@@ -1,0 +1,10 @@
+# Beef
+build/
+recovery/
+BeefSpace_User.toml
+
+.claude/
+.vscode/
+nul
+
+Assets/cache/
