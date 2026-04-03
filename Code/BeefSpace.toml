@@ -1,0 +1,187 @@
+FileVersion = 1
+Locked = ["Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "dr_libs-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
+
+[Projects]
+"Sedulous.RHI" = {Path = "Foundation/Sedulous.RHI"}
+"Sedulous.RHI.Vulkan" = {Path = "Foundation/Sedulous.RHI.Vulkan"}
+"Sedulous.RHI.Validation" = {Path = "Foundation/Sedulous.RHI.Validation"}
+"Sedulous.RHI.DX12" = {Path = "Foundation/Sedulous.RHI.DX12"}
+"Sedulous.RHI.Null" = {Path = "Foundation/Sedulous.RHI.Null"}
+SampleFramework = {Path = "Samples/SampleFramework"}
+Sample002_Textures = {Path = "Samples/RHI/Sample002_Textures"}
+Sample003_UniformBuffers = {Path = "Samples/RHI/Sample003_UniformBuffers"}
+Sample004_Compute = {Path = "Samples/RHI/Sample004_Compute"}
+Sample005_BindGroups = {Path = "Samples/RHI/Sample005_BindGroups"}
+Sample006_Blending = {Path = "Samples/RHI/Sample006_Blending"}
+Sample007_Instancing = {Path = "Samples/RHI/Sample007_Instancing"}
+Sample008_DepthBuffer = {Path = "Samples/RHI/Sample008_DepthBuffer"}
+Sample009_Mipmaps = {Path = "Samples/RHI/Sample009_Mipmaps"}
+Sample010_MSAA = {Path = "Samples/RHI/Sample010_MSAA"}
+Sample011_MRT = {Path = "Samples/RHI/Sample011_MRT"}
+Sample012_Wireframe = {Path = "Samples/RHI/Sample012_Wireframe"}
+Sample013_BorderSampler = {Path = "Samples/RHI/Sample013_BorderSampler"}
+Sample014_Blit = {Path = "Samples/RHI/Sample014_Blit"}
+Sample015_Queries = {Path = "Samples/RHI/Sample015_Queries"}
+Sample016_Readback = {Path = "Samples/RHI/Sample016_Readback"}
+Sample017_MultiQueue = {Path = "Samples/RHI/Sample017_MultiQueue"}
+Sample018_Bindless = {Path = "Samples/RHI/Sample018_Bindless"}
+Sample019_BatchUpload = {Path = "Samples/RHI/Sample019_BatchUpload"}
+Sample020_MeshShaders = {Path = "Samples/RHI/Sample020_MeshShaders"}
+Sample021_RayTracing = {Path = "Samples/RHI/Sample021_RayTracing"}
+Sample022_StencilOutline = {Path = "Samples/RHI/Sample022_StencilOutline"}
+Sample023_CubeMap = {Path = "Samples/RHI/Sample023_CubeMap"}
+Sample024_OcclusionQuery = {Path = "Samples/RHI/Sample024_OcclusionQuery"}
+Sample025_MultiDrawIndirect = {Path = "Samples/RHI/Sample025_MultiDrawIndirect"}
+Sample026_DynamicOffsets = {Path = "Samples/RHI/Sample026_DynamicOffsets"}
+Sample027_3DTexture = {Path = "Samples/RHI/Sample027_3DTexture"}
+Sample028_ProceduralRT = {Path = "Samples/RHI/Sample028_ProceduralRT"}
+Sample029_ResolveTexture = {Path = "Samples/RHI/Sample029_ResolveTexture"}
+Bulkan = {Path = "Dependencies/Bulkan"}
+cgltf-Beef = {Path = "Dependencies/cgltf-Beef"}
+cimgui-Beef = {Path = "Dependencies/cimgui-Beef"}
+Nuklear-Beef = {Path = "Dependencies/Nuklear-Beef"}
+Dxc-Beef = {Path = "Dependencies/Dxc-Beef"}
+glslang-Beef = {Path = "Dependencies/glslang-Beef"}
+SDL3 = {Path = "Dependencies/SDL3-Beef"}
+SPIRV-Cross = {Path = "Dependencies/SPIRV-Cross-Beef"}
+stb_image-Beef = {Path = "Dependencies/stb_image-Beef"}
+stb_truetype-Beef = {Path = "Dependencies/stb_truetype-Beef"}
+stb_vorbis-Beef = {Path = "Dependencies/stb_vorbis-Beef"}
+dr_libs-Beef = {Path = "Dependencies/dr_libs-Beef"}
+ufbx-Beef = {Path = "Dependencies/ufbx-Beef"}
+Win32 = {Path = "Dependencies/Win32-Beef"}
+"Sedulous.ShaderReflection" = {Path = "Foundation/Sedulous.ShaderReflection"}
+"Sedulous.ShaderReflection.SPIRV" = {Path = "Foundation/Sedulous.ShaderReflection.SPIRV"}
+"Sedulous.ShaderReflection.DXIL" = {Path = "Foundation/Sedulous.ShaderReflection.DXIL"}
+"Sedulous.ShaderReflection.Tests" = {Path = "Foundation/Sedulous.ShaderReflection.Tests"}
+SR001_ReflectedPBR = {Path = "Samples/ShaderReflection/SR001_ReflectedPBR"}
+"Sedulous.Core" = {Path = "Foundation/Sedulous.Core"}
+"Sedulous.Core.Collections" = {Path = "Foundation/Sedulous.Core.Collections"}
+"Sedulous.Core.Logging" = {Path = "Foundation/Sedulous.Core.Logging"}
+"Sedulous.Core.Mathematics" = {Path = "Foundation/Sedulous.Core.Mathematics"}
+"Sedulous.Core.Mathematics.Tests" = {Path = "Foundation/Sedulous.Core.Mathematics.Tests"}
+"Sedulous.Core.Tests" = {Path = "Foundation/Sedulous.Core.Tests"}
+"Sedulous.Shell" = {Path = "Foundation/Sedulous.Shell"}
+"Sedulous.Shell.SDL3" = {Path = "Foundation/Sedulous.Shell.SDL3"}
+"Sedulous.Shell.Tests" = {Path = "Foundation/Sedulous.Shell.Tests"}
+"Sedulous.Profiler" = {Path = "Foundation/Sedulous.Profiler"}
+"Sedulous.Profiler.Tests" = {Path = "Foundation/Sedulous.Profiler.Tests"}
+"Sedulous.Animation" = {Path = "Foundation/Sedulous.Animation"}
+"Sedulous.Animation.Tests" = {Path = "Foundation/Sedulous.Animation.Tests"}
+"Sedulous.Audio" = {Path = "Foundation/Sedulous.Audio"}
+"Sedulous.Audio.Decoders" = {Path = "Foundation/Sedulous.Audio.Decoders"}
+"Sedulous.Audio.SDL3" = {Path = "Foundation/Sedulous.Audio.SDL3"}
+"Sedulous.Audio.Tests" = {Path = "Foundation/Sedulous.Audio.Tests"}
+"Sedulous.DebugFont" = {Path = "Foundation/Sedulous.DebugFont"}
+"Sedulous.Drawing" = {Path = "Foundation/Sedulous.Drawing"}
+"Sedulous.Drawing.Fonts" = {Path = "Foundation/Sedulous.Drawing.Fonts"}
+"Sedulous.Drawing.Tests" = {Path = "Foundation/Sedulous.Drawing.Tests"}
+"Sedulous.Fonts" = {Path = "Foundation/Sedulous.Fonts"}
+"Sedulous.Fonts.TTF" = {Path = "Foundation/Sedulous.Fonts.TTF"}
+"Sedulous.Fonts.Tests" = {Path = "Foundation/Sedulous.Fonts.Tests"}
+"Sedulous.Geometry" = {Path = "Foundation/Sedulous.Geometry"}
+"Sedulous.Geometry.Tests" = {Path = "Foundation/Sedulous.Geometry.Tests"}
+"Sedulous.Imaging" = {Path = "Foundation/Sedulous.Imaging"}
+"Sedulous.Imaging.STB" = {Path = "Foundation/Sedulous.Imaging.STB"}
+"Sedulous.Imaging.Tests" = {Path = "Foundation/Sedulous.Imaging.Tests"}
+"Sedulous.Models" = {Path = "Foundation/Sedulous.Models"}
+"Sedulous.Models.FBX" = {Path = "Foundation/Sedulous.Models.FBX"}
+"Sedulous.Models.GLTF" = {Path = "Foundation/Sedulous.Models.GLTF"}
+"Sedulous.Models.Tests" = {Path = "Foundation/Sedulous.Models.Tests"}
+"Sedulous.Net" = {Path = "Foundation/Sedulous.Net"}
+"Sedulous.Net.HTTP" = {Path = "Foundation/Sedulous.Net.HTTP"}
+"Sedulous.Net.HTTP.Tests" = {Path = "Foundation/Sedulous.Net.HTTP.Tests"}
+"Sedulous.Net.Tests" = {Path = "Foundation/Sedulous.Net.Tests"}
+"Sedulous.Geometry.Tooling" = {Path = "Foundation/Sedulous.Geometry.Tooling"}
+"Sedulous.VG" = {Path = "Foundation/Sedulous.VG"}
+"Sedulous.VG.SVG" = {Path = "Foundation/Sedulous.VG.SVG"}
+"Sedulous.VG.Tests" = {Path = "Foundation/Sedulous.VG.Tests"}
+SampleVG001_Shapes = {Path = "Samples/VG/SampleVG001_Shapes"}
+"Sedulous.Materials" = {Path = "Foundation/Sedulous.Materials"}
+"Sedulous.Shaders" = {Path = "Foundation/Sedulous.Shaders"}
+"Sedulous.RenderGraph" = {Path = "Foundation/Sedulous.RenderGraph"}
+"Sedulous.RenderGraph.Tests" = {Path = "Foundation/Sedulous.RenderGraph.Tests"}
+"Sedulous.Textures" = {Path = "Foundation/Sedulous.Textures"}
+"Sedulous.Runtime" = {Path = "Foundation/Sedulous.Runtime"}
+"Sedulous.Runtime.Client" = {Path = "Foundation/Sedulous.Runtime.Client"}
+"Sedulous.Scenes" = {Path = "Foundation/Sedulous.Scenes"}
+"Sedulous.Scenes.Tests" = {Path = "Foundation/Sedulous.Scenes.Tests"}
+"Sedulous.Scenes.Resources" = {Path = "Foundation/Sedulous.Scenes.Resources"}
+"Sedulous.Jobs" = {Path = "Foundation/Sedulous.Jobs"}
+"Sedulous.Jobs.Tests" = {Path = "Foundation/Sedulous.Jobs.Tests"}
+"Sedulous.Resources" = {Path = "Foundation/Sedulous.Resources"}
+"Sedulous.Resources.Tests" = {Path = "Foundation/Sedulous.Resources.Tests"}
+"Sedulous.Serialization" = {Path = "Foundation/Sedulous.Serialization"}
+"Sedulous.Serialization.Tests" = {Path = "Foundation/Sedulous.Serialization.Tests"}
+"Sedulous.Serialization.OpenDDL" = {Path = "Foundation/Sedulous.Serialization.OpenDDL"}
+"Sedulous.Serialization.Xml" = {Path = "Foundation/Sedulous.Serialization.Xml"}
+"Sedulous.OpenDDL" = {Path = "Foundation/Sedulous.OpenDDL"}
+"Sedulous.OpenDDL.Tests" = {Path = "Foundation/Sedulous.OpenDDL/Sedulous.OpenDDL.Tests"}
+"Sedulous.Xml" = {Path = "Foundation/Sedulous.Xml"}
+"Sedulous.Xml.Tests" = {Path = "Foundation/Sedulous.Xml/Sedulous.Xml.Tests"}
+"Sedulous.GUI" = {Path = "Foundation/Sedulous.GUI"}
+"Sedulous.GUI.Shell" = {Path = "Foundation/Sedulous.GUI.Shell"}
+"Sedulous.GUI.Tests" = {Path = "Foundation/Sedulous.GUI.Tests"}
+"Sedulous.GUI.Runtime" = {Path = "Foundation/Sedulous.GUI.Runtime"}
+"Sedulous.Drawing.Renderer" = {Path = "Foundation/Sedulous.Drawing.Renderer"}
+"Sedulous.Audio.Resources" = {Path = "Foundation/Sedulous.Audio.Resources"}
+"Sedulous.Animation.Resources" = {Path = "Foundation/Sedulous.Animation.Resources"}
+"Sedulous.Imaging.Resources" = {Path = "Foundation/Sedulous.Imaging.Resources"}
+"Sedulous.Geometry.Resources" = {Path = "Foundation/Sedulous.Geometry.Resources"}
+"Sedulous.Textures.Resources" = {Path = "Foundation/Sedulous.Textures.Resources"}
+"Sedulous.Core.Mathematics.Serialization" = {Path = "Foundation/Sedulous.Core.Mathematics.Serialization"}
+"Sedulous.Physics" = {Path = "Foundation/Sedulous.Physics"}
+"Sedulous.Physics.Jolt" = {Path = "Foundation/Sedulous.Physics.Jolt"}
+"Sedulous.Physics.Tests" = {Path = "Foundation/Sedulous.Physics.Tests"}
+joltc-Beef = {Path = "Dependencies/joltc-Beef"}
+"Sedulous.VG.Renderer" = {Path = "Foundation/Sedulous.VG.Renderer"}
+"Sedulous.Geometry.Tooling.Resources" = {Path = "Foundation/Sedulous.Geometry.Tooling.Resources"}
+"Sedulous.Materials.Resources" = {Path = "Foundation/Sedulous.Materials.Resources"}
+"Sedulous.Imaging.SDL" = {Path = "Foundation/Sedulous.Imaging.SDL"}
+SDL3_image = {Path = "Dependencies/SDL3_image-Beef"}
+Sample001_Triangle = {Path = "Samples/RHI/Sample001_Triangle"}
+DrawingSandbox = {Path = "Samples/DrawingSandbox"}
+VGSandbox = {Path = "Samples/VG/VGSandbox"}
+"Sedulous.Slug" = {Path = "Foundation/Sedulous.Slug"}
+"Sedulous.Slug.Tests" = {Path = "Foundation/Sedulous.Slug.Tests"}
+"Sedulous.Slug.TTF" = {Path = "Foundation/Sedulous.Slug.TTF"}
+"Sedulous.Slug.Renderer" = {Path = "Foundation/Sedulous.Slug.Renderer"}
+FontRendering = {Path = "Samples/FontRendering"}
+GUISandbox = {Path = "Samples/GUISandbox"}
+ImGuiSample = {Path = "Samples/ImGuiSample"}
+NuklearSample = {Path = "Samples/NuklearSample"}
+SlugSample = {Path = "Samples/SlugSample"}
+NetEcho = {Path = "Samples/Net/NetEcho"}
+NetHttpClient = {Path = "Samples/Net/NetHttpClient"}
+NetWebSocket = {Path = "Samples/Net/NetWebSocket"}
+AudioSandbox = {Path = "Samples/AudioSandbox"}
+recastnavigation-Beef = {Path = "Dependencies/recastnavigation-Beef"}
+
+[WorkspaceFolders]
+Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
+Samples = ["SampleFramework", "SampleVG001_Shapes", "DrawingSandbox", "VGSandbox", "FontRendering", "GUISandbox", "ImGuiSample", "NuklearSample", "SlugSample", "NetEcho", "NetHttpClient", "NetWebSocket", "AudioSandbox"]
+"Samples/RHISamples" = ["Sample002_Textures", "Sample003_UniformBuffers", "Sample004_Compute", "Sample005_BindGroups", "Sample006_Blending", "Sample007_Instancing", "Sample008_DepthBuffer", "Sample009_Mipmaps", "Sample010_MSAA", "Sample011_MRT", "Sample012_Wireframe", "Sample013_BorderSampler", "Sample014_Blit", "Sample015_Queries", "Sample016_Readback", "Sample017_MultiQueue", "Sample018_Bindless", "Sample019_BatchUpload", "Sample020_MeshShaders", "Sample021_RayTracing", "Sample022_StencilOutline", "Sample023_CubeMap", "Sample024_OcclusionQuery", "Sample025_MultiDrawIndirect", "Sample026_DynamicOffsets", "Sample027_3DTexture", "Sample028_ProceduralRT", "Sample029_ResolveTexture", "Sample001_Triangle"]
+"Samples/ShaderReflection" = ["SR001_ReflectedPBR"]
+Foundation = []
+"Foundation/Core" = ["Sedulous.Core", "Sedulous.Core.Collections", "Sedulous.Core.Logging", "Sedulous.Core.Mathematics", "Sedulous.Core.Mathematics.Tests", "Sedulous.Core.Tests", "Sedulous.Core.Mathematics.Serialization"]
+"Foundation/Shell" = ["Sedulous.Shell", "Sedulous.Shell.SDL3", "Sedulous.Shell.Tests"]
+"Foundation/Profiling" = ["Sedulous.Profiler", "Sedulous.Profiler.Tests"]
+"Foundation/Animation" = ["Sedulous.Animation", "Sedulous.Animation.Tests", "Sedulous.Animation.Resources"]
+"Foundation/Audio" = ["Sedulous.Audio", "Sedulous.Audio.Decoders", "Sedulous.Audio.SDL3", "Sedulous.Audio.Tests", "Sedulous.Audio.Resources"]
+"Foundation/Drawing" = ["Sedulous.DebugFont", "Sedulous.Drawing", "Sedulous.Drawing.Fonts", "Sedulous.Drawing.Tests", "Sedulous.Drawing.Renderer"]
+"Foundation/Fonts" = ["Sedulous.Fonts", "Sedulous.Fonts.TTF", "Sedulous.Fonts.Tests"]
+"Foundation/Geometry" = ["Sedulous.Geometry", "Sedulous.Geometry.Tests", "Sedulous.Geometry.Tooling", "Sedulous.Geometry.Resources", "Sedulous.Geometry.Tooling.Resources"]
+"Foundation/VG" = ["Sedulous.VG", "Sedulous.VG.SVG", "Sedulous.VG.Tests", "Sedulous.VG.Renderer"]
+"Foundation/Imaging" = ["Sedulous.Imaging", "Sedulous.Imaging.STB", "Sedulous.Imaging.Tests", "Sedulous.Imaging.Resources", "Sedulous.Imaging.SDL"]
+"Foundation/Models" = ["Sedulous.Models", "Sedulous.Models.FBX", "Sedulous.Models.GLTF", "Sedulous.Models.Tests"]
+"Foundation/Net" = ["Sedulous.Net", "Sedulous.Net.HTTP", "Sedulous.Net.HTTP.Tests", "Sedulous.Net.Tests"]
+"Foundation/Render" = ["Sedulous.Materials", "Sedulous.Shaders", "Sedulous.Textures", "Sedulous.Textures.Resources", "Sedulous.Materials.Resources", "Sedulous.RenderGraph", "Sedulous.RenderGraph.Tests"]
+"Foundation/Runtime" = ["Sedulous.Runtime", "Sedulous.Runtime.Client"]
+"Foundation/Scenes" = ["Sedulous.Scenes", "Sedulous.Scenes.Tests", "Sedulous.Scenes.Resources"]
+"Foundation/Jobs" = ["Sedulous.Jobs", "Sedulous.Jobs.Tests"]
+"Foundation/Resources" = ["Sedulous.Resources", "Sedulous.Resources.Tests"]
+"Foundation/Serialization" = ["Sedulous.Serialization", "Sedulous.Serialization.Tests", "Sedulous.Serialization.OpenDDL", "Sedulous.Serialization.Xml", "Sedulous.OpenDDL", "Sedulous.OpenDDL.Tests", "Sedulous.Xml", "Sedulous.Xml.Tests"]
+"Foundation/GUI" = ["Sedulous.GUI", "Sedulous.GUI.Shell", "Sedulous.GUI.Tests", "Sedulous.GUI.Runtime"]
+"Foundation/Physics" = ["Sedulous.Physics", "Sedulous.Physics.Jolt", "Sedulous.Physics.Tests"]
+"Foundation/Slug" = ["Sedulous.Slug", "Sedulous.Slug.Tests", "Sedulous.Slug.TTF", "Sedulous.Slug.Renderer"]
+"Foundation/RHI" = ["Sedulous.RHI", "Sedulous.RHI.DX12", "Sedulous.RHI.Null", "Sedulous.RHI.Validation", "Sedulous.RHI.Vulkan", "Sedulous.ShaderReflection", "Sedulous.ShaderReflection.DXIL", "Sedulous.ShaderReflection.SPIRV", "Sedulous.ShaderReflection.Tests"]

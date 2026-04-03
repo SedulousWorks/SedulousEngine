@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.RHI" = "*", "Sedulous.RenderGraph" = "*"}
+
+[Project]
+Name = "Sedulous.RenderGraph.Tests"
+TargetType = "BeefTest"

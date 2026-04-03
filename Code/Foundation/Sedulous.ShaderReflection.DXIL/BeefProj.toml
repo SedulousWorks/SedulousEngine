@@ -1,0 +1,7 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.RHI" = "*", "Sedulous.ShaderReflection" = "*", Win32 = "*", Dxc-Beef = "*"}
+
+[Project]
+Name = "Sedulous.ShaderReflection.DXIL"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.ShaderReflection.DXIL.Program"

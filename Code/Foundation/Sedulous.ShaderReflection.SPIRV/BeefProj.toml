@@ -1,0 +1,7 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.RHI" = "*", "Sedulous.ShaderReflection" = "*", SPIRV-Cross = "*"}
+
+[Project]
+Name = "Sedulous.ShaderReflection.SPIRV"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.ShaderReflection.SPIRV.Program"

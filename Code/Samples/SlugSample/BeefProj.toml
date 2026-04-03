@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.RHI" = "*", "Sedulous.Shaders" = "*", "Sedulous.Runtime.Client" = "*", "Sedulous.Slug" = "*", "Sedulous.Slug.TTF" = "*", "Sedulous.Slug.Renderer" = "*", "stb_truetype-Beef" = "*"}
+
+[Project]
+Name = "SlugSample"
+StartupObject = "SlugSample.Program"

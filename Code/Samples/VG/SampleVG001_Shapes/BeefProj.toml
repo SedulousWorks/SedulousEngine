@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.RHI" = "*", "Sedulous.RHI.Validation" = "*", "Sedulous.RHI.DX12" = "*", "Sedulous.RHI.Vulkan" = "*", SampleFramework = "*", "Sedulous.VG" = "*", "Sedulous.VG.SVG" = "*", "Sedulous.Core" = "*", "Sedulous.Core.Mathematics" = "*"}
+
+[Project]
+Name = "SampleVG001_Shapes"
+StartupObject = "SampleVG001_Shapes.Program"

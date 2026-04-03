@@ -1,0 +1,6 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.RHI"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.RHI.Program"

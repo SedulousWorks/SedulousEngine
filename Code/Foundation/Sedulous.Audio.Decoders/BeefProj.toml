@@ -1,0 +1,7 @@
+FileVersion = 1
+Dependencies = {corlib = "*", dr_libs-Beef = "*", "Sedulous.Audio" = "*", stb_vorbis-Beef = "*"}
+
+[Project]
+Name = "Sedulous.Audio.Decoders"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Audio.Decoders.Program"

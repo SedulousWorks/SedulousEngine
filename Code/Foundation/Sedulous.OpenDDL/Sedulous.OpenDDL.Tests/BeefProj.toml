@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.OpenDDL.Tests"
+TargetType = "BeefTest"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.OpenDDL" = "*"

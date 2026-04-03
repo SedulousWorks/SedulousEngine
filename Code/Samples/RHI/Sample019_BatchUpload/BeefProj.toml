@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.RHI" = "*", "Sedulous.RHI.Validation" = "*", "Sedulous.RHI.DX12" = "*", "Sedulous.RHI.Vulkan" = "*", SampleFramework = "*"}
+
+[Project]
+Name = "Sample019_BatchUpload"
+StartupObject = "Sample019_BatchUpload.Program"

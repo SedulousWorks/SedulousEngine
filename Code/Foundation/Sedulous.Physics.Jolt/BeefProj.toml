@@ -1,0 +1,7 @@
+FileVersion = 1
+Dependencies = {corlib = "*", joltc-Beef = "*", "Sedulous.Physics" = "*"}
+
+[Project]
+Name = "Sedulous.Physics.Jolt"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Physics.Jolt.Program"

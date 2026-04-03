@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.RHI" = "*", Dxc-Beef = "*"}
+
+[Project]
+Name = "Sedulous.Shaders"
+TargetType = "BeefLib"

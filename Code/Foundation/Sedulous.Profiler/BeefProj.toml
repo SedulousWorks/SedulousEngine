@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*"}
+
+[Project]
+Name = "Sedulous.Profiler"
+TargetType = "BeefLib"

@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.RHI" = "*", "Sedulous.RHI.Validation" = "*", "Sedulous.RHI.DX12" = "*", "Sedulous.RHI.Vulkan" = "*", SampleFramework = "*", "stb_image-Beef" = "*"}
+
+[Project]
+Name = "Sample002_Textures"
+StartupObject = "Sample002_Textures.Program"

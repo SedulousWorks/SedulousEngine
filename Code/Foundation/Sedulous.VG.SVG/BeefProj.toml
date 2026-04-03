@@ -1,0 +1,5 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.VG" = "*"}
+
+[Project]
+Name = "Sedulous.VG.SVG"

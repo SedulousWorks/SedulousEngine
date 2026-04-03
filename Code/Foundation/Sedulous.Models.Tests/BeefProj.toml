@@ -1,0 +1,11 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Models.Tests"
+TargetType = "BeefTest"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Models" = "*"
+"Sedulous.Models.GLTF" = "*"
+"Sedulous.Core.Mathematics" = "*"

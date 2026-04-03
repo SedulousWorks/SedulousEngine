@@ -1,0 +1,7 @@
+FileVersion = 1
+Dependencies = {corlib = "*", SDL3_image = "*", "Sedulous.Imaging" = "*"}
+
+[Project]
+Name = "Sedulous.Imaging.SDL"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Imaging.SDL.Program"

@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.RHI" = "*", "Sedulous.Shaders" = "*", "Sedulous.VG" = "*", "Sedulous.VG.Renderer" = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Runtime.Client" = "*"}
+
+[Project]
+Name = "VGSandbox"
+StartupObject = "VGSandbox.Program"

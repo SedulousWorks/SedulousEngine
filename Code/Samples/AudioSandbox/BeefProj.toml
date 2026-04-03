@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Audio" = "*", "Sedulous.Audio.SDL3" = "*", "Sedulous.Audio.Decoders" = "*", "Sedulous.RHI" = "*", "Sedulous.GUI" = "*", "Sedulous.GUI.Runtime" = "*", "Sedulous.Fonts" = "*", "Sedulous.Runtime.Client" = "*"}
+
+[Project]
+Name = "AudioSandbox"
+StartupObject = "AudioSandbox.Program"

@@ -1,0 +1,12 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.ShaderReflection.Tests"
+TargetType = "BeefTest"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.ShaderReflection" = "*"
+"Sedulous.ShaderReflection.SPIRV" = "*"
+"Sedulous.ShaderReflection.DXIL" = "*"

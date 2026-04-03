@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.Slug" = "*", "Sedulous.Slug.TTF" = "*", "stb_truetype-Beef" = "*"}
+
+[Project]
+Name = "Sedulous.Slug.Tests"
+TargetType = "BeefTest"

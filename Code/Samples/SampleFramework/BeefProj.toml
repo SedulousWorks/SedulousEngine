@@ -1,0 +1,7 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.RHI" = "*", "Sedulous.RHI.Validation" = "*", "Sedulous.RHI.DX12" = "*", "Sedulous.RHI.Vulkan" = "*", SDL3 = "*", "Dxc-Beef" = "*"}
+
+[Project]
+Name = "SampleFramework"
+TargetType = "BeefLib"
+StartupObject = "SampleFramework.Program"

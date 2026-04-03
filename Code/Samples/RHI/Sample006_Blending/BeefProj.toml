@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.RHI" = "*", "Sedulous.RHI.Validation" = "*", "Sedulous.RHI.DX12" = "*", "Sedulous.RHI.Vulkan" = "*", SampleFramework = "*"}
+
+[Project]
+Name = "Sample006_Blending"
+StartupObject = "Sample006_Blending.Program"

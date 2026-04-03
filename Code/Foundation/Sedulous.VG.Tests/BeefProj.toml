@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.VG" = "*", "Sedulous.VG.SVG" = "*"}
+
+[Project]
+Name = "Sedulous.VG.Tests"
+TargetType = "BeefTest"

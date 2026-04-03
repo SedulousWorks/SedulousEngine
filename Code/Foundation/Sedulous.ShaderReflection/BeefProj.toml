@@ -1,0 +1,7 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.RHI" = "*"}
+
+[Project]
+Name = "Sedulous.ShaderReflection"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.ShaderReflection.Program"

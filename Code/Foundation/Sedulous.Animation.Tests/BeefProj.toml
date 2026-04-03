@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.Animation" = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Core" = "*", "Sedulous.OpenDDL" = "*", "Sedulous.Serialization.OpenDDL" = "*"}
+
+[Project]
+Name = "Sedulous.Animation.Tests"
+TargetType = "BeefTest"

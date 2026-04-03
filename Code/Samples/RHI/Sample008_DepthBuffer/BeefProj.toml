@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.RHI" = "*", "Sedulous.RHI.Validation" = "*", "Sedulous.RHI.DX12" = "*", "Sedulous.RHI.Vulkan" = "*", SampleFramework = "*"}
+
+[Project]
+Name = "Sample008_DepthBuffer"
+StartupObject = "Sample008_DepthBuffer.Program"

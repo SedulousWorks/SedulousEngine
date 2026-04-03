@@ -1,0 +1,7 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.Animation" = "*", "Sedulous.Resources" = "*", "Sedulous.OpenDDL" = "*", "Sedulous.Serialization.OpenDDL" = "*", "Sedulous.Core.Mathematics.Serialization" = "*"}
+
+[Project]
+Name = "Sedulous.Animation.Resources"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Animation.Resources.Program"

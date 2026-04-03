@@ -1,0 +1,14 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Resources.Tests"
+TargetType = "BeefTest"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Jobs" = "*"
+"Sedulous.Core.Mathematics" = "*"
+"Sedulous.OpenDDL" = "*"
+"Sedulous.Resources" = "*"
+"Sedulous.Serialization" = "*"
+"Sedulous.Serialization.OpenDDL" = "*"

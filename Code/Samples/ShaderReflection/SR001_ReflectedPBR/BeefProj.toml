@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.RHI" = "*", "Sedulous.RHI.Validation" = "*", "Sedulous.RHI.DX12" = "*", "Sedulous.RHI.Vulkan" = "*", SampleFramework = "*", "Sedulous.ShaderReflection" = "*", "Sedulous.ShaderReflection.SPIRV" = "*", "Sedulous.ShaderReflection.DXIL" = "*"}
+
+[Project]
+Name = "SR001_ReflectedPBR"
+StartupObject = "SR001_ReflectedPBR.Program"

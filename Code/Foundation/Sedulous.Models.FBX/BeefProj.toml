@@ -1,0 +1,7 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.Models" = "*", "ufbx-Beef" = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Imaging" = "*"}
+
+[Project]
+Name = "Sedulous.Models.FBX"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Models.FBX.Program"
