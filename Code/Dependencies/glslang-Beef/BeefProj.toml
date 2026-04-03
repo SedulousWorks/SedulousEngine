@@ -1,0 +1,22 @@
+FileVersion = 1
+
+[Project]
+Name = "glslang-Beef"
+TargetType = "BeefLib"
+StartupObject = "glslang_Beef.Program"
+
+[Configs.Debug.Win64]
+LibPaths = ["$(ProjectDir)/dist/Win64/Debug/MachineIndependentd.lib", "$(ProjectDir)/dist/Win64/Debug/glslangd.lib", "$(ProjectDir)/dist/Win64/Debug/SPIRVd.lib", "$(ProjectDir)/dist/Win64/Debug/glslang-default-resource-limitsd.lib"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/Win64/Debug/*.dll\")"]
+
+[Configs.Release.Win64]
+LibPaths = ["$(ProjectDir)/dist/Win64/Release/glslang.lib", "$(ProjectDir)/dist/Win64/Release/SPIRV.lib", "$(ProjectDir)/dist/Win64/Release/glslang-default-resource-limits.lib", "$(ProjectDir)/dist/Win64/Release/MachineIndependent.lib"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/Win64/Release/*.dll\")"]
+
+[Configs.Test.Win64]
+LibPaths = ["$(ProjectDir)/dist/Win64/Debug/glslangd.lib", "$(ProjectDir)/dist/Win64/Debug/SPIRVd.lib", "$(ProjectDir)/dist/Win64/Debug/glslang-default-resource-limitsd.lib", "$(ProjectDir)/dist/Win64/Debug/MachineIndependentd.lib"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/Win64/Debug/*.dll\")"]
+
+[Configs.Paranoid.Win64]
+LibPaths = ["$(ProjectDir)/dist/Win64/Release/glslang.lib", "$(ProjectDir)/dist/Win64/Release/SPIRV.lib", "$(ProjectDir)/dist/Win64/Release/glslang-default-resource-limits.lib", "$(ProjectDir)/dist/Win64/Release/MachineIndependent.lib"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/Win64/Release/*.dll\")"]

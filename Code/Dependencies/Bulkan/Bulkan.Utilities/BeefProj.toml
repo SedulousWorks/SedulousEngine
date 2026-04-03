@@ -1,0 +1,19 @@
+FileVersion = 1
+Dependencies = {corlib = "*", Bulkan = "*"}
+
+[Project]
+Name = "Bulkan.Utilities"
+TargetType = "BeefLib"
+StartupObject = "Bulkan.Utilities.Program"
+
+[Configs.Debug.Win64]
+LibPaths = ["$(ProjectDir)/dist/VulkanMemoryAllocatorrd.lib"]
+
+[Configs.Release.Win64]
+LibPaths = ["$(ProjectDir)/dist/VulkanMemoryAllocator.lib"]
+
+[Configs.Paranoid.Win64]
+LibPaths = ["$(ProjectDir)/dist/VulkanMemoryAllocator.lib"]
+
+[Configs.Test.Win64]
+LibPaths = ["$(ProjectDir)/dist/VulkanMemoryAllocator.lib"]

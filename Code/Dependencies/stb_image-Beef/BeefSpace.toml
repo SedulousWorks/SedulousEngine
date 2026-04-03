@@ -1,0 +1,5 @@
+FileVersion = 1
+Projects = {stb_image-Beef = {Path = "."}}
+
+[Workspace]
+StartupProject = "stb_image-Beef"

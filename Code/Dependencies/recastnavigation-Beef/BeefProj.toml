@@ -1,0 +1,33 @@
+FileVersion = 1
+
+[Project]
+Name = "recastnavigation-Beef"
+TargetType = "BeefLib"
+StartupObject = "recastnavigation_Beef.Program"
+
+[Configs.Debug.Win64]
+LibPaths = [
+    "$(ProjectDir)/dist/Debug-Win64/Recast-c.lib",
+    "$(ProjectDir)/dist/Debug-Win64/Detour-c.lib",
+    "$(ProjectDir)/dist/Debug-Win64/DetourCrowd-c.lib",
+    "$(ProjectDir)/dist/Debug-Win64/DetourTileCache-c.lib",
+    "$(ProjectDir)/dist/Debug-Win64/DebugUtils-c.lib"
+]
+
+[Configs.Release.Win64]
+LibPaths = [
+    "$(ProjectDir)/dist/Release-Win64/Recast-c.lib",
+    "$(ProjectDir)/dist/Release-Win64/Detour-c.lib",
+    "$(ProjectDir)/dist/Release-Win64/DetourCrowd-c.lib",
+    "$(ProjectDir)/dist/Release-Win64/DetourTileCache-c.lib",
+    "$(ProjectDir)/dist/Release-Win64/DebugUtils-c.lib"
+]
+
+[Configs.Test.Win64]
+LibPaths = [
+    "$(ProjectDir)/dist/Debug-Win64/Recast-c.lib",
+    "$(ProjectDir)/dist/Debug-Win64/Detour-c.lib",
+    "$(ProjectDir)/dist/Debug-Win64/DetourCrowd-c.lib",
+    "$(ProjectDir)/dist/Debug-Win64/DetourTileCache-c.lib",
+    "$(ProjectDir)/dist/Debug-Win64/DebugUtils-c.lib"
+]

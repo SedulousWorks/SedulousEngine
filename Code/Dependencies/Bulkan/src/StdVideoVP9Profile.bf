@@ -1,0 +1,12 @@
+using System;
+namespace Bulkan;
+
+[CRepr, AllowDuplicates]
+enum StdVideoVP9Profile : int32 {
+    STD_VIDEO_VP9_PROFILE_0 = 0,
+    STD_VIDEO_VP9_PROFILE_1 = 1,
+    STD_VIDEO_VP9_PROFILE_2 = 2,
+    STD_VIDEO_VP9_PROFILE_3 = 3,
+    STD_VIDEO_VP9_PROFILE_INVALID = 0x7FFFFFFF,
+    STD_VIDEO_VP9_PROFILE_MAX_ENUM = 0x7FFFFFFF
+}

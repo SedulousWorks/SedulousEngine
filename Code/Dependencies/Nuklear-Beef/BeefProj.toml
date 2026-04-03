@@ -1,0 +1,17 @@
+FileVersion = 1
+
+[Project]
+Name = "Nuklear-Beef"
+TargetType = "BeefLib"
+StartupObject = "Nuklear_Beef.Program"
+
+[Configs.Debug.Win64]
+LibPaths = ["$(ProjectDir)/dist/Debug-Win64/nuklear.lib"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/Debug-Win64/*.pdb\")"]
+
+[Configs.Release.Win64]
+LibPaths = ["$(ProjectDir)/dist/Release-Win64/nuklear.lib"]
+
+[Configs.Test.Win64]
+LibPaths = ["$(ProjectDir)/dist/Debug-Win64/nuklear.lib"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/Debug-Win64/*.pdb\")"]

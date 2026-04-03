@@ -1,0 +1,5 @@
+FileVersion = 1
+Projects = {joltc-Beef = {Path = "."}}
+
+[Workspace]
+StartupProject = "joltc-Beef"

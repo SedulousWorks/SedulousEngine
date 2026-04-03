@@ -1,0 +1,14 @@
+FileVersion = 1
+
+[Project]
+Name = "SPIRV-Cross"
+TargetType = "BeefLib"
+StartupObject = "SPIRV_Cross.Program"
+
+[Configs.Debug.Win64]
+LibPaths = ["$(ProjectDir)/dist/Win32/Debug/spirv-cross-c-sharedd.lib"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/Win32/Debug/*.dll\")"]
+
+[Configs.Release.Win64]
+LibPaths = ["$(ProjectDir)/dist/Win32/Release/spirv-cross-c-shared.lib"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/Win32/Release/*.dll\")"]

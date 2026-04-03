@@ -1,0 +1,15 @@
+FileVersion = 1
+
+[Project]
+Name = "cimgui-Beef"
+TargetType = "BeefLib"
+StartupObject = "cimgui_Beef.Program"
+
+[Configs.Debug.Win64]
+LibPaths = ["$(ProjectDir)/dist/Debug-Win64/cimgui.lib"]
+
+[Configs.Release.Win64]
+LibPaths = ["$(ProjectDir)/dist/Release-Win64/cimgui.lib"]
+
+[Configs.Test.Win64]
+LibPaths = ["$(ProjectDir)/dist/Debug-Win64/cimgui.lib"]

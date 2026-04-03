@@ -1,0 +1,5 @@
+FileVersion = 1
+Projects = {SPIRV-Cross = {Path = "."}, "SPIRV-Cross.Test" = {Path = "SPIRV-Cross.Test"}}
+
+[Workspace]
+StartupProject = "SPIRV-Cross.Test"

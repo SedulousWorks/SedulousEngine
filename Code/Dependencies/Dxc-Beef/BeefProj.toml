@@ -1,0 +1,14 @@
+FileVersion = 1
+
+[Project]
+Name = "Dxc-Beef"
+TargetType = "BeefLib"
+StartupObject = "Dxc_Beef.Program"
+
+[Configs.Debug.Win64]
+LibPaths = ["$(ProjectDir)/dist/lib/x64/dxcompiler.lib", "$(ProjectDir)/dist/lib/x64/dxil.lib"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/bin/x64/*.dll\")"]
+
+[Configs.Release.Win64]
+LibPaths = ["$(ProjectDir)/dist/lib/x64/dxcompiler.lib", "$(ProjectDir)/dist/lib/x64/dxil.lib"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/bin/x64/*.dll\")"]

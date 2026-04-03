@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", Dxc-Beef = "*"}
+
+[Project]
+Name = "Dxc-Beef.Test"
+StartupObject = "Dxc_Beef.Test.Program"

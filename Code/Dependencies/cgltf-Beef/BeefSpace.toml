@@ -1,0 +1,11 @@
+FileVersion = 1
+Projects = {cgltf-Beef = {Path = "."}, cgltf-Beef-Test = {Path = "cgltf-Beef-Test"}}
+
+[Workspace]
+StartupProject = "cgltf-Beef-Test"
+
+[Configs.Test.Win32]
+ConfigSelections = {corlib = {Config = "Debug"}}
+
+[Configs.Test.Win64]
+ConfigSelections = {corlib = {Config = "Debug"}}

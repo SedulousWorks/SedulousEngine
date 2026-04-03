@@ -1,0 +1,12 @@
+FileVersion = 1
+
+[Project]
+Name = "cgltf-Beef"
+TargetType = "BeefLib"
+StartupObject = "cgltf_Beef.Program"
+
+[Configs.Debug.Win64]
+LibPaths = ["$(ProjectDir)/dist/Debug-Win64/cgltf.lib"]
+
+[Configs.Release.Win64]
+LibPaths = ["$(ProjectDir)/dist/Release-Win64/cgltf.lib"]

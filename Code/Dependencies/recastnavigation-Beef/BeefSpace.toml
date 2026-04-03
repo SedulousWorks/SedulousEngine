@@ -1,0 +1,5 @@
+FileVersion = 1
+Projects = {recastnavigation-Beef = {Path = "."}}
+
+[Workspace]
+StartupProject = "recastnavigation-Beef"

@@ -1,0 +1,110 @@
+$option = $args[0]
+
+function PrintHelp()
+{
+    echo "Arguments:"
+    echo "make [DEBUG|RELEASE|ALL]... configure cmake"
+    echo "build [DEBUG|RELEASE|ALL]... build libraries"
+    echo "clean... remove build directories"
+}
+
+if(!$option -or $option -eq "help")
+{
+    PrintHelp
+}
+elseif($option -eq "make")
+{
+    $target = $args[1]
+    if(!$target) { $target = "ALL" }
+
+    if($target -eq "DEBUG" -or $target -eq "ALL")
+    {
+        echo "Configuring Debug..."
+
+        if(!(Test-Path build-debug))
+        {
+            mkdir build-debug
+        }
+
+        cmake -S . -B build-debug
+    }
+
+    if($target -eq "RELEASE" -or $target -eq "ALL")
+    {
+        echo "Configuring Release..."
+
+        if(!(Test-Path build-release))
+        {
+            mkdir build-release
+        }
+
+        cmake -S . -B build-release
+    }
+}
+elseif($option -eq "build")
+{
+    $target = $args[1]
+    if(!$target)
+    {
+        echo "Build targets: DEBUG or RELEASE or ALL"
+        return
+    }
+
+    if($target -eq "DEBUG" -or $target -eq "ALL")
+    {
+        if(!(Test-Path build-debug))
+        {
+            echo "Debug build directory missing. Run 'make DEBUG' first."
+        }
+        else
+        {
+            echo "Building Debug..."
+            cmake --build build-debug --config Debug
+
+            $targetPath = "./dist/Debug-Win64/"
+            if(!(Test-Path $targetPath))
+            {
+                mkdir $targetPath
+            }
+
+            copy-item "./build-debug/Debug/cimgui.lib" "$targetPath/cimgui.lib" -Force
+        }
+    }
+
+    if($target -eq "RELEASE" -or $target -eq "ALL")
+    {
+        if(!(Test-Path build-release))
+        {
+            echo "Release build directory missing. Run 'make RELEASE' first."
+        }
+        else
+        {
+            echo "Building Release..."
+            cmake --build build-release --config Release
+
+            $targetPath = "./dist/Release-Win64/"
+            if(!(Test-Path $targetPath))
+            {
+                mkdir $targetPath
+            }
+
+            copy-item "./build-release/Release/cimgui.lib" "$targetPath/cimgui.lib" -Force
+        }
+    }
+}
+elseif($option -eq "clean")
+{
+    if(Test-Path build-debug)
+    {
+        echo "Removing build-debug..."
+        rm -Recurse -Force build-debug
+    }
+
+    if(Test-Path build-release)
+    {
+        echo "Removing build-release..."
+        rm -Recurse -Force build-release
+    }
+
+    echo "Clean complete."
+}

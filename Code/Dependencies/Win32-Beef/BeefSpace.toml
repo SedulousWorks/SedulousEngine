@@ -1,0 +1,6 @@
+FileVersion = 1
+Projects = {Win32 = {Path = "."}, FlexibleArray = {Path = "Samples/FlexibleArray"}, PerfCount = {Path = "Samples/PerfCount"}, XAudioSample = {Path = "Samples/XAudioSample"}, DirectSoundSample = {Path = "Samples/DirectSoundSample"}, Common = {Path = "Samples/Common"}, DX11Triangle = {Path = "Samples/DX11Triangle"}, XInputSample = {Path = "Samples/XInputSample"}}
+WorkspaceFolders = {Samples = ["FlexibleArray", "PerfCount", "XAudioSample", "DirectSoundSample", "Common", "DX11Triangle", "XInputSample"]}
+
+[Workspace]
+StartupProject = "XInputSample"
