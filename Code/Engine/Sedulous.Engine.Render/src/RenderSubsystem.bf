@@ -357,7 +357,10 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 
 	public void OnSceneCreated(Scene scene)
 	{
-		scene.AddModule(new MeshComponentManager());
+		let meshMgr = new MeshComponentManager();
+		meshMgr.GPUResources = mPipeline?.GPUResources;
+		scene.AddModule(meshMgr);
+
 		scene.AddModule(new CameraComponentManager());
 		// Future: LightComponentManager, DecalComponentManager, etc.
 	}

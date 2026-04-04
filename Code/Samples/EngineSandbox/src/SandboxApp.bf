@@ -57,10 +57,11 @@ class SandboxApp : EngineApplication
 		let meshEntity = scene.CreateEntity("Triangle");
 		let meshMgr = scene.GetModule<MeshComponentManager>();
 		let meshCompHandle = meshMgr.CreateComponent(meshEntity);
-		if (let mesh = meshMgr.Get(meshCompHandle))
+		if (let meshComp = meshMgr.Get(meshCompHandle))
 		{
-			mesh.MeshHandle = triangleHandle;
-			mesh.LocalBounds = .(.(-0.5f, -0.5f, 0), .(0.5f, 0.5f, 0));
+			meshComp.MeshHandle = triangleHandle;
+			meshComp.LocalBounds = .(.(-0.5f, -0.5f, 0), .(0.5f, 0.5f, 0));
+			// No material yet — will render with unlit fallback
 		}
 
 		// Create a camera entity with a CameraComponent
