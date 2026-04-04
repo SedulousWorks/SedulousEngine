@@ -9,6 +9,7 @@ using Sedulous.Shell;
 using Sedulous.Shaders;
 using Sedulous.Renderer;
 using Sedulous.Renderer.Passes;
+using Sedulous.Core.Mathematics;
 
 /// Owns the renderer pipeline, swapchain, command pools, and GPU frame pacing.
 /// Runs late (UpdateOrder 500) — all scene updates and extraction are complete by this point.
@@ -40,6 +41,9 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	// Blit helper (fullscreen triangle to copy pipeline output → swapchain)
 	private BlitHelper mBlitHelper ~ delete _;
 
+	// Extraction
+	private ExtractedRenderData mExtractedData ~ delete _;
+
 	// Per-frame state
 	private int32 mFrameIndex = 0;
 	private RenderView mRenderView = new .() ~ delete _;
@@ -59,7 +63,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	public PresentMode PresentMode { get => mPresentMode; set => mPresentMode = value; }
 
 	/// Shader system (set by app, not owned).
-	public Sedulous.Shaders.ShaderSystem ShaderSystem { get; set; }
+	public ShaderSystem ShaderSystem { get; set; }
 
 	/// Asset directory (set by app, not owned).
 	public String AssetDirectory { get; set; }
@@ -68,9 +72,9 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	public IQueue GraphicsQueue => mGraphicsQueue;
 	public Pipeline Pipeline => mPipeline;
 
-	/// TEMPORARY: Set by the app to provide render data until scene extraction is implemented.
-	/// In Phase 4 this will be collected from scenes via IRenderDataProvider.
-	public ExtractedRenderData FrameRenderData { get; set; }
+	/// TEMPORARY: Set by the app to provide render data until scene extraction is fully wired.
+	/// When set, this overrides scene extraction. Set to null to use scene extraction.
+	public ExtractedRenderData FrameRenderDataOverride { get; set; }
 
 	// ==================== Lifecycle ====================
 
@@ -121,6 +125,9 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 			mBlitHelper = new BlitHelper();
 			mBlitHelper.Initialize(mDevice, mSwapChainFormat, ShaderSystem);
 		}
+
+		// Extraction buffer
+		mExtractedData = new ExtractedRenderData();
 	}
 
 	protected override void OnShutdown()
@@ -186,21 +193,19 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		let pool = mCommandPools[mFrameIndex];
 		var encoder = pool.CreateEncoder().Value;
 
-		// Set up render view
-		// TODO: get camera from scene extraction. For now, identity.
-		mRenderView.ViewMatrix = .Identity;
-		mRenderView.ProjectionMatrix = .Identity;
-		mRenderView.ViewProjectionMatrix = .Identity;
-		mRenderView.CameraPosition = .Zero;
-		mRenderView.NearPlane = 0.1f;
-		mRenderView.FarPlane = 1000.0f;
-		mRenderView.Width = mPipeline.OutputWidth;
-		mRenderView.Height = mPipeline.OutputHeight;
-		mRenderView.FrameIndex = mFrameIndex;
-		mRenderView.DeltaTime = mDeltaTime;
-		mRenderView.TotalTime = mTotalTime;
-		// TEMPORARY: use app-provided render data until scene extraction exists
-		mRenderView.RenderData = FrameRenderData;
+		// Get render data — either from override (temporary) or scene extraction
+		ExtractedRenderData renderData;
+		if (FrameRenderDataOverride != null)
+		{
+			renderData = FrameRenderDataOverride;
+		}
+		else
+		{
+			renderData = ExtractFromScenes();
+		}
+
+		// Build RenderView from camera + extracted data
+		SetupRenderView(renderData);
 
 		// Render to pipeline output
 		mPipeline.Render(encoder, mRenderView);
@@ -224,6 +229,106 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		pool.DestroyEncoder(ref encoder);
 	}
 
+	// ==================== Extraction ====================
+
+	/// Extracts render data from all active scenes via IRenderDataProvider.
+	private ExtractedRenderData ExtractFromScenes()
+	{
+		mExtractedData.Clear();
+
+		// Find camera for view setup
+		CameraComponent activeCamera = null;
+		Scene cameraScene = null;
+
+		let sceneSub = Context?.GetSubsystem<SceneSubsystem>();
+		if (sceneSub == null)
+			return mExtractedData;
+
+		// First pass: find active camera
+		for (let scene in sceneSub.ActiveScenes)
+		{
+			let cameraMgr = scene.GetModule<CameraComponentManager>();
+			if (cameraMgr != null)
+			{
+				let camera = cameraMgr.GetActiveCamera();
+				if (camera != null)
+				{
+					activeCamera = camera;
+					cameraScene = scene;
+					break;
+				}
+			}
+		}
+
+		// Build extraction context
+		let viewportAspect = (mPipeline.OutputHeight > 0) ?
+			(float)mPipeline.OutputWidth / (float)mPipeline.OutputHeight : 1.0f;
+
+		Matrix viewMatrix = .Identity;
+		Matrix projMatrix = .Identity;
+		Vector3 cameraPos = .Zero;
+		float nearPlane = 0.1f;
+		float farPlane = 1000.0f;
+
+		if (activeCamera != null && cameraScene != null)
+		{
+			viewMatrix = activeCamera.GetViewMatrix(cameraScene);
+			projMatrix = activeCamera.GetProjectionMatrix(viewportAspect);
+			cameraPos = cameraScene.GetWorldMatrix(activeCamera.Owner).Translation;
+			nearPlane = activeCamera.NearPlane;
+			farPlane = activeCamera.FarPlane;
+		}
+
+		let viewProjMatrix = viewMatrix * projMatrix;
+
+		mExtractedData.SetView(viewMatrix, projMatrix, cameraPos,
+			nearPlane, farPlane, mPipeline.OutputWidth, mPipeline.OutputHeight);
+
+		RenderExtractionContext context = .()
+		{
+			RenderData = mExtractedData,
+			ViewMatrix = viewMatrix,
+			ViewProjectionMatrix = viewProjMatrix,
+			CameraPosition = cameraPos,
+			NearPlane = nearPlane,
+			FarPlane = farPlane,
+			FrameIndex = mFrameIndex,
+			LayerMask = 0xFFFFFFFF,
+			LODBias = 0
+		};
+
+		// Second pass: extract render data from all scenes
+		for (let scene in sceneSub.ActiveScenes)
+		{
+			for (let module in scene.Modules)
+			{
+				if (let provider = module as IRenderDataProvider)
+					provider.ExtractRenderData(context);
+			}
+		}
+
+		mExtractedData.SortAndBatch();
+
+		return mExtractedData;
+	}
+
+	/// Builds the RenderView from camera data and extracted render data.
+	private void SetupRenderView(ExtractedRenderData renderData)
+	{
+		mRenderView.ViewMatrix = renderData.ViewMatrix;
+		mRenderView.ProjectionMatrix = renderData.ProjectionMatrix;
+		mRenderView.ViewProjectionMatrix = renderData.ViewProjectionMatrix;
+		mRenderView.CameraPosition = renderData.CameraPosition;
+		mRenderView.NearPlane = renderData.NearPlane;
+		mRenderView.FarPlane = renderData.FarPlane;
+		mRenderView.Width = mPipeline.OutputWidth;
+		mRenderView.Height = mPipeline.OutputHeight;
+		mRenderView.FrameIndex = mFrameIndex;
+		mRenderView.DeltaTime = mDeltaTime;
+		mRenderView.TotalTime = mTotalTime;
+		mRenderView.RenderData = renderData;
+	}
+
 	/// Blits the pipeline output texture to the swapchain backbuffer.
 	private void BlitToSwapchain(ICommandEncoder encoder)
 	{
@@ -231,10 +336,8 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		if (sourceView == null || mBlitHelper == null || !mBlitHelper.IsReady)
 			return;
 
-		// Transition pipeline output to shader read
 		encoder.TransitionTexture(mPipeline.OutputTexture, .RenderTarget, .ShaderRead);
 
-		// Begin render pass targeting swapchain
 		ColorAttachment[1] colorAttachments = .(.()
 		{
 			View = mSwapChain.CurrentTextureView,
@@ -254,7 +357,9 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 
 	public void OnSceneCreated(Scene scene)
 	{
-		// TODO: inject MeshComponentManager, LightComponentManager, CameraComponentManager, etc.
+		scene.AddModule(new MeshComponentManager());
+		scene.AddModule(new CameraComponentManager());
+		// Future: LightComponentManager, DecalComponentManager, etc.
 	}
 
 	public void OnSceneDestroyed(Scene scene)

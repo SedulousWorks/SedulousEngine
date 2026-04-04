@@ -627,4 +627,14 @@ struct BoundingBox : IEquatable<BoundingBox>, IEquatable, IHashable
     /// The maximum point included within the bounding box.
     /// </summary>
     public Vector3 Max;
+
+    /// <summary>
+    /// The center point of the bounding box.
+    /// </summary>
+    public Vector3 Center => (Min + Max) * 0.5f;
+
+    /// <summary>
+    /// The half-extents of the bounding box (distance from center to max).
+    /// </summary>
+    public Vector3 Extents => (Max - Min) * 0.5f;
 }

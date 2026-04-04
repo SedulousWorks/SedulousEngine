@@ -12,21 +12,21 @@ using Sedulous.Core.Mathematics;
 
 class SandboxApp : EngineApplication
 {
-	// TEMPORARY: hardcoded geometry for testing until scene extraction exists
-	private GPUMeshHandle mTriangleHandle;
-	private ExtractedRenderData mRenderData ~ delete _;
-
 	protected override void OnStartup()
 	{
 		Console.WriteLine("=== EngineSandbox OnStartup ===");
 
+		let sceneSub = Context.GetSubsystem<SceneSubsystem>();
 		let renderSub = Context.GetSubsystem<RenderSubsystem>();
 		let pipeline = renderSub.Pipeline;
 
+		// Create a test scene
+		// RenderSubsystem auto-injects MeshComponentManager + CameraComponentManager via ISceneAware
+		let scene = sceneSub.CreateScene("TestScene");
+		Console.WriteLine("Created scene: {0}", scene.Name);
+
 		// Upload a colored triangle to GPU
-		// Vertex format: float3 position + float4 color = 28 bytes
 		float[21] vertices = .(
-			// Position           // Color (RGBA)
 			 0.0f,  0.5f, 0.0f,  1.0f, 0.0f, 0.0f, 1.0f,  // Top - red
 			 0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f, 1.0f,  // Bottom right - green
 			-0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f, 1.0f   // Bottom left - blue
@@ -38,15 +38,13 @@ class SandboxApp : EngineApplication
 			VertexDataSize = (uint64)(vertices.Count * sizeof(float)),
 			VertexCount = 3,
 			VertexStride = 28,
-			IndexData = null,
-			IndexDataSize = 0,
-			IndexCount = 0,
 			Bounds = .(.(-0.5f, -0.5f, 0), .(0.5f, 0.5f, 0))
 		};
 
+		GPUMeshHandle triangleHandle = .Invalid;
 		if (pipeline.GPUResources.UploadMesh(meshDesc) case .Ok(let handle))
 		{
-			mTriangleHandle = handle;
+			triangleHandle = handle;
 			Console.WriteLine("Triangle uploaded to GPU");
 		}
 		else
@@ -55,34 +53,31 @@ class SandboxApp : EngineApplication
 			return;
 		}
 
-		// Create render data with the triangle
-		mRenderData = new ExtractedRenderData();
-		mRenderData.AddMesh(RenderCategories.Opaque, .()
+		// Create a mesh entity with a MeshComponent
+		let meshEntity = scene.CreateEntity("Triangle");
+		let meshMgr = scene.GetModule<MeshComponentManager>();
+		let meshCompHandle = meshMgr.CreateComponent(meshEntity);
+		if (let mesh = meshMgr.Get(meshCompHandle))
 		{
-			Base = .()
-			{
-				Position = .Zero,
-				Bounds = .(.(-0.5f, -0.5f, 0), .(0.5f, 0.5f, 0)),
-				MaterialSortKey = 0,
-				SortOrder = 0,
-				Flags = .None
-			},
-			WorldMatrix = .Identity,
-			PrevWorldMatrix = .Identity,
-			MeshHandle = mTriangleHandle,
-			SubMeshIndex = 0,
-			MaterialBindGroup = null,
-			MaterialKey = 0
-		});
+			mesh.MeshHandle = triangleHandle;
+			mesh.LocalBounds = .(.(-0.5f, -0.5f, 0), .(0.5f, 0.5f, 0));
+		}
 
-		// Sort (trivial with one item, but establishes the pattern)
-		mRenderData.SetView(.Identity, .Identity, .Zero, 0.1f, 100.0f,
-			pipeline.OutputWidth, pipeline.OutputHeight);
-		mRenderData.SortAndBatch();
+		// Create a camera entity with a CameraComponent
+		let cameraEntity = scene.CreateEntity("Camera");
+		// Camera at (0, 0, 2) looking at the triangle at origin
+		scene.SetLocalTransform(cameraEntity, Transform.CreateLookAt(.(0, 0, 2), .Zero));
 
-		// TEMPORARY: provide render data to subsystem directly
-		renderSub.FrameRenderData = mRenderData;
+		let cameraMgr = scene.GetModule<CameraComponentManager>();
+		let cameraCompHandle = cameraMgr.CreateComponent(cameraEntity);
+		if (let camera = cameraMgr.Get(cameraCompHandle))
+		{
+			camera.FieldOfView = 60.0f;
+			camera.NearPlane = 0.1f;
+			camera.FarPlane = 100.0f;
+		}
 
+		Console.WriteLine("Entities: {0}", scene.EntityCount);
 		Console.WriteLine("=== Engine running (close window to exit) ===");
 	}
 
