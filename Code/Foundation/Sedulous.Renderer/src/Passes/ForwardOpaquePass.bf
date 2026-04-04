@@ -4,100 +4,14 @@ using System;
 using Sedulous.RHI;
 using Sedulous.RenderGraph;
 using Sedulous.Renderer;
+using Sedulous.Materials;
 
 /// Forward opaque pass — renders opaque geometry.
+/// Uses PipelineStateCache to get GPU pipelines on demand from material config.
 /// Writes to PipelineOutput.
 class ForwardOpaquePass : PipelinePass
 {
-	private IDevice mDevice;
-	private Sedulous.RHI.IRenderPipeline mUnlitPipeline;
-	private IPipelineLayout mPipelineLayout;
-
 	public override StringView Name => "ForwardOpaque";
-
-	public override Result<void> OnInitialize(Pipeline pipeline)
-	{
-		mDevice = pipeline.Device;
-		let device = mDevice;
-		let shaderSystem = pipeline.ShaderSystem;
-		if (shaderSystem == null)
-			return .Ok; // No shaders available yet
-
-		// Get unlit shader pair
-		let shaderResult = shaderSystem.GetShaderPair("unlit");
-		if (shaderResult case .Err)
-			return .Ok; // Non-fatal
-
-		let (vertModule, fragModule) = shaderResult.Value;
-
-		// Pipeline layout: set 0 = frame uniforms only (for now)
-		IBindGroupLayout[1] layouts = .(pipeline.FrameBindGroupLayout);
-		PipelineLayoutDesc plDesc = .(layouts);
-
-		if (device.CreatePipelineLayout(plDesc) case .Ok(let plLayout))
-			mPipelineLayout = plLayout;
-		else
-			return .Err;
-
-		// Vertex layout: float3 position + float4 color
-		VertexAttribute[2] attrs = .(
-			.() { Format = .Float3, Offset = 0, ShaderLocation = 0 },    // POSITION
-			.() { Format = .Float4, Offset = 12, ShaderLocation = 1 }    // COLOR
-		);
-
-		VertexBufferLayout[1] vertexBuffers = .(
-			.()
-			{
-				Stride = 28, // 12 + 16
-				StepMode = .Vertex,
-				Attributes = attrs
-			}
-		);
-
-		ColorTargetState[1] colorTargets = .(.() { Format = pipeline.OutputFormat });
-
-		RenderPipelineDesc pipelineDesc = .()
-		{
-			Label = "Unlit Pipeline",
-			Layout = mPipelineLayout,
-			Vertex = .()
-			{
-				Shader = .(vertModule.Module, "main"),
-				Buffers = vertexBuffers
-			},
-			Fragment = .()
-			{
-				Shader = .(fragModule.Module, "main"),
-				Targets = colorTargets
-			},
-			Primitive = .()
-			{
-				Topology = .TriangleList,
-				FrontFace = .CCW,
-				CullMode = .None
-			},
-			DepthStencil = null,
-			Multisample = .()
-			{
-				Count = 1,
-				Mask = uint32.MaxValue
-			}
-		};
-
-		if (device.CreateRenderPipeline(pipelineDesc) case .Ok(let rp))
-			mUnlitPipeline = rp;
-
-		return .Ok;
-	}
-
-	public override void OnShutdown()
-	{
-		if (mDevice != null)
-		{
-			if (mUnlitPipeline != null) mDevice.DestroyRenderPipeline(ref mUnlitPipeline);
-			if (mPipelineLayout != null) mDevice.DestroyPipelineLayout(ref mPipelineLayout);
-		}
-	}
 
 	public override void AddPasses(Sedulous.RenderGraph.RenderGraph graph, RenderView view, Pipeline pipeline)
 	{
@@ -125,22 +39,19 @@ class ForwardOpaquePass : PipelinePass
 
 	private void ExecuteForwardOpaque(IRenderPassEncoder encoder, RenderView view, Pipeline pipeline)
 	{
-		if (mUnlitPipeline == null)
+		let cache = pipeline.PipelineStateCache;
+		if (cache == null)
 			return;
 
 		encoder.SetViewport(0, 0, (float)view.Width, (float)view.Height, 0.0f, 1.0f);
 		encoder.SetScissor(0, 0, view.Width, view.Height);
-		encoder.SetPipeline(mUnlitPipeline);
 
 		let data = view.RenderData;
 		let gpuResources = pipeline.GPUResources;
 		let frame = pipeline.GetFrameResources(view.FrameIndex);
 
-		// Bind frame bind group (set 0)
-		if (frame.FrameBindGroup != null)
-			encoder.SetBindGroup(0, frame.FrameBindGroup, default);
-
 		let opaqueBatch = data.GetSortedBatch(RenderCategories.Opaque);
+		Sedulous.RHI.IRenderPipeline lastPipeline = null;
 
 		for (let entry in opaqueBatch)
 		{
@@ -149,6 +60,43 @@ class ForwardOpaquePass : PipelinePass
 			if (gpuMesh == null) continue;
 
 			let subMesh = gpuMesh.SubMeshes[mesh.SubMeshIndex];
+
+			// Build vertex layout from mesh
+			VertexAttribute[2] attrs = .(
+				.() { Format = .Float3, Offset = 0, ShaderLocation = 0 },
+				.() { Format = .Float4, Offset = 12, ShaderLocation = 1 }
+			);
+
+			VertexBufferLayout[1] vertexBuffers = .(
+				.() { Stride = gpuMesh.VertexStride, StepMode = .Vertex, Attributes = attrs }
+			);
+
+			// Get or create pipeline from cache
+			var config = PipelineConfig();
+			config.ShaderName = "unlit";
+			config.BlendMode = .Opaque;
+			config.DepthMode = .Disabled;
+			config.CullMode = .None;
+			config.ColorTargetCount = 1;
+
+			if (cache.GetPipeline(config, vertexBuffers, null, pipeline.OutputFormat) case .Ok(let rhiPipeline))
+			{
+				if (rhiPipeline != lastPipeline)
+				{
+					encoder.SetPipeline(rhiPipeline);
+					lastPipeline = rhiPipeline;
+
+					// Bind frame bind group (set 0) after pipeline is set
+					if (frame.FrameBindGroup != null)
+						encoder.SetBindGroup(0, frame.FrameBindGroup, default);
+				}
+			}
+			else
+				continue;
+
+			// Bind material (set 2) if available
+			if (mesh.MaterialBindGroup != null)
+				encoder.SetBindGroup(2, mesh.MaterialBindGroup, default);
 
 			encoder.SetVertexBuffer(0, gpuMesh.VertexBuffer, 0);
 			if (gpuMesh.IndexBuffer != null)

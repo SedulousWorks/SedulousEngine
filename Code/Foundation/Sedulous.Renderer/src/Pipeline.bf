@@ -47,6 +47,9 @@ public class Pipeline : IDisposable
 	// Shader system (optional, set by subsystem — not owned)
 	private Sedulous.Shaders.ShaderSystem mShaderSystem;
 
+	// Pipeline state cache
+	private PipelineStateCache mPipelineStateCache ~ delete _;
+
 	// Frame counter
 	private uint64 mFrameNumber = 0;
 
@@ -83,8 +86,18 @@ public class Pipeline : IDisposable
 	public Sedulous.Shaders.ShaderSystem ShaderSystem
 	{
 		get => mShaderSystem;
-		set => mShaderSystem = value;
+		set
+		{
+			mShaderSystem = value;
+			// Create/recreate pipeline state cache when shader system is set
+			delete mPipelineStateCache;
+			if (value != null)
+				mPipelineStateCache = new PipelineStateCache(mDevice, value, this);
+		}
 	}
+
+	/// Pipeline state cache (creates GPU pipelines on demand from material config).
+	public PipelineStateCache PipelineStateCache => mPipelineStateCache;
 
 	/// The pipeline output texture. Read this after Render() to blit to the final target.
 	public ITexture OutputTexture => mOutputTexture;
