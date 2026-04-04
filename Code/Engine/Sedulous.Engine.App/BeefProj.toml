@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.Runtime" = "*", "Sedulous.Scenes" = "*", "Sedulous.Engine.Runtime" = "*", "Sedulous.Engine.Input" = "*", "Sedulous.Engine.Physics" = "*", "Sedulous.Engine.Animation" = "*", "Sedulous.Engine.Audio" = "*", "Sedulous.Engine.Navigation" = "*", "Sedulous.Engine.GUI" = "*", "Sedulous.Engine.Render" = "*", "Sedulous.Shell" = "*", "Sedulous.Shell.SDL3" = "*", "Sedulous.Profiler" = "*", "Sedulous.Serialization.OpenDDL" = "*", "Sedulous.Resources" = "*", "Sedulous.RHI" = "*", "Sedulous.RHI.Vulkan" = "*", "Sedulous.RHI.DX12" = "*", "Sedulous.RHI.Validation" = "*"}
+
+[Project]
+Name = "Sedulous.Engine.App"
+TargetType = "BeefLib"

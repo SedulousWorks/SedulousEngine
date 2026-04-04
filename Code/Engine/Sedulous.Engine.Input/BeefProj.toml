@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.Runtime" = "*", "Sedulous.Shell" = "*"}
+
+[Project]
+Name = "Sedulous.Engine.Input"
+TargetType = "BeefLib"

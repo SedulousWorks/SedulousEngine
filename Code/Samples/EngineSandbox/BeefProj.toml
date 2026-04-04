@@ -1,0 +1,7 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.Engine.App" = "*", "Sedulous.Engine.Runtime" = "*", "Sedulous.Scenes" = "*", "Sedulous.Runtime" = "*"}
+
+[Project]
+Name = "EngineSandbox"
+TargetType = "BeefConsoleApplication"
+StartupObject = "EngineSandbox.Program"
