@@ -3,58 +3,85 @@ namespace EngineSandbox;
 using System;
 using Sedulous.Engine.App;
 using Sedulous.Engine;
+using Sedulous.Engine.Render;
 using Sedulous.Scenes;
 using Sedulous.Runtime;
+using Sedulous.RHI;
+using Sedulous.Renderer;
+using Sedulous.Core.Mathematics;
 
 class SandboxApp : EngineApplication
 {
+	// TEMPORARY: hardcoded geometry for testing until scene extraction exists
+	private GPUMeshHandle mTriangleHandle;
+	private ExtractedRenderData mRenderData ~ delete _;
+
 	protected override void OnStartup()
 	{
 		Console.WriteLine("=== EngineSandbox OnStartup ===");
 
-		let sceneSub = Context.GetSubsystem<SceneSubsystem>();
+		let renderSub = Context.GetSubsystem<RenderSubsystem>();
+		let pipeline = renderSub.Pipeline;
 
-		// Create a test scene
-		let scene = sceneSub.CreateScene("TestScene");
-		Console.WriteLine("Created scene: {0}", scene.Name);
+		// Upload a colored triangle to GPU
+		// Vertex format: float3 position + float4 color = 28 bytes
+		float[21] vertices = .(
+			// Position           // Color (RGBA)
+			 0.0f,  0.5f, 0.0f,  1.0f, 0.0f, 0.0f, 1.0f,  // Top - red
+			 0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f, 1.0f,  // Bottom right - green
+			-0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f, 1.0f   // Bottom left - blue
+		);
 
-		// Create some entities with hierarchy
-		let root = scene.CreateEntity("Root");
-		let child1 = scene.CreateEntity("Child1");
-		let child2 = scene.CreateEntity("Child2");
-
-		scene.SetParent(child1, root);
-		scene.SetParent(child2, root);
-
-		scene.SetLocalTransform(root, .()
+		MeshUploadDesc meshDesc = .()
 		{
-			Position = .(0, 0, 0),
-			Rotation = .Identity,
-			Scale = .One
+			VertexData = (uint8*)&vertices[0],
+			VertexDataSize = (uint64)(vertices.Count * sizeof(float)),
+			VertexCount = 3,
+			VertexStride = 28,
+			IndexData = null,
+			IndexDataSize = 0,
+			IndexCount = 0,
+			Bounds = .(.(-0.5f, -0.5f, 0), .(0.5f, 0.5f, 0))
+		};
+
+		if (pipeline.GPUResources.UploadMesh(meshDesc) case .Ok(let handle))
+		{
+			mTriangleHandle = handle;
+			Console.WriteLine("Triangle uploaded to GPU");
+		}
+		else
+		{
+			Console.WriteLine("ERROR: Failed to upload triangle");
+			return;
+		}
+
+		// Create render data with the triangle
+		mRenderData = new ExtractedRenderData();
+		mRenderData.AddMesh(RenderCategories.Opaque, .()
+		{
+			Base = .()
+			{
+				Position = .Zero,
+				Bounds = .(.(-0.5f, -0.5f, 0), .(0.5f, 0.5f, 0)),
+				MaterialSortKey = 0,
+				SortOrder = 0,
+				Flags = .None
+			},
+			WorldMatrix = .Identity,
+			PrevWorldMatrix = .Identity,
+			MeshHandle = mTriangleHandle,
+			SubMeshIndex = 0,
+			MaterialBindGroup = null,
+			MaterialKey = 0
 		});
 
-		scene.SetLocalTransform(child1, .()
-		{
-			Position = .(5, 0, 0),
-			Rotation = .Identity,
-			Scale = .One
-		});
+		// Sort (trivial with one item, but establishes the pattern)
+		mRenderData.SetView(.Identity, .Identity, .Zero, 0.1f, 100.0f,
+			pipeline.OutputWidth, pipeline.OutputHeight);
+		mRenderData.SortAndBatch();
 
-		scene.SetLocalTransform(child2, .()
-		{
-			Position = .(0, 5, 0),
-			Rotation = .Identity,
-			Scale = .One
-		});
-
-		Console.WriteLine("Entities: {0}", scene.EntityCount);
-		Console.WriteLine("Root ID: {0}", scene.GetEntityId(root));
-
-		// Run one update to propagate transforms
-		scene.Update(0);
-
-		let child1World = scene.GetWorldMatrix(child1);
-		Console.WriteLine("Child1 world X: {0}", child1World.M41);
+		// TEMPORARY: provide render data to subsystem directly
+		renderSub.FrameRenderData = mRenderData;
 
 		Console.WriteLine("=== Engine running (close window to exit) ===");
 	}

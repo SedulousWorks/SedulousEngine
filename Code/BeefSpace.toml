@@ -110,6 +110,7 @@ SampleVG001_Shapes = {Path = "Samples/VG/SampleVG001_Shapes"}
 "Sedulous.Scenes" = {Path = "Foundation/Sedulous.Scenes"}
 "Sedulous.Scenes.Tests" = {Path = "Foundation/Sedulous.Scenes.Tests"}
 "Sedulous.Scenes.Resources" = {Path = "Foundation/Sedulous.Scenes.Resources"}
+"Sedulous.Renderer" = {Path = "Foundation/Sedulous.Renderer"}
 "Sedulous.Engine.Runtime" = {Path = "Engine/Sedulous.Engine.Runtime"}
 "Sedulous.Engine.App" = {Path = "Engine/Sedulous.Engine.App"}
 "Sedulous.Engine.Input" = {Path = "Engine/Sedulous.Engine.Input"}
@@ -188,7 +189,7 @@ Foundation = []
 "Foundation/Imaging" = ["Sedulous.Imaging", "Sedulous.Imaging.STB", "Sedulous.Imaging.Tests", "Sedulous.Imaging.Resources", "Sedulous.Imaging.SDL"]
 "Foundation/Models" = ["Sedulous.Models", "Sedulous.Models.FBX", "Sedulous.Models.GLTF", "Sedulous.Models.Tests"]
 "Foundation/Net" = ["Sedulous.Net", "Sedulous.Net.HTTP", "Sedulous.Net.HTTP.Tests", "Sedulous.Net.Tests"]
-"Foundation/Render" = ["Sedulous.Materials", "Sedulous.Shaders", "Sedulous.Textures", "Sedulous.Textures.Resources", "Sedulous.Materials.Resources", "Sedulous.RenderGraph", "Sedulous.RenderGraph.Tests"]
+"Foundation/Render" = ["Sedulous.Materials", "Sedulous.Shaders", "Sedulous.Textures", "Sedulous.Textures.Resources", "Sedulous.Materials.Resources", "Sedulous.RenderGraph", "Sedulous.RenderGraph.Tests", "Sedulous.Renderer"]
 "Foundation/Runtime" = ["Sedulous.Runtime", "Sedulous.Runtime.Client"]
 "Foundation/Scenes" = ["Sedulous.Scenes", "Sedulous.Scenes.Tests", "Sedulous.Scenes.Resources"]
 "Foundation/Jobs" = ["Sedulous.Jobs", "Sedulous.Jobs.Tests"]

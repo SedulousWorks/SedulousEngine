@@ -8,3 +8,6 @@ BeefSpace_User.toml
 nul
 
 Assets/cache/
+EngineRewrite.md
+RHI.md
+ShaderReflection.md

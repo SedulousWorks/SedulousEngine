@@ -3,6 +3,7 @@ namespace Sedulous.Engine.App;
 using System;
 using System.Collections;
 using System.Diagnostics;
+using System.IO;
 using Sedulous.RHI;
 using Sedulous.RHI.Validation;
 using Sedulous.Shell;
@@ -10,6 +11,7 @@ using Sedulous.Shell.SDL3;
 using Sedulous.Runtime;
 using Sedulous.Serialization.OpenDDL;
 using Sedulous.Profiler;
+using Sedulous.Shaders;
 using Sedulous.Engine;
 using Sedulous.Engine.Input;
 using Sedulous.Engine.Physics;
@@ -34,7 +36,14 @@ abstract class EngineApplication : IDisposable
 	protected IDevice mDevice;
 
 	// Engine
-	protected Context mContext ~ delete _;
+	protected Context mContext;
+
+	// Assets
+	private String mAssetDirectory = new .() ~ delete _;
+	private String mAssetCacheDirectory = new .() ~ delete _;
+
+	// Shader system (shared by all subsystems that need it)
+	private ShaderSystem mShaderSystem;
 
 	// Settings
 	protected EngineAppSettings mSettings;
@@ -59,13 +68,35 @@ abstract class EngineApplication : IDisposable
 	/// The RHI device.
 	public IDevice Device => mDevice;
 
+	/// The discovered assets directory path.
+	public StringView AssetDirectory => mAssetDirectory;
+
+	/// The discovered asset cache directory path.
+	public StringView AssetCacheDirectory => mAssetCacheDirectory;
+
+	/// The shared shader system.
+	public ShaderSystem ShaderSystem => mShaderSystem;
+
 	/// Runs the application.
 	public int Run(EngineAppSettings settings)
 	{
 		mSettings = settings;
 
+		// Discover asset directories
+		DiscoverAssetDirectories();
+
 		if (!InitializePlatform())
 			return -1;
+
+		// Shader system
+		let shaderDir = scope String();
+		Path.InternalCombine(shaderDir, mAssetDirectory, "shaders");
+		let cacheDir = scope String();
+		Path.InternalCombine(cacheDir, mAssetCacheDirectory, "shaders");
+
+		mShaderSystem = new ShaderSystem();
+		StringView[1] shaderPaths = .(shaderDir);
+		mShaderSystem.Initialize(mDevice, shaderPaths/*, cacheDir*/);
 
 		// Create context
 		mContext = new Context();
@@ -160,6 +191,8 @@ abstract class EngineApplication : IDisposable
 		renderSub.Surface = mSurface;
 		renderSub.SwapChainFormat = mSettings.SwapChainFormat;
 		renderSub.PresentMode = mSettings.PresentMode;
+		renderSub.ShaderSystem = mShaderSystem;
+		renderSub.AssetDirectory = mAssetDirectory;
 		mContext.RegisterSubsystem(renderSub);                   //  500
 	}
 
@@ -274,6 +307,13 @@ abstract class EngineApplication : IDisposable
 	{
 		if (mDevice != null) mDevice.WaitIdle();
 
+		// Context must be deleted before device — subsystems hold GPU resources
+		delete mContext;
+		mContext = null;
+
+		mShaderSystem?.Dispose();
+		delete mShaderSystem;
+
 		// Surface is owned by app, destroyed here
 		if (mSurface != null) mDevice.DestroySurface(ref mSurface);
 
@@ -317,5 +357,55 @@ abstract class EngineApplication : IDisposable
 	public void Dispose()
 	{
 		Cleanup();
+	}
+
+	/// Returns a path relative to the assets directory.
+	public void GetAssetPath(StringView relativePath, String outPath)
+	{
+		outPath.Clear();
+		Path.InternalCombine(outPath, mAssetDirectory, relativePath);
+	}
+
+	/// Discovers the assets and asset cache directories.
+	/// Searches from current directory upward for Assets folder with .assets marker.
+	private void DiscoverAssetDirectories()
+	{
+		let currentDir = Directory.GetCurrentDirectory(.. scope .());
+		String searchDir = scope .(currentDir);
+
+		while (true)
+		{
+			let assetsPath = scope String();
+			Path.InternalCombine(assetsPath, searchDir, "Assets");
+
+			if (Directory.Exists(assetsPath))
+			{
+				let markerPath = scope String();
+				Path.InternalCombine(markerPath, assetsPath, ".assets");
+
+				if (File.Exists(markerPath))
+				{
+					mAssetDirectory.Set(assetsPath);
+					Path.InternalCombine(mAssetCacheDirectory, searchDir, "Assets", "cache");
+
+					if (!Directory.Exists(mAssetCacheDirectory))
+						Directory.CreateDirectory(mAssetCacheDirectory);
+
+					return;
+				}
+			}
+
+			let parentDir = Path.GetDirectoryPath(searchDir, .. scope .());
+
+			if (parentDir.IsEmpty || parentDir == searchDir)
+			{
+				Console.WriteLine("WARNING: Could not find Assets directory with .assets marker. Using current directory.");
+				mAssetDirectory.Set(currentDir);
+				mAssetCacheDirectory.Set(currentDir);
+				return;
+			}
+
+			searchDir.Set(parentDir);
+		}
 	}
 }

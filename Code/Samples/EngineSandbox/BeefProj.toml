@@ -1,5 +1,5 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Engine.App" = "*", "Sedulous.Engine.Runtime" = "*", "Sedulous.Scenes" = "*", "Sedulous.Runtime" = "*"}
+Dependencies = {corlib = "*", "Sedulous.Engine.App" = "*", "Sedulous.Engine.Runtime" = "*", "Sedulous.Engine.Render" = "*", "Sedulous.Scenes" = "*", "Sedulous.Runtime" = "*", "Sedulous.Renderer" = "*", "Sedulous.RHI" = "*", "Sedulous.Core.Mathematics" = "*"}
 
 [Project]
 Name = "EngineSandbox"
