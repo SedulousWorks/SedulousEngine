@@ -6,6 +6,7 @@ using Sedulous.RHI;
 using Sedulous.RenderGraph;
 using Sedulous.Core.Mathematics;
 using Sedulous.Materials;
+using Sedulous.Profiler;
 
 /// Orchestrates rendering by managing pipeline passes, per-frame resources,
 /// GPU resource management, and the render graph.
@@ -276,6 +277,8 @@ public class Pipeline : IDisposable
 	/// to a swapchain, editor viewport, offscreen target, etc.
 	public void Render(ICommandEncoder encoder, RenderView view)
 	{
+		using (Profiler.Begin("Pipeline.Render"))
+		{
 		let frameIndex = view.FrameIndex % MaxFramesInFlight;
 		let frame = mFrameResources[frameIndex];
 
@@ -283,14 +286,17 @@ public class Pipeline : IDisposable
 		frame.ObjectBufferOffset = 0;
 
 		// Update per-frame uniforms
-		UploadSceneUniforms(frame, view);
+		using (Profiler.Begin("UploadUniforms"))
+		{
+			UploadSceneUniforms(frame, view);
 
-		// Upload light data
-		if (view.RenderData != null)
-			mLightBuffer.Upload(view.RenderData, view.FrameIndex);
+			// Upload light data
+			if (view.RenderData != null)
+				mLightBuffer.Upload(view.RenderData, view.FrameIndex);
 
-		// Rebuild frame bind group (includes light buffer)
-		RebuildFrameBindGroup(frame, view.FrameIndex);
+			// Rebuild frame bind group (includes light buffer)
+			RebuildFrameBindGroup(frame, view.FrameIndex);
+		}
 
 		// Process deferred GPU resource deletions
 		mGPUResources.ProcessDeletions(mFrameNumber);
@@ -319,12 +325,14 @@ public class Pipeline : IDisposable
 			pass.AddPasses(mRenderGraph, view, this);
 
 		// Compile and execute the graph
-		mRenderGraph.Execute(encoder);
+		using (Profiler.Begin("RenderGraph.Execute"))
+			mRenderGraph.Execute(encoder);
 
 		// End render graph frame
 		mRenderGraph.EndFrame();
 
 		mFrameNumber++;
+		} // Pipeline.Render scope
 	}
 
 	/// Resizes the pipeline output.

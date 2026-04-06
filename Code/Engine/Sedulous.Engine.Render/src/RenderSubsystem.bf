@@ -10,6 +10,7 @@ using Sedulous.Shaders;
 using Sedulous.Renderer;
 using Sedulous.Renderer.Passes;
 using Sedulous.Core.Mathematics;
+using Sedulous.Profiler;
 
 /// Owns the renderer pipeline, swapchain, command pools, and GPU frame pacing.
 /// Runs late (UpdateOrder 500) — all scene updates and extraction are complete by this point.
@@ -71,10 +72,6 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	public ISwapChain SwapChain => mSwapChain;
 	public IQueue GraphicsQueue => mGraphicsQueue;
 	public Pipeline Pipeline => mPipeline;
-
-	/// TEMPORARY: Set by the app to provide render data until scene extraction is fully wired.
-	/// When set, this overrides scene extraction. Set to null to use scene extraction.
-	public ExtractedRenderData FrameRenderDataOverride { get; set; }
 
 	// ==================== Lifecycle ====================
 
@@ -193,16 +190,10 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		let pool = mCommandPools[mFrameIndex];
 		var encoder = pool.CreateEncoder().Value;
 
-		// Get render data — either from override (temporary) or scene extraction
+		// Extract render data from scenes
 		ExtractedRenderData renderData;
-		if (FrameRenderDataOverride != null)
-		{
-			renderData = FrameRenderDataOverride;
-		}
-		else
-		{
+		using (Profiler.Begin("SceneExtraction"))
 			renderData = ExtractFromScenes();
-		}
 
 		// Build RenderView from camera + extracted data
 		SetupRenderView(renderData);
@@ -211,7 +202,8 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		mPipeline.Render(encoder, mRenderView);
 
 		// Blit pipeline output → swapchain
-		BlitToSwapchain(encoder);
+		using (Profiler.Begin("Blit"))
+			BlitToSwapchain(encoder);
 
 		// Transition swapchain to present
 		encoder.TransitionTexture(mSwapChain.CurrentTexture, .RenderTarget, .Present);

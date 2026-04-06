@@ -133,7 +133,7 @@ public class Context : IDisposable
 
 		for (let subsystem in mSortedSubsystems)
 		{
-			let name = subsystem.GetType().GetName(.. scope .());
+			let name = scope String()..AppendF("{0}.FixedUpdate", subsystem.GetType().GetName(.. scope .()));
 			using (SProfiler.Begin(name))
 				subsystem.FixedUpdate(fixedDeltaTime);
 		}
@@ -147,7 +147,7 @@ public class Context : IDisposable
 
 		for (let subsystem in mSortedSubsystems)
 		{
-			let name = subsystem.GetType().GetName(.. scope .());
+			let name = scope String()..AppendF("{0}.Update", subsystem.GetType().GetName(.. scope .()));
 			using (SProfiler.Begin(name))
 				subsystem.Update(deltaTime);
 		}

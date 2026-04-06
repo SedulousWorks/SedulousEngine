@@ -55,6 +55,9 @@ abstract class EngineApplication : IDisposable
 	private float mLastFrameTime;
 	private float mFixedTimeStep = 1.0f / 60.0f;
 	private float mFixedUpdateAccumulator = 0.0f;
+
+	// Profiling
+	private float mInitTimeMs;
 	private int32 mMaxFixedStepsPerFrame = 8;
 
 	/// The framework context.
@@ -95,9 +98,14 @@ abstract class EngineApplication : IDisposable
 		let cacheDir = scope String();
 		Path.InternalCombine(cacheDir, mAssetCacheDirectory, "shaders");
 
+		SProfiler.Initialize();
+
 		mShaderSystem = new ShaderSystem();
 		StringView[1] shaderPaths = .(shaderDir);
 		mShaderSystem.Initialize(mDevice, shaderPaths/*, cacheDir*/);
+
+		let initTimer = scope Stopwatch();
+		initTimer.Start();
 
 		// Create context
 		mContext = new Context();
@@ -114,6 +122,9 @@ abstract class EngineApplication : IDisposable
 		// Start up
 		mContext.Startup();
 		OnStartup();
+
+		initTimer.Stop();
+		mInitTimeMs = (float)initTimer.Elapsed.TotalMilliseconds;
 
 		// Main loop
 		mStopwatch.Start();
@@ -147,6 +158,11 @@ abstract class EngineApplication : IDisposable
 			mContext.EndFrame();
 
 			SProfiler.EndFrame();
+
+			// Shift+P: print profile frame
+			let keyboard = mShell.InputManager.Keyboard;
+			if (keyboard.IsKeyPressed(.P) /*&& keyboard.Modifiers.HasFlag(.Shift)*/)
+				PrintProfileFrame();
 		}
 
 		Shutdown();
@@ -160,6 +176,33 @@ abstract class EngineApplication : IDisposable
 	public void Exit()
 	{
 		mIsRunning = false;
+	}
+
+	// ==================== Profiling ====================
+
+	private void PrintProfileFrame()
+	{
+		let frame = SProfiler.GetCompletedFrame();
+
+		Console.WriteLine("=== Profile ===");
+		Console.WriteLine("Init: {0:F2}ms", mInitTimeMs);
+		Console.WriteLine("Frame {0}: {1:F2}ms ({2} samples)", frame.FrameNumber, frame.FrameDurationMs, frame.SampleCount);
+
+		// Sort by start time so parents appear before children
+		let sorted = scope List<ProfileSample>(frame.Samples.Count);
+		for (let sample in frame.Samples)
+			sorted.Add(sample);
+		sorted.Sort(scope (a, b) => a.StartTimeUs <=> b.StartTimeUs);
+
+		for (let sample in sorted)
+		{
+			let indent = scope String();
+			for (int d = 0; d < sample.Depth; d++)
+				indent.Append("  ");
+			Console.WriteLine("  {0}{1}: {2:F3}ms", indent, sample.Name, sample.DurationMs);
+		}
+
+		Console.WriteLine("================");
 	}
 
 	// ==================== Overrides ====================
@@ -322,6 +365,8 @@ abstract class EngineApplication : IDisposable
 		mCleanedUp = true;
 
 		OnCleanup();
+
+		SProfiler.Shutdown();
 
 		// Context must be deleted before device — subsystems hold GPU resources
 		delete mContext;

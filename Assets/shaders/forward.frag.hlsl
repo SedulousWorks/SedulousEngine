@@ -58,6 +58,13 @@ cbuffer MaterialUniforms : register(b0, space2)
     float4 EmissiveColor;   // offset 32
 };
 
+Texture2D AlbedoMap             : register(t0, space2);
+Texture2D NormalMap             : register(t1, space2);
+Texture2D MetallicRoughnessMap  : register(t2, space2);
+Texture2D OcclusionMap          : register(t3, space2);
+Texture2D EmissiveMap           : register(t4, space2);
+SamplerState MainSampler        : register(s0, space2);
+
 struct FragmentInput
 {
     float4 Position : SV_Position;
@@ -154,17 +161,52 @@ float3 EvaluateLight(GPULight light, float3 worldPos, float3 N, float3 V, float3
     return (diffuse + specular) * light.Color * NdotL * atten;
 }
 
+// ==================== Normal Mapping ====================
+
+float3 GetNormalFromMap(float3 worldNormal, float3 worldTangent, float2 uv)
+{
+    float3 tangentNormal = NormalMap.Sample(MainSampler, uv).rgb * 2.0 - 1.0;
+
+    float3 N = normalize(worldNormal);
+    float3 T = normalize(worldTangent - dot(worldTangent, N) * N); // re-orthogonalize
+    float3 B = cross(N, T);
+    float3x3 TBN = float3x3(T, B, N);
+
+    return normalize(mul(tangentNormal, TBN));
+}
+
 // ==================== Main ====================
 
 float4 main(FragmentInput input) : SV_Target
 {
-    float3 N = normalize(input.WorldNormal);
-    float3 V = normalize(CameraPosition - input.WorldPos);
+    float2 uv = input.TexCoord;
 
-    float3 albedo = BaseColor.rgb * input.Color.rgb;
-    float roughness = max(Roughness, 0.04);
-    float metallic = Metallic;
-    float ao = AO;
+    // Sample textures
+    float4 albedoSample = AlbedoMap.Sample(MainSampler, uv);
+    float4 mrSample = MetallicRoughnessMap.Sample(MainSampler, uv);
+    float aoSample = OcclusionMap.Sample(MainSampler, uv).r;
+    float3 emissiveSample = EmissiveMap.Sample(MainSampler, uv).rgb;
+
+    // Combine texture samples with uniform values
+    float3 albedo = BaseColor.rgb * albedoSample.rgb * input.Color.rgb;
+    float alpha = BaseColor.a * albedoSample.a;
+    float roughness = max(Roughness * mrSample.g, 0.04);
+    float metallic = Metallic * mrSample.b;
+    float ao = AO * aoSample;
+    float3 emissive = EmissiveColor.rgb + emissiveSample;
+
+    // Alpha cutoff
+    if (alpha < AlphaCutoff)
+        discard;
+
+    // Normal — use map if tangent is valid, otherwise geometric normal
+    float3 N;
+    if (dot(input.WorldTangent, input.WorldTangent) > 0.001)
+        N = GetNormalFromMap(input.WorldNormal, input.WorldTangent, uv);
+    else
+        N = normalize(input.WorldNormal);
+
+    float3 V = normalize(CameraPosition - input.WorldPos);
 
     float3 F0 = lerp(0.04, albedo, metallic);
 
@@ -175,8 +217,7 @@ float4 main(FragmentInput input) : SV_Target
     }
 
     float3 ambient = AmbientColor * albedo * ao;
-    float3 emissive = EmissiveColor.rgb;
     float3 color = ambient + Lo + emissive;
 
-    return float4(color, BaseColor.a);
+    return float4(color, alpha);
 }

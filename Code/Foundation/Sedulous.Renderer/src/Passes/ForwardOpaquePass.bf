@@ -5,6 +5,7 @@ using Sedulous.RHI;
 using Sedulous.RenderGraph;
 using Sedulous.Renderer;
 using Sedulous.Materials;
+using Sedulous.Profiler;
 
 /// Forward opaque pass — renders opaque geometry with PBR lighting.
 /// Reads SceneDepth from DepthPrepass (depth test LessEqual, no depth write).
@@ -47,6 +48,8 @@ class ForwardOpaquePass : PipelinePass
 
 	private void ExecuteForwardOpaque(IRenderPassEncoder encoder, RenderView view, Pipeline pipeline, bool hasDepth)
 	{
+		using (Profiler.Begin("ForwardOpaque"))
+		{
 		let cache = pipeline.PipelineStateCache;
 		if (cache == null)
 			return;
@@ -131,5 +134,6 @@ class ForwardOpaquePass : PipelinePass
 				encoder.Draw(subMesh.IndexCount, 1, 0, 0);
 			}
 		}
+		} // ForwardOpaque scope
 	}
 }

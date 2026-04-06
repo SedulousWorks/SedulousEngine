@@ -5,6 +5,7 @@ using Sedulous.RHI;
 using Sedulous.RenderGraph;
 using Sedulous.Renderer;
 using Sedulous.Materials;
+using Sedulous.Profiler;
 
 /// Depth prepass — renders opaque geometry to the depth buffer only.
 /// Establishes early-Z for the forward pass to minimize overdraw.
@@ -42,6 +43,8 @@ class DepthPrepass : PipelinePass
 
 	private void ExecuteDepthPrepass(IRenderPassEncoder encoder, RenderView view, Pipeline pipeline)
 	{
+		using (Profiler.Begin("DepthPrepass"))
+		{
 		let cache = pipeline.PipelineStateCache;
 		if (cache == null)
 			return;
@@ -104,5 +107,6 @@ class DepthPrepass : PipelinePass
 				encoder.Draw(subMesh.IndexCount, 1, 0, 0);
 			}
 		}
+		} // DepthPrepass scope
 	}
 }
