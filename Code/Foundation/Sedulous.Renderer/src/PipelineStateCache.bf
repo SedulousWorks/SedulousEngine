@@ -191,38 +191,21 @@ class PipelineStateCache : IDisposable
 	/// Set 0 = Frame (from Pipeline), Set 1 = Pass (TODO), Set 2 = Material, Set 3 = DrawCall (from Pipeline)
 	private IPipelineLayout GetOrCreatePipelineLayout(IBindGroupLayout materialLayout)
 	{
-		// Hash from material layout pointer (0 for null — frame-only layout)
-		int hash = materialLayout != null ? (int)(void*)Internal.UnsafeCastToPtr(materialLayout) : 0;
+		// Use default material layout if none provided
+		let effectiveMatLayout = materialLayout != null ? materialLayout : mPipeline.MaterialBindGroupLayout;
+
+		int hash = (int)(void*)Internal.UnsafeCastToPtr(effectiveMatLayout);
 
 		if (mLayoutCache.TryGetValue(hash, let cached))
 			return cached;
 
 		let frameLayout = mPipeline.FrameBindGroupLayout;
+		let drawLayout = mPipeline.DrawCallBindGroupLayout;
 
-		PipelineLayoutDesc layoutDesc;
-
-		if (materialLayout != null)
-		{
-			// Full layout: frame (0) + material (2) + draw (3)
-			// Set 1 (pass) reuses frame layout as placeholder for now
-			let drawLayout = mPipeline.DrawCallBindGroupLayout;
-			if (drawLayout != null)
-			{
-				IBindGroupLayout[4] layouts = .(frameLayout, frameLayout, materialLayout, drawLayout);
-				layoutDesc = .(Span<IBindGroupLayout>(&layouts[0], 4));
-			}
-			else
-			{
-				IBindGroupLayout[3] layouts = .(frameLayout, frameLayout, materialLayout);
-				layoutDesc = .(Span<IBindGroupLayout>(&layouts[0], 3));
-			}
-		}
-		else
-		{
-			// Frame-only layout (no material, no draw call bindings)
-			IBindGroupLayout[1] layouts = .(frameLayout);
-			layoutDesc = .(Span<IBindGroupLayout>(&layouts[0], 1));
-		}
+		// Always create a full 4-set layout: frame (0) + pass (1) + material (2) + draw (3)
+		// Set 1 (pass) reuses frame layout as placeholder for now
+		IBindGroupLayout[4] layouts = .(frameLayout, frameLayout, effectiveMatLayout, drawLayout);
+		PipelineLayoutDesc layoutDesc = .(Span<IBindGroupLayout>(&layouts[0], 4));
 
 		if (mDevice.CreatePipelineLayout(layoutDesc) case .Ok(let layout))
 		{

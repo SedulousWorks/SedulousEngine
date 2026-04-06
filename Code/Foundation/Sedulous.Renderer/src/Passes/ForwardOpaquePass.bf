@@ -6,8 +6,8 @@ using Sedulous.RenderGraph;
 using Sedulous.Renderer;
 using Sedulous.Materials;
 
-/// Forward opaque pass — renders opaque geometry.
-/// Uses PipelineStateCache to get GPU pipelines on demand from material config.
+/// Forward opaque pass — renders opaque geometry with PBR lighting.
+/// Reads SceneDepth from DepthPrepass (depth test LessEqual, no depth write).
 /// Writes to PipelineOutput.
 class ForwardOpaquePass : PipelinePass
 {
@@ -27,17 +27,25 @@ class ForwardOpaquePass : PipelinePass
 		if (!outputHandle.IsValid)
 			return;
 
+		// Read SceneDepth from DepthPrepass
+		let depthHandle = graph.GetResource("SceneDepth");
+		let hasDepth = depthHandle.IsValid;
+
 		graph.AddRenderPass("ForwardOpaque", scope (builder) => {
+			builder.SetColorTarget(0, outputHandle, .Clear, .Store, ClearColor(0.0f, 0.0f, 0.0f, 1.0f));
+
+			if (hasDepth)
+				builder.SetDepthTarget(depthHandle, .Load, .Store, 1.0f);
+
 			builder
-				.SetColorTarget(0, outputHandle, .Load, .Store)
 				.NeverCull()
 				.SetExecute(new [=] (encoder) => {
-					ExecuteForwardOpaque(encoder, view, pipeline);
+					ExecuteForwardOpaque(encoder, view, pipeline, hasDepth);
 				});
 		});
 	}
 
-	private void ExecuteForwardOpaque(IRenderPassEncoder encoder, RenderView view, Pipeline pipeline)
+	private void ExecuteForwardOpaque(IRenderPassEncoder encoder, RenderView view, Pipeline pipeline, bool hasDepth)
 	{
 		let cache = pipeline.PipelineStateCache;
 		if (cache == null)
@@ -50,53 +58,67 @@ class ForwardOpaquePass : PipelinePass
 		let gpuResources = pipeline.GPUResources;
 		let frame = pipeline.GetFrameResources(view.FrameIndex);
 
-		let opaqueBatch = data.GetSortedBatch(RenderCategories.Opaque);
-		Sedulous.RHI.IRenderPipeline lastPipeline = null;
+		// Build pipeline config
+		var config = PipelineConfig();
+		config.ShaderName = "forward";
+		config.BlendMode = .Opaque;
+		config.CullMode = .Back;
+		config.ColorTargetCount = 1;
 
-		for (let entry in opaqueBatch)
+		if (hasDepth)
 		{
-			let mesh = ref data.GetMesh(RenderCategories.Opaque, entry.Index);
+			// Read from prepass depth — test only, no write
+			config.DepthMode = .ReadOnly;
+			config.DepthCompare = .LessEqual;
+			config.DepthFormat = .Depth24PlusStencil8;
+		}
+		else
+		{
+			config.DepthMode = .Disabled;
+		}
+
+		let vertexLayout = VertexLayoutHelper.CreateBufferLayout(.Mesh);
+		VertexBufferLayout[1] vertexBuffers = .(vertexLayout);
+
+		let pipelineResult = cache.GetPipeline(config, vertexBuffers, null, pipeline.OutputFormat,
+			hasDepth ? .Depth24PlusStencil8 : .Undefined);
+		if (pipelineResult case .Err)
+			return;
+
+		let rhiPipeline = pipelineResult.Value;
+
+		encoder.SetPipeline(rhiPipeline);
+
+		if (frame.FrameBindGroup != null)
+			encoder.SetBindGroup(BindGroupFrequency.Frame, frame.FrameBindGroup, default);
+
+		if (pipeline.DefaultMaterialBindGroup != null)
+			encoder.SetBindGroup(BindGroupFrequency.Material, pipeline.DefaultMaterialBindGroup, default);
+
+		let opaqueBatch = data.GetSortedBatch(RenderCategories.Opaque);
+		IBindGroup lastMaterialBindGroup = null;
+
+		for (int32 i = 0; i < (int32)opaqueBatch.Length; i++)
+		{
+			let mesh = ref data.GetMesh(RenderCategories.Opaque, i);
 			let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
 			if (gpuMesh == null) continue;
 
 			let subMesh = gpuMesh.SubMeshes[mesh.SubMeshIndex];
 
-			// Build vertex layout from mesh
-			VertexAttribute[2] attrs = .(
-				.() { Format = .Float3, Offset = 0, ShaderLocation = 0 },
-				.() { Format = .Float4, Offset = 12, ShaderLocation = 1 }
-			);
+			// Upload per-object transform with dynamic offset
+			let objOffset = pipeline.WriteObjectUniforms(view.FrameIndex, mesh.WorldMatrix, mesh.PrevWorldMatrix);
+			if (objOffset == uint32.MaxValue) continue;
 
-			VertexBufferLayout[1] vertexBuffers = .(
-				.() { Stride = gpuMesh.VertexStride, StepMode = .Vertex, Attributes = attrs }
-			);
+			uint32[1] dynamicOffsets = .(objOffset);
+			encoder.SetBindGroup(BindGroupFrequency.DrawCall, frame.DrawCallBindGroup, dynamicOffsets);
 
-			// Get or create pipeline from cache
-			var config = PipelineConfig();
-			config.ShaderName = "unlit";
-			config.BlendMode = .Opaque;
-			config.DepthMode = .Disabled;
-			config.CullMode = .None;
-			config.ColorTargetCount = 1;
-
-			if (cache.GetPipeline(config, vertexBuffers, null, pipeline.OutputFormat) case .Ok(let rhiPipeline))
+			let materialBg = (mesh.MaterialBindGroup != null) ? mesh.MaterialBindGroup : pipeline.DefaultMaterialBindGroup;
+			if (materialBg != null && materialBg != lastMaterialBindGroup)
 			{
-				if (rhiPipeline != lastPipeline)
-				{
-					encoder.SetPipeline(rhiPipeline);
-					lastPipeline = rhiPipeline;
-
-					// Bind frame bind group (set 0) after pipeline is set
-					if (frame.FrameBindGroup != null)
-						encoder.SetBindGroup(0, frame.FrameBindGroup, default);
-				}
+				encoder.SetBindGroup(BindGroupFrequency.Material, materialBg, default);
+				lastMaterialBindGroup = materialBg;
 			}
-			else
-				continue;
-
-			// Bind material (set 2) if available
-			if (mesh.MaterialBindGroup != null)
-				encoder.SetBindGroup(2, mesh.MaterialBindGroup, default);
 
 			encoder.SetVertexBuffer(0, gpuMesh.VertexBuffer, 0);
 			if (gpuMesh.IndexBuffer != null)

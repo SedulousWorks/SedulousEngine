@@ -362,7 +362,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		scene.AddModule(meshMgr);
 
 		scene.AddModule(new CameraComponentManager());
-		// Future: LightComponentManager, DecalComponentManager, etc.
+		scene.AddModule(new LightComponentManager());
 	}
 
 	public void OnSceneDestroyed(Scene scene)

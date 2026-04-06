@@ -48,6 +48,7 @@ abstract class EngineApplication : IDisposable
 	// Settings
 	protected EngineAppSettings mSettings;
 	protected bool mIsRunning = false;
+	private bool mCleanedUp = false;
 
 	// Timing
 	private Stopwatch mStopwatch = new .() ~ delete _;
@@ -148,7 +149,7 @@ abstract class EngineApplication : IDisposable
 			SProfiler.EndFrame();
 		}
 
-		OnShutdown();
+		Shutdown();
 		mContext.Shutdown();
 		Cleanup();
 
@@ -172,6 +173,9 @@ abstract class EngineApplication : IDisposable
 
 	/// Override for cleanup before shutdown.
 	protected virtual void OnShutdown() { }
+
+	/// Override to release GPU resources after device WaitIdle but before subsystems are destroyed.
+	protected virtual void OnCleanup() { }
 
 	// ==================== Default Subsystems ====================
 
@@ -303,9 +307,21 @@ abstract class EngineApplication : IDisposable
 		}
 	}
 
+	private void Shutdown()
+	{
+		if (mDevice != null)
+			mDevice.WaitIdle();
+
+		OnShutdown();
+	}
+
 	private void Cleanup()
 	{
-		if (mDevice != null) mDevice.WaitIdle();
+		if (mCleanedUp)
+			return;
+		mCleanedUp = true;
+
+		OnCleanup();
 
 		// Context must be deleted before device — subsystems hold GPU resources
 		delete mContext;

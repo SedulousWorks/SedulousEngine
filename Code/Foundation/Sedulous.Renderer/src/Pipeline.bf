@@ -5,6 +5,7 @@ using System.Collections;
 using Sedulous.RHI;
 using Sedulous.RenderGraph;
 using Sedulous.Core.Mathematics;
+using Sedulous.Materials;
 
 /// Orchestrates rendering by managing pipeline passes, per-frame resources,
 /// GPU resource management, and the render graph.
@@ -33,11 +34,25 @@ public class Pipeline : IDisposable
 	// Render graph
 	private RenderGraph mRenderGraph ~ delete _;
 
+	// Lighting
+	private LightBuffer mLightBuffer ~ delete _;
+
+	// Material system (owns material bind group layouts, default textures, per-instance bind groups)
+	private MaterialSystem mMaterialSystem ~ { _?.Dispose(); delete _; };
+
 	// Shared bind group layouts (frequency model)
 	private IBindGroupLayout mFrameBindGroupLayout;
 	private IBindGroupLayout mDrawCallBindGroupLayout;
 
-	// Pipeline output (owned, persistent)
+	// Default material bind group (cached from MaterialSystem, ref held on instance)
+	private IBindGroup mDefaultMaterialBindGroup;
+	private MaterialInstance mDefaultMaterialInstanceRef; // AddRef'd — prevents instance from deleting bind group
+
+	// Default bind groups (used when no transform is assigned)
+	private IBindGroup mDefaultDrawCallBindGroup;
+	private IBuffer mDefaultDrawCallBuffer;
+
+	// Pipeline output
 	private ITexture mOutputTexture;
 	private ITextureView mOutputTextureView;
 	private uint32 mOutputWidth;
@@ -79,8 +94,23 @@ public class Pipeline : IDisposable
 	/// Frame-level bind group layout (set 0).
 	public IBindGroupLayout FrameBindGroupLayout => mFrameBindGroupLayout;
 
+	/// Material bind group layout (set 2) — from MaterialSystem.
+	public IBindGroupLayout MaterialBindGroupLayout => mMaterialSystem?.DefaultMaterialLayout;
+
 	/// Draw-call bind group layout (set 3).
 	public IBindGroupLayout DrawCallBindGroupLayout => mDrawCallBindGroupLayout;
+
+	/// Material system (manages material bind groups, default textures, per-instance GPU resources).
+	public MaterialSystem MaterialSystem => mMaterialSystem;
+
+	/// Default material bind group (white albedo, 0.5 roughness, 0 metallic).
+	public IBindGroup DefaultMaterialBindGroup => mDefaultMaterialBindGroup;
+
+	/// Default draw call bind group (identity transform).
+	public IBindGroup DefaultDrawCallBindGroup => mDefaultDrawCallBindGroup;
+
+	/// Light buffer for uploading and accessing light data.
+	public LightBuffer LightBuffer => mLightBuffer;
 
 	/// Shader system (optional, for passes that need to compile shaders).
 	public Sedulous.Shaders.ShaderSystem ShaderSystem
@@ -99,7 +129,7 @@ public class Pipeline : IDisposable
 	/// Pipeline state cache (creates GPU pipelines on demand from material config).
 	public PipelineStateCache PipelineStateCache => mPipelineStateCache;
 
-	/// The pipeline output texture. Read this after Render() to blit to the final target.
+	/// The pipeline output texture. Read this after Render() to blit.
 	public ITexture OutputTexture => mOutputTexture;
 
 	/// The pipeline output texture view.
@@ -130,6 +160,21 @@ public class Pipeline : IDisposable
 
 		// Render graph
 		mRenderGraph = new RenderGraph(device, .() { FrameBufferCount = MaxFramesInFlight });
+
+		// Light buffer
+		mLightBuffer = new LightBuffer();
+		if (mLightBuffer.Initialize(device) case .Err)
+			return .Err;
+
+		// Material system (manages material layouts, default textures, per-instance bind groups)
+		mMaterialSystem = new MaterialSystem();
+		if (mMaterialSystem.Initialize(device, queue) case .Err)
+			return .Err;
+
+		// Cache default material bind group and hold a ref on the instance
+		mDefaultMaterialInstanceRef = mMaterialSystem.DefaultMaterialInstance;
+		mDefaultMaterialInstanceRef.AddRef();
+		mDefaultMaterialBindGroup = mMaterialSystem.GetBindGroup(mDefaultMaterialInstanceRef);
 
 		// Create output texture
 		if (CreateOutputTexture(width, height) case .Err)
@@ -195,11 +240,33 @@ public class Pipeline : IDisposable
 		// Release output texture
 		DestroyOutputTexture();
 
+		// Release default material bind group ref (before MaterialSystem cleanup)
+		mDefaultMaterialBindGroup = null; // borrowed pointer — MaterialSystem owns it
+		if (mDefaultMaterialInstanceRef != null)
+		{
+			mDefaultMaterialInstanceRef.ReleaseRef();
+			mDefaultMaterialInstanceRef = null;
+		}
+
+		// Release default draw call bind group
+		if (mDefaultDrawCallBindGroup != null)
+			mDevice.DestroyBindGroup(ref mDefaultDrawCallBindGroup);
+		if (mDefaultDrawCallBuffer != null)
+			mDevice.DestroyBuffer(ref mDefaultDrawCallBuffer);
+
 		// Release bind group layouts
 		if (mFrameBindGroupLayout != null)
 			mDevice.DestroyBindGroupLayout(ref mFrameBindGroupLayout);
 		if (mDrawCallBindGroupLayout != null)
 			mDevice.DestroyBindGroupLayout(ref mDrawCallBindGroupLayout);
+
+		// Material system cleanup (layouts, buffers, bind groups, default textures)
+		if (mMaterialSystem != null)
+		{
+			mMaterialSystem.Dispose();
+			delete mMaterialSystem;
+			mMaterialSystem = null;
+		}
 	}
 
 	// ==================== Rendering ====================
@@ -212,8 +279,18 @@ public class Pipeline : IDisposable
 		let frameIndex = view.FrameIndex % MaxFramesInFlight;
 		let frame = mFrameResources[frameIndex];
 
+		// Reset per-frame object buffer offset
+		frame.ObjectBufferOffset = 0;
+
 		// Update per-frame uniforms
 		UploadSceneUniforms(frame, view);
+
+		// Upload light data
+		if (view.RenderData != null)
+			mLightBuffer.Upload(view.RenderData, view.FrameIndex);
+
+		// Rebuild frame bind group (includes light buffer)
+		RebuildFrameBindGroup(frame, view.FrameIndex);
 
 		// Process deferred GPU resource deletions
 		mGPUResources.ProcessDeletions(mFrameNumber);
@@ -397,24 +474,25 @@ public class Pipeline : IDisposable
 				return .Err;
 			}
 
-			// Create frame bind group (set 0) if layout is available
-			if (mFrameBindGroupLayout != null && frame.SceneUniformBuffer != null)
+			// Draw call bind group with dynamic offset into the object buffer
+			if (mDrawCallBindGroupLayout != null)
 			{
-				BindGroupEntry[1] bgEntries = .(
-					BindGroupEntry.Buffer(frame.SceneUniformBuffer, 0, SceneUniforms.Size)
+				BindGroupEntry[1] drawBgEntries = .(
+					BindGroupEntry.Buffer(frame.ObjectUniformBuffer, 0, PerFrameResources.ObjectAlignment)
 				);
 
-				BindGroupDesc bgDesc = .()
+				BindGroupDesc drawBgDesc = .()
 				{
-					Label = "Frame BindGroup",
-					Layout = mFrameBindGroupLayout,
-					Entries = bgEntries
+					Label = "DrawCall BindGroup (Dynamic)",
+					Layout = mDrawCallBindGroupLayout,
+					Entries = drawBgEntries
 				};
 
-				if (mDevice.CreateBindGroup(bgDesc) case .Ok(let bg))
-					frame.FrameBindGroup = bg;
+				if (mDevice.CreateBindGroup(drawBgDesc) case .Ok(let drawBg))
+					frame.DrawCallBindGroup = drawBg;
 			}
 
+			// Frame bind group is rebuilt each frame (includes light buffer which changes)
 			mFrameResources[i] = frame;
 		}
 
@@ -423,9 +501,14 @@ public class Pipeline : IDisposable
 
 	private Result<void> CreateBindGroupLayouts()
 	{
-		// Frame bind group layout (set 0): scene uniforms
-		BindGroupLayoutEntry[1] frameEntries = .(
-			.UniformBuffer(0, .Vertex | .Fragment | .Compute)
+		// Frame bind group layout (set 0):
+		//   b0: SceneUniforms
+		//   b1: LightParams (light count, ambient)
+		//   t0: Light buffer (StructuredBuffer<GPULight>)
+		BindGroupLayoutEntry[3] frameEntries = .(
+			.UniformBuffer(0, .Vertex | .Fragment | .Compute),                     // b0: SceneUniforms
+			.UniformBuffer(1, .Fragment),                                           // b1: LightParams
+			.() { Binding = 0, Visibility = .Fragment, Type = .StorageBufferReadOnly } // t0: Lights
 		);
 
 		BindGroupLayoutDesc frameLayoutDesc = .()
@@ -439,7 +522,11 @@ public class Pipeline : IDisposable
 		else
 			return .Err;
 
+		// Material bind group layout (set 2) is owned by MaterialSystem.
+		// It builds the layout from material property definitions (uniforms + textures + samplers).
+
 		// Draw call bind group layout (set 3): object uniforms with dynamic offset
+		//   b0: ObjectUniforms (world matrix, prev world matrix) — dynamic offset per draw
 		BindGroupLayoutEntry[1] drawEntries = .(
 			.() { Binding = 0, Visibility = .Vertex, Type = .UniformBuffer, HasDynamicOffset = true }
 		);
@@ -455,7 +542,129 @@ public class Pipeline : IDisposable
 		else
 			return .Err;
 
+		// Create default draw call bind group (identity transform)
+		if (CreateDefaultDrawCallBindGroup() case .Err)
+			return .Err;
+
 		return .Ok;
+	}
+
+	/// GPU-packed object uniforms. Must match forward.vert.hlsl ObjectUniforms.
+	[CRepr]
+	private struct DefaultObjectUniforms
+	{
+		public Matrix WorldMatrix;
+		public Matrix PrevWorldMatrix;
+		public const uint64 Size = 128;
+	}
+
+	private Result<void> CreateDefaultDrawCallBindGroup()
+	{
+		// Default draw call buffer + bind group (identity transform)
+		BufferDesc drawBufDesc = .()
+		{
+			Label = "Default DrawCall Uniforms",
+			Size = DefaultObjectUniforms.Size,
+			Usage = .Uniform,
+			Memory = .CpuToGpu
+		};
+
+		if (mDevice.CreateBuffer(drawBufDesc) case .Ok(let drawBuf))
+		{
+			mDefaultDrawCallBuffer = drawBuf;
+
+			DefaultObjectUniforms objData = .()
+			{
+				WorldMatrix = .Identity,
+				PrevWorldMatrix = .Identity
+			};
+			TransferHelper.WriteMappedBuffer(drawBuf, 0,
+				Span<uint8>((uint8*)&objData, DefaultObjectUniforms.Size));
+		}
+		else
+			return .Err;
+
+		BindGroupEntry[1] drawBgEntries = .(
+			BindGroupEntry.Buffer(mDefaultDrawCallBuffer, 0, DefaultObjectUniforms.Size)
+		);
+
+		BindGroupDesc drawBgDesc = .()
+		{
+			Label = "Default DrawCall BindGroup",
+			Layout = mDrawCallBindGroupLayout,
+			Entries = drawBgEntries
+		};
+
+		if (mDevice.CreateBindGroup(drawBgDesc) case .Ok(let drawBg))
+			mDefaultDrawCallBindGroup = drawBg;
+		else
+			return .Err;
+
+		return .Ok;
+	}
+
+	/// Rebuilds the frame bind group with current light data for this frame.
+	private void RebuildFrameBindGroup(PerFrameResources frame, int32 frameIndex)
+	{
+		if (mFrameBindGroupLayout == null || frame.SceneUniformBuffer == null)
+			return;
+
+		// Destroy previous bind group
+		if (frame.FrameBindGroup != null)
+			mDevice.DestroyBindGroup(ref frame.FrameBindGroup);
+
+		let lightBuffer = mLightBuffer.GetLightBuffer(frameIndex);
+		let lightParamsBuffer = mLightBuffer.GetLightParamsBuffer(frameIndex);
+
+		if (lightBuffer == null || lightParamsBuffer == null)
+			return;
+
+		// Light buffer size: at least 1 light worth (Vulkan requires non-zero)
+		let lightBufferSize = (uint64)(Math.Max(mLightBuffer.LightCount, 1) * GPULight.Size);
+
+		BindGroupEntry[3] bgEntries = .(
+			BindGroupEntry.Buffer(frame.SceneUniformBuffer, 0, SceneUniforms.Size),
+			BindGroupEntry.Buffer(lightParamsBuffer, 0, (uint64)LightParams.Size),
+			BindGroupEntry.Buffer(lightBuffer, 0, lightBufferSize)
+		);
+
+		BindGroupDesc bgDesc = .()
+		{
+			Label = "Frame BindGroup",
+			Layout = mFrameBindGroupLayout,
+			Entries = bgEntries
+		};
+
+		if (mDevice.CreateBindGroup(bgDesc) case .Ok(let bg))
+			frame.FrameBindGroup = bg;
+	}
+
+	/// Writes object uniforms (world matrix) to the per-frame object buffer and returns the dynamic offset.
+	/// Returns uint32.MaxValue if the buffer is full.
+	public uint32 WriteObjectUniforms(int32 frameIndex, Matrix worldMatrix, Matrix prevWorldMatrix)
+	{
+		let frame = mFrameResources[frameIndex % MaxFramesInFlight];
+		if (frame == null || frame.ObjectUniformBuffer == null)
+			return uint32.MaxValue;
+
+		if (frame.ObjectBufferOffset >= PerFrameResources.MaxObjects * PerFrameResources.ObjectAlignment)
+			return uint32.MaxValue;
+
+		let offset = frame.ObjectBufferOffset;
+
+		DefaultObjectUniforms objData = .()
+		{
+			WorldMatrix = worldMatrix,
+			PrevWorldMatrix = prevWorldMatrix
+		};
+
+		TransferHelper.WriteMappedBuffer(
+			frame.ObjectUniformBuffer, (uint64)offset,
+			Span<uint8>((uint8*)&objData, DefaultObjectUniforms.Size)
+		);
+
+		frame.ObjectBufferOffset += PerFrameResources.ObjectAlignment;
+		return offset;
 	}
 
 	public void Dispose()

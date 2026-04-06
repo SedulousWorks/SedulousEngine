@@ -40,10 +40,23 @@ class PerFrameResources
 	/// Object uniform buffer for per-draw transforms (set 3, dynamic offsets).
 	public IBuffer ObjectUniformBuffer;
 
+	/// Draw call bind group (set 3) with dynamic offset into ObjectUniformBuffer.
+	public IBindGroup DrawCallBindGroup;
+
+	/// Current write offset into ObjectUniformBuffer (reset each frame).
+	public uint32 ObjectBufferOffset;
+
+	/// Alignment for object uniform entries (256 bytes — Vulkan minUniformBufferOffsetAlignment).
+	public const uint32 ObjectAlignment = 256;
+
+	/// Maximum number of objects per frame.
+	public const uint32 MaxObjects = 4096;
+
 	/// Frees GPU resources.
 	public void Release(IDevice device)
 	{
 		device.DestroyBindGroup(ref FrameBindGroup);
+		device.DestroyBindGroup(ref DrawCallBindGroup);
 		device.DestroyBuffer(ref SceneUniformBuffer);
 		device.DestroyBuffer(ref ObjectUniformBuffer);
 	}
