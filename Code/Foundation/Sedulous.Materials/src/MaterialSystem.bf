@@ -216,15 +216,17 @@ class MaterialSystem : IDisposable
 		if (instance == null)
 			return;
 
-		if (mBindGroups.TryGetValue(instance, let bg))
+		if (mBindGroups.TryGetValue(instance, var bg))
 		{
-			delete bg;
+			// Clear the reference on the instance first
+			instance.BindGroup = null;
+			mDevice.DestroyBindGroup(ref bg);
 			mBindGroups.Remove(instance);
 		}
 
-		if (mUniformBuffers.TryGetValue(instance, let buf))
+		if (mUniformBuffers.TryGetValue(instance, var buf))
 		{
-			delete buf;
+			mDevice.DestroyBuffer(ref buf);
 			mUniformBuffers.Remove(instance);
 		}
 	}
@@ -612,9 +614,10 @@ class MaterialSystem : IDisposable
 			return false;
 
 		// Delete old bind group
-		if (mBindGroups.TryGetValue(instance, let oldBg))
+		if (mBindGroups.TryGetValue(instance, var oldBg))
 		{
-			delete oldBg;
+			instance.BindGroup = null; // clear reference first
+			mDevice.DestroyBindGroup(ref oldBg);
 			mBindGroups.Remove(instance);
 		}
 
@@ -625,6 +628,7 @@ class MaterialSystem : IDisposable
 		if (mDevice.CreateBindGroup(bgDesc) case .Ok(let bg))
 		{
 			mBindGroups[instance] = bg;
+			instance.BindGroup = bg; // update reference
 			return true;
 		}
 
