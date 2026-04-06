@@ -112,7 +112,11 @@ public enum RGAccessType : uint8
 
 	// --- Read + Write ---
 	/// Storage (UAV) simultaneous read and write
-	ReadWriteStorage
+	ReadWriteStorage,
+	/// Depth/stencil attachment load + write (LoadOp.Load on a depth target)
+	ReadWriteDepthTarget,
+	/// Color attachment load + write (LoadOp.Load on a color target)
+	ReadWriteColorTarget
 }
 
 extension RGAccessType
@@ -124,7 +128,8 @@ extension RGAccessType
 		{
 			switch (this)
 			{
-			case .ReadTexture, .ReadBuffer, .ReadDepthStencil, .ReadCopySrc, .ReadWriteStorage:
+			case .ReadTexture, .ReadBuffer, .ReadDepthStencil, .ReadCopySrc,
+				 .ReadWriteStorage, .ReadWriteDepthTarget, .ReadWriteColorTarget:
 				return true;
 			default:
 				return false;
@@ -139,7 +144,8 @@ extension RGAccessType
 		{
 			switch (this)
 			{
-			case .WriteColorTarget, .WriteDepthTarget, .WriteStorage, .WriteCopyDst, .ReadWriteStorage:
+			case .WriteColorTarget, .WriteDepthTarget, .WriteStorage, .WriteCopyDst,
+				 .ReadWriteStorage, .ReadWriteDepthTarget, .ReadWriteColorTarget:
 				return true;
 			default:
 				return false;
@@ -160,7 +166,9 @@ extension RGAccessType
 		case .WriteDepthTarget: return .DepthStencilWrite;
 		case .WriteStorage:     return .ShaderWrite;
 		case .WriteCopyDst:     return .CopyDst;
-		case .ReadWriteStorage: return .ShaderWrite | .ShaderRead;
+		case .ReadWriteStorage:     return .ShaderWrite | .ShaderRead;
+		case .ReadWriteDepthTarget: return .DepthStencilWrite;
+		case .ReadWriteColorTarget: return .RenderTarget;
 		}
 	}
 }

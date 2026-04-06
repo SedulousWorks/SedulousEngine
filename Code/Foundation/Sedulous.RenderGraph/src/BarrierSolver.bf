@@ -115,6 +115,7 @@ public class BarrierSolver
 			if (res == null) continue;
 
 			let requiredState = access.ToResourceState();
+			let accessIsReadWrite = access.Type.IsRead && access.Type.IsWrite;
 
 			if (res.ResourceType == .Texture && res.Texture != null)
 			{
@@ -123,7 +124,9 @@ public class BarrierSolver
 				ResourceState currentState = .Undefined;
 				mTextureStates.TryGetValue(key, out currentState);
 
-				if (currentState == requiredState)
+				// Skip if same state, UNLESS this is a read+write access that needs
+				// previous writes to be visible (e.g., depth Load+Store after depth Clear+Store)
+				if (currentState == requiredState && !accessIsReadWrite)
 					continue;
 
 				var barrier = TextureBarrier();

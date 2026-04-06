@@ -58,8 +58,10 @@ public struct PassBuilder
 			mPass.ColorTargets.Add(default);
 		mPass.ColorTargets[slot] = target;
 
-		// Add access record
-		if (storeOp == .Store)
+		// Add access record based on load/store semantics
+		if (loadOp == .Load && storeOp == .Store)
+			mPass.Accesses.Add(.(handle, .ReadWriteColorTarget, subresource));
+		else if (storeOp == .Store)
 			mPass.Accesses.Add(.(handle, .WriteColorTarget, subresource));
 
 		return this;
@@ -77,7 +79,10 @@ public struct PassBuilder
 			Subresource = subresource
 		};
 
-		if (storeOp == .Store)
+		// Add access record based on load/store semantics
+		if (loadOp == .Load && storeOp == .Store)
+			mPass.Accesses.Add(.(handle, .ReadWriteDepthTarget, subresource));
+		else if (storeOp == .Store)
 			mPass.Accesses.Add(.(handle, .WriteDepthTarget, subresource));
 
 		return this;
