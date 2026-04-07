@@ -36,6 +36,9 @@ public class Pipeline : IDisposable
 	private uint32 mOutputHeight;
 	private TextureFormat mOutputFormat = .RGBA16Float;
 
+	// Post-processing
+	private PostProcessStack mPostProcessStack;
+
 	// Frame counter
 	private uint64 mFrameNumber = 0;
 
@@ -70,6 +73,13 @@ public class Pipeline : IDisposable
 
 	/// Output format.
 	public TextureFormat OutputFormat => mOutputFormat;
+
+	/// Post-processing stack (optional). Set before adding passes.
+	public PostProcessStack PostProcessStack
+	{
+		get => mPostProcessStack;
+		set => mPostProcessStack = value;
+	}
 
 	// ==================== Lifecycle ====================
 
@@ -120,6 +130,14 @@ public class Pipeline : IDisposable
 		let device = mRenderer?.Device;
 		if (device != null)
 			device.WaitIdle();
+
+		// Shutdown post-process stack
+		if (mPostProcessStack != null)
+		{
+			mPostProcessStack.Shutdown();
+			delete mPostProcessStack;
+			mPostProcessStack = null;
+		}
 
 		// Shutdown passes in reverse order
 		for (int i = mPasses.Count - 1; i >= 0; i--)
@@ -181,20 +199,45 @@ public class Pipeline : IDisposable
 		// Begin render graph frame
 		mRenderGraph.BeginFrame((int32)frameIndex);
 
-		// Import the pipeline output as the render target
-		let outputHandle = mRenderGraph.ImportTarget("PipelineOutput", mOutputTexture, mOutputTextureView);
+		let hasPostProcess = mPostProcessStack != null && mPostProcessStack.HasActiveEffects;
 
-		// Always clear the output to a known state before passes run.
-		mRenderGraph.AddRenderPass("ClearOutput", scope (builder) => {
-			builder
-				.SetColorTarget(0, outputHandle, .Clear, .Store, ClearColor(0.0f, 0.0f, 0.0f, 1.0f))
-				.NeverCull()
-				.SetExecute(new (encoder) => {});
-		});
+		if (hasPostProcess)
+		{
+			// With post-processing:
+			//   "PipelineOutput" = transient HDR texture (scene passes write here)
+			//   "FinalOutput" = imported real output (post-process stack writes here)
+			let finalHandle = mRenderGraph.ImportTarget("FinalOutput", mOutputTexture, mOutputTextureView);
+			let hdrDesc = RGTextureDesc(mOutputFormat) { Usage = .RenderTarget | .Sampled };
+			let sceneHdrHandle = mRenderGraph.CreateTransient("PipelineOutput", hdrDesc);
 
-		// Let each pass add its graph nodes
-		for (let pass in mPasses)
-			pass.AddPasses(mRenderGraph, view, this);
+			mRenderGraph.AddRenderPass("ClearOutput", scope (builder) => {
+				builder
+					.SetColorTarget(0, sceneHdrHandle, .Clear, .Store, ClearColor(0.0f, 0.0f, 0.0f, 1.0f))
+					.NeverCull()
+					.SetExecute(new (encoder) => {});
+			});
+
+			for (let pass in mPasses)
+				pass.AddPasses(mRenderGraph, view, this);
+
+			let depthHandle = mRenderGraph.GetResource("SceneDepth");
+			mPostProcessStack.Execute(mRenderGraph, view, sceneHdrHandle, depthHandle, finalHandle);
+		}
+		else
+		{
+			// Without post-processing: scene passes write directly to imported output
+			let outputHandle = mRenderGraph.ImportTarget("PipelineOutput", mOutputTexture, mOutputTextureView);
+
+			mRenderGraph.AddRenderPass("ClearOutput", scope (builder) => {
+				builder
+					.SetColorTarget(0, outputHandle, .Clear, .Store, ClearColor(0.0f, 0.0f, 0.0f, 1.0f))
+					.NeverCull()
+					.SetExecute(new (encoder) => {});
+			});
+
+			for (let pass in mPasses)
+				pass.AddPasses(mRenderGraph, view, this);
+		}
 
 		// Compile and execute the graph
 		using (Profiler.Begin("RenderGraph.Execute"))

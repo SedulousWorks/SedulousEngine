@@ -124,6 +124,12 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		mPipeline.AddPass(new ForwardOpaquePass());
 		mPipeline.AddPass(new SkyPass());
 
+		// Post-processing stack
+		let postStack = new PostProcessStack();
+		postStack.Initialize(mRenderer);
+		postStack.AddEffect(new TonemapEffect());
+		mPipeline.PostProcessStack = postStack;
+
 		// Blit helper (copies pipeline output to swapchain)
 		if (ShaderSystem != null)
 		{

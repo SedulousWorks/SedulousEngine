@@ -22,24 +22,45 @@ Targeted feature set for game-readiness. Not a port of the old renderer — each
 
 HDR pipeline outputs RGBA16Float — need tone mapping at minimum to see correct colors.
 
-### 5.1 — Tone Mapping Pass
-- New `TonemapPass` in `Sedulous.Renderer/src/Passes/`
-- Reads "PipelineOutput" (HDR), writes to a new "LDR" render graph texture
-- ACES filmic tone mapping + gamma correction
-- Shader: `tonemap.frag.hlsl` — fullscreen triangle, samples HDR input
-- Exposure uniform (manual for now, auto-exposure later if needed)
-- Pipeline blit reads "LDR" instead of "PipelineOutput"
+### 5.1 — PostProcessStack + TonemapEffect
+Build the post-processing infrastructure and first effect together.
 
-### 5.2 — Post-Processing Stack
-- Evaluate ezEngine's approach: each post-process is a pass with input/output pins connected via render graph resources
-- Our approach: post-process passes are PipelinePass subclasses, chained via named render graph textures
-- Order: Scene HDR → Bloom (optional) → Tonemap → LDR output
-- Each pass reads a named texture and writes to the next
+**PostProcessStack** (`Sedulous.Renderer/src/PostProcessStack.bf`):
+- Owned by Pipeline (per-view, since Pipeline is per-view)
+- Ordered list of `PostProcessEffect` instances
+- `Execute(graph, view, renderer, sceneColor, sceneDepth)` → returns final output handle
+- Manages ping-pong: creates transient intermediates, last effect writes to PipelineOutput
+- Pass-through when empty (no effects → scene color flows directly to blit)
 
-### 5.3 — Bloom (Optional)
-- Downsample bright pixels → Gaussian blur → composite back
-- Multi-pass: extract → downsample chain → upsample chain → combine
-- Only if needed for the game — skip if not
+**PostProcessEffect** (`Sedulous.Renderer/src/PostProcessEffect.bf`):
+- Base class for effects, simpler than PipelinePass
+- `AddPasses(graph, view, renderer, ctx)` — adds render graph passes
+- `DeclareOutputs(ctx)` — register auxiliary textures (e.g., bloom → "BloomTexture")
+- PostProcessContext provides: Input handle, Output handle, SceneDepth, aux texture map
+- Effects hold GPU state (shaders, constant buffers), built once, parameters updated per-frame
+
+**TonemapEffect** (`Sedulous.Renderer/src/Effects/TonemapEffect.bf`):
+- First concrete effect — ACES filmic tone mapping + gamma correction
+- Reads ctx.Input (HDR), optional ctx.GetAux("BloomTexture")
+- Writes ctx.Output (LDR)
+- Properties: Exposure (manual), WhitePoint
+- Shader: `tonemap.frag.hlsl` — fullscreen triangle
+
+**Configuration model:**
+- Code-driven now: `pipeline.PostProcessStack.AddEffect(new TonemapEffect())`
+- RenderSubsystem builds default stack when creating pipeline
+- Future: CameraComponent holds PostProcessProfile (data), RenderSubsystem resolves to runtime stack
+
+### 5.2 — Bloom
+- `BloomEffect` in `Sedulous.Renderer/src/Effects/`
+- Gaussian pyramid: extract bright → downsample chain → upsample + blur chain
+- Produces auxiliary "BloomTexture" via `ctx.SetAux()` — consumed by TonemapEffect
+- Does NOT modify the main chain (passes through input → output unchanged)
+- Properties: Threshold, Intensity, Radius
+
+### 5.3 — Additional Effects (as needed)
+- SSAO, DoF, motion blur, color grading — each a PostProcessEffect
+- Added to the stack in order, chained automatically
 
 **Dependencies:** None. Can start immediately.
 
