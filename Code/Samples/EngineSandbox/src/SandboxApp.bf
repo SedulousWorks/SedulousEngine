@@ -28,9 +28,9 @@ class SandboxApp : EngineApplication
 
 		let sceneSub = Context.GetSubsystem<SceneSubsystem>();
 		let renderSub = Context.GetSubsystem<RenderSubsystem>();
-		let pipeline = renderSub.Pipeline;
-		let gpuResources = pipeline.GPUResources;
-		let matSystem = pipeline.MaterialSystem;
+		let renderer = renderSub.Renderer;
+		let gpuResources = renderer.GPUResources;
+		let matSystem = renderer.MaterialSystem;
 
 		// Create scene
 		let scene = sceneSub.CreateScene("TestScene");
@@ -268,7 +268,7 @@ class SandboxApp : EngineApplication
 
 	protected override void OnShutdown()
 	{
-		let matSystem = Context.GetSubsystem<RenderSubsystem>().Pipeline.MaterialSystem;
+		let matSystem = Context.GetSubsystem<RenderSubsystem>().Renderer.MaterialSystem;
 
 		if (mRedMaterial != null)
 			matSystem.ReleaseInstance(mRedMaterial);

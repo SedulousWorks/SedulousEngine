@@ -5,22 +5,19 @@ using System.Collections;
 using Sedulous.RHI;
 using Sedulous.RenderGraph;
 using Sedulous.Core.Mathematics;
-using Sedulous.Materials;
 using Sedulous.Profiler;
 
-/// Orchestrates rendering by managing pipeline passes, per-frame resources,
-/// GPU resource management, and the render graph.
+/// Per-view pass execution engine.
+///
+/// Owns the pass list, per-frame resources, output texture, and render graph.
+/// References shared infrastructure (GPU resources, materials, shaders) from Renderer.
 ///
 /// The pipeline renders to its own output texture — it doesn't know about swapchains.
-/// The caller (RenderSubsystem) blits the pipeline output to the backbuffer, an editor
-/// viewport, an offscreen target, etc.
-///
-/// Scene-independent. Receives a RenderView (camera + extracted data), renders it
-/// using registered passes, and produces an output texture.
+/// The caller (RenderSubsystem) blits the pipeline output to the backbuffer.
 public class Pipeline : IDisposable
 {
-	private IDevice mDevice;
-	private IQueue mQueue;
+	// Shared infrastructure (not owned)
+	private Renderer mRenderer;
 
 	// Passes
 	private List<PipelinePass> mPasses = new .() ~ delete _;
@@ -29,29 +26,8 @@ public class Pipeline : IDisposable
 	public const int32 MaxFramesInFlight = 2;
 	private PerFrameResources[MaxFramesInFlight] mFrameResources;
 
-	// GPU resource management
-	private GPUResourceManager mGPUResources ~ delete _;
-
 	// Render graph
 	private RenderGraph mRenderGraph ~ delete _;
-
-	// Lighting
-	private LightBuffer mLightBuffer ~ delete _;
-
-	// Material system (owns material bind group layouts, default textures, per-instance bind groups)
-	private MaterialSystem mMaterialSystem ~ { _?.Dispose(); delete _; };
-
-	// Shared bind group layouts (frequency model)
-	private IBindGroupLayout mFrameBindGroupLayout;
-	private IBindGroupLayout mDrawCallBindGroupLayout;
-
-	// Default material bind group (cached from MaterialSystem, ref held on instance)
-	private IBindGroup mDefaultMaterialBindGroup;
-	private MaterialInstance mDefaultMaterialInstanceRef; // AddRef'd — prevents instance from deleting bind group
-
-	// Default bind groups (used when no transform is assigned)
-	private IBindGroup mDefaultDrawCallBindGroup;
-	private IBuffer mDefaultDrawCallBuffer;
 
 	// Pipeline output
 	private ITexture mOutputTexture;
@@ -60,25 +36,13 @@ public class Pipeline : IDisposable
 	private uint32 mOutputHeight;
 	private TextureFormat mOutputFormat = .RGBA16Float;
 
-	// Shader system (optional, set by subsystem — not owned)
-	private Sedulous.Shaders.ShaderSystem mShaderSystem;
-
-	// Pipeline state cache
-	private PipelineStateCache mPipelineStateCache ~ delete _;
-
 	// Frame counter
 	private uint64 mFrameNumber = 0;
 
 	// ==================== Properties ====================
 
-	/// The RHI device.
-	public IDevice Device => mDevice;
-
-	/// The graphics queue.
-	public IQueue Queue => mQueue;
-
-	/// GPU resource manager (meshes, textures, bone buffers).
-	public GPUResourceManager GPUResources => mGPUResources;
+	/// The shared renderer infrastructure.
+	public Renderer Renderer => mRenderer;
 
 	/// The render graph.
 	public RenderGraph RenderGraph => mRenderGraph;
@@ -91,44 +55,6 @@ public class Pipeline : IDisposable
 	{
 		return mFrameResources[frameIndex % MaxFramesInFlight];
 	}
-
-	/// Frame-level bind group layout (set 0).
-	public IBindGroupLayout FrameBindGroupLayout => mFrameBindGroupLayout;
-
-	/// Material bind group layout (set 2) — from MaterialSystem.
-	public IBindGroupLayout MaterialBindGroupLayout => mMaterialSystem?.DefaultMaterialLayout;
-
-	/// Draw-call bind group layout (set 3).
-	public IBindGroupLayout DrawCallBindGroupLayout => mDrawCallBindGroupLayout;
-
-	/// Material system (manages material bind groups, default textures, per-instance GPU resources).
-	public MaterialSystem MaterialSystem => mMaterialSystem;
-
-	/// Default material bind group (white albedo, 0.5 roughness, 0 metallic).
-	public IBindGroup DefaultMaterialBindGroup => mDefaultMaterialBindGroup;
-
-	/// Default draw call bind group (identity transform).
-	public IBindGroup DefaultDrawCallBindGroup => mDefaultDrawCallBindGroup;
-
-	/// Light buffer for uploading and accessing light data.
-	public LightBuffer LightBuffer => mLightBuffer;
-
-	/// Shader system (optional, for passes that need to compile shaders).
-	public Sedulous.Shaders.ShaderSystem ShaderSystem
-	{
-		get => mShaderSystem;
-		set
-		{
-			mShaderSystem = value;
-			// Create/recreate pipeline state cache when shader system is set
-			delete mPipelineStateCache;
-			if (value != null)
-				mPipelineStateCache = new PipelineStateCache(mDevice, value, this);
-		}
-	}
-
-	/// Pipeline state cache (creates GPU pipelines on demand from material config).
-	public PipelineStateCache PipelineStateCache => mPipelineStateCache;
 
 	/// The pipeline output texture. Read this after Render() to blit.
 	public ITexture OutputTexture => mOutputTexture;
@@ -147,42 +73,17 @@ public class Pipeline : IDisposable
 
 	// ==================== Lifecycle ====================
 
-	/// Initializes the pipeline.
-	public Result<void> Initialize(IDevice device, IQueue queue, uint32 width, uint32 height, TextureFormat outputFormat = .RGBA16Float)
+	/// Initializes the pipeline with a reference to the shared renderer.
+	public Result<void> Initialize(Renderer renderer, uint32 width, uint32 height, TextureFormat outputFormat = .RGBA16Float)
 	{
-		mDevice = device;
-		mQueue = queue;
+		mRenderer = renderer;
 		mOutputFormat = outputFormat;
 
-		// GPU resource manager
-		mGPUResources = new GPUResourceManager();
-		if (mGPUResources.Initialize(device, queue) case .Err)
-			return .Err;
-
 		// Render graph
-		mRenderGraph = new RenderGraph(device, .() { FrameBufferCount = MaxFramesInFlight });
-
-		// Light buffer
-		mLightBuffer = new LightBuffer();
-		if (mLightBuffer.Initialize(device) case .Err)
-			return .Err;
-
-		// Material system (manages material layouts, default textures, per-instance bind groups)
-		mMaterialSystem = new MaterialSystem();
-		if (mMaterialSystem.Initialize(device, queue) case .Err)
-			return .Err;
-
-		// Cache default material bind group and hold a ref on the instance
-		mDefaultMaterialInstanceRef = mMaterialSystem.DefaultMaterialInstance;
-		mDefaultMaterialInstanceRef.AddRef();
-		mDefaultMaterialBindGroup = mMaterialSystem.GetBindGroup(mDefaultMaterialInstanceRef);
+		mRenderGraph = new RenderGraph(renderer.Device, .() { FrameBufferCount = MaxFramesInFlight });
 
 		// Create output texture
 		if (CreateOutputTexture(width, height) case .Err)
-			return .Err;
-
-		// Create shared bind group layouts (needed before per-frame bind groups)
-		if (CreateBindGroupLayouts() case .Err)
 			return .Err;
 
 		// Create per-frame resources (buffers + bind groups)
@@ -213,11 +114,12 @@ public class Pipeline : IDisposable
 		return null;
 	}
 
-	/// Shuts down the pipeline and releases all resources.
+	/// Shuts down the pipeline and releases per-view resources.
 	public void Shutdown()
 	{
-		if (mDevice != null)
-			mDevice.WaitIdle();
+		let device = mRenderer?.Device;
+		if (device != null)
+			device.WaitIdle();
 
 		// Shutdown passes in reverse order
 		for (int i = mPasses.Count - 1; i >= 0; i--)
@@ -232,7 +134,7 @@ public class Pipeline : IDisposable
 		{
 			if (mFrameResources[i] != null)
 			{
-				mFrameResources[i].Release(mDevice);
+				mFrameResources[i].Release(device);
 				delete mFrameResources[i];
 				mFrameResources[i] = null;
 			}
@@ -241,40 +143,12 @@ public class Pipeline : IDisposable
 		// Release output texture
 		DestroyOutputTexture();
 
-		// Release default material bind group ref (before MaterialSystem cleanup)
-		mDefaultMaterialBindGroup = null; // borrowed pointer — MaterialSystem owns it
-		if (mDefaultMaterialInstanceRef != null)
-		{
-			mDefaultMaterialInstanceRef.ReleaseRef();
-			mDefaultMaterialInstanceRef = null;
-		}
-
-		// Release default draw call bind group
-		if (mDefaultDrawCallBindGroup != null)
-			mDevice.DestroyBindGroup(ref mDefaultDrawCallBindGroup);
-		if (mDefaultDrawCallBuffer != null)
-			mDevice.DestroyBuffer(ref mDefaultDrawCallBuffer);
-
-		// Release bind group layouts
-		if (mFrameBindGroupLayout != null)
-			mDevice.DestroyBindGroupLayout(ref mFrameBindGroupLayout);
-		if (mDrawCallBindGroupLayout != null)
-			mDevice.DestroyBindGroupLayout(ref mDrawCallBindGroupLayout);
-
-		// Material system cleanup (layouts, buffers, bind groups, default textures)
-		if (mMaterialSystem != null)
-		{
-			mMaterialSystem.Dispose();
-			delete mMaterialSystem;
-			mMaterialSystem = null;
-		}
+		mRenderer = null;
 	}
 
 	// ==================== Rendering ====================
 
 	/// Renders a view to the pipeline's output texture.
-	/// After this call, read OutputTexture/OutputTextureView to blit the result
-	/// to a swapchain, editor viewport, offscreen target, etc.
 	public void Render(ICommandEncoder encoder, RenderView view)
 	{
 		using (Profiler.Begin("Pipeline.Render"))
@@ -292,14 +166,14 @@ public class Pipeline : IDisposable
 
 			// Upload light data
 			if (view.RenderData != null)
-				mLightBuffer.Upload(view.RenderData, view.FrameIndex);
+				mRenderer.LightBuffer.Upload(view.RenderData, view.FrameIndex);
 
 			// Rebuild frame bind group (includes light buffer)
 			RebuildFrameBindGroup(frame, view.FrameIndex);
 		}
 
 		// Process deferred GPU resource deletions
-		mGPUResources.ProcessDeletions(mFrameNumber);
+		mRenderer.ProcessDeletions(mFrameNumber);
 
 		// Set output size for render graph (affects relative-sized transients)
 		mRenderGraph.SetOutputSize(mOutputWidth, mOutputHeight);
@@ -308,11 +182,9 @@ public class Pipeline : IDisposable
 		mRenderGraph.BeginFrame((int32)frameIndex);
 
 		// Import the pipeline output as the render target
-		// Passes write to "PipelineOutput" — this is the pipeline's own texture
 		let outputHandle = mRenderGraph.ImportTarget("PipelineOutput", mOutputTexture, mOutputTextureView);
 
 		// Always clear the output to a known state before passes run.
-		// Passes use LoadOp.Load and build on top of this.
 		mRenderGraph.AddRenderPass("ClearOutput", scope (builder) => {
 			builder
 				.SetColorTarget(0, outputHandle, .Clear, .Store, ClearColor(0.0f, 0.0f, 0.0f, 1.0f))
@@ -343,7 +215,7 @@ public class Pipeline : IDisposable
 		if (width == mOutputWidth && height == mOutputHeight)
 			return;
 
-		mDevice.WaitIdle();
+		mRenderer.Device.WaitIdle();
 		DestroyOutputTexture();
 		CreateOutputTexture(width, height);
 
@@ -351,7 +223,49 @@ public class Pipeline : IDisposable
 			pass.OnResize(width, height);
 	}
 
+	/// Writes object uniforms (world matrix) to the per-frame object buffer and returns the dynamic offset.
+	/// Returns uint32.MaxValue if the buffer is full.
+	public uint32 WriteObjectUniforms(int32 frameIndex, Matrix worldMatrix, Matrix prevWorldMatrix)
+	{
+		let frame = mFrameResources[frameIndex % MaxFramesInFlight];
+		if (frame == null || frame.ObjectUniformBuffer == null)
+			return uint32.MaxValue;
+
+		if (frame.ObjectBufferOffset >= PerFrameResources.MaxObjects * PerFrameResources.ObjectAlignment)
+			return uint32.MaxValue;
+
+		let offset = frame.ObjectBufferOffset;
+
+		ObjectUniforms objData = .()
+		{
+			WorldMatrix = worldMatrix,
+			PrevWorldMatrix = prevWorldMatrix
+		};
+
+		TransferHelper.WriteMappedBuffer(
+			frame.ObjectUniformBuffer, (uint64)offset,
+			Span<uint8>((uint8*)&objData, ObjectUniforms.Size)
+		);
+
+		frame.ObjectBufferOffset += PerFrameResources.ObjectAlignment;
+		return offset;
+	}
+
+	public void Dispose()
+	{
+		Shutdown();
+	}
+
 	// ==================== Internal ====================
+
+	/// GPU-packed object uniforms. Must match forward.vert.hlsl ObjectUniforms.
+	[CRepr]
+	private struct ObjectUniforms
+	{
+		public Matrix WorldMatrix;
+		public Matrix PrevWorldMatrix;
+		public const uint64 Size = 128;
+	}
 
 	private Result<void> CreateOutputTexture(uint32 width, uint32 height)
 	{
@@ -372,7 +286,7 @@ public class Pipeline : IDisposable
 			SampleCount = 1
 		};
 
-		if (mDevice.CreateTexture(texDesc) case .Ok(let tex))
+		if (mRenderer.Device.CreateTexture(texDesc) case .Ok(let tex))
 			mOutputTexture = tex;
 		else
 			return .Err;
@@ -384,7 +298,7 @@ public class Pipeline : IDisposable
 			Dimension = .Texture2D
 		};
 
-		if (mDevice.CreateTextureView(mOutputTexture, viewDesc) case .Ok(let view))
+		if (mRenderer.Device.CreateTextureView(mOutputTexture, viewDesc) case .Ok(let view))
 			mOutputTextureView = view;
 		else
 			return .Err;
@@ -394,10 +308,13 @@ public class Pipeline : IDisposable
 
 	private void DestroyOutputTexture()
 	{
+		let device = mRenderer?.Device;
+		if (device == null) return;
+
 		if (mOutputTextureView != null)
-			mDevice.DestroyTextureView(ref mOutputTextureView);
+			device.DestroyTextureView(ref mOutputTextureView);
 		if (mOutputTexture != null)
-			mDevice.DestroyTexture(ref mOutputTexture);
+			device.DestroyTexture(ref mOutputTexture);
 		mOutputWidth = 0;
 		mOutputHeight = 0;
 	}
@@ -441,6 +358,8 @@ public class Pipeline : IDisposable
 
 	private Result<void> CreatePerFrameResources()
 	{
+		let device = mRenderer.Device;
+
 		for (int i = 0; i < MaxFramesInFlight; i++)
 		{
 			let frame = new PerFrameResources();
@@ -454,7 +373,7 @@ public class Pipeline : IDisposable
 				Memory = .CpuToGpu
 			};
 
-			if (mDevice.CreateBuffer(sceneUBDesc) case .Ok(let sceneBuf))
+			if (device.CreateBuffer(sceneUBDesc) case .Ok(let sceneBuf))
 				frame.SceneUniformBuffer = sceneBuf;
 			else
 			{
@@ -473,17 +392,18 @@ public class Pipeline : IDisposable
 				Memory = .CpuToGpu
 			};
 
-			if (mDevice.CreateBuffer(objectUBDesc) case .Ok(let objBuf))
+			if (device.CreateBuffer(objectUBDesc) case .Ok(let objBuf))
 				frame.ObjectUniformBuffer = objBuf;
 			else
 			{
-				frame.Release(mDevice);
+				frame.Release(device);
 				delete frame;
 				return .Err;
 			}
 
 			// Draw call bind group with dynamic offset into the object buffer
-			if (mDrawCallBindGroupLayout != null)
+			let drawCallLayout = mRenderer.DrawCallBindGroupLayout;
+			if (drawCallLayout != null)
 			{
 				BindGroupEntry[1] drawBgEntries = .(
 					BindGroupEntry.Buffer(frame.ObjectUniformBuffer, 0, PerFrameResources.ObjectAlignment)
@@ -492,11 +412,11 @@ public class Pipeline : IDisposable
 				BindGroupDesc drawBgDesc = .()
 				{
 					Label = "DrawCall BindGroup (Dynamic)",
-					Layout = mDrawCallBindGroupLayout,
+					Layout = drawCallLayout,
 					Entries = drawBgEntries
 				};
 
-				if (mDevice.CreateBindGroup(drawBgDesc) case .Ok(let drawBg))
+				if (device.CreateBindGroup(drawBgDesc) case .Ok(let drawBg))
 					frame.DrawCallBindGroup = drawBg;
 			}
 
@@ -507,176 +427,43 @@ public class Pipeline : IDisposable
 		return .Ok;
 	}
 
-	private Result<void> CreateBindGroupLayouts()
-	{
-		// Frame bind group layout (set 0):
-		//   b0: SceneUniforms
-		//   b1: LightParams (light count, ambient)
-		//   t0: Light buffer (StructuredBuffer<GPULight>)
-		BindGroupLayoutEntry[3] frameEntries = .(
-			.UniformBuffer(0, .Vertex | .Fragment | .Compute),                     // b0: SceneUniforms
-			.UniformBuffer(1, .Fragment),                                           // b1: LightParams
-			.() { Binding = 0, Visibility = .Fragment, Type = .StorageBufferReadOnly } // t0: Lights
-		);
-
-		BindGroupLayoutDesc frameLayoutDesc = .()
-		{
-			Label = "Frame BindGroup Layout",
-			Entries = frameEntries
-		};
-
-		if (mDevice.CreateBindGroupLayout(frameLayoutDesc) case .Ok(let layout))
-			mFrameBindGroupLayout = layout;
-		else
-			return .Err;
-
-		// Material bind group layout (set 2) is owned by MaterialSystem.
-		// It builds the layout from material property definitions (uniforms + textures + samplers).
-
-		// Draw call bind group layout (set 3): object uniforms with dynamic offset
-		//   b0: ObjectUniforms (world matrix, prev world matrix) — dynamic offset per draw
-		BindGroupLayoutEntry[1] drawEntries = .(
-			.() { Binding = 0, Visibility = .Vertex, Type = .UniformBuffer, HasDynamicOffset = true }
-		);
-
-		BindGroupLayoutDesc drawLayoutDesc = .()
-		{
-			Label = "DrawCall BindGroup Layout",
-			Entries = drawEntries
-		};
-
-		if (mDevice.CreateBindGroupLayout(drawLayoutDesc) case .Ok(let drawLayout))
-			mDrawCallBindGroupLayout = drawLayout;
-		else
-			return .Err;
-
-		// Create default draw call bind group (identity transform)
-		if (CreateDefaultDrawCallBindGroup() case .Err)
-			return .Err;
-
-		return .Ok;
-	}
-
-	/// GPU-packed object uniforms. Must match forward.vert.hlsl ObjectUniforms.
-	[CRepr]
-	private struct DefaultObjectUniforms
-	{
-		public Matrix WorldMatrix;
-		public Matrix PrevWorldMatrix;
-		public const uint64 Size = 128;
-	}
-
-	private Result<void> CreateDefaultDrawCallBindGroup()
-	{
-		// Default draw call buffer + bind group (identity transform)
-		BufferDesc drawBufDesc = .()
-		{
-			Label = "Default DrawCall Uniforms",
-			Size = DefaultObjectUniforms.Size,
-			Usage = .Uniform,
-			Memory = .CpuToGpu
-		};
-
-		if (mDevice.CreateBuffer(drawBufDesc) case .Ok(let drawBuf))
-		{
-			mDefaultDrawCallBuffer = drawBuf;
-
-			DefaultObjectUniforms objData = .()
-			{
-				WorldMatrix = .Identity,
-				PrevWorldMatrix = .Identity
-			};
-			TransferHelper.WriteMappedBuffer(drawBuf, 0,
-				Span<uint8>((uint8*)&objData, DefaultObjectUniforms.Size));
-		}
-		else
-			return .Err;
-
-		BindGroupEntry[1] drawBgEntries = .(
-			BindGroupEntry.Buffer(mDefaultDrawCallBuffer, 0, DefaultObjectUniforms.Size)
-		);
-
-		BindGroupDesc drawBgDesc = .()
-		{
-			Label = "Default DrawCall BindGroup",
-			Layout = mDrawCallBindGroupLayout,
-			Entries = drawBgEntries
-		};
-
-		if (mDevice.CreateBindGroup(drawBgDesc) case .Ok(let drawBg))
-			mDefaultDrawCallBindGroup = drawBg;
-		else
-			return .Err;
-
-		return .Ok;
-	}
-
 	/// Rebuilds the frame bind group with current light data for this frame.
 	private void RebuildFrameBindGroup(PerFrameResources frame, int32 frameIndex)
 	{
-		if (mFrameBindGroupLayout == null || frame.SceneUniformBuffer == null)
+		let frameLayout = mRenderer.FrameBindGroupLayout;
+		if (frameLayout == null || frame.SceneUniformBuffer == null)
 			return;
+
+		let device = mRenderer.Device;
 
 		// Destroy previous bind group
 		if (frame.FrameBindGroup != null)
-			mDevice.DestroyBindGroup(ref frame.FrameBindGroup);
+			device.DestroyBindGroup(ref frame.FrameBindGroup);
 
-		let lightBuffer = mLightBuffer.GetLightBuffer(frameIndex);
-		let lightParamsBuffer = mLightBuffer.GetLightParamsBuffer(frameIndex);
+		let lightBuffer = mRenderer.LightBuffer;
+		let lightBuf = lightBuffer.GetLightBuffer(frameIndex);
+		let lightParamsBuf = lightBuffer.GetLightParamsBuffer(frameIndex);
 
-		if (lightBuffer == null || lightParamsBuffer == null)
+		if (lightBuf == null || lightParamsBuf == null)
 			return;
 
 		// Light buffer size: at least 1 light worth (Vulkan requires non-zero)
-		let lightBufferSize = (uint64)(Math.Max(mLightBuffer.LightCount, 1) * GPULight.Size);
+		let lightBufferSize = (uint64)(Math.Max(lightBuffer.LightCount, 1) * GPULight.Size);
 
 		BindGroupEntry[3] bgEntries = .(
 			BindGroupEntry.Buffer(frame.SceneUniformBuffer, 0, SceneUniforms.Size),
-			BindGroupEntry.Buffer(lightParamsBuffer, 0, (uint64)LightParams.Size),
-			BindGroupEntry.Buffer(lightBuffer, 0, lightBufferSize)
+			BindGroupEntry.Buffer(lightParamsBuf, 0, (uint64)LightParams.Size),
+			BindGroupEntry.Buffer(lightBuf, 0, lightBufferSize)
 		);
 
 		BindGroupDesc bgDesc = .()
 		{
 			Label = "Frame BindGroup",
-			Layout = mFrameBindGroupLayout,
+			Layout = frameLayout,
 			Entries = bgEntries
 		};
 
-		if (mDevice.CreateBindGroup(bgDesc) case .Ok(let bg))
+		if (device.CreateBindGroup(bgDesc) case .Ok(let bg))
 			frame.FrameBindGroup = bg;
-	}
-
-	/// Writes object uniforms (world matrix) to the per-frame object buffer and returns the dynamic offset.
-	/// Returns uint32.MaxValue if the buffer is full.
-	public uint32 WriteObjectUniforms(int32 frameIndex, Matrix worldMatrix, Matrix prevWorldMatrix)
-	{
-		let frame = mFrameResources[frameIndex % MaxFramesInFlight];
-		if (frame == null || frame.ObjectUniformBuffer == null)
-			return uint32.MaxValue;
-
-		if (frame.ObjectBufferOffset >= PerFrameResources.MaxObjects * PerFrameResources.ObjectAlignment)
-			return uint32.MaxValue;
-
-		let offset = frame.ObjectBufferOffset;
-
-		DefaultObjectUniforms objData = .()
-		{
-			WorldMatrix = worldMatrix,
-			PrevWorldMatrix = prevWorldMatrix
-		};
-
-		TransferHelper.WriteMappedBuffer(
-			frame.ObjectUniformBuffer, (uint64)offset,
-			Span<uint8>((uint8*)&objData, DefaultObjectUniforms.Size)
-		);
-
-		frame.ObjectBufferOffset += PerFrameResources.ObjectAlignment;
-		return offset;
-	}
-
-	public void Dispose()
-	{
-		Shutdown();
 	}
 }

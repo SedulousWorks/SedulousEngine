@@ -45,7 +45,8 @@ class DepthPrepass : PipelinePass
 	{
 		using (Profiler.Begin("DepthPrepass"))
 		{
-		let cache = pipeline.PipelineStateCache;
+		let renderer = pipeline.Renderer;
+		let cache = renderer.PipelineStateCache;
 		if (cache == null)
 			return;
 
@@ -78,7 +79,7 @@ class DepthPrepass : PipelinePass
 			encoder.SetBindGroup(BindGroupFrequency.Frame, frame.FrameBindGroup, default);
 
 		let data = view.RenderData;
-		let gpuResources = pipeline.GPUResources;
+		let gpuResources = renderer.GPUResources;
 		let opaqueBatch = data.GetSortedBatch(RenderCategories.Opaque);
 
 		for (int32 i = 0; i < (int32)opaqueBatch.Length; i++)

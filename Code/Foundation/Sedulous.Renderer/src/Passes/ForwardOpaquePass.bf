@@ -50,7 +50,8 @@ class ForwardOpaquePass : PipelinePass
 	{
 		using (Profiler.Begin("ForwardOpaque"))
 		{
-		let cache = pipeline.PipelineStateCache;
+		let renderer = pipeline.Renderer;
+		let cache = renderer.PipelineStateCache;
 		if (cache == null)
 			return;
 
@@ -58,7 +59,7 @@ class ForwardOpaquePass : PipelinePass
 		encoder.SetScissor(0, 0, view.Width, view.Height);
 
 		let data = view.RenderData;
-		let gpuResources = pipeline.GPUResources;
+		let gpuResources = renderer.GPUResources;
 		let frame = pipeline.GetFrameResources(view.FrameIndex);
 
 		// Build pipeline config
@@ -95,8 +96,8 @@ class ForwardOpaquePass : PipelinePass
 		if (frame.FrameBindGroup != null)
 			encoder.SetBindGroup(BindGroupFrequency.Frame, frame.FrameBindGroup, default);
 
-		if (pipeline.DefaultMaterialBindGroup != null)
-			encoder.SetBindGroup(BindGroupFrequency.Material, pipeline.DefaultMaterialBindGroup, default);
+		if (renderer.DefaultMaterialBindGroup != null)
+			encoder.SetBindGroup(BindGroupFrequency.Material, renderer.DefaultMaterialBindGroup, default);
 
 		let opaqueBatch = data.GetSortedBatch(RenderCategories.Opaque);
 		IBindGroup lastMaterialBindGroup = null;
@@ -116,7 +117,7 @@ class ForwardOpaquePass : PipelinePass
 			uint32[1] dynamicOffsets = .(objOffset);
 			encoder.SetBindGroup(BindGroupFrequency.DrawCall, frame.DrawCallBindGroup, dynamicOffsets);
 
-			let materialBg = (mesh.MaterialBindGroup != null) ? mesh.MaterialBindGroup : pipeline.DefaultMaterialBindGroup;
+			let materialBg = (mesh.MaterialBindGroup != null) ? mesh.MaterialBindGroup : renderer.DefaultMaterialBindGroup;
 			if (materialBg != null && materialBg != lastMaterialBindGroup)
 			{
 				encoder.SetBindGroup(BindGroupFrequency.Material, materialBg, default);

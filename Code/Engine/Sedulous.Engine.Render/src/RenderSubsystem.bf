@@ -36,7 +36,10 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	private uint64 mNextFenceValue = 1;
 	private uint64[MAX_FRAMES_IN_FLIGHT] mFrameFenceValues;
 
-	// Pipeline
+	// Renderer (shared infrastructure)
+	private Renderer mRenderer ~ delete _;
+
+	// Pipeline (per-view pass execution)
 	private Pipeline mPipeline ~ delete _;
 
 	// Blit helper (fullscreen triangle to copy pipeline output → swapchain)
@@ -71,6 +74,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 
 	public ISwapChain SwapChain => mSwapChain;
 	public IQueue GraphicsQueue => mGraphicsQueue;
+	public Renderer Renderer => mRenderer;
 	public Pipeline Pipeline => mPipeline;
 
 	// ==================== Lifecycle ====================
@@ -106,10 +110,14 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		if (mDevice.CreateFence(0) case .Ok(let fence))
 			mFrameFence = fence;
 
-		// Pipeline
+		// Renderer (shared infrastructure)
+		mRenderer = new Renderer();
+		mRenderer.Initialize(mDevice, mGraphicsQueue);
+		mRenderer.ShaderSystem = ShaderSystem;
+
+		// Pipeline (per-view pass execution)
 		mPipeline = new Pipeline();
-		mPipeline.Initialize(mDevice, mGraphicsQueue, (uint32)mWindow.Width, (uint32)mWindow.Height);
-		mPipeline.ShaderSystem = ShaderSystem;
+		mPipeline.Initialize(mRenderer, (uint32)mWindow.Width, (uint32)mWindow.Height);
 
 		// Register default passes
 		mPipeline.AddPass(new DepthPrepass());
@@ -138,9 +146,11 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		if (mBlitHelper != null)
 			mBlitHelper.Dispose();
 
-		// Shutdown pipeline
+		// Shutdown pipeline then renderer (pipeline first — it references renderer)
 		if (mPipeline != null)
 			mPipeline.Shutdown();
+		if (mRenderer != null)
+			mRenderer.Shutdown();
 
 		// Frame pacing resources
 		for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
@@ -350,7 +360,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	public void OnSceneCreated(Scene scene)
 	{
 		let meshMgr = new MeshComponentManager();
-		meshMgr.GPUResources = mPipeline?.GPUResources;
+		meshMgr.GPUResources = mRenderer?.GPUResources;
 		scene.AddModule(meshMgr);
 
 		scene.AddModule(new CameraComponentManager());
