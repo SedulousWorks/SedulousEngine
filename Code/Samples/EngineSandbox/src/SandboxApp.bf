@@ -17,6 +17,9 @@ class SandboxApp : EngineApplication
 	Material mPbrMaterial ~ delete _;
 	MaterialInstance mRedMaterial ~ _?.ReleaseRef();
 	MaterialInstance mBlueMaterial ~ _?.ReleaseRef();
+	MaterialInstance mGreenMaterial ~ _?.ReleaseRef();
+	MaterialInstance mWhiteMaterial ~ _?.ReleaseRef();
+	MaterialInstance mYellowMaterial ~ _?.ReleaseRef();
 	MaterialInstance mGrayMaterial ~ _?.ReleaseRef();
 
 	protected override void OnStartup()
@@ -47,6 +50,23 @@ class SandboxApp : EngineApplication
 		mBlueMaterial.SetColor("BaseColor", .(0, 0, 1, 1));
 		matSystem.PrepareInstance(mBlueMaterial);
 
+		// Green material
+		mGreenMaterial = new MaterialInstance(mPbrMaterial);
+		mGreenMaterial.SetColor("BaseColor", .(0.2f, 0.8f, 0.2f, 1));
+		matSystem.PrepareInstance(mGreenMaterial);
+
+		// White material (shiny)
+		mWhiteMaterial = new MaterialInstance(mPbrMaterial);
+		mWhiteMaterial.SetColor("BaseColor", .(0.9f, 0.9f, 0.9f, 1));
+		mWhiteMaterial.SetFloat("Roughness", 0.1f);
+		mWhiteMaterial.SetFloat("Metallic", 0.8f);
+		matSystem.PrepareInstance(mWhiteMaterial);
+
+		// Yellow material
+		mYellowMaterial = new MaterialInstance(mPbrMaterial);
+		mYellowMaterial.SetColor("BaseColor", .(1.0f, 0.85f, 0.1f, 1));
+		matSystem.PrepareInstance(mYellowMaterial);
+
 		// Gray plane material
 		mGrayMaterial = new MaterialInstance(mPbrMaterial);
 		mGrayMaterial.SetColor("BaseColor", .(0.5f, 0.5f, 0.5f, 1));
@@ -76,7 +96,7 @@ class SandboxApp : EngineApplication
 		let cubeEntity = scene.CreateEntity("Cube");
 		scene.SetLocalTransform(cubeEntity, .()
 		{
-			Position = .(0, -0.5f, -4),
+			Position = .(-1.5f, -0.5f, 0),
 			Rotation = .Identity,
 			Scale = .One
 		});
@@ -90,16 +110,66 @@ class SandboxApp : EngineApplication
 		let sphereEntity = scene.CreateEntity("Sphere");
 		scene.SetLocalTransform(sphereEntity, .()
 		{
-			Position = .(2, 0, 0),
+			Position = .(1.5f, -0.5f, 0),
 			Rotation = .Identity,
 			Scale = .One
 		});
 		SetupMeshComponent(scene, sphereEntity, sphereHandle, sphereMesh.GetBounds(), mBlueMaterial);
 
+		// Green cube (back left)
+		let cube2Entity = scene.CreateEntity("GreenCube");
+		scene.SetLocalTransform(cube2Entity, .()
+		{
+			Position = .(-3.0f, -0.5f, -2.0f),
+			Rotation = .Identity,
+			Scale = .One
+		});
+		SetupMeshComponent(scene, cube2Entity, cubeHandle, cubeMesh.GetBounds(), mGreenMaterial);
+
+		// Yellow cube (back right)
+		let cube3Entity = scene.CreateEntity("YellowCube");
+		scene.SetLocalTransform(cube3Entity, .()
+		{
+			Position = .(3.0f, -0.5f, -2.0f),
+			Rotation = .Identity,
+			Scale = .One
+		});
+		SetupMeshComponent(scene, cube3Entity, cubeHandle, cubeMesh.GetBounds(), mYellowMaterial);
+
+		// White metallic sphere (center back)
+		let sphere2Entity = scene.CreateEntity("MetalSphere");
+		scene.SetLocalTransform(sphere2Entity, .()
+		{
+			Position = .(0, -0.25f, -2.0f),
+			Rotation = .Identity,
+			Scale = .(1.5f, 1.5f, 1.5f)
+		});
+		SetupMeshComponent(scene, sphere2Entity, sphereHandle, sphereMesh.GetBounds(), mWhiteMaterial);
+
+		// Small green sphere (front left)
+		let sphere3Entity = scene.CreateEntity("GreenSphere");
+		scene.SetLocalTransform(sphere3Entity, .()
+		{
+			Position = .(-0.5f, -0.7f, 1.5f),
+			Rotation = .Identity,
+			Scale = .(0.6f, 0.6f, 0.6f)
+		});
+		SetupMeshComponent(scene, sphere3Entity, sphereHandle, sphereMesh.GetBounds(), mGreenMaterial);
+
+		// Small yellow sphere (front right)
+		let sphere4Entity = scene.CreateEntity("YellowSphere");
+		scene.SetLocalTransform(sphere4Entity, .()
+		{
+			Position = .(0.5f, -0.7f, 1.5f),
+			Rotation = .Identity,
+			Scale = .(0.6f, 0.6f, 0.6f)
+		});
+		SetupMeshComponent(scene, sphere4Entity, sphereHandle, sphereMesh.GetBounds(), mYellowMaterial);
+
 		// ==================== Light ====================
 
 		let lightEntity = scene.CreateEntity("DirectionalLight");
-		scene.SetLocalTransform(lightEntity, Transform.CreateLookAt(.(5, 5, 5), .Zero));
+		scene.SetLocalTransform(lightEntity, Transform.CreateLookAt(.(-3, 5, 2), .Zero));
 
 		let lightMgr = scene.GetModule<LightComponentManager>();
 		let lightHandle = lightMgr.CreateComponent(lightEntity);
@@ -113,7 +183,7 @@ class SandboxApp : EngineApplication
 		// ==================== Camera ====================
 
 		let cameraEntity = scene.CreateEntity("Camera");
-		scene.SetLocalTransform(cameraEntity, Transform.CreateLookAt(.(0, 3, 6), .(0, -0.5f, -2)));
+		scene.SetLocalTransform(cameraEntity, Transform.CreateLookAt(.(0, 3, 5), .(0, 0, 0)));
 
 		let cameraMgr = scene.GetModule<CameraComponentManager>();
 		let cameraCompHandle = cameraMgr.CreateComponent(cameraEntity);
@@ -204,6 +274,12 @@ class SandboxApp : EngineApplication
 			matSystem.ReleaseInstance(mRedMaterial);
 		if (mBlueMaterial != null)
 			matSystem.ReleaseInstance(mBlueMaterial);
+		if (mGreenMaterial != null)
+			matSystem.ReleaseInstance(mGreenMaterial);
+		if (mWhiteMaterial != null)
+			matSystem.ReleaseInstance(mWhiteMaterial);
+		if (mYellowMaterial != null)
+			matSystem.ReleaseInstance(mYellowMaterial);
 		if (mGrayMaterial != null)
 			matSystem.ReleaseInstance(mGrayMaterial);
 
