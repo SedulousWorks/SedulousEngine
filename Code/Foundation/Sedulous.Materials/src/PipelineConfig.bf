@@ -9,6 +9,8 @@ enum BlendMode : uint8
 {
 	/// No blending, fully opaque.
 	Opaque,
+	/// Opaque with alpha test (discard below AlphaCutoff).
+	Masked,
 	/// Standard alpha blending (src.a, 1-src.a).
 	AlphaBlend,
 	/// Additive blending (one, one).

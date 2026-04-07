@@ -377,7 +377,7 @@ class PipelineStateCache : IDisposable
 	{
 		switch (mode)
 		{
-		case .Opaque:             return null;
+		case .Opaque, .Masked:    return null;
 		case .AlphaBlend:         return .AlphaBlend;
 		case .Additive:           return .Additive;
 		case .Multiply:           return .Multiply;

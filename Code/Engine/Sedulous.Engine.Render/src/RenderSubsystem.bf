@@ -122,6 +122,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		// Register default passes
 		mPipeline.AddPass(new DepthPrepass());
 		mPipeline.AddPass(new ForwardOpaquePass());
+		mPipeline.AddPass(new TransparentForwardPass());
 		mPipeline.AddPass(new SkyPass());
 
 		// Post-processing stack

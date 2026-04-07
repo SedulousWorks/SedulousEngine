@@ -21,6 +21,8 @@ class SandboxApp : EngineApplication
 	MaterialInstance mWhiteMaterial ~ _?.ReleaseRef();
 	MaterialInstance mYellowMaterial ~ _?.ReleaseRef();
 	MaterialInstance mGrayMaterial ~ _?.ReleaseRef();
+	MaterialInstance mTransparentMaterial ~ _?.ReleaseRef();
+	MaterialInstance mMaskedMaterial ~ _?.ReleaseRef();
 
 	protected override void OnStartup()
 	{
@@ -71,6 +73,19 @@ class SandboxApp : EngineApplication
 		mGrayMaterial = new MaterialInstance(mPbrMaterial);
 		mGrayMaterial.SetColor("BaseColor", .(0.5f, 0.5f, 0.5f, 1));
 		matSystem.PrepareInstance(mGrayMaterial);
+
+		// Transparent material (semi-transparent blue)
+		mTransparentMaterial = new MaterialInstance(mPbrMaterial);
+		mTransparentMaterial.SetColor("BaseColor", .(0.2f, 0.4f, 0.9f, 0.4f));
+		mTransparentMaterial.BlendMode = .AlphaBlend;
+		matSystem.PrepareInstance(mTransparentMaterial);
+
+		// Masked material (alpha cutoff test)
+		mMaskedMaterial = new MaterialInstance(mPbrMaterial);
+		mMaskedMaterial.SetColor("BaseColor", .(0.8f, 0.2f, 0.1f, 1));
+		mMaskedMaterial.SetFloat("AlphaCutoff", 0.5f);
+		mMaskedMaterial.BlendMode = .Masked;
+		matSystem.PrepareInstance(mMaskedMaterial);
 
 		// ==================== Geometry ====================
 
@@ -165,6 +180,26 @@ class SandboxApp : EngineApplication
 			Scale = .(0.6f, 0.6f, 0.6f)
 		});
 		SetupMeshComponent(scene, sphere4Entity, sphereHandle, sphereMesh.GetBounds(), mYellowMaterial);
+
+		// Transparent sphere (overlapping the red cube to test alpha blending)
+		let transparentEntity = scene.CreateEntity("TransparentSphere");
+		scene.SetLocalTransform(transparentEntity, .()
+		{
+			Position = .(-1.0f, -0.25f, 0.8f),
+			Rotation = .Identity,
+			Scale = .(1.2f, 1.2f, 1.2f)
+		});
+		SetupMeshComponent(scene, transparentEntity, sphereHandle, sphereMesh.GetBounds(), mTransparentMaterial);
+
+		// Masked cube (tests alpha cutoff — should render fully since no albedo texture with alpha)
+		let maskedEntity = scene.CreateEntity("MaskedCube");
+		scene.SetLocalTransform(maskedEntity, .()
+		{
+			Position = .(3.0f, -0.5f, 1.0f),
+			Rotation = .Identity,
+			Scale = .One
+		});
+		SetupMeshComponent(scene, maskedEntity, cubeHandle, cubeMesh.GetBounds(), mMaskedMaterial);
 
 		// ==================== Light ====================
 
@@ -280,6 +315,10 @@ class SandboxApp : EngineApplication
 			matSystem.ReleaseInstance(mWhiteMaterial);
 		if (mYellowMaterial != null)
 			matSystem.ReleaseInstance(mYellowMaterial);
+		if (mTransparentMaterial != null)
+			matSystem.ReleaseInstance(mTransparentMaterial);
+		if (mMaskedMaterial != null)
+			matSystem.ReleaseInstance(mMaskedMaterial);
 		if (mGrayMaterial != null)
 			matSystem.ReleaseInstance(mGrayMaterial);
 

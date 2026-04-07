@@ -7,12 +7,12 @@ using Sedulous.Renderer;
 using Sedulous.Materials;
 using Sedulous.Profiler;
 
-/// Forward pass — renders opaque and masked geometry with PBR lighting.
-/// Reads SceneDepth from DepthPrepass (depth test LessEqual, no depth write).
-/// Masked geometry uses the same shader with AlphaCutoff for discard.
-class ForwardOpaquePass : PipelinePass
+/// Transparent forward pass — renders transparent geometry with PBR lighting.
+/// Reads SceneDepth (depth test, no write). Alpha blended, back-to-front sorted.
+/// Same forward shader as opaque, different pipeline state.
+class TransparentForwardPass : PipelinePass
 {
-	public override StringView Name => "ForwardOpaque";
+	public override StringView Name => "TransparentForward";
 
 	public override void AddPasses(Sedulous.RenderGraph.RenderGraph graph, RenderView view, Pipeline pipeline)
 	{
@@ -20,21 +20,19 @@ class ForwardOpaquePass : PipelinePass
 		if (data == null)
 			return;
 
-		let opaqueBatch = data.GetSortedBatch(RenderCategories.Opaque);
-		let maskedBatch = data.GetSortedBatch(RenderCategories.Masked);
-		if (opaqueBatch.Length == 0 && maskedBatch.Length == 0)
+		let batch = data.GetSortedBatch(RenderCategories.Transparent);
+		if (batch.Length == 0)
 			return;
 
 		let outputHandle = graph.GetResource("PipelineOutput");
 		if (!outputHandle.IsValid)
 			return;
 
-		// Read SceneDepth from DepthPrepass
 		let depthHandle = graph.GetResource("SceneDepth");
 		let hasDepth = depthHandle.IsValid;
 
-		graph.AddRenderPass("ForwardOpaque", scope (builder) => {
-			builder.SetColorTarget(0, outputHandle, .Clear, .Store, ClearColor(0.0f, 0.0f, 0.0f, 1.0f));
+		graph.AddRenderPass("TransparentForward", scope (builder) => {
+			builder.SetColorTarget(0, outputHandle, .Load, .Store);
 
 			if (hasDepth)
 				builder.SetDepthTarget(depthHandle, .Load, .Store, 1.0f);
@@ -42,14 +40,14 @@ class ForwardOpaquePass : PipelinePass
 			builder
 				.NeverCull()
 				.SetExecute(new [=] (encoder) => {
-					ExecuteForwardOpaque(encoder, view, pipeline, hasDepth);
+					ExecuteTransparent(encoder, view, pipeline, hasDepth);
 				});
 		});
 	}
 
-	private void ExecuteForwardOpaque(IRenderPassEncoder encoder, RenderView view, Pipeline pipeline, bool hasDepth)
+	private void ExecuteTransparent(IRenderPassEncoder encoder, RenderView view, Pipeline pipeline, bool hasDepth)
 	{
-		using (Profiler.Begin("ForwardOpaque"))
+		using (Profiler.Begin("TransparentForward"))
 		{
 		let renderer = pipeline.Renderer;
 		let cache = renderer.PipelineStateCache;
@@ -63,16 +61,15 @@ class ForwardOpaquePass : PipelinePass
 		let gpuResources = renderer.GPUResources;
 		let frame = pipeline.GetFrameResources(view.FrameIndex);
 
-		// Build pipeline config
+		// Transparent pipeline: same forward shader, alpha blend, depth read-only
 		var config = PipelineConfig();
 		config.ShaderName = "forward";
-		config.BlendMode = .Opaque;
+		config.BlendMode = .AlphaBlend;
 		config.CullMode = .Back;
 		config.ColorTargetCount = 1;
 
 		if (hasDepth)
 		{
-			// Read from prepass depth — test only, no write
 			config.DepthMode = .ReadOnly;
 			config.DepthCompare = .LessEqual;
 			config.DepthFormat = .Depth24PlusStencil8;
@@ -100,24 +97,13 @@ class ForwardOpaquePass : PipelinePass
 		if (renderer.DefaultMaterialBindGroup != null)
 			encoder.SetBindGroup(BindGroupFrequency.Material, renderer.DefaultMaterialBindGroup, default);
 
+		let batch = data.GetSortedBatch(RenderCategories.Transparent);
 		IBindGroup lastMaterialBindGroup = null;
 
-		// Draw opaque geometry, then masked (same shader, same pipeline state)
-		DrawBatch(encoder, data, RenderCategories.Opaque, gpuResources, renderer, pipeline, frame, view, ref lastMaterialBindGroup);
-		DrawBatch(encoder, data, RenderCategories.Masked, gpuResources, renderer, pipeline, frame, view, ref lastMaterialBindGroup);
-
-		} // ForwardOpaque scope
-	}
-
-	private void DrawBatch(IRenderPassEncoder encoder, ExtractedRenderData data, RenderDataCategory category,
-		GPUResourceManager gpuResources, Renderer renderer, Pipeline pipeline, PerFrameResources frame,
-		RenderView view, ref IBindGroup lastMaterialBindGroup)
-	{
-		let batch = data.GetSortedBatch(category);
-
+		// Back-to-front sorted by RenderCategories
 		for (int32 i = 0; i < (int32)batch.Length; i++)
 		{
-			let mesh = ref data.GetMesh(category, i);
+			let mesh = ref data.GetMesh(RenderCategories.Transparent, i);
 			let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
 			if (gpuMesh == null) continue;
 
@@ -147,5 +133,6 @@ class ForwardOpaquePass : PipelinePass
 				encoder.Draw(subMesh.IndexCount, 1, 0, 0);
 			}
 		}
+		} // TransparentForward scope
 	}
 }

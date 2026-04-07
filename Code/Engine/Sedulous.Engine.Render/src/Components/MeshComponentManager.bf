@@ -62,8 +62,17 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 
 				// Determine category from material blend mode
 				var category = RenderCategories.Opaque;
-				if (material != null && material.BlendMode != .Opaque)
-					category = RenderCategories.Transparent;
+				if (material != null)
+				{
+					switch (material.BlendMode)
+					{
+					case .Masked:
+						category = RenderCategories.Masked;
+					case .AlphaBlend, .Additive, .Multiply, .PremultipliedAlpha:
+						category = RenderCategories.Transparent;
+					default:
+					}
+				}
 
 				// Material sort key for batching
 				let materialKey = (material != null) ? (uint32)(int)Internal.UnsafeCastToPtr(material) : 0;
