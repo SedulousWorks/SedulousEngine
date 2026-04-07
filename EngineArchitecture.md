@@ -14,11 +14,15 @@ Living document describing the engine's architecture, layers, and patterns.
 │  │ auto-subsystems  │  │ viewports+panels │  │ no engine    │ │
 │  └──────┬───────────┘  └──────┬───────────┘  └──────────────┘ │
 ├─────────▼─────────────────────▼─────────────────────────────────┤
+│  Engine Layer                                                   │
 │  Context + Subsystems (Sedulous.Runtime)                        │
+│  Engine.Render (RenderSubsystem, components, extraction)        │
 ├─────────────────────────────────────────────────────────────────┤
 │  Scene Layer (Sedulous.Scenes)                                  │
 ├─────────────────────────────────────────────────────────────────┤
-│  Renderer (Sedulous.Renderer — scene-independent)               │
+│  Renderer Layer                                                 │
+│  Renderer (shared infrastructure) + Pipeline (per-view passes)  │
+│  Materials, PostProcessStack, PipelineStateCache                │
 ├─────────────────────────────────────────────────────────────────┤
 │  RHI (Sedulous.RHI)                                             │
 │  Vulkan, DX12 backends                                          │
@@ -49,12 +53,19 @@ The `Context` is the central lifecycle hub. It owns subsystems, a job system, an
 
 ```
 Application main loop:
+  SProfiler.BeginFrame()
   ProcessEvents()
   FixedUpdate (0-N times)     → Context.FixedUpdate() → each subsystem
   Context.BeginFrame()        → each subsystem
   Context.Update()            → each subsystem in order
   Context.PostUpdate()        → each subsystem
   Context.EndFrame()          → RenderSubsystem renders + presents
+  SProfiler.EndFrame()
+
+Shutdown sequence:
+  Shutdown()                  → Device.WaitIdle() → OnShutdown() (app releases GPU refs)
+  Context.Shutdown()          → subsystems shut down
+  Cleanup()                   → OnCleanup() → delete context → destroy device
 ```
 
 ## Scenes
@@ -90,6 +101,7 @@ class RenderSubsystem : Subsystem, ISceneAware
     void OnSceneCreated(Scene scene)
     {
         scene.AddModule(new MeshComponentManager());
+        scene.AddModule(new CameraComponentManager());
         scene.AddModule(new LightComponentManager());
     }
 }
@@ -126,6 +138,7 @@ All resource managers and the scene serializer use the provider — no direct fo
 - Components implement `ISerializableComponent` for their data
 - `ComponentTypeRegistry` maps type IDs to manager factories for deserialization
 - `EntityRef` carries persistent Guid + cached runtime handle for cross-entity references
+- `IModuleSerializer` — scene modules can serialize module-level data (non-entity state like environment settings)
 
 ### Resource Serialization
 

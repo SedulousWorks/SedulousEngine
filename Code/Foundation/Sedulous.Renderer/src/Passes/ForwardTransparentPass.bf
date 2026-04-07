@@ -10,9 +10,9 @@ using Sedulous.Profiler;
 /// Transparent forward pass — renders transparent geometry with PBR lighting.
 /// Reads SceneDepth (depth test, no write). Alpha blended, back-to-front sorted.
 /// Same forward shader as opaque, different pipeline state.
-class TransparentForwardPass : PipelinePass
+class ForwardTransparentPass : PipelinePass
 {
-	public override StringView Name => "TransparentForward";
+	public override StringView Name => "ForwardTransparent";
 
 	public override void AddPasses(Sedulous.RenderGraph.RenderGraph graph, RenderView view, Pipeline pipeline)
 	{
@@ -31,7 +31,7 @@ class TransparentForwardPass : PipelinePass
 		let depthHandle = graph.GetResource("SceneDepth");
 		let hasDepth = depthHandle.IsValid;
 
-		graph.AddRenderPass("TransparentForward", scope (builder) => {
+		graph.AddRenderPass("ForwardTransparent", scope (builder) => {
 			builder.SetColorTarget(0, outputHandle, .Load, .Store);
 
 			if (hasDepth)
@@ -47,7 +47,7 @@ class TransparentForwardPass : PipelinePass
 
 	private void ExecuteTransparent(IRenderPassEncoder encoder, RenderView view, Pipeline pipeline, bool hasDepth)
 	{
-		using (Profiler.Begin("TransparentForward"))
+		using (Profiler.Begin("ForwardTransparent"))
 		{
 		let renderer = pipeline.Renderer;
 		let cache = renderer.PipelineStateCache;
@@ -133,6 +133,6 @@ class TransparentForwardPass : PipelinePass
 				encoder.Draw(subMesh.IndexCount, 1, 0, 0);
 			}
 		}
-		} // TransparentForward scope
+		} // ForwardTransparent scope
 	}
 }

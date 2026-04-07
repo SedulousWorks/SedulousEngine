@@ -108,6 +108,9 @@ class SceneSerializer
 
 		serializer.EndArray();
 
+		// Module-level data (non-entity state)
+		SaveModuleData(scene, serializer);
+
 		return .Ok;
 	}
 
@@ -203,7 +206,94 @@ class SceneSerializer
 				scene.SetParent(childHandle, parentHandle);
 		}
 
+		// Module-level data
+		LoadModuleData(scene, serializer);
+
 		return .Ok;
+	}
+
+	/// Saves module-level data for modules that implement IModuleSerializer.
+	private void SaveModuleData(Scene scene, Serializer serializer)
+	{
+		// Count modules with module-level data
+		var moduleDataCount = (int32)0;
+		for (let module in scene.Modules)
+		{
+			if (module.IsSerializable && module is IModuleSerializer)
+				moduleDataCount++;
+		}
+
+		serializer.BeginArray("Modules", ref moduleDataCount);
+
+		for (let module in scene.Modules)
+		{
+			if (!module.IsSerializable)
+				continue;
+			if (let ms = module as IModuleSerializer)
+			{
+				serializer.BeginObject("");
+
+				let typeId = scope String(module.SerializationTypeId);
+				serializer.String("TypeId", typeId);
+
+				var version = ms.GetModuleSerializationVersion();
+				serializer.Int32("Version", ref version);
+
+				serializer.BeginObject("Data");
+				let adapter = scope ComponentSerializerAdapter(serializer, version);
+				ms.SerializeModule(adapter);
+				serializer.EndObject();
+
+				serializer.EndObject();
+			}
+		}
+
+		serializer.EndArray();
+	}
+
+	/// Loads module-level data for modules that implement IModuleSerializer.
+	private void LoadModuleData(Scene scene, Serializer serializer)
+	{
+		var moduleDataCount = (int32)0;
+		if (serializer.BeginArray("Modules", ref moduleDataCount) not case .Ok)
+			return; // No module data section — older scene file
+
+		for (int32 i = 0; i < moduleDataCount; i++)
+		{
+			serializer.BeginObject("");
+
+			let typeId = scope String();
+			serializer.String("TypeId", typeId);
+
+			var version = (int32)1;
+			serializer.Int32("Version", ref version);
+
+			// Find existing module
+			SceneModule module = FindModuleByTypeId(scene, typeId);
+			if (module == null && mTypeRegistry != null)
+			{
+				module = mTypeRegistry.CreateManager(typeId);
+				if (module != null)
+					scene.AddModule(module);
+			}
+
+			if (serializer.BeginObject("Data") == .Ok)
+			{
+				if (module != null)
+				{
+					if (let ms = module as IModuleSerializer)
+					{
+						let adapter = scope ComponentSerializerAdapter(serializer, version);
+						ms.DeserializeModule(adapter);
+					}
+				}
+				serializer.EndObject();
+			}
+
+			serializer.EndObject();
+		}
+
+		serializer.EndArray();
 	}
 
 	/// Finds a module in the scene by its serialization type ID.

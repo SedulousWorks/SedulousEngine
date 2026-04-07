@@ -10,8 +10,10 @@ standalone for sandboxes, tools, and tests without any scene infrastructure.
 
 ```
 Sedulous.Renderer (scene-independent)
-├── Pipeline              — orchestrates passes, per-frame resources, GPU resources
+├── Renderer              — shared infrastructure (GPU resources, materials, lights, shaders)
+├── Pipeline              — per-view pass execution, output texture, render graph
 ├── PipelinePass          — base class for render/compute/copy passes
+├── PostProcessStack      — ordered chain of post-process effects on Pipeline
 ├── PipelineStateCache    — on-demand GPU pipeline creation from material config
 ├── RenderView            — camera + viewport + frame state + extracted data
 ├── ExtractedRenderData   — per-view container of categorized render data
@@ -21,15 +23,28 @@ Sedulous.Renderer (scene-independent)
 └── BindGroupFrequency    — 4-level bind group convention
 ```
 
-## Pipeline
+## Renderer (Shared Infrastructure)
 
-The `Pipeline` orchestrates rendering. It owns:
+The `Renderer` class owns GPU resources and systems shared across all views/pipelines:
+- `GPUResourceManager` — meshes, textures, bone buffers with deferred deletion
+- `MaterialSystem` — bind group lifecycle, default textures, per-instance GPU resources
+- `PipelineStateCache` — cached GPU pipelines by config hash
+- `LightBuffer` — per-frame light data upload (max 128 lights)
+- `ShaderSystem` reference — compilation and caching
+- Shared bind group layouts (Frame set 0, DrawCall set 3)
+- Default material and draw call bind groups
+
+One Renderer per application. Multiple Pipelines reference the same Renderer.
+
+## Pipeline (Per-View Execution)
+
+The `Pipeline` is a lightweight per-view pass execution engine. It owns:
 - List of `PipelinePass` objects
+- `PostProcessStack` (optional, chains post-process effects)
 - Per-frame resources (double-buffered uniform buffers + bind groups)
-- `GPUResourceManager` (meshes, textures, bone buffers)
 - `RenderGraph` instance
-- `PipelineStateCache` (on-demand GPU pipeline creation)
 - Output texture (RGBA16Float, owned by pipeline)
+- References shared infrastructure from `Renderer`
 
 ### Pipeline Output
 
@@ -46,13 +61,19 @@ Benefits:
 ```
 Pipeline.Render(encoder, view):
   1. Upload scene uniforms (per-frame, double-buffered)
-  2. Process deferred GPU resource deletions
-  3. renderGraph.BeginFrame(frameIndex)
-  4. Import PipelineOutput into render graph
-  5. Add ClearOutput pass (unconditional, guarantees known state)
-  6. Each PipelinePass.AddPasses(graph, view, pipeline)
-  7. renderGraph.Execute(encoder)
-  8. renderGraph.EndFrame()
+  2. Upload light data to LightBuffer
+  3. Rebuild frame bind group (scene uniforms + light buffer)
+  4. Process deferred GPU resource deletions
+  5. renderGraph.BeginFrame(frameIndex)
+  6. If post-processing active:
+       Import output as "FinalOutput", create transient "PipelineOutput" (HDR)
+     Else:
+       Import output as "PipelineOutput"
+  7. Add ClearOutput pass
+  8. Each PipelinePass.AddPasses(graph, view, pipeline)
+  9. PostProcessStack.Execute() chains: PipelineOutput → effects → FinalOutput
+  10. renderGraph.Execute(encoder)
+  11. renderGraph.EndFrame()
 ```
 
 ## PipelinePass
@@ -72,12 +93,47 @@ abstract class PipelinePass
 }
 ```
 
-Examples:
-- `DepthPrepass` — render pass, writes SceneDepth
-- `ForwardOpaquePass` — render pass, reads SceneDepth, writes PipelineOutput
-- `SkyPass` — render pass, reads SceneDepth, writes PipelineOutput
-- `GPUSkinningPass` (future) — compute pass, transforms vertices
-- `ParticleSimulationPass` (future) — compute pass, dispatches particle sim
+### Registered Passes
+
+| Pass | Type | Reads | Writes | Description |
+|------|------|-------|--------|-------------|
+| DepthPrepass | Render | — | SceneDepth | Depth-only, establishes early-Z |
+| ForwardOpaquePass | Render | SceneDepth | PipelineOutput | PBR lit opaque + masked geometry |
+| ForwardTransparentPass | Render | SceneDepth | PipelineOutput | PBR lit transparent, alpha blend, back-to-front |
+| SkyPass | Render | SceneDepth | PipelineOutput | Equirectangular HDR sky or procedural gradient |
+
+Future:
+- `GPUSkinningPass` — compute pass, transforms vertices
+- `ShadowPass` — render pass, depth-only from light perspective
+- `DecalPass` — render pass, screen-space projected decals
+
+## Post-Processing
+
+### PostProcessStack
+
+Owned by Pipeline (per-view). Chains `PostProcessEffect` instances via render graph passes.
+
+```
+PostProcessStack.Execute(graph, view, sceneColor, sceneDepth, pipelineOutput):
+  For each enabled effect:
+    effect.AddPasses(graph, view, renderer, ctx)
+    ctx.Input → effect → ctx.Output
+  Last effect writes to pipelineOutput
+```
+
+All intermediate textures are render graph transients — no manual texture management.
+
+### PostProcessEffect
+
+Base class for effects. Each effect adds render graph passes that read from
+`ctx.Input` and write to `ctx.Output`. Effects can produce auxiliary textures
+(e.g., bloom → "BloomTexture") via `ctx.SetAux()` for downstream effects.
+
+### Active Effects
+
+| Effect | Description |
+|--------|-------------|
+| TonemapEffect | ACES filmic tone mapping. sRGB swapchain handles gamma. |
 
 ## Render Data
 
@@ -88,7 +144,7 @@ Render data is categorized for sorting and pass routing:
 | Category | Sort | Purpose |
 |----------|------|---------|
 | Opaque | Front-to-back (material, then depth) | Lit opaque geometry |
-| Masked | Front-to-back | Alpha-tested geometry |
+| Masked | Front-to-back | Alpha-tested geometry (AlphaCutoff + discard) |
 | Transparent | Back-to-front | Blended geometry |
 | Sky | None | Sky rendering |
 | Decal | Sort order | Projected decals |
@@ -101,20 +157,10 @@ Render data is categorized for sorting and pass routing:
 Per-view container. Providers add data, then `SortAndBatch()` sorts by category-specific
 keys. Passes iterate sorted batches.
 
-```
-data.AddMesh(RenderCategories.Opaque, meshRenderData);
-data.AddLight(lightRenderData);
-data.SortAndBatch();
-
-// In pass:
-for (let entry in data.GetSortedBatch(RenderCategories.Opaque))
-    let mesh = ref data.GetMesh(RenderCategories.Opaque, entry.Index);
-```
-
 ### Render Data Types
 
 - `MeshRenderData` — GPUMeshHandle, submesh index, world matrix, material bind group
-- `LightRenderData` — type, color, intensity, direction, range, shadow config
+- `LightRenderData` — type (directional/point/spot), color, intensity, direction, range, shadow config
 - `DecalRenderData` — world matrix, color, textures
 
 All are structs (value types). No entity/component references — just GPU handles and flat data.
@@ -124,22 +170,9 @@ All are structs (value types). No entity/component references — just GPU handl
 ### Interface
 
 ```
-// In Sedulous.Renderer (scene-independent):
 interface IRenderDataProvider
 {
     void ExtractRenderData(in RenderExtractionContext context);
-}
-
-struct RenderExtractionContext
-{
-    ExtractedRenderData* RenderData;     // output
-    Matrix ViewMatrix;                    // for sorting
-    Matrix ViewProjectionMatrix;          // for frustum culling (future)
-    Vector3 CameraPosition;              // for LOD, distance culling
-    float NearPlane, FarPlane;
-    int32 FrameIndex;
-    uint32 LayerMask;                     // for filtering
-    float LODBias;                        // for LOD selection
 }
 ```
 
@@ -161,14 +194,13 @@ RenderSubsystem.EndFrame():
 ### Cross-Subsystem Discovery
 
 Any engine subsystem can provide render data by implementing IRenderDataProvider
-on its scene modules. The RenderSubsystem discovers providers via the interface
-at extraction time — no coupling between subsystems:
+on its scene modules:
 
 ```
 Engine.Render     → MeshComponentManager : IRenderDataProvider
 Engine.Render     → LightComponentManager : IRenderDataProvider
-Engine.Particles  → ParticleComponentManager : IRenderDataProvider
-Engine.Render     → DecalComponentManager : IRenderDataProvider
+Engine.Particles  → ParticleComponentManager : IRenderDataProvider (future)
+Engine.Render     → DecalComponentManager : IRenderDataProvider (future)
 ```
 
 ### Visibility / Culling (Future)
@@ -198,6 +230,7 @@ Creates GPU render pipeline objects on demand from `PipelineConfig`:
 - `GetPipeline(config, vertexBuffers, materialLayout, colorFormat)` → cached pipeline
 - `GetPipelineForMaterial(material, ...)` → derives config from MaterialInstance
 - Caches pipeline layouts for the 4-level bind group model
+- Owned by Renderer (shared across pipelines)
 
 ## Bind Group Frequency Model
 
@@ -205,21 +238,51 @@ Shaders use HLSL register spaces 0-3 by convention:
 
 | Set | Space | Frequency | Contents | Rebuilt |
 |-----|-------|-----------|----------|---------|
-| 0 | space0 | Per-frame | VP matrices, time, global lighting | Once per frame |
-| 1 | space1 | Per-pass | Shadow maps, GBuffer refs | Once per pass |
+| 0 | space0 | Per-frame | VP matrices, time, lights | Once per frame |
+| 1 | space1 | Per-pass | Sky params, shadow maps | Once per pass |
 | 2 | space2 | Per-material | Textures, params, samplers | On material change |
 | 3 | space3 | Per-draw | Object transforms (dynamic offset) | Per draw call |
 
 No shader reflection — convention-based. Shaders put resources in the right space,
 renderer builds matching layouts in code.
 
+## Material System
+
+`MaterialSystem` manages material bind groups, default textures, and per-instance GPU resources.
+Owned by Renderer. Key operations:
+
+- `PrepareInstance(MaterialInstance)` — creates/updates uniform buffer + bind group
+- `GetOrCreateLayout(Material)` — builds bind group layout from material property definitions
+- `ReleaseInstance(MaterialInstance)` — frees GPU resources for an instance
+- Provides default textures (white, normal, black, depth) for unset material slots
+
+Materials are created via factory methods in `Materials` static class:
+- `CreatePBR(name, shader, albedo, sampler)` — standard PBR
+- `CreateUnlit(name, shader)` — emissive only
+- `CreateSkybox(name, shader, cubemap, sampler)` — cubemap sky
+- `CreateSprite(name, shader, texture, sampler)` — 2D sprites
+
 ## Shader System
 
 `ShaderSystem` handles compilation and caching (memory → disk → compile from source).
-Created by EngineApplication, passed to RenderSubsystem and Pipeline.
+Created by EngineApplication, set on Renderer.
 
 Shaders are HLSL files in `Assets/shaders/`. The system auto-discovers source paths
 and caches compiled SPIRV/DXIL to `Assets/cache/shaders/`.
+
+### Shader Inventory
+
+| Shader | Purpose |
+|--------|---------|
+| forward | PBR lit geometry (vert + frag) |
+| depth_only | Depth prepass |
+| blit | Fullscreen copy to swapchain |
+| tonemap | ACES tone mapping |
+| sky | Equirectangular HDR sky + procedural fallback |
+| unlit | Unlit/emissive rendering |
+| drawing | Vector graphics |
+| vg | Vector graphics variant |
+| slug | Text rendering |
 
 ## Blit / Presentation
 
@@ -227,26 +290,26 @@ and caches compiled SPIRV/DXIL to `Assets/cache/shaders/`.
 The RenderSubsystem owns the blit helper and calls it after pipeline rendering.
 
 ```
-Pipeline.Render()  → PipelineOutput (RGBA16Float)
-BlitHelper.Blit()  → Swapchain (BGRA8UnormSrgb)
+Pipeline.Render()  → PipelineOutput (RGBA16Float, linear HDR)
+  → PostProcessStack → TonemapEffect → FinalOutput (RGBA16Float, linear LDR)
+BlitHelper.Blit()  → Swapchain (BGRA8UnormSrgb, sRGB gamma applied by hardware)
 Present            → Screen
 ```
 
-## GPU Compute Work
+## Profiling
 
-GPU compute (particle simulation, skinning, cluster culling) is handled by
-`PipelinePass` objects that add compute nodes to the render graph:
+Profiler scopes instrument the render path:
 
 ```
-graph.AddComputePass("GPUSkinning", scope (builder) => {
-    builder.ReadBuffer(boneBuffer);
-    builder.ReadWriteStorage(vertexBuffer);
-    builder.SetComputeExecute(new (encoder) => { ... });
-});
+Pipeline.Render
+  UploadUniforms
+  RenderGraph.Execute
+    DepthPrepass
+    ForwardOpaque
+    ForwardTransparent
+    Sky
+    Tonemap
+  Blit
 ```
 
-The render graph handles ordering — a compute pass that writes a buffer followed
-by a render pass that reads it gets correct barriers automatically.
-
-Compute passes are registered with the Pipeline by their respective subsystems,
-separate from render data extraction.
+Press Shift+P at runtime to print a sorted profile frame with init time.

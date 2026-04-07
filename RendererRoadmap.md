@@ -2,11 +2,11 @@
 
 Targeted feature set for game-readiness. Not a port of the old renderer — each feature is implemented fresh with our ezEngine-inspired architecture.
 
-## Current State (Phase 4.5 Complete)
+## Current State
 
 - Forward PBR with Cook-Torrance BRDF
 - Directional, point, and spot lights (max 128, LightBuffer)
-- Depth prepass with early-Z
+- Depth prepass with early-Z → forward pass handoff
 - MaterialSystem integration (bind group lifecycle, default textures)
 - PBR texture sampling (albedo, normal, metallic/roughness, occlusion, emissive)
 - Material instances with per-instance overrides
@@ -17,6 +17,12 @@ Targeted feature set for game-readiness. Not a port of the old renderer — each
 - SkinnedMesh vertex layout (80 bytes) and GPUBoneBuffer defined
 - DecalRenderData defined
 - Profiler instrumentation (Shift+P)
+- **Renderer/Pipeline split** — shared infrastructure (Renderer) separated from per-view pass execution (Pipeline)
+- **Post-processing stack** — PostProcessStack with TonemapEffect (ACES filmic), sRGB swapchain gamma
+- **Masked rendering** — BlendMode.Masked with AlphaCutoff, drawn in ForwardOpaquePass
+- **Transparent rendering** — TransparentForwardPass with alpha blending, back-to-front sorted
+- **Sky rendering** — Equirectangular HDR environment map with procedural gradient fallback
+- **IModuleSerializer** — scene module-level serialization support (for non-entity scene data)
 
 ## Phase 5: Tone Mapping & Post-Processing Foundation
 
@@ -239,15 +245,15 @@ Immediate-mode debug drawing for development: lines, wireframes, bounding boxes,
 
 Recommended implementation order based on dependencies and game impact:
 
-1. **Phase 5.1** — Tone mapping (everything looks wrong without it)
-2. **Phase 12** — Debug & overlay rendering (essential for development)
-3. **Phase 11** — Sky (visual completeness, small scope)
-4. **Phase 6** — Transparency + masked (needed for many game elements)
+1. ~~**Phase 5.1** — Tone mapping~~ DONE
+2. ~~**Phase 11** — Sky~~ DONE
+3. ~~**Phase 6** — Transparency + masked~~ DONE
+4. **Phase 12** — Debug & overlay rendering (essential for development)
 5. **Phase 7** — Shadows (major visual quality jump)
 6. **Phase 8** — GPU skinning (characters)
 7. **Phase 9** — Decals (environmental detail)
 8. **Phase 10** — Particles (effects, separate project)
-9. **Phase 5.2-5.3** — Bloom and post-processing stack (polish)
+9. **Phase 5.2-5.3** — Bloom and post-processing effects (polish)
 
 ## Architecture Notes
 
