@@ -1,22 +1,109 @@
 namespace Sedulous.Engine.Render;
 
+using System;
+using System.Collections;
 using Sedulous.Scenes;
 using Sedulous.Renderer;
 using Sedulous.Materials;
+using Sedulous.Resources;
+using Sedulous.Geometry.Resources;
+using Sedulous.Materials.Resources;
 using Sedulous.Core.Mathematics;
-using System;
+using Sedulous.RHI;
 
-/// Manages mesh components and extracts render data for the renderer.
+/// Manages mesh components: resolves resource refs, uploads to GPU, extracts render data.
 /// Injected into scenes by RenderSubsystem via ISceneAware.
 ///
-/// Each MeshComponent can have multiple materials (one per submesh material slot).
+/// Per-frame resolution (PostUpdate):
+///   1. For each component, resolve MeshRef → StaticMeshResource → GPU upload
+///   2. Resolve MaterialRefs → MaterialResource → MaterialInstance + bind group
+///
 /// Extraction emits one MeshRenderData per submesh.
 class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvider
 {
-	/// Reference to the pipeline's GPU resource manager (set by RenderSubsystem).
+	/// Reference to GPU resource manager (set by RenderSubsystem).
 	public GPUResourceManager GPUResources { get; set; }
 
+	/// Shared resource resolver (set by RenderSubsystem).
+	public RenderResourceResolver Resolver { get; set; }
+
+	/// Per-component resolve state, keyed by entity handle.
+	private Dictionary<EntityHandle, MeshResolveState> mResolveStates = new .() ~ {
+		for (let kv in _)
+			kv.value.Release();
+		DeleteDictionaryAndValues!(_);
+	};
+
 	public override StringView SerializationTypeId => "Sedulous.MeshComponent";
+
+	protected override void OnRegisterUpdateFunctions()
+	{
+		RegisterUpdate(.PostUpdate, new => ResolveResources);
+	}
+
+	/// Per-frame resource resolution. Loads resources, uploads to GPU, creates materials.
+	private void ResolveResources(float deltaTime)
+	{
+		if (Resolver == null)
+			return;
+
+		for (let comp in ActiveComponents)
+		{
+			if (!comp.IsActive)
+				continue;
+
+			let entityHandle = comp.Owner;
+			MeshResolveState state = null;
+
+			if (!mResolveStates.TryGetValue(entityHandle, var existingState))
+			{
+				let newState = new MeshResolveState();
+				mResolveStates[entityHandle] = newState;
+				state = newState;
+			}
+			else
+			{
+				state = existingState;
+			}
+
+			// Resolve mesh
+			let meshRef = comp.MeshRef;
+			GPUMeshHandle meshHandle;
+			BoundingBox bounds;
+			if (Resolver.ResolveMesh(ref state.Mesh, meshRef, out meshHandle, out bounds))
+			{
+				comp.MeshHandle = meshHandle;
+				comp.LocalBounds = bounds;
+			}
+
+			// Resolve materials from refs
+			for (int32 slot = 0; slot < comp.MaterialRefCount; slot++)
+			{
+				let matRef = comp.GetMaterialRef(slot);
+				if (!matRef.IsValid)
+					continue;
+
+				// Grow resolve state material list if needed
+				while (state.Materials.Count <= slot)
+					state.Materials.Add(.());
+
+				MaterialInstance instance;
+				if (Resolver.ResolveMaterial(ref state.Materials[slot], matRef, out instance))
+				{
+					comp.SetMaterial(slot, instance);
+					instance.ReleaseRef(); // SetMaterial AddRef'd — resolver doesn't own it
+				}
+			}
+
+			// Prepare any dirty material instances (handles both resolved and manually-set materials)
+			for (int32 slot = 0; slot < comp.Materials.Count; slot++)
+			{
+				let material = comp.Materials[slot];
+				if (material != null && (material.IsBindGroupDirty || material.IsUniformDirty))
+					Resolver.PrepareMaterial(material);
+			}
+		}
+	}
 
 	/// Extracts MeshRenderData for all active, visible mesh components.
 	/// Emits one entry per submesh, each with its own material.
@@ -96,5 +183,47 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 				});
 			}
 		}
+	}
+
+	public override void OnEntityDestroyed(EntityHandle entity)
+	{
+		// Release materials on this component
+		if (let comp = GetForEntity(entity))
+		{
+			for (let material in comp.Materials)
+			{
+				if (material != null)
+				{
+					if (Resolver != null)
+						Resolver.ReleaseMaterial(material);
+					material.ReleaseRef();
+				}
+			}
+			comp.Materials.Clear();
+		}
+
+		if (mResolveStates.TryGetValue(entity, let state))
+		{
+			state.Release();
+			delete state;
+			mResolveStates.Remove(entity);
+		}
+
+		base.OnEntityDestroyed(entity);
+	}
+}
+
+/// Per-component resource resolution tracking.
+/// Stored in MeshComponentManager, not on the component.
+class MeshResolveState
+{
+	public ResolvedResource<StaticMeshResource> Mesh;
+	public List<ResolvedResource<MaterialResource>> Materials = new .() ~ delete _;
+
+	public void Release()
+	{
+		Mesh.Release();
+		for (var mat in ref Materials)
+			mat.Release();
 	}
 }

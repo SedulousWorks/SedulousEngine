@@ -1,47 +1,50 @@
 namespace Sedulous.Engine.Render;
 
+using System;
 using System.Collections;
 using Sedulous.Scenes;
 using Sedulous.Renderer;
+using Sedulous.Animation;
 using Sedulous.Resources;
-using Sedulous.Materials;
 using Sedulous.Core.Mathematics;
+using Sedulous.Materials;
 
-/// Component for a renderable static mesh.
-/// One component per mesh — supports multiple materials via per-submesh material slots.
-///
-/// The app sets ResourceRefs (mesh, materials). MeshComponentManager resolves them
-/// to loaded resources, uploads to GPU, and creates MaterialInstances automatically.
-class MeshComponent : Component
+/// Component for a renderable skinned mesh with skeletal animation.
+/// Owns the animation player. The component manager resolves resource refs,
+/// evaluates animation, computes skinning matrices, and uploads to the GPU.
+class SkinnedMeshComponent : Component
 {
 	/// Mesh resource reference (serialized). Resolved to GPU handle by manager.
 	private ResourceRef mMeshRef ~ _.Dispose();
 
 	/// GPU mesh handle (runtime — set by manager after resource resolution).
-	public GPUMeshHandle MeshHandle;
+	public GPUMeshHandle MeshHandle = .Invalid;
+
+	/// GPU bone buffer handle (storage buffer for skinning matrices).
+	public GPUBoneBufferHandle BoneBufferHandle = .Invalid;
+
+	/// Animation player (owned). Evaluates clips into bone poses and skinning matrices.
+	public AnimationPlayer AnimationPlayer ~ delete _;
 
 	/// Material resource references per slot (serialized).
 	private List<ResourceRef> mMaterialRefs = new .() ~ { for (var r in _) r.Dispose(); delete _; };
 
-	/// Resolved material instances per slot (runtime — created by manager).
+	/// Resolved material instances per slot (runtime).
 	public List<MaterialInstance> Materials = new .() ~ { for (let m in _) m?.ReleaseRef(); delete _; };
 
 	/// Local-space bounding box.
 	public BoundingBox LocalBounds;
 
-	/// Render layer mask (for filtering in extraction).
-	public uint32 LayerMask = 0xFFFFFFFF;
+	/// Whether this mesh is visible.
+	public bool IsVisible = true;
 
 	/// Whether this mesh casts shadows.
 	public bool CastsShadows = true;
 
-	/// Whether this mesh is visible.
-	public bool IsVisible = true;
-
 	/// Gets the mesh resource ref.
 	public ResourceRef MeshRef => mMeshRef;
 
-	/// Sets the mesh resource ref (deep copy — allocates new String for path).
+	/// Sets the mesh resource ref (deep copy).
 	public void SetMeshRef(ResourceRef @ref)
 	{
 		mMeshRef.Dispose();
@@ -60,7 +63,6 @@ class MeshComponent : Component
 	}
 
 	/// Sets a material resource ref at the given slot (deep copy).
-	/// The MeshComponentManager resolves refs to instances during its update phase.
 	public void SetMaterialRef(int32 slot, ResourceRef @ref)
 	{
 		while (mMaterialRefs.Count <= slot)

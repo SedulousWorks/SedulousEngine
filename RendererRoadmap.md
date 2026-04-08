@@ -117,25 +117,65 @@ Build the post-processing infrastructure and first effect together.
 
 **Dependencies:** None, but large scope. Can parallelize atlas allocation and pass implementation.
 
-## Phase 8: GPU Skinning
+## Phase 8: Compute Skinning
 
-### 8.1 — Skinning Shader
-- New `skinned_forward.vert.hlsl` (or variant of forward.vert.hlsl)
-- Reads bone matrices from storage buffer (set 3 or dedicated set)
-- Transforms position, normal, tangent by weighted bone matrices
-- 4 bones per vertex (JointIndices uint4 + JointWeights float4)
+Compute shader pre-skins vertices into a standard Mesh vertex buffer. All render
+passes (depth, forward, shadow) draw skinned meshes as if they were static — no
+shader variants needed. Renderer does not reference the animation project.
 
-### 8.2 — Skinned Mesh Component
-- `SkinnedMeshComponent` + `SkinnedMeshComponentManager` in Engine.Render
-- Holds bone hierarchy, current pose (joint matrices)
-- Uploads bone matrices to GPUBoneBuffer each frame
-- Extracts as MeshRenderData with skinned pipeline config
+### 8.1 — SkinningSystem on Renderer
+- `SkinningSystem` class owned by `Renderer` (shared infrastructure)
+- Manages `SkinningInstance` per skinned mesh: output buffer, bind group, params buffer
+- `CreateInstance(sourceVB, boneBufferHandle, vertexCount, boneCount)` → SkinningInstanceHandle
+- `DestroyInstance(handle)` — releases output buffer and bind group
+- `GetSkinnedVertexBuffer(handle)` → IBuffer (48 bytes/vertex, Mesh layout)
+- Output buffers persist across frames (not recreated per dispatch)
+- Shared across pipeline runs — multiple views reuse the same skinned buffers
 
-### 8.3 — Animation Integration
-- AnimationSubsystem drives bone transforms
-- SkinnedMeshComponent receives final pose from animation system
-- Extraction writes bone buffer offset into render data
-- Forward pass binds bone buffer at draw time
+### 8.2 — Compute Shader
+- `skinning.comp.hlsl` — workgroup size 64
+- Input: SkinnedVertex (72 bytes) as ByteAddressBuffer + bone matrices as StructuredBuffer
+- Output: Mesh vertex (48 bytes) as RWByteAddressBuffer — strips joint indices/weights
+- Blends 4 bones per vertex (indices packed as 4x uint16 in 2x uint32 = 8 bytes)
+- Transforms position, normal, tangent by blended bone matrix
+- Bind group: b0=SkinningParams, t0=BoneMatrices, t1=SourceVertices, u0=OutputVertices
+
+### 8.3 — SkinningPass (PipelinePass, compute)
+- Runs first in the pipeline, before DepthPrepass
+- Iterates skinned meshes in render data
+- For each: looks up SkinningInstance on Renderer.SkinningSystem, dispatches compute
+- Render graph tracks compute-write → vertex-read barriers automatically
+- Pass itself is stateless — SkinningSystem owns all GPU resources
+
+### 8.4 — Mesh Upload Changes
+- `MeshUploadDesc` gets `IsSkinned` flag
+- When set: GPUResourceManager adds `.Storage` to vertex buffer usage (compute read)
+- `GPUMesh.IsSkinned` flag set on upload
+
+### 8.5 — MeshRenderData Changes
+- Add `GPUBoneBufferHandle BoneBufferHandle` — bone matrices (storage buffer)
+- Add `SkinningInstanceHandle SkinningHandle` — maps to skinned output buffer
+- Add `bool IsSkinned`
+
+### 8.6 — ForwardOpaquePass / DepthPrepass Changes
+- If `mesh.IsSkinned`: bind skinned vertex buffer from SkinningSystem (48 byte Mesh layout)
+- Else: bind original vertex buffer
+- Same shader, same pipeline — skinned output IS a standard Mesh vertex buffer
+
+### 8.7 — SkinnedMeshComponent (Engine.Render)
+- `SkinnedMeshComponent` + `SkinnedMeshComponentManager`
+- Holds: Skeleton ref, AnimationPlayer ref, GPUBoneBufferHandle, SkinningInstanceHandle
+- Each frame: evaluate animation → compute skinning matrices → upload to bone buffer
+- Extraction: emits MeshRenderData with BoneBufferHandle + SkinningHandle + IsSkinned
+- Bridge between animation (Sedulous.Animation) and renderer — Engine.Render references
+  both but Renderer references neither
+
+### 8.8 — Vertex Layout Update
+- Pack bone indices as 4x uint16 in 2x uint32 (8 bytes, matches old engine)
+- SkinnedMesh vertex stride: 72 bytes (down from 80)
+- Update VertexLayoutHelper: SkinnedMeshAttributes uses Uint32x2 for joints
+
+**Dependencies:** AnimationSubsystem needs to provide bone poses. Shader + SkinningSystem can be built independently.
 
 **Dependencies:** AnimationSubsystem needs to provide bone poses. Shader + component can be built independently.
 
@@ -262,6 +302,20 @@ Recommended implementation order based on dependencies and game impact:
 - **Pull-based extraction** — IRenderDataProvider extracts render data from components, same as ezEngine's extractor system
 - **Bind group frequency model** — Frame/Pass/Material/DrawCall maps to ezEngine's resource binding hierarchy
 - **Separate particle project** — ezEngine's ParticlePlugin is a standalone module; our Sedulous.Particles follows the same split
+
+### Resource Resolution (RenderResourceResolver)
+Shared resource resolution service in Engine.Render, used by all render component managers.
+Handles the resolve-upload-track pattern for meshes, materials, and textures.
+
+- **Mesh resolution** — ResourceRef → StaticMeshResource/SkinnedMeshResource → GPU upload → GPUMeshHandle
+- **Material resolution** — ResourceRef → MaterialResource → MaterialInstance → PrepareInstance (bind group)
+- **Texture resolution** — ResourceRef → TextureResource → GPU upload → ITextureView → set on MaterialInstance
+- **Texture cache** — same texture used by multiple materials uploads once
+- **Change detection** — BoundResource comparison handles first load and hot reload uniformly
+- **ResolvedResource<T>** — generic tracking struct (handle + bound resource + resolve method)
+
+Component managers (MeshComponentManager, SkinnedMeshComponentManager, DecalComponentManager)
+call into the resolver instead of duplicating the resolve-upload-track logic.
 
 ### Principles
 - Each feature targets what we actually need for the game

@@ -11,6 +11,10 @@ using Sedulous.Renderer;
 using Sedulous.Renderer.Passes;
 using Sedulous.Core.Mathematics;
 using Sedulous.Profiler;
+using Sedulous.Resources;
+using Sedulous.Geometry.Resources;
+using Sedulous.Textures.Resources;
+using Sedulous.Materials.Resources;
 
 /// Owns the renderer pipeline, swapchain, command pools, and GPU frame pacing.
 /// Runs late (UpdateOrder 500) — all scene updates and extraction are complete by this point.
@@ -44,6 +48,15 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 
 	// Blit helper (fullscreen triangle to copy pipeline output → swapchain)
 	private BlitHelper mBlitHelper ~ delete _;
+
+	// Resource managers (registered with Context.Resources)
+	private StaticMeshResourceManager mStaticMeshManager ~ delete _;
+	private SkinnedMeshResourceManager mSkinnedMeshManager ~ delete _;
+	private TextureResourceManager mTextureManager ~ delete _;
+	private MaterialResourceManager mMaterialManager ~ delete _;
+
+	// Shared resource resolver
+	private RenderResourceResolver mResolver ~ delete _;
 
 	// Extraction
 	private ExtractedRenderData mExtractedData ~ delete _;
@@ -120,6 +133,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		mPipeline.Initialize(mRenderer, (uint32)mWindow.Width, (uint32)mWindow.Height);
 
 		// Register default passes
+		mPipeline.AddPass(new SkinningPass());
 		mPipeline.AddPass(new DepthPrepass());
 		mPipeline.AddPass(new ForwardOpaquePass());
 		mPipeline.AddPass(new ForwardTransparentPass());
@@ -140,6 +154,20 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 
 		// Extraction buffer
 		mExtractedData = new ExtractedRenderData();
+
+		// Register resource managers with the resource system
+		mStaticMeshManager = new StaticMeshResourceManager();
+		mSkinnedMeshManager = new SkinnedMeshResourceManager();
+		mTextureManager = new TextureResourceManager();
+		mMaterialManager = new MaterialResourceManager();
+
+		Context.Resources.AddResourceManager(mStaticMeshManager);
+		Context.Resources.AddResourceManager(mSkinnedMeshManager);
+		Context.Resources.AddResourceManager(mTextureManager);
+		Context.Resources.AddResourceManager(mMaterialManager);
+
+		// Shared resource resolver
+		mResolver = new RenderResourceResolver(Context.Resources, mRenderer.GPUResources, mRenderer.MaterialSystem);
 	}
 
 	protected override void OnShutdown()
@@ -148,6 +176,16 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 			return;
 
 		mDevice.WaitIdle();
+
+		// Unregister resource managers
+		if (mStaticMeshManager != null)
+			Context.Resources.RemoveResourceManager(mStaticMeshManager);
+		if (mSkinnedMeshManager != null)
+			Context.Resources.RemoveResourceManager(mSkinnedMeshManager);
+		if (mTextureManager != null)
+			Context.Resources.RemoveResourceManager(mTextureManager);
+		if (mMaterialManager != null)
+			Context.Resources.RemoveResourceManager(mMaterialManager);
 
 		// Destroy blit helper
 		if (mBlitHelper != null)
@@ -368,7 +406,13 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	{
 		let meshMgr = new MeshComponentManager();
 		meshMgr.GPUResources = mRenderer?.GPUResources;
+		meshMgr.Resolver = mResolver;
 		scene.AddModule(meshMgr);
+
+		let skinnedMeshMgr = new SkinnedMeshComponentManager();
+		skinnedMeshMgr.GPUResources = mRenderer?.GPUResources;
+		skinnedMeshMgr.Resolver = mResolver;
+		scene.AddModule(skinnedMeshMgr);
 
 		scene.AddModule(new CameraComponentManager());
 		scene.AddModule(new LightComponentManager());

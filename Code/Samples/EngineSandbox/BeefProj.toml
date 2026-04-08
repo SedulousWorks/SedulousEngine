@@ -1,7 +1,29 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Engine.App" = "*", "Sedulous.Engine.Runtime" = "*", "Sedulous.Engine.Render" = "*", "Sedulous.Scenes" = "*", "Sedulous.Runtime" = "*", "Sedulous.Renderer" = "*", "Sedulous.RHI" = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Geometry" = "*", "Sedulous.Materials" = "*", "Sedulous.Imaging" = "*", "Sedulous.Imaging.STB" = "*"}
 
 [Project]
 Name = "EngineSandbox"
-TargetType = "BeefConsoleApplication"
 StartupObject = "EngineSandbox.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Engine.App" = "*"
+"Sedulous.Engine.Runtime" = "*"
+"Sedulous.Engine.Render" = "*"
+"Sedulous.Scenes" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Renderer" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Core.Mathematics" = "*"
+"Sedulous.Geometry" = "*"
+"Sedulous.Geometry.Resources" = "*"
+"Sedulous.Geometry.Tooling" = "*"
+"Sedulous.Geometry.Tooling.Resources" = "*"
+"Sedulous.Materials" = "*"
+"Sedulous.Resources" = "*"
+"Sedulous.Textures.Resources" = "*"
+"Sedulous.Imaging" = "*"
+"Sedulous.Imaging.STB" = "*"
+"Sedulous.Models" = "*"
+"Sedulous.Models.GLTF" = "*"
+"Sedulous.Animation" = "*"
+"Sedulous.Imaging.SDL" = "*"

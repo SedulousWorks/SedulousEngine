@@ -9,17 +9,40 @@ using Sedulous.Runtime;
 using Sedulous.RHI;
 using Sedulous.Renderer;
 using Sedulous.Geometry;
+using Sedulous.Geometry.Resources;
 using Sedulous.Core.Mathematics;
 using Sedulous.Materials;
+using Sedulous.Resources;
 using Sedulous.Imaging;
 using Sedulous.Imaging.STB;
 using Sedulous.Renderer.Passes;
+using Sedulous.Models;
+using Sedulous.Models.GLTF;
+using Sedulous.Geometry.Tooling;
+using Sedulous.Textures.Resources;
+using Sedulous.Geometry.Tooling.Resources;
+using Sedulous.Animation;
+using System.Collections;
+using Sedulous.Materials.Resources;
+using Sedulous.Imaging.SDL;
 
 class SandboxApp : EngineApplication
 {
 	Material mPbrMaterial ~ delete _;
 	ITexture mSkyTexture;
 	ITextureView mSkyTextureView;
+
+	// Mesh resources (we hold one ref, resource system holds another)
+	StaticMeshResource mPlaneRes;
+	StaticMeshResource mCubeRes;
+	StaticMeshResource mSphereRes;
+	SkinnedMeshResource mFoxMeshRes;
+
+	// Fox model data (persists for animation)
+	Skeleton mFoxSkeleton ~ delete _;
+	AnimationClip mFoxWalkClip ~ delete _;
+	List<TextureResource> mFoxTextures = new .() ~ delete _;
+	List<MaterialResource> mFoxMaterialResources = new .() ~ delete _;
 	MaterialInstance mRedMaterial ~ _?.ReleaseRef();
 	MaterialInstance mBlueMaterial ~ _?.ReleaseRef();
 	MaterialInstance mGreenMaterial ~ _?.ReleaseRef();
@@ -34,12 +57,12 @@ class SandboxApp : EngineApplication
 		Console.WriteLine("=== EngineSandbox OnStartup ===");
 
 		// Initialize image loader
+		SDLImageLoader.Initialize();
 		STBImageLoader.Initialize();
 
 		let sceneSub = Context.GetSubsystem<SceneSubsystem>();
 		let renderSub = Context.GetSubsystem<RenderSubsystem>();
 		let renderer = renderSub.Renderer;
-		let gpuResources = renderer.GPUResources;
 		let matSystem = renderer.MaterialSystem;
 
 		// Create scene
@@ -53,161 +76,211 @@ class SandboxApp : EngineApplication
 		// Red cube material
 		mRedMaterial = new MaterialInstance(mPbrMaterial);
 		mRedMaterial.SetColor("BaseColor", .(1, 0, 0, 1));
-		matSystem.PrepareInstance(mRedMaterial);
 
 		// Blue sphere material
 		mBlueMaterial = new MaterialInstance(mPbrMaterial);
 		mBlueMaterial.SetColor("BaseColor", .(0, 0, 1, 1));
-		matSystem.PrepareInstance(mBlueMaterial);
 
 		// Green material
 		mGreenMaterial = new MaterialInstance(mPbrMaterial);
 		mGreenMaterial.SetColor("BaseColor", .(0.2f, 0.8f, 0.2f, 1));
-		matSystem.PrepareInstance(mGreenMaterial);
 
 		// White material (shiny)
 		mWhiteMaterial = new MaterialInstance(mPbrMaterial);
 		mWhiteMaterial.SetColor("BaseColor", .(0.9f, 0.9f, 0.9f, 1));
 		mWhiteMaterial.SetFloat("Roughness", 0.1f);
 		mWhiteMaterial.SetFloat("Metallic", 0.8f);
-		matSystem.PrepareInstance(mWhiteMaterial);
 
 		// Yellow material
 		mYellowMaterial = new MaterialInstance(mPbrMaterial);
 		mYellowMaterial.SetColor("BaseColor", .(1.0f, 0.85f, 0.1f, 1));
-		matSystem.PrepareInstance(mYellowMaterial);
 
 		// Gray plane material
 		mGrayMaterial = new MaterialInstance(mPbrMaterial);
 		mGrayMaterial.SetColor("BaseColor", .(0.5f, 0.5f, 0.5f, 1));
-		matSystem.PrepareInstance(mGrayMaterial);
 
 		// Transparent material (semi-transparent blue)
 		mTransparentMaterial = new MaterialInstance(mPbrMaterial);
 		mTransparentMaterial.SetColor("BaseColor", .(0.2f, 0.4f, 0.9f, 0.4f));
 		mTransparentMaterial.BlendMode = .AlphaBlend;
-		matSystem.PrepareInstance(mTransparentMaterial);
 
 		// Masked material (alpha cutoff test)
 		mMaskedMaterial = new MaterialInstance(mPbrMaterial);
 		mMaskedMaterial.SetColor("BaseColor", .(0.8f, 0.2f, 0.1f, 1));
 		mMaskedMaterial.SetFloat("AlphaCutoff", 0.5f);
 		mMaskedMaterial.BlendMode = .Masked;
-		matSystem.PrepareInstance(mMaskedMaterial);
 
-		// ==================== Geometry ====================
+		// ==================== Geometry (registered as resources) ====================
+
+		let resources = Context.Resources;
+
+		// Create mesh resources and register with resource system
+		mPlaneRes = StaticMeshResource.CreatePlane(10, 10, 1, 1);
+		mCubeRes = StaticMeshResource.CreateCube(1.0f);
+		mSphereRes = StaticMeshResource.CreateSphere(0.5f, 32, 16);
+		resources.AddResource<StaticMeshResource>(mPlaneRes);
+		resources.AddResource<StaticMeshResource>(mCubeRes);
+		resources.AddResource<StaticMeshResource>(mSphereRes);
+
+		var planeRef = ResourceRef(mPlaneRes.Id, .());
+		defer planeRef.Dispose();
+
+		var cubeRef = ResourceRef(mCubeRes.Id, .());
+		defer cubeRef.Dispose();
+
+		var sphereRef = ResourceRef(mSphereRes.Id, .());
+		defer sphereRef.Dispose();
 
 		// Ground plane
-		let planeMesh = MeshBuilder.CreatePlane(10, 10, 1, 1);
-		defer delete planeMesh;
-		let planeHandle = UploadStaticMesh(gpuResources, planeMesh);
-
 		let planeEntity = scene.CreateEntity("Ground");
-		scene.SetLocalTransform(planeEntity, .()
-		{
-			Position = .(0, -1, 0),
-			Rotation = .Identity,
-			Scale = .One
-		});
-		SetupMeshComponent(scene, planeEntity, planeHandle, planeMesh.GetBounds(), mGrayMaterial);
+		scene.SetLocalTransform(planeEntity, .() { Position = .(0, -1, 0), Rotation = .Identity, Scale = .One });
+		SetupMeshComponent(scene, planeEntity, planeRef, mGrayMaterial);
 
 		// Cube
-		let cubeMesh = MeshBuilder.CreateCube(1.0f);
-		defer delete cubeMesh;
-		let cubeHandle = UploadStaticMesh(gpuResources, cubeMesh);
-
 		let cubeEntity = scene.CreateEntity("Cube");
-		scene.SetLocalTransform(cubeEntity, .()
-		{
-			Position = .(-1.5f, -0.5f, 0),
-			Rotation = .Identity,
-			Scale = .One
-		});
-		SetupMeshComponent(scene, cubeEntity, cubeHandle, cubeMesh.GetBounds(), mRedMaterial);
+		scene.SetLocalTransform(cubeEntity, .() { Position = .(-1.5f, -0.5f, 0), Rotation = .Identity, Scale = .One });
+		SetupMeshComponent(scene, cubeEntity, cubeRef, mRedMaterial);
 
 		// Sphere
-		let sphereMesh = MeshBuilder.CreateSphere(0.5f, 32, 16);
-		defer delete sphereMesh;
-		let sphereHandle = UploadStaticMesh(gpuResources, sphereMesh);
-
 		let sphereEntity = scene.CreateEntity("Sphere");
-		scene.SetLocalTransform(sphereEntity, .()
-		{
-			Position = .(1.5f, -0.5f, 0),
-			Rotation = .Identity,
-			Scale = .One
-		});
-		SetupMeshComponent(scene, sphereEntity, sphereHandle, sphereMesh.GetBounds(), mBlueMaterial);
+		scene.SetLocalTransform(sphereEntity, .() { Position = .(1.5f, -0.5f, 0), Rotation = .Identity, Scale = .One });
+		SetupMeshComponent(scene, sphereEntity, sphereRef, mBlueMaterial);
 
 		// Green cube (back left)
 		let cube2Entity = scene.CreateEntity("GreenCube");
-		scene.SetLocalTransform(cube2Entity, .()
-		{
-			Position = .(-3.0f, -0.5f, -2.0f),
-			Rotation = .Identity,
-			Scale = .One
-		});
-		SetupMeshComponent(scene, cube2Entity, cubeHandle, cubeMesh.GetBounds(), mGreenMaterial);
+		scene.SetLocalTransform(cube2Entity, .() { Position = .(-3.0f, -0.5f, -2.0f), Rotation = .Identity, Scale = .One });
+		SetupMeshComponent(scene, cube2Entity, cubeRef, mGreenMaterial);
 
 		// Yellow cube (back right)
 		let cube3Entity = scene.CreateEntity("YellowCube");
-		scene.SetLocalTransform(cube3Entity, .()
-		{
-			Position = .(3.0f, -0.5f, -2.0f),
-			Rotation = .Identity,
-			Scale = .One
-		});
-		SetupMeshComponent(scene, cube3Entity, cubeHandle, cubeMesh.GetBounds(), mYellowMaterial);
+		scene.SetLocalTransform(cube3Entity, .() { Position = .(3.0f, -0.5f, -2.0f), Rotation = .Identity, Scale = .One });
+		SetupMeshComponent(scene, cube3Entity, cubeRef, mYellowMaterial);
 
 		// White metallic sphere (center back)
 		let sphere2Entity = scene.CreateEntity("MetalSphere");
-		scene.SetLocalTransform(sphere2Entity, .()
-		{
-			Position = .(0, -0.25f, -2.0f),
-			Rotation = .Identity,
-			Scale = .(1.5f, 1.5f, 1.5f)
-		});
-		SetupMeshComponent(scene, sphere2Entity, sphereHandle, sphereMesh.GetBounds(), mWhiteMaterial);
+		scene.SetLocalTransform(sphere2Entity, .() { Position = .(0, -0.25f, -2.0f), Rotation = .Identity, Scale = .(1.5f, 1.5f, 1.5f) });
+		SetupMeshComponent(scene, sphere2Entity, sphereRef, mWhiteMaterial);
 
 		// Small green sphere (front left)
 		let sphere3Entity = scene.CreateEntity("GreenSphere");
-		scene.SetLocalTransform(sphere3Entity, .()
-		{
-			Position = .(-0.5f, -0.7f, 1.5f),
-			Rotation = .Identity,
-			Scale = .(0.6f, 0.6f, 0.6f)
-		});
-		SetupMeshComponent(scene, sphere3Entity, sphereHandle, sphereMesh.GetBounds(), mGreenMaterial);
+		scene.SetLocalTransform(sphere3Entity, .() { Position = .(-0.5f, -0.7f, 1.5f), Rotation = .Identity, Scale = .(0.6f, 0.6f, 0.6f) });
+		SetupMeshComponent(scene, sphere3Entity, sphereRef, mGreenMaterial);
 
 		// Small yellow sphere (front right)
 		let sphere4Entity = scene.CreateEntity("YellowSphere");
-		scene.SetLocalTransform(sphere4Entity, .()
-		{
-			Position = .(0.5f, -0.7f, 1.5f),
-			Rotation = .Identity,
-			Scale = .(0.6f, 0.6f, 0.6f)
-		});
-		SetupMeshComponent(scene, sphere4Entity, sphereHandle, sphereMesh.GetBounds(), mYellowMaterial);
+		scene.SetLocalTransform(sphere4Entity, .() { Position = .(0.5f, -0.7f, 1.5f), Rotation = .Identity, Scale = .(0.6f, 0.6f, 0.6f) });
+		SetupMeshComponent(scene, sphere4Entity, sphereRef, mYellowMaterial);
 
-		// Transparent sphere (overlapping the red cube to test alpha blending)
+		// Transparent sphere
 		let transparentEntity = scene.CreateEntity("TransparentSphere");
-		scene.SetLocalTransform(transparentEntity, .()
-		{
-			Position = .(-1.0f, -0.25f, 0.8f),
-			Rotation = .Identity,
-			Scale = .(1.2f, 1.2f, 1.2f)
-		});
-		SetupMeshComponent(scene, transparentEntity, sphereHandle, sphereMesh.GetBounds(), mTransparentMaterial);
+		scene.SetLocalTransform(transparentEntity, .() { Position = .(-1.0f, -0.25f, 0.8f), Rotation = .Identity, Scale = .(1.2f, 1.2f, 1.2f) });
+		SetupMeshComponent(scene, transparentEntity, sphereRef, mTransparentMaterial);
 
-		// Masked cube (tests alpha cutoff — should render fully since no albedo texture with alpha)
+		// Masked cube
 		let maskedEntity = scene.CreateEntity("MaskedCube");
-		scene.SetLocalTransform(maskedEntity, .()
+		scene.SetLocalTransform(maskedEntity, .() { Position = .(3.0f, -0.5f, 1.0f), Rotation = .Identity, Scale = .One });
+		SetupMeshComponent(scene, maskedEntity, cubeRef, mMaskedMaterial);
+
+		// ==================== Animated Fox ====================
+
+		GltfModels.Initialize();
+
+		let foxPath = scope String();
+		GetAssetPath("samples/models/Fox/glTF-Binary/Fox.glb", foxPath);
+
+		let foxModel = scope Model();
+		if (ModelLoaderFactory.LoadModel(foxPath, foxModel) case .Ok)
 		{
-			Position = .(3.0f, -0.5f, 1.0f),
-			Rotation = .Identity,
-			Scale = .One
-		});
-		SetupMeshComponent(scene, maskedEntity, cubeHandle, cubeMesh.GetBounds(), mMaskedMaterial);
+			let importOpts = ModelImportOptions.SkinnedWithAnimations();
+			let importer = scope ModelImporter(importOpts);
+			let importResult = importer.Import(foxModel);
+			defer delete importResult;
+
+			if (importResult.SkinnedMeshes.Count > 0 && importResult.Skeletons.Count > 0)
+			{
+				// Take ownership of skeleton and first animation clip
+				mFoxSkeleton = importResult.Skeletons[0];
+				importResult.Skeletons[0] = null; // prevent double-delete
+
+				if (importResult.Animations.Count > 0)
+				{
+					mFoxWalkClip = importResult.Animations[0];
+					importResult.Animations[0] = null;
+				}
+
+				// Register skinned mesh as a resource (resolver handles GPU upload)
+				let skinnedMesh = importResult.SkinnedMeshes[0];
+				mFoxMeshRes = new SkinnedMeshResource(skinnedMesh, true);
+				importResult.SkinnedMeshes[0] = null; // resource took ownership
+				resources.AddResource<SkinnedMeshResource>(mFoxMeshRes);
+				var foxMeshRef = ResourceRef(mFoxMeshRes.Id, .());
+				defer foxMeshRef.Dispose();
+
+				// Convert imported textures to resources and register
+				for (let importedTex in importResult.Textures)
+				{
+					let texRes = TextureResourceConverter.Convert(importedTex);
+					if (texRes != null)
+					{
+						resources.AddResource<TextureResource>(texRes);
+						mFoxTextures.Add(texRes);
+					}
+				}
+
+				// Convert imported materials to resources and register
+				for (let importedMat in importResult.Materials)
+				{
+					let matRes = MaterialResourceConverter.Convert(importedMat, mFoxTextures);
+					if (matRes != null)
+					{
+						resources.AddResource<MaterialResource>(matRes);
+						mFoxMaterialResources.Add(matRes);
+					}
+				}
+
+				// Create animation player
+				let player = new AnimationPlayer(mFoxSkeleton);
+				if (mFoxWalkClip != null)
+				{
+					mFoxWalkClip.IsLooping = true;
+					player.Play(mFoxWalkClip);
+				}
+
+				// Create fox entity
+				let foxEntity = scene.CreateEntity("Fox");
+				scene.SetLocalTransform(foxEntity, .()
+				{
+					Position = .(-3, -1, 2),
+					Rotation = .Identity,
+					Scale = .(0.02f, 0.02f, 0.02f)
+				});
+
+				// Set up skinned mesh component — manager resolves mesh, materials, and bone buffer
+				let skinnedMgr = scene.GetModule<SkinnedMeshComponentManager>();
+				let compHandle = skinnedMgr.CreateComponent(foxEntity);
+				if (let comp = skinnedMgr.Get(compHandle))
+				{
+					comp.SetMeshRef(foxMeshRef);
+					comp.AnimationPlayer = player;
+
+					// Set material refs by slot — resolver creates instances and prepares bind groups
+					for (int32 slot = 0; slot < mFoxMaterialResources.Count; slot++)
+					{
+						var matRef = ResourceRef(mFoxMaterialResources[slot].Id, .());
+						comp.SetMaterialRef(slot, matRef);
+						matRef.Dispose();
+					}
+				}
+
+				Console.WriteLine("Fox loaded: {0} vertices, {1} bones, {2} anims, {3} materials, {4} textures",
+					skinnedMesh.VertexCount, mFoxSkeleton.BoneCount,
+					importResult.Animations.Count, importResult.Materials.Count, importResult.Textures.Count);
+			}
+		}
+		else
+		{
+			Console.WriteLine("WARNING: Could not load Fox model");
+		}
 
 		// ==================== Light ====================
 
@@ -226,7 +299,7 @@ class SandboxApp : EngineApplication
 		// ==================== Camera ====================
 
 		let cameraEntity = scene.CreateEntity("Camera");
-		scene.SetLocalTransform(cameraEntity, Transform.CreateLookAt(.(0, 3, 5), .(0, 0, 0)));
+		scene.SetLocalTransform(cameraEntity, Transform.CreateLookAt(.(0, 4, 8), .(0, 0, 0)));
 
 		let cameraMgr = scene.GetModule<CameraComponentManager>();
 		let cameraCompHandle = cameraMgr.CreateComponent(cameraEntity);
@@ -303,65 +376,14 @@ class SandboxApp : EngineApplication
 		Console.WriteLine("=== Engine running (close window to exit) ===");
 	}
 
-	/// Uploads a StaticMesh to the GPU resource manager.
-	private GPUMeshHandle UploadStaticMesh(GPUResourceManager gpuResources, StaticMesh mesh)
-	{
-		let vertexDataSize = (uint64)(mesh.VertexCount * mesh.VertexSize);
-		let indices = mesh.Indices;
-		let hasIndices = indices != null && indices.IndexCount > 0;
-
-		let indexSize = hasIndices ? (indices.Format == .UInt16 ? 2 : 4) : 0;
-		let indexDataSize = hasIndices ? (uint64)(indices.IndexCount * indexSize) : 0;
-
-		// Build submesh array
-		GPUSubMesh[] subMeshes = null;
-		if (mesh.SubMeshes != null && mesh.SubMeshes.Count > 0)
-		{
-			subMeshes = scope :: GPUSubMesh[mesh.SubMeshes.Count];
-			for (int i = 0; i < mesh.SubMeshes.Count; i++)
-			{
-				let sub = mesh.SubMeshes[i];
-				subMeshes[i] = .()
-				{
-					IndexStart = (uint32)sub.startIndex,
-					IndexCount = (uint32)sub.indexCount,
-					BaseVertex = 0,
-					MaterialSlot = (uint32)sub.materialIndex
-				};
-			}
-		}
-
-		MeshUploadDesc desc = .()
-		{
-			VertexData = mesh.GetVertexData(),
-			VertexDataSize = vertexDataSize,
-			VertexCount = (uint32)mesh.VertexCount,
-			VertexStride = (uint32)mesh.VertexSize,
-			IndexData = hasIndices ? mesh.GetIndexData() : null,
-			IndexDataSize = indexDataSize,
-			IndexCount = hasIndices ? (uint32)indices.IndexCount : 0,
-			IndexFormat = hasIndices && indices.Format == .UInt16 ? .UInt16 : .UInt32,
-			SubMeshes = (subMeshes != null) ? &subMeshes[0] : null,
-			SubMeshCount = (subMeshes != null) ? (uint32)subMeshes.Count : 0,
-			Bounds = mesh.GetBounds()
-		};
-
-		if (gpuResources.UploadMesh(desc) case .Ok(let handle))
-			return handle;
-
-		Console.WriteLine("ERROR: Failed to upload mesh");
-		return .Invalid;
-	}
-
-	/// Creates a MeshComponent on an entity with the given GPU mesh handle and optional material.
-	private void SetupMeshComponent(Scene scene, EntityHandle entity, GPUMeshHandle meshHandle, BoundingBox bounds, MaterialInstance material = null)
+	/// Creates a MeshComponent on an entity with a mesh resource ref and optional material.
+	private void SetupMeshComponent(Scene scene, EntityHandle entity, ResourceRef meshRef, MaterialInstance material = null)
 	{
 		let meshMgr = scene.GetModule<MeshComponentManager>();
 		let compHandle = meshMgr.CreateComponent(entity);
 		if (let comp = meshMgr.Get(compHandle))
 		{
-			comp.MeshHandle = meshHandle;
-			comp.LocalBounds = bounds;
+			comp.SetMeshRef(meshRef);
 			if (material != null)
 				comp.SetMaterial(0, material);
 		}
@@ -385,24 +407,17 @@ class SandboxApp : EngineApplication
 		if (mSkyTexture != null)
 			device.DestroyTexture(ref mSkyTexture);
 
-		let matSystem = renderSub.Renderer.MaterialSystem;
+		// Release fox resources
+		for (let foxMatRes in mFoxMaterialResources)
+			foxMatRes?.ReleaseRef();
+		for (let foxTex in mFoxTextures)
+			foxTex?.ReleaseRef();
 
-		if (mRedMaterial != null)
-			matSystem.ReleaseInstance(mRedMaterial);
-		if (mBlueMaterial != null)
-			matSystem.ReleaseInstance(mBlueMaterial);
-		if (mGreenMaterial != null)
-			matSystem.ReleaseInstance(mGreenMaterial);
-		if (mWhiteMaterial != null)
-			matSystem.ReleaseInstance(mWhiteMaterial);
-		if (mYellowMaterial != null)
-			matSystem.ReleaseInstance(mYellowMaterial);
-		if (mTransparentMaterial != null)
-			matSystem.ReleaseInstance(mTransparentMaterial);
-		if (mMaskedMaterial != null)
-			matSystem.ReleaseInstance(mMaskedMaterial);
-		if (mGrayMaterial != null)
-			matSystem.ReleaseInstance(mGrayMaterial);
+		// Release our refs on mesh resources (resource system holds its own)
+		mPlaneRes?.ReleaseRef();
+		mCubeRes?.ReleaseRef();
+		mSphereRes?.ReleaseRef();
+		mFoxMeshRes?.ReleaseRef();
 
 		Console.WriteLine("=== EngineSandbox OnShutdown ===");
 	}
