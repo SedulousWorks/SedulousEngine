@@ -31,6 +31,9 @@ public class Renderer : IDisposable
 	// Pipeline state cache
 	private PipelineStateCache mPipelineStateCache ~ delete _;
 
+	// Compute skinning
+	private SkinningSystem mSkinningSystem ~ { _?.Dispose(); delete _; };
+
 	// Shader system (not owned)
 	private Sedulous.Shaders.ShaderSystem mShaderSystem;
 
@@ -68,6 +71,9 @@ public class Renderer : IDisposable
 	/// Pipeline state cache (creates GPU pipelines on demand from material config).
 	public PipelineStateCache PipelineStateCache => mPipelineStateCache;
 
+	/// Compute skinning system.
+	public SkinningSystem SkinningSystem => mSkinningSystem;
+
 	/// Shader system (optional, for passes that need to compile shaders).
 	public Sedulous.Shaders.ShaderSystem ShaderSystem
 	{
@@ -78,6 +84,13 @@ public class Renderer : IDisposable
 			delete mPipelineStateCache;
 			if (value != null)
 				mPipelineStateCache = new PipelineStateCache(mDevice, value, this);
+
+			// Initialize skinning system with shader system
+			if (value != null && mSkinningSystem == null)
+			{
+				mSkinningSystem = new SkinningSystem();
+				mSkinningSystem.Initialize(mDevice, value);
+			}
 		}
 	}
 

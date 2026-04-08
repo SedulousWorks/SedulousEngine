@@ -130,7 +130,8 @@ class ForwardTransparentPass : PipelinePass
 			}
 			else
 			{
-				encoder.Draw(subMesh.IndexCount, 1, 0, 0);
+				let vertCount = subMesh.IndexCount > 0 ? subMesh.IndexCount : gpuMesh.VertexCount;
+				encoder.Draw(vertCount, 1, 0, 0);
 			}
 		}
 		} // ForwardTransparent scope

@@ -27,4 +27,10 @@ struct MeshRenderData
 
 	/// Material sort key for batching.
 	public uint32 MaterialKey;
+
+	/// Bone matrix buffer handle (for skinned meshes).
+	public GPUBoneBufferHandle BoneBufferHandle;
+
+	/// Whether this mesh is skinned (needs compute skinning pass).
+	public bool IsSkinned;
 }

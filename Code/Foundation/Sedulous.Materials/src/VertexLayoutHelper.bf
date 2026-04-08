@@ -37,15 +37,16 @@ public static class VertexLayoutHelper
 		.(VertexFormat.Float32x3, 36, 4)   // Tangent (float3)
 	);
 
-	/// SkinnedMesh: Mesh attributes + JointIndices (uint4) + JointWeights (float4)
+	/// SkinnedMesh: Mesh attributes + JointIndices (2x uint32 = 4x uint16 packed) + JointWeights (float4)
+	/// 72 bytes total. Bone indices packed as 4x uint16 in 2x uint32 for memory savings.
 	public static VertexAttribute[7] SkinnedMeshAttributes = .(
 		.(VertexFormat.Float32x3, 0, 0),   // Position
 		.(VertexFormat.Float32x3, 12, 1),  // Normal
 		.(VertexFormat.Float32x2, 24, 2),  // UV
-		.(VertexFormat.Unorm8x4, 32, 3), // Color
+		.(VertexFormat.Unorm8x4, 32, 3),   // Color
 		.(VertexFormat.Float32x3, 36, 4),  // Tangent
-		.(VertexFormat.Uint32x4, 48, 5),   // Joint Indices
-		.(VertexFormat.Float32x4, 64, 6)   // Joint Weights
+		.(VertexFormat.Uint32x2, 48, 5),   // Joint Indices (4x uint16 packed in 2x uint32)
+		.(VertexFormat.Float32x4, 56, 6)   // Joint Weights
 	);
 
 	/// Instance data: 4 x float4 (world matrix rows) - for GPU instancing
@@ -72,7 +73,7 @@ public static class VertexLayoutHelper
 		case .PositionUVColor: return 36;    // float3 + float2 + float4
 		case .MeshNoTangent: return 32;      // float3 + float3 + float2
 		case .Mesh: return 48;               // float3 + float3 + float2 + ubyte4 + float3
-		case .SkinnedMesh: return 80;        // Mesh + uint4 + float4
+		case .SkinnedMesh: return 72;        // Mesh + uint2(packed uint16x4) + float4
 		case .Custom: return 0;              // Custom layouts define their own stride
 		}
 	}

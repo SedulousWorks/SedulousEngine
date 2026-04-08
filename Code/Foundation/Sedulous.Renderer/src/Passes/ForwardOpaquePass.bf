@@ -136,7 +136,21 @@ class ForwardOpaquePass : PipelinePass
 				lastMaterialBindGroup = materialBg;
 			}
 
-			encoder.SetVertexBuffer(0, gpuMesh.VertexBuffer, 0);
+			// Use skinned vertex buffer if available (compute skinning output)
+			IBuffer vertexBuffer = gpuMesh.VertexBuffer;
+			if (mesh.IsSkinned)
+			{
+				let skinningSystem = renderer.SkinningSystem;
+				if (skinningSystem != null)
+				{
+					let key = SkinningKey() { MeshHandle = mesh.MeshHandle, EntityId = mesh.MaterialKey };
+					let skinnedVB = skinningSystem.GetSkinnedVertexBuffer(key);
+					if (skinnedVB != null)
+						vertexBuffer = skinnedVB;
+				}
+			}
+
+			encoder.SetVertexBuffer(0, vertexBuffer, 0);
 			if (gpuMesh.IndexBuffer != null)
 			{
 				encoder.SetIndexBuffer(gpuMesh.IndexBuffer, gpuMesh.IndexFormat);
@@ -144,7 +158,8 @@ class ForwardOpaquePass : PipelinePass
 			}
 			else
 			{
-				encoder.Draw(subMesh.IndexCount, 1, 0, 0);
+				let vertCount = subMesh.IndexCount > 0 ? subMesh.IndexCount : gpuMesh.VertexCount;
+				encoder.Draw(vertCount, 1, 0, 0);
 			}
 		}
 	}
