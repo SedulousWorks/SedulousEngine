@@ -113,6 +113,8 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 		if (scene == null || GPUResources == null)
 			return;
 
+		let frameAlloc = context.RenderContext.FrameAllocator;
+
 		for (let mesh in ActiveComponents)
 		{
 			if (!mesh.IsActive || !mesh.IsVisible)
@@ -164,23 +166,19 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 				// Material sort key for batching
 				let materialKey = (material != null) ? (uint32)(int)Internal.UnsafeCastToPtr(material) : 0;
 
-				context.RenderData.AddMesh(category, .()
-				{
-					Base = .()
-					{
-						Position = center,
-						Bounds = mesh.LocalBounds,
-						MaterialSortKey = materialKey,
-						SortOrder = 0,
-						Flags = flags
-					},
-					WorldMatrix = worldMatrix,
-					PrevWorldMatrix = worldMatrix, // TODO: track previous frame
-					MeshHandle = mesh.MeshHandle,
-					SubMeshIndex = (uint32)subIdx,
-					MaterialBindGroup = material?.BindGroup,
-					MaterialKey = materialKey
-				});
+				let data = new:frameAlloc MeshRenderData();
+				data.Position = center;
+				data.Bounds = mesh.LocalBounds;
+				data.MaterialSortKey = materialKey;
+				data.SortOrder = 0;
+				data.Flags = flags;
+				data.WorldMatrix = worldMatrix;
+				data.PrevWorldMatrix = worldMatrix; // TODO: track previous frame
+				data.MeshHandle = mesh.MeshHandle;
+				data.SubMeshIndex = (uint32)subIdx;
+				data.MaterialBindGroup = material?.BindGroup;
+				data.MaterialKey = materialKey;
+				context.RenderData.Add(category, data);
 			}
 		}
 	}

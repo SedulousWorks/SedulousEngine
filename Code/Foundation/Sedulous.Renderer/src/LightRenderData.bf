@@ -3,7 +3,7 @@ namespace Sedulous.Renderer;
 using Sedulous.Core.Mathematics;
 
 /// Light type.
-enum LightType : uint8
+public enum LightType : uint8
 {
 	Directional,
 	Point,
@@ -11,11 +11,10 @@ enum LightType : uint8
 }
 
 /// Render data for a light. Not drawn — consumed by the lighting system.
-struct LightRenderData
+///
+/// Allocated from RenderContext.FrameAllocator — trivially destructible.
+public class LightRenderData : RenderData
 {
-	/// Base render data (position, bounds).
-	public RenderData Base;
-
 	/// Light type.
 	public LightType Type;
 

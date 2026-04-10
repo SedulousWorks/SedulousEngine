@@ -58,12 +58,13 @@ class SkinningPass : PipelinePass
 	{
 		let skinningSystem = renderContext.SkinningSystem;
 		let gpuResources = renderContext.GPUResources;
-		let batch = data.GetSortedBatch(category);
+		let batch = data.GetBatch(category);
+		if (batch == null) return;
 
-		for (int32 i = 0; i < (int32)batch.Length; i++)
+		for (let entry in batch)
 		{
-			let mesh = ref data.GetMesh(category, i);
-			if (!mesh.IsSkinned) continue;
+			let mesh = entry as MeshRenderData;
+			if (mesh == null || !mesh.IsSkinned) continue;
 
 			let boneBuffer = gpuResources.GetBoneBuffer(mesh.BoneBufferHandle);
 			if (boneBuffer == null) continue;
@@ -87,11 +88,15 @@ class SkinningPass : PipelinePass
 
 	private static bool HasSkinnedInCategory(ExtractedRenderData data, RenderDataCategory category)
 	{
-		let batch = data.GetSortedBatch(category);
-		for (int32 i = 0; i < (int32)batch.Length; i++)
+		let batch = data.GetBatch(category);
+		if (batch == null) return false;
+		for (let entry in batch)
 		{
-			if (data.GetMesh(category, i).IsSkinned)
-				return true;
+			if (let mesh = entry as MeshRenderData)
+			{
+				if (mesh.IsSkinned)
+					return true;
+			}
 		}
 		return false;
 	}

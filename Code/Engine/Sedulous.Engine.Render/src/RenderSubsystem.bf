@@ -9,6 +9,7 @@ using Sedulous.Shell;
 using Sedulous.Shaders;
 using Sedulous.Renderer;
 using Sedulous.Renderer.Passes;
+using Sedulous.Renderer.Renderers;
 using Sedulous.Core.Mathematics;
 using Sedulous.Profiler;
 using Sedulous.Resources;
@@ -131,6 +132,9 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		// Pipeline (per-view pass execution)
 		mPipeline = new Pipeline();
 		mPipeline.Initialize(mRenderContext, (uint32)mWindow.Width, (uint32)mWindow.Height);
+
+		// Register per-type drawers. Passes dispatch to these via RenderCategory().
+		mPipeline.RegisterRenderer(new MeshRenderer());
 
 		// Register default passes
 		mPipeline.AddPass(new SkinningPass());
@@ -281,7 +285,10 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	/// Extracts render data from all active scenes via IRenderDataProvider.
 	private ExtractedRenderData ExtractFromScenes()
 	{
+		// Order matters: drop references first, then reset the frame allocator.
+		// Otherwise mExtractedData would hold dangling pointers into rewound arena memory.
 		mExtractedData.Clear();
+		mRenderContext.BeginFrame();
 
 		// Find camera for view setup
 		CameraComponent activeCamera = null;
@@ -333,6 +340,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 
 		RenderExtractionContext context = .()
 		{
+			RenderContext = mRenderContext,
 			RenderData = mExtractedData,
 			ViewMatrix = viewMatrix,
 			ViewProjectionMatrix = viewProjMatrix,

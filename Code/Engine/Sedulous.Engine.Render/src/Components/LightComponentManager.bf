@@ -18,6 +18,8 @@ class LightComponentManager : ComponentManager<LightComponent>, IRenderDataProvi
 		if (scene == null)
 			return;
 
+		let frameAlloc = context.RenderContext.FrameAllocator;
+
 		for (let light in ActiveComponents)
 		{
 			if (!light.IsActive)
@@ -33,25 +35,21 @@ class LightComponentManager : ComponentManager<LightComponent>, IRenderDataProvi
 			// M31/M32/M33 is the +Z axis (backward), negate for forward.
 			let direction = -Vector3.Normalize(.(worldMatrix.M31, worldMatrix.M32, worldMatrix.M33));
 
-			context.RenderData.AddLight(.()
-			{
-				Base = .()
-				{
-					Position = position,
-					Bounds = .(.Zero, .Zero), // TODO: compute from range
-					Flags = .None
-				},
-				Type = light.Type,
-				Color = light.Color,
-				Intensity = light.Intensity,
-				Direction = direction,
-				Range = light.Range,
-				InnerConeAngle = Math.DegreesToRadians(light.InnerConeAngle),
-				OuterConeAngle = Math.DegreesToRadians(light.OuterConeAngle),
-				CastsShadows = light.CastsShadows,
-				ShadowBias = light.ShadowBias,
-				ShadowNormalBias = light.ShadowNormalBias
-			});
+			let data = new:frameAlloc LightRenderData();
+			data.Position = position;
+			data.Bounds = .(.Zero, .Zero); // TODO: compute from range
+			data.Flags = .None;
+			data.Type = light.Type;
+			data.Color = light.Color;
+			data.Intensity = light.Intensity;
+			data.Direction = direction;
+			data.Range = light.Range;
+			data.InnerConeAngle = Math.DegreesToRadians(light.InnerConeAngle);
+			data.OuterConeAngle = Math.DegreesToRadians(light.OuterConeAngle);
+			data.CastsShadows = light.CastsShadows;
+			data.ShadowBias = light.ShadowBias;
+			data.ShadowNormalBias = light.ShadowNormalBias;
+			context.RenderData.Add(RenderCategories.Light, data);
 		}
 	}
 }

@@ -4,11 +4,10 @@ using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
 
 /// Render data for a projected decal.
-struct DecalRenderData
+///
+/// Allocated from RenderContext.FrameAllocator — trivially destructible.
+public class DecalRenderData : RenderData
 {
-	/// Base render data (position, bounds, sort order).
-	public RenderData Base;
-
 	/// World matrix (positions and orients the decal volume).
 	public Matrix WorldMatrix;
 

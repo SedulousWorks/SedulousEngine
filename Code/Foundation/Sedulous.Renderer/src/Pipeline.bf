@@ -22,6 +22,13 @@ public class Pipeline : IDisposable
 	// Passes
 	private List<PipelinePass> mPasses = new .() ~ delete _;
 
+	// Registered renderers, keyed by category. Pipeline owns the renderer instances.
+	// Multiple renderers may be registered per category (e.g. MeshRenderer + ParticleRenderer
+	// both drawing into Transparent). Each renderer filters the category batch internally.
+	private List<Renderer>[RenderCategories.Count] mRenderersByCategory;
+	// Flat owning list (dedup — a renderer may appear in multiple categories).
+	private List<Renderer> mOwnedRenderers = new .() ~ DeleteContainerAndItems!(_);
+
 	// Per-frame resources (double-buffered)
 	public const int32 MaxFramesInFlight = 2;
 	private PerFrameResources[MaxFramesInFlight] mFrameResources;
@@ -89,6 +96,9 @@ public class Pipeline : IDisposable
 		mRenderContext = renderContext;
 		mOutputFormat = outputFormat;
 
+		for (int i = 0; i < RenderCategories.Count; i++)
+			mRenderersByCategory[i] = new .();
+
 		// Render graph
 		mRenderGraph = new RenderGraph(renderContext.Device, .() { FrameBufferCount = MaxFramesInFlight });
 
@@ -111,6 +121,40 @@ public class Pipeline : IDisposable
 
 		mPasses.Add(pass);
 		return .Ok;
+	}
+
+	/// Registers a per-type drawer. The pipeline takes ownership.
+	/// The renderer is indexed against every category returned by GetSupportedCategories().
+	public void RegisterRenderer(Renderer renderer)
+	{
+		if (renderer == null) return;
+
+		mOwnedRenderers.Add(renderer);
+
+		let categories = renderer.GetSupportedCategories();
+		for (let cat in categories)
+		{
+			if (cat.Value < RenderCategories.Count)
+				mRenderersByCategory[cat.Value].Add(renderer);
+		}
+	}
+
+	/// Dispatches a render batch for a category to all registered renderers.
+	/// Called by render passes after they've set up render targets, pipeline state,
+	/// viewport, and frame-level bind groups.
+	public void RenderCategory(IRenderPassEncoder encoder, RenderDataCategory category,
+		PerFrameResources frame, RenderView view, RenderBatchFlags flags)
+	{
+		if (category.Value >= RenderCategories.Count)
+			return;
+
+		let batch = view.RenderData?.GetBatch(category);
+		if (batch == null || batch.Count == 0)
+			return;
+
+		let renderers = mRenderersByCategory[category.Value];
+		for (let renderer in renderers)
+			renderer.RenderBatch(encoder, batch, mRenderContext, this, frame, view, flags);
 	}
 
 	/// Gets a pass by type.
@@ -146,6 +190,17 @@ public class Pipeline : IDisposable
 			delete mPasses[i];
 		}
 		mPasses.Clear();
+
+		// Clear per-category renderer indices. The actual Renderer instances are
+		// owned by mOwnedRenderers and deleted via its destructor.
+		for (int i = 0; i < RenderCategories.Count; i++)
+		{
+			if (mRenderersByCategory[i] != null)
+			{
+				delete mRenderersByCategory[i];
+				mRenderersByCategory[i] = null;
+			}
+		}
 
 		// Release per-frame resources
 		for (int i = 0; i < MaxFramesInFlight; i++)

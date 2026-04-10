@@ -157,6 +157,8 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 		if (scene == null || GPUResources == null)
 			return;
 
+		let frameAlloc = context.RenderContext.FrameAllocator;
+
 		for (let comp in ActiveComponents)
 		{
 			if (!comp.IsActive || !comp.IsVisible)
@@ -199,25 +201,21 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 
 				let materialKey = (material != null) ? (uint32)(int)Internal.UnsafeCastToPtr(material) : 0;
 
-				context.RenderData.AddMesh(category, .()
-				{
-					Base = .()
-					{
-						Position = center,
-						Bounds = comp.LocalBounds,
-						MaterialSortKey = materialKey,
-						SortOrder = 0,
-						Flags = flags
-					},
-					WorldMatrix = worldMatrix,
-					PrevWorldMatrix = worldMatrix, // TODO: track previous frame
-					MeshHandle = comp.MeshHandle,
-					SubMeshIndex = (uint32)subIdx,
-					MaterialBindGroup = material?.BindGroup,
-					MaterialKey = materialKey,
-					BoneBufferHandle = comp.BoneBufferHandle,
-					IsSkinned = true
-				});
+				let data = new:frameAlloc MeshRenderData();
+				data.Position = center;
+				data.Bounds = comp.LocalBounds;
+				data.MaterialSortKey = materialKey;
+				data.SortOrder = 0;
+				data.Flags = flags;
+				data.WorldMatrix = worldMatrix;
+				data.PrevWorldMatrix = worldMatrix; // TODO: track previous frame
+				data.MeshHandle = comp.MeshHandle;
+				data.SubMeshIndex = (uint32)subIdx;
+				data.MaterialBindGroup = material?.BindGroup;
+				data.MaterialKey = materialKey;
+				data.BoneBufferHandle = comp.BoneBufferHandle;
+				data.IsSkinned = true;
+				context.RenderData.Add(category, data);
 			}
 		}
 	}

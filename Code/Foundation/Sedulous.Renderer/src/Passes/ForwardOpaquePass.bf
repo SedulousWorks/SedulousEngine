@@ -20,9 +20,8 @@ class ForwardOpaquePass : PipelinePass
 		if (data == null)
 			return;
 
-		let opaqueBatch = data.GetSortedBatch(RenderCategories.Opaque);
-		let maskedBatch = data.GetSortedBatch(RenderCategories.Masked);
-		if (opaqueBatch.Length == 0 && maskedBatch.Length == 0)
+		if (data.GetBatchCount(RenderCategories.Opaque) == 0 &&
+			data.GetBatchCount(RenderCategories.Masked) == 0)
 			return;
 
 		let outputHandle = graph.GetResource("PipelineOutput");
@@ -51,16 +50,14 @@ class ForwardOpaquePass : PipelinePass
 	{
 		using (Profiler.Begin("ForwardOpaque"))
 		{
-		let renderer = pipeline.RenderContext;
-		let cache = renderer.PipelineStateCache;
+		let renderContext = pipeline.RenderContext;
+		let cache = renderContext.PipelineStateCache;
 		if (cache == null)
 			return;
 
 		encoder.SetViewport(0, 0, (float)view.Width, (float)view.Height, 0.0f, 1.0f);
 		encoder.SetScissor(0, 0, view.Width, view.Height);
 
-		let data = view.RenderData;
-		let gpuResources = renderer.GPUResources;
 		let frame = pipeline.GetFrameResources(view.FrameIndex);
 
 		// Build pipeline config
@@ -97,70 +94,13 @@ class ForwardOpaquePass : PipelinePass
 		if (frame.FrameBindGroup != null)
 			encoder.SetBindGroup(BindGroupFrequency.Frame, frame.FrameBindGroup, default);
 
-		if (renderer.DefaultMaterialBindGroup != null)
-			encoder.SetBindGroup(BindGroupFrequency.Material, renderer.DefaultMaterialBindGroup, default);
+		if (renderContext.DefaultMaterialBindGroup != null)
+			encoder.SetBindGroup(BindGroupFrequency.Material, renderContext.DefaultMaterialBindGroup, default);
 
-		IBindGroup lastMaterialBindGroup = null;
-
-		// Draw opaque geometry, then masked (same shader, same pipeline state)
-		DrawBatch(encoder, data, RenderCategories.Opaque, gpuResources, renderer, pipeline, frame, view, ref lastMaterialBindGroup);
-		DrawBatch(encoder, data, RenderCategories.Masked, gpuResources, renderer, pipeline, frame, view, ref lastMaterialBindGroup);
+		// Dispatch to registered renderers (MeshRenderer, future: particles, etc.)
+		pipeline.RenderCategory(encoder, RenderCategories.Opaque, frame, view, .BindMaterial);
+		pipeline.RenderCategory(encoder, RenderCategories.Masked, frame, view, .BindMaterial);
 
 		} // ForwardOpaque scope
-	}
-
-	private void DrawBatch(IRenderPassEncoder encoder, ExtractedRenderData data, RenderDataCategory category,
-		GPUResourceManager gpuResources, RenderContext renderContext, Pipeline pipeline, PerFrameResources frame,
-		RenderView view, ref IBindGroup lastMaterialBindGroup)
-	{
-		let batch = data.GetSortedBatch(category);
-
-		for (int32 i = 0; i < (int32)batch.Length; i++)
-		{
-			let mesh = ref data.GetMesh(category, i);
-			let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
-			if (gpuMesh == null) continue;
-
-			let subMesh = gpuMesh.SubMeshes[mesh.SubMeshIndex];
-
-			let objOffset = pipeline.WriteObjectUniforms(view.FrameIndex, mesh.WorldMatrix, mesh.PrevWorldMatrix);
-			if (objOffset == uint32.MaxValue) continue;
-
-			uint32[1] dynamicOffsets = .(objOffset);
-			encoder.SetBindGroup(BindGroupFrequency.DrawCall, frame.DrawCallBindGroup, dynamicOffsets);
-
-			let materialBg = (mesh.MaterialBindGroup != null) ? mesh.MaterialBindGroup : renderContext.DefaultMaterialBindGroup;
-			if (materialBg != null && materialBg != lastMaterialBindGroup)
-			{
-				encoder.SetBindGroup(BindGroupFrequency.Material, materialBg, default);
-				lastMaterialBindGroup = materialBg;
-			}
-
-			// Use skinned vertex buffer if available (compute skinning output)
-			IBuffer vertexBuffer = gpuMesh.VertexBuffer;
-			if (mesh.IsSkinned)
-			{
-				let skinningSystem = renderContext.SkinningSystem;
-				if (skinningSystem != null)
-				{
-					let key = SkinningKey() { MeshHandle = mesh.MeshHandle, EntityId = mesh.MaterialKey };
-					let skinnedVB = skinningSystem.GetSkinnedVertexBuffer(key);
-					if (skinnedVB != null)
-						vertexBuffer = skinnedVB;
-				}
-			}
-
-			encoder.SetVertexBuffer(0, vertexBuffer, 0);
-			if (gpuMesh.IndexBuffer != null)
-			{
-				encoder.SetIndexBuffer(gpuMesh.IndexBuffer, gpuMesh.IndexFormat);
-				encoder.DrawIndexed(subMesh.IndexCount, 1, subMesh.IndexStart, subMesh.BaseVertex, 0);
-			}
-			else
-			{
-				let vertCount = subMesh.IndexCount > 0 ? subMesh.IndexCount : gpuMesh.VertexCount;
-				encoder.Draw(vertCount, 1, 0, 0);
-			}
-		}
 	}
 }

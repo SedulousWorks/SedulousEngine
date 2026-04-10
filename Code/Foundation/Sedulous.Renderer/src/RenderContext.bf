@@ -4,6 +4,7 @@ using System;
 using Sedulous.RHI;
 using Sedulous.Materials;
 using Sedulous.Core.Mathematics;
+using Sedulous.Core.Memory;
 
 /// Shared rendering infrastructure — owns GPU resources, materials, pipeline cache,
 /// lighting, and bind group layouts that are common across all views/pipelines.
@@ -33,6 +34,13 @@ public class RenderContext : IDisposable
 
 	// Compute skinning
 	private SkinningSystem mSkinningSystem ~ { _?.Dispose(); delete _; };
+
+	// Per-frame scratch allocator for render data extraction.
+	// Reset at the start of each frame via BeginFrame().
+	// .Allow — Beef classes carry Object's destructor chain; we let the allocator
+	// track and run them on Reset. Render data subclasses should not define user
+	// destructors (convention, not enforced).
+	private FrameAllocator mFrameAllocator = new FrameAllocator(.Allow) ~ delete _;
 
 	// Shader system (not owned)
 	private Sedulous.Shaders.ShaderSystem mShaderSystem;
@@ -73,6 +81,10 @@ public class RenderContext : IDisposable
 
 	/// Compute skinning system.
 	public SkinningSystem SkinningSystem => mSkinningSystem;
+
+	/// Per-frame scratch allocator. Render data allocated here is valid until
+	/// the next BeginFrame() call, which rewinds the allocator.
+	public FrameAllocator FrameAllocator => mFrameAllocator;
 
 	/// Shader system (optional, for passes that need to compile shaders).
 	public Sedulous.Shaders.ShaderSystem ShaderSystem
@@ -181,6 +193,14 @@ public class RenderContext : IDisposable
 	public void ProcessDeletions(uint64 frameNumber)
 	{
 		mGPUResources.ProcessDeletions(frameNumber);
+	}
+
+	/// Begins a new frame — rewinds the frame allocator.
+	/// Must be called after all previous-frame RenderData references have been released
+	/// (typically after all pipelines have executed for the frame).
+	public void BeginFrame()
+	{
+		mFrameAllocator.Reset();
 	}
 
 	public void Dispose()

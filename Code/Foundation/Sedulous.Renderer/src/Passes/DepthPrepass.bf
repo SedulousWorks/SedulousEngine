@@ -20,8 +20,7 @@ class DepthPrepass : PipelinePass
 		if (data == null)
 			return;
 
-		let opaqueBatch = data.GetSortedBatch(RenderCategories.Opaque);
-		if (opaqueBatch.Length == 0)
+		if (data.GetBatchCount(RenderCategories.Opaque) == 0)
 			return;
 
 		// Create SceneDepth as a transient depth texture
@@ -45,8 +44,8 @@ class DepthPrepass : PipelinePass
 	{
 		using (Profiler.Begin("DepthPrepass"))
 		{
-		let renderer = pipeline.RenderContext;
-		let cache = renderer.PipelineStateCache;
+		let renderContext = pipeline.RenderContext;
+		let cache = renderContext.PipelineStateCache;
 		if (cache == null)
 			return;
 
@@ -78,51 +77,8 @@ class DepthPrepass : PipelinePass
 		if (frame.FrameBindGroup != null)
 			encoder.SetBindGroup(BindGroupFrequency.Frame, frame.FrameBindGroup, default);
 
-		let data = view.RenderData;
-		let gpuResources = renderer.GPUResources;
-		let opaqueBatch = data.GetSortedBatch(RenderCategories.Opaque);
-
-		for (int32 i = 0; i < (int32)opaqueBatch.Length; i++)
-		{
-			let mesh = ref data.GetMesh(RenderCategories.Opaque, i);
-			let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
-			if (gpuMesh == null) continue;
-
-			let subMesh = gpuMesh.SubMeshes[mesh.SubMeshIndex];
-
-			// Upload object transform and bind with dynamic offset
-			let objOffset = pipeline.WriteObjectUniforms(view.FrameIndex, mesh.WorldMatrix, mesh.PrevWorldMatrix);
-			if (objOffset == uint32.MaxValue) continue;
-
-			uint32[1] dynamicOffsets = .(objOffset);
-			encoder.SetBindGroup(BindGroupFrequency.DrawCall, frame.DrawCallBindGroup, dynamicOffsets);
-
-			// Use skinned vertex buffer if available
-			IBuffer vertexBuffer = gpuMesh.VertexBuffer;
-			if (mesh.IsSkinned)
-			{
-				let skinningSystem = renderer.SkinningSystem;
-				if (skinningSystem != null)
-				{
-					let key = SkinningKey() { MeshHandle = mesh.MeshHandle, EntityId = mesh.Base.MaterialSortKey };
-					let skinnedVB = skinningSystem.GetSkinnedVertexBuffer(key);
-					if (skinnedVB != null)
-						vertexBuffer = skinnedVB;
-				}
-			}
-
-			encoder.SetVertexBuffer(0, vertexBuffer, 0);
-			if (gpuMesh.IndexBuffer != null)
-			{
-				encoder.SetIndexBuffer(gpuMesh.IndexBuffer, gpuMesh.IndexFormat);
-				encoder.DrawIndexed(subMesh.IndexCount, 1, subMesh.IndexStart, subMesh.BaseVertex, 0);
-			}
-			else
-			{
-				let vertCount = subMesh.IndexCount > 0 ? subMesh.IndexCount : gpuMesh.VertexCount;
-				encoder.Draw(vertCount, 1, 0, 0);
-			}
-		}
+		// Dispatch to registered renderers — depth pass skips material binding.
+		pipeline.RenderCategory(encoder, RenderCategories.Opaque, frame, view, .None);
 		} // DepthPrepass scope
 	}
 }

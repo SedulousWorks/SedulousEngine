@@ -22,11 +22,11 @@ public struct GPULight
 	public const int32 Size = 64; // 4 x float4
 
 	/// Creates a GPULight from extracted LightRenderData.
-	public static GPULight FromRenderData(in LightRenderData data)
+	public static GPULight FromRenderData(LightRenderData data)
 	{
 		return .()
 		{
-			Position = data.Base.Position,
+			Position = data.Position,
 			Type = (float)data.Type,
 			Direction = data.Direction,
 			Range = data.Range,
@@ -109,15 +109,19 @@ public class LightBuffer : IDisposable
 	{
 		let slot = frameIndex % 2;
 		let lights = data.Lights;
+		let lightsCount = (lights != null) ? (int32)lights.Count : 0;
 
-		mLightCount = Math.Min((int32)lights.Length, MaxLights);
+		mLightCount = Math.Min(lightsCount, MaxLights);
 
 		// Pack lights into GPU format
 		if (mLightCount > 0 && mLightBuffers[slot] != null)
 		{
 			GPULight[MaxLights] gpuLights = default;
 			for (int32 i = 0; i < mLightCount; i++)
-				gpuLights[i] = GPULight.FromRenderData(lights[i]);
+			{
+				if (let light = lights[i] as LightRenderData)
+					gpuLights[i] = GPULight.FromRenderData(light);
+			}
 
 			TransferHelper.WriteMappedBuffer(
 				mLightBuffers[slot], 0,

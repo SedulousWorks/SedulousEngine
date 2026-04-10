@@ -20,8 +20,7 @@ class ForwardTransparentPass : PipelinePass
 		if (data == null)
 			return;
 
-		let batch = data.GetSortedBatch(RenderCategories.Transparent);
-		if (batch.Length == 0)
+		if (data.GetBatchCount(RenderCategories.Transparent) == 0)
 			return;
 
 		let outputHandle = graph.GetResource("PipelineOutput");
@@ -49,16 +48,14 @@ class ForwardTransparentPass : PipelinePass
 	{
 		using (Profiler.Begin("ForwardTransparent"))
 		{
-		let renderer = pipeline.RenderContext;
-		let cache = renderer.PipelineStateCache;
+		let renderContext = pipeline.RenderContext;
+		let cache = renderContext.PipelineStateCache;
 		if (cache == null)
 			return;
 
 		encoder.SetViewport(0, 0, (float)view.Width, (float)view.Height, 0.0f, 1.0f);
 		encoder.SetScissor(0, 0, view.Width, view.Height);
 
-		let data = view.RenderData;
-		let gpuResources = renderer.GPUResources;
 		let frame = pipeline.GetFrameResources(view.FrameIndex);
 
 		// Transparent pipeline: same forward shader, alpha blend, depth read-only
@@ -94,46 +91,12 @@ class ForwardTransparentPass : PipelinePass
 		if (frame.FrameBindGroup != null)
 			encoder.SetBindGroup(BindGroupFrequency.Frame, frame.FrameBindGroup, default);
 
-		if (renderer.DefaultMaterialBindGroup != null)
-			encoder.SetBindGroup(BindGroupFrequency.Material, renderer.DefaultMaterialBindGroup, default);
+		if (renderContext.DefaultMaterialBindGroup != null)
+			encoder.SetBindGroup(BindGroupFrequency.Material, renderContext.DefaultMaterialBindGroup, default);
 
-		let batch = data.GetSortedBatch(RenderCategories.Transparent);
-		IBindGroup lastMaterialBindGroup = null;
-
-		// Back-to-front sorted by RenderCategories
-		for (int32 i = 0; i < (int32)batch.Length; i++)
-		{
-			let mesh = ref data.GetMesh(RenderCategories.Transparent, i);
-			let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
-			if (gpuMesh == null) continue;
-
-			let subMesh = gpuMesh.SubMeshes[mesh.SubMeshIndex];
-
-			let objOffset = pipeline.WriteObjectUniforms(view.FrameIndex, mesh.WorldMatrix, mesh.PrevWorldMatrix);
-			if (objOffset == uint32.MaxValue) continue;
-
-			uint32[1] dynamicOffsets = .(objOffset);
-			encoder.SetBindGroup(BindGroupFrequency.DrawCall, frame.DrawCallBindGroup, dynamicOffsets);
-
-			let materialBg = (mesh.MaterialBindGroup != null) ? mesh.MaterialBindGroup : renderer.DefaultMaterialBindGroup;
-			if (materialBg != null && materialBg != lastMaterialBindGroup)
-			{
-				encoder.SetBindGroup(BindGroupFrequency.Material, materialBg, default);
-				lastMaterialBindGroup = materialBg;
-			}
-
-			encoder.SetVertexBuffer(0, gpuMesh.VertexBuffer, 0);
-			if (gpuMesh.IndexBuffer != null)
-			{
-				encoder.SetIndexBuffer(gpuMesh.IndexBuffer, gpuMesh.IndexFormat);
-				encoder.DrawIndexed(subMesh.IndexCount, 1, subMesh.IndexStart, subMesh.BaseVertex, 0);
-			}
-			else
-			{
-				let vertCount = subMesh.IndexCount > 0 ? subMesh.IndexCount : gpuMesh.VertexCount;
-				encoder.Draw(vertCount, 1, 0, 0);
-			}
-		}
+		// Dispatch to registered renderers for the transparent category.
+		// Future: ParticleRenderer registered for Transparent will be called here too.
+		pipeline.RenderCategory(encoder, RenderCategories.Transparent, frame, view, .BindMaterial);
 		} // ForwardTransparent scope
 	}
 }

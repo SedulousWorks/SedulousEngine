@@ -3,13 +3,12 @@ namespace Sedulous.Renderer;
 using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
 
-/// Render data for a static mesh draw call.
+/// Render data for a static or skinned mesh draw call.
 /// One MeshRenderData per submesh per material slot.
-struct MeshRenderData
+///
+/// Allocated from RenderContext.FrameAllocator — trivially destructible.
+public class MeshRenderData : RenderData
 {
-	/// Base render data (position, bounds, sorting).
-	public RenderData Base;
-
 	/// World transform matrix.
 	public Matrix WorldMatrix;
 

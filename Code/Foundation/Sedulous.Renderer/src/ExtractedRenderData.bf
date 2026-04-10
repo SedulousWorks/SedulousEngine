@@ -4,36 +4,21 @@ using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
 
-/// Entry in a sorted render data batch.
-struct SortableRenderData
-{
-	/// Index into the category's data array.
-	public int32 Index;
-
-	/// Sorting key (lower = renders first).
-	public uint64 SortKey;
-}
-
-/// A batch of sorted render data within a single category.
-/// Passes iterate these to issue draw calls.
-struct RenderDataBatch
-{
-	/// Sorted indices into the category's data array.
-	public Span<SortableRenderData> Entries;
-}
-
 /// Per-view container of all extracted render data for one frame.
 /// Component managers add data during extraction (PostTransform phase).
 /// The renderer sorts and batches before passes execute.
-class ExtractedRenderData : IDisposable
+///
+/// Storage is polymorphic — each category holds a List<RenderData>, and entries
+/// are subclasses (MeshRenderData, LightRenderData, DecalRenderData, etc.).
+/// The RenderData instances are allocated from RenderContext.FrameAllocator and
+/// are only valid until the next BeginFrame() — Clear() drops the references
+/// before the allocator is reset.
+public class ExtractedRenderData
 {
-	// Per-category storage
-	private List<MeshRenderData>[RenderCategories.Count] mMeshData;
-	private List<LightRenderData> mLightData = new .() ~ delete _;
-	private List<DecalRenderData> mDecalData = new .() ~ delete _;
-
-	// Sorted batches (populated by SortAndBatch)
-	private List<SortableRenderData>[RenderCategories.Count] mSortedBatches;
+	// Per-category storage (polymorphic — each entry is a RenderData subclass).
+	// Lists themselves are retained across frames; element pointers come from the
+	// frame allocator and are dropped on Clear().
+	private List<RenderData>[RenderCategories.Count] mCategories;
 
 	// View info
 	private Matrix mViewMatrix;
@@ -48,9 +33,15 @@ class ExtractedRenderData : IDisposable
 	public this()
 	{
 		for (int i = 0; i < RenderCategories.Count; i++)
+			mCategories[i] = new .();
+	}
+
+	public ~this()
+	{
+		for (int i = 0; i < RenderCategories.Count; i++)
 		{
-			mMeshData[i] = new .();
-			mSortedBatches[i] = new .();
+			delete mCategories[i];
+			mCategories[i] = null;
 		}
 	}
 
@@ -81,28 +72,18 @@ class ExtractedRenderData : IDisposable
 
 	// ==================== Adding Data ====================
 
-	/// Adds a mesh render data entry to a category.
-	public void AddMesh(RenderDataCategory category, MeshRenderData data)
+	/// Adds a render data entry to a category.
+	/// The data pointer must have been allocated from RenderContext.FrameAllocator —
+	/// it is held by reference until Clear() is called.
+	public void Add(RenderDataCategory category, RenderData data)
 	{
 		if (category.Value < RenderCategories.Count)
-			mMeshData[category.Value].Add(data);
-	}
-
-	/// Adds a light render data entry.
-	public void AddLight(LightRenderData data)
-	{
-		mLightData.Add(data);
-	}
-
-	/// Adds a decal render data entry.
-	public void AddDecal(DecalRenderData data)
-	{
-		mDecalData.Add(data);
+			mCategories[category.Value].Add(data);
 	}
 
 	// ==================== Sorting ====================
 
-	/// Sorts all categories by their sort functions and builds batches.
+	/// Computes sort keys and sorts each category in place.
 	/// Call once after all data has been added, before rendering.
 	public void SortAndBatch()
 	{
@@ -110,25 +91,16 @@ class ExtractedRenderData : IDisposable
 		{
 			let category = RenderDataCategory((uint16)i);
 			let sortFunc = RenderCategories.GetSortFunc(category);
-			let meshes = mMeshData[i];
-			let sorted = mSortedBatches[i];
+			let list = mCategories[i];
 
-			sorted.Clear();
+			// Compute sort keys on the entries themselves
+			for (let entry in list)
+				entry.SortKey = sortFunc(entry, mViewMatrix);
 
-			// Build sortable entries
-			for (int32 j = 0; j < meshes.Count; j++)
+			// In-place sort by SortKey (lower = renders first)
+			if (list.Count > 1)
 			{
-				sorted.Add(.()
-				{
-					Index = j,
-					SortKey = sortFunc(meshes[j].Base, mViewMatrix)
-				});
-			}
-
-			// Sort by key
-			if (sorted.Count > 1)
-			{
-				sorted.Sort(scope (a, b) => {
+				list.Sort(scope (a, b) => {
 					if (a.SortKey < b.SortKey) return -1;
 					if (a.SortKey > b.SortKey) return 1;
 					return 0;
@@ -139,62 +111,37 @@ class ExtractedRenderData : IDisposable
 
 	// ==================== Accessing Data ====================
 
-	/// Gets the sorted batch for a category.
-	public Span<SortableRenderData> GetSortedBatch(RenderDataCategory category)
+	/// Gets the (sorted) render data list for a category.
+	/// Entries are base RenderData — cast to the concrete subclass expected for the category.
+	public List<RenderData> GetBatch(RenderDataCategory category)
 	{
 		if (category.Value < RenderCategories.Count)
-			return mSortedBatches[category.Value];
-		return default;
+			return mCategories[category.Value];
+		return null;
 	}
 
-	/// Gets the mesh render data array for a category.
-	public Span<MeshRenderData> GetMeshData(RenderDataCategory category)
+	/// Convenience: number of entries in a category.
+	public int32 GetBatchCount(RenderDataCategory category)
 	{
 		if (category.Value < RenderCategories.Count)
-			return mMeshData[category.Value];
-		return default;
+			return (int32)mCategories[category.Value].Count;
+		return 0;
 	}
 
-	/// Gets all light data.
-	public Span<LightRenderData> Lights => mLightData;
+	/// Convenience: the Light category list (cast-ready for LightBuffer).
+	public List<RenderData> Lights => mCategories[RenderCategories.Light.Value];
 
-	/// Gets all decal data.
-	public Span<DecalRenderData> Decals => mDecalData;
-
-	/// Gets mesh render data by sorted index.
-	public ref MeshRenderData GetMesh(RenderDataCategory category, int32 sortedIndex)
-	{
-		let sorted = mSortedBatches[category.Value];
-		return ref mMeshData[category.Value][sorted[sortedIndex].Index];
-	}
+	/// Convenience: the Decal category list.
+	public List<RenderData> Decals => mCategories[RenderCategories.Decal.Value];
 
 	// ==================== Clear ====================
 
-	/// Clears all data for reuse next frame.
+	/// Clears all data references for the next frame.
+	/// MUST be called before RenderContext.BeginFrame() resets the frame allocator,
+	/// otherwise the lists would dangle at arena-rewound memory.
 	public void Clear()
 	{
 		for (int i = 0; i < RenderCategories.Count; i++)
-		{
-			mMeshData[i].Clear();
-			mSortedBatches[i].Clear();
-		}
-		mLightData.Clear();
-		mDecalData.Clear();
-	}
-
-	public ~this()
-	{
-		Dispose();
-	}
-
-	public void Dispose()
-	{
-		for (int i = 0; i < RenderCategories.Count; i++)
-		{
-			delete mMeshData[i];
-			mMeshData[i] = null;
-			delete mSortedBatches[i];
-			mSortedBatches[i] = null;
-		}
+			mCategories[i].Clear();
 	}
 }

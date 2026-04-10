@@ -7,6 +7,10 @@ using Sedulous.Core.Mathematics;
 /// Designed to grow as we add culling, LOD, and layer filtering without changing the interface.
 struct RenderExtractionContext
 {
+	/// Shared renderer infrastructure (frame allocator, GPU resources, materials).
+	/// Component managers allocate RenderData instances from RenderContext.FrameAllocator.
+	public RenderContext RenderContext;
+
 	/// Output container — providers add render data here.
 	public ExtractedRenderData RenderData;
 
