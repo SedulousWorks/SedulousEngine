@@ -10,7 +10,7 @@ using Sedulous.Core.Mathematics;
 ///
 /// Sits between the RHI (raw GPU API) and per-view Pipeline (pass execution).
 /// One Renderer per application. Multiple Pipelines can reference the same Renderer.
-public class Renderer : IDisposable
+public class RenderContext : IDisposable
 {
 	private IDevice mDevice;
 	private IQueue mQueue;

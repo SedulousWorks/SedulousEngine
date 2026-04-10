@@ -19,7 +19,7 @@ class SkinningPass : PipelinePass
 		if (data == null)
 			return;
 
-		let renderer = pipeline.Renderer;
+		let renderer = pipeline.RenderContext;
 		if (renderer.SkinningSystem == null)
 			return;
 
@@ -44,7 +44,7 @@ class SkinningPass : PipelinePass
 	{
 		using (Profiler.Begin("GPUSkinning"))
 		{
-		let renderer = pipeline.Renderer;
+		let renderer = pipeline.RenderContext;
 		let data = view.RenderData;
 
 		DispatchCategory(encoder, data, RenderCategories.Opaque, renderer);
@@ -54,10 +54,10 @@ class SkinningPass : PipelinePass
 	}
 
 	private void DispatchCategory(IComputePassEncoder encoder, ExtractedRenderData data,
-		RenderDataCategory category, Renderer renderer)
+		RenderDataCategory category, RenderContext renderContext)
 	{
-		let skinningSystem = renderer.SkinningSystem;
-		let gpuResources = renderer.GPUResources;
+		let skinningSystem = renderContext.SkinningSystem;
+		let gpuResources = renderContext.GPUResources;
 		let batch = data.GetSortedBatch(category);
 
 		for (int32 i = 0; i < (int32)batch.Length; i++)

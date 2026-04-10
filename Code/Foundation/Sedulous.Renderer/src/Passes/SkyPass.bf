@@ -47,7 +47,7 @@ class SkyPass : PipelinePass
 
 	public override Result<void> OnInitialize(Pipeline pipeline)
 	{
-		let renderer = pipeline.Renderer;
+		let renderer = pipeline.RenderContext;
 		mDevice = renderer.Device;
 		let shaderSystem = renderer.ShaderSystem;
 		if (shaderSystem == null)
@@ -85,7 +85,7 @@ class SkyPass : PipelinePass
 		if (mPipeline == null)
 			return;
 
-		let renderer = pipeline.Renderer;
+		let renderer = pipeline.RenderContext;
 		let frame = pipeline.GetFrameResources(view.FrameIndex);
 		let frameSlot = view.FrameIndex % MaxFrames;
 
@@ -130,14 +130,14 @@ class SkyPass : PipelinePass
 		} // Sky scope
 	}
 
-	private Result<void> CreatePipeline(Renderer renderer, ShaderSystem shaderSystem, TextureFormat outputFormat)
+	private Result<void> CreatePipeline(RenderContext renderContext, ShaderSystem shaderSystem, TextureFormat outputFormat)
 	{
 		let shaderResult = shaderSystem.GetShaderPair("sky");
 		if (shaderResult case .Err)
 			return .Err;
 
 		let (vertModule, fragModule) = shaderResult.Value;
-		let device = renderer.Device;
+		let device = renderContext.Device;
 
 		// Sky bind group layout (set 1): b0=SkyParams, t0=EnvironmentMap, s0=SkySampler
 		BindGroupLayoutEntry[3] skyEntries = .(
@@ -153,7 +153,7 @@ class SkyPass : PipelinePass
 			return .Err;
 
 		// Pipeline layout: set 0 = frame, set 1 = sky
-		let frameLayout = renderer.FrameBindGroupLayout;
+		let frameLayout = renderContext.FrameBindGroupLayout;
 		IBindGroupLayout[2] layouts = .(frameLayout, mSkyBindGroupLayout);
 
 		if (device.CreatePipelineLayout(.(layouts)) case .Ok(let plLayout))

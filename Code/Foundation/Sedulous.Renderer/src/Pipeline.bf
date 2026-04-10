@@ -17,7 +17,7 @@ using Sedulous.Profiler;
 public class Pipeline : IDisposable
 {
 	// Shared infrastructure (not owned)
-	private Renderer mRenderer;
+	private RenderContext mRenderContext;
 
 	// Passes
 	private List<PipelinePass> mPasses = new .() ~ delete _;
@@ -45,7 +45,7 @@ public class Pipeline : IDisposable
 	// ==================== Properties ====================
 
 	/// The shared renderer infrastructure.
-	public Renderer Renderer => mRenderer;
+	public RenderContext RenderContext => mRenderContext;
 
 	/// The render graph.
 	public RenderGraph RenderGraph => mRenderGraph;
@@ -84,13 +84,13 @@ public class Pipeline : IDisposable
 	// ==================== Lifecycle ====================
 
 	/// Initializes the pipeline with a reference to the shared renderer.
-	public Result<void> Initialize(Renderer renderer, uint32 width, uint32 height, TextureFormat outputFormat = .RGBA16Float)
+	public Result<void> Initialize(RenderContext renderContext, uint32 width, uint32 height, TextureFormat outputFormat = .RGBA16Float)
 	{
-		mRenderer = renderer;
+		mRenderContext = renderContext;
 		mOutputFormat = outputFormat;
 
 		// Render graph
-		mRenderGraph = new RenderGraph(renderer.Device, .() { FrameBufferCount = MaxFramesInFlight });
+		mRenderGraph = new RenderGraph(renderContext.Device, .() { FrameBufferCount = MaxFramesInFlight });
 
 		// Create output texture
 		if (CreateOutputTexture(width, height) case .Err)
@@ -127,7 +127,7 @@ public class Pipeline : IDisposable
 	/// Shuts down the pipeline and releases per-view resources.
 	public void Shutdown()
 	{
-		let device = mRenderer?.Device;
+		let device = mRenderContext?.Device;
 		if (device != null)
 			device.WaitIdle();
 
@@ -161,7 +161,7 @@ public class Pipeline : IDisposable
 		// Release output texture
 		DestroyOutputTexture();
 
-		mRenderer = null;
+		mRenderContext = null;
 	}
 
 	// ==================== Rendering ====================
@@ -184,14 +184,14 @@ public class Pipeline : IDisposable
 
 			// Upload light data
 			if (view.RenderData != null)
-				mRenderer.LightBuffer.Upload(view.RenderData, view.FrameIndex);
+				mRenderContext.LightBuffer.Upload(view.RenderData, view.FrameIndex);
 
 			// Rebuild frame bind group (includes light buffer)
 			RebuildFrameBindGroup(frame, view.FrameIndex);
 		}
 
 		// Process deferred GPU resource deletions
-		mRenderer.ProcessDeletions(mFrameNumber);
+		mRenderContext.ProcessDeletions(mFrameNumber);
 
 		// Set output size for render graph (affects relative-sized transients)
 		mRenderGraph.SetOutputSize(mOutputWidth, mOutputHeight);
@@ -258,7 +258,7 @@ public class Pipeline : IDisposable
 		if (width == mOutputWidth && height == mOutputHeight)
 			return;
 
-		mRenderer.Device.WaitIdle();
+		mRenderContext.Device.WaitIdle();
 		DestroyOutputTexture();
 		CreateOutputTexture(width, height);
 
@@ -329,7 +329,7 @@ public class Pipeline : IDisposable
 			SampleCount = 1
 		};
 
-		if (mRenderer.Device.CreateTexture(texDesc) case .Ok(let tex))
+		if (mRenderContext.Device.CreateTexture(texDesc) case .Ok(let tex))
 			mOutputTexture = tex;
 		else
 			return .Err;
@@ -341,7 +341,7 @@ public class Pipeline : IDisposable
 			Dimension = .Texture2D
 		};
 
-		if (mRenderer.Device.CreateTextureView(mOutputTexture, viewDesc) case .Ok(let view))
+		if (mRenderContext.Device.CreateTextureView(mOutputTexture, viewDesc) case .Ok(let view))
 			mOutputTextureView = view;
 		else
 			return .Err;
@@ -351,7 +351,7 @@ public class Pipeline : IDisposable
 
 	private void DestroyOutputTexture()
 	{
-		let device = mRenderer?.Device;
+		let device = mRenderContext?.Device;
 		if (device == null) return;
 
 		if (mOutputTextureView != null)
@@ -401,7 +401,7 @@ public class Pipeline : IDisposable
 
 	private Result<void> CreatePerFrameResources()
 	{
-		let device = mRenderer.Device;
+		let device = mRenderContext.Device;
 
 		for (int i = 0; i < MaxFramesInFlight; i++)
 		{
@@ -445,7 +445,7 @@ public class Pipeline : IDisposable
 			}
 
 			// Draw call bind group with dynamic offset into the object buffer
-			let drawCallLayout = mRenderer.DrawCallBindGroupLayout;
+			let drawCallLayout = mRenderContext.DrawCallBindGroupLayout;
 			if (drawCallLayout != null)
 			{
 				BindGroupEntry[1] drawBgEntries = .(
@@ -473,17 +473,17 @@ public class Pipeline : IDisposable
 	/// Rebuilds the frame bind group with current light data for this frame.
 	private void RebuildFrameBindGroup(PerFrameResources frame, int32 frameIndex)
 	{
-		let frameLayout = mRenderer.FrameBindGroupLayout;
+		let frameLayout = mRenderContext.FrameBindGroupLayout;
 		if (frameLayout == null || frame.SceneUniformBuffer == null)
 			return;
 
-		let device = mRenderer.Device;
+		let device = mRenderContext.Device;
 
 		// Destroy previous bind group
 		if (frame.FrameBindGroup != null)
 			device.DestroyBindGroup(ref frame.FrameBindGroup);
 
-		let lightBuffer = mRenderer.LightBuffer;
+		let lightBuffer = mRenderContext.LightBuffer;
 		let lightBuf = lightBuffer.GetLightBuffer(frameIndex);
 		let lightParamsBuf = lightBuffer.GetLightParamsBuffer(frameIndex);
 

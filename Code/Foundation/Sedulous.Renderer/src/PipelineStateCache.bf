@@ -75,16 +75,16 @@ class PipelineStateCache : IDisposable
 {
 	private IDevice mDevice;
 	private ShaderSystem mShaderSystem;
-	private Renderer mRenderer;
+	private RenderContext mRenderContext;
 
 	private Dictionary<int, IRenderPipeline> mPipelineCache = new .() ~ delete _;
 	private Dictionary<int, IPipelineLayout> mLayoutCache = new .() ~ delete _;
 
-	public this(IDevice device, ShaderSystem shaderSystem, Renderer renderer)
+	public this(IDevice device, ShaderSystem shaderSystem, RenderContext renderContext)
 	{
 		mDevice = device;
 		mShaderSystem = shaderSystem;
-		mRenderer = renderer;
+		mRenderContext = renderContext;
 	}
 
 	/// Gets or creates a pipeline for a material config with caller-provided vertex layouts.
@@ -192,15 +192,15 @@ class PipelineStateCache : IDisposable
 	private IPipelineLayout GetOrCreatePipelineLayout(IBindGroupLayout materialLayout)
 	{
 		// Use default material layout if none provided
-		let effectiveMatLayout = materialLayout != null ? materialLayout : mRenderer.MaterialBindGroupLayout;
+		let effectiveMatLayout = materialLayout != null ? materialLayout : mRenderContext.MaterialBindGroupLayout;
 
 		int hash = (int)(void*)Internal.UnsafeCastToPtr(effectiveMatLayout);
 
 		if (mLayoutCache.TryGetValue(hash, let cached))
 			return cached;
 
-		let frameLayout = mRenderer.FrameBindGroupLayout;
-		let drawLayout = mRenderer.DrawCallBindGroupLayout;
+		let frameLayout = mRenderContext.FrameBindGroupLayout;
+		let drawLayout = mRenderContext.DrawCallBindGroupLayout;
 
 		// Always create a full 4-set layout: frame (0) + pass (1) + material (2) + draw (3)
 		// Set 1 (pass) reuses frame layout as placeholder for now

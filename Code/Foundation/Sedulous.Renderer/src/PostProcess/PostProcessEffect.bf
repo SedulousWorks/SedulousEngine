@@ -20,7 +20,7 @@ abstract class PostProcessEffect
 
 	/// Called once when the effect is added to the stack.
 	/// Create GPU resources (shaders, samplers, constant buffers) here.
-	public virtual Result<void> OnInitialize(Renderer renderer) { return .Ok; }
+	public virtual Result<void> OnInitialize(RenderContext renderContext) { return .Ok; }
 
 	/// Called when the effect is removed or the stack is destroyed.
 	/// Release GPU resources created in OnInitialize.
@@ -32,5 +32,5 @@ abstract class PostProcessEffect
 
 	/// Add render graph passes for this effect.
 	/// Read from ctx.Input, write to ctx.Output.
-	public abstract void AddPasses(RenderGraph graph, RenderView view, Renderer renderer, PostProcessContext ctx);
+	public abstract void AddPasses(RenderGraph graph, RenderView view, RenderContext renderContext, PostProcessContext ctx);
 }

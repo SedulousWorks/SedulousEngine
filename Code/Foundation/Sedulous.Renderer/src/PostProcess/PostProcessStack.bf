@@ -19,7 +19,7 @@ class PostProcessStack
 {
 	private List<PostProcessEffect> mEffects = new .() ~ DeleteContainerAndItems!(_);
 	private PostProcessContext mContext = new .() ~ delete _;
-	private Renderer mRenderer;
+	private RenderContext mRenderContext;
 
 	/// Whether any effects are enabled.
 	public bool HasActiveEffects
@@ -33,15 +33,15 @@ class PostProcessStack
 	}
 
 	/// Initializes the stack with a reference to the shared renderer.
-	public void Initialize(Renderer renderer)
+	public void Initialize(RenderContext renderContext)
 	{
-		mRenderer = renderer;
+		mRenderContext = renderContext;
 	}
 
 	/// Adds an effect to the end of the chain. Takes ownership.
 	public Result<void> AddEffect(PostProcessEffect effect)
 	{
-		if (effect.OnInitialize(mRenderer) case .Err)
+		if (effect.OnInitialize(mRenderContext) case .Err)
 			return .Err;
 
 		mEffects.Add(effect);
@@ -109,7 +109,7 @@ class PostProcessStack
 				mContext.Output = graph.CreateTransient(scope $"PostFX_{effect.Name}", desc);
 			}
 
-			effect.AddPasses(graph, view, mRenderer, mContext);
+			effect.AddPasses(graph, view, mRenderContext, mContext);
 
 			currentInput = mContext.Output;
 		}

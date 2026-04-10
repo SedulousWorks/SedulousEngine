@@ -51,7 +51,7 @@ class ForwardOpaquePass : PipelinePass
 	{
 		using (Profiler.Begin("ForwardOpaque"))
 		{
-		let renderer = pipeline.Renderer;
+		let renderer = pipeline.RenderContext;
 		let cache = renderer.PipelineStateCache;
 		if (cache == null)
 			return;
@@ -110,7 +110,7 @@ class ForwardOpaquePass : PipelinePass
 	}
 
 	private void DrawBatch(IRenderPassEncoder encoder, ExtractedRenderData data, RenderDataCategory category,
-		GPUResourceManager gpuResources, Renderer renderer, Pipeline pipeline, PerFrameResources frame,
+		GPUResourceManager gpuResources, RenderContext renderContext, Pipeline pipeline, PerFrameResources frame,
 		RenderView view, ref IBindGroup lastMaterialBindGroup)
 	{
 		let batch = data.GetSortedBatch(category);
@@ -129,7 +129,7 @@ class ForwardOpaquePass : PipelinePass
 			uint32[1] dynamicOffsets = .(objOffset);
 			encoder.SetBindGroup(BindGroupFrequency.DrawCall, frame.DrawCallBindGroup, dynamicOffsets);
 
-			let materialBg = (mesh.MaterialBindGroup != null) ? mesh.MaterialBindGroup : renderer.DefaultMaterialBindGroup;
+			let materialBg = (mesh.MaterialBindGroup != null) ? mesh.MaterialBindGroup : renderContext.DefaultMaterialBindGroup;
 			if (materialBg != null && materialBg != lastMaterialBindGroup)
 			{
 				encoder.SetBindGroup(BindGroupFrequency.Material, materialBg, default);
@@ -140,7 +140,7 @@ class ForwardOpaquePass : PipelinePass
 			IBuffer vertexBuffer = gpuMesh.VertexBuffer;
 			if (mesh.IsSkinned)
 			{
-				let skinningSystem = renderer.SkinningSystem;
+				let skinningSystem = renderContext.SkinningSystem;
 				if (skinningSystem != null)
 				{
 					let key = SkinningKey() { MeshHandle = mesh.MeshHandle, EntityId = mesh.MaterialKey };

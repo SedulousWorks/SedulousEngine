@@ -45,7 +45,7 @@ class DepthPrepass : PipelinePass
 	{
 		using (Profiler.Begin("DepthPrepass"))
 		{
-		let renderer = pipeline.Renderer;
+		let renderer = pipeline.RenderContext;
 		let cache = renderer.PipelineStateCache;
 		if (cache == null)
 			return;

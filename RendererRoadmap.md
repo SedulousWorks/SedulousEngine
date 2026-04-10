@@ -20,9 +20,16 @@ Targeted feature set for game-readiness. Not a port of the old renderer — each
 - **Renderer/Pipeline split** — shared infrastructure (Renderer) separated from per-view pass execution (Pipeline)
 - **Post-processing stack** — PostProcessStack with TonemapEffect (ACES filmic), sRGB swapchain gamma
 - **Masked rendering** — BlendMode.Masked with AlphaCutoff, drawn in ForwardOpaquePass
-- **Transparent rendering** — TransparentForwardPass with alpha blending, back-to-front sorted
+- **Transparent rendering** — ForwardTransparentPass with alpha blending, back-to-front sorted
 - **Sky rendering** — Equirectangular HDR environment map with procedural gradient fallback
 - **IModuleSerializer** — scene module-level serialization support (for non-entity scene data)
+- **Compute skinning** — SkinningSystem + SkinningPass pre-skins vertices via compute shader (72→48 bytes), all passes draw skinned meshes as static
+- **SkinnedMeshComponent** — owns AnimationPlayer, manager evaluates animation + uploads bone matrices + auto-creates bone buffer
+- **Resource pipeline integration** — RenderSubsystem registers resource managers (StaticMesh, SkinnedMesh, Texture, Material); AnimationSubsystem registers Skeleton + AnimationClip managers
+- **RenderResourceResolver** — shared service for mesh/material/texture resolution with GPU upload, texture cache, automatic MaterialInstance preparation
+- **ResolvedResource<T>** — generic tracking for first load, deferred retry, and hot reload detection
+- **Component ResourceRef pattern** — components store ResourceRef (deep-copy setters), managers resolve per-frame via resolver
+- **Material ownership** — SetMaterial AddRefs, component destructor ReleaseRefs; resolver releases after handoff
 
 ## Phase 5: Tone Mapping & Post-Processing Foundation
 
@@ -288,9 +295,9 @@ Recommended implementation order based on dependencies and game impact:
 1. ~~**Phase 5.1** — Tone mapping~~ DONE
 2. ~~**Phase 11** — Sky~~ DONE
 3. ~~**Phase 6** — Transparency + masked~~ DONE
-4. **Phase 12** — Debug & overlay rendering (essential for development)
-5. **Phase 7** — Shadows (major visual quality jump)
-6. **Phase 8** — GPU skinning (characters)
+4. ~~**Phase 8** — Compute skinning~~ DONE
+5. **Phase 12** — Debug & overlay rendering (essential for development)
+6. **Phase 7** — Shadows (major visual quality jump)
 7. **Phase 9** — Decals (environmental detail)
 8. **Phase 10** — Particles (effects, separate project)
 9. **Phase 5.2-5.3** — Bloom and post-processing effects (polish)

@@ -41,7 +41,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	private uint64[MAX_FRAMES_IN_FLIGHT] mFrameFenceValues;
 
 	// Renderer (shared infrastructure)
-	private Renderer mRenderer ~ delete _;
+	private RenderContext mRenderContext ~ delete _;
 
 	// Pipeline (per-view pass execution)
 	private Pipeline mPipeline ~ delete _;
@@ -87,7 +87,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 
 	public ISwapChain SwapChain => mSwapChain;
 	public IQueue GraphicsQueue => mGraphicsQueue;
-	public Renderer Renderer => mRenderer;
+	public RenderContext RenderContext => mRenderContext;
 	public Pipeline Pipeline => mPipeline;
 
 	// ==================== Lifecycle ====================
@@ -124,13 +124,13 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 			mFrameFence = fence;
 
 		// Renderer (shared infrastructure)
-		mRenderer = new Renderer();
-		mRenderer.Initialize(mDevice, mGraphicsQueue);
-		mRenderer.ShaderSystem = ShaderSystem;
+		mRenderContext = new RenderContext();
+		mRenderContext.Initialize(mDevice, mGraphicsQueue);
+		mRenderContext.ShaderSystem = ShaderSystem;
 
 		// Pipeline (per-view pass execution)
 		mPipeline = new Pipeline();
-		mPipeline.Initialize(mRenderer, (uint32)mWindow.Width, (uint32)mWindow.Height);
+		mPipeline.Initialize(mRenderContext, (uint32)mWindow.Width, (uint32)mWindow.Height);
 
 		// Register default passes
 		mPipeline.AddPass(new SkinningPass());
@@ -141,7 +141,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 
 		// Post-processing stack
 		let postStack = new PostProcessStack();
-		postStack.Initialize(mRenderer);
+		postStack.Initialize(mRenderContext);
 		postStack.AddEffect(new TonemapEffect());
 		mPipeline.PostProcessStack = postStack;
 
@@ -167,7 +167,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		Context.Resources.AddResourceManager(mMaterialManager);
 
 		// Shared resource resolver
-		mResolver = new RenderResourceResolver(Context.Resources, mRenderer.GPUResources, mRenderer.MaterialSystem);
+		mResolver = new RenderResourceResolver(Context.Resources, mRenderContext.GPUResources, mRenderContext.MaterialSystem);
 	}
 
 	protected override void OnShutdown()
@@ -194,8 +194,8 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		// Shutdown pipeline then renderer (pipeline first — it references renderer)
 		if (mPipeline != null)
 			mPipeline.Shutdown();
-		if (mRenderer != null)
-			mRenderer.Shutdown();
+		if (mRenderContext != null)
+			mRenderContext.Shutdown();
 
 		// Frame pacing resources
 		for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
@@ -405,12 +405,12 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	public void OnSceneCreated(Scene scene)
 	{
 		let meshMgr = new MeshComponentManager();
-		meshMgr.GPUResources = mRenderer?.GPUResources;
+		meshMgr.GPUResources = mRenderContext?.GPUResources;
 		meshMgr.Resolver = mResolver;
 		scene.AddModule(meshMgr);
 
 		let skinnedMeshMgr = new SkinnedMeshComponentManager();
-		skinnedMeshMgr.GPUResources = mRenderer?.GPUResources;
+		skinnedMeshMgr.GPUResources = mRenderContext?.GPUResources;
 		skinnedMeshMgr.Resolver = mResolver;
 		scene.AddModule(skinnedMeshMgr);
 

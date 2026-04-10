@@ -32,10 +32,10 @@ class TonemapEffect : PostProcessEffect
 
 	public override StringView Name => "Tonemap";
 
-	public override Result<void> OnInitialize(Renderer renderer)
+	public override Result<void> OnInitialize(RenderContext renderContext)
 	{
-		mDevice = renderer.Device;
-		let shaderSystem = renderer.ShaderSystem;
+		mDevice = renderContext.Device;
+		let shaderSystem = renderContext.ShaderSystem;
 		if (shaderSystem == null)
 			return .Err;
 
@@ -118,7 +118,7 @@ class TonemapEffect : PostProcessEffect
 		return .Ok;
 	}
 
-	public override void AddPasses(RenderGraph graph, RenderView view, Renderer renderer, PostProcessContext ctx)
+	public override void AddPasses(RenderGraph graph, RenderView view, RenderContext renderContext, PostProcessContext ctx)
 	{
 		using (Profiler.Begin("Tonemap"))
 		{

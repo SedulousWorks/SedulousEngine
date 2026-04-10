@@ -62,7 +62,7 @@ class SandboxApp : EngineApplication
 
 		let sceneSub = Context.GetSubsystem<SceneSubsystem>();
 		let renderSub = Context.GetSubsystem<RenderSubsystem>();
-		let renderer = renderSub.Renderer;
+		let renderer = renderSub.RenderContext;
 		let matSystem = renderer.MaterialSystem;
 
 		// Create scene
@@ -396,7 +396,7 @@ class SandboxApp : EngineApplication
 	protected override void OnShutdown()
 	{
 		let renderSub = Context.GetSubsystem<RenderSubsystem>();
-		let device = renderSub.Renderer.Device;
+		let device = renderSub.RenderContext.Device;
 
 		// Clear sky texture reference before destroying
 		if (let skyPass = renderSub.Pipeline.GetPass<SkyPass>())
