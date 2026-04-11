@@ -52,6 +52,12 @@ public enum RenderBatchFlags : uint32
 /// setup, the renderer owns iteration + draw call emission.
 public abstract class Renderer
 {
+	/// Called once when this renderer is registered on a RenderContext. Subclasses
+	/// override this to create shared GPU resources (material templates, bind
+	/// group layouts, per-frame buffers) that depend on the context. Default
+	/// implementation is a no-op.
+	public virtual void OnRegistered(RenderContext context) { }
+
 	/// Categories this renderer participates in. The pipeline registers the renderer
 	/// against each of these; passes invoking those categories will call RenderBatch.
 	public abstract Span<RenderDataCategory> GetSupportedCategories();

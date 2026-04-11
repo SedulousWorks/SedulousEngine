@@ -144,6 +144,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		// and the ShadowPipeline dispatch through these.
 		mRenderContext.RegisterRenderer(new MeshRenderer());
 		mRenderContext.RegisterRenderer(new SpriteRenderer());
+		mRenderContext.RegisterRenderer(new DecalRenderer());
 
 		// Pipeline (per-view pass execution)
 		mPipeline = new Pipeline();
@@ -158,14 +159,16 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		//   1. Skinning (compute)
 		//   2. Depth prepass (opaque + masked)
 		//   3. Forward opaque + masked (fills color + uses prepass depth)
-		//   4. Sky (fills where depth == far — must be BEFORE transparent so
-		//      transparent/sprite draws don't get overwritten by the sky backdrop)
-		//   5. Forward transparent (sprites blend over sky + opaque)
-		//   6. Debug lines (depth-tested on top of everything)
-		//   7. 2D overlay (no depth — final HUD/text)
+		//   4. Decal pass (samples SceneDepth, composes on top of opaque)
+		//   5. Sky (fills where depth == far — before transparent so transparent
+		//      draws don't get overwritten by the sky backdrop)
+		//   6. Forward transparent (sprites/particles blend over sky + opaque)
+		//   7. Debug lines (depth-tested on top of everything)
+		//   8. 2D overlay (no depth — final HUD/text)
 		mPipeline.AddPass(new SkinningPass());
 		mPipeline.AddPass(new DepthPrepass());
 		mPipeline.AddPass(new ForwardOpaquePass());
+		mPipeline.AddPass(new DecalPass());
 		mPipeline.AddPass(new SkyPass());
 		mPipeline.AddPass(new ForwardTransparentPass());
 		mPipeline.AddPass(new DebugPass());
@@ -649,6 +652,11 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		spriteMgr.Resolver = mResolver;
 		spriteMgr.RenderContext = mRenderContext;
 		scene.AddModule(spriteMgr);
+
+		let decalMgr = new DecalComponentManager();
+		decalMgr.Resolver = mResolver;
+		decalMgr.RenderContext = mRenderContext;
+		scene.AddModule(decalMgr);
 
 		scene.AddModule(new CameraComponentManager());
 		scene.AddModule(new LightComponentManager());

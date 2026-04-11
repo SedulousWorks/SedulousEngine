@@ -129,6 +129,10 @@ public class RenderContext : IDisposable
 
 		mOwnedRenderers.Add(renderer);
 
+		// Let the renderer create its shared GPU resources (material templates,
+		// bind group layouts, per-frame buffers) now that it has a live context.
+		renderer.OnRegistered(this);
+
 		let categories = renderer.GetSupportedCategories();
 		for (let cat in categories)
 		{
@@ -330,7 +334,10 @@ public class RenderContext : IDisposable
 		// Draw call bind group layout (set 3): object uniforms with dynamic offset
 		//   b0: ObjectUniforms (world matrix, prev world matrix) — dynamic offset per draw
 		BindGroupLayoutEntry[1] drawEntries = .(
-			.() { Binding = 0, Visibility = .Vertex, Type = .UniformBuffer, HasDynamicOffset = true }
+			// Vertex + Fragment visibility: mesh shaders only read object uniforms
+			// in the vertex stage, but decals sample the cbuffer (InvWorld, Color,
+			// AngleFade) from the fragment stage too.
+			.() { Binding = 0, Visibility = .Vertex | .Fragment, Type = .UniformBuffer, HasDynamicOffset = true }
 		);
 
 		BindGroupLayoutDesc drawLayoutDesc = .()

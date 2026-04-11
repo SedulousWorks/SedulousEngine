@@ -193,13 +193,18 @@ class SandboxApp : EngineApplication
 		// Load a few animal icons from the Kenney pack and spawn sprites exercising
 		// all three billboard orientation modes.
 		{
-			CreateSprite(scene, resources, "textures/kenney_animal-pack-remastered/PNG/Round/fox.png",
+			CreateSprite(scene, resources, "textures/kenney_animal-pack-remastered/PNG/Round/rabbit.png",
 				.(-4.0f, 0.2f, 2.0f), .(1.2f, 1.2f), .CameraFacing);
 			CreateSprite(scene, resources, "textures/kenney_animal-pack-remastered/PNG/Round/bear.png",
 				.( 0.0f, 1.6f, 2.0f), .(1.2f, 1.2f), .CameraFacingY);
 			CreateSprite(scene, resources, "textures/kenney_animal-pack-remastered/PNG/Round/chicken.png",
 				.( 4.0f, 0.2f, 2.0f), .(1.2f, 1.2f), .WorldAligned);
 		}
+
+		// ==================== Decal ====================
+		// Projects a Kenney animal icon downward onto the ground plane.
+		CreateDecal(scene, resources, "textures/kenney_animal-pack-remastered/PNG/Round/panda.png",
+			.(0.0f, -0.5f, 2.5f), .(3.0f, 3.0f, 3.0f));
 
 		// ==================== Animated Fox ====================
 
@@ -463,6 +468,44 @@ class SandboxApp : EngineApplication
 			comp.SetTextureRef(texRef);
 			comp.Size = size;
 			comp.Orientation = orientation;
+		}
+	}
+
+	/// Loads a decal texture and creates a decal entity projecting downward
+	/// (local -Z axis in identity orientation) at the given world position.
+	private void CreateDecal(Scene scene, ResourceSystem resources, StringView relativePath,
+		Vector3 position, Vector3 size)
+	{
+		let fullPath = scope String();
+		GetAssetPath(relativePath, fullPath);
+
+		Image image = null;
+		if (ImageLoaderFactory.LoadImage(fullPath) case .Ok(var loaded))
+			image = loaded;
+		else
+		{
+			Console.WriteLine(scope $"WARNING: Decal texture not found: {relativePath}");
+			return;
+		}
+
+		let texRes = new TextureResource(image, true);
+		resources.AddResource<TextureResource>(texRes);
+		mSpriteTextures.Add(texRes); // reuse shutdown list
+
+		let entity = scene.CreateEntity("Decal");
+		// Rotate so local +Z (decal forward) points world -Y (downward).
+		let rot = Quaternion.CreateFromAxisAngle(.(1, 0, 0), Math.PI_f * 0.5f);
+		scene.SetLocalTransform(entity, .() { Position = position, Rotation = rot, Scale = .One });
+
+		let decalMgr = scene.GetModule<DecalComponentManager>();
+		let handle = decalMgr.CreateComponent(entity);
+		if (let comp = decalMgr.Get(handle))
+		{
+			var texRef = ResourceRef(texRes.Id, "");
+			defer texRef.Dispose();
+			comp.SetTextureRef(texRef);
+			comp.Size = size;
+			comp.Color = .(1, 1, 1, 1);
 		}
 	}
 

@@ -325,6 +325,28 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		return offset;
 	}
 
+	/// Writes arbitrary per-draw uniform bytes to the per-frame object buffer and
+	/// returns the dynamic offset. Used by renderers whose per-draw uniforms have
+	/// a layout different from ObjectUniforms (e.g. DecalRenderer packs world +
+	/// invWorld + color + angleFade). The caller is responsible for honoring the
+	/// 256-byte slot alignment (data.Length must be ≤ ObjectAlignment).
+	public uint32 WriteDrawCallBytes(int32 frameIndex, Span<uint8> data)
+	{
+		let frame = mFrameResources[frameIndex % MaxFramesInFlight];
+		if (frame == null || frame.ObjectUniformBuffer == null)
+			return uint32.MaxValue;
+
+		if (frame.ObjectBufferOffset >= PerFrameResources.MaxObjects * PerFrameResources.ObjectAlignment)
+			return uint32.MaxValue;
+		if (data.Length > PerFrameResources.ObjectAlignment)
+			return uint32.MaxValue;
+
+		let offset = frame.ObjectBufferOffset;
+		TransferHelper.WriteMappedBuffer(frame.ObjectUniformBuffer, (uint64)offset, data);
+		frame.ObjectBufferOffset += PerFrameResources.ObjectAlignment;
+		return offset;
+	}
+
 	public void Dispose()
 	{
 		Shutdown();
