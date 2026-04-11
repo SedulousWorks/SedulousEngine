@@ -1,0 +1,32 @@
+<TextureAtlas imagePath="round_nodetails.png">
+	<SubTexture name="bear.png" x="643" y="513" width="128" height="129"/>
+	<SubTexture name="buffalo.png" x="129" y="263" width="129" height="129"/>
+	<SubTexture name="chick.png" x="258" y="640" width="129" height="128"/>
+	<SubTexture name="chicken.png" x="643" y="257" width="128" height="128"/>
+	<SubTexture name="cow.png" x="129" y="520" width="129" height="128"/>
+	<SubTexture name="crocodile.png" x="258" y="384" width="129" height="128"/>
+	<SubTexture name="dog.png" x="261" y="0" width="129" height="128"/>
+	<SubTexture name="duck.png" x="261" y="128" width="129" height="128"/>
+	<SubTexture name="elephant.png" x="387" y="256" width="129" height="128"/>
+	<SubTexture name="frog.png" x="390" y="0" width="128" height="129"/>
+	<SubTexture name="giraffe.png" x="387" y="640" width="128" height="129"/>
+	<SubTexture name="goat.png" x="515" y="640" width="128" height="129"/>
+	<SubTexture name="gorilla.png" x="258" y="512" width="129" height="128"/>
+	<SubTexture name="hippo.png" x="387" y="384" width="128" height="128"/>
+	<SubTexture name="horse.png" x="0" y="391" width="129" height="128"/>
+	<SubTexture name="monkey.png" x="643" y="642" width="128" height="128"/>
+	<SubTexture name="moose.png" x="0" y="263" width="129" height="128"/>
+	<SubTexture name="narwhal.png" x="0" y="0" width="132" height="132"/>
+	<SubTexture name="owl.png" x="515" y="512" width="128" height="128"/>
+	<SubTexture name="panda.png" x="258" y="256" width="129" height="128"/>
+	<SubTexture name="parrot.png" x="132" y="128" width="129" height="128"/>
+	<SubTexture name="penguin.png" x="132" y="0" width="129" height="128"/>
+	<SubTexture name="pig.png" x="387" y="512" width="128" height="128"/>
+	<SubTexture name="rabbit.png" x="129" y="392" width="129" height="128"/>
+	<SubTexture name="rhino.png" x="516" y="129" width="128" height="128"/>
+	<SubTexture name="sloth.png" x="0" y="519" width="129" height="128"/>
+	<SubTexture name="snake.png" x="518" y="0" width="128" height="128"/>
+	<SubTexture name="walrus.png" x="643" y="385" width="128" height="128"/>
+	<SubTexture name="whale.png" x="0" y="132" width="132" height="131"/>
+	<SubTexture name="zebra.png" x="515" y="384" width="128" height="128"/>
+</TextureAtlas>
