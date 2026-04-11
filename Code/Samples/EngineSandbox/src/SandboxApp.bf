@@ -47,6 +47,9 @@ class SandboxApp : EngineApplication
 	Skeleton mFoxSkeleton ~ delete _;
 	AnimationClip mFoxWalkClip ~ delete _;
 	List<TextureResource> mFoxTextures = new .() ~ delete _;
+
+	// Sprite textures — held by the app so we release refs on shutdown.
+	List<TextureResource> mSpriteTextures = new .() ~ delete _;
 	List<MaterialResource> mFoxMaterialResources = new .() ~ delete _;
 	MaterialInstance mRedMaterial ~ _?.ReleaseRef();
 	MaterialInstance mBlueMaterial ~ _?.ReleaseRef();
@@ -185,6 +188,18 @@ class SandboxApp : EngineApplication
 		let maskedEntity = scene.CreateEntity("MaskedCube");
 		scene.SetLocalTransform(maskedEntity, .() { Position = .(3.0f, -0.5f, 1.0f), Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, maskedEntity, cubeRef, mMaskedMaterial);
+
+		// ==================== Sprites ====================
+		// Load a few animal icons from the Kenney pack and spawn sprites exercising
+		// all three billboard orientation modes.
+		{
+			CreateSprite(scene, resources, "textures/kenney_animal-pack-remastered/PNG/Round/fox.png",
+				.(-4.0f, 0.2f, 2.0f), .(1.2f, 1.2f), .CameraFacing);
+			CreateSprite(scene, resources, "textures/kenney_animal-pack-remastered/PNG/Round/bear.png",
+				.( 0.0f, 1.6f, 2.0f), .(1.2f, 1.2f), .CameraFacingY);
+			CreateSprite(scene, resources, "textures/kenney_animal-pack-remastered/PNG/Round/chicken.png",
+				.( 4.0f, 0.2f, 2.0f), .(1.2f, 1.2f), .WorldAligned);
+		}
 
 		// ==================== Animated Fox ====================
 
@@ -415,6 +430,42 @@ class SandboxApp : EngineApplication
 		}
 	}
 
+	/// Loads a sprite texture from the assets directory, registers it as a
+	/// TextureResource, and creates a sprite entity at the given position.
+	private void CreateSprite(Scene scene, ResourceSystem resources, StringView relativePath,
+		Vector3 position, Vector2 size, SpriteOrientation orientation)
+	{
+		let fullPath = scope String();
+		GetAssetPath(relativePath, fullPath);
+
+		Image image = null;
+		if (ImageLoaderFactory.LoadImage(fullPath) case .Ok(var loaded))
+			image = loaded;
+		else
+		{
+			Console.WriteLine(scope $"WARNING: Sprite texture not found: {relativePath}");
+			return;
+		}
+
+		let texRes = new TextureResource(image, true); // takes ownership of Image
+		resources.AddResource<TextureResource>(texRes);
+		mSpriteTextures.Add(texRes);
+
+		let entity = scene.CreateEntity("Sprite");
+		scene.SetLocalTransform(entity, .() { Position = position, Rotation = .Identity, Scale = .One });
+
+		let spriteMgr = scene.GetModule<SpriteComponentManager>();
+		let handle = spriteMgr.CreateComponent(entity);
+		if (let comp = spriteMgr.Get(handle))
+		{
+			var texRef = ResourceRef(texRes.Id, "");
+			defer texRef.Dispose();
+			comp.SetTextureRef(texRef);
+			comp.Size = size;
+			comp.Orientation = orientation;
+		}
+	}
+
 	protected override void OnUpdate(float deltaTime)
 	{
 		let rs = Context.GetSubsystem<RenderSubsystem>();
@@ -465,6 +516,10 @@ class SandboxApp : EngineApplication
 			foxMatRes?.ReleaseRef();
 		for (let foxTex in mFoxTextures)
 			foxTex?.ReleaseRef();
+
+		// Release sprite texture refs
+		for (let spriteTex in mSpriteTextures)
+			spriteTex?.ReleaseRef();
 
 		// Release our refs on mesh resources (resource system holds its own)
 		mPlaneRes?.ReleaseRef();

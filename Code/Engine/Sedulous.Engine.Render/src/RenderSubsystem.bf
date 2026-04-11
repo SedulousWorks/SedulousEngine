@@ -143,6 +143,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		// Register per-type drawers on the shared context. Both the main Pipeline
 		// and the ShadowPipeline dispatch through these.
 		mRenderContext.RegisterRenderer(new MeshRenderer());
+		mRenderContext.RegisterRenderer(new SpriteRenderer());
 
 		// Pipeline (per-view pass execution)
 		mPipeline = new Pipeline();
@@ -152,12 +153,21 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		mShadowPipeline = new ShadowPipeline();
 		mShadowPipeline.Initialize(mRenderContext);
 
-		// Register default passes
+		// Register default passes.
+		// Order is significant:
+		//   1. Skinning (compute)
+		//   2. Depth prepass (opaque + masked)
+		//   3. Forward opaque + masked (fills color + uses prepass depth)
+		//   4. Sky (fills where depth == far — must be BEFORE transparent so
+		//      transparent/sprite draws don't get overwritten by the sky backdrop)
+		//   5. Forward transparent (sprites blend over sky + opaque)
+		//   6. Debug lines (depth-tested on top of everything)
+		//   7. 2D overlay (no depth — final HUD/text)
 		mPipeline.AddPass(new SkinningPass());
 		mPipeline.AddPass(new DepthPrepass());
 		mPipeline.AddPass(new ForwardOpaquePass());
-		mPipeline.AddPass(new ForwardTransparentPass());
 		mPipeline.AddPass(new SkyPass());
+		mPipeline.AddPass(new ForwardTransparentPass());
 		mPipeline.AddPass(new DebugPass());
 		mPipeline.AddPass(new OverlayPass());
 
@@ -634,6 +644,11 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		skinnedMeshMgr.GPUResources = mRenderContext?.GPUResources;
 		skinnedMeshMgr.Resolver = mResolver;
 		scene.AddModule(skinnedMeshMgr);
+
+		let spriteMgr = new SpriteComponentManager();
+		spriteMgr.Resolver = mResolver;
+		spriteMgr.RenderContext = mRenderContext;
+		scene.AddModule(spriteMgr);
 
 		scene.AddModule(new CameraComponentManager());
 		scene.AddModule(new LightComponentManager());

@@ -45,6 +45,9 @@ public class RenderContext : IDisposable
 	private DebugDrawSystem mDebugDrawSystem ~ { _?.Dispose(); delete _; };
 	private DebugDraw mDebugDraw = new DebugDraw() ~ delete _;
 
+	// Sprite system (shared sprite material template + per-frame instance buffers)
+	private SpriteSystem mSpriteSystem ~ { _?.Dispose(); delete _; };
+
 	// Per-frame scratch allocator for render data extraction.
 	// Reset at the start of each frame via BeginFrame().
 	// .Allow — Beef classes carry Object's destructor chain; we let the allocator
@@ -108,6 +111,10 @@ public class RenderContext : IDisposable
 	/// queue lines, wire shapes, and text to be rendered by DebugPass + OverlayPass.
 	/// Cleared at the end of each frame by the renderer.
 	public DebugDraw DebugDraw => mDebugDraw;
+
+	/// Sprite system (shared Material template + per-frame instance buffers for
+	/// the SpriteRenderer drawer).
+	public SpriteSystem SpriteSystem => mSpriteSystem;
 
 	/// Per-frame scratch allocator. Render data allocated here is valid until
 	/// the next BeginFrame() call, which rewinds the allocator.
@@ -211,6 +218,11 @@ public class RenderContext : IDisposable
 		// Debug draw (font + per-frame vertex buffers)
 		mDebugDrawSystem = new DebugDrawSystem();
 		if (mDebugDrawSystem.Initialize(device, queue) case .Err)
+			return .Err;
+
+		// Sprite system (material template + per-frame instance buffers)
+		mSpriteSystem = new SpriteSystem();
+		if (mSpriteSystem.Initialize(device, mMaterialSystem) case .Err)
 			return .Err;
 
 		return .Ok;

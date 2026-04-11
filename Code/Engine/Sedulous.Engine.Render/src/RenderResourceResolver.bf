@@ -144,6 +144,44 @@ class RenderResourceResolver
 
 	// ==================== Texture Resolution ====================
 
+	/// Resolves a standalone texture ResourceRef and returns its GPU texture view.
+	/// Uploads on first load and caches; subsequent calls return the cached view.
+	/// Used by sprites and other systems that need direct texture access outside
+	/// of a Material's texture slots.
+	public bool ResolveTexture(ref ResolvedResource<TextureResource> state, ResourceRef texRef, out ITextureView outView)
+	{
+		outView = null;
+
+		if (!state.Resolve(mResourceSystem, texRef))
+			return false;
+
+		let texResource = state.Handle.Resource;
+		if (texResource?.Image == null)
+			return false;
+
+		// Check texture cache.
+		if (mTextureCache.TryGetValue(texResource, let gpuHandle))
+		{
+			let gpuTex = mGPUResources.GetTexture(gpuHandle);
+			if (gpuTex != null)
+			{
+				outView = gpuTex.DefaultView;
+				return true;
+			}
+		}
+
+		// Upload.
+		let uploadResult = UploadTexture(texResource.Image);
+		if (!uploadResult.IsValid)
+			return false;
+
+		mTextureCache[texResource] = uploadResult;
+		let gpuTex = mGPUResources.GetTexture(uploadResult);
+		if (gpuTex == null) return false;
+		outView = gpuTex.DefaultView;
+		return true;
+	}
+
 	/// Resolves texture references from a MaterialResource and sets them on a MaterialInstance.
 	/// Loads each TextureResource, uploads to GPU (cached), and binds to the material instance.
 	private void ResolveTextureRefs(MaterialResource matResource, MaterialInstance matInstance)
