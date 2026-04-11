@@ -44,4 +44,9 @@ public class LightRenderData : RenderData
 
 	/// Shadow normal bias.
 	public float ShadowNormalBias;
+
+	/// Index into ShadowSystem.DataBuffer assigned during shadow setup.
+	/// -1 means no shadow allocated this frame (light doesn't cast or atlas full).
+	/// For directional lights this is the base index of the first cascade.
+	public int32 ShadowIndex = -1;
 }

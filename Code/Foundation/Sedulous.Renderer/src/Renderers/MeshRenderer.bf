@@ -36,7 +36,7 @@ public class MeshRenderer : Renderer
 		IRenderPassEncoder encoder,
 		List<RenderData> batch,
 		RenderContext renderContext,
-		Pipeline pipeline,
+		IRenderingPipeline pipeline,
 		PerFrameResources frame,
 		RenderView view,
 		RenderBatchFlags flags)

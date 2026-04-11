@@ -14,20 +14,13 @@ using Sedulous.Profiler;
 ///
 /// The pipeline renders to its own output texture — it doesn't know about swapchains.
 /// The caller (RenderSubsystem) blits the pipeline output to the backbuffer.
-public class Pipeline : IDisposable
+public class Pipeline : IRenderingPipeline, IDisposable
 {
 	// Shared infrastructure (not owned)
 	private RenderContext mRenderContext;
 
 	// Passes
 	private List<PipelinePass> mPasses = new .() ~ delete _;
-
-	// Registered renderers, keyed by category. Pipeline owns the renderer instances.
-	// Multiple renderers may be registered per category (e.g. MeshRenderer + ParticleRenderer
-	// both drawing into Transparent). Each renderer filters the category batch internally.
-	private List<Renderer>[RenderCategories.Count] mRenderersByCategory;
-	// Flat owning list (dedup — a renderer may appear in multiple categories).
-	private List<Renderer> mOwnedRenderers = new .() ~ DeleteContainerAndItems!(_);
 
 	// Per-frame resources (double-buffered)
 	public const int32 MaxFramesInFlight = 2;
@@ -96,9 +89,6 @@ public class Pipeline : IDisposable
 		mRenderContext = renderContext;
 		mOutputFormat = outputFormat;
 
-		for (int i = 0; i < RenderCategories.Count; i++)
-			mRenderersByCategory[i] = new .();
-
 		// Render graph
 		mRenderGraph = new RenderGraph(renderContext.Device, .() { FrameBufferCount = MaxFramesInFlight });
 
@@ -123,36 +113,34 @@ public class Pipeline : IDisposable
 		return .Ok;
 	}
 
-	/// Registers a per-type drawer. The pipeline takes ownership.
-	/// The renderer is indexed against every category returned by GetSupportedCategories().
-	public void RegisterRenderer(Renderer renderer)
+	/// Resets per-frame ring buffer offsets for the given frame slot.
+	/// Must be called once per frame before the first Render() call. RenderSubsystem
+	/// calls this on every Pipeline that will render this frame (main pipeline + any
+	/// shadow pipelines) so multiple Render() calls within the frame can append to
+	/// the same per-frame resources without overwriting each other.
+	public void BeginFrame(int32 frameIndex)
 	{
-		if (renderer == null) return;
-
-		mOwnedRenderers.Add(renderer);
-
-		let categories = renderer.GetSupportedCategories();
-		for (let cat in categories)
-		{
-			if (cat.Value < RenderCategories.Count)
-				mRenderersByCategory[cat.Value].Add(renderer);
-		}
+		let frame = mFrameResources[frameIndex % MaxFramesInFlight];
+		if (frame == null) return;
+		frame.SceneBufferOffset = 0;
+		frame.ObjectBufferOffset = 0;
+		frame.CurrentSceneOffset = 0;
 	}
 
-	/// Dispatches a render batch for a category to all registered renderers.
-	/// Called by render passes after they've set up render targets, pipeline state,
-	/// viewport, and frame-level bind groups.
+	/// Dispatches a render batch for a category to every renderer registered with
+	/// the RenderContext for that category. Called by render passes after they've
+	/// set up render targets, pipeline state, viewport, and frame-level bind groups.
 	public void RenderCategory(IRenderPassEncoder encoder, RenderDataCategory category,
 		PerFrameResources frame, RenderView view, RenderBatchFlags flags)
 	{
-		if (category.Value >= RenderCategories.Count)
-			return;
-
 		let batch = view.RenderData?.GetBatch(category);
 		if (batch == null || batch.Count == 0)
 			return;
 
-		let renderers = mRenderersByCategory[category.Value];
+		let renderers = mRenderContext.GetRenderersFor(category);
+		if (renderers == null)
+			return;
+
 		for (let renderer in renderers)
 			renderer.RenderBatch(encoder, batch, mRenderContext, this, frame, view, flags);
 	}
@@ -191,17 +179,6 @@ public class Pipeline : IDisposable
 		}
 		mPasses.Clear();
 
-		// Clear per-category renderer indices. The actual Renderer instances are
-		// owned by mOwnedRenderers and deleted via its destructor.
-		for (int i = 0; i < RenderCategories.Count; i++)
-		{
-			if (mRenderersByCategory[i] != null)
-			{
-				delete mRenderersByCategory[i];
-				mRenderersByCategory[i] = null;
-			}
-		}
-
 		// Release per-frame resources
 		for (int i = 0; i < MaxFramesInFlight; i++)
 		{
@@ -229,13 +206,12 @@ public class Pipeline : IDisposable
 		let frameIndex = view.FrameIndex % MaxFramesInFlight;
 		let frame = mFrameResources[frameIndex];
 
-		// Reset per-frame object buffer offset
-		frame.ObjectBufferOffset = 0;
-
-		// Update per-frame uniforms
+		// Update per-view uniforms (appends into the per-frame ring buffers).
 		using (Profiler.Begin("UploadUniforms"))
 		{
-			UploadSceneUniforms(frame, view);
+			// Append this view's scene uniforms into the ring buffer and remember the
+			// offset so passes can bind the frame group with the right dynamic offset.
+			frame.CurrentSceneOffset = WriteSceneUniforms(frame, view);
 
 			// Upload light data
 			if (view.RenderData != null)
@@ -417,10 +393,19 @@ public class Pipeline : IDisposable
 		mOutputHeight = 0;
 	}
 
-	private void UploadSceneUniforms(PerFrameResources frame, RenderView view)
+	/// Writes the view's scene uniforms into the per-frame ring buffer and returns
+	/// the byte offset of the slot. The Frame bind group is bound with this offset
+	/// as a dynamic offset for binding 0.
+	private uint32 WriteSceneUniforms(PerFrameResources frame, RenderView view)
 	{
 		if (frame.SceneUniformBuffer == null)
-			return;
+			return 0;
+
+		// Wrap if we exceed the ring (caller should configure MaxScenes large enough).
+		if (frame.SceneBufferOffset >= PerFrameResources.MaxScenes * PerFrameResources.SceneAlignment)
+			frame.SceneBufferOffset = 0;
+
+		let offset = frame.SceneBufferOffset;
 
 		Matrix invView = .Identity;
 		Matrix.Invert(view.ViewMatrix, out invView);
@@ -449,9 +434,23 @@ public class Pipeline : IDisposable
 		};
 
 		TransferHelper.WriteMappedBuffer(
-			frame.SceneUniformBuffer, 0,
+			frame.SceneUniformBuffer, (uint64)offset,
 			Span<uint8>((uint8*)&uniforms, SceneUniforms.Size)
 		);
+
+		frame.SceneBufferOffset += PerFrameResources.SceneAlignment;
+		return offset;
+	}
+
+	/// Helper for passes — binds the Frame bind group with the dynamic offset for
+	/// the view currently being rendered. Use this instead of calling SetBindGroup
+	/// directly so passes don't need to know about the scene UBO ring buffer layout.
+	public void BindFrameGroup(IRenderPassEncoder encoder, PerFrameResources frame)
+	{
+		if (frame.FrameBindGroup == null)
+			return;
+		uint32[1] sceneOffsets = .(frame.CurrentSceneOffset);
+		encoder.SetBindGroup(BindGroupFrequency.Frame, frame.FrameBindGroup, sceneOffsets);
 	}
 
 	private Result<void> CreatePerFrameResources()
@@ -462,11 +461,12 @@ public class Pipeline : IDisposable
 		{
 			let frame = new PerFrameResources();
 
-			// Scene uniform buffer (set 0)
+			// Scene uniform ring buffer (set 0, binding 0, dynamic offset)
+			let sceneBufferSize = (uint64)(PerFrameResources.SceneAlignment * PerFrameResources.MaxScenes);
 			BufferDesc sceneUBDesc = .()
 			{
 				Label = "Scene Uniforms",
-				Size = SceneUniforms.Size,
+				Size = sceneBufferSize,
 				Usage = .Uniform,
 				Memory = .CpuToGpu
 			};
@@ -548,6 +548,8 @@ public class Pipeline : IDisposable
 		// Light buffer size: at least 1 light worth (Vulkan requires non-zero)
 		let lightBufferSize = (uint64)(Math.Max(lightBuffer.LightCount, 1) * GPULight.Size);
 
+		// Scene UBO is bound at offset 0 with size = one slot — the dynamic offset
+		// at SetBindGroup time selects which slot in the ring buffer to read.
 		BindGroupEntry[3] bgEntries = .(
 			BindGroupEntry.Buffer(frame.SceneUniformBuffer, 0, SceneUniforms.Size),
 			BindGroupEntry.Buffer(lightParamsBuf, 0, (uint64)LightParams.Size),

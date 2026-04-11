@@ -3,6 +3,27 @@ namespace Sedulous.Renderer;
 using System;
 using System.Collections;
 using Sedulous.RHI;
+using Sedulous.Core.Mathematics;
+
+/// Minimal interface implemented by both Pipeline and ShadowPipeline.
+/// Renderer.RenderBatch takes this so per-type drawers can be invoked from
+/// either pipeline without knowing the concrete type.
+///
+/// Note: NOT named IRenderPipeline because that conflicts with
+/// Sedulous.RHI.IRenderPipeline (the GPU pipeline state interface).
+public interface IRenderingPipeline
+{
+	/// The shared rendering infrastructure.
+	RenderContext RenderContext { get; }
+
+	/// Per-frame resources for the given frame in flight.
+	PerFrameResources GetFrameResources(int32 frameIndex);
+
+	/// Appends per-draw object uniforms (world + prev world) to the per-frame
+	/// ring buffer and returns the dynamic offset for the draw call bind group.
+	/// Returns uint32.MaxValue if the buffer is full.
+	uint32 WriteObjectUniforms(int32 frameIndex, Matrix worldMatrix, Matrix prevWorldMatrix);
+}
 
 /// Flags passed to Renderer.RenderBatch to convey pass-level hints.
 /// The same renderer is invoked by multiple passes (depth prepass, forward opaque,
@@ -44,7 +65,7 @@ public abstract class Renderer
 		IRenderPassEncoder encoder,
 		List<RenderData> batch,
 		RenderContext renderContext,
-		Pipeline pipeline,
+		IRenderingPipeline pipeline,
 		PerFrameResources frame,
 		RenderView view,
 		RenderBatchFlags flags);

@@ -77,7 +77,7 @@ class PipelineStateCache : IDisposable
 	private ShaderSystem mShaderSystem;
 	private RenderContext mRenderContext;
 
-	private Dictionary<int, IRenderPipeline> mPipelineCache = new .() ~ delete _;
+	private Dictionary<int, Sedulous.RHI.IRenderPipeline> mPipelineCache = new .() ~ delete _;
 	private Dictionary<int, IPipelineLayout> mLayoutCache = new .() ~ delete _;
 
 	public this(IDevice device, ShaderSystem shaderSystem, RenderContext renderContext)
@@ -88,7 +88,7 @@ class PipelineStateCache : IDisposable
 	}
 
 	/// Gets or creates a pipeline for a material config with caller-provided vertex layouts.
-	public Result<IRenderPipeline> GetPipeline(
+	public Result<Sedulous.RHI.IRenderPipeline> GetPipeline(
 		PipelineConfig config,
 		Span<VertexBufferLayout> vertexBuffers,
 		IBindGroupLayout materialLayout,
@@ -130,7 +130,7 @@ class PipelineStateCache : IDisposable
 	}
 
 	/// Gets or creates a pipeline from a MaterialInstance with caller-provided vertex layouts.
-	public Result<IRenderPipeline> GetPipelineForMaterial(
+	public Result<Sedulous.RHI.IRenderPipeline> GetPipelineForMaterial(
 		MaterialInstance material,
 		Span<VertexBufferLayout> vertexBuffers,
 		IBindGroupLayout materialLayout,
@@ -187,8 +187,8 @@ class PipelineStateCache : IDisposable
 
 	// ==================== Internal ====================
 
-	/// Gets or creates a pipeline layout for the 4-level bind group model.
-	/// Set 0 = Frame (from Renderer), Set 1 = Pass (TODO), Set 2 = Material, Set 3 = DrawCall (from Renderer)
+	/// Gets or creates a pipeline layout for the 5-level bind group model.
+	/// Set 0 = Frame, Set 1 = Pass (placeholder), Set 2 = Material, Set 3 = DrawCall, Set 4 = Shadow.
 	private IPipelineLayout GetOrCreatePipelineLayout(IBindGroupLayout materialLayout)
 	{
 		// Use default material layout if none provided
@@ -201,11 +201,15 @@ class PipelineStateCache : IDisposable
 
 		let frameLayout = mRenderContext.FrameBindGroupLayout;
 		let drawLayout = mRenderContext.DrawCallBindGroupLayout;
+		let shadowLayout = mRenderContext.ShadowSystem?.BindGroupLayout;
 
-		// Always create a full 4-set layout: frame (0) + pass (1) + material (2) + draw (3)
-		// Set 1 (pass) reuses frame layout as placeholder for now
-		IBindGroupLayout[4] layouts = .(frameLayout, frameLayout, effectiveMatLayout, drawLayout);
-		PipelineLayoutDesc layoutDesc = .(Span<IBindGroupLayout>(&layouts[0], 4));
+		// Full 5-set layout: frame (0) + pass (1, placeholder) + material (2) + draw (3) + shadow (4)
+		// Set 1 (pass) reuses frame layout as placeholder for now.
+		// Set 4 (shadow) reuses frame layout as placeholder when ShadowSystem is missing
+		// (e.g., during early init) so the layout shape stays stable.
+		let s4 = shadowLayout != null ? shadowLayout : frameLayout;
+		IBindGroupLayout[5] layouts = .(frameLayout, frameLayout, effectiveMatLayout, drawLayout, s4);
+		PipelineLayoutDesc layoutDesc = .(Span<IBindGroupLayout>(&layouts[0], 5));
 
 		if (mDevice.CreatePipelineLayout(layoutDesc) case .Ok(let layout))
 		{
@@ -270,7 +274,7 @@ class PipelineStateCache : IDisposable
 		return hash;
 	}
 
-	private Result<IRenderPipeline> CreatePipeline(
+	private Result<Sedulous.RHI.IRenderPipeline> CreatePipeline(
 		PipelineConfig config,
 		Span<VertexBufferLayout> vertexBuffers,
 		IPipelineLayout layout,

@@ -1,10 +1,12 @@
 namespace Sedulous.Renderer;
 
 using System;
+using System.Collections;
 using Sedulous.RHI;
 using Sedulous.Materials;
 using Sedulous.Core.Mathematics;
 using Sedulous.Core.Memory;
+using Sedulous.Renderer.Shadows;
 
 /// Shared rendering infrastructure — owns GPU resources, materials, pipeline cache,
 /// lighting, and bind group layouts that are common across all views/pipelines.
@@ -35,12 +37,21 @@ public class RenderContext : IDisposable
 	// Compute skinning
 	private SkinningSystem mSkinningSystem ~ { _?.Dispose(); delete _; };
 
+	// Shadow system (atlas + data buffer + bind group)
+	private ShadowSystem mShadowSystem ~ { _?.Dispose(); delete _; };
+
 	// Per-frame scratch allocator for render data extraction.
 	// Reset at the start of each frame via BeginFrame().
 	// .Allow — Beef classes carry Object's destructor chain; we let the allocator
 	// track and run them on Reset. Render data subclasses should not define user
 	// destructors (convention, not enforced).
 	private FrameAllocator mFrameAllocator = new FrameAllocator(.Allow) ~ delete _;
+
+	// Registered renderers, keyed by category. RenderContext owns the instances —
+	// shared across all Pipeline / ShadowPipeline instances built on this context.
+	private List<Renderer>[RenderCategories.Count] mRenderersByCategory;
+	// Flat owning list (a renderer may appear in multiple categories).
+	private List<Renderer> mOwnedRenderers = new .() ~ DeleteContainerAndItems!(_);
 
 	// Shader system (not owned)
 	private Sedulous.Shaders.ShaderSystem mShaderSystem;
@@ -82,9 +93,38 @@ public class RenderContext : IDisposable
 	/// Compute skinning system.
 	public SkinningSystem SkinningSystem => mSkinningSystem;
 
+	/// Shadow system (atlas + data buffer + bind group). Created in Initialize.
+	public ShadowSystem ShadowSystem => mShadowSystem;
+
 	/// Per-frame scratch allocator. Render data allocated here is valid until
 	/// the next BeginFrame() call, which rewinds the allocator.
 	public FrameAllocator FrameAllocator => mFrameAllocator;
+
+	/// Registers a per-type drawer. RenderContext takes ownership.
+	/// The renderer is indexed against every category returned by GetSupportedCategories().
+	/// All Pipelines built on this context share the same renderers.
+	public void RegisterRenderer(Renderer renderer)
+	{
+		if (renderer == null) return;
+
+		mOwnedRenderers.Add(renderer);
+
+		let categories = renderer.GetSupportedCategories();
+		for (let cat in categories)
+		{
+			if (cat.Value < RenderCategories.Count)
+				mRenderersByCategory[cat.Value].Add(renderer);
+		}
+	}
+
+	/// Gets the list of renderers registered against a category. May return null if
+	/// no renderers participate in the category. Used by Pipeline.RenderCategory.
+	public List<Renderer> GetRenderersFor(RenderDataCategory category)
+	{
+		if (category.Value >= RenderCategories.Count)
+			return null;
+		return mRenderersByCategory[category.Value];
+	}
 
 	/// Shader system (optional, for passes that need to compile shaders).
 	public Sedulous.Shaders.ShaderSystem ShaderSystem
@@ -123,6 +163,9 @@ public class RenderContext : IDisposable
 		mDevice = device;
 		mQueue = queue;
 
+		for (int i = 0; i < RenderCategories.Count; i++)
+			mRenderersByCategory[i] = new .();
+
 		// GPU resource manager
 		mGPUResources = new GPUResourceManager();
 		if (mGPUResources.Initialize(device, queue) case .Err)
@@ -147,6 +190,11 @@ public class RenderContext : IDisposable
 		if (CreateBindGroupLayouts() case .Err)
 			return .Err;
 
+		// Shadow system (atlas, data buffer, bind group at set 4)
+		mShadowSystem = new ShadowSystem();
+		if (mShadowSystem.Initialize(device) case .Err)
+			return .Err;
+
 		return .Ok;
 	}
 
@@ -155,6 +203,17 @@ public class RenderContext : IDisposable
 	{
 		if (mDevice != null)
 			mDevice.WaitIdle();
+
+		// Clear per-category renderer indices. The instances themselves are owned by
+		// mOwnedRenderers and deleted via its destructor.
+		for (int i = 0; i < RenderCategories.Count; i++)
+		{
+			if (mRenderersByCategory[i] != null)
+			{
+				delete mRenderersByCategory[i];
+				mRenderersByCategory[i] = null;
+			}
+		}
 
 		// Pipeline state cache
 		delete mPipelineStateCache;
@@ -195,12 +254,15 @@ public class RenderContext : IDisposable
 		mGPUResources.ProcessDeletions(frameNumber);
 	}
 
-	/// Begins a new frame — rewinds the frame allocator.
-	/// Must be called after all previous-frame RenderData references have been released
-	/// (typically after all pipelines have executed for the frame).
+	/// Begins a new frame — rewinds the frame allocator and resets per-frame
+	/// shadow allocations. Must be called after all previous-frame RenderData
+	/// references have been released (typically after all pipelines have
+	/// executed for the frame).
 	public void BeginFrame()
 	{
 		mFrameAllocator.Reset();
+		if (mShadowSystem != null)
+			mShadowSystem.BeginFrame();
 	}
 
 	public void Dispose()
@@ -213,11 +275,11 @@ public class RenderContext : IDisposable
 	private Result<void> CreateBindGroupLayouts()
 	{
 		// Frame bind group layout (set 0):
-		//   b0: SceneUniforms
+		//   b0: SceneUniforms (dynamic offset — per-view ring buffer)
 		//   b1: LightParams (light count, ambient)
 		//   t0: Light buffer (StructuredBuffer<GPULight>)
 		BindGroupLayoutEntry[3] frameEntries = .(
-			.UniformBuffer(0, .Vertex | .Fragment | .Compute),                     // b0: SceneUniforms
+			.() { Binding = 0, Visibility = .Vertex | .Fragment | .Compute, Type = .UniformBuffer, HasDynamicOffset = true }, // b0: SceneUniforms
 			.UniformBuffer(1, .Fragment),                                           // b1: LightParams
 			.() { Binding = 0, Visibility = .Fragment, Type = .StorageBufferReadOnly } // t0: Lights
 		);

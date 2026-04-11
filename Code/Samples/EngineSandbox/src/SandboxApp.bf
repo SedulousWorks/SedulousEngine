@@ -282,18 +282,39 @@ class SandboxApp : EngineApplication
 			Console.WriteLine("WARNING: Could not load Fox model");
 		}
 
-		// ==================== Light ====================
-
-		let lightEntity = scene.CreateEntity("DirectionalLight");
-		scene.SetLocalTransform(lightEntity, Transform.CreateLookAt(.(-3, 5, 2), .Zero));
+		// ==================== Lights ====================
 
 		let lightMgr = scene.GetModule<LightComponentManager>();
-		let lightHandle = lightMgr.CreateComponent(lightEntity);
-		if (let light = lightMgr.Get(lightHandle))
+
+		// Directional shadow-casting light (4 cascades)
+		let dirLightEntity = scene.CreateEntity("DirectionalLight");
+		scene.SetLocalTransform(dirLightEntity, Transform.CreateLookAt(.(-3, 5, 2), .Zero));
+		let dirLightHandle = lightMgr.CreateComponent(dirLightEntity);
+		if (let light = lightMgr.Get(dirLightHandle))
 		{
 			light.Type = .Directional;
 			light.Color = .(1.0f, 0.95f, 0.9f);
-			light.Intensity = 2.0f;
+			light.Intensity = 1.5f;
+			light.CastsShadows = true;
+			light.ShadowBias = 0.0005f;       // shader-side depth bias (hardware slope bias handles acne)
+			light.ShadowNormalBias = 3.0f;    // normal-offset bias IN TEXELS (scaled by world texel size in shader)
+		}
+
+		// Shadow-casting spot light — high above and angled toward the scene.
+		let spotLightEntity = scene.CreateEntity("ShadowSpot");
+		scene.SetLocalTransform(spotLightEntity, Transform.CreateLookAt(.(4, 6, 4), .(0, 0, 0)));
+		let spotLightHandle = lightMgr.CreateComponent(spotLightEntity);
+		if (let light = lightMgr.Get(spotLightHandle))
+		{
+			light.Type = .Spot;
+			light.Color = .(1.0f, 0.95f, 0.85f);
+			light.Intensity = 8.0f;
+			light.Range = 30.0f;
+			light.InnerConeAngle = 25.0f;
+			light.OuterConeAngle = 40.0f;
+			light.CastsShadows = false;
+			light.ShadowBias = 0.001f;
+			light.ShadowNormalBias = 0.05f;
 		}
 
 		// ==================== Camera ====================

@@ -166,8 +166,8 @@ class ShaderCompiler : IDisposable
 			//args.Add("-fvk-use-dx-layout");
 
 			// Binding shifts for Vulkan to avoid conflicts between resource types
-			// Apply to all descriptor sets (space0-space3)
-			for (int32 setIndex = 0; setIndex < 4; setIndex++)
+			// Apply to all descriptor sets (space0-space4 — set 4 is shadow data)
+			for (int32 setIndex = 0; setIndex < 5; setIndex++)
 			{
 				String setStr = scope:: .();
 				setStr.AppendF("{}", setIndex);

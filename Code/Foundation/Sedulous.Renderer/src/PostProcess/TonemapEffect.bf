@@ -10,7 +10,7 @@ using Sedulous.Profiler;
 /// Reads HDR scene color (and optional bloom), writes LDR output.
 class TonemapEffect : PostProcessEffect
 {
-	private IRenderPipeline mPipeline;
+	private Sedulous.RHI.IRenderPipeline mPipeline;
 	private IPipelineLayout mPipelineLayout;
 	private IBindGroupLayout mBindGroupLayout;
 	private ISampler mSampler;

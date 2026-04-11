@@ -42,10 +42,91 @@ struct GPULight
     float InnerConeAngle; // cos(angle)
     float OuterConeAngle; // cos(angle)
     float ShadowBias;
-    float _Pad;
+    int   ShadowIndex;    // -1 = no shadow, else index into ShadowData
 };
 
 StructuredBuffer<GPULight> Lights : register(t0, space0);
+
+// Set 4: Shadow data
+struct GPUShadowData
+{
+    float4x4 LightViewProj;
+    float4   AtlasUVRect;       // (u, v, w, h) within the atlas in [0,1]
+    float4   CascadeSplits;     // view-space far depth per cascade (base entry only)
+    float    Bias;
+    float    NormalBias;        // in texels, scaled by WorldTexelSize in shader
+    float    InvShadowMapSize;
+    int      CascadeCount;      // > 0 only on the base entry of a cascaded directional
+    float    WorldTexelSize;    // world units per shadow map texel
+    float3   _Pad;
+};
+
+Texture2D                 ShadowAtlas  : register(t0, space4);
+SamplerComparisonState    ShadowSampler : register(s0, space4);
+StructuredBuffer<GPUShadowData> ShadowData : register(t1, space4);
+
+// Samples a shadow map and returns the lit fraction (1 = lit, 0 = shadowed).
+//
+// Matches the legacy Sedulous renderer:
+//   - Receiver lookup with normal-offset bias scaled by world-space cascade texel size
+//   - Cascade selection by view-space depth (directional only)
+//   - saturate(z) instead of rejection (avoids popping at cascade far)
+//   - Plain 5×5 box PCF (hardware depth bias prevents acne, not the shader)
+float SampleShadow(int shadowIndex, float3 worldPos, float3 worldNormal, float NdotL, float viewDepth)
+{
+    if (shadowIndex < 0) return 1.0;
+
+    GPUShadowData shadow = ShadowData[shadowIndex];
+
+    // Cascade selection for directional lights — done BEFORE normal offset so we
+    // use the right cascade's world texel size.
+    if (shadow.CascadeCount > 0)
+    {
+        int cascadeIdx = shadow.CascadeCount - 1;
+        if (viewDepth < shadow.CascadeSplits.x)      cascadeIdx = 0;
+        else if (viewDepth < shadow.CascadeSplits.y) cascadeIdx = 1;
+        else if (viewDepth < shadow.CascadeSplits.z) cascadeIdx = 2;
+        else if (viewDepth < shadow.CascadeSplits.w) cascadeIdx = 3;
+
+        shadow = ShadowData[shadowIndex + cascadeIdx];
+    }
+
+    // Normal-offset bias in world space: NormalBias is in texels, scale by the
+    // cascade's world texel size, and fade at grazing angles (NdotL → 0).
+    float3 biasedPos = worldPos + worldNormal * (shadow.NormalBias * shadow.WorldTexelSize * (1.0 - NdotL));
+
+    float4 lightClip = mul(float4(biasedPos, 1.0), shadow.LightViewProj);
+    if (lightClip.w <= 0.0) return 1.0;
+
+    float3 lightNDC = lightClip.xyz / lightClip.w;
+
+    // NDC → shadow map UV (DX-style: y inverted). saturate lets fragments just past
+    // the far plane still sample (clamped) rather than popping to fully-lit.
+    float2 shadowUV = float2(lightNDC.x * 0.5 + 0.5, -lightNDC.y * 0.5 + 0.5);
+    if (any(shadowUV < 0.0) || any(shadowUV > 1.0))
+        return 1.0;
+    float compareDepth = saturate(lightNDC.z) - shadow.Bias;
+
+    // Local UV → atlas UV.
+    float2 atlasUV = shadow.AtlasUVRect.xy + shadowUV * shadow.AtlasUVRect.zw;
+
+    // Plain 5×5 box PCF. 25 hardware comparison taps → 100 effective bilinear
+    // samples. Hardware depth bias in the shadow pipeline prevents acne so the
+    // regular grid pattern doesn't produce banding.
+    float2 texel = shadow.AtlasUVRect.zw * shadow.InvShadowMapSize;
+    float result = 0.0;
+    [unroll]
+    for (int y = -2; y <= 2; y++)
+    {
+        [unroll]
+        for (int x = -2; x <= 2; x++)
+        {
+            float2 offset = float2(x, y) * texel;
+            result += ShadowAtlas.SampleCmpLevelZero(ShadowSampler, atlasUV + offset, compareDepth);
+        }
+    }
+    return result / 25.0;
+}
 
 // Set 2: Material data — matches Materials.CreatePBR() layout
 cbuffer MaterialUniforms : register(b0, space2)
@@ -119,7 +200,7 @@ float SpotAttenuation(float3 L, float3 spotDir, float innerCos, float outerCos)
     return saturate((cosAngle - outerCos) / (innerCos - outerCos + 0.0001));
 }
 
-float3 EvaluateLight(GPULight light, float3 worldPos, float3 N, float3 V, float3 albedo, float roughness, float metallic, float3 F0)
+float3 EvaluateLight(GPULight light, float3 worldPos, float3 worldNormal, float viewDepth, float3 N, float3 V, float3 albedo, float roughness, float metallic, float3 F0)
 {
     float3 L;
     float atten = 1.0;
@@ -149,6 +230,11 @@ float3 EvaluateLight(GPULight light, float3 worldPos, float3 N, float3 V, float3
 
     if (NdotL <= 0.0) return 0.0;
 
+    // Shadow term — geometric NdotL is used for slope-scaled bias to keep
+    // shadowing stable across normal mapping.
+    float geomNdotL = max(dot(normalize(worldNormal), L), 0.0);
+    float shadow = SampleShadow(light.ShadowIndex, worldPos, worldNormal, geomNdotL, viewDepth);
+
     float D = DistributionGGX(NdotH, roughness);
     float G = GeometrySmith(NdotV, NdotL, roughness);
     float3 F = FresnelSchlick(HdotV, F0);
@@ -158,7 +244,7 @@ float3 EvaluateLight(GPULight light, float3 worldPos, float3 N, float3 V, float3
     float3 kD = (1.0 - F) * (1.0 - metallic);
     float3 diffuse = kD * albedo / PI;
 
-    return (diffuse + specular) * light.Color * NdotL * atten;
+    return (diffuse + specular) * light.Color * NdotL * atten * shadow;
 }
 
 // ==================== Normal Mapping ====================
@@ -208,12 +294,16 @@ float4 main(FragmentInput input) : SV_Target
 
     float3 V = normalize(CameraPosition - input.WorldPos);
 
+    // View-space depth (positive distance from camera) for cascade selection.
+    float3 viewPos = mul(float4(input.WorldPos, 1.0), ViewMatrix).xyz;
+    float viewDepth = -viewPos.z;
+
     float3 F0 = lerp(0.04, albedo, metallic);
 
     float3 Lo = 0.0;
     for (uint i = 0; i < LightCount; i++)
     {
-        Lo += EvaluateLight(Lights[i], input.WorldPos, N, V, albedo, roughness, metallic, F0);
+        Lo += EvaluateLight(Lights[i], input.WorldPos, input.WorldNormal, viewDepth, N, V, albedo, roughness, metallic, F0);
     }
 
     float3 ambient = AmbientColor * albedo * ao;

@@ -10,12 +10,14 @@ using Sedulous.Shaders;
 using Sedulous.Renderer;
 using Sedulous.Renderer.Passes;
 using Sedulous.Renderer.Renderers;
+using Sedulous.Renderer.Shadows;
 using Sedulous.Core.Mathematics;
 using Sedulous.Profiler;
 using Sedulous.Resources;
 using Sedulous.Geometry.Resources;
 using Sedulous.Textures.Resources;
 using Sedulous.Materials.Resources;
+using System.Collections;
 
 /// Owns the renderer pipeline, swapchain, command pools, and GPU frame pacing.
 /// Runs late (UpdateOrder 500) — all scene updates and extraction are complete by this point.
@@ -47,6 +49,9 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	// Pipeline (per-view pass execution)
 	private Pipeline mPipeline ~ delete _;
 
+	// Shadow pipeline (renders depth into the shared shadow atlas, one call per shadow caster)
+	private ShadowPipeline mShadowPipeline ~ delete _;
+
 	// Blit helper (fullscreen triangle to copy pipeline output → swapchain)
 	private BlitHelper mBlitHelper ~ delete _;
 
@@ -59,12 +64,14 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	// Shared resource resolver
 	private RenderResourceResolver mResolver ~ delete _;
 
-	// Extraction
-	private ExtractedRenderData mExtractedData ~ delete _;
+	// Per-view extraction (one RenderView per frame view: main + shadow casters)
+	private RenderViewPool mViewPool = new .() ~ delete _;
+
+	// Per-frame list of shadow render jobs (cleared each frame in SetupShadows).
+	private List<ShadowPipeline.ShadowJob> mShadowDraws = new .() ~ delete _;
 
 	// Per-frame state
 	private int32 mFrameIndex = 0;
-	private RenderView mRenderView = new .() ~ delete _;
 
 	// Timing
 	private float mDeltaTime;
@@ -129,12 +136,17 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		mRenderContext.Initialize(mDevice, mGraphicsQueue);
 		mRenderContext.ShaderSystem = ShaderSystem;
 
+		// Register per-type drawers on the shared context. Both the main Pipeline
+		// and the ShadowPipeline dispatch through these.
+		mRenderContext.RegisterRenderer(new MeshRenderer());
+
 		// Pipeline (per-view pass execution)
 		mPipeline = new Pipeline();
 		mPipeline.Initialize(mRenderContext, (uint32)mWindow.Width, (uint32)mWindow.Height);
 
-		// Register per-type drawers. Passes dispatch to these via RenderCategory().
-		mPipeline.RegisterRenderer(new MeshRenderer());
+		// Shadow pipeline (separate per-view pipeline that renders into the shared atlas)
+		mShadowPipeline = new ShadowPipeline();
+		mShadowPipeline.Initialize(mRenderContext);
 
 		// Register default passes
 		mPipeline.AddPass(new SkinningPass());
@@ -156,8 +168,6 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 			mBlitHelper.Initialize(mDevice, mSwapChainFormat, ShaderSystem);
 		}
 
-		// Extraction buffer
-		mExtractedData = new ExtractedRenderData();
 
 		// Register resource managers with the resource system
 		mStaticMeshManager = new StaticMeshResourceManager();
@@ -195,7 +205,9 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		if (mBlitHelper != null)
 			mBlitHelper.Dispose();
 
-		// Shutdown pipeline then renderer (pipeline first — it references renderer)
+		// Shutdown pipelines then renderer (pipelines first — they reference renderer)
+		if (mShadowPipeline != null)
+			mShadowPipeline.Shutdown();
 		if (mPipeline != null)
 			mPipeline.Shutdown();
 		if (mRenderContext != null)
@@ -249,16 +261,31 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		let pool = mCommandPools[mFrameIndex];
 		var encoder = pool.CreateEncoder().Value;
 
-		// Extract render data from scenes
-		ExtractedRenderData renderData;
-		using (Profiler.Begin("SceneExtraction"))
-			renderData = ExtractFromScenes();
+		// Reset the view pool first — drops references to last frame's arena entries
+		// before BeginFrame() rewinds the frame allocator.
+		mViewPool.BeginFrame();
+		mRenderContext.BeginFrame();
 
-		// Build RenderView from camera + extracted data
-		SetupRenderView(renderData);
+		// Acquire and populate the main view from the active camera.
+		let mainView = mViewPool.Acquire();
+		using (Profiler.Begin("SceneExtraction"))
+			ExtractMainView(mainView);
+
+		// Allocate shadow maps for shadow-casting lights from the main view, build
+		// per-shadow RenderViews, and extract them.
+		using (Profiler.Begin("ShadowSetup"))
+			SetupShadows(mainView);
+
+		// Reset per-frame ring buffer offsets before any Render() calls this frame.
+		mPipeline.BeginFrame(mFrameIndex);
+		mShadowPipeline.BeginFrame(mFrameIndex);
+
+		// Render shadow views first (main forward pass samples the atlas).
+		using (Profiler.Begin("ShadowRender"))
+			RenderShadows(encoder);
 
 		// Render to pipeline output
-		mPipeline.Render(encoder, mRenderView);
+		mPipeline.Render(encoder, mainView);
 
 		// Blit pipeline output → swapchain
 		using (Profiler.Begin("Blit"))
@@ -282,23 +309,17 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 
 	// ==================== Extraction ====================
 
-	/// Extracts render data from all active scenes via IRenderDataProvider.
-	private ExtractedRenderData ExtractFromScenes()
+	/// Populates the main view from the active camera and extracts render data into it.
+	private void ExtractMainView(RenderView view)
 	{
-		// Order matters: drop references first, then reset the frame allocator.
-		// Otherwise mExtractedData would hold dangling pointers into rewound arena memory.
-		mExtractedData.Clear();
-		mRenderContext.BeginFrame();
-
 		// Find camera for view setup
 		CameraComponent activeCamera = null;
 		Scene cameraScene = null;
 
 		let sceneSub = Context?.GetSubsystem<SceneSubsystem>();
 		if (sceneSub == null)
-			return mExtractedData;
+			return;
 
-		// First pass: find active camera
 		for (let scene in sceneSub.ActiveScenes)
 		{
 			let cameraMgr = scene.GetModule<CameraComponentManager>();
@@ -314,7 +335,6 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 			}
 		}
 
-		// Build extraction context
 		let viewportAspect = (mPipeline.OutputHeight > 0) ?
 			(float)mPipeline.OutputWidth / (float)mPipeline.OutputHeight : 1.0f;
 
@@ -333,26 +353,46 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 			farPlane = activeCamera.FarPlane;
 		}
 
-		let viewProjMatrix = viewMatrix * projMatrix;
+		view.ViewMatrix = viewMatrix;
+		view.ProjectionMatrix = projMatrix;
+		view.ViewProjectionMatrix = viewMatrix * projMatrix;
+		view.CameraPosition = cameraPos;
+		view.NearPlane = nearPlane;
+		view.FarPlane = farPlane;
+		view.Width = mPipeline.OutputWidth;
+		view.Height = mPipeline.OutputHeight;
+		view.FrameIndex = mFrameIndex;
+		view.DeltaTime = mDeltaTime;
+		view.TotalTime = mTotalTime;
 
-		mExtractedData.SetView(viewMatrix, projMatrix, cameraPos,
-			nearPlane, farPlane, mPipeline.OutputWidth, mPipeline.OutputHeight);
+		ExtractIntoView(view);
+	}
+
+	/// Runs all IRenderDataProvider modules against the given view, populating
+	/// view.RenderData. Future per-view culling (frustum, layer mask) plugs in here.
+	private void ExtractIntoView(RenderView view)
+	{
+		view.RenderData.SetView(view.ViewMatrix, view.ProjectionMatrix, view.CameraPosition,
+			view.NearPlane, view.FarPlane, view.Width, view.Height);
 
 		RenderExtractionContext context = .()
 		{
 			RenderContext = mRenderContext,
-			RenderData = mExtractedData,
-			ViewMatrix = viewMatrix,
-			ViewProjectionMatrix = viewProjMatrix,
-			CameraPosition = cameraPos,
-			NearPlane = nearPlane,
-			FarPlane = farPlane,
+			RenderData = view.RenderData,
+			ViewMatrix = view.ViewMatrix,
+			ViewProjectionMatrix = view.ViewProjectionMatrix,
+			CameraPosition = view.CameraPosition,
+			NearPlane = view.NearPlane,
+			FarPlane = view.FarPlane,
 			FrameIndex = mFrameIndex,
 			LayerMask = 0xFFFFFFFF,
 			LODBias = 0
 		};
 
-		// Second pass: extract render data from all scenes
+		let sceneSub = Context?.GetSubsystem<SceneSubsystem>();
+		if (sceneSub == null)
+			return;
+
 		for (let scene in sceneSub.ActiveScenes)
 		{
 			for (let module in scene.Modules)
@@ -362,26 +402,188 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 			}
 		}
 
-		mExtractedData.SortAndBatch();
-
-		return mExtractedData;
+		view.RenderData.SortAndBatch();
 	}
 
-	/// Builds the RenderView from camera data and extracted render data.
-	private void SetupRenderView(ExtractedRenderData renderData)
+
+	/// Allocates atlas regions for all shadow-casting lights in the main view, builds
+	/// per-shadow RenderViews, extracts each, and uploads shadow data to the GPU.
+	private void SetupShadows(RenderView mainView)
 	{
-		mRenderView.ViewMatrix = renderData.ViewMatrix;
-		mRenderView.ProjectionMatrix = renderData.ProjectionMatrix;
-		mRenderView.ViewProjectionMatrix = renderData.ViewProjectionMatrix;
-		mRenderView.CameraPosition = renderData.CameraPosition;
-		mRenderView.NearPlane = renderData.NearPlane;
-		mRenderView.FarPlane = renderData.FarPlane;
-		mRenderView.Width = mPipeline.OutputWidth;
-		mRenderView.Height = mPipeline.OutputHeight;
-		mRenderView.FrameIndex = mFrameIndex;
-		mRenderView.DeltaTime = mDeltaTime;
-		mRenderView.TotalTime = mTotalTime;
-		mRenderView.RenderData = renderData;
+		mShadowDraws.Clear();
+
+		let shadowSystem = mRenderContext.ShadowSystem;
+		if (shadowSystem == null) return;
+
+		let lights = mainView.RenderData.Lights;
+		if (lights == null || lights.Count == 0)
+		{
+			shadowSystem.Upload(mFrameIndex);
+			return;
+		}
+
+		// Pass 1: directional lights (need 4 contiguous cells per light, easier to satisfy first).
+		for (let entry in lights)
+		{
+			let light = entry as LightRenderData;
+			if (light == null || !light.CastsShadows || light.Type != .Directional)
+				continue;
+			AllocateDirectionalShadow(light, mainView, shadowSystem);
+		}
+
+		// Pass 2: spot lights (single cell each).
+		for (let entry in lights)
+		{
+			let light = entry as LightRenderData;
+			if (light == null || !light.CastsShadows || light.Type != .Spot)
+				continue;
+			AllocateSpotShadow(light, shadowSystem);
+		}
+
+		shadowSystem.Upload(mFrameIndex);
+	}
+
+	/// Allocates and queues a single shadow map for a spot light.
+	private void AllocateSpotShadow(LightRenderData light, ShadowSystem shadowSystem)
+	{
+		ShadowAtlasRegion region;
+		int32 shadowIdx;
+		if (shadowSystem.AllocateShadow(out region) case .Ok(let idx))
+			shadowIdx = idx;
+		else
+			return;
+
+		let lightVP = ShadowMatrices.SpotLightViewProj(light);
+		let invShadowMapSize = 1.0f / (float)shadowSystem.Atlas.CellSize;
+
+		GPUShadowData data = .()
+		{
+			LightViewProj = lightVP,
+			AtlasUVRect = region.UVRect,
+			CascadeSplits = .Zero,
+			Bias = light.ShadowBias,
+			NormalBias = light.ShadowNormalBias,
+			InvShadowMapSize = invShadowMapSize,
+			CascadeCount = 0,
+			// Spot lights: rough world texel size = range / cellSize (not exact but
+			// close enough for the normal-offset bias).
+			WorldTexelSize = light.Range / (float)shadowSystem.Atlas.CellSize
+		};
+		shadowSystem.SetShadowData(shadowIdx, data);
+
+		light.ShadowIndex = shadowIdx;
+
+		let shadowView = mViewPool.Acquire();
+		shadowView.ViewMatrix = .Identity;
+		shadowView.ProjectionMatrix = lightVP;
+		shadowView.ViewProjectionMatrix = lightVP;
+		shadowView.CameraPosition = light.Position;
+		shadowView.NearPlane = 0.1f;
+		shadowView.FarPlane = Math.Max(light.Range, 0.2f);
+		shadowView.Width = region.Width;
+		shadowView.Height = region.Height;
+		shadowView.FrameIndex = mFrameIndex;
+		shadowView.DeltaTime = mDeltaTime;
+		shadowView.TotalTime = mTotalTime;
+
+		ExtractIntoView(shadowView);
+
+		mShadowDraws.Add(ShadowPipeline.ShadowJob() { View = shadowView, Region = region });
+	}
+
+	/// Allocates and queues 4 cascade shadow maps for a directional light.
+	/// The base GPUShadowData entry holds CascadeCount + CascadeSplits so the
+	/// fragment shader can pick the right cascade by view-space depth.
+	private void AllocateDirectionalShadow(LightRenderData light, RenderView mainView, ShadowSystem shadowSystem)
+	{
+		let cascadeCount = ShadowConstants.MaxCascades;
+
+		// Need 4 contiguous shadow data entries AND 4 contiguous atlas cells.
+		uint32 baseCell;
+		if (shadowSystem.Atlas.AllocateContiguous((uint32)cascadeCount) case .Ok(let cell))
+			baseCell = cell;
+		else
+			return;
+
+		// Reserve 4 shadow data slots (one per cascade). Atlas cells were already
+		// allocated above; ReserveShadowSlot only takes data buffer slots.
+		int32 baseShadowIdx = -1;
+		ShadowAtlasRegion[ShadowConstants.MaxCascades] regions = ?;
+		for (int32 c = 0; c < cascadeCount; c++)
+		{
+			regions[c] = shadowSystem.Atlas.GetRegion(baseCell + (uint32)c);
+
+			int32 idx;
+			if (shadowSystem.ReserveShadowSlot() case .Ok(let i))
+				idx = i;
+			else
+				return; // shadow data buffer full
+
+			if (baseShadowIdx < 0) baseShadowIdx = idx;
+		}
+
+		let cellSize = shadowSystem.Atlas.CellSize;
+		let cascades = ShadowMatrices.DirectionalCascades(light, mainView, cellSize);
+		let invShadowMapSize = 1.0f / (float)cellSize;
+
+		light.ShadowIndex = baseShadowIdx;
+
+		for (int32 c = 0; c < cascadeCount; c++)
+		{
+			let region = regions[c];
+			let isBase = (c == 0);
+			let texelWorld = (c == 0) ? cascades.WorldTexelSizes.X :
+			                 (c == 1) ? cascades.WorldTexelSizes.Y :
+			                 (c == 2) ? cascades.WorldTexelSizes.Z :
+			                            cascades.WorldTexelSizes.W;
+
+			GPUShadowData data = .()
+			{
+				LightViewProj = cascades.ViewProjs[c],
+				AtlasUVRect = region.UVRect,
+				CascadeSplits = isBase ? cascades.Splits : .Zero,
+				Bias = light.ShadowBias,
+				NormalBias = light.ShadowNormalBias,
+				InvShadowMapSize = invShadowMapSize,
+				CascadeCount = isBase ? cascadeCount : 0,
+				WorldTexelSize = texelWorld
+			};
+			shadowSystem.SetShadowData(baseShadowIdx + c, data);
+
+			let shadowView = mViewPool.Acquire();
+			shadowView.ViewMatrix = .Identity;
+			shadowView.ProjectionMatrix = cascades.ViewProjs[c];
+			shadowView.ViewProjectionMatrix = cascades.ViewProjs[c];
+			shadowView.CameraPosition = .Zero; // not used for ortho
+			shadowView.NearPlane = 0.1f;
+			shadowView.FarPlane = 1000.0f;
+			shadowView.Width = region.Width;
+			shadowView.Height = region.Height;
+			shadowView.FrameIndex = mFrameIndex;
+			shadowView.DeltaTime = mDeltaTime;
+			shadowView.TotalTime = mTotalTime;
+
+			ExtractIntoView(shadowView);
+
+			mShadowDraws.Add(ShadowPipeline.ShadowJob() { View = shadowView, Region = region });
+		}
+	}
+
+	/// Renders all queued shadow views into the atlas in a single graph cycle.
+	/// Called between BeginFrame and the main pipeline.Render. The graph imports
+	/// the atlas with finalState = ShaderRead, so it's left ready for sampling.
+	private void RenderShadows(ICommandEncoder encoder)
+	{
+		if (mShadowDraws.Count == 0) return;
+
+		let shadowSystem = mRenderContext.ShadowSystem;
+		if (shadowSystem == null) return;
+
+		let atlas = shadowSystem.Atlas.Texture;
+		let atlasView = shadowSystem.Atlas.TextureView;
+
+		Span<ShadowPipeline.ShadowJob> jobs = .(&mShadowDraws[0], mShadowDraws.Count);
+		mShadowPipeline.RenderAll(encoder, jobs, atlas, atlasView, mFrameIndex);
 	}
 
 	/// Blits the pipeline output texture to the swapchain backbuffer.

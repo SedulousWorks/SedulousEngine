@@ -98,31 +98,67 @@ Build the post-processing infrastructure and first effect together.
 
 ## Phase 7: Shadow Mapping
 
-### 7.1 — Shadow Atlas
-- Single large depth texture atlas (e.g., 4096x4096)
-- Allocate rectangular regions per shadow-casting light
-- Directional: cascaded shadow maps (2-4 cascades, each a region in the atlas)
-- Point: cubemap faces packed into atlas (6 regions)
-- Spot: single region per light
+Architecture follows ezEngine: per-view shadow rendering through a separate
+`ShadowPipeline`. Each shadow-casting light gets its own `RenderView` with
+light-space matrices; per-view extraction (independent of the main view)
+enables future frustum culling. Renderer registry moves to `RenderContext`
+so both `Pipeline` and `ShadowPipeline` dispatch to the same `MeshRenderer`.
 
-### 7.2 — Shadow Pass
-- New `ShadowPass` — runs before depth prepass
-- For each shadow-casting light: render scene from light's perspective into atlas region
-- Uses depth-only shader (already exists: `depth_only.vert/frag.hlsl`)
-- Light-space view-projection matrices stored per light
+### 7.1 — Infrastructure
+- `ShadowAtlas` — depth texture (default 2048×2048, configurable). Fixed-size
+  cell allocator: 4×4 grid of 512×512 cells (16 cells), simple bitset.
+- `ShadowSystem` — owned by `RenderContext`. Manages atlas + shadow data buffer
+  + per-frame allocation. Provides shadow bind group.
+- `GPUShadowData` — `LightViewProj`, `AtlasUVRect`, `Bias`, `NormalBias`,
+  cascade metadata. Stored in a `StructuredBuffer<GPUShadowData>` indexed by
+  `Light.ShadowIndex` (-1 = no shadow).
+- `LightBuffer` gains `ShadowIndex` per light, populated after `ShadowSystem`
+  allocates regions.
+- New shadow bind group at **set 4**: t0=ShadowAtlas (depth, sampled),
+  s0=shadow comparison sampler, t1=ShadowDataBuffer.
+- Renderer registry moves from `Pipeline` to `RenderContext` (shared).
+- Scene UBO becomes a ring buffer with dynamic offset (Frame layout binding 0)
+  so each per-frame view can write its own scene uniforms.
 
-### 7.3 — Shadow Sampling in Forward Shader
-- Forward shader receives shadow atlas + per-light shadow matrices
-- Sample shadow map with PCF (percentage-closer filtering)
-- Cascade selection for directional lights (based on view-space depth)
-- Shadow data in frame bind group (set 0) or separate shadow bind group
+### 7.2 — Spot light shadows
+- `ShadowPipeline` standalone class (not a `Pipeline` subclass). Owns its own
+  render graph + per-frame resources. `Render(encoder, shadowView, atlas, region)`
+  imports the atlas, sets viewport/scissor to the region, dispatches Opaque +
+  Masked categories with `RenderBatchFlags.None`.
+- Atlas cleared once per frame via explicit clear pass at frame start
+  (`ShadowSystem.BeginShadowFrame`); subsequent shadow renders use Load.
+- Spot light view-proj computed from light pose, outer cone (FOV), range.
+- `RenderSubsystem` flow: extract main view → discover shadow casters → build
+  shadow `RenderView`s → extract per shadow view → ShadowPipeline.Render per
+  view → main `Pipeline.Render`.
+- `forward.frag.hlsl` samples shadow atlas with PCF 3×3 hardware bilinear,
+  applies per-light bias.
 
-### 7.4 — Shadow Data Pipeline
-- LightRenderData already has `CastsShadows`, `ShadowBias`, `ShadowNormalBias`
-- LightBuffer needs shadow matrix + atlas region per light
-- Pipeline manages shadow atlas texture lifecycle
+### 7.3 — Cascaded directional shadows
+- 4 cascades per directional light. Splits computed via logarithmic + linear
+  blend over the main view's near/far range.
+- Per cascade: ortho projection fit around view-frustum slice transformed into
+  light space.
+- Each cascade allocates one atlas cell; one `GPUShadowData` per cascade,
+  contiguous by cascade index.
+- Fragment shader picks cascade by view-space depth comparison against split
+  distances stored in `GPUShadowData`.
 
-**Dependencies:** None, but large scope. Can parallelize atlas allocation and pass implementation.
+### 7.4 — Validation
+- Sandbox: spot + directional shadow casters. Verify no peter-panning, no
+  excessive self-shadow acne, correct cascade transitions.
+
+### 7.5 — Deferred polish
+- **Hierarchical allocator** with mixed cell sizes (e.g., 1024 for nearest
+  cascade, 256 for distant spots). Replaces fixed 512 cell grid. Needed when
+  shadow resolution per light varies meaningfully.
+- Point-light cubemap shadows (6 atlas regions per light).
+- Per-view frustum culling at extraction time (currently each view extracts
+  all entries — same providers, no spatial filter yet).
+- Receiver-plane depth bias / normal-offset bias polish.
+- PCSS / VSM / contact-hardening as quality upgrades.
+
+**Dependencies:** None, but large scope.
 
 ## Phase 8: Compute Skinning
 

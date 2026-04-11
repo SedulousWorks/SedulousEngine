@@ -17,7 +17,10 @@ public struct GPULight
 	public float InnerConeAngle; // radians, cosine
 	public float OuterConeAngle; // radians, cosine
 	public float ShadowBias;
-	public float _Pad;
+	/// Index into the ShadowDataBuffer (-1 if no shadow).
+	/// For directional lights this is the base index of the first cascade;
+	/// shaders read NumCascades consecutive entries.
+	public int32 ShadowIndex;
 
 	public const int32 Size = 64; // 4 x float4
 
@@ -34,7 +37,8 @@ public struct GPULight
 			Intensity = data.Intensity,
 			InnerConeAngle = Math.Cos(data.InnerConeAngle),
 			OuterConeAngle = Math.Cos(data.OuterConeAngle),
-			ShadowBias = data.ShadowBias
+			ShadowBias = data.ShadowBias,
+			ShadowIndex = data.ShadowIndex
 		};
 	}
 }

@@ -74,8 +74,7 @@ class DepthPrepass : PipelinePass
 		encoder.SetPipeline(rhiPipeline);
 
 		let frame = pipeline.GetFrameResources(view.FrameIndex);
-		if (frame.FrameBindGroup != null)
-			encoder.SetBindGroup(BindGroupFrequency.Frame, frame.FrameBindGroup, default);
+		pipeline.BindFrameGroup(encoder, frame);
 
 		// Dispatch to registered renderers — depth pass skips material binding.
 		pipeline.RenderCategory(encoder, RenderCategories.Opaque, frame, view, .None);

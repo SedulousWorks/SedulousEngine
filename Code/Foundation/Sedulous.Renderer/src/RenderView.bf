@@ -61,6 +61,7 @@ class RenderView
 	// ==================== Render Data ====================
 
 	/// The extracted render data for this view (meshes, lights, decals, etc.).
-	/// Populated by the engine layer during extraction, consumed by pipeline passes.
-	public ExtractedRenderData RenderData;
+	/// Owned by the view — extracted by the engine layer per frame, consumed by
+	/// pipeline passes. Never reassigned externally.
+	public ExtractedRenderData RenderData = new .() ~ delete _;
 }

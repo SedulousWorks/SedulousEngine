@@ -12,7 +12,7 @@ using Sedulous.Profiler;
 /// Uses depth test LessEqual at z=1.0 to only render where nothing was drawn.
 class SkyPass : PipelinePass
 {
-	private IRenderPipeline mPipeline;
+	private Sedulous.RHI.IRenderPipeline mPipeline;
 	private IPipelineLayout mPipelineLayout;
 	private IBindGroupLayout mSkyBindGroupLayout;
 	private ISampler mSkySampler;
@@ -119,8 +119,7 @@ class SkyPass : PipelinePass
 		encoder.SetScissor(0, 0, view.Width, view.Height);
 		encoder.SetPipeline(mPipeline);
 
-		if (frame.FrameBindGroup != null)
-			encoder.SetBindGroup(BindGroupFrequency.Frame, frame.FrameBindGroup, default);
+		pipeline.BindFrameGroup(encoder, frame);
 
 		if (mSkyBindGroups[frameSlot] != null)
 			encoder.SetBindGroup(BindGroupFrequency.RenderPass, mSkyBindGroups[frameSlot], default);

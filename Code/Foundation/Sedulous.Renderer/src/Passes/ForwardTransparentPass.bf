@@ -88,11 +88,19 @@ class ForwardTransparentPass : PipelinePass
 
 		encoder.SetPipeline(rhiPipeline);
 
-		if (frame.FrameBindGroup != null)
-			encoder.SetBindGroup(BindGroupFrequency.Frame, frame.FrameBindGroup, default);
+		pipeline.BindFrameGroup(encoder, frame);
 
 		if (renderContext.DefaultMaterialBindGroup != null)
 			encoder.SetBindGroup(BindGroupFrequency.Material, renderContext.DefaultMaterialBindGroup, default);
+
+		// Bind shadow data (set 4) so the forward shader can sample the atlas.
+		let shadowSystem = renderContext.ShadowSystem;
+		if (shadowSystem != null)
+		{
+			let shadowBg = shadowSystem.GetBindGroup(view.FrameIndex);
+			if (shadowBg != null)
+				encoder.SetBindGroup(BindGroupFrequency.Shadow, shadowBg, default);
+		}
 
 		// Dispatch to registered renderers for the transparent category.
 		// Future: ParticleRenderer registered for Transparent will be called here too.

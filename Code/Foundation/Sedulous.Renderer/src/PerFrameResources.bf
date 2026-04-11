@@ -31,7 +31,9 @@ public struct SceneUniforms
 /// Each frame-in-flight has its own set to avoid write-while-GPU-reads.
 class PerFrameResources
 {
-	/// Scene uniform buffer (set 0, binding 0).
+	/// Scene uniform ring buffer (set 0, binding 0, dynamic offset).
+	/// Per-view scene uniforms are appended into this buffer; the dynamic offset
+	/// selects the active view's slot when binding the frame group.
 	public IBuffer SceneUniformBuffer;
 
 	/// Frame-level bind group (set 0).
@@ -46,11 +48,27 @@ class PerFrameResources
 	/// Current write offset into ObjectUniformBuffer (reset each frame).
 	public uint32 ObjectBufferOffset;
 
+	/// Current write offset into SceneUniformBuffer (reset each frame).
+	/// Pipeline.WriteSceneUniforms returns the slot offset before advancing this.
+	public uint32 SceneBufferOffset;
+
+	/// The scene UBO offset of the view currently being rendered.
+	/// Set by Pipeline.Render before invoking passes; passes pass it to SetBindGroup
+	/// as the dynamic offset for the Frame bind group.
+	public uint32 CurrentSceneOffset;
+
 	/// Alignment for object uniform entries (256 bytes — Vulkan minUniformBufferOffsetAlignment).
 	public const uint32 ObjectAlignment = 256;
 
 	/// Maximum number of objects per frame.
 	public const uint32 MaxObjects = 4096;
+
+	/// Alignment for scene uniform slots. 512 bytes is a comfortable upper bound for
+	/// SceneUniforms (~432 bytes) and a multiple of 256 for Vulkan compatibility.
+	public const uint32 SceneAlignment = 512;
+
+	/// Maximum number of views per frame (main + shadow casters). Conservative.
+	public const uint32 MaxScenes = 32;
 
 	/// Frees GPU resources.
 	public void Release(IDevice device)
