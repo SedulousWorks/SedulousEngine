@@ -7,6 +7,7 @@ using Sedulous.Materials;
 using Sedulous.Core.Mathematics;
 using Sedulous.Core.Memory;
 using Sedulous.Renderer.Shadows;
+using Sedulous.Renderer.Debug;
 
 /// Shared rendering infrastructure — owns GPU resources, materials, pipeline cache,
 /// lighting, and bind group layouts that are common across all views/pipelines.
@@ -39,6 +40,10 @@ public class RenderContext : IDisposable
 
 	// Shadow system (atlas + data buffer + bind group)
 	private ShadowSystem mShadowSystem ~ { _?.Dispose(); delete _; };
+
+	// Debug draw system (font texture + per-frame vertex buffers) + immediate-mode API
+	private DebugDrawSystem mDebugDrawSystem ~ { _?.Dispose(); delete _; };
+	private DebugDraw mDebugDraw = new DebugDraw() ~ delete _;
 
 	// Per-frame scratch allocator for render data extraction.
 	// Reset at the start of each frame via BeginFrame().
@@ -95,6 +100,14 @@ public class RenderContext : IDisposable
 
 	/// Shadow system (atlas + data buffer + bind group). Created in Initialize.
 	public ShadowSystem ShadowSystem => mShadowSystem;
+
+	/// Debug draw system (GPU resources backing DebugDraw).
+	public DebugDrawSystem DebugDrawSystem => mDebugDrawSystem;
+
+	/// Immediate-mode debug draw API. Call Draw* methods from game code to
+	/// queue lines, wire shapes, and text to be rendered by DebugPass + OverlayPass.
+	/// Cleared at the end of each frame by the renderer.
+	public DebugDraw DebugDraw => mDebugDraw;
 
 	/// Per-frame scratch allocator. Render data allocated here is valid until
 	/// the next BeginFrame() call, which rewinds the allocator.
@@ -193,6 +206,11 @@ public class RenderContext : IDisposable
 		// Shadow system (atlas, data buffer, bind group at set 4)
 		mShadowSystem = new ShadowSystem();
 		if (mShadowSystem.Initialize(device) case .Err)
+			return .Err;
+
+		// Debug draw (font + per-frame vertex buffers)
+		mDebugDrawSystem = new DebugDrawSystem();
+		if (mDebugDrawSystem.Initialize(device, queue) case .Err)
 			return .Err;
 
 		return .Ok;

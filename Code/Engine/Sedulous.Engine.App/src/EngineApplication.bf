@@ -154,6 +154,7 @@ abstract class EngineApplication : IDisposable
 
 			mContext.BeginFrame(deltaTime);
 			mContext.Update(deltaTime);
+			OnUpdate(deltaTime);
 			mContext.PostUpdate(deltaTime);
 			mContext.EndFrame();
 
@@ -213,6 +214,10 @@ abstract class EngineApplication : IDisposable
 	/// Override to set up initial scene, load assets, etc.
 	/// All subsystems are initialized at this point.
 	protected virtual void OnStartup() { }
+
+	/// Override for per-frame game logic. Called after Context.Update and before
+	/// Context.PostUpdate. Used for one-off debug drawing, input polling, etc.
+	protected virtual void OnUpdate(float deltaTime) { }
 
 	/// Override for cleanup before shutdown.
 	protected virtual void OnShutdown() { }

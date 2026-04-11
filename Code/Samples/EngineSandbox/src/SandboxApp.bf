@@ -16,6 +16,7 @@ using Sedulous.Resources;
 using Sedulous.Imaging;
 using Sedulous.Imaging.STB;
 using Sedulous.Renderer.Passes;
+using Sedulous.Renderer.Debug;
 using Sedulous.Models;
 using Sedulous.Models.GLTF;
 using Sedulous.Geometry.Tooling;
@@ -28,6 +29,10 @@ using Sedulous.Imaging.SDL;
 
 class SandboxApp : EngineApplication
 {
+	// Smoothed frame-time stats for the FPS counter.
+	private float mFpsSmoothed = 0.0f;
+	private float mFrameTimeMs = 0.0f;
+
 	Material mPbrMaterial ~ delete _;
 	ITexture mSkyTexture;
 	ITextureView mSkyTextureView;
@@ -408,6 +413,33 @@ class SandboxApp : EngineApplication
 			if (material != null)
 				comp.SetMaterial(0, material);
 		}
+	}
+
+	protected override void OnUpdate(float deltaTime)
+	{
+		let rs = Context.GetSubsystem<RenderSubsystem>();
+		if (rs == null) return;
+		let dbg = rs.DebugDraw;
+		if (dbg == null) return;
+
+		// Smooth the FPS readout so it doesn't flicker every frame.
+		mFrameTimeMs = mFrameTimeMs * 0.9f + (deltaTime * 1000.0f) * 0.1f;
+		let fps = mFrameTimeMs > 0.001f ? 1000.0f / mFrameTimeMs : 0.0f;
+		mFpsSmoothed = mFpsSmoothed * 0.9f + fps * 0.1f;
+
+		// FPS counter — top-left corner with a dark background rect for readability.
+		dbg.DrawScreenRect(4, 4, 180, 22, .(0, 0, 0, 160));
+		let fpsText = scope String();
+		fpsText.AppendF("FPS {0:F0}  ({1:F2} ms)", mFpsSmoothed, mFrameTimeMs);
+		dbg.DrawScreenText(8, 8, fpsText, .White);
+
+		// World-space axis indicator at the origin.
+		dbg.DrawAxis(Matrix.Identity, 1.5f);
+
+		// Wire box around the rough scene extent so the frustum/cascade math can
+		// be visually sanity-checked later.
+		BoundingBox sceneBounds = .(.(-6, 0, -6), .(6, 4, 6));
+		dbg.DrawWireBox(sceneBounds, .Yellow);
 	}
 
 	protected override void OnCleanup()

@@ -98,6 +98,10 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	public RenderContext RenderContext => mRenderContext;
 	public Pipeline Pipeline => mPipeline;
 
+	/// Convenience accessor for the immediate-mode debug draw API.
+	/// Equivalent to `RenderContext.DebugDraw`.
+	public Sedulous.Renderer.Debug.DebugDraw DebugDraw => mRenderContext?.DebugDraw;
+
 	// ==================== Lifecycle ====================
 
 	protected override void OnInit()
@@ -154,6 +158,8 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		mPipeline.AddPass(new ForwardOpaquePass());
 		mPipeline.AddPass(new ForwardTransparentPass());
 		mPipeline.AddPass(new SkyPass());
+		mPipeline.AddPass(new DebugPass());
+		mPipeline.AddPass(new OverlayPass());
 
 		// Post-processing stack
 		let postStack = new PostProcessStack();
@@ -286,6 +292,11 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 
 		// Render to pipeline output
 		mPipeline.Render(encoder, mainView);
+
+		// Clear accumulated debug draws — commands have been recorded into the
+		// command buffer at this point, and the per-frame GPU vertex buffers hold
+		// the uploaded data until the GPU consumes it on the next fence wait.
+		mRenderContext.DebugDraw.Clear();
 
 		// Blit pipeline output → swapchain
 		using (Profiler.Begin("Blit"))

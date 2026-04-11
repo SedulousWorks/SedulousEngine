@@ -324,6 +324,40 @@ Immediate-mode debug drawing for development: lines, wireframes, bounding boxes,
 
 **Dependencies:** None. Can be implemented at any time. High value for development workflow.
 
+## Phase 13: Sprites
+
+Textured-quad rendering for billboards, in-world icons, 2D HUD elements, and
+animated sprite sheets. Separate from the particle system (particles use their
+own specialised billboard path) but shares the underlying quad rendering.
+
+### 13.1 — Sprite Component + Data
+- `SpriteComponent` in Engine.Render — owns texture ResourceRef, size, color,
+  UV rect, orientation mode (camera-facing billboard, fixed axis, world-aligned)
+- `SpriteRenderData : RenderData` — world matrix or world position, size,
+  UV rect, material bind group, blend mode
+- Animation: optional frame index + sprite-sheet UV rect override
+
+### 13.2 — SpriteRenderer (per-type drawer)
+- Extends the `Renderer` base class; registered against `Transparent` and
+  (optionally) `Opaque` / `Masked` categories depending on the sprite's blend
+- Batches sprites sharing a material into instanced draw calls
+- Supports three orientation modes:
+  - **Camera-facing** — quad vertices rotated to face the camera every frame
+  - **World-aligned** — quad with fixed orientation in world space (decals-ish)
+  - **Axis-aligned** — quad rotates around one world axis (e.g., Y for foliage)
+
+### 13.3 — Shaders
+- `sprite.vert.hlsl` — constructs quad corners from center + size + orientation
+- `sprite.frag.hlsl` — texture sampling with color tint, alpha test / blend
+
+### 13.4 — 2D/Screen-space sprites
+- Screen-space mode for HUD: quad positioned in pixels, bypasses view-proj
+- Bound in `OverlayPass` (Phase 12) or a dedicated `UIPass`
+
+**Dependencies:** Transparency pass (Phase 6, done), Debug/Overlay (Phase 12)
+for the 2D screen-space path. Quad rendering infrastructure is also useful for
+particles later.
+
 ## Priority Order
 
 Recommended implementation order based on dependencies and game impact:
@@ -332,11 +366,12 @@ Recommended implementation order based on dependencies and game impact:
 2. ~~**Phase 11** — Sky~~ DONE
 3. ~~**Phase 6** — Transparency + masked~~ DONE
 4. ~~**Phase 8** — Compute skinning~~ DONE
-5. **Phase 12** — Debug & overlay rendering (essential for development)
-6. **Phase 7** — Shadows (major visual quality jump)
-7. **Phase 9** — Decals (environmental detail)
-8. **Phase 10** — Particles (effects, separate project)
-9. **Phase 5.2-5.3** — Bloom and post-processing effects (polish)
+5. ~~**Phase 7** — Shadows~~ DONE (7.5 polish deferred)
+6. **Phase 12** — Debug & overlay rendering (essential for development)
+7. **Phase 13** — Sprites (billboards, HUD, icons)
+8. **Phase 9** — Decals (environmental detail)
+9. **Phase 10** — Particles (effects, separate project)
+10. **Phase 5.2-5.3** — Bloom and post-processing effects (polish)
 
 ## Architecture Notes
 
