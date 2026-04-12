@@ -34,6 +34,7 @@ class TonemapEffect : PostProcessEffect
 
 	public override Result<void> OnInitialize(RenderContext renderContext)
 	{
+		mRenderContext = renderContext;
 		mDevice = renderContext.Device;
 		let shaderSystem = renderContext.ShaderSystem;
 		if (shaderSystem == null)
@@ -157,6 +158,8 @@ class TonemapEffect : PostProcessEffect
 		} // Tonemap profiler scope
 	}
 
+	private RenderContext mRenderContext;
+
 	private void ExecuteTonemap(IRenderPassEncoder encoder, RenderView view, RenderGraph graph,
 		RGHandle inputHandle, RGHandle bloomHandle)
 	{
@@ -164,10 +167,13 @@ class TonemapEffect : PostProcessEffect
 		if (inputView == null)
 			return;
 
-		// Get bloom view (optional — use renderer's white texture as fallback)
+		// Get bloom view. When bloom is not active, fall back to a 1×1 black
+		// texture so the shader's `hdr += bloom` adds zero (no brightness change).
 		ITextureView bloomView = null;
 		if (bloomHandle.IsValid)
 			bloomView = graph.GetTextureView(bloomHandle);
+		if (bloomView == null)
+			bloomView = mRenderContext?.MaterialSystem?.BlackTexture;
 
 		let frameSlot = view.FrameIndex % MaxFrames;
 
@@ -182,20 +188,6 @@ class TonemapEffect : PostProcessEffect
 				BindGroupEntry.Buffer(mParamsBuffer, 0, TonemapParams.Size),
 				BindGroupEntry.Texture(inputView),
 				BindGroupEntry.Texture(bloomView),
-				BindGroupEntry.Sampler(mSampler)
-			);
-
-			BindGroupDesc bgDesc = .() { Label = "Tonemap BindGroup", Layout = mBindGroupLayout, Entries = bgEntries };
-			if (mDevice.CreateBindGroup(bgDesc) case .Ok(let bg))
-				mBindGroups[frameSlot] = bg;
-		}
-		else
-		{
-			// No bloom — bind the HDR input as bloom fallback (shader multiplies by 0 intensity)
-			BindGroupEntry[4] bgEntries = .(
-				BindGroupEntry.Buffer(mParamsBuffer, 0, TonemapParams.Size),
-				BindGroupEntry.Texture(inputView),
-				BindGroupEntry.Texture(inputView), // bloom slot — same texture, shader ignores
 				BindGroupEntry.Sampler(mSampler)
 			);
 
