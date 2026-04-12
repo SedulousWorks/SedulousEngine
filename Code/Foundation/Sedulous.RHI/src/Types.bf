@@ -2,6 +2,13 @@ namespace Sedulous.RHI;
 
 using System;
 
+/// RHI-wide limits.
+static class RHILimits
+{
+	/// Maximum number of simultaneous color attachments in a render pass / pipeline.
+	public const int MaxColorAttachments = 8;
+}
+
 /// 3D extent (width, height, depth).
 struct Extent3D
 {

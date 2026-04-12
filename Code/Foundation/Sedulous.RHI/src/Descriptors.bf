@@ -807,7 +807,7 @@ struct DepthStencilAttachment
 	public bool StencilReadOnly = false;
 }
 
-typealias ColorAttachmentList = FixedList<ColorAttachment, const 8>;
+typealias ColorAttachmentList = FixedList<ColorAttachment, const RHILimits.MaxColorAttachments>;
 
 /// Describes a render pass.
 struct RenderPassDesc
