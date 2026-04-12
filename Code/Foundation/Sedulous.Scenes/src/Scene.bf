@@ -30,6 +30,10 @@ public class Scene : IDisposable
 	{
 		public Transform Local;
 		public Matrix WorldMatrix;
+		/// Previous frame's world matrix, for motion vector computation.
+		/// Snapshot taken at the start of each UpdateTransforms before the
+		/// current frame's matrices are recomputed.
+		public Matrix PrevWorldMatrix;
 		public EntityHandle Parent;
 		public EntityHandle FirstChild;
 		public EntityHandle NextSibling;
@@ -273,6 +277,16 @@ public class Scene : IDisposable
 		return mTransforms[(int32)entity.Index].WorldMatrix;
 	}
 
+	/// Gets the previous frame's world matrix. Returns Identity for entities
+	/// that haven't been alive for more than one frame yet.
+	public Matrix GetPrevWorldMatrix(EntityHandle entity)
+	{
+		if (!IsValid(entity))
+			return .Identity;
+
+		return mTransforms[(int32)entity.Index].PrevWorldMatrix;
+	}
+
 	/// Sets the parent of an entity. Pass EntityHandle.Invalid to unparent.
 	public void SetParent(EntityHandle child, EntityHandle parent)
 	{
@@ -400,6 +414,15 @@ public class Scene : IDisposable
 
 	private void UpdateTransforms()
 	{
+		// Snapshot current world matrices as "previous" before recomputing.
+		// Done for ALL entities (not just dirty ones) so that entities whose
+		// transforms didn't change this frame still have a valid prev matrix.
+		for (int32 i = 0; i < mTransforms.Count; i++)
+		{
+			if (mEntities[i].Alive)
+				mTransforms[i].PrevWorldMatrix = mTransforms[i].WorldMatrix;
+		}
+
 		// Update dirty transforms top-down
 		for (int32 i = 0; i < mTransforms.Count; i++)
 		{

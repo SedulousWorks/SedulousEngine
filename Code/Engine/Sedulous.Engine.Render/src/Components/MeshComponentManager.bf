@@ -34,6 +34,7 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 		DeleteDictionaryAndValues!(_);
 	};
 
+
 	public override StringView SerializationTypeId => "Sedulous.MeshComponent";
 
 	protected override void OnRegisterUpdateFunctions()
@@ -133,6 +134,7 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 
 			// Get world matrix from entity transform
 			let worldMatrix = scene.GetWorldMatrix(mesh.Owner);
+			let prevWorldMatrix = scene.GetPrevWorldMatrix(mesh.Owner);
 			let center = Vector3.Transform(mesh.LocalBounds.Center, worldMatrix);
 
 			// Build render data flags
@@ -173,7 +175,7 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 				data.SortOrder = 0;
 				data.Flags = flags;
 				data.WorldMatrix = worldMatrix;
-				data.PrevWorldMatrix = worldMatrix; // TODO: track previous frame
+				data.PrevWorldMatrix = prevWorldMatrix;
 				data.MeshHandle = mesh.MeshHandle;
 				data.SubMeshIndex = (uint32)subIdx;
 				data.MaterialBindGroup = material?.BindGroup;

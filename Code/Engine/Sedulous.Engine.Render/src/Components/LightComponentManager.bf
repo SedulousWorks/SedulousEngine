@@ -53,9 +53,20 @@ class LightComponentManager : ComponentManager<LightComponent>, IRenderDataProvi
 			// M31/M32/M33 is the +Z axis (backward), negate for forward.
 			let direction = -Vector3.Normalize(.(worldMatrix.M31, worldMatrix.M32, worldMatrix.M33));
 
+			// Compute bounding box from light range for future frustum culling.
+			// Directional lights are infinite — zero bounds (never culled).
+			// Point and spot lights have a finite range as a bounding sphere,
+			// approximated as an AABB for the broad-phase.
+			BoundingBox lightBounds = .(.Zero, .Zero);
+			if (light.Type != .Directional && light.Range > 0)
+			{
+				let r = Vector3(light.Range, light.Range, light.Range);
+				lightBounds = .(position - r, position + r);
+			}
+
 			let data = new:frameAlloc LightRenderData();
 			data.Position = position;
-			data.Bounds = .(.Zero, .Zero); // TODO: compute from range
+			data.Bounds = lightBounds;
 			data.Flags = .None;
 			data.Type = light.Type;
 			data.Color = light.Color;

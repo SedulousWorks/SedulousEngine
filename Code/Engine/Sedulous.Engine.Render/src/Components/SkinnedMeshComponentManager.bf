@@ -34,6 +34,7 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 		DeleteDictionaryAndValues!(_);
 	};
 
+
 	public override StringView SerializationTypeId => "Sedulous.SkinnedMeshComponent";
 
 	protected override void OnRegisterUpdateFunctions()
@@ -172,6 +173,7 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 				continue;
 
 			let worldMatrix = scene.GetWorldMatrix(comp.Owner);
+			let prevWorldMatrix = scene.GetPrevWorldMatrix(comp.Owner);
 			let center = Vector3.Transform(comp.LocalBounds.Center, worldMatrix);
 
 			var flags = RenderDataFlags.None;
@@ -208,7 +210,7 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 				data.SortOrder = 0;
 				data.Flags = flags;
 				data.WorldMatrix = worldMatrix;
-				data.PrevWorldMatrix = worldMatrix; // TODO: track previous frame
+				data.PrevWorldMatrix = prevWorldMatrix;
 				data.MeshHandle = comp.MeshHandle;
 				data.SubMeshIndex = (uint32)subIdx;
 				data.MaterialBindGroup = material?.BindGroup;
