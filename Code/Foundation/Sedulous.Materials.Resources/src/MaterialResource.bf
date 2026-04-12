@@ -295,7 +295,7 @@ class MaterialResource : Resource
 		int32 depthFormat = (int32)config.DepthFormat;
 		int32 depthBias = (int32)config.DepthBias;
 		float depthBiasSlopeScale = config.DepthBiasSlopeScale;
-		int32 colorFormat = (int32)config.ColorFormat;
+		int32 colorFormat = (int32)config.ColorFormats[0];
 		int32 colorTargetCount = (int32)config.ColorTargetCount;
 		int32 sampleCount = (int32)config.SampleCount;
 		int32 depthOnly = config.DepthOnly ? 1 : 0;
@@ -359,7 +359,7 @@ class MaterialResource : Resource
 		config.DepthFormat = (.)depthFormat;
 		config.DepthBias = (int16)depthBias;
 		config.DepthBiasSlopeScale = depthBiasSlopeScale;
-		config.ColorFormat = (.)colorFormat;
+		config.ColorFormats[0] = (.)colorFormat;
 		config.ColorTargetCount = (uint8)colorTargetCount;
 		config.SampleCount = (uint8)sampleCount;
 		config.DepthOnly = depthOnly != 0;
