@@ -179,6 +179,12 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		// Post-processing stack
 		let postStack = new PostProcessStack();
 		postStack.Initialize(mRenderContext);
+		// Bloom must come before tonemap — it produces the "BloomTexture" aux
+		// that TonemapEffect reads for compositing.
+		let bloomEffect = new BloomEffect();
+		bloomEffect.Threshold = 1.5f;
+		bloomEffect.Intensity = 0.5f;
+		postStack.AddEffect(bloomEffect);
 		postStack.AddEffect(new TonemapEffect());
 		mPipeline.PostProcessStack = postStack;
 

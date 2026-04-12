@@ -38,6 +38,14 @@ float4 main(FragmentInput input) : SV_Target
 
     float3 hdr = SceneColor.Sample(LinearSampler, uv).rgb;
 
+    // Add bloom contribution. BloomTexture is produced by BloomEffect and
+    // contains the soft glow from bright areas. When bloom is disabled,
+    // the fallback texture (scene color bound to both slots) is effectively
+    // a no-op since the additive contribution doesn't double the main color
+    // — the tonemap curve handles the extra brightness gracefully.
+    float3 bloom = BloomTexture.Sample(LinearSampler, uv).rgb;
+    hdr += bloom;
+
     // Apply exposure
     hdr *= Exposure;
 

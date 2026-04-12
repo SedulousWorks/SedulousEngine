@@ -39,12 +39,17 @@ class TonemapEffect : PostProcessEffect
 		if (shaderSystem == null)
 			return .Err;
 
-		// Get tonemap shaders (reuses blit vertex shader)
-		let vertResult = shaderSystem.GetShaderPair("tonemap");
+		// Fullscreen triangle vertex shader (shared across post-process passes).
+		let vertResult = shaderSystem.GetShader("fullscreen", .Vertex);
 		if (vertResult case .Err)
 			return .Err;
+		let vertModule = vertResult.Value;
 
-		let (vertModule, fragModule) = vertResult.Value;
+		// Tonemap-specific fragment shader.
+		let fragResult = shaderSystem.GetShader("tonemap", .Fragment);
+		if (fragResult case .Err)
+			return .Err;
+		let fragModule = fragResult.Value;
 
 		// Bind group layout: b0 = params, t0 = HDR texture, t1 = bloom texture, s0 = sampler
 		BindGroupLayoutEntry[4] entries = .(
@@ -133,7 +138,15 @@ class TonemapEffect : PostProcessEffect
 
 		graph.AddRenderPass("Tonemap", scope (builder) => {
 			builder
-				.ReadTexture(input)
+				.ReadTexture(input);
+
+			// Declare the bloom texture as a read dependency so the render graph
+			// emits the COLOR_ATTACHMENT → SHADER_READ barrier after the bloom
+			// upsample chain writes to it.
+			if (bloomHandle.IsValid)
+				builder.ReadTexture(bloomHandle);
+
+			builder
 				.SetColorTarget(0, output, .DontCare, .Store)
 				.NeverCull()
 				.SetExecute(new [=] (encoder) => {
