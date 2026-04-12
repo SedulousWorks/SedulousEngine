@@ -78,45 +78,16 @@ int PickPointFace(float3 toFragment)
     return toFragment.z > 0.0 ? 4 : 5;
 }
 
-// Samples a shadow map and returns the lit fraction (1 = lit, 0 = shadowed).
-//
-// Handles three light types:
-//   - Directional: cascade selection by view-space depth
-//   - Spot:        single shadow map, direct sample
-//   - Point:       cube face selection by direction from light to fragment
+// Samples a SINGLE shadow map entry (one cascade or one face) and returns the
+// lit fraction (1 = lit, 0 = shadowed). Extracted so cascade blending can call
+// it twice — once for the primary cascade and once for the adjacent one.
 //
 // Matches the legacy Sedulous renderer:
 //   - Receiver lookup with normal-offset bias scaled by world-space texel size
 //   - saturate(z) instead of rejection (avoids popping at cascade far)
 //   - Plain 5×5 box PCF (hardware depth bias prevents acne, not the shader)
-float SampleShadow(GPULight light, float3 worldPos, float3 worldNormal, float NdotL, float viewDepth)
+float SampleShadowEntry(GPUShadowData shadow, float3 worldPos, float3 worldNormal, float NdotL)
 {
-    int shadowIndex = light.ShadowIndex;
-    if (shadowIndex < 0) return 1.0;
-
-    GPUShadowData shadow = ShadowData[shadowIndex];
-
-    // Cascade / face selection.
-    if (shadow.CascadeCount > 0)
-    {
-        if (light.Type > 0.5 && light.Type < 1.5) // Point
-        {
-            float3 toFrag = worldPos - light.Position;
-            int faceIdx = PickPointFace(toFrag);
-            shadow = ShadowData[shadowIndex + faceIdx];
-        }
-        else // Directional — pick cascade by view-space depth
-        {
-            int cascadeIdx = shadow.CascadeCount - 1;
-            if (viewDepth < shadow.CascadeSplits.x)      cascadeIdx = 0;
-            else if (viewDepth < shadow.CascadeSplits.y) cascadeIdx = 1;
-            else if (viewDepth < shadow.CascadeSplits.z) cascadeIdx = 2;
-            else if (viewDepth < shadow.CascadeSplits.w) cascadeIdx = 3;
-
-            shadow = ShadowData[shadowIndex + cascadeIdx];
-        }
-    }
-
     // Normal-offset bias in world space: NormalBias is in texels, scale by the
     // cascade's world texel size, and fade at grazing angles (NdotL → 0).
     float3 biasedPos = worldPos + worldNormal * (shadow.NormalBias * shadow.WorldTexelSize * (1.0 - NdotL));
@@ -152,6 +123,74 @@ float SampleShadow(GPULight light, float3 worldPos, float3 worldNormal, float Nd
         }
     }
     return result / 25.0;
+}
+
+// Returns the cascade split depth for a given cascade index (0-based).
+float GetCascadeSplit(float4 splits, int idx)
+{
+    if (idx == 0) return splits.x;
+    if (idx == 1) return splits.y;
+    if (idx == 2) return splits.z;
+    return splits.w;
+}
+
+// Samples a shadow map with cascade/face selection and cascade blending.
+//
+// Handles three light types:
+//   - Directional: cascade selection by view-space depth, blended at boundaries
+//   - Spot:        single shadow map, direct sample
+//   - Point:       cube face selection by direction from light to fragment
+float SampleShadow(GPULight light, float3 worldPos, float3 worldNormal, float NdotL, float viewDepth)
+{
+    int shadowIndex = light.ShadowIndex;
+    if (shadowIndex < 0) return 1.0;
+
+    GPUShadowData baseShadow = ShadowData[shadowIndex];
+
+    // --- Spot lights (CascadeCount == 0): single entry, sample directly ---
+    if (baseShadow.CascadeCount <= 0)
+        return SampleShadowEntry(baseShadow, worldPos, worldNormal, NdotL);
+
+    // --- Point lights: face selection, no blending ---
+    if (light.Type > 0.5 && light.Type < 1.5)
+    {
+        float3 toFrag = worldPos - light.Position;
+        int faceIdx = PickPointFace(toFrag);
+        return SampleShadowEntry(ShadowData[shadowIndex + faceIdx], worldPos, worldNormal, NdotL);
+    }
+
+    // --- Directional lights: cascade selection with smooth blending ---
+    int cascadeCount = baseShadow.CascadeCount;
+    float4 splits = baseShadow.CascadeSplits;
+
+    int cascadeIdx = cascadeCount - 1;
+    if (viewDepth < splits.x)      cascadeIdx = 0;
+    else if (viewDepth < splits.y) cascadeIdx = 1;
+    else if (viewDepth < splits.z) cascadeIdx = 2;
+    else if (viewDepth < splits.w) cascadeIdx = 3;
+
+    // Sample the primary cascade.
+    float primary = SampleShadowEntry(ShadowData[shadowIndex + cascadeIdx], worldPos, worldNormal, NdotL);
+
+    // Blend zone: the last 15% of each cascade's depth range transitions
+    // smoothly into the next cascade, eliminating the hard boundary.
+    if (cascadeIdx < cascadeCount - 1)
+    {
+        float cascadeFar = GetCascadeSplit(splits, cascadeIdx);
+        float cascadeNear = (cascadeIdx > 0) ? GetCascadeSplit(splits, cascadeIdx - 1) : 0.0;
+        float cascadeRange = cascadeFar - cascadeNear;
+        float blendZone = cascadeRange * 0.15;
+        float blendStart = cascadeFar - blendZone;
+
+        if (viewDepth > blendStart)
+        {
+            float blendFactor = saturate((viewDepth - blendStart) / blendZone);
+            float secondary = SampleShadowEntry(ShadowData[shadowIndex + cascadeIdx + 1], worldPos, worldNormal, NdotL);
+            return lerp(primary, secondary, blendFactor);
+        }
+    }
+
+    return primary;
 }
 
 // Set 2: Material data — matches Materials.CreatePBR() layout
