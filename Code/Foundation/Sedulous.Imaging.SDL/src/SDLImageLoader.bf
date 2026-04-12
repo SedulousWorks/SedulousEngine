@@ -1,6 +1,7 @@
 using System.Collections;
 using System;
 using SDL3;
+
 namespace Sedulous.Imaging.SDL;
 
 class SDLImageLoader : ImageLoader
@@ -11,7 +12,7 @@ class SDLImageLoader : ImageLoader
 
 	public static void Initialize()
 	{
-		if(sInstance == null)
+		if (sInstance == null)
 		{
 			sInstance = new .();
 			ImageLoaderFactory.RegisterLoader(sInstance);
@@ -19,56 +20,6 @@ class SDLImageLoader : ImageLoader
 	}
 
 	private static List<StringView> sSupportedExtensions = new .() { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tga" } ~ delete _;
-
-	private static Image.PixelFormat SDLSurfaceFormatToPixelFormat(SDL_PixelFormat sdlFormat)
-	{
-		switch (sdlFormat)
-		{
-		case .SDL_PIXELFORMAT_RGB24:
-			return .RGB8;
-		case .SDL_PIXELFORMAT_BGR24:
-			return .BGR8;
-		case .SDL_PIXELFORMAT_RGBA8888,
-			.SDL_PIXELFORMAT_RGBA32:
-			return .RGBA8;
-		case .SDL_PIXELFORMAT_BGRA8888,
-			.SDL_PIXELFORMAT_BGRA32:
-			return .BGRA8;
-		/*case .SDL_PIXELFORMAT_ABGR8888,
-			 .SDL_PIXELFORMAT_ABGR32:
-			return .RGBA8;  // Note: ABGR will need swizzling to RGBA
-		case .SDL_PIXELFORMAT_ARGB8888,
-			 .SDL_PIXELFORMAT_ARGB32:
-			return .BGRA8;  // Note: ARGB will need swizzling to BGRA*/
-		case .SDL_PIXELFORMAT_RGB48_FLOAT:
-			return .RGB16F;
-		case .SDL_PIXELFORMAT_BGR48_FLOAT:
-			return .RGB16F; // Note: BGR will need swizzling
-		case .SDL_PIXELFORMAT_RGBA64_FLOAT:
-			return .RGBA16F;
-		case .SDL_PIXELFORMAT_BGRA64_FLOAT:
-			return .RGBA16F; // Note: BGRA will need swizzling
-		case .SDL_PIXELFORMAT_ABGR64_FLOAT:
-			return .RGBA16F; // Note: ABGR will need swizzling
-		case .SDL_PIXELFORMAT_ARGB64_FLOAT:
-			return .RGBA16F; // Note: ARGB will need swizzling
-		case .SDL_PIXELFORMAT_RGB96_FLOAT:
-			return .RGB32F;
-		case .SDL_PIXELFORMAT_BGR96_FLOAT:
-			return .RGB32F; // Note: BGR will need swizzling
-		case .SDL_PIXELFORMAT_RGBA128_FLOAT:
-			return .RGBA32F;
-		case .SDL_PIXELFORMAT_BGRA128_FLOAT:
-			return .RGBA32F; // Note: BGRA will need swizzling
-		case .SDL_PIXELFORMAT_ABGR128_FLOAT:
-			return .RGBA32F; // Note: ABGR will need swizzling
-		case .SDL_PIXELFORMAT_ARGB128_FLOAT:
-			return .RGBA32F; // Note: ARGB will need swizzling
-		default:
-			// For unsupported formats, default to RGBA8
-			return .RGBA8;
-		}
-	}
 
 	public override Result<LoadInfo, LoadResult> LoadFromFile(StringView filePath)
 	{
@@ -84,8 +35,8 @@ class SDLImageLoader : ImageLoader
 		SDL_Surface* convertedSurface = surface;
 		bool needsDestroy = false;
 
-		if (surface.format != .SDL_PIXELFORMAT_RGBA32 &&
-			surface.format != .SDL_PIXELFORMAT_RGBA8888)
+		// Ensure consistent RGBA8 format
+		if (surface.format != .SDL_PIXELFORMAT_RGBA32)
 		{
 			convertedSurface = SDL_ConvertSurface(surface, .SDL_PIXELFORMAT_RGBA32);
 			if (convertedSurface == null)
@@ -95,13 +46,26 @@ class SDLImageLoader : ImageLoader
 			needsDestroy = true;
 		}
 
-		uint8[] pixelData = new .[convertedSurface.pitch * convertedSurface.h];
-		Internal.MemCpy(pixelData.Ptr, convertedSurface.pixels, pixelData.Count);
+		int width = convertedSurface.w;
+		int height = convertedSurface.h;
+		int srcPitch = convertedSurface.pitch;
+		uint8* srcPixels = (uint8*)convertedSurface.pixels;
+
+		int rowSize = width * 4; // tightly packed RGBA8
+		uint8[] pixelData = new .[rowSize * height];
+
+		// Copy row-by-row to remove pitch padding
+		for (int y = 0; y < height; y++)
+		{
+			uint8* srcRow = srcPixels + y * srcPitch;
+			uint8* dstRow = pixelData.Ptr + y * rowSize;
+			Internal.MemCpy(dstRow, srcRow, rowSize);
+		}
 
 		let result = LoadInfo()
 			{
-				Width = (uint32)convertedSurface.w,
-				Height = (uint32)convertedSurface.h,
+				Width = (uint32)width,
+				Height = (uint32)height,
 				Format = .RGBA8, // Always RGBA8 after conversion
 				Data = pixelData
 			};
@@ -127,8 +91,8 @@ class SDLImageLoader : ImageLoader
 		SDL_Surface* convertedSurface = surface;
 		bool needsDestroy = false;
 
-		if (surface.format != .SDL_PIXELFORMAT_RGBA32 &&
-			surface.format != .SDL_PIXELFORMAT_RGBA8888)
+		// Ensure consistent RGBA8 format
+		if (surface.format != .SDL_PIXELFORMAT_RGBA32)
 		{
 			convertedSurface = SDL_ConvertSurface(surface, .SDL_PIXELFORMAT_RGBA32);
 			if (convertedSurface == null)
@@ -138,13 +102,26 @@ class SDLImageLoader : ImageLoader
 			needsDestroy = true;
 		}
 
-		uint8[] pixelData = new .[convertedSurface.pitch * convertedSurface.h];
-		Internal.MemCpy(pixelData.Ptr, convertedSurface.pixels, pixelData.Count);
+		int width = convertedSurface.w;
+		int height = convertedSurface.h;
+		int srcPitch = convertedSurface.pitch;
+		uint8* srcPixels = (uint8*)convertedSurface.pixels;
+
+		int rowSize = width * 4; // tightly packed RGBA8
+		uint8[] pixelData = new .[rowSize * height];
+
+		// Copy row-by-row to remove pitch padding
+		for (int y = 0; y < height; y++)
+		{
+			uint8* srcRow = srcPixels + y * srcPitch;
+			uint8* dstRow = pixelData.Ptr + y * rowSize;
+			Internal.MemCpy(dstRow, srcRow, rowSize);
+		}
 
 		let result = LoadInfo()
 			{
-				Width = (uint32)convertedSurface.w,
-				Height = (uint32)convertedSurface.h,
+				Width = (uint32)width,
+				Height = (uint32)height,
 				Format = .RGBA8, // Always RGBA8 after conversion
 				Data = pixelData
 			};
