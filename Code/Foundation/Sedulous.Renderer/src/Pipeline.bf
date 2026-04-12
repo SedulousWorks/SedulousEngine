@@ -446,6 +446,7 @@ public class Pipeline : IRenderingPipeline, IDisposable
 			InvViewMatrix = invView,
 			InvProjectionMatrix = invProj,
 			InvViewProjectionMatrix = invViewProj,
+			PrevViewProjectionMatrix = view.PrevViewProjectionMatrix,
 			CameraPosition = view.CameraPosition,
 			NearPlane = view.NearPlane,
 			FarPlane = view.FarPlane,

@@ -72,6 +72,8 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 
 	// Per-frame state
 	private int32 mFrameIndex = 0;
+	/// Previous frame's main-view ViewProjectionMatrix, used for motion vectors.
+	private Matrix mPrevViewProjectionMatrix = .Identity;
 
 	// Timing
 	private float mDeltaTime;
@@ -306,6 +308,9 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		// Render to pipeline output
 		mPipeline.Render(encoder, mainView);
 
+		// Save this frame's VP for next frame's motion vectors.
+		mPrevViewProjectionMatrix = mainView.ViewProjectionMatrix;
+
 		// Clear accumulated debug draws — commands have been recorded into the
 		// command buffer at this point, and the per-frame GPU vertex buffers hold
 		// the uploaded data until the GPU consumes it on the next fence wait.
@@ -380,6 +385,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		view.ViewMatrix = viewMatrix;
 		view.ProjectionMatrix = projMatrix;
 		view.ViewProjectionMatrix = viewMatrix * projMatrix;
+		view.PrevViewProjectionMatrix = mPrevViewProjectionMatrix;
 		view.CameraPosition = cameraPos;
 		view.NearPlane = nearPlane;
 		view.FarPlane = farPlane;

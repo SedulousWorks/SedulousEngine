@@ -5,7 +5,7 @@ using Sedulous.RHI;
 using Sedulous.Core.Mathematics;
 
 /// GPU uniform data for per-frame scene constants (bind group set 0).
-/// Layout must match scene_uniforms.hlsl.
+/// Layout must match the SceneUniforms cbuffer in all shaders that declare it.
 [CRepr]
 public struct SceneUniforms
 {
@@ -15,6 +15,9 @@ public struct SceneUniforms
 	public Matrix InvViewMatrix;
 	public Matrix InvProjectionMatrix;
 	public Matrix InvViewProjectionMatrix;
+	/// Previous frame's combined view-projection matrix, used by the forward
+	/// shader to compute per-pixel screen-space motion vectors for TAA / motion blur.
+	public Matrix PrevViewProjectionMatrix;
 	public Vector3 CameraPosition;
 	public float NearPlane;
 	public float FarPlane;

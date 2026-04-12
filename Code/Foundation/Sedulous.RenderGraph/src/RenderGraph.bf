@@ -772,6 +772,12 @@ public class RenderGraph
 					res.Texture = tex;
 					res.TextureView = view;
 
+					// TODO: relabel the pooled texture's GPU debug name to match the
+					// current resource name (res.Name). The pool reuses textures by
+					// format/size, so RenderDoc may show a stale label from a prior
+					// frame's transient. Requires ITexture.SetLabel or
+					// IDevice.SetDebugName API that doesn't exist yet.
+
 					// Recreate depth-only view for depth+stencil textures (not stored in pool)
 					if (res.TextureDesc.Format.IsDepthFormat() && res.TextureDesc.Format.HasStencil())
 					{

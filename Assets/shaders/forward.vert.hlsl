@@ -13,6 +13,7 @@ cbuffer SceneUniforms : register(b0, space0)
     float4x4 InvViewMatrix;
     float4x4 InvProjectionMatrix;
     float4x4 InvViewProjectionMatrix;
+    float4x4 PrevViewProjectionMatrix;
     float3 CameraPosition;
     float NearPlane;
     float FarPlane;
@@ -47,6 +48,9 @@ struct VertexOutput
     float2 TexCoord : TEXCOORD2;
     float4 Color : TEXCOORD3;
     float3 WorldTangent : TEXCOORD4;
+    // Current and previous clip-space positions for motion vector computation.
+    float4 CurClipPos : TEXCOORD5;
+    float4 PrevClipPos : TEXCOORD6;
 };
 
 VertexOutput main(VertexInput input)
@@ -60,6 +64,11 @@ VertexOutput main(VertexInput input)
     output.WorldTangent = normalize(mul(input.Tangent, (float3x3)WorldMatrix));
     output.TexCoord = input.TexCoord;
     output.Color = input.Color;
+
+    // Clip-space positions for motion vector output.
+    output.CurClipPos = output.Position;
+    float4 prevWorldPos = mul(float4(input.Position, 1.0), PrevWorldMatrix);
+    output.PrevClipPos = mul(prevWorldPos, PrevViewProjectionMatrix);
 
     return output;
 }

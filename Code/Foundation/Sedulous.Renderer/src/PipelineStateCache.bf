@@ -254,6 +254,11 @@ class PipelineStateCache : IDisposable
 		key.SampleCount = sampleCount;
 		key.VariantFlags = (uint32)variantFlags;
 
+		// MRT extra formats contribute to the hash so different target configs
+		// produce distinct pipeline states.
+		for (int i = 1; i < config.ColorTargetCount; i++)
+			key.VariantFlags = key.VariantFlags * 31 + (uint32)config.ColorFormats[i];
+
 		return key;
 	}
 
@@ -302,19 +307,33 @@ class PipelineStateCache : IDisposable
 
 		let (vertShader, fragShader) = shaderResult.Value;
 
-		// Color target
-		ColorTargetState[1] colorTargets = default;
+		// Color targets — supports MRT via config.ColorFormats[].
+		ColorTargetState[RHILimits.MaxColorAttachments] colorTargets = default;
 		int colorTargetCount = 0;
 		bool hasColorTarget = !config.DepthOnly && config.ColorTargetCount > 0;
 
 		if (hasColorTarget)
 		{
 			let blendState = GetBlendState(config.BlendMode);
+
+			// Target 0: scene color — uses caller-provided colorFormat.
+			// Blending applies only to target 0; MRT targets write directly.
 			if (blendState.HasValue)
 				colorTargets[0] = .(colorFormat, blendState.Value);
 			else
 				colorTargets[0] = .(colorFormat);
 			colorTargetCount = 1;
+
+			// Targets 1+: additional render targets (mini G-buffer, etc.).
+			for (int i = 1; i < config.ColorTargetCount; i++)
+			{
+				let fmt = config.ColorFormats[i];
+				if (fmt != .Undefined)
+				{
+					colorTargets[i] = .(fmt);
+					colorTargetCount = i + 1;
+				}
+			}
 		}
 
 		// Depth stencil

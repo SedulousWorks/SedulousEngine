@@ -123,11 +123,6 @@ class MaterialInstance : RefCounted, IDisposable
 		}
 	}
 
-	public ~this()
-	{
-		//delete mBindGroup;
-	}
-
 	/// Sets a float property.
 	public void SetFloat(StringView name, float value)
 	{

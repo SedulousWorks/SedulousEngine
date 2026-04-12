@@ -15,6 +15,7 @@ cbuffer SceneUniforms : register(b0, space0)
     float4x4 InvViewMatrix;
     float4x4 InvProjectionMatrix;
     float4x4 InvViewProjectionMatrix;
+    float4x4 PrevViewProjectionMatrix;
     float3 CameraPosition;
     float NearPlane;
     float FarPlane;
@@ -219,6 +220,17 @@ struct FragmentInput
     float2 TexCoord : TEXCOORD2;
     float4 Color : TEXCOORD3;
     float3 WorldTangent : TEXCOORD4;
+    // Current and previous clip-space positions for motion vector computation.
+    float4 CurClipPos : TEXCOORD5;
+    float4 PrevClipPos : TEXCOORD6;
+};
+
+/// MRT output: scene color + mini G-buffer (normals + velocity).
+struct FragmentOutput
+{
+    float4 Color     : SV_Target0;  // HDR scene color
+    float2 Normal    : SV_Target1;  // view-space normal XY (reconstruct Z)
+    float2 Velocity  : SV_Target2;  // screen-space motion vector (UV delta)
 };
 
 // ==================== PBR Functions ====================
@@ -328,7 +340,7 @@ float3 GetNormalFromMap(float3 worldNormal, float3 worldTangent, float2 uv)
 
 // ==================== Main ====================
 
-float4 main(FragmentInput input) : SV_Target
+FragmentOutput main(FragmentInput input)
 {
     float2 uv = input.TexCoord;
 
@@ -374,5 +386,23 @@ float4 main(FragmentInput input) : SV_Target
     float3 ambient = AmbientColor * albedo * ao;
     float3 color = ambient + Lo + emissive;
 
-    return float4(color, alpha);
+    // ==================== MRT Output ====================
+    FragmentOutput output;
+
+    // Target 1: view-space normal XY. Post-FX reconstruct Z via
+    // sqrt(1 - x² - y²). Using the shading normal (N) which includes
+    // normal mapping, not the geometric interpolant.
+    float3 viewNormal = normalize(mul(float4(N, 0.0), ViewMatrix).xyz);
+    output.Normal = viewNormal.xy;
+
+    // Target 0: HDR scene color.
+    output.Color = float4(color, alpha);
+
+    // Target 2: screen-space motion vector (NDC delta × 0.5 → UV delta).
+    // Used by TAA / motion blur to reproject from current to previous frame.
+    float2 curNDC  = input.CurClipPos.xy / input.CurClipPos.w;
+    float2 prevNDC = input.PrevClipPos.xy / input.PrevClipPos.w;
+    output.Velocity = (curNDC - prevNDC) * 0.5;
+
+    return output;
 }

@@ -23,7 +23,7 @@ class TextureResource : Resource
 	/// Set during save, read during load.
 	public String BinaryPath = new .() ~ delete _;
 
-	/// Image dimensions and format — stored for deserialization (Image created by manager after loading sidecar).
+	/// Image dimensions and format - stored for deserialization (Image created by manager after loading sidecar).
 	public int32 ImageWidth;
 	public int32 ImageHeight;
 	public int32 ImageFormat;
@@ -126,7 +126,7 @@ class TextureResource : Resource
 
 	// ---- Serialization ----
 
-	/// Serializes texture metadata (not pixel data — that's in the binary sidecar).
+	/// Serializes texture metadata (not pixel data - that's in the binary sidecar).
 	protected override SerializationResult OnSerialize(Serializer s)
 	{
 		var minFilter = (int32)MinFilter;
@@ -180,7 +180,7 @@ class TextureResource : Resource
 		if (mImage == null)
 			return .Err;
 
-		// Set sidecar path (relative — just the filename with .bin appended)
+		// Set sidecar path (relative - just the filename with .bin appended)
 		BinaryPath.Set(scope $"{path}.bin");
 
 		// Write text metadata via base class

@@ -19,6 +19,9 @@ class RenderView
 	/// Combined view-projection matrix.
 	public Matrix ViewProjectionMatrix;
 
+	/// Previous frame's view-projection matrix (for motion vector computation).
+	public Matrix PrevViewProjectionMatrix;
+
 	/// Camera world-space position.
 	public Vector3 CameraPosition;
 

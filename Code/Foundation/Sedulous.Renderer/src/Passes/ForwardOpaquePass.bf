@@ -32,8 +32,18 @@ class ForwardOpaquePass : PipelinePass
 		let depthHandle = graph.GetResource("SceneDepth");
 		let hasDepth = depthHandle.IsValid;
 
+		// Mini G-buffer targets — always created so post-processing effects
+		// (SSAO, TAA, motion blur, SSR) can consume them without opt-in logic.
+		let normalsDesc = RGTextureDesc(.RG16Float) { Usage = .RenderTarget | .Sampled };
+		let normalsHandle = graph.CreateTransient("SceneNormals", normalsDesc);
+
+		let velocityDesc = RGTextureDesc(.RG16Float) { Usage = .RenderTarget | .Sampled };
+		let velocityHandle = graph.CreateTransient("MotionVectors", velocityDesc);
+
 		graph.AddRenderPass("ForwardOpaque", scope (builder) => {
 			builder.SetColorTarget(0, outputHandle, .Clear, .Store, ClearColor(0.0f, 0.0f, 0.0f, 1.0f));
+			builder.SetColorTarget(1, normalsHandle, .Clear, .Store, ClearColor(0.0f, 0.0f, 0.0f, 0.0f));
+			builder.SetColorTarget(2, velocityHandle, .Clear, .Store, ClearColor(0.0f, 0.0f, 0.0f, 0.0f));
 
 			if (hasDepth)
 				builder.SetDepthTarget(depthHandle, .Load, .Store, 1.0f);
@@ -60,12 +70,17 @@ class ForwardOpaquePass : PipelinePass
 
 		let frame = pipeline.GetFrameResources(view.FrameIndex);
 
-		// Build pipeline config
+		// Build pipeline config — 3 color targets for MRT:
+		//   Target 0: SceneColor (RGBA16Float)
+		//   Target 1: SceneNormals (RG16Float, view-space XY)
+		//   Target 2: MotionVectors (RG16Float, screen-space delta)
 		var config = PipelineConfig();
 		config.ShaderName = "forward";
 		config.BlendMode = .Opaque;
 		config.CullMode = .Back;
-		config.ColorTargetCount = 1;
+		config.ColorTargetCount = 3;
+		config.ColorFormats[1] = .RG16Float;  // SceneNormals (view-space XY)
+		config.ColorFormats[2] = .RG16Float;  // MotionVectors (screen-space delta)
 
 		if (hasDepth)
 		{
