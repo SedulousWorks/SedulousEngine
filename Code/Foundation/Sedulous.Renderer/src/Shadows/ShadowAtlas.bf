@@ -17,55 +17,99 @@ public struct ShadowAtlasRegion
 	public Vector4 UVRect;
 }
 
-/// Manages a single depth texture used as a packed shadow map atlas.
+/// Quality tier for shadow atlas allocation.
+/// Higher tiers give more texels per shadow map at the cost of fewer slots.
+public enum ShadowTier : uint8
+{
+	/// 2048×2048 — for near directional cascades (high resolution, 2 slots).
+	Large,
+	/// 1024×1024 — for far cascades and spot lights (4 slots).
+	Medium,
+	/// 512×512 — for point light faces and minor lights (16 slots).
+	Small
+}
+
+/// Hierarchical shadow atlas with three cell-size tiers.
 ///
-/// Phase 7.1 implementation: fixed-size square cells in a regular grid.
-/// 2048×2048 atlas, 512×512 cells, 4×4 = 16 cells.
-/// Allocator is a simple bitset — one bit per cell.
+/// Atlas layout within a 4096×4096 depth texture:
 ///
-/// Phase 7.5 will replace this with a hierarchical allocator supporting mixed
-/// cell sizes (1024 for nearest cascades, 256 for distant spots, etc.).
+///   +--------+--------+
+///   | L0     | L1     |  Top half: 2 cells of 2048×2048
+///   | 2048   | 2048   |
+///   +----+---+--------+
+///   |M0 M1|  S0 .. S15|  Bottom-left: 4 cells of 1024×1024
+///   |M2 M3|  512×512  |  Bottom-right: 16 cells of 512×512
+///   +----+-+-----------+
+///
+/// Total: 22 cells across 3 tiers, all packed into 4096×4096.
 public class ShadowAtlas
 {
-	/// Atlas dimensions (square, power of two).
-	public uint32 Size { get; private set; }
-	/// Cell side length (square cells).
-	public uint32 CellSize { get; private set; }
-	/// Number of cells per side.
-	public uint32 CellsPerSide { get; private set; }
-	/// Total cell count.
-	public uint32 CellCount { get; private set; }
+	/// Per-tier metadata.
+	private struct TierInfo
+	{
+		public uint32 CellSize;
+		public uint32 OriginX, OriginY;   // pixel offset of the tier's region
+		public uint32 CellsPerRow;
+		public uint32 CellCount;
+		public uint64 UsedMask;           // bitset (max 64 cells per tier)
+	}
+
+	private const int TierCount = 3;
+	private TierInfo[TierCount] mTiers;
 
 	private IDevice mDevice;
 	private ITexture mTexture ~ if (mDevice != null) mDevice.DestroyTexture(ref _);
 	private ITextureView mTextureView ~ if (mDevice != null) mDevice.DestroyTextureView(ref _);
 	private TextureFormat mFormat = .Depth32Float;
 
-	// Per-cell allocation bitset. Bit set = cell is in use this frame.
-	private uint64 mCellsUsed;
-
+	public uint32 Size { get; private set; }
 	public ITexture Texture => mTexture;
 	public ITextureView TextureView => mTextureView;
 	public TextureFormat Format => mFormat;
 
-	/// Initializes the atlas with the given size and cell size.
-	/// Defaults: 2048 atlas, 512 cells (16 cells, 4 directional lights worth of cascades).
-	public Result<void> Initialize(IDevice device, uint32 size = 2048, uint32 cellSize = 512)
+	/// Gets the cell side length for a tier.
+	public uint32 GetCellSize(ShadowTier tier) => mTiers[(int)tier].CellSize;
+
+	public Result<void> Initialize(IDevice device, uint32 atlasSize = 4096)
 	{
 		mDevice = device;
-		Size = size;
-		CellSize = cellSize;
-		CellsPerSide = size / cellSize;
-		CellCount = CellsPerSide * CellsPerSide;
+		Size = atlasSize;
 
-		Runtime.Assert(CellCount <= 64, "ShadowAtlas: cell count exceeds bitset capacity (64)");
-		Runtime.Assert(size % cellSize == 0, "ShadowAtlas: size must be a multiple of cellSize");
+		// --- Tier layout ---
+		// Large: top half — 2 cells of 2048
+		mTiers[0] = .()
+		{
+			CellSize = 2048,
+			OriginX = 0, OriginY = 0,
+			CellsPerRow = 2,
+			CellCount = 2,
+			UsedMask = 0
+		};
+		// Medium: bottom-left quarter — 4 cells of 1024
+		mTiers[1] = .()
+		{
+			CellSize = 1024,
+			OriginX = 0, OriginY = 2048,
+			CellsPerRow = 2,
+			CellCount = 4,
+			UsedMask = 0
+		};
+		// Small: bottom-right quarter — 16 cells of 512
+		mTiers[2] = .()
+		{
+			CellSize = 512,
+			OriginX = 2048, OriginY = 2048,
+			CellsPerRow = 4,
+			CellCount = 16,
+			UsedMask = 0
+		};
 
+		// --- GPU texture ---
 		TextureDesc desc = .()
 		{
 			Label = "Shadow Atlas",
-			Width = size,
-			Height = size,
+			Width = atlasSize,
+			Height = atlasSize,
 			Depth = 1,
 			Format = mFormat,
 			Usage = .DepthStencil | .Sampled,
@@ -95,42 +139,43 @@ public class ShadowAtlas
 		return .Ok;
 	}
 
-	/// Releases all cell allocations. Called once per frame before allocating shadows.
+	/// Resets all tier allocations. Called once per frame.
 	public void Reset()
 	{
-		mCellsUsed = 0;
+		for (int i = 0; i < TierCount; i++)
+			mTiers[i].UsedMask = 0;
 	}
 
-	/// Allocates a single cell. Returns the region in pixels + UV rect, or .Err if full.
-	public Result<ShadowAtlasRegion> AllocateCell()
+	/// Allocates a single cell from the given tier.
+	public Result<ShadowAtlasRegion> AllocateCell(ShadowTier tier)
 	{
-		// Find first free cell
-		for (uint32 i = 0; i < CellCount; i++)
+		var tierInfo = ref mTiers[(int)tier];
+		for (uint32 i = 0; i < tierInfo.CellCount; i++)
 		{
 			let mask = (uint64)1 << i;
-			if ((mCellsUsed & mask) == 0)
+			if ((tierInfo.UsedMask & mask) == 0)
 			{
-				mCellsUsed |= mask;
-				return .Ok(MakeRegion(i));
+				tierInfo.UsedMask |= mask;
+				return .Ok(MakeRegion(ref tierInfo, i));
 			}
 		}
 		return .Err;
 	}
 
-	/// Allocates `count` consecutive cells (used for cascaded shadow maps — 4 cells
-	/// per directional light). Returns the first region; subsequent cells follow in
-	/// linear cell-index order. Caller can compute their regions via GetRegion(idx + N).
-	public Result<uint32> AllocateContiguous(uint32 count)
+	/// Allocates `count` contiguous cells from the given tier.
+	/// Returns the first cell index within the tier.
+	public Result<uint32> AllocateContiguous(ShadowTier tier, uint32 count)
 	{
-		if (count == 0 || count > CellCount) return .Err;
+		if (count == 0) return .Err;
+		var tierInfo = ref mTiers[(int)tier];
+		if (count > tierInfo.CellCount) return .Err;
 
-		// Find a run of `count` free consecutive cells.
-		for (uint32 start = 0; start + count <= CellCount; start++)
+		for (uint32 start = 0; start + count <= tierInfo.CellCount; start++)
 		{
 			bool ok = true;
 			for (uint32 i = 0; i < count; i++)
 			{
-				if ((mCellsUsed & ((uint64)1 << (start + i))) != 0)
+				if ((tierInfo.UsedMask & ((uint64)1 << (start + i))) != 0)
 				{
 					ok = false;
 					break;
@@ -139,38 +184,38 @@ public class ShadowAtlas
 			if (ok)
 			{
 				for (uint32 i = 0; i < count; i++)
-					mCellsUsed |= (uint64)1 << (start + i);
+					tierInfo.UsedMask |= (uint64)1 << (start + i);
 				return .Ok(start);
 			}
 		}
 		return .Err;
 	}
 
-	/// Returns the region for the given cell index (regardless of allocation state).
-	public ShadowAtlasRegion GetRegion(uint32 cellIndex)
+	/// Returns the atlas region for a cell index within a tier.
+	public ShadowAtlasRegion GetRegion(ShadowTier tier, uint32 cellIndex)
 	{
-		return MakeRegion(cellIndex);
+		return MakeRegion(ref mTiers[(int)tier], cellIndex);
 	}
 
-	private ShadowAtlasRegion MakeRegion(uint32 cellIndex)
+	private ShadowAtlasRegion MakeRegion(ref TierInfo tier, uint32 cellIndex)
 	{
-		let cellX = cellIndex % CellsPerSide;
-		let cellY = cellIndex / CellsPerSide;
-		let pxX = cellX * CellSize;
-		let pxY = cellY * CellSize;
+		let cellX = cellIndex % tier.CellsPerRow;
+		let cellY = cellIndex / tier.CellsPerRow;
+		let pxX = tier.OriginX + cellX * tier.CellSize;
+		let pxY = tier.OriginY + cellY * tier.CellSize;
 		let invSize = 1.0f / (float)Size;
 
 		return .()
 		{
 			X = pxX,
 			Y = pxY,
-			Width = CellSize,
-			Height = CellSize,
+			Width = tier.CellSize,
+			Height = tier.CellSize,
 			UVRect = .(
 				(float)pxX * invSize,
 				(float)pxY * invSize,
-				(float)CellSize * invSize,
-				(float)CellSize * invSize
+				(float)tier.CellSize * invSize,
+				(float)tier.CellSize * invSize
 			)
 		};
 	}

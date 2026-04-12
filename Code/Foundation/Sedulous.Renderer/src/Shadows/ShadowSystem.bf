@@ -36,13 +36,12 @@ public class ShadowSystem : IDisposable
 	{
 		mDevice = device;
 
-		// Atlas — 4096×4096 with 1024×1024 cells (4×4 grid of 16 cells).
-		// Supports 4 directional cascades + 6 point-light faces + 6 spot lights
-		// simultaneously. Cell resolution is half of the earlier 2048 polish pass
-		// but this is the simplest layout that fits point shadows; a hierarchical
-		// allocator can restore high-res cascades later.
+		// Hierarchical atlas — 4096×4096 with three tiers:
+		//   Large  (2048²) × 2  — near directional cascades
+		//   Medium (1024²) × 4  — far cascades + spot lights
+		//   Small  (512²)  × 16 — point light faces + minor lights
 		Atlas = new .();
-		if (Atlas.Initialize(device, 4096, 1024) case .Err)
+		if (Atlas.Initialize(device) case .Err)
 			return .Err;
 
 		// Shadow data buffer
@@ -126,16 +125,16 @@ public class ShadowSystem : IDisposable
 		mShadowCount = 0;
 	}
 
-	/// Allocates a single shadow map slot — one cell from the atlas + one entry
-	/// in the data buffer. Returns the shadow index and outputs the atlas region
-	/// (caller uses the region's UVRect to fill GPUShadowData.AtlasUVRect).
-	public Result<int32> AllocateShadow(out ShadowAtlasRegion region)
+	/// Allocates a single shadow map slot — one cell from the atlas at the given
+	/// tier + one entry in the data buffer. Returns the shadow index and outputs
+	/// the atlas region.
+	public Result<int32> AllocateShadow(ShadowTier tier, out ShadowAtlasRegion region)
 	{
 		region = default;
 		if (mShadowCount >= ShadowDataBuffer.MaxShadows)
 			return .Err;
 
-		if (Atlas.AllocateCell() case .Ok(let r))
+		if (Atlas.AllocateCell(tier) case .Ok(let r))
 			region = r;
 		else
 			return .Err;

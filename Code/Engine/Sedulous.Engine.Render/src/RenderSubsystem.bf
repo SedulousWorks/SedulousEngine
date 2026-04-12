@@ -481,13 +481,14 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	{
 		ShadowAtlasRegion region;
 		int32 shadowIdx;
-		if (shadowSystem.AllocateShadow(out region) case .Ok(let idx))
+		if (shadowSystem.AllocateShadow(.Medium, out region) case .Ok(let idx))
 			shadowIdx = idx;
 		else
 			return;
 
 		let lightVP = ShadowMatrices.SpotLightViewProj(light);
-		let invShadowMapSize = 1.0f / (float)shadowSystem.Atlas.CellSize;
+		let cellSize = shadowSystem.Atlas.GetCellSize(.Medium);
+		let invShadowMapSize = 1.0f / (float)cellSize;
 
 		GPUShadowData data = .()
 		{
@@ -500,7 +501,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 			CascadeCount = 0,
 			// Spot lights: rough world texel size = range / cellSize (not exact but
 			// close enough for the normal-offset bias).
-			WorldTexelSize = light.Range / (float)shadowSystem.Atlas.CellSize
+			WorldTexelSize = light.Range / (float)cellSize
 		};
 		shadowSystem.SetShadowData(shadowIdx, data);
 
@@ -531,33 +532,46 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	{
 		let cascadeCount = ShadowConstants.MaxCascades;
 
-		// Need 4 contiguous shadow data entries AND 4 contiguous atlas cells.
-		uint32 baseCell;
-		if (shadowSystem.Atlas.AllocateContiguous((uint32)cascadeCount) case .Ok(let cell))
-			baseCell = cell;
-		else
-			return;
+		// Per-cascade tier assignment: near cascades get Large (2048) for crisp
+		// shadows near the camera; far cascades get Medium (1024).
+		ShadowTier[ShadowConstants.MaxCascades] cascadeTiers = .(
+			.Large, .Large,    // cascade 0-1: high-res (2048)
+			.Medium, .Medium   // cascade 2-3: medium-res (1024)
+		);
 
-		// Reserve 4 shadow data slots (one per cascade). Atlas cells were already
-		// allocated above; ReserveShadowSlot only takes data buffer slots.
+		// Reserve 4 shadow data slots (contiguous in the data buffer so the shader
+		// can do baseIndex + cascadeIdx). Atlas cells come from different tiers and
+		// are NOT contiguous in pixel space — that's fine, each entry carries its
+		// own AtlasUVRect.
 		int32 baseShadowIdx = -1;
 		ShadowAtlasRegion[ShadowConstants.MaxCascades] regions = ?;
+		uint32[ShadowConstants.MaxCascades] cellSizes = ?;
+
 		for (int32 c = 0; c < cascadeCount; c++)
 		{
-			regions[c] = shadowSystem.Atlas.GetRegion(baseCell + (uint32)c);
+			let tier = cascadeTiers[c];
+			ShadowAtlasRegion region;
+			if (shadowSystem.Atlas.AllocateCell(tier) case .Ok(let r))
+				region = r;
+			else
+				return; // atlas full at this tier
+
+			regions[c] = region;
+			cellSizes[c] = shadowSystem.Atlas.GetCellSize(tier);
 
 			int32 idx;
 			if (shadowSystem.ReserveShadowSlot() case .Ok(let i))
 				idx = i;
 			else
-				return; // shadow data buffer full
-
+				return;
 			if (baseShadowIdx < 0) baseShadowIdx = idx;
 		}
 
-		let cellSize = shadowSystem.Atlas.CellSize;
-		let cascades = ShadowMatrices.DirectionalCascades(light, mainView, cellSize);
-		let invShadowMapSize = 1.0f / (float)cellSize;
+		// Pass the LARGEST cascade resolution for the sphere-fit computation.
+		// WorldTexelSizes are recomputed below per cascade with each cascade's
+		// actual cell size.
+		let maxCellSize = cellSizes[0]; // cascade 0 has the largest
+		let cascades = ShadowMatrices.DirectionalCascades(light, mainView, maxCellSize);
 
 		light.ShadowIndex = baseShadowIdx;
 
@@ -565,10 +579,15 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		{
 			let region = regions[c];
 			let isBase = (c == 0);
-			let texelWorld = (c == 0) ? cascades.WorldTexelSizes.X :
-			                 (c == 1) ? cascades.WorldTexelSizes.Y :
-			                 (c == 2) ? cascades.WorldTexelSizes.Z :
-			                            cascades.WorldTexelSizes.W;
+
+			// Recompute world texel size with THIS cascade's cell resolution.
+			let rawTexel = (c == 0) ? cascades.WorldTexelSizes.X :
+			               (c == 1) ? cascades.WorldTexelSizes.Y :
+			               (c == 2) ? cascades.WorldTexelSizes.Z :
+			                          cascades.WorldTexelSizes.W;
+			// The original texel was computed with maxCellSize; scale by the ratio.
+			let texelWorld = rawTexel * ((float)maxCellSize / (float)cellSizes[c]);
+			let invShadowMapSize = 1.0f / (float)cellSizes[c];
 
 			GPUShadowData data = .()
 			{
@@ -587,7 +606,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 			shadowView.ViewMatrix = .Identity;
 			shadowView.ProjectionMatrix = cascades.ViewProjs[c];
 			shadowView.ViewProjectionMatrix = cascades.ViewProjs[c];
-			shadowView.CameraPosition = .Zero; // not used for ortho
+			shadowView.CameraPosition = .Zero;
 			shadowView.NearPlane = 0.1f;
 			shadowView.FarPlane = 1000.0f;
 			shadowView.Width = region.Width;
@@ -614,7 +633,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		let faceCount = ShadowConstants.PointFaceCount;
 
 		uint32 baseCell;
-		if (shadowSystem.Atlas.AllocateContiguous((uint32)faceCount) case .Ok(let cell))
+		if (shadowSystem.Atlas.AllocateContiguous(.Small, (uint32)faceCount) case .Ok(let cell))
 			baseCell = cell;
 		else
 			return;
@@ -623,7 +642,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		ShadowAtlasRegion[ShadowConstants.PointFaceCount] regions = ?;
 		for (int32 f = 0; f < faceCount; f++)
 		{
-			regions[f] = shadowSystem.Atlas.GetRegion(baseCell + (uint32)f);
+			regions[f] = shadowSystem.Atlas.GetRegion(.Small, baseCell + (uint32)f);
 			int32 idx;
 			if (shadowSystem.ReserveShadowSlot() case .Ok(let i))
 				idx = i;
@@ -632,10 +651,8 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 			if (baseShadowIdx < 0) baseShadowIdx = idx;
 		}
 
-		let cellSize = shadowSystem.Atlas.CellSize;
+		let cellSize = shadowSystem.Atlas.GetCellSize(.Small);
 		let invShadowMapSize = 1.0f / (float)cellSize;
-		// Rough world texel for normal-offset bias — for point lights we don't
-		// have cascaded resolution, so use the range / cell size as an estimate.
 		let worldTexel = Math.Max(light.Range, 1.0f) / (float)cellSize;
 
 		light.ShadowIndex = baseShadowIdx;
