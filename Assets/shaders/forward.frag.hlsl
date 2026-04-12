@@ -65,30 +65,56 @@ Texture2D                 ShadowAtlas  : register(t0, space4);
 SamplerComparisonState    ShadowSampler : register(s0, space4);
 StructuredBuffer<GPUShadowData> ShadowData : register(t1, space4);
 
+// Picks a cube face index (0..5) from the world-space direction from the light
+// to the surface. Face order matches ShadowMatrices.PointLightFaceViewProj:
+// 0 = +X, 1 = -X, 2 = +Y, 3 = -Y, 4 = +Z, 5 = -Z.
+int PickPointFace(float3 toFragment)
+{
+    float3 absD = abs(toFragment);
+    if (absD.x >= absD.y && absD.x >= absD.z)
+        return toFragment.x > 0.0 ? 0 : 1;
+    if (absD.y >= absD.z)
+        return toFragment.y > 0.0 ? 2 : 3;
+    return toFragment.z > 0.0 ? 4 : 5;
+}
+
 // Samples a shadow map and returns the lit fraction (1 = lit, 0 = shadowed).
 //
+// Handles three light types:
+//   - Directional: cascade selection by view-space depth
+//   - Spot:        single shadow map, direct sample
+//   - Point:       cube face selection by direction from light to fragment
+//
 // Matches the legacy Sedulous renderer:
-//   - Receiver lookup with normal-offset bias scaled by world-space cascade texel size
-//   - Cascade selection by view-space depth (directional only)
+//   - Receiver lookup with normal-offset bias scaled by world-space texel size
 //   - saturate(z) instead of rejection (avoids popping at cascade far)
 //   - Plain 5×5 box PCF (hardware depth bias prevents acne, not the shader)
-float SampleShadow(int shadowIndex, float3 worldPos, float3 worldNormal, float NdotL, float viewDepth)
+float SampleShadow(GPULight light, float3 worldPos, float3 worldNormal, float NdotL, float viewDepth)
 {
+    int shadowIndex = light.ShadowIndex;
     if (shadowIndex < 0) return 1.0;
 
     GPUShadowData shadow = ShadowData[shadowIndex];
 
-    // Cascade selection for directional lights — done BEFORE normal offset so we
-    // use the right cascade's world texel size.
+    // Cascade / face selection.
     if (shadow.CascadeCount > 0)
     {
-        int cascadeIdx = shadow.CascadeCount - 1;
-        if (viewDepth < shadow.CascadeSplits.x)      cascadeIdx = 0;
-        else if (viewDepth < shadow.CascadeSplits.y) cascadeIdx = 1;
-        else if (viewDepth < shadow.CascadeSplits.z) cascadeIdx = 2;
-        else if (viewDepth < shadow.CascadeSplits.w) cascadeIdx = 3;
+        if (light.Type > 0.5 && light.Type < 1.5) // Point
+        {
+            float3 toFrag = worldPos - light.Position;
+            int faceIdx = PickPointFace(toFrag);
+            shadow = ShadowData[shadowIndex + faceIdx];
+        }
+        else // Directional — pick cascade by view-space depth
+        {
+            int cascadeIdx = shadow.CascadeCount - 1;
+            if (viewDepth < shadow.CascadeSplits.x)      cascadeIdx = 0;
+            else if (viewDepth < shadow.CascadeSplits.y) cascadeIdx = 1;
+            else if (viewDepth < shadow.CascadeSplits.z) cascadeIdx = 2;
+            else if (viewDepth < shadow.CascadeSplits.w) cascadeIdx = 3;
 
-        shadow = ShadowData[shadowIndex + cascadeIdx];
+            shadow = ShadowData[shadowIndex + cascadeIdx];
+        }
     }
 
     // Normal-offset bias in world space: NormalBias is in texels, scale by the
@@ -233,7 +259,7 @@ float3 EvaluateLight(GPULight light, float3 worldPos, float3 worldNormal, float 
     // Shadow term — geometric NdotL is used for slope-scaled bias to keep
     // shadowing stable across normal mapping.
     float geomNdotL = max(dot(normalize(worldNormal), L), 0.0);
-    float shadow = SampleShadow(light.ShadowIndex, worldPos, worldNormal, geomNdotL, viewDepth);
+    float shadow = SampleShadow(light, worldPos, worldNormal, geomNdotL, viewDepth);
 
     float D = DistributionGGX(NdotH, roughness);
     float G = GeometrySmith(NdotV, NdotL, roughness);

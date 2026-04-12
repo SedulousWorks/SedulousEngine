@@ -158,8 +158,8 @@ public class DecalRenderer : Renderer
 			Label = "Decal Pass BindGroup Layout",
 			Entries = passEntries
 		};
-		if (mDevice.CreateBindGroupLayout(passLayoutDesc) case .Ok(let layout))
-			mDecalPassLayout = layout;
+		if (mDevice.CreateBindGroupLayout(passLayoutDesc) case .Ok(let passBgl))
+			mDecalPassLayout = passBgl;
 		else
 			return;
 

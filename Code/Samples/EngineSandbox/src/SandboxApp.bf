@@ -17,6 +17,7 @@ using Sedulous.Imaging;
 using Sedulous.Imaging.STB;
 using Sedulous.Renderer.Passes;
 using Sedulous.Renderer.Debug;
+using Sedulous.Shell.Input;
 using Sedulous.Models;
 using Sedulous.Models.GLTF;
 using Sedulous.Geometry.Tooling;
@@ -32,6 +33,14 @@ class SandboxApp : EngineApplication
 	// Smoothed frame-time stats for the FPS counter.
 	private float mFpsSmoothed = 0.0f;
 	private float mFrameTimeMs = 0.0f;
+
+	// Camera fly-through state.
+	private Scene mScene;
+	private EntityHandle mCameraEntity;
+	private Vector3 mCameraPosition = .(0, 4, 8);
+	private float mYaw = Math.PI_f;             // facing -Z initially (toward origin)
+	private float mPitch = -0.464f;              // slight downward tilt
+	private bool mMouseCaptured = false;
 
 	Material mPbrMaterial ~ delete _;
 	ITexture mSkyTexture;
@@ -75,6 +84,7 @@ class SandboxApp : EngineApplication
 
 		// Create scene
 		let scene = sceneSub.CreateScene("TestScene");
+		mScene = scene;
 
 		// ==================== Materials ====================
 
@@ -327,24 +337,46 @@ class SandboxApp : EngineApplication
 
 		// Shadow-casting spot light — high above and angled toward the scene.
 		let spotLightEntity = scene.CreateEntity("ShadowSpot");
-		scene.SetLocalTransform(spotLightEntity, Transform.CreateLookAt(.(4, 6, 4), .(0, 0, 0)));
+		scene.SetLocalTransform(spotLightEntity, Transform.CreateLookAt(.(2, 8, 2), .(0, -1, 0)));
 		let spotLightHandle = lightMgr.CreateComponent(spotLightEntity);
 		if (let light = lightMgr.Get(spotLightHandle))
 		{
 			light.Type = .Spot;
 			light.Color = .(1.0f, 0.95f, 0.85f);
-			light.Intensity = 8.0f;
+			light.Intensity = 20.0f;
 			light.Range = 30.0f;
 			light.InnerConeAngle = 25.0f;
 			light.OuterConeAngle = 40.0f;
-			light.CastsShadows = false;
+			light.CastsShadows = true;
 			light.ShadowBias = 0.001f;
 			light.ShadowNormalBias = 0.05f;
+		}
+
+		// Shadow-casting point light — sits near the scene, casts shadows in every
+		// direction (6 cube-map faces). Good test for the point shadow code path.
+		let pointLightEntity = scene.CreateEntity("ShadowPoint");
+		scene.SetLocalTransform(pointLightEntity, .()
+		{
+			Position = .(-2.0f, 2.0f, 0.0f),
+			Rotation = .Identity,
+			Scale = .One
+		});
+		let pointLightHandle = lightMgr.CreateComponent(pointLightEntity);
+		if (let light = lightMgr.Get(pointLightHandle))
+		{
+			light.Type = .Point;
+			light.Color = .(1.0f, 0.7f, 0.4f); // warm orange
+			light.Intensity = 15.0f;
+			light.Range = 12.0f;
+			light.CastsShadows = true;
+			light.ShadowBias = 0.0005f;
+			light.ShadowNormalBias = 2.0f;
 		}
 
 		// ==================== Camera ====================
 
 		let cameraEntity = scene.CreateEntity("Camera");
+		mCameraEntity = cameraEntity;
 		scene.SetLocalTransform(cameraEntity, Transform.CreateLookAt(.(0, 4, 8), .(0, 0, 0)));
 
 		let cameraMgr = scene.GetModule<CameraComponentManager>();
@@ -511,6 +543,12 @@ class SandboxApp : EngineApplication
 
 	protected override void OnUpdate(float deltaTime)
 	{
+		// ==================== Camera Controls ====================
+		// WASD = move, Q/E = down/up, mouse right-click drag = look,
+		// Tab = toggle mouse capture, Shift = fast, Escape = exit.
+		UpdateCamera(deltaTime);
+
+		// ==================== Debug HUD ====================
 		let rs = Context.GetSubsystem<RenderSubsystem>();
 		if (rs == null) return;
 		let dbg = rs.DebugDraw;
@@ -521,19 +559,67 @@ class SandboxApp : EngineApplication
 		let fps = mFrameTimeMs > 0.001f ? 1000.0f / mFrameTimeMs : 0.0f;
 		mFpsSmoothed = mFpsSmoothed * 0.9f + fps * 0.1f;
 
-		// FPS counter — top-left corner with a dark background rect for readability.
-		dbg.DrawScreenRect(4, 4, 180, 22, .(0, 0, 0, 160));
+		// FPS counter + controls hint.
+		dbg.DrawScreenRect(4, 4, 300, 34, .(0, 0, 0, 160));
 		let fpsText = scope String();
 		fpsText.AppendF("FPS {0:F0}  ({1:F2} ms)", mFpsSmoothed, mFrameTimeMs);
 		dbg.DrawScreenText(8, 8, fpsText, .White);
+		dbg.DrawScreenText(8, 20, "WASD=Move QE=Up/Down RMB=Look Tab=Capture Shift=Fast", .LightGray);
 
 		// World-space axis indicator at the origin.
 		dbg.DrawAxis(Matrix.Identity, 1.5f);
+	}
 
-		// Wire box around the rough scene extent so the frustum/cascade math can
-		// be visually sanity-checked later.
-		BoundingBox sceneBounds = .(.(-6, 0, -6), .(6, 4, 6));
-		dbg.DrawWireBox(sceneBounds, .Yellow);
+	private void UpdateCamera(float deltaTime)
+	{
+		let keyboard = mShell.InputManager.Keyboard;
+		let mouse = mShell.InputManager.Mouse;
+
+		// Escape exits.
+		if (keyboard.IsKeyPressed(.Escape))
+		{
+			Exit();
+			return;
+		}
+
+		// Tab toggles mouse capture (continuous look without holding RMB).
+		if (keyboard.IsKeyPressed(.Tab))
+		{
+			mMouseCaptured = !mMouseCaptured;
+			mouse.RelativeMode = mMouseCaptured;
+			mouse.Visible = !mMouseCaptured;
+		}
+
+		// Look: mouse delta → yaw/pitch when captured OR when right-click held.
+		if (mMouseCaptured || mouse.IsButtonDown(.Right))
+		{
+			mYaw += mouse.DeltaX * 0.003f;
+			mPitch -= mouse.DeltaY * 0.003f;
+			mPitch = Math.Clamp(mPitch, -Math.PI_f * 0.49f, Math.PI_f * 0.49f);
+		}
+
+		// Movement: WASD + QE relative to the current yaw/pitch.
+		let cosP = Math.Cos(mPitch);
+		let forward = Vector3(cosP * Math.Sin(mYaw), Math.Sin(mPitch), cosP * Math.Cos(mYaw));
+		let right = Vector3.Normalize(Vector3.Cross(forward, .(0, 1, 0)));
+		let speed = (keyboard.IsKeyDown(.LeftShift) ? 20.0f : 5.0f) * deltaTime;
+
+		Vector3 move = .Zero;
+		if (keyboard.IsKeyDown(.W)) move += forward;
+		if (keyboard.IsKeyDown(.S)) move -= forward;
+		if (keyboard.IsKeyDown(.D)) move += right;
+		if (keyboard.IsKeyDown(.A)) move -= right;
+		if (keyboard.IsKeyDown(.E)) move += .(0, 1, 0);
+		if (keyboard.IsKeyDown(.Q)) move -= .(0, 1, 0);
+		if (move.LengthSquared() > 0)
+			mCameraPosition += Vector3.Normalize(move) * speed;
+
+		// Update the camera entity's transform to reflect the fly-cam state.
+		if (mScene != null)
+		{
+			let target = mCameraPosition + forward;
+			mScene.SetLocalTransform(mCameraEntity, Transform.CreateLookAt(mCameraPosition, target));
+		}
 	}
 
 	protected override void OnCleanup()

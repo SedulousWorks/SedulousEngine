@@ -455,7 +455,16 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 			AllocateDirectionalShadow(light, mainView, shadowSystem);
 		}
 
-		// Pass 2: spot lights (single cell each).
+		// Pass 2: point lights (need 6 contiguous cells per light, one per cube face).
+		for (let entry in lights)
+		{
+			let light = entry as LightRenderData;
+			if (light == null || !light.CastsShadows || light.Type != .Point)
+				continue;
+			AllocatePointShadow(light, shadowSystem);
+		}
+
+		// Pass 3: spot lights (single cell each).
 		for (let entry in lights)
 		{
 			let light = entry as LightRenderData;
@@ -593,6 +602,85 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		}
 	}
 
+	/// Allocates and queues 6 cube-face shadow maps for a point light. Each face
+	/// gets its own GPUShadowData entry with its own view-proj; the fragment
+	/// shader picks the face at runtime via direction from light to surface.
+	///
+	/// light.ShadowIndex is set to the FIRST face's index; subsequent faces sit
+	/// at consecutive indices. The base entry carries CascadeCount = 6 as a
+	/// "face count" signal (spot lights have 0).
+	private void AllocatePointShadow(LightRenderData light, ShadowSystem shadowSystem)
+	{
+		let faceCount = ShadowConstants.PointFaceCount;
+
+		uint32 baseCell;
+		if (shadowSystem.Atlas.AllocateContiguous((uint32)faceCount) case .Ok(let cell))
+			baseCell = cell;
+		else
+			return;
+
+		int32 baseShadowIdx = -1;
+		ShadowAtlasRegion[ShadowConstants.PointFaceCount] regions = ?;
+		for (int32 f = 0; f < faceCount; f++)
+		{
+			regions[f] = shadowSystem.Atlas.GetRegion(baseCell + (uint32)f);
+			int32 idx;
+			if (shadowSystem.ReserveShadowSlot() case .Ok(let i))
+				idx = i;
+			else
+				return;
+			if (baseShadowIdx < 0) baseShadowIdx = idx;
+		}
+
+		let cellSize = shadowSystem.Atlas.CellSize;
+		let invShadowMapSize = 1.0f / (float)cellSize;
+		// Rough world texel for normal-offset bias — for point lights we don't
+		// have cascaded resolution, so use the range / cell size as an estimate.
+		let worldTexel = Math.Max(light.Range, 1.0f) / (float)cellSize;
+
+		light.ShadowIndex = baseShadowIdx;
+
+		for (int32 f = 0; f < faceCount; f++)
+		{
+			let region = regions[f];
+			let isBase = (f == 0);
+			let faceVP = ShadowMatrices.PointLightFaceViewProj(light, f);
+
+			GPUShadowData data = .()
+			{
+				LightViewProj = faceVP,
+				AtlasUVRect = region.UVRect,
+				CascadeSplits = .Zero,
+				Bias = light.ShadowBias,
+				NormalBias = light.ShadowNormalBias,
+				InvShadowMapSize = invShadowMapSize,
+				CascadeCount = isBase ? (int32)faceCount : 0,
+				WorldTexelSize = worldTexel
+			};
+			shadowSystem.SetShadowData(baseShadowIdx + f, data);
+
+			// Per-face shadow view — only ViewProjectionMatrix is used by the
+			// depth-only shader, so we collapse view+proj into a single matrix
+			// (View = Identity, Proj = faceVP) for the scene uniforms upload.
+			let shadowView = mViewPool.Acquire();
+			shadowView.ViewMatrix = .Identity;
+			shadowView.ProjectionMatrix = faceVP;
+			shadowView.ViewProjectionMatrix = faceVP;
+			shadowView.CameraPosition = light.Position;
+			shadowView.NearPlane = 0.1f;
+			shadowView.FarPlane = Math.Max(light.Range, 0.2f);
+			shadowView.Width = region.Width;
+			shadowView.Height = region.Height;
+			shadowView.FrameIndex = mFrameIndex;
+			shadowView.DeltaTime = mDeltaTime;
+			shadowView.TotalTime = mTotalTime;
+
+			ExtractIntoView(shadowView);
+
+			mShadowDraws.Add(ShadowPipeline.ShadowJob() { View = shadowView, Region = region });
+		}
+	}
+
 	/// Renders all queued shadow views into the atlas in a single graph cycle.
 	/// Called between BeginFrame and the main pipeline.Render. The graph imports
 	/// the atlas with finalState = ShaderRead, so it's left ready for sampling.
@@ -659,7 +747,10 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		scene.AddModule(decalMgr);
 
 		scene.AddModule(new CameraComponentManager());
-		scene.AddModule(new LightComponentManager());
+
+		let lightMgr = new LightComponentManager();
+		lightMgr.RenderContext = mRenderContext;
+		scene.AddModule(lightMgr);
 	}
 
 	public void OnSceneDestroyed(Scene scene)

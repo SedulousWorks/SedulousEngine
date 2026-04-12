@@ -69,8 +69,11 @@ class ForwardOpaquePass : PipelinePass
 
 		if (hasDepth)
 		{
-			// Read from prepass depth — test only, no write
-			config.DepthMode = .ReadOnly;
+			// ReadWrite so masked geometry (which the depth prepass skipped) writes
+			// its depth. Opaque pixels already have correct depth from the prepass;
+			// re-writing the same value is a no-op. Without this, SkyPass fills
+			// masked pixels because their depth is still at far-plane.
+			config.DepthMode = .ReadWrite;
 			config.DepthCompare = .LessEqual;
 			config.DepthFormat = .Depth24PlusStencil8;
 		}

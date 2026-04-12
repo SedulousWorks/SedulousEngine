@@ -36,12 +36,13 @@ public class ShadowSystem : IDisposable
 	{
 		mDevice = device;
 
-		// Atlas — 4096×4096 with 2048×2048 cells (2×2 grid of 4 large cells).
-		// Matches the old Sedulous renderer's per-cascade shadow map resolution.
-		// Only 4 cells total → fits one directional light (4 cascades). Spots share
-		// the remaining cells if any. Bump atlas size if more lights need shadows.
+		// Atlas — 4096×4096 with 1024×1024 cells (4×4 grid of 16 cells).
+		// Supports 4 directional cascades + 6 point-light faces + 6 spot lights
+		// simultaneously. Cell resolution is half of the earlier 2048 polish pass
+		// but this is the simplest layout that fits point shadows; a hierarchical
+		// allocator can restore high-res cascades later.
 		Atlas = new .();
-		if (Atlas.Initialize(device, 4096, 2048) case .Err)
+		if (Atlas.Initialize(device, 4096, 1024) case .Err)
 			return .Err;
 
 		// Shadow data buffer

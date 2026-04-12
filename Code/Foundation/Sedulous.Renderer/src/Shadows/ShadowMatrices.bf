@@ -8,6 +8,8 @@ using Sedulous.Renderer;
 public static class ShadowConstants
 {
 	public const int32 MaxCascades = 4;
+	/// Number of cube-map faces for a point light shadow (always 6).
+	public const int32 PointFaceCount = 6;
 }
 
 /// Output of DirectionalCascades — per-cascade view-projection matrices,
@@ -25,6 +27,39 @@ public struct DirectionalCascadeData
 /// Phase 7.3: cascaded directional support.
 public static class ShadowMatrices
 {
+	/// Computes the world → light-clip view-projection matrix for one face of a
+	/// point light's cube shadow. Face indices follow the standard +X, -X, +Y,
+	/// -Y, +Z, -Z order (matches the shader's face selection).
+	public static Matrix PointLightFaceViewProj(LightRenderData light, int32 faceIdx)
+	{
+		let position = light.Position;
+
+		Vector3 forward = .Zero;
+		Vector3 up = .Zero;
+		switch (faceIdx)
+		{
+		case 0: forward = .(1, 0, 0);  up = .(0, 1, 0);  // +X
+		case 1: forward = .(-1, 0, 0); up = .(0, 1, 0);  // -X
+		case 2: forward = .(0, 1, 0);  up = .(0, 0, -1); // +Y — up must be non-parallel
+		case 3: forward = .(0, -1, 0); up = .(0, 0, 1);  // -Y
+		case 4: forward = .(0, 0, 1);  up = .(0, 1, 0);  // +Z
+		case 5: forward = .(0, 0, -1); up = .(0, 1, 0);  // -Z
+		}
+
+		let target = position + forward;
+		let view = Matrix.CreateLookAt(position, target, up);
+
+		// Slightly wider than 90° so adjacent cube faces overlap at the boundary.
+		// This eliminates the seam artifact where fragments at exactly 45° between
+		// two axes can flip face index and hit an unlit edge of the other face's map.
+		let fov = Math.PI_f * 0.5f + 0.04f; // ~92.3°
+		let nearPlane = 0.1f;
+		let farPlane = Math.Max(light.Range, nearPlane + 0.1f);
+		let proj = Matrix.CreatePerspectiveFieldOfView(fov, 1.0f, nearPlane, farPlane);
+
+		return view * proj;
+	}
+
 	/// Computes the world → light-clip view-projection matrix for a spot light.
 	///
 	///   - Light position is the matrix's eye point.
