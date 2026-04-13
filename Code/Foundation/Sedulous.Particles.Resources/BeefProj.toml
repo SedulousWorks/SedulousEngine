@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.Particles" = "*", "Sedulous.Resources" = "*", "Sedulous.Serialization" = "*", "Sedulous.Core.Mathematics" = "*"}
+
+[Project]
+Name = "Sedulous.Particles.Resources"
+TargetType = "BeefLib"
