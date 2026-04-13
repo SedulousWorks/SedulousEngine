@@ -27,6 +27,7 @@ using Sedulous.Animation;
 using System.Collections;
 using Sedulous.Materials.Resources;
 using Sedulous.Imaging.SDL;
+using Sedulous.Particles;
 
 class SandboxApp : EngineApplication
 {
@@ -68,6 +69,14 @@ class SandboxApp : EngineApplication
 	MaterialInstance mGrayMaterial ~ _?.ReleaseRef();
 	MaterialInstance mTransparentMaterial ~ _?.ReleaseRef();
 	MaterialInstance mMaskedMaterial ~ _?.ReleaseRef();
+
+	// Particle effects (owned by app, shared by components)
+	ParticleEffect mSparksEffect ~ delete _;
+	ParticleEffect mSmokeEffect ~ delete _;
+	ParticleEffect mMagicEffect ~ delete _;
+	ParticleEffect mFireEffect ~ delete _;
+	ParticleEffect mTrailEffect ~ delete _;
+	ParticleEffect mFireworksEffect ~ delete _;
 
 	protected override void OnStartup()
 	{
@@ -133,7 +142,7 @@ class SandboxApp : EngineApplication
 		let resources = Context.Resources;
 
 		// Create mesh resources and register with resource system
-		mPlaneRes = StaticMeshResource.CreatePlane(10, 10, 1, 1);
+		mPlaneRes = StaticMeshResource.CreatePlane(30, 30, 1, 1);
 		mCubeRes = StaticMeshResource.CreateCube(1.0f);
 		mSphereRes = StaticMeshResource.CreateSphere(0.5f, 32, 16);
 		resources.AddResource<StaticMeshResource>(mPlaneRes);
@@ -215,6 +224,226 @@ class SandboxApp : EngineApplication
 		// Projects a Kenney animal icon downward onto the ground plane.
 		CreateDecal(scene, resources, "textures/kenney_animal-pack-remastered/PNG/Round/panda.png",
 			.(0.0f, -0.5f, 2.5f), .(3.0f, 3.0f, 3.0f));
+
+		// ==================== Particles ====================
+		// Four effects spaced across the scene to showcase different particle types.
+		{
+			let particleMgr = scene.GetModule<ParticleComponentManager>();
+
+			// --- Sparks (additive, rising embers) ---
+			mSparksEffect = new ParticleEffect("Sparks");
+			{
+				let sys = new ParticleSystem(500);
+				sys.Emitter.SpawnRate = 40;
+				sys.BlendMode = .Additive;
+				sys.AddInitializer(new LifetimeInitializer() { Lifetime = .(0.5f, 1.5f) });
+				sys.AddInitializer(new PositionInitializer() { Shape = .Sphere(0.3f) });
+				sys.AddInitializer(new VelocityInitializer() { BaseVelocity = .(0, 3, 0), Randomness = .(1.5f, 1, 1.5f) });
+				sys.AddInitializer(new SizeInitializer() { Size = .Constant(.(0.08f, 0.08f)) });
+				sys.AddInitializer(new ColorInitializer() { Color = .Range(.(1, 0.4f, 0, 1), .(1, 0.9f, 0.2f, 1)) });
+				sys.AddInitializer(new RotationInitializer());
+				sys.AddBehavior(new GravityBehavior() { Multiplier = 0.3f });
+				sys.AddBehavior(new DragBehavior() { Drag = 0.8f });
+				sys.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .FadeOut(1.0f) });
+				sys.AddBehavior(new RotationOverLifetimeBehavior());
+				sys.AddBehavior(new VelocityIntegrationBehavior());
+				mSparksEffect.AddSystem(sys);
+			}
+			CreateParticleEntity(scene, resources, particleMgr, mSparksEffect,
+				"textures/kenney_particle-pack/PNG (Transparent)/circle_05.png",
+				"Sparks", .(6, -1, -6));
+
+			// --- Smoke (alpha blended, rising plume) ---
+			mSmokeEffect = new ParticleEffect("Smoke");
+			{
+				let sys = new ParticleSystem(300);
+				sys.Emitter.SpawnRate = 15;
+				sys.BlendMode = .Alpha;
+				sys.SortParticles = true;
+				sys.AddInitializer(new LifetimeInitializer() { Lifetime = .(2.0f, 4.0f) });
+				sys.AddInitializer(new PositionInitializer() { Shape = .Circle(0.4f) });
+				sys.AddInitializer(new VelocityInitializer() { BaseVelocity = .(0, 1.5f, 0), Randomness = .(0.3f, 0.2f, 0.3f) });
+				sys.AddInitializer(new SizeInitializer() { Size = .Range(.(0.3f, 0.3f), .(0.5f, 0.5f)) });
+				sys.AddInitializer(new ColorInitializer() { Color = .Range(.(0.4f, 0.4f, 0.4f, 0.6f), .(0.6f, 0.6f, 0.6f, 0.4f)) });
+				sys.AddInitializer(new RotationInitializer() { RotationSpeed = .(-0.5f, 0.5f) });
+				sys.AddBehavior(new GravityBehavior() { Multiplier = -0.05f, Direction = .(0, -1, 0) }); // slight buoyancy
+				sys.AddBehavior(new DragBehavior() { Drag = 0.3f });
+				sys.AddBehavior(new WindBehavior() { Force = .(0.3f, 0, 0.1f) });
+				sys.AddBehavior(new SizeOverLifetimeBehavior() { Curve = .Linear(.(0.3f, 0.3f), .(1.2f, 1.2f)) });
+				sys.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .FadeOut(1.0f, 0.5f) });
+				sys.AddBehavior(new RotationOverLifetimeBehavior());
+				sys.AddBehavior(new VelocityIntegrationBehavior());
+				mSmokeEffect.AddSystem(sys);
+			}
+			CreateParticleEntity(scene, resources, particleMgr, mSmokeEffect,
+				"textures/kenney_particle-pack/PNG (Transparent)/smoke_07.png",
+				"Smoke", .(-6, -1, -6));
+
+			// --- Magic sparkles (additive, orbiting vortex) ---
+			mMagicEffect = new ParticleEffect("Magic");
+			{
+				let sys = new ParticleSystem(400);
+				sys.Emitter.SpawnRate = 60;
+				sys.BlendMode = .Additive;
+				sys.AddInitializer(new LifetimeInitializer() { Lifetime = .(1.0f, 2.0f) });
+				sys.AddInitializer(new PositionInitializer() { Shape = .Sphere(0.8f, true) }); // surface only
+				sys.AddInitializer(new VelocityInitializer() { BaseVelocity = .(0, 0.5f, 0), Randomness = .(0.2f, 0.3f, 0.2f) });
+				sys.AddInitializer(new SizeInitializer() { Size = .Range(.(0.15f, 0.15f), .(0.3f, 0.3f)) });
+				sys.AddInitializer(new ColorInitializer() { Color = .Range(.(0.5f, 0.7f, 1.5f, 1), .(1.2f, 0.5f, 1.5f, 1)) }); // HDR bright
+				sys.AddBehavior(new VortexBehavior() { Strength = 3.0f, Axis = .(0, 1, 0) });
+				sys.AddBehavior(new DragBehavior() { Drag = 0.5f });
+				sys.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .FadeOut(1.0f, 0.6f) });
+				sys.AddBehavior(new SizeOverLifetimeBehavior() { Curve = .Linear(.(0.3f, 0.3f), .(0.05f, 0.05f)) });
+				sys.AddBehavior(new VelocityIntegrationBehavior());
+				mMagicEffect.AddSystem(sys);
+			}
+			CreateParticleEntity(scene, resources, particleMgr, mMagicEffect,
+				"textures/kenney_particle-pack/PNG (Transparent)/star_04.png",
+				"Magic", .(0, 0, -8));
+
+			// --- Fire (additive, upward flames) ---
+			mFireEffect = new ParticleEffect("Fire");
+			{
+				let sys = new ParticleSystem(800);
+				sys.Emitter.SpawnRate = 120;
+				sys.BlendMode = .Additive;
+				sys.AddInitializer(new LifetimeInitializer() { Lifetime = .(0.3f, 0.8f) });
+				sys.AddInitializer(new PositionInitializer() { Shape = .Circle(0.15f) }); // tight base
+				sys.AddInitializer(new VelocityInitializer() { BaseVelocity = .(0, 2.0f, 0), Randomness = .(0.15f, 0.5f, 0.15f) }); // mostly upward
+				sys.AddInitializer(new SizeInitializer() { Size = .Range(.(0.2f, 0.2f), .(0.35f, 0.35f)) });
+				sys.AddInitializer(new ColorInitializer() { Color = .Constant(.(1, 0.9f, 0.5f, 1)) }); // bright yellow-white core
+				sys.AddInitializer(new RotationInitializer());
+				sys.AddBehavior(new GravityBehavior() { Multiplier = -0.3f, Direction = .(0, -1, 0) }); // buoyancy
+				sys.AddBehavior(new DragBehavior() { Drag = 2.0f });
+				sys.AddBehavior(new TurbulenceBehavior() { Strength = 0.8f, Frequency = 3.0f, Speed = 4.0f }); // subtle flicker
+
+				// Color gradient: bright yellow-white core → orange → dark red → transparent
+				var fireColor = ParticleCurveColor();
+				fireColor.AddKey(0.0f, .(1.5f, 1.2f, 0.5f, 1));    // HDR bright yellow-white
+				fireColor.AddKey(0.25f, .(1.2f, 0.5f, 0.05f, 1));   // orange
+				fireColor.AddKey(0.6f, .(0.6f, 0.1f, 0.0f, 0.7f));  // dark red, fading
+				fireColor.AddKey(1.0f, .(0.2f, 0.02f, 0.0f, 0.0f)); // nearly black, fully transparent
+				sys.AddBehavior(new ColorOverLifetimeBehavior() { Curve = fireColor });
+
+				// Grow slightly at base then shrink toward tip
+				var fireSize = ParticleCurveVector2();
+				fireSize.AddKey(0.0f, .(0.2f, 0.2f));
+				fireSize.AddKey(0.15f, .(0.35f, 0.35f));
+				fireSize.AddKey(1.0f, .(0.02f, 0.02f));
+				sys.AddBehavior(new SizeOverLifetimeBehavior() { Curve = fireSize });
+
+				sys.AddBehavior(new RotationOverLifetimeBehavior());
+				sys.AddBehavior(new VelocityIntegrationBehavior());
+				mFireEffect.AddSystem(sys);
+			}
+			CreateParticleEntity(scene, resources, particleMgr, mFireEffect,
+				"textures/kenney_particle-pack/PNG (Transparent)/flame_06.png",
+				"Fire", .(-6, -1, -12));
+
+			// --- Comet trail (trail render mode demo) ---
+			mTrailEffect = new ParticleEffect("Comet");
+			{
+				let sys = new ParticleSystem(50);
+				sys.Emitter.SpawnRate = 8;
+				sys.BlendMode = .Additive;
+				sys.RenderMode = .Trail;
+				sys.Trail = .()
+				{
+					Enabled = true,
+					MaxPoints = 32,
+					RecordInterval = 0.016f,
+					Lifetime = 1.5f,
+					WidthStart = 0.15f,
+					WidthEnd = 0.0f,
+					MinVertexDistance = 0.01f,
+					UseParticleColor = true,
+					TrailColor = .(1, 1, 1, 1)
+				};
+				sys.AddInitializer(new LifetimeInitializer() { Lifetime = .(2.0f, 3.0f) });
+				sys.AddInitializer(new PositionInitializer() { Shape = .Point() });
+				sys.AddInitializer(new VelocityInitializer()
+				{
+					BaseVelocity = .Zero,
+					ShapeDirectionSpeed = 3.0f,
+					Shape = .Sphere(0.1f)
+				});
+				sys.AddInitializer(new SizeInitializer() { Size = .Constant(.(0.12f, 0.12f)) });
+				sys.AddInitializer(new ColorInitializer() { Color = .Range(.(0.5f, 0.8f, 1.5f, 1), .(1.5f, 0.5f, 1.0f, 1)) }); // HDR blue-purple
+				sys.AddBehavior(new GravityBehavior() { Multiplier = 0.15f });
+				sys.AddBehavior(new DragBehavior() { Drag = 0.3f });
+				sys.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .FadeOut(1.0f, 0.4f) });
+				sys.AddBehavior(new VelocityIntegrationBehavior());
+				mTrailEffect.AddSystem(sys);
+			}
+			CreateParticleEntity(scene, resources, particleMgr, mTrailEffect,
+				"textures/kenney_particle-pack/PNG (Transparent)/trace_05.png",
+				"Comet", .(0, 1, -14));
+
+			// --- Fireworks (sub-emitter demo: rocket → burst on death) ---
+			mFireworksEffect = new ParticleEffect("Fireworks");
+			{
+				// System 0: Rockets — rise upward, short lifetime, trigger burst on death
+				let rockets = new ParticleSystem(10);
+				rockets.Emitter.Mode = .Burst;
+				rockets.Emitter.BurstCount = 3;
+				rockets.Emitter.BurstInterval = 2.0f;
+				rockets.Emitter.BurstCycles = 0; // infinite
+				rockets.BlendMode = .Additive;
+				rockets.RenderMode = .Trail;
+				rockets.Trail = .()
+				{
+					Enabled = true,
+					MaxPoints = 24,
+					RecordInterval = 0.02f,
+					Lifetime = 0.8f,
+					WidthStart = 0.06f,
+					WidthEnd = 0.0f,
+					MinVertexDistance = 0.01f,
+					UseParticleColor = true,
+					TrailColor = .(1, 1, 1, 1)
+				};
+				rockets.AddInitializer(new LifetimeInitializer() { Lifetime = .(0.8f, 1.2f) });
+				rockets.AddInitializer(new PositionInitializer() { Shape = .Circle(0.5f) });
+				rockets.AddInitializer(new VelocityInitializer() { BaseVelocity = .(0, 8, 0), Randomness = .(1.5f, 2, 1.5f) });
+				rockets.AddInitializer(new SizeInitializer() { Size = .Constant(.(0.06f, 0.06f)) });
+				rockets.AddInitializer(new ColorInitializer() { Color = .Constant(.(1.5f, 1.2f, 0.5f, 1)) }); // bright yellow
+				rockets.AddBehavior(new GravityBehavior() { Multiplier = 0.4f });
+				rockets.AddBehavior(new VelocityIntegrationBehavior());
+				let rocketIdx = mFireworksEffect.AddSystem(rockets);
+
+				// System 1: Burst sparks — triggered by rocket death
+				let burst = new ParticleSystem(500);
+				burst.Emitter.IsEmitting = false; // only spawns via sub-emitter
+				burst.BlendMode = .Additive;
+				burst.AddInitializer(new LifetimeInitializer() { Lifetime = .(0.5f, 1.5f) });
+				burst.AddInitializer(new PositionInitializer() { Shape = .Point() });
+				burst.AddInitializer(new VelocityInitializer()
+				{
+					BaseVelocity = .Zero,
+					ShapeDirectionSpeed = 5.0f,
+					Shape = .Sphere(0.1f)
+				});
+				burst.AddInitializer(new SizeInitializer() { Size = .Range(.(0.06f, 0.06f), .(0.12f, 0.12f)) });
+				burst.AddInitializer(new ColorInitializer() { Color = .Range(.(1.5f, 0.3f, 0.1f, 1), .(0.3f, 1.5f, 0.3f, 1)) }); // red-green mix
+				burst.AddBehavior(new GravityBehavior() { Multiplier = 0.5f });
+				burst.AddBehavior(new DragBehavior() { Drag = 1.0f });
+				burst.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .FadeOut(1.0f, 0.3f) });
+				burst.AddBehavior(new VelocityIntegrationBehavior());
+				let burstIdx = mFireworksEffect.AddSystem(burst);
+
+				// Link: rocket death → burst sparks
+				var link = SubEmitterLink.Default();
+				link.Trigger = .OnDeath;
+				link.ChildSystemIndex = burstIdx;
+				link.SpawnCount = 30;
+				link.Probability = 1.0f;
+				link.InheritPosition = true;
+				mFireworksEffect.AddSubEmitterLink(link);
+			}
+			CreateParticleEntity(scene, resources, particleMgr, mFireworksEffect,
+				"textures/kenney_particle-pack/PNG (Transparent)/spark_07.png",
+				"Fireworks", .(8, -1, -8));
+		}
 
 		// ==================== Animated Fox ====================
 
@@ -541,6 +770,35 @@ class SandboxApp : EngineApplication
 		}
 	}
 
+	/// Creates a particle entity with the given effect and texture.
+	private void CreateParticleEntity(Scene scene, ResourceSystem resources,
+		ParticleComponentManager particleMgr, ParticleEffect effect,
+		StringView texturePath, StringView entityName, Vector3 position)
+	{
+		let entity = scene.CreateEntity(entityName);
+		scene.SetLocalTransform(entity, .() { Position = position, Rotation = .Identity, Scale = .One });
+
+		let handle = particleMgr.CreateComponent(entity);
+		if (let comp = particleMgr.Get(handle))
+		{
+			comp.SetEffect(effect);
+
+			let fullPath = scope String();
+			GetAssetPath(texturePath, fullPath);
+
+			if (ImageLoaderFactory.LoadImage(fullPath) case .Ok(var image))
+			{
+				let texRes = new TextureResource(image, true);
+				resources.AddResource<TextureResource>(texRes);
+				mSpriteTextures.Add(texRes); // reuse shutdown list
+
+				var texRef = ResourceRef(texRes.Id, "");
+				defer texRef.Dispose();
+				comp.SetTextureRef(texRef);
+			}
+		}
+	}
+
 	protected override void OnUpdate(float deltaTime)
 	{
 		// ==================== Camera Controls ====================
@@ -568,6 +826,38 @@ class SandboxApp : EngineApplication
 
 		// World-space axis indicator at the origin.
 		dbg.DrawAxis(Matrix.Identity, 1.5f);
+
+		// Particle system bounding boxes.
+		DrawParticleBounds(dbg, mSparksEffect, .Yellow);
+		DrawParticleBounds(dbg, mSmokeEffect, .LightGray);
+		DrawParticleBounds(dbg, mMagicEffect, .Cyan);
+		DrawParticleBounds(dbg, mFireEffect, .Red);
+		DrawParticleBounds(dbg, mTrailEffect, .Blue);
+		DrawParticleBounds(dbg, mFireworksEffect, .Magenta);
+	}
+
+	private void DrawParticleBounds(DebugDraw dbg, ParticleEffect effect, Color color)
+	{
+		if (effect == null) return;
+		for (let system in effect.Systems)
+		{
+			if (system.AliveCount == 0) continue;
+			let positions = system.Streams.Positions;
+			if (positions == null) continue;
+
+			var min = positions[0];
+			var max = positions[0];
+			for (int32 i = 1; i < system.AliveCount; i++)
+			{
+				let p = positions[i];
+				min = Vector3.Min(min, p);
+				max = Vector3.Max(max, p);
+			}
+
+			// Expand slightly for particle size
+			let expand = Vector3(0.15f, 0.15f, 0.15f);
+			dbg.DrawWireBox(BoundingBox(min - expand, max + expand), color);
+		}
 	}
 
 	private void UpdateCamera(float deltaTime)

@@ -10,31 +10,55 @@ standalone for sandboxes, tools, and tests without any scene infrastructure.
 
 ```
 Sedulous.Renderer (scene-independent)
-├── Renderer              — shared infrastructure (GPU resources, materials, lights, shaders)
-├── Pipeline              — per-view pass execution, output texture, render graph
-├── PipelinePass          — base class for render/compute/copy passes
-├── PostProcessStack      — ordered chain of post-process effects on Pipeline
-├── PipelineStateCache    — on-demand GPU pipeline creation from material config
-├── RenderView            — camera + viewport + frame state + extracted data
-├── ExtractedRenderData   — per-view container of categorized render data
-├── GPUResourceManager    — handle-based GPU resource pool
-├── IRenderDataProvider   — extraction interface for scene modules
-├── RenderExtractionContext — view info passed to providers during extraction
-└── BindGroupFrequency    — 4-level bind group convention
+├── RenderContext          — shared infrastructure (GPU resources, materials, lights, shaders,
+│                            shadows, sprites, debug draw, registered renderers)
+├── Pipeline               — per-view pass execution, output texture, render graph
+├── IRenderingPipeline     — interface shared by Pipeline + ShadowPipeline
+├── PipelinePass           — base class for render/compute/copy passes
+├── Renderer               — abstract per-type drawer base (ezRenderer pattern)
+│   ├── MeshRenderer       — draws MeshRenderData (Opaque, Masked, Transparent)
+│   ├── SpriteRenderer     — draws SpriteRenderData (Transparent, GPU instanced)
+│   └── DecalRenderer      — draws DecalRenderData (Decal, own pipeline layout)
+├── PostProcessStack       — ordered chain of post-process effects on Pipeline
+├── PipelineStateCache     — on-demand GPU pipeline creation, MRT support
+├── RenderView             — camera + viewport + frame state + extracted data (owns ExtractedRenderData)
+├── RenderViewPool         — per-frame view reuse for multi-view rendering
+├── ExtractedRenderData    — per-view container of polymorphic render data per category
+├── FrameAllocator         — per-frame bump allocator for render data (Sedulous.Core.Memory)
+├── GPUResourceManager     — handle-based GPU resource pool
+├── Shadows/
+│   ├── ShadowSystem       — atlas + data buffer + comparison sampler + bind groups
+│   ├── ShadowAtlas         — hierarchical 3-tier depth atlas (Large/Medium/Small)
+│   ├── ShadowPipeline      — standalone per-view shadow rendering
+│   └── ShadowMatrices      — spot/point/directional cascade matrix computation
+├── Debug/
+│   ├── DebugDraw           — immediate-mode wire shapes + text API
+│   └── DebugDrawSystem     — font atlas + per-frame vertex buffers
+├── SpriteSystem           — sprite material template + per-frame instance buffers
+├── IRenderDataProvider    — extraction interface for scene modules
+├── RenderExtractionContext — view info + RenderContext ref passed to providers
+└── BindGroupFrequency     — 5-level bind group convention (Frame/Pass/Material/DrawCall/Shadow)
 ```
 
-## Renderer (Shared Infrastructure)
+## RenderContext (Shared Infrastructure)
 
-The `Renderer` class owns GPU resources and systems shared across all views/pipelines:
+The `RenderContext` class (formerly Renderer) owns GPU resources, systems, and
+registered per-type drawers shared across all views/pipelines:
+
 - `GPUResourceManager` — meshes, textures, bone buffers with deferred deletion
 - `MaterialSystem` — bind group lifecycle, default textures, per-instance GPU resources
-- `PipelineStateCache` — cached GPU pipelines by config hash
+- `PipelineStateCache` — cached GPU pipelines by config hash, MRT support
 - `LightBuffer` — per-frame light data upload (max 128 lights)
-- `ShaderSystem` reference — compilation and caching
-- Shared bind group layouts (Frame set 0, DrawCall set 3)
-- Default material and draw call bind groups
+- `ShadowSystem` — hierarchical shadow atlas + shadow data buffer + comparison sampler
+- `SkinningSystem` — compute skinning dispatch + per-mesh output buffers
+- `SpriteSystem` — shared sprite material template + per-frame instance buffers
+- `DebugDrawSystem` — font atlas + per-frame line/overlay vertex buffers
+- `DebugDraw` — immediate-mode API for wire shapes, text, screen overlays
+- `FrameAllocator` — per-frame bump allocator for render data, reset each BeginFrame
+- Registered renderers (MeshRenderer, SpriteRenderer, DecalRenderer) — shared across pipelines
+- Shared bind group layouts (Frame set 0, DrawCall set 3, Shadow set 4)
 
-One Renderer per application. Multiple Pipelines reference the same Renderer.
+One RenderContext per application. Multiple Pipelines reference the same context.
 
 ## Pipeline (Per-View Execution)
 
@@ -93,19 +117,21 @@ abstract class PipelinePass
 }
 ```
 
-### Registered Passes
+### Registered Passes (execution order)
 
 | Pass | Type | Reads | Writes | Description |
 |------|------|-------|--------|-------------|
-| DepthPrepass | Render | — | SceneDepth | Depth-only, establishes early-Z |
-| ForwardOpaquePass | Render | SceneDepth | PipelineOutput | PBR lit opaque + masked geometry |
-| ForwardTransparentPass | Render | SceneDepth | PipelineOutput | PBR lit transparent, alpha blend, back-to-front |
-| SkyPass | Render | SceneDepth | PipelineOutput | Equirectangular HDR sky or procedural gradient |
+| SkinningPass | Compute | SkinnedMesh VBs | Skinned output VBs | Pre-skins vertices for all downstream passes |
+| DepthPrepass | Render | — | SceneDepth | Depth-only for opaque, establishes early-Z |
+| ForwardOpaquePass | Render | SceneDepth | PipelineOutput, SceneNormals, MotionVectors | PBR lit opaque + masked (MRT: 3 color targets) |
+| DecalPass | Render | SceneDepth (sampled) | PipelineOutput | Projected decals via depth reconstruction |
+| SkyPass | Render | SceneDepth | PipelineOutput | HDR sky, fills where depth == far |
+| ForwardTransparentPass | Render | SceneDepth | PipelineOutput | Transparent + sprites, alpha blend, back-to-front |
+| DebugPass | Render | SceneDepth | PipelineOutput | 3D debug lines with depth test |
+| OverlayPass | Render | — | PipelineOutput | 2D text + rectangles, no depth |
 
-Future:
-- `GPUSkinningPass` — compute pass, transforms vertices
-- `ShadowPass` — render pass, depth-only from light perspective
-- `DecalPass` — render pass, screen-space projected decals
+Sky runs between opaque and transparent so transparent/sprite draws
+blend over the sky backdrop rather than being overwritten by it.
 
 ## Post-Processing
 
@@ -133,7 +159,20 @@ Base class for effects. Each effect adds render graph passes that read from
 
 | Effect | Description |
 |--------|-------------|
-| TonemapEffect | ACES filmic tone mapping. sRGB swapchain handles gamma. |
+| BloomEffect | 5-level downsample/upsample chain. Produces "BloomTexture" aux via ctx.SetAux. Does NOT modify the main chain (ctx.Output = ctx.Input). |
+| TonemapEffect | ACES filmic. Composites BloomTexture in HDR space (hdr += bloom) before tone curve. Falls back to 1×1 black when bloom is absent. |
+
+### Bloom Compositing Design
+
+Bloom must be added to the scene color in **HDR space before tone mapping**.
+If added after tonemapping (in LDR), the bloom values would clip at 1.0 and
+the soft glow would look harsh and banded. The HDR range that makes bloom
+look natural would be lost.
+
+The compositing is merged into the TonemapEffect shader (`hdr += bloom` then
+ACES) as an optimization — one fewer fullscreen pass vs a separate composite
+step. This couples tonemap to the "BloomTexture" aux, but the fallback to a
+black texture means tonemap works unchanged when bloom is disabled.
 
 ## Render Data
 
@@ -159,11 +198,16 @@ keys. Passes iterate sorted batches.
 
 ### Render Data Types
 
-- `MeshRenderData` — GPUMeshHandle, submesh index, world matrix, material bind group
-- `LightRenderData` — type (directional/point/spot), color, intensity, direction, range, shadow config
-- `DecalRenderData` — world matrix, color, textures
+All render data types are classes inheriting from `RenderData` (abstract base).
+Allocated from RenderContext.FrameAllocator — trivially destructible, valid
+for one frame only.
 
-All are structs (value types). No entity/component references — just GPU handles and flat data.
+- `MeshRenderData` — GPUMeshHandle, submesh index, world + prev world matrices, material bind group, IsSkinned
+- `LightRenderData` — type (directional/point/spot), color, intensity, direction, range, shadow config, ShadowIndex
+- `DecalRenderData` — world + inverse world matrices, color, angle fade, material bind group
+- `SpriteRenderData` — position, size, tint, UV rect, orientation mode, material bind group
+
+No entity/component references — just GPU handles and flat data.
 
 ## Render Extraction
 
@@ -180,15 +224,19 @@ interface IRenderDataProvider
 
 ```
 RenderSubsystem.EndFrame():
-  1. Build RenderExtractionContext from camera
-  2. Create/clear ExtractedRenderData
-  3. For each active scene:
-     For each scene module implementing IRenderDataProvider:
-       provider.ExtractRenderData(context)
-  4. renderData.SortAndBatch()
-  5. pipeline.Render(encoder, view)
-  6. BlitToSwapchain
-  7. Present
+  1. viewPool.BeginFrame() — clears previous frame's render data lists
+  2. renderContext.BeginFrame() — resets FrameAllocator + ShadowSystem
+  3. Acquire main view from pool, populate from active camera
+  4. ExtractIntoView(mainView) — runs all IRenderDataProviders
+  5. SetupShadows(mainView) — allocate atlas regions per shadow caster,
+     compute matrices, acquire shadow views, extract per shadow view
+  6. pipeline.BeginFrame() + shadowPipeline.BeginFrame() — reset ring buffers
+  7. RenderShadows(encoder) — ShadowPipeline.RenderAll(jobs)
+  8. pipeline.Render(encoder, mainView)
+  9. renderContext.DebugDraw.Clear()
+  10. BlitToSwapchain
+  11. Save current VP as PrevViewProjectionMatrix for next frame
+  12. Present
 ```
 
 ### Cross-Subsystem Discovery
@@ -198,9 +246,11 @@ on its scene modules:
 
 ```
 Engine.Render     → MeshComponentManager : IRenderDataProvider
+Engine.Render     → SkinnedMeshComponentManager : IRenderDataProvider
 Engine.Render     → LightComponentManager : IRenderDataProvider
+Engine.Render     → SpriteComponentManager : IRenderDataProvider
+Engine.Render     → DecalComponentManager : IRenderDataProvider
 Engine.Particles  → ParticleComponentManager : IRenderDataProvider (future)
-Engine.Render     → DecalComponentManager : IRenderDataProvider (future)
 ```
 
 ### Visibility / Culling (Future)
@@ -234,17 +284,19 @@ Creates GPU render pipeline objects on demand from `PipelineConfig`:
 
 ## Bind Group Frequency Model
 
-Shaders use HLSL register spaces 0-3 by convention:
+Shaders use HLSL register spaces 0-4 by convention:
 
 | Set | Space | Frequency | Contents | Rebuilt |
 |-----|-------|-----------|----------|---------|
-| 0 | space0 | Per-frame | VP matrices, time, lights | Once per frame |
-| 1 | space1 | Per-pass | Sky params, shadow maps | Once per pass |
+| 0 | space0 | Per-frame | VP matrices (incl. PrevVP), time, lights. Dynamic offset for scene UBO ring buffer | Once per view |
+| 1 | space1 | Per-pass | Pass-specific inputs (e.g., SceneDepth for decals) | Once per pass |
 | 2 | space2 | Per-material | Textures, params, samplers | On material change |
-| 3 | space3 | Per-draw | Object transforms (dynamic offset) | Per draw call |
+| 3 | space3 | Per-draw | Object/decal transforms (dynamic offset into ring buffer) | Per draw call |
+| 4 | space4 | Shadow | Shadow atlas + comparison sampler + ShadowDataBuffer | Once per frame |
 
 No shader reflection — convention-based. Shaders put resources in the right space,
-renderer builds matching layouts in code.
+renderer builds matching layouts in code. DecalRenderer uses its own 4-set pipeline
+layout (no shadow set) with depth sampling at set 1.
 
 ## Material System
 
@@ -274,15 +326,20 @@ and caches compiled SPIRV/DXIL to `Assets/cache/shaders/`.
 
 | Shader | Purpose |
 |--------|---------|
-| forward | PBR lit geometry (vert + frag) |
-| depth_only | Depth prepass |
+| forward | PBR lit geometry with MRT output (color + normals + velocity), shadow sampling |
+| depth_only | Depth prepass + shadow depth rendering |
+| fullscreen | Shared fullscreen-triangle vertex shader for all post-process passes |
 | blit | Fullscreen copy to swapchain |
-| tonemap | ACES tone mapping |
+| tonemap | ACES tone mapping + bloom composite (frag only, uses fullscreen vert) |
+| bloom_downsample | 13-tap downsample with threshold extract (frag only) |
+| bloom_upsample | 9-tap tent upsample + blend (frag only) |
 | sky | Equirectangular HDR sky + procedural fallback |
+| sprite | GPU-instanced billboard sprites (SV_VertexID quad + per-instance data) |
+| decal | Projected decals via depth reconstruction (cube SV_VertexID + depth sample) |
+| debug_line | Unlit colored lines for DebugDraw |
+| debug_overlay | 2D screen-space text + rectangles via DebugFont atlas |
+| skinning | Compute shader for vertex skinning (72→48 byte transform) |
 | unlit | Unlit/emissive rendering |
-| drawing | Vector graphics |
-| vg | Vector graphics variant |
-| slug | Text rendering |
 
 ## Blit / Presentation
 
@@ -291,7 +348,11 @@ The RenderSubsystem owns the blit helper and calls it after pipeline rendering.
 
 ```
 Pipeline.Render()  → PipelineOutput (RGBA16Float, linear HDR)
-  → PostProcessStack → TonemapEffect → FinalOutput (RGBA16Float, linear LDR)
+                     + SceneNormals (RG16Float, view-space XY)
+                     + MotionVectors (RG16Float, screen-space delta)
+  → PostProcessStack → BloomEffect (produces BloomTexture aux, passes main through)
+                     → TonemapEffect (composites bloom in HDR, ACES curves)
+                     → FinalOutput (RGBA16Float, linear LDR)
 BlitHelper.Blit()  → Swapchain (BGRA8UnormSrgb, sRGB gamma applied by hardware)
 Present            → Screen
 ```
@@ -304,12 +365,21 @@ Profiler scopes instrument the render path:
 Pipeline.Render
   UploadUniforms
   RenderGraph.Execute
+    GPUSkinning
     DepthPrepass
     ForwardOpaque
-    ForwardTransparent
+    DecalPass
     Sky
+    ForwardTransparent
+    DebugLines
+    Overlay
+    Bloom (downsample chain + upsample chain)
     Tonemap
   Blit
+ShadowSetup
+ShadowRender
+  ShadowPipeline.RenderAll
+SceneExtraction
 ```
 
-Press Shift+P at runtime to print a sorted profile frame with init time.
+Press P at runtime to print a sorted profile frame with init time.

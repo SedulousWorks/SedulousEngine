@@ -4,32 +4,49 @@ Targeted feature set for game-readiness. Not a port of the old renderer — each
 
 ## Current State
 
-- Forward PBR with Cook-Torrance BRDF
-- Directional, point, and spot lights (max 128, LightBuffer)
-- Depth prepass with early-Z → forward pass handoff
-- MaterialSystem integration (bind group lifecycle, default textures)
-- PBR texture sampling (albedo, normal, metallic/roughness, occlusion, emissive)
-- Material instances with per-instance overrides
-- PipelineStateCache for on-demand GPU pipeline creation
-- RenderGraph with barrier solver, ReadWrite access types
-- 8 render categories with sorting (Opaque, Masked, Transparent, Sky, Decal, Light, ReflectionProbe, GUI)
-- GPU resource manager (meshes, textures, bone buffers with deferred deletion)
-- SkinnedMesh vertex layout (80 bytes) and GPUBoneBuffer defined
-- DecalRenderData defined
-- Profiler instrumentation (Shift+P)
-- **Renderer/Pipeline split** — shared infrastructure (Renderer) separated from per-view pass execution (Pipeline)
-- **Post-processing stack** — PostProcessStack with TonemapEffect (ACES filmic), sRGB swapchain gamma
-- **Masked rendering** — BlendMode.Masked with AlphaCutoff, drawn in ForwardOpaquePass
+### Core Architecture
+- **RenderContext/Pipeline split** — shared infrastructure (RenderContext) separated from per-view pass execution (Pipeline). IRenderingPipeline interface lets both Pipeline and ShadowPipeline dispatch through the same registered renderers
+- **ezEngine-style per-type drawers** — Renderer base class with `GetSupportedCategories()` + `RenderBatch()`. MeshRenderer, SpriteRenderer, DecalRenderer registered on RenderContext. Passes call `pipeline.RenderCategory(category)` which dispatches to all matching drawers
+- **Polymorphic render data** — RenderData abstract class hierarchy (MeshRenderData, LightRenderData, DecalRenderData, SpriteRenderData). FrameAllocator (Sedulous.Core.Memory) provides per-frame bump allocation with Reset()
+- **Per-view extraction** — RenderViewPool creates independent RenderView + ExtractedRenderData per view (main camera + shadow casters). Each view extracts independently for future per-view culling
+- **RenderGraph with barrier solver** — ReadWrite access types, transient texture pool, persistent resources, hierarchical pass ordering
+
+### Rendering
+- **Forward PBR** with Cook-Torrance BRDF, directional/point/spot lights (max 128, LightBuffer)
+- **Depth prepass** with early-Z → forward pass handoff (ReadWrite so masked geometry writes depth)
+- **Mini G-buffer** — ForwardOpaquePass writes 3 MRT targets: SceneColor (RGBA16F), SceneNormals (RG16F view-space XY), MotionVectors (RG16F screen-space delta). Always present for post-FX consumption (SSAO, TAA, motion blur)
+- **Masked rendering** — BlendMode.Masked with AlphaCutoff + discard, drawn in ForwardOpaquePass
 - **Transparent rendering** — ForwardTransparentPass with alpha blending, back-to-front sorted
-- **Sky rendering** — Equirectangular HDR environment map with procedural gradient fallback
-- **IModuleSerializer** — scene module-level serialization support (for non-entity scene data)
-- **Compute skinning** — SkinningSystem + SkinningPass pre-skins vertices via compute shader (72→48 bytes), all passes draw skinned meshes as static
-- **SkinnedMeshComponent** — owns AnimationPlayer, manager evaluates animation + uploads bone matrices + auto-creates bone buffer
-- **Resource pipeline integration** — RenderSubsystem registers resource managers (StaticMesh, SkinnedMesh, Texture, Material); AnimationSubsystem registers Skeleton + AnimationClip managers
-- **RenderResourceResolver** — shared service for mesh/material/texture resolution with GPU upload, texture cache, automatic MaterialInstance preparation
-- **ResolvedResource<T>** — generic tracking for first load, deferred retry, and hot reload detection
-- **Component ResourceRef pattern** — components store ResourceRef (deep-copy setters), managers resolve per-frame via resolver
-- **Material ownership** — SetMaterial AddRefs, component destructor ReleaseRefs; resolver releases after handoff
+- **Sky rendering** — equirectangular HDR environment map with procedural gradient fallback. Runs after opaque but before transparent
+- **Compute skinning** — SkinningSystem + SkinningPass pre-skins vertices via compute shader (72→48 bytes)
+- **Decal rendering** — DecalRenderer draws unit cube, fragment shader reads SceneDepth, reconstructs world position, transforms to local decal space, clips + angle-fades. Own 4-set pipeline layout with depth sampling at set 1
+- **GPU-instanced sprites** — SpriteRenderer uses SV_VertexID for quad corners + per-instance vertex buffer (64 B/sprite). Three orientation modes: CameraFacing, CameraFacingY, WorldAligned
+
+### Shadows
+- **Hierarchical shadow atlas** — 4096² Depth32Float, 3 tiers: Large (2048²×2), Medium (1024²×4), Small (512²×16)
+- **Cascaded directional shadows** — 4-cascade PSSM with sphere-fit ortho, cascade blending at split boundaries (15% blend zone)
+- **Point light cubemap shadows** — 6 cube faces, 92.3° FOV for seam overlap, face selection via dominant axis
+- **Spot light shadows** — single shadow map per spot, perspective projection
+- **ShadowPipeline** — standalone per-view pipeline. Single RenderAll(jobs) per frame
+- **5×5 box PCF** — hardware DepthBias + SlopeScale prevents acne
+
+### Post-Processing
+- **PostProcessStack** — ordered effect chain. Auxiliary texture communication via ctx.SetAux/GetAux (ezEngine pipeline pin pattern)
+- **BloomEffect** — 5-level downsample/upsample chain. Produces "BloomTexture" aux without modifying the main chain. Bloom is composited in HDR space before tone mapping so the soft glow preserves HDR range
+- **TonemapEffect** — ACES filmic. Composites BloomTexture (hdr += bloom) before the tone curve. Falls back to 1×1 black texture when bloom is inactive
+
+### Debug & Development
+- **DebugDraw** — immediate-mode API: lines, wire shapes, screen text/rects, 3D-positioned text
+- **Light debug gizmos** — auto-drawn per light type (directional arrow, point sphere, spot cone)
+- **Camera fly-through** — WASD + Q/E + right-click look + Tab capture
+
+### Infrastructure
+- **MaterialSystem** — flexible material templates, bind group lifecycle, default textures
+- **PipelineStateCache** — on-demand pipelines, MRT support (ColorFormats[MaxColorAttachments])
+- **Resource pipeline** — RenderResourceResolver with texture cache, ResolvedResource<T> change detection
+- **Scene PrevWorldMatrix** — per-entity previous frame transform for motion vectors
+- **5-set bind group model** — Frame (0), RenderPass (1), Material (2), DrawCall (3), Shadow (4)
+- **Profiler instrumentation** — press P for profile frame
 
 ## Phase 5: Tone Mapping & Post-Processing Foundation
 
@@ -245,40 +262,46 @@ shader variants needed. Renderer does not reference the animation project.
 
 **Dependencies:** Needs depth buffer access (already available from prepass).
 
-## Phase 10: Particles
+## ~~Phase 10: Particles~~ DONE
 
-Separate subsystem, following ezEngine's ParticlePlugin pattern.
+Self-contained particle system following ezEngine's ParticlePlugin pattern.
+All rendering lives inside `Sedulous.Particles` (no split across projects).
 
-### 10.1 — Project Structure
-- New project: `Sedulous.Particles` (Foundation layer)
-- Depends on: Core.Mathematics, RHI (for buffer types)
-- Does NOT depend on Renderer — renderer pulls data from it
+### Architecture
+- **Sedulous.Particles** — simulation + rendering (depends on Core.Mathematics, RHI, Renderer, Materials)
+- **Sedulous.Particles.Resources** — ParticleEffectResource + ResourceManager
+- **Engine.Render** — ParticleComponent, ParticleComponentManager (IRenderDataProvider)
 
-### 10.2 — Particle System Core
-- `ParticleEffect` — top-level container, owns multiple systems
-- `ParticleSystem` — owns emitters, behaviors, renderers
-- `ParticleEmitter` — spawning (burst, continuous, distance-based)
-- `ParticleBehavior` — per-frame update (gravity, velocity, color over lifetime, size over lifetime)
-- SoA data layout (streams of Position, Velocity, Color, Size, Lifetime, Age)
-- CPU simulation, GPU rendering only
+### Simulation
+- **ParticleStream abstraction** — `ParticleStream` base, `CPUStream<T>` (system memory), `GPUStream` (storage buffer stub). `ParticleStreamContainer` owns streams, provides typed accessors, handles swap-remove compaction
+- **ParticleSimulator** base → `CPUSimulator` (iterates behaviors on SoA arrays), `GPUSimulator` (compute dispatch stub)
+- **ParticleSystem** — orchestrator owning emitter + behaviors + initializers + streams + simulator. Selects CPU/GPU backend based on SimulationMode + behavior support. LOD distance culling. Birth/death event collection for sub-emitters
+- **ParticleEmitter** — spawning logic only (continuous, burst, combined). Spawn rate scaling by LOD
+- **ParticleEffect** — top-level container grouping multiple ParticleSystems. SubEmitterLinks for cross-system event routing
+- **ParticleEffectInstance** — runtime instance, routes sub-emitter events between systems
+- **12 behaviors** — Gravity, Drag, Wind, Turbulence, Vortex, Attractor, RadialForce, VelocityIntegration, ColorOverLifetime, SizeOverLifetime, SpeedOverLifetime, AlphaOverLifetime, RotationOverLifetime
+- **6 initializers** — Position (emission shape), Velocity, Lifetime, Color, Size, Rotation
+- **Curves** — ParticleCurveFloat/Color/Vector2 with Hermite interpolation, factory methods
+- **Emission shapes** — Point, Sphere, Hemisphere, Cone, Box, Circle, Edge with volume/surface/arc
+- **Range values** — RangeFloat, RangeVector2, RangeColor for randomized initialization
 
-### 10.3 — Particle Rendering
-- `ParticleComponentManager` in Engine.Render — implements IRenderDataProvider
-- Extraction creates render data (quad billboard, trail, point) per system
-- Submits to `RenderCategories.Transparent` (additive or alpha-blended)
-- Renderer uploads particle data to GPU buffer, draws instanced quads
+### Rendering
+- **ParticleRenderer** — Renderer subclass for Transparent category. Groups by material + blend mode, creates per-blend-mode pipeline variants, instanced draw (6 verts × N particles)
+- **ParticleGPUResources** — per-frame instance buffers (CpuToGpu), material template, default bind group (white texture fallback)
+- **ParticleRenderExtractor** — CPU-side extraction: streams → ParticleVertex[] with sorting, stretched billboard projection, AABB computation
+- **Particle shaders** — `particle.vert.hlsl` (SV_VertexID billboard + rotation + stretched), `particle.frag.hlsl` (texture × color)
+- **Per-system blend mode** — ParticleBlendMode (Alpha, Additive, Premultiplied, Multiply) correctly applied to pipeline state
 
-### 10.4 — Particle Pass
-- New `ParticlePass` or fold into TransparentForwardPass
-- Billboard vertex shader (camera-facing quads from particle position + size)
-- Particle fragment shader (texture sampling, color, soft particles via depth)
+### Engine Integration
+- **ParticleComponent** — holds effect ref (ResourceRef or direct), texture ref, MaterialInstance
+- **ParticleComponentManager** — resolves effect + texture resources, simulates effects, extracts ParticleBatchRenderData. LOD via stored camera position (one-frame delay)
+- **RenderSubsystem** — registers ParticleRenderer + ParticleComponentManager automatically
 
-### 10.5 — Particle Subsystem
-- `ParticleSubsystem` in Engine layer — manages particle world module
-- Updates particle effects during Update phase
-- ParticleComponent on entities triggers effect playback
-
-**Dependencies:** Transparency pass (Phase 6) for blended particles. Can build core simulation independently.
+### Deferred
+- **Grid-based atlas animation** — ParticleVertex already has TexCoordOffset/TexCoordScale fields. Needs AtlasColumns/AtlasRows/AtlasFPS/AtlasLoop on ParticleSystem and UV computation in ParticleRenderExtractor (port from old engine's CPUParticleEmitter atlas logic). Consider generic atlas format for shared use across particles, sprites, and UI
+- **Trail rendering** — TrailPoint/TrailVertex/TrailState/TrailSettings types exist. Needs trail point recording during simulation and ribbon mesh generation during extraction
+- **GPU simulation** — GPUSimulator stub exists. Needs compute shaders per behavior, GPU compaction (prefix sum + scatter), GPU sorting (bitonic/radix for transparent). Start with additive-only GPU particles (no sort needed)
+- **Soft particles** — fragment shader depth comparison for fade at geometry intersections
 
 ## Phase 11: Sky
 
@@ -366,20 +389,30 @@ Recommended implementation order based on dependencies and game impact:
 2. ~~**Phase 11** — Sky~~ DONE
 3. ~~**Phase 6** — Transparency + masked~~ DONE
 4. ~~**Phase 8** — Compute skinning~~ DONE
-5. ~~**Phase 7** — Shadows~~ DONE (7.5 polish deferred)
-6. **Phase 12** — Debug & overlay rendering (essential for development)
-7. **Phase 13** — Sprites (billboards, HUD, icons)
-8. **Phase 9** — Decals (environmental detail)
-9. **Phase 10** — Particles (effects, separate project)
-10. **Phase 5.2-5.3** — Bloom and post-processing effects (polish)
+5. ~~**Phase 7** — Shadows~~ DONE
+6. ~~**Phase 7.5** — Shadow polish (point cubemap, hierarchical atlas, cascade blending)~~ DONE
+7. ~~**Phase 12** — Debug & overlay rendering~~ DONE
+8. ~~**Phase 13** — Sprites (GPU instanced, 3 orientation modes)~~ DONE
+9. ~~**Phase 9** — Decals (depth-reconstructed projected decals)~~ DONE
+10. ~~**Phase 5.2** — Bloom (downsample/upsample chain + tonemap composite)~~ DONE
+11. ~~**Mini G-buffer** — SceneNormals + MotionVectors MRT~~ DONE
+12. ~~**Phase 10** — Particles (self-contained system, CPU simulation, billboard rendering, sub-emitters, LOD)~~ DONE
+13. **Phase 5.3** — Additional post FX (SSAO, FXAA/TAA, motion blur, color grading)
 
 ## Architecture Notes
 
 ### ezEngine Patterns We Follow
 - **Pipeline passes as graph nodes** — our PipelinePass + RenderGraph serves the same role as ezEngine's RenderPipelinePass with pins
+- **Per-type drawers (ezRenderer pattern)** — Renderer base class with `GetSupportedCategories()` + `RenderBatch()`. Passes call `pipeline.RenderCategory(category)` which dispatches to all registered renderers. Adding a new render data type (e.g., ParticleRenderer) requires zero pass modifications — just register the renderer and it gets called automatically for its supported categories
 - **Pull-based extraction** — IRenderDataProvider extracts render data from components, same as ezEngine's extractor system
-- **Bind group frequency model** — Frame/Pass/Material/DrawCall maps to ezEngine's resource binding hierarchy
+- **Bind group frequency model** — Frame/RenderPass/Material/DrawCall/Shadow maps to ezEngine's resource binding hierarchy
+- **Auxiliary textures (pipeline pins)** — PostProcessContext.SetAux/GetAux lets effects communicate side-channel textures. BloomEffect produces "BloomTexture" aux consumed by TonemapEffect
 - **Separate particle project** — ezEngine's ParticlePlugin is a standalone module; our Sedulous.Particles follows the same split
+
+### Post-Processing Design
+- Bloom is composited in **HDR space before tone mapping** so the soft glow preserves HDR range. If added after tonemapping in LDR, bloom values would clip at 1.0 and the glow would look harsh
+- The compositing happens inside the TonemapEffect shader (`hdr += bloom`) as an optimization — one fewer fullscreen pass vs a separate composite step. The two operations are logically distinct (bloom composite vs tone curve) but merged for efficiency
+- When BloomEffect is absent, TonemapEffect binds a 1×1 black texture as bloom fallback so the shader works unchanged (hdr += black = no change)
 
 ### Resource Resolution (RenderResourceResolver)
 Shared resource resolution service in Engine.Render, used by all render component managers.
@@ -388,12 +421,13 @@ Handles the resolve-upload-track pattern for meshes, materials, and textures.
 - **Mesh resolution** — ResourceRef → StaticMeshResource/SkinnedMeshResource → GPU upload → GPUMeshHandle
 - **Material resolution** — ResourceRef → MaterialResource → MaterialInstance → PrepareInstance (bind group)
 - **Texture resolution** — ResourceRef → TextureResource → GPU upload → ITextureView → set on MaterialInstance
+- **Standalone texture resolution** — ResolveTexture for sprites/decals needing direct texture views
 - **Texture cache** — same texture used by multiple materials uploads once
 - **Change detection** — BoundResource comparison handles first load and hot reload uniformly
 - **ResolvedResource<T>** — generic tracking struct (handle + bound resource + resolve method)
 
-Component managers (MeshComponentManager, SkinnedMeshComponentManager, DecalComponentManager)
-call into the resolver instead of duplicating the resolve-upload-track logic.
+Component managers (MeshComponentManager, SkinnedMeshComponentManager, DecalComponentManager,
+SpriteComponentManager) call into the resolver instead of duplicating the resolve-upload-track logic.
 
 ### Principles
 - Each feature targets what we actually need for the game
