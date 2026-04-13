@@ -4,20 +4,21 @@ using System;
 using System.Collections;
 using Sedulous.Scenes;
 using Sedulous.Renderer;
-using Sedulous.Animation;
 using Sedulous.Resources;
+using Sedulous.Animation;
+using Sedulous.Engine.Animation;
 using Sedulous.Geometry.Resources;
 using Sedulous.Materials.Resources;
 using Sedulous.Core.Mathematics;
 using Sedulous.Materials;
 using Sedulous.RHI;
 
-/// Manages skinned mesh components: resolves resource refs, evaluates animation,
-/// uploads bone matrices, and extracts render data for the renderer.
+/// Manages skinned mesh components: resolves resource refs, reads bone matrices
+/// from SkeletalAnimationComponent, uploads to GPU, and extracts render data.
 ///
 /// Each frame:
 ///   1. PostUpdate: resolve mesh/material refs via RenderResourceResolver
-///   2. PostUpdate: evaluate animation → compute skinning matrices → upload to bone buffer
+///   2. PostUpdate: read bone matrices from animation component → upload to bone buffer
 ///   3. Extraction: emit MeshRenderData with IsSkinned + BoneBufferHandle
 class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRenderDataProvider
 {
@@ -54,32 +55,49 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 			if (Resolver != null)
 				ResolveComponentResources(comp);
 
-			// Evaluate animation and upload bone matrices
-			if (comp.AnimationPlayer != null)
+			// Read bone matrices from animation component on the same entity
+			// and upload to the GPU bone buffer.
+			// Priority: AnimationGraphComponent > SkeletalAnimationComponent
+			if (comp.BoneBufferHandle.IsValid && GPUResources != null && Scene != null)
 			{
-				comp.AnimationPlayer.Update(deltaTime);
+				Span<Matrix> currentMatrices = default;
+				Span<Matrix> prevMatrices = default;
 
-				if (comp.BoneBufferHandle.IsValid && GPUResources != null)
+				// Check for animation graph first (overrides simple clip)
+				let graphMgr = Scene.GetModule<AnimationGraphComponentManager>();
+				let graphComp = (graphMgr != null) ? graphMgr.GetForEntity(comp.Owner) : null;
+				if (graphComp != null && graphComp.IsReady)
+				{
+					currentMatrices = graphComp.GetSkinningMatrices();
+					prevMatrices = graphComp.GetPrevSkinningMatrices();
+				}
+				else
+				{
+					// Fall back to simple skeletal animation
+					let animMgr = Scene.GetModule<SkeletalAnimationComponentManager>();
+					let animComp = (animMgr != null) ? animMgr.GetForEntity(comp.Owner) : null;
+					if (animComp != null && animComp.IsReady)
+					{
+						currentMatrices = animComp.GetSkinningMatrices();
+						prevMatrices = animComp.GetPrevSkinningMatrices();
+					}
+				}
+
+				if (currentMatrices.Length > 0)
 				{
 					let boneBuffer = GPUResources.GetBoneBuffer(comp.BoneBufferHandle);
 					if (boneBuffer != null && boneBuffer.Buffer != null)
 					{
-						let currentMatrices = comp.AnimationPlayer.GetSkinningMatrices();
-						let prevMatrices = comp.AnimationPlayer.GetPrevSkinningMatrices();
+						let matrixSize = (uint64)(currentMatrices.Length * sizeof(Matrix));
 
-						if (currentMatrices.Length > 0)
-						{
-							let matrixSize = (uint64)(currentMatrices.Length * sizeof(Matrix));
+						// Current frame matrices at offset 0
+						TransferHelper.WriteMappedBuffer(boneBuffer.Buffer, 0,
+							Span<uint8>((uint8*)currentMatrices.Ptr, (int)matrixSize));
 
-							// Current frame matrices at offset 0
-							TransferHelper.WriteMappedBuffer(boneBuffer.Buffer, 0,
-								Span<uint8>((uint8*)currentMatrices.Ptr, (int)matrixSize));
-
-							// Previous frame matrices at offset matrixSize
-							if (prevMatrices.Length > 0)
-								TransferHelper.WriteMappedBuffer(boneBuffer.Buffer, matrixSize,
-									Span<uint8>((uint8*)prevMatrices.Ptr, (int)matrixSize));
-						}
+						// Previous frame matrices at offset matrixSize
+						if (prevMatrices.Length > 0)
+							TransferHelper.WriteMappedBuffer(boneBuffer.Buffer, matrixSize,
+								Span<uint8>((uint8*)prevMatrices.Ptr, (int)matrixSize));
 					}
 				}
 			}
@@ -112,14 +130,34 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 			comp.MeshHandle = meshHandle;
 			comp.LocalBounds = bounds;
 
-			// Create bone buffer if we have an animation player and don't have one yet
-			if (!comp.BoneBufferHandle.IsValid && comp.AnimationPlayer != null)
+			// Create bone buffer from animation component's skeleton
+			if (!comp.BoneBufferHandle.IsValid && Scene != null)
 			{
-				let boneCount = (uint16)comp.AnimationPlayer.Skeleton.BoneCount;
-				if (boneCount > 0)
+				Skeleton skeleton = null;
+
+				// Check graph component first
+				let graphMgr = Scene.GetModule<AnimationGraphComponentManager>();
+				let graphComp = (graphMgr != null) ? graphMgr.GetForEntity(comp.Owner) : null;
+				if (graphComp != null)
+					skeleton = graphComp.Skeleton;
+
+				// Fall back to skeletal animation component
+				if (skeleton == null)
 				{
-					if (GPUResources.CreateBoneBuffer(boneCount) case .Ok(let boneHandle))
-						comp.BoneBufferHandle = boneHandle;
+					let animMgr = Scene.GetModule<SkeletalAnimationComponentManager>();
+					let animComp = (animMgr != null) ? animMgr.GetForEntity(comp.Owner) : null;
+					if (animComp != null)
+						skeleton = animComp.Skeleton;
+				}
+
+				if (skeleton != null)
+				{
+					let boneCount = (uint16)skeleton.BoneCount;
+					if (boneCount > 0)
+					{
+						if (GPUResources.CreateBoneBuffer(boneCount) case .Ok(let boneHandle))
+							comp.BoneBufferHandle = boneHandle;
+					}
 				}
 			}
 		}

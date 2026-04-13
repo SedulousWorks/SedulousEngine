@@ -24,11 +24,13 @@ using Sedulous.Geometry.Tooling;
 using Sedulous.Textures.Resources;
 using Sedulous.Geometry.Tooling.Resources;
 using Sedulous.Animation;
+using Sedulous.Animation.Resources;
 using System.Collections;
 using Sedulous.Materials.Resources;
 using Sedulous.Imaging.SDL;
 using Sedulous.Particles;
 using Sedulous.Engine.Physics;
+using Sedulous.Engine.Animation;
 using Sedulous.Physics;
 
 class SandboxApp : EngineApplication
@@ -56,9 +58,21 @@ class SandboxApp : EngineApplication
 	SkinnedMeshResource mFoxMeshRes;
 
 	// Fox model data (persists for animation)
-	Skeleton mFoxSkeleton ~ delete _;
-	AnimationClip mFoxWalkClip ~ delete _;
+	// Fox animation resources (registered with resource system, we hold refs)
+	SkeletonResource mFoxSkeletonRes;
+	AnimationClipResource mFoxWalkClipRes;
+
+	PropertyAnimationClipResource mOrbitAnimRes;
 	List<TextureResource> mFoxTextures = new .() ~ delete _;
+
+	// Kenney character (animation graph demo)
+	float mCharAnimTime = 0;
+	AnimationGraph mCharGraph ~ delete _;
+	SkinnedMeshResource mCharMeshRes;
+	SkeletonResource mCharSkeletonRes;
+	List<AnimationClipResource> mCharClipResources = new .() ~ delete _;
+	List<TextureResource> mCharTextures = new .() ~ delete _;
+	List<MaterialResource> mCharMaterialResources = new .() ~ delete _;
 
 	// Sprite textures — held by the app so we release refs on shutdown.
 	List<TextureResource> mSpriteTextures = new .() ~ delete _;
@@ -476,14 +490,19 @@ class SandboxApp : EngineApplication
 
 			if (importResult.SkinnedMeshes.Count > 0 && importResult.Skeletons.Count > 0)
 			{
-				// Take ownership of skeleton and first animation clip
-				mFoxSkeleton = importResult.Skeletons[0];
-				importResult.Skeletons[0] = null; // prevent double-delete
+				// Register skeleton as a resource
+				let skeleton = importResult.Skeletons[0];
+				importResult.Skeletons[0] = null;
+				mFoxSkeletonRes = new SkeletonResource(skeleton, true);
+				resources.AddResource<SkeletonResource>(mFoxSkeletonRes);
 
+				// Register first animation clip as a resource
 				if (importResult.Animations.Count > 0)
 				{
-					mFoxWalkClip = importResult.Animations[0];
+					let clip = importResult.Animations[0];
 					importResult.Animations[0] = null;
+					mFoxWalkClipRes = new AnimationClipResource(clip, true);
+					resources.AddResource<AnimationClipResource>(mFoxWalkClipRes);
 				}
 
 				// Register skinned mesh as a resource (resolver handles GPU upload)
@@ -516,14 +535,6 @@ class SandboxApp : EngineApplication
 					}
 				}
 
-				// Create animation player
-				let player = new AnimationPlayer(mFoxSkeleton);
-				if (mFoxWalkClip != null)
-				{
-					mFoxWalkClip.IsLooping = true;
-					player.Play(mFoxWalkClip);
-				}
-
 				// Create fox entity
 				let foxEntity = scene.CreateEntity("Fox");
 				scene.SetLocalTransform(foxEntity, .()
@@ -533,13 +544,31 @@ class SandboxApp : EngineApplication
 					Scale = .(0.02f, 0.02f, 0.02f)
 				});
 
-				// Set up skinned mesh component — manager resolves mesh, materials, and bone buffer
+				// Skeletal animation component — drives bone matrices via resource refs
+				let skelAnimMgr = scene.GetModule<SkeletalAnimationComponentManager>();
+				let animHandle = skelAnimMgr.CreateComponent(foxEntity);
+				if (let animComp = skelAnimMgr.Get(animHandle))
+				{
+					var skelRef = ResourceRef(mFoxSkeletonRes.Id, .());
+					defer skelRef.Dispose();
+					animComp.SetSkeletonRef(skelRef);
+
+					if (mFoxWalkClipRes != null)
+					{
+						var clipRef = ResourceRef(mFoxWalkClipRes.Id, .());
+						defer clipRef.Dispose();
+						animComp.SetClipRef(clipRef);
+					}
+					animComp.Loop = true;
+					animComp.AutoPlay = true;
+				}
+
+				// Skinned mesh component — renders the mesh, reads bone matrices from animation component
 				let skinnedMgr = scene.GetModule<SkinnedMeshComponentManager>();
 				let compHandle = skinnedMgr.CreateComponent(foxEntity);
 				if (let comp = skinnedMgr.Get(compHandle))
 				{
 					comp.SetMeshRef(foxMeshRef);
-					comp.AnimationPlayer = player;
 
 					// Set material refs by slot — resolver creates instances and prepares bind groups
 					for (int32 slot = 0; slot < mFoxMaterialResources.Count; slot++)
@@ -551,13 +580,194 @@ class SandboxApp : EngineApplication
 				}
 
 				Console.WriteLine("Fox loaded: {0} vertices, {1} bones, {2} anims, {3} materials, {4} textures",
-					skinnedMesh.VertexCount, mFoxSkeleton.BoneCount,
+					skinnedMesh.VertexCount, skeleton.BoneCount,
 					importResult.Animations.Count, importResult.Materials.Count, importResult.Textures.Count);
 			}
 		}
 		else
 		{
 			Console.WriteLine("WARNING: Could not load Fox model");
+		}
+
+		// ==================== Property Animation ====================
+		// A sphere that floats around the edge of the ground plane,
+		// demonstrating PropertyAnimationComponent with Transform.Position tracks.
+		{
+			let propAnimClip = new PropertyAnimationClip("OrbitPath", 12.0f, true);
+
+			// Trace a rectangular path around the plane at Y=1.5
+			let posTrack = propAnimClip.AddVector3Track("Transform.Position");
+			let edge = 12.0f; // near edge of 30x30 plane (half = 15)
+			let height = 1.5f;
+			posTrack.AddKeyframe(0.0f, .( edge, height, edge));      // front-right
+			posTrack.AddKeyframe(3.0f, .(-edge, height, edge));      // front-left
+			posTrack.AddKeyframe(6.0f, .(-edge, height, -edge));     // back-left
+			posTrack.AddKeyframe(9.0f, .( edge, height, -edge));     // back-right
+			posTrack.AddKeyframe(12.0f, .( edge, height, edge));     // back to start
+
+			mOrbitAnimRes = new PropertyAnimationClipResource(propAnimClip, true);
+			resources.AddResource<PropertyAnimationClipResource>(mOrbitAnimRes);
+
+			let orbitEntity = scene.CreateEntity("OrbitSphere");
+			scene.SetLocalTransform(orbitEntity, .() { Position = .(edge, height, edge), Rotation = .Identity, Scale = .(0.8f, 0.8f, 0.8f) });
+			SetupMeshComponent(scene, orbitEntity, sphereRef, mYellowMaterial);
+
+			let propAnimMgr = scene.GetModule<PropertyAnimationComponentManager>();
+			let propHandle = propAnimMgr.CreateComponent(orbitEntity);
+			if (let propComp = propAnimMgr.Get(propHandle))
+			{
+				var clipRef = ResourceRef(mOrbitAnimRes.Id, .());
+				defer clipRef.Dispose();
+				propComp.SetClipRef(clipRef);
+				propComp.Loop = true;
+				propComp.AutoPlay = true;
+			}
+		}
+
+		// ==================== Animation Graph Demo ====================
+		// Kenney character with idle/walk state machine driven by Speed parameter.
+		{
+			let charPath = scope String();
+			GetAssetPath("samples/models/kenney_platformer-kit/Models/GLB format/character-oopi.glb", charPath);
+
+			let charModel = scope Model();
+			if (ModelLoaderFactory.LoadModel(charPath, charModel) case .Ok)
+			{
+				let importOpts = ModelImportOptions.SkinnedWithAnimations();
+				let importer = scope ModelImporter(importOpts);
+				let importResult = importer.Import(charModel);
+				defer delete importResult;
+
+				if (importResult.SkinnedMeshes.Count > 0 && importResult.Skeletons.Count > 0)
+				{
+					// Register skeleton
+					let charSkeleton = importResult.Skeletons[0];
+					importResult.Skeletons[0] = null;
+					mCharSkeletonRes = new SkeletonResource(charSkeleton, true);
+					resources.AddResource<SkeletonResource>(mCharSkeletonRes);
+
+					// Register skinned mesh
+					let charMesh = importResult.SkinnedMeshes[0];
+					mCharMeshRes = new SkinnedMeshResource(charMesh, true);
+					importResult.SkinnedMeshes[0] = null;
+					resources.AddResource<SkinnedMeshResource>(mCharMeshRes);
+					var charMeshRef = ResourceRef(mCharMeshRes.Id, .());
+					defer charMeshRef.Dispose();
+
+					// Register all animation clips (resource takes ownership)
+					Dictionary<StringView, AnimationClip> clipsByName = scope .();
+					for (int32 clipIdx = 0; clipIdx < importResult.Animations.Count; clipIdx++)
+					{
+						let clip = importResult.Animations[clipIdx];
+						if (clip != null)
+						{
+							clipsByName[clip.Name] = clip;
+							let clipRes = new AnimationClipResource(clip, true);
+							importResult.Animations[clipIdx] = null; // resource owns it now
+							resources.AddResource<AnimationClipResource>(clipRes);
+							mCharClipResources.Add(clipRes);
+						}
+					}
+
+					// Register textures and materials
+					for (let importedTex in importResult.Textures)
+					{
+						let texRes = TextureResourceConverter.Convert(importedTex);
+						if (texRes != null)
+						{
+							resources.AddResource<TextureResource>(texRes);
+							mCharTextures.Add(texRes);
+						}
+					}
+					for (let importedMat in importResult.Materials)
+					{
+						let matRes = MaterialResourceConverter.Convert(importedMat, mCharTextures);
+						if (matRes != null)
+						{
+							resources.AddResource<MaterialResource>(matRes);
+							mCharMaterialResources.Add(matRes);
+						}
+					}
+
+					// Build animation graph: Idle <-> Walk (Speed parameter)
+					let idleClip = clipsByName.GetValueOrDefault("idle");
+					let walkClip = clipsByName.GetValueOrDefault("walk");
+
+					if (idleClip != null && walkClip != null)
+					{
+						mCharGraph = new AnimationGraph();
+						let speedIdx = mCharGraph.AddParameter("Speed", .Float);
+
+						let baseLayer = new AnimationLayer("Base");
+						let idleState = baseLayer.AddState(new AnimationGraphState("Idle",
+							new ClipStateNode(idleClip), ownsNode: true));
+						let walkState = baseLayer.AddState(new AnimationGraphState("Walk",
+							new ClipStateNode(walkClip), ownsNode: true));
+						baseLayer.DefaultStateIndex = idleState;
+
+						// Idle → Walk (Speed > 0.1)
+						let toWalk = new AnimationGraphTransition();
+						toWalk.SourceStateIndex = idleState;
+						toWalk.DestStateIndex = walkState;
+						toWalk.Duration = 0.2f;
+						toWalk.AddFloatCondition(speedIdx, .Greater, 0.1f);
+						baseLayer.AddTransition(toWalk);
+
+						// Walk → Idle (Speed <= 0.1)
+						let toIdle = new AnimationGraphTransition();
+						toIdle.SourceStateIndex = walkState;
+						toIdle.DestStateIndex = idleState;
+						toIdle.Duration = 0.2f;
+						toIdle.AddFloatCondition(speedIdx, .LessEqual, 0.1f);
+						baseLayer.AddTransition(toIdle);
+
+						mCharGraph.AddLayer(baseLayer);
+
+						// Create character entity
+						let charEntity = scene.CreateEntity("KenneyCharacter");
+						scene.SetLocalTransform(charEntity, .()
+						{
+							Position = .(5, 0, 4),
+							Rotation = .Identity,
+							Scale = .One
+						});
+
+						// Animation graph component
+						let graphAnimMgr = scene.GetModule<AnimationGraphComponentManager>();
+						let graphHandle = graphAnimMgr.CreateComponent(charEntity);
+						if (let graphComp = graphAnimMgr.Get(graphHandle))
+						{
+							// Set skeleton + graph directly (not via resource ref — graph is built programmatically)
+							graphComp.Skeleton = charSkeleton;
+							graphComp.Graph = mCharGraph;
+						}
+
+						// Skinned mesh component
+						let charSkinnedMgr = scene.GetModule<SkinnedMeshComponentManager>();
+						let charMeshHandle = charSkinnedMgr.CreateComponent(charEntity);
+						if (let charComp = charSkinnedMgr.Get(charMeshHandle))
+						{
+							charComp.SetMeshRef(charMeshRef);
+							for (int32 slot = 0; slot < mCharMaterialResources.Count; slot++)
+							{
+								var matRef = ResourceRef(mCharMaterialResources[slot].Id, .());
+								charComp.SetMaterialRef(slot, matRef);
+								matRef.Dispose();
+							}
+						}
+
+						// Cycle Speed parameter so the character alternates idle/walk
+						// (done in OnUpdate via graph player parameter)
+
+						Console.WriteLine("Kenney character loaded: {0} anims, idle/walk graph",
+							importResult.Animations.Count);
+					}
+				}
+			}
+			else
+			{
+				Console.WriteLine("WARNING: Could not load Kenney character model");
+			}
 		}
 
 		// ==================== Lights ====================
@@ -857,6 +1067,25 @@ class SandboxApp : EngineApplication
 		// World-space axis indicator at the origin.
 		dbg.DrawAxis(Matrix.Identity, 1.5f);
 
+		// Cycle the Kenney character's Speed parameter on the graph PLAYER
+		// (idle <-> walk every ~3 seconds via sin wave)
+		if (mScene != null && mCharGraph != null)
+		{
+			let graphMgr = mScene.GetModule<AnimationGraphComponentManager>();
+			if (graphMgr != null)
+			{
+				for (let comp in graphMgr.ActiveComponents)
+				{
+					if (comp.GraphPlayer != null)
+					{
+						mCharAnimTime += deltaTime;
+						let cycle = Math.Sin(mCharAnimTime * 1.0f);
+						comp.GraphPlayer.SetFloat("Speed", (cycle > 0) ? 1.0f : 0.0f);
+					}
+				}
+			}
+		}
+
 		// Particle system bounding boxes.
 		DrawParticleBounds(dbg, mSparksEffect, .Yellow);
 		DrawParticleBounds(dbg, mSmokeEffect, .LightGray);
@@ -1043,11 +1272,24 @@ class SandboxApp : EngineApplication
 		for (let spriteTex in mSpriteTextures)
 			spriteTex?.ReleaseRef();
 
-		// Release our refs on mesh resources (resource system holds its own)
+		// Release our refs on mesh/animation resources (resource system holds its own)
 		mPlaneRes?.ReleaseRef();
 		mCubeRes?.ReleaseRef();
 		mSphereRes?.ReleaseRef();
 		mFoxMeshRes?.ReleaseRef();
+		mFoxSkeletonRes?.ReleaseRef();
+		mFoxWalkClipRes?.ReleaseRef();
+		mOrbitAnimRes?.ReleaseRef();
+
+		// Kenney character cleanup
+		mCharMeshRes?.ReleaseRef();
+		mCharSkeletonRes?.ReleaseRef();
+		for (let clipRes in mCharClipResources)
+			clipRes?.ReleaseRef();
+		for (let charTex in mCharTextures)
+			charTex?.ReleaseRef();
+		for (let charMat in mCharMaterialResources)
+			charMat?.ReleaseRef();
 
 		Console.WriteLine("=== EngineSandbox OnShutdown ===");
 	}

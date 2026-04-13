@@ -4,14 +4,14 @@ using System;
 using System.Collections;
 using Sedulous.Scenes;
 using Sedulous.Renderer;
-using Sedulous.Animation;
 using Sedulous.Resources;
 using Sedulous.Core.Mathematics;
 using Sedulous.Materials;
 
-/// Component for a renderable skinned mesh with skeletal animation.
-/// Owns the animation player. The component manager resolves resource refs,
-/// evaluates animation, computes skinning matrices, and uploads to the GPU.
+/// Component for a renderable skinned mesh.
+/// Rendering only — does not own animation. Bone matrices come from a
+/// SkeletalAnimationComponent (or AnimationGraphComponent) on the same entity.
+/// The manager reads matrices from the animation component and uploads to GPU.
 class SkinnedMeshComponent : Component
 {
 	/// Mesh resource reference (serialized). Resolved to GPU handle by manager.
@@ -22,9 +22,6 @@ class SkinnedMeshComponent : Component
 
 	/// GPU bone buffer handle (storage buffer for skinning matrices).
 	public GPUBoneBufferHandle BoneBufferHandle = .Invalid;
-
-	/// Animation player (owned). Evaluates clips into bone poses and skinning matrices.
-	public AnimationPlayer AnimationPlayer ~ delete _;
 
 	/// Material resource references per slot (serialized).
 	private List<ResourceRef> mMaterialRefs = new .() ~ { for (var r in _) r.Dispose(); delete _; };
