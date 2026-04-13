@@ -10,7 +10,7 @@ interface IAudioSystem : IDisposable
 	bool IsInitialized { get; }
 
 	/// Gets the 3D audio listener.
-	IAudioListener Listener { get; }
+	AudioListener Listener { get; }
 
 	/// Gets or sets the master volume affecting all audio (0.0 to 1.0).
 	float MasterVolume { get; set; }

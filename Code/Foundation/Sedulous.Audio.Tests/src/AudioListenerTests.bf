@@ -10,7 +10,7 @@ class AudioListenerTests
 	[Test]
 	public static void TestDefaultPosition()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 
 		Test.Assert(listener.Position == Vector3.Zero);
 	}
@@ -18,7 +18,7 @@ class AudioListenerTests
 	[Test]
 	public static void TestDefaultForward()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 
 		// Default forward is -Z
 		Test.Assert(listener.Forward.X == 0);
@@ -29,7 +29,7 @@ class AudioListenerTests
 	[Test]
 	public static void TestDefaultUp()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 
 		// Default up is +Y
 		Test.Assert(listener.Up.X == 0);
@@ -40,7 +40,7 @@ class AudioListenerTests
 	[Test]
 	public static void TestSetPosition()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 		listener.Position = .(10, 20, 30);
 
 		Test.Assert(listener.Position.X == 10);
@@ -51,7 +51,7 @@ class AudioListenerTests
 	[Test]
 	public static void TestSetForward()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 		listener.Forward = .(1, 0, 0);  // Looking right
 
 		// Should be normalized
@@ -63,7 +63,7 @@ class AudioListenerTests
 	[Test]
 	public static void TestSetUp()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 		listener.Up = .(0, 0, 1);  // Up is +Z
 
 		Test.Assert(Math.Abs(listener.Up.X) < 0.001f);
@@ -74,7 +74,7 @@ class AudioListenerTests
 	[Test]
 	public static void TestWorldToLocal_SoundInFront()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 		// Listener at origin, looking down -Z
 		listener.Position = Vector3.Zero;
 		listener.Forward = .(0, 0, -1);
@@ -95,7 +95,7 @@ class AudioListenerTests
 	[Test]
 	public static void TestWorldToLocal_SoundToRight()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 		listener.Position = Vector3.Zero;
 		listener.Forward = .(0, 0, -1);
 		listener.Up = .(0, 1, 0);
@@ -113,7 +113,7 @@ class AudioListenerTests
 	[Test]
 	public static void TestWorldToLocal_SoundToLeft()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 		listener.Position = Vector3.Zero;
 		listener.Forward = .(0, 0, -1);
 		listener.Up = .(0, 1, 0);
@@ -131,7 +131,7 @@ class AudioListenerTests
 	[Test]
 	public static void TestWorldToLocal_SoundAbove()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 		listener.Position = Vector3.Zero;
 		listener.Forward = .(0, 0, -1);
 		listener.Up = .(0, 1, 0);
@@ -149,7 +149,7 @@ class AudioListenerTests
 	[Test]
 	public static void TestWorldToLocal_ListenerMoved()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 		listener.Position = .(10, 0, 0);  // Listener at X=10
 		listener.Forward = .(0, 0, -1);
 		listener.Up = .(0, 1, 0);
@@ -167,7 +167,7 @@ class AudioListenerTests
 	[Test]
 	public static void TestWorldToLocal_ListenerRotated()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 		listener.Position = Vector3.Zero;
 		listener.Forward = .(1, 0, 0);  // Looking right (+X)
 		listener.Up = .(0, 1, 0);

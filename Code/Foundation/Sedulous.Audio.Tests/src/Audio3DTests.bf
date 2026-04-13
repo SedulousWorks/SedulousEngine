@@ -11,7 +11,7 @@ class Audio3DTests
 	[Test]
 	public static void TestDistanceGain_AtMinDistance()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 		listener.Position = Vector3.Zero;
 
 		let source = scope SDL3AudioSource(0);
@@ -30,7 +30,7 @@ class Audio3DTests
 	[Test]
 	public static void TestDistanceGain_AtMaxDistance()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 		listener.Position = Vector3.Zero;
 
 		let source = scope SDL3AudioSource(0);
@@ -47,7 +47,7 @@ class Audio3DTests
 	[Test]
 	public static void TestDistanceGain_BetweenMinMax()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 		listener.Position = Vector3.Zero;
 
 		let source = scope SDL3AudioSource(0);
@@ -64,7 +64,7 @@ class Audio3DTests
 	[Test]
 	public static void TestPan_SoundInCenter()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 		listener.Position = Vector3.Zero;
 		listener.Forward = .(0, 0, -1);
 		listener.Up = .(0, 1, 0);
@@ -81,7 +81,7 @@ class Audio3DTests
 	[Test]
 	public static void TestPan_SoundToRight()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 		listener.Position = Vector3.Zero;
 		listener.Forward = .(0, 0, -1);
 		listener.Up = .(0, 1, 0);
@@ -98,7 +98,7 @@ class Audio3DTests
 	[Test]
 	public static void TestPan_SoundToLeft()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 		listener.Position = Vector3.Zero;
 		listener.Forward = .(0, 0, -1);
 		listener.Up = .(0, 1, 0);
@@ -115,7 +115,7 @@ class Audio3DTests
 	[Test]
 	public static void TestPan_SoundBehind()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 		listener.Position = Vector3.Zero;
 		listener.Forward = .(0, 0, -1);
 		listener.Up = .(0, 1, 0);
@@ -132,7 +132,7 @@ class Audio3DTests
 	[Test]
 	public static void TestPan_MovingListener()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 		listener.Position = .(100, 0, 0);  // Listener at X=100
 		listener.Forward = .(0, 0, -1);
 		listener.Up = .(0, 1, 0);
@@ -149,7 +149,7 @@ class Audio3DTests
 	[Test]
 	public static void TestPan_RotatedListener()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 		listener.Position = Vector3.Zero;
 		listener.Forward = .(1, 0, 0);  // Looking right (+X)
 		listener.Up = .(0, 1, 0);
@@ -188,7 +188,7 @@ class Audio3DTests
 	[Test]
 	public static void TestUpdate3D_WithSamePosition()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 		listener.Position = .(5, 5, 5);
 
 		let source = scope SDL3AudioSource(0);
@@ -203,7 +203,7 @@ class Audio3DTests
 	[Test]
 	public static void TestUpdate3D_VerySmallDistance()
 	{
-		let listener = scope SDL3AudioListener();
+		let listener = scope AudioListener();
 		listener.Position = Vector3.Zero;
 
 		let source = scope SDL3AudioSource(0);

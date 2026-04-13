@@ -181,7 +181,7 @@ class SDL3AudioSource : IAudioSource
 	}
 
 	/// Calculates 3D audio parameters (distance gain and pan) from listener position.
-	public void Update3D(SDL3AudioListener listener)
+	public void Update3D(AudioListener listener)
 	{
 		if (!m3DEnabled)
 		{

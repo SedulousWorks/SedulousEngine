@@ -10,7 +10,7 @@ namespace Sedulous.Audio.SDL3;
 class SDL3AudioSystem : IAudioSystem
 {
 	private SDL_AudioDeviceID mDeviceId;
-	private SDL3AudioListener mListener = new .() ~ delete _;
+	private AudioListener mListener = new .() ~ delete _;
 	private List<SDL3AudioSource> mSources = new .() ~ DeleteContainerAndItems!(_);
 	private List<SDL3AudioSource> mOneShotSources = new .() ~ DeleteContainerAndItems!(_);
 	private List<SDL3AudioStream> mStreams = new .() ~ DeleteContainerAndItems!(_);
@@ -82,7 +82,7 @@ class SDL3AudioSystem : IAudioSystem
 		}
 	}
 
-	public IAudioListener Listener => mListener;
+	public AudioListener Listener => mListener;
 
 	public float MasterVolume
 	{
