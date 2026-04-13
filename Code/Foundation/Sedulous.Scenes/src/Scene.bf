@@ -397,6 +397,18 @@ public class Scene : IDisposable
 		ProcessDeferredDestroys();
 	}
 
+	/// Initializes any components created since the last frame.
+	/// Called before FixedUpdate so new physics bodies, audio sources, etc.
+	/// are ready before their first simulation step.
+	public void InitializePendingComponents()
+	{
+		for (let module in mModules)
+		{
+			if (let cmBase = module as ComponentManagerBase)
+				cmBase.InitializePendingComponents();
+		}
+	}
+
 	/// Runs fixed update functions. Called by SceneSubsystem at fixed timestep.
 	public void FixedUpdate(float fixedDeltaTime)
 	{

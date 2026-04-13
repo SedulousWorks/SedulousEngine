@@ -180,6 +180,11 @@ public class Context : IDisposable
 		if (!mIsRunning)
 			return;
 
+		// PrepareShutdown: let subsystems detach cross-references while
+		// the world is still alive (e.g., null physics world refs on managers).
+		for (int i = mSortedSubsystems.Count - 1; i >= 0; i--)
+			mSortedSubsystems[i].PrepareShutdown();
+
 		// Shutdown subsystems in reverse UpdateOrder (higher values first)
 		for (int i = mSortedSubsystems.Count - 1; i >= 0; i--)
 			mSortedSubsystems[i].Shutdown();

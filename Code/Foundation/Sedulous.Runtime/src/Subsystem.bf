@@ -50,6 +50,17 @@ public abstract class Subsystem : IDisposable
 		}
 	}
 
+	/// Prepares the subsystem for shutdown while the world is still alive.
+	/// Called on all subsystems before any Shutdown() calls, giving subsystems
+	/// a chance to detach cross-references (e.g., null physics world refs on
+	/// component managers) so component cleanup during Shutdown doesn't
+	/// access destroyed resources.
+	public void PrepareShutdown()
+	{
+		if (mInitialized)
+			OnPrepareShutdown();
+	}
+
 	/// Shuts down the subsystem. Called during Context.Shutdown().
 	public void Shutdown()
 	{
@@ -80,6 +91,12 @@ public abstract class Subsystem : IDisposable
 
 	/// Override to perform subsystem initialization.
 	protected virtual void OnInit() { }
+
+	/// Override to detach cross-references before shutdown.
+	/// Called while the world is still alive — safe to access other subsystems,
+	/// scenes, and component managers. Use this to null external references so
+	/// component cleanup during Shutdown doesn't use-after-free.
+	protected virtual void OnPrepareShutdown() { }
 
 	/// Override to perform subsystem shutdown.
 	protected virtual void OnShutdown() { }

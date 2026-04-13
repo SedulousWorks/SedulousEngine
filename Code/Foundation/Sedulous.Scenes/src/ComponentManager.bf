@@ -12,7 +12,7 @@ using System.Collections;
 ///   - Get(handle) -> T (nullable)
 ///   - GetForEntity(entity) -> T (nullable, linear scan)
 ///   - Iteration over active components
-public abstract class ComponentManager<T> : SceneModule, IComponentManagerSerializer where T : Component, class, new, delete
+public abstract class ComponentManager<T> : ComponentManagerBase, IComponentManagerSerializer where T : Component, class, new, delete
 {
 	/// Pool slot — holds the component and generation counter.
 	private struct Slot
@@ -24,6 +24,7 @@ public abstract class ComponentManager<T> : SceneModule, IComponentManagerSerial
 
 	private List<Slot> mSlots = new .() ~ delete _;
 	private List<int32> mFreeList = new .() ~ delete _;
+	private List<int32> mPendingInit = new .() ~ delete _;
 	private int32 mActiveCount = 0;
 
 	/// Number of active components.
@@ -51,9 +52,11 @@ public abstract class ComponentManager<T> : SceneModule, IComponentManagerSerial
 		let component = new T();
 		component.Owner = entity;
 		component.IsActive = Scene?.IsActive(entity) ?? true;
+		component.Initialized = false;
 		slot.Component = component;
 
 		mActiveCount++;
+		mPendingInit.Add(index);
 
 		OnComponentCreated(component);
 
@@ -162,11 +165,35 @@ public abstract class ComponentManager<T> : SceneModule, IComponentManagerSerial
 	/// Iterates all active components.
 	public ComponentEnumerator ActiveComponents => .(&mSlots);
 
-	/// Called when a component is created. Override for custom initialization.
+	/// Called when a component is created (inside CreateComponent). Properties
+	/// are NOT set yet — use OnComponentInitialized for setup that depends on config.
 	protected virtual void OnComponentCreated(T component) { }
+
+	/// Called once per component after properties have been set, at the start
+	/// of the next scene update (before FixedUpdate). Safe to create physics
+	/// bodies, resolve resources, etc. Override for deferred initialization.
+	protected virtual void OnComponentInitialized(T component) { }
 
 	/// Called when a component is about to be destroyed. Override for cleanup.
 	protected virtual void OnComponentDestroyed(T component) { }
+
+	/// Initializes all pending components (calls OnComponentInitialized).
+	/// Called by Scene before FixedUpdate each frame.
+	public override void InitializePendingComponents()
+	{
+		if (mPendingInit.Count == 0) return;
+
+		for (let index in mPendingInit)
+		{
+			var slot = ref mSlots[index];
+			if (slot.Occupied && !slot.Component.Initialized)
+			{
+				slot.Component.Initialized = true;
+				OnComponentInitialized(slot.Component);
+			}
+		}
+		mPendingInit.Clear();
+	}
 
 	/// Called when an entity is destroyed — destroys all components owned by that entity.
 	public override void OnEntityDestroyed(EntityHandle entity)

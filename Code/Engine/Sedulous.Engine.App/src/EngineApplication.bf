@@ -140,7 +140,12 @@ abstract class EngineApplication : IDisposable
 			float deltaTime = currentTime - mLastFrameTime;
 			mLastFrameTime = currentTime;
 
-			// Fixed update loop
+			// BeginFrame runs first — resets per-frame state, polls input,
+			// and initializes components created last frame.
+			mContext.BeginFrame(deltaTime);
+
+			// Fixed update loop — runs after BeginFrame so newly initialized
+			// components (physics bodies, etc.) are ready for simulation.
 			mFixedUpdateAccumulator += deltaTime;
 			int32 fixedSteps = 0;
 			while (mFixedUpdateAccumulator >= mFixedTimeStep && fixedSteps < mMaxFixedStepsPerFrame)
@@ -152,7 +157,6 @@ abstract class EngineApplication : IDisposable
 			if (mFixedUpdateAccumulator > mFixedTimeStep * 2)
 				mFixedUpdateAccumulator = mFixedTimeStep * 2;
 
-			mContext.BeginFrame(deltaTime);
 			mContext.Update(deltaTime);
 			OnUpdate(deltaTime);
 			mContext.PostUpdate(deltaTime);
