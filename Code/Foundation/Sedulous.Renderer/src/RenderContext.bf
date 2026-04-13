@@ -80,6 +80,11 @@ public class RenderContext : IDisposable
 	/// The graphics queue.
 	public IQueue Queue => mQueue;
 
+	/// Current frame's scene depth texture view (set by transparent pass for
+	/// depth-dependent effects like soft particles). Reset each frame.
+	public ITextureView CurrentSceneDepthView;
+
+
 	/// GPU resource manager (meshes, textures, bone buffers).
 	public GPUResourceManager GPUResources => mGPUResources;
 
@@ -295,6 +300,7 @@ public class RenderContext : IDisposable
 	public void BeginFrame()
 	{
 		mFrameAllocator.Reset();
+		CurrentSceneDepthView = null;
 		if (mShadowSystem != null)
 			mShadowSystem.BeginFrame();
 	}

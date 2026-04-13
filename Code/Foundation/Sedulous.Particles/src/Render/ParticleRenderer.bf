@@ -26,7 +26,7 @@ public class ParticleRenderer : Sedulous.Renderer.Renderer
 
 	public this()
 	{
-		mCategories = .(RenderCategories.Transparent);
+		mCategories = .(RenderCategories.Particle);
 	}
 
 	/// ParticleGPUResources (instance buffers, material template, layout).
@@ -35,7 +35,7 @@ public class ParticleRenderer : Sedulous.Renderer.Renderer
 	public override void OnRegistered(RenderContext context)
 	{
 		mGPUResources = new ParticleGPUResources();
-		mGPUResources.Initialize(context.Device, context.MaterialSystem);
+		mGPUResources.Initialize(context.Device, context.MaterialSystem, context);
 	}
 
 	public override Span<RenderDataCategory> GetSupportedCategories()
@@ -66,10 +66,7 @@ public class ParticleRenderer : Sedulous.Renderer.Renderer
 	{
 		if (batch == null || batch.Count == 0) return;
 		if (mGPUResources == null) return;
-
-		let cache = renderContext.PipelineStateCache;
-		if (cache == null) return;
-		if (mGPUResources.ParticleMaterialLayout == null) return;
+		if (mGPUResources.PipelineLayout == null) return;
 
 		let mainPipeline = pipeline as Pipeline;
 		if (mainPipeline == null) return;
@@ -152,15 +149,10 @@ public class ParticleRenderer : Sedulous.Renderer.Renderer
 		encoder.SetViewport(0, 0, (float)view.Width, (float)view.Height, 0.0f, 1.0f);
 		encoder.SetScissor(0, 0, view.Width, view.Height);
 
-		mainPipeline.BindFrameGroup(encoder, frame);
-
-		// DrawCall bind group — particles don't use object uniforms but the
-		// pipeline layout expects the set to be bound.
-		if (frame.DrawCallBindGroup != null)
-		{
-			uint32[1] zeroOffset = .(0);
-			encoder.SetBindGroup(BindGroupFrequency.DrawCall, frame.DrawCallBindGroup, zeroOffset);
-		}
+		// Prepare depth bind group for soft particles (lazy, before draw loop)
+		let depthView = renderContext.CurrentSceneDepthView;
+		if (depthView != null)
+			mGPUResources.UpdateDepthForFrame(view.FrameIndex, depthView);
 
 		// 4. One draw per run, switching pipeline on blend mode change.
 		ParticleBlendMode lastBlend = .Alpha;
@@ -171,15 +163,10 @@ public class ParticleRenderer : Sedulous.Renderer.Renderer
 			// Rebind pipeline if blend mode changed
 			if (!pipelineBound || run.blend != lastBlend)
 			{
-				var config = mGPUResources.ParticleMaterial.PipelineConfig;
-				config.ShaderName = "particle";
-				config.ColorTargetCount = 1;
-				config.Topology = .TriangleList;
-				config.DepthFormat = .Depth24PlusStencil8;
-				config.BlendMode = ToMaterialBlendMode(run.blend);
-
-				let pipelineResult = cache.GetPipeline(config, vertexBuffers,
-					mGPUResources.ParticleMaterialLayout,
+				let pipelineResult = mGPUResources.GetOrCreatePipeline(
+					"particle",
+					ToMaterialBlendMode(run.blend),
+					vertexBuffers,
 					mainPipeline.OutputFormat,
 					.Depth24PlusStencil8);
 				if (pipelineResult case .Err)
@@ -188,6 +175,19 @@ public class ParticleRenderer : Sedulous.Renderer.Renderer
 				encoder.SetPipeline(pipelineResult.Value);
 				lastBlend = run.blend;
 				pipelineBound = true;
+
+				// Bind groups must be set after pipeline — layout must match.
+				mainPipeline.BindFrameGroup(encoder, frame);
+
+				let depthBG = mGPUResources.GetDepthPassBindGroup(view.FrameIndex);
+				if (depthBG != null)
+					encoder.SetBindGroup(BindGroupFrequency.RenderPass, depthBG, default);
+
+				if (frame.DrawCallBindGroup != null)
+				{
+					uint32[1] zeroOffset = .(0);
+					encoder.SetBindGroup(BindGroupFrequency.DrawCall, frame.DrawCallBindGroup, zeroOffset);
+				}
 			}
 
 			let mat = (run.bg != null) ? run.bg : mGPUResources.DefaultBindGroup;
@@ -200,14 +200,13 @@ public class ParticleRenderer : Sedulous.Renderer.Renderer
 		}
 
 		// 5. Trail rendering — separate pass with different vertex layout and shader.
-		RenderTrails(encoder, batch, cache, mainPipeline, frame, view);
+		RenderTrails(encoder, batch, mainPipeline, frame, view);
 	}
 
 	/// Renders trail ribbon geometry for systems with RenderMode == .Trail.
 	private void RenderTrails(
 		IRenderPassEncoder encoder,
 		List<RenderData> batch,
-		PipelineStateCache cache,
 		Pipeline mainPipeline,
 		PerFrameResources frame,
 		RenderView view)
@@ -295,15 +294,10 @@ public class ParticleRenderer : Sedulous.Renderer.Renderer
 		{
 			if (!pipelineBound || run.blend != lastBlend)
 			{
-				var config = mGPUResources.ParticleMaterial.PipelineConfig;
-				config.ShaderName = "particle_trail";
-				config.ColorTargetCount = 1;
-				config.Topology = .TriangleList;
-				config.DepthFormat = .Depth24PlusStencil8;
-				config.BlendMode = ToMaterialBlendMode(run.blend);
-
-				let pipelineResult = cache.GetPipeline(config, trailBuffers,
-					mGPUResources.ParticleMaterialLayout,
+				let pipelineResult = mGPUResources.GetOrCreatePipeline(
+					"particle_trail",
+					ToMaterialBlendMode(run.blend),
+					trailBuffers,
 					mainPipeline.OutputFormat,
 					.Depth24PlusStencil8);
 				if (pipelineResult case .Err)

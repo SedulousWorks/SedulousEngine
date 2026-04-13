@@ -409,7 +409,7 @@ class SandboxApp : EngineApplication
 				rockets.AddInitializer(new ColorInitializer() { Color = .Constant(.(1.5f, 1.2f, 0.5f, 1)) }); // bright yellow
 				rockets.AddBehavior(new GravityBehavior() { Multiplier = 0.4f });
 				rockets.AddBehavior(new VelocityIntegrationBehavior());
-				let rocketIdx = mFireworksEffect.AddSystem(rockets);
+				mFireworksEffect.AddSystem(rockets);
 
 				// System 1: Burst sparks — triggered by rocket death
 				let burst = new ParticleSystem(500);

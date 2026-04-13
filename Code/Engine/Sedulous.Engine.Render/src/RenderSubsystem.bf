@@ -175,6 +175,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		mPipeline.AddPass(new DecalPass());
 		mPipeline.AddPass(new SkyPass());
 		mPipeline.AddPass(new ForwardTransparentPass());
+		mPipeline.AddPass(new ParticlePass());
 		mPipeline.AddPass(new DebugPass());
 		mPipeline.AddPass(new OverlayPass());
 

@@ -88,7 +88,7 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 
 		// Find the ParticleRenderer to get its GPUResources
 		ParticleRenderer particleRenderer = null;
-		for (let renderer in RenderContext.GetRenderersFor(RenderCategories.Transparent))
+		for (let renderer in RenderContext.GetRenderersFor(RenderCategories.Particle))
 		{
 			if (let pr = renderer as ParticleRenderer)
 			{
@@ -227,7 +227,7 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 					data.TrailVertexCount = renderState.RenderData.TrailVertexCount;
 				}
 
-				context.RenderData.Add(RenderCategories.Transparent, data);
+				context.RenderData.Add(RenderCategories.Particle, data);
 			}
 		}
 	}

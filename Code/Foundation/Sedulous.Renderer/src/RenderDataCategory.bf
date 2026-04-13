@@ -55,8 +55,11 @@ static class RenderCategories
 	/// Screen-space GUI. Rendered last.
 	public static readonly RenderDataCategory GUI = .(7);
 
+	/// Particle systems. Rendered in a dedicated pass with depth sampling for soft particles.
+	public static readonly RenderDataCategory Particle = .(8);
+
 	/// Total number of built-in categories.
-	public const int32 Count = 8;
+	public const int32 Count = 9;
 
 	/// Gets the sort function for a category.
 	public static RenderDataSortFunc GetSortFunc(RenderDataCategory category)
@@ -66,6 +69,7 @@ static class RenderCategories
 		case 0, 1: return => SortFrontToBack;   // Opaque, Masked
 		case 2:    return => SortBackToFront;    // Transparent
 		case 4:    return => SortBySortOrder;    // Decal
+		case 8:    return => SortBackToFront;    // Particle
 		default:   return => SortNone;
 		}
 	}
