@@ -26,7 +26,8 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 	public RenderContext RenderContext { get; set; }
 
 	/// Per-system render data (reusable across frames to avoid reallocation).
-	private Dictionary<EntityHandle, ParticleRenderState> mRenderStates = new .() ~ {
+	/// Keyed by (entity index << 16 | system index) to support multi-system effects.
+	private Dictionary<int64, ParticleRenderState> mRenderStates = new .() ~ {
 		for (let kv in _)
 			delete kv.value;
 		delete _;
@@ -242,13 +243,19 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 		return state;
 	}
 
+	private int64 MakeRenderStateKey(EntityHandle entity, int32 systemIndex)
+	{
+		return ((int64)entity.Index << 16) | (int64)systemIndex;
+	}
+
 	private ParticleRenderState GetOrCreateRenderState(EntityHandle entity, int32 systemIndex, int32 maxParticles)
 	{
-		if (mRenderStates.TryGetValue(entity, let existing))
+		let key = MakeRenderStateKey(entity, systemIndex);
+		if (mRenderStates.TryGetValue(key, let existing))
 			return existing;
 
 		let state = new ParticleRenderState(maxParticles);
-		mRenderStates[entity] = state;
+		mRenderStates[key] = state;
 		return state;
 	}
 
@@ -268,10 +275,21 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 			delete state;
 			mResolveStates.Remove(entity);
 		}
-		if (mRenderStates.TryGetValue(entity, let renderState))
+		// Remove all render states for this entity (one per system in the effect)
+		let keysToRemove = scope List<int64>();
+		for (let kv in mRenderStates)
 		{
-			delete renderState;
-			mRenderStates.Remove(entity);
+			// Extract entity index from key (upper bits)
+			if ((kv.key >> 16) == (int64)entity.Index)
+				keysToRemove.Add(kv.key);
+		}
+		for (let key in keysToRemove)
+		{
+			if (mRenderStates.TryGetValue(key, let renderState))
+			{
+				delete renderState;
+				mRenderStates.Remove(key);
+			}
 		}
 		base.OnEntityDestroyed(entity);
 	}
