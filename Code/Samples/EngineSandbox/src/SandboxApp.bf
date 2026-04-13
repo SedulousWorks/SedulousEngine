@@ -31,6 +31,9 @@ using Sedulous.Imaging.SDL;
 using Sedulous.Particles;
 using Sedulous.Engine.Physics;
 using Sedulous.Engine.Animation;
+using Sedulous.Engine.Audio;
+using Sedulous.Audio;
+using Sedulous.Audio.Decoders;
 using Sedulous.Physics;
 
 class SandboxApp : EngineApplication
@@ -63,6 +66,12 @@ class SandboxApp : EngineApplication
 	AnimationClipResource mFoxWalkClipRes;
 
 	PropertyAnimationClipResource mOrbitAnimRes;
+
+	// Audio clips (decoded via AudioDecoderFactory)
+	List<AudioClip> mOneShotClips = new .() ~ DeleteContainerAndItems!(_);
+	int32 mOneShotIndex = 0;
+	AudioClip mBgMusicClip ~ delete _;
+	IAudioSource mBgMusicSource;
 	List<TextureResource> mFoxTextures = new .() ~ delete _;
 
 	// Kenney character (animation graph demo)
@@ -841,6 +850,55 @@ class SandboxApp : EngineApplication
 			camera.FarPlane = 100.0f;
 		}
 
+		// Audio listener on camera
+		let listenerMgr = scene.GetModule<AudioListenerComponentManager>();
+		if (listenerMgr != null)
+			listenerMgr.CreateComponent(cameraEntity);
+
+		// ==================== Audio ====================
+		{
+			let audioSub = Context.GetSubsystem<AudioSubsystem>();
+			if (audioSub != null)
+			{
+				let decoder = scope AudioDecoderFactory();
+				decoder.RegisterDefaultDecoders();
+
+				// Background music — decode via AudioDecoderFactory (handles 24-bit WAV)
+				// and play as a looping source
+				let musicPath = scope String();
+				GetAssetPath("samples/audio/background/eyeless.wav", musicPath);
+				if (decoder.DecodeFile(musicPath) case .Ok(let clip))
+				{
+					mBgMusicClip = clip;
+					mBgMusicSource = audioSub.AudioSystem.CreateSource();
+					mBgMusicSource.Loop = true;
+					mBgMusicSource.Volume = 0.15f;
+					mBgMusicSource.Play(clip);
+					Console.WriteLine("Background music started");
+				}
+				else
+				{
+					Console.WriteLine("WARNING: Failed to decode background music");
+				}
+
+				// Decode RPG clips from OGG for one-shot demo (M key cycles through them)
+				StringView[6] rpgClipNames = .(
+					"chop.ogg", "bookOpen.ogg", "cloth1.ogg",
+					"doorOpen_1.ogg", "metalClick.ogg", "handleCoins.ogg"
+				);
+
+				for (let clipName in rpgClipNames)
+				{
+					let clipPath = scope String();
+					GetAssetPath(scope $"samples/audio/kenney_rpg-audio/Audio/{clipName}", clipPath);
+					if (decoder.DecodeFile(clipPath) case .Ok(let rpgClip))
+						mOneShotClips.Add(rpgClip);
+				}
+
+				Console.WriteLine(scope $"Audio initialized: {mOneShotClips.Count} SFX clips (M = play next)");
+			}
+		}
+
 		// ==================== Sky ====================
 
 		let skyPath = scope String();
@@ -1062,10 +1120,21 @@ class SandboxApp : EngineApplication
 		let fpsText = scope String();
 		fpsText.AppendF("FPS {0:F0}  ({1:F2} ms)", mFpsSmoothed, mFrameTimeMs);
 		dbg.DrawScreenText(8, 8, fpsText, .White);
-		dbg.DrawScreenText(8, 20, "WASD=Move QE=Up/Down RMB=Look Tab=Capture Shift=Fast", .LightGray);
+		dbg.DrawScreenText(8, 20, "WASD=Move QE=Up/Down RMB=Look Tab=Capture Shift=Fast M=SFX", .LightGray);
 
 		// World-space axis indicator at the origin.
 		dbg.DrawAxis(Matrix.Identity, 1.5f);
+
+		// M key: play next RPG sound effect
+		if (mShell.InputManager.Keyboard.IsKeyPressed(.M) && mOneShotClips.Count > 0)
+		{
+			let audioSub = Context.GetSubsystem<AudioSubsystem>();
+			if (audioSub != null)
+			{
+				audioSub.PlayOneShot(mOneShotClips[mOneShotIndex], 0.8f);
+				mOneShotIndex = (mOneShotIndex + 1) % (int32)mOneShotClips.Count;
+			}
+		}
 
 		// Cycle the Kenney character's Speed parameter on the graph PLAYER
 		// (idle <-> walk every ~3 seconds via sin wave)
