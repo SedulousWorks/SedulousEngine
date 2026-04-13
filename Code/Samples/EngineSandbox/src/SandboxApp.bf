@@ -28,6 +28,8 @@ using System.Collections;
 using Sedulous.Materials.Resources;
 using Sedulous.Imaging.SDL;
 using Sedulous.Particles;
+using Sedulous.Engine.Physics;
+using Sedulous.Physics;
 
 class SandboxApp : EngineApplication
 {
@@ -158,72 +160,84 @@ class SandboxApp : EngineApplication
 		var sphereRef = ResourceRef(mSphereRes.Id, .());
 		defer sphereRef.Dispose();
 
-		// Ground plane
+		let physicsMgr = scene.GetModule<PhysicsComponentManager>();
+
+		// Ground plane — static physics body at Y=0 (plane shape passes through body origin)
 		let planeEntity = scene.CreateEntity("Ground");
-		scene.SetLocalTransform(planeEntity, .() { Position = .(0, -1, 0), Rotation = .Identity, Scale = .One });
+		scene.SetLocalTransform(planeEntity, .() { Position = .Zero, Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, planeEntity, planeRef, mGrayMaterial);
+		SetupRigidBody(scene, physicsMgr, planeEntity, .Plane(), .Static, 0);
 
-		// Cube
+		// Cube — dynamic, falls from height
 		let cubeEntity = scene.CreateEntity("Cube");
-		scene.SetLocalTransform(cubeEntity, .() { Position = .(-1.5f, -0.5f, 0), Rotation = .Identity, Scale = .One });
+		scene.SetLocalTransform(cubeEntity, .() { Position = .(-1.5f, 5, 0), Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, cubeEntity, cubeRef, mRedMaterial);
+		SetupRigidBody(scene, physicsMgr, cubeEntity, .Box(0.5f), .Dynamic);
 
-		// Sphere
+		// Sphere — dynamic, falls from height
 		let sphereEntity = scene.CreateEntity("Sphere");
-		scene.SetLocalTransform(sphereEntity, .() { Position = .(1.5f, -0.5f, 0), Rotation = .Identity, Scale = .One });
+		scene.SetLocalTransform(sphereEntity, .() { Position = .(1.5f, 6, 0), Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, sphereEntity, sphereRef, mBlueMaterial);
+		SetupRigidBody(scene, physicsMgr, sphereEntity, .Sphere(0.5f), .Dynamic);
 
-		// Green cube (back left)
+		// Green cube (back left) — dynamic
 		let cube2Entity = scene.CreateEntity("GreenCube");
-		scene.SetLocalTransform(cube2Entity, .() { Position = .(-3.0f, -0.5f, -2.0f), Rotation = .Identity, Scale = .One });
+		scene.SetLocalTransform(cube2Entity, .() { Position = .(-3.0f, 7, -2.0f), Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, cube2Entity, cubeRef, mGreenMaterial);
+		SetupRigidBody(scene, physicsMgr, cube2Entity, .Box(0.5f), .Dynamic);
 
-		// Yellow cube (back right)
+		// Yellow cube (back right) — dynamic
 		let cube3Entity = scene.CreateEntity("YellowCube");
-		scene.SetLocalTransform(cube3Entity, .() { Position = .(3.0f, -0.5f, -2.0f), Rotation = .Identity, Scale = .One });
+		scene.SetLocalTransform(cube3Entity, .() { Position = .(3.0f, 4.5f, -2.0f), Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, cube3Entity, cubeRef, mYellowMaterial);
+		SetupRigidBody(scene, physicsMgr, cube3Entity, .Box(0.5f), .Dynamic);
 
-		// White metallic sphere (center back)
+		// White metallic sphere (center back) — dynamic, larger
 		let sphere2Entity = scene.CreateEntity("MetalSphere");
-		scene.SetLocalTransform(sphere2Entity, .() { Position = .(0, -0.25f, -2.0f), Rotation = .Identity, Scale = .(1.5f, 1.5f, 1.5f) });
+		scene.SetLocalTransform(sphere2Entity, .() { Position = .(0, 8, -2.0f), Rotation = .Identity, Scale = .(1.5f, 1.5f, 1.5f) });
 		SetupMeshComponent(scene, sphere2Entity, sphereRef, mWhiteMaterial);
+		SetupRigidBody(scene, physicsMgr, sphere2Entity, .Sphere(0.75f), .Dynamic);
 
-		// Small green sphere (front left)
+		// Small green sphere (front left) — dynamic
 		let sphere3Entity = scene.CreateEntity("GreenSphere");
-		scene.SetLocalTransform(sphere3Entity, .() { Position = .(-0.5f, -0.7f, 1.5f), Rotation = .Identity, Scale = .(0.6f, 0.6f, 0.6f) });
+		scene.SetLocalTransform(sphere3Entity, .() { Position = .(-0.5f, 6.5f, 1.5f), Rotation = .Identity, Scale = .(0.6f, 0.6f, 0.6f) });
 		SetupMeshComponent(scene, sphere3Entity, sphereRef, mGreenMaterial);
+		SetupRigidBody(scene, physicsMgr, sphere3Entity, .Sphere(0.3f), .Dynamic);
 
-		// Small yellow sphere (front right)
+		// Small yellow sphere (front right) — dynamic
 		let sphere4Entity = scene.CreateEntity("YellowSphere");
-		scene.SetLocalTransform(sphere4Entity, .() { Position = .(0.5f, -0.7f, 1.5f), Rotation = .Identity, Scale = .(0.6f, 0.6f, 0.6f) });
+		scene.SetLocalTransform(sphere4Entity, .() { Position = .(0.5f, 5.5f, 1.5f), Rotation = .Identity, Scale = .(0.6f, 0.6f, 0.6f) });
 		SetupMeshComponent(scene, sphere4Entity, sphereRef, mYellowMaterial);
+		SetupRigidBody(scene, physicsMgr, sphere4Entity, .Sphere(0.3f), .Dynamic);
 
-		// Transparent sphere
+		// Transparent sphere — dynamic
 		let transparentEntity = scene.CreateEntity("TransparentSphere");
-		scene.SetLocalTransform(transparentEntity, .() { Position = .(-1.0f, -0.25f, 0.8f), Rotation = .Identity, Scale = .(1.2f, 1.2f, 1.2f) });
+		scene.SetLocalTransform(transparentEntity, .() { Position = .(-1.0f, 9, 0.8f), Rotation = .Identity, Scale = .(1.2f, 1.2f, 1.2f) });
 		SetupMeshComponent(scene, transparentEntity, sphereRef, mTransparentMaterial);
+		SetupRigidBody(scene, physicsMgr, transparentEntity, .Sphere(0.6f), .Dynamic);
 
-		// Masked cube
+		// Masked cube — dynamic
 		let maskedEntity = scene.CreateEntity("MaskedCube");
-		scene.SetLocalTransform(maskedEntity, .() { Position = .(3.0f, -0.5f, 1.0f), Rotation = .Identity, Scale = .One });
+		scene.SetLocalTransform(maskedEntity, .() { Position = .(3.0f, 4, 1.0f), Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, maskedEntity, cubeRef, mMaskedMaterial);
+		SetupRigidBody(scene, physicsMgr, maskedEntity, .Box(0.5f), .Dynamic);
 
 		// ==================== Sprites ====================
 		// Load a few animal icons from the Kenney pack and spawn sprites exercising
 		// all three billboard orientation modes.
 		{
 			CreateSprite(scene, resources, "textures/kenney_animal-pack-remastered/PNG/Round/rabbit.png",
-				.(-4.0f, 0.2f, 2.0f), .(1.2f, 1.2f), .CameraFacing);
+				.(-4.0f, 1.2f, 2.0f), .(1.2f, 1.2f), .CameraFacing);
 			CreateSprite(scene, resources, "textures/kenney_animal-pack-remastered/PNG/Round/bear.png",
-				.( 0.0f, 1.6f, 2.0f), .(1.2f, 1.2f), .CameraFacingY);
+				.( 0.0f, 2.6f, 2.0f), .(1.2f, 1.2f), .CameraFacingY);
 			CreateSprite(scene, resources, "textures/kenney_animal-pack-remastered/PNG/Round/chicken.png",
-				.( 4.0f, 0.2f, 2.0f), .(1.2f, 1.2f), .WorldAligned);
+				.( 4.0f, 1.2f, 2.0f), .(1.2f, 1.2f), .WorldAligned);
 		}
 
 		// ==================== Decal ====================
 		// Projects a Kenney animal icon downward onto the ground plane.
 		CreateDecal(scene, resources, "textures/kenney_animal-pack-remastered/PNG/Round/panda.png",
-			.(0.0f, -0.5f, 2.5f), .(3.0f, 3.0f, 3.0f));
+			.(0.0f, 0.5f, 2.5f), .(3.0f, 3.0f, 3.0f));
 
 		// ==================== Particles ====================
 		// Four effects spaced across the scene to showcase different particle types.
@@ -251,7 +265,7 @@ class SandboxApp : EngineApplication
 			}
 			CreateParticleEntity(scene, resources, particleMgr, mSparksEffect,
 				"textures/kenney_particle-pack/PNG (Transparent)/circle_05.png",
-				"Sparks", .(6, -1, -6));
+				"Sparks", .(6, 0, -6));
 
 			// --- Smoke (alpha blended, rising plume) ---
 			mSmokeEffect = new ParticleEffect("Smoke");
@@ -277,7 +291,7 @@ class SandboxApp : EngineApplication
 			}
 			CreateParticleEntity(scene, resources, particleMgr, mSmokeEffect,
 				"textures/kenney_particle-pack/PNG (Transparent)/smoke_07.png",
-				"Smoke", .(-6, -1, -6));
+				"Smoke", .(-6, 0, -6));
 
 			// --- Magic sparkles (additive, orbiting vortex) ---
 			mMagicEffect = new ParticleEffect("Magic");
@@ -338,7 +352,7 @@ class SandboxApp : EngineApplication
 			}
 			CreateParticleEntity(scene, resources, particleMgr, mFireEffect,
 				"textures/kenney_particle-pack/PNG (Transparent)/flame_06.png",
-				"Fire", .(-6, -1, -12));
+				"Fire", .(-6, 0, -12));
 
 			// --- Comet trail (trail render mode demo) ---
 			mTrailEffect = new ParticleEffect("Comet");
@@ -442,7 +456,7 @@ class SandboxApp : EngineApplication
 			}
 			CreateParticleEntity(scene, resources, particleMgr, mFireworksEffect,
 				"textures/kenney_particle-pack/PNG (Transparent)/spark_07.png",
-				"Fireworks", .(8, -1, -8));
+				"Fireworks", .(8, 0, -8));
 		}
 
 		// ==================== Animated Fox ====================
@@ -514,7 +528,7 @@ class SandboxApp : EngineApplication
 				let foxEntity = scene.CreateEntity("Fox");
 				scene.SetLocalTransform(foxEntity, .()
 				{
-					Position = .(-3, -1, 2),
+					Position = .(-3, 0, 2),
 					Rotation = .Identity,
 					Scale = .(0.02f, 0.02f, 0.02f)
 				});
@@ -696,6 +710,22 @@ class SandboxApp : EngineApplication
 		}
 	}
 
+	/// Adds a RigidBodyComponent to an entity.
+	private void SetupRigidBody(Scene scene, PhysicsComponentManager physicsMgr,
+		EntityHandle entity, ShapeConfig shape, BodyType bodyType, uint16 layer = 1)
+	{
+		let handle = physicsMgr.CreateComponent(entity);
+		if (let comp = physicsMgr.Get(handle))
+		{
+			comp.Shape = shape;
+			comp.BodyType = bodyType;
+			comp.CollisionLayer = layer;
+			comp.Restitution = 0.3f;
+			// Body is created automatically in OnComponentInitialized
+			// (called by Scene.InitializePendingComponents before FixedUpdate)
+		}
+	}
+
 	/// Loads a sprite texture from the assets directory, registers it as a
 	/// TextureResource, and creates a sprite entity at the given position.
 	private void CreateSprite(Scene scene, ResourceSystem resources, StringView relativePath,
@@ -834,6 +864,79 @@ class SandboxApp : EngineApplication
 		DrawParticleBounds(dbg, mFireEffect, .Red);
 		DrawParticleBounds(dbg, mTrailEffect, .Blue);
 		DrawParticleBounds(dbg, mFireworksEffect, .Magenta);
+
+		// Physics debug shapes.
+		DrawPhysicsDebug(dbg);
+	}
+
+	private void DrawPhysicsDebug(DebugDraw dbg)
+	{
+		if (mScene == null) return;
+		let physicsMgr = mScene.GetModule<PhysicsComponentManager>();
+		if (physicsMgr == null || physicsMgr.PhysicsWorld == null) return;
+
+		let world = physicsMgr.PhysicsWorld;
+		let debugColor = Color(0, 255, 0, 180);
+
+		for (let comp in physicsMgr.ActiveComponents)
+		{
+			if (!comp.IsActive || !comp.PhysicsBody.IsValid) continue;
+
+			let pos = world.GetBodyPosition(comp.PhysicsBody);
+			let rot = world.GetBodyRotation(comp.PhysicsBody);
+
+			switch (comp.Shape.Type)
+			{
+			case .Box:
+				DrawWireBoxOriented(dbg, pos, rot, comp.Shape.HalfExtents, debugColor);
+			case .Sphere:
+				dbg.DrawWireSphere(pos, comp.Shape.Radius, debugColor);
+			case .Capsule:
+				dbg.DrawWireSphere(pos, comp.Shape.Radius, debugColor);
+			case .Cylinder:
+				DrawWireBoxOriented(dbg, pos, rot, .(comp.Shape.Radius, comp.Shape.HalfHeight, comp.Shape.Radius), debugColor);
+			case .Plane:
+				dbg.DrawWireBox(BoundingBox(pos - .(5, 0.01f, 5), pos + .(5, 0.01f, 5)), debugColor);
+			}
+		}
+	}
+
+	/// Draws a wireframe box with position and rotation applied.
+	private void DrawWireBoxOriented(DebugDraw dbg, Vector3 center, Quaternion rotation, Vector3 halfExtents, Color color)
+	{
+		// 8 local-space corners of the box
+		Vector3[8] locals = .(
+			.(-halfExtents.X, -halfExtents.Y, -halfExtents.Z),
+			.( halfExtents.X, -halfExtents.Y, -halfExtents.Z),
+			.( halfExtents.X,  halfExtents.Y, -halfExtents.Z),
+			.(-halfExtents.X,  halfExtents.Y, -halfExtents.Z),
+			.(-halfExtents.X, -halfExtents.Y,  halfExtents.Z),
+			.( halfExtents.X, -halfExtents.Y,  halfExtents.Z),
+			.( halfExtents.X,  halfExtents.Y,  halfExtents.Z),
+			.(-halfExtents.X,  halfExtents.Y,  halfExtents.Z)
+		);
+
+		// Transform to world space
+		Vector3[8] corners = .();
+		for (int i = 0; i < 8; i++)
+			corners[i] = center + Vector3.Transform(locals[i], rotation);
+
+		// Draw 12 edges
+		// Bottom face
+		dbg.DrawLine(corners[0], corners[1], color);
+		dbg.DrawLine(corners[1], corners[2], color);
+		dbg.DrawLine(corners[2], corners[3], color);
+		dbg.DrawLine(corners[3], corners[0], color);
+		// Top face
+		dbg.DrawLine(corners[4], corners[5], color);
+		dbg.DrawLine(corners[5], corners[6], color);
+		dbg.DrawLine(corners[6], corners[7], color);
+		dbg.DrawLine(corners[7], corners[4], color);
+		// Vertical edges
+		dbg.DrawLine(corners[0], corners[4], color);
+		dbg.DrawLine(corners[1], corners[5], color);
+		dbg.DrawLine(corners[2], corners[6], color);
+		dbg.DrawLine(corners[3], corners[7], color);
 	}
 
 	private void DrawParticleBounds(DebugDraw dbg, ParticleEffect effect, Color color)
