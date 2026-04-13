@@ -170,6 +170,8 @@ NetHttpClient = {Path = "Samples/Net/NetHttpClient"}
 NetWebSocket = {Path = "Samples/Net/NetWebSocket"}
 AudioSandbox = {Path = "Samples/AudioSandbox"}
 recastnavigation-Beef = {Path = "Dependencies/recastnavigation-Beef"}
+"Sedulous.Particles" = {Path = "Foundation/Sedulous.Particles"}
+"Sedulous.Particles.Resources" = {Path = "Foundation/Sedulous.Particles.Resources"}
 
 [WorkspaceFolders]
 Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
@@ -189,7 +191,7 @@ Foundation = []
 "Foundation/Imaging" = ["Sedulous.Imaging", "Sedulous.Imaging.STB", "Sedulous.Imaging.Tests", "Sedulous.Imaging.Resources", "Sedulous.Imaging.SDL"]
 "Foundation/Models" = ["Sedulous.Models", "Sedulous.Models.FBX", "Sedulous.Models.GLTF", "Sedulous.Models.Tests"]
 "Foundation/Net" = ["Sedulous.Net", "Sedulous.Net.HTTP", "Sedulous.Net.HTTP.Tests", "Sedulous.Net.Tests"]
-"Foundation/Render" = ["Sedulous.Materials", "Sedulous.Shaders", "Sedulous.Textures", "Sedulous.Textures.Resources", "Sedulous.Materials.Resources", "Sedulous.RenderGraph", "Sedulous.RenderGraph.Tests", "Sedulous.Renderer"]
+"Foundation/Render" = ["Sedulous.Materials", "Sedulous.Shaders", "Sedulous.Textures", "Sedulous.Textures.Resources", "Sedulous.Materials.Resources", "Sedulous.RenderGraph", "Sedulous.RenderGraph.Tests", "Sedulous.Renderer", "Sedulous.Particles", "Sedulous.Particles.Resources"]
 "Foundation/Runtime" = ["Sedulous.Runtime", "Sedulous.Runtime.Client"]
 "Foundation/Scenes" = ["Sedulous.Scenes", "Sedulous.Scenes.Tests", "Sedulous.Scenes.Resources"]
 "Foundation/Jobs" = ["Sedulous.Jobs", "Sedulous.Jobs.Tests"]

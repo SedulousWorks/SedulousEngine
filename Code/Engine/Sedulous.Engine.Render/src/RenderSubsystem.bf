@@ -10,6 +10,7 @@ using Sedulous.Shaders;
 using Sedulous.Renderer;
 using Sedulous.Renderer.Passes;
 using Sedulous.Renderer.Renderers;
+using Sedulous.Particles;
 using Sedulous.Renderer.Shadows;
 using Sedulous.Core.Mathematics;
 using Sedulous.Profiler;
@@ -147,6 +148,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		mRenderContext.RegisterRenderer(new MeshRenderer());
 		mRenderContext.RegisterRenderer(new SpriteRenderer());
 		mRenderContext.RegisterRenderer(new DecalRenderer());
+		mRenderContext.RegisterRenderer(new ParticleRenderer());
 
 		// Pipeline (per-view pass execution)
 		mPipeline = new Pipeline();
@@ -774,6 +776,11 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		decalMgr.Resolver = mResolver;
 		decalMgr.RenderContext = mRenderContext;
 		scene.AddModule(decalMgr);
+
+		let particleMgr = new ParticleComponentManager();
+		particleMgr.Resolver = mResolver;
+		particleMgr.RenderContext = mRenderContext;
+		scene.AddModule(particleMgr);
 
 		scene.AddModule(new CameraComponentManager());
 
