@@ -229,7 +229,9 @@ abstract class EngineApplication : IDisposable
 
 	protected virtual void RegisterDefaultSubsystems()
 	{
-		mContext.RegisterSubsystem(new InputSubsystem());       // -900
+		let inputSub = new InputSubsystem();
+		inputSub.SetInputManager(mShell.InputManager);
+		mContext.RegisterSubsystem(inputSub);                    // -900
 		mContext.RegisterSubsystem(new SceneSubsystem());        // -500
 		mContext.RegisterSubsystem(new PhysicsSubsystem());      // -100
 		mContext.RegisterSubsystem(new AnimationSubsystem());    //  100
