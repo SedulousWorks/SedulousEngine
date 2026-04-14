@@ -299,9 +299,9 @@ All rendering lives inside `Sedulous.Particles` (no split across projects).
 
 ### Deferred
 - **Grid-based atlas animation** — ParticleVertex already has TexCoordOffset/TexCoordScale fields. Needs AtlasColumns/AtlasRows/AtlasFPS/AtlasLoop on ParticleSystem and UV computation in ParticleRenderExtractor (port from old engine's CPUParticleEmitter atlas logic). Consider generic atlas format for shared use across particles, sprites, and UI
-- **Trail rendering** — TrailPoint/TrailVertex/TrailState/TrailSettings types exist. Needs trail point recording during simulation and ribbon mesh generation during extraction
+- ~~**Trail rendering**~~ DONE — per-particle ring buffer recording, camera-facing ribbon mesh generation, separate trail shader + draw path
 - **GPU simulation** — GPUSimulator stub exists. Needs compute shaders per behavior, GPU compaction (prefix sum + scatter), GPU sorting (bitonic/radix for transparent). Start with additive-only GPU particles (no sort needed)
-- **Soft particles** — fragment shader depth comparison for fade at geometry intersections
+- ~~**Soft particles**~~ DONE — dedicated ParticlePass with ReadDepth + ReadTexture (DEPTH_STENCIL_READ_ONLY_OPTIMAL), depth linearization in fragment shader
 
 ## Phase 11: Sky
 

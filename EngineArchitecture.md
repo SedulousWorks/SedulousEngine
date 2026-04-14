@@ -55,27 +55,52 @@ The `Context` is the central lifecycle hub. It owns subsystems, a job system, an
 Application main loop:
   SProfiler.BeginFrame()
   ProcessEvents()
-  FixedUpdate (0-N times)     → Context.FixedUpdate() → each subsystem
-  Context.BeginFrame()        → each subsystem
-  Context.Update()            → each subsystem in order
+  Context.BeginFrame()        → input polling, InitializePendingComponents
+  FixedUpdate (0-N times)     → Context.FixedUpdate() → physics, navigation
+  Context.Update()            → each subsystem in order (scene phases run here)
   Context.PostUpdate()        → each subsystem
   Context.EndFrame()          → RenderSubsystem renders + presents
   SProfiler.EndFrame()
+```
 
+BeginFrame runs BEFORE FixedUpdate so input is fresh and newly initialized
+components (physics bodies, audio sources) are ready for their first simulation step.
+
+```
 Shutdown sequence:
-  Shutdown()                  → Device.WaitIdle() → OnShutdown() (app releases GPU refs)
-  Context.Shutdown()          → subsystems shut down
+  Context.PrepareShutdown()   → detach cross-references (physics worlds, etc.)
+  Context.Shutdown()          → subsystems shut down (reverse order)
   Cleanup()                   → OnCleanup() → delete context → destroy device
 ```
+
+PrepareShutdown runs on all subsystems before any Shutdown calls. Subsystems
+detach cross-references (e.g., null physics world refs on component managers)
+so component cleanup during scene teardown doesn't access destroyed resources.
 
 ## Scenes
 
 ### Entity-Component Model
 
 - **Entity** — lightweight handle (index + generation + Guid). No entity class — `EntityHandle` IS the entity.
-- **Component** — ref type, pooled per type in a `ComponentManager<T>`.
-- **ComponentManager<T>** — IS-A SceneModule. Owns the pool, registers update functions, handles lifecycle.
+- **Component** — ref type, pooled per type in a `ComponentManager<T>`. Has `Initialized` flag.
+- **ComponentManagerBase** — non-generic base between SceneModule and ComponentManager<T>. Owns `InitializePendingComponents`.
+- **ComponentManager<T>** — extends ComponentManagerBase. Owns the pool, registers update functions, handles lifecycle.
 - **Transform** — not a component. Every entity has one. Hierarchical parent-child with dirty-flag propagation.
+
+### Component Lifecycle
+
+```
+CreateComponent(entity)         → OnComponentCreated (properties NOT set yet)
+[app sets properties]           → Shape, BodyType, clip refs, etc.
+InitializePendingComponents()   → OnComponentInitialized (properties set, safe for
+                                   physics body creation, resource resolution, etc.)
+[simulation runs]               → FixedUpdate, Update phases
+DestroyComponent() / entity     → OnComponentDestroyed
+```
+
+`InitializePendingComponents` is called by Scene at the start of each frame
+(in SceneSubsystem.BeginFrame) before FixedUpdate. This mirrors ezEngine's
+`OnSimulationStarted` lifecycle hook.
 
 ### Scene Update Phases
 
@@ -158,7 +183,53 @@ Full engine. Creates Context, auto-registers all subsystems, discovers asset dir
 ### Level 3: Tools.Core.EditorApplication (future)
 Multi-window, viewport rendering, editor panels.
 
+## Engine Modules
+
+### Engine.Input
+Subsystem-only (no components). InputSubsystem manages priority-ordered stack of
+InputContexts, each containing named InputActions with typed InputBindings.
+Binding types: Key (with modifiers), MouseButton, MouseAxis (delta/scroll),
+GamepadButton, GamepadAxis (dead zone), GamepadStick (circular dead zone),
+CompositeBinding (4 keys → Vector2, e.g. WASD).
+
+### Engine.Physics
+PhysicsSubsystem creates JoltPhysicsWorld per scene via ISceneAware.
+RigidBodyComponent (data-rich: body type, mass, friction, ShapeConfig).
+PhysicsComponentManager creates bodies in OnComponentInitialized, runs
+FixedUpdate (kinematic sync → step → dynamic sync), preserves entity scale.
+RayCast with entity handle decoding from body user data.
+PrepareShutdown detaches managers before world destruction.
+
+### Engine.Animation
+Three component types:
+- **SkeletalAnimationComponent** — simple clip playback via ResourceRefs (SkeletonRef + ClipRef). Priority 10.
+- **AnimationGraphComponent** — state-machine-driven via graph. Priority 11 (overrides skeletal).
+- **PropertyAnimationComponent** — animates entity properties via PropertyBinderRegistry.
+AnimationSubsystem registers all 4 resource managers, owns PropertyBinderRegistry.
+SkinnedMeshComponent decoupled from animation — reads bone matrices from animation components.
+
+### Engine.Audio
+AudioSubsystem creates SDL3AudioSystem, manages volume categories (Master × SFX/Music),
+music streaming (PlayMusic/StopMusic), one-shot API (PlayOneShot/PlayOneShot3D).
+AudioSourceComponent (clip ref, volume, pitch, spatial, autoplay, category).
+AudioListenerComponent on camera entity. Managers sync 3D positions in PostTransform.
+
+### Engine.Navigation
+Infrastructure ported from old engine: NavMesh, NavMeshBuilder, NavMeshQuery,
+CrowdManager, TileCache, NavWorld (all wrapping recastnavigation-Beef).
+NavAgentComponent (radius, height, speed, move target, crowd agent index).
+NavObstacleComponent (radius, height, obstacle ID).
+NavigationSubsystem creates NavWorld per scene, PrepareShutdown detaches managers.
+FixedUpdate steps crowd, Update creates agents and syncs positions.
+
+### Material Lifecycle
+MaterialInstance is ref-counted (RefCounted base). Components call AddRef/ReleaseRef
+via SetMaterial. GPU resources (bind group, uniform buffer) are cleaned up in
+MaterialInstance's destructor when the last ref is released — not by component managers.
+MaterialSystem.ClearCache detaches all instances (SetMaterialSystem(null)) before
+destroying GPU resources, so late-running destructors don't use-after-free.
+
 ## Reference Engines
 
-- **ezEngine** — extraction pattern, world modules, bind group frequency, component managers
+- **ezEngine** — extraction pattern, world modules, bind group frequency, component managers, OnSimulationStarted lifecycle
 - **Traktor** — GatherView flat data bundle, deferred render context, entity renderer pattern

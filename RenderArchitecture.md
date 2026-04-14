@@ -12,6 +12,7 @@ standalone for sandboxes, tools, and tests without any scene infrastructure.
 Sedulous.Renderer (scene-independent)
 ├── RenderContext          — shared infrastructure (GPU resources, materials, lights, shaders,
 │                            shadows, sprites, debug draw, registered renderers)
+│                            CurrentSceneDepthView for depth-dependent effects
 ├── Pipeline               — per-view pass execution, output texture, render graph
 ├── IRenderingPipeline     — interface shared by Pipeline + ShadowPipeline
 ├── PipelinePass           — base class for render/compute/copy passes
@@ -38,6 +39,21 @@ Sedulous.Renderer (scene-independent)
 ├── IRenderDataProvider    — extraction interface for scene modules
 ├── RenderExtractionContext — view info + RenderContext ref passed to providers
 └── BindGroupFrequency     — 5-level bind group convention (Frame/Pass/Material/DrawCall/Shadow)
+
+Sedulous.Particles (self-contained, depends on Renderer)
+├── Simulation
+│   ├── ParticleStream/CPUStream/GPUStream — SoA data channels with on-demand allocation
+│   ├── ParticleSimulator/CPUSimulator     — behavior execution on streams
+│   ├── ParticleSystem                     — orchestrator (emitter + behaviors + initializers + streams)
+│   ├── ParticleEffect/ParticleEffectInstance — multi-system grouping + sub-emitter routing
+│   ├── 12 behaviors + 6 initializers      — composable, declare stream requirements
+│   └── Curves, shapes, ranges             — Hermite curves, 7 emission shapes, randomized values
+├── Render/
+│   ├── ParticlePass        — own render pass with ReadDepth + ReadTexture for soft particles
+│   ├── ParticleRenderer    — Renderer subclass for Particle category, per-blend-mode pipelines
+│   ├── ParticleGPUResources — custom pipeline layout (Frame+Depth+Material+DrawCall), buffers
+│   └── ParticleRenderExtractor — streams → vertex array, sorting, AABB, trail ribbon mesh
+└── Sedulous.Particles.Resources — serialization (ParticleEffectResource, type registry)
 ```
 
 ## RenderContext (Shared Infrastructure)
@@ -127,11 +143,18 @@ abstract class PipelinePass
 | DecalPass | Render | SceneDepth (sampled) | PipelineOutput | Projected decals via depth reconstruction |
 | SkyPass | Render | SceneDepth | PipelineOutput | HDR sky, fills where depth == far |
 | ForwardTransparentPass | Render | SceneDepth | PipelineOutput | Transparent + sprites, alpha blend, back-to-front |
+| ParticlePass | Render | SceneDepth (ReadDepth + ReadTexture) | PipelineOutput | Particles with depth testing + soft fade |
 | DebugPass | Render | SceneDepth | PipelineOutput | 3D debug lines with depth test |
 | OverlayPass | Render | — | PipelineOutput | 2D text + rectangles, no depth |
 
 Sky runs between opaque and transparent so transparent/sprite draws
 blend over the sky backdrop rather than being overwritten by it.
+
+ParticlePass declares both ReadDepth and ReadTexture on SceneDepth, which
+transitions the depth buffer to DEPTH_STENCIL_READ_ONLY_OPTIMAL — allowing
+simultaneous depth testing and soft-particle shader sampling. Particles render
+in their own Particle category (not Transparent) with a custom 4-set pipeline
+layout (Frame + Depth + Material + DrawCall).
 
 ## Post-Processing
 
