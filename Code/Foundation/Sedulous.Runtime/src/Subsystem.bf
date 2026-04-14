@@ -93,7 +93,7 @@ public abstract class Subsystem : IDisposable
 	protected virtual void OnInit() { }
 
 	/// Override to detach cross-references before shutdown.
-	/// Called while the world is still alive — safe to access other subsystems,
+	/// Called while the world is still alive - safe to access other subsystems,
 	/// scenes, and component managers. Use this to null external references so
 	/// component cleanup during Shutdown doesn't use-after-free.
 	protected virtual void OnPrepareShutdown() { }

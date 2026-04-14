@@ -9,6 +9,7 @@ using Sedulous.Shell.SDL3;
 using Sedulous.Core.Mathematics;
 using Sedulous.Runtime;
 using Sedulous.Profiler;
+using Sedulous.Serialization.OpenDDL;
 
 namespace Sedulous.Runtime.Client;
 
@@ -155,6 +156,9 @@ abstract class Application
 
 		// Create the framework context
 		mContext = CreateContext();
+
+		// Register serializer provider
+		mContext.Resources.SetSerializerProvider(new OpenDDLSerializerProvider());
 
 		// Let derived class configure the context (register subsystems, etc.)
 		OnInitialize(mContext);

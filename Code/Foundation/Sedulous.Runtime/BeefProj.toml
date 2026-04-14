@@ -1,7 +1,13 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Core.Logging" = "*", "Sedulous.Jobs" = "*", "Sedulous.Profiler" = "*", "Sedulous.Resources" = "*"}
 
 [Project]
 Name = "Sedulous.Runtime"
 TargetType = "BeefLib"
 StartupObject = "Sedulous.Runtime.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core.Logging" = "*"
+"Sedulous.Jobs" = "*"
+"Sedulous.Profiler" = "*"
+"Sedulous.Resources" = "*"
