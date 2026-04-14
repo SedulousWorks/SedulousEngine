@@ -5,6 +5,8 @@ using System.Collections;
 
 class NullDevice : IDevice
 {
+	public DeviceType Type => .Null;
+
 	private NullQueue mGraphicsQueue = new .(QueueType.Graphics) ~ delete _;
 	private NullQueue mComputeQueue = new .(QueueType.Compute) ~ delete _;
 	private NullQueue mTransferQueue = new .(QueueType.Transfer) ~ delete _;

@@ -15,6 +15,8 @@ using Win32.Graphics.Dxgi.Common;
 /// DX12 implementation of IDevice.
 class DX12Device : IDevice
 {
+	public DeviceType Type => .DX12;
+
 	private DX12Adapter mAdapter;
 	private ID3D12Device* mDevice;
 	private DeviceFeatures mFeatures;

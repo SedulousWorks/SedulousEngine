@@ -17,6 +17,8 @@ using System;
 /// ```
 interface IDevice
 {
+	DeviceType Type { get; }
+
 	// ===== Queues =====
 
 	/// Gets a queue by type and index.

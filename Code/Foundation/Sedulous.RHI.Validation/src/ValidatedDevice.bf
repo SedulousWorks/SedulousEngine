@@ -8,6 +8,8 @@ using Sedulous.RHI;
 /// Tracks resource lifecycle for use-after-destroy detection.
 class ValidatedDevice : IDevice
 {
+	public DeviceType Type => mInner.Type;
+
 	private IDevice mInner;
 	private bool mDestroyed;
 
@@ -88,23 +90,23 @@ class ValidatedDevice : IDevice
 		// Vulkan allows this but DX12 does not. Use a staging + GPU copy pattern instead.
 		if (desc.Memory == .CpuToGpu && desc.Usage.HasFlag(.Storage))
 		{
-			/*ValidationLogger.Error(
+			ValidationLogger.Error(
 				"""
 				CreateBuffer: Storage usage is not compatible with CpuToGpu memory.
 				DX12 UPLOAD heaps cannot have ALLOW_UNORDERED_ACCESS.
 				Use a staging buffer (CpuToGpu, CopySrc) + GPU buffer (GpuOnly, Storage | CopyDst) instead.
 				""");
-			return .Err;*/
+			return .Err;
 		}
 
 		if (desc.Memory == .GpuToCpu && desc.Usage.HasFlag(.Storage))
 		{
-			/*ValidationLogger.Error(
+			ValidationLogger.Error(
 				"""
 				CreateBuffer: Storage usage is not compatible with GpuToCpu memory.
 				"DX12 READBACK heaps cannot have ALLOW_UNORDERED_ACCESS.
 				""");
-			return .Err;*/
+			return .Err;
 		}
 
 		let result = mInner.CreateBuffer(desc);

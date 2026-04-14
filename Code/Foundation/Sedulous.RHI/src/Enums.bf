@@ -2,6 +2,13 @@ namespace Sedulous.RHI;
 
 using System;
 
+enum DeviceType
+{
+	Vulkan,
+	DX12,
+	Null
+}
+
 /// Type of command queue.
 enum QueueType
 {

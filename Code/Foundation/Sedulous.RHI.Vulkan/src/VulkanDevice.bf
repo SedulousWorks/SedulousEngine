@@ -56,6 +56,8 @@ struct VulkanBindingShifts
 /// Vulkan implementation of IDevice.
 class VulkanDevice : IDevice
 {
+	public DeviceType Type => .Vulkan;
+
 	private VulkanAdapter mAdapter;
 	private VkDevice mDevice;
 	private DeviceFeatures mFeatures;
