@@ -1,0 +1,28 @@
+FileVersion = 1
+
+[Project]
+Name = "EngineRenderStressTest"
+StartupObject = "EngineRenderStressTest.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Engine.App" = "*"
+"Sedulous.Engine.Runtime" = "*"
+"Sedulous.Engine.Render" = "*"
+"Sedulous.Scenes" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Renderer" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Core.Mathematics" = "*"
+"Sedulous.Geometry" = "*"
+"Sedulous.Geometry.Resources" = "*"
+"Sedulous.Geometry.Tooling" = "*"
+"Sedulous.Geometry.Tooling.Resources" = "*"
+"Sedulous.Materials" = "*"
+"Sedulous.Resources" = "*"
+"Sedulous.Imaging" = "*"
+"Sedulous.Imaging.STB" = "*"
+"Sedulous.Imaging.SDL" = "*"
+"Sedulous.Textures.Resources" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Profiler" = "*"

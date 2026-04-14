@@ -172,10 +172,11 @@ AudioSandbox = {Path = "Samples/AudioSandbox"}
 recastnavigation-Beef = {Path = "Dependencies/recastnavigation-Beef"}
 "Sedulous.Particles" = {Path = "Foundation/Sedulous.Particles"}
 "Sedulous.Particles.Resources" = {Path = "Foundation/Sedulous.Particles.Resources"}
+EngineRenderStressTest = {Path = "Samples/EngineRenderStressTest"}
 
 [WorkspaceFolders]
 Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
-Samples = ["SampleFramework", "SampleVG001_Shapes", "DrawingSandbox", "VGSandbox", "FontRendering", "GUISandbox", "ImGuiSample", "NuklearSample", "SlugSample", "NetEcho", "NetHttpClient", "NetWebSocket", "AudioSandbox", "EngineSandbox"]
+Samples = ["SampleFramework", "SampleVG001_Shapes", "DrawingSandbox", "VGSandbox", "FontRendering", "GUISandbox", "ImGuiSample", "NuklearSample", "SlugSample", "NetEcho", "NetHttpClient", "NetWebSocket", "AudioSandbox", "EngineSandbox", "EngineRenderStressTest"]
 "Samples/RHISamples" = ["Sample002_Textures", "Sample003_UniformBuffers", "Sample004_Compute", "Sample005_BindGroups", "Sample006_Blending", "Sample007_Instancing", "Sample008_DepthBuffer", "Sample009_Mipmaps", "Sample010_MSAA", "Sample011_MRT", "Sample012_Wireframe", "Sample013_BorderSampler", "Sample014_Blit", "Sample015_Queries", "Sample016_Readback", "Sample017_MultiQueue", "Sample018_Bindless", "Sample019_BatchUpload", "Sample020_MeshShaders", "Sample021_RayTracing", "Sample022_StencilOutline", "Sample023_CubeMap", "Sample024_OcclusionQuery", "Sample025_MultiDrawIndirect", "Sample026_DynamicOffsets", "Sample027_3DTexture", "Sample028_ProceduralRT", "Sample029_ResolveTexture", "Sample001_Triangle"]
 "Samples/ShaderReflection" = ["SR001_ReflectedPBR"]
 Foundation = []
