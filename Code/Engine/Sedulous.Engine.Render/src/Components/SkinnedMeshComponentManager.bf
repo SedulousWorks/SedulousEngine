@@ -262,18 +262,13 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 
 	public override void OnEntityDestroyed(EntityHandle entity)
 	{
-		// Release materials on this component
+		// Release material refs on this component.
+		// GPU resources (bind group, uniform buffer) are cleaned up by
+		// MaterialInstance's destructor when the last ref is released.
 		if (let comp = GetForEntity(entity))
 		{
 			for (let material in comp.Materials)
-			{
-				if (material != null)
-				{
-					if (Resolver != null)
-						Resolver.ReleaseMaterial(material);
-					material.ReleaseRef();
-				}
-			}
+				material?.ReleaseRef();
 			comp.Materials.Clear();
 		}
 

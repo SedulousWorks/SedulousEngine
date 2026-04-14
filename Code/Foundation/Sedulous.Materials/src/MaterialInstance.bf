@@ -52,6 +52,10 @@ class MaterialInstance : RefCounted, IDisposable
 	/// The base material (not owned).
 	private Material mMaterial;
 
+	/// Material system that manages this instance's GPU resources (bind group, uniform buffer).
+	/// Set by MaterialSystem.PrepareInstance. Used in destructor for cleanup.
+	private MaterialSystem mMaterialSystem;
+
 	/// Override uniform data (null = use material defaults).
 	private uint8[] mUniformData ~ delete _;
 
@@ -106,6 +110,19 @@ class MaterialInstance : RefCounted, IDisposable
 
 	/// Whether bind group is dirty.
 	public bool IsBindGroupDirty => mBindGroupDirty;
+
+	/// Sets the material system reference. Called by MaterialSystem.PrepareInstance.
+	public void SetMaterialSystem(MaterialSystem system)
+	{
+		mMaterialSystem = system;
+	}
+
+	public ~this()
+	{
+		// Clean up GPU resources (bind group, uniform buffer) via the material system
+		if (mMaterialSystem != null)
+			mMaterialSystem.ReleaseInstance(this);
+	}
 
 	/// Creates a material instance from a material.
 	public this(Material material)

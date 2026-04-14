@@ -167,6 +167,9 @@ class MaterialSystem : IDisposable
 		if (instance == null || instance.Material == null)
 			return .Err;
 
+		// Set material system reference so the instance can clean up in its destructor
+		instance.SetMaterialSystem(this);
+
 		let material = instance.Material;
 		IBindGroupLayout bgLayout = layout;
 
@@ -232,8 +235,18 @@ class MaterialSystem : IDisposable
 	}
 
 	/// Clears all cached resources.
+	/// Detaches MaterialInstance references so their destructors won't
+	/// call back into this (already-disposed) MaterialSystem.
 	public void ClearCache()
 	{
+		// Detach all instances from this system before destroying GPU resources.
+		// Their destructors may run later (during scene teardown) and must not
+		// call ReleaseInstance on a disposed MaterialSystem.
+		for (let kv in mBindGroups)
+			kv.key.SetMaterialSystem(null);
+		for (let kv in mUniformBuffers)
+			kv.key.SetMaterialSystem(null);
+
 		if (mDevice != null)
 		{
 			for (var kv in mBindGroups)
