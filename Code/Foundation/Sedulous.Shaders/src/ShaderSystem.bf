@@ -48,6 +48,7 @@ class ShaderSystem : IDisposable
 	public Result<void> Initialize(IDevice device, Span<StringView> shaderSourcePaths, StringView cachePath = default)
 	{
 		mDevice = device;
+		Target = device.Type == .DX12 ? .DXIL : .SPIRV;
 
 		// Store shader source path
 		for (var path in shaderSourcePaths)
