@@ -26,7 +26,7 @@ elseif($option -eq "make")
             mkdir build-debug
         }
 
-        cmake -S ./joltc -B build-debug
+        cmake -S ./joltc -B build-debug -DINTERPROCEDURAL_OPTIMIZATION=OFF
     }
 
     if($target -eq "RELEASE" -or $target -eq "ALL")
@@ -38,7 +38,10 @@ elseif($option -eq "make")
             mkdir build-release
         }
 
-        cmake -S ./joltc -B build-release
+        # Disable LTO — with /GL the static jolt.lib embeds MSVC bitcode,
+        # inflating it from ~15MB to 104MB. Negligible runtime impact since
+        # the C-wrapper DLL boundary prevents cross-TU inlining.
+        cmake -S ./joltc -B build-release -DINTERPROCEDURAL_OPTIMIZATION=OFF
 
     }
 }
