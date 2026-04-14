@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using Sedulous.RHI;
 using Sedulous.Core.Mathematics;
+using Sedulous.Materials;
 
 /// Minimal interface implemented by both Pipeline and ShadowPipeline.
 /// Renderer.RenderBatch takes this so per-type drawers can be invoked from
@@ -23,6 +24,13 @@ public interface IRenderingPipeline
 	/// ring buffer and returns the dynamic offset for the draw call bind group.
 	/// Returns uint32.MaxValue if the buffer is full.
 	uint32 WriteObjectUniforms(int32 frameIndex, Matrix worldMatrix, Matrix prevWorldMatrix);
+
+	/// Binds the frame-level bind group (set 0) with the current scene offset.
+	/// Must be called after setting a new pipeline (layout change invalidates bindings).
+	void BindFrameGroup(IRenderPassEncoder encoder, PerFrameResources frame);
+
+	/// Output texture format (HDR scene color for main pipeline, Undefined for shadow).
+	TextureFormat OutputFormat { get; }
 }
 
 /// Flags passed to Renderer.RenderBatch to convey pass-level hints.
@@ -74,5 +82,6 @@ public abstract class Renderer
 		IRenderingPipeline pipeline,
 		PerFrameResources frame,
 		RenderView view,
-		RenderBatchFlags flags);
+		RenderBatchFlags flags,
+		PipelineConfig passConfig);
 }

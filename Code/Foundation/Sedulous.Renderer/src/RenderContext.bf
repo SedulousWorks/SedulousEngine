@@ -68,6 +68,9 @@ public class RenderContext : IDisposable
 	private IBindGroupLayout mFrameBindGroupLayout;
 	private IBindGroupLayout mDrawCallBindGroupLayout;
 
+	/// Bind group layout for instanced draws (set 3): StructuredBuffer<InstanceData>.
+	private IBindGroupLayout mInstanceBindGroupLayout;
+
 	// Default draw call bind group (identity transform)
 	private IBindGroup mDefaultDrawCallBindGroup;
 	private IBuffer mDefaultDrawCallBuffer;
@@ -184,6 +187,9 @@ public class RenderContext : IDisposable
 	/// Draw-call bind group layout (set 3).
 	public IBindGroupLayout DrawCallBindGroupLayout => mDrawCallBindGroupLayout;
 
+	/// Bind group layout for instanced draws (StructuredBuffer at set 3).
+	public IBindGroupLayout InstanceBindGroupLayout => mInstanceBindGroupLayout;
+
 	// ==================== Lifecycle ====================
 
 	/// Initializes the shared rendering infrastructure.
@@ -277,6 +283,8 @@ public class RenderContext : IDisposable
 			mDevice.DestroyBindGroupLayout(ref mFrameBindGroupLayout);
 		if (mDrawCallBindGroupLayout != null)
 			mDevice.DestroyBindGroupLayout(ref mDrawCallBindGroupLayout);
+		if (mInstanceBindGroupLayout != null)
+			mDevice.DestroyBindGroupLayout(ref mInstanceBindGroupLayout);
 
 		// Material system
 		if (mMaterialSystem != null)
@@ -354,6 +362,22 @@ public class RenderContext : IDisposable
 
 		if (mDevice.CreateBindGroupLayout(drawLayoutDesc) case .Ok(let drawLayout))
 			mDrawCallBindGroupLayout = drawLayout;
+		else
+			return .Err;
+
+		// Instance bind group layout (set 3, storage buffer for instanced draws).
+		BindGroupLayoutEntry[1] instanceEntries = .(
+			.() { Binding = 0, Visibility = .Vertex, Type = .StorageBufferReadOnly }
+		);
+
+		BindGroupLayoutDesc instanceLayoutDesc = .()
+		{
+			Label = "Instance BindGroup Layout",
+			Entries = instanceEntries
+		};
+
+		if (mDevice.CreateBindGroupLayout(instanceLayoutDesc) case .Ok(let instanceLayout))
+			mInstanceBindGroupLayout = instanceLayout;
 		else
 			return .Err;
 

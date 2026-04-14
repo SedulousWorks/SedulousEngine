@@ -276,16 +276,22 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		mFrameIndex = (int32)mSwapChain.CurrentImageIndex;
 
 		// Wait for this frame's previous GPU work
-		if (mFrameFenceValues[mFrameIndex] > 0)
-			mFrameFence.Wait(mFrameFenceValues[mFrameIndex]);
+		using (Profiler.Begin("GPU.WaitFence"))
+		{
+			if (mFrameFenceValues[mFrameIndex] > 0)
+				mFrameFence.Wait(mFrameFenceValues[mFrameIndex]);
+		}
 
 		mCommandPools[mFrameIndex].Reset();
 
 		// Acquire swapchain image
-		if (mSwapChain.AcquireNextImage() case .Err)
+		using (Profiler.Begin("GPU.AcquireImage"))
 		{
-			OnWindowResized(mWindow, mWindow.Width, mWindow.Height);
-			return;
+			if (mSwapChain.AcquireNextImage() case .Err)
+			{
+				OnWindowResized(mWindow, mWindow.Width, mWindow.Height);
+				return;
+			}
 		}
 
 		let pool = mCommandPools[mFrameIndex];
@@ -335,12 +341,18 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		let commandBuffer = encoder.Finish();
 
 		// Submit + present
-		mFrameFenceValues[mFrameIndex] = mNextFenceValue++;
-		ICommandBuffer[1] bufs = .(commandBuffer);
-		mGraphicsQueue.Submit(bufs, mFrameFence, mFrameFenceValues[mFrameIndex]);
+		using (Profiler.Begin("GPU.Submit"))
+		{
+			mFrameFenceValues[mFrameIndex] = mNextFenceValue++;
+			ICommandBuffer[1] bufs = .(commandBuffer);
+			mGraphicsQueue.Submit(bufs, mFrameFence, mFrameFenceValues[mFrameIndex]);
+		}
 
-		if (mSwapChain.Present(mGraphicsQueue) case .Err)
-			OnWindowResized(mWindow, mWindow.Width, mWindow.Height);
+		using (Profiler.Begin("GPU.Present"))
+		{
+			if (mSwapChain.Present(mGraphicsQueue) case .Err)
+				OnWindowResized(mWindow, mWindow.Width, mWindow.Height);
+		}
 
 		pool.DestroyEncoder(ref encoder);
 	}
@@ -476,7 +488,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 			let light = entry as LightRenderData;
 			if (light == null || !light.CastsShadows || light.Type != .Point)
 				continue;
-			AllocatePointShadow(light, shadowSystem);
+			AllocatePointShadow(light, mainView, shadowSystem);
 		}
 
 		// Pass 3: spot lights (single cell each).
@@ -485,14 +497,14 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 			let light = entry as LightRenderData;
 			if (light == null || !light.CastsShadows || light.Type != .Spot)
 				continue;
-			AllocateSpotShadow(light, shadowSystem);
+			AllocateSpotShadow(light, mainView, shadowSystem);
 		}
 
 		shadowSystem.Upload(mFrameIndex);
 	}
 
 	/// Allocates and queues a single shadow map for a spot light.
-	private void AllocateSpotShadow(LightRenderData light, ShadowSystem shadowSystem)
+	private void AllocateSpotShadow(LightRenderData light, RenderView mainView, ShadowSystem shadowSystem)
 	{
 		ShadowAtlasRegion region;
 		int32 shadowIdx;
@@ -535,7 +547,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		shadowView.DeltaTime = mDeltaTime;
 		shadowView.TotalTime = mTotalTime;
 
-		ExtractIntoView(shadowView);
+		CopyShadowData(shadowView, mainView);
 
 		mShadowDraws.Add(ShadowPipeline.ShadowJob() { View = shadowView, Region = region });
 	}
@@ -630,7 +642,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 			shadowView.DeltaTime = mDeltaTime;
 			shadowView.TotalTime = mTotalTime;
 
-			ExtractIntoView(shadowView);
+			CopyShadowData(shadowView, mainView);
 
 			mShadowDraws.Add(ShadowPipeline.ShadowJob() { View = shadowView, Region = region });
 		}
@@ -643,7 +655,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	/// light.ShadowIndex is set to the FIRST face's index; subsequent faces sit
 	/// at consecutive indices. The base entry carries CascadeCount = 6 as a
 	/// "face count" signal (spot lights have 0).
-	private void AllocatePointShadow(LightRenderData light, ShadowSystem shadowSystem)
+	private void AllocatePointShadow(LightRenderData light, RenderView mainView, ShadowSystem shadowSystem)
 	{
 		let faceCount = ShadowConstants.PointFaceCount;
 
@@ -707,9 +719,31 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 			shadowView.DeltaTime = mDeltaTime;
 			shadowView.TotalTime = mTotalTime;
 
-			ExtractIntoView(shadowView);
+			CopyShadowData(shadowView, mainView);
 
 			mShadowDraws.Add(ShadowPipeline.ShadowJob() { View = shadowView, Region = region });
+		}
+	}
+
+	/// Copies shadow-relevant render data (Opaque + Masked) from the main view
+	/// into a shadow view. Avoids re-extracting the entire scene per shadow view.
+	/// The RenderData entries are arena-allocated and valid until BeginFrame().
+	private void CopyShadowData(RenderView shadowView, RenderView mainView)
+	{
+		let srcOpaque = mainView.RenderData.GetBatch(RenderCategories.Opaque);
+		if (srcOpaque != null)
+		{
+			let dst = shadowView.RenderData.GetBatch(RenderCategories.Opaque);
+			for (let entry in srcOpaque)
+				dst.Add(entry);
+		}
+
+		let srcMasked = mainView.RenderData.GetBatch(RenderCategories.Masked);
+		if (srcMasked != null)
+		{
+			let dst = shadowView.RenderData.GetBatch(RenderCategories.Masked);
+			for (let entry in srcMasked)
+				dst.Add(entry);
 		}
 	}
 
@@ -718,14 +752,22 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	/// the atlas with finalState = ShaderRead, so it's left ready for sampling.
 	private void RenderShadows(ICommandEncoder encoder)
 	{
-		if (mShadowDraws.Count == 0) return;
-
 		let shadowSystem = mRenderContext.ShadowSystem;
 		if (shadowSystem == null) return;
 
 		let atlas = shadowSystem.Atlas.Texture;
-		let atlasView = shadowSystem.Atlas.TextureView;
+		if (atlas == null) return;
 
+		if (mShadowDraws.Count == 0)
+		{
+			// No shadow casters — the atlas was never rendered to, so it's still
+			// in UNDEFINED layout. Transition to ShaderRead so the forward shader
+			// can safely sample it (reads all-ones depth = fully lit).
+			encoder.TransitionTexture(atlas, .Undefined, .ShaderRead);
+			return;
+		}
+
+		let atlasView = shadowSystem.Atlas.TextureView;
 		Span<ShadowPipeline.ShadowJob> jobs = .(&mShadowDraws[0], mShadowDraws.Count);
 		mShadowPipeline.RenderAll(encoder, jobs, atlas, atlasView, mFrameIndex);
 	}

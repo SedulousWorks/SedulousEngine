@@ -4,6 +4,7 @@ using System;
 using Sedulous.RHI;
 using Sedulous.RenderGraph;
 using Sedulous.Renderer;
+using Sedulous.Materials;
 using Sedulous.Profiler;
 
 /// Particle rendering pass. Runs after ForwardTransparentPass.
@@ -59,7 +60,8 @@ public class ParticlePass : PipelinePass
 		renderContext.CurrentSceneDepthView = depthView;
 
 		let frame = pipeline.GetFrameResources(view.FrameIndex);
-		pipeline.RenderCategory(encoder, RenderCategories.Particle, frame, view, .BindMaterial);
+		var passConfig = PipelineConfig.ForParticles("particle");
+		pipeline.RenderCategory(encoder, RenderCategories.Particle, frame, view, .BindMaterial, passConfig);
 		} // scope
 	}
 }

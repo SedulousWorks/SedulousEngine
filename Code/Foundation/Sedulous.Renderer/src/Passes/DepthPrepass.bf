@@ -77,7 +77,7 @@ class DepthPrepass : PipelinePass
 		pipeline.BindFrameGroup(encoder, frame);
 
 		// Dispatch to registered renderers — depth pass skips material binding.
-		pipeline.RenderCategory(encoder, RenderCategories.Opaque, frame, view, .None);
+		pipeline.RenderCategory(encoder, RenderCategories.Opaque, frame, view, .None, config);
 		} // DepthPrepass scope
 	}
 }

@@ -38,7 +38,8 @@ public class SpriteRenderer : Renderer
 		IRenderingPipeline pipeline,
 		PerFrameResources frame,
 		RenderView view,
-		RenderBatchFlags flags)
+		RenderBatchFlags flags,
+		PipelineConfig passConfig)
 	{
 		if (batch == null || batch.Count == 0) return;
 

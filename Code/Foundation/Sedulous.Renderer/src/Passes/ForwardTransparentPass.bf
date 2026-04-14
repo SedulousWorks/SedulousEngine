@@ -103,8 +103,7 @@ class ForwardTransparentPass : PipelinePass
 		}
 
 		// Dispatch to registered renderers for the transparent category.
-		// Future: ParticleRenderer registered for Transparent will be called here too.
-		pipeline.RenderCategory(encoder, RenderCategories.Transparent, frame, view, .BindMaterial);
+		pipeline.RenderCategory(encoder, RenderCategories.Transparent, frame, view, .BindMaterial, config);
 		} // ForwardTransparent scope
 	}
 }

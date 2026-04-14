@@ -51,6 +51,16 @@ class PerFrameResources
 	/// Current write offset into ObjectUniformBuffer (reset each frame).
 	public uint32 ObjectBufferOffset;
 
+	/// Instance buffer for batched instanced draws (StructuredBuffer of InstanceData).
+	/// Each entry = 128 bytes (WorldMatrix + PrevWorldMatrix).
+	public IBuffer InstanceBuffer;
+
+	/// Bind group for the instance buffer (set 3, used for instanced draws).
+	public IBindGroup InstanceBindGroup;
+
+	/// Current write offset into InstanceBuffer (in instances, not bytes).
+	public int32 InstanceOffset;
+
 	/// Current write offset into SceneUniformBuffer (reset each frame).
 	/// Pipeline.WriteSceneUniforms returns the slot offset before advancing this.
 	public uint32 SceneBufferOffset;
@@ -66,6 +76,12 @@ class PerFrameResources
 	/// Maximum number of objects per frame.
 	public const uint32 MaxObjects = 4096;
 
+	/// Maximum instances for batched instanced draws.
+	public const int32 MaxInstances = 200000;
+
+	/// Size of one instance entry in the StructuredBuffer (2 matrices = 128 bytes).
+	public const int32 InstanceStride = 128;
+
 	/// Alignment for scene uniform slots. 512 bytes is a comfortable upper bound for
 	/// SceneUniforms (~432 bytes) and a multiple of 256 for Vulkan compatibility.
 	public const uint32 SceneAlignment = 512;
@@ -78,7 +94,11 @@ class PerFrameResources
 	{
 		device.DestroyBindGroup(ref FrameBindGroup);
 		device.DestroyBindGroup(ref DrawCallBindGroup);
+		if (InstanceBindGroup != null)
+			device.DestroyBindGroup(ref InstanceBindGroup);
 		device.DestroyBuffer(ref SceneUniformBuffer);
 		device.DestroyBuffer(ref ObjectUniformBuffer);
+		if (InstanceBuffer != null)
+			device.DestroyBuffer(ref InstanceBuffer);
 	}
 }

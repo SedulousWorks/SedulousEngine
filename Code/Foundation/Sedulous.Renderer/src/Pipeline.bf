@@ -5,6 +5,7 @@ using System.Collections;
 using Sedulous.RHI;
 using Sedulous.RenderGraph;
 using Sedulous.Core.Mathematics;
+using Sedulous.Materials;
 using Sedulous.Profiler;
 
 /// Per-view pass execution engine.
@@ -124,6 +125,7 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		if (frame == null) return;
 		frame.SceneBufferOffset = 0;
 		frame.ObjectBufferOffset = 0;
+		frame.InstanceOffset = 0;
 		frame.CurrentSceneOffset = 0;
 	}
 
@@ -131,7 +133,7 @@ public class Pipeline : IRenderingPipeline, IDisposable
 	/// the RenderContext for that category. Called by render passes after they've
 	/// set up render targets, pipeline state, viewport, and frame-level bind groups.
 	public void RenderCategory(IRenderPassEncoder encoder, RenderDataCategory category,
-		PerFrameResources frame, RenderView view, RenderBatchFlags flags)
+		PerFrameResources frame, RenderView view, RenderBatchFlags flags, PipelineConfig passConfig)
 	{
 		let batch = view.RenderData?.GetBatch(category);
 		if (batch == null || batch.Count == 0)
@@ -142,7 +144,7 @@ public class Pipeline : IRenderingPipeline, IDisposable
 			return;
 
 		for (let renderer in renderers)
-			renderer.RenderBatch(encoder, batch, mRenderContext, this, frame, view, flags);
+			renderer.RenderBatch(encoder, batch, mRenderContext, this, frame, view, flags, passConfig);
 	}
 
 	/// Gets a pass by type.
@@ -539,6 +541,40 @@ public class Pipeline : IRenderingPipeline, IDisposable
 
 				if (device.CreateBindGroup(drawBgDesc) case .Ok(let drawBg))
 					frame.DrawCallBindGroup = drawBg;
+			}
+
+			// Instance buffer for batched instanced draws (StructuredBuffer<InstanceData>)
+			let instanceBufferSize = (uint64)(PerFrameResources.MaxInstances * PerFrameResources.InstanceStride);
+			BufferDesc instanceBufDesc = .()
+			{
+				Label = "Instance Buffer",
+				Size = instanceBufferSize,
+				Usage = .Storage,
+				Memory = .CpuToGpu
+			};
+
+			if (device.CreateBuffer(instanceBufDesc) case .Ok(let instanceBuf))
+			{
+				frame.InstanceBuffer = instanceBuf;
+
+				// Create bind group for instance buffer (set 3, binding 0)
+				let instanceLayout = mRenderContext.InstanceBindGroupLayout;
+				if (instanceLayout != null)
+				{
+					BindGroupEntry[1] instanceBgEntries = .(
+						BindGroupEntry.Buffer(instanceBuf, 0, instanceBufferSize)
+					);
+
+					BindGroupDesc instanceBgDesc = .()
+					{
+						Label = "Instance BindGroup",
+						Layout = instanceLayout,
+						Entries = instanceBgEntries
+					};
+
+					if (device.CreateBindGroup(instanceBgDesc) case .Ok(let instanceBg))
+						frame.InstanceBindGroup = instanceBg;
+				}
 			}
 
 			// Frame bind group is rebuilt each frame (includes light buffer which changes)

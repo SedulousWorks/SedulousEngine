@@ -31,6 +31,7 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 
 	public RenderContext RenderContext => mRenderContext;
 	public RenderGraph RenderGraph => mRenderGraph;
+	public TextureFormat OutputFormat => .Undefined;
 
 	public PerFrameResources GetFrameResources(int32 frameIndex)
 	{
@@ -75,6 +76,7 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 		if (frame == null) return;
 		frame.SceneBufferOffset = 0;
 		frame.ObjectBufferOffset = 0;
+		frame.InstanceOffset = 0;
 		frame.CurrentSceneOffset = 0;
 	}
 
@@ -180,8 +182,8 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 		// Dispatch to registered renderers (MeshRenderer) for shadow casters.
 		// Opaque + Masked categories cast shadows; Transparent does not.
 		// .None — no material binding required for depth-only writes.
-		RenderCategory(encoder, RenderCategories.Opaque, frame, view, .None);
-		RenderCategory(encoder, RenderCategories.Masked, frame, view, .None);
+		RenderCategory(encoder, RenderCategories.Opaque, frame, view, .None, config);
+		RenderCategory(encoder, RenderCategories.Masked, frame, view, .None, config);
 	}
 
 	/// Helper for the shadow depth pass — same pattern as Pipeline.BindFrameGroup.
@@ -196,7 +198,7 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 	/// Dispatches a category to all registered renderers — exposed so MeshRenderer
 	/// is reachable through the shadow pipeline. Mirrors Pipeline.RenderCategory.
 	public void RenderCategory(IRenderPassEncoder encoder, RenderDataCategory category,
-		PerFrameResources frame, RenderView view, RenderBatchFlags flags)
+		PerFrameResources frame, RenderView view, RenderBatchFlags flags, PipelineConfig passConfig)
 	{
 		let batch = view.RenderData?.GetBatch(category);
 		if (batch == null || batch.Count == 0)
@@ -207,7 +209,7 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 			return;
 
 		for (let renderer in renderers)
-			renderer.RenderBatch(encoder, batch, mRenderContext, this, frame, view, flags);
+			renderer.RenderBatch(encoder, batch, mRenderContext, this, frame, view, flags, passConfig);
 	}
 
 	/// Writes object uniforms to the per-frame ring buffer (mirrors Pipeline.WriteObjectUniforms).
@@ -358,6 +360,39 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 
 				if (device.CreateBindGroup(drawBgDesc) case .Ok(let drawBg))
 					frame.DrawCallBindGroup = drawBg;
+			}
+
+			// Instance buffer for batched instanced draws (StructuredBuffer<InstanceData>)
+			let instanceBufferSize = (uint64)(PerFrameResources.MaxInstances * PerFrameResources.InstanceStride);
+			BufferDesc instanceBufDesc = .()
+			{
+				Label = "Shadow Instance Buffer",
+				Size = instanceBufferSize,
+				Usage = .Storage,
+				Memory = .CpuToGpu
+			};
+
+			if (device.CreateBuffer(instanceBufDesc) case .Ok(let instanceBuf))
+			{
+				frame.InstanceBuffer = instanceBuf;
+
+				let instanceLayout = mRenderContext.InstanceBindGroupLayout;
+				if (instanceLayout != null)
+				{
+					BindGroupEntry[1] instanceBgEntries = .(
+						BindGroupEntry.Buffer(instanceBuf, 0, instanceBufferSize)
+					);
+
+					BindGroupDesc instanceBgDesc = .()
+					{
+						Label = "Shadow Instance BindGroup",
+						Layout = instanceLayout,
+						Entries = instanceBgEntries
+					};
+
+					if (device.CreateBindGroup(instanceBgDesc) case .Ok(let instanceBg))
+						frame.InstanceBindGroup = instanceBg;
+				}
 			}
 
 			mFrameResources[i] = frame;

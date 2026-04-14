@@ -124,8 +124,8 @@ class ForwardOpaquePass : PipelinePass
 		}
 
 		// Dispatch to registered renderers (MeshRenderer, future: particles, etc.)
-		pipeline.RenderCategory(encoder, RenderCategories.Opaque, frame, view, .BindMaterial);
-		pipeline.RenderCategory(encoder, RenderCategories.Masked, frame, view, .BindMaterial);
+		pipeline.RenderCategory(encoder, RenderCategories.Opaque, frame, view, .BindMaterial, config);
+		pipeline.RenderCategory(encoder, RenderCategories.Masked, frame, view, .BindMaterial, config);
 
 		} // ForwardOpaque scope
 	}

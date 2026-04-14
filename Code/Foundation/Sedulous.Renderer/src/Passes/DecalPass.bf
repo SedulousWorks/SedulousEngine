@@ -5,6 +5,7 @@ using Sedulous.RHI;
 using Sedulous.RenderGraph;
 using Sedulous.Renderer;
 using Sedulous.Renderer.Renderers;
+using Sedulous.Materials;
 using Sedulous.Profiler;
 
 /// Decal rendering pass. Runs after the forward opaque pass (so SceneDepth is
@@ -64,7 +65,14 @@ class DecalPass : PipelinePass
 		decalRenderer.UpdateForFrame(view.FrameIndex, depthView);
 
 		let frame = pipeline.GetFrameResources(view.FrameIndex);
-		pipeline.RenderCategory(encoder, RenderCategories.Decal, frame, view, .None);
+
+		var passConfig = PipelineConfig();
+		passConfig.ColorTargetCount = 1;
+		passConfig.DepthCompare = .LessEqual;
+		passConfig.DepthMode = .Disabled;
+		passConfig.BlendMode = .AlphaBlend;
+
+		pipeline.RenderCategory(encoder, RenderCategories.Decal, frame, view, .None, passConfig);
 		} // scope
 	}
 

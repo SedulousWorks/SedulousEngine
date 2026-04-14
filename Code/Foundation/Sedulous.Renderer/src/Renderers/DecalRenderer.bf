@@ -242,7 +242,8 @@ public class DecalRenderer : Renderer
 		IRenderingPipeline pipeline,
 		PerFrameResources frame,
 		RenderView view,
-		RenderBatchFlags flags)
+		RenderBatchFlags flags,
+		PipelineConfig passConfig)
 	{
 		if (batch == null || batch.Count == 0) return;
 		if (mPipelineState == null) return;

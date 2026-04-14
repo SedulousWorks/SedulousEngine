@@ -62,7 +62,8 @@ public class ParticleRenderer : Sedulous.Renderer.Renderer
 		IRenderingPipeline pipeline,
 		PerFrameResources frame,
 		RenderView view,
-		RenderBatchFlags flags)
+		RenderBatchFlags flags,
+		PipelineConfig passConfig)
 	{
 		if (batch == null || batch.Count == 0) return;
 		if (mGPUResources == null) return;

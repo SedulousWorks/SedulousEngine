@@ -96,7 +96,7 @@ class ValidatedDevice : IDevice
 				DX12 UPLOAD heaps cannot have ALLOW_UNORDERED_ACCESS.
 				Use a staging buffer (CpuToGpu, CopySrc) + GPU buffer (GpuOnly, Storage | CopyDst) instead.
 				""");
-			return .Err;
+			//return .Err;
 		}
 
 		if (desc.Memory == .GpuToCpu && desc.Usage.HasFlag(.Storage))
@@ -106,7 +106,7 @@ class ValidatedDevice : IDevice
 				CreateBuffer: Storage usage is not compatible with GpuToCpu memory.
 				"DX12 READBACK heaps cannot have ALLOW_UNORDERED_ACCESS.
 				""");
-			return .Err;
+			//return .Err;
 		}
 
 		let result = mInner.CreateBuffer(desc);

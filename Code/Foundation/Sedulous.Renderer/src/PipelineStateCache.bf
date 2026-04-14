@@ -114,8 +114,9 @@ class PipelineStateCache : IDisposable
 		if (mPipelineCache.TryGetValue(hash, let cached))
 			return .Ok(cached);
 
-		// Get or create pipeline layout
-		let pipelineLayout = GetOrCreatePipelineLayout(materialLayout);
+		// Get or create pipeline layout (instanced variant uses storage buffer at set 3)
+		let isInstanced = cfg.ShaderFlags.HasFlag(.Instanced);
+		let pipelineLayout = GetOrCreatePipelineLayout(materialLayout, isInstanced);
 		if (pipelineLayout == null)
 			return .Err;
 
@@ -189,26 +190,31 @@ class PipelineStateCache : IDisposable
 
 	/// Gets or creates a pipeline layout for the 5-level bind group model.
 	/// Set 0 = Frame, Set 1 = Pass (placeholder), Set 2 = Material, Set 3 = DrawCall, Set 4 = Shadow.
-	private IPipelineLayout GetOrCreatePipelineLayout(IBindGroupLayout materialLayout)
+	private IPipelineLayout GetOrCreatePipelineLayout(IBindGroupLayout materialLayout, bool instanced = false)
 	{
 		// Use default material layout if none provided
 		let effectiveMatLayout = materialLayout != null ? materialLayout : mRenderContext.MaterialBindGroupLayout;
 
 		int hash = (int)(void*)Internal.UnsafeCastToPtr(effectiveMatLayout);
+		if (instanced)
+			hash = hash * 31 + 1; // differentiate instanced vs non-instanced layouts
 
 		if (mLayoutCache.TryGetValue(hash, let cached))
 			return cached;
 
 		let frameLayout = mRenderContext.FrameBindGroupLayout;
-		let drawLayout = mRenderContext.DrawCallBindGroupLayout;
 		let shadowLayout = mRenderContext.ShadowSystem?.BindGroupLayout;
 
-		// Full 5-set layout: frame (0) + pass (1, placeholder) + material (2) + draw (3) + shadow (4)
+		// Set 3: DrawCall UBO (non-instanced) or StorageBuffer (instanced)
+		let set3Layout = instanced
+			? mRenderContext.InstanceBindGroupLayout
+			: mRenderContext.DrawCallBindGroupLayout;
+
+		// Full 5-set layout: frame (0) + pass (1, placeholder) + material (2) + draw/instance (3) + shadow (4)
 		// Set 1 (pass) reuses frame layout as placeholder for now.
-		// Set 4 (shadow) reuses frame layout as placeholder when ShadowSystem is missing
-		// (e.g., during early init) so the layout shape stays stable.
+		// Set 4 (shadow) reuses frame layout as placeholder when ShadowSystem is missing.
 		let s4 = shadowLayout != null ? shadowLayout : frameLayout;
-		IBindGroupLayout[5] layouts = .(frameLayout, frameLayout, effectiveMatLayout, drawLayout, s4);
+		IBindGroupLayout[5] layouts = .(frameLayout, frameLayout, effectiveMatLayout, set3Layout, s4);
 		PipelineLayoutDesc layoutDesc = .(Span<IBindGroupLayout>(&layouts[0], 5));
 
 		if (mDevice.CreatePipelineLayout(layoutDesc) case .Ok(let layout))
