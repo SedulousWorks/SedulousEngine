@@ -1,5 +1,5 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Runtime" = "*", "Sedulous.Scenes" = "*", "Sedulous.Engine.Runtime" = "*"}
+Dependencies = {corlib = "*", "Sedulous.Runtime" = "*", "Sedulous.Scenes" = "*", "Sedulous.Engine.Runtime" = "*", "Sedulous.Core.Mathematics" = "*", "recastnavigation-Beef" = "*"}
 
 [Project]
 Name = "Sedulous.Engine.Navigation"

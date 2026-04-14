@@ -32,6 +32,7 @@ using Sedulous.Particles;
 using Sedulous.Engine.Physics;
 using Sedulous.Engine.Animation;
 using Sedulous.Engine.Audio;
+using Sedulous.Engine.Navigation;
 using Sedulous.Audio;
 using Sedulous.Audio.Decoders;
 using Sedulous.Physics;
@@ -72,6 +73,25 @@ class SandboxApp : EngineApplication
 	int32 mOneShotIndex = 0;
 	AudioClip mBgMusicClip ~ delete _;
 	IAudioSource mBgMusicSource;
+
+	// Navigation demo
+	List<EntityHandle> mNavAgentEntities = new .() ~ delete _;
+	Random mNavRandom = new .() ~ delete _;
+	Vector3 mNavTarget;
+	bool mHasNavTarget = false;
+	List<float> mNavPathWaypoints = new .() ~ delete _;
+
+	// Agent colors for nav mesh agents
+	static Color[8] sNavAgentColors = .(
+		Color(50, 200, 50, 255),
+		Color(50, 100, 255, 255),
+		Color(255, 200, 50, 255),
+		Color(200, 50, 200, 255),
+		Color(255, 100, 50, 255),
+		Color(50, 200, 200, 255),
+		Color(200, 50, 50, 255),
+		Color(200, 200, 200, 255)
+	);
 	List<TextureResource> mFoxTextures = new .() ~ delete _;
 
 	// Kenney character (animation graph demo)
@@ -779,6 +799,64 @@ class SandboxApp : EngineApplication
 			}
 		}
 
+		// ==================== Navigation ====================
+		// Build a navmesh from the ground plane and spawn crowd agents.
+		// 1=add agent, 2=remove agent, left-click=move target
+		{
+			let navSub = Context.GetSubsystem<NavigationSubsystem>();
+			let navWorld = navSub?.GetNavWorld(scene);
+			if (navWorld != null)
+			{
+				// Build navmesh from ground plane geometry
+				let navVerts = scope List<float>();
+				let navTris = scope List<int32>();
+
+				// Ground plane (thin box at Y=0, matching the 30×30 visual mesh)
+				AddNavBoxGeometry(navVerts, navTris, .(0, -0.05f, 0), .(15, 0.05f, 15));
+
+				let geometry = scope InputGeometry(
+					Span<float>(navVerts.Ptr, navVerts.Count),
+					Span<int32>(navTris.Ptr, navTris.Count));
+
+				var config = NavMeshBuildConfig.Default;
+				config.CellSize = 0.3f;
+				config.CellHeight = 0.2f;
+				config.AgentRadius = 0.5f;
+				config.AgentHeight = 1.8f;
+				config.AgentMaxClimb = 0.9f;
+				config.AgentMaxSlope = 45.0f;
+
+				// Build single-tile navmesh and set on the NavWorld
+				let buildResult = NavMeshBuilder.BuildSingle(geometry, config);
+				let buildOk = (buildResult != null && buildResult.Success && buildResult.NavMesh != null);
+				if (buildOk)
+				{
+					let mesh = buildResult.NavMesh;
+					buildResult.NavMesh = null; // transfer ownership to NavWorld
+					navWorld.SetNavMesh(mesh);
+				}
+				defer { if (buildResult != null) delete buildResult; }
+
+				if (buildOk)
+				{
+					// Spawn initial nav agents with visible sphere meshes
+					let navMgr = scene.GetModule<NavigationComponentManager>();
+					if (navMgr != null)
+					{
+						Vector3[3] startPositions = .(.(-5, 0, -5), .(5, 0, 5), .(0, 0, -8));
+						for (int32 i = 0; i < 3; i++)
+							SpawnNavAgent(scene, navMgr, startPositions[i], sphereRef);
+					}
+
+					Console.WriteLine("Navigation ready: 1=add agent, 2=remove, left-click=move");
+				}
+				else
+				{
+					Console.WriteLine("WARNING: NavMesh build failed");
+				}
+			}
+		}
+
 		// ==================== Lights ====================
 
 		let lightMgr = scene.GetModule<LightComponentManager>();
@@ -1120,7 +1198,7 @@ class SandboxApp : EngineApplication
 		let fpsText = scope String();
 		fpsText.AppendF("FPS {0:F0}  ({1:F2} ms)", mFpsSmoothed, mFrameTimeMs);
 		dbg.DrawScreenText(8, 8, fpsText, .White);
-		dbg.DrawScreenText(8, 20, "WASD=Move QE=Up/Down RMB=Look Tab=Capture Shift=Fast M=SFX", .LightGray);
+		dbg.DrawScreenText(8, 20, "WASD=Move QE=Up/Down RMB=Look Tab=Capture Shift=Fast M=SFX 1/2=Nav", .LightGray);
 
 		// World-space axis indicator at the origin.
 		dbg.DrawAxis(Matrix.Identity, 1.5f);
@@ -1133,6 +1211,155 @@ class SandboxApp : EngineApplication
 			{
 				audioSub.PlayOneShot(mOneShotClips[mOneShotIndex], 0.8f);
 				mOneShotIndex = (mOneShotIndex + 1) % (int32)mOneShotClips.Count;
+			}
+		}
+
+		// Navigation: 1=add agent, 2=remove, left-click=move target
+		if (mScene != null)
+		{
+			let keyboard = mShell.InputManager.Keyboard;
+			let mouse = mShell.InputManager.Mouse;
+			let navMgr = mScene.GetModule<NavigationComponentManager>();
+
+			if (navMgr != null)
+			{
+				// Add agent at random position with mesh
+				if (keyboard.IsKeyPressed(.Num1))
+				{
+					let x = ((float)mNavRandom.NextDouble() - 0.5f) * 20.0f;
+					let z = ((float)mNavRandom.NextDouble() - 0.5f) * 20.0f;
+					var agentMeshRef = ResourceRef(mSphereRes.Id, .());
+					defer agentMeshRef.Dispose();
+					SpawnNavAgent(mScene, navMgr, .(x, 0, z), agentMeshRef);
+				}
+
+				// Remove last agent
+				if (keyboard.IsKeyPressed(.Num2) && mNavAgentEntities.Count > 0)
+				{
+					let entity = mNavAgentEntities.PopBack();
+					mScene.DestroyEntity(entity);
+				}
+
+				// Left-click: move all agents to mouse cursor ground hit
+				if (mouse.IsButtonPressed(.Left) && !mMouseCaptured)
+				{
+					// Build view-projection matrix from camera state
+					let cosP = Math.Cos(mPitch);
+					let camForward = Vector3(cosP * Math.Sin(mYaw), Math.Sin(mPitch), cosP * Math.Cos(mYaw));
+					let camTarget = mCameraPosition + camForward;
+					let viewMatrix = Matrix.CreateLookAt(mCameraPosition, camTarget, .(0, 1, 0));
+					let aspect = (float)rs.Pipeline.OutputWidth / (float)rs.Pipeline.OutputHeight;
+					let projMatrix = Matrix.CreatePerspectiveFieldOfView(60.0f * (Math.PI_f / 180.0f), aspect, 0.1f, 100.0f);
+					let viewProj = viewMatrix * projMatrix;
+
+					// Unproject mouse position to ray
+					let ndcX = (2.0f * mouse.X / (float)rs.Pipeline.OutputWidth) - 1.0f;
+					let ndcY = 1.0f - (2.0f * mouse.Y / (float)rs.Pipeline.OutputHeight);
+
+					Matrix invVP = .Identity;
+					if (Matrix.TryInvert(viewProj, out invVP))
+					{
+						var nearWorld = Vector4.Transform(Vector4(ndcX, ndcY, 0, 1), invVP);
+						var farWorld = Vector4.Transform(Vector4(ndcX, ndcY, 1, 1), invVP);
+
+						if (Math.Abs(nearWorld.W) > 0.0001f && Math.Abs(farWorld.W) > 0.0001f)
+						{
+							let nearPos = Vector3(nearWorld.X, nearWorld.Y, nearWorld.Z) / nearWorld.W;
+							let farPos = Vector3(farWorld.X, farWorld.Y, farWorld.Z) / farWorld.W;
+							let rayDir = farPos - nearPos;
+
+					if (Math.Abs(rayDir.Y) > 0.001f)
+					{
+						let t = -nearPos.Y / rayDir.Y;
+						if (t > 0)
+						{
+							let hitPos = nearPos + rayDir * t;
+							mNavTarget = Vector3(Math.Clamp(hitPos.X, -14, 14), 0, Math.Clamp(hitPos.Z, -14, 14));
+							mHasNavTarget = true;
+
+							for (let agentEntity in mNavAgentEntities)
+							{
+								let agentComp = navMgr.GetForEntity(agentEntity);
+								if (agentComp != null)
+									agentComp.MoveTarget = mNavTarget;
+							}
+
+							// Update path from first agent to target
+							let navSub = Context.GetSubsystem<NavigationSubsystem>();
+							let navWorld = navSub?.GetNavWorld(mScene);
+							if (navWorld != null && mNavAgentEntities.Count > 0)
+							{
+								float[3] agentPos = ?;
+								let firstAgent = navMgr.GetForEntity(mNavAgentEntities[0]);
+								if (firstAgent != null && firstAgent.IsOnCrowd)
+								{
+									navWorld.Crowd.GetAgentPosition(firstAgent.CrowdAgentIndex, out agentPos);
+									float[3] targetArr = .(mNavTarget.X, mNavTarget.Y, mNavTarget.Z);
+									navWorld.FindPath(agentPos, targetArr, mNavPathWaypoints);
+								}
+							}
+						}
+					}
+						} // nearWorld.W check
+					} // invVP
+				} // mouse left click
+
+				// Draw target marker (cross + circle on ground)
+				if (mHasNavTarget)
+				{
+					let targetColor = Color(255, 255, 255, 200);
+					let p = mNavTarget + .(0, 0.05f, 0);
+					// Cross
+					dbg.DrawLine(p + .(-0.3f, 0, 0), p + .(0.3f, 0, 0), targetColor);
+					dbg.DrawLine(p + .(0, 0, -0.3f), p + .(0, 0, 0.3f), targetColor);
+					dbg.DrawWireSphere(p, 0.15f, targetColor);
+				}
+
+				// Draw path on the ground
+				if (mNavPathWaypoints.Count >= 6)
+				{
+					let pathColor = Color(0, 255, 100, 200);
+					for (int32 i = 0; i + 5 < (int32)mNavPathWaypoints.Count; i += 3)
+					{
+						let from = Vector3(mNavPathWaypoints[i], mNavPathWaypoints[i + 1] + 0.1f, mNavPathWaypoints[i + 2]);
+						let to = Vector3(mNavPathWaypoints[i + 3], mNavPathWaypoints[i + 4] + 0.1f, mNavPathWaypoints[i + 5]);
+						dbg.DrawLine(from, to, pathColor);
+					}
+				}
+
+				// Draw agents as colored wireframe capsules (cylinder body + sphere top)
+				for (int32 i = 0; i < (int32)mNavAgentEntities.Count; i++)
+				{
+					let agentPos = mScene.GetWorldMatrix(mNavAgentEntities[i]).Translation;
+					let color = sNavAgentColors[i % 8];
+					let halfH = 0.9f; // half agent height
+					let r = 0.5f;     // agent radius
+
+					// Vertical body lines
+					dbg.DrawLine(agentPos + .(r, 0, 0), agentPos + .(r, halfH * 2, 0), color);
+					dbg.DrawLine(agentPos + .(-r, 0, 0), agentPos + .(-r, halfH * 2, 0), color);
+					dbg.DrawLine(agentPos + .(0, 0, r), agentPos + .(0, halfH * 2, r), color);
+					dbg.DrawLine(agentPos + .(0, 0, -r), agentPos + .(0, halfH * 2, -r), color);
+
+					// Bottom and top circles
+					dbg.DrawWireSphere(agentPos + .(0, 0.05f, 0), r, color, 12);
+					dbg.DrawWireSphere(agentPos + .(0, halfH * 2, 0), r, color, 12);
+
+					// Velocity direction arrow
+					let agentComp = navMgr.GetForEntity(mNavAgentEntities[i]);
+					if (agentComp != null && agentComp.IsOnCrowd && navMgr.NavWorld?.Crowd != null)
+					{
+						float[3] vel = ?;
+						navMgr.NavWorld.Crowd.GetAgentVelocity(agentComp.CrowdAgentIndex, out vel);
+						let speed = Math.Sqrt(vel[0] * vel[0] + vel[2] * vel[2]);
+						if (speed > 0.1f)
+						{
+							let arrowStart = agentPos + .(0, halfH, 0);
+							let arrowEnd = arrowStart + Vector3(vel[0], 0, vel[2]) * 0.4f;
+							dbg.DrawLine(arrowStart, arrowEnd, Color(255, 255, 0, 255));
+						}
+					}
+				}
 			}
 		}
 
@@ -1361,5 +1588,62 @@ class SandboxApp : EngineApplication
 			charMat?.ReleaseRef();
 
 		Console.WriteLine("=== EngineSandbox OnShutdown ===");
+	}
+
+	// ==================== Navigation Helpers ====================
+
+	/// Spawns a nav agent entity with a visible sphere mesh and nav component.
+	private void SpawnNavAgent(Scene scene, NavigationComponentManager navMgr, Vector3 position, ResourceRef meshRef)
+	{
+		let agentEntity = scene.CreateEntity("NavAgent");
+		scene.SetLocalTransform(agentEntity, .() { Position = position, Rotation = .Identity, Scale = .One });
+
+		// Visible sphere mesh
+		SetupMeshComponent(scene, agentEntity, meshRef, mGreenMaterial);
+
+		// Nav agent component
+		let agentHandle = navMgr.CreateComponent(agentEntity);
+		if (let agentComp = navMgr.Get(agentHandle))
+		{
+			agentComp.Radius = 0.5f;
+			agentComp.Height = 1.8f;
+			agentComp.MaxSpeed = 3.0f;
+			agentComp.MaxAcceleration = 8.0f;
+		}
+
+		mNavAgentEntities.Add(agentEntity);
+	}
+
+	private static void AddNavBoxGeometry(List<float> vertices, List<int32> triangles, Vector3 center, Vector3 halfExtents)
+	{
+		let baseIndex = (int32)(vertices.Count / 3);
+		let min = center - halfExtents;
+		let max = center + halfExtents;
+
+		// 8 vertices
+		void AddV(float x, float y, float z) { vertices.Add(x); vertices.Add(y); vertices.Add(z); }
+		AddV(min.X, min.Y, min.Z);
+		AddV(max.X, min.Y, min.Z);
+		AddV(max.X, max.Y, min.Z);
+		AddV(min.X, max.Y, min.Z);
+		AddV(min.X, min.Y, max.Z);
+		AddV(max.X, min.Y, max.Z);
+		AddV(max.X, max.Y, max.Z);
+		AddV(min.X, max.Y, max.Z);
+
+		// 12 triangles (2 per face)
+		void AddT(int32 a, int32 b, int32 c) { triangles.Add(a); triangles.Add(b); triangles.Add(c); }
+		AddT(baseIndex + 0, baseIndex + 1, baseIndex + 2);
+		AddT(baseIndex + 0, baseIndex + 2, baseIndex + 3);
+		AddT(baseIndex + 5, baseIndex + 4, baseIndex + 7);
+		AddT(baseIndex + 5, baseIndex + 7, baseIndex + 6);
+		AddT(baseIndex + 3, baseIndex + 6, baseIndex + 2);
+		AddT(baseIndex + 3, baseIndex + 7, baseIndex + 6);
+		AddT(baseIndex + 4, baseIndex + 1, baseIndex + 5);
+		AddT(baseIndex + 4, baseIndex + 0, baseIndex + 1);
+		AddT(baseIndex + 1, baseIndex + 5, baseIndex + 6);
+		AddT(baseIndex + 1, baseIndex + 6, baseIndex + 2);
+		AddT(baseIndex + 4, baseIndex + 0, baseIndex + 3);
+		AddT(baseIndex + 4, baseIndex + 3, baseIndex + 7);
 	}
 }
