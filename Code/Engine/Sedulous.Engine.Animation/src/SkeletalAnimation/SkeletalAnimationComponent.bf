@@ -13,8 +13,19 @@ using Sedulous.Core.Mathematics;
 /// from this component for GPU skinning.
 ///
 /// For complex state-machine-driven animation, use AnimationGraphComponent instead.
-class SkeletalAnimationComponent : Component
+class SkeletalAnimationComponent : Component, ISerializableComponent
 {
+	public int32 SerializationVersion => 1;
+
+	public void Serialize(IComponentSerializer s)
+	{
+		s.ResourceRef("SkeletonRef", ref mSkeletonRef);
+		s.ResourceRef("ClipRef", ref mClipRef);
+		s.Float("Speed", ref Speed);
+		s.Bool("Loop", ref Loop);
+		s.Bool("AutoPlay", ref AutoPlay);
+	}
+
 	// --- Resource refs (serializable) ---
 
 	/// Skeleton resource reference.

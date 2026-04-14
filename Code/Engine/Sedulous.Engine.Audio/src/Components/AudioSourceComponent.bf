@@ -17,8 +17,25 @@ public enum AudioVolumeCategory : uint8
 /// The AudioSourceComponentManager resolves the clip resource, creates the
 /// IAudioSource, syncs 3D position from the entity transform, and manages
 /// playback lifecycle.
-class AudioSourceComponent : Component
+class AudioSourceComponent : Component, ISerializableComponent
 {
+	public int32 SerializationVersion => 1;
+
+	public void Serialize(IComponentSerializer s)
+	{
+		s.ResourceRef("ClipRef", ref mClipRef);
+		s.Float("Volume", ref Volume);
+		s.Float("Pitch", ref Pitch);
+		s.Bool("Loop", ref Loop);
+		s.Bool("Spatial", ref Spatial);
+		s.Bool("AutoPlay", ref AutoPlay);
+		s.Float("MinDistance", ref MinDistance);
+		s.Float("MaxDistance", ref MaxDistance);
+		var category = (uint8)Category;
+		s.UInt8("Category", ref category);
+		if (s.IsReading) Category = (AudioVolumeCategory)category;
+	}
+
 	// --- Resource ref (serializable) ---
 
 	/// Audio clip resource reference.

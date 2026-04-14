@@ -13,8 +13,18 @@ using Sedulous.Particles;
 /// ParticleComponentManager resolves the effect resource, creates a runtime
 /// instance, resolves the texture, creates a MaterialInstance, simulates the
 /// effect, and extracts ParticleBatchRenderData each frame.
-class ParticleComponent : Component
+class ParticleComponent : Component, ISerializableComponent
 {
+	public int32 SerializationVersion => 1;
+
+	public void Serialize(IComponentSerializer s)
+	{
+		s.ResourceRef("EffectRef", ref mEffectRef);
+		s.ResourceRef("TextureRef", ref mTextureRef);
+		s.Bool("IsVisible", ref IsVisible);
+		s.Bool("AutoPlay", ref AutoPlay);
+	}
+
 	/// The particle effect definition (shared, not owned by component).
 	/// Set directly for programmatic effects, or resolved from EffectRef by the manager.
 	public ParticleEffect Effect;

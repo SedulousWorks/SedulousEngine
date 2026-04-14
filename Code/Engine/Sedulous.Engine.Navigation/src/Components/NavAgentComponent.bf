@@ -6,8 +6,25 @@ using Sedulous.Core.Mathematics;
 /// Component for a navigation agent on the crowd.
 /// The NavigationComponentManager creates crowd agents from these components,
 /// syncs positions to entity transforms, and processes move targets.
-class NavAgentComponent : Component
+class NavAgentComponent : Component, ISerializableComponent
 {
+	public int32 SerializationVersion => 1;
+
+	public void Serialize(IComponentSerializer s)
+	{
+		s.Bool("SyncToTransform", ref SyncToTransform);
+		s.Float("Radius", ref Radius);
+		s.Float("Height", ref Height);
+		s.Float("MaxAcceleration", ref MaxAcceleration);
+		s.Float("MaxSpeed", ref MaxSpeed);
+		s.Float("CollisionQueryRange", ref CollisionQueryRange);
+		s.Float("PathOptimizationRange", ref PathOptimizationRange);
+		s.Float("SeparationWeight", ref SeparationWeight);
+		var oaType = (int32)ObstacleAvoidanceType;
+		s.Int32("ObstacleAvoidanceType", ref oaType);
+		if (s.IsReading) ObstacleAvoidanceType = (uint8)oaType;
+	}
+
 	// --- Configuration ---
 
 	/// Whether to sync agent position back to entity transform.

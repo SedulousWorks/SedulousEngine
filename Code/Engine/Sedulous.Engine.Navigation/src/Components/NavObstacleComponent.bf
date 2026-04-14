@@ -5,8 +5,16 @@ using Sedulous.Scenes;
 /// Component for a dynamic navigation obstacle.
 /// The NavObstacleComponentManager creates obstacles in the TileCache,
 /// updates positions from entity transforms, and rebuilds affected tiles.
-class NavObstacleComponent : Component
+class NavObstacleComponent : Component, ISerializableComponent
 {
+	public int32 SerializationVersion => 1;
+
+	public void Serialize(IComponentSerializer s)
+	{
+		s.Float("Radius", ref Radius);
+		s.Float("Height", ref Height);
+	}
+
 	// --- Configuration ---
 
 	/// Obstacle radius (cylinder shape).

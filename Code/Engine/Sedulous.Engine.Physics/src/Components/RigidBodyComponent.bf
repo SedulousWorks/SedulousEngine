@@ -9,8 +9,35 @@ using Sedulous.Core.Mathematics;
 /// Holds configuration data (body type, mass, shape, material properties)
 /// and runtime state (BodyHandle, ShapeHandle). The PhysicsComponentManager
 /// creates/destroys the actual physics bodies and syncs transforms.
-class RigidBodyComponent : Component
+class RigidBodyComponent : Component, ISerializableComponent
 {
+	public int32 SerializationVersion => 1;
+
+	public void Serialize(IComponentSerializer s)
+	{
+		var bodyType = (uint8)BodyType;
+		s.UInt8("BodyType", ref bodyType);
+		if (s.IsReading) BodyType = (BodyType)bodyType;
+
+		var shapeType = (uint8)Shape.Type;
+		s.UInt8("ShapeType", ref shapeType);
+		if (s.IsReading) Shape.Type = (ShapeType)shapeType;
+		s.Float("ShapeHalfX", ref Shape.HalfExtents.X);
+		s.Float("ShapeHalfY", ref Shape.HalfExtents.Y);
+		s.Float("ShapeHalfZ", ref Shape.HalfExtents.Z);
+		s.Float("ShapeRadius", ref Shape.Radius);
+		s.Float("ShapeHalfHeight", ref Shape.HalfHeight);
+
+		s.Float("Mass", ref Mass);
+		s.Float("Friction", ref Friction);
+		s.Float("Restitution", ref Restitution);
+		s.Float("LinearDamping", ref LinearDamping);
+		s.Float("AngularDamping", ref AngularDamping);
+		s.Float("GravityFactor", ref GravityFactor);
+		s.Bool("IsSensor", ref IsSensor);
+		s.Bool("AllowSleep", ref AllowSleep);
+	}
+
 	// --- Configuration (set by app, serializable) ---
 
 	/// Body motion type.

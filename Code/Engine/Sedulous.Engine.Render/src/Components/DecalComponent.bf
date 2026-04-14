@@ -11,8 +11,25 @@ using Sedulous.Core.Mathematics;
 /// The decal's world transform (from the entity's Transform component) places
 /// and orients a unit cube — the decal's projection volume. The shader samples
 /// the texture using the local XY of any scene surface inside the cube.
-class DecalComponent : Component
+class DecalComponent : Component, ISerializableComponent
 {
+	public int32 SerializationVersion => 1;
+
+	public void Serialize(IComponentSerializer s)
+	{
+		s.ResourceRef("TextureRef", ref mTextureRef);
+		s.Float("ColorR", ref Color.X);
+		s.Float("ColorG", ref Color.Y);
+		s.Float("ColorB", ref Color.Z);
+		s.Float("ColorA", ref Color.W);
+		s.Float("SizeX", ref Size.X);
+		s.Float("SizeY", ref Size.Y);
+		s.Float("SizeZ", ref Size.Z);
+		s.Float("AngleFadeStart", ref AngleFadeStart);
+		s.Float("AngleFadeEnd", ref AngleFadeEnd);
+		s.Bool("IsVisible", ref IsVisible);
+	}
+
 	/// Texture resource reference (serialized). Resolved to a MaterialInstance
 	/// by DecalComponentManager.
 	private ResourceRef mTextureRef ~ _.Dispose();

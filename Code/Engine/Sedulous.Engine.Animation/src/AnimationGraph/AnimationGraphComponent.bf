@@ -13,8 +13,17 @@ using Sedulous.Core.Mathematics;
 /// SkeletalAnimationComponent, the graph output overrides the simple clip.
 ///
 /// For simple single-clip playback, use SkeletalAnimationComponent instead.
-class AnimationGraphComponent : Component
+class AnimationGraphComponent : Component, ISerializableComponent
 {
+	public int32 SerializationVersion => 1;
+
+	public void Serialize(IComponentSerializer s)
+	{
+		s.ResourceRef("SkeletonRef", ref mSkeletonRef);
+		s.ResourceRef("GraphRef", ref mGraphRef);
+		s.Bool("Active", ref Active);
+	}
+
 	// --- Resource refs (serializable) ---
 
 	/// Skeleton resource reference.

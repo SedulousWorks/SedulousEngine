@@ -11,8 +11,18 @@ using Sedulous.Animation;
 /// Used for doors, platforms, UI animations, color fades — anything that
 /// isn't skeletal animation. Tracks are evaluated against the entity via
 /// the PropertyBinderRegistry.
-class PropertyAnimationComponent : Component
+class PropertyAnimationComponent : Component, ISerializableComponent
 {
+	public int32 SerializationVersion => 1;
+
+	public void Serialize(IComponentSerializer s)
+	{
+		s.ResourceRef("ClipRef", ref mClipRef);
+		s.Float("Speed", ref Speed);
+		s.Bool("Loop", ref Loop);
+		s.Bool("AutoPlay", ref AutoPlay);
+	}
+
 	// --- Resource ref (serializable) ---
 
 	/// Property animation clip resource reference.

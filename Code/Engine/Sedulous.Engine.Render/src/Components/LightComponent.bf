@@ -5,8 +5,28 @@ using Sedulous.Renderer;
 using Sedulous.Core.Mathematics;
 
 /// Component for a light source.
-class LightComponent : Component
+class LightComponent : Component, ISerializableComponent
 {
+	public int32 SerializationVersion => 1;
+
+	public void Serialize(IComponentSerializer s)
+	{
+		var type = (uint8)Type;
+		s.UInt8("Type", ref type);
+		if (s.IsReading) Type = (LightType)type;
+
+		s.Float("ColorR", ref Color.X);
+		s.Float("ColorG", ref Color.Y);
+		s.Float("ColorB", ref Color.Z);
+		s.Float("Intensity", ref Intensity);
+		s.Float("Range", ref Range);
+		s.Float("InnerConeAngle", ref InnerConeAngle);
+		s.Float("OuterConeAngle", ref OuterConeAngle);
+		s.Bool("CastsShadows", ref CastsShadows);
+		s.Float("ShadowBias", ref ShadowBias);
+		s.Float("ShadowNormalBias", ref ShadowNormalBias);
+	}
+
 	/// Light type (directional, point, spot).
 	public LightType Type = .Directional;
 

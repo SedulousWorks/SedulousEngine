@@ -5,8 +5,22 @@ using Sedulous.Core.Mathematics;
 using System;
 
 /// Component for a camera that defines a rendering viewpoint.
-class CameraComponent : Component
+class CameraComponent : Component, ISerializableComponent
 {
+	public int32 SerializationVersion => 1;
+
+	public void Serialize(IComponentSerializer s)
+	{
+		s.Float("FieldOfView", ref FieldOfView);
+		s.Float("NearPlane", ref NearPlane);
+		s.Float("FarPlane", ref FarPlane);
+		s.Float("AspectRatio", ref AspectRatio);
+		s.Bool("IsActiveCamera", ref IsActiveCamera);
+		var layerMask = (int32)LayerMask;
+		s.Int32("LayerMask", ref layerMask);
+		if (s.IsReading) LayerMask = (uint32)layerMask;
+	}
+
 	/// Field of view in degrees (vertical).
 	public float FieldOfView = 60.0f;
 

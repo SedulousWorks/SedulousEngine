@@ -12,8 +12,41 @@ using Sedulous.Core.Mathematics;
 ///
 /// The app sets ResourceRefs (mesh, materials). MeshComponentManager resolves them
 /// to loaded resources, uploads to GPU, and creates MaterialInstances automatically.
-class MeshComponent : Component
+class MeshComponent : Component, ISerializableComponent
 {
+	public int32 SerializationVersion => 1;
+
+	public void Serialize(IComponentSerializer s)
+	{
+		s.ResourceRef("MeshRef", ref mMeshRef);
+		s.Bool("CastsShadows", ref CastsShadows);
+		s.Bool("IsVisible", ref IsVisible);
+		var layerMask = (int32)LayerMask;
+		s.Int32("LayerMask", ref layerMask);
+		if (s.IsReading) LayerMask = (uint32)layerMask;
+
+		// Material refs
+		var matCount = (int32)mMaterialRefs.Count;
+		s.BeginArray("Materials", ref matCount);
+		if (s.IsReading)
+		{
+			for (int32 i = 0; i < matCount; i++)
+			{
+				var matRef = ResourceRef();
+				s.ResourceRef("", ref matRef);
+				while (mMaterialRefs.Count <= i) mMaterialRefs.Add(.());
+				mMaterialRefs[i].Dispose();
+				mMaterialRefs[i] = matRef;
+			}
+		}
+		else
+		{
+			for (int32 i = 0; i < matCount; i++)
+				s.ResourceRef("", ref mMaterialRefs[i]);
+		}
+		s.EndArray();
+	}
+
 	/// Mesh resource reference (serialized). Resolved to GPU handle by manager.
 	private ResourceRef mMeshRef ~ _.Dispose();
 

@@ -79,13 +79,13 @@ does linear light iteration in the forward shader. Needed when light count > 32.
 
 ## Engine Gaps
 
-### High Priority
+### ~~High Priority~~
 
-**Component Serialization:**
-New engine has basic ISerializableComponent but no ComponentData intermediate
-classes. Scene save/load works but is less flexible than the old engine's
-ComponentData → Serializer → Component pipeline. May need improvement for
-editor workflow.
+~~**Component Serialization:**~~ DONE
+All 14 components implement ISerializableComponent. ResourceRef serialization
+via Beef interface extension on IComponentSerializer (in Sedulous.Scenes.Resources).
+SceneSerializer handles entities, transforms, hierarchy, components, and module data.
+No intermediate ComponentData classes needed — components serialize directly.
 
 ### Medium Priority
 

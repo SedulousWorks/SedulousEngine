@@ -11,8 +11,29 @@ using Sedulous.Core.Mathematics;
 /// The app sets the texture ResourceRef and size. SpriteComponentManager
 /// resolves the texture, creates a MaterialInstance from SpriteSystem's
 /// shared sprite material template, and extracts SpriteRenderData each frame.
-class SpriteComponent : Component
+class SpriteComponent : Component, ISerializableComponent
 {
+	public int32 SerializationVersion => 1;
+
+	public void Serialize(IComponentSerializer s)
+	{
+		s.ResourceRef("TextureRef", ref mTextureRef);
+		s.Float("SizeW", ref Size.X);
+		s.Float("SizeH", ref Size.Y);
+		s.Float("TintR", ref Tint.X);
+		s.Float("TintG", ref Tint.Y);
+		s.Float("TintB", ref Tint.Z);
+		s.Float("TintA", ref Tint.W);
+		s.Float("UVRectU", ref UVRect.X);
+		s.Float("UVRectV", ref UVRect.Y);
+		s.Float("UVRectW", ref UVRect.Z);
+		s.Float("UVRectH", ref UVRect.W);
+		var orientation = (uint8)Orientation;
+		s.UInt8("Orientation", ref orientation);
+		if (s.IsReading) Orientation = (SpriteOrientation)orientation;
+		s.Bool("IsVisible", ref IsVisible);
+	}
+
 	/// Texture resource reference (serialized). Resolved to a MaterialInstance
 	/// (with the texture bound to the "SpriteTexture" property) by the manager.
 	private ResourceRef mTextureRef ~ _.Dispose();

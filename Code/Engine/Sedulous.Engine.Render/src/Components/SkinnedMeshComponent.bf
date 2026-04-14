@@ -12,8 +12,38 @@ using Sedulous.Materials;
 /// Rendering only — does not own animation. Bone matrices come from a
 /// SkeletalAnimationComponent (or AnimationGraphComponent) on the same entity.
 /// The manager reads matrices from the animation component and uploads to GPU.
-class SkinnedMeshComponent : Component
+class SkinnedMeshComponent : Component, ISerializableComponent
 {
+	public int32 SerializationVersion => 1;
+
+	public void Serialize(IComponentSerializer s)
+	{
+		s.ResourceRef("MeshRef", ref mMeshRef);
+		s.Bool("CastsShadows", ref CastsShadows);
+		s.Bool("IsVisible", ref IsVisible);
+
+		// Material refs
+		var matCount = (int32)mMaterialRefs.Count;
+		s.BeginArray("Materials", ref matCount);
+		if (s.IsReading)
+		{
+			for (int32 i = 0; i < matCount; i++)
+			{
+				var matRef = ResourceRef();
+				s.ResourceRef("", ref matRef);
+				while (mMaterialRefs.Count <= i) mMaterialRefs.Add(.());
+				mMaterialRefs[i].Dispose();
+				mMaterialRefs[i] = matRef;
+			}
+		}
+		else
+		{
+			for (int32 i = 0; i < matCount; i++)
+				s.ResourceRef("", ref mMaterialRefs[i]);
+		}
+		s.EndArray();
+	}
+
 	/// Mesh resource reference (serialized). Resolved to GPU handle by manager.
 	private ResourceRef mMeshRef ~ _.Dispose();
 
