@@ -28,6 +28,12 @@ class RenderResourceResolver
 	/// Texture cache — same TextureResource maps to one GPU handle.
 	private Dictionary<TextureResource, GPUTextureHandle> mTextureCache = new .() ~ delete _;
 
+	/// Static mesh cache — same StaticMeshResource maps to one GPU handle.
+	private Dictionary<StaticMeshResource, GPUMeshHandle> mStaticMeshCache = new .() ~ delete _;
+
+	/// Skinned mesh cache — same SkinnedMeshResource maps to one GPU handle.
+	private Dictionary<SkinnedMeshResource, GPUMeshHandle> mSkinnedMeshCache = new .() ~ delete _;
+
 	// ==================== Setup ====================
 
 	public this(ResourceSystem resourceSystem, GPUResourceManager gpuResources, MaterialSystem materialSystem)
@@ -56,10 +62,19 @@ class RenderResourceResolver
 		if (meshResource?.Mesh == null)
 			return false;
 
+		// Check cache — same resource reuses the same GPU handle
+		if (mStaticMeshCache.TryGetValue(meshResource, let cachedHandle))
+		{
+			outHandle = cachedHandle;
+			outBounds = meshResource.Mesh.GetBounds();
+			return true;
+		}
+
 		let mesh = meshResource.Mesh;
 		let handle = UploadStaticMesh(mesh);
 		if (handle.IsValid)
 		{
+			mStaticMeshCache[meshResource] = handle;
 			outHandle = handle;
 			outBounds = mesh.GetBounds();
 			return true;
@@ -82,10 +97,19 @@ class RenderResourceResolver
 		if (meshResource?.Mesh == null)
 			return false;
 
+		// Check cache — same resource reuses the same GPU handle
+		if (mSkinnedMeshCache.TryGetValue(meshResource, let cachedHandle))
+		{
+			outHandle = cachedHandle;
+			outBounds = meshResource.Mesh.Bounds;
+			return true;
+		}
+
 		let mesh = meshResource.Mesh;
 		let handle = UploadSkinnedMesh(mesh);
 		if (handle.IsValid)
 		{
+			mSkinnedMeshCache[meshResource] = handle;
 			outHandle = handle;
 			outBounds = mesh.Bounds;
 			return true;
