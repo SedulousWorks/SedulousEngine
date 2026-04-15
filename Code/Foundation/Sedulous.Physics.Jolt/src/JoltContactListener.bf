@@ -130,9 +130,10 @@ class JoltContactListener
 		if (wrapper == null || wrapper.mUserListener == null)
 			return;
 
-		// Note: OnContactRemoved only gives us sub-shape pair, not body IDs
-		// For now we pass invalid handles - this would need more work to track
-		wrapper.mUserListener.OnContactRemoved(.Invalid, .Invalid);
+		let handle1 = wrapper.mWorld.[Friend]GetBodyHandleFromId(subShapePair.Body1ID);
+		let handle2 = wrapper.mWorld.[Friend]GetBodyHandleFromId(subShapePair.Body2ID);
+
+		wrapper.mUserListener.OnContactRemoved(handle1, handle2);
 	}
 
 	private static ContactEvent BuildContactEvent(JPH_ContactManifold* manifold)

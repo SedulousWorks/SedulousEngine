@@ -247,9 +247,21 @@ CompositeBinding (4 keys → Vector2, e.g. WASD).
 PhysicsSubsystem creates JoltPhysicsWorld per scene via ISceneAware.
 RigidBodyComponent (data-rich: body type, mass, friction, ShapeConfig).
 PhysicsComponentManager creates bodies in OnComponentInitialized, runs
-FixedUpdate (kinematic sync → step → dynamic sync), preserves entity scale.
-RayCast with entity handle decoding from body user data.
+FixedUpdate (kinematic sync → step → dispatch contacts → dynamic sync),
+preserves entity scale. RayCast with entity handle decoding from body user data.
 PrepareShutdown detaches managers before world destruction.
+
+**Contact events:** PhysicsComponentManager implements IContactListener, registered
+with the physics world automatically. Jolt callbacks are buffered during the physics
+step (thread-safe via Monitor) and dispatched to components on the main thread after
+the step completes. Both bodies in a contact are notified (normals/velocities flipped
+for body2's perspective). Gameplay code sets delegates on RigidBodyComponent:
+- `OnContactAdded(self, PhysicsContactEvent) → bool` — return false to reject contact
+- `OnContactPersisted(self, PhysicsContactEvent)` — fires each frame while in contact
+- `OnContactRemoved(self, EntityHandle otherEntity)` — fires when contact ends
+
+All three callbacks provide valid EntityHandles. `OnContactRemoved` extracts
+body IDs from the `JPH_SubShapeIDPair` struct passed by Jolt.
 
 ### Engine.Animation
 Three component types:

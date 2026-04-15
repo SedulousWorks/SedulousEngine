@@ -86,4 +86,16 @@ class RigidBodyComponent : Component, ISerializableComponent
 
 	/// Whether this component needs its shape to be recreated (config changed).
 	public bool NeedsShapeUpdate = false;
+
+	// --- Contact event handlers (set by gameplay code) ---
+
+	/// Called when this body first contacts another body.
+	/// Return false to reject the contact (bodies pass through each other).
+	public delegate bool(RigidBodyComponent self, PhysicsContactEvent event) OnContactAdded ~ delete _;
+
+	/// Called each frame while this body remains in contact with another.
+	public delegate void(RigidBodyComponent self, PhysicsContactEvent event) OnContactPersisted ~ delete _;
+
+	/// Called when this body stops contacting another body.
+	public delegate void(RigidBodyComponent self, EntityHandle otherEntity) OnContactRemoved ~ delete _;
 }
