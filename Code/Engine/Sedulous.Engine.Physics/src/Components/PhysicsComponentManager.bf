@@ -2,7 +2,7 @@ namespace Sedulous.Engine.Physics;
 
 using System;
 using System.Collections;
-using System.Threading;
+using System.Threading; // Interlocked for lock-free contact buffering
 using Sedulous.Scenes;
 using Sedulous.Physics;
 using Sedulous.Core.Mathematics;
@@ -40,18 +40,22 @@ class PhysicsComponentManager : ComponentManager<RigidBodyComponent>, IContactLi
 	/// Whether to draw debug collision shapes.
 	public bool DebugDrawEnabled = false;
 
-	// Buffered contact events — filled during physics step (on Jolt's thread),
-	// dispatched to components after the step completes on the main thread.
+	// Buffered contact events — filled lock-free during physics step (on Jolt's
+	// worker threads), dispatched to components after the step on the main thread.
+	// Uses raw BodyHandles, NOT EntityHandles — decoding to EntityHandles requires
+	// calling back into Jolt (GetBodyUserData) which violates Jolt's internal lock
+	// ordering and deadlocks. EntityHandle decoding happens on the main thread.
 	private enum ContactType { Added, Persisted, Removed }
 	private struct BufferedContact
 	{
 		public ContactType Type;
-		public EntityHandle Entity1;
-		public EntityHandle Entity2;
+		public BodyHandle Body1;
+		public BodyHandle Body2;
 		public ContactEvent Event;
 	}
-	private List<BufferedContact> mContactBuffer = new .() ~ delete _;
-	private Monitor mContactLock = new .() ~ delete _;
+	private const int32 MaxBufferedContacts = 4096;
+	private BufferedContact[MaxBufferedContacts] mContactBuffer;
+	private volatile int32 mContactCount = 0;
 
 	public override StringView SerializationTypeId => "Sedulous.RigidBodyComponent";
 
@@ -229,79 +233,66 @@ class PhysicsComponentManager : ComponentManager<RigidBodyComponent>, IContactLi
 
 	// ==================== IContactListener ====================
 
-	/// Decodes an EntityHandle from body user data.
+	/// Decodes an EntityHandle from body user data. Must be called on the main
+	/// thread (after physics step), NOT from Jolt callbacks.
 	private EntityHandle DecodeEntityHandle(BodyHandle body)
 	{
-		if (mPhysicsWorld == null) return .Invalid;
+		if (mPhysicsWorld == null || !body.IsValid) return .Invalid;
 		let userData = mPhysicsWorld.GetBodyUserData(body);
 		return .() { Index = (uint32)(userData >> 32), Generation = (uint32)(userData & 0xFFFFFFFF) };
 	}
 
-	/// Finds the RigidBodyComponent for an entity. Returns null if not found.
-	private RigidBodyComponent FindComponentForEntity(EntityHandle entity)
+	/// Appends a contact to the lock-free buffer. Called from Jolt worker threads.
+	private void BufferContact(ContactType type, BodyHandle body1, BodyHandle body2, ContactEvent event)
 	{
-		if (!entity.IsAssigned) return null;
-		return GetForEntity(entity);
+		let idx = Interlocked.Increment(ref mContactCount) - 1;
+		if (idx < MaxBufferedContacts)
+		{
+			mContactBuffer[idx] = .()
+			{
+				Type = type,
+				Body1 = body1,
+				Body2 = body2,
+				Event = event
+			};
+		}
 	}
 
 	bool IContactListener.OnContactAdded(BodyHandle body1, BodyHandle body2, ContactEvent event)
 	{
-		using (mContactLock.Enter())
-		{
-			mContactBuffer.Add(.()
-			{
-				Type = .Added,
-				Entity1 = DecodeEntityHandle(body1),
-				Entity2 = DecodeEntityHandle(body2),
-				Event = event
-			});
-		}
-		return true; // accept contact by default
+		BufferContact(.Added, body1, body2, event);
+		return true;
 	}
 
 	void IContactListener.OnContactPersisted(BodyHandle body1, BodyHandle body2, ContactEvent event)
 	{
-		using (mContactLock.Enter())
-		{
-			mContactBuffer.Add(.()
-			{
-				Type = .Persisted,
-				Entity1 = DecodeEntityHandle(body1),
-				Entity2 = DecodeEntityHandle(body2),
-				Event = event
-			});
-		}
+		BufferContact(.Persisted, body1, body2, event);
 	}
 
 	void IContactListener.OnContactRemoved(BodyHandle body1, BodyHandle body2)
 	{
-		using (mContactLock.Enter())
-		{
-			mContactBuffer.Add(.()
-			{
-				Type = .Removed,
-				Entity1 = DecodeEntityHandle(body1),
-				Entity2 = DecodeEntityHandle(body2),
-				Event = default
-			});
-		}
+		BufferContact(.Removed, body1, body2, default);
 	}
 
 	/// Dispatches buffered contact events to components. Called on the main
 	/// thread after the physics step completes.
 	private void DispatchContactEvents()
 	{
-		List<BufferedContact> contacts = scope .();
-		using (mContactLock.Enter())
-		{
-			contacts.AddRange(mContactBuffer);
-			mContactBuffer.Clear();
-		}
+		let count = Math.Min(mContactCount, MaxBufferedContacts);
+		mContactCount = 0;
 
-		for (let contact in contacts)
+		if (count == 0) return;
+
+		for (int32 i = 0; i < count; i++)
 		{
-			let comp1 = FindComponentForEntity(contact.Entity1);
-			let comp2 = FindComponentForEntity(contact.Entity2);
+			let contact = mContactBuffer[i];
+
+			// Decode EntityHandles from BodyHandles on the main thread (safe here)
+			let entity1 = DecodeEntityHandle(contact.Body1);
+			let entity2 = DecodeEntityHandle(contact.Body2);
+
+			let comp1 = (entity1.IsAssigned) ? GetForEntity(entity1) : null;
+			let comp2 = (entity2.IsAssigned) ? GetForEntity(entity2) : null;
 
 			switch (contact.Type)
 			{
@@ -310,7 +301,7 @@ class PhysicsComponentManager : ComponentManager<RigidBodyComponent>, IContactLi
 				{
 					let evt = PhysicsContactEvent()
 					{
-						OtherEntity = contact.Entity2,
+						OtherEntity = entity2,
 						Position = contact.Event.Position,
 						Normal = contact.Event.Normal,
 						PenetrationDepth = contact.Event.PenetrationDepth,
@@ -324,7 +315,7 @@ class PhysicsComponentManager : ComponentManager<RigidBodyComponent>, IContactLi
 				{
 					let evt = PhysicsContactEvent()
 					{
-						OtherEntity = contact.Entity1,
+						OtherEntity = entity1,
 						Position = contact.Event.Position,
 						Normal = -contact.Event.Normal, // flip normal for body2's perspective
 						PenetrationDepth = contact.Event.PenetrationDepth,
@@ -340,7 +331,7 @@ class PhysicsComponentManager : ComponentManager<RigidBodyComponent>, IContactLi
 				{
 					let evt = PhysicsContactEvent()
 					{
-						OtherEntity = contact.Entity2,
+						OtherEntity = entity2,
 						Position = contact.Event.Position,
 						Normal = contact.Event.Normal,
 						PenetrationDepth = contact.Event.PenetrationDepth,
@@ -354,7 +345,7 @@ class PhysicsComponentManager : ComponentManager<RigidBodyComponent>, IContactLi
 				{
 					let evt = PhysicsContactEvent()
 					{
-						OtherEntity = contact.Entity1,
+						OtherEntity = entity1,
 						Position = contact.Event.Position,
 						Normal = -contact.Event.Normal,
 						PenetrationDepth = contact.Event.PenetrationDepth,
@@ -367,9 +358,9 @@ class PhysicsComponentManager : ComponentManager<RigidBodyComponent>, IContactLi
 
 			case .Removed:
 				if (comp1?.OnContactRemoved != null)
-					comp1.OnContactRemoved(comp1, contact.Entity2);
+					comp1.OnContactRemoved(comp1, entity2);
 				if (comp2?.OnContactRemoved != null)
-					comp2.OnContactRemoved(comp2, contact.Entity1);
+					comp2.OnContactRemoved(comp2, entity1);
 			}
 		}
 	}
