@@ -3,6 +3,7 @@ namespace Sedulous.Scenes;
 using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
+using Sedulous.Jobs;
 
 /// A scene containing entities, transforms, and component managers.
 /// Multiple scenes can coexist — each is fully isolated (own physics world, own components, etc.).
@@ -384,6 +385,7 @@ public class Scene : IDisposable
 		RunPhase(.Initialize, deltaTime);
 		RunPhase(.PreUpdate, deltaTime);
 		RunPhase(.Update, deltaTime);
+		RunAsyncPhase(deltaTime);
 		RunPhase(.PostUpdate, deltaTime);
 
 		// Transform propagation (internal, not user-registered)
@@ -424,27 +426,61 @@ public class Scene : IDisposable
 			entry.Function(deltaTime);
 	}
 
-	private void UpdateTransforms()
+	/// Runs the AsyncUpdate phase — all registered functions execute concurrently.
+	/// Each function should only access its own component pool.
+	private void RunAsyncPhase(float deltaTime)
 	{
-		// Snapshot current world matrices as "previous" before recomputing.
-		// Done for ALL entities (not just dirty ones) so that entities whose
-		// transforms didn't change this frame still have a valid prev matrix.
-		for (int32 i = 0; i < mTransforms.Count; i++)
+		let asyncFunctions = mPhaseFunctions[(int)ScenePhase.AsyncUpdate];
+		let count = (int32)asyncFunctions.Count;
+		if (count == 0)
+			return;
+
+		if (count == 1)
 		{
-			if (mEntities[i].Alive)
-				mTransforms[i].PrevWorldMatrix = mTransforms[i].WorldMatrix;
+			// Single function — no parallelism needed
+			asyncFunctions[0].Function(deltaTime);
+			return;
 		}
 
-		// Update dirty transforms top-down
-		for (int32 i = 0; i < mTransforms.Count; i++)
-		{
-			var data = ref mTransforms[i];
-			if (!data.Dirty || !mEntities[i].Alive)
-				continue;
+		// Dispatch all async functions concurrently
+		JobSystem.ParallelFor(0, count, scope [&](begin, end) => {
+			for (int32 i = begin; i < end; i++)
+				asyncFunctions[i].Function(deltaTime);
+		});
+	}
 
-			// Only process roots here — children are updated recursively
-			if (!data.Parent.IsAssigned)
-				UpdateTransformRecursive(i, .Identity);
+	private void UpdateTransforms()
+	{
+		let count = (int32)mTransforms.Count;
+		if (count == 0) return;
+
+		// Pass 1: Snapshot current world matrices as "previous" before recomputing.
+		// Done for ALL alive entities so motion vectors work even for static objects.
+		// Embarrassingly parallel — each entity writes only to its own slot.
+		JobSystem.ParallelFor(0, count, scope [&](begin, end) => {
+			for (int32 i = begin; i < end; i++)
+			{
+				if (mEntities[i].Alive)
+					mTransforms[i].PrevWorldMatrix = mTransforms[i].WorldMatrix;
+			}
+		});
+
+		// Pass 2: Collect dirty roots, then update each subtree.
+		// Each root's subtree is independent — safe for parallel dispatch.
+		let dirtyRoots = scope List<int32>();
+		for (int32 i = 0; i < count; i++)
+		{
+			if (mTransforms[i].Dirty && mEntities[i].Alive && !mTransforms[i].Parent.IsAssigned)
+				dirtyRoots.Add(i);
+		}
+
+		if (dirtyRoots.Count > 0)
+		{
+			let rootCount = (int32)dirtyRoots.Count;
+			JobSystem.ParallelFor(0, rootCount, scope [&](begin, end) => {
+				for (int32 r = begin; r < end; r++)
+					UpdateTransformRecursive(dirtyRoots[r], .Identity);
+			});
 		}
 	}
 

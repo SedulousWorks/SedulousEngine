@@ -108,13 +108,64 @@ Phases run inside `SceneSubsystem.Update()`. Multiple scenes run in lockstep per
 
 ```
 1. Initialize      — init newly created components
-2. PreUpdate        — physics results readback, input application
-3. Update           — gameplay, AI, simulation
-4. PostUpdate       — animation, constraints, late logic
-5. TransformUpdate  — propagate dirty transforms down hierarchy
-6. PostTransform    — render extraction, spatial index update
-7. Cleanup          — deferred entity/component destruction
+2. PreUpdate        — physics results readback, input application (sequential)
+3. Update           — gameplay, AI, scene mutation (sequential)
+4. AsyncUpdate      — PARALLEL: independent per-component work (opt-in)
+5. PostUpdate       — read async results, constraints, late logic (sequential)
+6. TransformUpdate  — propagate dirty transforms down hierarchy
+7. PostTransform    — render extraction, spatial index update (sequential)
+8. Cleanup          — deferred entity/component destruction
 ```
+
+### AsyncUpdate Phase (Parallel)
+
+The AsyncUpdate phase runs all registered managers concurrently via `JobSystem.ParallelFor`.
+Inspired by ezEngine's Async phase. Managers opt in by registering for `.AsyncUpdate`
+instead of `.Update`.
+
+**Rules for AsyncUpdate:**
+- Each manager iterates ONLY its own component pool — no cross-component access
+- No entity creation/destruction, no hierarchy changes, no transform writes
+- No dependencies between AsyncUpdate functions (enforced at registration)
+- Read-only access to transforms is safe (transforms are finalized in TransformUpdate AFTER AsyncUpdate,
+  but the PREVIOUS frame's transforms are stable during AsyncUpdate)
+
+**Scene dispatches AsyncUpdate:**
+```
+// Scene.RunAsyncUpdate():
+for each manager registered for AsyncUpdate:
+    JobSystem.ParallelFor(0, manager.ActiveCount, (begin, end) => {
+        manager.UpdateRange(begin, end, deltaTime);
+    });
+// All ParallelFor calls block — AsyncUpdate is fully complete before PostUpdate.
+```
+
+**Which managers use which phase:**
+
+| Manager | Phase | Reason |
+|---------|-------|--------|
+| PhysicsComponentManager | PreUpdate + PostUpdate | Reads transforms, steps world, writes back |
+| User gameplay managers | Update | May access any component, mutate scene |
+| SkeletalAnimationManager | AsyncUpdate | Each player is independent |
+| AnimationGraphManager | AsyncUpdate | Each graph evaluates independently |
+| PropertyAnimationManager | AsyncUpdate | Per-entity, reads only own state |
+| AudioSourceManager | AsyncUpdate | Per-source position sync, no cross-reads |
+| NavigationComponentManager | Update | Crowd manager is not thread-safe |
+| MeshComponentManager (extraction) | PostTransform | Reads finalized transforms |
+| SkinnedMeshComponentManager | PostTransform | Reads bone matrices + transforms |
+
+**Default is sequential.** User gameplay code registers for `Update` (safe, sequential).
+Only engine managers with provably independent per-component work opt into `AsyncUpdate`.
+
+### Internal Parallelization (separate from AsyncUpdate)
+
+Some operations use `JobSystem.ParallelFor` internally without needing a new phase:
+
+- **Scene Extraction** (PostTransform): split component iteration across threads,
+  per-thread output lists merged after. Needs thread-local FrameAllocator.
+- **SortAndBatch**: each render category sorted independently, one ParallelFor across categories.
+- **Transform Propagation**: PrevWorldMatrix snapshot is a bulk memcpy (ParallelFor over entity range).
+  Dirty root subtrees are independent and can be processed in parallel.
 
 ### Scene Modules and ISceneAware
 
