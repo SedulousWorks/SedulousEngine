@@ -11,7 +11,6 @@ namespace Sedulous.Resources;
 class ResourceSystem
 {
 	private readonly ILogger mLogger;
-	private readonly JobSystem mJobSystem;
 
 	private readonly Monitor mManagersMonitor = new .() ~ delete _;
 	private readonly Dictionary<Type, IResourceManager> mManagers = new .() ~ delete _;
@@ -46,10 +45,9 @@ class ResourceSystem
 		mOwnsSerializerProvider = takeOwnership;
 	}
 
-	public this(ILogger logger, JobSystem jobSystem)
+	public this(ILogger logger)
 	{
 		mLogger = logger;
-		mJobSystem = jobSystem;
 	}
 
 	public ~this()
@@ -378,7 +376,8 @@ class ResourceSystem
 		bool ownsDelegate = true) where T : IResource
 	{
 		let job = new LoadResourceJob<T>(this, path, fromCache, cacheIfLoaded, .AutoRelease, onCompleted, ownsDelegate);
-		mJobSystem.AddJob(job);
+		// todo: we may need a addref to job here to return it
+		JobSystem.Run(job);
 		return job;
 	}
 

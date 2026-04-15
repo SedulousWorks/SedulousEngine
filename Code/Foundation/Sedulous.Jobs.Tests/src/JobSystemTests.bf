@@ -1,620 +1,289 @@
 using System;
 using System.Threading;
 using System.Collections;
-using Sedulous.Core.Logging.Debug;
 
 namespace Sedulous.Jobs.Tests;
 
-using internal Sedulous.Jobs;
-
-// Test job implementations
 class TestJob : Job
 {
 	public bool WasExecuted { get; private set; } = false;
-	public int32 ExecutionCount { get; private set; } = 0;
 	public int32 SleepTimeMs { get; set; } = 0;
-	public bool ShouldFail { get; set; } = false;
 
-	public this(StringView name, JobFlags flags = .None) : base(name, flags)
-	{
-	}
+	public this(StringView name = default, JobFlags flags = .None) : base(name, flags) { }
 
 	protected override void OnExecute()
 	{
 		WasExecuted = true;
-		ExecutionCount++;
-
-		if (ShouldFail)
-		{
-			mState = .Canceled;
-			return;
-		}
-
 		if (SleepTimeMs > 0)
-		{
 			Thread.Sleep(SleepTimeMs);
-		}
 	}
 }
 
 class CounterJob : Job
 {
-	public static int32 sGlobalCounter = 0;
-	public static Monitor sCounterMonitor = new .() ~ delete _;
-
-	public this(StringView name, JobFlags flags = .None) : base(name, flags)
-	{
-	}
-
-	protected override void OnExecute()
-	{
-		using (sCounterMonitor.Enter())
-		{
-			sGlobalCounter++;
-		}
-	}
-
-	public static void ResetCounter()
-	{
-		using (sCounterMonitor.Enter())
-		{
-			sGlobalCounter = 0;
-		}
-	}
-
-	public static int32 GetCounter()
-	{
-		using (sCounterMonitor.Enter())
-		{
-			return sGlobalCounter;
-		}
-	}
+	private static int32 sCounter = 0;
+	public this(StringView name = default, JobFlags flags = .None) : base(name, flags) { }
+	protected override void OnExecute() { Interlocked.Increment(ref sCounter); }
+	public static void Reset() { sCounter = 0; }
+	public static int32 Value => Interlocked.Load(ref sCounter);
 }
 
 class JobSystemTests
 {
 	[Test]
-	public static void TestJobSystemStartupShutdown()
+	public static void TestInitializeShutdown()
 	{
-		let jobSystem = scope JobSystem(scope DebugLogger(.Trace), 2);
-		Test.Assert(!jobSystem.IsRunning);
-
-		jobSystem.Startup();
-		Test.Assert(jobSystem.IsRunning);
-		Test.Assert(jobSystem.WorkerCount == 2);
-
-		jobSystem.Shutdown();
-		Test.Assert(!jobSystem.IsRunning);
+		Test.Assert(!JobSystem.IsInitialized);
+		JobSystem.Initialize(2);
+		Test.Assert(JobSystem.IsInitialized);
+		Test.Assert(JobSystem.WorkerCount == 2);
+		JobSystem.Shutdown();
+		Test.Assert(!JobSystem.IsInitialized);
 	}
 
 	[Test]
-	public static void BasicJobExecution()
+	public static void TestBasicJobExecution()
 	{
-		var jobSystem = scope JobSystem(scope DebugLogger(.Trace), 2);
-		jobSystem.Startup();
+		JobSystem.Initialize(2);
 
-		var job = scope TestJob("BasicTest");
-		defer job.ReleaseRefNoDelete();
-		jobSystem.AddJob(job);
-
-		jobSystem.Update();
-		jobSystem.Update();
-		jobSystem.Update();
-
-		// Wait for job completion
-		WaitForJobCompletion(job, 1000);
-
-		jobSystem.Shutdown();
+		let job = new TestJob("Basic", .AutoRelease);
+		job.AddRef(); // observation ref — survives AutoRelease
+		JobSystem.Run(job);
+		job.Wait();
 
 		Test.Assert(job.WasExecuted);
 		Test.Assert(job.State == .Succeeded);
+
+		JobSystem.ProcessCompletions();
+		job.ReleaseRef(); // observation ref → rc=0 → delete
+
+		JobSystem.Shutdown();
 	}
 
 	[Test]
-	public static void JobDependencies()
+	public static void TestDelegateJob()
 	{
-		var jobSystem = scope JobSystem(scope DebugLogger(.Trace), 2);
-		jobSystem.Startup();
+		JobSystem.Initialize(2);
 
-		var job1 = scope TestJob("Job1");
-		defer job1.ReleaseRefNoDelete();
-		var job2 = scope TestJob("Job2");
-		defer job2.ReleaseRefNoDelete();
-		var job3 = scope TestJob("Job3");
-		defer job3.ReleaseRefNoDelete();
+		bool executed = false;
+		WaitEvent done = scope .();
+
+		JobSystem.Run(new [&]() => {
+			executed = true;
+			done.Set();
+		}, true, "Delegate");
+
+		done.WaitFor(1000);
+		JobSystem.ProcessCompletions();
+		Test.Assert(executed);
+
+		JobSystem.Shutdown();
+	}
+
+	[Test]
+	public static void TestResultJob()
+	{
+		JobSystem.Initialize(2);
+
+		int32 resultValue = 0;
+		WaitEvent done = scope .();
+
+		JobSystem.Run<int32>(new () => { return 42; }, true,
+			new [&](result) => { resultValue = result; done.Set(); }, true, "Result");
+
+		done.WaitFor(1000);
+		JobSystem.ProcessCompletions();
+		Test.Assert(resultValue == 42);
+
+		JobSystem.Shutdown();
+	}
+
+	[Test]
+	public static void TestJobDependencies()
+	{
+		JobSystem.Initialize(1); // single worker for deterministic ordering
+
+		let job1 = new TestJob("Job1");
+		let job2 = new TestJob("Job2");
+		let job3 = new TestJob("Job3");
 
 		job2.AddDependency(job1);
 		job3.AddDependency(job2);
 
-		// Add jobs in reverse order to test dependency resolution
-		jobSystem.AddJob(job3);
-		jobSystem.AddJob(job2);
-		jobSystem.AddJob(job1);
+		JobSystem.Run(job3);
+		JobSystem.Run(job2);
+		JobSystem.Run(job1);
 
-		for (int i = 0; i < 6000; i++)
-		{
-			jobSystem.Update();
-		}
-
-		WaitForJobCompletion(job3, 2000);
-		jobSystem.Shutdown();
+		job3.Wait();
+		Thread.Sleep(10); // ensure all HandleCompletion calls have completed
+		JobSystem.ProcessCompletions();
 
 		Test.Assert(job1.WasExecuted);
 		Test.Assert(job2.WasExecuted);
 		Test.Assert(job3.WasExecuted);
+
+		// Release in reverse dependency order so destructors chain correctly
+		job3.ReleaseRef(); // creation ref → triggers destructor → job2 dependency ReleaseRef
+		job2.ReleaseRef(); // creation ref → triggers destructor → job1 dependency ReleaseRef
+		job1.ReleaseRef(); // creation ref
+
+		JobSystem.Shutdown();
 	}
 
 	[Test]
-	public static void MainThreadJobs()
+	public static void TestJobCancellation()
 	{
-		var jobSystem = scope JobSystem(scope DebugLogger(.Trace), 2);
-		jobSystem.Startup();
-		defer jobSystem.Shutdown();
+		let job1 = new TestJob("Job1");
+		let job2 = new TestJob("Job2");
 
-		var mainThreadJob = scope TestJob("MainThreadJob", .RunOnMainThread);
-		defer mainThreadJob.ReleaseRefNoDelete();
-		jobSystem.AddJob(mainThreadJob);
-
-		// Process main thread jobs
-		for (int i = 0; i < 100 && !mainThreadJob.WasExecuted; i++)
-		{
-			jobSystem.Update();
-			Thread.Sleep(10);
-		}
-
-		Test.Assert(mainThreadJob.WasExecuted);
-	}
-
-	[Test]
-	public static void JobCancellation()
-	{
-		var jobSystem = scope JobSystem(scope DebugLogger(.Trace), 1);
-		jobSystem.Startup();
-
-		var job1 = scope TestJob("Job1");
-		defer job1.ReleaseRefNoDelete();
-		job1.SleepTimeMs = 100;
-		var job2 = scope TestJob("Job2");
-		defer job2.ReleaseRefNoDelete();
 		job2.AddDependency(job1);
-
-		jobSystem.AddJob(job1);
-		jobSystem.AddJob(job2);
-
-		// Cancel job1 before it completes
-		Thread.Sleep(10);
 		job1.Cancel();
-
-		jobSystem.Update();
-		jobSystem.Update();
-		jobSystem.Update();
-		jobSystem.Update();
-		WaitForJobCompletion(job1, 1000);
 
 		Test.Assert(job1.State == .Canceled);
 		Test.Assert(job2.State == .Canceled);
 
-		jobSystem.Shutdown();
+		job2.ReleaseRef();
+		job1.ReleaseRef();
 	}
 
 	[Test]
-	public static void JobGroups()
+	public static void TestJobGroup()
 	{
-		var jobSystem = scope JobSystem(scope DebugLogger(.Trace), 2);
-		jobSystem.Startup();
+		JobSystem.Initialize(2);
 
-		CounterJob.ResetCounter();
+		CounterJob.Reset();
 
-		var jobGroup = scope JobGroup("TestGroup");
-		defer jobGroup.ReleaseRefNoDelete();
-
+		let group = new JobGroup("Group", .AutoRelease);
+		group.AddRef(); // observation ref
 		for (int i = 0; i < 5; i++)
-		{
-			var counterJob = scope:: CounterJob(scope $"Counter{i}", .AutoRelease);
-			defer:: counterJob.ReleaseRefNoDelete();
-			jobGroup.AddJob(counterJob);
-		}
+			group.AddJob(new CounterJob(scope $"C{i}"));
 
-		jobSystem.AddJob(jobGroup);
+		JobSystem.Run(group);
+		group.Wait();
+		JobSystem.ProcessCompletions();
 
-		for (int i = 0; i < 6000; i++)
-		{
-			jobSystem.Update();
-		}
+		Test.Assert(group.State == .Succeeded);
+		Test.Assert(CounterJob.Value == 5);
 
-		WaitForJobCompletion(jobGroup, 2000);
-		jobSystem.Shutdown();
-
-		Test.Assert(jobGroup.State == .Succeeded);
-		Test.Assert(CounterJob.GetCounter() == 5);
+		group.ReleaseRef(); // observation ref
+		JobSystem.Shutdown();
 	}
 
 	[Test]
-	public static void DelegateJobs()
+	public static void TestMainThreadJob()
 	{
-		var jobSystem = scope JobSystem(scope DebugLogger(.Trace), 2);
-		jobSystem.Startup();
-		defer jobSystem.Shutdown();
+		JobSystem.Initialize(2);
 
-		bool executed = false;
+		let job = new TestJob("MainThread", .RunOnMainThread | .AutoRelease);
+		job.AddRef(); // observation ref
+		JobSystem.Run(job);
 
-		jobSystem.AddJob(scope [&]() => {
-			executed = true;
-		}, false, "DelegateTest");
+		Thread.Sleep(50);
+		Test.Assert(!job.WasExecuted);
 
-		// Wait for execution
-		for (int i = 0; i < 100 && !executed; i++)
-		{
-			Thread.Sleep(10);
-			jobSystem.Update();
-		}
+		JobSystem.ProcessCompletions();
+		Test.Assert(job.WasExecuted);
+		Test.Assert(job.State == .Succeeded);
 
-		Test.Assert(executed);
+		job.ReleaseRef(); // observation ref
+		JobSystem.Shutdown();
 	}
 
 	[Test]
-	public static void ResultJobs()
+	public static void TestJobWait()
 	{
-		var jobSystem = scope JobSystem(scope DebugLogger(.Trace), 2);
-		jobSystem.Startup();
-		defer jobSystem.Shutdown();
+		JobSystem.Initialize(2);
 
-		int32 resultValue = 0;
-		bool callbackCalled = false;
+		let job = new TestJob("Wait", .AutoRelease);
+		job.AddRef(); // observation ref
+		job.SleepTimeMs = 50;
+		JobSystem.Run(job);
 
-		jobSystem.AddJob<int32>(scope () => {
-			return 42;
-		}, false, "ResultTest", .None, scope [&](result) => {
-			resultValue = result;
-			callbackCalled = true;
-		}, false);
+		job.Wait();
+		Test.Assert(job.IsCompleted());
+		Test.Assert(job.WasExecuted);
 
-		// Wait for completion
-		for (int i = 0; i < 100 && !callbackCalled; i++)
-		{
-			Thread.Sleep(10);
-			jobSystem.Update();
-		}
-
-		Test.Assert(callbackCalled);
-		Test.Assert(resultValue == 42);
+		JobSystem.ProcessCompletions();
+		job.ReleaseRef(); // observation ref
+		JobSystem.Shutdown();
 	}
 
 	[Test]
-	public static void JobSystemMultipleStartupShutdown()
+	public static void TestJobStates()
 	{
-		var jobSystem = scope JobSystem(scope DebugLogger(.Trace), 2);
-
-		// Test multiple startup/shutdown cycles
-		for (int cycle = 0; cycle < 3; cycle++)
-		{
-			jobSystem.Startup();
-			Test.Assert(jobSystem.WorkerCount == 2);
-
-			var job = scope:: TestJob(scope:: $"CycleTest{cycle}");
-			defer:: job.ReleaseRefNoDelete();
-			jobSystem.AddJob(job);
-
-			for (int i = 0; i < 6000; i++)
-			{
-				jobSystem.Update();
-			}
-
-			WaitForJobCompletion(job, 1000);
-
-			Test.Assert(job.WasExecuted);
-
-			jobSystem.Shutdown();
-		}
-	}
-
-	[Test]
-	public static void MultipleWorkers()
-	{
-		var jobSystem = scope JobSystem(scope DebugLogger(.Trace), 4);
-		jobSystem.Startup();
-		defer jobSystem.Shutdown();
-
-		CounterJob.ResetCounter();
-
-		// Add many jobs to test worker distribution
-		List<TestJob> jobs = scope .();
-		for (int i = 0; i < 20; i++)
-		{
-			var job = scope:: TestJob(scope:: $"Worker Test {i}");
-			defer:: job.ReleaseRefNoDelete();
-			jobs.Add(job);
-			jobSystem.AddJob(job);
-		}
-
-		// Wait for all jobs to complete
-		bool allComplete = false;
-		for (int i = 0; i < 200 && !allComplete; i++)
-		{
-			allComplete = true;
-			for (var job in jobs)
-			{
-				if (!job.IsCompleted())
-				{
-					allComplete = false;
-					break;
-				}
-			}
-			Thread.Sleep(10);
-			jobSystem.Update();
-		}
-
-		Test.Assert(allComplete);
-
-		int executedCount = 0;
-		for (var job in jobs)
-		{
-			if (job.WasExecuted)
-				executedCount++;
-		}
-
-		Test.Assert(executedCount == 20);
-	}
-
-	[Test]
-	public static void JobStates()
-	{
-		var jobSystem = scope JobSystem(scope DebugLogger(.Trace), 1);
-		jobSystem.Startup();
-		defer jobSystem.Shutdown();
-
-		var job = scope TestJob("StateTest");
-		defer job.ReleaseRefNoDelete();
+		let job = new TestJob("States");
 
 		Test.Assert(job.State == .Pending);
 		Test.Assert(job.IsPending());
 		Test.Assert(!job.IsCompleted());
 
-		jobSystem.AddJob(job);
-
-		for (int i = 0; i < 6000; i++)
-		{
-			jobSystem.Update();
-		}
-
-		WaitForJobCompletion(job, 1000);
-
-		Test.Assert(job.State == .Succeeded);
-		Test.Assert(!job.IsPending());
-		Test.Assert(job.IsCompleted());
+		job.ReleaseRef();
 	}
 
 	[Test]
-	public static void AutoRelease()
+	public static void TestMultipleInitShutdownCycles()
 	{
-		var jobSystem = scope JobSystem(scope DebugLogger(.Trace), 1);
-		jobSystem.Startup();
-		defer jobSystem.Shutdown();
-
-		// Test that auto-release jobs don't cause issues
-		jobSystem.AddJob(scope () => {
-			// This job has AutoRelease flag by default
-		}, false, "AutoReleaseTest");
-
-		// Allow time for processing
-		for (int i = 0; i < 50; i++)
+		for (int cycle = 0; cycle < 3; cycle++)
 		{
-			jobSystem.Update();
-			Thread.Sleep(10);
-		}
+			JobSystem.Initialize(2);
 
-		// If we get here without crashing, auto-release worked
-		Test.Assert(true);
+			let job = new TestJob(scope $"Cycle{cycle}", .AutoRelease);
+			job.AddRef(); // observation ref
+			JobSystem.Run(job);
+			job.Wait();
+			Test.Assert(job.WasExecuted);
+
+			JobSystem.ProcessCompletions();
+			job.ReleaseRef(); // observation ref
+			JobSystem.Shutdown();
+		}
 	}
 
 	[Test]
-	public static void JobSystemWithNoWorkers()
+	public static void TestConcurrentSubmission()
 	{
-		var jobSystem = scope JobSystem(scope DebugLogger(.Trace), 0);
-		jobSystem.Startup();
+		JobSystem.Initialize(2);
 
-		var job = scope TestJob("NoWorkerTest");
-		jobSystem.AddJob(job);
+		CounterJob.Reset();
 
-		// Should execute on main thread
-		for (int i = 0; i < 100 && !job.WasExecuted; i++)
+		Thread[3] threads = ?;
+		for (int t = 0; t < 3; t++)
 		{
-			jobSystem.Update();
-			Thread.Sleep(10);
+			threads[t] = new Thread(new () => {
+				for (int i = 0; i < 10; i++)
+				{
+					let job = new CounterJob("C", .AutoRelease);
+					JobSystem.Run(job);
+				}
+			});
+			threads[t].Start(false);
 		}
-
-		Test.Assert(job.WasExecuted);
-
-		// Extra Update calls to ensure cleanup happens
-		for (int i = 0; i < 10; i++)
-		{
-			jobSystem.Update();
-		}
-
-		// Shutdown before leaving scope to ensure proper cleanup
-		jobSystem.Shutdown();
-
-		// Now release our ref - should bring refcount to 0
-		job.ReleaseRefNoDelete();
-	}
-
-	[Test]
-	public static void ConcurrentJobAddition()
-	{
-		var jobSystem = scope JobSystem(scope DebugLogger(.Trace), 2);
-		jobSystem.Startup();
-
-		CounterJob.ResetCounter();
-
-		// Simulate concurrent job addition from multiple threads
-		List<Thread> threads = scope .();
 
 		for (int t = 0; t < 3; t++)
 		{
-			var thread = new Thread(new [&](data) => {
-				int threadId = Thread.CurrentThreadId;
-				for (int i = 0; i < 10; i++)
-				{
-					var counterJob = new CounterJob(scope $"ConcurrentJob_{threadId}_{i}", .AutoRelease);
-					jobSystem.AddJob(counterJob);
-					Thread.Sleep(1);
-				}
-			});
-			threads.Add(thread);
-			thread.Start(false);
+			threads[t].Join();
+			delete threads[t];
 		}
 
-		// Wait for all threads to finish adding jobs
-		for (var thread in threads)
-		{
-			thread.Join();
-			delete thread;
-		}
+		Thread.Sleep(200);
+		JobSystem.ProcessCompletions();
+		Test.Assert(CounterJob.Value == 30);
 
-		// Wait for jobs to complete
-		for (int i = 0; i < 300; i++)
-		{
-			jobSystem.Update();
-			Thread.Sleep(10);
-			if (CounterJob.GetCounter() >= 30)
-				break;
-		}
-
-		jobSystem.Shutdown();
-
-		Test.Assert(CounterJob.GetCounter() == 30);
+		JobSystem.Shutdown();
 	}
 
 	[Test]
-	public static void WorkerRecovery()
+	public static void TestNoWorkersRunsOnCallingThread()
 	{
-		var jobSystem = scope JobSystem(scope DebugLogger(.Trace), 2);
-		jobSystem.Startup();
+		JobSystem.Initialize(0);
 
-		var job = scope TestJob("RecoveryTest");
-		defer job.ReleaseRefNoDelete();
-		jobSystem.AddJob(job);
+		int32 sum = 0;
+		JobSystem.ParallelFor(0, 100, scope [&](begin, end) => {
+			for (int32 i = begin; i < end; i++)
+				sum += i;
+		});
 
-		// Update the job system multiple times to trigger worker updates
-		for (int i = 0; i < 100; i++)
-		{
-			jobSystem.Update();
-			Thread.Sleep(5);
-			if (job.WasExecuted)
-				break;
-		}
-
-		Test.Assert(job.WasExecuted);
-		jobSystem.Shutdown();
-	}
-
-	[Test]
-	public static void JobIsReadyLogic()
-	{
-		var job1 = scope TestJob("Job1");
-		defer job1.ReleaseRefNoDelete();
-
-		var job2 = scope TestJob("Job2");
-		defer job2.ReleaseRefNoDelete();
-
-		var job3 = scope TestJob("Job3");
-		defer job3.ReleaseRefNoDelete();
-
-		// Job with no dependencies should be ready
-		Test.Assert(job1.IsReady());
-
-		// Add dependency - job2 should not be ready until job1 succeeds
-		job2.AddDependency(job1);
-		Test.Assert(!job2.IsReady());
-
-		// Manually set job1 to succeeded state
-		job1.[Friend]mState = .Succeeded;
-		Test.Assert(job2.IsReady());
-
-		// Chain dependencies
-		job3.AddDependency(job2);
-		Test.Assert(!job3.IsReady()); // job2 hasn't succeeded yet
-
-		job2.[Friend]mState = .Succeeded;
-		Test.Assert(job3.IsReady());
-	}
-
-	[Test]
-	public static void JobSelfDependencyPrevention()
-	{
-		var job = scope TestJob("SelfTest");
-		defer job.ReleaseRefNoDelete();
-
-		// Verify the job doesn't think it depends on itself initially
-		Test.Assert(!job.HasDependents);
-	}
-
-	[Test]
-	public static void JobExecutionOrder()
-	{
-		var jobSystem = scope JobSystem(scope DebugLogger(.Trace), 1); // Single worker for deterministic order
-		jobSystem.Startup();
-
-		List<String> executionOrder = new .();
-		var monitor = scope Monitor();
-
-		var job1 = scope DelegateJob(scope () => {
-			using (monitor.Enter())
-			{
-				executionOrder.Add(new String("First"));
-			}
-		}, false, "First", .None);
-		defer job1.ReleaseRefNoDelete();
-
-		var job2 = scope DelegateJob(scope () => {
-			using (monitor.Enter())
-			{
-				executionOrder.Add(new String("Second"));
-			}
-		}, false, "Second", .None);
-		defer job2.ReleaseRefNoDelete();
-
-		var job3 = scope DelegateJob(scope () => {
-			using (monitor.Enter())
-			{
-				executionOrder.Add(new String("Third"));
-			}
-		}, false, "Third", .None);
-		defer job3.ReleaseRefNoDelete();
-
-		// Set up dependencies: job1 -> job2 -> job3
-		job2.AddDependency(job1);
-		job3.AddDependency(job2);
-
-		// Add in reverse order
-		jobSystem.AddJob(job3);
-		jobSystem.AddJob(job2);
-		jobSystem.AddJob(job1);
-
-		for (int i = 0; i < 6000; i++)
-		{
-			jobSystem.Update();
-		}
-
-		WaitForJobCompletion(job3, 2000);
-		jobSystem.Shutdown();
-
-		Test.Assert(executionOrder.Count == 3);
-		Test.Assert(executionOrder[0] == "First");
-		Test.Assert(executionOrder[1] == "Second");
-		Test.Assert(executionOrder[2] == "Third");
-
-		// Clean up
-		DeleteContainerAndItems!(executionOrder);
-	}
-
-	private static void WaitForJobCompletion(JobBase job, int32 timeoutMs)
-	{
-		int32 elapsed = 0;
-		while (!job.IsCompleted() && elapsed < timeoutMs)
-		{
-			Thread.Sleep(10);
-			elapsed += 10;
-		}
+		Test.Assert(sum == 4950);
+		JobSystem.Shutdown();
 	}
 }

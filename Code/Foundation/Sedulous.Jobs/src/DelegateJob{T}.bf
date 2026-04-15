@@ -1,27 +1,23 @@
 using System;
 namespace Sedulous.Jobs;
 
-
 /// A job that executes a delegate and returns a result.
 class DelegateJob<T> : Job<T>
 {
-	private delegate T() mJob = null ~ { if (mOwnsJobDelegate) delete _; };
-	private bool mOwnsJobDelegate = false;
-	private delegate void(T) mOnCompleted ~ { if (mOwnsCompletedDelegate) delete _; };
-	private bool mOwnsCompletedDelegate;
+	private delegate T() mJob = null ~ { if (mOwnsDelegate) delete _; };
+	private bool mOwnsDelegate = false;
+	private delegate void(T) mOnCompleted ~ { if (mOwnsOnCompleted) delete _; };
+	private bool mOwnsOnCompleted;
 
-	public this(delegate T() job,
-		bool ownsJobDelegate,
-		StringView? name = null,
-		JobFlags flags = .None,
-		delegate void(T) onCompleted = null,
-		bool ownsCompletedDelegate = true)
+	public this(delegate T() job, bool ownsDelegate,
+		StringView name = default, JobFlags flags = .None,
+		delegate void(T) onCompleted = null, bool ownsOnCompleted = true)
 		: base(name, flags)
 	{
 		mJob = job;
-		mOwnsJobDelegate = ownsJobDelegate;
+		mOwnsDelegate = ownsDelegate;
 		mOnCompleted = onCompleted;
-		mOwnsCompletedDelegate = ownsCompletedDelegate;
+		mOwnsOnCompleted = ownsOnCompleted;
 	}
 
 	protected override T OnExecute()

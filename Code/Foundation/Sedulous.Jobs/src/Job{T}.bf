@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 namespace Sedulous.Jobs;
 
 /// A job that returns a result of type T.
@@ -10,9 +9,7 @@ abstract class Job<T> : JobBase
 	/// Gets the result after the job completes.
 	public T Result => mResult;
 
-	public this(StringView? name = null,
-		JobFlags flags = .None)
-		 : base(name, flags)
+	public this(StringView name = default, JobFlags flags = .None) : base(name, flags)
 	{
 	}
 

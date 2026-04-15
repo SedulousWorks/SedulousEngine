@@ -1,22 +1,36 @@
+namespace Sedulous.Jobs;
+
 using System;
 using System.Collections;
 using System.Threading;
 
-namespace Sedulous.Jobs;
+using internal Sedulous.Jobs;
 
-/// Base class for all jobs. Provides dependency tracking and lifecycle management.
+/// Base class for all jobs. Provides dependency tracking, state management,
+/// and ref-counted lifecycle.
 abstract class JobBase : RefCounted
 {
 	private readonly String mName = new .() ~ delete _;
 	private readonly JobFlags mFlags;
-	protected JobState mState = .Pending;
+	protected volatile JobState mState = .Pending;
 	private JobPriority mPriority = .Normal;
 
 	private List<JobBase> mDependencies = new .() ~ delete _;
 	private List<JobBase> mDependents = new .() ~ delete _;
 
+	/// Event signaled when the job completes (succeeds or is canceled).
+	/// Used by Wait() for efficient blocking instead of spin-polling.
+	private WaitEvent mCompletionEvent = new .() ~ delete _;
+
+	/// If true, the worker deletes this job after execution instead of
+	/// going through HandleCompletion. Used by ParallelFor chunks.
+	internal bool mSelfCleanup = false;
+
 	/// Gets whether this job has dependents waiting on it.
 	public bool HasDependents => mDependents.Count > 0;
+
+	/// Gets the dependents list (jobs waiting on this one).
+	internal List<JobBase> Dependents => mDependents;
 
 	/// Gets the job name.
 	public String Name => mName;
@@ -30,19 +44,17 @@ abstract class JobBase : RefCounted
 	/// Gets the job priority.
 	public JobPriority Priority => mPriority;
 
-	public this(StringView? name, JobFlags flags = .None)
+	public this(StringView name = default, JobFlags flags = .None)
 	{
-		if (name != null)
-			mName.Set(name.Value);
+		if (name.Length > 0)
+			mName.Set(name);
 		mFlags = flags;
 	}
 
 	public ~this()
 	{
-		for (JobBase dependency in mDependencies)
-		{
+		for (let dependency in mDependencies)
 			dependency.ReleaseRef();
-		}
 	}
 
 	/// Adds a dependency. This job will not run until the dependency completes.
@@ -82,10 +94,9 @@ abstract class JobBase : RefCounted
 		if (mState != .Succeeded && mState != .Canceled)
 		{
 			mState = .Canceled;
+			SignalCompletion();
 			for (let dependent in mDependents)
-			{
 				dependent.Cancel();
-			}
 		}
 	}
 
@@ -98,10 +109,9 @@ abstract class JobBase : RefCounted
 	/// Blocks until the job completes (succeeds or is canceled).
 	public void Wait()
 	{
-		while (!IsCompleted())
-		{
-			Thread.Sleep(1);
-		}
+		if (IsCompleted())
+			return;
+		mCompletionEvent.WaitFor();
 	}
 
 	/// Override to implement job execution logic.
@@ -114,20 +124,25 @@ abstract class JobBase : RefCounted
 	{
 	}
 
-	/// Runs the job. Returns the result of the run attempt.
-	internal JobRunResult Run()
+	/// Signals the completion event. Called by JobSystem after all post-completion
+	/// processing (dependency resolution, completion queue) is done, so Wait()
+	/// callers don't resume while the system still holds refs on the job.
+	internal void SignalCompletion()
 	{
-		if (!IsReady())
-			return .NotReady;
+		mCompletionEvent.Set(true);
+	}
 
+	/// Runs the job. Called by worker threads. Does NOT signal the completion
+	/// event — that's done by JobSystem.HandleCompletion after post-processing.
+	internal void Run()
+	{
 		mState = .Running;
 		Execute();
 
 		if (mState == .Canceled)
-			return .Cancelled;
+			return;
 
 		mState = .Succeeded;
 		OnCompleted();
-		return .Success;
 	}
 }

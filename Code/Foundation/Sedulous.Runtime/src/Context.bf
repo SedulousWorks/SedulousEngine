@@ -17,7 +17,6 @@ public class Context : IDisposable
 	private bool mDisposed = false;
 
 	// Core systems
-	private JobSystem mJobSystem ~ delete _;
 	private ResourceSystem mResourceSystem ~ delete _;
 
 	/// Returns true if the context is running.
@@ -26,19 +25,25 @@ public class Context : IDisposable
 	/// Gets all registered subsystems in update order.
 	public List<Subsystem> Subsystems => mSortedSubsystems;
 
-	/// Gets the job system.
-	public JobSystem Jobs => mJobSystem;
-
 	/// Gets the resource system.
 	public ResourceSystem Resources => mResourceSystem;
+
+	static this()
+	{
+		JobSystem.Initialize();
+	}
+
+	static ~this()
+	{
+		JobSystem.Shutdown();
+	}
 
 	/// Creates a new context.
 	/// @param logger Optional logger for the resource system and job system.
 	/// @param jobThreadCount Number of worker threads for the job system (0 = auto-detect).
-	public this(ILogger logger = null, int32 jobThreadCount = 0)
+	public this(ILogger logger = null)
 	{
-		mJobSystem = new JobSystem(logger, jobThreadCount);
-		mResourceSystem = new ResourceSystem(logger, mJobSystem);
+		mResourceSystem = new ResourceSystem(logger);
 	}
 
 	/// Destructor - ensures Dispose is called.
@@ -100,7 +105,6 @@ public class Context : IDisposable
 			return;
 
 		// Start core systems
-		mJobSystem.Startup();
 		mResourceSystem.Startup();
 
 		// Initialize all subsystems in UpdateOrder
@@ -117,7 +121,7 @@ public class Context : IDisposable
 			return;
 
 		// Update core systems first (processes completed async jobs/resources)
-		mJobSystem.Update();
+		JobSystem.ProcessCompletions();
 		mResourceSystem.Update();
 
 		for (let subsystem in mSortedSubsystems)
@@ -191,7 +195,6 @@ public class Context : IDisposable
 
 		// Shutdown core systems
 		mResourceSystem.Shutdown();
-		mJobSystem.Shutdown();
 
 		mIsRunning = false;
 	}

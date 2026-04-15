@@ -1,47 +1,57 @@
-using System;
-using System.Threading;
-using System.Collections;
-using Sedulous.Core.Logging.Abstractions;
-using static System.Platform;
-
 namespace Sedulous.Jobs;
+
+using System;
+using System.Collections;
+using System.Threading;
+using static System.Platform;
 
 using internal Sedulous.Jobs;
 
-/// Manages job execution across worker threads.
-class JobSystem
+/// Static job system providing immediate dispatch and fork-join parallelism.
+///
+/// Two execution modes:
+///   Run()        — dispatches a job immediately to a worker thread
+///   ParallelFor  — splits a range across workers + calling thread, blocks until done
+///
+/// Workers sleep on WaitEvents and wake instantly when work arrives.
+/// Call ProcessCompletions() once per frame to run main-thread callbacks.
+static class JobSystem
 {
-	private readonly int32 mWorkerCount;
-	private readonly List<BackgroundWorker> mWorkers = new .() ~ delete _;
-	private MainThreadWorker mMainThreadWorker = null;
+	// Worker threads
+	private static WorkerThread[] sWorkers;
+	private static int32 sWorkerCount;
+	private static volatile bool sInitialized = false;
 
-	private readonly Monitor mJobsToRunMonitor = new .() ~ delete _;
-	private readonly Queue<JobBase> mJobsToRun = new .() ~ delete _;
+	// Shared work queue (Monitor-protected)
+	private static Monitor sQueueLock = new .() ~ delete _;
+	private static Queue<JobBase> sWorkQueue = new .() ~ delete _;
 
-	private readonly Monitor mCompletedJobsMonitor = new .() ~ delete _;
-	private readonly List<JobBase> mCompletedJobs = new .() ~ delete _;
+	// Main-thread job queue
+	private static Monitor sMainThreadLock = new .() ~ delete _;
+	private static Queue<JobBase> sMainThreadQueue = new .() ~ delete _;
 
-	private readonly Monitor mCancelledJobsMonitor = new .() ~ delete _;
-	private readonly List<JobBase> mCancelledJobs = new .() ~ delete _;
+	// Completion queue (jobs with callbacks to process on main thread)
+	private static Monitor sCompletionLock = new .() ~ delete _;
+	private static List<JobBase> sCompletionQueue = new .() ~ delete _;
 
-	private bool mIsRunning = false;
+	/// Whether the job system has been initialized.
+	public static bool IsInitialized => sInitialized;
 
-	/// Gets the number of background workers.
-	public int WorkerCount => mWorkers?.Count ?? 0;
+	/// Number of background worker threads.
+	public static int32 WorkerCount => sWorkerCount;
 
-	private readonly ILogger mLogger;
-	public ILogger Logger => mLogger;
-	
-	/// Gets whether the job system is running.
-	public bool IsRunning => mIsRunning;
+	// ==================== Lifecycle ====================
 
-	public this(ILogger logger, int32 workerCount = 0)
+	/// Initializes the job system with the specified number of worker threads.
+	/// Pass negative to auto-detect based on CPU core count.
+	/// Pass 0 for single-threaded mode (ParallelFor runs on calling thread).
+	public static void Initialize(int32 workerCount = -1)
 	{
-		mLogger = logger;
-		var count = workerCount;
+		if (sInitialized)
+			return;
 
-		// Auto-detect worker count based on CPU cores
-		if (count <= 0)
+		var count = workerCount;
+		if (count < 0)
 		{
 			BfpSystemResult result = .Ok;
 			int coreCount = Platform.BfpSystem_GetNumLogicalCPUs(&result);
@@ -51,318 +61,300 @@ class JobSystem
 				count = 2;
 		}
 
-		mWorkerCount = count;
-	}
-
-	public ~this()
-	{
-		if (mIsRunning)
-			Shutdown();
-
-		for (let worker in mWorkers)
-			delete worker;
-
-		delete mMainThreadWorker;
-	}
-
-	private void CreateWorkers()
-	{
-		mMainThreadWorker = new .(this, "Main Thread Worker");
-
-		for (int32 i = 0; i < mWorkerCount; i++)
+		sWorkerCount = count;
+		sWorkers = new WorkerThread[count];
+		for (int32 i = 0; i < count; i++)
 		{
-			let worker = new BackgroundWorker(this, scope $"Worker{i}", .Persistent);
-			mWorkers.Add(worker);
-		}
-	}
-
-	private void DestroyWorkers()
-	{
-		if (mMainThreadWorker != null)
-		{
-			delete mMainThreadWorker;
-			mMainThreadWorker = null;
+			sWorkers[i] = new WorkerThread(scope $"TaskWorker{i}");
+			sWorkers[i].Start();
 		}
 
-		for (let worker in mWorkers)
-			delete worker;
-		mWorkers.Clear();
+		sInitialized = true;
 	}
 
-	private void HandleProcessedJob(JobBase job, Worker worker)
+	/// Shuts down the job system and waits for all workers to finish.
+	public static void Shutdown()
 	{
-		if (job.State == .Succeeded)
-			OnJobCompleted(job, worker);
-		else if (job.State == .Canceled)
-			OnJobCancelled(job, worker);
-	}
-
-	private void OnJobCompleted(JobBase job, Worker worker)
-	{
-		using (mCompletedJobsMonitor.Enter())
-		{
-			job.AddRef();
-			mCompletedJobs.Add(job);
-		}
-	}
-
-	private void OnJobCancelled(JobBase job, Worker worker)
-	{
-		using (mCancelledJobsMonitor.Enter())
-		{
-			job.AddRef();
-			mCancelledJobs.Add(job);
-		}
-	}
-
-	/// Starts the job system.
-	public void Startup()
-	{
-		if (mIsRunning)
-		{
-			Logger?.LogError("Startup called on JobSystem that is already running.");
+		if (!sInitialized)
 			return;
-		}
-
-		CreateWorkers();
-
-		mMainThreadWorker.Start();
-
-		for (let worker in mWorkers)
-			worker.Start();
-
-		mIsRunning = true;
-	}
-
-	/// Shuts down the job system.
-	public void Shutdown()
-	{
-		if (!mIsRunning)
-		{
-			Logger?.LogError("Shutdown called on JobSystem that is not running.");
-			return;
-		}
 
 		// Stop all workers
-		for (let worker in mWorkers)
+		for (int32 i = 0; i < sWorkerCount; i++)
+			sWorkers[i].Stop();
+
+		// Clean up workers
+		for (int32 i = 0; i < sWorkerCount; i++)
+			delete sWorkers[i];
+		delete sWorkers;
+		sWorkers = null;
+		sWorkerCount = 0;
+
+		// Drain remaining queues
+		using (sQueueLock.Enter())
 		{
-			if (worker.State == .Paused)
-				worker.Resume();
-			worker.Stop();
+			while (sWorkQueue.Count > 0)
+			{
+				let job = sWorkQueue.PopFront();
+				job.Cancel();
+				job.ReleaseRef();
+			}
 		}
 
-		mMainThreadWorker.Stop();
-
-		// Cancel remaining jobs
-		while (mJobsToRun.Count > 0)
+		using (sMainThreadLock.Enter())
 		{
-			let job = mJobsToRun.PopFront();
-			defer job.ReleaseRef();
-			job.Cancel();
-			OnJobCancelled(job, null);
+			while (sMainThreadQueue.Count > 0)
+			{
+				let job = sMainThreadQueue.PopFront();
+				job.Cancel();
+				job.ReleaseRef();
+			}
 		}
 
-		ClearCompletedJobs();
-		ClearCancelledJobs();
+		using (sCompletionLock.Enter())
+		{
+			for (let job in sCompletionQueue)
+				job.ReleaseRef();
+			sCompletionQueue.Clear();
+		}
 
-		mIsRunning = false;
-		DestroyWorkers();
+		sInitialized = false;
 	}
 
-	/// Updates the job system. Call this once per frame from the main thread.
-	public void Update()
+	// ==================== Run (immediate dispatch) ====================
+
+	/// Dispatches a job immediately. If the job has unmet dependencies, it will
+	/// be re-checked when its prerequisites complete.
+	public static void Run(JobBase job)
 	{
-		if (!mIsRunning)
+		Runtime.Assert(sInitialized, "JobSystem not initialized.");
+
+		job.AddRef();
+
+		if (job.Flags.HasFlag(.RunOnMainThread))
 		{
-			Logger?.LogError("Update called on JobSystem that is not running.");
+			using (sMainThreadLock.Enter())
+				sMainThreadQueue.Add(job);
+		}
+		else
+		{
+			EnqueueInternal(job, true);
+		}
+	}
+
+	/// Dispatches a delegate job immediately.
+	/// The system takes full ownership via AutoRelease — no manual cleanup needed.
+	public static void Run(delegate void() work, bool ownsDelegate,
+		StringView name = default, JobFlags flags = .None)
+	{
+		let job = new DelegateJob(work, ownsDelegate, name, flags | .AutoRelease);
+		Run(job);
+	}
+
+	/// Dispatches a delegate job with a result and optional completion callback.
+	/// The system takes full ownership via AutoRelease — no manual cleanup needed.
+	public static void Run<T>(delegate T() work, bool ownsDelegate,
+		delegate void(T) onComplete = null, bool ownsOnComplete = true,
+		StringView name = default, JobFlags flags = .None)
+	{
+		let job = new DelegateJob<T>(work, ownsDelegate, name, flags | .AutoRelease, onComplete, ownsOnComplete);
+		Run(job);
+	}
+
+	// ==================== ParallelFor ====================
+
+	/// Splits [begin, end) into chunks across worker threads + the calling thread.
+	/// Blocks until all chunks complete. The calling thread processes one chunk itself
+	/// to avoid wasting it while waiting.
+	public static void ParallelFor(int32 begin, int32 end,
+		delegate void(int32 chunkBegin, int32 chunkEnd) body)
+	{
+		let range = end - begin;
+		if (range <= 0) return;
+
+		// If not initialized or no workers, run everything on calling thread
+		if (!sInitialized || sWorkerCount == 0)
+		{
+			body(begin, end);
 			return;
 		}
 
-		// Collect jobs to dispatch
-		List<JobBase> jobsToDispatch = scope .();
-		using (mJobsToRunMonitor.Enter())
+		let chunkCount = Math.Min(range, sWorkerCount + 1);
+		let chunkSize = (range + chunkCount - 1) / chunkCount;
+
+		if (chunkCount == 1)
 		{
-			jobsToDispatch.AddRange(mJobsToRun);
-			mJobsToRun.Clear();
+			body(begin, end);
+			return;
 		}
 
-		// Dispatch jobs to workers
-		for (let job in jobsToDispatch)
+		// Shared completion state
+		int32 remaining = chunkCount;
+		WaitEvent completionEvent = scope .();
+
+		// Submit chunks 1..N-1 to workers via the shared queue
+		for (int32 i = 1; i < chunkCount; i++)
 		{
-			defer job.ReleaseRef();
+			let chunkBegin = begin + i * chunkSize;
+			let chunkEnd = Math.Min(chunkBegin + chunkSize, end);
 
-			if (!job.IsReady())
-			{
-				// Requeue job
-				AddJob(job);
-				continue;
-			}
-			// Check if job was canceled or succeeded
-			if (job.State == .Canceled || job.State == .Succeeded)
-			{
-				HandleProcessedJob(job, null);
-				continue;
-			}
+			let chunk = new ParallelChunk(body, chunkBegin, chunkEnd, &remaining, completionEvent);
+			using (sQueueLock.Enter())
+				sWorkQueue.Add(chunk);
+		}
 
-			// Queue the job on the main thread worker
-			// if it has the RunOnMainThread flag or no background workers exist
-			if (job.Flags.HasFlag(.RunOnMainThread) || mWorkers.Count == 0)
-			{
-				if (mMainThreadWorker.QueueJob(job) case .Err)
-					RequeueJob(job);
-				continue;
-			}
+		// Wake workers
+		let wakeable = Math.Min(chunkCount - 1, sWorkerCount);
+		for (int32 i = 0; i < wakeable; i++)
+			sWorkers[i].Wake();
 
-			// Find available background worker
-			BackgroundWorker targetWorker = null;
-			for (let worker in mWorkers)
-			{
-				if (worker.State == .Idle || worker.State == .Paused)
-				{
-					targetWorker = worker;
-					break;
-				}
-			}
+		// Calling thread processes chunk 0
+		body(begin, Math.Min(begin + chunkSize, end));
 
-			if (targetWorker != null)
+		// Check if we were the last to finish
+		if (Interlocked.Decrement(ref remaining) != 0)
+			completionEvent.WaitFor(); // wait for workers to finish
+	}
+
+	// ==================== Main thread ====================
+
+	/// Processes main-thread jobs and completion callbacks.
+	/// Call once per frame from the main thread.
+	public static void ProcessCompletions()
+	{
+		if (!sInitialized)
+			return;
+
+		// Process main-thread-only jobs
+		while (true)
+		{
+			JobBase job = null;
+			using (sMainThreadLock.Enter())
 			{
-				if (targetWorker.QueueJob(job) case .Err)
-				{
-					Logger?.LogError("Failed to queue job on worker '{}'.", targetWorker.Name);
-					RequeueJob(job);
-				}else{
-					targetWorker.Wake();
-				}
+				if (sMainThreadQueue.Count > 0)
+					job = sMainThreadQueue.PopFront();
+			}
+			if (job == null) break;
+
+			if (job.IsReady())
+			{
+				job.Run();
+				// HandleCompletion releases the queue ref and adds a completion ref.
+				// Do NOT access `job` after this for AutoRelease jobs.
+				HandleCompletion(job);
 			}
 			else
 			{
-				// No available worker, requeue
-				RequeueJob(job);
+				// Not ready yet — put it back
+				using (sMainThreadLock.Enter())
+					sMainThreadQueue.Add(job);
+				break; // avoid infinite loop on unresolvable dependency
 			}
 		}
 
-		// Handle dead workers
-		List<BackgroundWorker> deadWorkers = scope .();
-		for (let worker in mWorkers)
+		// Process completion callbacks (auto-release etc.)
+		List<JobBase> completions = scope .();
+		using (sCompletionLock.Enter())
 		{
-
-			// Update worker in case thread died
-			worker.Update();
-
-			// gather dead workers
-			if (worker.State == .Dead)
-				deadWorkers.Add(worker);
+			completions.AddRange(sCompletionQueue);
+			sCompletionQueue.Clear();
 		}
 
-		// Replace dead persistent workers
-		for (let deadWorker in deadWorkers)
+		for (let job in completions)
 		{
-			let name = scope String(deadWorker.Name);
-			let flags = deadWorker.Flags;
-			mWorkers.Remove(deadWorker);
-
-			if (flags.HasFlag(.Persistent))
-			{
-				let newWorker = new BackgroundWorker(this, name, flags);
-				newWorker.Start();
-				mWorkers.Add(newWorker);
-			}
-
-			delete deadWorker;
-		}
-
-		// Process main thread jobs
-		mMainThreadWorker.Update();
-
-		// Cleanup completed/cancelled jobs
-		ClearCompletedJobs();
-		ClearCancelledJobs();
-	}
-
-	/// Adds a job to be executed.
-	public void AddJob(JobBase job)
-	{
-		if (!mIsRunning)
-		{
-			Runtime.FatalError("JobSystem is not running.");
-		}
-		using (mJobsToRunMonitor.Enter())
-		{
-			job.AddRef();
-			mJobsToRun.Add(job);
-		}
-	}
-
-	/// Requeues a job to the front of the queue. Used internally by workers.
-	internal void RequeueJob(JobBase job)
-	{
-		using (mJobsToRunMonitor.Enter())
-		{
-			job.AddRef();
-			mJobsToRun.AddFront(job);
-		}
-	}
-
-	public void AddJobs(Span<JobBase> jobs)
-	{
-		if (!mIsRunning)
-		{
-			Runtime.FatalError("JobSystem is not running.");
-		}
-		using (mJobsToRunMonitor.Enter())
-		{
-			for (JobBase job in jobs)
-			{
-				job.AddRef();
-				mJobsToRun.Add(job);
-			}
-		}
-	}
-
-	/// Adds a delegate job to be executed.
-	public void AddJob(delegate void() jobDelegate, bool ownsJobDelegate, StringView? jobName = null, JobFlags flags = .None)
-	{
-		let job = new DelegateJob(jobDelegate, ownsJobDelegate, jobName, flags | .AutoRelease);
-		AddJob(job);
-	}
-
-	/// Adds a delegate job with a result to be executed.
-	public void AddJob<T>(delegate T() jobDelegate,
-		bool ownsJobDelegate,
-		StringView? jobName = null,
-		JobFlags flags = .None,
-		delegate void(T) onCompleted = null,
-		bool ownsOnCompletedDelegate = true)
-	{
-		let job = new DelegateJob<T>(jobDelegate, ownsJobDelegate, jobName, flags | .AutoRelease, onCompleted, ownsOnCompletedDelegate);
-		AddJob(job);
-	}
-
-	private void ClearCompletedJobs()
-	{
-		using (mCompletedJobsMonitor.Enter())
-		{
-			for (let job in mCompletedJobs)
-			{
-				if (job.Flags.HasFlag(.AutoRelease))
-					job.ReleaseRef();
+			if (job.Flags.HasFlag(.AutoRelease))
 				job.ReleaseRef();
-			}
-			mCompletedJobs.Clear();
+			job.ReleaseRef();
 		}
 	}
 
-	private void ClearCancelledJobs()
+	// ==================== Internal ====================
+
+	/// Adds a job to the shared work queue and optionally wakes a worker.
+	internal static void EnqueueInternal(JobBase job, bool wake)
 	{
-		using (mCancelledJobsMonitor.Enter())
+		using (sQueueLock.Enter())
+			sWorkQueue.Add(job);
+
+		if (wake && sWorkers != null && sWorkerCount > 0)
+			sWorkers[0].Wake();
+	}
+
+	/// Attempts to dequeue a job from the shared queue.
+	internal static bool TryDequeue(out JobBase job)
+	{
+		using (sQueueLock.Enter())
 		{
-			for (let job in mCancelledJobs)
+			if (sWorkQueue.Count > 0)
 			{
-				if (job.Flags.HasFlag(.AutoRelease))
-					job.ReleaseRef();
-				job.ReleaseRef();
+				job = sWorkQueue.PopFront();
+				return true;
 			}
-			mCancelledJobs.Clear();
+		}
+		job = null;
+		return false;
+	}
+
+	/// Called by workers after a job finishes. Resolves dependencies,
+	/// queues for main-thread cleanup, then signals completion.
+	///
+	/// Ref ownership transfer: AddRef for the completion queue first, then
+	/// ReleaseRef the worker/queue ownership, then signal. The AddRef ensures
+	/// rc > 0 during the ReleaseRef. After SignalCompletion, the worker must
+	/// NOT access `job` — the waiting thread may delete it.
+	internal static void HandleCompletion(JobBase job)
+	{
+		// Resolve dependents — if a dependent is now ready, dispatch it
+		for (let dependent in job.Dependents)
+		{
+			if (dependent.IsReady())
+			{
+				dependent.AddRef();
+				EnqueueInternal(dependent, true);
+			}
+		}
+
+		// Transfer ownership: add completion ref BEFORE releasing the worker ref.
+		// This ensures rc never hits 0 during the transfer.
+		using (sCompletionLock.Enter())
+		{
+			job.AddRef(); // completion queue ref
+			sCompletionQueue.Add(job);
+		}
+		job.ReleaseRefNoDelete(); // release the worker/queue ref (won't delete — completion ref keeps it alive)
+
+		// Signal LAST — after this, the waiting thread may delete the job.
+		job.SignalCompletion();
+	}
+
+	// ==================== ParallelFor internals ====================
+
+	/// A lightweight work item for ParallelFor chunks. Not a full Job — no ref
+	/// counting, no dependencies, no completion callbacks. Just a delegate + range.
+	private class ParallelChunk : JobBase
+	{
+		private delegate void(int32, int32) mBody;
+		private int32 mBegin;
+		private int32 mEnd;
+		private int32* mRemaining;
+		private WaitEvent mCompletionEvent;
+
+		public this(delegate void(int32, int32) body, int32 begin, int32 end,
+			int32* remaining, WaitEvent completionEvent)
+		{
+			mBody = body;
+			mBegin = begin;
+			mEnd = end;
+			mRemaining = remaining;
+			mCompletionEvent = completionEvent;
+			mSelfCleanup = true; // worker deletes after execution, no HandleCompletion
+		}
+
+		protected override void Execute()
+		{
+			mBody(mBegin, mEnd);
+
+			if (Interlocked.Decrement(ref *mRemaining) == 0)
+				mCompletionEvent.Set();
 		}
 	}
 }

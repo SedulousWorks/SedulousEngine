@@ -143,7 +143,7 @@ class HotReloadTests
 
 		// Set up ResourceSystem
 		let manager = scope GameConfigResourceManager();
-		let system = scope ResourceSystem(null, null);
+		let system = scope ResourceSystem(null);
 		system.AddResourceManager(manager);
 		system.EnableHotReload(0.0); // No poll delay
 
@@ -204,7 +204,7 @@ class HotReloadTests
 
 		// Set up ResourceSystem
 		let manager = scope GameConfigResourceManager();
-		let system = scope ResourceSystem(null, null);
+		let system = scope ResourceSystem(null);
 		system.AddResourceManager(manager);
 
 		// Load resource — get two handles to same path
