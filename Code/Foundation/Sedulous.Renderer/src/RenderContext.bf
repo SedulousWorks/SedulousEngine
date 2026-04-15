@@ -6,6 +6,7 @@ using Sedulous.RHI;
 using Sedulous.Materials;
 using Sedulous.Core.Mathematics;
 using Sedulous.Core.Memory;
+using Sedulous.Jobs;
 using Sedulous.Renderer.Shadows;
 using Sedulous.Renderer.Debug;
 
@@ -54,6 +55,11 @@ public class RenderContext : IDisposable
 	// track and run them on Reset. Render data subclasses should not define user
 	// destructors (convention, not enforced).
 	private FrameAllocator mFrameAllocator = new FrameAllocator(.Allow) ~ delete _;
+
+	// Per-worker frame allocators for parallel extraction. One per worker thread
+	// + one for the calling thread. Initialized lazily on first use.
+	// Reset alongside the main allocator in BeginFrame().
+	private FrameAllocator[] mWorkerAllocators ~ { if (_ != null) { for (let a in _) delete a; delete _; } };
 
 	// Registered renderers, keyed by category. RenderContext owns the instances —
 	// shared across all Pipeline / ShadowPipeline instances built on this context.
@@ -127,6 +133,17 @@ public class RenderContext : IDisposable
 	/// Per-frame scratch allocator. Render data allocated here is valid until
 	/// the next BeginFrame() call, which rewinds the allocator.
 	public FrameAllocator FrameAllocator => mFrameAllocator;
+
+	/// Gets a worker allocator for parallel extraction. Index 0..WorkerAllocatorCount-1.
+	/// Created in BeginFrame (single-threaded) so GetWorkerAllocator is safe to call
+	/// from multiple threads during parallel extraction.
+	public FrameAllocator GetWorkerAllocator(int32 index)
+	{
+		return mWorkerAllocators[index];
+	}
+
+	/// Number of available worker allocators.
+	public int32 WorkerAllocatorCount => (mWorkerAllocators != null) ? (int32)mWorkerAllocators.Count : 0;
 
 	/// Registers a per-type drawer. RenderContext takes ownership.
 	/// The renderer is indexed against every category returned by GetSupportedCategories().
@@ -308,6 +325,23 @@ public class RenderContext : IDisposable
 	public void BeginFrame()
 	{
 		mFrameAllocator.Reset();
+
+		// Create worker allocators on first BeginFrame (single-threaded).
+		// Must happen here, not lazily in GetWorkerAllocator, because
+		// GetWorkerAllocator is called from multiple threads during ParallelFor.
+		if (mWorkerAllocators == null && JobSystem.IsInitialized && JobSystem.WorkerCount > 0)
+		{
+			let count = JobSystem.WorkerCount + 1;
+			mWorkerAllocators = new FrameAllocator[count];
+			for (int i = 0; i < count; i++)
+				mWorkerAllocators[i] = new FrameAllocator(.Allow);
+		}
+
+		if (mWorkerAllocators != null)
+		{
+			for (let alloc in mWorkerAllocators)
+				alloc.Reset();
+		}
 		CurrentSceneDepthView = null;
 		if (mShadowSystem != null)
 			mShadowSystem.BeginFrame();

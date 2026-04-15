@@ -30,6 +30,18 @@ public abstract class ComponentManager<T> : ComponentManagerBase, IComponentMana
 	/// Number of active components.
 	public int32 ActiveCount => mActiveCount;
 
+	/// Total slot count (including free slots). For parallel iteration by index.
+	public int32 SlotCount => (int32)mSlots.Count;
+
+	/// Gets the component at a slot index, or null if the slot is empty.
+	/// For parallel iteration — callers must check null and IsActive.
+	public T GetAtSlot(int32 index)
+	{
+		if (index < 0 || index >= mSlots.Count) return null;
+		let slot = mSlots[index];
+		return slot.Occupied ? slot.Component : null;
+	}
+
 	/// Creates a component and attaches it to the given entity.
 	/// Returns a handle for future access.
 	public ComponentHandle<T> CreateComponent(EntityHandle entity)
