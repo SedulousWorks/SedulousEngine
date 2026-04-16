@@ -1,4 +1,4 @@
-namespace Sedulous.Drawing;
+namespace Sedulous.ImageData;
 
 /// Defines the border insets for 9-slice image scaling.
 /// 9-slice divides an image into 9 regions: corners (fixed size),

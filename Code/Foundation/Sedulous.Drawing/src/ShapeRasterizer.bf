@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.Fonts;
+using Sedulous.ImageData;
 
 namespace Sedulous.Drawing;
 

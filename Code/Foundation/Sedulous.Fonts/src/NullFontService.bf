@@ -2,7 +2,7 @@ using System;
 using Sedulous.Fonts;
 using Sedulous.ImageData;
 
-namespace Sedulous.Drawing;
+namespace Sedulous.Fonts;
 
 /// A minimal font service implementation that returns null for all fonts.
 /// Use this for testing when font service is required but actual fonts aren't needed.
