@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.ImageData;
+using Sedulous.Fonts;
 
 namespace Sedulous.VG;
 
@@ -14,6 +15,11 @@ public class VGContext
 	// 1x1 white texture used for solid-color draws (shape/path/stroke).
 	// Sits at Textures[0] so all shape vertices sample white → color passthrough.
 	private OwnedImageData mWhiteTexture ~ delete _;
+
+	// Optional font service for the convenience DrawText overloads that take
+	// a CachedFont. Low-level overloads take atlas + atlasTexture directly
+	// and don't require a service.
+	private IFontService mFontService;
 
 	// State stack
 	private List<VGState> mStateStack = new .() ~ delete _;
@@ -31,10 +37,15 @@ public class VGContext
 	// Default tessellation tolerance
 	private float mTolerance = 0.05f;
 
-	public this()
+	/// The font service used by the convenience CachedFont text overloads.
+	/// Null when not provided — low-level text overloads still work.
+	public IFontService FontService => mFontService;
+
+	public this(IFontService fontService = null)
 	{
 		mCurrentState = .();
 		mStateStack.Reserve(16);
+		mFontService = fontService;
 
 		// Create 1x1 white texture for solid color drawing.
 		uint8[4] whitePixel = .(255, 255, 255, 255);
@@ -451,6 +462,133 @@ public class VGContext
 		// Apply transform to all emitted vertices in one pass so rotation/scale
 		// affects the whole 9-slice grid consistently.
 		TransformVertices(startVertex);
+	}
+
+	// === Text ===
+
+	/// Draw text at a baseline position using a pre-rendered font atlas.
+	/// Low-level entry point — takes atlas and atlas texture directly.
+	/// The position is the origin of the first glyph's baseline.
+	public void DrawText(StringView text, IFontAtlas atlas, IImageData atlasTexture, Vector2 position, Color color)
+	{
+		if (text.IsEmpty || atlas == null || atlasTexture == null) return;
+
+		let textureIndex = GetOrAddTexture(atlasTexture);
+		SetupForTextureDraw(textureIndex);
+
+		let startVertex = mBatch.Vertices.Count;
+		let opColor = ApplyOpacity(color);
+		var cursorX = position.X;
+		let cursorY = position.Y;
+
+		for (let ch in text.DecodedChars)
+		{
+			GlyphQuad quad = ?;
+			if (atlas.GetGlyphQuad((int32)ch, ref cursorX, cursorY, out quad))
+				EmitGlyphQuad(quad, opColor);
+		}
+
+		TransformVertices(startVertex);
+	}
+
+	/// Draw text with horizontal alignment within bounds.
+	/// Vertical position is centered on the line height (standard UI label behavior).
+	public void DrawText(StringView text, IFont font, IFontAtlas atlas, IImageData atlasTexture,
+		RectangleF bounds, TextAlignment align, Color color)
+	{
+		if (text.IsEmpty || font == null) return;
+
+		let textWidth = font.MeasureString(text);
+		var offsetX = bounds.X;
+		switch (align)
+		{
+		case .Left:   offsetX = bounds.X;
+		case .Center: offsetX = bounds.X + (bounds.Width - textWidth) * 0.5f;
+		case .Right:  offsetX = bounds.X + bounds.Width - textWidth;
+		}
+
+		let offsetY = bounds.Y + (bounds.Height - font.Metrics.LineHeight) * 0.5f + font.Metrics.Ascent;
+		DrawText(text, atlas, atlasTexture, .(offsetX, offsetY), color);
+	}
+
+	/// Draw text with horizontal and vertical alignment within bounds.
+	public void DrawText(StringView text, IFont font, IFontAtlas atlas, IImageData atlasTexture,
+		RectangleF bounds, TextAlignment hAlign, VerticalAlignment vAlign, Color color)
+	{
+		if (text.IsEmpty || font == null) return;
+
+		let textWidth = font.MeasureString(text);
+		var offsetX = bounds.X;
+		var offsetY = bounds.Y;
+
+		switch (hAlign)
+		{
+		case .Left:   offsetX = bounds.X;
+		case .Center: offsetX = bounds.X + (bounds.Width - textWidth) * 0.5f;
+		case .Right:  offsetX = bounds.X + bounds.Width - textWidth;
+		}
+
+		switch (vAlign)
+		{
+		case .Top:      offsetY = bounds.Y + font.Metrics.Ascent;
+		case .Middle:   offsetY = bounds.Y + (bounds.Height - font.Metrics.LineHeight) * 0.5f + font.Metrics.Ascent;
+		case .Bottom:   offsetY = bounds.Y + bounds.Height - font.Metrics.Descent;
+		case .Baseline: offsetY = bounds.Y;
+		}
+
+		DrawText(text, atlas, atlasTexture, .(offsetX, offsetY), color);
+	}
+
+	/// Convenience: draw text using a CachedFont. Requires a FontService (set via constructor).
+	public void DrawText(StringView text, CachedFont font, Vector2 position, Color color)
+	{
+		if (font == null || mFontService == null) return;
+		let atlasTex = mFontService.GetAtlasTexture(font);
+		if (atlasTex == null) return;
+		DrawText(text, font.Atlas, atlasTex, position, color);
+	}
+
+	/// Convenience: draw text using a CachedFont with alignment.
+	public void DrawText(StringView text, CachedFont font, RectangleF bounds,
+		TextAlignment hAlign, VerticalAlignment vAlign, Color color)
+	{
+		if (font == null || mFontService == null) return;
+		let atlasTex = mFontService.GetAtlasTexture(font);
+		if (atlasTex == null) return;
+		DrawText(text, font.Font, font.Atlas, atlasTex, bounds, hAlign, vAlign, color);
+	}
+
+	/// Measure the width and line height of a string in pixels.
+	public Vector2 MeasureText(StringView text, IFont font)
+	{
+		if (font == null) return .Zero;
+		return .(font.MeasureString(text), font.Metrics.LineHeight);
+	}
+
+	/// Measure just the pixel width of a string.
+	public float MeasureTextWidth(StringView text, IFont font)
+	{
+		if (font == null) return 0;
+		return font.MeasureString(text);
+	}
+
+	/// Emit a glyph quad into the batch in untransformed coordinates.
+	/// Caller is responsible for calling TransformVertices on the added range.
+	private void EmitGlyphQuad(GlyphQuad quad, Color color)
+	{
+		let baseIndex = (uint32)mBatch.Vertices.Count;
+
+		mBatch.Vertices.Add(.(.(quad.X0, quad.Y0), .(quad.U0, quad.V0), color, 1.0f));
+		mBatch.Vertices.Add(.(.(quad.X1, quad.Y0), .(quad.U1, quad.V0), color, 1.0f));
+		mBatch.Vertices.Add(.(.(quad.X1, quad.Y1), .(quad.U1, quad.V1), color, 1.0f));
+		mBatch.Vertices.Add(.(.(quad.X0, quad.Y1), .(quad.U0, quad.V1), color, 1.0f));
+
+		mBatch.Indices.Add(baseIndex + 0);
+		mBatch.Indices.Add(baseIndex + 1);
+		mBatch.Indices.Add(baseIndex + 2);
+		mBatch.Indices.Add(baseIndex + 0);
+		mBatch.Indices.Add(baseIndex + 2);
+		mBatch.Indices.Add(baseIndex + 3);
 	}
 
 	/// Emit a textured quad into the batch in untransformed coordinates.

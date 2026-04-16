@@ -9,6 +9,8 @@ using Sedulous.VG.Renderer;
 using Sedulous.Shaders;
 using Sedulous.ImageData;
 using Sedulous.Imaging;
+using Sedulous.Fonts;
+using Sedulous.Fonts.TTF;
 
 /// VG Sandbox — NanoVG-inspired demo showcasing Sedulous.VG capabilities.
 class VGSandboxApp : Application
@@ -19,6 +21,12 @@ class VGSandboxApp : Application
 
 	// Checkerboard image used to demonstrate DrawImage.
 	private OwnedImageData mCheckerboard ~ delete _;
+
+	// Font service + cached fonts for text rendering.
+	private FontService mFontService;
+	private CachedFont mFontSmall;
+	private CachedFont mFontMedium;
+	private CachedFont mFontLarge;
 
 	private float mTime = 0;
 
@@ -37,7 +45,22 @@ class VGSandboxApp : Application
 			return;
 		}
 
-		mVG = new VGContext();
+		// Load fonts at a few sizes — Roboto-Regular from the shared assets.
+		// FontService already converts the R8 atlas to RGBA8 under the hood,
+		// so VG consumes the atlas just like any other IImageData image.
+		mFontService = new FontService();
+		String fontPath = scope .();
+		GetAssetPath("fonts/roboto/Roboto-Regular.ttf", fontPath);
+
+		LoadFontSize(fontPath, 14);
+		LoadFontSize(fontPath, 20);
+		LoadFontSize(fontPath, 36);
+
+		mFontSmall  = mFontService.GetFont("Roboto", 14);
+		mFontMedium = mFontService.GetFont("Roboto", 20);
+		mFontLarge  = mFontService.GetFont("Roboto", 36);
+
+		mVG = new VGContext(mFontService);
 		mVGRenderer = new VGRenderer();
 		if (mVGRenderer.Initialize(Device, SwapChain.Format, (int32)SwapChain.BufferCount, mShaderSystem) case .Err)
 		{
@@ -82,10 +105,20 @@ class VGSandboxApp : Application
 		DrawGraph(mVG, 0, h - 180, w, 180, mTime);
 		DrawScissor(mVG, 20, h - 220, mTime);
 		DrawImages(mVG, 150, 20, mTime);
+		DrawTextDemo(mVG, 150, 170, mTime);
 
 		let batch = mVG.GetBatch();
 		mVGRenderer.Prepare(batch, frame.FrameIndex);
 		mVGRenderer.UpdateProjection(SwapChain.Width, SwapChain.Height, frame.FrameIndex);
+	}
+
+	/// Load a font at a specific pixel size into the shared service.
+	private void LoadFontSize(StringView path, int32 pixelHeight)
+	{
+		FontLoadOptions options = .ExtendedLatin;
+		options.PixelHeight = pixelHeight;
+		if (mFontService.LoadFont("Roboto", path, options) case .Err)
+			Console.WriteLine(scope $"Failed to load font {path} @ {pixelHeight}px");
 	}
 
 	/// Animated eyes that follow a virtual point
@@ -417,6 +450,33 @@ class VGSandboxApp : Application
 		vg.PopState();
 	}
 
+	/// Demonstrates Phase 3 text rendering: multiple sizes, alignments, tinting,
+	/// rotation via transform stack, and aligned text within a bounds rect.
+	private void DrawTextDemo(VGContext vg, float x, float y, float t)
+	{
+		// Plain text at a baseline position, multiple sizes.
+		vg.DrawText("Sedulous.VG text rendering", mFontLarge, .(x, y + 30), Color(240, 240, 245, 255));
+		vg.DrawText("Medium size — the quick brown fox", mFontMedium, .(x, y + 60), Color(180, 200, 255, 255));
+		vg.DrawText("small caption @ 14px", mFontSmall, .(x, y + 82), Color(160, 170, 180, 255));
+
+		// Tinted + animated color — exercises ApplyOpacity and per-vertex color path.
+		let pulse = (uint8)(160 + Math.Sin(t * 2) * 60);
+		vg.DrawText("pulsing tint", mFontMedium, .(x, y + 108), Color(255, pulse, 80, 255));
+
+		// Alignment inside a bounds rect — draw an outline first so the box is visible.
+		let boxRect = RectangleF(x + 350, y + 50, 200, 60);
+		vg.StrokeRect(boxRect, Color(80, 100, 120, 255), 1.0f);
+		vg.DrawText("centered", mFontMedium.Font, mFontMedium.Atlas, mFontService.GetAtlasTexture(mFontMedium),
+			boxRect, .Center, .Middle, Color(220, 220, 220, 255));
+
+		// Rotated text via transform stack — confirms glyph quads go through TransformVertices.
+		vg.PushState();
+		vg.Translate(x + 280, y + 130);
+		vg.Rotate(Math.Sin(t * 0.7f) * 0.3f);
+		vg.DrawText("rotated!", mFontLarge, .(-60, 10), Color(120, 255, 160, 255));
+		vg.PopState();
+	}
+
 	/// Demonstrates different stroke widths
 	private void DrawLineWidths(VGContext vg, float x, float y)
 	{
@@ -601,6 +661,10 @@ class VGSandboxApp : Application
 		}
 
 		if (mVG != null) delete mVG;
+
+		// Font service owns its CachedFonts — delete after VGRenderer disposed
+		// so the cache stops referencing atlas textures before they're freed.
+		if (mFontService != null) delete mFontService;
 
 		if (mShaderSystem != null)
 		{
