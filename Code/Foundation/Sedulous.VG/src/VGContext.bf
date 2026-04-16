@@ -16,6 +16,10 @@ public class VGContext
 	// Sits at Textures[0] so all shape vertices sample white → color passthrough.
 	private OwnedImageData mWhiteTexture ~ delete _;
 
+	// Reusable PathBuilder for the immediate-mode path API (BeginPath / MoveTo /
+	// ... / Fill / Stroke). Reset on each BeginPath call instead of re-allocating.
+	private PathBuilder mCurrentPath = new .() ~ delete _;
+
 	// Optional font service for the convenience DrawText overloads that take
 	// a CachedFont. Low-level overloads take atlas + atlasTexture directly
 	// and don't require a service.
@@ -433,6 +437,87 @@ public class VGContext
 			Math.Max(0, radii.BottomRight - halfThick),
 			Math.Max(0, radii.BottomLeft - halfThick));
 		StrokeRoundedRect(insetRect, insetRadii, color, thickness);
+	}
+
+	// === Immediate-Mode Path API ===
+	//
+	// Build one-off shapes without the PathBuilder + Path + defer-delete
+	// ceremony. The reusable mCurrentPath is reset per BeginPath, so the
+	// only per-shape allocation is the Path snapshot that Fill/Stroke
+	// finalize with (same cost as the manual pattern it replaces — that
+	// can be optimized later by teaching the tessellators to consume
+	// builder data directly).
+
+	/// Begin a new immediate-mode path. Resets the internal builder.
+	public void BeginPath()
+	{
+		mCurrentPath.Clear();
+	}
+
+	/// Move the pen to a new position, starting a new sub-path.
+	public void MoveTo(float x, float y)        => mCurrentPath.MoveTo(x, y);
+	public void MoveTo(Vector2 point)           => mCurrentPath.MoveTo(point);
+
+	/// Draw a straight line to the given point.
+	public void LineTo(float x, float y)        => mCurrentPath.LineTo(x, y);
+	public void LineTo(Vector2 point)           => mCurrentPath.LineTo(point);
+
+	/// Draw a quadratic Bezier curve.
+	public void QuadTo(float cx, float cy, float x, float y) => mCurrentPath.QuadTo(cx, cy, x, y);
+	public void QuadTo(Vector2 control, Vector2 end)         => mCurrentPath.QuadTo(control, end);
+
+	/// Draw a cubic Bezier curve.
+	public void CubicTo(float c1x, float c1y, float c2x, float c2y, float x, float y)
+		=> mCurrentPath.CubicTo(c1x, c1y, c2x, c2y, x, y);
+	public void CubicTo(Vector2 c1, Vector2 c2, Vector2 end)
+		=> mCurrentPath.CubicTo(c1, c2, end);
+
+	/// Draw an SVG-style endpoint arc.
+	public void ArcTo(float rx, float ry, float xAxisRotation, bool largeArc, bool sweep, float x, float y)
+		=> mCurrentPath.ArcTo(rx, ry, xAxisRotation, largeArc, sweep, x, y);
+	public void ArcTo(float rx, float ry, float xAxisRotation, bool largeArc, bool sweep, Vector2 to)
+		=> mCurrentPath.ArcTo(rx, ry, xAxisRotation, largeArc, sweep, to);
+
+	/// Close the current sub-path with a line back to the sub-path start.
+	public void ClosePath() => mCurrentPath.Close();
+
+	/// Current pen position in the immediate-mode path.
+	public Vector2 CurrentPoint => mCurrentPath.CurrentPoint;
+
+	/// Fill the current immediate-mode path with a solid color.
+	public void Fill(Color color, FillRule fillRule = .EvenOdd, bool antiAlias = true)
+	{
+		if (mCurrentPath.CommandCount == 0) return;
+		let path = mCurrentPath.ToPath();
+		defer delete path;
+		FillPath(path, color, fillRule, antiAlias);
+	}
+
+	/// Fill the current immediate-mode path with a gradient / custom fill.
+	public void Fill(IVGFill fill, FillRule fillRule = .EvenOdd, bool antiAlias = true)
+	{
+		if (mCurrentPath.CommandCount == 0) return;
+		let path = mCurrentPath.ToPath();
+		defer delete path;
+		FillPath(path, fill, fillRule, antiAlias);
+	}
+
+	/// Stroke the current immediate-mode path with a stroke style.
+	public void Stroke(Color color, StrokeStyle style, Span<float> dashPattern = default, bool antiAlias = true)
+	{
+		if (mCurrentPath.CommandCount == 0) return;
+		let path = mCurrentPath.ToPath();
+		defer delete path;
+		StrokePath(path, color, style, dashPattern, antiAlias);
+	}
+
+	/// Stroke the current immediate-mode path with just a thickness.
+	public void Stroke(Color color, float thickness = 1.0f)
+	{
+		if (mCurrentPath.CommandCount == 0) return;
+		let path = mCurrentPath.ToPath();
+		defer delete path;
+		StrokePath(path, color, .(thickness));
 	}
 
 	// === Images ===

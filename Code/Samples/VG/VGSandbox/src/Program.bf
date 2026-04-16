@@ -107,6 +107,7 @@ class VGSandboxApp : Application
 		DrawImages(mVG, 150, 20, mTime);
 		DrawTextDemo(mVG, 150, 170, mTime);
 		DrawUIConvenience(mVG, 150, 340);
+		DrawImmediatePath(mVG, 150, 410, mTime);
 
 		let batch = mVG.GetBatch();
 		mVGRenderer.Prepare(batch, frame.FrameIndex);
@@ -451,6 +452,50 @@ class VGSandboxApp : Application
 		vg.PopState();
 	}
 
+	/// Demonstrates Phase 5 immediate-mode path API: no PathBuilder / ToPath /
+	/// defer-delete ceremony — just BeginPath / MoveTo / LineTo / ... / Fill / Stroke.
+	private void DrawImmediatePath(VGContext vg, float x, float y, float t)
+	{
+		// Animated "signature" curve — cubic Bezier arcs that wobble with time.
+		vg.BeginPath();
+		vg.MoveTo(x, y + 25);
+		vg.CubicTo(x + 30, y + 25 - Math.Sin(t * 1.5f) * 15,
+		           x + 60, y + 25 + Math.Sin(t * 1.5f) * 15,
+		           x + 90, y + 25);
+		vg.CubicTo(x + 120, y + 25 - Math.Sin(t * 1.5f + 1) * 15,
+		           x + 150, y + 25 + Math.Sin(t * 1.5f + 1) * 15,
+		           x + 180, y + 25);
+		vg.Stroke(Color(120, 200, 255, 255), 3.0f);
+
+		// Filled star built with straight LineTo segments, then closed.
+		let cx = x + 230;
+		let cy = y + 25;
+		let outerR = 22.0f;
+		let innerR = 10.0f;
+		let pointCount = 5;
+		vg.BeginPath();
+		for (int i = 0; i < pointCount * 2; i++)
+		{
+			let r = (i % 2 == 0) ? outerR : innerR;
+			let angle = (float)i * Math.PI_f / pointCount - Math.PI_f * 0.5f;
+			let px = cx + Math.Cos(angle) * r;
+			let py = cy + Math.Sin(angle) * r;
+			if (i == 0) vg.MoveTo(px, py);
+			else vg.LineTo(px, py);
+		}
+		vg.ClosePath();
+		vg.Fill(Color(255, 220, 120, 255));
+
+		// Teardrop shape using QuadTo — shows mixing move/line/quad/close freely.
+		vg.BeginPath();
+		vg.MoveTo(x + 290, y + 5);
+		vg.QuadTo(x + 320, y + 25, x + 290, y + 45);
+		vg.QuadTo(x + 260, y + 25, x + 290, y + 5);
+		vg.ClosePath();
+		vg.Fill(Color(220, 140, 255, 255));
+		vg.Stroke(Color(255, 255, 255, 120), 1.0f);
+	}
+
 	/// Demonstrates Phase 4 UI convenience primitives: DrawLine, StrokeEllipse,
 	/// and the "border" variants that inset the stroke to align with the rect edges.
 	private void DrawUIConvenience(VGContext vg, float x, float y)
@@ -713,7 +758,7 @@ class Program
 		return app.Run(.()
 		{
 			Title = "VG Sandbox",
-			Width = 1000, Height = 600,
+			Width = 1000, Height = 720,
 			EnableDepth = false
 		});
 	}
