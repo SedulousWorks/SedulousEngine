@@ -106,6 +106,7 @@ class VGSandboxApp : Application
 		DrawScissor(mVG, 20, h - 220, mTime);
 		DrawImages(mVG, 150, 20, mTime);
 		DrawTextDemo(mVG, 150, 170, mTime);
+		DrawUIConvenience(mVG, 150, 340);
 
 		let batch = mVG.GetBatch();
 		mVGRenderer.Prepare(batch, frame.FrameIndex);
@@ -448,6 +449,36 @@ class VGSandboxApp : Application
 		vg.Rotate(t * 0.6f);
 		vg.DrawImage(mCheckerboard, RectangleF(-40, -40, 80, 80));
 		vg.PopState();
+	}
+
+	/// Demonstrates Phase 4 UI convenience primitives: DrawLine, StrokeEllipse,
+	/// and the "border" variants that inset the stroke to align with the rect edges.
+	private void DrawUIConvenience(VGContext vg, float x, float y)
+	{
+		// DrawLine — quick point-to-point. No PathBuilder ceremony.
+		vg.DrawLine(.(x, y + 5), .(x + 120, y + 5), Color(200, 220, 255, 255), 1.0f);
+		vg.DrawLine(.(x, y + 15), .(x + 120, y + 15), Color(200, 220, 255, 255), 2.5f);
+		vg.DrawLine(.(x, y + 30), .(x + 120, y + 30), Color(200, 220, 255, 255), 5.0f);
+
+		// StrokeEllipse — was missing from VG before this phase.
+		vg.StrokeEllipse(.(x + 180, y + 20), 40, 18, Color(255, 200, 140, 255), 2.0f);
+
+		// Border vs Stroke comparison — draw both around the same rect so the
+		// inset difference is visible. The outer edge of DrawBorderRect aligns
+		// exactly with the rect; StrokeRect's stroke straddles the edge.
+		let compareRect = RectangleF(x + 250, y, 60, 40);
+		vg.DrawBorderRect(compareRect, Color(120, 255, 160, 255), 4.0f);
+		// Ghost outline showing where the rect actually is (1px inside the border).
+		vg.StrokeRect(compareRect, Color(255, 255, 255, 60), 1.0f);
+
+		// Same for rounded: outer edge aligns with rect bounds.
+		let roundedRect = RectangleF(x + 330, y, 80, 40);
+		vg.DrawBorderRoundedRect(roundedRect, 10, Color(180, 160, 255, 255), 3.0f);
+
+		// Per-corner rounded border (different radius each corner).
+		let customRect = RectangleF(x + 430, y, 80, 40);
+		vg.DrawBorderRoundedRect(customRect, CornerRadii(2, 12, 2, 12),
+			Color(255, 180, 220, 255), 2.0f);
 	}
 
 	/// Demonstrates Phase 3 text rendering: multiple sizes, alignments, tinting,

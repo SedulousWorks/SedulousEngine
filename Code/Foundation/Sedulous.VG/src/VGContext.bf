@@ -369,6 +369,72 @@ public class VGContext
 		StrokePath(path, color, .(width));
 	}
 
+	/// Stroke an ellipse
+	public void StrokeEllipse(Vector2 center, float rx, float ry, Color color, float width = 1.0f)
+	{
+		let pb = scope PathBuilder();
+		ShapeBuilder.BuildEllipse(center, rx, ry, pb);
+		let path = pb.ToPath();
+		defer delete path;
+		StrokePath(path, color, .(width));
+	}
+
+	// === UI Convenience ===
+
+	/// Draw a straight line between two points. Convenience for the common
+	/// case where callers would otherwise build a 2-point PathBuilder.
+	public void DrawLine(Vector2 a, Vector2 b, Color color, float thickness = 1.0f)
+	{
+		let pb = scope PathBuilder();
+		pb.MoveTo(a.X, a.Y);
+		pb.LineTo(b.X, b.Y);
+		let path = pb.ToPath();
+		defer delete path;
+		StrokePath(path, color, .(thickness));
+	}
+
+	/// Draw a border rectangle with the stroke fully *inside* the rect bounds.
+	/// Unlike StrokeRect (which centers the stroke on the edges — half inside,
+	/// half outside), DrawBorderRect insets by half-thickness so the outer
+	/// stroke edge aligns exactly with the rect. Use this for UI borders
+	/// where content lives at rect + thickness.
+	public void DrawBorderRect(RectangleF rect, Color color, float thickness = 1.0f)
+	{
+		let halfThick = thickness * 0.5f;
+		let insetRect = RectangleF(
+			rect.X + halfThick,
+			rect.Y + halfThick,
+			rect.Width - thickness,
+			rect.Height - thickness);
+		StrokeRect(insetRect, color, thickness);
+	}
+
+	/// Draw a rounded border rectangle with the stroke fully inside the rect.
+	/// See DrawBorderRect — same inset behavior with a uniform corner radius.
+	public void DrawBorderRoundedRect(RectangleF rect, float radius, Color color, float thickness = 1.0f)
+	{
+		DrawBorderRoundedRect(rect, CornerRadii(radius), color, thickness);
+	}
+
+	/// Draw a rounded border rectangle with the stroke fully inside the rect,
+	/// using per-corner radii. The radii are also shrunk by half-thickness so
+	/// the inset corners stay visually consistent with the original shape.
+	public void DrawBorderRoundedRect(RectangleF rect, CornerRadii radii, Color color, float thickness = 1.0f)
+	{
+		let halfThick = thickness * 0.5f;
+		let insetRect = RectangleF(
+			rect.X + halfThick,
+			rect.Y + halfThick,
+			rect.Width - thickness,
+			rect.Height - thickness);
+		let insetRadii = CornerRadii(
+			Math.Max(0, radii.TopLeft - halfThick),
+			Math.Max(0, radii.TopRight - halfThick),
+			Math.Max(0, radii.BottomRight - halfThick),
+			Math.Max(0, radii.BottomLeft - halfThick));
+		StrokeRoundedRect(insetRect, insetRadii, color, thickness);
+	}
+
 	// === Images ===
 
 	/// Draw an image at its native size at the given top-left position.
