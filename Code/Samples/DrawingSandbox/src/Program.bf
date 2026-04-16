@@ -6,7 +6,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
 using Sedulous.Runtime.Client;
 using Sedulous.Drawing;
-using Sedulous.Drawing.Fonts;
+using Sedulous.Fonts.TTF;
 using Sedulous.Drawing.Renderer;
 using Sedulous.Fonts;
 using Sedulous.Shaders;

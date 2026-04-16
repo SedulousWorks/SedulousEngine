@@ -10,12 +10,14 @@ using Sedulous.Runtime;
 using Sedulous.Drawing;
 using Sedulous.Fonts;
 using Sedulous.GUI;
-using Sedulous.Drawing.Fonts;
+using Sedulous.Fonts.TTF;
 using Sedulous.Drawing.Renderer;
 using Sedulous.Shell.Input;
 using Sedulous.GUI.Shell;
 using Sedulous.Shaders;
 using Sedulous.Imaging;
+using Sedulous.ImageData;
+using Sedulous.Fonts.TTF;
 
 /// GUI Sandbox sample demonstrating the Sedulous.GUI framework.
 /// Features a professional header with theme/scale switching and demo navigation.

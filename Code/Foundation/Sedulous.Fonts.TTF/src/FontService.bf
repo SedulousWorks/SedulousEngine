@@ -1,10 +1,10 @@
-namespace Sedulous.Drawing.Fonts;
+namespace Sedulous.Fonts.TTF;
 
 using System;
 using System.Collections;
 using Sedulous.Fonts;
 using Sedulous.Fonts.TTF;
-using Sedulous.Drawing;
+using Sedulous.ImageData;
 
 /// Font service implementation that loads fonts and creates atlas textures.
 /// This service manages CPU-side font data and atlas pixel data.

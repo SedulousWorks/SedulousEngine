@@ -1,6 +1,7 @@
 using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
+using Sedulous.ImageData;
 
 namespace Sedulous.GUI;
 

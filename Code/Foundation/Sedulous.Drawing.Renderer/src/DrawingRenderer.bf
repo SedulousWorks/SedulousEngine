@@ -7,6 +7,7 @@ using Sedulous.Shaders;
 using Sedulous.Drawing;
 using Sedulous.Core.Mathematics;
 using Sedulous.Profiler;
+using Sedulous.ImageData;
 
 /// Uniform buffer data for projection matrix.
 [CRepr]
@@ -87,12 +88,12 @@ public class DrawingRenderer : IDisposable
 	private List<CachedTexture> mTextureCache = new .() ~ { for (var e in _) { e.Dispose(mDevice, mFrameCount); delete e; } delete _; };
 
 	// Textures from current batch (stored for bind group creation)
-	private List<Sedulous.Drawing.IImageData> mBatchTextures = new .() ~ delete _;
+	private List<IImageData> mBatchTextures = new .() ~ delete _;
 
 	/// Cached GPU resources for a Drawing.ITexture
 	private class CachedTexture
 	{
-		public Sedulous.Drawing.IImageData SourceTexture;
+		public IImageData SourceTexture;
 		public Sedulous.RHI.ITexture GpuTexture;
 		public ITextureView GpuTextureView;
 		public IBindGroup[] BindGroups;
@@ -183,7 +184,7 @@ public class DrawingRenderer : IDisposable
 	}
 
 	/// Get or create cached GPU resources for a Drawing.ITexture
-	private CachedTexture GetOrCreateCachedTexture(Sedulous.Drawing.IImageData texture)
+	private CachedTexture GetOrCreateCachedTexture(IImageData texture)
 	{
 		if (texture == null)
 			return null;
@@ -273,7 +274,7 @@ public class DrawingRenderer : IDisposable
 	/// This allows render targets or other externally-created textures to be used in 2D drawing.
 	/// The caller owns the GPU texture and view - the renderer will not delete them.
 	/// Call UnregisterExternalTexture when done to remove from cache.
-	public void RegisterExternalTexture(Sedulous.Drawing.IImageData imageRef, ITextureView gpuTextureView)
+	public void RegisterExternalTexture(IImageData imageRef, ITextureView gpuTextureView)
 	{
 		if (imageRef == null || gpuTextureView == null)
 			return;
@@ -320,7 +321,7 @@ public class DrawingRenderer : IDisposable
 	}
 
 	/// Unregister an external texture from the cache.
-	public void UnregisterExternalTexture(Sedulous.Drawing.IImageData imageRef)
+	public void UnregisterExternalTexture(IImageData imageRef)
 	{
 		if (imageRef == null)
 			return;

@@ -1,6 +1,20 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Imaging" = "*", "Sedulous.RHI" = "*", "Sedulous.RHI.Vulkan" = "*", "Sedulous.RHI.Validation" = "*", "Sedulous.Shell.SDL3" = "*", "Sedulous.Runtime.Client" = "*", "Sedulous.Drawing" = "*", "Sedulous.Drawing.Fonts" = "*", "Sedulous.Drawing.Renderer" = "*", "Sedulous.Fonts" = "*", "Sedulous.Fonts.TTF" = "*", "Sedulous.Shaders" = "*"}
 
 [Project]
 Name = "DrawingSandbox"
 StartupObject = "DrawingSandbox.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core.Mathematics" = "*"
+"Sedulous.Imaging" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.Vulkan" = "*"
+"Sedulous.RHI.Validation" = "*"
+"Sedulous.Shell.SDL3" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Drawing" = "*"
+"Sedulous.Drawing.Renderer" = "*"
+"Sedulous.Fonts" = "*"
+"Sedulous.Fonts.TTF" = "*"
+"Sedulous.Shaders" = "*"

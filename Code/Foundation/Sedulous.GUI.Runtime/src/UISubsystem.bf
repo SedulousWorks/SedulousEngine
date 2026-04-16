@@ -6,13 +6,13 @@ using Sedulous.GUI;
 using Sedulous.GUI.Shell;
 using Sedulous.Drawing;
 using Sedulous.Drawing.Renderer;
-using Sedulous.Drawing.Fonts;
 using Sedulous.Fonts;
 using Sedulous.RHI;
 using Sedulous.Shell;
 using Sedulous.Shell.Input;
 using Sedulous.Shaders;
 using Sedulous.Profiler;
+using Sedulous.Fonts.TTF;
 
 /// Foundation-layer subsystem for screen-space GUI overlays.
 /// Owns GUIContext, DrawingRenderer, FontService, Theme, and ShaderSystem.

@@ -1,6 +1,19 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Runtime" = "*", "Sedulous.Core" = "*", "Sedulous.GUI" = "*", "Sedulous.GUI.Shell" = "*", "Sedulous.Drawing" = "*", "Sedulous.Drawing.Renderer" = "*", "Sedulous.Drawing.Fonts" = "*", "Sedulous.Fonts" = "*", "Sedulous.RHI" = "*", "Sedulous.Shell" = "*", "Sedulous.Shaders" = "*", "Sedulous.Profiler" = "*"}
 
 [Project]
 Name = "Sedulous.GUI.Runtime"
-TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Shell" = "*"
+"Sedulous.Drawing" = "*"
+"Sedulous.Drawing.Renderer" = "*"
+"Sedulous.Fonts" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Shaders" = "*"
+"Sedulous.Profiler" = "*"
+"Sedulous.Fonts.TTF" = "*"

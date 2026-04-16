@@ -1,4 +1,4 @@
-namespace Sedulous.Drawing;
+namespace Sedulous.ImageData;
 
 /// Pixel format for CPU-side texture data.
 /// This is a simplified format enum for the Drawing layer.

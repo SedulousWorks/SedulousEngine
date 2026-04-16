@@ -5,6 +5,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.GUI;
 using Sedulous.Imaging;
 using Sedulous.Drawing;
+using Sedulous.ImageData;
 
 /// Phase 5: Display Controls Demo
 static class DisplayControlsDemo

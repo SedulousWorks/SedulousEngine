@@ -1,7 +1,8 @@
 using System;
 using Sedulous.Fonts;
+using Sedulous.ImageData;
 
-namespace Sedulous.Drawing;
+namespace Sedulous.Fonts;
 
 /// Service interface for providing fonts to drawing and UI systems.
 /// The implementation is responsible for managing font loading,

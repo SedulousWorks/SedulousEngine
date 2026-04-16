@@ -1,6 +1,6 @@
 using System;
 
-namespace Sedulous.Drawing;
+namespace Sedulous.ImageData;
 
 /// Interface for textures used in 2D drawing.
 /// Textures carry CPU pixel data that the renderer uploads to the GPU.

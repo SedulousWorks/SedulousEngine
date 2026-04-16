@@ -1,0 +1,6 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.ImageData"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.ImageData.Program"

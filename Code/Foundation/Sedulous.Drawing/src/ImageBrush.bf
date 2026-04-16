@@ -1,4 +1,5 @@
 using Sedulous.Core.Mathematics;
+using Sedulous.ImageData;
 
 namespace Sedulous.Drawing;
 
