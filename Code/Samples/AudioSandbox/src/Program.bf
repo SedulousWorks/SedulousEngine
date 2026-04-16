@@ -41,7 +41,7 @@ class AudioSandboxApp : Application
 	private bool mIsPlaying = false;
 
 	// GUI system (handles rendering, input, fonts internally)
-	private UISubsystem mUISubsystem;
+	private GUISubsystem mUISubsystem;
 	private DockPanel mUIRoot;
 
 	// UI Elements (for updating)
@@ -61,7 +61,7 @@ class AudioSandboxApp : Application
 			return;
 
 		// Initialize GUI subsystem
-		mUISubsystem = new UISubsystem();
+		mUISubsystem = new GUISubsystem();
 		context.RegisterSubsystem(mUISubsystem);
 
 		String shaderPath = scope .();

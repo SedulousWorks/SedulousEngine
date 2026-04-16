@@ -18,7 +18,7 @@ using Sedulous.Fonts.TTF;
 /// Owns GUIContext, DrawingRenderer, FontService, Theme, and ShaderSystem.
 /// Register with Context to get automatic Update() calls for input routing.
 /// Call Render() explicitly after 3D scene rendering, before present.
-public class UISubsystem : Subsystem
+public class GUISubsystem : Subsystem
 {
 	/// Updates after game logic but before rendering.
 	public override int32 UpdateOrder => 400;
