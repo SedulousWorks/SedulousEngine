@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.ImageData;
 
 namespace Sedulous.VG;
 
@@ -13,6 +14,10 @@ public class VGBatch
 	public List<uint32> Indices = new .() ~ delete _;
 	/// Draw commands (batched by state)
 	public List<VGCommand> Commands = new .() ~ delete _;
+	/// Textures referenced by commands (by TextureIndex).
+	/// Not owned by VGBatch — caller (VGContext) manages texture lifetime.
+	/// By convention, index 0 is always a 1x1 white texture for solid-color draws.
+	public List<IImageData> Textures = new .() ~ delete _;
 
 	/// Get vertex data as a span for GPU upload
 	public Span<VGVertex> GetVertexData()
@@ -35,18 +40,30 @@ public class VGBatch
 		return Commands[index];
 	}
 
+	/// Get the texture for a command (null if the command has no valid texture).
+	public IImageData GetTextureForCommand(int index)
+	{
+		let cmd = Commands[index];
+		if (cmd.TextureIndex >= 0 && cmd.TextureIndex < Textures.Count)
+			return Textures[cmd.TextureIndex];
+		return null;
+	}
+
 	/// Total vertex count
 	public int VertexCount => Vertices.Count;
 
 	/// Total index count
 	public int IndexCount => Indices.Count;
 
-	/// Clear all data for reuse
+	/// Clear all data for reuse.
+	/// Also clears the texture list — the caller is expected to re-add any
+	/// required textures (e.g. the white fallback at index 0).
 	public void Clear()
 	{
 		Vertices.Clear();
 		Indices.Clear();
 		Commands.Clear();
+		Textures.Clear();
 	}
 
 	/// Reserve capacity for expected geometry

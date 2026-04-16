@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
+using Sedulous.ImageData;
 
 namespace Sedulous.VG;
 
@@ -9,6 +10,10 @@ namespace Sedulous.VG;
 public class VGContext
 {
 	private VGBatch mBatch = new .() ~ delete _;
+
+	// 1x1 white texture used for solid-color draws (shape/path/stroke).
+	// Sits at Textures[0] so all shape vertices sample white → color passthrough.
+	private OwnedImageData mWhiteTexture ~ delete _;
 
 	// State stack
 	private List<VGState> mStateStack = new .() ~ delete _;
@@ -20,6 +25,7 @@ public class VGContext
 
 	// Command tracking
 	private VGBlendMode mCurrentBlendMode = .Normal;
+	private int32 mCurrentTextureIndex = 0;  // 0 = white texture (solid draws)
 	private int32 mCommandStartIndex = 0;
 
 	// Default tessellation tolerance
@@ -29,6 +35,13 @@ public class VGContext
 	{
 		mCurrentState = .();
 		mStateStack.Reserve(16);
+
+		// Create 1x1 white texture for solid color drawing.
+		uint8[4] whitePixel = .(255, 255, 255, 255);
+		mWhiteTexture = new OwnedImageData(1, 1, .RGBA8, Span<uint8>(&whitePixel, 4));
+
+		// Register as texture 0 in the batch.
+		mBatch.Textures.Add(mWhiteTexture);
 	}
 
 	// === Output ===
@@ -49,7 +62,11 @@ public class VGContext
 		mOpacityStack.Clear();
 		mCurrentState = .();
 		mCurrentBlendMode = .Normal;
+		mCurrentTextureIndex = 0;
 		mCommandStartIndex = 0;
+
+		// Re-add the white texture at index 0 for solid color drawing.
+		mBatch.Textures.Add(mWhiteTexture);
 	}
 
 	/// Set the tessellation tolerance (lower = smoother curves, more vertices)
@@ -178,6 +195,7 @@ public class VGContext
 	/// Fill a path with a solid color
 	public void FillPath(Path path, Color color, FillRule fillRule = .EvenOdd, bool antiAlias = true)
 	{
+		SetupForSolidDraw();
 		let startVertex = mBatch.Vertices.Count;
 		let scaledTolerance = GetScaledTolerance();
 		FillTessellator.Tessellate(path, fillRule, ApplyOpacity(color), antiAlias, mBatch.Vertices, mBatch.Indices, scaledTolerance);
@@ -187,6 +205,7 @@ public class VGContext
 	/// Fill a path with a fill style
 	public void FillPath(Path path, IVGFill fill, FillRule fillRule = .EvenOdd, bool antiAlias = true)
 	{
+		SetupForSolidDraw();
 		let startVertex = mBatch.Vertices.Count;
 		let scaledTolerance = GetScaledTolerance();
 		FillTessellator.TessellateWithFill(path, fillRule, fill, antiAlias, mBatch.Vertices, mBatch.Indices, scaledTolerance);
@@ -197,6 +216,7 @@ public class VGContext
 	/// Stroke a path with a solid color
 	public void StrokePath(Path path, Color color, StrokeStyle style, Span<float> dashPattern = default, bool antiAlias = true)
 	{
+		SetupForSolidDraw();
 		// Flatten path to polylines
 		let scaledTolerance = GetScaledTolerance();
 		let subPaths = scope List<FlattenedSubPath>();
@@ -338,6 +358,44 @@ public class VGContext
 		StrokePath(path, color, .(width));
 	}
 
+	// === Texture state (used by text/image paths — currently only solid) ===
+
+	/// Look up a texture in the batch or append it. Returns the index.
+	/// Index 0 is reserved for the 1x1 white texture used by solid draws.
+	private int32 GetOrAddTexture(IImageData tex)
+	{
+		if (tex == null) return 0;
+		for (int i = 0; i < mBatch.Textures.Count; i++)
+		{
+			if (mBatch.Textures[i] === tex)
+				return (int32)i;
+		}
+		mBatch.Textures.Add(tex);
+		return (int32)(mBatch.Textures.Count - 1);
+	}
+
+	/// Ensure the current command state uses the solid (white) texture.
+	/// Flushes the current command if a texture switch is needed.
+	private void SetupForSolidDraw()
+	{
+		if (mCurrentTextureIndex != 0)
+		{
+			FlushCurrentCommand();
+			mCurrentTextureIndex = 0;
+		}
+	}
+
+	/// Ensure the current command state uses the given texture index.
+	/// Flushes the current command if a texture switch is needed.
+	private void SetupForTextureDraw(int32 textureIndex)
+	{
+		if (mCurrentTextureIndex != textureIndex)
+		{
+			FlushCurrentCommand();
+			mCurrentTextureIndex = textureIndex;
+		}
+	}
+
 	// === Internal Helpers ===
 
 	private void FlushCurrentCommand()
@@ -348,6 +406,7 @@ public class VGContext
 			var cmd = VGCommand();
 			cmd.StartIndex = mCommandStartIndex;
 			cmd.IndexCount = indexCount;
+			cmd.TextureIndex = mCurrentTextureIndex;
 			cmd.ClipRect = mCurrentState.ClipRect;
 			cmd.BlendMode = mCurrentBlendMode;
 			cmd.ClipMode = mCurrentState.ClipMode;

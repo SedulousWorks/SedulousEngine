@@ -6,6 +6,7 @@ using Sedulous.RHI;
 using Sedulous.Shaders;
 using Sedulous.VG;
 using Sedulous.Core.Mathematics;
+using Sedulous.ImageData;
 
 /// Uniform buffer data for projection matrix.
 [CRepr]
@@ -16,6 +17,7 @@ struct VGUniforms
 
 /// Renders VGContext/VGBatch content using RHI.
 /// Creates GPU vertex/index buffers, uploads per-frame, and renders with alpha blending.
+/// Creates GPU textures on demand from IImageData provided by the VGBatch.
 /// Does NOT own the device or swapchain — caller manages those.
 public class VGRenderer : IDisposable
 {
@@ -36,12 +38,41 @@ public class VGRenderer : IDisposable
 	private IBuffer[] mVertexBuffers;
 	private IBuffer[] mIndexBuffers;
 	private IBuffer[] mUniformBuffers;
-	private IBindGroup[] mBindGroups;
 
-	// White pixel texture for solid color rendering
-	private ITexture mWhiteTexture;
-	private ITextureView mWhiteTextureView;
+	// Sampler
 	private ISampler mSampler;
+
+	// Texture cache — maps IImageData to GPU resources.
+	// Using a list since IImageData doesn't implement IHashable.
+	private List<CachedTexture> mTextureCache = new .() ~ { for (var e in _) { e.Dispose(mDevice, mFrameCount); delete e; } delete _; };
+
+	// Textures from the current batch (stored for bind group creation during Render)
+	private List<IImageData> mBatchTextures = new .() ~ delete _;
+
+	/// Cached GPU resources for an IImageData.
+	private class CachedTexture
+	{
+		public IImageData SourceTexture;
+		public Sedulous.RHI.ITexture GpuTexture;
+		public ITextureView GpuTextureView;
+		public IBindGroup[] BindGroups;
+		public bool IsExternal;  // If true, we don't own the GPU resources
+
+		public void Dispose(IDevice device, int32 frameCount)
+		{
+			if (BindGroups != null)
+			{
+				for (int i = 0; i < frameCount; i++)
+					if (BindGroups[i] != null) { var bg = BindGroups[i]; device.DestroyBindGroup(ref bg); BindGroups[i] = null; }
+				delete BindGroups;
+			}
+			if (!IsExternal)
+			{
+				if (GpuTextureView != null) device.DestroyTextureView(ref GpuTextureView);
+				if (GpuTexture != null) device.DestroyTexture(ref GpuTexture);
+			}
+		}
+	}
 
 	// Batch data converted for GPU
 	private List<VGRenderVertex> mVertices = new .() ~ delete _;
@@ -73,9 +104,6 @@ public class VGRenderer : IDisposable
 		if (CreateSampler() case .Err)
 			return .Err;
 
-		if (CreateWhiteTexture() case .Err)
-			return .Err;
-
 		if (CreateLayouts() case .Err)
 			return .Err;
 
@@ -87,6 +115,98 @@ public class VGRenderer : IDisposable
 
 		IsInitialized = true;
 		return .Ok;
+	}
+
+	/// Convert ImageData.PixelFormat to RHI.TextureFormat
+	private TextureFormat ToRHIFormat(PixelFormat format)
+	{
+		switch (format)
+		{
+		case .R8: return .R8Unorm;
+		case .RGBA8: return .RGBA8Unorm;
+		case .BGRA8: return .BGRA8Unorm;
+		}
+	}
+
+	/// Get bytes per pixel for a pixel format
+	private uint32 GetBytesPerPixel(PixelFormat format)
+	{
+		switch (format)
+		{
+		case .R8: return 1;
+		case .RGBA8, .BGRA8: return 4;
+		}
+	}
+
+	/// Get or create cached GPU resources for an IImageData.
+	private CachedTexture GetOrCreateCachedTexture(IImageData texture)
+	{
+		if (texture == null)
+			return null;
+
+		for (let cached in mTextureCache)
+		{
+			if (cached.SourceTexture === texture)
+				return cached;
+		}
+
+		let pixelData = texture.PixelData;
+		if (pixelData.Length == 0)
+			return null;
+
+		let width = texture.Width;
+		let height = texture.Height;
+		let format = ToRHIFormat(texture.Format);
+
+		TextureDesc textureDesc = TextureDesc.Texture2D(
+			width, height, format, TextureUsage.Sampled | TextureUsage.CopyDst,
+			label: "VGRenderer cached texture"
+		);
+
+		Sedulous.RHI.ITexture gpuTexture;
+		if (mDevice.CreateTexture(textureDesc) case .Ok(let tex))
+			gpuTexture = tex;
+		else
+			return null;
+
+		TextureDataLayout dataLayout = .()
+		{
+			Offset = 0,
+			BytesPerRow = width * GetBytesPerPixel(texture.Format),
+			RowsPerImage = height
+		};
+		Extent3D writeSize = .(width, height, 1);
+		TransferHelper.WriteTextureSync(mQueue, mDevice, gpuTexture, pixelData, dataLayout, writeSize);
+
+		TextureViewDesc viewDesc = .() { Format = format };
+		ITextureView gpuTextureView;
+		if (mDevice.CreateTextureView(gpuTexture, viewDesc) case .Ok(let view))
+			gpuTextureView = view;
+		else
+		{
+			mDevice.DestroyTexture(ref gpuTexture);
+			return null;
+		}
+
+		let cached = new CachedTexture();
+		cached.SourceTexture = texture;
+		cached.GpuTexture = gpuTexture;
+		cached.GpuTextureView = gpuTextureView;
+		cached.BindGroups = new IBindGroup[mFrameCount];
+		mTextureCache.Add(cached);
+
+		return cached;
+	}
+
+	/// Clear all cached textures.
+	public void ClearTextureCache()
+	{
+		for (var cached in mTextureCache)
+		{
+			cached.Dispose(mDevice, mFrameCount);
+			delete cached;
+		}
+		mTextureCache.Clear();
 	}
 
 	/// Prepare batch data for rendering.
@@ -108,6 +228,11 @@ public class VGRenderer : IDisposable
 		for (let cmd in batch.Commands)
 			mDrawCommands.Add(cmd);
 
+		// Store batch textures for multi-texture rendering
+		mBatchTextures.Clear();
+		for (let tex in batch.Textures)
+			mBatchTextures.Add(tex);
+
 		// Upload to GPU buffers
 		if (mVertices.Count > 0)
 		{
@@ -117,6 +242,10 @@ public class VGRenderer : IDisposable
 			let indexData = Span<uint8>((uint8*)mIndices.Ptr, mIndices.Count * sizeof(uint32));
 			TransferHelper.WriteMappedBuffer(mIndexBuffers[frameIndex], 0, indexData);
 		}
+
+		// Ensure GPU textures and bind groups exist for each batch texture
+		for (int32 texIdx = 0; texIdx < mBatchTextures.Count; texIdx++)
+			UpdateTextureBindGroup(texIdx, frameIndex);
 	}
 
 	/// Update the projection matrix for the given viewport size.
@@ -139,14 +268,25 @@ public class VGRenderer : IDisposable
 		renderPass.SetPipeline(mPipeline);
 		renderPass.SetVertexBuffer(0, mVertexBuffers[frameIndex], 0);
 		renderPass.SetIndexBuffer(mIndexBuffers[frameIndex], .UInt32, 0);
-		renderPass.SetBindGroup(0, mBindGroups[frameIndex]);
+
+		// Track current texture to minimize bind group switches.
+		// Use -2 as sentinel to force first bind group set.
+		int32 currentTextureIndex = -2;
 
 		for (let cmd in mDrawCommands)
 		{
 			if (cmd.IndexCount == 0)
 				continue;
 
-			// Set scissor rect based on clip mode
+			let texIdx = cmd.TextureIndex;
+			if (texIdx != currentTextureIndex)
+			{
+				let bindGroup = GetBindGroupForTexture(texIdx, frameIndex);
+				if (bindGroup != null)
+					renderPass.SetBindGroup(0, bindGroup);
+				currentTextureIndex = texIdx;
+			}
+
 			if (cmd.ClipMode == .Scissor && cmd.ClipRect.Width > 0 && cmd.ClipRect.Height > 0)
 			{
 				let startX = (int32)Math.Ceiling(Math.Max(0f, cmd.ClipRect.X));
@@ -156,6 +296,11 @@ public class VGRenderer : IDisposable
 				let w = (uint32)Math.Max(0, endX - startX);
 				let h = (uint32)Math.Max(0, endY - startY);
 				renderPass.SetScissor(startX, startY, w, h);
+			}
+			else if (cmd.ClipMode == .Scissor)
+			{
+				// Empty/invalid clip rect — hide everything
+				renderPass.SetScissor(0, 0, 0, 0);
 			}
 			else
 			{
@@ -195,29 +340,6 @@ public class VGRenderer : IDisposable
 			return .Ok;
 		}
 		return .Err;
-	}
-
-	private Result<void> CreateWhiteTexture()
-	{
-		// 1x1 white pixel texture for solid color rendering
-		TextureDesc texDesc = TextureDesc.Texture2D(1, 1, .RGBA8Unorm, .Sampled | .CopyDst);
-		if (mDevice.CreateTexture(texDesc) case .Ok(let tex))
-			mWhiteTexture = tex;
-		else
-			return .Err;
-
-		uint8[4] whitePixel = .(255, 255, 255, 255);
-		TextureDataLayout layout = .() { BytesPerRow = 4, RowsPerImage = 1 };
-		Extent3D size = .(1, 1, 1);
-		TransferHelper.WriteTextureSync(mQueue, mDevice, mWhiteTexture, Span<uint8>(&whitePixel[0], 4), layout, size);
-
-		TextureViewDesc viewDesc = .() { Format = .RGBA8Unorm };
-		if (mDevice.CreateTextureView(mWhiteTexture, viewDesc) case .Ok(let view))
-			mWhiteTextureView = view;
-		else
-			return .Err;
-
-		return .Ok;
 	}
 
 	private Result<void> CreateLayouts()
@@ -300,7 +422,6 @@ public class VGRenderer : IDisposable
 		mVertexBuffers = new IBuffer[mFrameCount];
 		mIndexBuffers = new IBuffer[mFrameCount];
 		mUniformBuffers = new IBuffer[mFrameCount];
-		mBindGroups = new IBindGroup[mFrameCount];
 
 		for (int32 i = 0; i < mFrameCount; i++)
 		{
@@ -339,32 +460,65 @@ public class VGRenderer : IDisposable
 				mUniformBuffers[i] = ub;
 			else
 				return .Err;
-
-			// Bind group (uses white texture)
-			BindGroupEntry[3] bindGroupEntries = .(
-				BindGroupEntry.Buffer(mUniformBuffers[i], 0, (uint64)sizeof(VGUniforms)),
-				BindGroupEntry.Texture(mWhiteTextureView),
-				BindGroupEntry.Sampler(mSampler)
-			);
-			BindGroupDesc bindGroupDesc = .(mBindGroupLayout, bindGroupEntries);
-			if (mDevice.CreateBindGroup(bindGroupDesc) case .Ok(let group))
-				mBindGroups[i] = group;
-			else
-				return .Err;
 		}
 
 		return .Ok;
 	}
 
+	private void UpdateTextureBindGroup(int32 textureIndex, int32 frameIndex)
+	{
+		if (textureIndex >= mBatchTextures.Count)
+			return;
+
+		let texture = mBatchTextures[textureIndex];
+		if (texture == null)
+			return;
+
+		let cached = GetOrCreateCachedTexture(texture);
+		if (cached == null || cached.GpuTextureView == null)
+			return;
+
+		// Skip if bind group already exists for this frame
+		if (cached.BindGroups[frameIndex] != null)
+			return;
+
+		BindGroupEntry[3] bindGroupEntries = .(
+			BindGroupEntry.Buffer(mUniformBuffers[frameIndex], 0, (uint64)sizeof(VGUniforms)),
+			BindGroupEntry.Texture(cached.GpuTextureView),
+			BindGroupEntry.Sampler(mSampler)
+		);
+		BindGroupDesc bindGroupDesc = .(mBindGroupLayout, bindGroupEntries);
+		if (mDevice.CreateBindGroup(bindGroupDesc) case .Ok(let group))
+			cached.BindGroups[frameIndex] = group;
+	}
+
+	private IBindGroup GetBindGroupForTexture(int32 textureIndex, int32 frameIndex)
+	{
+		if (mBatchTextures.Count == 0)
+			return null;
+
+		// For solid-color drawing (legacy index -1), use texture 0 (white fallback).
+		let effectiveIndex = (textureIndex < 0) ? 0 : textureIndex;
+		if (effectiveIndex >= mBatchTextures.Count)
+			return null;
+
+		let texture = mBatchTextures[effectiveIndex];
+		if (texture == null)
+			return null;
+
+		for (let cached in mTextureCache)
+		{
+			if (cached.SourceTexture === texture)
+				return cached.BindGroups[frameIndex];
+		}
+		return null;
+	}
+
 	public void Dispose()
 	{
-		if (mBindGroups != null)
-		{
-			for (var bg in ref mBindGroups)
-				if (bg != null) mDevice.DestroyBindGroup(ref bg);
-			delete mBindGroups;
-			mBindGroups = null;
-		}
+		// Texture cache (includes bind groups)
+		ClearTextureCache();
+
 		if (mUniformBuffers != null)
 		{
 			for (var buf in ref mUniformBuffers)
@@ -390,8 +544,6 @@ public class VGRenderer : IDisposable
 		if (mPipeline != null) mDevice.DestroyRenderPipeline(ref mPipeline);
 		if (mPipelineLayout != null) mDevice.DestroyPipelineLayout(ref mPipelineLayout);
 		if (mBindGroupLayout != null) mDevice.DestroyBindGroupLayout(ref mBindGroupLayout);
-		if (mWhiteTextureView != null) mDevice.DestroyTextureView(ref mWhiteTextureView);
-		if (mWhiteTexture != null) mDevice.DestroyTexture(ref mWhiteTexture);
 		if (mSampler != null) mDevice.DestroySampler(ref mSampler);
 
 		IsInitialized = false;
