@@ -358,7 +358,132 @@ public class VGContext
 		StrokePath(path, color, .(width));
 	}
 
-	// === Texture state (used by text/image paths — currently only solid) ===
+	// === Images ===
+
+	/// Draw an image at its native size at the given top-left position.
+	public void DrawImage(IImageData texture, Vector2 position)
+	{
+		if (texture == null) return;
+		DrawImage(texture,
+			.(position.X, position.Y, texture.Width, texture.Height),
+			.(0, 0, texture.Width, texture.Height),
+			Color.White);
+	}
+
+	/// Draw an image at its native size with a tint.
+	public void DrawImage(IImageData texture, Vector2 position, Color tint)
+	{
+		if (texture == null) return;
+		DrawImage(texture,
+			.(position.X, position.Y, texture.Width, texture.Height),
+			.(0, 0, texture.Width, texture.Height),
+			tint);
+	}
+
+	/// Draw an image stretched to fit a destination rectangle.
+	public void DrawImage(IImageData texture, RectangleF destRect)
+	{
+		if (texture == null) return;
+		DrawImage(texture, destRect, .(0, 0, texture.Width, texture.Height), Color.White);
+	}
+
+	/// Draw a sub-region of an image stretched to fit a destination rectangle, with tint.
+	public void DrawImage(IImageData texture, RectangleF destRect, RectangleF srcRect, Color tint)
+	{
+		if (texture == null) return;
+
+		let textureIndex = GetOrAddTexture(texture);
+		SetupForTextureDraw(textureIndex);
+
+		let startVertex = mBatch.Vertices.Count;
+		EmitTexturedQuad(destRect, srcRect, texture.Width, texture.Height, ApplyOpacity(tint));
+		TransformVertices(startVertex);
+	}
+
+	/// Draw a 9-slice image scaled to fit a destination rectangle.
+	/// Corners stay at their native size; edges stretch along one axis; center stretches along both.
+	public void DrawNineSlice(IImageData texture, RectangleF destRect, RectangleF srcRect, NineSlice slices, Color tint)
+	{
+		if (texture == null) return;
+
+		let textureIndex = GetOrAddTexture(texture);
+		SetupForTextureDraw(textureIndex);
+
+		let startVertex = mBatch.Vertices.Count;
+		let opTint = ApplyOpacity(tint);
+
+		// Source coordinates (X0/Y0 = start, X1/Y1 = after left/top border, X2/Y2 = before right/bottom border)
+		let srcX0 = srcRect.X;
+		let srcX1 = srcRect.X + slices.Left;
+		let srcX2 = srcRect.X + srcRect.Width - slices.Right;
+
+		let srcY0 = srcRect.Y;
+		let srcY1 = srcRect.Y + slices.Top;
+		let srcY2 = srcRect.Y + srcRect.Height - slices.Bottom;
+
+		// Destination coordinates in untransformed space (corners keep their pixel size from slices)
+		let dstX0 = destRect.X;
+		let dstX1 = destRect.X + slices.Left;
+		let dstX2 = destRect.X + destRect.Width - slices.Right;
+
+		let dstY0 = destRect.Y;
+		let dstY1 = destRect.Y + slices.Top;
+		let dstY2 = destRect.Y + destRect.Height - slices.Bottom;
+
+		let tw = texture.Width;
+		let th = texture.Height;
+
+		// Row 0 (top)
+		EmitTexturedQuad(.(dstX0, dstY0, slices.Left, slices.Top),           .(srcX0, srcY0, slices.Left, slices.Top),           tw, th, opTint);
+		EmitTexturedQuad(.(dstX1, dstY0, dstX2 - dstX1, slices.Top),         .(srcX1, srcY0, srcX2 - srcX1, slices.Top),         tw, th, opTint);
+		EmitTexturedQuad(.(dstX2, dstY0, slices.Right, slices.Top),          .(srcX2, srcY0, slices.Right, slices.Top),          tw, th, opTint);
+
+		// Row 1 (middle)
+		EmitTexturedQuad(.(dstX0, dstY1, slices.Left, dstY2 - dstY1),        .(srcX0, srcY1, slices.Left, srcY2 - srcY1),        tw, th, opTint);
+		EmitTexturedQuad(.(dstX1, dstY1, dstX2 - dstX1, dstY2 - dstY1),      .(srcX1, srcY1, srcX2 - srcX1, srcY2 - srcY1),      tw, th, opTint);
+		EmitTexturedQuad(.(dstX2, dstY1, slices.Right, dstY2 - dstY1),       .(srcX2, srcY1, slices.Right, srcY2 - srcY1),       tw, th, opTint);
+
+		// Row 2 (bottom)
+		EmitTexturedQuad(.(dstX0, dstY2, slices.Left, slices.Bottom),        .(srcX0, srcY2, slices.Left, slices.Bottom),        tw, th, opTint);
+		EmitTexturedQuad(.(dstX1, dstY2, dstX2 - dstX1, slices.Bottom),      .(srcX1, srcY2, srcX2 - srcX1, slices.Bottom),      tw, th, opTint);
+		EmitTexturedQuad(.(dstX2, dstY2, slices.Right, slices.Bottom),       .(srcX2, srcY2, slices.Right, slices.Bottom),       tw, th, opTint);
+
+		// Apply transform to all emitted vertices in one pass so rotation/scale
+		// affects the whole 9-slice grid consistently.
+		TransformVertices(startVertex);
+	}
+
+	/// Emit a textured quad into the batch in untransformed coordinates.
+	/// Caller is responsible for calling TransformVertices on the added range.
+	/// Coverage = 1.0 (no analytical AA for images).
+	private void EmitTexturedQuad(RectangleF destRect, RectangleF srcRect, uint32 texWidth, uint32 texHeight, Color color)
+	{
+		// Skip degenerate quads (nine-slice center can be zero-sized when destRect is small).
+		if (destRect.Width <= 0 || destRect.Height <= 0)
+			return;
+
+		let baseIndex = (uint32)mBatch.Vertices.Count;
+
+		// UVs from source rect
+		let u0 = srcRect.X / texWidth;
+		let v0 = srcRect.Y / texHeight;
+		let u1 = (srcRect.X + srcRect.Width) / texWidth;
+		let v1 = (srcRect.Y + srcRect.Height) / texHeight;
+
+		mBatch.Vertices.Add(.(.(destRect.X, destRect.Y), .(u0, v0), color, 1.0f));
+		mBatch.Vertices.Add(.(.(destRect.X + destRect.Width, destRect.Y), .(u1, v0), color, 1.0f));
+		mBatch.Vertices.Add(.(.(destRect.X + destRect.Width, destRect.Y + destRect.Height), .(u1, v1), color, 1.0f));
+		mBatch.Vertices.Add(.(.(destRect.X, destRect.Y + destRect.Height), .(u0, v1), color, 1.0f));
+
+		mBatch.Indices.Add(baseIndex + 0);
+		mBatch.Indices.Add(baseIndex + 1);
+		mBatch.Indices.Add(baseIndex + 2);
+		mBatch.Indices.Add(baseIndex + 0);
+		mBatch.Indices.Add(baseIndex + 2);
+		mBatch.Indices.Add(baseIndex + 3);
+	}
+
+	// === Texture state ===
 
 	/// Look up a texture in the batch or append it. Returns the index.
 	/// Index 0 is reserved for the 1x1 white texture used by solid draws.

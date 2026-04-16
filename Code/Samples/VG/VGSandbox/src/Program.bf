@@ -7,6 +7,8 @@ using Sedulous.Runtime.Client;
 using Sedulous.VG;
 using Sedulous.VG.Renderer;
 using Sedulous.Shaders;
+using Sedulous.ImageData;
+using Sedulous.Imaging;
 
 /// VG Sandbox — NanoVG-inspired demo showcasing Sedulous.VG capabilities.
 class VGSandboxApp : Application
@@ -14,6 +16,9 @@ class VGSandboxApp : Application
 	private VGContext mVG;
 	private VGRenderer mVGRenderer;
 	private ShaderSystem mShaderSystem;
+
+	// Checkerboard image used to demonstrate DrawImage.
+	private OwnedImageData mCheckerboard ~ delete _;
 
 	private float mTime = 0;
 
@@ -39,6 +44,20 @@ class VGSandboxApp : Application
 			Console.WriteLine("Failed to initialize VGRenderer");
 			return;
 		}
+
+		// Generate a 128x128 checkerboard and wrap it as IImageData for VG.
+		// Sedulous.Imaging is CPU image generation; Sedulous.ImageData is the
+		// CPU-to-GPU bridge format VG's renderer understands.
+		let img = scope Image(128, 128, .RGBA8);
+		for (uint32 y = 0; y < img.Height; y++)
+		{
+			for (uint32 x = 0; x < img.Width; x++)
+			{
+				let cell = ((x / 16) + (y / 16)) % 2 == 0;
+				img.SetPixel(x, y, cell ? Color(230, 230, 230, 255) : Color(60, 60, 70, 255));
+			}
+		}
+		mCheckerboard = new OwnedImageData(img.Width, img.Height, .RGBA8, img.Data);
 	}
 
 	protected override void OnUpdate(FrameContext frame)
@@ -62,6 +81,7 @@ class VGSandboxApp : Application
 		DrawColorWheel(mVG, w - 280, 120, 250, 250, mTime);
 		DrawGraph(mVG, 0, h - 180, w, 180, mTime);
 		DrawScissor(mVG, 20, h - 220, mTime);
+		DrawImages(mVG, 150, 20, mTime);
 
 		let batch = mVG.GetBatch();
 		mVGRenderer.Prepare(batch, frame.FrameIndex);
@@ -365,6 +385,36 @@ class VGSandboxApp : Application
 			vg.StrokeCircle(.(selX, selY), 5.0f, Color(255, 255, 255, 192), 2.0f);
 			vg.FillCircle(.(selX, selY), 3.5f, hueColor);
 		}
+	}
+
+	/// Demonstrates Phase 2 image rendering: native size, stretched, tinted,
+	/// source-rect sub-region, and a rotated draw.
+	private void DrawImages(VGContext vg, float x, float y, float t)
+	{
+		// 1. Native-size draw.
+		vg.DrawImage(mCheckerboard, Vector2(x, y));
+
+		// 2. Stretched into a larger rect.
+		vg.DrawImage(mCheckerboard, RectangleF(x + 140, y, 80, 50));
+
+		// 3. Tinted draw (semi-transparent red multiplied against the image).
+		vg.DrawImage(mCheckerboard,
+			.(x + 230, y, 80, 80),
+			.(0, 0, mCheckerboard.Width, mCheckerboard.Height),
+			Color(255, 120, 120, 220));
+
+		// 4. Sub-region (top-left 64x64 of the atlas) enlarged.
+		vg.DrawImage(mCheckerboard,
+			.(x + 320, y, 80, 80),
+			.(0, 0, 64, 64),
+			Color.White);
+
+		// 5. Rotated draw via the transform stack, verifying per-vertex transform.
+		vg.PushState();
+		vg.Translate(x + 450, y + 40);
+		vg.Rotate(t * 0.6f);
+		vg.DrawImage(mCheckerboard, RectangleF(-40, -40, 80, 80));
+		vg.PopState();
 	}
 
 	/// Demonstrates different stroke widths

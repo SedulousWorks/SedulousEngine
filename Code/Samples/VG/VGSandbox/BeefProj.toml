@@ -1,5 +1,5 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.RHI" = "*", "Sedulous.Shaders" = "*", "Sedulous.VG" = "*", "Sedulous.VG.Renderer" = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Runtime.Client" = "*"}
+Dependencies = {corlib = "*", "Sedulous.RHI" = "*", "Sedulous.Shaders" = "*", "Sedulous.VG" = "*", "Sedulous.VG.Renderer" = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Runtime.Client" = "*", "Sedulous.ImageData" = "*", "Sedulous.Imaging" = "*"}
 
 [Project]
 Name = "VGSandbox"
