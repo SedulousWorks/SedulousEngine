@@ -2,7 +2,7 @@ FileVersion = 1
 Locked = ["Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "dr_libs-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
 
 [Workspace]
-StartupProject = "VGSandbox"
+StartupProject = "UISandbox"
 
 [Projects]
 "Sedulous.RHI" = {Path = "Foundation/Sedulous.RHI"}
@@ -173,10 +173,14 @@ recastnavigation-Beef = {Path = "Dependencies/recastnavigation-Beef"}
 "Sedulous.Particles.Resources" = {Path = "Foundation/Sedulous.Particles.Resources"}
 EngineRenderStressTest = {Path = "Samples/EngineRenderStressTest"}
 "Sedulous.ImageData" = {Path = "Foundation/Sedulous.ImageData"}
+"Sedulous.UI" = {Path = "Foundation/Sedulous.UI"}
+"Sedulous.UI.Runtime" = {Path = "Foundation/Sedulous.UI.Runtime"}
+UISandbox = {Path = "Samples/UI/UISandbox"}
+"Sedulous.UI.Tests" = {Path = "Foundation/Sedulous.UI.Tests"}
 
 [WorkspaceFolders]
 Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
-Samples = ["SampleFramework", "SampleVG001_Shapes", "DrawingSandbox", "VGSandbox", "FontRendering", "GUISandbox", "ImGuiSample", "NuklearSample", "SlugSample", "NetEcho", "NetHttpClient", "NetWebSocket", "AudioSandbox", "EngineSandbox", "EngineRenderStressTest"]
+Samples = ["SampleFramework", "SampleVG001_Shapes", "DrawingSandbox", "VGSandbox", "FontRendering", "GUISandbox", "ImGuiSample", "NuklearSample", "SlugSample", "NetEcho", "NetHttpClient", "NetWebSocket", "AudioSandbox", "EngineSandbox", "EngineRenderStressTest", "UISandbox"]
 "Samples/RHISamples" = ["Sample002_Textures", "Sample003_UniformBuffers", "Sample004_Compute", "Sample005_BindGroups", "Sample006_Blending", "Sample007_Instancing", "Sample008_DepthBuffer", "Sample009_Mipmaps", "Sample010_MSAA", "Sample011_MRT", "Sample012_Wireframe", "Sample013_BorderSampler", "Sample014_Blit", "Sample015_Queries", "Sample016_Readback", "Sample017_MultiQueue", "Sample018_Bindless", "Sample019_BatchUpload", "Sample020_MeshShaders", "Sample021_RayTracing", "Sample022_StencilOutline", "Sample023_CubeMap", "Sample024_OcclusionQuery", "Sample025_MultiDrawIndirect", "Sample026_DynamicOffsets", "Sample027_3DTexture", "Sample028_ProceduralRT", "Sample029_ResolveTexture", "Sample001_Triangle"]
 "Samples/ShaderReflection" = ["SR001_ReflectedPBR"]
 Foundation = []
@@ -203,3 +207,4 @@ Foundation = []
 "Foundation/Slug" = ["Sedulous.Slug", "Sedulous.Slug.Tests", "Sedulous.Slug.TTF", "Sedulous.Slug.Renderer"]
 Engine = ["Sedulous.Engine.Runtime", "Sedulous.Engine.App", "Sedulous.Engine.Input", "Sedulous.Engine.Physics", "Sedulous.Engine.Audio", "Sedulous.Engine.Animation", "Sedulous.Engine.Navigation", "Sedulous.Engine.GUI", "Sedulous.Engine.Render"]
 "Foundation/RHI" = ["Sedulous.RHI", "Sedulous.RHI.DX12", "Sedulous.RHI.Null", "Sedulous.RHI.Validation", "Sedulous.RHI.Vulkan", "Sedulous.ShaderReflection", "Sedulous.ShaderReflection.DXIL", "Sedulous.ShaderReflection.SPIRV", "Sedulous.ShaderReflection.Tests"]
+"Foundation/UI" = ["Sedulous.UI", "Sedulous.UI.Runtime", "Sedulous.UI.Tests"]
