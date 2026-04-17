@@ -1,0 +1,8 @@
+<svg width="192" height="64" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs/>
+  <g>
+    <path stroke="none" fill="#989AAF" d="M6 0 L186 0 Q192 0 192 6 L192 58 Q192 64 186 64 L6 64 Q0 64 0 58 L0 6 Q0 0 6 0 M186 2 L6 2 Q2 2 2 6 L2 58 Q2 62 6 62 L186 62 Q190 62 190 58 L190 6 Q190 2 186 2 M186 4 Q188 4 188 6 L188 58 Q188 60 186 60 L6 60 Q4 60 4 58 L4 6 Q4 4 6 4 L186 4 M186 8 L186 6 6 6 6 8 6 58 186 58 186 8"/>
+    <path stroke="none" fill="#DADCE7" d="M186 8 L6 8 6 6 186 6 186 8 M186 2 Q190 2 190 6 L190 58 Q190 62 186 62 L6 62 Q2 62 2 58 L2 6 Q2 2 6 2 L186 2 M186 4 L6 4 Q4 4 4 6 L4 58 Q4 60 6 60 L186 60 Q188 60 188 58 L188 6 Q188 4 186 4"/>
+    <path stroke="none" fill="#FFFFFF" d="M186 8 L186 58 6 58 6 8 186 8"/>
+  </g>
+</svg>
