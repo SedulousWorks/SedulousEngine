@@ -76,9 +76,10 @@ public class UISubsystem : Subsystem
 		if (mShaderSystem.Initialize(device, shaderPaths) case .Err)
 			return .Err;
 
-		// UIContext (connect font service so controls can query fonts)
+		// UIContext (connect font service + default theme)
 		mUIContext = new UIContext();
 		mUIContext.FontService = mFontService;
+		mUIContext.Theme = DarkTheme.Create();
 
 		// Input bridge (Shell → UI)
 		if (shell?.InputManager != null)

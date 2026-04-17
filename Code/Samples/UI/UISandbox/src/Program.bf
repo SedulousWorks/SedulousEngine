@@ -12,6 +12,79 @@ using Sedulous.ImageData;
 using Sedulous.Imaging;
 using Sedulous.Imaging.STB;
 
+// === Custom control: StatusBadge ===
+// Demonstrates a user-defined control themed via IThemeExtension.
+
+class StatusBadge : View
+{
+	public String Text ~ delete _;
+	private Color? mBadgeColor;
+	private Color? mTextColor;
+
+	public Color BadgeColor
+	{
+		get => mBadgeColor ?? Context?.Theme?.GetColor("StatusBadge.Background") ?? .(100, 100, 100, 255);
+		set => mBadgeColor = value;
+	}
+
+	public Color TextColor
+	{
+		get => mTextColor ?? Context?.Theme?.GetColor("StatusBadge.Foreground") ?? .White;
+		set => mTextColor = value;
+	}
+
+	public void SetText(StringView text)
+	{
+		if (Text == null) Text = new String(text);
+		else Text.Set(text);
+		InvalidateLayout();
+	}
+
+	protected override void OnMeasure(MeasureSpec wSpec, MeasureSpec hSpec)
+	{
+		float textW = 40;
+		if (Text != null && Context?.FontService != null)
+		{
+			let font = Context.FontService.GetFont(12);
+			if (font != null) textW = font.Font.MeasureString(Text);
+		}
+		MeasuredSize = .(wSpec.Resolve(textW + 16), hSpec.Resolve(22));
+	}
+
+	public override void OnDraw(UIDrawContext ctx)
+	{
+		let radius = ctx.Theme?.GetDimension("StatusBadge.Radius", 11) ?? 11;
+		ctx.VG.FillRoundedRect(.(0, 0, Width, Height), radius, BadgeColor);
+		if (Text != null && ctx.FontService != null)
+		{
+			let font = ctx.FontService.GetFont(12);
+			if (font != null)
+				ctx.VG.DrawText(Text, font, .(0, 0, Width, Height), .Center, .Middle, TextColor);
+		}
+	}
+}
+
+// === Theme extension for StatusBadge ===
+// Registers once; applies to every theme (Dark and Light get different values).
+
+class StatusBadgeThemeExtension : IThemeExtension
+{
+	public void Apply(Theme theme)
+	{
+		if (theme.Name.Contains("Dark"))
+		{
+			theme.SetColor("StatusBadge.Background", .(50, 140, 90, 255));  // green on dark
+			theme.SetColor("StatusBadge.Foreground", .White);
+		}
+		else
+		{
+			theme.SetColor("StatusBadge.Background", .(40, 100, 180, 255)); // blue on light
+			theme.SetColor("StatusBadge.Foreground", .White);
+		}
+		theme.SetDimension("StatusBadge.Radius", 11);
+	}
+}
+
 /// UISandbox — gallery/showcase for Sedulous.UI, growing with each phase.
 /// Phase 2: Drawable system, Label, Button, Panel, Separator, debug overlays.
 class UISandboxApp : Application
@@ -28,6 +101,10 @@ class UISandboxApp : Application
 
 	protected override void OnInitialize(Sedulous.Runtime.Context context)
 	{
+		// Register theme extension for custom StatusBadge control
+		// BEFORE subsystem creates the default theme.
+		Theme.RegisterExtension(new StatusBadgeThemeExtension());
+
 		// Create the UI subsystem.
 		mUI = new UISubsystem();
 		context.RegisterSubsystem(mUI);
@@ -109,10 +186,8 @@ class UISandboxApp : Application
 		// Label
 		{
 			let label = new Label();
-			label.SetText("Label — 16px Roboto");
-			label.TextColor = .(200, 210, 230, 255);
-			label.FontSize = 16;
-			left.AddView(label, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 22 });
+			label.SetText("Label — 16px Roboto (theme color)");
+				left.AddView(label, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 22 });
 		}
 
 		// Buttons (clickable in Phase 3!)
@@ -126,25 +201,45 @@ class UISandboxApp : Application
 			AddButton(row, "Danger", Color(200, 60, 60, 255));
 		}
 
+		// Theme-styled buttons (no explicit Background — uses theme).
+		{
+			let row = new LinearLayout();
+			row.Orientation = .Horizontal;
+			row.Spacing = 6;
+			left.AddView(row, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 36 });
+
+			for (let label in StringView[]("Theme Btn 1", "Theme Btn 2"))
+			{
+				let btn = new Button();
+				btn.SetText(label);
+				// No Background set — uses DrawDefaultBackground from theme.
+				btn.OnClick.Add(new [&](b) => {
+					if (mClickLabel != null)
+					{
+						let msg = scope String();
+						msg.AppendF("Clicked: {}", b.Text);
+						mClickLabel.SetText(msg);
+						mClickLabel.TextColor = mUI.UIContext.Theme?.Palette.Success ?? .(60, 180, 80, 255);
+					}
+				});
+				row.AddView(btn, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
+			}
+		}
+
 		// Click feedback label.
 		{
 			mClickLabel = new Label();
-			mClickLabel.SetText("Click a button... (Tab to cycle focus)");
-			mClickLabel.TextColor = .(140, 160, 180, 255);
-			mClickLabel.FontSize = 16;
+			mClickLabel.SetText("Click / Tab / F5=toggle theme");
 			left.AddView(mClickLabel, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 20 });
 		}
 
-		// Panel
+		// Panel — draws theme-aware background.
 		{
 			let panel = new Panel();
-			panel.Background = new RoundedRectDrawable(.(40, 42, 54, 255), 6, .(60, 65, 80, 255), 1);
 			panel.Padding = .(10, 6);
 			left.AddView(panel, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 40 });
 			let panelLabel = new Label();
-			panelLabel.SetText("Panel + RoundedRectDrawable");
-			panelLabel.TextColor = .(180, 190, 210, 255);
-			panelLabel.FontSize = 16;
+			panelLabel.SetText("Panel (theme background)");
 			panel.AddView(panelLabel, new LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent });
 		}
 
@@ -193,7 +288,6 @@ class UISandboxApp : Application
 			row.AddView(new Spacer(8, 0));
 			let desc = new Label();
 			desc.SetText("Checkerboard ImageView");
-			desc.TextColor = .(180, 190, 210, 255);
 			desc.FontSize = 16;
 			desc.VAlign = .Middle;
 			row.AddView(desc, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
@@ -260,12 +354,37 @@ class UISandboxApp : Application
 			grid.VSpacing = 2;
 			right.AddView(grid, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 46 });
 
-			AddGridCell(grid, "Name:", 0, 0, .(140, 150, 170, 255));
-			AddGridCell(grid, "Sedulous Engine", 0, 1, .(200, 210, 230, 255));
-			AddGridCell(grid, "v1.0", 0, 2, .(120, 180, 120, 255));
-			AddGridCell(grid, "Status:", 1, 0, .(140, 150, 170, 255));
-			AddGridCell(grid, "Phase 2", 1, 1, .(200, 210, 230, 255));
-			AddGridCell(grid, "OK", 1, 2, .(120, 180, 120, 255));
+			AddGridCell(grid, "Name:", 0, 0);
+			AddGridCell(grid, "Sedulous Engine", 0, 1);
+			AddGridCell(grid, "v1.0", 0, 2);
+			AddGridCell(grid, "Status:", 1, 0);
+			AddGridCell(grid, "Phase 4", 1, 1);
+			AddGridCell(grid, "OK", 1, 2);
+		}
+
+		AddSeparator(right);
+		AddSectionLabel(right, "Custom Control + IThemeExtension");
+
+		// StatusBadge — custom control themed via registered extension.
+		// Colors change when F5 toggles theme.
+		{
+			let row = new LinearLayout();
+			row.Orientation = .Horizontal;
+			row.Spacing = 8;
+			right.AddView(row, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 26 });
+
+			for (let text in StringView[]("Online", "Active", "Ready"))
+			{
+				let badge = new StatusBadge();
+				badge.SetText(text);
+				row.AddView(badge);
+			}
+
+			// One with explicit override (ignores theme).
+			let custom = new StatusBadge();
+			custom.SetText("Custom");
+			custom.BadgeColor = .(180, 60, 60, 255);
+			row.AddView(custom);
 		}
 
 		AddSeparator(right);
@@ -288,8 +407,7 @@ class UISandboxApp : Application
 				let label = new Label();
 				label.SetText((w == 80) ? "Small" : ((w == 140) ? "Medium" : "Wide Button"));
 				label.TextColor = .White;
-				label.FontSize = 16;
-				label.HAlign = .Center;
+						label.HAlign = .Center;
 				panel.AddView(label, new LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent });
 			}
 		}
@@ -305,8 +423,7 @@ class UISandboxApp : Application
 			let btn = new Button();
 			btn.SetText("9-Slice StateList");
 			btn.Background = sld;
-			btn.FontSize = 16;
-			right.AddView(btn, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 42 });
+				right.AddView(btn, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 42 });
 		}
 
 		// F2=bounds  F3=padding  F4=margin
@@ -318,15 +435,14 @@ class UISandboxApp : Application
 	{
 		let label = new Label();
 		label.SetText(text);
-		label.TextColor = .(255, 200, 100, 255);
-		label.FontSize = 16;
+		label.StyleId = new String("SectionLabel");
 		parent.AddView(label, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 22 });
 	}
 
 	private void AddSeparator(LinearLayout parent)
 	{
 		let sep = new Separator();
-		sep.Color = .(60, 65, 75, 255);
+		// No explicit color — uses theme's "Separator.Color".
 		parent.AddView(sep, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 1 });
 	}
 
@@ -341,7 +457,6 @@ class UISandboxApp : Application
 	{
 		let btn = new Button();
 		btn.SetText(text);
-		btn.FontSize = 16;
 
 		let bg = new StateListDrawable();
 		bg.Set(.Normal, new RoundedRectDrawable(bgColor, 4));
@@ -358,7 +473,7 @@ class UISandboxApp : Application
 				let msg = scope String();
 				msg.AppendF("Clicked: {}", clickedBtn.Text);
 				mClickLabel.SetText(msg);
-				mClickLabel.TextColor = .(120, 255, 160, 255);
+				mClickLabel.TextColor = mUI.UIContext.Theme?.Palette.Success ?? .(60, 180, 80, 255);
 			}
 		});
 
@@ -374,12 +489,11 @@ class UISandboxApp : Application
 		abs.AddView(cv, new AbsoluteLayout.LayoutParams() { X = x, Y = y });
 	}
 
-	private void AddGridCell(GridLayout grid, StringView text, int32 row, int32 col, Color color)
+	private void AddGridCell(GridLayout grid, StringView text, int32 row, int32 col)
 	{
 		let label = new Label();
 		label.SetText(text);
-		label.TextColor = color;
-		label.FontSize = 16;
+		// No explicit TextColor — uses theme's Label.Foreground.
 		grid.AddView(label, new GridLayout.LayoutParams() {
 			Row = row, Column = col,
 			Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent
@@ -492,6 +606,16 @@ class UISandboxApp : Application
 		// F4 toggles margin overlay.
 		if (kb.IsKeyPressed(.F4))
 			mUI.UIContext.DebugSettings.ShowMargin = !mUI.UIContext.DebugSettings.ShowMargin;
+
+		// F5 toggles between Dark and Light themes.
+		if (kb.IsKeyPressed(.F5))
+		{
+			let ctx = mUI.UIContext;
+			let isDark = ctx.Theme?.Name.Contains("Dark") ?? true;
+			delete ctx.Theme;
+			ctx.Theme = isDark ? LightTheme.Create() : DarkTheme.Create();
+			ctx.Root.InvalidateLayout();
+		}
 	}
 
 	protected override bool OnRenderFrame(RenderContext render)
@@ -499,12 +623,14 @@ class UISandboxApp : Application
 		if (mUI == null || !mUI.IsRenderingInitialized)
 			return false;
 
+		// Use theme background for clear color.
+		let bg = mUI.UIContext.Theme?.Palette.Background ?? Color(30, 30, 35, 255);
 		ColorAttachment[1] clearAttachments = .(.()
 		{
 			View = render.CurrentTextureView,
 			LoadOp = .Clear,
 			StoreOp = .Store,
-			ClearValue = ClearColor(0.12f, 0.12f, 0.14f, 1.0f)
+			ClearValue = ClearColor(bg.R / 255.0f, bg.G / 255.0f, bg.B / 255.0f, 1.0f)
 		});
 		RenderPassDesc clearPass = .() { ColorAttachments = .(clearAttachments) };
 		let rp = render.Encoder.BeginRenderPass(clearPass);

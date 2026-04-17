@@ -28,8 +28,30 @@ public class Panel : ViewGroup
 
 	public override void OnDraw(UIDrawContext ctx)
 	{
+		let bounds = RectangleF(0, 0, Width, Height);
 		if (Background != null)
-			Background.Draw(ctx, .(0, 0, Width, Height));
+			Background.Draw(ctx, bounds);
+		else if (ctx.Theme != null)
+		{
+			let bgColor = ctx.Theme.GetColor("Panel.Background", .Transparent);
+			let borderColor = ctx.Theme.GetColor("Panel.Border", .Transparent);
+			let radius = ctx.Theme.GetDimension("Panel.CornerRadius", 0);
+			let borderWidth = ctx.Theme.GetDimension("Panel.BorderWidth", 0);
+
+			if (bgColor.A > 0 || (borderColor.A > 0 && borderWidth > 0))
+			{
+				if (radius > 0)
+				{
+					if (bgColor.A > 0) ctx.VG.FillRoundedRect(bounds, radius, bgColor);
+					if (borderColor.A > 0 && borderWidth > 0) ctx.VG.StrokeRoundedRect(bounds, radius, borderColor, borderWidth);
+				}
+				else
+				{
+					if (bgColor.A > 0) ctx.VG.FillRect(bounds, bgColor);
+					if (borderColor.A > 0 && borderWidth > 0) ctx.VG.StrokeRect(bounds, borderColor, borderWidth);
+				}
+			}
+		}
 		DrawChildren(ctx);
 	}
 

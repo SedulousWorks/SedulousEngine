@@ -5,14 +5,37 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Fonts;
 using Sedulous.VG;
 
-/// Text label. Draws a single-line string using the font service.
+/// Text label. Uses theme for defaults; per-instance overrides take priority.
 public class Label : View
 {
 	public String Text ~ delete _;
-	public Color TextColor = .(220, 220, 220, 255);
-	public float FontSize = 16;
 	public TextAlignment HAlign = .Left;
 	public VerticalAlignment VAlign = .Middle;
+
+	// Nullable per-instance overrides — null = use theme.
+	private Color? mTextColor;
+	private float? mFontSize;
+
+	public Color TextColor
+	{
+		get
+		{
+			if (mTextColor.HasValue) return mTextColor.Value;
+			let theme = Context?.Theme;
+			if (theme == null) return .(220, 225, 235, 255);
+			// Try StyleId-specific key first, then fall back to Label default.
+			if (StyleId != null && theme.HasKey(scope $"{StyleId}.Foreground"))
+				return theme.GetColor(scope $"{StyleId}.Foreground");
+			return theme.GetColor("Label.Foreground", .(220, 225, 235, 255));
+		}
+		set => mTextColor = value;
+	}
+
+	public float FontSize
+	{
+		get => mFontSize ?? Context?.Theme?.GetDimension("Label.FontSize", 16) ?? 16;
+		set { mFontSize = value; InvalidateLayout(); }
+	}
 
 	public void SetText(StringView text)
 	{
@@ -25,18 +48,16 @@ public class Label : View
 
 	protected override void OnMeasure(MeasureSpec wSpec, MeasureSpec hSpec)
 	{
-		float textW = 0, textH = FontSize;
+		let fontSize = FontSize;
+		float textW = 0, textH = fontSize;
 
-		if (Text != null && Text.Length > 0)
+		if (Text != null && Text.Length > 0 && Context?.FontService != null)
 		{
-			if (Context?.FontService != null)
+			let font = Context.FontService.GetFont(fontSize);
+			if (font != null)
 			{
-				let font = Context.FontService.GetFont(FontSize);
-				if (font != null)
-				{
-					textW = font.Font.MeasureString(Text);
-					textH = font.Font.Metrics.LineHeight;
-				}
+				textW = font.Font.MeasureString(Text);
+				textH = font.Font.Metrics.LineHeight;
 			}
 		}
 

@@ -30,6 +30,9 @@ public class UIContext
 	// === Font service (optional — set by UISubsystem) ===
 	public IFontService FontService;
 
+	// === Theme ===
+	public Theme Theme ~ delete _;
+
 	// === Debug draw settings ===
 	public UIDebugDrawSettings DebugSettings;
 
@@ -103,7 +106,7 @@ public class UIContext
 	{
 		Phase = .Drawing;
 
-		let drawCtx = scope UIDrawContext(vg, uiScale, FontService, DebugSettings);
+		let drawCtx = scope UIDrawContext(vg, uiScale, FontService, Theme, DebugSettings);
 
 		// Apply global DPI scale at the root.
 		if (uiScale != 1.0f)
