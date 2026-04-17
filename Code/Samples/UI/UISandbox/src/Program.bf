@@ -101,6 +101,9 @@ class UISandboxApp : Application
 
 	protected override void OnInitialize(Sedulous.Runtime.Context context)
 	{
+		// Register built-in view types for XML loading.
+		UIRegistry.RegisterBuiltins();
+
 		// Register theme extension for custom StatusBadge control
 		// BEFORE subsystem creates the default theme.
 		Theme.RegisterExtension(new StatusBadgeThemeExtension());
@@ -426,7 +429,25 @@ class UISandboxApp : Application
 				right.AddView(btn, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 42 });
 		}
 
-		// F2=bounds  F3=padding  F4=margin
+		AddSeparator(right);
+		AddSectionLabel(right, "XML-Loaded UI");
+
+		// Load a UI fragment from an XML string.
+		{
+			let xml = """
+				<LinearLayout orientation="Horizontal" spacing="6" padding="4">
+				  <Button text="XML Btn 1" layout_weight="1" layout_width="match_parent" layout_height="match_parent"/>
+				  <Button text="XML Btn 2" layout_weight="1" layout_width="match_parent" layout_height="match_parent"/>
+				  <Label text="from XML!" layout_height="match_parent"/>
+				</LinearLayout>
+				""";
+
+			let xmlView = UIXmlLoader.LoadFromString(xml);
+			if (xmlView != null)
+				right.AddView(xmlView, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 36 });
+		}
+
+		// F2=bounds  F3=padding  F4=margin  F5=theme
 	}
 
 	// === Helpers ===

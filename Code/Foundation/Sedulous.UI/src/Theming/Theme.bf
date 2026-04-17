@@ -20,6 +20,14 @@ public class Theme
 		sExtensions.Add(ext);
 	}
 
+	/// Remove a previously registered extension. Does NOT delete it —
+	/// caller manages lifetime. Use this to clean up scope-allocated
+	/// extensions in tests.
+	public static void UnregisterExtension(IThemeExtension ext)
+	{
+		sExtensions.Remove(ext);
+	}
+
 	// === Typed dictionaries ===
 	private Dictionary<String, Color> mColors = new .() ~ DeleteDictKeys(_);
 	private Dictionary<String, float> mDimensions = new .() ~ DeleteDictKeys(_);
