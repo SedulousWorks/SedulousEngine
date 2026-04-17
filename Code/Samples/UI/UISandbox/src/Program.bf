@@ -297,6 +297,30 @@ class UISandboxApp : Application
 			row.AddView(desc, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
 		}
 
+		AddSeparator(left);
+		AddSectionLabel(left, "ScrollView (mouse wheel)");
+
+		// ScrollView with tall content — scroll via mouse wheel.
+		{
+			let sv = new ScrollView();
+			sv.VScrollPolicy = .Auto;
+			left.AddView(sv, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
+
+			let content = new LinearLayout();
+			content.Orientation = .Vertical;
+			content.Spacing = 4;
+			sv.AddView(content, new LayoutParams() { Width = LayoutParams.MatchParent });
+
+			for (int i = 0; i < 20; i++)
+			{
+				let label = new Label();
+				let text = scope String();
+				text.AppendF("Scrollable item {}", i + 1);
+				label.SetText(text);
+				content.AddView(label, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 22 });
+			}
+		}
+
 		// --- RIGHT COLUMN ---
 		let right = new LinearLayout();
 		right.Orientation = .Vertical;
@@ -656,6 +680,8 @@ class UISandboxApp : Application
 				  <Color key="Separator.Color" value="70,55,85"/>
 				  <Color key="SectionLabel.Foreground" value="255,180,220"/>
 				  <Color key="Focus.Ring" value="200,100,160,200"/>
+				  <Color key="ScrollBar.Track" value="50,40,60,150"/>
+				  <Color key="ScrollBar.Thumb" value="160,100,140,220"/>
 				  <Dimension key="Button.CornerRadius" value="6"/>
 				  <Dimension key="Panel.CornerRadius" value="8"/>
 				  <Dimension key="Panel.BorderWidth" value="1"/>

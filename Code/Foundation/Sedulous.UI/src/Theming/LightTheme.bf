@@ -48,6 +48,10 @@ public static class LightTheme
 		// === Separator ===
 		theme.SetColor("Separator.Color", p.Border);
 
+		// === ScrollBar ===
+		theme.SetColor("ScrollBar.Track", .(200, 205, 215, 150));
+		theme.SetColor("ScrollBar.Thumb", .(140, 150, 170, 200));
+
 		// === Focus ===
 		theme.SetColor("Focus.Ring", .(40, 100, 220, 200));
 

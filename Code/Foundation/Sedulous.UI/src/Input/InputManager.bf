@@ -103,13 +103,27 @@ public class InputManager
 		mLastClickY = y;
 		mLastClickButton = button;
 
-		let local = ToLocal(target, x, y);
-		mMouseArgs.Set(local.X, local.Y, button, mClickCount);
-		target.OnMouseDown(mMouseArgs);
+		// Dispatch to target, then bubble up parents if not handled.
+		BubbleMouseDown(target, x, y, button, mClickCount);
 
 		// Update button visual state.
 		if (let btn = target as Button)
 			btn.IsPressed = true;
+	}
+
+	/// Fire OnMouseDown on the target, then bubble up parent chain
+	/// until someone sets Handled or we reach the root.
+	private void BubbleMouseDown(View target, float screenX, float screenY, MouseButton button, int32 clickCount)
+	{
+		var v = target;
+		while (v != null)
+		{
+			let local = ToLocal(v, screenX, screenY);
+			mMouseArgs.Set(local.X, local.Y, button, clickCount);
+			v.OnMouseDown(mMouseArgs);
+			if (mMouseArgs.Handled) break;
+			v = v.Parent;
+		}
 	}
 
 	/// Called when a mouse button is released.

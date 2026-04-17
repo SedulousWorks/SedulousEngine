@@ -21,6 +21,11 @@ public class ViewGroup : View
 
 	public View GetChildAt(int index) => mChildren[index];
 
+	// Visual children = logical children by default.
+	// Subclasses with internal views (ScrollView, etc.) override to append them.
+	public override int VisualChildCount => mChildren.Count;
+	public override View GetVisualChild(int index) => mChildren[index];
+
 	/// Add a child with optional layout params. If lp is null,
 	/// CreateDefaultLayoutParams() provides the default for this ViewGroup.
 	public virtual void AddView(View child, LayoutParams lp = null)
@@ -106,9 +111,12 @@ public class ViewGroup : View
 
 	protected void DrawChildren(UIDrawContext ctx)
 	{
-		for (let child in mChildren)
+		// Iterate visual children (includes internal auxiliary views like scrollbars).
+		let count = VisualChildCount;
+		for (int i = 0; i < count; i++)
 		{
-			if (child.Visibility != .Visible)
+			let child = GetVisualChild(i);
+			if (child == null || child.Visibility != .Visible)
 				continue;
 
 			// Translate to child's local coordinate space
@@ -120,7 +128,6 @@ public class ViewGroup : View
 
 			child.OnDraw(ctx);
 
-			// Debug overlays drawn after the child's normal draw.
 			if (ctx.DebugSettings.AnyEnabled)
 				UIDebugOverlay.DrawOverlays(ctx, child);
 
@@ -131,7 +138,7 @@ public class ViewGroup : View
 		}
 	}
 
-	// === Hit testing (reverse order — topmost child first) ===
+	// === Hit testing (reverse order — topmost visual child first, matching draw order) ===
 
 	public override View HitTest(Vector2 localPoint)
 	{
@@ -142,11 +149,11 @@ public class ViewGroup : View
 			localPoint.X >= Width || localPoint.Y >= Height)
 			return null;
 
-		// Reverse order: last child drawn on top, hit-test first.
-		for (int i = mChildren.Count - 1; i >= 0; i--)
+		let count = VisualChildCount;
+		for (int i = count - 1; i >= 0; i--)
 		{
-			let child = mChildren[i];
-			if (child.Visibility != .Visible || !child.IsHitTestVisible)
+			let child = GetVisualChild(i);
+			if (child == null || child.Visibility != .Visible || !child.IsHitTestVisible)
 				continue;
 
 			let childLocal = Vector2(localPoint.X - child.Bounds.X, localPoint.Y - child.Bounds.Y);
@@ -192,14 +199,25 @@ public class ViewGroup : View
 	public override void OnAttachedToContext(UIContext ctx)
 	{
 		base.OnAttachedToContext(ctx);
-		for (let child in mChildren)
-			AttachSubtree(child, ctx);
+		// Attach all visual children (includes logical + internal auxiliary views).
+		let count = VisualChildCount;
+		for (int i = 0; i < count; i++)
+		{
+			let child = GetVisualChild(i);
+			if (child != null)
+				AttachSubtree(child, ctx);
+		}
 	}
 
 	public override void OnDetachedFromContext()
 	{
-		for (let child in mChildren)
-			DetachSubtree(child);
+		let count = VisualChildCount;
+		for (int i = 0; i < count; i++)
+		{
+			let child = GetVisualChild(i);
+			if (child != null)
+				DetachSubtree(child);
+		}
 		base.OnDetachedFromContext();
 	}
 

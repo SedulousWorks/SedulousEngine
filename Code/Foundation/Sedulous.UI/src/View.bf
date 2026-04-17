@@ -106,6 +106,33 @@ public class View
 
 	public bool IsLayoutDirty => mLayoutDirty;
 
+	// === Visual children ===
+	// Distinguishes logical children (the public Children list managed by
+	// ViewGroup) from visual children (everything that draws, hit-tests,
+	// and attaches to context — including internal views like scrollbars).
+	// Base View has no visual children. ViewGroup overrides to return its
+	// logical children. Controls with internal views (ScrollView, etc.)
+	// override to append their auxiliary views.
+
+	/// Number of visual children. Override in ViewGroup and controls
+	/// with internal auxiliary views.
+	public virtual int VisualChildCount => 0;
+
+	/// Get a visual child by index. Override alongside VisualChildCount.
+	public virtual View GetVisualChild(int index) => null;
+
+	/// Iterate all visual children.
+	public void ForEachVisualChild(delegate void(View child) action)
+	{
+		let count = VisualChildCount;
+		for (int i = 0; i < count; i++)
+		{
+			let child = GetVisualChild(i);
+			if (child != null)
+				action(child);
+		}
+	}
+
 	// === Drawing ===
 
 	/// Override to draw this view's content.
@@ -174,6 +201,44 @@ public class View
 				v = v.Parent;
 			}
 			return true;
+		}
+	}
+
+	// === Scrolling ===
+
+	/// Walk up to find the nearest ScrollView ancestor and scroll to make
+	/// this view's bounds visible.
+	public void ScrollIntoView()
+	{
+		var v = Parent;
+		while (v != null)
+		{
+			if (let sv = v as ScrollView)
+			{
+				// Compute this view's position relative to the ScrollView.
+				float relX = Bounds.X, relY = Bounds.Y;
+				var p = Parent;
+				while (p != null && p !== sv)
+				{
+					relX += p.Bounds.X;
+					relY += p.Bounds.Y;
+					p = p.Parent;
+				}
+
+				// Adjust scroll so this view is visible.
+				if (relY < sv.ScrollY)
+					sv.ScrollTo(sv.ScrollX, relY);
+				else if (relY + Height > sv.ScrollY + sv.Height)
+					sv.ScrollTo(sv.ScrollX, relY + Height - sv.Height);
+
+				if (relX < sv.ScrollX)
+					sv.ScrollTo(relX, sv.ScrollY);
+				else if (relX + Width > sv.ScrollX + sv.Width)
+					sv.ScrollTo(relX + Width - sv.Width, sv.ScrollY);
+
+				return;
+			}
+			v = v.Parent;
 		}
 	}
 

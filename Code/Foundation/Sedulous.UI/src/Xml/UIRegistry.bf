@@ -223,6 +223,9 @@ public static class UIRegistry
 		// === Panel ===
 		RegisterView("Panel", new () => new Panel());
 
+		// === ScrollView ===
+		RegisterView("ScrollView", new () => new ScrollView());
+
 		// === ColorView ===
 		RegisterView("ColorView", new () => new ColorView());
 		RegisterProperty("ColorView", "color", new (v, val) => {
