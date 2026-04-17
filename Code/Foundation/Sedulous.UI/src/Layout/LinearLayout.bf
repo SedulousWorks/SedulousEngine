@@ -8,6 +8,9 @@ public class LinearLayout : ViewGroup
 {
 	public Orientation Orientation = .Vertical;
 	public float Spacing;
+	/// When true (default) and Orientation is Horizontal, children with
+	/// baselines are vertically aligned so their text baselines match.
+	public bool BaselineAligned = true;
 
 	public class LayoutParams : Sedulous.UI.LayoutParams
 	{
@@ -211,6 +214,19 @@ public class LinearLayout : ViewGroup
 		var xPos = Padding.Left;
 		bool first = true;
 
+		// Compute max baseline for alignment if enabled.
+		float maxBaseline = -1;
+		if (BaselineAligned)
+		{
+			for (int i = 0; i < ChildCount; i++)
+			{
+				let child = GetChildAt(i);
+				if (child.Visibility == .Gone) continue;
+				let bl = child.GetBaseline();
+				if (bl >= 0) maxBaseline = Math.Max(maxBaseline, bl);
+			}
+		}
+
 		for (int i = 0; i < ChildCount; i++)
 		{
 			let child = GetChildAt(i);
@@ -226,9 +242,17 @@ public class LinearLayout : ViewGroup
 			let childW = child.MeasuredSize.X;
 			let childH = child.MeasuredSize.Y;
 
-			// Apply cross-axis (vertical) gravity
+			// Apply cross-axis (vertical) positioning.
 			var yPos = Padding.Top + margin.Top;
-			if (gravity.HasFlag(.CenterV))
+
+			// Baseline alignment takes priority over gravity when baselines
+			// are present and no explicit gravity is set.
+			let childBaseline = child.GetBaseline();
+			if (BaselineAligned && maxBaseline >= 0 && childBaseline >= 0 && gravity == .None)
+			{
+				yPos = Padding.Top + margin.Top + (maxBaseline - childBaseline);
+			}
+			else if (gravity.HasFlag(.CenterV))
 				yPos = Padding.Top + (contentH - childH - margin.TotalVertical) * 0.5f + margin.Top;
 			else if (gravity.HasFlag(.Bottom))
 				yPos = Padding.Top + contentH - childH - margin.Bottom;

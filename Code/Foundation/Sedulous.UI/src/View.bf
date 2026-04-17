@@ -36,6 +36,24 @@ public class View
 	public bool IsPendingDeletion { get; internal set; }
 	public bool IsAttached => Context != null;
 
+	// === Cursor ===
+	public CursorType Cursor = .Default;
+
+	/// Effective cursor — walks parent chain, returning first non-Default.
+	public CursorType EffectiveCursor
+	{
+		get
+		{
+			var v = this;
+			while (v != null)
+			{
+				if (v.Cursor != .Default) return v.Cursor;
+				v = v.Parent;
+			}
+			return .Default;
+		}
+	}
+
 	public float Width => Bounds.Width;
 	public float Height => Bounds.Height;
 
@@ -116,6 +134,8 @@ public class View
 	public virtual void OnMouseWheel(MouseWheelEventArgs e) { }
 	public virtual void OnMouseEnter() { }
 	public virtual void OnMouseLeave() { }
+	public virtual void OnKeyDown(KeyEventArgs e) { }
+	public virtual void OnKeyUp(KeyEventArgs e) { }
 	public virtual void OnFocusGained() { }
 	public virtual void OnFocusLost() { }
 
@@ -155,5 +175,49 @@ public class View
 			}
 			return true;
 		}
+	}
+
+	// === Deferred mutation convenience ===
+
+	/// Queue removal from parent (deferred to next drain point).
+	/// Sets IsPendingDeletion immediately.
+	public void QueueRemove()
+	{
+		if (Context == null || IsPendingDeletion) return;
+		IsPendingDeletion = true;
+		Context.MutationQueue.QueueAction(new () =>
+		{
+			if (Parent != null)
+				if (let parentGroup = Parent as ViewGroup)
+					parentGroup.RemoveView(this, false);
+		});
+	}
+
+	/// Queue destruction (removal + delete, deferred to next drain point).
+	/// Sets IsPendingDeletion immediately.
+	public void QueueDestroy()
+	{
+		if (Context == null || IsPendingDeletion) return;
+		IsPendingDeletion = true;
+		Context.MutationQueue.QueueAction(new () =>
+		{
+			if (Parent != null)
+				if (let parentGroup = Parent as ViewGroup)
+					parentGroup.RemoveView(this, true);
+		});
+	}
+
+	/// Queue focus change (deferred to next drain point).
+	public void QueueFocus()
+	{
+		if (Context == null || IsPendingDeletion) return;
+		let ctx = Context;
+		let viewId = Id;
+		ctx.MutationQueue.QueueAction(new [&]() =>
+		{
+			let view = ctx.GetElementById(viewId);
+			if (view != null)
+				ctx.FocusManager.SetFocus(view);
+		});
 	}
 }

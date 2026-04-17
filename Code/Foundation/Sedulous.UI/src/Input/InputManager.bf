@@ -168,6 +168,58 @@ public class InputManager
 		}
 	}
 
+	// === Keyboard ===
+
+	private KeyEventArgs mKeyArgs = new .() ~ delete _;
+
+	/// Route a key-down event to the focused view. If Alt is held,
+	/// searches for IAcceleratorHandler top-down first.
+	public void ProcessKeyDown(KeyCode key, KeyModifiers modifiers, bool isRepeat)
+	{
+		// Alt+key: search tree for IAcceleratorHandler.
+		if (modifiers.HasFlag(.Alt))
+		{
+			if (SearchAccelerator(mContext.Root, key, modifiers))
+				return;
+		}
+
+		let focused = mContext.FocusManager.FocusedView;
+		if (focused == null) return;
+
+		mKeyArgs.Set(key, modifiers, isRepeat);
+		focused.OnKeyDown(mKeyArgs);
+	}
+
+	/// Route a key-up event to the focused view.
+	public void ProcessKeyUp(KeyCode key, KeyModifiers modifiers)
+	{
+		let focused = mContext.FocusManager.FocusedView;
+		if (focused == null) return;
+
+		mKeyArgs.Set(key, modifiers, false);
+		focused.OnKeyUp(mKeyArgs);
+	}
+
+	/// Search the tree top-down for an IAcceleratorHandler that handles
+	/// the given Alt+key combination.
+	private bool SearchAccelerator(View view, KeyCode key, KeyModifiers modifiers)
+	{
+		if (let handler = view as IAcceleratorHandler)
+		{
+			if (handler.HandleAccelerator(key, modifiers))
+				return true;
+		}
+		if (let group = view as ViewGroup)
+		{
+			for (int i = 0; i < group.ChildCount; i++)
+			{
+				if (SearchAccelerator(group.GetChildAt(i), key, modifiers))
+					return true;
+			}
+		}
+		return false;
+	}
+
 	/// Notify that a view was deleted — clear any references.
 	public void OnElementDeleted(View view)
 	{

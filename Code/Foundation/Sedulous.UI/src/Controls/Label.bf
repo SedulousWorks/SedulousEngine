@@ -43,6 +43,17 @@ public class Label : View
 		MeasuredSize = .(wSpec.Resolve(textW), hSpec.Resolve(textH));
 	}
 
+	public override float GetBaseline()
+	{
+		if (Context?.FontService != null)
+		{
+			let font = Context.FontService.GetFont(FontSize);
+			if (font != null)
+				return font.Font.Metrics.Ascent;
+		}
+		return -1;
+	}
+
 	public override void OnDraw(UIDrawContext ctx)
 	{
 		if (Text == null || Text.Length == 0) return;

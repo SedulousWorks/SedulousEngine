@@ -64,6 +64,9 @@ public class UIContext
 	public void UnregisterElement(View view)
 	{
 		mRegistry.Remove(view.Id.Value);
+		// Notify managers so they can clear any ViewId references.
+		InputManager?.OnElementDeleted(view);
+		FocusManager?.OnElementDeleted(view);
 	}
 
 	public View GetElementById(ViewId id)
