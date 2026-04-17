@@ -46,6 +46,9 @@ public static class DarkTheme
 		theme.SetColor("ScrollBar.Track", .(40, 42, 50, 150));
 		theme.SetColor("ScrollBar.Thumb", .(100, 110, 130, 200));
 
+		// === ListView ===
+		theme.SetColor("ListView.Selection", .(60, 120, 200, 80));
+
 		// === Focus ===
 		theme.SetColor("Focus.Ring", .(100, 160, 255, 180));
 

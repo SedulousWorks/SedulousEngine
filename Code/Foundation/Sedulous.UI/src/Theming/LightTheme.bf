@@ -52,6 +52,9 @@ public static class LightTheme
 		theme.SetColor("ScrollBar.Track", .(200, 205, 215, 150));
 		theme.SetColor("ScrollBar.Thumb", .(140, 150, 170, 200));
 
+		// === ListView ===
+		theme.SetColor("ListView.Selection", .(40, 100, 200, 60));
+
 		// === Focus ===
 		theme.SetColor("Focus.Ring", .(40, 100, 220, 200));
 

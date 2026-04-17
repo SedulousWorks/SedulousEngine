@@ -1,0 +1,84 @@
+namespace Sedulous.UI;
+
+using System;
+using Sedulous.Core.Mathematics;
+
+using internal Sedulous.UI;
+
+/// Tree view using FlattenedTreeAdapter for virtualization.
+/// Internally uses a ListView with the flattened adapter.
+/// Double-click expands/collapses nodes.
+public class TreeView : ViewGroup
+{
+	public ITreeAdapter TreeAdapter;
+	public SelectionModel Selection => mListView.Selection;
+	public float ItemHeight { get => mListView.ItemHeight; set => mListView.ItemHeight = value; }
+
+	private FlattenedTreeAdapter mFlatAdapter ~ delete _;
+	private ListView mListView ~ delete _;
+	private float mIndentWidth = 20;
+
+	public float IndentWidth { get => mIndentWidth; set => mIndentWidth = value; }
+	public FlattenedTreeAdapter FlatAdapter => mFlatAdapter;
+
+	public this()
+	{
+		ClipsContent = true;
+
+		mListView = new ListView();
+		mListView.Parent = this;
+
+		// Subscribe to item clicks — double-click toggles expansion.
+		mListView.OnItemClicked.Add(new (position, clickCount) =>
+		{
+			if (clickCount >= 2)
+				ToggleExpand(position);
+		});
+	}
+
+	/// Set the tree adapter and build the flat list.
+	public void SetAdapter(ITreeAdapter adapter)
+	{
+		TreeAdapter = adapter;
+		delete mFlatAdapter;
+		mFlatAdapter = new FlattenedTreeAdapter(adapter);
+		mListView.Adapter = mFlatAdapter;
+	}
+
+	/// Toggle expansion of the node at the given flat position.
+	public void ToggleExpand(int32 flatPosition)
+	{
+		if (mFlatAdapter == null) return;
+		let nodeId = mFlatAdapter.GetNodeId(flatPosition);
+		if (nodeId >= 0)
+		{
+			mFlatAdapter.ToggleExpand(nodeId);
+			mListView.NotifyDataChanged();
+		}
+	}
+
+	// === Visual children: the internal ListView ===
+
+	public override int VisualChildCount => 1;
+	public override View GetVisualChild(int index) => (index == 0) ? mListView : null;
+
+	// === Layout ===
+
+	protected override void OnMeasure(MeasureSpec wSpec, MeasureSpec hSpec)
+	{
+		mListView.Measure(wSpec, hSpec);
+		MeasuredSize = mListView.MeasuredSize;
+	}
+
+	protected override void OnLayout(float left, float top, float right, float bottom)
+	{
+		mListView.Layout(0, 0, right - left, bottom - top);
+	}
+
+	// === Drawing ===
+
+	public override void OnDraw(UIDrawContext ctx)
+	{
+		DrawChildren(ctx);
+	}
+}

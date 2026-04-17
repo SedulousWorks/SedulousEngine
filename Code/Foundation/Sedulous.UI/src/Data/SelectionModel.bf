@@ -1,0 +1,82 @@
+namespace Sedulous.UI;
+
+using System;
+using System.Collections;
+
+public enum SelectionMode { None, Single, Multiple }
+
+/// Decoupled selection state. Tracks selected indices independently
+/// of the data view. Multiple views can share one SelectionModel.
+public class SelectionModel
+{
+	public SelectionMode Mode = .Single;
+	private HashSet<int32> mSelected = new .() ~ delete _;
+
+	public Event<delegate void()> OnSelectionChanged ~ _.Dispose();
+
+	/// Number of selected items.
+	public int SelectedCount => mSelected.Count;
+
+	/// Check if an index is selected.
+	public bool IsSelected(int32 index) => mSelected.Contains(index);
+
+	/// Select an index. In Single mode, clears previous selection.
+	public void Select(int32 index)
+	{
+		if (Mode == .None) return;
+		if (Mode == .Single) mSelected.Clear();
+		if (mSelected.Add(index))
+			OnSelectionChanged();
+	}
+
+	/// Deselect an index.
+	public void Deselect(int32 index)
+	{
+		if (mSelected.Remove(index))
+			OnSelectionChanged();
+	}
+
+	/// Toggle selection of an index.
+	public void Toggle(int32 index)
+	{
+		if (IsSelected(index)) Deselect(index);
+		else Select(index);
+	}
+
+	/// Clear all selections.
+	public void ClearSelection()
+	{
+		if (mSelected.Count > 0)
+		{
+			mSelected.Clear();
+			OnSelectionChanged();
+		}
+	}
+
+	/// Get the first selected index, or -1.
+	public int32 FirstSelected
+	{
+		get
+		{
+			for (let idx in mSelected) return idx;
+			return -1;
+		}
+	}
+
+	/// Adjust indices when items are inserted/removed above them.
+	/// delta > 0 = insertion, delta < 0 = removal.
+	public void ShiftIndices(int32 startPos, int32 delta)
+	{
+		let oldSelected = scope List<int32>();
+		for (let idx in mSelected) oldSelected.Add(idx);
+
+		mSelected.Clear();
+		for (let idx in oldSelected)
+		{
+			if (idx >= startPos)
+				mSelected.Add(idx + delta);
+			else
+				mSelected.Add(idx);
+		}
+	}
+}

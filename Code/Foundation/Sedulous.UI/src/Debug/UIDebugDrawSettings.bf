@@ -12,8 +12,10 @@ public struct UIDebugDrawSettings
 	public bool ShowHitTarget;        // highlight view under cursor (Phase 3)
 	public bool ShowFocusPath;        // chain from focused view to root (Phase 3)
 	public bool ShowTabOrder;         // numbered focus arrows (Phase 3)
+	public bool ShowRecyclerStats;    // overlay Created/Recycled/Reused counters on ListViews
 
 	public bool AnyEnabled =>
 		ShowBounds || ShowPadding || ShowMargin || ShowDrawablePadding ||
-		ShowZOrder || ShowHitTarget || ShowFocusPath || ShowTabOrder;
+		ShowZOrder || ShowHitTarget || ShowFocusPath || ShowTabOrder ||
+		ShowRecyclerStats;
 }

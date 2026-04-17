@@ -86,6 +86,133 @@ class StatusBadgeThemeExtension : IThemeExtension
 	}
 }
 
+// === Sandbox list adapter for ListView demo ===
+
+class SandboxListAdapter : IListAdapter
+{
+	private int32 mCount;
+
+	public this(int32 count) { mCount = count; }
+
+	public int32 ItemCount => mCount;
+	public void SetObserver(IListAdapterObserver observer) { }
+
+	public View CreateView(int32 viewType)
+	{
+		return new Label();
+	}
+
+	public void BindView(View view, int32 position)
+	{
+		if (let label = view as Label)
+		{
+			let text = scope String();
+			text.AppendF("List item {} of {}", position + 1, mCount);
+			label.SetText(text);
+		}
+	}
+}
+
+// === Tree item view with VG-drawn expand arrow ===
+
+class TreeItemView : View
+{
+	public String Text ~ delete _;
+	public int32 Depth;
+	public bool HasChildren;
+	public bool IsExpanded;
+	private float mIndent = 20;
+
+	public void Set(StringView text, int32 depth, bool hasChildren, bool isExpanded)
+	{
+		if (Text == null) Text = new String(text);
+		else Text.Set(text);
+		Depth = depth;
+		HasChildren = hasChildren;
+		IsExpanded = isExpanded;
+	}
+
+	public override void OnDraw(UIDrawContext ctx)
+	{
+		let indent = Depth * mIndent;
+		let arrowSize = 8.0f;
+		let arrowX = indent + 4;
+		let arrowCY = Height * 0.5f;
+
+		// Draw expand/collapse triangle for nodes with children.
+		if (HasChildren)
+		{
+			let arrowColor = ctx.Theme?.Palette.Text ?? Color(200, 200, 200, 255);
+			ctx.VG.BeginPath();
+			if (IsExpanded)
+			{
+				// Down-pointing triangle (v).
+				ctx.VG.MoveTo(arrowX, arrowCY - arrowSize * 0.3f);
+				ctx.VG.LineTo(arrowX + arrowSize, arrowCY - arrowSize * 0.3f);
+				ctx.VG.LineTo(arrowX + arrowSize * 0.5f, arrowCY + arrowSize * 0.4f);
+			}
+			else
+			{
+				// Right-pointing triangle (>).
+				ctx.VG.MoveTo(arrowX, arrowCY - arrowSize * 0.4f);
+				ctx.VG.LineTo(arrowX + arrowSize * 0.6f, arrowCY);
+				ctx.VG.LineTo(arrowX, arrowCY + arrowSize * 0.4f);
+			}
+			ctx.VG.ClosePath();
+			ctx.VG.Fill(arrowColor);
+		}
+
+		// Draw text label.
+		if (Text != null && Text.Length > 0 && ctx.FontService != null)
+		{
+			let textX = indent + mIndent;
+			let textColor = ctx.Theme?.GetColor("Label.Foreground") ?? Color(220, 220, 230, 255);
+			let font = ctx.FontService.GetFont(14);
+			if (font != null)
+				ctx.VG.DrawText(Text, font, .(textX, 0, Width - textX, Height), .Left, .Middle, textColor);
+		}
+	}
+}
+
+// === Sandbox tree adapter for TreeView demo ===
+// Simulates a filesystem: 5 folders, each with 3 files.
+
+class SandboxTreeAdapter : ITreeAdapter
+{
+	public int32 RootCount => 5;
+
+	public int32 GetChildCount(int32 nodeId)
+	{
+		if (nodeId == -1) return 5;
+		if (nodeId < 5) return 3;
+		return 0;
+	}
+
+	public int32 GetChildId(int32 parentId, int32 childIndex)
+	{
+		if (parentId == -1) return childIndex;
+		return parentId * 10 + 10 + childIndex;
+	}
+
+	public int32 GetDepth(int32 nodeId) => (nodeId >= 10) ? 1 : 0;
+	public bool HasChildren(int32 nodeId) => nodeId < 5;
+
+	public View CreateView(int32 viewType) => new TreeItemView();
+
+	public void BindView(View view, int32 nodeId, int32 depth, bool isExpanded)
+	{
+		if (let item = view as TreeItemView)
+		{
+			let name = scope String();
+			if (HasChildren(nodeId))
+				name.AppendF("Folder {}", nodeId);
+			else
+				name.AppendF("file_{}.txt", nodeId);
+			item.Set(name, depth, HasChildren(nodeId), isExpanded);
+		}
+	}
+}
+
 /// UISandbox — gallery/showcase for Sedulous.UI, growing with each phase.
 /// Phase 2: Drawable system, Label, Button, Panel, Separator, debug overlays.
 class UISandboxApp : Application
@@ -94,6 +221,8 @@ class UISandboxApp : Application
 	private OwnedImageData mCheckerboard ~ delete _;
 	private OwnedImageData mButtonNormal ~ delete _;
 	private OwnedImageData mButtonPressed ~ delete _;
+	private SandboxListAdapter mListAdapter ~ delete _;
+	private SandboxTreeAdapter mTreeAdapter ~ delete _;
 	private Label mClickLabel;  // shows click feedback
 
 	public this() : base()
@@ -321,6 +450,17 @@ class UISandboxApp : Application
 			}
 		}
 
+		AddSeparator(left);
+		AddSectionLabel(left, "TreeView (dbl-click to expand)");
+
+		{
+			mTreeAdapter = new SandboxTreeAdapter();
+			let tree = new TreeView();
+			tree.ItemHeight = 22;
+			tree.SetAdapter(mTreeAdapter);
+			left.AddView(tree, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
+		}
+
 		// --- RIGHT COLUMN ---
 		let right = new LinearLayout();
 		right.Orientation = .Vertical;
@@ -452,6 +592,18 @@ class UISandboxApp : Application
 			btn.SetText("9-Slice StateList");
 			btn.Background = sld;
 				right.AddView(btn, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 42 });
+		}
+
+		AddSeparator(right);
+		AddSectionLabel(right, "ListView (1000 items, virtualized)");
+
+		// Virtualized ListView with 1000 items — only visible items created.
+		{
+			let list = new ListView();
+			list.ItemHeight = 22;
+			mListAdapter = new SandboxListAdapter(1000);
+			list.Adapter = mListAdapter;
+			right.AddView(list, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
 		}
 
 		AddSeparator(right);

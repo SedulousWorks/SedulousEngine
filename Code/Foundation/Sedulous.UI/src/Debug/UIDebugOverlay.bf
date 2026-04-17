@@ -1,7 +1,9 @@
 namespace Sedulous.UI;
 
+using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.VG;
+using Sedulous.Fonts;
 
 /// Draws debug overlays (bounds, padding, margin, focus, hit-target)
 /// for the given view. Called after the normal draw pass.
@@ -91,6 +93,25 @@ public static class UIDebugOverlay
 				ctx.VG.StrokeRect(.(-2, -2, w + 4, h + 4), sFocusColor, 2.0f);
 			else if (view.IsFocusWithin)
 				ctx.VG.StrokeRect(.(-1, -1, w + 2, h + 2), .(sFocusColor.R, sFocusColor.G, sFocusColor.B, 80), 1.0f);
+		}
+
+		// Recycler stats on ListViews
+		if (settings.ShowRecyclerStats)
+		{
+			if (let listView = view as ListView)
+			{
+				let r = listView.Recycler;
+				let statsText = scope String();
+				statsText.AppendF("C:{} R:{} U:{}", r.CreatedCount, r.RecycledCount, r.ReusedCount);
+
+				ctx.VG.FillRoundedRect(.(2, 2, 140, 18), 4, .(0, 0, 0, 160));
+				if (ctx.FontService != null)
+				{
+					let font = ctx.FontService.GetFont(12);
+					if (font != null)
+						ctx.VG.DrawText(statsText, font, .(6, 2, 130, 18), .Left, .Middle, .(200, 255, 200, 255));
+				}
+			}
 		}
 	}
 }
