@@ -69,8 +69,9 @@ public class UISubsystem : Subsystem
 		if (mShaderSystem.Initialize(device, shaderPaths) case .Err)
 			return .Err;
 
-		// UIContext
+		// UIContext (connect font service so controls can query fonts)
 		mUIContext = new UIContext();
+		mUIContext.FontService = mFontService;
 
 		// VGContext (with font service so DrawText convenience overloads work)
 		mVGContext = new VGContext(mFontService);

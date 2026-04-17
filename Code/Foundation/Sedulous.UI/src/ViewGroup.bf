@@ -120,6 +120,10 @@ public class ViewGroup : View
 
 			child.OnDraw(ctx);
 
+			// Debug overlays drawn after the child's normal draw.
+			if (ctx.DebugSettings.AnyEnabled)
+				UIDebugOverlay.DrawOverlays(ctx, child);
+
 			if (child.ClipsContent)
 				ctx.PopClip();
 

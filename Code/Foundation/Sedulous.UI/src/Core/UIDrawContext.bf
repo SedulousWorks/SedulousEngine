@@ -4,12 +4,14 @@ using Sedulous.VG;
 using Sedulous.Fonts;
 using Sedulous.Core.Mathematics;
 
-/// Thin wrapper over VGContext that widgets draw to. Phase 1: bare VG pass-through.
-/// Phase 2 adds drawable helpers; Phase 4 adds theme-key-based overloads.
+/// Wrapper over VGContext that widgets draw to. Provides VG access,
+/// font service access, and debug overlay state.
 public class UIDrawContext
 {
 	private VGContext mVG;
 	private float mUIScale;
+	private IFontService mFontService;
+	private UIDebugDrawSettings mDebugSettings;
 
 	/// Direct access to the underlying VGContext for custom drawing.
 	public VGContext VG => mVG;
@@ -17,10 +19,19 @@ public class UIDrawContext
 	/// Current UI scale (for DPI-aware decisions inside custom draw code).
 	public float UIScale => mUIScale;
 
-	public this(VGContext vg, float uiScale = 1.0f)
+	/// Font service for text rendering. May be null if no fonts loaded.
+	public IFontService FontService => mFontService;
+
+	/// Debug draw settings (which overlays are enabled).
+	public UIDebugDrawSettings DebugSettings => mDebugSettings;
+
+	public this(VGContext vg, float uiScale = 1.0f, IFontService fontService = null,
+		UIDebugDrawSettings debugSettings = .())
 	{
 		mVG = vg;
 		mUIScale = uiScale;
+		mFontService = fontService;
+		mDebugSettings = debugSettings;
 	}
 
 	/// Push a scissor clip rect (logical coordinates).

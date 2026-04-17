@@ -3,6 +3,7 @@ namespace Sedulous.UI;
 using System;
 using System.Collections;
 using Sedulous.VG;
+using Sedulous.Fonts;
 using Sedulous.Core.Mathematics;
 
 using internal Sedulous.UI;
@@ -25,6 +26,12 @@ public class UIContext
 
 	// === DPI scale ===
 	public float DpiScale { get => mRoot?.DpiScale ?? 1.0f; }
+
+	// === Font service (optional — set by UISubsystem) ===
+	public IFontService FontService;
+
+	// === Debug draw settings ===
+	public UIDebugDrawSettings DebugSettings;
 
 	/// The root view of this UI surface.
 	public RootView Root => mRoot;
@@ -81,7 +88,7 @@ public class UIContext
 	{
 		Phase = .Drawing;
 
-		let drawCtx = scope UIDrawContext(vg, uiScale);
+		let drawCtx = scope UIDrawContext(vg, uiScale, FontService, DebugSettings);
 
 		// Apply global DPI scale at the root.
 		if (uiScale != 1.0f)
