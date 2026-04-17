@@ -20,8 +20,14 @@ public static class UIRegistry
 		public Dictionary<String, PropertySetter> Properties;
 	}
 
-	private static Dictionary<String, ViewRegistration> sRegistry = new .() ~ {
-		for (let kv in _)
+	private static Dictionary<String, ViewRegistration> sRegistry = new .() ~ Cleanup(ref _);
+
+	private static void Cleanup(ref Dictionary<String, ViewRegistration> registry)
+	{
+		if(registry == null)
+			return;
+
+		for (let kv in registry)
 		{
 			delete kv.key;
 			delete kv.value.Factory;
@@ -35,8 +41,20 @@ public static class UIRegistry
 				delete kv.value.Properties;
 			}
 		}
-		delete _;
-	};
+		delete registry;
+
+		registry = null;
+	}
+
+	public static ~this()
+	{
+		Cleanup(ref sRegistry);
+	}
+
+	public static void Clear()
+	{
+		Cleanup(ref sRegistry);
+	}
 
 	/// Register a view type with its XML element name and factory.
 	public static void RegisterView(StringView elementName, ViewFactory factory)
@@ -113,9 +131,15 @@ public static class UIRegistry
 
 	private static bool ParseOrientation(StringView val) => val == "Horizontal";
 
+	private static bool sBuiltinsRegistered = false;
+
 	/// Register all built-in view types with their XML-settable properties.
+	/// Safe to call multiple times — no-op after the first call.
 	public static void RegisterBuiltins()
 	{
+		if (sBuiltinsRegistered) return;
+		sBuiltinsRegistered = true;
+
 		// === LinearLayout ===
 		RegisterView("LinearLayout", new () => new LinearLayout());
 		RegisterProperty("LinearLayout", "orientation", new (v, val) => {

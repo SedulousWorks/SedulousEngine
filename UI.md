@@ -1591,7 +1591,33 @@ A phase is **not complete** until all three conditions hold:
 Each phase section below lists its work items followed by the specific
 test coverage expected and the sandbox additions.
 
+## Implementation Status
+
+| Phase | Status | Tests |
+|-------|--------|-------|
+| **1** Foundation + Runtime + Sandbox | ✅ DONE | 18 |
+| **2** Drawables + Widgets + Layouts + Debug | ✅ DONE | 9 |
+| **3** Input + Focus | ✅ DONE | 25 |
+| **4** Theme System | ✅ DONE | 13 |
+| **5** XML UI Loading | ✅ DONE | 20 |
+| **6** Resource Integration | ✅ DONE | 6 |
+| **7** Engine Integration | DEFERRED | — |
+| **8** Scrolling | NOT STARTED | — |
+| **9** Adapters + Virtualization | NOT STARTED | — |
+| **10** Text Editing | NOT STARTED | — |
+| **11** Overlays | NOT STARTED | — |
+| **12** Animation | NOT STARTED | — |
+| **13** Drag and Drop | NOT STARTED | — |
+| **14** Toolkit + Gamekit + Polish | NOT STARTED | — |
+
+**Total tests: 90** across Phases 1–6.
+
+See **Deferred Work** section at the end of this document for all
+items skipped or deferred from completed phases.
+
 ## Phase 1 — First light: foundation + runtime + sandbox
+
+> **Status: ✅ COMPLETE**
 
 **Goal: get the real `UISubsystem` driving the real `UISandbox` rendering
 real UI on screen.** VGRenderer is already proven, so there's no reason
@@ -1666,6 +1692,8 @@ app.
 
 ## Phase 2 — Drawable system + full widget set + layouts + debug overlays
 
+> **Status: ✅ COMPLETE**
+
 Expand from the bare minimum of Phase 1 into a production-capable widget
 set with composable visuals. **No theme yet** — widgets have per-instance
 fields for colors/drawables; theme retrofit comes in Phase 4. Since the
@@ -1715,6 +1743,9 @@ demo page.
 - Debug-overlay toggle keys (F1=bounds, F2=padding, F3=margin, F4=drawable-padding, F5=z-order)
 
 ## Phase 3 — Input + focus
+
+> **Status: ✅ COMPLETE** — Focus restoration on overlay close deferred to
+> Phase 11. TextInputEventArgs deferred to Phase 10.
 
 With the runtime subsystem already established, this phase turns buttons
 into buttons, makes hover/focus work, and wires `Sedulous.Shell` events
@@ -1793,6 +1824,9 @@ through to the tree.
 
 ## Phase 4 — Theme system
 
+> **Status: ✅ COMPLETE** — Theme XML parser deferred to Phase 6. Theme
+> XML round-trip test deferred with it.
+
 **Code (`Sedulous.UI`):**
 - `Theme` with typed flat dictionaries (Color, Dimension, Padding,
   Drawable, String, Font)
@@ -1826,6 +1860,10 @@ through to the tree.
 
 ## Phase 5 — XML UI loading + view registry
 
+> **Status: ✅ COMPLETE** — `{Binding Path}` syntax and `<Include Source=...>`
+> deferred. Both need infrastructure not yet built (observable bindings,
+> file I/O integration).
+
 Declarative UIs, file-I/O-free (parsing only).
 
 **Code (`Sedulous.UI`):**
@@ -1852,6 +1890,10 @@ Declarative UIs, file-I/O-free (parsing only).
 
 ## Phase 6 — Resource integration
 
+> **Status: ✅ COMPLETE** — Hot-reload file watching deferred to Phase 7
+> (needs engine FileWatcher). `<Include Source=...>` in layout XML
+> deferred (needs file I/O resolution path).
+
 `Sedulous.UI.Resources` wraps Phase 4 & 5 parsers as engine resources.
 
 **Code (`Sedulous.UI.Resources`):**
@@ -1871,6 +1913,11 @@ Declarative UIs, file-I/O-free (parsing only).
   without restart).
 
 ## Phase 7 — Engine integration
+
+> **Status: DEFERRED** — Engine integration is only useful once enough UI
+> capability exists (scrolling, text editing, overlays) to build real
+> game UIs. Phases 8–11 proceed first using the standalone
+> `Sedulous.UI.Runtime` + `UISandbox` driver. Phase 7 picks up after.
 
 `Sedulous.UI.Runtime` has been around since Phase 1. This phase adds the
 engine-specific layer — scene integration, resource system registration,
@@ -2167,18 +2214,18 @@ everything suddenly needs to integrate.
    retrofit existing widgets to theme-driven styling.
 5. **Phase 6** (resource integration) — wraps 4 & 5 as engine resources,
    enabling hot reload.
-6. **Phase 7** (engine integration) — thin: `Sedulous.Engine.UI` for
-   scene hooks + resource registration + default `IFloatingWindowHost`.
-7. **Phases 8-9** (scrolling + virtualization) — required for any
+6. **Phases 8-9** (scrolling + virtualization) — required for any
    non-trivial UI.
-8. **Phase 10** (text editing).
-9. **Phase 11** (overlays) — dialogs, menus, tooltips.
-10. **Phase 12** (animation).
-11. **Phase 13** (drag and drop).
+7. **Phase 10** (text editing).
+8. **Phase 11** (overlays) — dialogs, menus, tooltips.
+9. **Phase 12** (animation).
+10. **Phase 13** (drag and drop).
+11. **Phase 7** (engine integration) — deferred until enough UI
+    capability exists to build real game UIs. Picks up after Phase 11+.
 12. **Phase 14** (Toolkit + Gamekit + polish) — final libraries, tree
     inspector, sample game UI gallery.
 
-**Phases 7-13 can ship independently** — they don't change foundations.
+**Phases 8-13 can ship independently** — they don't change foundations.
 Each phase still follows the completion criteria: code + tests + sandbox
 update.
 
@@ -2479,3 +2526,54 @@ src/
     GamekitPage.bf          // Phase 14
     SampleGameUIPage.bf     // Phase 14
 ```
+
+## Deferred Work
+
+Items skipped or deferred from completed phases, with their original
+phase and the reason for deferral. Pick these up when the prerequisite
+infrastructure lands or when the feature becomes blocking.
+
+### From Phase 1
+
+| Item | Reason | Where it fits |
+|------|--------|---------------|
+| `Alignment` value type | Gravity covers H+V alignment + fill. Separate type is redundant. | **Dropped** — not needed |
+
+### From Phase 3
+
+| Item | Reason | Where it fits |
+|------|--------|---------------|
+| Focus restoration on overlay close | Needs PopupLayer + modal stack | Phase 11 (Overlays) |
+| `TextInputEventArgs` | Needs text input pipeline | Phase 10 (Text Editing) |
+| Debug overlay `ShowTabOrder` rendering | Flag exists but renderer not implemented | Low priority — pick up when tab order bugs arise |
+
+### From Phase 4
+
+| Item | Reason | Where it fits |
+|------|--------|---------------|
+| Theme XML round-trip test (parse → serialize → parse) | Needs XML writer for themes; ThemeXmlParser only reads | Future — add `ThemeXmlWriter` when theme editing is needed |
+
+### From Phase 5
+
+| Item | Reason | Where it fits |
+|------|--------|---------------|
+| `{Binding Path}` XML syntax | Needs `Observable<T>` or binding infrastructure | Could be its own mini-phase or part of Phase 8+ when data-driven UIs become needed |
+| `<Include Source=...>` XML composition | Needs file I/O path resolution relative to the including file | Phase 7 (Engine Integration) or whenever file-based layout loading is needed |
+
+### From Phase 6
+
+| Item | Reason | Where it fits |
+|------|--------|---------------|
+| Hot-reload file watching | Needs engine `FileWatcher` infrastructure | Phase 7 (Engine Integration) |
+| `<Include Source=...>` in layout XML | Same as Phase 5 deferral — needs file path resolution | Phase 7 |
+
+### Debug overlays not yet rendering
+
+These flags exist in `UIDebugDrawSettings` but `UIDebugOverlay` does
+not implement their rendering yet:
+
+- `ShowZOrder` — numbered overlay showing draw order
+- `ShowTabOrder` — numbered arrows showing focus traversal order
+
+Both are low priority. Implement when debugging those specific
+behaviors becomes necessary.

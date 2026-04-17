@@ -1,5 +1,5 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.RHI" = "*", "Sedulous.Shaders" = "*", "Sedulous.VG" = "*", "Sedulous.VG.Renderer" = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Runtime.Client" = "*", "Sedulous.ImageData" = "*", "Sedulous.Imaging" = "*", "Sedulous.Imaging.STB" = "*", "Sedulous.Fonts" = "*", "Sedulous.Fonts.TTF" = "*", "Sedulous.UI" = "*", "Sedulous.UI.Runtime" = "*", "Sedulous.Shell" = "*", "Sedulous.Runtime" = "*", "Sedulous.Profiler" = "*"}
+Dependencies = {corlib = "*", "Sedulous.RHI" = "*", "Sedulous.Shaders" = "*", "Sedulous.VG" = "*", "Sedulous.VG.Renderer" = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Runtime.Client" = "*", "Sedulous.ImageData" = "*", "Sedulous.Imaging" = "*", "Sedulous.Imaging.STB" = "*", "Sedulous.Fonts" = "*", "Sedulous.Fonts.TTF" = "*", "Sedulous.UI" = "*", "Sedulous.UI.Runtime" = "*", "Sedulous.UI.Resources" = "*", "Sedulous.Resources" = "*", "Sedulous.Shell" = "*", "Sedulous.Runtime" = "*", "Sedulous.Profiler" = "*"}
 
 [Project]
 Name = "UISandbox"

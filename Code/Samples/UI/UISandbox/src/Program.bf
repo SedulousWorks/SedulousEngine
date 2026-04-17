@@ -11,6 +11,7 @@ using Sedulous.Shell.Input;
 using Sedulous.ImageData;
 using Sedulous.Imaging;
 using Sedulous.Imaging.STB;
+using Sedulous.UI.Resources;
 
 // === Custom control: StatusBadge ===
 // Demonstrates a user-defined control themed via IThemeExtension.
@@ -636,6 +637,40 @@ class UISandboxApp : Application
 			delete ctx.Theme;
 			ctx.Theme = isDark ? LightTheme.Create() : DarkTheme.Create();
 			ctx.Root.InvalidateLayout();
+		}
+
+		// F6 loads a custom theme from XML (demonstrates ThemeXmlParser).
+		if (kb.IsKeyPressed(.F6))
+		{
+			let themeXml = """
+				<Theme name="XmlCustom">
+				  <Palette primary="180,60,120" background="25,20,30" surface="40,32,48"
+				           border="70,55,85" text="230,220,240" textDim="150,130,170"/>
+				  <Color key="Button.Background" value="180,60,120"/>
+				  <Color key="Button.Background.Hover" value="210,90,150"/>
+				  <Color key="Button.Background.Pressed" value="140,40,90"/>
+				  <Color key="Button.Foreground" value="255,240,250"/>
+				  <Color key="Label.Foreground" value="230,220,240"/>
+				  <Color key="Panel.Background" value="40,32,48"/>
+				  <Color key="Panel.Border" value="70,55,85"/>
+				  <Color key="Separator.Color" value="70,55,85"/>
+				  <Color key="SectionLabel.Foreground" value="255,180,220"/>
+				  <Color key="Focus.Ring" value="200,100,160,200"/>
+				  <Dimension key="Button.CornerRadius" value="6"/>
+				  <Dimension key="Panel.CornerRadius" value="8"/>
+				  <Dimension key="Panel.BorderWidth" value="1"/>
+				  <Padding key="Button.Padding" value="12,8"/>
+				</Theme>
+				""";
+
+			let ctx = mUI.UIContext;
+			let newTheme = ThemeXmlParser.Parse(themeXml);
+			if (newTheme != null)
+			{
+				delete ctx.Theme;
+				ctx.Theme = newTheme;
+				ctx.Root.InvalidateLayout();
+			}
 		}
 	}
 
