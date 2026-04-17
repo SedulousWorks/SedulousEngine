@@ -27,8 +27,12 @@ public class UISubsystem : Subsystem
 	private ShaderSystem mShaderSystem;
 	private FontService mFontService;
 
+	// Input bridge (Shell → UI)
+	private UIInputHelper mInputHelper;
+
 	// Platform (not owned)
 	private IDevice mDevice;
+	private Sedulous.Shell.IShell mShell;
 
 	// State
 	private bool mRenderingInitialized;
@@ -52,13 +56,16 @@ public class UISubsystem : Subsystem
 	}
 
 	/// Initialize rendering resources. Call after the device is ready.
+	/// Pass shell for input bridging (optional — null disables input).
 	public Result<void> InitializeRendering(
 		IDevice device,
 		TextureFormat targetFormat,
 		int32 frameCount,
-		Span<StringView> shaderPaths)
+		Span<StringView> shaderPaths,
+		Sedulous.Shell.IShell shell = null)
 	{
 		mDevice = device;
+		mShell = shell;
 		mFrameCount = frameCount;
 
 		// Font service
@@ -72,6 +79,10 @@ public class UISubsystem : Subsystem
 		// UIContext (connect font service so controls can query fonts)
 		mUIContext = new UIContext();
 		mUIContext.FontService = mFontService;
+
+		// Input bridge (Shell → UI)
+		if (shell?.InputManager != null)
+			mInputHelper = new UIInputHelper(shell.InputManager, mUIContext);
 
 		// VGContext (with font service so DrawText convenience overloads work)
 		mVGContext = new VGContext(mFontService);
@@ -100,6 +111,9 @@ public class UISubsystem : Subsystem
 		using (SProfiler.Begin("UISubsystem.Update"))
 		{
 			mTotalTime += deltaTime;
+
+			// Route shell input → UI events.
+			mInputHelper?.Update(deltaTime);
 
 			// Drain deferred mutations, then run layout.
 			mUIContext.BeginFrame(deltaTime);
@@ -156,6 +170,12 @@ public class UISubsystem : Subsystem
 
 	protected override void OnShutdown()
 	{
+		if (mInputHelper != null)
+		{
+			delete mInputHelper;
+			mInputHelper = null;
+		}
+
 		if (mVGRenderer != null)
 		{
 			mVGRenderer.Dispose();

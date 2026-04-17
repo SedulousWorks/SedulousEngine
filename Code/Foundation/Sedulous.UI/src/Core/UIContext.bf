@@ -33,13 +33,25 @@ public class UIContext
 	// === Debug draw settings ===
 	public UIDebugDrawSettings DebugSettings;
 
+	// === Input + Focus ===
+	public InputManager InputManager { get; private set; }
+	public FocusManager FocusManager { get; private set; }
+
 	/// The root view of this UI surface.
 	public RootView Root => mRoot;
 
 	public this()
 	{
+		InputManager = new InputManager(this);
+		FocusManager = new FocusManager(this);
 		mRoot = new RootView();
 		ViewGroup.AttachSubtree(mRoot, this);
+	}
+
+	public ~this()
+	{
+		delete InputManager;
+		delete FocusManager;
 	}
 
 	// === Registry ===

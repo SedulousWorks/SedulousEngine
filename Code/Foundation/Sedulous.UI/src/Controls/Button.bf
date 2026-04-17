@@ -6,8 +6,7 @@ using Sedulous.Fonts;
 using Sedulous.VG;
 
 /// Button with a background drawable and a text label.
-/// No click handler yet (Phase 3 wires input). ControlState is computed
-/// from flags for drawable state selection.
+/// ControlState is computed from hover/pressed/enabled flags.
 public class Button : View
 {
 	public String Text ~ delete _;
@@ -16,9 +15,15 @@ public class Button : View
 	public Drawable Background ~ delete _;
 	public Thickness Padding = .(12, 8);
 
-	// Visual state flags (set by InputManager in Phase 3).
+	// Visual state flags (set by InputManager).
 	public bool IsHovered;
 	public bool IsPressed;
+
+	// Click event — subscribe to get notified when the button is clicked.
+	public Event<delegate void(Button)> OnClick ~ _.Dispose();
+
+	// Focus ring color.
+	public Color FocusRingColor = .(100, 160, 255, 180);
 
 	public this()
 	{
@@ -38,8 +43,16 @@ public class Button : View
 	{
 		if (!IsEffectivelyEnabled) return .Disabled;
 		if (IsPressed) return .Pressed;
+		if (IsFocused) return .Focused;
 		if (IsHovered) return .Hover;
 		return .Normal;
+	}
+
+	/// Called by InputManager when a click is detected (mouse-down + mouse-up
+	/// on the same button view).
+	public void FireClick()
+	{
+		OnClick(this);
 	}
 
 	protected override void OnMeasure(MeasureSpec wSpec, MeasureSpec hSpec)
@@ -83,5 +96,9 @@ public class Button : View
 				ctx.VG.DrawText(Text, font, contentBounds, .Center, .Middle, TextColor);
 			}
 		}
+
+		// Focus ring
+		if (IsFocused)
+			ctx.VG.StrokeRect(.(-1, -1, Width + 2, Height + 2), FocusRingColor, 2.0f);
 	}
 }

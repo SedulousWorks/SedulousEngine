@@ -20,6 +20,7 @@ class UISandboxApp : Application
 	private OwnedImageData mCheckerboard ~ delete _;
 	private OwnedImageData mButtonNormal ~ delete _;
 	private OwnedImageData mButtonPressed ~ delete _;
+	private Label mClickLabel;  // shows click feedback
 
 	public this() : base()
 	{
@@ -36,7 +37,7 @@ class UISandboxApp : Application
 		GetAssetPath("shaders", shaderPath);
 
 		if (mUI.InitializeRendering(Device, SwapChain.Format, (int32)SwapChain.BufferCount,
-			scope StringView[](shaderPath)) case .Err)
+			scope StringView[](shaderPath), Shell) case .Err)
 		{
 			Console.WriteLine("Failed to initialize UI rendering");
 			return;
@@ -114,7 +115,7 @@ class UISandboxApp : Application
 			left.AddView(label, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 22 });
 		}
 
-		// Buttons
+		// Buttons (clickable in Phase 3!)
 		{
 			let row = new LinearLayout();
 			row.Orientation = .Horizontal;
@@ -123,6 +124,15 @@ class UISandboxApp : Application
 			AddButton(row, "Primary", Color(50, 100, 200, 255));
 			AddButton(row, "Success", Color(50, 160, 70, 255));
 			AddButton(row, "Danger", Color(200, 60, 60, 255));
+		}
+
+		// Click feedback label.
+		{
+			mClickLabel = new Label();
+			mClickLabel.SetText("Click a button... (Tab to cycle focus)");
+			mClickLabel.TextColor = .(140, 160, 180, 255);
+			mClickLabel.FontSize = 16;
+			left.AddView(mClickLabel, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 20 });
 		}
 
 		// Panel
@@ -339,6 +349,18 @@ class UISandboxApp : Application
 		bg.Set(.Pressed, new RoundedRectDrawable(Darken(bgColor, 0.15f), 4));
 		bg.Set(.Disabled, new RoundedRectDrawable(Desaturate(bgColor, 0.5f), 4));
 		btn.Background = bg;
+
+		// Wire click feedback.
+		btn.OnClick.Add(new [&](clickedBtn) =>
+		{
+			if (mClickLabel != null)
+			{
+				let msg = scope String();
+				msg.AppendF("Clicked: {}", clickedBtn.Text);
+				mClickLabel.SetText(msg);
+				mClickLabel.TextColor = .(120, 255, 160, 255);
+			}
+		});
 
 		row.AddView(btn, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
 	}

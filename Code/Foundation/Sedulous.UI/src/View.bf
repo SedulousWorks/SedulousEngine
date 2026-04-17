@@ -108,12 +108,37 @@ public class View
 		return null;
 	}
 
-	// === Input stubs (wired up in Phase 3) ===
+	// === Input events ===
 
-	public virtual void OnMouseDown(/*MouseEventArgs e*/) { }
-	public virtual void OnMouseUp(/*MouseEventArgs e*/) { }
-	public virtual void OnMouseMove(/*MouseEventArgs e*/) { }
-	public virtual void OnKeyDown(/*KeyEventArgs e*/) { }
+	public virtual void OnMouseDown(MouseEventArgs e) { }
+	public virtual void OnMouseUp(MouseEventArgs e) { }
+	public virtual void OnMouseMove(MouseEventArgs e) { }
+	public virtual void OnMouseWheel(MouseWheelEventArgs e) { }
+	public virtual void OnMouseEnter() { }
+	public virtual void OnMouseLeave() { }
+	public virtual void OnFocusGained() { }
+	public virtual void OnFocusLost() { }
+
+	/// True if this view currently has keyboard focus.
+	public bool IsFocused => Context?.FocusManager?.FocusedId == Id;
+
+	/// True if this view or any descendant has keyboard focus.
+	public bool IsFocusWithin
+	{
+		get
+		{
+			if (Context?.FocusManager == null) return false;
+			let focusedView = Context.FocusManager.FocusedView;
+			if (focusedView == null) return false;
+			var v = focusedView;
+			while (v != null)
+			{
+				if (v.Id == Id) return true;
+				v = v.Parent;
+			}
+			return false;
+		}
+	}
 
 	// === Effective state ===
 
