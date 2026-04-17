@@ -267,5 +267,65 @@ public static class UIRegistry
 		RegisterProperty("Separator", "color", new (v, val) => {
 			if (let c = v as Separator) if (ParseColor(val, let col)) c.Color = col;
 		});
+
+		// === CheckBox ===
+		RegisterView("CheckBox", new () => new CheckBox());
+		RegisterProperty("CheckBox", "text", new (v, val) => {
+			if (let c = v as CheckBox) c.SetText(val);
+		});
+		RegisterProperty("CheckBox", "isChecked", new (v, val) => {
+			if (let c = v as CheckBox) c.IsChecked = (val == "true");
+		});
+
+		// === RadioButton ===
+		RegisterView("RadioButton", new () => new RadioButton());
+		RegisterProperty("RadioButton", "text", new (v, val) => {
+			if (let c = v as RadioButton) c.SetText(val);
+		});
+
+		// === RadioGroup ===
+		RegisterView("RadioGroup", new () => new RadioGroup());
+
+		// === ToggleButton ===
+		RegisterView("ToggleButton", new () => new ToggleButton());
+		RegisterProperty("ToggleButton", "text", new (v, val) => {
+			if (let c = v as ToggleButton) c.SetText(val);
+		});
+
+		// === ToggleSwitch ===
+		RegisterView("ToggleSwitch", new () => new ToggleSwitch());
+		RegisterProperty("ToggleSwitch", "text", new (v, val) => {
+			if (let c = v as ToggleSwitch) c.SetText(val);
+		});
+
+		// === RepeatButton ===
+		RegisterView("RepeatButton", new () => new RepeatButton());
+		RegisterProperty("RepeatButton", "text", new (v, val) => {
+			if (let c = v as RepeatButton) c.SetText(val);
+		});
+
+		// === ProgressBar ===
+		RegisterView("ProgressBar", new () => new ProgressBar());
+		RegisterProperty("ProgressBar", "progress", new (v, val) => {
+			if (let c = v as ProgressBar) if (float.Parse(val) case .Ok(let f)) c.Progress = f;
+		});
+
+		// === Slider ===
+		RegisterView("Slider", new () => new Slider());
+		RegisterProperty("Slider", "min", new (v, val) => {
+			if (let c = v as Slider) if (float.Parse(val) case .Ok(let f)) c.Min = f;
+		});
+		RegisterProperty("Slider", "max", new (v, val) => {
+			if (let c = v as Slider) if (float.Parse(val) case .Ok(let f)) c.Max = f;
+		});
+		RegisterProperty("Slider", "step", new (v, val) => {
+			if (let c = v as Slider) if (float.Parse(val) case .Ok(let f)) c.Step = f;
+		});
+
+		// === TabView ===
+		RegisterView("TabView", new () => new TabView());
+
+		// === ComboBox ===
+		RegisterView("ComboBox", new () => new ComboBox());
 	}
 }

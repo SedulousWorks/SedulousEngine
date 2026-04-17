@@ -53,6 +53,9 @@ public class SelectionModel
 		}
 	}
 
+	/// Get all selected indices.
+	public HashSet<int32> SelectedPositions => mSelected;
+
 	/// Get the first selected index, or -1.
 	public int32 FirstSelected
 	{
@@ -74,7 +77,11 @@ public class SelectionModel
 		for (let idx in oldSelected)
 		{
 			if (idx >= startPos)
-				mSelected.Add(idx + delta);
+			{
+				let newIdx = idx + delta;
+				if (newIdx >= 0) // guard against negative indices
+					mSelected.Add(newIdx);
+			}
 			else
 				mSelected.Add(idx);
 		}

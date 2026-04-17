@@ -88,4 +88,52 @@ public class UIDrawContext
 		if (drawable != null)
 			drawable.Draw(this, bounds, state);
 	}
+
+	/// Draw a themed box (fill + border + corner radius) using keys:
+	/// "{prefix}.Background", "{prefix}.Border", "{prefix}.CornerRadius", "{prefix}.BorderWidth".
+	/// Reduces boilerplate in Panel, Button, Dialog, etc.
+	public void FillThemedBox(RectangleF bounds, StringView prefix,
+		Color defaultBg = .Transparent, Color defaultBorder = .Transparent,
+		float defaultRadius = 0, float defaultBorderWidth = 0)
+	{
+		if (mTheme == null) return;
+
+		let bgKey = scope $"{prefix}.Background";
+		let borderKey = scope $"{prefix}.Border";
+		let radiusKey = scope $"{prefix}.CornerRadius";
+		let widthKey = scope $"{prefix}.BorderWidth";
+
+		let bgColor = mTheme.GetColor(bgKey, defaultBg);
+		let borderColor = mTheme.GetColor(borderKey, defaultBorder);
+		let radius = mTheme.GetDimension(radiusKey, defaultRadius);
+		let borderWidth = mTheme.GetDimension(widthKey, defaultBorderWidth);
+
+		if (bgColor.A > 0)
+		{
+			if (radius > 0)
+				mVG.FillRoundedRect(bounds, radius, bgColor);
+			else
+				mVG.FillRect(bounds, bgColor);
+		}
+
+		if (borderColor.A > 0 && borderWidth > 0)
+		{
+			if (radius > 0)
+				mVG.StrokeRoundedRect(bounds, radius, borderColor, borderWidth);
+			else
+				mVG.StrokeRect(bounds, borderColor, borderWidth);
+		}
+	}
+
+	/// Draw a standard focus ring around bounds using theme colors.
+	/// cornerRadius should match the control's corner radius.
+	public void DrawFocusRing(RectangleF bounds, float cornerRadius = 0, float ringWidth = 2.0f)
+	{
+		let ringColor = mTheme?.GetColor("Focus.Ring", .(100, 160, 255, 180)) ?? .(100, 160, 255, 180);
+		let outset = RectangleF(bounds.X - 1, bounds.Y - 1, bounds.Width + 2, bounds.Height + 2);
+		if (cornerRadius > 0)
+			mVG.StrokeRoundedRect(outset, cornerRadius + 1, ringColor, ringWidth);
+		else
+			mVG.StrokeRect(outset, ringColor, ringWidth);
+	}
 }

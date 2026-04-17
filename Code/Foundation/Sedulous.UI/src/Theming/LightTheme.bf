@@ -55,8 +55,76 @@ public static class LightTheme
 		// === ListView ===
 		theme.SetColor("ListView.Selection", .(40, 100, 200, 60));
 
+		// === ContextMenu ===
+		theme.SetColor("ContextMenu.Background", .(248, 248, 252, 245));
+		theme.SetColor("ContextMenu.Border", .(190, 195, 205, 255));
+		theme.SetColor("ContextMenu.Hover", .(40, 100, 200, 60));
+		theme.SetColor("ContextMenu.Text", p.Text);
+
+		// === Dialog ===
+		theme.SetColor("Dialog.Background", .(252, 252, 255, 250));
+		theme.SetColor("Dialog.Border", .(190, 195, 210, 255));
+		theme.SetDimension("Dialog.CornerRadius", 8);
+
+		// === Tooltip ===
+		theme.SetColor("Tooltip.Background", .(255, 255, 240, 240));
+		theme.SetColor("Tooltip.Border", .(180, 185, 195, 255));
+
 		// === Focus ===
 		theme.SetColor("Focus.Ring", .(40, 100, 220, 200));
+
+		// === CheckBox ===
+		theme.SetColor("CheckBox.BoxBackground", .(245, 245, 248, 255));
+		theme.SetColor("CheckBox.BoxBorder", .(180, 185, 200, 255));
+		theme.SetColor("CheckBox.CheckColor", p.PrimaryAccent);
+		theme.SetColor("CheckBox.Text", p.Text);
+
+		// === RadioButton ===
+		theme.SetColor("RadioButton.CircleBackground", .(245, 245, 248, 255));
+		theme.SetColor("RadioButton.CircleBorder", .(180, 185, 200, 255));
+		theme.SetColor("RadioButton.DotColor", p.PrimaryAccent);
+		theme.SetColor("RadioButton.Text", p.Text);
+
+		// === ToggleButton ===
+		theme.SetColor("ToggleButton.Background", .(220, 225, 230, 255));
+		theme.SetColor("ToggleButton.CheckedBackground", p.PrimaryAccent);
+		theme.SetColor("ToggleButton.Text", p.Text);
+		theme.SetColor("ToggleButton.CheckedText", .White);
+		theme.SetDimension("ToggleButton.CornerRadius", 4);
+
+		// === ToggleSwitch ===
+		theme.SetColor("ToggleSwitch.TrackOff", .(210, 215, 225, 255));
+		theme.SetColor("ToggleSwitch.TrackOn", p.PrimaryAccent);
+		theme.SetColor("ToggleSwitch.Border", p.Border);
+		theme.SetColor("ToggleSwitch.Knob", .White);
+		theme.SetColor("ToggleSwitch.Text", p.Text);
+
+		// === ProgressBar ===
+		theme.SetColor("ProgressBar.Track", .(220, 225, 230, 255));
+		theme.SetColor("ProgressBar.Fill", p.PrimaryAccent);
+
+		// === Slider ===
+		theme.SetColor("Slider.Track", .(210, 215, 225, 255));
+		theme.SetColor("Slider.Fill", p.PrimaryAccent);
+		theme.SetColor("Slider.Thumb", .(250, 250, 255, 255));
+		theme.SetColor("Slider.ThumbHover", .White);
+
+		// === TabView ===
+		theme.SetColor("TabView.StripBackground", .(235, 237, 242, 255));
+		theme.SetColor("TabView.ContentBackground", p.Surface);
+		theme.SetColor("TabView.ActiveTabBackground", p.Surface);
+		theme.SetColor("TabView.ActiveTabText", p.Text);
+		theme.SetColor("TabView.InactiveTabText", .(p.Text.R, p.Text.G, p.Text.B, 130));
+		theme.SetColor("TabView.HoverTabText", p.Text);
+		theme.SetColor("TabView.TabHover", .(p.PrimaryAccent.R, p.PrimaryAccent.G, p.PrimaryAccent.B, 40));
+		theme.SetColor("TabView.Border", p.Border);
+
+		// === ComboBox ===
+		theme.SetColor("ComboBox.Background", .(248, 248, 252, 255));
+		theme.SetColor("ComboBox.Border", p.Border);
+		theme.SetColor("ComboBox.Text", p.Text);
+		theme.SetColor("ComboBox.ArrowColor", .(100, 110, 130, 255));
+		theme.SetDimension("ComboBox.CornerRadius", 4);
 
 		// === Section header ===
 		theme.SetColor("SectionLabel.Foreground", .(180, 120, 30, 255));

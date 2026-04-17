@@ -10,6 +10,7 @@ public class MouseEventArgs
 	public float Y;
 	public MouseButton Button;
 	public int32 ClickCount;        // 1 = single, 2 = double, etc.
+	public float Timestamp;         // time of event in seconds (from frame clock)
 	public bool Handled;
 
 	public Vector2 Position => .(X, Y);
@@ -19,14 +20,16 @@ public class MouseEventArgs
 		X = 0; Y = 0;
 		Button = .Left;
 		ClickCount = 0;
+		Timestamp = 0;
 		Handled = false;
 	}
 
-	public void Set(float x, float y, MouseButton button = .Left, int32 clickCount = 1)
+	public void Set(float x, float y, MouseButton button = .Left, int32 clickCount = 1, float timestamp = 0)
 	{
 		X = x; Y = y;
 		Button = button;
 		ClickCount = clickCount;
+		Timestamp = timestamp;
 		Handled = false;
 	}
 }

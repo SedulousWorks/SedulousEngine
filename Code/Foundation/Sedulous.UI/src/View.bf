@@ -31,6 +31,23 @@ public class View
 	public bool ClipsContent;
 	public bool IsHitTestVisible = true;
 
+	// === Visual properties ===
+	private float mAlpha = 1.0f;
+	public float Alpha { get => mAlpha; set => mAlpha = Math.Clamp(value, 0, 1); }
+
+	/// Tooltip text shown after hover delay. Empty = no tooltip.
+	public String TooltipText ~ delete _;
+	/// Where the tooltip appears relative to this view.
+	public TooltipPlacement TooltipPlacement = .Bottom;
+	/// When true, the tooltip stays visible when hovered and its content
+	/// is interactive (clickable links, selectable text, etc.).
+	public bool IsTooltipInteractive;
+
+	/// Render transform applied around RenderTransformOrigin during draw.
+	public Matrix RenderTransform = Matrix.Identity;
+	/// Normalized origin for render transform (0,0 = top-left, 0.5,0.5 = center).
+	public Vector2 RenderTransformOrigin = .(0.5f, 0.5f);
+
 	// === Context attachment ===
 	public UIContext Context { get; internal set; }
 	public bool IsPendingDeletion { get; internal set; }
@@ -163,8 +180,12 @@ public class View
 	public virtual void OnMouseLeave() { }
 	public virtual void OnKeyDown(KeyEventArgs e) { }
 	public virtual void OnKeyUp(KeyEventArgs e) { }
+	public virtual void OnTextInput(TextInputEventArgs e) { }
 	public virtual void OnFocusGained() { }
 	public virtual void OnFocusLost() { }
+
+	/// True if the mouse is currently over this view.
+	public bool IsHovered => Context?.InputManager?.HoveredId == Id;
 
 	/// True if this view currently has keyboard focus.
 	public bool IsFocused => Context?.FocusManager?.FocusedId == Id;

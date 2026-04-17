@@ -35,12 +35,14 @@ public class Button : View
 		set { mPadding = value; InvalidateLayout(); }
 	}
 
-	// Visual state flags (set by InputManager).
-	public bool IsHovered;
+	// Visual state flag (set by InputManager).
 	public bool IsPressed;
 
 	// Click event.
 	public Event<delegate void(Button)> OnClick ~ _.Dispose();
+
+	/// Optional command — executed on click if CanExecute() is true.
+	public ICommand Command;
 
 	public this()
 	{
@@ -59,6 +61,7 @@ public class Button : View
 	public ControlState GetControlState()
 	{
 		if (!IsEffectivelyEnabled) return .Disabled;
+		if (Command != null && !Command.CanExecute()) return .Disabled;
 		if (IsPressed) return .Pressed;
 		if (IsFocused) return .Focused;
 		if (IsHovered) return .Hover;
@@ -68,6 +71,8 @@ public class Button : View
 	public void FireClick()
 	{
 		OnClick(this);
+		if (Command != null && Command.CanExecute())
+			Command.Execute();
 	}
 
 	/// Build a default StateListDrawable background from the theme.
@@ -146,12 +151,8 @@ public class Button : View
 		// Focus ring from theme — matches button corner radius.
 		if (IsFocused)
 		{
-			let ringColor = ctx.Theme?.GetColor("Focus.Ring", .(100, 160, 255, 180)) ?? .(100, 160, 255, 180);
 			let radius = ctx.Theme?.GetDimension("Button.CornerRadius", 4) ?? 4;
-			if (radius > 0)
-				ctx.VG.StrokeRoundedRect(.(-1, -1, Width + 2, Height + 2), radius + 1, ringColor, 2.0f);
-			else
-				ctx.VG.StrokeRect(.(-1, -1, Width + 2, Height + 2), ringColor, 2.0f);
+			ctx.DrawFocusRing(bounds, radius);
 		}
 	}
 }

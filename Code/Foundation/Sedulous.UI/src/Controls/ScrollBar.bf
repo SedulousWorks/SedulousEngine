@@ -9,9 +9,13 @@ public class ScrollBar : View
 {
 	public Orientation Orientation = .Vertical;
 	public float Value;           // current scroll position
+	public float Min;             // minimum scroll value (usually 0)
 	public float MaxValue = 100;  // total scrollable range
 	public float ViewportSize;    // visible portion size
 	public float BarThickness = 8;
+	public float SmallChange = 20;  // arrow key / single-click step
+	private float mLargeChange;     // page step (0 = auto: 90% of viewport)
+	public float LargeChange { get => (mLargeChange > 0) ? mLargeChange : ViewportSize * 0.9f; set => mLargeChange = value; }
 
 	// Drag state.
 	private bool mDragging;
@@ -103,11 +107,11 @@ public class ScrollBar : View
 		}
 		else
 		{
-			// Clicked on track — jump to that position.
-			let trackSize = (Orientation == .Vertical) ? Height : Width;
-			let thumbSize = (Orientation == .Vertical) ? thumbRect.Height : thumbRect.Width;
-			let normalized = Math.Clamp((pos - thumbSize * 0.5f) / (trackSize - thumbSize), 0, 1);
-			Value = normalized * MaxValue;
+			// Clicked on track — page-scroll toward click position.
+			if (pos < thumbStart)
+				Value = Math.Max(Min, Value - LargeChange);
+			else
+				Value = Math.Min(MaxValue, Value + LargeChange);
 			OnValueChanged?.Invoke(Value);
 			e.Handled = true;
 		}

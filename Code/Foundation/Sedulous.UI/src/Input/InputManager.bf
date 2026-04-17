@@ -38,6 +38,10 @@ public class InputManager
 	public float MouseX => mMouseX;
 	public float MouseY => mMouseY;
 
+	/// Current cursor type based on the hovered view's EffectiveCursor.
+	/// Platform layer should read this each frame to set the system cursor.
+	public CursorType CurrentCursor { get; private set; } = .Default;
+
 	public this(UIContext context)
 	{
 		mContext = context;
@@ -67,6 +71,16 @@ public class InputManager
 		}
 
 		UpdateHover(x, y);
+
+		// Dispatch OnMouseMove to the hovered view (needed for hover-tracking
+		// in context menus, tooltips, sliders, etc.).
+		let hovered = Hovered;
+		if (hovered != null)
+		{
+			let local = ToLocal(hovered, x, y);
+			mMouseArgs.Set(local.X, local.Y);
+			hovered.OnMouseMove(mMouseArgs);
+		}
 	}
 
 	/// Called when a mouse button is pressed.
@@ -76,8 +90,34 @@ public class InputManager
 		mMouseY = y;
 		mTotalTime = totalTime;
 
-		// Refresh hover on mouse-down (hover may be stale if mouse didn't move).
+		// Hide tooltip on any mouse down.
+		mContext.TooltipManager?.OnMouseDown();
+
+		// Refresh hover first so we know what was clicked.
 		UpdateHover(x, y);
+
+		// If popups are showing and the click didn't land on a popup,
+		// dismiss CloseOnClickOutside popups.
+		let popupLayer = mContext.PopupLayer;
+		if (popupLayer != null && popupLayer.PopupCount > 0)
+		{
+			let hitView = Hovered;
+			bool hitIsPopup = false;
+			// Walk up from hit view — if any ancestor is a popup entry, don't dismiss.
+			var v = hitView;
+			while (v != null)
+			{
+				if (v.Parent is PopupLayer)
+				{ hitIsPopup = true; break; }
+				v = v.Parent;
+			}
+
+			if (!hitIsPopup)
+			{
+				if (popupLayer.HandleClickOutside(button))
+					return; // LMB consumed
+			}
+		}
 
 		let target = Hovered;
 		if (target == null) return;
@@ -104,7 +144,7 @@ public class InputManager
 		mLastClickButton = button;
 
 		// Dispatch to target, then bubble up parents if not handled.
-		BubbleMouseDown(target, x, y, button, mClickCount);
+		BubbleMouseDown(target, x, y, button, mClickCount, totalTime);
 
 		// Update button visual state.
 		if (let btn = target as Button)
@@ -113,13 +153,13 @@ public class InputManager
 
 	/// Fire OnMouseDown on the target, then bubble up parent chain
 	/// until someone sets Handled or we reach the root.
-	private void BubbleMouseDown(View target, float screenX, float screenY, MouseButton button, int32 clickCount)
+	private void BubbleMouseDown(View target, float screenX, float screenY, MouseButton button, int32 clickCount, float timestamp)
 	{
 		var v = target;
 		while (v != null)
 		{
 			let local = ToLocal(v, screenX, screenY);
-			mMouseArgs.Set(local.X, local.Y, button, clickCount);
+			mMouseArgs.Set(local.X, local.Y, button, clickCount, timestamp);
 			v.OnMouseDown(mMouseArgs);
 			if (mMouseArgs.Handled) break;
 			v = v.Parent;
@@ -200,18 +240,46 @@ public class InputManager
 		let focused = mContext.FocusManager.FocusedView;
 		if (focused == null) return;
 
-		mKeyArgs.Set(key, modifiers, isRepeat);
-		focused.OnKeyDown(mKeyArgs);
+		// Bubble key-down up the parent chain until handled.
+		var v = focused;
+		while (v != null)
+		{
+			mKeyArgs.Set(key, modifiers, isRepeat);
+			v.OnKeyDown(mKeyArgs);
+			if (mKeyArgs.Handled) break;
+			v = v.Parent;
+		}
 	}
 
-	/// Route a key-up event to the focused view.
+	/// Route a key-up event to the focused view, bubbling up if unhandled.
 	public void ProcessKeyUp(KeyCode key, KeyModifiers modifiers)
 	{
 		let focused = mContext.FocusManager.FocusedView;
 		if (focused == null) return;
 
-		mKeyArgs.Set(key, modifiers, false);
-		focused.OnKeyUp(mKeyArgs);
+		var v = focused;
+		while (v != null)
+		{
+			mKeyArgs.Set(key, modifiers, false);
+			v.OnKeyUp(mKeyArgs);
+			if (mKeyArgs.Handled) break;
+			v = v.Parent;
+		}
+	}
+
+	// === Text Input ===
+
+	private TextInputEventArgs mTextInputArgs = new .() ~ delete _;
+
+	/// Route a text input character to the focused view.
+	public void ProcessTextInput(char32 character)
+	{
+		let focused = mContext.FocusManager.FocusedView;
+		if (focused == null) return;
+
+		mTextInputArgs.Character = character;
+		mTextInputArgs.Handled = false;
+		focused.OnTextInput(mTextInputArgs);
 	}
 
 	/// Search the tree top-down for an IAcceleratorHandler that handles
@@ -253,21 +321,20 @@ public class InputManager
 			// Leave old hover.
 			let oldHover = mContext.GetElementById(mHoveredId);
 			if (oldHover != null)
-			{
 				oldHover.OnMouseLeave();
-				if (let btn = oldHover as Button)
-					btn.IsHovered = false;
-			}
 
 			// Enter new hover.
 			mHoveredId = newHoverId;
 			if (hitView != null)
-			{
 				hitView.OnMouseEnter();
-				if (let btn = hitView as Button)
-					btn.IsHovered = true;
-			}
+
+			// Notify tooltip manager of hover change.
+			mContext.TooltipManager?.OnHoverChanged(hitView);
 		}
+
+		// Update cursor from hovered view.
+		let cursorView = (hitView != null) ? hitView : mContext.GetElementById(mHoveredId);
+		CurrentCursor = (cursorView != null) ? cursorView.EffectiveCursor : .Default;
 	}
 
 	private void FocusOnClick(View target)

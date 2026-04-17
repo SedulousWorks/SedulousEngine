@@ -53,31 +53,31 @@ public class Theme
 
 	// === Setters ===
 
-	public void SetColor(StringView key, Color value)
+	/// Set or overwrite without leaking the key string.
+	private static void SetDict<T>(Dictionary<String, T> dict, StringView key, T value)
 	{
-		mColors[new String(key)] = value;
+		let k = scope String(key);
+		if (dict.ContainsKey(k))
+			dict[k] = value;
+		else
+			dict[new String(key)] = value;
 	}
 
-	public void SetDimension(StringView key, float value)
-	{
-		mDimensions[new String(key)] = value;
-	}
-
-	public void SetPadding(StringView key, Thickness value)
-	{
-		mPaddings[new String(key)] = value;
-	}
+	public void SetColor(StringView key, Color value) => SetDict(mColors, key, value);
+	public void SetDimension(StringView key, float value) => SetDict(mDimensions, key, value);
+	public void SetPadding(StringView key, Thickness value) => SetDict(mPaddings, key, value);
+	public void SetFontSize(StringView key, float value) => SetDict(mFontSizes, key, value);
 
 	public void SetDrawable(StringView key, Drawable value)
 	{
-		// Delete old drawable if replacing.
 		let k = scope String(key);
 		if (mDrawables.TryGetValue(k, let old))
 		{
 			delete old;
-			mDrawables.Remove(k);
+			mDrawables[k] = value;
 		}
-		mDrawables[new String(key)] = value;
+		else
+			mDrawables[new String(key)] = value;
 	}
 
 	public void SetString(StringView key, StringView value)
@@ -85,15 +85,10 @@ public class Theme
 		let k = scope String(key);
 		if (mStrings.TryGetValue(k, let old))
 		{
-			delete old;
-			mStrings.Remove(k);
+			old.Set(value);
 		}
-		mStrings[new String(key)] = new String(value);
-	}
-
-	public void SetFontSize(StringView key, float value)
-	{
-		mFontSizes[new String(key)] = value;
+		else
+			mStrings[new String(key)] = new String(value);
 	}
 
 	// === Getters (return default if key missing) ===
@@ -104,6 +99,16 @@ public class Theme
 		if (mColors.TryGetValue(k, let value))
 			return value;
 		return defaultValue;
+	}
+
+	/// Nullable color lookup — returns null if the key is not set.
+	/// Use when you need a fallback chain: theme key → palette → hardcoded.
+	public Color? TryGetColor(StringView key)
+	{
+		let k = scope String(key);
+		if (mColors.TryGetValue(k, let value))
+			return value;
+		return null;
 	}
 
 	public float GetDimension(StringView key, float defaultValue = 0)

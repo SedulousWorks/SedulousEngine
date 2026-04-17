@@ -229,7 +229,7 @@ public class ListView : ViewGroup, IListAdapterObserver
 
 	public override void OnMouseDown(MouseEventArgs e)
 	{
-		if (MaxScrollY > 0)
+		if (e.Button == .Left && MaxScrollY > 0)
 		{
 			mDragging = true;
 			mDragLastY = e.Y;
@@ -270,6 +270,66 @@ public class ListView : ViewGroup, IListAdapterObserver
 			mDragging = false;
 			Context?.FocusManager.ReleaseCapture();
 		}
+	}
+
+	public override void OnKeyDown(KeyEventArgs e)
+	{
+		if (mAdapter == null) return;
+		let sel = Selection.FirstSelected;
+		let count = mAdapter.ItemCount;
+
+		switch (e.Key)
+		{
+		case .Down:
+			let next = Math.Min(sel + 1, count - 1);
+			Selection.Select(next);
+			ScrollToPosition(next);
+			e.Handled = true;
+		case .Up:
+			let prev = Math.Max(sel - 1, 0);
+			Selection.Select(prev);
+			ScrollToPosition(prev);
+			e.Handled = true;
+		case .Home:
+			Selection.Select(0);
+			ScrollToPosition(0);
+			e.Handled = true;
+		case .End:
+			Selection.Select(count - 1);
+			ScrollToPosition(count - 1);
+			e.Handled = true;
+		case .PageDown:
+			let pageSize = (int32)(Height / ItemHeight);
+			let pageNext = Math.Min(sel + pageSize, count - 1);
+			Selection.Select(pageNext);
+			ScrollToPosition(pageNext);
+			e.Handled = true;
+		case .PageUp:
+			let pageSizeUp = (int32)(Height / ItemHeight);
+			let pagePrev = Math.Max(sel - pageSizeUp, 0);
+			Selection.Select(pagePrev);
+			ScrollToPosition(pagePrev);
+			e.Handled = true;
+		default:
+		}
+	}
+
+	/// Scroll so that the item at the given position is visible. (H2)
+	public void ScrollToPosition(int32 position)
+	{
+		if (mAdapter == null || position < 0 || position >= mAdapter.ItemCount) return;
+
+		let itemTop = GetItemOffset(position);
+		let itemBottom = itemTop + GetItemHeightAt(position);
+		let viewportH = Height - Padding.TotalVertical;
+
+		if (itemTop < mScrollY)
+			mScrollY = itemTop;
+		else if (itemBottom > mScrollY + viewportH)
+			mScrollY = itemBottom - viewportH;
+
+		mScrollY = Math.Clamp(mScrollY, 0, MaxScrollY);
+		InvalidateLayout();
 	}
 
 	/// Get the adapter position of the item at local Y coordinate.

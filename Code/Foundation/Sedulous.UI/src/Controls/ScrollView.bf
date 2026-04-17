@@ -62,12 +62,64 @@ public class ScrollView : ViewGroup
 		InvalidateLayout();
 	}
 
+	/// Clear all children and add a single content view.
+	public void SetContent(View content, LayoutParams lp = null)
+	{
+		while (ChildCount > 0)
+			RemoveView(GetChildAt(0), true);
+		if (content != null)
+			AddView(content, lp);
+	}
+
+	/// Scroll to an absolute position, clamping to valid range.
+	public void ScrollToTop() => ScrollTo(mScrollX, 0);
+	public void ScrollToBottom() => ScrollTo(mScrollX, MaxScrollY);
+	public void ScrollToLeft() => ScrollTo(0, mScrollY);
+	public void ScrollToRight() => ScrollTo(MaxScrollX, mScrollY);
+
 	/// Scroll to an absolute position, clamping to valid range.
 	public void ScrollTo(float x, float y)
 	{
 		mScrollX = Math.Clamp(x, 0, MaxScrollX);
 		mScrollY = Math.Clamp(y, 0, MaxScrollY);
 		InvalidateLayout();
+	}
+
+	/// Scroll to make a child view visible within the viewport.
+	/// The child must be a descendant of this ScrollView.
+	public void ScrollToView(View child)
+	{
+		if (child == null) return;
+
+		// Compute child's position relative to this ScrollView's content area.
+		float relX = child.Bounds.X, relY = child.Bounds.Y;
+		var p = child.Parent;
+		while (p != null && p !== this)
+		{
+			relX += p.Bounds.X;
+			relY += p.Bounds.Y;
+			p = p.Parent;
+		}
+		if (p == null) return; // child is not a descendant
+
+		let viewportW = Width - Padding.TotalHorizontal - (mVBarVisible ? ScrollBarThickness : 0);
+		let viewportH = Height - Padding.TotalVertical - (mHBarVisible ? ScrollBarThickness : 0);
+
+		// Vertical: ensure child is within [scrollY .. scrollY + viewportH].
+		var newScrollY = mScrollY;
+		if (relY < mScrollY)
+			newScrollY = relY;
+		else if (relY + child.Height > mScrollY + viewportH)
+			newScrollY = relY + child.Height - viewportH;
+
+		// Horizontal: ensure child is within [scrollX .. scrollX + viewportW].
+		var newScrollX = mScrollX;
+		if (relX < mScrollX)
+			newScrollX = relX;
+		else if (relX + child.Width > mScrollX + viewportW)
+			newScrollX = relX + child.Width - viewportW;
+
+		ScrollTo(newScrollX, newScrollY);
 	}
 
 	// === Mouse wheel ===
@@ -92,7 +144,7 @@ public class ScrollView : ViewGroup
 
 	public override void OnMouseDown(MouseEventArgs e)
 	{
-		if (MaxScrollY > 0 || MaxScrollX > 0)
+		if (e.Button == .Left && (MaxScrollY > 0 || MaxScrollX > 0))
 		{
 			mDragging = true;
 			mDragLastX = e.X;

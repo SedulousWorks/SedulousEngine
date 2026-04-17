@@ -1602,15 +1602,19 @@ test coverage expected and the sandbox additions.
 | **5** XML UI Loading | ✅ DONE | 20 |
 | **6** Resource Integration | ✅ DONE | 6 |
 | **7** Engine Integration | DEFERRED | — |
-| **8** Scrolling | NOT STARTED | — |
-| **9** Adapters + Virtualization | NOT STARTED | — |
+| **8** Scrolling | ✅ DONE | 14 |
+| **9** Adapters + Virtualization | ✅ DONE | 18 |
 | **10** Text Editing | NOT STARTED | — |
 | **11** Overlays | NOT STARTED | — |
 | **12** Animation | NOT STARTED | — |
 | **13** Drag and Drop | NOT STARTED | — |
 | **14** Toolkit + Gamekit + Polish | NOT STARTED | — |
 
-**Total tests: 90** across Phases 1–6.
+**Total tests: 122** across Phases 1–9.
+
+**Execution order note:** Phase 11 (Overlays) must be done before
+Phase 10 (Text Editing) because text editing needs ContextMenu for
+cut/copy/paste right-click menus.
 
 See **Deferred Work** section at the end of this document for all
 items skipped or deferred from completed phases.
@@ -2201,27 +2205,19 @@ rendering app from the first phase. Every later phase just grows the
 framework while the sandbox keeps working. No "big bang" moment where
 everything suddenly needs to integrate.
 
-1. **Phase 1** (foundation + runtime + first-light sandbox) —
-   `Sedulous.UI` core + `Sedulous.UI.Runtime` + `UISandbox` all land.
-   First visible pixels. Framework can render a layout tree to screen
-   via `UISubsystem`. No interactivity yet.
-2. **Phase 2** (drawables + full widget set + layouts + debug overlays) —
-   sandbox grows with Widgets / Drawables / Layouts pages. Buttons visible
-   but not clickable.
-3. **Phase 3** (input + focus) — sandbox becomes interactive; shell input
-   wired through `UIInputHelper`.
-4. **Phases 4-5** (theme + XML parsing) in parallel — orthogonal; both
-   retrofit existing widgets to theme-driven styling.
-5. **Phase 6** (resource integration) — wraps 4 & 5 as engine resources,
-   enabling hot reload.
-6. **Phases 8-9** (scrolling + virtualization) — required for any
-   non-trivial UI.
-7. **Phase 10** (text editing).
-8. **Phase 11** (overlays) — dialogs, menus, tooltips.
+1. **Phase 1** (foundation + runtime + first-light sandbox) — COMPLETE
+2. **Phase 2** (drawables + full widget set + layouts + debug overlays) — COMPLETE
+3. **Phase 3** (input + focus) — COMPLETE
+4. **Phases 4-5** (theme + XML parsing) — COMPLETE
+5. **Phase 6** (resource integration) — COMPLETE
+6. **Phases 8-9** (scrolling + virtualization) — COMPLETE
+7. **Phase 11** (overlays + legacy comparison adoption) — COMPLETE
+   Includes all critical/high/medium items from legacy comparison.
+8. **Phase 10** (text editing) — depends on Phase 11 for ContextMenu.
 9. **Phase 12** (animation).
 10. **Phase 13** (drag and drop).
 11. **Phase 7** (engine integration) — deferred until enough UI
-    capability exists to build real game UIs. Picks up after Phase 11+.
+    capability exists to build real game UIs.
 12. **Phase 14** (Toolkit + Gamekit + polish) — final libraries, tree
     inspector, sample game UI gallery.
 
@@ -2577,3 +2573,65 @@ not implement their rendering yet:
 
 Both are low priority. Implement when debugging those specific
 behaviors becomes necessary.
+
+
+## Legacy Comparison: Items Worth Adopting
+
+Detailed comparison of current implementation against BansheeBeef's
+legacy Sedulous.UI. Items organized by priority. Pick selectively —
+not everything needs to be adopted.
+
+### Critical (load-bearing for correctness)
+
+| # | Item | Area | Status |
+|---|------|------|--------|
+| C1 | **OnInterceptMouseEvent hook** | ViewGroup | DONE — virtual method on ViewGroup |
+| C2 | **Render Transform support** | View | DONE — RenderTransform + RenderTransformOrigin |
+| C3 | **Full event bubbling with coordinate recalculation** | InputManager | DONE — audited; BubbleMouseDown recalculates via ToLocal per parent, correct |
+| C4 | **ProcessTextInput method** | InputManager | DONE — routes char32 to focused view |
+| C5 | **Modal popup awareness in tab navigation** | FocusManager | DONE — GetFocusRoot constrains to modal |
+| C6 | **DeletedThisFrame tracking** | MutationQueue | DONE — NotifyDeleted + DeletedThisFrameCount |
+| C7 | **Alpha property** | View | DONE — clamped 0-1 on View |
+
+### High Priority (significant functionality gaps)
+
+| # | Item | Area | Status |
+|---|------|------|--------|
+| H1 | **ListView keyboard navigation** | ListView | DONE — Up/Down/PageUp/PageDown/Home/End with selection |
+| H2 | **ListView.ScrollToPosition(int)** | ListView | DONE — scrolls adapter position into view |
+| H3 | **Theme-aware rendering helpers** | UIDrawContext | DONE — FillThemedBox + DrawFocusRing on UIDrawContext |
+| H4 | **MeasureChild / MeasureChildWithMargins helpers** | ViewGroup | DONE — both helpers on ViewGroup |
+| H5 | **MomentumHelper.IsActive threshold** | MomentumHelper | DONE — StopThreshold check |
+| H6 | **SelectionModel.ShiftIndices guard** | SelectionModel | DONE — negative index guard |
+| H7 | **Tooltip integration in InputManager** | InputManager | DONE — OnMouseDown hides tooltip, TooltipText used |
+| H8 | **Cursor management in InputManager** | InputManager | DONE — CurrentCursor property updated from EffectiveCursor |
+| H9 | **Event args with timestamps** | Input | DONE — Timestamp on MouseEventArgs + KeyEventArgs |
+| H10 | **ScrollView.ScrollToView(child)** | ScrollView | DONE — scrolls child into viewport |
+
+### Medium Priority (API completeness)
+
+| # | Item | Area | Status |
+|---|------|------|--------|
+| M1 | **ScrollBar.SmallChange / LargeChange** | ScrollBar | DONE — SmallChange + auto LargeChange (90% viewport) |
+| M2 | **ScrollBar.Min property** | ScrollBar | DONE — arbitrary scroll range support |
+| M3 | **ScrollBar page-click behavior** | ScrollBar | DONE — pages by LargeChange on track click |
+| M4 | **ScrollView convenience methods** | ScrollView | DONE — ScrollToTop/Bottom/Left/Right |
+| M5 | **ScrollView.SetContent()** | ScrollView | DONE — clears children and sets single content |
+| M6 | **SelectionModel.SelectedPositions** | SelectionModel | DONE — returns full HashSet |
+| M7 | **Button.Command (ICommand)** | Button | DONE — ICommand + auto-disable via CanExecute |
+| M8 | **ScanCode on KeyEventArgs** | Input | DONE — int32 ScanCode field |
+| M9 | **Multi-window support architecture** | UIContext | DEFERRED — significant scope; single-root sufficient for now |
+| M10 | **AnimationManager in UIContext** | UIContext | DEFERRED — Phase 12 |
+
+### Things We Do Better (keep as-is)
+
+| Item | Why ours is better |
+|------|-------------------|
+| **Visual children abstraction** | `VisualChildCount`/`GetVisualChild` distinguishes logical from auxiliary views (scrollbars, internal controls). Legacy has no equivalent — every auxiliary view needs manual wiring. |
+| **Deferred mutation convenience** | `View.QueueRemove()`/`QueueDestroy()`/`QueueFocus()` directly on View. Legacy requires going through ViewGroup/MutationQueue. |
+| **Auto-reparenting** | `AddView` automatically detaches child from previous parent. Legacy requires manual management. |
+| **Explicit phase tracking** | `UIPhase` enum makes the frame lifecycle debuggable. Legacy has no equivalent. |
+| **Debug overlay granularity** | Settings-driven toggles (ShowBounds, ShowPadding, ShowHitTarget, ShowRecyclerStats, etc.) with zero overhead when off. Legacy shows everything or nothing. |
+| **ViewRecycler.GetOrCreate()** | Combines acquire + creation + binding in one call. Legacy requires three separate steps. |
+| **Re-entrant MutationQueue** | Our closure-based queue supports actions that enqueue more actions. Legacy processes all at once without re-entrancy. |
+| **IsFocusWithin** | Checks if any descendant has focus. Legacy only has `IsFocused` flag. |

@@ -33,6 +33,6 @@ public struct MomentumHelper
 		return (dx, dy);
 	}
 
-	/// True if any velocity remains.
-	public bool IsActive => VelocityX != 0 || VelocityY != 0;
+	/// True if any velocity above threshold remains.
+	public bool IsActive => Math.Abs(VelocityX) > StopThreshold || Math.Abs(VelocityY) > StopThreshold;
 }

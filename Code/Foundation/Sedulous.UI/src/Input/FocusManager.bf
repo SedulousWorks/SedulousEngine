@@ -61,10 +61,12 @@ public class FocusManager
 
 	/// Move focus to the next focusable+tab-stop view (Tab key).
 	/// HTML-style: TabIndex > 0 sorted first, then TabIndex == 0 in tree order.
+	/// When a modal popup is active, constrain to views within it.
 	public void FocusNext()
 	{
 		let focusables = scope List<View>();
-		CollectFocusable(mContext.Root, focusables);
+		let root = GetFocusRoot();
+		CollectFocusable(root, focusables);
 		if (focusables.Count == 0) return;
 
 		SortByTabIndex(focusables);
@@ -78,7 +80,7 @@ public class FocusManager
 	public void FocusPrev()
 	{
 		let focusables = scope List<View>();
-		CollectFocusable(mContext.Root, focusables);
+		CollectFocusable(GetFocusRoot(), focusables);
 		if (focusables.Count == 0) return;
 
 		SortByTabIndex(focusables);
@@ -135,5 +137,18 @@ public class FocusManager
 				return i;
 		}
 		return -1;
+	}
+
+	/// Get the root view for focus traversal. If a modal popup is active,
+	/// constrain to the topmost modal; otherwise use the full root.
+	private View GetFocusRoot()
+	{
+		let popupLayer = mContext.PopupLayer;
+		if (popupLayer != null && popupLayer.HasModalPopup)
+		{
+			let modal = popupLayer.TopmostModalPopup;
+			if (modal != null) return modal;
+		}
+		return mContext.Root;
 	}
 }

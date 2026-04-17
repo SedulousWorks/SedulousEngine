@@ -13,6 +13,39 @@ using Sedulous.Imaging;
 using Sedulous.Imaging.STB;
 using Sedulous.UI.Resources;
 
+// === ImageView with rich tooltip (image + text) ===
+// Demonstrates ITooltipProvider for custom tooltip content.
+
+class RichTooltipImageView : ImageView, ITooltipProvider
+{
+	public String TooltipLabel ~ delete _;
+	public IImageData TooltipImage;
+
+	public View CreateTooltipContent()
+	{
+		let layout = new LinearLayout();
+		layout.Orientation = .Vertical;
+		layout.Spacing = 4;
+
+		if (TooltipImage != null)
+		{
+			let img = new ImageView();
+			img.Image = TooltipImage;
+			layout.AddView(img, new LinearLayout.LayoutParams() { Width = 64, Height = 64 });
+		}
+
+		if (TooltipLabel != null)
+		{
+			let label = new Label();
+			label.SetText(TooltipLabel);
+			label.FontSize = 12;
+			layout.AddView(label, new LinearLayout.LayoutParams() { Width = Sedulous.UI.LayoutParams.WrapContent, Height = 16 });
+		}
+
+		return layout;
+	}
+}
+
 // === Custom control: StatusBadge ===
 // Demonstrates a user-defined control themed via IThemeExtension.
 
@@ -223,7 +256,10 @@ class UISandboxApp : Application
 	private OwnedImageData mButtonPressed ~ delete _;
 	private SandboxListAdapter mListAdapter ~ delete _;
 	private SandboxTreeAdapter mTreeAdapter ~ delete _;
+	private ContextMenu mContextMenu ~ delete _;
+	private bool mPrevRightDown;
 	private Label mClickLabel;  // shows click feedback
+	private ProgressBar mDemoProgressBar; // animated in Update
 
 	public this() : base()
 	{
@@ -278,18 +314,34 @@ class UISandboxApp : Application
 
 		// Build the demo tree.
 		BuildDemoUI(mUI.UIContext);
+
+		// Create a reusable context menu for right-click.
+		mContextMenu = new ContextMenu();
+		mContextMenu.AddItem("Cut", new () => { mClickLabel?.SetText("Cut!"); });
+		mContextMenu.AddItem("Copy", new () => { mClickLabel?.SetText("Copy!"); });
+		mContextMenu.AddItem("Paste", new () => { mClickLabel?.SetText("Paste!"); });
+		mContextMenu.AddSeparator();
+		let sub = mContextMenu.AddSubmenu("More");
+		sub.Submenu.AddItem("Option A", new () => { mClickLabel?.SetText("Option A!"); });
+		sub.Submenu.AddItem("Option B", new () => { mClickLabel?.SetText("Option B!"); });
 	}
 
 	private void BuildDemoUI(UIContext ctx)
 	{
 		let root = ctx.Root;
 
-		// Main vertical layout — top bar + two-column body.
+		// Scrollable root — content stacks vertically with fixed-height
+		// list/tree views. Scrolls when window is smaller than content.
+		let scroll = new ScrollView();
+		scroll.VScrollPolicy = .Auto;
+		scroll.HScrollPolicy = .Never;
+		root.AddView(scroll);
+
 		let main = new LinearLayout();
 		main.Orientation = .Vertical;
 		main.Padding = .(12);
 		main.Spacing = 8;
-		root.AddView(main);
+		scroll.AddView(main, new LayoutParams() { Width = LayoutParams.MatchParent });
 
 		// === Top bar: weighted colors (Phase 1) ===
 		{
@@ -306,13 +358,13 @@ class UISandboxApp : Application
 		let columns = new LinearLayout();
 		columns.Orientation = .Horizontal;
 		columns.Spacing = 12;
-		main.AddView(columns, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
+		main.AddView(columns, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent });
 
 		// --- LEFT COLUMN ---
 		let left = new LinearLayout();
 		left.Orientation = .Vertical;
 		left.Spacing = 6;
-		columns.AddView(left, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
+		columns.AddView(left, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Weight = 1 });
 
 		AddSectionLabel(left, "Widgets");
 
@@ -320,6 +372,8 @@ class UISandboxApp : Application
 		{
 			let label = new Label();
 			label.SetText("Label — 16px Roboto (theme color)");
+			label.TooltipText = new String("Tooltip: Right placement");
+			label.TooltipPlacement = .Right;
 				left.AddView(label, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 22 });
 		}
 
@@ -329,9 +383,9 @@ class UISandboxApp : Application
 			row.Orientation = .Horizontal;
 			row.Spacing = 6;
 			left.AddView(row, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 36 });
-			AddButton(row, "Primary", Color(50, 100, 200, 255));
-			AddButton(row, "Success", Color(50, 160, 70, 255));
-			AddButton(row, "Danger", Color(200, 60, 60, 255));
+			AddButton(row, "Primary", Color(50, 100, 200, 255), "Tooltip: Bottom (default)", .Bottom);
+			AddButton(row, "Success", Color(50, 160, 70, 255), "Tooltip: Top placement", .Top);
+			AddButton(row, "Danger", Color(200, 60, 60, 255), "Tooltip: Left placement", .Left);
 		}
 
 		// Theme-styled buttons (no explicit Background — uses theme).
@@ -370,6 +424,7 @@ class UISandboxApp : Application
 		{
 			let panel = new Panel();
 			panel.Padding = .(10, 6);
+			panel.TooltipText = new String("Panel with theme-driven background and border");
 			left.AddView(panel, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 40 });
 			let panelLabel = new Label();
 			panelLabel.SetText("Panel (theme background)");
@@ -408,19 +463,53 @@ class UISandboxApp : Application
 		}
 
 		AddSeparator(left);
-		AddSectionLabel(left, "ImageView + Spacer");
+		AddSectionLabel(left, "ImageView ScaleType");
 
+		// Four images showing each ScaleType, all rendering a 64x64
+		// checkerboard into a non-square box.
+		{
+			let row = new LinearLayout();
+			row.Orientation = .Horizontal;
+			row.Spacing = 6;
+			left.AddView(row, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 50 });
+
+			ScaleType[?] scaleTypes = .(.None, .FitCenter, .FillBounds, .CenterCrop);
+			StringView[?] scaleNames = .("None", "FitCenter", "FillBounds", "CenterCrop");
+
+			for (int si = 0; si < scaleTypes.Count; si++)
+			{
+				let panel = new Panel();
+				panel.Padding = .(1);
+				row.AddView(panel, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
+
+				let iv = new ImageView();
+				iv.Image = mCheckerboard;
+				iv.ScaleType = scaleTypes[si];
+				iv.TooltipText = new String(scaleNames[si]);
+				iv.TooltipPlacement = .Top;
+				panel.AddView(iv, new LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent });
+			}
+		}
+
+		left.AddView(new Spacer(0, 16));
+
+		// Interactive rich tooltip on a standalone image.
 		{
 			let row = new LinearLayout();
 			row.Orientation = .Horizontal;
 			row.Spacing = 8;
 			left.AddView(row, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 48 });
-			let iv = new ImageView();
+			let iv = new RichTooltipImageView();
 			iv.Image = mCheckerboard;
+			iv.ScaleType = .FitCenter;
+			iv.TooltipImage = mCheckerboard;
+			iv.TooltipLabel = new String("Interactive tooltip (hover me!)");
+			iv.IsTooltipInteractive = true;
+			iv.TooltipPlacement = .Right;
 			row.AddView(iv, new LinearLayout.LayoutParams() { Width = 48, Height = 48 });
 			row.AddView(new Spacer(8, 0));
 			let desc = new Label();
-			desc.SetText("Checkerboard ImageView");
+			desc.SetText("Hover image for rich tooltip");
 			desc.FontSize = 16;
 			desc.VAlign = .Middle;
 			row.AddView(desc, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
@@ -433,7 +522,7 @@ class UISandboxApp : Application
 		{
 			let sv = new ScrollView();
 			sv.VScrollPolicy = .Auto;
-			left.AddView(sv, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
+			left.AddView(sv, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 150 });
 
 			let content = new LinearLayout();
 			content.Orientation = .Vertical;
@@ -458,14 +547,14 @@ class UISandboxApp : Application
 			let tree = new TreeView();
 			tree.ItemHeight = 22;
 			tree.SetAdapter(mTreeAdapter);
-			left.AddView(tree, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
+			left.AddView(tree, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 180 });
 		}
 
 		// --- RIGHT COLUMN ---
 		let right = new LinearLayout();
 		right.Orientation = .Vertical;
 		right.Spacing = 6;
-		columns.AddView(right, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
+		columns.AddView(right, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Weight = 1 });
 
 		AddSectionLabel(right, "Drawable Showcase");
 
@@ -552,6 +641,7 @@ class UISandboxApp : Application
 			let custom = new StatusBadge();
 			custom.SetText("Custom");
 			custom.BadgeColor = .(180, 60, 60, 255);
+			custom.TooltipText = new String("Explicit color override — ignores theme");
 			row.AddView(custom);
 		}
 
@@ -603,7 +693,7 @@ class UISandboxApp : Application
 			list.ItemHeight = 22;
 			mListAdapter = new SandboxListAdapter(1000);
 			list.Adapter = mListAdapter;
-			right.AddView(list, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
+			right.AddView(list, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 200 });
 		}
 
 		AddSeparator(right);
@@ -624,7 +714,143 @@ class UISandboxApp : Application
 				right.AddView(xmlView, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 36 });
 		}
 
-		// F2=bounds  F3=padding  F4=margin  F5=theme
+		AddSeparator(right);
+		AddSectionLabel(right, "Controls");
+
+		// CheckBox + ToggleSwitch row
+		{
+			let row = new LinearLayout();
+			row.Orientation = .Horizontal;
+			row.Spacing = 12;
+			right.AddView(row, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 24 });
+
+			let cb = new CheckBox();
+			cb.SetText("Check me");
+			row.AddView(cb);
+
+			let sw = new ToggleSwitch();
+			sw.SetText("Switch");
+			row.AddView(sw);
+		}
+
+		// RadioGroup
+		{
+			let row = new LinearLayout();
+			row.Orientation = .Horizontal;
+			row.Spacing = 12;
+			right.AddView(row, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 22 });
+
+			let group = new RadioGroup();
+			group.Orientation = .Horizontal;
+			group.Spacing = 12;
+			let r1 = new RadioButton(); r1.SetText("Option A");
+			let r2 = new RadioButton(); r2.SetText("Option B");
+			let r3 = new RadioButton(); r3.SetText("Option C");
+			group.AddRadioButton(r1);
+			group.AddRadioButton(r2);
+			group.AddRadioButton(r3);
+			group.CheckAt(0);
+			row.AddView(group, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent });
+		}
+
+		// ProgressBar (animates in OnUpdate)
+		{
+			mDemoProgressBar = new ProgressBar();
+			mDemoProgressBar.Progress = 0;
+			right.AddView(mDemoProgressBar, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 12 });
+		}
+
+		// Slider (smooth — no step)
+		{
+			let slider = new Slider();
+			slider.Min = 0;
+			slider.Max = 100;
+			slider.Value = 40;
+			right.AddView(slider, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 24 });
+		}
+
+		// ToggleButton row
+		{
+			let row = new LinearLayout();
+			row.Orientation = .Horizontal;
+			row.Spacing = 6;
+			right.AddView(row, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 30 });
+
+			let tb1 = new ToggleButton(); tb1.SetText("Bold");
+			let tb2 = new ToggleButton(); tb2.SetText("Italic");
+			row.AddView(tb1, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
+			row.AddView(tb2, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
+		}
+
+		// ComboBox
+		{
+			let combo = new ComboBox();
+			combo.AddItem("Apple");
+			combo.AddItem("Banana");
+			combo.AddItem("Cherry");
+			combo.AddItem("Date");
+			combo.SelectedIndex = 0;
+			right.AddView(combo, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 30 });
+		}
+
+		// TabView with placement toggle
+		{
+			let tabRow = new LinearLayout();
+			tabRow.Orientation = .Vertical;
+			tabRow.Spacing = 4;
+			right.AddView(tabRow, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 110 });
+
+			let tabs = new TabView();
+			let tab1Content = new Label(); tab1Content.SetText("Content of Tab 1");
+			let tab2Content = new Label(); tab2Content.SetText("Content of Tab 2");
+			let tab3Content = new Label(); tab3Content.SetText("Content of Tab 3");
+			tabs.AddTab("Tab 1", tab1Content);
+			tabs.AddTab("Tab 2", tab2Content);
+			tabs.AddTab("Tab 3", tab3Content);
+			tabRow.AddView(tabs, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 80 });
+
+			let placeBtn = new Button();
+			placeBtn.SetText("Placement: Top");
+			placeBtn.OnClick.Add(new (b) =>
+			{
+				switch (tabs.Placement)
+				{
+				case .Top:    tabs.Placement = .Bottom; placeBtn.SetText("Placement: Bottom");
+				case .Bottom: tabs.Placement = .Left;   placeBtn.SetText("Placement: Left");
+				case .Left:   tabs.Placement = .Right;  placeBtn.SetText("Placement: Right");
+				case .Right:  tabs.Placement = .Top;    placeBtn.SetText("Placement: Top");
+				}
+			});
+			tabRow.AddView(placeBtn, new LinearLayout.LayoutParams() { Height = 26 });
+		}
+
+		AddSeparator(right);
+		AddSectionLabel(right, "Overlays (right-click / dialog)");
+
+		{
+			let row = new LinearLayout();
+			row.Orientation = .Horizontal;
+			row.Spacing = 8;
+			right.AddView(row, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 36 });
+
+			// Dialog button.
+			let dialogBtn = new Button();
+			dialogBtn.SetText("Show Dialog");
+			dialogBtn.TooltipText = new String("Opens a modal alert dialog");
+			dialogBtn.OnClick.Add(new [&](b) =>
+			{
+				let dialog = Dialog.Alert("Hello!", "This is a modal dialog.\nPress OK or Escape to close.");
+				dialog.Show(mUI.UIContext);
+			});
+			row.AddView(dialogBtn, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
+
+			// Context menu instruction.
+			let hint = new Label();
+			hint.SetText("Right-click anywhere for menu");
+			row.AddView(hint, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
+		}
+
+		// F2=bounds  F3=padding  F4=margin  F5=theme  F6=xml-theme
 	}
 
 	// === Helpers ===
@@ -651,10 +877,15 @@ class UISandboxApp : Application
 		row.AddView(cv, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = weight });
 	}
 
-	private void AddButton(LinearLayout row, StringView text, Color bgColor)
+	private void AddButton(LinearLayout row, StringView text, Color bgColor, StringView tooltip = default, TooltipPlacement tooltipPlacement = .Bottom)
 	{
 		let btn = new Button();
 		btn.SetText(text);
+		if (tooltip.Length > 0)
+		{
+			btn.TooltipText = new String(tooltip);
+			btn.TooltipPlacement = tooltipPlacement;
+		}
 
 		let bg = new StateListDrawable();
 		bg.Set(.Normal, new RoundedRectDrawable(bgColor, 4));
@@ -790,6 +1021,14 @@ class UISandboxApp : Application
 	{
 		if (mUI == null) return;
 
+		// Animate progress bar.
+		if (mDemoProgressBar != null)
+		{
+			var p = mDemoProgressBar.Progress + frame.DeltaTime * 0.15f;
+			if (p > 1) p -= 1;
+			mDemoProgressBar.Progress = p;
+		}
+
 		let kb = Shell?.InputManager?.Keyboard;
 		if (kb == null) return;
 
@@ -834,6 +1073,35 @@ class UISandboxApp : Application
 				  <Color key="Focus.Ring" value="200,100,160,200"/>
 				  <Color key="ScrollBar.Track" value="50,40,60,150"/>
 				  <Color key="ScrollBar.Thumb" value="160,100,140,220"/>
+				  <Color key="CheckBox.BoxBackground" value="35,25,42"/>
+				  <Color key="CheckBox.CheckColor" value="200,80,150"/>
+				  <Color key="RadioButton.DotColor" value="200,80,150"/>
+				  <Color key="ToggleSwitch.TrackOff" value="40,32,48"/>
+				  <Color key="ToggleSwitch.TrackOn" value="200,80,150"/>
+				  <Color key="ProgressBar.Fill" value="200,80,150"/>
+				  <Color key="Slider.Fill" value="200,80,150"/>
+				  <Color key="ToggleButton.CheckedBackground" value="200,80,150"/>
+				  <Color key="TabView.StripBackground" value="30,22,38"/>
+				  <Color key="TabView.ContentBackground" value="40,32,48"/>
+				  <Color key="TabView.ActiveTabBackground" value="40,32,48"/>
+				  <Color key="TabView.ActiveTabText" value="230,220,240"/>
+				  <Color key="TabView.InactiveTabText" value="150,130,170"/>
+				  <Color key="TabView.HoverTabText" value="210,190,230"/>
+				  <Color key="TabView.TabHover" value="180,60,120,40"/>
+				  <Color key="ToggleButton.Background" value="55,45,65"/>
+				  <Color key="ToggleButton.CheckedBackground" value="200,80,150"/>
+				  <Color key="ComboBox.Background" value="40,32,48"/>
+				  <Color key="ComboBox.Border" value="70,55,85"/>
+				  <Color key="ComboBox.Text" value="230,220,240"/>
+				  <Color key="ComboBox.ArrowColor" value="180,140,200"/>
+				  <Color key="ContextMenu.Background" value="45,35,55,240"/>
+				  <Color key="ContextMenu.Border" value="70,55,85"/>
+				  <Color key="ContextMenu.Hover" value="180,60,120,80"/>
+				  <Color key="ContextMenu.Text" value="230,220,240"/>
+				  <Color key="Dialog.Background" value="45,35,55,245"/>
+				  <Color key="Dialog.Border" value="90,65,110"/>
+				  <Color key="Tooltip.Background" value="40,30,50,230"/>
+				  <Color key="Tooltip.Border" value="80,60,100"/>
 				  <Dimension key="Button.CornerRadius" value="6"/>
 				  <Dimension key="Panel.CornerRadius" value="8"/>
 				  <Dimension key="Panel.BorderWidth" value="1"/>
@@ -856,6 +1124,16 @@ class UISandboxApp : Application
 	{
 		if (mUI == null || !mUI.IsRenderingInitialized)
 			return false;
+
+		// Right-click → show context menu.
+		let mouse = Shell?.InputManager?.Mouse;
+		if (mouse != null)
+		{
+			let rightDown = mouse.IsButtonDown(.Right);
+			if (rightDown && !mPrevRightDown && mContextMenu != null)
+				mContextMenu.Show(mUI.UIContext, mouse.X, mouse.Y);
+			mPrevRightDown = rightDown;
+		}
 
 		// Use theme background for clear color.
 		let bg = mUI.UIContext.Theme?.Palette.Background ?? Color(30, 30, 35, 255);

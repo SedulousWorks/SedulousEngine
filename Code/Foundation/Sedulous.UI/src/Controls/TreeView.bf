@@ -57,6 +57,38 @@ public class TreeView : ViewGroup
 		}
 	}
 
+	// === Keyboard: Left/Right expand/collapse ===
+	// Key events bubble from the inner ListView to TreeView.
+
+	public override void OnKeyDown(KeyEventArgs e)
+	{
+		if (mFlatAdapter == null) return;
+		let sel = mListView.Selection.FirstSelected;
+		if (sel < 0) return;
+
+		let nodeId = mFlatAdapter.GetNodeId(sel);
+		if (nodeId < 0) return;
+
+		switch (e.Key)
+		{
+		case .Right:
+			if (TreeAdapter.HasChildren(nodeId) && !mFlatAdapter.IsExpanded(nodeId))
+			{
+				mFlatAdapter.ToggleExpand(nodeId);
+				mListView.NotifyDataChanged();
+				e.Handled = true;
+			}
+		case .Left:
+			if (TreeAdapter.HasChildren(nodeId) && mFlatAdapter.IsExpanded(nodeId))
+			{
+				mFlatAdapter.ToggleExpand(nodeId);
+				mListView.NotifyDataChanged();
+				e.Handled = true;
+			}
+		default:
+		}
+	}
+
 	// === Visual children: the internal ListView ===
 
 	public override int VisualChildCount => 1;

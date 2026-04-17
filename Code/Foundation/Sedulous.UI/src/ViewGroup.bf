@@ -54,6 +54,40 @@ public class ViewGroup : View
 		InvalidateLayout();
 	}
 
+	/// Insert a child at a specific index. Used by RootView to keep
+	/// PopupLayer as the last child.
+	public void InsertView(View child, int index, LayoutParams lp = null)
+	{
+		if (child.Parent != null)
+			if (let parentGroup = child.Parent as ViewGroup)
+				parentGroup.RemoveChildInternal(child, false);
+
+		child.Parent = this;
+
+		if (lp != null)
+		{
+			delete child.LayoutParams;
+			child.LayoutParams = lp;
+		}
+		else if (child.LayoutParams == null)
+		{
+			child.LayoutParams = CreateDefaultLayoutParams();
+		}
+
+		let clampedIndex = Math.Min(index, mChildren.Count);
+		mChildren.Insert(clampedIndex, child);
+
+		if (Context != null)
+			AttachSubtree(child, Context);
+
+		InvalidateLayout();
+	}
+
+	/// Override to intercept mouse events before they reach children.
+	/// Return true to consume the event (children won't receive it).
+	/// Used by ScrollView to initiate drag-to-scroll.
+	public virtual bool OnInterceptMouseEvent(MouseEventArgs e) => false;
+
 	/// Remove a child. If dispose is true (default), the child is deleted.
 	public virtual void RemoveView(View child, bool dispose = true)
 	{
@@ -163,6 +197,26 @@ public class ViewGroup : View
 		}
 
 		return this;
+	}
+
+	// === Layout helpers ===
+
+	/// Measure a child using this ViewGroup's constraints and padding.
+	protected void MeasureChild(View child, MeasureSpec parentWSpec, MeasureSpec parentHSpec)
+	{
+		let lp = child.LayoutParams ?? CreateDefaultLayoutParams();
+		let childW = MakeChildMeasureSpec(parentWSpec, Padding.TotalHorizontal, lp.Width);
+		let childH = MakeChildMeasureSpec(parentHSpec, Padding.TotalVertical, lp.Height);
+		child.Measure(childW, childH);
+	}
+
+	/// Measure a child accounting for used space (margins + already-consumed space).
+	protected void MeasureChildWithMargins(View child, MeasureSpec parentWSpec, float usedW, MeasureSpec parentHSpec, float usedH)
+	{
+		let lp = child.LayoutParams ?? CreateDefaultLayoutParams();
+		let childW = MakeChildMeasureSpec(parentWSpec, Padding.TotalHorizontal + lp.Margin.TotalHorizontal + usedW, lp.Width);
+		let childH = MakeChildMeasureSpec(parentHSpec, Padding.TotalVertical + lp.Margin.TotalVertical + usedH, lp.Height);
+		child.Measure(childW, childH);
 	}
 
 	// === Layout utility ===

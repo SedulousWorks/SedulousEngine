@@ -40,6 +40,11 @@ public class UIContext
 	public InputManager InputManager { get; private set; }
 	public FocusManager FocusManager { get; private set; }
 
+	// === Overlays ===
+	/// PopupLayer is owned by RootView (always its last child).
+	public PopupLayer PopupLayer => mRoot?.PopupLayer;
+	public TooltipManager TooltipManager { get; private set; }
+
 	/// The root view of this UI surface.
 	public RootView Root => mRoot;
 
@@ -47,12 +52,15 @@ public class UIContext
 	{
 		InputManager = new InputManager(this);
 		FocusManager = new FocusManager(this);
+		TooltipManager = new TooltipManager(this);
+
 		mRoot = new RootView();
 		ViewGroup.AttachSubtree(mRoot, this);
 	}
 
 	public ~this()
 	{
+		delete TooltipManager;
 		delete InputManager;
 		delete FocusManager;
 	}
@@ -70,6 +78,8 @@ public class UIContext
 		// Notify managers so they can clear any ViewId references.
 		InputManager?.OnElementDeleted(view);
 		FocusManager?.OnElementDeleted(view);
+		// Track for diagnostics.
+		MutationQueue.NotifyDeleted(view.Id);
 	}
 
 	public View GetElementById(ViewId id)
@@ -81,12 +91,15 @@ public class UIContext
 
 	// === Frame lifecycle ===
 
-	/// Call once per frame before layout/draw. Drains the mutation queue.
+	/// Call once per frame before layout/draw. Drains the mutation queue
+	/// and ticks the tooltip manager.
 	public void BeginFrame(float deltaTime)
 	{
 		Phase = .Draining;
 		MutationQueue.Drain();
 		Phase = .Idle;
+
+		TooltipManager?.Update(deltaTime);
 	}
 
 	/// Run the Measure + Layout pass on the tree.

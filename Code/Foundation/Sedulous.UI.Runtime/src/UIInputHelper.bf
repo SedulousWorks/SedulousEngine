@@ -19,6 +19,12 @@ public class UIInputHelper
 	// Previous frame key states for edge detection.
 	private bool[256] mPrevKeyDown;
 
+	// Key repeat timing — mimics OS repeat behavior.
+	private float[256] mKeyHeldTime;
+	private float mRepeatDelay = 0.5f;    // initial delay before repeat starts
+	private float mRepeatInterval = 0.05f; // interval between repeats
+	private float[256] mNextRepeatTime;
+
 	public this(IInputManager shellInput, UIContext context)
 	{
 		mShellInput = shellInput;
@@ -51,10 +57,10 @@ public class UIInputHelper
 
 		// Keyboard events.
 		if (kb != null)
-			ProcessKeyboard(kb);
+			ProcessKeyboard(kb, deltaTime);
 	}
 
-	private void ProcessKeyboard(IKeyboard kb)
+	private void ProcessKeyboard(IKeyboard kb, float deltaTime)
 	{
 		let modifiers = MapModifiers(kb.Modifiers);
 
@@ -80,6 +86,9 @@ public class UIInputHelper
 			if (down && !wasDown)
 			{
 				// Key pressed this frame.
+				mKeyHeldTime[idx] = 0;
+				mNextRepeatTime[idx] = mRepeatDelay;
+
 				if (uiKey == .Tab && !modifiers.HasFlag(.Ctrl))
 				{
 					// Plain Tab / Shift+Tab → focus navigation (not routed as key event).
@@ -95,12 +104,18 @@ public class UIInputHelper
 			}
 			else if (down && wasDown)
 			{
-				// Key repeat.
-				mContext.InputManager.ProcessKeyDown(uiKey, modifiers, true);
+				// Key held — throttle repeats to mimic OS repeat behavior.
+				mKeyHeldTime[idx] += deltaTime;
+				if (mKeyHeldTime[idx] >= mNextRepeatTime[idx])
+				{
+					mNextRepeatTime[idx] = mKeyHeldTime[idx] + mRepeatInterval;
+					mContext.InputManager.ProcessKeyDown(uiKey, modifiers, true);
+				}
 			}
 			else if (!down && wasDown)
 			{
 				// Key released.
+				mKeyHeldTime[idx] = 0;
 				mContext.InputManager.ProcessKeyUp(uiKey, modifiers);
 			}
 
