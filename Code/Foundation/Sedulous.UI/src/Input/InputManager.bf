@@ -56,6 +56,10 @@ public class InputManager
 		mMouseX = x;
 		mMouseY = y;
 
+		// Drag-and-drop: if a drag is in progress, let the manager consume the move.
+		if (mContext.DragDropManager != null && mContext.DragDropManager.UpdateDrag(x, y))
+			return;
+
 		// If a view has capture, it gets all mouse events regardless of hit.
 		let focusMgr = mContext.FocusManager;
 		if (focusMgr.HasCapture)
@@ -143,6 +147,22 @@ public class InputManager
 		mLastClickY = y;
 		mLastClickButton = button;
 
+		// Drag-and-drop: on single left-click, check if target or ancestor is IDragSource.
+		// Don't start drag on double-click (prevents phantom drags).
+		if (button == .Left && mClickCount == 1 && mContext.DragDropManager != null)
+		{
+			var dragView = target;
+			while (dragView != null)
+			{
+				if (let source = dragView as IDragSource)
+				{
+					mContext.DragDropManager.BeginPotentialDrag(dragView, source, x, y, button);
+					break;
+				}
+				dragView = dragView.Parent;
+			}
+		}
+
 		// Dispatch to target, then bubble up parents if not handled.
 		BubbleMouseDown(target, x, y, button, mClickCount, totalTime);
 
@@ -171,6 +191,10 @@ public class InputManager
 	{
 		mMouseX = x;
 		mMouseY = y;
+
+		// Drag-and-drop: if a drag is in progress, let the manager consume the up.
+		if (mContext.DragDropManager != null && mContext.DragDropManager.EndDrag(x, y))
+			return;
 
 		// Release capture if active.
 		let focusMgr = mContext.FocusManager;
@@ -230,6 +254,13 @@ public class InputManager
 	/// searches for IAcceleratorHandler top-down first.
 	public void ProcessKeyDown(KeyCode key, KeyModifiers modifiers, bool isRepeat)
 	{
+		// Escape cancels active drag.
+		if (key == .Escape && mContext.DragDropManager != null && mContext.DragDropManager.IsDragging)
+		{
+			mContext.DragDropManager.CancelDrag();
+			return;
+		}
+
 		// Alt+key: search tree for IAcceleratorHandler.
 		if (modifiers.HasFlag(.Alt))
 		{

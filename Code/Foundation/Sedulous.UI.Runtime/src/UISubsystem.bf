@@ -34,6 +34,7 @@ public class UISubsystem : Subsystem
 	// Platform (not owned)
 	private IDevice mDevice;
 	private Sedulous.Shell.IShell mShell;
+	private Sedulous.Shell.IWindow mWindow;
 
 	// State
 	private bool mRenderingInitialized;
@@ -63,10 +64,12 @@ public class UISubsystem : Subsystem
 		TextureFormat targetFormat,
 		int32 frameCount,
 		Span<StringView> shaderPaths,
-		Sedulous.Shell.IShell shell = null)
+		Sedulous.Shell.IShell shell = null,
+		Sedulous.Shell.IWindow window = null)
 	{
 		mDevice = device;
 		mShell = shell;
+		mWindow = window;
 		mFrameCount = frameCount;
 
 		// Font service
@@ -120,6 +123,10 @@ public class UISubsystem : Subsystem
 		using (SProfiler.Begin("UISubsystem.Update"))
 		{
 			mTotalTime += deltaTime;
+
+			// Sync DPI scale from Shell window (handles monitor changes).
+			if (mWindow != null)
+				mUIContext.Root.DpiScale = mWindow.ContentScale;
 
 			// Route shell input → UI events.
 			if (mInputHelper != null && mShell?.InputManager != null)

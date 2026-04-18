@@ -246,6 +246,132 @@ class SandboxTreeAdapter : ITreeAdapter
 	}
 }
 
+/// DragData carrying a reference to the source DragChip.
+class ChipDragData : DragData
+{
+	public DragChip SourceChip;
+
+	public this(DragChip source) : base("demo/chip")
+	{
+		SourceChip = source;
+	}
+}
+
+/// Draggable color chip. Implements IDragSource.
+class DragChip : ColorView, IDragSource
+{
+	public DragData CreateDragData()
+	{
+		return new ChipDragData(this);
+	}
+
+	public View CreateDragVisual(DragData data)
+	{
+		// Custom drag preview — a small color swatch with a border.
+		let panel = new Panel();
+		panel.Background = new RoundedRectDrawable(Color, 4, .(200, 200, 210, 255), 1);
+		let label = new Label();
+		let hex = scope String();
+		hex.AppendF("#{0:X2}{1:X2}{2:X2}", Color.R, Color.G, Color.B);
+		label.SetText(hex);
+		label.FontSize = 11;
+		panel.AddView(label, new Sedulous.UI.LayoutParams() { Width = Sedulous.UI.LayoutParams.MatchParent, Height = Sedulous.UI.LayoutParams.MatchParent });
+		panel.Padding = .(6, 2);
+		return panel;
+	}
+
+	public void OnDragStarted(DragData data) { Alpha = 0.4f; }
+	public void OnDragCompleted(DragData data, DragDropEffects effect, bool cancelled) { Alpha = 1.0f; }
+}
+
+/// Reorder container — drag chips to swap their positions.
+class ChipReorderContainer : LinearLayout, IDropTarget
+{
+	public DragDropEffects CanAcceptDrop(DragData data, float localX, float localY)
+	{
+		return (data.Format == "demo/chip") ? .Move : .None;
+	}
+
+	public void OnDragEnter(DragData data, float localX, float localY) { }
+	public void OnDragOver(DragData data, float localX, float localY) { }
+	public void OnDragLeave(DragData data) { }
+
+	public DragDropEffects OnDrop(DragData data, float localX, float localY)
+	{
+		if (let chipData = data as ChipDragData)
+		{
+			let sourceChip = chipData.SourceChip;
+
+			// Find which child position was dropped on.
+			for (int i = 0; i < ChildCount; i++)
+			{
+				let child = GetChildAt(i);
+				if (localX >= child.Bounds.X && localX < child.Bounds.X + child.Width)
+				{
+					if (let targetChip = child as DragChip)
+					{
+						if (targetChip !== sourceChip)
+						{
+							// Swap colors.
+							let tempColor = sourceChip.Color;
+							sourceChip.Color = targetChip.Color;
+							targetChip.Color = tempColor;
+						}
+						return .Move;
+					}
+				}
+			}
+		}
+		return .None;
+	}
+}
+
+/// Drop target box that changes color when a chip is dropped on it.
+class ColorDropBox : Panel, IDropTarget
+{
+	private Label mLabel;
+
+	public this()
+	{
+		Padding = .(8, 4);
+		mLabel = new Label();
+		mLabel.SetText("Drop here");
+		mLabel.HAlign = .Center;
+		mLabel.VAlign = .Middle;
+		mLabel.FontSize = 12;
+		AddView(mLabel, new Sedulous.UI.LayoutParams() { Width = Sedulous.UI.LayoutParams.MatchParent, Height = Sedulous.UI.LayoutParams.MatchParent });
+	}
+
+	public DragDropEffects CanAcceptDrop(DragData data, float localX, float localY)
+	{
+		return (data.Format == "demo/chip") ? .Copy : .None;
+	}
+
+	public void OnDragEnter(DragData data, float localX, float localY)
+	{
+		mLabel.SetText("Release!");
+	}
+
+	public void OnDragOver(DragData data, float localX, float localY) { }
+
+	public void OnDragLeave(DragData data)
+	{
+		mLabel.SetText("Drop here");
+	}
+
+	public DragDropEffects OnDrop(DragData data, float localX, float localY)
+	{
+		if (let chipData = data as ChipDragData)
+		{
+			// Change background to the dragged chip's color.
+			delete Background;
+			Background = new RoundedRectDrawable(chipData.SourceChip.Color, 6);
+			mLabel.SetText("Dropped!");
+		}
+		return .Copy;
+	}
+}
+
 /// Label with a right-click context menu to copy its text.
 class CopyableLabel : Label
 {
@@ -303,7 +429,7 @@ class UISandboxApp : Application
 		GetAssetPath("shaders", shaderPath);
 
 		if (mUI.InitializeRendering(Device, SwapChain.Format, (int32)SwapChain.BufferCount,
-			scope StringView[](shaderPath), Shell) case .Err)
+			scope StringView[](shaderPath), Shell, Window) case .Err)
 		{
 			Console.WriteLine("Failed to initialize UI rendering");
 			return;
@@ -992,6 +1118,40 @@ class UISandboxApp : Application
 			skewBtn.RenderTransform = skew;
 			skewBtn.OnClick.Add(new (b) => { mClickLabel?.SetText("Skewed button clicked!"); });
 			transformRow.AddView(skewBtn, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
+		}
+
+		AddSeparator(right);
+		AddSectionLabel(right, "Drag & Drop");
+
+		// Reorderable color chips + drop target box.
+		{
+			let row = new LinearLayout();
+			row.Orientation = .Horizontal;
+			row.Spacing = 8;
+			right.AddView(row, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 36 });
+
+			// Reorder container with draggable chips.
+			let container = new ChipReorderContainer();
+			container.Orientation = .Horizontal;
+			container.Spacing = 4;
+			row.AddView(container, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
+
+			Color[?] chipColors = .(
+				.(220, 60, 60, 255), .(60, 180, 60, 255), .(60, 100, 220, 255),
+				.(220, 180, 40, 255), .(180, 60, 220, 255));
+
+			for (int i = 0; i < chipColors.Count; i++)
+			{
+				let chip = new DragChip();
+				chip.Color = chipColors[i];
+				chip.PreferredWidth = 30;
+				chip.PreferredHeight = 30;
+				container.AddView(chip, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
+			}
+
+			// Drop target box — changes color when a chip is dropped on it.
+			let dropBox = new ColorDropBox();
+			row.AddView(dropBox, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
 		}
 
 		// F2=bounds  F3=padding  F4=margin  F5=theme  F6=xml-theme

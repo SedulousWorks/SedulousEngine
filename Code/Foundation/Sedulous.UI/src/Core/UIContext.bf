@@ -49,6 +49,9 @@ public class UIContext
 	// === Animation ===
 	public AnimationManager Animations { get; private set; }
 
+	// === Drag and Drop ===
+	public DragDropManager DragDropManager { get; private set; }
+
 	// === Overlays ===
 	/// PopupLayer is owned by RootView (always its last child).
 	public PopupLayer PopupLayer => mRoot?.PopupLayer;
@@ -57,12 +60,33 @@ public class UIContext
 	/// The root view of this UI surface.
 	public RootView Root => mRoot;
 
+	/// Active popup layer (for multi-window, returns the focused window's layer).
+	/// Currently delegates to Root.PopupLayer.
+	public PopupLayer ActivePopupLayer => mRoot?.PopupLayer;
+
+	/// Active input root (for multi-window, returns the focused window's root).
+	/// Currently delegates to Root.
+	public RootView ActiveInputRoot => mRoot;
+
+	/// Logical width (viewport width / DPI scale).
+	public float LogicalWidth => mRoot != null ? mRoot.ViewportSize.X / DpiScale : 0;
+
+	/// Logical height (viewport height / DPI scale).
+	public float LogicalHeight => mRoot != null ? mRoot.ViewportSize.Y / DpiScale : 0;
+
+	/// Global hit-test against the root view tree.
+	public View HitTest(Vector2 screenPoint)
+	{
+		return mRoot?.HitTest(screenPoint);
+	}
+
 	public this()
 	{
 		InputManager = new InputManager(this);
 		FocusManager = new FocusManager(this);
 		TooltipManager = new TooltipManager(this);
 		Animations = new AnimationManager();
+		DragDropManager = new DragDropManager(this);
 
 		mRoot = new RootView();
 		ViewGroup.AttachSubtree(mRoot, this);
@@ -70,6 +94,7 @@ public class UIContext
 
 	public ~this()
 	{
+		delete DragDropManager;
 		delete Animations;
 		delete TooltipManager;
 		delete InputManager;
@@ -90,6 +115,7 @@ public class UIContext
 		InputManager?.OnElementDeleted(view);
 		FocusManager?.OnElementDeleted(view);
 		Animations?.CancelForView(view);
+		DragDropManager?.OnElementDeleted(view);
 		// Track for diagnostics.
 		MutationQueue.NotifyDeleted(view.Id);
 	}
