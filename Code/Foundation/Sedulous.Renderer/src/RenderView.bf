@@ -10,10 +10,10 @@ class RenderView
 {
 	// ==================== Camera ====================
 
-	/// View matrix (world → view space).
+	/// View matrix (world -> view space).
 	public Matrix ViewMatrix;
 
-	/// Projection matrix (view → clip space).
+	/// Projection matrix (view -> clip space).
 	public Matrix ProjectionMatrix;
 
 	/// Combined view-projection matrix.

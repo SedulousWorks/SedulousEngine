@@ -174,15 +174,15 @@ public static class StrokeTessellator
 				let ui = (uint32)i;
 				let uj = (uint32)j;
 
-				// Left fringe: outerLeft → strokeLeft
+				// Left fringe: outerLeft -> strokeLeft
 				indices.Add(outerLeftBase + ui); indices.Add(outerLeftBase + uj); indices.Add(strokeLeftBase + uj);
 				indices.Add(outerLeftBase + ui); indices.Add(strokeLeftBase + uj); indices.Add(strokeLeftBase + ui);
 
-				// Stroke body: strokeLeft → strokeRight
+				// Stroke body: strokeLeft -> strokeRight
 				indices.Add(strokeLeftBase + ui); indices.Add(strokeLeftBase + uj); indices.Add(strokeRightBase + uj);
 				indices.Add(strokeLeftBase + ui); indices.Add(strokeRightBase + uj); indices.Add(strokeRightBase + ui);
 
-				// Right fringe: strokeRight → outerRight
+				// Right fringe: strokeRight -> outerRight
 				indices.Add(strokeRightBase + ui); indices.Add(strokeRightBase + uj); indices.Add(outerRightBase + uj);
 				indices.Add(strokeRightBase + ui); indices.Add(outerRightBase + uj); indices.Add(outerRightBase + ui);
 			}

@@ -7,7 +7,7 @@ using Sedulous.RHI;
 
 /// Main shader system facade.
 /// Handles shader loading, compilation, and caching.
-/// Three-tier lookup: memory cache → disk cache → compile from source.
+/// Three-tier lookup: memory cache -> disk cache -> compile from source.
 class ShaderSystem : IDisposable
 {
 	private ShaderCompiler mCompiler ~ delete _;
@@ -127,7 +127,7 @@ class ShaderSystem : IDisposable
 	{
 		let key = ShaderVariantKey(name, stage, flags);
 
-		// Check cache (memory → disk)
+		// Check cache (memory -> disk)
 		if (let cached = mCache.TryGet(key))
 			return cached;
 

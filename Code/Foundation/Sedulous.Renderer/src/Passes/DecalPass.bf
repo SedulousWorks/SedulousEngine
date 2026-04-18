@@ -13,7 +13,7 @@ using Sedulous.Profiler;
 /// top of opaque geometry but underneath transparent content.
 ///
 /// The pass reads SceneDepth as a sampled input — the render graph emits the
-/// appropriate DepthStencilWrite → ShaderRead barrier automatically when the
+/// appropriate DepthStencilWrite -> ShaderRead barrier automatically when the
 /// pass declares the depth handle as a read dependency.
 ///
 /// Execution dispatches RenderCategories.Decal through the DecalRenderer drawer,
@@ -36,7 +36,7 @@ class DecalPass : PipelinePass
 
 		graph.AddRenderPass("DecalPass", scope (builder) => {
 			builder.SetColorTarget(0, outputHandle, .Load, .Store);
-			builder.ReadTexture(depthHandle); // barrier: depth-attachment → shader-read
+			builder.ReadTexture(depthHandle); // barrier: depth-attachment -> shader-read
 			builder
 				.NeverCull()
 				.SetExecute(new [=] (encoder) => {

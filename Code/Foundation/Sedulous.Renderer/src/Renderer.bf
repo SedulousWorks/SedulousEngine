@@ -47,7 +47,7 @@ public enum RenderBatchFlags : uint32
 }
 
 /// Abstract per-type drawer. Concrete subclasses handle a specific RenderData subtype
-/// (MeshRenderer → MeshRenderData, ParticleRenderer → ParticleRenderData, etc.) and
+/// (MeshRenderer -> MeshRenderData, ParticleRenderer -> ParticleRenderData, etc.) and
 /// issue draw calls for a batch of matching entries.
 ///
 /// Renderers are registered with a Pipeline against the categories they participate in

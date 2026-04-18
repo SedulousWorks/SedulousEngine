@@ -22,7 +22,7 @@ struct Vertex
 class UniformBufferSample : SampleApp
 {
 	// HLSL: uniform buffer in bind group 0, push constants for color tint.
-	// register(b0, space0) → Vulkan binding 0 (CBV shift = +0)
+	// register(b0, space0) -> Vulkan binding 0 (CBV shift = +0)
 	const String cShaderSource = """
 		cbuffer UBO : register(b0, space0)
 		{
@@ -295,7 +295,7 @@ class UniformBufferSample : SampleApp
 		if (encoderResult case .Err) return;
 		var encoder = encoderResult.Value;
 
-		// Barrier: present → render target
+		// Barrier: present -> render target
 		let texBarriers = scope TextureBarrier[1];
 		texBarriers[0] = TextureBarrier()
 		{
@@ -344,7 +344,7 @@ class UniformBufferSample : SampleApp
 		rp.DrawIndexed(36);
 		rp.End();
 
-		// Barrier: render target → present
+		// Barrier: render target -> present
 		texBarriers[0].OldState = .RenderTarget;
 		texBarriers[0].NewState = .Present;
 		encoder.Barrier(BarrierGroup() { TextureBarriers = Span<TextureBarrier>(texBarriers) });

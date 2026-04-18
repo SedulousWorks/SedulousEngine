@@ -17,7 +17,7 @@ enum EncoderState
 }
 
 /// Validation wrapper for ICommandEncoder.
-/// Enforces the state machine: Recording → (RenderPass | ComputePass) → Recording → Finished.
+/// Enforces the state machine: Recording -> (RenderPass | ComputePass) -> Recording -> Finished.
 class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 {
 	private ICommandEncoder mInner;

@@ -16,19 +16,19 @@ public class FbxLoader : IModelLoader
 	private ufbx_scene* mScene;
 	private String mBasePath ~ delete _;
 
-	/// Node typed_id → model bone index
+	/// Node typed_id -> model bone index
 	private Dictionary<uint32, int32> mNodeToBoneIndex ~ delete _;
 
-	/// Material typed_id → model material index
+	/// Material typed_id -> model material index
 	private Dictionary<uint32, int32> mMaterialIndexMap ~ delete _;
 
-	/// Texture typed_id → model texture index
+	/// Texture typed_id -> model texture index
 	private Dictionary<uint32, int32> mTextureIndexMap ~ delete _;
 
-	/// Mesh typed_id → model mesh index
+	/// Mesh typed_id -> model mesh index
 	private Dictionary<uint32, int32> mMeshIndexMap ~ delete _;
 
-	/// Skin deformer typed_id → model skin index
+	/// Skin deformer typed_id -> model skin index
 	private Dictionary<uint32, int32> mSkinIndexMap ~ delete _;
 
 	/// Tracks load options for use in mesh loading
@@ -512,7 +512,7 @@ public class FbxLoader : IModelLoader
 			// Collect all triangulated vertices across all material parts
 			let allVertexBytes = scope List<uint8>();
 			let allIndices = scope List<uint32>();
-			let vertexMap = scope Dictionary<int, int32>(); // vertex hash → index
+			let vertexMap = scope Dictionary<int, int32>(); // vertex hash -> index
 
 			// Allocate triangle index buffer for triangulation
 			int maxTriIndices = (int)fbxMesh.max_face_triangles * 3;
@@ -1068,7 +1068,7 @@ public class FbxLoader : IModelLoader
 	// ===== Matrix Conversion =====
 
 	/// Converts a ufbx 3x4 matrix to our 4x4 Matrix.
-	/// ufbx column → Matrix row (same pattern as GltfLoader's column-major transpose).
+	/// ufbx column -> Matrix row (same pattern as GltfLoader's column-major transpose).
 	private static Matrix ConvertMatrix(ufbx_matrix m)
 	{
 		return .(

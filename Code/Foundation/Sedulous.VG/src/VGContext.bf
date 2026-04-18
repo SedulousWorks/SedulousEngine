@@ -13,7 +13,7 @@ public class VGContext
 	private VGBatch mBatch = new .() ~ delete _;
 
 	// 1x1 white texture used for solid-color draws (shape/path/stroke).
-	// Sits at Textures[0] so all shape vertices sample white → color passthrough.
+	// Sits at Textures[0] so all shape vertices sample white -> color passthrough.
 	private OwnedImageData mWhiteTexture ~ delete _;
 
 	// Reusable PathBuilder for the immediate-mode path API (BeginPath / MoveTo /

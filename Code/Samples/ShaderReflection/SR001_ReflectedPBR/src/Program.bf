@@ -12,7 +12,7 @@ using SampleFramework;
 ///
 /// Instead of manually specifying BindGroupLayoutEntry arrays, PushConstantRanges,
 /// and VertexAttributes, this sample:
-///   1. Compiles the PBR shader (HLSL → SPIR-V or DXIL)
+///   1. Compiles the PBR shader (HLSL -> SPIR-V or DXIL)
 ///   2. Reflects the compiled bytecode to discover bindings, inputs, push constants
 ///   3. Uses ReflectionUtils to derive BindGroupLayouts, PushConstantRanges, VertexAttributes
 ///   4. Creates the pipeline layout and pipeline from the reflected data
@@ -420,7 +420,7 @@ class ReflectedPBRSample : SampleApp
 		mCommandPool.Reset();
 		var encoder = mCommandPool.CreateEncoder().Value;
 
-		// Barrier: present → render target
+		// Barrier: present -> render target
 		TextureBarrier[1] texBarriers = .(.() { Texture = mSwapChain.CurrentTexture, OldState = .Present, NewState = .RenderTarget });
 		encoder.Barrier(.() { TextureBarriers = .(&texBarriers[0], 1) });
 
@@ -472,7 +472,7 @@ class ReflectedPBRSample : SampleApp
 		rp.DrawIndexed(mIndexCount);
 		rp.End();
 
-		// Barrier: render target → present
+		// Barrier: render target -> present
 		texBarriers[0].OldState = .RenderTarget;
 		texBarriers[0].NewState = .Present;
 		encoder.Barrier(.() { TextureBarriers = .(&texBarriers[0], 1) });

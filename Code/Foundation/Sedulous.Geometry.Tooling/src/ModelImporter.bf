@@ -26,7 +26,7 @@ class ModelImporter
 	}
 
 	/// Import resources from a loaded model.
-	/// Order: Preprocess → Skeletons → Textures → Materials → StaticMeshes → SkinnedMeshes → Animations
+	/// Order: Preprocess -> Skeletons -> Textures -> Materials -> StaticMeshes -> SkinnedMeshes -> Animations
 	/// Textures are imported before materials so materials can reference them by index.
 	/// Skeletons are imported before skinned meshes so meshes can reference them by index.
 	public ModelImportResult Import(Model model)
@@ -222,7 +222,7 @@ class ModelImporter
 			if (!SkinsShareHierarchy(model, skin, targetSkin))
 				continue;
 
-			// Build remapping: skin joint index → targetSkin joint index
+			// Build remapping: skin joint index -> targetSkin joint index
 			let remap = scope int32[skin.Joints.Count];
 			for (int32 j = 0; j < (int32)skin.Joints.Count; j++)
 			{
@@ -420,7 +420,7 @@ class ModelImporter
 
 	private void ImportSkinnedMeshes(Model model, ModelImportResult result)
 	{
-		// Build meshIdx → skinIdx mapping from bones so we can filter meshes by skin
+		// Build meshIdx -> skinIdx mapping from bones so we can filter meshes by skin
 		let meshToSkin = scope int32[model.Meshes.Count];
 		for (int i = 0; i < meshToSkin.Count; i++)
 			meshToSkin[i] = -1;

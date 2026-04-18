@@ -142,7 +142,7 @@ class TonemapEffect : PostProcessEffect
 				.ReadTexture(input);
 
 			// Declare the bloom texture as a read dependency so the render graph
-			// emits the COLOR_ATTACHMENT → SHADER_READ barrier after the bloom
+			// emits the COLOR_ATTACHMENT -> SHADER_READ barrier after the bloom
 			// upsample chain writes to it.
 			if (bloomHandle.IsValid)
 				builder.ReadTexture(bloomHandle);

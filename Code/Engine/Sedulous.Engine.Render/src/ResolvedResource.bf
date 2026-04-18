@@ -3,7 +3,7 @@ namespace Sedulous.Engine.Render;
 using System;
 using Sedulous.Resources;
 
-/// Tracks the resolution state of a ResourceRef → loaded Resource → GPU upload.
+/// Tracks the resolution state of a ResourceRef -> loaded Resource -> GPU upload.
 /// Handles first load, deferred retry (resource not yet available), and hot reload
 /// detection (resource ID changed after reload from disk).
 ///

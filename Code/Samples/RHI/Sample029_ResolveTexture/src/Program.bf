@@ -226,14 +226,14 @@ class ResolveTextureSample : SampleApp
 		// === Step 2: Transition for resolve ===
 		{
 			let barriers = scope TextureBarrier[2];
-			// MSAA texture: RenderTarget → CopySrc
+			// MSAA texture: RenderTarget -> CopySrc
 			barriers[0] = TextureBarrier() { Texture = mMsaaTexture, OldState = .RenderTarget, NewState = .CopySrc };
-			// Swapchain: Present → CopyDst
+			// Swapchain: Present -> CopyDst
 			barriers[1] = TextureBarrier() { Texture = mSwapChain.CurrentTexture, OldState = .Present, NewState = .CopyDst };
 			encoder.Barrier(BarrierGroup() { TextureBarriers = Span<TextureBarrier>(barriers) });
 		}
 
-		// === Step 3: Explicit resolve MSAA → swapchain ===
+		// === Step 3: Explicit resolve MSAA -> swapchain ===
 		encoder.ResolveTexture(mMsaaTexture, mSwapChain.CurrentTexture);
 
 		// === Step 4: Transition swapchain back to Present ===

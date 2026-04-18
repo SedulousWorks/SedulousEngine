@@ -268,7 +268,7 @@ class VulkanTransferBatch : ITransferBatch
 			{
 				let aspectMask = VulkanConversions.GetAspectMask(vkDst.Desc.Format);
 
-				// Transition UNDEFINED → TRANSFER_DST_OPTIMAL
+				// Transition UNDEFINED -> TRANSFER_DST_OPTIMAL
 				VkImageMemoryBarrier preCopyBarrier = .();
 				preCopyBarrier.srcAccessMask = .VK_ACCESS_NONE;
 				preCopyBarrier.dstAccessMask = .VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -303,7 +303,7 @@ class VulkanTransferBatch : ITransferBatch
 				VulkanNative.vkCmdCopyBufferToImage(cmdBuf, mStagingBuffer.Handle, vkDst.Handle,
 					.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-				// Transition TRANSFER_DST_OPTIMAL → SHADER_READ_ONLY_OPTIMAL
+				// Transition TRANSFER_DST_OPTIMAL -> SHADER_READ_ONLY_OPTIMAL
 				VkImageMemoryBarrier postCopyBarrier = .();
 				postCopyBarrier.srcAccessMask = .VK_ACCESS_TRANSFER_WRITE_BIT;
 				postCopyBarrier.dstAccessMask = .VK_ACCESS_SHADER_READ_BIT;

@@ -69,7 +69,7 @@ class DX12DescriptorStaging
 
 		uint32 dstOffset = (uint32)mBlockOffset + mCurrent;
 
-		// Copy descriptors from CPU heap (bind group) → GPU heap (staging)
+		// Copy descriptors from CPU heap (bind group) -> GPU heap (staging)
 		mD3DDevice.CopyDescriptorsSimple(count,
 			mGpuHeap.GetCpuHandle(dstOffset),
 			mCpuHeap.GetCpuHandle(srcOffset),

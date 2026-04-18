@@ -21,7 +21,7 @@ class SkinningSystem : IDisposable
 
 	/// Active skinning instances keyed by mesh handle.
 	/// Multiple entities sharing the same mesh get separate instances
-	/// (different bone transforms → different output).
+	/// (different bone transforms -> different output).
 	private Dictionary<SkinningKey, SkinningInstance> mInstances = new .() ~ delete _;
 
 	/// Output vertex stride (standard Mesh layout: 48 bytes).

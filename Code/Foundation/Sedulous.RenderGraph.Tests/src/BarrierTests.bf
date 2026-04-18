@@ -111,7 +111,7 @@ class BarrierTests
 
 		solver.EmitBarriers(readPass, resources, encoder);
 
-		// Should emit DepthStencilWrite → ShaderRead barrier
+		// Should emit DepthStencilWrite -> ShaderRead barrier
 		Test.Assert(encoder.RecordedTextureBarriers.Count == 1);
 		Test.Assert(encoder.RecordedTextureBarriers[0].OldState == .DepthStencilWrite);
 		Test.Assert(encoder.RecordedTextureBarriers[0].NewState == .ShaderRead);

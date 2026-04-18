@@ -26,7 +26,7 @@ class DecalComponentManager : ComponentManager<DecalComponent>, IRenderDataProvi
 		DeleteDictionaryAndValues!(_);
 	};
 
-	/// Texture view → shared decal MaterialInstance cache.
+	/// Texture view -> shared decal MaterialInstance cache.
 	private Dictionary<ObjectKey<ITextureView>, MaterialInstance> mMaterialCache = new .() ~ {
 		for (let kv in _)
 			kv.value?.ReleaseRef();

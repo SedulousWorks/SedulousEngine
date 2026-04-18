@@ -258,7 +258,7 @@ public static class SVGPathParser
 
 		let numStr = s.Substring(start, pos - start);
 
-		// Handle leading dot (e.g., ".81" → parse as 0.81)
+		// Handle leading dot (e.g., ".81" -> parse as 0.81)
 		if (numStr.Length > 0 && numStr[0] == '.')
 		{
 			let withZero = scope String("0");

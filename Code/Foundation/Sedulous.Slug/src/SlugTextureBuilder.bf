@@ -301,7 +301,7 @@ public class SlugTextureBuilder
 		}
 		else if (exponent > 30)
 		{
-			return (uint16)(sign | 0x7C00); // Overflow → Inf
+			return (uint16)(sign | 0x7C00); // Overflow -> Inf
 		}
 
 		return (uint16)(sign | ((uint32)exponent << 10) | (mantissa >> 13));

@@ -86,7 +86,7 @@ static class TextureConverter
 	private static void SetName(ImportedTexture tex, ModelTexture modelTexture)
 	{
 		let rawName = modelTexture.Name.IsEmpty ? StringView(modelTexture.Uri) : StringView(modelTexture.Name);
-		// Strip file extension (e.g., "Texture.png" → "Texture")
+		// Strip file extension (e.g., "Texture.png" -> "Texture")
 		let dotIdx = rawName.LastIndexOf('.');
 		if (dotIdx > 0)
 			tex.Name.Set(rawName[0..<dotIdx]);

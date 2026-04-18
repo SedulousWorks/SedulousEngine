@@ -11,7 +11,7 @@ namespace Sedulous.Slug.Renderer;
 ///
 /// Usage pattern:
 ///   1. Initialize() once with font + texture data
-///   2. Each frame: Prepare(frameIndex) → OnRender(renderPass, frameIndex)
+///   2. Each frame: Prepare(frameIndex) -> OnRender(renderPass, frameIndex)
 public class SlugTextRenderer : IDisposable
 {
 	private IDevice mDevice;
@@ -269,7 +269,7 @@ public class SlugTextRenderer : IDisposable
 	{
 		// Single bind group (set 0): uniform buffer (b0) + curve texture (t0) + band texture (t1)
 		// All in space0 to match HLSL register declarations.
-		// Vulkan backend auto-applies binding shifts (b0→0, t0→1000, t1→1001).
+		// Vulkan backend auto-applies binding shifts (b0->0, t0->1000, t1->1001).
 		BindGroupLayoutEntry[3] entries = .(
 			.UniformBuffer(0, .Vertex),
 			.SampledTexture(0, .Fragment),

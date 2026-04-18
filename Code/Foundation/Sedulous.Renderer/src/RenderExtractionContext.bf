@@ -14,7 +14,7 @@ struct RenderExtractionContext
 	/// Output container — providers add render data here.
 	public ExtractedRenderData RenderData;
 
-	/// View matrix (world → view space). For sorting key computation.
+	/// View matrix (world -> view space). For sorting key computation.
 	public Matrix ViewMatrix;
 
 	/// View-projection matrix. For frustum culling (when implemented).

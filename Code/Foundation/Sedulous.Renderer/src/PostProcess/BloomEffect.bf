@@ -15,7 +15,7 @@ using Sedulous.Profiler;
 /// The final full-res bloom texture is published as the "BloomTexture" auxiliary
 /// for TonemapEffect to composite.
 ///
-/// This effect does NOT modify the main color chain — it passes input → output
+/// This effect does NOT modify the main color chain — it passes input -> output
 /// unchanged (blit copy) and only produces the auxiliary bloom texture on the
 /// side. TonemapEffect reads it via ctx.GetAux("BloomTexture").
 class BloomEffect : PostProcessEffect
@@ -180,7 +180,7 @@ class BloomEffect : PostProcessEffect
 		// created for ctx.Output is harmless (graph culls unused resources).
 		ctx.Output = ctx.Input;
 
-		// 2. Downsample chain: input → half → quarter → ... → 1/32.
+		// 2. Downsample chain: input -> half -> quarter -> ... -> 1/32.
 		RGHandle[MipCount] downMips = ?;
 		var prevHandle = input;
 		for (int32 mip = 0; mip < MipCount; mip++)
@@ -195,7 +195,7 @@ class BloomEffect : PostProcessEffect
 			prevHandle = mipHandle;
 		}
 
-		// 3. Upsample chain: smallest → ... → full-res bloom texture.
+		// 3. Upsample chain: smallest -> ... -> full-res bloom texture.
 		// Start from the second-smallest and blend upward. The very bottom
 		// downsample level IS the initial upsample input.
 		var upHandle = downMips[MipCount - 1]; // smallest downsample mip

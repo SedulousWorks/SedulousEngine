@@ -70,7 +70,7 @@ class TransformTests
 		let parentWorld = scene.GetWorldMatrix(parent);
 		let childWorld = scene.GetWorldMatrix(child);
 
-		// Parent at 100, child local at 10 → child world at 110
+		// Parent at 100, child local at 10 -> child world at 110
 		Test.Assert(Math.Abs(parentWorld.M41 - 100) < 0.001f);
 		Test.Assert(Math.Abs(childWorld.M41 - 110) < 0.001f);
 	}
@@ -101,7 +101,7 @@ class TransformTests
 		scene.Update(0);
 
 		let childWorld = scene.GetWorldMatrix(child);
-		// Child at local (5,0,0) with parent scale 2 → world (10,0,0)
+		// Child at local (5,0,0) with parent scale 2 -> world (10,0,0)
 		Test.Assert(Math.Abs(childWorld.M41 - 10) < 0.001f);
 	}
 

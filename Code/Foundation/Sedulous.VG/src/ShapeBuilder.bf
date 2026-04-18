@@ -23,22 +23,22 @@ public static class ShapeBuilder
 		// Start at top edge, after top-left corner
 		builder.MoveTo(x + tl, y);
 
-		// Top edge → top-right corner
+		// Top edge -> top-right corner
 		builder.LineTo(x + w - tr, y);
 		if (tr > 0)
 			ArcCorner(builder, x + w - tr, y + tr, tr, -Math.PI_f * 0.5f, 0);
 
-		// Right edge → bottom-right corner
+		// Right edge -> bottom-right corner
 		builder.LineTo(x + w, y + h - br);
 		if (br > 0)
 			ArcCorner(builder, x + w - br, y + h - br, br, 0, Math.PI_f * 0.5f);
 
-		// Bottom edge → bottom-left corner
+		// Bottom edge -> bottom-left corner
 		builder.LineTo(x + bl, y + h);
 		if (bl > 0)
 			ArcCorner(builder, x + bl, y + h - bl, bl, Math.PI_f * 0.5f, Math.PI_f);
 
-		// Left edge → top-left corner
+		// Left edge -> top-left corner
 		builder.LineTo(x, y + tl);
 		if (tl > 0)
 			ArcCorner(builder, x + tl, y + tl, tl, Math.PI_f, Math.PI_f * 1.5f);

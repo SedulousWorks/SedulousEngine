@@ -183,7 +183,7 @@ class DependencyTests
 
 		graph.Compile();
 
-		// Order: Write1 → Process → FinalRead
+		// Order: Write1 -> Process -> FinalRead
 		Test.Assert(graph.ExecutionOrder.Count == 3);
 		Test.Assert(graph.Passes[graph.ExecutionOrder[0]].Name.Equals("Write1"));
 		Test.Assert(graph.Passes[graph.ExecutionOrder[1]].Name.Equals("Process"));

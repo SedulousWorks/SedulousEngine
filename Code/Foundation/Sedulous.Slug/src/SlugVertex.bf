@@ -90,23 +90,23 @@ public struct SlugUniforms
 
 		// Same approach as DrawingRenderer:
 		// Normal (DX12):  CreateOrthographicOffCenter(0, width, height, 0, -1, 1)
-		//   → Y: maps 0→+1 (top), height→-1 (bottom), clip Y-up
+		//   -> Y: maps 0->+1 (top), height->-1 (bottom), clip Y-up
 		// Vulkan flip:    CreateOrthographicOffCenter(0, width, 0, height, -1, 1)
-		//   → Y: maps 0→-1 (top in Vulkan), height→+1 (bottom in Vulkan)
+		//   -> Y: maps 0->-1 (top in Vulkan), height->+1 (bottom in Vulkan)
 
-		// Row 0: X maps [0, width] → [-1, +1]
+		// Row 0: X maps [0, width] -> [-1, +1]
 		u.matrix[0]  = 2.0f / width;
 		u.matrix[3]  = -1.0f;
 
 		if (flipY)
 		{
-			// Vulkan: bottom=0, top=height → scale=2/h, translate=-1
+			// Vulkan: bottom=0, top=height -> scale=2/h, translate=-1
 			u.matrix[5]  = 2.0f / height;
 			u.matrix[7]  = -1.0f;
 		}
 		else
 		{
-			// DX12: bottom=height, top=0 → scale=-2/h, translate=+1
+			// DX12: bottom=height, top=0 -> scale=-2/h, translate=+1
 			u.matrix[5]  = -2.0f / height;
 			u.matrix[7]  = 1.0f;
 		}

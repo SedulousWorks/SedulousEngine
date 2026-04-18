@@ -16,8 +16,8 @@ using Sedulous.Jobs;
 /// Injected into scenes by RenderSubsystem via ISceneAware.
 ///
 /// Per-frame resolution (PostUpdate):
-///   1. For each component, resolve MeshRef → StaticMeshResource → GPU upload
-///   2. Resolve MaterialRefs → MaterialResource → MaterialInstance + bind group
+///   1. For each component, resolve MeshRef -> StaticMeshResource -> GPU upload
+///   2. Resolve MaterialRefs -> MaterialResource -> MaterialInstance + bind group
 ///
 /// Extraction emits one MeshRenderData per submesh.
 class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvider

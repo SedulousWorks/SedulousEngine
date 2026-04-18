@@ -6,7 +6,7 @@ using System.Collections;
 using Sedulous.RHI;
 
 /// Caches compiled shader bytecode in memory and on disk.
-/// Three-tier lookup: memory cache → disk cache → compile.
+/// Three-tier lookup: memory cache -> disk cache -> compile.
 class ShaderCache : IDisposable
 {
 	/// In-memory cache of compiled shaders.

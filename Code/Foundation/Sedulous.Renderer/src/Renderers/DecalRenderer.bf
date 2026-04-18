@@ -271,7 +271,7 @@ public class DecalRenderer : Renderer
 			if (decal == null) continue;
 			if (decal.MaterialBindGroup == null) continue;
 
-			// Per-decal uniforms → ring buffer slot.
+			// Per-decal uniforms -> ring buffer slot.
 			DecalUniforms uniforms = .()
 			{
 				World = decal.WorldMatrix,

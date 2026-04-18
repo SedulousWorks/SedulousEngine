@@ -18,7 +18,7 @@ using Sedulous.RHI;
 ///
 /// Each frame:
 ///   1. PostUpdate: resolve mesh/material refs via RenderResourceResolver
-///   2. PostUpdate: read bone matrices from animation component → upload to bone buffer
+///   2. PostUpdate: read bone matrices from animation component -> upload to bone buffer
 ///   3. Extraction: emit MeshRenderData with IsSkinned + BoneBufferHandle
 class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRenderDataProvider
 {

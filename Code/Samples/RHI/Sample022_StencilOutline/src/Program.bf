@@ -143,7 +143,7 @@ class StencilOutlineSample : SampleApp
 		transfer.Submit();
 		mGraphicsQueue.DestroyTransferBatch(ref transfer);
 
-		// Pipeline layout with push constants (0 bind groups → push constants at space0)
+		// Pipeline layout with push constants (0 bind groups -> push constants at space0)
 		let pushRanges = scope PushConstantRange[1];
 		pushRanges[0] = PushConstantRange() { Stages = .Vertex, Offset = 0, Size = sizeof(PushData) };
 

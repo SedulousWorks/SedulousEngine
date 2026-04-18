@@ -159,7 +159,7 @@ class OverlayPass : PipelinePass
 				if (clip.W <= 0.0f) continue;
 				let ndcX = clip.X / clip.W;
 				let ndcY = clip.Y / clip.W;
-				// NDC → pixel coordinates (top-left origin).
+				// NDC -> pixel coordinates (top-left origin).
 				let px = (ndcX * 0.5f + 0.5f) * (float)view.Width;
 				let py = (1.0f - (ndcY * 0.5f + 0.5f)) * (float)view.Height;
 

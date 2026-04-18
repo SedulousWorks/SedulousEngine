@@ -53,7 +53,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	// Shadow pipeline (renders depth into the shared shadow atlas, one call per shadow caster)
 	private ShadowPipeline mShadowPipeline ~ delete _;
 
-	// Blit helper (fullscreen triangle to copy pipeline output → swapchain)
+	// Blit helper (fullscreen triangle to copy pipeline output -> swapchain)
 	private BlitHelper mBlitHelper ~ delete _;
 
 	// Resource managers (registered with Context.Resources)
@@ -331,7 +331,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		// the uploaded data until the GPU consumes it on the next fence wait.
 		mRenderContext.DebugDraw.Clear();
 
-		// Blit pipeline output → swapchain
+		// Blit pipeline output -> swapchain
 		using (Profiler.Begin("Blit"))
 			BlitToSwapchain(encoder);
 

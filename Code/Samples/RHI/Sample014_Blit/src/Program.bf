@@ -179,7 +179,7 @@ class BlitSample : SampleApp
 			barriers[0] = TextureBarrier() { Texture = mSwapChain.CurrentTexture, OldState = .Present, NewState = .CopyDst };
 			encoder.Barrier(BarrierGroup() { TextureBarriers = Span<TextureBarrier>(barriers) });
 
-			// Blit small offscreen (128x128) → full swapchain (scaled up with linear filtering)
+			// Blit small offscreen (128x128) -> full swapchain (scaled up with linear filtering)
 			encoder.Blit(mOffscreenTex, mSwapChain.CurrentTexture);
 
 			barriers[0].OldState = .CopyDst;

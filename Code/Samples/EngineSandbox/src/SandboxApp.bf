@@ -374,7 +374,7 @@ class SandboxApp : EngineApplication
 				sys.AddBehavior(new DragBehavior() { Drag = 2.0f });
 				sys.AddBehavior(new TurbulenceBehavior() { Strength = 0.8f, Frequency = 3.0f, Speed = 4.0f }); // subtle flicker
 
-				// Color gradient: bright yellow-white core → orange → dark red → transparent
+				// Color gradient: bright yellow-white core -> orange -> dark red -> transparent
 				var fireColor = ParticleCurveColor();
 				fireColor.AddKey(0.0f, .(1.5f, 1.2f, 0.5f, 1));    // HDR bright yellow-white
 				fireColor.AddKey(0.25f, .(1.2f, 0.5f, 0.05f, 1));   // orange
@@ -436,7 +436,7 @@ class SandboxApp : EngineApplication
 				"textures/kenney_particle-pack/PNG (Transparent)/trace_05.png",
 				"Comet", .(0, 1, -14));
 
-			// --- Fireworks (sub-emitter demo: rocket → burst on death) ---
+			// --- Fireworks (sub-emitter demo: rocket -> burst on death) ---
 			mFireworksEffect = new ParticleEffect("Fireworks");
 			{
 				// System 0: Rockets — rise upward, short lifetime, trigger burst on death
@@ -488,7 +488,7 @@ class SandboxApp : EngineApplication
 				burst.AddBehavior(new VelocityIntegrationBehavior());
 				let burstIdx = mFireworksEffect.AddSystem(burst);
 
-				// Link: rocket death → burst sparks
+				// Link: rocket death -> burst sparks
 				var link = SubEmitterLink.Default();
 				link.Trigger = .OnDeath;
 				link.ChildSystemIndex = burstIdx;
@@ -734,7 +734,7 @@ class SandboxApp : EngineApplication
 							new ClipStateNode(walkClip), ownsNode: true));
 						baseLayer.DefaultStateIndex = idleState;
 
-						// Idle → Walk (Speed > 0.1)
+						// Idle -> Walk (Speed > 0.1)
 						let toWalk = new AnimationGraphTransition();
 						toWalk.SourceStateIndex = idleState;
 						toWalk.DestStateIndex = walkState;
@@ -742,7 +742,7 @@ class SandboxApp : EngineApplication
 						toWalk.AddFloatCondition(speedIdx, .Greater, 0.1f);
 						baseLayer.AddTransition(toWalk);
 
-						// Walk → Idle (Speed <= 0.1)
+						// Walk -> Idle (Speed <= 0.1)
 						let toIdle = new AnimationGraphTransition();
 						toIdle.SourceStateIndex = walkState;
 						toIdle.DestStateIndex = idleState;
@@ -1508,7 +1508,7 @@ class SandboxApp : EngineApplication
 			mouse.Visible = !mMouseCaptured;
 		}
 
-		// Look: mouse delta → yaw/pitch when captured OR when right-click held.
+		// Look: mouse delta -> yaw/pitch when captured OR when right-click held.
 		if (mMouseCaptured || mouse.IsButtonDown(.Right))
 		{
 			mYaw += mouse.DeltaX * 0.003f;

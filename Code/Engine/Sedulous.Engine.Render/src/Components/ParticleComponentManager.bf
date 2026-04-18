@@ -46,7 +46,7 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 	/// Last known camera position (from extraction, used for LOD during simulation).
 	private Vector3 mCameraPosition;
 
-	/// Cache: texture view → shared MaterialInstance.
+	/// Cache: texture view -> shared MaterialInstance.
 	private Dictionary<ObjectKey<ITextureView>, MaterialInstance> mMaterialCache = new .() ~ {
 		for (let kv in _)
 			kv.value?.ReleaseRef();

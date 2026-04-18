@@ -30,7 +30,7 @@ public struct Transform
 	{
 		// Build a look-at matrix, extract rotation as quaternion
 		let lookMatrix = Matrix.CreateLookAt(position, target, up);
-		// CreateLookAt returns a view matrix (world→view). We need the inverse
+		// CreateLookAt returns a view matrix (world->view). We need the inverse
 		// rotation to get the world-space orientation of the camera.
 		Matrix invLook = .Identity;
 		Matrix.Invert(lookMatrix, out invLook);

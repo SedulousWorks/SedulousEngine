@@ -325,13 +325,13 @@ class DX12CommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		let dxgiFormat = DX12Conversions.ToDxgiFormat(desc.Format);
 
 		// Texture enters in CopySrc+CopyDst state (DX12: all subresources in COPY_SOURCE).
-		// For each mip: transition src→SRV, dst→RTV, blit, restore src→COPY_SOURCE.
+		// For each mip: transition src->SRV, dst->RTV, blit, restore src->COPY_SOURCE.
 		for (uint32 mip = 1; mip < desc.MipLevelCount; mip++)
 		{
 			uint32 dstWidth = Math.Max(1, desc.Width >> mip);
 			uint32 dstHeight = Math.Max(1, desc.Height >> mip);
 
-			// Pre-blit: src mip → SRV, dst mip → RTV
+			// Pre-blit: src mip -> SRV, dst mip -> RTV
 			D3D12_RESOURCE_BARRIER[2] barriers = default;
 
 			barriers[0] = default;
@@ -352,7 +352,7 @@ class DX12CommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 			BlitSubresource(dxTex, mip - 1, dxTex, mip, dstWidth, dstHeight, dxgiFormat);
 
-			// Post-blit: restore src mip → COPY_SOURCE, dst mip → COPY_SOURCE
+			// Post-blit: restore src mip -> COPY_SOURCE, dst mip -> COPY_SOURCE
 			barriers[0].Transition.StateBefore = .D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | .D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
 			barriers[0].Transition.StateAfter = .D3D12_RESOURCE_STATE_COPY_SOURCE;
 			barriers[1].Transition.StateBefore = .D3D12_RESOURCE_STATE_RENDER_TARGET;
@@ -444,7 +444,7 @@ class DX12CommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 		let dxgiFormat = DX12Conversions.ToDxgiFormat(dxDst.Desc.Format);
 
-		// Transition src → RESOLVE_SOURCE, dst → RESOLVE_DEST
+		// Transition src -> RESOLVE_SOURCE, dst -> RESOLVE_DEST
 		D3D12_RESOURCE_BARRIER[2] barriers = default;
 
 		barriers[0] = default;

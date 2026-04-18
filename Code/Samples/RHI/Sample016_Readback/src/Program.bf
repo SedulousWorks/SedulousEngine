@@ -5,7 +5,7 @@ using System.Collections;
 using Sedulous.RHI;
 using SampleFramework;
 
-/// Demonstrates GPU → CPU readback.
+/// Demonstrates GPU -> CPU readback.
 /// Renders a colored triangle to a small offscreen texture, copies it to a
 /// readback buffer, then reads pixel values on the CPU and prints them.
 class ReadbackSample : SampleApp

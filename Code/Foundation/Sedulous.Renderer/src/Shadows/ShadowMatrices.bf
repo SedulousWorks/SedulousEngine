@@ -27,7 +27,7 @@ public struct DirectionalCascadeData
 /// Phase 7.3: cascaded directional support.
 public static class ShadowMatrices
 {
-	/// Computes the world → light-clip view-projection matrix for one face of a
+	/// Computes the world -> light-clip view-projection matrix for one face of a
 	/// point light's cube shadow. Face indices follow the standard +X, -X, +Y,
 	/// -Y, +Z, -Z order (matches the shader's face selection).
 	public static Matrix PointLightFaceViewProj(LightRenderData light, int32 faceIdx)
@@ -60,7 +60,7 @@ public static class ShadowMatrices
 		return view * proj;
 	}
 
-	/// Computes the world → light-clip view-projection matrix for a spot light.
+	/// Computes the world -> light-clip view-projection matrix for a spot light.
 	///
 	///   - Light position is the matrix's eye point.
 	///   - Light direction is the look-at forward vector.

@@ -510,7 +510,7 @@ class CubeMapSample : SampleApp
 			rp.End();
 		}
 
-		// Transition depth texture from DepthStencilWrite → ShaderRead for sampling
+		// Transition depth texture from DepthStencilWrite -> ShaderRead for sampling
 		{
 			let depthBarriers = scope TextureBarrier[1];
 			depthBarriers[0] = TextureBarrier() { Texture = mDepthTexture, OldState = .DepthStencilWrite, NewState = .ShaderRead };

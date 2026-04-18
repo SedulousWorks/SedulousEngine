@@ -266,7 +266,7 @@ class VGShapesSample : SampleApp
 		if (encoderResult case .Err) return;
 		var encoder = encoderResult.Value;
 
-		// Barrier: Present → RenderTarget
+		// Barrier: Present -> RenderTarget
 		let texBarriers = scope TextureBarrier[1];
 		texBarriers[0] = TextureBarrier()
 		{
@@ -308,7 +308,7 @@ class VGShapesSample : SampleApp
 
 		rp.End();
 
-		// Barrier: RenderTarget → Present
+		// Barrier: RenderTarget -> Present
 		texBarriers[0].OldState = .RenderTarget;
 		texBarriers[0].NewState = .Present;
 		encoder.Barrier(BarrierGroup() { TextureBarriers = Span<TextureBarrier>(texBarriers) });

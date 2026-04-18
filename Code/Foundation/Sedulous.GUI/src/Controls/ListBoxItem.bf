@@ -130,7 +130,7 @@ public class ListBoxItem : ContentControl, ISelectable
 	{
 		get
 		{
-			// Parent chain: ListBoxItem → StackPanel → ScrollViewer → ListBox
+			// Parent chain: ListBoxItem -> StackPanel -> ScrollViewer -> ListBox
 			if (let listBox = Parent?.Parent?.Parent as ListBox)
 				return listBox.IsItemHovered(mIndex);
 			return false;

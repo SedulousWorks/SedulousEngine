@@ -20,7 +20,7 @@ static class ReflectionUtils
 		Span<ReflectedShader> shaders,
 		List<List<BindGroupLayoutEntry>> outEntriesPerSet)
 	{
-		// Map of (set, binding) → merged entry
+		// Map of (set, binding) -> merged entry
 		var merged = scope Dictionary<uint64, BindGroupLayoutEntry>();
 
 		for (let shader in shaders)
@@ -51,12 +51,12 @@ static class ReflectionUtils
 				}
 				else
 				{
-					// Convert ReflectedBinding → BindGroupLayoutEntry
+					// Convert ReflectedBinding -> BindGroupLayoutEntry
 					BindGroupLayoutEntry entry = default;
 					entry.Binding = b.Binding;
 					entry.Visibility = b.Stages;
 					entry.Type = b.Type;
-					entry.Count = b.Count == 0 ? uint32.MaxValue : b.Count; // 0 = bindless → MaxValue
+					entry.Count = b.Count == 0 ? uint32.MaxValue : b.Count; // 0 = bindless -> MaxValue
 					entry.Label = b.Name;
 					entry.TextureDimension = b.TextureDimension;
 					entry.TextureMultisampled = b.TextureMultisampled;

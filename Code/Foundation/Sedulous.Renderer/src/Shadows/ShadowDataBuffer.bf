@@ -18,7 +18,7 @@ using Sedulous.Renderer;
 [CRepr]
 public struct GPUShadowData
 {
-	/// World → light clip space transform.
+	/// World -> light clip space transform.
 	public Matrix LightViewProj;
 
 	/// Atlas UV rect (x, y, width, height) in [0,1] space.

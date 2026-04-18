@@ -14,7 +14,7 @@ using Sedulous.Core.Mathematics;
 ///
 /// FixedUpdate order:
 ///   1. Create bodies for new components
-///   2. Sync kinematic entity transforms → physics (app moves entity, physics follows)
+///   2. Sync kinematic entity transforms -> physics (app moves entity, physics follows)
 ///   3. Step physics simulation (contact events buffered during step)
 ///   4. Dispatch buffered contact events to components
 ///   5. Sync dynamic physics results -> entity transforms (physics drives entity)
@@ -79,7 +79,7 @@ class PhysicsComponentManager : ComponentManager<RigidBodyComponent>, IContactLi
 				CreatePhysicsBody(comp);
 		}
 
-		// 2. Sync kinematic entities → physics
+		// 2. Sync kinematic entities -> physics
 		for (let comp in ActiveComponents)
 		{
 			if (!comp.IsActive || !comp.PhysicsBody.IsValid) continue;
@@ -97,7 +97,7 @@ class PhysicsComponentManager : ComponentManager<RigidBodyComponent>, IContactLi
 		// 4. Dispatch buffered contact events to components
 		DispatchContactEvents();
 
-		// 5. Sync dynamic bodies → entity transforms
+		// 5. Sync dynamic bodies -> entity transforms
 		for (let comp in ActiveComponents)
 		{
 			if (!comp.IsActive || !comp.PhysicsBody.IsValid) continue;

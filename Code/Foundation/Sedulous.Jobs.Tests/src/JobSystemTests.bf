@@ -55,7 +55,7 @@ class JobSystemTests
 		Test.Assert(job.State == .Succeeded);
 
 		JobSystem.ProcessCompletions();
-		job.ReleaseRef(); // observation ref → rc=0 → delete
+		job.ReleaseRef(); // observation ref -> rc=0 -> delete
 
 		JobSystem.Shutdown();
 	}
@@ -123,8 +123,8 @@ class JobSystemTests
 		Test.Assert(job3.WasExecuted);
 
 		// Release in reverse dependency order so destructors chain correctly
-		job3.ReleaseRef(); // creation ref → triggers destructor → job2 dependency ReleaseRef
-		job2.ReleaseRef(); // creation ref → triggers destructor → job1 dependency ReleaseRef
+		job3.ReleaseRef(); // creation ref -> triggers destructor -> job2 dependency ReleaseRef
+		job2.ReleaseRef(); // creation ref -> triggers destructor -> job1 dependency ReleaseRef
 		job1.ReleaseRef(); // creation ref
 
 		JobSystem.Shutdown();

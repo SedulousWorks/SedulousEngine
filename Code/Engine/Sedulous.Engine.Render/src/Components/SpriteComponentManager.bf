@@ -32,7 +32,7 @@ class SpriteComponentManager : ComponentManager<SpriteComponent>, IRenderDataPro
 		DeleteDictionaryAndValues!(_);
 	};
 
-	/// Cache: texture view → shared MaterialInstance. Sprites using the same
+	/// Cache: texture view -> shared MaterialInstance. Sprites using the same
 	/// texture share the same instance (and therefore the same bind group) so
 	/// they can be batched into a single DrawInstanced.
 	private Dictionary<ObjectKey<ITextureView>, MaterialInstance> mMaterialCache = new .() ~ {

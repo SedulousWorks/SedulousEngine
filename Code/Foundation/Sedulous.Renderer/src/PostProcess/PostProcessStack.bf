@@ -11,7 +11,7 @@ using Sedulous.RenderGraph;
 ///
 /// When the stack has active effects:
 ///   Scene passes write to "SceneHDR" (transient)
-///   Effects chain: SceneHDR → [effect0] → [effect1] → ... → PipelineOutput
+///   Effects chain: SceneHDR -> [effect0] -> [effect1] -> ... -> PipelineOutput
 ///
 /// When the stack is empty or all effects disabled:
 ///   Scene passes write directly to "PipelineOutput" (no intermediates)
