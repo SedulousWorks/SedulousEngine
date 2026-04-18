@@ -56,7 +56,7 @@ public class SlugTextRenderer : IDisposable
 
 	/// Initialize the renderer.
 	/// frameCount should match the swapchain image count (typically 2 or 3).
-	/// shaderSystem must be initialized with the path to Assets/shaders.
+	/// shaderSystem must be initialized with the path to shaders.
 	public Result<void> Initialize(
 		SlugFont font,
 		SlugTextureBuilder.BuildResult textureData,

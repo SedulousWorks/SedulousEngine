@@ -19,7 +19,7 @@ Sedulous.Slug.Tests     Unit tests
 SlugSample              Demo application
 ```
 
-Shaders: `Assets/shaders/slug.vert.hlsl`, `slug.frag.hlsl`
+Shaders: `shaders/slug.vert.hlsl`, `slug.frag.hlsl`
 
 ## How It Works
 
