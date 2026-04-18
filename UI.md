@@ -1604,17 +1604,35 @@ test coverage expected and the sandbox additions.
 | **7** Engine Integration | DEFERRED | — |
 | **8** Scrolling | ✅ DONE | 14 |
 | **9** Adapters + Virtualization | ✅ DONE | 18 |
-| **10** Text Editing | NOT STARTED | — |
-| **11** Overlays | NOT STARTED | — |
-| **12** Animation | NOT STARTED | — |
-| **13** Drag and Drop | NOT STARTED | — |
+| **11** Overlays + Controls + Legacy Adoption | ✅ DONE | 175 |
+| **10** Text Editing | ✅ DONE | 218 |
+| **12** Animation + Transitions | ✅ DONE | 241 |
+| **13** Drag and Drop | ✅ DONE | 252 |
 | **14** Toolkit + Gamekit + Polish | NOT STARTED | — |
 
-**Total tests: 122** across Phases 1–9.
+**Total tests: 252** across Phases 1–13.
 
-**Execution order note:** Phase 11 (Overlays) must be done before
-Phase 10 (Text Editing) because text editing needs ContextMenu for
-cut/copy/paste right-click menus.
+Phase 11 included: overlays (PopupLayer, ContextMenu, Dialog,
+TooltipManager), 10 new controls (CheckBox, RadioButton, RadioGroup,
+ToggleButton, ToggleSwitch, RepeatButton, ProgressBar, Slider,
+TabView, ComboBox), legacy comparison adoption, focus stack,
+ImageView ScaleType, scrollable demo layout, theme fixes.
+
+Phase 10 included: Sedulous.UI.Shell bridge library (InputMapping,
+UIInputHelper with text input emulation, ShellClipboardAdapter),
+TextEditingBehavior + ITextEditHost, EditText (single + multiline),
+PasswordBox, UndoStack, InputFilter, IClipboard, focus stack for
+popup focus save/restore.
+
+Phase 12 included: Animation base + FloatAnimation/ColorAnimation/
+Vector2Animation, Storyboard (Sequential/Parallel), AnimationManager,
+Easing convenience wrapper, ViewAnimator factories, DrawChildren
+Alpha/RenderTransform support, transform-aware hit-testing,
+VGContext DrawTextWrapped/MeasureTextWrapped/FillPolygon.
+
+Phase 13 included: DragDropManager state machine, IDragSource/
+IDropTarget, DragData, DragAdorner, DPI wiring from Shell window,
+View.ToLocal, UIContext multi-window readiness properties.
 
 See **Deferred Work** section at the end of this document for all
 items skipped or deferred from completed phases.
@@ -2211,19 +2229,24 @@ everything suddenly needs to integrate.
 4. **Phases 4-5** (theme + XML parsing) — COMPLETE
 5. **Phase 6** (resource integration) — COMPLETE
 6. **Phases 8-9** (scrolling + virtualization) — COMPLETE
-7. **Phase 11** (overlays + legacy comparison adoption) — COMPLETE
-   Includes all critical/high/medium items from legacy comparison.
-8. **Phase 10** (text editing) — depends on Phase 11 for ContextMenu.
-9. **Phase 12** (animation).
-10. **Phase 13** (drag and drop).
+7. **Phase 11** (overlays + controls + legacy adoption) — COMPLETE
+8. **Phase 10** (text editing + Sedulous.UI.Shell) — COMPLETE
+9. **Phase 12** (animation + transitions) — COMPLETE
+10. **Phase 13** (drag and drop + DPI wiring) — COMPLETE
 11. **Phase 7** (engine integration) — deferred until enough UI
     capability exists to build real game UIs.
 12. **Phase 14** (Toolkit + Gamekit + polish) — final libraries, tree
     inspector, sample game UI gallery.
 
-**Phases 8-13 can ship independently** — they don't change foundations.
-Each phase still follows the completion criteria: code + tests + sandbox
-update.
+**Phases 1-6 and 8-13 are COMPLETE.** Only Phase 7 (engine integration)
+and Phase 14 (Toolkit + Gamekit + polish) remain.
+
+**Remaining work:**
+- **Phase 7** (engine integration) — WorldSpaceUIComponent, scene hooks,
+  resource system wiring. Deferred until real game UI is being built.
+- **Phase 14** (Toolkit + Gamekit + polish) — DockManager, PropertyGrid,
+  DataGrid, UI Inspector, HUD widgets, gamepad navigation, two-way
+  binding. The final feature-complete phase.
 
 ## Files
 

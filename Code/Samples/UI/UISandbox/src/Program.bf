@@ -1011,6 +1011,44 @@ class UISandboxApp : Application
 			tabRow.AddView(placeBtn, new LinearLayout.LayoutParams() { Height = 26 });
 		}
 
+		// NumericField
+		{
+			let numRow = new LinearLayout();
+			numRow.Orientation = .Horizontal;
+			numRow.Spacing = 8;
+			right.AddView(numRow, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 28 });
+
+			let numLabel = new Label();
+			numLabel.SetText("Numeric:");
+			numLabel.VAlign = .Middle;
+			numRow.AddView(numLabel, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
+
+			let numField = new NumericField();
+			numField.Min = 0;
+			numField.Max = 100;
+			numField.Value = 42;
+			numField.Step = 1;
+			numRow.AddView(numField, new LinearLayout.LayoutParams() { Width = 120, Height = LayoutParams.MatchParent });
+
+			let numFieldDec = new NumericField();
+			numFieldDec.Min = 0;
+			numFieldDec.Max = 1;
+			numFieldDec.Value = 0.5f;
+			numFieldDec.Step = 0.05f;
+			numFieldDec.DecimalPlaces = 2;
+			numRow.AddView(numFieldDec, new LinearLayout.LayoutParams() { Width = 120, Height = LayoutParams.MatchParent });
+		}
+
+		// Expander
+		{
+			let expander = new Expander();
+			expander.SetHeaderText("Expandable Section");
+			let content = new Label();
+			content.SetText("Hidden content revealed!");
+			expander.SetContent(content, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 24 });
+			right.AddView(expander, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent });
+		}
+
 		AddSeparator(right);
 		AddSectionLabel(right, "Overlays (right-click / dialog)");
 

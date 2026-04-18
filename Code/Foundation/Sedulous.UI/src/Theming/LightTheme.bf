@@ -138,6 +138,13 @@ public static class LightTheme
 		theme.SetDimension("EditText.FontSize", 14);
 		theme.SetPadding("EditText.Padding", .(6, 4));
 
+		// === Expander ===
+		theme.SetColor("Expander.Header", .(228, 230, 238, 255));
+
+		// === NumericField ===
+		theme.SetColor("NumericField.ButtonBackground", .(235, 237, 242, 255));
+		theme.SetColor("NumericField.ButtonBorder", p.Border);
+
 		// === Section header ===
 		theme.SetColor("SectionLabel.Foreground", .(180, 120, 30, 255));
 

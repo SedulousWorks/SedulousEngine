@@ -351,5 +351,17 @@ public static class UIRegistry
 		RegisterProperty("PasswordBox", "placeholder", new (v, val) => {
 			if (let c = v as PasswordBox) c.SetPlaceholder(val);
 		});
+
+		// === Expander ===
+		RegisterView("Expander", new () => new Expander());
+		RegisterProperty("Expander", "headerText", new (v, val) => {
+			if (let c = v as Expander) c.SetHeaderText(val);
+		});
+		RegisterProperty("Expander", "isExpanded", new (v, val) => {
+			if (let c = v as Expander) c.IsExpanded = (val == "true");
+		});
+
+		// === NumericField ===
+		RegisterView("NumericField", new () => new NumericField());
 	}
 }
