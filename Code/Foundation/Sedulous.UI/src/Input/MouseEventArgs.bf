@@ -10,6 +10,7 @@ public class MouseEventArgs
 	public float Y;
 	public MouseButton Button;
 	public int32 ClickCount;        // 1 = single, 2 = double, etc.
+	public KeyModifiers Modifiers;  // modifier keys held during this event
 	public float Timestamp;         // time of event in seconds (from frame clock)
 	public bool Handled;
 
@@ -20,15 +21,17 @@ public class MouseEventArgs
 		X = 0; Y = 0;
 		Button = .Left;
 		ClickCount = 0;
+		Modifiers = .None;
 		Timestamp = 0;
 		Handled = false;
 	}
 
-	public void Set(float x, float y, MouseButton button = .Left, int32 clickCount = 1, float timestamp = 0)
+	public void Set(float x, float y, MouseButton button = .Left, int32 clickCount = 1, float timestamp = 0, KeyModifiers modifiers = .None)
 	{
 		X = x; Y = y;
 		Button = button;
 		ClickCount = clickCount;
+		Modifiers = modifiers;
 		Timestamp = timestamp;
 		Handled = false;
 	}

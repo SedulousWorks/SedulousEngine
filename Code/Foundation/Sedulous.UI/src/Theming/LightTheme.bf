@@ -126,6 +126,18 @@ public static class LightTheme
 		theme.SetColor("ComboBox.ArrowColor", .(100, 110, 130, 255));
 		theme.SetDimension("ComboBox.CornerRadius", 4);
 
+		// === EditText ===
+		theme.SetColor("EditText.Background", .(248, 248, 252, 255));
+		theme.SetColor("EditText.Border", p.Border);
+		theme.SetColor("EditText.Border.Focused", p.PrimaryAccent);
+		theme.SetColor("EditText.Foreground", p.Text);
+		theme.SetColor("EditText.Placeholder", p.TextDim);
+		theme.SetColor("EditText.Selection", .(40, 100, 200, 80));
+		theme.SetColor("EditText.Cursor", p.Text);
+		theme.SetDimension("EditText.CornerRadius", 4);
+		theme.SetDimension("EditText.FontSize", 14);
+		theme.SetPadding("EditText.Padding", .(6, 4));
+
 		// === Section header ===
 		theme.SetColor("SectionLabel.Foreground", .(180, 120, 30, 255));
 

@@ -24,6 +24,13 @@ public enum KeyCode
 	Delete = 76, End = 77, PageDown = 78,
 	Right = 79, Left = 80, Down = 81, Up = 82,
 	NumLock = 83,
+	KeypadDivide = 84, KeypadMultiply = 85, KeypadMinus = 86, KeypadPlus = 87,
+	KeypadEnter = 88,
+	Keypad1 = 89, Keypad2 = 90, Keypad3 = 91, Keypad4 = 92, Keypad5 = 93,
+	Keypad6 = 94, Keypad7 = 95, Keypad8 = 96, Keypad9 = 97, Keypad0 = 98,
+	KeypadPeriod = 99,
+	Application = 101,
 	LeftCtrl = 224, LeftShift = 225, LeftAlt = 226, LeftGui = 227,
-	RightCtrl = 228, RightShift = 229, RightAlt = 230, RightGui = 231
+	RightCtrl = 228, RightShift = 229, RightAlt = 230, RightGui = 231,
+	LeftSuper = 227, RightSuper = 231
 }

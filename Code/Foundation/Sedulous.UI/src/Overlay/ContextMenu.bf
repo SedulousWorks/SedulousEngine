@@ -42,7 +42,8 @@ public class ContextMenu : View, IPopupOwner
 	}
 
 	/// Show this menu at the given screen position, clamping to screen bounds.
-	public void Show(UIContext ctx, float x, float y)
+	/// Pass an IPopupOwner to receive OnPopupClosed when the menu closes.
+	public void Show(UIContext ctx, float x, float y, IPopupOwner owner = null)
 	{
 		// Measure first to know the popup size, then clamp to screen.
 		Measure(.AtMost(ctx.Root.ViewportSize.X), .AtMost(ctx.Root.ViewportSize.Y));
@@ -58,7 +59,7 @@ public class ContextMenu : View, IPopupOwner
 		if (py + MeasuredSize.Y > screen.Height)
 			py = Math.Max(0, py - MeasuredSize.Y);
 
-		ctx.PopupLayer.ShowPopup(this, null, px, py, closeOnClickOutside: true, isModal: false, ownsView: false);
+		ctx.PopupLayer.ShowPopup(this, owner, px, py, closeOnClickOutside: true, isModal: false, ownsView: true);
 	}
 
 	/// Close this menu and all submenus.

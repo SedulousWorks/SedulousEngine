@@ -28,7 +28,8 @@ public class UISubsystem : Subsystem
 	private FontService mFontService;
 
 	// Input bridge (Shell → UI)
-	private UIInputHelper mInputHelper;
+	private Sedulous.UI.Shell.UIInputHelper mInputHelper;
+	private Sedulous.UI.Shell.ShellClipboardAdapter mClipboardAdapter;
 
 	// Platform (not owned)
 	private IDevice mDevice;
@@ -83,7 +84,14 @@ public class UISubsystem : Subsystem
 
 		// Input bridge (Shell → UI)
 		if (shell?.InputManager != null)
-			mInputHelper = new UIInputHelper(shell.InputManager, mUIContext);
+			mInputHelper = new Sedulous.UI.Shell.UIInputHelper();
+
+		// Clipboard bridge (Shell → UI)
+		if (shell?.Clipboard != null)
+		{
+			mClipboardAdapter = new Sedulous.UI.Shell.ShellClipboardAdapter(shell.Clipboard);
+			mUIContext.Clipboard = mClipboardAdapter;
+		}
 
 		// VGContext (with font service so DrawText convenience overloads work)
 		mVGContext = new VGContext(mFontService);
@@ -114,7 +122,8 @@ public class UISubsystem : Subsystem
 			mTotalTime += deltaTime;
 
 			// Route shell input → UI events.
-			mInputHelper?.Update(deltaTime);
+			if (mInputHelper != null && mShell?.InputManager != null)
+				mInputHelper.Update(mShell.InputManager, mUIContext, deltaTime);
 
 			// Drain deferred mutations, then run layout.
 			mUIContext.BeginFrame(deltaTime);
@@ -176,6 +185,14 @@ public class UISubsystem : Subsystem
 			delete mInputHelper;
 			mInputHelper = null;
 		}
+
+		if (mClipboardAdapter != null)
+		{
+			if (mUIContext != null) mUIContext.Clipboard = null;
+			delete mClipboardAdapter;
+			mClipboardAdapter = null;
+		}
+
 
 		if (mVGRenderer != null)
 		{

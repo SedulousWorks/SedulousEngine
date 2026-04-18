@@ -327,5 +327,29 @@ public static class UIRegistry
 
 		// === ComboBox ===
 		RegisterView("ComboBox", new () => new ComboBox());
+
+		// === EditText ===
+		RegisterView("EditText", new () => new EditText());
+		RegisterProperty("EditText", "text", new (v, val) => {
+			if (let c = v as EditText) c.SetText(val);
+		});
+		RegisterProperty("EditText", "placeholder", new (v, val) => {
+			if (let c = v as EditText) c.SetPlaceholder(val);
+		});
+		RegisterProperty("EditText", "readOnly", new (v, val) => {
+			if (let c = v as EditText) c.IsReadOnly = (val == "true");
+		});
+		RegisterProperty("EditText", "maxLength", new (v, val) => {
+			if (let c = v as EditText) if (int32.Parse(val) case .Ok(let n)) c.MaxLength = n;
+		});
+		RegisterProperty("EditText", "multiline", new (v, val) => {
+			if (let c = v as EditText) c.Multiline = (val == "true");
+		});
+
+		// === PasswordBox ===
+		RegisterView("PasswordBox", new () => new PasswordBox());
+		RegisterProperty("PasswordBox", "placeholder", new (v, val) => {
+			if (let c = v as PasswordBox) c.SetPlaceholder(val);
+		});
 	}
 }

@@ -709,6 +709,32 @@ public class VGContext
 		DrawText(text, font.Font, font.Atlas, atlasTex, bounds, hAlign, vAlign, color);
 	}
 
+	/// Draw pre-shaped glyphs at an offset. Used by EditText for scroll-offset
+	/// text rendering with shaper-produced glyph positions.
+	public void DrawPositionedGlyphs(System.Collections.List<GlyphPosition> positions,
+		CachedFont font, float offsetX, float offsetY, Color color)
+	{
+		if (positions == null || positions.Count == 0 || font == null || mFontService == null) return;
+		let atlasTex = mFontService.GetAtlasTexture(font);
+		if (atlasTex == null || font.Atlas == null) return;
+
+		let textureIndex = GetOrAddTexture(atlasTex);
+		SetupForTextureDraw(textureIndex);
+
+		let startVertex = mBatch.Vertices.Count;
+		let opColor = ApplyOpacity(color);
+
+		for (let pos in positions)
+		{
+			GlyphQuad quad = ?;
+			var glyphX = offsetX + pos.X;
+			if (font.Atlas.GetGlyphQuad(pos.Codepoint, ref glyphX, offsetY + pos.Y, out quad))
+				EmitGlyphQuad(quad, opColor);
+		}
+
+		TransformVertices(startVertex);
+	}
+
 	/// Measure the width and line height of a string in pixels.
 	public Vector2 MeasureText(StringView text, IFont font)
 	{

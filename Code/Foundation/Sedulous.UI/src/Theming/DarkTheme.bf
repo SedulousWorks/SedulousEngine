@@ -119,6 +119,18 @@ public static class DarkTheme
 		theme.SetColor("ComboBox.ArrowColor", .(180, 185, 200, 255));
 		theme.SetDimension("ComboBox.CornerRadius", 4);
 
+		// === EditText ===
+		theme.SetColor("EditText.Background", .(30, 32, 42, 255));
+		theme.SetColor("EditText.Border", p.Border);
+		theme.SetColor("EditText.Border.Focused", p.PrimaryAccent);
+		theme.SetColor("EditText.Foreground", p.Text);
+		theme.SetColor("EditText.Placeholder", p.TextDim);
+		theme.SetColor("EditText.Selection", .(60, 120, 200, 100));
+		theme.SetColor("EditText.Cursor", p.Text);
+		theme.SetDimension("EditText.CornerRadius", 4);
+		theme.SetDimension("EditText.FontSize", 14);
+		theme.SetPadding("EditText.Padding", .(6, 4));
+
 		// === Section header ===
 		theme.SetColor("SectionLabel.Foreground", .(255, 200, 100, 255));
 

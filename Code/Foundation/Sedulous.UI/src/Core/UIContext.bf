@@ -30,6 +30,12 @@ public class UIContext
 	// === Font service (optional — set by UISubsystem) ===
 	public IFontService FontService;
 
+	// === Clipboard (optional — set by UISubsystem via adapter) ===
+	public IClipboard Clipboard;
+
+	// === Total elapsed time (for cursor blink, undo coalescing) ===
+	public float TotalTime { get; private set; }
+
 	// === Theme ===
 	public Theme Theme ~ delete _;
 
@@ -95,6 +101,8 @@ public class UIContext
 	/// and ticks the tooltip manager.
 	public void BeginFrame(float deltaTime)
 	{
+		TotalTime += deltaTime;
+
 		Phase = .Draining;
 		MutationQueue.Drain();
 		Phase = .Idle;

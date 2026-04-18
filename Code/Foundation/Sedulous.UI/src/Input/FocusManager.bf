@@ -10,6 +10,7 @@ public class FocusManager
 	private UIContext mContext;
 	private ViewId mFocusedId;
 	private ViewId mCapturedId;
+	private List<ViewId> mFocusStack = new .() ~ delete _;
 
 	public this(UIContext context)
 	{
@@ -46,6 +47,38 @@ public class FocusManager
 			oldFocused.OnFocusLost();
 		mFocusedId = .Invalid;
 	}
+
+	/// Push the current focus onto the stack and clear focus.
+	/// Called when a popup opens to save and suspend current focus.
+	public void PushFocus()
+	{
+		mFocusStack.Add(mFocusedId);
+		ClearFocus();
+	}
+
+	/// Pop the focus stack, restoring the most recent live focused view.
+	/// Skips dead ViewIds (views deleted while the popup was open).
+	/// Called when a popup closes.
+	public void PopFocus()
+	{
+		while (mFocusStack.Count > 0)
+		{
+			let savedId = mFocusStack.PopBack();
+			if (!savedId.IsValid)
+				continue;
+			let view = mContext.GetElementById(savedId);
+			if (view != null)
+			{
+				SetFocus(view);
+				return;
+			}
+			// Dead ID — skip and try the next one.
+		}
+		// Stack empty or all dead — leave focus cleared.
+	}
+
+	/// Current depth of the focus stack (for debugging/testing).
+	public int FocusStackDepth => mFocusStack.Count;
 
 	/// Set mouse capture. While captured, all mouse events route to this view.
 	public void SetCapture(View view)

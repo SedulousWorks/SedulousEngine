@@ -246,8 +246,30 @@ class SandboxTreeAdapter : ITreeAdapter
 	}
 }
 
+/// Label with a right-click context menu to copy its text.
+class CopyableLabel : Label
+{
+	public override void OnMouseDown(MouseEventArgs e)
+	{
+		if (e.Button == .Right && Context != null)
+		{
+			let menu = new ContextMenu();
+			menu.AddItem("Copy", new [&]() =>
+			{
+				Context?.Clipboard?.SetText(Text);
+			});
+
+			// Convert to screen coords.
+			float sx = e.X + Bounds.X, sy = e.Y + Bounds.Y;
+			var v = Parent;
+			while (v != null) { sx += v.Bounds.X; sy += v.Bounds.Y; v = v.Parent; }
+			menu.Show(Context, sx, sy);
+			e.Handled = true;
+		}
+	}
+}
+
 /// UISandbox — gallery/showcase for Sedulous.UI, growing with each phase.
-/// Phase 2: Drawable system, Label, Button, Panel, Separator, debug overlays.
 class UISandboxApp : Application
 {
 	private UISubsystem mUI;
@@ -256,8 +278,6 @@ class UISandboxApp : Application
 	private OwnedImageData mButtonPressed ~ delete _;
 	private SandboxListAdapter mListAdapter ~ delete _;
 	private SandboxTreeAdapter mTreeAdapter ~ delete _;
-	private ContextMenu mContextMenu ~ delete _;
-	private bool mPrevRightDown;
 	private Label mClickLabel;  // shows click feedback
 	private ProgressBar mDemoProgressBar; // animated in Update
 
@@ -314,16 +334,6 @@ class UISandboxApp : Application
 
 		// Build the demo tree.
 		BuildDemoUI(mUI.UIContext);
-
-		// Create a reusable context menu for right-click.
-		mContextMenu = new ContextMenu();
-		mContextMenu.AddItem("Cut", new () => { mClickLabel?.SetText("Cut!"); });
-		mContextMenu.AddItem("Copy", new () => { mClickLabel?.SetText("Copy!"); });
-		mContextMenu.AddItem("Paste", new () => { mClickLabel?.SetText("Paste!"); });
-		mContextMenu.AddSeparator();
-		let sub = mContextMenu.AddSubmenu("More");
-		sub.Submenu.AddItem("Option A", new () => { mClickLabel?.SetText("Option A!"); });
-		sub.Submenu.AddItem("Option B", new () => { mClickLabel?.SetText("Option B!"); });
 	}
 
 	private void BuildDemoUI(UIContext ctx)
@@ -548,6 +558,57 @@ class UISandboxApp : Application
 			tree.ItemHeight = 22;
 			tree.SetAdapter(mTreeAdapter);
 			left.AddView(tree, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 180 });
+		}
+
+		AddSeparator(left);
+		AddSectionLabel(left, "Text Editing");
+
+		// EditText with placeholder.
+		{
+			let edit = new EditText();
+			edit.SetPlaceholder("Type here...");
+			left.AddView(edit, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 28 });
+		}
+
+		// PasswordBox.
+		{
+			let pw = new PasswordBox();
+			pw.SetPlaceholder("Password...");
+			left.AddView(pw, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 28 });
+		}
+
+		// Digits-only + max length.
+		{
+			let row = new LinearLayout();
+			row.Orientation = .Horizontal;
+			row.Spacing = 6;
+			left.AddView(row, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 28 });
+
+			let digits = new EditText();
+			digits.SetPlaceholder("Digits only");
+			digits.Filter = InputFilter.Digits();
+			row.AddView(digits, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
+
+			let maxLen = new EditText();
+			maxLen.SetPlaceholder("Max 8 chars");
+			maxLen.MaxLength = 8;
+			row.AddView(maxLen, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
+		}
+
+		// Read-only.
+		{
+			let ro = new EditText();
+			ro.SetText("Read-only text (try to edit)");
+			ro.IsReadOnly = true;
+			left.AddView(ro, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 28 });
+		}
+
+		// Multiline.
+		{
+			let multi = new EditText();
+			multi.Multiline = true;
+			multi.SetPlaceholder("Multi-line text...");
+			left.AddView(multi, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 80 });
 		}
 
 		// --- RIGHT COLUMN ---
@@ -844,10 +905,10 @@ class UISandboxApp : Application
 			});
 			row.AddView(dialogBtn, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
 
-			// Context menu instruction.
-			let hint = new Label();
-			hint.SetText("Right-click anywhere for menu");
-			row.AddView(hint, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
+			// Copyable label — right-click to copy, then paste in EditText.
+			let copyPanel = new CopyableLabel();
+			copyPanel.SetText("Right-click to copy this text");
+			row.AddView(copyPanel, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
 		}
 
 		// F2=bounds  F3=padding  F4=margin  F5=theme  F6=xml-theme
@@ -1102,6 +1163,13 @@ class UISandboxApp : Application
 				  <Color key="Dialog.Border" value="90,65,110"/>
 				  <Color key="Tooltip.Background" value="40,30,50,230"/>
 				  <Color key="Tooltip.Border" value="80,60,100"/>
+				  <Color key="EditText.Background" value="35,25,42"/>
+				  <Color key="EditText.Border" value="70,55,85"/>
+				  <Color key="EditText.Border.Focused" value="200,80,150"/>
+				  <Color key="EditText.Foreground" value="230,220,240"/>
+				  <Color key="EditText.Placeholder" value="120,100,140"/>
+				  <Color key="EditText.Selection" value="180,60,120,80"/>
+				  <Color key="EditText.Cursor" value="230,220,240"/>
 				  <Dimension key="Button.CornerRadius" value="6"/>
 				  <Dimension key="Panel.CornerRadius" value="8"/>
 				  <Dimension key="Panel.BorderWidth" value="1"/>
@@ -1124,16 +1192,6 @@ class UISandboxApp : Application
 	{
 		if (mUI == null || !mUI.IsRenderingInitialized)
 			return false;
-
-		// Right-click → show context menu.
-		let mouse = Shell?.InputManager?.Mouse;
-		if (mouse != null)
-		{
-			let rightDown = mouse.IsButtonDown(.Right);
-			if (rightDown && !mPrevRightDown && mContextMenu != null)
-				mContextMenu.Show(mUI.UIContext, mouse.X, mouse.Y);
-			mPrevRightDown = rightDown;
-		}
 
 		// Use theme background for clear color.
 		let bg = mUI.UIContext.Theme?.Palette.Background ?? Color(30, 30, 35, 255);

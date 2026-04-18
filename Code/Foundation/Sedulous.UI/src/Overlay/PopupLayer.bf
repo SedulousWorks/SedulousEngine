@@ -99,6 +99,10 @@ public class PopupLayer : ViewGroup
 				AddView(mBackdrop);
 		}
 
+		// Save and clear focus so the popup blocks keyboard input
+		// to the underlying view. Focus restores on ClosePopup.
+		Context?.FocusManager.PushFocus();
+
 		popup.Parent = this;
 		if (Context != null)
 			ViewGroup.AttachSubtree(popup, Context);
@@ -129,6 +133,9 @@ public class PopupLayer : ViewGroup
 					delete popup;
 
 				delete entry;
+
+				// Restore focus from stack.
+				Context?.FocusManager.PopFocus();
 
 				// Remove backdrop if no more modals.
 				if (!HasModalPopup && mBackdrop != null && mBackdrop.Parent != null)
