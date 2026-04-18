@@ -911,6 +911,89 @@ class UISandboxApp : Application
 			row.AddView(copyPanel, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
 		}
 
+		AddSeparator(right);
+		AddSectionLabel(right, "Animation");
+
+		{
+			// Target view to animate.
+			let animTarget = new ColorView();
+			animTarget.Color = .(80, 160, 255, 255);
+			right.AddView(animTarget, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 30 });
+
+			let animRow = new LinearLayout();
+			animRow.Orientation = .Horizontal;
+			animRow.Spacing = 6;
+			right.AddView(animRow, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 28 });
+
+			// Fade Out button.
+			let fadeOutBtn = new Button();
+			fadeOutBtn.SetText("Fade Out");
+			fadeOutBtn.OnClick.Add(new (b) =>
+			{
+				mUI.UIContext.Animations.Add(ViewAnimator.FadeOut(animTarget, 0.5f, Easing.EaseOutCubic));
+			});
+			animRow.AddView(fadeOutBtn, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
+
+			// Fade In button.
+			let fadeInBtn = new Button();
+			fadeInBtn.SetText("Fade In");
+			fadeInBtn.OnClick.Add(new (b) =>
+			{
+				mUI.UIContext.Animations.Add(ViewAnimator.FadeIn(animTarget, 0.5f, Easing.EaseOutCubic));
+			});
+			animRow.AddView(fadeInBtn, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
+
+			// Bounce button.
+			let bounceBtn = new Button();
+			bounceBtn.SetText("Bounce");
+			bounceBtn.OnClick.Add(new (b) =>
+			{
+				let sb = new Storyboard(.Sequential);
+				sb.Add(ViewAnimator.ScaleTo(animTarget, 1.0f, 1.3f, 0.15f, Easing.EaseOutCubic));
+				sb.Add(ViewAnimator.ScaleTo(animTarget, 1.3f, 1.0f, 0.3f, Easing.BounceOut));
+				mUI.UIContext.Animations.Add(sb);
+			});
+			animRow.AddView(bounceBtn, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
+
+			// Slide button.
+			let slideBtn = new Button();
+			slideBtn.SetText("Slide");
+			slideBtn.OnClick.Add(new (b) =>
+			{
+				let sb = new Storyboard(.Sequential);
+				sb.Add(ViewAnimator.TranslateX(animTarget, 0, 50, 0.3f, Easing.EaseOutCubic));
+				sb.Add(ViewAnimator.TranslateX(animTarget, 50, 0, 0.3f, Easing.EaseInCubic));
+				mUI.UIContext.Animations.Add(sb);
+			});
+			animRow.AddView(slideBtn, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
+
+			// Transformed buttons — rotated and scaled, with working hit-testing.
+			let transformRow = new LinearLayout();
+			transformRow.Orientation = .Horizontal;
+			transformRow.Spacing = 20;
+			right.AddView(transformRow, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 40 });
+
+			let rotBtn = new Button();
+			rotBtn.SetText("Rotated");
+			rotBtn.RenderTransform = Matrix.CreateRotationZ(0.15f);
+			rotBtn.OnClick.Add(new (b) => { mClickLabel?.SetText("Rotated button clicked!"); });
+			transformRow.AddView(rotBtn, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
+
+			let scaleBtn = new Button();
+			scaleBtn.SetText("Scaled 1.2x");
+			scaleBtn.RenderTransform = Matrix.CreateScale(1.2f);
+			scaleBtn.OnClick.Add(new (b) => { mClickLabel?.SetText("Scaled button clicked!"); });
+			transformRow.AddView(scaleBtn, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
+
+			let skewBtn = new Button();
+			skewBtn.SetText("Skewed");
+			var skew = Matrix.Identity;
+			skew.M21 = 0.2f; // horizontal skew
+			skewBtn.RenderTransform = skew;
+			skewBtn.OnClick.Add(new (b) => { mClickLabel?.SetText("Skewed button clicked!"); });
+			transformRow.AddView(skewBtn, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
+		}
+
 		// F2=bounds  F3=padding  F4=margin  F5=theme  F6=xml-theme
 	}
 

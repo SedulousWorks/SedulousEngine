@@ -355,16 +355,32 @@ public class InputManager
 	}
 
 	/// Convert screen-space coords to view-local coords by walking up the parent chain.
+	/// Accounts for RenderTransform on each ancestor.
 	private Vector2 ToLocal(View view, float screenX, float screenY)
 	{
 		var x = screenX;
 		var y = screenY;
-		// Walk up and subtract each ancestor's bounds offset.
+		// Walk up and subtract each ancestor's bounds offset + inverse transform.
 		var v = view;
 		while (v != null && v.Parent != null)
 		{
 			x -= v.Bounds.X;
 			y -= v.Bounds.Y;
+
+			if (v.RenderTransform != Matrix.Identity)
+			{
+				let ox = v.Width * v.RenderTransformOrigin.X;
+				let oy = v.Height * v.RenderTransformOrigin.Y;
+				Matrix invTransform;
+				if (Matrix.TryInvert(v.RenderTransform, out invTransform))
+				{
+					let px = x - ox;
+					let py = y - oy;
+					x = px * invTransform.M11 + py * invTransform.M21 + invTransform.M41 + ox;
+					y = px * invTransform.M12 + py * invTransform.M22 + invTransform.M42 + oy;
+				}
+			}
+
 			v = v.Parent;
 		}
 		return .(x, y);

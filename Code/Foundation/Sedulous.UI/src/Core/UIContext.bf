@@ -46,6 +46,9 @@ public class UIContext
 	public InputManager InputManager { get; private set; }
 	public FocusManager FocusManager { get; private set; }
 
+	// === Animation ===
+	public AnimationManager Animations { get; private set; }
+
 	// === Overlays ===
 	/// PopupLayer is owned by RootView (always its last child).
 	public PopupLayer PopupLayer => mRoot?.PopupLayer;
@@ -59,6 +62,7 @@ public class UIContext
 		InputManager = new InputManager(this);
 		FocusManager = new FocusManager(this);
 		TooltipManager = new TooltipManager(this);
+		Animations = new AnimationManager();
 
 		mRoot = new RootView();
 		ViewGroup.AttachSubtree(mRoot, this);
@@ -66,6 +70,7 @@ public class UIContext
 
 	public ~this()
 	{
+		delete Animations;
 		delete TooltipManager;
 		delete InputManager;
 		delete FocusManager;
@@ -84,6 +89,7 @@ public class UIContext
 		// Notify managers so they can clear any ViewId references.
 		InputManager?.OnElementDeleted(view);
 		FocusManager?.OnElementDeleted(view);
+		Animations?.CancelForView(view);
 		// Track for diagnostics.
 		MutationQueue.NotifyDeleted(view.Id);
 	}
@@ -108,6 +114,7 @@ public class UIContext
 		Phase = .Idle;
 
 		TooltipManager?.Update(deltaTime);
+		Animations?.Update(deltaTime);
 	}
 
 	/// Run the Measure + Layout pass on the tree.

@@ -735,6 +735,66 @@ public class VGContext
 		TransformVertices(startVertex);
 	}
 
+	/// Draw text with word wrapping. Position is the top-left of the text block.
+	/// Requires the CachedFont to have a Shaper set.
+	public void DrawTextWrapped(StringView text, CachedFont font, Vector2 position, float maxWidth, Color color)
+	{
+		if (text.IsEmpty || font == null || font.Shaper == null || mFontService == null) return;
+		let atlasTex = mFontService.GetAtlasTexture(font);
+		if (atlasTex == null) return;
+
+		let positions = scope System.Collections.List<GlyphPosition>();
+		float totalHeight = 0;
+		if (font.Shaper.ShapeTextWrapped(font.Font, text, maxWidth, positions, out totalHeight) case .Err)
+			return;
+
+		DrawPositionedGlyphs(positions, font, position.X, position.Y + font.Font.Metrics.Ascent, color);
+	}
+
+	/// Draw text with word wrapping within bounds.
+	public void DrawTextWrapped(StringView text, CachedFont font, RectangleF bounds, Color color)
+	{
+		DrawTextWrapped(text, font, .(bounds.X, bounds.Y), bounds.Width, color);
+	}
+
+	/// Measure wrapped text without drawing.
+	/// Returns the total height of the wrapped text, or 0 if shaper unavailable.
+	public float MeasureTextWrapped(StringView text, CachedFont font, float maxWidth)
+	{
+		if (text.IsEmpty || font == null || font.Shaper == null) return 0;
+
+		let positions = scope System.Collections.List<GlyphPosition>();
+		float totalHeight = 0;
+		if (font.Shaper.ShapeTextWrapped(font.Font, text, maxWidth, positions, out totalHeight) case .Err)
+			return 0;
+
+		return totalHeight;
+	}
+
+	/// Draw text using the default font at the given pixel size.
+	/// Position is the top-left. Requires a FontService.
+	public void DrawText(StringView text, float fontSize, Vector2 position, Color color)
+	{
+		if (text.IsEmpty || mFontService == null) return;
+		let font = mFontService.GetFont(fontSize);
+		if (font == null) return;
+		DrawText(text, font, position, color);
+	}
+
+	/// Fill a polygon defined by a span of points.
+	/// Uses the immediate-mode path API internally.
+	public void FillPolygon(Span<Vector2> points, Color color)
+	{
+		if (points.Length < 3) return;
+
+		BeginPath();
+		MoveTo(points[0]);
+		for (int i = 1; i < points.Length; i++)
+			LineTo(points[i]);
+		ClosePath();
+		Fill(color);
+	}
+
 	/// Measure the width and line height of a string in pixels.
 	public Vector2 MeasureText(StringView text, IFont font)
 	{

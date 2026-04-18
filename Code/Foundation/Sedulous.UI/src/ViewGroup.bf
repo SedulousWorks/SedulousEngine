@@ -153,9 +153,24 @@ public class ViewGroup : View
 			if (child == null || child.Visibility != .Visible)
 				continue;
 
-			// Translate to child's local coordinate space
+			// Translate to child's local coordinate space.
 			ctx.VG.PushState();
 			ctx.VG.Translate(child.Bounds.X, child.Bounds.Y);
+
+			// Apply render transform around the child's transform origin.
+			if (child.RenderTransform != Matrix.Identity)
+			{
+				let ox = child.Width * child.RenderTransformOrigin.X;
+				let oy = child.Height * child.RenderTransformOrigin.Y;
+				ctx.VG.Translate(ox, oy);
+				let current = ctx.VG.GetTransform();
+				ctx.VG.SetTransform(child.RenderTransform * current);
+				ctx.VG.Translate(-ox, -oy);
+			}
+
+			// Apply alpha opacity.
+			if (child.Alpha < 1.0f)
+				ctx.VG.PushOpacity(child.Alpha);
 
 			if (child.ClipsContent)
 				ctx.PushClip(.(0, 0, child.Width, child.Height));
@@ -167,6 +182,9 @@ public class ViewGroup : View
 
 			if (child.ClipsContent)
 				ctx.PopClip();
+
+			if (child.Alpha < 1.0f)
+				ctx.VG.PopOpacity();
 
 			ctx.VG.PopState();
 		}
@@ -190,7 +208,28 @@ public class ViewGroup : View
 			if (child == null || child.Visibility != .Visible || !child.IsHitTestVisible)
 				continue;
 
-			let childLocal = Vector2(localPoint.X - child.Bounds.X, localPoint.Y - child.Bounds.Y);
+			// Translate point into child's local space.
+			var childLocal = Vector2(localPoint.X - child.Bounds.X, localPoint.Y - child.Bounds.Y);
+
+			// Apply inverse RenderTransform if the child has one.
+			if (child.RenderTransform != Matrix.Identity)
+			{
+				let ox = child.Width * child.RenderTransformOrigin.X;
+				let oy = child.Height * child.RenderTransformOrigin.Y;
+
+				// The draw transform is: translate(ox,oy) * RenderTransform * translate(-ox,-oy)
+				// Inverse: translate(ox,oy) * inverse(RenderTransform) * translate(-ox,-oy)
+				Matrix invTransform;
+				if (Matrix.TryInvert(child.RenderTransform, out invTransform))
+				{
+					// Shift to origin, apply inverse, shift back.
+					let px = childLocal.X - ox;
+					let py = childLocal.Y - oy;
+					childLocal.X = px * invTransform.M11 + py * invTransform.M21 + invTransform.M41 + ox;
+					childLocal.Y = px * invTransform.M12 + py * invTransform.M22 + invTransform.M42 + oy;
+				}
+			}
+
 			let hit = child.HitTest(childLocal);
 			if (hit != null)
 				return hit;
