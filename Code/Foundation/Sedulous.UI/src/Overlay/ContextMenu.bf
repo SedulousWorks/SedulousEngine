@@ -141,7 +141,7 @@ public class ContextMenu : View, IPopupOwner
 		let h = Height;
 
 		// Background
-		let bgColor = ctx.Theme?.GetColor("ContextMenu.Background", .(45, 48, 58, 240)) ?? .(45, 48, 58, 240);
+		let bgColor = ctx.Theme?.GetColor("ContextMenu.Background", .(45, 48, 58, 255)) ?? .(45, 48, 58, 255);
 		let borderColor = ctx.Theme?.GetColor("ContextMenu.Border", .(70, 75, 90, 255)) ?? .(70, 75, 90, 255);
 		ctx.VG.FillRoundedRect(.(0, 0, w, h), 4, bgColor);
 		ctx.VG.StrokeRoundedRect(.(0, 0, w, h), 4, borderColor, 1);

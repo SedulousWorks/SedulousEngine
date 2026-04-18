@@ -171,14 +171,22 @@ public class TabView : ViewGroup
 
 		switch (Placement)
 		{
-		case .Top:    content.Layout(0, TabHeight, w, Math.Max(0, h - TabHeight));
-		case .Bottom: content.Layout(0, 0, w, Math.Max(0, h - TabHeight));
+		case .Top:
+			content.Measure(.Exactly(w), .Exactly(Math.Max(0, h - TabHeight)));
+			content.Layout(0, TabHeight, w, Math.Max(0, h - TabHeight));
+		case .Bottom:
+			content.Measure(.Exactly(w), .Exactly(Math.Max(0, h - TabHeight)));
+			content.Layout(0, 0, w, Math.Max(0, h - TabHeight));
 		case .Left:
 			let sw = ComputeVerticalStripWidth();
-			content.Layout(sw, 0, Math.Max(0, w - sw), h);
+			let cw = Math.Max(0, w - sw);
+			content.Measure(.Exactly(cw), .Exactly(h));
+			content.Layout(sw, 0, cw, h);
 		case .Right:
 			let sw2 = ComputeVerticalStripWidth();
-			content.Layout(0, 0, Math.Max(0, w - sw2), h);
+			let cw2 = Math.Max(0, w - sw2);
+			content.Measure(.Exactly(cw2), .Exactly(h));
+			content.Layout(0, 0, cw2, h);
 		}
 	}
 

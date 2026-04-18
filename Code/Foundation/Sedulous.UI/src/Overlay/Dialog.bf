@@ -26,8 +26,8 @@ public class Dialog : ViewGroup
 
 		mLayout = new LinearLayout();
 		mLayout.Orientation = .Vertical;
-		mLayout.Spacing = 12;
-		mLayout.Padding = .(20, 16);
+		mLayout.Spacing = 10;
+		mLayout.Padding = .(12, 10);
 		mLayout.Parent = this;
 
 		// Title
@@ -131,8 +131,8 @@ public class Dialog : ViewGroup
 	{
 		let bounds = RectangleF(0, 0, Width, Height);
 		ctx.FillThemedBox(bounds, "Dialog",
-			defaultBg: .(50, 52, 62, 245), defaultBorder: .(80, 85, 100, 255),
-			defaultRadius: 8, defaultBorderWidth: 1);
+			defaultBg: .(50, 52, 62, 255), defaultBorder: .(80, 85, 100, 255),
+			defaultRadius: 6, defaultBorderWidth: 1);
 		DrawChildren(ctx);
 	}
 

@@ -8,10 +8,20 @@ using internal Sedulous.UI;
 /// Scrollable container. Clips content to viewport and scrolls via
 /// negative-offset layout (not render translate). Supports mouse wheel,
 /// momentum scrolling, and optional scrollbars.
+/// How scrollbars occupy space relative to content.
+public enum ScrollBarMode
+{
+	/// Scrollbar draws on top of content (mobile/macOS style). Content uses full width.
+	Overlay,
+	/// Scrollbar reserves its own space. Content shrinks to make room. No overlap.
+	Reserved
+}
+
 public class ScrollView : ViewGroup
 {
 	public ScrollBarPolicy HScrollPolicy = .Never;
 	public ScrollBarPolicy VScrollPolicy = .Auto;
+	public ScrollBarMode BarMode = .Overlay;
 
 	private float mScrollX;
 	private float mScrollY;
@@ -211,6 +221,16 @@ public class ScrollView : ViewGroup
 		float maxW = 0, maxH = 0;
 		bool anyMatchParentW = false;
 
+		// In Reserved mode, subtract scrollbar thickness from the width
+		// available to children so they don't extend under the scrollbar.
+		float reservedW = 0;
+		float reservedH = 0;
+		if (BarMode == .Reserved)
+		{
+			if (VScrollPolicy != .Never) reservedW = ScrollBarThickness;
+			if (HScrollPolicy != .Never) reservedH = ScrollBarThickness;
+		}
+
 		for (int i = 0; i < ChildCount; i++)
 		{
 			let child = GetChildAt(i);
@@ -220,7 +240,7 @@ public class ScrollView : ViewGroup
 			if (lp != null && lp.Width == Sedulous.UI.LayoutParams.MatchParent)
 				anyMatchParentW = true;
 
-			let childWSpec = MakeChildMeasureSpec(wSpec, Padding.TotalHorizontal,
+			let childWSpec = MakeChildMeasureSpec(wSpec, Padding.TotalHorizontal + reservedW,
 				lp?.Width ?? Sedulous.UI.LayoutParams.WrapContent);
 			child.Measure(childWSpec, .Unspecified());
 

@@ -56,18 +56,23 @@ public static class LightTheme
 		theme.SetColor("ListView.Selection", .(40, 100, 200, 60));
 
 		// === ContextMenu ===
-		theme.SetColor("ContextMenu.Background", .(248, 248, 252, 245));
+		theme.SetColor("ContextMenu.Background", .(248, 248, 252, 255));
 		theme.SetColor("ContextMenu.Border", .(190, 195, 205, 255));
 		theme.SetColor("ContextMenu.Hover", .(40, 100, 200, 60));
 		theme.SetColor("ContextMenu.Text", p.Text);
 
+		// === Modal ===
+		theme.SetColor("Modal.Backdrop", .(0, 0, 0, 100));
+
 		// === Dialog ===
-		theme.SetColor("Dialog.Background", .(252, 252, 255, 250));
+		theme.SetColor("Dialog.Background", .(252, 252, 255, 255));
 		theme.SetColor("Dialog.Border", .(190, 195, 210, 255));
-		theme.SetDimension("Dialog.CornerRadius", 8);
+		theme.SetDimension("Dialog.CornerRadius", 6);
+		theme.SetDimension("Dialog.BorderWidth", 1);
+		theme.SetPadding("Dialog.Padding", .(12, 10));
 
 		// === Tooltip ===
-		theme.SetColor("Tooltip.Background", .(255, 255, 240, 240));
+		theme.SetColor("Tooltip.Background", .(255, 255, 245, 255));
 		theme.SetColor("Tooltip.Border", .(180, 185, 195, 255));
 
 		// === Focus ===

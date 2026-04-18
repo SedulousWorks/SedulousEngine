@@ -402,13 +402,43 @@ class UISandboxApp : Application
 	private OwnedImageData mCheckerboard ~ delete _;
 	private OwnedImageData mButtonNormal ~ delete _;
 	private OwnedImageData mButtonPressed ~ delete _;
-	private SandboxListAdapter mListAdapter ~ delete _;
-	private SandboxTreeAdapter mTreeAdapter ~ delete _;
-	private Label mClickLabel;  // shows click feedback
-	private ProgressBar mDemoProgressBar; // animated in Update
+	private DemoContext mDemoCtx ~ delete _;
+	private ControlsPage mControlsPage; // for progress bar tick
 
 	public this() : base()
 	{
+	}
+
+	
+
+	/// Load a PNG/JPG file and convert to OwnedImageData (RGBA8).
+	private OwnedImageData LoadImageAsRGBA8(StringView path)
+	{
+		if (ImageLoaderFactory.LoadImage(path) case .Ok(let loaded))
+		{
+			OwnedImageData result;
+			if (loaded.Format == .RGBA8)
+			{
+				result = new OwnedImageData(loaded.Width, loaded.Height, .RGBA8, loaded.Data);
+			}
+			else
+			{
+				// Convert to RGBA8.
+				if (loaded.ConvertFormat(.RGBA8) case .Ok(let converted))
+				{
+					result = new OwnedImageData(converted.Width, converted.Height, .RGBA8, converted.Data);
+					delete converted;
+				}
+				else
+				{
+					delete loaded;
+					return null;
+				}
+			}
+			delete loaded;
+			return result;
+		}
+		return null;
 	}
 
 	protected override void OnInitialize(Sedulous.Runtime.Context context)
@@ -416,9 +446,9 @@ class UISandboxApp : Application
 		// Register built-in view types for XML loading.
 		UIRegistry.RegisterBuiltins();
 
-		// Register theme extension for custom StatusBadge control
-		// BEFORE subsystem creates the default theme.
+		// Register theme extensions BEFORE subsystem creates the default theme.
 		Theme.RegisterExtension(new StatusBadgeThemeExtension());
+		Theme.RegisterExtension(new Sedulous.UI.Toolkit.ToolkitThemeExtension());
 
 		// Create the UI subsystem.
 		mUI = new UISubsystem();
@@ -459,10 +489,43 @@ class UISandboxApp : Application
 		mButtonPressed = LoadImageAsRGBA8(nineslicePressedPath);
 
 		// Build the demo tree.
+		mDemoCtx = new DemoContext();
+		mDemoCtx.UI = mUI;
+		mDemoCtx.Checkerboard = mCheckerboard;
+		mDemoCtx.ButtonNormal = mButtonNormal;
+		mDemoCtx.ButtonPressed = mButtonPressed;
 		BuildDemoUI(mUI.UIContext);
 	}
 
 	private void BuildDemoUI(UIContext ctx)
+	{
+		let root = ctx.Root;
+
+		// Tabbed layout with left-side tabs for focused demos.
+		let tabs = new TabView();
+		tabs.Placement = .Left;
+		tabs.TabHeight = 28;
+		tabs.TabFontSize = 12;
+		root.AddView(tabs);
+
+		// Create pages.
+		let widgetsPage = new WidgetsPage(mDemoCtx);
+		tabs.AddTab("Widgets", widgetsPage);
+
+		mControlsPage = new ControlsPage(mDemoCtx);
+		tabs.AddTab("Controls", mControlsPage);
+
+		tabs.AddTab("Text", new TextEditingPage(mDemoCtx));
+		tabs.AddTab("Data", new DataPage(mDemoCtx));
+		tabs.AddTab("Overlays", new OverlaysPage(mDemoCtx));
+		tabs.AddTab("Animation", new AnimationPage(mDemoCtx));
+		tabs.AddTab("Drag & Drop", new DragDropPage(mDemoCtx));
+		tabs.AddTab("Toolkit", new ToolkitPage(mDemoCtx));
+	}
+
+	/*
+	// Keep the old BuildDemoUI content commented out — remove after verification.
+	private void BuildDemoUI_Old(UIContext ctx)
 	{
 		let root = ctx.Root;
 
@@ -1192,6 +1255,91 @@ class UISandboxApp : Application
 			row.AddView(dropBox, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
 		}
 
+		AddSeparator(right);
+		AddSectionLabel(right, "Toolkit");
+
+		// SplitView demo.
+		{
+			let split = new Sedulous.UI.Toolkit.SplitView();
+			split.Orientation = .Horizontal;
+			split.SplitRatio = 0.4f;
+
+			let leftPane = new Panel();
+			leftPane.Padding = .(4);
+			let leftLabel = new Label();
+			leftLabel.SetText("Left pane");
+			leftLabel.FontSize = 12;
+			leftPane.AddView(leftLabel, new LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent });
+
+			let rightPane = new Panel();
+			rightPane.Padding = .(4);
+			let rightLabel = new Label();
+			rightLabel.SetText("Right pane (drag divider)");
+			rightLabel.FontSize = 12;
+			rightPane.AddView(rightLabel, new LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent });
+
+			split.SetPanes(leftPane, rightPane);
+			right.AddView(split, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 60 });
+		}
+
+		// Toolbar demo.
+		{
+			let toolbar = new Sedulous.UI.Toolkit.Toolbar();
+			let btn1 = toolbar.AddButton("File");
+			btn1.OnClick.Add(new (b) => { mClickLabel?.SetText("File clicked"); });
+			let btn2 = toolbar.AddButton("Edit");
+			btn2.OnClick.Add(new (b) => { mClickLabel?.SetText("Edit clicked"); });
+			toolbar.AddSeparator();
+			let toggle = toolbar.AddToggle("Grid");
+			toggle.OnCheckedChanged.Add(new (t, v) => {
+				let msg = scope String();
+				msg.AppendF("Grid: {}", v ? "ON" : "OFF");
+				mClickLabel?.SetText(msg);
+			});
+			right.AddView(toolbar, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 30 });
+		}
+
+		// MenuBar demo.
+		{
+			let menuBar = new Sedulous.UI.Toolkit.MenuBar();
+			let fileMenu = menuBar.AddMenu("File");
+			fileMenu.AddItem("New", new () => { mClickLabel?.SetText("File > New"); });
+			fileMenu.AddItem("Open", new () => { mClickLabel?.SetText("File > Open"); });
+			fileMenu.AddSeparator();
+			fileMenu.AddItem("Exit", new () => { mClickLabel?.SetText("File > Exit"); });
+
+			let editMenu = menuBar.AddMenu("Edit");
+			editMenu.AddItem("Undo", new () => { mClickLabel?.SetText("Edit > Undo"); });
+			editMenu.AddItem("Redo", new () => { mClickLabel?.SetText("Edit > Redo"); });
+
+			let viewMenu = menuBar.AddMenu("View");
+			viewMenu.AddItem("Zoom In", new () => { mClickLabel?.SetText("View > Zoom In"); });
+			viewMenu.AddItem("Zoom Out", new () => { mClickLabel?.SetText("View > Zoom Out"); });
+
+			right.AddView(menuBar, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 28 });
+		}
+
+		// StatusBar demo.
+		{
+			let statusBar = new Sedulous.UI.Toolkit.StatusBar();
+			statusBar.SetText("Ready");
+			statusBar.AddSection("Ln 1, Col 1");
+			statusBar.AddSection("UTF-8");
+			right.AddView(statusBar, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 24 });
+		}
+
+		// PropertyGrid demo.
+		{
+			let grid = new Sedulous.UI.Toolkit.PropertyGrid();
+			grid.AddProperty(new Sedulous.UI.Toolkit.BoolEditor("Visible", true));
+			grid.AddProperty(new Sedulous.UI.Toolkit.StringEditor("Name", "Player"));
+			grid.AddProperty(new Sedulous.UI.Toolkit.FloatEditor("Speed", 5.0, 0, 100, 0.5, 1, category: "Physics"));
+			grid.AddProperty(new Sedulous.UI.Toolkit.IntEditor("Health", 100, 0, 999, category: "Stats"));
+			grid.AddProperty(new Sedulous.UI.Toolkit.RangeEditor("Volume", 0.8f, 0, 1, category: "Audio"));
+			grid.AddProperty(new Sedulous.UI.Toolkit.ColorEditor("Tint", .(200, 100, 50, 255)));
+			right.AddView(grid, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 180 });
+		}
+
 		// F2=bounds  F3=padding  F4=margin  F5=theme  F6=xml-theme
 	}
 
@@ -1271,36 +1419,6 @@ class UISandboxApp : Application
 		});
 	}
 
-	/// Load a PNG/JPG file and convert to OwnedImageData (RGBA8).
-	private OwnedImageData LoadImageAsRGBA8(StringView path)
-	{
-		if (ImageLoaderFactory.LoadImage(path) case .Ok(let loaded))
-		{
-			OwnedImageData result;
-			if (loaded.Format == .RGBA8)
-			{
-				result = new OwnedImageData(loaded.Width, loaded.Height, .RGBA8, loaded.Data);
-			}
-			else
-			{
-				// Convert to RGBA8.
-				if (loaded.ConvertFormat(.RGBA8) case .Ok(let converted))
-				{
-					result = new OwnedImageData(converted.Width, converted.Height, .RGBA8, converted.Data);
-					delete converted;
-				}
-				else
-				{
-					delete loaded;
-					return null;
-				}
-			}
-			delete loaded;
-			return result;
-		}
-		return null;
-	}
-
 	private static Color Lighten(Color c, float amount)
 	{
 		return .(
@@ -1358,18 +1476,14 @@ class UISandboxApp : Application
 		if (t < 2.0f / 3.0f) return p + (q - p) * (2.0f / 3.0f - t) * 6.0f;
 		return p;
 	}
+	*/
 
 	protected override void OnUpdate(FrameContext frame)
 	{
 		if (mUI == null) return;
 
-		// Animate progress bar.
-		if (mDemoProgressBar != null)
-		{
-			var p = mDemoProgressBar.Progress + frame.DeltaTime * 0.15f;
-			if (p > 1) p -= 1;
-			mDemoProgressBar.Progress = p;
-		}
+		// Animate progress bar in controls page.
+		mControlsPage?.Update(frame.DeltaTime);
 
 		let kb = Shell?.InputManager?.Keyboard;
 		if (kb == null) return;

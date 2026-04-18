@@ -1608,15 +1608,15 @@ test coverage expected and the sandbox additions.
 | **10** Text Editing | ✅ DONE | 218 |
 | **12** Animation + Transitions | ✅ DONE | 241 |
 | **13** Drag and Drop | ✅ DONE | 252 |
-| **14** Toolkit + Gamekit + Polish | NOT STARTED | — |
+| **14** Toolkit + Gamekit + Polish | IN PROGRESS | 274 |
 
-**Total tests: 252** across Phases 1–13.
+**Total tests: 274** across Phases 1–14.
 
 Phase 11 included: overlays (PopupLayer, ContextMenu, Dialog,
 TooltipManager), 10 new controls (CheckBox, RadioButton, RadioGroup,
 ToggleButton, ToggleSwitch, RepeatButton, ProgressBar, Slider,
-TabView, ComboBox), legacy comparison adoption, focus stack,
-ImageView ScaleType, scrollable demo layout, theme fixes.
+TabView, ComboBox), Expander, NumericField, legacy comparison
+adoption, focus stack, ImageView ScaleType, theme fixes.
 
 Phase 10 included: Sedulous.UI.Shell bridge library (InputMapping,
 UIInputHelper with text input emulation, ShellClipboardAdapter),
@@ -1633,6 +1633,48 @@ VGContext DrawTextWrapped/MeasureTextWrapped/FillPolygon.
 Phase 13 included: DragDropManager state machine, IDragSource/
 IDropTarget, DragData, DragAdorner, DPI wiring from Shell window,
 View.ToLocal, UIContext multi-window readiness properties.
+
+Phase 14 (in progress): Sedulous.UI.Toolkit library with:
+- ✅ ToolkitThemeExtension (isDark-aware theme config)
+- ✅ SplitView (resizable two-pane, draggable divider, min pane enforcement)
+- ✅ Toolbar (ToolbarItem/Button/Separator/Toggle)
+- ✅ StatusBar (bottom strip with sections)
+- ✅ MenuBar (horizontal menus with ContextMenu dropdowns, hover-switch)
+- ✅ ColorPicker (HSV square, hue/alpha strips, RGB fields, hex input)
+- ✅ DraggableTreeView (TreeView + drag-to-reorder, IReorderableTreeAdapter)
+- ✅ PropertyGrid (PropertyEditor base, categorized Expanders, 6 typed editors)
+- ✅ ScrollBarMode.Reserved (scrollbar doesn't overlap content)
+- ⚠️ Docking system (compiles, needs debugging — tree attachment issues)
+- 🔲 FloatingWindow (not yet implemented)
+- 🔲 FileBrowser / AssetBrowser (see below)
+- 🔲 UI Tree Inspector (follow-up)
+
+Sedulous.UI.Gamekit project created (empty, ready for game-specific
+controls).
+
+Demo reorganized into tabbed pages (TabView with .Left placement):
+Widgets, Controls, Text, Data, Overlays, Animation, Drag & Drop,
+Toolkit. Each page is a self-contained DemoPage class in its own file.
+
+### Remaining Toolkit Work
+
+**Docking** — tree operations (ReplaceNode, Center docking) have
+context attachment issues that crash in headless tests. Needs
+interactive debugging. FloatingWindow not yet implemented.
+
+**FileBrowser / AssetBrowser** — generic browsable content viewer:
+- Data-model driven (not hardcoded to filesystem). Model provides
+  items from any source: local files, remote database, asset registry.
+- Multiple view modes: TileView (grid/flow), ListView, TreeView.
+- TileView with resizable tile size (slider control).
+- Model provides: item name, icon/thumbnail, type, metadata.
+- Model provides context menu items per item (right-click actions
+  depend on item type and source).
+- Breadcrumb navigation for hierarchical browsing.
+- Selection model (single/multi).
+- Search/filter bar.
+- Design needs further brainstorming — model interface, view mode
+  switching, thumbnail loading strategy, drag-out support.
 
 See **Deferred Work** section at the end of this document for all
 items skipped or deferred from completed phases.
@@ -2235,18 +2277,24 @@ everything suddenly needs to integrate.
 10. **Phase 13** (drag and drop + DPI wiring) — COMPLETE
 11. **Phase 7** (engine integration) — deferred until enough UI
     capability exists to build real game UIs.
-12. **Phase 14** (Toolkit + Gamekit + polish) — final libraries, tree
-    inspector, sample game UI gallery.
+12. **Phase 14** (Toolkit + Gamekit + polish) — IN PROGRESS
 
-**Phases 1-6 and 8-13 are COMPLETE.** Only Phase 7 (engine integration)
-and Phase 14 (Toolkit + Gamekit + polish) remain.
+**Phases 1-13 are COMPLETE.** Phase 14 is in progress.
 
-**Remaining work:**
-- **Phase 7** (engine integration) — WorldSpaceUIComponent, scene hooks,
-  resource system wiring. Deferred until real game UI is being built.
-- **Phase 14** (Toolkit + Gamekit + polish) — DockManager, PropertyGrid,
-  DataGrid, UI Inspector, HUD widgets, gamepad navigation, two-way
-  binding. The final feature-complete phase.
+**Phase 14 done so far:**
+- SplitView, Toolbar, StatusBar, MenuBar, ColorPicker
+- DraggableTreeView, PropertyGrid (6 typed editors)
+- ScrollBarMode.Reserved, theme consistency fixes
+- Demo reorganized into tabbed pages
+- Docking system (compiles, needs debugging)
+
+**Phase 14 remaining:**
+- Docking debugging + FloatingWindow
+- FileBrowser / AssetBrowser (generic data-model-driven browser
+  with tile/list/tree view modes, resizable tiles, per-item
+  context menus — needs design brainstorming)
+- UI Tree Inspector (follow-up)
+- **Phase 7** (engine integration) — deferred
 
 ## Files
 

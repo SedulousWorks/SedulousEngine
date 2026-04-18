@@ -6,11 +6,10 @@ using Sedulous.Core.Mathematics;
 /// Blocks input to underlying content.
 public class ModalBackdrop : View
 {
-	public Color BackdropColor = .(0, 0, 0, 120);
-
 	public override void OnDraw(UIDrawContext ctx)
 	{
-		ctx.VG.FillRect(.(0, 0, Width, Height), BackdropColor);
+		let color = ctx.Theme?.GetColor("Modal.Backdrop", .(0, 0, 0, 120)) ?? .(0, 0, 0, 120);
+		ctx.VG.FillRect(.(0, 0, Width, Height), color);
 	}
 
 	// Block all mouse input.

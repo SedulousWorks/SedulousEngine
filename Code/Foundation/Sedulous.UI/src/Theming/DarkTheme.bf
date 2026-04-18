@@ -50,18 +50,23 @@ public static class DarkTheme
 		theme.SetColor("ListView.Selection", .(60, 120, 200, 80));
 
 		// === ContextMenu ===
-		theme.SetColor("ContextMenu.Background", .(45, 48, 58, 240));
+		theme.SetColor("ContextMenu.Background", .(45, 48, 58, 255));
 		theme.SetColor("ContextMenu.Border", .(70, 75, 90, 255));
 		theme.SetColor("ContextMenu.Hover", .(60, 120, 200, 100));
 		theme.SetColor("ContextMenu.Text", p.Text);
 
+		// === Modal ===
+		theme.SetColor("Modal.Backdrop", .(0, 0, 0, 120));
+
 		// === Dialog ===
-		theme.SetColor("Dialog.Background", .(50, 52, 62, 245));
+		theme.SetColor("Dialog.Background", .(50, 52, 62, 255));
 		theme.SetColor("Dialog.Border", .(80, 85, 100, 255));
-		theme.SetDimension("Dialog.CornerRadius", 8);
+		theme.SetDimension("Dialog.CornerRadius", 6);
+		theme.SetDimension("Dialog.BorderWidth", 1);
+		theme.SetPadding("Dialog.Padding", .(12, 10));
 
 		// === Tooltip ===
-		theme.SetColor("Tooltip.Background", .(40, 42, 50, 230));
+		theme.SetColor("Tooltip.Background", .(40, 42, 50, 255));
 		theme.SetColor("Tooltip.Border", .(70, 75, 85, 255));
 
 		// === Focus ===
