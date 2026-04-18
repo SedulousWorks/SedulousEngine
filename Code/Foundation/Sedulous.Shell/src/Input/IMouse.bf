@@ -6,11 +6,17 @@ namespace Sedulous.Shell.Input;
 /// Mouse input interface.
 public interface IMouse
 {
-	/// Gets the current X position in pixels.
+	/// Gets the current X position in pixels (relative to focused window).
 	float X { get; }
 
-	/// Gets the current Y position in pixels.
+	/// Gets the current Y position in pixels (relative to focused window).
 	float Y { get; }
+
+	/// Gets the global (desktop) X position in pixels.
+	float GlobalX { get; }
+
+	/// Gets the global (desktop) Y position in pixels.
+	float GlobalY { get; }
 
 	/// Gets the X movement since last frame.
 	float DeltaX { get; }

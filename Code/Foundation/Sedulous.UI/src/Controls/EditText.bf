@@ -237,7 +237,7 @@ public class EditText : View, ITextEditHost
 	{
 		if (mGlyphPositions.Count == 0) return 0;
 
-		// Check if charIndex is at or right after a newline → X = 0 (start of line).
+		// Check if charIndex is at or right after a newline -> X = 0 (start of line).
 		if (charIndex > 0)
 		{
 			int32 idx = 0;
@@ -501,7 +501,7 @@ public class EditText : View, ITextEditHost
 	{
 		if (!IsEffectivelyEnabled) return;
 
-		// Enter → submit for single-line, newline for multiline.
+		// Enter -> submit for single-line, newline for multiline.
 		// Multiline Enter is handled by TextEditingBehavior.
 		if (e.Key == .Return && !mMultiline)
 		{

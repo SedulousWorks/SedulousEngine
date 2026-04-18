@@ -216,8 +216,8 @@ public class InputManager
 		if (let btn = pressedView as Button)
 			btn.IsPressed = false;
 
-		// Check if released over the same view that was pressed → click.
-		let hitView = mContext.Root.HitTest(.(x, y));
+		// Check if released over the same view that was pressed -> click.
+		let hitView = mContext.ActiveInputRoot.HitTest(.(x, y));
 		if (hitView != null && pressedView != null && hitView.Id == mPressedId)
 		{
 			// Fire click.
@@ -238,7 +238,7 @@ public class InputManager
 		mWheelArgs.DeltaY = deltaY;
 
 		// Mouse wheel bubbles up from hit target to root.
-		var target = mContext.Root.HitTest(.(x, y));
+		var target = mContext.ActiveInputRoot.HitTest(.(x, y));
 		while (target != null && !mWheelArgs.Handled)
 		{
 			target.OnMouseWheel(mWheelArgs);
@@ -264,7 +264,7 @@ public class InputManager
 		// Alt+key: search tree for IAcceleratorHandler.
 		if (modifiers.HasFlag(.Alt))
 		{
-			if (SearchAccelerator(mContext.Root, key, modifiers))
+			if (SearchAccelerator(mContext.ActiveInputRoot, key, modifiers))
 				return;
 		}
 
@@ -344,7 +344,7 @@ public class InputManager
 
 	private void UpdateHover(float x, float y)
 	{
-		let hitView = mContext.Root.HitTest(.(x, y));
+		let hitView = mContext.ActiveInputRoot.HitTest(.(x, y));
 		let newHoverId = (hitView != null) ? hitView.Id : ViewId.Invalid;
 
 		if (newHoverId != mHoveredId)
@@ -381,7 +381,7 @@ public class InputManager
 			}
 			v = v.Parent;
 		}
-		// Clicked a non-focusable area → clear focus.
+		// Clicked a non-focusable area -> clear focus.
 		mContext.FocusManager.ClearFocus();
 	}
 

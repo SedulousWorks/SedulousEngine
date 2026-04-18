@@ -24,10 +24,12 @@ class ToolkitTests
 	public static void SplitView_SetPanes()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let split = new SplitView();
-		ctx.Root.AddView(split);
+		root.AddView(split);
 
 		let left = new ColorView();
 		let right = new ColorView();
@@ -54,8 +56,10 @@ class ToolkitTests
 	public static void Toolbar_AddButton()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let toolbar = new Toolbar();
-		ctx.Root.AddView(toolbar);
+		root.AddView(toolbar);
 
 		let btn = toolbar.AddButton("Test");
 		Test.Assert(btn != null);
@@ -66,8 +70,10 @@ class ToolkitTests
 	public static void Toolbar_AddSeparator()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let toolbar = new Toolbar();
-		ctx.Root.AddView(toolbar);
+		root.AddView(toolbar);
 
 		toolbar.AddButton("A");
 		toolbar.AddSeparator();
@@ -95,8 +101,10 @@ class ToolkitTests
 	public static void StatusBar_SetText()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let bar = new StatusBar();
-		ctx.Root.AddView(bar);
+		root.AddView(bar);
 
 		bar.SetText("Ready");
 		Test.Assert(bar.ChildCount == 1);
@@ -110,8 +118,10 @@ class ToolkitTests
 	public static void StatusBar_AddSection()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let bar = new StatusBar();
-		ctx.Root.AddView(bar);
+		root.AddView(bar);
 
 		bar.SetText("Status");
 		let section = bar.AddSection("Line 42");
@@ -125,8 +135,10 @@ class ToolkitTests
 	public static void MenuBar_AddMenu()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let bar = new MenuBar();
-		ctx.Root.AddView(bar);
+		root.AddView(bar);
 
 		let fileMenu = bar.AddMenu("File");
 		Test.Assert(fileMenu != null);
@@ -177,8 +189,10 @@ class ToolkitTests
 	public static void ColorPicker_SetColor()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let picker = new ColorPicker();
-		ctx.Root.AddView(picker);
+		root.AddView(picker);
 
 		picker.SetColor(.(128, 64, 200, 255));
 		let c = picker.CurrentColor;
@@ -194,8 +208,10 @@ class ToolkitTests
 	public static void PropertyGrid_AddRemove()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let grid = new PropertyGrid();
-		ctx.Root.AddView(grid);
+		root.AddView(grid);
 
 		grid.AddProperty(new BoolEditor("Visible", true));
 		grid.AddProperty(new StringEditor("Name", "Test"));
@@ -209,8 +225,10 @@ class ToolkitTests
 	public static void PropertyGrid_Clear()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let grid = new PropertyGrid();
-		ctx.Root.AddView(grid);
+		root.AddView(grid);
 
 		grid.AddProperty(new IntEditor("X", 10));
 		grid.AddProperty(new IntEditor("Y", 20));
@@ -222,8 +240,10 @@ class ToolkitTests
 	public static void PropertyGrid_GetProperty()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let grid = new PropertyGrid();
-		ctx.Root.AddView(grid);
+		root.AddView(grid);
 
 		grid.AddProperty(new FloatEditor("Speed", 1.5));
 		let editor = grid.GetProperty("Speed");

@@ -10,8 +10,10 @@ class OverlayTests
 	public static void PopupLayer_HitTest_EmptyPassesThrough()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
-		ctx.DoLayout();
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
+		ctx.UpdateRootView(root);
 
 		// PopupLayer with no popups should pass through (return null).
 		let hit = ctx.PopupLayer.HitTest(.(100, 100));
@@ -22,7 +24,9 @@ class OverlayTests
 	public static void PopupLayer_ShowAndClose()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let popup = new ColorView();
 		popup.PreferredWidth = 100;
@@ -41,7 +45,9 @@ class OverlayTests
 	public static void PopupLayer_OwnsView_False()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let popup = scope ColorView();
 		popup.PreferredWidth = 100;
@@ -60,15 +66,17 @@ class OverlayTests
 	public static void PopupLayer_Modal_BlocksInput()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
-		ctx.DoLayout();
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
+		ctx.UpdateRootView(root);
 
 		let popup = new ColorView();
 		popup.PreferredWidth = 100;
 		popup.PreferredHeight = 50;
 
 		ctx.PopupLayer.ShowPopup(popup, null, 150, 125, isModal: true, ownsView: true);
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		Test.Assert(ctx.PopupLayer.HasModalPopup);
 
@@ -84,14 +92,16 @@ class OverlayTests
 	public static void PopupLayer_ClickOutside_Closes()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let popup = new ColorView();
 		popup.PreferredWidth = 100;
 		popup.PreferredHeight = 50;
 
 		ctx.PopupLayer.ShowPopup(popup, null, 50, 50, closeOnClickOutside: true, ownsView: true);
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		Test.Assert(ctx.PopupLayer.PopupCount == 1);
 

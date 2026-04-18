@@ -49,13 +49,15 @@ class MutationQueueTests
 	public static void QueueRemove_DuringTreeWalk_Safe()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let child = new ColorView();
-		ctx.Root.AddView(child);
+		root.AddView(child);
 		let id = child.Id;
 
 		// Simulate an event handler queuing removal.
 		ctx.MutationQueue.QueueAction(new [&] () => {
-			ctx.Root.RemoveView(child, true);
+			root.RemoveView(child, true);
 		});
 
 		// Drain should execute the removal without crash.

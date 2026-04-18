@@ -10,17 +10,19 @@ class FocusTests
 	public static void Focus_SetAndClear()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let layout = new LinearLayout();
 		layout.Orientation = .Vertical;
-		ctx.Root.AddView(layout);
+		root.AddView(layout);
 
 		let btn = new Button();
 		btn.SetText("A");
 		layout.AddView(btn);
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		ctx.FocusManager.SetFocus(btn);
 		Test.Assert(btn.IsFocused);
@@ -33,11 +35,13 @@ class FocusTests
 	public static void FocusNext_CyclesThroughFocusable()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let layout = new LinearLayout();
 		layout.Orientation = .Vertical;
-		ctx.Root.AddView(layout);
+		root.AddView(layout);
 
 		let a = new Button(); a.SetText("A");
 		let b = new Button(); b.SetText("B");
@@ -46,21 +50,21 @@ class FocusTests
 		layout.AddView(b);
 		layout.AddView(c);
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
-		// No focus → FocusNext selects first.
+		// No focus -> FocusNext selects first.
 		ctx.FocusManager.FocusNext();
 		Test.Assert(ctx.FocusManager.FocusedView === a);
 
-		// Next → B.
+		// Next -> B.
 		ctx.FocusManager.FocusNext();
 		Test.Assert(ctx.FocusManager.FocusedView === b);
 
-		// Next → C.
+		// Next -> C.
 		ctx.FocusManager.FocusNext();
 		Test.Assert(ctx.FocusManager.FocusedView === c);
 
-		// Next wraps → A.
+		// Next wraps -> A.
 		ctx.FocusManager.FocusNext();
 		Test.Assert(ctx.FocusManager.FocusedView === a);
 	}
@@ -69,18 +73,20 @@ class FocusTests
 	public static void FocusPrev_CyclesBackward()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let layout = new LinearLayout();
 		layout.Orientation = .Vertical;
-		ctx.Root.AddView(layout);
+		root.AddView(layout);
 
 		let a = new Button(); a.SetText("A");
 		let b = new Button(); b.SetText("B");
 		layout.AddView(a);
 		layout.AddView(b);
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		ctx.FocusManager.SetFocus(a);
 
@@ -93,32 +99,36 @@ class FocusTests
 	public static void IsFocusWithin_TrueForAncestors()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let layout = new LinearLayout();
 		layout.Orientation = .Vertical;
-		ctx.Root.AddView(layout);
+		root.AddView(layout);
 
 		let btn = new Button(); btn.SetText("X");
 		layout.AddView(btn);
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 		ctx.FocusManager.SetFocus(btn);
 
 		Test.Assert(btn.IsFocusWithin);
 		Test.Assert(layout.IsFocusWithin);
-		Test.Assert(ctx.Root.IsFocusWithin);
+		Test.Assert(root.IsFocusWithin);
 	}
 
 	[Test]
 	public static void Disabled_SkippedInTabOrder()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let layout = new LinearLayout();
 		layout.Orientation = .Vertical;
-		ctx.Root.AddView(layout);
+		root.AddView(layout);
 
 		let a = new Button(); a.SetText("A");
 		let b = new Button(); b.SetText("B"); b.IsEnabled = false;
@@ -127,12 +137,12 @@ class FocusTests
 		layout.AddView(b);
 		layout.AddView(c);
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		ctx.FocusManager.FocusNext();
 		Test.Assert(ctx.FocusManager.FocusedView === a);
 
-		// Skip disabled B → go to C.
+		// Skip disabled B -> go to C.
 		ctx.FocusManager.FocusNext();
 		Test.Assert(ctx.FocusManager.FocusedView === c);
 	}
@@ -141,14 +151,16 @@ class FocusTests
 	public static void HandleSurvivesViewDeletion()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let layout = new LinearLayout();
-		ctx.Root.AddView(layout);
+		root.AddView(layout);
 
 		let btn = new Button(); btn.SetText("X");
 		layout.AddView(btn);
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		ctx.FocusManager.SetFocus(btn);
 		Test.Assert(ctx.FocusManager.FocusedView === btn);

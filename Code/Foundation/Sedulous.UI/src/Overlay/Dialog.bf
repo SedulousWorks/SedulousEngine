@@ -83,12 +83,12 @@ public class Dialog : ViewGroup
 			closeOnClickOutside: false, isModal: true, ownsView: ownsView);
 
 		// Now measure with context available, then reposition to center.
-		let maxW = Math.Min(400, ctx.Root.ViewportSize.X * 0.8f);
-		let maxH = Math.Min(300, ctx.Root.ViewportSize.Y * 0.8f);
+		let maxW = Math.Min(400, ctx.ActiveInputRoot.ViewportSize.X * 0.8f);
+		let maxH = Math.Min(300, ctx.ActiveInputRoot.ViewportSize.Y * 0.8f);
 		Measure(.AtMost(maxW), .AtMost(maxH));
 
-		let x = (ctx.Root.ViewportSize.X - MeasuredSize.X) * 0.5f;
-		let y = (ctx.Root.ViewportSize.Y - MeasuredSize.Y) * 0.5f;
+		let x = (ctx.ActiveInputRoot.ViewportSize.X - MeasuredSize.X) * 0.5f;
+		let y = (ctx.ActiveInputRoot.ViewportSize.Y - MeasuredSize.Y) * 0.5f;
 
 		Layout(x, y, MeasuredSize.X, MeasuredSize.Y);
 		ctx.PopupLayer.UpdatePopupPosition(this, x, y);

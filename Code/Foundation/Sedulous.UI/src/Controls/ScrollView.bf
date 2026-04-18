@@ -242,7 +242,18 @@ public class ScrollView : ViewGroup
 
 			let childWSpec = MakeChildMeasureSpec(wSpec, Padding.TotalHorizontal + reservedW,
 				lp?.Width ?? Sedulous.UI.LayoutParams.WrapContent);
-			child.Measure(childWSpec, .Unspecified());
+
+			// Only use Unspecified on axes that actually scroll.
+			// When scroll is disabled (.Never), pass through the parent's constraint
+			// so MatchParent children get a real size.
+			MeasureSpec childHSpec;
+			if (VScrollPolicy == .Never)
+				childHSpec = MakeChildMeasureSpec(hSpec, Padding.TotalVertical + reservedH,
+					lp?.Height ?? Sedulous.UI.LayoutParams.WrapContent);
+			else
+				childHSpec = .Unspecified();
+
+			child.Measure(childWSpec, childHSpec);
 
 			maxW = Math.Max(maxW, child.MeasuredSize.X);
 			maxH = Math.Max(maxH, child.MeasuredSize.Y);
@@ -281,7 +292,7 @@ public class ScrollView : ViewGroup
 			let lp = child.LayoutParams;
 
 			// MatchParent children fit the viewport (minus scrollbar) — don't overflow.
-			// WrapContent children use their measured size (may be wider → horizontal scroll).
+			// WrapContent children use their measured size (may be wider -> horizontal scroll).
 			float childW;
 			if (lp != null && lp.Width == Sedulous.UI.LayoutParams.MatchParent)
 				childW = viewportW - margin.TotalHorizontal;

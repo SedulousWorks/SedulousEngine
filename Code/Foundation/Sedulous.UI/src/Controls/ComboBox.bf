@@ -219,7 +219,7 @@ public class ComboBox : View, IPopupOwner
 			v = v.Parent;
 		}
 
-		let screen = RectangleF(0, 0, Context.Root.ViewportSize.X, Context.Root.ViewportSize.Y);
+		let screen = RectangleF(0, 0, Context.ActiveInputRoot.ViewportSize.X, Context.ActiveInputRoot.ViewportSize.Y);
 		menu.Measure(.AtMost(screen.Width), .AtMost(screen.Height));
 
 		// Flip above if clipping bottom.

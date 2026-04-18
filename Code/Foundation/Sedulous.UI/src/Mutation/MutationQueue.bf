@@ -3,6 +3,8 @@ namespace Sedulous.UI;
 using System;
 using System.Collections;
 
+using internal Sedulous.UI;
+
 /// Deferred mutation queue. Structural tree changes (add/remove/reparent/destroy)
 /// and focus changes are enqueued here and drained at safe sync points. Prevents
 /// use-after-free during event routing and render walks.
@@ -27,6 +29,15 @@ public class MutationQueue
 	public void NotifyDeleted(ViewId id)
 	{
 		mDeletedThisFrame.Add(id);
+	}
+
+	/// Queue a view for deferred deletion at the next drain point.
+	/// Skips if the view is already pending deletion (prevents double-delete).
+	public void QueueDelete(View view)
+	{
+		if (view.IsPendingDeletion) return;
+		view.IsPendingDeletion = true;
+		QueueAction(new () => { delete view; });
 	}
 
 	/// Enqueue an action to run at the next drain point.

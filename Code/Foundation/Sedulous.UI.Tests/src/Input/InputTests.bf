@@ -10,17 +10,19 @@ class InputTests
 	public static void Hover_UpdatesOnMove()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let layout = new FrameLayout();
-		ctx.Root.AddView(layout);
+		root.AddView(layout);
 
 		let child = new ColorView();
 		child.PreferredWidth = 100;
 		child.PreferredHeight = 100;
 		layout.AddView(child, new FrameLayout.LayoutParams() { Width = 100, Height = 100, Gravity = .None });
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		// Move mouse over the child.
 		ctx.InputManager.ProcessMouseMove(50, 50);
@@ -35,16 +37,18 @@ class InputTests
 	public static void Click_FiresOnButton()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let layout = new FrameLayout();
-		ctx.Root.AddView(layout);
+		root.AddView(layout);
 
 		let btn = new Button();
 		btn.SetText("Test");
 		layout.AddView(btn, new FrameLayout.LayoutParams() { Width = 100, Height = 40, Gravity = .None });
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		bool clicked = false;
 		btn.OnClick.Add(new [&clicked](b) => { clicked = true; });
@@ -62,21 +66,23 @@ class InputTests
 	public static void Click_MissDoesNotFire()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let layout = new FrameLayout();
-		ctx.Root.AddView(layout);
+		root.AddView(layout);
 
 		let btn = new Button();
 		btn.SetText("Test");
 		layout.AddView(btn, new FrameLayout.LayoutParams() { Width = 100, Height = 40, Gravity = .None });
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		bool clicked = false;
 		btn.OnClick.Add(new [&clicked](b) => { clicked = true; });
 
-		// Mouse down on button, up outside → no click.
+		// Mouse down on button, up outside -> no click.
 		ctx.InputManager.ProcessMouseDown(.Left, 50, 20, 1.0f);
 		ctx.InputManager.ProcessMouseUp(.Left, 200, 200);
 		Test.Assert(!clicked);
@@ -86,16 +92,18 @@ class InputTests
 	public static void DoubleClick_ClickCountIncrements()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let layout = new FrameLayout();
-		ctx.Root.AddView(layout);
+		root.AddView(layout);
 
 		let btn = new Button();
 		btn.SetText("Test");
 		layout.AddView(btn, new FrameLayout.LayoutParams() { Width = 100, Height = 40, Gravity = .None });
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		// First click at t=1.0.
 		ctx.InputManager.ProcessMouseDown(.Left, 50, 20, 1.0f);
@@ -113,17 +121,19 @@ class InputTests
 	public static void MouseWheel_BubblesUp()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let outer = new FrameLayout();
-		ctx.Root.AddView(outer);
+		root.AddView(outer);
 
 		let inner = new ColorView();
 		inner.PreferredWidth = 400;
 		inner.PreferredHeight = 300;
 		outer.AddView(inner, new FrameLayout.LayoutParams() { Width = 400, Height = 300 });
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		bool outerGotWheel = false;
 		// Override OnMouseWheel on outer via subclass? We can't easily.

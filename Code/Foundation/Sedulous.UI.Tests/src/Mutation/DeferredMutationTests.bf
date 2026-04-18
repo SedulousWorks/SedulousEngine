@@ -9,8 +9,10 @@ class DeferredMutationTests
 	public static void QueueDestroy_SetsPendingImmediately()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let child = new ColorView();
-		ctx.Root.AddView(child);
+		root.AddView(child);
 
 		Test.Assert(!child.IsPendingDeletion);
 
@@ -24,8 +26,10 @@ class DeferredMutationTests
 	public static void QueueDestroy_ViewGoneAfterDrain()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let child = new ColorView();
-		ctx.Root.AddView(child);
+		root.AddView(child);
 		let id = child.Id;
 
 		child.QueueDestroy();
@@ -43,8 +47,10 @@ class DeferredMutationTests
 	public static void QueueRemove_DetachesWithoutDelete()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let child = new ColorView();
-		ctx.Root.AddView(child);
+		root.AddView(child);
 		let id = child.Id;
 
 		child.QueueRemove();
@@ -63,23 +69,25 @@ class DeferredMutationTests
 	public static void OnElementDeleted_ClearsInputManagerHover()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let frame = new FrameLayout();
-		ctx.Root.AddView(frame);
+		root.AddView(frame);
 
 		let child = new ColorView();
 		child.PreferredWidth = 100;
 		child.PreferredHeight = 100;
 		frame.AddView(child, new FrameLayout.LayoutParams() { Width = 100, Height = 100 });
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		// Hover over the child.
 		ctx.InputManager.ProcessMouseMove(50, 50);
 		Test.Assert(ctx.InputManager.HoveredId == child.Id);
 
-		// Remove child → InputManager.OnElementDeleted called via UnregisterElement.
+		// Remove child -> InputManager.OnElementDeleted called via UnregisterElement.
 		frame.RemoveView(child, true);
 
 		// Hover should be cleared.

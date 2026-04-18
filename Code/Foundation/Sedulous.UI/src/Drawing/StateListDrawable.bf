@@ -2,7 +2,7 @@ namespace Sedulous.UI;
 
 using Sedulous.Core.Mathematics;
 
-/// Maps ControlState → Drawable via pre-allocated array for O(1) lookup.
+/// Maps ControlState -> Drawable via pre-allocated array for O(1) lookup.
 /// Falls back to Normal state if the requested state has no drawable.
 public class StateListDrawable : Drawable
 {

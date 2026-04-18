@@ -22,12 +22,13 @@ public class UISubsystem : Subsystem
 
 	// Core UI
 	private UIContext mUIContext;
+	private RootView mRoot;
 	private VGContext mVGContext;
 	private VGRenderer mVGRenderer;
 	private ShaderSystem mShaderSystem;
 	private FontService mFontService;
 
-	// Input bridge (Shell → UI)
+	// Input bridge (Shell -> UI)
 	private Sedulous.UI.Shell.UIInputHelper mInputHelper;
 	private Sedulous.UI.Shell.ShellClipboardAdapter mClipboardAdapter;
 
@@ -41,8 +42,15 @@ public class UISubsystem : Subsystem
 	private int32 mFrameCount;
 	private float mTotalTime;
 
+	/// When true, UISubsystem skips shell input routing this frame.
+	/// Set by the application when it handles input directly (e.g., during cross-window drag).
+	public bool SkipInputThisFrame;
+
 	/// The global UIContext for screen-space UI.
 	public UIContext UIContext => mUIContext;
+
+	/// The main root view (for the primary window).
+	public RootView Root => mRoot;
 
 	/// The font service for loading/caching fonts.
 	public FontService FontService => mFontService;
@@ -85,11 +93,15 @@ public class UISubsystem : Subsystem
 		mUIContext.FontService = mFontService;
 		mUIContext.Theme = DarkTheme.Create();
 
-		// Input bridge (Shell → UI)
+		// Create and register the main root view.
+		mRoot = new RootView();
+		mUIContext.AddRootView(mRoot);
+
+		// Input bridge (Shell -> UI)
 		if (shell?.InputManager != null)
 			mInputHelper = new Sedulous.UI.Shell.UIInputHelper();
 
-		// Clipboard bridge (Shell → UI)
+		// Clipboard bridge (Shell -> UI)
 		if (shell?.Clipboard != null)
 		{
 			mClipboardAdapter = new Sedulous.UI.Shell.ShellClipboardAdapter(shell.Clipboard);
@@ -126,15 +138,16 @@ public class UISubsystem : Subsystem
 
 			// Sync DPI scale from Shell window (handles monitor changes).
 			if (mWindow != null)
-				mUIContext.Root.DpiScale = mWindow.ContentScale;
+				mRoot.DpiScale = mWindow.ContentScale;
 
-			// Route shell input → UI events.
-			if (mInputHelper != null && mShell?.InputManager != null)
+			// Route shell input -> UI events (unless app handled it this frame).
+			if (!SkipInputThisFrame && mInputHelper != null && mShell?.InputManager != null)
 				mInputHelper.Update(mShell.InputManager, mUIContext, deltaTime);
+			SkipInputThisFrame = false;
 
 			// Drain deferred mutations, then run layout.
 			mUIContext.BeginFrame(deltaTime);
-			mUIContext.DoLayout();
+			mUIContext.UpdateRootView(mRoot);
 		}
 	}
 
@@ -148,11 +161,11 @@ public class UISubsystem : Subsystem
 
 		using (SProfiler.Begin("UISubsystem.Render"))
 		{
-			mUIContext.SetViewportSize((float)width, (float)height);
+			mRoot.ViewportSize = .((float)width, (float)height);
 
 			// Build geometry
 			mVGContext.Clear();
-			mUIContext.Draw(mVGContext, mUIContext.DpiScale);
+			mUIContext.DrawRootView(mRoot, mVGContext);
 			let batch = mVGContext.GetBatch();
 			if (batch == null || batch.Commands.Count == 0)
 				return;
@@ -229,6 +242,12 @@ public class UISubsystem : Subsystem
 
 		if (mUIContext != null)
 		{
+			if (mRoot != null)
+			{
+				mUIContext.RemoveRootView(mRoot);
+				delete mRoot;
+				mRoot = null;
+			}
 			delete mUIContext;
 			mUIContext = null;
 		}

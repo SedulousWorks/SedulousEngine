@@ -84,8 +84,12 @@ public class DragDropManager
 
 	public ~this()
 	{
-		if (mState != .Idle)
-			CancelDrag();
+		// Don't call CancelDrag/CompleteDrag during destruction — other
+		// managers (FocusManager, PopupLayer) may already be deleted.
+		// Just clean up owned data.
+		delete mDragData;
+		mDragData = null;
+		mState = .Idle;
 	}
 
 	// === Public API (called by InputManager) ===
@@ -172,6 +176,12 @@ public class DragDropManager
 			mAdornerPopupLayer = null;
 		}
 
+		// Clear source view reference before OnDrop so that if OnDrop
+		// triggers tree modifications (e.g. CleanupEmptyNodes detaching
+		// the source), OnElementDeleted won't prematurely fire CompleteDrag.
+		let savedSourceView = mSourceView;
+		mSourceView = null;
+
 		DragDropEffects effect = .None;
 		if (mCurrentDropTarget != null && mCurrentEffect != .None)
 		{
@@ -179,6 +189,7 @@ public class DragDropManager
 			effect = mCurrentDropTarget.OnDrop(mDragData, local.X, local.Y);
 		}
 
+		mSourceView = savedSourceView;
 		CompleteDrag(effect, effect == .None);
 		return true;
 	}
@@ -252,8 +263,8 @@ public class DragDropManager
 
 		// Measure adorner.
 		let popupLayer = mContext.ActivePopupLayer;
-		float viewportW = mContext.Root.ViewportSize.X;
-		float viewportH = mContext.Root.ViewportSize.Y;
+		float viewportW = mContext.ActiveInputRoot.ViewportSize.X;
+		float viewportH = mContext.ActiveInputRoot.ViewportSize.Y;
 		mAdorner.Measure(.AtMost(viewportW), .AtMost(viewportH));
 
 		// Show adorner via PopupLayer.

@@ -94,6 +94,23 @@ public class ViewGroup : View
 		RemoveChildInternal(child, dispose);
 	}
 
+	/// Detach a child without deleting it. Equivalent to RemoveView(child, false).
+	/// Used by docking system when moving views between parents.
+	public void DetachView(View child)
+	{
+		RemoveChildInternal(child, false);
+	}
+
+	/// Remove and delete all children.
+	public void RemoveAllViews()
+	{
+		while (mChildren.Count > 0)
+		{
+			let child = mChildren[mChildren.Count - 1];
+			RemoveChildInternal(child, true);
+		}
+	}
+
 	private void RemoveChildInternal(View child, bool dispose)
 	{
 		let idx = mChildren.IndexOf(child);
@@ -317,6 +334,19 @@ public class ViewGroup : View
 	internal static void AttachSubtree(View view, UIContext ctx)
 	{
 		view.Context = ctx;
+
+		// Find owning RootView by walking up the parent chain.
+		var v = view;
+		while (v != null)
+		{
+			if (let root = v as RootView)
+			{
+				view.Root = root;
+				break;
+			}
+			v = v.Parent;
+		}
+
 		ctx.RegisterElement(view);
 		view.OnAttachedToContext(ctx);
 	}
@@ -328,5 +358,6 @@ public class ViewGroup : View
 		if (ctx != null)
 			ctx.UnregisterElement(view);
 		view.Context = null;
+		view.Root = null;
 	}
 }

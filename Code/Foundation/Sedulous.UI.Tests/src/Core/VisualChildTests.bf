@@ -18,8 +18,10 @@ class VisualChildTests
 	public static void ViewGroup_VisualChildren_MatchLogical()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let layout = new LinearLayout();
-		ctx.Root.AddView(layout);
+		root.AddView(layout);
 
 		let a = new ColorView();
 		let b = new ColorView();
@@ -35,16 +37,18 @@ class VisualChildTests
 	public static void ScrollView_VisualChildren_IncludeScrollbars()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(200, 100);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(200, 100);
 
 		let sv = new ScrollView();
-		ctx.Root.AddView(sv);
+		root.AddView(sv);
 
 		let content = new ColorView();
 		content.PreferredHeight = 500;
 		sv.AddView(content, new LayoutParams() { Width = LayoutParams.MatchParent, Height = 500 });
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		// 1 logical child + 2 scrollbar slots = 3 visual children.
 		// Both scrollbars are always returned (never null) — visibility
@@ -61,16 +65,18 @@ class VisualChildTests
 	public static void ScrollView_ScrollbarRegisteredInContext()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(200, 100);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(200, 100);
 
 		let sv = new ScrollView();
-		ctx.Root.AddView(sv);
+		root.AddView(sv);
 
 		let content = new ColorView();
 		content.PreferredHeight = 500;
 		sv.AddView(content, new LayoutParams() { Width = LayoutParams.MatchParent, Height = 500 });
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		// The visible scrollbar should be registered (findable by ViewId).
 		let vBar = sv.GetVisualChild(sv.ChildCount);
@@ -85,8 +91,10 @@ class VisualChildTests
 	public static void ForEachVisualChild_IteratesAll()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let layout = new LinearLayout();
-		ctx.Root.AddView(layout);
+		root.AddView(layout);
 
 		layout.AddView(new ColorView());
 		layout.AddView(new ColorView());

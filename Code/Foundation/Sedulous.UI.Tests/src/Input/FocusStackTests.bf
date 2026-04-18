@@ -10,12 +10,14 @@ class FocusStackTests
 	public static void PushFocus_SavesAndClears()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let btn = new Button();
 		btn.SetText("Test");
-		ctx.Root.AddView(btn);
-		ctx.DoLayout();
+		root.AddView(btn);
+		ctx.UpdateRootView(root);
 
 		ctx.FocusManager.SetFocus(btn);
 		Test.Assert(btn.IsFocused);
@@ -30,12 +32,14 @@ class FocusStackTests
 	public static void PopFocus_RestoresPrevious()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let btn = new Button();
 		btn.SetText("Test");
-		ctx.Root.AddView(btn);
-		ctx.DoLayout();
+		root.AddView(btn);
+		ctx.UpdateRootView(root);
 
 		ctx.FocusManager.SetFocus(btn);
 		ctx.FocusManager.PushFocus();
@@ -49,15 +53,17 @@ class FocusStackTests
 	public static void NestedPushPop_RestoresCorrectly()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let btn1 = new Button();
 		btn1.SetText("A");
 		let btn2 = new Button();
 		btn2.SetText("B");
-		ctx.Root.AddView(btn1);
-		ctx.Root.AddView(btn2);
-		ctx.DoLayout();
+		root.AddView(btn1);
+		root.AddView(btn2);
+		ctx.UpdateRootView(root);
 
 		// Focus btn1, push (simulates first popup).
 		ctx.FocusManager.SetFocus(btn1);
@@ -69,12 +75,12 @@ class FocusStackTests
 		ctx.FocusManager.PushFocus();
 		Test.Assert(ctx.FocusManager.FocusStackDepth == 2);
 
-		// Pop inner → restores btn2.
+		// Pop inner -> restores btn2.
 		ctx.FocusManager.PopFocus();
 		Test.Assert(ctx.FocusManager.FocusedView === btn2);
 		Test.Assert(ctx.FocusManager.FocusStackDepth == 1);
 
-		// Pop outer → restores btn1.
+		// Pop outer -> restores btn1.
 		ctx.FocusManager.PopFocus();
 		Test.Assert(ctx.FocusManager.FocusedView === btn1);
 		Test.Assert(ctx.FocusManager.FocusStackDepth == 0);
@@ -84,18 +90,20 @@ class FocusStackTests
 	public static void PopFocus_SkipsDeadViews()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let btn = new Button();
 		btn.SetText("WillDie");
-		ctx.Root.AddView(btn);
-		ctx.DoLayout();
+		root.AddView(btn);
+		ctx.UpdateRootView(root);
 
 		ctx.FocusManager.SetFocus(btn);
 		ctx.FocusManager.PushFocus();
 
 		// Delete the view while popup is "open".
-		ctx.Root.RemoveView(btn, true);
+		root.RemoveView(btn, true);
 
 		// Pop — saved ID is dead, should not crash, focus stays cleared.
 		ctx.FocusManager.PopFocus();
@@ -107,15 +115,17 @@ class FocusStackTests
 	public static void PopFocus_SkipsDeadFindsLive()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let btn1 = new Button();
 		btn1.SetText("Survives");
 		let btn2 = new Button();
 		btn2.SetText("WillDie");
-		ctx.Root.AddView(btn1);
-		ctx.Root.AddView(btn2);
-		ctx.DoLayout();
+		root.AddView(btn1);
+		root.AddView(btn2);
+		ctx.UpdateRootView(root);
 
 		// Push btn1 (first popup).
 		ctx.FocusManager.SetFocus(btn1);
@@ -126,9 +136,9 @@ class FocusStackTests
 		ctx.FocusManager.PushFocus();
 
 		// Delete btn2 while nested popup is open.
-		ctx.Root.RemoveView(btn2, true);
+		root.RemoveView(btn2, true);
 
-		// Pop inner → btn2 is dead, skipped.
+		// Pop inner -> btn2 is dead, skipped.
 		ctx.FocusManager.PopFocus();
 		// Stack still has btn1's entry, but PopFocus only pops one level.
 		// Since btn2 was dead, focus should be cleared (no live ID at this level).
@@ -151,12 +161,14 @@ class FocusStackTests
 	public static void PopupLayer_PushesAndPopsFocus()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let btn = new Button();
 		btn.SetText("Test");
-		ctx.Root.AddView(btn);
-		ctx.DoLayout();
+		root.AddView(btn);
+		ctx.UpdateRootView(root);
 
 		ctx.FocusManager.SetFocus(btn);
 		Test.Assert(btn.IsFocused);

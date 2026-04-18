@@ -12,6 +12,11 @@ using Sedulous.ImageData;
 using Sedulous.Imaging;
 using Sedulous.Imaging.STB;
 using Sedulous.UI.Resources;
+using Sedulous.UI.Toolkit;
+using Sedulous.Shell;
+using Sedulous.VG;
+using Sedulous.VG.Renderer;
+using Sedulous.Shaders;
 
 // === ImageView with rich tooltip (image + text) ===
 // Demonstrates ITooltipProvider for custom tooltip content.
@@ -396,7 +401,17 @@ class CopyableLabel : Label
 }
 
 /// UISandbox — gallery/showcase for Sedulous.UI, growing with each phase.
-class UISandboxApp : Application
+/// Per-window render data for secondary (floating) windows.
+class FloatingWindowRenderData
+{
+	public RootView RootView ~ delete _;
+	public Sedulous.VG.VGContext VGContext ~ delete _;
+	public Sedulous.VG.Renderer.VGRenderer VGRenderer ~ { _.Dispose(); delete _; };
+	public View FloatingView; // non-owning ref to the floating window in the root
+	public delegate void(View) OnCloseDelegate ~ delete _; // owns the callback from DockManager
+}
+
+class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 {
 	private UISubsystem mUI;
 	private OwnedImageData mCheckerboard ~ delete _;
@@ -405,11 +420,20 @@ class UISandboxApp : Application
 	private DemoContext mDemoCtx ~ delete _;
 	private ControlsPage mControlsPage; // for progress bar tick
 
+	// Map floating window view → secondary window context for OS floating windows.
+	private System.Collections.Dictionary<View, SecondaryWindowContext> mFloatingWindowMap = new .() ~ delete _;
+
+	// Cross-window drag state.
+	private bool mDragPrevLeftDown;
+	private IWindow mDragSourceWindow; // OS window being dragged
+	private float mDragWindowOffsetX;  // Mouse offset within window at drag start
+	private float mDragWindowOffsetY;
+
 	public this() : base()
 	{
 	}
 
-	
+
 
 	/// Load a PNG/JPG file and convert to OwnedImageData (RGBA8).
 	private OwnedImageData LoadImageAsRGBA8(StringView path)
@@ -494,12 +518,13 @@ class UISandboxApp : Application
 		mDemoCtx.Checkerboard = mCheckerboard;
 		mDemoCtx.ButtonNormal = mButtonNormal;
 		mDemoCtx.ButtonPressed = mButtonPressed;
+		mDemoCtx.FloatingWindowHost = this;
 		BuildDemoUI(mUI.UIContext);
 	}
 
 	private void BuildDemoUI(UIContext ctx)
 	{
-		let root = ctx.Root;
+		let root = mUI.Root;
 
 		// Tabbed layout with left-side tabs for focused demos.
 		let tabs = new TabView();
@@ -521,13 +546,14 @@ class UISandboxApp : Application
 		tabs.AddTab("Animation", new AnimationPage(mDemoCtx));
 		tabs.AddTab("Drag & Drop", new DragDropPage(mDemoCtx));
 		tabs.AddTab("Toolkit", new ToolkitPage(mDemoCtx));
+		tabs.AddTab("Docking", new DockingPage(mDemoCtx));
 	}
 
 	/*
 	// Keep the old BuildDemoUI content commented out — remove after verification.
 	private void BuildDemoUI_Old(UIContext ctx)
 	{
-		let root = ctx.Root;
+		let root = mUI.Root;
 
 		// Scrollable root — content stacks vertically with fixed-height
 		// list/tree views. Scrolls when window is smaller than content.
@@ -1478,6 +1504,84 @@ class UISandboxApp : Application
 	}
 	*/
 
+	protected override void OnInput()
+	{
+		if (mUI == null) return;
+
+		let mouse = Shell?.InputManager?.Mouse;
+		let dragDrop = mUI.UIContext.DragDropManager;
+
+		// During active drag, use global mouse coords and handle cross-window movement.
+		if (dragDrop.IsDragging || dragDrop.IsPotentialDrag)
+		{
+			mUI.UIContext.ActiveInputRoot = mUI.Root;
+
+			if (mouse != null)
+			{
+				let globalX = mouse.GlobalX;
+				let globalY = mouse.GlobalY;
+
+				// Move the floating OS window to follow cursor (like legacy).
+				if (dragDrop.IsDragging && mDragSourceWindow == null)
+				{
+					// First frame of active drag — find the source floating window
+					// and capture the mouse offset within it.
+					for (let kv in mFloatingWindowMap)
+					{
+						if (kv.value.Window.Focused)
+						{
+							mDragSourceWindow = kv.value.Window;
+							mDragWindowOffsetX = globalX - (float)mDragSourceWindow.X;
+							mDragWindowOffsetY = globalY - (float)mDragSourceWindow.Y;
+							break;
+						}
+					}
+				}
+
+				if (mDragSourceWindow != null)
+				{
+					mDragSourceWindow.X = (int32)(globalX - mDragWindowOffsetX);
+					mDragSourceWindow.Y = (int32)(globalY - mDragWindowOffsetY);
+				}
+
+				// Convert global to main-window-relative for input routing.
+				let mx = globalX - (float)mWindow.X;
+				let my = globalY - (float)mWindow.Y;
+
+				mUI.UIContext.InputManager.ProcessMouseMove(mx, my);
+
+				// Edge-detect mouse button for drag end.
+				let leftDown = mouse.IsButtonDown(.Left);
+				if (!leftDown && mDragPrevLeftDown)
+					mUI.UIContext.InputManager.ProcessMouseUp(.Left, mx, my);
+				mDragPrevLeftDown = leftDown;
+
+				mUI.SkipInputThisFrame = true;
+			}
+			return;
+		}
+
+		// Not dragging — clear drag source tracking.
+		if (mDragSourceWindow != null)
+			mDragSourceWindow = null;
+
+		// Route input to whichever window has focus.
+		for (let kv in mFloatingWindowMap)
+		{
+			if (kv.value.Window.Focused)
+			{
+				if (let data = kv.value.UserData as FloatingWindowRenderData)
+				{
+					mUI.UIContext.ActiveInputRoot = data.RootView;
+					return;
+				}
+			}
+		}
+
+		// Default: main window.
+		mUI.UIContext.ActiveInputRoot = mUI.Root;
+	}
+
 	protected override void OnUpdate(FrameContext frame)
 	{
 		if (mUI == null) return;
@@ -1505,9 +1609,7 @@ class UISandboxApp : Application
 		{
 			let ctx = mUI.UIContext;
 			let isDark = ctx.Theme?.Name.Contains("Dark") ?? true;
-			delete ctx.Theme;
 			ctx.Theme = isDark ? LightTheme.Create() : DarkTheme.Create();
-			ctx.Root.InvalidateLayout();
 		}
 
 		// F6 loads a custom theme from XML (demonstrates ThemeXmlParser).
@@ -1575,11 +1677,7 @@ class UISandboxApp : Application
 			let ctx = mUI.UIContext;
 			let newTheme = ThemeXmlParser.Parse(themeXml);
 			if (newTheme != null)
-			{
-				delete ctx.Theme;
 				ctx.Theme = newTheme;
-				ctx.Root.InvalidateLayout();
-			}
 		}
 	}
 
@@ -1610,6 +1708,150 @@ class UISandboxApp : Application
 
 	protected override void OnShutdown()
 	{
+		// Destroy all floating windows before UI shutdown.
+		let floatingViews = scope System.Collections.List<View>();
+		for (let kv in mFloatingWindowMap)
+			floatingViews.Add(kv.key);
+		for (let view in floatingViews)
+			DestroyFloatingWindowImpl(view, detachView: false);
+		mFloatingWindowMap.Clear();
+	}
+
+	// === IFloatingWindowHost ===
+
+	public bool SupportsOSWindows => true;
+
+	public void CreateFloatingWindow(View floatingWindow, float width, float height,
+		float screenX, float screenY, delegate void(View) onCloseRequested)
+	{
+		let settings = Sedulous.Shell.WindowSettings()
+		{
+			Title = scope .("Float"),
+			Width = (int32)width,
+			Height = (int32)height,
+			Resizable = true,
+			Bordered = false // chromeless
+		};
+
+		if (CreateSecondaryWindow(settings) case .Err)
+		{
+			Console.WriteLine("Failed to create floating OS window");
+			delete onCloseRequested;
+			return;
+		}
+
+		let ctx = mSecondaryWindows[mSecondaryWindows.Count - 1];
+
+		// Position the window (screenX/Y are main-window-relative → convert to global).
+		ctx.Window.X = mWindow.X + (int32)screenX;
+		ctx.Window.Y = mWindow.Y + (int32)screenY;
+
+		// Create per-window rendering resources.
+		let data = new FloatingWindowRenderData();
+
+		// Store the close delegate so it's properly owned and deleted.
+		data.OnCloseDelegate = onCloseRequested;
+		if (onCloseRequested != null)
+			ctx.OnCloseRequested = new (swCtx) => { data.OnCloseDelegate(floatingWindow); };
+		else
+			ctx.OnCloseRequested = new (swCtx) => { };
+
+		data.RootView = new RootView();
+		data.RootView.DpiScale = ctx.Window.ContentScale;
+		data.RootView.ViewportSize = .((float)ctx.Window.Width, (float)ctx.Window.Height);
+		mUI.UIContext.AddRootView(data.RootView);
+		data.RootView.AddView(floatingWindow);
+		data.FloatingView = floatingWindow;
+
+		data.VGContext = new Sedulous.VG.VGContext(mUI.FontService);
+
+		data.VGRenderer = new Sedulous.VG.Renderer.VGRenderer();
+		if (data.VGRenderer.Initialize(Device, ctx.SwapChain.Format,
+			(int32)ctx.SwapChain.BufferCount, mUI.ShaderSystem) case .Err)
+		{
+			Console.WriteLine("Failed to initialize VGRenderer for floating window");
+		}
+
+		ctx.UserData = data;
+		mFloatingWindowMap[floatingWindow] = ctx;
+	}
+
+	public void DestroyFloatingWindow(View floatingWindow)
+	{
+		DestroyFloatingWindowImpl(floatingWindow);
+	}
+
+	public void MoveFloatingWindow(View floatingWindow, float screenX, float screenY)
+	{
+		if (mFloatingWindowMap.TryGetValue(floatingWindow, let ctx))
+		{
+			// screenX/screenY are main-window-relative (from DragDropManager.LastScreenX/Y).
+			// Convert to global screen coordinates for OS window positioning.
+			ctx.Window.X = mWindow.X + (int32)screenX;
+			ctx.Window.Y = mWindow.Y + (int32)screenY;
+		}
+	}
+
+	/// Destroy a floating window's secondary window and GPU resources.
+	/// During normal operation (IFloatingWindowHost.DestroyFloatingWindow), the floating
+	/// view is detached from its RootView so DockManager can queue-delete it separately.
+	/// During shutdown, cascade-delete via RootView cleans up everything.
+	private void DestroyFloatingWindowImpl(View floatingWindow, bool detachView = true)
+	{
+		if (!mFloatingWindowMap.TryGetValue(floatingWindow, let ctx))
+			return;
+
+		mFloatingWindowMap.Remove(floatingWindow);
+
+		if (let data = ctx.UserData as FloatingWindowRenderData)
+		{
+			// Detach floating window from RootView so it survives for
+			// DockManager's QueueDeleteNode. During shutdown, skip detach
+			// to let RootView's destructor cascade-delete everything.
+			if (detachView && floatingWindow.Parent == data.RootView)
+				data.RootView.DetachView(floatingWindow);
+
+			mUI.UIContext.RemoveRootView(data.RootView);
+			mDevice.WaitIdle(); // Ensure GPU is done before freeing VGRenderer resources.
+			delete data;
+		}
+
+		ctx.UserData = null;
+		DestroySecondaryWindow(ctx);
+	}
+
+	// === Secondary window rendering ===
+
+	protected override void OnPrepareSecondaryFrame(SecondaryWindowContext ctx, FrameContext frame)
+	{
+		if (let data = ctx.UserData as FloatingWindowRenderData)
+		{
+			data.RootView.DpiScale = ctx.Window.ContentScale;
+			data.RootView.ViewportSize = .((float)ctx.Window.Width, (float)ctx.Window.Height);
+			mUI.UIContext.UpdateRootView(data.RootView);
+		}
+	}
+
+	protected override void OnRenderSecondaryWindow(SecondaryWindowContext ctx,
+		IRenderPassEncoder renderPass, FrameContext frame)
+	{
+		if (let data = ctx.UserData as FloatingWindowRenderData)
+		{
+			let vg = data.VGContext;
+			let renderer = data.VGRenderer;
+			let w = ctx.SwapChain.Width;
+			let h = ctx.SwapChain.Height;
+
+			vg.Clear();
+			mUI.UIContext.DrawRootView(data.RootView, vg);
+			let batch = vg.GetBatch();
+			if (batch == null || batch.Commands.Count == 0)
+				return;
+
+			renderer.UpdateProjection(w, h, frame.FrameIndex);
+			renderer.Prepare(batch, frame.FrameIndex);
+			renderer.Render(renderPass, w, h, frame.FrameIndex);
+		}
 	}
 }
 

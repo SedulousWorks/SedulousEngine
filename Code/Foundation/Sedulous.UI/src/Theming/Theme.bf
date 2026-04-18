@@ -102,7 +102,7 @@ public class Theme
 	}
 
 	/// Nullable color lookup — returns null if the key is not set.
-	/// Use when you need a fallback chain: theme key → palette → hardcoded.
+	/// Use when you need a fallback chain: theme key -> palette -> hardcoded.
 	public Color? TryGetColor(StringView key)
 	{
 		let k = scope String(key);

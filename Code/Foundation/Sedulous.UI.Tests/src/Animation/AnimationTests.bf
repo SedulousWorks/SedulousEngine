@@ -303,8 +303,10 @@ class AnimationTests
 	public static void Manager_CancelForView()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let view = new ColorView();
-		ctx.Root.AddView(view);
+		root.AddView(view);
 
 		let anim = new FloatAnimation(0, 1, 1.0f, new (v) => { });
 		anim.Target = view;
@@ -319,8 +321,10 @@ class AnimationTests
 	public static void Manager_AutoCancelOnViewDelete()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let view = new ColorView();
-		ctx.Root.AddView(view);
+		root.AddView(view);
 		let viewId = view.Id;
 
 		let anim = new FloatAnimation(0, 1, 1.0f, new (v) => { });
@@ -328,7 +332,7 @@ class AnimationTests
 		ctx.Animations.Add(anim);
 
 		// Delete the view — should auto-cancel the animation.
-		ctx.Root.RemoveView(view, true);
+		root.RemoveView(view, true);
 		Test.Assert(ctx.Animations.ActiveCount == 0);
 	}
 

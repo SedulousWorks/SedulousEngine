@@ -158,7 +158,7 @@ public class FocusManager
 			if (aIdx > 0 && bIdx > 0) return aIdx <=> bIdx;
 			if (aIdx > 0 && bIdx == 0) return -1; // explicit before natural
 			if (aIdx == 0 && bIdx > 0) return 1;
-			return 0; // both 0 → preserve tree order
+			return 0; // both 0 -> preserve tree order
 		});
 	}
 
@@ -182,6 +182,6 @@ public class FocusManager
 			let modal = popupLayer.TopmostModalPopup;
 			if (modal != null) return modal;
 		}
-		return mContext.Root;
+		return mContext.ActiveInputRoot;
 	}
 }

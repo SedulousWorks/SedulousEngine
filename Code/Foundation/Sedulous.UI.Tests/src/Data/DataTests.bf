@@ -68,11 +68,11 @@ class DataTests
 		recycler.Recycle(viewA, 0);
 		recycler.Recycle(viewB, 1);
 
-		// Acquire type 1 → gets the Label, not the ColorView.
+		// Acquire type 1 -> gets the Label, not the ColorView.
 		let got = recycler.Acquire(1);
 		Test.Assert(got === viewB);
 
-		// Acquire type 0 → gets the ColorView.
+		// Acquire type 0 -> gets the ColorView.
 		let got2 = recycler.Acquire(0);
 		Test.Assert(got2 === viewA);
 
@@ -120,7 +120,7 @@ class DataTests
 		sel.Select(2);
 		sel.Select(5);
 
-		// Insert 3 items at position 3 → indices >= 3 shift by +3.
+		// Insert 3 items at position 3 -> indices >= 3 shift by +3.
 		sel.ShiftIndices(3, 3);
 		Test.Assert(sel.IsSelected(2));  // below start, unchanged
 		Test.Assert(!sel.IsSelected(5)); // was 5, shifted to 8
@@ -144,17 +144,19 @@ class DataTests
 	public static void ListView_FixedHeight_VisibleRange()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(300, 100);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(300, 100);
 
 		let list = new ListView();
 		list.ItemHeight = 25;
 		list.Adapter = new TestAdapter(100);
 		defer delete list.Adapter;
-		ctx.Root.AddView(list);
+		root.AddView(list);
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
-		// Viewport = 100px, item height = 25px → ~4-5 visible items.
+		// Viewport = 100px, item height = 25px -> ~4-5 visible items.
 		// With 100 items, most are off-screen and not created.
 		Test.Assert(list.Recycler.CreatedCount <= 6); // at most ceil(100/25)+1
 		Test.Assert(list.Recycler.CreatedCount >= 4);
@@ -164,20 +166,22 @@ class DataTests
 	public static void ListView_ScrollRecyclesViews()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(300, 100);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(300, 100);
 
 		let list = new ListView();
 		list.ItemHeight = 25;
 		list.Adapter = new TestAdapter(100);
 		defer delete list.Adapter;
-		ctx.Root.AddView(list);
+		root.AddView(list);
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 		let initialCreated = list.Recycler.CreatedCount;
 
 		// Scroll down by one item.
 		list.ScrollBy(25);
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		// Should have recycled 1 view and reused it (or created 1 more).
 		// CreatedCount should not have grown much.
@@ -210,14 +214,16 @@ class DataTests
 	public static void ListView_VariableHeight_CorrectRange()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(300, 100);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(300, 100);
 
 		let list = new ListView();
 		list.Adapter = new VariableHeightAdapter();
 		defer delete list.Adapter;
-		ctx.Root.AddView(list);
+		root.AddView(list);
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		// First 10 items = 20px each = 200px. In 100px viewport,
 		// 5 items visible (0-4) + 1 buffer.
@@ -229,19 +235,21 @@ class DataTests
 	public static void ListView_VariableHeight_ScrollToLargeItems()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(300, 100);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(300, 100);
 
 		let list = new ListView();
 		list.Adapter = new VariableHeightAdapter();
 		defer delete list.Adapter;
-		ctx.Root.AddView(list);
+		root.AddView(list);
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		// Scroll to the large items region (items 10+, each 40px).
 		// Total offset of item 10 = 10 * 20 = 200.
 		list.ScrollBy(200);
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		// In 100px viewport with 40px items: 2-3 items visible.
 		// Verify we didn't crash and created reasonable count.
@@ -267,7 +275,9 @@ class DataTests
 	public static void Observer_DataSetChanged_Rebuilds()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(300, 200);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(300, 200);
 
 		let adapter = new ObservedAdapter();
 		defer delete adapter;
@@ -275,18 +285,18 @@ class DataTests
 		let list = new ListView();
 		list.ItemHeight = 20;
 		list.Adapter = adapter;
-		ctx.Root.AddView(list);
+		root.AddView(list);
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 		let initialCreated = list.Recycler.CreatedCount;
 
 		// Change data and notify.
 		adapter.Count = 5;
 		adapter.NotifyDataSetChanged();
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		// ListView should have rebuilt — MaxScrollY should reflect new count.
-		// 5 * 20 = 100 < 200 viewport → no scroll needed.
+		// 5 * 20 = 100 < 200 viewport -> no scroll needed.
 		Test.Assert(list.MaxScrollY == 0);
 	}
 
@@ -294,7 +304,9 @@ class DataTests
 	public static void Observer_RangeChanged_Rebinds()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(300, 200);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(300, 200);
 
 		let adapter = new ObservedAdapter();
 		defer delete adapter;
@@ -302,13 +314,13 @@ class DataTests
 		let list = new ListView();
 		list.ItemHeight = 20;
 		list.Adapter = adapter;
-		ctx.Root.AddView(list);
+		root.AddView(list);
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		// Notify range changed — shouldn't crash, should rebind.
 		adapter.NotifyRangeChanged(0, 3);
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		// Just verify no crash and views still exist.
 		Test.Assert(list.Recycler.CreatedCount > 0);

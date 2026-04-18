@@ -133,7 +133,7 @@ class MockTextEditHost : ITextEditHost
 
 	float ITextEditHost.GetCursorYPosition(int32 charIndex)
 	{
-		// Simple mock: count newlines before charIndex → line * 16.
+		// Simple mock: count newlines before charIndex -> line * 16.
 		int32 line = 0;
 		int32 idx = 0;
 		for (let c in TextBuffer.DecodedChars)
@@ -237,7 +237,7 @@ class TextEditingTests
 		behavior.CursorPosition = 3;
 		behavior.AnchorPosition = 0;
 
-		// Right arrow without Shift → collapse to end.
+		// Right arrow without Shift -> collapse to end.
 		behavior.HandleKeyDown(.Right, .None);
 		Test.Assert(!behavior.IsSelecting);
 		Test.Assert(behavior.CursorPosition == 3);
@@ -457,8 +457,8 @@ class TextEditingTests
 		host.Time = 2.0f;
 		behavior.HandleTextInput('b');
 
-		behavior.HandleKeyDown(.Z, .Ctrl); // undo → "a"
-		behavior.HandleKeyDown(.Y, .Ctrl); // redo → "ab"
+		behavior.HandleKeyDown(.Z, .Ctrl); // undo -> "a"
+		behavior.HandleKeyDown(.Y, .Ctrl); // redo -> "ab"
 		Test.Assert(StringView(host.TextBuffer) == "ab");
 	}
 
@@ -470,14 +470,14 @@ class TextEditingTests
 		let host = scope MockTextEditHost();
 		let behavior = scope TextEditingBehavior(host);
 
-		// Rapid typing (same timestamp) → single undo entry.
+		// Rapid typing (same timestamp) -> single undo entry.
 		behavior.HandleTextInput('a');
 		behavior.HandleTextInput('b');
 		behavior.HandleTextInput('c');
 
 		Test.Assert(StringView(host.TextBuffer) == "abc");
 
-		behavior.HandleKeyDown(.Z, .Ctrl); // undo → empty
+		behavior.HandleKeyDown(.Z, .Ctrl); // undo -> empty
 		Test.Assert(host.TextBuffer.IsEmpty);
 	}
 
@@ -493,7 +493,7 @@ class TextEditingTests
 		behavior.HandleTextInput('c');
 
 		// Two undo entries: "abc" and "ab"
-		behavior.HandleKeyDown(.Z, .Ctrl); // undo → "ab" (removes 'c')
+		behavior.HandleKeyDown(.Z, .Ctrl); // undo -> "ab" (removes 'c')
 		Test.Assert(StringView(host.TextBuffer) == "ab");
 	}
 

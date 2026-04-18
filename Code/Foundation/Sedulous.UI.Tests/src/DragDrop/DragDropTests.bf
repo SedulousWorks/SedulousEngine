@@ -83,13 +83,15 @@ class DragDropTests
 	public static void BeginPotential_SetsState()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let source = new TestDragSource();
 		source.PreferredWidth = 100;
 		source.PreferredHeight = 100;
-		ctx.Root.AddView(source);
-		ctx.DoLayout();
+		root.AddView(source);
+		ctx.UpdateRootView(root);
 
 		let result = ctx.DragDropManager.BeginPotentialDrag(source, source, 50, 50, .Left);
 		Test.Assert(result);
@@ -100,13 +102,15 @@ class DragDropTests
 	public static void Threshold_ActivatesDrag()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let source = new TestDragSource();
 		source.PreferredWidth = 100;
 		source.PreferredHeight = 100;
-		ctx.Root.AddView(source);
-		ctx.DoLayout();
+		root.AddView(source);
+		ctx.UpdateRootView(root);
 
 		ctx.DragDropManager.BeginPotentialDrag(source, source, 50, 50, .Left);
 
@@ -124,13 +128,15 @@ class DragDropTests
 	public static void MouseUp_BeforeThreshold_CancelsSilently()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let source = new TestDragSource();
 		source.PreferredWidth = 100;
 		source.PreferredHeight = 100;
-		ctx.Root.AddView(source);
-		ctx.DoLayout();
+		root.AddView(source);
+		ctx.UpdateRootView(root);
 
 		ctx.DragDropManager.BeginPotentialDrag(source, source, 50, 50, .Left);
 
@@ -146,14 +152,16 @@ class DragDropTests
 	public static void NullDragData_CancelsDrag()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let source = new TestDragSource();
 		source.ReturnNullData = true;
 		source.PreferredWidth = 100;
 		source.PreferredHeight = 100;
-		ctx.Root.AddView(source);
-		ctx.DoLayout();
+		root.AddView(source);
+		ctx.UpdateRootView(root);
 
 		ctx.DragDropManager.BeginPotentialDrag(source, source, 50, 50, .Left);
 		ctx.DragDropManager.UpdateDrag(60, 60); // Past threshold.
@@ -167,7 +175,9 @@ class DragDropTests
 	public static void Drop_OnTarget_FiresOnDrop()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let source = new TestDragSource();
 		source.PreferredWidth = 50;
@@ -179,10 +189,10 @@ class DragDropTests
 
 		let layout = new LinearLayout();
 		layout.Orientation = .Horizontal;
-		ctx.Root.AddView(layout);
+		root.AddView(layout);
 		layout.AddView(source, new LinearLayout.LayoutParams() { Width = 50, Height = 50 });
 		layout.AddView(target, new LinearLayout.LayoutParams() { Width = 100, Height = 100 });
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		// Start drag from source.
 		ctx.DragDropManager.BeginPotentialDrag(source, source, 25, 25, .Left);
@@ -205,13 +215,15 @@ class DragDropTests
 	public static void Drop_OnNonTarget_Cancels()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let source = new TestDragSource();
 		source.PreferredWidth = 100;
 		source.PreferredHeight = 100;
-		ctx.Root.AddView(source);
-		ctx.DoLayout();
+		root.AddView(source);
+		ctx.UpdateRootView(root);
 
 		ctx.DragDropManager.BeginPotentialDrag(source, source, 50, 50, .Left);
 		ctx.DragDropManager.UpdateDrag(60, 60); // Activate.
@@ -227,13 +239,15 @@ class DragDropTests
 	public static void CancelDrag_FiresCompletedWithCancelled()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let source = new TestDragSource();
 		source.PreferredWidth = 100;
 		source.PreferredHeight = 100;
-		ctx.Root.AddView(source);
-		ctx.DoLayout();
+		root.AddView(source);
+		ctx.UpdateRootView(root);
 
 		ctx.DragDropManager.BeginPotentialDrag(source, source, 50, 50, .Left);
 		ctx.DragDropManager.UpdateDrag(60, 60); // Activate.
@@ -248,19 +262,21 @@ class DragDropTests
 	public static void SourceDeleted_CancelsDrag()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let source = new TestDragSource();
 		source.PreferredWidth = 100;
 		source.PreferredHeight = 100;
-		ctx.Root.AddView(source);
-		ctx.DoLayout();
+		root.AddView(source);
+		ctx.UpdateRootView(root);
 
 		ctx.DragDropManager.BeginPotentialDrag(source, source, 50, 50, .Left);
 		ctx.DragDropManager.UpdateDrag(60, 60); // Activate.
 
 		// Delete source mid-drag.
-		ctx.Root.RemoveView(source, true);
+		root.RemoveView(source, true);
 		Test.Assert(ctx.DragDropManager.State == .Idle);
 	}
 
@@ -268,7 +284,9 @@ class DragDropTests
 	public static void DropTarget_EnterLeave_Fires()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let source = new TestDragSource();
 		source.PreferredWidth = 50;
@@ -284,11 +302,11 @@ class DragDropTests
 
 		let layout = new LinearLayout();
 		layout.Orientation = .Horizontal;
-		ctx.Root.AddView(layout);
+		root.AddView(layout);
 		layout.AddView(source, new LinearLayout.LayoutParams() { Width = 50, Height = 300 });
 		layout.AddView(target1, new LinearLayout.LayoutParams() { Width = 100, Height = 300 });
 		layout.AddView(target2, new LinearLayout.LayoutParams() { Width = 100, Height = 300 });
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		ctx.DragDropManager.BeginPotentialDrag(source, source, 25, 25, .Left);
 		ctx.DragDropManager.UpdateDrag(35, 25); // Activate.
@@ -311,7 +329,9 @@ class DragDropTests
 	public static void WrongFormat_RejectsDrops()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let source = new TestDragSource("type/a");
 		source.PreferredWidth = 50;
@@ -323,15 +343,15 @@ class DragDropTests
 
 		let layout = new LinearLayout();
 		layout.Orientation = .Horizontal;
-		ctx.Root.AddView(layout);
+		root.AddView(layout);
 		layout.AddView(source, new LinearLayout.LayoutParams() { Width = 50, Height = 50 });
 		layout.AddView(target, new LinearLayout.LayoutParams() { Width = 100, Height = 100 });
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		ctx.DragDropManager.BeginPotentialDrag(source, source, 25, 25, .Left);
 		ctx.DragDropManager.UpdateDrag(35, 25); // Activate.
 
-		// Move over target (wrong format → CanAcceptDrop returns None).
+		// Move over target (wrong format -> CanAcceptDrop returns None).
 		ctx.DragDropManager.UpdateDrag(100, 25);
 		Test.Assert(ctx.DragDropManager.CurrentEffect == .None);
 
@@ -345,8 +365,10 @@ class DragDropTests
 	public static void RightClick_DoesNotStartDrag()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let source = new TestDragSource();
-		ctx.Root.AddView(source);
+		root.AddView(source);
 
 		let result = ctx.DragDropManager.BeginPotentialDrag(source, source, 50, 50, .Right);
 		Test.Assert(!result);

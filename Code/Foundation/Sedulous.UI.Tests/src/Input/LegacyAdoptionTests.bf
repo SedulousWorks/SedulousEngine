@@ -13,8 +13,10 @@ class LegacyAdoptionTests
 	public static void TooltipManager_HidesOnMouseDown()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
-		ctx.DoLayout();
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
+		ctx.UpdateRootView(root);
 
 		// Manually show a tooltip popup (bypassing timer for reliable testing).
 		let tooltipView = new ColorView();
@@ -42,9 +44,11 @@ class LegacyAdoptionTests
 	public static void TooltipText_Property_Retained()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let view = new ColorView();
 		view.TooltipText = new String("Test tooltip");
-		ctx.Root.AddView(view);
+		root.AddView(view);
 
 		Test.Assert(view.TooltipText != null);
 		Test.Assert(StringView(view.TooltipText) == "Test tooltip");
@@ -56,10 +60,12 @@ class LegacyAdoptionTests
 	public static void InputManager_UpdatesCursorFromHovered()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let layout = new FrameLayout();
-		ctx.Root.AddView(layout);
+		root.AddView(layout);
 
 		let view = new ColorView();
 		view.PreferredWidth = 100;
@@ -67,7 +73,7 @@ class LegacyAdoptionTests
 		view.Cursor = .Hand;
 		layout.AddView(view, new FrameLayout.LayoutParams() { Width = 100, Height = 100 });
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		// Move over the view.
 		ctx.InputManager.ProcessMouseMove(50, 50);
@@ -103,10 +109,12 @@ class LegacyAdoptionTests
 	public static void ScrollView_ScrollToView_ScrollsDown()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(200, 100);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(200, 100);
 
 		let sv = new ScrollView();
-		ctx.Root.AddView(sv);
+		root.AddView(sv);
 
 		let layout = new LinearLayout();
 		layout.Orientation = .Vertical;
@@ -119,7 +127,7 @@ class LegacyAdoptionTests
 			layout.AddView(item, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 30 });
 		}
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 		Test.Assert(sv.ScrollY == 0);
 
 		// Scroll to make the 15th item visible.
@@ -190,10 +198,12 @@ class LegacyAdoptionTests
 	public static void ScrollView_SetContent_ReplacesChildren()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(200, 100);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(200, 100);
 
 		let sv = new ScrollView();
-		ctx.Root.AddView(sv);
+		root.AddView(sv);
 
 		let first = new ColorView();
 		first.PreferredHeight = 50;
@@ -225,10 +235,12 @@ class LegacyAdoptionTests
 	public static void Button_Command_ExecutesOnClick()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let layout = new FrameLayout();
-		ctx.Root.AddView(layout);
+		root.AddView(layout);
 
 		let btn = new Button();
 		btn.SetText("Cmd");
@@ -237,7 +249,7 @@ class LegacyAdoptionTests
 		let cmd = scope TestCommand();
 		btn.Command = cmd;
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		btn.FireClick();
 		Test.Assert(cmd.ExecuteCount == 1);
@@ -273,8 +285,10 @@ class LegacyAdoptionTests
 	public static void MutationQueue_TracksDeletedViews()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let child = new ColorView();
-		ctx.Root.AddView(child);
+		root.AddView(child);
 		let childId = child.Id;
 
 		child.QueueDestroy();
@@ -295,8 +309,10 @@ class LegacyAdoptionTests
 	public static void MutationQueue_ClearsDeletedOnNextDrain()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let child = new ColorView();
-		ctx.Root.AddView(child);
+		root.AddView(child);
 
 		child.QueueDestroy();
 		ctx.BeginFrame(0);

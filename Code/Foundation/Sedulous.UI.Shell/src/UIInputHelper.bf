@@ -115,7 +115,7 @@ public class UIInputHelper
 	{
 		let mods = InputMapping.MapModifiers(keyboard.Modifiers);
 
-		// Tab → focus navigation (not a key event).
+		// Tab -> focus navigation (not a key event).
 		if (keyboard.IsKeyPressed(.Tab) && !mods.HasFlag(.Ctrl))
 		{
 			if (mods.HasFlag(.Shift))
@@ -124,7 +124,7 @@ public class UIInputHelper
 				context.FocusManager.FocusNext();
 		}
 
-		// Navigation and editing keys → KeyDown.
+		// Navigation and editing keys -> KeyDown.
 		for (let key in sNavigationKeys)
 		{
 			if (key == .Tab) continue; // handled above
@@ -132,14 +132,14 @@ public class UIInputHelper
 				context.InputManager.ProcessKeyDown(InputMapping.MapKey(key), mods, false);
 		}
 
-		// Function keys → KeyDown.
+		// Function keys -> KeyDown.
 		for (let key in sFunctionKeys)
 		{
 			if (keyboard.IsKeyPressed(key))
 				context.InputManager.ProcessKeyDown(InputMapping.MapKey(key), mods, false);
 		}
 
-		// Ctrl+key shortcuts → KeyDown.
+		// Ctrl+key shortcuts -> KeyDown.
 		if (mods.HasFlag(.Ctrl))
 		{
 			for (let key in sCtrlShortcutKeys)
@@ -149,7 +149,7 @@ public class UIInputHelper
 			}
 		}
 
-		// Alt+letter for menu accelerators → KeyDown.
+		// Alt+letter for menu accelerators -> KeyDown.
 		if (mods.HasFlag(.Alt))
 		{
 			for (let key in sLetterKeys)

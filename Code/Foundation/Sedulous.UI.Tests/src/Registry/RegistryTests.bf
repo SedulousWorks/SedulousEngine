@@ -9,8 +9,10 @@ class RegistryTests
 	public static void ViewRegistered_OnAttach()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let child = new ColorView();
-		ctx.Root.AddView(child);
+		root.AddView(child);
 
 		// Should be findable via ID.
 		let found = ctx.GetElementById(child.Id);
@@ -21,11 +23,13 @@ class RegistryTests
 	public static void ViewUnregistered_OnRemove()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let child = new ColorView();
-		ctx.Root.AddView(child);
+		root.AddView(child);
 		let id = child.Id;
 
-		ctx.Root.RemoveView(child, true); // dispose
+		root.RemoveView(child, true); // dispose
 
 		// Should no longer be findable.
 		let found = ctx.GetElementById(id);
@@ -36,8 +40,10 @@ class RegistryTests
 	public static void ElementHandle_ResolvesLive()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let child = new ColorView();
-		ctx.Root.AddView(child);
+		root.AddView(child);
 
 		let handle = ElementHandle<ColorView>(child);
 		let resolved = handle.TryResolve(ctx);
@@ -48,11 +54,13 @@ class RegistryTests
 	public static void ElementHandle_NullAfterDestroy()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let child = new ColorView();
-		ctx.Root.AddView(child);
+		root.AddView(child);
 		let handle = ElementHandle<ColorView>(child);
 
-		ctx.Root.RemoveView(child, true);
+		root.RemoveView(child, true);
 
 		let resolved = handle.TryResolve(ctx);
 		Test.Assert(resolved == null);

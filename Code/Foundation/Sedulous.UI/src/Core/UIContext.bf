@@ -8,24 +8,26 @@ using Sedulous.Core.Mathematics;
 
 using internal Sedulous.UI;
 
-/// Central owner of the view tree, element registry, and mutation queue.
-/// One UIContext per UI surface (typically one per window).
+/// Central owner of the element registry, services, and mutation queue.
+/// Supports multiple root views for multi-window scenarios.
+/// Each window gets a RootView; the application switches ActiveInputRoot
+/// based on which window has focus.
 public class UIContext
 {
-	// === Element registry (ViewId → live View) ===
+	// === Element registry (ViewId -> live View) ===
 	private Dictionary<int32, View> mRegistry = new .() ~ delete _;
 
-	// === Root of the view tree ===
-	private RootView mRoot ~ delete _;
+	// === Root views (non-owning — callers own their roots) ===
+	private List<RootView> mRootViews = new .() ~ delete _;
+
+	// === Active input root (set by application based on focused window) ===
+	private RootView mActiveInputRoot;
 
 	// === Deferred mutation ===
 	public MutationQueue MutationQueue { get; } = new .() ~ delete _;
 
 	// === Phase tracking ===
 	public UIPhase Phase { get; private set; } = .Idle;
-
-	// === DPI scale ===
-	public float DpiScale { get => mRoot?.DpiScale ?? 1.0f; }
 
 	// === Font service (optional — set by UISubsystem) ===
 	public IFontService FontService;
@@ -37,7 +39,22 @@ public class UIContext
 	public float TotalTime { get; private set; }
 
 	// === Theme ===
-	public Theme Theme ~ delete _;
+	private Theme mTheme ~ delete _;
+
+	public Theme Theme
+	{
+		get => mTheme;
+		set
+		{
+			if (mTheme != value)
+			{
+				delete mTheme;
+				mTheme = value;
+				for (let root in mRootViews)
+					root.InvalidateLayout();
+			}
+		}
+	}
 
 	// === Debug draw settings ===
 	public UIDebugDrawSettings DebugSettings;
@@ -53,32 +70,44 @@ public class UIContext
 	public DragDropManager DragDropManager { get; private set; }
 
 	// === Overlays ===
-	/// PopupLayer is owned by RootView (always its last child).
-	public PopupLayer PopupLayer => mRoot?.PopupLayer;
 	public TooltipManager TooltipManager { get; private set; }
 
-	/// The root view of this UI surface.
-	public RootView Root => mRoot;
+	// =================================================================
+	// Root view access
+	// =================================================================
 
-	/// Active popup layer (for multi-window, returns the focused window's layer).
-	/// Currently delegates to Root.PopupLayer.
-	public PopupLayer ActivePopupLayer => mRoot?.PopupLayer;
+	/// Number of root views.
+	public int RootViewCount => mRootViews.Count;
 
-	/// Active input root (for multi-window, returns the focused window's root).
-	/// Currently delegates to Root.
-	public RootView ActiveInputRoot => mRoot;
+	/// Get root view at index.
+	public RootView GetRootView(int index) => mRootViews[index];
 
-	/// Logical width (viewport width / DPI scale).
-	public float LogicalWidth => mRoot != null ? mRoot.ViewportSize.X / DpiScale : 0;
-
-	/// Logical height (viewport height / DPI scale).
-	public float LogicalHeight => mRoot != null ? mRoot.ViewportSize.Y / DpiScale : 0;
-
-	/// Global hit-test against the root view tree.
-	public View HitTest(Vector2 screenPoint)
+	/// The root view that currently receives input.
+	/// Set by the application before dispatching input events.
+	public RootView ActiveInputRoot
 	{
-		return mRoot?.HitTest(screenPoint);
+		get => mActiveInputRoot;
+		set { mActiveInputRoot = value; }
 	}
+
+	/// PopupLayer for the active input root.
+	public PopupLayer ActivePopupLayer => mActiveInputRoot?.PopupLayer;
+
+	/// PopupLayer alias — controls use Context.PopupLayer.
+	public PopupLayer PopupLayer => mActiveInputRoot?.PopupLayer;
+
+	/// DPI scale for the active input root.
+	public float DpiScale => mActiveInputRoot?.DpiScale ?? 1.0f;
+
+	/// Logical width of the active input root.
+	public float LogicalWidth => mActiveInputRoot != null ? mActiveInputRoot.ViewportSize.X / DpiScale : 0;
+
+	/// Logical height of the active input root.
+	public float LogicalHeight => mActiveInputRoot != null ? mActiveInputRoot.ViewportSize.Y / DpiScale : 0;
+
+	// =================================================================
+	// Constructor / Destructor
+	// =================================================================
 
 	public this()
 	{
@@ -87,9 +116,6 @@ public class UIContext
 		TooltipManager = new TooltipManager(this);
 		Animations = new AnimationManager();
 		DragDropManager = new DragDropManager(this);
-
-		mRoot = new RootView();
-		ViewGroup.AttachSubtree(mRoot, this);
 	}
 
 	public ~this()
@@ -101,7 +127,39 @@ public class UIContext
 		delete FocusManager;
 	}
 
-	// === Registry ===
+	// =================================================================
+	// Root view management
+	// =================================================================
+
+	/// Add a root view. UIContext does NOT take ownership.
+	public void AddRootView(RootView root)
+	{
+		if (root == null || mRootViews.Contains(root))
+			return;
+
+		mRootViews.Add(root);
+		ViewGroup.AttachSubtree(root, this);
+
+		if (mActiveInputRoot == null)
+			mActiveInputRoot = root;
+	}
+
+	/// Remove a root view. Does not delete it.
+	public void RemoveRootView(RootView root)
+	{
+		if (root == null || !mRootViews.Contains(root))
+			return;
+
+		ViewGroup.DetachSubtree(root);
+		mRootViews.Remove(root);
+
+		if (mActiveInputRoot === root)
+			mActiveInputRoot = mRootViews.Count > 0 ? mRootViews[0] : null;
+	}
+
+	// =================================================================
+	// Element registry
+	// =================================================================
 
 	public void RegisterElement(View view)
 	{
@@ -111,7 +169,7 @@ public class UIContext
 	public void UnregisterElement(View view)
 	{
 		mRegistry.Remove(view.Id.Value);
-		// Notify managers so they can clear any ViewId references.
+		// Notify managers so they can clear any dangling references.
 		InputManager?.OnElementDeleted(view);
 		FocusManager?.OnElementDeleted(view);
 		Animations?.CancelForView(view);
@@ -127,10 +185,12 @@ public class UIContext
 		return null;
 	}
 
-	// === Frame lifecycle ===
+	// =================================================================
+	// Frame lifecycle
+	// =================================================================
 
 	/// Call once per frame before layout/draw. Drains the mutation queue
-	/// and ticks the tooltip manager.
+	/// and ticks global managers (animations, tooltips).
 	public void BeginFrame(float deltaTime)
 	{
 		TotalTime += deltaTime;
@@ -143,38 +203,40 @@ public class UIContext
 		Animations?.Update(deltaTime);
 	}
 
-	/// Run the Measure + Layout pass on the tree.
-	public void DoLayout()
+	/// Measure + Layout a single root view.
+	public void UpdateRootView(RootView root)
 	{
+		if (root == null) return;
+
 		Phase = .LayingOut;
 
-		let vp = mRoot.ViewportSize;
-		mRoot.Measure(.Exactly(vp.X), .Exactly(vp.Y));
-		mRoot.Layout(0, 0, vp.X, vp.Y);
+		let vp = root.ViewportSize;
+		root.Measure(.Exactly(vp.X), .Exactly(vp.Y));
+		root.Layout(0, 0, vp.X, vp.Y);
 
 		Phase = .Idle;
 	}
 
-	/// Walk the tree and emit draw calls into the given VGContext.
-	public void Draw(VGContext vg, float uiScale = 1.0f)
+	/// Draw a single root view into the given VGContext.
+	public void DrawRootView(RootView root, VGContext vg)
 	{
+		if (root == null) return;
+
 		Phase = .Drawing;
 
-		let drawCtx = scope UIDrawContext(vg, uiScale, FontService, Theme, DebugSettings);
+		let drawCtx = scope UIDrawContext(vg, root.DpiScale, FontService, Theme, DebugSettings);
 
-		// Apply global DPI scale at the root.
-		if (uiScale != 1.0f)
-			vg.Scale(uiScale, uiScale);
+		if (root.DpiScale != 1.0f)
+			vg.Scale(root.DpiScale, root.DpiScale);
 
-		mRoot.OnDraw(drawCtx);
+		root.OnDraw(drawCtx);
 
 		Phase = .Idle;
 	}
 
-	/// Set the viewport size (logical units) on the root.
-	public void SetViewportSize(float width, float height)
+	/// Hit-test within the active input root.
+	public View HitTest(Vector2 screenPoint)
 	{
-		mRoot.ViewportSize = .(width, height);
-		mRoot.InvalidateLayout();
+		return mActiveInputRoot?.HitTest(screenPoint);
 	}
 }

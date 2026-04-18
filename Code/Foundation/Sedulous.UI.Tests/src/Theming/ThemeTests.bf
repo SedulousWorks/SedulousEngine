@@ -120,14 +120,16 @@ class ThemeTests
 	{
 		let ctx = scope UIContext();
 		ctx.Theme = DarkTheme.Create();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let label = new Label();
 		label.SetText("Test");
-		ctx.Root.AddView(label);
-		ctx.DoLayout();
+		root.AddView(label);
+		ctx.UpdateRootView(root);
 
-		// No explicit TextColor set → should use theme's Label.Foreground.
+		// No explicit TextColor set -> should use theme's Label.Foreground.
 		let themeColor = ctx.Theme.GetColor("Label.Foreground");
 		Test.Assert(label.TextColor.R == themeColor.R);
 		Test.Assert(label.TextColor.G == themeColor.G);
@@ -142,20 +144,21 @@ class ThemeTests
 	{
 		let ctx = scope UIContext();
 		ctx.Theme = DarkTheme.Create();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let label = new Label();
 		label.SetText("Test");
-		ctx.Root.AddView(label);
+		root.AddView(label);
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
-		// Switch theme → root should need re-layout.
-		delete ctx.Theme;
+		// Switch theme -> root should need re-layout.
+		// Setter deletes the old theme automatically.
 		ctx.Theme = LightTheme.Create();
-		ctx.Root.InvalidateLayout();
 
-		Test.Assert(ctx.Root.IsLayoutDirty);
+		Test.Assert(root.IsLayoutDirty);
 	}
 
 	[Test]
@@ -180,14 +183,16 @@ class ThemeTests
 	{
 		let ctx = scope UIContext();
 		ctx.Theme = DarkTheme.Create();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let btn = new Button();
 		btn.SetText("X");
-		ctx.Root.AddView(btn);
-		ctx.DoLayout();
+		root.AddView(btn);
+		ctx.UpdateRootView(root);
 
-		// Change padding → should invalidate.
+		// Change padding -> should invalidate.
 		btn.Padding = .(20);
 		Test.Assert(btn.IsLayoutDirty);
 	}

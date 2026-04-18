@@ -217,7 +217,7 @@ public class MenuBar : ViewGroup, IPopupOwner
 		}
 
 		// Show via PopupLayer directly — MenuBar owns the ContextMenu (not PopupLayer).
-		entry.Menu.Measure(.AtMost(Context.Root.ViewportSize.X), .AtMost(Context.Root.ViewportSize.Y));
+		entry.Menu.Measure(.AtMost(Root.ViewportSize.X), .AtMost(Root.ViewportSize.Y));
 		Context.PopupLayer.ShowPopup(entry.Menu, this, screenX, screenY,
 			closeOnClickOutside: true, isModal: false, ownsView: false);
 	}

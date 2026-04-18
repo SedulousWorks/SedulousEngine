@@ -69,8 +69,10 @@ class ControlTests
 	public static void RadioGroup_MutualExclusion()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let group = new RadioGroup();
-		ctx.Root.AddView(group);
+		root.AddView(group);
 
 		let r1 = new RadioButton(); r1.SetText("A");
 		let r2 = new RadioButton(); r2.SetText("B");
@@ -93,8 +95,10 @@ class ControlTests
 	public static void RadioGroup_ClearCheck()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let group = new RadioGroup();
-		ctx.Root.AddView(group);
+		root.AddView(group);
 
 		let r1 = new RadioButton();
 		group.AddRadioButton(r1);
@@ -232,8 +236,10 @@ class ControlTests
 	public static void TabView_AddAndSelect()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let tabs = new TabView();
-		ctx.Root.AddView(tabs);
+		root.AddView(tabs);
 
 		let c1 = new Label(); c1.SetText("Tab 1");
 		let c2 = new Label(); c2.SetText("Tab 2");
@@ -255,8 +261,10 @@ class ControlTests
 	public static void TabView_RemoveTab()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let tabs = new TabView();
-		ctx.Root.AddView(tabs);
+		root.AddView(tabs);
 
 		let c1 = new Label(); c1.SetText("1");
 		let c2 = new Label(); c2.SetText("2");
@@ -272,8 +280,10 @@ class ControlTests
 	public static void TabView_FiresEvent()
 	{
 		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
 		let tabs = new TabView();
-		ctx.Root.AddView(tabs);
+		root.AddView(tabs);
 
 		int lastIdx = -1;
 		tabs.OnTabChanged.Add(new [&](t, idx) => { lastIdx = idx; });
@@ -357,17 +367,19 @@ class ControlTests
 	public static void View_IsHovered_ComputedFromInputManager()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let layout = new FrameLayout();
-		ctx.Root.AddView(layout);
+		root.AddView(layout);
 
 		let view = new ColorView();
 		view.PreferredWidth = 100;
 		view.PreferredHeight = 100;
 		layout.AddView(view, new FrameLayout.LayoutParams() { Width = 100, Height = 100 });
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		Test.Assert(!view.IsHovered);
 

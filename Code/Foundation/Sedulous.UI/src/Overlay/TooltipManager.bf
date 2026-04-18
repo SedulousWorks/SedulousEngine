@@ -135,7 +135,7 @@ public class TooltipManager
 		// Now measure with context available, then reposition.
 		mTooltipView.Measure(.AtMost(300), .AtMost(200));
 
-		let screen = RectangleF(0, 0, mContext.Root.ViewportSize.X, mContext.Root.ViewportSize.Y);
+		let screen = RectangleF(0, 0, mContext.ActiveInputRoot.ViewportSize.X, mContext.ActiveInputRoot.ViewportSize.Y);
 		let popupSize = mTooltipView.MeasuredSize;
 
 		// Compute screen-space position of the target.

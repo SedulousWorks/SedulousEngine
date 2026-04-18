@@ -46,8 +46,8 @@ public class ContextMenu : View, IPopupOwner
 	public void Show(UIContext ctx, float x, float y, IPopupOwner owner = null)
 	{
 		// Measure first to know the popup size, then clamp to screen.
-		Measure(.AtMost(ctx.Root.ViewportSize.X), .AtMost(ctx.Root.ViewportSize.Y));
-		let screen = RectangleF(0, 0, ctx.Root.ViewportSize.X, ctx.Root.ViewportSize.Y);
+		Measure(.AtMost(ctx.ActiveInputRoot.ViewportSize.X), .AtMost(ctx.ActiveInputRoot.ViewportSize.Y));
+		let screen = RectangleF(0, 0, ctx.ActiveInputRoot.ViewportSize.X, ctx.ActiveInputRoot.ViewportSize.Y);
 
 		var px = x;
 		var py = y;
@@ -217,7 +217,7 @@ public class ContextMenu : View, IPopupOwner
 					let (sx, sy) = PopupPositioner.PositionSubmenu(
 						.(Bounds.X, Bounds.Y + GetItemY(newIndex), Width, mItemHeight),
 						.(item.Submenu.mMinWidth, 200),
-						.(0, 0, Context.Root.ViewportSize.X, Context.Root.ViewportSize.Y));
+						.(0, 0, Context.ActiveInputRoot.ViewportSize.X, Context.ActiveInputRoot.ViewportSize.Y));
 					mOpenSubmenu = item.Submenu;
 					Context.PopupLayer.ShowPopup(item.Submenu, this, sx, sy,
 						closeOnClickOutside: false, isModal: false, ownsView: false);

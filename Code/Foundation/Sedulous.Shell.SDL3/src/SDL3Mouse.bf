@@ -34,6 +34,26 @@ class SDL3Mouse : IMouse
 	public float ScrollX => mScrollX;
 	public float ScrollY => mScrollY;
 
+	public float GlobalX
+	{
+		get
+		{
+			float gx = 0, gy = 0;
+			SDL_GetGlobalMouseState(&gx, &gy);
+			return gx;
+		}
+	}
+
+	public float GlobalY
+	{
+		get
+		{
+			float gx = 0, gy = 0;
+			SDL_GetGlobalMouseState(&gx, &gy);
+			return gy;
+		}
+	}
+
 	public EventAccessor<MouseMoveDelegate> OnMove => mOnMove;
 	public EventAccessor<MouseButtonDelegate> OnButton => mOnButton;
 	public EventAccessor<MouseScrollDelegate> OnScroll => mOnScroll;

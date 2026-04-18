@@ -38,14 +38,16 @@ class KeyboardTests
 	public static void KeyDown_RoutedToFocused()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let layout = new FrameLayout();
-		ctx.Root.AddView(layout);
+		root.AddView(layout);
 
 		let view = new KeyTestView();
 		layout.AddView(view);
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		ctx.FocusManager.SetFocus(view);
 
@@ -58,14 +60,16 @@ class KeyboardTests
 	public static void KeyDown_NotRoutedWithoutFocus()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let layout = new FrameLayout();
-		ctx.Root.AddView(layout);
+		root.AddView(layout);
 
 		let view = new KeyTestView();
 		layout.AddView(view);
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		// No focus set.
 		ctx.InputManager.ProcessKeyDown(.Space, .None, false);
@@ -76,14 +80,16 @@ class KeyboardTests
 	public static void Accelerator_FoundTopDown()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(400, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
 
 		let layout = new FrameLayout();
-		ctx.Root.AddView(layout);
+		root.AddView(layout);
 
 		let accel = new AccelTestView();
 		layout.AddView(accel);
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		// Alt+A should find the accelerator handler.
 		ctx.InputManager.ProcessKeyDown(.A, .Alt, false);

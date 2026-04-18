@@ -50,6 +50,7 @@ public class View
 
 	// === Context attachment ===
 	public UIContext Context { get; internal set; }
+	public RootView Root { get; internal set; }
 	public bool IsPendingDeletion { get; internal set; }
 	public bool IsAttached => Context != null;
 

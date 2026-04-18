@@ -10,13 +10,15 @@ class FlowLayoutTests
 	public static void Flow_WrapsToNextLine()
 	{
 		let ctx = scope UIContext();
-		ctx.SetViewportSize(200, 300);
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(200, 300);
 
 		let flow = new FlowLayout();
 		flow.Orientation = .Horizontal;
-		ctx.Root.AddView(flow);
+		root.AddView(flow);
 
-		// 3 children × 80px wide = 240px > 200px viewport → wraps after 2.
+		// 3 children × 80px wide = 240px > 200px viewport -> wraps after 2.
 		for (int i = 0; i < 3; i++)
 		{
 			let child = new ColorView();
@@ -25,7 +27,7 @@ class FlowLayoutTests
 			flow.AddView(child);
 		}
 
-		ctx.DoLayout();
+		ctx.UpdateRootView(root);
 
 		let c0 = flow.GetChildAt(0);
 		let c1 = flow.GetChildAt(1);
