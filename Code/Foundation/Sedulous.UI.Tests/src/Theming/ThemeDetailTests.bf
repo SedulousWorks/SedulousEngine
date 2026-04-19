@@ -216,12 +216,12 @@ class ThemeDetailTests
 		root1.ViewportSize = .(400, 300);
 		root2.ViewportSize = .(200, 150);
 
-		ctx.Theme = DarkTheme.Create();
+		ctx.SetTheme(DarkTheme.Create(), true);
 		ctx.UpdateRootView(root1);
 		ctx.UpdateRootView(root2);
 
 		// Switch theme — both roots should need re-layout.
-		ctx.Theme = LightTheme.Create();
+		ctx.SetTheme(LightTheme.Create(), true);
 		Test.Assert(root1.IsLayoutDirty);
 		Test.Assert(root2.IsLayoutDirty);
 

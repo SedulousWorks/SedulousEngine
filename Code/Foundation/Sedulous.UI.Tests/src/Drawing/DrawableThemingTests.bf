@@ -438,7 +438,7 @@ class DrawableThemingTests
 		let root = scope RootView();
 		ctx.AddRootView(root);
 		root.ViewportSize = .(400, 300);
-		ctx.Theme = DarkTheme.Create();
+		ctx.SetTheme(DarkTheme.Create(), true);
 
 		let btn = new Button();
 		btn.SetText("Test");

@@ -1863,11 +1863,11 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 			let ctx = mUI.UIContext;
 			let name = ctx.Theme?.Name ?? "Dark";
 			if (name.Contains("Dark"))
-				ctx.Theme = LightTheme.Create();
+				ctx.SetTheme(LightTheme.Create(), true);
 			else if (name.Contains("Light"))
-				ctx.Theme = CreateTexturedTheme();
+				ctx.SetTheme(CreateTexturedTheme(), true);
 			else
-				ctx.Theme = DarkTheme.Create();
+				ctx.SetTheme(DarkTheme.Create(), true);
 		}
 
 		// F6 loads a custom theme from XML (demonstrates ThemeXmlParser).
@@ -1959,7 +1959,7 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 			let ctx = mUI.UIContext;
 			let newTheme = ThemeXmlParser.Parse(themeXml);
 			if (newTheme != null)
-				ctx.Theme = newTheme;
+				ctx.SetTheme(newTheme, true);
 		}
 	}
 

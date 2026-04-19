@@ -95,7 +95,7 @@ public class UISubsystem : Subsystem
 		// UIContext (connect font service + default theme)
 		mUIContext = new UIContext();
 		mUIContext.FontService = mFontService;
-		mUIContext.Theme = DarkTheme.Create();
+		mUIContext.SetTheme(DarkTheme.Create(), true);
 
 		// Create and register the main root view.
 		mRoot = new RootView();

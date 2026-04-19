@@ -39,20 +39,21 @@ public class UIContext
 	public float TotalTime { get; private set; }
 
 	// === Theme ===
-	private Theme mTheme ~ delete _;
+	private Theme mTheme;
+	private bool mOwnsTheme;
 
-	public Theme Theme
+	public Theme Theme => mTheme;
+
+	/// Set the theme. If ownsTheme is true, UIContext will delete it on destruction or replacement.
+	public void SetTheme(Theme theme, bool ownsTheme)
 	{
-		get => mTheme;
-		set
+		if (mTheme != theme)
 		{
-			if (mTheme != value)
-			{
-				delete mTheme;
-				mTheme = value;
-				for (let root in mRootViews)
-					root.InvalidateLayout();
-			}
+			if (mOwnsTheme) delete mTheme;
+			mTheme = theme;
+			mOwnsTheme = ownsTheme;
+			for (let root in mRootViews)
+				root.InvalidateLayout();
 		}
 	}
 
@@ -125,6 +126,7 @@ public class UIContext
 		delete TooltipManager;
 		delete InputManager;
 		delete FocusManager;
+		if (mOwnsTheme) delete mTheme;
 	}
 
 	// =================================================================

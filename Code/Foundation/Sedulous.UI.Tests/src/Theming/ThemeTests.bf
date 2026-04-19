@@ -119,7 +119,7 @@ class ThemeTests
 	public static void Label_NullableOverride_FallsBackToTheme()
 	{
 		let ctx = scope UIContext();
-		ctx.Theme = DarkTheme.Create();
+		ctx.SetTheme(DarkTheme.Create(), true);
 		let root = scope RootView();
 		ctx.AddRootView(root);
 		root.ViewportSize = .(400, 300);
@@ -143,7 +143,7 @@ class ThemeTests
 	public static void ThemeSwitch_InvalidatesLayout()
 	{
 		let ctx = scope UIContext();
-		ctx.Theme = DarkTheme.Create();
+		ctx.SetTheme(DarkTheme.Create(), true);
 		let root = scope RootView();
 		ctx.AddRootView(root);
 		root.ViewportSize = .(400, 300);
@@ -155,8 +155,8 @@ class ThemeTests
 		ctx.UpdateRootView(root);
 
 		// Switch theme -> root should need re-layout.
-		// Setter deletes the old theme automatically.
-		ctx.Theme = LightTheme.Create();
+		// SetTheme with ownsTheme=true deletes the old theme.
+		ctx.SetTheme(LightTheme.Create(), true);
 
 		Test.Assert(root.IsLayoutDirty);
 	}
@@ -182,7 +182,7 @@ class ThemeTests
 	public static void Button_PaddingChange_InvalidatesLayout()
 	{
 		let ctx = scope UIContext();
-		ctx.Theme = DarkTheme.Create();
+		ctx.SetTheme(DarkTheme.Create(), true);
 		let root = scope RootView();
 		ctx.AddRootView(root);
 		root.ViewportSize = .(400, 300);
