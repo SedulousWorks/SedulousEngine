@@ -64,7 +64,12 @@ public class Panel : ViewGroup
 		{
 			let child = GetChildAt(i);
 			if (child.Visibility == .Gone) continue;
-			child.Measure(wSpec, hSpec);
+			let lp = child.LayoutParams;
+			let childW = MakeChildMeasureSpec(wSpec, pad.TotalHorizontal,
+				lp?.Width ?? Sedulous.UI.LayoutParams.WrapContent);
+			let childH = MakeChildMeasureSpec(hSpec, pad.TotalVertical,
+				lp?.Height ?? Sedulous.UI.LayoutParams.WrapContent);
+			child.Measure(childW, childH);
 			maxW = Math.Max(maxW, child.MeasuredSize.X);
 			maxH = Math.Max(maxH, child.MeasuredSize.Y);
 		}
