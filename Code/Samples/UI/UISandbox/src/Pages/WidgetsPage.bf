@@ -130,6 +130,53 @@ class WidgetsPage : DemoPage
 			grid.AddView(shapePanel, new GridLayout.LayoutParams() { Row = 1, Column = 1 });
 		}
 
+		// DockView layout
+		AddSection("DockView");
+		{
+			let dockView = new DockView();
+			mLayout.AddView(dockView, new LinearLayout.LayoutParams() { Width = Sedulous.UI.LayoutParams.MatchParent, Height = 150 });
+
+			let top = new Panel();
+			top.Background = new ColorDrawable(.(60, 130, 200, 255));
+			let topLabel = new Label();
+			topLabel.SetText("Top (Menu Bar)");
+			topLabel.FontSize = 11;
+			topLabel.HAlign = .Center;
+			topLabel.VAlign = .Middle;
+			top.AddView(topLabel, new Sedulous.UI.LayoutParams() { Width = Sedulous.UI.LayoutParams.MatchParent, Height = Sedulous.UI.LayoutParams.MatchParent });
+			dockView.AddView(top, new DockView.LayoutParams(.Top) { Height = 24 });
+
+			let bottom = new Panel();
+			bottom.Background = new ColorDrawable(.(60, 130, 200, 255));
+			let bottomLabel = new Label();
+			bottomLabel.SetText("Bottom (Status Bar)");
+			bottomLabel.FontSize = 11;
+			bottomLabel.HAlign = .Center;
+			bottomLabel.VAlign = .Middle;
+			bottom.AddView(bottomLabel, new Sedulous.UI.LayoutParams() { Width = Sedulous.UI.LayoutParams.MatchParent, Height = Sedulous.UI.LayoutParams.MatchParent });
+			dockView.AddView(bottom, new DockView.LayoutParams(.Bottom) { Height = 20 });
+
+			let left = new Panel();
+			left.Background = new ColorDrawable(.(80, 160, 80, 255));
+			let leftLabel = new Label();
+			leftLabel.SetText("Left");
+			leftLabel.FontSize = 11;
+			leftLabel.HAlign = .Center;
+			leftLabel.VAlign = .Middle;
+			left.AddView(leftLabel, new Sedulous.UI.LayoutParams() { Width = Sedulous.UI.LayoutParams.MatchParent, Height = Sedulous.UI.LayoutParams.MatchParent });
+			dockView.AddView(left, new DockView.LayoutParams(.Left) { Width = 80 });
+
+			let center = new Panel();
+			center.Background = new ColorDrawable(.(50, 50, 60, 255));
+			let centerLabel = new Label();
+			centerLabel.SetText("Fill (Content)");
+			centerLabel.FontSize = 11;
+			centerLabel.HAlign = .Center;
+			centerLabel.VAlign = .Middle;
+			center.AddView(centerLabel, new Sedulous.UI.LayoutParams() { Width = Sedulous.UI.LayoutParams.MatchParent, Height = Sedulous.UI.LayoutParams.MatchParent });
+			dockView.AddView(center, new DockView.LayoutParams(.Fill));
+		}
+
 		// Image ScaleType
 		if (demo.Checkerboard != null)
 		{

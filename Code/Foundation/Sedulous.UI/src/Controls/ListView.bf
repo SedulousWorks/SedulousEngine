@@ -18,6 +18,12 @@ public class ListView : ViewGroup, IListAdapterObserver
 	/// Fired when an item is clicked. Args: (position, clickCount).
 	public Event<delegate void(int32, int32)> OnItemClicked ~ _.Dispose();
 
+	/// Fired when an item is long-pressed. Args: (position).
+	public Event<delegate void(int32)> OnItemLongPress ~ _.Dispose();
+
+	/// Long press threshold in seconds.
+	public float LongPressTime = 0.5f;
+
 	private ViewRecycler mRecycler = new .() ~ delete _;
 	private float mScrollY;
 	private MomentumHelper mMomentum = .();
@@ -45,6 +51,11 @@ public class ListView : ViewGroup, IListAdapterObserver
 	// Drag state.
 	private bool mDragging;
 	private float mDragLastY;
+
+	// Long press state.
+	private int32 mPressedItem = -1;
+	private float mPressTime;
+	private bool mLongPressFired;
 
 	public float ScrollY => mScrollY;
 	public ViewRecycler Recycler => mRecycler;
@@ -245,6 +256,11 @@ public class ListView : ViewGroup, IListAdapterObserver
 			{
 				Selection.Select(itemIndex);
 				OnItemClicked(itemIndex, e.ClickCount);
+
+				// Start long press tracking.
+				mPressedItem = itemIndex;
+				mPressTime = 0;
+				mLongPressFired = false;
 			}
 		}
 	}
@@ -270,6 +286,7 @@ public class ListView : ViewGroup, IListAdapterObserver
 			mDragging = false;
 			Context?.FocusManager.ReleaseCapture();
 		}
+		mPressedItem = -1;
 	}
 
 	public override void OnKeyDown(KeyEventArgs e)
@@ -428,8 +445,20 @@ public class ListView : ViewGroup, IListAdapterObserver
 	public override void OnDraw(UIDrawContext ctx)
 	{
 		// Tick momentum.
-		let (_, dy) = mMomentum.Update(1.0f / 60.0f);
+		let dt = 1.0f / 60.0f;
+		let (_, dy) = mMomentum.Update(dt);
 		if (dy != 0) ScrollBy(dy);
+
+		// Tick long press.
+		if (mPressedItem >= 0 && !mLongPressFired && !mDragging)
+		{
+			mPressTime += dt;
+			if (mPressTime >= LongPressTime)
+			{
+				mLongPressFired = true;
+				OnItemLongPress(mPressedItem);
+			}
+		}
 
 		// Draw selection highlights.
 		if (mAdapter != null)

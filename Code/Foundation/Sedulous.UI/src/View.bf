@@ -75,6 +75,19 @@ public class View
 	public float Width => Bounds.Width;
 	public float Height => Bounds.Height;
 
+	/// Bounds minus padding (content area in local coords). Only meaningful for ViewGroups.
+	public RectangleF ContentBounds
+	{
+		get
+		{
+			if (let vg = this as ViewGroup)
+				return .(vg.Padding.Left, vg.Padding.Top,
+					Width - vg.Padding.TotalHorizontal,
+					Height - vg.Padding.TotalVertical);
+			return .(0, 0, Width, Height);
+		}
+	}
+
 	public this()
 	{
 		Id = ViewId.Generate();

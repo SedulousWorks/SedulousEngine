@@ -26,7 +26,13 @@ public class TooltipManager
 
 	public ~this()
 	{
-		Hide(); // remove from PopupLayer before deleting
+		// Don't call Hide() or DetachView — during destruction, PopupLayer
+		// and UIContext services may already be freed. The tooltip view was
+		// shown with ownsView=false, so PopupLayer won't double-delete it.
+		// Just null the parent to prevent the ViewGroup destructor from
+		// accessing freed PopupLayer, then delete directly.
+		mTooltipView.[Friend]Parent = null;
+		mTooltipView.[Friend]Context = null;
 		delete mTooltipView;
 	}
 

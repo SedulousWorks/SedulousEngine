@@ -424,7 +424,6 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 	private System.Collections.Dictionary<View, SecondaryWindowContext> mFloatingWindowMap = new .() ~ delete _;
 
 	// Cross-window drag state.
-	private bool mDragPrevLeftDown;
 	private IWindow mDragSourceWindow; // OS window being dragged
 	private float mDragWindowOffsetX;  // Mouse offset within window at drag start
 	private float mDragWindowOffsetY;
@@ -1544,17 +1543,14 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 					mDragSourceWindow.Y = (int32)(globalY - mDragWindowOffsetY);
 				}
 
-				// Convert global to main-window-relative for input routing.
+				// Route all input with main-window-relative coords via UIInputHelper
+				// overload. This handles move, button edges, and wheel correctly.
 				let mx = globalX - (float)mWindow.X;
 				let my = globalY - (float)mWindow.Y;
 
-				mUI.UIContext.InputManager.ProcessMouseMove(mx, my);
-
-				// Edge-detect mouse button for drag end.
-				let leftDown = mouse.IsButtonDown(.Left);
-				if (!leftDown && mDragPrevLeftDown)
-					mUI.UIContext.InputManager.ProcessMouseUp(.Left, mx, my);
-				mDragPrevLeftDown = leftDown;
+				Sedulous.UI.Shell.UIInputHelper inputHelper = mUI.[Friend]mInputHelper;
+				if (inputHelper != null)
+					inputHelper.ProcessMouseInput(mouse, mUI.UIContext, mx, my);
 
 				mUI.SkipInputThisFrame = true;
 			}

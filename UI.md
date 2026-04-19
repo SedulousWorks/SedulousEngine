@@ -2286,15 +2286,76 @@ everything suddenly needs to integrate.
 - DraggableTreeView, PropertyGrid (6 typed editors)
 - ScrollBarMode.Reserved, theme consistency fixes
 - Demo reorganized into tabbed pages
-- Docking system (compiles, needs debugging)
+- Docking system — fully ported from legacy, debugged, working:
+  - DockManager with binary split tree, tab groups, zone indicators
+  - Drag-to-dock, drag-to-float, close panel support
+  - CleanupEmptyNodes with re-entrancy guard
+  - MutationQueue.QueueDelete IsPendingDeletion guard
+  - DragDropManager.EndDrag source view clearing
+- Multi-window OS floating windows:
+  - UIContext multi-root (no default root, AddRootView/RemoveRootView)
+  - View.Root property (set in AttachSubtree)
+  - IFloatingWindowHost interface in Toolkit
+  - DockManager branches on FloatingWindowHost (OS vs PopupLayer)
+  - IMouse.GlobalX/GlobalY (SDL_GetGlobalMouseState)
+  - UIInputHelper.ProcessMouseInput overload with explicit coords
+  - UISandbox implements IFloatingWindowHost via CreateSecondaryWindow
+  - Per-window RootView + VGContext + VGRenderer
+  - Cross-window drag with captured offset (matching legacy pattern)
+- DockView layout (DockPanel equivalent from GUI)
+- ListView.OnItemLongPress event
+- View.ContentBounds property
 
 **Phase 14 remaining:**
-- Docking debugging + FloatingWindow
+- Drawable-based theming (see Theming Improvement Plan below)
+- DataGrid control
+- TileView control
 - FileBrowser / AssetBrowser (generic data-model-driven browser
   with tile/list/tree view modes, resizable tiles, per-item
   context menus — needs design brainstorming)
 - UI Tree Inspector (follow-up)
 - **Phase 7** (engine integration) — deferred
+
+## Theming Improvement Plan
+
+**Current state:** Theme maps string keys to colors, dimensions, and
+padding. Controls query `theme.GetColor("Button.Background")` etc.
+All rendering is code-driven (VG draw calls with theme colors).
+
+**Gap:** Legacy (BansheeBeef) uses `Drawable` as the theming primitive.
+Backgrounds, borders, and state variants are all `Drawable` objects
+(ImageDrawable, NineSliceDrawable, StateListDrawable). A theme can be
+fully skinned with image assets without code changes. Our framework has
+the Drawable system (ColorDrawable, NineSliceDrawable, StateListDrawable,
+etc.) but the Theme doesn't use it — controls hardcode VG draw calls.
+
+**Proposed changes:**
+
+1. **Add Drawable support to Theme** — `SetDrawable(key, Drawable)` /
+   `GetDrawable(key)` alongside existing color/dimension/padding.
+
+2. **Theme provides default Drawables** — DarkTheme/LightTheme create
+   ColorDrawable/RoundedRectDrawable defaults for all controls. These
+   match current visual output but are now swappable.
+
+3. **Controls query Drawable instead of colors** — e.g., Button.OnDraw
+   does `let bg = ctx.Theme.GetDrawable("Button.Background") ?? fallback`
+   then `bg.Draw(ctx, bounds, state)`. StateListDrawable handles
+   hover/pressed/disabled automatically.
+
+4. **NineSlice/Image themes** — a theme can replace any control's
+   drawable with NineSliceDrawable backed by a texture atlas. Full
+   game-UI skinning without subclassing controls.
+
+5. **ThemeXmlParser extension** — XML theme files can reference drawable
+   types: `<Drawable key="Button.Background" type="NineSlice" src="button.png" slices="4,4,4,4" />`
+
+**Migration path:** Non-breaking. Controls that already work with colors
+continue to work. Drawable support is additive — controls that opt in
+get skinnable visuals. Can be done incrementally per control.
+
+**Priority:** After DockView, DataGrid, and test gap work. This is a
+rendering/theming improvement, not a functional gap.
 
 ## Files
 
@@ -2691,8 +2752,8 @@ not everything needs to be adopted.
 | M6 | **SelectionModel.SelectedPositions** | SelectionModel | DONE — returns full HashSet |
 | M7 | **Button.Command (ICommand)** | Button | DONE — ICommand + auto-disable via CanExecute |
 | M8 | **ScanCode on KeyEventArgs** | Input | DONE — int32 ScanCode field |
-| M9 | **Multi-window support architecture** | UIContext | DEFERRED — significant scope; single-root sufficient for now |
-| M10 | **AnimationManager in UIContext** | UIContext | DEFERRED — Phase 12 |
+| M9 | **Multi-window support architecture** | UIContext | DONE — multi-root, AddRootView/RemoveRootView, IFloatingWindowHost, OS floating windows |
+| M10 | **AnimationManager in UIContext** | UIContext | DONE — Phase 12 |
 
 ### Things We Do Better (keep as-is)
 

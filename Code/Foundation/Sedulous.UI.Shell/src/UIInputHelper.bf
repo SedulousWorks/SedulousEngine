@@ -93,21 +93,26 @@ public class UIInputHelper
 	/// Route mouse input from a polled mouse to a UIContext.
 	public void ProcessMouseInput(IMouse mouse, UIContext context)
 	{
-		let mx = mouse.X;
-		let my = mouse.Y;
+		ProcessMouseInput(mouse, context, mouse.X, mouse.Y);
+	}
 
+	/// Route mouse input with explicit override coordinates.
+	/// Used for cross-window drag routing where the mouse position
+	/// must be transformed to a different window's coordinate space.
+	public void ProcessMouseInput(IMouse mouse, UIContext context, float overrideX, float overrideY)
+	{
 		// Mouse move — only when mouse actually moved.
 		if (mouse.DeltaX != 0 || mouse.DeltaY != 0)
-			context.InputManager.ProcessMouseMove(mx, my);
+			context.InputManager.ProcessMouseMove(overrideX, overrideY);
 
 		// Mouse button edges.
-		ProcessMouseButton(mouse, context, .Left, ref mPrevLeftDown, mx, my);
-		ProcessMouseButton(mouse, context, .Right, ref mPrevRightDown, mx, my);
-		ProcessMouseButton(mouse, context, .Middle, ref mPrevMiddleDown, mx, my);
+		ProcessMouseButton(mouse, context, .Left, ref mPrevLeftDown, overrideX, overrideY);
+		ProcessMouseButton(mouse, context, .Right, ref mPrevRightDown, overrideX, overrideY);
+		ProcessMouseButton(mouse, context, .Middle, ref mPrevMiddleDown, overrideX, overrideY);
 
 		// Mouse wheel.
 		if (mouse.ScrollX != 0 || mouse.ScrollY != 0)
-			context.InputManager.ProcessMouseWheel(mx, my, mouse.ScrollX, mouse.ScrollY);
+			context.InputManager.ProcessMouseWheel(overrideX, overrideY, mouse.ScrollX, mouse.ScrollY);
 	}
 
 	/// Process all keyboard input from a polled keyboard and route to a UIContext.
