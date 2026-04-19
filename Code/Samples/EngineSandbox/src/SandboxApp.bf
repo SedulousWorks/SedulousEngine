@@ -151,6 +151,9 @@ class SandboxApp : EngineApplication
 		let scene = sceneSub.CreateScene("TestScene");
 		mScene = scene;
 
+		// Set up world-space UI panel demo.
+		SetupWorldUI();
+
 		// ==================== Materials ====================
 
 		mPbrMaterial = Materials.CreatePBR("PBR", "forward",
@@ -1188,6 +1191,9 @@ class SandboxApp : EngineApplication
 
 	protected override void OnUpdate(float deltaTime)
 	{
+		// Add world UI content once component is initialized.
+		TryAddWorldUIContent();
+
 		// ==================== UI Debug ====================
 		let uiSub = Context.GetSubsystem<EngineUISubsystem>();
 
@@ -1558,6 +1564,159 @@ class SandboxApp : EngineApplication
 			let target = mCameraPosition + forward;
 			mScene.SetLocalTransform(mCameraEntity, Transform.CreateLookAt(mCameraPosition, target));
 		}
+	}
+
+	private void SetupWorldUI()
+	{
+		if (mScene == null) return;
+
+		let uiMgr = mScene.GetModule<UIComponentManager>();
+		if (uiMgr == null) return;
+
+		// Create an entity with a world-space UI panel.
+		let entity = mScene.CreateEntity("WorldUI");
+		mScene.SetLocalTransform(entity, .() {
+			Position = .(2, 2.5f, 0),
+			Rotation = .Identity,
+			Scale = .One
+		});
+
+		// Create UIComponent.
+		let handle = uiMgr.CreateComponent(entity);
+		if (let comp = uiMgr.Get(handle))
+		{
+			comp.PixelWidth = 256;
+			comp.PixelHeight = 256;
+			comp.WorldWidth = 2.0f;
+			comp.WorldHeight = 2.0f;
+		}
+
+		// Second world UI — camera-facing billboard (like a nameplate).
+		let billboard = mScene.CreateEntity("WorldUI_Billboard");
+		mScene.SetLocalTransform(billboard, .() {
+			Position = .(-2, 3, 0),
+			Rotation = .Identity,
+			Scale = .One
+		});
+
+		let billboardHandle = uiMgr.CreateComponent(billboard);
+		if (let comp2 = uiMgr.Get(billboardHandle))
+		{
+			comp2.PixelWidth = 200;
+			comp2.PixelHeight = 64;
+			comp2.WorldWidth = 1.5f;
+			comp2.WorldHeight = 0.5f;
+			comp2.Orientation = .CameraFacing;
+		}
+
+		// UIComponent is now pending init. On next frame, UIComponentManager
+		// will create the RootView, VGContext, VGRenderer, and texture.
+		// We add UI content after init — defer to OnUpdate or use a callback.
+		// For demo: we'll add content on first update when Root becomes available.
+	}
+
+	/// Add UI content to world panels once they're initialized.
+	private int mWorldUIContentCount;
+
+	private void TryAddWorldUIContent()
+	{
+		if (mScene == null) return;
+
+		let uiMgr = mScene.GetModule<UIComponentManager>();
+		if (uiMgr == null) return;
+
+		for (let comp in uiMgr.ActiveComponents)
+		{
+			if (comp.Root == null) continue; // Not initialized yet.
+			if (comp.Root.ChildCount > 1) continue; // Already has content (1 = PopupLayer only).
+
+			if (comp.Orientation == .WorldAligned)
+				AddWorldPanelContent(comp);
+			else
+				AddBillboardContent(comp);
+
+			mWorldUIContentCount++;
+		}
+	}
+
+	private void AddWorldPanelContent(UIComponent comp)
+	{
+		let panel = new Panel();
+		panel.Background = new ColorDrawable(.(30, 35, 50, 220));
+		panel.Padding = .(8, 8, 8, 8);
+		panel.ClipsContent = true;
+		comp.Root.AddView(panel, new LayoutParams() {
+			Width = LayoutParams.MatchParent,
+			Height = LayoutParams.MatchParent
+		});
+
+		let layout = new LinearLayout();
+		layout.Orientation = .Vertical;
+		layout.Spacing = 4;
+		panel.AddView(layout, new LayoutParams() {
+			Width = LayoutParams.MatchParent,
+			Height = LayoutParams.MatchParent
+		});
+
+		let title = new Label();
+		title.SetText("World UI Panel");
+		title.FontSize = 16;
+		title.HAlign = .Center;
+		layout.AddView(title, new LinearLayout.LayoutParams() {
+			Width = LayoutParams.MatchParent, Height = 24
+		});
+
+		let info = new Label();
+		info.SetText("Rendered to texture");
+		info.FontSize = 12;
+		info.HAlign = .Center;
+		layout.AddView(info, new LinearLayout.LayoutParams() {
+			Width = LayoutParams.MatchParent, Height = 16
+		});
+
+		let info2 = new Label();
+		info2.SetText("Displayed as sprite");
+		info2.FontSize = 12;
+		info2.HAlign = .Center;
+		layout.AddView(info2, new LinearLayout.LayoutParams() {
+			Width = LayoutParams.MatchParent, Height = 16
+		});
+
+		let btn = new Button();
+		btn.SetText("World Button");
+		btn.OnClick.Add(new (b) => {
+			info.SetText("Clicked!");
+			comp.MarkDirty();
+		});
+		layout.AddView(btn, new LinearLayout.LayoutParams() {
+			Width = LayoutParams.MatchParent, Height = 28
+		});
+
+		comp.MarkDirty();
+	}
+
+	private void AddBillboardContent(UIComponent comp)
+	{
+		let panel = new Panel();
+		panel.Background = new ColorDrawable(.(20, 20, 20, 180));
+		panel.Padding = .(6, 4, 6, 4);
+		comp.Root.AddView(panel, new LayoutParams() {
+			Width = LayoutParams.MatchParent,
+			Height = LayoutParams.MatchParent
+		});
+
+		let label = new Label();
+		label.SetText("NPC Nameplate");
+		label.FontSize = 14;
+		label.HAlign = .Center;
+		label.VAlign = .Middle;
+		label.TextColor = .(255, 220, 100, 255);
+		panel.AddView(label, new LayoutParams() {
+			Width = LayoutParams.MatchParent,
+			Height = LayoutParams.MatchParent
+		});
+
+		comp.MarkDirty();
 	}
 
 	private void SetupScreenUI()

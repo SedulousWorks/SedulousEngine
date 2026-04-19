@@ -38,10 +38,16 @@ class UIComponent : Component, ISerializableComponent
 	public bool IsInteractive = true;
 	/// Whether this view is visible.
 	public bool IsVisible = true;
+	/// Billboard orientation mode for the sprite quad.
+	public Sedulous.Renderer.SpriteOrientation Orientation = .WorldAligned;
+	/// Enable debug bounds overlay on this component's UI.
+	public bool DebugShowBounds = false;
 
 	// === Runtime state (managed by UIComponentManager) ===
 
-	/// The RootView in the shared UIContext. Add UI content here.
+	/// Per-component UIContext with its own input state.
+	public UIContext UIContext;
+	/// The RootView in the per-component UIContext. Add UI content here.
 	public RootView Root;
 	/// Per-view VG context for building geometry.
 	public VGContext VG;
@@ -53,6 +59,13 @@ class UIComponent : Component, ISerializableComponent
 	public ITextureView TextureView;
 	/// Whether the view needs re-rendering.
 	public bool IsDirty = true;
+
+	// === Input state (for edge detection in world UI raycasting) ===
+	public bool PrevLeftDown;
+	public bool PrevRightDown;
+	public bool PrevMiddleDown;
+	public float InputTotalTime;
+	public bool WasHovered;
 
 	/// Mark the view as needing re-rendering.
 	public void MarkDirty() { IsDirty = true; }

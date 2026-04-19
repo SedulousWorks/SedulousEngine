@@ -11,32 +11,40 @@ using Sedulous.Shaders;
 using Sedulous.Core.Mathematics;
 
 /// Per-scene manager for world-space UI components.
-/// WIP: Render-to-texture for world UI views requires access to a command
-/// encoder during the render phase. Current engine infrastructure doesn't
-/// provide this to component managers. Screen UI (ScreenUIView) works via
-/// IRenderOverlay. World UI needs infrastructure changes to VGRenderer
-/// or the render pipeline before it can render to textures.
+/// Creates GPU resources (texture, VGRenderer) per component.
+/// Collects dirty views each frame for WorldUIPass to render
+/// during the pipeline's render graph execution.
 class UIComponentManager : ComponentManager<UIComponent>
 {
 	// Injected by EngineUISubsystem.
 	public IDevice Device;
-	public UIContext UIContext;
+	public Theme SharedTheme;
 	public IFontService FontService;
 	public ShaderSystem ShaderSystem;
+	public Sedulous.Renderer.RenderContext RenderContext;
+
+	/// WorldUIPass reads this list each frame to render dirty textures.
+	public WorldUIPass RenderPass;
 
 	protected override void OnRegisterUpdateFunctions()
 	{
-		RegisterUpdate(.PostUpdate, new => RenderDirtyViews);
+		RegisterUpdate(.PostUpdate, new => CollectDirtyViews);
 	}
 
 	protected override void OnComponentInitialized(UIComponent comp)
 	{
-		if (Device == null || UIContext == null) return;
+		if (Device == null) return;
 
-		// Create RootView in shared UIContext.
+		// Create per-component UIContext with shared theme and font service.
+		comp.UIContext = new UIContext();
+		comp.UIContext.FontService = FontService;
+		if (SharedTheme != null)
+			comp.UIContext.SetTheme(SharedTheme, false);
+
+		// Create RootView in per-component UIContext.
 		comp.Root = new RootView();
 		comp.Root.ViewportSize = .((float)comp.PixelWidth, (float)comp.PixelHeight);
-		UIContext.AddRootView(comp.Root);
+		comp.UIContext.AddRootView(comp.Root);
 
 		// Per-view VG rendering.
 		comp.VG = new VGContext(FontService);
@@ -82,13 +90,37 @@ class UIComponentManager : ComponentManager<UIComponent>
 		}
 
 		comp.IsDirty = true;
+
+		// Create a SpriteComponent to display the UI texture in the 3D scene.
+		// Bypass ResourceRef — create MaterialInstance directly from the texture view.
+		let spriteMgr = Scene.GetModule<Sedulous.Engine.Render.SpriteComponentManager>();
+		if (spriteMgr != null && comp.TextureView != null && RenderContext != null)
+		{
+			let spriteSystem = RenderContext.SpriteSystem;
+			let materialSystem = RenderContext.MaterialSystem;
+			if (spriteSystem?.SpriteMaterial != null && materialSystem != null)
+			{
+				let spriteHandle = spriteMgr.CreateComponent(comp.Owner);
+				if (let sprite = spriteMgr.Get(spriteHandle))
+				{
+					sprite.Size = .(comp.WorldWidth, comp.WorldHeight);
+					sprite.Orientation = comp.Orientation;
+					sprite.IsVisible = true;
+
+					// Create material instance with the UI render texture.
+					let matInstance = new Sedulous.Materials.MaterialInstance(spriteSystem.SpriteMaterial);
+					matInstance.SetTexture("SpriteTexture", comp.TextureView);
+					materialSystem.PrepareInstance(matInstance);
+					sprite.SetMaterial(matInstance);
+					// Transfer ownership to sprite (SetMaterial called AddRef).
+					matInstance.ReleaseRef();
+				}
+			}
+		}
 	}
 
 	protected override void OnComponentDestroyed(UIComponent comp)
 	{
-		if (comp.Root != null && UIContext != null)
-			UIContext.RemoveRootView(comp.Root);
-
 		if (comp.Renderer != null)
 		{
 			comp.Renderer.Dispose();
@@ -104,14 +136,21 @@ class UIComponentManager : ComponentManager<UIComponent>
 		if (comp.Texture != null)
 			Device?.DestroyTexture(ref comp.Texture);
 
+		// UIContext owns the RootView via AddRootView — remove before deleting.
+		if (comp.UIContext != null && comp.Root != null)
+			comp.UIContext.RemoveRootView(comp.Root);
+
 		delete comp.Root;
 		comp.Root = null;
+
+		delete comp.UIContext;
+		comp.UIContext = null;
 	}
 
-	/// Render all dirty world UI views to their textures.
-	private void RenderDirtyViews(float deltaTime)
+	/// Collect dirty views for WorldUIPass to render during the pipeline phase.
+	private void CollectDirtyViews(float deltaTime)
 	{
-		if (UIContext == null || Device == null) return;
+		if (RenderPass == null) return;
 
 		for (let comp in ActiveComponents)
 		{
@@ -119,33 +158,7 @@ class UIComponentManager : ComponentManager<UIComponent>
 			if (comp.Root == null || comp.VG == null || comp.Renderer == null) continue;
 			if (comp.Texture == null || comp.TextureView == null) continue;
 
-			// Layout.
-			UIContext.UpdateRootView(comp.Root);
-
-			// Build geometry.
-			comp.VG.Clear();
-			UIContext.DrawRootView(comp.Root, comp.VG);
-			let batch = comp.VG.GetBatch();
-			if (batch == null || batch.Commands.Count == 0)
-			{
-				comp.IsDirty = false;
-				continue;
-			}
-
-			// Upload + render to texture.
-			// Use frameIndex 0 for world views (they render on-demand, not double-buffered).
-			comp.Renderer.UpdateProjection(comp.PixelWidth, comp.PixelHeight, 0);
-			comp.Renderer.Prepare(batch, 0);
-
-			// TODO: Need a command encoder to create a render pass.
-			// World UI render-to-texture needs to happen during the render phase,
-			// not during PostUpdate. For now, mark clean and defer actual rendering
-			// to a render pass or overlay mechanism.
-			//
-			// Option: UIComponentManager could implement IRenderDataProvider and
-			// render dirty views during ExtractRenderData (has access to RenderContext).
-			// Or: Register a PipelinePass that renders world UI textures.
-
+			RenderPass.DirtyViews.Add(comp);
 			comp.IsDirty = false;
 		}
 	}

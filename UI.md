@@ -1601,16 +1601,16 @@ test coverage expected and the sandbox additions.
 | **4** Theme System | ✅ DONE | 13 |
 | **5** XML UI Loading | ✅ DONE | 20 |
 | **6** Resource Integration | ✅ DONE | 6 |
-| **7** Engine Integration | DEFERRED | — |
+| **7** Engine Integration | ✅ DONE | — |
 | **8** Scrolling | ✅ DONE | 14 |
 | **9** Adapters + Virtualization | ✅ DONE | 18 |
 | **11** Overlays + Controls + Legacy Adoption | ✅ DONE | 175 |
 | **10** Text Editing | ✅ DONE | 218 |
 | **12** Animation + Transitions | ✅ DONE | 241 |
 | **13** Drag and Drop | ✅ DONE | 252 |
-| **14** Toolkit + Gamekit + Polish | IN PROGRESS | 274 |
+| **14** Toolkit + Gamekit + Polish | IN PROGRESS | 657 |
 
-**Total tests: 274** across Phases 1–14.
+**Total tests: 657** across Phases 1–14.
 
 Phase 11 included: overlays (PopupLayer, ContextMenu, Dialog,
 TooltipManager), 10 new controls (CheckBox, RadioButton, RadioGroup,
@@ -1644,8 +1644,12 @@ Phase 14 (in progress): Sedulous.UI.Toolkit library with:
 - ✅ DraggableTreeView (TreeView + drag-to-reorder, IReorderableTreeAdapter)
 - ✅ PropertyGrid (PropertyEditor base, categorized Expanders, 6 typed editors)
 - ✅ ScrollBarMode.Reserved (scrollbar doesn't overlap content)
-- ⚠️ Docking system (compiles, needs debugging — tree attachment issues)
-- 🔲 FloatingWindow (not yet implemented)
+- ✅ Docking system (DockManager, DockView layout control, closable tabs)
+- ✅ UIContext multi-root support (AddRootView/RemoveRootView, ActiveInputRoot)
+- ✅ View.Root property (each view knows its owning RootView)
+- ✅ Drawable-based theming (Option C: drawable first, color fallback) across all ~30 controls
+- ✅ SVGDrawable, AtlasImageDrawable, AtlasNineSliceDrawable, ThemeAtlas, TexturedTheme
+- ✅ IFloatingWindowHost + OS floating windows (multi-window)
 - 🔲 FileBrowser / AssetBrowser (see below)
 - 🔲 UI Tree Inspector (follow-up)
 
@@ -1978,40 +1982,45 @@ Declarative UIs, file-I/O-free (parsing only).
 
 ## Phase 7 — Engine integration
 
-> **Status: DEFERRED** — Engine integration is only useful once enough UI
-> capability exists (scrolling, text editing, overlays) to build real
-> game UIs. Phases 8–11 proceed first using the standalone
-> `Sedulous.UI.Runtime` + `UISandbox` driver. Phase 7 picks up after.
+> **Status: ✅ COMPLETE**
 
-`Sedulous.UI.Runtime` has been around since Phase 1. This phase adds the
-engine-specific layer — scene integration, resource system registration,
-and engine-provided window hosting. Thin phase; most of the heavy lifting
-is already done.
-
-**Code (`Sedulous.UI.Runtime`):**
-- `ShellClipboardAdapter`: full `IClipboard` impl (round-trips Shell
-  clipboard). Stubbed in Phase 1, completed here since Phase 10 text
-  editing will lean on it heavily.
+Renamed `Sedulous.Engine.GUI` → `Sedulous.Engine.UI`. Full engine
+integration with screen-space and world-space UI.
 
 **Code (`Sedulous.Engine.UI`):**
-- Registers `ThemeResource` / `UILayoutResource` types with `ResourceSystem`
-- `WorldSpaceUIComponent` + manager (3D-anchored UI, uses Gamekit
-  widgets when Phase 14 lands them)
-- Default `IFloatingWindowHost` impl using engine windows
-- Cursor management (engine cursor swap via `View.EffectiveCursor` chain)
-- Optional: `EngineUISubsystem` thin wrapper or composition that adds
-  engine-side behavior (scene tick integration, resource hot-reload
-  propagation) on top of `Sedulous.UI.Runtime.UISubsystem`
+- `EngineUISubsystem` (ISceneAware, IWindowAware, UpdateOrder 400)
+  owns shared UIContext, FontService, ScreenUIView, WorldUIPass
+- `ScreenUIView` implements `IRenderOverlay` — renders VG geometry
+  onto swapchain after 3D scene blit, before present
+- `UIComponent` — world-space UI component (pixel/world dims,
+  per-component UIContext, RootView, VGContext, VGRenderer, texture)
+- `UIComponentManager` — per-scene ComponentManager<UIComponent>,
+  creates GPU resources + SpriteComponent per component on init
+- `WorldUIPass` — PipelinePass that renders dirty world UI views to
+  their textures via the render graph (ImportTarget + RequireReadableAfterWrite)
+- World UI input raycasting — ray-plane intersection supporting all
+  three SpriteOrientation modes (CameraFacing, CameraFacingY, WorldAligned),
+  routes mouse events to per-component UIContext InputManager
+- Per-component UIContext with shared theme (SetTheme ownership model)
+  for isolated input state (hover, pressed, capture) per world panel
+- `IRenderOverlay` extension point on RenderSubsystem (register/unregister)
+- `IsMouseOverUI` blocks scene input for both screen and world UI
+- Hit-test fix: `IsHitTestVisible` per-view only, `IsInteractionEnabled`
+  blocks entire subtree
 
-**Tests (`Sedulous.UI.Tests/Runtime`):**
-- `ShellClipboardAdapter` round-trip
-- Engine-side integration tests stay minimal (deeper integration tested
-  in engine layer itself)
+**Code (`Sedulous.UI`):**
+- `UIContext.SetTheme(theme, ownsTheme)` — explicit ownership flag,
+  replaces property setter. Enables safe theme sharing across contexts.
 
-**UISandbox:**
-- Clipboard works (Ctrl+C / Ctrl+V on prospective text fields)
-- No major refactor — sandbox continues working as before; this phase
-  mostly benefits engine-side consumers
+**Code (`Foundation/Sedulous.Renderer`):**
+- `IRenderOverlay` interface for post-blit overlays
+
+**EngineSandbox demo:**
+- Screen UI: HUD panel with FPS label, controls hint, clickable button
+- World UI: WorldAligned 256x256 panel with title/labels/button,
+  CameraFacing 200x64 billboard nameplate
+- F1 toggles debug bounds overlay
+- IsMouseOverUI blocks camera look and nav agent click
 
 ## Phase 8 — Scrolling
 
@@ -2281,81 +2290,68 @@ everything suddenly needs to integrate.
 
 **Phases 1-13 are COMPLETE.** Phase 14 is in progress.
 
-**Phase 14 done so far:**
-- SplitView, Toolbar, StatusBar, MenuBar, ColorPicker
-- DraggableTreeView, PropertyGrid (6 typed editors)
-- ScrollBarMode.Reserved, theme consistency fixes
-- Demo reorganized into tabbed pages
-- Docking system — fully ported from legacy, debugged, working:
-  - DockManager with binary split tree, tab groups, zone indicators
-  - Drag-to-dock, drag-to-float, close panel support
-  - CleanupEmptyNodes with re-entrancy guard
-  - MutationQueue.QueueDelete IsPendingDeletion guard
-  - DragDropManager.EndDrag source view clearing
-- Multi-window OS floating windows:
-  - UIContext multi-root (no default root, AddRootView/RemoveRootView)
-  - View.Root property (set in AttachSubtree)
-  - IFloatingWindowHost interface in Toolkit
-  - DockManager branches on FloatingWindowHost (OS vs PopupLayer)
-  - IMouse.GlobalX/GlobalY (SDL_GetGlobalMouseState)
-  - UIInputHelper.ProcessMouseInput overload with explicit coords
-  - UISandbox implements IFloatingWindowHost via CreateSecondaryWindow
-  - Per-window RootView + VGContext + VGRenderer
-  - Cross-window drag with captured offset (matching legacy pattern)
-- DockView layout (DockPanel equivalent from GUI)
-- ListView.OnItemLongPress event
-- View.ContentBounds property
+**Phase 14 done:**
+- Toolkit controls: SplitView, Toolbar, StatusBar, MenuBar, ColorPicker,
+  DraggableTreeView, PropertyGrid (6 typed editors)
+- Docking system: DockManager, DockSplit, DockTabGroup, DockablePanel,
+  FloatingWindow, DockZoneIndicator — fully ported from legacy
+- Multi-window OS floating windows: UIContext multi-root, View.Root,
+  IFloatingWindowHost, IMouse.GlobalX/GlobalY, cross-window drag
+- DockView layout (DockPanel equivalent)
+- Closable tabs on TabView
+- Drawable-based theming: Option C (drawable first, color fallback) on
+  all ~30 controls covering ~54 drawable keys (backgrounds, icons, arrows,
+  grips, close buttons). SVGDrawable, AtlasImageDrawable, AtlasNineSliceDrawable,
+  ThemeAtlas, ThemeIcons, TexturedTheme, ThemeImageSet (extensible by toolkit).
+  ThemeXmlParser supports `<Drawable>` elements (Color, RoundedRect, SVG,
+  Image, NineSlice, StateList) with ImageLoader callback.
+- View.GetControlState(), UIDrawContext.TryDrawDrawable()
+- Theme.OwnResource() for atlas/image lifetime
+- UISubsystem.ManualInputRouting + InputHelper property
+- UIInputHelper.ProcessMouseInput overload with explicit coords
+- ListView.OnItemLongPress, View.ContentBounds
+- 657 unit tests (exceeding legacy's 542), 20 ImageData tests
+- Demo: F5 cycles Dark/Light/Textured, F6 loads XML theme
+- UITheme.md: complete theming guide with image requirements
 
-**Phase 14 remaining:**
-- Drawable-based theming (see Theming Improvement Plan below)
-- DataGrid control
-- TileView control
-- FileBrowser / AssetBrowser (generic data-model-driven browser
-  with tile/list/tree view modes, resizable tiles, per-item
-  context menus — needs design brainstorming)
-- UI Tree Inspector (follow-up)
-- **Phase 7** (engine integration) — deferred
+---
 
-## Theming Improvement Plan
+## Remaining Work
 
-**Current state:** Theme maps string keys to colors, dimensions, and
-padding. Controls query `theme.GetColor("Button.Background")` etc.
-All rendering is code-driven (VG draw calls with theme colors).
+### Phase 14 — Still open
 
-**Gap:** Legacy (BansheeBeef) uses `Drawable` as the theming primitive.
-Backgrounds, borders, and state variants are all `Drawable` objects
-(ImageDrawable, NineSliceDrawable, StateListDrawable). A theme can be
-fully skinned with image assets without code changes. Our framework has
-the Drawable system (ColorDrawable, NineSliceDrawable, StateListDrawable,
-etc.) but the Theme doesn't use it — controls hardcode VG draw calls.
+| Item | Priority | Notes |
+|------|----------|-------|
+| **Focus validation** | High | Verify focus ring, tab navigation, focus restoration across all demo pages. Fix any controls missing IsFocusable or broken tab order. |
+| **DataGrid control** | Medium | Tabular data with columns, sorting, resizing. Build on ListView. |
+| **TileView control** | Medium | Wrapping grid of tiles. Build from FlowLayout + adapter. |
+| **FileBrowser / AssetBrowser** | Low | Generic data-model-driven browser. Needs design brainstorming. |
+| **UI Tree Inspector** | Low | Debug panel showing live view tree + properties. Follow-up. |
 
-**Proposed changes:**
+### Phase 7 — Engine Integration
 
-1. **Add Drawable support to Theme** — `SetDrawable(key, Drawable)` /
-   `GetDrawable(key)` alongside existing color/dimension/padding.
+**✅ COMPLETE.** Screen-space and world-space UI both working.
 
-2. **Theme provides default Drawables** — DarkTheme/LightTheme create
-   ColorDrawable/RoundedRectDrawable defaults for all controls. These
-   match current visual output but are now swappable.
+- Renamed `Sedulous.Engine.GUI` → `Sedulous.Engine.UI`
+- `EngineUISubsystem` (ISceneAware, IWindowAware, UpdateOrder 400)
+- `ScreenUIView` as `IRenderOverlay` after 3D scene blit
+- `UIComponent` + `UIComponentManager` — per-component UIContext,
+  RootView, VGContext, VGRenderer, render texture, SpriteComponent
+- `WorldUIPass` — render-to-texture via render graph
+- World UI input raycasting with all billboard modes
+- Per-component UIContext with shared theme (`SetTheme` ownership model)
+- `IsHitTestVisible` per-view, `IsInteractionEnabled` subtree block
+- EngineSandbox demo: screen HUD + two world UI panels (WorldAligned + CameraFacing)
 
-3. **Controls query Drawable instead of colors** — e.g., Button.OnDraw
-   does `let bg = ctx.Theme.GetDrawable("Button.Background") ?? fallback`
-   then `bg.Draw(ctx, bounds, state)`. StateListDrawable handles
-   hover/pressed/disabled automatically.
+### Deferred / Low Priority
 
-4. **NineSlice/Image themes** — a theme can replace any control's
-   drawable with NineSliceDrawable backed by a texture atlas. Full
-   game-UI skinning without subclassing controls.
-
-5. **ThemeXmlParser extension** — XML theme files can reference drawable
-   types: `<Drawable key="Button.Background" type="NineSlice" src="button.png" slices="4,4,4,4" />`
-
-**Migration path:** Non-breaking. Controls that already work with colors
-continue to work. Drawable support is additive — controls that opt in
-get skinnable visuals. Can be done incrementally per control.
-
-**Priority:** After DockView, DataGrid, and test gap work. This is a
-rendering/theming improvement, not a functional gap.
+| Item | From | Reason |
+|------|------|--------|
+| Debug overlay `ShowTabOrder` / `ShowZOrder` | Phase 3 | Flags exist, rendering not implemented |
+| Theme XML round-trip test | Phase 4 | Needs ThemeXmlWriter |
+| `{Binding Path}` XML syntax | Phase 5 | Needs Observable<T> / binding infrastructure |
+| `<Include Source=...>` XML composition | Phase 5 | Needs file path resolution |
+| Hot-reload file watching | Phase 6 | Needs engine FileWatcher |
 
 ## Files
 
@@ -2615,16 +2611,18 @@ src/
 
 ### Sedulous.Engine.UI
 
-Depends on `Sedulous.UI.Runtime`, `Sedulous.UI.Gamekit`,
-`Sedulous.UI.Resources`, engine layer.
+Depends on `Sedulous.UI`, `Sedulous.UI.Shell`, `Sedulous.Engine.Runtime`,
+`Sedulous.Engine.Render`, `Sedulous.Scenes`, `Sedulous.Renderer`,
+`Sedulous.VG`, `Sedulous.VG.Renderer`, `Sedulous.Fonts`, `Sedulous.Shaders`,
+`Sedulous.RHI`, `Sedulous.Materials`, engine layer.
 
 ```
 src/
-  UIResourceRegistration.bf    // registers ThemeResource / UILayoutResource
-  Components/
-    WorldSpaceUIComponent.bf   // uses Gamekit's WorldSpaceAnchor
-    WorldSpaceUIComponentManager.bf
-  EngineFloatingWindowHost.bf  // default IFloatingWindowHost impl
+  EngineUISubsystem.bf        // screen + world UI, ISceneAware, IWindowAware
+  ScreenUIView.bf             // IRenderOverlay, VG render onto swapchain
+  UIComponent.bf              // world-space UI component
+  UIComponentManager.bf       // per-scene ComponentManager<UIComponent>
+  WorldUIPass.bf              // PipelinePass, render dirty views to textures
 ```
 
 ### Samples/UI/UISandbox
