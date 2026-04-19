@@ -29,7 +29,18 @@ public class View
 	public bool IsTabStop = true;
 	public int32 TabIndex;
 	public bool ClipsContent;
+
+	/// Whether this view is a valid hit-test target. When false, the view
+	/// itself won't be returned from HitTest, but its children are still
+	/// tested. Use for structural layout containers that should pass
+	/// through clicks to their children without catching them.
 	public bool IsHitTestVisible = true;
+
+	/// Whether this view and its entire subtree can receive input.
+	/// When false, HitTest returns null for the entire subtree (children
+	/// included). Use to disable interaction on a whole panel — e.g.,
+	/// a loading overlay, a disabled settings pane, etc.
+	public bool IsInteractionEnabled = true;
 
 	// === Visual properties ===
 	private float mAlpha = 1.0f;
@@ -174,7 +185,7 @@ public class View
 	/// Returns this view (or a child) at the given local-space point, or null.
 	public virtual View HitTest(Vector2 localPoint)
 	{
-		if (!IsHitTestVisible || Visibility != .Visible)
+		if (!IsHitTestVisible || !IsInteractionEnabled || Visibility != .Visible)
 			return null;
 
 		if (localPoint.X >= 0 && localPoint.Y >= 0 &&

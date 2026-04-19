@@ -211,18 +211,20 @@ public class ViewGroup : View
 
 	public override View HitTest(Vector2 localPoint)
 	{
-		if (!IsHitTestVisible || Visibility != .Visible)
+		// IsInteractionEnabled blocks the entire subtree (like disabling a panel).
+		if (!IsInteractionEnabled || Visibility != .Visible)
 			return null;
 
 		if (localPoint.X < 0 || localPoint.Y < 0 ||
 			localPoint.X >= Width || localPoint.Y >= Height)
 			return null;
 
+		// Always test children — even if this container isn't a hit target.
 		let count = VisualChildCount;
 		for (int i = count - 1; i >= 0; i--)
 		{
 			let child = GetVisualChild(i);
-			if (child == null || child.Visibility != .Visible || !child.IsHitTestVisible)
+			if (child == null || child.Visibility != .Visible || !child.IsInteractionEnabled)
 				continue;
 
 			// Translate point into child's local space.
@@ -252,7 +254,8 @@ public class ViewGroup : View
 				return hit;
 		}
 
-		return this;
+		// IsHitTestVisible gates only this view — children were already tested above.
+		return IsHitTestVisible ? this : null;
 	}
 
 	// === Layout helpers ===
