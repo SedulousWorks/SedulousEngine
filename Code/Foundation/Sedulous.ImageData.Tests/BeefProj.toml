@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.ImageData" = "*"}
+
+[Project]
+Name = "Sedulous.ImageData.Tests"
+TargetType = "BeefTest"

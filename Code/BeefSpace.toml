@@ -173,6 +173,7 @@ recastnavigation-Beef = {Path = "Dependencies/recastnavigation-Beef"}
 "Sedulous.Particles.Resources" = {Path = "Foundation/Sedulous.Particles.Resources"}
 EngineRenderStressTest = {Path = "Samples/EngineRenderStressTest"}
 "Sedulous.ImageData" = {Path = "Foundation/Sedulous.ImageData"}
+"Sedulous.ImageData.Tests" = {Path = "Foundation/Sedulous.ImageData.Tests"}
 "Sedulous.UI" = {Path = "Foundation/Sedulous.UI"}
 "Sedulous.UI.Runtime" = {Path = "Foundation/Sedulous.UI.Runtime"}
 "Sedulous.UI.Shell" = {Path = "Foundation/Sedulous.UI.Shell"}
@@ -197,7 +198,7 @@ Foundation = []
 "Foundation/Fonts" = ["Sedulous.Fonts", "Sedulous.Fonts.TTF", "Sedulous.Fonts.Tests"]
 "Foundation/Geometry" = ["Sedulous.Geometry", "Sedulous.Geometry.Tests", "Sedulous.Geometry.Tooling", "Sedulous.Geometry.Resources", "Sedulous.Geometry.Tooling.Resources"]
 "Foundation/VG" = ["Sedulous.VG", "Sedulous.VG.SVG", "Sedulous.VG.Tests", "Sedulous.VG.Renderer"]
-"Foundation/Imaging" = ["Sedulous.Imaging", "Sedulous.Imaging.STB", "Sedulous.Imaging.Tests", "Sedulous.Imaging.Resources", "Sedulous.Imaging.SDL", "Sedulous.ImageData"]
+"Foundation/Imaging" = ["Sedulous.Imaging", "Sedulous.Imaging.STB", "Sedulous.Imaging.Tests", "Sedulous.Imaging.Resources", "Sedulous.Imaging.SDL", "Sedulous.ImageData", "Sedulous.ImageData.Tests"]
 "Foundation/Models" = ["Sedulous.Models", "Sedulous.Models.FBX", "Sedulous.Models.GLTF", "Sedulous.Models.Tests"]
 "Foundation/Net" = ["Sedulous.Net", "Sedulous.Net.HTTP", "Sedulous.Net.HTTP.Tests", "Sedulous.Net.Tests"]
 "Foundation/Render" = ["Sedulous.Materials", "Sedulous.Shaders", "Sedulous.Textures", "Sedulous.Textures.Resources", "Sedulous.Materials.Resources", "Sedulous.RenderGraph", "Sedulous.RenderGraph.Tests", "Sedulous.Renderer", "Sedulous.Particles", "Sedulous.Particles.Resources"]
