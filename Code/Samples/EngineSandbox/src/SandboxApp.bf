@@ -37,11 +37,19 @@ using Sedulous.Audio;
 using Sedulous.Audio.Decoders;
 using Sedulous.Physics;
 
+using Sedulous.Engine.UI;
+using Sedulous.UI;
+using Sedulous.Shell;
+
 class SandboxApp : EngineApplication
 {
 	// Smoothed frame-time stats for the FPS counter.
 	private float mFpsSmoothed = 0.0f;
 	private float mFrameTimeMs = 0.0f;
+
+	// Screen UI elements.
+	private Label mFpsLabel;
+	private Label mControlsLabel;
 
 	// Camera fly-through state.
 	private Scene mScene;
@@ -130,6 +138,9 @@ class SandboxApp : EngineApplication
 		// Initialize image loader
 		SDLImageLoader.Initialize();
 		STBImageLoader.Initialize();
+
+		// Set up screen UI overlay.
+		SetupScreenUI();
 
 		let sceneSub = Context.GetSubsystem<SceneSubsystem>();
 		let renderSub = Context.GetSubsystem<RenderSubsystem>();
@@ -1177,10 +1188,17 @@ class SandboxApp : EngineApplication
 
 	protected override void OnUpdate(float deltaTime)
 	{
+		// ==================== UI Debug ====================
+		let uiSub = Context.GetSubsystem<EngineUISubsystem>();
+
+		// F1 toggles UI debug bounds overlay.
+		if (mShell.InputManager.Keyboard.IsKeyPressed(.F1) && uiSub?.UIContext != null)
+			uiSub.UIContext.DebugSettings.ShowBounds = !uiSub.UIContext.DebugSettings.ShowBounds;
+
 		// ==================== Camera Controls ====================
-		// WASD = move, Q/E = down/up, mouse right-click drag = look,
-		// Tab = toggle mouse capture, Shift = fast, Escape = exit.
-		UpdateCamera(deltaTime);
+		// Block camera mouse input when UI has the mouse.
+		let uiHovered = uiSub?.IsMouseOverUI ?? false;
+		UpdateCamera(deltaTime, uiHovered);
 
 		// ==================== Debug HUD ====================
 		let rs = Context.GetSubsystem<RenderSubsystem>();
@@ -1193,12 +1211,13 @@ class SandboxApp : EngineApplication
 		let fps = mFrameTimeMs > 0.001f ? 1000.0f / mFrameTimeMs : 0.0f;
 		mFpsSmoothed = mFpsSmoothed * 0.9f + fps * 0.1f;
 
-		// FPS counter + controls hint.
-		dbg.DrawScreenRect(4, 4, 300, 34, .(0, 0, 0, 160));
-		let fpsText = scope String();
-		fpsText.AppendF("FPS {0:F0}  ({1:F2} ms)", mFpsSmoothed, mFrameTimeMs);
-		dbg.DrawScreenText(8, 8, fpsText, .White);
-		dbg.DrawScreenText(8, 20, "WASD=Move QE=Up/Down RMB=Look Tab=Capture Shift=Fast M=SFX 1/2=Nav", .LightGray);
+		// Update screen UI FPS label.
+		if (mFpsLabel != null)
+		{
+			let fpsText = scope String();
+			fpsText.AppendF("FPS {0:F0}  ({1:F2} ms)", mFpsSmoothed, mFrameTimeMs);
+			mFpsLabel.SetText(fpsText);
+		}
 
 		// World-space axis indicator at the origin.
 		dbg.DrawAxis(Matrix.Identity, 1.5f);
@@ -1241,7 +1260,7 @@ class SandboxApp : EngineApplication
 				}
 
 				// Left-click: move all agents to mouse cursor ground hit
-				if (mouse.IsButtonPressed(.Left) && !mMouseCaptured)
+				if (mouse.IsButtonPressed(.Left) && !mMouseCaptured && !uiHovered)
 				{
 					// Build view-projection matrix from camera state
 					let cosP = Math.Cos(mPitch);
@@ -1488,7 +1507,7 @@ class SandboxApp : EngineApplication
 		}
 	}
 
-	private void UpdateCamera(float deltaTime)
+	private void UpdateCamera(float deltaTime, bool uiHovered = false)
 	{
 		let keyboard = mShell.InputManager.Keyboard;
 		let mouse = mShell.InputManager.Mouse;
@@ -1509,7 +1528,8 @@ class SandboxApp : EngineApplication
 		}
 
 		// Look: mouse delta -> yaw/pitch when captured OR when right-click held.
-		if (mMouseCaptured || mouse.IsButtonDown(.Right))
+		// Skip when UI has the mouse (unless captured).
+		if (mMouseCaptured || (mouse.IsButtonDown(.Right) && !uiHovered))
 		{
 			mYaw += mouse.DeltaX * 0.003f;
 			mPitch -= mouse.DeltaY * 0.003f;
@@ -1538,6 +1558,51 @@ class SandboxApp : EngineApplication
 			let target = mCameraPosition + forward;
 			mScene.SetLocalTransform(mCameraEntity, Transform.CreateLookAt(mCameraPosition, target));
 		}
+	}
+
+	private void SetupScreenUI()
+	{
+		let uiSub = Context.GetSubsystem<EngineUISubsystem>();
+		if (uiSub?.ScreenView == null) return;
+
+		let root = uiSub.ScreenView.Root;
+
+		// Absolute layout for HUD overlay — doesn't interfere with 3D.
+		let hud = new AbsoluteLayout();
+		hud.IsHitTestVisible = false; // Layout is not a hit target — children (panel, button) are.
+		root.AddView(hud, new LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent });
+
+		// Translucent background panel for the HUD info.
+		let hudPanel = new Panel();
+		hudPanel.Background = new ColorDrawable(.(0, 0, 0, 140));
+		hudPanel.Padding = .(8, 6, 8, 6);
+		hud.AddView(hudPanel, new AbsoluteLayout.LayoutParams() { X = 4, Y = 4, Width = 420, Height = 70 });
+
+		let hudLayout = new LinearLayout();
+		hudLayout.Orientation = .Vertical;
+		hudLayout.Spacing = 2;
+		hudPanel.AddView(hudLayout, new LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent });
+
+		// FPS label.
+		mFpsLabel = new Label();
+		mFpsLabel.SetText("FPS --");
+		mFpsLabel.FontSize = 14;
+		hudLayout.AddView(mFpsLabel, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 18 });
+
+		// Controls hint.
+		mControlsLabel = new Label();
+		mControlsLabel.SetText("WASD=Move QE=Up/Down RMB=Look Tab=Capture Shift=Fast M=SFX");
+		mControlsLabel.FontSize = 11;
+		hudLayout.AddView(mControlsLabel, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 14 });
+
+		// Test button to confirm input works.
+		let btn = new Button();
+		btn.SetText("Click Me");
+		btn.OnClick.Add(new (b) =>
+		{
+			mControlsLabel.SetText("Button clicked!");
+		});
+		hudLayout.AddView(btn, new LinearLayout.LayoutParams() { Width = 100, Height = 24 });
 	}
 
 	protected override void OnCleanup()
