@@ -18,7 +18,7 @@ using Sedulous.Engine.Physics;
 using Sedulous.Engine.Animation;
 using Sedulous.Engine.Audio;
 using Sedulous.Engine.Navigation;
-using Sedulous.Engine.GUI;
+using Sedulous.Engine.UI;
 using Sedulous.Engine.Render;
 
 /// Full engine application base class.
@@ -241,7 +241,14 @@ abstract class EngineApplication : IDisposable
 		mContext.RegisterSubsystem(new AnimationSubsystem());    //  100
 		mContext.RegisterSubsystem(new AudioSubsystem());        //  200
 		mContext.RegisterSubsystem(new NavigationSubsystem());   //  300
-		mContext.RegisterSubsystem(new GUISubsystem());          //  400
+		let uiSub = new EngineUISubsystem();
+		uiSub.Device = mDevice;
+		uiSub.Window = mWindow;
+		uiSub.Shell = mShell;
+		uiSub.ShaderSystem = mShaderSystem;
+		if (mAssetDirectory.Length > 0)
+			uiSub.AssetDirectory = new String(mAssetDirectory);
+		mContext.RegisterSubsystem(uiSub);                      //  400
 
 		let renderSub = new RenderSubsystem();
 		renderSub.Device = mDevice;
