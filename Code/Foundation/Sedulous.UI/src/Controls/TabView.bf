@@ -15,6 +15,7 @@ public class TabView : ViewGroup
 	{
 		public String Title;
 		public View Content;
+		public bool IsClosable;
 	}
 
 	private List<TabItem> mTabs = new .() ~ {
@@ -32,6 +33,13 @@ public class TabView : ViewGroup
 	public float MinTabWidth = 50;
 
 	public Event<delegate void(TabView, int)> OnTabChanged ~ _.Dispose();
+
+	/// Fired when a closable tab's close button is clicked. Args: (tabView, index).
+	/// The handler should call RemoveTab(index) to actually close it.
+	public Event<delegate void(TabView, int)> OnTabCloseRequested ~ _.Dispose();
+
+	/// Size of the close button in the tab header.
+	public float CloseButtonSize = 14;
 
 	public int SelectedIndex
 	{
@@ -61,11 +69,12 @@ public class TabView : ViewGroup
 	}
 
 	/// Add a tab with title and content view. Returns the tab index.
-	public int AddTab(StringView title, View content)
+	public int AddTab(StringView title, View content, bool closable = false)
 	{
 		TabItem tab;
 		tab.Title = new String(title);
 		tab.Content = content;
+		tab.IsClosable = closable;
 
 		let index = mTabs.Count;
 		mTabs.Add(tab);
@@ -268,9 +277,26 @@ public class TabView : ViewGroup
 					else if (isHover)
 						ctx.VG.FillRect(rect, hoverBg);
 
-					// Tab text.
+					// Tab text (shift left if closable to make room for X button).
 					let textColor = isActive ? activeTabText : (isHover ? hoverTabText : inactiveTabText);
-					ctx.VG.DrawText(tab.Title, font, rect, .Center, .Middle, textColor);
+					var textRect = rect;
+					if (tab.IsClosable)
+						textRect.Width -= CloseButtonSize + 4;
+					ctx.VG.DrawText(tab.Title, font, textRect, .Center, .Middle, textColor);
+
+					// Close button (X).
+					if (tab.IsClosable)
+					{
+						let btnSize = CloseButtonSize;
+						let btnX = rect.X + rect.Width - btnSize - 4;
+						let btnY = rect.Y + (rect.Height - btnSize) * 0.5f;
+						let cx = btnX + btnSize * 0.5f;
+						let cy = btnY + btnSize * 0.5f;
+						let sz = btnSize * 0.25f;
+						let closeColor = isHover ? activeTabText : inactiveTabText;
+						ctx.VG.DrawLine(.(cx - sz, cy - sz), .(cx + sz, cy + sz), closeColor, 1.5f);
+						ctx.VG.DrawLine(.(cx + sz, cy - sz), .(cx - sz, cy + sz), closeColor, 1.5f);
+					}
 				}
 			}
 		}
@@ -296,7 +322,9 @@ public class TabView : ViewGroup
 					for (let tab in mTabs)
 					{
 						let textW = font.Font.MeasureString(tab.Title);
-						let tabW = Math.Max(MinTabWidth, textW + TabPadding * 2);
+						var tabW = textW + TabPadding * 2;
+						if (tab.IsClosable) tabW += CloseButtonSize + 4;
+						tabW = Math.Max(MinTabWidth, tabW);
 						mTabRects.Add(.(x, stripY, tabW, TabHeight));
 						x += tabW;
 					}
@@ -326,6 +354,15 @@ public class TabView : ViewGroup
 		let tabIndex = GetTabIndexAtPoint(e.X, e.Y);
 		if (tabIndex >= 0)
 		{
+			// Check close button first.
+			if (tabIndex < mTabs.Count && mTabs[tabIndex].IsClosable &&
+				HitTestCloseButton(tabIndex, e.X, e.Y))
+			{
+				OnTabCloseRequested(this, tabIndex);
+				e.Handled = true;
+				return;
+			}
+
 			SelectedIndex = tabIndex;
 			e.Handled = true;
 		}
@@ -350,6 +387,17 @@ public class TabView : ViewGroup
 
 		if (prev && mSelectedIndex > 0) { SelectedIndex = mSelectedIndex - 1; e.Handled = true; }
 		else if (next && mSelectedIndex < mTabs.Count - 1) { SelectedIndex = mSelectedIndex + 1; e.Handled = true; }
+	}
+
+	private bool HitTestCloseButton(int tabIndex, float localX, float localY)
+	{
+		if (tabIndex < 0 || tabIndex >= mTabRects.Count) return false;
+		let r = mTabRects[tabIndex];
+		let btnSize = CloseButtonSize;
+		let btnX = r.X + r.Width - btnSize - 4;
+		let btnY = r.Y + (r.Height - btnSize) * 0.5f;
+		return localX >= btnX && localX <= btnX + btnSize &&
+			localY >= btnY && localY <= btnY + btnSize;
 	}
 
 	private int GetTabIndexAtPoint(float localX, float localY)

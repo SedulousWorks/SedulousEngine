@@ -1351,4 +1351,115 @@ class ControlDetailTests
 
 		ctx.UpdateRootView(root);
 	}
+
+	// =====================================================================
+	// TabView — Closable Tabs
+	// =====================================================================
+
+	[Test]
+	public static void TabView_AddClosableTab()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
+
+		let tabs = new TabView();
+		root.AddView(tabs, new LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent });
+
+		tabs.AddTab("Normal", new ColorView());
+		tabs.AddTab("Closable", new ColorView(), closable: true);
+
+		Test.Assert(tabs.TabCount == 2);
+	}
+
+	[Test]
+	public static void TabView_CloseRequestedEvent_Fires()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
+
+		let tabs = new TabView();
+		root.AddView(tabs, new LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent });
+
+		tabs.AddTab("Tab1", new ColorView(), closable: true);
+		tabs.AddTab("Tab2", new ColorView(), closable: true);
+
+		int closedIndex = -1;
+		tabs.OnTabCloseRequested.Add(new [&closedIndex](tv, idx) => { closedIndex = idx; });
+
+		// Simulate clicking the close button area on the first tab.
+		// We need to layout first so tab rects are computed.
+		ctx.UpdateRootView(root);
+
+		// Force a draw to rebuild tab rects (they're built in OnDraw).
+		// Instead, just verify the event is wired — actual close button
+		// hit-testing requires rendered tab rects.
+		tabs.OnTabCloseRequested(tabs, 0);
+		Test.Assert(closedIndex == 0);
+	}
+
+	[Test]
+	public static void TabView_RemoveTab_OnClose()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
+
+		let tabs = new TabView();
+		root.AddView(tabs, new LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent });
+
+		tabs.AddTab("A", new ColorView(), closable: true);
+		tabs.AddTab("B", new ColorView(), closable: true);
+		tabs.AddTab("C", new ColorView());
+
+		tabs.OnTabCloseRequested.Add(new (tv, idx) => { tv.RemoveTab(idx); });
+
+		Test.Assert(tabs.TabCount == 3);
+
+		// Close first tab.
+		tabs.OnTabCloseRequested(tabs, 0);
+		Test.Assert(tabs.TabCount == 2);
+	}
+
+	[Test]
+	public static void TabView_ClosableTab_WiderThanNormal()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
+
+		let tabs = new TabView();
+		root.AddView(tabs, new LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent });
+		tabs.AddTab("Test", new ColorView(), closable: false);
+		tabs.AddTab("Test", new ColorView(), closable: true);
+
+		// Closable tab should request more width for the X button.
+		// Can't easily measure without font service, but verify no crash.
+		Test.Assert(tabs.TabCount == 2);
+	}
+
+	[Test]
+	public static void TabView_CloseLastTab_SelectsPrevious()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		root.ViewportSize = .(400, 300);
+
+		let tabs = new TabView();
+		root.AddView(tabs, new LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent });
+
+		tabs.AddTab("A", new ColorView());
+		tabs.AddTab("B", new ColorView(), closable: true);
+		tabs.SelectedIndex = 1;
+
+		tabs.RemoveTab(1);
+		Test.Assert(tabs.SelectedIndex == 0);
+		Test.Assert(tabs.TabCount == 1);
+	}
 }

@@ -130,6 +130,41 @@ class WidgetsPage : DemoPage
 			grid.AddView(shapePanel, new GridLayout.LayoutParams() { Row = 1, Column = 1 });
 		}
 
+		// Closable tabs with placement toggle
+		AddSection("Closable Tabs (click content to cycle placement)");
+		{
+			let tabView = new TabView();
+			tabView.TabFontSize = 12;
+			mLayout.AddView(tabView, new LinearLayout.LayoutParams() { Width = Sedulous.UI.LayoutParams.MatchParent, Height = 120 });
+
+			for (let name in scope StringView[]("Tab 1", "Tab 2", "Tab 3"))
+			{
+				let btn = new Button();
+				btn.SetText("Cycle Placement");
+				btn.OnClick.Add(new (btn) =>
+				{
+					switch (tabView.Placement)
+					{
+					case .Top:    tabView.Placement = .Bottom;
+					case .Bottom: tabView.Placement = .Left;
+					case .Left:   tabView.Placement = .Right;
+					case .Right:  tabView.Placement = .Top;
+					}
+					tabView.InvalidateLayout();
+				});
+				tabView.AddTab(name, btn, closable: true);
+			}
+
+			// Add one non-closable tab for comparison.
+			let fixedLabel = new Label();
+			fixedLabel.SetText("Fixed");
+			fixedLabel.HAlign = .Center;
+			fixedLabel.VAlign = .Middle;
+			tabView.AddTab("Pinned", fixedLabel, closable: false);
+
+			tabView.OnTabCloseRequested.Add(new (tv, idx) => { tv.RemoveTab(idx); });
+		}
+
 		// DockView layout
 		AddSection("DockView");
 		{
