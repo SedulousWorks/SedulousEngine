@@ -71,6 +71,9 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	// Per-frame list of shadow render jobs (cleared each frame in SetupShadows).
 	private List<ShadowPipeline.ShadowJob> mShadowDraws = new .() ~ delete _;
 
+	// Screen-space overlays rendered after blit, before present.
+	private List<Sedulous.Renderer.IRenderOverlay> mOverlays = new .() ~ delete _;
+
 	// Per-frame state
 	private int32 mFrameIndex = 0;
 	/// Previous frame's main-view ViewProjectionMatrix, used for motion vectors.
@@ -89,6 +92,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	public ISurface Surface { get => mSurface; set => mSurface = value; }
 	public TextureFormat SwapChainFormat { get => mSwapChainFormat; set => mSwapChainFormat = value; }
 	public PresentMode PresentMode { get => mPresentMode; set => mPresentMode = value; }
+	public int32 FrameCount => MAX_FRAMES_IN_FLIGHT;
 
 	/// Shader system (set by app, not owned).
 	public ShaderSystem ShaderSystem { get; set; }
@@ -334,6 +338,17 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		// Blit pipeline output -> swapchain
 		using (Profiler.Begin("Blit"))
 			BlitToSwapchain(encoder);
+
+		// Render screen-space overlays (UI, etc.) after blit, before present.
+		if (mOverlays.Count > 0)
+		{
+			using (Profiler.Begin("Overlays"))
+			{
+				for (let overlay in mOverlays)
+					overlay.RenderOverlay(encoder, mSwapChain.CurrentTextureView,
+						mSwapChain.Width, mSwapChain.Height, mFrameIndex);
+			}
+		}
 
 		// Transition swapchain to present
 		encoder.TransitionTexture(mSwapChain.CurrentTexture, .RenderTarget, .Present);
@@ -834,6 +849,21 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 
 	public void OnSceneDestroyed(Scene scene)
 	{
+	}
+
+	// ==================== Render Overlays ====================
+
+	/// Register a screen-space overlay (rendered after blit, before present).
+	public void RegisterOverlay(Sedulous.Renderer.IRenderOverlay overlay)
+	{
+		if (!mOverlays.Contains(overlay))
+			mOverlays.Add(overlay);
+	}
+
+	/// Unregister a screen-space overlay.
+	public void UnregisterOverlay(Sedulous.Renderer.IRenderOverlay overlay)
+	{
+		mOverlays.Remove(overlay);
 	}
 
 	// ==================== IWindowAware ====================
