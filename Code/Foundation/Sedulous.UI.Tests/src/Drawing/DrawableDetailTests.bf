@@ -115,7 +115,7 @@ class DrawableDetailTests
 	{
 		bool drawn = false;
 		let d = scope ShapeDrawable(new [&drawn](ctx, bounds) => { drawn = true; });
-		// Verify construction works without crash.
+		Test.Assert(d != null);
 		Test.Assert(!drawn);
 	}
 

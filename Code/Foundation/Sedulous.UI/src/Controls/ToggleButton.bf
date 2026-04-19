@@ -47,6 +47,17 @@ public class ToggleButton : View
 		set { mPadding = value; InvalidateLayout(); }
 	}
 
+	public bool IsPressed;
+
+	public override ControlState GetControlState()
+	{
+		if (!IsEffectivelyEnabled) return .Disabled;
+		if (IsPressed) return .Pressed;
+		if (IsHovered) return .Hover;
+		if (IsFocused) return .Focused;
+		return .Normal;
+	}
+
 	public this()
 	{
 		IsFocusable = true;
@@ -86,18 +97,23 @@ public class ToggleButton : View
 		let radius = ctx.Theme?.GetDimension("ToggleButton.CornerRadius", 4) ?? 4;
 
 		// Background — accent when checked, primary when not.
-		Color bgColor;
-		if (mIsChecked)
-			bgColor = ctx.Theme?.TryGetColor("ToggleButton.CheckedBackground") ?? ctx.Theme?.Palette.PrimaryAccent ?? .(80, 160, 255, 255);
-		else
-			bgColor = ctx.Theme?.TryGetColor("ToggleButton.Background") ?? ctx.Theme?.Palette.Surface ?? .(60, 65, 80, 255);
+		let drawableKey = mIsChecked ? "ToggleButton.CheckedBackground" : "ToggleButton.Background";
+		let state = GetControlState();
+		if (!ctx.TryDrawDrawable(drawableKey, bounds, state))
+		{
+			Color bgColor;
+			if (mIsChecked)
+				bgColor = ctx.Theme?.TryGetColor("ToggleButton.CheckedBackground") ?? ctx.Theme?.Palette.PrimaryAccent ?? .(80, 160, 255, 255);
+			else
+				bgColor = ctx.Theme?.TryGetColor("ToggleButton.Background") ?? ctx.Theme?.Palette.Surface ?? .(60, 65, 80, 255);
 
-		if (!IsEffectivelyEnabled)
-			bgColor = Palette.ComputeDisabled(bgColor);
-		else if (IsHovered)
-			bgColor = Palette.ComputeHover(bgColor);
+			if (!IsEffectivelyEnabled)
+				bgColor = Palette.ComputeDisabled(bgColor);
+			else if (IsHovered)
+				bgColor = Palette.ComputeHover(bgColor);
 
-		ctx.VG.FillRoundedRect(bounds, radius, bgColor);
+			ctx.VG.FillRoundedRect(bounds, radius, bgColor);
+		}
 
 		// Border on unchecked state for visual distinction.
 		if (!mIsChecked)

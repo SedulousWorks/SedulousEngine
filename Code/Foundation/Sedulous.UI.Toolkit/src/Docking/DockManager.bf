@@ -514,8 +514,12 @@ public class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 
 	public override void OnDraw(UIDrawContext ctx)
 	{
-		let bgColor = ctx.Theme?.GetColor("DockManager.Background") ?? ctx.Theme?.Palette.Background ?? .(30, 30, 35, 255);
-		ctx.VG.FillRect(.(0, 0, Width, Height), bgColor);
+		let bounds = RectangleF(0, 0, Width, Height);
+		if (!ctx.TryDrawDrawable("DockManager.Background", bounds, .Normal))
+		{
+			let bgColor = ctx.Theme?.GetColor("DockManager.Background") ?? ctx.Theme?.Palette.Background ?? .(30, 30, 35, 255);
+			ctx.VG.FillRect(bounds, bgColor);
+		}
 
 		DrawChildren(ctx);
 

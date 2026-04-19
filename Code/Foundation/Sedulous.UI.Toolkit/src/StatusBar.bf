@@ -45,8 +45,11 @@ public class StatusBar : LinearLayout
 	public override void OnDraw(UIDrawContext ctx)
 	{
 		// Background.
-		let bgColor = ctx.Theme?.GetColor("StatusBar.Background", .(30, 32, 40, 255)) ?? .(30, 32, 40, 255);
-		ctx.VG.FillRect(.(0, 0, Width, Height), bgColor);
+		if (!ctx.TryDrawDrawable("StatusBar.Background", .(0, 0, Width, Height), .Normal))
+		{
+			let bgColor = ctx.Theme?.GetColor("StatusBar.Background", .(30, 32, 40, 255)) ?? .(30, 32, 40, 255);
+			ctx.VG.FillRect(.(0, 0, Width, Height), bgColor);
+		}
 
 		// Top border.
 		let borderColor = ctx.Theme?.GetColor("StatusBar.Border", .(65, 70, 85, 255)) ?? .(65, 70, 85, 255);

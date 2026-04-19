@@ -57,15 +57,18 @@ public class ScrollBar : View
 	public override void OnDraw(UIDrawContext ctx)
 	{
 		let bounds = RectangleF(0, 0, Width, Height);
+		let state = GetControlState();
 
 		// Track
-		ctx.VG.FillRoundedRect(bounds, BarThickness * 0.5f, TrackColor);
+		if (!ctx.TryDrawDrawable("ScrollBar.Track", bounds, state))
+			ctx.VG.FillRoundedRect(bounds, BarThickness * 0.5f, TrackColor);
 
 		// Thumb
 		if (ThumbRatio < 1.0f)
 		{
 			let thumbRect = GetThumbRect();
-			ctx.VG.FillRoundedRect(thumbRect, BarThickness * 0.4f, ThumbColor);
+			if (!ctx.TryDrawDrawable("ScrollBar.Thumb", thumbRect, state))
+				ctx.VG.FillRoundedRect(thumbRect, BarThickness * 0.4f, ThumbColor);
 		}
 	}
 

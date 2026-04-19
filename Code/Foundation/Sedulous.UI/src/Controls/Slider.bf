@@ -96,20 +96,31 @@ public class Slider : View
 		let trackEnd = Width - thumbHalf;
 		let trackW = trackEnd - trackStart;
 		let trackY = (Height - TrackHeight) * 0.5f;
+		let state = GetControlState();
 
 		// Track.
-		ctx.VG.FillRoundedRect(.(trackStart, trackY, trackW, TrackHeight), TrackHeight * 0.5f, trackBg);
+		let trackBounds = RectangleF(trackStart, trackY, trackW, TrackHeight);
+		if (!ctx.TryDrawDrawable("Slider.Track", trackBounds, state))
+			ctx.VG.FillRoundedRect(trackBounds, TrackHeight * 0.5f, trackBg);
 
 		// Fill.
 		let fillW = trackW * ratio;
 		if (fillW > 0)
-			ctx.VG.FillRoundedRect(.(trackStart, trackY, fillW, TrackHeight), TrackHeight * 0.5f, fillColor);
+		{
+			let fillBounds = RectangleF(trackStart, trackY, fillW, TrackHeight);
+			if (!ctx.TryDrawDrawable("Slider.Fill", fillBounds, state))
+				ctx.VG.FillRoundedRect(fillBounds, TrackHeight * 0.5f, fillColor);
+		}
 
 		// Thumb.
 		let thumbX = trackStart + trackW * ratio;
 		let thumbY = Height * 0.5f;
-		let tc = (IsHovered || mDragging) ? thumbHover : thumbNormal;
-		ctx.VG.FillCircle(.(thumbX, thumbY), thumbHalf, tc);
+		let thumbBounds = RectangleF(thumbX - thumbHalf, thumbY - thumbHalf, ThumbSize, ThumbSize);
+		if (!ctx.TryDrawDrawable("Slider.Thumb", thumbBounds, state))
+		{
+			let tc = (IsHovered || mDragging) ? thumbHover : thumbNormal;
+			ctx.VG.FillCircle(.(thumbX, thumbY), thumbHalf, tc);
+		}
 
 		// Focus ring.
 		if (IsFocused)
@@ -124,20 +135,31 @@ public class Slider : View
 		let trackEnd = Height - thumbHalf;
 		let trackLen = trackEnd - trackStart;
 		let trackX = (Width - TrackHeight) * 0.5f;
+		let state = GetControlState();
 
 		// Track.
-		ctx.VG.FillRoundedRect(.(trackX, trackStart, TrackHeight, trackLen), TrackHeight * 0.5f, trackBg);
+		let trackBounds = RectangleF(trackX, trackStart, TrackHeight, trackLen);
+		if (!ctx.TryDrawDrawable("Slider.Track", trackBounds, state))
+			ctx.VG.FillRoundedRect(trackBounds, TrackHeight * 0.5f, trackBg);
 
 		// Fill (bottom-up).
 		let fillH = trackLen * ratio;
 		if (fillH > 0)
-			ctx.VG.FillRoundedRect(.(trackX, trackEnd - fillH, TrackHeight, fillH), TrackHeight * 0.5f, fillColor);
+		{
+			let fillBounds = RectangleF(trackX, trackEnd - fillH, TrackHeight, fillH);
+			if (!ctx.TryDrawDrawable("Slider.Fill", fillBounds, state))
+				ctx.VG.FillRoundedRect(fillBounds, TrackHeight * 0.5f, fillColor);
+		}
 
 		// Thumb.
 		let thumbX = Width * 0.5f;
 		let thumbY = trackEnd - trackLen * ratio;
-		let tc = (IsHovered || mDragging) ? thumbHover : thumbNormal;
-		ctx.VG.FillCircle(.(thumbX, thumbY), thumbHalf, tc);
+		let thumbBounds = RectangleF(thumbX - thumbHalf, thumbY - thumbHalf, ThumbSize, ThumbSize);
+		if (!ctx.TryDrawDrawable("Slider.Thumb", thumbBounds, state))
+		{
+			let tc = (IsHovered || mDragging) ? thumbHover : thumbNormal;
+			ctx.VG.FillCircle(.(thumbX, thumbY), thumbHalf, tc);
+		}
 
 		if (IsFocused)
 			ctx.VG.StrokeCircle(.(thumbX, thumbY), thumbHalf + 2,

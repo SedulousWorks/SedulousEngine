@@ -88,8 +88,11 @@ public class ToolbarButton : ToolbarItem
 		// Hover/pressed background.
 		if (IsHovered)
 		{
-			let hoverColor = ctx.Theme?.GetColor("Toolbar.ButtonHover", .(70, 75, 90, 255)) ?? .(70, 75, 90, 255);
-			ctx.VG.FillRoundedRect(bounds, 3, hoverColor);
+			if (!ctx.TryDrawDrawable("ToolbarButton.Background", bounds, .Hover))
+			{
+				let hoverColor = ctx.Theme?.GetColor("Toolbar.ButtonHover", .(70, 75, 90, 255)) ?? .(70, 75, 90, 255);
+				ctx.VG.FillRoundedRect(bounds, 3, hoverColor);
+			}
 		}
 
 		float x = 8;
@@ -165,8 +168,11 @@ public class ToolbarToggle : ToolbarButton
 		// Active toggle: accent background.
 		if (mIsChecked)
 		{
-			let onColor = ctx.Theme?.GetColor("Toolbar.ToggleOn", .(40, 80, 160, 255)) ?? .(40, 80, 160, 255);
-			ctx.VG.FillRoundedRect(bounds, 3, onColor);
+			if (!ctx.TryDrawDrawable("ToolbarToggle.CheckedBackground", bounds, .Pressed))
+			{
+				let onColor = ctx.Theme?.GetColor("Toolbar.ToggleOn", .(40, 80, 160, 255)) ?? .(40, 80, 160, 255);
+				ctx.VG.FillRoundedRect(bounds, 3, onColor);
+			}
 		}
 
 		base.OnDraw(ctx);
@@ -236,8 +242,11 @@ public class Toolbar : LinearLayout
 	public override void OnDraw(UIDrawContext ctx)
 	{
 		// Background.
-		let bgColor = ctx.Theme?.GetColor("Toolbar.Background", .(35, 37, 46, 255)) ?? .(35, 37, 46, 255);
-		ctx.VG.FillRect(.(0, 0, Width, Height), bgColor);
+		if (!ctx.TryDrawDrawable("Toolbar.Background", .(0, 0, Width, Height), .Normal))
+		{
+			let bgColor = ctx.Theme?.GetColor("Toolbar.Background", .(35, 37, 46, 255)) ?? .(35, 37, 46, 255);
+			ctx.VG.FillRect(.(0, 0, Width, Height), bgColor);
+		}
 
 		// Bottom border.
 		let borderColor = ctx.Theme?.GetColor("Toolbar.Border", .(65, 70, 85, 255)) ?? .(65, 70, 85, 255);

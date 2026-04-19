@@ -67,6 +67,11 @@ public class ToolkitThemeExtension : IThemeExtension
 
 		// === DockSplit ===
 		theme.SetColor("DockSplit.Divider", p.Border);
+		theme.SetColor("DockSplit.DividerHover", p.PrimaryAccent);
+
+		// === FloatingWindow ===
+		theme.SetColor("FloatingWindow.Background", p.Surface);
+		theme.SetColor("FloatingWindow.Border", p.Border);
 
 		// === DockZoneIndicator ===
 		theme.SetColor("DockZone.Indicator", .(p.PrimaryAccent.R, p.PrimaryAccent.G, p.PrimaryAccent.B, 80));

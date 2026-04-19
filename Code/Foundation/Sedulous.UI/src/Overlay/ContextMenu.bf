@@ -141,10 +141,14 @@ public class ContextMenu : View, IPopupOwner
 		let h = Height;
 
 		// Background
-		let bgColor = ctx.Theme?.GetColor("ContextMenu.Background", .(45, 48, 58, 255)) ?? .(45, 48, 58, 255);
+		let menuBounds = RectangleF(0, 0, w, h);
 		let borderColor = ctx.Theme?.GetColor("ContextMenu.Border", .(70, 75, 90, 255)) ?? .(70, 75, 90, 255);
-		ctx.VG.FillRoundedRect(.(0, 0, w, h), 4, bgColor);
-		ctx.VG.StrokeRoundedRect(.(0, 0, w, h), 4, borderColor, 1);
+		if (!ctx.TryDrawDrawable("ContextMenu.Background", menuBounds, GetControlState()))
+		{
+			let bgColor = ctx.Theme?.GetColor("ContextMenu.Background", .(45, 48, 58, 255)) ?? .(45, 48, 58, 255);
+			ctx.VG.FillRoundedRect(menuBounds, 4, bgColor);
+			ctx.VG.StrokeRoundedRect(menuBounds, 4, borderColor, 1);
+		}
 
 		let hoverColor = ctx.Theme?.GetColor("ContextMenu.Hover", .(60, 120, 200, 100)) ?? .(60, 120, 200, 100);
 		let textColor = ctx.Theme?.GetColor("ContextMenu.Text") ?? ctx.Theme?.GetColor("Label.Foreground") ?? .(220, 225, 235, 255);
@@ -165,7 +169,11 @@ public class ContextMenu : View, IPopupOwner
 
 			// Hover highlight
 			if (i == mHoveredIndex)
-				ctx.VG.FillRoundedRect(.(4, y, w - 8, mItemHeight), 3, hoverColor);
+			{
+				let hoverRect = RectangleF(4, y, w - 8, mItemHeight);
+				if (!ctx.TryDrawDrawable("ContextMenu.ItemHover", hoverRect, .Hover))
+					ctx.VG.FillRoundedRect(hoverRect, 3, hoverColor);
+			}
 
 			// Label
 			if (item.Label != null && ctx.FontService != null)
@@ -178,18 +186,23 @@ public class ContextMenu : View, IPopupOwner
 				}
 			}
 
-			// Submenu arrow — right-pointing VG triangle.
+			// Submenu arrow.
 			if (item.Submenu != null)
 			{
 				let arrowX = w - 16;
 				let arrowCY = y + mItemHeight * 0.5f;
 				let arrowSize = 6.0f;
-				ctx.VG.BeginPath();
-				ctx.VG.MoveTo(arrowX, arrowCY - arrowSize * 0.5f);
-				ctx.VG.LineTo(arrowX + arrowSize * 0.6f, arrowCY);
-				ctx.VG.LineTo(arrowX, arrowCY + arrowSize * 0.5f);
-				ctx.VG.ClosePath();
-				ctx.VG.Fill(textColor);
+				let arrowRect = RectangleF(arrowX, arrowCY - arrowSize * 0.5f, arrowSize, arrowSize);
+
+				if (!ctx.TryDrawDrawable("ContextMenu.SubmenuArrow", arrowRect, .Normal))
+				{
+					ctx.VG.BeginPath();
+					ctx.VG.MoveTo(arrowX, arrowCY - arrowSize * 0.5f);
+					ctx.VG.LineTo(arrowX + arrowSize * 0.6f, arrowCY);
+					ctx.VG.LineTo(arrowX, arrowCY + arrowSize * 0.5f);
+					ctx.VG.ClosePath();
+					ctx.VG.Fill(textColor);
+				}
 			}
 
 			y += mItemHeight;

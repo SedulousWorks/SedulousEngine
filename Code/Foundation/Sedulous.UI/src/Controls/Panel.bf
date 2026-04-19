@@ -31,7 +31,7 @@ public class Panel : ViewGroup
 		let bounds = RectangleF(0, 0, Width, Height);
 		if (Background != null)
 			Background.Draw(ctx, bounds);
-		else
+		else if (!ctx.TryDrawDrawable("Panel.Background", bounds, GetControlState()))
 			ctx.FillThemedBox(bounds, "Panel");
 		DrawChildren(ctx);
 	}

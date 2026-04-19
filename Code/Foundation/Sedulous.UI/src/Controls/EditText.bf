@@ -344,8 +344,11 @@ public class EditText : View, ITextEditHost
 		let radius = ctx.Theme?.GetDimension("EditText.CornerRadius", 4) ?? 4;
 
 		// Background.
-		let bgColor = ctx.Theme?.GetColor("EditText.Background", .(30, 32, 42, 255)) ?? .(30, 32, 42, 255);
-		ctx.VG.FillRoundedRect(bounds, radius, bgColor);
+		if (!ctx.TryDrawDrawable("EditText.Background", bounds, GetControlState()))
+		{
+			let bgColor = ctx.Theme?.GetColor("EditText.Background", .(30, 32, 42, 255)) ?? .(30, 32, 42, 255);
+			ctx.VG.FillRoundedRect(bounds, radius, bgColor);
+		}
 
 		// Border — thicker + accent when focused.
 		let borderColor = IsFocused

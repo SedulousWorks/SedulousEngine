@@ -169,8 +169,11 @@ public class DockTabGroup : ViewGroup, IDragSource
 		let contentH = Height - mTabHeight;
 
 		// Content area.
-		let contentBg = ctx.Theme?.Palette.Surface ?? .(42, 44, 54, 255);
-		ctx.VG.FillRect(.(0, 0, Width, contentH), contentBg);
+		if (!ctx.TryDrawDrawable("DockTabGroup.ContentBackground", .(0, 0, Width, contentH), .Normal))
+		{
+			let contentBg = ctx.Theme?.Palette.Surface ?? .(42, 44, 54, 255);
+			ctx.VG.FillRect(.(0, 0, Width, contentH), contentBg);
+		}
 
 		// Draw selected panel.
 		if (mSelectedIndex >= 0 && mSelectedIndex < mPanels.Count)
@@ -187,7 +190,8 @@ public class DockTabGroup : ViewGroup, IDragSource
 
 		// Tab bar background.
 		let tabBg = ctx.Theme?.GetColor("DockTabGroup.Background", .(35, 37, 46, 255)) ?? .(35, 37, 46, 255);
-		ctx.VG.FillRect(.(0, contentH, Width, mTabHeight), tabBg);
+		if (!ctx.TryDrawDrawable("DockTabGroup.TabBar", .(0, contentH, Width, mTabHeight), .Normal))
+			ctx.VG.FillRect(.(0, contentH, Width, mTabHeight), tabBg);
 
 		// Draw tabs.
 		mTabRects.Clear();
@@ -210,9 +214,15 @@ public class DockTabGroup : ViewGroup, IDragSource
 			mTabRects.Add(tabRect);
 
 			if (i == mSelectedIndex)
-				ctx.VG.FillRect(tabRect, activeTabBg);
+			{
+				if (!ctx.TryDrawDrawable("DockTabGroup.ActiveTab", tabRect, .Normal))
+					ctx.VG.FillRect(tabRect, activeTabBg);
+			}
 			else if (i == mHoveredTabIndex)
-				ctx.VG.FillRect(tabRect, Palette.Lighten(tabBg, 0.1f));
+			{
+				if (!ctx.TryDrawDrawable("DockTabGroup.InactiveTab", tabRect, .Hover))
+					ctx.VG.FillRect(tabRect, Palette.Lighten(tabBg, 0.1f));
+			}
 
 			let textColor = (i == mSelectedIndex) ? activeText : inactiveText;
 			ctx.VG.DrawText(panel.Title, font, .(tabX + 8, contentH, textW, mTabHeight), .Left, .Middle, textColor);

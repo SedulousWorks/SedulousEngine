@@ -214,24 +214,37 @@ public class NumericField : View, ITextEditHost
 		let halfH = Height * 0.5f;
 
 		// Unified background.
-		let bgColor = ctx.Theme?.GetColor("EditText.Background", .(30, 32, 42, 255)) ?? .(30, 32, 42, 255);
-		ctx.VG.FillRoundedRect(bounds, radius, bgColor);
+		if (!ctx.TryDrawDrawable("EditText.Background", bounds, GetControlState()))
+		{
+			let bgColor = ctx.Theme?.GetColor("EditText.Background", .(30, 32, 42, 255)) ?? .(30, 32, 42, 255);
+			ctx.VG.FillRoundedRect(bounds, radius, bgColor);
+		}
 
 		// Spin button backgrounds.
 		let btnBg = ctx.Theme?.GetColor("NumericField.ButtonBackground", .(50, 55, 68, 255)) ?? .(50, 55, 68, 255);
 		let btnBorder = ctx.Theme?.GetColor("NumericField.ButtonBorder", .(80, 85, 100, 255)) ?? .(80, 85, 100, 255);
 
 		// Up button.
-		var upBg = btnBg;
-		if (mPressedButton == 1) upBg = Palette.ComputePressed(btnBg);
-		else if (mHoveredButton == 1) upBg = Palette.ComputeHover(btnBg);
-		ctx.VG.FillRect(.(btnX, 0, ButtonWidth, halfH), upBg);
+		let upState = (mPressedButton == 1) ? ControlState.Pressed : ((mHoveredButton == 1) ? ControlState.Hover : ControlState.Normal);
+		let upRect = RectangleF(btnX, 0, ButtonWidth, halfH);
+		if (!ctx.TryDrawDrawable("NumericField.UpButton", upRect, upState))
+		{
+			var upBg = btnBg;
+			if (mPressedButton == 1) upBg = Palette.ComputePressed(btnBg);
+			else if (mHoveredButton == 1) upBg = Palette.ComputeHover(btnBg);
+			ctx.VG.FillRect(upRect, upBg);
+		}
 
 		// Down button.
-		var downBg = btnBg;
-		if (mPressedButton == -1) downBg = Palette.ComputePressed(btnBg);
-		else if (mHoveredButton == -1) downBg = Palette.ComputeHover(btnBg);
-		ctx.VG.FillRect(.(btnX, halfH, ButtonWidth, halfH), downBg);
+		let downState = (mPressedButton == -1) ? ControlState.Pressed : ((mHoveredButton == -1) ? ControlState.Hover : ControlState.Normal);
+		let downRect = RectangleF(btnX, halfH, ButtonWidth, halfH);
+		if (!ctx.TryDrawDrawable("NumericField.DownButton", downRect, downState))
+		{
+			var downBg = btnBg;
+			if (mPressedButton == -1) downBg = Palette.ComputePressed(btnBg);
+			else if (mHoveredButton == -1) downBg = Palette.ComputeHover(btnBg);
+			ctx.VG.FillRect(downRect, downBg);
+		}
 
 		// Button separators.
 		ctx.VG.FillRect(.(btnX, 0, 1, Height), btnBorder);
@@ -245,24 +258,32 @@ public class NumericField : View, ITextEditHost
 		{
 			let cx = btnX + ButtonWidth * 0.5f;
 			let cy = halfH * 0.5f;
-			ctx.VG.BeginPath();
-			ctx.VG.MoveTo(cx - arrowSz, cy + arrowSz * 0.5f);
-			ctx.VG.LineTo(cx + arrowSz, cy + arrowSz * 0.5f);
-			ctx.VG.LineTo(cx, cy - arrowSz * 0.5f);
-			ctx.VG.ClosePath();
-			ctx.VG.Fill(arrowColor);
+			let upArrowRect = RectangleF(cx - arrowSz, cy - arrowSz, arrowSz * 2, arrowSz * 2);
+			if (!ctx.TryDrawDrawable("NumericField.UpArrow", upArrowRect, .Normal))
+			{
+				ctx.VG.BeginPath();
+				ctx.VG.MoveTo(cx - arrowSz, cy + arrowSz * 0.5f);
+				ctx.VG.LineTo(cx + arrowSz, cy + arrowSz * 0.5f);
+				ctx.VG.LineTo(cx, cy - arrowSz * 0.5f);
+				ctx.VG.ClosePath();
+				ctx.VG.Fill(arrowColor);
+			}
 		}
 
 		// Down arrow.
 		{
 			let cx = btnX + ButtonWidth * 0.5f;
 			let cy = halfH + halfH * 0.5f;
-			ctx.VG.BeginPath();
-			ctx.VG.MoveTo(cx - arrowSz, cy - arrowSz * 0.5f);
-			ctx.VG.LineTo(cx + arrowSz, cy - arrowSz * 0.5f);
-			ctx.VG.LineTo(cx, cy + arrowSz * 0.5f);
-			ctx.VG.ClosePath();
-			ctx.VG.Fill(arrowColor);
+			let downArrowRect = RectangleF(cx - arrowSz, cy - arrowSz, arrowSz * 2, arrowSz * 2);
+			if (!ctx.TryDrawDrawable("NumericField.DownArrow", downArrowRect, .Normal))
+			{
+				ctx.VG.BeginPath();
+				ctx.VG.MoveTo(cx - arrowSz, cy - arrowSz * 0.5f);
+				ctx.VG.LineTo(cx + arrowSz, cy - arrowSz * 0.5f);
+				ctx.VG.LineTo(cx, cy + arrowSz * 0.5f);
+				ctx.VG.ClosePath();
+				ctx.VG.Fill(arrowColor);
+			}
 		}
 
 		// Unified border.

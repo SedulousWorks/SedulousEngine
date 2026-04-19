@@ -396,7 +396,7 @@ class DockViewTests
 
 		ctx.UpdateRootView(root);
 
-		// No children, no padding → measures to available space via spec.
+		// No children, no padding -> measures to available space via spec.
 		Test.Assert(dock.MeasuredSize.X >= 0);
 		Test.Assert(dock.MeasuredSize.Y >= 0);
 	}

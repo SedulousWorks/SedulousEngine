@@ -48,6 +48,20 @@ public class UIDrawContext
 
 	// === Theme-key helpers ===
 
+	/// Try to draw a theme drawable. Returns true if a drawable was found and drawn.
+	/// Controls use this for Option C pattern: drawable first, color fallback.
+	public bool TryDrawDrawable(StringView key, RectangleF bounds, ControlState state = .Normal)
+	{
+		if (mTheme == null) return false;
+		let d = mTheme.GetDrawable(key);
+		if (d != null)
+		{
+			d.Draw(this, bounds, state);
+			return true;
+		}
+		return false;
+	}
+
 	/// Fill a rect with the color from a theme key.
 	public void FillBackground(RectangleF bounds, StringView themeKey)
 	{

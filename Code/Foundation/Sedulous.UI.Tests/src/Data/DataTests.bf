@@ -288,7 +288,6 @@ class DataTests
 		root.AddView(list);
 
 		ctx.UpdateRootView(root);
-		let initialCreated = list.Recycler.CreatedCount;
 
 		// Change data and notify.
 		adapter.Count = 5;

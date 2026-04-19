@@ -325,7 +325,6 @@ class AnimationTests
 		ctx.AddRootView(root);
 		let view = new ColorView();
 		root.AddView(view);
-		let viewId = view.Id;
 
 		let anim = new FloatAnimation(0, 1, 1.0f, new (v) => { });
 		anim.Target = view;

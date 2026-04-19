@@ -115,33 +115,40 @@ public class Expander : ViewGroup
 		let w = Width;
 
 		// Header background.
-		var headerBg = HeaderColor;
-		if (IsHovered) headerBg = Palette.ComputeHover(headerBg);
-		ctx.VG.FillRect(.(0, 0, w, HeaderHeight), headerBg);
+		let headerBounds = RectangleF(0, 0, w, HeaderHeight);
+		if (!ctx.TryDrawDrawable("Expander.Header", headerBounds, GetControlState()))
+		{
+			var headerBg = HeaderColor;
+			if (IsHovered) headerBg = Palette.ComputeHover(headerBg);
+			ctx.VG.FillRect(headerBounds, headerBg);
+		}
 
-		// VG-drawn expand/collapse arrow.
+		// Expand/collapse arrow — separate keys for expanded vs collapsed.
 		let arrowSize = 8.0f;
 		let arrowX = 10.0f;
 		let arrowCY = HeaderHeight * 0.5f;
-		let arrowColor = ctx.Theme?.Palette.Text ?? .(220, 225, 235, 255);
+		let arrowKey = mIsExpanded ? "Expander.ArrowExpanded" : "Expander.ArrowCollapsed";
+		let arrowRect = RectangleF(arrowX - 2, arrowCY - arrowSize * 0.5f, arrowSize + 4, arrowSize);
 
-		ctx.VG.BeginPath();
-		if (mIsExpanded)
+		if (!ctx.TryDrawDrawable(arrowKey, arrowRect, .Normal))
 		{
-			// Down-pointing triangle.
-			ctx.VG.MoveTo(arrowX, arrowCY - arrowSize * 0.3f);
-			ctx.VG.LineTo(arrowX + arrowSize, arrowCY - arrowSize * 0.3f);
-			ctx.VG.LineTo(arrowX + arrowSize * 0.5f, arrowCY + arrowSize * 0.4f);
+			let arrowColor = ctx.Theme?.Palette.Text ?? .(220, 225, 235, 255);
+			ctx.VG.BeginPath();
+			if (mIsExpanded)
+			{
+				ctx.VG.MoveTo(arrowX, arrowCY - arrowSize * 0.3f);
+				ctx.VG.LineTo(arrowX + arrowSize, arrowCY - arrowSize * 0.3f);
+				ctx.VG.LineTo(arrowX + arrowSize * 0.5f, arrowCY + arrowSize * 0.4f);
+			}
+			else
+			{
+				ctx.VG.MoveTo(arrowX, arrowCY - arrowSize * 0.4f);
+				ctx.VG.LineTo(arrowX + arrowSize * 0.6f, arrowCY);
+				ctx.VG.LineTo(arrowX, arrowCY + arrowSize * 0.4f);
+			}
+			ctx.VG.ClosePath();
+			ctx.VG.Fill(arrowColor);
 		}
-		else
-		{
-			// Right-pointing triangle.
-			ctx.VG.MoveTo(arrowX, arrowCY - arrowSize * 0.4f);
-			ctx.VG.LineTo(arrowX + arrowSize * 0.6f, arrowCY);
-			ctx.VG.LineTo(arrowX, arrowCY + arrowSize * 0.4f);
-		}
-		ctx.VG.ClosePath();
-		ctx.VG.Fill(arrowColor);
 
 		// Header text.
 		if (mHeaderText != null && mHeaderText.Length > 0 && ctx.FontService != null)

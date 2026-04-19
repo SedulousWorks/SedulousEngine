@@ -79,34 +79,39 @@ public class CheckBox : View
 	public override void OnDraw(UIDrawContext ctx)
 	{
 		let boxY = (Height - BoxSize) * 0.5f;
-
-		// Box background.
-		let boxBg = ctx.Theme?.GetColor("CheckBox.BoxBackground", .(30, 32, 42, 255)) ?? .(30, 32, 42, 255);
-		let boxBorder = ctx.Theme?.GetColor("CheckBox.BoxBorder", .(100, 105, 120, 255)) ?? .(100, 105, 120, 255);
+		let boxRect = RectangleF(0, boxY, BoxSize, BoxSize);
 		let radius = ctx.Theme?.GetDimension("CheckBox.CornerRadius", 3) ?? 3;
 
-		let borderColor = IsHovered ? Palette.Lighten(boxBorder, 0.3f) : boxBorder;
-		ctx.VG.FillRoundedRect(.(0, boxY, BoxSize, BoxSize), radius, boxBg);
-		ctx.VG.StrokeRoundedRect(.(0, boxY, BoxSize, BoxSize), radius, borderColor, 1.5f);
+		// Box background.
+		if (!ctx.TryDrawDrawable("CheckBox.Box", boxRect, GetControlState()))
+		{
+			let boxBg = ctx.Theme?.GetColor("CheckBox.BoxBackground", .(30, 32, 42, 255)) ?? .(30, 32, 42, 255);
+			let boxBorder = ctx.Theme?.GetColor("CheckBox.BoxBorder", .(100, 105, 120, 255)) ?? .(100, 105, 120, 255);
+			let borderColor = IsHovered ? Palette.Lighten(boxBorder, 0.3f) : boxBorder;
+			ctx.VG.FillRoundedRect(boxRect, radius, boxBg);
+			ctx.VG.StrokeRoundedRect(boxRect, radius, borderColor, 1.5f);
+		}
 
-		// Check mark — VG-drawn checkmark.
+		// Check mark.
 		if (mIsChecked)
 		{
-			let checkColor = ctx.Theme?.TryGetColor("CheckBox.CheckColor") ?? ctx.Theme?.Palette.PrimaryAccent ?? .(80, 160, 255, 255);
-			let cc = IsEffectivelyEnabled ? checkColor : Palette.ComputeDisabled(checkColor);
-			// Draw a checkmark path.
-			let cx = BoxSize * 0.5f;
-			let cy = boxY + BoxSize * 0.5f;
-			ctx.VG.BeginPath();
-			ctx.VG.MoveTo(cx - 4, cy);
-			ctx.VG.LineTo(cx - 1, cy + 3);
-			ctx.VG.LineTo(cx + 4, cy - 3);
-			ctx.VG.Stroke(cc, 2.0f);
+			if (!ctx.TryDrawDrawable("CheckBox.Checkmark", boxRect, GetControlState()))
+			{
+				let checkColor = ctx.Theme?.TryGetColor("CheckBox.CheckColor") ?? ctx.Theme?.Palette.PrimaryAccent ?? .(80, 160, 255, 255);
+				let cc = IsEffectivelyEnabled ? checkColor : Palette.ComputeDisabled(checkColor);
+				let cx = BoxSize * 0.5f;
+				let cy = boxY + BoxSize * 0.5f;
+				ctx.VG.BeginPath();
+				ctx.VG.MoveTo(cx - 4, cy);
+				ctx.VG.LineTo(cx - 1, cy + 3);
+				ctx.VG.LineTo(cx + 4, cy - 3);
+				ctx.VG.Stroke(cc, 2.0f);
+			}
 		}
 
 		// Focus ring.
 		if (IsFocused)
-			ctx.DrawFocusRing(.(0, boxY, BoxSize, BoxSize), radius);
+			ctx.DrawFocusRing(boxRect, radius);
 
 		// Text label.
 		if (mText != null && mText.Length > 0 && ctx.FontService != null)

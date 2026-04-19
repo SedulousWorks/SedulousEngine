@@ -76,8 +76,11 @@ public class MenuBar : ViewGroup, IPopupOwner
 		let h = Height;
 
 		// Background.
-		let bgColor = ctx.Theme?.GetColor("MenuBar.Background", .(35, 37, 46, 255)) ?? .(35, 37, 46, 255);
-		ctx.VG.FillRect(.(0, 0, w, h), bgColor);
+		if (!ctx.TryDrawDrawable("MenuBar.Background", .(0, 0, w, h), .Normal))
+		{
+			let bgColor = ctx.Theme?.GetColor("MenuBar.Background", .(35, 37, 46, 255)) ?? .(35, 37, 46, 255);
+			ctx.VG.FillRect(.(0, 0, w, h), bgColor);
+		}
 
 		// Bottom border.
 		let borderColor = ctx.Theme?.GetColor("MenuBar.Border", .(65, 70, 85, 255)) ?? .(65, 70, 85, 255);
@@ -100,7 +103,10 @@ public class MenuBar : ViewGroup, IPopupOwner
 
 					// Hover/active highlight.
 					if (i == mActiveIndex || i == mHoveredIndex)
-						ctx.VG.FillRect(rect, hoverColor);
+					{
+						if (!ctx.TryDrawDrawable("MenuBar.ItemBackground", rect, .Hover))
+							ctx.VG.FillRect(rect, hoverColor);
+					}
 
 					// Text.
 					ctx.VG.DrawText(mMenus[i].Title, font, rect, .Center, .Middle, textColor);

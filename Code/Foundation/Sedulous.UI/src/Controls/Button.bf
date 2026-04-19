@@ -38,6 +38,16 @@ public class Button : View
 	// Visual state flag (set by InputManager).
 	public bool IsPressed;
 
+	public override ControlState GetControlState()
+	{
+		if (!IsEffectivelyEnabled) return .Disabled;
+		if (Command != null && !Command.CanExecute()) return .Disabled;
+		if (IsPressed) return .Pressed;
+		if (IsHovered) return .Hover;
+		if (IsFocused) return .Focused;
+		return .Normal;
+	}
+
 	// Click event.
 	public Event<delegate void(Button)> OnClick ~ _.Dispose();
 
@@ -56,16 +66,6 @@ public class Button : View
 		else
 			Text.Set(text);
 		InvalidateLayout();
-	}
-
-	public ControlState GetControlState()
-	{
-		if (!IsEffectivelyEnabled) return .Disabled;
-		if (Command != null && !Command.CanExecute()) return .Disabled;
-		if (IsPressed) return .Pressed;
-		if (IsFocused) return .Focused;
-		if (IsHovered) return .Hover;
-		return .Normal;
 	}
 
 	public void FireClick()
@@ -128,10 +128,10 @@ public class Button : View
 		let state = GetControlState();
 		let padding = Padding;
 
-		// Draw background.
+		// Draw background: per-instance drawable -> theme drawable -> color fallback.
 		if (Background != null)
 			Background.Draw(ctx, bounds, state);
-		else
+		else if (!ctx.TryDrawDrawable("Button.Background", bounds, state))
 			DrawDefaultBackground(ctx, bounds, state);
 
 		// Draw label.

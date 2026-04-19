@@ -420,7 +420,7 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 	private DemoContext mDemoCtx ~ delete _;
 	private ControlsPage mControlsPage; // for progress bar tick
 
-	// Map floating window view → secondary window context for OS floating windows.
+	// Map floating window view -> secondary window context for OS floating windows.
 	private System.Collections.Dictionary<View, SecondaryWindowContext> mFloatingWindowMap = new .() ~ delete _;
 
 	// Cross-window drag state.
@@ -433,6 +433,261 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 	}
 
 
+
+	/// Create a textured theme with procedurally generated placeholder images.
+	private Theme CreateTexturedTheme()
+	{
+		let images = scope ThemeImageSet();
+
+		// Generate placeholder images. Source images can be deleted after Create()
+		// since the atlas copies pixel data.
+		let btnN = MakeRoundedRectImage(48, 32, .(70, 130, 200, 255), .(50, 100, 170, 255), 6);
+		let btnH = MakeRoundedRectImage(48, 32, .(90, 150, 220, 255), .(70, 120, 190, 255), 6);
+		let btnP = MakeRoundedRectImage(48, 32, .(40, 90, 150, 255), .(30, 70, 130, 255), 6);
+		let btnD = MakeRoundedRectImage(48, 32, .(60, 60, 70, 128), .(50, 50, 60, 128), 6);
+		defer { delete btnN; delete btnH; delete btnP; delete btnD; }
+		images.AddStateImages("Button.Background", btnN, btnH, btnP, btnD, slices: .(8, 8, 8, 8));
+
+		let panelImg = MakeRoundedRectImage(48, 48, .(45, 48, 58, 255), .(65, 70, 85, 255), 6);
+		defer delete panelImg;
+		images.AddImage("Panel.Background", panelImg, .(8, 8, 8, 8));
+
+		let etNorm = MakeRoundedRectImage(48, 28, .(35, 38, 48, 255), .(70, 75, 90, 255), 4);
+		let etFocus = MakeRoundedRectImage(48, 28, .(35, 38, 48, 255), .(80, 150, 240, 255), 4);
+		defer { delete etNorm; delete etFocus; }
+		images.AddStateImages("EditText.Background", etNorm, focused: etFocus, slices: .(6, 6, 6, 6));
+
+		let tabAct = MakeRoundedRectImage(64, 28, .(50, 52, 62, 255), .(50, 52, 62, 255), 4);
+		let tabInact = MakeRoundedRectImage(64, 28, .(38, 40, 50, 255), .(38, 40, 50, 255), 4);
+		defer { delete tabAct; delete tabInact; }
+		images.AddImage("TabView.ActiveTab", tabAct, .(6, 6, 6, 4));
+		images.AddImage("TabView.InactiveTab", tabInact, .(6, 6, 6, 4));
+
+		let dialogImg = MakeRoundedRectImage(64, 64, .(50, 52, 62, 255), .(80, 85, 100, 255), 8);
+		let tooltipImg = MakeRoundedRectImage(32, 24, .(45, 48, 55, 255), .(75, 80, 95, 255), 4);
+		let ctxMenuImg = MakeRoundedRectImage(48, 48, .(45, 48, 58, 255), .(70, 75, 90, 255), 6);
+		defer { delete dialogImg; delete tooltipImg; delete ctxMenuImg; }
+		images.AddImage("Dialog.Background", dialogImg, .(10, 10, 10, 10));
+		images.AddImage("Tooltip.Background", tooltipImg, .(6, 6, 6, 6));
+		images.AddImage("ContextMenu.Background", ctxMenuImg, .(8, 8, 8, 8));
+
+		let scrollTrack = MakeRoundedRectImage(12, 32, .(30, 32, 40, 150), .(30, 32, 40, 0), 3);
+		let scrollThumb = MakeRoundedRectImage(12, 24, .(90, 95, 110, 200), .(90, 95, 110, 0), 3);
+		defer { delete scrollTrack; delete scrollThumb; }
+		images.AddImage("ScrollBar.Track", scrollTrack, .(4, 6, 4, 6));
+		images.AddImage("ScrollBar.Thumb", scrollThumb, .(4, 6, 4, 6));
+
+		let progTrack = MakeRoundedRectImage(32, 12, .(35, 38, 48, 255), .(35, 38, 48, 0), 4);
+		let progFill = MakeRoundedRectImage(32, 12, .(70, 140, 220, 255), .(70, 140, 220, 0), 4);
+		defer { delete progTrack; delete progFill; }
+		images.AddImage("ProgressBar.Track", progTrack, .(4, 4, 4, 4));
+		images.AddImage("ProgressBar.Fill", progFill, .(4, 4, 4, 4));
+
+		// CheckBox
+		let cbUnchecked = MakeRoundedRectImage(16, 16, .(30, 32, 42, 255), .(100, 105, 120, 255), 3);
+		let cbChecked = MakeRoundedRectImage(16, 16, .(60, 130, 200, 255), .(50, 110, 180, 255), 3);
+		defer { delete cbUnchecked; delete cbChecked; }
+		images.AddImage("CheckBox.Box", cbUnchecked);
+		images.AddImage("CheckBox.Checkmark", cbChecked);
+
+		// RadioButton
+		let rbCircle = MakeRoundedRectImage(16, 16, .(30, 32, 42, 255), .(100, 105, 120, 255), 8);
+		let rbDot = MakeRoundedRectImage(8, 8, .(80, 160, 255, 255), .(80, 160, 255, 255), 4);
+		defer { delete rbCircle; delete rbDot; }
+		images.AddImage("RadioButton.Circle", rbCircle);
+		images.AddImage("RadioButton.Dot", rbDot);
+
+		// ToggleButton
+		let tbN = MakeRoundedRectImage(48, 28, .(55, 58, 68, 255), .(75, 80, 95, 255), 4);
+		let tbH = MakeRoundedRectImage(48, 28, .(65, 68, 78, 255), .(85, 90, 105, 255), 4);
+		let tbChk = MakeRoundedRectImage(48, 28, .(60, 130, 200, 255), .(50, 110, 180, 255), 4);
+		let tbChkH = MakeRoundedRectImage(48, 28, .(80, 150, 220, 255), .(70, 130, 200, 255), 4);
+		defer { delete tbN; delete tbH; delete tbChk; delete tbChkH; }
+		images.AddStateImages("ToggleButton.Background", tbN, tbH, slices: .(6, 6, 6, 6));
+		images.AddStateImages("ToggleButton.CheckedBackground", tbChk, tbChkH, slices: .(6, 6, 6, 6));
+
+		// ToggleSwitch
+		let tsOff = MakeRoundedRectImage(44, 24, .(50, 52, 62, 255), .(70, 75, 90, 255), 12);
+		let tsOn = MakeRoundedRectImage(44, 24, .(60, 130, 200, 255), .(50, 110, 180, 255), 12);
+		let tsKnob = MakeRoundedRectImage(20, 20, .(220, 225, 235, 255), .(200, 205, 215, 255), 10);
+		defer { delete tsOff; delete tsOn; delete tsKnob; }
+		images.AddStateImages("ToggleSwitch.Track", tsOff, pressed: tsOn, slices: .(12, 12, 12, 12));
+		images.AddImage("ToggleSwitch.Knob", tsKnob);
+
+		// Slider
+		let slTrack = MakeRoundedRectImage(32, 6, .(40, 42, 52, 255), .(40, 42, 52, 0), 3);
+		let slFill = MakeRoundedRectImage(32, 6, .(60, 130, 200, 255), .(60, 130, 200, 0), 3);
+		let slThumb = MakeRoundedRectImage(14, 14, .(200, 210, 230, 255), .(180, 190, 210, 255), 7);
+		defer { delete slTrack; delete slFill; delete slThumb; }
+		images.AddImage("Slider.Track", slTrack, .(3, 2, 3, 2));
+		images.AddImage("Slider.Fill", slFill, .(3, 2, 3, 2));
+		images.AddImage("Slider.Thumb", slThumb);
+
+		// ComboBox
+		let cbxN = MakeRoundedRectImage(48, 28, .(40, 42, 52, 255), .(70, 75, 90, 255), 4);
+		let cbxH = MakeRoundedRectImage(48, 28, .(50, 52, 62, 255), .(80, 85, 100, 255), 4);
+		defer { delete cbxN; delete cbxH; }
+		images.AddStateImages("ComboBox.Background", cbxN, cbxH, slices: .(6, 6, 6, 6));
+
+		// Expander
+		let expN = MakeRoundedRectImage(48, 24, .(40, 42, 52, 255), .(40, 42, 52, 0), 0);
+		let expH = MakeRoundedRectImage(48, 24, .(50, 52, 62, 255), .(50, 52, 62, 0), 0);
+		defer { delete expN; delete expH; }
+		images.AddStateImages("Expander.Header", expN, expH, slices: .(4, 4, 4, 4));
+
+		// NumericField buttons
+		let nfBtnN = MakeRoundedRectImage(24, 16, .(50, 55, 68, 255), .(50, 55, 68, 0), 0);
+		let nfBtnH = MakeRoundedRectImage(24, 16, .(65, 70, 82, 255), .(65, 70, 82, 0), 0);
+		let nfBtnP = MakeRoundedRectImage(24, 16, .(40, 45, 55, 255), .(40, 45, 55, 0), 0);
+		defer { delete nfBtnN; delete nfBtnH; delete nfBtnP; }
+		images.AddStateImages("NumericField.UpButton", nfBtnN, nfBtnH, nfBtnP, slices: .(4, 4, 4, 4));
+		images.AddStateImages("NumericField.DownButton", nfBtnN, nfBtnH, nfBtnP, slices: .(4, 4, 4, 4));
+
+		// TabView strip + content
+		let tabStrip = MakeRoundedRectImage(48, 32, .(30, 32, 40, 255), .(30, 32, 40, 0), 0);
+		let tabContent = MakeRoundedRectImage(48, 48, .(42, 44, 54, 255), .(42, 44, 54, 0), 0);
+		defer { delete tabStrip; delete tabContent; }
+		images.AddImage("TabView.StripBackground", tabStrip, .(4, 4, 4, 4));
+		images.AddImage("TabView.ContentBackground", tabContent, .(4, 4, 4, 4));
+
+		// Modal backdrop
+		let backdrop = MakeRoundedRectImage(4, 4, .(0, 0, 0, 120), .(0, 0, 0, 120), 0);
+		defer delete backdrop;
+		images.AddImage("Modal.Backdrop", backdrop);
+
+		// ContextMenu item hover
+		let ctxHover = MakeRoundedRectImage(32, 24, .(60, 120, 200, 80), .(60, 120, 200, 0), 3);
+		defer delete ctxHover;
+		images.AddImage("ContextMenu.ItemHover", ctxHover, .(4, 4, 4, 4));
+
+		// === Toolkit controls ===
+
+		// Toolbar
+		let toolbarBg = MakeRoundedRectImage(48, 32, .(35, 37, 46, 255), .(35, 37, 46, 0), 0);
+		let toolbarBtnH = MakeRoundedRectImage(32, 24, .(70, 75, 90, 255), .(70, 75, 90, 0), 3);
+		let toolbarToggle = MakeRoundedRectImage(32, 24, .(40, 80, 160, 255), .(40, 80, 160, 0), 3);
+		defer { delete toolbarBg; delete toolbarBtnH; delete toolbarToggle; }
+		images.AddImage("Toolbar.Background", toolbarBg, .(4, 4, 4, 4));
+		images.AddStateImages("ToolbarButton.Background", null, toolbarBtnH, slices: .(4, 4, 4, 4));
+		images.AddImage("ToolbarToggle.CheckedBackground", toolbarToggle, .(4, 4, 4, 4));
+
+		// StatusBar
+		let statusBg = MakeRoundedRectImage(48, 24, .(30, 32, 40, 255), .(30, 32, 40, 0), 0);
+		defer delete statusBg;
+		images.AddImage("StatusBar.Background", statusBg, .(4, 4, 4, 4));
+
+		// MenuBar
+		let menuBg = MakeRoundedRectImage(48, 28, .(35, 37, 46, 255), .(35, 37, 46, 0), 0);
+		let menuItemH = MakeRoundedRectImage(32, 24, .(60, 65, 80, 255), .(60, 65, 80, 0), 0);
+		defer { delete menuBg; delete menuItemH; }
+		images.AddImage("MenuBar.Background", menuBg, .(4, 4, 4, 4));
+		images.AddStateImages("MenuBar.ItemBackground", null, menuItemH, slices: .(4, 4, 4, 4));
+
+		// SplitView
+		let splitDiv = MakeRoundedRectImage(8, 32, .(55, 58, 70, 255), .(55, 58, 70, 0), 0);
+		let splitDivH = MakeRoundedRectImage(8, 32, .(80, 85, 105, 255), .(80, 85, 105, 0), 0);
+		let splitGrip = MakeRoundedRectImage(6, 20, .(100, 105, 120, 180), .(100, 105, 120, 0), 2);
+		defer { delete splitDiv; delete splitDivH; delete splitGrip; }
+		images.AddStateImages("SplitView.Divider", splitDiv, splitDivH, slices: .(2, 4, 2, 4));
+		images.AddImage("SplitView.Grip", splitGrip, .(2, 4, 2, 4));
+
+		// ColorPicker
+		let colorPickerBg = MakeRoundedRectImage(48, 48, .(42, 44, 54, 255), .(42, 44, 54, 0), 4);
+		defer delete colorPickerBg;
+		images.AddImage("ColorPicker.Background", colorPickerBg, .(6, 6, 6, 6));
+
+		// PropertyGrid
+		let propGridBg = MakeRoundedRectImage(48, 48, .(42, 44, 54, 255), .(42, 44, 54, 0), 0);
+		defer delete propGridBg;
+		images.AddImage("PropertyGrid.Background", propGridBg, .(4, 4, 4, 4));
+
+		// DockManager
+		let dockBg = MakeRoundedRectImage(48, 48, .(30, 30, 35, 255), .(30, 30, 35, 0), 0);
+		defer delete dockBg;
+		images.AddImage("DockManager.Background", dockBg, .(4, 4, 4, 4));
+
+		// DockablePanel
+		let dockHeader = MakeRoundedRectImage(48, 24, .(40, 44, 55, 255), .(40, 44, 55, 0), 0);
+		let dockContent = MakeRoundedRectImage(48, 48, .(42, 44, 54, 255), .(42, 44, 54, 0), 0);
+		defer { delete dockHeader; delete dockContent; }
+		images.AddImage("DockablePanel.Header", dockHeader, .(4, 4, 4, 4));
+		images.AddImage("DockablePanel.ContentBackground", dockContent, .(4, 4, 4, 4));
+
+		// DockTabGroup
+		let dockTabBar = MakeRoundedRectImage(48, 24, .(35, 37, 46, 255), .(35, 37, 46, 0), 0);
+		let dockTabContent = MakeRoundedRectImage(48, 48, .(42, 44, 54, 255), .(42, 44, 54, 0), 0);
+		let dockTabAct = MakeRoundedRectImage(48, 24, .(42, 44, 54, 255), .(42, 44, 54, 0), 0);
+		let dockTabInact = MakeRoundedRectImage(48, 24, .(38, 40, 50, 255), .(38, 40, 50, 0), 0);
+		let dockTabInactH = MakeRoundedRectImage(48, 24, .(45, 47, 57, 255), .(45, 47, 57, 0), 0);
+		defer { delete dockTabBar; delete dockTabContent; delete dockTabAct; delete dockTabInact; delete dockTabInactH; }
+		images.AddImage("DockTabGroup.TabBar", dockTabBar, .(4, 4, 4, 4));
+		images.AddImage("DockTabGroup.ContentBackground", dockTabContent, .(4, 4, 4, 4));
+		images.AddImage("DockTabGroup.ActiveTab", dockTabAct, .(4, 4, 4, 4));
+		images.AddStateImages("DockTabGroup.InactiveTab", dockTabInact, dockTabInactH, slices: .(4, 4, 4, 4));
+
+		// DockSplit
+		let dockDiv = MakeRoundedRectImage(6, 32, .(65, 70, 85, 255), .(65, 70, 85, 0), 0);
+		let dockDivH = MakeRoundedRectImage(6, 32, .(80, 150, 240, 255), .(80, 150, 240, 0), 0);
+		defer { delete dockDiv; delete dockDivH; }
+		images.AddStateImages("DockSplit.Divider", dockDiv, dockDivH, slices: .(2, 4, 2, 4));
+
+		// FloatingWindow
+		let floatBg = MakeRoundedRectImage(48, 48, .(42, 44, 54, 255), .(65, 70, 85, 255), 4);
+		defer delete floatBg;
+		images.AddImage("FloatingWindow.Background", floatBg, .(6, 6, 6, 6));
+
+		return TexturedTheme.Create(images);
+	}
+
+	/// Generate a rounded-rect image with fill and border colors.
+	/// Used for placeholder theme images.
+	private static OwnedImageData MakeRoundedRectImage(uint32 w, uint32 h,
+		Color fill, Color border, int radius)
+	{
+		let data = new uint8[w * h * 4];
+
+		for (uint32 y = 0; y < h; y++)
+		{
+			for (uint32 x = 0; x < w; x++)
+			{
+				// Check if pixel is inside rounded rect.
+				bool inside = true;
+				bool isBorder = false;
+
+				// Corner check — distance from corner center.
+				int cx = -1, cy = -1;
+				if (x < (uint32)radius && y < (uint32)radius) { cx = radius; cy = radius; }
+				else if (x >= w - (uint32)radius && y < (uint32)radius) { cx = (int)w - radius - 1; cy = radius; }
+				else if (x < (uint32)radius && y >= h - (uint32)radius) { cx = radius; cy = (int)h - radius - 1; }
+				else if (x >= w - (uint32)radius && y >= h - (uint32)radius) { cx = (int)w - radius - 1; cy = (int)h - radius - 1; }
+
+				if (cx >= 0)
+				{
+					let dx = (int)x - cx;
+					let dy = (int)y - cy;
+					let dist = Math.Sqrt((float)(dx * dx + dy * dy));
+					if (dist > (float)radius) inside = false;
+					else if (dist > (float)(radius - 1)) isBorder = true;
+				}
+
+				// Edge border (non-corner).
+				if (inside && cx < 0)
+				{
+					if (x == 0 || x == w - 1 || y == 0 || y == h - 1)
+						isBorder = true;
+				}
+
+				let c = inside ? (isBorder ? border : fill) : Color(0, 0, 0, 0);
+				let offset = (int)(y * w + x) * 4;
+				data[offset] = c.R;
+				data[offset + 1] = c.G;
+				data[offset + 2] = c.B;
+				data[offset + 3] = c.A;
+			}
+		}
+
+		return new OwnedImageData(w, h, .RGBA8, data);
+	}
 
 	/// Load a PNG/JPG file and convert to OwnedImageData (RGBA8).
 	private OwnedImageData LoadImageAsRGBA8(StringView path)
@@ -1602,12 +1857,17 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 		if (kb.IsKeyPressed(.F4))
 			mUI.UIContext.DebugSettings.ShowMargin = !mUI.UIContext.DebugSettings.ShowMargin;
 
-		// F5 toggles between Dark and Light themes.
+		// F5 cycles through Dark -> Light -> Textured themes.
 		if (kb.IsKeyPressed(.F5))
 		{
 			let ctx = mUI.UIContext;
-			let isDark = ctx.Theme?.Name.Contains("Dark") ?? true;
-			ctx.Theme = isDark ? LightTheme.Create() : DarkTheme.Create();
+			let name = ctx.Theme?.Name ?? "Dark";
+			if (name.Contains("Dark"))
+				ctx.Theme = LightTheme.Create();
+			else if (name.Contains("Light"))
+				ctx.Theme = CreateTexturedTheme();
+			else
+				ctx.Theme = DarkTheme.Create();
 		}
 
 		// F6 loads a custom theme from XML (demonstrates ThemeXmlParser).
@@ -1631,12 +1891,24 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 				  <Color key="ScrollBar.Thumb" value="160,100,140,220"/>
 				  <Color key="CheckBox.BoxBackground" value="35,25,42"/>
 				  <Color key="CheckBox.CheckColor" value="200,80,150"/>
+				  <Color key="RadioButton.CircleBackground" value="35,25,42"/>
+				  <Color key="RadioButton.CircleBorder" value="70,55,85"/>
 				  <Color key="RadioButton.DotColor" value="200,80,150"/>
+				  <Color key="RadioButton.Text" value="230,220,240"/>
 				  <Color key="ToggleSwitch.TrackOff" value="40,32,48"/>
 				  <Color key="ToggleSwitch.TrackOn" value="200,80,150"/>
+				  <Color key="ToggleSwitch.Border" value="70,55,85"/>
+				  <Color key="ToggleSwitch.Knob" value="230,220,240"/>
+				  <Color key="ToggleSwitch.Text" value="230,220,240"/>
+				  <Color key="ProgressBar.Track" value="50,40,60"/>
 				  <Color key="ProgressBar.Fill" value="200,80,150"/>
+				  <Color key="Slider.Track" value="50,40,60"/>
 				  <Color key="Slider.Fill" value="200,80,150"/>
+				  <Color key="Slider.Thumb" value="230,200,240"/>
+				  <Color key="Slider.ThumbHover" value="255,230,250"/>
+				  <Color key="ToggleButton.Background" value="55,45,65"/>
 				  <Color key="ToggleButton.CheckedBackground" value="200,80,150"/>
+				  <Color key="ToggleButton.Text" value="230,220,240"/>
 				  <Color key="TabView.StripBackground" value="30,22,38"/>
 				  <Color key="TabView.ContentBackground" value="40,32,48"/>
 				  <Color key="TabView.ActiveTabBackground" value="40,32,48"/>
@@ -1644,20 +1916,21 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 				  <Color key="TabView.InactiveTabText" value="150,130,170"/>
 				  <Color key="TabView.HoverTabText" value="210,190,230"/>
 				  <Color key="TabView.TabHover" value="180,60,120,40"/>
-				  <Color key="ToggleButton.Background" value="55,45,65"/>
-				  <Color key="ToggleButton.CheckedBackground" value="200,80,150"/>
+				  <Color key="TabView.Border" value="70,55,85"/>
 				  <Color key="ComboBox.Background" value="40,32,48"/>
 				  <Color key="ComboBox.Border" value="70,55,85"/>
 				  <Color key="ComboBox.Text" value="230,220,240"/>
 				  <Color key="ComboBox.ArrowColor" value="180,140,200"/>
-				  <Color key="ContextMenu.Background" value="45,35,55,240"/>
+				  <Color key="ContextMenu.Background" value="45,35,55"/>
 				  <Color key="ContextMenu.Border" value="70,55,85"/>
 				  <Color key="ContextMenu.Hover" value="180,60,120,80"/>
 				  <Color key="ContextMenu.Text" value="230,220,240"/>
-				  <Color key="Dialog.Background" value="45,35,55,245"/>
+				  <Color key="Dialog.Background" value="45,35,55"/>
 				  <Color key="Dialog.Border" value="90,65,110"/>
-				  <Color key="Tooltip.Background" value="40,30,50,230"/>
+				  <Color key="Tooltip.Background" value="40,30,50"/>
 				  <Color key="Tooltip.Border" value="80,60,100"/>
+				  <Color key="Modal.Backdrop" value="0,0,0,120"/>
+				  <Color key="ListView.Selection" value="180,60,120,60"/>
 				  <Color key="EditText.Background" value="35,25,42"/>
 				  <Color key="EditText.Border" value="70,55,85"/>
 				  <Color key="EditText.Border.Focused" value="200,80,150"/>
@@ -1665,10 +1938,21 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 				  <Color key="EditText.Placeholder" value="120,100,140"/>
 				  <Color key="EditText.Selection" value="180,60,120,80"/>
 				  <Color key="EditText.Cursor" value="230,220,240"/>
+				  <Color key="Expander.Header" value="35,28,44"/>
+				  <Color key="NumericField.ButtonBackground" value="50,40,60"/>
+				  <Color key="NumericField.ButtonBorder" value="70,55,85"/>
 				  <Dimension key="Button.CornerRadius" value="6"/>
+				  <Dimension key="Button.FontSize" value="16"/>
 				  <Dimension key="Panel.CornerRadius" value="8"/>
 				  <Dimension key="Panel.BorderWidth" value="1"/>
+				  <Dimension key="Dialog.CornerRadius" value="6"/>
+				  <Dimension key="Dialog.BorderWidth" value="1"/>
+				  <Dimension key="ComboBox.CornerRadius" value="4"/>
+				  <Dimension key="EditText.CornerRadius" value="4"/>
+				  <Dimension key="ToggleButton.CornerRadius" value="4"/>
 				  <Padding key="Button.Padding" value="12,8"/>
+				  <Padding key="Dialog.Padding" value="12,10"/>
+				  <Padding key="EditText.Padding" value="6,4"/>
 				</Theme>
 				""";
 
@@ -1740,7 +2024,7 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 
 		let ctx = mSecondaryWindows[mSecondaryWindows.Count - 1];
 
-		// Position the window (screenX/Y are main-window-relative → convert to global).
+		// Position the window (screenX/Y are main-window-relative -> convert to global).
 		ctx.Window.X = mWindow.X + (int32)screenX;
 		ctx.Window.Y = mWindow.Y + (int32)screenY;
 

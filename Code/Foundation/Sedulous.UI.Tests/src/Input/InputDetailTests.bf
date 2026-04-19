@@ -22,16 +22,18 @@ class InputDetailTests
 		root.AddView(btn, new LayoutParams() { Width = 100, Height = 40 });
 		ctx.UpdateRootView(root);
 
-		int maxClickCount = 0;
-		btn.OnClick.Add(new [&maxClickCount](b) => { });
+		int clickCount = 0;
+		btn.OnClick.Add(new [&clickCount](b) => { clickCount++; });
 
 		// First click.
 		ctx.InputManager.ProcessMouseDown(.Left, 50, 20, 0.0f);
 		ctx.InputManager.ProcessMouseUp(.Left, 50, 20);
+		Test.Assert(clickCount == 1);
 
 		// Second click quickly (within double-click time).
 		ctx.InputManager.ProcessMouseDown(.Left, 50, 20, 0.1f);
-		// ClickCount should be 2.
+		ctx.InputManager.ProcessMouseUp(.Left, 50, 20);
+		Test.Assert(clickCount == 2);
 	}
 
 	// === Mouse capture ===

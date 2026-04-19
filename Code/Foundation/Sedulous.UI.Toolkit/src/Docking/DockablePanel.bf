@@ -107,8 +107,11 @@ public class DockablePanel : ViewGroup, IDragSource
 		let w = Width;
 
 		// Header background.
-		let headerBg = ctx.Theme?.GetColor("DockablePanel.HeaderBackground", .(40, 44, 55, 255)) ?? .(40, 44, 55, 255);
-		ctx.VG.FillRect(.(0, 0, w, HeaderHeight), headerBg);
+		if (!ctx.TryDrawDrawable("DockablePanel.Header", .(0, 0, w, HeaderHeight), .Normal))
+		{
+			let headerBg = ctx.Theme?.GetColor("DockablePanel.HeaderBackground", .(40, 44, 55, 255)) ?? .(40, 44, 55, 255);
+			ctx.VG.FillRect(.(0, 0, w, HeaderHeight), headerBg);
+		}
 
 		// Header text.
 		if (ctx.FontService != null)
@@ -124,17 +127,25 @@ public class DockablePanel : ViewGroup, IDragSource
 		// Close button (X).
 		if (mClosable)
 		{
-			let closeColor = ctx.Theme?.GetColor("DockablePanel.CloseButton", .(180, 185, 200, 150)) ?? .(180, 185, 200, 150);
 			let cx = w - 14;
 			let cy = HeaderHeight * 0.5f;
 			let sz = 4.0f;
-			ctx.VG.DrawLine(.(cx - sz, cy - sz), .(cx + sz, cy + sz), closeColor, 1.5f);
-			ctx.VG.DrawLine(.(cx + sz, cy - sz), .(cx - sz, cy + sz), closeColor, 1.5f);
+			let closeRect = RectangleF(cx - sz - 2, cy - sz - 2, sz * 2 + 4, sz * 2 + 4);
+
+			if (!ctx.TryDrawDrawable("DockablePanel.CloseIcon", closeRect, .Normal))
+			{
+				let closeColor = ctx.Theme?.GetColor("DockablePanel.CloseButton", .(180, 185, 200, 150)) ?? .(180, 185, 200, 150);
+				ctx.VG.DrawLine(.(cx - sz, cy - sz), .(cx + sz, cy + sz), closeColor, 1.5f);
+				ctx.VG.DrawLine(.(cx + sz, cy - sz), .(cx - sz, cy + sz), closeColor, 1.5f);
+			}
 		}
 
 		// Content background.
-		let contentBg = ctx.Theme?.GetColor("DockablePanel.ContentBackground") ?? ctx.Theme?.Palette.Surface ?? .(42, 44, 54, 255);
-		ctx.VG.FillRect(.(0, HeaderHeight, w, Height - HeaderHeight), contentBg);
+		if (!ctx.TryDrawDrawable("DockablePanel.ContentBackground", .(0, HeaderHeight, w, Height - HeaderHeight), .Normal))
+		{
+			let contentBg = ctx.Theme?.GetColor("DockablePanel.ContentBackground") ?? ctx.Theme?.Palette.Surface ?? .(42, 44, 54, 255);
+			ctx.VG.FillRect(.(0, HeaderHeight, w, Height - HeaderHeight), contentBg);
+		}
 
 		DrawChildren(ctx);
 	}

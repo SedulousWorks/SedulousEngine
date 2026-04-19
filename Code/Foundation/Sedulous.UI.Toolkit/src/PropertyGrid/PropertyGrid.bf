@@ -102,8 +102,11 @@ public class PropertyGrid : ViewGroup
 
 	public override void OnDraw(UIDrawContext ctx)
 	{
-		let bgColor = ctx.Theme?.GetColor("PropertyGrid.Background") ?? ctx.Theme?.Palette.Surface ?? .(42, 44, 54, 255);
-		ctx.VG.FillRect(.(0, 0, Width, Height), bgColor);
+		if (!ctx.TryDrawDrawable("PropertyGrid.Background", .(0, 0, Width, Height), .Normal))
+		{
+			let bgColor = ctx.Theme?.GetColor("PropertyGrid.Background") ?? ctx.Theme?.Palette.Surface ?? .(42, 44, 54, 255);
+			ctx.VG.FillRect(.(0, 0, Width, Height), bgColor);
+		}
 		DrawChildren(ctx);
 	}
 

@@ -226,7 +226,8 @@ public class TabView : ViewGroup
 		case .Left:   contentRect = .(stripSize, 0, Width - stripSize, Height);
 		case .Right:  contentRect = .(0, 0, Width - stripSize, Height);
 		}
-		ctx.VG.FillRect(contentRect, contentBg);
+		if (!ctx.TryDrawDrawable("TabView.ContentBackground", contentRect, GetControlState()))
+			ctx.VG.FillRect(contentRect, contentBg);
 
 		// Strip background.
 		RectangleF stripRect;
@@ -237,7 +238,8 @@ public class TabView : ViewGroup
 		case .Left:   stripRect = .(0, 0, stripSize, Height);
 		case .Right:  stripRect = .(Width - stripSize, 0, stripSize, Height);
 		}
-		ctx.VG.FillRect(stripRect, stripBg);
+		if (!ctx.TryDrawDrawable("TabView.StripBackground", stripRect, GetControlState()))
+			ctx.VG.FillRect(stripRect, stripBg);
 
 		// Border between strip and content.
 		switch (Placement)
@@ -264,18 +266,24 @@ public class TabView : ViewGroup
 					// Tab background.
 					if (isActive)
 					{
-						ctx.VG.FillRect(rect, activeTabBg);
-						// Accent indicator.
-						switch (Placement)
+						if (!ctx.TryDrawDrawable("TabView.ActiveTab", rect, .Normal))
 						{
-						case .Top:    ctx.VG.FillRect(.(rect.X, rect.Y + rect.Height - 2, rect.Width, 2), accentColor);
-						case .Bottom: ctx.VG.FillRect(.(rect.X, rect.Y, rect.Width, 2), accentColor);
-						case .Left:   ctx.VG.FillRect(.(rect.X + rect.Width - 2, rect.Y, 2, rect.Height), accentColor);
-						case .Right:  ctx.VG.FillRect(.(rect.X, rect.Y, 2, rect.Height), accentColor);
+							ctx.VG.FillRect(rect, activeTabBg);
+							// Accent indicator (only in color fallback — drawable handles its own styling).
+							switch (Placement)
+							{
+							case .Top:    ctx.VG.FillRect(.(rect.X, rect.Y + rect.Height - 2, rect.Width, 2), accentColor);
+							case .Bottom: ctx.VG.FillRect(.(rect.X, rect.Y, rect.Width, 2), accentColor);
+							case .Left:   ctx.VG.FillRect(.(rect.X + rect.Width - 2, rect.Y, 2, rect.Height), accentColor);
+							case .Right:  ctx.VG.FillRect(.(rect.X, rect.Y, 2, rect.Height), accentColor);
+							}
 						}
 					}
 					else if (isHover)
-						ctx.VG.FillRect(rect, hoverBg);
+					{
+						if (!ctx.TryDrawDrawable("TabView.InactiveTab", rect, .Hover))
+							ctx.VG.FillRect(rect, hoverBg);
+					}
 
 					// Tab text (shift left if closable to make room for X button).
 					let textColor = isActive ? activeTabText : (isHover ? hoverTabText : inactiveTabText);
@@ -290,12 +298,18 @@ public class TabView : ViewGroup
 						let btnSize = CloseButtonSize;
 						let btnX = rect.X + rect.Width - btnSize - 4;
 						let btnY = rect.Y + (rect.Height - btnSize) * 0.5f;
-						let cx = btnX + btnSize * 0.5f;
-						let cy = btnY + btnSize * 0.5f;
-						let sz = btnSize * 0.25f;
-						let closeColor = isHover ? activeTabText : inactiveTabText;
-						ctx.VG.DrawLine(.(cx - sz, cy - sz), .(cx + sz, cy + sz), closeColor, 1.5f);
-						ctx.VG.DrawLine(.(cx + sz, cy - sz), .(cx - sz, cy + sz), closeColor, 1.5f);
+						let closeRect = RectangleF(btnX, btnY, btnSize, btnSize);
+						let closeState = (isHover && i == mHoveredTabIndex) ? ControlState.Hover : ControlState.Normal;
+
+						if (!ctx.TryDrawDrawable("TabView.CloseIcon", closeRect, closeState))
+						{
+							let cx = btnX + btnSize * 0.5f;
+							let cy = btnY + btnSize * 0.5f;
+							let sz = btnSize * 0.25f;
+							let closeColor = isHover ? activeTabText : inactiveTabText;
+							ctx.VG.DrawLine(.(cx - sz, cy - sz), .(cx + sz, cy + sz), closeColor, 1.5f);
+							ctx.VG.DrawLine(.(cx + sz, cy - sz), .(cx - sz, cy + sz), closeColor, 1.5f);
+						}
 					}
 				}
 			}

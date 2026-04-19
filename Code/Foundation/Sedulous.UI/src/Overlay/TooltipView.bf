@@ -69,11 +69,15 @@ public class TooltipView : ViewGroup
 
 	public override void OnDraw(UIDrawContext ctx)
 	{
-		let bgColor = ctx.Theme?.GetColor("Tooltip.Background", .(40, 42, 50, 230)) ?? .(40, 42, 50, 230);
-		let borderColor = ctx.Theme?.GetColor("Tooltip.Border", .(70, 75, 85, 255)) ?? .(70, 75, 85, 255);
+		let bounds = RectangleF(0, 0, Width, Height);
+		if (!ctx.TryDrawDrawable("Tooltip.Background", bounds, GetControlState()))
+		{
+			let bgColor = ctx.Theme?.GetColor("Tooltip.Background", .(40, 42, 50, 230)) ?? .(40, 42, 50, 230);
+			let borderColor = ctx.Theme?.GetColor("Tooltip.Border", .(70, 75, 85, 255)) ?? .(70, 75, 85, 255);
 
-		ctx.VG.FillRoundedRect(.(0, 0, Width, Height), 4, bgColor);
-		ctx.VG.StrokeRoundedRect(.(0, 0, Width, Height), 4, borderColor, 1);
+			ctx.VG.FillRoundedRect(bounds, 4, bgColor);
+			ctx.VG.StrokeRoundedRect(bounds, 4, borderColor, 1);
+		}
 
 		DrawChildren(ctx);
 	}

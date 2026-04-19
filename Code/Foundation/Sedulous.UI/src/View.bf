@@ -239,6 +239,16 @@ public class View
 		}
 	}
 
+	/// Returns the current visual state of this view for drawable/theme lookups.
+	/// Override in controls with additional states (e.g., Button adds Pressed).
+	public virtual ControlState GetControlState()
+	{
+		if (!IsEffectivelyEnabled) return .Disabled;
+		if (IsFocused) return .Focused;
+		if (IsHovered) return .Hover;
+		return .Normal;
+	}
+
 	// === Coordinate conversion ===
 
 	/// Convert screen-space coordinates to this view's local coordinates.

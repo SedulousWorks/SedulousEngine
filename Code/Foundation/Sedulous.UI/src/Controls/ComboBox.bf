@@ -120,9 +120,12 @@ public class ComboBox : View, IPopupOwner
 		let radius = ctx.Theme?.GetDimension("ComboBox.CornerRadius", 4) ?? 4;
 
 		// Background.
-		var bgColor = ctx.Theme?.GetColor("ComboBox.Background") ?? .(40, 42, 52, 255);
-		if (IsHovered) bgColor = Palette.ComputeHover(bgColor);
-		ctx.VG.FillRoundedRect(bounds, radius, bgColor);
+		if (!ctx.TryDrawDrawable("ComboBox.Background", bounds, GetControlState()))
+		{
+			var bgColor = ctx.Theme?.GetColor("ComboBox.Background") ?? .(40, 42, 52, 255);
+			if (IsHovered) bgColor = Palette.ComputeHover(bgColor);
+			ctx.VG.FillRoundedRect(bounds, radius, bgColor);
+		}
 
 		// Border — accent when open.
 		let borderColor = mIsOpen
@@ -141,17 +144,22 @@ public class ComboBox : View, IPopupOwner
 			}
 		}
 
-		// Dropdown arrow (VG triangle).
+		// Dropdown arrow.
 		let arrowX = Width - mArrowAreaWidth * 0.5f;
 		let arrowY = Height * 0.5f;
 		let arrowSize = 4.0f;
-		let arrowColor = ctx.Theme?.GetColor("ComboBox.ArrowColor") ?? .(180, 185, 200, 255);
-		ctx.VG.BeginPath();
-		ctx.VG.MoveTo(arrowX - arrowSize, arrowY - arrowSize * 0.5f);
-		ctx.VG.LineTo(arrowX + arrowSize, arrowY - arrowSize * 0.5f);
-		ctx.VG.LineTo(arrowX, arrowY + arrowSize * 0.5f);
-		ctx.VG.ClosePath();
-		ctx.VG.Fill(arrowColor);
+		let arrowRect = RectangleF(arrowX - arrowSize, arrowY - arrowSize, arrowSize * 2, arrowSize * 2);
+
+		if (!ctx.TryDrawDrawable("ComboBox.Arrow", arrowRect, GetControlState()))
+		{
+			let arrowColor = ctx.Theme?.GetColor("ComboBox.ArrowColor") ?? .(180, 185, 200, 255);
+			ctx.VG.BeginPath();
+			ctx.VG.MoveTo(arrowX - arrowSize, arrowY - arrowSize * 0.5f);
+			ctx.VG.LineTo(arrowX + arrowSize, arrowY - arrowSize * 0.5f);
+			ctx.VG.LineTo(arrowX, arrowY + arrowSize * 0.5f);
+			ctx.VG.ClosePath();
+			ctx.VG.Fill(arrowColor);
+		}
 
 		// Focus ring.
 		if (IsFocused)

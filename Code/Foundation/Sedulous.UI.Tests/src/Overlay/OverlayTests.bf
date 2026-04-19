@@ -146,10 +146,9 @@ class OverlayTests
 		menu.AddItem("Item 2", new () => { });
 		menu.AddSeparator();
 		let sub = menu.AddSubmenu("Submenu");
+		Test.Assert(sub != null);
 
 		// 4 items: 2 regular + 1 separator + 1 submenu.
-		// (Internal list has 4 entries.)
-		// Just verify no crash during construction.
 		Test.Assert(!clicked);
 	}
 

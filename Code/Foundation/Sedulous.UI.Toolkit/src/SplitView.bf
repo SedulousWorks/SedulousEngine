@@ -131,26 +131,33 @@ public class SplitView : ViewGroup
 
 		// Draw divider.
 		let divRect = GetDividerRect();
-		let divColor = mDividerHovered || mDragging
-			? (ctx.Theme?.GetColor("SplitView.DividerHover", .(80, 85, 105, 255)) ?? .(80, 85, 105, 255))
-			: (ctx.Theme?.GetColor("SplitView.Divider", .(55, 58, 70, 255)) ?? .(55, 58, 70, 255));
-		ctx.VG.FillRect(divRect, divColor);
-
-		// Grip dots in divider center.
-		let gripColor = ctx.Theme?.GetColor("SplitView.Grip", .(100, 105, 120, 180)) ?? .(100, 105, 120, 180);
-		let cx = divRect.X + divRect.Width * 0.5f;
-		let cy = divRect.Y + divRect.Height * 0.5f;
-		let dotR = 1.5f;
-
-		if (Orientation == .Horizontal)
+		let divState = (mDividerHovered || mDragging) ? ControlState.Hover : ControlState.Normal;
+		if (!ctx.TryDrawDrawable("SplitView.Divider", divRect, divState))
 		{
-			for (int i = -2; i <= 2; i++)
-				ctx.VG.FillCircle(.(cx, cy + i * 5), dotR, gripColor);
+			let divColor = mDividerHovered || mDragging
+				? (ctx.Theme?.GetColor("SplitView.DividerHover", .(80, 85, 105, 255)) ?? .(80, 85, 105, 255))
+				: (ctx.Theme?.GetColor("SplitView.Divider", .(55, 58, 70, 255)) ?? .(55, 58, 70, 255));
+			ctx.VG.FillRect(divRect, divColor);
 		}
-		else
+
+		// Grip indicator in divider center.
+		if (!ctx.TryDrawDrawable("SplitView.Grip", divRect, divState))
 		{
-			for (int i = -2; i <= 2; i++)
-				ctx.VG.FillCircle(.(cx + i * 5, cy), dotR, gripColor);
+			let gripColor = ctx.Theme?.GetColor("SplitView.Grip", .(100, 105, 120, 180)) ?? .(100, 105, 120, 180);
+			let cx = divRect.X + divRect.Width * 0.5f;
+			let cy = divRect.Y + divRect.Height * 0.5f;
+			let dotR = 1.5f;
+
+			if (Orientation == .Horizontal)
+			{
+				for (int i = -2; i <= 2; i++)
+					ctx.VG.FillCircle(.(cx, cy + i * 5), dotR, gripColor);
+			}
+			else
+			{
+				for (int i = -2; i <= 2; i++)
+					ctx.VG.FillCircle(.(cx + i * 5, cy), dotR, gripColor);
+			}
 		}
 	}
 

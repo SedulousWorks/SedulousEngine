@@ -42,6 +42,20 @@ public class Theme
 	};
 	private Dictionary<String, float> mFontSizes = new .() ~ DeleteDictKeys(_);
 
+	/// Arbitrary resources owned by this theme (atlases, loaded images, etc.).
+	/// Deleted when the theme is deleted.
+	private List<Object> mOwnedResources ~ {
+		if (_ != null) { for (let r in _) delete r; delete _; }
+	};
+
+	/// Take ownership of a resource so it lives as long as this theme.
+	public void OwnResource(Object resource)
+	{
+		if (mOwnedResources == null)
+			mOwnedResources = new .();
+		mOwnedResources.Add(resource);
+	}
+
 	public String Name = new .() ~ delete _;
 	public Palette Palette;
 

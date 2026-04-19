@@ -45,17 +45,23 @@ public class ProgressBar : View
 	public override void OnDraw(UIDrawContext ctx)
 	{
 		let radius = Height * 0.5f;
+		let bounds = RectangleF(0, 0, Width, Height);
 
 		// Track.
-		ctx.VG.FillRoundedRect(.(0, 0, Width, Height), radius, TrackColor);
+		if (!ctx.TryDrawDrawable("ProgressBar.Track", bounds, GetControlState()))
+			ctx.VG.FillRoundedRect(bounds, radius, TrackColor);
 
 		// Fill — clip so the rounded left edge is preserved.
 		let fillW = Width * mProgress;
 		if (fillW > 0)
 		{
-			ctx.VG.PushClipRect(.(0, 0, fillW, Height));
-			ctx.VG.FillRoundedRect(.(0, 0, Width, Height), radius, FillColor);
-			ctx.VG.PopClip();
+			let fillBounds = RectangleF(0, 0, fillW, Height);
+			if (!ctx.TryDrawDrawable("ProgressBar.Fill", fillBounds, GetControlState()))
+			{
+				ctx.VG.PushClipRect(.(0, 0, fillW, Height));
+				ctx.VG.FillRoundedRect(bounds, radius, FillColor);
+				ctx.VG.PopClip();
+			}
 		}
 	}
 }

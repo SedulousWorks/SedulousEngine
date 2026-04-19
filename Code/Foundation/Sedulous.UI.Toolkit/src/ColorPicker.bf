@@ -246,8 +246,11 @@ public class ColorPicker : ViewGroup
 
 	public override void OnDraw(UIDrawContext ctx)
 	{
-		let bgColor = ctx.Theme?.GetColor("ColorPicker.Background") ?? ctx.Theme?.Palette.Surface ?? .(42, 44, 54, 255);
-		ctx.VG.FillRoundedRect(.(0, 0, Width, Height), 4, bgColor);
+		if (!ctx.TryDrawDrawable("ColorPicker.Background", .(0, 0, Width, Height), .Normal))
+		{
+			let bgColor = ctx.Theme?.GetColor("ColorPicker.Background") ?? ctx.Theme?.Palette.Surface ?? .(42, 44, 54, 255);
+			ctx.VG.FillRoundedRect(.(0, 0, Width, Height), 4, bgColor);
+		}
 
 		DrawChildren(ctx);
 	}

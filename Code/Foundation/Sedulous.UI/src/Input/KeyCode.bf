@@ -1,7 +1,9 @@
+using System;
 namespace Sedulous.UI;
 
 /// UI keyboard key codes. Values match Shell.Input.KeyCode so mapping
 /// is a trivial cast. UI owns its own enum to avoid depending on Shell.
+[AllowDuplicates]
 public enum KeyCode
 {
 	Unknown = 0,

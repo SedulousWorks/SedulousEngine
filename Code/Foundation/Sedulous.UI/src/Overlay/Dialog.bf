@@ -50,9 +50,7 @@ public class Dialog : ViewGroup
 			mLayout.RemoveView(mContent, true);
 
 		mContent = content;
-		// Insert content before the button row.
-		let buttonIdx = mLayout.ChildCount - 1;
-		// Remove button row, add content, re-add button row.
+		// Insert content before the button row — remove it, add content, re-add.
 		mLayout.RemoveView(mButtonRow, false);
 		mLayout.AddView(content, new LinearLayout.LayoutParams() { Width = Sedulous.UI.LayoutParams.MatchParent, Height = Sedulous.UI.LayoutParams.WrapContent });
 		mLayout.AddView(mButtonRow, new LinearLayout.LayoutParams() { Width = Sedulous.UI.LayoutParams.MatchParent, Height = 36 });
@@ -130,9 +128,10 @@ public class Dialog : ViewGroup
 	public override void OnDraw(UIDrawContext ctx)
 	{
 		let bounds = RectangleF(0, 0, Width, Height);
-		ctx.FillThemedBox(bounds, "Dialog",
-			defaultBg: .(50, 52, 62, 255), defaultBorder: .(80, 85, 100, 255),
-			defaultRadius: 6, defaultBorderWidth: 1);
+		if (!ctx.TryDrawDrawable("Dialog.Background", bounds, GetControlState()))
+			ctx.FillThemedBox(bounds, "Dialog",
+				defaultBg: .(50, 52, 62, 255), defaultBorder: .(80, 85, 100, 255),
+				defaultRadius: 6, defaultBorderWidth: 1);
 		DrawChildren(ctx);
 	}
 

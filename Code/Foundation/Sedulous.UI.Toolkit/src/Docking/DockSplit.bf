@@ -130,10 +130,14 @@ public class DockSplit : ViewGroup
 
 		// Draw divider.
 		let dividerRect = GetDividerRect();
-		let dividerColor = (mIsDragging || mIsDividerHovered)
-			? (ctx.Theme?.GetColor("DockSplit.DividerHover") ?? ctx.Theme?.Palette.PrimaryAccent ?? .(80, 150, 240, 255))
-			: (ctx.Theme?.GetColor("DockSplit.Divider") ?? ctx.Theme?.Palette.Border ?? .(65, 70, 85, 255));
-		ctx.VG.FillRect(dividerRect, dividerColor);
+		let divState = (mIsDragging || mIsDividerHovered) ? ControlState.Hover : ControlState.Normal;
+		if (!ctx.TryDrawDrawable("DockSplit.Divider", dividerRect, divState))
+		{
+			let dividerColor = (mIsDragging || mIsDividerHovered)
+				? (ctx.Theme?.GetColor("DockSplit.DividerHover") ?? ctx.Theme?.Palette.PrimaryAccent ?? .(80, 150, 240, 255))
+				: (ctx.Theme?.GetColor("DockSplit.Divider") ?? ctx.Theme?.Palette.Border ?? .(65, 70, 85, 255));
+			ctx.VG.FillRect(dividerRect, dividerColor);
+		}
 	}
 
 	// === Hit testing: intercept divider clicks ===

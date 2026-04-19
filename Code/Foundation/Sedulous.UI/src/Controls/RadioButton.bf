@@ -84,19 +84,26 @@ public class RadioButton : View
 		let radius = CircleSize * 0.5f;
 
 		// Circle background.
-		let circleBg = ctx.Theme?.GetColor("RadioButton.CircleBackground", .(30, 32, 42, 255)) ?? .(30, 32, 42, 255);
-		let circleBorder = ctx.Theme?.GetColor("RadioButton.CircleBorder", .(100, 105, 120, 255)) ?? .(100, 105, 120, 255);
+		if (!ctx.TryDrawDrawable("RadioButton.Circle", .(centerX - radius, centerY - radius, CircleSize, CircleSize), GetControlState()))
+		{
+			let circleBg = ctx.Theme?.GetColor("RadioButton.CircleBackground", .(30, 32, 42, 255)) ?? .(30, 32, 42, 255);
+			let circleBorder = ctx.Theme?.GetColor("RadioButton.CircleBorder", .(100, 105, 120, 255)) ?? .(100, 105, 120, 255);
 
-		let borderColor = IsHovered ? Palette.Lighten(circleBorder, 0.3f) : circleBorder;
-		ctx.VG.FillCircle(.(centerX, centerY), radius, circleBg);
-		ctx.VG.StrokeCircle(.(centerX, centerY), radius, borderColor, 1.5f);
+			let borderColor = IsHovered ? Palette.Lighten(circleBorder, 0.3f) : circleBorder;
+			ctx.VG.FillCircle(.(centerX, centerY), radius, circleBg);
+			ctx.VG.StrokeCircle(.(centerX, centerY), radius, borderColor, 1.5f);
+		}
 
 		// Inner dot when checked.
 		if (mIsChecked)
 		{
-			let dotColor = ctx.Theme?.TryGetColor("RadioButton.DotColor") ?? ctx.Theme?.Palette.PrimaryAccent ?? .(80, 160, 255, 255);
-			let dc = IsEffectivelyEnabled ? dotColor : Palette.ComputeDisabled(dotColor);
-			ctx.VG.FillCircle(.(centerX, centerY), radius - 4, dc);
+			let dotRect = RectangleF(centerX - (radius - 4), centerY - (radius - 4), (radius - 4) * 2, (radius - 4) * 2);
+			if (!ctx.TryDrawDrawable("RadioButton.Dot", dotRect, GetControlState()))
+			{
+				let dotColor = ctx.Theme?.TryGetColor("RadioButton.DotColor") ?? ctx.Theme?.Palette.PrimaryAccent ?? .(80, 160, 255, 255);
+				let dc = IsEffectivelyEnabled ? dotColor : Palette.ComputeDisabled(dotColor);
+				ctx.VG.FillCircle(.(centerX, centerY), radius - 4, dc);
+			}
 		}
 
 		// Focus ring.

@@ -1213,7 +1213,6 @@ class LayoutDetailTests
 
 		ctx.UpdateRootView(root);
 
-		let c0 = flow.GetChildAt(0);
 		let c1 = flow.GetChildAt(1);
 		let c2 = flow.GetChildAt(2);
 		let c3 = flow.GetChildAt(3);

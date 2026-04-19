@@ -135,7 +135,6 @@ class InputTests
 
 		ctx.UpdateRootView(root);
 
-		bool outerGotWheel = false;
 		// Override OnMouseWheel on outer via subclass? We can't easily.
 		// Just verify it doesn't crash.
 		ctx.InputManager.ProcessMouseWheel(50, 50, 0, 1.0f);

@@ -51,10 +51,13 @@ public class FloatingWindow : ViewGroup, IDockableWindow
 	{
 		if (!IsOSWindow)
 		{
-			// Virtual mode: draw border.
+			// Virtual mode: draw background and border.
+			if (!ctx.TryDrawDrawable("FloatingWindow.Background", .(0, 0, Width, Height), .Normal))
+			{
+				let bgColor = ctx.Theme?.Palette.Surface ?? .(42, 44, 54, 255);
+				ctx.VG.FillRoundedRect(.(0, 0, Width, Height), 4, bgColor);
+			}
 			let borderColor = ctx.Theme?.Palette.Border ?? .(65, 70, 85, 255);
-			let bgColor = ctx.Theme?.Palette.Surface ?? .(42, 44, 54, 255);
-			ctx.VG.FillRoundedRect(.(0, 0, Width, Height), 4, bgColor);
 			ctx.VG.StrokeRect(.(0, 0, Width, Height), borderColor, 2);
 		}
 

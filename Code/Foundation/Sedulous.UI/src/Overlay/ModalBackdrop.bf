@@ -8,8 +8,12 @@ public class ModalBackdrop : View
 {
 	public override void OnDraw(UIDrawContext ctx)
 	{
-		let color = ctx.Theme?.GetColor("Modal.Backdrop", .(0, 0, 0, 120)) ?? .(0, 0, 0, 120);
-		ctx.VG.FillRect(.(0, 0, Width, Height), color);
+		let bounds = RectangleF(0, 0, Width, Height);
+		if (!ctx.TryDrawDrawable("Modal.Backdrop", bounds, .Normal))
+		{
+			let color = ctx.Theme?.GetColor("Modal.Backdrop", .(0, 0, 0, 120)) ?? .(0, 0, 0, 120);
+			ctx.VG.FillRect(bounds, color);
+		}
 	}
 
 	// Block all mouse input.
