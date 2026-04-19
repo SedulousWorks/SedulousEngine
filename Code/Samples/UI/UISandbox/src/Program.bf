@@ -518,6 +518,9 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 		mDemoCtx.ButtonNormal = mButtonNormal;
 		mDemoCtx.ButtonPressed = mButtonPressed;
 		mDemoCtx.FloatingWindowHost = this;
+
+		// Multi-window: app handles all input routing in OnInput.
+		mUI.ManualInputRouting = true;
 		BuildDemoUI(mUI.UIContext);
 	}
 
@@ -1503,79 +1506,78 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 	}
 	*/
 
+	/// All input routing in one place (matching legacy ProcessUIInput pattern).
+	/// ManualInputRouting=true disables UISubsystem's auto-processing.
 	protected override void OnInput()
 	{
 		if (mUI == null) return;
 
 		let mouse = Shell?.InputManager?.Mouse;
-		let dragDrop = mUI.UIContext.DragDropManager;
+		let kb = Shell?.InputManager?.Keyboard;
+		let ctx = mUI.UIContext;
+		let dragDrop = ctx.DragDropManager;
+		let inputHelper = mUI.InputHelper;
+		if (mouse == null || inputHelper == null) return;
 
-		// During active drag, use global mouse coords and handle cross-window movement.
-		if (dragDrop.IsDragging || dragDrop.IsPotentialDrag)
-		{
-			mUI.UIContext.ActiveInputRoot = mUI.Root;
-
-			if (mouse != null)
-			{
-				let globalX = mouse.GlobalX;
-				let globalY = mouse.GlobalY;
-
-				// Move the floating OS window to follow cursor (like legacy).
-				if (dragDrop.IsDragging && mDragSourceWindow == null)
-				{
-					// First frame of active drag — find the source floating window
-					// and capture the mouse offset within it.
-					for (let kv in mFloatingWindowMap)
-					{
-						if (kv.value.Window.Focused)
-						{
-							mDragSourceWindow = kv.value.Window;
-							mDragWindowOffsetX = globalX - (float)mDragSourceWindow.X;
-							mDragWindowOffsetY = globalY - (float)mDragSourceWindow.Y;
-							break;
-						}
-					}
-				}
-
-				if (mDragSourceWindow != null)
-				{
-					mDragSourceWindow.X = (int32)(globalX - mDragWindowOffsetX);
-					mDragSourceWindow.Y = (int32)(globalY - mDragWindowOffsetY);
-				}
-
-				// Route all input with main-window-relative coords via UIInputHelper
-				// overload. This handles move, button edges, and wheel correctly.
-				let mx = globalX - (float)mWindow.X;
-				let my = globalY - (float)mWindow.Y;
-
-				Sedulous.UI.Shell.UIInputHelper inputHelper = mUI.[Friend]mInputHelper;
-				if (inputHelper != null)
-					inputHelper.ProcessMouseInput(mouse, mUI.UIContext, mx, my);
-
-				mUI.SkipInputThisFrame = true;
-			}
-			return;
-		}
-
-		// Not dragging — clear drag source tracking.
-		if (mDragSourceWindow != null)
-			mDragSourceWindow = null;
-
-		// Route input to whichever window has focus.
+		// Determine which window has the mouse.
+		RootView inputRoot = mUI.Root;
 		for (let kv in mFloatingWindowMap)
 		{
 			if (kv.value.Window.Focused)
 			{
 				if (let data = kv.value.UserData as FloatingWindowRenderData)
-				{
-					mUI.UIContext.ActiveInputRoot = data.RootView;
-					return;
-				}
+					inputRoot = data.RootView;
+				break;
 			}
 		}
 
-		// Default: main window.
-		mUI.UIContext.ActiveInputRoot = mUI.Root;
+		// Cross-window drag: move OS window, route input to main window.
+		if ((dragDrop.IsDragging || dragDrop.IsPotentialDrag) && inputRoot !== mUI.Root)
+		{
+			let globalX = mouse.GlobalX;
+			let globalY = mouse.GlobalY;
+
+			// Capture drag offset on first frame.
+			if (dragDrop.IsDragging && mDragSourceWindow == null)
+			{
+				for (let kv in mFloatingWindowMap)
+				{
+					if (kv.value.Window.Focused)
+					{
+						mDragSourceWindow = kv.value.Window;
+						mDragWindowOffsetX = globalX - (float)mDragSourceWindow.X;
+						mDragWindowOffsetY = globalY - (float)mDragSourceWindow.Y;
+						break;
+					}
+				}
+			}
+
+			// Move the floating OS window to follow cursor.
+			if (mDragSourceWindow != null)
+			{
+				mDragSourceWindow.X = (int32)(globalX - mDragWindowOffsetX);
+				mDragSourceWindow.Y = (int32)(globalY - mDragWindowOffsetY);
+			}
+
+			// Route to main window with global-to-main-relative conversion.
+			ctx.ActiveInputRoot = mUI.Root;
+			let mx = globalX - (float)mWindow.X;
+			let my = globalY - (float)mWindow.Y;
+			inputHelper.ProcessMouseInput(mouse, ctx, mx, my);
+			if (kb != null)
+				inputHelper.ProcessKeyboardInput(kb, ctx, 0);
+			return;
+		}
+
+		// Not cross-window dragging — clear drag source.
+		if (mDragSourceWindow != null)
+			mDragSourceWindow = null;
+
+		// Normal routing to focused window.
+		ctx.ActiveInputRoot = inputRoot;
+		inputHelper.ProcessMouseInput(mouse, ctx);
+		if (kb != null)
+			inputHelper.ProcessKeyboardInput(kb, ctx, 0);
 	}
 
 	protected override void OnUpdate(FrameContext frame)

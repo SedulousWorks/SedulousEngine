@@ -42,15 +42,19 @@ public class UISubsystem : Subsystem
 	private int32 mFrameCount;
 	private float mTotalTime;
 
-	/// When true, UISubsystem skips shell input routing this frame.
-	/// Set by the application when it handles input directly (e.g., during cross-window drag).
-	public bool SkipInputThisFrame;
+	/// When true, the application handles all input routing via InputHelper.
+	/// UISubsystem skips its automatic shell input processing.
+	/// Set once at init when the app needs multi-window input control.
+	public bool ManualInputRouting;
 
 	/// The global UIContext for screen-space UI.
 	public UIContext UIContext => mUIContext;
 
 	/// The main root view (for the primary window).
 	public RootView Root => mRoot;
+
+	/// The input helper for manual input routing (when ManualInputRouting is true).
+	public Sedulous.UI.Shell.UIInputHelper InputHelper => mInputHelper;
 
 	/// The font service for loading/caching fonts.
 	public FontService FontService => mFontService;
@@ -140,10 +144,9 @@ public class UISubsystem : Subsystem
 			if (mWindow != null)
 				mRoot.DpiScale = mWindow.ContentScale;
 
-			// Route shell input -> UI events (unless app handled it this frame).
-			if (!SkipInputThisFrame && mInputHelper != null && mShell?.InputManager != null)
+			// Route shell input -> UI events (unless app handles routing manually).
+			if (!ManualInputRouting && mInputHelper != null && mShell?.InputManager != null)
 				mInputHelper.Update(mShell.InputManager, mUIContext, deltaTime);
-			SkipInputThisFrame = false;
 
 			// Drain deferred mutations, then run layout.
 			mUIContext.BeginFrame(deltaTime);
