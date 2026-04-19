@@ -11,6 +11,7 @@ Sedulous engine (BeefGFX_Workspace_Compare) and ezEngine as references.
 - ~~**Engine.Animation**~~ — skeletal clips, animation graphs, property animation
 - ~~**Engine.Audio**~~ — SDL3 audio (sources, listener, volume categories, music streaming, one-shots)
 - ~~**Engine.Navigation**~~ — Recast/Detour (navmesh, crowd, obstacles, pathfinding)
+- ~~**Engine.UI**~~ — screen-space + world-space UI (EngineUISubsystem, ScreenUIView, UIComponent, WorldUIPass, input raycasting)
 
 ### Renderer
 - ~~Forward PBR~~ with Cook-Torrance BRDF
@@ -64,7 +65,7 @@ does linear light iteration in the forward shader. Needed when light count > 32.
 | Occlusion culling (Hi-Z) | Old engine had HiZOcclusionCuller. Important for complex scenes |
 | SSR | Screen-space reflections. Medium effort, reads normals + depth |
 | Volumetric fog | Old engine had VolumetricFogFeature. Large scope |
-| World-space UI | Old engine had WorldUIComponent + WorldSpaceUIFeature |
+| ~~World-space UI~~ | DONE — EngineUISubsystem, UIComponent, WorldUIPass, input raycasting |
 
 ### Low Priority (ezEngine parity, advanced)
 
@@ -91,7 +92,7 @@ No intermediate ComponentData classes needed — components serialize directly.
 
 | Feature | Old Engine | ezEngine | Notes |
 |---------|-----------|----------|-------|
-| World-space UI | WorldUIComponent | RmlUiPlugin | Need UI rendering in 3D |
+| ~~World-space UI~~ | ~~WorldUIComponent~~ | RmlUiPlugin | DONE — UIComponent + UIComponentManager, render-to-texture via WorldUIPass, input raycasting |
 | IK (aim, two-bone) | ❌ | AimIKComponent, TwoBoneIKComponent | Animation quality |
 | Motion matching | ❌ | MotionMatchingComponent | Advanced animation |
 | Character controller | Via Jolt | Via Jolt | Already available via physics |
@@ -132,6 +133,5 @@ No intermediate ComponentData classes needed — components serialize directly.
 - Reflection probes with scene capture
 - Cluster lighting for many lights
 - Hi-Z occlusion culling
-- World-space UI system
 - Comprehensive component serialization (ComponentData pattern)
 - Scene system tests
