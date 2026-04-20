@@ -50,6 +50,15 @@ public abstract class Subsystem : IDisposable
 		}
 	}
 
+	/// Signals that all subsystems have been initialized.
+	/// Called once during Context.Startup(), after all Init() calls complete.
+	/// Safe to access other subsystems for cross-reference wiring.
+	public void Ready()
+	{
+		if (mInitialized)
+			OnReady();
+	}
+
 	/// Prepares the subsystem for shutdown while the world is still alive.
 	/// Called on all subsystems before any Shutdown() calls, giving subsystems
 	/// a chance to detach cross-references (e.g., null physics world refs on
@@ -91,6 +100,11 @@ public abstract class Subsystem : IDisposable
 
 	/// Override to perform subsystem initialization.
 	protected virtual void OnInit() { }
+
+	/// Override to wire cross-subsystem references after all subsystems are initialized.
+	/// Called once during startup, after all OnInit() calls, before the first frame.
+	/// Mirror of OnPrepareShutdown (which detaches cross-references before shutdown).
+	protected virtual void OnReady() { }
 
 	/// Override to detach cross-references before shutdown.
 	/// Called while the world is still alive - safe to access other subsystems,

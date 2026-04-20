@@ -98,6 +98,26 @@ public class Context : IDisposable
 		return mSubsystems.ContainsKey(typeof(T));
 	}
 
+	/// Gets the first registered subsystem implementing interface T.
+	/// Searches in update order (lowest UpdateOrder first).
+	/// Callers should cache the result at startup for hot paths.
+	public T GetSubsystemByInterface<T>() where T : class
+	{
+		for (let subsystem in mSortedSubsystems)
+			if (let match = subsystem as T)
+				return match;
+		return null;
+	}
+
+	/// Gets all registered subsystems implementing interface T, in update order.
+	/// Results are appended to the provided list.
+	public void GetSubsystemsByInterface<T>(List<T> results) where T : class
+	{
+		for (let subsystem in mSortedSubsystems)
+			if (let match = subsystem as T)
+				results.Add(match);
+	}
+
 	/// Starts up the context and all registered subsystems.
 	public virtual void Startup()
 	{
@@ -110,6 +130,11 @@ public class Context : IDisposable
 		// Initialize all subsystems in UpdateOrder
 		for (let subsystem in mSortedSubsystems)
 			subsystem.Init();
+
+		// Signal all subsystems that initialization is complete.
+		// Safe to wire cross-subsystem references here.
+		for (let subsystem in mSortedSubsystems)
+			subsystem.Ready();
 
 		mIsRunning = true;
 	}
