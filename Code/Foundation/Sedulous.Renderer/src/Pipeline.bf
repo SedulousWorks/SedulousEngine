@@ -30,9 +30,7 @@ public class Pipeline : IRenderingPipeline, IDisposable
 	// Render graph
 	private RenderGraph mRenderGraph ~ delete _;
 
-	// Pipeline output
-	private ITexture mOutputTexture;
-	private ITextureView mOutputTextureView;
+	// Pipeline output dimensions (texture owned by application)
 	private uint32 mOutputWidth;
 	private uint32 mOutputHeight;
 	private TextureFormat mOutputFormat = .RGBA16Float;
@@ -60,12 +58,6 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		return mFrameResources[frameIndex % MaxFramesInFlight];
 	}
 
-	/// The pipeline output texture. Read this after Render() to blit.
-	public ITexture OutputTexture => mOutputTexture;
-
-	/// The pipeline output texture view.
-	public ITextureView OutputTextureView => mOutputTextureView;
-
 	/// Output width in pixels.
 	public uint32 OutputWidth => mOutputWidth;
 
@@ -89,13 +81,11 @@ public class Pipeline : IRenderingPipeline, IDisposable
 	{
 		mRenderContext = renderContext;
 		mOutputFormat = outputFormat;
+		mOutputWidth = width;
+		mOutputHeight = height;
 
 		// Render graph
 		mRenderGraph = new RenderGraph(renderContext.Device, .() { FrameBufferCount = MaxFramesInFlight });
-
-		// Create output texture
-		if (CreateOutputTexture(width, height) case .Err)
-			return .Err;
 
 		// Create per-frame resources (buffers + bind groups)
 		if (CreatePerFrameResources() case .Err)
@@ -115,10 +105,8 @@ public class Pipeline : IRenderingPipeline, IDisposable
 	}
 
 	/// Resets per-frame ring buffer offsets for the given frame slot.
-	/// Must be called once per frame before the first Render() call. RenderSubsystem
-	/// calls this on every Pipeline that will render this frame (main pipeline + any
-	/// shadow pipelines) so multiple Render() calls within the frame can append to
-	/// the same per-frame resources without overwriting each other.
+	/// Must be called once per frame before the first Render() call.
+	/// frameIndex is provided by the application (owns frame pacing).
 	public void BeginFrame(int32 frameIndex)
 	{
 		let frame = mFrameResources[frameIndex % MaxFramesInFlight];
@@ -192,21 +180,26 @@ public class Pipeline : IRenderingPipeline, IDisposable
 			}
 		}
 
-		// Release output texture
-		DestroyOutputTexture();
-
 		mRenderContext = null;
 	}
 
 	// ==================== Rendering ====================
 
-	/// Renders a view to the pipeline's output texture.
-	public void Render(ICommandEncoder encoder, RenderView view)
+	/// Renders a view to the provided output texture.
+	///
+	/// Contract:
+	///   - The caller owns the output texture and must clear it before calling.
+	///   - The output texture must be in RenderTarget state on entry.
+	///   - On return, the output texture is still in RenderTarget state.
+	///     The caller is responsible for transitioning to ShaderRead (for blit sampling)
+	///     or any other required state after this call.
+	///   - frameIndex is provided by the caller (application owns frame pacing).
+	public void Render(ICommandEncoder encoder, RenderView view, ITexture outputTexture, ITextureView outputTextureView, int32 frameIndex)
 	{
 		using (Profiler.Begin("Pipeline.Render"))
 		{
-		let frameIndex = view.FrameIndex % MaxFramesInFlight;
-		let frame = mFrameResources[frameIndex];
+		let frameSlot = frameIndex % MaxFramesInFlight;
+		let frame = mFrameResources[frameSlot];
 
 		// Update per-view uniforms (appends into the per-frame ring buffers).
 		using (Profiler.Begin("UploadUniforms"))
@@ -217,10 +210,10 @@ public class Pipeline : IRenderingPipeline, IDisposable
 
 			// Upload light data
 			if (view.RenderData != null)
-				mRenderContext.LightBuffer.Upload(view.RenderData, view.FrameIndex);
+				mRenderContext.LightBuffer.Upload(view.RenderData, frameIndex);
 
 			// Rebuild frame bind group (includes light buffer)
-			RebuildFrameBindGroup(frame, view.FrameIndex);
+			RebuildFrameBindGroup(frame, frameIndex);
 		}
 
 		// Process deferred GPU resource deletions
@@ -230,7 +223,7 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		mRenderGraph.SetOutputSize(mOutputWidth, mOutputHeight);
 
 		// Begin render graph frame
-		mRenderGraph.BeginFrame((int32)frameIndex);
+		mRenderGraph.BeginFrame(frameSlot);
 
 		let hasPostProcess = mPostProcessStack != null && mPostProcessStack.HasActiveEffects;
 
@@ -238,17 +231,23 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		{
 			// With post-processing:
 			//   "PipelineOutput" = transient HDR texture (scene passes write here)
-			//   "FinalOutput" = imported real output (post-process stack writes here)
-			let finalHandle = mRenderGraph.ImportTarget("FinalOutput", mOutputTexture, mOutputTextureView);
+			//   "FinalOutput"    = imported caller-owned output (post-process stack writes here)
+			//
+			// The transient HDR texture is internal to the render graph — the caller never
+			// sees it. It does NOT need an explicit clear pass because ForwardOpaquePass
+			// (the first writer) already uses LoadOp.Clear on color target 0. If a future
+			// pass becomes the first writer, it must also use LoadOp.Clear, or an explicit
+			// clear pass should be added here:
+			//
+			//   mRenderGraph.AddRenderPass("ClearSceneHDR", scope (builder) => {
+			//       builder
+			//           .SetColorTarget(0, sceneHdrHandle, .Clear, .Store, ClearColor(0, 0, 0, 1))
+			//           .NeverCull()
+			//           .SetExecute(new (encoder) => {});
+			//   });
+			let finalHandle = mRenderGraph.ImportTarget("FinalOutput", outputTexture, outputTextureView);
 			let hdrDesc = RGTextureDesc(mOutputFormat) { Usage = .RenderTarget | .Sampled };
 			let sceneHdrHandle = mRenderGraph.CreateTransient("PipelineOutput", hdrDesc);
-
-			mRenderGraph.AddRenderPass("ClearOutput", scope (builder) => {
-				builder
-					.SetColorTarget(0, sceneHdrHandle, .Clear, .Store, ClearColor(0.0f, 0.0f, 0.0f, 1.0f))
-					.NeverCull()
-					.SetExecute(new (encoder) => {});
-			});
 
 			for (let pass in mPasses)
 				pass.AddPasses(mRenderGraph, view, this);
@@ -258,15 +257,12 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		}
 		else
 		{
-			// Without post-processing: scene passes write directly to imported output
-			let outputHandle = mRenderGraph.ImportTarget("PipelineOutput", mOutputTexture, mOutputTextureView);
-
-			mRenderGraph.AddRenderPass("ClearOutput", scope (builder) => {
-				builder
-					.SetColorTarget(0, outputHandle, .Clear, .Store, ClearColor(0.0f, 0.0f, 0.0f, 1.0f))
-					.NeverCull()
-					.SetExecute(new (encoder) => {});
-			});
+			// Without post-processing: scene passes write directly to the caller-owned output.
+			// The caller clears the output before calling Render(). ForwardOpaquePass also
+			// uses LoadOp.Clear, so the caller's clear is technically redundant here — but
+			// the contract requires it for correctness if the pass order ever changes.
+			// Import so passes can find it by name via graph.GetResource("PipelineOutput").
+			mRenderGraph.ImportTarget("PipelineOutput", outputTexture, outputTextureView);
 
 			for (let pass in mPasses)
 				pass.AddPasses(mRenderGraph, view, this);
@@ -283,7 +279,8 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		} // Pipeline.Render scope
 	}
 
-	/// Resizes the pipeline output.
+	/// Notifies the pipeline of a resize. Updates internal dimensions and
+	/// notifies passes. The application owns the output texture and recreates it.
 	public void OnResize(uint32 width, uint32 height)
 	{
 		if (width == 0 || height == 0)
@@ -291,9 +288,8 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		if (width == mOutputWidth && height == mOutputHeight)
 			return;
 
-		mRenderContext.Device.WaitIdle();
-		DestroyOutputTexture();
-		CreateOutputTexture(width, height);
+		mOutputWidth = width;
+		mOutputHeight = height;
 
 		for (let pass in mPasses)
 			pass.OnResize(width, height);
@@ -363,58 +359,6 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		public Matrix WorldMatrix;
 		public Matrix PrevWorldMatrix;
 		public const uint64 Size = 128;
-	}
-
-	private Result<void> CreateOutputTexture(uint32 width, uint32 height)
-	{
-		mOutputWidth = width;
-		mOutputHeight = height;
-
-		TextureDesc texDesc = .()
-		{
-			Label = "Pipeline Output",
-			Width = width,
-			Height = height,
-			Depth = 1,
-			Format = mOutputFormat,
-			Usage = .RenderTarget | .Sampled | .CopySrc,
-			Dimension = .Texture2D,
-			MipLevelCount = 1,
-			ArrayLayerCount = 1,
-			SampleCount = 1
-		};
-
-		if (mRenderContext.Device.CreateTexture(texDesc) case .Ok(let tex))
-			mOutputTexture = tex;
-		else
-			return .Err;
-
-		TextureViewDesc viewDesc = .()
-		{
-			Label = "Pipeline Output View",
-			Format = mOutputFormat,
-			Dimension = .Texture2D
-		};
-
-		if (mRenderContext.Device.CreateTextureView(mOutputTexture, viewDesc) case .Ok(let view))
-			mOutputTextureView = view;
-		else
-			return .Err;
-
-		return .Ok;
-	}
-
-	private void DestroyOutputTexture()
-	{
-		let device = mRenderContext?.Device;
-		if (device == null) return;
-
-		if (mOutputTextureView != null)
-			device.DestroyTextureView(ref mOutputTextureView);
-		if (mOutputTexture != null)
-			device.DestroyTexture(ref mOutputTexture);
-		mOutputWidth = 0;
-		mOutputHeight = 0;
 	}
 
 	/// Writes the view's scene uniforms into the per-frame ring buffer and returns

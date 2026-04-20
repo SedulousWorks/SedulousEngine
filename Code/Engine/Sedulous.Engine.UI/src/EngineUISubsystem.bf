@@ -5,8 +5,8 @@ using Sedulous.Runtime;
 using Sedulous.Shell;
 using Sedulous.Shell.Input;
 using Sedulous.Engine;
-using Sedulous.Engine.Render;
 using Sedulous.Scenes;
+using Sedulous.Renderer;
 using Sedulous.RHI;
 using Sedulous.UI;
 using Sedulous.UI.Shell;
@@ -14,11 +14,12 @@ using Sedulous.Fonts;
 using Sedulous.Fonts.TTF;
 using Sedulous.Shaders;
 using Sedulous.Core.Mathematics;
+using Sedulous.Engine.Render;
 
 /// Unified engine UI subsystem handling screen-space and world-space UI.
 /// Screen-space: ScreenUIView renders as IRenderOverlay after 3D scene blit.
 /// World-space: UIComponentManager per scene, renders to textures displayed as sprites.
-class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware
+class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 {
 	public override int32 UpdateOrder => 400;
 
@@ -28,13 +29,14 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware
 	public IShell Shell;
 	public ShaderSystem ShaderSystem;
 	public String AssetDirectory ~ delete _;
+	public TextureFormat SwapChainFormat = .BGRA8UnormSrgb;
+	public int32 FrameCount = 2;
 
 	// Owned.
 	private UIContext mUIContext;
 	private FontService mFontService;
 	private ScreenUIView mScreenView;
 	private WorldUIPass mWorldUIPass;
-	private bool mWorldUIPassRegistered;
 	private UIInputHelper mInputHelper;
 	private ShellClipboardAdapter mClipboardAdapter;
 
@@ -58,6 +60,18 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware
 			return hit != null && hit !== mScreenView.Root;
 		}
 	}
+
+	// === IOverlayRenderer ===
+
+	public int32 OverlayOrder => 0;
+
+	public void RenderOverlay(ICommandEncoder encoder, ITextureView target,
+		uint32 w, uint32 h, int32 frameIndex)
+	{
+		mScreenView?.RenderOverlay(encoder, target, w, h, frameIndex);
+	}
+
+	// === Lifecycle ===
 
 	protected override void OnInit()
 	{
@@ -83,23 +97,11 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware
 		// Screen UI view — needs Device + SwapChain format.
 		if (Device != null)
 		{
-			// Get swap chain format from RenderSubsystem.
-			let renderSub = Context.GetSubsystem<Sedulous.Engine.Render.RenderSubsystem>();
-			if (renderSub != null)
-			{
-				let swapFormat = renderSub.SwapChainFormat;
-				let frameCount = renderSub.FrameCount;
+			mScreenView = new ScreenUIView(mUIContext, Device, SwapChainFormat,
+				FrameCount, mFontService, ShaderSystem);
 
-				mScreenView = new ScreenUIView(mUIContext, Device, swapFormat,
-					frameCount, mFontService, ShaderSystem);
-
-				// Register as render overlay.
-				renderSub.RegisterOverlay(mScreenView);
-
-				// Create world UI render pass (added to pipeline on first Update,
-				// since Pipeline isn't created until RenderSubsystem.OnInit at UpdateOrder 500).
-				mWorldUIPass = new WorldUIPass();
-			}
+			// Create world UI render pass (registered with pipeline in OnReady).
+			mWorldUIPass = new WorldUIPass();
 		}
 
 		// Load default font if asset directory is available.
@@ -115,21 +117,20 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware
 		}
 	}
 
+	protected override void OnReady()
+	{
+		// All subsystems initialized — safe to access ISceneRenderer's Pipeline.
+		if (mWorldUIPass != null)
+		{
+			let sceneRenderer = Context.GetSubsystemByInterface<ISceneRenderer>();
+			if (sceneRenderer?.Pipeline != null)
+				sceneRenderer.Pipeline.AddPass(mWorldUIPass);
+		}
+	}
+
 	public override void Update(float deltaTime)
 	{
 		if (mUIContext == null) return;
-
-		// Deferred: add WorldUIPass to pipeline on first Update
-		// (Pipeline doesn't exist during OnInit — RenderSubsystem inits at UpdateOrder 500).
-		if (mWorldUIPass != null && !mWorldUIPassRegistered)
-		{
-			let renderSub = Context.GetSubsystem<RenderSubsystem>();
-			if (renderSub?.Pipeline != null)
-			{
-				renderSub.Pipeline.AddPass(mWorldUIPass);
-				mWorldUIPassRegistered = true;
-			}
-		}
 
 		// Sync DPI scale from window.
 		if (Window != null && mScreenView != null)
@@ -189,11 +190,11 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware
 	/// Route mouse input to world-space UI panels via raycasting.
 	private void RouteWorldUIInput(float deltaTime)
 	{
-		let renderSub = Context?.GetSubsystem<RenderSubsystem>();
-		if (renderSub?.Pipeline == null) return;
+		let sceneRenderer = Context?.GetSubsystemByInterface<ISceneRenderer>();
+		if (sceneRenderer?.Pipeline == null) return;
 
-		let viewportWidth = renderSub.Pipeline.OutputWidth;
-		let viewportHeight = renderSub.Pipeline.OutputHeight;
+		let viewportWidth = sceneRenderer.Pipeline.OutputWidth;
+		let viewportHeight = sceneRenderer.Pipeline.OutputHeight;
 		if (viewportWidth == 0 || viewportHeight == 0) return;
 
 		let inputMgr = Shell.InputManager;
@@ -391,14 +392,14 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware
 
 	public void OnSceneCreated(Scene scene)
 	{
-		let renderSub = Context.GetSubsystem<RenderSubsystem>();
+		let sceneRenderer = Context.GetSubsystemByInterface<ISceneRenderer>();
 		let uiMgr = new UIComponentManager();
 		uiMgr.Device = Device;
 		uiMgr.SharedTheme = mUIContext?.Theme;
 		uiMgr.FontService = mFontService;
 		uiMgr.ShaderSystem = ShaderSystem;
 		uiMgr.RenderPass = mWorldUIPass;
-		uiMgr.RenderContext = renderSub?.RenderContext;
+		uiMgr.RenderContext = sceneRenderer?.RenderContext;
 		scene.AddModule(uiMgr);
 	}
 
@@ -410,13 +411,6 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware
 
 	protected override void OnPrepareShutdown()
 	{
-		// Unregister overlay while other subsystems are still alive.
-		if (mScreenView != null)
-		{
-			let renderSub = Context?.GetSubsystem<RenderSubsystem>();
-			renderSub?.UnregisterOverlay(mScreenView);
-		}
-
 		// Null out SharedTheme on scene modules before screen UIContext (which owns the theme) is deleted.
 		// Per-component UIContexts use SetSharedTheme so they don't own it — but they hold a pointer.
 		let sceneSub = Context?.GetSubsystem<Sedulous.Engine.SceneSubsystem>();

@@ -6,12 +6,11 @@ using Sedulous.VG;
 using Sedulous.VG.Renderer;
 using Sedulous.Fonts;
 using Sedulous.Shaders;
-using Sedulous.Renderer;
 using Sedulous.Core.Mathematics;
 
 /// Screen-space UI view. Single instance owned by EngineUISubsystem.
-/// Implements IRenderOverlay so RenderSubsystem calls it after blit.
-public class ScreenUIView : IRenderOverlay
+/// Called by EngineUISubsystem.RenderOverlay to composite UI onto the swapchain.
+public class ScreenUIView
 {
 	public RootView Root { get; private set; }
 

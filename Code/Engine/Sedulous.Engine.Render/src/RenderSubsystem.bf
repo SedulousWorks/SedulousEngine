@@ -20,29 +20,18 @@ using Sedulous.Textures.Resources;
 using Sedulous.Materials.Resources;
 using System.Collections;
 
-/// Owns the renderer pipeline, swapchain, command pools, and GPU frame pacing.
+/// Implements ISceneRenderer — renders the 3D scene to application-provided output targets.
 /// Runs late (UpdateOrder 500) — all scene updates and extraction are complete by this point.
 /// Injects render component managers (Mesh, Light, Camera, etc.) into scenes via ISceneAware.
 ///
-/// The pipeline renders to its own output texture. This subsystem blits it to the swapchain.
-class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
+/// Does NOT own swapchain, frame pacing, or presentation. The application owns those and
+/// calls RenderScene() with an encoder and output targets, then handles blit + overlays + present.
+class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 {
-	private const int MAX_FRAMES_IN_FLIGHT = 2;
-
 	// Set by EngineApplication before context startup
 	private IDevice mDevice;
 	private IWindow mWindow;
-	private ISurface mSurface;
-	private TextureFormat mSwapChainFormat = .BGRA8UnormSrgb;
-	private PresentMode mPresentMode = .Fifo;
-
-	// Frame pacing
-	private ISwapChain mSwapChain;
 	private IQueue mGraphicsQueue;
-	private ICommandPool[MAX_FRAMES_IN_FLIGHT] mCommandPools;
-	private IFence mFrameFence;
-	private uint64 mNextFenceValue = 1;
-	private uint64[MAX_FRAMES_IN_FLIGHT] mFrameFenceValues;
 
 	// Renderer (shared infrastructure)
 	private RenderContext mRenderContext ~ delete _;
@@ -52,9 +41,6 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 
 	// Shadow pipeline (renders depth into the shared shadow atlas, one call per shadow caster)
 	private ShadowPipeline mShadowPipeline ~ delete _;
-
-	// Blit helper (fullscreen triangle to copy pipeline output -> swapchain)
-	private BlitHelper mBlitHelper ~ delete _;
 
 	// Resource managers (registered with Context.Resources)
 	private StaticMeshResourceManager mStaticMeshManager ~ delete _;
@@ -71,13 +57,10 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	// Per-frame list of shadow render jobs (cleared each frame in SetupShadows).
 	private List<ShadowPipeline.ShadowJob> mShadowDraws = new .() ~ delete _;
 
-	// Screen-space overlays rendered after blit, before present.
-	private List<Sedulous.Renderer.IRenderOverlay> mOverlays = new .() ~ delete _;
-
-	// Per-frame state
-	private int32 mFrameIndex = 0;
 	/// Previous frame's main-view ViewProjectionMatrix, used for motion vectors.
 	private Matrix mPrevViewProjectionMatrix = .Identity;
+	/// Current frame index during RenderScene (set by caller, used by shadow methods).
+	private int32 mFrameIndex;
 
 	// Timing
 	private float mDeltaTime;
@@ -89,10 +72,6 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 
 	public IDevice Device { get => mDevice; set => mDevice = value; }
 	public IWindow Window { get => mWindow; set => mWindow = value; }
-	public ISurface Surface { get => mSurface; set => mSurface = value; }
-	public TextureFormat SwapChainFormat { get => mSwapChainFormat; set => mSwapChainFormat = value; }
-	public PresentMode PresentMode { get => mPresentMode; set => mPresentMode = value; }
-	public int32 FrameCount => MAX_FRAMES_IN_FLIGHT;
 
 	/// Shader system (set by app, not owned).
 	public ShaderSystem ShaderSystem { get; set; }
@@ -100,7 +79,8 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	/// Asset directory (set by app, not owned).
 	public String AssetDirectory { get; set; }
 
-	public ISwapChain SwapChain => mSwapChain;
+	// ==================== ISceneRenderer ====================
+
 	public IQueue GraphicsQueue => mGraphicsQueue;
 	public RenderContext RenderContext => mRenderContext;
 	public Pipeline Pipeline => mPipeline;
@@ -113,34 +93,11 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 
 	protected override void OnInit()
 	{
-		if (mDevice == null || mSurface == null || mWindow == null)
+		if (mDevice == null || mWindow == null)
 			return;
-
-		// Swapchain
-		SwapChainDesc desc = .()
-		{
-			Width = (uint32)mWindow.Width,
-			Height = (uint32)mWindow.Height,
-			Format = mSwapChainFormat,
-			PresentMode = mPresentMode
-		};
-
-		if (mDevice.CreateSwapChain(mSurface, desc) case .Ok(let swapChain))
-			mSwapChain = swapChain;
 
 		// Graphics queue
 		mGraphicsQueue = mDevice.GetQueue(.Graphics);
-
-		// Per-frame command pools
-		for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-		{
-			if (mDevice.CreateCommandPool(.Graphics) case .Ok(let pool))
-				mCommandPools[i] = pool;
-		}
-
-		// Frame fence
-		if (mDevice.CreateFence(0) case .Ok(let fence))
-			mFrameFence = fence;
 
 		// Renderer (shared infrastructure)
 		mRenderContext = new RenderContext();
@@ -195,14 +152,6 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		postStack.AddEffect(new TonemapEffect());
 		mPipeline.PostProcessStack = postStack;
 
-		// Blit helper (copies pipeline output to swapchain)
-		if (ShaderSystem != null)
-		{
-			mBlitHelper = new BlitHelper();
-			mBlitHelper.Initialize(mDevice, mSwapChainFormat, ShaderSystem);
-		}
-
-
 		// Register resource managers with the resource system
 		mStaticMeshManager = new StaticMeshResourceManager();
 		mSkinnedMeshManager = new SkinnedMeshResourceManager();
@@ -235,10 +184,6 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		if (mMaterialManager != null)
 			Context.Resources.RemoveResourceManager(mMaterialManager);
 
-		// Destroy blit helper
-		if (mBlitHelper != null)
-			mBlitHelper.Dispose();
-
 		// Shutdown pipelines then renderer (pipelines first — they reference renderer)
 		if (mShadowPipeline != null)
 			mShadowPipeline.Shutdown();
@@ -246,19 +191,6 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 			mPipeline.Shutdown();
 		if (mRenderContext != null)
 			mRenderContext.Shutdown();
-
-		// Frame pacing resources
-		for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-		{
-			if (mCommandPools[i] != null)
-				mDevice.DestroyCommandPool(ref mCommandPools[i]);
-		}
-
-		if (mFrameFence != null)
-			mDevice.DestroyFence(ref mFrameFence);
-
-		if (mSwapChain != null)
-			mDevice.DestroySwapChain(ref mSwapChain);
 	}
 
 	// ==================== Frame ====================
@@ -269,37 +201,28 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		mTotalTime += deltaTime;
 	}
 
-	public override void EndFrame()
+	/// Renders the 3D scene (shadows + main pipeline) to application-provided output targets.
+	///
+	/// Contract:
+	///   - The application owns the encoder, output textures, and frame pacing.
+	///   - colorTexture/colorTarget must be pre-cleared and in RenderTarget state on entry.
+	///   - On return, colorTexture is transitioned to ShaderRead — ready for blit sampling.
+	///   - frameIndex is the application's frame-in-flight index (0..MAX_FRAMES-1),
+	///     used to index double-buffered per-frame resources (uniform ring buffers,
+	///     shadow atlas, etc.).
+	///   - w/h are the output dimensions. Pipeline.OnResize should be called separately
+	///     if these change (window resize) so internal transient textures match.
+	///
+	/// The method extracts scene data from all active scenes, renders shadow maps,
+	/// then runs the full pipeline (depth prepass -> forward -> sky -> transparent ->
+	/// particles -> debug -> post-processing) into the provided target.
+	public void RenderScene(ICommandEncoder encoder, ITexture colorTexture, ITextureView colorTarget,
+		uint32 w, uint32 h, int32 frameIndex)
 	{
-		if (mDevice == null || mSwapChain == null || mPipeline == null)
+		if (mDevice == null || mPipeline == null)
 			return;
 
-		if (mWindow.State == .Minimized)
-			return;
-
-		mFrameIndex = (int32)mSwapChain.CurrentImageIndex;
-
-		// Wait for this frame's previous GPU work
-		using (Profiler.Begin("GPU.WaitFence"))
-		{
-			if (mFrameFenceValues[mFrameIndex] > 0)
-				mFrameFence.Wait(mFrameFenceValues[mFrameIndex]);
-		}
-
-		mCommandPools[mFrameIndex].Reset();
-
-		// Acquire swapchain image
-		using (Profiler.Begin("GPU.AcquireImage"))
-		{
-			if (mSwapChain.AcquireNextImage() case .Err)
-			{
-				OnWindowResized(mWindow, mWindow.Width, mWindow.Height);
-				return;
-			}
-		}
-
-		let pool = mCommandPools[mFrameIndex];
-		var encoder = pool.CreateEncoder().Value;
+		mFrameIndex = frameIndex;
 
 		// Reset the view pool first — drops references to last frame's arena entries
 		// before BeginFrame() rewinds the frame allocator.
@@ -308,6 +231,11 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 
 		// Acquire and populate the main view from the active camera.
 		let mainView = mViewPool.Acquire();
+		mainView.FrameIndex = frameIndex;
+		mainView.DeltaTime = mDeltaTime;
+		mainView.TotalTime = mTotalTime;
+		mainView.Width = w;
+		mainView.Height = h;
 		using (Profiler.Begin("SceneExtraction"))
 			ExtractMainView(mainView);
 
@@ -317,15 +245,15 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 			SetupShadows(mainView);
 
 		// Reset per-frame ring buffer offsets before any Render() calls this frame.
-		mPipeline.BeginFrame(mFrameIndex);
-		mShadowPipeline.BeginFrame(mFrameIndex);
+		mPipeline.BeginFrame(frameIndex);
+		mShadowPipeline.BeginFrame(frameIndex);
 
 		// Render shadow views first (main forward pass samples the atlas).
 		using (Profiler.Begin("ShadowRender"))
-			RenderShadows(encoder);
+			RenderShadows(encoder, frameIndex);
 
-		// Render to pipeline output
-		mPipeline.Render(encoder, mainView);
+		// Render to the application-provided output target.
+		mPipeline.Render(encoder, mainView, colorTexture, colorTarget, frameIndex);
 
 		// Save this frame's VP for next frame's motion vectors.
 		mPrevViewProjectionMatrix = mainView.ViewProjectionMatrix;
@@ -335,41 +263,8 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		// the uploaded data until the GPU consumes it on the next fence wait.
 		mRenderContext.DebugDraw.Clear();
 
-		// Blit pipeline output -> swapchain
-		using (Profiler.Begin("Blit"))
-			BlitToSwapchain(encoder);
-
-		// Render screen-space overlays (UI, etc.) after blit, before present.
-		if (mOverlays.Count > 0)
-		{
-			using (Profiler.Begin("Overlays"))
-			{
-				for (let overlay in mOverlays)
-					overlay.RenderOverlay(encoder, mSwapChain.CurrentTextureView,
-						mSwapChain.Width, mSwapChain.Height, mFrameIndex);
-			}
-		}
-
-		// Transition swapchain to present
-		encoder.TransitionTexture(mSwapChain.CurrentTexture, .RenderTarget, .Present);
-
-		let commandBuffer = encoder.Finish();
-
-		// Submit + present
-		using (Profiler.Begin("GPU.Submit"))
-		{
-			mFrameFenceValues[mFrameIndex] = mNextFenceValue++;
-			ICommandBuffer[1] bufs = .(commandBuffer);
-			mGraphicsQueue.Submit(bufs, mFrameFence, mFrameFenceValues[mFrameIndex]);
-		}
-
-		using (Profiler.Begin("GPU.Present"))
-		{
-			if (mSwapChain.Present(mGraphicsQueue) case .Err)
-				OnWindowResized(mWindow, mWindow.Width, mWindow.Height);
-		}
-
-		pool.DestroyEncoder(ref encoder);
+		// Transition output to ShaderRead for the application to blit.
+		encoder.TransitionTexture(colorTexture, .RenderTarget, .ShaderRead);
 	}
 
 	// ==================== Extraction ====================
@@ -425,11 +320,8 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 		view.CameraPosition = cameraPos;
 		view.NearPlane = nearPlane;
 		view.FarPlane = farPlane;
-		view.Width = mPipeline.OutputWidth;
-		view.Height = mPipeline.OutputHeight;
-		view.FrameIndex = mFrameIndex;
-		view.DeltaTime = mDeltaTime;
-		view.TotalTime = mTotalTime;
+		// Width, Height, FrameIndex, DeltaTime, TotalTime are set by the caller
+		// (RenderScene) from application-provided values.
 
 		ExtractIntoView(view);
 	}
@@ -450,7 +342,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 			CameraPosition = view.CameraPosition,
 			NearPlane = view.NearPlane,
 			FarPlane = view.FarPlane,
-			FrameIndex = mFrameIndex,
+			FrameIndex = view.FrameIndex,
 			LayerMask = 0xFFFFFFFF,
 			LODBias = 0
 		};
@@ -765,7 +657,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	/// Renders all queued shadow views into the atlas in a single graph cycle.
 	/// Called between BeginFrame and the main pipeline.Render. The graph imports
 	/// the atlas with finalState = ShaderRead, so it's left ready for sampling.
-	private void RenderShadows(ICommandEncoder encoder)
+	private void RenderShadows(ICommandEncoder encoder, int32 frameIndex)
 	{
 		let shadowSystem = mRenderContext.ShadowSystem;
 		if (shadowSystem == null) return;
@@ -784,31 +676,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 
 		let atlasView = shadowSystem.Atlas.TextureView;
 		Span<ShadowPipeline.ShadowJob> jobs = .(&mShadowDraws[0], mShadowDraws.Count);
-		mShadowPipeline.RenderAll(encoder, jobs, atlas, atlasView, mFrameIndex);
-	}
-
-	/// Blits the pipeline output texture to the swapchain backbuffer.
-	private void BlitToSwapchain(ICommandEncoder encoder)
-	{
-		let sourceView = mPipeline.OutputTextureView;
-		if (sourceView == null || mBlitHelper == null || !mBlitHelper.IsReady)
-			return;
-
-		encoder.TransitionTexture(mPipeline.OutputTexture, .RenderTarget, .ShaderRead);
-
-		ColorAttachment[1] colorAttachments = .(.()
-		{
-			View = mSwapChain.CurrentTextureView,
-			LoadOp = .DontCare,
-			StoreOp = .Store
-		});
-
-		RenderPassDesc passDesc = .() { ColorAttachments = .(colorAttachments) };
-		let renderPass = encoder.BeginRenderPass(passDesc);
-
-		mBlitHelper.Blit(renderPass, sourceView, mSwapChain.Width, mSwapChain.Height, mFrameIndex);
-
-		renderPass.End();
+		mShadowPipeline.RenderAll(encoder, jobs, atlas, atlasView, frameIndex);
 	}
 
 	// ==================== Scene Injection ====================
@@ -851,30 +719,12 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware
 	{
 	}
 
-	// ==================== Render Overlays ====================
-
-	/// Register a screen-space overlay (rendered after blit, before present).
-	public void RegisterOverlay(Sedulous.Renderer.IRenderOverlay overlay)
-	{
-		if (!mOverlays.Contains(overlay))
-			mOverlays.Add(overlay);
-	}
-
-	/// Unregister a screen-space overlay.
-	public void UnregisterOverlay(Sedulous.Renderer.IRenderOverlay overlay)
-	{
-		mOverlays.Remove(overlay);
-	}
-
 	// ==================== IWindowAware ====================
 
 	public void OnWindowResized(IWindow window, int32 width, int32 height)
 	{
-		if (width == 0 || height == 0 || mDevice == null || mSwapChain == null)
+		if (width == 0 || height == 0 || mDevice == null)
 			return;
-
-		mDevice.WaitIdle();
-		mSwapChain.Resize((uint32)width, (uint32)height);
 
 		if (mPipeline != null)
 			mPipeline.OnResize((uint32)width, (uint32)height);

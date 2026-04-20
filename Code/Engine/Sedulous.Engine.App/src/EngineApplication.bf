@@ -20,15 +20,19 @@ using Sedulous.Engine.Audio;
 using Sedulous.Engine.Navigation;
 using Sedulous.Engine.UI;
 using Sedulous.Engine.Render;
+using Sedulous.Renderer;
 
 /// Full engine application base class.
 /// Creates a Context with standard subsystems and manages the main loop.
 /// Game logic lives in components and subsystems, not in app overrides.
 ///
 /// The app creates the RHI device and window, then passes them to subsystems.
-/// The RenderSubsystem owns swapchain, command pools, and frame pacing.
+/// The application owns swapchain, output textures, frame pacing, and presentation.
+/// RenderSubsystem implements ISceneRenderer and focuses purely on scene rendering.
 abstract class EngineApplication : IDisposable
 {
+	private const int MAX_FRAMES_IN_FLIGHT = 2;
+
 	// Platform
 	protected IShell mShell;
 	protected IWindow mWindow;
@@ -37,6 +41,24 @@ abstract class EngineApplication : IDisposable
 
 	// Engine
 	protected Context mContext;
+
+	// Presentation (owned by application)
+	private ISwapChain mSwapChain;
+	private IQueue mGraphicsQueue;
+	private ICommandPool[MAX_FRAMES_IN_FLIGHT] mCommandPools;
+	private IFence mFrameFence;
+	private uint64 mNextFenceValue = 1;
+	private uint64[MAX_FRAMES_IN_FLIGHT] mFrameFenceValues;
+	private int32 mFrameIndex;
+
+	// Output targets (application-owned, Pipeline-sized)
+	private ITexture mColorTarget;
+	private ITextureView mColorTargetView;
+	private BlitHelper mBlitHelper;
+
+	// Cached renderer interfaces
+	private ISceneRenderer mSceneRenderer;
+	private List<IOverlayRenderer> mOverlayRenderers = new .() ~ delete _;
 
 	// Assets
 	private String mAssetDirectory = new .() ~ delete _;
@@ -121,6 +143,15 @@ abstract class EngineApplication : IDisposable
 
 		// Start up
 		mContext.Startup();
+
+		// Initialize presentation resources (after context startup so device is ready)
+		InitializePresentation();
+
+		// Cache renderer interfaces from registered subsystems
+		mSceneRenderer = mContext.GetSubsystemByInterface<ISceneRenderer>();
+		mContext.GetSubsystemsByInterface<IOverlayRenderer>(mOverlayRenderers);
+		mOverlayRenderers.Sort(scope (a, b) => a.OverlayOrder <=> b.OverlayOrder);
+
 		OnStartup();
 
 		initTimer.Stop();
@@ -161,6 +192,9 @@ abstract class EngineApplication : IDisposable
 			OnUpdate(deltaTime);
 			mContext.PostUpdate(deltaTime);
 			mContext.EndFrame();
+
+			// Presentation — application owns swapchain, output targets, blit, overlays, present.
+			PresentFrame();
 
 			SProfiler.EndFrame();
 
@@ -246,6 +280,8 @@ abstract class EngineApplication : IDisposable
 		uiSub.Window = mWindow;
 		uiSub.Shell = mShell;
 		uiSub.ShaderSystem = mShaderSystem;
+		uiSub.SwapChainFormat = mSettings.SwapChainFormat;
+		uiSub.FrameCount = MAX_FRAMES_IN_FLIGHT;
 		if (mAssetDirectory.Length > 0)
 			uiSub.AssetDirectory = new String(mAssetDirectory);
 		mContext.RegisterSubsystem(uiSub);                      //  400
@@ -253,12 +289,208 @@ abstract class EngineApplication : IDisposable
 		let renderSub = new RenderSubsystem();
 		renderSub.Device = mDevice;
 		renderSub.Window = mWindow;
-		renderSub.Surface = mSurface;
-		renderSub.SwapChainFormat = mSettings.SwapChainFormat;
-		renderSub.PresentMode = mSettings.PresentMode;
 		renderSub.ShaderSystem = mShaderSystem;
 		renderSub.AssetDirectory = mAssetDirectory;
 		mContext.RegisterSubsystem(renderSub);                   //  500
+	}
+
+	// ==================== Presentation ====================
+
+	private void InitializePresentation()
+	{
+		if (mDevice == null || mSurface == null || mWindow == null)
+			return;
+
+		// Graphics queue
+		mGraphicsQueue = mDevice.GetQueue(.Graphics);
+
+		// Swapchain
+		SwapChainDesc swapDesc = .()
+		{
+			Width = (uint32)mWindow.Width,
+			Height = (uint32)mWindow.Height,
+			Format = mSettings.SwapChainFormat,
+			PresentMode = mSettings.PresentMode
+		};
+		if (mDevice.CreateSwapChain(mSurface, swapDesc) case .Ok(let swapChain))
+			mSwapChain = swapChain;
+
+		// Per-frame command pools
+		for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+		{
+			if (mDevice.CreateCommandPool(.Graphics) case .Ok(let pool))
+				mCommandPools[i] = pool;
+		}
+
+		// Frame fence
+		if (mDevice.CreateFence(0) case .Ok(let fence))
+			mFrameFence = fence;
+
+		// Output target (HDR, same size as window)
+		CreateOutputTarget((uint32)mWindow.Width, (uint32)mWindow.Height);
+
+		// Blit helper (fullscreen triangle to tonemap HDR -> swapchain)
+		if (mShaderSystem != null)
+		{
+			mBlitHelper = new BlitHelper();
+			mBlitHelper.Initialize(mDevice, mSettings.SwapChainFormat, mShaderSystem);
+		}
+	}
+
+	private void CreateOutputTarget(uint32 width, uint32 height)
+	{
+		TextureDesc texDesc = .()
+		{
+			Label = "Pipeline Output",
+			Width = width,
+			Height = height,
+			Depth = 1,
+			Format = .RGBA16Float,
+			Usage = .RenderTarget | .Sampled | .CopySrc,
+			Dimension = .Texture2D,
+			MipLevelCount = 1,
+			ArrayLayerCount = 1,
+			SampleCount = 1
+		};
+
+		if (mDevice.CreateTexture(texDesc) case .Ok(let tex))
+			mColorTarget = tex;
+
+		TextureViewDesc viewDesc = .()
+		{
+			Label = "Pipeline Output View",
+			Format = .RGBA16Float,
+			Dimension = .Texture2D
+		};
+
+		if (mDevice.CreateTextureView(mColorTarget, viewDesc) case .Ok(let view))
+			mColorTargetView = view;
+	}
+
+	private void DestroyOutputTarget()
+	{
+		if (mDevice == null) return;
+		if (mColorTargetView != null)
+			mDevice.DestroyTextureView(ref mColorTargetView);
+		if (mColorTarget != null)
+			mDevice.DestroyTexture(ref mColorTarget);
+	}
+
+	private void PresentFrame()
+	{
+		if (mSwapChain == null || mDevice == null || mWindow.State == .Minimized)
+			return;
+
+		// Frame pacing — wait for this frame slot's previous GPU work
+		using (SProfiler.Begin("GPU.WaitFence"))
+		{
+			if (mFrameFenceValues[mFrameIndex] > 0)
+				mFrameFence.Wait(mFrameFenceValues[mFrameIndex]);
+		}
+
+		mCommandPools[mFrameIndex].Reset();
+
+		let pool = mCommandPools[mFrameIndex];
+		var encoder = pool.CreateEncoder().Value;
+
+		// Clear output target via render pass with LoadOp.Clear
+		{
+			ColorAttachment[1] clearAttachments = .(.()
+			{
+				View = mColorTargetView,
+				LoadOp = .Clear,
+				StoreOp = .Store,
+				ClearValue = .(0, 0, 0, 1)
+			});
+			RenderPassDesc clearDesc = .() { ColorAttachments = .(clearAttachments) };
+			let clearPass = encoder.BeginRenderPass(clearDesc);
+			clearPass.End();
+		}
+
+		// Scene rendering (ISceneRenderer — implemented by RenderSubsystem)
+		if (mSceneRenderer != null)
+			mSceneRenderer.RenderScene(encoder, mColorTarget, mColorTargetView,
+				(uint32)mWindow.Width, (uint32)mWindow.Height, mFrameIndex);
+
+		// Acquire swapchain image
+		using (SProfiler.Begin("GPU.AcquireImage"))
+		{
+			if (mSwapChain.AcquireNextImage() case .Err)
+			{
+				pool.DestroyEncoder(ref encoder);
+				ResizeSwapChain();
+				return;
+			}
+		}
+
+		// Blit scene output -> swapchain
+		using (SProfiler.Begin("Blit"))
+			BlitToSwapchain(encoder);
+
+		// Overlays (IOverlayRenderer — ScreenUIView, debug HUD, etc.)
+		if (mOverlayRenderers.Count > 0)
+		{
+			using (SProfiler.Begin("Overlays"))
+			{
+				for (let overlay in mOverlayRenderers)
+					overlay.RenderOverlay(encoder, mSwapChain.CurrentTextureView,
+						mSwapChain.Width, mSwapChain.Height, mFrameIndex);
+			}
+		}
+
+		// Transition swapchain to present
+		encoder.TransitionTexture(mSwapChain.CurrentTexture, .RenderTarget, .Present);
+
+		let commandBuffer = encoder.Finish();
+
+		// Submit with fence signaling
+		using (SProfiler.Begin("GPU.Submit"))
+		{
+			mFrameFenceValues[mFrameIndex] = mNextFenceValue++;
+			ICommandBuffer[1] bufs = .(commandBuffer);
+			mGraphicsQueue.Submit(bufs, mFrameFence, mFrameFenceValues[mFrameIndex]);
+		}
+
+		// Present
+		using (SProfiler.Begin("GPU.Present"))
+		{
+			if (mSwapChain.Present(mGraphicsQueue) case .Err)
+				ResizeSwapChain();
+		}
+
+		pool.DestroyEncoder(ref encoder);
+		mFrameIndex = (mFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
+	}
+
+	private void BlitToSwapchain(ICommandEncoder encoder)
+	{
+		if (mColorTargetView == null || mBlitHelper == null || !mBlitHelper.IsReady)
+			return;
+
+		// Color target is already transitioned to ShaderRead by RenderScene
+
+		ColorAttachment[1] colorAttachments = .(.()
+		{
+			View = mSwapChain.CurrentTextureView,
+			LoadOp = .DontCare,
+			StoreOp = .Store
+		});
+
+		RenderPassDesc passDesc = .() { ColorAttachments = .(colorAttachments) };
+		let renderPass = encoder.BeginRenderPass(passDesc);
+		mBlitHelper.Blit(renderPass, mColorTargetView, mSwapChain.Width, mSwapChain.Height, mFrameIndex);
+		renderPass.End();
+	}
+
+	private void ResizeSwapChain()
+	{
+		if (mDevice == null || mSwapChain == null) return;
+		mDevice.WaitIdle();
+		mSwapChain.Resize((uint32)mWindow.Width, (uint32)mWindow.Height);
+
+		// Recreate output target at new size
+		DestroyOutputTarget();
+		CreateOutputTarget((uint32)mWindow.Width, (uint32)mWindow.Height);
 	}
 
 	// ==================== Platform Init ====================
@@ -296,7 +528,7 @@ abstract class EngineApplication : IDisposable
 
 		mShell.WindowManager.OnWindowEvent.Subscribe(new => HandleWindowEvent);
 
-		// Surface (needed by RenderSubsystem for swapchain creation)
+		// Surface (needed by application for swapchain creation)
 		if (mBackend.CreateSurface(mWindow.NativeHandle) not case .Ok(let surface))
 			return false;
 		mSurface = surface;
@@ -356,6 +588,10 @@ abstract class EngineApplication : IDisposable
 		case .CloseRequested:
 			Exit();
 		case .Resized:
+			// Resize swapchain and output targets
+			ResizeSwapChain();
+
+			// Notify subsystems (pipeline resize, etc.)
 			if (mContext != null)
 			{
 				for (let subsystem in mContext.Subsystems)
@@ -389,6 +625,25 @@ abstract class EngineApplication : IDisposable
 		// Context must be deleted before device — subsystems hold GPU resources
 		delete mContext;
 		mContext = null;
+
+		// Destroy presentation resources (after context — subsystems may reference device)
+		if (mBlitHelper != null)
+		{
+			mBlitHelper.Dispose();
+			delete mBlitHelper;
+			mBlitHelper = null;
+		}
+		DestroyOutputTarget();
+
+		for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+		{
+			if (mCommandPools[i] != null)
+				mDevice.DestroyCommandPool(ref mCommandPools[i]);
+		}
+		if (mFrameFence != null)
+			mDevice.DestroyFence(ref mFrameFence);
+		if (mSwapChain != null)
+			mDevice.DestroySwapChain(ref mSwapChain);
 
 		mShaderSystem?.Dispose();
 		delete mShaderSystem;
