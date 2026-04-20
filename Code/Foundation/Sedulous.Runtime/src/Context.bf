@@ -2,13 +2,12 @@ namespace Sedulous.Runtime;
 
 using System;
 using System.Collections;
-using Sedulous.Jobs;
-using Sedulous.Core.Logging.Abstractions;
 using Sedulous.Profiler;
-using Sedulous.Resources;
 
 /// Central access point for all subsystems.
 /// Manages subsystem registration, lifecycle, and update ordering.
+/// Does NOT own ResourceSystem or JobSystem — those are application concerns.
+/// Subsystems that need resources receive them as constructor parameters.
 public class Context : IDisposable
 {
 	private Dictionary<Type, Subsystem> mSubsystems = new .() ~ delete _;
@@ -16,35 +15,13 @@ public class Context : IDisposable
 	private bool mIsRunning = false;
 	private bool mDisposed = false;
 
-	// Core systems
-	private ResourceSystem mResourceSystem ~ delete _;
-
 	/// Returns true if the context is running.
 	public bool IsRunning => mIsRunning;
 
 	/// Gets all registered subsystems in update order.
 	public List<Subsystem> Subsystems => mSortedSubsystems;
 
-	/// Gets the resource system.
-	public ResourceSystem Resources => mResourceSystem;
-
-	static this()
-	{
-		JobSystem.Initialize();
-	}
-
-	static ~this()
-	{
-		JobSystem.Shutdown();
-	}
-
-	/// Creates a new context.
-	/// @param logger Optional logger for the resource system and job system.
-	/// @param jobThreadCount Number of worker threads for the job system (0 = auto-detect).
-	public this(ILogger logger = null)
-	{
-		mResourceSystem = new ResourceSystem(logger);
-	}
+	public this() { }
 
 	/// Destructor - ensures Dispose is called.
 	public ~this()
@@ -124,9 +101,6 @@ public class Context : IDisposable
 		if (mIsRunning)
 			return;
 
-		// Start core systems
-		mResourceSystem.Startup();
-
 		// Initialize all subsystems in UpdateOrder
 		for (let subsystem in mSortedSubsystems)
 			subsystem.Init();
@@ -144,10 +118,6 @@ public class Context : IDisposable
 	{
 		if (!mIsRunning)
 			return;
-
-		// Update core systems first (processes completed async jobs/resources)
-		JobSystem.ProcessCompletions();
-		mResourceSystem.Update();
 
 		for (let subsystem in mSortedSubsystems)
 			subsystem.BeginFrame(deltaTime);
@@ -217,9 +187,6 @@ public class Context : IDisposable
 		// Shutdown subsystems in reverse UpdateOrder (higher values first)
 		for (int i = mSortedSubsystems.Count - 1; i >= 0; i--)
 			mSortedSubsystems[i].Shutdown();
-
-		// Shutdown core systems
-		mResourceSystem.Shutdown();
 
 		mIsRunning = false;
 	}

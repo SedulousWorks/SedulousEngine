@@ -82,7 +82,7 @@ class RenderStressTestApp : EngineApplication
 		let renderSub = Context.GetSubsystem<RenderSubsystem>();
 		let renderer = renderSub.RenderContext;
 		let matSystem = renderer.MaterialSystem;
-		let resources = Context.Resources;
+		let resources = ResourceSystem;
 
 		mScene = sceneSub.CreateScene("StressTest");
 

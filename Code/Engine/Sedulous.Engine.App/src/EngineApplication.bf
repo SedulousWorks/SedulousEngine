@@ -9,6 +9,8 @@ using Sedulous.RHI.Validation;
 using Sedulous.Shell;
 using Sedulous.Shell.SDL3;
 using Sedulous.Runtime;
+using Sedulous.Resources;
+using Sedulous.Jobs;
 using Sedulous.Serialization.OpenDDL;
 using Sedulous.Profiler;
 using Sedulous.Shaders;
@@ -41,6 +43,11 @@ abstract class EngineApplication : IDisposable
 
 	// Engine
 	protected Context mContext;
+	private Sedulous.Core.Logging.Abstractions.ILogger mLogger;
+	private ResourceSystem mResourceSystem;
+
+	/// The resource system (application-owned, shared with subsystems).
+	public ResourceSystem ResourceSystem => mResourceSystem;
 
 	// Presentation (owned by application)
 	private ISwapChain mSwapChain;
@@ -129,11 +136,15 @@ abstract class EngineApplication : IDisposable
 		let initTimer = scope Stopwatch();
 		initTimer.Start();
 
+		// Core systems (application-owned, not Context)
+		JobSystem.Initialize();
+		mLogger = new Sedulous.Core.Logging.Console.ConsoleLogger(.Information);
+		mResourceSystem = new ResourceSystem(mLogger);
+		mResourceSystem.SetSerializerProvider(new OpenDDLSerializerProvider());
+		mResourceSystem.Startup();
+
 		// Create context
 		mContext = new Context();
-
-		// Register serializer provider
-		mContext.Resources.SetSerializerProvider(new OpenDDLSerializerProvider());
 
 		// Register standard subsystems
 		RegisterDefaultSubsystems();
@@ -170,6 +181,10 @@ abstract class EngineApplication : IDisposable
 			float currentTime = (float)mStopwatch.Elapsed.TotalSeconds;
 			float deltaTime = currentTime - mLastFrameTime;
 			mLastFrameTime = currentTime;
+
+			// Process completed async jobs and resource loads before frame starts.
+			JobSystem.ProcessCompletions();
+			mResourceSystem.Update();
 
 			// BeginFrame runs first - resets per-frame state, polls input,
 			// and initializes components created last frame.
@@ -271,9 +286,9 @@ abstract class EngineApplication : IDisposable
 		inputSub.SetInputManager(mShell.InputManager);
 		mContext.RegisterSubsystem(inputSub);                    // -900
 		mContext.RegisterSubsystem(new SceneSubsystem());        // -500
-		mContext.RegisterSubsystem(new PhysicsSubsystem());      // -100
-		mContext.RegisterSubsystem(new AnimationSubsystem());    //  100
-		mContext.RegisterSubsystem(new AudioSubsystem());        //  200
+		mContext.RegisterSubsystem(new PhysicsSubsystem());                  // -100
+		mContext.RegisterSubsystem(new AnimationSubsystem(mResourceSystem));  //  100
+		mContext.RegisterSubsystem(new AudioSubsystem(mResourceSystem));      //  200
 		mContext.RegisterSubsystem(new NavigationSubsystem());   //  300
 		let uiSub = new EngineUISubsystem();
 		uiSub.Device = mDevice;
@@ -286,7 +301,7 @@ abstract class EngineApplication : IDisposable
 			uiSub.AssetDirectory = new String(mAssetDirectory);
 		mContext.RegisterSubsystem(uiSub);                      //  400
 
-		let renderSub = new RenderSubsystem();
+		let renderSub = new RenderSubsystem(mResourceSystem);
 		renderSub.Device = mDevice;
 		renderSub.Window = mWindow;
 		renderSub.ShaderSystem = mShaderSystem;
@@ -625,6 +640,14 @@ abstract class EngineApplication : IDisposable
 		// Context must be deleted before device - subsystems hold GPU resources
 		delete mContext;
 		mContext = null;
+
+		// Shutdown core systems (after context - subsystems may have used them)
+		mResourceSystem.Shutdown();
+		delete mResourceSystem;
+		mResourceSystem = null;
+		delete mLogger;
+		mLogger = null;
+		JobSystem.Shutdown();
 
 		// Destroy presentation resources (after context - subsystems may reference device)
 		if (mBlitHelper != null)

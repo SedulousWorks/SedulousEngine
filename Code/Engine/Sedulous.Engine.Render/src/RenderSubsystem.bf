@@ -33,6 +33,9 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 	private IWindow mWindow;
 	private IQueue mGraphicsQueue;
 
+	// Resource system (not owned - passed by application)
+	private Sedulous.Resources.ResourceSystem mResourceSystem;
+
 	// Renderer (shared infrastructure)
 	private RenderContext mRenderContext ~ delete _;
 
@@ -42,7 +45,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 	// Shadow pipeline (renders depth into the shared shadow atlas, one call per shadow caster)
 	private ShadowPipeline mShadowPipeline ~ delete _;
 
-	// Resource managers (registered with Context.Resources)
+	// Resource managers (registered with mResourceSystem)
 	private StaticMeshResourceManager mStaticMeshManager ~ delete _;
 	private SkinnedMeshResourceManager mSkinnedMeshManager ~ delete _;
 	private TextureResourceManager mTextureManager ~ delete _;
@@ -65,6 +68,11 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 	// Timing
 	private float mDeltaTime;
 	private float mTotalTime;
+
+	public this(Sedulous.Resources.ResourceSystem resourceSystem)
+	{
+		mResourceSystem = resourceSystem;
+	}
 
 	public override int32 UpdateOrder => 500;
 
@@ -158,13 +166,13 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		mTextureManager = new TextureResourceManager();
 		mMaterialManager = new MaterialResourceManager();
 
-		Context.Resources.AddResourceManager(mStaticMeshManager);
-		Context.Resources.AddResourceManager(mSkinnedMeshManager);
-		Context.Resources.AddResourceManager(mTextureManager);
-		Context.Resources.AddResourceManager(mMaterialManager);
+		mResourceSystem.AddResourceManager(mStaticMeshManager);
+		mResourceSystem.AddResourceManager(mSkinnedMeshManager);
+		mResourceSystem.AddResourceManager(mTextureManager);
+		mResourceSystem.AddResourceManager(mMaterialManager);
 
 		// Shared resource resolver
-		mResolver = new RenderResourceResolver(Context.Resources, mRenderContext.GPUResources, mRenderContext.MaterialSystem);
+		mResolver = new RenderResourceResolver(mResourceSystem, mRenderContext.GPUResources, mRenderContext.MaterialSystem);
 	}
 
 	protected override void OnShutdown()
@@ -176,13 +184,13 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 
 		// Unregister resource managers
 		if (mStaticMeshManager != null)
-			Context.Resources.RemoveResourceManager(mStaticMeshManager);
+			mResourceSystem.RemoveResourceManager(mStaticMeshManager);
 		if (mSkinnedMeshManager != null)
-			Context.Resources.RemoveResourceManager(mSkinnedMeshManager);
+			mResourceSystem.RemoveResourceManager(mSkinnedMeshManager);
 		if (mTextureManager != null)
-			Context.Resources.RemoveResourceManager(mTextureManager);
+			mResourceSystem.RemoveResourceManager(mTextureManager);
 		if (mMaterialManager != null)
-			Context.Resources.RemoveResourceManager(mMaterialManager);
+			mResourceSystem.RemoveResourceManager(mMaterialManager);
 
 		// Shutdown pipelines then renderer (pipelines first - they reference renderer)
 		if (mShadowPipeline != null)

@@ -198,7 +198,7 @@ class SandboxApp : EngineApplication
 
 		// ==================== Geometry (registered as resources) ====================
 
-		let resources = Context.Resources;
+		let resources = ResourceSystem;
 
 		// Create mesh resources and register with resource system
 		mPlaneRes = StaticMeshResource.CreatePlane(30, 30, 1, 1);

@@ -7,7 +7,4 @@ StartupObject = "Sedulous.Runtime.Program"
 
 [Dependencies]
 corlib = "*"
-"Sedulous.Core.Logging" = "*"
-"Sedulous.Jobs" = "*"
 "Sedulous.Profiler" = "*"
-"Sedulous.Resources" = "*"

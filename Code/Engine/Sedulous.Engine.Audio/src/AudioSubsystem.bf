@@ -20,8 +20,14 @@ class AudioSubsystem : Subsystem, ISceneAware
 {
 	public override int32 UpdateOrder => 200;
 
+	private Sedulous.Resources.ResourceSystem mResourceSystem;
 	private IAudioSystem mAudioSystem ~ { _?.Dispose(); delete _; };
 	private AudioClipResourceManager mClipResourceManager ~ delete _;
+
+	public this(Sedulous.Resources.ResourceSystem resourceSystem)
+	{
+		mResourceSystem = resourceSystem;
+	}
 	/// Current music stream (owned by IAudioSystem, not by us - don't delete).
 	private IAudioStream mCurrentMusic;
 
@@ -74,7 +80,7 @@ class AudioSubsystem : Subsystem, ISceneAware
 
 		// Register clip resource manager (needs audio system for clip loading)
 		mClipResourceManager = new AudioClipResourceManager(mAudioSystem);
-		Context.Resources.AddResourceManager(mClipResourceManager);
+		mResourceSystem.AddResourceManager(mClipResourceManager);
 	}
 
 	protected override void OnPrepareShutdown()
@@ -86,7 +92,7 @@ class AudioSubsystem : Subsystem, ISceneAware
 	protected override void OnShutdown()
 	{
 		if (mClipResourceManager != null)
-			Context.Resources.RemoveResourceManager(mClipResourceManager);
+			mResourceSystem.RemoveResourceManager(mClipResourceManager);
 	}
 
 	public override void Update(float deltaTime)
@@ -105,7 +111,7 @@ class AudioSubsystem : Subsystem, ISceneAware
 		// Inject audio source component manager
 		let sourceMgr = new AudioSourceComponentManager();
 		sourceMgr.AudioSystem = mAudioSystem;
-		sourceMgr.ResourceSystem = Context.Resources;
+		sourceMgr.ResourceSystem = mResourceSystem;
 		sourceMgr.Subsystem = this;
 		scene.AddModule(sourceMgr);
 

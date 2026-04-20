@@ -48,6 +48,10 @@ abstract class Application
 	// Framework context (created and owned by Application)
 	protected Context mContext ~ delete _;
 
+	// Core systems (application-owned)
+	private Sedulous.Core.Logging.Abstractions.ILogger mLogger ~ delete _;
+	protected Sedulous.Resources.ResourceSystem mResourceSystem ~ delete _;
+
 	// Asset directories (discovered at construction time)
 	private String mAssetDirectory = new .() ~ delete _;
 	private String mAssetCacheDirectory = new .() ~ delete _;
@@ -154,11 +158,15 @@ abstract class Application
 		if (!Initialize())
 			return -1;
 
+		// Core systems
+		Sedulous.Jobs.JobSystem.Initialize();
+		mLogger = new Sedulous.Core.Logging.Console.ConsoleLogger(.Information);
+		mResourceSystem = new Sedulous.Resources.ResourceSystem(mLogger);
+		mResourceSystem.SetSerializerProvider(new Sedulous.Serialization.OpenDDL.OpenDDLSerializerProvider());
+		mResourceSystem.Startup();
+
 		// Create the framework context
 		mContext = CreateContext();
-
-		// Register serializer provider
-		mContext.Resources.SetSerializerProvider(new OpenDDLSerializerProvider());
 
 		// Let derived class configure the context (register subsystems, etc.)
 		OnInitialize(mContext);
@@ -219,6 +227,10 @@ abstract class Application
 				FrameCount = (int32)mSwapChain.BufferCount
 			};
 
+			// Process completed async jobs and resource loads.
+			Sedulous.Jobs.JobSystem.ProcessCompletions();
+			mResourceSystem.Update();
+
 			// Update framework - BeginFrame, Update, PostUpdate
 			{
 				using (SProfiler.Begin("BeginFrame"))
@@ -266,6 +278,8 @@ abstract class Application
 		mDevice.WaitIdle();
 		OnShutdown();
 		mContext.Shutdown();
+		mResourceSystem.Shutdown();
+		Sedulous.Jobs.JobSystem.Shutdown();
 		Cleanup();
 
 		return 0;

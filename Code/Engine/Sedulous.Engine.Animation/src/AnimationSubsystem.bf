@@ -11,6 +11,7 @@ using Sedulous.Animation.Resources;
 /// Per-scene animation state is managed by component managers injected via ISceneAware.
 class AnimationSubsystem : Subsystem, ISceneAware
 {
+	private Sedulous.Resources.ResourceSystem mResourceSystem;
 	private SkeletonResourceManager mSkeletonManager ~ delete _;
 	private AnimationClipResourceManager mAnimClipManager ~ delete _;
 	private AnimationGraphResourceManager mAnimGraphManager ~ delete _;
@@ -19,6 +20,11 @@ class AnimationSubsystem : Subsystem, ISceneAware
 	/// Shared property binder registry (maps property paths to setter delegates).
 	/// Game code can register custom bindings via this registry.
 	private PropertyBinderRegistry mPropertyBinderRegistry ~ delete _;
+
+	public this(Sedulous.Resources.ResourceSystem resourceSystem)
+	{
+		mResourceSystem = resourceSystem;
+	}
 
 	/// Gets the property binder registry for registering custom property bindings.
 	public PropertyBinderRegistry PropertyBinderRegistry => mPropertyBinderRegistry;
@@ -33,39 +39,39 @@ class AnimationSubsystem : Subsystem, ISceneAware
 		mPropertyAnimManager = new PropertyAnimationClipResourceManager();
 		mPropertyBinderRegistry = new PropertyBinderRegistry();
 
-		Context.Resources.AddResourceManager(mSkeletonManager);
-		Context.Resources.AddResourceManager(mAnimClipManager);
-		Context.Resources.AddResourceManager(mAnimGraphManager);
-		Context.Resources.AddResourceManager(mPropertyAnimManager);
+		mResourceSystem.AddResourceManager(mSkeletonManager);
+		mResourceSystem.AddResourceManager(mAnimClipManager);
+		mResourceSystem.AddResourceManager(mAnimGraphManager);
+		mResourceSystem.AddResourceManager(mPropertyAnimManager);
 	}
 
 	protected override void OnShutdown()
 	{
 		if (mSkeletonManager != null)
-			Context.Resources.RemoveResourceManager(mSkeletonManager);
+			mResourceSystem.RemoveResourceManager(mSkeletonManager);
 		if (mAnimClipManager != null)
-			Context.Resources.RemoveResourceManager(mAnimClipManager);
+			mResourceSystem.RemoveResourceManager(mAnimClipManager);
 		if (mAnimGraphManager != null)
-			Context.Resources.RemoveResourceManager(mAnimGraphManager);
+			mResourceSystem.RemoveResourceManager(mAnimGraphManager);
 		if (mPropertyAnimManager != null)
-			Context.Resources.RemoveResourceManager(mPropertyAnimManager);
+			mResourceSystem.RemoveResourceManager(mPropertyAnimManager);
 	}
 
 	public void OnSceneCreated(Scene scene)
 	{
 		// Inject skeletal animation component manager
 		let skelAnimMgr = new SkeletalAnimationComponentManager();
-		skelAnimMgr.ResourceSystem = Context.Resources;
+		skelAnimMgr.ResourceSystem = mResourceSystem;
 		scene.AddModule(skelAnimMgr);
 
 		// Inject animation graph component manager
 		let graphAnimMgr = new AnimationGraphComponentManager();
-		graphAnimMgr.ResourceSystem = Context.Resources;
+		graphAnimMgr.ResourceSystem = mResourceSystem;
 		scene.AddModule(graphAnimMgr);
 
 		// Inject property animation component manager
 		let propAnimMgr = new PropertyAnimationComponentManager();
-		propAnimMgr.ResourceSystem = Context.Resources;
+		propAnimMgr.ResourceSystem = mResourceSystem;
 		propAnimMgr.BinderRegistry = mPropertyBinderRegistry;
 		scene.AddModule(propAnimMgr);
 	}
