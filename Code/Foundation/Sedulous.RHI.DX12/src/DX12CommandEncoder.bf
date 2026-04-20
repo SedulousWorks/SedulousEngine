@@ -383,7 +383,7 @@ class DX12CommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		mDevice.Handle.CreateRenderTargetView(dstTex.Handle, &rtvDesc, rtvHandle);
 
 		// Allocate temp SRV in CPU heap, write descriptor there, then stage-copy to GPU heap.
-		// The CPU heap slot is freed immediately (safe — GPU reads the staging copy).
+		// The CPU heap slot is freed immediately (safe - GPU reads the staging copy).
 		int32 tempSrvOffset = mDevice.CpuSrvHeap.Allocate(1);
 		if (tempSrvOffset < 0) { mDevice.RtvHeap.Free(rtvHandle); return; }
 
@@ -478,7 +478,7 @@ class DX12CommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	public void ResetQuerySet(IQuerySet querySet, uint32 first, uint32 count)
 	{
-		// DX12 doesn't require explicit query reset — queries are implicitly reset when written.
+		// DX12 doesn't require explicit query reset - queries are implicitly reset when written.
 	}
 
 	public void WriteTimestamp(IQuerySet querySet, uint32 index)
@@ -657,7 +657,7 @@ class DX12CommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 		let dxLayout = dxGroup.Layout as DX12BindGroupLayout;
 
-		// RT uses compute root signature binding — copy-on-bind staging
+		// RT uses compute root signature binding - copy-on-bind staging
 		if (dxGroup.CbvSrvUavOffset >= 0 && dxLayout != null && dxLayout.CbvSrvUavCount > 0)
 		{
 			let rootIdx = layout.GetCbvSrvUavRootIndex(index);
@@ -736,7 +736,7 @@ class DX12CommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 		D3D12_DISPATCH_RAYS_DESC dispatchDesc = default;
 
-		// Raygen — single record
+		// Raygen - single record
 		if (let dxBuf = raygenSBT as DX12Buffer)
 		{
 			dispatchDesc.RayGenerationShaderRecord.StartAddress =

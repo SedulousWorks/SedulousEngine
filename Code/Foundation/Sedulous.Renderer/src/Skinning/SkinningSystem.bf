@@ -85,7 +85,7 @@ class SkinningSystem : IDisposable
 	}
 
 	/// Gets or creates a skinning instance for a mesh.
-	/// Call during extraction/setup phase — not during render graph execution.
+	/// Call during extraction/setup phase - not during render graph execution.
 	public SkinningInstance GetOrCreateInstance(SkinningKey key, IBuffer sourceVertexBuffer,
 		GPUBoneBufferHandle boneBufferHandle, int32 vertexCount, int32 boneCount)
 	{
@@ -228,7 +228,7 @@ class SkinningSystem : IDisposable
 }
 
 /// Key for identifying a unique skinning instance.
-/// An entity + mesh handle combination — same mesh on different entities
+/// An entity + mesh handle combination - same mesh on different entities
 /// gets different instances (different bone transforms).
 struct SkinningKey : IHashable, IEquatable<SkinningKey>
 {

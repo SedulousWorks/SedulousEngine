@@ -75,7 +75,7 @@ class VGShapesSample : SampleApp
 	{
 	}
 
-	protected override StringView Title => "SampleVG001 — Vector Graphics Shapes";
+	protected override StringView Title => "SampleVG001 - Vector Graphics Shapes";
 
 	protected override Result<void> OnInit()
 	{

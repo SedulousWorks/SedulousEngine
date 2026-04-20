@@ -10,7 +10,7 @@ public class ToolbarItem : View
 {
 }
 
-/// Toolbar separator — vertical divider line.
+/// Toolbar separator - vertical divider line.
 public class ToolbarSeparator : ToolbarItem
 {
 	protected override void OnMeasure(MeasureSpec wSpec, MeasureSpec hSpec)
@@ -27,7 +27,7 @@ public class ToolbarSeparator : ToolbarItem
 	}
 }
 
-/// Toolbar button — supports text, icon (via custom draw delegate), or both.
+/// Toolbar button - supports text, icon (via custom draw delegate), or both.
 public class ToolbarButton : ToolbarItem
 {
 	private String mText ~ delete _;
@@ -140,7 +140,7 @@ public class ToolbarButton : ToolbarItem
 	}
 }
 
-/// Toolbar toggle button — on/off state with accent background when active.
+/// Toolbar toggle button - on/off state with accent background when active.
 public class ToolbarToggle : ToolbarButton
 {
 	private bool mIsChecked;

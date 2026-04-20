@@ -56,7 +56,7 @@ public class MeshRenderer : Renderer
 		public int32 InstanceCount;
 	}
 
-	// Per-frame batch caches — built once on first use, reused across passes.
+	// Per-frame batch caches - built once on first use, reused across passes.
 	// Two caches: material-aware (forward passes group by mesh+material+submesh)
 	// and material-agnostic (depth/shadow passes group by mesh+submesh only,
 	// collapsing unique materials into single instanced draws).
@@ -128,7 +128,7 @@ public class MeshRenderer : Renderer
 
 	/// Groups static mesh entries by (mesh + material + submesh), packs instance data,
 	/// and issues one DrawIndexedInstanced per group.
-	/// Batch groups are cached per frame — the first call builds them, subsequent
+	/// Batch groups are cached per frame - the first call builds them, subsequent
 	/// calls (depth prepass, forward, shadow views) reuse the cached grouping and
 	/// only re-upload instance data to the current pipeline's buffer.
 	private void RenderStaticInstanced(
@@ -170,7 +170,7 @@ public class MeshRenderer : Renderer
 		}
 
 		// Check if we can reuse cached batch groups. Identity is based on the
-		// first entry's address + count — same entries from the same extraction
+		// first entry's address + count - same entries from the same extraction
 		// produce the same identity across all passes and shadow views.
 		let batchIdentity = (entries.Count > 0)
 			? ((int)Internal.UnsafeCastToPtr(entries[0]) * 397 ^ entries.Count)
@@ -180,7 +180,7 @@ public class MeshRenderer : Renderer
 
 		if (batchIdentity != cachedIdentity || cachedGroups.Count == 0)
 		{
-			// Cache miss — rebuild batch groups.
+			// Cache miss - rebuild batch groups.
 			// Two passes: first count instances per group, then fill instance data
 			// contiguously so each group's instances form a contiguous range in the
 			// StructuredBuffer. DrawIndexedInstanced requires this.
@@ -270,7 +270,7 @@ public class MeshRenderer : Renderer
 		if (cachedGroups.Count == 0) return;
 
 		// Reuse previous upload if this buffer already has the cached data.
-		// Each pipeline (main, shadow) has its own instance buffer — upload once
+		// Each pipeline (main, shadow) has its own instance buffer - upload once
 		// per buffer, then all passes sharing that buffer reuse the same offset.
 		let bufferKey = (int)Internal.UnsafeCastToPtr(frame.InstanceBuffer);
 		int32 startOffset;
@@ -300,7 +300,7 @@ public class MeshRenderer : Renderer
 		VertexBufferLayout[1] vertexBuffers = .(vertexLayout);
 
 		// Build instanced pipeline variant from the pass config.
-		// The pass already provides the correct shader, blend, depth, and MRT state —
+		// The pass already provides the correct shader, blend, depth, and MRT state -
 		// we just add the INSTANCED flag for StructuredBuffer reads.
 		var config = passConfig;
 		config.ShaderFlags |= .Instanced;
@@ -391,7 +391,7 @@ public class MeshRenderer : Renderer
 
 		// Set the non-instanced pipeline (DrawCall UBO at set 3).
 		// RenderStaticInstanced may have left the instanced pipeline active,
-		// which uses StorageBuffer at set 3 — incompatible with DrawCallBindGroup.
+		// which uses StorageBuffer at set 3 - incompatible with DrawCallBindGroup.
 		let vertexLayout = VertexLayoutHelper.CreateBufferLayout(.Mesh);
 		VertexBufferLayout[1] vertexBuffers = .(vertexLayout);
 

@@ -25,7 +25,7 @@ class MaterialResourceManager : ResourceManager<MaterialResource>
 
 		let resource = new MaterialResource();
 		resource.Serialize(reader);
-		resource.AddRef(); // Manager's ownership ref — released in Unload
+		resource.AddRef(); // Manager's ownership ref - released in Unload
 		return .Ok(resource);
 	}
 

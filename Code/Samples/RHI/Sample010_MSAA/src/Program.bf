@@ -50,7 +50,7 @@ class MSAASample : SampleApp
 
 	public this()  { }
 
-	protected override StringView Title => "Sample010 — MSAA (4x)";
+	protected override StringView Title => "Sample010 - MSAA (4x)";
 
 	protected override Result<void> OnInit()
 	{

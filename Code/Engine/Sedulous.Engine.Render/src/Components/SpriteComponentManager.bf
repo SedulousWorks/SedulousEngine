@@ -147,7 +147,7 @@ class SpriteComponentManager : ComponentManager<SpriteComponent>, IRenderDataPro
 	{
 		if (let comp = GetForEntity(entity))
 		{
-			// Sprite component's Material is a shared instance owned by the cache —
+			// Sprite component's Material is a shared instance owned by the cache -
 			// the component just holds a ref. Releasing the ref here drops the
 			// component's hold; the cache still keeps a ref until Dispose.
 			if (comp.Material != null)

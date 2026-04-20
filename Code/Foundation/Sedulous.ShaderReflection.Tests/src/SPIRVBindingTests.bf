@@ -3,7 +3,7 @@ namespace Sedulous.ShaderReflection.Tests;
 using System;
 using Sedulous.RHI;
 
-/// Phase 2: SPIR-V reflection — resource binding tests.
+/// Phase 2: SPIR-V reflection - resource binding tests.
 class SPIRVBindingTests
 {
 	[Test]

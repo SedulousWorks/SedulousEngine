@@ -25,13 +25,13 @@ class RenderResourceResolver
 	private GPUResourceManager mGPUResources;
 	private MaterialSystem mMaterialSystem;
 
-	/// Texture cache — same TextureResource maps to one GPU handle.
+	/// Texture cache - same TextureResource maps to one GPU handle.
 	private Dictionary<TextureResource, GPUTextureHandle> mTextureCache = new .() ~ delete _;
 
-	/// Static mesh cache — same StaticMeshResource maps to one GPU handle.
+	/// Static mesh cache - same StaticMeshResource maps to one GPU handle.
 	private Dictionary<StaticMeshResource, GPUMeshHandle> mStaticMeshCache = new .() ~ delete _;
 
-	/// Skinned mesh cache — same SkinnedMeshResource maps to one GPU handle.
+	/// Skinned mesh cache - same SkinnedMeshResource maps to one GPU handle.
 	private Dictionary<SkinnedMeshResource, GPUMeshHandle> mSkinnedMeshCache = new .() ~ delete _;
 
 	// ==================== Setup ====================
@@ -62,7 +62,7 @@ class RenderResourceResolver
 		if (meshResource?.Mesh == null)
 			return false;
 
-		// Check cache — same resource reuses the same GPU handle
+		// Check cache - same resource reuses the same GPU handle
 		if (mStaticMeshCache.TryGetValue(meshResource, let cachedHandle))
 		{
 			outHandle = cachedHandle;
@@ -97,7 +97,7 @@ class RenderResourceResolver
 		if (meshResource?.Mesh == null)
 			return false;
 
-		// Check cache — same resource reuses the same GPU handle
+		// Check cache - same resource reuses the same GPU handle
 		if (mSkinnedMeshCache.TryGetValue(meshResource, let cachedHandle))
 		{
 			outHandle = cachedHandle;

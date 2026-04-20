@@ -1353,7 +1353,7 @@ class ControlDetailTests
 	}
 
 	// =====================================================================
-	// TabView — Closable Tabs
+	// TabView - Closable Tabs
 	// =====================================================================
 
 	[Test]
@@ -1395,7 +1395,7 @@ class ControlDetailTests
 		ctx.UpdateRootView(root);
 
 		// Force a draw to rebuild tab rects (they're built in OnDraw).
-		// Instead, just verify the event is wired — actual close button
+		// Instead, just verify the event is wired - actual close button
 		// hit-testing requires rendered tab rects.
 		tabs.OnTabCloseRequested(tabs, 0);
 		Test.Assert(closedIndex == 0);

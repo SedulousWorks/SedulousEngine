@@ -12,7 +12,7 @@ using Sedulous.Core.Mathematics;
 /// IAudioSource handles, syncs 3D positions from entity transforms, and
 /// applies volume category multipliers.
 ///
-/// Updates in PostTransform phase — after transforms are finalized so 3D
+/// Updates in PostTransform phase - after transforms are finalized so 3D
 /// positions are correct.
 class AudioSourceComponentManager : ComponentManager<AudioSourceComponent>
 {

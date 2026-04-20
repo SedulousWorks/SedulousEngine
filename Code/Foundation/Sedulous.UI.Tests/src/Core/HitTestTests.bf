@@ -71,7 +71,7 @@ class HitTestTests
 
 		ctx.UpdateRootView(root);
 
-		// Invisible child should not be hit — returns the frame instead.
+		// Invisible child should not be hit - returns the frame instead.
 		let hit = root.HitTest(.(50, 50));
 		Test.Assert(hit === frame);
 	}

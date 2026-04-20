@@ -16,7 +16,7 @@ static class TextureResourceConverter
 		if (imported == null || imported.PixelData == null)
 			return null;
 
-		// Copy the image data — TextureResource will own it
+		// Copy the image data - TextureResource will own it
 		let srcImage = imported.PixelData;
 		let data = new uint8[srcImage.Data.Length];
 		defer delete data;

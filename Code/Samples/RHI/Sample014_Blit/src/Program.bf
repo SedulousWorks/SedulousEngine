@@ -53,7 +53,7 @@ class BlitSample : SampleApp
 
 	public this() :base(.DX12)  { }
 
-	protected override StringView Title => "Sample014 — Blit (Scaled Copy)";
+	protected override StringView Title => "Sample014 - Blit (Scaled Copy)";
 
 	protected override Result<void> OnInit()
 	{

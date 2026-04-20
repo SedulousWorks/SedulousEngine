@@ -25,7 +25,7 @@ class DX12RayTracingExt : IRayTracingExt
 
 	public Result<IAccelStruct> CreateAccelStruct(AccelStructDesc desc)
 	{
-		// Use a default size — same approach as Vulkan backend.
+		// Use a default size - same approach as Vulkan backend.
 		// A more complete implementation would expose GetAccelStructBuildSizes().
 		uint64 defaultSize = 256 * 1024;
 

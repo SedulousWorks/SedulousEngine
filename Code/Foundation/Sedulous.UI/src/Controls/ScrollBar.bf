@@ -21,7 +21,7 @@ public class ScrollBar : View
 	private bool mDragging;
 	private float mDragOffset;  // offset from thumb top/left to mouse pos at drag start
 
-	// Callback when the user drags the thumb — ScrollView subscribes.
+	// Callback when the user drags the thumb - ScrollView subscribes.
 	public delegate void(float newValue) OnValueChanged ~ delete _;
 
 	private Color? mTrackColor;
@@ -102,7 +102,7 @@ public class ScrollBar : View
 
 		if (pos >= thumbStart && pos <= thumbEnd)
 		{
-			// Clicked on thumb — start drag.
+			// Clicked on thumb - start drag.
 			mDragging = true;
 			mDragOffset = pos - thumbStart;
 			Context?.FocusManager.SetCapture(this);
@@ -110,7 +110,7 @@ public class ScrollBar : View
 		}
 		else
 		{
-			// Clicked on track — page-scroll toward click position.
+			// Clicked on track - page-scroll toward click position.
 			if (pos < thumbStart)
 				Value = Math.Max(Min, Value - LargeChange);
 			else

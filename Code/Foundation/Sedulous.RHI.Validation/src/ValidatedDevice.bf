@@ -13,7 +13,7 @@ class ValidatedDevice : IDevice
 	private IDevice mInner;
 	private bool mDestroyed;
 
-	// Resource tracking — tracks all live resources created through this device
+	// Resource tracking - tracks all live resources created through this device
 	private List<IBuffer> mLiveBuffers = new .() ~ delete _;
 	private List<ITexture> mLiveTextures = new .() ~ delete _;
 	private List<ITextureView> mLiveTextureViews = new .() ~ delete _;
@@ -218,7 +218,7 @@ class ValidatedDevice : IDevice
 			return .Err;
 		}
 
-		// Count non-bindless layout entries — only those need positional BindGroupEntry
+		// Count non-bindless layout entries - only those need positional BindGroupEntry
 		let layoutEntries = desc.Layout.Entries;
 		if (layoutEntries != null)
 		{
@@ -249,7 +249,7 @@ class ValidatedDevice : IDevice
 			{
 				let layoutEntry = layoutEntries[i];
 
-				// Skip bindless layout entries — they don't consume a positional entry
+				// Skip bindless layout entries - they don't consume a positional entry
 				switch (layoutEntry.Type)
 				{
 				case .BindlessTextures, .BindlessSamplers, .BindlessStorageBuffers, .BindlessStorageTextures:

@@ -47,7 +47,7 @@ class JobSystemTests
 		JobSystem.Initialize(2);
 
 		let job = new TestJob("Basic", .AutoRelease);
-		job.AddRef(); // observation ref — survives AutoRelease
+		job.AddRef(); // observation ref - survives AutoRelease
 		JobSystem.Run(job);
 		job.Wait();
 

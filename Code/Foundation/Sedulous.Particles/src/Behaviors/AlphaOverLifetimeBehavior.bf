@@ -4,7 +4,7 @@ using System;
 using Sedulous.Core.Mathematics;
 
 /// Multiplies particle alpha over its lifetime using a float curve.
-/// Applied on top of the existing color alpha — does not replace it.
+/// Applied on top of the existing color alpha - does not replace it.
 public class AlphaOverLifetimeBehavior : ParticleBehavior
 {
 	/// Alpha multiplier curve evaluated at normalized particle age [0, 1].

@@ -29,7 +29,7 @@ public class ScrollView : ViewGroup
 	private float mContentHeight;
 	private MomentumHelper mMomentum = .();
 
-	// Scrollbars — managed separately, not in mChildren.
+	// Scrollbars - managed separately, not in mChildren.
 	private ScrollBar mVScrollBar ~ delete _;
 	private ScrollBar mHScrollBar ~ delete _;
 	private bool mVBarVisible;
@@ -259,7 +259,7 @@ public class ScrollView : ViewGroup
 			maxH = Math.Max(maxH, child.MeasuredSize.Y);
 		}
 
-		// For MatchParent children, content width equals viewport — no horizontal overflow.
+		// For MatchParent children, content width equals viewport - no horizontal overflow.
 		if (anyMatchParentW)
 			mContentWidth = 0; // will be ≤ viewport, so MaxScrollX = 0
 		else
@@ -291,7 +291,7 @@ public class ScrollView : ViewGroup
 			let margin = child.LayoutParams?.Margin ?? Thickness();
 			let lp = child.LayoutParams;
 
-			// MatchParent children fit the viewport (minus scrollbar) — don't overflow.
+			// MatchParent children fit the viewport (minus scrollbar) - don't overflow.
 			// WrapContent children use their measured size (may be wider -> horizontal scroll).
 			float childW;
 			if (lp != null && lp.Width == Sedulous.UI.LayoutParams.MatchParent)
@@ -379,7 +379,7 @@ public class ScrollView : ViewGroup
 			ScrollBy(dx, dy);
 
 		// DrawChildren iterates VisualChildCount which includes scrollbars
-		// appended after logical children — they draw on top automatically.
+		// appended after logical children - they draw on top automatically.
 		DrawChildren(ctx);
 	}
 }

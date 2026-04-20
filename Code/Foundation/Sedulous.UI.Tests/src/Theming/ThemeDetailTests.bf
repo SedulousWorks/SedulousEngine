@@ -220,7 +220,7 @@ class ThemeDetailTests
 		ctx.UpdateRootView(root1);
 		ctx.UpdateRootView(root2);
 
-		// Switch theme — both roots should need re-layout.
+		// Switch theme - both roots should need re-layout.
 		ctx.SetTheme(LightTheme.Create(), true);
 		Test.Assert(root1.IsLayoutDirty);
 		Test.Assert(root2.IsLayoutDirty);

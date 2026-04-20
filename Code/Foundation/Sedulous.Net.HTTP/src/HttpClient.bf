@@ -5,7 +5,7 @@ using System.Collections;
 using Sedulous.Net;
 
 /// Simple HTTP/1.1 client. Sends a request and returns a response.
-/// Note: No TLS/SSL support — HTTP only.
+/// Note: No TLS/SSL support - HTTP only.
 public class HttpClient
 {
 	private int mTimeoutMs = 30000;
@@ -56,7 +56,7 @@ public class HttpClient
 			case .Ok(let received):
 				if (received == 0)
 				{
-					// Connection closed — try to parse what we have
+					// Connection closed - try to parse what we have
 					if (parser.TryParseResponse() case .Ok(let response))
 					{
 						client.Close();
@@ -79,7 +79,7 @@ public class HttpClient
 				System.Threading.Thread.Sleep(10);
 				elapsed += 10;
 			case .Err(.ConnectionClosed):
-				// Server closed after sending — try to parse buffered data
+				// Server closed after sending - try to parse buffered data
 				if (parser.TryParseResponse() case .Ok(let response))
 				{
 					client.Close();

@@ -48,7 +48,7 @@ class DataTests
 		recycler.Recycle(view, 0);
 		Test.Assert(recycler.RecycledCount == 1);
 
-		// Get another — should reuse.
+		// Get another - should reuse.
 		let view2 = recycler.GetOrCreate(adapter, 1);
 		Test.Assert(recycler.CreatedCount == 1); // didn't create new
 		Test.Assert(recycler.ReusedCount == 1);
@@ -294,7 +294,7 @@ class DataTests
 		adapter.NotifyDataSetChanged();
 		ctx.UpdateRootView(root);
 
-		// ListView should have rebuilt — MaxScrollY should reflect new count.
+		// ListView should have rebuilt - MaxScrollY should reflect new count.
 		// 5 * 20 = 100 < 200 viewport -> no scroll needed.
 		Test.Assert(list.MaxScrollY == 0);
 	}
@@ -317,7 +317,7 @@ class DataTests
 
 		ctx.UpdateRootView(root);
 
-		// Notify range changed — shouldn't crash, should rebind.
+		// Notify range changed - shouldn't crash, should rebind.
 		adapter.NotifyRangeChanged(0, 3);
 		ctx.UpdateRootView(root);
 

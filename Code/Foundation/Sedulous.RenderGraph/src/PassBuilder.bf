@@ -145,7 +145,7 @@ public struct PassBuilder
 		return this;
 	}
 
-	/// Set a runtime condition — pass is skipped if this returns false
+	/// Set a runtime condition - pass is skipped if this returns false
 	public Self EnableIf(delegate bool() condition) mut
 	{
 		mPass.Condition = condition;

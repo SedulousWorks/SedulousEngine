@@ -81,7 +81,7 @@ public class SlugTextureBuilder
 			let curveCount = (int32)curves.Count;
 			let bb = ref glyph.BoundingBox;
 
-			// Determine band counts — use more bands for better spatial acceleration.
+			// Determine band counts - use more bands for better spatial acceleration.
 			// Original Slug uses up to 32 bands. More bands = fewer curves tested per pixel.
 			let hBands = (int16)Math.Min(maxBandCount, Math.Max(1, curveCount));
 			let vBands = hBands;
@@ -115,7 +115,7 @@ public class SlugTextureBuilder
 			curveListStart.x += hBands + vBands; // skip past all headers
 			WrapTexelPos(ref curveListStart, kTextureWidth);
 
-			// Epsilon overlap for band boundaries — prevents curves at exact
+			// Epsilon overlap for band boundaries - prevents curves at exact
 			// band edges from being missed (per Slug tips: use 1/1024 em-space).
 			let bandEpsilon = 1.0f / 1024.0f;
 
@@ -126,7 +126,7 @@ public class SlugTextureBuilder
 				let bandMaxY = bb.min.y + (float)(b + 1) / (float)hBands * bb.Height + bandEpsilon;
 
 				// Find curves intersecting this horizontal band.
-				// Skip straight horizontal lines — they can't contribute to winding
+				// Skip straight horizontal lines - they can't contribute to winding
 				// for horizontal rays (parallel to the line).
 				let curvesInBand = scope List<int32>();
 				for (int32 c = 0; c < curveCount; c++)
@@ -174,7 +174,7 @@ public class SlugTextureBuilder
 				let bandMinX = bb.min.x + (float)b / (float)vBands * bb.Width - bandEpsilon;
 				let bandMaxX = bb.min.x + (float)(b + 1) / (float)vBands * bb.Width + bandEpsilon;
 
-				// Skip straight vertical lines — they can't contribute to winding
+				// Skip straight vertical lines - they can't contribute to winding
 				// for vertical rays (parallel to the line).
 				let curvesInBand = scope List<int32>();
 				for (int32 c = 0; c < curveCount; c++)

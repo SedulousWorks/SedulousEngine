@@ -11,7 +11,7 @@
 
 #define kLogBandTextureWidth 12
 
-// Boost optical weight for small text — makes thin strokes more visible.
+// Boost optical weight for small text - makes thin strokes more visible.
 #define SLUG_WEIGHT
 
 // It's convenient to have a texel load function to aid in translation to other shader languages.

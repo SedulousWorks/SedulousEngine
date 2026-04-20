@@ -10,10 +10,10 @@ public enum ScenePhase
 	/// Synchronous pre-update (physics results readback, input application).
 	PreUpdate,
 
-	/// Main update (gameplay, AI, simulation). Sequential — safe for cross-component access.
+	/// Main update (gameplay, AI, simulation). Sequential - safe for cross-component access.
 	Update,
 
-	/// Parallel update — all registered managers run concurrently via JobSystem.ParallelFor.
+	/// Parallel update - all registered managers run concurrently via JobSystem.ParallelFor.
 	/// Each manager may ONLY access its own component pool. No entity creation/destruction,
 	/// no hierarchy changes, no transform writes, no cross-component reads.
 	AsyncUpdate,

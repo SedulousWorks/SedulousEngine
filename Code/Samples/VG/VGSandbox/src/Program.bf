@@ -11,7 +11,7 @@ using Sedulous.Images;
 using Sedulous.Fonts;
 using Sedulous.Fonts.TTF;
 
-/// VG Sandbox — NanoVG-inspired demo showcasing Sedulous.VG capabilities.
+/// VG Sandbox - NanoVG-inspired demo showcasing Sedulous.VG capabilities.
 class VGSandboxApp : Application
 {
 	private VGContext mVG;
@@ -44,7 +44,7 @@ class VGSandboxApp : Application
 			return;
 		}
 
-		// Load fonts at a few sizes — Roboto-Regular from the shared assets.
+		// Load fonts at a few sizes - Roboto-Regular from the shared assets.
 		// FontService already converts the R8 atlas to RGBA8 under the hood,
 		// so VG consumes the atlas just like any other IImageData image.
 		mFontService = new FontService();
@@ -452,10 +452,10 @@ class VGSandboxApp : Application
 	}
 
 	/// Demonstrates Phase 5 immediate-mode path API: no PathBuilder / ToPath /
-	/// defer-delete ceremony — just BeginPath / MoveTo / LineTo / ... / Fill / Stroke.
+	/// defer-delete ceremony - just BeginPath / MoveTo / LineTo / ... / Fill / Stroke.
 	private void DrawImmediatePath(VGContext vg, float x, float y, float t)
 	{
-		// Animated "signature" curve — cubic Bezier arcs that wobble with time.
+		// Animated "signature" curve - cubic Bezier arcs that wobble with time.
 		vg.BeginPath();
 		vg.MoveTo(x, y + 25);
 		vg.CubicTo(x + 30, y + 25 - Math.Sin(t * 1.5f) * 15,
@@ -485,7 +485,7 @@ class VGSandboxApp : Application
 		vg.ClosePath();
 		vg.Fill(Color(255, 220, 120, 255));
 
-		// Teardrop shape using QuadTo — shows mixing move/line/quad/close freely.
+		// Teardrop shape using QuadTo - shows mixing move/line/quad/close freely.
 		vg.BeginPath();
 		vg.MoveTo(x + 290, y + 5);
 		vg.QuadTo(x + 320, y + 25, x + 290, y + 45);
@@ -499,15 +499,15 @@ class VGSandboxApp : Application
 	/// and the "border" variants that inset the stroke to align with the rect edges.
 	private void DrawUIConvenience(VGContext vg, float x, float y)
 	{
-		// DrawLine — quick point-to-point. No PathBuilder ceremony.
+		// DrawLine - quick point-to-point. No PathBuilder ceremony.
 		vg.DrawLine(.(x, y + 5), .(x + 120, y + 5), Color(200, 220, 255, 255), 1.0f);
 		vg.DrawLine(.(x, y + 15), .(x + 120, y + 15), Color(200, 220, 255, 255), 2.5f);
 		vg.DrawLine(.(x, y + 30), .(x + 120, y + 30), Color(200, 220, 255, 255), 5.0f);
 
-		// StrokeEllipse — was missing from VG before this phase.
+		// StrokeEllipse - was missing from VG before this phase.
 		vg.StrokeEllipse(.(x + 180, y + 20), 40, 18, Color(255, 200, 140, 255), 2.0f);
 
-		// Border vs Stroke comparison — draw both around the same rect so the
+		// Border vs Stroke comparison - draw both around the same rect so the
 		// inset difference is visible. The outer edge of DrawBorderRect aligns
 		// exactly with the rect; StrokeRect's stroke straddles the edge.
 		let compareRect = RectangleF(x + 250, y, 60, 40);
@@ -531,20 +531,20 @@ class VGSandboxApp : Application
 	{
 		// Plain text at a baseline position, multiple sizes.
 		vg.DrawText("Sedulous.VG text rendering", mFontLarge, .(x, y + 30), Color(240, 240, 245, 255));
-		vg.DrawText("Medium size — the quick brown fox", mFontMedium, .(x, y + 60), Color(180, 200, 255, 255));
+		vg.DrawText("Medium size - the quick brown fox", mFontMedium, .(x, y + 60), Color(180, 200, 255, 255));
 		vg.DrawText("small caption @ 14px", mFontSmall, .(x, y + 82), Color(160, 170, 180, 255));
 
-		// Tinted + animated color — exercises ApplyOpacity and per-vertex color path.
+		// Tinted + animated color - exercises ApplyOpacity and per-vertex color path.
 		let pulse = (uint8)(160 + Math.Sin(t * 2) * 60);
 		vg.DrawText("pulsing tint", mFontMedium, .(x, y + 108), Color(255, pulse, 80, 255));
 
-		// Alignment inside a bounds rect — draw an outline first so the box is visible.
+		// Alignment inside a bounds rect - draw an outline first so the box is visible.
 		let boxRect = RectangleF(x + 350, y + 50, 200, 60);
 		vg.StrokeRect(boxRect, Color(80, 100, 120, 255), 1.0f);
 		vg.DrawText("centered", mFontMedium.Font, mFontMedium.Atlas, mFontService.GetAtlasTexture(mFontMedium),
 			boxRect, .Center, .Middle, Color(220, 220, 220, 255));
 
-		// Rotated text via transform stack — confirms glyph quads go through TransformVertices.
+		// Rotated text via transform stack - confirms glyph quads go through TransformVertices.
 		vg.PushState();
 		vg.Translate(x + 280, y + 130);
 		vg.Rotate(Math.Sin(t * 0.7f) * 0.3f);
@@ -737,7 +737,7 @@ class VGSandboxApp : Application
 
 		if (mVG != null) delete mVG;
 
-		// Font service owns its CachedFonts — delete after VGRenderer disposed
+		// Font service owns its CachedFonts - delete after VGRenderer disposed
 		// so the cache stops referencing atlas textures before they're freed.
 		if (mFontService != null) delete mFontService;
 

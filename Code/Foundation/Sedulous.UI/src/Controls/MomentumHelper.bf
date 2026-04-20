@@ -2,14 +2,14 @@ namespace Sedulous.UI;
 
 using System;
 
-/// Physics-based kinetic scroll — exponential velocity decay.
+/// Physics-based kinetic scroll - exponential velocity decay.
 /// Owned as a member by scrollable views, not a separate object.
 public struct MomentumHelper
 {
 	public float VelocityX;
 	public float VelocityY;
 	public float Friction = 6.0f;       // higher = stops sooner
-	public float StopThreshold = 0.5f;  // px/sec — below this, snap to 0
+	public float StopThreshold = 0.5f;  // px/sec - below this, snap to 0
 
 	/// Update velocities and return the displacement this frame.
 	public (float dx, float dy) Update(float deltaTime) mut

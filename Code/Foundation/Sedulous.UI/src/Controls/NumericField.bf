@@ -294,7 +294,7 @@ public class NumericField : View, ITextEditHost
 		let borderWidth = focused ? 2.0f : 1.0f;
 		ctx.VG.StrokeRoundedRect(bounds, radius, borderColor, borderWidth);
 
-		// Text area — clip to text region.
+		// Text area - clip to text region.
 		let textAreaX = TextPaddingLeft;
 		let textAreaW = TextAreaWidth;
 		ctx.PushClip(.(textAreaX, 0, textAreaW, Height));

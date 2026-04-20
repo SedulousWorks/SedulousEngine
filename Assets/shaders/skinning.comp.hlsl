@@ -15,10 +15,10 @@ cbuffer SkinningParams : register(b0)
 // Bone matrices: current frame (BoneCount matrices), then previous frame (BoneCount matrices)
 StructuredBuffer<float4x4> BoneMatrices : register(t0);
 
-// Source vertices (72 bytes each) — read as raw bytes
+// Source vertices (72 bytes each) - read as raw bytes
 ByteAddressBuffer SourceVertices : register(t1);
 
-// Output vertices (48 bytes each) — write as raw bytes
+// Output vertices (48 bytes each) - write as raw bytes
 RWByteAddressBuffer OutputVertices : register(u0);
 
 [numthreads(64, 1, 1)]

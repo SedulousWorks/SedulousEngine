@@ -5,11 +5,11 @@ namespace Sedulous.Scenes;
 /// Game code defines components by extending this class with data fields.
 ///
 /// Lifecycle:
-///   1. CreateComponent()         — allocates slot, sets Owner, calls OnComponentCreated
-///   2. [app sets properties]     — Shape, BodyType, clip refs, etc.
-///   3. OnComponentInitialized()  — called at start of next Scene update, all properties set
-///   4. [simulation runs]         — FixedUpdate, Update phases, etc.
-///   5. OnComponentDestroyed()    — called on destroy or entity destroy
+///   1. CreateComponent()         - allocates slot, sets Owner, calls OnComponentCreated
+///   2. [app sets properties]     - Shape, BodyType, clip refs, etc.
+///   3. OnComponentInitialized()  - called at start of next Scene update, all properties set
+///   4. [simulation runs]         - FixedUpdate, Update phases, etc.
+///   5. OnComponentDestroyed()    - called on destroy or entity destroy
 public abstract class Component
 {
 	/// The entity this component is attached to. Set by the manager.
@@ -19,6 +19,6 @@ public abstract class Component
 	public bool IsActive = true;
 
 	/// Whether this component has been initialized (OnComponentInitialized called).
-	/// Set automatically by ComponentManager — do not modify.
+	/// Set automatically by ComponentManager - do not modify.
 	public bool Initialized = false;
 }

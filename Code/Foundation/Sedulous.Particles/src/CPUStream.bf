@@ -2,7 +2,7 @@ namespace Sedulous.Particles;
 
 using System;
 
-/// CPU-side particle stream — a typed system-memory array.
+/// CPU-side particle stream - a typed system-memory array.
 /// This is the primary stream type for CPU simulation.
 public class CPUStream<T> : ParticleStream where T : struct
 {

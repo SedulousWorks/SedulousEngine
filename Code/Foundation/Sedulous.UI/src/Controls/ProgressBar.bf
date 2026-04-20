@@ -51,7 +51,7 @@ public class ProgressBar : View
 		if (!ctx.TryDrawDrawable("ProgressBar.Track", bounds, GetControlState()))
 			ctx.VG.FillRoundedRect(bounds, radius, TrackColor);
 
-		// Fill — clip so the rounded left edge is preserved.
+		// Fill - clip so the rounded left edge is preserved.
 		let fillW = Width * mProgress;
 		if (fillW > 0)
 		{

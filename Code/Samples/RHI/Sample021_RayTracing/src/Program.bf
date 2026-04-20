@@ -97,7 +97,7 @@ class RayTracingSample : SampleApp
 
 	public this() { }
 
-	protected override StringView Title => "Sample021 — Ray Tracing (TraceRays)";
+	protected override StringView Title => "Sample021 - Ray Tracing (TraceRays)";
 
 	protected override DeviceFeatures RequiredFeatures => .() { RayTracing = true };
 
@@ -310,8 +310,8 @@ class RayTracingSample : SampleApp
 
 		// ---- Create RT bind group layout and bind group ----
 		{
-			// binding 0 (u0): RWTexture2D — storage texture, read-write
-			// binding 0 (t0): RaytracingAccelerationStructure — TLAS
+			// binding 0 (u0): RWTexture2D - storage texture, read-write
+			// binding 0 (t0): RaytracingAccelerationStructure - TLAS
 			// Both use register 0 in different HLSL spaces (u vs t),
 			// mapped to different Vulkan bindings via shifts (UAV=2000, SRV=1000).
 			let layoutEntries = scope BindGroupLayoutEntry[2];
@@ -360,7 +360,7 @@ class RayTracingSample : SampleApp
 			if (rtPlResult case .Err) { Console.WriteLine("ERROR: CreatePipelineLayout (RT) failed"); return .Err; }
 			mRtPipelineLayout = rtPlResult.Value;
 
-			// 3 stages: RayGen, ClosestHit, Miss — all from the same shader module
+			// 3 stages: RayGen, ClosestHit, Miss - all from the same shader module
 			let stages = scope ProgrammableStage[3];
 			stages[0] = ProgrammableStage() { Module = mRtShaderModule, EntryPoint = "RayGen", Stage = .RayGen };
 			stages[1] = ProgrammableStage() { Module = mRtShaderModule, EntryPoint = "ClosestHit", Stage = .ClosestHit };
@@ -430,7 +430,7 @@ class RayTracingSample : SampleApp
 				handleSize, baseAlignment, mSbtAlignedStride, sbtSize);
 		}
 
-		Console.WriteLine("RT sample ready — TraceRays rendering active.");
+		Console.WriteLine("RT sample ready - TraceRays rendering active.");
 
 		return .Ok;
 	}

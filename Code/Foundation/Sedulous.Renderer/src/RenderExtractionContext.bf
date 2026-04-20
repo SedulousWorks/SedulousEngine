@@ -11,7 +11,7 @@ struct RenderExtractionContext
 	/// Component managers allocate RenderData instances from RenderContext.FrameAllocator.
 	public RenderContext RenderContext;
 
-	/// Output container — providers add render data here.
+	/// Output container - providers add render data here.
 	public ExtractedRenderData RenderData;
 
 	/// View matrix (world -> view space). For sorting key computation.

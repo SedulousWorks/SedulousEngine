@@ -4,11 +4,11 @@ using System;
 
 public enum MeasureMode
 {
-	/// No constraint — child can be any size it wants.
+	/// No constraint - child can be any size it wants.
 	Unspecified,
-	/// Maximum size — child can be smaller but not larger.
+	/// Maximum size - child can be smaller but not larger.
 	AtMost,
-	/// Exact size — child must be exactly this size.
+	/// Exact size - child must be exactly this size.
 	Exactly
 }
 

@@ -60,7 +60,7 @@ class BlendTree2D : IAnimationStateNode
 
 			if (dist < 0.0001f)
 			{
-				// Essentially on top of this entry — use it exclusively
+				// Essentially on top of this entry - use it exclusively
 				let clip = Entries[i].Clip;
 				if (clip != null)
 				{
@@ -96,7 +96,7 @@ class BlendTree2D : IAnimationStateNode
 
 			if (firstSample)
 			{
-				// First contributing entry — copy directly with weight consideration
+				// First contributing entry - copy directly with weight consideration
 				for (int b = 0; b < skeleton.BoneCount && b < outPoses.Length; b++)
 					outPoses[b] = tempPoses[b];
 				firstSample = false;
@@ -105,7 +105,7 @@ class BlendTree2D : IAnimationStateNode
 				if (weights[i] > 0.999f)
 					return;
 
-				// Scale the first contribution — we'll accumulate weighted blends
+				// Scale the first contribution - we'll accumulate weighted blends
 				// For proper multi-way blending, we start from the first and blend toward others
 				continue;
 			}

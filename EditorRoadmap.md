@@ -16,23 +16,23 @@ editor core knowing about them. Reference: BansheeBeef editor implementation.
 
 ## Key Differences from BansheeBeef Reference
 
-The Banshee editor uses its own `Sedulous.UI` + `Sedulous.UI.Toolkit` — a similar
+The Banshee editor uses its own `Sedulous.UI` + `Sedulous.UI.Toolkit` - a similar
 Android-inspired UI framework with the same control names (Label, Button, Panel,
 TreeView, PropertyGrid, DockManager, SplitView, etc.) but a different implementation
 from ours. The ideas and patterns carry over; the code does not.
 
 Other differences:
 
-- `DrawContext`/`DrawingRenderer` — we use **VGContext/VGRenderer**
-- `Application` (Runtime.Client) — we follow the same pattern, **not** EngineApplication
-- Old `Context` with shared JobSystem/ResourceSystem — our JobSystem is a singleton (runs jobs immediately), Context just calls ProcessCompleteJobs in update
-- `Sedulous.Engine.Core` (old engine) — we use **Sedulous.Engine.Runtime** + scene system
-- `EntityId` — we use **EntityHandle**
-- `SceneManager` — we use **SceneSubsystem** + **ComponentManager<T>** pattern
-- Old `Renderer` class — we use **RenderSubsystem** with Pipeline/RenderGraph
+- `DrawContext`/`DrawingRenderer` - we use **VGContext/VGRenderer**
+- `Application` (Runtime.Client) - we follow the same pattern, **not** EngineApplication
+- Old `Context` with shared JobSystem/ResourceSystem - our JobSystem is a singleton (runs jobs immediately), Context just calls ProcessCompleteJobs in update
+- `Sedulous.Engine.Core` (old engine) - we use **Sedulous.Engine.Runtime** + scene system
+- `EntityId` - we use **EntityHandle**
+- `SceneManager` - we use **SceneSubsystem** + **ComponentManager<T>** pattern
+- Old `Renderer` class - we use **RenderSubsystem** with Pipeline/RenderGraph
 
 The Banshee editor's architecture (plugins, pages, inspector flow, command stack) is
-a strong reference. Control patterns are similar but not copy-paste — our UI API
+a strong reference. Control patterns are similar but not copy-paste - our UI API
 differs in constructors, layout params, and theming. The main adaptation work is in
 engine integration: scene management, viewport rendering, and component inspection.
 
@@ -208,7 +208,7 @@ class EditorContext
     public DockManager DockManager;
     public MenuBar MenuBar;
 
-    // Registration — plugins call during Initialize()
+    // Registration - plugins call during Initialize()
     public void RegisterPanelFactory(IEditorPanelFactory factory);
     public void RegisterComponentInspector(Type componentType, IComponentInspector inspector);
     public void RegisterPageFactory(IEditorPageFactory factory);
@@ -289,7 +289,7 @@ class SceneEditorPage : IEditorPage
 
 ```
 DockManager (outer, owned by EditorApplication)
-├── Page tab area (center) — active page's ContentView
+├── Page tab area (center) - active page's ContentView
 │   └── SceneEditorPage.ContentView:
 │       ├── Hierarchy (left)       ← per-page, TreeView with SceneHierarchyAdapter
 │       ├── Viewport (center)      ← per-page, render-to-texture with fly cam
@@ -385,7 +385,7 @@ for (let type in Type.Types)
    - No custom → `ReflectionInspector` auto-generates from fields
 4. PropertyEditor events → `PropertyChangeCommand` → per-page `CommandStack`
 
-## Rendering Architecture Refactor (Prerequisite) — DONE
+## Rendering Architecture Refactor (Prerequisite) - DONE
 
 Decoupled RenderSubsystem from presentation so the same scene rendering code
 works in both EngineApplication (game) and EditorApplication (viewport texture).
@@ -418,14 +418,14 @@ interface IOverlayRenderer
 **Key design:** RenderSubsystem implements only ISceneRenderer. It does not
 handle overlays. EngineUISubsystem implements IOverlayRenderer and delegates
 to ScreenUIView. This keeps scene rendering and UI overlay as separate concerns
-on separate subsystems — cleaner than having RenderSubsystem own both.
+on separate subsystems - cleaner than having RenderSubsystem own both.
 
 ### Texture ownership
 
 The application owns the **final output target** (RGBA16Float color) and passes
 it to RenderScene. Internal pipeline textures (bloom chain, shadow atlas,
 transient HDR, G-buffer) stay internal. Pipeline no longer creates or owns
-the output texture — it receives it as a parameter.
+the output texture - it receives it as a parameter.
 
 ### Application frame loop (implemented)
 
@@ -456,7 +456,7 @@ mFrameIndex = (mFrameIndex + 1) % MAX_FRAMES;
 ### What changed
 
 **RenderSubsystem:**
-- Implements ISceneRenderer — `RenderScene(encoder, targets, frameIndex)`
+- Implements ISceneRenderer - `RenderScene(encoder, targets, frameIndex)`
 - Lost: swapchain, surface, blit helper, overlay list, command pools, frame fence
 - Pipeline receives output target as parameter, no longer owns it
 - Pipeline's explicit ClearOutput pass removed (ForwardOpaquePass already uses LoadOp.Clear on the transient HDR; application clears the final output)
@@ -464,7 +464,7 @@ mFrameIndex = (mFrameIndex + 1) % MAX_FRAMES;
 
 **EngineApplication:**
 - Owns: swapchain, output texture, command pools, frame fence, frame index, blit helper
-- New PresentFrame() after Context.EndFrame() — handles the full clear → render → blit → overlay → present pipeline
+- New PresentFrame() after Context.EndFrame() - handles the full clear → render → blit → overlay → present pipeline
 - Caches ISceneRenderer + IOverlayRenderer queries at startup
 
 **EngineUISubsystem:**
@@ -475,7 +475,7 @@ mFrameIndex = (mFrameIndex + 1) % MAX_FRAMES;
 - WorldUIPass registered in OnReady() instead of deferred Update hack
 
 **Subsystem lifecycle:**
-- Added `OnReady()` — called after all OnInit() completes, before first frame.
+- Added `OnReady()` - called after all OnInit() completes, before first frame.
   Mirror of OnPrepareShutdown. Enables cross-subsystem wiring without deferred hacks.
 
 **Pipeline:**
@@ -539,8 +539,8 @@ viewport but not in the editor UI.
 - `CoreEditorPlugin` registering built-in factories
 
 ### Phase 3: Viewport & Gizmos
-- `ViewportView` — render-to-texture with engine pipeline
-- `ViewportCameraController` — fly cam
+- `ViewportView` - render-to-texture with engine pipeline
+- `ViewportCameraController` - fly cam
 - `IGizmoRenderer`, `GizmoContext`
 - Transform gizmo (translate/rotate/scale)
 - Selection picking (raycast in viewport)
@@ -551,7 +551,7 @@ viewport but not in the editor UI.
 - `IAssetCreator` for "Create New" menus
 
 ### Phase 5: Play Mode
-- `EditorSceneManager` — serialize/restore scene around play
+- `EditorSceneManager` - serialize/restore scene around play
 - Play/Pause/Stop controls
 - Inspector read-only during play
 
@@ -565,10 +565,10 @@ viewport but not in the editor UI.
 ## Prerequisites
 
 - ~~**RenderSubsystem refactor**~~: ISceneRenderer/IOverlayRenderer, swapchain
-  ownership moved to EngineApplication — **DONE**
+  ownership moved to EngineApplication - **DONE**
 - **Sedulous.UI.Toolkit**: DockManager, SplitView, MenuBar, StatusBar, Toolbar,
-  PropertyGrid, TreeView — all complete
-- **Sedulous.Engine.UI**: EngineUISubsystem, ScreenUIView — complete
-- **Sedulous.Engine.Render**: RenderSubsystem, render pipeline — complete
-- **Sedulous.Scenes**: ComponentManager, Scene serialization — complete
-- **Sedulous.Resources**: ResourceSystem — exists but FileWatcher not yet implemented
+  PropertyGrid, TreeView - all complete
+- **Sedulous.Engine.UI**: EngineUISubsystem, ScreenUIView - complete
+- **Sedulous.Engine.Render**: RenderSubsystem, render pipeline - complete
+- **Sedulous.Scenes**: ComponentManager, Scene serialization - complete
+- **Sedulous.Resources**: ResourceSystem - exists but FileWatcher not yet implemented

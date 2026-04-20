@@ -317,7 +317,7 @@ public class FbxLoader : IModelLoader
 			}
 			else if (tex.has_file)
 			{
-				// External file — try relative path, then walk parent directories, then absolute
+				// External file - try relative path, then walk parent directories, then absolute
 				StringView relPath = default;
 				if (tex.relative_filename.data != null && tex.relative_filename.length > 0)
 					relPath = StringView(tex.relative_filename.data, (int)tex.relative_filename.length);
@@ -568,7 +568,7 @@ public class FbxLoader : IModelLoader
 			}
 			else
 			{
-				// No material parts — process all faces as a single part
+				// No material parts - process all faces as a single part
 				int32 indexCount = 0;
 
 				for (int fi = 0; fi < (int)fbxMesh.faces.count; fi++)
@@ -961,7 +961,7 @@ public class FbxLoader : IModelLoader
 			if (stack.element.name.data != null && stack.element.name.length > 0)
 				animation.SetName(StringView(stack.element.name.data, (int)stack.element.name.length));
 
-			// Bake the animation — this pre-computes T/R/S keyframes per node
+			// Bake the animation - this pre-computes T/R/S keyframes per node
 			// in the target coordinate system (Y-up), handling Euler-to-quaternion
 			// conversion and layer blending automatically.
 			ufbx_bake_opts bakeOpts = .();

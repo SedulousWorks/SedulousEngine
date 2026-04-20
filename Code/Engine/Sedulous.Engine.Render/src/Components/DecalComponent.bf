@@ -9,7 +9,7 @@ using Sedulous.Core.Mathematics;
 /// Projected decal component.
 ///
 /// The decal's world transform (from the entity's Transform component) places
-/// and orients a unit cube — the decal's projection volume. The shader samples
+/// and orients a unit cube - the decal's projection volume. The shader samples
 /// the texture using the local XY of any scene surface inside the cube.
 class DecalComponent : Component, ISerializableComponent
 {
@@ -34,7 +34,7 @@ class DecalComponent : Component, ISerializableComponent
 	/// by DecalComponentManager.
 	private ResourceRef mTextureRef ~ _.Dispose();
 
-	/// Resolved MaterialInstance — shared across decals using the same texture.
+	/// Resolved MaterialInstance - shared across decals using the same texture.
 	public MaterialInstance Material ~ _?.ReleaseRef();
 
 	/// Decal tint (RGBA).

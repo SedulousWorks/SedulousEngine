@@ -6,7 +6,7 @@ using Sedulous.RenderGraph;
 using Sedulous.Renderer;
 using Sedulous.Profiler;
 
-/// Compute skinning pass — transforms skinned vertices into standard Mesh layout.
+/// Compute skinning pass - transforms skinned vertices into standard Mesh layout.
 /// Runs before all render passes. Dispatches one compute job per visible skinned mesh.
 /// Output buffers are reused by DepthPrepass, ForwardOpaquePass, etc.
 class SkinningPass : PipelinePass

@@ -97,7 +97,7 @@ class MeshShaderSample : SampleApp
 
 	public this() { }
 
-	protected override StringView Title => "Sample020 — Mesh Shaders (Rotating Triangle)";
+	protected override StringView Title => "Sample020 - Mesh Shaders (Rotating Triangle)";
 
 	protected override DeviceFeatures RequiredFeatures => .() { MeshShaders = true };
 

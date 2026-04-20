@@ -128,7 +128,7 @@ class TreeAdapterTests
 		let flat = scope FlattenedTreeAdapter(tree);
 
 		flat.Expand(0);
-		flat.Expand(10); // leaf — no children
+		flat.Expand(10); // leaf - no children
 
 		// Still 5 items (expand on leaf didn't add anything).
 		Test.Assert(flat.ItemCount == 5);

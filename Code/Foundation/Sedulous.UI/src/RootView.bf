@@ -11,7 +11,7 @@ public class RootView : ViewGroup
 	public float DpiScale = 1.0f;
 	public Vector2 ViewportSize;
 
-	// Owned as child — ViewGroup destructor handles deletion.
+	// Owned as child - ViewGroup destructor handles deletion.
 	private PopupLayer mPopupLayer;
 
 	/// The per-window popup/overlay layer.
@@ -28,7 +28,7 @@ public class RootView : ViewGroup
 	{
 		if (child == null) return;
 
-		// PopupLayer itself — just use base (already added in constructor).
+		// PopupLayer itself - just use base (already added in constructor).
 		if (child is PopupLayer)
 		{
 			base.AddView(child, lp);

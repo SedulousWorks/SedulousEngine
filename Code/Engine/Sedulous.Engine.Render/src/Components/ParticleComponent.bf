@@ -38,7 +38,7 @@ class ParticleComponent : Component, ISerializableComponent
 	/// Texture resource reference (serialized). Overrides the effect's default texture.
 	private ResourceRef mTextureRef ~ _.Dispose();
 
-	/// Resolved MaterialInstance — created by the manager, released on destroy.
+	/// Resolved MaterialInstance - created by the manager, released on destroy.
 	public MaterialInstance Material ~ _?.ReleaseRef();
 
 	/// Layer mask for filtering during extraction.
@@ -70,7 +70,7 @@ class ParticleComponent : Component, ISerializableComponent
 		mTextureRef = ResourceRef(@ref.Id, @ref.Path ?? "");
 	}
 
-	/// Assigns a MaterialInstance directly (takes ownership — AddRef/ReleaseRef pattern).
+	/// Assigns a MaterialInstance directly (takes ownership - AddRef/ReleaseRef pattern).
 	public void SetMaterial(MaterialInstance material)
 	{
 		if (Material == material) return;

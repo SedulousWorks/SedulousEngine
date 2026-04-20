@@ -1,4 +1,4 @@
-# Sedulous.UI — Usage Manual
+# Sedulous.UI - Usage Manual
 
 ## ScrollView and Layout Weights
 
@@ -19,14 +19,14 @@ scroll container. All other children should use `WrapContent` or explicit
 heights so they report their natural size.
 
 ```
-// WRONG — collapses to zero inside ScrollView:
+// WRONG - collapses to zero inside ScrollView:
 list.AddView(listView, new LinearLayout.LayoutParams() {
     Width = LayoutParams.MatchParent,
     Height = LayoutParams.MatchParent,
     Weight = 1
 });
 
-// CORRECT — fixed height works inside ScrollView:
+// CORRECT - fixed height works inside ScrollView:
 list.AddView(listView, new LinearLayout.LayoutParams() {
     Width = LayoutParams.MatchParent,
     Height = 200
@@ -106,7 +106,7 @@ btn.TooltipText = new String("Save the current document");
 Control where the tooltip appears relative to the anchor view:
 
 ```beef
-btn.TooltipPlacement = .Bottom;  // default — below, flips above if clipped
+btn.TooltipPlacement = .Bottom;  // default - below, flips above if clipped
 btn.TooltipPlacement = .Top;     // above, flips below if clipped
 btn.TooltipPlacement = .Right;   // right side, flips left if clipped
 btn.TooltipPlacement = .Left;    // left side, flips right if clipped
@@ -157,7 +157,7 @@ buttons, selecting text, etc.):
 view.IsTooltipInteractive = true;
 ```
 
-Non-interactive tooltips (the default) are hit-test transparent — mouse
+Non-interactive tooltips (the default) are hit-test transparent - mouse
 events pass through them to the content below.
 
 ---
@@ -172,6 +172,6 @@ Context menus automatically flip when they would clip screen edges:
   vertically.
 
 ```beef
-// Show at mouse position — auto-clamps to screen
+// Show at mouse position - auto-clamps to screen
 contextMenu.Show(uiContext, mouseX, mouseY);
 ```

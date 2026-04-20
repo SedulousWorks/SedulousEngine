@@ -295,7 +295,7 @@ class DockViewTests
 
 		ctx.UpdateRootView(root);
 
-		// Gone child doesn't consume space — alsoLeft starts at 0.
+		// Gone child doesn't consume space - alsoLeft starts at 0.
 		Test.Assert(alsoLeft.Bounds.X == 0);
 		Test.Assert(alsoLeft.Bounds.Width == 60);
 	}
@@ -372,7 +372,7 @@ class DockViewTests
 		root.AddView(dock, new LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent });
 
 		let child = MakeView(80, 0);
-		dock.AddView(child); // no explicit DockView.LayoutParams — uses default
+		dock.AddView(child); // no explicit DockView.LayoutParams - uses default
 
 		ctx.UpdateRootView(root);
 

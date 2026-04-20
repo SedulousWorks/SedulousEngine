@@ -11,7 +11,7 @@ using Sedulous.Profiler;
 ///
 /// Declares both ReadDepth (depth testing) and ReadTexture (shader sampling)
 /// on SceneDepth, which causes the render graph to transition the depth buffer
-/// to VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL — allowing simultaneous
+/// to VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL - allowing simultaneous
 /// depth testing and soft-particle depth sampling in the fragment shader.
 ///
 /// Dispatches RenderCategories.Particle through the ParticleRenderer drawer.

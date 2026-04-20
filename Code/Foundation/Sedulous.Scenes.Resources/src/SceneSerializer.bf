@@ -62,7 +62,7 @@ class SceneSerializer
 			var transform = scene.GetLocalTransform(entity);
 			SerializeTransform(serializer, ref transform);
 
-			// Components — count how many serializable modules have a component for this entity
+			// Components - count how many serializable modules have a component for this entity
 			var componentCount = (int32)0;
 			for (let module in serializableModules)
 			{
@@ -256,7 +256,7 @@ class SceneSerializer
 	{
 		var moduleDataCount = (int32)0;
 		if (serializer.BeginArray("Modules", ref moduleDataCount) not case .Ok)
-			return; // No module data section — older scene file
+			return; // No module data section - older scene file
 
 		for (int32 i = 0; i < moduleDataCount; i++)
 		{

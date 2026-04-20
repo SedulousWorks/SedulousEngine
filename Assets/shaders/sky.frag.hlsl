@@ -1,4 +1,4 @@
-// Sky Fragment Shader — equirectangular HDR sky or procedural gradient fallback
+// Sky Fragment Shader - equirectangular HDR sky or procedural gradient fallback
 // Samples an equirectangular environment map using the view direction.
 
 cbuffer LightParams : register(b1, space0)

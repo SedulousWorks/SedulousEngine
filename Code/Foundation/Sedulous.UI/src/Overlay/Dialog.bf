@@ -50,7 +50,7 @@ public class Dialog : ViewGroup
 			mLayout.RemoveView(mContent, true);
 
 		mContent = content;
-		// Insert content before the button row — remove it, add content, re-add.
+		// Insert content before the button row - remove it, add content, re-add.
 		mLayout.RemoveView(mButtonRow, false);
 		mLayout.AddView(content, new LinearLayout.LayoutParams() { Width = Sedulous.UI.LayoutParams.MatchParent, Height = Sedulous.UI.LayoutParams.WrapContent });
 		mLayout.AddView(mButtonRow, new LinearLayout.LayoutParams() { Width = Sedulous.UI.LayoutParams.MatchParent, Height = 36 });

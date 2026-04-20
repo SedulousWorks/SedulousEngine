@@ -6,7 +6,7 @@ using System.Diagnostics;
 namespace Sedulous.Resources;
 
 /// Tracks file paths and their last-modified timestamps.
-/// Polls on demand — no threading.
+/// Polls on demand - no threading.
 class FileWatcher
 {
 	struct WatchEntry : IDisposable

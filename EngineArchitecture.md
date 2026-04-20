@@ -33,8 +33,8 @@ Living document describing the engine's architecture, layers, and patterns.
 
 The `Context` is the central lifecycle hub. It owns subsystems, a job system, and a resource system. Subsystems are registered by type and updated in `UpdateOrder` priority.
 
-**Subsystem** — 1 instance per application. Provides app-wide services.
-**Scene Module (ComponentManager)** — 1 instance per scene. Owns per-scene data.
+**Subsystem** - 1 instance per application. Provides app-wide services.
+**Scene Module (ComponentManager)** - 1 instance per scene. Owns per-scene data.
 
 ### Subsystem Update Order
 
@@ -96,11 +96,11 @@ so component cleanup during scene teardown doesn't access destroyed resources.
 
 ### Entity-Component Model
 
-- **Entity** — lightweight handle (index + generation + Guid). No entity class — `EntityHandle` IS the entity.
-- **Component** — ref type, pooled per type in a `ComponentManager<T>`. Has `Initialized` flag.
-- **ComponentManagerBase** — non-generic base between SceneModule and ComponentManager<T>. Owns `InitializePendingComponents`.
-- **ComponentManager<T>** — extends ComponentManagerBase. Owns the pool, registers update functions, handles lifecycle.
-- **Transform** — not a component. Every entity has one. Hierarchical parent-child with dirty-flag propagation.
+- **Entity** - lightweight handle (index + generation + Guid). No entity class - `EntityHandle` IS the entity.
+- **Component** - ref type, pooled per type in a `ComponentManager<T>`. Has `Initialized` flag.
+- **ComponentManagerBase** - non-generic base between SceneModule and ComponentManager<T>. Owns `InitializePendingComponents`.
+- **ComponentManager<T>** - extends ComponentManagerBase. Owns the pool, registers update functions, handles lifecycle.
+- **Transform** - not a component. Every entity has one. Hierarchical parent-child with dirty-flag propagation.
 
 ### Component Lifecycle
 
@@ -122,14 +122,14 @@ DestroyComponent() / entity     → OnComponentDestroyed
 Phases run inside `SceneSubsystem.Update()`. Multiple scenes run in lockstep per phase.
 
 ```
-1. Initialize      — init newly created components
-2. PreUpdate        — physics results readback, input application (sequential)
-3. Update           — gameplay, AI, scene mutation (sequential)
-4. AsyncUpdate      — PARALLEL: independent per-component work (opt-in)
-5. PostUpdate       — read async results, constraints, late logic (sequential)
-6. TransformUpdate  — propagate dirty transforms down hierarchy
-7. PostTransform    — render extraction, spatial index update (sequential)
-8. Cleanup          — deferred entity/component destruction
+1. Initialize      - init newly created components
+2. PreUpdate        - physics results readback, input application (sequential)
+3. Update           - gameplay, AI, scene mutation (sequential)
+4. AsyncUpdate      - PARALLEL: independent per-component work (opt-in)
+5. PostUpdate       - read async results, constraints, late logic (sequential)
+6. TransformUpdate  - propagate dirty transforms down hierarchy
+7. PostTransform    - render extraction, spatial index update (sequential)
+8. Cleanup          - deferred entity/component destruction
 ```
 
 ### AsyncUpdate Phase (Parallel)
@@ -139,7 +139,7 @@ Inspired by ezEngine's Async phase. Managers opt in by registering for `.AsyncUp
 instead of `.Update`.
 
 **Rules for AsyncUpdate:**
-- Each manager iterates ONLY its own component pool — no cross-component access
+- Each manager iterates ONLY its own component pool - no cross-component access
 - No entity creation/destruction, no hierarchy changes, no transform writes
 - No dependencies between AsyncUpdate functions (enforced at registration)
 - Read-only access to transforms is safe (transforms are finalized in TransformUpdate AFTER AsyncUpdate,
@@ -152,7 +152,7 @@ for each manager registered for AsyncUpdate:
     JobSystem.ParallelFor(0, manager.ActiveCount, (begin, end) => {
         manager.UpdateRange(begin, end, deltaTime);
     });
-// All ParallelFor calls block — AsyncUpdate is fully complete before PostUpdate.
+// All ParallelFor calls block - AsyncUpdate is fully complete before PostUpdate.
 ```
 
 **Which managers use which phase:**
@@ -197,7 +197,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
         // + SpriteComponentManager, DecalComponentManager, etc.
     }
 
-    // ISceneRenderer — called by application with encoder + output targets
+    // ISceneRenderer - called by application with encoder + output targets
     void RenderScene(encoder, colorTexture, colorTarget, w, h, frameIndex)
     {
         // extract scenes → setup shadows → render shadows → pipeline.Render()
@@ -206,7 +206,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 
 class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 {
-    // IOverlayRenderer — called by application after blit
+    // IOverlayRenderer - called by application after blit
     void RenderOverlay(encoder, target, w, h, frameIndex)
     {
         // delegates to ScreenUIView → VGRenderer composites UI onto swapchain
@@ -237,7 +237,7 @@ Format-independent serialization. One provider registered at app startup:
 context.Resources.SetSerializerProvider(new OpenDDLSerializerProvider());
 ```
 
-All resource managers and the scene serializer use the provider — no direct format dependencies.
+All resource managers and the scene serializer use the provider - no direct format dependencies.
 
 ### Scene Serialization
 
@@ -245,13 +245,13 @@ All resource managers and the scene serializer use the provider — no direct fo
 - Components implement `ISerializableComponent` for their data
 - `ComponentTypeRegistry` maps type IDs to manager factories for deserialization
 - `EntityRef` carries persistent Guid + cached runtime handle for cross-entity references
-- `IModuleSerializer` — scene modules can serialize module-level data (non-entity state like environment settings)
+- `IModuleSerializer` - scene modules can serialize module-level data (non-entity state like environment settings)
 
 ### Resource Serialization
 
-- `Resource.SaveToFile(path, provider)` — generic text save via provider
+- `Resource.SaveToFile(path, provider)` - generic text save via provider
 - `TextureResource` overrides with binary sidecar (text metadata + `.bin` pixel data)
-- Resource managers load via `SerializerProvider.CreateReader(text)` — format-independent
+- Resource managers load via `SerializerProvider.CreateReader(text)` - format-independent
 - `ResourceType` hash (uint64) validates resource type on load
 
 ## Application Stack
@@ -287,20 +287,20 @@ with the physics world automatically. Jolt callbacks are buffered during the phy
 step (thread-safe via Monitor) and dispatched to components on the main thread after
 the step completes. Both bodies in a contact are notified (normals/velocities flipped
 for body2's perspective). Gameplay code sets delegates on RigidBodyComponent:
-- `OnContactAdded(self, PhysicsContactEvent) → bool` — return false to reject contact
-- `OnContactPersisted(self, PhysicsContactEvent)` — fires each frame while in contact
-- `OnContactRemoved(self, EntityHandle otherEntity)` — fires when contact ends
+- `OnContactAdded(self, PhysicsContactEvent) → bool` - return false to reject contact
+- `OnContactPersisted(self, PhysicsContactEvent)` - fires each frame while in contact
+- `OnContactRemoved(self, EntityHandle otherEntity)` - fires when contact ends
 
 All three callbacks provide valid EntityHandles. `OnContactRemoved` extracts
 body IDs from the `JPH_SubShapeIDPair` struct passed by Jolt.
 
 ### Engine.Animation
 Three component types:
-- **SkeletalAnimationComponent** — simple clip playback via ResourceRefs (SkeletonRef + ClipRef). Priority 10.
-- **AnimationGraphComponent** — state-machine-driven via graph. Priority 11 (overrides skeletal).
-- **PropertyAnimationComponent** — animates entity properties via PropertyBinderRegistry.
+- **SkeletalAnimationComponent** - simple clip playback via ResourceRefs (SkeletonRef + ClipRef). Priority 10.
+- **AnimationGraphComponent** - state-machine-driven via graph. Priority 11 (overrides skeletal).
+- **PropertyAnimationComponent** - animates entity properties via PropertyBinderRegistry.
 AnimationSubsystem registers all 4 resource managers, owns PropertyBinderRegistry.
-SkinnedMeshComponent decoupled from animation — reads bone matrices from animation components.
+SkinnedMeshComponent decoupled from animation - reads bone matrices from animation components.
 
 ### Engine.Audio
 AudioSubsystem creates SDL3AudioSystem, manages volume categories (Master × SFX/Music),
@@ -319,11 +319,11 @@ FixedUpdate steps crowd, Update creates agents and syncs positions.
 ### Material Lifecycle
 MaterialInstance is ref-counted (RefCounted base). Components call AddRef/ReleaseRef
 via SetMaterial. GPU resources (bind group, uniform buffer) are cleaned up in
-MaterialInstance's destructor when the last ref is released — not by component managers.
+MaterialInstance's destructor when the last ref is released - not by component managers.
 MaterialSystem.ClearCache detaches all instances (SetMaterialSystem(null)) before
 destroying GPU resources, so late-running destructors don't use-after-free.
 
 ## Reference Engines
 
-- **ezEngine** — extraction pattern, world modules, bind group frequency, component managers, OnSimulationStarted lifecycle
-- **Traktor** — GatherView flat data bundle, deferred render context, entity renderer pattern
+- **ezEngine** - extraction pattern, world modules, bind group frequency, component managers, OnSimulationStarted lifecycle
+- **Traktor** - GatherView flat data bundle, deferred render context, entity renderer pattern

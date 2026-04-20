@@ -171,7 +171,7 @@ class DX12Device : IDevice
 
 	private void CreateExtensions()
 	{
-		// Mesh shaders — requires ID3D12Device2 (which we already require for mesh pipeline creation)
+		// Mesh shaders - requires ID3D12Device2 (which we already require for mesh pipeline creation)
 		// Check for mesh shader support via feature options7
 		D3D12_FEATURE_DATA_D3D12_OPTIONS7 options7 = default;
 		HRESULT hr = mDevice.CheckFeatureSupport(.D3D12_FEATURE_D3D12_OPTIONS7, &options7, (uint32)sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS7));
@@ -192,7 +192,7 @@ class DX12Device : IDevice
 			mDevice.CreateCommandSignature(&sigDesc, null, ID3D12CommandSignature.IID, (void**)&mDispatchMeshSignature);
 		}
 
-		// Ray tracing — requires ID3D12Device5 and DXR support
+		// Ray tracing - requires ID3D12Device5 and DXR support
 		D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = default;
 		hr = mDevice.CheckFeatureSupport(.D3D12_FEATURE_D3D12_OPTIONS5, &options5, (uint32)sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5));
 		if (SUCCEEDED(hr) && options5.RaytracingTier != .D3D12_RAYTRACING_TIER_NOT_SUPPORTED)

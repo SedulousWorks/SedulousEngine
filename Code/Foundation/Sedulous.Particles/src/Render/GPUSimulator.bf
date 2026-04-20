@@ -2,7 +2,7 @@ namespace Sedulous.Particles;
 
 using System;
 
-/// GPU simulation backend — dispatches compute shaders on storage buffers.
+/// GPU simulation backend - dispatches compute shaders on storage buffers.
 /// Placeholder for future GPU compute particle simulation.
 public class GPUSimulator : ParticleSimulator
 {
@@ -13,7 +13,7 @@ public class GPUSimulator : ParticleSimulator
 	{
 		// TODO: For each behavior that supports GPU, dispatch its compute shader.
 		// For behaviors that are CPU-only, fall back to CPU execution on readback data.
-		// For now, this is a stub — GPU simulation will be implemented per-behavior.
+		// For now, this is a stub - GPU simulation will be implemented per-behavior.
 	}
 
 	public override int32 CompactDead(ParticleStreamContainer streams)

@@ -54,7 +54,7 @@ class LightComponentManager : ComponentManager<LightComponent>, IRenderDataProvi
 			let direction = -Vector3.Normalize(.(worldMatrix.M31, worldMatrix.M32, worldMatrix.M33));
 
 			// Compute bounding box from light range for future frustum culling.
-			// Directional lights are infinite — zero bounds (never culled).
+			// Directional lights are infinite - zero bounds (never culled).
 			// Point and spot lights have a finite range as a bounding sphere,
 			// approximated as an AABB for the broad-phase.
 			BoundingBox lightBounds = .(.Zero, .Zero);

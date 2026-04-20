@@ -50,7 +50,7 @@ struct ClearColor
 }
 
 /// Information about a GPU adapter.
-/// Owns a heap-allocated Name string — caller must `delete` when done.
+/// Owns a heap-allocated Name string - caller must `delete` when done.
 class AdapterInfo
 {
 	public String Name = new .() ~ delete _;

@@ -3,7 +3,7 @@ namespace Sedulous.ShaderReflection.Tests;
 using System;
 using Sedulous.RHI;
 
-/// Phase 3: SPIR-V reflection — vertex inputs and compute thread group size.
+/// Phase 3: SPIR-V reflection - vertex inputs and compute thread group size.
 class SPIRVVertexComputeTests
 {
 	[Test]

@@ -4,7 +4,7 @@ using System;
 using System.Collections;
 
 /// Manages a pool of components of type T.
-/// IS-A SceneModule — one instance per scene, owns the pool, handles lifecycle.
+/// IS-A SceneModule - one instance per scene, owns the pool, handles lifecycle.
 ///
 /// Provides:
 ///   - CreateComponent(entity) -> ComponentHandle<T>
@@ -14,7 +14,7 @@ using System.Collections;
 ///   - Iteration over active components
 public abstract class ComponentManager<T> : ComponentManagerBase, IComponentManagerSerializer where T : Component, class, new, delete
 {
-	/// Pool slot — holds the component and generation counter.
+	/// Pool slot - holds the component and generation counter.
 	private struct Slot
 	{
 		public T Component;
@@ -34,7 +34,7 @@ public abstract class ComponentManager<T> : ComponentManagerBase, IComponentMana
 	public int32 SlotCount => (int32)mSlots.Count;
 
 	/// Gets the component at a slot index, or null if the slot is empty.
-	/// For parallel iteration — callers must check null and IsActive.
+	/// For parallel iteration - callers must check null and IsActive.
 	public T GetAtSlot(int32 index)
 	{
 		if (index < 0 || index >= mSlots.Count) return null;
@@ -108,7 +108,7 @@ public abstract class ComponentManager<T> : ComponentManagerBase, IComponentMana
 	}
 
 	/// Finds the first component attached to the given entity.
-	/// Linear scan — cache the result if called frequently.
+	/// Linear scan - cache the result if called frequently.
 	public T GetForEntity(EntityHandle entity)
 	{
 		for (let slot in ref mSlots)
@@ -178,7 +178,7 @@ public abstract class ComponentManager<T> : ComponentManagerBase, IComponentMana
 	public ComponentEnumerator ActiveComponents => .(&mSlots);
 
 	/// Called when a component is created (inside CreateComponent). Properties
-	/// are NOT set yet — use OnComponentInitialized for setup that depends on config.
+	/// are NOT set yet - use OnComponentInitialized for setup that depends on config.
 	protected virtual void OnComponentCreated(T component) { }
 
 	/// Called once per component after properties have been set, at the start
@@ -207,7 +207,7 @@ public abstract class ComponentManager<T> : ComponentManagerBase, IComponentMana
 		mPendingInit.Clear();
 	}
 
-	/// Called when an entity is destroyed — destroys all components owned by that entity.
+	/// Called when an entity is destroyed - destroys all components owned by that entity.
 	public override void OnEntityDestroyed(EntityHandle entity)
 	{
 		for (int32 i = 0; i < mSlots.Count; i++)
@@ -225,7 +225,7 @@ public abstract class ComponentManager<T> : ComponentManagerBase, IComponentMana
 		}
 	}
 
-	/// Called when an entity's active state changes — syncs to all components owned by that entity.
+	/// Called when an entity's active state changes - syncs to all components owned by that entity.
 	public override void OnEntityActiveChanged(EntityHandle entity, bool active)
 	{
 		for (var slot in ref mSlots)

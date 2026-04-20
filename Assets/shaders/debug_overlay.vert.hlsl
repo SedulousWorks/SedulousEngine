@@ -1,4 +1,4 @@
-// Debug overlay vertex shader — maps pixel-space positions to clip space.
+// Debug overlay vertex shader - maps pixel-space positions to clip space.
 // Used for 2D text and filled rectangles in screen space.
 
 #pragma pack_matrix(row_major)

@@ -5,7 +5,7 @@ using Sedulous.UI;
 using Sedulous.UI.Toolkit;
 using Sedulous.Core.Mathematics;
 
-/// Demo page: Toolkit controls — SplitView, Toolbar, MenuBar, StatusBar,
+/// Demo page: Toolkit controls - SplitView, Toolbar, MenuBar, StatusBar,
 /// PropertyGrid, ColorPicker.
 class ToolkitPage : DemoPage
 {

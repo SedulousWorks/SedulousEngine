@@ -4,7 +4,7 @@ using System;
 
 /// Lightweight handle to an entity in a scene.
 /// Contains an index into the entity pool and a generation counter for validation.
-/// Never store direct pointers to entities — always use handles and resolve through Scene.
+/// Never store direct pointers to entities - always use handles and resolve through Scene.
 public struct EntityHandle : IHashable, IEquatable<EntityHandle>
 {
 	public uint32 Index;

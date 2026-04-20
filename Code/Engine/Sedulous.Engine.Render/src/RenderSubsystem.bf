@@ -20,8 +20,8 @@ using Sedulous.Textures.Resources;
 using Sedulous.Materials.Resources;
 using System.Collections;
 
-/// Implements ISceneRenderer — renders the 3D scene to application-provided output targets.
-/// Runs late (UpdateOrder 500) — all scene updates and extraction are complete by this point.
+/// Implements ISceneRenderer - renders the 3D scene to application-provided output targets.
+/// Runs late (UpdateOrder 500) - all scene updates and extraction are complete by this point.
 /// Injects render component managers (Mesh, Light, Camera, etc.) into scenes via ISceneAware.
 ///
 /// Does NOT own swapchain, frame pacing, or presentation. The application owns those and
@@ -125,11 +125,11 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		//   2. Depth prepass (opaque + masked)
 		//   3. Forward opaque + masked (fills color + uses prepass depth)
 		//   4. Decal pass (samples SceneDepth, composes on top of opaque)
-		//   5. Sky (fills where depth == far — before transparent so transparent
+		//   5. Sky (fills where depth == far - before transparent so transparent
 		//      draws don't get overwritten by the sky backdrop)
 		//   6. Forward transparent (sprites/particles blend over sky + opaque)
 		//   7. Debug lines (depth-tested on top of everything)
-		//   8. 2D overlay (no depth — final HUD/text)
+		//   8. 2D overlay (no depth - final HUD/text)
 		mPipeline.AddPass(new SkinningPass());
 		mPipeline.AddPass(new DepthPrepass());
 		mPipeline.AddPass(new ForwardOpaquePass());
@@ -143,7 +143,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		// Post-processing stack
 		let postStack = new PostProcessStack();
 		postStack.Initialize(mRenderContext);
-		// Bloom must come before tonemap — it produces the "BloomTexture" aux
+		// Bloom must come before tonemap - it produces the "BloomTexture" aux
 		// that TonemapEffect reads for compositing.
 		let bloomEffect = new BloomEffect();
 		bloomEffect.Threshold = 1.5f;
@@ -184,7 +184,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		if (mMaterialManager != null)
 			Context.Resources.RemoveResourceManager(mMaterialManager);
 
-		// Shutdown pipelines then renderer (pipelines first — they reference renderer)
+		// Shutdown pipelines then renderer (pipelines first - they reference renderer)
 		if (mShadowPipeline != null)
 			mShadowPipeline.Shutdown();
 		if (mPipeline != null)
@@ -206,7 +206,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 	/// Contract:
 	///   - The application owns the encoder, output textures, and frame pacing.
 	///   - colorTexture/colorTarget must be pre-cleared and in RenderTarget state on entry.
-	///   - On return, colorTexture is transitioned to ShaderRead — ready for blit sampling.
+	///   - On return, colorTexture is transitioned to ShaderRead - ready for blit sampling.
 	///   - frameIndex is the application's frame-in-flight index (0..MAX_FRAMES-1),
 	///     used to index double-buffered per-frame resources (uniform ring buffers,
 	///     shadow atlas, etc.).
@@ -224,7 +224,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 
 		mFrameIndex = frameIndex;
 
-		// Reset the view pool first — drops references to last frame's arena entries
+		// Reset the view pool first - drops references to last frame's arena entries
 		// before BeginFrame() rewinds the frame allocator.
 		mViewPool.BeginFrame();
 		mRenderContext.BeginFrame();
@@ -258,7 +258,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		// Save this frame's VP for next frame's motion vectors.
 		mPrevViewProjectionMatrix = mainView.ViewProjectionMatrix;
 
-		// Clear accumulated debug draws — commands have been recorded into the
+		// Clear accumulated debug draws - commands have been recorded into the
 		// command buffer at this point, and the per-frame GPU vertex buffers hold
 		// the uploaded data until the GPU consumes it on the next fence wait.
 		mRenderContext.DebugDraw.Clear();
@@ -475,7 +475,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 
 		// Reserve 4 shadow data slots (contiguous in the data buffer so the shader
 		// can do baseIndex + cascadeIdx). Atlas cells come from different tiers and
-		// are NOT contiguous in pixel space — that's fine, each entry carries its
+		// are NOT contiguous in pixel space - that's fine, each entry carries its
 		// own AtlasUVRect.
 		int32 baseShadowIdx = -1;
 		ShadowAtlasRegion[ShadowConstants.MaxCascades] regions = ?;
@@ -610,7 +610,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 			};
 			shadowSystem.SetShadowData(baseShadowIdx + f, data);
 
-			// Per-face shadow view — only ViewProjectionMatrix is used by the
+			// Per-face shadow view - only ViewProjectionMatrix is used by the
 			// depth-only shader, so we collapse view+proj into a single matrix
 			// (View = Identity, Proj = faceVP) for the scene uniforms upload.
 			let shadowView = mViewPool.Acquire();
@@ -667,7 +667,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 
 		if (mShadowDraws.Count == 0)
 		{
-			// No shadow casters — the atlas was never rendered to, so it's still
+			// No shadow casters - the atlas was never rendered to, so it's still
 			// in UNDEFINED layout. Transition to ShaderRead so the forward shader
 			// can safely sample it (reads all-ones depth = fully lit).
 			encoder.TransitionTexture(atlas, .Undefined, .ShaderRead);

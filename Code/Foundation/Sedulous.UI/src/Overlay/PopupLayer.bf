@@ -30,7 +30,7 @@ public class PopupLayer : ViewGroup
 			if (!e.OwnsView && e.Popup != null && e.Popup.Parent == this)
 			{
 				e.Popup.Parent = null;
-				// Don't call DetachSubtree here — context may already be gone.
+				// Don't call DetachSubtree here - context may already be gone.
 			}
 			else if (e.OwnsView && e.Popup != null)
 			{
@@ -41,7 +41,7 @@ public class PopupLayer : ViewGroup
 		delete _;
 	};
 
-	// Not `~ delete _` — if backdrop is a child, ViewGroup's mChildren
+	// Not `~ delete _` - if backdrop is a child, ViewGroup's mChildren
 	// destructor handles it. If detached, we delete in ~this.
 	private ModalBackdrop mBackdrop;
 
@@ -139,7 +139,7 @@ public class PopupLayer : ViewGroup
 
 				// Remove backdrop if no more modals.
 				if (!HasModalPopup && mBackdrop != null && mBackdrop.Parent != null)
-					RemoveView(mBackdrop, false); // don't delete — reuse
+					RemoveView(mBackdrop, false); // don't delete - reuse
 
 				InvalidateLayout();
 				return;
@@ -149,7 +149,7 @@ public class PopupLayer : ViewGroup
 
 	/// Close all popups with CloseOnClickOutside (topmost first).
 	/// Called by InputManager when a click lands outside all popups.
-	/// No coordinate check — the caller already determined the click
+	/// No coordinate check - the caller already determined the click
 	/// didn't hit any popup via hit-testing.
 	public bool HandleClickOutside(MouseButton button)
 	{
@@ -164,7 +164,7 @@ public class PopupLayer : ViewGroup
 					ClosePopup(mEntries[i].Popup);
 					closed = true;
 					found = true;
-					break; // restart — list changed
+					break; // restart - list changed
 				}
 			}
 			if (!found) break;

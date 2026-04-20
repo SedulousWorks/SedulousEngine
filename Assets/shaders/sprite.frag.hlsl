@@ -1,4 +1,4 @@
-// Sprite fragment shader — samples texture and multiplies by tint.
+// Sprite fragment shader - samples texture and multiplies by tint.
 
 Texture2D    SpriteTexture : register(t0, space2);
 SamplerState SpriteSampler : register(s0, space2);

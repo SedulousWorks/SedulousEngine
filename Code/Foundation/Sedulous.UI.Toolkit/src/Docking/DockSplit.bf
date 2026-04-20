@@ -5,7 +5,7 @@ using Sedulous.UI;
 using Sedulous.Core.Mathematics;
 
 /// Binary split node for the dock tree. Contains two children separated
-/// by a draggable divider. Direct ViewGroup — no SplitView wrapper.
+/// by a draggable divider. Direct ViewGroup - no SplitView wrapper.
 public class DockSplit : ViewGroup
 {
 	private Orientation mOrientation = .Horizontal;

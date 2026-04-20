@@ -66,7 +66,7 @@ class DrawableDetailTests
 		let d = scope LayerDrawable();
 		d.AddLayer(new ColorDrawable(.Red));
 		d.AddLayer(new ColorDrawable(.Blue));
-		// LayerDrawable stores layers internally — verify it doesn't crash.
+		// LayerDrawable stores layers internally - verify it doesn't crash.
 	}
 
 	// === StateListDrawable ===
@@ -95,7 +95,7 @@ class DrawableDetailTests
 		let normal = new ColorDrawable(.(100, 100, 100, 255));
 		d.Set(.Normal, normal);
 
-		// Disabled not set — should fall back to normal.
+		// Disabled not set - should fall back to normal.
 		let resolved = d.Get(.Disabled);
 		Test.Assert(resolved === normal);
 	}

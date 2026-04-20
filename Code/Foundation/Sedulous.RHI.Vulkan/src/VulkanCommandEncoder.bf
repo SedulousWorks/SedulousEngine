@@ -172,7 +172,7 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 			VkImageMemoryBarrier2 vkBarrier = .();
 			// When the actual old layout is UNDEFINED (first use), there is no prior
-			// work to synchronize against — use TOP_OF_PIPE with no access flags.
+			// work to synchronize against - use TOP_OF_PIPE with no access flags.
 			if (resolvedOldLayout == .VK_IMAGE_LAYOUT_UNDEFINED)
 			{
 				vkBarrier.srcStageMask = (uint64)VkPipelineStageFlags2.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
@@ -681,7 +681,7 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 			hitRegion.size = hitStride;
 		}
 
-		VkStridedDeviceAddressRegionKHR callableRegion = .(); // Empty — no callable shaders
+		VkStridedDeviceAddressRegionKHR callableRegion = .(); // Empty - no callable shaders
 
 		VulkanNative.vkCmdTraceRaysKHR(mCmdBuf, &raygenRegion, &missRegion, &hitRegion, &callableRegion,
 			width, height, depth);

@@ -84,7 +84,7 @@ public class DragDropManager
 
 	public ~this()
 	{
-		// Don't call CancelDrag/CompleteDrag during destruction — other
+		// Don't call CancelDrag/CompleteDrag during destruction - other
 		// managers (FocusManager, PopupLayer) may already be deleted.
 		// Just clean up owned data.
 		delete mDragData;
@@ -127,9 +127,9 @@ public class DragDropManager
 			let dist = Math.Sqrt(dx * dx + dy * dy);
 
 			if (dist < DragThreshold)
-				return false; // Not yet — let normal mouse processing continue.
+				return false; // Not yet - let normal mouse processing continue.
 
-			// Threshold exceeded — activate drag.
+			// Threshold exceeded - activate drag.
 			if (!ActivateDrag())
 			{
 				mState = .Idle;
@@ -139,7 +139,7 @@ public class DragDropManager
 			}
 		}
 
-		// Active drag — update adorner and drop target.
+		// Active drag - update adorner and drop target.
 		UpdateAdornerPosition(screenX, screenY);
 		UpdateDropTarget(screenX, screenY);
 		return true;
@@ -156,14 +156,14 @@ public class DragDropManager
 
 		if (mState == .Potential)
 		{
-			// Never reached threshold — cancel silently.
+			// Never reached threshold - cancel silently.
 			mState = .Idle;
 			mSourceView = null;
 			mDragSource = null;
 			return false;
 		}
 
-		// Active drag — attempt drop.
+		// Active drag - attempt drop.
 		UpdateDropTarget(screenX, screenY);
 
 		// Close adorner BEFORE OnDrop. OnDrop may destroy views
@@ -333,7 +333,7 @@ public class DragDropManager
 		}
 		else if (mCurrentDropTarget != null)
 		{
-			// Same target — fire over.
+			// Same target - fire over.
 			let local = mCurrentDropTargetView.ToLocal(.(screenX, screenY));
 			mCurrentDropTarget.OnDragOver(mDragData, local.X, local.Y);
 			mCurrentEffect = mCurrentDropTarget.CanAcceptDrop(mDragData, local.X, local.Y);

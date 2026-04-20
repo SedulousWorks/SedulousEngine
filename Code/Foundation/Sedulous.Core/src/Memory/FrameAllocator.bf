@@ -4,7 +4,7 @@ using System.Collections;
 namespace Sedulous.Core.Memory;
 
 /// Resettable bump allocator based on corlib's System.BumpAllocator.
-/// Pool memory is retained across Reset() calls — ideal for per-frame scratch
+/// Pool memory is retained across Reset() calls - ideal for per-frame scratch
 /// allocations (render data extraction, particle simulation, broadphase temps).
 ///
 /// Differences from System.BumpAllocator:
@@ -48,7 +48,7 @@ class FrameAllocator : ITypedAllocator
 	int mLargeAllocs;
 	public DestructorHandlingKind DestructorHandling = .Allow;
 
-	/// Index of the pool currently being filled. -1 means "no pool active" —
+	/// Index of the pool currently being filled. -1 means "no pool active" -
 	/// the next allocation triggers AdvanceOrGrowPool to pick up pool 0.
 	int mCurrentPoolIdx = -1;
 
@@ -173,7 +173,7 @@ class FrameAllocator : ITypedAllocator
 		else
 		{
 			GrowPool();
-			// GrowPool appends to mPools — the current pool is now the last one.
+			// GrowPool appends to mPools - the current pool is now the last one.
 			mCurrentPoolIdx = mPools.Count - 1;
 		}
 	}
@@ -324,7 +324,7 @@ class FrameAllocator : ITypedAllocator
 	}
 
 	/// Rewinds all pools, running destructors on tracked objects and freeing
-	/// any large (pool-overflow) allocations. Retained pool memory is kept —
+	/// any large (pool-overflow) allocations. Retained pool memory is kept -
 	/// subsequent allocations flow through pool 0 again.
 	///
 	/// All pointers returned from this allocator before Reset() become invalid.
@@ -353,7 +353,7 @@ class FrameAllocator : ITypedAllocator
 			mDtorEntriesEx.Clear();
 		}
 
-		// Free large allocations — these are not part of retained pool memory.
+		// Free large allocations - these are not part of retained pool memory.
 		if (mLargeDtorAllocs != null)
 		{
 			for (var obj in mLargeDtorAllocs)
@@ -392,7 +392,7 @@ class FrameAllocator : ITypedAllocator
 		return mPoolsSize;
 	}
 
-	/// Bytes currently used in the active pool (rough — does not sum prior filled pools).
+	/// Bytes currently used in the active pool (rough - does not sum prior filled pools).
 	public int GetAllocSize()
 	{
 		return mPoolsSize - (mCurEnd - mCurPtr);

@@ -15,10 +15,10 @@ class SkinningInstance
 	/// Bind group for compute dispatch.
 	public IBindGroup BindGroup;
 
-	/// Source vertex buffer reference (NOT owned — from GPUMesh).
+	/// Source vertex buffer reference (NOT owned - from GPUMesh).
 	public IBuffer SourceVertexBuffer;
 
-	/// Bone matrix buffer handle (NOT owned — from GPUResourceManager).
+	/// Bone matrix buffer handle (NOT owned - from GPUResourceManager).
 	public GPUBoneBufferHandle BoneBufferHandle;
 
 	/// Number of vertices.

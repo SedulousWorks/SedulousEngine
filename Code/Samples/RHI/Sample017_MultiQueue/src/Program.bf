@@ -135,14 +135,14 @@ class MultiQueueSample : SampleApp
 
 	public this() { }
 
-	protected override StringView Title => "Sample017 — MultiQueue (Async Compute)";
+	protected override StringView Title => "Sample017 - MultiQueue (Async Compute)";
 
 	protected override Result<void> OnInit()
 	{
 		// Check for compute queue
 		if (mDevice.GetQueueCount(.Compute) == 0)
 		{
-			Console.WriteLine("No dedicated compute queue — using graphics queue for both");
+			Console.WriteLine("No dedicated compute queue - using graphics queue for both");
 			mComputeQueue = mGraphicsQueue;
 			mHasDedicatedCompute = false;
 		}
@@ -284,7 +284,7 @@ class MultiQueueSample : SampleApp
 		if (rPipR case .Err) return .Err;
 		mRenderPipeline = rPipR.Value;
 
-		// Command pools — one per queue type
+		// Command pools - one per queue type
 		let gPoolR = mDevice.CreateCommandPool(.Graphics);
 		if (gPoolR case .Err) return .Err;
 		mGraphicsPool = gPoolR.Value;
@@ -347,11 +347,11 @@ class MultiQueueSample : SampleApp
 		var computeCmdBuf = computeEncoder.Finish();
 		mComputeFenceValue++;
 
-		// Submit compute work — signals compute fence when done
+		// Submit compute work - signals compute fence when done
 		mComputeQueue.Submit(Span<ICommandBuffer>(&computeCmdBuf, 1), mComputeFence, mComputeFenceValue);
 		mComputePool.DestroyEncoder(ref computeEncoder);
 
-		// === Graphics pass — waits on compute fence before executing ===
+		// === Graphics pass - waits on compute fence before executing ===
 		mGraphicsPool.Reset();
 		let gEncR = mGraphicsPool.CreateEncoder();
 		if (gEncR case .Err) return;
@@ -394,7 +394,7 @@ class MultiQueueSample : SampleApp
 		var gfxCmdBuf = gfxEncoder.Finish();
 		mGraphicsFenceValue++;
 
-		// Submit graphics work — wait on compute fence, signal graphics fence
+		// Submit graphics work - wait on compute fence, signal graphics fence
 		let waitFences = scope IFence[1];
 		waitFences[0] = mComputeFence;
 		let waitValues = scope uint64[1];

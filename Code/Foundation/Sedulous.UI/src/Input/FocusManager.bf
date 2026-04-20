@@ -72,9 +72,9 @@ public class FocusManager
 				SetFocus(view);
 				return;
 			}
-			// Dead ID — skip and try the next one.
+			// Dead ID - skip and try the next one.
 		}
-		// Stack empty or all dead — leave focus cleared.
+		// Stack empty or all dead - leave focus cleared.
 	}
 
 	/// Current depth of the focus stack (for debugging/testing).
@@ -123,7 +123,7 @@ public class FocusManager
 		SetFocus(focusables[prevIdx]);
 	}
 
-	/// Notify that a view was deleted — clear any references.
+	/// Notify that a view was deleted - clear any references.
 	public void OnElementDeleted(View view)
 	{
 		if (mFocusedId == view.Id) mFocusedId = .Invalid;

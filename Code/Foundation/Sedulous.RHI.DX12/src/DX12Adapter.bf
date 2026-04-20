@@ -98,7 +98,7 @@ class DX12Adapter : IAdapter
 			f.RayTracing = (options5.RaytracingTier != .D3D12_RAYTRACING_TIER_NOT_SUPPORTED);
 		}
 
-		// Limits — use conservative defaults for D3D12 feature level 12.0
+		// Limits - use conservative defaults for D3D12 feature level 12.0
 		f.MaxBindGroups = 32; // Root signature descriptor tables
 		f.MaxBindingsPerGroup = 1000000; // DX12 descriptor heaps are huge
 		f.MaxPushConstantSize = 128; // 32 root constants * 4 bytes

@@ -52,7 +52,7 @@ class VulkanDescriptorPoolManager
 			}
 		}
 
-		// All pools exhausted — create a new one
+		// All pools exhausted - create a new one
 		if (CreatePool(updateAfterBind) case .Err)
 		{
 			System.Diagnostics.Debug.WriteLine("VulkanDescriptorPoolManager: failed to create new descriptor pool");

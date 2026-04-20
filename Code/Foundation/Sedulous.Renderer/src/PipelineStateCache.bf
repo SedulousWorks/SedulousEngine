@@ -69,7 +69,7 @@ enum PipelineVariantFlags : uint32
 /// Creates pipelines on demand from material config + vertex layout + render target format.
 /// Avoids recreating the same pipeline when different meshes share the same material/shader.
 ///
-/// Lives in Sedulous.Renderer — scene-independent. Takes a Pipeline reference for
+/// Lives in Sedulous.Renderer - scene-independent. Takes a Pipeline reference for
 /// shared layouts and shader system access.
 class PipelineStateCache : IDisposable
 {
@@ -313,7 +313,7 @@ class PipelineStateCache : IDisposable
 
 		let (vertShader, fragShader) = shaderResult.Value;
 
-		// Color targets — supports MRT via config.ColorFormats[].
+		// Color targets - supports MRT via config.ColorFormats[].
 		ColorTargetState[RHILimits.MaxColorAttachments] colorTargets = default;
 		int colorTargetCount = 0;
 		bool hasColorTarget = !config.DepthOnly && config.ColorTargetCount > 0;
@@ -322,7 +322,7 @@ class PipelineStateCache : IDisposable
 		{
 			let blendState = GetBlendState(config.BlendMode);
 
-			// Target 0: scene color — uses caller-provided colorFormat.
+			// Target 0: scene color - uses caller-provided colorFormat.
 			// Blending applies only to target 0; MRT targets write directly.
 			if (blendState.HasValue)
 				colorTargets[0] = .(colorFormat, blendState.Value);

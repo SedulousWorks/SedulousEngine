@@ -171,11 +171,11 @@ abstract class EngineApplication : IDisposable
 			float deltaTime = currentTime - mLastFrameTime;
 			mLastFrameTime = currentTime;
 
-			// BeginFrame runs first — resets per-frame state, polls input,
+			// BeginFrame runs first - resets per-frame state, polls input,
 			// and initializes components created last frame.
 			mContext.BeginFrame(deltaTime);
 
-			// Fixed update loop — runs after BeginFrame so newly initialized
+			// Fixed update loop - runs after BeginFrame so newly initialized
 			// components (physics bodies, etc.) are ready for simulation.
 			mFixedUpdateAccumulator += deltaTime;
 			int32 fixedSteps = 0;
@@ -193,7 +193,7 @@ abstract class EngineApplication : IDisposable
 			mContext.PostUpdate(deltaTime);
 			mContext.EndFrame();
 
-			// Presentation — application owns swapchain, output targets, blit, overlays, present.
+			// Presentation - application owns swapchain, output targets, blit, overlays, present.
 			PresentFrame();
 
 			SProfiler.EndFrame();
@@ -381,7 +381,7 @@ abstract class EngineApplication : IDisposable
 		if (mSwapChain == null || mDevice == null || mWindow.State == .Minimized)
 			return;
 
-		// Frame pacing — wait for this frame slot's previous GPU work
+		// Frame pacing - wait for this frame slot's previous GPU work
 		using (SProfiler.Begin("GPU.WaitFence"))
 		{
 			if (mFrameFenceValues[mFrameIndex] > 0)
@@ -407,7 +407,7 @@ abstract class EngineApplication : IDisposable
 			clearPass.End();
 		}
 
-		// Scene rendering (ISceneRenderer — implemented by RenderSubsystem)
+		// Scene rendering (ISceneRenderer - implemented by RenderSubsystem)
 		if (mSceneRenderer != null)
 			mSceneRenderer.RenderScene(encoder, mColorTarget, mColorTargetView,
 				(uint32)mWindow.Width, (uint32)mWindow.Height, mFrameIndex);
@@ -427,7 +427,7 @@ abstract class EngineApplication : IDisposable
 		using (SProfiler.Begin("Blit"))
 			BlitToSwapchain(encoder);
 
-		// Overlays (IOverlayRenderer — ScreenUIView, debug HUD, etc.)
+		// Overlays (IOverlayRenderer - ScreenUIView, debug HUD, etc.)
 		if (mOverlayRenderers.Count > 0)
 		{
 			using (SProfiler.Begin("Overlays"))
@@ -622,11 +622,11 @@ abstract class EngineApplication : IDisposable
 
 		SProfiler.Shutdown();
 
-		// Context must be deleted before device — subsystems hold GPU resources
+		// Context must be deleted before device - subsystems hold GPU resources
 		delete mContext;
 		mContext = null;
 
-		// Destroy presentation resources (after context — subsystems may reference device)
+		// Destroy presentation resources (after context - subsystems may reference device)
 		if (mBlitHelper != null)
 		{
 			mBlitHelper.Dispose();

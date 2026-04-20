@@ -8,7 +8,7 @@ using Sedulous.Animation;
 /// Component for property-based animation (animating entity transforms,
 /// component properties, etc. via string-identified tracks).
 ///
-/// Used for doors, platforms, UI animations, color fades — anything that
+/// Used for doors, platforms, UI animations, color fades - anything that
 /// isn't skeletal animation. Tracks are evaluated against the entity via
 /// the PropertyBinderRegistry.
 class PropertyAnimationComponent : Component, ISerializableComponent
@@ -44,7 +44,7 @@ class PropertyAnimationComponent : Component, ISerializableComponent
 
 	// --- Runtime state (managed by PropertyAnimationComponentManager) ---
 
-	/// Resolved animation clip (not owned — owned by resource system).
+	/// Resolved animation clip (not owned - owned by resource system).
 	public PropertyAnimationClip CurrentClip;
 
 	/// Property animation player (owned by this component, created by manager).

@@ -28,7 +28,7 @@ class StaticMeshResourceManager : ResourceManager<StaticMeshResource>
 
 		let resource = new StaticMeshResource();
 		resource.Serialize(reader);
-		resource.AddRef(); // Manager's ownership ref — released in Unload
+		resource.AddRef(); // Manager's ownership ref - released in Unload
 		return .Ok(resource);
 	}
 

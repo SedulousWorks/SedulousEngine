@@ -87,7 +87,7 @@ class Texture3DSample : SampleApp
 
 	public this() { }
 
-	protected override StringView Title => "Sample027 — 3D Texture & 1D LUT";
+	protected override StringView Title => "Sample027 - 3D Texture & 1D LUT";
 
 	protected override Result<void> OnInit()
 	{

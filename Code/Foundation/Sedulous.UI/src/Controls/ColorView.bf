@@ -2,7 +2,7 @@ namespace Sedulous.UI;
 
 using Sedulous.Core.Mathematics;
 
-/// Simplest concrete view — fills its bounds with a solid color.
+/// Simplest concrete view - fills its bounds with a solid color.
 /// Phase 1 "Hello World" widget. Drawable system replaces this in Phase 2.
 public class ColorView : View
 {

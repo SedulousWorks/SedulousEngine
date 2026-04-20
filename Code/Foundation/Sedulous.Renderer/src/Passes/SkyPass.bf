@@ -7,7 +7,7 @@ using Sedulous.Renderer;
 using Sedulous.Shaders;
 using Sedulous.Profiler;
 
-/// Sky pass — renders environment sky behind all geometry.
+/// Sky pass - renders environment sky behind all geometry.
 /// Supports equirectangular HDR map or procedural gradient fallback.
 /// Uses depth test LessEqual at z=1.0 to only render where nothing was drawn.
 class SkyPass : PipelinePass
@@ -188,7 +188,7 @@ class SkyPass : PipelinePass
 		else
 			return .Err;
 
-		// Depth test LessEqual, no write — only render where depth == 1.0
+		// Depth test LessEqual, no write - only render where depth == 1.0
 		DepthStencilState depthState = .()
 		{
 			Format = .Depth24PlusStencil8,

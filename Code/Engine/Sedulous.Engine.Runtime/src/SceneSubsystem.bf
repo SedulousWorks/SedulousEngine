@@ -78,7 +78,7 @@ class SceneSubsystem : Subsystem
 
 	// ==================== Update Loop ====================
 
-	/// Called at start of each frame — initializes any components created last frame.
+	/// Called at start of each frame - initializes any components created last frame.
 	/// Runs before FixedUpdate so new physics bodies, audio sources, etc.
 	/// are ready before their first simulation step.
 	public override void BeginFrame(float deltaTime)
@@ -87,7 +87,7 @@ class SceneSubsystem : Subsystem
 			scene.InitializePendingComponents();
 	}
 
-	/// Fixed update — delegates to all active scenes at fixed timestep.
+	/// Fixed update - delegates to all active scenes at fixed timestep.
 	/// Lockstep: all scenes run the same phase before moving to the next.
 	public override void FixedUpdate(float fixedDeltaTime)
 	{
@@ -95,7 +95,7 @@ class SceneSubsystem : Subsystem
 			scene.FixedUpdate(fixedDeltaTime);
 	}
 
-	/// Main update — runs all scene phases in lockstep across active scenes.
+	/// Main update - runs all scene phases in lockstep across active scenes.
 	public override void Update(float deltaTime)
 	{
 		for (let scene in mActiveScenes)

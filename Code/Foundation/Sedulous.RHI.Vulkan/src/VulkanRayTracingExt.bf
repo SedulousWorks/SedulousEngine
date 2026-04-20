@@ -36,7 +36,7 @@ class VulkanRayTracingExt : IRayTracingExt
 		// For now, allocate a reasonably large AS and let the build command populate it.
 		// A more complete implementation would expose GetAccelStructBuildSizes().
 
-		// Use a default size — the user must ensure the AS is large enough.
+		// Use a default size - the user must ensure the AS is large enough.
 		// In practice, users should call a size query first. For now, use 256KB as default.
 		uint64 defaultSize = 256 * 1024;
 

@@ -1,6 +1,6 @@
 // Forward PBR Vertex Shader
 // Transforms vertices and passes data to fragment shader.
-// Vertex format: Mesh (48 bytes) — position, normal, uv, color, tangent
+// Vertex format: Mesh (48 bytes) - position, normal, uv, color, tangent
 //
 // When INSTANCED is defined, reads per-instance transforms from a
 // StructuredBuffer indexed by SV_InstanceID instead of the per-draw UBO.

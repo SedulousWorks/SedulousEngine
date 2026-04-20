@@ -50,10 +50,10 @@ class SkeletalAnimationComponent : Component, ISerializableComponent
 
 	// --- Runtime state (managed by SkeletalAnimationComponentManager) ---
 
-	/// Resolved skeleton (not owned — owned by resource system).
+	/// Resolved skeleton (not owned - owned by resource system).
 	public Skeleton Skeleton;
 
-	/// Resolved animation clip (not owned — owned by resource system).
+	/// Resolved animation clip (not owned - owned by resource system).
 	public AnimationClip CurrentClip;
 
 	/// Animation player (owned by this component, created by manager on init).

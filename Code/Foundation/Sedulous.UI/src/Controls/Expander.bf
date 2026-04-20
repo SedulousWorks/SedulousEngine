@@ -8,7 +8,7 @@ using Sedulous.Core.Mathematics;
 public class Expander : ViewGroup
 {
 	private String mHeaderText ~ delete _;
-	private View mContent; // not owned separately — in mChildren via AddView
+	private View mContent; // not owned separately - in mChildren via AddView
 	private bool mIsExpanded = true;
 
 	private Color? mHeaderColor;
@@ -123,7 +123,7 @@ public class Expander : ViewGroup
 			ctx.VG.FillRect(headerBounds, headerBg);
 		}
 
-		// Expand/collapse arrow — separate keys for expanded vs collapsed.
+		// Expand/collapse arrow - separate keys for expanded vs collapsed.
 		let arrowSize = 8.0f;
 		let arrowX = 10.0f;
 		let arrowCY = HeaderHeight * 0.5f;

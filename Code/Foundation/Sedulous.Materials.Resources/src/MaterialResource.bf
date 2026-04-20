@@ -87,7 +87,7 @@ class MaterialResource : Resource
 		TextureRefs[new String(slot)] = @ref;
 	}
 
-	/// Sets a texture path for a slot (convenience — creates a ResourceRef with empty GUID).
+	/// Sets a texture path for a slot (convenience - creates a ResourceRef with empty GUID).
 	public void SetTexturePath(StringView slot, StringView path)
 	{
 		SetTextureRef(slot, ResourceRef(.(), path));

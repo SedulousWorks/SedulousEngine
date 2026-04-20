@@ -6,7 +6,7 @@ using Sedulous.RHI;
 /// Render data for a static or skinned mesh draw call.
 /// One MeshRenderData per submesh per material slot.
 ///
-/// Allocated from RenderContext.FrameAllocator — trivially destructible.
+/// Allocated from RenderContext.FrameAllocator - trivially destructible.
 public class MeshRenderData : RenderData
 {
 	/// World transform matrix.

@@ -165,7 +165,7 @@ public class ImageAtlasBuilder
 		}
 
 		delete mAtlas;
-		// OwnedImageData takes ownership of pixelData — don't delete it.
+		// OwnedImageData takes ownership of pixelData - don't delete it.
 		mAtlas = new OwnedImageData(atlasW, atlasH, .RGBA8, pixelData);
 
 		return true;

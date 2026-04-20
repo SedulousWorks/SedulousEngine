@@ -96,7 +96,7 @@ class BindGroupSample : SampleApp
 	private IBindGroupLayout mGlobalBGL;
 	private IBindGroup mGlobalBG;
 
-	// Set 1: per-object — single bind group with dynamic offset
+	// Set 1: per-object - single bind group with dynamic offset
 	private IBindGroupLayout mObjectBGL;
 	private IBindGroup mObjectBG;
 
@@ -113,7 +113,7 @@ class BindGroupSample : SampleApp
 
 	public this()  { }
 
-	protected override StringView Title => "Sample005 — Multiple Bind Groups";
+	protected override StringView Title => "Sample005 - Multiple Bind Groups";
 
 	protected override Result<void> OnInit()
 	{
@@ -221,7 +221,7 @@ class BindGroupSample : SampleApp
 		if (globalBgResult case .Err) { Console.WriteLine("ERROR: CreateBindGroup (global) failed"); return .Err; }
 		mGlobalBG = globalBgResult.Value;
 
-		// Per-object bind group (set 1) — single bind group, dynamic offset selects object
+		// Per-object bind group (set 1) - single bind group, dynamic offset selects object
 		{
 			let objBgEntries = scope BindGroupEntry[1];
 			objBgEntries[0] = BindGroupEntry.Buffer(mObjectUBO, 0, ObjectDataStride);

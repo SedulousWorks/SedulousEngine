@@ -67,7 +67,7 @@ class MipmapSample : SampleApp
 
 	public this()  { }
 
-	protected override StringView Title => "Sample009 — Mipmaps";
+	protected override StringView Title => "Sample009 - Mipmaps";
 
 	protected override Result<void> OnInit()
 	{

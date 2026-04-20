@@ -87,7 +87,7 @@ class BindlessSample : SampleApp
 
 	public this()  { }
 
-	protected override StringView Title => "Sample018 — Bindless Textures";
+	protected override StringView Title => "Sample018 - Bindless Textures";
 
 	protected override DeviceFeatures RequiredFeatures => .() { BindlessDescriptors = true };
 
@@ -145,7 +145,7 @@ class BindlessSample : SampleApp
 		if (blBGLR case .Err) return .Err;
 		mBindlessBGL = blBGLR.Value;
 
-		// Create bindless bind group (no entries at creation — populated via UpdateBindless)
+		// Create bindless bind group (no entries at creation - populated via UpdateBindless)
 		let blBGR = mDevice.CreateBindGroup(BindGroupDesc()
 		{
 			Layout = mBindlessBGL, Label = "BindlessBG"
@@ -197,7 +197,7 @@ class BindlessSample : SampleApp
 		if (plR case .Err) return .Err;
 		mPipelineLayout = plR.Value;
 
-		// Render pipeline (no vertex buffers — SV_VertexID driven)
+		// Render pipeline (no vertex buffers - SV_VertexID driven)
 		let colorTargets = scope ColorTargetState[1];
 		colorTargets[0] = ColorTargetState() { Format = mSwapChain.Format, WriteMask = .All };
 

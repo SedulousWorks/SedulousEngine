@@ -23,7 +23,7 @@ class PanelPaddingTests
 		Test.Assert(eff.Right == 10);
 		Test.Assert(eff.Bottom == 10);
 
-		panel.Background = null; // don't let scope delete it — it's scope-allocated
+		panel.Background = null; // don't let scope delete it - it's scope-allocated
 	}
 
 	[Test]

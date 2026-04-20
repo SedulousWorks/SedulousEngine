@@ -11,7 +11,7 @@ using Sedulous.DebugFont;
 using Sedulous.Profiler;
 using Sedulous.Materials;
 
-/// 2D overlay pass — renders accumulated screen-space text and filled rectangles
+/// 2D overlay pass - renders accumulated screen-space text and filled rectangles
 /// (plus screen-projected 3D text) using the DebugFont atlas.
 ///
 /// No depth test. Runs last before the final post-process / blit so the overlay
@@ -71,7 +71,7 @@ class OverlayPass : PipelinePass
 		encoder.SetViewport(0, 0, (float)view.Width, (float)view.Height, 0.0f, 1.0f);
 		encoder.SetScissor(0, 0, view.Width, view.Height);
 
-		// Pipeline state — textured quads, alpha blend, no depth, no cull.
+		// Pipeline state - textured quads, alpha blend, no depth, no cull.
 		var config = PipelineConfig();
 		config.ShaderName = "debug_overlay";
 		config.BlendMode = .AlphaBlend;
@@ -148,7 +148,7 @@ class OverlayPass : PipelinePass
 			}
 		}
 
-		// 3D text — project to screen, then emit pixel-space quads.
+		// 3D text - project to screen, then emit pixel-space quads.
 		if (debugDraw.TextCommands3D.Length > 0)
 		{
 			let vp = view.ViewProjectionMatrix;

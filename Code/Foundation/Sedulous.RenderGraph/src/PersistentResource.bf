@@ -4,7 +4,7 @@ using Sedulous.RHI;
 namespace Sedulous.RenderGraph;
 
 /// A persistent resource that survives across frames with tracked state.
-/// Externally owned — the render graph does not create or destroy these.
+/// Externally owned - the render graph does not create or destroy these.
 public class PersistentResource
 {
 	/// Texture handles (index 0 = primary, index 1 = secondary for ping-pong)

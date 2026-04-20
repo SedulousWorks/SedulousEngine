@@ -53,7 +53,7 @@ class QuerySample : SampleApp
 
 	public this()  { }
 
-	protected override StringView Title => "Sample015 — GPU Queries";
+	protected override StringView Title => "Sample015 - GPU Queries";
 
 	protected override Result<void> OnInit()
 	{

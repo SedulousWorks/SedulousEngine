@@ -1,4 +1,4 @@
-// Sky Vertex Shader — fullscreen triangle, reconstructs view ray
+// Sky Vertex Shader - fullscreen triangle, reconstructs view ray
 
 #pragma pack_matrix(row_major)
 

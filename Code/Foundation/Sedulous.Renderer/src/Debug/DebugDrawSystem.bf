@@ -24,7 +24,7 @@ public class DebugDrawSystem : IDisposable
 	private ITextureView mFontTextureView ~ if (mDevice != null) mDevice.DestroyTextureView(ref _);
 	private ISampler mFontSampler ~ if (mDevice != null) mDevice.DestroySampler(ref _);
 
-	// Bind group (set 2 — material frequency — holds font texture + sampler)
+	// Bind group (set 2 - material frequency - holds font texture + sampler)
 	private IBindGroupLayout mDebugBindGroupLayout ~ if (mDevice != null) mDevice.DestroyBindGroupLayout(ref _);
 	private IBindGroup mDebugBindGroup ~ if (mDevice != null) mDevice.DestroyBindGroup(ref _);
 
@@ -67,7 +67,7 @@ public class DebugDrawSystem : IDisposable
 		else
 			return .Err;
 
-		// Upload the pixel data (synchronous — init only).
+		// Upload the pixel data (synchronous - init only).
 		TextureDataLayout uploadLayout = .()
 		{
 			Offset = 0,
@@ -111,7 +111,7 @@ public class DebugDrawSystem : IDisposable
 		else
 			return .Err;
 
-		// Bind group layout: t0 font, s0 sampler (at Material slot — set 2).
+		// Bind group layout: t0 font, s0 sampler (at Material slot - set 2).
 		BindGroupLayoutEntry[2] entries = .(
 			.SampledTexture(0, .Fragment, .Texture2D),
 			.Sampler(0, .Fragment)

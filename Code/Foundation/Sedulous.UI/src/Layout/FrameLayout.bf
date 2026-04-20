@@ -4,7 +4,7 @@ using System;
 using Sedulous.Core.Mathematics;
 
 /// Stacks children on top of each other, positioned by Gravity.
-/// Simplest ViewGroup — children overlap, each positioned independently.
+/// Simplest ViewGroup - children overlap, each positioned independently.
 public class FrameLayout : ViewGroup
 {
 	public class LayoutParams : Sedulous.UI.LayoutParams

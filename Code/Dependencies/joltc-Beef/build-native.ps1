@@ -38,7 +38,7 @@ elseif($option -eq "make")
             mkdir build-release
         }
 
-        # Disable LTO — with /GL the static jolt.lib embeds MSVC bitcode,
+        # Disable LTO - with /GL the static jolt.lib embeds MSVC bitcode,
         # inflating it from ~15MB to 104MB. Negligible runtime impact since
         # the C-wrapper DLL boundary prevents cross-TU inlining.
         cmake -S ./joltc -B build-release -DINTERPROCEDURAL_OPTIMIZATION=OFF

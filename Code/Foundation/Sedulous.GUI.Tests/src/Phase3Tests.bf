@@ -385,7 +385,7 @@ class Phase3Tests
 		// Interactive controls should have opaque backgrounds
 		Test.Assert(controlStyle.Background.A > 0);
 		Test.Assert(buttonStyle.Background.A > 0);
-		// Panel is a layout container — transparent background is correct
+		// Panel is a layout container - transparent background is correct
 		Test.Assert(panelStyle.Background.A == 0);
 	}
 
@@ -419,7 +419,7 @@ class Phase3Tests
 		// Interactive controls should have opaque backgrounds
 		Test.Assert(controlStyle.Background.A > 0);
 		Test.Assert(buttonStyle.Background.A > 0);
-		// Panel is a layout container — transparent background is correct
+		// Panel is a layout container - transparent background is correct
 		Test.Assert(panelStyle.Background.A == 0);
 	}
 

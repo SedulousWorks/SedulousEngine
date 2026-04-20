@@ -98,7 +98,7 @@ The vertex shader expands glyph quads by half a pixel in viewport space using th
 | `SlugMath.bf` | Vector2D/4D, Point2D, Box2D, Color4U, ColorRGBA, QuadraticBezier2D |
 | `SlugGlyph.bf` | `SlugGlyphData` (curves + metrics per glyph), `SlugFont` (font container) |
 | `SlugTextureBuilder.bf` | Builds curve texture (RGBA16F) and band texture (RGBA16UI) from curves |
-| `SlugGeometryBuilder.bf` | CountGlyphs, BuildText, MeasureString — vertex/triangle generation |
+| `SlugGeometryBuilder.bf` | CountGlyphs, BuildText, MeasureString - vertex/triangle generation |
 | `SlugVertex.bf` | Vertex4U, Triangle16/32, GeometryBuffer, SlugUniforms |
 | `SlugShader.bf` | Embedded HLSL shader source (fallback; prefer loading from files) |
 
@@ -167,7 +167,7 @@ Band count per glyph: `min(32, curveCount)` for correct rendering of complex gly
 
 Additional optimizations from the Slug reference:
 - **Epsilon overlap**: bands overlap by 1/1024 em-space to prevent curves at exact boundaries from being missed
-- **Skip parallel lines**: straight horizontal lines excluded from horizontal bands, straight vertical lines excluded from vertical bands — they can't contribute to winding number for parallel rays
+- **Skip parallel lines**: straight horizontal lines excluded from horizontal bands, straight vertical lines excluded from vertical bands - they can't contribute to winding number for parallel rays
 - **Shared band data** (not yet implemented): adjacent bands with identical curve sets can share data; subsets can point into larger band's data
 - **Shared curve texels** (not yet implemented): connected curves share an endpoint (p3 of curve N = p1 of curve N+1), so the second texel of one curve can be the first texel of the next
 

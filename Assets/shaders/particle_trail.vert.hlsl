@@ -1,5 +1,5 @@
 // Particle trail ribbon vertex shader.
-// Trail vertices are pre-computed on CPU — position, UV, and color are
+// Trail vertices are pre-computed on CPU - position, UV, and color are
 // passed through directly. No billboard expansion needed.
 
 #pragma pack_matrix(row_major)

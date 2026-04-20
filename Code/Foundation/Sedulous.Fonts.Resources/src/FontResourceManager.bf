@@ -37,8 +37,8 @@ public class FontResourceManager : ResourceManager<FontResource>
 				// Cache it
 				let key = new String(path);
 				mCache[key] = resource;
-				resource.AddRef(); // Internal cache ref — released in Unload/ClearCache
-				resource.AddRef(); // Manager's ownership ref — released in Unload
+				resource.AddRef(); // Internal cache ref - released in Unload/ClearCache
+				resource.AddRef(); // Manager's ownership ref - released in Unload
 
 				return .Ok(resource);
 			}
@@ -63,7 +63,7 @@ public class FontResourceManager : ResourceManager<FontResource>
 			if (FontLoaderFactory.CreateAtlas(font, mDefaultOptions) case .Ok(let atlas))
 			{
 				let resource = new FontResource(font, atlas, mDefaultOptions);
-				resource.AddRef(); // Manager's ownership ref — released in Unload
+				resource.AddRef(); // Manager's ownership ref - released in Unload
 				return .Ok(resource);
 			}
 			delete (Object)font;

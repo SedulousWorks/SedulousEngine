@@ -38,7 +38,7 @@ class SpriteComponent : Component, ISerializableComponent
 	/// (with the texture bound to the "SpriteTexture" property) by the manager.
 	private ResourceRef mTextureRef ~ _.Dispose();
 
-	/// Resolved MaterialInstance — created by the manager, released on destroy.
+	/// Resolved MaterialInstance - created by the manager, released on destroy.
 	public MaterialInstance Material ~ _?.ReleaseRef();
 
 	/// World-space size (width, height) of the sprite quad.
@@ -69,7 +69,7 @@ class SpriteComponent : Component, ISerializableComponent
 		mTextureRef = ResourceRef(@ref.Id, @ref.Path ?? "");
 	}
 
-	/// Assigns a MaterialInstance directly (takes ownership — AddRef/ReleaseRef pattern).
+	/// Assigns a MaterialInstance directly (takes ownership - AddRef/ReleaseRef pattern).
 	public void SetMaterial(MaterialInstance material)
 	{
 		if (Material == material) return;

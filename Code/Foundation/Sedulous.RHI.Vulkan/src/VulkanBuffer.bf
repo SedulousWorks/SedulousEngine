@@ -96,7 +96,7 @@ class VulkanBuffer : IBuffer
 
 	public void Unmap()
 	{
-		// Persistently mapped — nothing to do
+		// Persistently mapped - nothing to do
 	}
 
 	public void Cleanup(VulkanDevice device)

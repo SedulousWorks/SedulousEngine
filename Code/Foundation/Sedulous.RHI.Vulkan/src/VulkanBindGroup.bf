@@ -65,7 +65,7 @@ class VulkanBindGroup : IBindGroup
 		accelStructHandles.Reserve(desc.Entries.Length);
 
 		// Entries are positional: entry[j] provides the resource for the j-th non-bindless layout entry.
-		// Bindless entries are skipped — they are populated via UpdateBindless().
+		// Bindless entries are skipped - they are populated via UpdateBindless().
 		int entryIdx = 0;
 		for (int i = 0; i < mLayout.Entries.Count; i++)
 		{
@@ -111,7 +111,7 @@ class VulkanBindGroup : IBindGroup
 					imgInfo.imageView = vkView.Handle;
 					if (layoutEntry.Type == .SampledTexture)
 					{
-						// Use the texture's tracked layout — depth textures in DepthStencilReadOnly
+						// Use the texture's tracked layout - depth textures in DepthStencilReadOnly
 						// can be sampled with that layout (concurrent depth test + shader read).
 						let vkTex = vkView.Texture as VulkanTexture;
 						VkImageLayout currentLayout = (vkTex != null) ? vkTex.CurrentLayout : .VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

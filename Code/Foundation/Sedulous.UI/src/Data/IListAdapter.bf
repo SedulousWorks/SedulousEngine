@@ -5,10 +5,10 @@ using System;
 /// Observer for adapter data changes. ListView implements this.
 public interface IListAdapterObserver
 {
-	/// Entire data set changed — rebuild everything.
+	/// Entire data set changed - rebuild everything.
 	void OnDataSetChanged();
 
-	/// Items in [start, start+count) changed — rebind those views.
+	/// Items in [start, start+count) changed - rebind those views.
 	void OnItemRangeChanged(int32 start, int32 count);
 }
 

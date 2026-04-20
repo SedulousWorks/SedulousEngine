@@ -6,7 +6,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Jobs;
 
 /// A scene containing entities, transforms, and component managers.
-/// Multiple scenes can coexist — each is fully isolated (own physics world, own components, etc.).
+/// Multiple scenes can coexist - each is fully isolated (own physics world, own components, etc.).
 public class Scene : IDisposable
 {
 	// --- Entity storage ---
@@ -181,7 +181,7 @@ public class Scene : IDisposable
 		{
 			if (IsValid(handle))
 				return handle;
-			// Stale entry — clean up
+			// Stale entry - clean up
 			mEntityIdMap.Remove(id);
 		}
 		return .Invalid;
@@ -426,7 +426,7 @@ public class Scene : IDisposable
 			entry.Function(deltaTime);
 	}
 
-	/// Runs the AsyncUpdate phase — all registered functions execute concurrently.
+	/// Runs the AsyncUpdate phase - all registered functions execute concurrently.
 	/// Each function should only access its own component pool.
 	private void RunAsyncPhase(float deltaTime)
 	{
@@ -437,7 +437,7 @@ public class Scene : IDisposable
 
 		if (count == 1)
 		{
-			// Single function — no parallelism needed
+			// Single function - no parallelism needed
 			asyncFunctions[0].Function(deltaTime);
 			return;
 		}
@@ -456,7 +456,7 @@ public class Scene : IDisposable
 
 		// Pass 1: Snapshot current world matrices as "previous" before recomputing.
 		// Done for ALL alive entities so motion vectors work even for static objects.
-		// Embarrassingly parallel — each entity writes only to its own slot.
+		// Embarrassingly parallel - each entity writes only to its own slot.
 		JobSystem.ParallelFor(0, count, scope [&](begin, end) => {
 			for (int32 i = begin; i < end; i++)
 			{
@@ -466,7 +466,7 @@ public class Scene : IDisposable
 		});
 
 		// Pass 2: Collect dirty roots, then update each subtree.
-		// Each root's subtree is independent — safe for parallel dispatch.
+		// Each root's subtree is independent - safe for parallel dispatch.
 		let dirtyRoots = scope List<int32>();
 		for (int32 i = 0; i < count; i++)
 		{

@@ -3,7 +3,7 @@ namespace Sedulous.Animation;
 using System;
 
 /// A view into bone transforms and morph weights representing an animation pose.
-/// Does not own memory — the backing arrays must outlive this struct.
+/// Does not own memory - the backing arrays must outlive this struct.
 struct AnimationPose
 {
 	/// Per-bone local transforms.

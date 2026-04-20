@@ -4,7 +4,7 @@ using System;
 
 /// Fixed-capacity array of ResourceRef values with a count.
 /// TCapacity is the maximum number of refs (e.g., ResourceRefArray<8>).
-/// The Path strings in each ResourceRef are owned — call Dispose() to free them.
+/// The Path strings in each ResourceRef are owned - call Dispose() to free them.
 [Reflect(.NonStaticFields)]
 struct ResourceRefArray<TCapacity> : IDisposable where TCapacity : const int
 {

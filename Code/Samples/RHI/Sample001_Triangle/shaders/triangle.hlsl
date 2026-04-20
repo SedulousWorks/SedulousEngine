@@ -1,4 +1,4 @@
-// Triangle sample shader — position + color passthrough.
+// Triangle sample shader - position + color passthrough.
 // Compile with DXC:
 //   Vertex DXIL:  dxc -T vs_6_0 -E VSMain -Fo triangle_vs.dxil triangle.hlsl
 //   Pixel  DXIL:  dxc -T ps_6_0 -E PSMain -Fo triangle_ps.dxil triangle.hlsl

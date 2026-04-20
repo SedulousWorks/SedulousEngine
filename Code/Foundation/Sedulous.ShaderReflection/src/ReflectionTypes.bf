@@ -31,7 +31,7 @@ class ReflectedShader
 	/// Entry point name.
 	public String EntryPoint = new .() ~ delete _;
 
-	/// String table — owns all strings that StringViews in bindings/inputs point into.
+	/// String table - owns all strings that StringViews in bindings/inputs point into.
 	public List<String> StringTable = new .() ~ DeleteContainerAndItems!(_);
 
 	/// Adds a string to the string table and returns a StringView into it.

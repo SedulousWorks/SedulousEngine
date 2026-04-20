@@ -2,7 +2,7 @@ namespace Sedulous.Particles;
 
 using System;
 
-/// CPU simulation backend — iterates behaviors on SoA arrays in system memory.
+/// CPU simulation backend - iterates behaviors on SoA arrays in system memory.
 /// This is the default and most flexible backend.
 public class CPUSimulator : ParticleSimulator
 {

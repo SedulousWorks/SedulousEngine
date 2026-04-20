@@ -28,7 +28,7 @@ class ResourceImportResult
 	/// Texture resources (non-owning wrappers).
 	public List<TextureResource> Textures = new .() ~ DeleteContainerAndItems!(_);
 
-	/// Material resources (owning — these are newly created from ImportedMaterial).
+	/// Material resources (owning - these are newly created from ImportedMaterial).
 	public List<MaterialResource> Materials = new .() ~ DeleteContainerAndItems!(_);
 
 	/// Animation clip resources (non-owning wrappers).

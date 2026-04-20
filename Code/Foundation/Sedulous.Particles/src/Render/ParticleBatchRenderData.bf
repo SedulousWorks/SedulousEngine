@@ -4,9 +4,9 @@ using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
 using Sedulous.Renderer;
 
-/// Render data for a particle emitter — submitted to the render pipeline.
+/// Render data for a particle emitter - submitted to the render pipeline.
 ///
-/// Allocated from RenderContext.FrameAllocator — trivially destructible.
+/// Allocated from RenderContext.FrameAllocator - trivially destructible.
 /// Points to the emitter's pre-extracted vertex array (valid for this frame).
 /// Submitted to RenderCategories.Transparent (back-to-front sorted by emitter position).
 public class ParticleBatchRenderData : RenderData

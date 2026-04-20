@@ -57,7 +57,7 @@ class ReadbackSample : SampleApp
 
 	public this() : base(.DX12)  { }
 
-	protected override StringView Title => "Sample016 — GPU Readback";
+	protected override StringView Title => "Sample016 - GPU Readback";
 
 	protected override Result<void> OnInit()
 	{

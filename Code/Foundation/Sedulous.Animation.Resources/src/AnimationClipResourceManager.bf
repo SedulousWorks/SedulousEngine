@@ -26,7 +26,7 @@ class AnimationClipResourceManager : ResourceManager<AnimationClipResource>
 
 		let resource = new AnimationClipResource();
 		resource.Serialize(reader);
-		resource.AddRef(); // Manager's ownership ref — released in Unload
+		resource.AddRef(); // Manager's ownership ref - released in Unload
 		return .Ok(resource);
 	}
 

@@ -10,13 +10,13 @@ using Sedulous.Materials;
 
 /// Per-view shadow rendering pipeline.
 ///
-/// Standalone (not a Pipeline subclass) — owns its own RenderGraph and per-frame
+/// Standalone (not a Pipeline subclass) - owns its own RenderGraph and per-frame
 /// resources. The atlas is owned by ShadowSystem; ShadowPipeline.RenderAll imports
 /// it as a depth target and renders all shadow views' depth into the atlas in a
 /// single graph cycle (one render pass per shadow caster, all sharing the atlas).
 ///
 /// Doing all shadow renders in one Execute is required so the render graph can
-/// correctly track the atlas state across passes — multi-Execute would re-import
+/// correctly track the atlas state across passes - multi-Execute would re-import
 /// the atlas as Undefined each time, causing .Load to discard prior shadow contents.
 public class ShadowPipeline : IRenderingPipeline, IDisposable
 {
@@ -181,12 +181,12 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 
 		// Dispatch to registered renderers (MeshRenderer) for shadow casters.
 		// Opaque + Masked categories cast shadows; Transparent does not.
-		// .None — no material binding required for depth-only writes.
+		// .None - no material binding required for depth-only writes.
 		RenderCategory(encoder, RenderCategories.Opaque, frame, view, .None, config);
 		RenderCategory(encoder, RenderCategories.Masked, frame, view, .None, config);
 	}
 
-	/// Helper for the shadow depth pass — same pattern as Pipeline.BindFrameGroup.
+	/// Helper for the shadow depth pass - same pattern as Pipeline.BindFrameGroup.
 	public void BindFrameGroup(IRenderPassEncoder encoder, PerFrameResources frame)
 	{
 		if (frame.FrameBindGroup == null)
@@ -195,7 +195,7 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 		encoder.SetBindGroup(BindGroupFrequency.Frame, frame.FrameBindGroup, sceneOffsets);
 	}
 
-	/// Dispatches a category to all registered renderers — exposed so MeshRenderer
+	/// Dispatches a category to all registered renderers - exposed so MeshRenderer
 	/// is reachable through the shadow pipeline. Mirrors Pipeline.RenderCategory.
 	public void RenderCategory(IRenderPassEncoder encoder, RenderDataCategory category,
 		PerFrameResources frame, RenderView view, RenderBatchFlags flags, PipelineConfig passConfig)

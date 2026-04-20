@@ -330,7 +330,7 @@ class AnimationTests
 		anim.Target = view;
 		ctx.Animations.Add(anim);
 
-		// Delete the view — should auto-cancel the animation.
+		// Delete the view - should auto-cancel the animation.
 		root.RemoveView(view, true);
 		Test.Assert(ctx.Animations.ActiveCount == 0);
 	}

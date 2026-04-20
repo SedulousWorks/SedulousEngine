@@ -159,7 +159,7 @@ public static class SlugTTFLoader
 		}
 		else
 		{
-			// No curves — use stbtt box with Y negated
+			// No curves - use stbtt box with Y negated
 			glyph.BoundingBox = .(
 				(float)x0 * scale, (float)(-y1) * scale,
 				(float)x1 * scale, (float)(-y0) * scale

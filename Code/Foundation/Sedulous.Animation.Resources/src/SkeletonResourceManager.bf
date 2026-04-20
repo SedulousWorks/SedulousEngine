@@ -27,7 +27,7 @@ class SkeletonResourceManager : ResourceManager<SkeletonResource>
 
 		let resource = new SkeletonResource();
 		resource.Serialize(reader);
-		resource.AddRef(); // Manager's ownership ref — released in Unload
+		resource.AddRef(); // Manager's ownership ref - released in Unload
 		return .Ok(resource);
 	}
 

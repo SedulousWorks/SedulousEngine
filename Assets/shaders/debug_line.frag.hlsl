@@ -1,4 +1,4 @@
-// Debug line fragment shader — unlit per-vertex color.
+// Debug line fragment shader - unlit per-vertex color.
 
 struct FragmentInput
 {

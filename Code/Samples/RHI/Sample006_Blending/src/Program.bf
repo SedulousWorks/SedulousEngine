@@ -51,7 +51,7 @@ class BlendingSample : SampleApp
 
 	public this()  { }
 
-	protected override StringView Title => "Sample006 — Alpha Blending";
+	protected override StringView Title => "Sample006 - Alpha Blending";
 
 	protected override Result<void> OnInit()
 	{
@@ -269,7 +269,7 @@ class BlendingSample : SampleApp
 		rp.SetViewport(0, 0, (float)mWidth, (float)mHeight, 0.0f, 1.0f);
 		rp.SetScissor(0, 0, mWidth, mHeight);
 
-		// Draw background quad (opaque) — SetPipeline before SetVertexBuffer for correct stride
+		// Draw background quad (opaque) - SetPipeline before SetVertexBuffer for correct stride
 		rp.SetPipeline(mOpaquePipeline);
 		rp.SetVertexBuffer(0, mVertexBuffer, 0);
 		rp.SetIndexBuffer(mIndexBuffer, .UInt16, 0);

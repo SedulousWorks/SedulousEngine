@@ -7,7 +7,7 @@ using Sedulous.Renderer;
 using Sedulous.Materials;
 using Sedulous.Profiler;
 
-/// Forward pass — renders opaque and masked geometry with PBR lighting.
+/// Forward pass - renders opaque and masked geometry with PBR lighting.
 /// Reads SceneDepth from DepthPrepass (depth test LessEqual, no depth write).
 /// Masked geometry uses the same shader with AlphaCutoff for discard.
 class ForwardOpaquePass : PipelinePass
@@ -32,7 +32,7 @@ class ForwardOpaquePass : PipelinePass
 		let depthHandle = graph.GetResource("SceneDepth");
 		let hasDepth = depthHandle.IsValid;
 
-		// Mini G-buffer targets — always created so post-processing effects
+		// Mini G-buffer targets - always created so post-processing effects
 		// (SSAO, TAA, motion blur, SSR) can consume them without opt-in logic.
 		let normalsDesc = RGTextureDesc(.RG16Float) { Usage = .RenderTarget | .Sampled };
 		let normalsHandle = graph.CreateTransient("SceneNormals", normalsDesc);
@@ -70,7 +70,7 @@ class ForwardOpaquePass : PipelinePass
 
 		let frame = pipeline.GetFrameResources(view.FrameIndex);
 
-		// Build pipeline config — 3 color targets for MRT:
+		// Build pipeline config - 3 color targets for MRT:
 		//   Target 0: SceneColor (RGBA16Float)
 		//   Target 1: SceneNormals (RG16Float, view-space XY)
 		//   Target 2: MotionVectors (RG16Float, screen-space delta)

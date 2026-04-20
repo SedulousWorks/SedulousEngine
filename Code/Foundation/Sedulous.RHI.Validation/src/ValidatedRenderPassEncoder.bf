@@ -142,7 +142,7 @@ class ValidatedRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 		}
 		if (!mPipelineBound)
 		{
-			ValidationLogger.Error("SetVertexBuffer: no pipeline bound — call SetPipeline before SetVertexBuffer (DX12 needs pipeline to determine vertex stride)");
+			ValidationLogger.Error("SetVertexBuffer: no pipeline bound - call SetPipeline before SetVertexBuffer (DX12 needs pipeline to determine vertex stride)");
 		}
 		mInner.SetVertexBuffer(slot, buffer, offset);
 	}

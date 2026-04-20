@@ -26,7 +26,7 @@ public class TooltipManager
 
 	public ~this()
 	{
-		// Don't call Hide() or DetachView — during destruction, PopupLayer
+		// Don't call Hide() or DetachView - during destruction, PopupLayer
 		// and UIContext services may already be freed. The tooltip view was
 		// shown with ownsView=false, so PopupLayer won't double-delete it.
 		// Just null the parent to prevent the ViewGroup destructor from
@@ -72,13 +72,13 @@ public class TooltipManager
 		return false;
 	}
 
-	/// Called when mouse is pressed — hide tooltip (unless interactive
+	/// Called when mouse is pressed - hide tooltip (unless interactive
 	/// and the click is on the tooltip itself).
 	public void OnMouseDown()
 	{
 		if (mShowing && mInteractive)
 		{
-			// Check if the current hover target is the tooltip — if so, don't hide.
+			// Check if the current hover target is the tooltip - if so, don't hide.
 			let hovered = mContext.InputManager.Hovered;
 			if (hovered != null && IsTooltipOrDescendant(hovered))
 				return;

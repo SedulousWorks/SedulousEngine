@@ -18,7 +18,7 @@ public enum ScaleType
 }
 
 /// Displays an IImageData with configurable scaling.
-/// Does not own the IImageData — caller manages image lifetime.
+/// Does not own the IImageData - caller manages image lifetime.
 public class ImageView : View
 {
 	private IImageData mImage;
@@ -112,13 +112,13 @@ public class ImageView : View
 		float srcW, srcH;
 		if (imgAspect > boundsAspect)
 		{
-			// Image is wider than bounds — crop sides.
+			// Image is wider than bounds - crop sides.
 			srcH = imgH;
 			srcW = srcH * boundsAspect;
 		}
 		else
 		{
-			// Image is taller than bounds — crop top/bottom.
+			// Image is taller than bounds - crop top/bottom.
 			srcW = imgW;
 			srcH = srcW / boundsAspect;
 		}

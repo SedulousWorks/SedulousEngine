@@ -50,7 +50,7 @@ class DepthBufferSample : SampleApp
 
 	public this()  { }
 
-	protected override StringView Title => "Sample008 — Depth Buffer";
+	protected override StringView Title => "Sample008 - Depth Buffer";
 
 	protected override Result<void> OnInit()
 	{
@@ -80,19 +80,19 @@ class DepthBufferSample : SampleApp
 		// But positioned so they visually intersect when depth tested.
 		// Stride: 7 floats per vertex (pos xyz + color rgba)
 		float[?] verts = .(
-			// Quad 0: Red — large, behind (z=0.8), drawn first
+			// Quad 0: Red - large, behind (z=0.8), drawn first
 			-0.6f, -0.6f, 0.8f,   1.0f, 0.2f, 0.2f, 1.0f,
 			 0.4f, -0.6f, 0.8f,   1.0f, 0.2f, 0.2f, 1.0f,
 			 0.4f,  0.6f, 0.8f,   1.0f, 0.2f, 0.2f, 1.0f,
 			-0.6f,  0.6f, 0.8f,   1.0f, 0.2f, 0.2f, 1.0f,
 
-			// Quad 1: Green — overlaps red, closer (z=0.5), drawn second
+			// Quad 1: Green - overlaps red, closer (z=0.5), drawn second
 			-0.2f, -0.4f, 0.5f,   0.2f, 1.0f, 0.2f, 1.0f,
 			 0.6f, -0.4f, 0.5f,   0.2f, 1.0f, 0.2f, 1.0f,
 			 0.6f,  0.4f, 0.5f,   0.2f, 1.0f, 0.2f, 1.0f,
 			-0.2f,  0.4f, 0.5f,   0.2f, 1.0f, 0.2f, 1.0f,
 
-			// Quad 2: Blue — overlaps both, nearest (z=0.2), drawn third
+			// Quad 2: Blue - overlaps both, nearest (z=0.2), drawn third
 			-0.4f, -0.7f, 0.2f,   0.2f, 0.3f, 1.0f, 1.0f,
 			 0.2f, -0.7f, 0.2f,   0.2f, 0.3f, 1.0f, 1.0f,
 			 0.2f,  0.7f, 0.2f,   0.2f, 0.3f, 1.0f, 1.0f,
@@ -214,7 +214,7 @@ class DepthBufferSample : SampleApp
 		rp.SetVertexBuffer(0, mVertexBuffer, 0);
 		rp.SetIndexBuffer(mIndexBuffer, .UInt16, 0);
 
-		// Draw all 3 quads — depth buffer determines visibility
+		// Draw all 3 quads - depth buffer determines visibility
 		rp.DrawIndexed(18);
 		rp.End();
 

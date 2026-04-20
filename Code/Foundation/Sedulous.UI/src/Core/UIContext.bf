@@ -17,7 +17,7 @@ public class UIContext
 	// === Element registry (ViewId -> live View) ===
 	private Dictionary<int32, View> mRegistry = new .() ~ delete _;
 
-	// === Root views (non-owning — callers own their roots) ===
+	// === Root views (non-owning - callers own their roots) ===
 	private List<RootView> mRootViews = new .() ~ delete _;
 
 	// === Active input root (set by application based on focused window) ===
@@ -29,10 +29,10 @@ public class UIContext
 	// === Phase tracking ===
 	public UIPhase Phase { get; private set; } = .Idle;
 
-	// === Font service (optional — set by UISubsystem) ===
+	// === Font service (optional - set by UISubsystem) ===
 	public IFontService FontService;
 
-	// === Clipboard (optional — set by UISubsystem via adapter) ===
+	// === Clipboard (optional - set by UISubsystem via adapter) ===
 	public IClipboard Clipboard;
 
 	// === Total elapsed time (for cursor blink, undo coalescing) ===
@@ -94,7 +94,7 @@ public class UIContext
 	/// PopupLayer for the active input root.
 	public PopupLayer ActivePopupLayer => mActiveInputRoot?.PopupLayer;
 
-	/// PopupLayer alias — controls use Context.PopupLayer.
+	/// PopupLayer alias - controls use Context.PopupLayer.
 	public PopupLayer PopupLayer => mActiveInputRoot?.PopupLayer;
 
 	/// DPI scale for the active input root.

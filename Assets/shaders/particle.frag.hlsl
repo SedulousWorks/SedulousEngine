@@ -1,8 +1,8 @@
-// Particle fragment shader — samples texture, multiplies by vertex color,
+// Particle fragment shader - samples texture, multiplies by vertex color,
 // and applies soft-particle depth fade at geometry intersections.
 //
 // The ParticlePass declares both ReadDepth and ReadTexture on SceneDepth,
-// so the depth buffer is in DEPTH_STENCIL_READ_ONLY_OPTIMAL layout —
+// so the depth buffer is in DEPTH_STENCIL_READ_ONLY_OPTIMAL layout -
 // allowing simultaneous depth testing and shader sampling.
 
 #pragma pack_matrix(row_major)
@@ -26,11 +26,11 @@ cbuffer SceneUniforms : register(b0, space0)
     float2   InvScreenSize;
 };
 
-// Set 1 — scene depth for soft particles.
+// Set 1 - scene depth for soft particles.
 Texture2D    SceneDepth    : register(t0, space1);
 SamplerState DepthSampler  : register(s0, space1);
 
-// Set 2 — particle material (texture + sampler).
+// Set 2 - particle material (texture + sampler).
 Texture2D    ParticleTexture : register(t0, space2);
 SamplerState ParticleSampler : register(s0, space2);
 

@@ -91,7 +91,7 @@ class OverlaysPage : DemoPage
 			let custom = new StatusBadge();
 			custom.SetText("Custom");
 			custom.BadgeColor = .(180, 60, 60, 255);
-			custom.TooltipText = new String("Explicit color override — ignores theme");
+			custom.TooltipText = new String("Explicit color override - ignores theme");
 			row.AddView(custom);
 		}
 	}

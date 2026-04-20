@@ -69,7 +69,7 @@ class AudioSourceComponent : Component, ISerializableComponent
 
 	// --- Runtime state (managed by AudioSourceComponentManager) ---
 
-	/// Resolved audio clip (not owned — owned by resource system).
+	/// Resolved audio clip (not owned - owned by resource system).
 	public AudioClip Clip;
 
 	/// Audio source handle (owned by IAudioSystem, managed by manager).

@@ -1,4 +1,4 @@
-// Particle trail fragment shader — texture × vertex color with soft-particle depth fade.
+// Particle trail fragment shader - texture × vertex color with soft-particle depth fade.
 
 #pragma pack_matrix(row_major)
 
@@ -21,11 +21,11 @@ cbuffer SceneUniforms : register(b0, space0)
     float2   InvScreenSize;
 };
 
-// Set 1 — scene depth for soft particles.
+// Set 1 - scene depth for soft particles.
 Texture2D    SceneDepth    : register(t0, space1);
 SamplerState DepthSampler  : register(s0, space1);
 
-// Set 2 — particle material (texture + sampler).
+// Set 2 - particle material (texture + sampler).
 Texture2D    ParticleTexture : register(t0, space2);
 SamplerState ParticleSampler : register(s0, space2);
 

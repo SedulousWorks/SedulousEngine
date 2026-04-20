@@ -63,7 +63,7 @@ public class SpriteSystem : IDisposable
 		mDevice = device;
 
 		// --- Sprite material template ---
-		// VertexLayout is .Custom — SpriteRenderer supplies a per-instance layout
+		// VertexLayout is .Custom - SpriteRenderer supplies a per-instance layout
 		// at pipeline-creation time. The material config drives blend/cull/depth.
 		mSpriteMaterial = scope MaterialBuilder("Sprite")
 			.Shader("sprite")

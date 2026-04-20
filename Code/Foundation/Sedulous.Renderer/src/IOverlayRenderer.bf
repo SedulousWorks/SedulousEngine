@@ -12,7 +12,7 @@ interface IOverlayRenderer
 	int32 OverlayOrder { get; }
 
 	/// Render the overlay onto the target. The target already has content
-	/// (blitted scene) — use LoadOp.Load to preserve it.
+	/// (blitted scene) - use LoadOp.Load to preserve it.
 	void RenderOverlay(ICommandEncoder encoder, ITextureView target,
 		uint32 w, uint32 h, int32 frameIndex);
 }

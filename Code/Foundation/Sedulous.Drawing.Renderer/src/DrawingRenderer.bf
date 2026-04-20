@@ -445,12 +445,12 @@ public class DrawingRenderer : IDisposable
 				}
 				else if (cmd.ClipMode == .Scissor)
 				{
-					// Empty/invalid clip rect — hide everything (match OpenGL glScissor(0,0,0,0))
+					// Empty/invalid clip rect - hide everything (match OpenGL glScissor(0,0,0,0))
 					renderPass.SetScissor(0, 0, 0, 0);
 				}
 				else
 				{
-					// No clipping — full viewport
+					// No clipping - full viewport
 					renderPass.SetScissor(0, 0, width, height);
 				}
 

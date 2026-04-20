@@ -14,7 +14,7 @@ public struct DockTarget
 }
 
 /// Overlay that shows dock drop zones during drag operations.
-/// Hit-test transparent — shown via PopupLayer.
+/// Hit-test transparent - shown via PopupLayer.
 public class DockZoneIndicator : View
 {
 	private List<DockTarget> mTargets = new .() ~ delete _;

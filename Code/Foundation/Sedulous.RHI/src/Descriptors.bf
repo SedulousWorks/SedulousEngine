@@ -337,7 +337,7 @@ struct BindGroupEntry
 		return entry;
 	}
 
-	/// Creates a texture binding entry (state hint ignored — for Serenity compatibility).
+	/// Creates a texture binding entry (state hint ignored - for Serenity compatibility).
 	public static Self Texture(ITextureView textureView, ResourceState stateHint)
 	{
 		Self entry = default;

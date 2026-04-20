@@ -33,7 +33,7 @@ class AudioClipResourceManager : ResourceManager<AudioClipResource>
 		case .Ok(let clip):
 			let resource = new AudioClipResource();
 			resource.Clip = clip;
-			resource.AddRef(); // Manager's ownership ref — released in Unload
+			resource.AddRef(); // Manager's ownership ref - released in Unload
 			return .Ok(resource);
 		case .Err:
 			return .Err(.InvalidFormat);

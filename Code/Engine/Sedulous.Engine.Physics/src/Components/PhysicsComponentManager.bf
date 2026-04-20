@@ -40,9 +40,9 @@ class PhysicsComponentManager : ComponentManager<RigidBodyComponent>, IContactLi
 	/// Whether to draw debug collision shapes.
 	public bool DebugDrawEnabled = false;
 
-	// Buffered contact events — filled lock-free during physics step (on Jolt's
+	// Buffered contact events - filled lock-free during physics step (on Jolt's
 	// worker threads), dispatched to components after the step on the main thread.
-	// Uses raw BodyHandles, NOT EntityHandles — decoding to EntityHandles requires
+	// Uses raw BodyHandles, NOT EntityHandles - decoding to EntityHandles requires
 	// calling back into Jolt (GetBodyUserData) which violates Jolt's internal lock
 	// ordering and deadlocks. EntityHandle decoding happens on the main thread.
 	private enum ContactType { Added, Persisted, Removed }
@@ -106,7 +106,7 @@ class PhysicsComponentManager : ComponentManager<RigidBodyComponent>, IContactLi
 			let position = mPhysicsWorld.GetBodyPosition(comp.PhysicsBody);
 			let rotation = mPhysicsWorld.GetBodyRotation(comp.PhysicsBody);
 
-			// Preserve the entity's original scale — physics doesn't affect scale.
+			// Preserve the entity's original scale - physics doesn't affect scale.
 			let currentTransform = scene.GetLocalTransform(comp.Owner);
 			scene.SetLocalTransform(comp.Owner, .()
 			{
@@ -127,7 +127,7 @@ class PhysicsComponentManager : ComponentManager<RigidBodyComponent>, IContactLi
 
 	protected override void OnComponentDestroyed(RigidBodyComponent comp)
 	{
-		// PhysicsWorld may already be destroyed during scene teardown —
+		// PhysicsWorld may already be destroyed during scene teardown -
 		// skip cleanup if the world is gone (bodies are already freed).
 		if (mPhysicsWorld != null && mPhysicsWorld.IsInitialized)
 			DestroyPhysicsBody(comp);

@@ -15,7 +15,7 @@ interface ISerializableComponent
 }
 
 /// Abstraction over the serialization backend.
-/// Components use this interface — they don't depend on Sedulous.Serialization directly.
+/// Components use this interface - they don't depend on Sedulous.Serialization directly.
 ///
 /// For reference type fields (List<T>, custom classes), the component owns them.
 /// Use BeginArray/EndArray for lists, BeginObject/EndObject for nested structs.
@@ -43,7 +43,7 @@ interface IComponentSerializer
 	// Scene references
 	void EntityRef(StringView name, ref EntityRef value);
 
-	// Nested structures — for complex fields, lists, custom types
+	// Nested structures - for complex fields, lists, custom types
 	void BeginObject(StringView name);
 	void EndObject();
 	void BeginArray(StringView name, ref int32 count);

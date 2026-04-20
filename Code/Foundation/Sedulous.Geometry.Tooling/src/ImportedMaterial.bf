@@ -52,7 +52,7 @@ struct MaterialTexture
 
 /// Material data extracted from a model file.
 /// Contains PBR properties and texture references.
-/// No dependency on the renderer — the application maps this to
+/// No dependency on the renderer - the application maps this to
 /// renderer MaterialInstance + SamplerDesc when uploading to GPU.
 class ImportedMaterial
 {

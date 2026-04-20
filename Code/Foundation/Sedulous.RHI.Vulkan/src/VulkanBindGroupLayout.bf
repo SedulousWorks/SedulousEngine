@@ -36,7 +36,7 @@ class VulkanBindGroupLayout : IBindGroupLayout
 			bindings[i].descriptorCount = entry.Count;
 			if (entry.Count == uint32.MaxValue)
 			{
-				// Bindless — use a large but finite count for the layout
+				// Bindless - use a large but finite count for the layout
 				bindings[i].descriptorCount = 1024 * 16;
 				mHasBindless = true;
 				mBindlessDescriptorCount = bindings[i].descriptorCount;

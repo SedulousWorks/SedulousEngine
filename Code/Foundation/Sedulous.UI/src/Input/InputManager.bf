@@ -10,7 +10,7 @@ public class InputManager
 {
 	private UIContext mContext;
 
-	// Pooled event args — one per type, reused each event.
+	// Pooled event args - one per type, reused each event.
 	private MouseEventArgs mMouseArgs = new .() ~ delete _;
 	private MouseWheelEventArgs mWheelArgs = new .() ~ delete _;
 
@@ -107,7 +107,7 @@ public class InputManager
 		{
 			let hitView = Hovered;
 			bool hitIsPopup = false;
-			// Walk up from hit view — if any ancestor is a popup entry, don't dismiss.
+			// Walk up from hit view - if any ancestor is a popup entry, don't dismiss.
 			var v = hitView;
 			while (v != null)
 			{
@@ -333,7 +333,7 @@ public class InputManager
 		return false;
 	}
 
-	/// Notify that a view was deleted — clear any references.
+	/// Notify that a view was deleted - clear any references.
 	public void OnElementDeleted(View view)
 	{
 		if (mHoveredId == view.Id) mHoveredId = .Invalid;

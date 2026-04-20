@@ -105,7 +105,7 @@ class FocusStackTests
 		// Delete the view while popup is "open".
 		root.RemoveView(btn, true);
 
-		// Pop — saved ID is dead, should not crash, focus stays cleared.
+		// Pop - saved ID is dead, should not crash, focus stays cleared.
 		ctx.FocusManager.PopFocus();
 		Test.Assert(ctx.FocusManager.FocusedView == null);
 		Test.Assert(ctx.FocusManager.FocusStackDepth == 0);
@@ -173,7 +173,7 @@ class FocusStackTests
 		ctx.FocusManager.SetFocus(btn);
 		Test.Assert(btn.IsFocused);
 
-		// Show a popup — should push focus (EditText loses focus).
+		// Show a popup - should push focus (EditText loses focus).
 		let popup = new ColorView();
 		popup.PreferredWidth = 100;
 		popup.PreferredHeight = 50;
@@ -182,7 +182,7 @@ class FocusStackTests
 		Test.Assert(!btn.IsFocused);
 		Test.Assert(ctx.FocusManager.FocusStackDepth == 1);
 
-		// Close popup — should pop focus (btn regains focus).
+		// Close popup - should pop focus (btn regains focus).
 		ctx.PopupLayer.ClosePopup(popup);
 
 		Test.Assert(btn.IsFocused);
@@ -193,7 +193,7 @@ class FocusStackTests
 	public static void PushFocus_NoFocus_PushesInvalid()
 	{
 		let ctx = scope UIContext();
-		// Nothing focused — push should still work.
+		// Nothing focused - push should still work.
 		ctx.FocusManager.PushFocus();
 		Test.Assert(ctx.FocusManager.FocusStackDepth == 1);
 

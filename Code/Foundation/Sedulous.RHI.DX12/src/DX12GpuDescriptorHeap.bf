@@ -95,14 +95,14 @@ class DX12GpuDescriptorHeap
 			let block = mFreeBlocks[i];
 			if (block.Offset + block.Count == mergedOffset)
 			{
-				// Block is immediately before us — merge left
+				// Block is immediately before us - merge left
 				mergedOffset = block.Offset;
 				mergedCount += block.Count;
 				mFreeBlocks.RemoveAt(i);
 			}
 			else if (mergedOffset + mergedCount == block.Offset)
 			{
-				// Block is immediately after us — merge right
+				// Block is immediately after us - merge right
 				mergedCount += block.Count;
 				mFreeBlocks.RemoveAt(i);
 			}

@@ -10,7 +10,7 @@ using Sedulous.Particles;
 /// Handles polymorphic behavior/initializer types by matching on type ID
 /// and reading/writing each type's specific parameters.
 ///
-/// All serialization knowledge for particle types lives here — the core
+/// All serialization knowledge for particle types lives here - the core
 /// Sedulous.Particles project has no serialization dependency.
 public static class ParticleEffectSerializer
 {

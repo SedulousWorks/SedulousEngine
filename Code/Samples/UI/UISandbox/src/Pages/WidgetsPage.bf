@@ -14,7 +14,7 @@ class WidgetsPage : DemoPage
 		// Label
 		{
 			let label = new Label();
-			label.SetText("Label — 16px Roboto (theme color)");
+			label.SetText("Label - 16px Roboto (theme color)");
 			label.TooltipText = new String("Tooltip: Right placement");
 			label.TooltipPlacement = .Right;
 			mLayout.AddView(label, new LinearLayout.LayoutParams() { Width = Sedulous.UI.LayoutParams.MatchParent, Height = 22 });

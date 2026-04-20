@@ -7,13 +7,13 @@ using System;
 /// Use Resolve() after scene load to populate the cached handle.
 public struct EntityRef
 {
-	/// Persistent identity — survives save/load.
+	/// Persistent identity - survives save/load.
 	public Guid PersistentId;
 
-	/// Cached runtime handle — valid only after Resolve().
+	/// Cached runtime handle - valid only after Resolve().
 	public EntityHandle CachedHandle;
 
-	/// Default constructor — empty ref.
+	/// Default constructor - empty ref.
 	public this()
 	{
 		PersistentId = .Empty;

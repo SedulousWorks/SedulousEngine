@@ -9,7 +9,7 @@ public abstract class Drawable
 	/// State-unaware draw.
 	public abstract void Draw(UIDrawContext ctx, RectangleF bounds);
 
-	/// State-aware draw — default delegates to state-unaware.
+	/// State-aware draw - default delegates to state-unaware.
 	public virtual void Draw(UIDrawContext ctx, RectangleF bounds, ControlState state)
 		=> Draw(ctx, bounds);
 

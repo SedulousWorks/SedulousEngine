@@ -2,7 +2,7 @@ namespace Sedulous.Scenes;
 
 /// Non-generic base class for component managers.
 /// Provides the InitializePendingComponents hook that Scene calls
-/// before FixedUpdate each frame. Only component managers need this —
+/// before FixedUpdate each frame. Only component managers need this -
 /// plain SceneModules do not.
 public abstract class ComponentManagerBase : SceneModule
 {

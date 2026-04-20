@@ -15,7 +15,7 @@ public class VGBatch
 	/// Draw commands (batched by state)
 	public List<VGCommand> Commands = new .() ~ delete _;
 	/// Textures referenced by commands (by TextureIndex).
-	/// Not owned by VGBatch — caller (VGContext) manages texture lifetime.
+	/// Not owned by VGBatch - caller (VGContext) manages texture lifetime.
 	/// By convention, index 0 is always a 1x1 white texture for solid-color draws.
 	public List<IImageData> Textures = new .() ~ delete _;
 
@@ -56,7 +56,7 @@ public class VGBatch
 	public int IndexCount => Indices.Count;
 
 	/// Clear all data for reuse.
-	/// Also clears the texture list — the caller is expected to re-add any
+	/// Also clears the texture list - the caller is expected to re-add any
 	/// required textures (e.g. the white fallback at index 0).
 	public void Clear()
 	{

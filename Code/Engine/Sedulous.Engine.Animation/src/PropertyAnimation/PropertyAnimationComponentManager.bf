@@ -10,7 +10,7 @@ using Sedulous.Animation.Resources;
 /// Manages property animation components: resolves clip resources,
 /// creates PropertyAnimationPlayers, evaluates tracks each frame.
 ///
-/// Updates at Update phase with priority 0 — applies property changes
+/// Updates at Update phase with priority 0 - applies property changes
 /// during main game logic phase so they're visible to PostUpdate.
 class PropertyAnimationComponentManager : ComponentManager<PropertyAnimationComponent>
 {

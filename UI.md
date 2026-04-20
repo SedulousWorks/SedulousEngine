@@ -1,4 +1,4 @@
-# Sedulous.UI — Game UI Framework Plan
+# Sedulous.UI - Game UI Framework Plan
 
 Plan for a retained-mode game UI framework built on `Sedulous.VG`, with XML
 authoring and code-first authoring both first-class. Designed to replace
@@ -6,11 +6,11 @@ authoring and code-first authoring both first-class. Designed to replace
 draws explicitly from two prior frameworks reviewed in detail:
 `Sedulous.GUI` (WPF-derived) and the legacy `Sedulous.UI` in BansheeBeef
 (Android-derived). Where the two diverge, this plan picks the simpler,
-more game-loop-friendly choice — usually the Android one.
+more game-loop-friendly choice - usually the Android one.
 
 ## Goals
 
-1. **Flat view hierarchy.** `View` / `ViewGroup` / `RootView` — two real
+1. **Flat view hierarchy.** `View` / `ViewGroup` / `RootView` - two real
    levels, no five-deep WPF inheritance chain.
 2. **Game-loop-friendly:** layout invalidation is an *opt-in optimization*,
    not a requirement. Default = re-measure / re-arrange every frame, which
@@ -22,7 +22,7 @@ more game-loop-friendly choice — usually the Android one.
    drained at safe sync points.
 4. **Composable visuals via Drawables.** Backgrounds, borders, state
    variants are `Drawable` objects (StateListDrawable, LayerDrawable,
-   NineSliceDrawable, etc.) — not nested widgets, not WPF brushes.
+   NineSliceDrawable, etc.) - not nested widgets, not WPF brushes.
 5. **Fully skinnable** through a flat string-keyed `Theme` with an
    `IThemeExtension` registry so external libraries can inject styles
    without modifying the core themes.
@@ -34,18 +34,18 @@ more game-loop-friendly choice — usually the Android one.
    transforms.
 8. **XML *and* code authoring** at equal parity through a `UIRegistry`.
    A UI declared in XML is identical to the same UI constructed in code.
-9. **Extensible.** Custom view subclasses are first-class — no
+9. **Extensible.** Custom view subclasses are first-class - no
    distinction between built-in and user-defined.
 10. **Game-specific:** in-world anchored UI, gamepad navigation, kinetic
     scrolling via `MomentumHelper`, hot reload of XML during dev.
 11. **Cleanly layered** so the core has no rendering or engine dependency
-    — runs headless for tests, tooling, and editor support.
+    - runs headless for tests, tooling, and editor support.
 
 ## Non-goals
 
 - WPF/XAML compatibility. Our XML is similar but its own format.
-- Designer tooling (WYSIWYG editor) — XML hot reload covers dev for now.
-- Accessibility (screen readers) — `View.ContentDescription` field only;
+- Designer tooling (WYSIWYG editor) - XML hot reload covers dev for now.
+- Accessibility (screen readers) - `View.ContentDescription` field only;
   no actual reader integration yet.
 - Advanced IME / RTL text shaping beyond what `Sedulous.Fonts` already does.
 - CSS selectors / cascading. `Theme` is a flat dictionary.
@@ -58,7 +58,7 @@ more game-loop-friendly choice — usually the Android one.
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
 │  Samples                                                             │
-│  UISandbox — gallery/showcase; grows as each phase lands.            │
+│  UISandbox - gallery/showcase; grows as each phase lands.            │
 │  Uses Sedulous.UI.Runtime directly (no engine required).             │
 ├──────────────────────────────────────────────────────────────────────┤
 │  Sedulous.Engine.UI                                                  │
@@ -98,7 +98,7 @@ more game-loop-friendly choice — usually the Android one.
 ```
 
 UI is rendered the same way `Sedulous.GUI` is: it draws into a `VGContext`,
-producing a `VGBatch`. `VGRenderer` handles the GPU side — there's no
+producing a `VGBatch`. `VGRenderer` handles the GPU side - there's no
 dedicated UI renderer. This is the existing engine pattern.
 
 ### Why this split
@@ -106,22 +106,22 @@ dedicated UI renderer. This is the existing engine pattern.
 - **`Sedulous.UI`** (core) depends only on CPU-side libraries (VG, Fonts,
   ImageData, Xml). Walks the tree and draws into a caller-provided
   `VGContext`. Layout, input routing, adapters, animation, overlays are
-  all pure logic — testable headless. Does **not** know about Shell, OS
+  all pure logic - testable headless. Does **not** know about Shell, OS
   input, or engine subsystems.
 
 - **`Sedulous.UI.Runtime`** provides the `UISubsystem` + Shell integration
   (input helper, clipboard adapter, input mapping). This is what standalone
-  apps — including `UISandbox` — use. Depends on `Sedulous.Runtime` +
+  apps - including `UISandbox` - use. Depends on `Sedulous.Runtime` +
   `Sedulous.Shell`, but **not** on `Sedulous.Engine.*`. Follows the
   existing `Sedulous.GUI.Runtime` precedent.
 
 - **`Sedulous.UI.Toolkit`** builds advanced/tooling widgets on top of core
-  UI — dock manager, floating windows, property grid, data grid, UI tree
+  UI - dock manager, floating windows, property grid, data grid, UI tree
   inspector, and anything an editor-style app needs. Separated so games
   that don't need tools don't pull in the overhead.
 
 - **`Sedulous.UI.Gamekit`** builds game-focused widgets on top of core UI
-  — HUD bars, radial gauges, action bars, nameplates, damage numbers,
+  - HUD bars, radial gauges, action bars, nameplates, damage numbers,
   floating anchors. Separated so tooling apps don't pull in game-specific
   visuals.
 
@@ -145,9 +145,9 @@ dedicated UI renderer. This is the existing engine pattern.
 ### UISandbox
 
 Lives at `Code/Samples/UI/UISandbox/`, mirroring `VGSandbox`'s layout.
-Uses `Sedulous.Runtime.Client.Application` + `Sedulous.UI.Runtime` —
+Uses `Sedulous.Runtime.Client.Application` + `Sedulous.UI.Runtime` -
 does **not** require the full engine. **Established in Phase 1 along with
-the Runtime subsystem** — the sandbox is a running, rendering app from
+the Runtime subsystem** - the sandbox is a running, rendering app from
 the first phase, and every later phase simply grows it. No big-bang
 integration moment where everything has to come together at once.
 
@@ -171,7 +171,7 @@ end. Between phases, the sandbox can be refactored to match API changes.
 
 3. **Animation target deletion mid-animation:** ✅ **Default
    `FillBehavior.Stop`.** Cancel as-is when target is destroyed. `Reset`
-   (restore original value before cancel) is opt-in per-animation — adds
+   (restore original value before cancel) is opt-in per-animation - adds
    cost of storing original + delegate, rarely needed.
 
 4. **Binding evaluation model:** ✅ **Push for `{Binding}` XML syntax**
@@ -201,7 +201,7 @@ public class View
     public String Name;                        // for XML/hot-reload
     public String StyleId;                     // theme key prefix
 
-    // Tree (raw refs — owner owns)
+    // Tree (raw refs - owner owns)
     public View Parent { get; internal set; }
     public LayoutParams LayoutParams;          // parent-specific subclass
 
@@ -263,7 +263,7 @@ public class ViewGroup : View
     public virtual void RemoveAllViews(bool dispose = true);
     public virtual LayoutParams CreateDefaultLayoutParams();
     public virtual bool CheckLayoutParams(LayoutParams lp);
-    // OnMeasure / OnLayout abstract — concrete subclasses define layout strategy
+    // OnMeasure / OnLayout abstract - concrete subclasses define layout strategy
 }
 
 public class RootView : ViewGroup
@@ -373,7 +373,7 @@ public class UIContext
   uses the `Queue*` variants.
 - **Focus changes** are deferred (they unwind input routing in subtle ways).
 - **Property mutations** that don't affect tree structure (text, color,
-  opacity, `Value`) are immediate — they don't invalidate iteration.
+  opacity, `Value`) are immediate - they don't invalidate iteration.
 - **Theme switches** are deferred (touch every view; can't run mid-draw).
 - **Layout invalidation** is immediate but lazy: `InvalidateLayout` only
   flips a flag; the layout pass actually runs in the layout phase.
@@ -389,7 +389,7 @@ lookup because handlers may have cached references.
 3. Between layout and draw
 
 `UIPhase` tracking on `UIContext` (Idle, RoutingInput, LayingOut, Drawing)
-lets synchronous mutations assert when called in unsafe phases — catches
+lets synchronous mutations assert when called in unsafe phases - catches
 misuse early.
 
 When a tree subtree is removed/destroyed, the queue calls
@@ -430,7 +430,7 @@ public struct MeasureSpec
 ```
 
 Children always know whether the constraint is hard or soft. Eliminates
-ambiguity in weighted distribution. WPF passes one `availableSize` —
+ambiguity in weighted distribution. WPF passes one `availableSize` -
 child has to guess.
 
 ### LayoutParams (subclass per ViewGroup)
@@ -488,9 +488,9 @@ position.
 public enum Visibility { Visible, Invisible, Gone }
 ```
 
-- `Visible` — renders + takes layout space
-- `Invisible` — no render + still takes space (reserve)
-- `Gone` — no render + no space
+- `Visible` - renders + takes layout space
+- `Invisible` - no render + still takes space (reserve)
+- `Gone` - no render + no space
 
 Layout panels skip `Gone` children entirely. Many UI systems conflate
 all three; the distinction is essential for things like "hide an icon
@@ -528,7 +528,7 @@ Prevents "I set width but it stretches anyway" surprise.
 
 ### Children arranged in *content* bounds (post-padding)
 
-`ViewGroup.OnLayout(left, top, right, bottom)` receives content bounds —
+`ViewGroup.OnLayout(left, top, right, bottom)` receives content bounds -
 padding already trimmed. Each ViewGroup arranges within already-trimmed
 space; padding handled once in base class.
 
@@ -552,7 +552,7 @@ public abstract class Drawable
     /// State-unaware draw.
     public abstract void Draw(UIDrawContext ctx, RectangleF bounds);
 
-    /// State-aware draw — default delegates to state-unaware.
+    /// State-aware draw - default delegates to state-unaware.
     public virtual void Draw(UIDrawContext ctx, RectangleF bounds, ControlState state)
         => Draw(ctx, bounds);
 
@@ -689,7 +689,7 @@ per property; the absence *is* the signal.
 ### Default themes
 
 Library ships `DarkTheme` and `LightTheme` factories. Both seed from a
-`Palette` and call `Palette.Compute*` to derive state colors — math-
+`Palette` and call `Palette.Compute*` to derive state colors - math-
 consistent variants without manual tuning.
 
 ### Theme switching
@@ -766,7 +766,7 @@ Plain Tab = focus traversal. Ctrl+Tab = control-internal cycling
 ### Accelerators (Alt+key) bypass focus
 
 Searched top-down through the tree for `IAcceleratorHandler` implementers.
-Different system from focus dispatch — keeps menu logic out of focus.
+Different system from focus dispatch - keeps menu logic out of focus.
 
 ### Drag candidate walks parent chain
 
@@ -778,9 +778,9 @@ On left mouse down, walk up from the hit view looking for `IDragSource`.
 
 Three orthogonal axes:
 
-- `IsFocusable` — can be focused programmatically
-- `IsTabStop` — participates in Tab order
-- `IsEffectivelyEnabled` — functional now, walking parent chain (disabled
+- `IsFocusable` - can be focused programmatically
+- `IsTabStop` - participates in Tab order
+- `IsEffectivelyEnabled` - functional now, walking parent chain (disabled
   parent disables children regardless of local state)
 
 Disabled controls skip Tab order without becoming unfocusable. Walking
@@ -817,7 +817,7 @@ Focus trap stays out of focus core; modal manager opts in.
 
 ### Cursor inheritance
 
-`View.EffectiveCursor` walks parent chain — self.Cursor, fall back to
+`View.EffectiveCursor` walks parent chain - self.Cursor, fall back to
 parent until root returns Default. Parents set fallback cursors without
 children opting in.
 
@@ -885,12 +885,12 @@ public class SelectionModel
 
 - Adapter owns *both* view creation and data binding. No "item template"
   separation.
-- Multiple view types per adapter via `GetItemViewType()` — heterogeneous
+- Multiple view types per adapter via `GetItemViewType()` - heterogeneous
   lists work natively.
 - `ViewRecycler` is a separate object that lives on the consuming view.
   Diagnostic counters help measure pool effectiveness.
 - Trees flatten to lists for virtualization (one virtualization path).
-  Expansion state lives in the tree adapter — not the flat one.
+  Expansion state lives in the tree adapter - not the flat one.
 - Selection is decoupled from data. Multiple views can share a
   `SelectionModel`. `ShiftIndices` adjusts when data inserts/removes.
 
@@ -910,7 +910,7 @@ public struct MomentumHelper
 {
     public float VelocityX, VelocityY;
     public float Friction = 6.0f;       // higher = stops sooner
-    public float StopThreshold = 0.5f;  // px/sec — below this, snap to 0
+    public float StopThreshold = 0.5f;  // px/sec - below this, snap to 0
 
     public (float dx, float dy) Update(float deltaTime) mut;
 }
@@ -922,12 +922,12 @@ separate object. Physics-based (not tweening).
 
 ### ScrollBar (standalone view)
 
-`ScrollBar` is a standalone `View` — not built into `ScrollView`. Has its
+`ScrollBar` is a standalone `View` - not built into `ScrollView`. Has its
 own measure/layout/draw/input. Independently themeable. Plugged in by
 composition.
 
 `ScrollView` and `ListView` own them but **don't put them in `mChildren`**
-— managed separately, drawn after the children, hit-tested first.
+- managed separately, drawn after the children, hit-tested first.
 
 ### ScrollBarPolicy enum
 
@@ -1001,7 +1001,7 @@ Two integers. Naturally extends in both directions. Normalize to
 ### UTF-8-aware caret navigation
 
 `GetPrevCharIndex` / `GetNextCharIndex` skip continuation bytes (0x80–0xBF).
-Every navigation method respects this from day one — not added later.
+Every navigation method respects this from day one - not added later.
 
 ### Word boundaries via state machine
 
@@ -1113,7 +1113,7 @@ Three explicit cases. Cleaner than WPF's modal event loop.
 
 ### `OwnsView` flag
 
-`PopupEntry.OwnsView` — `true` deletes view on close, `false` just
+`PopupEntry.OwnsView` - `true` deletes view on close, `false` just
 detaches. Submenus use `false` so the menu item still owns them. Lifecycle
 flexibility without leaks.
 
@@ -1172,7 +1172,7 @@ patterns. Dialog merges its drawable padding with explicit padding via
 Hierarchical menus. `MenuItem` struct owns submenu (cascaded delete).
 Submenu opens on hover (no click), closes on leave. `CloseEntireChain()`
 walks up `mParentMenu` to root and closes everything. Submenus shown via
-`PopupLayer.ShowPopup(ownsView: false)` — menu item retains ownership.
+`PopupLayer.ShowPopup(ownsView: false)` - menu item retains ownership.
 
 ### TooltipManager + TooltipView
 
@@ -1254,7 +1254,7 @@ public interface IDropTarget
 public enum DragDropEffects { None, Copy, Move, Link }
 ```
 
-Symmetric. Walking the drop-target chain *includes* the drag source —
+Symmetric. Walking the drop-target chain *includes* the drag source -
 target rejects via `CanAcceptDrop`. Allows reorder operations where
 source = target (tab reordering, list item swap).
 
@@ -1288,7 +1288,7 @@ public abstract class Animation
     public EasingFunction Easing;
     public bool AutoReverse;
     public int32 RepeatCount = 1;       // 0 = infinite
-    public ElementHandle<View> Target;  // weak — auto-cancels on view destroy
+    public ElementHandle<View> Target;  // weak - auto-cancels on view destroy
     public AnimationState State;        // Pending / Running / Paused / Completed / Cancelled
     public FillBehavior OnTargetDestroyed; // Stop (default) or Reset
 
@@ -1325,7 +1325,7 @@ public class Storyboard : Animation
 }
 ```
 
-Storyboard *is* an `Animation` — composable to arbitrary depth.
+Storyboard *is* an `Animation` - composable to arbitrary depth.
 
 ### ViewAnimator (factory shortcuts)
 
@@ -1388,7 +1388,7 @@ public class UIContext
 `AnimationManager`, `DragDropManager`, `TooltipManager`, custom app
 services.
 
-Services not owned by context — caller retains ownership.
+Services not owned by context - caller retains ownership.
 
 ## 16. Element-Bound Events
 
@@ -1435,7 +1435,7 @@ public class RelayCommand<T> : ICommand
 
 `Button.Command` and `MenuItem.Command` properties. Button auto-disables
 when `CanExecute()` returns false. `RaiseCanExecuteChanged` is **manual**
-— business logic owns when conditions changed; no automatic watching.
+- business logic owns when conditions changed; no automatic watching.
 
 ## 18. Custom Controls
 
@@ -1474,7 +1474,7 @@ Now this works:
 <RadialGauge Value="{Binding Player.Mana}" MinValue="0" MaxValue="100"/>
 ```
 
-**Design principle:** custom views are first-class — no distinction between
+**Design principle:** custom views are first-class - no distinction between
 built-in and user-defined. The registry is just data the XML loader
 consults.
 
@@ -1564,9 +1564,9 @@ views red → green by percentile.
 
 UI resource types live in `Sedulous.UI.Resources`:
 
-- **`ThemeResource`** — wraps a loaded `Theme`. Listens for underlying
+- **`ThemeResource`** - wraps a loaded `Theme`. Listens for underlying
   file changes for runtime theme reloads.
-- **`UILayoutResource`** — wraps a parsed UI XML layout. Holds the view
+- **`UILayoutResource`** - wraps a parsed UI XML layout. Holds the view
   tree blueprint (not instantiated views); instantiated via `UIXmlLoader`
   when used. Republishes on file change for hot reload.
 
@@ -1578,13 +1578,13 @@ UI resource types live in `Sedulous.UI.Resources`:
 
 A phase is **not complete** until all three conditions hold:
 
-1. **Code merged** — the phase's features land in `Sedulous.UI` (and
+1. **Code merged** - the phase's features land in `Sedulous.UI` (and
    `.Runtime` / `.Toolkit` / `.Gamekit` / `.Resources` / `.Engine.UI` as
    appropriate).
-2. **Tests passing** — `Sedulous.UI.Tests` has test coverage for the
+2. **Tests passing** - `Sedulous.UI.Tests` has test coverage for the
    phase's features, and `BeefBuild -project=Sedulous.UI.Tests` runs
    clean. Tests are written alongside the feature, not deferred.
-3. **UISandbox updated** — `UISandbox` gains a new demo page / section
+3. **UISandbox updated** - `UISandbox` gains a new demo page / section
    exercising the phase's features. Layout can be refactored to match
    current API; sandbox is treated as a living gallery, not a fixed app.
 
@@ -1601,7 +1601,7 @@ test coverage expected and the sandbox additions.
 | **4** Theme System | ✅ DONE | 13 |
 | **5** XML UI Loading | ✅ DONE | 20 |
 | **6** Resource Integration | ✅ DONE | 6 |
-| **7** Engine Integration | ✅ DONE | — |
+| **7** Engine Integration | ✅ DONE | - |
 | **8** Scrolling | ✅ DONE | 14 |
 | **9** Adapters + Virtualization | ✅ DONE | 18 |
 | **11** Overlays + Controls + Legacy Adoption | ✅ DONE | 175 |
@@ -1662,11 +1662,11 @@ Toolkit. Each page is a self-contained DemoPage class in its own file.
 
 ### Remaining Toolkit Work
 
-**Docking** — tree operations (ReplaceNode, Center docking) have
+**Docking** - tree operations (ReplaceNode, Center docking) have
 context attachment issues that crash in headless tests. Needs
 interactive debugging. FloatingWindow not yet implemented.
 
-**FileBrowser / AssetBrowser** — generic browsable content viewer:
+**FileBrowser / AssetBrowser** - generic browsable content viewer:
 - Data-model driven (not hardcoded to filesystem). Model provides
   items from any source: local files, remote database, asset registry.
 - Multiple view modes: TileView (grid/flow), ListView, TreeView.
@@ -1677,13 +1677,13 @@ interactive debugging. FloatingWindow not yet implemented.
 - Breadcrumb navigation for hierarchical browsing.
 - Selection model (single/multi).
 - Search/filter bar.
-- Design needs further brainstorming — model interface, view mode
+- Design needs further brainstorming - model interface, view mode
   switching, thumbnail loading strategy, drag-out support.
 
 See **Deferred Work** section at the end of this document for all
 items skipped or deferred from completed phases.
 
-## Phase 1 — First light: foundation + runtime + sandbox
+## Phase 1 - First light: foundation + runtime + sandbox
 
 > **Status: ✅ COMPLETE**
 
@@ -1691,10 +1691,10 @@ items skipped or deferred from completed phases.
 real UI on screen.** VGRenderer is already proven, so there's no reason
 to spend a phase headless before seeing pixels. Phase 1 is bigger than
 a typical first phase but concludes with a running, demoable sandbox
-— every subsequent phase then just adds capability to an already-working
+- every subsequent phase then just adds capability to an already-working
 app.
 
-**Code (`Sedulous.UI` — core data model):**
+**Code (`Sedulous.UI` - core data model):**
 - `View` / `ViewGroup` / `RootView` hierarchy
 - `ViewId` (atomic counter), `ElementHandle<T>`, `Registry` on `UIContext`
 - `MutationQueue` + `IsPendingDeletion` flag + `UIPhase` tracking
@@ -1705,24 +1705,24 @@ app.
 - `Thickness`, `Orientation`, `Alignment` value types
 - `LinearLayout` (horizontal/vertical, weight distribution, Gravity)
 - `FrameLayout` (gravity-positioned overlay stack)
-- `ColorView` — simplest concrete widget, fills bounds with a color.
+- `ColorView` - simplest concrete widget, fills bounds with a color.
   Uses direct `UIDrawContext.VG.FillRect`. (Drawable system lands in
   Phase 2; this keeps Phase 1 scope tight.)
-- `UIDrawContext` — thin wrapper over `VGContext` for now. No
+- `UIDrawContext` - thin wrapper over `VGContext` for now. No
   theme-aware helpers yet.
 - Tree-walk render: `UIContext.Draw(vg)` emits into the context.
 - DPI scale transform applied once at the render-pass root.
-- Reverse-order hit test in `ViewGroup` (no input routing yet — just the
+- Reverse-order hit test in `ViewGroup` (no input routing yet - just the
   hit-test primitive; actual event routing lands Phase 3)
 
-**Code (`Sedulous.UI.Runtime` — real subsystem from day one):**
+**Code (`Sedulous.UI.Runtime` - real subsystem from day one):**
 - `UISubsystem` extends `Sedulous.Runtime.Subsystem` (UpdateOrder = 400,
   matching `GUISubsystem`). Owns:
   - `UIContext` (the view tree + registry + mutation queue)
   - `VGContext` (fed by the tree walk)
   - `VGRenderer` (submits the batch to GPU each frame)
   - `FontService` (wired via TTF loader)
-- Stubbed input — `Sedulous.Shell` events accepted but not yet routed
+- Stubbed input - `Sedulous.Shell` events accepted but not yet routed
   (FocusManager/InputManager land Phase 3). Click/key/move events get
   noted but don't affect the tree.
 - Window resize / DPI change propagates to `RootView.ViewportSize` /
@@ -1730,7 +1730,7 @@ app.
 - Basic frame loop: drain MutationQueue → Layout if invalidated → Draw
   → Submit
 
-**Code (UISandbox — running app):**
+**Code (UISandbox - running app):**
 - `Code/Samples/UI/UISandbox/` created, mirrors `VGSandbox` layout
 - `Application` subclass that creates `UISubsystem` via
   `Sedulous.UI.Runtime`
@@ -1739,7 +1739,7 @@ app.
   children, and nested `FrameLayout` demonstrating Gravity
 - Proves: registration, layout pipeline, mutation queue, render path,
   subsystem integration, VG batch submission
-- Static — no interactivity yet, but visually confirms the framework
+- Static - no interactivity yet, but visually confirms the framework
   pipeline end-to-end
 
 **Tests (`Sedulous.UI.Tests/Core`, `/Layout`, `/Registry`, `/Mutation`,
@@ -1758,12 +1758,12 @@ app.
 - End-to-end smoke: UISubsystem produces a non-empty VGBatch from a
   sample tree
 
-## Phase 2 — Drawable system + full widget set + layouts + debug overlays
+## Phase 2 - Drawable system + full widget set + layouts + debug overlays
 
 > **Status: ✅ COMPLETE**
 
 Expand from the bare minimum of Phase 1 into a production-capable widget
-set with composable visuals. **No theme yet** — widgets have per-instance
+set with composable visuals. **No theme yet** - widgets have per-instance
 fields for colors/drawables; theme retrofit comes in Phase 4. Since the
 sandbox is already running, each new widget and layout is added as a new
 demo page.
@@ -1781,14 +1781,14 @@ demo page.
   (`FillBackground`, `DrawBorder`, `DrawText`, `DrawImage`) that take a
   `Drawable` argument directly; the theme-key-based overloads land Phase 4.
 - Widgets: `Label`, `Button`, `ImageView`, `Panel`, `Spacer`, `Separator`
-  — each carries its own `Drawable Background` / `Color Foreground`
+  - each carries its own `Drawable Background` / `Color Foreground`
   fields (null → hardcoded defaults; null-fallback-to-theme added Phase 4)
 - Additional layouts: `GridLayout` (with two-pass Auto/Star), `FlowLayout`
   (wrap with primary/cross axis), `AbsoluteLayout`
 - `View.GetBaseline()` for typography-aware `LinearLayout` horizontal mode
 - Effective-enabled walk (parent-chain disable propagation)
 - **Debug overlays:** `ShowBounds`, `ShowPadding`, `ShowMargin`,
-  `ShowDrawablePadding`, `ShowZOrder` — pay for themselves immediately
+  `ShowDrawablePadding`, `ShowZOrder` - pay for themselves immediately
   while building later widgets
 
 **Tests (`Sedulous.UI.Tests/Drawing`, `/Layout`, `/Core`):**
@@ -1810,9 +1810,9 @@ demo page.
 - "Layouts" page with GridLayout/FlowLayout/AbsoluteLayout side-by-side
 - Debug-overlay toggle keys (F1=bounds, F2=padding, F3=margin, F4=drawable-padding, F5=z-order)
 
-## Phase 3 — Input + focus
+## Phase 3 - Input + focus
 
-> **Status: ✅ COMPLETE** — Focus restoration on overlay close deferred to
+> **Status: ✅ COMPLETE** - Focus restoration on overlay close deferred to
 > Phase 11. TextInputEventArgs deferred to Phase 10.
 
 With the runtime subsystem already established, this phase turns buttons
@@ -1836,7 +1836,7 @@ through to the tree.
   - `IsFocusWithin` (computed via parent chain)
   - HTML-style Tab order (TabIndex>0 sorted, TabIndex==0 tree order)
   - Focus restoration on overlay close
-  - Modal trap hook (no modal manager yet — that's Phase 11)
+  - Modal trap hook (no modal manager yet - that's Phase 11)
   - Tab vs Ctrl+Tab distinction reserved
 - `EffectiveCursor` walks parent chain
 - `UIContext.Focused`, `Hovered`, `Capturing` stored as `ViewId`,
@@ -1845,9 +1845,9 @@ through to the tree.
 - **Debug overlays:** `ShowHitTarget`, `ShowFocusPath`, `ShowTabOrder`
 
 **Code (`Sedulous.UI.Runtime`):**
-- `UIInputHelper` — real `Sedulous.Shell` event → `InputManager` wiring
+- `UIInputHelper` - real `Sedulous.Shell` event → `InputManager` wiring
   (was stubbed in Phase 1)
-- `InputMapping` — Shell `KeyCode` → UI `KeyCode` translation
+- `InputMapping` - Shell `KeyCode` → UI `KeyCode` translation
 - `UISubsystem` feeds pumped events into `InputManager` each frame
 
 **Tests (`Sedulous.UI.Tests/Input`, `/Focus`, `/Runtime`):**
@@ -1865,7 +1865,7 @@ through to the tree.
 - `UIInputHelper`: shell events arrive at the correct view
 
 **UISandbox:**
-- Existing Phase 2 pages gain interactivity — buttons actually respond
+- Existing Phase 2 pages gain interactivity - buttons actually respond
 - "Input" page: focus rings, hover-change demo, capture demo (slider
   thumb), tab-order visualization with DebugDraw overlays active
 - "Events" page showing a live log of routed events (capture/target/bubble
@@ -1890,9 +1890,9 @@ through to the tree.
 - "Events" page showing a live log of routed events (capture/target/bubble
   phases, Handled state)
 
-## Phase 4 — Theme system
+## Phase 4 - Theme system
 
-> **Status: ✅ COMPLETE** — Theme XML parser deferred to Phase 6. Theme
+> **Status: ✅ COMPLETE** - Theme XML parser deferred to Phase 6. Theme
 > XML round-trip test deferred with it.
 
 **Code (`Sedulous.UI`):**
@@ -1926,9 +1926,9 @@ through to the tree.
 - All widgets from Phase 2/3 retrofit to go through theme
   (hardcoded defaults removed)
 
-## Phase 5 — XML UI loading + view registry
+## Phase 5 - XML UI loading + view registry
 
-> **Status: ✅ COMPLETE** — `{Binding Path}` syntax and `<Include Source=...>`
+> **Status: ✅ COMPLETE** - `{Binding Path}` syntax and `<Include Source=...>`
 > deferred. Both need infrastructure not yet built (observable bindings,
 > file I/O integration).
 
@@ -1956,9 +1956,9 @@ Declarative UIs, file-I/O-free (parsing only).
   rendered tree. Edit XML in a scratch file, reload via button (full
   hot reload comes with resource integration in Phase 6).
 
-## Phase 6 — Resource integration
+## Phase 6 - Resource integration
 
-> **Status: ✅ COMPLETE** — Hot-reload file watching deferred to Phase 7
+> **Status: ✅ COMPLETE** - Hot-reload file watching deferred to Phase 7
 > (needs engine FileWatcher). `<Include Source=...>` in layout XML
 > deferred (needs file I/O resolution path).
 
@@ -1980,7 +1980,7 @@ Declarative UIs, file-I/O-free (parsing only).
   demonstrates hot reload by editing the theme file (color change visible
   without restart).
 
-## Phase 7 — Engine integration
+## Phase 7 - Engine integration
 
 > **Status: ✅ COMPLETE**
 
@@ -1990,15 +1990,15 @@ integration with screen-space and world-space UI.
 **Code (`Sedulous.Engine.UI`):**
 - `EngineUISubsystem` (ISceneAware, IWindowAware, UpdateOrder 400)
   owns shared UIContext, FontService, ScreenUIView, WorldUIPass
-- `ScreenUIView` implements `IRenderOverlay` — renders VG geometry
+- `ScreenUIView` implements `IRenderOverlay` - renders VG geometry
   onto swapchain after 3D scene blit, before present
-- `UIComponent` — world-space UI component (pixel/world dims,
+- `UIComponent` - world-space UI component (pixel/world dims,
   per-component UIContext, RootView, VGContext, VGRenderer, texture)
-- `UIComponentManager` — per-scene ComponentManager<UIComponent>,
+- `UIComponentManager` - per-scene ComponentManager<UIComponent>,
   creates GPU resources + SpriteComponent per component on init
-- `WorldUIPass` — PipelinePass that renders dirty world UI views to
+- `WorldUIPass` - PipelinePass that renders dirty world UI views to
   their textures via the render graph (ImportTarget + RequireReadableAfterWrite)
-- World UI input raycasting — ray-plane intersection supporting all
+- World UI input raycasting - ray-plane intersection supporting all
   three SpriteOrientation modes (CameraFacing, CameraFacingY, WorldAligned),
   routes mouse events to per-component UIContext InputManager
 - Per-component UIContext with shared theme (SetTheme ownership model)
@@ -2009,7 +2009,7 @@ integration with screen-space and world-space UI.
   blocks entire subtree
 
 **Code (`Sedulous.UI`):**
-- `UIContext.SetTheme(theme, ownsTheme)` — explicit ownership flag,
+- `UIContext.SetTheme(theme, ownsTheme)` - explicit ownership flag,
   replaces property setter. Enables safe theme sharing across contexts.
 
 **Code (`Foundation/Sedulous.Renderer`):**
@@ -2022,7 +2022,7 @@ integration with screen-space and world-space UI.
 - F1 toggles debug bounds overlay
 - IsMouseOverUI blocks camera look and nav agent click
 
-## Phase 8 — Scrolling
+## Phase 8 - Scrolling
 
 **Code (`Sedulous.UI`):**
 - `MomentumHelper` struct (kinetic friction-decay scroll)
@@ -2049,7 +2049,7 @@ integration with screen-space and world-space UI.
 - "Scrolling" page: long content in `ScrollView` with various policies.
   Mouse wheel, drag on scrollbar, momentum after drag release.
 
-## Phase 9 — Adapters + virtualization
+## Phase 9 - Adapters + virtualization
 
 `ListView` + `TreeView` powered by adapters.
 
@@ -2081,7 +2081,7 @@ integration with screen-space and world-space UI.
 - "Tree View" page: filesystem-like browser using `ITreeAdapter` with
   lazy expansion. Selection survives expand/collapse.
 
-## Phase 10 — Text editing
+## Phase 10 - Text editing
 
 **Code (`Sedulous.UI`):**
 - `TextEditingBehavior` + `ITextEditHost` interface
@@ -2118,7 +2118,7 @@ integration with screen-space and world-space UI.
   selection, copy/paste. Also `PasswordBox`, numeric-only input
   (`InputFilter.Digits`), and UTF-8 stress text (emoji, diacritics).
 
-## Phase 11 — Overlays / popups / dialogs / menus / tooltips
+## Phase 11 - Overlays / popups / dialogs / menus / tooltips
 
 **Code (`Sedulous.UI`):**
 - `PopupLayer` with three-state hit-test (empty/normal/modal)
@@ -2154,7 +2154,7 @@ integration with screen-space and world-space UI.
   right-click with nested submenus (hover-open), tooltips on every
   button, modal test.
 
-## Phase 12 — Animation + transitions
+## Phase 12 - Animation + transitions
 
 **Code (`Sedulous.UI`):**
 - `Animation` base class with virtual `Apply(t)` and `ElementHandle<View>` target
@@ -2188,7 +2188,7 @@ integration with screen-space and world-space UI.
   demo (card flip-in sequence), parallel storyboard (multiple properties
   tweening together), custom easing curves comparison.
 
-## Phase 13 — Drag and drop
+## Phase 13 - Drag and drop
 
 **Code (`Sedulous.UI`):**
 - `DragData` (format-string keyed dictionary)
@@ -2216,7 +2216,7 @@ integration with screen-space and world-space UI.
   same container (tests drag-source-as-drop-target), cross-container
   drag (move from left list to right), tab-drag to rearrange tabs.
 
-## Phase 14 — Toolkit + Gamekit + polish
+## Phase 14 - Toolkit + Gamekit + polish
 
 Now that the core framework is complete, spin up the two supporting
 libraries and the final polish items.
@@ -2230,7 +2230,7 @@ libraries and the final polish items.
 - **UI Tree Inspector:** floating debug panel (collapsible hierarchy,
   properties pane with theme keys / computed bounds / focus state /
   dirty flags / binding sources / recycler stats). Built entirely from
-  framework primitives — eats its own dog food.
+  framework primitives - eats its own dog food.
 
 **Code (`Sedulous.UI.Gamekit`):**
 - HUD widgets: `HealthBar`, `ManaBar`, `StaminaBar`
@@ -2248,9 +2248,9 @@ libraries and the final polish items.
   field + a way to export a tree description)
 
 **Tests:**
-- `Sedulous.UI.Tests/Toolkit/` — DockManager split/merge, PropertyGrid
+- `Sedulous.UI.Tests/Toolkit/` - DockManager split/merge, PropertyGrid
   field enumeration, DataGrid column resize math
-- `Sedulous.UI.Tests/Gamekit/` — HealthBar value clamping, RadialGauge
+- `Sedulous.UI.Tests/Gamekit/` - HealthBar value clamping, RadialGauge
   angle math
 
 **UISandbox (gallery finale):**
@@ -2260,7 +2260,7 @@ libraries and the final polish items.
 - "Gamekit" page: HUD showcase with health/mana/stamina bars, action
   bar, animated damage numbers, radial gauge
 - "Sample Game UI" page: pause menu, inventory grid, dialog boxes, with
-  world-space nameplates floating over demo entities — all wired through
+  world-space nameplates floating over demo entities - all wired through
   bindings to mock game state
 - Gamepad navigation works across all pages
 
@@ -2269,24 +2269,24 @@ libraries and the final polish items.
 All design decisions resolved; ready to start.
 
 **Philosophy: sandbox runs from Phase 1.** `Sedulous.UI.Runtime` and
-`UISandbox` are established on day one — the sandbox is a running,
+`UISandbox` are established on day one - the sandbox is a running,
 rendering app from the first phase. Every later phase just grows the
 framework while the sandbox keeps working. No "big bang" moment where
 everything suddenly needs to integrate.
 
-1. **Phase 1** (foundation + runtime + first-light sandbox) — COMPLETE
-2. **Phase 2** (drawables + full widget set + layouts + debug overlays) — COMPLETE
-3. **Phase 3** (input + focus) — COMPLETE
-4. **Phases 4-5** (theme + XML parsing) — COMPLETE
-5. **Phase 6** (resource integration) — COMPLETE
-6. **Phases 8-9** (scrolling + virtualization) — COMPLETE
-7. **Phase 11** (overlays + controls + legacy adoption) — COMPLETE
-8. **Phase 10** (text editing + Sedulous.UI.Shell) — COMPLETE
-9. **Phase 12** (animation + transitions) — COMPLETE
-10. **Phase 13** (drag and drop + DPI wiring) — COMPLETE
-11. **Phase 7** (engine integration) — deferred until enough UI
+1. **Phase 1** (foundation + runtime + first-light sandbox) - COMPLETE
+2. **Phase 2** (drawables + full widget set + layouts + debug overlays) - COMPLETE
+3. **Phase 3** (input + focus) - COMPLETE
+4. **Phases 4-5** (theme + XML parsing) - COMPLETE
+5. **Phase 6** (resource integration) - COMPLETE
+6. **Phases 8-9** (scrolling + virtualization) - COMPLETE
+7. **Phase 11** (overlays + controls + legacy adoption) - COMPLETE
+8. **Phase 10** (text editing + Sedulous.UI.Shell) - COMPLETE
+9. **Phase 12** (animation + transitions) - COMPLETE
+10. **Phase 13** (drag and drop + DPI wiring) - COMPLETE
+11. **Phase 7** (engine integration) - deferred until enough UI
     capability exists to build real game UIs.
-12. **Phase 14** (Toolkit + Gamekit + polish) — IN PROGRESS
+12. **Phase 14** (Toolkit + Gamekit + polish) - IN PROGRESS
 
 **Phases 1-13 are COMPLETE.** Phase 14 is in progress.
 
@@ -2294,7 +2294,7 @@ everything suddenly needs to integrate.
 - Toolkit controls: SplitView, Toolbar, StatusBar, MenuBar, ColorPicker,
   DraggableTreeView, PropertyGrid (6 typed editors)
 - Docking system: DockManager, DockSplit, DockTabGroup, DockablePanel,
-  FloatingWindow, DockZoneIndicator — fully ported from legacy
+  FloatingWindow, DockZoneIndicator - fully ported from legacy
 - Multi-window OS floating windows: UIContext multi-root, View.Root,
   IFloatingWindowHost, IMouse.GlobalX/GlobalY, cross-window drag
 - DockView layout (DockPanel equivalent)
@@ -2318,7 +2318,7 @@ everything suddenly needs to integrate.
 
 ## Remaining Work
 
-### Phase 14 — Still open
+### Phase 14 - Still open
 
 | Item | Priority | Notes |
 |------|----------|-------|
@@ -2328,16 +2328,16 @@ everything suddenly needs to integrate.
 | **FileBrowser / AssetBrowser** | Low | Generic data-model-driven browser. Needs design brainstorming. |
 | **UI Tree Inspector** | Low | Debug panel showing live view tree + properties. Follow-up. |
 
-### Phase 7 — Engine Integration
+### Phase 7 - Engine Integration
 
 **✅ COMPLETE.** Screen-space and world-space UI both working.
 
 - Renamed `Sedulous.Engine.GUI` → `Sedulous.Engine.UI`
 - `EngineUISubsystem` (ISceneAware, IWindowAware, UpdateOrder 400)
 - `ScreenUIView` as `IRenderOverlay` after 3D scene blit
-- `UIComponent` + `UIComponentManager` — per-component UIContext,
+- `UIComponent` + `UIComponentManager` - per-component UIContext,
   RootView, VGContext, VGRenderer, render texture, SpriteComponent
-- `WorldUIPass` — render-to-texture via render graph
+- `WorldUIPass` - render-to-texture via render graph
 - World UI input raycasting with all billboard modes
 - Per-component UIContext with shared theme (`SetTheme` ownership model)
 - `IsHitTestVisible` per-view, `IsInteractionEnabled` subtree block
@@ -2663,7 +2663,7 @@ infrastructure lands or when the feature becomes blocking.
 
 | Item | Reason | Where it fits |
 |------|--------|---------------|
-| `Alignment` value type | Gravity covers H+V alignment + fill. Separate type is redundant. | **Dropped** — not needed |
+| `Alignment` value type | Gravity covers H+V alignment + fill. Separate type is redundant. | **Dropped** - not needed |
 
 ### From Phase 3
 
@@ -2671,13 +2671,13 @@ infrastructure lands or when the feature becomes blocking.
 |------|--------|---------------|
 | Focus restoration on overlay close | Needs PopupLayer + modal stack | Phase 11 (Overlays) |
 | `TextInputEventArgs` | Needs text input pipeline | Phase 10 (Text Editing) |
-| Debug overlay `ShowTabOrder` rendering | Flag exists but renderer not implemented | Low priority — pick up when tab order bugs arise |
+| Debug overlay `ShowTabOrder` rendering | Flag exists but renderer not implemented | Low priority - pick up when tab order bugs arise |
 
 ### From Phase 4
 
 | Item | Reason | Where it fits |
 |------|--------|---------------|
-| Theme XML round-trip test (parse → serialize → parse) | Needs XML writer for themes; ThemeXmlParser only reads | Future — add `ThemeXmlWriter` when theme editing is needed |
+| Theme XML round-trip test (parse → serialize → parse) | Needs XML writer for themes; ThemeXmlParser only reads | Future - add `ThemeXmlWriter` when theme editing is needed |
 
 ### From Phase 5
 
@@ -2691,15 +2691,15 @@ infrastructure lands or when the feature becomes blocking.
 | Item | Reason | Where it fits |
 |------|--------|---------------|
 | Hot-reload file watching | Needs engine `FileWatcher` infrastructure | Phase 7 (Engine Integration) |
-| `<Include Source=...>` in layout XML | Same as Phase 5 deferral — needs file path resolution | Phase 7 |
+| `<Include Source=...>` in layout XML | Same as Phase 5 deferral - needs file path resolution | Phase 7 |
 
 ### Debug overlays not yet rendering
 
 These flags exist in `UIDebugDrawSettings` but `UIDebugOverlay` does
 not implement their rendering yet:
 
-- `ShowZOrder` — numbered overlay showing draw order
-- `ShowTabOrder` — numbered arrows showing focus traversal order
+- `ShowZOrder` - numbered overlay showing draw order
+- `ShowTabOrder` - numbered arrows showing focus traversal order
 
 Both are low priority. Implement when debugging those specific
 behaviors becomes necessary.
@@ -2708,56 +2708,56 @@ behaviors becomes necessary.
 ## Legacy Comparison: Items Worth Adopting
 
 Detailed comparison of current implementation against BansheeBeef's
-legacy Sedulous.UI. Items organized by priority. Pick selectively —
+legacy Sedulous.UI. Items organized by priority. Pick selectively -
 not everything needs to be adopted.
 
 ### Critical (load-bearing for correctness)
 
 | # | Item | Area | Status |
 |---|------|------|--------|
-| C1 | **OnInterceptMouseEvent hook** | ViewGroup | DONE — virtual method on ViewGroup |
-| C2 | **Render Transform support** | View | DONE — RenderTransform + RenderTransformOrigin |
-| C3 | **Full event bubbling with coordinate recalculation** | InputManager | DONE — audited; BubbleMouseDown recalculates via ToLocal per parent, correct |
-| C4 | **ProcessTextInput method** | InputManager | DONE — routes char32 to focused view |
-| C5 | **Modal popup awareness in tab navigation** | FocusManager | DONE — GetFocusRoot constrains to modal |
-| C6 | **DeletedThisFrame tracking** | MutationQueue | DONE — NotifyDeleted + DeletedThisFrameCount |
-| C7 | **Alpha property** | View | DONE — clamped 0-1 on View |
+| C1 | **OnInterceptMouseEvent hook** | ViewGroup | DONE - virtual method on ViewGroup |
+| C2 | **Render Transform support** | View | DONE - RenderTransform + RenderTransformOrigin |
+| C3 | **Full event bubbling with coordinate recalculation** | InputManager | DONE - audited; BubbleMouseDown recalculates via ToLocal per parent, correct |
+| C4 | **ProcessTextInput method** | InputManager | DONE - routes char32 to focused view |
+| C5 | **Modal popup awareness in tab navigation** | FocusManager | DONE - GetFocusRoot constrains to modal |
+| C6 | **DeletedThisFrame tracking** | MutationQueue | DONE - NotifyDeleted + DeletedThisFrameCount |
+| C7 | **Alpha property** | View | DONE - clamped 0-1 on View |
 
 ### High Priority (significant functionality gaps)
 
 | # | Item | Area | Status |
 |---|------|------|--------|
-| H1 | **ListView keyboard navigation** | ListView | DONE — Up/Down/PageUp/PageDown/Home/End with selection |
-| H2 | **ListView.ScrollToPosition(int)** | ListView | DONE — scrolls adapter position into view |
-| H3 | **Theme-aware rendering helpers** | UIDrawContext | DONE — FillThemedBox + DrawFocusRing on UIDrawContext |
-| H4 | **MeasureChild / MeasureChildWithMargins helpers** | ViewGroup | DONE — both helpers on ViewGroup |
-| H5 | **MomentumHelper.IsActive threshold** | MomentumHelper | DONE — StopThreshold check |
-| H6 | **SelectionModel.ShiftIndices guard** | SelectionModel | DONE — negative index guard |
-| H7 | **Tooltip integration in InputManager** | InputManager | DONE — OnMouseDown hides tooltip, TooltipText used |
-| H8 | **Cursor management in InputManager** | InputManager | DONE — CurrentCursor property updated from EffectiveCursor |
-| H9 | **Event args with timestamps** | Input | DONE — Timestamp on MouseEventArgs + KeyEventArgs |
-| H10 | **ScrollView.ScrollToView(child)** | ScrollView | DONE — scrolls child into viewport |
+| H1 | **ListView keyboard navigation** | ListView | DONE - Up/Down/PageUp/PageDown/Home/End with selection |
+| H2 | **ListView.ScrollToPosition(int)** | ListView | DONE - scrolls adapter position into view |
+| H3 | **Theme-aware rendering helpers** | UIDrawContext | DONE - FillThemedBox + DrawFocusRing on UIDrawContext |
+| H4 | **MeasureChild / MeasureChildWithMargins helpers** | ViewGroup | DONE - both helpers on ViewGroup |
+| H5 | **MomentumHelper.IsActive threshold** | MomentumHelper | DONE - StopThreshold check |
+| H6 | **SelectionModel.ShiftIndices guard** | SelectionModel | DONE - negative index guard |
+| H7 | **Tooltip integration in InputManager** | InputManager | DONE - OnMouseDown hides tooltip, TooltipText used |
+| H8 | **Cursor management in InputManager** | InputManager | DONE - CurrentCursor property updated from EffectiveCursor |
+| H9 | **Event args with timestamps** | Input | DONE - Timestamp on MouseEventArgs + KeyEventArgs |
+| H10 | **ScrollView.ScrollToView(child)** | ScrollView | DONE - scrolls child into viewport |
 
 ### Medium Priority (API completeness)
 
 | # | Item | Area | Status |
 |---|------|------|--------|
-| M1 | **ScrollBar.SmallChange / LargeChange** | ScrollBar | DONE — SmallChange + auto LargeChange (90% viewport) |
-| M2 | **ScrollBar.Min property** | ScrollBar | DONE — arbitrary scroll range support |
-| M3 | **ScrollBar page-click behavior** | ScrollBar | DONE — pages by LargeChange on track click |
-| M4 | **ScrollView convenience methods** | ScrollView | DONE — ScrollToTop/Bottom/Left/Right |
-| M5 | **ScrollView.SetContent()** | ScrollView | DONE — clears children and sets single content |
-| M6 | **SelectionModel.SelectedPositions** | SelectionModel | DONE — returns full HashSet |
-| M7 | **Button.Command (ICommand)** | Button | DONE — ICommand + auto-disable via CanExecute |
-| M8 | **ScanCode on KeyEventArgs** | Input | DONE — int32 ScanCode field |
-| M9 | **Multi-window support architecture** | UIContext | DONE — multi-root, AddRootView/RemoveRootView, IFloatingWindowHost, OS floating windows |
-| M10 | **AnimationManager in UIContext** | UIContext | DONE — Phase 12 |
+| M1 | **ScrollBar.SmallChange / LargeChange** | ScrollBar | DONE - SmallChange + auto LargeChange (90% viewport) |
+| M2 | **ScrollBar.Min property** | ScrollBar | DONE - arbitrary scroll range support |
+| M3 | **ScrollBar page-click behavior** | ScrollBar | DONE - pages by LargeChange on track click |
+| M4 | **ScrollView convenience methods** | ScrollView | DONE - ScrollToTop/Bottom/Left/Right |
+| M5 | **ScrollView.SetContent()** | ScrollView | DONE - clears children and sets single content |
+| M6 | **SelectionModel.SelectedPositions** | SelectionModel | DONE - returns full HashSet |
+| M7 | **Button.Command (ICommand)** | Button | DONE - ICommand + auto-disable via CanExecute |
+| M8 | **ScanCode on KeyEventArgs** | Input | DONE - int32 ScanCode field |
+| M9 | **Multi-window support architecture** | UIContext | DONE - multi-root, AddRootView/RemoveRootView, IFloatingWindowHost, OS floating windows |
+| M10 | **AnimationManager in UIContext** | UIContext | DONE - Phase 12 |
 
 ### Things We Do Better (keep as-is)
 
 | Item | Why ours is better |
 |------|-------------------|
-| **Visual children abstraction** | `VisualChildCount`/`GetVisualChild` distinguishes logical from auxiliary views (scrollbars, internal controls). Legacy has no equivalent — every auxiliary view needs manual wiring. |
+| **Visual children abstraction** | `VisualChildCount`/`GetVisualChild` distinguishes logical from auxiliary views (scrollbars, internal controls). Legacy has no equivalent - every auxiliary view needs manual wiring. |
 | **Deferred mutation convenience** | `View.QueueRemove()`/`QueueDestroy()`/`QueueFocus()` directly on View. Legacy requires going through ViewGroup/MutationQueue. |
 | **Auto-reparenting** | `AddView` automatically detaches child from previous parent. Legacy requires manual management. |
 | **Explicit phase tracking** | `UIPhase` enum makes the frame lifecycle debuggable. Legacy has no equivalent. |

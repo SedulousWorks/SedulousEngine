@@ -60,7 +60,7 @@ class DX12DescriptorStaging
 			int32 newBlock = mGpuHeap.Allocate(newCapacity);
 			if (newBlock < 0) return -1;
 
-			// Retire old block — don't free it yet, GPU may still reference staged descriptors
+			// Retire old block - don't free it yet, GPU may still reference staged descriptors
 			mRetiredBlocks.Add(.() { Offset = mBlockOffset, Capacity = mCapacity });
 			mBlockOffset = newBlock;
 			mCapacity = newCapacity;

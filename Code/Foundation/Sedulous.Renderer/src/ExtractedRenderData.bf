@@ -8,14 +8,14 @@ using Sedulous.Core.Mathematics;
 /// Component managers add data during extraction (PostTransform phase).
 /// The renderer sorts and batches before passes execute.
 ///
-/// Storage is polymorphic — each category holds a List<RenderData>, and entries
+/// Storage is polymorphic - each category holds a List<RenderData>, and entries
 /// are subclasses (MeshRenderData, LightRenderData, DecalRenderData, etc.).
 /// The RenderData instances are allocated from RenderContext.FrameAllocator and
-/// are only valid until the next BeginFrame() — Clear() drops the references
+/// are only valid until the next BeginFrame() - Clear() drops the references
 /// before the allocator is reset.
 public class ExtractedRenderData
 {
-	// Per-category storage (polymorphic — each entry is a RenderData subclass).
+	// Per-category storage (polymorphic - each entry is a RenderData subclass).
 	// Lists themselves are retained across frames; element pointers come from the
 	// frame allocator and are dropped on Clear().
 	private List<RenderData>[RenderCategories.Count] mCategories;
@@ -73,7 +73,7 @@ public class ExtractedRenderData
 	// ==================== Adding Data ====================
 
 	/// Adds a render data entry to a category.
-	/// The data pointer must have been allocated from RenderContext.FrameAllocator —
+	/// The data pointer must have been allocated from RenderContext.FrameAllocator -
 	/// it is held by reference until Clear() is called.
 	public void Add(RenderDataCategory category, RenderData data)
 	{
@@ -112,7 +112,7 @@ public class ExtractedRenderData
 	// ==================== Accessing Data ====================
 
 	/// Gets the (sorted) render data list for a category.
-	/// Entries are base RenderData — cast to the concrete subclass expected for the category.
+	/// Entries are base RenderData - cast to the concrete subclass expected for the category.
 	public List<RenderData> GetBatch(RenderDataCategory category)
 	{
 		if (category.Value < RenderCategories.Count)

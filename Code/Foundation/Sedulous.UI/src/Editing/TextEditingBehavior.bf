@@ -314,7 +314,7 @@ public class TextEditingBehavior
 		let curY = mHost.GetCursorYPosition(mCursorPos);
 		let lineH = mHost.LineHeight;
 
-		// Already on the first line — do nothing.
+		// Already on the first line - do nothing.
 		if (curY < lineH * 0.5f)
 			return;
 
@@ -334,7 +334,7 @@ public class TextEditingBehavior
 			if (c == '\n') totalLines++;
 		let currentLine = (int32)(curY / lineH);
 
-		// Already on the last line — do nothing.
+		// Already on the last line - do nothing.
 		if (currentLine >= totalLines - 1)
 			return;
 

@@ -207,7 +207,7 @@ public class ViewGroup : View
 		}
 	}
 
-	// === Hit testing (reverse order — topmost visual child first, matching draw order) ===
+	// === Hit testing (reverse order - topmost visual child first, matching draw order) ===
 
 	public override View HitTest(Vector2 localPoint)
 	{
@@ -219,7 +219,7 @@ public class ViewGroup : View
 			localPoint.X >= Width || localPoint.Y >= Height)
 			return null;
 
-		// Always test children — even if this container isn't a hit target.
+		// Always test children - even if this container isn't a hit target.
 		let count = VisualChildCount;
 		for (int i = count - 1; i >= 0; i--)
 		{
@@ -254,7 +254,7 @@ public class ViewGroup : View
 				return hit;
 		}
 
-		// IsHitTestVisible gates only this view — children were already tested above.
+		// IsHitTestVisible gates only this view - children were already tested above.
 		return IsHitTestVisible ? this : null;
 	}
 

@@ -4,7 +4,7 @@ using System;
 using System.Collections;
 
 /// Manages active animations. Owned by UIContext and ticked each frame.
-/// Owns animations — deletes on completion or cancellation.
+/// Owns animations - deletes on completion or cancellation.
 public class AnimationManager
 {
 	private List<Animation> mAnimations = new .() ~ DeleteContainerAndItems!(_);

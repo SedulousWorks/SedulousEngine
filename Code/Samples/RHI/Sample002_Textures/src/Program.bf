@@ -7,7 +7,7 @@ using SampleFramework;
 
 class TextureSample : SampleApp
 {
-	// Textured quad HLSL — texture + sampler in bind group 0.
+	// Textured quad HLSL - texture + sampler in bind group 0.
 	const String cShaderSource = """
 		Texture2D gTexture : register(t0, space0);
 		SamplerState gSampler : register(s0, space0);
@@ -70,7 +70,7 @@ class TextureSample : SampleApp
 
 	public this()  { }
 
-	protected override StringView Title => "Sample002 — Textured Quad";
+	protected override StringView Title => "Sample002 - Textured Quad";
 
 	protected override Result<void> OnInit()
 	{

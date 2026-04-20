@@ -5,10 +5,10 @@ Current performance baseline (Release, no shadows, all objects visible):
 - CPU work: 14.6ms | GPU wait: 11.7ms
 
 Old engine comparison (Debug, no shadows, 48k):
-- Old engine: 26.5ms | New engine: 22.4ms — **new engine is 15% faster**
+- Old engine: 26.5ms | New engine: 22.4ms - **new engine is 15% faster**
 
 With shadows (Debug, 48k):
-- Old engine: 74ms | New engine: 48ms — **new engine is 35% faster**
+- Old engine: 74ms | New engine: 48ms - **new engine is 35% faster**
 
 ---
 
@@ -49,7 +49,7 @@ With shadows (Debug, 48k):
 
 ## Phase 3: LOD System
 
-**Target:** GPU wait (11.7ms) — reduce triangle count for distant objects
+**Target:** GPU wait (11.7ms) - reduce triangle count for distant objects
 
 **Problem:** All 56k spheres use the same high-poly mesh regardless of distance from camera. The GPU rasterizes the same triangle count for a sphere 1 unit away and one 200 units away.
 
@@ -67,9 +67,9 @@ With shadows (Debug, 48k):
 
 ## Phase 4: Shadow Cascade Culling
 
-**Target:** ShadowRender with cascaded shadows — reduce per-cascade GPU work
+**Target:** ShadowRender with cascaded shadows - reduce per-cascade GPU work
 
-**Problem:** All meshes are copied into every shadow view via `CopyShadowData`, regardless of whether they intersect the cascade's frustum. Cascade 0 covers near objects, cascade 3 covers far objects — most meshes are outside any given cascade.
+**Problem:** All meshes are copied into every shadow view via `CopyShadowData`, regardless of whether they intersect the cascade's frustum. Cascade 0 covers near objects, cascade 3 covers far objects - most meshes are outside any given cascade.
 
 **Approach:**
 - During `CopyShadowData`, test each mesh's bounding sphere against the cascade's view-projection frustum
@@ -111,7 +111,7 @@ With shadows (Debug, 48k):
 - Upload all instance data to a GPU buffer unconditionally
 - Compute shader performs frustum culling + LOD selection + compaction
 - Output to an indirect draw argument buffer (`DrawIndexedIndirect`)
-- CPU issues a single indirect draw per mesh type — no per-entity CPU work
+- CPU issues a single indirect draw per mesh type - no per-entity CPU work
 - Integrates with Hi-Z occlusion culling (use depth from previous frame)
 
 **Expected savings:** CPU extraction + culling → near-zero. GPU culling is massively parallel.

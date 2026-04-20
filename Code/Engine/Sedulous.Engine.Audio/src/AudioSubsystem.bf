@@ -22,7 +22,7 @@ class AudioSubsystem : Subsystem, ISceneAware
 
 	private IAudioSystem mAudioSystem ~ { _?.Dispose(); delete _; };
 	private AudioClipResourceManager mClipResourceManager ~ delete _;
-	/// Current music stream (owned by IAudioSystem, not by us — don't delete).
+	/// Current music stream (owned by IAudioSystem, not by us - don't delete).
 	private IAudioStream mCurrentMusic;
 
 	// --- Volume Categories ---

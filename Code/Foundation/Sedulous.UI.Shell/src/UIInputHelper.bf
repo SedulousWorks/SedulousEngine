@@ -101,7 +101,7 @@ public class UIInputHelper
 	/// must be transformed to a different window's coordinate space.
 	public void ProcessMouseInput(IMouse mouse, UIContext context, float overrideX, float overrideY)
 	{
-		// Mouse move — only when mouse actually moved.
+		// Mouse move - only when mouse actually moved.
 		if (mouse.DeltaX != 0 || mouse.DeltaY != 0)
 			context.InputManager.ProcessMouseMove(overrideX, overrideY);
 

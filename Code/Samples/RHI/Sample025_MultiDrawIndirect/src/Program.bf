@@ -63,7 +63,7 @@ class MultiDrawIndirectSample : SampleApp
 
 	public this() { }
 
-	protected override StringView Title => "Sample025 — Multi-Draw Indirect & Lines";
+	protected override StringView Title => "Sample025 - Multi-Draw Indirect & Lines";
 
 	protected override Result<void> OnInit()
 	{
@@ -205,7 +205,7 @@ class MultiDrawIndirectSample : SampleApp
 
 	private Result<void> CreateIndirectBuffer()
 	{
-		// 4 indirect draw commands — one per quad
+		// 4 indirect draw commands - one per quad
 		DrawIndexedIndirectArgs[4] args = .(
 			.() { IndexCountPerInstance = 6, InstanceCount = 1, StartIndexLocation = 0,  BaseVertexLocation = 0,  StartInstanceLocation = 0 },
 			.() { IndexCountPerInstance = 6, InstanceCount = 1, StartIndexLocation = 6,  BaseVertexLocation = 0,  StartInstanceLocation = 0 },

@@ -80,7 +80,7 @@ struct PendingDeletion
 /// Manages GPU resources (meshes, textures, bone buffers) with handle-based access,
 /// reference counting, and deferred deletion.
 ///
-/// Scene-independent — takes raw data, returns handles.
+/// Scene-independent - takes raw data, returns handles.
 /// The engine bridge layer converts CPU resources to upload descriptors.
 public class GPUResourceManager : IDisposable
 {

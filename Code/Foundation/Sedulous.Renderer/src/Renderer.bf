@@ -35,14 +35,14 @@ public interface IRenderingPipeline
 
 /// Flags passed to Renderer.RenderBatch to convey pass-level hints.
 /// The same renderer is invoked by multiple passes (depth prepass, forward opaque,
-/// forward transparent, shadow caster, etc.) — these flags let the renderer adjust
+/// forward transparent, shadow caster, etc.) - these flags let the renderer adjust
 /// per-draw behavior without needing pass-specific subclasses.
 public enum RenderBatchFlags : uint32
 {
 	None = 0,
 
 	/// The pass binds material bind groups (forward / color passes).
-	/// Depth-only passes leave this off — the shader doesn't read material textures.
+	/// Depth-only passes leave this off - the shader doesn't read material textures.
 	BindMaterial = 1,
 }
 
@@ -72,7 +72,7 @@ public abstract class Renderer
 
 	/// Draws a batch of render data entries.
 	///
-	/// The batch is the full category list — the renderer is responsible for casting
+	/// The batch is the full category list - the renderer is responsible for casting
 	/// entries to its concrete type and skipping mismatches. This keeps the pipeline
 	/// dispatch zero-copy (no filtered sub-span allocation per call).
 	public abstract void RenderBatch(

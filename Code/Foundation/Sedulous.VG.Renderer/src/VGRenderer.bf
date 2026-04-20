@@ -19,7 +19,7 @@ struct VGUniforms
 /// Renders VGContext/VGBatch content using RHI.
 /// Creates GPU vertex/index buffers, uploads per-frame, and renders with alpha blending.
 /// Creates GPU textures on demand from IImageData provided by the VGBatch.
-/// Does NOT own the device or swapchain — caller manages those.
+/// Does NOT own the device or swapchain - caller manages those.
 public class VGRenderer : IDisposable
 {
 	private IDevice mDevice;
@@ -43,7 +43,7 @@ public class VGRenderer : IDisposable
 	// Sampler
 	private ISampler mSampler;
 
-	// Texture cache — maps IImageData to GPU resources.
+	// Texture cache - maps IImageData to GPU resources.
 	// Using a list since IImageData doesn't implement IHashable.
 	private List<CachedTexture> mTextureCache = new .() ~ { for (var e in _) { e.Dispose(mDevice, mFrameCount); delete e; } delete _; };
 
@@ -279,7 +279,7 @@ public class VGRenderer : IDisposable
 			}
 			else if (cmd.ClipMode == .Scissor)
 			{
-				// Empty/invalid clip rect — hide everything
+				// Empty/invalid clip rect - hide everything
 				renderPass.SetScissor(0, 0, 0, 0);
 			}
 			else

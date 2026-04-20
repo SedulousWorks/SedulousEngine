@@ -183,7 +183,7 @@ public class DockablePanel : ViewGroup, IDragSource
 
 	public View CreateDragVisual(DragData data)
 	{
-		// If dragging from a floating window, suppress the adorner —
+		// If dragging from a floating window, suppress the adorner -
 		// we'll move the actual FloatingWindow instead.
 		if (Parent is FloatingWindow)
 			return null;

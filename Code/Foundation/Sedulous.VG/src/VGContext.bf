@@ -42,7 +42,7 @@ public class VGContext
 	private float mTolerance = 0.05f;
 
 	/// The font service used by the convenience CachedFont text overloads.
-	/// Null when not provided — low-level text overloads still work.
+	/// Null when not provided - low-level text overloads still work.
 	public IFontService FontService => mFontService;
 
 	public this(IFontService fontService = null)
@@ -398,7 +398,7 @@ public class VGContext
 	}
 
 	/// Draw a border rectangle with the stroke fully *inside* the rect bounds.
-	/// Unlike StrokeRect (which centers the stroke on the edges — half inside,
+	/// Unlike StrokeRect (which centers the stroke on the edges - half inside,
 	/// half outside), DrawBorderRect insets by half-thickness so the outer
 	/// stroke edge aligns exactly with the rect. Use this for UI borders
 	/// where content lives at rect + thickness.
@@ -414,7 +414,7 @@ public class VGContext
 	}
 
 	/// Draw a rounded border rectangle with the stroke fully inside the rect.
-	/// See DrawBorderRect — same inset behavior with a uniform corner radius.
+	/// See DrawBorderRect - same inset behavior with a uniform corner radius.
 	public void DrawBorderRoundedRect(RectangleF rect, float radius, Color color, float thickness = 1.0f)
 	{
 		DrawBorderRoundedRect(rect, CornerRadii(radius), color, thickness);
@@ -444,7 +444,7 @@ public class VGContext
 	// Build one-off shapes without the PathBuilder + Path + defer-delete
 	// ceremony. The reusable mCurrentPath is reset per BeginPath, so the
 	// only per-shape allocation is the Path snapshot that Fill/Stroke
-	// finalize with (same cost as the manual pattern it replaces — that
+	// finalize with (same cost as the manual pattern it replaces - that
 	// can be optimized later by teaching the tessellators to consume
 	// builder data directly).
 
@@ -618,7 +618,7 @@ public class VGContext
 	// === Text ===
 
 	/// Draw text at a baseline position using a pre-rendered font atlas.
-	/// Low-level entry point — takes atlas and atlas texture directly.
+	/// Low-level entry point - takes atlas and atlas texture directly.
 	/// The position is the origin of the first glyph's baseline.
 	public void DrawText(StringView text, IFontAtlas atlas, IImageData atlasTexture, Vector2 position, Color color)
 	{

@@ -50,7 +50,7 @@ public class MutationQueue
 	public bool HasPending => mQueue.Count > 0;
 
 	/// Execute all pending mutations (called at safe sync points).
-	/// Actions executed may enqueue more actions — drain loops until empty.
+	/// Actions executed may enqueue more actions - drain loops until empty.
 	public void Drain()
 	{
 		mDeletedThisFrame.Clear();

@@ -37,11 +37,11 @@ cbuffer DecalUniforms : register(b0, space3)
     float2   _DecalPad;
 };
 
-// Set 1 — render-pass inputs: scene depth + point sampler.
+// Set 1 - render-pass inputs: scene depth + point sampler.
 Texture2D    SceneDepth : register(t0, space1);
 SamplerState DepthSampler : register(s0, space1);
 
-// Set 2 — decal material (texture + sampler).
+// Set 2 - decal material (texture + sampler).
 Texture2D    DecalTexture : register(t0, space2);
 SamplerState DecalSampler : register(s0, space2);
 

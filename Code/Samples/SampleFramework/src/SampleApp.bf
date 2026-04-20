@@ -218,7 +218,7 @@ abstract class SampleApp
 			lastTime = now;
 			mTotalTime += mDeltaTime;
 
-			// Render (skip while minimized — no valid swapchain surface)
+			// Render (skip while minimized - no valid swapchain surface)
 			if (!mMinimized)
 			{
 				CheckAndResize();

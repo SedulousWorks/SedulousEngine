@@ -145,7 +145,7 @@ class CubeMapSample : SampleApp
 
 	public this() { }
 
-	protected override StringView Title => "Sample023 — Cube Map & Comparison Sampler";
+	protected override StringView Title => "Sample023 - Cube Map & Comparison Sampler";
 
 	protected override Result<void> OnInit()
 	{
@@ -533,7 +533,7 @@ class CubeMapSample : SampleApp
 		rp.SetViewport(0, 0, (float)mWidth, (float)mHeight, 0.0f, 1.0f);
 		rp.SetScissor(0, 0, mWidth, mHeight);
 
-		// Draw skybox (fullscreen triangle, no VB needed — SV_VertexID)
+		// Draw skybox (fullscreen triangle, no VB needed - SV_VertexID)
 		rp.SetPipeline(mSkyboxPipeline);
 		rp.SetBindGroup(0, mSkyboxBG);
 		var pc = PushData() { Time = mTotalTime, AspectRatio = aspect };

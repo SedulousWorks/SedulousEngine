@@ -12,7 +12,7 @@ public class View
 	public String Name ~ delete _;
 	public String StyleId ~ delete _;
 
-	// === Tree (raw pointers — parent owns children) ===
+	// === Tree (raw pointers - parent owns children) ===
 	public View Parent { get; internal set; }
 	public LayoutParams LayoutParams ~ delete _;
 
@@ -38,7 +38,7 @@ public class View
 
 	/// Whether this view and its entire subtree can receive input.
 	/// When false, HitTest returns null for the entire subtree (children
-	/// included). Use to disable interaction on a whole panel — e.g.,
+	/// included). Use to disable interaction on a whole panel - e.g.,
 	/// a loading overlay, a disabled settings pane, etc.
 	public bool IsInteractionEnabled = true;
 
@@ -68,7 +68,7 @@ public class View
 	// === Cursor ===
 	public CursorType Cursor = .Default;
 
-	/// Effective cursor — walks parent chain, returning first non-Default.
+	/// Effective cursor - walks parent chain, returning first non-Default.
 	public CursorType EffectiveCursor
 	{
 		get
@@ -151,7 +151,7 @@ public class View
 	// === Visual children ===
 	// Distinguishes logical children (the public Children list managed by
 	// ViewGroup) from visual children (everything that draws, hit-tests,
-	// and attaches to context — including internal views like scrollbars).
+	// and attaches to context - including internal views like scrollbars).
 	// Base View has no visual children. ViewGroup overrides to return its
 	// logical children. Controls with internal views (ScrollView, etc.)
 	// override to append their auxiliary views.

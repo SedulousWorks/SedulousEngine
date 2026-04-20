@@ -6,7 +6,7 @@ using Sedulous.VG;
 using Sedulous.VG.SVG;
 
 /// Drawable that renders SVG content via VGContext path operations.
-/// Resolution-independent — scales to any size. Ideal for icons.
+/// Resolution-independent - scales to any size. Ideal for icons.
 public class SVGDrawable : Drawable
 {
 	private SVGDocument mDocument ~ delete _;

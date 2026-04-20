@@ -19,9 +19,9 @@ public enum SpriteOrientation : int32
 	WorldAligned = 2
 }
 
-/// Render data for a sprite — a textured, colored, world-positioned quad.
+/// Render data for a sprite - a textured, colored, world-positioned quad.
 ///
-/// Allocated from RenderContext.FrameAllocator — trivially destructible.
+/// Allocated from RenderContext.FrameAllocator - trivially destructible.
 /// Submitted to RenderCategories.Transparent (back-to-front sorted).
 public class SpriteRenderData : RenderData
 {
@@ -42,7 +42,7 @@ public class SpriteRenderData : RenderData
 	/// bind group are batched into a single instanced draw.
 	public IBindGroup MaterialBindGroup;
 
-	/// Material batch key (typically bind-group pointer cast to uint) — used to
+	/// Material batch key (typically bind-group pointer cast to uint) - used to
 	/// group consecutive sprites into a single DrawInstanced call.
 	public uint32 MaterialKey;
 }

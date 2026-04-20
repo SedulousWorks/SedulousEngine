@@ -51,7 +51,7 @@ class VisualChildTests
 		ctx.UpdateRootView(root);
 
 		// 1 logical child + 2 scrollbar slots = 3 visual children.
-		// Both scrollbars are always returned (never null) — visibility
+		// Both scrollbars are always returned (never null) - visibility
 		// controlled via .Visible / .Gone, not by returning null.
 		Test.Assert(sv.VisualChildCount == 3);
 		Test.Assert(sv.GetVisualChild(0) === content);

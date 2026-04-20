@@ -38,7 +38,7 @@ class DnsTests
 	{
 		// A hostname that should not resolve.
 		// Note: Some DNS servers (ISPs, corporate) may resolve all domains.
-		// This test may pass on such networks — that's acceptable.
+		// This test may pass on such networks - that's acceptable.
 		let result = DnsResolver.Resolve("this.host.does.not.exist.invalid");
 		if (result case .Err)
 			Test.Assert(true); // Expected: DNS resolution fails

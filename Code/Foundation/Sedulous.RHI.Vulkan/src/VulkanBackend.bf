@@ -81,7 +81,7 @@ class VulkanBackend : IBackend
 			return .Err;
 		}
 
-		// Load instance functions — some optional extension functions may not be
+		// Load instance functions - some optional extension functions may not be
 		// available (e.g. VK_KHR_display, VK_EXT_debug_report). Log failures
 		// but don't treat them as fatal, matching how the legacy RHI handles this.
 		VulkanNative.LoadInstanceFunctions(mInstance, .Agnostic | .Win32, null,

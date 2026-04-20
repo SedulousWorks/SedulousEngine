@@ -3,7 +3,7 @@ namespace Sedulous.ShaderReflection.Tests;
 using System;
 using Sedulous.RHI;
 
-/// Phase 4: DXIL reflection — resource binding tests.
+/// Phase 4: DXIL reflection - resource binding tests.
 class DXILBindingTests
 {
 	[Test]

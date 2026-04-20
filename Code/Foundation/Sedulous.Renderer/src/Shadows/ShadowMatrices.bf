@@ -12,7 +12,7 @@ public static class ShadowConstants
 	public const int32 PointFaceCount = 6;
 }
 
-/// Output of DirectionalCascades — per-cascade view-projection matrices,
+/// Output of DirectionalCascades - per-cascade view-projection matrices,
 /// view-space far split distances, and world-space texel sizes.
 public struct DirectionalCascadeData
 {
@@ -40,7 +40,7 @@ public static class ShadowMatrices
 		{
 		case 0: forward = .(1, 0, 0);  up = .(0, 1, 0);  // +X
 		case 1: forward = .(-1, 0, 0); up = .(0, 1, 0);  // -X
-		case 2: forward = .(0, 1, 0);  up = .(0, 0, -1); // +Y — up must be non-parallel
+		case 2: forward = .(0, 1, 0);  up = .(0, 0, -1); // +Y - up must be non-parallel
 		case 3: forward = .(0, -1, 0); up = .(0, 0, 1);  // -Y
 		case 4: forward = .(0, 0, 1);  up = .(0, 1, 0);  // +Z
 		case 5: forward = .(0, 0, -1); up = .(0, 1, 0);  // -Z

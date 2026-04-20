@@ -5,7 +5,7 @@ using System.Collections;
 using Sedulous.Core.Mathematics;
 
 /// Maps XML element names to View factories and property setters.
-/// Registration-based (not reflection) — explicit and debuggable.
+/// Registration-based (not reflection) - explicit and debuggable.
 public static class UIRegistry
 {
 	/// Factory delegate that creates a View instance.
@@ -134,7 +134,7 @@ public static class UIRegistry
 	private static bool sBuiltinsRegistered = false;
 
 	/// Register all built-in view types with their XML-settable properties.
-	/// Safe to call multiple times — no-op after the first call.
+	/// Safe to call multiple times - no-op after the first call.
 	public static void RegisterBuiltins()
 	{
 		if (sBuiltinsRegistered) return;

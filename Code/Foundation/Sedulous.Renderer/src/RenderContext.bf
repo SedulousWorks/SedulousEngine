@@ -10,7 +10,7 @@ using Sedulous.Jobs;
 using Sedulous.Renderer.Shadows;
 using Sedulous.Renderer.Debug;
 
-/// Shared rendering infrastructure — owns GPU resources, materials, pipeline cache,
+/// Shared rendering infrastructure - owns GPU resources, materials, pipeline cache,
 /// lighting, and bind group layouts that are common across all views/pipelines.
 ///
 /// Sits between the RHI (raw GPU API) and per-view Pipeline (pass execution).
@@ -51,7 +51,7 @@ public class RenderContext : IDisposable
 
 	// Per-frame scratch allocator for render data extraction.
 	// Reset at the start of each frame via BeginFrame().
-	// .Allow — Beef classes carry Object's destructor chain; we let the allocator
+	// .Allow - Beef classes carry Object's destructor chain; we let the allocator
 	// track and run them on Reset. Render data subclasses should not define user
 	// destructors (convention, not enforced).
 	private FrameAllocator mFrameAllocator = new FrameAllocator(.Allow) ~ delete _;
@@ -61,7 +61,7 @@ public class RenderContext : IDisposable
 	// Reset alongside the main allocator in BeginFrame().
 	private FrameAllocator[] mWorkerAllocators ~ { if (_ != null) { for (let a in _) delete a; delete _; } };
 
-	// Registered renderers, keyed by category. RenderContext owns the instances —
+	// Registered renderers, keyed by category. RenderContext owns the instances -
 	// shared across all Pipeline / ShadowPipeline instances built on this context.
 	private List<Renderer>[RenderCategories.Count] mRenderersByCategory;
 	// Flat owning list (a renderer may appear in multiple categories).
@@ -198,7 +198,7 @@ public class RenderContext : IDisposable
 	/// Frame-level bind group layout (set 0).
 	public IBindGroupLayout FrameBindGroupLayout => mFrameBindGroupLayout;
 
-	/// Material bind group layout (set 2) — from MaterialSystem.
+	/// Material bind group layout (set 2) - from MaterialSystem.
 	public IBindGroupLayout MaterialBindGroupLayout => mMaterialSystem?.DefaultMaterialLayout;
 
 	/// Draw-call bind group layout (set 3).
@@ -318,7 +318,7 @@ public class RenderContext : IDisposable
 		mGPUResources.ProcessDeletions(frameNumber);
 	}
 
-	/// Begins a new frame — rewinds the frame allocator and resets per-frame
+	/// Begins a new frame - rewinds the frame allocator and resets per-frame
 	/// shadow allocations. Must be called after all previous-frame RenderData
 	/// references have been released (typically after all pipelines have
 	/// executed for the frame).
@@ -357,7 +357,7 @@ public class RenderContext : IDisposable
 	private Result<void> CreateBindGroupLayouts()
 	{
 		// Frame bind group layout (set 0):
-		//   b0: SceneUniforms (dynamic offset — per-view ring buffer)
+		//   b0: SceneUniforms (dynamic offset - per-view ring buffer)
 		//   b1: LightParams (light count, ambient)
 		//   t0: Light buffer (StructuredBuffer<GPULight>)
 		BindGroupLayoutEntry[3] frameEntries = .(
@@ -380,7 +380,7 @@ public class RenderContext : IDisposable
 		// Material bind group layout (set 2) is owned by MaterialSystem.
 
 		// Draw call bind group layout (set 3): object uniforms with dynamic offset
-		//   b0: ObjectUniforms (world matrix, prev world matrix) — dynamic offset per draw
+		//   b0: ObjectUniforms (world matrix, prev world matrix) - dynamic offset per draw
 		BindGroupLayoutEntry[1] drawEntries = .(
 			// Vertex + Fragment visibility: mesh shaders only read object uniforms
 			// in the vertex stage, but decals sample the cbuffer (InvWorld, Color,

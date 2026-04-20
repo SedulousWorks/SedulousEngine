@@ -7,7 +7,7 @@ using Sedulous.Shaders;
 namespace Sedulous.Slug.Renderer;
 
 /// High-level GPU text renderer using the Slug algorithm.
-/// Multi-buffered for proper frame pacing — no sync stalls.
+/// Multi-buffered for proper frame pacing - no sync stalls.
 ///
 /// Usage pattern:
 ///   1. Initialize() once with font + texture data

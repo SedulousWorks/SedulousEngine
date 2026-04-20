@@ -57,7 +57,7 @@ public class SpriteRenderer : Renderer
 		//    material-change boundaries so we can emit one Draw per run.
 		mScratch.Clear();
 
-		// (runStart, runCount, runBindGroup) tuples — kept in parallel arrays.
+		// (runStart, runCount, runBindGroup) tuples - kept in parallel arrays.
 		let runs = scope List<(int32 start, int32 count, IBindGroup bg)>();
 		int32 curStart = 0;
 		int32 curCount = 0;
@@ -125,7 +125,7 @@ public class SpriteRenderer : Renderer
 
 		mainPipeline.BindFrameGroup(encoder, frame);
 
-		// DrawCall bind group (object uniforms) — sprites don't use object uniforms
+		// DrawCall bind group (object uniforms) - sprites don't use object uniforms
 		// but the pipeline layout expects the set to be bound. Default offset 0.
 		if (frame.DrawCallBindGroup != null)
 		{

@@ -4,7 +4,7 @@ using System;
 using System.Collections;
 
 /// Definition of an animation graph: parameters + layers with states and transitions.
-/// This is a shared configuration object — multiple AnimationGraphPlayers can reference
+/// This is a shared configuration object - multiple AnimationGraphPlayers can reference
 /// the same graph. The graph does not own animation clips; those are owned by the resource system.
 class AnimationGraph
 {

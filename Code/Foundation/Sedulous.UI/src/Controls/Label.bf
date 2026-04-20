@@ -12,7 +12,7 @@ public class Label : View
 	public TextAlignment HAlign = .Left;
 	public VerticalAlignment VAlign = .Middle;
 
-	// Nullable per-instance overrides — null = use theme.
+	// Nullable per-instance overrides - null = use theme.
 	private Color? mTextColor;
 	private float? mFontSize;
 

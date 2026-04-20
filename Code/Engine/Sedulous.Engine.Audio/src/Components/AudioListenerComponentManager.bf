@@ -8,7 +8,7 @@ using Sedulous.Core.Mathematics;
 /// Manages audio listener components: syncs the active listener's position
 /// and orientation from its entity's world transform to the IAudioSystem listener.
 ///
-/// Updates in PostTransform phase — after transforms are finalized.
+/// Updates in PostTransform phase - after transforms are finalized.
 class AudioListenerComponentManager : ComponentManager<AudioListenerComponent>
 {
 	/// Audio system whose listener we sync to.

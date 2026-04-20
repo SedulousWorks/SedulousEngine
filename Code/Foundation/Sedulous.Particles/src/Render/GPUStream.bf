@@ -2,7 +2,7 @@ namespace Sedulous.Particles;
 
 using System;
 
-/// GPU-side particle stream — wraps a storage buffer handle.
+/// GPU-side particle stream - wraps a storage buffer handle.
 /// Placeholder for GPU compute simulation. Data lives on GPU and is
 /// never read back to CPU (except for async readback of bounding boxes, etc.).
 public class GPUStream : ParticleStream

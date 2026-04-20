@@ -10,8 +10,8 @@ using internal Sedulous.Jobs;
 /// Static job system providing immediate dispatch and fork-join parallelism.
 ///
 /// Two execution modes:
-///   Run()        — dispatches a job immediately to a worker thread
-///   ParallelFor  — splits a range across workers + calling thread, blocks until done
+///   Run()        - dispatches a job immediately to a worker thread
+///   ParallelFor  - splits a range across workers + calling thread, blocks until done
 ///
 /// Workers sleep on WaitEvents and wake instantly when work arrives.
 /// Call ProcessCompletions() once per frame to run main-thread callbacks.
@@ -142,7 +142,7 @@ static class JobSystem
 	}
 
 	/// Dispatches a delegate job immediately.
-	/// The system takes full ownership via AutoRelease — no manual cleanup needed.
+	/// The system takes full ownership via AutoRelease - no manual cleanup needed.
 	public static void Run(delegate void() work, bool ownsDelegate,
 		StringView name = default, JobFlags flags = .None)
 	{
@@ -151,7 +151,7 @@ static class JobSystem
 	}
 
 	/// Dispatches a delegate job with a result and optional completion callback.
-	/// The system takes full ownership via AutoRelease — no manual cleanup needed.
+	/// The system takes full ownership via AutoRelease - no manual cleanup needed.
 	public static void Run<T>(delegate T() work, bool ownsDelegate,
 		delegate void(T) onComplete = null, bool ownsOnComplete = true,
 		StringView name = default, JobFlags flags = .None)
@@ -244,7 +244,7 @@ static class JobSystem
 			}
 			else
 			{
-				// Not ready yet — put it back
+				// Not ready yet - put it back
 				using (sMainThreadLock.Enter())
 					sMainThreadQueue.Add(job);
 				break; // avoid infinite loop on unresolvable dependency
@@ -300,10 +300,10 @@ static class JobSystem
 	/// Ref ownership transfer: AddRef for the completion queue first, then
 	/// ReleaseRef the worker/queue ownership, then signal. The AddRef ensures
 	/// rc > 0 during the ReleaseRef. After SignalCompletion, the worker must
-	/// NOT access `job` — the waiting thread may delete it.
+	/// NOT access `job` - the waiting thread may delete it.
 	internal static void HandleCompletion(JobBase job)
 	{
-		// Resolve dependents — if a dependent is now ready, dispatch it
+		// Resolve dependents - if a dependent is now ready, dispatch it
 		for (let dependent in job.Dependents)
 		{
 			if (dependent.IsReady())
@@ -320,15 +320,15 @@ static class JobSystem
 			job.AddRef(); // completion queue ref
 			sCompletionQueue.Add(job);
 		}
-		job.ReleaseRefNoDelete(); // release the worker/queue ref (won't delete — completion ref keeps it alive)
+		job.ReleaseRefNoDelete(); // release the worker/queue ref (won't delete - completion ref keeps it alive)
 
-		// Signal LAST — after this, the waiting thread may delete the job.
+		// Signal LAST - after this, the waiting thread may delete the job.
 		job.SignalCompletion();
 	}
 
 	// ==================== ParallelFor internals ====================
 
-	/// A lightweight work item for ParallelFor chunks. Not a full Job — no ref
+	/// A lightweight work item for ParallelFor chunks. Not a full Job - no ref
 	/// counting, no dependencies, no completion callbacks. Just a delegate + range.
 	private class ParallelChunk : JobBase
 	{

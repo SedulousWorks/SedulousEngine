@@ -69,7 +69,7 @@ class ShaderCompiler
 	/// - profile: Shader profile (e.g. "vs_6_0", "ps_6_0", "cs_6_0")
 	/// - format: Output format (DXIL or SPIRV)
 	/// - outBytecode: Receives the compiled bytecode. Caller owns the list.
-	/// - outErrors: Optional — receives error/warning messages. Caller owns the string.
+	/// - outErrors: Optional - receives error/warning messages. Caller owns the string.
 	public Result<void> Compile(StringView source, StringView entryPoint, StringView profile,
 		ShaderOutputFormat format, List<uint8> outBytecode, String outErrors = null)
 	{

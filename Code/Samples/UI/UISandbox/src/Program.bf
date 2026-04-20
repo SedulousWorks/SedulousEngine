@@ -271,7 +271,7 @@ class DragChip : ColorView, IDragSource
 
 	public View CreateDragVisual(DragData data)
 	{
-		// Custom drag preview — a small color swatch with a border.
+		// Custom drag preview - a small color swatch with a border.
 		let panel = new Panel();
 		panel.Background = new RoundedRectDrawable(Color, 4, .(200, 200, 210, 255), 1);
 		let label = new Label();
@@ -288,7 +288,7 @@ class DragChip : ColorView, IDragSource
 	public void OnDragCompleted(DragData data, DragDropEffects effect, bool cancelled) { Alpha = 1.0f; }
 }
 
-/// Reorder container — drag chips to swap their positions.
+/// Reorder container - drag chips to swap their positions.
 class ChipReorderContainer : LinearLayout, IDropTarget
 {
 	public DragDropEffects CanAcceptDrop(DragData data, float localX, float localY)
@@ -399,7 +399,7 @@ class CopyableLabel : Label
 	}
 }
 
-/// UISandbox — gallery/showcase for Sedulous.UI, growing with each phase.
+/// UISandbox - gallery/showcase for Sedulous.UI, growing with each phase.
 /// Per-window render data for secondary (floating) windows.
 class FloatingWindowRenderData
 {
@@ -653,7 +653,7 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 				bool inside = true;
 				bool isBorder = false;
 
-				// Corner check — distance from corner center.
+				// Corner check - distance from corner center.
 				int cx = -1, cy = -1;
 				if (x < (uint32)radius && y < (uint32)radius) { cx = radius; cy = radius; }
 				else if (x >= w - (uint32)radius && y < (uint32)radius) { cx = (int)w - radius - 1; cy = radius; }
@@ -806,12 +806,12 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 	}
 
 	/*
-	// Keep the old BuildDemoUI content commented out — remove after verification.
+	// Keep the old BuildDemoUI content commented out - remove after verification.
 	private void BuildDemoUI_Old(UIContext ctx)
 	{
 		let root = mUI.Root;
 
-		// Scrollable root — content stacks vertically with fixed-height
+		// Scrollable root - content stacks vertically with fixed-height
 		// list/tree views. Scrolls when window is smaller than content.
 		let scroll = new ScrollView();
 		scroll.VScrollPolicy = .Auto;
@@ -852,7 +852,7 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 		// Label
 		{
 			let label = new Label();
-			label.SetText("Label — 16px Roboto (theme color)");
+			label.SetText("Label - 16px Roboto (theme color)");
 			label.TooltipText = new String("Tooltip: Right placement");
 			label.TooltipPlacement = .Right;
 				left.AddView(label, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 22 });
@@ -869,7 +869,7 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 			AddButton(row, "Danger", Color(200, 60, 60, 255), "Tooltip: Left placement", .Left);
 		}
 
-		// Theme-styled buttons (no explicit Background — uses theme).
+		// Theme-styled buttons (no explicit Background - uses theme).
 		{
 			let row = new LinearLayout();
 			row.Orientation = .Horizontal;
@@ -880,7 +880,7 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 			{
 				let btn = new Button();
 				btn.SetText(label);
-				// No Background set — uses DrawDefaultBackground from theme.
+				// No Background set - uses DrawDefaultBackground from theme.
 				btn.OnClick.Add(new [&](b) => {
 					if (mClickLabel != null)
 					{
@@ -901,7 +901,7 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 			left.AddView(mClickLabel, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 20 });
 		}
 
-		// Panel — draws theme-aware background.
+		// Panel - draws theme-aware background.
 		{
 			let panel = new Panel();
 			panel.Padding = .(10, 6);
@@ -999,7 +999,7 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 		AddSeparator(left);
 		AddSectionLabel(left, "ScrollView (mouse wheel)");
 
-		// ScrollView with tall content — scroll via mouse wheel.
+		// ScrollView with tall content - scroll via mouse wheel.
 		{
 			let sv = new ScrollView();
 			sv.VScrollPolicy = .Auto;
@@ -1090,7 +1090,7 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 
 		AddSectionLabel(right, "Drawable Showcase");
 
-		// Drawable types — 2x2 grid
+		// Drawable types - 2x2 grid
 		{
 			let grid = new GridLayout();
 			grid.ColumnDefs.Add(.Star(1));
@@ -1154,7 +1154,7 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 		AddSeparator(right);
 		AddSectionLabel(right, "Custom Control + IThemeExtension");
 
-		// StatusBadge — custom control themed via registered extension.
+		// StatusBadge - custom control themed via registered extension.
 		// Colors change when F5 toggles theme.
 		{
 			let row = new LinearLayout();
@@ -1173,7 +1173,7 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 			let custom = new StatusBadge();
 			custom.SetText("Custom");
 			custom.BadgeColor = .(180, 60, 60, 255);
-			custom.TooltipText = new String("Explicit color override — ignores theme");
+			custom.TooltipText = new String("Explicit color override - ignores theme");
 			row.AddView(custom);
 		}
 
@@ -1219,7 +1219,7 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 		AddSeparator(right);
 		AddSectionLabel(right, "ListView (1000 items, virtualized)");
 
-		// Virtualized ListView with 1000 items — only visible items created.
+		// Virtualized ListView with 1000 items - only visible items created.
 		{
 			let list = new ListView();
 			list.ItemHeight = 22;
@@ -1292,7 +1292,7 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 			right.AddView(mDemoProgressBar, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 12 });
 		}
 
-		// Slider (smooth — no step)
+		// Slider (smooth - no step)
 		{
 			let slider = new Slider();
 			slider.Min = 0;
@@ -1414,7 +1414,7 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 			});
 			row.AddView(dialogBtn, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
 
-			// Copyable label — right-click to copy, then paste in EditText.
+			// Copyable label - right-click to copy, then paste in EditText.
 			let copyPanel = new CopyableLabel();
 			copyPanel.SetText("Right-click to copy this text");
 			row.AddView(copyPanel, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
@@ -1476,7 +1476,7 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 			});
 			animRow.AddView(slideBtn, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
 
-			// Transformed buttons — rotated and scaled, with working hit-testing.
+			// Transformed buttons - rotated and scaled, with working hit-testing.
 			let transformRow = new LinearLayout();
 			transformRow.Orientation = .Horizontal;
 			transformRow.Spacing = 20;
@@ -1532,7 +1532,7 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 				container.AddView(chip, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
 			}
 
-			// Drop target box — changes color when a chip is dropped on it.
+			// Drop target box - changes color when a chip is dropped on it.
 			let dropBox = new ColorDropBox();
 			row.AddView(dropBox, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent, Weight = 1 });
 		}
@@ -1638,7 +1638,7 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 	private void AddSeparator(LinearLayout parent)
 	{
 		let sep = new Separator();
-		// No explicit color — uses theme's "Separator.Color".
+		// No explicit color - uses theme's "Separator.Color".
 		parent.AddView(sep, new LinearLayout.LayoutParams() { Width = LayoutParams.MatchParent, Height = 1 });
 	}
 
@@ -1694,7 +1694,7 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 	{
 		let label = new Label();
 		label.SetText(text);
-		// No explicit TextColor — uses theme's Label.Foreground.
+		// No explicit TextColor - uses theme's Label.Foreground.
 		grid.AddView(label, new GridLayout.LayoutParams() {
 			Row = row, Column = col,
 			Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent
@@ -1823,7 +1823,7 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 			return;
 		}
 
-		// Not cross-window dragging — clear drag source.
+		// Not cross-window dragging - clear drag source.
 		if (mDragSourceWindow != null)
 			mDragSourceWindow = null;
 

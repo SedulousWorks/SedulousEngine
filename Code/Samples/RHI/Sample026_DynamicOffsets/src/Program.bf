@@ -66,7 +66,7 @@ class DynamicOffsetSample : SampleApp
 
 	public this() { }
 
-	protected override StringView Title => "Sample026 — Dynamic Offsets & Blend Constants";
+	protected override StringView Title => "Sample026 - Dynamic Offsets & Blend Constants";
 
 	protected override Result<void> OnInit()
 	{

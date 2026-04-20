@@ -525,7 +525,7 @@ class SceneSerializationTests
 		let guard = source.CreateEntity("IdleGuard");
 		let ph = patrolMgr.CreateComponent(guard);
 		patrolMgr.Get(ph).Speed = 1.0f;
-		// No waypoints added — empty list
+		// No waypoints added - empty list
 
 		let dest = scope Scene();
 		RoundTrip(source, dest, registry);

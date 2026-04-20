@@ -62,7 +62,7 @@ class WireframeSample : SampleApp
 
 	public this()  { }
 
-	protected override StringView Title => "Sample012 — Wireframe";
+	protected override StringView Title => "Sample012 - Wireframe";
 
 	protected override Result<void> OnInit()
 	{

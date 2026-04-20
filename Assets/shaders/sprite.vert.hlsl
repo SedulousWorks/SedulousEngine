@@ -5,9 +5,9 @@
 //               per-instance vertex attributes in buffer slot 0).
 //
 // Orientation modes:
-//   0 = CameraFacing   — quad basis = (camera right, camera up)
-//   1 = CameraFacingY  — quad basis = (camera right projected into XZ, world Y)
-//   2 = WorldAligned   — quad basis = (world X, world Y)
+//   0 = CameraFacing   - quad basis = (camera right, camera up)
+//   1 = CameraFacingY  - quad basis = (camera right projected into XZ, world Y)
+//   2 = WorldAligned   - quad basis = (world X, world Y)
 
 #pragma pack_matrix(row_major)
 

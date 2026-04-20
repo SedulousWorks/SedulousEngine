@@ -40,7 +40,7 @@ public static class UIDebugOverlay
 			}
 		}
 
-		// Drawable padding (blue interior bands — distinct from explicit padding)
+		// Drawable padding (blue interior bands - distinct from explicit padding)
 		if (settings.ShowDrawablePadding)
 		{
 			if (let panel = view as Panel)

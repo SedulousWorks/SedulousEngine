@@ -11,7 +11,7 @@ using Sedulous.Core.Mathematics;
 /// Manages skeletal animation components: resolves skeleton + clip resources,
 /// creates AnimationPlayers, evaluates animation each frame.
 ///
-/// Updates at PostUpdate with priority 10 — before SkinnedMeshComponentManager
+/// Updates at PostUpdate with priority 10 - before SkinnedMeshComponentManager
 /// (priority 0) so bone matrices are ready for GPU skinning upload.
 class SkeletalAnimationComponentManager : ComponentManager<SkeletalAnimationComponent>
 {

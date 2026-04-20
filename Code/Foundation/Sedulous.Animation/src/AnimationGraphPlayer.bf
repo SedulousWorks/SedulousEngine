@@ -391,7 +391,7 @@ class AnimationGraphPlayer
 			}
 		}
 
-		// No transition — just sample current state
+		// No transition - just sample current state
 		currentState.Node.Evaluate(mSkeleton, runtime.CurrentTime, runtime.Poses);
 	}
 

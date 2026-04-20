@@ -7,7 +7,7 @@ using Sedulous.Core.Mathematics;
 class LayoutDetailTests
 {
 	// =========================================================================
-	// LinearLayout — Vertical
+	// LinearLayout - Vertical
 	// =========================================================================
 
 	[Test]

@@ -9,7 +9,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Materials;
 
 /// Component for a renderable skinned mesh.
-/// Rendering only — does not own animation. Bone matrices come from a
+/// Rendering only - does not own animation. Bone matrices come from a
 /// SkeletalAnimationComponent (or AnimationGraphComponent) on the same entity.
 /// The manager reads matrices from the animation component and uploads to GPU.
 class SkinnedMeshComponent : Component, ISerializableComponent
@@ -47,7 +47,7 @@ class SkinnedMeshComponent : Component, ISerializableComponent
 	/// Mesh resource reference (serialized). Resolved to GPU handle by manager.
 	private ResourceRef mMeshRef ~ _.Dispose();
 
-	/// GPU mesh handle (runtime — set by manager after resource resolution).
+	/// GPU mesh handle (runtime - set by manager after resource resolution).
 	public GPUMeshHandle MeshHandle = .Invalid;
 
 	/// GPU bone buffer handle (storage buffer for skinning matrices).
@@ -107,7 +107,7 @@ class SkinnedMeshComponent : Component, ISerializableComponent
 	}
 
 	/// Sets a material instance at the given slot, growing the list if needed.
-	/// Takes ownership — AddRefs the new material, ReleaseRefs the old.
+	/// Takes ownership - AddRefs the new material, ReleaseRefs the old.
 	public void SetMaterial(int32 slot, MaterialInstance material)
 	{
 		while (Materials.Count <= slot)

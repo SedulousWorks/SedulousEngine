@@ -47,7 +47,7 @@ public class ScreenUIView
 		delete Root;
 	}
 
-	/// IRenderOverlay — called by RenderSubsystem after blit, before present.
+	/// IRenderOverlay - called by RenderSubsystem after blit, before present.
 	public void RenderOverlay(ICommandEncoder encoder, ITextureView targetView,
 		uint32 width, uint32 height, int32 frameIndex)
 	{

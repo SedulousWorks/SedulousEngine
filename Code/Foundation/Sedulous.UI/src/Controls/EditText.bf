@@ -125,7 +125,7 @@ public class EditText : View, ITextEditHost
 	{
 		IsFocusable = true;
 		Cursor = .IBeam;
-		// Don't set ClipsContent — the parent's rectangular clip would
+		// Don't set ClipsContent - the parent's rectangular clip would
 		// cut off the rounded border corners. EditText clips its own
 		// content area internally via PushClip in OnDraw.
 		mBehavior = new TextEditingBehavior(this);
@@ -261,7 +261,7 @@ public class EditText : View, ITextEditHost
 				return mGlyphPositions[i].X;
 			if (mGlyphPositions[i].StringIndex > charIndex)
 			{
-				// charIndex is between glyphs (at a newline) — return 0 for line start,
+				// charIndex is between glyphs (at a newline) - return 0 for line start,
 				// or the end of the previous glyph if on the same line.
 				if (i > 0)
 				{
@@ -274,7 +274,7 @@ public class EditText : View, ITextEditHost
 			}
 		}
 
-		// Past all glyphs — cursor at end of last glyph.
+		// Past all glyphs - cursor at end of last glyph.
 		let last = mGlyphPositions[mGlyphPositions.Count - 1];
 		return last.X + last.Advance;
 	}
@@ -350,7 +350,7 @@ public class EditText : View, ITextEditHost
 			ctx.VG.FillRoundedRect(bounds, radius, bgColor);
 		}
 
-		// Border — thicker + accent when focused.
+		// Border - thicker + accent when focused.
 		let borderColor = IsFocused
 			? (ctx.Theme?.TryGetColor("EditText.Border.Focused") ?? ctx.Theme?.Palette.PrimaryAccent ?? .(80, 160, 255, 255))
 			: (ctx.Theme?.GetColor("EditText.Border", .(80, 85, 100, 255)) ?? .(80, 85, 100, 255));
@@ -466,7 +466,7 @@ public class EditText : View, ITextEditHost
 
 		if (e.Button != .Left) return;
 
-		// Only start drag on single click — double/triple click selects
+		// Only start drag on single click - double/triple click selects
 		// word/all and shouldn't be overridden by drag movement.
 		if (e.ClickCount <= 1)
 		{
@@ -645,7 +645,7 @@ public class EditText : View, ITextEditHost
 			return mGlyphPositions[0].StringIndex;
 		if (glyphInsertionIndex >= mGlyphPositions.Count)
 		{
-			// After last glyph — return one past the last glyph's char index.
+			// After last glyph - return one past the last glyph's char index.
 			let lastGlyph = mGlyphPositions[mGlyphPositions.Count - 1];
 			return lastGlyph.StringIndex + 1;
 		}

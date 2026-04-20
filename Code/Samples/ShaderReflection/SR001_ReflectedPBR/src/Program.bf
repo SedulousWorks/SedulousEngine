@@ -177,7 +177,7 @@ class ReflectedPBRSample : SampleApp
 
 	public this() :base(.DX12) { }
 
-	protected override StringView Title => "SR001 — Reflected PBR Sphere";
+	protected override StringView Title => "SR001 - Reflected PBR Sphere";
 
 	protected override Result<void> OnInit()
 	{

@@ -17,7 +17,7 @@ public enum EmissionMode : uint8
 	ContinuousAndBurst
 }
 
-/// Particle emitter — handles spawning logic only (rate, burst, shape).
+/// Particle emitter - handles spawning logic only (rate, burst, shape).
 /// Does NOT own simulation or behaviors. Those belong to ParticleSystem.
 /// Multiple emitters can feed into the same ParticleSystem's stream container.
 public class ParticleEmitter
@@ -46,7 +46,7 @@ public class ParticleEmitter
 	private int32 mBurstCyclesCompleted = 0;
 
 	/// Calculates how many particles to spawn this frame.
-	/// Does NOT actually spawn them — the ParticleSystem handles that.
+	/// Does NOT actually spawn them - the ParticleSystem handles that.
 	public int32 CalculateSpawnCount(float deltaTime)
 	{
 		if (!IsEmitting)

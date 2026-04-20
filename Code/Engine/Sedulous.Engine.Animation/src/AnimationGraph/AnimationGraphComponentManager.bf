@@ -11,7 +11,7 @@ using Sedulous.Core.Mathematics;
 /// Manages animation graph components: resolves skeleton + graph resources,
 /// creates AnimationGraphPlayers, evaluates graph each frame.
 ///
-/// Updates at PostUpdate with priority 11 — before SkeletalAnimationComponentManager
+/// Updates at PostUpdate with priority 11 - before SkeletalAnimationComponentManager
 /// (priority 10) so graph output can override simple clip playback.
 class AnimationGraphComponentManager : ComponentManager<AnimationGraphComponent>
 {

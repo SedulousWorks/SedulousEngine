@@ -71,7 +71,7 @@ class CullingTests
 			builder.SetDepthTarget(depth, .Clear, .Store);
 		});
 
-		// Pass 2: reads depth, writes color — NeverCull
+		// Pass 2: reads depth, writes color - NeverCull
 		graph.AddRenderPass("ForwardOpaque", scope (builder) => {
 			builder.ReadTexture(depth);
 			builder.SetColorTarget(0, color, .Clear, .Store);

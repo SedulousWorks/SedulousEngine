@@ -56,13 +56,13 @@ public class PropertyItem
 			if (value != null)
 			{
 				value.ToString(DisplayValue);
-				// Getter always returns owned values — caller is responsible for cleanup
+				// Getter always returns owned values - caller is responsible for cleanup
 				delete value;
 			}
 		}
 	}
 
-	/// Virtual factory — return null to use built-in procedural rendering.
+	/// Virtual factory - return null to use built-in procedural rendering.
 	public virtual UIElement CreateEditorControl() => null;
 
 	/// Called by RefreshValues() to push getter data into the editor.

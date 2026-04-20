@@ -4,7 +4,7 @@ using System;
 using Sedulous.UI;
 using Sedulous.Core.Mathematics;
 
-/// Boolean property editor — CheckBox.
+/// Boolean property editor - CheckBox.
 public class BoolEditor : PropertyEditor
 {
 	private bool mValue;
@@ -43,7 +43,7 @@ public class BoolEditor : PropertyEditor
 	}
 }
 
-/// String property editor — EditText.
+/// String property editor - EditText.
 public class StringEditor : PropertyEditor
 {
 	private String mValue = new .() ~ delete _;
@@ -82,7 +82,7 @@ public class StringEditor : PropertyEditor
 	}
 }
 
-/// Float property editor — NumericField with decimal places.
+/// Float property editor - NumericField with decimal places.
 public class FloatEditor : PropertyEditor
 {
 	private double mValue;
@@ -129,7 +129,7 @@ public class FloatEditor : PropertyEditor
 	}
 }
 
-/// Integer property editor — NumericField with 0 decimal places.
+/// Integer property editor - NumericField with 0 decimal places.
 public class IntEditor : PropertyEditor
 {
 	private int64 mValue;
@@ -173,7 +173,7 @@ public class IntEditor : PropertyEditor
 	}
 }
 
-/// Color property editor — ColorView swatch that opens a ColorPicker popup on click.
+/// Color property editor - ColorView swatch that opens a ColorPicker popup on click.
 public class ColorEditor : PropertyEditor
 {
 	private Color mValue;
@@ -239,7 +239,7 @@ public class ColorEditor : PropertyEditor
 	}
 }
 
-/// Range/slider property editor — Slider.
+/// Range/slider property editor - Slider.
 public class RangeEditor : PropertyEditor
 {
 	private float mValue;

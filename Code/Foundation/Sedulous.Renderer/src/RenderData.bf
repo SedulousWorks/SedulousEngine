@@ -6,7 +6,7 @@ using Sedulous.RHI;
 
 /// Base class for all extracted render data.
 ///
-/// Allocated from RenderContext.FrameAllocator during extraction. Lifetime is one frame —
+/// Allocated from RenderContext.FrameAllocator during extraction. Lifetime is one frame -
 /// pointers into arena memory become invalid when RenderContext.BeginFrame() is called next.
 ///
 /// Subclasses MUST be trivially destructible: no owned heap data, no user-defined
@@ -23,7 +23,7 @@ public abstract class RenderData
 	/// Material sort key (hash of material, for grouping draws with same state).
 	public uint32 MaterialSortKey;
 
-	/// Explicit sort order (for decals, overlays — lower values first).
+	/// Explicit sort order (for decals, overlays - lower values first).
 	public int32 SortOrder;
 
 	/// Flags.

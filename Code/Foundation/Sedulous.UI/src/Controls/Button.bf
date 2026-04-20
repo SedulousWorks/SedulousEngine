@@ -12,7 +12,7 @@ public class Button : View
 	public String Text ~ delete _;
 	public Drawable Background ~ delete _;
 
-	// Nullable per-instance overrides — null = use theme.
+	// Nullable per-instance overrides - null = use theme.
 	private Color? mTextColor;
 	private float? mFontSize;
 	private Thickness? mPadding;
@@ -51,7 +51,7 @@ public class Button : View
 	// Click event.
 	public Event<delegate void(Button)> OnClick ~ _.Dispose();
 
-	/// Optional command — executed on click if CanExecute() is true.
+	/// Optional command - executed on click if CanExecute() is true.
 	public ICommand Command;
 
 	public this()
@@ -148,7 +148,7 @@ public class Button : View
 			}
 		}
 
-		// Focus ring from theme — matches button corner radius.
+		// Focus ring from theme - matches button corner radius.
 		if (IsFocused)
 		{
 			let radius = ctx.Theme?.GetDimension("Button.CornerRadius", 4) ?? 4;

@@ -4,7 +4,7 @@ using System;
 using Sedulous.Core.Mathematics;
 
 /// Static positioning helpers for popups, tooltips, and menus.
-/// Pure calculations — no state. Reusable across all overlay types.
+/// Pure calculations - no state. Reusable across all overlay types.
 public static class PopupPositioner
 {
 	/// Position below anchor; if clips bottom, flip above. Clamp horizontally.

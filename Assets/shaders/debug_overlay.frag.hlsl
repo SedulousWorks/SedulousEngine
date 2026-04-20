@@ -1,4 +1,4 @@
-// Debug overlay fragment shader — samples the R8 font atlas and multiplies by
+// Debug overlay fragment shader - samples the R8 font atlas and multiplies by
 // the vertex color. Rectangles sample a solid-white region of the atlas so the
 // same shader works for text and rect draws.
 

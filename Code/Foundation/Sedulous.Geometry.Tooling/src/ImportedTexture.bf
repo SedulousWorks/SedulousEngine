@@ -5,7 +5,7 @@ using Sedulous.Images;
 
 /// Texture data extracted from a model file.
 /// Contains the decoded pixel data and metadata.
-/// No dependency on the renderer — the application uploads to GPU.
+/// No dependency on the renderer - the application uploads to GPU.
 class ImportedTexture
 {
 	/// Texture name from the source model (file extension stripped).

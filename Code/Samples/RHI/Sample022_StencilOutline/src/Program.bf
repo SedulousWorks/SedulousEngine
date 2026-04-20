@@ -78,7 +78,7 @@ class StencilOutlineSample : SampleApp
 
 	public this() { }
 
-	protected override StringView Title => "Sample022 — Stencil Outline";
+	protected override StringView Title => "Sample022 - Stencil Outline";
 
 	protected override Result<void> OnInit()
 	{
@@ -167,7 +167,7 @@ class StencilOutlineSample : SampleApp
 		let colorTargets = scope ColorTargetState[1];
 		colorTargets[0] = ColorTargetState() { Format = mSwapChain.Format, WriteMask = .All };
 
-		// Pipeline 1: Stencil write — draw solid, always pass depth, write stencil = ref (1)
+		// Pipeline 1: Stencil write - draw solid, always pass depth, write stencil = ref (1)
 		{
 			let pipR = mDevice.CreateRenderPipeline(RenderPipelineDesc()
 			{
@@ -193,7 +193,7 @@ class StencilOutlineSample : SampleApp
 			mStencilWritePipeline = pipR.Value;
 		}
 
-		// Pipeline 2: Stencil test — draw outline, only where stencil != 1
+		// Pipeline 2: Stencil test - draw outline, only where stencil != 1
 		{
 			let pipR = mDevice.CreateRenderPipeline(RenderPipelineDesc()
 			{

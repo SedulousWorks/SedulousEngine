@@ -269,7 +269,7 @@ public class TabView : ViewGroup
 						if (!ctx.TryDrawDrawable("TabView.ActiveTab", rect, .Normal))
 						{
 							ctx.VG.FillRect(rect, activeTabBg);
-							// Accent indicator (only in color fallback — drawable handles its own styling).
+							// Accent indicator (only in color fallback - drawable handles its own styling).
 							switch (Placement)
 							{
 							case .Top:    ctx.VG.FillRect(.(rect.X, rect.Y + rect.Height - 2, rect.Width, 2), accentColor);

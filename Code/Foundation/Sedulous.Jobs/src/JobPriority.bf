@@ -5,6 +5,6 @@ enum JobPriority
 {
 	/// Normal priority.
 	Normal,
-	/// High priority — should be processed first.
+	/// High priority - should be processed first.
 	High
 }

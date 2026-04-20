@@ -234,7 +234,7 @@ public static class SVGPathParser
 		while (pos < s.Length && s[pos] >= '0' && s[pos] <= '9')
 			pos++;
 
-		// Decimal point (only first one — a second dot starts a new number)
+		// Decimal point (only first one - a second dot starts a new number)
 		if (pos < s.Length && s[pos] == '.')
 		{
 			hasDot = true;

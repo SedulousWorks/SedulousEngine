@@ -28,7 +28,7 @@ public class TreeView : ViewGroup
 		mListView = new ListView();
 		mListView.Parent = this;
 
-		// Subscribe to item clicks — double-click toggles expansion.
+		// Subscribe to item clicks - double-click toggles expansion.
 		mListView.OnItemClicked.Add(new (position, clickCount) =>
 		{
 			if (clickCount >= 2)

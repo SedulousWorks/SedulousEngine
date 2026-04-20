@@ -6,7 +6,7 @@ using Sedulous.Particles;
 
 /// Registry for creating particle behaviors and initializers by type ID.
 /// Used during deserialization to reconstruct the effect graph from saved data.
-/// Lives in Sedulous.Particles.Resources — the core Particles project has no
+/// Lives in Sedulous.Particles.Resources - the core Particles project has no
 /// serialization dependency.
 public static class ParticleTypeRegistry
 {

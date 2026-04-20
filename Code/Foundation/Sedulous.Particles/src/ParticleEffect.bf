@@ -4,18 +4,18 @@ using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
 
-/// A particle effect — top-level container grouping multiple particle systems
+/// A particle effect - top-level container grouping multiple particle systems
 /// into a single logical effect (e.g., "campfire" = flame + smoke + sparks).
 ///
 ///   ParticleEffect
 ///     └── ParticleSystem[]
-///           ├── Emitter        — spawn rules
-///           ├── Behaviors[]    — per-frame update rules
-///           ├── Initializers[] — per-spawn setup
-///           ├── Streams        — SoA data channels
-///           └── Simulator      — CPU or GPU backend
+///           ├── Emitter        - spawn rules
+///           ├── Behaviors[]    - per-frame update rules
+///           ├── Initializers[] - per-spawn setup
+///           ├── Streams        - SoA data channels
+///           └── Simulator      - CPU or GPU backend
 ///
-/// This is the "asset definition" — runtime instances are ParticleEffectInstance.
+/// This is the "asset definition" - runtime instances are ParticleEffectInstance.
 public class ParticleEffect
 {
 	/// Display name for debugging.

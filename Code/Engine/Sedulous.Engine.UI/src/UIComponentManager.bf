@@ -92,7 +92,7 @@ class UIComponentManager : ComponentManager<UIComponent>
 		comp.IsDirty = true;
 
 		// Create a SpriteComponent to display the UI texture in the 3D scene.
-		// Bypass ResourceRef — create MaterialInstance directly from the texture view.
+		// Bypass ResourceRef - create MaterialInstance directly from the texture view.
 		let spriteMgr = Scene.GetModule<Sedulous.Engine.Render.SpriteComponentManager>();
 		if (spriteMgr != null && comp.TextureView != null && RenderContext != null)
 		{
@@ -136,7 +136,7 @@ class UIComponentManager : ComponentManager<UIComponent>
 		if (comp.Texture != null)
 			Device?.DestroyTexture(ref comp.Texture);
 
-		// UIContext owns the RootView via AddRootView — remove before deleting.
+		// UIContext owns the RootView via AddRootView - remove before deleting.
 		if (comp.UIContext != null && comp.Root != null)
 			comp.UIContext.RemoveRootView(comp.Root);
 

@@ -39,10 +39,10 @@ class AnimationGraphComponent : Component, ISerializableComponent
 
 	// --- Runtime state (managed by AnimationGraphComponentManager) ---
 
-	/// Resolved skeleton (not owned — owned by resource system).
+	/// Resolved skeleton (not owned - owned by resource system).
 	public Skeleton Skeleton;
 
-	/// Resolved animation graph (not owned — owned by resource system).
+	/// Resolved animation graph (not owned - owned by resource system).
 	public AnimationGraph Graph;
 
 	/// Animation graph player (owned by this component, created by manager).

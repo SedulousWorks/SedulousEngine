@@ -6,7 +6,7 @@ using System.Threading;
 using internal Sedulous.Jobs;
 
 /// Background worker thread that pulls jobs from JobSystem's shared queue.
-/// Sleeps on a WaitEvent until signaled — no polling, instant wakeup.
+/// Sleeps on a WaitEvent until signaled - no polling, instant wakeup.
 internal class WorkerThread
 {
 	private readonly Thread mThread;
@@ -58,13 +58,13 @@ internal class WorkerThread
 			if (!mRunning)
 				return;
 
-			// Drain the shared queue — keep pulling until empty
+			// Drain the shared queue - keep pulling until empty
 			JobBase job;
 			while (mRunning && JobSystem.TryDequeue(out job))
 			{
 				if (!job.IsReady())
 				{
-					// Dependencies not met — drop it. HandleCompletion will
+					// Dependencies not met - drop it. HandleCompletion will
 					// re-enqueue when its prerequisites complete.
 					job.ReleaseRef();
 					continue;
@@ -82,7 +82,7 @@ internal class WorkerThread
 				{
 					// HandleCompletion transfers the ref from Run's AddRef to the
 					// completion queue and signals completion. Do NOT access `job`
-					// after this call — the waiting thread may delete it.
+					// after this call - the waiting thread may delete it.
 					JobSystem.HandleCompletion(job);
 				}
 			}

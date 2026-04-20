@@ -70,7 +70,7 @@ class PerFrameResources
 	/// as the dynamic offset for the Frame bind group.
 	public uint32 CurrentSceneOffset;
 
-	/// Alignment for object uniform entries (256 bytes — Vulkan minUniformBufferOffsetAlignment).
+	/// Alignment for object uniform entries (256 bytes - Vulkan minUniformBufferOffsetAlignment).
 	public const uint32 ObjectAlignment = 256;
 
 	/// Maximum number of objects per frame.

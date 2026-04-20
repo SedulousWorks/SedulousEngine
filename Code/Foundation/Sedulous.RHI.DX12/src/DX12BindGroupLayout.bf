@@ -49,7 +49,7 @@ class DX12BindGroupLayout : IBindGroupLayout
 			uint32 count = entry.Count;
 			if (count == uint32.MaxValue)
 			{
-				count = 1024 * 16; // Bindless — large but finite
+				count = 1024 * 16; // Bindless - large but finite
 				mHasBindless = true;
 			}
 

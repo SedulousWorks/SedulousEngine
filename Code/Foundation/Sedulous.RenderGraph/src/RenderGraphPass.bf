@@ -31,7 +31,7 @@ public class RenderGraphPass
 	public bool NeverCull;
 	/// If true, this pass has side effects the graph cannot track
 	public bool HasSideEffects;
-	/// Optional runtime condition — pass is skipped if this returns false
+	/// Optional runtime condition - pass is skipped if this returns false
 	public delegate bool() Condition ~ delete _;
 	/// Execution order assigned during topological sort (-1 = not scheduled)
 	public int32 ExecutionOrder = -1;

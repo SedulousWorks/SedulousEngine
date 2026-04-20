@@ -42,7 +42,7 @@ float4 main(FragmentInput input) : SV_Target
     // contains the soft glow from bright areas. When bloom is disabled,
     // the fallback texture (scene color bound to both slots) is effectively
     // a no-op since the additive contribution doesn't double the main color
-    // — the tonemap curve handles the extra brightness gracefully.
+    // - the tonemap curve handles the extra brightness gracefully.
     float3 bloom = BloomTexture.Sample(LinearSampler, uv).rgb;
     hdr += bloom;
 
@@ -52,6 +52,6 @@ float4 main(FragmentInput input) : SV_Target
     // Tone map
     float3 ldr = ACESFilmic(hdr);
 
-    // Output linear — sRGB swapchain handles gamma correction
+    // Output linear - sRGB swapchain handles gamma correction
     return float4(ldr, 1.0);
 }

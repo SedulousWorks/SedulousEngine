@@ -59,7 +59,7 @@ public class DebugDraw
 	public Span<Debug3DTextCommand> TextCommands3D => m3DTextCommands;
 	public Span<char8> TextChars => mTextChars;
 
-	/// Number of line vertices (always a multiple of 2 — pairs form line segments).
+	/// Number of line vertices (always a multiple of 2 - pairs form line segments).
 	public int32 LineVertexCount => (int32)mLineVerts.Count;
 
 	public bool HasAnyDraws => mLineVerts.Count > 0 || m2DCommands.Count > 0 || m3DTextCommands.Count > 0;

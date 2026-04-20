@@ -1,4 +1,4 @@
-// Debug line vertex shader — transforms world-space line vertices to clip space.
+// Debug line vertex shader - transforms world-space line vertices to clip space.
 
 #pragma pack_matrix(row_major)
 

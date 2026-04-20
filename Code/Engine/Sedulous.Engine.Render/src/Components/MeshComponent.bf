@@ -8,7 +8,7 @@ using Sedulous.Materials;
 using Sedulous.Core.Mathematics;
 
 /// Component for a renderable static mesh.
-/// One component per mesh — supports multiple materials via per-submesh material slots.
+/// One component per mesh - supports multiple materials via per-submesh material slots.
 ///
 /// The app sets ResourceRefs (mesh, materials). MeshComponentManager resolves them
 /// to loaded resources, uploads to GPU, and creates MaterialInstances automatically.
@@ -50,13 +50,13 @@ class MeshComponent : Component, ISerializableComponent
 	/// Mesh resource reference (serialized). Resolved to GPU handle by manager.
 	private ResourceRef mMeshRef ~ _.Dispose();
 
-	/// GPU mesh handle (runtime — set by manager after resource resolution).
+	/// GPU mesh handle (runtime - set by manager after resource resolution).
 	public GPUMeshHandle MeshHandle;
 
 	/// Material resource references per slot (serialized).
 	private List<ResourceRef> mMaterialRefs = new .() ~ { for (var r in _) r.Dispose(); delete _; };
 
-	/// Resolved material instances per slot (runtime — created by manager).
+	/// Resolved material instances per slot (runtime - created by manager).
 	public List<MaterialInstance> Materials = new .() ~ { for (let m in _) m?.ReleaseRef(); delete _; };
 
 	/// Local-space bounding box.
@@ -74,7 +74,7 @@ class MeshComponent : Component, ISerializableComponent
 	/// Gets the mesh resource ref.
 	public ResourceRef MeshRef => mMeshRef;
 
-	/// Sets the mesh resource ref (deep copy — allocates new String for path).
+	/// Sets the mesh resource ref (deep copy - allocates new String for path).
 	public void SetMeshRef(ResourceRef @ref)
 	{
 		mMeshRef.Dispose();
@@ -111,7 +111,7 @@ class MeshComponent : Component, ISerializableComponent
 	}
 
 	/// Sets a material instance at the given slot, growing the list if needed.
-	/// Takes ownership — AddRefs the new material, ReleaseRefs the old.
+	/// Takes ownership - AddRefs the new material, ReleaseRefs the old.
 	public void SetMaterial(int32 slot, MaterialInstance material)
 	{
 		while (Materials.Count <= slot)

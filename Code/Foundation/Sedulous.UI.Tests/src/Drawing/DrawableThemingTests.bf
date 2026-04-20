@@ -139,7 +139,7 @@ class DrawableThemingTests
 		let normal = new ColorDrawable(.Green);
 		stateList.Set(.Normal, normal);
 
-		// Focused not set — falls back to Normal.
+		// Focused not set - falls back to Normal.
 		Test.Assert(stateList.Get(.Focused) === normal);
 	}
 
@@ -428,7 +428,7 @@ class DrawableThemingTests
 	}
 
 	// ==========================================================
-	// Option C pattern — drawable overrides color fallback
+	// Option C pattern - drawable overrides color fallback
 	// ==========================================================
 
 	[Test]
@@ -445,7 +445,7 @@ class DrawableThemingTests
 		root.AddView(btn, new LayoutParams() { Width = 100, Height = 30 });
 		ctx.UpdateRootView(root);
 
-		// No drawable set — verify theme has no drawable for Button.Background.
+		// No drawable set - verify theme has no drawable for Button.Background.
 		Test.Assert(ctx.Theme.GetDrawable("Button.Background") == null);
 		// Color fallback should be used (no crash during draw).
 	}
@@ -457,7 +457,7 @@ class DrawableThemingTests
 		theme.SetDrawable("Test", new ColorDrawable(.Red));
 		// Theme should own and delete the drawable.
 		delete theme;
-		// No leak — verified by Beef's leak detector.
+		// No leak - verified by Beef's leak detector.
 	}
 
 	// ==========================================================

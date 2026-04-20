@@ -135,7 +135,7 @@ class ComputeSample : SampleApp
 
 	public this()  { }
 
-	protected override StringView Title => "Sample004 — Compute Shader (Animated Point Grid)";
+	protected override StringView Title => "Sample004 - Compute Shader (Animated Point Grid)";
 
 	protected override Result<void> OnInit()
 	{

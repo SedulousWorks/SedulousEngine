@@ -66,14 +66,14 @@ class DX12BindGroup : IBindGroup
 	private void WriteDescriptors(DX12Device device, BindGroupDesc desc)
 	{
 		// Entries are positional: entry[j] provides the resource for the j-th non-bindless layout range.
-		// Bindless ranges are skipped — they are populated via UpdateBindless().
+		// Bindless ranges are skipped - they are populated via UpdateBindless().
 		// Dynamic offset bindings store GPU addresses instead of writing heap descriptors.
 		int entryIdx = 0;
 		for (int i = 0; i < mLayout.Ranges.Count; i++)
 		{
 			let rangeInfo = mLayout.Ranges[i];
 
-			// Skip bindless ranges — not populated at creation time
+			// Skip bindless ranges - not populated at creation time
 			switch (rangeInfo.Type)
 			{
 			case .BindlessTextures, .BindlessSamplers, .BindlessStorageBuffers, .BindlessStorageTextures:

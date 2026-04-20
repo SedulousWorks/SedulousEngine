@@ -114,7 +114,7 @@ class DragDropTests
 
 		ctx.DragDropManager.BeginPotentialDrag(source, source, 50, 50, .Left);
 
-		// Move less than threshold — still potential.
+		// Move less than threshold - still potential.
 		ctx.DragDropManager.UpdateDrag(52, 52);
 		Test.Assert(ctx.DragDropManager.State == .Potential);
 
@@ -140,9 +140,9 @@ class DragDropTests
 
 		ctx.DragDropManager.BeginPotentialDrag(source, source, 50, 50, .Left);
 
-		// Mouse up before threshold — cancels silently, no callbacks.
+		// Mouse up before threshold - cancels silently, no callbacks.
 		let consumed = ctx.DragDropManager.EndDrag(51, 51);
-		Test.Assert(!consumed); // Not consumed — normal mouseup should continue.
+		Test.Assert(!consumed); // Not consumed - normal mouseup should continue.
 		Test.Assert(ctx.DragDropManager.State == .Idle);
 		Test.Assert(!source.DragStarted);
 		Test.Assert(!source.DragCompleted);
@@ -166,7 +166,7 @@ class DragDropTests
 		ctx.DragDropManager.BeginPotentialDrag(source, source, 50, 50, .Left);
 		ctx.DragDropManager.UpdateDrag(60, 60); // Past threshold.
 
-		// CreateDragData returned null — drag cancelled.
+		// CreateDragData returned null - drag cancelled.
 		Test.Assert(ctx.DragDropManager.State == .Idle);
 		Test.Assert(!source.DragStarted);
 	}
@@ -355,7 +355,7 @@ class DragDropTests
 		ctx.DragDropManager.UpdateDrag(100, 25);
 		Test.Assert(ctx.DragDropManager.CurrentEffect == .None);
 
-		// Drop — should cancel since effect is None.
+		// Drop - should cancel since effect is None.
 		ctx.DragDropManager.EndDrag(100, 25);
 		Test.Assert(!target.Dropped);
 		Test.Assert(source.CompletedCancelled);

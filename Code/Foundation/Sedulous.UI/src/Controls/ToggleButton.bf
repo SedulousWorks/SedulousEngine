@@ -96,7 +96,7 @@ public class ToggleButton : View
 		let bounds = RectangleF(0, 0, Width, Height);
 		let radius = ctx.Theme?.GetDimension("ToggleButton.CornerRadius", 4) ?? 4;
 
-		// Background — accent when checked, primary when not.
+		// Background - accent when checked, primary when not.
 		let drawableKey = mIsChecked ? "ToggleButton.CheckedBackground" : "ToggleButton.Background";
 		let state = GetControlState();
 		if (!ctx.TryDrawDrawable(drawableKey, bounds, state))
@@ -126,7 +126,7 @@ public class ToggleButton : View
 		if (IsFocused)
 			ctx.DrawFocusRing(bounds, radius);
 
-		// Text — may use different color when checked vs unchecked.
+		// Text - may use different color when checked vs unchecked.
 		if (mText != null && mText.Length > 0 && ctx.FontService != null)
 		{
 			let font = ctx.FontService.GetFont(FontSize);

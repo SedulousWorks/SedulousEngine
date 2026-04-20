@@ -96,7 +96,7 @@ public class InputSubsystem : Subsystem
 	}
 
 	/// Removes a context from the stack.
-	/// Note: Does NOT delete the context — caller is responsible for deletion.
+	/// Note: Does NOT delete the context - caller is responsible for deletion.
 	public void PopContext(InputContext context)
 	{
 		mContextStack.Remove(context);

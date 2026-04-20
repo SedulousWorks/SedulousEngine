@@ -5,15 +5,15 @@ using System;
 /// Particle simulation backend.
 public enum SimulationMode : uint8
 {
-	/// CPU simulation — SoA arrays updated per-frame on CPU, uploaded to GPU for rendering.
+	/// CPU simulation - SoA arrays updated per-frame on CPU, uploaded to GPU for rendering.
 	/// Supports all behaviors including CPU-only ones (raycasting, scene queries).
 	CPU,
 
-	/// GPU compute shader simulation — data stays on GPU, rendered directly (zero copy).
+	/// GPU compute shader simulation - data stays on GPU, rendered directly (zero copy).
 	/// Only behaviors that declare GPU support can be used.
 	GPU,
 
-	/// Automatic selection — GPU if all attached behaviors support it and particle
+	/// Automatic selection - GPU if all attached behaviors support it and particle
 	/// count exceeds a threshold; CPU otherwise.
 	Auto
 }

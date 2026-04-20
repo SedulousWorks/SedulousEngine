@@ -340,7 +340,7 @@ class LegacyAdoptionTests
 	{
 		let vg = scope Sedulous.VG.VGContext();
 		let ctx = scope UIDrawContext(vg);
-		// Should not crash — uses hardcoded fallback color.
+		// Should not crash - uses hardcoded fallback color.
 		ctx.DrawFocusRing(.(0, 0, 100, 50), 4);
 	}
 }

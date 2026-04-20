@@ -1,4 +1,4 @@
-# Static vs Skinned Meshes — Import Pipeline
+# Static vs Skinned Meshes - Import Pipeline
 
 ## Vertex Layouts
 
@@ -28,15 +28,15 @@ Uses `VertexBuffer` with dynamic attribute definitions. The first 48 bytes of la
 
 Fixed-size `[CRepr]` struct. Adds 24 bytes of skinning data (bone indices + weights) to the common layout.
 
-## Transform Handling — The Key Difference
+## Transform Handling - The Key Difference
 
 ### Static Meshes: Transforms Are Baked Into Vertices
 
 `ImportStaticMeshes` (ModelImporter.bf) does the following for each mesh:
 
-1. `ComputeMeshNodeWorldTransform(model, meshIndex)` — walks the bone hierarchy from the mesh's owner node up to the root, accumulating the full world transform matrix.
-2. `ApplyTransform(mesh, worldTransform)` — **bakes** that transform directly into vertex data:
-   - **Positions**: `Vector3.Transform(pos, worldMatrix)` — full affine transform including translation, rotation, scale.
+1. `ComputeMeshNodeWorldTransform(model, meshIndex)` - walks the bone hierarchy from the mesh's owner node up to the root, accumulating the full world transform matrix.
+2. `ApplyTransform(mesh, worldTransform)` - **bakes** that transform directly into vertex data:
+   - **Positions**: `Vector3.Transform(pos, worldMatrix)` - full affine transform including translation, rotation, scale.
    - **Normals/Tangents**: Uses **normal matrix** (inverse-transpose of upper 3x3) via `Vector3.TransformNormal()`, then normalizes. This correctly handles non-uniform scale.
 
 After baking, vertex positions are in world space. The StaticModel component needs only a simple node transform (identity for origin-placed models, or user-applied position/scale).
@@ -67,7 +67,7 @@ Baking a world transform into the positions would **double-transform** during sk
 
 ### When loading models in the engine:
 
-1. **For StaticModel**: Use `result.StaticMeshes[i].Mesh` directly. The importer has already baked node transforms, so the mesh is correctly oriented without any extra work. Do NOT convert from SkinnedMesh to StaticMesh — this bypasses the transform baking and produces incorrectly oriented models.
+1. **For StaticModel**: Use `result.StaticMeshes[i].Mesh` directly. The importer has already baked node transforms, so the mesh is correctly oriented without any extra work. Do NOT convert from SkinnedMesh to StaticMesh - this bypasses the transform baking and produces incorrectly oriented models.
 
 2. **For AnimatedModel**: Use `result.SkinnedMeshes[i].Mesh` with the corresponding skeleton from `result.Skeletons`. The AnimatedModel component handles skinning via bone matrices at render time.
 
@@ -81,14 +81,14 @@ Baking a world transform into the positions would **double-transform** during sk
 ## Import Order
 
 ```
-0a. PreprocessRigidAttachments()  — promote rigid bone-attached meshes to skinned
-0b. MergeRelatedSkins()           — consolidate multi-skin hierarchies
-1.  Skeletons                     — needed by skinned meshes for ResourceRef
-2.  Textures                      — needed by materials
-3.  Materials                     — reference textures via ResourceRef
-4.  Static Meshes                 — transform baked, standalone
-5.  Skinned Meshes                — reference skeletons, bone-local positions
-6.  Animations                    — reference skeletons for channel mapping
+0a. PreprocessRigidAttachments()  - promote rigid bone-attached meshes to skinned
+0b. MergeRelatedSkins()           - consolidate multi-skin hierarchies
+1.  Skeletons                     - needed by skinned meshes for ResourceRef
+2.  Textures                      - needed by materials
+3.  Materials                     - reference textures via ResourceRef
+4.  Static Meshes                 - transform baked, standalone
+5.  Skinned Meshes                - reference skeletons, bone-local positions
+6.  Animations                    - reference skeletons for channel mapping
 ```
 
 ## Summary Table

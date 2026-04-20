@@ -818,7 +818,7 @@ public class RenderGraph
 				{
 					let rhiDesc = res.TextureDesc.ToTextureDesc(res.Name);
 					mTexturePool.ReturnToPool(rhiDesc, res.Texture, res.TextureView);
-					// DepthOnlyView is not pooled — defer deletion (commands may still reference it)
+					// DepthOnlyView is not pooled - defer deletion (commands may still reference it)
 					if (res.DepthOnlyView != null)
 						deletions.Add(.() { View = res.DepthOnlyView });
 				}

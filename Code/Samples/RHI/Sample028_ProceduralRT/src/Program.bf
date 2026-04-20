@@ -143,7 +143,7 @@ class ProceduralRTSample : SampleApp
 
 	public this() : base(.DX12) { }
 
-	protected override StringView Title => "Sample028 — Procedural RT (AABB Spheres)";
+	protected override StringView Title => "Sample028 - Procedural RT (AABB Spheres)";
 	protected override DeviceFeatures RequiredFeatures => .() { RayTracing = true };
 
 	protected override Result<void> OnInit()
@@ -196,7 +196,7 @@ class ProceduralRTSample : SampleApp
 		mOutputTextureView = tvR.Value;
 
 		// AABB buffer: one AABB per sphere (6 floats: minX, minY, minZ, maxX, maxY, maxZ)
-		// All AABBs are unit cubes [-0.5, 0.5] centered at origin — instance transforms position them
+		// All AABBs are unit cubes [-0.5, 0.5] centered at origin - instance transforms position them
 		{
 			float[?] aabbs = .(
 				-0.5f, -0.5f, -0.5f, 0.5f, 0.5f, 0.5f

@@ -14,7 +14,7 @@ namespace Sedulous.Renderer;
 ///   - Frustum culling (when context provides visibility data, future)
 ///   - LOD selection (via context.CameraPosition + context.LODBias)
 ///
-/// The Renderer knows nothing about entities or scenes — this interface is
+/// The Renderer knows nothing about entities or scenes - this interface is
 /// the boundary between scene-aware code and scene-independent rendering.
 interface IRenderDataProvider
 {

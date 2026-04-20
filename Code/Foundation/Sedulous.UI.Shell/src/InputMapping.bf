@@ -11,7 +11,7 @@ static class InputMapping
 	/// Maps Shell.Input.KeyCode to UI.KeyCode.
 	public static Sedulous.UI.KeyCode MapKey(Sedulous.Shell.Input.KeyCode shellKey)
 	{
-		// Values match by design — trivial cast works for all common keys.
+		// Values match by design - trivial cast works for all common keys.
 		return (Sedulous.UI.KeyCode)(int)shellKey;
 	}
 

@@ -57,7 +57,7 @@ class OverlayTests
 		Test.Assert(ctx.PopupLayer.PopupCount == 1);
 
 		ctx.PopupLayer.ClosePopup(popup);
-		// popup NOT deleted — still accessible
+		// popup NOT deleted - still accessible
 		Test.Assert(ctx.PopupLayer.PopupCount == 0);
 		Test.Assert(popup.PreferredWidth == 100); // still valid
 	}
@@ -80,7 +80,7 @@ class OverlayTests
 
 		Test.Assert(ctx.PopupLayer.HasModalPopup);
 
-		// Hit outside the popup — modal should block (return PopupLayer itself).
+		// Hit outside the popup - modal should block (return PopupLayer itself).
 		let hit = ctx.PopupLayer.HitTest(.(10, 10));
 		Test.Assert(hit != null); // blocked, not null
 
@@ -105,7 +105,7 @@ class OverlayTests
 
 		Test.Assert(ctx.PopupLayer.PopupCount == 1);
 
-		// Click outside — closes all CloseOnClickOutside popups.
+		// Click outside - closes all CloseOnClickOutside popups.
 		ctx.PopupLayer.HandleClickOutside(.Left);
 		Test.Assert(ctx.PopupLayer.PopupCount == 0);
 	}

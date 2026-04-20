@@ -206,7 +206,7 @@ public class Path
 			remaining -= segLen;
 		}
 
-		// Past end — return last point
+		// Past end - return last point
 		if (mPoints.Count > 0)
 			return mPoints[mPoints.Count - 1];
 		return .Zero;

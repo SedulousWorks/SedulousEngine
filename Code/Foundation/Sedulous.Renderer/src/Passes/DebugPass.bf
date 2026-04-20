@@ -9,7 +9,7 @@ using Sedulous.DebugFont;
 using Sedulous.Profiler;
 using Sedulous.Materials;
 
-/// Debug line drawing — uploads accumulated line vertices from
+/// Debug line drawing - uploads accumulated line vertices from
 /// RenderContext.DebugDraw and renders them with depth test (occluded lines
 /// still draw but behind opaque geometry). Runs after the main forward passes
 /// and before post-processing so the lines compose into the HDR scene color.
@@ -64,7 +64,7 @@ class DebugPass : PipelinePass
 		encoder.SetViewport(0, 0, (float)view.Width, (float)view.Height, 0.0f, 1.0f);
 		encoder.SetScissor(0, 0, view.Width, view.Height);
 
-		// Pipeline state — line list, depth test, no cull, alpha blend.
+		// Pipeline state - line list, depth test, no cull, alpha blend.
 		var config = PipelineConfig();
 		config.ShaderName = "debug_line";
 		config.BlendMode = .AlphaBlend;

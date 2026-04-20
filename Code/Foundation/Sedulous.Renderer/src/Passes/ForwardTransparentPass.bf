@@ -7,7 +7,7 @@ using Sedulous.Renderer;
 using Sedulous.Materials;
 using Sedulous.Profiler;
 
-/// Transparent forward pass — renders transparent geometry with PBR lighting.
+/// Transparent forward pass - renders transparent geometry with PBR lighting.
 /// Reads SceneDepth (depth test, no write). Alpha blended, back-to-front sorted.
 /// Same forward shader as opaque, different pipeline state.
 class ForwardTransparentPass : PipelinePass

@@ -127,7 +127,7 @@ public class ComboBox : View, IPopupOwner
 			ctx.VG.FillRoundedRect(bounds, radius, bgColor);
 		}
 
-		// Border — accent when open.
+		// Border - accent when open.
 		let borderColor = mIsOpen
 			? (ctx.Theme?.Palette.PrimaryAccent ?? .(80, 160, 255, 255))
 			: (ctx.Theme?.GetColor("ComboBox.Border", .(80, 85, 100, 255)) ?? .(80, 85, 100, 255));
@@ -247,7 +247,7 @@ public class ComboBox : View, IPopupOwner
 		InvalidateVisual();
 	}
 
-	/// IPopupOwner — called when dropdown is closed externally.
+	/// IPopupOwner - called when dropdown is closed externally.
 	public void OnPopupClosed(View popup)
 	{
 		mIsOpen = false;

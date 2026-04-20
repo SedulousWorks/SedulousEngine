@@ -146,7 +146,7 @@ static class SkeletonConverter
 	/// ancestor chain and collects non-joint nodes. This ensures animated transforms
 	/// on these nodes (e.g. root motion) are part of the skeleton hierarchy.
 	///
-	/// Scene root nodes (ParentIndex < 0) are NOT included — their transforms are
+	/// Scene root nodes (ParentIndex < 0) are NOT included - their transforms are
 	/// captured via RootCorrection on the topmost included ancestor instead.
 	private static void CollectAncestorNodes(Model model, ModelSkin skin, int32[] nodeToSkinJoint, List<int32> outAncestors)
 	{
@@ -179,7 +179,7 @@ static class SkeletonConverter
 					break; // Already a skin joint, stop
 
 				if (currentBone.ParentIndex < 0)
-					break; // Scene root — keep in RootCorrection, not as a bone
+					break; // Scene root - keep in RootCorrection, not as a bone
 
 				if (seen.Add(current))
 					outAncestors.Add(current);
@@ -191,7 +191,7 @@ static class SkeletonConverter
 
 	/// Computes RootCorrection matrix for a bone by accumulating static transforms
 	/// of all ancestors starting from the given node index up to the scene root.
-	/// No explicit axis conversion is needed — loaders (FBX via MODIFY_GEOMETRY,
+	/// No explicit axis conversion is needed - loaders (FBX via MODIFY_GEOMETRY,
 	/// GLTF which is natively Y-up) deliver transforms already in engine space.
 	private static Matrix ComputeRootCorrection(Model model, int32 startNodeIdx)
 	{

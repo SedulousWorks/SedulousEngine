@@ -9,7 +9,7 @@ using Sedulous.Shaders;
 using Sedulous.Renderer;
 
 /// Per-decal uniform data written to the per-frame draw-call ring buffer.
-/// Layout must match decal.frag/vert.hlsl `DecalUniforms` cbuffer — 160 bytes.
+/// Layout must match decal.frag/vert.hlsl `DecalUniforms` cbuffer - 160 bytes.
 [CRepr]
 public struct DecalUniforms
 {
@@ -41,7 +41,7 @@ public class DecalRenderer : Renderer
 	private IDevice mDevice;
 	private RenderContext mRenderContext;
 
-	// Shared decal material template — managed by MaterialSystem.
+	// Shared decal material template - managed by MaterialSystem.
 	private Material mDecalMaterial ~ delete _;
 	private IBindGroupLayout mDecalMaterialLayout; // owned by MaterialSystem
 
@@ -148,7 +148,7 @@ public class DecalRenderer : Renderer
 		else
 			return;
 
-		// --- 2. Decal-pass bind group layout (set 1) — depth texture + sampler ---
+		// --- 2. Decal-pass bind group layout (set 1) - depth texture + sampler ---
 		BindGroupLayoutEntry[2] passEntries = .(
 			.SampledTexture(0, .Fragment, .Texture2D),
 			.Sampler(0, .Fragment)
@@ -178,7 +178,7 @@ public class DecalRenderer : Renderer
 			return;
 
 		// --- 3. Custom pipeline layout ---
-		// Set 0 Frame, 1 DecalPass, 2 Material, 3 DrawCall — no shadow set needed.
+		// Set 0 Frame, 1 DecalPass, 2 Material, 3 DrawCall - no shadow set needed.
 		IBindGroupLayout[4] layouts = .(
 			context.FrameBindGroupLayout,
 			mDecalPassLayout,
@@ -209,7 +209,7 @@ public class DecalRenderer : Renderer
 			Vertex = .()
 			{
 				Shader = .(vertShader.Module, "main"),
-				Buffers = .()  // no vertex buffer — SV_VertexID generates positions
+				Buffers = .()  // no vertex buffer - SV_VertexID generates positions
 			},
 			Fragment = .()
 			{
@@ -260,7 +260,7 @@ public class DecalRenderer : Renderer
 
 		mainPipeline.BindFrameGroup(encoder, frame);
 
-		// Set 1 — decal pass bind group (scene depth)
+		// Set 1 - decal pass bind group (scene depth)
 		encoder.SetBindGroup(BindGroupFrequency.RenderPass, passBindGroup, default);
 
 		IBindGroup lastMaterial = null;

@@ -177,7 +177,7 @@ public class ParticleRenderer : Sedulous.Renderer.Renderer
 				lastBlend = run.blend;
 				pipelineBound = true;
 
-				// Bind groups must be set after pipeline — layout must match.
+				// Bind groups must be set after pipeline - layout must match.
 				mainPipeline.BindFrameGroup(encoder, frame);
 
 				let depthBG = mGPUResources.GetDepthPassBindGroup(view.FrameIndex);
@@ -200,7 +200,7 @@ public class ParticleRenderer : Sedulous.Renderer.Renderer
 			encoder.Draw(6, (uint32)run.count, 0, 0);
 		}
 
-		// 5. Trail rendering — separate pass with different vertex layout and shader.
+		// 5. Trail rendering - separate pass with different vertex layout and shader.
 		RenderTrails(encoder, batch, mainPipeline, frame, view);
 	}
 

@@ -266,7 +266,7 @@ class ThemeXmlParserTests
 			</Theme>
 			""";
 
-		// No image loader provided — drawable should not be created.
+		// No image loader provided - drawable should not be created.
 		let theme = ThemeXmlParser.Parse(xml);
 		Test.Assert(theme != null);
 		defer delete theme;

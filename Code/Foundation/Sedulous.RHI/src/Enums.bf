@@ -100,7 +100,7 @@ enum ResourceState : uint32
 	CopyDst             = 1 << 10,
 	Present             = 1 << 11,
 	InputAttachment     = 1 << 12,
-	/// General layout — usable for any purpose but not optimal.
+	/// General layout - usable for any purpose but not optimal.
 	General             = 1 << 13,
 	/// Acceleration structure read (ray tracing extension).
 	AccelStructRead     = 1 << 14,
@@ -146,7 +146,7 @@ enum ShaderStage : uint32
 	Vertex       = 1 << 0,
 	Fragment     = 1 << 1,
 	Compute      = 1 << 2,
-	// Extension stages — only meaningful when the corresponding extension is supported.
+	// Extension stages - only meaningful when the corresponding extension is supported.
 	Mesh         = 1 << 3,
 	/// Amplification shader (DX12) / Task shader (Vulkan).
 	Task         = 1 << 4,
@@ -444,7 +444,7 @@ enum GeometryType
 enum GeometryFlags : uint32
 {
 	None = 0,
-	/// Geometry is fully opaque — skip any-hit shaders.
+	/// Geometry is fully opaque - skip any-hit shaders.
 	Opaque = 1 << 0,
 	/// Guarantee at most one any-hit invocation per primitive.
 	NoDuplicateAnyHitInvocation = 1 << 1,

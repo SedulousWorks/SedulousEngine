@@ -1,4 +1,4 @@
-// Decal vertex shader — generates 36 vertices of a unit cube from SV_VertexID,
+// Decal vertex shader - generates 36 vertices of a unit cube from SV_VertexID,
 // transforms them by the decal's world matrix, and projects to clip space.
 //
 // The cube is rendered in the decal's local space centered at origin with
@@ -45,7 +45,7 @@ struct VertexOutput
 
 VertexOutput main(uint vertexID : SV_VertexID)
 {
-    // 36 cube vertices — 6 faces × 2 triangles × 3 vertices. Cube extent [-0.5, 0.5].
+    // 36 cube vertices - 6 faces × 2 triangles × 3 vertices. Cube extent [-0.5, 0.5].
     // Winding is intentionally mixed; DecalRenderer draws with CullMode.None so
     // both sides of each face are rasterized regardless.
     static const float3 CubeVerts[36] = {
@@ -76,7 +76,7 @@ VertexOutput main(uint vertexID : SV_VertexID)
     VertexOutput output;
     output.Position = clip;
     // Screen UV is recomputed in the fragment shader from SV_Position, so this
-    // slot isn't strictly needed — but we keep it for clarity.
+    // slot isn't strictly needed - but we keep it for clarity.
     output.ScreenUV = float2(0, 0);
     return output;
 }

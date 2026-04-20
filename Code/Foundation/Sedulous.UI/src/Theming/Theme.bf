@@ -20,7 +20,7 @@ public class Theme
 		sExtensions.Add(ext);
 	}
 
-	/// Remove a previously registered extension. Does NOT delete it —
+	/// Remove a previously registered extension. Does NOT delete it -
 	/// caller manages lifetime. Use this to clean up scope-allocated
 	/// extensions in tests.
 	public static void UnregisterExtension(IThemeExtension ext)
@@ -115,7 +115,7 @@ public class Theme
 		return defaultValue;
 	}
 
-	/// Nullable color lookup — returns null if the key is not set.
+	/// Nullable color lookup - returns null if the key is not set.
 	/// Use when you need a fallback chain: theme key -> palette -> hardcoded.
 	public Color? TryGetColor(StringView key)
 	{

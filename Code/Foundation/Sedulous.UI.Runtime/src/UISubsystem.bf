@@ -70,7 +70,7 @@ public class UISubsystem : Subsystem
 	}
 
 	/// Initialize rendering resources. Call after the device is ready.
-	/// Pass shell for input bridging (optional — null disables input).
+	/// Pass shell for input bridging (optional - null disables input).
 	public Result<void> InitializeRendering(
 		IDevice device,
 		TextureFormat targetFormat,

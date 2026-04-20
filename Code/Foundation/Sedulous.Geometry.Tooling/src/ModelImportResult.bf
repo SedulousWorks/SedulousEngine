@@ -6,7 +6,7 @@ using Sedulous.Animation;
 namespace Sedulous.Geometry.Tooling;
 
 /// Result of importing a model, containing all extracted data.
-/// Uses direct data types — no resource system dependency.
+/// Uses direct data types - no resource system dependency.
 /// Caller takes ownership of all data.
 class ModelImportResult
 {

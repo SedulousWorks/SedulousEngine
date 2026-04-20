@@ -29,7 +29,7 @@ public class ListView : ViewGroup, IListAdapterObserver
 	private MomentumHelper mMomentum = .();
 
 	// Currently visible item views, keyed by adapter position.
-	// ListView owns these — active views are not in mChildren or recycler pools.
+	// ListView owns these - active views are not in mChildren or recycler pools.
 	private Dictionary<int32, View> mActiveViews = new .() ~ {
 		for (let kv in _) delete kv.value;
 		delete _;
@@ -104,7 +104,7 @@ public class ListView : ViewGroup, IListAdapterObserver
 		InvalidateLayout();
 	}
 
-	/// Notify that the adapter data has changed — rebuild visible items.
+	/// Notify that the adapter data has changed - rebuild visible items.
 	public void NotifyDataChanged()
 	{
 		RebuildOffsets();

@@ -1,6 +1,6 @@
 // Test shader with specialization constants (Vulkan only).
 //
-// Compile (SPIR-V only — DXIL has no specialization constants):
+// Compile (SPIR-V only - DXIL has no specialization constants):
 //   dxc -T cs_6_0 -E CSMain -spirv -Fo test_specconst.spv test_specconst.hlsl
 
 [[vk::constant_id(0)]] const bool ENABLE_FEATURE = true;

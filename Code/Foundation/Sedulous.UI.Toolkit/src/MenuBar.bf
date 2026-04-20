@@ -222,7 +222,7 @@ public class MenuBar : ViewGroup, IPopupOwner
 			v = v.Parent;
 		}
 
-		// Show via PopupLayer directly — MenuBar owns the ContextMenu (not PopupLayer).
+		// Show via PopupLayer directly - MenuBar owns the ContextMenu (not PopupLayer).
 		entry.Menu.Measure(.AtMost(Root.ViewportSize.X), .AtMost(Root.ViewportSize.Y));
 		Context.PopupLayer.ShowPopup(entry.Menu, this, screenX, screenY,
 			closeOnClickOutside: true, isModal: false, ownsView: false);
@@ -233,7 +233,7 @@ public class MenuBar : ViewGroup, IPopupOwner
 		if (mActiveIndex >= 0 && mActiveIndex < mMenus.Count && Context != null)
 		{
 			let menu = mMenus[mActiveIndex].Menu;
-			// The menu is shown via PopupLayer — closing it will trigger OnPopupClosed.
+			// The menu is shown via PopupLayer - closing it will trigger OnPopupClosed.
 			if (menu.IsAttached)
 				Context.PopupLayer.ClosePopup(menu);
 		}

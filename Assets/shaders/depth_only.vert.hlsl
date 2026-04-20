@@ -1,5 +1,5 @@
 // Depth-only vertex shader
-// Transforms position only — no color output, just depth buffer write.
+// Transforms position only - no color output, just depth buffer write.
 //
 // When INSTANCED is defined, reads per-instance transforms from a
 // StructuredBuffer indexed by SV_InstanceID instead of the per-draw UBO.

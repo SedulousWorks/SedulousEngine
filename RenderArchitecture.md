@@ -10,50 +10,50 @@ standalone for sandboxes, tools, and tests without any scene infrastructure.
 
 ```
 Sedulous.Renderer (scene-independent)
-├── RenderContext          — shared infrastructure (GPU resources, materials, lights, shaders,
+├── RenderContext          - shared infrastructure (GPU resources, materials, lights, shaders,
 │                            shadows, sprites, debug draw, registered renderers)
 │                            CurrentSceneDepthView for depth-dependent effects
-├── Pipeline               — per-view pass execution, render graph (output target provided by caller)
-├── IRenderingPipeline     — interface shared by Pipeline + ShadowPipeline
-├── PipelinePass           — base class for render/compute/copy passes
-├── Renderer               — abstract per-type drawer base (ezRenderer pattern)
-│   ├── MeshRenderer       — draws MeshRenderData (Opaque, Masked, Transparent)
-│   ├── SpriteRenderer     — draws SpriteRenderData (Transparent, GPU instanced)
-│   └── DecalRenderer      — draws DecalRenderData (Decal, own pipeline layout)
-├── PostProcessStack       — ordered chain of post-process effects on Pipeline
-├── PipelineStateCache     — on-demand GPU pipeline creation, MRT support
-├── RenderView             — camera + viewport + frame state + extracted data (owns ExtractedRenderData)
-├── RenderViewPool         — per-frame view reuse for multi-view rendering
-├── ExtractedRenderData    — per-view container of polymorphic render data per category
-├── FrameAllocator         — per-frame bump allocator for render data (Sedulous.Core.Memory)
-├── GPUResourceManager     — handle-based GPU resource pool
+├── Pipeline               - per-view pass execution, render graph (output target provided by caller)
+├── IRenderingPipeline     - interface shared by Pipeline + ShadowPipeline
+├── PipelinePass           - base class for render/compute/copy passes
+├── Renderer               - abstract per-type drawer base (ezRenderer pattern)
+│   ├── MeshRenderer       - draws MeshRenderData (Opaque, Masked, Transparent)
+│   ├── SpriteRenderer     - draws SpriteRenderData (Transparent, GPU instanced)
+│   └── DecalRenderer      - draws DecalRenderData (Decal, own pipeline layout)
+├── PostProcessStack       - ordered chain of post-process effects on Pipeline
+├── PipelineStateCache     - on-demand GPU pipeline creation, MRT support
+├── RenderView             - camera + viewport + frame state + extracted data (owns ExtractedRenderData)
+├── RenderViewPool         - per-frame view reuse for multi-view rendering
+├── ExtractedRenderData    - per-view container of polymorphic render data per category
+├── FrameAllocator         - per-frame bump allocator for render data (Sedulous.Core.Memory)
+├── GPUResourceManager     - handle-based GPU resource pool
 ├── Shadows/
-│   ├── ShadowSystem       — atlas + data buffer + comparison sampler + bind groups
-│   ├── ShadowAtlas         — hierarchical 3-tier depth atlas (Large/Medium/Small)
-│   ├── ShadowPipeline      — standalone per-view shadow rendering
-│   └── ShadowMatrices      — spot/point/directional cascade matrix computation
+│   ├── ShadowSystem       - atlas + data buffer + comparison sampler + bind groups
+│   ├── ShadowAtlas         - hierarchical 3-tier depth atlas (Large/Medium/Small)
+│   ├── ShadowPipeline      - standalone per-view shadow rendering
+│   └── ShadowMatrices      - spot/point/directional cascade matrix computation
 ├── Debug/
-│   ├── DebugDraw           — immediate-mode wire shapes + text API
-│   └── DebugDrawSystem     — font atlas + per-frame vertex buffers
-├── SpriteSystem           — sprite material template + per-frame instance buffers
-├── IRenderDataProvider    — extraction interface for scene modules
-├── RenderExtractionContext — view info + RenderContext ref passed to providers
-└── BindGroupFrequency     — 5-level bind group convention (Frame/Pass/Material/DrawCall/Shadow)
+│   ├── DebugDraw           - immediate-mode wire shapes + text API
+│   └── DebugDrawSystem     - font atlas + per-frame vertex buffers
+├── SpriteSystem           - sprite material template + per-frame instance buffers
+├── IRenderDataProvider    - extraction interface for scene modules
+├── RenderExtractionContext - view info + RenderContext ref passed to providers
+└── BindGroupFrequency     - 5-level bind group convention (Frame/Pass/Material/DrawCall/Shadow)
 
 Sedulous.Particles (self-contained, depends on Renderer)
 ├── Simulation
-│   ├── ParticleStream/CPUStream/GPUStream — SoA data channels with on-demand allocation
-│   ├── ParticleSimulator/CPUSimulator     — behavior execution on streams
-│   ├── ParticleSystem                     — orchestrator (emitter + behaviors + initializers + streams)
-│   ├── ParticleEffect/ParticleEffectInstance — multi-system grouping + sub-emitter routing
-│   ├── 12 behaviors + 6 initializers      — composable, declare stream requirements
-│   └── Curves, shapes, ranges             — Hermite curves, 7 emission shapes, randomized values
+│   ├── ParticleStream/CPUStream/GPUStream - SoA data channels with on-demand allocation
+│   ├── ParticleSimulator/CPUSimulator     - behavior execution on streams
+│   ├── ParticleSystem                     - orchestrator (emitter + behaviors + initializers + streams)
+│   ├── ParticleEffect/ParticleEffectInstance - multi-system grouping + sub-emitter routing
+│   ├── 12 behaviors + 6 initializers      - composable, declare stream requirements
+│   └── Curves, shapes, ranges             - Hermite curves, 7 emission shapes, randomized values
 ├── Render/
-│   ├── ParticlePass        — own render pass with ReadDepth + ReadTexture for soft particles
-│   ├── ParticleRenderer    — Renderer subclass for Particle category, per-blend-mode pipelines
-│   ├── ParticleGPUResources — custom pipeline layout (Frame+Depth+Material+DrawCall), buffers
-│   └── ParticleRenderExtractor — streams → vertex array, sorting, AABB, trail ribbon mesh
-└── Sedulous.Particles.Resources — serialization (ParticleEffectResource, type registry)
+│   ├── ParticlePass        - own render pass with ReadDepth + ReadTexture for soft particles
+│   ├── ParticleRenderer    - Renderer subclass for Particle category, per-blend-mode pipelines
+│   ├── ParticleGPUResources - custom pipeline layout (Frame+Depth+Material+DrawCall), buffers
+│   └── ParticleRenderExtractor - streams → vertex array, sorting, AABB, trail ribbon mesh
+└── Sedulous.Particles.Resources - serialization (ParticleEffectResource, type registry)
 ```
 
 ## RenderContext (Shared Infrastructure)
@@ -61,17 +61,17 @@ Sedulous.Particles (self-contained, depends on Renderer)
 The `RenderContext` class (formerly Renderer) owns GPU resources, systems, and
 registered per-type drawers shared across all views/pipelines:
 
-- `GPUResourceManager` — meshes, textures, bone buffers with deferred deletion
-- `MaterialSystem` — bind group lifecycle, default textures, per-instance GPU resources
-- `PipelineStateCache` — cached GPU pipelines by config hash, MRT support
-- `LightBuffer` — per-frame light data upload (max 128 lights)
-- `ShadowSystem` — hierarchical shadow atlas + shadow data buffer + comparison sampler
-- `SkinningSystem` — compute skinning dispatch + per-mesh output buffers
-- `SpriteSystem` — shared sprite material template + per-frame instance buffers
-- `DebugDrawSystem` — font atlas + per-frame line/overlay vertex buffers
-- `DebugDraw` — immediate-mode API for wire shapes, text, screen overlays
-- `FrameAllocator` — per-frame bump allocator for render data, reset each BeginFrame
-- Registered renderers (MeshRenderer, SpriteRenderer, DecalRenderer) — shared across pipelines
+- `GPUResourceManager` - meshes, textures, bone buffers with deferred deletion
+- `MaterialSystem` - bind group lifecycle, default textures, per-instance GPU resources
+- `PipelineStateCache` - cached GPU pipelines by config hash, MRT support
+- `LightBuffer` - per-frame light data upload (max 128 lights)
+- `ShadowSystem` - hierarchical shadow atlas + shadow data buffer + comparison sampler
+- `SkinningSystem` - compute skinning dispatch + per-mesh output buffers
+- `SpriteSystem` - shared sprite material template + per-frame instance buffers
+- `DebugDrawSystem` - font atlas + per-frame line/overlay vertex buffers
+- `DebugDraw` - immediate-mode API for wire shapes, text, screen overlays
+- `FrameAllocator` - per-frame bump allocator for render data, reset each BeginFrame
+- Registered renderers (MeshRenderer, SpriteRenderer, DecalRenderer) - shared across pipelines
 - Shared bind group layouts (Frame set 0, DrawCall set 3, Shadow set 4)
 
 One RenderContext per application. Multiple Pipelines reference the same context.
@@ -96,7 +96,7 @@ Benefits:
 - Pipeline doesn't know about swapchains or who owns the output
 - Same code renders to swapchain blit target, editor viewport texture, or offscreen buffer
 - Application controls output lifetime, sizing, and format
-- No texture create/destroy in Pipeline.OnResize — just dimension updates
+- No texture create/destroy in Pipeline.OnResize - just dimension updates
 
 ### Frame Flow
 
@@ -113,7 +113,7 @@ Pipeline.Render(encoder, view, outputTexture, outputTextureView, frameIndex):
      Else:
        Import caller's output as "PipelineOutput"
   7. Each PipelinePass.AddPasses(graph, view, pipeline)
-     (ForwardOpaquePass uses LoadOp.Clear — no separate clear pass needed)
+     (ForwardOpaquePass uses LoadOp.Clear - no separate clear pass needed)
   8. PostProcessStack.Execute() chains: PipelineOutput → effects → FinalOutput
   9. renderGraph.Execute(encoder)
   10. renderGraph.EndFrame()
@@ -121,13 +121,13 @@ Pipeline.Render(encoder, view, outputTexture, outputTextureView, frameIndex):
 
 The caller (application) clears the output target before calling Render().
 The transient HDR texture (post-processing path) is cleared by ForwardOpaquePass's
-LoadOp.Clear — no explicit ClearOutput pass.
+LoadOp.Clear - no explicit ClearOutput pass.
 
 ## PipelinePass
 
 Base class for all pipeline stages. A pass adds one or more render graph nodes
 (render, compute, or copy). The render graph handles ordering based on resource
-dependencies — no explicit dependency declarations needed.
+dependencies - no explicit dependency declarations needed.
 
 ```
 abstract class PipelinePass
@@ -145,20 +145,20 @@ abstract class PipelinePass
 | Pass | Type | Reads | Writes | Description |
 |------|------|-------|--------|-------------|
 | SkinningPass | Compute | SkinnedMesh VBs | Skinned output VBs | Pre-skins vertices for all downstream passes |
-| DepthPrepass | Render | — | SceneDepth | Depth-only for opaque, establishes early-Z |
+| DepthPrepass | Render | - | SceneDepth | Depth-only for opaque, establishes early-Z |
 | ForwardOpaquePass | Render | SceneDepth | PipelineOutput, SceneNormals, MotionVectors | PBR lit opaque + masked (MRT: 3 color targets) |
 | DecalPass | Render | SceneDepth (sampled) | PipelineOutput | Projected decals via depth reconstruction |
 | SkyPass | Render | SceneDepth | PipelineOutput | HDR sky, fills where depth == far |
 | ForwardTransparentPass | Render | SceneDepth | PipelineOutput | Transparent + sprites, alpha blend, back-to-front |
 | ParticlePass | Render | SceneDepth (ReadDepth + ReadTexture) | PipelineOutput | Particles with depth testing + soft fade |
 | DebugPass | Render | SceneDepth | PipelineOutput | 3D debug lines with depth test |
-| OverlayPass | Render | — | PipelineOutput | 2D text + rectangles, no depth |
+| OverlayPass | Render | - | PipelineOutput | 2D text + rectangles, no depth |
 
 Sky runs between opaque and transparent so transparent/sprite draws
 blend over the sky backdrop rather than being overwritten by it.
 
 ParticlePass declares both ReadDepth and ReadTexture on SceneDepth, which
-transitions the depth buffer to DEPTH_STENCIL_READ_ONLY_OPTIMAL — allowing
+transitions the depth buffer to DEPTH_STENCIL_READ_ONLY_OPTIMAL - allowing
 simultaneous depth testing and soft-particle shader sampling. Particles render
 in their own Particle category (not Transparent) with a custom 4-set pipeline
 layout (Frame + Depth + Material + DrawCall).
@@ -177,7 +177,7 @@ PostProcessStack.Execute(graph, view, sceneColor, sceneDepth, pipelineOutput):
   Last effect writes to pipelineOutput
 ```
 
-All intermediate textures are render graph transients — no manual texture management.
+All intermediate textures are render graph transients - no manual texture management.
 
 ### PostProcessEffect
 
@@ -200,7 +200,7 @@ the soft glow would look harsh and banded. The HDR range that makes bloom
 look natural would be lost.
 
 The compositing is merged into the TonemapEffect shader (`hdr += bloom` then
-ACES) as an optimization — one fewer fullscreen pass vs a separate composite
+ACES) as an optimization - one fewer fullscreen pass vs a separate composite
 step. This couples tonemap to the "BloomTexture" aux, but the fallback to a
 black texture means tonemap works unchanged when bloom is disabled.
 
@@ -229,15 +229,15 @@ keys. Passes iterate sorted batches.
 ### Render Data Types
 
 All render data types are classes inheriting from `RenderData` (abstract base).
-Allocated from RenderContext.FrameAllocator — trivially destructible, valid
+Allocated from RenderContext.FrameAllocator - trivially destructible, valid
 for one frame only.
 
-- `MeshRenderData` — GPUMeshHandle, submesh index, world + prev world matrices, material bind group, IsSkinned
-- `LightRenderData` — type (directional/point/spot), color, intensity, direction, range, shadow config, ShadowIndex
-- `DecalRenderData` — world + inverse world matrices, color, angle fade, material bind group
-- `SpriteRenderData` — position, size, tint, UV rect, orientation mode, material bind group
+- `MeshRenderData` - GPUMeshHandle, submesh index, world + prev world matrices, material bind group, IsSkinned
+- `LightRenderData` - type (directional/point/spot), color, intensity, direction, range, shadow config, ShadowIndex
+- `DecalRenderData` - world + inverse world matrices, color, angle fade, material bind group
+- `SpriteRenderData` - position, size, tint, UV rect, orientation mode, material bind group
 
-No entity/component references — just GPU handles and flat data.
+No entity/component references - just GPU handles and flat data.
 
 ## Render Extraction
 
@@ -264,14 +264,14 @@ Application.PresentFrame():
   8. Advance frame index
 
 RenderSubsystem.RenderScene(encoder, colorTexture, colorTarget, w, h, frameIndex):
-  1. viewPool.BeginFrame() — clears previous frame's render data lists
-  2. renderContext.BeginFrame() — resets FrameAllocator + ShadowSystem
+  1. viewPool.BeginFrame() - clears previous frame's render data lists
+  2. renderContext.BeginFrame() - resets FrameAllocator + ShadowSystem
   3. Acquire main view from pool, populate from active camera
-  4. ExtractIntoView(mainView) — runs all IRenderDataProviders
-  5. SetupShadows(mainView) — allocate atlas regions per shadow caster,
+  4. ExtractIntoView(mainView) - runs all IRenderDataProviders
+  5. SetupShadows(mainView) - allocate atlas regions per shadow caster,
      compute matrices, acquire shadow views, extract per shadow view
   6. pipeline.BeginFrame(frameIndex) + shadowPipeline.BeginFrame(frameIndex)
-  7. RenderShadows(encoder, frameIndex) — ShadowPipeline.RenderAll(jobs)
+  7. RenderShadows(encoder, frameIndex) - ShadowPipeline.RenderAll(jobs)
   8. pipeline.Render(encoder, mainView, colorTexture, colorTarget, frameIndex)
   9. renderContext.DebugDraw.Clear()
   10. Transition output to ShaderRead (for blit sampling)
@@ -284,8 +284,8 @@ presentation. RenderSubsystem focuses purely on scene rendering.
 
 EngineUISubsystem implements `IOverlayRenderer` and delegates to ScreenUIView.
 The application queries both interfaces from Context at startup:
-- `Context.GetSubsystemByInterface<ISceneRenderer>()` — first match
-- `Context.GetSubsystemsByInterface<IOverlayRenderer>()` — all, sorted by OverlayOrder
+- `Context.GetSubsystemByInterface<ISceneRenderer>()` - first match
+- `Context.GetSubsystemsByInterface<IOverlayRenderer>()` - all, sorted by OverlayOrder
 
 ### Cross-Subsystem Discovery
 
@@ -306,7 +306,7 @@ Engine.Particles  → ParticleComponentManager : IRenderDataProvider (future)
 Currently: providers extract everything.
 Future: scene-level spatial structure (octree/BVH) produces a visibility set.
 The `RenderExtractionContext` will carry the visibility set. Providers check it.
-Culling is centralized — one frustum test per entity, not per component type.
+Culling is centralized - one frustum test per entity, not per component type.
 
 ## GPU Resource Management
 
@@ -318,7 +318,7 @@ Handle-based pool of GPU resources (meshes, textures, bone buffers):
 - `UploadTexture(TextureUploadDesc)` → `GPUTextureHandle`
 - `CreateBoneBuffer(boneCount)` → `GPUBoneBufferHandle`
 - Reference counting + deferred deletion (safe for in-flight frames)
-- Scene-independent — takes raw data, returns handles
+- Scene-independent - takes raw data, returns handles
 
 ### PipelineStateCache
 
@@ -342,7 +342,7 @@ Shaders use HLSL register spaces 0-4 by convention:
 | 3 | space3 | Per-draw | Object/decal transforms (dynamic offset into ring buffer) | Per draw call |
 | 4 | space4 | Shadow | Shadow atlas + comparison sampler + ShadowDataBuffer | Once per frame |
 
-No shader reflection — convention-based. Shaders put resources in the right space,
+No shader reflection - convention-based. Shaders put resources in the right space,
 renderer builds matching layouts in code. DecalRenderer uses its own 4-set pipeline
 layout (no shadow set) with depth sampling at set 1.
 
@@ -351,16 +351,16 @@ layout (no shadow set) with depth sampling at set 1.
 `MaterialSystem` manages material bind groups, default textures, and per-instance GPU resources.
 Owned by Renderer. Key operations:
 
-- `PrepareInstance(MaterialInstance)` — creates/updates uniform buffer + bind group
-- `GetOrCreateLayout(Material)` — builds bind group layout from material property definitions
-- `ReleaseInstance(MaterialInstance)` — frees GPU resources for an instance
+- `PrepareInstance(MaterialInstance)` - creates/updates uniform buffer + bind group
+- `GetOrCreateLayout(Material)` - builds bind group layout from material property definitions
+- `ReleaseInstance(MaterialInstance)` - frees GPU resources for an instance
 - Provides default textures (white, normal, black, depth) for unset material slots
 
 Materials are created via factory methods in `Materials` static class:
-- `CreatePBR(name, shader, albedo, sampler)` — standard PBR
-- `CreateUnlit(name, shader)` — emissive only
-- `CreateSkybox(name, shader, cubemap, sampler)` — cubemap sky
-- `CreateSprite(name, shader, texture, sampler)` — 2D sprites
+- `CreatePBR(name, shader, albedo, sampler)` - standard PBR
+- `CreateUnlit(name, shader)` - emissive only
+- `CreateSkybox(name, shader, cubemap, sampler)` - cubemap sky
+- `CreateSprite(name, shader, texture, sampler)` - 2D sprites
 
 ## Shader System
 

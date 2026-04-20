@@ -10,9 +10,9 @@ public enum LightType : uint8
 	Spot
 }
 
-/// Render data for a light. Not drawn — consumed by the lighting system.
+/// Render data for a light. Not drawn - consumed by the lighting system.
 ///
-/// Allocated from RenderContext.FrameAllocator — trivially destructible.
+/// Allocated from RenderContext.FrameAllocator - trivially destructible.
 public class LightRenderData : RenderData
 {
 	/// Light type.

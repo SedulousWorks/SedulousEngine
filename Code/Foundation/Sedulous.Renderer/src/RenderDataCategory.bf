@@ -46,10 +46,10 @@ static class RenderCategories
 	/// Screen-space projected decals. Sorted by sort order.
 	public static readonly RenderDataCategory Decal = .(4);
 
-	/// Light data (not drawn — consumed by lighting system).
+	/// Light data (not drawn - consumed by lighting system).
 	public static readonly RenderDataCategory Light = .(5);
 
-	/// Reflection probe data (not drawn — consumed by probe system).
+	/// Reflection probe data (not drawn - consumed by probe system).
 	public static readonly RenderDataCategory ReflectionProbe = .(6);
 
 	/// Screen-space GUI. Rendered last.

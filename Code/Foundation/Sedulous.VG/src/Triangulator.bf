@@ -52,7 +52,7 @@ public static class Triangulator
 		// For convex polygons, use simple fan (fast path)
 		if (IsConvexPolygon(contour))
 		{
-			// Determine winding — fan from vertex 0
+			// Determine winding - fan from vertex 0
 			let area = PolygonArea(contour);
 			if (area > 0)
 			{
@@ -66,7 +66,7 @@ public static class Triangulator
 			}
 			else
 			{
-				// CW — reverse winding
+				// CW - reverse winding
 				for (int i = 1; i < n - 1; i++)
 				{
 					indices.Add(baseIndex);
@@ -84,13 +84,13 @@ public static class Triangulator
 		let area = PolygonArea(contour);
 		if (area > 0)
 		{
-			// CCW — keep order
+			// CCW - keep order
 			for (int i = 0; i < n; i++)
 				idxList.Add(i);
 		}
 		else
 		{
-			// CW — reverse to CCW
+			// CW - reverse to CCW
 			for (int i = n - 1; i >= 0; i--)
 				idxList.Add(i);
 		}
@@ -102,7 +102,7 @@ public static class Triangulator
 		{
 			if (failCount >= idxList.Count)
 			{
-				// Degenerate — fallback to fan triangulation for remaining vertices
+				// Degenerate - fallback to fan triangulation for remaining vertices
 				for (int k = 1; k < idxList.Count - 1; k++)
 				{
 					indices.Add(baseIndex + (uint32)idxList[0]);

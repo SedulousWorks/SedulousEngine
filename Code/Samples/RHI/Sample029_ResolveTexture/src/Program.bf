@@ -53,7 +53,7 @@ class ResolveTextureSample : SampleApp
 
 	public this() { }
 
-	protected override StringView Title => "Sample029 — ResolveTexture (Explicit 4x MSAA)";
+	protected override StringView Title => "Sample029 - ResolveTexture (Explicit 4x MSAA)";
 
 	protected override Result<void> OnInit()
 	{
@@ -204,7 +204,7 @@ class ResolveTextureSample : SampleApp
 			ca[0] = ColorAttachment()
 			{
 				View = mMsaaView,
-				ResolveTarget = null,  // No auto-resolve — we do it manually
+				ResolveTarget = null,  // No auto-resolve - we do it manually
 				LoadOp = .Clear, StoreOp = .Store,
 				ClearValue = ClearColor(0.08f, 0.08f, 0.12f, 1.0f)
 			};

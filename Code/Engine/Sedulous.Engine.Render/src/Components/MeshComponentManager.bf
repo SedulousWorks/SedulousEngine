@@ -93,7 +93,7 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 				if (Resolver.ResolveMaterial(ref state.Materials[slot], matRef, out instance))
 				{
 					comp.SetMaterial(slot, instance);
-					instance.ReleaseRef(); // SetMaterial AddRef'd — resolver doesn't own it
+					instance.ReleaseRef(); // SetMaterial AddRef'd - resolver doesn't own it
 				}
 			}
 
@@ -109,7 +109,7 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 
 	/// Extracts MeshRenderData for all active, visible mesh components.
 	/// Emits one entry per submesh, each with its own material.
-	/// Uses ParallelFor with per-thread allocators and output lists — zero
+	/// Uses ParallelFor with per-thread allocators and output lists - zero
 	/// contention during extraction, one cheap merge pass after.
 	public void ExtractRenderData(in RenderExtractionContext context)
 	{
@@ -130,7 +130,7 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 			return;
 		}
 
-		// Parallel extraction — per-thread allocators + per-thread output lists
+		// Parallel extraction - per-thread allocators + per-thread output lists
 		let chunkCount = Math.Min((int32)slotCount, workerCount + 1);
 		let catCount = RenderCategories.Count;
 

@@ -21,11 +21,11 @@ public struct ShadowAtlasRegion
 /// Higher tiers give more texels per shadow map at the cost of fewer slots.
 public enum ShadowTier : uint8
 {
-	/// 2048×2048 — for near directional cascades (high resolution, 2 slots).
+	/// 2048×2048 - for near directional cascades (high resolution, 2 slots).
 	Large,
-	/// 1024×1024 — for far cascades and spot lights (4 slots).
+	/// 1024×1024 - for far cascades and spot lights (4 slots).
 	Medium,
-	/// 512×512 — for point light faces and minor lights (16 slots).
+	/// 512×512 - for point light faces and minor lights (16 slots).
 	Small
 }
 
@@ -76,7 +76,7 @@ public class ShadowAtlas
 		Size = atlasSize;
 
 		// --- Tier layout ---
-		// Large: top half — 2 cells of 2048
+		// Large: top half - 2 cells of 2048
 		mTiers[0] = .()
 		{
 			CellSize = 2048,
@@ -85,7 +85,7 @@ public class ShadowAtlas
 			CellCount = 2,
 			UsedMask = 0
 		};
-		// Medium: bottom-left quarter — 4 cells of 1024
+		// Medium: bottom-left quarter - 4 cells of 1024
 		mTiers[1] = .()
 		{
 			CellSize = 1024,
@@ -94,7 +94,7 @@ public class ShadowAtlas
 			CellCount = 4,
 			UsedMask = 0
 		};
-		// Small: bottom-right quarter — 16 cells of 512
+		// Small: bottom-right quarter - 16 cells of 512
 		mTiers[2] = .()
 		{
 			CellSize = 512,

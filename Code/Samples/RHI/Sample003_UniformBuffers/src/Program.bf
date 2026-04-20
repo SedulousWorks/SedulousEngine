@@ -85,7 +85,7 @@ class UniformBufferSample : SampleApp
 
 	public this()  { }
 
-	protected override StringView Title => "Sample003 — Rotating Cube (Uniform Buffers)";
+	protected override StringView Title => "Sample003 - Rotating Cube (Uniform Buffers)";
 
 	protected override Result<void> OnInit()
 	{
@@ -459,7 +459,7 @@ class UniformBufferSample : SampleApp
 		float uz = fx * ry - fy * rx;
 
 		// Row-major LH view matrix for mul(M, v)
-		// Row0 = right, Row1 = up, Row2 = forward (not negated — LH, depth [0,1])
+		// Row0 = right, Row1 = up, Row2 = forward (not negated - LH, depth [0,1])
 		m[0]  = rx;  m[1]  = ry;  m[2]  = rz;  m[3]  = -(rx * eyeX + ry * eyeY + rz * eyeZ);
 		m[4]  = ux;  m[5]  = uy;  m[6]  = uz;  m[7]  = -(ux * eyeX + uy * eyeY + uz * eyeZ);
 		m[8]  = fx;  m[9]  = fy;  m[10] = fz;  m[11] = -(fx * eyeX + fy * eyeY + fz * eyeZ);

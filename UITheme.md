@@ -13,7 +13,7 @@ Every control's `OnDraw` follows this pattern:
 ```beef
 if (!ctx.TryDrawDrawable("Button.Background", bounds, GetControlState()))
 {
-    // Color fallback — only runs if no drawable is set.
+    // Color fallback - only runs if no drawable is set.
     let bg = ctx.Theme?.GetColor("Button.Background") ?? fallback;
     ctx.VG.FillRoundedRect(bounds, radius, bg);
 }
@@ -63,7 +63,7 @@ The `NineSlice(left, top, right, bottom)` values define the border widths in pix
 
 ### Atlas Packing
 
-`TexturedTheme.Create()` automatically packs all provided images into a single atlas texture via `ImageAtlasBuilder`. This means all UI rendering uses one texture bind — optimal GPU batching.
+`TexturedTheme.Create()` automatically packs all provided images into a single atlas texture via `ImageAtlasBuilder`. This means all UI rendering uses one texture bind - optimal GPU batching.
 
 ---
 
@@ -102,7 +102,7 @@ The `NineSlice(left, top, right, bottom)` values define the border widths in pix
 
 | File | Description | Suggested Size | 9-Slice |
 |------|-------------|----------------|---------|
-| `dialog.png` | Modal dialog background. Drop shadow, rounded corners. Shadow extends beyond content — use `Expand` thickness. | 64×64 | 12,12,12,12 |
+| `dialog.png` | Modal dialog background. Drop shadow, rounded corners. Shadow extends beyond content - use `Expand` thickness. | 64×64 | 12,12,12,12 |
 | `tooltip.png` | Tooltip popup. Small, sharp corners or slight rounding. Optional shadow. | 32×24 | 6,6,6,6 |
 | `contextmenu.png` | Right-click menu background. Similar to dialog but lighter shadow. | 48×48 | 8,8,8,8 |
 
@@ -119,7 +119,7 @@ The `NineSlice(left, top, right, bottom)` values define the border widths in pix
 |------|-------------|----------------|---------|
 | `slider_track.png` | Slider track background. Thin horizontal groove. | 32×8 | 4,2,4,2 |
 | `slider_fill.png` | Slider filled portion (left of thumb). Accent colored. | 32×8 | 4,2,4,2 |
-| `slider_thumb.png` | Slider thumb/knob. Circular or rounded, draggable. NOT 9-sliced — drawn as-is. | 16×16 | N/A |
+| `slider_thumb.png` | Slider thumb/knob. Circular or rounded, draggable. NOT 9-sliced - drawn as-is. | 16×16 | N/A |
 
 ### CheckBox (2 images)
 
@@ -172,32 +172,32 @@ The `NineSlice(left, top, right, bottom)` values define the border widths in pix
 |-----|---------|--------|-------------|
 | `Button.Background` | Button, RepeatButton | Normal, Hover, Pressed, Disabled | Button surface |
 | `CheckBox.Box` | CheckBox | Normal, Hover, Disabled | Checkbox square |
-| `CheckBox.Checkmark` | CheckBox | — | Checkmark icon (when checked) |
+| `CheckBox.Checkmark` | CheckBox | - | Checkmark icon (when checked) |
 | `RadioButton.Circle` | RadioButton | Normal, Hover, Disabled | Radio circle |
-| `RadioButton.Dot` | RadioButton | — | Inner dot (when selected) |
+| `RadioButton.Dot` | RadioButton | - | Inner dot (when selected) |
 | `ToggleButton.Background` | ToggleButton | Normal, Hover, Pressed, Disabled | Unchecked background |
 | `ToggleButton.CheckedBackground` | ToggleButton | Normal, Hover, Pressed, Disabled | Checked background |
 | `ToggleSwitch.Track` | ToggleSwitch | Normal (off), Pressed (on) | Switch track |
 | `ToggleSwitch.Knob` | ToggleSwitch | Normal, Hover | Switch knob |
-| `Slider.Track` | Slider | — | Track background |
-| `Slider.Fill` | Slider | — | Value fill |
+| `Slider.Track` | Slider | - | Track background |
+| `Slider.Fill` | Slider | - | Value fill |
 | `Slider.Thumb` | Slider | Normal, Hover | Draggable thumb |
-| `ProgressBar.Track` | ProgressBar | — | Track background |
-| `ProgressBar.Fill` | ProgressBar | — | Progress fill |
-| `ScrollBar.Track` | ScrollBar | — | Track background |
-| `ScrollBar.Thumb` | ScrollBar | — | Thumb |
+| `ProgressBar.Track` | ProgressBar | - | Track background |
+| `ProgressBar.Fill` | ProgressBar | - | Progress fill |
+| `ScrollBar.Track` | ScrollBar | - | Track background |
+| `ScrollBar.Thumb` | ScrollBar | - | Thumb |
 | `EditText.Background` | EditText, PasswordBox, NumericField | Normal, Focused | Input background |
 | `ComboBox.Background` | ComboBox | Normal, Hover | Dropdown background |
-| `Panel.Background` | Panel | — | Container background |
-| `TabView.StripBackground` | TabView | — | Tab header strip |
-| `TabView.ContentBackground` | TabView | — | Content area |
-| `TabView.ActiveTab` | TabView | — | Selected tab header |
+| `Panel.Background` | Panel | - | Container background |
+| `TabView.StripBackground` | TabView | - | Tab header strip |
+| `TabView.ContentBackground` | TabView | - | Content area |
+| `TabView.ActiveTab` | TabView | - | Selected tab header |
 | `TabView.InactiveTab` | TabView | Hover | Unselected tab header |
 | `Expander.Header` | Expander | Normal, Hover | Collapsible header |
-| `ContextMenu.Background` | ContextMenu | — | Popup background |
-| `Dialog.Background` | Dialog | — | Modal background |
-| `Tooltip.Background` | TooltipView | — | Tooltip background |
-| `Modal.Backdrop` | ModalBackdrop | — | Semi-transparent overlay |
+| `ContextMenu.Background` | ContextMenu | - | Popup background |
+| `Dialog.Background` | Dialog | - | Modal background |
+| `Tooltip.Background` | TooltipView | - | Tooltip background |
+| `Modal.Backdrop` | ModalBackdrop | - | Semi-transparent overlay |
 
 ### Icons (queried via `TryDrawDrawable`)
 
@@ -220,35 +220,35 @@ The `NineSlice(left, top, right, bottom)` values define the border widths in pix
 
 | Key | Control | States | Description |
 |-----|---------|--------|-------------|
-| `Toolbar.Background` | Toolbar | — | Toolbar bar |
+| `Toolbar.Background` | Toolbar | - | Toolbar bar |
 | `ToolbarButton.Background` | ToolbarButton | Hover | Button hover |
-| `ToolbarToggle.CheckedBackground` | ToolbarToggle | — | Checked toggle |
-| `StatusBar.Background` | StatusBar | — | Status bar |
-| `MenuBar.Background` | MenuBar | — | Menu bar |
+| `ToolbarToggle.CheckedBackground` | ToolbarToggle | - | Checked toggle |
+| `StatusBar.Background` | StatusBar | - | Status bar |
+| `MenuBar.Background` | MenuBar | - | Menu bar |
 | `MenuBar.ItemBackground` | MenuBar | Hover | Menu item hover |
 | `SplitView.Divider` | SplitView | Normal, Hover | Draggable divider |
 | `SplitView.Grip` | SplitView | Normal, Hover | Grip dot pattern |
-| `ColorPicker.Background` | ColorPicker | — | Picker container |
-| `PropertyGrid.Background` | PropertyGrid | — | Grid container |
-| `DockManager.Background` | DockManager | — | Dock area background |
-| `DockablePanel.Header` | DockablePanel | — | Panel title bar |
-| `DockablePanel.ContentBackground` | DockablePanel | — | Panel content area |
-| `DockTabGroup.TabBar` | DockTabGroup | — | Tab strip |
-| `DockTabGroup.ContentBackground` | DockTabGroup | — | Content area |
-| `DockTabGroup.ActiveTab` | DockTabGroup | — | Selected tab |
+| `ColorPicker.Background` | ColorPicker | - | Picker container |
+| `PropertyGrid.Background` | PropertyGrid | - | Grid container |
+| `DockManager.Background` | DockManager | - | Dock area background |
+| `DockablePanel.Header` | DockablePanel | - | Panel title bar |
+| `DockablePanel.ContentBackground` | DockablePanel | - | Panel content area |
+| `DockTabGroup.TabBar` | DockTabGroup | - | Tab strip |
+| `DockTabGroup.ContentBackground` | DockTabGroup | - | Content area |
+| `DockTabGroup.ActiveTab` | DockTabGroup | - | Selected tab |
 | `DockTabGroup.InactiveTab` | DockTabGroup | Hover | Unselected tab |
 | `DockSplit.Divider` | DockSplit | Normal, Hover | Split divider |
-| `FloatingWindow.Background` | FloatingWindow | — | Virtual window background |
+| `FloatingWindow.Background` | FloatingWindow | - | Virtual window background |
 
 ### SVG Icons (built-in via ThemeIcons)
 
 The framework includes built-in SVG icon definitions in `ThemeIcons`:
-- `ThemeIcons.Checkmark` — checkmark path
-- `ThemeIcons.ArrowDown` / `ArrowUp` — dropdown/spin arrows
-- `ThemeIcons.ChevronRight` / `ChevronDown` — expand/collapse
-- `ThemeIcons.Close` — X close icon
-- `ThemeIcons.Plus` / `Minus` — add/remove
-- `ThemeIcons.RadioDot` — filled circle
+- `ThemeIcons.Checkmark` - checkmark path
+- `ThemeIcons.ArrowDown` / `ArrowUp` - dropdown/spin arrows
+- `ThemeIcons.ChevronRight` / `ChevronDown` - expand/collapse
+- `ThemeIcons.Close` - X close icon
+- `ThemeIcons.Plus` / `Minus` - add/remove
+- `ThemeIcons.RadioDot` - filled circle
 
 These can be registered as SVGDrawables:
 ```beef
@@ -260,6 +260,6 @@ theme.SetDrawable("ComboBox.Arrow", SVGDrawable.FromString(ThemeIcons.ArrowDown)
 - **Format:** PNG, RGBA8 (32-bit with alpha)
 - **Background:** Transparent where the control shouldn't fill (e.g., rounded corners)
 - **Shadows:** If including drop shadows, use the `Expand` parameter on NineSliceDrawable so the shadow extends beyond the control bounds
-- **Consistency:** All images should share the same visual language — same corner radius style, same shadow depth, same border treatment
+- **Consistency:** All images should share the same visual language - same corner radius style, same shadow depth, same border treatment
 - **States:** Hover should be subtly brighter. Pressed should feel inset/darker. Disabled should be desaturated and low-contrast.
 - **DPI:** Images are stretched via 9-slice, so they work at any DPI. Provide images at 1x resolution; they scale cleanly.

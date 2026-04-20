@@ -9,7 +9,7 @@ public class WindBehavior : ParticleBehavior
 	/// Wind direction and strength (vector magnitude = force).
 	public Vector3 Force = .(1, 0, 0);
 
-	/// Wind turbulence — randomized variation applied each frame.
+	/// Wind turbulence - randomized variation applied each frame.
 	public float Turbulence = 0;
 
 	public override BehaviorSupport Support => .Both;

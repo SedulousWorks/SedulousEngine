@@ -133,7 +133,7 @@ abstract class JobBase : RefCounted
 	}
 
 	/// Runs the job. Called by worker threads. Does NOT signal the completion
-	/// event — that's done by JobSystem.HandleCompletion after post-processing.
+	/// event - that's done by JobSystem.HandleCompletion after post-processing.
 	internal void Run()
 	{
 		mState = .Running;

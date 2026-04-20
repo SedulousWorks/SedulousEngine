@@ -202,7 +202,7 @@ class ModelImporter
 		if (model.Skins.Count <= 1)
 			return;
 
-		// Find the largest skin (by joint count) — this is the merge target
+		// Find the largest skin (by joint count) - this is the merge target
 		int32 targetSkinIdx = 0;
 		for (int32 i = 1; i < (int32)model.Skins.Count; i++)
 		{

@@ -16,7 +16,7 @@ namespace Sedulous.Geometry.Tooling.Resources;
 
 /// Serializes renderer resources to files.
 /// Converts ModelImportResult (plain data types) to resources, then saves.
-/// Loading is handled by the resource managers — use ResourceSystem.Load<T>().
+/// Loading is handled by the resource managers - use ResourceSystem.Load<T>().
 static class ResourceSerializer
 {
 	public const int32 CurrentVersion = 1;
@@ -118,7 +118,7 @@ static class ResourceSerializer
 
 	/// Save all resources from a plain ModelImportResult to a directory.
 	/// Converts plain data -> resources, saves to disk, and returns the ResourceImportResult
-	/// (caller takes ownership — needed for registry building with GUIDs).
+	/// (caller takes ownership - needed for registry building with GUIDs).
 	public static Result<ResourceImportResult> SaveImportResult(ModelImportResult result, StringView outputDir, ISerializerProvider provider)
 	{
 		let resourceResult = ResourceImportResult.ConvertFrom(result);

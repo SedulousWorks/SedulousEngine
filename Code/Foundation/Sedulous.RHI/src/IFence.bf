@@ -3,7 +3,7 @@ namespace Sedulous.RHI;
 using System;
 
 /// A timeline fence for CPU/GPU synchronization.
-/// The fence value increases monotonically — GPU operations signal specific values,
+/// The fence value increases monotonically - GPU operations signal specific values,
 /// and the CPU can wait for them.
 ///
 /// Vulkan: VkSemaphore (timeline). DX12: ID3D12Fence.

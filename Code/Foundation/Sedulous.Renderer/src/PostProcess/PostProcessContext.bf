@@ -26,7 +26,7 @@ class PostProcessContext
 		let key = new String(name);
 		if (mAuxTextures.TryAdd(key, handle))
 			return;
-		// Key already exists — update value, delete the new key
+		// Key already exists - update value, delete the new key
 		delete key;
 		mAuxTextures[scope String(name)] = handle;
 	}

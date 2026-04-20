@@ -81,7 +81,7 @@ int PickPointFace(float3 toFragment)
 
 // Samples a SINGLE shadow map entry (one cascade or one face) and returns the
 // lit fraction (1 = lit, 0 = shadowed). Extracted so cascade blending can call
-// it twice — once for the primary cascade and once for the adjacent one.
+// it twice - once for the primary cascade and once for the adjacent one.
 //
 // Matches the legacy Sedulous renderer:
 //   - Receiver lookup with normal-offset bias scaled by world-space texel size
@@ -194,7 +194,7 @@ float SampleShadow(GPULight light, float3 worldPos, float3 worldNormal, float Nd
     return primary;
 }
 
-// Set 2: Material data — matches Materials.CreatePBR() layout
+// Set 2: Material data - matches Materials.CreatePBR() layout
 cbuffer MaterialUniforms : register(b0, space2)
 {
     float4 BaseColor;       // offset 0
@@ -307,7 +307,7 @@ float3 EvaluateLight(GPULight light, float3 worldPos, float3 worldNormal, float 
 
     if (NdotL <= 0.0) return 0.0;
 
-    // Shadow term — geometric NdotL is used for slope-scaled bias to keep
+    // Shadow term - geometric NdotL is used for slope-scaled bias to keep
     // shadowing stable across normal mapping.
     float geomNdotL = max(dot(normalize(worldNormal), L), 0.0);
     float shadow = SampleShadow(light, worldPos, worldNormal, geomNdotL, viewDepth);
@@ -362,7 +362,7 @@ FragmentOutput main(FragmentInput input)
     if (alpha < AlphaCutoff)
         discard;
 
-    // Normal — use map if tangent is valid, otherwise geometric normal
+    // Normal - use map if tangent is valid, otherwise geometric normal
     float3 N;
     if (dot(input.WorldTangent, input.WorldTangent) > 0.001)
         N = GetNormalFromMap(input.WorldNormal, input.WorldTangent, uv);

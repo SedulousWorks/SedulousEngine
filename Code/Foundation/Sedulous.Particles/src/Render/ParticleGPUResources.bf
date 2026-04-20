@@ -11,7 +11,7 @@ using Sedulous.Shaders;
 ///
 /// Owns the shared particle Material template, caches its bind group layout,
 /// and manages per-frame instance vertex buffers for CPU-simulated particles.
-/// Mirrors SpriteSystem — one ParticleGPUResources per RenderContext.
+/// Mirrors SpriteSystem - one ParticleGPUResources per RenderContext.
 public class ParticleGPUResources : IDisposable
 {
 	public const int32 MaxFramesInFlight = 2;
@@ -50,7 +50,7 @@ public class ParticleGPUResources : IDisposable
 	/// Shader system reference for loading shaders.
 	private ShaderSystem mShaderSystem;
 
-	/// Default MaterialInstance with white texture — used when no texture is set.
+	/// Default MaterialInstance with white texture - used when no texture is set.
 	private MaterialInstance mDefaultMaterialInstance ~ _?.ReleaseRef();
 
 	/// The shared particle material template.
@@ -190,7 +190,7 @@ public class ParticleGPUResources : IDisposable
 		mDevice = device;
 
 		// --- Particle material template ---
-		// VertexLayout is .Custom — ParticleRenderer supplies a per-instance layout
+		// VertexLayout is .Custom - ParticleRenderer supplies a per-instance layout
 		// at pipeline-creation time. Blend mode defaults to Additive (most particles).
 		mParticleMaterial = scope MaterialBuilder("Particle")
 			.Shader("particle")

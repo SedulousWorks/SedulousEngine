@@ -145,7 +145,7 @@ class DX12TextureView : ITextureView
 		case .Texture2D:
 			if (isArrayResource)
 			{
-				// Single layer of an array texture — must use Array RTV dimension
+				// Single layer of an array texture - must use Array RTV dimension
 				if (mTexture.Desc.SampleCount > 1)
 				{
 					rtvDesc.ViewDimension = .D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
@@ -224,7 +224,7 @@ class DX12TextureView : ITextureView
 		case .Texture2D:
 			if (isArrayResource)
 			{
-				// Single layer of an array texture — must use Array DSV dimension
+				// Single layer of an array texture - must use Array DSV dimension
 				if (mTexture.Desc.SampleCount > 1)
 				{
 					dsvDesc.ViewDimension = .D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY;

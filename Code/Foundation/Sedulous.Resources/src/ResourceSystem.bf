@@ -304,7 +304,7 @@ class ResourceSystem
 		if (manager == null)
 			return .Err(.ManagerNotFound);
 
-		resource.AddRef(); // Manager's ownership ref — released in Unload
+		resource.AddRef(); // Manager's ownership ref - released in Unload
 		var handle = ResourceHandle<IResource>(resource);
 
 		if (cache)
@@ -388,7 +388,7 @@ class ResourceSystem
 
 		// Untrack from hot-reload if no other cache entries use this path
 		// (We don't have the path here, so the FileWatcher will simply fail to find
-		// a matching cache entry on next poll — harmless. Explicit untracking happens
+		// a matching cache entry on next poll - harmless. Explicit untracking happens
 		// when we know the path.)
 
 		if (resource.Resource?.RefCount > 1)

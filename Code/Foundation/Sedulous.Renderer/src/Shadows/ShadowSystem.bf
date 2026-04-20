@@ -36,10 +36,10 @@ public class ShadowSystem : IDisposable
 	{
 		mDevice = device;
 
-		// Hierarchical atlas — 4096×4096 with three tiers:
-		//   Large  (2048²) × 2  — near directional cascades
-		//   Medium (1024²) × 4  — far cascades + spot lights
-		//   Small  (512²)  × 16 — point light faces + minor lights
+		// Hierarchical atlas - 4096×4096 with three tiers:
+		//   Large  (2048²) × 2  - near directional cascades
+		//   Medium (1024²) × 4  - far cascades + spot lights
+		//   Small  (512²)  × 16 - point light faces + minor lights
 		Atlas = new .();
 		if (Atlas.Initialize(device) case .Err)
 			return .Err;
@@ -49,7 +49,7 @@ public class ShadowSystem : IDisposable
 		if (DataBuffer.Initialize(device) case .Err)
 			return .Err;
 
-		// Comparison sampler — Less compare for standard shadow maps.
+		// Comparison sampler - Less compare for standard shadow maps.
 		// Linear filtering enables hardware PCF (4-tap 2×2 bilinear).
 		SamplerDesc samplerDesc = .()
 		{
@@ -91,7 +91,7 @@ public class ShadowSystem : IDisposable
 		else
 			return .Err;
 
-		// Bind groups (one per frame slot — atlas + sampler are stable, data buffer rotates).
+		// Bind groups (one per frame slot - atlas + sampler are stable, data buffer rotates).
 		for (int frameSlot = 0; frameSlot < 2; frameSlot++)
 		{
 			BindGroupEntry[3] bgEntries = .(
@@ -125,7 +125,7 @@ public class ShadowSystem : IDisposable
 		mShadowCount = 0;
 	}
 
-	/// Allocates a single shadow map slot — one cell from the atlas at the given
+	/// Allocates a single shadow map slot - one cell from the atlas at the given
 	/// tier + one entry in the data buffer. Returns the shadow index and outputs
 	/// the atlas region.
 	public Result<int32> AllocateShadow(ShadowTier tier, out ShadowAtlasRegion region)

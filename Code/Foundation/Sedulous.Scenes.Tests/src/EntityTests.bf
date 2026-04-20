@@ -52,7 +52,7 @@ class EntityTests
 
 		// Slot reused
 		Test.Assert(e2.Index == oldIndex);
-		// Generation incremented — old handle no longer valid
+		// Generation incremented - old handle no longer valid
 		Test.Assert(e2.Generation > e1.Generation);
 		Test.Assert(!scene.IsValid(e1));
 		Test.Assert(scene.IsValid(e2));

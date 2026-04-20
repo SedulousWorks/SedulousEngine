@@ -1,6 +1,6 @@
 // Bloom downsample fragment shader.
 //
-// Progressive 2× downsample with a 13-tap filter (Jimenez 2014 — Call of Duty
+// Progressive 2× downsample with a 13-tap filter (Jimenez 2014 - Call of Duty
 // method). Produces a smooth half-res output from the input texture. On the
 // first pass (MipLevel == 0) a brightness threshold is applied so only pixels
 // above the threshold contribute to the bloom.
@@ -27,7 +27,7 @@ struct FragmentInput
 // Luminance (BT.709) for thresholding.
 float Luminance(float3 c) { return dot(c, float3(0.2126, 0.7152, 0.0722)); }
 
-// Soft knee threshold — avoids the hard cutoff that causes flickering on
+// Soft knee threshold - avoids the hard cutoff that causes flickering on
 // pixels near the boundary. Returns a smooth 0..1 weight.
 float3 ThresholdColor(float3 color)
 {

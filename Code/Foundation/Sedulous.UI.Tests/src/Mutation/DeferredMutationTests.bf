@@ -56,7 +56,7 @@ class DeferredMutationTests
 		child.QueueRemove();
 		ctx.BeginFrame(0);
 
-		// Removed from tree (unregistered) but not deleted — we can
+		// Removed from tree (unregistered) but not deleted - we can
 		// still access the object since we hold a ref.
 		Test.Assert(ctx.GetElementById(id) == null);
 		Test.Assert(child.Parent == null);

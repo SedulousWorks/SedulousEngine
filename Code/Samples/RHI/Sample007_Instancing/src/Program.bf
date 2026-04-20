@@ -61,7 +61,7 @@ class InstancingSample : SampleApp
 
 	public this()  { }
 
-	protected override StringView Title => "Sample007 — Instanced Rendering";
+	protected override StringView Title => "Sample007 - Instanced Rendering";
 
 	protected override Result<void> OnInit()
 	{

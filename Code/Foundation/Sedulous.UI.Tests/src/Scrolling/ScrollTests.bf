@@ -104,7 +104,7 @@ class ScrollTests
 		sv.VScrollPolicy = .Auto;
 		root.AddView(sv);
 
-		// Content smaller than viewport — no bar.
+		// Content smaller than viewport - no bar.
 		let small = new ColorView();
 		small.PreferredHeight = 50;
 		sv.AddView(small, new LayoutParams() { Width = LayoutParams.MatchParent, Height = 50 });
@@ -198,7 +198,7 @@ class ScrollTests
 
 		// Content that overflows vertically but just barely fits horizontally.
 		// Without V scrollbar it fits at 200px. With V scrollbar taking 10px,
-		// it only has 190px — if content is 195px wide that triggers H bar.
+		// it only has 190px - if content is 195px wide that triggers H bar.
 		let content = new ColorView();
 		content.PreferredWidth = 195;
 		content.PreferredHeight = 400;

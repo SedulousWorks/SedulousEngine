@@ -1,7 +1,7 @@
 namespace Sedulous.UI;
 
 /// Type-safe weak reference to a View. Resolves through UIContext's
-/// element registry — returns null if the view has been destroyed.
+/// element registry - returns null if the view has been destroyed.
 public struct ElementHandle<T> where T : View
 {
 	private ViewId mId;

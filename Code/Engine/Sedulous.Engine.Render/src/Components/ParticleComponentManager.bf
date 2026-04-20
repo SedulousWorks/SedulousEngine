@@ -77,7 +77,7 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 			let worldMatrix = scene.GetWorldMatrix(comp.Owner);
 			instance.Position = worldMatrix.Translation;
 
-			// Simulate (pass camera position for LOD — one-frame delay from extraction)
+			// Simulate (pass camera position for LOD - one-frame delay from extraction)
 			instance.Update(deltaTime, mCameraPosition);
 		}
 	}
@@ -115,7 +115,7 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 			{
 				if (state.Effect.Resolve(Resolver.ResourceSystem, comp.EffectRef))
 				{
-					// Effect resource changed — create a new runtime instance
+					// Effect resource changed - create a new runtime instance
 					let effectResource = state.Effect.Handle.Resource;
 					if (effectResource != null && effectResource.Effect != null)
 					{

@@ -76,7 +76,7 @@ class DX12ComputePassEncoder : IComputePassEncoder
 			}
 		}
 
-		// Bind dynamic offset root descriptors (not staged — uses GPU virtual addresses)
+		// Bind dynamic offset root descriptors (not staged - uses GPU virtual addresses)
 		int dynOffsetIdx = 0;
 		for (let entry in layout.DynamicRootEntries)
 		{

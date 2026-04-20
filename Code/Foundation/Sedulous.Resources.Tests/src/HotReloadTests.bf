@@ -207,7 +207,7 @@ class HotReloadTests
 		let system = scope ResourceSystem(null);
 		system.AddResourceManager(manager);
 
-		// Load resource — get two handles to same path
+		// Load resource - get two handles to same path
 		var h1Result = system.LoadResource<GameConfigResource>(tempPath);
 		Test.Assert(h1Result case .Ok);
 		var h1 = h1Result.Value;

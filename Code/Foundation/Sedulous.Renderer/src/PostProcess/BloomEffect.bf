@@ -15,7 +15,7 @@ using Sedulous.Profiler;
 /// The final full-res bloom texture is published as the "BloomTexture" auxiliary
 /// for TonemapEffect to composite.
 ///
-/// This effect does NOT modify the main color chain — it passes input -> output
+/// This effect does NOT modify the main color chain - it passes input -> output
 /// unchanged (blit copy) and only produces the auxiliary bloom texture on the
 /// side. TonemapEffect reads it via ctx.GetAux("BloomTexture").
 class BloomEffect : PostProcessEffect
@@ -162,7 +162,7 @@ class BloomEffect : PostProcessEffect
 		CleanupFrameBindGroups(frameSlot);
 
 		// Write both param buffers ONCE before adding graph passes. The GPU reads
-		// them later during graph.Execute — by then the data is stable.
+		// them later during graph.Execute - by then the data is stable.
 		BloomParams thresholdParams = .() { Threshold = Threshold, Intensity = Intensity, MipLevel = 0 };
 		TransferHelper.WriteMappedBuffer(mParamsBuffers[0], 0,
 			Span<uint8>((uint8*)&thresholdParams, BloomParams.Size));
@@ -174,7 +174,7 @@ class BloomEffect : PostProcessEffect
 		let input = ctx.Input;
 		let bloomOutput = ctx.GetAux("BloomTexture");
 
-		// Bloom doesn't modify the main color chain — it only produces the
+		// Bloom doesn't modify the main color chain - it only produces the
 		// auxiliary BloomTexture. Skip the blit copy and tell the stack to
 		// pass the input through directly. The unused transient the stack
 		// created for ctx.Output is harmless (graph culls unused resources).

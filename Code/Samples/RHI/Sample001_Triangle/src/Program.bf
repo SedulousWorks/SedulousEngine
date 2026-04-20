@@ -8,7 +8,7 @@ using SampleFramework;
 
 class TriangleSample : SampleApp
 {
-	// Triangle HLSL source — compiled at runtime via DXC.
+	// Triangle HLSL source - compiled at runtime via DXC.
 	const String cShaderSource = """
 		struct VSInput
 		{
@@ -38,13 +38,13 @@ class TriangleSample : SampleApp
 
 	// Triangle vertex data: position (xyz) + color (rgb)
 	static float[30] sVertexData = .(
-		// Top vertex — red
+		// Top vertex - red
 		 0.0f,  0.5f, 0.0f,    1.0f, 0.0f, 0.0f,
-		// Bottom-right — green
+		// Bottom-right - green
 		 0.5f, -0.5f, 0.0f,    0.0f, 1.0f, 0.0f,
-		// Bottom-left — blue
+		// Bottom-left - blue
 		-0.5f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f,
-		// (2 unused floats for alignment — 30 total, 18 used)
+		// (2 unused floats for alignment - 30 total, 18 used)
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 	);
 
@@ -63,7 +63,7 @@ class TriangleSample : SampleApp
 	{
 	}
 
-	protected override StringView Title => "Sample001 — Triangle";
+	protected override StringView Title => "Sample001 - Triangle";
 
 	protected override Result<void> OnInit()
 	{

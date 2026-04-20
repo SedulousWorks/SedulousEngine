@@ -94,7 +94,7 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 		if (Shell?.InputManager != null)
 			mInputHelper = new UIInputHelper();
 
-		// Screen UI view — needs Device + SwapChain format.
+		// Screen UI view - needs Device + SwapChain format.
 		if (Device != null)
 		{
 			mScreenView = new ScreenUIView(mUIContext, Device, SwapChainFormat,
@@ -119,7 +119,7 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 
 	protected override void OnReady()
 	{
-		// All subsystems initialized — safe to access ISceneRenderer's Pipeline.
+		// All subsystems initialized - safe to access ISceneRenderer's Pipeline.
 		if (mWorldUIPass != null)
 		{
 			let sceneRenderer = Context.GetSubsystemByInterface<ISceneRenderer>();
@@ -412,7 +412,7 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 	protected override void OnPrepareShutdown()
 	{
 		// Null out SharedTheme on scene modules before screen UIContext (which owns the theme) is deleted.
-		// Per-component UIContexts use SetSharedTheme so they don't own it — but they hold a pointer.
+		// Per-component UIContexts use SetSharedTheme so they don't own it - but they hold a pointer.
 		let sceneSub = Context?.GetSubsystem<Sedulous.Engine.SceneSubsystem>();
 		if (sceneSub != null)
 		{

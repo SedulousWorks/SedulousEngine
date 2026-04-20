@@ -110,7 +110,7 @@ class MRTSample : SampleApp
 
 	public this()  { }
 
-	protected override StringView Title => "Sample011 — Multiple Render Targets";
+	protected override StringView Title => "Sample011 - Multiple Render Targets";
 
 	protected override Result<void> OnInit()
 	{

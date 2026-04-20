@@ -7,7 +7,7 @@ using Sedulous.Renderer;
 using Sedulous.Materials;
 using Sedulous.Profiler;
 
-/// Depth prepass — renders opaque geometry to the depth buffer only.
+/// Depth prepass - renders opaque geometry to the depth buffer only.
 /// Establishes early-Z for the forward pass to minimize overdraw.
 /// Creates the SceneDepth transient resource.
 class DepthPrepass : PipelinePass
@@ -76,7 +76,7 @@ class DepthPrepass : PipelinePass
 		let frame = pipeline.GetFrameResources(view.FrameIndex);
 		pipeline.BindFrameGroup(encoder, frame);
 
-		// Dispatch to registered renderers — depth pass skips material binding.
+		// Dispatch to registered renderers - depth pass skips material binding.
 		pipeline.RenderCategory(encoder, RenderCategories.Opaque, frame, view, .None, config);
 		} // DepthPrepass scope
 	}

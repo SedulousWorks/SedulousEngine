@@ -86,7 +86,7 @@ class ThemeTests
 		let color = theme.GetColor("Extension.Applied");
 		Test.Assert(color.G == 255);
 
-		// Clean up — extensions are static; must not leak into other tests.
+		// Clean up - extensions are static; must not leak into other tests.
 		Theme.UnregisterExtension(ext);
 	}
 

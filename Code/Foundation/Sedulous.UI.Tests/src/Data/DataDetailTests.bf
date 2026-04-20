@@ -71,7 +71,7 @@ class DataDetailTests
 		sel.Select(5);
 		sel.Select(2);
 		sel.Select(8);
-		// HashSet order is undefined — just verify it returns one of the selected.
+		// HashSet order is undefined - just verify it returns one of the selected.
 		let first = sel.FirstSelected;
 		Test.Assert(first == 2 || first == 5 || first == 8);
 	}

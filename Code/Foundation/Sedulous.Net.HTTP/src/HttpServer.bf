@@ -70,7 +70,7 @@ public class HttpServer
 			if (!takenOver)
 				delete client;
 		case .Err(.WouldBlock):
-			// No pending connections — normal
+			// No pending connections - normal
 		case .Err:
 			// Ignore other errors
 		}

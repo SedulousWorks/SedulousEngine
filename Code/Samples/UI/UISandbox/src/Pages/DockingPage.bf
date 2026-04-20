@@ -6,7 +6,7 @@ using Sedulous.UI.Toolkit;
 using Sedulous.Core.Mathematics;
 
 /// Demo page: Docking system with multiple panels.
-/// This page IS the dock manager — it fills the entire tab content.
+/// This page IS the dock manager - it fills the entire tab content.
 class DockingPage : DemoPage
 {
 	private DockManager mDockManager;
@@ -18,7 +18,7 @@ class DockingPage : DemoPage
 		RemoveView(mLayout, true);
 		mLayout = null;
 
-		// Disable scrolling — the dock manager fills the page.
+		// Disable scrolling - the dock manager fills the page.
 		VScrollPolicy = .Never;
 		HScrollPolicy = .Never;
 

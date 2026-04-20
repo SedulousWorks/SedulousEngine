@@ -37,7 +37,7 @@ public class Storyboard : Animation
 
 	protected override void Apply(float t)
 	{
-		// Not used — Storyboard overrides Update directly.
+		// Not used - Storyboard overrides Update directly.
 	}
 
 	public override bool Update(float deltaTime)

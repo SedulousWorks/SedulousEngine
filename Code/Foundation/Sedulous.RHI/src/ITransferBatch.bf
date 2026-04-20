@@ -30,7 +30,7 @@ interface ITransferBatch
 	/// Signals `fence` to `signalValue` when the GPU transfer completes.
 	Result<void> SubmitAsync(IFence fence, uint64 signalValue);
 
-	/// Resets for reuse — clears recorded operations and frees staging memory.
+	/// Resets for reuse - clears recorded operations and frees staging memory.
 	void Reset();
 
 	/// Destroys the transfer batch and frees all resources.

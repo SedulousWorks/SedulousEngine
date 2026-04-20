@@ -10,7 +10,7 @@ namespace Sedulous.RenderGraph;
 /// - Per-ITexture (source of truth when multiple handles reference the same GPU texture)
 public class BarrierSolver
 {
-	/// Identity key for ITexture — hashes by object pointer so the same
+	/// Identity key for ITexture - hashes by object pointer so the same
 	/// GPU texture is always the same key regardless of which handle references it.
 	private struct TextureKey : IHashable
 	{
@@ -31,7 +31,7 @@ public class BarrierSolver
 
 	/// Per-resource-handle tracked state (kept in sync with texture-level state)
 	private Dictionary<int32, ResourceState> mResourceStates = new .() ~ delete _;
-	/// Per-ITexture tracked state — source of truth for actual GPU layout
+	/// Per-ITexture tracked state - source of truth for actual GPU layout
 	private Dictionary<TextureKey, ResourceState> mTextureStates = new .() ~ delete _;
 	/// Temporary barrier lists to avoid per-pass allocation
 	private List<TextureBarrier> mTextureBarriers = new .() ~ delete _;
@@ -82,7 +82,7 @@ public class BarrierSolver
 				let key = TextureKey(res.Texture);
 				if (mTextureStates.TryGetValue(key, let existingState))
 				{
-					// Same GPU texture seen from another handle — unify state.
+					// Same GPU texture seen from another handle - unify state.
 					// Prefer the existing tracked state if our handle says Undefined.
 					if (initialState == .Undefined && existingState != .Undefined)
 						mResourceStates[i] = existingState;

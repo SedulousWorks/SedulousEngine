@@ -4,7 +4,7 @@ namespace Sedulous.Audio;
 
 /// 3D audio listener that determines how sounds are heard.
 /// Typically attached to the camera or player position.
-/// Pure math — no backend-specific state.
+/// Pure math - no backend-specific state.
 class AudioListener
 {
 	private Vector3 mPosition = .Zero;

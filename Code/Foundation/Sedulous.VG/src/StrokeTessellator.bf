@@ -29,7 +29,7 @@ public static class StrokeTessellator
 			return;
 		}
 
-		// No dashing — tessellate directly
+		// No dashing - tessellate directly
 		let pointList = scope List<Vector2>();
 		for (let p in points)
 			pointList.Add(p);

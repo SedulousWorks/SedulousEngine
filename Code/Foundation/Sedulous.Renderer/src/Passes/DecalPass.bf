@@ -12,7 +12,7 @@ using Sedulous.Profiler;
 /// populated) and before SkyPass / ForwardTransparentPass so decals compose on
 /// top of opaque geometry but underneath transparent content.
 ///
-/// The pass reads SceneDepth as a sampled input — the render graph emits the
+/// The pass reads SceneDepth as a sampled input - the render graph emits the
 /// appropriate DepthStencilWrite -> ShaderRead barrier automatically when the
 /// pass declares the depth handle as a read dependency.
 ///

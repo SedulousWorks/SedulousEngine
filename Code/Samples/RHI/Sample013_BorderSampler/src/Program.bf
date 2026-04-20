@@ -72,7 +72,7 @@ class BorderSamplerSample : SampleApp
 
 	public this()  { }
 
-	protected override StringView Title => "Sample013 — Border Sampler";
+	protected override StringView Title => "Sample013 - Border Sampler";
 
 	protected override Result<void> OnInit()
 	{

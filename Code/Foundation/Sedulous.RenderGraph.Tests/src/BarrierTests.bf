@@ -67,7 +67,7 @@ class MockEncoder : ICommandEncoder
 class BarrierTests
 {
 	/// When two handles reference the same ITexture, a state change through one
-	/// must be visible when the other is accessed — emitting the correct barrier.
+	/// must be visible when the other is accessed - emitting the correct barrier.
 	[Test]
 	public static void SameTexture_TwoHandles_BarrierEmitted()
 	{
@@ -249,7 +249,7 @@ class BarrierTests
 
 		solver.Reset(resources);
 
-		// Read texture — already in ShaderRead state
+		// Read texture - already in ShaderRead state
 		let pass = scope RenderGraphPass("Reader", .Render);
 		pass.Accesses.Add(.(RGHandle(0, 0), .ReadTexture));
 

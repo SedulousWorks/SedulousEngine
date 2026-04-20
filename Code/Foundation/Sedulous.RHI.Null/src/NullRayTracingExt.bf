@@ -31,7 +31,7 @@ class NullRayTracingExt : IRayTracingExt
 	public Result<void> GetShaderGroupHandles(IRayTracingPipeline pipeline,
 		uint32 firstGroup, uint32 groupCount, Span<uint8> outData)
 	{
-		// Zero-fill the output — no real handles
+		// Zero-fill the output - no real handles
 		Internal.MemSet(outData.Ptr, 0, outData.Length);
 		return .Ok;
 	}

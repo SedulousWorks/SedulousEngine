@@ -4,16 +4,16 @@ using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
 
-/// A particle system — owns an emitter, behaviors, initializers, streams,
+/// A particle system - owns an emitter, behaviors, initializers, streams,
 /// and a simulation backend. This is the per-system class from the proposal:
 ///
 ///   ParticleEffect
 ///     └── ParticleSystem
-///           ├── Emitter        — spawn rules
-///           ├── Behaviors[]    — per-frame update rules
-///           ├── Initializers[] — per-spawn setup
-///           ├── Streams        — SoA data channels
-///           └── Simulator      — CPU or GPU backend
+///           ├── Emitter        - spawn rules
+///           ├── Behaviors[]    - per-frame update rules
+///           ├── Initializers[] - per-spawn setup
+///           ├── Streams        - SoA data channels
+///           └── Simulator      - CPU or GPU backend
 ///
 /// The ParticleSystem picks its simulator based on SimulationMode and
 /// validates that all behaviors support the chosen backend.
@@ -62,10 +62,10 @@ public class ParticleSystem
 	/// Minimum spawn rate multiplier at LODCullDistance (before full cull).
 	public float LODMinRate = 0.1f;
 
-	/// Emitter — spawning logic.
+	/// Emitter - spawning logic.
 	public ParticleEmitter Emitter { get; private set; } ~ delete _;
 
-	/// Stream container — SoA data channels.
+	/// Stream container - SoA data channels.
 	public ParticleStreamContainer Streams { get; private set; } ~ delete _;
 
 	/// World-space position (set by owner before Update).
@@ -260,7 +260,7 @@ public class ParticleSystem
 		}
 	}
 
-	/// Resets — kills all particles and restarts emission.
+	/// Resets - kills all particles and restarts emission.
 	public void Reset()
 	{
 		Streams.AliveCount = 0;

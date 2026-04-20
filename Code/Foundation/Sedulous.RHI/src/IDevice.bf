@@ -50,7 +50,7 @@ interface IDevice
 	/// Creates a bind group layout, defining the shape of a bind group.
 	Result<IBindGroupLayout> CreateBindGroupLayout(BindGroupLayoutDesc desc);
 
-	/// Creates a bind group — a set of resource bindings matching a layout.
+	/// Creates a bind group - a set of resource bindings matching a layout.
 	Result<IBindGroup> CreateBindGroup(BindGroupDesc desc);
 
 	/// Creates a pipeline layout from bind group layouts and push constant ranges.

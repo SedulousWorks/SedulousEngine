@@ -37,7 +37,7 @@ class BlendTree1D : IAnimationStateNode
 
 		if (Entries.Count == 1)
 		{
-			// Single entry — just sample it
+			// Single entry - just sample it
 			let clip = Entries[0].Clip;
 			if (clip != null)
 			{
@@ -53,7 +53,7 @@ class BlendTree1D : IAnimationStateNode
 
 		if (Parameter <= Entries[0].Threshold)
 		{
-			// Below minimum — use first entry
+			// Below minimum - use first entry
 			let clip = Entries[0].Clip;
 			if (clip != null)
 			{
@@ -65,7 +65,7 @@ class BlendTree1D : IAnimationStateNode
 
 		if (Parameter >= Entries[Entries.Count - 1].Threshold)
 		{
-			// Above maximum — use last entry
+			// Above maximum - use last entry
 			let clip = Entries[Entries.Count - 1].Clip;
 			if (clip != null)
 			{

@@ -56,7 +56,7 @@ class OcclusionQuerySample : SampleApp
 
 	public this() { }
 
-	protected override StringView Title => "Sample024 — Occlusion Queries & Debug Labels";
+	protected override StringView Title => "Sample024 - Occlusion Queries & Debug Labels";
 
 	protected override Result<void> OnInit()
 	{
@@ -86,19 +86,19 @@ class OcclusionQuerySample : SampleApp
 		// Quad 1: Test A (red, z=0.7, partially behind occluder)
 		// Quad 2: Test B (blue, z=0.7, fully behind occluder)
 		float[?] verts = .(
-			// Quad 0: Occluder — center, near
+			// Quad 0: Occluder - center, near
 			-0.3f, -0.4f, 0.3f,   0.4f, 0.4f, 0.4f, 1.0f,
 			 0.3f, -0.4f, 0.3f,   0.4f, 0.4f, 0.4f, 1.0f,
 			 0.3f,  0.4f, 0.3f,   0.5f, 0.5f, 0.5f, 1.0f,
 			-0.3f,  0.4f, 0.3f,   0.5f, 0.5f, 0.5f, 1.0f,
 
-			// Quad 1: Test A — partially occluded (left side visible)
+			// Quad 1: Test A - partially occluded (left side visible)
 			-0.7f, -0.3f, 0.7f,   1.0f, 0.3f, 0.3f, 1.0f,
 			 0.0f, -0.3f, 0.7f,   1.0f, 0.3f, 0.3f, 1.0f,
 			 0.0f,  0.3f, 0.7f,   1.0f, 0.5f, 0.5f, 1.0f,
 			-0.7f,  0.3f, 0.7f,   1.0f, 0.5f, 0.5f, 1.0f,
 
-			// Quad 2: Test B — fully occluded (behind occluder)
+			// Quad 2: Test B - fully occluded (behind occluder)
 			-0.15f, -0.2f, 0.7f,  0.3f, 0.3f, 1.0f, 1.0f,
 			 0.15f, -0.2f, 0.7f,  0.3f, 0.3f, 1.0f, 1.0f,
 			 0.15f,  0.2f, 0.7f,  0.5f, 0.5f, 1.0f, 1.0f,

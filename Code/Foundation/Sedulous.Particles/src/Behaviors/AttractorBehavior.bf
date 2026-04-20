@@ -12,7 +12,7 @@ public class AttractorBehavior : ParticleBehavior
 	/// Attractor position in world space.
 	public Vector3 Position = .Zero;
 
-	/// Attractor radius — force falls off outside this distance.
+	/// Attractor radius - force falls off outside this distance.
 	/// Set to 0 for no falloff.
 	public float Radius = 0;
 

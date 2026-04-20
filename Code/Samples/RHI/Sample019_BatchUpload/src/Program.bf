@@ -86,7 +86,7 @@ class BatchUploadSample : SampleApp
 
 	public this()  { }
 
-	protected override StringView Title => "Sample019 — Batch Upload (Async Transfer)";
+	protected override StringView Title => "Sample019 - Batch Upload (Async Transfer)";
 
 	protected override Result<void> OnInit()
 	{
@@ -289,7 +289,7 @@ class BatchUploadSample : SampleApp
 			TextureDataLayout() { BytesPerRow = cTexSize * 4, RowsPerImage = cTexSize },
 			Extent3D() { Width = cTexSize, Height = cTexSize, Depth = 1 });
 
-		// Async submit — signals fence when GPU transfer completes
+		// Async submit - signals fence when GPU transfer completes
 		mUploadFenceValue = 1;
 		if (transfer.SubmitAsync(mUploadFence, mUploadFenceValue) case .Err)
 		{

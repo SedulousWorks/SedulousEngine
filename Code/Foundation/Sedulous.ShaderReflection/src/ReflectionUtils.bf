@@ -10,7 +10,7 @@ using Sedulous.RHI;
 static class ReflectionUtils
 {
 	/// Merges bindings from multiple reflected shaders into bind group layout entries.
-	/// Bindings at the same (set, binding) are merged — their stage flags are OR'd together.
+	/// Bindings at the same (set, binding) are merged - their stage flags are OR'd together.
 	/// Returns .Err if conflicting types are found at the same (set, binding).
 	///
 	/// outEntriesPerSet: one List<BindGroupLayoutEntry> per set index.
@@ -31,7 +31,7 @@ static class ReflectionUtils
 
 				if (merged.TryGetValue(key, var existing))
 				{
-					// Same (set, binding) — types must match
+					// Same (set, binding) - types must match
 					if (existing.Type != b.Type)
 					{
 						Debug.WriteLine(scope String()..AppendF(

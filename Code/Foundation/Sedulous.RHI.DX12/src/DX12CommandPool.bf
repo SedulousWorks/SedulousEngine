@@ -16,7 +16,7 @@ class DX12CommandPool : ICommandPool
 	private D3D12_COMMAND_LIST_TYPE mType;
 	private List<DX12CommandBuffer> mCommandBuffers = new .() ~ delete _;
 
-	// Descriptor staging owned by the pool — lifetime matches GPU execution.
+	// Descriptor staging owned by the pool - lifetime matches GPU execution.
 	// Reset after fence wait (pool.Reset), safe from use-after-free.
 	private DX12DescriptorStaging mSrvStaging;
 	private DX12DescriptorStaging mSamplerStaging;
@@ -72,7 +72,7 @@ class DX12CommandPool : ICommandPool
 	public void Reset()
 	{
 		ReleaseCommandBuffers();
-		// Reset descriptor staging — GPU is done (fence waited), so staging
+		// Reset descriptor staging - GPU is done (fence waited), so staging
 		// bump pointers can safely return to start.
 		if (mSrvStaging != null) mSrvStaging.Reset();
 		if (mSamplerStaging != null) mSamplerStaging.Reset();

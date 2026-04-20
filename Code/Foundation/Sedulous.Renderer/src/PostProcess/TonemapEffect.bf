@@ -101,8 +101,8 @@ class TonemapEffect : PostProcessEffect
 		else
 			return .Err;
 
-		// Render pipeline (no vertex buffers — fullscreen triangle via SV_VertexID)
-		// Output format matches pipeline output (RGBA16Float) — blit handles final format conversion
+		// Render pipeline (no vertex buffers - fullscreen triangle via SV_VertexID)
+		// Output format matches pipeline output (RGBA16Float) - blit handles final format conversion
 		ColorTargetState[1] colorTargets = .(.() { Format = .RGBA16Float });
 
 		RenderPipelineDesc pipelineDesc = .()

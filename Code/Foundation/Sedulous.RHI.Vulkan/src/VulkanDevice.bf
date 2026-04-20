@@ -8,7 +8,7 @@ using Sedulous.RHI;
 /// Configurable HLSL register shifts for Vulkan's flat binding namespace.
 /// When compiling HLSL->SPIR-V via DXC, each register class (b/t/u/s) is offset
 /// so they don't collide. Set these to match your DXC -fvk-*-shift flags.
-/// Default is all zeros (no shifts — user passes pre-shifted bindings or uses GLSL).
+/// Default is all zeros (no shifts - user passes pre-shifted bindings or uses GLSL).
 ///
 /// Shifts are applied internally by the Vulkan backend when creating descriptor set
 /// layouts and writing descriptor sets. The user always works with unshifted binding
@@ -162,7 +162,7 @@ class VulkanDevice : IDevice
 		List<char8*> extensions = scope .();
 		extensions.Add(VulkanNative.VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
-		// Vulkan 1.3 features are core — but if on 1.2 we need extensions
+		// Vulkan 1.3 features are core - but if on 1.2 we need extensions
 		if (!adapter.SupportsDynamicRendering) { System.Diagnostics.Debug.WriteLine("VulkanDevice: dynamic rendering not supported (requires Vulkan 1.3)"); return .Err; }
 		if (!adapter.SupportsTimelineSemaphore) { System.Diagnostics.Debug.WriteLine("VulkanDevice: timeline semaphores not supported (requires Vulkan 1.2)"); return .Err; }
 

@@ -7,7 +7,7 @@ using Sedulous.Resources;
 /// Handles first load, deferred retry (resource not yet available), and hot reload
 /// detection (resource ID changed after reload from disk).
 ///
-/// Usage: call Resolve() each frame. When it returns true, the resource changed —
+/// Usage: call Resolve() each frame. When it returns true, the resource changed -
 /// the caller should upload the new data to the GPU.
 struct ResolvedResource<T> where T : Resource, class, delete
 {
@@ -25,7 +25,7 @@ struct ResolvedResource<T> where T : Resource, class, delete
 	{
 		if (!@ref.IsValid)
 		{
-			// Ref cleared — release if we had something
+			// Ref cleared - release if we had something
 			if (Handle.IsValid)
 			{
 				Handle.Release();
@@ -49,7 +49,7 @@ struct ResolvedResource<T> where T : Resource, class, delete
 			if (resources.LoadByRef<T>(@ref) case .Ok(let handle))
 				Handle = handle;
 			else
-				return false; // Not available yet — retry next frame
+				return false; // Not available yet - retry next frame
 		}
 
 		// Check if loaded resource differs from what's on the GPU
@@ -57,7 +57,7 @@ struct ResolvedResource<T> where T : Resource, class, delete
 		if (currentResource != BoundResource)
 		{
 			BoundResource = currentResource;
-			return true; // Changed — caller should upload
+			return true; // Changed - caller should upload
 		}
 
 		return false;

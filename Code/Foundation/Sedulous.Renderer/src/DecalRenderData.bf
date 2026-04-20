@@ -5,7 +5,7 @@ using Sedulous.RHI;
 
 /// Render data for a projected decal.
 ///
-/// Allocated from RenderContext.FrameAllocator — trivially destructible.
+/// Allocated from RenderContext.FrameAllocator - trivially destructible.
 /// Submitted to RenderCategories.Decal. The DecalRenderer draws one cube per
 /// entry using the decal's world matrix to place/orient the projection volume.
 public class DecalRenderData : RenderData

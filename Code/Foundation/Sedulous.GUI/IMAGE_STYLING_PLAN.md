@@ -4,7 +4,7 @@
 Add nine-slice image background support to the GUI styling system so controls can render
 with textured backgrounds (ornate frames, parchment panels, etc.) instead of flat colors.
 
-## Infrastructure (Phase 1 — Current)
+## Infrastructure (Phase 1 - Current)
 
 - [x] Create `ImageBrush` struct in `Sedulous.Drawing` (Texture, NineSlice, Tint)
 - [x] Add `BackgroundImage` field to `StateStyle`
@@ -43,57 +43,57 @@ These have custom `RenderOverride()` that doesn't call `RenderBackground()`.
 Each needs its own image integration:
 
 ### High Priority (common in game UI)
-- [x] ProgressBar — TrackImage + FillImage properties
-- [x] Slider — TrackImage + ThumbImage properties (with state tint modulation on thumb)
-- [x] ScrollBar — TrackImage + ThumbImage properties (with state tint modulation on thumb)
-- [x] Dialog — BackgroundImage support (replaces frame + title bar + border)
-- [x] Popup — BackgroundImage support (replaces background + border, shadow preserved)
-- [x] Tooltip — BackgroundImage support (replaces background + border)
+- [x] ProgressBar - TrackImage + FillImage properties
+- [x] Slider - TrackImage + ThumbImage properties (with state tint modulation on thumb)
+- [x] ScrollBar - TrackImage + ThumbImage properties (with state tint modulation on thumb)
+- [x] Dialog - BackgroundImage support (replaces frame + title bar + border)
+- [x] Popup - BackgroundImage support (replaces background + border, shadow preserved)
+- [x] Tooltip - BackgroundImage support (replaces background + border)
 
 ### Medium Priority
-- [x] CheckBox — indicator box image (checked/unchecked/indeterminate states)
-- [x] RadioButton — indicator circle image (selected/unselected states)
-- [x] ToggleSwitch — track image + knob image (on/off states)
-- [x] ListBoxItem — selected/hover row background image
-- [x] TreeViewItem — selected/hover row background image + expander arrow image
-- [x] TileViewItem — tile background image
-- [x] TabItem (TabControl tabs) — active/inactive tab image
-- [x] ComboBox dropdown arrow — arrow image instead of drawn triangle
+- [x] CheckBox - indicator box image (checked/unchecked/indeterminate states)
+- [x] RadioButton - indicator circle image (selected/unselected states)
+- [x] ToggleSwitch - track image + knob image (on/off states)
+- [x] ListBoxItem - selected/hover row background image
+- [x] TreeViewItem - selected/hover row background image + expander arrow image
+- [x] TileViewItem - tile background image
+- [x] TabItem (TabControl tabs) - active/inactive tab image
+- [x] ComboBox dropdown arrow - arrow image instead of drawn triangle
 
 ### Lower Priority (less visible in game UI)
-- [x] MenuItem — hover/selected row image (HighlightImage)
-- [x] MenuBarItem — hover image (HighlightImage)
-- [x] MenuSeparator — divider image (DividerImage)
-- [x] ToolBarButton — button image per-state (ButtonImage)
-- [x] ToolBarToggleButton — toggle image per-state (ButtonImage)
-- [x] ToolBarSeparator — divider image (DividerImage)
-- [x] Splitter — grip image (GripImage)
-- [x] GroupBox — frame image (FrameImage)
-- [x] BreadcrumbItem — segment image (SegmentImage)
-- [x] StatusBarItem — item background image (ItemBackgroundImage)
-- [x] Separator — line image (LineImage)
-- [x] RepeatButton — works via base Button (already has image support)
+- [x] MenuItem - hover/selected row image (HighlightImage)
+- [x] MenuBarItem - hover image (HighlightImage)
+- [x] MenuSeparator - divider image (DividerImage)
+- [x] ToolBarButton - button image per-state (ButtonImage)
+- [x] ToolBarToggleButton - toggle image per-state (ButtonImage)
+- [x] ToolBarSeparator - divider image (DividerImage)
+- [x] Splitter - grip image (GripImage)
+- [x] GroupBox - frame image (FrameImage)
+- [x] BreadcrumbItem - segment image (SegmentImage)
+- [x] StatusBarItem - item background image (ItemBackgroundImage)
+- [x] Separator - line image (LineImage)
+- [x] RepeatButton - works via base Button (already has image support)
 
-### Docking System (Deferred — tooling-specific)
-- [x] DockablePanel — panel frame image (FrameImage)
-- [x] DockablePanelHeader — title bar image (TitleBarImage)
-- [x] DockTabGroup — tab strip image (TabStripImage)
-- [x] DockTab — tab image (active/inactive) (ActiveTabImage/InactiveTabImage)
-- [x] FloatingWindow — window frame image (FrameImage)
-- [x] DockTarget/DockSplit — overlay images (DockTarget.OverlayImage, DockZoneIndicator.ButtonImage/ButtonHoverImage, DockSplit needs no changes)
+### Docking System (Deferred - tooling-specific)
+- [x] DockablePanel - panel frame image (FrameImage)
+- [x] DockablePanelHeader - title bar image (TitleBarImage)
+- [x] DockTabGroup - tab strip image (TabStripImage)
+- [x] DockTab - tab image (active/inactive) (ActiveTabImage/InactiveTabImage)
+- [x] FloatingWindow - window frame image (FrameImage)
+- [x] DockTarget/DockSplit - overlay images (DockTarget.OverlayImage, DockZoneIndicator.ButtonImage/ButtonHoverImage, DockSplit needs no changes)
 
-### Data Controls (Deferred — tooling-specific)
-- [x] DataGrid — grid background image (GridBackgroundImage, RowSelectionImage, RowHoverImage)
-- [x] DataGridHeader — header row image (DataGrid.HeaderImage)
-- [x] DataGridCell — header cell image (DataGridColumn.HeaderCellImage)
-- [x] PropertyGrid — grid background image (GridBackgroundImage)
-- [x] PropertyGridCategory — category header image (CategoryImage, CategoryHoverImage)
-- [x] PropertyGridProperty — property row image (PropertyImage, PropertyHoverImage)
+### Data Controls (Deferred - tooling-specific)
+- [x] DataGrid - grid background image (GridBackgroundImage, RowSelectionImage, RowHoverImage)
+- [x] DataGridHeader - header row image (DataGrid.HeaderImage)
+- [x] DataGridCell - header cell image (DataGridColumn.HeaderCellImage)
+- [x] PropertyGrid - grid background image (GridBackgroundImage)
+- [x] PropertyGridCategory - category header image (CategoryImage, CategoryHoverImage)
+- [x] PropertyGridProperty - property row image (PropertyImage, PropertyHoverImage)
 
 ## Future Enhancements (Not Planned)
 
 - [ ] Gradient brush support (linear/radial gradients as backgrounds)
-- [ ] Border-only images (separate from background — e.g., glow border overlay)
+- [ ] Border-only images (separate from background - e.g., glow border overlay)
 - [ ] Fill images for ProgressBar (partial rendering of nine-slice)
 - [ ] Animated image backgrounds (sprite sheet cycling)
 - [ ] Image-based cursor themes
@@ -105,7 +105,7 @@ Each needs its own image integration:
 ## Complete Image Asset Reference
 
 Every `ImageBrush` property across all controls. This is the full list of images
-needed to skin the entire UI with textures. All are optional — controls fall back
+needed to skin the entire UI with textures. All are optional - controls fall back
 to color-based rendering when no image is set.
 
 Auto-tint means the control applies `Palette.Lighten`/`Darken` on hover/press

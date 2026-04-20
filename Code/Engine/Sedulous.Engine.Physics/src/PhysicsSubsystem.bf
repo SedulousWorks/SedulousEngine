@@ -47,7 +47,7 @@ class PhysicsSubsystem : Subsystem, ISceneAware
 
 	protected override void OnShutdown()
 	{
-		// Managers already detached by PrepareShutdown — safe to destroy worlds.
+		// Managers already detached by PrepareShutdown - safe to destroy worlds.
 		for (let kv in mSceneWorlds)
 		{
 			kv.value.Dispose();

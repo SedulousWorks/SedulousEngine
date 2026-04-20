@@ -176,7 +176,7 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 			if (Resolver.ResolveMaterial(ref state.Materials[slot], matRef, out instance))
 			{
 				comp.SetMaterial(slot, instance);
-				instance.ReleaseRef(); // SetMaterial AddRef'd — resolver doesn't own it
+				instance.ReleaseRef(); // SetMaterial AddRef'd - resolver doesn't own it
 			}
 		}
 

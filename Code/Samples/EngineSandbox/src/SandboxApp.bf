@@ -111,7 +111,7 @@ class SandboxApp : EngineApplication
 	List<TextureResource> mCharTextures = new .() ~ delete _;
 	List<MaterialResource> mCharMaterialResources = new .() ~ delete _;
 
-	// Sprite textures — held by the app so we release refs on shutdown.
+	// Sprite textures - held by the app so we release refs on shutdown.
 	List<TextureResource> mSpriteTextures = new .() ~ delete _;
 	List<MaterialResource> mFoxMaterialResources = new .() ~ delete _;
 	MaterialInstance mRedMaterial ~ _?.ReleaseRef();
@@ -219,61 +219,61 @@ class SandboxApp : EngineApplication
 
 		let physicsMgr = scene.GetModule<PhysicsComponentManager>();
 
-		// Ground plane — static physics body at Y=0 (plane shape passes through body origin)
+		// Ground plane - static physics body at Y=0 (plane shape passes through body origin)
 		let planeEntity = scene.CreateEntity("Ground");
 		scene.SetLocalTransform(planeEntity, .() { Position = .Zero, Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, planeEntity, planeRef, mGrayMaterial);
 		SetupRigidBody(scene, physicsMgr, planeEntity, .Plane(), .Static, 0);
 
-		// Cube — dynamic, falls from height
+		// Cube - dynamic, falls from height
 		let cubeEntity = scene.CreateEntity("Cube");
 		scene.SetLocalTransform(cubeEntity, .() { Position = .(-1.5f, 5, 0), Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, cubeEntity, cubeRef, mRedMaterial);
 		SetupRigidBody(scene, physicsMgr, cubeEntity, .Box(0.5f), .Dynamic);
 
-		// Sphere — dynamic, falls from height
+		// Sphere - dynamic, falls from height
 		let sphereEntity = scene.CreateEntity("Sphere");
 		scene.SetLocalTransform(sphereEntity, .() { Position = .(1.5f, 6, 0), Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, sphereEntity, sphereRef, mBlueMaterial);
 		SetupRigidBody(scene, physicsMgr, sphereEntity, .Sphere(0.5f), .Dynamic);
 
-		// Green cube (back left) — dynamic
+		// Green cube (back left) - dynamic
 		let cube2Entity = scene.CreateEntity("GreenCube");
 		scene.SetLocalTransform(cube2Entity, .() { Position = .(-3.0f, 7, -2.0f), Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, cube2Entity, cubeRef, mGreenMaterial);
 		SetupRigidBody(scene, physicsMgr, cube2Entity, .Box(0.5f), .Dynamic);
 
-		// Yellow cube (back right) — dynamic
+		// Yellow cube (back right) - dynamic
 		let cube3Entity = scene.CreateEntity("YellowCube");
 		scene.SetLocalTransform(cube3Entity, .() { Position = .(3.0f, 4.5f, -2.0f), Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, cube3Entity, cubeRef, mYellowMaterial);
 		SetupRigidBody(scene, physicsMgr, cube3Entity, .Box(0.5f), .Dynamic);
 
-		// White metallic sphere (center back) — dynamic, larger
+		// White metallic sphere (center back) - dynamic, larger
 		let sphere2Entity = scene.CreateEntity("MetalSphere");
 		scene.SetLocalTransform(sphere2Entity, .() { Position = .(0, 8, -2.0f), Rotation = .Identity, Scale = .(1.5f, 1.5f, 1.5f) });
 		SetupMeshComponent(scene, sphere2Entity, sphereRef, mWhiteMaterial);
 		SetupRigidBody(scene, physicsMgr, sphere2Entity, .Sphere(0.75f), .Dynamic);
 
-		// Small green sphere (front left) — dynamic
+		// Small green sphere (front left) - dynamic
 		let sphere3Entity = scene.CreateEntity("GreenSphere");
 		scene.SetLocalTransform(sphere3Entity, .() { Position = .(-0.5f, 6.5f, 1.5f), Rotation = .Identity, Scale = .(0.6f, 0.6f, 0.6f) });
 		SetupMeshComponent(scene, sphere3Entity, sphereRef, mGreenMaterial);
 		SetupRigidBody(scene, physicsMgr, sphere3Entity, .Sphere(0.3f), .Dynamic);
 
-		// Small yellow sphere (front right) — dynamic
+		// Small yellow sphere (front right) - dynamic
 		let sphere4Entity = scene.CreateEntity("YellowSphere");
 		scene.SetLocalTransform(sphere4Entity, .() { Position = .(0.5f, 5.5f, 1.5f), Rotation = .Identity, Scale = .(0.6f, 0.6f, 0.6f) });
 		SetupMeshComponent(scene, sphere4Entity, sphereRef, mYellowMaterial);
 		SetupRigidBody(scene, physicsMgr, sphere4Entity, .Sphere(0.3f), .Dynamic);
 
-		// Transparent sphere — dynamic
+		// Transparent sphere - dynamic
 		let transparentEntity = scene.CreateEntity("TransparentSphere");
 		scene.SetLocalTransform(transparentEntity, .() { Position = .(-1.0f, 9, 0.8f), Rotation = .Identity, Scale = .(1.2f, 1.2f, 1.2f) });
 		SetupMeshComponent(scene, transparentEntity, sphereRef, mTransparentMaterial);
 		SetupRigidBody(scene, physicsMgr, transparentEntity, .Sphere(0.6f), .Dynamic);
 
-		// Masked cube — dynamic
+		// Masked cube - dynamic
 		let maskedEntity = scene.CreateEntity("MaskedCube");
 		scene.SetLocalTransform(maskedEntity, .() { Position = .(3.0f, 4, 1.0f), Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, maskedEntity, cubeRef, mMaskedMaterial);
@@ -453,7 +453,7 @@ class SandboxApp : EngineApplication
 			// --- Fireworks (sub-emitter demo: rocket -> burst on death) ---
 			mFireworksEffect = new ParticleEffect("Fireworks");
 			{
-				// System 0: Rockets — rise upward, short lifetime, trigger burst on death
+				// System 0: Rockets - rise upward, short lifetime, trigger burst on death
 				let rockets = new ParticleSystem(10);
 				rockets.Emitter.Mode = .Burst;
 				rockets.Emitter.BurstCount = 3;
@@ -482,7 +482,7 @@ class SandboxApp : EngineApplication
 				rockets.AddBehavior(new VelocityIntegrationBehavior());
 				mFireworksEffect.AddSystem(rockets);
 
-				// System 1: Burst sparks — triggered by rocket death
+				// System 1: Burst sparks - triggered by rocket death
 				let burst = new ParticleSystem(500);
 				burst.Emitter.IsEmitting = false; // only spawns via sub-emitter
 				burst.BlendMode = .Additive;
@@ -587,7 +587,7 @@ class SandboxApp : EngineApplication
 					Scale = .(0.02f, 0.02f, 0.02f)
 				});
 
-				// Skeletal animation component — drives bone matrices via resource refs
+				// Skeletal animation component - drives bone matrices via resource refs
 				let skelAnimMgr = scene.GetModule<SkeletalAnimationComponentManager>();
 				let animHandle = skelAnimMgr.CreateComponent(foxEntity);
 				if (let animComp = skelAnimMgr.Get(animHandle))
@@ -606,14 +606,14 @@ class SandboxApp : EngineApplication
 					animComp.AutoPlay = true;
 				}
 
-				// Skinned mesh component — renders the mesh, reads bone matrices from animation component
+				// Skinned mesh component - renders the mesh, reads bone matrices from animation component
 				let skinnedMgr = scene.GetModule<SkinnedMeshComponentManager>();
 				let compHandle = skinnedMgr.CreateComponent(foxEntity);
 				if (let comp = skinnedMgr.Get(compHandle))
 				{
 					comp.SetMeshRef(foxMeshRef);
 
-					// Set material refs by slot — resolver creates instances and prepares bind groups
+					// Set material refs by slot - resolver creates instances and prepares bind groups
 					for (int32 slot = 0; slot < mFoxMaterialResources.Count; slot++)
 					{
 						var matRef = ResourceRef(mFoxMaterialResources[slot].Id, .());
@@ -780,7 +780,7 @@ class SandboxApp : EngineApplication
 						let graphHandle = graphAnimMgr.CreateComponent(charEntity);
 						if (let graphComp = graphAnimMgr.Get(graphHandle))
 						{
-							// Set skeleton + graph directly (not via resource ref — graph is built programmatically)
+							// Set skeleton + graph directly (not via resource ref - graph is built programmatically)
 							graphComp.Skeleton = charSkeleton;
 							graphComp.Graph = mCharGraph;
 						}
@@ -889,7 +889,7 @@ class SandboxApp : EngineApplication
 			light.ShadowNormalBias = 3.0f;    // normal-offset bias IN TEXELS (scaled by world texel size in shader)
 		}
 
-		// Shadow-casting spot light — high above and angled toward the scene.
+		// Shadow-casting spot light - high above and angled toward the scene.
 		let spotLightEntity = scene.CreateEntity("ShadowSpot");
 		scene.SetLocalTransform(spotLightEntity, Transform.CreateLookAt(.(2, 8, 2), .(0, -1, 0)));
 		let spotLightHandle = lightMgr.CreateComponent(spotLightEntity);
@@ -906,7 +906,7 @@ class SandboxApp : EngineApplication
 			light.ShadowNormalBias = 0.05f;
 		}
 
-		// Shadow-casting point light — sits near the scene, casts shadows in every
+		// Shadow-casting point light - sits near the scene, casts shadows in every
 		// direction (6 cube-map faces). Good test for the point shadow code path.
 		let pointLightEntity = scene.CreateEntity("ShadowPoint");
 		scene.SetLocalTransform(pointLightEntity, .()
@@ -955,7 +955,7 @@ class SandboxApp : EngineApplication
 				let decoder = scope AudioDecoderFactory();
 				decoder.RegisterDefaultDecoders();
 
-				// Background music — decode via AudioDecoderFactory (handles 24-bit WAV)
+				// Background music - decode via AudioDecoderFactory (handles 24-bit WAV)
 				// and play as a looping source
 				let musicPath = scope String();
 				GetAssetPath("samples/audio/background/eyeless.wav", musicPath);
@@ -1591,7 +1591,7 @@ class SandboxApp : EngineApplication
 			comp.WorldHeight = 2.0f;
 		}
 
-		// Second world UI — camera-facing billboard (like a nameplate).
+		// Second world UI - camera-facing billboard (like a nameplate).
 		let billboard = mScene.CreateEntity("WorldUI_Billboard");
 		mScene.SetLocalTransform(billboard, .() {
 			Position = .(-2, 3, 0),
@@ -1611,7 +1611,7 @@ class SandboxApp : EngineApplication
 
 		// UIComponent is now pending init. On next frame, UIComponentManager
 		// will create the RootView, VGContext, VGRenderer, and texture.
-		// We add UI content after init — defer to OnUpdate or use a callback.
+		// We add UI content after init - defer to OnUpdate or use a callback.
 		// For demo: we'll add content on first update when Root becomes available.
 	}
 
@@ -1726,9 +1726,9 @@ class SandboxApp : EngineApplication
 
 		let root = uiSub.ScreenView.Root;
 
-		// Absolute layout for HUD overlay — doesn't interfere with 3D.
+		// Absolute layout for HUD overlay - doesn't interfere with 3D.
 		let hud = new AbsoluteLayout();
-		hud.IsHitTestVisible = false; // Layout is not a hit target — children (panel, button) are.
+		hud.IsHitTestVisible = false; // Layout is not a hit target - children (panel, button) are.
 		root.AddView(hud, new LayoutParams() { Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent });
 
 		// Translucent background panel for the HUD info.

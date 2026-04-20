@@ -73,7 +73,7 @@ class DependencyTests
 
 		let atlas = graph.CreateTransient("ShadowAtlas", RGTextureDesc(.Depth32Float) { ArrayLayerCount = 4 });
 
-		// Two passes writing to different layers — should be independent
+		// Two passes writing to different layers - should be independent
 		graph.AddRenderPass("Cascade0", scope (builder) => {
 			builder.SetDepthTarget(atlas, .Clear, .Store, 1.0f, .(0, 1, 0, 1));
 			builder.NeverCull();
@@ -84,7 +84,7 @@ class DependencyTests
 			builder.NeverCull();
 		});
 
-		// Reader of all layers — depends on both
+		// Reader of all layers - depends on both
 		graph.AddRenderPass("Forward", scope (builder) => {
 			builder.ReadTexture(atlas);
 			builder.NeverCull();

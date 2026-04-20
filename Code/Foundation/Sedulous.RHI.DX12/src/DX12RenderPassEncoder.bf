@@ -55,7 +55,7 @@ class DX12RenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 
 		// Copy-on-bind: copy bind group's descriptors into encoder's staging region,
 		// then bind from the staging offset. This makes bind group destruction safe
-		// during command recording — the GPU only references the staging copy.
+		// during command recording - the GPU only references the staging copy.
 
 		// Bind CBV/SRV/UAV table (staged)
 		if (dxGroup.CbvSrvUavOffset >= 0 && dxLayout != null && dxLayout.CbvSrvUavCount > 0)
@@ -89,7 +89,7 @@ class DX12RenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 			}
 		}
 
-		// Bind dynamic offset root descriptors (not staged — uses GPU virtual addresses)
+		// Bind dynamic offset root descriptors (not staged - uses GPU virtual addresses)
 		int dynOffsetIdx = 0;
 		for (let entry in layout.DynamicRootEntries)
 		{

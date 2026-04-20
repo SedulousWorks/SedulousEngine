@@ -54,7 +54,7 @@ class FileWatcherTests
 		WriteTempFile(tempPath, "original");
 		watcher.Track(tempPath);
 
-		// First poll — no changes expected (just tracked)
+		// First poll - no changes expected (just tracked)
 		let changes1 = scope List<String>();
 		watcher.Poll(changes1);
 		for (let s in changes1)

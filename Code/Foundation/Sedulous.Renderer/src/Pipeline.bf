@@ -13,7 +13,7 @@ using Sedulous.Profiler;
 /// Owns the pass list, per-frame resources, output texture, and render graph.
 /// References shared infrastructure (GPU resources, materials, shaders) from Renderer.
 ///
-/// The pipeline renders to its own output texture — it doesn't know about swapchains.
+/// The pipeline renders to its own output texture - it doesn't know about swapchains.
 /// The caller (RenderSubsystem) blits the pipeline output to the backbuffer.
 public class Pipeline : IRenderingPipeline, IDisposable
 {
@@ -233,7 +233,7 @@ public class Pipeline : IRenderingPipeline, IDisposable
 			//   "PipelineOutput" = transient HDR texture (scene passes write here)
 			//   "FinalOutput"    = imported caller-owned output (post-process stack writes here)
 			//
-			// The transient HDR texture is internal to the render graph — the caller never
+			// The transient HDR texture is internal to the render graph - the caller never
 			// sees it. It does NOT need an explicit clear pass because ForwardOpaquePass
 			// (the first writer) already uses LoadOp.Clear on color target 0. If a future
 			// pass becomes the first writer, it must also use LoadOp.Clear, or an explicit
@@ -259,7 +259,7 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		{
 			// Without post-processing: scene passes write directly to the caller-owned output.
 			// The caller clears the output before calling Render(). ForwardOpaquePass also
-			// uses LoadOp.Clear, so the caller's clear is technically redundant here — but
+			// uses LoadOp.Clear, so the caller's clear is technically redundant here - but
 			// the contract requires it for correctness if the pass order ever changes.
 			// Import so passes can find it by name via graph.GetResource("PipelineOutput").
 			mRenderGraph.ImportTarget("PipelineOutput", outputTexture, outputTextureView);
@@ -411,7 +411,7 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		return offset;
 	}
 
-	/// Helper for passes — binds the Frame bind group with the dynamic offset for
+	/// Helper for passes - binds the Frame bind group with the dynamic offset for
 	/// the view currently being rendered. Use this instead of calling SetBindGroup
 	/// directly so passes don't need to know about the scene UBO ring buffer layout.
 	public void BindFrameGroup(IRenderPassEncoder encoder, PerFrameResources frame)
@@ -551,7 +551,7 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		// Light buffer size: at least 1 light worth (Vulkan requires non-zero)
 		let lightBufferSize = (uint64)(Math.Max(lightBuffer.LightCount, 1) * GPULight.Size);
 
-		// Scene UBO is bound at offset 0 with size = one slot — the dynamic offset
+		// Scene UBO is bound at offset 0 with size = one slot - the dynamic offset
 		// at SetBindGroup time selects which slot in the ring buffer to read.
 		BindGroupEntry[3] bgEntries = .(
 			BindGroupEntry.Buffer(frame.SceneUniformBuffer, 0, SceneUniforms.Size),

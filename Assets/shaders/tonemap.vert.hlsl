@@ -1,4 +1,4 @@
-// Tonemap Vertex Shader — fullscreen triangle via SV_VertexID
+// Tonemap Vertex Shader - fullscreen triangle via SV_VertexID
 
 struct VertexOutput
 {

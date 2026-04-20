@@ -31,7 +31,7 @@ public class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 
 	public ~this()
 	{
-		// Don't call CloseAllFloatingWindows() here — during destruction,
+		// Don't call CloseAllFloatingWindows() here - during destruction,
 		// UIContext services are already gone and DetachSubtree -> UnregisterElement
 		// would access freed memory. Floating windows live in PopupLayer and are
 		// cleaned up by UIContext's tree destruction; panels inside them are owned
@@ -90,7 +90,7 @@ public class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 		ViewId relativeToId = (relativeTo != null) ? relativeTo.Id : .Invalid;
 		CleanupEmptyNodes();
 
-		// Re-resolve relativeTo — it may have been collapsed by cleanup.
+		// Re-resolve relativeTo - it may have been collapsed by cleanup.
 		var target = relativeTo;
 		if (relativeToId.IsValid && Context != null)
 		{
@@ -130,7 +130,7 @@ public class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 			}
 			else
 			{
-				// Target is a DockSplit or null — find first tab group in subtree.
+				// Target is a DockSplit or null - find first tab group in subtree.
 				DockTabGroup targetGroup = null;
 				if (target != null)
 					targetGroup = FindFirstTabGroup(target);
@@ -143,7 +143,7 @@ public class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 				}
 				else
 				{
-					// Empty tree — create new root.
+					// Empty tree - create new root.
 					let group = new DockTabGroup();
 					group.AddPanel(panel);
 					mRootNode = group;
@@ -326,7 +326,7 @@ public class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 			}
 			else if (let parentSplit = parent as DockSplit)
 			{
-				// Capture both children BEFORE detaching — DockSplit.First/Second
+				// Capture both children BEFORE detaching - DockSplit.First/Second
 				// are index-based, so detaching shifts the array.
 				bool isFirst = (parentSplit.First === target);
 				let otherChild = isFirst ? parentSplit.Second : parentSplit.First;
@@ -600,10 +600,10 @@ public class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 			}
 			else
 			{
-				// Dropped inside DockManager but not on a zone — float.
+				// Dropped inside DockManager but not on a zone - float.
 				if (panelData.SourceWindow != null)
 				{
-					// Already floating — just restore and keep at current position.
+					// Already floating - just restore and keep at current position.
 					panelData.SourceWindow.Alpha = 1.0f;
 					panelData.SourceWindow.IsInteractionEnabled = true;
 				}

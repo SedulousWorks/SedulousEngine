@@ -5,7 +5,7 @@ using System.Collections;
 
 /// Base class for per-scene systems.
 /// Each scene has its own instances of scene modules.
-/// ComponentManager<T> extends this — most scene modules are component managers.
+/// ComponentManager<T> extends this - most scene modules are component managers.
 ///
 /// Scene modules can register update functions for specific phases
 /// and fixed update functions for physics-rate updates.
@@ -36,7 +36,7 @@ public abstract class SceneModule : IDisposable
 	/// Serialization type ID for this module.
 	/// Override and return a non-empty string to make this module's components serializable.
 	/// This ID is stored in scene files to identify which manager owns which components.
-	/// Use a stable string (e.g., "Sedulous.MeshComponent") — not a type name that could change.
+	/// Use a stable string (e.g., "Sedulous.MeshComponent") - not a type name that could change.
 	public virtual StringView SerializationTypeId => default;
 
 	/// Whether this module participates in serialization.
