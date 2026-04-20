@@ -200,10 +200,10 @@ public class DockablePanel : ViewGroup, IDragSource
 			if (let fw = Parent as FloatingWindow)
 			{
 				// Floating panel: move the actual window during drag.
-				// Dim + disable hit-test so DockManager underneath receives drop events.
+				// Dim + disable interaction so DockManager underneath receives drop events.
 				panelData.SourceWindow = fw;
 				fw.Alpha = 0.5f;
-				fw.IsHitTestVisible = false;
+				fw.IsInteractionEnabled = false;
 
 				// Capture where the user clicked relative to the window's origin.
 				// DragDropManager.LastScreenX/Y hold the start position (window-relative).
@@ -241,7 +241,7 @@ public class DockablePanel : ViewGroup, IDragSource
 				if (panelData.SourceWindow != null)
 				{
 					panelData.SourceWindow.Alpha = 1.0f;
-					panelData.SourceWindow.IsHitTestVisible = true;
+					panelData.SourceWindow.IsInteractionEnabled = true;
 				}
 			}
 		}

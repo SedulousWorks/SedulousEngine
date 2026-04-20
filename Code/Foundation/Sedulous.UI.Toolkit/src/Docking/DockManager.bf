@@ -605,7 +605,7 @@ public class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 				{
 					// Already floating — just restore and keep at current position.
 					panelData.SourceWindow.Alpha = 1.0f;
-					panelData.SourceWindow.IsHitTestVisible = true;
+					panelData.SourceWindow.IsInteractionEnabled = true;
 				}
 				else
 				{

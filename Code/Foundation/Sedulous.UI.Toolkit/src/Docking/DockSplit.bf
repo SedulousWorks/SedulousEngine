@@ -144,7 +144,7 @@ public class DockSplit : ViewGroup
 
 	public override View HitTest(Vector2 localPoint)
 	{
-		if (!IsHitTestVisible || Visibility != .Visible) return null;
+		if (!IsInteractionEnabled || Visibility != .Visible) return null;
 		if (localPoint.X < 0 || localPoint.Y < 0 || localPoint.X >= Width || localPoint.Y >= Height)
 			return null;
 

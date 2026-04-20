@@ -4,7 +4,8 @@ using Sedulous.Core.Mathematics;
 
 /// Visual overlay shown during a drag operation.
 /// Wraps a user-provided visual or shows a default indicator.
-/// Shown via PopupLayer with IsHitTestVisible = false.
+/// Shown via PopupLayer. Entire subtree is invisible to hit testing
+/// so the drag drop target underneath can be found.
 public class DragAdorner : FrameLayout
 {
 	private float mOffsetX;
@@ -17,7 +18,7 @@ public class DragAdorner : FrameLayout
 	{
 		mOffsetX = offsetX;
 		mOffsetY = offsetY;
-		IsHitTestVisible = false;
+		IsInteractionEnabled = false;
 		Alpha = 0.7f;
 
 		if (visual != null)
