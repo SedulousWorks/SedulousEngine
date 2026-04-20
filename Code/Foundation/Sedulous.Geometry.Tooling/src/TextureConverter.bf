@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using Sedulous.Models;
-using Sedulous.Imaging;
+using Sedulous.Images;
 
 namespace Sedulous.Geometry.Tooling;
 
@@ -95,7 +95,7 @@ static class TextureConverter
 	}
 
 	/// Converts TexturePixelFormat to Image.PixelFormat.
-	private static Image.PixelFormat ConvertPixelFormat(TexturePixelFormat format)
+	private static PixelFormat ConvertPixelFormat(TexturePixelFormat format)
 	{
 		switch (format)
 		{

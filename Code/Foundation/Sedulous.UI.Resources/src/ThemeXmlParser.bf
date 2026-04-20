@@ -4,7 +4,7 @@ using System;
 using Sedulous.Xml;
 using Sedulous.UI;
 using Sedulous.Core.Mathematics;
-using Sedulous.ImageData;
+using Sedulous.Images;
 
 /// Parses a Theme from an XML string. Theme XML format:
 ///

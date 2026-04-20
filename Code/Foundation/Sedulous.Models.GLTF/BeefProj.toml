@@ -2,11 +2,11 @@ FileVersion = 1
 
 [Project]
 Name = "Sedulous.Models.GLTF"
-TargetType = "BeefLib"
 
 [Dependencies]
 corlib = "*"
 "Sedulous.Core.Mathematics" = "*"
 "Sedulous.Models" = "*"
-"Sedulous.Imaging" = "*"
-"cgltf-Beef" = "*"
+"Sedulous.Images" = "*"
+cgltf-Beef = "*"
+"Sedulous.Images.Loading" = "*"

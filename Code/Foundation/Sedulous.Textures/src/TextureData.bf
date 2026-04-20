@@ -2,7 +2,7 @@ namespace Sedulous.Textures;
 
 using System;
 using Sedulous.RHI;
-using Sedulous.Imaging;
+using Sedulous.Images;
 
 /// Raw texture data for upload to GPU.
 /// The caller is responsible for providing correctly formatted pixel data.

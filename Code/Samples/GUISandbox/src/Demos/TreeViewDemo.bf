@@ -4,8 +4,7 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.GUI;
-using Sedulous.Imaging;
-using Sedulous.ImageData;
+using Sedulous.Images;
 
 /// Demo 13: Tree & Hierarchical Controls
 /// Shows TreeView, TreeViewItem, TileView, and TileViewItem.

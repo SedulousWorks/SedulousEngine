@@ -1,5 +1,14 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Geometry" = "*", "Sedulous.Models" = "*", "Sedulous.Imaging" = "*", "Sedulous.Animation" = "*", corlib = "*"}
 
 [Project]
 Name = "Sedulous.Geometry.Tooling"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core.Mathematics" = "*"
+"Sedulous.Geometry" = "*"
+"Sedulous.Models" = "*"
+"Sedulous.Images" = "*"
+"Sedulous.Animation" = "*"
+corlib = "*"
+"Sedulous.Images.Loading" = "*"

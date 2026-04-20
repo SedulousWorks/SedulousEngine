@@ -3,8 +3,8 @@ using System.IO;
 using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.Models;
-using Sedulous.Imaging;
 using ufbx_Beef;
+using Sedulous.Images;
 
 namespace Sedulous.Models.FBX;
 
@@ -403,7 +403,7 @@ public class FbxLoader : IModelLoader
 		texture.SetData(dataArray);
 	}
 
-	private TexturePixelFormat ConvertPixelFormat(Image.PixelFormat format)
+	private TexturePixelFormat ConvertPixelFormat(PixelFormat format)
 	{
 		switch (format)
 		{

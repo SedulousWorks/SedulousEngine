@@ -1,7 +1,7 @@
-namespace Sedulous.ImageData.Tests;
+namespace Sedulous.Images.Tests;
 
 using System;
-using Sedulous.ImageData;
+using Sedulous.Images;
 
 class ImageDataTests
 {

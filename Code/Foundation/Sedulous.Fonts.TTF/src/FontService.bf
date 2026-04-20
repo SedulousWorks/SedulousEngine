@@ -4,7 +4,7 @@ using System;
 using System.Collections;
 using Sedulous.Fonts;
 using Sedulous.Fonts.TTF;
-using Sedulous.ImageData;
+using Sedulous.Images;
 
 /// Font service implementation that loads fonts and creates atlas textures.
 /// This service manages CPU-side font data and atlas pixel data.

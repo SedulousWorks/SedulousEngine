@@ -15,8 +15,7 @@ using Sedulous.Drawing.Renderer;
 using Sedulous.Shell.Input;
 using Sedulous.GUI.Shell;
 using Sedulous.Shaders;
-using Sedulous.Imaging;
-using Sedulous.ImageData;
+using Sedulous.Images;
 using Sedulous.Fonts.TTF;
 
 /// GUI Sandbox sample demonstrating the Sedulous.GUI framework.
@@ -67,7 +66,7 @@ class GUISandboxApp : Application
 	protected override void OnInitialize(Context context)
 	{
 		// Initialize image loader (must be before any image loading)
-		Sedulous.Imaging.SDL.SDLImageLoader.Initialize();
+		Sedulous.Images.SDL.SDLImageLoader.Initialize();
 
 		// Initialize fonts
 		mFontService = new FontService();
@@ -119,12 +118,12 @@ class GUISandboxApp : Application
 	private void CreateDemoImages()
 	{
 		// Create a checkerboard pattern image (64x64)
-		let checkerboard = Sedulous.Imaging.Image.CreateSolidColor(64, 64, Color.Red);
+		let checkerboard = Sedulous.Images.Image.CreateSolidColor(64, 64, Color.Red);
 		mDemoCheckerboard = new OwnedImageData(checkerboard.Width, checkerboard.Height, .RGBA8, checkerboard.Data);
 		delete checkerboard;
 
 		// Create a gradient image (80x60)
-		let gradient = Sedulous.Imaging.Image.CreateGradient(80, 60, Color(100, 200, 100, 255), Color(100, 100, 200, 255), .RGBA8);
+		let gradient = Sedulous.Images.Image.CreateGradient(80, 60, Color(100, 200, 100, 255), Color(100, 100, 200, 255), .RGBA8);
 		mDemoGradient = new OwnedImageData(gradient.Width, gradient.Height, .RGBA8, gradient.Data);
 		delete gradient;
 	}

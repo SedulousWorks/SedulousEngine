@@ -3,7 +3,7 @@ namespace Sedulous.UI;
 using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
-using Sedulous.ImageData;
+using Sedulous.Images;
 
 /// Entry for a single image in a ThemeImageSet.
 public struct ThemeImageEntry

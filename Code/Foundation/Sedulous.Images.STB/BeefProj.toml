@@ -1,0 +1,12 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Images.STB"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Images.STB.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Images" = "*"
+stb_image-Beef = "*"
+"Sedulous.Images.Loading" = "*"

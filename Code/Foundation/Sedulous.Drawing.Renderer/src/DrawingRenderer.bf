@@ -7,7 +7,8 @@ using Sedulous.Shaders;
 using Sedulous.Drawing;
 using Sedulous.Core.Mathematics;
 using Sedulous.Profiler;
-using Sedulous.ImageData;
+using Sedulous.Images;
+using Sedulous.Textures;
 
 /// Uniform buffer data for projection matrix.
 [CRepr]
@@ -172,17 +173,6 @@ public class DrawingRenderer : IDisposable
 		}
 	}
 
-	/// Convert Drawing.PixelFormat to RHI.TextureFormat
-	private TextureFormat ToRHIFormat(PixelFormat format)
-	{
-		switch (format)
-		{
-		case .R8: return .R8Unorm;
-		case .RGBA8: return .RGBA8Unorm;
-		case .BGRA8: return .BGRA8Unorm;
-		}
-	}
-
 	/// Get or create cached GPU resources for a Drawing.ITexture
 	private CachedTexture GetOrCreateCachedTexture(IImageData texture)
 	{
@@ -203,7 +193,7 @@ public class DrawingRenderer : IDisposable
 
 		let width = texture.Width;
 		let height = texture.Height;
-		let format = ToRHIFormat(texture.Format);
+		let format = TextureFormatUtils.Convert(texture.Format);
 
 		// Create GPU texture
 		TextureDesc textureDesc = TextureDesc.Texture2D(
@@ -221,7 +211,7 @@ public class DrawingRenderer : IDisposable
 		TextureDataLayout dataLayout = .()
 		{
 			Offset = 0,
-			BytesPerRow = width * GetBytesPerPixel(texture.Format),
+			BytesPerRow = width * (uint32)Image.GetBytesPerPixel(texture.Format),
 			RowsPerImage = height
 		};
 		Extent3D writeSize = .(width, height, 1);
@@ -247,16 +237,6 @@ public class DrawingRenderer : IDisposable
 		mTextureCache.Add(cached);
 
 		return cached;
-	}
-
-	/// Get bytes per pixel for a format
-	private uint32 GetBytesPerPixel(PixelFormat format)
-	{
-		switch (format)
-		{
-		case .R8: return 1;
-		case .RGBA8, .BGRA8: return 4;
-		}
 	}
 
 	/// Clear all cached textures

@@ -4,7 +4,6 @@ using System.Collections;
 using Sedulous.Serialization;
 using Sedulous.Core.Mathematics;
 using Sedulous.Geometry;
-using Sedulous.Imaging;
 using Sedulous.Animation;
 using Sedulous.Animation.Resources;
 using Sedulous.Geometry.Resources;

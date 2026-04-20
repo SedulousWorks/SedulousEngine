@@ -2,7 +2,7 @@ using System.Collections;
 using System;
 using SDL3;
 
-namespace Sedulous.Imaging.SDL;
+namespace Sedulous.Images.SDL;
 
 class SDLImageLoader : ImageLoader
 {

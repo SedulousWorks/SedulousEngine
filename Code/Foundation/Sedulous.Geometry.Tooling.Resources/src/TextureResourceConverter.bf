@@ -1,7 +1,7 @@
 using System;
-using Sedulous.Imaging;
 using Sedulous.Textures.Resources;
 using Sedulous.Geometry.Tooling;
+using Sedulous.Images;
 
 namespace Sedulous.Geometry.Tooling.Resources;
 

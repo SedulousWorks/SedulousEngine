@@ -30,7 +30,7 @@ VG's tessellator.
   `Path` + manual `delete`
 
 **Assets already in place:**
-- `Sedulous.ImageData` — `IImageData`, `OwnedImageData`, `ImageDataRef`, `PixelFormat`,
+- `Sedulous.Images` — `IImageData`, `OwnedImageData`, `ImageDataRef`, `PixelFormat`,
   `NineSlice` (extracted from Drawing so VG can depend on it without pulling in Drawing)
 - `Sedulous.Fonts` — `IFont`, `IFontAtlas`, `ITextShaper`, `CachedFont`, `FontManager`,
   `IFontService`, glyph/position/hit-test types
@@ -64,7 +64,7 @@ VG's tessellator.
    upload time (white RGB + alpha from R). One unified shader path samples
    `texture.a * vertex.color.a`. SDF/MSDF later gets its own shader branch.
 
-3. **`NineSlice`** — ✅ **Resolved** — moved to `Sedulous.ImageData`.
+3. **`NineSlice`** — ✅ **Resolved** — moved to `Sedulous.Images`.
 
 4. **`IVGFill` vs `IBrush`** — keep them separate. `IVGFill` has `ConicGradient`,
    `IBrush` has `ImageBrush` — they've diverged intentionally. Don't unify.
@@ -75,7 +75,7 @@ VG's tessellator.
 Goal: make `VGCommand.TextureIndex` functional. Prerequisite for images and text.
 
 **`Sedulous.VG` BeefProj.toml:**
-- Add `Sedulous.ImageData` dependency.
+- Add `Sedulous.Images` dependency.
 
 **`VGBatch`:**
 - Add `public List<IImageData> Textures`.
@@ -112,7 +112,7 @@ Goal: make `VGCommand.TextureIndex` functional. Prerequisite for images and text
 
 Goal: API parity with `DrawContext.DrawImage` / `DrawNineSlice`.
 
-`NineSlice` is already in `Sedulous.ImageData` and available via the Phase 1 dependency.
+`NineSlice` is already in `Sedulous.Images` and available via the Phase 1 dependency.
 
 **`VGContext` additions:**
 ```
@@ -306,17 +306,17 @@ quality-of-life improvements with no capability change.
 ## Files touched (summary)
 
 ### New
-- (none — `Sedulous.ImageData` already exists)
+- (none — `Sedulous.Images` already exists)
 
 ### Modified
 
 **`Sedulous.Drawing`:**
-- Add `using Sedulous.ImageData;` where `NineSlice` is referenced (already done
+- Add `using Sedulous.Images;` where `NineSlice` is referenced (already done
   if the move is complete).
 - `BeefProj.toml` — keep current dependencies.
 
 **`Sedulous.VG`:**
-- `BeefProj.toml` — add `Sedulous.ImageData`, `Sedulous.Fonts` dependencies.
+- `BeefProj.toml` — add `Sedulous.Images`, `Sedulous.Fonts` dependencies.
 - `VGBatch.bf` — add `Textures` list.
 - `VGContext.bf` — all new APIs (Phases 1-5), texture state, font service,
   immediate-mode path state.

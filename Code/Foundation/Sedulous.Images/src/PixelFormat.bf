@@ -1,9 +1,9 @@
-namespace Sedulous.ImageData;
+namespace Sedulous.Images;
 
 /// Pixel format for CPU-side texture data.
 /// This is a simplified format enum for the Drawing layer.
 /// The renderer maps these to GPU-specific formats.
-public enum PixelFormat
+/*public enum PixelFormat
 {
 	/// Single channel, 8-bit unsigned normalized (grayscale/alpha)
 	R8,
@@ -13,4 +13,4 @@ public enum PixelFormat
 
 	/// Four channels, 8-bit unsigned normalized, BGR order (blue, green, red, alpha)
 	BGRA8
-}
+}*/

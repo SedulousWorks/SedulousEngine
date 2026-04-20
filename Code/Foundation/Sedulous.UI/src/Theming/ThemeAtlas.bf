@@ -2,7 +2,7 @@ namespace Sedulous.UI;
 
 using System;
 using Sedulous.Core.Mathematics;
-using Sedulous.ImageData;
+using Sedulous.Images;
 
 /// Builds a packed image atlas for theme drawables. Wraps ImageAtlasBuilder
 /// and creates AtlasImageDrawable/AtlasNineSliceDrawable from packed regions.

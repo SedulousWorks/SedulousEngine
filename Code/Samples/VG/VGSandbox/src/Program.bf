@@ -7,8 +7,7 @@ using Sedulous.Runtime.Client;
 using Sedulous.VG;
 using Sedulous.VG.Renderer;
 using Sedulous.Shaders;
-using Sedulous.ImageData;
-using Sedulous.Imaging;
+using Sedulous.Images;
 using Sedulous.Fonts;
 using Sedulous.Fonts.TTF;
 
@@ -69,7 +68,7 @@ class VGSandboxApp : Application
 		}
 
 		// Generate a 128x128 checkerboard and wrap it as IImageData for VG.
-		// Sedulous.Imaging is CPU image generation; Sedulous.ImageData is the
+		// Sedulous.Images.Image is CPU image generation; Sedulous.Images.ImageData is the
 		// CPU-to-GPU bridge format VG's renderer understands.
 		let img = scope Image(128, 128, .RGBA8);
 		for (uint32 y = 0; y < img.Height; y++)

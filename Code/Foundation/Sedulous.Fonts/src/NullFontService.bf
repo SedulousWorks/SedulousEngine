@@ -1,6 +1,6 @@
 using System;
 using Sedulous.Fonts;
-using Sedulous.ImageData;
+using Sedulous.Images;
 
 namespace Sedulous.Fonts;
 

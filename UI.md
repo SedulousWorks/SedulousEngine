@@ -90,7 +90,7 @@ more game-loop-friendly choice — usually the Android one.
 │  Sedulous.UI.Tests (xUnit-style tests mirroring UI's folders)        │
 │  - A phase isn't complete until its tests pass.                      │
 ├──────────────────────────────────────────────────────────────────────┤
-│  Sedulous.VG, Sedulous.Fonts, Sedulous.ImageData,                    │
+│  Sedulous.VG, Sedulous.Fonts, Sedulous.Images,                    │
 │  Sedulous.Xml, Sedulous.Resources, Sedulous.Core.Mathematics         │
 ├──────────────────────────────────────────────────────────────────────┤
 │  Sedulous.VG.Renderer (renders the VGBatch UI produces)              │

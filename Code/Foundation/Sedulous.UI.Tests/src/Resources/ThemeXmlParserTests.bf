@@ -215,7 +215,7 @@ class ThemeXmlParserTests
 			if (path == "button.png")
 			{
 				let data = new uint8[16 * 16 * 4];
-				return new Sedulous.ImageData.OwnedImageData(16, 16, .RGBA8, data);
+				return new Sedulous.Images.OwnedImageData(16, 16, .RGBA8, data);
 			}
 			return null;
 		});
@@ -241,7 +241,7 @@ class ThemeXmlParserTests
 			if (path == "panel.png")
 			{
 				let data = new uint8[32 * 32 * 4];
-				return new Sedulous.ImageData.OwnedImageData(32, 32, .RGBA8, data);
+				return new Sedulous.Images.OwnedImageData(32, 32, .RGBA8, data);
 			}
 			return null;
 		});
@@ -305,7 +305,7 @@ class ThemeXmlParserTests
 		let theme = ThemeXmlParser.Parse(xml, scope (path) =>
 		{
 			let data = new uint8[16 * 16 * 4];
-			return new Sedulous.ImageData.OwnedImageData(16, 16, .RGBA8, data);
+			return new Sedulous.Images.OwnedImageData(16, 16, .RGBA8, data);
 		});
 		Test.Assert(theme != null);
 		defer delete theme;

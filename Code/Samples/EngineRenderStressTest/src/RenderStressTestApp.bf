@@ -19,11 +19,11 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Materials;
 using Sedulous.Resources;
 using Sedulous.Shell.Input;
-using Sedulous.Imaging;
-using Sedulous.Imaging.STB;
-using Sedulous.Imaging.SDL;
+using Sedulous.Images.STB;
+using Sedulous.Images.SDL;
 using Sedulous.Textures.Resources;
 using Sedulous.Profiler;
+using Sedulous.Images;
 
 class RenderStressTestApp : EngineApplication
 {

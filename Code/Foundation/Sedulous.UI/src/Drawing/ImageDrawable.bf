@@ -1,7 +1,7 @@
 namespace Sedulous.UI;
 
 using Sedulous.Core.Mathematics;
-using Sedulous.ImageData;
+using Sedulous.Images;
 
 /// Draws an image stretched to fill bounds.
 public class ImageDrawable : Drawable

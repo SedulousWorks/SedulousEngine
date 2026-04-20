@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using Sedulous.Resources;
 using Sedulous.Serialization;
-using Sedulous.Imaging;
+using Sedulous.Images;
 
 namespace Sedulous.Textures.Resources;
 

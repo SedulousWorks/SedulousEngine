@@ -1,14 +1,14 @@
 namespace Sedulous.Textures;
 
-using Sedulous.Imaging;
 using Sedulous.RHI;
+using Sedulous.Images;
 
 /// Converts between Image pixel formats and RHI texture formats.
 public static class TextureFormatUtils
 {
 	/// Converts an Image.PixelFormat to the corresponding RHI TextureFormat.
 	/// Note: RGB/3-channel formats map to RGBA since GPUs don't support 3-channel.
-	public static TextureFormat Convert(Image.PixelFormat format)
+	public static TextureFormat Convert(PixelFormat format)
 	{
 		switch (format)
 		{

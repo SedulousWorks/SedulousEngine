@@ -4,7 +4,6 @@ using System;
 using System.Collections;
 using System.IO;
 using Sedulous.Core.Mathematics;
-using Sedulous.Imaging;
 using Sedulous.RHI;
 using Sedulous.Shaders;
 using Sedulous.Runtime.Client;

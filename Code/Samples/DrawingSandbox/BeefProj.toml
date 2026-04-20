@@ -7,7 +7,7 @@ StartupObject = "DrawingSandbox.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Core.Mathematics" = "*"
-"Sedulous.Imaging" = "*"
+"Sedulous.Images" = "*"
 "Sedulous.RHI" = "*"
 "Sedulous.RHI.Vulkan" = "*"
 "Sedulous.RHI.Validation" = "*"

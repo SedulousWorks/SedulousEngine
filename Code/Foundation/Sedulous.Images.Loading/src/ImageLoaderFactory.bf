@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Collections;
 
-namespace Sedulous.Imaging;
+namespace Sedulous.Images;
 
 // Factory class for managing different image loaders
 public static class ImageLoaderFactory

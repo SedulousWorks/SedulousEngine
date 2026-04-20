@@ -4,9 +4,8 @@ using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.GUI;
-using Sedulous.Imaging;
 using Sedulous.Drawing;
-using Sedulous.ImageData;
+using Sedulous.Images;
 
 /// Main shell for the GUISandbox with header bar and navigation.
 /// Provides a professional UI shell with theme switching, scaling, and demo selection.

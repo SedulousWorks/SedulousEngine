@@ -3,7 +3,7 @@ namespace Sedulous.UI.Tests;
 using System;
 using Sedulous.UI;
 using Sedulous.Core.Mathematics;
-using Sedulous.ImageData;
+using Sedulous.Images;
 
 /// Tests for drawable-based theming infrastructure:
 /// GetControlState, TryDrawDrawable, SVGDrawable, ThemeAtlas, atlas drawables.

@@ -2,7 +2,7 @@ namespace Sedulous.UI;
 
 using System;
 using Sedulous.Core.Mathematics;
-using Sedulous.ImageData;
+using Sedulous.Images;
 
 /// 9-slice image drawable with optional Expand for shadow/glow
 /// extending beyond the logical bounds.

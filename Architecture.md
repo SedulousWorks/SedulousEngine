@@ -90,8 +90,8 @@ WebGPU-inspired but lower-level. Interface-based - backends are swappable.
 | **Sedulous.Particles** | Self-contained particle system: CPU simulation, billboard/trail rendering, sub-emitters, LOD. ParticlePass + ParticleRenderer |
 | **Sedulous.Geometry** | Mesh formats, vertex definitions, OBJ/glTF loading (via Tooling variant) |
 | **Sedulous.Textures** | Texture metadata and resource types |
-| **Sedulous.ImageData** | In-memory image abstractions (IImageData, OwnedImageData) |
-| **Sedulous.Imaging** | Image loading - STB and SDL variants |
+| **Sedulous.Images** | In-memory image abstractions (IImageData, OwnedImageData) |
+| **Sedulous.Images** | Image loading - STB and SDL variants |
 | **Sedulous.DebugFont** | Built-in bitmap font for debug text overlay |
 
 ### Vector Graphics & Text

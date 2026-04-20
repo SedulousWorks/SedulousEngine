@@ -13,8 +13,7 @@ using Sedulous.Geometry.Resources;
 using Sedulous.Core.Mathematics;
 using Sedulous.Materials;
 using Sedulous.Resources;
-using Sedulous.Imaging;
-using Sedulous.Imaging.STB;
+using Sedulous.Images.STB;
 using Sedulous.Renderer.Passes;
 using Sedulous.Renderer.Debug;
 using Sedulous.Shell.Input;
@@ -27,7 +26,7 @@ using Sedulous.Animation;
 using Sedulous.Animation.Resources;
 using System.Collections;
 using Sedulous.Materials.Resources;
-using Sedulous.Imaging.SDL;
+using Sedulous.Images.SDL;
 using Sedulous.Particles;
 using Sedulous.Engine.Physics;
 using Sedulous.Engine.Animation;
@@ -40,6 +39,7 @@ using Sedulous.Physics;
 using Sedulous.Engine.UI;
 using Sedulous.UI;
 using Sedulous.Shell;
+using Sedulous.Images;
 
 class SandboxApp : EngineApplication
 {

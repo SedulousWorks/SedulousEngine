@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using Sedulous.Resources;
 using Sedulous.Serialization;
-using Sedulous.Imaging;
+using Sedulous.Images;
 
 namespace Sedulous.Textures.Resources;
 
@@ -142,7 +142,7 @@ class TextureResourceManager : ResourceManager<TextureResource>
 		}
 
 		// Create image from serialized dimensions/format + sidecar pixel data
-		let image = new Image((uint32)resource.ImageWidth, (uint32)resource.ImageHeight, (Image.PixelFormat)resource.ImageFormat, binData);
+		let image = new Image((uint32)resource.ImageWidth, (uint32)resource.ImageHeight, (PixelFormat)resource.ImageFormat, binData);
 		delete binData;
 		resource.SetImage(image, true);
 

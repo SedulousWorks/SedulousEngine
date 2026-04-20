@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
-using Sedulous.ImageData;
+using Sedulous.Images;
 
 namespace Sedulous.Drawing.Tests;
 

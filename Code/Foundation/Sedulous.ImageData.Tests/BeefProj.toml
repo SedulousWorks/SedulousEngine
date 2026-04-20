@@ -1,6 +1,6 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.ImageData" = "*"}
+Dependencies = {corlib = "*", "Sedulous.Images" = "*"}
 
 [Project]
-Name = "Sedulous.ImageData.Tests"
+Name = "Sedulous.Images.Tests"
 TargetType = "BeefTest"

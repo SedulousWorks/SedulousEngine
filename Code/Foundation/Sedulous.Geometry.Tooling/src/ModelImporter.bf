@@ -4,8 +4,8 @@ using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.Geometry;
 using Sedulous.Models;
-using Sedulous.Imaging;
 using Sedulous.Animation;
+using Sedulous.Images;
 
 namespace Sedulous.Geometry.Tooling;
 

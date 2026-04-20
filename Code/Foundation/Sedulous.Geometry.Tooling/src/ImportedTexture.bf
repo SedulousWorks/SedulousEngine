@@ -1,7 +1,7 @@
 namespace Sedulous.Geometry.Tooling;
 
 using System;
-using Sedulous.Imaging;
+using Sedulous.Images;
 
 /// Texture data extracted from a model file.
 /// Contains the decoded pixel data and metadata.

@@ -1,34 +1,36 @@
 using System;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.Imaging;
+namespace Sedulous.Images;
+
+public enum PixelFormat
+{
+	// 8-bit formats
+	R8,           // 1 byte per pixel
+	RG8,          // 2 bytes per pixel
+	RGB8,         // 3 bytes per pixel
+	RGBA8,        // 4 bytes per pixel
+
+	// 16-bit float formats
+	R16F,         // 2 bytes per pixel
+	RG16F,        // 4 bytes per pixel
+	RGB16F,       // 6 bytes per pixel
+	RGBA16F,      // 8 bytes per pixel
+
+	// 32-bit float formats
+	R32F,         // 4 bytes per pixel
+	RG32F,        // 8 bytes per pixel
+	RGB32F,       // 12 bytes per pixel
+	RGBA32F,      // 16 bytes per pixel
+
+	// Special formats
+	BGR8,         // 3 bytes per pixel (common in some file formats)
+	BGRA8,        // 4 bytes per pixel (common in Windows)
+}
 
 public class Image
 {
-	public enum PixelFormat
-	{
-		// 8-bit formats
-		R8,           // 1 byte per pixel
-		RG8,          // 2 bytes per pixel
-		RGB8,         // 3 bytes per pixel
-		RGBA8,        // 4 bytes per pixel
 
-		// 16-bit float formats
-		R16F,         // 2 bytes per pixel
-		RG16F,        // 4 bytes per pixel
-		RGB16F,       // 6 bytes per pixel
-		RGBA16F,      // 8 bytes per pixel
-
-		// 32-bit float formats
-		R32F,         // 4 bytes per pixel
-		RG32F,        // 8 bytes per pixel
-		RGB32F,       // 12 bytes per pixel
-		RGBA32F,      // 16 bytes per pixel
-
-		// Special formats
-		BGR8,         // 3 bytes per pixel (common in some file formats)
-		BGRA8,        // 4 bytes per pixel (common in Windows)
-	}
 
 	private uint8[] mData ~ delete _;
 	private uint32 mWidth;

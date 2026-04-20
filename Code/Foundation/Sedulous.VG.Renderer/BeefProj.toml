@@ -1,6 +1,13 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.RHI" = "*", "Sedulous.Shaders" = "*", "Sedulous.VG" = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.ImageData" = "*"}
 
 [Project]
 Name = "Sedulous.VG.Renderer"
-TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Shaders" = "*"
+"Sedulous.VG" = "*"
+"Sedulous.Core.Mathematics" = "*"
+"Sedulous.Images" = "*"
+"Sedulous.Textures" = "*"

@@ -1,6 +1,0 @@
-FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Core.Mathematics" = "*"}
-
-[Project]
-Name = "Sedulous.Imaging"
-TargetType = "BeefLib"

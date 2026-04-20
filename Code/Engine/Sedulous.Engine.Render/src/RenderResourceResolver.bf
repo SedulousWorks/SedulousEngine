@@ -10,8 +10,8 @@ using Sedulous.Materials.Resources;
 using Sedulous.Geometry;
 using Sedulous.Geometry.Resources;
 using Sedulous.Textures.Resources;
-using Sedulous.Imaging;
 using Sedulous.Core.Mathematics;
+using Sedulous.Images;
 
 /// Shared resource resolution service for render component managers.
 /// Resolves ResourceRefs to loaded resources, uploads to GPU, creates MaterialInstances.
@@ -377,7 +377,7 @@ class RenderResourceResolver
 		return .Invalid;
 	}
 
-	private static TextureFormat ImageFormatToTextureFormat(Image.PixelFormat format)
+	private static TextureFormat ImageFormatToTextureFormat(PixelFormat format)
 	{
 		switch (format)
 		{

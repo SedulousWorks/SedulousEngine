@@ -1,7 +1,7 @@
 namespace Sedulous.UI;
 
 using Sedulous.Core.Mathematics;
-using Sedulous.ImageData;
+using Sedulous.Images;
 
 /// Draws a sub-region of a shared atlas image. Enables single-texture
 /// batching for all themed UI elements.

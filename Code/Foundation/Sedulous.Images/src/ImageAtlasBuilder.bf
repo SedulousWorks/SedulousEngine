@@ -1,4 +1,4 @@
-namespace Sedulous.ImageData;
+namespace Sedulous.Images;
 
 using System;
 using System.Collections;

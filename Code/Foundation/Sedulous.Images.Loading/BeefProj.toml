@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Images.Loading"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core.Mathematics" = "*"
+"Sedulous.Images" = "*"

@@ -6,8 +6,7 @@ using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.GUI;
 using Sedulous.Drawing;
-using Sedulous.Imaging;
-using Sedulous.ImageData;
+using Sedulous.Images;
 
 /// Image-based Breeze theme using eepp's UI theme PNGs.
 /// Loads 9-patch images and maps them to ControlStyle BackgroundImages.

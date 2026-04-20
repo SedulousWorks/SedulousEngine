@@ -1,7 +1,0 @@
-FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Imaging" = "*", stb_image-Beef = "*"}
-
-[Project]
-Name = "Sedulous.Imaging.STB"
-TargetType = "BeefLib"
-StartupObject = "Sedulous.Imaging.STB.Program"

@@ -1,7 +1,7 @@
 using System.Collections;
 using System;
 using stb_image;
-namespace Sedulous.Imaging.STB;
+namespace Sedulous.Images.STB;
 
 class STBImageLoader: ImageLoader
 {
@@ -20,7 +20,7 @@ class STBImageLoader: ImageLoader
 
 	private static List<StringView> sSupportedExtensions = new .() { ".hdr", ".jpg", ".jpeg", ".png", ".tga", ".bmp", ".psd", "" } ~ delete _;
 
-	private static Image.PixelFormat ToPixelFormat(int32 componentCount, bool isHDR)
+	private static PixelFormat ToPixelFormat(int32 componentCount, bool isHDR)
 	{
 	    if (isHDR)
 	    {

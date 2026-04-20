@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.Imaging.Tests;
+namespace Sedulous.Images.Tests;
 
 class ImageFactoryTests
 {

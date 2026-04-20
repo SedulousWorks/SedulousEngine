@@ -2,7 +2,7 @@ namespace Sedulous.UI;
 
 using System;
 using Sedulous.Core.Mathematics;
-using Sedulous.ImageData;
+using Sedulous.Images;
 
 /// How an ImageView scales its source to fit its bounds.
 public enum ScaleType

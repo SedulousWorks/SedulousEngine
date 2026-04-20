@@ -2,7 +2,7 @@ namespace Sedulous.UI;
 
 using System;
 using Sedulous.Core.Mathematics;
-using Sedulous.ImageData;
+using Sedulous.Images;
 
 /// 9-slice drawable that uses a sub-region of a shared atlas image.
 /// Enables single-texture batching for all themed UI elements.

@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using Sedulous.Fonts;
-using Sedulous.Imaging;
 using stb_truetype;
 
 namespace Sedulous.Fonts.TTF;

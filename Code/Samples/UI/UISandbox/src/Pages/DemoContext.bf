@@ -3,7 +3,7 @@ namespace UISandbox;
 using Sedulous.UI;
 using Sedulous.UI.Runtime;
 using Sedulous.UI.Toolkit;
-using Sedulous.ImageData;
+using Sedulous.Images;
 
 /// Shared resources for demo pages.
 class DemoContext

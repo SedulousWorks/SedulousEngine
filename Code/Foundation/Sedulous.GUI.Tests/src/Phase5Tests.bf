@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
-using Sedulous.ImageData;
+using Sedulous.Images;
 
 namespace Sedulous.GUI.Tests;
 
@@ -154,7 +154,7 @@ class Phase5Tests
 
 		// Create a mock image data
 		let imageData = new OwnedImageData(100, 50, .RGBA8, .());
-		let image = new Image(imageData);
+		let image = new Sedulous.GUI.Image(imageData);
 		image.Stretch = .None;
 		panel.AddChild(image);
 
@@ -176,7 +176,7 @@ class Phase5Tests
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
-		let image = new Image();
+		let image = new Sedulous.GUI.Image();
 		panel.AddChild(image);
 
 		ctx.SetViewportSize(800, 600);

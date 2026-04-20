@@ -1,5 +1,5 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.UI" = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Fonts" = "*", "Sedulous.ImageData" = "*", "Sedulous.VG" = "*"}
+Dependencies = {corlib = "*", "Sedulous.UI" = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Fonts" = "*", "Sedulous.Images" = "*", "Sedulous.VG" = "*"}
 
 [Project]
 Name = "Sedulous.UI.Gamekit"

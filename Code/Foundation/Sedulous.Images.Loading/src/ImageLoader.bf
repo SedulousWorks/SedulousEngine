@@ -1,8 +1,9 @@
 using System;
 using System.IO;
 using System.Collections;
+using Sedulous.Images;
 
-namespace Sedulous.Imaging;
+namespace Sedulous.Images;
 
 // Abstract base class for image loaders
 public abstract class ImageLoader
@@ -22,7 +23,7 @@ public abstract class ImageLoader
 	{
 		public uint32 Width;
 		public uint32 Height;
-		public Image.PixelFormat Format;
+		public PixelFormat Format;
 		public uint8[] Data;
 
 		public this()
