@@ -13,7 +13,7 @@ public class Dialog : ViewGroup
 {
 	public String Title ~ delete _;
 	public DialogResult Result = .None;
-	public Event<delegate void(Dialog)> OnClosed ~ _.Dispose();
+	public Event<delegate void(Dialog, DialogResult)> OnClosed ~ _.Dispose();
 
 	private LinearLayout mLayout ~ delete _;
 	private Label mTitleLabel;
@@ -64,8 +64,7 @@ public class Dialog : ViewGroup
 		let dialogResult = result;
 		btn.OnClick.Add(new (b) =>
 		{
-			Result = dialogResult;
-			Close();
+			Close(dialogResult);
 		});
 		mButtonRow.AddView(btn, new LinearLayout.LayoutParams() { Height = Sedulous.UI.LayoutParams.MatchParent });
 		return btn;
@@ -92,12 +91,14 @@ public class Dialog : ViewGroup
 		ctx.PopupLayer.UpdatePopupPosition(this, x, y);
 	}
 
-	/// Close the dialog. Deferred via MutationQueue so the close happens
-	/// after the current event handler returns (avoids use-after-free when
-	/// PopupLayer owns the dialog and deletes it on close).
-	public void Close()
+	/// Close the dialog with a result. Deferred via MutationQueue so the close
+	/// happens after the current event handler returns (avoids use-after-free
+	/// when PopupLayer owns the dialog and deletes it on close).
+	public void Close(DialogResult result = .None)
 	{
-		OnClosed(this);
+		if (result != .None)
+			Result = result;
+		OnClosed(this, Result);
 		let ctx = Context;
 		if (ctx != null)
 			ctx.MutationQueue.QueueAction(new () => {
@@ -141,8 +142,7 @@ public class Dialog : ViewGroup
 	{
 		if (e.Key == .Escape)
 		{
-			Result = .Cancel;
-			Close();
+			Close(.Cancel);
 			e.Handled = true;
 		}
 	}

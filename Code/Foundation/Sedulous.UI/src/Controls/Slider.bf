@@ -18,6 +18,8 @@ public class Slider : View
 	private const float ThumbSize = 14;
 
 	public Event<delegate void(Slider, float)> OnValueChanged ~ _.Dispose();
+	public Event<delegate void(Slider)> OnDragStarted ~ _.Dispose();
+	public Event<delegate void(Slider)> OnDragEnded ~ _.Dispose();
 
 	public float Value
 	{
@@ -173,6 +175,7 @@ public class Slider : View
 		if (!IsEffectivelyEnabled || e.Button != .Left) return;
 		mDragging = true;
 		Context?.FocusManager.SetCapture(this);
+		OnDragStarted(this);
 		UpdateValueFromMouse(e.X, e.Y);
 		e.Handled = true;
 	}
@@ -188,6 +191,7 @@ public class Slider : View
 		if (e.Button != .Left || !mDragging) return;
 		mDragging = false;
 		Context?.FocusManager.ReleaseCapture();
+		OnDragEnded(this);
 		e.Handled = true;
 	}
 
