@@ -46,8 +46,8 @@ The `Context` is the central lifecycle hub. It owns subsystems, a job system, an
 | AnimationSubsystem | 100 | Owns animation clip cache |
 | AudioSubsystem | 200 | Owns audio device, mixer |
 | NavigationSubsystem | 300 | Owns NavMesh settings |
-| GUISubsystem | 400 | UI framework |
-| RenderSubsystem | 500 | Rendering, GPU frame pacing |
+| EngineUISubsystem | 400 | Screen + world UI (IOverlayRenderer) |
+| RenderSubsystem | 500 | Scene rendering (ISceneRenderer) |
 
 ### Frame Loop
 
@@ -59,19 +59,34 @@ Application main loop:
   FixedUpdate (0-N times)     → Context.FixedUpdate() → physics, navigation
   Context.Update()            → each subsystem in order (scene phases run here)
   Context.PostUpdate()        → each subsystem
-  Context.EndFrame()          → RenderSubsystem renders + presents
+  Context.EndFrame()          → subsystem EndFrame (RenderSubsystem is now minimal)
+  PresentFrame()              → application-owned: clear, RenderScene, blit, overlays, present
   SProfiler.EndFrame()
 ```
 
 BeginFrame runs BEFORE FixedUpdate so input is fresh and newly initialized
 components (physics bodies, audio sources) are ready for their first simulation step.
 
+Presentation is owned by the application, not a subsystem. The application creates
+the command encoder, clears output targets, calls ISceneRenderer.RenderScene(),
+blits to swapchain, runs IOverlayRenderers, and presents. This enables the editor
+to call the same ISceneRenderer with a viewport texture instead of a swapchain.
+
 ```
+Startup sequence:
+  Context.Startup()
+    for each subsystem: Init()    → individual setup (OnInit)
+    for each subsystem: Ready()   → cross-subsystem wiring (OnReady)
+
 Shutdown sequence:
   Context.PrepareShutdown()   → detach cross-references (physics worlds, etc.)
   Context.Shutdown()          → subsystems shut down (reverse order)
   Cleanup()                   → OnCleanup() → delete context → destroy device
 ```
+
+OnReady runs on all subsystems after all OnInit calls complete. Subsystems can
+safely access other subsystems here (e.g., EngineUISubsystem registers WorldUIPass
+with RenderSubsystem's Pipeline). Mirror of OnPrepareShutdown at the other end.
 
 PrepareShutdown runs on all subsystems before any Shutdown calls. Subsystems
 detach cross-references (e.g., null physics world refs on component managers)
@@ -172,13 +187,29 @@ Some operations use `JobSystem.ParallelFor` internally without needing a new pha
 Subsystems implement `ISceneAware` to inject their scene modules when scenes are created:
 
 ```
-class RenderSubsystem : Subsystem, ISceneAware
+class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 {
     void OnSceneCreated(Scene scene)
     {
         scene.AddModule(new MeshComponentManager());
         scene.AddModule(new CameraComponentManager());
         scene.AddModule(new LightComponentManager());
+        // + SpriteComponentManager, DecalComponentManager, etc.
+    }
+
+    // ISceneRenderer — called by application with encoder + output targets
+    void RenderScene(encoder, colorTexture, colorTarget, w, h, frameIndex)
+    {
+        // extract scenes → setup shadows → render shadows → pipeline.Render()
+    }
+}
+
+class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
+{
+    // IOverlayRenderer — called by application after blit
+    void RenderOverlay(encoder, target, w, h, frameIndex)
+    {
+        // delegates to ScreenUIView → VGRenderer composites UI onto swapchain
     }
 }
 ```

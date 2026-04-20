@@ -6,6 +6,7 @@ Targeted feature set for game-readiness. Not a port of the old renderer — each
 
 ### Core Architecture
 - **RenderContext/Pipeline split** — shared infrastructure (RenderContext) separated from per-view pass execution (Pipeline). IRenderingPipeline interface lets both Pipeline and ShadowPipeline dispatch through the same registered renderers
+- **ISceneRenderer/IOverlayRenderer** — RenderSubsystem implements ISceneRenderer, EngineUISubsystem implements IOverlayRenderer. Application owns swapchain, output textures, frame pacing, and presentation. Pipeline receives output targets instead of owning them. OnReady lifecycle hook enables cross-subsystem wiring after all inits complete
 - **ezEngine-style per-type drawers** — Renderer base class with `GetSupportedCategories()` + `RenderBatch()`. MeshRenderer, SpriteRenderer, DecalRenderer registered on RenderContext. Passes call `pipeline.RenderCategory(category)` which dispatches to all matching drawers
 - **Polymorphic render data** — RenderData abstract class hierarchy (MeshRenderData, LightRenderData, DecalRenderData, SpriteRenderData). FrameAllocator (Sedulous.Core.Memory) provides per-frame bump allocation with Reset()
 - **Per-view extraction** — RenderViewPool creates independent RenderView + ExtractedRenderData per view (main camera + shadow casters). Each view extracts independently for future per-view culling

@@ -13,7 +13,7 @@ Sedulous.Renderer (scene-independent)
 ├── RenderContext          — shared infrastructure (GPU resources, materials, lights, shaders,
 │                            shadows, sprites, debug draw, registered renderers)
 │                            CurrentSceneDepthView for depth-dependent effects
-├── Pipeline               — per-view pass execution, output texture, render graph
+├── Pipeline               — per-view pass execution, render graph (output target provided by caller)
 ├── IRenderingPipeline     — interface shared by Pipeline + ShadowPipeline
 ├── PipelinePass           — base class for render/compute/copy passes
 ├── Renderer               — abstract per-type drawer base (ezRenderer pattern)
@@ -83,38 +83,45 @@ The `Pipeline` is a lightweight per-view pass execution engine. It owns:
 - `PostProcessStack` (optional, chains post-process effects)
 - Per-frame resources (double-buffered uniform buffers + bind groups)
 - `RenderGraph` instance
-- Output texture (RGBA16Float, owned by pipeline)
-- References shared infrastructure from `Renderer`
+- Output dimensions (width/height) for internal transient sizing
+- References shared infrastructure from `RenderContext`
 
 ### Pipeline Output
 
-The Pipeline renders to its own internal output texture, NOT to the swapchain.
-The caller (RenderSubsystem) blits the output to the final target.
+The Pipeline renders to a **caller-provided output texture**, NOT to an internally
+owned texture. The caller (EngineApplication via ISceneRenderer) creates the output
+target (RGBA16Float), clears it, and passes it to `Pipeline.Render()`.
 
 Benefits:
-- Pipeline doesn't know about swapchains
-- Same output can go to swapchain, editor viewport, screenshot, offscreen buffer
-- Resolution independence (pipeline renders at internal res, blit scales)
+- Pipeline doesn't know about swapchains or who owns the output
+- Same code renders to swapchain blit target, editor viewport texture, or offscreen buffer
+- Application controls output lifetime, sizing, and format
+- No texture create/destroy in Pipeline.OnResize — just dimension updates
 
 ### Frame Flow
 
 ```
-Pipeline.Render(encoder, view):
+Pipeline.Render(encoder, view, outputTexture, outputTextureView, frameIndex):
   1. Upload scene uniforms (per-frame, double-buffered)
   2. Upload light data to LightBuffer
   3. Rebuild frame bind group (scene uniforms + light buffer)
   4. Process deferred GPU resource deletions
   5. renderGraph.BeginFrame(frameIndex)
   6. If post-processing active:
-       Import output as "FinalOutput", create transient "PipelineOutput" (HDR)
+       Import caller's output as "FinalOutput"
+       Create transient "PipelineOutput" (HDR, internal)
      Else:
-       Import output as "PipelineOutput"
-  7. Add ClearOutput pass
-  8. Each PipelinePass.AddPasses(graph, view, pipeline)
-  9. PostProcessStack.Execute() chains: PipelineOutput → effects → FinalOutput
-  10. renderGraph.Execute(encoder)
-  11. renderGraph.EndFrame()
+       Import caller's output as "PipelineOutput"
+  7. Each PipelinePass.AddPasses(graph, view, pipeline)
+     (ForwardOpaquePass uses LoadOp.Clear — no separate clear pass needed)
+  8. PostProcessStack.Execute() chains: PipelineOutput → effects → FinalOutput
+  9. renderGraph.Execute(encoder)
+  10. renderGraph.EndFrame()
 ```
+
+The caller (application) clears the output target before calling Render().
+The transient HDR texture (post-processing path) is cleared by ForwardOpaquePass's
+LoadOp.Clear — no explicit ClearOutput pass.
 
 ## PipelinePass
 
@@ -246,21 +253,39 @@ interface IRenderDataProvider
 ### Extraction Flow
 
 ```
-RenderSubsystem.EndFrame():
+Application.PresentFrame():
+  1. Wait frame fence, reset command pool, create encoder
+  2. Clear output target (render pass with LoadOp.Clear)
+  3. sceneRenderer.RenderScene(encoder, colorTarget, ..., frameIndex)
+  4. Acquire swapchain image
+  5. Blit output → swapchain (BlitHelper fullscreen triangle)
+  6. Run IOverlayRenderers (sorted by OverlayOrder)
+  7. Transition swapchain to Present, submit, present
+  8. Advance frame index
+
+RenderSubsystem.RenderScene(encoder, colorTexture, colorTarget, w, h, frameIndex):
   1. viewPool.BeginFrame() — clears previous frame's render data lists
   2. renderContext.BeginFrame() — resets FrameAllocator + ShadowSystem
   3. Acquire main view from pool, populate from active camera
   4. ExtractIntoView(mainView) — runs all IRenderDataProviders
   5. SetupShadows(mainView) — allocate atlas regions per shadow caster,
      compute matrices, acquire shadow views, extract per shadow view
-  6. pipeline.BeginFrame() + shadowPipeline.BeginFrame() — reset ring buffers
-  7. RenderShadows(encoder) — ShadowPipeline.RenderAll(jobs)
-  8. pipeline.Render(encoder, mainView)
+  6. pipeline.BeginFrame(frameIndex) + shadowPipeline.BeginFrame(frameIndex)
+  7. RenderShadows(encoder, frameIndex) — ShadowPipeline.RenderAll(jobs)
+  8. pipeline.Render(encoder, mainView, colorTexture, colorTarget, frameIndex)
   9. renderContext.DebugDraw.Clear()
-  10. BlitToSwapchain
+  10. Transition output to ShaderRead (for blit sampling)
   11. Save current VP as PrevViewProjectionMatrix for next frame
-  12. Present
 ```
+
+RenderSubsystem implements `ISceneRenderer`. The application owns frame pacing
+(fence, command pools, frame index), output textures, swapchain, blit, and
+presentation. RenderSubsystem focuses purely on scene rendering.
+
+EngineUISubsystem implements `IOverlayRenderer` and delegates to ScreenUIView.
+The application queries both interfaces from Context at startup:
+- `Context.GetSubsystemByInterface<ISceneRenderer>()` — first match
+- `Context.GetSubsystemsByInterface<IOverlayRenderer>()` — all, sorted by OverlayOrder
 
 ### Cross-Subsystem Discovery
 
@@ -366,18 +391,22 @@ and caches compiled SPIRV/DXIL to `Assets/cache/shaders/`.
 
 ## Blit / Presentation
 
-`BlitHelper` copies pipeline output to the swapchain via a fullscreen triangle shader.
-The RenderSubsystem owns the blit helper and calls it after pipeline rendering.
+`BlitHelper` copies the scene output to the swapchain via a fullscreen triangle shader.
+The application (EngineApplication) owns the blit helper, swapchain, and output textures.
+RenderSubsystem has no knowledge of presentation.
 
 ```
-Pipeline.Render()  → PipelineOutput (RGBA16Float, linear HDR)
-                     + SceneNormals (RG16Float, view-space XY)
-                     + MotionVectors (RG16Float, screen-space delta)
+Application clears   → ColorTarget (RGBA16Float, black)
+RenderScene()        → Pipeline renders to ColorTarget
+                       + SceneNormals (RG16Float, view-space XY)
+                       + MotionVectors (RG16Float, screen-space delta)
   → PostProcessStack → BloomEffect (produces BloomTexture aux, passes main through)
                      → TonemapEffect (composites bloom in HDR, ACES curves)
                      → FinalOutput (RGBA16Float, linear LDR)
-BlitHelper.Blit()  → Swapchain (BGRA8UnormSrgb, sRGB gamma applied by hardware)
-Present            → Screen
+                     ColorTarget transitioned to ShaderRead
+BlitHelper.Blit()    → Swapchain (BGRA8UnormSrgb, sRGB gamma applied by hardware)
+IOverlayRenderers    → Screen UI, debug HUD composited with LoadOp.Load
+Present              → Screen
 ```
 
 ## Profiling
