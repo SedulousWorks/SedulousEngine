@@ -268,8 +268,8 @@ public class DrawingRenderer : IDisposable
 				if (!cached.IsExternal)
 				{
 					// Was previously an owned texture, clean it up
-					if (cached.GpuTextureView != null) delete cached.GpuTextureView;
-					if (cached.GpuTexture != null) delete cached.GpuTexture;
+					if (cached.GpuTextureView != null) { var v = cached.GpuTextureView; mDevice.DestroyTextureView(ref v); cached.GpuTextureView = null; }
+					if (cached.GpuTexture != null) { var t = cached.GpuTexture; mDevice.DestroyTexture(ref t); cached.GpuTexture = null; }
 				}
 				cached.GpuTextureView = gpuTextureView;
 				cached.GpuTexture = null;  // External - we don't track the texture itself
@@ -281,7 +281,8 @@ public class DrawingRenderer : IDisposable
 					{
 						if (cached.BindGroups[i] != null)
 						{
-							delete cached.BindGroups[i];
+							var bg = cached.BindGroups[i];
+							mDevice.DestroyBindGroup(ref bg);
 							cached.BindGroups[i] = null;
 						}
 					}
@@ -308,10 +309,25 @@ public class DrawingRenderer : IDisposable
 
 		for (int i = 0; i < mTextureCache.Count; i++)
 		{
-			if (mTextureCache[i].SourceTexture == imageRef)
+			if (mTextureCache[i].SourceTexture === imageRef)
 			{
 				let cached = mTextureCache[i];
-				cached.Dispose(mDevice, mFrameCount);
+				// Don't dispose GPU resources for external textures — caller owns them.
+				// But do clean up bind groups.
+				if (cached.BindGroups != null)
+				{
+					for (int j = 0; j < mFrameCount; j++)
+					{
+						if (cached.BindGroups[j] != null)
+						{
+							var bg = cached.BindGroups[j];
+							mDevice.DestroyBindGroup(ref bg);
+							cached.BindGroups[j] = null;
+						}
+					}
+					delete cached.BindGroups;
+					cached.BindGroups = null;
+				}
 				delete cached;
 				mTextureCache.RemoveAt(i);
 				return;

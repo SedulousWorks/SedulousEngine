@@ -189,6 +189,91 @@ public class VGRenderer : IDisposable
 		mTextureCache.Clear();
 	}
 
+	/// Register an external GPU texture for use with an IImageData reference.
+	/// This allows render targets or other externally-created textures to be
+	/// used in VG drawing via VGContext.DrawImage(imageRef, ...).
+	/// The caller owns the GPU texture and view — the renderer will not delete them.
+	/// Call UnregisterExternalTexture when done to remove from cache.
+	public void RegisterExternalTexture(IImageData imageRef, ITextureView gpuTextureView)
+	{
+		if (imageRef == null || gpuTextureView == null)
+			return;
+
+		// Check if already registered
+		for (let cached in mTextureCache)
+		{
+			if (cached.SourceTexture === imageRef)
+			{
+				// Update existing entry
+				if (!cached.IsExternal)
+				{
+					if (cached.GpuTextureView != null) { var v = cached.GpuTextureView; mDevice.DestroyTextureView(ref v); cached.GpuTextureView = null; }
+					if (cached.GpuTexture != null) { var t = cached.GpuTexture; mDevice.DestroyTexture(ref t); cached.GpuTexture = null; }
+				}
+				cached.GpuTextureView = gpuTextureView;
+				cached.GpuTexture = null;
+				cached.IsExternal = true;
+				// Invalidate bind groups so they get recreated with the new texture
+				if (cached.BindGroups != null)
+				{
+					for (int i = 0; i < mFrameCount; i++)
+					{
+						if (cached.BindGroups[i] != null)
+						{
+							var bg = cached.BindGroups[i];
+							mDevice.DestroyBindGroup(ref bg);
+							cached.BindGroups[i] = null;
+						}
+					}
+				}
+				return;
+			}
+		}
+
+		// Create new cache entry
+		let cached = new CachedTexture();
+		cached.SourceTexture = imageRef;
+		cached.GpuTexture = null;
+		cached.GpuTextureView = gpuTextureView;
+		cached.BindGroups = new IBindGroup[mFrameCount];
+		cached.IsExternal = true;
+		mTextureCache.Add(cached);
+	}
+
+	/// Unregister an external texture from the cache.
+	public void UnregisterExternalTexture(IImageData imageRef)
+	{
+		if (imageRef == null)
+			return;
+
+		for (int i = 0; i < mTextureCache.Count; i++)
+		{
+			if (mTextureCache[i].SourceTexture === imageRef)
+			{
+				let cached = mTextureCache[i];
+				// Don't dispose GPU resources for external textures — caller owns them.
+				// But do clean up bind groups.
+				if (cached.BindGroups != null)
+				{
+					for (int j = 0; j < mFrameCount; j++)
+					{
+						if (cached.BindGroups[j] != null)
+						{
+							var bg = cached.BindGroups[j];
+							mDevice.DestroyBindGroup(ref bg);
+							cached.BindGroups[j] = null;
+						}
+					}
+					delete cached.BindGroups;
+					cached.BindGroups = null;
+				}
+				delete cached;
+				mTextureCache.RemoveAt(i);
+				return;
+			}
+		}
+	}
+
 	/// Prepare batch data for rendering.
 	/// Call this after drawing to VGContext and before the render pass.
 	public void Prepare(VGBatch batch, int32 frameIndex)
