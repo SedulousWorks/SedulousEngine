@@ -31,7 +31,7 @@ Living document describing the engine's architecture, layers, and patterns.
 
 ## Context and Subsystems
 
-The `Context` is the central lifecycle hub. It owns subsystems, a job system, and a resource system. Subsystems are registered by type and updated in `UpdateOrder` priority.
+The `Context` is a pure subsystem lifecycle manager. It does NOT own ResourceSystem or JobSystem — those are application concerns. Subsystems that need resources receive ResourceSystem as a constructor parameter (explicit dependency). Subsystems are registered by type and updated in `UpdateOrder` priority. Interface-based queries via `GetSubsystemByInterface<T>()`/`GetSubsystemsByInterface<T>()` allow decoupled access (e.g., ISceneRenderer, IOverlayRenderer).
 
 **Subsystem** - 1 instance per application. Provides app-wide services.
 **Scene Module (ComponentManager)** - 1 instance per scene. Owns per-scene data.
@@ -55,17 +55,23 @@ The `Context` is the central lifecycle hub. It owns subsystems, a job system, an
 Application main loop:
   SProfiler.BeginFrame()
   ProcessEvents()
-  Context.BeginFrame()        → input polling, InitializePendingComponents
-  FixedUpdate (0-N times)     → Context.FixedUpdate() → physics, navigation
-  Context.Update()            → each subsystem in order (scene phases run here)
-  Context.PostUpdate()        → each subsystem
-  Context.EndFrame()          → subsystem EndFrame (RenderSubsystem is now minimal)
-  PresentFrame()              → application-owned: clear, RenderScene, blit, overlays, present
+  JobSystem.ProcessCompletions()   → application-owned, not Context
+  ResourceSystem.Update()          → application-owned, not Context
+  Context.BeginFrame()             → input polling, InitializePendingComponents
+  FixedUpdate (0-N times)          → Context.FixedUpdate() → physics, navigation
+  Context.Update()                 → each subsystem in order (scene phases run here)
+  Context.PostUpdate()             → each subsystem
+  Context.EndFrame()               → subsystem EndFrame (RenderSubsystem is now minimal)
+  PresentFrame()                   → application-owned: clear, RenderScene, blit, overlays, present
   SProfiler.EndFrame()
 ```
 
 BeginFrame runs BEFORE FixedUpdate so input is fresh and newly initialized
 components (physics bodies, audio sources) are ready for their first simulation step.
+
+JobSystem and ResourceSystem are updated by the application before Context.BeginFrame,
+not by Context itself. Subsystems that need resources receive ResourceSystem as a
+constructor parameter (e.g., `new RenderSubsystem(mResourceSystem)`).
 
 Presentation is owned by the application, not a subsystem. The application creates
 the command encoder, clears output targets, calls ISceneRenderer.RenderScene(),
@@ -74,6 +80,7 @@ to call the same ISceneRenderer with a viewport texture instead of a swapchain.
 
 ```
 Startup sequence:
+  Application: JobSystem.Initialize(), ResourceSystem.Startup()
   Context.Startup()
     for each subsystem: Init()    → individual setup (OnInit)
     for each subsystem: Ready()   → cross-subsystem wiring (OnReady)
@@ -81,6 +88,7 @@ Startup sequence:
 Shutdown sequence:
   Context.PrepareShutdown()   → detach cross-references (physics worlds, etc.)
   Context.Shutdown()          → subsystems shut down (reverse order)
+  Application: ResourceSystem.Shutdown(), JobSystem.Shutdown()
   Cleanup()                   → OnCleanup() → delete context → destroy device
 ```
 
@@ -256,14 +264,22 @@ All resource managers and the scene serializer use the provider - no direct form
 
 ## Application Stack
 
-### Level 1: Runtime.Client.Application (RHI samples)
-Raw RHI access. No engine, no scenes, no subsystems.
+### Level 1: Runtime.Client.Application (RHI samples, tools, editor)
+Shell + RHI + SwapChain. Owns device, window, frame loop. Virtual CreateLogger()
+for custom logging. Both EngineApplication and EditorApplication extend this.
 
 ### Level 2: Engine.App.EngineApplication (games)
-Full engine. Creates Context, auto-registers all subsystems, discovers asset directory, creates ShaderSystem and device. Game logic lives in components and subsystems.
+Full engine. Creates Context, auto-registers all subsystems (passing ResourceSystem
+to those that need it), discovers asset directory, creates ShaderSystem. Owns
+swapchain, output targets, frame pacing, BlitHelper. Calls ISceneRenderer.RenderScene
++ IOverlayRenderers for presentation.
 
-### Level 3: Tools.Core.EditorApplication (future)
-Multi-window, viewport rendering, editor panels.
+### Level 3: Editor.App.EditorApplication
+Extends Runtime.Client.Application directly (not EngineApplication). Owns UIContext
+and VGRenderer directly. Creates a RuntimeContext with engine subsystems for scene
+preview. EditorContext provides plugin system, page/panel management, commands.
+ViewportView renders scene to texture via ISceneRenderer, displayed in UI via
+VGRenderer.RegisterExternalTexture.
 
 ## Engine Modules
 
