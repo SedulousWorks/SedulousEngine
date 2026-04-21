@@ -88,6 +88,9 @@ public class DrawingRenderer : IDisposable
 	// Using list since ITexture doesn't implement IHashable
 	private List<CachedTexture> mTextureCache = new .() ~ { for (var e in _) { e.Dispose(mDevice, mFrameCount); delete e; } delete _; };
 
+	// Shared external texture cache (optional, not owned).
+	private DrawingExternalTextureCache mExternalCache;
+
 	// Textures from current batch (stored for bind group creation)
 	private List<IImageData> mBatchTextures = new .() ~ delete _;
 
@@ -99,6 +102,7 @@ public class DrawingRenderer : IDisposable
 		public ITextureView GpuTextureView;
 		public IBindGroup[] BindGroups;
 		public bool IsExternal;  // If true, we don't own the GPU resources
+		public int32 ExternalVersion; // For detecting shared cache updates
 
 		public void Dispose(IDevice device, int32 frameCount)
 		{
@@ -183,7 +187,50 @@ public class DrawingRenderer : IDisposable
 		for (let cached in mTextureCache)
 		{
 			if (cached.SourceTexture == texture)
+			{
+				// Check if external texture was updated in shared cache.
+				if (cached.IsExternal && mExternalCache != null)
+				{
+					if (mExternalCache.TryGet(texture, var extEntry))
+					{
+						if (extEntry.Version != cached.ExternalVersion)
+						{
+							cached.GpuTextureView = extEntry.TextureView;
+							cached.ExternalVersion = extEntry.Version;
+							if (cached.BindGroups != null)
+							{
+								for (int i = 0; i < mFrameCount; i++)
+								{
+									if (cached.BindGroups[i] != null)
+									{
+										var bg = cached.BindGroups[i];
+										mDevice.DestroyBindGroup(ref bg);
+										cached.BindGroups[i] = null;
+									}
+								}
+							}
+						}
+					}
+				}
 				return cached;
+			}
+		}
+
+		// Check shared external texture cache before trying pixel upload.
+		if (mExternalCache != null)
+		{
+			if (mExternalCache.TryGet(texture, var extEntry) && extEntry.IsReady)
+			{
+				let cached = new CachedTexture();
+				cached.SourceTexture = texture;
+				cached.GpuTexture = null;
+				cached.GpuTextureView = extEntry.TextureView;
+				cached.BindGroups = new IBindGroup[mFrameCount];
+				cached.IsExternal = true;
+				cached.ExternalVersion = extEntry.Version;
+				mTextureCache.Add(cached);
+				return cached;
+			}
 		}
 
 		// Create new GPU texture from pixel data
@@ -250,31 +297,37 @@ public class DrawingRenderer : IDisposable
 		mTextureCache.Clear();
 	}
 
-	/// Register an external GPU texture for use with an IImageData reference.
-	/// This allows render targets or other externally-created textures to be used in 2D drawing.
-	/// The caller owns the GPU texture and view - the renderer will not delete them.
-	/// Call UnregisterExternalTexture when done to remove from cache.
+	/// Set the shared external texture cache. All DrawingRenderers sharing the same
+	/// cache will automatically pick up external textures during rendering.
+	public void SetExternalCache(DrawingExternalTextureCache cache)
+	{
+		mExternalCache = cache;
+	}
+
+	/// Register an external GPU texture. Updates the local cache for immediate
+	/// use by this renderer, and registers with the shared cache so other
+	/// renderers can pick it up once marked ready.
 	public void RegisterExternalTexture(IImageData imageRef, ITextureView gpuTextureView)
 	{
-		if (imageRef == null || gpuTextureView == null)
-			return;
+		if (imageRef == null || gpuTextureView == null) return;
 
-		// Check if already registered
+		// Register with shared cache (starts as not-ready for other renderers).
+		if (mExternalCache != null)
+			mExternalCache.Register(imageRef, gpuTextureView);
+
+		// Update local cache directly for immediate use by this renderer.
 		for (let cached in mTextureCache)
 		{
 			if (cached.SourceTexture == imageRef)
 			{
-				// Update existing entry
 				if (!cached.IsExternal)
 				{
-					// Was previously an owned texture, clean it up
 					if (cached.GpuTextureView != null) { var v = cached.GpuTextureView; mDevice.DestroyTextureView(ref v); cached.GpuTextureView = null; }
 					if (cached.GpuTexture != null) { var t = cached.GpuTexture; mDevice.DestroyTexture(ref t); cached.GpuTexture = null; }
 				}
 				cached.GpuTextureView = gpuTextureView;
-				cached.GpuTexture = null;  // External - we don't track the texture itself
+				cached.GpuTexture = null;
 				cached.IsExternal = true;
-				// Invalidate bind groups so they get recreated
 				if (cached.BindGroups != null)
 				{
 					for (int i = 0; i < mFrameCount; i++)
@@ -291,7 +344,6 @@ public class DrawingRenderer : IDisposable
 			}
 		}
 
-		// Create new cache entry
 		let cached = new CachedTexture();
 		cached.SourceTexture = imageRef;
 		cached.GpuTexture = null;
@@ -301,19 +353,19 @@ public class DrawingRenderer : IDisposable
 		mTextureCache.Add(cached);
 	}
 
-	/// Unregister an external texture from the cache.
+	/// Unregister an external texture from the shared cache and local cache.
 	public void UnregisterExternalTexture(IImageData imageRef)
 	{
-		if (imageRef == null)
-			return;
+		if (imageRef == null) return;
+
+		if (mExternalCache != null)
+			mExternalCache.Unregister(imageRef);
 
 		for (int i = 0; i < mTextureCache.Count; i++)
 		{
-			if (mTextureCache[i].SourceTexture === imageRef)
+			if (mTextureCache[i].SourceTexture === imageRef && mTextureCache[i].IsExternal)
 			{
 				let cached = mTextureCache[i];
-				// Don't dispose GPU resources for external textures — caller owns them.
-				// But do clean up bind groups.
 				if (cached.BindGroups != null)
 				{
 					for (int j = 0; j < mFrameCount; j++)
@@ -333,6 +385,13 @@ public class DrawingRenderer : IDisposable
 				return;
 			}
 		}
+	}
+
+	/// Mark an external texture as ready in the shared cache.
+	public void MarkExternalTextureReady(IImageData imageRef)
+	{
+		if (mExternalCache != null)
+			mExternalCache.MarkReady(imageRef);
 	}
 
 	/// Prepare batch data for standard (per-vertex) rendering.
