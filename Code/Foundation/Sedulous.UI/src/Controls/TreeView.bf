@@ -14,6 +14,18 @@ public class TreeView : ViewGroup
 	public SelectionModel Selection => mListView.Selection;
 	public float ItemHeight { get => mListView.ItemHeight; set => mListView.ItemHeight = value; }
 
+	public struct ItemClickInfo
+	{
+		public int32 NodeId;
+		public int32 ClickCount;
+	}
+
+	/// Fired when an item is clicked. Parameters: (nodeId, clickCount).
+	public Event<delegate void(ItemClickInfo)> OnItemClick ~ _.Dispose();
+
+	/// Fired when a node is expanded or collapsed. Parameter: nodeId.
+	public Event<delegate void(int32)> OnItemToggled ~ _.Dispose();
+
 	private FlattenedTreeAdapter mFlatAdapter ~ delete _;
 	private ListView mListView ~ delete _;
 	private float mIndentWidth = 20;
@@ -28,9 +40,15 @@ public class TreeView : ViewGroup
 		mListView = new ListView();
 		mListView.Parent = this;
 
-		// Subscribe to item clicks - double-click toggles expansion.
 		mListView.OnItemClicked.Add(new (position, clickCount) =>
 		{
+			// Resolve flat position to node ID
+			let nodeId = (mFlatAdapter != null) ? mFlatAdapter.GetNodeId(position) : position;
+
+			// Single click — notify listeners
+			OnItemClick(.(){NodeId=nodeId, ClickCount=clickCount});
+
+			// Double-click — toggle expansion
 			if (clickCount >= 2)
 				ToggleExpand(position);
 		});
@@ -54,6 +72,7 @@ public class TreeView : ViewGroup
 		{
 			mFlatAdapter.ToggleExpand(nodeId);
 			mListView.NotifyDataChanged();
+			OnItemToggled(nodeId);
 		}
 	}
 

@@ -404,10 +404,7 @@ public class ListView : ViewGroup, IListAdapterObserver
 				let view = mRecycler.GetOrCreate(mAdapter, pos);
 				view.Parent = this;
 				if (Context != null)
-				{
-					view.Context = Context;
-					Context.RegisterElement(view);
-				}
+					ViewGroup.AttachSubtree(view, Context);
 				mActiveViews[pos] = view;
 			}
 			else
@@ -492,11 +489,10 @@ public class ListView : ViewGroup, IListAdapterObserver
 		{
 			let view = mActiveViews[pos];
 			let viewType = (mAdapter != null) ? mAdapter.GetItemViewType(pos) : 0;
-			// Unregister before recycling.
-			if (Context != null)
-				Context.UnregisterElement(view);
+			// Detach subtree before recycling (unregisters view + all children).
+			if (view.Context != null)
+				ViewGroup.DetachSubtree(view);
 			view.Parent = null;
-			view.Context = null;
 			mActiveViews.Remove(pos);
 			mRecycler.Recycle(view, viewType);
 		}
@@ -507,10 +503,9 @@ public class ListView : ViewGroup, IListAdapterObserver
 		for (let kv in mActiveViews)
 		{
 			let viewType = (mAdapter != null) ? mAdapter.GetItemViewType(kv.key) : 0;
-			if (Context != null)
-				Context.UnregisterElement(kv.value);
+			if (kv.value.Context != null)
+				ViewGroup.DetachSubtree(kv.value);
 			kv.value.Parent = null;
-			kv.value.Context = null;
 			mRecycler.Recycle(kv.value, viewType);
 		}
 		mActiveViews.Clear();

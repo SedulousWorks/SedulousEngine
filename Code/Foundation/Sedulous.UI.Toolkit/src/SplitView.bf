@@ -24,6 +24,11 @@ public class SplitView : ViewGroup
 
 	public Event<delegate void(SplitView, float)> OnSplitChanged ~ _.Dispose();
 
+	public this(Orientation orietation = .Horizontal)
+	{
+		Orientation = orietation;
+	}
+
 	/// Split ratio (0..1). 0 = first pane collapsed, 1 = second pane collapsed.
 	public float SplitRatio
 	{
