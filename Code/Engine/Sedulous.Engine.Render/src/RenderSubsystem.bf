@@ -232,6 +232,10 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 
 		mFrameIndex = frameIndex;
 
+		// Update pipeline dimensions if they differ (viewport may be a different size than window).
+		if (w != mPipeline.OutputWidth || h != mPipeline.OutputHeight)
+			mPipeline.OnResize(w, h);
+
 		// Reset the view pool first - drops references to last frame's arena entries
 		// before BeginFrame() rewinds the frame allocator.
 		mViewPool.BeginFrame();
