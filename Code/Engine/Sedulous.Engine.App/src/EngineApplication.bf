@@ -23,6 +23,7 @@ using Sedulous.Engine.Navigation;
 using Sedulous.Engine.UI;
 using Sedulous.Engine.Render;
 using Sedulous.Renderer;
+using Sedulous.Engine.Renderer;
 
 /// Full engine application base class.
 /// Creates a Context with standard subsystems and manages the main loop.
@@ -424,8 +425,18 @@ abstract class EngineApplication : IDisposable
 
 		// Scene rendering (ISceneRenderer - implemented by RenderSubsystem)
 		if (mSceneRenderer != null)
-			mSceneRenderer.RenderScene(encoder, mColorTarget, mColorTargetView,
-				(uint32)mWindow.Width, (uint32)mWindow.Height, mFrameIndex);
+		{
+			let sceneSub = mContext.GetSubsystem<Sedulous.Engine.SceneSubsystem>();
+			if (sceneSub != null)
+			{
+				for (let scene in sceneSub.ActiveScenes)
+				{
+					mSceneRenderer.RenderScene(scene, encoder, mColorTarget, mColorTargetView,
+						(uint32)mWindow.Width, (uint32)mWindow.Height, mFrameIndex);
+					break; // Render only the first/active scene for now
+				}
+			}
+		}
 
 		// Acquire swapchain image
 		using (SProfiler.Begin("GPU.AcquireImage"))

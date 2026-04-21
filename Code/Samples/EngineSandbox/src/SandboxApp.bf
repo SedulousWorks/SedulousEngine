@@ -1037,7 +1037,7 @@ class SandboxApp : EngineApplication
 					mSkyTextureView = view;
 
 				// Set on sky pass
-				if (let skyPass = renderSub.Pipeline.GetPass<SkyPass>())
+				if (let skyPass = renderSub.GetPipeline(mScene).GetPass<SkyPass>())
 				{
 					skyPass.SkyTexture = mSkyTextureView;
 					skyPass.Intensity = 1.0f;
@@ -1273,13 +1273,13 @@ class SandboxApp : EngineApplication
 					let camForward = Vector3(cosP * Math.Sin(mYaw), Math.Sin(mPitch), cosP * Math.Cos(mYaw));
 					let camTarget = mCameraPosition + camForward;
 					let viewMatrix = Matrix.CreateLookAt(mCameraPosition, camTarget, .(0, 1, 0));
-					let aspect = (float)rs.Pipeline.OutputWidth / (float)rs.Pipeline.OutputHeight;
+					let aspect = (float)rs.GetPipeline(mScene).OutputWidth / (float)rs.GetPipeline(mScene).OutputHeight;
 					let projMatrix = Matrix.CreatePerspectiveFieldOfView(60.0f * (Math.PI_f / 180.0f), aspect, 0.1f, 100.0f);
 					let viewProj = viewMatrix * projMatrix;
 
 					// Unproject mouse position to ray
-					let ndcX = (2.0f * mouse.X / (float)rs.Pipeline.OutputWidth) - 1.0f;
-					let ndcY = 1.0f - (2.0f * mouse.Y / (float)rs.Pipeline.OutputHeight);
+					let ndcX = (2.0f * mouse.X / (float)rs.GetPipeline(mScene).OutputWidth) - 1.0f;
+					let ndcY = 1.0f - (2.0f * mouse.Y / (float)rs.GetPipeline(mScene).OutputHeight);
 
 					Matrix invVP = .Identity;
 					if (Matrix.TryInvert(viewProj, out invVP))
@@ -1774,7 +1774,7 @@ class SandboxApp : EngineApplication
 		let device = renderSub.RenderContext.Device;
 
 		// Clear sky texture reference before destroying
-		if (let skyPass = renderSub.Pipeline.GetPass<SkyPass>())
+		if (let skyPass = renderSub.GetPipeline(mScene).GetPass<SkyPass>())
 			skyPass.SkyTexture = null;
 
 		if (mSkyTextureView != null)

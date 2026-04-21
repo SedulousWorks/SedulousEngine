@@ -121,6 +121,8 @@ class AudioSubsystem : Subsystem, ISceneAware
 		scene.AddModule(listenerMgr);
 	}
 
+	public void OnSceneReady(Scene scene) { }
+
 	public void OnSceneDestroyed(Scene scene)
 	{
 	}

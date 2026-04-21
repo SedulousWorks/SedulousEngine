@@ -1,4 +1,4 @@
-namespace Sedulous.Renderer;
+namespace Sedulous.Engine.Renderer;
 
 using Sedulous.RHI;
 

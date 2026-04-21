@@ -39,8 +39,11 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 	// Renderer (shared infrastructure)
 	private RenderContext mRenderContext ~ delete _;
 
-	// Pipeline (per-view pass execution)
-	private Pipeline mPipeline ~ delete _;
+	// Per-scene pipelines (created in OnSceneCreated, destroyed in OnSceneDestroyed)
+	private Dictionary<Scene, Pipeline> mScenePipelines = new .() ~ {
+		for (let kv in _) { kv.value.Shutdown(); delete kv.value; }
+		delete _;
+	};
 
 	// Shadow pipeline (renders depth into the shared shadow atlas, one call per shadow caster)
 	private ShadowPipeline mShadowPipeline ~ delete _;
@@ -91,7 +94,13 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 
 	public IQueue GraphicsQueue => mGraphicsQueue;
 	public RenderContext RenderContext => mRenderContext;
-	public Pipeline Pipeline => mPipeline;
+
+	public Pipeline GetPipeline(Scene scene)
+	{
+		if (mScenePipelines.TryGetValue(scene, let pipeline))
+			return pipeline;
+		return null;
+	}
 
 	/// Convenience accessor for the immediate-mode debug draw API.
 	/// Equivalent to `RenderContext.DebugDraw`.
@@ -119,46 +128,11 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		mRenderContext.RegisterRenderer(new DecalRenderer());
 		mRenderContext.RegisterRenderer(new ParticleRenderer());
 
-		// Pipeline (per-view pass execution)
-		mPipeline = new Pipeline();
-		mPipeline.Initialize(mRenderContext, (uint32)mWindow.Width, (uint32)mWindow.Height);
-
 		// Shadow pipeline (separate per-view pipeline that renders into the shared atlas)
 		mShadowPipeline = new ShadowPipeline();
 		mShadowPipeline.Initialize(mRenderContext);
 
-		// Register default passes.
-		// Order is significant:
-		//   1. Skinning (compute)
-		//   2. Depth prepass (opaque + masked)
-		//   3. Forward opaque + masked (fills color + uses prepass depth)
-		//   4. Decal pass (samples SceneDepth, composes on top of opaque)
-		//   5. Sky (fills where depth == far - before transparent so transparent
-		//      draws don't get overwritten by the sky backdrop)
-		//   6. Forward transparent (sprites/particles blend over sky + opaque)
-		//   7. Debug lines (depth-tested on top of everything)
-		//   8. 2D overlay (no depth - final HUD/text)
-		mPipeline.AddPass(new SkinningPass());
-		mPipeline.AddPass(new DepthPrepass());
-		mPipeline.AddPass(new ForwardOpaquePass());
-		mPipeline.AddPass(new DecalPass());
-		mPipeline.AddPass(new SkyPass());
-		mPipeline.AddPass(new ForwardTransparentPass());
-		mPipeline.AddPass(new ParticlePass());
-		mPipeline.AddPass(new DebugPass());
-		mPipeline.AddPass(new OverlayPass());
-
-		// Post-processing stack
-		let postStack = new PostProcessStack();
-		postStack.Initialize(mRenderContext);
-		// Bloom must come before tonemap - it produces the "BloomTexture" aux
-		// that TonemapEffect reads for compositing.
-		let bloomEffect = new BloomEffect();
-		bloomEffect.Threshold = 1.5f;
-		bloomEffect.Intensity = 0.5f;
-		postStack.AddEffect(bloomEffect);
-		postStack.AddEffect(new TonemapEffect());
-		mPipeline.PostProcessStack = postStack;
+		// Per-scene pipelines are created in OnSceneCreated.
 
 		// Register resource managers with the resource system
 		mStaticMeshManager = new StaticMeshResourceManager();
@@ -193,10 +167,14 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 			mResourceSystem.RemoveResourceManager(mMaterialManager);
 
 		// Shutdown pipelines then renderer (pipelines first - they reference renderer)
+		for (let kv in mScenePipelines)
+		{
+			kv.value.Shutdown();
+			delete kv.value;
+		}
+		mScenePipelines.Clear();
 		if (mShadowPipeline != null)
 			mShadowPipeline.Shutdown();
-		if (mPipeline != null)
-			mPipeline.Shutdown();
 		if (mRenderContext != null)
 			mRenderContext.Shutdown();
 	}
@@ -209,39 +187,36 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		mTotalTime += deltaTime;
 	}
 
-	/// Renders the 3D scene (shadows + main pipeline) to application-provided output targets.
+	/// Renders a specific scene to application-provided output targets.
 	///
 	/// Contract:
+	///   - Each scene has its own Pipeline (created in OnSceneCreated).
 	///   - The application owns the encoder, output textures, and frame pacing.
 	///   - colorTexture/colorTarget must be pre-cleared and in RenderTarget state on entry.
 	///   - On return, colorTexture is transitioned to ShaderRead - ready for blit sampling.
-	///   - frameIndex is the application's frame-in-flight index (0..MAX_FRAMES-1),
-	///     used to index double-buffered per-frame resources (uniform ring buffers,
-	///     shadow atlas, etc.).
-	///   - w/h are the output dimensions. Pipeline.OnResize should be called separately
-	///     if these change (window resize) so internal transient textures match.
-	///
-	/// The method extracts scene data from all active scenes, renders shadow maps,
-	/// then runs the full pipeline (depth prepass -> forward -> sky -> transparent ->
-	/// particles -> debug -> post-processing) into the provided target.
-	public void RenderScene(ICommandEncoder encoder, ITexture colorTexture, ITextureView colorTarget,
+	///   - frameIndex is the application's frame-in-flight index (0..MAX_FRAMES-1).
+	///   - w/h are the output dimensions.
+	public void RenderScene(Scene scene, ICommandEncoder encoder, ITexture colorTexture, ITextureView colorTarget,
 		uint32 w, uint32 h, int32 frameIndex)
 	{
-		if (mDevice == null || mPipeline == null)
+		if (mDevice == null || scene == null)
+			return;
+
+		if (!mScenePipelines.TryGetValue(scene, let pipeline))
 			return;
 
 		mFrameIndex = frameIndex;
 
-		// Update pipeline dimensions if they differ (viewport may be a different size than window).
-		if (w != mPipeline.OutputWidth || h != mPipeline.OutputHeight)
-			mPipeline.OnResize(w, h);
+		// Update pipeline dimensions if they differ.
+		if (w != pipeline.OutputWidth || h != pipeline.OutputHeight)
+			pipeline.OnResize(w, h);
 
 		// Reset the view pool first - drops references to last frame's arena entries
 		// before BeginFrame() rewinds the frame allocator.
 		mViewPool.BeginFrame();
 		mRenderContext.BeginFrame();
 
-		// Acquire and populate the main view from the active camera.
+		// Acquire and populate the main view from the scene's active camera.
 		let mainView = mViewPool.Acquire();
 		mainView.FrameIndex = frameIndex;
 		mainView.DeltaTime = mDeltaTime;
@@ -249,15 +224,14 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		mainView.Width = w;
 		mainView.Height = h;
 		using (Profiler.Begin("SceneExtraction"))
-			ExtractMainView(mainView);
+			ExtractMainView(mainView, scene);
 
-		// Allocate shadow maps for shadow-casting lights from the main view, build
-		// per-shadow RenderViews, and extract them.
+		// Allocate shadow maps for shadow-casting lights from the main view.
 		using (Profiler.Begin("ShadowSetup"))
 			SetupShadows(mainView);
 
-		// Reset per-frame ring buffer offsets before any Render() calls this frame.
-		mPipeline.BeginFrame(frameIndex);
+		// Reset per-frame ring buffer offsets.
+		pipeline.BeginFrame(frameIndex);
 		mShadowPipeline.BeginFrame(frameIndex);
 
 		// Render shadow views first (main forward pass samples the atlas).
@@ -265,7 +239,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 			RenderShadows(encoder, frameIndex);
 
 		// Render to the application-provided output target.
-		mPipeline.Render(encoder, mainView, colorTexture, colorTarget, frameIndex);
+		pipeline.Render(encoder, mainView, colorTexture, colorTarget, frameIndex);
 
 		// Save this frame's VP for next frame's motion vectors.
 		mPrevViewProjectionMatrix = mainView.ViewProjectionMatrix;
@@ -282,33 +256,17 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 	// ==================== Extraction ====================
 
 	/// Populates the main view from the active camera and extracts render data into it.
-	private void ExtractMainView(RenderView view)
+	private void ExtractMainView(RenderView view, Scene scene)
 	{
-		// Find camera for view setup
+		// Find camera in the specified scene.
 		CameraComponent activeCamera = null;
-		Scene cameraScene = null;
 
-		let sceneSub = Context?.GetSubsystem<SceneSubsystem>();
-		if (sceneSub == null)
-			return;
+		let cameraMgr = scene.GetModule<CameraComponentManager>();
+		if (cameraMgr != null)
+			activeCamera = cameraMgr.GetActiveCamera();
 
-		for (let scene in sceneSub.ActiveScenes)
-		{
-			let cameraMgr = scene.GetModule<CameraComponentManager>();
-			if (cameraMgr != null)
-			{
-				let camera = cameraMgr.GetActiveCamera();
-				if (camera != null)
-				{
-					activeCamera = camera;
-					cameraScene = scene;
-					break;
-				}
-			}
-		}
-
-		let viewportAspect = (mPipeline.OutputHeight > 0) ?
-			(float)mPipeline.OutputWidth / (float)mPipeline.OutputHeight : 1.0f;
+		let viewportAspect = (view.Height > 0) ?
+			(float)view.Width / (float)view.Height : 1.0f;
 
 		Matrix viewMatrix = .Identity;
 		Matrix projMatrix = .Identity;
@@ -316,11 +274,11 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		float nearPlane = 0.1f;
 		float farPlane = 1000.0f;
 
-		if (activeCamera != null && cameraScene != null)
+		if (activeCamera != null)
 		{
-			viewMatrix = activeCamera.GetViewMatrix(cameraScene);
+			viewMatrix = activeCamera.GetViewMatrix(scene);
 			projMatrix = activeCamera.GetProjectionMatrix(viewportAspect);
-			cameraPos = cameraScene.GetWorldMatrix(activeCamera.Owner).Translation;
+			cameraPos = scene.GetWorldMatrix(activeCamera.Owner).Translation;
 			nearPlane = activeCamera.NearPlane;
 			farPlane = activeCamera.FarPlane;
 		}
@@ -335,12 +293,11 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		// Width, Height, FrameIndex, DeltaTime, TotalTime are set by the caller
 		// (RenderScene) from application-provided values.
 
-		ExtractIntoView(view);
+		ExtractIntoView(view, scene);
 	}
 
-	/// Runs all IRenderDataProvider modules against the given view, populating
-	/// view.RenderData. Future per-view culling (frustum, layer mask) plugs in here.
-	private void ExtractIntoView(RenderView view)
+	/// Runs all IRenderDataProvider modules on the specified scene against the given view.
+	private void ExtractIntoView(RenderView view, Scene scene)
 	{
 		view.RenderData.SetView(view.ViewMatrix, view.ProjectionMatrix, view.CameraPosition,
 			view.NearPlane, view.FarPlane, view.Width, view.Height);
@@ -359,17 +316,10 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 			LODBias = 0
 		};
 
-		let sceneSub = Context?.GetSubsystem<SceneSubsystem>();
-		if (sceneSub == null)
-			return;
-
-		for (let scene in sceneSub.ActiveScenes)
+		for (let module in scene.Modules)
 		{
-			for (let module in scene.Modules)
-			{
-				if (let provider = module as IRenderDataProvider)
-					provider.ExtractRenderData(context);
-			}
+			if (let provider = module as IRenderDataProvider)
+				provider.ExtractRenderData(context);
 		}
 
 		view.RenderData.SortAndBatch();
@@ -725,10 +675,61 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		let lightMgr = new LightComponentManager();
 		lightMgr.RenderContext = mRenderContext;
 		scene.AddModule(lightMgr);
+
+		// Create a pipeline for this scene.
+		let pipeline = CreatePipelineForScene();
+		mScenePipelines[scene] = pipeline;
 	}
+
+	public void OnSceneReady(Scene scene) { }
 
 	public void OnSceneDestroyed(Scene scene)
 	{
+		if (mScenePipelines.TryGetValue(scene, let pipeline))
+		{
+			pipeline.Shutdown();
+			delete pipeline;
+			mScenePipelines.Remove(scene);
+		}
+	}
+
+	/// Creates a fully configured Pipeline with default passes and post-processing.
+	private Pipeline CreatePipelineForScene()
+	{
+		let pipeline = new Pipeline();
+		pipeline.Initialize(mRenderContext, (uint32)mWindow.Width, (uint32)mWindow.Height);
+
+		// Register default passes.
+		// Order is significant:
+		//   1. Skinning (compute)
+		//   2. Depth prepass (opaque + masked)
+		//   3. Forward opaque + masked (fills color + uses prepass depth)
+		//   4. Decal pass (samples SceneDepth, composes on top of opaque)
+		//   5. Sky (fills where depth == far)
+		//   6. Forward transparent (sprites/particles blend over sky + opaque)
+		//   7. Debug lines (depth-tested on top of everything)
+		//   8. 2D overlay (no depth)
+		pipeline.AddPass(new SkinningPass());
+		pipeline.AddPass(new DepthPrepass());
+		pipeline.AddPass(new ForwardOpaquePass());
+		pipeline.AddPass(new DecalPass());
+		pipeline.AddPass(new SkyPass());
+		pipeline.AddPass(new ForwardTransparentPass());
+		pipeline.AddPass(new ParticlePass());
+		pipeline.AddPass(new DebugPass());
+		pipeline.AddPass(new OverlayPass());
+
+		// Post-processing stack
+		let postStack = new PostProcessStack();
+		postStack.Initialize(mRenderContext);
+		let bloomEffect = new BloomEffect();
+		bloomEffect.Threshold = 1.5f;
+		bloomEffect.Intensity = 0.5f;
+		postStack.AddEffect(bloomEffect);
+		postStack.AddEffect(new TonemapEffect());
+		pipeline.PostProcessStack = postStack;
+
+		return pipeline;
 	}
 
 	// ==================== IWindowAware ====================
@@ -738,7 +739,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		if (width == 0 || height == 0 || mDevice == null)
 			return;
 
-		if (mPipeline != null)
-			mPipeline.OnResize((uint32)width, (uint32)height);
+		for (let kv in mScenePipelines)
+			kv.value.OnResize((uint32)width, (uint32)height);
 	}
 }

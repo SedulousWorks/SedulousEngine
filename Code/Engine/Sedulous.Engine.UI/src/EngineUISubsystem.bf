@@ -15,6 +15,7 @@ using Sedulous.Fonts.TTF;
 using Sedulous.Shaders;
 using Sedulous.Core.Mathematics;
 using Sedulous.Engine.Render;
+using Sedulous.Engine.Renderer;
 
 /// Unified engine UI subsystem handling screen-space and world-space UI.
 /// Screen-space: ScreenUIView renders as IRenderOverlay after 3D scene blit.
@@ -37,6 +38,7 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 	private FontService mFontService;
 	private ScreenUIView mScreenView;
 	private WorldUIPass mWorldUIPass;
+	private bool mWorldUIPassRegistered;
 	private UIInputHelper mInputHelper;
 	private ShellClipboardAdapter mClipboardAdapter;
 
@@ -119,13 +121,6 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 
 	protected override void OnReady()
 	{
-		// All subsystems initialized - safe to access ISceneRenderer's Pipeline.
-		if (mWorldUIPass != null)
-		{
-			let sceneRenderer = Context.GetSubsystemByInterface<ISceneRenderer>();
-			if (sceneRenderer?.Pipeline != null)
-				sceneRenderer.Pipeline.AddPass(mWorldUIPass);
-		}
 	}
 
 	public override void Update(float deltaTime)
@@ -191,10 +186,20 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 	private void RouteWorldUIInput(float deltaTime)
 	{
 		let sceneRenderer = Context?.GetSubsystemByInterface<ISceneRenderer>();
-		if (sceneRenderer?.Pipeline == null) return;
+		let sceneSub = Context?.GetSubsystem<SceneSubsystem>();
+		if (sceneRenderer == null || sceneSub == null) return;
 
-		let viewportWidth = sceneRenderer.Pipeline.OutputWidth;
-		let viewportHeight = sceneRenderer.Pipeline.OutputHeight;
+		// Get viewport dimensions from first active scene's pipeline.
+		Sedulous.Renderer.Pipeline activePipeline = null;
+		for (let scene in sceneSub.ActiveScenes)
+		{
+			activePipeline = sceneRenderer.GetPipeline(scene);
+			if (activePipeline != null) break;
+		}
+		if (activePipeline == null) return;
+
+		let viewportWidth = activePipeline.OutputWidth;
+		let viewportHeight = activePipeline.OutputHeight;
 		if (viewportWidth == 0 || viewportHeight == 0) return;
 
 		let inputMgr = Shell.InputManager;
@@ -401,6 +406,24 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 		uiMgr.RenderPass = mWorldUIPass;
 		uiMgr.RenderContext = sceneRenderer?.RenderContext;
 		scene.AddModule(uiMgr);
+	}
+
+	public void OnSceneReady(Scene scene)
+	{
+		// Register WorldUIPass with the scene's pipeline (created by RenderSubsystem.OnSceneCreated).
+		if (mWorldUIPass != null && !mWorldUIPassRegistered)
+		{
+			let sceneRenderer = Context.GetSubsystemByInterface<ISceneRenderer>();
+			if (sceneRenderer != null)
+			{
+				let pipeline = sceneRenderer.GetPipeline(scene);
+				if (pipeline != null)
+				{
+					pipeline.AddPass(mWorldUIPass);
+					mWorldUIPassRegistered = true;
+				}
+			}
+		}
 	}
 
 	public void OnSceneDestroyed(Scene scene)

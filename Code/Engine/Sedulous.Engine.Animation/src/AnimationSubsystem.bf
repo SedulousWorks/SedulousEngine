@@ -76,6 +76,8 @@ class AnimationSubsystem : Subsystem, ISceneAware
 		scene.AddModule(propAnimMgr);
 	}
 
+	public void OnSceneReady(Scene scene) { }
+
 	public void OnSceneDestroyed(Scene scene)
 	{
 	}

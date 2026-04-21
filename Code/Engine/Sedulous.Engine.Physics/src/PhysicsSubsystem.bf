@@ -71,6 +71,8 @@ class PhysicsSubsystem : Subsystem, ISceneAware
 		}
 	}
 
+	public void OnSceneReady(Scene scene) { }
+
 	public void OnSceneDestroyed(Scene scene)
 	{
 		if (mSceneWorlds.TryGetValue(scene, let world))

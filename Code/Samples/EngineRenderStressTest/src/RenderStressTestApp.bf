@@ -186,7 +186,7 @@ class RenderStressTestApp : EngineApplication
 				if (device.CreateTextureView(mSkyTexture, viewDesc) case .Ok(let view))
 					mSkyTextureView = view;
 
-				if (let skyPass = renderSub.Pipeline.GetPass<SkyPass>())
+				if (let skyPass = renderSub.GetPipeline(mScene).GetPass<SkyPass>())
 				{
 					skyPass.SkyTexture = mSkyTextureView;
 					skyPass.Intensity = 1.0f;
@@ -407,7 +407,7 @@ class RenderStressTestApp : EngineApplication
 		let renderSub = Context.GetSubsystem<RenderSubsystem>();
 		let device = renderSub.RenderContext.Device;
 
-		if (let skyPass = renderSub.Pipeline.GetPass<SkyPass>())
+		if (let skyPass = renderSub.GetPipeline(mScene).GetPass<SkyPass>())
 			skyPass.SkyTexture = null;
 
 		if (mSkyTextureView != null)

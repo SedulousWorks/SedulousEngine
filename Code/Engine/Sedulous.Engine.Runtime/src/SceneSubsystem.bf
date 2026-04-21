@@ -112,10 +112,18 @@ class SceneSubsystem : Subsystem
 		if (Context == null)
 			return;
 
+		// First pass: let all subsystems inject their scene modules.
 		for (let subsystem in Context.Subsystems)
 		{
 			if (let aware = subsystem as ISceneAware)
 				aware.OnSceneCreated(scene);
+		}
+
+		// Second pass: all modules/pipelines are created - safe for cross-subsystem access.
+		for (let subsystem in Context.Subsystems)
+		{
+			if (let aware = subsystem as ISceneAware)
+				aware.OnSceneReady(scene);
 		}
 	}
 

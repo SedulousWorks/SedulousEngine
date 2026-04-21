@@ -63,6 +63,8 @@ class NavigationSubsystem : Subsystem, ISceneAware
 		scene.AddModule(obsMgr);
 	}
 
+	public void OnSceneReady(Scene scene) { }
+
 	public void OnSceneDestroyed(Scene scene)
 	{
 		// Detach managers before destroying world
