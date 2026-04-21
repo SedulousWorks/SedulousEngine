@@ -56,8 +56,11 @@ class EditorApplication : Application, IFloatingWindowHost
 	private View mPagePlaceholder;
 	private LogView mLogView;
 
-	// Multi-window (floating dock panels)
+	// Multi-window (floating dock panels + cross-window drag)
 	private Dictionary<View, SecondaryWindowContext> mFloatingWindowMap = new .() ~ delete _;
+	private IWindow mDragSourceWindow;
+	private float mDragWindowOffsetX;
+	private float mDragWindowOffsetY;
 
 	public this() : base() { }
 
@@ -547,7 +550,9 @@ class EditorApplication : Application, IFloatingWindowHost
 		let keyboard = Shell.InputManager.Keyboard;
 		if (mouse == null) return;
 
-		// Determine which window has focus — route input to its RootView.
+		let dragDrop = mUIContext.DragDropManager;
+
+		// Determine which window has the mouse.
 		RootView inputRoot = mMainRoot;
 		for (let kv in mFloatingWindowMap)
 		{
@@ -559,6 +564,49 @@ class EditorApplication : Application, IFloatingWindowHost
 			}
 		}
 
+		// Cross-window drag: move OS window, route input to main window.
+		if ((dragDrop.IsDragging || dragDrop.IsPotentialDrag) && inputRoot !== mMainRoot)
+		{
+			let globalX = mouse.GlobalX;
+			let globalY = mouse.GlobalY;
+
+			// Capture drag offset on first frame.
+			if (dragDrop.IsDragging && mDragSourceWindow == null)
+			{
+				for (let kv in mFloatingWindowMap)
+				{
+					if (kv.value.Window.Focused)
+					{
+						mDragSourceWindow = kv.value.Window;
+						mDragWindowOffsetX = globalX - (float)mDragSourceWindow.X;
+						mDragWindowOffsetY = globalY - (float)mDragSourceWindow.Y;
+						break;
+					}
+				}
+			}
+
+			// Move the floating OS window to follow cursor.
+			if (mDragSourceWindow != null)
+			{
+				mDragSourceWindow.X = (int32)(globalX - mDragWindowOffsetX);
+				mDragSourceWindow.Y = (int32)(globalY - mDragWindowOffsetY);
+			}
+
+			// Route to main window with global-to-main-relative conversion.
+			mUIContext.ActiveInputRoot = mMainRoot;
+			let mx = globalX - (float)Window.X;
+			let my = globalY - (float)Window.Y;
+			mInputHelper.ProcessMouseInput(mouse, mUIContext, mx, my);
+			if (keyboard != null)
+				mInputHelper.ProcessKeyboardInput(keyboard, mUIContext, mFrameDelta);
+			return;
+		}
+
+		// Not cross-window dragging — clear drag source.
+		if (mDragSourceWindow != null)
+			mDragSourceWindow = null;
+
+		// Normal routing to focused window.
 		mUIContext.ActiveInputRoot = inputRoot;
 		mInputHelper.ProcessMouseInput(mouse, mUIContext);
 		if (keyboard != null)
