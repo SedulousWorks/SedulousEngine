@@ -517,7 +517,7 @@ viewport but not in the editor UI.
 
 ## Implementation Phases
 
-### Phase 1: Core Framework
+### Phase 1: Core Framework — DONE
 - `EditorContext`, `IEditorPlugin`, `EditorPluginAttribute`, `EditorPluginRegistry`
 - `IEditorCommand`, `EditorCommandStack`, `CommandGroup`
 - `IEditorPage`, `IEditorPageFactory`, `SceneEditorPage`, `EditorPageManager`
@@ -528,22 +528,28 @@ viewport but not in the editor UI.
 - Field attributes: `HideInInspector`, `Range`, `Category`, `Tooltip`
 - `PropertyChangeCommand`, `EntityCommands`
 
-### Phase 2: Editor Shell
-- `EditorApplication` (standalone app, creates device/window/UI directly)
-- Project picker (startup screen)
-- Editor shell: MenuBar, DockManager, StatusBar
-- `SceneEditorPage` with Hierarchy + Viewport (placeholder) + Inspector
-- ConsolePanel, AssetBrowserPanel (global panels)
+### Phase 2: Editor Shell — DONE
+- `EditorApplication` extends Runtime.Client.Application (owns UIContext/VGRenderer directly)
+- Project picker: New Project / Open Project (OS folder dialog) + recent projects
+- Editor shell: MenuBar (File/Edit/View), DockManager, StatusBar
+- Page area with placeholder, Console + Assets panels docked at bottom
+- LogView with ListView adapter, color-coded level indicators, selection
+- EditorLogger with IEditorLogListener + EditorLogBuffer (thread-safe, early log capture)
+- RuntimeContext with SceneSubsystem + RenderSubsystem for scene preview
+- File > New Scene: creates scene with camera, light, ground plane, cube
+- SceneEditorPage with hierarchy | viewport | inspector (ScenePageBuilder)
+- SceneHierarchyAdapter: ITreeAdapter with Dictionary nodeId mapping
+- ViewportView: render-to-texture via VGRenderer.RegisterExternalTexture
+- ViewportCameraController: RMB+drag look, WASD movement, scroll zoom
+- IFloatingWindowHost: full OS floating window support
+- Cross-window input routing via focused window detection
 - Wire: selection → inspector, command stack → Edit menu undo/redo
-- Scene create/load/save
-- `CoreEditorPlugin` registering built-in factories
 
-### Phase 3: Viewport & Gizmos
-- `ViewportView` - render-to-texture with engine pipeline
-- `ViewportCameraController` - fly cam
-- `IGizmoRenderer`, `GizmoContext`
+### Phase 3: Gizmos & Polish
+- `IGizmoRenderer`, `GizmoContext` (interfaces done, rendering not wired)
 - Transform gizmo (translate/rotate/scale)
 - Selection picking (raycast in viewport)
+- Cross-window drag routing (move OS windows during dock panel drag)
 
 ### Phase 4: Asset Pipeline
 - `IAssetImporter`, `IAssetThumbnailGenerator`
@@ -571,4 +577,4 @@ viewport but not in the editor UI.
 - **Sedulous.Engine.UI**: EngineUISubsystem, ScreenUIView - complete
 - **Sedulous.Engine.Render**: RenderSubsystem, render pipeline - complete
 - **Sedulous.Scenes**: ComponentManager, Scene serialization - complete
-- **Sedulous.Resources**: ResourceSystem - exists but FileWatcher not yet implemented
+- **Sedulous.Resources**: ResourceSystem with FileWatcher - complete
