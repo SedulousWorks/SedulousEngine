@@ -97,7 +97,7 @@ EditorApplication
 1. Serialize active scene to buffer
 2. Engine begins full ticking (physics, audio, animation, gameplay)
 3. Inspector becomes read-only, play/pause/stop controls shown
-4. Stop → restore scene from buffer, resume editor mode
+4. Stop -> restore scene from buffer, resume editor mode
 5. Undo history preserved across play/stop
 
 ## Project Structure
@@ -136,7 +136,7 @@ Editor/
       ReflectionInspector.bf          # Default: auto from fields
       InspectorContext.bf             # Services for inspectors
     Assets/
-      IAssetImporter.bf               # Source file → engine asset
+      IAssetImporter.bf               # Source file -> engine asset
       IAssetCreator.bf                # "Create New" asset types
       IAssetThumbnailGenerator.bf     # Asset browser thumbnails
     Gizmos/
@@ -378,12 +378,12 @@ for (let type in Type.Types)
 
 ## Inspector Flow
 
-1. User clicks entity in Hierarchy → `SceneEditorPage.SelectEntity(handle)`
+1. User clicks entity in Hierarchy -> `SceneEditorPage.SelectEntity(handle)`
 2. Inspector observes `OnSelectionChanged`
 3. For each component on the entity:
-   - Registered `IComponentInspector` → `BuildInspector(component, grid, ctx)`
-   - No custom → `ReflectionInspector` auto-generates from fields
-4. PropertyEditor events → `PropertyChangeCommand` → per-page `CommandStack`
+   - Registered `IComponentInspector` -> `BuildInspector(component, grid, ctx)`
+   - No custom -> `ReflectionInspector` auto-generates from fields
+4. PropertyEditor events -> `PropertyChangeCommand` -> per-page `CommandStack`
 
 ## Rendering Architecture Refactor (Prerequisite) - DONE
 
@@ -464,7 +464,7 @@ mFrameIndex = (mFrameIndex + 1) % MAX_FRAMES;
 
 **EngineApplication:**
 - Owns: swapchain, output texture, command pools, frame fence, frame index, blit helper
-- New PresentFrame() after Context.EndFrame() - handles the full clear → render → blit → overlay → present pipeline
+- New PresentFrame() after Context.EndFrame() - handles the full clear -> render -> blit -> overlay -> present pipeline
 - Caches ISceneRenderer + IOverlayRenderer queries at startup
 
 **EngineUISubsystem:**
@@ -517,7 +517,7 @@ viewport but not in the editor UI.
 
 ## Implementation Phases
 
-### Phase 1: Core Framework — DONE
+### Phase 1: Core Framework - DONE
 - `EditorContext`, `IEditorPlugin`, `EditorPluginAttribute`, `EditorPluginRegistry`
 - `IEditorCommand`, `EditorCommandStack`, `CommandGroup`
 - `IEditorPage`, `IEditorPageFactory`, `SceneEditorPage`, `EditorPageManager`
@@ -528,7 +528,7 @@ viewport but not in the editor UI.
 - Field attributes: `HideInInspector`, `Range`, `Category`, `Tooltip`
 - `PropertyChangeCommand`, `EntityCommands`
 
-### Phase 2: Editor Shell — DONE
+### Phase 2: Editor Shell - DONE
 - `EditorApplication` extends Runtime.Client.Application (owns UIContext/VGRenderer directly)
 - Project picker: New Project / Open Project (OS folder dialog) + recent projects
 - Editor shell: MenuBar (File/Edit/View), DockManager, StatusBar
@@ -543,7 +543,7 @@ viewport but not in the editor UI.
 - ViewportCameraController: RMB+drag look, WASD movement, scroll zoom
 - IFloatingWindowHost: full OS floating window support
 - Cross-window input routing via focused window detection
-- Wire: selection → inspector, command stack → Edit menu undo/redo
+- Wire: selection -> inspector, command stack -> Edit menu undo/redo
 
 ### Phase 3: Gizmos & Polish
 - `IGizmoRenderer`, `GizmoContext` (interfaces done, rendering not wired)

@@ -52,7 +52,7 @@ Sedulous.Particles (self-contained, depends on Renderer)
 │   ├── ParticlePass        - own render pass with ReadDepth + ReadTexture for soft particles
 │   ├── ParticleRenderer    - Renderer subclass for Particle category, per-blend-mode pipelines
 │   ├── ParticleGPUResources - custom pipeline layout (Frame+Depth+Material+DrawCall), buffers
-│   └── ParticleRenderExtractor - streams → vertex array, sorting, AABB, trail ribbon mesh
+│   └── ParticleRenderExtractor - streams -> vertex array, sorting, AABB, trail ribbon mesh
 └── Sedulous.Particles.Resources - serialization (ParticleEffectResource, type registry)
 ```
 
@@ -114,7 +114,7 @@ Pipeline.Render(encoder, view, outputTexture, outputTextureView, frameIndex):
        Import caller's output as "PipelineOutput"
   7. Each PipelinePass.AddPasses(graph, view, pipeline)
      (ForwardOpaquePass uses LoadOp.Clear - no separate clear pass needed)
-  8. PostProcessStack.Execute() chains: PipelineOutput → effects → FinalOutput
+  8. PostProcessStack.Execute() chains: PipelineOutput -> effects -> FinalOutput
   9. renderGraph.Execute(encoder)
   10. renderGraph.EndFrame()
 ```
@@ -173,7 +173,7 @@ Owned by Pipeline (per-view). Chains `PostProcessEffect` instances via render gr
 PostProcessStack.Execute(graph, view, sceneColor, sceneDepth, pipelineOutput):
   For each enabled effect:
     effect.AddPasses(graph, view, renderer, ctx)
-    ctx.Input → effect → ctx.Output
+    ctx.Input -> effect -> ctx.Output
   Last effect writes to pipelineOutput
 ```
 
@@ -183,7 +183,7 @@ All intermediate textures are render graph transients - no manual texture manage
 
 Base class for effects. Each effect adds render graph passes that read from
 `ctx.Input` and write to `ctx.Output`. Effects can produce auxiliary textures
-(e.g., bloom → "BloomTexture") via `ctx.SetAux()` for downstream effects.
+(e.g., bloom -> "BloomTexture") via `ctx.SetAux()` for downstream effects.
 
 ### Active Effects
 
@@ -258,7 +258,7 @@ Application.PresentFrame():
   2. Clear output target (render pass with LoadOp.Clear)
   3. sceneRenderer.RenderScene(encoder, colorTarget, ..., frameIndex)
   4. Acquire swapchain image
-  5. Blit output → swapchain (BlitHelper fullscreen triangle)
+  5. Blit output -> swapchain (BlitHelper fullscreen triangle)
   6. Run IOverlayRenderers (sorted by OverlayOrder)
   7. Transition swapchain to Present, submit, present
   8. Advance frame index
@@ -293,12 +293,12 @@ Any engine subsystem can provide render data by implementing IRenderDataProvider
 on its scene modules:
 
 ```
-Engine.Render     → MeshComponentManager : IRenderDataProvider
-Engine.Render     → SkinnedMeshComponentManager : IRenderDataProvider
-Engine.Render     → LightComponentManager : IRenderDataProvider
-Engine.Render     → SpriteComponentManager : IRenderDataProvider
-Engine.Render     → DecalComponentManager : IRenderDataProvider
-Engine.Particles  → ParticleComponentManager : IRenderDataProvider (future)
+Engine.Render     -> MeshComponentManager : IRenderDataProvider
+Engine.Render     -> SkinnedMeshComponentManager : IRenderDataProvider
+Engine.Render     -> LightComponentManager : IRenderDataProvider
+Engine.Render     -> SpriteComponentManager : IRenderDataProvider
+Engine.Render     -> DecalComponentManager : IRenderDataProvider
+Engine.Particles  -> ParticleComponentManager : IRenderDataProvider (future)
 ```
 
 ### Visibility / Culling (Future)
@@ -314,9 +314,9 @@ Culling is centralized - one frustum test per entity, not per component type.
 
 Handle-based pool of GPU resources (meshes, textures, bone buffers):
 
-- `UploadMesh(MeshUploadDesc)` → `GPUMeshHandle`
-- `UploadTexture(TextureUploadDesc)` → `GPUTextureHandle`
-- `CreateBoneBuffer(boneCount)` → `GPUBoneBufferHandle`
+- `UploadMesh(MeshUploadDesc)` -> `GPUMeshHandle`
+- `UploadTexture(TextureUploadDesc)` -> `GPUTextureHandle`
+- `CreateBoneBuffer(boneCount)` -> `GPUBoneBufferHandle`
 - Reference counting + deferred deletion (safe for in-flight frames)
 - Scene-independent - takes raw data, returns handles
 
@@ -325,8 +325,8 @@ Handle-based pool of GPU resources (meshes, textures, bone buffers):
 Creates GPU render pipeline objects on demand from `PipelineConfig`:
 
 - Key: shader + vertex layout + render state + target format
-- `GetPipeline(config, vertexBuffers, materialLayout, colorFormat)` → cached pipeline
-- `GetPipelineForMaterial(material, ...)` → derives config from MaterialInstance
+- `GetPipeline(config, vertexBuffers, materialLayout, colorFormat)` -> cached pipeline
+- `GetPipelineForMaterial(material, ...)` -> derives config from MaterialInstance
 - Caches pipeline layouts for the 4-level bind group model
 - Owned by Renderer (shared across pipelines)
 
@@ -364,7 +364,7 @@ Materials are created via factory methods in `Materials` static class:
 
 ## Shader System
 
-`ShaderSystem` handles compilation and caching (memory → disk → compile from source).
+`ShaderSystem` handles compilation and caching (memory -> disk -> compile from source).
 Created by EngineApplication, set on Renderer.
 
 Shaders are HLSL files in `Assets/shaders/`. The system auto-discovers source paths
@@ -386,7 +386,7 @@ and caches compiled SPIRV/DXIL to `Assets/cache/shaders/`.
 | decal | Projected decals via depth reconstruction (cube SV_VertexID + depth sample) |
 | debug_line | Unlit colored lines for DebugDraw |
 | debug_overlay | 2D screen-space text + rectangles via DebugFont atlas |
-| skinning | Compute shader for vertex skinning (72→48 byte transform) |
+| skinning | Compute shader for vertex skinning (72->48 byte transform) |
 | unlit | Unlit/emissive rendering |
 
 ## Blit / Presentation
@@ -396,17 +396,17 @@ The application (EngineApplication) owns the blit helper, swapchain, and output 
 RenderSubsystem has no knowledge of presentation.
 
 ```
-Application clears   → ColorTarget (RGBA16Float, black)
-RenderScene()        → Pipeline renders to ColorTarget
+Application clears   -> ColorTarget (RGBA16Float, black)
+RenderScene()        -> Pipeline renders to ColorTarget
                        + SceneNormals (RG16Float, view-space XY)
                        + MotionVectors (RG16Float, screen-space delta)
-  → PostProcessStack → BloomEffect (produces BloomTexture aux, passes main through)
-                     → TonemapEffect (composites bloom in HDR, ACES curves)
-                     → FinalOutput (RGBA16Float, linear LDR)
+  -> PostProcessStack -> BloomEffect (produces BloomTexture aux, passes main through)
+                     -> TonemapEffect (composites bloom in HDR, ACES curves)
+                     -> FinalOutput (RGBA16Float, linear LDR)
                      ColorTarget transitioned to ShaderRead
-BlitHelper.Blit()    → Swapchain (BGRA8UnormSrgb, sRGB gamma applied by hardware)
-IOverlayRenderers    → Screen UI, debug HUD composited with LoadOp.Load
-Present              → Screen
+BlitHelper.Blit()    -> Swapchain (BGRA8UnormSrgb, sRGB gamma applied by hardware)
+IOverlayRenderers    -> Screen UI, debug HUD composited with LoadOp.Load
+Present              -> Screen
 ```
 
 ## Profiling

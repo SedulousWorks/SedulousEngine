@@ -14,7 +14,7 @@ With shadows (Debug, 48k):
 
 ## Phase 1: Dirty Transform Flags
 
-**Target:** SceneSubsystem.Update (3.4ms → ~0ms for static scenes)
+**Target:** SceneSubsystem.Update (3.4ms -> ~0ms for static scenes)
 
 **Problem:** Transform hierarchy is recalculated for all 56k entities every frame, even when nothing has moved.
 
@@ -32,7 +32,7 @@ With shadows (Debug, 48k):
 
 ## Phase 2: Extraction Pre-allocation
 
-**Target:** SceneExtraction (6.3ms → ~4ms)
+**Target:** SceneExtraction (6.3ms -> ~4ms)
 
 **Problem:** 56k individual `new:frameAlloc MeshRenderData()` calls + per-entity bounds transform + separate O(n log n) sort pass.
 
@@ -114,7 +114,7 @@ With shadows (Debug, 48k):
 - CPU issues a single indirect draw per mesh type - no per-entity CPU work
 - Integrates with Hi-Z occlusion culling (use depth from previous frame)
 
-**Expected savings:** CPU extraction + culling → near-zero. GPU culling is massively parallel.
+**Expected savings:** CPU extraction + culling -> near-zero. GPU culling is massively parallel.
 
 **Complexity:** High
 
@@ -124,8 +124,8 @@ With shadows (Debug, 48k):
 
 | Phase | Target | Savings | Complexity |
 |-------|--------|---------|------------|
-| 1. Dirty transforms | CPU 3.4ms → ~0ms | ~3ms | Low |
-| 2. Extraction pre-alloc | CPU 6.3ms → ~4ms | ~2ms | Low |
+| 1. Dirty transforms | CPU 3.4ms -> ~0ms | ~3ms | Low |
+| 2. Extraction pre-alloc | CPU 6.3ms -> ~4ms | ~2ms | Low |
 | 3. LOD system | GPU vertex cost | 30-50% GPU | Medium |
 | 4. Shadow cascade cull | Shadow GPU cost | 60-80% shadow GPU | Medium |
 | 5. Main view frustum cull | GPU (off-screen) | Scene-dependent | Medium |

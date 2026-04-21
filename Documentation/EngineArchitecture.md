@@ -31,7 +31,7 @@ Living document describing the engine's architecture, layers, and patterns.
 
 ## Context and Subsystems
 
-The `Context` is a pure subsystem lifecycle manager. It does NOT own ResourceSystem or JobSystem — those are application concerns. Subsystems that need resources receive ResourceSystem as a constructor parameter (explicit dependency). Subsystems are registered by type and updated in `UpdateOrder` priority. Interface-based queries via `GetSubsystemByInterface<T>()`/`GetSubsystemsByInterface<T>()` allow decoupled access (e.g., ISceneRenderer, IOverlayRenderer).
+The `Context` is a pure subsystem lifecycle manager. It does NOT own ResourceSystem or JobSystem - those are application concerns. Subsystems that need resources receive ResourceSystem as a constructor parameter (explicit dependency). Subsystems are registered by type and updated in `UpdateOrder` priority. Interface-based queries via `GetSubsystemByInterface<T>()`/`GetSubsystemsByInterface<T>()` allow decoupled access (e.g., ISceneRenderer, IOverlayRenderer).
 
 **Subsystem** - 1 instance per application. Provides app-wide services.
 **Scene Module (ComponentManager)** - 1 instance per scene. Owns per-scene data.
@@ -55,14 +55,14 @@ The `Context` is a pure subsystem lifecycle manager. It does NOT own ResourceSys
 Application main loop:
   SProfiler.BeginFrame()
   ProcessEvents()
-  JobSystem.ProcessCompletions()   → application-owned, not Context
-  ResourceSystem.Update()          → application-owned, not Context
-  Context.BeginFrame()             → input polling, InitializePendingComponents
-  FixedUpdate (0-N times)          → Context.FixedUpdate() → physics, navigation
-  Context.Update()                 → each subsystem in order (scene phases run here)
-  Context.PostUpdate()             → each subsystem
-  Context.EndFrame()               → subsystem EndFrame (RenderSubsystem is now minimal)
-  PresentFrame()                   → application-owned: clear, RenderScene, blit, overlays, present
+  JobSystem.ProcessCompletions()   -> application-owned, not Context
+  ResourceSystem.Update()          -> application-owned, not Context
+  Context.BeginFrame()             -> input polling, InitializePendingComponents
+  FixedUpdate (0-N times)          -> Context.FixedUpdate() -> physics, navigation
+  Context.Update()                 -> each subsystem in order (scene phases run here)
+  Context.PostUpdate()             -> each subsystem
+  Context.EndFrame()               -> subsystem EndFrame (RenderSubsystem is now minimal)
+  PresentFrame()                   -> application-owned: clear, RenderScene, blit, overlays, present
   SProfiler.EndFrame()
 ```
 
@@ -82,14 +82,14 @@ to call the same ISceneRenderer with a viewport texture instead of a swapchain.
 Startup sequence:
   Application: JobSystem.Initialize(), ResourceSystem.Startup()
   Context.Startup()
-    for each subsystem: Init()    → individual setup (OnInit)
-    for each subsystem: Ready()   → cross-subsystem wiring (OnReady)
+    for each subsystem: Init()    -> individual setup (OnInit)
+    for each subsystem: Ready()   -> cross-subsystem wiring (OnReady)
 
 Shutdown sequence:
-  Context.PrepareShutdown()   → detach cross-references (physics worlds, etc.)
-  Context.Shutdown()          → subsystems shut down (reverse order)
+  Context.PrepareShutdown()   -> detach cross-references (physics worlds, etc.)
+  Context.Shutdown()          -> subsystems shut down (reverse order)
   Application: ResourceSystem.Shutdown(), JobSystem.Shutdown()
-  Cleanup()                   → OnCleanup() → delete context → destroy device
+  Cleanup()                   -> OnCleanup() -> delete context -> destroy device
 ```
 
 OnReady runs on all subsystems after all OnInit calls complete. Subsystems can
@@ -113,12 +113,12 @@ so component cleanup during scene teardown doesn't access destroyed resources.
 ### Component Lifecycle
 
 ```
-CreateComponent(entity)         → OnComponentCreated (properties NOT set yet)
-[app sets properties]           → Shape, BodyType, clip refs, etc.
-InitializePendingComponents()   → OnComponentInitialized (properties set, safe for
+CreateComponent(entity)         -> OnComponentCreated (properties NOT set yet)
+[app sets properties]           -> Shape, BodyType, clip refs, etc.
+InitializePendingComponents()   -> OnComponentInitialized (properties set, safe for
                                    physics body creation, resource resolution, etc.)
-[simulation runs]               → FixedUpdate, Update phases
-DestroyComponent() / entity     → OnComponentDestroyed
+[simulation runs]               -> FixedUpdate, Update phases
+DestroyComponent() / entity     -> OnComponentDestroyed
 ```
 
 `InitializePendingComponents` is called by Scene at the start of each frame
@@ -208,7 +208,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
     // ISceneRenderer - called by application with encoder + output targets
     void RenderScene(encoder, colorTexture, colorTarget, w, h, frameIndex)
     {
-        // extract scenes → setup shadows → render shadows → pipeline.Render()
+        // extract scenes -> setup shadows -> render shadows -> pipeline.Render()
     }
 }
 
@@ -217,7 +217,7 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
     // IOverlayRenderer - called by application after blit
     void RenderOverlay(encoder, target, w, h, frameIndex)
     {
-        // delegates to ScreenUIView → VGRenderer composites UI onto swapchain
+        // delegates to ScreenUIView -> VGRenderer composites UI onto swapchain
     }
 }
 ```
@@ -288,13 +288,13 @@ Subsystem-only (no components). InputSubsystem manages priority-ordered stack of
 InputContexts, each containing named InputActions with typed InputBindings.
 Binding types: Key (with modifiers), MouseButton, MouseAxis (delta/scroll),
 GamepadButton, GamepadAxis (dead zone), GamepadStick (circular dead zone),
-CompositeBinding (4 keys → Vector2, e.g. WASD).
+CompositeBinding (4 keys -> Vector2, e.g. WASD).
 
 ### Engine.Physics
 PhysicsSubsystem creates JoltPhysicsWorld per scene via ISceneAware.
 RigidBodyComponent (data-rich: body type, mass, friction, ShapeConfig).
 PhysicsComponentManager creates bodies in OnComponentInitialized, runs
-FixedUpdate (kinematic sync → step → dispatch contacts → dynamic sync),
+FixedUpdate (kinematic sync -> step -> dispatch contacts -> dynamic sync),
 preserves entity scale. RayCast with entity handle decoding from body user data.
 PrepareShutdown detaches managers before world destruction.
 
@@ -303,7 +303,7 @@ with the physics world automatically. Jolt callbacks are buffered during the phy
 step (thread-safe via Monitor) and dispatched to components on the main thread after
 the step completes. Both bodies in a contact are notified (normals/velocities flipped
 for body2's perspective). Gameplay code sets delegates on RigidBodyComponent:
-- `OnContactAdded(self, PhysicsContactEvent) → bool` - return false to reject contact
+- `OnContactAdded(self, PhysicsContactEvent) -> bool` - return false to reject contact
 - `OnContactPersisted(self, PhysicsContactEvent)` - fires each frame while in contact
 - `OnContactRemoved(self, EntityHandle otherEntity)` - fires when contact ends
 

@@ -100,7 +100,7 @@ Goal: make `VGCommand.TextureIndex` functional. Prerequisite for images and text
 
 **Shader / renderer:**
 - VG's fragment shader now samples the bound texture. For solid shapes, UV
-  defaults to `(0.5, 0.5)` into the 1x1 white texture → sample returns (1,1,1,1),
+  defaults to `(0.5, 0.5)` into the 1x1 white texture -> sample returns (1,1,1,1),
   no behavioral change.
 - Uniform/bindings updated to carry a per-command texture.
 
@@ -190,7 +190,7 @@ Thin wrappers over `IFont.MeasureString` + `FontMetrics.LineHeight`.
 - Textured path (same `SetupForTextureDraw` as images).
 - Coverage = 1.0 for glyph vertices.
 
-**Atlas format:** atlases uploaded as RGBA8. VG's text path performs the grayscale →
+**Atlas format:** atlases uploaded as RGBA8. VG's text path performs the grayscale ->
 RGBA8 expansion itself on first use of a given `IFontAtlas`:
 - Private cache in `VGContext` keyed by `IFontAtlas` reference, value is an
   `OwnedImageData` (RGBA8) with white RGB and alpha copied from the atlas's R channel.
@@ -236,7 +236,7 @@ Overloads that take `Pen` delegate to `StrokePath(..., .(pen.Thickness, pen.Cap,
 
 ## Phase 5 - Immediate-mode path API
 
-Goal: eliminate the `PathBuilder → Path → defer delete path → FillPath` ceremony
+Goal: eliminate the `PathBuilder -> Path -> defer delete path -> FillPath` ceremony
 for one-off shapes.
 
 **`VGContext` internal state:**

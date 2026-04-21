@@ -14,12 +14,12 @@ Targeted feature set for game-readiness. Not a port of the old renderer - each f
 
 ### Rendering
 - **Forward PBR** with Cook-Torrance BRDF, directional/point/spot lights (max 128, LightBuffer)
-- **Depth prepass** with early-Z → forward pass handoff (ReadWrite so masked geometry writes depth)
+- **Depth prepass** with early-Z -> forward pass handoff (ReadWrite so masked geometry writes depth)
 - **Mini G-buffer** - ForwardOpaquePass writes 3 MRT targets: SceneColor (RGBA16F), SceneNormals (RG16F view-space XY), MotionVectors (RG16F screen-space delta). Always present for post-FX consumption (SSAO, TAA, motion blur)
 - **Masked rendering** - BlendMode.Masked with AlphaCutoff + discard, drawn in ForwardOpaquePass
 - **Transparent rendering** - ForwardTransparentPass with alpha blending, back-to-front sorted
 - **Sky rendering** - equirectangular HDR environment map with procedural gradient fallback. Runs after opaque but before transparent
-- **Compute skinning** - SkinningSystem + SkinningPass pre-skins vertices via compute shader (72→48 bytes)
+- **Compute skinning** - SkinningSystem + SkinningPass pre-skins vertices via compute shader (72->48 bytes)
 - **Decal rendering** - DecalRenderer draws unit cube, fragment shader reads SceneDepth, reconstructs world position, transforms to local decal space, clips + angle-fades. Own 4-set pipeline layout with depth sampling at set 1
 - **GPU-instanced sprites** - SpriteRenderer uses SV_VertexID for quad corners + per-instance vertex buffer (64 B/sprite). Three orientation modes: CameraFacing, CameraFacingY, WorldAligned
 
@@ -59,14 +59,14 @@ Build the post-processing infrastructure and first effect together.
 **PostProcessStack** (`Sedulous.Renderer/src/PostProcessStack.bf`):
 - Owned by Pipeline (per-view, since Pipeline is per-view)
 - Ordered list of `PostProcessEffect` instances
-- `Execute(graph, view, renderer, sceneColor, sceneDepth)` → returns final output handle
+- `Execute(graph, view, renderer, sceneColor, sceneDepth)` -> returns final output handle
 - Manages ping-pong: creates transient intermediates, last effect writes to PipelineOutput
-- Pass-through when empty (no effects → scene color flows directly to blit)
+- Pass-through when empty (no effects -> scene color flows directly to blit)
 
 **PostProcessEffect** (`Sedulous.Renderer/src/PostProcessEffect.bf`):
 - Base class for effects, simpler than PipelinePass
 - `AddPasses(graph, view, renderer, ctx)` - adds render graph passes
-- `DeclareOutputs(ctx)` - register auxiliary textures (e.g., bloom → "BloomTexture")
+- `DeclareOutputs(ctx)` - register auxiliary textures (e.g., bloom -> "BloomTexture")
 - PostProcessContext provides: Input handle, Output handle, SceneDepth, aux texture map
 - Effects hold GPU state (shaders, constant buffers), built once, parameters updated per-frame
 
@@ -84,9 +84,9 @@ Build the post-processing infrastructure and first effect together.
 
 ### 5.2 - Bloom
 - `BloomEffect` in `Sedulous.Renderer/src/Effects/`
-- Gaussian pyramid: extract bright → downsample chain → upsample + blur chain
+- Gaussian pyramid: extract bright -> downsample chain -> upsample + blur chain
 - Produces auxiliary "BloomTexture" via `ctx.SetAux()` - consumed by TonemapEffect
-- Does NOT modify the main chain (passes through input → output unchanged)
+- Does NOT modify the main chain (passes through input -> output unchanged)
 - Properties: Threshold, Intensity, Radius
 
 ### 5.3 - Additional Effects (as needed)
@@ -146,9 +146,9 @@ so both `Pipeline` and `ShadowPipeline` dispatch to the same `MeshRenderer`.
 - Atlas cleared once per frame via explicit clear pass at frame start
   (`ShadowSystem.BeginShadowFrame`); subsequent shadow renders use Load.
 - Spot light view-proj computed from light pose, outer cone (FOV), range.
-- `RenderSubsystem` flow: extract main view → discover shadow casters → build
-  shadow `RenderView`s → extract per shadow view → ShadowPipeline.Render per
-  view → main `Pipeline.Render`.
+- `RenderSubsystem` flow: extract main view -> discover shadow casters -> build
+  shadow `RenderView`s -> extract per shadow view -> ShadowPipeline.Render per
+  view -> main `Pipeline.Render`.
 - `forward.frag.hlsl` samples shadow atlas with PCF 3×3 hardware bilinear,
   applies per-light bias.
 
@@ -187,9 +187,9 @@ shader variants needed. Renderer does not reference the animation project.
 ### 8.1 - SkinningSystem on Renderer
 - `SkinningSystem` class owned by `Renderer` (shared infrastructure)
 - Manages `SkinningInstance` per skinned mesh: output buffer, bind group, params buffer
-- `CreateInstance(sourceVB, boneBufferHandle, vertexCount, boneCount)` → SkinningInstanceHandle
+- `CreateInstance(sourceVB, boneBufferHandle, vertexCount, boneCount)` -> SkinningInstanceHandle
 - `DestroyInstance(handle)` - releases output buffer and bind group
-- `GetSkinnedVertexBuffer(handle)` → IBuffer (48 bytes/vertex, Mesh layout)
+- `GetSkinnedVertexBuffer(handle)` -> IBuffer (48 bytes/vertex, Mesh layout)
 - Output buffers persist across frames (not recreated per dispatch)
 - Shared across pipeline runs - multiple views reuse the same skinned buffers
 
@@ -205,7 +205,7 @@ shader variants needed. Renderer does not reference the animation project.
 - Runs first in the pipeline, before DepthPrepass
 - Iterates skinned meshes in render data
 - For each: looks up SkinningInstance on Renderer.SkinningSystem, dispatches compute
-- Render graph tracks compute-write → vertex-read barriers automatically
+- Render graph tracks compute-write -> vertex-read barriers automatically
 - Pass itself is stateless - SkinningSystem owns all GPU resources
 
 ### 8.4 - Mesh Upload Changes
@@ -226,7 +226,7 @@ shader variants needed. Renderer does not reference the animation project.
 ### 8.7 - SkinnedMeshComponent (Engine.Render)
 - `SkinnedMeshComponent` + `SkinnedMeshComponentManager`
 - Holds: Skeleton ref, AnimationPlayer ref, GPUBoneBufferHandle, SkinningInstanceHandle
-- Each frame: evaluate animation → compute skinning matrices → upload to bone buffer
+- Each frame: evaluate animation -> compute skinning matrices -> upload to bone buffer
 - Extraction: emits MeshRenderData with BoneBufferHandle + SkinningHandle + IsSkinned
 - Bridge between animation (Sedulous.Animation) and renderer - Engine.Render references
   both but Renderer references neither
@@ -275,7 +275,7 @@ All rendering lives inside `Sedulous.Particles` (no split across projects).
 
 ### Simulation
 - **ParticleStream abstraction** - `ParticleStream` base, `CPUStream<T>` (system memory), `GPUStream` (storage buffer stub). `ParticleStreamContainer` owns streams, provides typed accessors, handles swap-remove compaction
-- **ParticleSimulator** base → `CPUSimulator` (iterates behaviors on SoA arrays), `GPUSimulator` (compute dispatch stub)
+- **ParticleSimulator** base -> `CPUSimulator` (iterates behaviors on SoA arrays), `GPUSimulator` (compute dispatch stub)
 - **ParticleSystem** - orchestrator owning emitter + behaviors + initializers + streams + simulator. Selects CPU/GPU backend based on SimulationMode + behavior support. LOD distance culling. Birth/death event collection for sub-emitters
 - **ParticleEmitter** - spawning logic only (continuous, burst, combined). Spawn rate scaling by LOD
 - **ParticleEffect** - top-level container grouping multiple ParticleSystems. SubEmitterLinks for cross-system event routing
@@ -289,7 +289,7 @@ All rendering lives inside `Sedulous.Particles` (no split across projects).
 ### Rendering
 - **ParticleRenderer** - Renderer subclass for Transparent category. Groups by material + blend mode, creates per-blend-mode pipeline variants, instanced draw (6 verts × N particles)
 - **ParticleGPUResources** - per-frame instance buffers (CpuToGpu), material template, default bind group (white texture fallback)
-- **ParticleRenderExtractor** - CPU-side extraction: streams → ParticleVertex[] with sorting, stretched billboard projection, AABB computation
+- **ParticleRenderExtractor** - CPU-side extraction: streams -> ParticleVertex[] with sorting, stretched billboard projection, AABB computation
 - **Particle shaders** - `particle.vert.hlsl` (SV_VertexID billboard + rotation + stretched), `particle.frag.hlsl` (texture × color)
 - **Per-system blend mode** - ParticleBlendMode (Alpha, Additive, Premultiplied, Multiply) correctly applied to pipeline state
 
@@ -419,9 +419,9 @@ Recommended implementation order based on dependencies and game impact:
 Shared resource resolution service in Engine.Render, used by all render component managers.
 Handles the resolve-upload-track pattern for meshes, materials, and textures.
 
-- **Mesh resolution** - ResourceRef → StaticMeshResource/SkinnedMeshResource → GPU upload → GPUMeshHandle
-- **Material resolution** - ResourceRef → MaterialResource → MaterialInstance → PrepareInstance (bind group)
-- **Texture resolution** - ResourceRef → TextureResource → GPU upload → ITextureView → set on MaterialInstance
+- **Mesh resolution** - ResourceRef -> StaticMeshResource/SkinnedMeshResource -> GPU upload -> GPUMeshHandle
+- **Material resolution** - ResourceRef -> MaterialResource -> MaterialInstance -> PrepareInstance (bind group)
+- **Texture resolution** - ResourceRef -> TextureResource -> GPU upload -> ITextureView -> set on MaterialInstance
 - **Standalone texture resolution** - ResolveTexture for sprites/decals needing direct texture views
 - **Texture cache** - same texture used by multiple materials uploads once
 - **Change detection** - BoundResource comparison handles first load and hot reload uniformly

@@ -25,14 +25,14 @@ rendering pipeline, engine subsystems, application models, and how they compose.
 │  SceneModule lifecycle, serialization                                       │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Renderer Layer (Sedulous.Renderer)                                         │
-│  RenderContext (shared) + Pipeline (per-view passes) + PostProcessStack     │
+│  RenderContext (shared) + Pipeline (per-scene passes) + PostProcessStack    │
 │  Materials, PipelineStateCache, Shadows, Particles                          │
-│  ISceneRenderer / IOverlayRenderer interfaces                               │
+│  IOverlayRenderer interface                                                 │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Foundation Layer                                                           │
 │  RHI (Vulkan, DX12)  │  Shell (SDL3)  │  VG + Fonts  │  UI + Toolkit      │
 │  Resources  │  Jobs  │  Shaders  │  Physics (Jolt)  │  Audio  │  Animation │
-│  Core.Mathematics  │  Serialization  │  Imaging  │  Geometry  │  Profiler  │
+│  Core.Mathematics  │  Serialization  │  Images  │  Geometry  │  Profiler   │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -45,16 +45,16 @@ in tools, sandboxes, and tests.
 
 | Library | Purpose |
 |---------|---------|
-| **Sedulous.Core** | Base abstractions, common utilities |
+| **Sedulous.Core** | Base abstractions, ObjectKey<T>, common utilities |
 | **Sedulous.Core.Mathematics** | Vector, Matrix, Quaternion, Ray, Plane, BoundingBox, Transform |
 | **Sedulous.Core.Collections** | Extended data structures |
-| **Sedulous.Core.Logging** | ILogger abstractions |
+| **Sedulous.Core.Logging** | ILogger, BaseLogger, ConsoleLogger, log formatters |
 
 ### Platform Abstraction
 
 | Library | Purpose |
 |---------|---------|
-| **Sedulous.Shell** | Platform abstraction - IShell, IWindow, IWindowManager, IInputManager (keyboard, mouse, gamepad, touch), IClipboard, CursorType |
+| **Sedulous.Shell** | Platform abstraction - IShell, IWindow, IWindowManager, IInputManager (keyboard, mouse, gamepad, touch), IClipboard, IDialogService, CursorType |
 | **Sedulous.Shell.SDL3** | SDL3 implementation of IShell (cross-platform) |
 
 ### Rendering Hardware Interface (RHI)
@@ -73,10 +73,10 @@ WebGPU-inspired but lower-level. Interface-based - backends are swappable.
 
 | Library | Purpose |
 |---------|---------|
-| **Sedulous.Runtime** | Context (subsystem registry + lifecycle), Subsystem base class (UpdateOrder, OnInit/OnReady/OnPrepareShutdown/OnShutdown), interface-based subsystem queries |
-| **Sedulous.Runtime.Client** | Application base class - lightweight app with Shell + RHI + SwapChain. Owns device, window, frame loop. For sandboxes and tools that don't need the engine |
-| **Sedulous.Jobs** | JobSystem singleton - runs jobs immediately, ProcessCompletions in Context update |
-| **Sedulous.Resources** | ResourceSystem - async loading, caching, per-type ResourceManagers, hot-reload ready |
+| **Sedulous.Runtime** | Context (pure subsystem lifecycle manager - no ResourceSystem/JobSystem ownership), Subsystem base class (UpdateOrder, OnInit/OnReady/OnPrepareShutdown/OnShutdown), interface-based subsystem queries (GetSubsystemByInterface<T>) |
+| **Sedulous.Runtime.Client** | Application base class - lightweight app with Shell + RHI + SwapChain. Owns device, window, frame loop. Virtual CreateLogger(). For sandboxes, tools, and editor |
+| **Sedulous.Jobs** | JobSystem singleton - runs jobs immediately, ProcessCompletions called by application |
+| **Sedulous.Resources** | ResourceSystem - async loading, caching, per-type ResourceManagers, FileWatcher, hot-reload |
 | **Sedulous.Profiler** | SProfiler - per-frame scoped profiling (BeginFrame/Begin/End) |
 
 ### Graphics & Rendering
@@ -84,14 +84,14 @@ WebGPU-inspired but lower-level. Interface-based - backends are swappable.
 | Library | Purpose |
 |---------|---------|
 | **Sedulous.Shaders** | ShaderSystem - HLSL compilation to SPIR-V/DXIL, shader pair loading, caching |
-| **Sedulous.Renderer** | Scene-independent rendering: RenderContext, Pipeline, PipelinePass, PostProcessStack, PipelineStateCache, ISceneRenderer, IOverlayRenderer, IRenderDataProvider. Shadows, debug draw, sprites |
+| **Sedulous.Renderer** | Scene-independent rendering: RenderContext, Pipeline, PipelinePass, PostProcessStack, PipelineStateCache, IOverlayRenderer, IRenderDataProvider. Shadows, debug draw, sprites |
 | **Sedulous.RenderGraph** | Dependency-driven render graph with transient texture pool, barrier solver |
 | **Sedulous.Materials** | Material templates, MaterialInstance (ref-counted), bind group lifecycle |
 | **Sedulous.Particles** | Self-contained particle system: CPU simulation, billboard/trail rendering, sub-emitters, LOD. ParticlePass + ParticleRenderer |
 | **Sedulous.Geometry** | Mesh formats, vertex definitions, OBJ/glTF loading (via Tooling variant) |
 | **Sedulous.Textures** | Texture metadata and resource types |
-| **Sedulous.Images** | In-memory image abstractions (IImageData, OwnedImageData) |
-| **Sedulous.Images** | Image loading - STB and SDL variants |
+| **Sedulous.Images** | In-memory image abstractions (IImageData, OwnedImageData, ImageDataRef) |
+| **Sedulous.Imaging** | Image loading - STB and SDL variants |
 | **Sedulous.DebugFont** | Built-in bitmap font for debug text overlay |
 
 ### Vector Graphics & Text
@@ -99,7 +99,7 @@ WebGPU-inspired but lower-level. Interface-based - backends are swappable.
 | Library | Purpose |
 |---------|---------|
 | **Sedulous.VG** | NanoVG-inspired vector graphics - paths, fills, strokes, text layout. Draws to VGContext, produces VGBatch |
-| **Sedulous.VG.Renderer** | GPU renderer for VGBatch (uploads + draws) |
+| **Sedulous.VG.Renderer** | GPU renderer for VGBatch. VGExternalTextureCache for cross-renderer texture sharing |
 | **Sedulous.VG.SVG** | SVG parsing and rendering |
 | **Sedulous.Fonts** | FontService - font loading, glyph caching, atlas management |
 | **Sedulous.Fonts.TTF** | TrueType support (stb_truetype) |
@@ -111,7 +111,7 @@ WebGPU-inspired but lower-level. Interface-based - backends are swappable.
 | **Sedulous.UI** | Android-inspired retained-mode UI: View/ViewGroup/RootView hierarchy, MeasureSpec layout, theme system, input routing, animation, drag-drop, overlays. Renders via VGContext. No engine dependency - runs headless for tests |
 | **Sedulous.UI.Shell** | Bridge: UIInputHelper (Shell -> UI input routing), InputMapping, ShellClipboardAdapter |
 | **Sedulous.UI.Runtime** | UISubsystem for standalone apps (owns UIContext + VGRenderer). Used by UISandbox |
-| **Sedulous.UI.Toolkit** | Advanced widgets: DockManager, SplitView, MenuBar, StatusBar, Toolbar, PropertyGrid, TreeView, ColorPicker, TabView (closable), DraggableTreeView, IFloatingWindowHost |
+| **Sedulous.UI.Toolkit** | Advanced widgets: DockManager, SplitView, MenuBar, StatusBar, Toolbar, PropertyGrid (with transactional editors), TreeView, ColorPicker, TabView (closable), DraggableTreeView, IFloatingWindowHost |
 | **Sedulous.UI.Resources** | ThemeResource, UILayoutResource, ThemeXmlParser |
 
 ### Physics, Audio, Animation
@@ -138,16 +138,18 @@ WebGPU-inspired but lower-level. Interface-based - backends are swappable.
 
 ### Runtime.Client.Application - Lightweight Apps
 
-For sandboxes, tools, demos, and anything that needs Shell + RHI without the full engine.
+For sandboxes, tools, demos, editor, and anything that needs Shell + RHI without
+the full engine. Both EngineApplication and EditorApplication extend this.
 
-**Owns:** Shell, Backend, Device, Window, SwapChain, CommandPools, Fence, DepthBuffer.
+**Owns:** Shell, Backend, Device, Window, SwapChain, CommandPools, Fence, DepthBuffer,
+Logger (via virtual CreateLogger), ResourceSystem, JobSystem lifecycle.
 
 **Features:**
 - Multi-window support (secondary windows with shared device)
 - Fixed timestep simulation
 - Frame pacing with configurable target framerate
 - Asset directory discovery (searches up for "Assets" with ".assets" marker)
-- Virtual hooks: OnInitialize, OnUpdate, OnRenderFrame, OnResize, etc.
+- Virtual hooks: OnInitialize, OnUpdate, OnRenderFrame, OnResize, CreateLogger, etc.
 - Can optionally create a Context with subsystems (e.g., UISubsystem)
 
 **Used by:** UISandbox, VGSandbox, DrawingSandbox, AudioSandbox, FontRendering, RHI samples
@@ -157,27 +159,37 @@ For sandboxes, tools, demos, and anything that needs Shell + RHI without the ful
 For games and interactive applications with scenes, physics, rendering, audio, etc.
 
 **Owns:** Shell, Backend, Device, Window + all presentation (SwapChain, OutputTargets,
-CommandPools, Fence, BlitHelper, frame index). Creates Context with all standard subsystems.
+CommandPools, Fence, BlitHelper, frame index). Creates Context with all standard
+subsystems, passing ResourceSystem to those that need it.
 
 **Features:**
 - Automatic subsystem registration (Input, Physics, Animation, Audio, Navigation, UI, Render)
 - ShaderSystem initialization
-- Presentation pipeline: clear -> ISceneRenderer.RenderScene -> blit -> IOverlayRenderers -> present
+- Presentation pipeline: clear -> RenderScene(scene) -> blit -> IOverlayRenderers -> present
 - Caches ISceneRenderer + IOverlayRenderer queries at startup
 - Scene management via SceneSubsystem
 - Virtual hooks: OnConfigure, OnStartup, OnUpdate, OnShutdown
 
 **Used by:** EngineSandbox, EngineRenderStressTest
 
-### EditorApplication - Future Editor
+### EditorApplication - Editor
 
-Standalone app (not EngineApplication subclass). Creates its own RuntimeContext with
-engine subsystems for preview. Owns the editor UI directly. See EditorRoadmap.md.
+Extends Runtime.Client.Application directly (not EngineApplication). Owns UIContext
+and VGRenderer directly for the editor UI. Creates a RuntimeContext with engine
+subsystems (SceneSubsystem, RenderSubsystem) for scene preview. EditorContext
+provides plugin system, page/panel management, commands. ViewportView renders scene
+to texture via ISceneRenderer, displayed in UI via VGExternalTextureCache.
+
+**Used by:** Sedulous.Editor.App
 
 ## Context and Subsystems
 
-The `Context` is the central lifecycle hub. It owns subsystems and a resource system.
-Subsystems are registered by type and updated in `UpdateOrder` priority.
+The `Context` is a pure subsystem lifecycle manager. It does NOT own ResourceSystem
+or JobSystem - those are application concerns. Subsystems that need resources receive
+ResourceSystem as a constructor parameter (explicit dependency). Subsystems are
+registered by type and updated in `UpdateOrder` priority. Interface-based queries
+via `GetSubsystemByInterface<T>()`/`GetSubsystemsByInterface<T>()` allow decoupled
+access (e.g., ISceneRenderer, IOverlayRenderer).
 
 **Subsystem** - 1 instance per application. Provides app-wide services.
 **Scene Module (ComponentManager)** - 1 instance per scene. Owns per-scene data.
@@ -198,27 +210,35 @@ Subsystems are registered by type and updated in `UpdateOrder` priority.
 ### Subsystem Lifecycle
 
 ```
+Application:
+  JobSystem.Initialize()
+  ResourceSystem.Startup()
+
 Context.Startup():
   for each subsystem: Init()    -> OnInit() - individual setup
   for each subsystem: Ready()   -> OnReady() - cross-subsystem wiring (all inits done)
 
 Per frame:
-  BeginFrame(dt)    -> InitializePendingComponents, poll input
-  FixedUpdate(dt)   -> physics, navigation (0-N times per frame)
-  Update(dt)        -> scene phases, gameplay, UI input
-  PostUpdate(dt)    -> late updates, dirty view collection
-  EndFrame()        -> minimal (RenderSubsystem no longer renders here)
+  Application: JobSystem.ProcessCompletions(), ResourceSystem.Update()
+  Context.BeginFrame(dt)  -> InitializePendingComponents, poll input
+  FixedUpdate(dt)         -> physics, navigation (0-N times per frame)
+  Context.Update(dt)      -> scene phases, gameplay, UI input
+  Context.PostUpdate(dt)  -> late updates, dirty view collection
+  Context.EndFrame()      -> minimal
 
-Application.PresentFrame():
-  -> clear output -> RenderScene -> blit -> overlays -> present
+  Application.PresentFrame():
+    -> clear output -> RenderScene(scene) -> blit -> overlays -> present
 
 Context.Shutdown():
   PrepareShutdown() -> detach cross-references (all subsystems, reverse order)
   Shutdown()        -> OnShutdown() (reverse order)
+
+Application:
+  ResourceSystem.Shutdown()
+  JobSystem.Shutdown()
 ```
 
-OnReady runs after all OnInit calls. Safe to access other subsystems for wiring
-(e.g., EngineUISubsystem registers WorldUIPass with Pipeline).
+OnReady runs after all OnInit calls. Safe to access other subsystems for wiring.
 Mirror of OnPrepareShutdown (which detaches references before shutdown).
 
 ### Interface-Based Subsystem Queries
@@ -232,13 +252,48 @@ let overlays = scope List<IOverlayRenderer>();
 context.GetSubsystemsByInterface<IOverlayRenderer>(overlays);
 ```
 
-Used by the application to find renderers without knowing concrete types.
-
 ## Rendering Architecture
 
-The renderer is **scene-independent**. It receives flat render data and draws it.
-Scene integration is a layer above (Engine.Render). The renderer can be used
-standalone for sandboxes, tools, and tests without any scene infrastructure.
+The renderer (Sedulous.Renderer) is **scene-independent**. It receives flat render
+data and draws it. Scene integration is a layer above (Engine.Render). The renderer
+can be used standalone for sandboxes, tools, and tests without any scene infrastructure.
+
+```
+Sedulous.Renderer (scene-independent)
+├── RenderContext          - shared infrastructure (GPU resources, materials, lights, shaders,
+│                            shadows, sprites, debug draw, registered renderers)
+├── Pipeline               - per-scene pass execution, render graph (output target provided by caller)
+├── IRenderingPipeline     - interface shared by Pipeline + ShadowPipeline
+├── PipelinePass           - base class for render/compute/copy passes
+├── Renderer               - abstract per-type drawer base (ezRenderer pattern)
+│   ├── MeshRenderer       - draws MeshRenderData (Opaque, Masked, Transparent)
+│   ├── SpriteRenderer     - draws SpriteRenderData (Transparent, GPU instanced)
+│   └── DecalRenderer      - draws DecalRenderData (Decal, own pipeline layout)
+├── PostProcessStack       - ordered chain of post-process effects on Pipeline
+├── PipelineStateCache     - on-demand GPU pipeline creation, MRT support
+├── RenderView             - camera + viewport + frame state + extracted data
+├── RenderViewPool         - per-frame view reuse for multi-view rendering
+├── ExtractedRenderData    - per-view container of polymorphic render data per category
+├── FrameAllocator         - per-frame bump allocator for render data
+├── GPUResourceManager     - handle-based GPU resource pool
+├── Shadows/
+│   ├── ShadowSystem       - atlas + data buffer + comparison sampler + bind groups
+│   ├── ShadowAtlas        - hierarchical 3-tier depth atlas (Large/Medium/Small)
+│   ├── ShadowPipeline     - standalone per-view shadow rendering
+│   └── ShadowMatrices     - spot/point/directional cascade matrix computation
+├── Debug/
+│   ├── DebugDraw          - immediate-mode wire shapes + text API
+│   └── DebugDrawSystem    - font atlas + per-frame vertex buffers
+├── SpriteSystem           - sprite material template + per-frame instance buffers
+├── IOverlayRenderer       - screen-space overlay interface (EngineUISubsystem implements)
+├── IRenderDataProvider    - extraction interface for scene modules
+└── BindGroupFrequency     - 5-level bind group convention
+
+Sedulous.Engine.Render (scene-aware, depends on Renderer + Scenes)
+├── ISceneRenderer         - renders a specific Scene to provided output targets
+├── RenderSubsystem        - implements ISceneRenderer, per-scene Pipeline map
+└── Component Managers     - Mesh, Light, Camera, Sprite, Decal, SkinnedMesh, Particle
+```
 
 ### RenderContext (Shared Infrastructure)
 
@@ -256,9 +311,9 @@ One per application. Owns GPU resources, systems, and registered per-type drawer
 - Registered renderers (MeshRenderer, SpriteRenderer, DecalRenderer, ParticleRenderer)
 - Shared bind group layouts (Frame set 0, DrawCall set 3, Shadow set 4)
 
-### Pipeline (Per-View Execution)
+### Pipeline (Per-Scene Execution)
 
-Lightweight per-view pass execution engine. Owns:
+Each scene gets its own Pipeline (created by RenderSubsystem in OnSceneCreated). Owns:
 - List of `PipelinePass` objects
 - `PostProcessStack` (optional)
 - Per-frame resources (double-buffered uniform buffers + bind groups)
@@ -267,6 +322,17 @@ Lightweight per-view pass execution engine. Owns:
 
 The Pipeline renders to a **caller-provided output texture**. The application owns
 the output target, clears it, and passes it to `Pipeline.Render()`.
+
+```beef
+abstract class PipelinePass
+{
+    StringView Name;
+    Result<void> OnInitialize(Pipeline pipeline);
+    void OnShutdown();
+    void OnResize(uint32 width, uint32 height);
+    void AddPasses(RenderGraph graph, RenderView view, Pipeline pipeline);
+}
+```
 
 #### Frame Flow
 
@@ -289,9 +355,6 @@ Pipeline.Render(encoder, view, outputTexture, outputTextureView, frameIndex):
   10. renderGraph.EndFrame()
 ```
 
-The caller clears the output target before calling Render(). The internal transient
-HDR texture (post-processing path) is cleared by ForwardOpaquePass's LoadOp.Clear.
-
 ### Pipeline Passes
 
 | Pass | Type | Reads | Writes | Description |
@@ -308,7 +371,9 @@ HDR texture (post-processing path) is cleared by ForwardOpaquePass's LoadOp.Clea
 
 ### Post-Processing
 
-`PostProcessStack` chains `PostProcessEffect` instances via render graph passes:
+`PostProcessStack` chains `PostProcessEffect` instances via render graph passes.
+Each effect adds render graph passes that read from `ctx.Input` and write to
+`ctx.Output`. Effects can produce auxiliary textures via `ctx.SetAux()`.
 
 | Effect | Description |
 |--------|-------------|
@@ -335,17 +400,14 @@ The application owns presentation - RenderSubsystem has no swapchain knowledge.
 Application.PresentFrame():
   1. Wait frame fence, reset command pool, create encoder
   2. Clear output target (render pass with LoadOp.Clear)
-  3. sceneRenderer.RenderScene(encoder, colorTarget, ..., frameIndex)
-     -> extraction + shadows + pipeline -> output in ShaderRead state
+  3. sceneRenderer.RenderScene(scene, encoder, colorTarget, ..., frameIndex)
+     -> extraction from specified scene + shadows + pipeline -> output in ShaderRead state
   4. Acquire swapchain image
   5. Blit output -> swapchain (BlitHelper fullscreen triangle, tonemap shader)
   6. Run IOverlayRenderers (sorted by OverlayOrder, LoadOp.Load)
   7. Transition swapchain to Present, submit with fence, present
   8. Advance frame index
 ```
-
-`BlitHelper` copies HDR pipeline output (RGBA16Float) to swapchain (BGRA8UnormSrgb)
-via a fullscreen triangle with the "blit" shader. The application owns the BlitHelper.
 
 ### Render Data & Extraction
 
@@ -361,18 +423,23 @@ Render data is categorized for sorting and pass routing:
 | Light | None | Consumed by lighting system |
 | Particle | Back-to-front | Particle rendering |
 
-All render data types inherit from `RenderData` (abstract base). Allocated from
-FrameAllocator - trivially destructible, valid for one frame only. No entity/component
-references - just GPU handles and flat data.
+All render data types inherit from `RenderData` (abstract base):
+- `MeshRenderData` - GPUMeshHandle, submesh, world + prev world matrices, material bind group
+- `LightRenderData` - type, color, intensity, direction, range, shadow config
+- `DecalRenderData` - world + inverse world matrices, color, angle fade
+- `SpriteRenderData` - position, size, tint, UV rect, orientation mode
+
+Allocated from FrameAllocator - trivially destructible, valid for one frame only.
+No entity/component references - just GPU handles and flat data.
 
 #### Extraction Flow
 
 ```
-RenderSubsystem.RenderScene(encoder, targets, frameIndex):
+RenderSubsystem.RenderScene(scene, encoder, targets, frameIndex):
   1. viewPool.BeginFrame() - clears previous frame's data
   2. renderContext.BeginFrame() - resets FrameAllocator + ShadowSystem
-  3. Acquire main view, populate from active camera
-  4. ExtractIntoView(mainView) - runs all IRenderDataProviders
+  3. Acquire main view, populate from scene's active camera
+  4. ExtractIntoView(mainView, scene) - runs IRenderDataProviders from specified scene only
   5. SetupShadows(mainView) - allocate atlas, compute matrices, extract shadow views
   6. pipeline.BeginFrame(frameIndex) + shadowPipeline.BeginFrame(frameIndex)
   7. RenderShadows(encoder, frameIndex) - ShadowPipeline.RenderAll(jobs)
@@ -381,8 +448,13 @@ RenderSubsystem.RenderScene(encoder, targets, frameIndex):
   10. Transition output to ShaderRead
 ```
 
-Any subsystem can provide render data by implementing `IRenderDataProvider`
-on its scene modules (MeshComponentManager, LightComponentManager, etc.).
+Any subsystem can provide render data by implementing `IRenderDataProvider`:
+```
+Engine.Render     -> MeshComponentManager, SkinnedMeshComponentManager,
+                    LightComponentManager, SpriteComponentManager,
+                    DecalComponentManager : IRenderDataProvider
+Engine.Particles  -> ParticleComponentManager : IRenderDataProvider
+```
 
 ### Bind Group Frequency Model
 
@@ -395,6 +467,27 @@ on its scene modules (MeshComponentManager, LightComponentManager, etc.).
 | 4 | space4 | Shadow | Shadow atlas + comparison sampler + ShadowDataBuffer |
 
 Convention-based - no shader reflection. Shaders place resources in the right space.
+
+### GPU Resource Management
+
+`GPUResourceManager` - handle-based pool of GPU resources (meshes, textures, bone buffers):
+- `UploadMesh(MeshUploadDesc)` -> `GPUMeshHandle`
+- `UploadTexture(TextureUploadDesc)` -> `GPUTextureHandle`
+- Reference counting + deferred deletion (safe for in-flight frames)
+
+`PipelineStateCache` - creates GPU render pipeline objects on demand from `PipelineConfig`:
+- Key: shader + vertex layout + render state + target format
+- Caches pipeline layouts for the bind group model
+
+### Material System
+
+`MaterialSystem` manages material bind groups, default textures, and per-instance resources:
+- `PrepareInstance(MaterialInstance)` - creates/updates uniform buffer + bind group
+- `GetOrCreateLayout(Material)` - builds bind group layout from property definitions
+- Default textures (white, normal, black, depth) for unset material slots
+
+MaterialInstance is ref-counted. Components call AddRef/ReleaseRef via SetMaterial.
+GPU resources cleaned up in destructor when last ref released.
 
 ### Shader Inventory
 
@@ -414,6 +507,15 @@ Convention-based - no shader reflection. Shaders place resources in the right sp
 | debug_overlay | 2D screen-space text + rectangles |
 | skinning | Compute vertex skinning |
 | unlit | Unlit/emissive rendering |
+
+### External Texture Cache
+
+`VGExternalTextureCache` / `DrawingExternalTextureCache` - shared caches for
+displaying render-to-texture content (e.g., viewport views) across multiple renderer
+instances (main window + floating windows). Each entry has a version counter and
+IsReady flag. RegisterExternalTexture updates local cache immediately (smooth resize)
+and shared cache (not-ready). MarkReady called after first render. Other renderers
+only pick up ready entries, preventing UNDEFINED layout errors.
 
 ## Scene System
 
@@ -435,9 +537,6 @@ InitializePendingComponents()   -> OnComponentInitialized (properties set, safe 
 DestroyComponent() / entity     -> OnComponentDestroyed
 ```
 
-InitializePendingComponents is called by Scene at the start of each frame
-(in SceneSubsystem.BeginFrame) before FixedUpdate.
-
 ### Scene Update Phases
 
 Run inside SceneSubsystem.Update(). Multiple scenes run in lockstep per phase.
@@ -453,22 +552,50 @@ Run inside SceneSubsystem.Update(). Multiple scenes run in lockstep per phase.
 8. Cleanup          - deferred entity/component destruction
 ```
 
+### AsyncUpdate Phase (Parallel)
+
+Managers opt in by registering for `.AsyncUpdate` instead of `.Update`.
+Rules: each manager iterates only its own pool, no cross-component access,
+no entity creation/destruction, read-only transforms.
+
+| Manager | Phase | Reason |
+|---------|-------|--------|
+| PhysicsComponentManager | PreUpdate + PostUpdate | Steps world, writes back |
+| User gameplay managers | Update | May access any component |
+| SkeletalAnimationManager | AsyncUpdate | Independent per player |
+| AnimationGraphManager | AsyncUpdate | Independent per graph |
+| PropertyAnimationManager | AsyncUpdate | Per-entity, reads only own state |
+| AudioSourceManager | AsyncUpdate | Per-source position sync |
+| NavigationComponentManager | Update | Crowd manager not thread-safe |
+| MeshComponentManager | PostTransform | Reads finalized transforms |
+| SkinnedMeshComponentManager | PostTransform | Reads bone matrices |
+
 ### ISceneAware
 
-Subsystems implement ISceneAware to inject their scene modules:
+Subsystems implement ISceneAware to inject their scene modules when scenes are created:
 
 ```beef
-class RenderSubsystem : Subsystem, ISceneAware, ISceneRenderer
+interface ISceneAware
 {
-    void OnSceneCreated(Scene scene)
-    {
-        scene.AddModule(new MeshComponentManager());
-        scene.AddModule(new CameraComponentManager());
-        scene.AddModule(new LightComponentManager());
-        // + Sprite, Decal, SkinnedMesh, Particle managers
-    }
+    void OnSceneCreated(Scene scene);   // Inject modules
+    void OnSceneReady(Scene scene);     // Cross-subsystem wiring (all modules created)
+    void OnSceneDestroyed(Scene scene); // Cleanup
 }
 ```
+
+OnSceneReady runs after ALL OnSceneCreated handlers - safe to access resources
+created by other subsystems (e.g., per-scene Pipeline created by RenderSubsystem).
+
+### IWindowAware
+
+```beef
+interface IWindowAware
+{
+    void OnWindowResized(IWindow window, int32 width, int32 height);
+}
+```
+
+The app iterates all subsystems and broadcasts resize to any that implement it.
 
 ## Engine Modules
 
@@ -501,29 +628,24 @@ NavAgentComponent (radius, height, speed, move target). NavObstacleComponent.
 EngineUISubsystem (IOverlayRenderer, ISceneAware). Screen-space: ScreenUIView
 renders VG onto swapchain after blit. World-space: UIComponent + UIComponentManager
 with per-component UIContext, render-to-texture via WorldUIPass, input raycasting
-(CameraFacing, CameraFacingY, WorldAligned).
+(CameraFacing, CameraFacingY, WorldAligned). WorldUIPass registered in OnSceneReady.
 
 ### Engine.Render
-RenderSubsystem (ISceneRenderer, ISceneAware). Injects component managers per scene.
-Extracts render data, sets up shadows, calls Pipeline.Render with application-provided
-output targets. Does not own swapchain or presentation.
-
-## Material Lifecycle
-
-MaterialInstance is ref-counted (RefCounted base). Components call AddRef/ReleaseRef
-via SetMaterial. GPU resources (bind group, uniform buffer) cleaned up in destructor
-when last ref released. MaterialSystem.ClearCache detaches all instances before
-destroying GPU resources.
+RenderSubsystem (ISceneRenderer, ISceneAware). Creates a Pipeline per scene in
+OnSceneCreated. Injects component managers per scene. RenderScene takes a Scene
+parameter - extracts from that scene only, renders through that scene's Pipeline.
+Does not own swapchain or presentation.
 
 ## Serialization
 
 Format-independent via ISerializerProvider:
 ```beef
-context.Resources.SetSerializerProvider(new OpenDDLSerializerProvider());
+mResourceSystem.SetSerializerProvider(new OpenDDLSerializerProvider());
 ```
 
 SceneSerializer writes entities, transforms, hierarchy, components. Components
-implement ISerializableComponent. ResourceType hash validates on load.
+implement ISerializableComponent. ComponentTypeRegistry maps type IDs to factories.
+EntityRef carries persistent Guid + cached runtime handle. ResourceType hash validates on load.
 
 ## Reference Engines
 

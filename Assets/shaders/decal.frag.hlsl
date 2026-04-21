@@ -57,13 +57,13 @@ float4 main(FragmentInput input) : SV_Target
     float2 screenUV = input.Position.xy * InvScreenSize;
     float depth = SceneDepth.Sample(DepthSampler, screenUV).r;
 
-    // Screen UV → NDC. Y flipped: top-left origin for UV, top-right is (+1,+1) in NDC.
+    // Screen UV -> NDC. Y flipped: top-left origin for UV, top-right is (+1,+1) in NDC.
     float2 ndcXY = float2(screenUV.x * 2.0 - 1.0, 1.0 - screenUV.y * 2.0);
     float4 ndcPos = float4(ndcXY, depth, 1.0);
     float4 worldPos4 = mul(ndcPos, InvViewProjectionMatrix);
     float3 worldPos = worldPos4.xyz / worldPos4.w;
 
-    // World → decal local (centered at origin, extents [-0.5, 0.5]).
+    // World -> decal local (centered at origin, extents [-0.5, 0.5]).
     float4 localPos4 = mul(float4(worldPos, 1.0), DecalInvWorld);
     float3 local = localPos4.xyz;
     if (any(abs(local) > 0.5))

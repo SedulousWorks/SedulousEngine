@@ -90,7 +90,7 @@ int PickPointFace(float3 toFragment)
 float SampleShadowEntry(GPUShadowData shadow, float3 worldPos, float3 worldNormal, float NdotL)
 {
     // Normal-offset bias in world space: NormalBias is in texels, scale by the
-    // cascade's world texel size, and fade at grazing angles (NdotL → 0).
+    // cascade's world texel size, and fade at grazing angles (NdotL -> 0).
     float3 biasedPos = worldPos + worldNormal * (shadow.NormalBias * shadow.WorldTexelSize * (1.0 - NdotL));
 
     float4 lightClip = mul(float4(biasedPos, 1.0), shadow.LightViewProj);
@@ -98,17 +98,17 @@ float SampleShadowEntry(GPUShadowData shadow, float3 worldPos, float3 worldNorma
 
     float3 lightNDC = lightClip.xyz / lightClip.w;
 
-    // NDC → shadow map UV (DX-style: y inverted). saturate lets fragments just past
+    // NDC -> shadow map UV (DX-style: y inverted). saturate lets fragments just past
     // the far plane still sample (clamped) rather than popping to fully-lit.
     float2 shadowUV = float2(lightNDC.x * 0.5 + 0.5, -lightNDC.y * 0.5 + 0.5);
     if (any(shadowUV < 0.0) || any(shadowUV > 1.0))
         return 1.0;
     float compareDepth = saturate(lightNDC.z) - shadow.Bias;
 
-    // Local UV → atlas UV.
+    // Local UV -> atlas UV.
     float2 atlasUV = shadow.AtlasUVRect.xy + shadowUV * shadow.AtlasUVRect.zw;
 
-    // Plain 5×5 box PCF. 25 hardware comparison taps → 100 effective bilinear
+    // Plain 5×5 box PCF. 25 hardware comparison taps -> 100 effective bilinear
     // samples. Hardware depth bias in the shadow pipeline prevents acne so the
     // regular grid pattern doesn't produce banding.
     float2 texel = shadow.AtlasUVRect.zw * shadow.InvShadowMapSize;
@@ -398,7 +398,7 @@ FragmentOutput main(FragmentInput input)
     // Target 0: HDR scene color.
     output.Color = float4(color, alpha);
 
-    // Target 2: screen-space motion vector (NDC delta × 0.5 → UV delta).
+    // Target 2: screen-space motion vector (NDC delta × 0.5 -> UV delta).
     // Used by TAA / motion blur to reproject from current to previous frame.
     float2 curNDC  = input.CurClipPos.xy / input.CurClipPos.w;
     float2 prevNDC = input.PrevClipPos.xy / input.PrevClipPos.w;

@@ -39,8 +39,8 @@ struct VertexOutput
 VertexOutput main(VertexInput input)
 {
     VertexOutput output;
-    // Pixel (0,0) = top-left → NDC (-1, 1)
-    // Pixel (w,h) = bottom-right → NDC (1, -1)
+    // Pixel (0,0) = top-left -> NDC (-1, 1)
+    // Pixel (w,h) = bottom-right -> NDC (1, -1)
     // (The Vulkan backend uses negative viewport height to match DX convention.)
     float2 ndc = float2(
         (input.Position.x * InvScreenSize.x) * 2.0 - 1.0,

@@ -26,14 +26,14 @@ Shaders: `shaders/slug.vert.hlsl`, `slug.frag.hlsl`
 ### Pipeline
 
 ```
-1. Load TTF        → SlugTTFLoader.LoadFromFile()     → SlugFont (curves + metrics)
-2. Build textures  → SlugTextureBuilder.Build()        → curve + band texture data
-3. Initialize GPU  → SlugTextRenderer.Initialize()     → uploads textures, compiles shaders, creates pipeline
+1. Load TTF        -> SlugTTFLoader.LoadFromFile()     -> SlugFont (curves + metrics)
+2. Build textures  -> SlugTextureBuilder.Build()        -> curve + band texture data
+3. Initialize GPU  -> SlugTextRenderer.Initialize()     -> uploads textures, compiles shaders, creates pipeline
 4. Each frame:
-   a. Begin()      → clear geometry staging
-   b. DrawText()   → add glyph quads to staging buffer (CPU)
-   c. Prepare()    → upload to per-frame GPU buffers (WriteMappedBuffer, no sync stall)
-   d. Render()     → set pipeline, bind group, draw indexed
+   a. Begin()      -> clear geometry staging
+   b. DrawText()   -> add glyph quads to staging buffer (CPU)
+   c. Prepare()    -> upload to per-frame GPU buffers (WriteMappedBuffer, no sync stall)
+   d. Render()     -> set pipeline, bind group, draw indexed
 ```
 
 ### Two Textures
@@ -106,7 +106,7 @@ The vertex shader expands glyph quads by half a pixel in viewport space using th
 
 | File | Description |
 |------|-------------|
-| `SlugTTFLoader.bf` | Extracts quadratic Bézier curves from TTF/OTF via `stbtt_GetGlyphShape()`. Handles Y-flip (font Y-up → screen Y-down), line→curve conversion, cubic→quadratic approximation. Computes bounding boxes from actual curve control points with padding. |
+| `SlugTTFLoader.bf` | Extracts quadratic Bézier curves from TTF/OTF via `stbtt_GetGlyphShape()`. Handles Y-flip (font Y-up -> screen Y-down), line->curve conversion, cubic->quadratic approximation. Computes bounding boxes from actual curve control points with padding. |
 
 ### Sedulous.Slug.Renderer
 

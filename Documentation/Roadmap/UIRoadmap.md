@@ -73,7 +73,7 @@ more game-loop-friendly choice - usually the Android one.
 │     VGContext +           - PropertyGrid         - Action bars       │
 │     VGRenderer)           - DataGrid             - Nameplates        │
 │  - UIInputHelper          - UI Inspector         - Minimap widgets   │
-│    (Shell→UI adapter)     - Tooling-oriented     - Damage numbers    │
+│    (Shell->UI adapter)     - Tooling-oriented     - Damage numbers    │
 │  - ShellClipboardAdapter    widgets              - Floating anchors  │
 │  - InputMapping                                                      │
 │  Depends on: Sedulous.Runtime + Sedulous.Shell                       │
@@ -331,7 +331,7 @@ public class UIContext
 **Where raw pointers are fine:**
 
 - Inside one phase of one frame (the layout walk holds raw `View*` while iterating)
-- Parent → child within the tree (the tree owns its children)
+- Parent -> child within the tree (the tree owns its children)
 - Inside one synchronous method call
 
 **Rule of thumb:** if a reference outlives the current synchronous
@@ -539,8 +539,8 @@ Avoids numerical instability in layout math.
 
 ### Reverse-order hit testing
 
-`ViewGroup` hit-tests children back-to-front (N→0). Topmost wins, matching
-visual z-order (children rendered front-to-back 0→N).
+`ViewGroup` hit-tests children back-to-front (N->0). Topmost wins, matching
+visual z-order (children rendered front-to-back 0->N).
 
 ## 5. Drawable System
 
@@ -580,7 +580,7 @@ public abstract class Drawable
 
 | Type | Role |
 |------|------|
-| `StateListDrawable` | Maps `ControlState` enum → `Drawable`. Pre-allocated array for O(1) state lookup. Falls back to default if state-specific is null. |
+| `StateListDrawable` | Maps `ControlState` enum -> `Drawable`. Pre-allocated array for O(1) state lookup. Falls back to default if state-specific is null. |
 | `LayerDrawable` | Stacks multiple drawables in order with per-layer insets. Replaces VisualBrush composition; flat alternative to nested widgets just for visuals. |
 | `InsetDrawable` | Wraps a drawable with insets and advertises them via `DrawablePadding`. Useful for "this drawable wants 8px of content padding". |
 
@@ -1005,7 +1005,7 @@ Every navigation method respects this from day one - not added later.
 
 ### Word boundaries via state machine
 
-Skip-word → skip-whitespace → stop. Prevents landing in whitespace runs.
+Skip-word -> skip-whitespace -> stop. Prevents landing in whitespace runs.
 Used by Ctrl+Left/Right.
 
 ### Caret blink via modulo on time
@@ -1034,7 +1034,7 @@ All editors inherit the filter.
 
 ### Navigation breaks undo merge chain
 
-Type "abc" → arrow → type "d" produces two undo entries, not "abcd".
+Type "abc" -> arrow -> type "d" produces two undo entries, not "abcd".
 
 ### InputFilter
 
@@ -1157,7 +1157,7 @@ spot.
 
 ### Render order
 
-`tree → modal backdrop → popups → drag adorner`. Each layer has a
+`tree -> modal backdrop -> popups -> drag adorner`. Each layer has a
 specific visual purpose. Layered by render order, not structural in tree.
 
 ### Dialog
@@ -1203,11 +1203,11 @@ provide a virtual implementation (in-game window).
 ### State machine
 
 ```
-Idle → (mouse-down on IDragSource) → Potential
-Potential → (distance threshold met) → Active
-Potential → (cancel / threshold not met) → Idle
-Active → (mouse-up over IDropTarget) → OnDrop → Idle
-Active → (mouse-up over invalid target) → cancelled → Idle
+Idle -> (mouse-down on IDragSource) -> Potential
+Potential -> (distance threshold met) -> Active
+Potential -> (cancel / threshold not met) -> Idle
+Active -> (mouse-up over IDropTarget) -> OnDrop -> Idle
+Active -> (mouse-up over invalid target) -> cancelled -> Idle
 ```
 
 Mouse capture acquired immediately on `Potential`. Threshold (default
@@ -1486,14 +1486,14 @@ consults.
 
 Uses `Sedulous.Xml`. Conventions:
 
-- Element name → view type (via `UIRegistry`)
-- Attribute name → property name (via registry; reflection fallback)
-- Child elements → `Children` of containing `ViewGroup`
+- Element name -> view type (via `UIRegistry`)
+- Attribute name -> property name (via registry; reflection fallback)
+- Child elements -> `Children` of containing `ViewGroup`
 - `LayoutParams` attributes (e.g., `layout_weight`, `gravity`) inferred
   from parent's runtime type via `CreateDefaultLayoutParams()`
-- `{Binding Path}` attribute syntax → data binding
-- `x:Name="resumeBtn"` → setter populates a code-behind reference
-- `<Include Source="other.ui.xml"/>` → composition
+- `{Binding Path}` attribute syntax -> data binding
+- `x:Name="resumeBtn"` -> setter populates a code-behind reference
+- `<Include Source="other.ui.xml"/>` -> composition
 
 ```xml
 <RootView>
@@ -1558,7 +1558,7 @@ framework itself.
 
 **Per-view timing** when `ShowPerfHotspots` on: layout/draw walks wrap
 each view's `Measure` / `Arrange` / `Draw` in profiler scopes. Cost colors
-views red → green by percentile.
+views red -> green by percentile.
 
 ## 22. Resource Integration
 
@@ -1727,8 +1727,8 @@ app.
   noted but don't affect the tree.
 - Window resize / DPI change propagates to `RootView.ViewportSize` /
   `DpiScale`
-- Basic frame loop: drain MutationQueue → Layout if invalidated → Draw
-  → Submit
+- Basic frame loop: drain MutationQueue -> Layout if invalidated -> Draw
+  -> Submit
 
 **Code (UISandbox - running app):**
 - `Code/Samples/UI/UISandbox/` created, mirrors `VGSandbox` layout
@@ -1782,7 +1782,7 @@ demo page.
   `Drawable` argument directly; the theme-key-based overloads land Phase 4.
 - Widgets: `Label`, `Button`, `ImageView`, `Panel`, `Spacer`, `Separator`
   - each carries its own `Drawable Background` / `Color Foreground`
-  fields (null → hardcoded defaults; null-fallback-to-theme added Phase 4)
+  fields (null -> hardcoded defaults; null-fallback-to-theme added Phase 4)
 - Additional layouts: `GridLayout` (with two-pass Auto/Star), `FlowLayout`
   (wrap with primary/cross axis), `AbsoluteLayout`
 - `View.GetBaseline()` for typography-aware `LinearLayout` horizontal mode
@@ -1826,7 +1826,7 @@ through to the tree.
 - Hover refresh on mouse-down
 - Capture (single view) via `FocusManager.SetCapture`
 - Mouse wheel bubbles; other mouse events stop at hit
-- Click count + distance threshold → `MouseEventArgs.ClickCount`
+- Click count + distance threshold -> `MouseEventArgs.ClickCount`
 - `KeyModifiers` per event; no global state
 - `IsRepeat` flag on key events
 - `e.Handled` cooperative propagation
@@ -1845,9 +1845,9 @@ through to the tree.
 - **Debug overlays:** `ShowHitTarget`, `ShowFocusPath`, `ShowTabOrder`
 
 **Code (`Sedulous.UI.Runtime`):**
-- `UIInputHelper` - real `Sedulous.Shell` event → `InputManager` wiring
+- `UIInputHelper` - real `Sedulous.Shell` event -> `InputManager` wiring
   (was stubbed in Phase 1)
-- `InputMapping` - Shell `KeyCode` → UI `KeyCode` translation
+- `InputMapping` - Shell `KeyCode` -> UI `KeyCode` translation
 - `UISubsystem` feeds pumped events into `InputManager` each frame
 
 **Tests (`Sedulous.UI.Tests/Input`, `/Focus`, `/Runtime`):**
@@ -1917,7 +1917,7 @@ through to the tree.
 - `IThemeExtension` applied after base init, can inject new keys
 - Nullable override: setting `mBackground = null` falls back to theme;
   non-null overrides
-- Theme XML round-trip (parse → re-serialize → parse)
+- Theme XML round-trip (parse -> re-serialize -> parse)
 - Theme change triggers layout invalidation on affected views
 
 **UISandbox:**
@@ -1936,7 +1936,7 @@ Declarative UIs, file-I/O-free (parsing only).
 
 **Code (`Sedulous.UI`):**
 - `UIRegistry` with view + property registration
-- XML → view tree loader in `Sedulous.UI`
+- XML -> view tree loader in `Sedulous.UI`
 - Implicit `LayoutParams` subclass dispatch from parent type
 - `{Binding Path}` syntax (one-way only)
 - `x:Name` code-behind references
@@ -1948,8 +1948,8 @@ Declarative UIs, file-I/O-free (parsing only).
 - `LayoutParams` subclass correctly chosen from parent type
 - `x:Name` populates the target field
 - `{Binding Path}` resolves simple paths, updates on change
-- Unknown element type → clear error with location
-- Unknown property → clear error with available properties listed
+- Unknown element type -> clear error with location
+- Unknown property -> clear error with available properties listed
 
 **UISandbox:**
 - "XML Loading" page: sidebar showing XML source, main area showing the
@@ -1984,7 +1984,7 @@ Declarative UIs, file-I/O-free (parsing only).
 
 > **Status: ✅ COMPLETE**
 
-Renamed `Sedulous.Engine.GUI` → `Sedulous.Engine.UI`. Full engine
+Renamed `Sedulous.Engine.GUI` -> `Sedulous.Engine.UI`. Full engine
 integration with screen-space and world-space UI.
 
 **Code (`Sedulous.Engine.UI`):**
@@ -2056,7 +2056,7 @@ integration with screen-space and world-space UI.
 **Code (`Sedulous.UI`):**
 - `IListAdapter` interface with multi-view-type support
 - `ITreeAdapter` interface
-- `FlattenedTreeAdapter` (tree → flat virtualizable list)
+- `FlattenedTreeAdapter` (tree -> flat virtualizable list)
 - `ViewRecycler` (per-view-type pool + diagnostic counters)
 - `SelectionModel` (separate from view, with `ShiftIndices` for tree expand)
 - `ListView` virtualization:
@@ -2089,7 +2089,7 @@ integration with screen-space and world-space UI.
 - `UndoStack` with fixed capacity + 1.0s coalescing window for char-insert
 - `IClipboard` interface
 - UTF-8-aware caret nav
-- Word boundary state machine (skip-word → skip-whitespace → stop)
+- Word boundary state machine (skip-word -> skip-whitespace -> stop)
 - Anchor + caret selection model (normalize to range when needed)
 - Caret blink via modulo on time
 - Glyph cache lazy invalidation
@@ -2099,7 +2099,7 @@ integration with screen-space and world-space UI.
 - Navigation breaks undo merge chain
 - `EditText` (single + multi-line)
 - `PasswordBox` (display override, blocks Ctrl+C/X)
-- Double/triple click → word/line selection
+- Double/triple click -> word/line selection
 - Context menu lookup walks parent chain
 - ContextMenu populated on right-click (Phase 11 brings the actual menu)
 
@@ -2135,12 +2135,12 @@ integration with screen-space and world-space UI.
 - `TooltipManager` (timing/state) + `TooltipView` (rendering)
   - Default 0.5s show-delay, 5s auto-hide
   - Single TooltipView reused
-- Render order: tree → backdrop → popups → drag adorner
+- Render order: tree -> backdrop -> popups -> drag adorner
 - Modal focus trap via `ModalManager` registered as service
 
 **Tests (`Sedulous.UI.Tests/Overlay`):**
-- `PopupLayer` three-state hit-test (empty → null, normal → child,
-  modal → self)
+- `PopupLayer` three-state hit-test (empty -> null, normal -> child,
+  modal -> self)
 - `PopupEntry.OwnsView` flag: true deletes on close, false detaches
 - `PopupPositioner.BestFit` flips above when clipping bottom
 - `PopupPositioner.Submenu` flips left when clipping right
@@ -2175,7 +2175,7 @@ integration with screen-space and world-space UI.
 - **Debug overlays:** `ShowLayoutInvalidation`, `ShowPerfHotspots`
 
 **Tests (`Sedulous.UI.Tests/Animation`):**
-- Animation progress: t=0 → from, t=1 → to, eased in between
+- Animation progress: t=0 -> from, t=1 -> to, eased in between
 - AutoReverse + RepeatCount semantics
 - Storyboard Sequential: children start at correct times, complete in order
 - Storyboard Parallel: all children advance together
@@ -2195,7 +2195,7 @@ integration with screen-space and world-space UI.
 - `IDragSource` / `IDropTarget` interfaces (symmetric)
 - `DragDropEffects` enum (Copy/Move/Link)
 - `DragDropManager` state machine (Idle / Potential / Active)
-- Distance threshold for Potential → Active transition
+- Distance threshold for Potential -> Active transition
 - Capture acquired immediately on Potential
 - Skip drag on double-click
 - Drop walks parent chain (don't skip drag source)
@@ -2205,7 +2205,7 @@ integration with screen-space and world-space UI.
 - Drag-source lookup walks parent chain
 
 **Tests (`Sedulous.UI.Tests/DragDrop`):**
-- State machine: Idle → Potential → Active with threshold
+- State machine: Idle -> Potential -> Active with threshold
 - Drag cancelled if threshold not met within mouse-up window
 - Drop walks parent chain including source (for reorder)
 - Double-click guards drag start
@@ -2241,8 +2241,8 @@ libraries and the final polish items.
 
 **Code (`Sedulous.UI` + `Sedulous.UI.Runtime`):**
 - Gamepad navigation:
-  - DPad → focus traversal (uses focus model from Phase 3)
-  - A button → activate focused control
+  - DPad -> focus traversal (uses focus model from Phase 3)
+  - A button -> activate focused control
 - Two-way binding for `EditText` / `Slider` / `CheckBox`
 - `View.ContentDescription` accessibility hook (no reader yet; just the
   field + a way to export a tree description)
@@ -2332,7 +2332,7 @@ everything suddenly needs to integrate.
 
 **✅ COMPLETE.** Screen-space and world-space UI both working.
 
-- Renamed `Sedulous.Engine.GUI` → `Sedulous.Engine.UI`
+- Renamed `Sedulous.Engine.GUI` -> `Sedulous.Engine.UI`
 - `EngineUISubsystem` (ISceneAware, IWindowAware, UpdateOrder 400)
 - `ScreenUIView` as `IRenderOverlay` after 3D scene blit
 - `UIComponent` + `UIComponentManager` - per-component UIContext,
@@ -2530,9 +2530,9 @@ Depends on `Sedulous.UI`, `Sedulous.Runtime`, `Sedulous.Shell`,
 ```
 src/
   UISubsystem.bf           // extends Sedulous.Runtime.Subsystem
-  UIInputHelper.bf         // Sedulous.Shell events → UIInputEvent
+  UIInputHelper.bf         // Sedulous.Shell events -> UIInputEvent
   ShellClipboardAdapter.bf // IClipboard over Shell
-  InputMapping.bf          // shell KeyCode → UI KeyCode
+  InputMapping.bf          // shell KeyCode -> UI KeyCode
 ```
 
 ### Sedulous.UI.Toolkit
@@ -2677,7 +2677,7 @@ infrastructure lands or when the feature becomes blocking.
 
 | Item | Reason | Where it fits |
 |------|--------|---------------|
-| Theme XML round-trip test (parse → serialize → parse) | Needs XML writer for themes; ThemeXmlParser only reads | Future - add `ThemeXmlWriter` when theme editing is needed |
+| Theme XML round-trip test (parse -> serialize -> parse) | Needs XML writer for themes; ThemeXmlParser only reads | Future - add `ThemeXmlWriter` when theme editing is needed |
 
 ### From Phase 5
 
