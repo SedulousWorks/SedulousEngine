@@ -8,7 +8,9 @@ BeefSpace_User.toml
 nul
 
 Assets/cache/
+Assets/shaders/editorcache/
 EngineRewrite.md
 RHI.md
 ShaderReflection.md
 GameIdeas/
+Projects/

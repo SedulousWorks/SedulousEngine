@@ -2,7 +2,7 @@ FileVersion = 1
 Locked = ["Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "dr_libs-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
 
 [Workspace]
-StartupProject = "EngineSandbox"
+StartupProject = "Sedulous.Editor.App"
 
 [Projects]
 "Sedulous.RHI" = {Path = "Foundation/Sedulous.RHI"}
@@ -122,6 +122,8 @@ SampleVG001_Shapes = {Path = "Samples/VG/SampleVG001_Shapes"}
 "Sedulous.Engine.Navigation" = {Path = "Engine/Sedulous.Engine.Navigation"}
 "Sedulous.Engine.UI" = {Path = "Engine/Sedulous.Engine.UI"}
 "Sedulous.Engine.Render" = {Path = "Engine/Sedulous.Engine.Render"}
+"Sedulous.Editor.Core" = {Path = "Editor/Sedulous.Editor.Core"}
+"Sedulous.Editor.App" = {Path = "Editor/Sedulous.Editor.App"}
 EngineSandbox = {Path = "Samples/EngineSandbox"}
 "Sedulous.Jobs" = {Path = "Foundation/Sedulous.Jobs"}
 "Sedulous.Jobs.Tests" = {Path = "Foundation/Sedulous.Jobs.Tests"}
@@ -212,3 +214,4 @@ Foundation = []
 Engine = ["Sedulous.Engine.Runtime", "Sedulous.Engine.App", "Sedulous.Engine.Input", "Sedulous.Engine.Physics", "Sedulous.Engine.Audio", "Sedulous.Engine.Animation", "Sedulous.Engine.Navigation", "Sedulous.Engine.UI", "Sedulous.Engine.Render"]
 "Foundation/RHI" = ["Sedulous.RHI", "Sedulous.RHI.DX12", "Sedulous.RHI.Null", "Sedulous.RHI.Validation", "Sedulous.RHI.Vulkan", "Sedulous.ShaderReflection", "Sedulous.ShaderReflection.DXIL", "Sedulous.ShaderReflection.SPIRV", "Sedulous.ShaderReflection.Tests"]
 "Foundation/UI" = ["Sedulous.UI", "Sedulous.UI.Shell", "Sedulous.UI.Runtime", "Sedulous.UI.Toolkit", "Sedulous.UI.Gamekit", "Sedulous.UI.Tests", "Sedulous.UI.Resources"]
+Editor = ["Sedulous.Editor.Core", "Sedulous.Editor.App"]
