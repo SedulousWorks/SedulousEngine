@@ -7,6 +7,7 @@ using Sedulous.RHI;
 using Sedulous.VG.Renderer;
 using Sedulous.Scenes;
 using Sedulous.Renderer;
+using Sedulous.Engine.Render;
 using Sedulous.Shell.Input;
 using Sedulous.Editor.Core;
 using Sedulous.Core.Mathematics;
@@ -130,7 +131,8 @@ static class ScenePageBuilder
 		page.AddOwnedObject(camController);
 
 		// Wire 3D render callback
-		viewportView.OnRender.Add(new [=sceneRenderer, =camController] (vp, encoder, frameIndex) =>
+		let capturedScene = page.Scene;
+		viewportView.OnRender.Add(new [=sceneRenderer, =camController, =capturedScene] (vp, encoder, frameIndex) =>
 		{
 			if (!vp.IsReady) return;
 
@@ -153,7 +155,7 @@ static class ScenePageBuilder
 				let clearPass = encoder.BeginRenderPass(clearDesc);
 				clearPass?.End();
 
-				sceneRenderer.RenderScene(encoder, vp.ColorTexture, vp.ColorTargetView,
+				sceneRenderer.RenderScene(capturedScene, encoder, vp.ColorTexture, vp.ColorTargetView,
 					vp.RenderWidth, vp.RenderHeight, frameIndex);
 			}
 			else

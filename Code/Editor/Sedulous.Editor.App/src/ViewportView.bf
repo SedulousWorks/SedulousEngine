@@ -14,7 +14,7 @@ public delegate void ViewportRenderDelegate(ViewportView viewport, ICommandEncod
 /// A UI View that displays 3D rendered content.
 /// Creates offscreen color + depth render targets, fires OnRender for 3D drawing,
 /// and displays the result as an image via VGContext.DrawImage.
-/// Pure render surface — input handling is done by the owning page/controller.
+/// Pure render surface - input handling is done by the owning page/controller.
 class ViewportView : View
 {
 	private IDevice mDevice;
@@ -56,7 +56,7 @@ class ViewportView : View
 	/// Whether render targets are ready.
 	public bool IsReady => mColorTextureView != null && mDepthTextureView != null;
 
-	/// Input delegates — set by the owning page/controller.
+	/// Input delegates - set by the owning page/controller.
 	public delegate void(MouseEventArgs) OnMouseDownHandler ~ delete _;
 	public delegate void(MouseEventArgs) OnMouseUpHandler ~ delete _;
 	public delegate void(MouseEventArgs) OnMouseMoveHandler ~ delete _;
@@ -82,6 +82,11 @@ class ViewportView : View
 			return;
 
 		OnRender(this, encoder, frameIndex);
+
+		// Mark the texture as ready in the shared cache — other VGRenderers
+		// can now safely pick it up (texture is in ShaderRead state).
+		if (mVGRenderer != null)
+			mVGRenderer.MarkExternalTextureReady(mImageRef);
 	}
 
 	// === Layout ===
@@ -202,7 +207,9 @@ class ViewportView : View
 		if (mDevice.CreateTextureView(mDepthTexture, .() { Format = .Depth32Float }) case .Ok(let depthView))
 			mDepthTextureView = depthView;
 
-		// Register with VGRenderer for DrawImage
+		// Register immediately with VGRenderer for smooth resize (same-window case).
+		// The shared cache entry starts as not-ready — other VGRenderers won't pick
+		// it up until MarkReady is called after the first RenderContent.
 		if (mVGRenderer != null && mColorTextureView != null)
 		{
 			mVGRenderer.RegisterExternalTexture(mImageRef, mColorTextureView);
@@ -214,6 +221,10 @@ class ViewportView : View
 
 	public ~this()
 	{
+		// Ensure GPU is done with our textures before freeing them.
+		if (mDevice != null && (mColorTexture != null || mDepthTexture != null))
+			mDevice.WaitIdle();
+
 		if (mIsRegistered && mVGRenderer != null)
 		{
 			mVGRenderer.UnregisterExternalTexture(mImageRef);

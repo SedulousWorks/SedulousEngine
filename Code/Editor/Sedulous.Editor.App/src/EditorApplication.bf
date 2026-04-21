@@ -37,6 +37,7 @@ class EditorApplication : Application, IFloatingWindowHost
 	private FontService mFontService ~ delete _;
 	private VGContext mVGContext ~ delete _;
 	private VGRenderer mVGRenderer;
+	private VGExternalTextureCache mExternalTextureCache = new .() ~ delete _;
 	private ShaderSystem mShaderSystem;
 	private ShellClipboardAdapter mClipboard ~ delete _;
 	private UIInputHelper mInputHelper = new .() ~ delete _;
@@ -52,9 +53,10 @@ class EditorApplication : Application, IFloatingWindowHost
 	private View mEditorShellView;
 	private EditorProject mProject = new .() ~ delete _;
 	private RecentProjects mRecentProjects = new .() ~ delete _;
-	private FrameLayout mPageArea;
-	private View mPagePlaceholder;
+	private DockablePanel mPlaceholderPanel; // "Open an asset..." placeholder, removed when first page opens
 	private LogView mLogView;
+	private Dictionary<Sedulous.Core.ObjectKey<IEditorPage>, DockablePanel> mPageDockPanels = new .() ~ delete _;
+	private int32 mNewSceneCounter;
 
 	// Multi-window (floating dock panels + cross-window drag)
 	private Dictionary<View, SecondaryWindowContext> mFloatingWindowMap = new .() ~ delete _;
@@ -98,6 +100,7 @@ class EditorApplication : Application, IFloatingWindowHost
 		mVGContext = new VGContext(mFontService);
 		mVGRenderer = new VGRenderer();
 		mVGRenderer.Initialize(Device, SwapChain.Format, (int32)SwapChain.BufferCount, mShaderSystem);
+		mVGRenderer.SetExternalCache(mExternalTextureCache);
 
 		// Clipboard
 		mClipboard = new ShellClipboardAdapter(Shell.Clipboard);
@@ -268,7 +271,7 @@ class EditorApplication : Application, IFloatingWindowHost
 		mProjectLoaded = true;
 		mEditorLogger.Log(.Information, "Project opened: {}", path);
 
-		// Defer view switch — the button that triggered this is inside the picker.
+		// Defer view switch - the button that triggered this is inside the picker.
 		// Deleting immediately would use-after-free in Button.FireClick.
 		if (mProjectPickerView != null)
 		{
@@ -302,29 +305,25 @@ class EditorApplication : Application, IFloatingWindowHost
 			Width = LayoutParams.MatchParent, Height = 0, Weight = 1
 		});
 
-		// Page area (center) — shows active page content or placeholder
-		mPageArea = new FrameLayout();
-		mPagePlaceholder = new Label();
-		((Label)mPagePlaceholder).SetText("Open an asset from the Asset Browser, or File > New Scene");
-		((Label)mPagePlaceholder).FontSize = 14;
-		((Label)mPagePlaceholder).HAlign = .Center;
-		((Label)mPagePlaceholder).VAlign = .Middle;
-		((Label)mPagePlaceholder).TextColor = .(100, 100, 115, 255);
-		mPageArea.AddView(mPagePlaceholder, new LayoutParams() {
-			Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent
-		});
+		// Placeholder panel (center) - shown until first page is opened.
+		let placeholderContent = new Label();
+		placeholderContent.SetText("Open an asset from the Asset Browser, or File > New Scene");
+		placeholderContent.FontSize = 14;
+		placeholderContent.HAlign = .Center;
+		placeholderContent.VAlign = .Middle;
+		placeholderContent.TextColor = .(100, 100, 115, 255);
+		mPlaceholderPanel = dockManager.AddPanel("Editor", placeholderContent);
+		dockManager.DockPanel(mPlaceholderPanel, .Center);
 
-		// Wire page manager events to swap content
-		mEditorContext.PageManager.OnActivePageChanged.Add(new (page) => OnActivePageChanged(page));
-
-		let pageDockPanel = dockManager.AddPanel("Editor", mPageArea);
-		dockManager.DockPanel(pageDockPanel, .Center);
+		// Wire page manager events - each page gets its own dock tab.
+		mEditorContext.PageManager.OnPageOpened.Add(new (page) => OnPageOpened(page));
+		mEditorContext.PageManager.OnPageClosed.Add(new (page) => OnPageClosed(page));
 
 		// Console panel (bottom)
 		mLogView = new LogView();
 		mLogBuffer.SetLogView(mLogView); // Flushes buffered startup logs
 		let consolePanel = dockManager.AddPanel("Console", mLogView);
-		dockManager.DockPanelRelativeTo(consolePanel, .Bottom, pageDockPanel.Parent);
+		dockManager.DockPanelRelativeTo(consolePanel, .Bottom, mPlaceholderPanel.Parent);
 
 		// Asset browser panel (bottom tab with console)
 		let assetsContent = new Panel();
@@ -384,42 +383,104 @@ class EditorApplication : Application, IFloatingWindowHost
 		viewMenu.AddItem("Asset Browser", new () => { /* TODO: toggle assets panel */ });
 	}
 
-	private void OnActivePageChanged(IEditorPage page)
+	private void OnPageOpened(IEditorPage page)
 	{
-		if (mPageArea == null) return;
+		if (page == null || page.ContentView == null) return;
+		let dockManager = mEditorContext.DockManager;
+		if (dockManager == null) return;
 
-		// Remove current content (but don't delete — pages own their views)
-		for (int i = mPageArea.ChildCount - 1; i >= 0; i--)
-		{
-			let child = mPageArea.GetChildAt(i);
-			if (child != mPagePlaceholder)
-				mPageArea.DetachView(child);
-		}
+		// Create dock panel for this page.
+		let panel = dockManager.AddPanel(page.Title, page.ContentView);
+		panel.Closable = true;
 
-		if (page != null && page.ContentView != null)
+		// When dock tab X is clicked, detach content (page owns it) and close via PageManager.
+		let capturedPage = page;
+		panel.OnCloseRequested.Add(new (dp) => {
+			// Detach content before dock manager deletes the panel.
+			if (capturedPage.ContentView?.Parent != null)
+				if (let parent = capturedPage.ContentView.Parent as ViewGroup)
+					parent.DetachView(capturedPage.ContentView);
+
+			// If this is the last page, restore placeholder BEFORE closing -
+			// the dock panel still exists so we can dock relative to its parent.
+			let key = Sedulous.Core.ObjectKey<IEditorPage>(capturedPage);
+			if (mPageDockPanels.Count == 1 && mPageDockPanels.ContainsKey(key) && mPlaceholderPanel == null)
+			{
+				let dockManager = mEditorContext.DockManager;
+				if (dockManager != null)
+				{
+					let placeholderContent = new Label();
+					placeholderContent.SetText("Open an asset from the Asset Browser, or File > New Scene");
+					placeholderContent.FontSize = 14;
+					placeholderContent.HAlign = .Center;
+					placeholderContent.VAlign = .Middle;
+					placeholderContent.TextColor = .(100, 100, 115, 255);
+					mPlaceholderPanel = dockManager.AddPanel("Editor", placeholderContent);
+					dockManager.DockPanelRelativeTo(mPlaceholderPanel, .Center, dp.Parent);
+				}
+			}
+
+			// Close through PageManager (fires OnPageClosed, handles cleanup).
+			mEditorContext.PageManager.Close(capturedPage);
+		});
+
+		// Dock in the right place.
+		if (mPlaceholderPanel != null)
 		{
-			// Hide placeholder, show page content
-			if (mPagePlaceholder != null)
-				mPagePlaceholder.Visibility = .Gone;
-			mPageArea.AddView(page.ContentView, new LayoutParams() {
-				Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent
-			});
+			let placeholder = mPlaceholderPanel;
+			mPlaceholderPanel = null;
+			dockManager.DockPanelRelativeTo(panel, .Center, placeholder.Parent);
+			dockManager.ClosePanel(placeholder);
 		}
 		else
 		{
-			// No page — show placeholder
-			if (mPagePlaceholder != null)
-				mPagePlaceholder.Visibility = .Visible;
+			// Subsequent pages: dock as tab next to existing pages.
+			DockablePanel relativePanel = null;
+			for (let kv in mPageDockPanels)
+			{
+				relativePanel = kv.value;
+				break;
+			}
+
+			if (relativePanel != null)
+				dockManager.DockPanelRelativeTo(panel, .Center, relativePanel.Parent);
+			else
+				dockManager.DockPanel(panel, .Center);
 		}
+
+		mPageDockPanels[.(page)] = panel;
+	}
+
+	private void OnPageClosed(IEditorPage page)
+	{
+		let key = Sedulous.Core.ObjectKey<IEditorPage>(page);
+
+		// Detach content view from dock panel before the page deletes it.
+		// During normal tab close, OnCloseRequested already did this.
+		// During shutdown, PageManager.Close calls us directly - need to ensure detach.
+		if (page.ContentView?.Parent != null)
+			if (let parent = page.ContentView.Parent as ViewGroup)
+				parent.DetachView(page.ContentView);
+
+		// Close the dock panel if it still exists.
+		if (mPageDockPanels.TryGetValue(key, let panel))
+			mEditorContext.DockManager?.ClosePanel(panel);
+
+		mPageDockPanels.Remove(key);
 	}
 
 	private void RenderActiveViewports(ICommandEncoder encoder, int32 frameIndex)
 	{
 		if (mEditorContext?.PageManager == null) return;
-		if (let page = mEditorContext.PageManager.ActivePage as SceneEditorPage)
+
+		// Render viewports for ALL open scene pages that still have dock panels.
+		for (let page in mEditorContext.PageManager.OpenPages)
 		{
-			if (page.ContentView != null)
-				RenderViewportsInTree(page.ContentView, encoder, frameIndex);
+			if (let scenePage = page as SceneEditorPage)
+			{
+				if (scenePage.ContentView != null && !scenePage.ContentView.IsPendingDeletion)
+					RenderViewportsInTree(scenePage.ContentView, encoder, frameIndex);
+			}
 		}
 	}
 
@@ -449,7 +510,10 @@ class EditorApplication : Application, IFloatingWindowHost
 			return;
 		}
 
-		let scene = sceneSub.CreateScene("Untitled");
+		mNewSceneCounter++;
+		let sceneName = scope String();
+		sceneName.AppendF("Untitled {}", mNewSceneCounter);
+		let scene = sceneSub.CreateScene(sceneName);
 
 		// Create default camera
 		let cameraEntity = scene.CreateEntity("Main Camera");
@@ -500,7 +564,7 @@ class EditorApplication : Application, IFloatingWindowHost
 		defer { planeRef.Dispose(); cubeRef.Dispose(); }
 
 		// Create materials
-		let sceneRenderer = mRuntimeContext.GetSubsystemByInterface<Sedulous.Renderer.ISceneRenderer>();
+		let sceneRenderer = mRuntimeContext.GetSubsystemByInterface<Sedulous.Engine.Render.ISceneRenderer>();
 		let matSystem = sceneRenderer?.RenderContext?.MaterialSystem;
 
 		// Ground plane
@@ -529,7 +593,7 @@ class EditorApplication : Application, IFloatingWindowHost
 		// Create page with layout
 		let page = new SceneEditorPage(scene, "");
 
-		let sceneRenderer = mRuntimeContext.GetSubsystemByInterface<Sedulous.Renderer.ISceneRenderer>();
+		let sceneRenderer = mRuntimeContext.GetSubsystemByInterface<Sedulous.Engine.Render.ISceneRenderer>();
 		let content = ScenePageBuilder.Build(page, mEditorContext, Device, mVGRenderer,
 			sceneRenderer, Shell.InputManager.Keyboard);
 		page.SetContentView(content);
@@ -548,6 +612,17 @@ class EditorApplication : Application, IFloatingWindowHost
 
 		let mouse = Shell.InputManager.Mouse;
 		let keyboard = Shell.InputManager.Keyboard;
+
+		// F2 toggles UI debug overlay (all options at once).
+		if (keyboard != null && keyboard.IsKeyPressed(.F2))
+		{
+			let on = !mUIContext.DebugSettings.ShowBounds;
+			mUIContext.DebugSettings.ShowBounds = on;
+			mUIContext.DebugSettings.ShowPadding = on;
+			mUIContext.DebugSettings.ShowMargin = on;
+			mUIContext.DebugSettings.ShowHitTarget = on;
+			mUIContext.DebugSettings.ShowFocusPath = on;
+		}
 		if (mouse == null) return;
 
 		let dragDrop = mUIContext.DragDropManager;
@@ -602,7 +677,7 @@ class EditorApplication : Application, IFloatingWindowHost
 			return;
 		}
 
-		// Not cross-window dragging — clear drag source.
+		// Not cross-window dragging - clear drag source.
 		if (mDragSourceWindow != null)
 			mDragSourceWindow = null;
 
@@ -661,7 +736,7 @@ class EditorApplication : Application, IFloatingWindowHost
 		let frame = render.Frame;
 
 		// Render active viewport views (3D scenes) to their offscreen textures
-		// BEFORE UI rendering — the UI will display these textures via DrawImage.
+		// BEFORE UI rendering - the UI will display these textures via DrawImage.
 		RenderActiveViewports(encoder, frame.FrameIndex);
 
 		// Begin render pass for UI
@@ -729,6 +804,7 @@ class EditorApplication : Application, IFloatingWindowHost
 		data.VGRenderer = new VGRenderer();
 		data.VGRenderer.Initialize(Device, ctx.SwapChain.Format,
 			(int32)ctx.SwapChain.BufferCount, mShaderSystem);
+		data.VGRenderer.SetExternalCache(mExternalTextureCache);
 
 		ctx.UserData = data;
 		mFloatingWindowMap[floatingWindow] = ctx;
@@ -810,7 +886,18 @@ class EditorApplication : Application, IFloatingWindowHost
 		// Shutdown plugins
 		mEditorContext.PluginRegistry.ShutdownAll();
 
-		// Shutdown pages
+		// Detach all page content views from dock panels before pages are deleted.
+		// Don't call ClosePanel - the view tree will be cascade-deleted by
+		// RootView's destructor during UIContext cleanup.
+		for (let page in mEditorContext.PageManager.OpenPages)
+		{
+			if (page.ContentView?.Parent != null)
+				if (let parent = page.ContentView.Parent as ViewGroup)
+					parent.DetachView(page.ContentView);
+		}
+		mPageDockPanels.Clear();
+
+		// Shutdown pages (deletes pages + their content views)
 		mEditorContext.PageManager.Shutdown();
 
 		// Close project
