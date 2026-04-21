@@ -6,7 +6,7 @@ using Sedulous.Profiler;
 
 /// Central access point for all subsystems.
 /// Manages subsystem registration, lifecycle, and update ordering.
-/// Does NOT own ResourceSystem or JobSystem — those are application concerns.
+/// Does NOT own ResourceSystem or JobSystem - those are application concerns.
 /// Subsystems that need resources receive them as constructor parameters.
 public class Context : IDisposable
 {

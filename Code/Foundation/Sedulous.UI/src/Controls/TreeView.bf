@@ -45,10 +45,10 @@ public class TreeView : ViewGroup
 			// Resolve flat position to node ID
 			let nodeId = (mFlatAdapter != null) ? mFlatAdapter.GetNodeId(position) : position;
 
-			// Single click — notify listeners
+			// Single click - notify listeners
 			OnItemClick(.(){NodeId=nodeId, ClickCount=clickCount});
 
-			// Double-click — toggle expansion
+			// Double-click - toggle expansion
 			if (clickCount >= 2)
 				ToggleExpand(position);
 		});
