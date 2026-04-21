@@ -160,7 +160,7 @@ abstract class Application
 
 		// Core systems
 		Sedulous.Jobs.JobSystem.Initialize();
-		mLogger = new Sedulous.Core.Logging.Console.ConsoleLogger(.Information);
+		mLogger = CreateLogger();
 		mResourceSystem = new Sedulous.Resources.ResourceSystem(mLogger);
 		mResourceSystem.SetSerializerProvider(new Sedulous.Serialization.OpenDDL.OpenDDLSerializerProvider());
 		mResourceSystem.Startup();
@@ -297,6 +297,13 @@ abstract class Application
 	protected virtual Context CreateContext()
 	{
 		return new Context();
+	}
+
+	/// Create the application logger. Override to provide a custom logger
+	/// (e.g., EditorLogger that tees to a log UI panel).
+	protected virtual Sedulous.Core.Logging.Abstractions.ILogger CreateLogger()
+	{
+		return new Sedulous.Core.Logging.Console.ConsoleLogger(.Information);
 	}
 
 	/// Called once at startup after device and swap chain are ready.
