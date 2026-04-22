@@ -136,6 +136,12 @@ Extends Application directly. Owns UIContext/VGRenderer for editor UI. Creates
 a RuntimeContext with engine subsystems for scene preview. Each scene page gets
 its own dock tab with a viewport rendering via ISceneRenderer.
 
+## Platform Support
+
+Sedulous is developed and tested on Windows. The engine is intended to be
+cross-platform, but targeting other platforms would require building the
+dependencies for those platforms and filling any gaps in RHI bootstrapping.
+
 ## Known Limitations
 
 - **DX12 renderer support**: The RHI layer and RHI samples work on both Vulkan and
@@ -198,6 +204,7 @@ coding conventions, and submitting changes.
 Areas where help is welcome:
 - Testing and reporting issues
 - Editor tooling
+- Cross-platform support (Linux, macOS)
 - Items on the roadmaps that are not yet complete
 
 ## Dependencies
