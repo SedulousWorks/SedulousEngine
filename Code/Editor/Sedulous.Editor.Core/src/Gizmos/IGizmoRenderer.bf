@@ -1,7 +1,7 @@
 namespace Sedulous.Editor.Core;
 
 using System;
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 
 /// 3D viewport gizmo for a specific component type.
 /// Plugins register these with EditorContext.RegisterGizmoRenderer().

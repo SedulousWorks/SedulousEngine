@@ -3,7 +3,7 @@ namespace Sedulous.Engine.Animation;
 using System;
 using Sedulous.Animation;
 using Sedulous.Core.Mathematics;
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 
 /// Evaluates a PropertyAnimationClip against an entity, applying sampled values
 /// via the PropertyBinderRegistry.

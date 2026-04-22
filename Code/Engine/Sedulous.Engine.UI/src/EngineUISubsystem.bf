@@ -5,7 +5,7 @@ using Sedulous.Runtime;
 using Sedulous.Shell;
 using Sedulous.Shell.Input;
 using Sedulous.Engine;
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 using Sedulous.Renderer;
 using Sedulous.RHI;
 using Sedulous.UI;

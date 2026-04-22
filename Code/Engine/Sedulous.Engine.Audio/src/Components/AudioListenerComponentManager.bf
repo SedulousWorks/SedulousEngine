@@ -1,7 +1,7 @@
 namespace Sedulous.Engine.Audio;
 
 using System;
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 using Sedulous.Audio;
 using Sedulous.Core.Mathematics;
 

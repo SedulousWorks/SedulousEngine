@@ -1,6 +1,6 @@
 namespace Sedulous.Engine.Navigation;
 
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 
 /// Component for a dynamic navigation obstacle.
 /// The NavObstacleComponentManager creates obstacles in the TileCache,

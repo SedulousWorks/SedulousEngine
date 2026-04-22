@@ -3,7 +3,7 @@ namespace Sedulous.Editor.Core;
 using System;
 using System.Reflection;
 using System.Collections;
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 using Sedulous.UI.Toolkit;
 
 /// Default inspector that auto-generates PropertyGrid entries from a component's

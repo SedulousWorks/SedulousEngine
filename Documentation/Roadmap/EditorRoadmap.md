@@ -26,7 +26,7 @@ Other differences:
 - `DrawContext`/`DrawingRenderer` - we use **VGContext/VGRenderer**
 - `Application` (Runtime.Client) - we follow the same pattern, **not** EngineApplication
 - Old `Context` with shared JobSystem/ResourceSystem - our JobSystem is a singleton (runs jobs immediately), Context just calls ProcessCompleteJobs in update
-- `Sedulous.Engine.Core` (old engine) - we use **Sedulous.Engine.Runtime** + scene system
+- `Sedulous.Engine.Core` (old engine) - we use **Sedulous.Engine.Core** + scene system
 - `EntityId` - we use **EntityHandle**
 - `SceneManager` - we use **SceneSubsystem** + **ComponentManager<T>** pattern
 - Old `Renderer` class - we use **RenderSubsystem** with Pipeline/RenderGraph
@@ -576,5 +576,5 @@ viewport but not in the editor UI.
   PropertyGrid, TreeView - all complete
 - **Sedulous.Engine.UI**: EngineUISubsystem, ScreenUIView - complete
 - **Sedulous.Engine.Render**: RenderSubsystem, render pipeline - complete
-- **Sedulous.Scenes**: ComponentManager, Scene serialization - complete
+- **Sedulous.Engine.Core**: ComponentManager, Scene serialization - complete
 - **Sedulous.Resources**: ResourceSystem with FileWatcher - complete

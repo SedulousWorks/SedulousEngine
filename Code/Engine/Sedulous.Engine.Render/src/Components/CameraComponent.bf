@@ -1,6 +1,6 @@
 namespace Sedulous.Engine.Render;
 
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 using Sedulous.Core.Mathematics;
 using System;
 

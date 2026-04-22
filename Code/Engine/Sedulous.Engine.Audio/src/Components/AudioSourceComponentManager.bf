@@ -2,7 +2,7 @@ namespace Sedulous.Engine.Audio;
 
 using System;
 using System.Collections;
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 using Sedulous.Resources;
 using Sedulous.Audio;
 using Sedulous.Audio.Resources;

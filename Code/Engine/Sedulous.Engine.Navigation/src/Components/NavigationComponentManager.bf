@@ -1,7 +1,7 @@
 namespace Sedulous.Engine.Navigation;
 
 using System;
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 using Sedulous.Core.Mathematics;
 
 /// Manages navigation agent components: creates/removes crowd agents,

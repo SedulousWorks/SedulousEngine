@@ -3,7 +3,7 @@ namespace Sedulous.Engine.Physics;
 using System;
 using System.Collections;
 using System.Threading; // Interlocked for lock-free contact buffering
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 using Sedulous.Physics;
 using Sedulous.Core.Mathematics;
 

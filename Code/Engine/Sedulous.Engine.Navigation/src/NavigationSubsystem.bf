@@ -3,7 +3,7 @@ namespace Sedulous.Engine.Navigation;
 using System;
 using System.Collections;
 using Sedulous.Runtime;
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 using Sedulous.Engine;
 
 /// Owns per-scene NavWorlds and injects navigation component managers.

@@ -1,7 +1,7 @@
 namespace Sedulous.Engine.Navigation;
 
 using System;
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 using Sedulous.Core.Mathematics;
 
 /// Manages navigation obstacle components: creates/removes obstacles in the

@@ -4,7 +4,7 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.UI;
 using Sedulous.Shell.Input;
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 using Sedulous.Engine.Render;
 
 /// Orbit/fly camera controller for the editor viewport.

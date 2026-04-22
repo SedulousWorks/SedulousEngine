@@ -109,11 +109,8 @@ SampleVG001_Shapes = {Path = "Samples/VG/SampleVG001_Shapes"}
 "Sedulous.Textures" = {Path = "Foundation/Sedulous.Textures"}
 "Sedulous.Runtime" = {Path = "Foundation/Sedulous.Runtime"}
 "Sedulous.Runtime.Client" = {Path = "Foundation/Sedulous.Runtime.Client"}
-"Sedulous.Scenes" = {Path = "Foundation/Sedulous.Scenes"}
-"Sedulous.Scenes.Tests" = {Path = "Foundation/Sedulous.Scenes.Tests"}
-"Sedulous.Scenes.Resources" = {Path = "Foundation/Sedulous.Scenes.Resources"}
 "Sedulous.Renderer" = {Path = "Foundation/Sedulous.Renderer"}
-"Sedulous.Engine.Runtime" = {Path = "Engine/Sedulous.Engine.Runtime"}
+"Sedulous.Engine.Core" = {Path = "Engine/Sedulous.Engine.Core"}
 "Sedulous.Engine.App" = {Path = "Engine/Sedulous.Engine.App"}
 "Sedulous.Engine.Input" = {Path = "Engine/Sedulous.Engine.Input"}
 "Sedulous.Engine.Physics" = {Path = "Engine/Sedulous.Engine.Physics"}
@@ -183,6 +180,7 @@ UISandbox = {Path = "Samples/UI/UISandbox"}
 "Sedulous.UI.Resources" = {Path = "Foundation/Sedulous.UI.Resources"}
 "Sedulous.UI.Toolkit" = {Path = "Foundation/Sedulous.UI.Toolkit"}
 "Sedulous.UI.Gamekit" = {Path = "Foundation/Sedulous.UI.Gamekit"}
+"Sedulous.Engine.Core.Tests" = {Path = "Engine/Sedulous.Engine.Core.Tests"}
 
 [WorkspaceFolders]
 Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
@@ -204,14 +202,13 @@ Foundation = []
 "Foundation/Net" = ["Sedulous.Net", "Sedulous.Net.HTTP", "Sedulous.Net.HTTP.Tests", "Sedulous.Net.Tests"]
 "Foundation/Render" = ["Sedulous.Materials", "Sedulous.Shaders", "Sedulous.Textures", "Sedulous.Textures.Resources", "Sedulous.Materials.Resources", "Sedulous.RenderGraph", "Sedulous.RenderGraph.Tests", "Sedulous.Renderer", "Sedulous.Particles", "Sedulous.Particles.Resources"]
 "Foundation/Runtime" = ["Sedulous.Runtime", "Sedulous.Runtime.Client"]
-"Foundation/Scenes" = ["Sedulous.Scenes", "Sedulous.Scenes.Tests", "Sedulous.Scenes.Resources"]
 "Foundation/Jobs" = ["Sedulous.Jobs", "Sedulous.Jobs.Tests"]
 "Foundation/Resources" = ["Sedulous.Resources", "Sedulous.Resources.Tests"]
 "Foundation/Serialization" = ["Sedulous.Serialization", "Sedulous.Serialization.Tests", "Sedulous.Serialization.OpenDDL", "Sedulous.Serialization.Xml", "Sedulous.OpenDDL", "Sedulous.OpenDDL.Tests", "Sedulous.Xml", "Sedulous.Xml.Tests"]
 "Foundation/GUI" = ["Sedulous.GUI", "Sedulous.GUI.Shell", "Sedulous.GUI.Tests", "Sedulous.GUI.Runtime"]
 "Foundation/Physics" = ["Sedulous.Physics", "Sedulous.Physics.Jolt", "Sedulous.Physics.Tests"]
 "Foundation/Slug" = ["Sedulous.Slug", "Sedulous.Slug.Tests", "Sedulous.Slug.TTF", "Sedulous.Slug.Renderer"]
-Engine = ["Sedulous.Engine.Runtime", "Sedulous.Engine.App", "Sedulous.Engine.Input", "Sedulous.Engine.Physics", "Sedulous.Engine.Audio", "Sedulous.Engine.Animation", "Sedulous.Engine.Navigation", "Sedulous.Engine.UI", "Sedulous.Engine.Render"]
+Engine = ["Sedulous.Engine.Core", "Sedulous.Engine.App", "Sedulous.Engine.Input", "Sedulous.Engine.Physics", "Sedulous.Engine.Audio", "Sedulous.Engine.Animation", "Sedulous.Engine.Navigation", "Sedulous.Engine.UI", "Sedulous.Engine.Render", "Sedulous.Engine.Core.Tests"]
 "Foundation/RHI" = ["Sedulous.RHI", "Sedulous.RHI.DX12", "Sedulous.RHI.Null", "Sedulous.RHI.Validation", "Sedulous.RHI.Vulkan", "Sedulous.ShaderReflection", "Sedulous.ShaderReflection.DXIL", "Sedulous.ShaderReflection.SPIRV", "Sedulous.ShaderReflection.Tests"]
 "Foundation/UI" = ["Sedulous.UI", "Sedulous.UI.Shell", "Sedulous.UI.Runtime", "Sedulous.UI.Toolkit", "Sedulous.UI.Gamekit", "Sedulous.UI.Tests", "Sedulous.UI.Resources"]
 Editor = ["Sedulous.Editor.Core", "Sedulous.Editor.App"]

@@ -1,6 +1,6 @@
 namespace Sedulous.Editor.Core;
 
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 
 /// Context passed to component inspectors. Provides access to the
 /// command stack, scene, entity, and editor services.

@@ -3,7 +3,7 @@ namespace Sedulous.Editor.App;
 using System;
 using System.Collections;
 using Sedulous.UI;
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 using Sedulous.Editor.Core;
 
 /// Tree adapter that presents a Scene's entity hierarchy for TreeView.

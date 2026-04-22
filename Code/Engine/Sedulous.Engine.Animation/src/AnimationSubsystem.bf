@@ -1,7 +1,7 @@
 namespace Sedulous.Engine.Animation;
 
 using Sedulous.Runtime;
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 using Sedulous.Engine;
 using Sedulous.Resources;
 using Sedulous.Animation.Resources;

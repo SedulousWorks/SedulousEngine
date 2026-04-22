@@ -1,7 +1,7 @@
 namespace Sedulous.Editor.Core;
 
 using System;
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 using Sedulous.Core.Mathematics;
 
 /// Command to create an entity.

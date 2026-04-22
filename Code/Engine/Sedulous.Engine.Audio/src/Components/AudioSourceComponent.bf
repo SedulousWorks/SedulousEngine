@@ -1,6 +1,6 @@
 namespace Sedulous.Engine.Audio;
 
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 using Sedulous.Resources;
 using Sedulous.Audio;
 

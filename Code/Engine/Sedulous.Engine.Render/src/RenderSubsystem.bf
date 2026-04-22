@@ -2,7 +2,7 @@ namespace Sedulous.Engine.Render;
 
 using System;
 using Sedulous.Runtime;
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 using Sedulous.Engine;
 using Sedulous.RHI;
 using Sedulous.Shell;

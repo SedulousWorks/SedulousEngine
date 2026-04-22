@@ -1,7 +1,7 @@
 namespace Sedulous.Engine.Render;
 
 using Sedulous.RHI;
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 using Sedulous.Renderer;
 
 /// Renders the 3D scene to caller-provided output targets.

@@ -2611,7 +2611,7 @@ src/
 
 ### Sedulous.Engine.UI
 
-Depends on `Sedulous.UI`, `Sedulous.UI.Shell`, `Sedulous.Engine.Runtime`,
+Depends on `Sedulous.UI`, `Sedulous.UI.Shell`, `Sedulous.Engine.Core`,
 `Sedulous.Engine.Render`, `Sedulous.Scenes`, `Sedulous.Renderer`,
 `Sedulous.VG`, `Sedulous.VG.Renderer`, `Sedulous.Fonts`, `Sedulous.Shaders`,
 `Sedulous.RHI`, `Sedulous.Materials`, engine layer.

@@ -16,13 +16,11 @@ rendering pipeline, engine subsystems, application models, and how they compose.
 │  └──────┬────────┘  └──────┬────────┘  └──────┬────────┘  └──────┬──────┘ │
 ├─────────▼──────────────────▼──────────────────▼──────────────────▼─────────┤
 │  Engine Layer (Sedulous.Engine.*)                                           │
-│  Context + Subsystems: Input, Physics, Animation, Audio, Navigation,       │
-│  Render (ISceneRenderer), UI (IOverlayRenderer)                            │
+│  Engine.Core: Scene, EntityHandle, ComponentManager<T>, Transforms,        │
+│    SceneSubsystem, ISceneAware, serialization                              │
+│  Subsystems: Input, Physics, Animation, Audio, Navigation,                 │
+│    Render (ISceneRenderer), UI (IOverlayRenderer)                          │
 │  EngineApplication owns swapchain, output targets, frame pacing, blit      │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  Scene Layer (Sedulous.Scenes)                                              │
-│  Entity handles, ComponentManager<T>, hierarchical transforms,              │
-│  SceneModule lifecycle, serialization                                       │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Renderer Layer (Sedulous.Renderer)                                         │
 │  RenderContext (shared) + Pipeline (per-scene passes) + PostProcessStack    │
@@ -54,7 +52,7 @@ in tools, sandboxes, and tests.
 
 | Library | Purpose |
 |---------|---------|
-| **Sedulous.Shell** | Platform abstraction - IShell, IWindow, IWindowManager, IInputManager (keyboard, mouse, gamepad, touch), IClipboard, IDialogService, CursorType |
+| **Sedulous.Shell** | Platform abstraction - IShell, IWindow, IWindowManager, IInputManager (keyboard, mouse, gamepad, touch), IClipboard, IDialogService, CursorType, IWindowAware |
 | **Sedulous.Shell.SDL3** | SDL3 implementation of IShell (cross-platform) |
 
 ### Rendering Hardware Interface (RHI)
@@ -123,7 +121,6 @@ WebGPU-inspired but lower-level. Interface-based - backends are swappable.
 | **Sedulous.Audio** | Audio abstractions (playback, mixing, spatial) |
 | **Sedulous.Audio.SDL3** | SDL3 audio backend |
 | **Sedulous.Animation** | Skeletal clips, animation graphs, property animation |
-| **Sedulous.Scenes** | Scene, EntityHandle, ComponentManager<T>, Transform hierarchy, SceneModule, serialization |
 
 ### Serialization & Data
 
@@ -163,11 +160,11 @@ CommandPools, Fence, BlitHelper, frame index). Creates Context with all standard
 subsystems, passing ResourceSystem to those that need it.
 
 **Features:**
-- Automatic subsystem registration (Input, Physics, Animation, Audio, Navigation, UI, Render)
+- Automatic subsystem registration (Scene, Input, Physics, Animation, Audio, Navigation, UI, Render)
 - ShaderSystem initialization
 - Presentation pipeline: clear -> RenderScene(scene) -> blit -> IOverlayRenderers -> present
 - Caches ISceneRenderer + IOverlayRenderer queries at startup
-- Scene management via SceneSubsystem
+- Scene management via SceneSubsystem (Engine.Core)
 - Virtual hooks: OnConfigure, OnStartup, OnUpdate, OnShutdown
 
 **Used by:** EngineSandbox, EngineRenderStressTest
@@ -289,7 +286,7 @@ Sedulous.Renderer (scene-independent)
 ├── IRenderDataProvider    - extraction interface for scene modules
 └── BindGroupFrequency     - 5-level bind group convention
 
-Sedulous.Engine.Render (scene-aware, depends on Renderer + Scenes)
+Sedulous.Engine.Render (scene-aware, depends on Renderer + Engine.Core)
 ├── ISceneRenderer         - renders a specific Scene to provided output targets
 ├── RenderSubsystem        - implements ISceneRenderer, per-scene Pipeline map
 └── Component Managers     - Mesh, Light, Camera, Sprite, Decal, SkinnedMesh, Particle
@@ -586,7 +583,7 @@ interface ISceneAware
 OnSceneReady runs after ALL OnSceneCreated handlers - safe to access resources
 created by other subsystems (e.g., per-scene Pipeline created by RenderSubsystem).
 
-### IWindowAware
+### IWindowAware (Sedulous.Shell)
 
 ```beef
 interface IWindowAware
@@ -595,9 +592,18 @@ interface IWindowAware
 }
 ```
 
-The app iterates all subsystems and broadcasts resize to any that implement it.
+Lives in Sedulous.Shell (platform layer) so any subsystem can implement it without
+depending on engine layers. The app iterates all subsystems and broadcasts resize
+to any that implement it.
 
 ## Engine Modules
+
+### Engine.Core
+Scene model and subsystem infrastructure. Scene, EntityHandle, ComponentManager<T>,
+ComponentManagerBase, SceneModule, hierarchical Transform with dirty-flag propagation,
+ScenePhase update ordering. SceneSubsystem manages scene lifecycle and lockstep
+per-phase updates. ISceneAware interface for subsystem scene injection. Serialization:
+SceneSerializer, SceneResource, ComponentTypeRegistry, ComponentSerializerAdapter.
 
 ### Engine.Input
 Subsystem-only (no components). InputSubsystem manages priority-ordered stack of

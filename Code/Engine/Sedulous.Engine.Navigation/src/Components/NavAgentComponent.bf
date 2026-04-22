@@ -1,6 +1,6 @@
 namespace Sedulous.Engine.Navigation;
 
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 using Sedulous.Core.Mathematics;
 
 /// Component for a navigation agent on the crowd.

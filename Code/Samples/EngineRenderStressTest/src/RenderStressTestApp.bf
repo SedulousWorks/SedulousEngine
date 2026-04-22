@@ -5,7 +5,7 @@ using System.Collections;
 using Sedulous.Engine.App;
 using Sedulous.Engine;
 using Sedulous.Engine.Render;
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 using Sedulous.Runtime;
 using Sedulous.RHI;
 using Sedulous.Renderer;

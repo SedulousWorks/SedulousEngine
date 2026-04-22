@@ -1,6 +1,6 @@
 namespace Sedulous.Engine.Audio;
 
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 
 /// Component marking an entity as the 3D audio listener.
 /// Position and orientation are synced from the entity's world transform.

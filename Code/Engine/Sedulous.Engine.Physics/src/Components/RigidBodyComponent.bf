@@ -1,6 +1,6 @@
 namespace Sedulous.Engine.Physics;
 
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 using Sedulous.Physics;
 using Sedulous.Core.Mathematics;
 

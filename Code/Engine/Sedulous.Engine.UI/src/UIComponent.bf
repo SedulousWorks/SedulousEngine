@@ -1,6 +1,6 @@
 namespace Sedulous.Engine.UI;
 
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 using Sedulous.RHI;
 using Sedulous.UI;
 using Sedulous.VG;

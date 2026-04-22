@@ -1,7 +1,7 @@
 namespace Sedulous.Engine.Render;
 
 using System;
-using Sedulous.Scenes;
+using Sedulous.Engine.Core;
 using Sedulous.Renderer;
 using Sedulous.Renderer.Debug;
 using Sedulous.Core.Mathematics;

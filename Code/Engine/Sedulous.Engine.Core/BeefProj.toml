@@ -1,0 +1,11 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.Core"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Resources" = "*"
+"Sedulous.Core.Mathematics" = "*"
