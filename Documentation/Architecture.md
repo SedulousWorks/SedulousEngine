@@ -112,6 +112,9 @@ WebGPU-inspired but lower-level. Interface-based - backends are swappable.
 | **Sedulous.UI.Toolkit** | Advanced widgets: DockManager, SplitView, MenuBar, StatusBar, Toolbar, PropertyGrid (with transactional editors), TreeView, ColorPicker, TabView (closable), DraggableTreeView, IFloatingWindowHost |
 | **Sedulous.UI.Resources** | ThemeResource, UILayoutResource, ThemeXmlParser |
 
+> **Sedulous.GUI** (deprecated, moved to `Code/Deprecated/`) -- the original UI
+> framework, replaced by the Sedulous.UI stack above. Kept for reference only.
+
 ### Physics, Audio, Animation
 
 | Library | Purpose |

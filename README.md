@@ -142,6 +142,7 @@ Code/
   Engine/              -- Engine.Core (scene model) + subsystems (Input, Physics, Render, UI, etc.)
   Editor/              -- Editor core + application
   Samples/             -- EngineSandbox, UISandbox, RHI samples, etc.
+  Deprecated/          -- Sedulous.GUI (replaced by Sedulous.UI stack)
   Dependencies/        -- Third-party bindings (Bulkan, SDL3, Jolt, Recast, etc.)
 
 Documentation/
