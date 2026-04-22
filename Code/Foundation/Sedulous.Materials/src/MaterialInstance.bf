@@ -128,6 +128,7 @@ class MaterialInstance : RefCounted, IDisposable
 	public this(Material material)
 	{
 		mMaterial = material;
+		mBlendMode = material.PipelineConfig.BlendMode;
 
 		// Allocate override buffer if material has uniforms
 		if (material.UniformDataSize > 0)

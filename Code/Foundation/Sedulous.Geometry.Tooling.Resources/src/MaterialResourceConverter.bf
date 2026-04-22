@@ -38,7 +38,7 @@ static class MaterialResourceConverter
 			mat.PipelineConfig.BlendMode = .Opaque;
 			mat.PipelineConfig.DepthMode = .ReadWrite;
 		case .Mask:
-			mat.PipelineConfig.BlendMode = .Opaque;
+			mat.PipelineConfig.BlendMode = .Masked;
 			mat.PipelineConfig.DepthMode = .ReadWrite;
 			mat.ShaderFlags |= .AlphaTest;
 			mat.PipelineConfig.ShaderFlags |= .AlphaTest;
