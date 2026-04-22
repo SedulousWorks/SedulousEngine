@@ -195,6 +195,11 @@ Documentation/
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on setting up the project,
 coding conventions, and submitting changes.
 
+Areas where help is welcome:
+- Testing and reporting issues
+- Editor tooling
+- Items on the roadmaps that are not yet complete
+
 ## Dependencies
 
 Built on these Beeflang bindings:
