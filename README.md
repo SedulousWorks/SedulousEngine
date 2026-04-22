@@ -150,9 +150,13 @@ dependencies for those platforms and filling any gaps in RHI bootstrapping.
   with the Vulkan backend. Updating them for DX12 is straightforward but not a current
   priority.
 
-## Building
+## Requirements
 
-Requires [Beeflang](https://www.beeflang.org/) (BeefBuild or Beef IDE).
+- [Beeflang](https://www.beeflang.org/) (BeefBuild or Beef IDE)
+- [Vulkan SDK](https://vulkan.lunarg.com/) (for shader compilation)
+- Vulkan-capable GPU supporting Vulkan 1.3 or later
+
+## Building
 
 ```
 cd Code
