@@ -596,7 +596,7 @@ abstract class EngineApplication : IDisposable
 		if (adapters.IsEmpty)
 			return false;
 
-		if (adapters[0].CreateDevice(.()) case .Ok(let rawDevice))
+		if (adapters[0].CreateDevice(.() { DeviceValidationEnabled = mSettings.EnableValidation }) case .Ok(let rawDevice))
 		{
 			mDevice = mSettings.EnableValidation ? new ValidatedDevice(rawDevice) : rawDevice;
 			return true;

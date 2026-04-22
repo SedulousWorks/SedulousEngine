@@ -153,7 +153,7 @@ class VulkanAdapter : IAdapter
 		let device = new VulkanDevice();
 		if (device.Init(this, desc) case .Err)
 		{
-			System.Diagnostics.Debug.WriteLine("VulkanAdapter: device creation failed");
+			Console.WriteLine("VulkanAdapter: device creation failed");
 			delete device;
 			return .Err;
 		}

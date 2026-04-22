@@ -85,11 +85,14 @@ class VulkanDevice : IDevice
 	private QueueInfo[3] mQueueInfos; // Graphics=0, Compute=1, Transfer=2
 	private List<VulkanQueue> mAllQueues = new .() ~ DeleteContainerAndItems!(_);
 
+	public bool ValidationEnabled { get; private set; }
+
 	public this() { }
 
 	public Result<void> Init(VulkanAdapter adapter, DeviceDesc desc)
 	{
 		mAdapter = adapter;
+		ValidationEnabled = desc.DeviceValidationEnabled;
 
 		// Find queue families
 		int32 graphicsFamily = adapter.FindQueueFamily(.Graphics);

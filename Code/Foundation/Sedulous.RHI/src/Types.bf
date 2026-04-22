@@ -144,6 +144,8 @@ struct DeviceDesc
 	/// Number of dedicated transfer queues (default 0).
 	public uint32 TransferQueueCount = 0;
 	public StringView Label;
+
+	public bool DeviceValidationEnabled = false;
 }
 
 /// Texture data layout for copy operations.

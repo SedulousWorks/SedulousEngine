@@ -464,6 +464,9 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	public void BeginDebugLabel(StringView label, float r = 0, float g = 0, float b = 0, float a = 1)
 	{
+		if(!mDevice.ValidationEnabled)
+			return;
+
 		char8[256] buf = default;
 		let len = Math.Min(label.Length, 255);
 		Internal.MemCpy(&buf, label.Ptr, len);
@@ -476,11 +479,17 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	public void EndDebugLabel()
 	{
+		if(!mDevice.ValidationEnabled)
+			return;
+
 		VulkanNative.vkCmdEndDebugUtilsLabelEXT(mCmdBuf);
 	}
 
 	public void InsertDebugLabel(StringView label, float r = 0, float g = 0, float b = 0, float a = 1)
 	{
+		if(!mDevice.ValidationEnabled)
+			return;
+
 		char8[256] buf = default;
 		let len = Math.Min(label.Length, 255);
 		Internal.MemCpy(&buf, label.Ptr, len);
