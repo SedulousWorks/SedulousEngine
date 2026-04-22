@@ -286,6 +286,8 @@ class RenderStressTestApp : EngineApplication
 			mSphereEntities.Count, mBatchCount);
 	}
 
+	float m_Time = 0.0f;
+
 	protected override void OnUpdate(float deltaTime)
 	{
 		UpdateCamera(deltaTime);
@@ -299,6 +301,28 @@ class RenderStressTestApp : EngineApplication
 		// Backspace: remove batch
 		if (keyboard.IsKeyPressed(.Backspace))
 			RemoveLastBatch();
+
+		m_Time += deltaTime;
+
+		const float planeY = 0.0f;
+
+		int i = 0;
+		for (var entity in ref mSphereEntities)
+		{
+		    var transform = mScene.GetLocalTransform(entity);
+
+		    float amplitude = 1.0f;
+		    float speed = 2.0f;
+		    float phaseOffset = i * 0.5f;
+
+		    // Shift wave up by amplitude so min = planeY
+		    float y = Math.Sin(m_Time * speed + phaseOffset) * amplitude + amplitude;
+
+		    transform.Position.Y = planeY + y;
+
+		    mScene.SetLocalTransform(entity, transform);
+		    i++;
+		}
 
 		// U: toggle unique materials
 		if (keyboard.IsKeyPressed(.U))
