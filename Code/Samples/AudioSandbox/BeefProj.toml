@@ -1,5 +1,5 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Audio" = "*", "Sedulous.Audio.SDL3" = "*", "Sedulous.Audio.Decoders" = "*", "Sedulous.RHI" = "*", "Sedulous.GUI" = "*", "Sedulous.GUI.Runtime" = "*", "Sedulous.Fonts" = "*", "Sedulous.Runtime.Client" = "*"}
+Dependencies = {corlib = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Audio" = "*", "Sedulous.Audio.SDL3" = "*", "Sedulous.Audio.Decoders" = "*", "Sedulous.RHI" = "*", "Sedulous.UI" = "*", "Sedulous.UI.Runtime" = "*", "Sedulous.Fonts" = "*", "Sedulous.Runtime.Client" = "*"}
 
 [Project]
 Name = "AudioSandbox"

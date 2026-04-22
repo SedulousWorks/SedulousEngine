@@ -110,8 +110,7 @@ what to render and where.
 
 ### Runtime.Client.Application
 Lightweight base for sandboxes, tools, and the editor. Owns Shell + RHI + SwapChain.
-Virtual CreateLogger() for custom logging. Both EngineApplication and
-EditorApplication extend this.
+Virtual CreateLogger() for custom logging. EditorApplication extends this.
 
 ### EngineApplication
 Full engine with automatic subsystem registration. Owns presentation pipeline

@@ -139,7 +139,7 @@ WebGPU-inspired but lower-level. Interface-based - backends are swappable.
 ### Runtime.Client.Application - Lightweight Apps
 
 For sandboxes, tools, demos, editor, and anything that needs Shell + RHI without
-the full engine. Both EngineApplication and EditorApplication extend this.
+the full engine. EditorApplication extends this.
 
 **Owns:** Shell, Backend, Device, Window, SwapChain, CommandPools, Fence, DepthBuffer,
 Logger (via virtual CreateLogger), ResourceSystem, JobSystem lifecycle.
