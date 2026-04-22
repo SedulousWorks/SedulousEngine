@@ -1,6 +1,7 @@
 # Sedulous Engine
 
 [![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.gg/WSvxW8mWH5)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A modular game engine written in [Beeflang](https://www.beeflang.org/) with a
 cross-platform RHI (Vulkan + DX12), forward PBR renderer, entity-component
