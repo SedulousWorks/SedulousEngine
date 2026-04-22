@@ -36,4 +36,6 @@ struct EngineAppSettings
 
 	/// Presentation mode.
 	public PresentMode PresentMode = .Fifo;
+
+	public bool EnableShaderCache = false;
 }

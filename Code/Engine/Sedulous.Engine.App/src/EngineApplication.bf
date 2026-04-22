@@ -132,7 +132,7 @@ abstract class EngineApplication : IDisposable
 
 		mShaderSystem = new ShaderSystem();
 		StringView[1] shaderPaths = .(shaderDir);
-		mShaderSystem.Initialize(mDevice, shaderPaths/*, cacheDir*/);
+		mShaderSystem.Initialize(mDevice, shaderPaths, mSettings.EnableShaderCache ? cacheDir : default);
 
 		let initTimer = scope Stopwatch();
 		initTimer.Start();

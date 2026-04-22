@@ -1,8 +1,15 @@
 # Sedulous Engine
 
+[![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.gg/WSvxW8mWH5)
+
 A modular game engine written in [Beeflang](https://www.beeflang.org/) with a
 cross-platform RHI (Vulkan + DX12), forward PBR renderer, entity-component
 scene system, and an Android-inspired retained-mode UI framework.
+
+> **Note:** Sedulous is under active development. APIs are subject to change.
+> Previous iterations of the engine have been used to create a few games.
+> This version is a significant evolution and a full game built on it is
+> in progress.
 
 ## Architecture
 
@@ -114,8 +121,15 @@ Virtual CreateLogger() for custom logging. EditorApplication extends this.
 
 ### EngineApplication
 Full engine with automatic subsystem registration. Owns presentation pipeline
-(clear -> RenderScene -> blit -> overlays -> present). Game logic lives in
-components and subsystems.
+(clear -> RenderScene -> blit -> overlays -> present). Sedulous currently follows
+a code-first development model -- game logic lives in components and subsystems.
+Editor tooling for a visual workflow is work-in-progress.
+
+**EngineSandbox** showcases this well and serves as the primary testbed for engine
+features -- PBR rendering, shadows, skinned meshes, particles, sprites, decals,
+debug draw, world-space UI, physics, audio, and navigation.
+
+![EngineSandbox](Code/Samples/EngineSandbox/EngineSandbox.png)
 
 ### EditorApplication
 Extends Application directly. Owns UIContext/VGRenderer for editor UI. Creates
@@ -139,6 +153,18 @@ BeefBuild -workspace=. -project=EngineSandbox     # Game sandbox
 BeefBuild -workspace=. -project=Sedulous.Editor.App # Editor
 BeefBuild -workspace=. -project=UISandbox          # UI demo
 ```
+
+**Shader compilation note:** The first run of EngineSandbox may take a while as
+all shaders are compiled on startup. To speed up subsequent runs, enable shader
+caching in `Code/Engine/Sedulous.Engine.App/src/EngineAppSettings.bf`:
+
+```beef
+public bool EnableShaderCache = true;   // default is false
+```
+
+Shader caching is disabled by default because there is no automatic change
+detection yet -- if you modify shaders, you must manually delete the cache
+directory for them to recompile.
 
 ## Project Structure
 
@@ -164,6 +190,11 @@ Documentation/
 - [Engine Roadmap](Documentation/Roadmap/EngineRoadmap.md) -- Engine gap analysis
 - [UI Plan](Documentation/Roadmap/UI.md) -- UI framework design and phase plan
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on setting up the project,
+coding conventions, and submitting changes.
+
 ## Dependencies
 
 Built on these Beeflang bindings:
@@ -175,3 +206,13 @@ Built on these Beeflang bindings:
 - **Dxc-Beef** -- HLSL shader compilation
 - **stb_image-Beef**, **stb_truetype-Beef** -- Image loading, font rasterization
 - **cgltf-Beef** -- glTF model loading
+
+## Inspiration
+
+Sedulous draws inspiration from [ezEngine](https://github.com/ezEngine/ezEngine),
+[LumixEngine](https://github.com/nem0/LumixEngine) (mostly earlier iterations),
+and [Traktor](https://github.com/apistol78/traktor).
+
+## Community
+
+Join the [Discord](https://discord.gg/WSvxW8mWH5) for discussion and support.
