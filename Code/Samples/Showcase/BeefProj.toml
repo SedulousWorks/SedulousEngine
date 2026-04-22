@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.Engine.App" = "*", "Sedulous.Engine.Core" = "*", "Sedulous.Engine.Render" = "*", "Sedulous.Runtime" = "*", "Sedulous.Renderer" = "*", "Sedulous.RHI" = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Geometry" = "*", "Sedulous.Geometry.Resources" = "*", "Sedulous.Geometry.Tooling" = "*", "Sedulous.Geometry.Tooling.Resources" = "*", "Sedulous.Materials" = "*", "Sedulous.Resources" = "*", "Sedulous.Textures.Resources" = "*", "Sedulous.Images.Loading" = "*", "Sedulous.Images.STB" = "*", "Sedulous.Images.SDL" = "*", "Sedulous.Models" = "*", "Sedulous.Models.GLTF" = "*", "Sedulous.Shell" = "*", "Sedulous.Particles" = "*", "Sedulous.Engine.UI" = "*", "Sedulous.UI" = "*"}
+
+[Project]
+Name = "Showcase"
+StartupObject = "Showcase.Program"
