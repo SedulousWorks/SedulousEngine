@@ -122,6 +122,13 @@ Extends Application directly. Owns UIContext/VGRenderer for editor UI. Creates
 a RuntimeContext with engine subsystems for scene preview. Each scene page gets
 its own dock tab with a viewport rendering via ISceneRenderer.
 
+## Known Limitations
+
+- **DX12 renderer support**: The RHI layer and RHI samples work on both Vulkan and
+  DX12. However, Sedulous.Renderer and its shaders have only been developed and tested
+  with the Vulkan backend. Updating them for DX12 is straightforward but not a current
+  priority.
+
 ## Building
 
 Requires [Beeflang](https://www.beeflang.org/) (BeefBuild or Beef IDE).
