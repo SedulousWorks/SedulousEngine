@@ -513,12 +513,19 @@ abstract class Application
 	{
 		// Create shell
 		let shell = new SDL3Shell();
-		if (shell.Initialize() case .Err) { Console.WriteLine("Failed to initialize shell"); delete shell; return false; }
+		if (shell.Initialize() case .Err) {
+			Console.WriteLine("Failed to initialize shell");
+			delete shell;
+			return false;
+		}
 		mShell = shell;
 
 		// Create backend
 		if (!CreateBackend())
+		{
+			delete shell;
 			return false;
+		}
 
 		// Create device
 		if (!CreateDevice())

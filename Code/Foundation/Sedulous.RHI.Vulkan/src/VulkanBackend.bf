@@ -22,7 +22,7 @@ class VulkanBackend : IBackend
 		let backend = new VulkanBackend();
 		if (backend.Init(enableValidation) case .Err)
 		{
-			System.Diagnostics.Debug.WriteLine("VulkanBackend: initialization failed");
+			Console.WriteLine("VulkanBackend: initialization failed");
 			delete backend;
 			return .Err;
 		}
@@ -36,7 +36,7 @@ class VulkanBackend : IBackend
 		// Initialize Bulkan
 		if (VulkanNative.Initialize() case .Err)
 		{
-			System.Diagnostics.Debug.WriteLine("VulkanBackend: Bulkan initialization failed");
+			Console.WriteLine("VulkanBackend: Bulkan initialization failed");
 			return .Err;
 		}
 
@@ -77,7 +77,7 @@ class VulkanBackend : IBackend
 		let result = VulkanNative.vkCreateInstance(&createInfo, null, &mInstance);
 		if (result != .VK_SUCCESS)
 		{
-			System.Diagnostics.Debug.WriteLine(scope $"VulkanBackend: vkCreateInstance failed ({result})");
+			Console.WriteLine(scope $"VulkanBackend: vkCreateInstance failed ({result})");
 			return .Err;
 		}
 
@@ -180,13 +180,13 @@ class VulkanBackend : IBackend
 		let result = VulkanNative.vkCreateWin32SurfaceKHR(mInstance, &createInfo, null, &surface);
 		if (result != .VK_SUCCESS)
 		{
-			System.Diagnostics.Debug.WriteLine(scope $"VulkanBackend: vkCreateWin32SurfaceKHR failed ({result})");
+			Console.WriteLine(scope $"VulkanBackend: vkCreateWin32SurfaceKHR failed ({result})");
 			return .Err;
 		}
 
 		return .Ok(new VulkanSurface(surface, mInstance));
 #else
-		System.Diagnostics.Debug.WriteLine("VulkanBackend: surface creation not supported on this platform");
+		Console.WriteLine("VulkanBackend: surface creation not supported on this platform");
 		return .Err;
 #endif
 	}
