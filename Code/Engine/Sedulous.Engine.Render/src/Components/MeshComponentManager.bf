@@ -206,8 +206,10 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 		if (gpuMesh == null)
 			return;
 
-		let worldMatrix = scene.GetWorldMatrix(mesh.Owner);
-		let prevWorldMatrix = scene.GetPrevWorldMatrix(mesh.Owner);
+		let (prevWorldMatrix, worldMatrix) = scene.GetWorldMatrices(mesh.Owner);
+
+		//let worldMatrix = scene.GetWorldMatrix(mesh.Owner);
+		//let prevWorldMatrix = scene.GetPrevWorldMatrix(mesh.Owner);
 		let center = Vector3.Transform(mesh.LocalBounds.Center, worldMatrix);
 
 		var flags = RenderDataFlags.None;

@@ -313,7 +313,9 @@ class RenderStressTestApp : EngineApplication
 
 		    float amplitude = 1.0f;
 		    float speed = 2.0f;
-		    float phaseOffset = i * 0.5f;
+		    int32 gridX = (int32)(i % mGridSize);
+		    int32 gridZ = (int32)(i / mGridSize);
+		    float phaseOffset = (gridX + gridZ) * 0.3f;
 
 		    // Shift wave up by amplitude so min = planeY
 		    float y = Math.Sin(m_Time * speed + phaseOffset) * amplitude + amplitude;

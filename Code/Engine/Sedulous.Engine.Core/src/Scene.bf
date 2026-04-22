@@ -288,6 +288,14 @@ public class Scene : IDisposable
 		return mTransforms[(int32)entity.Index].PrevWorldMatrix;
 	}
 
+	public (Matrix Previous, Matrix Current) GetWorldMatrices(EntityHandle entity)
+	{
+		if (!IsValid(entity))
+			return (.Identity, .Identity);
+
+		return (mTransforms[(int32)entity.Index].PrevWorldMatrix, mTransforms[(int32)entity.Index].WorldMatrix);
+	}
+
 	/// Sets the parent of an entity. Pass EntityHandle.Invalid to unparent.
 	public void SetParent(EntityHandle child, EntityHandle parent)
 	{
@@ -451,6 +459,26 @@ public class Scene : IDisposable
 
 	private void UpdateTransforms()
 	{
+	    let count = (int32)mTransforms.Count;
+	    if (count == 0) return;
+
+	    // Pass 1: Snapshot previous world matrices
+	    for (int32 i = 0; i < count; i++)
+	    {
+	        if (mEntities[i].Alive)
+	            mTransforms[i].PrevWorldMatrix = mTransforms[i].WorldMatrix;
+	    }
+
+	    // Pass 2: Collect dirty roots, then update each subtree
+	    for (int32 i = 0; i < count; i++)
+	    {
+	        if (mTransforms[i].Dirty && mEntities[i].Alive && !mTransforms[i].Parent.IsAssigned)
+	            UpdateTransformRecursive(i, .Identity);
+	    }
+	}
+
+	/*private void UpdateTransforms()
+	{
 		let count = (int32)mTransforms.Count;
 		if (count == 0) return;
 
@@ -482,7 +510,7 @@ public class Scene : IDisposable
 					UpdateTransformRecursive(dirtyRoots[r], .Identity);
 			});
 		}
-	}
+	}*/
 
 	private void UpdateTransformRecursive(int32 index, Matrix parentWorld)
 	{
