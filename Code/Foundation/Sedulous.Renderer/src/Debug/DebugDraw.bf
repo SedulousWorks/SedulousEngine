@@ -45,6 +45,9 @@ public class DebugDraw
 	// World-space line vertices (pairs). Drawn with line-list topology + depth test.
 	private List<DebugVertex> mLineVerts = new .() ~ delete _;
 
+	// World-space line vertices drawn WITHOUT depth test (overlay on top of geometry).
+	private List<DebugVertex> mOverlayLineVerts = new .() ~ delete _;
+
 	// 2D overlay commands (pixel coordinates).
 	private List<Debug2DCommand> m2DCommands = new .() ~ delete _;
 
@@ -55,6 +58,7 @@ public class DebugDraw
 	private List<char8> mTextChars = new .() ~ delete _;
 
 	public Span<DebugVertex> LineVertices => mLineVerts;
+	public Span<DebugVertex> OverlayLineVertices => mOverlayLineVerts;
 	public Span<Debug2DCommand> Commands2D => m2DCommands;
 	public Span<Debug3DTextCommand> TextCommands3D => m3DTextCommands;
 	public Span<char8> TextChars => mTextChars;
@@ -62,13 +66,17 @@ public class DebugDraw
 	/// Number of line vertices (always a multiple of 2 - pairs form line segments).
 	public int32 LineVertexCount => (int32)mLineVerts.Count;
 
-	public bool HasAnyDraws => mLineVerts.Count > 0 || m2DCommands.Count > 0 || m3DTextCommands.Count > 0;
+	/// Number of overlay line vertices (no depth test).
+	public int32 OverlayLineVertexCount => (int32)mOverlayLineVerts.Count;
+
+	public bool HasAnyDraws => mLineVerts.Count > 0 || mOverlayLineVerts.Count > 0 || m2DCommands.Count > 0 || m3DTextCommands.Count > 0;
 
 	/// Clears all accumulated draws. Called by the renderer at the end of each frame
 	/// after the debug passes have consumed the data.
 	public void Clear()
 	{
 		mLineVerts.Clear();
+		mOverlayLineVerts.Clear();
 		m2DCommands.Clear();
 		m3DTextCommands.Clear();
 		mTextChars.Clear();
@@ -81,6 +89,37 @@ public class DebugDraw
 	{
 		mLineVerts.Add(.(from, color));
 		mLineVerts.Add(.(to, color));
+	}
+
+	/// Draws a line segment without depth testing (rendered on top of all geometry).
+	public void DrawLineOverlay(Vector3 from, Vector3 to, Color color)
+	{
+		mOverlayLineVerts.Add(.(from, color));
+		mOverlayLineVerts.Add(.(to, color));
+	}
+
+	/// Draws a wire sphere without depth testing.
+	public void DrawWireSphereOverlay(Vector3 center, float radius, Color color, int32 segments = 24)
+	{
+		// XY circle
+		DrawCircleOverlay(center, .(1, 0, 0), .(0, 1, 0), radius, color, segments);
+		// XZ circle
+		DrawCircleOverlay(center, .(1, 0, 0), .(0, 0, 1), radius, color, segments);
+		// YZ circle
+		DrawCircleOverlay(center, .(0, 1, 0), .(0, 0, 1), radius, color, segments);
+	}
+
+	/// Draws a circle in the plane spanned by u and v, without depth testing.
+	public void DrawCircleOverlay(Vector3 center, Vector3 u, Vector3 v, float radius, Color color, int32 segments = 32)
+	{
+		Vector3 prev = center + u * radius;
+		for (int32 i = 1; i <= segments; i++)
+		{
+			let angle = (float)i / (float)segments * Math.PI_f * 2.0f;
+			let point = center + u * (Math.Cos(angle) * radius) + v * (Math.Sin(angle) * radius);
+			DrawLineOverlay(prev, point, color);
+			prev = point;
+		}
 	}
 
 	/// Draws an axis-aligned wire bounding box.
