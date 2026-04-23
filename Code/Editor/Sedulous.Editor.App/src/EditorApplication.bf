@@ -17,6 +17,7 @@ using Sedulous.UI.Shell;
 using Sedulous.UI.Toolkit;
 using Sedulous.Core.Mathematics;
 using Sedulous.Editor.Core;
+using Sedulous.UI.Viewport;
 using Sedulous.Profiler;
 
 /// The Sedulous Editor application.
@@ -82,7 +83,7 @@ class EditorApplication : Application, IFloatingWindowHost
 		StringView[1] shaderPaths = .(shaderDir);
 		
 		let shaderCacheDir = scope String();
-		GetAssetPath("shaders/editorcache", shaderCacheDir);
+		GetAssetCachePath("shaders", shaderCacheDir);
 		mShaderSystem.Initialize(Device, shaderPaths, shaderCacheDir);
 
 		// Font service
@@ -604,9 +605,9 @@ class EditorApplication : Application, IFloatingWindowHost
 
 	// ==================== Frame Loop ====================
 
-	protected override void OnInput()
+	protected override void OnInput(FrameContext frame)
 	{
-		mFrameDelta = 1.0f / 60.0f; // TODO: use actual delta
+		mFrameDelta = frame.DeltaTime;
 
 		if (mUIContext == null) return;
 

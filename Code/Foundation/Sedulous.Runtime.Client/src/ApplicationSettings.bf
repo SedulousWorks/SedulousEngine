@@ -24,4 +24,5 @@ struct ApplicationSettings
 	public TextureFormat DepthFormat = .Depth24PlusStencil8;
 	public BackendType Backend = .Vulkan;
 	public bool EnableValidation = true;
+	public bool EnableShaderCache = false;
 }

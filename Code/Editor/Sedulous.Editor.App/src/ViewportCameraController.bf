@@ -6,8 +6,9 @@ using Sedulous.UI;
 using Sedulous.Shell.Input;
 using Sedulous.Engine.Core;
 using Sedulous.Engine.Render;
+using Sedulous.UI.Viewport;
 
-/// Orbit/fly camera controller for the editor viewport.
+/// Orbit/fly camera controller for viewport views.
 /// Uses delegate-based input from ViewportView.
 ///
 /// Controls:
@@ -19,7 +20,7 @@ using Sedulous.Engine.Render;
 ///   Shift           - 3x speed
 ///   MMB + drag      - Pan (move target + camera laterally)
 ///   Scroll wheel    - Zoom (move along forward axis)
-class ViewportCameraController
+public class ViewportCameraController
 {
 	private Scene mScene;
 	private EntityHandle mCameraEntity;
