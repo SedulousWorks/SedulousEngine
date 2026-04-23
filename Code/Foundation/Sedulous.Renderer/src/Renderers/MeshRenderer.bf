@@ -181,14 +181,11 @@ public class MeshRenderer : Renderer
 		if (batchIdentity != cachedIdentity || cachedGroups.Count == 0)
 		{
 			// Cache miss - rebuild batch groups.
-			// Two passes: first count instances per group, then fill instance data
-			// contiguously so each group's instances form a contiguous range in the
-			// StructuredBuffer. DrawIndexedInstanced requires this.
+			// Pass 1: count instances per group to determine grouping structure.
 			groupCache.Clear();
 			cachedGroups.Clear();
 			cachedInstanceData.Clear();
 
-			// Pass 1: determine groups and count instances per group
 			for (let mesh in entries)
 			{
 				let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
@@ -228,12 +225,27 @@ public class MeshRenderer : Renderer
 				var group = cachedGroups[g];
 				group.InstanceStart = offset;
 				offset += group.InstanceCount;
-				group.InstanceCount = 0; // reset for pass 2 fill
 				cachedGroups[g] = group;
 			}
 
-			// Pass 2: fill instance data at the correct contiguous positions
-			cachedInstanceData.Count = offset; // pre-size
+			cachedInstanceData.Count = offset;
+
+			if (bindMaterial)
+				mMatCachedBatchIdentity = batchIdentity;
+			else
+				mNoMatCachedBatchIdentity = batchIdentity;
+		}
+
+		// Always re-fill instance data with current world matrices.
+		// Grouping structure is cached but transforms change every frame.
+		{
+			// Reset instance counts for filling
+			for (int32 g = 0; g < cachedGroups.Count; g++)
+			{
+				var group = cachedGroups[g];
+				group.InstanceCount = 0;
+				cachedGroups[g] = group;
+			}
 
 			for (let mesh in entries)
 			{
@@ -247,7 +259,9 @@ public class MeshRenderer : Renderer
 					SubMeshIndex = mesh.SubMeshIndex
 				};
 
-				let groupIdx = groupCache[key];
+				if (!groupCache.TryGetValue(key, let groupIdx))
+					continue;
+
 				var group = cachedGroups[groupIdx];
 				let slot = group.InstanceStart + group.InstanceCount;
 				group.InstanceCount++;
@@ -260,10 +274,7 @@ public class MeshRenderer : Renderer
 				};
 			}
 
-			if (bindMaterial)
-				mMatCachedBatchIdentity = batchIdentity;
-			else
-				mNoMatCachedBatchIdentity = batchIdentity;
+			// Force re-upload since matrices changed
 			uploadOffsets.Clear();
 		}
 
