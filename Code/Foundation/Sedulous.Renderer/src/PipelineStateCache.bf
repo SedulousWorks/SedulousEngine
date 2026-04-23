@@ -344,16 +344,31 @@ class PipelineStateCache : IDisposable
 
 		// Depth stencil
 		DepthStencilState? depthStencil = null;
-		if (depthFormat != .Undefined && config.DepthMode != .Disabled)
+		if (depthFormat != .Undefined)
 		{
-			var ds = GetDepthStencilState(config);
-			ds.Format = depthFormat;
-			if (config.DepthBias != 0 || config.DepthBiasSlopeScale != 0)
+			if (config.DepthMode != .Disabled)
 			{
-				ds.DepthBias = (int32)config.DepthBias;
-				ds.DepthBiasSlopeScale = config.DepthBiasSlopeScale;
+				var ds = GetDepthStencilState(config);
+				ds.Format = depthFormat;
+				if (config.DepthBias != 0 || config.DepthBiasSlopeScale != 0)
+				{
+					ds.DepthBias = (int32)config.DepthBias;
+					ds.DepthBiasSlopeScale = config.DepthBiasSlopeScale;
+				}
+				depthStencil = ds;
 			}
-			depthStencil = ds;
+			else
+			{
+				// Depth disabled but render pass has a depth attachment --
+				// declare the format with testing/writing off so Vulkan is satisfied.
+				depthStencil = .()
+				{
+					Format = depthFormat,
+					DepthTestEnabled = false,
+					DepthWriteEnabled = false,
+					DepthCompare = .Always
+				};
+			}
 		}
 
 		// Cull mode (variant overrides)
