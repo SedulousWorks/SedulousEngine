@@ -169,11 +169,12 @@ public class MeshRenderer : Renderer
 			uploadOffsets = mNoMatUploadOffsets;
 		}
 
-		// Check if we can reuse cached batch groups. Identity is based on the
-		// first entry's address + count - same entries from the same extraction
-		// produce the same identity across all passes and shadow views.
+		// Check if we can reuse cached batch groups. Identity includes the
+		// instance buffer pointer so different scenes (with different Pipelines
+		// and PerFrameResources) never collide. Same scene's main + shadow passes
+		// share the same buffer and still cache correctly.
 		let batchIdentity = (entries.Count > 0)
-			? ((int)Internal.UnsafeCastToPtr(entries[0]) * 397 ^ entries.Count)
+			? ((int)Internal.UnsafeCastToPtr(entries[0]) * 397 ^ entries.Count ^ (int)Internal.UnsafeCastToPtr(frame.InstanceBuffer))
 			: 0;
 
 		let cachedIdentity = bindMaterial ? mMatCachedBatchIdentity : mNoMatCachedBatchIdentity;
@@ -238,7 +239,11 @@ public class MeshRenderer : Renderer
 
 		// Always re-fill instance data with current world matrices.
 		// Grouping structure is cached but transforms change every frame.
+		// If any entry's key isn't found in the group cache, the grouping is
+		// stale (different scene rendered through same renderer) -- force rebuild.
 		{
+			bool needsRebuild = false;
+
 			// Reset instance counts for filling
 			for (int32 g = 0; g < cachedGroups.Count; g++)
 			{
@@ -260,7 +265,10 @@ public class MeshRenderer : Renderer
 				};
 
 				if (!groupCache.TryGetValue(key, let groupIdx))
-					continue;
+				{
+					needsRebuild = true;
+					break;
+				}
 
 				var group = cachedGroups[groupIdx];
 				let slot = group.InstanceStart + group.InstanceCount;
@@ -272,6 +280,18 @@ public class MeshRenderer : Renderer
 					WorldMatrix = mesh.WorldMatrix,
 					PrevWorldMatrix = mesh.PrevWorldMatrix
 				};
+			}
+
+			if (needsRebuild)
+			{
+				// Stale grouping (identity collision) -- invalidate and rebuild inline
+				if (bindMaterial)
+					mMatCachedBatchIdentity = 0;
+				else
+					mNoMatCachedBatchIdentity = 0;
+				cachedGroups.Clear();
+				// Fall through to return -- next frame will rebuild with correct identity
+				return;
 			}
 
 			// Force re-upload since matrices changed
