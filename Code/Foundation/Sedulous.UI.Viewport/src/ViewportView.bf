@@ -1,4 +1,4 @@
-namespace Sedulous.Editor.App;
+namespace Sedulous.UI.Viewport;
 
 using System;
 using Sedulous.Core.Mathematics;
@@ -15,7 +15,7 @@ public delegate void ViewportRenderDelegate(ViewportView viewport, ICommandEncod
 /// Creates offscreen color + depth render targets, fires OnRender for 3D drawing,
 /// and displays the result as an image via VGContext.DrawImage.
 /// Pure render surface - input handling is done by the owning page/controller.
-class ViewportView : View
+public class ViewportView : View
 {
 	private IDevice mDevice;
 	private VGRenderer mVGRenderer;
@@ -30,6 +30,7 @@ class ViewportView : View
 	private uint32 mTextureWidth;
 	private uint32 mTextureHeight;
 	private bool mIsRegistered;
+	private bool mHasRendered;
 
 	/// Event fired when the viewport needs to render 3D content.
 	/// The handler should render to ColorTexture/ColorTargetView.

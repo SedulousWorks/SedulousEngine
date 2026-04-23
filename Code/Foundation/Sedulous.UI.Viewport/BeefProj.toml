@@ -1,0 +1,5 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.RHI" = "*", "Sedulous.UI" = "*", "Sedulous.VG.Renderer" = "*", "Sedulous.Shell" = "*", "Sedulous.Engine.Core" = "*", "Sedulous.Engine.Render" = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Images" = "*", "Sedulous.VG" = "*"}
+
+[Project]
+Name = "Sedulous.UI.Viewport"
