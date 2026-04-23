@@ -737,7 +737,8 @@ public class VGContext
 
 	/// Draw text with word wrapping. Position is the top-left of the text block.
 	/// Requires the CachedFont to have a Shaper set.
-	public void DrawTextWrapped(StringView text, CachedFont font, Vector2 position, float maxWidth, Color color)
+	public void DrawTextWrapped(StringView text, CachedFont font, Vector2 position, float maxWidth, Color color,
+		TextAlignment hAlign = .Left)
 	{
 		if (text.IsEmpty || font == null || font.Shaper == null || mFontService == null) return;
 		let atlasTex = mFontService.GetAtlasTexture(font);
@@ -748,13 +749,61 @@ public class VGContext
 		if (font.Shaper.ShapeTextWrapped(font.Font, text, maxWidth, positions, out totalHeight) case .Err)
 			return;
 
+		if (hAlign != .Left)
+			ApplyLineAlignment(positions, maxWidth, hAlign);
+
 		DrawPositionedGlyphs(positions, font, position.X, position.Y + font.Font.Metrics.Ascent, color);
 	}
 
 	/// Draw text with word wrapping within bounds.
-	public void DrawTextWrapped(StringView text, CachedFont font, RectangleF bounds, Color color)
+	public void DrawTextWrapped(StringView text, CachedFont font, RectangleF bounds, Color color,
+		TextAlignment hAlign = .Left)
 	{
-		DrawTextWrapped(text, font, .(bounds.X, bounds.Y), bounds.Width, color);
+		DrawTextWrapped(text, font, .(bounds.X, bounds.Y), bounds.Width, color, hAlign);
+	}
+
+	/// Applies horizontal alignment offsets to shaped glyph positions per line.
+	private static void ApplyLineAlignment(System.Collections.List<GlyphPosition> positions, float maxWidth, TextAlignment align)
+	{
+		if (positions.Count == 0) return;
+
+		int lineStart = 0;
+		float lineY = positions[0].Y;
+
+		for (int i = 0; i <= positions.Count; i++)
+		{
+			let newLine = (i == positions.Count) || (positions[i].Y != lineY);
+			if (newLine)
+			{
+				// Compute line width from last glyph
+				if (lineStart < i)
+				{
+					let lastGlyph = positions[i - 1];
+					let lineWidth = lastGlyph.X + lastGlyph.Advance;
+					float offset = 0;
+					if (align == .Center)
+						offset = (maxWidth - lineWidth) * 0.5f;
+					else if (align == .Right)
+						offset = maxWidth - lineWidth;
+
+					if (offset != 0)
+					{
+						for (int j = lineStart; j < i; j++)
+						{
+							var pos = positions[j];
+							pos.X += offset;
+							positions[j] = pos;
+						}
+					}
+				}
+
+				if (i < positions.Count)
+				{
+					lineStart = i;
+					lineY = positions[i].Y;
+				}
+			}
+		}
 	}
 
 	/// Measure wrapped text without drawing.

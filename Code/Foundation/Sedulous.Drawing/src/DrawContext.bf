@@ -897,7 +897,8 @@ public class DrawContext
 
 	/// Draw text with word wrapping using the text shaper.
 	/// Requires the CachedFont to have a Shaper set.
-	public void DrawTextWrapped(StringView text, CachedFont font, IImageData atlasTexture, RectangleF bounds, float maxWidth, Color color)
+	public void DrawTextWrapped(StringView text, CachedFont font, IImageData atlasTexture, RectangleF bounds, float maxWidth, Color color,
+		TextAlignment hAlign = .Left)
 	{
 		if (text.IsEmpty || font == null || font.Shaper == null || atlasTexture == null)
 			return;
@@ -907,6 +908,9 @@ public class DrawContext
 		float totalHeight = 0;
 		if (font.Shaper.ShapeTextWrapped(font.Font, text, maxWidth, positions, out totalHeight) case .Err)
 			return;
+
+		if (hAlign != .Left)
+			ApplyLineAlignment(positions, maxWidth, hAlign);
 
 		// Render positioned glyphs
 		DrawPositionedGlyphs(positions, font.Atlas, atlasTexture, bounds.X, bounds.Y + font.Font.Metrics.Ascent, color);
@@ -914,7 +918,8 @@ public class DrawContext
 
 	/// Draw text with word wrapping using the text shaper.
 	/// Returns the total height of the wrapped text.
-	public float DrawTextWrapped(StringView text, CachedFont font, IImageData atlasTexture, Vector2 position, float maxWidth, Color color)
+	public float DrawTextWrapped(StringView text, CachedFont font, IImageData atlasTexture, Vector2 position, float maxWidth, Color color,
+		TextAlignment hAlign = .Left)
 	{
 		if (text.IsEmpty || font == null || font.Shaper == null || atlasTexture == null)
 			return 0;
@@ -925,9 +930,55 @@ public class DrawContext
 		if (font.Shaper.ShapeTextWrapped(font.Font, text, maxWidth, positions, out totalHeight) case .Err)
 			return 0;
 
+		if (hAlign != .Left)
+			ApplyLineAlignment(positions, maxWidth, hAlign);
+
 		// Render positioned glyphs (offset Y by ascent so position is top-left)
 		DrawPositionedGlyphs(positions, font.Atlas, atlasTexture, position.X, position.Y + font.Font.Metrics.Ascent, color);
 		return totalHeight;
+	}
+
+	/// Applies horizontal alignment offsets to shaped glyph positions per line.
+	private static void ApplyLineAlignment(List<GlyphPosition> positions, float maxWidth, TextAlignment align)
+	{
+		if (positions.Count == 0) return;
+
+		int lineStart = 0;
+		float lineY = positions[0].Y;
+
+		for (int i = 0; i <= positions.Count; i++)
+		{
+			let newLine = (i == positions.Count) || (positions[i].Y != lineY);
+			if (newLine)
+			{
+				if (lineStart < i)
+				{
+					let lastGlyph = positions[i - 1];
+					let lineWidth = lastGlyph.X + lastGlyph.Advance;
+					float offset = 0;
+					if (align == .Center)
+						offset = (maxWidth - lineWidth) * 0.5f;
+					else if (align == .Right)
+						offset = maxWidth - lineWidth;
+
+					if (offset != 0)
+					{
+						for (int j = lineStart; j < i; j++)
+						{
+							var pos = positions[j];
+							pos.X += offset;
+							positions[j] = pos;
+						}
+					}
+				}
+
+				if (i < positions.Count)
+				{
+					lineStart = i;
+					lineY = positions[i].Y;
+				}
+			}
+		}
 	}
 
 	/// Measure wrapped text without drawing.
