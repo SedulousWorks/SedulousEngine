@@ -146,7 +146,7 @@ class GUISandboxApp : Application
 		mGUIContext.RootElement = mMainShell.Root;
 	}
 
-	protected override void OnInput()
+	protected override void OnInput(FrameContext frame)
 	{
 		let keyboard = mShell.InputManager.Keyboard;
 		let mouse = mShell.InputManager.Mouse;

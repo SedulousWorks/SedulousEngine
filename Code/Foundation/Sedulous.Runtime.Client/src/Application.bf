@@ -10,6 +10,8 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Runtime;
 using Sedulous.Profiler;
 using Sedulous.Serialization.OpenDDL;
+using Sedulous.Resources;
+using Sedulous.Core.Logging.Abstractions;
 
 namespace Sedulous.Runtime.Client;
 
@@ -49,8 +51,10 @@ abstract class Application
 	protected Context mContext ~ delete _;
 
 	// Core systems (application-owned)
-	private Sedulous.Core.Logging.Abstractions.ILogger mLogger ~ delete _;
-	protected Sedulous.Resources.ResourceSystem mResourceSystem ~ delete _;
+	private ILogger mLogger ~ delete _;
+	protected ResourceSystem mResourceSystem ~ delete _;
+
+	public ResourceSystem ResourceSystem => mResourceSystem;
 
 	// Asset directories (discovered at construction time)
 	private String mAssetDirectory = new .() ~ delete _;
@@ -194,10 +198,19 @@ abstract class Application
 			float currentTime = (float)mStopwatch.Elapsed.TotalSeconds;
 			float deltaTime = currentTime - mLastFrameTime;
 			mLastFrameTime = currentTime;
+			
+
+			let frameContext = FrameContext()
+			{
+				DeltaTime = deltaTime,
+				TotalTime = currentTime,
+				FrameIndex = (int32)mSwapChain.CurrentImageIndex,
+				FrameCount = (int32)mSwapChain.BufferCount
+			};
 
 			{
 				using (SProfiler.Begin("Input"))
-					OnInput();
+					OnInput(frameContext);
 			}
 
 			// Fixed update loop - may run multiple times per frame
@@ -218,14 +231,6 @@ abstract class Application
 						mFixedUpdateAccumulator = mFixedTimeStep * 2;
 				}
 			}
-
-			let frameContext = FrameContext()
-			{
-				DeltaTime = deltaTime,
-				TotalTime = currentTime,
-				FrameIndex = (int32)mSwapChain.CurrentImageIndex,
-				FrameCount = (int32)mSwapChain.BufferCount
-			};
 
 			// Process completed async jobs and resource loads.
 			Sedulous.Jobs.JobSystem.ProcessCompletions();
@@ -322,7 +327,7 @@ abstract class Application
 	protected virtual void OnResize(int32 width, int32 height) { }
 
 	/// Called each frame for input handling (before Update).
-	protected virtual void OnInput() { }
+	protected virtual void OnInput(FrameContext frame) { }
 
 	/// Called at a fixed timestep for physics and deterministic game logic.
 	/// May be called multiple times per frame (or not at all) depending on framerate.

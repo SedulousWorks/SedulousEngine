@@ -387,7 +387,7 @@ class NuklearSampleApp : Application
 		return true;
 	}
 
-	protected override void OnInput()
+	protected override void OnInput(FrameContext frame)
 	{
 		let mouse = mShell.InputManager.Mouse;
 		let keyboard = mShell.InputManager.Keyboard;

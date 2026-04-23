@@ -1762,7 +1762,7 @@ class UISandboxApp : Application, Sedulous.UI.Toolkit.IFloatingWindowHost
 
 	/// All input routing in one place (matching legacy ProcessUIInput pattern).
 	/// ManualInputRouting=true disables UISubsystem's auto-processing.
-	protected override void OnInput()
+	protected override void OnInput(FrameContext frame)
 	{
 		if (mUI == null) return;
 
