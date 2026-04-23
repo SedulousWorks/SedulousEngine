@@ -16,7 +16,6 @@ using Sedulous.Geometry.Tooling;
 using Sedulous.Geometry.Tooling.Resources;
 using Sedulous.Materials;
 using Sedulous.Materials.Resources;
-using Sedulous.Textures;
 using Sedulous.Textures.Resources;
 using Sedulous.Resources;
 using Sedulous.Images;
@@ -27,13 +26,13 @@ using Sedulous.Models.GLTF;
 using Sedulous.Shell;
 using Sedulous.Engine.Core;
 
-/// Loaded model asset: mesh resource + per-slot shared material instances.
+/// Loaded model asset: mesh resource + per-slot material resource refs.
 class LoadedModel
 {
 	public String Name ~ delete _;
 	public StaticMeshResource MeshResource;
-	/// Shared MaterialInstances per submesh slot (not owned - owned by ShowcaseApp.mSharedMaterials).
-	public List<MaterialInstance> MaterialSlots = new .() ~ delete _;
+	/// Material ResourceRefs per submesh slot. Resolver creates shared instances automatically.
+	public List<ResourceRef> MaterialRefs = new .() ~ { for (var r in _) r.Dispose(); delete _; };
 
 	public void ReleaseRefs()
 	{
@@ -62,9 +61,6 @@ class ShowcaseApp : EngineApplication
 
 	// Dedup context for texture/material resource deduplication across model imports
 	private ImportDeduplicationContext mDedupContext = new .() ~ delete _;
-
-	// Shared material cache: material name -> MaterialInstance (shared across all entities)
-	private Dictionary<String, MaterialInstance> mSharedMaterials = new .() ~ delete _;
 
 	// Materials
 	private Material mPbrMaterial ~ delete _;
@@ -306,7 +302,7 @@ class ShowcaseApp : EngineApplication
 		}
 
 		// Convert to resources with deduplication (shared textures + materials across models)
-		let resResult = ResourceImportResult.ConvertFrom(importResult, mDedupContext);
+		let resResult = ResourceImportResult.ConvertFrom(importResult, mDedupContext, path);
 		defer delete resResult;
 
 		Console.WriteLine("  Import: {0} textures, {1} materials from model",
@@ -326,79 +322,17 @@ class ShowcaseApp : EngineApplication
 		resResult.Textures.Clear();
 		resResult.Materials.Clear();
 
-		// Build shared MaterialInstances for batching
+		// Collect material ResourceRefs -- resolver will create shared instances automatically
 		let loaded = new LoadedModel();
 		loaded.Name = new String(modelName);
 
-		let renderSub = Context.GetSubsystem<RenderSubsystem>();
-
 		for (let importedMat in importResult.Materials)
 		{
-			let matName = importedMat.Name;
-			if (matName != null && mSharedMaterials.TryGetValue(scope String(matName), let existing))
+			let matRes = mDedupContext.FindMaterial(importedMat.Name);
+			if (matRes != null)
 			{
-				Console.WriteLine("  Material '{}': reused shared instance", matName);
-				loaded.MaterialSlots.Add(existing);
-			}
-			else
-			{
-				// Find the MaterialResource (may be in this result or in the dedup context)
-				MaterialResource matRes = mDedupContext.FindMaterial(matName);
-				if (matRes == null)
-					continue;
-
-				let instance = new MaterialInstance(matRes.Material);
-				let gpuResources = renderSub.RenderContext.GPUResources;
-
-				// Resolve textures onto the instance
-				for (let kv in matRes.TextureRefs)
-				{
-					let slotName = kv.key;
-					let texRef = kv.value;
-					if (!texRef.IsValid) continue;
-
-					if (resources.LoadByRef<TextureResource>(texRef) case .Ok(var texHandle))
-					{
-						let texResource = texHandle.Resource;
-						if (texResource?.Image != null)
-						{
-							let image = texResource.Image;
-							let bpp = Image.GetBytesPerPixel(image.Format);
-							TextureUploadDesc uploadDesc = .()
-							{
-								PixelData = image.Data.Ptr,
-								PixelDataSize = (uint64)image.Data.Length,
-								Width = image.Width,
-								Height = image.Height,
-								DepthOrArrayLayers = 1,
-								MipLevels = 1,
-								Format = TextureFormatUtils.Convert(image.Format),
-								Dimension = .Texture2D,
-								BytesPerRow = image.Width * (uint32)bpp,
-								RowsPerImage = image.Height
-							};
-
-							if (gpuResources.UploadTexture(uploadDesc) case .Ok(let gpuHandle))
-							{
-								let gpuTex = gpuResources.GetTexture(gpuHandle);
-								if (gpuTex != null)
-									instance.SetTexture(slotName, gpuTex.DefaultView);
-							}
-						}
-						texHandle.Release();
-					}
-				}
-
-				// Set sampler
-				instance.SetSampler("MainSampler", renderSub.RenderContext.MaterialSystem.DefaultSampler);
-
-				// Prepare bind group
-				renderSub.RenderContext.MaterialSystem.PrepareInstance(instance);
-
-				Console.WriteLine("  Material '{}': created new shared instance", matName);
-				if (matName != null)
-					mSharedMaterials[new String(matName)] = instance;
-				loaded.MaterialSlots.Add(instance);
+				loaded.MaterialRefs.Add(ResourceRef(matRes.Id, matRes.Name));
+				Console.WriteLine("  Material '{}': ref -> {}", importedMat.Name, matRes.Id);
 			}
 		}
 
@@ -414,7 +348,7 @@ class ShowcaseApp : EngineApplication
 		mLoadedModels.Add(loaded);
 
 		Console.WriteLine("Loaded: {} ({} verts, {} material slots)",
-			modelName, staticMesh.VertexCount, loaded.MaterialSlots.Count);
+			modelName, staticMesh.VertexCount, loaded.MaterialRefs.Count);
 
 		return loaded;
 	}
@@ -480,12 +414,8 @@ class ShowcaseApp : EngineApplication
 		if (let comp = meshMgr.Get(compHandle))
 		{
 			comp.SetMeshRef(meshRef);
-			for (int32 slot = 0; slot < loaded.MaterialSlots.Count; slot++)
-			{
-				let mat = loaded.MaterialSlots[slot];
-				if (mat != null)
-					comp.SetMaterial(slot, mat);
-			}
+			for (int32 slot = 0; slot < loaded.MaterialRefs.Count; slot++)
+				comp.SetMaterialRef(slot, loaded.MaterialRefs[slot]);
 		}
 	}
 
@@ -706,13 +636,6 @@ class ShowcaseApp : EngineApplication
 
 		// Release deduped texture/material resource refs
 		mDedupContext.ReleaseAllRefs();
-
-		// Release shared material instances
-		for (let kv in mSharedMaterials)
-		{
-			delete kv.key;
-			kv.value?.ReleaseRef();
-		}
 
 		// Model cache keys
 		for (let key in mModelCache.Keys)

@@ -39,15 +39,16 @@ class ResourceImportResult
 	/// Materials are converted from ImportedMaterial to MaterialResource (owning).
 	public static ResourceImportResult ConvertFrom(ModelImportResult result)
 	{
-		return ConvertFrom(result, null);
+		return ConvertFrom(result, null, .());
 	}
 
 	/// Creates a ResourceImportResult with deduplication support.
 	/// If dedupContext is provided, textures and materials are deduplicated across imports.
 	/// Deduplicated resources are NOT added to this result's lists (they exist in the
 	/// result that first created them). The caller queries the context to find them.
+	/// modelPath is set as SourcePath on mesh, skeleton, and animation resources.
 	public static ResourceImportResult ConvertFrom(ModelImportResult result,
-		ImportDeduplicationContext dedupContext)
+		ImportDeduplicationContext dedupContext, StringView modelPath = .())
 	{
 		let res = new ResourceImportResult();
 
@@ -109,6 +110,8 @@ class ResourceImportResult
 		{
 			let meshRes = new StaticMeshResource(mesh, false);
 			meshRes.Name.Set(mesh.Name);
+			if (!modelPath.IsEmpty)
+				meshRes.SourcePath.Set(modelPath);
 			res.StaticMeshes.Add(meshRes);
 		}
 
@@ -117,6 +120,8 @@ class ResourceImportResult
 		{
 			let meshRes = new SkinnedMeshResource(mesh, false);
 			meshRes.Name.Set(mesh.Name);
+			if (!modelPath.IsEmpty)
+				meshRes.SourcePath.Set(modelPath);
 
 			// Link to skeleton via ResourceRef
 			if (mesh.SkeletonIndex >= 0 && mesh.SkeletonIndex < res.Skeletons.Count)
@@ -133,6 +138,8 @@ class ResourceImportResult
 		{
 			let skelRes = new SkeletonResource(skeleton, false);
 			skelRes.Name.Set(skeleton.Name);
+			if (!modelPath.IsEmpty)
+				skelRes.SourcePath.Set(modelPath);
 			res.Skeletons.Add(skelRes);
 		}
 
@@ -140,6 +147,8 @@ class ResourceImportResult
 		for (let animation in result.Animations)
 		{
 			let animRes = new AnimationClipResource(animation, false);
+			if (!modelPath.IsEmpty)
+				animRes.SourcePath.Set(modelPath);
 			res.Animations.Add(animRes);
 		}
 

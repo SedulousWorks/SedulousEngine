@@ -11,6 +11,9 @@ interface IResource
 	/// Gets the resource name.
 	String Name { get; }
 
+	/// Original source path for import deduplication.
+	String SourcePath { get; }
+
 	/// Gets the current reference count.
 	int RefCount { get; }
 

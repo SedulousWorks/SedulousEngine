@@ -137,40 +137,36 @@ Textures are keyed by source path (external: resolved file path, embedded:
 multiple `ResourceImportResult.ConvertFrom()` calls. Showcase sample validates
 this: 44 models produce only 14 unique textures and 14 unique materials.
 
-**MaterialInstance sharing -- outstanding.** Even with deduplicated resources,
-`RenderResourceResolver.ResolveMaterial()` creates a new `MaterialInstance` per
-component slot. Entities sharing the same MaterialResource get different
-MaterialInstance pointers, preventing MeshRenderer from batching draw calls.
-The Showcase works around this with manual shared MaterialInstances via
-`SetMaterial()`.
+**MaterialInstance sharing -- DONE.** `RenderResourceResolver.ResolveMaterial()`
+caches MaterialInstances by `MaterialResource.Id` (GUID). All components using
+`SetMaterialRef()` with the same MaterialResource share one instance and bind
+group, enabling MeshRenderer draw call batching automatically.
 
-Options for engine-level MaterialInstance sharing:
+Components using `SetMaterial()` with a manually-created instance bypass the
+cache and get their own private instance. Per-entity material overrides use
+`SetMaterial()` with a cloned/custom instance.
 
-**Option A: Share by default, clone on override (copy-on-write)**
-- Resolver shares instances automatically
-- If a component calls SetFloat/SetColor on a shared instance, the component
-  manager detects the shared ref count and clones into a private instance
-- Pro: automatic, covers the common case (imported materials rarely overridden)
-- Con: adds complexity to the component manager override path; need to track
-  which instances are shared vs private
+### Resource SourcePath Coverage
 
-**Option B: Explicit opt-in via flag**
-- A flag on the component or material (e.g. `SharedMaterial = true`)
-- Shared materials batch; unique materials get their own instance as today
-- Pro: simple, predictable, no hidden cloning
-- Con: requires awareness from the user; imported materials would need the
-  flag set by default in the converter
+All resources have a `SourcePath` field (on `Resource` base class, serialized)
+for tracking the original source asset. This enables rebuilding dedup contexts
+from previously baked resources across editor sessions.
 
-**Option C: Resolver-level instance cache**
-- Resolver maintains `Dictionary<Guid, MaterialInstance>` keyed by
-  MaterialResource.Id. Same resource = same instance (AddRef on reuse)
-- Per-entity overrides clone explicitly via a new API (e.g. `CloneMaterial()`)
-- Pro: clean separation -- sharing is a resource concern, overrides are explicit
-- Con: requires explicit clone call for per-entity variation
+**Covered (model import pipeline):**
+- Textures -- resolved file path (external) or modelPath#textureN (embedded)
+- Materials -- material name
+- Static meshes, skinned meshes, skeletons, animations -- model file path
 
-Option C is likely the cleanest long-term approach. Most imported materials are
-never overridden per-entity, so sharing by resource ID covers the common case.
-The few entities needing unique properties call CloneMaterial() explicitly.
+**Future -- needs offline importers:**
+- Audio clips -- set SourcePath from source audio file when audio importer is built
+- Scenes -- created at runtime, no source file (unless editor scene save/load added)
+- Themes -- set SourcePath from XML file when theme importer is formalized
+- UI layouts -- set SourcePath from layout file when layout importer is formalized
+
+**Cross-session dedup context rebuild (editor):**
+At editor startup, load previously baked resources from disk, iterate them, and
+populate an `ImportDeduplicationContext` from their `SourcePath` fields. New
+imports will then skip re-creating resources that already exist from prior sessions.
 
 ### What the old engine does that we don't yet
 - 14 post-processing effects (we have 2)

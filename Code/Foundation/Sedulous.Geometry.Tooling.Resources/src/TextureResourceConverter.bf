@@ -25,6 +25,8 @@ static class TextureResourceConverter
 
 		let textureRes = new TextureResource(image, true);
 		textureRes.Name.Set(imported.Name);
+		if (!imported.SourcePath.IsEmpty)
+			textureRes.SourcePath.Set(imported.SourcePath);
 		textureRes.SetupFor3D();
 
 		return textureRes;

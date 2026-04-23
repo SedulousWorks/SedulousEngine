@@ -14,6 +14,7 @@ abstract class Resource : IResource, ISerializable
 	private int32 mRefCount = 0;
 	private Guid mId;
 	private String mName = new .() ~ delete _;
+	private String mSourcePath = new .() ~ delete _;
 
 	/// Gets or sets the unique identifier.
 	public Guid Id
@@ -27,6 +28,15 @@ abstract class Resource : IResource, ISerializable
 	{
 		get => mName;
 		set { mName.Set(value); }
+	}
+
+	/// Original source path used for import deduplication.
+	/// External textures: resolved file path. Embedded: modelPath#textureN.
+	/// Persisted across sessions so dedup context can be rebuilt from baked resources.
+	public String SourcePath
+	{
+		get => mSourcePath;
+		set { mSourcePath.Set(value); }
 	}
 
 	/// Gets the resource file type identifier (fully qualified class name).
@@ -104,6 +114,7 @@ abstract class Resource : IResource, ISerializable
 			mId = Guid.Parse(guidStr).GetValueOrDefault();
 
 		s.String("_name", mName);
+		s.String("_sourcePath", mSourcePath);
 
 		return OnSerialize(s);
 	}

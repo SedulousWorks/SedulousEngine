@@ -656,6 +656,56 @@ SceneSerializer writes entities, transforms, hierarchy, components. Components
 implement ISerializableComponent. ComponentTypeRegistry maps type IDs to factories.
 EntityRef carries persistent Guid + cached runtime handle. ResourceType hash validates on load.
 
+## Model Import & Resource Deduplication
+
+### Import Pipeline
+
+```
+Model File (.gltf/.glb)
+    |
+ModelLoaderFactory.LoadModel() -> Model (in-memory)
+    |
+ModelImporter.Import(model) -> ModelImportResult
+    |-- TextureConverter: ModelTexture -> ImportedTexture (pixel data + SourcePath)
+    |-- MaterialConverter: ModelMaterial -> ImportedMaterial (PBR props + texture indices)
+    |-- MeshConverter: ModelMesh -> StaticMesh / SkinnedMesh
+    |
+ResourceImportResult.ConvertFrom(importResult, dedupContext, modelPath)
+    |-- TextureResourceConverter: ImportedTexture -> TextureResource (with SourcePath)
+    |-- MaterialResourceConverter: ImportedMaterial -> MaterialResource (PBR material + texture refs)
+    |-- Mesh/Skeleton/Animation wrapping (with SourcePath from modelPath)
+    |
+ResourceSystem.AddResource() -> cached by GUID
+    |
+MeshComponent.SetMaterialRef() -> RenderResourceResolver.ResolveMaterial()
+    |-- Creates/caches shared MaterialInstance per MaterialResource GUID
+    |-- Resolves textures, prepares bind group on first use
+    |-- Same MaterialResource = same MaterialInstance = draw call batching
+```
+
+### Resource Deduplication
+
+`ImportDeduplicationContext` prevents duplicate resources when multiple models
+share the same textures and materials (e.g. all tree variants using
+"Bark_NormalTree"). Pass the same context to multiple `ConvertFrom()` calls.
+
+- **Textures** deduped by `SourcePath` (resolved file path for external,
+  `modelPath#textureN` for embedded)
+- **Materials** deduped by name (unique within one asset pack / import session)
+
+All resources carry a `SourcePath` field (persisted via `Resource.Serialize`),
+enabling dedup context rebuild from previously baked resources across editor
+sessions.
+
+### MaterialInstance Sharing
+
+`RenderResourceResolver` caches `MaterialInstance` objects by `MaterialResource`
+GUID. All components using `SetMaterialRef()` with the same material share one
+instance and bind group, enabling automatic draw call batching.
+
+Components using `SetMaterial()` with a manually-created instance bypass the
+cache for per-entity overrides.
+
 ## Reference Engines
 
 - **ezEngine** - extraction pattern, world modules, bind group frequency, component lifecycle

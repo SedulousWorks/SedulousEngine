@@ -71,6 +71,7 @@ static class MaterialResourceConverter
 		// Create resource wrapper
 		let matRes = new MaterialResource(mat, true);
 		matRes.Name.Set(imported.Name);
+		matRes.SourcePath.Set(imported.Name);
 
 		// Set sampler from the albedo texture slot
 		if (imported.Albedo.HasTexture)

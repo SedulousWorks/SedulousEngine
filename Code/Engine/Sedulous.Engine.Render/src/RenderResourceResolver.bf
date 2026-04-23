@@ -34,6 +34,15 @@ class RenderResourceResolver
 	/// Skinned mesh cache - same SkinnedMeshResource maps to one GPU handle.
 	private Dictionary<SkinnedMeshResource, GPUMeshHandle> mSkinnedMeshCache = new .() ~ delete _;
 
+	/// MaterialInstance cache - same MaterialResource GUID maps to one shared instance.
+	/// Enables draw call batching when multiple entities use the same material.
+	/// Components using SetMaterialRef() share instances; SetMaterial() bypasses this cache.
+	private Dictionary<Guid, MaterialInstance> mMaterialInstanceCache = new .() ~ {
+		for (let kv in _)
+			kv.value?.ReleaseRef();
+		delete _;
+	};
+
 	// ==================== Setup ====================
 
 	public this(ResourceSystem resourceSystem, GPUResourceManager gpuResources, MaterialSystem materialSystem)
@@ -120,8 +129,11 @@ class RenderResourceResolver
 
 	// ==================== Material Resolution ====================
 
-	/// Resolves a material ResourceRef, creates a MaterialInstance, and resolves its textures.
-	/// Returns true if the material was (re)created.
+	/// Resolves a material ResourceRef to a shared MaterialInstance.
+	/// Returns a cached instance if one exists for this MaterialResource, otherwise
+	/// creates a new one, resolves textures, prepares its bind group, and caches it.
+	/// The returned instance has been AddRef'd -- caller must ReleaseRef when done
+	/// (typically balanced by SetMaterial's AddRef + caller's ReleaseRef pattern).
 	public bool ResolveMaterial(ref ResolvedResource<MaterialResource> state, ResourceRef matRef,
 		out MaterialInstance outInstance)
 	{
@@ -134,7 +146,16 @@ class RenderResourceResolver
 		if (matResource == null)
 			return false;
 
-		// Create MaterialInstance from MaterialResource
+		// Check cache -- same MaterialResource GUID returns the same shared instance
+		let resourceId = matResource.Id;
+		if (mMaterialInstanceCache.TryGetValue(resourceId, let cached))
+		{
+			cached.AddRef();
+			outInstance = cached;
+			return true;
+		}
+
+		// Create new MaterialInstance from MaterialResource
 		let material = matResource.Material;
 		if (material == null)
 			return false;
@@ -146,6 +167,10 @@ class RenderResourceResolver
 
 		// Prepare bind group via MaterialSystem
 		mMaterialSystem.PrepareInstance(instance);
+
+		// Cache holds one ref, caller gets another
+		instance.AddRef();
+		mMaterialInstanceCache[resourceId] = instance;
 
 		outInstance = instance;
 		return true;
