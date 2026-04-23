@@ -4,13 +4,19 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Fonts;
 using Sedulous.VG;
+using System.Collections;
 
 /// Text label. Uses theme for defaults; per-instance overrides take priority.
+/// Supports optional word wrapping via the WordWrap property.
+/// Handles explicit \n line breaks in both wrapped and non-wrapped modes.
 public class Label : View
 {
 	public String Text ~ delete _;
 	public TextAlignment HAlign = .Left;
 	public VerticalAlignment VAlign = .Middle;
+
+	/// When true, text wraps at the view's width boundary.
+	public bool WordWrap = false;
 
 	// Nullable per-instance overrides - null = use theme.
 	private Color? mTextColor;
@@ -46,6 +52,8 @@ public class Label : View
 		InvalidateLayout();
 	}
 
+	private bool HasNewlines => Text != null && Text.Contains('\n');
+
 	protected override void OnMeasure(MeasureSpec wSpec, MeasureSpec hSpec)
 	{
 		let fontSize = FontSize;
@@ -56,8 +64,36 @@ public class Label : View
 			let font = Context.FontService.GetFont(fontSize);
 			if (font != null)
 			{
-				textW = font.Font.MeasureString(Text);
-				textH = font.Font.Metrics.LineHeight;
+				if (WordWrap && font.Shaper != null)
+				{
+					let maxWidth = wSpec.Mode == .Exactly ? wSpec.Size : (wSpec.Mode == .AtMost ? wSpec.Size : 10000.0f);
+					textW = maxWidth;
+
+					let positions = scope List<GlyphPosition>();
+					float totalHeight = 0;
+					if (font.Shaper.ShapeTextWrapped(font.Font, Text, maxWidth, positions, out totalHeight) case .Ok)
+						textH = totalHeight;
+				}
+				else if (HasNewlines)
+				{
+					// Measure each line, take max width and sum heights
+					let lineHeight = font.Font.Metrics.LineHeight;
+					float maxW = 0;
+					int lineCount = 0;
+					for (let line in Text.Split('\n'))
+					{
+						let w = font.Font.MeasureString(line);
+						if (w > maxW) maxW = w;
+						lineCount++;
+					}
+					textW = maxW;
+					textH = lineHeight * lineCount;
+				}
+				else
+				{
+					textW = font.Font.MeasureString(Text);
+					textH = font.Font.Metrics.LineHeight;
+				}
 			}
 		}
 
@@ -83,6 +119,49 @@ public class Label : View
 		let font = ctx.FontService.GetFont(FontSize);
 		if (font == null) return;
 
-		ctx.VG.DrawText(Text, font, .(0, 0, Width, Height), HAlign, VAlign, TextColor);
+		if (WordWrap)
+		{
+			float y = 0;
+			if (VAlign != .Top && font.Shaper != null)
+			{
+				let positions = scope List<GlyphPosition>();
+				float totalH = 0;
+				if (font.Shaper.ShapeTextWrapped(font.Font, Text, Width, positions, out totalH) case .Ok)
+				{
+					if (VAlign == .Middle)
+						y = (Height - totalH) * 0.5f;
+					else if (VAlign == .Bottom)
+						y = Height - totalH;
+				}
+			}
+			ctx.VG.DrawTextWrapped(Text, font, .(0, y), Width, TextColor, HAlign);
+		}
+		else if (HasNewlines)
+		{
+			// Draw each line with alignment
+			let lineHeight = font.Font.Metrics.LineHeight;
+			int lineCount = 0;
+			for (let _ in Text.Split('\n'))
+				lineCount++;
+
+			let totalH = lineHeight * lineCount;
+			float startY = 0;
+			if (VAlign == .Middle)
+				startY = (Height - totalH) * 0.5f;
+			else if (VAlign == .Bottom)
+				startY = Height - totalH;
+
+			float y = startY;
+			for (let line in Text.Split('\n'))
+			{
+				let lineStr = scope String(line);
+				ctx.VG.DrawText(lineStr, font, .(0, y, Width, lineHeight), HAlign, .Top, TextColor);
+				y += lineHeight;
+			}
+		}
+		else
+		{
+			ctx.VG.DrawText(Text, font, .(0, 0, Width, Height), HAlign, VAlign, TextColor);
+		}
 	}
 }
