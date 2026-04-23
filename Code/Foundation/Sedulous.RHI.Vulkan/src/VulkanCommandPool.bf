@@ -6,11 +6,14 @@ using Bulkan;
 using Sedulous.RHI;
 
 /// Vulkan implementation of ICommandPool.
+/// Uses TRANSIENT_BIT for short-lived command buffers and pools VkCommandBuffer
+/// handles to avoid unbounded vkAllocateCommandBuffers growth.
 class VulkanCommandPool : ICommandPool
 {
 	private VkCommandPool mPool;
 	private VulkanDevice mDevice;
 	private uint32 mQueueFamilyIndex;
+	private List<VkCommandBuffer> mFreeHandles = new .() ~ delete _;
 	private List<VulkanCommandBuffer> mCommandBuffers = new .() ~ delete _;
 
 	public this() { }
@@ -28,7 +31,7 @@ class VulkanCommandPool : ICommandPool
 		mQueueFamilyIndex = (uint32)familyIndex;
 
 		VkCommandPoolCreateInfo poolInfo = .();
-		poolInfo.flags = .VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+		poolInfo.flags = .VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
 		poolInfo.queueFamilyIndex = mQueueFamilyIndex;
 
 		let result = VulkanNative.vkCreateCommandPool(device.Handle, &poolInfo, null, &mPool);
@@ -43,17 +46,25 @@ class VulkanCommandPool : ICommandPool
 
 	public Result<ICommandEncoder> CreateEncoder()
 	{
-		VkCommandBufferAllocateInfo allocInfo = .();
-		allocInfo.commandPool = mPool;
-		allocInfo.level = .VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandBufferCount = 1;
+		VkCommandBuffer cmdBuf = .Null;
 
-		VkCommandBuffer cmdBuf = default;
-		let result = VulkanNative.vkAllocateCommandBuffers(mDevice.Handle, &allocInfo, &cmdBuf);
-		if (result != .VK_SUCCESS)
+		if (mFreeHandles.Count > 0)
 		{
-			System.Diagnostics.Debug.WriteLine(scope $"VulkanCommandPool: vkAllocateCommandBuffers failed ({result})");
-			return .Err;
+			cmdBuf = mFreeHandles.PopBack();
+		}
+		else
+		{
+			VkCommandBufferAllocateInfo allocInfo = .();
+			allocInfo.commandPool = mPool;
+			allocInfo.level = .VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+			allocInfo.commandBufferCount = 1;
+
+			let result = VulkanNative.vkAllocateCommandBuffers(mDevice.Handle, &allocInfo, &cmdBuf);
+			if (result != .VK_SUCCESS)
+			{
+				System.Diagnostics.Debug.WriteLine(scope $"VulkanCommandPool: vkAllocateCommandBuffers failed ({result})");
+				return .Err;
+			}
 		}
 
 		VkCommandBufferBeginInfo beginInfo = .();
@@ -74,25 +85,30 @@ class VulkanCommandPool : ICommandPool
 
 	public void Reset()
 	{
-		ReleaseCommandBuffers();
+		// Reclaim handles for reuse, delete Beef wrappers
+		for (let cb in mCommandBuffers)
+		{
+			mFreeHandles.Add(cb.Handle);
+			delete cb;
+		}
+		mCommandBuffers.Clear();
+
+		// Reset all buffers in one call (cheap with TRANSIENT_BIT)
 		VulkanNative.vkResetCommandPool(mDevice.Handle, mPool, .None);
 	}
 
 	public void Cleanup(VulkanDevice device)
 	{
-		ReleaseCommandBuffers();
+		for (let cb in mCommandBuffers)
+			delete cb;
+		mCommandBuffers.Clear();
+		mFreeHandles.Clear();
+
 		if (mPool.Handle != 0)
 		{
 			VulkanNative.vkDestroyCommandPool(device.Handle, mPool, null);
 			mPool = .Null;
 		}
-	}
-
-	private void ReleaseCommandBuffers()
-	{
-		for (let cb in mCommandBuffers)
-			delete cb;
-		mCommandBuffers.Clear();
 	}
 
 	public VkCommandPool Handle => mPool;
@@ -103,3 +119,4 @@ class VulkanCommandPool : ICommandPool
 		mCommandBuffers.Add(cb);
 	}
 }
+
