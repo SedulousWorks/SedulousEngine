@@ -128,6 +128,50 @@ No intermediate ComponentData classes needed - components serialize directly.
 - **Animation decoupling** - animation separate from skinned mesh (old engine coupled them)
 - **Render pass architecture** - cleaner pass-based pipeline vs old engine's feature-based system
 
+### Material and Texture Deduplication
+
+**Resource deduplication -- DONE.** `ImportDeduplicationContext` deduplicates
+TextureResource and MaterialResource objects across multiple model imports.
+Textures are keyed by source path (external: resolved file path, embedded:
+`modelPath#textureN`). Materials are keyed by name. Pass the same context to
+multiple `ResourceImportResult.ConvertFrom()` calls. Showcase sample validates
+this: 44 models produce only 14 unique textures and 14 unique materials.
+
+**MaterialInstance sharing -- outstanding.** Even with deduplicated resources,
+`RenderResourceResolver.ResolveMaterial()` creates a new `MaterialInstance` per
+component slot. Entities sharing the same MaterialResource get different
+MaterialInstance pointers, preventing MeshRenderer from batching draw calls.
+The Showcase works around this with manual shared MaterialInstances via
+`SetMaterial()`.
+
+Options for engine-level MaterialInstance sharing:
+
+**Option A: Share by default, clone on override (copy-on-write)**
+- Resolver shares instances automatically
+- If a component calls SetFloat/SetColor on a shared instance, the component
+  manager detects the shared ref count and clones into a private instance
+- Pro: automatic, covers the common case (imported materials rarely overridden)
+- Con: adds complexity to the component manager override path; need to track
+  which instances are shared vs private
+
+**Option B: Explicit opt-in via flag**
+- A flag on the component or material (e.g. `SharedMaterial = true`)
+- Shared materials batch; unique materials get their own instance as today
+- Pro: simple, predictable, no hidden cloning
+- Con: requires awareness from the user; imported materials would need the
+  flag set by default in the converter
+
+**Option C: Resolver-level instance cache**
+- Resolver maintains `Dictionary<Guid, MaterialInstance>` keyed by
+  MaterialResource.Id. Same resource = same instance (AddRef on reuse)
+- Per-entity overrides clone explicitly via a new API (e.g. `CloneMaterial()`)
+- Pro: clean separation -- sharing is a resource concern, overrides are explicit
+- Con: requires explicit clone call for per-entity variation
+
+Option C is likely the cleanest long-term approach. Most imported materials are
+never overridden per-entity, so sharing by resource ID covers the common case.
+The few entities needing unique properties call CloneMaterial() explicitly.
+
 ### What the old engine does that we don't yet
 - 14 post-processing effects (we have 2)
 - Reflection probes with scene capture

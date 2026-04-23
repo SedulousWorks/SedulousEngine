@@ -10,6 +10,8 @@ class ImportedTexture
 {
 	/// Texture name from the source model (file extension stripped).
 	public String Name = new .() ~ delete _;
+	/// Source path for deduplication. External: resolved file path. Embedded: modelPath#textureN.
+	public String SourcePath = new .() ~ delete _;
 	/// Decoded pixel data. Owned by this instance.
 	public Image PixelData ~ delete _;
 }

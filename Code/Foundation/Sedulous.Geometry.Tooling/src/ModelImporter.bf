@@ -643,6 +643,10 @@ class ModelImporter
 				continue;
 			}
 
+			// Set source path for embedded textures (TextureConverter handles external)
+			if (textureRes.SourcePath.IsEmpty && !mOptions.ModelPath.IsEmpty)
+				textureRes.SourcePath.AppendF("{}#texture{}", mOptions.ModelPath, texIdx);
+
 			result.Textures.Add(textureRes);
 		}
 	}

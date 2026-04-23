@@ -60,8 +60,8 @@ class ShowcaseApp : EngineApplication
 	// Loaded model assets (owned, cleaned up on shutdown)
 	private List<LoadedModel> mLoadedModels = new .() ~ DeleteContainerAndItems!(_);
 
-	// Shared texture cache: texture name -> TextureResource (deduplicated across models)
-	private Dictionary<String, TextureResource> mSharedTextures = new .() ~ delete _;
+	// Dedup context for texture/material resource deduplication across model imports
+	private ImportDeduplicationContext mDedupContext = new .() ~ delete _;
 
 	// Shared material cache: material name -> MaterialInstance (shared across all entities)
 	private Dictionary<String, MaterialInstance> mSharedMaterials = new .() ~ delete _;
@@ -293,6 +293,8 @@ class ShowcaseApp : EngineApplication
 		}
 
 		let importOpts = ModelImportOptions.StaticMeshOnly();
+		importOpts.BasePath.Set(basePath);
+		importOpts.ModelPath.Set(path);
 		let importer = scope ModelImporter(importOpts);
 		let importResult = importer.Import(model);
 		defer delete importResult;
@@ -303,29 +305,28 @@ class ShowcaseApp : EngineApplication
 			return null;
 		}
 
-		// Deduplicate textures by name
-		let localTextures = scope List<TextureResource>();
-		for (let importedTex in importResult.Textures)
-		{
-			let texName = importedTex.Name;
-			if (texName != null && mSharedTextures.TryGetValue(scope String(texName), let existing))
-			{
-				localTextures.Add(existing);
-			}
-			else
-			{
-				let texRes = TextureResourceConverter.Convert(importedTex);
-				if (texRes != null)
-				{
-					resources.AddResource<TextureResource>(texRes);
-					if (texName != null)
-						mSharedTextures[new String(texName)] = texRes;
-					localTextures.Add(texRes);
-				}
-			}
-		}
+		// Convert to resources with deduplication (shared textures + materials across models)
+		let resResult = ResourceImportResult.ConvertFrom(importResult, mDedupContext);
+		defer delete resResult;
 
-		// Deduplicate materials by name -> shared MaterialInstances
+		Console.WriteLine("  Import: {0} textures, {1} materials from model",
+			importResult.Textures.Count, importResult.Materials.Count);
+		Console.WriteLine("  Dedup:  {0} new textures, {1} new materials (rest reused)",
+			resResult.Textures.Count, resResult.Materials.Count);
+
+		// Register newly created resources and take ownership from resResult
+		// (deduped ones already registered by earlier imports)
+		for (let texRes in resResult.Textures)
+			resources.AddResource<TextureResource>(texRes);
+		for (let matRes in resResult.Materials)
+			resources.AddResource<MaterialResource>(matRes);
+
+		// Prevent resResult from deleting resources we registered
+		// (ResourceSystem now owns them via AddResource refs)
+		resResult.Textures.Clear();
+		resResult.Materials.Clear();
+
+		// Build shared MaterialInstances for batching
 		let loaded = new LoadedModel();
 		loaded.Name = new String(modelName);
 
@@ -336,72 +337,68 @@ class ShowcaseApp : EngineApplication
 			let matName = importedMat.Name;
 			if (matName != null && mSharedMaterials.TryGetValue(scope String(matName), let existing))
 			{
+				Console.WriteLine("  Material '{}': reused shared instance", matName);
 				loaded.MaterialSlots.Add(existing);
 			}
 			else
 			{
-				// Create material and resolve textures into a shared MaterialInstance
-				let matRes = MaterialResourceConverter.Convert(importedMat, localTextures);
-				if (matRes != null)
-				{
-					resources.AddResource<MaterialResource>(matRes);
-					let instance = new MaterialInstance(matRes.Material);
-					let gpuResources = renderSub.RenderContext.GPUResources;
+				// Find the MaterialResource (may be in this result or in the dedup context)
+				MaterialResource matRes = mDedupContext.FindMaterial(matName);
+				if (matRes == null)
+					continue;
 
-					// Resolve textures onto the instance
-					for (let kv in matRes.TextureRefs)
+				let instance = new MaterialInstance(matRes.Material);
+				let gpuResources = renderSub.RenderContext.GPUResources;
+
+				// Resolve textures onto the instance
+				for (let kv in matRes.TextureRefs)
+				{
+					let slotName = kv.key;
+					let texRef = kv.value;
+					if (!texRef.IsValid) continue;
+
+					if (resources.LoadByRef<TextureResource>(texRef) case .Ok(var texHandle))
 					{
-						let slotName = kv.key;
-						let texRef = kv.value;
-						if (!texRef.IsValid) continue;
-
-						if (resources.LoadByRef<TextureResource>(texRef) case .Ok(var texHandle))
+						let texResource = texHandle.Resource;
+						if (texResource?.Image != null)
 						{
-							let texResource = texHandle.Resource;
-							if (texResource?.Image != null)
+							let image = texResource.Image;
+							let bpp = Image.GetBytesPerPixel(image.Format);
+							TextureUploadDesc uploadDesc = .()
 							{
-								let image = texResource.Image;
-								let bpp = Image.GetBytesPerPixel(image.Format);
-								TextureUploadDesc uploadDesc = .()
-								{
-									PixelData = image.Data.Ptr,
-									PixelDataSize = (uint64)image.Data.Length,
-									Width = image.Width,
-									Height = image.Height,
-									DepthOrArrayLayers = 1,
-									MipLevels = 1,
-									Format = TextureFormatUtils.Convert(image.Format),
-									Dimension = .Texture2D,
-									BytesPerRow = image.Width * (uint32)bpp,
-									RowsPerImage = image.Height
-								};
+								PixelData = image.Data.Ptr,
+								PixelDataSize = (uint64)image.Data.Length,
+								Width = image.Width,
+								Height = image.Height,
+								DepthOrArrayLayers = 1,
+								MipLevels = 1,
+								Format = TextureFormatUtils.Convert(image.Format),
+								Dimension = .Texture2D,
+								BytesPerRow = image.Width * (uint32)bpp,
+								RowsPerImage = image.Height
+							};
 
-								if (gpuResources.UploadTexture(uploadDesc) case .Ok(let gpuHandle))
-								{
-									let gpuTex = gpuResources.GetTexture(gpuHandle);
-									if (gpuTex != null)
-										instance.SetTexture(slotName, gpuTex.DefaultView);
-								}
+							if (gpuResources.UploadTexture(uploadDesc) case .Ok(let gpuHandle))
+							{
+								let gpuTex = gpuResources.GetTexture(gpuHandle);
+								if (gpuTex != null)
+									instance.SetTexture(slotName, gpuTex.DefaultView);
 							}
-							texHandle.Release();
 						}
+						texHandle.Release();
 					}
-
-					// Set sampler
-					instance.SetSampler("MainSampler", renderSub.RenderContext.MaterialSystem.DefaultSampler);
-
-					// Prepare bind group
-					renderSub.RenderContext.MaterialSystem.PrepareInstance(instance);
-
-					if (matName != null)
-						mSharedMaterials[new String(matName)] = instance;
-					loaded.MaterialSlots.Add(instance);
-					matRes.ReleaseRef();
 				}
-				else
-				{
-					loaded.MaterialSlots.Add(null);
-				}
+
+				// Set sampler
+				instance.SetSampler("MainSampler", renderSub.RenderContext.MaterialSystem.DefaultSampler);
+
+				// Prepare bind group
+				renderSub.RenderContext.MaterialSystem.PrepareInstance(instance);
+
+				Console.WriteLine("  Material '{}': created new shared instance", matName);
+				if (matName != null)
+					mSharedMaterials[new String(matName)] = instance;
+				loaded.MaterialSlots.Add(instance);
 			}
 		}
 
@@ -707,15 +704,11 @@ class ShowcaseApp : EngineApplication
 		for (let loaded in mLoadedModels)
 			loaded.ReleaseRefs();
 
+		// Release deduped texture/material resource refs
+		mDedupContext.ReleaseAllRefs();
+
 		// Release shared material instances
 		for (let kv in mSharedMaterials)
-		{
-			delete kv.key;
-			kv.value?.ReleaseRef();
-		}
-
-		// Release shared texture resources
-		for (let kv in mSharedTextures)
 		{
 			delete kv.key;
 			kv.value?.ReleaseRef();

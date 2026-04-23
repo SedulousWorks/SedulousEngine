@@ -39,22 +39,69 @@ class ResourceImportResult
 	/// Materials are converted from ImportedMaterial to MaterialResource (owning).
 	public static ResourceImportResult ConvertFrom(ModelImportResult result)
 	{
+		return ConvertFrom(result, null);
+	}
+
+	/// Creates a ResourceImportResult with deduplication support.
+	/// If dedupContext is provided, textures and materials are deduplicated across imports.
+	/// Deduplicated resources are NOT added to this result's lists (they exist in the
+	/// result that first created them). The caller queries the context to find them.
+	public static ResourceImportResult ConvertFrom(ModelImportResult result,
+		ImportDeduplicationContext dedupContext)
+	{
 		let res = new ResourceImportResult();
 
-		// Convert textures first (materials need texture GUIDs)
-		for (let tex in result.Textures)
+		// Build a local texture map aligned with result.Textures indices.
+		// Materials reference textures by index, so this map must preserve
+		// index alignment even when some textures are deduped from the context.
+		let localTextureMap = scope List<TextureResource>();
+
+		for (int i = 0; i < result.Textures.Count; i++)
 		{
+			let tex = result.Textures[i];
+
+			// Check dedup context by source path
+			if (dedupContext != null)
+			{
+				let existing = dedupContext.FindTexture(tex.SourcePath);
+				if (existing != null)
+				{
+					localTextureMap.Add(existing);
+					continue;
+				}
+			}
+
+			// Create new
 			let texRes = TextureResourceConverter.Convert(tex);
 			if (texRes != null)
+			{
 				res.Textures.Add(texRes);
+				localTextureMap.Add(texRes);
+				dedupContext?.RegisterTexture(tex.SourcePath, texRes);
+			}
+			else
+			{
+				localTextureMap.Add(null);
+			}
 		}
 
-		// Convert materials using texture resources for GUIDs
+		// Convert materials using localTextureMap for correct GUID resolution
 		for (let mat in result.Materials)
 		{
-			let matRes = MaterialResourceConverter.Convert(mat, res.Textures);
+			// Check dedup context by material name
+			if (dedupContext != null)
+			{
+				let existing = dedupContext.FindMaterial(mat.Name);
+				if (existing != null)
+					continue;
+			}
+
+			let matRes = MaterialResourceConverter.Convert(mat, localTextureMap);
 			if (matRes != null)
+			{
 				res.Materials.Add(matRes);
+				dedupContext?.RegisterMaterial(mat.Name, matRes);
+			}
 		}
 
 		// Wrap static meshes

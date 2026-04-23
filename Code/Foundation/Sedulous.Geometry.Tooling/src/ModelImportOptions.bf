@@ -37,6 +37,10 @@ class ModelImportOptions
 	/// If empty, uses the model file's directory.
 	public String BasePath = new .() ~ delete _;
 
+	/// Path of the model file being imported.
+	/// Used to construct dedup keys for embedded textures.
+	public String ModelPath = new .() ~ delete _;
+
 	/// Scale factor to apply to all geometry.
 	public float Scale = 1.0f;
 

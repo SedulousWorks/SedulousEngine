@@ -78,6 +78,18 @@ static class TextureConverter
 		let result = new ImportedTexture();
 		result.PixelData = image;
 		SetName(result, modelTexture);
+
+		// Set source path for external textures (file-loaded via URI)
+		if (!modelTexture.Uri.IsEmpty && !basePath.IsEmpty)
+		{
+			let sourcePath = scope String();
+			sourcePath.Append(basePath);
+			if (!sourcePath.EndsWith('/') && !sourcePath.EndsWith('\\'))
+				sourcePath.Append('/');
+			sourcePath.Append(modelTexture.Uri);
+			result.SourcePath.Set(sourcePath);
+		}
+
 		return result;
 	}
 
