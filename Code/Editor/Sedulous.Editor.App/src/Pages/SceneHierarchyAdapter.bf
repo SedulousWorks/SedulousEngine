@@ -15,7 +15,7 @@ class SceneHierarchyAdapter : ITreeAdapter
 	private Dictionary<int32, EntityHandle> mNodeToEntity = new .() ~ delete _;
 	private Dictionary<EntityHandle, int32> mEntityToNode = new .() ~ delete _;
 	private int32 mNextNodeId;
-	private IListAdapterObserver mObserver;
+	private ITreeAdapterObserver mObserver;
 
 	public this(Scene scene)
 	{
@@ -27,7 +27,7 @@ class SceneHierarchyAdapter : ITreeAdapter
 	public void Rebuild()
 	{
 		RebuildMapping();
-		mObserver?.OnDataSetChanged();
+		mObserver?.OnTreeDataChanged();
 	}
 
 	/// Get the entity handle for a node ID.
@@ -46,6 +46,7 @@ class SceneHierarchyAdapter : ITreeAdapter
 
 		for (let handle in mScene.Entities)
 		{
+			if (!mScene.IsValid(handle)) continue;
 			let nodeId = mNextNodeId++;
 			mNodeToEntity[nodeId] = handle;
 			mEntityToNode[handle] = nodeId;
@@ -75,6 +76,7 @@ class SceneHierarchyAdapter : ITreeAdapter
 			int32 count = 0;
 			for (let handle in mScene.Entities)
 			{
+				if (!mScene.IsValid(handle)) continue;
 				if (mScene.GetParent(handle) == .Invalid)
 					count++;
 			}
@@ -92,6 +94,7 @@ class SceneHierarchyAdapter : ITreeAdapter
 		int32 count = 0;
 		for (let handle in mScene.Entities)
 		{
+			if (!mScene.IsValid(handle)) continue;
 			if (mScene.GetParent(handle) == parent)
 				count++;
 		}
@@ -105,6 +108,7 @@ class SceneHierarchyAdapter : ITreeAdapter
 		int32 i = 0;
 		for (let handle in mScene.Entities)
 		{
+			if (!mScene.IsValid(handle)) continue;
 			let entityParent = mScene.GetParent(handle);
 			bool isChild = (parentId == -1) ? (entityParent == .Invalid) : (entityParent == parentHandle);
 			if (isChild)
@@ -138,6 +142,7 @@ class SceneHierarchyAdapter : ITreeAdapter
 
 		for (let handle in mScene.Entities)
 		{
+			if (!mScene.IsValid(handle)) continue;
 			if (mScene.GetParent(handle) == parent)
 				return true;
 		}
@@ -163,7 +168,7 @@ class SceneHierarchyAdapter : ITreeAdapter
 		}
 	}
 
-	public void SetObserver(IListAdapterObserver observer)
+	public void SetObserver(ITreeAdapterObserver observer)
 	{
 		mObserver = observer;
 	}

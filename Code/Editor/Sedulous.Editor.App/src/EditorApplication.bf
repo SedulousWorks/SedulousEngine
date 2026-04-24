@@ -19,6 +19,14 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Editor.Core;
 using Sedulous.UI.Viewport;
 using Sedulous.Profiler;
+using Sedulous.Engine.Core;
+using Sedulous.Core;
+using Sedulous.Core.Logging.Abstractions;
+using Sedulous.Engine.Core.Resources;
+using Sedulous.Engine;
+using Sedulous.Engine.Render;
+using Sedulous.Geometry.Resources;
+using Sedulous.Resources;
 
 /// The Sedulous Editor application.
 /// Extends Runtime.Client.Application for direct control over UI and rendering.
@@ -30,8 +38,14 @@ class EditorApplication : Application, IFloatingWindowHost
 	private Context mRuntimeContext;
 
 	// Scene serialization (owned)
-	private Sedulous.Engine.Core.Resources.ComponentTypeRegistry mTypeRegistry ~ delete _;
-	private Sedulous.Engine.Core.Resources.SceneResourceManager mSceneManager ~ delete _;
+	private ComponentTypeRegistry mTypeRegistry ~ delete _;
+	private SceneResourceManager mSceneManager ~ delete _;
+
+	// Default primitive registry
+	private ResourceRegistry mPrimitiveRegistry ~ delete _;
+
+	// Project asset registry
+	private ResourceRegistry mProjectRegistry ~ delete _;
 
 	// Editor context (service locator for plugins, pages, panels)
 	private EditorContext mEditorContext ~ delete _;
@@ -60,7 +74,7 @@ class EditorApplication : Application, IFloatingWindowHost
 	private RecentProjects mRecentProjects = new .() ~ delete _;
 	private DockablePanel mPlaceholderPanel; // "Open an asset..." placeholder, removed when first page opens
 	private LogView mLogView;
-	private Dictionary<Sedulous.Core.ObjectKey<IEditorPage>, DockablePanel> mPageDockPanels = new .() ~ delete _;
+	private Dictionary<ObjectKey<IEditorPage>, DockablePanel> mPageDockPanels = new .() ~ delete _;
 	private int32 mNewSceneCounter;
 
 	// Multi-window (floating dock panels + cross-window drag)
@@ -71,7 +85,7 @@ class EditorApplication : Application, IFloatingWindowHost
 
 	public this() : base() { }
 
-	protected override Sedulous.Core.Logging.Abstractions.ILogger CreateLogger()
+	protected override ILogger CreateLogger()
 	{
 		mEditorLogger = new EditorLogger();
 		mEditorLogger.AddListener(mLogBuffer);
@@ -136,9 +150,12 @@ class EditorApplication : Application, IFloatingWindowHost
 
 		mRuntimeContext.Startup();
 
+		// Default primitive assets + registry
+		EnsureDefaultAssets();
+
 		// Scene serialization
-		mTypeRegistry = new Sedulous.Engine.Core.Resources.ComponentTypeRegistry();
-		mSceneManager = new Sedulous.Engine.Core.Resources.SceneResourceManager(mTypeRegistry, ResourceSystem.SerializerProvider);
+		mTypeRegistry = new ComponentTypeRegistry();
+		mSceneManager = new SceneResourceManager(mTypeRegistry, ResourceSystem.SerializerProvider);
 
 		// Editor context
 		mEditorContext = new EditorContext();
@@ -281,6 +298,23 @@ class EditorApplication : Application, IFloatingWindowHost
 		mProjectLoaded = true;
 		mEditorLogger.Log(.Information, "Project opened: {}", path);
 
+		// Load or create project registry
+		let projectDir = scope String();
+		projectDir.Set(mProject.ProjectDirectory);
+		let projRegistryPath = scope String()..AppendF("{}/project.registry", projectDir);
+
+		if (mProjectRegistry != null)
+		{
+			ResourceSystem.RemoveRegistry(mProjectRegistry);
+			delete mProjectRegistry;
+		}
+
+		mProjectRegistry = new Sedulous.Resources.ResourceRegistry("project", projectDir);
+		if (System.IO.File.Exists(projRegistryPath))
+			mProjectRegistry.LoadFromFile(projRegistryPath);
+		ResourceSystem.AddRegistry(mProjectRegistry);
+		mEditorLogger.Log(.Information, scope String()..AppendF("Project registry loaded ({} entries)", mProjectRegistry.Count));
+
 		// Defer view switch - the button that triggered this is inside the picker.
 		// Deleting immediately would use-after-free in Button.FireClick.
 		if (mProjectPickerView != null)
@@ -414,7 +448,11 @@ class EditorApplication : Application, IFloatingWindowHost
 		if (page.FilePath.Length == 0)
 			OnSaveAs();
 		else
+		{
 			page.Save();
+			SyncDockPanelTitle(page);
+			RegisterInProjectRegistry(page);
+		}
 	}
 
 	private void OnSaveAs()
@@ -434,16 +472,61 @@ class EditorApplication : Application, IFloatingWindowHost
 					if (!savePath.EndsWith(".scene", .OrdinalIgnoreCase))
 						savePath.Append(".scene");
 					page.SaveAs(savePath);
+					SyncDockPanelTitle(page);
+					RegisterInProjectRegistry(page);
 				}
 			},
 			scope StringView[]("*.scene"),
 			defaultPath, Window);
 	}
 
+	private void SyncDockPanelTitle(IEditorPage page)
+	{
+		let key = Sedulous.Core.ObjectKey<IEditorPage>(page);
+		if (mPageDockPanels.TryGetValue(key, let panel))
+			panel.SetTitle(page.Title);
+	}
+
+	private void RegisterInProjectRegistry(IEditorPage page)
+	{
+		if (mProjectRegistry == null || page.FilePath.Length == 0) return;
+
+		if (let scenePage = page as SceneEditorPage)
+		{
+			let sceneGuid = scenePage.LastSavedGuid;
+			if (sceneGuid == .Empty) return;
+
+			// Convert absolute path to project-relative
+			let projectDir = mProject.ProjectDirectory;
+			let filePath = page.FilePath;
+
+			let relativePath = scope String();
+			if (filePath.StartsWith(projectDir))
+			{
+				var rel = filePath.Substring(projectDir.Length);
+				if (rel.StartsWith("/") || rel.StartsWith("\\"))
+					rel = rel.Substring(1);
+				relativePath.Set(rel);
+			}
+			else
+			{
+				relativePath.Set(filePath);
+			}
+
+			relativePath.Replace('\\', '/');
+			mProjectRegistry.Register(sceneGuid, relativePath);
+
+			// Save registry to disk
+			let registryPath = scope String()..AppendF("{}/project.registry", projectDir);
+			mProjectRegistry.SaveToFile(registryPath);
+			mEditorLogger.Log(.Information, scope String()..AppendF("Registered in project registry: {}", relativePath));
+		}
+	}
+
 	private void OpenSceneFile(StringView path)
 	{
 		// Create scene through RuntimeContext so subsystems inject component managers
-		let sceneSub = mRuntimeContext.GetSubsystem<Sedulous.Engine.SceneSubsystem>();
+		let sceneSub = mRuntimeContext.GetSubsystem<SceneSubsystem>();
 		if (sceneSub == null)
 		{
 			mEditorLogger.Log(.Error, "No SceneSubsystem in RuntimeContext");
@@ -476,7 +559,7 @@ class EditorApplication : Application, IFloatingWindowHost
 
 		// Use a temporary SceneResource to deserialize through the Resource path
 		// (reads header + scene data via SceneResource.OnSerialize)
-		let tempResource = scope Sedulous.Engine.Core.Resources.SceneResource();
+		let tempResource = scope SceneResource();
 		tempResource.Scene = scene;
 		tempResource.TypeRegistry = mTypeRegistry;
 		tempResource.Serialize(reader);
@@ -484,13 +567,15 @@ class EditorApplication : Application, IFloatingWindowHost
 		// Create page
 		let page = new SceneEditorPage(scene, path, mEditorContext);
 
-		let sceneRenderer = mRuntimeContext.GetSubsystemByInterface<Sedulous.Engine.Render.ISceneRenderer>();
+		let sceneRenderer = mRuntimeContext.GetSubsystemByInterface<ISceneRenderer>();
 		let content = ScenePageBuilder.Build(page, mEditorContext, Device, mVGRenderer,
 			sceneRenderer, Shell.InputManager.Keyboard);
 		page.SetContentView(content);
 
 		mEditorContext.PageManager.AddPage(page);
 		mEditorLogger.Log(.Information, scope String()..AppendF("Opened scene: {}", path));
+
+		// Debug: check state after first update tick
 	}
 
 	private void OnPageOpened(IEditorPage page)
@@ -513,7 +598,7 @@ class EditorApplication : Application, IFloatingWindowHost
 
 			// If this is the last page, restore placeholder BEFORE closing -
 			// the dock panel still exists so we can dock relative to its parent.
-			let key = Sedulous.Core.ObjectKey<IEditorPage>(capturedPage);
+			let key = ObjectKey<IEditorPage>(capturedPage);
 			if (mPageDockPanels.Count == 1 && mPageDockPanels.ContainsKey(key) && mPlaceholderPanel == null)
 			{
 				let dockManager = mEditorContext.DockManager;
@@ -563,7 +648,7 @@ class EditorApplication : Application, IFloatingWindowHost
 
 	private void OnPageClosed(IEditorPage page)
 	{
-		let key = Sedulous.Core.ObjectKey<IEditorPage>(page);
+		let key = ObjectKey<IEditorPage>(page);
 
 		// Detach content view from dock panel before the page deletes it.
 		// During normal tab close, OnCloseRequested already did this.
@@ -609,11 +694,120 @@ class EditorApplication : Application, IFloatingWindowHost
 		}
 	}
 
+	// ==================== Default Assets ====================
+
+	/// Ensures default builtin assets (primitives, materials) exist on disk.
+	/// Creates them if missing, loads the registry, and adds it to ResourceSystem.
+	private void EnsureDefaultAssets()
+	{
+		let assetRoot = scope String();
+		GetAssetPath("", assetRoot);
+
+		let registryPath = scope String();
+		registryPath.AppendF("{}/builtin.registry", assetRoot);
+
+		// Check if assets need generating
+		bool needsGeneration = !System.IO.File.Exists(registryPath);
+
+		if (needsGeneration)
+		{
+			mEditorLogger.Log(.Information, "Generating default builtin assets...");
+			let provider = ResourceSystem.SerializerProvider;
+			let tempRegistry = scope Sedulous.Resources.ResourceRegistry();
+
+			GenerateDefaultPrimitives(assetRoot, provider, tempRegistry);
+			GenerateDefaultMaterials(assetRoot, provider, tempRegistry);
+
+			tempRegistry.SaveToFile(registryPath);
+			mEditorLogger.Log(.Information, "Default builtin assets generated.");
+		}
+
+		// Load builtin registry with name "builtin" and root = asset directory
+		mPrimitiveRegistry = new Sedulous.Resources.ResourceRegistry("builtin", assetRoot);
+		if (mPrimitiveRegistry.LoadFromFile(registryPath) case .Ok)
+		{
+			ResourceSystem.AddRegistry(mPrimitiveRegistry);
+			mEditorLogger.Log(.Information, scope String()..AppendF("Builtin registry loaded ({} entries)", mPrimitiveRegistry.Count));
+		}
+		else
+		{
+			mEditorLogger.Log(.Warning, "Failed to load builtin registry.");
+		}
+	}
+
+	private void GenerateDefaultPrimitives(StringView assetRoot, Sedulous.Serialization.ISerializerProvider provider, Sedulous.Resources.ResourceRegistry registry)
+	{
+		let primDir = scope String()..AppendF("{}/primitives", assetRoot);
+		if (!System.IO.Directory.Exists(primDir))
+			System.IO.Directory.CreateDirectory(primDir);
+
+		// Plane
+		{
+			let res = StaticMeshResource.CreatePlane(10, 10, 1, 1);
+			res.Name = "Plane";
+			let path = scope String()..AppendF("{}/plane.mesh", primDir);
+			res.SaveToFile(path, provider);
+			registry.Register(res.Id, "builtin://primitives/plane.mesh");
+			delete res;
+		}
+
+		// Cube
+		{
+			let res = StaticMeshResource.CreateCube(1.0f);
+			res.Name = "Cube";
+			let path = scope String()..AppendF("{}/cube.mesh", primDir);
+			res.SaveToFile(path, provider);
+			registry.Register(res.Id, "builtin://primitives/cube.mesh");
+			delete res;
+		}
+
+		// Sphere
+		{
+			let res = StaticMeshResource.CreateSphere(0.5f, 32, 16);
+			res.Name = "Sphere";
+			let path = scope String()..AppendF("{}/sphere.mesh", primDir);
+			res.SaveToFile(path, provider);
+			registry.Register(res.Id, "builtin://primitives/sphere.mesh");
+			delete res;
+		}
+	}
+
+	private void GenerateDefaultMaterials(StringView assetRoot, Sedulous.Serialization.ISerializerProvider provider, Sedulous.Resources.ResourceRegistry registry)
+	{
+		let matDir = scope String()..AppendF("{}/materials", assetRoot);
+		if (!System.IO.Directory.Exists(matDir))
+			System.IO.Directory.CreateDirectory(matDir);
+
+		// Default PBR material
+		{
+			let mat = Sedulous.Materials.Materials.CreatePBR("Default");
+			let res = new Sedulous.Materials.Resources.MaterialResource(mat, true);
+			res.Name = "Default";
+			let path = scope String()..AppendF("{}/default.material", matDir);
+			res.SaveToFile(path, provider);
+			registry.Register(res.Id, "builtin://materials/default.material");
+			delete res;
+		}
+
+		// Default Unlit material
+		{
+			let mat = Sedulous.Materials.Materials.CreateUnlit("DefaultUnlit");
+			let res = new Sedulous.Materials.Resources.MaterialResource(mat, true);
+			res.Name = "DefaultUnlit";
+			let path = scope String()..AppendF("{}/default_unlit.material", matDir);
+			res.SaveToFile(path, provider);
+			registry.Register(res.Id, "builtin://materials/default_unlit.material");
+			delete res;
+		}
+	}
+
+	// ==================== Scene Creation ====================
+
 	private void OnNewScene()
 	{
 		// Create scene through RuntimeContext's SceneSubsystem so ISceneAware
 		// subsystems (RenderSubsystem) inject their component managers.
-		let sceneSub = mRuntimeContext.GetSubsystem<Sedulous.Engine.SceneSubsystem>();
+		let sceneSub = mRuntimeContext.GetSubsystem<SceneSubsystem>();
 		if (sceneSub == null)
 		{
 			mEditorLogger.Log(.Error, "No SceneSubsystem in RuntimeContext");
@@ -634,7 +828,7 @@ class EditorApplication : Application, IFloatingWindowHost
 		});
 
 		// Add CameraComponent
-		let cameraMgr = scene.GetModule<Sedulous.Engine.Render.CameraComponentManager>();
+		let cameraMgr = scene.GetModule<CameraComponentManager>();
 		if (cameraMgr != null)
 		{
 			let camHandle = cameraMgr.CreateComponent(cameraEntity);
@@ -650,7 +844,7 @@ class EditorApplication : Application, IFloatingWindowHost
 			Scale = .One
 		});
 
-		let lightMgr = scene.GetModule<Sedulous.Engine.Render.LightComponentManager>();
+		let lightMgr = scene.GetModule<LightComponentManager>();
 		if (lightMgr != null)
 		{
 			let lightHandle = lightMgr.CreateComponent(lightEntity);
@@ -661,32 +855,24 @@ class EditorApplication : Application, IFloatingWindowHost
 			}
 		}
 
-		// Create ground plane + cube mesh resources
-		let planeRes = Sedulous.Geometry.Resources.StaticMeshResource.CreatePlane(10, 10, 1, 1);
-		let cubeRes = Sedulous.Geometry.Resources.StaticMeshResource.CreateCube(1.0f);
-		mResourceSystem.AddResource<Sedulous.Geometry.Resources.StaticMeshResource>(planeRes);
-		mResourceSystem.AddResource<Sedulous.Geometry.Resources.StaticMeshResource>(cubeRes);
-		planeRes.ReleaseRef();
-		cubeRes.ReleaseRef();
-
-		var planeRef = Sedulous.Resources.ResourceRef(planeRes.Id, .());
-		var cubeRef = Sedulous.Resources.ResourceRef(cubeRes.Id, .());
-		defer { planeRef.Dispose(); cubeRef.Dispose(); }
-
-		// Create materials
-		let sceneRenderer = mRuntimeContext.GetSubsystemByInterface<Sedulous.Engine.Render.ISceneRenderer>();
-		let matSystem = sceneRenderer?.RenderContext?.MaterialSystem;
+		// Load primitive meshes from disk (generated by EnsureDefaultAssets)
+		let meshMgr = scene.GetModule<MeshComponentManager>();
 
 		// Ground plane
 		let planeEntity = scene.CreateEntity("Ground");
 		scene.SetLocalTransform(planeEntity, .() { Position = .Zero, Rotation = .Identity, Scale = .One });
 
-		let meshMgr = scene.GetModule<Sedulous.Engine.Render.MeshComponentManager>();
 		if (meshMgr != null)
 		{
-			let planeComp = meshMgr.CreateComponent(planeEntity);
-			if (let comp = meshMgr.Get(planeComp))
-				comp.SetMeshRef(planeRef);
+			if (ResourceSystem.LoadResource<StaticMeshResource>("builtin://primitives/plane.mesh") case .Ok(var handle))
+			{
+				var planeRef = ResourceRef(handle.Resource.Id, "builtin://primitives/plane.mesh");
+				let planeComp = meshMgr.CreateComponent(planeEntity);
+				if (let comp = meshMgr.Get(planeComp))
+					comp.SetMeshRef(planeRef);
+				planeRef.Dispose();
+				handle.Release();
+			}
 		}
 
 		// Cube
@@ -695,15 +881,21 @@ class EditorApplication : Application, IFloatingWindowHost
 
 		if (meshMgr != null)
 		{
-			let cubeComp = meshMgr.CreateComponent(cubeEntity);
-			if (let comp = meshMgr.Get(cubeComp))
-				comp.SetMeshRef(cubeRef);
+			if (ResourceSystem.LoadResource<StaticMeshResource>("builtin://primitives/cube.mesh") case .Ok(var handle))
+			{
+				var cubeRef = ResourceRef(handle.Resource.Id, "builtin://primitives/cube.mesh");
+				let cubeComp = meshMgr.CreateComponent(cubeEntity);
+				if (let comp = meshMgr.Get(cubeComp))
+					comp.SetMeshRef(cubeRef);
+				cubeRef.Dispose();
+				handle.Release();
+			}
 		}
 
 		// Create page with layout
 		let page = new SceneEditorPage(scene, "", mEditorContext);
 
-		let sceneRenderer = mRuntimeContext.GetSubsystemByInterface<Sedulous.Engine.Render.ISceneRenderer>();
+		let sceneRenderer = mRuntimeContext.GetSubsystemByInterface<ISceneRenderer>();
 		let content = ScenePageBuilder.Build(page, mEditorContext, Device, mVGRenderer,
 			sceneRenderer, Shell.InputManager.Keyboard);
 		page.SetContentView(content);

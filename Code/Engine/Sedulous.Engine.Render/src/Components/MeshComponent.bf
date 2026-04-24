@@ -51,7 +51,7 @@ class MeshComponent : Component, ISerializableComponent
 	private ResourceRef mMeshRef ~ _.Dispose();
 
 	/// GPU mesh handle (runtime - set by manager after resource resolution).
-	public GPUMeshHandle MeshHandle;
+	public GPUMeshHandle MeshHandle = .Invalid;
 
 	/// Material resource references per slot (serialized).
 	private List<ResourceRef> mMaterialRefs = new .() ~ { for (var r in _) r.Dispose(); delete _; };

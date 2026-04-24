@@ -93,7 +93,8 @@ class SceneResourceManager : ResourceManager<SceneResource>
 
 	/// Saves a scene to a file through the standard Resource serialization path.
 	/// Writes resource header followed by scene data.
-	public Result<void> SaveSceneToFile(Scene scene, StringView path)
+	/// Returns the resource GUID written to the file (for registry tracking).
+	public Result<Guid> SaveSceneToFile(Scene scene, StringView path)
 	{
 		let resource = scope SceneResource();
 		resource.Scene = scene;
@@ -106,6 +107,9 @@ class SceneResourceManager : ResourceManager<SceneResource>
 		resource.SourcePath = scope .(path);
 
 		// Use Resource.SaveToFile which calls Serialize() in write mode
-		return resource.SaveToFile(path, mSerializerProvider);
+		if (resource.SaveToFile(path, mSerializerProvider) case .Err)
+			return .Err;
+
+		return .Ok(resource.Id);
 	}
 }

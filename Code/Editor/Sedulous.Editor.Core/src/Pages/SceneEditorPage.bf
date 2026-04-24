@@ -19,6 +19,9 @@ class SceneEditorPage : IEditorPage
 	// Scene (owned by RuntimeContext.SceneSubsystem - we hold a reference)
 	private Scene mScene;
 
+	// Resource GUID from last save (for registry tracking)
+	private Guid mLastSavedGuid;
+
 	// Editor context for serialization access
 	private EditorContext mEditorContext;
 
@@ -63,13 +66,16 @@ class SceneEditorPage : IEditorPage
 
 	public Scene Scene => mScene;
 
+	public Guid LastSavedGuid => mLastSavedGuid;
+
 	public void Save()
 	{
 		if (mFilePath.Length == 0) return;
 		if (mEditorContext?.SceneManager == null) return;
 
-		if (mEditorContext.SceneManager.SaveSceneToFile(mScene, mFilePath) case .Ok)
+		if (mEditorContext.SceneManager.SaveSceneToFile(mScene, mFilePath) case .Ok(let guid))
 		{
+			mLastSavedGuid = guid;
 			mDirty = false;
 			UpdateTitle();
 			Console.WriteLine("Scene saved: {}", mFilePath);
@@ -157,12 +163,10 @@ class SceneEditorPage : IEditorPage
 		mTitle.Clear();
 		if (mFilePath.Length > 0)
 		{
-			// Extract filename from path.
-			let lastSlash = Math.Max(mFilePath.LastIndexOf('/'), mFilePath.LastIndexOf('\\'));
-			if (lastSlash >= 0)
-				mTitle.Append(mFilePath, lastSlash + 1);
-			else
-				mTitle.Set(mFilePath);
+			// Extract filename without extension from path.
+			let name = scope String();
+			System.IO.Path.GetFileNameWithoutExtension(mFilePath, name);
+			mTitle.Set(name);
 		}
 		else
 		{
