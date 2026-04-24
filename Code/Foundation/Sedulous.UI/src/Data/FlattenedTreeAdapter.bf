@@ -5,7 +5,7 @@ using System.Collections;
 
 /// Wraps ITreeAdapter to present as IListAdapter for ListView virtualization.
 /// Maintains expansion state and a flat list of currently visible nodes.
-public class FlattenedTreeAdapter : IListAdapter
+public class FlattenedTreeAdapter : IListAdapter, ITreeAdapterObserver
 {
 	private ITreeAdapter mSource;
 
@@ -23,6 +23,7 @@ public class FlattenedTreeAdapter : IListAdapter
 	public this(ITreeAdapter source)
 	{
 		mSource = source;
+		mSource.SetObserver(this);
 		RebuildVisibleList();
 	}
 
@@ -112,6 +113,13 @@ public class FlattenedTreeAdapter : IListAdapter
 		}
 
 		mObserver?.OnDataSetChanged();
+	}
+
+	// === ITreeAdapterObserver ===
+
+	public void OnTreeDataChanged()
+	{
+		RebuildVisibleList();
 	}
 
 	private void AddNodeRecursive(int32 nodeId, int32 depth)

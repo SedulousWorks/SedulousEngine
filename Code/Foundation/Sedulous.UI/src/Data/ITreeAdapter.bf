@@ -29,4 +29,7 @@ public interface ITreeAdapter
 
 	/// View type for a node (for recycler pools).
 	int32 GetItemViewType(int32 nodeId) => 0;
+
+	/// Set the observer for data change notifications.
+	void SetObserver(ITreeAdapterObserver observer) { }
 }
