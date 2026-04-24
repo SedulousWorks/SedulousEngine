@@ -51,6 +51,7 @@ public class MeshRenderer : Renderer
 	{
 		public GPUMeshHandle MeshHandle;
 		public IBindGroup MaterialBindGroup;
+		public PipelineConfig MaterialConfig;
 		public uint32 SubMeshIndex;
 		public int32 InstanceStart;
 		public int32 InstanceCount;
@@ -212,6 +213,7 @@ public class MeshRenderer : Renderer
 					{
 						MeshHandle = mesh.MeshHandle,
 						MaterialBindGroup = mesh.MaterialBindGroup,
+						MaterialConfig = mesh.MaterialPipelineConfig,
 						SubMeshIndex = mesh.SubMeshIndex,
 						InstanceStart = 0,
 						InstanceCount = 1
@@ -330,29 +332,15 @@ public class MeshRenderer : Renderer
 		let vertexLayout = VertexLayoutHelper.CreateBufferLayout(.Mesh);
 		VertexBufferLayout[1] vertexBuffers = .(vertexLayout);
 
-		// Build instanced pipeline variant from the pass config.
-		// The pass already provides the correct shader, blend, depth, and MRT state -
-		// we just add the INSTANCED flag for StructuredBuffer reads.
-		var config = passConfig;
-		config.ShaderFlags |= .Instanced;
-
 		let colorFormat = pipeline.OutputFormat;
-		let depthFormat = config.DepthFormat;
+		let depthFormat = passConfig.DepthFormat;
 
-		let instancedPipelineResult = cache.GetPipeline(config, vertexBuffers, null,
-			colorFormat, depthFormat);
-		if (instancedPipelineResult case .Err)
-			return;
-
-		encoder.SetPipeline(instancedPipelineResult.Value);
-
+		// Initial bind group setup
 		pipeline.BindFrameGroup(encoder, frame);
 
-		// Bind instance buffer at set 3
 		if (frame.InstanceBindGroup != null)
 			encoder.SetBindGroup(BindGroupFrequency.DrawCall, frame.InstanceBindGroup, default);
 
-		// Bind shadow data if available
 		let shadowSystem = renderContext.ShadowSystem;
 		if (shadowSystem != null)
 		{
@@ -361,8 +349,11 @@ public class MeshRenderer : Renderer
 				encoder.SetBindGroup(BindGroupFrequency.Shadow, shadowBg, default);
 		}
 
-		// Draw each group
+		// Draw each group with per-material pipeline config.
+		// The material provides shader name, cull mode, blend mode, shader flags.
+		// The pass provides color/depth formats and MRT layout.
 		IBindGroup lastMaterialBg = null;
+		IRenderPipeline currentPipeline = null;
 
 		for (let group in cachedGroups)
 		{
@@ -370,6 +361,40 @@ public class MeshRenderer : Renderer
 			if (gpuMesh == null) continue;
 
 			let subMesh = gpuMesh.SubMeshes[group.SubMeshIndex];
+
+			// Build pipeline config from material, with pass-level overrides
+			var config = group.MaterialConfig;
+			config.ShaderFlags |= .Instanced;
+			config.VertexLayout = passConfig.VertexLayout;
+			config.ColorTargetCount = passConfig.ColorTargetCount;
+			config.ColorFormats = passConfig.ColorFormats;
+			config.DepthFormat = passConfig.DepthFormat;
+			config.DepthMode = passConfig.DepthMode;
+			config.DepthCompare = passConfig.DepthCompare;
+			config.DepthBias = passConfig.DepthBias;
+			config.DepthBiasSlopeScale = passConfig.DepthBiasSlopeScale;
+
+			let pipelineResult = cache.GetPipeline(config, vertexBuffers, null, colorFormat, depthFormat);
+			if (pipelineResult case .Err) continue;
+
+			let groupPipeline = pipelineResult.Value;
+			if (groupPipeline != currentPipeline)
+			{
+				encoder.SetPipeline(groupPipeline);
+				currentPipeline = groupPipeline;
+
+				// Re-bind groups after pipeline switch
+				pipeline.BindFrameGroup(encoder, frame);
+				if (frame.InstanceBindGroup != null)
+					encoder.SetBindGroup(BindGroupFrequency.DrawCall, frame.InstanceBindGroup, default);
+				if (shadowSystem != null)
+				{
+					let shadowBg2 = shadowSystem.GetBindGroup(view.FrameIndex);
+					if (shadowBg2 != null)
+						encoder.SetBindGroup(BindGroupFrequency.Shadow, shadowBg2, default);
+				}
+				lastMaterialBg = null; // force re-bind after pipeline switch
+			}
 
 			// Bind material
 			if (bindMaterial)
@@ -420,23 +445,11 @@ public class MeshRenderer : Renderer
 		let cache = renderContext.PipelineStateCache;
 		let bindMaterial = flags.HasFlag(.BindMaterial);
 
-		// Set the non-instanced pipeline (DrawCall UBO at set 3).
-		// RenderStaticInstanced may have left the instanced pipeline active,
-		// which uses StorageBuffer at set 3 - incompatible with DrawCallBindGroup.
 		let vertexLayout = VertexLayoutHelper.CreateBufferLayout(.Mesh);
 		VertexBufferLayout[1] vertexBuffers = .(vertexLayout);
 
 		let colorFormat = pipeline.OutputFormat;
 		let depthFormat = passConfig.DepthFormat;
-
-		let skinnedPipelineResult = cache.GetPipeline(passConfig, vertexBuffers, null,
-			colorFormat, depthFormat);
-		if (skinnedPipelineResult case .Err)
-			return;
-
-		encoder.SetPipeline(skinnedPipelineResult.Value);
-
-		pipeline.BindFrameGroup(encoder, frame);
 
 		// Bind shadow data if available
 		let shadowSystem = renderContext.ShadowSystem;
@@ -448,6 +461,7 @@ public class MeshRenderer : Renderer
 		}
 
 		IBindGroup lastMaterialBindGroup = null;
+		IRenderPipeline currentPipeline = null;
 
 		for (let mesh in entries)
 		{
@@ -455,6 +469,35 @@ public class MeshRenderer : Renderer
 			if (gpuMesh == null) continue;
 
 			let subMesh = gpuMesh.SubMeshes[mesh.SubMeshIndex];
+
+			// Build pipeline from material config with pass-level format overrides
+			var config = mesh.MaterialPipelineConfig;
+			config.VertexLayout = passConfig.VertexLayout;
+			config.ColorTargetCount = passConfig.ColorTargetCount;
+			config.ColorFormats = passConfig.ColorFormats;
+			config.DepthFormat = passConfig.DepthFormat;
+			config.DepthMode = passConfig.DepthMode;
+			config.DepthCompare = passConfig.DepthCompare;
+			config.DepthBias = passConfig.DepthBias;
+			config.DepthBiasSlopeScale = passConfig.DepthBiasSlopeScale;
+
+			let pipelineResult = cache.GetPipeline(config, vertexBuffers, null, colorFormat, depthFormat);
+			if (pipelineResult case .Err) continue;
+
+			let meshPipeline = pipelineResult.Value;
+			if (meshPipeline != currentPipeline)
+			{
+				encoder.SetPipeline(meshPipeline);
+				currentPipeline = meshPipeline;
+				pipeline.BindFrameGroup(encoder, frame);
+				if (shadowSystem != null)
+				{
+					let shadowBg2 = shadowSystem.GetBindGroup(view.FrameIndex);
+					if (shadowBg2 != null)
+						encoder.SetBindGroup(BindGroupFrequency.Shadow, shadowBg2, default);
+				}
+				lastMaterialBindGroup = null;
+			}
 
 			// Object uniforms via dynamic offset (non-instanced path)
 			let objOffset = pipeline.WriteObjectUniforms(view.FrameIndex, mesh.WorldMatrix, mesh.PrevWorldMatrix);

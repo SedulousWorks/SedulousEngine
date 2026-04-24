@@ -252,6 +252,7 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 				data.MeshHandle = comp.MeshHandle;
 				data.SubMeshIndex = (uint32)subIdx;
 				data.MaterialBindGroup = material?.BindGroup;
+				data.MaterialPipelineConfig = material?.Material?.PipelineConfig ?? .();
 				data.MaterialKey = materialKey;
 				data.BoneBufferHandle = comp.BoneBufferHandle;
 				data.IsSkinned = true;

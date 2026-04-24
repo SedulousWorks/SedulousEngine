@@ -248,6 +248,7 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 			data.MeshHandle = mesh.MeshHandle;
 			data.SubMeshIndex = (uint32)subIdx;
 			data.MaterialBindGroup = material?.BindGroup;
+			data.MaterialPipelineConfig = material?.Material?.PipelineConfig ?? .();
 			data.MaterialKey = materialKey;
 
 			if (renderData != null)

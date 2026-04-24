@@ -2,6 +2,7 @@ namespace Sedulous.Renderer;
 
 using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
+using Sedulous.Materials;
 
 /// Render data for a static or skinned mesh draw call.
 /// One MeshRenderData per submesh per material slot.
@@ -23,6 +24,10 @@ public class MeshRenderData : RenderData
 
 	/// Material bind group (set 2: textures, params, samplers).
 	public IBindGroup MaterialBindGroup;
+
+	/// Material's pipeline config (cull mode, blend mode, shader flags, etc.).
+	/// Used by MeshRenderer to create the correct pipeline variant per material.
+	public PipelineConfig MaterialPipelineConfig;
 
 	/// Material sort key for batching.
 	public uint32 MaterialKey;
