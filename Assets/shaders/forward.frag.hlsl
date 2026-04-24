@@ -223,6 +223,7 @@ struct FragmentInput
     // Current and previous clip-space positions for motion vector computation.
     float4 CurClipPos : TEXCOORD5;
     float4 PrevClipPos : TEXCOORD6;
+    bool IsFrontFace : SV_IsFrontFace;
 };
 
 /// MRT output: scene color + mini G-buffer (normals + velocity).
@@ -362,12 +363,22 @@ FragmentOutput main(FragmentInput input)
     if (alpha < AlphaCutoff)
         discard;
 
+    // Flip geometric normal for back-facing fragments before TBN construction,
+    // so normal mapping and lighting are correct for double-sided materials.
+    float3 geomNormal = input.WorldNormal;
+    float3 geomTangent = input.WorldTangent;
+    if (!input.IsFrontFace)
+    {
+        geomNormal = -geomNormal;
+        geomTangent = -geomTangent;
+    }
+
     // Normal - use map if tangent is valid, otherwise geometric normal
     float3 N;
-    if (dot(input.WorldTangent, input.WorldTangent) > 0.001)
-        N = GetNormalFromMap(input.WorldNormal, input.WorldTangent, uv);
+    if (dot(geomTangent, geomTangent) > 0.001)
+        N = GetNormalFromMap(geomNormal, geomTangent, uv);
     else
-        N = normalize(input.WorldNormal);
+        N = normalize(geomNormal);
 
     float3 V = normalize(CameraPosition - input.WorldPos);
 
@@ -380,7 +391,7 @@ FragmentOutput main(FragmentInput input)
     float3 Lo = 0.0;
     for (uint i = 0; i < LightCount; i++)
     {
-        Lo += EvaluateLight(Lights[i], input.WorldPos, input.WorldNormal, viewDepth, N, V, albedo, roughness, metallic, F0);
+        Lo += EvaluateLight(Lights[i], input.WorldPos, geomNormal, viewDepth, N, V, albedo, roughness, metallic, F0);
     }
 
     float3 ambient = AmbientColor * albedo * ao;
