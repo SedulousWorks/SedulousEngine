@@ -334,24 +334,11 @@ public class MeshRenderer : Renderer
 
 		let colorFormat = pipeline.OutputFormat;
 		let depthFormat = passConfig.DepthFormat;
-
-		// Initial bind group setup
-		pipeline.BindFrameGroup(encoder, frame);
-
-		if (frame.InstanceBindGroup != null)
-			encoder.SetBindGroup(BindGroupFrequency.DrawCall, frame.InstanceBindGroup, default);
-
 		let shadowSystem = renderContext.ShadowSystem;
-		if (shadowSystem != null)
-		{
-			let shadowBg = shadowSystem.GetBindGroup(view.FrameIndex);
-			if (shadowBg != null)
-				encoder.SetBindGroup(BindGroupFrequency.Shadow, shadowBg, default);
-		}
 
 		// Draw each group with per-material pipeline config.
-		// The material provides shader name, cull mode, blend mode, shader flags.
-		// The pass provides color/depth formats and MRT layout.
+		// Start from the pass config (shader, formats, depth), then apply
+		// material-specific render state (cull mode, blend mode, shader flags).
 		IBindGroup lastMaterialBg = null;
 		IRenderPipeline currentPipeline = null;
 
@@ -362,17 +349,14 @@ public class MeshRenderer : Renderer
 
 			let subMesh = gpuMesh.SubMeshes[group.SubMeshIndex];
 
-			// Build pipeline config from material, with pass-level overrides
-			var config = group.MaterialConfig;
+			// Start from pass config, overlay material-specific state
+			var config = passConfig;
 			config.ShaderFlags |= .Instanced;
-			config.VertexLayout = passConfig.VertexLayout;
-			config.ColorTargetCount = passConfig.ColorTargetCount;
-			config.ColorFormats = passConfig.ColorFormats;
-			config.DepthFormat = passConfig.DepthFormat;
-			config.DepthMode = passConfig.DepthMode;
-			config.DepthCompare = passConfig.DepthCompare;
-			config.DepthBias = passConfig.DepthBias;
-			config.DepthBiasSlopeScale = passConfig.DepthBiasSlopeScale;
+			config.ShaderFlags |= group.MaterialConfig.ShaderFlags;
+			config.CullMode = group.MaterialConfig.CullMode;
+			config.BlendMode = group.MaterialConfig.BlendMode;
+			config.FillMode = group.MaterialConfig.FillMode;
+			config.FrontFace = group.MaterialConfig.FrontFace;
 
 			let pipelineResult = cache.GetPipeline(config, vertexBuffers, null, colorFormat, depthFormat);
 			if (pipelineResult case .Err) continue;
@@ -470,16 +454,13 @@ public class MeshRenderer : Renderer
 
 			let subMesh = gpuMesh.SubMeshes[mesh.SubMeshIndex];
 
-			// Build pipeline from material config with pass-level format overrides
-			var config = mesh.MaterialPipelineConfig;
-			config.VertexLayout = passConfig.VertexLayout;
-			config.ColorTargetCount = passConfig.ColorTargetCount;
-			config.ColorFormats = passConfig.ColorFormats;
-			config.DepthFormat = passConfig.DepthFormat;
-			config.DepthMode = passConfig.DepthMode;
-			config.DepthCompare = passConfig.DepthCompare;
-			config.DepthBias = passConfig.DepthBias;
-			config.DepthBiasSlopeScale = passConfig.DepthBiasSlopeScale;
+			// Start from pass config, overlay material-specific state
+			var config = passConfig;
+			config.ShaderFlags |= mesh.MaterialPipelineConfig.ShaderFlags;
+			config.CullMode = mesh.MaterialPipelineConfig.CullMode;
+			config.BlendMode = mesh.MaterialPipelineConfig.BlendMode;
+			config.FillMode = mesh.MaterialPipelineConfig.FillMode;
+			config.FrontFace = mesh.MaterialPipelineConfig.FrontFace;
 
 			let pipelineResult = cache.GetPipeline(config, vertexBuffers, null, colorFormat, depthFormat);
 			if (pipelineResult case .Err) continue;
