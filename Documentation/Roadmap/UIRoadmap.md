@@ -2765,3 +2765,39 @@ not everything needs to be adopted.
 | **ViewRecycler.GetOrCreate()** | Combines acquire + creation + binding in one call. Legacy requires three separate steps. |
 | **Re-entrant MutationQueue** | Our closure-based queue supports actions that enqueue more actions. Legacy processes all at once without re-entrancy. |
 | **IsFocusWithin** | Checks if any descendant has focus. Legacy only has `IsFocused` flag. |
+
+### Custom Drawing in Controls (Icon Buttons)
+
+**Problem:** Controls like Button only support text labels. Tool UIs (model
+viewer, editor) need icon buttons (play/pause/stop triangles, arrows, etc.).
+There's no way to inject custom VG drawing into a standard control.
+
+**Context:** `UIDrawContext` exposes `ctx.VG` (full VGContext) which can draw
+arbitrary paths, fills, strokes. The capability exists but there's no clean
+way to hook custom drawing into existing controls without subclassing.
+
+**Possible solutions:**
+
+1. **Custom View subclass (simplest):** Create `IconButton : View` with
+   `IsFocusable = true`, an OnClick event, and an overridden `OnDraw` that
+   draws VG shapes. Duplicates button hover/press behavior but is self-contained.
+
+2. **Draw callback on View:** Add `Event<delegate void(UIDrawContext, float, float)> OnCustomDraw`
+   to View base class. If set, called during OnDraw with width/height. Any view
+   can have custom drawing without subclassing. Flexible but adds a field to
+   every view.
+
+3. **Content view on Button:** Extend Button to accept a child View as content
+   instead of (or alongside) text. The child view does custom drawing. Matches
+   WPF's ContentControl pattern but adds complexity.
+
+4. **Icon font:** Load an icon font (FontAwesome, Material Icons), render
+   glyphs as button text using unicode codepoints. No custom drawing needed.
+   Limited to available icon glyphs, requires font file.
+
+5. **Drawable extension:** Extend the Drawable system to support VG path
+   drawables alongside the existing image-based drawables. Button's Background
+   already uses Drawable -- an icon could be another Drawable property.
+
+Recommendation: option 1 for immediate needs (model viewer), option 2 or 5
+as a general framework feature later.
