@@ -43,6 +43,13 @@ class ResourceSystem
 
 		mSerializerProvider = provider;
 		mOwnsSerializerProvider = takeOwnership;
+
+		// Propagate to all registered managers
+		using (mManagersMonitor.Enter())
+		{
+			for (let kv in mManagers)
+				kv.value.SerializerProvider = provider;
+		}
 	}
 
 	public this(ILogger logger)
@@ -205,6 +212,11 @@ class ResourceSystem
 				mLogger?.LogWarning("A resource manager has already been registered for type '{0}'.", manager.ResourceType.GetName(.. scope .()));
 				return;
 			}
+
+			// Propagate serializer provider so managers can load files
+			if (manager.SerializerProvider == null && mSerializerProvider != null)
+				manager.SerializerProvider = mSerializerProvider;
+
 			mManagers.Add(manager.ResourceType, manager);
 		}
 	}
@@ -326,7 +338,7 @@ class ResourceSystem
 		bool fromCache = true,
 		bool cacheIfLoaded = true) where T : IResource
 	{
-		// Check cache first
+		// Check cache first (by original path, including protocol)
 		if (fromCache)
 		{
 			var key = ResourceCacheKey(path, typeof(T));
@@ -336,19 +348,24 @@ class ResourceSystem
 				return ResourceHandle<T>((T)handle.Resource);
 		}
 
+		// Resolve protocol-prefixed paths to absolute filesystem paths
+		let resolvedPath = scope String();
+		if (!ResolveProtocolPath(path, resolvedPath))
+			return .Err(.NotFound);
+
 		// Get manager
 		let manager = GetManager<T>();
 		if (manager == null)
 			return .Err(.ManagerNotFound);
 
-		// Load resource
-		let loadResult = manager.Load(path);
+		// Load resource using absolute path
+		let loadResult = manager.Load(resolvedPath);
 		if (loadResult case .Err(let error))
 			return .Err(error);
 
 		var handle = loadResult.Value;
 
-		// Cache if requested
+		// Cache by original path (with protocol) for consistent lookups
 		if (cacheIfLoaded)
 		{
 			var key = ResourceCacheKey(path, typeof(T));
@@ -356,8 +373,8 @@ class ResourceSystem
 			mCache.Set(key, handle);
 		}
 
-		// Track for hot-reload
-		mFileWatcher?.Track(path);
+		// Track for hot-reload (absolute path)
+		mFileWatcher?.Track(resolvedPath);
 
 		// Build the caller's handle from the raw resource pointer, then release the
 		// intermediate handle so its ref doesn't leak. The caller's handle and the
@@ -491,5 +508,56 @@ class ResourceSystem
 			}
 			return false;
 		}
+	}
+
+	/// Parses a protocol-prefixed path (e.g. "builtin://primitives/cube.mesh").
+	/// Returns true if a protocol was found; sets protocol and relativePath.
+	private static bool TryParseProtocol(StringView path, out StringView protocol, out StringView relativePath)
+	{
+		let idx = path.IndexOf("://");
+		if (idx > 0)
+		{
+			protocol = path[0..<idx];
+			relativePath = path[(idx + 3)...];
+			return true;
+		}
+		protocol = default;
+		relativePath = path;
+		return false;
+	}
+
+	/// Finds a registry by name (protocol).
+	private IResourceRegistry FindRegistry(StringView name)
+	{
+		using (mManagersMonitor.Enter())
+		{
+			for (let registry in mRegistries)
+			{
+				if (registry.Name == name)
+					return registry;
+			}
+			return null;
+		}
+	}
+
+	/// Resolves a protocol-prefixed path to an absolute filesystem path.
+	/// If the path has no protocol, returns it unchanged (assumed absolute).
+	/// Returns true if resolution succeeded.
+	public bool ResolveProtocolPath(StringView path, String outAbsolutePath)
+	{
+		StringView protocol = default;
+		StringView relativePath = default;
+
+		if (TryParseProtocol(path, out protocol, out relativePath))
+		{
+			let registry = FindRegistry(protocol);
+			if (registry != null)
+				return registry.ResolvePath(relativePath, outAbsolutePath);
+			return false;
+		}
+
+		// No protocol -- treat as absolute path
+		outAbsolutePath.Set(path);
+		return true;
 	}
 }

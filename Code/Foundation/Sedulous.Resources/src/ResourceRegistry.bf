@@ -7,13 +7,41 @@ using System.Threading;
 
 /// Default implementation of IResourceRegistry using in-memory dictionaries.
 /// Thread-safe via Monitor. Can be populated programmatically or from a manifest.
+///
+/// Each registry has a name (protocol prefix) and a root path. Internal paths
+/// are stored relative (e.g. "primitives/cube.mesh"). TryResolvePath prepends
+/// the protocol prefix (e.g. "builtin://primitives/cube.mesh"). ResolvePath
+/// combines root + relative to get an absolute filesystem path.
 class ResourceRegistry : IResourceRegistry
 {
 	private Monitor mMonitor = new .() ~ delete _;
 	private Dictionary<Guid, String> mIdToPath = new .() ~ DeleteDictionaryAndValues!(_);
 	private Dictionary<String, Guid> mPathToId = new .() ~ delete _; // Keys shared with mIdToPath values
+	private String mName = new .() ~ delete _;
+	private String mRootPath = new .() ~ delete _;
 
-	/// Registers a resource mapping (GUID <-> path).
+	/// Creates a registry with a name (protocol) and root path.
+	public this(StringView name = default, StringView rootPath = default)
+	{
+		if (name.Length > 0)
+			mName.Set(name);
+		if (rootPath.Length > 0)
+			mRootPath.Set(rootPath);
+	}
+
+	/// Registry name, used as protocol prefix (e.g. "builtin", "project").
+	public StringView Name => mName;
+
+	/// Root path for resolving relative asset paths.
+	public StringView RootPath => mRootPath;
+
+	/// Sets the root path (can be changed after construction, e.g. when project changes).
+	public void SetRootPath(StringView rootPath)
+	{
+		mRootPath.Set(rootPath);
+	}
+
+	/// Registers a resource mapping (GUID <-> relative path).
 	/// Replaces any existing mapping for the same GUID.
 	public void Register(Guid id, StringView path)
 	{
@@ -58,26 +86,40 @@ class ResourceRegistry : IResourceRegistry
 		}
 	}
 
+	/// Resolves GUID to protocol-prefixed path (e.g. "builtin://primitives/cube.mesh").
 	public bool TryResolvePath(Guid id, String outPath)
 	{
 		using (mMonitor.Enter())
 		{
 			if (mIdToPath.TryGetValue(id, let path))
 			{
-				outPath.Set(path);
+				if (mName.Length > 0)
+					outPath.AppendF("{}://{}", mName, path);
+				else
+					outPath.Set(path);
 				return true;
 			}
 			return false;
 		}
 	}
 
+	/// Resolves a path to its GUID. Accepts both relative and protocol-prefixed paths.
 	public bool TryResolveId(StringView path, out Guid outId)
 	{
 		using (mMonitor.Enter())
 		{
+			// Strip protocol prefix if present
+			var lookupPath = path;
+			if (mName.Length > 0)
+			{
+				let prefix = scope String()..AppendF("{}://", mName);
+				if (path.StartsWith(prefix))
+					lookupPath = path.Substring(prefix.Length);
+			}
+
 			for (let kv in mPathToId)
 			{
-				if (StringView(kv.key) == path)
+				if (StringView(kv.key) == lookupPath)
 				{
 					outId = kv.value;
 					return true;
@@ -88,7 +130,18 @@ class ResourceRegistry : IResourceRegistry
 		}
 	}
 
-	/// Saves the registry to a text file. Format: one "guid=path" per line.
+	/// Resolves a relative path to an absolute filesystem path.
+	/// Returns true if the file exists at the resolved location.
+	public bool ResolvePath(StringView relativePath, String outAbsolutePath)
+	{
+		if (mRootPath.Length == 0)
+			return false;
+
+		Path.InternalCombine(outAbsolutePath, mRootPath, relativePath);
+		return File.Exists(outAbsolutePath);
+	}
+
+	/// Saves the registry to a text file. Format: one "guid=relativePath" per line.
 	public Result<void> SaveToFile(StringView filePath)
 	{
 		using (mMonitor.Enter())

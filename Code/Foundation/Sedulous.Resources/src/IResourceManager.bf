@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Sedulous.Serialization;
 
 namespace Sedulous.Resources;
 
@@ -8,6 +9,8 @@ interface IResourceManager
 {
 	/// Gets the type of resource this manager handles.
 	Type ResourceType { get; }
+
+	ISerializerProvider SerializerProvider { get; set; }
 
 	/// Loads a resource from a file path.
 	Result<ResourceHandle<IResource>, ResourceLoadError> Load(StringView path);

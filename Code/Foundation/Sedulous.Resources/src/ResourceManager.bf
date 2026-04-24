@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Collections;
+using Sedulous.Serialization;
 
 namespace Sedulous.Resources;
 
@@ -9,7 +10,7 @@ abstract class ResourceManager<T> : IResourceManager where T : IResource
 {
 	/// Serializer provider for format-independent read/write.
 	/// Set by the subsystem that creates this manager, or pulled from ResourceSystem.
-	public Sedulous.Serialization.ISerializerProvider SerializerProvider { get; set; }
+	public ISerializerProvider SerializerProvider { get; set; }
 
 	/// Gets the type of resource this manager handles.
 	public Type ResourceType => typeof(T);
