@@ -1,0 +1,120 @@
+uint64 %_type {175488002581160416}
+int32 %_version {1}
+string %_id {"045f9bc8-b314-4f7e-a0cc-0465dfbcbf07"}
+string %_name {"Default"}
+string %_sourcePath {""}
+string %materialName {"Default"}
+string %shaderName {"pbr"}
+int32 %shaderFlags {0}
+int32 %wrapU {0}
+int32 %wrapV {0}
+int32 %minFilter {5}
+int32 %magFilter {1}
+Obj_ %pipelineConfig {
+	int32 %vertexLayout {4}
+	int32 %topology {3}
+	int32 %cullMode {1}
+	int32 %frontFace {0}
+	int32 %fillMode {0}
+	int32 %blendMode {0}
+	int32 %colorWriteMask {15}
+	int32 %depthMode {1}
+	int32 %depthCompare {1}
+	int32 %depthFormat {43}
+	int32 %depthBias {0}
+	float %depthBiasSlopeScale {0}
+	int32 %colorFormat {23}
+	int32 %colorTargetCount {1}
+	int32 %sampleCount {1}
+	int32 %depthOnly {0}
+}
+int32 %propertyCount {12}
+Obj_ %prop0 {
+	string %name {"BaseColor"}
+	int32 %type {3}
+	uint32 %binding {0}
+	uint32 %offset {0}
+	uint32 %size {16}
+}
+Obj_ %prop1 {
+	string %name {"Metallic"}
+	int32 %type {0}
+	uint32 %binding {1}
+	uint32 %offset {16}
+	uint32 %size {4}
+}
+Obj_ %prop2 {
+	string %name {"Roughness"}
+	int32 %type {0}
+	uint32 %binding {2}
+	uint32 %offset {20}
+	uint32 %size {4}
+}
+Obj_ %prop3 {
+	string %name {"AO"}
+	int32 %type {0}
+	uint32 %binding {3}
+	uint32 %offset {24}
+	uint32 %size {4}
+}
+Obj_ %prop4 {
+	string %name {"AlphaCutoff"}
+	int32 %type {0}
+	uint32 %binding {4}
+	uint32 %offset {28}
+	uint32 %size {4}
+}
+Obj_ %prop5 {
+	string %name {"EmissiveColor"}
+	int32 %type {3}
+	uint32 %binding {5}
+	uint32 %offset {32}
+	uint32 %size {16}
+}
+Obj_ %prop6 {
+	string %name {"AlbedoMap"}
+	int32 %type {9}
+	uint32 %binding {6}
+	uint32 %offset {0}
+	uint32 %size {0}
+}
+Obj_ %prop7 {
+	string %name {"NormalMap"}
+	int32 %type {9}
+	uint32 %binding {7}
+	uint32 %offset {0}
+	uint32 %size {0}
+}
+Obj_ %prop8 {
+	string %name {"MetallicRoughnessMap"}
+	int32 %type {9}
+	uint32 %binding {8}
+	uint32 %offset {0}
+	uint32 %size {0}
+}
+Obj_ %prop9 {
+	string %name {"OcclusionMap"}
+	int32 %type {9}
+	uint32 %binding {9}
+	uint32 %offset {0}
+	uint32 %size {0}
+}
+Obj_ %prop10 {
+	string %name {"EmissiveMap"}
+	int32 %type {9}
+	uint32 %binding {10}
+	uint32 %offset {0}
+	uint32 %size {0}
+}
+Obj_ %prop11 {
+	string %name {"MainSampler"}
+	int32 %type {11}
+	uint32 %binding {11}
+	uint32 %offset {0}
+	uint32 %size {0}
+}
+int32 %uniformSize {48}
+float[12] %uniformData {
+	{1, 1, 1, 1, 0, 0.5, 1, 0, 0, 0, 0, 1}
+}
+int32 %textureCount {0}

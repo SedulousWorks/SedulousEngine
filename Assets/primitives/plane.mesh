@@ -1,0 +1,23 @@
+uint64 %_type {8462204072068577150}
+int32 %_version {1}
+string %_id {"d526f5c9-5dd1-4ed3-84fe-31aac4d5765e"}
+string %_name {"Plane"}
+string %_sourcePath {""}
+int32 %vertexCount {4}
+Obj_ %vertices {
+	float %positions {-5, 0, -5, 5, 0, -5, -5, 0, 5, 5, 0, 5}
+	float %normals {0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0}
+	float %uvs {0, 0, 1, 0, 0, 1, 1, 1}
+	int32 %colors {-1, -1, -1, -1}
+	float %tangents {1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0}
+}
+int32 %indexCount {6}
+int32 %indices {0, 2, 1, 1, 2, 3}
+int32 %submeshCount {1}
+Obj_ %submeshes {
+	Obj_ %sm0 {
+		int32 %startIndex {0}
+		int32 %indexCount {6}
+		int32 %materialIndex {0}
+	}
+}

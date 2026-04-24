@@ -1,0 +1,5 @@
+d526f5c9-5dd1-4ed3-84fe-31aac4d5765e=builtin://primitives/plane.mesh
+718a903f-8fcf-41b3-93ad-3c0e1ec73194=builtin://primitives/cube.mesh
+b635d3ed-c6d7-4b08-8f46-49c4a9046916=builtin://primitives/sphere.mesh
+045f9bc8-b314-4f7e-a0cc-0465dfbcbf07=builtin://materials/default.material
+d45d8b63-38c5-4158-af4b-22a7e1942725=builtin://materials/default_unlit.material

@@ -1,0 +1,71 @@
+uint64 %_type {175488002581160416}
+int32 %_version {1}
+string %_id {"d45d8b63-38c5-4158-af4b-22a7e1942725"}
+string %_name {"DefaultUnlit"}
+string %_sourcePath {""}
+string %materialName {"DefaultUnlit"}
+string %shaderName {"unlit"}
+int32 %shaderFlags {0}
+int32 %wrapU {0}
+int32 %wrapV {0}
+int32 %minFilter {5}
+int32 %magFilter {1}
+Obj_ %pipelineConfig {
+	int32 %vertexLayout {4}
+	int32 %topology {3}
+	int32 %cullMode {1}
+	int32 %frontFace {0}
+	int32 %fillMode {0}
+	int32 %blendMode {0}
+	int32 %colorWriteMask {15}
+	int32 %depthMode {1}
+	int32 %depthCompare {1}
+	int32 %depthFormat {43}
+	int32 %depthBias {0}
+	float %depthBiasSlopeScale {0}
+	int32 %colorFormat {23}
+	int32 %colorTargetCount {1}
+	int32 %sampleCount {1}
+	int32 %depthOnly {0}
+}
+int32 %propertyCount {5}
+Obj_ %prop0 {
+	string %name {"BaseColor"}
+	int32 %type {3}
+	uint32 %binding {0}
+	uint32 %offset {0}
+	uint32 %size {16}
+}
+Obj_ %prop1 {
+	string %name {"EmissiveColor"}
+	int32 %type {3}
+	uint32 %binding {1}
+	uint32 %offset {16}
+	uint32 %size {16}
+}
+Obj_ %prop2 {
+	string %name {"AlphaCutoff"}
+	int32 %type {0}
+	uint32 %binding {2}
+	uint32 %offset {32}
+	uint32 %size {4}
+}
+Obj_ %prop3 {
+	string %name {"AlbedoMap"}
+	int32 %type {9}
+	uint32 %binding {3}
+	uint32 %offset {0}
+	uint32 %size {0}
+}
+Obj_ %prop4 {
+	string %name {"MainSampler"}
+	int32 %type {11}
+	uint32 %binding {4}
+	uint32 %offset {0}
+	uint32 %size {0}
+}
+int32 %uniformSize {36}
+float[9] %uniformData {
+	{1, 1, 1, 1, 0, 0, 0, 1, 0}
+}
+int32 %textureCount {0}
