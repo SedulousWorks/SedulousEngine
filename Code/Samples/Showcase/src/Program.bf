@@ -605,7 +605,7 @@ class ShowcaseApp : EngineApplication
 			queue.DestroyTransferBatch(ref tbRef);
 		}
 
-		TextureViewDesc viewDesc = .() { Label = "Sky Cubemap View", Format = .RGBA8Unorm, Dimension = .TextureCube };
+		TextureViewDesc viewDesc = .() { Label = "Sky Cubemap View", Format = .RGBA8Unorm, Dimension = .TextureCube, ArrayLayerCount = 6 };
 		if (device.CreateTextureView(mSkyCubemapTexture, viewDesc) case .Ok(let view))
 			mSkyCubemapView = view;
 	}
