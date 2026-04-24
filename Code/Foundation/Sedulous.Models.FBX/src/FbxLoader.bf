@@ -118,6 +118,7 @@ public class FbxLoader : IModelLoader
 		// Convert to Model
 		LoadMaterials(model);
 		LoadTextures(model);
+		DetectAlphaFromTextures(model);
 		LoadMeshes(model);
 		LoadNodes(model);
 		LoadSkins(model);
@@ -244,7 +245,8 @@ public class FbxLoader : IModelLoader
 			else
 				material.DoubleSided = true;
 
-			// Alpha / opacity
+			// Alpha / opacity (scalar values only -- texture-based alpha detection
+			// is handled by DetectAlphaFromTextures after textures are loaded)
 			if (mat.features.opacity.enabled)
 			{
 				if (mat.pbr.opacity.has_value && (float)mat.pbr.opacity.value_real < 1.0f)
@@ -335,6 +337,17 @@ public class FbxLoader : IModelLoader
 					// Try basePath + relative path first
 					let imagePath = scope String();
 					Path.InternalCombine(imagePath, mBasePath, relPath);
+
+					if(!File.Exists(imagePath))
+					{
+						// Rel path may be wrong
+						imagePath.Clear();
+						String fileName = scope .();
+						Path.GetFileName(relPath, fileName);
+						Path.InternalCombine(imagePath, mBasePath, fileName);
+					}
+
+
 
 					if (File.Exists(imagePath))
 					{
@@ -442,6 +455,105 @@ public class FbxLoader : IModelLoader
 		{
 		case .UFBX_WRAP_CLAMP: return .ClampToEdge;
 		default: return .Repeat;
+		}
+	}
+
+	// ===== Alpha Detection =====
+
+	/// Post-process: detect alpha mode from base color texture content.
+	/// FBX doesn't have an explicit alpha mode like glTF, so we analyze
+	/// the albedo texture's alpha channel (like Godot does):
+	///   - All alpha = 255: Opaque (no change)
+	///   - Alpha is binary (only 0 or 255): Mask with cutoff 0.5
+	///   - Alpha has gradient values: Blend
+	private void DetectAlphaFromTextures(Model model)
+	{
+		for (let material in model.Materials)
+		{
+			// Skip materials that already have an explicit alpha mode
+			if (material.AlphaMode != .Opaque)
+				continue;
+
+			// Check the base color texture for alpha
+			if (material.BaseColorTextureIndex < 0 || material.BaseColorTextureIndex >= model.Textures.Count)
+				continue;
+
+			let texture = model.Textures[material.BaseColorTextureIndex];
+			if (texture.GetData() == null || texture.GetDataSize() == 0)
+				continue;
+
+			// Only check RGBA/BGRA textures (4 bytes per pixel with alpha)
+			let bpp = GetBytesPerPixel(texture.PixelFormat);
+			if (bpp != 4)
+				continue;
+
+			let alphaOffset = GetAlphaOffset(texture.PixelFormat);
+			if (alphaOffset < 0)
+				continue;
+
+			let data = texture.GetData();
+			let pixelCount = texture.Width * texture.Height;
+			let dataSize = texture.GetDataSize();
+
+			if (pixelCount * bpp > dataSize)
+				continue;
+
+			// Scan alpha channel and classify pixels
+			int32 opaqueCount = 0;       // alpha == 255
+			int32 transparentCount = 0;  // alpha == 0
+			int32 gradientCount = 0;     // 0 < alpha < 255
+
+			for (int32 i = 0; i < pixelCount; i++)
+			{
+				let alpha = data[i * bpp + alphaOffset];
+				if (alpha == 255)
+					opaqueCount++;
+				else if (alpha == 0)
+					transparentCount++;
+				else
+					gradientCount++;
+			}
+
+			if (transparentCount == 0 && gradientCount == 0)
+				continue; // fully opaque
+
+			// Determine alpha mode from pixel distribution.
+			// Cutout textures (foliage, fences) have mostly 0/255 alpha with a
+			// thin band of anti-aliased edge pixels. True transparency (glass,
+			// fade) has a large proportion of gradient values.
+			// Threshold: if more than 25% of pixels have gradient alpha, use blend.
+			let gradientRatio = (float)gradientCount / (float)pixelCount;
+			if (gradientRatio > 0.25f)
+			{
+				material.AlphaMode = .Blend;
+			}
+			else if (transparentCount > 0 || gradientCount > 0)
+			{
+				material.AlphaMode = .Mask;
+				material.AlphaCutoff = 0.2f;
+			}
+		}
+	}
+
+	private static int32 GetBytesPerPixel(TexturePixelFormat format)
+	{
+		switch (format)
+		{
+		case .RGBA8, .BGRA8: return 4;
+		case .RGB8, .BGR8: return 3;
+		case .RG8: return 2;
+		case .R8: return 1;
+		default: return 0;
+		}
+	}
+
+	private static int32 GetAlphaOffset(TexturePixelFormat format)
+	{
+		switch (format)
+		{
+		case .RGBA8: return 3;
+		case .BGRA8: return 3;
+		default: return -1;
 		}
 	}
 
