@@ -42,7 +42,7 @@ static class ModelMeshConverter
 		let mesh = new StaticMesh();
 
 		// Find vertex element offsets
-		int32 posOffset = 0, normalOffset = 12, texCoordOffset = 24, colorOffset = 32, tangentOffset = 36;
+		int32 posOffset = 0, normalOffset = 12, texCoordOffset = 24, colorOffset = -1, tangentOffset = -1;
 
 		for (let element in modelMesh.VertexElements)
 		{
@@ -70,8 +70,8 @@ static class ModelMeshConverter
 			mesh.Vertices[i].Position = *(Vector3*)(v + posOffset);
 			mesh.Vertices[i].Normal = *(Vector3*)(v + normalOffset);
 			mesh.Vertices[i].TexCoord = *(Vector2*)(v + texCoordOffset);
-			mesh.Vertices[i].Color = *(uint32*)(v + colorOffset);
-			mesh.Vertices[i].Tangent = *(Vector3*)(v + tangentOffset);
+			mesh.Vertices[i].Color = (colorOffset >= 0) ? *(uint32*)(v + colorOffset) : 0xFFFFFFFF;
+			mesh.Vertices[i].Tangent = (tangentOffset >= 0) ? *(Vector3*)(v + tangentOffset) : Vector3.Zero;
 		}
 
 		// Copy indices
@@ -129,7 +129,7 @@ static class ModelMeshConverter
 			return .Err;
 
 		// Find vertex element offsets
-		int32 posOffset = 0, normalOffset = 12, texCoordOffset = 24, colorOffset = 32, tangentOffset = 36;
+		int32 posOffset = 0, normalOffset = 12, texCoordOffset = 24, colorOffset = -1, tangentOffset = -1;
 		int32 jointsOffset = -1, weightsOffset = -1;
 
 		for (let element in modelMesh.VertexElements)
@@ -163,8 +163,8 @@ static class ModelMeshConverter
 			vertex.Position = *(Vector3*)(v + posOffset);
 			vertex.Normal = *(Vector3*)(v + normalOffset);
 			vertex.TexCoord = *(Vector2*)(v + texCoordOffset);
-			vertex.Color = *(uint32*)(v + colorOffset);
-			vertex.Tangent = *(Vector3*)(v + tangentOffset);
+			vertex.Color = (colorOffset >= 0) ? *(uint32*)(v + colorOffset) : 0xFFFFFFFF;
+			vertex.Tangent = (tangentOffset >= 0) ? *(Vector3*)(v + tangentOffset) : Vector3.Zero;
 
 			// Joint indices are already indices into the skin's joints array,
 			// which is exactly what we want for skeleton bone indices
