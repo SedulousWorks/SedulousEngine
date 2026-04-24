@@ -568,6 +568,62 @@ viewport but not in the editor UI.
 - Animation: CurveEditor, TimelinePanel
 - Navigation: NavMeshDebugPanel, "Bake NavMesh" menu item
 
+## Editor Modules Architecture
+
+Each engine domain (physics, audio, animation, navigation) gets a paired editor
+module project that provides both runtime registration and editor extensions.
+
+**Project structure:**
+```
+Editor/
+  Sedulous.Editor.Core/        -- core editor framework (existing)
+  Sedulous.Editor.App/         -- editor application (existing)
+  Sedulous.Editor.Render/      -- render component inspectors, gizmos
+  Sedulous.Editor.Physics/     -- physics inspectors, collider gizmos
+  Sedulous.Editor.Audio/       -- audio inspectors, source gizmos
+  Sedulous.Editor.Animation/   -- animation inspectors, skeleton gizmos
+  Sedulous.Editor.Navigation/  -- navmesh inspectors, agent gizmos
+```
+
+**Registration flow:**
+Each editor module implements a registration method that receives both the
+RuntimeContext and EditorContext. It registers:
+1. The runtime subsystem with RuntimeContext (so scenes get component managers)
+2. Component inspectors, gizmo renderers, asset importers with EditorContext
+
+```
+EditorApplication.OnInitialize():
+  // Always needed
+  runtimeContext.RegisterSubsystem(new SceneSubsystem())
+  runtimeContext.RegisterSubsystem(new RenderSubsystem())
+
+  // Editor modules register runtime + editor parts
+  EditorPhysicsModule.Register(runtimeContext, editorContext)
+    -> runtimeContext.RegisterSubsystem(new PhysicsSubsystem())
+    -> editorContext.RegisterComponentInspector(typeof(RigidBodyComponent), ...)
+    -> editorContext.RegisterGizmoRenderer(typeof(RigidBodyComponent), ...)
+
+  EditorAudioModule.Register(runtimeContext, editorContext)
+    -> runtimeContext.RegisterSubsystem(new AudioSubsystem())
+    -> editorContext.RegisterComponentInspector(typeof(AudioSourceComponent), ...)
+
+  runtimeContext.Startup()
+```
+
+**Benefits:**
+- Editor stays modular -- build without physics by not registering the module
+- Runtime and editor parts are co-located in one project per domain
+- Scenes get all component types from registered modules via ISceneAware
+- ComponentTypeRegistry fallback not needed -- subsystems inject managers
+- Full round-trip: scenes saved by the editor preserve all component types
+- Plugins can add new component types by following the same pattern
+
+**Current state:** Only SceneSubsystem + RenderSubsystem registered. Other
+engine subsystems not yet available in the editor. Scenes saved from the
+editor will only contain render components (mesh, camera, light). Loading
+scenes with physics/audio/animation components will silently skip those
+components until their editor modules are registered.
+
 ## Prerequisites
 
 - ~~**RenderSubsystem refactor**~~: ISceneRenderer/IOverlayRenderer, swapchain

@@ -19,6 +19,9 @@ class SceneEditorPage : IEditorPage
 	// Scene (owned by RuntimeContext.SceneSubsystem - we hold a reference)
 	private Scene mScene;
 
+	// Editor context for serialization access
+	private EditorContext mEditorContext;
+
 	// Per-scene entity selection
 	private List<EntityHandle> mSelectedEntities = new .() ~ delete _;
 	public Event<delegate void(SceneEditorPage)> OnSelectionChanged ~ _.Dispose();
@@ -26,10 +29,11 @@ class SceneEditorPage : IEditorPage
 	// Owned objects (adapters, controllers, etc.) - deleted on page dispose.
 	private List<Object> mOwnedObjects = new .() ~ { for (let obj in _) delete obj; delete _; };
 
-	public this(Scene scene, StringView filePath)
+	public this(Scene scene, StringView filePath, EditorContext editorContext = null)
 	{
 		mScene = scene;
 		mFilePath.Set(filePath);
+		mEditorContext = editorContext;
 
 		// Generate page ID from path or scene name.
 		if (filePath.Length > 0)
@@ -62,15 +66,26 @@ class SceneEditorPage : IEditorPage
 	public void Save()
 	{
 		if (mFilePath.Length == 0) return;
-		// TODO: SceneSerializer.Save(mScene, mFilePath)
-		mDirty = false;
-		UpdateTitle();
+		if (mEditorContext?.SceneManager == null) return;
+
+		if (mEditorContext.SceneManager.SaveSceneToFile(mScene, mFilePath) case .Ok)
+		{
+			mDirty = false;
+			UpdateTitle();
+			Console.WriteLine("Scene saved: {}", mFilePath);
+		}
+		else
+		{
+			Console.WriteLine("ERROR: Failed to save scene: {}", mFilePath);
+		}
 	}
 
 	public void SaveAs(StringView path)
 	{
 		mFilePath.Set(path);
+		mPageId.Set(path);
 		Save();
+		UpdateTitle();
 	}
 
 	public void OnActivated() { }

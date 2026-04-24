@@ -5,6 +5,7 @@ using System.Collections;
 using Sedulous.Runtime;
 using Sedulous.UI.Toolkit;
 using Sedulous.UI;
+using Sedulous.Engine.Core.Resources;
 
 /// Central access point for all editor services.
 /// Passed to plugins during initialization so they can register extensions.
@@ -19,6 +20,9 @@ class EditorContext : IDisposable
 	public AssetSelection AssetSelection ~ delete _;
 	public EditorPluginRegistry PluginRegistry ~ delete _;
 	public EditorProject Project;
+
+	// Scene serialization
+	public SceneResourceManager SceneManager;
 
 	// UI (editor shell)
 	public DockManager DockManager;

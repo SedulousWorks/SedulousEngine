@@ -29,6 +29,10 @@ class EditorApplication : Application, IFloatingWindowHost
 	// Deleted explicitly in OnShutdown before Device is destroyed.
 	private Context mRuntimeContext;
 
+	// Scene serialization (owned)
+	private Sedulous.Engine.Core.Resources.ComponentTypeRegistry mTypeRegistry ~ delete _;
+	private Sedulous.Engine.Core.Resources.SceneResourceManager mSceneManager ~ delete _;
+
 	// Editor context (service locator for plugins, pages, panels)
 	private EditorContext mEditorContext ~ delete _;
 
@@ -132,9 +136,14 @@ class EditorApplication : Application, IFloatingWindowHost
 
 		mRuntimeContext.Startup();
 
+		// Scene serialization
+		mTypeRegistry = new Sedulous.Engine.Core.Resources.ComponentTypeRegistry();
+		mSceneManager = new Sedulous.Engine.Core.Resources.SceneResourceManager(mTypeRegistry, ResourceSystem.SerializerProvider);
+
 		// Editor context
 		mEditorContext = new EditorContext();
 		mEditorContext.RuntimeContext = mRuntimeContext;
+		mEditorContext.SceneManager = mSceneManager;
 		mEditorContext.PageManager = new EditorPageManager();
 		mEditorContext.SceneEditor = new EditorSceneManager();
 		mEditorContext.AssetSelection = new AssetSelection();
@@ -362,12 +371,10 @@ class EditorApplication : Application, IFloatingWindowHost
 	{
 		let fileMenu = menuBar.AddMenu("File");
 		fileMenu.AddItem("New Scene", new () => OnNewScene());
-		fileMenu.AddItem("Open Scene...", new () => { /* TODO */ });
+		fileMenu.AddItem("Open Scene...", new () => OnOpenScene());
 		fileMenu.AddSeparator();
-		fileMenu.AddItem("Save", new () => {
-			mEditorContext.PageManager.ActivePage?.Save();
-		});
-		fileMenu.AddItem("Save As...", new () => { /* TODO */ });
+		fileMenu.AddItem("Save", new () => OnSave());
+		fileMenu.AddItem("Save As...", new () => OnSaveAs());
 		fileMenu.AddSeparator();
 		fileMenu.AddItem("Exit", new () => Exit());
 
@@ -382,6 +389,108 @@ class EditorApplication : Application, IFloatingWindowHost
 		let viewMenu = menuBar.AddMenu("View");
 		viewMenu.AddItem("Console", new () => { /* TODO: toggle console panel */ });
 		viewMenu.AddItem("Asset Browser", new () => { /* TODO: toggle assets panel */ });
+	}
+
+	private void OnOpenScene()
+	{
+		let defaultPath = scope String();
+		if (mProject.ProjectDirectory.Length > 0)
+			defaultPath.Set(mProject.ProjectDirectory);
+
+		Shell.Dialogs.ShowOpenFileDialog(
+			new (paths) => {
+				if (paths.Length > 0)
+					OpenSceneFile(paths[0]);
+			},
+			scope StringView[]("*.scene"),
+			defaultPath, false, Window);
+	}
+
+	private void OnSave()
+	{
+		let page = mEditorContext.PageManager.ActivePage;
+		if (page == null) return;
+
+		if (page.FilePath.Length == 0)
+			OnSaveAs();
+		else
+			page.Save();
+	}
+
+	private void OnSaveAs()
+	{
+		let page = mEditorContext.PageManager.ActivePage;
+		if (page == null) return;
+
+		let defaultPath = scope String();
+		if (mProject.ProjectDirectory.Length > 0)
+			defaultPath.Set(mProject.ProjectDirectory);
+
+		Shell.Dialogs.ShowSaveFileDialog(
+			new (paths) => {
+				if (paths.Length > 0)
+				{
+					let savePath = scope String(paths[0]);
+					if (!savePath.EndsWith(".scene", .OrdinalIgnoreCase))
+						savePath.Append(".scene");
+					page.SaveAs(savePath);
+				}
+			},
+			scope StringView[]("*.scene"),
+			defaultPath, Window);
+	}
+
+	private void OpenSceneFile(StringView path)
+	{
+		// Create scene through RuntimeContext so subsystems inject component managers
+		let sceneSub = mRuntimeContext.GetSubsystem<Sedulous.Engine.SceneSubsystem>();
+		if (sceneSub == null)
+		{
+			mEditorLogger.Log(.Error, "No SceneSubsystem in RuntimeContext");
+			return;
+		}
+
+		// Extract scene name from filename
+		let sceneName = scope String();
+		System.IO.Path.GetFileNameWithoutExtension(path, sceneName);
+
+		let scene = sceneSub.CreateScene(sceneName);
+
+		// Read and deserialize scene file through the resource path
+		let text = scope String();
+		if (System.IO.File.ReadAllText(path, text) case .Err)
+		{
+			mEditorLogger.Log(.Error, scope String()..AppendF("Failed to read scene file: {}", path));
+			sceneSub.DestroyScene(scene);
+			return;
+		}
+
+		let reader = ResourceSystem.SerializerProvider.CreateReader(text);
+		if (reader == null)
+		{
+			mEditorLogger.Log(.Error, "Failed to create scene reader");
+			sceneSub.DestroyScene(scene);
+			return;
+		}
+		defer delete reader;
+
+		// Use a temporary SceneResource to deserialize through the Resource path
+		// (reads header + scene data via SceneResource.OnSerialize)
+		let tempResource = scope Sedulous.Engine.Core.Resources.SceneResource();
+		tempResource.Scene = scene;
+		tempResource.TypeRegistry = mTypeRegistry;
+		tempResource.Serialize(reader);
+
+		// Create page
+		let page = new SceneEditorPage(scene, path, mEditorContext);
+
+		let sceneRenderer = mRuntimeContext.GetSubsystemByInterface<Sedulous.Engine.Render.ISceneRenderer>();
+		let content = ScenePageBuilder.Build(page, mEditorContext, Device, mVGRenderer,
+			sceneRenderer, Shell.InputManager.Keyboard);
+		page.SetContentView(content);
+
+		mEditorContext.PageManager.AddPage(page);
+		mEditorLogger.Log(.Information, scope String()..AppendF("Opened scene: {}", path));
 	}
 
 	private void OnPageOpened(IEditorPage page)
@@ -592,7 +701,7 @@ class EditorApplication : Application, IFloatingWindowHost
 		}
 
 		// Create page with layout
-		let page = new SceneEditorPage(scene, "");
+		let page = new SceneEditorPage(scene, "", mEditorContext);
 
 		let sceneRenderer = mRuntimeContext.GetSubsystemByInterface<Sedulous.Engine.Render.ISceneRenderer>();
 		let content = ScenePageBuilder.Build(page, mEditorContext, Device, mVGRenderer,
@@ -623,6 +732,22 @@ class EditorApplication : Application, IFloatingWindowHost
 			mUIContext.DebugSettings.ShowMargin = on;
 			mUIContext.DebugSettings.ShowHitTarget = on;
 			mUIContext.DebugSettings.ShowFocusPath = on;
+		}
+
+		// Keyboard shortcuts
+		if (keyboard != null && keyboard.IsKeyDown(.LeftCtrl))
+		{
+			if (keyboard.IsKeyPressed(.S))
+			{
+				if (keyboard.IsKeyDown(.LeftShift))
+					OnSaveAs();
+				else
+					OnSave();
+			}
+			else if (keyboard.IsKeyPressed(.O))
+			{
+				OnOpenScene();
+			}
 		}
 		if (mouse == null) return;
 
