@@ -2,7 +2,7 @@ FileVersion = 1
 Locked = ["Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "dr_libs-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
 
 [Workspace]
-StartupProject = "Showcase"
+StartupProject = "EngineSandbox"
 
 [Projects]
 "Sedulous.RHI" = {Path = "Foundation/Sedulous.RHI"}
@@ -182,6 +182,8 @@ UISandbox = {Path = "Samples/UI/UISandbox"}
 "Sedulous.UI.Gamekit" = {Path = "Foundation/Sedulous.UI.Gamekit"}
 "Sedulous.Engine.Core.Tests" = {Path = "Engine/Sedulous.Engine.Core.Tests"}
 Showcase = {Path = "Samples/Showcase"}
+"Sedulous.UI.Viewport" = {Path = "Foundation/Sedulous.UI.Viewport"}
+ModelViewer = {Path = "Tools/Sedulous.Tools.ModelViewer"}
 
 [WorkspaceFolders]
 Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
@@ -212,5 +214,6 @@ Deprecated = []
 "Foundation/Slug" = ["Sedulous.Slug", "Sedulous.Slug.Tests", "Sedulous.Slug.TTF", "Sedulous.Slug.Renderer"]
 Engine = ["Sedulous.Engine.Core", "Sedulous.Engine.App", "Sedulous.Engine.Input", "Sedulous.Engine.Physics", "Sedulous.Engine.Audio", "Sedulous.Engine.Animation", "Sedulous.Engine.Navigation", "Sedulous.Engine.UI", "Sedulous.Engine.Render", "Sedulous.Engine.Core.Tests"]
 "Foundation/RHI" = ["Sedulous.RHI", "Sedulous.RHI.DX12", "Sedulous.RHI.Null", "Sedulous.RHI.Validation", "Sedulous.RHI.Vulkan", "Sedulous.ShaderReflection", "Sedulous.ShaderReflection.DXIL", "Sedulous.ShaderReflection.SPIRV", "Sedulous.ShaderReflection.Tests"]
-"Foundation/UI" = ["Sedulous.UI", "Sedulous.UI.Shell", "Sedulous.UI.Runtime", "Sedulous.UI.Toolkit", "Sedulous.UI.Gamekit", "Sedulous.UI.Tests", "Sedulous.UI.Resources"]
+"Foundation/UI" = ["Sedulous.UI", "Sedulous.UI.Shell", "Sedulous.UI.Runtime", "Sedulous.UI.Toolkit", "Sedulous.UI.Gamekit", "Sedulous.UI.Tests", "Sedulous.UI.Resources", "Sedulous.UI.Viewport"]
 Editor = ["Sedulous.Editor.Core", "Sedulous.Editor.App"]
+Tools = ["ModelViewer"]
