@@ -430,6 +430,44 @@ Handles the resolve-upload-track pattern for meshes, materials, and textures.
 Component managers (MeshComponentManager, SkinnedMeshComponentManager, DecalComponentManager,
 SpriteComponentManager) call into the resolver instead of duplicating the resolve-upload-track logic.
 
+### Masked Geometry and Depth Prepass
+
+**Problem:** Overlapping alpha-tested geometry (foliage, fences) can produce
+rendering artifacts if the depth prepass writes depth for the full quad rather
+than just the visible pixels. The transparent regions of the quad block geometry
+behind them since the depth buffer doesn't know about the alpha test.
+
+**Current solution:** The depth prepass only renders `RenderCategories.Opaque`.
+Masked geometry (`RenderCategories.Masked`) is skipped in the depth prepass and
+only rendered in the forward pass where the fragment shader samples the albedo
+texture and discards below `AlphaCutoff`. This matches the old renderer's
+approach and is correct -- no stale depth from masked quads.
+
+**Future optimization: alpha-tested depth prepass.** The `depth_only` fragment
+shader is currently empty (depth written from SV_Position.z only). To give
+masked geometry early-Z benefits:
+- Add a `depth_only` shader variant with `AlphaTest` flag that samples the
+  albedo texture and calls `discard` below the cutoff
+- The depth prepass would render masked geometry with this variant, binding
+  the material's albedo texture (requires `.BindMaterial` flag for masked category)
+- Only pixels surviving the alpha test write depth
+- Forward pass then benefits from early-Z for masked geometry
+- Cost: extra texture sampling in depth prepass for masked materials
+
+This is an optimization, not a correctness fix. Current behavior is correct.
+
+### Per-Material Pipeline State in MeshRenderer
+
+MeshRenderer now builds GPU pipeline variants per material, not per pass.
+The pass provides shader name, formats, depth mode. The material provides
+cull mode, blend mode, fill mode, shader flags. This enables double-sided
+materials (`CullMode = .None`), per-material shader variants, and future
+material-driven render state without pass-level changes.
+
+Pipeline switches only occur when material render state differs between
+batch groups. Same-state materials share one pipeline (no switch). The
+`PipelineStateCache` handles caching by config hash.
+
 ### Principles
 - Each feature targets what we actually need for the game
 - Build features properly - follow established engine architecture patterns, not shortcuts that need rework later
