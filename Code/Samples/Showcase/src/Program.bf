@@ -25,6 +25,7 @@ using Sedulous.Models;
 using Sedulous.Models.GLTF;
 using Sedulous.Shell;
 using Sedulous.Engine.Core;
+using Sedulous.Models.FBX;
 
 /// Loaded model asset: mesh resource + per-slot material resource refs.
 class LoadedModel
@@ -81,6 +82,7 @@ class ShowcaseApp : EngineApplication
 		SDLImageLoader.Initialize();
 		STBImageLoader.Initialize();
 		GltfModels.Initialize();
+		FbxModels.Initialize();
 
 		let sceneSub = Context.GetSubsystem<SceneSubsystem>();
 		let renderSub = Context.GetSubsystem<RenderSubsystem>();
@@ -113,7 +115,7 @@ class ShowcaseApp : EngineApplication
 
 		// Load nature assets
 		let assetBase = scope String();
-		GetAssetPath("samples/StylizedNatureMegaKit_Standard/glTF", assetBase);
+		GetAssetPath("samples/StylizedNatureMegaKit_Standard/gLTF", assetBase);
 
 		// ==================== Trees ====================
 		// Common trees - dense clusters and scattered singles
