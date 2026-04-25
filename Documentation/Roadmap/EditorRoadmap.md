@@ -545,23 +545,135 @@ viewport but not in the editor UI.
 - Cross-window input routing via focused window detection
 - Wire: selection -> inspector, command stack -> Edit menu undo/redo
 
-### Phase 3: Gizmos & Polish
-- `IGizmoRenderer`, `GizmoContext` (interfaces done, rendering not wired)
-- Transform gizmo (translate/rotate/scale)
-- Selection picking (raycast in viewport)
-- Cross-window drag routing (move OS windows during dock panel drag)
+### Phase 3: Entity Inspector
 
-### Phase 4: Asset Pipeline
-- `IAssetImporter`, `IAssetThumbnailGenerator`
-- Asset browser with file watching + hot reload
-- `IAssetCreator` for "Create New" menus
+The inspector panel shows the components of the selected entity and allows
+editing their properties. This is the primary way to configure entities.
 
-### Phase 5: Play Mode
+**3a. Reflection-based inspector (default)**
+- When an entity is selected, iterate its components via ComponentManagers
+- For each component, use `ReflectionInspector` to auto-generate property editors
+  from field reflection (`component.GetType().GetFields()`)
+- Map field types to PropertyEditor subclasses:
+  - `float` → NumericField, `int` → NumericField (integer mode)
+  - `bool` → Checkbox
+  - `String` → StringEditor
+  - `Color` → ColorPicker (when available, fallback to 4 floats)
+  - `Vector3` → 3x NumericField row
+  - `Quaternion` → Euler angles (3x NumericField)
+  - `Transform` → Position/Rotation/Scale groups
+  - `ResourceRef` → Path text + browse button
+  - `enum` → ComboBox
+- Respect attributes: `[HideInInspector]` skip, `[Range(min,max)]` slider,
+  `[Category("name")]` grouping, `[Tooltip("text")]` hover text
+- PropertyEditor OnValueChanged → `PropertyChangeCommand` → page CommandStack
+
+**3b. Component enumeration**
+- Need API to iterate components on an entity across all registered managers
+- Options:
+  A. Scene stores a component list per entity (adds memory per entity)
+  B. Each ComponentManager has `HasComponent(entity)` + `Get(entity)` (iterate all managers)
+  C. ComponentManagerBase tracks a per-entity component mask
+- Option B is simplest for now — iterate `scene.Modules`, check each manager
+
+**3c. Add/remove components**
+- Inspector header: "Add Component" button → dropdown of all registered component types
+- Each component section has a remove button (or context menu)
+- Add/remove go through EditorCommands for undo
+
+**3d. Custom inspectors**
+- `IComponentInspector` registered per component type (e.g. LightComponentInspector)
+- Override `BuildInspector` to create custom UI instead of reflection
+- Registered via `EditorContext.RegisterComponentInspector(type, inspector)`
+
+**Dependencies:** PropertyGrid (done), PropertyEditor types (StringEditor done,
+NumericField done, need more types), component enumeration API on Scene.
+
+### Phase 4: Asset Browser
+
+The asset browser displays project files, supports file operations, drag-drop
+into scenes, and integrates with the import pipeline.
+
+**4a. File tree view**
+- Display project directory as a tree (left) + grid/list (right)
+- File system scanning: initial scan + FileWatcher for changes
+- Filter by type (meshes, textures, materials, scenes, all)
+- Search bar for name filtering
+- Breadcrumb path bar for folder navigation
+
+**4b. File operations**
+- Create folder, rename, delete (with confirmation)
+- Drag files from OS explorer into the browser (IDropTarget on browser panel)
+- Double-click to open: .scene → SceneEditorPage, .material → MaterialEditorPage
+
+**4c. Asset import**
+- Drag external files (.fbx, .gltf, .png, .hdr) into browser
+- `IAssetImporter.Import(sourcePath, outputPath)` converts to engine format
+- Import settings dialog per file type (texture compression, mesh options)
+- Re-import on source file change (FileWatcher on source directory)
+
+**4d. Drag into scene**
+- Drag mesh from browser → create entity with MeshComponent in scene
+- Drag material → assign to selected mesh component's material slot
+- Drag texture → assign to selected material's texture slot
+- Uses DragData with "asset/file" format, SceneHierarchyView accepts the drop
+
+**4e. Thumbnails**
+- `IAssetThumbnailGenerator` per asset type
+- Mesh thumbnails: render a small viewport with the mesh
+- Texture thumbnails: downscaled image
+- Cache thumbnails to disk (.thumb directory)
+
+**Dependencies:** FileWatcher (done in ResourceSystem), DragDrop (done),
+IAssetImporter interface (defined), project registry (done).
+
+### Phase 5: Scene Gizmos
+
+Visual handles in the 3D viewport for selecting and manipulating entities.
+Gizmos render as an overlay after the scene but before editor UI compositing.
+
+**5a. Selection picking**
+- Click in viewport → raycast against scene entities
+- Need: camera unproject (screen → world ray), AABB/OBB intersection test
+- Selected entity highlighted with outline or wireframe overlay
+- Shift+click for multi-select
+
+**5b. Transform gizmo**
+- Three modes: Translate (arrows), Rotate (rings), Scale (boxes)
+- Toggle via toolbar buttons or W/E/R hotkeys
+- Local vs. World space toggle (toolbar or keyboard)
+- Gizmo renders at entity position, sized to stay constant on screen
+- Axis hit-testing: raycast against gizmo geometry (arrows, rings)
+- Drag interaction:
+  - Translate: project mouse delta onto axis/plane
+  - Rotate: angular delta from mouse arc
+  - Scale: distance delta from gizmo center
+- Snap: hold Ctrl for grid snap (translate) / angle snap (rotate) / step snap (scale)
+- All transforms go through `SetTransformCommand` for undo
+
+**5c. Component gizmos**
+- `IGizmoRenderer` per component type (registered by editor modules)
+- Light: directional arrow, point sphere, spot cone
+- Camera: frustum wireframe
+- Collider: wireframe shapes (box, sphere, capsule)
+- Draw via `GizmoContext` which wraps DebugDraw
+- `DrawWhenUnselected` flag for always-visible gizmos (lights, cameras)
+
+**5d. Gizmo rendering pipeline**
+- Gizmo pass runs after scene render, before viewport texture is finalized
+- Uses DebugDraw overlay (no depth test) for handles
+- Uses DebugDraw with depth for component gizmos (occluded by geometry)
+- Gizmo geometry is not part of the scene — editor-only rendering
+
+**Dependencies:** DebugDraw overlay (done), camera unproject, AABB intersection,
+viewport mouse coordinate conversion.
+
+### Phase 6: Play Mode
 - `EditorSceneManager` - serialize/restore scene around play
 - Play/Pause/Stop controls
 - Inspector read-only during play
 
-### Phase 6: Per-Module Plugins
+### Phase 7: Per-Module Plugins
 - Physics: ColliderInspector, ColliderGizmo, PhysicsDebugPanel
 - Render: MaterialEditorPage, LightGizmo, CameraFrustumGizmo
 - Audio: AudioSourceInspector, AudioPreview
