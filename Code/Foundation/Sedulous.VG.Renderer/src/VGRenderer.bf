@@ -139,7 +139,7 @@ public class VGRenderer : IDisposable
 					{
 						if (extEntry.Version != cached.ExternalVersion)
 						{
-							// Texture changed — update view and invalidate bind groups.
+							// Texture changed - update view and invalidate bind groups.
 							cached.GpuTextureView = extEntry.TextureView;
 							cached.ExternalVersion = extEntry.Version;
 							if (cached.BindGroups != null)
@@ -286,7 +286,7 @@ public class VGRenderer : IDisposable
 			}
 		}
 
-		// Not in local cache — create new entry.
+		// Not in local cache - create new entry.
 		let cached = new CachedTexture();
 		cached.SourceTexture = imageRef;
 		cached.GpuTexture = null;

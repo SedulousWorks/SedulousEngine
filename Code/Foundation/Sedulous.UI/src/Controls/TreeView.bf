@@ -52,7 +52,7 @@ public class TreeView : ViewGroup
 
 		mListView.OnItemClicked.Add(new (position, clickCount, localX, localY) =>
 		{
-			// Check if click is in the arrow zone — toggle expand/collapse
+			// Check if click is in the arrow zone - toggle expand/collapse
 			if (IsArrowHit(position, localX))
 			{
 				ToggleExpand(position);

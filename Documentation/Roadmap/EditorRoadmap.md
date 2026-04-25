@@ -555,18 +555,18 @@ editing their properties. This is the primary way to configure entities.
 - For each component, use `ReflectionInspector` to auto-generate property editors
   from field reflection (`component.GetType().GetFields()`)
 - Map field types to PropertyEditor subclasses:
-  - `float` → NumericField, `int` → NumericField (integer mode)
-  - `bool` → Checkbox
-  - `String` → StringEditor
-  - `Color` → ColorPicker (when available, fallback to 4 floats)
-  - `Vector3` → 3x NumericField row
-  - `Quaternion` → Euler angles (3x NumericField)
-  - `Transform` → Position/Rotation/Scale groups
-  - `ResourceRef` → Path text + browse button
-  - `enum` → ComboBox
+  - `float` -> NumericField, `int` -> NumericField (integer mode)
+  - `bool` -> Checkbox
+  - `String` -> StringEditor
+  - `Color` -> ColorPicker (when available, fallback to 4 floats)
+  - `Vector3` -> 3x NumericField row
+  - `Quaternion` -> Euler angles (3x NumericField)
+  - `Transform` -> Position/Rotation/Scale groups
+  - `ResourceRef` -> Path text + browse button
+  - `enum` -> ComboBox
 - Respect attributes: `[HideInInspector]` skip, `[Range(min,max)]` slider,
   `[Category("name")]` grouping, `[Tooltip("text")]` hover text
-- PropertyEditor OnValueChanged → `PropertyChangeCommand` → page CommandStack
+- PropertyEditor OnValueChanged -> `PropertyChangeCommand` -> page CommandStack
 
 **3b. Component enumeration**
 - Need API to iterate components on an entity across all registered managers
@@ -574,10 +574,10 @@ editing their properties. This is the primary way to configure entities.
   A. Scene stores a component list per entity (adds memory per entity)
   B. Each ComponentManager has `HasComponent(entity)` + `Get(entity)` (iterate all managers)
   C. ComponentManagerBase tracks a per-entity component mask
-- Option B is simplest for now — iterate `scene.Modules`, check each manager
+- Option B is simplest for now - iterate `scene.Modules`, check each manager
 
 **3c. Add/remove components**
-- Inspector header: "Add Component" button → dropdown of all registered component types
+- Inspector header: "Add Component" button -> dropdown of all registered component types
 - Each component section has a remove button (or context menu)
 - Add/remove go through EditorCommands for undo
 
@@ -604,18 +604,24 @@ into scenes, and integrates with the import pipeline.
 **4b. File operations**
 - Create folder, rename, delete (with confirmation)
 - Drag files from OS explorer into the browser (IDropTarget on browser panel)
-- Double-click to open: .scene → SceneEditorPage, .material → MaterialEditorPage
+- Double-click to open: .scene -> SceneEditorPage, .material -> MaterialEditorPage
 
 **4c. Asset import**
 - Drag external files (.fbx, .gltf, .png, .hdr) into browser
 - `IAssetImporter.Import(sourcePath, outputPath)` converts to engine format
 - Import settings dialog per file type (texture compression, mesh options)
 - Re-import on source file change (FileWatcher on source directory)
+- **Registry selection:** Import dialog lets user pick which registry to import
+  into (default: project, but can select builtin or any mounted registry).
+  Imported asset gets a protocol path (e.g. `project://models/tree.mesh`).
+- **Registry creation:** User can create a new registry by selecting a folder.
+  A `.registry` file is created there and the registry is mounted with a
+  user-chosen name (protocol prefix). Useful for asset packs or shared libraries.
 
 **4d. Drag into scene**
-- Drag mesh from browser → create entity with MeshComponent in scene
-- Drag material → assign to selected mesh component's material slot
-- Drag texture → assign to selected material's texture slot
+- Drag mesh from browser -> create entity with MeshComponent in scene
+- Drag material -> assign to selected mesh component's material slot
+- Drag texture -> assign to selected material's texture slot
 - Uses DragData with "asset/file" format, SceneHierarchyView accepts the drop
 
 **4e. Thumbnails**
@@ -633,8 +639,8 @@ Visual handles in the 3D viewport for selecting and manipulating entities.
 Gizmos render as an overlay after the scene but before editor UI compositing.
 
 **5a. Selection picking**
-- Click in viewport → raycast against scene entities
-- Need: camera unproject (screen → world ray), AABB/OBB intersection test
+- Click in viewport -> raycast against scene entities
+- Need: camera unproject (screen -> world ray), AABB/OBB intersection test
 - Selected entity highlighted with outline or wireframe overlay
 - Shift+click for multi-select
 
@@ -663,7 +669,7 @@ Gizmos render as an overlay after the scene but before editor UI compositing.
 - Gizmo pass runs after scene render, before viewport texture is finalized
 - Uses DebugDraw overlay (no depth test) for handles
 - Uses DebugDraw with depth for component gizmos (occluded by geometry)
-- Gizmo geometry is not part of the scene — editor-only rendering
+- Gizmo geometry is not part of the scene - editor-only rendering
 
 **Dependencies:** DebugDraw overlay (done), camera unproject, AABB intersection,
 viewport mouse coordinate conversion.

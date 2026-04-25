@@ -84,7 +84,7 @@ public class ViewportView : View
 
 		OnRender(this, encoder, frameIndex);
 
-		// Mark the texture as ready in the shared cache — other VGRenderers
+		// Mark the texture as ready in the shared cache - other VGRenderers
 		// can now safely pick it up (texture is in ShaderRead state).
 		if (mVGRenderer != null)
 			mVGRenderer.MarkExternalTextureReady(mImageRef);
@@ -209,7 +209,7 @@ public class ViewportView : View
 			mDepthTextureView = depthView;
 
 		// Register immediately with VGRenderer for smooth resize (same-window case).
-		// The shared cache entry starts as not-ready — other VGRenderers won't pick
+		// The shared cache entry starts as not-ready - other VGRenderers won't pick
 		// it up until MarkReady is called after the first RenderContent.
 		if (mVGRenderer != null && mColorTextureView != null)
 		{

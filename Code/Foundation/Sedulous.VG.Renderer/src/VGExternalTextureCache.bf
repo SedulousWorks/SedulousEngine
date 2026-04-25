@@ -22,7 +22,7 @@ public class VGExternalTextureCache
 	private int32 mNextVersion = 1;
 
 	/// Register an external GPU texture for an IImageData reference.
-	/// Starts as not ready — call MarkReady after the texture is rendered to.
+	/// Starts as not ready - call MarkReady after the texture is rendered to.
 	public void Register(IImageData imageRef, ITextureView textureView)
 	{
 		if (imageRef == null || textureView == null) return;

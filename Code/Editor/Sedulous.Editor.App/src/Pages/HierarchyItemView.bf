@@ -103,7 +103,7 @@ class HierarchyItemView : EditText
 			base.OnKeyDown(e);
 			return;
 		}
-		// Not editing — don't handle keys (let TreeView/ListView process them)
+		// Not editing - don't handle keys (let TreeView/ListView process them)
 	}
 
 	public override void OnMouseDown(MouseEventArgs e)
@@ -113,7 +113,7 @@ class HierarchyItemView : EditText
 			base.OnMouseDown(e);
 			return;
 		}
-		// Not editing — don't intercept mouse (let ListView handle selection)
+		// Not editing - don't intercept mouse (let ListView handle selection)
 	}
 
 	// === Drawing ===
