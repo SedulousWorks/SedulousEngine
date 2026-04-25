@@ -608,19 +608,13 @@ public class Scene : IDisposable
 	/// Collects all components attached to the given entity across all managers.
 	public void GetComponents(EntityHandle entity, List<Component> outComponents)
 	{
-		Console.WriteLine("[Scene.GetComponents] entity idx={} gen={}, scanning {} modules", entity.Index, entity.Generation, mModules.Count);
 		for (let module in mModules)
 		{
 			if (let manager = module as ComponentManagerBase)
 			{
 				let comp = manager.GetComponent(entity);
-				Console.WriteLine("[Scene.GetComponents]   Manager '{}': comp={}", manager.GetType().GetName(.. scope .()), comp != null ? "found" : "null");
 				if (comp != null)
 					outComponents.Add(comp);
-			}
-			else
-			{
-				Console.WriteLine("[Scene.GetComponents]   Module '{}': not a ComponentManagerBase", module.GetType().GetName(.. scope .()));
 			}
 		}
 	}
