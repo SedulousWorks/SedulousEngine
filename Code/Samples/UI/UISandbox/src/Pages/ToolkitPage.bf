@@ -87,7 +87,11 @@ class ToolkitPage : DemoPage
 			grid.AddProperty(new IntEditor("Health", 100, 0, 999, category: "Stats"));
 			grid.AddProperty(new RangeEditor("Volume", 0.8f, 0, 1, category: "Audio"));
 			grid.AddProperty(new ColorEditor("Tint", .(200, 100, 50, 255)));
-			mLayout.AddView(grid, new LinearLayout.LayoutParams() { Width = Sedulous.UI.LayoutParams.MatchParent, Height = 200 });
+			grid.AddProperty(new EnumEditor("Direction", 0, scope StringView[]("North", "South", "East", "West"), category: "Navigation"));
+			grid.AddProperty(new Vector3Editor("Position", .(1.0f, 2.5f, -3.0f), category: "Transform"));
+			grid.AddProperty(new Vector3Editor("Scale", .(1.0f, 1.0f, 1.0f), min: 0.001f, max: 100, category: "Transform"));
+			grid.AddProperty(new RangeEditor("Intensity", 0.5f, 0, 10, category: "Lighting"));
+			mLayout.AddView(grid, new LinearLayout.LayoutParams() { Width = Sedulous.UI.LayoutParams.MatchParent, Height = 350 });
 		}
 
 		AddSeparator();
