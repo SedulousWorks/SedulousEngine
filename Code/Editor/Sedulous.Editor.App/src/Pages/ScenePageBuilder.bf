@@ -162,6 +162,12 @@ static class ScenePageBuilder
 			adapter.Rebuild();
 		});
 
+		// When entity is renamed from hierarchy, refresh inspector
+		adapter.OnEntityRenamed.Add(new () =>
+		{
+			page.OnSelectionChanged(page);
+		});
+
 		return container;
 	}
 
@@ -264,23 +270,12 @@ static class ScenePageBuilder
 			Width = LayoutParams.MatchParent, Height = 0, Weight = 1
 		});
 
-		// Track active inspectors for cleanup on selection change
-		let activeInspectors = new List<ReflectionInspector>();
-		page.AddOwnedObject(activeInspectors);
-
 		// Wire selection changes to inspector rebuild
 		page.OnSelectionChanged.Add(new (p) =>
 		{
-			// Clean up previous inspectors
-			for (let inspector in activeInspectors)
-				delete inspector;
-			activeInspectors.Clear();
-
 			propertyGrid.Clear();
 
 			let selected = p.PrimarySelection;
-			Console.WriteLine("[Inspector] Selection changed: selected={} valid={}", selected, selected != .Invalid ? p.Scene.IsValid(selected) : false);
-
 			if (selected == .Invalid || !p.Scene.IsValid(selected))
 			{
 				headerLabel.SetText("Inspector");
@@ -290,7 +285,6 @@ static class ScenePageBuilder
 			let name = scope String();
 			name.Set(p.Scene.GetEntityName(selected));
 			headerLabel.SetText(scope $"Inspector - {name}");
-			Console.WriteLine("[Inspector] Entity: '{}' (idx={} gen={})", name, selected.Index, selected.Generation);
 
 			// Entity name editor
 			propertyGrid.AddProperty(new StringEditor("Name", name,
@@ -299,37 +293,48 @@ static class ScenePageBuilder
 					p.MarkDirty();
 				}));
 
-			// Build inspectors for each component
+			// Transform editors (every entity has a transform)
+			{
+				let transform = p.Scene.GetLocalTransform(selected);
+				let capturedEntity = selected;
+
+				let posEditor = new Vector3Editor("Position", transform.Position, category: "Transform");
+				posEditor.Setter = new [=p, =capturedEntity] (v) => {
+					var t = p.Scene.GetLocalTransform(capturedEntity);
+					t.Position = v;
+					p.Scene.SetLocalTransform(capturedEntity, t);
+				};
+				propertyGrid.AddProperty(posEditor);
+
+				// Rotation as euler angles
+				let euler = PropertyGridDescriptor.QuaternionToEuler(transform.Rotation);
+				let rotEditor = new Vector3Editor("Rotation", euler, min: -360, max: 360, category: "Transform");
+				rotEditor.Setter = new [=p, =capturedEntity] (v) => {
+					var t = p.Scene.GetLocalTransform(capturedEntity);
+					t.Rotation = PropertyGridDescriptor.EulerToQuaternion(v);
+					p.Scene.SetLocalTransform(capturedEntity, t);
+				};
+				propertyGrid.AddProperty(rotEditor);
+
+				let scaleEditor = new Vector3Editor("Scale", transform.Scale, min: 0.001f, max: 10000, category: "Transform");
+				scaleEditor.Setter = new [=p, =capturedEntity] (v) => {
+					var t = p.Scene.GetLocalTransform(capturedEntity);
+					t.Scale = v;
+					p.Scene.SetLocalTransform(capturedEntity, t);
+				};
+				propertyGrid.AddProperty(scaleEditor);
+			}
+
+			// Build inspectors for each component via comptime-generated IInspectable
 			let components = scope List<Component>();
 			p.Scene.GetComponents(selected, components);
-			Console.WriteLine("[Inspector] Found {} components", components.Count);
-
-			let inspectorCtx = InspectorContext() {
-				CommandStack = p.CommandStack,
-				Scene = p.Scene,
-				Entity = selected,
-				EditorContext = editorContext
-			};
 
 			for (let component in components)
 			{
-				let compType = component.GetType();
-				Console.WriteLine("[Inspector]   Component: {} owner={}", compType.GetName(.. scope .()), component.Owner);
-
-				// Check for custom inspector first
-				let customInspector = editorContext?.GetInspector(compType);
-				if (customInspector != null)
+				if (let inspectable = component as IInspectable)
 				{
-					Console.WriteLine("[Inspector]     Using custom inspector");
-					customInspector.BuildInspector(component, propertyGrid, inspectorCtx);
-				}
-				else
-				{
-					Console.WriteLine("[Inspector]     Using ReflectionInspector");
-					// Default: reflection-based inspector
-					let inspector = new ReflectionInspector(compType);
-					inspector.BuildInspector(component, propertyGrid, inspectorCtx);
-					activeInspectors.Add(inspector);
+					let desc = scope PropertyGridDescriptor(propertyGrid);
+					inspectable.DescribeProperties(desc);
 				}
 			}
 		});

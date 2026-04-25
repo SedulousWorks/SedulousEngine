@@ -27,6 +27,9 @@ class SceneHierarchyAdapter : ITreeAdapter
 	public int32 LastClickedNodeId = -1;
 	public float LastClickTime = 0;
 
+	/// Fired when an entity is renamed from the hierarchy.
+	public Event<delegate void()> OnEntityRenamed ~ _.Dispose();
+
 	public this(Scene scene)
 	{
 		mScene = scene;
@@ -195,6 +198,7 @@ class SceneHierarchyAdapter : ITreeAdapter
 					mScene.SetEntityName(handle, newName);
 				mRenamingNodeId = -1;
 				Rebuild();
+				OnEntityRenamed();
 			}
 		});
 
