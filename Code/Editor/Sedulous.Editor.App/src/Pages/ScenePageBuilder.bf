@@ -12,6 +12,7 @@ using Sedulous.UI.Viewport;
 using Sedulous.Shell.Input;
 using Sedulous.Editor.Core;
 using Sedulous.Core.Mathematics;
+using System.Collections;
 
 /// Builds the internal layout for a SceneEditorPage:
 /// Hierarchy (left) | Viewport (center) | Inspector (right)
@@ -263,12 +264,23 @@ static class ScenePageBuilder
 			Width = LayoutParams.MatchParent, Height = 0, Weight = 1
 		});
 
+		// Track active inspectors for cleanup on selection change
+		let activeInspectors = new List<ReflectionInspector>();
+		page.AddOwnedObject(activeInspectors);
+
 		// Wire selection changes to inspector rebuild
-		page.OnSelectionChanged.Add(new /*[page, editorContext, headerLabel, propertyGrid]*/ (p) =>
+		page.OnSelectionChanged.Add(new (p) =>
 		{
+			// Clean up previous inspectors
+			for (let inspector in activeInspectors)
+				delete inspector;
+			activeInspectors.Clear();
+
 			propertyGrid.Clear();
 
 			let selected = p.PrimarySelection;
+			Console.WriteLine("[Inspector] Selection changed: selected={} valid={}", selected, selected != .Invalid ? p.Scene.IsValid(selected) : false);
+
 			if (selected == .Invalid || !p.Scene.IsValid(selected))
 			{
 				headerLabel.SetText("Inspector");
@@ -278,10 +290,48 @@ static class ScenePageBuilder
 			let name = scope String();
 			name.Set(p.Scene.GetEntityName(selected));
 			headerLabel.SetText(scope $"Inspector - {name}");
+			Console.WriteLine("[Inspector] Entity: '{}' (idx={} gen={})", name, selected.Index, selected.Generation);
 
-			// TODO: Get components, build inspectors (reflection or custom)
-			// For now just show entity name
-			propertyGrid.AddProperty(new StringEditor("Name", name));
+			// Entity name editor
+			propertyGrid.AddProperty(new StringEditor("Name", name,
+				new [=p, =selected] (newName) => {
+					p.Scene.SetEntityName(selected, newName);
+					p.MarkDirty();
+				}));
+
+			// Build inspectors for each component
+			let components = scope List<Component>();
+			p.Scene.GetComponents(selected, components);
+			Console.WriteLine("[Inspector] Found {} components", components.Count);
+
+			let inspectorCtx = InspectorContext() {
+				CommandStack = p.CommandStack,
+				Scene = p.Scene,
+				Entity = selected,
+				EditorContext = editorContext
+			};
+
+			for (let component in components)
+			{
+				let compType = component.GetType();
+				Console.WriteLine("[Inspector]   Component: {} owner={}", compType.GetName(.. scope .()), component.Owner);
+
+				// Check for custom inspector first
+				let customInspector = editorContext?.GetInspector(compType);
+				if (customInspector != null)
+				{
+					Console.WriteLine("[Inspector]     Using custom inspector");
+					customInspector.BuildInspector(component, propertyGrid, inspectorCtx);
+				}
+				else
+				{
+					Console.WriteLine("[Inspector]     Using ReflectionInspector");
+					// Default: reflection-based inspector
+					let inspector = new ReflectionInspector(compType);
+					inspector.BuildInspector(component, propertyGrid, inspectorCtx);
+					activeInspectors.Add(inspector);
+				}
+			}
 		});
 
 		return container;
