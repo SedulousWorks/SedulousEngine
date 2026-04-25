@@ -86,15 +86,73 @@ static class ScenePageBuilder
 		});
 
 		let adapter = new SceneHierarchyAdapter(page.Scene);
+		adapter.TreeView = treeView;
 		treeView.SetAdapter(adapter);
 		page.AddOwnedObject(adapter);
 
-		// Wire tree clicks to selection
+		// Wire tree clicks to selection + slow-click rename
 		treeView.OnItemClick.Add(new (clickInfo) =>
 		{
 			let entity = adapter.GetEntityForNode(clickInfo.NodeId);
 			if (entity != .Invalid)
+			{
+				let now = treeView.Context?.TotalTime ?? 0;
+
+				// Slow click: second single-click on same already-selected item
+				// after a delay (not a double-click). Threshold: 0.4-1.5s.
+				if (clickInfo.ClickCount == 1 &&
+					clickInfo.NodeId == adapter.LastClickedNodeId &&
+					page.IsSelected(entity))
+				{
+					let elapsed = now - adapter.LastClickTime;
+					if (elapsed > 0.4f && elapsed < 1.5f)
+					{
+						adapter.StartRename(entity);
+						adapter.LastClickedNodeId = -1;
+						return;
+					}
+				}
+
+				adapter.LastClickedNodeId = clickInfo.NodeId;
+				adapter.LastClickTime = now;
 				page.SelectEntity(entity);
+			}
+		});
+
+		// Right-click context menu
+		treeView.OnItemRightClick.Add(new (nodeId, localX, localY) =>
+		{
+			let entity = adapter.GetEntityForNode(nodeId);
+			if (entity == .Invalid) return;
+
+			page.SelectEntity(entity);
+			ShowHierarchyContextMenu(page, adapter, treeView, entity, localX, localY);
+		});
+
+		// Keyboard shortcuts
+		treeView.OnItemKeyDown.Add(new (nodeId, e) =>
+		{
+			if (e.Key == .Delete)
+			{
+				let entity = adapter.GetEntityForNode(nodeId);
+				if (entity != .Invalid)
+				{
+					let cmd = new DestroyEntityCommand(page.Scene, entity);
+					page.CommandStack.Execute(cmd);
+					page.ClearSelection();
+					page.MarkDirty();
+					e.Handled = true;
+				}
+			}
+			else if (e.Key == .F2)
+			{
+				let entity = adapter.GetEntityForNode(nodeId);
+				if (entity != .Invalid)
+				{
+					adapter.StartRename(entity);
+					e.Handled = true;
+				}
+			}
 		});
 
 		// Rebuild tree when selection or scene changes
@@ -227,5 +285,62 @@ static class ScenePageBuilder
 		});
 
 		return container;
+	}
+
+	// ==================== Hierarchy Context Menu ====================
+
+	private static void ShowHierarchyContextMenu(SceneEditorPage page,
+		SceneHierarchyAdapter adapter, TreeView treeView,
+		EntityHandle entity, float localX, float localY)
+	{
+		let ctx = treeView.Context;
+		if (ctx == null) return;
+
+		let menu = new ContextMenu();
+
+		// Add child entity submenu
+		let addItem = menu.AddSubmenu("Add Child");
+		addItem.Submenu.AddItem("Empty", new () =>
+		{
+			let child = page.Scene.CreateEntity("New Entity");
+			page.Scene.SetParent(child, entity);
+			page.SelectEntity(child);
+			page.MarkDirty();
+		});
+
+		menu.AddSeparator();
+
+		// Rename
+		menu.AddItem("Rename", new [=adapter, =entity] () =>
+		{
+			adapter.StartRename(entity);
+		});
+
+		// Duplicate (stub)
+		menu.AddItem("Duplicate", new () => { }, enabled: false);
+
+		menu.AddSeparator();
+
+		// Delete
+		menu.AddItem("Delete", new [=page, =entity] () =>
+		{
+			let cmd = new DestroyEntityCommand(page.Scene, entity);
+			page.CommandStack.Execute(cmd);
+			page.ClearSelection();
+			page.MarkDirty();
+		});
+
+		// Convert local coords to screen coords
+		float screenX = localX;
+		float screenY = localY;
+		View v = treeView /*as View*/;
+		while (v != null)
+		{
+			screenX += v.Bounds.X;
+			screenY += v.Bounds.Y;
+			v = v.Parent;
+		}
+
+		menu.Show(ctx, screenX, screenY);
 	}
 }

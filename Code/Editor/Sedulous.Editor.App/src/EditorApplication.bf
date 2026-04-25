@@ -357,6 +357,7 @@ class EditorApplication : Application, IFloatingWindowHost
 		placeholderContent.VAlign = .Middle;
 		placeholderContent.TextColor = .(100, 100, 115, 255);
 		mPlaceholderPanel = dockManager.AddPanel("Editor", placeholderContent);
+		mPlaceholderPanel.OnCloseRequested.Add(new (p) => { mPlaceholderPanel = null; });
 		dockManager.DockPanel(mPlaceholderPanel, .Center);
 
 		// Wire page manager events - each page gets its own dock tab.
@@ -589,6 +590,8 @@ class EditorApplication : Application, IFloatingWindowHost
 		panel.Closable = true;
 
 		// When dock tab X is clicked, detach content (page owns it) and close via PageManager.
+		// Note: DockManager's own OnCloseRequested handler (registered first in AddPanel)
+		// calls ClosePanel before this handler runs, so the dock panel is already undocked.
 		let capturedPage = page;
 		panel.OnCloseRequested.Add(new (dp) => {
 			// Detach content before dock manager deletes the panel.
@@ -596,26 +599,7 @@ class EditorApplication : Application, IFloatingWindowHost
 				if (let parent = capturedPage.ContentView.Parent as ViewGroup)
 					parent.DetachView(capturedPage.ContentView);
 
-			// If this is the last page, restore placeholder BEFORE closing -
-			// the dock panel still exists so we can dock relative to its parent.
-			let key = ObjectKey<IEditorPage>(capturedPage);
-			if (mPageDockPanels.Count == 1 && mPageDockPanels.ContainsKey(key) && mPlaceholderPanel == null)
-			{
-				let dockManager = mEditorContext.DockManager;
-				if (dockManager != null)
-				{
-					let placeholderContent = new Label();
-					placeholderContent.SetText("Open an asset from the Asset Browser, or File > New Scene");
-					placeholderContent.FontSize = 14;
-					placeholderContent.HAlign = .Center;
-					placeholderContent.VAlign = .Middle;
-					placeholderContent.TextColor = .(100, 100, 115, 255);
-					mPlaceholderPanel = dockManager.AddPanel("Editor", placeholderContent);
-					dockManager.DockPanelRelativeTo(mPlaceholderPanel, .Center, dp.Parent);
-				}
-			}
-
-			// Close through PageManager (fires OnPageClosed, handles cleanup).
+			// Close through PageManager (fires OnPageClosed, handles cleanup + placeholder).
 			mEditorContext.PageManager.Close(capturedPage);
 		});
 
@@ -662,6 +646,25 @@ class EditorApplication : Application, IFloatingWindowHost
 			mEditorContext.DockManager?.ClosePanel(panel);
 
 		mPageDockPanels.Remove(key);
+
+		// If that was the last page, restore the placeholder panel.
+		if (mPageDockPanels.Count == 0 && mPlaceholderPanel == null)
+		{
+			let dockManager = mEditorContext.DockManager;
+			if (dockManager != null)
+			{
+				let placeholderContent = new Label();
+				placeholderContent.SetText("Open an asset from the Asset Browser, or File > New Scene");
+				placeholderContent.FontSize = 14;
+				placeholderContent.HAlign = .Center;
+				placeholderContent.VAlign = .Middle;
+				placeholderContent.TextColor = .(100, 100, 115, 255);
+				mPlaceholderPanel = dockManager.AddPanel("Editor", placeholderContent);
+				mPlaceholderPanel.OnCloseRequested.Add(new (p) => { mPlaceholderPanel = null; });
+				// Dock above the remaining root (console/assets) to recreate the original split
+				dockManager.DockPanelRelativeTo(mPlaceholderPanel, .Top, dockManager.RootNode);
+			}
+		}
 	}
 
 	private void RenderActiveViewports(ICommandEncoder encoder, int32 frameIndex)
@@ -747,7 +750,7 @@ class EditorApplication : Application, IFloatingWindowHost
 			res.Name = "Plane";
 			let path = scope String()..AppendF("{}/plane.mesh", primDir);
 			res.SaveToFile(path, provider);
-			registry.Register(res.Id, "builtin://primitives/plane.mesh");
+			registry.Register(res.Id, "primitives/plane.mesh");
 			delete res;
 		}
 
@@ -757,7 +760,7 @@ class EditorApplication : Application, IFloatingWindowHost
 			res.Name = "Cube";
 			let path = scope String()..AppendF("{}/cube.mesh", primDir);
 			res.SaveToFile(path, provider);
-			registry.Register(res.Id, "builtin://primitives/cube.mesh");
+			registry.Register(res.Id, "primitives/cube.mesh");
 			delete res;
 		}
 
@@ -767,7 +770,7 @@ class EditorApplication : Application, IFloatingWindowHost
 			res.Name = "Sphere";
 			let path = scope String()..AppendF("{}/sphere.mesh", primDir);
 			res.SaveToFile(path, provider);
-			registry.Register(res.Id, "builtin://primitives/sphere.mesh");
+			registry.Register(res.Id, "primitives/sphere.mesh");
 			delete res;
 		}
 	}
@@ -785,7 +788,7 @@ class EditorApplication : Application, IFloatingWindowHost
 			res.Name = "Default";
 			let path = scope String()..AppendF("{}/default.material", matDir);
 			res.SaveToFile(path, provider);
-			registry.Register(res.Id, "builtin://materials/default.material");
+			registry.Register(res.Id, "materials/default.material");
 			delete res;
 		}
 
@@ -796,7 +799,7 @@ class EditorApplication : Application, IFloatingWindowHost
 			res.Name = "DefaultUnlit";
 			let path = scope String()..AppendF("{}/default_unlit.material", matDir);
 			res.SaveToFile(path, provider);
-			registry.Register(res.Id, "builtin://materials/default_unlit.material");
+			registry.Register(res.Id, "materials/default_unlit.material");
 			delete res;
 		}
 	}
@@ -915,8 +918,8 @@ class EditorApplication : Application, IFloatingWindowHost
 		let mouse = Shell.InputManager.Mouse;
 		let keyboard = Shell.InputManager.Keyboard;
 
-		// F2 toggles UI debug overlay (all options at once).
-		if (keyboard != null && keyboard.IsKeyPressed(.F2))
+		// F8 toggles UI debug overlay (all options at once).
+		if (keyboard != null && keyboard.IsKeyPressed(.F8))
 		{
 			let on = !mUIContext.DebugSettings.ShowBounds;
 			mUIContext.DebugSettings.ShowBounds = on;

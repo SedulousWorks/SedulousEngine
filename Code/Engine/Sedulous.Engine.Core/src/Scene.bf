@@ -197,6 +197,19 @@ public class Scene : IDisposable
 		return (slot.Name != null) ? StringView(slot.Name) : default;
 	}
 
+	/// Sets the name of an entity.
+	public void SetEntityName(EntityHandle entity, StringView name)
+	{
+		if (!IsValid(entity))
+			return;
+
+		var slot = ref mEntities[(int32)entity.Index];
+		if (slot.Name == null)
+			slot.Name = new String(name);
+		else
+			slot.Name.Set(name);
+	}
+
 	/// Gets whether an entity is active.
 	public bool IsActive(EntityHandle entity)
 	{
