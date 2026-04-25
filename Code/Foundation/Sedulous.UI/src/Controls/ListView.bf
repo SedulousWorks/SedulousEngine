@@ -15,8 +15,11 @@ public class ListView : ViewGroup, IListAdapterObserver
 	public SelectionModel Selection = new .() ~ delete _;
 	public float ItemHeight = 30;
 
-	/// Fired when an item is clicked. Args: (position, clickCount).
-	public Event<delegate void(int32, int32)> OnItemClicked ~ _.Dispose();
+	/// Fired when an item is clicked. Args: (position, clickCount, localX, localY).
+	public Event<delegate void(int32, int32, float, float)> OnItemClicked ~ _.Dispose();
+
+	/// Fired when an item is right-clicked. Args: (position, localX, localY).
+	public Event<delegate void(int32, float, float)> OnItemRightClicked ~ _.Dispose();
 
 	/// Fired when an item is long-pressed. Args: (position).
 	public Event<delegate void(int32)> OnItemLongPress ~ _.Dispose();
@@ -248,14 +251,34 @@ public class ListView : ViewGroup, IListAdapterObserver
 			e.Handled = true;
 		}
 
+		// Right-click item notification.
+		if (mAdapter != null && e.Button == .Right)
+		{
+			let itemIndex = GetItemAtY(e.Y);
+			if (itemIndex >= 0 && itemIndex < mAdapter.ItemCount)
+			{
+				// Select the item if not already selected (preserves multi-select)
+				if (!Selection.IsSelected(itemIndex))
+					Selection.Select(itemIndex);
+				OnItemRightClicked(itemIndex, e.X, e.Y);
+				e.Handled = true;
+			}
+		}
+
 		// Selection + item click notification.
 		if (mAdapter != null && e.Button == .Left)
 		{
 			let itemIndex = GetItemAtY(e.Y);
 			if (itemIndex >= 0 && itemIndex < mAdapter.ItemCount)
 			{
-				Selection.Select(itemIndex);
-				OnItemClicked(itemIndex, e.ClickCount);
+				if (e.Modifiers.HasFlag(.Ctrl))
+					Selection.Toggle(itemIndex);
+				else if (e.Modifiers.HasFlag(.Shift))
+					Selection.SelectRange(Selection.FirstSelected, itemIndex);
+				else
+					Selection.Select(itemIndex);
+
+				OnItemClicked(itemIndex, e.ClickCount, e.X, e.Y);
 
 				// Start long press tracking.
 				mPressedItem = itemIndex;
@@ -294,44 +317,72 @@ public class ListView : ViewGroup, IListAdapterObserver
 		if (mAdapter == null) return;
 		let sel = Selection.FirstSelected;
 		let count = mAdapter.ItemCount;
+		let shift = e.Modifiers.HasFlag(.Shift);
 
 		switch (e.Key)
 		{
 		case .Down:
 			let next = Math.Min(sel + 1, count - 1);
-			Selection.Select(next);
+			if (shift)
+				Selection.SelectRange(sel, next);
+			else
+				Selection.Select(next);
 			ScrollToPosition(next);
 			e.Handled = true;
 		case .Up:
 			let prev = Math.Max(sel - 1, 0);
-			Selection.Select(prev);
+			if (shift)
+				Selection.SelectRange(sel, prev);
+			else
+				Selection.Select(prev);
 			ScrollToPosition(prev);
 			e.Handled = true;
 		case .Home:
-			Selection.Select(0);
+			if (shift)
+				Selection.SelectRange(sel, 0);
+			else
+				Selection.Select(0);
 			ScrollToPosition(0);
 			e.Handled = true;
 		case .End:
-			Selection.Select(count - 1);
+			if (shift)
+				Selection.SelectRange(sel, count - 1);
+			else
+				Selection.Select(count - 1);
 			ScrollToPosition(count - 1);
 			e.Handled = true;
 		case .PageDown:
 			let pageSize = (int32)(Height / ItemHeight);
 			let pageNext = Math.Min(sel + pageSize, count - 1);
-			Selection.Select(pageNext);
+			if (shift)
+				Selection.SelectRange(sel, pageNext);
+			else
+				Selection.Select(pageNext);
 			ScrollToPosition(pageNext);
 			e.Handled = true;
 		case .PageUp:
 			let pageSizeUp = (int32)(Height / ItemHeight);
 			let pagePrev = Math.Max(sel - pageSizeUp, 0);
-			Selection.Select(pagePrev);
+			if (shift)
+				Selection.SelectRange(sel, pagePrev);
+			else
+				Selection.Select(pagePrev);
 			ScrollToPosition(pagePrev);
 			e.Handled = true;
 		default:
 		}
 	}
 
-	/// Scroll so that the item at the given position is visible. (H2)
+	/// Get the currently visible view for a specific adapter position.
+	/// Returns null if the position is not currently on screen.
+	public View GetActiveView(int32 position)
+	{
+		if (mActiveViews.TryGetValue(position, let view))
+			return view;
+		return null;
+	}
+
+	/// Scroll so that the item at the given position is visible.
 	public void ScrollToPosition(int32 position)
 	{
 		if (mAdapter == null || position < 0 || position >= mAdapter.ItemCount) return;

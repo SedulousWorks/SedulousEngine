@@ -7,7 +7,7 @@ using internal Sedulous.UI;
 
 /// Tree view using FlattenedTreeAdapter for virtualization.
 /// Internally uses a ListView with the flattened adapter.
-/// Double-click expands/collapses nodes.
+/// Draws indent + expand/collapse arrows. Single-click on arrow toggles expansion.
 public class TreeView : ViewGroup
 {
 	public ITreeAdapter TreeAdapter;
@@ -20,8 +20,15 @@ public class TreeView : ViewGroup
 		public int32 ClickCount;
 	}
 
-	/// Fired when an item is clicked. Parameters: (nodeId, clickCount).
+	/// Fired when an item is clicked (left button). Parameters: (nodeId, clickCount).
 	public Event<delegate void(ItemClickInfo)> OnItemClick ~ _.Dispose();
+
+	/// Fired when an item is right-clicked. Parameters: (nodeId, localX, localY).
+	public Event<delegate void(int32, float, float)> OnItemRightClick ~ _.Dispose();
+
+	/// Fired when a key is pressed with an item selected. Parameters: (nodeId, KeyEventArgs).
+	/// Set e.Handled = true to prevent default TreeView key handling.
+	public Event<delegate void(int32, KeyEventArgs)> OnItemKeyDown ~ _.Dispose();
 
 	/// Fired when a node is expanded or collapsed. Parameter: nodeId.
 	public Event<delegate void(int32)> OnItemToggled ~ _.Dispose();
@@ -29,9 +36,12 @@ public class TreeView : ViewGroup
 	private FlattenedTreeAdapter mFlatAdapter ~ delete _;
 	private ListView mListView ~ delete _;
 	private float mIndentWidth = 20;
+	private float mArrowSize = 8;
 
 	public float IndentWidth { get => mIndentWidth; set => mIndentWidth = value; }
+	public float ArrowSize { get => mArrowSize; set => mArrowSize = value; }
 	public FlattenedTreeAdapter FlatAdapter => mFlatAdapter;
+	public ListView InternalListView => mListView;
 
 	public this()
 	{
@@ -40,17 +50,24 @@ public class TreeView : ViewGroup
 		mListView = new ListView();
 		mListView.Parent = this;
 
-		mListView.OnItemClicked.Add(new (position, clickCount) =>
+		mListView.OnItemClicked.Add(new (position, clickCount, localX, localY) =>
 		{
-			// Resolve flat position to node ID
-			let nodeId = (mFlatAdapter != null) ? mFlatAdapter.GetNodeId(position) : position;
-
-			// Single click - notify listeners
-			OnItemClick(.(){NodeId=nodeId, ClickCount=clickCount});
-
-			// Double-click - toggle expansion
-			if (clickCount >= 2)
+			// Check if click is in the arrow zone — toggle expand/collapse
+			if (IsArrowHit(position, localX))
+			{
 				ToggleExpand(position);
+				return;
+			}
+
+			// Resolve flat position to node ID and notify listeners
+			let nodeId = (mFlatAdapter != null) ? mFlatAdapter.GetNodeId(position) : position;
+			OnItemClick(.(){NodeId=nodeId, ClickCount=clickCount});
+		});
+
+		mListView.OnItemRightClicked.Add(new (position, localX, localY) =>
+		{
+			let nodeId = (mFlatAdapter != null) ? mFlatAdapter.GetNodeId(position) : position;
+			OnItemRightClick(nodeId, localX, localY);
 		});
 	}
 
@@ -76,8 +93,22 @@ public class TreeView : ViewGroup
 		}
 	}
 
+	/// Checks if a click at localX is in the arrow zone for the given flat position.
+	private bool IsArrowHit(int32 position, float localX)
+	{
+		if (mFlatAdapter == null || TreeAdapter == null) return false;
+
+		let nodeId = mFlatAdapter.GetNodeId(position);
+		if (nodeId < 0 || !TreeAdapter.HasChildren(nodeId)) return false;
+
+		let depth = mFlatAdapter.GetDepth(position);
+		let arrowLeft = depth * mIndentWidth;
+		let arrowRight = arrowLeft + mIndentWidth;
+
+		return localX >= arrowLeft && localX < arrowRight;
+	}
+
 	// === Keyboard: Left/Right expand/collapse ===
-	// Key events bubble from the inner ListView to TreeView.
 
 	public override void OnKeyDown(KeyEventArgs e)
 	{
@@ -87,6 +118,10 @@ public class TreeView : ViewGroup
 
 		let nodeId = mFlatAdapter.GetNodeId(sel);
 		if (nodeId < 0) return;
+
+		// Let subscribers handle keys first (Delete, F2, etc.)
+		OnItemKeyDown(nodeId, e);
+		if (e.Handled) return;
 
 		switch (e.Key)
 		{
@@ -131,5 +166,52 @@ public class TreeView : ViewGroup
 	public override void OnDraw(UIDrawContext ctx)
 	{
 		DrawChildren(ctx);
+		DrawTreeOverlay(ctx);
+	}
+
+	/// Draws expand/collapse arrows and indent guides for visible items.
+	private void DrawTreeOverlay(UIDrawContext ctx)
+	{
+		if (mFlatAdapter == null || TreeAdapter == null) return;
+
+		let arrowColor = ctx.Theme?.Palette.TextDim ?? .(160, 165, 180, 255);
+		let scrollY = mListView.ScrollY;
+		let itemH = mListView.ItemHeight;
+		let viewportH = Height;
+
+		// Calculate visible range
+		let firstVisible = (int32)(scrollY / itemH);
+		let lastVisible = Math.Min(firstVisible + (int32)(viewportH / itemH) + 1, mFlatAdapter.ItemCount - 1);
+
+		for (int32 i = firstVisible; i <= lastVisible; i++)
+		{
+			let nodeId = mFlatAdapter.GetNodeId(i);
+			if (nodeId < 0) continue;
+			if (!TreeAdapter.HasChildren(nodeId)) continue;
+
+			let depth = mFlatAdapter.GetDepth(i);
+			let itemY = i * itemH - scrollY;
+			let arrowX = depth * mIndentWidth + (mIndentWidth - mArrowSize) * 0.5f;
+			let arrowCY = itemY + itemH * 0.5f;
+			let halfSize = mArrowSize * 0.5f;
+
+			ctx.VG.BeginPath();
+			if (mFlatAdapter.IsExpanded(nodeId))
+			{
+				// Down-pointing triangle (v)
+				ctx.VG.MoveTo(arrowX, arrowCY - halfSize * 0.6f);
+				ctx.VG.LineTo(arrowX + mArrowSize, arrowCY - halfSize * 0.6f);
+				ctx.VG.LineTo(arrowX + halfSize, arrowCY + halfSize * 0.6f);
+			}
+			else
+			{
+				// Right-pointing triangle (>)
+				ctx.VG.MoveTo(arrowX, arrowCY - halfSize * 0.8f);
+				ctx.VG.LineTo(arrowX + mArrowSize * 0.6f, arrowCY);
+				ctx.VG.LineTo(arrowX, arrowCY + halfSize * 0.8f);
+			}
+			ctx.VG.ClosePath();
+			ctx.VG.Fill(arrowColor);
+		}
 	}
 }

@@ -36,11 +36,32 @@ public class SelectionModel
 			OnSelectionChanged();
 	}
 
-	/// Toggle selection of an index.
+	/// Toggle selection of an index (for Ctrl+click).
 	public void Toggle(int32 index)
 	{
+		if (Mode == .None) return;
 		if (IsSelected(index)) Deselect(index);
-		else Select(index);
+		else
+		{
+			if (Mode == .Single) mSelected.Clear();
+			if (mSelected.Add(index))
+				OnSelectionChanged();
+		}
+	}
+
+	/// Select a range of indices from..to inclusive (for Shift+click).
+	/// In Single mode, selects only `to`.
+	public void SelectRange(int32 from, int32 to)
+	{
+		if (Mode == .None) return;
+		if (Mode == .Single) { Select(to); return; }
+
+		let lo = Math.Min(from, to);
+		let hi = Math.Max(from, to);
+		mSelected.Clear();
+		for (int32 i = lo; i <= hi; i++)
+			mSelected.Add(i);
+		OnSelectionChanged();
 	}
 
 	/// Clear all selections.

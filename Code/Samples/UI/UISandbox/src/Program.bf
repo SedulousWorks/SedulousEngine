@@ -152,12 +152,12 @@ class SandboxListAdapter : IListAdapter
 
 // === Tree item view with VG-drawn expand arrow ===
 
+/// Tree item view - renders just the text label.
+/// Indent and expand/collapse arrows are drawn by TreeView.
 class TreeItemView : View
 {
 	public String Text ~ delete _;
 	public int32 Depth;
-	public bool HasChildren;
-	public bool IsExpanded;
 	private float mIndent = 20;
 
 	public void Set(StringView text, int32 depth, bool hasChildren, bool isExpanded)
@@ -165,44 +165,13 @@ class TreeItemView : View
 		if (Text == null) Text = new String(text);
 		else Text.Set(text);
 		Depth = depth;
-		HasChildren = hasChildren;
-		IsExpanded = isExpanded;
 	}
 
 	public override void OnDraw(UIDrawContext ctx)
 	{
-		let indent = Depth * mIndent;
-		let arrowSize = 8.0f;
-		let arrowX = indent + 4;
-		let arrowCY = Height * 0.5f;
-
-		// Draw expand/collapse triangle for nodes with children.
-		if (HasChildren)
-		{
-			let arrowColor = ctx.Theme?.Palette.Text ?? Color(200, 200, 200, 255);
-			ctx.VG.BeginPath();
-			if (IsExpanded)
-			{
-				// Down-pointing triangle (v).
-				ctx.VG.MoveTo(arrowX, arrowCY - arrowSize * 0.3f);
-				ctx.VG.LineTo(arrowX + arrowSize, arrowCY - arrowSize * 0.3f);
-				ctx.VG.LineTo(arrowX + arrowSize * 0.5f, arrowCY + arrowSize * 0.4f);
-			}
-			else
-			{
-				// Right-pointing triangle (>).
-				ctx.VG.MoveTo(arrowX, arrowCY - arrowSize * 0.4f);
-				ctx.VG.LineTo(arrowX + arrowSize * 0.6f, arrowCY);
-				ctx.VG.LineTo(arrowX, arrowCY + arrowSize * 0.4f);
-			}
-			ctx.VG.ClosePath();
-			ctx.VG.Fill(arrowColor);
-		}
-
-		// Draw text label.
 		if (Text != null && Text.Length > 0 && ctx.FontService != null)
 		{
-			let textX = indent + mIndent;
+			let textX = (Depth + 1) * mIndent;
 			let textColor = ctx.Theme?.GetColor("Label.Foreground") ?? Color(220, 220, 230, 255);
 			let font = ctx.FontService.GetFont(14);
 			if (font != null)

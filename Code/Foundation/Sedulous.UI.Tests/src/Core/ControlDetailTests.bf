@@ -1303,7 +1303,7 @@ class ControlDetailTests
 		ctx.UpdateRootView(root);
 
 		int32 clickedPos = -1;
-		list.OnItemClicked.Add(new [&](pos, count) => { clickedPos = pos; });
+		list.OnItemClicked.Add(new [&](pos, count, x, y) => { clickedPos = pos; });
 
 		// Simulate a click in the first item area.
 		let args = scope MouseEventArgs();

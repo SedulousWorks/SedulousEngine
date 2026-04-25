@@ -19,9 +19,9 @@ public class EditText : View, ITextEditHost
 	private int32 mMaxLength;
 
 	// === Glyph cache ===
-	private List<GlyphPosition> mGlyphPositions = new .() ~ delete _;
+	protected List<GlyphPosition> mGlyphPositions = new .() ~ delete _;
 	private String mCachedDisplayText = new .() ~ delete _;
-	private bool mGlyphsDirty = true;
+	protected bool mGlyphsDirty = true;
 	private float mTextHeight;
 	private float mTextWidth;
 
@@ -30,7 +30,7 @@ public class EditText : View, ITextEditHost
 	private float mScrollOffsetY;
 
 	// === Cursor blink ===
-	private float mCursorBlinkResetTime;
+	protected float mCursorBlinkResetTime;
 
 	// === Drag selection ===
 	private bool mIsDragging;
@@ -539,7 +539,7 @@ public class EditText : View, ITextEditHost
 
 	// === Glyph shaping ===
 
-	private void EnsureGlyphsValid()
+	protected void EnsureGlyphsValid()
 	{
 		if (!mGlyphsDirty) return;
 
