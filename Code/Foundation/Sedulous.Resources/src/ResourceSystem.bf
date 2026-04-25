@@ -560,4 +560,42 @@ class ResourceSystem
 		outAbsolutePath.Set(path);
 		return true;
 	}
+
+	/// Converts an absolute filesystem path to a protocol-prefixed path
+	/// by matching against registered registry root paths.
+	/// Returns true if a matching registry was found.
+	/// If no match, outProtocolPath is set to the original absolute path.
+	public bool TryMakeProtocolPath(StringView absolutePath, String outProtocolPath)
+	{
+		using (mManagersMonitor.Enter())
+		{
+			for (let registry in mRegistries)
+			{
+				let rootPath = registry.RootPath;
+				if (rootPath.Length == 0)
+					continue;
+
+				// Normalize separators for comparison
+				let normalizedAbsolute = scope String(absolutePath);
+				normalizedAbsolute.Replace('\\', '/');
+				let normalizedRoot = scope String(rootPath);
+				normalizedRoot.Replace('\\', '/');
+				if (!normalizedRoot.EndsWith('/'))
+					normalizedRoot.Append('/');
+
+				if (normalizedAbsolute.StartsWith(normalizedRoot, .OrdinalIgnoreCase))
+				{
+					let relativePart = absolutePath.Substring(normalizedRoot.Length);
+					outProtocolPath.AppendF("{}://{}", registry.Name, relativePart);
+					// Normalize to forward slashes
+					outProtocolPath.Replace('\\', '/');
+					return true;
+				}
+			}
+		}
+
+		// No matching registry - use absolute path as-is
+		outProtocolPath.Set(absolutePath);
+		return false;
+	}
 }
