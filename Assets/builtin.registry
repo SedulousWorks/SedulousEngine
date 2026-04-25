@@ -1,5 +1,5 @@
-d526f5c9-5dd1-4ed3-84fe-31aac4d5765e=builtin://primitives/plane.mesh
-718a903f-8fcf-41b3-93ad-3c0e1ec73194=builtin://primitives/cube.mesh
-b635d3ed-c6d7-4b08-8f46-49c4a9046916=builtin://primitives/sphere.mesh
-045f9bc8-b314-4f7e-a0cc-0465dfbcbf07=builtin://materials/default.material
-d45d8b63-38c5-4158-af4b-22a7e1942725=builtin://materials/default_unlit.material
+6283d213-f2d1-47a2-89e9-c3e8f0ee4d97=primitives/plane.mesh
+5101ead6-3262-4462-989e-2afb122f6c7f=primitives/cube.mesh
+234a09fd-03d0-449b-8610-673283a714b5=primitives/sphere.mesh
+a24695ce-a0fc-49a4-b3eb-85af1d2f8f4a=materials/default.material
+c8f7f500-f7bb-405d-8e7f-da01c6bd0434=materials/default_unlit.material

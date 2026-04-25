@@ -1,6 +1,6 @@
 uint64 %_type {8462204072068577150}
 int32 %_version {1}
-string %_id {"718a903f-8fcf-41b3-93ad-3c0e1ec73194"}
+string %_id {"5101ead6-3262-4462-989e-2afb122f6c7f"}
 string %_name {"Cube"}
 string %_sourcePath {""}
 int32 %vertexCount {24}
