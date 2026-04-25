@@ -94,20 +94,22 @@ class AudioSourceComponentManager : ComponentManager<AudioSourceComponent>
 
 	private void ResolveResources(AudioSourceComponent comp)
 	{
-		if (comp.Clip != null || !comp.ClipRef.IsValid) return;
-
 		let state = GetOrCreateResolveState(comp.Owner);
+		let clipRef = comp.ClipRef;
 
-		if (!state.ClipHandle.IsValid)
+		if (state.Clip.Resolve(ResourceSystem, clipRef))
 		{
-			if (ResourceSystem.LoadByRef<AudioClipResource>(comp.ClipRef) case .Ok(let handle))
-				state.ClipHandle = handle;
-		}
-		if (state.ClipHandle.IsValid)
-		{
-			let res = state.ClipHandle.Resource;
+			// Resource changed (first load, hot reload, or ref changed)
+			let res = state.Clip.Handle.Resource;
 			if (res != null && res.Clip != null)
 				comp.Clip = res.Clip;
+			else
+				comp.Clip = null;
+		}
+		else if (!clipRef.IsValid && comp.Clip != null)
+		{
+			// Ref was cleared
+			comp.Clip = null;
 		}
 	}
 
@@ -145,10 +147,10 @@ class AudioSourceComponentManager : ComponentManager<AudioSourceComponent>
 /// Per-component resource resolution tracking for audio sources.
 class AudioResolveState
 {
-	public ResourceHandle<AudioClipResource> ClipHandle;
+	public ResolvedResource<AudioClipResource> Clip;
 
 	public void Release()
 	{
-		if (ClipHandle.IsValid) ClipHandle.Release();
+		Clip.Release();
 	}
 }

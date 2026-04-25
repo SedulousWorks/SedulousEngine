@@ -62,36 +62,22 @@ class AnimationGraphComponentManager : ComponentManager<AnimationGraphComponent>
 		let state = GetOrCreateResolveState(comp.Owner);
 
 		// Resolve skeleton
-		if (comp.Skeleton == null && comp.SkeletonRef.IsValid)
+		if (state.Skeleton.Resolve(ResourceSystem, comp.SkeletonRef))
 		{
-			if (!state.SkeletonHandle.IsValid)
-			{
-				if (ResourceSystem.LoadByRef<SkeletonResource>(comp.SkeletonRef) case .Ok(let handle))
-					state.SkeletonHandle = handle;
-			}
-			if (state.SkeletonHandle.IsValid)
-			{
-				let res = state.SkeletonHandle.Resource;
-				if (res != null)
-					comp.Skeleton = res.Skeleton;
-			}
+			let res = state.Skeleton.Handle.Resource;
+			comp.Skeleton = (res != null) ? res.Skeleton : null;
 		}
+		else if (!comp.SkeletonRef.IsValid && comp.Skeleton != null)
+			comp.Skeleton = null;
 
 		// Resolve graph
-		if (comp.Graph == null && comp.GraphRef.IsValid)
+		if (state.Graph.Resolve(ResourceSystem, comp.GraphRef))
 		{
-			if (!state.GraphHandle.IsValid)
-			{
-				if (ResourceSystem.LoadByRef<AnimationGraphResource>(comp.GraphRef) case .Ok(let handle))
-					state.GraphHandle = handle;
-			}
-			if (state.GraphHandle.IsValid)
-			{
-				let res = state.GraphHandle.Resource;
-				if (res != null)
-					comp.Graph = res.Graph;
-			}
+			let res = state.Graph.Handle.Resource;
+			comp.Graph = (res != null) ? res.Graph : null;
 		}
+		else if (!comp.GraphRef.IsValid && comp.Graph != null)
+			comp.Graph = null;
 	}
 
 	private AnimGraphResolveState GetOrCreateResolveState(EntityHandle entity)
@@ -118,12 +104,12 @@ class AnimationGraphComponentManager : ComponentManager<AnimationGraphComponent>
 /// Per-component resource resolution tracking for animation graphs.
 class AnimGraphResolveState
 {
-	public ResourceHandle<SkeletonResource> SkeletonHandle;
-	public ResourceHandle<AnimationGraphResource> GraphHandle;
+	public ResolvedResource<SkeletonResource> Skeleton;
+	public ResolvedResource<AnimationGraphResource> Graph;
 
 	public void Release()
 	{
-		if (SkeletonHandle.IsValid) SkeletonHandle.Release();
-		if (GraphHandle.IsValid) GraphHandle.Release();
+		Skeleton.Release();
+		Graph.Release();
 	}
 }

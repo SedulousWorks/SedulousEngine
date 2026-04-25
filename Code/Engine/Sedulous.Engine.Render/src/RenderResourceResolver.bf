@@ -12,6 +12,7 @@ using Sedulous.Geometry.Resources;
 using Sedulous.Textures.Resources;
 using Sedulous.Core.Mathematics;
 using Sedulous.Images;
+using Sedulous.Engine.Core;
 
 /// Shared resource resolution service for render component managers.
 /// Resolves ResourceRefs to loaded resources, uploads to GPU, creates MaterialInstances.

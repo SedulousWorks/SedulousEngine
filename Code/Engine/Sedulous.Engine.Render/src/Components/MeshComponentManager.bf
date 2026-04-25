@@ -77,6 +77,12 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 				comp.MeshHandle = meshHandle;
 				comp.LocalBounds = bounds;
 			}
+			else if (!meshRef.IsValid && comp.MeshHandle.IsValid)
+			{
+				// Ref was cleared - reset GPU handle
+				comp.MeshHandle = .Invalid;
+				comp.LocalBounds = .(.Zero, .Zero);
+			}
 
 			// Resolve materials from refs
 			for (int32 slot = 0; slot < comp.MaterialRefCount; slot++)

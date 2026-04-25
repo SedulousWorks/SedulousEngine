@@ -161,6 +161,11 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 				}
 			}
 		}
+		else if (!meshRef.IsValid && comp.MeshHandle.IsValid)
+		{
+			comp.MeshHandle = .Invalid;
+			comp.LocalBounds = .(.Zero, .Zero);
+		}
 
 		// Resolve materials
 		for (int32 slot = 0; slot < comp.MaterialRefCount; slot++)

@@ -77,20 +77,13 @@ class PropertyAnimationComponentManager : ComponentManager<PropertyAnimationComp
 	{
 		let state = GetOrCreateResolveState(comp.Owner);
 
-		if (comp.CurrentClip == null && comp.ClipRef.IsValid)
+		if (state.Clip.Resolve(ResourceSystem, comp.ClipRef))
 		{
-			if (!state.ClipHandle.IsValid)
-			{
-				if (ResourceSystem.LoadByRef<PropertyAnimationClipResource>(comp.ClipRef) case .Ok(let handle))
-					state.ClipHandle = handle;
-			}
-			if (state.ClipHandle.IsValid)
-			{
-				let res = state.ClipHandle.Resource;
-				if (res != null)
-					comp.CurrentClip = res.Clip;
-			}
+			let res = state.Clip.Handle.Resource;
+			comp.CurrentClip = (res != null) ? res.Clip : null;
 		}
+		else if (!comp.ClipRef.IsValid && comp.CurrentClip != null)
+			comp.CurrentClip = null;
 	}
 
 	private PropAnimResolveState GetOrCreateResolveState(EntityHandle entity)
@@ -117,10 +110,10 @@ class PropertyAnimationComponentManager : ComponentManager<PropertyAnimationComp
 /// Per-component resource resolution tracking for property animation.
 class PropAnimResolveState
 {
-	public ResourceHandle<PropertyAnimationClipResource> ClipHandle;
+	public ResolvedResource<PropertyAnimationClipResource> Clip;
 
 	public void Release()
 	{
-		if (ClipHandle.IsValid) ClipHandle.Release();
+		Clip.Release();
 	}
 }

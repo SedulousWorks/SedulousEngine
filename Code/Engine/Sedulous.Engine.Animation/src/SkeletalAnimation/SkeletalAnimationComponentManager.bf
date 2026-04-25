@@ -76,44 +76,22 @@ class SkeletalAnimationComponentManager : ComponentManager<SkeletalAnimationComp
 		let state = GetOrCreateResolveState(comp.Owner);
 
 		// Resolve skeleton
-		if (comp.Skeleton == null && comp.SkeletonRef.IsValid)
+		if (state.Skeleton.Resolve(ResourceSystem, comp.SkeletonRef))
 		{
-			if (!state.SkeletonHandle.IsValid)
-			{
-				if (ResourceSystem.LoadByRef<SkeletonResource>(comp.SkeletonRef) case .Ok(let handle))
-					state.SkeletonHandle = handle;
-			}
-
-			if (state.SkeletonHandle.IsValid)
-			{
-				let res = state.SkeletonHandle.Resource;
-				if (res != null && res.Skeleton != state.BoundSkeleton)
-				{
-					state.BoundSkeleton = res.Skeleton;
-					comp.Skeleton = res.Skeleton;
-				}
-			}
+			let res = state.Skeleton.Handle.Resource;
+			comp.Skeleton = (res != null) ? res.Skeleton : null;
 		}
+		else if (!comp.SkeletonRef.IsValid && comp.Skeleton != null)
+			comp.Skeleton = null;
 
 		// Resolve clip
-		if (comp.CurrentClip == null && comp.ClipRef.IsValid)
+		if (state.Clip.Resolve(ResourceSystem, comp.ClipRef))
 		{
-			if (!state.ClipHandle.IsValid)
-			{
-				if (ResourceSystem.LoadByRef<AnimationClipResource>(comp.ClipRef) case .Ok(let handle))
-					state.ClipHandle = handle;
-			}
-
-			if (state.ClipHandle.IsValid)
-			{
-				let res = state.ClipHandle.Resource;
-				if (res != null && res.Clip != state.BoundClip)
-				{
-					state.BoundClip = res.Clip;
-					comp.CurrentClip = res.Clip;
-				}
-			}
+			let res = state.Clip.Handle.Resource;
+			comp.CurrentClip = (res != null) ? res.Clip : null;
 		}
+		else if (!comp.ClipRef.IsValid && comp.CurrentClip != null)
+			comp.CurrentClip = null;
 	}
 
 	private SkeletalAnimResolveState GetOrCreateResolveState(EntityHandle entity)
@@ -140,18 +118,12 @@ class SkeletalAnimationComponentManager : ComponentManager<SkeletalAnimationComp
 /// Per-component resource resolution tracking.
 class SkeletalAnimResolveState
 {
-	public ResourceHandle<SkeletonResource> SkeletonHandle;
-	public ResourceHandle<AnimationClipResource> ClipHandle;
-	public Skeleton BoundSkeleton;
-	public AnimationClip BoundClip;
+	public ResolvedResource<SkeletonResource> Skeleton;
+	public ResolvedResource<AnimationClipResource> Clip;
 
 	public void Release()
 	{
-		if (SkeletonHandle.IsValid)
-			SkeletonHandle.Release();
-		if (ClipHandle.IsValid)
-			ClipHandle.Release();
-		BoundSkeleton = null;
-		BoundClip = null;
+		Skeleton.Release();
+		Clip.Release();
 	}
 }

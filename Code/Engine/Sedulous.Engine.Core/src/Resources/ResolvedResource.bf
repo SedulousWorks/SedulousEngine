@@ -1,4 +1,4 @@
-namespace Sedulous.Engine.Render;
+namespace Sedulous.Engine.Core;
 
 using System;
 using Sedulous.Resources;
@@ -18,6 +18,9 @@ struct ResolvedResource<T> where T : Resource, class, delete
 	/// Compared against Handle.Resource to detect changes.
 	public T BoundResource;
 
+	/// Last resolved ref path hash - used to detect path-only ref changes.
+	private int mLastRefHash;
+
 	/// Attempts to resolve the given ResourceRef to a loaded resource.
 	/// Returns true if the resource changed (first load, hot reload, or ref changed).
 	/// The caller should upload to GPU when this returns true.
@@ -35,13 +38,19 @@ struct ResolvedResource<T> where T : Resource, class, delete
 			return false;
 		}
 
-		// Check for hot reload: resource ID changed
+		// Compute a hash of the ref to detect any change (GUID or path)
+		int refHash = @ref.Id.GetHashCode();
+		if (@ref.HasPath)
+			refHash = refHash * 31 + @ref.Path.GetHashCode();
+
 		bool needsLoad = !Handle.IsValid;
-		if (!needsLoad && @ref.HasId && Handle.Resource != null && Handle.Resource.Id != @ref.Id)
+		if (!needsLoad && refHash != mLastRefHash)
 		{
+			// Ref changed - force reload
 			Handle.Release();
 			needsLoad = true;
 		}
+		mLastRefHash = refHash;
 
 		// Attempt to load if needed
 		if (needsLoad)
