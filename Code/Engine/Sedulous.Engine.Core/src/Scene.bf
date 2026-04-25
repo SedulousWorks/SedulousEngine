@@ -43,6 +43,9 @@ public class Scene : IDisposable
 
 	private List<TransformData> mTransforms = new .() ~ delete _;
 
+	/// Head of the root entity linked list (entities with no parent).
+	private EntityHandle mFirstRoot = .Invalid;
+
 	// --- Scene modules ---
 
 	private List<SceneModule> mModules = new .() ~ delete _;
@@ -137,6 +140,10 @@ public class Scene : IDisposable
 
 		let handle = EntityHandle() { Index = (uint32)index, Generation = slot.Generation };
 		mEntityIdMap[id] = handle;
+
+		// Append to root list (new entities start as roots)
+		AppendToList(handle, ref mFirstRoot);
+
 		return handle;
 	}
 
@@ -319,22 +326,69 @@ public class Scene : IDisposable
 		if (child == parent)
 			return;
 
-		// Remove from current parent's child list
+		// Remove from current parent's child list (or root list)
 		RemoveFromParent(child);
 
 		var childTransform = ref mTransforms[(int32)child.Index];
 		childTransform.Parent = parent;
 
-		// Add to new parent's child list
 		if (parent.IsAssigned)
 		{
 			var parentTransform = ref mTransforms[(int32)parent.Index];
-			childTransform.NextSibling = parentTransform.FirstChild;
-			parentTransform.FirstChild = child;
+			AppendToList(child, ref parentTransform.FirstChild);
+		}
+		else
+		{
+			AppendToList(child, ref mFirstRoot);
 		}
 
 		MarkDirty(child);
 	}
+
+	/// Sets the parent of an entity, inserting it after a specific sibling.
+	/// If afterSibling is .Invalid, the child is prepended (becomes first child).
+	public void SetParentAfter(EntityHandle child, EntityHandle parent, EntityHandle afterSibling)
+	{
+		if (!IsValid(child))
+			return;
+		if (parent.IsAssigned && !IsValid(parent))
+			return;
+		if (child == parent)
+			return;
+
+		RemoveFromParent(child);
+
+		var childTransform = ref mTransforms[(int32)child.Index];
+		childTransform.Parent = parent;
+
+		if (!afterSibling.IsAssigned)
+		{
+			// Prepend
+			if (parent.IsAssigned)
+			{
+				var parentTransform = ref mTransforms[(int32)parent.Index];
+				childTransform.NextSibling = parentTransform.FirstChild;
+				parentTransform.FirstChild = child;
+			}
+			else
+			{
+				childTransform.NextSibling = mFirstRoot;
+				mFirstRoot = child;
+			}
+		}
+		else
+		{
+			// Insert after the specified sibling
+			var afterTransform = ref mTransforms[(int32)afterSibling.Index];
+			childTransform.NextSibling = afterTransform.NextSibling;
+			afterTransform.NextSibling = child;
+		}
+
+		MarkDirty(child);
+	}
+
+	/// Gets the first root entity (head of root linked list).
+	public EntityHandle FirstRoot => mFirstRoot;
 
 	/// Gets the parent of an entity.
 	public EntityHandle GetParent(EntityHandle entity)
@@ -343,6 +397,161 @@ public class Scene : IDisposable
 			return .Invalid;
 
 		return mTransforms[(int32)entity.Index].Parent;
+	}
+
+	/// Gets the first child of an entity.
+	public EntityHandle GetFirstChild(EntityHandle entity)
+	{
+		if (!IsValid(entity))
+			return .Invalid;
+
+		return mTransforms[(int32)entity.Index].FirstChild;
+	}
+
+	/// Gets the next sibling of an entity.
+	public EntityHandle GetNextSibling(EntityHandle entity)
+	{
+		if (!IsValid(entity))
+			return .Invalid;
+
+		return mTransforms[(int32)entity.Index].NextSibling;
+	}
+
+	/// Gets the number of direct children of an entity.
+	public int32 GetChildCount(EntityHandle entity)
+	{
+		if (!IsValid(entity))
+			return 0;
+
+		int32 count = 0;
+		var child = mTransforms[(int32)entity.Index].FirstChild;
+		while (child.IsAssigned && IsValid(child))
+		{
+			count++;
+			child = mTransforms[(int32)child.Index].NextSibling;
+		}
+		return count;
+	}
+
+	/// Fills the list with the direct children of an entity, in sibling order.
+	public void GetChildren(EntityHandle entity, List<EntityHandle> outChildren)
+	{
+		if (!IsValid(entity))
+			return;
+
+		var child = mTransforms[(int32)entity.Index].FirstChild;
+		while (child.IsAssigned && IsValid(child))
+		{
+			outChildren.Add(child);
+			child = mTransforms[(int32)child.Index].NextSibling;
+		}
+	}
+
+	/// Gets the sibling index of an entity (0-based).
+	/// Works for both parented entities and root entities.
+	public int32 GetSiblingIndex(EntityHandle entity)
+	{
+		if (!IsValid(entity))
+			return -1;
+
+		let parent = mTransforms[(int32)entity.Index].Parent;
+		let listHead = parent.IsAssigned ? mTransforms[(int32)parent.Index].FirstChild : mFirstRoot;
+
+		int32 index = 0;
+		var child = listHead;
+		while (child.IsAssigned && IsValid(child))
+		{
+			if (child == entity)
+				return index;
+			index++;
+			child = mTransforms[(int32)child.Index].NextSibling;
+		}
+		return -1;
+	}
+
+	/// Moves an entity to a specific sibling index among its siblings.
+	/// Works for both parented entities and root entities. Clamps to valid range.
+	public void SetSiblingIndex(EntityHandle entity, int32 targetIndex)
+	{
+		if (!IsValid(entity))
+			return;
+
+		let parent = GetParent(entity);
+
+		// Remove from current position (parent or root list)
+		RemoveFromParent(entity);
+
+		// Re-insert at target position
+		var childTransform = ref mTransforms[(int32)entity.Index];
+		childTransform.Parent = parent;
+
+		if (parent.IsAssigned)
+		{
+			var parentTransform = ref mTransforms[(int32)parent.Index];
+			InsertIntoList(entity, ref parentTransform.FirstChild, targetIndex);
+		}
+		else
+		{
+			InsertIntoList(entity, ref mFirstRoot, targetIndex);
+		}
+
+		MarkDirty(entity);
+	}
+
+	/// Inserts an entity into a sibling linked list at the given index.
+	private void InsertIntoList(EntityHandle entity, ref EntityHandle listHead, int32 targetIndex)
+	{
+		var childTransform = ref mTransforms[(int32)entity.Index];
+
+		if (targetIndex <= 0 || !listHead.IsAssigned)
+		{
+			// Prepend
+			childTransform.NextSibling = listHead;
+			listHead = entity;
+		}
+		else
+		{
+			// Walk to the sibling before the target position
+			var prev = listHead;
+			int32 i = 0;
+			while (i < targetIndex - 1 && IsValid(prev))
+			{
+				let next = mTransforms[(int32)prev.Index].NextSibling;
+				if (!next.IsAssigned || !IsValid(next))
+					break;
+				prev = next;
+				i++;
+			}
+
+			var prevTransform = ref mTransforms[(int32)prev.Index];
+			childTransform.NextSibling = prevTransform.NextSibling;
+			prevTransform.NextSibling = entity;
+		}
+	}
+
+	/// Appends an entity to the end of a sibling linked list.
+	private void AppendToList(EntityHandle entity, ref EntityHandle listHead)
+	{
+		var childTransform = ref mTransforms[(int32)entity.Index];
+		childTransform.NextSibling = .Invalid;
+
+		if (!listHead.IsAssigned)
+		{
+			listHead = entity;
+			return;
+		}
+
+		// Walk to the end
+		var tail = listHead;
+		while (true)
+		{
+			let next = mTransforms[(int32)tail.Index].NextSibling;
+			if (!next.IsAssigned || !IsValid(next))
+				break;
+			tail = next;
+		}
+
+		mTransforms[(int32)tail.Index].NextSibling = entity;
 	}
 
 	// ==================== Module Management ====================
@@ -572,28 +781,50 @@ public class Scene : IDisposable
 		var childTransform = ref mTransforms[(int32)child.Index];
 		let parentHandle = childTransform.Parent;
 
-		if (!parentHandle.IsAssigned)
-			return;
-
-		var parentTransform = ref mTransforms[(int32)parentHandle.Index];
-
-		// Remove from linked list
-		if (parentTransform.FirstChild == child)
+		if (parentHandle.IsAssigned)
 		{
-			parentTransform.FirstChild = childTransform.NextSibling;
+			// Remove from parent's child list
+			var parentTransform = ref mTransforms[(int32)parentHandle.Index];
+
+			if (parentTransform.FirstChild == child)
+			{
+				parentTransform.FirstChild = childTransform.NextSibling;
+			}
+			else
+			{
+				var prev = parentTransform.FirstChild;
+				while (prev.IsAssigned && IsValid(prev))
+				{
+					var prevTransform = ref mTransforms[(int32)prev.Index];
+					if (prevTransform.NextSibling == child)
+					{
+						prevTransform.NextSibling = childTransform.NextSibling;
+						break;
+					}
+					prev = prevTransform.NextSibling;
+				}
+			}
 		}
 		else
 		{
-			var prev = parentTransform.FirstChild;
-			while (prev.IsAssigned && IsValid(prev))
+			// Remove from root list
+			if (mFirstRoot == child)
 			{
-				var prevTransform = ref mTransforms[(int32)prev.Index];
-				if (prevTransform.NextSibling == child)
+				mFirstRoot = childTransform.NextSibling;
+			}
+			else
+			{
+				var prev = mFirstRoot;
+				while (prev.IsAssigned && IsValid(prev))
 				{
-					prevTransform.NextSibling = childTransform.NextSibling;
-					break;
+					var prevTransform = ref mTransforms[(int32)prev.Index];
+					if (prevTransform.NextSibling == child)
+					{
+						prevTransform.NextSibling = childTransform.NextSibling;
+						break;
+					}
+					prev = prevTransform.NextSibling;
 				}
-				prev = prevTransform.NextSibling;
 			}
 		}
 
