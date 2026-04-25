@@ -12,6 +12,7 @@ using Sedulous.Core.Mathematics;
 ///
 /// The app sets ResourceRefs (mesh, materials). MeshComponentManager resolves them
 /// to loaded resources, uploads to GPU, and creates MaterialInstances automatically.
+[Component]
 class MeshComponent : Component, ISerializableComponent
 {
 	public int32 SerializationVersion => 1;
@@ -63,12 +64,15 @@ class MeshComponent : Component, ISerializableComponent
 	public BoundingBox LocalBounds;
 
 	/// Render layer mask (for filtering in extraction).
+	[Property]
 	public uint32 LayerMask = 0xFFFFFFFF;
 
 	/// Whether this mesh casts shadows.
+	[Property]
 	public bool CastsShadows = true;
 
 	/// Whether this mesh is visible.
+	[Property]
 	public bool IsVisible = true;
 
 	/// Gets the mesh resource ref.

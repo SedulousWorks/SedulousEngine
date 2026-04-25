@@ -5,6 +5,7 @@ using Sedulous.Core.Mathematics;
 using System;
 
 /// Component for a camera that defines a rendering viewpoint.
+[Component]
 class CameraComponent : Component, ISerializableComponent
 {
 	public int32 SerializationVersion => 1;
@@ -22,21 +23,30 @@ class CameraComponent : Component, ISerializableComponent
 	}
 
 	/// Field of view in degrees (vertical).
+	[Property]
+	[Range(1.0f, 179.0f)]
 	public float FieldOfView = 60.0f;
 
 	/// Near clip plane distance.
+	[Property]
+	[Range(0.001f, 1000.0f)]
 	public float NearPlane = 0.1f;
 
 	/// Far clip plane distance.
+	[Property]
+	[Range(1.0f, 100000.0f)]
 	public float FarPlane = 1000.0f;
 
 	/// Aspect ratio override (0 = use viewport aspect).
+	[Property]
 	public float AspectRatio = 0;
 
 	/// Whether this is the active camera for rendering.
+	[Property]
 	public bool IsActiveCamera = true;
 
 	/// Render layer mask (which layers this camera sees).
+	[Property]
 	public uint32 LayerMask = 0xFFFFFFFF;
 
 	/// Computes the view matrix from the entity's world transform.

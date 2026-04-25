@@ -119,6 +119,18 @@ public abstract class ComponentManager<T> : ComponentManagerBase, IComponentMana
 		return null;
 	}
 
+	/// Non-generic: whether the given entity has a component of this type.
+	public override bool HasComponent(EntityHandle entity)
+	{
+		return GetForEntity(entity) != null;
+	}
+
+	/// Non-generic: gets the component for the entity, or null.
+	public override Component GetComponent(EntityHandle entity)
+	{
+		return GetForEntity(entity);
+	}
+
 	/// Serializes a component's data. Default implementation delegates to ISerializableComponent.
 	/// Override for custom serialization logic.
 	public virtual void SerializeComponent(T component, IComponentSerializer serializer)

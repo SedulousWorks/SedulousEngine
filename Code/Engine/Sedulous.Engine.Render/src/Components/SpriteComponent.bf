@@ -11,6 +11,7 @@ using Sedulous.Core.Mathematics;
 /// The app sets the texture ResourceRef and size. SpriteComponentManager
 /// resolves the texture, creates a MaterialInstance from SpriteSystem's
 /// shared sprite material template, and extracts SpriteRenderData each frame.
+[Component]
 class SpriteComponent : Component, ISerializableComponent
 {
 	public int32 SerializationVersion => 1;

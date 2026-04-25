@@ -12,4 +12,10 @@ public abstract class ComponentManagerBase : SceneModule
 	/// ComponentManager<T> overrides this to call OnComponentInitialized on
 	/// each pending component.
 	public abstract void InitializePendingComponents();
+
+	/// Whether the given entity has a component managed by this manager.
+	public abstract bool HasComponent(EntityHandle entity);
+
+	/// Gets the component for the given entity, or null. Non-generic accessor.
+	public abstract Component GetComponent(EntityHandle entity);
 }

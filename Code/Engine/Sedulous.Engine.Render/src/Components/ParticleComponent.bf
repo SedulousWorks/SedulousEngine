@@ -13,6 +13,7 @@ using Sedulous.Particles;
 /// ParticleComponentManager resolves the effect resource, creates a runtime
 /// instance, resolves the texture, creates a MaterialInstance, simulates the
 /// effect, and extracts ParticleBatchRenderData each frame.
+[Component]
 class ParticleComponent : Component, ISerializableComponent
 {
 	public int32 SerializationVersion => 1;

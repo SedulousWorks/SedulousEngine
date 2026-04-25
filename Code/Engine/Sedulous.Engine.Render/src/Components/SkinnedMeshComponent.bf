@@ -12,6 +12,7 @@ using Sedulous.Materials;
 /// Rendering only - does not own animation. Bone matrices come from a
 /// SkeletalAnimationComponent (or AnimationGraphComponent) on the same entity.
 /// The manager reads matrices from the animation component and uploads to GPU.
+[Component]
 class SkinnedMeshComponent : Component, ISerializableComponent
 {
 	public int32 SerializationVersion => 1;

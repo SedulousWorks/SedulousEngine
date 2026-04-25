@@ -11,6 +11,7 @@ using Sedulous.Core.Mathematics;
 /// The decal's world transform (from the entity's Transform component) places
 /// and orients a unit cube - the decal's projection volume. The shader samples
 /// the texture using the local XY of any scene surface inside the cube.
+[Component]
 class DecalComponent : Component, ISerializableComponent
 {
 	public int32 SerializationVersion => 1;
