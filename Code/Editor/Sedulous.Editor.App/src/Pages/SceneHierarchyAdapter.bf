@@ -84,11 +84,11 @@ class SceneHierarchyAdapter : ITreeAdapter
 		get
 		{
 			int32 count = 0;
-			for (let handle in mScene.Entities)
+			var child = mScene.FirstRoot;
+			while (child.IsAssigned && mScene.IsValid(child))
 			{
-				if (!mScene.IsValid(handle)) continue;
-				if (mScene.GetParent(handle) == .Invalid)
-					count++;
+				count++;
+				child = mScene.GetNextSibling(child);
 			}
 			return count;
 		}
@@ -101,31 +101,36 @@ class SceneHierarchyAdapter : ITreeAdapter
 		let parent = GetHandle(nodeId);
 		if (parent == .Invalid) return 0;
 
-		int32 count = 0;
-		for (let handle in mScene.Entities)
-		{
-			if (!mScene.IsValid(handle)) continue;
-			if (mScene.GetParent(handle) == parent)
-				count++;
-		}
-		return count;
+		return mScene.GetChildCount(parent);
 	}
 
 	public int32 GetChildId(int32 parentId, int32 childIndex)
 	{
-		EntityHandle parentHandle = (parentId == -1) ? .Invalid : GetHandle(parentId);
-
-		int32 i = 0;
-		for (let handle in mScene.Entities)
+		if (parentId == -1)
 		{
-			if (!mScene.IsValid(handle)) continue;
-			let entityParent = mScene.GetParent(handle);
-			bool isChild = (parentId == -1) ? (entityParent == .Invalid) : (entityParent == parentHandle);
-			if (isChild)
+			// Root level: walk root linked list
+			var child = mScene.FirstRoot;
+			int32 i = 0;
+			while (child.IsAssigned && mScene.IsValid(child))
 			{
-				if (i == childIndex) return GetNodeId(handle);
+				if (i == childIndex) return GetNodeId(child);
 				i++;
+				child = mScene.GetNextSibling(child);
 			}
+			return -1;
+		}
+
+		let parentHandle = GetHandle(parentId);
+		if (parentHandle == .Invalid) return -1;
+
+		// Walk the child linked list
+		var child = mScene.GetFirstChild(parentHandle);
+		int32 i = 0;
+		while (child.IsAssigned && mScene.IsValid(child))
+		{
+			if (i == childIndex) return GetNodeId(child);
+			i++;
+			child = mScene.GetNextSibling(child);
 		}
 		return -1;
 	}
@@ -150,13 +155,7 @@ class SceneHierarchyAdapter : ITreeAdapter
 		let parent = GetHandle(nodeId);
 		if (parent == .Invalid) return false;
 
-		for (let handle in mScene.Entities)
-		{
-			if (!mScene.IsValid(handle)) continue;
-			if (mScene.GetParent(handle) == parent)
-				return true;
-		}
-		return false;
+		return mScene.GetFirstChild(parent).IsAssigned;
 	}
 
 	/// Start inline rename on the given entity.

@@ -78,25 +78,25 @@ static class ScenePageBuilder
 			Width = LayoutParams.MatchParent, Height = 1
 		});
 
-		// Tree view
-		let treeView = new TreeView();
-		treeView.ItemHeight = 20;
-		container.AddView(treeView, new LinearLayout.LayoutParams() {
+		// Tree view with drag reorder/reparent
+		let hierarchyView = new SceneHierarchyView(page.Scene);
+		hierarchyView.ItemHeight = 20;
+		container.AddView(hierarchyView, new LinearLayout.LayoutParams() {
 			Width = LayoutParams.MatchParent, Height = 0, Weight = 1
 		});
 
 		let adapter = new SceneHierarchyAdapter(page.Scene);
-		adapter.TreeView = treeView;
-		treeView.SetAdapter(adapter);
+		adapter.TreeView = hierarchyView.InternalTreeView;
+		hierarchyView.SetAdapter(adapter);
 		page.AddOwnedObject(adapter);
 
 		// Wire tree clicks to selection + slow-click rename
-		treeView.OnItemClick.Add(new (clickInfo) =>
+		hierarchyView.OnItemClick.Add(new (clickInfo) =>
 		{
 			let entity = adapter.GetEntityForNode(clickInfo.NodeId);
 			if (entity != .Invalid)
 			{
-				let now = treeView.Context?.TotalTime ?? 0;
+				let now = hierarchyView.Context?.TotalTime ?? 0;
 
 				// Slow click: second single-click on same already-selected item
 				// after a delay (not a double-click). Threshold: 0.4-1.5s.
@@ -120,17 +120,17 @@ static class ScenePageBuilder
 		});
 
 		// Right-click context menu
-		treeView.OnItemRightClick.Add(new (nodeId, localX, localY) =>
+		hierarchyView.OnItemRightClick.Add(new (nodeId, localX, localY) =>
 		{
 			let entity = adapter.GetEntityForNode(nodeId);
 			if (entity == .Invalid) return;
 
 			page.SelectEntity(entity);
-			ShowHierarchyContextMenu(page, adapter, treeView, entity, localX, localY);
+			ShowHierarchyContextMenu(page, adapter, hierarchyView.InternalTreeView, entity, localX, localY);
 		});
 
 		// Keyboard shortcuts
-		treeView.OnItemKeyDown.Add(new (nodeId, e) =>
+		hierarchyView.OnItemKeyDown.Add(new (nodeId, e) =>
 		{
 			if (e.Key == .Delete)
 			{
