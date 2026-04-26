@@ -171,8 +171,13 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 		for (int32 slot = 0; slot < comp.MaterialRefCount; slot++)
 		{
 			let matRef = comp.GetMaterialRef(slot);
+
 			if (!matRef.IsValid)
+			{
+				if (slot < comp.Materials.Count && comp.Materials[slot] != null)
+					comp.SetMaterial(slot, null);
 				continue;
+			}
 
 			while (state.Materials.Count <= slot)
 				state.Materials.Add(.());

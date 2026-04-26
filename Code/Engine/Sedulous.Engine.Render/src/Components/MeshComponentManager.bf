@@ -88,8 +88,14 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 			for (int32 slot = 0; slot < comp.MaterialRefCount; slot++)
 			{
 				let matRef = comp.GetMaterialRef(slot);
+
 				if (!matRef.IsValid)
+				{
+					// Ref cleared — remove material instance if present
+					if (slot < comp.Materials.Count && comp.Materials[slot] != null)
+						comp.SetMaterial(slot, null);
 					continue;
+				}
 
 				// Grow resolve state material list if needed
 				while (state.Materials.Count <= slot)
