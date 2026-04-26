@@ -201,52 +201,51 @@ For materials, this creates a new `Material` object inside an existing
 uniform buffer) are not cleaned up. Similar issues may exist for other resource
 types that own GPU or runtime objects.
 
-**Options to investigate:**
-
-1. **Resource.OnReload virtual method** — resources override `OnReload()` to tear
-   down old state before `OnSerialize` re-populates. The manager calls `OnReload()`
-   before `ReloadFromFile`. Resources that don't support reload return `.NotSupported`
-   (already exists in the error enum). Simple, explicit.
-
-2. **Serialize with reload flag** — pass a context flag to `OnSerialize` indicating
-   reload mode. The resource can clean up old state conditionally. Avoids adding a
-   new virtual method but makes serialization aware of lifecycle, which may be
-   undesirable.
-
-3. **Manager-level reload** — the manager handles teardown entirely. For materials:
-   dispose old Material, call Load to create fresh, swap into the existing
-   ResourceHandle. The resource itself is stateless between loads. Cleanest
-   separation but requires managers to know resource internals.
-
 **Critical constraint:** Resources cannot be destroyed and replaced because other
 systems hold direct references to the instance (e.g. `MaterialInstance` holds a
 pointer to `Material`). Destroying the old resource causes use-after-free crashes.
 Resources must be **updated in place** during hot-reload.
 
-**Known crash:** `MaterialResource.OnSerialize` in read mode creates a new
-`Material` and calls `SetMaterial(mat, true)` which `delete`s the old one. Any
-`MaterialInstance` still referencing the old `Material` crashes. The fix: on
-reload, clear and repopulate the existing `Material`'s properties, uniforms, and
-shader name in place rather than creating a new one.
+### Implemented Infrastructure
 
-**Recommendation:** Option 1 (OnReload) with in-place update semantics. A virtual
-`OnReload()` on Resource prepares for re-serialization by clearing mutable state
-without destroying the object. For `MaterialResource`: clear property defs, reset
-uniform buffer, clear texture refs — then `OnSerialize` repopulates the same
-`Material` instance. `MaterialInstance` stays valid, marks bind group dirty for
-GPU re-upload. For resources that can't reload in place, return `.NotSupported`.
+**`Resource.Generation`** (uint32) — incremented by `ResourceSystem` after a
+successful reload. `ResolvedResource<T>` checks generation alongside pointer
+identity to detect in-place content changes.
 
-**Affected resource types:**
-- `MaterialResource` — owns a `Material` object (may own textures, samplers)
-- `StaticMeshResource` / `SkinnedMeshResource` — own mesh data, GPU handles cached externally
-- `TextureResource` — owns pixel data, GPU texture cached externally
-- `SceneResource` — complex; full scene reload may not be practical via hot-reload
-- `AudioClipResource` — owns audio clip data
-- `ParticleEffectResource` — owns effect definition
+**`Resource.Reload(Serializer)`** — virtual method (defaults to `.NotSupported`).
+Each resource type overrides to handle in-place reload: clear internal state,
+re-read from the serializer, keep the same object alive. `ResourceManager.
+ReloadFromFile` calls `resource.Reload(reader)` instead of `resource.Serialize(reader)`.
 
-**GPU resource invalidation:** When a resource reloads, any cached GPU handles
-(in `RenderResourceResolver`'s caches) may point to stale data. The resolver's
-`ResolvedResource<T>` uses `BoundResource` pointer comparison to detect changes —
-if the resource object stays the same but its contents change, the resolver won't
-re-upload. May need a version counter or dirty flag on resources that resolvers
-check.
+**`RenderResourceResolver` caches** — all GPU caches (static mesh, skinned mesh,
+texture, material instance) store the resource generation alongside the cached
+handle. On generation mismatch, the stale entry is discarded and the resource is
+re-uploaded / re-created.
+
+### MaterialResource — Reference Implementation (DONE)
+
+`MaterialResource.Reload()` is the model for other resource types:
+
+1. Calls `mMaterial.ClearForReload()` — clears property defs, uniform data,
+   texture/sampler bindings without deleting the Material object
+2. Clears `TextureRefs` (disposes old refs)
+3. Calls `Serialize(s)` to re-read from file
+4. `OnSerialize` read path reuses the existing `mMaterial` instead of creating
+   a new one (checks `mMaterial != null`), skips `SetMaterial` delete
+5. `MaterialInstance` references stay valid — same `Material` pointer
+6. `RenderResourceResolver` detects generation change → discards cached
+   `MaterialInstance` → creates fresh instance from updated Material
+
+### Remaining Resource Types
+
+Each needs a `Reload()` override following the material pattern:
+
+- **`StaticMeshResource`** — clear mesh vertex/index data, re-read. GPU cache
+  detects generation change and re-uploads.
+- **`SkinnedMeshResource`** — same as static mesh + skeleton data.
+- **`TextureResource`** — clear pixel data, re-read. GPU cache re-uploads.
+- **`AudioClipResource`** — clear audio buffer, re-read. ResolvedResource
+  detects generation change automatically.
+- **`ParticleEffectResource`** — clear effect definition, re-read.
+- **`SceneResource`** — complex; probably not practical for hot-reload.
+  Default `.NotSupported` is appropriate.

@@ -59,7 +59,6 @@ class MaterialResourceManager : ResourceManager<MaterialResource>
 		if (version > MaterialResource.FileVersion)
 			return .Err(.InvalidFormat);
 
-		resource.Serialize(reader);
-		return .Ok;
+		return resource.Reload(reader);
 	}
 }

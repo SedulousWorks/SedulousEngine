@@ -105,6 +105,34 @@ class MaterialResource : Resource
 
 	public override int32 SerializationVersion => FileVersion;
 
+	/// Reloads the material resource in place. Clears the existing Material's
+	/// properties/uniforms and re-reads from the serializer without creating a new object.
+	public override Result<void, ResourceLoadError> Reload(Serializer s)
+	{
+		if (mMaterial == null)
+			return .Err(.InvalidFormat);
+
+		// Clear existing state
+		mMaterial.ClearForReload();
+
+		// Clear texture refs
+		for (var kv in TextureRefs)
+		{
+			delete kv.key;
+			kv.value.Dispose();
+		}
+		TextureRefs.Clear();
+
+		// Re-read through standard serialization (header + OnSerialize)
+		// OnSerialize in read mode will populate the existing Material
+		// because we DON'T create a new one — we read into the existing fields.
+		let result = Serialize(s);
+		if (result != .Ok)
+			return .Err(.InvalidFormat);
+
+		return .Ok;
+	}
+
 	protected override SerializationResult OnSerialize(Serializer s)
 	{
 		if (s.IsWriting)
@@ -210,8 +238,8 @@ class MaterialResource : Resource
 			MinFilter = (SamplerMinFilter)minFilter;
 			MagFilter = (SamplerMagFilter)magFilter;
 
-			// Create material
-			let mat = new Material();
+			// Reuse existing material (reload) or create new (first load)
+			let mat = (mMaterial != null) ? mMaterial : new Material();
 			mat.Name.Set(materialName);
 			mat.ShaderName.Set(shaderName);
 			mat.ShaderFlags = (.)shaderFlags;
@@ -258,7 +286,10 @@ class MaterialResource : Resource
 				s.FixedFloatArray("uniformData", (float*)mat.DefaultUniformData.Ptr, (int32)floatCount);
 			}
 
-			SetMaterial(mat, true);
+			// Only call SetMaterial on first load (new material).
+			// On reload, mMaterial is the same object — skip to avoid deleting it.
+			if (mMaterial != mat)
+				SetMaterial(mat, true);
 
 			// Read texture refs
 			int32 texCount = 0;

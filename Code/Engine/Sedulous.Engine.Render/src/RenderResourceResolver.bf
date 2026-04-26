@@ -26,21 +26,35 @@ class RenderResourceResolver
 	private GPUResourceManager mGPUResources;
 	private MaterialSystem mMaterialSystem;
 
+	/// Cached GPU resource with the generation it was built from.
+	private struct CachedGPUResource<T>
+	{
+		public T Handle;
+		public uint32 Generation;
+	}
+
 	/// Texture cache - same TextureResource maps to one GPU handle.
-	private Dictionary<TextureResource, GPUTextureHandle> mTextureCache = new .() ~ delete _;
+	private Dictionary<TextureResource, CachedGPUResource<GPUTextureHandle>> mTextureCache = new .() ~ delete _;
 
 	/// Static mesh cache - same StaticMeshResource maps to one GPU handle.
-	private Dictionary<StaticMeshResource, GPUMeshHandle> mStaticMeshCache = new .() ~ delete _;
+	private Dictionary<StaticMeshResource, CachedGPUResource<GPUMeshHandle>> mStaticMeshCache = new .() ~ delete _;
 
 	/// Skinned mesh cache - same SkinnedMeshResource maps to one GPU handle.
-	private Dictionary<SkinnedMeshResource, GPUMeshHandle> mSkinnedMeshCache = new .() ~ delete _;
+	private Dictionary<SkinnedMeshResource, CachedGPUResource<GPUMeshHandle>> mSkinnedMeshCache = new .() ~ delete _;
+
+	/// Cached material instance with the resource generation it was built from.
+	private struct CachedMaterialInstance
+	{
+		public MaterialInstance Instance;
+		public uint32 Generation;
+	}
 
 	/// MaterialInstance cache - same MaterialResource GUID maps to one shared instance.
 	/// Enables draw call batching when multiple entities use the same material.
 	/// Components using SetMaterialRef() share instances; SetMaterial() bypasses this cache.
-	private Dictionary<Guid, MaterialInstance> mMaterialInstanceCache = new .() ~ {
+	private Dictionary<Guid, CachedMaterialInstance> mMaterialInstanceCache = new .() ~ {
 		for (let kv in _)
-			kv.value?.ReleaseRef();
+			kv.value.Instance?.ReleaseRef();
 		delete _;
 	};
 
@@ -72,19 +86,25 @@ class RenderResourceResolver
 		if (meshResource?.Mesh == null)
 			return false;
 
-		// Check cache - same resource reuses the same GPU handle
-		if (mStaticMeshCache.TryGetValue(meshResource, let cachedHandle))
+		// Check cache - same resource + generation reuses the same GPU handle
+		let resourceGen = meshResource.Generation;
+		if (mStaticMeshCache.TryGetValue(meshResource, let cached))
 		{
-			outHandle = cachedHandle;
-			outBounds = meshResource.Mesh.GetBounds();
-			return true;
+			if (cached.Generation == resourceGen)
+			{
+				outHandle = cached.Handle;
+				outBounds = meshResource.Mesh.GetBounds();
+				return true;
+			}
+			// Generation changed — re-upload
+			mStaticMeshCache.Remove(meshResource);
 		}
 
 		let mesh = meshResource.Mesh;
 		let handle = UploadStaticMesh(mesh);
 		if (handle.IsValid)
 		{
-			mStaticMeshCache[meshResource] = handle;
+			mStaticMeshCache[meshResource] = .() { Handle = handle, Generation = resourceGen };
 			outHandle = handle;
 			outBounds = mesh.GetBounds();
 			return true;
@@ -107,19 +127,24 @@ class RenderResourceResolver
 		if (meshResource?.Mesh == null)
 			return false;
 
-		// Check cache - same resource reuses the same GPU handle
-		if (mSkinnedMeshCache.TryGetValue(meshResource, let cachedHandle))
+		// Check cache - same resource + generation reuses the same GPU handle
+		let resourceGen = meshResource.Generation;
+		if (mSkinnedMeshCache.TryGetValue(meshResource, let cached))
 		{
-			outHandle = cachedHandle;
-			outBounds = meshResource.Mesh.Bounds;
-			return true;
+			if (cached.Generation == resourceGen)
+			{
+				outHandle = cached.Handle;
+				outBounds = meshResource.Mesh.Bounds;
+				return true;
+			}
+			mSkinnedMeshCache.Remove(meshResource);
 		}
 
 		let mesh = meshResource.Mesh;
 		let handle = UploadSkinnedMesh(mesh);
 		if (handle.IsValid)
 		{
-			mSkinnedMeshCache[meshResource] = handle;
+			mSkinnedMeshCache[meshResource] = .() { Handle = handle, Generation = resourceGen };
 			outHandle = handle;
 			outBounds = mesh.Bounds;
 			return true;
@@ -149,11 +174,21 @@ class RenderResourceResolver
 
 		// Check cache -- same MaterialResource GUID returns the same shared instance
 		let resourceId = matResource.Id;
+		let resourceGen = matResource.Generation;
+
 		if (mMaterialInstanceCache.TryGetValue(resourceId, let cached))
 		{
-			cached.AddRef();
-			outInstance = cached;
-			return true;
+			if (cached.Generation == resourceGen)
+			{
+				// Cache hit — same generation, reuse
+				cached.Instance.AddRef();
+				outInstance = cached.Instance;
+				return true;
+			}
+
+			// Generation changed (hot-reload) — discard stale instance
+			cached.Instance?.ReleaseRef();
+			mMaterialInstanceCache.Remove(resourceId);
 		}
 
 		// Create new MaterialInstance from MaterialResource
@@ -171,7 +206,7 @@ class RenderResourceResolver
 
 		// Cache holds one ref, caller gets another
 		instance.AddRef();
-		mMaterialInstanceCache[resourceId] = instance;
+		mMaterialInstanceCache[resourceId] = .() { Instance = instance, Generation = resourceGen };
 
 		outInstance = instance;
 		return true;
@@ -210,14 +245,19 @@ class RenderResourceResolver
 			return false;
 
 		// Check texture cache.
-		if (mTextureCache.TryGetValue(texResource, let gpuHandle))
+		let resourceGen = texResource.Generation;
+		if (mTextureCache.TryGetValue(texResource, let cached))
 		{
-			let gpuTex = mGPUResources.GetTexture(gpuHandle);
-			if (gpuTex != null)
+			if (cached.Generation == resourceGen)
 			{
-				outView = gpuTex.DefaultView;
-				return true;
+				let gpuTex = mGPUResources.GetTexture(cached.Handle);
+				if (gpuTex != null)
+				{
+					outView = gpuTex.DefaultView;
+					return true;
+				}
 			}
+			mTextureCache.Remove(texResource);
 		}
 
 		// Upload.
@@ -225,7 +265,7 @@ class RenderResourceResolver
 		if (!uploadResult.IsValid)
 			return false;
 
-		mTextureCache[texResource] = uploadResult;
+		mTextureCache[texResource] = .() { Handle = uploadResult, Generation = resourceGen };
 		let gpuTex = mGPUResources.GetTexture(uploadResult);
 		if (gpuTex == null) return false;
 		outView = gpuTex.DefaultView;
@@ -253,22 +293,33 @@ class RenderResourceResolver
 					continue;
 				}
 
-				// Check texture cache
+				// Check texture cache (with generation)
 				ITextureView view = null;
-				if (mTextureCache.TryGetValue(texResource, let gpuHandle))
+				let texGen = texResource.Generation;
+				bool cacheHit = false;
+				if (mTextureCache.TryGetValue(texResource, let cached))
 				{
-					let gpuTex = mGPUResources.GetTexture(gpuHandle);
-					if (gpuTex != null)
-						view = gpuTex.DefaultView;
+					if (cached.Generation == texGen)
+					{
+						let gpuTex = mGPUResources.GetTexture(cached.Handle);
+						if (gpuTex != null)
+						{
+							view = gpuTex.DefaultView;
+							cacheHit = true;
+						}
+					}
+					else
+						mTextureCache.Remove(texResource);
 				}
-				else
+
+				if (!cacheHit)
 				{
 					// Upload to GPU
 					let image = texResource.Image;
 					let uploadResult = UploadTexture(image);
 					if (uploadResult.IsValid)
 					{
-						mTextureCache[texResource] = uploadResult;
+						mTextureCache[texResource] = .() { Handle = uploadResult, Generation = texGen };
 						let gpuTex = mGPUResources.GetTexture(uploadResult);
 						if (gpuTex != null)
 							view = gpuTex.DefaultView;

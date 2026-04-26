@@ -99,6 +99,21 @@ class Material
 	/// Pipeline configuration for this material.
 	public PipelineConfig PipelineConfig;
 
+	/// Clears all properties, uniform data, and bindings for in-place reload.
+	/// Name, ShaderName, and PipelineConfig are preserved (overwritten by caller).
+	public void ClearForReload()
+	{
+		for (let name in mPropertyNames) delete name;
+		mPropertyNames.Clear();
+		mProperties.Clear();
+		mPropertyIndices.Clear();
+		mDefaultTextures.Clear();
+		mDefaultSamplers.Clear();
+		delete mDefaultUniformData;
+		mDefaultUniformData = null;
+		mUniformDataSize = 0;
+	}
+
 	/// Whether this material is ready to use.
 	public bool IsValid => ShaderName.Length > 0;
 
