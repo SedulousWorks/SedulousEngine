@@ -191,14 +191,18 @@ static class ScenePageBuilder
 		let viewportView = new ViewportView();
 		viewportView.Initialize(device, vgRenderer);
 
+		// Editor camera (independent of scene camera entities)
+		let editorCamera = new EditorCamera();
+		page.AddOwnedObject(editorCamera);
+
 		// Camera controller (orbit/fly)
-		let camController = new ViewportCameraController(page.Scene, keyboard);
+		let camController = new ViewportCameraController(editorCamera, keyboard);
 		camController.Attach(viewportView);
 		page.AddOwnedObject(camController);
 
 		// Wire 3D render callback
 		let capturedScene = page.Scene;
-		viewportView.OnRender.Add(new [=sceneRenderer, =camController, =capturedScene] (vp, encoder, frameIndex) =>
+		viewportView.OnRender.Add(new [=sceneRenderer, =camController, =editorCamera, =capturedScene] (vp, encoder, frameIndex) =>
 		{
 			if (!vp.IsReady) return;
 
@@ -221,8 +225,12 @@ static class ScenePageBuilder
 				let clearPass = encoder.BeginRenderPass(clearDesc);
 				clearPass?.End();
 
+				// Build camera override from editor camera
+				let aspect = (vp.RenderHeight > 0) ? (float)vp.RenderWidth / (float)vp.RenderHeight : 1.0f;
+				let cameraOverride = editorCamera.GetCameraOverride(aspect);
+
 				sceneRenderer.RenderScene(capturedScene, encoder, vp.ColorTexture, vp.ColorTargetView,
-					vp.RenderWidth, vp.RenderHeight, frameIndex);
+					vp.RenderWidth, vp.RenderHeight, frameIndex, cameraOverride);
 			}
 			else
 			{

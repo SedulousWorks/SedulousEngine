@@ -4,12 +4,10 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.UI;
 using Sedulous.Shell.Input;
-using Sedulous.Engine.Core;
-using Sedulous.Engine.Render;
 using Sedulous.UI.Viewport;
 
 /// Orbit/fly camera controller for viewport views.
-/// Uses delegate-based input from ViewportView.
+/// Operates on an EditorCamera (not a scene entity).
 ///
 /// Controls:
 ///   Alt + LMB drag  - Orbit rotate (yaw + pitch around target)
@@ -22,20 +20,9 @@ using Sedulous.UI.Viewport;
 ///   Scroll wheel    - Zoom (move along forward axis)
 public class ViewportCameraController
 {
-	private Scene mScene;
-	private EntityHandle mCameraEntity;
+	private EditorCamera mCamera;
 	private ViewportView mViewport;
 	private IKeyboard mKeyboard;
-
-	// Orbit camera state: position derived from target + distance + yaw + pitch
-	private Vector3 mTarget = .Zero;
-	private float mDistance = 5.0f;
-	private float mYaw = Math.PI_f;
-	private float mPitch = -0.38f;
-	private float mMinPitch = -Math.PI_f * 0.49f;
-	private float mMaxPitch = Math.PI_f * 0.49f;
-	private float mMinDistance = 0.5f;
-	private float mMaxDistance = 500.0f;
 
 	// Speed
 	private float mMoveSpeed = 5.0f;
@@ -48,11 +35,12 @@ public class ViewportCameraController
 	private bool mIsPanning;  // MMB held
 	private float mLastMouseX;
 	private float mLastMouseY;
-	private bool mInitialized;
 
-	public this(Scene scene, IKeyboard keyboard)
+	public EditorCamera Camera => mCamera;
+
+	public this(EditorCamera camera, IKeyboard keyboard)
 	{
-		mScene = scene;
+		mCamera = camera;
 		mKeyboard = keyboard;
 	}
 
@@ -69,25 +57,13 @@ public class ViewportCameraController
 	/// Call each frame for WASD fly movement.
 	public void Update(float deltaTime)
 	{
-		if (mScene == null || mKeyboard == null) return;
-
-		// Lazy init - camera component isn't available until after first BeginFrame.
-		if (!mInitialized)
-		{
-			FindCamera();
-			if (mCameraEntity != .Invalid)
-			{
-				InitFromCamera();
-				mInitialized = true;
-			}
-			return;
-		}
+		if (mCamera == null || mKeyboard == null) return;
 
 		// WASD movement only while flying (RMB held)
 		if (!mIsFlying) return;
 
-		let forward = Forward;
-		let right = Right;
+		let forward = mCamera.Forward;
+		let right = mCamera.Right;
 		let speed = (mKeyboard.IsKeyDown(.LeftShift) ? mMoveSpeed * mShiftMultiplier : mMoveSpeed) * deltaTime;
 
 		Vector3 move = .Zero;
@@ -101,42 +77,8 @@ public class ViewportCameraController
 		if (move.LengthSquared() > 0)
 		{
 			let delta = Vector3.Normalize(move) * speed;
-			mTarget = mTarget + delta;
-			ApplyTransform();
+			mCamera.Target = mCamera.Target + delta;
 		}
-	}
-
-	// === Orbit camera math ===
-
-	private Vector3 Position
-	{
-		get
-		{
-			let cosP = Math.Cos(mPitch);
-			return mTarget + Vector3(
-				mDistance * cosP * Math.Sin(mYaw),
-				mDistance * Math.Sin(mPitch),
-				mDistance * cosP * Math.Cos(mYaw));
-		}
-	}
-
-	private Vector3 Forward => Vector3.Normalize(mTarget - Position);
-
-	private Vector3 Right
-	{
-		get
-		{
-			let fwd = Forward;
-			return Vector3.Normalize(Vector3.Cross(fwd, Vector3.Up));
-		}
-	}
-
-	private void ApplyTransform()
-	{
-		if (mCameraEntity == .Invalid || mScene == null) return;
-
-		let pos = Position;
-		mScene.SetLocalTransform(mCameraEntity, Transform.CreateLookAt(pos, mTarget));
 	}
 
 	// === Input handlers ===
@@ -153,8 +95,6 @@ public class ViewportCameraController
 
 	private void OnMouseDown(MouseEventArgs e)
 	{
-		if (!mInitialized) return;
-
 		if (e.Button == .Right)
 		{
 			mIsFlying = true;
@@ -220,75 +160,36 @@ public class ViewportCameraController
 		if (mIsOrbiting && !mIsFlying)
 		{
 			// Alt+LMB: orbit - rotate around target
-			mYaw += deltaX * mLookSensitivity;
-			mPitch = Math.Clamp(mPitch - deltaY * mLookSensitivity, mMinPitch, mMaxPitch);
-			ApplyTransform();
+			mCamera.Yaw += deltaX * mLookSensitivity;
+			mCamera.Pitch = Math.Clamp(mCamera.Pitch - deltaY * mLookSensitivity, mCamera.MinPitch, mCamera.MaxPitch);
 			e.Handled = true;
 		}
 		else if (mIsFlying)
 		{
 			// RMB: free look - rotate in place, target follows camera
-			let pos = Position;
-			mYaw += deltaX * mLookSensitivity;
-			mPitch = Math.Clamp(mPitch - deltaY * mLookSensitivity, mMinPitch, mMaxPitch);
+			let pos = mCamera.Position;
+			mCamera.Yaw += deltaX * mLookSensitivity;
+			mCamera.Pitch = Math.Clamp(mCamera.Pitch - deltaY * mLookSensitivity, mCamera.MinPitch, mCamera.MaxPitch);
 			// Recompute target so camera stays at the same position
-			mTarget = pos + Forward * mDistance;
-			ApplyTransform();
+			mCamera.Target = pos + mCamera.Forward * mCamera.Distance;
 			e.Handled = true;
 		}
 		else if (mIsPanning)
 		{
 			// MMB: pan - move target + camera laterally
-			let right = Right;
-			let up = Vector3.Cross(right, Forward);
-			let panScale = mDistance * 0.005f;
-			mTarget = mTarget + right * (-deltaX * panScale) + up * (deltaY * panScale);
-			ApplyTransform();
+			let right = mCamera.Right;
+			let up = Vector3.Cross(right, mCamera.Forward);
+			let panScale = mCamera.Distance * 0.005f;
+			mCamera.Target = mCamera.Target + right * (-deltaX * panScale) + up * (deltaY * panScale);
 			e.Handled = true;
 		}
 	}
 
 	private void OnMouseWheel(MouseWheelEventArgs e)
 	{
-		if (!mInitialized) return;
-
 		// Zoom: adjust distance
-		mDistance = Math.Clamp(mDistance - e.DeltaY * mDistance * 0.1f, mMinDistance, mMaxDistance);
-		ApplyTransform();
+		mCamera.Distance = Math.Clamp(mCamera.Distance - e.DeltaY * mCamera.Distance * 0.1f,
+			mCamera.MinDistance, mCamera.MaxDistance);
 		e.Handled = true;
-	}
-
-	// === Init ===
-
-	private void FindCamera()
-	{
-		if (mScene == null) return;
-
-		let cameraMgr = mScene.GetModule<CameraComponentManager>();
-		if (cameraMgr == null) return;
-
-		let camera = cameraMgr.GetActiveCamera();
-		if (camera != null)
-			mCameraEntity = camera.Owner;
-	}
-
-	private void InitFromCamera()
-	{
-		if (mCameraEntity == .Invalid || mScene == null) return;
-
-		let worldMat = mScene.GetWorldMatrix(mCameraEntity);
-		let pos = worldMat.Translation;
-
-		// Default orbit: look toward origin from initial position
-		mTarget = .(0, 0, 0);
-		let offset = pos - mTarget;
-		mDistance = offset.Length();
-		if (mDistance < mMinDistance) mDistance = 5.0f;
-
-		let horizontalDist = Math.Sqrt(offset.X * offset.X + offset.Z * offset.Z);
-		mPitch = Math.Clamp((float)Math.Atan2(offset.Y, horizontalDist), mMinPitch, mMaxPitch);
-		mYaw = (float)Math.Atan2(offset.X, offset.Z);
-
-		ApplyTransform();
 	}
 }
