@@ -185,6 +185,8 @@ class ResourceSystem
 				let result = manager.ReloadFromFile(resource, path);
 				if (result case .Ok)
 				{
+					if (let res = resource as Resource)
+						res.IncrementGeneration();
 					mLogger?.LogInformation("Hot-reloaded resource '{0}' ({1})", path, entry.ResourceType.GetName(.. scope .()));
 					for (let listener in mListeners)
 						listener.OnResourceReloaded(path, entry.ResourceType, resource);

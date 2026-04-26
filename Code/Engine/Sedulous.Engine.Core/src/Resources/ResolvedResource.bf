@@ -18,6 +18,9 @@ struct ResolvedResource<T> where T : Resource, class, delete
 	/// Compared against Handle.Resource to detect changes.
 	public T BoundResource;
 
+	/// Generation of the bound resource when last resolved.
+	private uint32 mBoundGeneration;
+
 	/// Last resolved ref path hash - used to detect path-only ref changes.
 	private int mLastRefHash;
 
@@ -61,11 +64,14 @@ struct ResolvedResource<T> where T : Resource, class, delete
 				return false; // Not available yet - retry next frame
 		}
 
-		// Check if loaded resource differs from what's on the GPU
+		// Check if loaded resource differs from what's on the GPU,
+		// or if the resource's content changed (hot-reload increments Generation).
 		let currentResource = Handle.Resource;
-		if (currentResource != BoundResource)
+		let currentGen = (currentResource != null) ? currentResource.Generation : 0;
+		if (currentResource != BoundResource || currentGen != mBoundGeneration)
 		{
 			BoundResource = currentResource;
+			mBoundGeneration = currentGen;
 			return true; // Changed - caller should upload
 		}
 

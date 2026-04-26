@@ -15,6 +15,7 @@ abstract class Resource : IResource, ISerializable
 	private Guid mId;
 	private String mName = new .() ~ delete _;
 	private String mSourcePath = new .() ~ delete _;
+	private uint32 mGeneration = 0;
 
 	/// Gets or sets the unique identifier.
 	public Guid Id
@@ -29,6 +30,13 @@ abstract class Resource : IResource, ISerializable
 		get => mName;
 		set { mName.Set(value); }
 	}
+
+	/// Content generation counter. Incremented on successful hot-reload.
+	/// Used by resolvers to detect content changes without pointer comparison.
+	public uint32 Generation => mGeneration;
+
+	/// Increments the generation counter. Called by ResourceSystem after a successful reload.
+	public void IncrementGeneration() { mGeneration++; }
 
 	/// Original source path used for import deduplication.
 	/// External textures: resolved file path. Embedded: modelPath#textureN.
@@ -123,6 +131,15 @@ abstract class Resource : IResource, ISerializable
 	protected virtual SerializationResult OnSerialize(Serializer s)
 	{
 		return .Ok;
+	}
+
+	/// Reloads the resource in place from a serializer.
+	/// Override to clear internal state and re-read data without destroying the object.
+	/// Resources that can't reload should return .Err(.NotSupported).
+	/// Default: .Err(.NotSupported).
+	public virtual Result<void, ResourceLoadError> Reload(Serializer s)
+	{
+		return .Err(.NotSupported);
 	}
 
 	/// Saves this resource to a file using the given serializer provider.
