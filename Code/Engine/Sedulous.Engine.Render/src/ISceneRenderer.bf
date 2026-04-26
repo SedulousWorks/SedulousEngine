@@ -13,8 +13,9 @@ interface ISceneRenderer
 	/// Each scene has its own Pipeline (created in OnSceneCreated).
 	/// The application owns the encoder, output textures, and frame pacing.
 	/// After this call, the color target is transitioned to ShaderRead for blit sampling.
+	/// Pass a CameraOverride to use external camera matrices instead of the scene's active camera.
 	void RenderScene(Scene scene, ICommandEncoder encoder, ITexture colorTexture, ITextureView colorTarget,
-		uint32 w, uint32 h, int32 frameIndex);
+		uint32 w, uint32 h, int32 frameIndex, CameraOverride? camera = null);
 
 	/// Get the pipeline for a specific scene. Returns null if scene has no pipeline.
 	Pipeline GetPipeline(Scene scene);

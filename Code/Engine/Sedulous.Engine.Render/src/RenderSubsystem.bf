@@ -197,7 +197,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 	///   - frameIndex is the application's frame-in-flight index (0..MAX_FRAMES-1).
 	///   - w/h are the output dimensions.
 	public void RenderScene(Scene scene, ICommandEncoder encoder, ITexture colorTexture, ITextureView colorTarget,
-		uint32 w, uint32 h, int32 frameIndex)
+		uint32 w, uint32 h, int32 frameIndex, CameraOverride? camera = null)
 	{
 		if (mDevice == null || scene == null)
 			return;
@@ -224,7 +224,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		mainView.Width = w;
 		mainView.Height = h;
 		using (Profiler.Begin("SceneExtraction"))
-			ExtractMainView(mainView, scene);
+			ExtractMainView(mainView, scene, camera);
 
 		// Allocate shadow maps for shadow-casting lights from the main view.
 		using (Profiler.Begin("ShadowSetup"))
@@ -255,32 +255,41 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 
 	// ==================== Extraction ====================
 
-	/// Populates the main view from the active camera and extracts render data into it.
-	private void ExtractMainView(RenderView view, Scene scene)
+	/// Populates the main view from the active camera (or override) and extracts render data into it.
+	private void ExtractMainView(RenderView view, Scene scene, CameraOverride? cameraOverride = null)
 	{
-		// Find camera in the specified scene.
-		CameraComponent activeCamera = null;
-
-		let cameraMgr = scene.GetModule<CameraComponentManager>();
-		if (cameraMgr != null)
-			activeCamera = cameraMgr.GetActiveCamera();
-
-		let viewportAspect = (view.Height > 0) ?
-			(float)view.Width / (float)view.Height : 1.0f;
-
 		Matrix viewMatrix = .Identity;
 		Matrix projMatrix = .Identity;
 		Vector3 cameraPos = .Zero;
 		float nearPlane = 0.1f;
 		float farPlane = 1000.0f;
 
-		if (activeCamera != null)
+		if (cameraOverride.HasValue)
 		{
-			viewMatrix = activeCamera.GetViewMatrix(scene);
-			projMatrix = activeCamera.GetProjectionMatrix(viewportAspect);
-			cameraPos = scene.GetWorldMatrix(activeCamera.Owner).Translation;
-			nearPlane = activeCamera.NearPlane;
-			farPlane = activeCamera.FarPlane;
+			// Use externally provided camera (editor camera)
+			let cam = cameraOverride.Value;
+			viewMatrix = cam.ViewMatrix;
+			projMatrix = cam.ProjectionMatrix;
+			cameraPos = cam.CameraPosition;
+			nearPlane = cam.NearPlane;
+			farPlane = cam.FarPlane;
+		}
+		else
+		{
+			// Query scene's active camera
+			let cameraMgr = scene.GetModule<CameraComponentManager>();
+			let activeCamera = (cameraMgr != null) ? cameraMgr.GetActiveCamera() : null;
+
+			if (activeCamera != null)
+			{
+				let viewportAspect = (view.Height > 0) ?
+					(float)view.Width / (float)view.Height : 1.0f;
+				viewMatrix = activeCamera.GetViewMatrix(scene);
+				projMatrix = activeCamera.GetProjectionMatrix(viewportAspect);
+				cameraPos = scene.GetWorldMatrix(activeCamera.Owner).Translation;
+				nearPlane = activeCamera.NearPlane;
+				farPlane = activeCamera.FarPlane;
+			}
 		}
 
 		view.ViewMatrix = viewMatrix;
