@@ -25,6 +25,9 @@ public class MeshRenderData : RenderData
 	/// Material bind group (set 2: textures, params, samplers).
 	public IBindGroup MaterialBindGroup;
 
+	/// Material bind group layout (needed for pipeline creation).
+	public IBindGroupLayout MaterialBindGroupLayout;
+
 	/// Material's pipeline config (cull mode, blend mode, shader flags, etc.).
 	/// Used by MeshRenderer to create the correct pipeline variant per material.
 	public PipelineConfig MaterialPipelineConfig;

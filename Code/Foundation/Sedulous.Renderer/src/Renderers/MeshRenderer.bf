@@ -51,6 +51,7 @@ public class MeshRenderer : Renderer
 	{
 		public GPUMeshHandle MeshHandle;
 		public IBindGroup MaterialBindGroup;
+		public IBindGroupLayout MaterialBindGroupLayout;
 		public PipelineConfig MaterialConfig;
 		public uint32 SubMeshIndex;
 		public int32 InstanceStart;
@@ -213,6 +214,7 @@ public class MeshRenderer : Renderer
 					{
 						MeshHandle = mesh.MeshHandle,
 						MaterialBindGroup = mesh.MaterialBindGroup,
+						MaterialBindGroupLayout = mesh.MaterialBindGroupLayout,
 						MaterialConfig = mesh.MaterialPipelineConfig,
 						SubMeshIndex = mesh.SubMeshIndex,
 						InstanceStart = 0,
@@ -357,8 +359,10 @@ public class MeshRenderer : Renderer
 			config.BlendMode = group.MaterialConfig.BlendMode;
 			config.FillMode = group.MaterialConfig.FillMode;
 			config.FrontFace = group.MaterialConfig.FrontFace;
+			if (!group.MaterialConfig.ShaderName.IsEmpty)
+				config.ShaderName = group.MaterialConfig.ShaderName;
 
-			let pipelineResult = cache.GetPipeline(config, vertexBuffers, null, colorFormat, depthFormat);
+			let pipelineResult = cache.GetPipeline(config, vertexBuffers, group.MaterialBindGroupLayout, colorFormat, depthFormat);
 			if (pipelineResult case .Err) continue;
 
 			let groupPipeline = pipelineResult.Value;
@@ -461,8 +465,10 @@ public class MeshRenderer : Renderer
 			config.BlendMode = mesh.MaterialPipelineConfig.BlendMode;
 			config.FillMode = mesh.MaterialPipelineConfig.FillMode;
 			config.FrontFace = mesh.MaterialPipelineConfig.FrontFace;
+			if (!mesh.MaterialPipelineConfig.ShaderName.IsEmpty)
+				config.ShaderName = mesh.MaterialPipelineConfig.ShaderName;
 
-			let pipelineResult = cache.GetPipeline(config, vertexBuffers, null, colorFormat, depthFormat);
+			let pipelineResult = cache.GetPipeline(config, vertexBuffers, mesh.MaterialBindGroupLayout, colorFormat, depthFormat);
 			if (pipelineResult case .Err) continue;
 
 			let meshPipeline = pipelineResult.Value;

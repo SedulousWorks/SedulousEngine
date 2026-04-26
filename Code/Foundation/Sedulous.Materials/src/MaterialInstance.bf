@@ -77,6 +77,9 @@ class MaterialInstance : RefCounted, IDisposable
 	/// GPU bind group for this material instance.
 	private IBindGroup mBindGroup;
 
+	/// GPU bind group layout (set when bind group is created by MaterialSystem).
+	private IBindGroupLayout mBindGroupLayout;
+
 	/// Blend mode for rendering.
 	private BlendMode mBlendMode = .Opaque;
 
@@ -85,6 +88,13 @@ class MaterialInstance : RefCounted, IDisposable
 
 	/// Gets the vertex layout type from the material's pipeline config.
 	public VertexLayoutType VertexLayout => mMaterial?.PipelineConfig.VertexLayout ?? .Mesh;
+
+	/// Gets or sets the GPU bind group layout.
+	public IBindGroupLayout BindGroupLayout
+	{
+		get => mBindGroupLayout;
+		set => mBindGroupLayout = value;
+	}
 
 	/// Gets or sets the GPU bind group.
 	public IBindGroup BindGroup

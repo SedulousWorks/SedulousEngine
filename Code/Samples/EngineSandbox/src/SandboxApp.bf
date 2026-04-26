@@ -122,6 +122,8 @@ class SandboxApp : EngineApplication
 	MaterialInstance mGrayMaterial ~ _?.ReleaseRef();
 	MaterialInstance mTransparentMaterial ~ _?.ReleaseRef();
 	MaterialInstance mMaskedMaterial ~ _?.ReleaseRef();
+	Material mUnlitMaterial ~ delete _;
+	MaterialInstance mUnlitInstance ~ _?.ReleaseRef();
 
 	// Particle effects (owned by app, shared by components)
 	ParticleEffect mSparksEffect ~ delete _;
@@ -195,6 +197,12 @@ class SandboxApp : EngineApplication
 		mMaskedMaterial.SetColor("BaseColor", .(0.8f, 0.2f, 0.1f, 1));
 		mMaskedMaterial.SetFloat("AlphaCutoff", 0.5f);
 		mMaskedMaterial.BlendMode = .Masked;
+
+		// Unlit material (bright magenta, no lighting)
+		mUnlitMaterial = Materials.CreateUnlit("Unlit", null,
+			matSystem.WhiteTexture, matSystem.DefaultSampler);
+		mUnlitInstance = new MaterialInstance(mUnlitMaterial);
+		mUnlitInstance.SetColor("BaseColor", .(1.0f, 0.0f, 1.0f, 1));
 
 		// ==================== Geometry (registered as resources) ====================
 
@@ -278,6 +286,12 @@ class SandboxApp : EngineApplication
 		scene.SetLocalTransform(maskedEntity, .() { Position = .(3.0f, 4, 1.0f), Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, maskedEntity, cubeRef, mMaskedMaterial);
 		SetupRigidBody(scene, physicsMgr, maskedEntity, .Box(0.5f), .Dynamic);
+
+		// Unlit sphere - dynamic, bright magenta, no lighting
+		let unlitEntity = scene.CreateEntity("UnlitSphere");
+		scene.SetLocalTransform(unlitEntity, .() { Position = .(0, 10, 2.0f), Rotation = .Identity, Scale = .One });
+		SetupMeshComponent(scene, unlitEntity, sphereRef, mUnlitInstance);
+		SetupRigidBody(scene, physicsMgr, unlitEntity, .Sphere(0.5f), .Dynamic);
 
 		// ==================== Sprites ====================
 		// Load a few animal icons from the Kenney pack and spawn sprites exercising

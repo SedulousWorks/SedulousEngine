@@ -190,6 +190,9 @@ class MaterialSystem : IDisposable
 			instance.ClearUniformDirty();
 		}
 
+		// Store layout on instance for pipeline creation
+		instance.BindGroupLayout = bgLayout;
+
 		// Create bind group if dirty
 		if (instance.IsBindGroupDirty)
 		{

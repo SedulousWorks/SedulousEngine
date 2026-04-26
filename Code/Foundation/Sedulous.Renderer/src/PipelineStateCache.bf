@@ -106,9 +106,11 @@ class PipelineStateCache : IDisposable
 		if (depthCompareOverride.HasValue)
 			cfg.DepthCompare = depthCompareOverride.Value;
 
-		// Build cache key
+		// Build cache key (include material layout to differentiate PBR vs unlit etc.)
 		let key = BuildKey(cfg, vertexBuffers, colorFormat, depthFormat, sampleCount, variantFlags);
-		let hash = key.GetHashCode();
+		var hash = key.GetHashCode();
+		if (materialLayout != null)
+			hash = hash * 31 + (int)Internal.UnsafeCastToPtr(materialLayout);
 
 		// Check cache
 		if (mPipelineCache.TryGetValue(hash, let cached))
