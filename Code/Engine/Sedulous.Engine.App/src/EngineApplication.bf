@@ -141,6 +141,7 @@ abstract class EngineApplication : IDisposable
 		JobSystem.Initialize();
 		mLogger = new Sedulous.Core.Logging.Console.ConsoleLogger(.Information);
 		mResourceSystem = new ResourceSystem(mLogger);
+		mResourceSystem.EnableHotReload();
 		mResourceSystem.SetSerializerProvider(new OpenDDLSerializerProvider());
 		mResourceSystem.Startup();
 

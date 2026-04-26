@@ -166,6 +166,7 @@ abstract class Application
 		Sedulous.Jobs.JobSystem.Initialize();
 		mLogger = CreateLogger();
 		mResourceSystem = new Sedulous.Resources.ResourceSystem(mLogger);
+		mResourceSystem.EnableHotReload();
 		mResourceSystem.SetSerializerProvider(new Sedulous.Serialization.OpenDDL.OpenDDLSerializerProvider());
 		mResourceSystem.Startup();
 
