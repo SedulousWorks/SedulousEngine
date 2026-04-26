@@ -166,6 +166,8 @@ class EditorApplication : Application, IFloatingWindowHost
 		mEditorContext.AssetSelection = new AssetSelection();
 		mEditorContext.PluginRegistry = new EditorPluginRegistry();
 		mEditorContext.Project = mProject;
+		mEditorContext.DialogService = Shell.Dialogs;
+		mEditorContext.ResourceSystem = mResourceSystem;
 
 		// Discover plugins
 		mEditorContext.PluginRegistry.DiscoverPlugins();

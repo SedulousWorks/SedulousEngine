@@ -3,9 +3,11 @@ namespace Sedulous.Editor.Core;
 using System;
 using System.Collections;
 using Sedulous.Runtime;
+using Sedulous.Shell;
 using Sedulous.UI.Toolkit;
 using Sedulous.UI;
 using Sedulous.Engine.Core.Resources;
+using Sedulous.Resources;
 
 /// Central access point for all editor services.
 /// Passed to plugins during initialization so they can register extensions.
@@ -27,6 +29,10 @@ class EditorContext : IDisposable
 	// UI (editor shell)
 	public DockManager DockManager;
 	public MenuBar MenuBar;
+
+	// Platform services
+	public IDialogService DialogService;
+	public ResourceSystem ResourceSystem;
 
 	// Registries (owned)
 	private List<IComponentInspector> mInspectors = new .() ~ delete _;

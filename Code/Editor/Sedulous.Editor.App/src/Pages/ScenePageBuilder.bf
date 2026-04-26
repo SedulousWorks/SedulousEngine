@@ -333,7 +333,7 @@ static class ScenePageBuilder
 			{
 				if (let inspectable = component as IInspectable)
 				{
-					let desc = scope PropertyGridDescriptor(propertyGrid);
+					let desc = scope EditorPropertyGridDescriptor(propertyGrid, editorContext?.DialogService, editorContext?.ResourceSystem?.SerializerProvider, editorContext?.ResourceSystem);
 					inspectable.DescribeProperties(desc);
 				}
 			}

@@ -61,6 +61,31 @@ static class InspectorCodegen
 				body.AppendF($"\tdesc.Vec3(\"{field.Name}\", &{field.Name});\n");
 			else if (ft == typeof(Sedulous.Core.Mathematics.Quaternion))
 				body.AppendF($"\tdesc.Quat(\"{field.Name}\", &{field.Name});\n");
+			else if (ft == typeof(Sedulous.Resources.ResourceRef))
+			{
+				// Convention: mFooRef -> SetFooRef(ref), FooRef (getter property)
+				String baseName = scope .(field.Name);
+				if (baseName.StartsWith("m") && baseName.Length > 1 && baseName[1].IsUpper)
+					baseName.Remove(0, 1);
+
+				body.AppendF($"\tdesc.ResRef(\"{baseName}\", new () => {{ return {baseName}; }}, new (r) => {{ Set{baseName}(r); }});\n");
+			}
+			else if (let specType = ft as SpecializedGenericType)
+			{
+				if (specType.UnspecializedType == typeof(System.Collections.List<>) &&
+					specType.GetGenericArg(0) == typeof(Sedulous.Resources.ResourceRef))
+				{
+					// Convention: mFooRefs -> singular FooRef -> GetFooRef(i), SetFooRef(i, ref), FooRefCount
+					String baseName = scope .(field.Name);
+					if (baseName.StartsWith("m") && baseName.Length > 1 && baseName[1].IsUpper)
+						baseName.Remove(0, 1);
+					String singularName = scope .(baseName);
+					if (singularName.EndsWith("s"))
+						singularName.RemoveFromEnd(1);
+
+					body.AppendF($"\tdesc.ResRefList(\"{singularName}s\", new () => {{ return {singularName}Count; }}, new (i) => {{ return Get{singularName}(i); }}, new (i, r) => {{ Set{singularName}(i, r); }});\n");
+				}
+			}
 			else if (ft.IsEnum)
 				body.AppendF($"\tdesc.EnumField(\"{field.Name}\", &{field.Name}, typeof({ft.GetFullName(.. scope .())}));\n");
 		}

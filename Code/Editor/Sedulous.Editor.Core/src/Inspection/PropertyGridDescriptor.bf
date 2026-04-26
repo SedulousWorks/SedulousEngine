@@ -3,14 +3,17 @@ namespace Sedulous.Editor.Core;
 using System;
 using Sedulous.Engine.Core;
 using Sedulous.Core.Mathematics;
+using Sedulous.Resources;
 using Sedulous.UI.Toolkit;
 
 /// Implements IPropertyDescriptor to build PropertyGrid entries from
 /// comptime-generated DescribeProperties calls.
 class PropertyGridDescriptor : IPropertyDescriptor
 {
-	private PropertyGrid mGrid;
+	protected PropertyGrid mGrid;
 	private String mCurrentCategory = new .() ~ delete _;
+
+	public StringView CurrentCategory => mCurrentCategory;
 
 	public this(PropertyGrid grid)
 	{
@@ -103,6 +106,33 @@ class PropertyGridDescriptor : IPropertyDescriptor
 		let editor = new EnumEditor(name, currentVal, names, category: mCurrentCategory);
 		editor.Setter = new [=ptr] (v) => { *(int32*)ptr = v; };
 		mGrid.AddProperty(editor);
+	}
+
+	public virtual void ResRef(StringView name, delegate ResourceRef() getter, delegate void(ResourceRef) setter)
+	{
+		// Base implementation: read-only display. Override in Editor.App for full editor.
+		let @ref = getter();
+		let display = scope String();
+		if (@ref.HasPath)
+			System.IO.Path.GetFileName(@ref.Path, display);
+		else if (@ref.HasId)
+			@ref.Id.ToString(display);
+		else
+			display.Set("(none)");
+		mGrid.AddProperty(new StringEditor(name, display, category: mCurrentCategory));
+		delete getter;
+		delete setter;
+	}
+
+	public virtual void ResRefList(StringView name, delegate int32() countGetter,
+		delegate ResourceRef(int32) getter, delegate void(int32, ResourceRef) setter)
+	{
+		// Base implementation: read-only count display. Override in Editor.App for full editor.
+		let count = countGetter();
+		mGrid.AddProperty(new StringEditor(name, scope $"{count} refs", category: mCurrentCategory));
+		delete countGetter;
+		delete getter;
+		delete setter;
 	}
 
 	public void BeginCategory(StringView name)

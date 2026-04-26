@@ -1,7 +1,9 @@
 namespace Sedulous.Engine.Core;
 
 using System;
+using System.Collections;
 using Sedulous.Core.Mathematics;
+using Sedulous.Resources;
 
 /// Typed property descriptor interface. Called by comptime-generated
 /// DescribeProperties methods. Editor implements this to build UI.
@@ -33,6 +35,13 @@ interface IPropertyDescriptor
 
 	/// Quaternion field displayed as euler angles (3 numeric fields).
 	void Quat(StringView name, Quaternion* ptr);
+
+	/// Single ResourceRef field. getter reads current value, setter writes new value.
+	void ResRef(StringView name, delegate ResourceRef() getter, delegate void(ResourceRef) setter);
+
+	/// List of ResourceRef fields. countGetter/getter/setter by index.
+	void ResRefList(StringView name, delegate int32() countGetter,
+		delegate ResourceRef(int32) getter, delegate void(int32, ResourceRef) setter);
 
 	/// Begin a named category group (Expander).
 	void BeginCategory(StringView name);
