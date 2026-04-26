@@ -11,7 +11,7 @@ class EditorCamera
 	// Orbit state: position derived from target + distance + yaw + pitch
 	public Vector3 Target = .Zero;
 	public float Distance = 5.0f;
-	public float Yaw = Math.PI_f;
+	public float Yaw = 0;
 	public float Pitch = 0.38f;
 	public float MinPitch = -Math.PI_f * 0.49f;
 	public float MaxPitch = Math.PI_f * 0.49f;

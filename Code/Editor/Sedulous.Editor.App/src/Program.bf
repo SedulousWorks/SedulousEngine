@@ -13,7 +13,8 @@ class Program
 			Height = 900,
 			Resizable = true,
 			Backend = .Vulkan,
-			EnableValidation = true
+			EnableValidation = true,
+			SwapChainFormat = .BGRA8UnormSrgb
 		});
 	}
 }

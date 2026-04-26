@@ -25,6 +25,22 @@ class SceneEditorPage : IEditorPage
 	// Editor context for serialization access
 	private EditorContext mEditorContext;
 
+	// Viewport state
+	private GizmoMode mGizmoMode = .Translate;
+	private bool mWorldSpace = false;
+
+	public GizmoMode GizmoMode
+	{
+		get => mGizmoMode;
+		set => mGizmoMode = value;
+	}
+
+	public bool WorldSpace
+	{
+		get => mWorldSpace;
+		set => mWorldSpace = value;
+	}
+
 	// Per-scene entity selection
 	private List<EntityHandle> mSelectedEntities = new .() ~ delete _;
 	public Event<delegate void(SceneEditorPage)> OnSelectionChanged ~ _.Dispose();

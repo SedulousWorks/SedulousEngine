@@ -188,8 +188,41 @@ static class ScenePageBuilder
 	private static View BuildViewport(SceneEditorPage page, IDevice device,
 		VGRenderer vgRenderer, ISceneRenderer sceneRenderer, IKeyboard keyboard)
 	{
+		// Container: toolbar on top, viewport below
+		let container = new LinearLayout();
+		container.Orientation = .Vertical;
+
+		// === Viewport Toolbar ===
+		let toolbar = new Toolbar();
+
+		let translateBtn = toolbar.AddToggle("W Translate");
+		let rotateBtn = toolbar.AddToggle("E Rotate");
+		let scaleBtn = toolbar.AddToggle("R Scale");
+		translateBtn.IsChecked = true;
+
+		translateBtn.OnCheckedChanged.Add(new (btn, val) => {
+			if (val) { page.GizmoMode = .Translate; rotateBtn.IsChecked = false; scaleBtn.IsChecked = false; }
+		});
+		rotateBtn.OnCheckedChanged.Add(new (btn, val) => {
+			if (val) { page.GizmoMode = .Rotate; translateBtn.IsChecked = false; scaleBtn.IsChecked = false; }
+		});
+		scaleBtn.OnCheckedChanged.Add(new (btn, val) => {
+			if (val) { page.GizmoMode = .Scale; translateBtn.IsChecked = false; rotateBtn.IsChecked = false; }
+		});
+
+		toolbar.AddSeparator();
+
+		container.AddView(toolbar, new LinearLayout.LayoutParams() {
+			Width = LayoutParams.MatchParent, Height = LayoutParams.WrapContent
+		});
+
+		// === Viewport ===
 		let viewportView = new ViewportView();
 		viewportView.Initialize(device, vgRenderer);
+
+		container.AddView(viewportView, new LinearLayout.LayoutParams() {
+			Width = LayoutParams.MatchParent, Height = 0, Weight = 1
+		});
 
 		// Editor camera (independent of scene camera entities)
 		let editorCamera = new EditorCamera();
@@ -250,7 +283,7 @@ static class ScenePageBuilder
 			}
 		});
 
-		return viewportView;
+		return container;
 	}
 
 	private static View BuildInspector(SceneEditorPage page, EditorContext editorContext)
