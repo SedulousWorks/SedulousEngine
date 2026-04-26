@@ -219,6 +219,8 @@ class MaterialResource : Resource
 			// Read full pipeline config
 			var pipelineConfig = PipelineConfig();
 			DeserializePipelineConfig(s, ref pipelineConfig);
+			// PipelineConfig.ShaderName is a StringView — point it at the Material's owned ShaderName
+			pipelineConfig.ShaderName = mat.ShaderName;
 			mat.PipelineConfig = pipelineConfig;
 
 			// Read property definitions

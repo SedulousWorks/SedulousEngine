@@ -1,10 +1,10 @@
 uint64 %_type {175488002581160416}
 int32 %_version {1}
-string %_id {"a24695ce-a0fc-49a4-b3eb-85af1d2f8f4a"}
+string %_id {"868704da-d9fe-4ea4-8cd1-55fa37a2e435"}
 string %_name {"Default"}
 string %_sourcePath {""}
 string %materialName {"Default"}
-string %shaderName {"pbr"}
+string %shaderName {"forward"}
 int32 %shaderFlags {0}
 int32 %wrapU {0}
 int32 %wrapV {0}

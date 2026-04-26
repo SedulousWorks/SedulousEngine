@@ -785,7 +785,7 @@ class EditorApplication : Application, IFloatingWindowHost
 
 		// Default PBR material
 		{
-			let mat = Sedulous.Materials.Materials.CreatePBR("Default");
+			let mat = Sedulous.Materials.Materials.CreatePBR("Default", "forward");
 			let res = new Sedulous.Materials.Resources.MaterialResource(mat, true);
 			res.Name = "Default";
 			let path = scope String()..AppendF("{}/default.material", matDir);
