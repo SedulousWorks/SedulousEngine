@@ -211,7 +211,7 @@ public class PropertyGrid : ViewGroup
 
 		container.AddView(row, new LinearLayout.LayoutParams() {
 			Width = Sedulous.UI.LayoutParams.MatchParent,
-			Height = RowHeight
+			Height = Sedulous.UI.LayoutParams.WrapContent
 		});
 	}
 }
