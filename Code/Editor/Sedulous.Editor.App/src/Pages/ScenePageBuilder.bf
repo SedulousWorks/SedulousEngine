@@ -228,6 +228,10 @@ static class ScenePageBuilder
 		let editorCamera = new EditorCamera();
 		page.AddOwnedObject(editorCamera);
 
+		// Transform gizmo
+		let gizmo = new TransformGizmo();
+		page.AddOwnedObject(gizmo);
+
 		// Camera controller (orbit/fly)
 		let camController = new ViewportCameraController(editorCamera, keyboard);
 		camController.Attach(viewportView);
@@ -235,12 +239,29 @@ static class ScenePageBuilder
 
 		// Wire 3D render callback
 		let capturedScene = page.Scene;
-		viewportView.OnRender.Add(new [=sceneRenderer, =camController, =editorCamera, =capturedScene] (vp, encoder, frameIndex) =>
+		viewportView.OnRender.Add(new (vp, encoder, frameIndex) =>
 		{
 			if (!vp.IsReady) return;
 
 			// Update fly cam movement
 			camController.Update(1.0f / 60.0f);
+
+			// Draw gizmo at selected entity position (before RenderScene so DebugPass picks it up)
+			if (sceneRenderer != null)
+			{
+				let selected = page.PrimarySelection;
+				if (selected != .Invalid && capturedScene.IsValid(selected))
+				{
+					let worldMatrix = capturedScene.GetWorldMatrix(selected);
+					gizmo.Position = worldMatrix.Translation;
+
+					// Scale gizmo to maintain constant screen size
+					let camDist = Vector3.Distance(editorCamera.Position, gizmo.Position);
+					gizmo.Size = camDist * 0.15f;
+
+					gizmo.Draw(sceneRenderer.RenderContext.DebugDraw, page.GizmoMode);
+				}
+			}
 
 			encoder.TransitionTexture(vp.ColorTexture, .Undefined, .RenderTarget);
 
