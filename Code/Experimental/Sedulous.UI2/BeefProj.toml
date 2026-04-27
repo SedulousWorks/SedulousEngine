@@ -1,0 +1,6 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.UI2"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.UI2.Program"

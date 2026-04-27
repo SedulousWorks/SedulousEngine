@@ -1,0 +1,6 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.UI2.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.UI2.Tests.Program"
