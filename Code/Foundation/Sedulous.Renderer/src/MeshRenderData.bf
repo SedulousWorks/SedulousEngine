@@ -40,4 +40,7 @@ public class MeshRenderData : RenderData
 
 	/// Whether this mesh is skinned (needs compute skinning pass).
 	public bool IsSkinned;
+
+	/// Entity index for GPU picking (encoded as color in pick pass).
+	public uint32 EntityIndex;
 }

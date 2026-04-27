@@ -7,6 +7,7 @@ using Sedulous.UI.Viewport;
 using Sedulous.Engine.Core;
 using Sedulous.Engine.Render;
 using Sedulous.Editor.Core;
+using Sedulous.Renderer.Passes;
 
 /// Viewport input handler for gizmo interaction and entity picking.
 /// Handles plain LMB: gizmo drag if hovering an axis, entity pick otherwise.
@@ -24,6 +25,11 @@ class GizmoInputHandler : IViewportInputHandler
 	private Transform mDragStartTransform;
 	private EntityHandle mDragEntity;
 
+	// GPU picking
+	private PickPass mPickPass;
+	private Ray mPendingFallbackRay;
+	private bool mHasPendingPick;
+
 	public this(EditorCamera camera, TransformGizmo gizmo, SceneEditorPage page, Scene scene)
 	{
 		mCamera = camera;
@@ -31,6 +37,9 @@ class GizmoInputHandler : IViewportInputHandler
 		mPage = page;
 		mScene = scene;
 	}
+
+	/// Set the GPU pick pass for entity selection. If null, falls back to CPU ray-AABB.
+	public void SetPickPass(PickPass pickPass) { mPickPass = pickPass; }
 
 	// === Pick ray ===
 
@@ -72,8 +81,18 @@ class GizmoInputHandler : IViewportInputHandler
 			}
 		}
 
-		// Entity picking via ray-AABB intersection
+		// Entity picking: GPU pick for meshes, CPU fallback for non-mesh entities
+		if (mPickPass != null)
 		{
+			let ray = CreatePickRay(e.X, e.Y, viewport);
+			mPendingFallbackRay = ray;
+			mPickPass.RequestPick((int32)e.X, (int32)e.Y);
+			mHasPendingPick = true;
+			e.Handled = true;
+		}
+		else
+		{
+			// Fallback: CPU ray-AABB (no pick pass available)
 			let ray = CreatePickRay(e.X, e.Y, viewport);
 			let hit = PickEntity(ray);
 			if (hit != .Invalid)
@@ -88,7 +107,7 @@ class GizmoInputHandler : IViewportInputHandler
 	{
 		if (e.Button == .Left && mIsDragging)
 		{
-			// End drag — push undo command
+			// End drag - push undo command
 			if (mDragEntity != .Invalid && mScene.IsValid(mDragEntity))
 			{
 				let newTransform = mScene.GetLocalTransform(mDragEntity);
@@ -142,7 +161,7 @@ class GizmoInputHandler : IViewportInputHandler
 			return;
 		}
 
-		// Update gizmo hover (don't set e.Handled — let camera track mouse too)
+		// Update gizmo hover (don't set e.Handled - let camera track mouse too)
 		let selected = mPage.PrimarySelection;
 		if (selected != .Invalid && mScene.IsValid(selected))
 		{
@@ -153,10 +172,82 @@ class GizmoInputHandler : IViewportInputHandler
 
 	public void OnMouseWheel(MouseWheelEventArgs e, ViewportView viewport)
 	{
-		// Gizmo doesn't handle scroll — let camera handle it
+		// Gizmo doesn't handle scroll - let camera handle it
 	}
 
-	// === Entity Picking ===
+	// === GPU Pick Result ===
+
+	/// Called by the render loop when the GPU pick result is ready.
+	public void OnPickResult(uint32 entityIndex)
+	{
+		if (!mHasPendingPick) return;
+		mHasPendingPick = false;
+
+		if (entityIndex != uint32.MaxValue)
+		{
+			// GPU pick hit a mesh entity
+			let entity = FindEntityByIndex(entityIndex);
+			if (entity != .Invalid)
+				mPage.SelectEntity(entity);
+			else
+				mPage.ClearSelection();
+		}
+		else
+		{
+			// No mesh hit - try CPU sphere test for non-mesh entities (lights, cameras)
+			let hit = PickNonMeshEntity(mPendingFallbackRay);
+			if (hit != .Invalid)
+				mPage.SelectEntity(hit);
+			else
+				mPage.ClearSelection();
+		}
+	}
+
+	/// Finds an entity in the scene by its slot index.
+	private EntityHandle FindEntityByIndex(uint32 index)
+	{
+		for (let entity in mScene.Entities)
+		{
+			if (!mScene.IsValid(entity)) continue;
+			if (entity.Index == index)
+				return entity;
+		}
+		return .Invalid;
+	}
+
+	/// Picks non-mesh entities (lights, cameras) using proxy spheres.
+	private EntityHandle PickNonMeshEntity(Ray ray)
+	{
+		let meshMgr = mScene.GetModule<MeshComponentManager>();
+		let skinnedMgr = mScene.GetModule<SkinnedMeshComponentManager>();
+
+		EntityHandle closestEntity = .Invalid;
+		float closestDist = float.MaxValue;
+
+		for (let entity in mScene.Entities)
+		{
+			if (!mScene.IsValid(entity)) continue;
+
+			// Skip entities that have mesh components (already tested by GPU pick)
+			if (meshMgr != null && meshMgr.GetForEntity(entity) != null) continue;
+			if (skinnedMgr != null && skinnedMgr.GetForEntity(entity) != null) continue;
+
+			let worldPos = mScene.GetWorldMatrix(entity).Translation;
+			let proxyRadius = 0.5f;
+			let sphere = BoundingSphere(worldPos, proxyRadius);
+
+			let dist = ray.Intersects(sphere);
+			if (dist.HasValue && dist.Value < closestDist)
+			{
+				closestDist = dist.Value;
+				closestEntity = entity;
+			}
+		}
+
+		return closestEntity;
+	}
+
+	// === Entity Picking (CPU fallback) ===
 
 	/// Picks the closest entity under the ray by testing against mesh bounding boxes.
 	private EntityHandle PickEntity(Ray ray)

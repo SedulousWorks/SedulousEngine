@@ -12,6 +12,7 @@ using Sedulous.UI.Viewport;
 using Sedulous.Shell.Input;
 using Sedulous.Editor.Core;
 using Sedulous.Core.Mathematics;
+using Sedulous.Renderer.Passes;
 using System.Collections;
 
 /// Builds the internal layout for a SceneEditorPage:
@@ -273,6 +274,21 @@ static class ScenePageBuilder
 		page.AddOwnedObject(camController);
 		viewportView.AddInputHandler(camController);
 
+		// GPU entity picking pass - added to the scene pipeline
+		PickPass pickPass = null;
+		if (sceneRenderer != null)
+		{
+			let pipeline = sceneRenderer.GetPipeline(page.Scene);
+			if (pipeline != null)
+			{
+				pickPass = new PickPass();
+				pipeline.AddPass(pickPass);
+				// Initialize pick textures with current pipeline dimensions
+				pickPass.OnResize(pipeline.OutputWidth, pipeline.OutputHeight);
+				gizmoHandler.SetPickPass(pickPass);
+			}
+		}
+
 		// Wire 3D render callback
 		let capturedScene = page.Scene;
 		viewportView.OnRender.Add(new (vp, encoder, frameIndex) =>
@@ -327,6 +343,14 @@ static class ScenePageBuilder
 
 				sceneRenderer.RenderScene(capturedScene, encoder, vp.ColorTexture, vp.ColorTargetView,
 					vp.RenderWidth, vp.RenderHeight, frameIndex, cameraOverride);
+
+				// Poll GPU pick results (readback completed inside Pipeline.Render -> AddPasses)
+				if (pickPass != null)
+				{
+					uint32 entityIndex;
+					if (pickPass.TryGetResult(out entityIndex))
+						gizmoHandler.OnPickResult(entityIndex);
+				}
 			}
 			else
 			{

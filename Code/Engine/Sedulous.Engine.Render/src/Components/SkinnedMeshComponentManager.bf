@@ -267,6 +267,7 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 				data.MaterialKey = materialKey;
 				data.BoneBufferHandle = comp.BoneBufferHandle;
 				data.IsSkinned = true;
+				data.EntityIndex = comp.Owner.Index;
 				context.RenderData.Add(category, data);
 			}
 		}

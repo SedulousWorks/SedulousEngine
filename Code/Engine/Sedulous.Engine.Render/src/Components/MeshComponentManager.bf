@@ -11,6 +11,7 @@ using Sedulous.Materials.Resources;
 using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
 using Sedulous.Jobs;
+using Sedulous.Core.Memory;
 
 /// Manages mesh components: resolves resource refs, uploads to GPU, extracts render data.
 /// Injected into scenes by RenderSubsystem via ISceneAware.
@@ -91,7 +92,7 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 
 				if (!matRef.IsValid)
 				{
-					// Ref cleared — remove material instance if present
+					// Ref cleared - remove material instance if present
 					if (slot < comp.Materials.Count && comp.Materials[slot] != null)
 						comp.SetMaterial(slot, null);
 					continue;
@@ -189,7 +190,7 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 
 	/// Parallel extraction into per-thread lists (no shared state).
 	private void ExtractRangeToLists(int32 begin, int32 end,
-		Sedulous.Core.Memory.FrameAllocator alloc,
+		FrameAllocator alloc,
 		in RenderExtractionContext context,
 		List<RenderData>[] threadLists, int32 baseIdx)
 	{
@@ -203,7 +204,7 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 	/// Extracts a single slot. Writes to either renderData (sequential) or
 	/// threadLists (parallel). Exactly one of renderData/threadLists is non-null.
 	private void ExtractSlot(int32 slotIdx, Scene scene, GPUResourceManager gpuResources,
-		Sedulous.Core.Memory.FrameAllocator alloc,
+		FrameAllocator alloc,
 		ExtractedRenderData renderData,
 		List<RenderData>[] threadLists, int32 threadListBase)
 	{
@@ -263,6 +264,7 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 			data.MaterialBindGroupLayout = material?.BindGroupLayout;
 			data.MaterialPipelineConfig = material?.Material?.PipelineConfig ?? .();
 			data.MaterialKey = materialKey;
+			data.EntityIndex = mesh.Owner.Index;
 
 			if (renderData != null)
 				renderData.Add(category, data);

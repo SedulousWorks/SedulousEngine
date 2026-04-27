@@ -633,7 +633,7 @@ into scenes, and integrates with the import pipeline.
 **Dependencies:** FileWatcher (done in ResourceSystem), DragDrop (done),
 IAssetImporter interface (defined), project registry (done).
 
-### Phase 5: Scene Gizmos — PARTIAL
+### Phase 5: Scene Gizmos - PARTIAL
 
 **Done:**
 - ✅ EditorCamera (independent of scene entities, uses CameraOverride)
@@ -647,13 +647,14 @@ IAssetImporter interface (defined), project registry (done).
 
 **Remaining:**
 
-**5a. Entity selection picking**
-- Click in viewport (not on gizmo) should raycast against scene entities
-- Ray-AABB intersection using entity bounding boxes (MeshComponent.LocalBounds + world matrix)
-- Select closest hit entity, update page selection
-- Shift+click for multi-select (add to selection)
-- Click empty space to deselect
-- GizmoInputHandler has TODO placeholder for this
+**5a. Entity selection picking - DONE**
+- ✅ GPU pick pass (PickPass): renders entity indices as RGBA8 colors, async 2-frame readback
+- ✅ RHI: Origin3D + TextureOrigin on BufferTextureCopyRegion for sub-texture copy (Vulkan/DX12)
+- ✅ MeshRenderData.EntityIndex set during extraction (static + skinned meshes)
+- ✅ Pick shaders (pick.vert/frag.hlsl): entity index encoded as color, +1 offset so 0 = background
+- ✅ GizmoInputHandler: GPU pick on LMB click, CPU proxy sphere fallback for non-mesh entities
+- ✅ Selection syncs to hierarchy view via OnSelectionChanged
+- Shift+click multi-select not yet implemented
 
 **5b. Inspector live update during gizmo drag**
 - Transform Vector3Editors don't refresh while dragging
@@ -678,7 +679,7 @@ IAssetImporter interface (defined), project registry (done).
 
 **5f. Intermittent undock drag bug**
 - Occasionally LMB drag on gizmo triggers dock panel undock instead
-- Likely mouse capture timing issue — gizmo capture may fail or release early
+- Likely mouse capture timing issue - gizmo capture may fail or release early
 - Needs investigation to reproduce reliably
 
 ### Phase 6: Play Mode
