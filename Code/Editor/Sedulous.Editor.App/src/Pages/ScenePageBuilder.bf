@@ -156,10 +156,36 @@ static class ScenePageBuilder
 			}
 		});
 
-		// Rebuild tree when selection or scene changes
+		// Rebuild tree and sync TreeView selection when selection changes
 		page.OnSelectionChanged.Add(new (p) =>
 		{
 			adapter.Rebuild();
+
+			// Sync TreeView selection to match page selection
+			let selected = p.PrimarySelection;
+			if (selected != .Invalid)
+			{
+				let nodeId = adapter.GetNodeId(selected);
+				if (nodeId >= 0)
+				{
+					let flatAdapter = hierarchyView.InternalTreeView.FlatAdapter;
+					if (flatAdapter != null)
+					{
+						for (int32 i = 0; i < flatAdapter.ItemCount; i++)
+						{
+							if (flatAdapter.GetNodeId(i) == nodeId)
+							{
+								hierarchyView.Selection.Select(i);
+								break;
+							}
+						}
+					}
+				}
+			}
+			else
+			{
+				hierarchyView.Selection.ClearSelection();
+			}
 		});
 
 		// When entity is renamed from hierarchy, refresh inspector

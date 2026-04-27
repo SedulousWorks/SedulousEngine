@@ -66,7 +66,7 @@ class SceneHierarchyAdapter : ITreeAdapter
 		}
 	}
 
-	private int32 GetNodeId(EntityHandle handle)
+	public int32 GetNodeId(EntityHandle handle)
 	{
 		if (mEntityToNode.TryGetValue(handle, let id))
 			return id;

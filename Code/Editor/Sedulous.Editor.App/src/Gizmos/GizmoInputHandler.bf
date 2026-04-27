@@ -5,6 +5,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.UI;
 using Sedulous.UI.Viewport;
 using Sedulous.Engine.Core;
+using Sedulous.Engine.Render;
 using Sedulous.Editor.Core;
 
 /// Viewport input handler for gizmo interaction and entity picking.
@@ -71,8 +72,16 @@ class GizmoInputHandler : IViewportInputHandler
 			}
 		}
 
-		// TODO: Entity picking via ray-AABB intersection
-		e.Handled = true;
+		// Entity picking via ray-AABB intersection
+		{
+			let ray = CreatePickRay(e.X, e.Y, viewport);
+			let hit = PickEntity(ray);
+			if (hit != .Invalid)
+				mPage.SelectEntity(hit);
+			else
+				mPage.ClearSelection();
+			e.Handled = true;
+		}
 	}
 
 	public void OnMouseUp(MouseEventArgs e, ViewportView viewport)
@@ -145,5 +154,95 @@ class GizmoInputHandler : IViewportInputHandler
 	public void OnMouseWheel(MouseWheelEventArgs e, ViewportView viewport)
 	{
 		// Gizmo doesn't handle scroll — let camera handle it
+	}
+
+	// === Entity Picking ===
+
+	/// Picks the closest entity under the ray by testing against mesh bounding boxes.
+	private EntityHandle PickEntity(Ray ray)
+	{
+		let meshMgr = mScene.GetModule<MeshComponentManager>();
+		let skinnedMgr = mScene.GetModule<SkinnedMeshComponentManager>();
+
+		EntityHandle closestEntity = .Invalid;
+		float closestDist = float.MaxValue;
+
+		// Test static meshes
+		if (meshMgr != null)
+		{
+			for (let comp in meshMgr.ActiveComponents)
+			{
+				if (!comp.IsActive || !comp.MeshHandle.IsValid) continue;
+				let dist = TestEntityBounds(ray, comp.Owner, comp.LocalBounds);
+				if (dist.HasValue && dist.Value < closestDist)
+				{
+					closestDist = dist.Value;
+					closestEntity = comp.Owner;
+				}
+			}
+		}
+
+		// Test skinned meshes
+		if (skinnedMgr != null)
+		{
+			for (let comp in skinnedMgr.ActiveComponents)
+			{
+				if (!comp.IsActive || !comp.MeshHandle.IsValid) continue;
+				let dist = TestEntityBounds(ray, comp.Owner, comp.LocalBounds);
+				if (dist.HasValue && dist.Value < closestDist)
+				{
+					closestDist = dist.Value;
+					closestEntity = comp.Owner;
+				}
+			}
+		}
+
+		// For entities without meshes (lights, cameras), use a small proxy sphere
+		for (let entity in mScene.Entities)
+		{
+			if (!mScene.IsValid(entity)) continue;
+
+			// Skip entities that have mesh components (already tested)
+			if (meshMgr != null && meshMgr.GetForEntity(entity) != null) continue;
+			if (skinnedMgr != null && skinnedMgr.GetForEntity(entity) != null) continue;
+
+			let worldPos = mScene.GetWorldMatrix(entity).Translation;
+			let proxyRadius = 0.5f;
+			let sphere = BoundingSphere(worldPos, proxyRadius);
+
+			let dist = ray.Intersects(sphere);
+			if (dist.HasValue && dist.Value < closestDist)
+			{
+				closestDist = dist.Value;
+				closestEntity = entity;
+			}
+		}
+
+		return closestEntity;
+	}
+
+	/// Tests a ray against an entity's local bounding box transformed to world space.
+	private float? TestEntityBounds(Ray ray, EntityHandle entity, BoundingBox localBounds)
+	{
+		// Transform ray into entity's local space
+		let worldMatrix = mScene.GetWorldMatrix(entity);
+		Matrix invWorld;
+		if (!Matrix.TryInvert(worldMatrix, out invWorld))
+			return null;
+
+		let localRayPos = Vector3.Transform(ray.Position, invWorld);
+		let localRayDir = Vector3.TransformNormal(ray.Direction, invWorld);
+		let localRayDirLen = localRayDir.Length();
+		if (localRayDirLen < 0.0001f) return null;
+
+		let localRay = Ray(localRayPos, localRayDir / localRayDirLen);
+		let dist = localRay.Intersects(localBounds);
+
+		if (dist.HasValue)
+		{
+			// Scale distance back to world space
+			return dist.Value / localRayDirLen;
+		}
+		return null;
 	}
 }
