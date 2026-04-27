@@ -155,15 +155,15 @@ SDL3_image = {Path = "Dependencies/SDL3_image-Beef"}
 Sample001_Triangle = {Path = "Samples/RHI/Sample001_Triangle"}
 DrawingSandbox = {Path = "Samples/DrawingSandbox"}
 VGSandbox = {Path = "Samples/VG/VGSandbox"}
-"Sedulous.Slug" = {Path = "Foundation/Sedulous.Slug"}
-"Sedulous.Slug.Tests" = {Path = "Foundation/Sedulous.Slug.Tests"}
-"Sedulous.Slug.TTF" = {Path = "Foundation/Sedulous.Slug.TTF"}
-"Sedulous.Slug.Renderer" = {Path = "Foundation/Sedulous.Slug.Renderer"}
+"Sedulous.Slug" = {Path = "Experimental/Sedulous.Slug"}
+"Sedulous.Slug.Tests" = {Path = "Experimental/Sedulous.Slug.Tests"}
+"Sedulous.Slug.TTF" = {Path = "Experimental/Sedulous.Slug.TTF"}
+"Sedulous.Slug.Renderer" = {Path = "Experimental/Sedulous.Slug.Renderer"}
 FontRendering = {Path = "Samples/FontRendering"}
-GUISandbox = {Path = "Samples/GUISandbox"}
+GUISandbox = {Path = "Deprecated/GUISandbox"}
 ImGuiSample = {Path = "Samples/ImGuiSample"}
 NuklearSample = {Path = "Samples/NuklearSample"}
-SlugSample = {Path = "Samples/SlugSample"}
+SlugSample = {Path = "Experimental/SlugSample"}
 NetEcho = {Path = "Samples/Net/NetEcho"}
 NetHttpClient = {Path = "Samples/Net/NetHttpClient"}
 NetWebSocket = {Path = "Samples/Net/NetWebSocket"}
@@ -187,7 +187,7 @@ ModelViewer = {Path = "Tools/Sedulous.Tools.ModelViewer"}
 
 [WorkspaceFolders]
 Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
-Samples = ["SampleFramework", "SampleVG001_Shapes", "DrawingSandbox", "VGSandbox", "FontRendering", "GUISandbox", "ImGuiSample", "NuklearSample", "SlugSample", "NetEcho", "NetHttpClient", "NetWebSocket", "AudioSandbox", "EngineSandbox", "EngineRenderStressTest", "UISandbox", "Showcase"]
+Samples = ["SampleFramework", "SampleVG001_Shapes", "DrawingSandbox", "VGSandbox", "FontRendering", "ImGuiSample", "NuklearSample", "NetEcho", "NetHttpClient", "NetWebSocket", "AudioSandbox", "EngineSandbox", "EngineRenderStressTest", "UISandbox", "Showcase"]
 "Samples/RHISamples" = ["Sample002_Textures", "Sample003_UniformBuffers", "Sample004_Compute", "Sample005_BindGroups", "Sample006_Blending", "Sample007_Instancing", "Sample008_DepthBuffer", "Sample009_Mipmaps", "Sample010_MSAA", "Sample011_MRT", "Sample012_Wireframe", "Sample013_BorderSampler", "Sample014_Blit", "Sample015_Queries", "Sample016_Readback", "Sample017_MultiQueue", "Sample018_Bindless", "Sample019_BatchUpload", "Sample020_MeshShaders", "Sample021_RayTracing", "Sample022_StencilOutline", "Sample023_CubeMap", "Sample024_OcclusionQuery", "Sample025_MultiDrawIndirect", "Sample026_DynamicOffsets", "Sample027_3DTexture", "Sample028_ProceduralRT", "Sample029_ResolveTexture", "Sample001_Triangle"]
 "Samples/ShaderReflection" = ["SR001_ReflectedPBR"]
 Foundation = []
@@ -209,11 +209,12 @@ Foundation = []
 "Foundation/Resources" = ["Sedulous.Resources", "Sedulous.Resources.Tests"]
 "Foundation/Serialization" = ["Sedulous.Serialization", "Sedulous.Serialization.Tests", "Sedulous.Serialization.OpenDDL", "Sedulous.Serialization.Xml", "Sedulous.OpenDDL", "Sedulous.OpenDDL.Tests", "Sedulous.Xml", "Sedulous.Xml.Tests"]
 Deprecated = []
-"Deprecated/GUI" = ["Sedulous.GUI", "Sedulous.GUI.Shell", "Sedulous.GUI.Tests", "Sedulous.GUI.Runtime"]
+"Deprecated/GUI" = ["Sedulous.GUI", "Sedulous.GUI.Shell", "Sedulous.GUI.Tests", "Sedulous.GUI.Runtime", "GUISandbox"]
 "Foundation/Physics" = ["Sedulous.Physics", "Sedulous.Physics.Jolt", "Sedulous.Physics.Tests"]
-"Foundation/Slug" = ["Sedulous.Slug", "Sedulous.Slug.Tests", "Sedulous.Slug.TTF", "Sedulous.Slug.Renderer"]
 Engine = ["Sedulous.Engine.Core", "Sedulous.Engine.App", "Sedulous.Engine.Input", "Sedulous.Engine.Physics", "Sedulous.Engine.Audio", "Sedulous.Engine.Animation", "Sedulous.Engine.Navigation", "Sedulous.Engine.UI", "Sedulous.Engine.Render", "Sedulous.Engine.Core.Tests"]
 "Foundation/RHI" = ["Sedulous.RHI", "Sedulous.RHI.DX12", "Sedulous.RHI.Null", "Sedulous.RHI.Validation", "Sedulous.RHI.Vulkan", "Sedulous.ShaderReflection", "Sedulous.ShaderReflection.DXIL", "Sedulous.ShaderReflection.SPIRV", "Sedulous.ShaderReflection.Tests"]
 "Foundation/UI" = ["Sedulous.UI", "Sedulous.UI.Shell", "Sedulous.UI.Runtime", "Sedulous.UI.Toolkit", "Sedulous.UI.Gamekit", "Sedulous.UI.Tests", "Sedulous.UI.Resources", "Sedulous.UI.Viewport"]
 Editor = ["Sedulous.Editor.Core", "Sedulous.Editor.App"]
 Tools = ["ModelViewer"]
+Experimental = []
+"Experimental/Slug" = ["Sedulous.Slug", "Sedulous.Slug.Renderer", "Sedulous.Slug.Tests", "Sedulous.Slug.TTF", "SlugSample"]
