@@ -391,7 +391,7 @@ class TransformGizmo
 		let denom = Vector3.Dot(normal, ray.Direction);
 		if (Math.Abs(denom) < 0.0001f)
 		{
-			// Ray parallel to plane — check distance from ray to nearest ring point
+			// Ray parallel to plane - check distance from ray to nearest ring point
 			// Approximate: distance from ray origin to plane, projected
 			let distToPlane = Math.Abs(Vector3.Dot(normal, ray.Position - center));
 			return distToPlane; // rough approximation

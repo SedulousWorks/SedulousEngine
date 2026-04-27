@@ -96,7 +96,7 @@ class RenderResourceResolver
 				outBounds = meshResource.Mesh.GetBounds();
 				return true;
 			}
-			// Generation changed — re-upload
+			// Generation changed - re-upload
 			mStaticMeshCache.Remove(meshResource);
 		}
 
@@ -180,13 +180,13 @@ class RenderResourceResolver
 		{
 			if (cached.Generation == resourceGen)
 			{
-				// Cache hit — same generation, reuse
+				// Cache hit - same generation, reuse
 				cached.Instance.AddRef();
 				outInstance = cached.Instance;
 				return true;
 			}
 
-			// Generation changed (hot-reload) — discard stale instance
+			// Generation changed (hot-reload) - discard stale instance
 			cached.Instance?.ReleaseRef();
 			mMaterialInstanceCache.Remove(resourceId);
 		}

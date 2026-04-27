@@ -125,7 +125,7 @@ class MaterialResource : Resource
 
 		// Re-read through standard serialization (header + OnSerialize)
 		// OnSerialize in read mode will populate the existing Material
-		// because we DON'T create a new one — we read into the existing fields.
+		// because we DON'T create a new one - we read into the existing fields.
 		let result = Serialize(s);
 		if (result != .Ok)
 			return .Err(.InvalidFormat);
@@ -247,7 +247,7 @@ class MaterialResource : Resource
 			// Read full pipeline config
 			var pipelineConfig = PipelineConfig();
 			DeserializePipelineConfig(s, ref pipelineConfig);
-			// PipelineConfig.ShaderName is a StringView — point it at the Material's owned ShaderName
+			// PipelineConfig.ShaderName is a StringView - point it at the Material's owned ShaderName
 			pipelineConfig.ShaderName = mat.ShaderName;
 			mat.PipelineConfig = pipelineConfig;
 
@@ -287,7 +287,7 @@ class MaterialResource : Resource
 			}
 
 			// Only call SetMaterial on first load (new material).
-			// On reload, mMaterial is the same object — skip to avoid deleting it.
+			// On reload, mMaterial is the same object - skip to avoid deleting it.
 			if (mMaterial != mat)
 				SetMaterial(mat, true);
 

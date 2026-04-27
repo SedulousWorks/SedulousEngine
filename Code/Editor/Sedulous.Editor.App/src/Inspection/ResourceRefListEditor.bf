@@ -149,7 +149,7 @@ class ResourceRefListEditor : PropertyEditor
 		addBtn.SetText("+");
 		addBtn.OnClick.Add(new (btn) =>
 		{
-			// Defer mutation — this button will be deleted by RebuildSlots
+			// Defer mutation - this button will be deleted by RebuildSlots
 			mContainer.Context?.MutationQueue.QueueAction(new () =>
 			{
 				mSetter(mCountGetter(), .());

@@ -208,44 +208,44 @@ Resources must be **updated in place** during hot-reload.
 
 ### Implemented Infrastructure
 
-**`Resource.Generation`** (uint32) — incremented by `ResourceSystem` after a
+**`Resource.Generation`** (uint32) - incremented by `ResourceSystem` after a
 successful reload. `ResolvedResource<T>` checks generation alongside pointer
 identity to detect in-place content changes.
 
-**`Resource.Reload(Serializer)`** — virtual method (defaults to `.NotSupported`).
+**`Resource.Reload(Serializer)`** - virtual method (defaults to `.NotSupported`).
 Each resource type overrides to handle in-place reload: clear internal state,
 re-read from the serializer, keep the same object alive. `ResourceManager.
 ReloadFromFile` calls `resource.Reload(reader)` instead of `resource.Serialize(reader)`.
 
-**`RenderResourceResolver` caches** — all GPU caches (static mesh, skinned mesh,
+**`RenderResourceResolver` caches** - all GPU caches (static mesh, skinned mesh,
 texture, material instance) store the resource generation alongside the cached
 handle. On generation mismatch, the stale entry is discarded and the resource is
 re-uploaded / re-created.
 
-### MaterialResource — Reference Implementation (DONE)
+### MaterialResource - Reference Implementation (DONE)
 
 `MaterialResource.Reload()` is the model for other resource types:
 
-1. Calls `mMaterial.ClearForReload()` — clears property defs, uniform data,
+1. Calls `mMaterial.ClearForReload()` - clears property defs, uniform data,
    texture/sampler bindings without deleting the Material object
 2. Clears `TextureRefs` (disposes old refs)
 3. Calls `Serialize(s)` to re-read from file
 4. `OnSerialize` read path reuses the existing `mMaterial` instead of creating
    a new one (checks `mMaterial != null`), skips `SetMaterial` delete
-5. `MaterialInstance` references stay valid — same `Material` pointer
-6. `RenderResourceResolver` detects generation change → discards cached
-   `MaterialInstance` → creates fresh instance from updated Material
+5. `MaterialInstance` references stay valid - same `Material` pointer
+6. `RenderResourceResolver` detects generation change -> discards cached
+   `MaterialInstance` -> creates fresh instance from updated Material
 
 ### Remaining Resource Types
 
 Each needs a `Reload()` override following the material pattern:
 
-- **`StaticMeshResource`** — clear mesh vertex/index data, re-read. GPU cache
+- **`StaticMeshResource`** - clear mesh vertex/index data, re-read. GPU cache
   detects generation change and re-uploads.
-- **`SkinnedMeshResource`** — same as static mesh + skeleton data.
-- **`TextureResource`** — clear pixel data, re-read. GPU cache re-uploads.
-- **`AudioClipResource`** — clear audio buffer, re-read. ResolvedResource
+- **`SkinnedMeshResource`** - same as static mesh + skeleton data.
+- **`TextureResource`** - clear pixel data, re-read. GPU cache re-uploads.
+- **`AudioClipResource`** - clear audio buffer, re-read. ResolvedResource
   detects generation change automatically.
-- **`ParticleEffectResource`** — clear effect definition, re-read.
-- **`SceneResource`** — complex; probably not practical for hot-reload.
+- **`ParticleEffectResource`** - clear effect definition, re-read.
+- **`SceneResource`** - complex; probably not practical for hot-reload.
   Default `.NotSupported` is appropriate.
