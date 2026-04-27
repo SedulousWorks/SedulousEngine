@@ -31,6 +31,21 @@ struct Extent3D
 	}
 }
 
+/// 3D origin (texel offset) for copy operations.
+struct Origin3D
+{
+	public uint32 X;
+	public uint32 Y;
+	public uint32 Z;
+
+	public this(uint32 x = 0, uint32 y = 0, uint32 z = 0)
+	{
+		X = x;
+		Y = y;
+		Z = z;
+	}
+}
+
 /// Clear color value.
 struct ClearColor
 {
@@ -187,6 +202,8 @@ struct BufferTextureCopyRegion
 	public uint32 TextureMipLevel;
 	/// Array layer of the texture to copy.
 	public uint32 TextureArrayLayer;
+	/// Origin (texel offset) within the texture. Defaults to (0,0,0).
+	public Origin3D TextureOrigin;
 	/// Size of the texture region (in texels).
 	public Extent3D TextureExtent;
 }

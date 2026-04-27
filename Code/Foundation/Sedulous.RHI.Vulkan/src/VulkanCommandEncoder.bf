@@ -242,6 +242,9 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		copy.imageSubresource.mipLevel = region.TextureMipLevel;
 		copy.imageSubresource.baseArrayLayer = region.TextureArrayLayer;
 		copy.imageSubresource.layerCount = 1;
+		copy.imageOffset.x = (int32)region.TextureOrigin.X;
+		copy.imageOffset.y = (int32)region.TextureOrigin.Y;
+		copy.imageOffset.z = (int32)region.TextureOrigin.Z;
 		copy.imageExtent.width = region.TextureExtent.Width;
 		copy.imageExtent.height = region.TextureExtent.Height;
 		copy.imageExtent.depth = region.TextureExtent.Depth;
@@ -266,6 +269,9 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		copy.imageSubresource.mipLevel = region.TextureMipLevel;
 		copy.imageSubresource.baseArrayLayer = region.TextureArrayLayer;
 		copy.imageSubresource.layerCount = 1;
+		copy.imageOffset.x = (int32)region.TextureOrigin.X;
+		copy.imageOffset.y = (int32)region.TextureOrigin.Y;
+		copy.imageOffset.z = (int32)region.TextureOrigin.Z;
 		copy.imageExtent.width = region.TextureExtent.Width;
 		copy.imageExtent.height = region.TextureExtent.Height;
 		copy.imageExtent.depth = region.TextureExtent.Depth;

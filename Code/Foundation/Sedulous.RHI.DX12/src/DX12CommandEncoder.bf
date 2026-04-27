@@ -207,7 +207,7 @@ class DX12CommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		dstLoc.Type = .D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
 		dstLoc.SubresourceIndex = subresource;
 
-		mCmdList.CopyTextureRegion(&dstLoc, 0, 0, 0, &srcLoc, null);
+		mCmdList.CopyTextureRegion(&dstLoc, region.TextureOrigin.X, region.TextureOrigin.Y, region.TextureOrigin.Z, &srcLoc, null);
 	}
 
 	public void CopyTextureToBuffer(ITexture src, IBuffer dst, BufferTextureCopyRegion region)
@@ -235,10 +235,12 @@ class DX12CommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 		D3D12_BOX srcBox = .()
 		{
-			left = 0, top = 0, front = 0,
-			right = region.TextureExtent.Width,
-			bottom = region.TextureExtent.Height,
-			back = region.TextureExtent.Depth
+			left = region.TextureOrigin.X,
+			top = region.TextureOrigin.Y,
+			front = region.TextureOrigin.Z,
+			right = region.TextureOrigin.X + region.TextureExtent.Width,
+			bottom = region.TextureOrigin.Y + region.TextureExtent.Height,
+			back = region.TextureOrigin.Z + region.TextureExtent.Depth
 		};
 
 		mCmdList.CopyTextureRegion(&dstLoc, 0, 0, 0, &srcLoc, &srcBox);
