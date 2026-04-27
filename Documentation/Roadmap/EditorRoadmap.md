@@ -633,31 +633,42 @@ into scenes, and integrates with the import pipeline.
 **Dependencies:** FileWatcher (done in ResourceSystem), DragDrop (done),
 IAssetImporter interface (defined), project registry (done).
 
-### Phase 5: Scene Gizmos
+### Phase 5: Scene Gizmos — PARTIAL
 
-Visual handles in the 3D viewport for selecting and manipulating entities.
-Gizmos render as an overlay after the scene but before editor UI compositing.
+**Done:**
+- ✅ EditorCamera (independent of scene entities, uses CameraOverride)
+- ✅ Viewport toolbar (Translate/Rotate/Scale toggles, World/Local toggle)
+- ✅ IViewportInputHandler chain (gizmo priority before camera)
+- ✅ TransformGizmo: translate (arrows), rotate (rings), scale (boxes+lines)
+- ✅ Mode-aware hover detection (axis lines for translate/scale, ring proximity for rotate)
+- ✅ Drag interaction with undo (SetTransformCommand with old/new transforms)
+- ✅ Local/World orientation (gizmo axes follow entity rotation or world)
+- ✅ Constant screen-size scaling (gizmo scales with camera distance)
 
-**5a. Selection picking**
-- Click in viewport -> raycast against scene entities
-- Need: camera unproject (screen -> world ray), AABB/OBB intersection test
-- Selected entity highlighted with outline or wireframe overlay
-- Shift+click for multi-select
+**Remaining:**
 
-**5b. Transform gizmo**
-- Three modes: Translate (arrows), Rotate (rings), Scale (boxes)
-- Toggle via toolbar buttons or W/E/R hotkeys
-- Local vs. World space toggle (toolbar or keyboard)
-- Gizmo renders at entity position, sized to stay constant on screen
-- Axis hit-testing: raycast against gizmo geometry (arrows, rings)
-- Drag interaction:
-  - Translate: project mouse delta onto axis/plane
-  - Rotate: angular delta from mouse arc
-  - Scale: distance delta from gizmo center
-- Snap: hold Ctrl for grid snap (translate) / angle snap (rotate) / step snap (scale)
-- All transforms go through `SetTransformCommand` for undo
+**5a. Entity selection picking**
+- Click in viewport (not on gizmo) should raycast against scene entities
+- Ray-AABB intersection using entity bounding boxes (MeshComponent.LocalBounds + world matrix)
+- Select closest hit entity, update page selection
+- Shift+click for multi-select (add to selection)
+- Click empty space to deselect
+- GizmoInputHandler has TODO placeholder for this
 
-**5c. Component gizmos**
+**5b. Inspector live update during gizmo drag**
+- Transform Vector3Editors don't refresh while dragging
+- Need either polling mechanism on editors or OnSelectionChanged on drag end
+- Currently must click away and back to see updated values
+
+**5c. W/E/R keyboard shortcuts for gizmo mode**
+- Toolbar buttons work but no keyboard shortcuts to switch modes
+- Should be handled at viewport level (OnKeyDown in ViewportView or handler)
+
+**5d. Snap**
+- Hold Ctrl for grid snap (translate), angle snap (rotate), step snap (scale)
+- Snap size configurable via toolbar or settings
+
+**5e. Component gizmos**
 - `IGizmoRenderer` per component type (registered by editor modules)
 - Light: directional arrow, point sphere, spot cone
 - Camera: frustum wireframe
@@ -665,14 +676,10 @@ Gizmos render as an overlay after the scene but before editor UI compositing.
 - Draw via `GizmoContext` which wraps DebugDraw
 - `DrawWhenUnselected` flag for always-visible gizmos (lights, cameras)
 
-**5d. Gizmo rendering pipeline**
-- Gizmo pass runs after scene render, before viewport texture is finalized
-- Uses DebugDraw overlay (no depth test) for handles
-- Uses DebugDraw with depth for component gizmos (occluded by geometry)
-- Gizmo geometry is not part of the scene - editor-only rendering
-
-**Dependencies:** DebugDraw overlay (done), camera unproject, AABB intersection,
-viewport mouse coordinate conversion.
+**5f. Intermittent undock drag bug**
+- Occasionally LMB drag on gizmo triggers dock panel undock instead
+- Likely mouse capture timing issue — gizmo capture may fail or release early
+- Needs investigation to reproduce reliably
 
 ### Phase 6: Play Mode
 - `EditorSceneManager` - serialize/restore scene around play
