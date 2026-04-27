@@ -1,6 +1,7 @@
 namespace Sedulous.UI.Viewport;
 
 using System;
+using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
 using Sedulous.UI;
@@ -57,11 +58,9 @@ public class ViewportView : View
 	/// Whether render targets are ready.
 	public bool IsReady => mColorTextureView != null && mDepthTextureView != null;
 
-	/// Input delegates - set by the owning page/controller.
-	public delegate void(MouseEventArgs) OnMouseDownHandler ~ delete _;
-	public delegate void(MouseEventArgs) OnMouseUpHandler ~ delete _;
-	public delegate void(MouseEventArgs) OnMouseMoveHandler ~ delete _;
-	public delegate void(MouseWheelEventArgs) OnMouseWheelHandler ~ delete _;
+	/// Input handlers processed in registration order (priority).
+	/// First handler to set e.Handled = true stops propagation.
+	private List<IViewportInputHandler> mInputHandlers = new .() ~ delete _;
 
 	public this()
 	{
@@ -92,12 +91,49 @@ public class ViewportView : View
 
 	// === Layout ===
 
-	// === Input forwarding ===
+	// === Input handlers ===
 
-	public override void OnMouseDown(MouseEventArgs e) { OnMouseDownHandler?.Invoke(e); }
-	public override void OnMouseUp(MouseEventArgs e) { OnMouseUpHandler?.Invoke(e); }
-	public override void OnMouseMove(MouseEventArgs e) { OnMouseMoveHandler?.Invoke(e); }
-	public override void OnMouseWheel(MouseWheelEventArgs e) { OnMouseWheelHandler?.Invoke(e); }
+	/// Adds an input handler. Handlers are processed in registration order.
+	public void AddInputHandler(IViewportInputHandler handler)
+	{
+		mInputHandlers.Add(handler);
+	}
+
+	public override void OnMouseDown(MouseEventArgs e)
+	{
+		for (let handler in mInputHandlers)
+		{
+			handler.OnMouseDown(e, this);
+			if (e.Handled) break;
+		}
+	}
+
+	public override void OnMouseUp(MouseEventArgs e)
+	{
+		for (let handler in mInputHandlers)
+		{
+			handler.OnMouseUp(e, this);
+			if (e.Handled) break;
+		}
+	}
+
+	public override void OnMouseMove(MouseEventArgs e)
+	{
+		for (let handler in mInputHandlers)
+		{
+			handler.OnMouseMove(e, this);
+			if (e.Handled) break;
+		}
+	}
+
+	public override void OnMouseWheel(MouseWheelEventArgs e)
+	{
+		for (let handler in mInputHandlers)
+		{
+			handler.OnMouseWheel(e, this);
+			if (e.Handled) break;
+		}
+	}
 
 	// === Layout ===
 
