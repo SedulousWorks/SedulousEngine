@@ -212,6 +212,12 @@ static class ScenePageBuilder
 
 		toolbar.AddSeparator();
 
+		let worldSpaceBtn = toolbar.AddToggle("World");
+		worldSpaceBtn.IsChecked = page.WorldSpace;
+		worldSpaceBtn.OnCheckedChanged.Add(new (btn, val) => {
+			page.WorldSpace = val;
+		});
+
 		container.AddView(toolbar, new LinearLayout.LayoutParams() {
 			Width = LayoutParams.MatchParent, Height = LayoutParams.WrapContent
 		});
@@ -232,10 +238,14 @@ static class ScenePageBuilder
 		let gizmo = new TransformGizmo();
 		page.AddOwnedObject(gizmo);
 
-		// Camera controller (orbit/fly)
+		// Input handlers (priority order: gizmo first, camera second)
+		let gizmoHandler = new GizmoInputHandler(editorCamera, gizmo, page, page.Scene);
+		page.AddOwnedObject(gizmoHandler);
+		viewportView.AddInputHandler(gizmoHandler);
+
 		let camController = new ViewportCameraController(editorCamera, keyboard);
-		camController.Attach(viewportView);
 		page.AddOwnedObject(camController);
+		viewportView.AddInputHandler(camController);
 
 		// Wire 3D render callback
 		let capturedScene = page.Scene;
@@ -254,6 +264,12 @@ static class ScenePageBuilder
 				{
 					let worldMatrix = capturedScene.GetWorldMatrix(selected);
 					gizmo.Position = worldMatrix.Translation;
+
+					// Set gizmo orientation: local space uses entity rotation, world space uses identity
+					if (page.WorldSpace)
+						gizmo.Orientation = .Identity;
+					else
+						gizmo.Orientation = capturedScene.GetLocalTransform(selected).Rotation;
 
 					// Scale gizmo to maintain constant screen size
 					let camDist = Vector3.Distance(editorCamera.Position, gizmo.Position);

@@ -6,8 +6,9 @@ using Sedulous.UI;
 using Sedulous.Shell.Input;
 using Sedulous.UI.Viewport;
 
-/// Orbit/fly camera controller for viewport views.
-/// Operates on an EditorCamera (not a scene entity).
+/// Camera input handler for viewport views.
+/// Handles RMB fly, Alt+LMB orbit, MMB pan, scroll zoom.
+/// Implements IViewportInputHandler for the input chain.
 ///
 /// Controls:
 ///   Alt + LMB drag  - Orbit rotate (yaw + pitch around target)
@@ -18,10 +19,9 @@ using Sedulous.UI.Viewport;
 ///   Shift           - 3x speed
 ///   MMB + drag      - Pan (move target + camera laterally)
 ///   Scroll wheel    - Zoom (move along forward axis)
-public class ViewportCameraController
+public class ViewportCameraController : IViewportInputHandler
 {
 	private EditorCamera mCamera;
-	private ViewportView mViewport;
 	private IKeyboard mKeyboard;
 
 	// Speed
@@ -42,16 +42,6 @@ public class ViewportCameraController
 	{
 		mCamera = camera;
 		mKeyboard = keyboard;
-	}
-
-	/// Wire input delegates on the viewport view.
-	public void Attach(ViewportView viewport)
-	{
-		mViewport = viewport;
-		viewport.OnMouseDownHandler = new => OnMouseDown;
-		viewport.OnMouseUpHandler = new => OnMouseUp;
-		viewport.OnMouseMoveHandler = new => OnMouseMove;
-		viewport.OnMouseWheelHandler = new => OnMouseWheel;
 	}
 
 	/// Call each frame for WASD fly movement.
@@ -81,26 +71,16 @@ public class ViewportCameraController
 		}
 	}
 
-	// === Input handlers ===
+	// === IViewportInputHandler ===
 
-	private void SetCapture()
-	{
-		mViewport?.Context?.FocusManager.SetCapture(mViewport);
-	}
-
-	private void ReleaseCapture()
-	{
-		mViewport?.Context?.FocusManager.ReleaseCapture();
-	}
-
-	private void OnMouseDown(MouseEventArgs e)
+	public void OnMouseDown(MouseEventArgs e, ViewportView viewport)
 	{
 		if (e.Button == .Right)
 		{
 			mIsFlying = true;
 			mLastMouseX = e.X;
 			mLastMouseY = e.Y;
-			SetCapture();
+			viewport.Context?.FocusManager.SetCapture(viewport);
 			e.Handled = true;
 		}
 		else if (e.Button == .Left && e.Modifiers.HasFlag(.Alt))
@@ -108,7 +88,7 @@ public class ViewportCameraController
 			mIsOrbiting = true;
 			mLastMouseX = e.X;
 			mLastMouseY = e.Y;
-			SetCapture();
+			viewport.Context?.FocusManager.SetCapture(viewport);
 			e.Handled = true;
 		}
 		else if (e.Button == .Middle)
@@ -116,34 +96,34 @@ public class ViewportCameraController
 			mIsPanning = true;
 			mLastMouseX = e.X;
 			mLastMouseY = e.Y;
-			SetCapture();
+			viewport.Context?.FocusManager.SetCapture(viewport);
 			e.Handled = true;
 		}
 	}
 
-	private void OnMouseUp(MouseEventArgs e)
+	public void OnMouseUp(MouseEventArgs e, ViewportView viewport)
 	{
 		if (e.Button == .Right && mIsFlying)
 		{
 			mIsFlying = false;
-			ReleaseCapture();
+			viewport.Context?.FocusManager.ReleaseCapture();
 			e.Handled = true;
 		}
 		else if (e.Button == .Left && mIsOrbiting)
 		{
 			mIsOrbiting = false;
-			ReleaseCapture();
+			viewport.Context?.FocusManager.ReleaseCapture();
 			e.Handled = true;
 		}
 		else if (e.Button == .Middle && mIsPanning)
 		{
 			mIsPanning = false;
-			ReleaseCapture();
+			viewport.Context?.FocusManager.ReleaseCapture();
 			e.Handled = true;
 		}
 	}
 
-	private void OnMouseMove(MouseEventArgs e)
+	public void OnMouseMove(MouseEventArgs e, ViewportView viewport)
 	{
 		if (!mIsFlying && !mIsOrbiting && !mIsPanning)
 		{
@@ -185,7 +165,7 @@ public class ViewportCameraController
 		}
 	}
 
-	private void OnMouseWheel(MouseWheelEventArgs e)
+	public void OnMouseWheel(MouseWheelEventArgs e, ViewportView viewport)
 	{
 		// Zoom: adjust distance
 		mCamera.Distance = Math.Clamp(mCamera.Distance - e.DeltaY * mCamera.Distance * 0.1f,

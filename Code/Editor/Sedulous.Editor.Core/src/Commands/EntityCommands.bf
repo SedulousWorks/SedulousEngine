@@ -103,6 +103,16 @@ class SetTransformCommand : IEditorCommand
 		mNewTransform = newTransform;
 	}
 
+	/// Constructor with explicit old transform (for drag operations where
+	/// the entity has already been moved during the drag).
+	public this(Scene scene, EntityHandle entity, Transform oldTransform, Transform newTransform)
+	{
+		mScene = scene;
+		mEntity = entity;
+		mOldTransform = oldTransform;
+		mNewTransform = newTransform;
+	}
+
 	public StringView Description => "Set Transform";
 
 	public void Execute()

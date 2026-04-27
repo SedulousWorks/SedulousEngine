@@ -22,7 +22,7 @@ class PropertyGridDescriptor : IPropertyDescriptor
 
 	public void Float(StringView name, float* ptr, float min, float max)
 	{
-		let editor = new FloatEditor(name, *ptr, min: min, max: max, category: mCurrentCategory);
+		let editor = new FloatEditor(name, *ptr, min: min, max: max, decimalPlaces: 4, category: mCurrentCategory);
 		editor.Setter = new [=ptr, =min, =max] (v) => {
 			*ptr = (float)Math.Clamp(v, min, max);
 		};

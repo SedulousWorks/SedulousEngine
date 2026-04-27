@@ -20,7 +20,7 @@ using Sedulous.Engine.Render;
 ///   Shift           - 3x speed
 ///   MMB + drag      - Pan (move target + camera laterally)
 ///   Scroll wheel    - Zoom (move along forward axis)
-class ViewportCameraController
+class ViewportCameraController : IViewportInputHandler
 {
 	private Scene mScene;
 	private EntityHandle mCameraEntity = .Invalid;
@@ -56,15 +56,19 @@ class ViewportCameraController
 		FindCamera();
 	}
 
-	/// Wire input delegates on the viewport view.
+	/// Wire as input handler on the viewport view.
 	public void Attach(ViewportView viewport)
 	{
 		mViewport = viewport;
-		viewport.OnMouseDownHandler = new => OnMouseDown;
-		viewport.OnMouseUpHandler = new => OnMouseUp;
-		viewport.OnMouseMoveHandler = new => OnMouseMove;
-		viewport.OnMouseWheelHandler = new => OnMouseWheel;
+		viewport.AddInputHandler(this);
 	}
+
+	// === IViewportInputHandler ===
+
+	public void IViewportInputHandler.OnMouseDown(MouseEventArgs e, ViewportView viewport) { OnMouseDown(e); }
+	public void IViewportInputHandler.OnMouseUp(MouseEventArgs e, ViewportView viewport) { OnMouseUp(e); }
+	public void IViewportInputHandler.OnMouseMove(MouseEventArgs e, ViewportView viewport) { OnMouseMove(e); }
+	public void IViewportInputHandler.OnMouseWheel(MouseWheelEventArgs e, ViewportView viewport) { OnMouseWheel(e); }
 
 	/// Fit the camera to frame a bounding box.
 	public void FitToBounds(BoundingBox bounds)
