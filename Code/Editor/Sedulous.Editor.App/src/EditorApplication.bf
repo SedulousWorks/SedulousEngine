@@ -73,6 +73,7 @@ class EditorApplication : Application, IFloatingWindowHost
 	private EditorProject mProject = new .() ~ delete _;
 	private RecentProjects mRecentProjects = new .() ~ delete _;
 	private DockablePanel mPlaceholderPanel; // "Open an asset..." placeholder, removed when first page opens
+	private AssetBrowserPanel mAssetBrowserPanel ~ delete _;
 	private LogView mLogView;
 	private Dictionary<ObjectKey<IEditorPage>, DockablePanel> mPageDockPanels = new .() ~ delete _;
 	private int32 mNewSceneCounter;
@@ -373,18 +374,8 @@ class EditorApplication : Application, IFloatingWindowHost
 		dockManager.DockPanelRelativeTo(consolePanel, .Bottom, mPlaceholderPanel.Parent);
 
 		// Asset browser panel (bottom tab with console)
-		let assetsContent = new Panel();
-		assetsContent.Background = new ColorDrawable(.(30, 32, 40, 255));
-		let assetsLabel = new Label();
-		assetsLabel.SetText("Asset Browser (connect to project directory)");
-		assetsLabel.FontSize = 12;
-		assetsLabel.HAlign = .Center;
-		assetsLabel.VAlign = .Middle;
-		assetsLabel.TextColor = .(100, 100, 115, 255);
-		assetsContent.AddView(assetsLabel, new LayoutParams() {
-			Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent
-		});
-		let assetsPanel = dockManager.AddPanel("Assets", assetsContent);
+		mAssetBrowserPanel = new AssetBrowserPanel(mEditorContext);
+		let assetsPanel = dockManager.AddPanel("Assets", mAssetBrowserPanel.ContentView);
 		dockManager.DockPanelRelativeTo(assetsPanel, .Center, consolePanel.Parent);
 
 		// Set split ratio for page area vs console (70/30)
