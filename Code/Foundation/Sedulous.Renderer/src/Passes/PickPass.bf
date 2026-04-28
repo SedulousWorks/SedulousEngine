@@ -273,7 +273,7 @@ class PickPass : PipelinePass
 			if (ptr != null)
 			{
 				let bytes = (uint8*)ptr;
-				// Decode RGBA8 → uint32 (pick shader wrote entityIndex + 1)
+				// Decode RGBA8 -> uint32 (pick shader wrote entityIndex + 1)
 				uint32 encoded = (uint32)bytes[0] |
 					((uint32)bytes[1] << 8) |
 					((uint32)bytes[2] << 16) |
