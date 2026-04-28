@@ -56,6 +56,9 @@ class AssetContentAdapter : ListAdapterBase
 	/// Gets the active registry.
 	public IResourceRegistry ActiveRegistry => mRegistry;
 
+	/// The owning ListView (set by AssetBrowserBuilder after construction).
+	public ListView OwnerListView { get; set; }
+
 	/// Sets the active registry and navigates to a folder within it.
 	public void SetFolder(IResourceRegistry registry, StringView relativePath)
 	{
@@ -66,6 +69,13 @@ class AssetContentAdapter : ListAdapterBase
 			mAbsoluteRoot.Set(registry.RootPath);
 
 		Rebuild();
+
+		// Reset scroll and selection when switching folders
+		if (OwnerListView != null)
+		{
+			OwnerListView.ScrollToPosition(0);
+			OwnerListView.Selection.ClearSelection();
+		}
 	}
 
 	/// Navigates into a subfolder (relative to current).

@@ -93,6 +93,17 @@ class RegistryTreeAdapter : ITreeAdapter
 		return null;
 	}
 
+	/// Finds the root node ID for a registry. Returns -1 if not found.
+	public int32 GetRootNodeForRegistry(IResourceRegistry registry)
+	{
+		for (let rootId in mRootIds)
+		{
+			if (mNodes.TryGetValue(rootId, let node) && node.Registry == registry)
+				return rootId;
+		}
+		return -1;
+	}
+
 	/// Gets whether a node represents a locked registry (builtin/project).
 	public bool IsNodeLocked(int32 nodeId)
 	{

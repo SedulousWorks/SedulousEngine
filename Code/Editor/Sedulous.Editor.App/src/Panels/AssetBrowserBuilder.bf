@@ -25,7 +25,7 @@ static class AssetBrowserBuilder
 	}
 
 	/// Builds the complete asset browser layout.
-	public static BuildResult Build(EditorContext editorContext)
+	public static BuildResult Build(EditorContext editorContext, AssetBrowserPanel panel)
 	{
 		let resourceSystem = editorContext.ResourceSystem;
 
@@ -38,9 +38,30 @@ static class AssetBrowserBuilder
 		resourceSystem.GetRegistries(registries);
 		treeAdapter.SetRegistries(registries);
 
-		// === Left pane: Registry tree ===
+		// === Left pane: Registry toolbar + tree ===
 		let leftPane = new LinearLayout();
 		leftPane.Orientation = .Vertical;
+
+		// Registry management toolbar
+		let regToolbar = new Toolbar();
+		let mountBtn = regToolbar.AddButton("Mount");
+		let createBtn = regToolbar.AddButton("Create");
+		let unmountBtn = regToolbar.AddButton("Unmount");
+
+		mountBtn.OnClick.Add(new [=panel] (btn) => { panel.MountRegistry(); });
+		createBtn.OnClick.Add(new [=panel] (btn) => { panel.CreateRegistry(); });
+		unmountBtn.OnClick.Add(new [=panel] (btn) => { panel.UnmountSelectedRegistry(); });
+
+		leftPane.AddView(regToolbar, new LinearLayout.LayoutParams() {
+			Width = LayoutParams.MatchParent, Height = LayoutParams.WrapContent
+		});
+
+		// Separator below toolbar
+		let toolbarSep = new Panel();
+		toolbarSep.Background = new ColorDrawable(.(50, 55, 65, 255));
+		leftPane.AddView(toolbarSep, new LinearLayout.LayoutParams() {
+			Width = LayoutParams.MatchParent, Height = 1
+		});
 
 		let treeView = new TreeView();
 		treeView.ItemHeight = 22;
