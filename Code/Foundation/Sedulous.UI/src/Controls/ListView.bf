@@ -431,6 +431,14 @@ public class ListView : ViewGroup, IListAdapterObserver
 		// Clamp scroll.
 		mScrollY = Math.Clamp(mScrollY, 0, MaxScrollY);
 
+		// No items — nothing to lay out (recycle was already done in NotifyDataChanged).
+		if (mAdapter.ItemCount == 0)
+		{
+			mScrollBarVisible = false;
+			mScrollBar.Visibility = .Gone;
+			return;
+		}
+
 		// Compute visible range.
 		let firstVis = FindFirstVisible(mScrollY);
 		int32 lastVis = firstVis;
