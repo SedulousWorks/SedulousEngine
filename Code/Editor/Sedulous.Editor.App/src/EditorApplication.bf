@@ -187,9 +187,18 @@ class EditorApplication : Application, IFloatingWindowHost
 
 	protected override void OnContextStarted()
 	{
+		// Initialize model and image loaders
+		Sedulous.Images.STB.STBImageLoader.Initialize();
+		Sedulous.Models.GLTF.GltfModels.Initialize();
+		Sedulous.Models.FBX.FbxModels.Initialize();
+
 		// Register built-in asset creators
 		mEditorContext.RegisterAssetCreator(new MaterialAssetCreator());
 		mEditorContext.RegisterAssetCreator(new SceneAssetCreator());
+
+		// Register built-in asset importers
+		mEditorContext.RegisterAssetImporter(new ModelAssetImporter());
+		mEditorContext.RegisterAssetImporter(new TextureAssetImporter());
 
 		// Initialize plugins after UI is set up.
 		mEditorContext.PluginRegistry.InitializeAll(mEditorContext);

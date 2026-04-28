@@ -377,10 +377,10 @@ static class AssetBrowserBuilder
 
 		menu.AddSeparator();
 
-		// Import... (stub for Phase 4d)
-		menu.AddItem("Import...", new () => {
-			// TODO: trigger import dialog (Phase 4d)
-		}, enabled: false);
+		// Import...
+		menu.AddItem("Import...", new [=editorContext, =adapter, =panel] () => {
+			TriggerImportDialog(editorContext, adapter, panel);
+		});
 
 		menu.Show(ctx, x, y);
 	}
@@ -510,6 +510,84 @@ static class AssetBrowserBuilder
 
 			panel.RefreshContent();
 		}
+	}
+
+	/// Opens a file dialog for importing source assets, then runs the import pipeline.
+	private static void TriggerImportDialog(EditorContext editorContext,
+		AssetContentAdapter adapter, AssetBrowserPanel panel)
+	{
+		let registry = adapter.ActiveRegistry;
+		if (registry == null) return;
+
+		let dialogService = editorContext.DialogService;
+		if (dialogService == null) return;
+
+		// Build filter string from all registered importers
+		let filterParts = scope List<String>();
+		defer { for (let s in filterParts) delete s; }
+		editorContext.GetAllImportExtensions(filterParts);
+
+		// Build filter like "Importable Assets|gltf;glb;fbx;obj;png;jpg"
+		let filterStr = scope String("Importable Assets|");
+		for (int i = 0; i < filterParts.Count; i++)
+		{
+			if (i > 0) filterStr.Append(';');
+			let ext = filterParts[i];
+			// Strip leading dot for filter format
+			if (ext.StartsWith('.'))
+				filterStr.Append(ext[1...]);
+			else
+				filterStr.Append(ext);
+		}
+		StringView[1] filters = .(filterStr);
+
+		dialogService.ShowOpenFileDialog(new [=editorContext, =adapter, =panel, =registry] (paths) => {
+			if (paths.Length == 0) return;
+
+			for (let sourcePath in paths)
+			{
+				// Find importer for this file
+				let ext = scope String();
+				System.IO.Path.GetExtension(sourcePath, ext);
+
+				let importer = editorContext.GetImporterForExtension(ext);
+				if (importer == null)
+				{
+					Console.WriteLine("No importer found for extension: {}", ext);
+					continue;
+				}
+
+				// Create preview
+				ImportPreview preview;
+				if (importer.CreatePreview(sourcePath) case .Ok(let p))
+					preview = p;
+				else
+				{
+					Console.WriteLine("Failed to create import preview for: {}", sourcePath);
+					continue;
+				}
+				defer { delete preview; }
+
+				// Build output directory (current folder in the active registry)
+				let outputDir = scope String();
+				if (adapter.CurrentFolder.Length > 0)
+					System.IO.Path.InternalCombine(outputDir, registry.RootPath, adapter.CurrentFolder);
+				else
+					outputDir.Set(registry.RootPath);
+
+				// Run import
+				if (let concreteReg = registry as ResourceRegistry)
+				{
+					let serializer = editorContext.ResourceSystem?.SerializerProvider;
+					if (serializer != null && importer.Import(preview, outputDir, concreteReg, serializer) case .Ok)
+						Console.WriteLine("Imported: {} ({} items)", sourcePath, preview.Items.Count);
+					else
+						Console.WriteLine("Import failed: {}", sourcePath);
+				}
+			}
+
+			panel.RefreshContent();
+		}, filters, default, true);
 	}
 }
 

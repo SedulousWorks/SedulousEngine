@@ -148,6 +148,34 @@ class EditorContext : IDisposable
 		return null;
 	}
 
+	/// Find the importer that handles a file extension. Returns null if none registered.
+	public IAssetImporter GetImporterForExtension(StringView @extension)
+	{
+		let exts = scope List<String>();
+		for (let importer in mImporters)
+		{
+			ClearAndDeleteItems(exts);
+			importer.GetSupportedExtensions(exts);
+			for (let ext in exts)
+			{
+				if (ext.Equals(@extension, .OrdinalIgnoreCase))
+				{
+					ClearAndDeleteItems(exts);
+					return importer;
+				}
+			}
+		}
+		ClearAndDeleteItems(exts);
+		return null;
+	}
+
+	/// Collects all file extension filters from all registered importers.
+	public void GetAllImportExtensions(List<String> outExtensions)
+	{
+		for (let importer in mImporters)
+			importer.GetSupportedExtensions(outExtensions);
+	}
+
 	/// Get all registered asset creators.
 	public void GetAssetCreators(List<IAssetCreator> outCreators)
 	{
