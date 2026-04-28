@@ -589,49 +589,395 @@ editing their properties. This is the primary way to configure entities.
 **Dependencies:** PropertyGrid (done), PropertyEditor types (StringEditor done,
 NumericField done, need more types), component enumeration API on Scene.
 
-### Phase 4: Asset Browser
+### Phase 4: Asset Browser, Import Pipeline & Registry Management
 
-The asset browser displays project files, supports file operations, drag-drop
-into scenes, and integrates with the import pipeline.
+The asset browser displays registry contents, supports file operations, imports
+source assets into baked engine resources, and manages registry mount points.
+The import pipeline already exists in `Sedulous.Geometry.Tooling` +
+`.Tooling.Resources` (ModelImporter -> ResourceImportResult -> ResourceSerializer)
+but is only called from code (EngineSandbox). The editor needs UI and wiring.
 
-**4a. File tree view**
-- Display project directory as a tree (left) + grid/list (right)
-- File system scanning: initial scan + FileWatcher for changes
-- Filter by type (meshes, textures, materials, scenes, all)
-- Search bar for name filtering
-- Breadcrumb path bar for folder navigation
+**Existing pipeline (complete):**
+- `ModelLoaderFactory` -> `GltfLoader` / `FbxLoader` -> `Model`
+- `ModelImporter.Import(model, options)` -> `ModelImportResult` (plain data)
+- `ResourceImportResult.ConvertFrom(importResult, dedupContext)` -> resource wrappers
+- `ResourceSerializer.SaveImportResult(result, outputDir)` -> saves `.mesh`, `.material`, `.texture`, `.skeleton`, `.animation` files
+- `ImportDeduplicationContext` -- cross-import texture/material sharing by source path
+- `ImageLoaderFactory` -> STB / SDL loaders for standalone texture import
+- `ModelImportOptions` -- flags, scale, normals, tangents, recenter, max bones
 
-**4b. File operations**
-- Create folder, rename, delete (with confirmation)
-- Drag files from OS explorer into the browser (IDropTarget on browser panel)
-- Double-click to open: .scene -> SceneEditorPage, .material -> MaterialEditorPage
+**Registry system (complete):**
+- `ResourceRegistry` -- GUID<->path bidirectional maps, `SaveToFile`/`LoadFromFile`
+- `.registry` text format: `guid=relativePath` per line
+- `ResourceSystem` -- protocol path resolution (`builtin://`, `project://`), hot-reload via FileWatcher
+- Editor already creates `builtin` + `project` registries in `EditorApplication`
 
-**4c. Asset import**
-- Drag external files (.fbx, .gltf, .png, .hdr) into browser
-- `IAssetImporter.Import(sourcePath, outputPath)` converts to engine format
-- Import settings dialog per file type (texture compression, mesh options)
-- Re-import on source file change (FileWatcher on source directory)
-- **Registry selection:** Import dialog lets user pick which registry to import
-  into (default: project, but can select builtin or any mounted registry).
-  Imported asset gets a protocol path (e.g. `project://models/tree.mesh`).
-- **Registry creation:** User can create a new registry by selecting a folder.
-  A `.registry` file is created there and the registry is mounted with a
-  user-chosen name (protocol prefix). Useful for asset packs or shared libraries.
+**Editor interfaces (defined, needs redesign):**
+- `IAssetImporter` -- current: simple `Import(sourcePath, outputPath)`. **Will be redesigned** to support multi-resource preview and import (see Phase 4d)
+- `IAssetCreator` -- `DisplayName`, `Category`, `Extension`, `Create(path, context)`
+- `IAssetThumbnailGenerator` -- `GenerateThumbnail(path, w, h)`
+- `EditorContext` -- `RegisterAssetImporter()`, `RegisterAssetCreator()`, `RegisterThumbnailGenerator()`
 
-**4d. Drag into scene**
-- Drag mesh from browser -> create entity with MeshComponent in scene
-- Drag material -> assign to selected mesh component's material slot
-- Drag texture -> assign to selected material's texture slot
-- Uses DragData with "asset/file" format, SceneHierarchyView accepts the drop
+**UI toolkit (available):**
+- `ListView` -- virtualized, adapter-based, selection, right-click events
+- `TreeView` -- hierarchical with `ITreeAdapter`, expand/collapse
+- `TabView` -- tabbed container
+- `ContextMenu` -- popup menus with submenus
+- `ImageView` -- image display with scale modes
+- `ToggleButton` -- for view mode switching
+- `DragDropManager` / `IDragSource` / `IDropTarget` -- full drag-drop framework
+- `IDialogService` -- native file/folder dialogs
+- `SelectionModel` -- single/multi selection with events
+- **No GridView** -- needs custom implementation for tile view
 
-**4e. Thumbnails**
-- `IAssetThumbnailGenerator` per asset type
-- Mesh thumbnails: render a small viewport with the mesh
-- Texture thumbnails: downscaled image
-- Cache thumbnails to disk (.thumb directory)
+#### Phase 4a: Asset Browser Panel -- Core UI
 
-**Dependencies:** FileWatcher (done in ResourceSystem), DragDrop (done),
-IAssetImporter interface (defined), project registry (done).
+**Goal:** Dockable panel with registry tree (left) + content list (right).
+Replace the placeholder "Assets" panel in EditorApplication.
+
+**4a-1. Registry Tree (left pane)**
+
+`RegistryTreeAdapter : ITreeAdapter` with one root node per mounted registry.
+Each registry shows its filesystem subdirectories as expandable children.
+Builtin and project registries always present; additional mounted registries
+appear below. Clicking a node sets the content view's current path.
+
+Tree node data:
+- Registry name (root level) -- e.g. "builtin", "project", "shared_assets"
+- Subdirectory paths (children) -- resolved from registry root on disk
+
+**4a-2. Content View (right pane)**
+
+`AssetContentAdapter : ListAdapterBase` showing items in the selected directory.
+Each row shows: icon (by extension), name, and a registry badge if the item
+has a GUID in the active registry.
+
+Items come from **both** the filesystem (files in the directory) and the
+registry (GUID-mapped entries whose relative path starts with the current
+folder prefix). Filesystem items without a registry entry appear unmarked.
+Registry entries pointing to missing files appear with a warning indicator.
+
+Initial view mode: list only. Grid/tile view deferred to Phase 4e.
+
+**4a-3. Navigation**
+
+- Click folder in content view -> navigate into it (update path, rebuild adapter)
+- Breadcrumb bar above content view showing current path segments (clickable)
+- Back button or breadcrumb click to navigate up
+- Double-click asset -> open in appropriate editor page (via `IEditorPageFactory`)
+
+**4a-4. Panel Wiring**
+
+- `AssetBrowserPanel : IEditorPanel` -- replaces placeholder in EditorApplication
+- `AssetBrowserPanelFactory : IEditorPanelFactory` -- registered with EditorContext
+- Panel stores reference to `ResourceSystem` (for registry access) and `EditorContext`
+
+**Files:**
+
+| File | Change |
+|------|--------|
+| `Editor.Core/src/Panels/AssetBrowserPanel.bf` | NEW -- panel implementation |
+| `Editor.App/src/Panels/AssetBrowserBuilder.bf` | NEW -- builds split layout |
+| `Editor.App/src/Panels/RegistryTreeAdapter.bf` | NEW -- ITreeAdapter for registries |
+| `Editor.App/src/Panels/AssetContentAdapter.bf` | NEW -- ListAdapterBase for content |
+| `Editor.App/src/Panels/AssetBrowserPanelFactory.bf` | NEW -- factory |
+| `Editor.App/src/EditorApplication.bf` | MODIFY -- replace placeholder with real panel |
+
+#### Phase 4b: Registry Management
+
+**Goal:** Mount, create, and unmount registries from the asset browser.
+
+**4b-1. Registry Toolbar**
+
+Toolbar above the registry tree with buttons:
+- **Mount** -- `IDialogService.ShowOpenFileDialog` for `.registry` files -> creates `ResourceRegistry`, loads file, adds to `ResourceSystem`
+- **Create** -- `IDialogService.ShowFolderDialog` -> creates empty `.registry` file in selected folder, mounts it with user-provided name
+- **Unmount** -- removes selected registry from `ResourceSystem` (disabled for builtin/project)
+
+**4b-2. Registry Persistence**
+
+Mounted registries (beyond builtin/project) stored in `.sedproj` so they
+restore on project reopen. Format: list of `{name, rootPath, registryFilePath}`.
+
+**4b-3. Locked Registries**
+
+Builtin and project registries cannot be unmounted. The unmount button is
+disabled when they're selected. Their tree nodes may show a lock icon.
+
+**Files:**
+
+| File | Change |
+|------|--------|
+| `Editor.Core/src/Project/EditorProject.bf` | MODIFY -- persist mounted registries |
+| `Editor.App/src/Panels/AssetBrowserBuilder.bf` | MODIFY -- registry toolbar |
+| `Editor.App/src/EditorApplication.bf` | MODIFY -- restore mounted registries on load |
+
+#### Phase 4c: Context Menus & File Operations
+
+**Goal:** Right-click menus for items, folders, and empty space.
+
+**4c-1. Item Context Menu**
+
+Right-click on a file/asset in the content view:
+- **Rename** -- inline edit (like hierarchy rename)
+- **Delete** -- confirmation dialog, removes file + unregisters from registry
+- **Copy Path** -- copies protocol path to clipboard (e.g. `project://models/cube.mesh`)
+- **Copy GUID** -- copies GUID string to clipboard
+- **Find References** -- (stub for now, future: scan scene files for this GUID)
+- **Reimport** -- (only for resources with SourcePath, triggers re-import)
+- **Show in Explorer** -- opens OS file browser at file location
+
+**4c-2. Folder / Empty Space Context Menu**
+
+Right-click on folder or empty area:
+- **Create New ->** submenu dynamically populated from `EditorContext.GetAssetCreators()`
+  - Each `IAssetCreator` provides `DisplayName`, `Category`, `Extension`
+  - Categories become submenus: "Create New -> Rendering -> Material"
+- **Create Folder** -- creates subdirectory, refreshes view
+- **Import...** -- opens file dialog filtered by all registered importer extensions
+- **Paste** -- (future: clipboard file operations)
+
+**4c-3. Asset Creator Registration**
+
+Built-in creators registered by editor modules:
+- `MaterialAssetCreator` -- creates default `.material` file
+- `SceneAssetCreator` -- creates empty `.scene` file
+- Future modules add their own (audio clips, particle effects, etc.)
+
+Each creator: creates the resource, saves to disk, registers GUID in the
+active registry, refreshes the content view.
+
+**Files:**
+
+| File | Change |
+|------|--------|
+| `Editor.App/src/Panels/AssetBrowserBuilder.bf` | MODIFY -- context menus |
+| `Editor.App/src/Assets/MaterialAssetCreator.bf` | NEW -- IAssetCreator impl |
+| `Editor.App/src/Assets/SceneAssetCreator.bf` | NEW -- IAssetCreator impl |
+| `Editor.App/src/EditorApplication.bf` | MODIFY -- register built-in creators |
+
+#### Phase 4d: Asset Import Pipeline
+
+**Goal:** Import source files into baked engine resources via UI.
+
+**4d-1. Redesigned IAssetImporter Interface**
+
+Replace the current simple `Import(sourcePath, outputPath)` with a richer
+interface that supports multi-resource preview and import:
+
+```beef
+interface IAssetImporter : IDisposable
+{
+    /// File extensions this importer handles (e.g. ".gltf", ".glb", ".fbx").
+    void GetSupportedExtensions(List<String> outExtensions);
+
+    /// Analyze source file and return list of importable items.
+    /// Called before showing the import dialog so user can preview/configure.
+    Result<ImportPreview> CreatePreview(StringView sourcePath);
+
+    /// Import selected items from the preview.
+    /// outputDir is the target directory, registry is for GUID registration.
+    Result<void> Import(ImportPreview preview, StringView outputDir,
+        ResourceRegistry registry, ImportDeduplicationContext dedupContext);
+}
+
+/// One importable item from a source file.
+class ImportPreviewItem
+{
+    public String Name;                // Suggested filename (editable)
+    public String TypeLabel;           // "Static Mesh", "Texture", etc.
+    public ResourceType ResourceType;  // For icon selection
+    public bool Selected = true;       // Checkbox state
+}
+
+/// Preview of what an import will produce.
+class ImportPreview
+{
+    public String SourcePath;
+    public List<ImportPreviewItem> Items;
+    public ModelImportOptions Options;  // Null for non-model importers
+}
+```
+
+Simple importers (texture) return a single-item preview. Model importers
+return many items. The import dialog works the same for both.
+
+**4d-2. Import Dialog**
+
+When the user drops files or clicks "Import...", show a dialog:
+- Source file path (read-only)
+- List of resources from `CreatePreview()` (checkboxes to include/exclude)
+  - For a `.gltf`: meshes, materials, textures, skeletons, animations
+  - For a `.png`: single texture resource
+- Each item shows: type icon, suggested name, output path (editable)
+- "Import All to Folder..." button to set a common output directory
+- Import options panel (scale, normals, tangents -- from `ModelImportOptions`)
+- Target registry shown (the registry whose content view triggered the import)
+- Deduplication warnings: "Texture 'wood.png' already exists -- skip/reimport/rename"
+- **Import** / **Cancel** buttons
+
+**4d-3. Import Execution**
+
+On **Import**:
+1. Call `importer.Import(preview, outputDir, registry, dedupContext)`
+2. Internally: load source, run pipeline, save checked items, register GUIDs
+3. Write `.meta` sidecar file for each imported resource (see 4d-6)
+4. Save registry to disk
+5. Refresh content view
+
+**4d-4. Importer Implementations**
+
+Registered with `EditorContext.RegisterAssetImporter()`:
+
+- **ModelAssetImporter** -- handles `.gltf`, `.glb`, `.fbx`, `.obj`
+  - `CreatePreview`: loads via `ModelLoaderFactory`, runs `ModelImporter.Import`,
+    enumerates all produced meshes/materials/textures/skeletons/animations
+  - `Import`: converts to resources, saves via `ResourceSerializer`, registers GUIDs
+- **TextureAssetImporter** -- handles `.png`, `.jpg`, `.jpeg`, `.tga`, `.bmp`, `.hdr`
+  - `CreatePreview`: single item -- the texture resource
+  - `Import`: loads via `ImageLoaderFactory`, wraps as `TextureResource`, saves
+- **AudioAssetImporter** -- (stub, future: `.wav`, `.ogg` -> `.audioclip`)
+
+**4d-5. Drag-Drop Import**
+
+Content view implements `IDropTarget`. When files are dropped from OS:
+1. Check extensions against registered importers
+2. If importer found -> call `CreatePreview()` -> show import dialog
+3. If no match -> copy file as-is (raw asset, no registry entry)
+4. If multiple files -> batch import dialog (one preview per file)
+
+**4d-6. Import Metadata (.meta sidecar files)**
+
+Each imported resource gets a `.meta` sidecar file alongside it
+(e.g. `cube.mesh.meta`). Plain text format:
+
+```
+source=D:/Models/character.gltf
+sourceHash=a1b2c3d4e5f6
+importOptions.scale=1.0
+importOptions.generateNormals=true
+importTimestamp=2026-04-27T15:30:00
+```
+
+**Benefits:** per-file locality (travels with asset), easy to inspect,
+git-friendly, no lock contention on concurrent imports.
+
+**Used for:** re-import (detect source changes via hash), preserving import
+options across re-imports, tracking provenance.
+
+**4d-7. Deduplication**
+
+Before import, build `ImportDeduplicationContext` from existing registry
+entries by scanning resources with matching `SourcePath` values. Dialog
+shows conflicts with skip/reimport/rename choices per item.
+
+**Files:**
+
+| File | Change |
+|------|--------|
+| `Editor.Core/src/Assets/IAssetImporter.bf` | MODIFY -- redesigned interface |
+| `Editor.Core/src/Assets/ImportPreview.bf` | NEW -- preview items and options |
+| `Editor.App/src/Assets/ModelAssetImporter.bf` | NEW -- IAssetImporter for models |
+| `Editor.App/src/Assets/TextureAssetImporter.bf` | NEW -- IAssetImporter for textures |
+| `Editor.App/src/Assets/ImportDialog.bf` | NEW -- import preview/config UI |
+| `Editor.App/src/Assets/ImportMetadata.bf` | NEW -- .meta file read/write |
+| `Editor.App/src/Panels/AssetBrowserBuilder.bf` | MODIFY -- IDropTarget, import trigger |
+| `Editor.App/src/EditorApplication.bf` | MODIFY -- register built-in importers |
+
+#### Phase 4e: Thumbnails & Grid View
+
+**Goal:** Visual asset browsing with thumbnails and tile layout.
+
+**4e-1. Custom GridContentView**
+
+Purpose-built `GridContentView : ViewGroup` for the asset browser:
+- Flow layout: fixed-size cells, wrap on container width, reflow on resize
+- Each cell: thumbnail `ImageView` + name `Label` below
+- `ViewRecycler` for virtualization (only create/bind visible cells)
+- Vertical scrolling with momentum (same physics as `ListView`)
+- `SelectionModel` integration: click, shift-click, ctrl-click
+- Right-click -> `OnItemRightClicked` event (same pattern as `ListView`)
+- Double-click -> `OnItemDoubleClicked` event
+- Cell size configurable (small/medium/large via slider or presets)
+
+View mode switcher: `ToggleButton` group in content toolbar (List | Grid).
+Both modes use the same `AssetContentAdapter` data, different presentation.
+
+**4e-2. Thumbnail Generators**
+
+Per-type generators registered with `EditorContext.RegisterThumbnailGenerator()`:
+- **TextureThumbnailGenerator** -- downsample the texture's pixel data
+- **MeshThumbnailGenerator** -- (future: render mesh to small offscreen target)
+- **MaterialThumbnailGenerator** -- (future: render sphere with material)
+- **Default** -- icon by file extension (gear for .material, cube for .mesh, etc.)
+
+**4e-3. Thumbnail Cache**
+
+Thumbnails cached to disk in project's `.cache/thumbnails/` directory.
+Cache key: resource GUID + file modification time. Regenerate on mismatch.
+
+**Files:**
+
+| File | Change |
+|------|--------|
+| `Editor.App/src/Panels/GridContentView.bf` | NEW -- grid layout view |
+| `Editor.App/src/Assets/TextureThumbnailGenerator.bf` | NEW |
+| `Editor.App/src/Assets/ThumbnailCache.bf` | NEW -- disk cache |
+| `Editor.App/src/Panels/AssetBrowserBuilder.bf` | MODIFY -- view mode toggle |
+
+#### Phase 4f: Drag into Scene & Asset Preview
+
+**Goal:** Drag assets from browser into viewport/hierarchy to create entities.
+
+**4f-1. Drag from Browser**
+
+Content view items implement `IDragSource`. Drag data carries the resource's
+protocol path and type. Format: `"asset/resource"`.
+
+**4f-2. Drop Targets**
+
+- **Viewport** -- drop mesh -> create entity at camera look-at point with MeshComponent
+- **Hierarchy** -- drop mesh -> create entity as child of drop target
+- **Inspector material slot** -- drop material -> assign to slot
+- **Inspector texture slot** -- drop texture -> assign to slot
+
+**4f-3. Asset Inspector**
+
+When an asset is selected in the browser (not a scene entity), the inspector
+shows asset properties (read-only or editable depending on type). Uses the
+same `IComponentInspector` pattern but for resources instead of components.
+
+**Files:**
+
+| File | Change |
+|------|--------|
+| `Editor.App/src/Panels/AssetDragData.bf` | NEW -- DragData subclass |
+| `Editor.App/src/Panels/AssetContentAdapter.bf` | MODIFY -- IDragSource |
+| `Editor.App/src/Pages/ScenePageBuilder.bf` | MODIFY -- viewport IDropTarget |
+| `Editor.App/src/Pages/SceneHierarchyView.bf` | MODIFY -- accept asset drops |
+
+#### Phase 4 Dependencies
+
+```
+4a (Browser Core UI)
+  |
+  v
+4b (Registry Mgmt) --- can parallel with 4c
+  |                           |
+  v                           v
+4c (Context Menus) <----------+
+  |
+  v
+4d (Import Pipeline)
+  |
+  v
+4e (Thumbnails & Grid) --- can parallel with 4f
+  |                              |
+  v                              v
+4f (Drag into Scene) <-----------+
+```
+
+Phases 4a-4d are the core functional path. 4e-4f are enhancement/polish.
 
 ### Phase 5: Scene Gizmos - PARTIAL
 
