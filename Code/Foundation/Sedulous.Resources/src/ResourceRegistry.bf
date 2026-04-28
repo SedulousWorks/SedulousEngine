@@ -141,6 +141,43 @@ class ResourceRegistry : IResourceRegistry
 		return File.Exists(outAbsolutePath);
 	}
 
+	/// Enumerates all registered entries. Caller must not modify the registry during enumeration.
+	/// Appends (guid, relativePath) pairs to the output list.
+	public void GetEntries(List<(Guid id, StringView path)> outEntries)
+	{
+		using (mMonitor.Enter())
+		{
+			for (let kv in mIdToPath)
+				outEntries.Add((kv.key, kv.value));
+		}
+	}
+
+	/// Enumerates entries whose relative path starts with the given folder prefix.
+	/// prefix should be "" for root, or "folder/" for a subfolder (with trailing slash).
+	/// Only returns direct children (no deeper nesting beyond the prefix level).
+	public void GetEntriesInFolder(StringView prefix, List<(Guid id, StringView path, StringView name)> outEntries)
+	{
+		using (mMonitor.Enter())
+		{
+			let prefixLen = prefix.Length;
+			for (let kv in mIdToPath)
+			{
+				let path = StringView(kv.value);
+				if (prefixLen > 0 && !path.StartsWith(prefix))
+					continue;
+
+				// Get the part after the prefix
+				let remainder = path[prefixLen...];
+
+				// Only direct children (no further '/' in remainder)
+				if (remainder.Contains('/'))
+					continue;
+
+				outEntries.Add((kv.key, path, remainder));
+			}
+		}
+	}
+
 	/// Saves the registry to a text file. Format: one "guid=relativePath" per line.
 	public Result<void> SaveToFile(StringView filePath)
 	{

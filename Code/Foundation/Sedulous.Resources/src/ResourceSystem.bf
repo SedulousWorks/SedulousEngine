@@ -287,6 +287,26 @@ class ResourceSystem
 		}
 	}
 
+	/// Gets a snapshot of all mounted registries.
+	public void GetRegistries(List<IResourceRegistry> outRegistries)
+	{
+		using (mManagersMonitor.Enter())
+		{
+			for (let reg in mRegistries)
+				outRegistries.Add(reg);
+		}
+	}
+
+	/// Gets the number of mounted registries.
+	public int RegistryCount
+	{
+		get
+		{
+			using (mManagersMonitor.Enter())
+				return mRegistries.Count;
+		}
+	}
+
 	/// Gets the manager for a resource type.
 	private IResourceManager GetManager<T>() where T : IResource
 	{
