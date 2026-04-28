@@ -32,6 +32,7 @@ class EditorContext : IDisposable
 
 	// Platform services
 	public IDialogService DialogService;
+	public IShell Shell;
 	public ResourceSystem ResourceSystem;
 
 	// Registries (owned)

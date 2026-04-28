@@ -3,3 +3,5 @@ fbd61c78-82a2-470f-8bac-8315a2e27eee=primitives/cube.mesh
 afba7128-eec2-4249-90d8-235466fa38de=primitives/sphere.mesh
 868704da-d9fe-4ea4-8cd1-55fa37a2e435=materials/default.material
 02f2de9e-19fc-4aa8-ac50-6ac665751d32=materials/default_unlit.material
+f72d2760-c3e3-472c-8661-b3638381c023=New Material.material
+afccec29-a14c-42d6-a306-c6cfc0f63891=New Scene.scene

@@ -16,5 +16,6 @@ interface IAssetCreator
 	StringView Extension { get; }
 
 	/// Create a new default asset at the given path.
-	Result<void> Create(StringView path, EditorContext context);
+	/// Returns the resource's GUID on success so the caller can register it.
+	Result<Guid> Create(StringView path, EditorContext context);
 }

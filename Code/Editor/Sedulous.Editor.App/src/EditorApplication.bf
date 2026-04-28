@@ -168,6 +168,7 @@ class EditorApplication : Application, IFloatingWindowHost
 		mEditorContext.PluginRegistry = new EditorPluginRegistry();
 		mEditorContext.Project = mProject;
 		mEditorContext.DialogService = Shell.Dialogs;
+		mEditorContext.Shell = Shell;
 		mEditorContext.ResourceSystem = mResourceSystem;
 
 		// Discover plugins
@@ -186,6 +187,10 @@ class EditorApplication : Application, IFloatingWindowHost
 
 	protected override void OnContextStarted()
 	{
+		// Register built-in asset creators
+		mEditorContext.RegisterAssetCreator(new MaterialAssetCreator());
+		mEditorContext.RegisterAssetCreator(new SceneAssetCreator());
+
 		// Initialize plugins after UI is set up.
 		mEditorContext.PluginRegistry.InitializeAll(mEditorContext);
 	}

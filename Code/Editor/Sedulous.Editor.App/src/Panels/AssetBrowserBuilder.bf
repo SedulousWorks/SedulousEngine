@@ -94,6 +94,7 @@ static class AssetBrowserBuilder
 		contentList.ItemHeight = 24;
 		contentList.Adapter = contentAdapter;
 		contentList.Selection.Mode = .Single;
+		contentAdapter.OwnerListView = contentList;
 
 		rightPane.AddView(contentList, new LinearLayout.LayoutParams() {
 			Width = LayoutParams.MatchParent, Height = 0, Weight = 1
@@ -133,6 +134,30 @@ static class AssetBrowserBuilder
 						editorContext.PageManager.OpenWithContext(item.AbsolutePath, editorContext);
 				}
 			}
+		});
+
+		// Wire content list right-click on item -> context menu
+		contentList.OnItemRightClicked.Add(new [=contentAdapter, =editorContext, =contentList, =breadcrumb, =panel] (position, localX, localY) => {
+			let item = contentAdapter.GetItem(position);
+			let ctx = contentList.Context;
+			if (ctx == null || item == null) return;
+
+			let screenCoords = ToScreenCoords(contentList, localX, localY);
+
+			if (item.IsFolder)
+				ShowFolderItemContextMenu(ctx, screenCoords.x, screenCoords.y, item, contentAdapter, editorContext, panel, breadcrumb);
+			else
+				ShowItemContextMenu(ctx, screenCoords.x, screenCoords.y, item, contentAdapter, editorContext, panel);
+		});
+
+		// Wire right-click on empty space -> background context menu
+		contentList.OnBackgroundRightClicked.Add(new [=contentAdapter, =editorContext, =contentList, =breadcrumb, =panel] (localX, localY) => {
+			let ctx = contentList.Context;
+			if (ctx == null) return;
+
+			let screenCoords = ToScreenCoords(contentList, localX, localY);
+			ShowBackgroundContextMenu(ctx, screenCoords.x, screenCoords.y,
+				contentAdapter.CurrentFolder, contentAdapter, editorContext, panel, breadcrumb);
 		});
 
 		// Wire breadcrumb navigation — deferred via mutation queue because
@@ -185,6 +210,306 @@ static class AssetBrowserBuilder
 			ContentAdapter = contentAdapter,
 			Breadcrumb = breadcrumb
 		};
+	}
+
+	// ==================== Helpers ====================
+
+	/// Converts local coordinates to screen coordinates by walking up the view tree.
+	private static (float x, float y) ToScreenCoords(View view, float localX, float localY)
+	{
+		float sx = localX;
+		float sy = localY;
+		View v = view;
+		while (v != null)
+		{
+			sx += v.Bounds.X;
+			sy += v.Bounds.Y;
+			v = v.Parent;
+		}
+		return (sx, sy);
+	}
+
+	// ==================== Context Menus ====================
+
+	/// Context menu for a file/asset item.
+	private static void ShowItemContextMenu(UIContext ctx, float x, float y,
+		AssetContentItem item, AssetContentAdapter adapter,
+		EditorContext editorContext, AssetBrowserPanel panel)
+	{
+		let menu = new ContextMenu();
+		let registry = adapter.ActiveRegistry;
+
+		// Rename
+		menu.AddItem("Rename", new [=item, =adapter, =panel] () => {
+			// TODO: inline rename (Phase 4c polish)
+		}, enabled: false);
+
+		// Delete
+		menu.AddItem("Delete", new [=item, =adapter, =registry, =panel] () => {
+			if (item.AbsolutePath != null && System.IO.File.Exists(item.AbsolutePath))
+				System.IO.File.Delete(item.AbsolutePath);
+
+			// Unregister from registry
+			if (item.IsRegistered)
+			{
+				if (let concreteReg = registry as ResourceRegistry)
+					concreteReg.Unregister(item.RegistryId);
+			}
+
+			// Delete .meta sidecar if exists
+			let metaPath = scope String(item.AbsolutePath);
+			metaPath.Append(".meta");
+			if (System.IO.File.Exists(metaPath))
+				System.IO.File.Delete(metaPath);
+
+			panel.RefreshContent();
+		});
+
+		menu.AddSeparator();
+
+		// Copy Path (protocol path)
+		if (item.IsRegistered && registry != null)
+		{
+			menu.AddItem("Copy Path", new [=item, =registry, =ctx] () => {
+				let protocolPath = scope String();
+				if (registry.Name.Length > 0)
+					protocolPath.AppendF("{}://{}", registry.Name, item.RelativePath);
+				else
+					protocolPath.Set(item.RelativePath);
+
+				ctx.Clipboard?.SetText(protocolPath);
+			});
+		}
+
+		// Copy GUID
+		if (item.IsRegistered)
+		{
+			menu.AddItem("Copy GUID", new [=item, =ctx] () => {
+				let guidStr = scope String();
+				item.RegistryId.ToString(guidStr);
+				ctx.Clipboard?.SetText(guidStr);
+			});
+		}
+
+		menu.AddSeparator();
+
+		// Show in Explorer
+		if (item.AbsolutePath != null)
+		{
+			menu.AddItem("Show in Explorer", new [=item, =editorContext] () => {
+				let dirPath = scope String();
+				System.IO.Path.GetDirectoryPath(item.AbsolutePath, dirPath);
+				editorContext.Shell?.RevealInFileManager(dirPath);
+			});
+		}
+
+		menu.Show(ctx, x, y);
+	}
+
+	/// Context menu for a folder item in the content view.
+	private static void ShowFolderItemContextMenu(UIContext ctx, float x, float y,
+		AssetContentItem folderItem, AssetContentAdapter adapter,
+		EditorContext editorContext, AssetBrowserPanel panel, BreadcrumbBar breadcrumb)
+	{
+		let menu = new ContextMenu();
+		let registry = adapter.ActiveRegistry;
+
+		// The target folder for creating assets is the right-clicked folder
+		let targetFolder = scope String(folderItem.RelativePath);
+
+		// Create New submenu — assets go into the right-clicked folder
+		AddCreateNewSubmenu(menu, targetFolder, registry, editorContext, adapter, panel);
+
+		// Create Folder inside this folder
+		menu.AddItem("Create Folder", new [=folderItem, =panel] () => {
+			CreateSubfolder(folderItem.AbsolutePath);
+			panel.RefreshContent();
+		});
+
+		menu.AddSeparator();
+
+		// Delete folder
+		menu.AddItem("Delete", new [=folderItem, =panel] () => {
+			if (folderItem.AbsolutePath != null && System.IO.Directory.Exists(folderItem.AbsolutePath))
+				System.IO.Directory.DelTree(folderItem.AbsolutePath);
+			panel.RefreshContent();
+		});
+
+		menu.AddSeparator();
+
+		// Show in Explorer
+		if (folderItem.AbsolutePath != null)
+		{
+			menu.AddItem("Show in Explorer", new [=folderItem, =editorContext] () => {
+				editorContext.Shell?.RevealInFileManager(folderItem.AbsolutePath);
+			});
+		}
+
+		menu.Show(ctx, x, y);
+	}
+
+	/// Context menu for right-clicking empty space in the content view.
+	private static void ShowBackgroundContextMenu(UIContext ctx, float x, float y,
+		StringView targetFolder, AssetContentAdapter adapter,
+		EditorContext editorContext, AssetBrowserPanel panel, BreadcrumbBar breadcrumb)
+	{
+		let menu = new ContextMenu();
+		let registry = adapter.ActiveRegistry;
+
+		// Create New submenu — assets go into the current folder
+		AddCreateNewSubmenu(menu, targetFolder, registry, editorContext, adapter, panel);
+
+		// Create Folder in current directory
+		let currentAbsDir = new String();
+		if (registry != null)
+		{
+			if (targetFolder.Length > 0)
+				System.IO.Path.InternalCombine(currentAbsDir, registry.RootPath, targetFolder);
+			else
+				currentAbsDir.Set(registry.RootPath);
+		}
+		menu.AddOwnedObject(currentAbsDir);
+
+		menu.AddItem("Create Folder", new () => {
+			CreateSubfolder(currentAbsDir);
+			panel.RefreshContent();
+		});
+
+		menu.AddSeparator();
+
+		// Import... (stub for Phase 4d)
+		menu.AddItem("Import...", new () => {
+			// TODO: trigger import dialog (Phase 4d)
+		}, enabled: false);
+
+		menu.Show(ctx, x, y);
+	}
+
+	/// Adds a "Create New" submenu populated from registered IAssetCreators.
+	private static void AddCreateNewSubmenu(ContextMenu menu, StringView targetFolder,
+		IResourceRegistry registry, EditorContext editorContext,
+		AssetContentAdapter adapter, AssetBrowserPanel panel)
+	{
+		let createSub = menu.AddSubmenu("Create New");
+		let creators = scope System.Collections.List<IAssetCreator>();
+		editorContext.GetAssetCreators(creators);
+
+		if (creators.Count > 0)
+		{
+			let categories = scope System.Collections.Dictionary<StringView, ContextMenu>();
+
+			for (let creator in creators)
+			{
+				ContextMenu targetMenu;
+				if (creator.Category.Length > 0)
+				{
+					if (!categories.TryGetValue(creator.Category, let existing))
+					{
+						let catSub = createSub.Submenu.AddSubmenu(creator.Category);
+						categories[creator.Category] = catSub.Submenu;
+						targetMenu = catSub.Submenu;
+					}
+					else
+					{
+						targetMenu = existing;
+					}
+				}
+				else
+				{
+					targetMenu = createSub.Submenu;
+				}
+
+				let folderCopy = new String(targetFolder);
+				menu.AddOwnedObject(folderCopy);
+				targetMenu.AddItem(creator.DisplayName, new () => {
+					CreateAssetInFolder(creator, folderCopy, registry, editorContext, panel);
+				});
+			}
+		}
+	}
+
+	/// Creates a new subfolder with a unique name inside parentDir.
+	private static void CreateSubfolder(StringView parentDir)
+	{
+		if (parentDir.Length == 0) return;
+
+		let newDir = scope String();
+		System.IO.Path.InternalCombine(newDir, parentDir, "New Folder");
+
+		if (System.IO.Directory.Exists(newDir))
+		{
+			for (int i = 1; i < 100; i++)
+			{
+				newDir.Clear();
+				System.IO.Path.InternalCombine(newDir, parentDir, scope $"New Folder ({i})");
+				if (!System.IO.Directory.Exists(newDir))
+					break;
+			}
+		}
+
+		System.IO.Directory.CreateDirectory(newDir);
+	}
+
+	/// Creates an asset in a specific folder and registers it in the registry.
+	/// targetFolder is the relative path within the registry (e.g. "models" or "").
+	private static void CreateAssetInFolder(IAssetCreator creator,
+		StringView targetFolder, IResourceRegistry registry,
+		EditorContext editorContext, AssetBrowserPanel panel)
+	{
+		if (registry == null) return;
+
+		// Build absolute output directory
+		let absDir = scope String();
+		if (targetFolder.Length > 0)
+			System.IO.Path.InternalCombine(absDir, registry.RootPath, targetFolder);
+		else
+			absDir.Set(registry.RootPath);
+
+		// Ensure directory exists
+		if (!System.IO.Directory.Exists(absDir))
+			System.IO.Directory.CreateDirectory(absDir);
+
+		// Generate unique filename
+		let baseName = scope String()..AppendF("New {}", creator.DisplayName);
+		let fileName = scope String()..AppendF("{}{}", baseName, creator.Extension);
+		let fullPath = scope String();
+		System.IO.Path.InternalCombine(fullPath, absDir, fileName);
+
+		if (System.IO.File.Exists(fullPath))
+		{
+			for (int i = 1; i < 100; i++)
+			{
+				fileName.Clear();
+				fileName.AppendF("{} ({}){}", baseName, i, creator.Extension);
+				fullPath.Clear();
+				System.IO.Path.InternalCombine(fullPath, absDir, fileName);
+				if (!System.IO.File.Exists(fullPath))
+					break;
+			}
+		}
+
+		// Create the asset
+		if (creator.Create(fullPath, editorContext) case .Ok(let resourceId))
+		{
+			// Register in the active registry
+			if (let concreteReg = registry as ResourceRegistry)
+			{
+				let relPath = scope String();
+				if (targetFolder.Length > 0)
+					relPath.AppendF("{}/{}", targetFolder, fileName);
+				else
+					relPath.Set(fileName);
+
+				concreteReg.Register(resourceId, relPath);
+
+				// Save registry to disk
+				let regFile = scope String();
+				System.IO.Path.InternalCombine(regFile, registry.RootPath, scope $"{registry.Name}.registry");
+				concreteReg.SaveToFile(regFile);
+			}
+
+			panel.RefreshContent();
+		}
 	}
 }
 
