@@ -24,6 +24,9 @@ public class ListView : ViewGroup, IListAdapterObserver
 	/// Fired when an item is long-pressed. Args: (position).
 	public Event<delegate void(int32)> OnItemLongPress ~ _.Dispose();
 
+	/// Fired when the background (empty space) is right-clicked. Args: (localX, localY).
+	public Event<delegate void(float, float)> OnBackgroundRightClicked ~ _.Dispose();
+
 	/// Long press threshold in seconds.
 	public float LongPressTime = 0.5f;
 
@@ -261,6 +264,12 @@ public class ListView : ViewGroup, IListAdapterObserver
 				if (!Selection.IsSelected(itemIndex))
 					Selection.Select(itemIndex);
 				OnItemRightClicked(itemIndex, e.X, e.Y);
+				e.Handled = true;
+			}
+			else
+			{
+				// Clicked empty space — fire background event
+				OnBackgroundRightClicked(e.X, e.Y);
 				e.Handled = true;
 			}
 		}

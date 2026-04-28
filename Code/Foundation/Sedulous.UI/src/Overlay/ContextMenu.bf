@@ -14,6 +14,12 @@ public class ContextMenu : View, IPopupOwner
 		delete _;
 	};
 
+	/// Heap objects that should be deleted when the menu is destroyed.
+	/// Use AddOwnedObject() to register strings or other data captured by menu item lambdas.
+	private List<Object> mOwnedObjects ~ {
+		if (_ != null) { for (let obj in _) delete obj; delete _; }
+	};
+
 	private int32 mHoveredIndex = -1;
 	private ContextMenu mOpenSubmenu;
 	private ContextMenu mParentMenu;
@@ -24,6 +30,15 @@ public class ContextMenu : View, IPopupOwner
 	public void AddItem(StringView label, delegate void() action, bool enabled = true)
 	{
 		mItems.Add(new MenuItem(label, action, enabled));
+	}
+
+	/// Registers a heap object to be deleted when the menu is destroyed.
+	/// Use for heap strings captured by menu item lambdas.
+	public void AddOwnedObject(Object obj)
+	{
+		if (mOwnedObjects == null)
+			mOwnedObjects = new .();
+		mOwnedObjects.Add(obj);
 	}
 
 	public void AddSeparator()
