@@ -33,4 +33,10 @@ public interface IShell
 
 	/// Requests the shell to exit.
 	void RequestExit();
+
+	/// Opens a URL or file path with the system default handler.
+	Result<void> OpenURL(StringView url);
+
+	/// Opens the system file manager and reveals (selects) the given path.
+	Result<void> RevealInFileManager(StringView path);
 }

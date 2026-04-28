@@ -115,4 +115,25 @@ class SDL3Shell : IShell
 	{
 		mIsRunning = false;
 	}
+
+	public Result<void> OpenURL(StringView url)
+	{
+		let urlStr = scope String(url);
+		if (SDL_OpenURL(urlStr.CStr()))
+			return .Ok;
+		return .Err;
+	}
+
+	public Result<void> RevealInFileManager(StringView path)
+	{
+		// SDL_OpenURL with a file:// URI opens the folder in the system file manager.
+		// Normalize separators for the URI.
+		let normalized = scope String(path);
+		normalized.Replace('\\', '/');
+		let uri = scope String();
+		uri.AppendF("file:///{}", normalized);
+		if (SDL_OpenURL(uri.CStr()))
+			return .Ok;
+		return .Err;
+	}
 }
