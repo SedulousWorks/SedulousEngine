@@ -6,6 +6,7 @@ using System.Collections;
 using Sedulous.UI;
 using Sedulous.UI.Toolkit;
 using Sedulous.Resources;
+using Sedulous.Core.Mathematics;
 
 /// Tree adapter for the asset browser's registry pane.
 /// Root nodes are mounted registries. Children are filesystem subdirectories
@@ -182,27 +183,25 @@ class RegistryTreeAdapter : ITreeAdapter
 
 	public View CreateView(int32 viewType)
 	{
-		let label = new Label();
-		label.FontSize = 12;
-		return label;
+		return new RegistryTreeItemView();
 	}
 
 	public void BindView(View view, int32 nodeId, int32 depth, bool isExpanded)
 	{
-		let label = view as Label;
-		if (label == null) return;
+		let itemView = view as RegistryTreeItemView;
+		if (itemView == null) return;
 
 		if (!mNodes.TryGetValue(nodeId, let node)) return;
 
-		label.SetText(node.DisplayName);
+		itemView.Set(node.DisplayName, depth);
 
 		// Highlight selected node
 		if (nodeId == mSelectedNodeId)
-			label.TextColor = .(220, 225, 240, 255);
+			itemView.TextColor = .(220, 225, 240, 255);
 		else if (node.IsRegistryRoot)
-			label.TextColor = .(180, 185, 200, 255);
+			itemView.TextColor = .(180, 185, 200, 255);
 		else
-			label.TextColor = .(160, 165, 180, 255);
+			itemView.TextColor = .(160, 165, 180, 255);
 	}
 
 	public int32 GetItemViewType(int32 nodeId) => 0;
@@ -280,5 +279,34 @@ class RegistryTreeAdapter : ITreeAdapter
 			mNodes[childNode.Id] = childNode;
 			node.ChildIds.Add(childNode.Id);
 		}
+	}
+}
+
+/// Simple tree item view for the registry tree.
+/// Draws text with depth-based indentation so it doesn't overlap with the TreeView's arrows.
+class RegistryTreeItemView : View
+{
+	private String mText = new .() ~ delete _;
+	private int32 mDepth;
+	private float mIndentWidth = 20;
+
+	public Color TextColor = .(180, 185, 200, 255);
+
+	public void Set(StringView text, int32 depth)
+	{
+		mText.Set(text);
+		mDepth = depth;
+	}
+
+	public override void OnDraw(UIDrawContext ctx)
+	{
+		if (mText.Length == 0 || ctx.FontService == null) return;
+
+		let font = ctx.FontService.GetFont(12);
+		if (font == null) return;
+
+		let indent = (mDepth + 1) * mIndentWidth;
+		let bounds = RectangleF(indent, 0, Width - indent, Height);
+		ctx.VG.DrawText(mText, font, bounds, .Left, .Middle, TextColor);
 	}
 }

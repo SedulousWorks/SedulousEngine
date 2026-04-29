@@ -20,8 +20,11 @@ static class AssetBrowserBuilder
 		public TreeView RegistryTree;
 		public RegistryTreeAdapter TreeAdapter;
 		public ListView ContentList;
-		public AssetContentAdapter ContentAdapter;
+		public GridContentView ContentGrid;
+		public AssetContentAdapter ListAdapter;
+		public AssetContentAdapter GridAdapter;
 		public BreadcrumbBar Breadcrumb;
+		public Panel ContentContainer;  // Holds the active content view (list or grid)
 	}
 
 	/// Builds the complete asset browser layout.
@@ -72,13 +75,35 @@ static class AssetBrowserBuilder
 			Width = LayoutParams.MatchParent, Height = 0, Weight = 1
 		});
 
-		// === Right pane: Breadcrumb + content list ===
+		// === Right pane: Toolbar + Breadcrumb + content (list or grid) ===
 		let rightPane = new LinearLayout();
 		rightPane.Orientation = .Vertical;
 
-		// Breadcrumb bar
+		// Two adapters sharing the same data — one for list, one for grid
+		let listAdapter = contentAdapter;
+		listAdapter.ViewMode = .List;
+
+		let gridAdapter = new AssetContentAdapter();
+		gridAdapter.ViewMode = .Grid;
+
+		// Navigation bar: breadcrumbs (left, fills) + view mode toggles (right)
+		let navBar = new LinearLayout();
+		navBar.Orientation = .Horizontal;
+		navBar.Padding = .(0, 0, 4, 0);
+
 		let breadcrumb = new BreadcrumbBar();
-		rightPane.AddView(breadcrumb, new LinearLayout.LayoutParams() {
+		navBar.AddView(breadcrumb, new LinearLayout.LayoutParams() { Width = 0, Height = LayoutParams.MatchParent, Weight = 1 });
+
+		let listBtn = new ToggleButton();
+		listBtn.SetText("List");
+		listBtn.IsChecked = true;
+		let gridBtn = new ToggleButton();
+		gridBtn.SetText("Grid");
+
+		navBar.AddView(listBtn, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
+		navBar.AddView(gridBtn, new LinearLayout.LayoutParams() { Height = LayoutParams.MatchParent });
+
+		rightPane.AddView(navBar, new LinearLayout.LayoutParams() {
 			Width = LayoutParams.MatchParent, Height = LayoutParams.WrapContent
 		});
 
@@ -89,20 +114,55 @@ static class AssetBrowserBuilder
 			Width = LayoutParams.MatchParent, Height = 1
 		});
 
-		// Content list
+		// Content container — holds the active view (list or grid)
+		let contentContainer = new Panel();
+		rightPane.AddView(contentContainer, new LinearLayout.LayoutParams() {
+			Width = LayoutParams.MatchParent, Height = 0, Weight = 1
+		});
+
+		// List view (default, visible)
 		let contentList = new ListView();
 		contentList.ItemHeight = 24;
-		contentList.Adapter = contentAdapter;
+		contentList.Adapter = listAdapter;
 		contentList.Selection.Mode = .Single;
-		contentAdapter.OwnerListView = contentList;
+		listAdapter.OwnerListView = contentList;
+		contentContainer.AddView(contentList, new LayoutParams() {
+			Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent
+		});
 
-		rightPane.AddView(contentList, new LinearLayout.LayoutParams() {
-			Width = LayoutParams.MatchParent, Height = 0, Weight = 1
+		// Grid view (hidden initially)
+		let contentGrid = new GridContentView();
+		contentGrid.CellWidth = 80;
+		contentGrid.CellHeight = 96;
+		contentGrid.Adapter = gridAdapter;
+		contentGrid.Selection.Mode = .Single;
+		contentGrid.Visibility = .Gone;
+		contentContainer.AddView(contentGrid, new LayoutParams() {
+			Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent
+		});
+
+		// View mode toggle wiring
+		listBtn.OnCheckedChanged.Add(new [=contentList, =contentGrid, =gridBtn] (btn, val) => {
+			if (val)
+			{
+				gridBtn.IsChecked = false;
+				contentList.Visibility = .Visible;
+				contentGrid.Visibility = .Gone;
+			}
+		});
+		gridBtn.OnCheckedChanged.Add(new [=contentList, =contentGrid, =listBtn] (btn, val) => {
+			if (val)
+			{
+				listBtn.IsChecked = false;
+				contentList.Visibility = .Gone;
+				contentGrid.Visibility = .Visible;
+			}
 		});
 
 		// === Wire tree selection -> content view ===
 		treeAdapter.OnFolderSelected.Add(new (registry, relativePath) => {
 			contentAdapter.SetFolder(registry, relativePath);
+			gridAdapter.SetFolder(registry, relativePath);
 
 			// Update breadcrumb
 			breadcrumb.SetPath(registry.Name, relativePath);
@@ -123,6 +183,7 @@ static class AssetBrowserBuilder
 				if (item.IsFolder)
 				{
 					contentAdapter.NavigateInto(item.Name);
+					gridAdapter.NavigateInto(item.Name);
 					breadcrumb.SetPath(
 						contentAdapter.ActiveRegistry?.Name ?? "",
 						contentAdapter.CurrentFolder);
@@ -160,25 +221,71 @@ static class AssetBrowserBuilder
 				contentAdapter.CurrentFolder, contentAdapter, editorContext, panel, breadcrumb);
 		});
 
+		// Wire grid view double-click -> navigate into folder or open asset
+		contentGrid.OnItemDoubleClicked.Add(new [=gridAdapter, =contentAdapter, =breadcrumb, =editorContext] (position) => {
+			let item = gridAdapter.GetItem(position);
+			if (item == null) return;
+
+			if (item.IsFolder)
+			{
+				contentAdapter.NavigateInto(item.Name);
+				gridAdapter.NavigateInto(item.Name);
+				breadcrumb.SetPath(
+					contentAdapter.ActiveRegistry?.Name ?? "",
+					contentAdapter.CurrentFolder);
+			}
+			else
+			{
+				if (editorContext.PageManager != null && item.AbsolutePath != null)
+					editorContext.PageManager.OpenWithContext(item.AbsolutePath, editorContext);
+			}
+		});
+
+		// Wire grid view right-click on item -> context menu
+		contentGrid.OnItemRightClicked.Add(new [=gridAdapter, =editorContext, =contentGrid, =breadcrumb, =panel] (position, localX, localY) => {
+			let item = gridAdapter.GetItem(position);
+			let ctx = contentGrid.Context;
+			if (ctx == null || item == null) return;
+
+			let screenCoords = ToScreenCoords(contentGrid, localX, localY);
+
+			if (item.IsFolder)
+				ShowFolderItemContextMenu(ctx, screenCoords.x, screenCoords.y, item, gridAdapter, editorContext, panel, breadcrumb);
+			else
+				ShowItemContextMenu(ctx, screenCoords.x, screenCoords.y, item, gridAdapter, editorContext, panel);
+		});
+
+		// Wire grid view right-click on empty space
+		contentGrid.OnBackgroundRightClicked.Add(new [=gridAdapter, =editorContext, =contentGrid, =breadcrumb, =panel] (localX, localY) => {
+			let ctx = contentGrid.Context;
+			if (ctx == null) return;
+
+			let screenCoords = ToScreenCoords(contentGrid, localX, localY);
+			ShowBackgroundContextMenu(ctx, screenCoords.x, screenCoords.y,
+				gridAdapter.CurrentFolder, gridAdapter, editorContext, panel, breadcrumb);
+		});
+
 		// Wire breadcrumb navigation — deferred via mutation queue because
 		// SetPath destroys the button that fired the click event.
-		breadcrumb.OnSegmentClicked.Add(new [=contentAdapter, =breadcrumb] (segmentIndex) => {
+		breadcrumb.OnSegmentClicked.Add(new [=contentAdapter, =gridAdapter, =breadcrumb] (segmentIndex) => {
 			let ctx = breadcrumb.Context;
 			if (ctx == null) return;
 
-			ctx.MutationQueue.QueueAction(new [=segmentIndex, =contentAdapter, =breadcrumb] () => {
+			ctx.MutationQueue.QueueAction(new [=segmentIndex, =contentAdapter, =gridAdapter, =breadcrumb] () => {
 				let registry = contentAdapter.ActiveRegistry;
 				if (registry == null) return;
 
 				if (segmentIndex == 0)
 				{
 					contentAdapter.SetFolder(registry, "");
+					gridAdapter.SetFolder(registry, "");
 				}
 				else
 				{
 					let newPath = scope String();
 					breadcrumb.BuildPathToSegment(segmentIndex, newPath);
 					contentAdapter.SetFolder(registry, newPath);
+					gridAdapter.SetFolder(registry, newPath);
 				}
 				breadcrumb.SetPath(registry.Name, contentAdapter.CurrentFolder);
 			});
@@ -207,8 +314,11 @@ static class AssetBrowserBuilder
 			RegistryTree = treeView,
 			TreeAdapter = treeAdapter,
 			ContentList = contentList,
-			ContentAdapter = contentAdapter,
-			Breadcrumb = breadcrumb
+			ContentGrid = contentGrid,
+			ListAdapter = listAdapter,
+			GridAdapter = gridAdapter,
+			Breadcrumb = breadcrumb,
+			ContentContainer = contentContainer
 		};
 	}
 

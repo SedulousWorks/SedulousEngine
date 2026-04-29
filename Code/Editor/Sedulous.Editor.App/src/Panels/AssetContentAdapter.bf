@@ -259,22 +259,28 @@ class AssetContentAdapter : ListAdapterBase
 		NotifyDataSetChanged();
 	}
 
+	/// View mode for CreateView/BindView.
+	public enum ContentViewMode { List, Grid }
+	public ContentViewMode ViewMode = .List;
+
 	// === ListAdapterBase ===
 
 	public override View CreateView(int32 viewType)
 	{
+		if (ViewMode == .Grid)
+			return new AssetGridCellView();
 		return new AssetContentItemView();
 	}
 
 	public override void BindView(View view, int32 position)
 	{
-		let itemView = view as AssetContentItemView;
-		if (itemView == null) return;
-
 		let item = GetItem(position);
 		if (item == null) return;
 
-		itemView.Bind(item);
+		if (let gridCell = view as AssetGridCellView)
+			gridCell.Bind(item);
+		else if (let listItem = view as AssetContentItemView)
+			listItem.Bind(item);
 	}
 
 	// === Internal ===
@@ -311,6 +317,7 @@ class AssetContentItemView : LinearLayout
 		mNameLabel = new Label();
 		mNameLabel.FontSize = 12;
 		mNameLabel.TextColor = .(200, 205, 220, 255);
+		mNameLabel.Ellipsis = true;
 		AddView(mNameLabel, new LinearLayout.LayoutParams() { Width = 0, Height = Sedulous.UI.LayoutParams.MatchParent, Weight = 1 });
 
 		// Registry badge

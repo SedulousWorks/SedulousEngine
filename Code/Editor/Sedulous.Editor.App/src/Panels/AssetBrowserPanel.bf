@@ -51,11 +51,12 @@ class AssetBrowserPanel : IEditorPanel
 
 	public ~this()
 	{
-		// Tree adapter and content adapter are owned by the tree/list views
+		// Tree adapter and content adapters are owned by the tree/list/grid views
 		// which are owned by the layout, which is owned by the dock panel.
 		// We only need to clean up the adapters we created.
 		delete mBuildResult.TreeAdapter;
-		delete mBuildResult.ContentAdapter;
+		delete mBuildResult.ListAdapter;
+		delete mBuildResult.GridAdapter;
 	}
 
 	public StringView PanelId => "AssetBrowser";
@@ -77,7 +78,8 @@ class AssetBrowserPanel : IEditorPanel
 	/// Refreshes the content view (e.g. after import or file changes).
 	public void RefreshContent()
 	{
-		mBuildResult.ContentAdapter.Rebuild();
+		mBuildResult.ListAdapter.Rebuild();
+		mBuildResult.GridAdapter.Rebuild();
 	}
 
 	// ==================== Registry Management ====================
@@ -201,7 +203,8 @@ class AssetBrowserPanel : IEditorPanel
 		RefreshRegistries();
 
 		// Clear content view since the selected registry was removed
-		mBuildResult.ContentAdapter.SetFolder(null, "");
+		mBuildResult.ListAdapter.SetFolder(null, "");
+		mBuildResult.GridAdapter.SetFolder(null, "");
 		mBuildResult.Breadcrumb.SetPath("", "");
 	}
 
