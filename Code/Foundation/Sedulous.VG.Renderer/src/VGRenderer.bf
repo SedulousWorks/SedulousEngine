@@ -185,7 +185,7 @@ public class VGRenderer : IDisposable
 
 		let width = texture.Width;
 		let height = texture.Height;
-		let format = TextureFormatUtils.Convert(texture.Format);
+		let format = TextureFormatUtils.Convert(texture.Format, texture.ColorSpace);
 
 		TextureDesc textureDesc = TextureDesc.Texture2D(
 			width, height, format, TextureUsage.Sampled | TextureUsage.CopyDst,

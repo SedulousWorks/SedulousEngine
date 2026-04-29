@@ -111,10 +111,14 @@ public struct TextureData
 	}
 
 	/// Creates texture data from an Image.
-	public static Self FromImage(Image image)
+	///
+	/// `colorSpace` describes the pixel data's color space - Srgb selects the sRGB
+	/// GPU format so hardware decodes sRGB->linear on sample (use for albedo,
+	/// emissive, UI imagery); Linear is for data textures (normal maps, masks, HDR).
+	public static Self FromImage(Image image, ImageColorSpace colorSpace)
 	{
 		return Create2D(image.Data.Ptr, (uint64)image.Data.Length,
-			image.Width, image.Height, TextureFormatUtils.Convert(image.Format));
+			image.Width, image.Height, TextureFormatUtils.Convert(image.Format, colorSpace));
 	}
 
 	/// Gets bytes per pixel for a format.

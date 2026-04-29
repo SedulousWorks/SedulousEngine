@@ -240,7 +240,7 @@ public class DrawingRenderer : IDisposable
 
 		let width = texture.Width;
 		let height = texture.Height;
-		let format = TextureFormatUtils.Convert(texture.Format);
+		let format = TextureFormatUtils.Convert(texture.Format, texture.ColorSpace);
 
 		// Create GPU texture
 		TextureDesc textureDesc = TextureDesc.Texture2D(

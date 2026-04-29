@@ -6,10 +6,27 @@ using Sedulous.Images;
 /// Converts between Image pixel formats and RHI texture formats.
 public static class TextureFormatUtils
 {
-	/// Converts an Image.PixelFormat to the corresponding RHI TextureFormat.
+	/// Converts an Image.PixelFormat to the corresponding RHI TextureFormat,
+	/// honoring the source pixel data's color space.
+	///
+	/// When colorSpace is Srgb and the format has an sRGB variant (8-bit RGB/RGBA/
+	/// BGR/BGRA), the sRGB GPU format is returned so hardware decodes sRGB->linear
+	/// on sample. Float and single/two-channel formats have no sRGB variant and
+	/// pass through unchanged.
+	///
 	/// Note: RGB/3-channel formats map to RGBA since GPUs don't support 3-channel.
-	public static TextureFormat Convert(PixelFormat format)
+	public static TextureFormat Convert(PixelFormat format, ImageColorSpace colorSpace)
 	{
+		if (colorSpace == .Srgb)
+		{
+			switch (format)
+			{
+			case .RGB8, .RGBA8: return .RGBA8UnormSrgb;
+			case .BGR8, .BGRA8: return .BGRA8UnormSrgb;
+			default: break;
+			}
+		}
+
 		switch (format)
 		{
 		case .R8:       return .R8Unorm;

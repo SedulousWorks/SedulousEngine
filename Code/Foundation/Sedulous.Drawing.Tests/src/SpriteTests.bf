@@ -14,6 +14,7 @@ class MockTexture : IImageData
 	public uint32 Width => mWidth;
 	public uint32 Height => mHeight;
 	public PixelFormat Format => .RGBA8;
+	public ImageColorSpace ColorSpace => .Srgb;
 	public Span<uint8> PixelData => .();
 
 	public this(uint32 width, uint32 height)
