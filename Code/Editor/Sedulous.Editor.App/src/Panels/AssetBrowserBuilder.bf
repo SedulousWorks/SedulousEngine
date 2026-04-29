@@ -173,7 +173,9 @@ static class AssetBrowserBuilder
 			treeAdapter.SelectNode(clickInfo.NodeId);
 		});
 
-		// Wire content list double-click -> navigate into folder or open asset
+		// Wire content list double-click -> navigate into folder or open asset.
+		// Deferred via mutation queue because NavigateInto triggers Rebuild which
+		// recycles the view that's still processing the click event.
 		contentList.OnItemClicked.Add(new (position, clickCount, x, y) => {
 			if (clickCount == 2)
 			{
@@ -182,11 +184,15 @@ static class AssetBrowserBuilder
 
 				if (item.IsFolder)
 				{
-					contentAdapter.NavigateInto(item.Name);
-					gridAdapter.NavigateInto(item.Name);
-					breadcrumb.SetPath(
-						contentAdapter.ActiveRegistry?.Name ?? "",
-						contentAdapter.CurrentFolder);
+					let folderName = new String(item.Name);
+					contentList.Context?.MutationQueue.QueueAction(new [=contentAdapter, =gridAdapter, =breadcrumb, =folderName] () => {
+						contentAdapter.NavigateInto(folderName);
+						gridAdapter.NavigateInto(folderName);
+						breadcrumb.SetPath(
+							contentAdapter.ActiveRegistry?.Name ?? "",
+							contentAdapter.CurrentFolder);
+						delete folderName;
+					});
 				}
 				else
 				{
@@ -221,18 +227,23 @@ static class AssetBrowserBuilder
 				contentAdapter.CurrentFolder, contentAdapter, editorContext, panel, breadcrumb);
 		});
 
-		// Wire grid view double-click -> navigate into folder or open asset
-		contentGrid.OnItemDoubleClicked.Add(new [=gridAdapter, =contentAdapter, =breadcrumb, =editorContext] (position) => {
+		// Wire grid view double-click -> navigate into folder or open asset.
+		// Deferred via mutation queue for same reason as list view.
+		contentGrid.OnItemDoubleClicked.Add(new [=gridAdapter, =contentAdapter, =breadcrumb, =editorContext, =contentGrid] (position) => {
 			let item = gridAdapter.GetItem(position);
 			if (item == null) return;
 
 			if (item.IsFolder)
 			{
-				contentAdapter.NavigateInto(item.Name);
-				gridAdapter.NavigateInto(item.Name);
-				breadcrumb.SetPath(
-					contentAdapter.ActiveRegistry?.Name ?? "",
-					contentAdapter.CurrentFolder);
+				let folderName = new String(item.Name);
+				contentGrid.Context?.MutationQueue.QueueAction(new [=contentAdapter, =gridAdapter, =breadcrumb, =folderName] () => {
+					contentAdapter.NavigateInto(folderName);
+					gridAdapter.NavigateInto(folderName);
+					breadcrumb.SetPath(
+						contentAdapter.ActiveRegistry?.Name ?? "",
+						contentAdapter.CurrentFolder);
+					delete folderName;
+				});
 			}
 			else
 			{
@@ -676,7 +687,6 @@ static class AssetBrowserBuilder
 					Console.WriteLine("Failed to create import preview for: {}", sourcePath);
 					continue;
 				}
-				defer { delete preview; }
 
 				// Build output directory (current folder in the active registry)
 				let outputDir = scope String();
@@ -685,18 +695,27 @@ static class AssetBrowserBuilder
 				else
 					outputDir.Set(registry.RootPath);
 
-				// Run import
+				// Show import dialog
 				if (let concreteReg = registry as ResourceRegistry)
 				{
 					let serializer = editorContext.ResourceSystem?.SerializerProvider;
-					if (serializer != null && importer.Import(preview, outputDir, concreteReg, serializer) case .Ok)
-						Console.WriteLine("Imported: {} ({} items)", sourcePath, preview.Items.Count);
-					else
-						Console.WriteLine("Import failed: {}", sourcePath);
+					if (serializer != null)
+					{
+						let ctx = panel.ContentView?.Context;
+						if (ctx != null)
+						{
+							// Dialog takes ownership of preview and is deleted by PopupLayer on close
+							let importDialog = new ImportDialog(preview, importer, outputDir,
+								concreteReg, serializer, panel);
+							importDialog.Show(ctx);
+							continue; // Don't delete preview — dialog owns it now
+						}
+					}
 				}
-			}
 
-			panel.RefreshContent();
+				// Fallback: delete preview if dialog wasn't shown
+				delete preview;
+			}
 		}, filters, default, true);
 	}
 }
