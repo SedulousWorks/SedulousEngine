@@ -1,0 +1,11 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Messaging.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Messaging.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Messaging" = "*"
+"Sedulous.Messaging.Runtime" = "*"

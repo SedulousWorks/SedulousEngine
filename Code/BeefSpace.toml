@@ -189,6 +189,9 @@ ModelViewer = {Path = "Tools/Sedulous.Tools.ModelViewer"}
 "Sedulous.UI2.Shell" = {Path = "Experimental/Sedulous.UI2.Shell"}
 "Sedulous.UI2.Toolkit" = {Path = "Experimental/Sedulous.UI2.Toolkit"}
 UI2Sandbox = {Path = "Experimental/UI2Sandbox"}
+"Sedulous.Messaging" = {Path = "Foundation/Sedulous.Messaging"}
+"Sedulous.Messaging.Runtime" = {Path = "Foundation/Sedulous.Messaging.Runtime"}
+"Sedulous.Messaging.Tests" = {Path = "Foundation/Sedulous.Messaging.Tests"}
 
 [WorkspaceFolders]
 Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
@@ -224,3 +227,4 @@ Tools = ["ModelViewer"]
 Experimental = []
 "Experimental/Slug" = ["Sedulous.Slug", "Sedulous.Slug.Renderer", "Sedulous.Slug.Tests", "Sedulous.Slug.TTF", "SlugSample"]
 "Experimental/UI2" = ["Sedulous.UI2", "Sedulous.UI2.Tests", "Sedulous.UI2.Shell", "Sedulous.UI2.Toolkit", "UI2Sandbox"]
+"Foundation/Messaging" = ["Sedulous.Messaging", "Sedulous.Messaging.Runtime", "Sedulous.Messaging.Tests"]
