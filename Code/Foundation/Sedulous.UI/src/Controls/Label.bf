@@ -18,6 +18,9 @@ public class Label : View
 	/// When true, text wraps at the view's width boundary.
 	public bool WordWrap = false;
 
+	/// When true, text that exceeds the view's width is truncated with "...".
+	public bool Ellipsis = false;
+
 	// Nullable per-instance overrides - null = use theme.
 	private Color? mTextColor;
 	private float? mFontSize;
@@ -157,6 +160,44 @@ public class Label : View
 				let lineStr = scope String(line);
 				ctx.VG.DrawText(lineStr, font, .(0, y, Width, lineHeight), HAlign, .Top, TextColor);
 				y += lineHeight;
+			}
+		}
+		else if (Ellipsis)
+		{
+			// Measure text and truncate with "..." if it exceeds the view width
+			let textW = font.Font.MeasureString(Text);
+			if (textW <= Width)
+			{
+				ctx.VG.DrawText(Text, font, .(0, 0, Width, Height), HAlign, VAlign, TextColor);
+			}
+			else
+			{
+				let ellipsis = "...";
+				let ellipsisW = font.Font.MeasureString(ellipsis);
+				let availW = Width - ellipsisW;
+
+				if (availW <= 0)
+				{
+					ctx.VG.DrawText(ellipsis, font, .(0, 0, Width, Height), HAlign, VAlign, TextColor);
+				}
+				else
+				{
+					// Find how many characters fit within availW
+					let truncated = scope String();
+					float w = 0;
+					for (let c in Text.RawChars)
+					{
+						let charStr = scope String();
+						charStr.Append(c);
+						let charW = font.Font.MeasureString(charStr);
+						if (w + charW > availW)
+							break;
+						truncated.Append(c);
+						w += charW;
+					}
+					truncated.Append(ellipsis);
+					ctx.VG.DrawText(truncated, font, .(0, 0, Width, Height), HAlign, VAlign, TextColor);
+				}
 			}
 		}
 		else
