@@ -51,13 +51,16 @@ public class InputManager
 	public View Hovered => mContext.GetElementById(mHoveredId);
 
 	/// Called by UIInputHelper each frame with current mouse position.
+	/// Coordinates are in physical pixels and are inverse-scaled by DpiScale
+	/// to match the logical layout coordinate space.
 	public void ProcessMouseMove(float x, float y)
 	{
-		mMouseX = x;
-		mMouseY = y;
+		let dpi = mContext.DpiScale;
+		mMouseX = x / dpi;
+		mMouseY = y / dpi;
 
 		// Drag-and-drop: if a drag is in progress, let the manager consume the move.
-		if (mContext.DragDropManager != null && mContext.DragDropManager.UpdateDrag(x, y))
+		if (mContext.DragDropManager != null && mContext.DragDropManager.UpdateDrag(mMouseX, mMouseY))
 			return;
 
 		// If a view has capture, it gets all mouse events regardless of hit.
@@ -67,38 +70,40 @@ public class InputManager
 			let captured = focusMgr.CapturedView;
 			if (captured != null)
 			{
-				let local = ToLocal(captured, x, y);
+				let local = ToLocal(captured, mMouseX, mMouseY);
 				mMouseArgs.Set(local.X, local.Y);
 				captured.OnMouseMove(mMouseArgs);
 			}
 			return;
 		}
 
-		UpdateHover(x, y);
+		UpdateHover(mMouseX, mMouseY);
 
 		// Dispatch OnMouseMove to the hovered view (needed for hover-tracking
 		// in context menus, tooltips, sliders, etc.).
 		let hovered = Hovered;
 		if (hovered != null)
 		{
-			let local = ToLocal(hovered, x, y);
+			let local = ToLocal(hovered, mMouseX, mMouseY);
 			mMouseArgs.Set(local.X, local.Y);
 			hovered.OnMouseMove(mMouseArgs);
 		}
 	}
 
 	/// Called when a mouse button is pressed.
+	/// Coordinates are in physical pixels and are inverse-scaled by DpiScale.
 	public void ProcessMouseDown(MouseButton button, float x, float y, float totalTime)
 	{
-		mMouseX = x;
-		mMouseY = y;
+		let dpi = mContext.DpiScale;
+		mMouseX = x / dpi;
+		mMouseY = y / dpi;
 		mTotalTime = totalTime;
 
 		// Hide tooltip on any mouse down.
 		mContext.TooltipManager?.OnMouseDown();
 
 		// Refresh hover first so we know what was clicked.
-		UpdateHover(x, y);
+		UpdateHover(mMouseX, mMouseY);
 
 		// If popups are showing and the click didn't land on a popup,
 		// dismiss CloseOnClickOutside popups.
@@ -135,7 +140,7 @@ public class InputManager
 
 		// Compute click count.
 		let timeDelta = totalTime - mLastClickTime;
-		let dist = Math.Sqrt((x - mLastClickX) * (x - mLastClickX) + (y - mLastClickY) * (y - mLastClickY));
+		let dist = Math.Sqrt((mMouseX - mLastClickX) * (mMouseX - mLastClickX) + (mMouseY - mLastClickY) * (mMouseY - mLastClickY));
 
 		if (button == mLastClickButton && timeDelta < DoubleClickTime && dist < DoubleClickDistance)
 			mClickCount++;
@@ -143,8 +148,8 @@ public class InputManager
 			mClickCount = 1;
 
 		mLastClickTime = totalTime;
-		mLastClickX = x;
-		mLastClickY = y;
+		mLastClickX = mMouseX;
+		mLastClickY = mMouseY;
 		mLastClickButton = button;
 
 		// Drag-and-drop: on single left-click, check if target or ancestor is IDragSource.
@@ -156,7 +161,7 @@ public class InputManager
 			{
 				if (let source = dragView as IDragSource)
 				{
-					mContext.DragDropManager.BeginPotentialDrag(dragView, source, x, y, button);
+					mContext.DragDropManager.BeginPotentialDrag(dragView, source, mMouseX, mMouseY, button);
 					break;
 				}
 				dragView = dragView.Parent;
@@ -164,7 +169,7 @@ public class InputManager
 		}
 
 		// Dispatch to target, then bubble up parents if not handled.
-		BubbleMouseDown(target, x, y, button, mClickCount, totalTime);
+		BubbleMouseDown(target, mMouseX, mMouseY, button, mClickCount, totalTime);
 
 		// Update button visual state.
 		if (let btn = target as Button)
@@ -187,13 +192,15 @@ public class InputManager
 	}
 
 	/// Called when a mouse button is released.
+	/// Coordinates are in physical pixels and are inverse-scaled by DpiScale.
 	public void ProcessMouseUp(MouseButton button, float x, float y)
 	{
-		mMouseX = x;
-		mMouseY = y;
+		let dpi = mContext.DpiScale;
+		mMouseX = x / dpi;
+		mMouseY = y / dpi;
 
 		// Drag-and-drop: if a drag is in progress, let the manager consume the up.
-		if (mContext.DragDropManager != null && mContext.DragDropManager.EndDrag(x, y))
+		if (mContext.DragDropManager != null && mContext.DragDropManager.EndDrag(mMouseX, mMouseY))
 			return;
 
 		// Release capture if active.
@@ -203,7 +210,7 @@ public class InputManager
 			let captured = focusMgr.CapturedView;
 			if (captured != null)
 			{
-				let local = ToLocal(captured, x, y);
+				let local = ToLocal(captured, mMouseX, mMouseY);
 				mMouseArgs.Set(local.X, local.Y, button);
 				captured.OnMouseUp(mMouseArgs);
 			}
@@ -217,7 +224,7 @@ public class InputManager
 			btn.IsPressed = false;
 
 		// Check if released over the same view that was pressed -> click.
-		let hitView = mContext.ActiveInputRoot.HitTest(.(x, y));
+		let hitView = mContext.ActiveInputRoot.HitTest(.(mMouseX, mMouseY));
 		if (hitView != null && pressedView != null && hitView.Id == mPressedId)
 		{
 			// Fire click.
@@ -229,16 +236,20 @@ public class InputManager
 	}
 
 	/// Called when the mouse wheel is scrolled.
+	/// Coordinates are in physical pixels and are inverse-scaled by DpiScale.
 	public void ProcessMouseWheel(float x, float y, float deltaX, float deltaY)
 	{
+		let dpi = mContext.DpiScale;
+		let scaledX = x / dpi;
+		let scaledY = y / dpi;
 		mWheelArgs.Reset();
-		mWheelArgs.X = x;
-		mWheelArgs.Y = y;
+		mWheelArgs.X = scaledX;
+		mWheelArgs.Y = scaledY;
 		mWheelArgs.DeltaX = deltaX;
 		mWheelArgs.DeltaY = deltaY;
 
 		// Mouse wheel bubbles up from hit target to root.
-		var target = mContext.ActiveInputRoot.HitTest(.(x, y));
+		var target = mContext.ActiveInputRoot.HitTest(.(scaledX, scaledY));
 		while (target != null && !mWheelArgs.Handled)
 		{
 			target.OnMouseWheel(mWheelArgs);

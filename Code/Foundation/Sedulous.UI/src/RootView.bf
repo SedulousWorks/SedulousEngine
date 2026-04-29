@@ -42,12 +42,14 @@ public class RootView : ViewGroup
 		InsertView(child, insertIndex, lp);
 	}
 
-	/// Measure fills the viewport.
+	/// Measure fills the viewport in logical coordinates (physical / DpiScale).
 	protected override void OnMeasure(MeasureSpec wSpec, MeasureSpec hSpec)
 	{
-		let w = MeasureSpec.Exactly(ViewportSize.X);
-		let h = MeasureSpec.Exactly(ViewportSize.Y);
-		MeasuredSize = .(ViewportSize.X, ViewportSize.Y);
+		let logicalW = ViewportSize.X / DpiScale;
+		let logicalH = ViewportSize.Y / DpiScale;
+		let w = MeasureSpec.Exactly(logicalW);
+		let h = MeasureSpec.Exactly(logicalH);
+		MeasuredSize = .(logicalW, logicalH);
 
 		for (int i = 0; i < ChildCount; i++)
 		{

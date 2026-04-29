@@ -101,15 +101,7 @@ public class Dialog : ViewGroup
 		let x = (viewportW - finalW) * 0.5f;
 		let y = (viewportH - finalH) * 0.5f;
 
-		Console.WriteLine("Dialog.Show: viewport={}x{} max={}x{} measured={}x{} final={}x{} pos={},{}",
-			viewportW, viewportH, maxW, maxH,
-			MeasuredSize.X, MeasuredSize.Y, finalW, finalH, x, y);
-
 		Layout(x, y, finalW, finalH);
-
-		Console.WriteLine("Dialog.Show: after Layout bounds=({},{} {}x{})",
-			Bounds.X, Bounds.Y, Bounds.Width, Bounds.Height);
-
 		ctx.PopupLayer.UpdatePopupPosition(this, x, y);
 	}
 
