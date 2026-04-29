@@ -1038,6 +1038,7 @@ class EditorApplication : Application, IFloatingWindowHost
 		mEditorContext.PageManager.ActivePage?.Update(frame.DeltaTime);
 
 		// UI frame
+		mMainRoot.DpiScale = Window.ContentScale;
 		mMainRoot.ViewportSize = .((float)Window.Width, (float)Window.Height);
 		mUIContext.BeginFrame(frame.DeltaTime);
 		mUIContext.UpdateRootView(mMainRoot);
