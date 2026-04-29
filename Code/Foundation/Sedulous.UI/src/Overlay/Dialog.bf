@@ -15,6 +15,11 @@ public class Dialog : ViewGroup
 	public DialogResult Result = .None;
 	public Event<delegate void(Dialog, DialogResult)> OnClosed ~ _.Dispose();
 
+	/// Maximum dialog width. Clamped to 80% of viewport if larger.
+	public float MaxWidth = 400;
+	/// Maximum dialog height. Clamped to 80% of viewport if larger.
+	public float MaxHeight = 300;
+
 	private LinearLayout mLayout ~ delete _;
 	private Label mTitleLabel;
 	private LinearLayout mButtonRow;
@@ -22,6 +27,7 @@ public class Dialog : ViewGroup
 
 	public this(StringView title)
 	{
+		ClipsContent = true;
 		Title = new String(title);
 
 		mLayout = new LinearLayout();
@@ -51,8 +57,10 @@ public class Dialog : ViewGroup
 
 		mContent = content;
 		// Insert content before the button row - remove it, add content, re-add.
+		// Content uses Weight=1 to fill available space between title and buttons,
+		// constrained by the dialog's MaxWidth/MaxHeight.
 		mLayout.RemoveView(mButtonRow, false);
-		mLayout.AddView(content, new LinearLayout.LayoutParams() { Width = Sedulous.UI.LayoutParams.MatchParent, Height = Sedulous.UI.LayoutParams.WrapContent });
+		mLayout.AddView(content, new LinearLayout.LayoutParams() { Width = Sedulous.UI.LayoutParams.MatchParent, Height = 0, Weight = 1 });
 		mLayout.AddView(mButtonRow, new LinearLayout.LayoutParams() { Width = Sedulous.UI.LayoutParams.MatchParent, Height = 36 });
 	}
 
@@ -80,14 +88,28 @@ public class Dialog : ViewGroup
 			closeOnClickOutside: false, isModal: true, ownsView: ownsView);
 
 		// Now measure with context available, then reposition to center.
-		let maxW = Math.Min(400, ctx.ActiveInputRoot.ViewportSize.X * 0.8f);
-		let maxH = Math.Min(300, ctx.ActiveInputRoot.ViewportSize.Y * 0.8f);
+		let viewportW = ctx.ActiveInputRoot.ViewportSize.X;
+		let viewportH = ctx.ActiveInputRoot.ViewportSize.Y;
+		let maxW = Math.Min(MaxWidth, viewportW * 0.8f);
+		let maxH = Math.Min(MaxHeight, viewportH * 0.8f);
 		Measure(.AtMost(maxW), .AtMost(maxH));
 
-		let x = (ctx.ActiveInputRoot.ViewportSize.X - MeasuredSize.X) * 0.5f;
-		let y = (ctx.ActiveInputRoot.ViewportSize.Y - MeasuredSize.Y) * 0.5f;
+		// Clamp to max bounds in case measure didn't respect AtMost fully
+		let finalW = Math.Min(MeasuredSize.X, maxW);
+		let finalH = Math.Min(MeasuredSize.Y, maxH);
 
-		Layout(x, y, MeasuredSize.X, MeasuredSize.Y);
+		let x = (viewportW - finalW) * 0.5f;
+		let y = (viewportH - finalH) * 0.5f;
+
+		Console.WriteLine("Dialog.Show: viewport={}x{} max={}x{} measured={}x{} final={}x{} pos={},{}",
+			viewportW, viewportH, maxW, maxH,
+			MeasuredSize.X, MeasuredSize.Y, finalW, finalH, x, y);
+
+		Layout(x, y, finalW, finalH);
+
+		Console.WriteLine("Dialog.Show: after Layout bounds=({},{} {}x{})",
+			Bounds.X, Bounds.Y, Bounds.Width, Bounds.Height);
+
 		ctx.PopupLayer.UpdatePopupPosition(this, x, y);
 	}
 
@@ -115,8 +137,18 @@ public class Dialog : ViewGroup
 
 	protected override void OnMeasure(MeasureSpec wSpec, MeasureSpec hSpec)
 	{
-		mLayout.Measure(wSpec, hSpec);
-		MeasuredSize = mLayout.MeasuredSize;
+		// Enforce MaxWidth/MaxHeight as upper bounds on the measure spec,
+		// even if the PopupLayer passes a larger AtMost constraint.
+		var clampedW = wSpec;
+		var clampedH = hSpec;
+		if (MaxWidth > 0 && (wSpec.Mode == .AtMost || wSpec.Mode == .Unspecified))
+			clampedW = .AtMost(Math.Min(MaxWidth, wSpec.Size));
+		if (MaxHeight > 0 && (hSpec.Mode == .AtMost || hSpec.Mode == .Unspecified))
+			clampedH = .AtMost(Math.Min(MaxHeight, hSpec.Size));
+
+		mLayout.Measure(clampedW, clampedH);
+		MeasuredSize = .(Math.Min(mLayout.MeasuredSize.X, clampedW.Size),
+						 Math.Min(mLayout.MeasuredSize.Y, clampedH.Size));
 	}
 
 	protected override void OnLayout(float left, float top, float right, float bottom)
