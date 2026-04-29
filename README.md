@@ -3,9 +3,11 @@
 [![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.gg/WSvxW8mWH5)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A modular game engine written in [Beeflang](https://www.beeflang.org/) with a
-cross-platform RHI (Vulkan + DX12), forward PBR renderer, entity-component
-scene system, and an Android-inspired retained-mode UI framework.
+A modular game engine written in [Beeflang](https://www.beeflang.org/)
+with a cross-platform RHI (Vulkan + DX12), forward PBR renderer, entity-component
+scene system, asset pipeline, and an Android-inspired retained-mode UI framework.
+
+![Sedulous Editor](Documentation/Editor.png)
 
 > **Note:** Sedulous is under active development. APIs are subject to change.
 > Previous iterations of the engine have been used to create a few games.
@@ -106,36 +108,33 @@ what to render and where.
 
 ### Editor (Sedulous.Editor)
 - Plugin-based architecture ([EditorPlugin] auto-discovery)
-- Project management (.sedproj)
-- Scene editor with hierarchy, 3D viewport, inspector
-- Orbit/fly camera controller
-- Per-page undo/redo command stack
+- Project management (.sedproj) with recent projects
+- Scene editor with hierarchy (drag reorder/reparent, inline rename), 3D viewport, inspector
+- Independent editor camera (orbit/fly/pan/zoom) with CameraOverride
+- Transform gizmos (translate/rotate/scale) with local/world orientation
+- GPU entity picking (PickPass with async readback, proxy sphere fallback for non-mesh entities)
+- Asset browser with registry tree, list/grid content view, breadcrumb navigation
+- Registry management (mount/create/unmount, .sedproj persistence)
+- Asset import pipeline (model + texture importers, import preview dialog)
+- Context menus (create assets, delete, copy path/GUID, show in explorer)
+- Comptime-generated component inspectors via [Property] attributes
+- Per-page undo/redo command stack with drag merge
 - LogView with thread-safe log capture
 - Multi-window docking with cross-window drag
 - ViewportView with render-to-texture via external texture cache
 
-## Application Models
+## Samples
 
-### Runtime.Client.Application
-Lightweight base for sandboxes, tools, and the editor. Owns Shell + RHI + SwapChain.
-Virtual CreateLogger() for custom logging. EditorApplication extends this.
-
-### EngineApplication
-Full engine with automatic subsystem registration. Owns presentation pipeline
-(clear -> RenderScene -> blit -> overlays -> present). Sedulous currently follows
-a code-first development model -- game logic lives in components and subsystems.
-Editor tooling for a visual workflow is work-in-progress.
-
-**EngineSandbox** showcases this well and serves as the primary testbed for engine
-features -- PBR rendering, shadows, skinned meshes, particles, sprites, decals,
-debug draw, world-space UI, physics, audio, and navigation.
+**EngineSandbox** is the primary testbed for engine features -- PBR
+rendering, shadows, skinned meshes, particles, sprites, decals, debug draw,
+world-space UI, physics, audio, and navigation.
 
 ![EngineSandbox](Code/Samples/EngineSandbox/EngineSandbox.png)
 
-### EditorApplication
-Extends Application directly. Owns UIContext/VGRenderer for editor UI. Creates
-a RuntimeContext with engine subsystems for scene preview. Each scene page gets
-its own dock tab with a viewport rendering via ISceneRenderer.
+**Showcase** demonstrates the asset import pipeline with a stylized nature
+scene built from glTF models, with material deduplication across imports.
+
+![Showcase](Code/Samples/Showcase/Showcase.png)
 
 ## Platform Support
 
@@ -152,7 +151,7 @@ dependencies for those platforms and filling any gaps in RHI bootstrapping.
 
 ## Requirements
 
-- [Beeflang](https://www.beeflang.org/) (BeefBuild or Beef IDE)
+- [Beeflang Nightly](https://nightly.beeflang.org/index.html) (BeefBuild or Beef IDE)
 - [Vulkan SDK](https://vulkan.lunarg.com/) (for shader compilation)
 - Vulkan-capable GPU supporting Vulkan 1.3 or later
 
@@ -223,6 +222,7 @@ Built on these Beeflang bindings:
 - **Dxc-Beef** -- HLSL shader compilation
 - **stb_image-Beef**, **stb_truetype-Beef** -- Image loading, font rasterization
 - **cgltf-Beef** -- glTF model loading
+- **ufbx-Beef** -- FBX/OBJ model loading
 
 ## Inspiration
 
