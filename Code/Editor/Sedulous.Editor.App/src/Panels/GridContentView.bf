@@ -9,7 +9,7 @@ using internal Sedulous.UI;
 
 /// A flow-layout grid view for the asset browser tile/grid mode.
 /// Fixed-size cells arranged in rows, wrapping on container width.
-/// Virtualized — only creates/binds views for the visible range.
+/// Virtualized - only creates/binds views for the visible range.
 ///
 /// Uses the same IListAdapter as ListView for data binding.
 /// Each cell is a single view created by the adapter.
@@ -40,6 +40,10 @@ class GridContentView : ViewGroup, IListAdapterObserver
 
 	/// Fired when the background (empty space) is right-clicked. Args: (localX, localY).
 	public Event<delegate void(float, float)> OnBackgroundRightClicked ~ _.Dispose();
+
+	/// Fired when a key is pressed with an item selected. Args: (position, KeyEventArgs).
+	/// Set e.Handled = true to prevent default handling.
+	public Event<delegate void(int32, KeyEventArgs)> OnItemKeyDown ~ _.Dispose();
 
 	private ViewRecycler mRecycler = new .() ~ delete _;
 	private float mScrollY;
@@ -97,6 +101,14 @@ class GridContentView : ViewGroup, IListAdapterObserver
 			let viewportH = Height - GridPadding.Top - GridPadding.Bottom;
 			return Math.Max(0, mTotalContentHeight - viewportH);
 		}
+	}
+
+	/// Gets the currently active (visible) view for a given adapter position, or null.
+	public View GetActiveView(int32 position)
+	{
+		if (mActiveViews.TryGetValue(position, let view))
+			return view;
+		return null;
 	}
 
 	public void ScrollBy(float dy)
@@ -175,7 +187,7 @@ class GridContentView : ViewGroup, IListAdapterObserver
 		let totalRows = (itemCount + mColumnsPerRow - 1) / mColumnsPerRow;
 		mTotalContentHeight = totalRows * (CellHeight + SpacingY) - (totalRows > 0 ? SpacingY : 0);
 
-		// No items — nothing to lay out
+		// No items - nothing to lay out
 		if (itemCount == 0)
 		{
 			mScrollBarVisible = false;
@@ -301,7 +313,7 @@ class GridContentView : ViewGroup, IListAdapterObserver
 			}
 			else
 			{
-				// Click on empty space — clear selection
+				// Click on empty space - clear selection
 				Selection.ClearSelection();
 				e.Handled = true;
 			}
@@ -315,6 +327,16 @@ class GridContentView : ViewGroup, IListAdapterObserver
 			ScrollBy(-e.DeltaY * CellHeight);
 			mMomentum.VelocityY = -e.DeltaY * 200;
 			e.Handled = true;
+		}
+	}
+
+	public override void OnKeyDown(KeyEventArgs e)
+	{
+		let sel = Selection.FirstSelected;
+		if (sel >= 0)
+		{
+			OnItemKeyDown(sel, e);
+			if (e.Handled) return;
 		}
 	}
 

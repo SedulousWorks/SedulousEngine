@@ -82,6 +82,63 @@ class AssetBrowserPanel : IEditorPanel
 		mBuildResult.GridAdapter.Rebuild();
 	}
 
+	/// Navigates the content view to a folder. If the folder doesn't exist,
+	/// walks up to the closest existing parent.
+	public void NavigateToFolder(StringView relativePath)
+	{
+		let registry = mBuildResult.ListAdapter.ActiveRegistry;
+		if (registry == null) return;
+
+		// Walk up until we find an existing folder (or reach root)
+		let folder = scope String(relativePath);
+		while (folder.Length > 0)
+		{
+			let absPath = scope String();
+			System.IO.Path.InternalCombine(absPath, registry.RootPath, folder);
+			if (System.IO.Directory.Exists(absPath))
+				break;
+
+			let lastSlash = folder.LastIndexOf('/');
+			if (lastSlash >= 0)
+				folder.RemoveToEnd(lastSlash);
+			else
+				folder.Clear();
+		}
+
+		mBuildResult.ListAdapter.SetFolder(registry, folder);
+		mBuildResult.GridAdapter.SetFolder(registry, folder);
+		mBuildResult.Breadcrumb.SetPath(registry.Name, folder);
+	}
+
+	/// If the content view is currently inside the given folder, navigates
+	/// to the closest existing parent. Otherwise just refreshes.
+	public void NavigateAwayFromDeletedFolder(StringView deletedRelPath)
+	{
+		let currentFolder = mBuildResult.ListAdapter.CurrentFolder;
+
+		bool isInside = StringView(currentFolder) == deletedRelPath ||
+			(currentFolder.Length > deletedRelPath.Length &&
+			 currentFolder.StartsWith(deletedRelPath) &&
+			 currentFolder[deletedRelPath.Length] == '/');
+
+		if (isInside)
+		{
+			// Navigate to parent of the deleted folder
+			let parentFolder = scope String(deletedRelPath);
+			let lastSlash = parentFolder.LastIndexOf('/');
+			if (lastSlash >= 0)
+				parentFolder.RemoveToEnd(lastSlash);
+			else
+				parentFolder.Clear();
+
+			NavigateToFolder(parentFolder);
+		}
+		else
+		{
+			RefreshContent();
+		}
+	}
+
 	// ==================== Registry Management ====================
 
 	/// Mount an existing .registry file via file dialog.

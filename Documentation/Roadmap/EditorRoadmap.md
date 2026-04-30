@@ -1102,6 +1102,50 @@ editor will only contain render components (mesh, camera, light). Loading
 scenes with physics/audio/animation components will silently skip those
 components until their editor modules are registered.
 
+## Sedulous.Messaging Integration
+
+`Sedulous.Messaging` provides a typed pub/sub message bus with zero-allocation
+dispatch (struct messages by reference), re-entrant safe dispatch, snapshot
+semantics, and deferred queue/drain mode. `MessagingSubsystem` integrates it
+with the engine update loop (drains queued messages each frame at UpdateOrder -500).
+
+**Editor use cases where MessageBus replaces direct coupling:**
+
+- **Asset hot-reload notifications** -- when FileWatcher detects changes and
+  resources are reloaded, publish `ResourceReloadedMessage { Guid, Type, Path }`
+  so the inspector, viewport, and asset browser all react independently without
+  knowing about each other.
+
+- **Selection changed broadcast** -- currently `SceneEditorPage.OnSelectionChanged`
+  is an event with direct subscribers. A `SelectionChangedMessage` on the bus
+  would decouple hierarchy, inspector, viewport gizmos, and future property
+  animation editors from the page.
+
+- **Scene dirty/save state** -- `SceneDirtyMessage` when any command executes,
+  letting the tab title, status bar, and auto-save logic all respond independently.
+
+- **Import completed notifications** -- `AssetImportedMessage { paths, registry }`
+  so the asset browser refreshes, and any open material/mesh editors reload
+  their data without the importer knowing about those systems.
+
+- **Play mode transitions** -- `PlayModeChangedMessage { .Edit, .Playing, .Paused }`
+  so inspector, gizmos, toolbar, and viewport all switch modes independently.
+
+- **Cross-module plugin communication** -- editor modules (Physics, Audio, etc.)
+  can publish domain-specific messages without depending on each other. E.g.
+  physics debug panel publishes `PhysicsDebugToggleMessage`, and RenderSubsystem
+  subscribes to enable/disable debug draw.
+
+**Integration approach:** `EditorApplication` registers `MessagingSubsystem` on
+its own `mContext` (from `Application` base class) in `OnInitialize`. This bus
+is for editor-side messages only - it is not shared with `RuntimeContext`
+(the embedded engine for scene preview). Access via
+`mContext.GetSubsystem<MessagingSubsystem>().Bus` or expose on `EditorContext`
+for convenience. `EngineApplication` does not register it by default - it's
+opt-in per application. Evaluate per use case whether immediate `Publish` or
+deferred `Queue`/`Drain` is appropriate (immediate for UI updates, deferred
+for batch operations like import).
+
 ## Prerequisites
 
 - ~~**RenderSubsystem refactor**~~: ISceneRenderer/IOverlayRenderer, swapchain

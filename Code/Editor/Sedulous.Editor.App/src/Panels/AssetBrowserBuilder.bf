@@ -12,7 +12,7 @@ using Sedulous.Editor.Core;
 ///   with breadcrumb bar above the content view.
 static class AssetBrowserBuilder
 {
-	/// Result of building the browser — contains references to key components
+	/// Result of building the browser - contains references to key components
 	/// so the panel can wire events and manage state.
 	public struct BuildResult
 	{
@@ -79,7 +79,7 @@ static class AssetBrowserBuilder
 		let rightPane = new LinearLayout();
 		rightPane.Orientation = .Vertical;
 
-		// Two adapters sharing the same data — one for list, one for grid
+		// Two adapters sharing the same data - one for list, one for grid
 		let listAdapter = contentAdapter;
 		listAdapter.ViewMode = .List;
 
@@ -114,7 +114,7 @@ static class AssetBrowserBuilder
 			Width = LayoutParams.MatchParent, Height = 1
 		});
 
-		// Content container — holds the active view (list or grid)
+		// Content container - holds the active view (list or grid)
 		let contentContainer = new Panel();
 		rightPane.AddView(contentContainer, new LinearLayout.LayoutParams() {
 			Width = LayoutParams.MatchParent, Height = 0, Weight = 1
@@ -137,6 +137,7 @@ static class AssetBrowserBuilder
 		contentGrid.Adapter = gridAdapter;
 		contentGrid.Selection.Mode = .Single;
 		contentGrid.Visibility = .Gone;
+		gridAdapter.OwnerGridView = contentGrid;
 		contentContainer.AddView(contentGrid, new LayoutParams() {
 			Width = LayoutParams.MatchParent, Height = LayoutParams.MatchParent
 		});
@@ -171,6 +172,146 @@ static class AssetBrowserBuilder
 		// Wire tree item click -> select node
 		treeView.OnItemClick.Add(new (clickInfo) => {
 			treeAdapter.SelectNode(clickInfo.NodeId);
+		});
+
+		// Wire tree right-click -> context menu
+		treeView.OnItemRightClick.Add(new [=treeAdapter, =treeView, =editorContext, =panel, =contentAdapter, =gridAdapter, =breadcrumb] (nodeId, localX, localY) => {
+			let ctx = treeView.Context;
+			if (ctx == null) return;
+
+			treeAdapter.SelectNode(nodeId);
+
+			let screenCoords = ToScreenCoords(treeView, localX, localY);
+			let registry = treeAdapter.GetRegistryForNode(nodeId);
+			let isLocked = treeAdapter.IsNodeLocked(nodeId);
+			let isRoot = treeAdapter.IsRegistryRoot(nodeId);
+
+			ShowTreeContextMenu(ctx, screenCoords.x, screenCoords.y, nodeId, registry,
+				isRoot, isLocked, treeAdapter, contentAdapter, gridAdapter, editorContext, panel, breadcrumb);
+		});
+
+		// Wire rename commit -> rename file on disk and update registry
+		listAdapter.OnItemRenamed.Add(new [=listAdapter, =gridAdapter, =panel] (item, newName) => {
+			if (item.AbsolutePath == null || newName.Length == 0) return;
+
+			// Build new absolute path
+			let dir = scope String();
+			System.IO.Path.GetDirectoryPath(item.AbsolutePath, dir);
+			let newAbsPath = scope String();
+			System.IO.Path.InternalCombine(newAbsPath, dir, newName);
+
+			// Don't rename if target already exists
+			if (System.IO.File.Exists(newAbsPath) || System.IO.Directory.Exists(newAbsPath))
+				return;
+
+			// Rename file on disk
+			if (System.IO.File.Exists(item.AbsolutePath))
+				System.IO.File.Move(item.AbsolutePath, newAbsPath);
+			else if (System.IO.Directory.Exists(item.AbsolutePath))
+				System.IO.Directory.Move(item.AbsolutePath, newAbsPath);
+
+			// Rename .meta sidecar if exists
+			let oldMeta = scope String(item.AbsolutePath);
+			oldMeta.Append(".meta");
+			if (System.IO.File.Exists(oldMeta))
+			{
+				let newMeta = scope String(newAbsPath);
+				newMeta.Append(".meta");
+				System.IO.File.Move(oldMeta, newMeta);
+			}
+
+			// Update registry entry if registered
+			if (item.IsRegistered)
+			{
+				let registry = listAdapter.ActiveRegistry;
+				if (let concreteReg = registry as ResourceRegistry)
+				{
+					// Build new relative path
+					let newRelPath = scope String();
+					if (listAdapter.CurrentFolder.Length > 0)
+						newRelPath.AppendF("{}/{}", listAdapter.CurrentFolder, newName);
+					else
+						newRelPath.Set(newName);
+
+					concreteReg.Register(item.RegistryId, newRelPath);
+
+					// Save registry
+					let regFile = scope String();
+					System.IO.Path.InternalCombine(regFile, registry.RootPath, scope $"{registry.Name}.registry");
+					concreteReg.SaveToFile(regFile);
+				}
+			}
+
+			// Refresh both views
+			listAdapter.Rebuild();
+			gridAdapter.Rebuild();
+		});
+
+		// Wire F2 key -> inline rename on selected item
+		contentList.OnItemKeyDown.Add(new [=listAdapter] (position, e) => {
+			if (e.Key == .F2)
+			{
+				listAdapter.StartRename(position);
+				e.Handled = true;
+			}
+		});
+
+		// Wire grid adapter rename commit -> rename file on disk and update registry
+		gridAdapter.OnItemRenamed.Add(new [=listAdapter, =gridAdapter, =panel] (item, newName) => {
+			if (item.AbsolutePath == null || newName.Length == 0) return;
+
+			let dir = scope String();
+			System.IO.Path.GetDirectoryPath(item.AbsolutePath, dir);
+			let newAbsPath = scope String();
+			System.IO.Path.InternalCombine(newAbsPath, dir, newName);
+
+			if (System.IO.File.Exists(newAbsPath) || System.IO.Directory.Exists(newAbsPath))
+				return;
+
+			if (System.IO.File.Exists(item.AbsolutePath))
+				System.IO.File.Move(item.AbsolutePath, newAbsPath);
+			else if (System.IO.Directory.Exists(item.AbsolutePath))
+				System.IO.Directory.Move(item.AbsolutePath, newAbsPath);
+
+			let oldMeta = scope String(item.AbsolutePath);
+			oldMeta.Append(".meta");
+			if (System.IO.File.Exists(oldMeta))
+			{
+				let newMeta = scope String(newAbsPath);
+				newMeta.Append(".meta");
+				System.IO.File.Move(oldMeta, newMeta);
+			}
+
+			if (item.IsRegistered)
+			{
+				let registry = gridAdapter.ActiveRegistry;
+				if (let concreteReg = registry as ResourceRegistry)
+				{
+					let newRelPath = scope String();
+					if (gridAdapter.CurrentFolder.Length > 0)
+						newRelPath.AppendF("{}/{}", gridAdapter.CurrentFolder, newName);
+					else
+						newRelPath.Set(newName);
+
+					concreteReg.Register(item.RegistryId, newRelPath);
+
+					let regFile = scope String();
+					System.IO.Path.InternalCombine(regFile, registry.RootPath, scope $"{registry.Name}.registry");
+					concreteReg.SaveToFile(regFile);
+				}
+			}
+
+			listAdapter.Rebuild();
+			gridAdapter.Rebuild();
+		});
+
+		// Wire F2 key -> inline rename on selected grid item
+		contentGrid.OnItemKeyDown.Add(new [=gridAdapter] (position, e) => {
+			if (e.Key == .F2)
+			{
+				gridAdapter.StartRename(position);
+				e.Handled = true;
+			}
 		});
 
 		// Wire content list double-click -> navigate into folder or open asset.
@@ -212,9 +353,9 @@ static class AssetBrowserBuilder
 			let screenCoords = ToScreenCoords(contentList, localX, localY);
 
 			if (item.IsFolder)
-				ShowFolderItemContextMenu(ctx, screenCoords.x, screenCoords.y, item, contentAdapter, editorContext, panel, breadcrumb);
+				ShowFolderItemContextMenu(ctx, screenCoords.x, screenCoords.y, item, position, contentAdapter, editorContext, panel, breadcrumb);
 			else
-				ShowItemContextMenu(ctx, screenCoords.x, screenCoords.y, item, contentAdapter, editorContext, panel);
+				ShowItemContextMenu(ctx, screenCoords.x, screenCoords.y, item, position, contentAdapter, editorContext, panel);
 		});
 
 		// Wire right-click on empty space -> background context menu
@@ -261,9 +402,9 @@ static class AssetBrowserBuilder
 			let screenCoords = ToScreenCoords(contentGrid, localX, localY);
 
 			if (item.IsFolder)
-				ShowFolderItemContextMenu(ctx, screenCoords.x, screenCoords.y, item, gridAdapter, editorContext, panel, breadcrumb);
+				ShowFolderItemContextMenu(ctx, screenCoords.x, screenCoords.y, item, position, gridAdapter, editorContext, panel, breadcrumb);
 			else
-				ShowItemContextMenu(ctx, screenCoords.x, screenCoords.y, item, gridAdapter, editorContext, panel);
+				ShowItemContextMenu(ctx, screenCoords.x, screenCoords.y, item, position, gridAdapter, editorContext, panel);
 		});
 
 		// Wire grid view right-click on empty space
@@ -276,7 +417,7 @@ static class AssetBrowserBuilder
 				gridAdapter.CurrentFolder, gridAdapter, editorContext, panel, breadcrumb);
 		});
 
-		// Wire breadcrumb navigation — deferred via mutation queue because
+		// Wire breadcrumb navigation - deferred via mutation queue because
 		// SetPath destroys the button that fired the click event.
 		breadcrumb.OnSegmentClicked.Add(new [=contentAdapter, =gridAdapter, =breadcrumb] (segmentIndex) => {
 			let ctx = breadcrumb.Context;
@@ -335,6 +476,7 @@ static class AssetBrowserBuilder
 
 	// ==================== Helpers ====================
 
+
 	/// Converts local coordinates to screen coordinates by walking up the view tree.
 	private static (float x, float y) ToScreenCoords(View view, float localX, float localY)
 	{
@@ -354,36 +496,50 @@ static class AssetBrowserBuilder
 
 	/// Context menu for a file/asset item.
 	private static void ShowItemContextMenu(UIContext ctx, float x, float y,
-		AssetContentItem item, AssetContentAdapter adapter,
+		AssetContentItem item, int32 position, AssetContentAdapter adapter,
 		EditorContext editorContext, AssetBrowserPanel panel)
 	{
 		let menu = new ContextMenu();
 		let registry = adapter.ActiveRegistry;
 
-		// Rename
-		menu.AddItem("Rename", new [=item, =adapter, =panel] () => {
-			// TODO: inline rename (Phase 4c polish)
-		}, enabled: false);
+		// Rename - double-deferred: the menu item action queues a first action,
+		// which runs after ClosePopup/PopFocus, and then queues StartRename.
+		// This ensures BeginEdit's SetFocus happens after PopFocus restores focus.
+		menu.AddItem("Rename", new [=position, =adapter, =ctx] () => {
+			ctx.MutationQueue.QueueAction(new [=position, =adapter, =ctx] () => {
+				ctx.MutationQueue.QueueAction(new [=position, =adapter] () => {
+					adapter.StartRename(position);
+				});
+			});
+		});
 
 		// Delete
-		menu.AddItem("Delete", new [=item, =adapter, =registry, =panel] () => {
-			if (item.AbsolutePath != null && System.IO.File.Exists(item.AbsolutePath))
-				System.IO.File.Delete(item.AbsolutePath);
+		menu.AddItem("Delete", new [=item, =adapter, =registry, =panel, =ctx] () => {
+			let confirmMsg = scope String();
+			confirmMsg.AppendF("Delete '{}'?", item.Name);
+			let dialog = Dialog.Confirm("Confirm Delete", confirmMsg);
+			dialog.OnClosed.Add(new [=item, =registry, =panel] (dlg, result) => {
+				if (result != .OK) return;
 
-			// Unregister from registry
-			if (item.IsRegistered)
-			{
-				if (let concreteReg = registry as ResourceRegistry)
-					concreteReg.Unregister(item.RegistryId);
-			}
+				if (item.AbsolutePath != null && System.IO.File.Exists(item.AbsolutePath))
+					System.IO.File.Delete(item.AbsolutePath);
 
-			// Delete .meta sidecar if exists
-			let metaPath = scope String(item.AbsolutePath);
-			metaPath.Append(".meta");
-			if (System.IO.File.Exists(metaPath))
-				System.IO.File.Delete(metaPath);
+				// Unregister from registry
+				if (item.IsRegistered)
+				{
+					if (let concreteReg = registry as ResourceRegistry)
+						concreteReg.Unregister(item.RegistryId);
+				}
 
-			panel.RefreshContent();
+				// Delete .meta sidecar if exists
+				let metaPath = scope String(item.AbsolutePath);
+				metaPath.Append(".meta");
+				if (System.IO.File.Exists(metaPath))
+					System.IO.File.Delete(metaPath);
+
+				panel.RefreshContent();
+			});
+			dialog.Show(ctx);
 		});
 
 		menu.AddSeparator();
@@ -429,7 +585,7 @@ static class AssetBrowserBuilder
 
 	/// Context menu for a folder item in the content view.
 	private static void ShowFolderItemContextMenu(UIContext ctx, float x, float y,
-		AssetContentItem folderItem, AssetContentAdapter adapter,
+		AssetContentItem folderItem, int32 position, AssetContentAdapter adapter,
 		EditorContext editorContext, AssetBrowserPanel panel, BreadcrumbBar breadcrumb)
 	{
 		let menu = new ContextMenu();
@@ -438,7 +594,16 @@ static class AssetBrowserBuilder
 		// The target folder for creating assets is the right-clicked folder
 		let targetFolder = scope String(folderItem.RelativePath);
 
-		// Create New submenu — assets go into the right-clicked folder
+		// Rename folder - double-deferred for same reason as file rename
+		menu.AddItem("Rename", new [=position, =adapter, =ctx] () => {
+			ctx.MutationQueue.QueueAction(new [=position, =adapter, =ctx] () => {
+				ctx.MutationQueue.QueueAction(new [=position, =adapter] () => {
+					adapter.StartRename(position);
+				});
+			});
+		});
+
+		// Create New submenu - assets go into the right-clicked folder
 		AddCreateNewSubmenu(menu, targetFolder, registry, editorContext, adapter, panel);
 
 		// Create Folder inside this folder
@@ -450,10 +615,21 @@ static class AssetBrowserBuilder
 		menu.AddSeparator();
 
 		// Delete folder
-		menu.AddItem("Delete", new [=folderItem, =panel] () => {
-			if (folderItem.AbsolutePath != null && System.IO.Directory.Exists(folderItem.AbsolutePath))
-				System.IO.Directory.DelTree(folderItem.AbsolutePath);
-			panel.RefreshContent();
+		menu.AddItem("Delete", new [=folderItem, =panel, =ctx] () => {
+			let confirmMsg = scope String();
+			confirmMsg.AppendF("Delete folder '{}' and all its contents?", folderItem.Name);
+			let dialog = Dialog.Confirm("Confirm Delete", confirmMsg);
+			let deletedRelPath = new String(folderItem.RelativePath);
+			dialog.OnClosed.Add(new [=folderItem, =panel, =deletedRelPath] (dlg, result) => {
+				if (result != .OK) { delete deletedRelPath; return; }
+
+				if (folderItem.AbsolutePath != null && System.IO.Directory.Exists(folderItem.AbsolutePath))
+					System.IO.Directory.DelTree(folderItem.AbsolutePath);
+
+				panel.NavigateAwayFromDeletedFolder(deletedRelPath);
+				delete deletedRelPath;
+			});
+			dialog.Show(ctx);
 		});
 
 		menu.AddSeparator();
@@ -477,7 +653,7 @@ static class AssetBrowserBuilder
 		let menu = new ContextMenu();
 		let registry = adapter.ActiveRegistry;
 
-		// Create New submenu — assets go into the current folder
+		// Create New submenu - assets go into the current folder
 		AddCreateNewSubmenu(menu, targetFolder, registry, editorContext, adapter, panel);
 
 		// Create Folder in current directory
@@ -708,7 +884,7 @@ static class AssetBrowserBuilder
 							let importDialog = new ImportDialog(preview, importer, outputDir,
 								concreteReg, serializer, panel);
 							importDialog.Show(ctx);
-							continue; // Don't delete preview — dialog owns it now
+							continue; // Don't delete preview - dialog owns it now
 						}
 					}
 				}
@@ -717,6 +893,110 @@ static class AssetBrowserBuilder
 				delete preview;
 			}
 		}, filters, default, true);
+	}
+
+	/// Context menu for the registry tree view nodes.
+	private static void ShowTreeContextMenu(UIContext ctx, float x, float y,
+		int32 nodeId, IResourceRegistry registry, bool isRoot, bool isLocked,
+		RegistryTreeAdapter treeAdapter, AssetContentAdapter contentAdapter,
+		AssetContentAdapter gridAdapter, EditorContext editorContext,
+		AssetBrowserPanel panel, BreadcrumbBar breadcrumb)
+	{
+		let menu = new ContextMenu();
+
+		// Single owned copy of the absolute path - shared by all lambdas, cleaned up by menu
+		let absPathOwned = new String(treeAdapter.GetNodeAbsolutePath(nodeId));
+		menu.AddOwnedObject(absPathOwned);
+
+		if (!isRoot)
+		{
+			// Subdirectory node - can rename, delete, create in
+			let relPath = treeAdapter.GetNodeRelativePath(nodeId);
+
+			// Rename folder - placeholder until tree item inline rename is implemented
+			menu.AddItem("Rename", new () => {
+			}, enabled: false);
+
+			// Create New submenu
+			AddCreateNewSubmenu(menu, relPath, registry, editorContext, contentAdapter, panel);
+
+			// Create Folder
+			menu.AddItem("Create Folder", new [=absPathOwned, =panel] () => {
+				CreateSubfolder(absPathOwned);
+				panel.RefreshRegistries();
+				panel.RefreshContent();
+			});
+
+			menu.AddSeparator();
+
+			// Delete folder — copy paths for the confirm dialog since absPathOwned
+			// is deleted when the context menu closes (before the dialog callback fires).
+			let deleteRelPath = new String(relPath);
+			menu.AddOwnedObject(deleteRelPath);
+			menu.AddItem("Delete", new [=absPathOwned, =deleteRelPath, =panel, =ctx] () => {
+				let pathCopy = new String(absPathOwned);
+				let relPathCopy = new String(deleteRelPath);
+				let dialog = Dialog.Confirm("Confirm Delete", "Delete this folder and all its contents?");
+				dialog.OnClosed.Add(new [=pathCopy, =relPathCopy, =panel] (dlg, result) => {
+					if (result != .OK) { delete pathCopy; delete relPathCopy; return; }
+
+					if (System.IO.Directory.Exists(pathCopy))
+						System.IO.Directory.DelTree(pathCopy);
+
+					panel.NavigateAwayFromDeletedFolder(relPathCopy);
+					panel.RefreshRegistries();
+					delete pathCopy;
+					delete relPathCopy;
+				});
+				dialog.Show(ctx);
+			});
+
+			menu.AddSeparator();
+
+			// Show in Explorer
+			menu.AddItem("Show in Explorer", new [=absPathOwned, =editorContext] () => {
+				editorContext.Shell?.RevealInFileManager(absPathOwned);
+			});
+		}
+		else
+		{
+			// Registry root node - limited actions
+
+			// Create New submenu (at registry root)
+			AddCreateNewSubmenu(menu, "", registry, editorContext, contentAdapter, panel);
+
+			// Create Folder at root
+			menu.AddItem("Create Folder", new [=absPathOwned, =panel] () => {
+				CreateSubfolder(absPathOwned);
+				panel.RefreshRegistries();
+				panel.RefreshContent();
+			});
+
+			menu.AddSeparator();
+
+			// Import
+			menu.AddItem("Import...", new [=editorContext, =contentAdapter, =panel] () => {
+				TriggerImportDialog(editorContext, contentAdapter, panel);
+			});
+
+			menu.AddSeparator();
+
+			// Show in Explorer
+			menu.AddItem("Show in Explorer", new [=absPathOwned, =editorContext] () => {
+				editorContext.Shell?.RevealInFileManager(absPathOwned);
+			});
+
+			// Unmount (only for non-locked registries)
+			if (!isLocked)
+			{
+				menu.AddSeparator();
+				menu.AddItem("Unmount", new [=panel] () => {
+					panel.UnmountSelectedRegistry();
+				});
+			}
+		}
+
+		menu.Show(ctx, x, y);
 	}
 }
 

@@ -105,6 +105,30 @@ class RegistryTreeAdapter : ITreeAdapter
 		return -1;
 	}
 
+	/// Gets whether a node is a registry root (top level).
+	public bool IsRegistryRoot(int32 nodeId)
+	{
+		if (mNodes.TryGetValue(nodeId, let node))
+			return node.IsRegistryRoot;
+		return false;
+	}
+
+	/// Gets the absolute path for a node.
+	public StringView GetNodeAbsolutePath(int32 nodeId)
+	{
+		if (mNodes.TryGetValue(nodeId, let node) && node.AbsolutePath != null)
+			return node.AbsolutePath;
+		return "";
+	}
+
+	/// Gets the relative path for a node within its registry.
+	public StringView GetNodeRelativePath(int32 nodeId)
+	{
+		if (mNodes.TryGetValue(nodeId, let node) && node.RelativePath != null)
+			return node.RelativePath;
+		return "";
+	}
+
 	/// Gets whether a node represents a locked registry (builtin/project).
 	public bool IsNodeLocked(int32 nodeId)
 	{

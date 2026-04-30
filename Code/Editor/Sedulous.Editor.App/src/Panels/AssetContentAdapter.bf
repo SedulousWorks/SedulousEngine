@@ -59,6 +59,9 @@ class AssetContentAdapter : ListAdapterBase
 	/// The owning ListView (set by AssetBrowserBuilder after construction).
 	public ListView OwnerListView { get; set; }
 
+	/// The owning GridContentView (set by AssetBrowserBuilder after construction).
+	public GridContentView OwnerGridView { get; set; }
+
 	/// Sets the active registry and navigates to a folder within it.
 	public void SetFolder(IResourceRegistry registry, StringView relativePath)
 	{
@@ -263,13 +266,91 @@ class AssetContentAdapter : ListAdapterBase
 	public enum ContentViewMode { List, Grid }
 	public ContentViewMode ViewMode = .List;
 
+	/// Position of the item currently being renamed, or -1.
+	private int32 mRenamingPosition = -1;
+
+	/// Fired when a rename is committed. Args: (item, newName).
+	public Event<delegate void(AssetContentItem, StringView)> OnItemRenamed ~ _.Dispose();
+
+	/// Triggers inline rename on the item at the given position.
+	/// Works in both list and grid view modes.
+	public void StartRename(int32 position)
+	{
+		if (position < 0 || position >= mItems.Count) return;
+		mRenamingPosition = position;
+
+		// Find the active view for this position and trigger edit
+		if (OwnerListView != null)
+		{
+			let view = OwnerListView.GetActiveView(position);
+			if (let itemView = view as AssetContentItemView)
+				itemView.NameLabel.BeginEdit();
+		}
+
+		if (OwnerGridView != null)
+		{
+			let view = OwnerGridView.GetActiveView(position);
+			if (let gridCell = view as AssetGridCellView)
+				gridCell.NameLabel.BeginEdit();
+		}
+	}
+
 	// === ListAdapterBase ===
 
 	public override View CreateView(int32 viewType)
 	{
 		if (ViewMode == .Grid)
-			return new AssetGridCellView();
-		return new AssetContentItemView();
+		{
+			let gridCell = new AssetGridCellView();
+
+			// Wire rename events
+			gridCell.NameLabel.OnRenameCommitted.Add(new (label, newName) => {
+				if (mRenamingPosition >= 0 && mRenamingPosition < mItems.Count)
+				{
+					let item = mItems[mRenamingPosition];
+					OnItemRenamed(item, newName);
+				}
+				mRenamingPosition = -1;
+			});
+
+			gridCell.NameLabel.OnRenameCancelled.Add(new (label) => {
+				mRenamingPosition = -1;
+			});
+
+			return gridCell;
+		}
+
+		let itemView = new AssetContentItemView();
+
+		// Disable double-click-to-edit - double-click navigates into folders
+		itemView.NameLabel.DoubleClickToEdit = false;
+
+		// Validate filenames: reject invalid filesystem characters
+		itemView.NameLabel.ValidateRename = new (name) => {
+			for (let c in name.RawChars)
+			{
+				if (c == '/' || c == '\\' || c == ':' || c == '*' ||
+					c == '?' || c == '"' || c == '<' || c == '>' || c == '|')
+					return false;
+			}
+			return true;
+		};
+
+		// Wire rename events
+		itemView.NameLabel.OnRenameCommitted.Add(new (label, newName) => {
+			if (mRenamingPosition >= 0 && mRenamingPosition < mItems.Count)
+			{
+				let item = mItems[mRenamingPosition];
+				OnItemRenamed(item, newName);
+			}
+			mRenamingPosition = -1;
+		});
+
+		itemView.NameLabel.OnRenameCancelled.Add(new (label) => {
+			mRenamingPosition = -1;
+		});
+
+		return itemView;
 	}
 
 	public override void BindView(View view, int32 position)
@@ -278,9 +359,21 @@ class AssetContentAdapter : ListAdapterBase
 		if (item == null) return;
 
 		if (let gridCell = view as AssetGridCellView)
+		{
 			gridCell.Bind(item);
+
+			// If this position is being renamed, enter edit mode
+			if (position == mRenamingPosition)
+				gridCell.NameLabel.BeginEdit();
+		}
 		else if (let listItem = view as AssetContentItemView)
+		{
 			listItem.Bind(item);
+
+			// If this position is being renamed, enter edit mode
+			if (position == mRenamingPosition)
+				listItem.NameLabel.BeginEdit();
+		}
 	}
 
 	// === Internal ===
@@ -294,12 +387,15 @@ class AssetContentAdapter : ListAdapterBase
 }
 
 /// View for a single item in the asset browser content list.
-/// Shows: [icon] [name] [registry badge]
+/// Shows: [icon] [name (editable)] [registry badge]
 class AssetContentItemView : LinearLayout
 {
 	private Label mIconLabel;
-	private Label mNameLabel;
+	private EditableLabel mNameLabel;
 	private Label mBadgeLabel;
+
+	/// The editable name label - used by the adapter to trigger rename.
+	public EditableLabel NameLabel => mNameLabel;
 
 	public this()
 	{
@@ -313,11 +409,10 @@ class AssetContentItemView : LinearLayout
 		mIconLabel.TextColor = .(140, 145, 165, 255);
 		AddView(mIconLabel, new LayoutParams() { Width = 20, Height = Sedulous.UI.LayoutParams.MatchParent });
 
-		// Name
-		mNameLabel = new Label();
+		// Name (editable label - acts as plain label, switches to edit on BeginEdit)
+		mNameLabel = new EditableLabel();
 		mNameLabel.FontSize = 12;
 		mNameLabel.TextColor = .(200, 205, 220, 255);
-		mNameLabel.Ellipsis = true;
 		AddView(mNameLabel, new LinearLayout.LayoutParams() { Width = 0, Height = Sedulous.UI.LayoutParams.MatchParent, Weight = 1 });
 
 		// Registry badge
