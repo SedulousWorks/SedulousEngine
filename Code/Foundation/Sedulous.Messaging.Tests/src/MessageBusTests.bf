@@ -346,7 +346,7 @@ class MessageBusTests
 		let bus = scope DefaultMessageBus();
 
 		bus.Queue<TestMessage>(.() { Value = 42 });
-		bus.Drain(); // no subscribers — should not crash
+		bus.Drain(); // no subscribers - should not crash
 	}
 
 	[Test]

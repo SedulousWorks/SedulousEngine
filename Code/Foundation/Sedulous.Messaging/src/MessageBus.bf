@@ -7,7 +7,7 @@ using System.Collections;
 ///
 /// Generic methods (Subscribe<T>, Publish<T>, Queue<T>) are concrete because
 /// Beef does not support generic virtual methods. The class is abstract to
-/// establish the extension pattern — use DefaultMessageBus or a custom subclass.
+/// establish the extension pattern - use DefaultMessageBus or a custom subclass.
 ///
 /// Subclasses can override Drain() and Dispose() for extension points
 /// (e.g., logging, profiling, thread safety).
