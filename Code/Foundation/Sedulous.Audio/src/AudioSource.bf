@@ -111,6 +111,10 @@ class AudioSource : IAudioSource
 		set => mAttenuator = value;
 	}
 
+	/// Starts playback. Sets up the node for playing but does NOT connect
+	/// to the bus — connection is handled by SetTargetBus (which may be
+	/// enqueued on the command queue for thread safety).
+	/// Safe to call from the main thread (only writes node fields).
 	public void Play(AudioClip clip)
 	{
 		mCurrentClip = clip;
@@ -121,10 +125,6 @@ class AudioSource : IAudioSource
 		mNode.Loop = mLoop;
 		mNode.Volume = mVolume * mMasterVolume * mDistanceGain;
 		mNode.Play();
-
-		// Connect to target bus if set and not already connected
-		if (mTargetBus != null)
-			mTargetBus.AddInput(mPanNode);
 
 		mState = .Playing;
 	}
@@ -144,15 +144,28 @@ class AudioSource : IAudioSource
 	public void Stop()
 	{
 		mNode.Stop();
+		mState = .Stopped;
+		// NOTE: Disconnection from bus is handled by DisconnectFromBus(),
+		// which should be enqueued on the command queue when threaded.
+	}
 
-		// Disconnect from bus
+	/// Connects to the target bus. Call from the mix thread (or via command queue).
+	public void ConnectToBus()
+	{
+		if (mTargetBus != null && mState != .Stopped)
+			mTargetBus.AddInput(mPanNode);
+	}
+
+	/// Disconnects from the target bus. Call from the mix thread (or via command queue).
+	public void DisconnectFromBus()
+	{
 		if (mTargetBus != null)
 			mTargetBus.RemoveInput(mPanNode);
-
-		mState = .Stopped;
 	}
 
 	/// Sets which CombineNode this source routes into.
+	/// Handles disconnect from old bus and connect to new bus.
+	/// Call from the mix thread (or via command queue).
 	public void SetTargetBus(CombineNode bus)
 	{
 		if (mTargetBus == bus)
