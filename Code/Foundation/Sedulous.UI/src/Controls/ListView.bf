@@ -27,6 +27,10 @@ public class ListView : ViewGroup, IListAdapterObserver
 	/// Fired when the background (empty space) is right-clicked. Args: (localX, localY).
 	public Event<delegate void(float, float)> OnBackgroundRightClicked ~ _.Dispose();
 
+	/// Fired when a key is pressed with an item selected. Args: (position, KeyEventArgs).
+	/// Set e.Handled = true to prevent default ListView key handling.
+	public Event<delegate void(int32, KeyEventArgs)> OnItemKeyDown ~ _.Dispose();
+
 	/// Long press threshold in seconds.
 	public float LongPressTime = 0.5f;
 
@@ -268,7 +272,7 @@ public class ListView : ViewGroup, IListAdapterObserver
 			}
 			else
 			{
-				// Clicked empty space — fire background event
+				// Clicked empty space - fire background event
 				OnBackgroundRightClicked(e.X, e.Y);
 				e.Handled = true;
 			}
@@ -326,6 +330,14 @@ public class ListView : ViewGroup, IListAdapterObserver
 		if (mAdapter == null) return;
 		let sel = Selection.FirstSelected;
 		let count = mAdapter.ItemCount;
+
+		// Let subscribers handle keys first (F2, Delete, etc.)
+		if (sel >= 0)
+		{
+			OnItemKeyDown(sel, e);
+			if (e.Handled) return;
+		}
+
 		let shift = e.Modifiers.HasFlag(.Shift);
 
 		switch (e.Key)
@@ -440,7 +452,7 @@ public class ListView : ViewGroup, IListAdapterObserver
 		// Clamp scroll.
 		mScrollY = Math.Clamp(mScrollY, 0, MaxScrollY);
 
-		// No items — nothing to lay out (recycle was already done in NotifyDataChanged).
+		// No items - nothing to lay out (recycle was already done in NotifyDataChanged).
 		if (mAdapter.ItemCount == 0)
 		{
 			mScrollBarVisible = false;

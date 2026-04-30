@@ -89,6 +89,37 @@ class ControlsPage : DemoPage
 			row.AddView(numFieldDec, new LinearLayout.LayoutParams() { Width = 120, Height = Sedulous.UI.LayoutParams.MatchParent });
 		}
 
+		AddSection("EditableLabel");
+		{
+			let row = new LinearLayout();
+			row.Orientation = .Horizontal;
+			row.Spacing = 8;
+			mLayout.AddView(row, new LinearLayout.LayoutParams() { Width = Sedulous.UI.LayoutParams.MatchParent, Height = 24 });
+
+			let editableLabel = new EditableLabel();
+			editableLabel.SetText("Double-click or slow-click to rename");
+			row.AddView(editableLabel, new LinearLayout.LayoutParams() { Width = 0, Height = Sedulous.UI.LayoutParams.MatchParent, Weight = 1 });
+
+			let editBtn = new Button();
+			editBtn.SetText("Edit");
+			editBtn.OnClick.Add(new (b) => {
+				editableLabel.BeginEdit();
+			});
+			row.AddView(editBtn, new LinearLayout.LayoutParams() { Height = Sedulous.UI.LayoutParams.MatchParent });
+
+			let statusLabel = new Label();
+			statusLabel.FontSize = 11;
+			statusLabel.TextColor = .(140, 145, 165, 255);
+			mLayout.AddView(statusLabel, new LinearLayout.LayoutParams() { Width = Sedulous.UI.LayoutParams.MatchParent, Height = 18 });
+
+			editableLabel.OnRenameCommitted.Add(new (label, newText) => {
+				statusLabel.SetText(scope $"Renamed to: {newText}");
+			});
+			editableLabel.OnRenameCancelled.Add(new (label) => {
+				statusLabel.SetText("Rename cancelled");
+			});
+		}
+
 		AddSection("Expander");
 		{
 			let expander = new Expander();
