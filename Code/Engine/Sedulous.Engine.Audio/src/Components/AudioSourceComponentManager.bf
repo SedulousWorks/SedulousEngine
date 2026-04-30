@@ -66,28 +66,46 @@ class AudioSourceComponentManager : ComponentManager<AudioSourceComponent>
 
 			if (comp.Source == null) continue;
 
-			// Apply properties
-			let categoryVolume = (Subsystem != null)
-				? ((comp.Category == .SFX) ? Subsystem.SFXVolume : Subsystem.MusicVolume)
-				: 1.0f;
-			comp.Source.Volume = comp.Volume * categoryVolume;
+			// Apply properties - bus volumes are handled by the graph, not here
+			comp.Source.Volume = comp.Volume;
 			comp.Source.Pitch = comp.Pitch;
 			comp.Source.Loop = comp.Loop;
 			comp.Source.MinDistance = comp.MinDistance;
 			comp.Source.MaxDistance = comp.MaxDistance;
+			comp.Source.BusName = comp.BusName;
 
-			// Sync 3D position from entity transform
+			// Apply attenuator
+			if (comp.UseAttenuator)
+				comp.Source.Attenuator = comp.AttenuatorConfig;
+			else
+				comp.Source.Attenuator = null;
+
+			// Sync 3D position and direction from entity transform
 			if (comp.Spatial)
 			{
 				let worldMatrix = scene.GetWorldMatrix(comp.Owner);
 				comp.Source.Position = worldMatrix.Translation;
+
+				// Forward direction for cone attenuation (negative Z in row-major)
+				comp.Source.Direction = Vector3.Normalize(Vector3(worldMatrix.M31, worldMatrix.M32, worldMatrix.M33));
 			}
 
-			// Handle play request
-			if (comp.PlayRequested && comp.Clip != null)
+			// Handle play request - prefer cue over clip
+			if (comp.PlayRequested)
 			{
 				comp.PlayRequested = false;
-				comp.Source.Play(comp.Clip);
+				if (comp.Cue != null)
+				{
+					// Play through cue system (handles selection, randomization, voice limits)
+					if (comp.Spatial)
+						AudioSystem.PlayCue3D(comp.Cue, comp.Source.Position, comp.Volume);
+					else
+						AudioSystem.PlayCue(comp.Cue, comp.Volume);
+				}
+				else if (comp.Clip != null)
+				{
+					comp.Source.Play(comp.Clip);
+				}
 			}
 		}
 	}
@@ -95,11 +113,11 @@ class AudioSourceComponentManager : ComponentManager<AudioSourceComponent>
 	private void ResolveResources(AudioSourceComponent comp)
 	{
 		let state = GetOrCreateResolveState(comp.Owner);
-		let clipRef = comp.ClipRef;
 
+		// Resolve clip
+		let clipRef = comp.ClipRef;
 		if (state.Clip.Resolve(ResourceSystem, clipRef))
 		{
-			// Resource changed (first load, hot reload, or ref changed)
 			let res = state.Clip.Handle.Resource;
 			if (res != null && res.Clip != null)
 				comp.Clip = res.Clip;
@@ -108,8 +126,22 @@ class AudioSourceComponentManager : ComponentManager<AudioSourceComponent>
 		}
 		else if (!clipRef.IsValid && comp.Clip != null)
 		{
-			// Ref was cleared
 			comp.Clip = null;
+		}
+
+		// Resolve cue
+		let cueRef = comp.CueRef;
+		if (state.Cue.Resolve(ResourceSystem, cueRef))
+		{
+			let res = state.Cue.Handle.Resource;
+			if (res != null && res.Cue != null)
+				comp.Cue = res.Cue;
+			else
+				comp.Cue = null;
+		}
+		else if (!cueRef.IsValid && comp.Cue != null)
+		{
+			comp.Cue = null;
 		}
 	}
 
@@ -148,9 +180,11 @@ class AudioSourceComponentManager : ComponentManager<AudioSourceComponent>
 class AudioResolveState
 {
 	public ResolvedResource<AudioClipResource> Clip;
+	public ResolvedResource<SoundCueResource> Cue;
 
 	public void Release()
 	{
 		Clip.Release();
+		Cue.Release();
 	}
 }

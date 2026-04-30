@@ -3,23 +3,33 @@ using System.Collections;
 using SDL3;
 using Sedulous.Core.Mathematics;
 using Sedulous.Audio;
+using Sedulous.Audio.Graph;
 
 namespace Sedulous.Audio.SDL3;
 
-/// SDL3 implementation of IAudioSystem using raw SDL3 audio.
+/// SDL3 implementation of IAudioSystem using the audio node graph and bus system.
 class SDL3AudioSystem : IAudioSystem
 {
 	private SDL_AudioDeviceID mDeviceId;
 	private AudioListener mListener = new .() ~ delete _;
-	private List<SDL3AudioSource> mSources = new .() ~ DeleteContainerAndItems!(_);
-	private List<SDL3AudioSource> mOneShotSources = new .() ~ DeleteContainerAndItems!(_);
+	private List<AudioSource> mSources = new .() ~ DeleteContainerAndItems!(_);
+	private List<AudioSource> mOneShotSources = new .() ~ DeleteContainerAndItems!(_);
 	private List<SDL3AudioStream> mStreams = new .() ~ DeleteContainerAndItems!(_);
 	private float mMasterVolume = 1.0f;
 	private bool mOwnedAudioInit;
 	private bool mPaused;
 
+	// Graph-based mixing
+	private SDL3AudioMixer mMixer ~ { if (_ != null) { _.Dispose(); delete _; } };
+
 	/// Returns true if the audio system initialized successfully.
 	public bool IsInitialized => mDeviceId != 0;
+
+	/// The audio mixer managing the graph and device output.
+	public SDL3AudioMixer Mixer => mMixer;
+
+	/// The bus system for routing audio.
+	public IAudioBusSystem BusSystem => mMixer?.BusSystem;
 
 	/// Creates an SDL3AudioSystem with default audio device and format.
 	public this()
@@ -36,13 +46,15 @@ class SDL3AudioSystem : IAudioSystem
 		}
 
 		// Open default playback device
-		// SDL3 will automatically handle format conversion via streams
 		mDeviceId = SDL3.SDL_OpenAudioDevice(SDL3.SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, null);
 		if (mDeviceId == 0)
 		{
 			LogError("Failed to open audio device");
 			return;
 		}
+
+		// Create mixer (owns graph + bus system)
+		mMixer = new SDL3AudioMixer(mDeviceId);
 	}
 
 	public ~this()
@@ -52,20 +64,32 @@ class SDL3AudioSystem : IAudioSystem
 
 	public void Dispose()
 	{
-		// Clean up sources first
+		// Stop all sources (disconnects from graph)
+		for (let source in mSources)
+			source.Stop();
+		for (let source in mOneShotSources)
+			source.Stop();
+
+		// Delete sources (their nodes are standalone, not owned by graph)
 		for (let source in mSources)
 			delete source;
 		mSources.Clear();
 
-		// Clean up one-shot sources
 		for (let source in mOneShotSources)
 			delete source;
 		mOneShotSources.Clear();
 
-		// Clean up streams
 		for (let stream in mStreams)
 			delete stream;
 		mStreams.Clear();
+
+		// Mixer disposes bus system + graph
+		if (mMixer != null)
+		{
+			mMixer.Dispose();
+			delete mMixer;
+			mMixer = null;
+		}
 
 		// Close audio device
 		if (mDeviceId != 0)
@@ -91,11 +115,10 @@ class SDL3AudioSystem : IAudioSystem
 		{
 			mMasterVolume = Math.Clamp(value, 0.0f, 1.0f);
 
-			// Update all sources with new master volume
-			for (let source in mSources)
-				source.SetMasterVolume(mMasterVolume);
-			for (let source in mOneShotSources)
-				source.SetMasterVolume(mMasterVolume);
+			// Set master bus volume
+			if (mMixer?.BusSystem != null)
+				mMixer.BusSystem.Master.Volume = mMasterVolume;
+
 			for (let stream in mStreams)
 				stream.SetMasterVolume(mMasterVolume);
 		}
@@ -106,16 +129,17 @@ class SDL3AudioSystem : IAudioSystem
 		if (mDeviceId == 0)
 			return null;
 
-		let source = new SDL3AudioSource(mDeviceId);
-		source.SetMasterVolume(mMasterVolume);
+		let source = new AudioSource();
+		RouteSourceToBus(source);
 		mSources.Add(source);
 		return source;
 	}
 
 	public void DestroySource(IAudioSource source)
 	{
-		if (let sdlSource = source as SDL3AudioSource)
+		if (let sdlSource = source as AudioSource)
 		{
+			sdlSource.Stop();
 			mSources.Remove(sdlSource);
 			delete sdlSource;
 		}
@@ -128,10 +152,10 @@ class SDL3AudioSystem : IAudioSystem
 
 		if (clip != null && clip.IsLoaded)
 		{
-			let source = new SDL3AudioSource(mDeviceId);
+			let source = new AudioSource();
 			source.IsOneShot = true;
-			source.SetMasterVolume(mMasterVolume);
 			source.Volume = volume;
+			RouteSourceToBus(source);
 			source.Play(clip);
 			mOneShotSources.Add(source);
 		}
@@ -144,19 +168,63 @@ class SDL3AudioSystem : IAudioSystem
 
 		if (clip != null && clip.IsLoaded)
 		{
-			let source = new SDL3AudioSource(mDeviceId);
+			let source = new AudioSource();
 			source.IsOneShot = true;
-			source.SetMasterVolume(mMasterVolume);
 			source.Volume = volume;
 			source.Position = position;
-
-			// Calculate initial 3D parameters before playing
 			source.Update3D(mListener);
-
-			// Play (will apply 3D panning in the first chunk)
+			RouteSourceToBus(source);
 			source.Play(clip);
-
 			mOneShotSources.Add(source);
+		}
+	}
+
+	private Random mCueRandom = new .() ~ delete _;
+	private float mCueTime;
+
+	public void PlayCue(SoundCue cue, float volume)
+	{
+		if (mDeviceId == 0 || cue == null)
+			return;
+
+		if (let entry = cue.SelectEntry(mCueTime))
+		{
+			if (entry.Clip == null || !entry.Clip.IsLoaded)
+				return;
+
+			let source = new AudioSource();
+			source.IsOneShot = true;
+			source.Volume = volume * SoundCue.RandomizeVolume(entry, mCueRandom);
+			source.Pitch = SoundCue.RandomizePitch(entry, mCueRandom);
+			source.BusName = cue.BusName;
+			RouteSourceToBus(source);
+			source.Play(entry.Clip);
+			mOneShotSources.Add(source);
+			cue.NotifyInstanceStarted();
+		}
+	}
+
+	public void PlayCue3D(SoundCue cue, Vector3 position, float volume)
+	{
+		if (mDeviceId == 0 || cue == null)
+			return;
+
+		if (let entry = cue.SelectEntry(mCueTime))
+		{
+			if (entry.Clip == null || !entry.Clip.IsLoaded)
+				return;
+
+			let source = new AudioSource();
+			source.IsOneShot = true;
+			source.Volume = volume * SoundCue.RandomizeVolume(entry, mCueRandom);
+			source.Pitch = SoundCue.RandomizePitch(entry, mCueRandom);
+			source.Position = position;
+			source.BusName = cue.BusName;
+			source.Update3D(mListener);
+			RouteSourceToBus(source);
+			source.Play(entry.Clip);
+			mOneShotSources.Add(source);
+			cue.NotifyInstanceStarted();
 		}
 	}
 
@@ -251,6 +319,7 @@ class SDL3AudioSystem : IAudioSystem
 
 			// Update playback state (feeds chunks, handles looping)
 			source.UpdateState();
+			UpdateSourceBusRouting(source);
 		}
 
 		// Update and clean up one-shot sources
@@ -272,11 +341,44 @@ class SDL3AudioSystem : IAudioSystem
 			}
 		}
 
-		// Update streams (feeds data, handles looping)
+		// Update streams
 		for (let stream in mStreams)
-		{
 			stream.Update();
+
+		// Evaluate the audio graph and push to device
+		if (mMixer != null)
+			mMixer.Mix();
+	}
+
+	/// Routes a source to its target bus based on BusName.
+	private void RouteSourceToBus(AudioSource source)
+	{
+		if (mMixer?.BusSystem == null)
+			return;
+
+		let bus = mMixer.BusSystem.GetBusInternal(source.BusName);
+		if (bus != null)
+			source.SetTargetBus(bus.InputNode);
+		else
+		{
+			// Fallback to master
+			let master = mMixer.BusSystem.GetBusInternal("Master");
+			if (master != null)
+				source.SetTargetBus(master.InputNode);
 		}
+	}
+
+	/// Re-routes a source if its BusName changed.
+	private void UpdateSourceBusRouting(AudioSource source)
+	{
+		if (mMixer?.BusSystem == null)
+			return;
+
+		let bus = mMixer.BusSystem.GetBusInternal(source.BusName);
+		let targetInput = (bus != null) ? bus.InputNode : mMixer.BusSystem.GetBusInternal("Master")?.InputNode;
+
+		if (targetInput != null)
+			source.SetTargetBus(targetInput);
 	}
 
 	private void LogError(StringView message)

@@ -23,6 +23,7 @@ class AudioSubsystem : Subsystem, ISceneAware
 	private Sedulous.Resources.ResourceSystem mResourceSystem;
 	private IAudioSystem mAudioSystem ~ { _?.Dispose(); delete _; };
 	private AudioClipResourceManager mClipResourceManager ~ delete _;
+	private SoundCueResourceManager mCueResourceManager ~ delete _;
 
 	public this(Sedulous.Resources.ResourceSystem resourceSystem)
 	{
@@ -31,39 +32,49 @@ class AudioSubsystem : Subsystem, ISceneAware
 	/// Current music stream (owned by IAudioSystem, not by us - don't delete).
 	private IAudioStream mCurrentMusic;
 
-	// --- Volume Categories ---
-
-	private float mMasterVolume = 1.0f;
-	private float mSFXVolume = 1.0f;
-	private float mMusicVolume = 1.0f;
+	// --- Volume (bus-based) ---
 
 	/// Master volume affecting all audio (0.0 to 1.0).
+	/// Controls the Master bus volume.
 	public float MasterVolume
 	{
-		get => mMasterVolume;
-		set
-		{
-			mMasterVolume = Math.Clamp(value, 0.0f, 1.0f);
-			SyncMasterVolume();
-		}
+		get => GetBusVolume("Master");
+		set => SetBusVolume("Master", value);
 	}
 
-	/// SFX volume category (0.0 to 1.0). Multiplied by MasterVolume.
+	/// SFX volume (0.0 to 1.0). Controls the SFX bus volume.
 	public float SFXVolume
 	{
-		get => mSFXVolume;
-		set => mSFXVolume = Math.Clamp(value, 0.0f, 1.0f);
+		get => GetBusVolume("SFX");
+		set => SetBusVolume("SFX", value);
 	}
 
-	/// Music volume category (0.0 to 1.0). Multiplied by MasterVolume.
+	/// Music volume (0.0 to 1.0). Controls the Music bus volume.
 	public float MusicVolume
 	{
-		get => mMusicVolume;
+		get => GetBusVolume("Music");
 		set
 		{
-			mMusicVolume = Math.Clamp(value, 0.0f, 1.0f);
+			SetBusVolume("Music", value);
 			SyncMusicVolume();
 		}
+	}
+
+	/// Gets a bus volume by name.
+	public float GetBusVolume(StringView busName)
+	{
+		if (mAudioSystem?.BusSystem != null)
+			if (let bus = mAudioSystem.BusSystem.GetBus(busName))
+				return bus.Volume;
+		return 1.0f;
+	}
+
+	/// Sets a bus volume by name.
+	public void SetBusVolume(StringView busName, float volume)
+	{
+		if (mAudioSystem?.BusSystem != null)
+			if (let bus = mAudioSystem.BusSystem.GetBus(busName))
+				bus.Volume = Math.Clamp(volume, 0.0f, 1.0f);
 	}
 
 	/// Gets the audio system (for direct access if needed).
@@ -78,9 +89,12 @@ class AudioSubsystem : Subsystem, ISceneAware
 		if (!mAudioSystem.IsInitialized)
 			Console.Error.WriteLine("[AudioSubsystem] Failed to initialize audio system");
 
-		// Register clip resource manager (needs audio system for clip loading)
+		// Register resource managers
 		mClipResourceManager = new AudioClipResourceManager(mAudioSystem);
 		mResourceSystem.AddResourceManager(mClipResourceManager);
+
+		mCueResourceManager = new SoundCueResourceManager();
+		mResourceSystem.AddResourceManager(mCueResourceManager);
 	}
 
 	protected override void OnPrepareShutdown()
@@ -91,6 +105,8 @@ class AudioSubsystem : Subsystem, ISceneAware
 
 	protected override void OnShutdown()
 	{
+		if (mCueResourceManager != null)
+			mResourceSystem.RemoveResourceManager(mCueResourceManager);
 		if (mClipResourceManager != null)
 			mResourceSystem.RemoveResourceManager(mClipResourceManager);
 	}
@@ -140,7 +156,7 @@ class AudioSubsystem : Subsystem, ISceneAware
 		if (mAudioSystem.OpenStream(filePath) case .Ok(let stream))
 		{
 			mCurrentMusic = stream;
-			mCurrentMusic.Volume = volume * mMusicVolume * mMasterVolume;
+			mCurrentMusic.Volume = volume * GetBusVolume("Music") * GetBusVolume("Master");
 			mCurrentMusic.Loop = loop;
 			mCurrentMusic.Play();
 			return true;
@@ -179,33 +195,44 @@ class AudioSubsystem : Subsystem, ISceneAware
 	// ==================== One-Shot API ====================
 
 	/// Plays a clip once with fire-and-forget (no component needed).
-	/// Volume is multiplied by MasterVolume × SFXVolume.
+	/// Volume is the per-source volume; bus volumes are applied by the graph.
 	public void PlayOneShot(AudioClip clip, float volume = 1.0f)
 	{
 		if (mAudioSystem != null)
-			mAudioSystem.PlayOneShot(clip, volume * mSFXVolume * mMasterVolume);
+			mAudioSystem.PlayOneShot(clip, volume);
 	}
 
 	/// Plays a clip at a 3D position with fire-and-forget.
-	/// Volume is multiplied by MasterVolume × SFXVolume.
+	/// Volume is the per-source volume; bus volumes are applied by the graph.
 	public void PlayOneShot3D(AudioClip clip, Vector3 position, float volume = 1.0f)
 	{
 		if (mAudioSystem != null)
-			mAudioSystem.PlayOneShot3D(clip, position, volume * mSFXVolume * mMasterVolume);
+			mAudioSystem.PlayOneShot3D(clip, position, volume);
+	}
+
+	// ==================== Sound Cue API ====================
+
+	/// Plays a sound cue with fire-and-forget semantics.
+	/// Selects entry, applies volume/pitch randomization, routes to cue's bus.
+	public void PlayCue(SoundCue cue, float volume = 1.0f)
+	{
+		if (mAudioSystem != null)
+			mAudioSystem.PlayCue(cue, volume);
+	}
+
+	/// Plays a sound cue at a 3D position with fire-and-forget.
+	public void PlayCue3D(SoundCue cue, Vector3 position, float volume = 1.0f)
+	{
+		if (mAudioSystem != null)
+			mAudioSystem.PlayCue3D(cue, position, volume);
 	}
 
 	// ==================== Internal ====================
 
-	private void SyncMasterVolume()
-	{
-		if (mAudioSystem != null)
-			mAudioSystem.MasterVolume = mMasterVolume;
-		SyncMusicVolume();
-	}
-
 	private void SyncMusicVolume()
 	{
+		// Streams still use SDL directly, so apply combined volume
 		if (mCurrentMusic != null)
-			mCurrentMusic.Volume = mMusicVolume * mMasterVolume;
+			mCurrentMusic.Volume = GetBusVolume("Music") * GetBusVolume("Master");
 	}
 }

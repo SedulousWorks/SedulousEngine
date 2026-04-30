@@ -929,7 +929,7 @@ static class AssetBrowserBuilder
 
 			menu.AddSeparator();
 
-			// Delete folder — copy paths for the confirm dialog since absPathOwned
+			// Delete folder - copy paths for the confirm dialog since absPathOwned
 			// is deleted when the context menu closes (before the dialog callback fires).
 			let deleteRelPath = new String(relPath);
 			menu.AddOwnedObject(deleteRelPath);

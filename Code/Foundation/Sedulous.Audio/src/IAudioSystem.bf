@@ -15,6 +15,10 @@ interface IAudioSystem : IDisposable
 	/// Gets or sets the master volume affecting all audio (0.0 to 1.0).
 	float MasterVolume { get; set; }
 
+	/// Gets the bus system for routing audio through named buses.
+	/// Returns null if the backend doesn't support buses.
+	IAudioBusSystem BusSystem { get; }
+
 	/// Creates a new audio source for controlled playback.
 	IAudioSource CreateSource();
 
@@ -33,6 +37,13 @@ interface IAudioSystem : IDisposable
 	/// Opens an audio stream from a file path for streaming playback.
 	/// Use this for music and long audio files that shouldn't be loaded entirely into memory.
 	Result<IAudioStream> OpenStream(StringView filePath);
+
+	/// Plays a sound cue with fire-and-forget semantics.
+	/// Selects an entry, applies randomization, routes to the cue's bus.
+	void PlayCue(SoundCue cue, float volume = 1.0f);
+
+	/// Plays a sound cue at a 3D position with fire-and-forget semantics.
+	void PlayCue3D(SoundCue cue, Vector3 position, float volume = 1.0f);
 
 	/// Pauses all audio playback.
 	void PauseAll();

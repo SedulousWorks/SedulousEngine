@@ -3,15 +3,7 @@ namespace Sedulous.Engine.Audio;
 using Sedulous.Engine.Core;
 using Sedulous.Resources;
 using Sedulous.Audio;
-
-/// Volume category for an audio source.
-public enum AudioVolumeCategory : uint8
-{
-	/// Sound effects (short clips, spatialized).
-	SFX,
-	/// Music (long-form, typically non-spatialized).
-	Music
-}
+using System;
 
 /// Component for an audio source attached to an entity.
 /// The AudioSourceComponentManager resolves the clip resource, creates the
@@ -19,11 +11,12 @@ public enum AudioVolumeCategory : uint8
 /// playback lifecycle.
 class AudioSourceComponent : Component, ISerializableComponent
 {
-	public int32 SerializationVersion => 1;
+	public int32 SerializationVersion => 2;
 
 	public void Serialize(IComponentSerializer s)
 	{
 		s.ResourceRef("ClipRef", ref mClipRef);
+		s.ResourceRef("CueRef", ref mCueRef);
 		s.Float("Volume", ref Volume);
 		s.Float("Pitch", ref Pitch);
 		s.Bool("Loop", ref Loop);
@@ -31,15 +24,30 @@ class AudioSourceComponent : Component, ISerializableComponent
 		s.Bool("AutoPlay", ref AutoPlay);
 		s.Float("MinDistance", ref MinDistance);
 		s.Float("MaxDistance", ref MaxDistance);
-		var category = (uint8)Category;
-		s.UInt8("Category", ref category);
-		if (s.IsReading) Category = (AudioVolumeCategory)category;
+		s.String("BusName", BusName);
+		s.Bool("UseAttenuator", ref UseAttenuator);
+		if (UseAttenuator)
+		{
+			var curve = (uint8)AttenuatorConfig.Curve;
+			s.UInt8("AttenuationCurve", ref curve);
+			if (s.IsReading) AttenuatorConfig.Curve = (AttenuationCurve)curve;
+			s.Float("AttMinDistance", ref AttenuatorConfig.MinDistance);
+			s.Float("AttMaxDistance", ref AttenuatorConfig.MaxDistance);
+			s.Float("AttMaxDistanceLowPassHz", ref AttenuatorConfig.MaxDistanceLowPassHz);
+			s.Float("AttConeInnerAngle", ref AttenuatorConfig.ConeInnerAngle);
+			s.Float("AttConeOuterAngle", ref AttenuatorConfig.ConeOuterAngle);
+			s.Float("AttConeOuterGain", ref AttenuatorConfig.ConeOuterGain);
+			s.Float("AttDopplerFactor", ref AttenuatorConfig.DopplerFactor);
+		}
 	}
 
-	// --- Resource ref (serializable) ---
+	// --- Resource refs (serializable) ---
 
-	/// Audio clip resource reference.
+	/// Audio clip resource reference (used when CueRef is empty).
 	private ResourceRef mClipRef ~ _.Dispose();
+
+	/// Sound cue resource reference (overrides ClipRef when set).
+	private ResourceRef mCueRef ~ _.Dispose();
 
 	// --- Configuration ---
 
@@ -64,10 +72,19 @@ class AudioSourceComponent : Component, ISerializableComponent
 	/// Maximum distance for sound attenuation.
 	public float MaxDistance = 50.0f;
 
-	/// Volume category (affects which category volume multiplier applies).
-	public AudioVolumeCategory Category = .SFX;
+	/// Name of the audio bus this source routes to (e.g., "SFX", "Music", "UI").
+	public String BusName = new .("SFX") ~ delete _;
+
+	/// Whether to use a custom attenuator (instead of default linear).
+	public bool UseAttenuator = false;
+
+	/// Custom attenuator configuration. Only used when UseAttenuator is true.
+	public SoundAttenuator AttenuatorConfig = .();
 
 	// --- Runtime state (managed by AudioSourceComponentManager) ---
+
+	/// Resolved sound cue (not owned - owned by resource system).
+	public SoundCue Cue;
 
 	/// Resolved audio clip (not owned - owned by resource system).
 	public AudioClip Clip;
@@ -84,11 +101,18 @@ class AudioSourceComponent : Component, ISerializableComponent
 	// --- Resource ref accessors ---
 
 	public ResourceRef ClipRef => mClipRef;
+	public ResourceRef CueRef => mCueRef;
 
 	public void SetClipRef(ResourceRef @ref)
 	{
 		mClipRef.Dispose();
 		mClipRef = ResourceRef(@ref.Id, @ref.Path ?? "");
+	}
+
+	public void SetCueRef(ResourceRef @ref)
+	{
+		mCueRef.Dispose();
+		mCueRef = ResourceRef(@ref.Id, @ref.Path ?? "");
 	}
 
 	/// Requests playback to start. Will begin once the clip is resolved.

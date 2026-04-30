@@ -1,6 +1,5 @@
 using System;
 using Sedulous.Audio;
-using Sedulous.Audio.SDL3;
 using Sedulous.Core.Mathematics;
 
 namespace Sedulous.Audio.Tests;
@@ -14,7 +13,7 @@ class Audio3DTests
 		let listener = scope AudioListener();
 		listener.Position = Vector3.Zero;
 
-		let source = scope SDL3AudioSource(0);
+		let source = scope AudioSource();
 		source.MinDistance = 5.0f;
 		source.MaxDistance = 100.0f;
 		source.Position = .(3, 0, 0);  // Within min distance
@@ -33,7 +32,7 @@ class Audio3DTests
 		let listener = scope AudioListener();
 		listener.Position = Vector3.Zero;
 
-		let source = scope SDL3AudioSource(0);
+		let source = scope AudioSource();
 		source.MinDistance = 1.0f;
 		source.MaxDistance = 50.0f;
 		source.Position = .(100, 0, 0);  // Beyond max distance
@@ -50,7 +49,7 @@ class Audio3DTests
 		let listener = scope AudioListener();
 		listener.Position = Vector3.Zero;
 
-		let source = scope SDL3AudioSource(0);
+		let source = scope AudioSource();
 		source.MinDistance = 10.0f;
 		source.MaxDistance = 110.0f;
 		source.Position = .(60, 0, 0);  // Halfway between min and max
@@ -69,7 +68,7 @@ class Audio3DTests
 		listener.Forward = .(0, 0, -1);
 		listener.Up = .(0, 1, 0);
 
-		let source = scope SDL3AudioSource(0);
+		let source = scope AudioSource();
 		source.Position = .(0, 0, -10);  // Directly in front
 
 		source.Update3D(listener);
@@ -86,7 +85,7 @@ class Audio3DTests
 		listener.Forward = .(0, 0, -1);
 		listener.Up = .(0, 1, 0);
 
-		let source = scope SDL3AudioSource(0);
+		let source = scope AudioSource();
 		source.Position = .(10, 0, 0);  // To the right
 
 		source.Update3D(listener);
@@ -103,7 +102,7 @@ class Audio3DTests
 		listener.Forward = .(0, 0, -1);
 		listener.Up = .(0, 1, 0);
 
-		let source = scope SDL3AudioSource(0);
+		let source = scope AudioSource();
 		source.Position = .(-10, 0, 0);  // To the left
 
 		source.Update3D(listener);
@@ -120,7 +119,7 @@ class Audio3DTests
 		listener.Forward = .(0, 0, -1);
 		listener.Up = .(0, 1, 0);
 
-		let source = scope SDL3AudioSource(0);
+		let source = scope AudioSource();
 		source.Position = .(0, 0, 10);  // Behind (positive Z)
 
 		source.Update3D(listener);
@@ -137,7 +136,7 @@ class Audio3DTests
 		listener.Forward = .(0, 0, -1);
 		listener.Up = .(0, 1, 0);
 
-		let source = scope SDL3AudioSource(0);
+		let source = scope AudioSource();
 		source.Position = .(90, 0, 0);  // Source at X=90 (10 units to left of listener)
 
 		source.Update3D(listener);
@@ -154,7 +153,7 @@ class Audio3DTests
 		listener.Forward = .(1, 0, 0);  // Looking right (+X)
 		listener.Up = .(0, 1, 0);
 
-		let source = scope SDL3AudioSource(0);
+		let source = scope AudioSource();
 		source.Position = .(0, 0, -10);  // Negative Z (was front, now left)
 
 		source.Update3D(listener);
@@ -166,7 +165,7 @@ class Audio3DTests
 	[Test]
 	public static void Test3D_DisabledByDefault()
 	{
-		let source = scope SDL3AudioSource(0);
+		let source = scope AudioSource();
 
 		// Position property enables 3D when set
 		// Without setting position, 3D should effectively be disabled
@@ -177,7 +176,7 @@ class Audio3DTests
 	[Test]
 	public static void Test3D_EnabledWhenPositionSet()
 	{
-		let source = scope SDL3AudioSource(0);
+		let source = scope AudioSource();
 
 		source.Position = .(5, 0, 0);
 
@@ -191,7 +190,7 @@ class Audio3DTests
 		let listener = scope AudioListener();
 		listener.Position = .(5, 5, 5);
 
-		let source = scope SDL3AudioSource(0);
+		let source = scope AudioSource();
 		source.Position = .(5, 5, 5);  // Same as listener
 
 		// Should handle zero distance case without issues
@@ -206,7 +205,7 @@ class Audio3DTests
 		let listener = scope AudioListener();
 		listener.Position = Vector3.Zero;
 
-		let source = scope SDL3AudioSource(0);
+		let source = scope AudioSource();
 		source.Position = .(0.0001f, 0, 0);  // Very close
 
 		// Should handle very small distances without issues

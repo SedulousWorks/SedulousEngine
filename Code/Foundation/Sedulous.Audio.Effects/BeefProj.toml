@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Audio.Effects"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Audio.Effects.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Audio" = "*"

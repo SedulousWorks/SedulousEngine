@@ -1,4 +1,5 @@
 using Sedulous.Core.Mathematics;
+using System;
 
 namespace Sedulous.Audio;
 
@@ -27,6 +28,18 @@ interface IAudioSource
 	/// Gets or sets the maximum distance for sound attenuation.
 	/// Beyond this distance, the sound is inaudible.
 	float MaxDistance { get; set; }
+
+	/// Gets or sets the name of the bus this source routes to.
+	/// Default is "SFX". Set to "Master" for direct routing.
+	StringView BusName { get; set; }
+
+	/// Gets or sets the forward direction for directional emission (cone attenuation).
+	/// Only used when the source has a SoundAttenuator with cone angles < 360.
+	Vector3 Direction { get; set; }
+
+	/// Gets or sets the optional sound attenuator for configurable distance/cone/doppler behavior.
+	/// When null, default linear attenuation is used.
+	SoundAttenuator? Attenuator { get; set; }
 
 	/// Plays the specified audio clip from the beginning.
 	void Play(AudioClip clip);
