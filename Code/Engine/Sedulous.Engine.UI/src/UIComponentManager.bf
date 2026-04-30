@@ -9,6 +9,9 @@ using Sedulous.VG.Renderer;
 using Sedulous.Fonts;
 using Sedulous.Shaders;
 using Sedulous.Core.Mathematics;
+using Sedulous.Engine.Render;
+using Sedulous.Materials;
+using Sedulous.Renderer;
 
 /// Per-scene manager for world-space UI components.
 /// Creates GPU resources (texture, VGRenderer) per component.
@@ -21,7 +24,7 @@ class UIComponentManager : ComponentManager<UIComponent>
 	public Theme SharedTheme;
 	public IFontService FontService;
 	public ShaderSystem ShaderSystem;
-	public Sedulous.Renderer.RenderContext RenderContext;
+	public RenderContext RenderContext;
 
 	/// WorldUIPass reads this list each frame to render dirty textures.
 	public WorldUIPass RenderPass;
@@ -50,7 +53,7 @@ class UIComponentManager : ComponentManager<UIComponent>
 		comp.VG = new VGContext(FontService);
 
 		comp.Renderer = new VGRenderer();
-		if (comp.Renderer.Initialize(Device, .RGBA8Unorm, 2, ShaderSystem) case .Err)
+		if (comp.Renderer.Initialize(Device, .RGBA8UnormSrgb, 2, ShaderSystem) case .Err)
 		{
 			Console.WriteLine("UIComponentManager: failed to initialize VGRenderer");
 			return;
@@ -61,7 +64,7 @@ class UIComponentManager : ComponentManager<UIComponent>
 		{
 			Width = comp.PixelWidth,
 			Height = comp.PixelHeight,
-			Format = .RGBA8Unorm,
+			Format = .RGBA8UnormSrgb,
 			Usage = .RenderTarget | .Sampled,
 			Dimension = .Texture2D,
 			MipLevelCount = 1,
@@ -76,7 +79,7 @@ class UIComponentManager : ComponentManager<UIComponent>
 
 			TextureViewDesc viewDesc = .()
 			{
-				Format = .RGBA8Unorm,
+				Format = .RGBA8UnormSrgb,
 				Dimension = .Texture2D,
 				BaseMipLevel = 0,
 				MipLevelCount = 1,
@@ -93,7 +96,7 @@ class UIComponentManager : ComponentManager<UIComponent>
 
 		// Create a SpriteComponent to display the UI texture in the 3D scene.
 		// Bypass ResourceRef - create MaterialInstance directly from the texture view.
-		let spriteMgr = Scene.GetModule<Sedulous.Engine.Render.SpriteComponentManager>();
+		let spriteMgr = Scene.GetModule<SpriteComponentManager>();
 		if (spriteMgr != null && comp.TextureView != null && RenderContext != null)
 		{
 			let spriteSystem = RenderContext.SpriteSystem;
@@ -108,7 +111,7 @@ class UIComponentManager : ComponentManager<UIComponent>
 					sprite.IsVisible = true;
 
 					// Create material instance with the UI render texture.
-					let matInstance = new Sedulous.Materials.MaterialInstance(spriteSystem.SpriteMaterial);
+					let matInstance = new MaterialInstance(spriteSystem.SpriteMaterial);
 					matInstance.SetTexture("SpriteTexture", comp.TextureView);
 					materialSystem.PrepareInstance(matInstance);
 					sprite.SetMaterial(matInstance);
