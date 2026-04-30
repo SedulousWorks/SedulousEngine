@@ -62,12 +62,18 @@ class ModelAssetImporter : IAssetImporter
 		dialogOptions.Options.ModelPath.Set(sourcePath);
 		preview.Options = dialogOptions;
 
+		// Model base name for fallback when resource names are empty
+		let modelBaseName = scope String();
+		System.IO.Path.GetFileNameWithoutExtension(sourcePath, modelBaseName);
+		if (modelBaseName.IsEmpty)
+			modelBaseName.Set("model");
+
 		int32 idx = 0;
 
 		for (let mesh in importResult.StaticMeshes)
 		{
 			let item = new ImportPreviewItem();
-			item.Name = new String(mesh.Name ?? "mesh");
+			item.Name = new String((mesh.Name != null && !mesh.Name.IsEmpty) ? StringView(mesh.Name) : StringView(modelBaseName));
 			item.Extension = new String(".mesh");
 			item.TypeLabel = new String("Static Mesh");
 			item.InternalIndex = idx++;
@@ -77,7 +83,7 @@ class ModelAssetImporter : IAssetImporter
 		for (let mesh in importResult.SkinnedMeshes)
 		{
 			let item = new ImportPreviewItem();
-			item.Name = new String(mesh.Name ?? "skinnedmesh");
+			item.Name = new String((mesh.Name != null && !mesh.Name.IsEmpty) ? StringView(mesh.Name) : StringView(modelBaseName));
 			item.Extension = new String(".skinnedmesh");
 			item.TypeLabel = new String("Skinned Mesh");
 			item.InternalIndex = idx++;
@@ -87,7 +93,7 @@ class ModelAssetImporter : IAssetImporter
 		for (let tex in importResult.Textures)
 		{
 			let item = new ImportPreviewItem();
-			item.Name = new String(tex.Name ?? "texture");
+			item.Name = new String((tex.Name != null && !tex.Name.IsEmpty) ? StringView(tex.Name) : StringView(modelBaseName));
 			item.Extension = new String(".texture");
 			item.TypeLabel = new String("Texture");
 			item.InternalIndex = idx++;
@@ -97,7 +103,7 @@ class ModelAssetImporter : IAssetImporter
 		for (let mat in importResult.Materials)
 		{
 			let item = new ImportPreviewItem();
-			item.Name = new String(mat.Name ?? "material");
+			item.Name = new String((mat.Name != null && !mat.Name.IsEmpty) ? StringView(mat.Name) : StringView(modelBaseName));
 			item.Extension = new String(".material");
 			item.TypeLabel = new String("Material");
 			item.InternalIndex = idx++;
@@ -107,7 +113,7 @@ class ModelAssetImporter : IAssetImporter
 		for (let skel in importResult.Skeletons)
 		{
 			let item = new ImportPreviewItem();
-			item.Name = new String(skel.Name ?? "skeleton");
+			item.Name = new String((skel.Name != null && !skel.Name.IsEmpty) ? StringView(skel.Name) : StringView(modelBaseName));
 			item.Extension = new String(".skeleton");
 			item.TypeLabel = new String("Skeleton");
 			item.InternalIndex = idx++;
@@ -117,7 +123,7 @@ class ModelAssetImporter : IAssetImporter
 		for (let anim in importResult.Animations)
 		{
 			let item = new ImportPreviewItem();
-			item.Name = new String(anim.Name ?? "animation");
+			item.Name = new String((anim.Name != null && !anim.Name.IsEmpty) ? StringView(anim.Name) : StringView(modelBaseName));
 			item.Extension = new String(".animation");
 			item.TypeLabel = new String("Animation");
 			item.InternalIndex = idx++;

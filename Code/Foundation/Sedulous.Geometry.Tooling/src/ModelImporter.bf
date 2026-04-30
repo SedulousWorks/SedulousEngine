@@ -414,6 +414,8 @@ class ModelImporter
 				delete m;
 		}
 
+		if (firstName.IsEmpty)
+			GetModelBaseName(firstName);
 		mergedMesh.Name.Set(firstName);
 		result.StaticMeshes.Add(mergedMesh);
 	}
@@ -522,6 +524,8 @@ class ModelImporter
 				RecenterSkinnedMesh(mergedMesh, skeleton);
 			}
 
+			if (firstName.IsEmpty)
+				GetModelBaseName(firstName);
 			mergedMesh.Name.Set(firstName);
 			// Store skeleton index so the application can link them
 			mergedMesh.SkeletonIndex = (int32)skeletonIdx;
@@ -668,15 +672,30 @@ class ModelImporter
 
 	private void ImportAnimations(Model model, ModelImportResult result)
 	{
-		if (model.Animations.Count == 0 || model.Skins.Count == 0)
+		if (model.Animations.Count == 0)
 			return;
 
-		// Get node-to-bone mapping from the skeleton converter (includes ancestor nodes
-		// so that root motion animation channels on non-joint ancestors are preserved)
-		let skin = model.Skins[0];
-		let nodeToBoneMapping = SkeletonConverter.CreateNodeToBoneMapping(model, skin);
-		if (nodeToBoneMapping == null)
-			return;
+		int32[] nodeToBoneMapping;
+
+		if (model.Skins.Count > 0)
+		{
+			// Get node-to-bone mapping from the skeleton converter (includes ancestor nodes
+			// so that root motion animation channels on non-joint ancestors are preserved)
+			let skin = model.Skins[0];
+			nodeToBoneMapping = SkeletonConverter.CreateNodeToBoneMapping(model, skin);
+			if (nodeToBoneMapping == null)
+				return;
+		}
+		else
+		{
+			// No skins — animation-only file (e.g. separate Mixamo animation clips).
+			// Use identity mapping: node index = bone index. The consumer is responsible
+			// for ensuring the skeleton's bone order matches the node order, which is the
+			// common case for standard exports sharing the same rig.
+			nodeToBoneMapping = new int32[model.Bones.Count];
+			for (int32 i = 0; i < nodeToBoneMapping.Count; i++)
+				nodeToBoneMapping[i] = i;
+		}
 		defer delete nodeToBoneMapping;
 
 		for (let modelAnim in model.Animations)
@@ -691,6 +710,16 @@ class ModelImporter
 				result.AddWarning(scope $"Failed to convert animation '{modelAnim.Name}'");
 			}
 		}
+	}
+
+	/// Extracts the model filename without extension from the model path.
+	/// Falls back to "model" if the path is empty.
+	private void GetModelBaseName(String outName)
+	{
+		if (mOptions.ModelPath.Length > 0)
+			System.IO.Path.GetFileNameWithoutExtension(mOptions.ModelPath, outName);
+		if (outName.IsEmpty)
+			outName.Set("model");
 	}
 
 	private Image LoadImageFromMemory(Span<uint8> data)
