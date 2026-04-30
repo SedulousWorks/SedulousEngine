@@ -16,7 +16,7 @@ using Sedulous.Serialization;
 /// Usage:
 ///   let dialog = new ImportDialog(preview, importer, outputDir, registry, serializer, panel);
 ///   dialog.Show(ctx);
-///   // Dialog owns itself — deleted on close via PopupLayer.
+///   // Dialog owns itself - deleted on close via PopupLayer.
 class ImportDialog : Dialog
 {
 	private ImportPreview mPreview ~ delete _;

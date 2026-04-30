@@ -21,7 +21,7 @@ class SceneAssetCreator : IAssetCreator
 
 		// Create an empty scene, serialize it, then destroy it.
 		// We don't go through SceneSubsystem because we don't want the scene
-		// registered as active — we just want to write a file.
+		// registered as active - we just want to write a file.
 		let scene = new Scene();
 		scene.Name.Set("New Scene");
 		defer delete scene;

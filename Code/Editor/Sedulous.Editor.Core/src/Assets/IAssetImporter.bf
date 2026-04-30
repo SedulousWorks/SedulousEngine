@@ -7,10 +7,10 @@ using Sedulous.Resources;
 /// Converts source files (.fbx, .gltf, .png, etc.) into baked engine resources.
 ///
 /// Import flow:
-///   1. GetSupportedExtensions() — discover which files this importer handles
-///   2. CreatePreview(sourcePath) — analyze source, return list of importable items
+///   1. GetSupportedExtensions() - discover which files this importer handles
+///   2. CreatePreview(sourcePath) - analyze source, return list of importable items
 ///   3. User reviews/configures items in the import dialog
-///   4. Import(preview, outputDir, registry) — save selected items, register GUIDs
+///   4. Import(preview, outputDir, registry) - save selected items, register GUIDs
 interface IAssetImporter
 {
 	/// File extensions this importer handles (e.g. ".gltf", ".glb", ".fbx").
