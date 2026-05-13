@@ -19,6 +19,7 @@ using Sedulous.Geometry.Resources;
 using Sedulous.Textures;
 using Sedulous.Textures.Resources;
 using Sedulous.Materials.Resources;
+using Sedulous.Particles.Resources;
 using System.Collections;
 
 /// Implements ISceneRenderer - renders the 3D scene to application-provided output targets.
@@ -54,6 +55,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 	private SkinnedMeshResourceManager mSkinnedMeshManager ~ delete _;
 	private TextureResourceManager mTextureManager ~ delete _;
 	private MaterialResourceManager mMaterialManager ~ delete _;
+	private ParticleEffectResourceManager mParticleEffectManager ~ delete _;
 
 	// Shared resource resolver
 	private RenderResourceResolver mResolver ~ delete _;
@@ -145,11 +147,14 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		mSkinnedMeshManager = new SkinnedMeshResourceManager();
 		mTextureManager = new TextureResourceManager();
 		mMaterialManager = new MaterialResourceManager();
+		mParticleEffectManager = new ParticleEffectResourceManager();
+		mParticleEffectManager.SerializerProvider = mResourceSystem.SerializerProvider;
 
 		mResourceSystem.AddResourceManager(mStaticMeshManager);
 		mResourceSystem.AddResourceManager(mSkinnedMeshManager);
 		mResourceSystem.AddResourceManager(mTextureManager);
 		mResourceSystem.AddResourceManager(mMaterialManager);
+		mResourceSystem.AddResourceManager(mParticleEffectManager);
 
 		// Shared resource resolver
 		mResolver = new RenderResourceResolver(mResourceSystem, mRenderContext.GPUResources, mRenderContext.MaterialSystem);
@@ -171,6 +176,8 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 			mResourceSystem.RemoveResourceManager(mTextureManager);
 		if (mMaterialManager != null)
 			mResourceSystem.RemoveResourceManager(mMaterialManager);
+		if (mParticleEffectManager != null)
+			mResourceSystem.RemoveResourceManager(mParticleEffectManager);
 
 		// Shutdown pipelines then renderer (pipelines first - they reference renderer)
 		for (let kv in mScenePipelines)
