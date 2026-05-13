@@ -36,6 +36,20 @@ public class Pipeline : IRenderingPipeline, IDisposable
 	private uint32 mOutputHeight;
 	private TextureFormat mOutputFormat = .RGBA16Float;
 
+	// Pipeline-owned persistent depth target. Created in Initialize, recreated
+	// on resize, freed in Shutdown. Imported into the render graph each frame
+	// so DepthPrepass and downstream consumers (ParticlePass, DecalPass,
+	// ForwardTransparentPass, SkyPass, DebugPass) share a single SceneDepth
+	// that exists regardless of whether opaque geometry was drawn this frame.
+	private ITexture mSceneDepthTexture;
+	private ITextureView mSceneDepthView;
+	/// Depth-only sub-view used for shader sampling (soft particles, decal
+	/// depth-reconstruction, future TAA disocclusion). Distinct from the
+	/// main view because the depth-stencil format carries both aspects but
+	/// sampled views must be single-aspect under Vulkan.
+	private ITextureView mSceneDepthOnlyView;
+	private const TextureFormat SceneDepthFormat = .Depth24PlusStencil8;
+
 	// Post-processing
 	private PostProcessStack mPostProcessStack;
 
@@ -171,6 +185,11 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		if (CreatePerFrameResources() case .Err)
 			return .Err;
 
+		// Allocate the pipeline-owned SceneDepth target.
+		RecreateSceneDepth(width, height);
+		if (mSceneDepthView == null)
+			return .Err;
+
 		return .Ok;
 	}
 
@@ -269,6 +288,11 @@ public class Pipeline : IRenderingPipeline, IDisposable
 				if (mLineVertexBuffers[i] != null)
 					device.DestroyBuffer(ref mLineVertexBuffers[i]);
 			}
+
+			// Release SceneDepth (WaitIdle above already flushed in-flight refs).
+			if (mSceneDepthOnlyView != null) device.DestroyTextureView(ref mSceneDepthOnlyView);
+			if (mSceneDepthView != null) device.DestroyTextureView(ref mSceneDepthView);
+			if (mSceneDepthTexture != null) device.DestroyTexture(ref mSceneDepthTexture);
 		}
 
 		mRenderContext = null;
@@ -336,6 +360,31 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		// Begin render graph frame
 		mRenderGraph.BeginFrame(frameSlot);
 
+		// Import the pipeline-owned SceneDepth and clear it once. Every depth
+		// consumer (DepthPrepass, ParticlePass, DecalPass, ForwardTransparentPass,
+		// SkyPass, DebugPass, post-process effects) reads SceneDepth, so the
+		// resource exists regardless of whether DepthPrepass has any opaque
+		// geometry to draw. DepthPrepass becomes a pure early-Z optimizer that
+		// uses LoadOp.Load on this same target when there is opaque to draw.
+		if (mSceneDepthView != null)
+		{
+			// Pass both views so RenderGraph.GetDepthOnlyTextureView returns a
+			// valid sampled view for ParticlePass / DecalPass / future TAA depth
+			// disocclusion. Without this, set 1 on the particle pipeline goes
+			// unbound and Vulkan validation fires.
+			let depthHandle = mRenderGraph.ImportTarget("SceneDepth", mSceneDepthTexture, mSceneDepthView, mSceneDepthOnlyView);
+			mRenderGraph.AddRenderPass("SceneDepthClear", scope (builder) => {
+				builder
+					.SetDepthTarget(depthHandle, .Clear, .Store, 1.0f)
+					.NeverCull()
+					// Empty execute is intentional: ExecuteRenderPass skips any pass
+					// with a null callback (including the LoadOp.Clear on its
+					// attachments). The empty body still drives the
+					// BeginRenderPass/End cycle that performs the clear.
+					.SetExecute(new (encoder) => {});
+			});
+		}
+
 		let hasPostProcess = mPostProcessStack != null && mPostProcessStack.HasActiveEffects;
 
 		if (hasPostProcess)
@@ -401,6 +450,8 @@ public class Pipeline : IRenderingPipeline, IDisposable
 
 		mOutputWidth = width;
 		mOutputHeight = height;
+
+		RecreateSceneDepth(width, height);
 
 		for (let pass in mPasses)
 			pass.OnResize(width, height);
@@ -580,6 +631,48 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		float x = HaltonSeq(index, 2) - 0.5f;
 		float y = HaltonSeq(index, 3) - 0.5f;
 		return .(x * 2.0f / Math.Max(width, 1), y * 2.0f / Math.Max(height, 1));
+	}
+
+	/// (Re)creates the pipeline-owned SceneDepth target at the given size.
+	/// Called from Initialize, OnResize, and never from the per-frame path.
+	/// Mirrors TAAEffect.RecreateHistoryTextures: WaitIdle before destroy so
+	/// any in-flight frame that referenced the old depth target finishes.
+	private void RecreateSceneDepth(uint32 width, uint32 height)
+	{
+		let device = mRenderContext?.Device;
+		if (device == null || width == 0 || height == 0) return;
+
+		// Wait for any in-flight reference to the existing target before destroying.
+		if (mSceneDepthTexture != null)
+			device.WaitIdle();
+
+		if (mSceneDepthOnlyView != null) device.DestroyTextureView(ref mSceneDepthOnlyView);
+		if (mSceneDepthView != null) device.DestroyTextureView(ref mSceneDepthView);
+		if (mSceneDepthTexture != null) device.DestroyTexture(ref mSceneDepthTexture);
+
+		TextureDesc desc = .()
+		{
+			Label = "SceneDepth",
+			Width = width, Height = height, Depth = 1,
+			Format = SceneDepthFormat,
+			Usage = .DepthStencil | .Sampled,
+			Dimension = .Texture2D,
+			MipLevelCount = 1, ArrayLayerCount = 1, SampleCount = 1
+		};
+		if (device.CreateTexture(desc) case .Ok(let tex))
+			mSceneDepthTexture = tex;
+
+		if (mSceneDepthTexture != null
+			&& device.CreateTextureView(mSceneDepthTexture, .() { Format = SceneDepthFormat }) case .Ok(let view))
+			mSceneDepthView = view;
+
+		// Depth-only companion view for shader sampling (soft particles, decals,
+		// future TAA disocclusion). Vulkan requires sampled depth views to be
+		// single-aspect; mSceneDepthView carries Depth+Stencil and can't be
+		// bound to a fragment shader sampler directly.
+		if (mSceneDepthTexture != null
+			&& device.CreateTextureView(mSceneDepthTexture, .() { Format = SceneDepthFormat, Aspect = .DepthOnly, Label = "SceneDepthOnlyView" }) case .Ok(let depthOnly))
+			mSceneDepthOnlyView = depthOnly;
 	}
 
 	private Result<void> CreatePerFrameResources()

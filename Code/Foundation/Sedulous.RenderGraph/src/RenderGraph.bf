@@ -301,6 +301,22 @@ public class RenderGraph
 		return AddResource(res);
 	}
 
+	/// Import an external depth/stencil texture for this frame, providing
+	/// both the depth-stencil attachment view and a single-aspect depth-only
+	/// view for shader sampling (soft particles, decals, etc.). The graph
+	/// does not own either view - the caller is responsible for their
+	/// lifetime, matching the no-depth-only ImportTarget contract.
+	public RGHandle ImportTarget(StringView name, ITexture texture, ITextureView view, ITextureView depthOnlyView, ResourceState? finalState = null)
+	{
+		let res = new RenderGraphResource(name, .Texture, .Imported);
+		res.Texture = texture;
+		res.TextureView = view;
+		res.DepthOnlyView = depthOnlyView;
+		res.FinalState = finalState;
+		res.LastKnownState = texture != null ? texture.InitialState : .Undefined;
+		return AddResource(res);
+	}
+
 	/// Import an external buffer for this frame (not owned by graph)
 	public RGHandle ImportBuffer(StringView name, IBuffer buffer)
 	{

@@ -9,7 +9,12 @@ using Sedulous.Profiler;
 
 /// Depth prepass - renders opaque geometry to the depth buffer only.
 /// Establishes early-Z for the forward pass to minimize overdraw.
-/// Creates the SceneDepth transient resource.
+///
+/// Pipeline owns SceneDepth (created + cleared unconditionally each frame),
+/// so this pass is a pure optimizer: it only adds draws when there is opaque
+/// geometry, and it loads the already-cleared depth target rather than
+/// allocating its own. Other passes (Particle/Decal/Transparent/Sky/Debug)
+/// then read the same SceneDepth whether or not the prepass ran.
 class DepthPrepass : PipelinePass
 {
 	public override StringView Name => "DepthPrepass";
@@ -23,16 +28,14 @@ class DepthPrepass : PipelinePass
 		if (data.GetBatchCount(RenderCategories.Opaque) == 0)
 			return;
 
-		// Create SceneDepth as a transient depth texture
-		let depthDesc = RGTextureDesc(.Depth24PlusStencil8)
-		{
-			Usage = .DepthStencil | .Sampled
-		};
-		let depthHandle = graph.CreateTransient("SceneDepth", depthDesc);
+		// Pipeline cleared SceneDepth this frame - load it and write opaque depth on top.
+		let depthHandle = graph.GetResource("SceneDepth");
+		if (!depthHandle.IsValid)
+			return;
 
 		graph.AddRenderPass("DepthPrepass", scope (builder) => {
 			builder
-				.SetDepthTarget(depthHandle, .Clear, .Store, 1.0f)
+				.SetDepthTarget(depthHandle, .Load, .Store, 1.0f)
 				.NeverCull()
 				.SetExecute(new [=] (encoder) => {
 					ExecuteDepthPrepass(encoder, view, pipeline);
