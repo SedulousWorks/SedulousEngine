@@ -31,6 +31,7 @@ class ResourceEditorPage : IEditorPage
 	public View ContentView => mContentView;
 	public bool IsDirty => false;
 	public EditorCommandStack CommandStack => mCommandStack;
+	public StringView SaveFileExtension => "";
 
 	public void SetContentView(View view) { mContentView = view; }
 

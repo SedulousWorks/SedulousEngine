@@ -79,6 +79,12 @@ class SceneEditorPage : IEditorPage
 	public bool IsDirty => mDirty;
 	public EditorCommandStack CommandStack => mCommandStack;
 
+	/// SceneEditorPage handles both .scene and .prefab files - the dispatch
+	/// lives inside Save(). Match the current FilePath's extension so the
+	/// Save As dialog filter is right; default to .scene for untitled pages.
+	public StringView SaveFileExtension =>
+		mFilePath.EndsWith(".prefab", .OrdinalIgnoreCase) ? ".prefab" : ".scene";
+
 	/// Set the content view (built by ScenePageBuilder).
 	public void SetContentView(View view) { mContentView = view; }
 

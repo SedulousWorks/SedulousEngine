@@ -45,6 +45,7 @@ class TextureEditorPage : IEditorPage
 	public View ContentView => mContentView;
 	public bool IsDirty => false;
 	public EditorCommandStack CommandStack => mCommandStack;
+	public StringView SaveFileExtension => "";  // read-only preview
 
 	public TextureResource Texture => mTexture;
 

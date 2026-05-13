@@ -59,6 +59,7 @@ class ParticleEditorPage : IEditorPage
 	public View ContentView => mContentView;
 	public bool IsDirty => false;
 	public EditorCommandStack CommandStack => mCommandStack;
+	public StringView SaveFileExtension => "";  // read-only preview
 
 	public ParticleEffectResource EffectResource => mEffectRes;
 	public PreviewSceneHost Host => mHost;

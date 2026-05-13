@@ -62,6 +62,7 @@ class SkeletonEditorPage : IEditorPage
 	public View ContentView => mContentView;
 	public bool IsDirty => false;
 	public EditorCommandStack CommandStack => mCommandStack;
+	public StringView SaveFileExtension => "";  // read-only preview
 
 	public SkeletonResource Skeleton => mSkeletonRes;
 	public PreviewSceneHost Host => mHost;

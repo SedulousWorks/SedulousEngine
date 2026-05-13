@@ -57,6 +57,7 @@ class AudioClipEditorPage : IEditorPage
 	public View ContentView => mContentView;
 	public bool IsDirty => false;
 	public EditorCommandStack CommandStack => mCommandStack;
+	public StringView SaveFileExtension => "";  // read-only preview
 
 	public AudioClipResource ClipResource => mClipResource;
 	public IAudioSource Source => mSource;

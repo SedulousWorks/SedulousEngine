@@ -65,6 +65,7 @@ class MaterialEditorPage : IEditorPage
 	public View ContentView => mContentView;
 	public bool IsDirty => false;
 	public EditorCommandStack CommandStack => mCommandStack;
+	public StringView SaveFileExtension => "";  // read-only preview (property editing coming later)
 
 	public MaterialResource Material => mMaterial;
 	public PreviewSceneHost Host => mHost;

@@ -57,6 +57,7 @@ class MeshEditorPage : IEditorPage
 	public View ContentView => mContentView;
 	public bool IsDirty => false;
 	public EditorCommandStack CommandStack => mCommandStack;
+	public StringView SaveFileExtension => "";  // read-only preview
 
 	public StaticMeshResource Mesh => mMesh;
 	public PreviewSceneHost Host => mHost;

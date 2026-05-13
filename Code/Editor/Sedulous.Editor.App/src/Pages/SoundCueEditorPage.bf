@@ -45,6 +45,7 @@ class SoundCueEditorPage : IEditorPage
 	public View ContentView => mContentView;
 	public bool IsDirty => false;
 	public EditorCommandStack CommandStack => mCommandStack;
+	public StringView SaveFileExtension => "";  // read-only preview (entry-management UI coming later)
 
 	public SoundCueResource CueResource => mCueResource;
 	public IAudioSystem AudioSystem => mAudioSystem;

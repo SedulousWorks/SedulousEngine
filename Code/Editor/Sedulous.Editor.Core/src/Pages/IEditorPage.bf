@@ -25,6 +25,11 @@ interface IEditorPage : IDisposable
 	/// Per-page undo/redo stack.
 	EditorCommandStack CommandStack { get; }
 
+	/// File extension this page saves to (e.g. ".scene", ".material").
+	/// Empty string means the page is read-only - Save / Save As / Save All
+	/// menu items have no effect and the page is filtered out of Save All.
+	StringView SaveFileExtension { get; }
+
 	/// Save to the current file path.
 	void Save();
 

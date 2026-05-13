@@ -1052,34 +1052,125 @@ Phases 4a-4d are the core functional path. 4e-4f are enhancement/polish.
 
 ### Phase 5.5: Resource Editor Pages
 
-Stub page factories exist for all resource types — double-clicking any asset in the browser opens a tab. Each page needs real editing/viewing functionality.
+Every resource type has a registered page factory and a page class — double-clicking
+any asset in the browser opens a real preview tab. The shared viewport infrastructure
+(`PreviewSceneHost`) was the missing prereq and is now in; each page composes it as
+a member and contributes its own UI layout.
 
-**Done:**
-- ✅ `ResourceEditorPage` — generic placeholder page (title label only)
-- ✅ `TextureEditorPage` — image preview (ImageView FitCenter) + metadata panel (dimensions, format, shape, filters, wrap, mipmaps, anisotropy)
-- ✅ Page factories registered for all resource types
+**Shared infrastructure (`Sedulous.Editor.App.Pages.PreviewSceneHost`):**
+- Owns a private scene created via `SceneSubsystem.CreateScene` so all `ISceneAware`
+  subsystems' per-scene modules (component managers + per-scene `Pipeline`) install
+  automatically.
+- `ViewportView` + `EditorCamera` + `ViewportCameraController` for the render-to-
+  texture surface and orbit/fly/pan camera.
+- Default directional key light so meshes/materials render with readable shading.
+- `OnRender` wires `ISceneRenderer.RenderScene`; `OnPreRender` event lets pages
+  inject debug-draw into the per-scene `Pipeline.DebugDraw` before the scene render
+  runs (skeleton page uses it for bone wireframes).
+- `FitToBounds(BoundingBox)` frames the camera; `Dispose` defers scene destruction
+  to next-frame via `DestroyScene` (page is gone from `OpenPages` before the
+  deferred teardown fires — no orphan render).
 
-**Pages to implement (ordered by value):**
+**Page status:**
 
-| Page | Extension | What it needs |
-|------|-----------|---------------|
-| **Material Editor** | `.material` | Property grid for shader name, blend mode, cull mode, PBR values (base color, roughness, metallic, emissive). Texture slot assignment with ResourceRef editors. Live preview sphere in a viewport. |
-| **Mesh Viewer** | `.mesh` | 3D viewport with orbit camera rendering the mesh. Info panel: vertex/triangle count, submesh list, bounding box, vertex format. No editing — read-only. |
-| **Particle Editor** | `.particle` | 3D viewport with live particle simulation. Property editing for emitters, behaviors, initializers. Restart/pause controls. |
-| **Animation Viewer** | `.animation` | 3D viewport with skinned mesh playback. Timeline scrubber, play/pause/loop. Bone list. Read-only initially. |
-| **Skeleton Viewer** | `.skeleton` | 3D viewport showing bone hierarchy wireframe. Bone list with names and parent indices. Read-only. |
-| **Animation Graph** | `.animgraph` | Node graph editor for blend trees and state machines. Requires a graph editing widget (not yet in toolkit). |
-| **Property Animation** | `.propanim` | Curve editor with keyframe editing. Requires curve editor widget (not yet in toolkit). |
-| **Audio Clip** | `.audioclip` | Waveform display, play/pause/stop, metadata (sample rate, channels, duration). |
-| **Sound Cue** | `.soundcue` | Node graph for audio mixing/layering. Requires graph editor widget. |
+| Page | Extension | Status | Notes |
+|------|-----------|--------|-------|
+| **Texture** | `.texture` | DONE (read-only) | Image preview (ImageView FitCenter), metadata panel. Settings editing (filter / wrap / mips / anisotropy) is a later polish pass. |
+| **Mesh** | `.mesh` | DONE (read-only by design) | Mesh + default material in preview scene, info panel with vertex/triangle/submesh counts and bounds. Re-import to change geometry. |
+| **Skeleton** | `.skeleton` | DONE (read-only by design) | Bone hierarchy debug-drawn via `PreviewSceneHost.OnPreRender`. Info panel with bone names. |
+| **Material** | `.material` | Preview only — property editing pending | Sphere primitive (`builtin://primitives/sphere.mesh`) shaded with the material. Right pane currently shows shader name / blend / cull / property count; needs `PropertyGrid` binding for full editing. |
+| **Animation** | `.animation` | Metadata only — viewport empty | `AnimationClip` carries no skeleton link, so no skeletal preview yet. Play/Pause/Stop + scrubber UI present. Full preview needs a skeleton-binding flow (later phase). |
+| **Particle Effect** | `.particlefx` | Preview only — system editing pending | Live `ParticleComponent` with `AutoPlay`. Toolbar with Play / Stop / Restart. Asset creator ships a default Sparks-style system so newly created effects render something on first open. |
+| **Audio Clip** | `.audioclip` | DONE (read-only) | Metadata, Play/Pause/Stop, volume slider, loop toggle (playback via `IAudioSource`). Settings editing is a later polish pass. |
+| **Sound Cue** | `.soundcue` | Preview only — entry editing pending | Metadata, entry list (read-only), Play Cue button. Needs entry-management UI: list editor with `AudioClip` ResourceRef pickers + weight/volume/pitch sliders. Page owns the cue resource and releases on close. |
+| **Animation Graph** | `.animgraph` | Stub | Asset creator works; page is the generic `ResourceEditorPage` placeholder. Needs a node-graph widget in `Sedulous.UI.Toolkit`. |
+| **Property Animation** | `.propanim` | Stub | Same shape. Needs a curve-editor widget in the toolkit. |
 
-**Prerequisites for viewport-based pages (mesh, particle, animation, skeleton):**
-These need a standalone viewport that renders a single resource without a scene. Options:
-- Reuse `ViewportView` + create a temporary scene with the resource loaded
-- Lightweight preview renderer that bypasses the full scene pipeline
+**Read-only vs. editable split:**
 
-**Prerequisites for graph-based pages (anim graph, sound cue):**
-- Node graph editing widget in Sedulous.UI.Toolkit (not yet implemented)
+These pages stay read-only by design — their content comes from a model import, not
+the engine editor: `Mesh`, `Skeleton`, `Animation`. Their `SaveFileExtension` is
+permanently empty.
+
+These pages are read-only *for now* and will gain edit capability later (each one a
+follow-up): `Material` (property grid + texture slot picking), `Particle Effect`
+(emitter/initializer/behavior editing surface), `Sound Cue` (entry list with ref
+pickers), `Texture` (filter/wrap/mip settings), `Audio Clip` (loop/volume defaults).
+When each flips, the change is local: implement `Save()`/`SaveAs()`, return the real
+extension from `SaveFileExtension`, optionally expose a `LastSavedGuid` for index
+registration. The global save plumbing (Phase 5.6) already handles them correctly.
+
+**Asset creators added alongside:**
+`MaterialAssetCreator`, `SceneAssetCreator`, `PrefabAssetCreator` were already in;
+this phase added `ParticleAssetCreator` (ships with a default minimal "Sparks"
+system so the page renders something visible on first open),
+`SoundCueAssetCreator`, `AnimGraphAssetCreator`, `PropAnimAssetCreator`. Each
+writes an empty/default resource through the active mount and registers the
+resulting GUID with the project index.
+
+**URI plumbing fixed in the same pass:**
+The asset browser hands page factories absolute filesystem paths, but
+`ResourceSystem.LoadResource` only parses `scheme://locator` URIs. Every page
+factory previously failed silently. `MountResolver.TryResolveAbsoluteToUri` and
+`TryResolveUriToAbsolute` translate both directions; factories resolve to URI before
+`LoadResource`, pages keep the absolute path as `FilePath` so the page-manager's
+equality-based tab-reuse check still works.
+
+**Editor session persistence became cross-machine:**
+`EditorProject.OpenPageUris` and dock-layout `panel.SetPersistenceId` now store
+`scheme://locator` URIs, resolved back to absolute paths on restore. Old
+absolute-path `.sedproj` / `editor_layout.oddl` files don't restore (URI parse
+fails); they get rewritten on next save.
+
+**RenderActiveViewports filter fixed:**
+Was `if (let scenePage = page as SceneEditorPage)` — would have silently skipped
+every preview page's viewport. Now walks any open page's content tree for
+`ViewportView` nodes.
+
+**Active-tab activation on re-open:**
+`PageManager.OnActivePageChanged` is now subscribed by `EditorApplication`;
+double-clicking an already-open asset surfaces its existing dock tab via
+`DockManager.ActivatePanel`.
+
+### Phase 5.6: Page-owned save handling
+
+The global `OnSave` / `OnSaveAs` in `EditorApplication` hardcodes `.scene`
+for the dialog filter and only handles `SceneEditorPage` for index
+registration. Every new savable page type cracks open `EditorApplication`,
+which is the wrong gravity once more than one page type can be saved.
+Move the responsibility to the active page:
+
+**Interface changes:**
+- `IEditorPage.SaveFileExtension` returns the page's file extension
+  (e.g. `.scene`, `.prefab`, `.material`) or empty for read-only pages.
+  Empty filter = page is filtered out of Save / Save As / Save All and
+  the menu items grey out naturally.
+- `SceneEditorPage` returns `.prefab` when its FilePath ends with
+  `.prefab`, else `.scene` (the same dispatch already inside its `Save`).
+- All preview pages (Mesh / Skeleton / Material / Animation / Particle /
+  SoundCue / AudioClip / Texture) return empty.
+
+**EditorApplication delegates instead of dispatches:**
+- `OnSave` reads the active page's extension; empty = no-op; FilePath
+  empty = route to `OnSaveAs`; else `page.Save()`.
+- `OnSaveAs` opens the dialog with the page's extension as the filter,
+  appends the extension if the user omitted it, calls `page.SaveAs(path)`.
+- `OnSaveAll` walks `PageManager.OpenPages`, filters on
+  `SaveFileExtension.Length > 0 && IsDirty && FilePath.Length > 0`,
+  calls `Save()` on each. Untitled pages are skipped silently
+  (or prompted one-by-one in a future polish pass).
+
+**Project-side registration stays in `EditorApplication`:**
+- `RegisterInProjectRegistry` still type-checks for `SceneEditorPage`
+  via `LastSavedGuid` - that's a project-side concern, not page-side.
+  Other page types that produce registered resources can opt in later
+  by exposing their own `LastSavedGuid` (or a more generic property),
+  but no current page does.
+
+**Menu / shortcut:**
+- "Save All" item between "Save As..." and the separator.
+- `Ctrl+S` (active page Save), `Ctrl+Shift+S` (active page Save As),
+  `Ctrl+Alt+S` (Save All).
 
 ### Phase 6: Play Mode
 - `EditorSceneManager` - serialize/restore scene around play

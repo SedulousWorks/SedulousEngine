@@ -584,6 +584,7 @@ class EditorApplication : Application, IDockableWindowHost
 		fileMenu.AddSeparator();
 		fileMenu.AddItem("Save", new () => OnSave());
 		fileMenu.AddItem("Save As...", new () => OnSaveAs());
+		fileMenu.AddItem("Save All", new () => OnSaveAll());
 		fileMenu.AddSeparator();
 		fileMenu.AddItem("Exit", new () => Exit());
 
@@ -620,6 +621,10 @@ class EditorApplication : Application, IDockableWindowHost
 		let page = mEditorContext.PageManager.ActivePage;
 		if (page == null) return;
 
+		// Empty extension = page is read-only; menu items are still wired
+		// (file menu, shortcuts) so we just no-op rather than show a dialog.
+		if (page.SaveFileExtension.Length == 0) return;
+
 		if (page.FilePath.Length == 0)
 			OnSaveAs();
 		else
@@ -635,24 +640,53 @@ class EditorApplication : Application, IDockableWindowHost
 		let page = mEditorContext.PageManager.ActivePage;
 		if (page == null) return;
 
+		let ext = page.SaveFileExtension;
+		if (ext.Length == 0) return; // read-only page
+
 		let defaultPath = scope String();
 		if (mProject.ProjectDirectory.Length > 0)
 			defaultPath.Set(mProject.ProjectDirectory);
+
+		let filter = scope String()..AppendF("*{}", ext);
+		let extCopy = scope String(ext); // captured into the dialog callback
 
 		Shell.Dialogs.ShowSaveFileDialog(
 			new (paths) => {
 				if (paths.Length > 0)
 				{
 					let savePath = scope String(paths[0]);
-					if (!savePath.EndsWith(".scene", .OrdinalIgnoreCase))
-						savePath.Append(".scene");
+					if (!savePath.EndsWith(extCopy, .OrdinalIgnoreCase))
+						savePath.Append(extCopy);
 					page.SaveAs(savePath);
 					SyncDockPanelTitle(page);
 					RegisterInProjectRegistry(page);
 				}
 			},
-			scope StringView[]("*.scene"),
+			scope StringView[](filter),
 			defaultPath, Window);
+	}
+
+	/// Saves every open page that's dirty and savable. Pages with no FilePath
+	/// (untitled) are skipped silently - the user can save them individually
+	/// via the Save/Save As menu items.
+	private void OnSaveAll()
+	{
+		if (mEditorContext?.PageManager == null) return;
+
+		int savedCount = 0;
+		for (let page in mEditorContext.PageManager.OpenPages)
+		{
+			if (page.SaveFileExtension.Length == 0) continue;  // read-only
+			if (!page.IsDirty) continue;
+			if (page.FilePath.Length == 0) continue;  // untitled - need Save As
+
+			page.Save();
+			SyncDockPanelTitle(page);
+			RegisterInProjectRegistry(page);
+			savedCount++;
+		}
+
+		mEditorLogger?.Log(.Information, scope String()..AppendF("Save All: saved {} page(s)", savedCount));
 	}
 
 	private void SyncDockPanelTitle(IEditorPage page)
@@ -1200,7 +1234,9 @@ class EditorApplication : Application, IDockableWindowHost
 		{
 			if (keyboard.IsKeyPressed(.S))
 			{
-				if (keyboard.IsKeyDown(.LeftShift))
+				if (keyboard.IsKeyDown(.LeftAlt))
+					OnSaveAll();
+				else if (keyboard.IsKeyDown(.LeftShift))
 					OnSaveAs();
 				else
 					OnSave();
