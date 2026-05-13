@@ -24,6 +24,10 @@ cbuffer SceneUniforms : register(b0, space0)
     float _Pad0;
     float2 ScreenSize;
     float2 InvScreenSize;
+    float2 JitterOffset;
+    float2 PrevJitterOffset;
+    float MaterialLodBias;       // negative when TAA is on, 0 otherwise
+    float _Pad1;
 };
 
 cbuffer LightParams : register(b1, space0)
@@ -240,15 +244,25 @@ struct FragmentOutput
 // ==================== PBR Functions ====================
 
 // Geometric Specular Anti-Aliasing (Tokuyoshi & Kaplanyan 2019).
-// Widens roughness based on screen-space normal derivatives to prevent
-// sub-pixel specular aliasing on smooth metallic surfaces.
+// Widens the GGX alpha^2 parameter based on screen-space normal derivatives
+// so smooth surfaces (low roughness) get a meaningful kernel widening - the
+// roughness-space variant under-corrects exactly where metals shimmer most.
+// Reference: "Improved Geometric Specular Antialiasing", JCGT 2019.
 float AdjustRoughness(float roughness, float3 N)
 {
     float3 dNdx = ddx(N);
     float3 dNdy = ddy(N);
     float variance = dot(dNdx, dNdx) + dot(dNdy, dNdy);
-    float kernelRoughness = min(variance * 2.0, 0.18);
-    return saturate(roughness + kernelRoughness);
+
+    // Widen in alpha^2 space: alpha = roughness^2, alpha^2 = roughness^4.
+    // Kernel is clamped so AA can't fully wash out a near-mirror surface.
+    float alpha = roughness * roughness;
+    float alpha2 = alpha * alpha;
+    float kernelAlpha2 = min(variance * 2.0, 0.18);
+    alpha2 = saturate(alpha2 + kernelAlpha2);
+
+    // Back to roughness: roughness = sqrt(sqrt(alpha^2)).
+    return sqrt(sqrt(alpha2));
 }
 
 // GGX Normal Distribution Function.
@@ -352,7 +366,7 @@ float3 EvaluateLight(GPULight light, float3 worldPos, float3 worldNormal, float 
 
 float3 GetNormalFromMap(float3 worldNormal, float3 worldTangent, float2 uv)
 {
-    float3 tangentNormal = NormalMap.Sample(MainSampler, uv).rgb * 2.0 - 1.0;
+    float3 tangentNormal = NormalMap.SampleBias(MainSampler, uv, MaterialLodBias).rgb * 2.0 - 1.0;
 
     float3 N = normalize(worldNormal);
     float3 T = normalize(worldTangent - dot(worldTangent, N) * N); // re-orthogonalize
@@ -369,10 +383,10 @@ FragmentOutput main(FragmentInput input)
     float2 uv = input.TexCoord;
 
     // Sample textures
-    float4 albedoSample = AlbedoMap.Sample(MainSampler, uv);
-    float4 mrSample = MetallicRoughnessMap.Sample(MainSampler, uv);
-    float aoSample = OcclusionMap.Sample(MainSampler, uv).r;
-    float3 emissiveSample = EmissiveMap.Sample(MainSampler, uv).rgb;
+    float4 albedoSample = AlbedoMap.SampleBias(MainSampler, uv, MaterialLodBias);
+    float4 mrSample = MetallicRoughnessMap.SampleBias(MainSampler, uv, MaterialLodBias);
+    float aoSample = OcclusionMap.SampleBias(MainSampler, uv, MaterialLodBias).r;
+    float3 emissiveSample = EmissiveMap.SampleBias(MainSampler, uv, MaterialLodBias).rgb;
 
     // Combine texture samples with uniform values
     float3 albedo = BaseColor.rgb * albedoSample.rgb * input.Color.rgb;

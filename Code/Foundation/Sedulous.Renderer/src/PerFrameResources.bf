@@ -28,6 +28,11 @@ public struct SceneUniforms
 	public Vector2 InvScreenSize;
 	public Vector2 JitterOffset;
 	public Vector2 PrevJitterOffset;
+	/// Negative LOD bias applied to material texture samples when TAA is on so
+	/// the rasterizer reads finer mips that TAA can reconstruct into a sharp
+	/// stable image. 0 when TAA is off.
+	public float MaterialLodBias;
+	public float _Pad1;
 
 	public const uint64 Size = sizeof(Self);
 }

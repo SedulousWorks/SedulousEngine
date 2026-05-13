@@ -512,7 +512,8 @@ public class Pipeline : IRenderingPipeline, IDisposable
 			ScreenSize = .(view.Width, view.Height),
 			InvScreenSize = .(1.0f / Math.Max(view.Width, 1), 1.0f / Math.Max(view.Height, 1)),
 			JitterOffset = view.JitterOffset,
-			PrevJitterOffset = view.PrevJitterOffset
+			PrevJitterOffset = view.PrevJitterOffset,
+			MaterialLodBias = mTAAEnabled ? -0.5f : 0.0f
 		};
 
 		TransferHelper.WriteMappedBuffer(

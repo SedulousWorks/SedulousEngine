@@ -37,6 +37,20 @@ float Luminance(float3 c)
     return dot(c, float3(0.2126, 0.7152, 0.0722));
 }
 
+// Tone-weight a sample by 1/(1+luma) so bright HDR outliers carry less
+// weight in the AABB neighborhood and the resolve blend (Karis 2014 /
+// "High-Quality Temporal Supersampling"). Without this, single-frame
+// specular spikes blow up the box and leak through the clip every frame.
+float3 ToneWeight(float3 c)
+{
+    return c / (1.0 + Luminance(c));
+}
+
+float3 InverseToneWeight(float3 c)
+{
+    return c / max(1.0 - Luminance(c), 1e-5);
+}
+
 // Clip color toward AABB center instead of hard clamping.
 // Produces smoother results at AABB boundaries (Pedersen 2016, INSIDE).
 float3 ClipToAABB(float3 color, float3 aabbMin, float3 aabbMax)
@@ -91,9 +105,16 @@ FragmentOutput main(FragmentInput input)
     // Sample history
     float3 history = HistoryColor.Sample(LinearSampler, historyUV).rgb;
 
-    // 3x3 neighborhood min/max for box clamping
-    float3 neighborMin = current;
-    float3 neighborMax = current;
+    // Tone-weight every sample so HDR fireflies (single-frame specular spikes)
+    // don't blow up the AABB or dominate the blend. Without this the box clip
+    // is effectively a no-op on bright pixels and they shimmer through the
+    // resolve every frame.
+    float3 currentW = ToneWeight(current);
+    float3 historyW = ToneWeight(history);
+
+    // 3x3 neighborhood min/max in tone-weighted space for box clamping.
+    float3 neighborMin = currentW;
+    float3 neighborMax = currentW;
 
     for (int ny = -1; ny <= 1; ny++)
     {
@@ -101,24 +122,28 @@ FragmentOutput main(FragmentInput input)
         {
             if (nx == 0 && ny == 0) continue;
             float3 s = CurrentColor.Sample(PointSampler, uv + float2(nx, ny) * TexelSize).rgb;
-            neighborMin = min(neighborMin, s);
-            neighborMax = max(neighborMax, s);
+            float3 sW = ToneWeight(s);
+            neighborMin = min(neighborMin, sW);
+            neighborMax = max(neighborMax, sW);
         }
     }
 
-    // Clip history to neighborhood AABB (soft clip toward center)
-    history = ClipToAABB(history, neighborMin, neighborMax);
+    // Clip history (weighted) to neighborhood AABB (soft clip toward center).
+    historyW = ClipToAABB(historyW, neighborMin, neighborMax);
 
     // Luminance-adaptive blend factor (Lumix approach):
     // When current and history luminance match closely -> high blend (stable).
     // When they differ (specular flash, disocclusion) -> low blend (responsive).
-    float lum0 = Luminance(current);
-    float lum1 = Luminance(history);
+    // Computed in tone-weighted space so a single specular spike doesn't
+    // skew the adaptation as aggressively.
+    float lum0 = Luminance(currentW);
+    float lum1 = Luminance(historyW);
     float lumaDiff = 1.0 - abs(lum0 - lum1) / max(lum0, max(lum1, 0.1));
     float blend = lerp(0.85, BlendFactor, saturate(lumaDiff * lumaDiff));
 
-    // Blend
-    float3 result = lerp(current, history, blend);
+    // Blend in tone-weighted space, then expand back to linear HDR.
+    float3 resultW = lerp(currentW, historyW, blend);
+    float3 result = InverseToneWeight(resultW);
 
     FragmentOutput output;
     output.Color = float4(result, 1.0);
