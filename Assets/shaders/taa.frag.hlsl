@@ -11,12 +11,17 @@ cbuffer TAAParams : register(b0)
     float HistoryValid;        // 0.0 = no valid history (first frame), 1.0 = valid
     float2 JitterOffset;       // current frame's jitter in clip space
     float2 PrevJitterOffset;   // previous frame's jitter in clip space
+    float NearPlane;           // camera near for depth linearization
+    float FarPlane;            // camera far for depth linearization
+    float PrevDepthValid;      // 0.0 = no valid prev depth, 1.0 = valid
+    float _Pad0;
 };
 
 Texture2D CurrentColor : register(t0);
 Texture2D HistoryColor : register(t1);
 Texture2D MotionVectors : register(t2);
 Texture2D DepthTexture : register(t3);
+Texture2D PrevDepthTexture : register(t4);
 SamplerState PointSampler : register(s0);
 SamplerState LinearSampler : register(s1);
 
@@ -35,6 +40,13 @@ struct FragmentOutput
 float Luminance(float3 c)
 {
     return dot(c, float3(0.2126, 0.7152, 0.0722));
+}
+
+// Linearize a non-reverse-Z depth value (D3D/Vulkan convention: 0=near, 1=far).
+// Returns view-space Z in the same units as the camera near/far.
+float LinearizeDepth(float d, float near, float far)
+{
+    return (near * far) / (far - d * (far - near));
 }
 
 // Tone-weight a sample by 1/(1+luma) so bright HDR outliers carry less
@@ -100,6 +112,28 @@ FragmentOutput main(FragmentInput input)
         rejected.Color = float4(current, 1.0);
         rejected.History = float4(current, 1.0);
         return rejected;
+    }
+
+    // Depth-based disocclusion test: if last frame's depth at historyUV
+    // disagrees with this frame's depth at uv beyond a relative threshold,
+    // the historyUV pixel sampled a different surface (occluder revealed
+    // or new geometry occluded what was behind). Linearize so the threshold
+    // is depth-independent. Gated on PrevDepthValid - first-frame after
+    // recreate has only the clear (far-plane) in PrevDepthTexture, so the
+    // test would always trip.
+    if (PrevDepthValid >= 0.5)
+    {
+        float prevDepthRaw = PrevDepthTexture.Sample(PointSampler, historyUV).r;
+        float linCur = LinearizeDepth(closestDepth, NearPlane, FarPlane);
+        float linPrev = LinearizeDepth(prevDepthRaw, NearPlane, FarPlane);
+        float relDiff = abs(linCur - linPrev) / max(min(linCur, linPrev), 0.001);
+        if (relDiff > 0.1)
+        {
+            FragmentOutput rejected;
+            rejected.Color = float4(current, 1.0);
+            rejected.History = float4(current, 1.0);
+            return rejected;
+        }
     }
 
     // Sample history

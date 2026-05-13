@@ -73,15 +73,17 @@ class TAAEffect : PostProcessEffect
 		// t0 = current color
 		// t1 = history color
 		// t2 = motion vectors
-		// t3 = depth
+		// t3 = depth (current frame)
+		// t4 = previous depth (last frame, for disocclusion testing)
 		// s0 = point sampler
 		// s1 = linear sampler
-		BindGroupLayoutEntry[7] entries = .(
+		BindGroupLayoutEntry[8] entries = .(
 			.UniformBuffer(0, .Fragment),
 			.SampledTexture(0, .Fragment),
 			.SampledTexture(1, .Fragment),
 			.SampledTexture(2, .Fragment),
 			.SampledTexture(3, .Fragment),
+			.SampledTexture(4, .Fragment),
 			.Sampler(0, .Fragment),
 			.Sampler(1, .Fragment)
 		);
@@ -184,6 +186,12 @@ class TAAEffect : PostProcessEffect
 		let readIdx = mHistoryIndex;
 		let writeIdx = (int32)((mHistoryIndex + 1) % TAAHistoryCount);
 
+		let input = ctx.Input;
+		let output = ctx.Output;
+		let motionVectors = ctx.MotionVectors;
+		let depth = ctx.SceneDepth;
+		let prevDepth = ctx.PrevSceneDepth;
+
 		// Upload params
 		TAAParams @params = .()
 		{
@@ -194,14 +202,14 @@ class TAAEffect : PostProcessEffect
 			JitterOffsetX = view.JitterOffset.X,
 			JitterOffsetY = view.JitterOffset.Y,
 			PrevJitterOffsetX = view.PrevJitterOffset.X,
-			PrevJitterOffsetY = view.PrevJitterOffset.Y
+			PrevJitterOffsetY = view.PrevJitterOffset.Y,
+			NearPlane = view.NearPlane,
+			FarPlane = view.FarPlane,
+			// Same gate as HistoryValid: prev depth comes from the same
+			// ping-pong, so it's only valid after the first frame.
+			PrevDepthValid = (prevDepth.IsValid && mFrameCount > 0) ? 1.0f : 0.0f
 		};
 		TransferHelper.WriteMappedBuffer(mParamsBuffer, 0, Span<uint8>((uint8*)&@params, TAAParams.Size));
-
-		let input = ctx.Input;
-		let output = ctx.Output;
-		let motionVectors = ctx.MotionVectors;
-		let depth = ctx.SceneDepth;
 
 		// Import history textures into the render graph
 		let historyReadHandle = graph.ImportTarget("TAA_HistoryRead", mHistoryTextures[readIdx], mHistoryViews[readIdx]);
@@ -216,13 +224,15 @@ class TAAEffect : PostProcessEffect
 				builder.ReadTexture(motionVectors);
 			if (depth.IsValid)
 				builder.ReadTexture(depth);
+			if (prevDepth.IsValid)
+				builder.ReadTexture(prevDepth);
 			builder
 				.ReadTexture(historyReadHandle)
 				.SetColorTarget(0, output, .DontCare, .Store)
 				.SetColorTarget(1, historyWriteHandle, .DontCare, .Store)
 				.NeverCull()
 				.SetExecute(new [=] (encoder) => {
-					ExecuteTAA(encoder, view, graph, input, historyReadHandle, motionVectors, depth);
+					ExecuteTAA(encoder, view, graph, input, historyReadHandle, motionVectors, depth, prevDepth);
 				});
 		});
 
@@ -233,7 +243,8 @@ class TAAEffect : PostProcessEffect
 	}
 
 	private void ExecuteTAA(IRenderPassEncoder encoder, RenderView view, RenderGraph graph,
-		RGHandle inputHandle, RGHandle historyHandle, RGHandle motionHandle, RGHandle depthHandle)
+		RGHandle inputHandle, RGHandle historyHandle, RGHandle motionHandle, RGHandle depthHandle,
+		RGHandle prevDepthHandle)
 	{
 		let inputView = graph.GetTextureView(inputHandle);
 		let historyView = graph.GetTextureView(historyHandle);
@@ -242,12 +253,16 @@ class TAAEffect : PostProcessEffect
 
 		ITextureView motionView = motionHandle.IsValid ? graph.GetTextureView(motionHandle) : null;
 		ITextureView depthView = depthHandle.IsValid ? graph.GetDepthOnlyTextureView(depthHandle) : null;
+		ITextureView prevDepthView = prevDepthHandle.IsValid ? graph.GetDepthOnlyTextureView(prevDepthHandle) : null;
 
-		// Use black texture fallback if motion/depth not available
+		// Use black texture fallback if motion/depth not available. PrevDepth
+		// gets the same fallback - the shader gates on PrevDepthValid (0)
+		// so the texture contents won't be sampled meaningfully.
 		let blackTex = mRenderContext?.MaterialSystem?.BlackTexture;
 		if (motionView == null) motionView = blackTex;
 		if (depthView == null) depthView = blackTex;
-		if (motionView == null || depthView == null)
+		if (prevDepthView == null) prevDepthView = blackTex;
+		if (motionView == null || depthView == null || prevDepthView == null)
 			return;
 
 		let frameSlot = view.FrameIndex % MaxFrames;
@@ -255,12 +270,13 @@ class TAAEffect : PostProcessEffect
 		if (mBindGroups[frameSlot] != null)
 			mDevice.DestroyBindGroup(ref mBindGroups[frameSlot]);
 
-		BindGroupEntry[7] bgEntries = .(
+		BindGroupEntry[8] bgEntries = .(
 			BindGroupEntry.Buffer(mParamsBuffer, 0, TAAParams.Size),
 			BindGroupEntry.Texture(inputView),
 			BindGroupEntry.Texture(historyView),
 			BindGroupEntry.Texture(motionView),
 			BindGroupEntry.Texture(depthView),
+			BindGroupEntry.Texture(prevDepthView),
 			BindGroupEntry.Sampler(mPointSampler),
 			BindGroupEntry.Sampler(mLinearSampler)
 		);
@@ -360,6 +376,14 @@ class TAAEffect : PostProcessEffect
 		public float JitterOffsetY;
 		public float PrevJitterOffsetX;
 		public float PrevJitterOffsetY;
-		public const uint64 Size = 32;
+		/// Camera near/far for linearizing depth in the disocclusion test.
+		public float NearPlane;
+		public float FarPlane;
+		/// 1.0 if PrevSceneDepth is available this frame, 0.0 otherwise
+		/// (e.g. very first frame after recreate). Gates the disocclusion
+		/// test - without prev depth, fall back to UV-bounds rejection only.
+		public float PrevDepthValid;
+		public float _Pad0;
+		public const uint64 Size = 48;
 	}
 }

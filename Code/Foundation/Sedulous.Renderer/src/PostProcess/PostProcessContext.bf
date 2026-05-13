@@ -17,6 +17,11 @@ class PostProcessContext
 	/// Scene depth (read-only, for depth-aware effects like DoF, fog, SSAO).
 	public RGHandle SceneDepth;
 
+	/// Previous frame's scene depth (read-only, for history-aware effects:
+	/// TAA disocclusion testing, temporal SSAO, motion-vector validation).
+	/// Invalid for the very first frame after recreate.
+	public RGHandle PrevSceneDepth;
+
 	/// View-space normals (RG16Float, for SSAO and similar effects).
 	public RGHandle SceneNormals;
 
@@ -52,6 +57,7 @@ class PostProcessContext
 		Input = .Invalid;
 		Output = .Invalid;
 		SceneDepth = .Invalid;
+		PrevSceneDepth = .Invalid;
 		SceneNormals = .Invalid;
 		MotionVectors = .Invalid;
 		DeleteDictionaryAndKeys!(mAuxTextures);

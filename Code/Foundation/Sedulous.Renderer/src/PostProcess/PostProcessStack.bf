@@ -70,6 +70,7 @@ class PostProcessStack
 	{
 		mContext.Clear();
 		mContext.SceneDepth = sceneDepth;
+		mContext.PrevSceneDepth = graph.GetResource("PrevSceneDepth");
 		mContext.SceneNormals = graph.GetResource("SceneNormals");
 		mContext.MotionVectors = graph.GetResource("MotionVectors");
 
