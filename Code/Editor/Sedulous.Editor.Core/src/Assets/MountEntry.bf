@@ -104,4 +104,57 @@ public static class MountResolver
 		mount = asMount as IWritableMount;
 		return mount != null;
 	}
+
+	/// Resolves an absolute filesystem path to a `scheme://locator` URI usable
+	/// with `ResourceSystem.LoadResource`. Returns false if no mount entry's
+	/// root prefixes the path.
+	public static bool TryResolveAbsoluteToUri(List<MountEntry> entries, StringView absolutePath,
+		String outUri)
+	{
+		outUri.Clear();
+		if (entries == null) return false;
+
+		IMount mount = null;
+		let locator = scope String();
+		if (!TryResolveAbsolute(entries, absolutePath, out mount, locator))
+			return false;
+
+		for (let entry in entries)
+		{
+			if (entry.Mount === mount)
+			{
+				outUri.AppendF("{}://{}", entry.Scheme, locator);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/// Reverse of `TryResolveAbsoluteToUri`. Parses a `scheme://locator` URI
+	/// and joins the locator onto the matching disk-backed mount's root path.
+	/// Returns false if the URI is malformed, no entry has the scheme, or the
+	/// entry's mount isn't a `FileSystemMount`.
+	public static bool TryResolveUriToAbsolute(List<MountEntry> entries, StringView uri,
+		String outAbsolutePath)
+	{
+		outAbsolutePath.Clear();
+		if (entries == null) return false;
+
+		let sep = uri.IndexOf("://");
+		if (sep <= 0) return false;
+		let scheme = uri.Substring(0, sep);
+		let locator = uri.Substring(sep + 3);
+
+		for (let entry in entries)
+		{
+			if (StringView(entry.Scheme) == scheme)
+			{
+				let fsMount = entry.Mount as FileSystemMount;
+				if (fsMount == null) return false;
+				System.IO.Path.InternalCombine(outAbsolutePath, fsMount.RootPath, scope String(locator));
+				return true;
+			}
+		}
+		return false;
+	}
 }

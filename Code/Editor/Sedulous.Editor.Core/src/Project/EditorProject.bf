@@ -20,7 +20,7 @@ class EditorProject
 	};
 
 	// Open pages state
-	private List<String> mOpenPagePaths = new .() ~ DeleteContainerAndItems!(_);
+	private List<String> mOpenPageUris = new .() ~ DeleteContainerAndItems!(_);
 	private int32 mActivePageIndex = -1;
 
 	/// The project root directory.
@@ -33,7 +33,7 @@ class EditorProject
 	public bool IsLoaded => mProjectDirectory.Length > 0;
 
 	/// Paths of pages that were open when the project was last saved.
-	public List<String> OpenPagePaths => mOpenPagePaths;
+	public List<String> OpenPageUris => mOpenPageUris;
 
 	/// Index of the active page tab when last saved.
 	public int32 ActivePageIndex
@@ -96,16 +96,19 @@ class EditorProject
 		mSettings[new String(key)] = new String(value);
 	}
 
-	/// Sets the list of open page paths (for save).
-	public void SetOpenPages(Span<IEditorPage> pages, int32 activeIndex)
+	/// Sets the list of open page URIs (for save). Caller is responsible for
+	/// resolving each page's absolute FilePath to a `scheme://locator` URI via
+	/// `MountResolver.TryResolveAbsoluteToUri` so the saved list is portable
+	/// across machines.
+	public void SetOpenPageUris(Span<StringView> uris, int32 activeIndex)
 	{
-		ClearAndDeleteItems!(mOpenPagePaths);
+		ClearAndDeleteItems!(mOpenPageUris);
 		mActivePageIndex = activeIndex;
 
-		for (let page in pages)
+		for (let uri in uris)
 		{
-			if (page.FilePath.Length > 0)
-				mOpenPagePaths.Add(new String(page.FilePath));
+			if (uri.Length > 0)
+				mOpenPageUris.Add(new String(uri));
 		}
 	}
 
@@ -179,16 +182,17 @@ class EditorProject
 
 		s.EndArray();
 
-		// Open pages
-		var pageCount = (int32)mOpenPagePaths.Count;
+		// Open pages (stored as scheme://locator URIs, not absolute paths, so
+		// .sedproj works across machines and operating systems).
+		var pageCount = (int32)mOpenPageUris.Count;
 		s.BeginArray("OpenPages", ref pageCount);
 
 		if (s.IsWriting)
 		{
-			for (let path in mOpenPagePaths)
+			for (let uri in mOpenPageUris)
 			{
 				s.BeginObject("");
-				s.String("path", path);
+				s.String("uri", uri);
 				s.EndObject();
 			}
 		}
@@ -197,9 +201,9 @@ class EditorProject
 			for (int32 i = 0; i < pageCount; i++)
 			{
 				s.BeginObject("");
-				let path = new String();
-				s.String("path", path);
-				mOpenPagePaths.Add(path);
+				let uri = new String();
+				s.String("uri", uri);
+				mOpenPageUris.Add(uri);
 				s.EndObject();
 			}
 		}
@@ -213,7 +217,7 @@ class EditorProject
 	{
 		for (let kv in mSettings) { delete kv.key; delete kv.value; }
 		mSettings.Clear();
-		ClearAndDeleteItems!(mOpenPagePaths);
+		ClearAndDeleteItems!(mOpenPageUris);
 		mActivePageIndex = -1;
 	}
 }

@@ -45,6 +45,7 @@ using System.IO;
 using Sedulous.Serialization;
 using Sedulous.Materials;
 using Sedulous.Materials.Resources;
+using Sedulous.Editor.App.Pages;
 
 /// The Sedulous Editor application.
 /// Extends Runtime.Client.Application for direct control over UI and rendering.
@@ -255,6 +256,10 @@ class EditorApplication : Application, IDockableWindowHost
 		mEditorContext.RegisterAssetCreator(new MaterialAssetCreator());
 		mEditorContext.RegisterAssetCreator(new SceneAssetCreator());
 		mEditorContext.RegisterAssetCreator(new PrefabAssetCreator());
+		mEditorContext.RegisterAssetCreator(new ParticleAssetCreator());
+		mEditorContext.RegisterAssetCreator(new SoundCueAssetCreator());
+		mEditorContext.RegisterAssetCreator(new AnimGraphAssetCreator());
+		mEditorContext.RegisterAssetCreator(new PropAnimAssetCreator());
 
 		// Register built-in asset importers
 		mEditorContext.RegisterAssetImporter(new ModelAssetImporter());
@@ -270,15 +275,15 @@ class EditorApplication : Application, IDockableWindowHost
 		mEditorContext.RegisterPageFactory(new PrefabEditorPageFactory(
 			Device, mVGRenderer, Shell.InputManager.Keyboard, mTypeRegistry));
 		mEditorContext.RegisterPageFactory(new TextureEditorPageFactory());
-		mEditorContext.RegisterPageFactory(new MaterialEditorPageFactory());
-		mEditorContext.RegisterPageFactory(new MeshEditorPageFactory());
-		mEditorContext.RegisterPageFactory(new AnimationEditorPageFactory());
-		mEditorContext.RegisterPageFactory(new SkeletonEditorPageFactory());
+		mEditorContext.RegisterPageFactory(new MaterialEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
+		mEditorContext.RegisterPageFactory(new MeshEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
+		mEditorContext.RegisterPageFactory(new AnimationEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
+		mEditorContext.RegisterPageFactory(new SkeletonEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
 		mEditorContext.RegisterPageFactory(new AnimGraphEditorPageFactory());
 		mEditorContext.RegisterPageFactory(new AudioClipEditorPageFactory());
 		mEditorContext.RegisterPageFactory(new SoundCueEditorPageFactory());
 		mEditorContext.RegisterPageFactory(new PropAnimEditorPageFactory());
-		mEditorContext.RegisterPageFactory(new ParticleEditorPageFactory());
+		mEditorContext.RegisterPageFactory(new ParticleEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
 
 		// Register built-in gizmo renderers
 		mEditorContext.RegisterGizmoRenderer(typeof(LightComponent), new LightGizmoRenderer());
@@ -488,6 +493,9 @@ class EditorApplication : Application, IDockableWindowHost
 		// Wire page manager events - each page gets its own dock tab.
 		mEditorContext.PageManager.OnPageOpened.Add(new (page) => OnPageOpened(page));
 		mEditorContext.PageManager.OnPageClosed.Add(new (page) => OnPageClosed(page));
+		// When SetActive runs (e.g. double-click on an already-open asset),
+		// surface the matching dock tab so the user sees the activation.
+		mEditorContext.PageManager.OnActivePageChanged.Add(new (page) => OnActivePageChanged(page));
 
 		// Asset browser panel (bottom)
 		mAssetBrowserPanel = new AssetBrowserPanel(mEditorContext);
@@ -721,9 +729,16 @@ class EditorApplication : Application, IDockableWindowHost
 		let panel = dockManager.AddPanel(page.Title, page.ContentView);
 		panel.Closable = true;
 
-		// Set persistence ID from file path so layout save/restore can track page panels.
+		// Persistence ID uses the URI form (scheme://locator) instead of the
+		// absolute filesystem path so editor_layout.oddl is portable across
+		// machines and operating systems. Falls back to silently skipping if
+		// the page's file isn't inside a mounted scheme (e.g. an unsaved page).
 		if (page.FilePath.Length > 0)
-			panel.SetPersistenceId(scope $"page:{page.FilePath}");
+		{
+			let uri = scope String();
+			if (MountResolver.TryResolveAbsoluteToUri(mEditorContext.MountEntries, page.FilePath, uri))
+				panel.SetPersistenceId(scope $"page:{uri}");
+		}
 
 		// When dock tab X is clicked, detach content (page owns it) and close via PageManager.
 		// Note: DockManager's own OnCloseRequested handler (registered first in AddPanel)
@@ -810,23 +825,33 @@ class EditorApplication : Application, IDockableWindowHost
 		}
 	}
 
+	/// Surface the dock tab matching the newly active page. Fired by the page
+	/// manager whenever SetActive runs - including the dedup path where the
+	/// user double-clicks an already-open asset.
+	private void OnActivePageChanged(IEditorPage page)
+	{
+		if (page == null) return;
+		let dockManager = mEditorContext?.DockManager;
+		if (dockManager == null) return;
+		if (mPageDockPanels.TryGetValue(.(page), let panel))
+			dockManager.ActivatePanel(panel);
+	}
+
 	private void RenderActiveViewports(ICommandEncoder encoder, int32 frameIndex)
 	{
 		if (mEditorContext?.PageManager == null) return;
 
-		// Render viewports only for scene pages whose panels are actually visible.
+		// Render viewports for every open page whose panel is actually visible.
 		// Inactive dock tabs have their DockablePanel set to Visibility=Gone,
 		// so we walk ancestors to skip those - no point doing GPU work for
-		// hidden viewports.
+		// hidden viewports. Any page that hosts a ViewportView in its content
+		// tree (scene editor, preview pages, etc.) renders through here.
 		for (let page in mEditorContext.PageManager.OpenPages)
 		{
-			if (let scenePage = page as SceneEditorPage)
+			if (page.ContentView != null && !page.ContentView.IsPendingDeletion
+				&& IsViewEffectivelyVisible(page.ContentView))
 			{
-				if (scenePage.ContentView != null && !scenePage.ContentView.IsPendingDeletion
-					&& IsViewEffectivelyVisible(scenePage.ContentView))
-				{
-					RenderViewportsInTree(scenePage.ContentView, encoder, frameIndex);
-				}
+				RenderViewportsInTree(page.ContentView, encoder, frameIndex);
 			}
 		}
 	}
@@ -1502,7 +1527,26 @@ class EditorApplication : Application, IDockableWindowHost
 			}
 		}
 
-		mProject.SetOpenPages(pages, activeIndex);
+		// Resolve each page's absolute FilePath to a scheme://locator URI so
+		// the saved list is portable. Pages that aren't inside any mount (e.g.
+		// untitled unsaved pages) are dropped.
+		let uris = scope List<String>();
+		defer { for (let s in uris) delete s; }
+
+		for (let page in pages)
+		{
+			if (page.FilePath.Length == 0) continue;
+			let uri = new String();
+			if (MountResolver.TryResolveAbsoluteToUri(mEditorContext.MountEntries, page.FilePath, uri))
+				uris.Add(uri);
+			else
+				delete uri;
+		}
+
+		let views = scope List<StringView>();
+		for (let u in uris) views.Add(u);
+
+		mProject.SetOpenPageUris(views, activeIndex);
 		mProject.Save();
 	}
 
@@ -1510,11 +1554,18 @@ class EditorApplication : Application, IDockableWindowHost
 	{
 		if (!mProject.IsLoaded) return;
 
-		for (let path in mProject.OpenPagePaths)
+		// Stored URIs are mount-relative. Resolve each to an absolute path
+		// against the current machine's mount table before handing to the
+		// page manager (asset browser and equality checks work in abs paths).
+		// A URI whose scheme isn't mounted on this machine is silently dropped.
+		for (let uri in mProject.OpenPageUris)
 		{
-			if (path.Length == 0) continue;
-			if (!File.Exists(path)) continue;
-			mEditorContext.PageManager.OpenWithContext(path, mEditorContext);
+			if (uri.Length == 0) continue;
+			let absPath = scope String();
+			if (!MountResolver.TryResolveUriToAbsolute(mEditorContext.MountEntries, uri, absPath))
+				continue;
+			if (!File.Exists(absPath)) continue;
+			mEditorContext.PageManager.OpenWithContext(absPath, mEditorContext);
 		}
 
 		// Restore active page
