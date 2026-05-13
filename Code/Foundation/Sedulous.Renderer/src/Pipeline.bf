@@ -36,18 +36,39 @@ public class Pipeline : IRenderingPipeline, IDisposable
 	private uint32 mOutputHeight;
 	private TextureFormat mOutputFormat = .RGBA16Float;
 
-	// Pipeline-owned persistent depth target. Created in Initialize, recreated
-	// on resize, freed in Shutdown. Imported into the render graph each frame
-	// so DepthPrepass and downstream consumers (ParticlePass, DecalPass,
-	// ForwardTransparentPass, SkyPass, DebugPass) share a single SceneDepth
-	// that exists regardless of whether opaque geometry was drawn this frame.
-	private ITexture mSceneDepthTexture;
-	private ITextureView mSceneDepthView;
-	/// Depth-only sub-view used for shader sampling (soft particles, decal
-	/// depth-reconstruction, future TAA disocclusion). Distinct from the
-	/// main view because the depth-stencil format carries both aspects but
-	/// sampled views must be single-aspect under Vulkan.
-	private ITextureView mSceneDepthOnlyView;
+	/// Number of frames of depth history kept (current + N-1 previous).
+	/// Independent of MaxFramesInFlight: that controls CPU/GPU pipelining
+	/// (fence-driven), this controls how many frames back can be sampled by
+	/// temporal effects. 2 = "current + one previous", which is what TAA
+	/// disocclusion, temporal SSAO, and motion-vector validation all want.
+	/// Bump only if a real consumer needs deeper history - each extra slot
+	/// is a full-resolution depth target (~8 MB at 1080p D24S8).
+	private const int SceneDepthHistoryCount = 2;
+
+	// Pipeline-owned persistent depth ping-pong. SceneDepthHistoryCount slots
+	// so previous-frame depth can be sampled by history-aware effects (TAA
+	// disocclusion, temporal SSAO, motion-vector validation). Each frame:
+	//   * slot[Curr] is imported as "SceneDepth"     (this frame's write target)
+	//   * slot[Prev] is imported as "PrevSceneDepth" (last frame's write target)
+	// then the indices advance at end of Render. Resource allocation, resize,
+	// clear, and disposal are pipeline concerns - DepthPrepass and downstream
+	// consumers (ParticlePass, DecalPass, ForwardTransparentPass, SkyPass,
+	// DebugPass) only see the imported names.
+	private ITexture[SceneDepthHistoryCount] mSceneDepthTextures;
+	private ITextureView[SceneDepthHistoryCount] mSceneDepthViews;
+	/// Depth-only sub-views used for shader sampling (soft particles, decals,
+	/// TAA disocclusion). Distinct from the main views because the depth-
+	/// stencil format carries both aspects but sampled views must be
+	/// single-aspect under Vulkan.
+	private ITextureView[SceneDepthHistoryCount] mSceneDepthOnlyViews;
+	/// Index of the slot the current frame writes to. The other slot(s) hold
+	/// previous frames' depth and are exposed as "PrevSceneDepth".
+	private int32 mSceneDepthCurrIndex = 0;
+	/// True once every slot has been cleared at least once. While false,
+	/// Pipeline.Render adds extra clear passes for the non-current slots so
+	/// PrevSceneDepth reads as far-plane (1.0) instead of uninitialized
+	/// memory until normal ping-pong writes have populated each slot.
+	private bool mSceneDepthAllSlotsCleared = false;
 	private const TextureFormat SceneDepthFormat = .Depth24PlusStencil8;
 
 	// Post-processing
@@ -185,10 +206,11 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		if (CreatePerFrameResources() case .Err)
 			return .Err;
 
-		// Allocate the pipeline-owned SceneDepth target.
+		// Allocate the pipeline-owned SceneDepth ping-pong.
 		RecreateSceneDepth(width, height);
-		if (mSceneDepthView == null)
-			return .Err;
+		for (int i = 0; i < SceneDepthHistoryCount; i++)
+			if (mSceneDepthViews[i] == null)
+				return .Err;
 
 		return .Ok;
 	}
@@ -289,10 +311,13 @@ public class Pipeline : IRenderingPipeline, IDisposable
 					device.DestroyBuffer(ref mLineVertexBuffers[i]);
 			}
 
-			// Release SceneDepth (WaitIdle above already flushed in-flight refs).
-			if (mSceneDepthOnlyView != null) device.DestroyTextureView(ref mSceneDepthOnlyView);
-			if (mSceneDepthView != null) device.DestroyTextureView(ref mSceneDepthView);
-			if (mSceneDepthTexture != null) device.DestroyTexture(ref mSceneDepthTexture);
+			// Release SceneDepth ping-pong (WaitIdle above already flushed in-flight refs).
+			for (int i = 0; i < SceneDepthHistoryCount; i++)
+			{
+				if (mSceneDepthOnlyViews[i] != null) device.DestroyTextureView(ref mSceneDepthOnlyViews[i]);
+				if (mSceneDepthViews[i] != null) device.DestroyTextureView(ref mSceneDepthViews[i]);
+				if (mSceneDepthTextures[i] != null) device.DestroyTexture(ref mSceneDepthTextures[i]);
+			}
 		}
 
 		mRenderContext = null;
@@ -366,13 +391,30 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		// resource exists regardless of whether DepthPrepass has any opaque
 		// geometry to draw. DepthPrepass becomes a pure early-Z optimizer that
 		// uses LoadOp.Load on this same target when there is opaque to draw.
-		if (mSceneDepthView != null)
+		bool allDepthSlotsReady = true;
+		for (int i = 0; i < SceneDepthHistoryCount; i++)
+			if (mSceneDepthViews[i] == null) { allDepthSlotsReady = false; break; }
+
+		if (allDepthSlotsReady)
 		{
-			// Pass both views so RenderGraph.GetDepthOnlyTextureView returns a
-			// valid sampled view for ParticlePass / DecalPass / future TAA depth
-			// disocclusion. Without this, set 1 on the particle pipeline goes
-			// unbound and Vulkan validation fires.
-			let depthHandle = mRenderGraph.ImportTarget("SceneDepth", mSceneDepthTexture, mSceneDepthView, mSceneDepthOnlyView);
+			let currIdx = mSceneDepthCurrIndex;
+			// "Previous" is one step backward in the ring (matches the swap
+			// formula at end of Render). Works for any SceneDepthHistoryCount >= 2.
+			let prevIdx = (currIdx + SceneDepthHistoryCount - 1) % SceneDepthHistoryCount;
+
+			// Current slot: this frame's depth writes. Pass both views so
+			// RenderGraph.GetDepthOnlyTextureView returns a valid sampled view
+			// for ParticlePass / DecalPass / SSAO / TAA.
+			let depthHandle = mRenderGraph.ImportTarget("SceneDepth",
+				mSceneDepthTextures[currIdx], mSceneDepthViews[currIdx], mSceneDepthOnlyViews[currIdx]);
+
+			// Previous slot: last frame's depth, exposed by name for effects
+			// that want disocclusion testing / temporal stability. If nothing
+			// reads it, the import is harmless - no pass writes to it so
+			// nothing depends on it.
+			mRenderGraph.ImportTarget("PrevSceneDepth",
+				mSceneDepthTextures[prevIdx], mSceneDepthViews[prevIdx], mSceneDepthOnlyViews[prevIdx]);
+
 			mRenderGraph.AddRenderPass("SceneDepthClear", scope (builder) => {
 				builder
 					.SetDepthTarget(depthHandle, .Clear, .Store, 1.0f)
@@ -383,6 +425,27 @@ public class Pipeline : IRenderingPipeline, IDisposable
 					// BeginRenderPass/End cycle that performs the clear.
 					.SetExecute(new (encoder) => {});
 			});
+
+			// First frame after Initialize/OnResize: also clear every non-current
+			// slot so PrevSceneDepth (and any deeper-history slots if
+			// SceneDepthHistoryCount > 2) read as far-plane (1.0) instead of
+			// uninitialized memory until normal ping-pong writes populate them.
+			if (!mSceneDepthAllSlotsCleared)
+			{
+				for (int s = 0; s < SceneDepthHistoryCount; s++)
+				{
+					if (s == currIdx) continue;
+					let staleHandle = mRenderGraph.ImportTarget(scope $"SceneDepthInitClear[{s}]",
+						mSceneDepthTextures[s], mSceneDepthViews[s], mSceneDepthOnlyViews[s]);
+					mRenderGraph.AddRenderPass(scope $"SceneDepthInitClear[{s}]", scope (builder) => {
+						builder
+							.SetDepthTarget(staleHandle, .Clear, .Store, 1.0f)
+							.NeverCull()
+							.SetExecute(new (encoder) => {});
+					});
+				}
+				mSceneDepthAllSlotsCleared = true;
+			}
 		}
 
 		let hasPostProcess = mPostProcessStack != null && mPostProcessStack.HasActiveEffects;
@@ -434,6 +497,12 @@ public class Pipeline : IRenderingPipeline, IDisposable
 
 		// End render graph frame
 		mRenderGraph.EndFrame();
+
+		// Advance SceneDepth ping-pong: what we just wrote becomes the previous
+		// slot for the next frame, and the next slot in the ring becomes the
+		// new write target. Modulo arithmetic so this works for any history
+		// count >= 2 without touching this site.
+		mSceneDepthCurrIndex = (int32)((mSceneDepthCurrIndex + 1) % SceneDepthHistoryCount);
 
 		mFrameNumber++;
 		} // Pipeline.Render scope
@@ -633,46 +702,58 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		return .(x * 2.0f / Math.Max(width, 1), y * 2.0f / Math.Max(height, 1));
 	}
 
-	/// (Re)creates the pipeline-owned SceneDepth target at the given size.
-	/// Called from Initialize, OnResize, and never from the per-frame path.
-	/// Mirrors TAAEffect.RecreateHistoryTextures: WaitIdle before destroy so
-	/// any in-flight frame that referenced the old depth target finishes.
+	/// (Re)creates both slots of the pipeline-owned SceneDepth ping-pong at
+	/// the given size. Called from Initialize, OnResize, and never from the
+	/// per-frame path. Mirrors TAAEffect.RecreateHistoryTextures: WaitIdle
+	/// before destroy so any in-flight frame that referenced the old depth
+	/// targets finishes. Resets the ping-pong index so the next frame writes
+	/// to slot 0 and the "both cleared" flag so PrevSceneDepth's first read
+	/// is well-defined far-plane.
 	private void RecreateSceneDepth(uint32 width, uint32 height)
 	{
 		let device = mRenderContext?.Device;
 		if (device == null || width == 0 || height == 0) return;
 
-		// Wait for any in-flight reference to the existing target before destroying.
-		if (mSceneDepthTexture != null)
+		// Wait for any in-flight reference to the existing targets before destroying.
+		bool hasAny = false;
+		for (int i = 0; i < SceneDepthHistoryCount; i++)
+			if (mSceneDepthTextures[i] != null) { hasAny = true; break; }
+		if (hasAny)
 			device.WaitIdle();
 
-		if (mSceneDepthOnlyView != null) device.DestroyTextureView(ref mSceneDepthOnlyView);
-		if (mSceneDepthView != null) device.DestroyTextureView(ref mSceneDepthView);
-		if (mSceneDepthTexture != null) device.DestroyTexture(ref mSceneDepthTexture);
-
-		TextureDesc desc = .()
+		for (int i = 0; i < SceneDepthHistoryCount; i++)
 		{
-			Label = "SceneDepth",
-			Width = width, Height = height, Depth = 1,
-			Format = SceneDepthFormat,
-			Usage = .DepthStencil | .Sampled,
-			Dimension = .Texture2D,
-			MipLevelCount = 1, ArrayLayerCount = 1, SampleCount = 1
-		};
-		if (device.CreateTexture(desc) case .Ok(let tex))
-			mSceneDepthTexture = tex;
+			if (mSceneDepthOnlyViews[i] != null) device.DestroyTextureView(ref mSceneDepthOnlyViews[i]);
+			if (mSceneDepthViews[i] != null) device.DestroyTextureView(ref mSceneDepthViews[i]);
+			if (mSceneDepthTextures[i] != null) device.DestroyTexture(ref mSceneDepthTextures[i]);
 
-		if (mSceneDepthTexture != null
-			&& device.CreateTextureView(mSceneDepthTexture, .() { Format = SceneDepthFormat }) case .Ok(let view))
-			mSceneDepthView = view;
+			let label = scope $"SceneDepth[{i}]";
+			TextureDesc desc = .()
+			{
+				Label = label,
+				Width = width, Height = height, Depth = 1,
+				Format = SceneDepthFormat,
+				Usage = .DepthStencil | .Sampled,
+				Dimension = .Texture2D,
+				MipLevelCount = 1, ArrayLayerCount = 1, SampleCount = 1
+			};
+			if (device.CreateTexture(desc) case .Ok(let tex))
+				mSceneDepthTextures[i] = tex;
 
-		// Depth-only companion view for shader sampling (soft particles, decals,
-		// future TAA disocclusion). Vulkan requires sampled depth views to be
-		// single-aspect; mSceneDepthView carries Depth+Stencil and can't be
-		// bound to a fragment shader sampler directly.
-		if (mSceneDepthTexture != null
-			&& device.CreateTextureView(mSceneDepthTexture, .() { Format = SceneDepthFormat, Aspect = .DepthOnly, Label = "SceneDepthOnlyView" }) case .Ok(let depthOnly))
-			mSceneDepthOnlyView = depthOnly;
+			if (mSceneDepthTextures[i] != null
+				&& device.CreateTextureView(mSceneDepthTextures[i], .() { Format = SceneDepthFormat }) case .Ok(let view))
+				mSceneDepthViews[i] = view;
+
+			// Depth-only companion view for shader sampling. Vulkan requires
+			// sampled depth views to be single-aspect; the main view carries
+			// Depth+Stencil and can't be bound to a fragment shader sampler.
+			if (mSceneDepthTextures[i] != null
+				&& device.CreateTextureView(mSceneDepthTextures[i], .() { Format = SceneDepthFormat, Aspect = .DepthOnly, Label = "SceneDepthOnlyView" }) case .Ok(let depthOnly))
+				mSceneDepthOnlyViews[i] = depthOnly;
+		}
+
+		mSceneDepthCurrIndex = 0;
+		mSceneDepthAllSlotsCleared = false;
 	}
 
 	private Result<void> CreatePerFrameResources()

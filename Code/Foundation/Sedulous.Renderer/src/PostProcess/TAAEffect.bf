@@ -24,9 +24,17 @@ class TAAEffect : PostProcessEffect
 	private IDevice mDevice;
 	private RenderContext mRenderContext;
 
+	/// Number of history color slots for the temporal ping-pong: one slot is
+	/// read while the other is written each frame. The resolve algorithm
+	/// (read previous → blend with current → write new) is fundamentally
+	/// 2-slot; a larger count would only matter for variants that sample
+	/// multiple frames back. Independent of MaxFramesInFlight (CPU/GPU
+	/// pipelining is fence-driven, not slot-driven).
+	private const int TAAHistoryCount = 2;
+
 	// History ping-pong textures (persistent across frames, owned by effect)
-	private ITexture[2] mHistoryTextures;
-	private ITextureView[2] mHistoryViews;
+	private ITexture[TAAHistoryCount] mHistoryTextures;
+	private ITextureView[TAAHistoryCount] mHistoryViews;
 	private uint32 mHistoryWidth;
 	private uint32 mHistoryHeight;
 	private int32 mHistoryIndex = 0;
@@ -159,16 +167,22 @@ class TAAEffect : PostProcessEffect
 		if (view.Width != mHistoryWidth || view.Height != mHistoryHeight)
 			RecreateHistoryTextures(view.Width, view.Height);
 
-		if (mHistoryTextures[0] == null || mHistoryTextures[1] == null)
+		bool historyReady = true;
+		for (int i = 0; i < TAAHistoryCount; i++)
+			if (mHistoryTextures[i] == null) { historyReady = false; break; }
+
+		if (!historyReady)
 		{
 			// Can't run TAA without history - pass through
 			// The stack handles this: output = input when we don't write
 			return;
 		}
 
-		// Current history = read, other = write target
+		// Current history = read, next in the ring = write target.
+		// For TAAHistoryCount == 2 this is the classic ping-pong; modulo
+		// arithmetic keeps the swap correct if the count is ever increased.
 		let readIdx = mHistoryIndex;
-		let writeIdx = 1 - mHistoryIndex;
+		let writeIdx = (int32)((mHistoryIndex + 1) % TAAHistoryCount);
 
 		// Upload params
 		TAAParams @params = .()
@@ -270,10 +284,13 @@ class TAAEffect : PostProcessEffect
 		if (mDevice == null || width == 0 || height == 0) return;
 
 		// Wait for GPU before destroying
-		if (mHistoryTextures[0] != null || mHistoryTextures[1] != null)
+		bool hasAny = false;
+		for (int i = 0; i < TAAHistoryCount; i++)
+			if (mHistoryTextures[i] != null) { hasAny = true; break; }
+		if (hasAny)
 			mDevice.WaitIdle();
 
-		for (int i = 0; i < 2; i++)
+		for (int i = 0; i < TAAHistoryCount; i++)
 		{
 			if (mHistoryViews[i] != null) mDevice.DestroyTextureView(ref mHistoryViews[i]);
 			if (mHistoryTextures[i] != null) mDevice.DestroyTexture(ref mHistoryTextures[i]);
@@ -308,14 +325,17 @@ class TAAEffect : PostProcessEffect
 	{
 		if (mDevice == null) return;
 
-		if (mHistoryTextures[0] != null || mHistoryTextures[1] != null)
+		bool hasAny = false;
+		for (int i = 0; i < TAAHistoryCount; i++)
+			if (mHistoryTextures[i] != null) { hasAny = true; break; }
+		if (hasAny)
 			mDevice.WaitIdle();
 
 		for (int i = 0; i < MaxFrames; i++)
 			if (mBindGroups[i] != null)
 				mDevice.DestroyBindGroup(ref mBindGroups[i]);
 
-		for (int i = 0; i < 2; i++)
+		for (int i = 0; i < TAAHistoryCount; i++)
 		{
 			if (mHistoryViews[i] != null) mDevice.DestroyTextureView(ref mHistoryViews[i]);
 			if (mHistoryTextures[i] != null) mDevice.DestroyTexture(ref mHistoryTextures[i]);

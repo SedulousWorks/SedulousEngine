@@ -5,13 +5,23 @@ namespace Sedulous.RenderGraph;
 
 /// A persistent resource that survives across frames with tracked state.
 /// Externally owned - the render graph does not create or destroy these.
+///
+/// The ping-pong variant carries SlotCount slots (current + previous frame).
+/// Independent of MaxFramesInFlight: that controls CPU/GPU pipelining
+/// (fence-driven), this controls how many frames of temporal data are
+/// retained. The PreviousTexture / PreviousTextureView accessors specifically
+/// model "current + one previous" - deeper history would need a different
+/// accessor shape, so bumping SlotCount alone is not enough to support N>2.
 public class PersistentResource
 {
+	/// Number of slots in the ping-pong (current + one previous).
+	public const int SlotCount = 2;
+
 	/// Texture handles (index 0 = primary, index 1 = secondary for ping-pong)
-	private ITexture[2] mTextures;
+	private ITexture[SlotCount] mTextures;
 	/// Texture view handles
-	private ITextureView[2] mViews;
-	/// Current active index (0 or 1)
+	private ITextureView[SlotCount] mViews;
+	/// Current active index in [0, SlotCount)
 	private int32 mCurrentIndex;
 	/// Whether this is a ping-pong resource
 	private bool mIsPingPong;
@@ -47,10 +57,10 @@ public class PersistentResource
 	public ITextureView TextureView => mViews[mCurrentIndex];
 
 	/// The previous frame's texture (for ping-pong; same as current for non-ping-pong)
-	public ITexture PreviousTexture => mIsPingPong ? mTextures[1 - mCurrentIndex] : mTextures[mCurrentIndex];
+	public ITexture PreviousTexture => mIsPingPong ? mTextures[(mCurrentIndex + SlotCount - 1) % SlotCount] : mTextures[mCurrentIndex];
 
 	/// The previous frame's texture view
-	public ITextureView PreviousTextureView => mIsPingPong ? mViews[1 - mCurrentIndex] : mViews[mCurrentIndex];
+	public ITextureView PreviousTextureView => mIsPingPong ? mViews[(mCurrentIndex + SlotCount - 1) % SlotCount] : mViews[mCurrentIndex];
 
 	/// Whether this is a ping-pong resource
 	public bool IsPingPong => mIsPingPong;
@@ -59,7 +69,7 @@ public class PersistentResource
 	public void Swap()
 	{
 		if (mIsPingPong)
-			mCurrentIndex = 1 - mCurrentIndex;
+			mCurrentIndex = (int32)((mCurrentIndex + 1) % SlotCount);
 	}
 
 	/// Update references (e.g., when the external texture is recreated on resize)
