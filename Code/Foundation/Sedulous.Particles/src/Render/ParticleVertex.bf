@@ -30,6 +30,14 @@ public struct ParticleVertex
 	/// Screen-space velocity for stretched billboards.
 	public Vector2 Velocity2D;
 
+	/// Per-particle render mode (mirrors `ParticleRenderMode`). The extractor
+	/// stamps every particle in a system with the system's render mode; the
+	/// vertex shader branches the basis construction on this value so a
+	/// single draw can mix particles authored with different modes (in
+	/// practice each batch is uniform, but the per-vertex value keeps the
+	/// shader self-contained and avoids needing a per-draw uniform).
+	public uint32 RenderMode;
+
 	/// Size in bytes.
-	public static int SizeInBytes => 52;
+	public static int SizeInBytes => 56;
 }

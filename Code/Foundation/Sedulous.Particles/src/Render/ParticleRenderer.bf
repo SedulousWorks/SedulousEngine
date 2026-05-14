@@ -136,15 +136,16 @@ public class ParticleRenderer : Sedulous.Renderer.Renderer
 			Span<uint8>(scratch, writeOffset * ParticleVertex.SizeInBytes));
 
 		// 3. Vertex layout (shared across all blend modes).
-		VertexAttribute[6] attrs = .(
+		VertexAttribute[7] attrs = .(
 			.(.Float32x3, 0,  0),   // Position
 			.(.Float32x2, 12, 1),   // Size
 			.(.Unorm8x4,  20, 2),   // Color
 			.(.Float32,   24, 3),   // Rotation
 			.(.Float32x4, 28, 4),   // TexCoordOffset + TexCoordScale
-			.(.Float32x2, 44, 5)    // Velocity2D
+			.(.Float32x2, 44, 5),   // Velocity2D
+			.(.Uint32,    52, 6)    // RenderMode (per-particle)
 		);
-		VertexBufferLayout instanceLayout = .((uint32)ParticleVertex.SizeInBytes, .(&attrs[0], 6), .Instance);
+		VertexBufferLayout instanceLayout = .((uint32)ParticleVertex.SizeInBytes, .(&attrs[0], 7), .Instance);
 		VertexBufferLayout[1] vertexBuffers = .(instanceLayout);
 
 		encoder.SetViewport(0, 0, (float)view.Width, (float)view.Height, 0.0f, 1.0f);

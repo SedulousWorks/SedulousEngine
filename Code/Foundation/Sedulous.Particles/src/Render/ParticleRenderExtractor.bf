@@ -104,6 +104,14 @@ public static class ParticleRenderExtractor
 			// Default full-texture UV (no atlas)
 			v.TexCoordOffset = .Zero;
 			v.TexCoordScale = .(1, 1);
+
+			// Per-particle render mode. Every particle in this system gets
+			// the same value; the vertex shader uses it to pick basis
+			// vectors (camera-facing / horizontal / vertical billboard).
+			// Stretched billboards are still gated implicitly by Velocity2D
+			// being non-zero above, so the value here is the underlying
+			// authored mode regardless.
+			v.RenderMode = (uint32)system.RenderMode;
 		}
 
 		renderData.VertexCount = streams.AliveCount;

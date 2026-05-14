@@ -4,8 +4,17 @@
 // Per-instance: position, size, color, rotation, atlas UV, velocity (via
 //               per-instance vertex attributes in buffer slot 0).
 //
-// Supports camera-facing billboards with per-particle rotation.
-// Stretched billboards use Velocity2D to elongate along the velocity direction.
+// Supports four orientation modes selected per-particle by RenderMode:
+//   0: Billboard           - camera-facing, with per-particle rotation
+//   1: StretchedBillboard  - elongated along velocity (implicit via Velocity2D)
+//   2: HorizontalBillboard - XZ plane, normal = +Y (ground decals, dust)
+//   3: VerticalBillboard   - Y-up locked, faces camera horizontally (grass, fire)
+//   4: Mesh   - not handled here; separate draw path
+//   5: Trail  - not handled here; separate trail shader
+//
+// StretchedBillboard is detected by the extractor only setting Velocity2D
+// for that mode; the branch in this shader is gated on `length(Velocity2D)`
+// so it overrides the explicit RenderMode if present.
 
 #pragma pack_matrix(row_major)
 
@@ -25,6 +34,7 @@ struct VertexInput
     float  Rotation       : TEXCOORD3;    // rotation angle in radians
     float4 UVOffsetScale  : TEXCOORD4;    // xy = atlas offset, zw = atlas scale
     float2 Velocity2D     : TEXCOORD5;    // screen-space velocity for stretched billboard
+    uint   RenderMode     : TEXCOORD6;    // per-particle orientation mode
     uint   VertexID       : SV_VertexID;
 };
 
@@ -64,25 +74,52 @@ VertexOutput main(VertexInput input)
     float3 camRight = float3(ViewMatrix._m00, ViewMatrix._m10, ViewMatrix._m20);
     float3 camUp    = float3(ViewMatrix._m01, ViewMatrix._m11, ViewMatrix._m21);
 
-    // Apply per-particle rotation around the camera forward axis.
     float cosR = cos(input.Rotation);
     float sinR = sin(input.Rotation);
-    float3 right = camRight * cosR + camUp * sinR;
-    float3 up    = camUp    * cosR - camRight * sinR;
 
-    // Stretched billboard: elongate along the velocity direction.
+    // Pick basis. StretchedBillboard wins if Velocity2D is set, otherwise
+    // dispatch on RenderMode. Default falls back to camera-facing billboard.
+    float3 right;
+    float3 up;
+
     float velLen = length(input.Velocity2D);
     if (velLen > 0.001)
     {
+        // StretchedBillboard: elongate along velocity direction.
         float2 velDir = input.Velocity2D / velLen;
-        // Override right/up to align with velocity.
+        right = camRight * velDir.x + camUp * velDir.y;
+        up    = camUp    * velDir.x - camRight * velDir.y;
         // Stretch factor: longer quads for faster particles.
         float stretch = 1.0 + velLen * 0.1;
-        float3 velRight = camRight * velDir.x + camUp * velDir.y;
-        float3 velUp    = camUp    * velDir.x - camRight * velDir.y;
-        right = velRight;
-        up    = velUp;
         local.y *= stretch;
+    }
+    else if (input.RenderMode == 2u)
+    {
+        // HorizontalBillboard: quad lies in the XZ plane (normal = +Y).
+        // Per-particle rotation spins around the Y normal.
+        right = float3( cosR, 0.0,  sinR);
+        up    = float3(-sinR, 0.0,  cosR);
+    }
+    else if (input.RenderMode == 3u)
+    {
+        // VerticalBillboard: up is world +Y, right is horizontal-camera-facing.
+        // Per-particle rotation is intentionally not applied - this mode
+        // exists for grass/flame sprites that want a fixed vertical axis.
+        float3 camForward = -float3(ViewMatrix._m02, ViewMatrix._m12, ViewMatrix._m22);
+        camForward.y = 0.0;
+        float3 worldUp = float3(0.0, 1.0, 0.0);
+        // If camera is looking straight down/up, camForward.xz collapses;
+        // fall back to world X to keep right finite.
+        float horizLen = length(camForward);
+        camForward = (horizLen > 0.001) ? (camForward / horizLen) : float3(0.0, 0.0, 1.0);
+        right = normalize(cross(worldUp, camForward));
+        up    = worldUp;
+    }
+    else
+    {
+        // Billboard (default): camera-facing with per-particle rotation.
+        right = camRight * cosR + camUp * sinR;
+        up    = camUp    * cosR - camRight * sinR;
     }
 
     float3 cornerWS = input.WorldPos
