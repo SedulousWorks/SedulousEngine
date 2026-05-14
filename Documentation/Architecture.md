@@ -8,19 +8,19 @@ rendering pipeline, engine subsystems, application models, and how they compose.
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │  Applications                                                               │
-│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐  ┌─────────────┐ │
-│  │ Game          │  │ Editor        │  │ UISandbox     │  │ RHI Sample  │ │
-│  │ (Engine.App)  │  │ (Editor.App)  │  │ (Rt.Client)   │  │ (Rt.Client) │ │
-│  │ full engine   │  │ multi-window  │  │ UI framework  │  │ raw GPU     │ │
-│  │ auto-subsys   │  │ viewports     │  │ no engine     │  │ no engine   │ │
-│  └──────┬────────┘  └──────┬────────┘  └──────┬────────┘  └──────┬──────┘ │
-├─────────▼──────────────────▼──────────────────▼──────────────────▼─────────┤
+│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐  ┌─────────────┐   │
+│  │ Game          │  │ Editor        │  │ UISandbox     │  │ RHI Sample  │   │
+│  │ (Engine.App)  │  │ (Editor.App)  │  │ (Rt.Client)   │  │ (Rt.Client) │   │
+│  │ full engine   │  │ multi-window  │  │ UI framework  │  │ raw GPU     │   │
+│  │ auto-subsys   │  │ viewports     │  │ no engine     │  │ no engine   │   │
+│  └──────┬────────┘  └──────┬────────┘  └──────┬────────┘  └──────┬──────┘   │
+├─────────▼──────────────────▼──────────────────▼──────────────────▼──────────┤
 │  Engine Layer (Sedulous.Engine.*)                                           │
-│  Engine.Core: Scene, EntityHandle, ComponentManager<T>, Transforms,        │
-│    SceneSubsystem, ISceneAware, serialization                              │
-│  Subsystems: Input, Physics, Animation, Audio, Navigation,                 │
-│    Render (ISceneRenderer), UI (IOverlayRenderer)                          │
-│  EngineApplication owns swapchain, output targets, frame pacing, blit      │
+│  Engine.Core: Scene, EntityHandle, ComponentManager<T>, Transforms,         │
+│    SceneSubsystem, ISceneAware, serialization                               │
+│  Subsystems: Input, Physics, Animation, Audio, Navigation,                  │
+│    Render (ISceneRenderer), UI (IOverlayRenderer)                           │
+│  EngineApplication owns swapchain, output targets, frame pacing, blit       │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Renderer Layer (Sedulous.Renderer)                                         │
 │  RenderContext (shared) + Pipeline (per-scene passes) + PostProcessStack    │
@@ -28,10 +28,10 @@ rendering pipeline, engine subsystems, application models, and how they compose.
 │  IOverlayRenderer interface                                                 │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Foundation Layer                                                           │
-│  RHI (Vulkan, DX12)  │  Shell (SDL3)  │  VG + Fonts  │  UI + Toolkit      │
-│  Resources  │  VFS (Disk, Pak)  │  Jobs  │  Shaders  │  Physics (Jolt)    │
-│  Audio  │  Animation  │  Core.Mathematics  │  Serialization  │  Images    │
-│  Geometry  │  Profiler                                                     │
+│  RHI (Vulkan, DX12)  │  Shell (SDL3)  │  VG + Fonts  │  UI + Toolkit        │
+│  Resources  │  VFS (Disk, Pak)  │  Jobs  │  Shaders  │  Physics (Jolt)      │
+│  Audio  │  Animation  │  Core.Mathematics  │  Serialization  │  Images      │
+│  Geometry  │  Profiler                                                      │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
