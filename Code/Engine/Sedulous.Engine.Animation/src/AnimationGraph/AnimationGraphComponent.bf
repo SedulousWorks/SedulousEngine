@@ -5,6 +5,7 @@ using Sedulous.Engine.Core;
 using Sedulous.Resources;
 using Sedulous.Animation;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// Component for state-machine-driven skeletal animation.
 /// References a Skeleton and AnimationGraph via ResourceRefs. The manager

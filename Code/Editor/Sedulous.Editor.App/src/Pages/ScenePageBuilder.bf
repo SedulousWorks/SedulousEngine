@@ -14,6 +14,7 @@ using Sedulous.Editor.Core;
 using Sedulous.Core.Mathematics;
 using Sedulous.Renderer.Passes;
 using System.Collections;
+using Sedulous.Inspection;
 
 /// Builds the internal layout for a SceneEditorPage:
 /// Hierarchy (left) | Viewport (center) | Inspector (right)

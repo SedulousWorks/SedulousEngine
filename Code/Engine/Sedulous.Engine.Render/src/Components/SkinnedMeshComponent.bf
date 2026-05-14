@@ -7,6 +7,7 @@ using Sedulous.Renderer;
 using Sedulous.Resources;
 using Sedulous.Core.Mathematics;
 using Sedulous.Materials;
+using Sedulous.Inspection;
 
 /// Component for a renderable skinned mesh.
 /// Rendering only - does not own animation. Bone matrices come from a

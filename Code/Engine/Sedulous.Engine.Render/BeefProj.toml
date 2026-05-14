@@ -1,6 +1,28 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Runtime" = "*", "Sedulous.Engine.Core" = "*", "Sedulous.RHI" = "*", "Sedulous.Shell" = "*", "Sedulous.Renderer" = "*", "Sedulous.Shaders" = "*", "Sedulous.RenderGraph" = "*", "Sedulous.Materials" = "*", "Sedulous.Materials.Resources" = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Resources" = "*", "Sedulous.Profiler" = "*", "Sedulous.Animation" = "*", "Sedulous.Geometry" = "*", "Sedulous.Geometry.Resources" = "*", "Sedulous.Textures" = "*", "Sedulous.Textures.Resources" = "*", "Sedulous.Images" = "*", "Sedulous.Particles" = "*", "Sedulous.Particles.Resources" = "*", "Sedulous.Engine.Animation" = "*"}
 
 [Project]
 Name = "Sedulous.Engine.Render"
-TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Engine.Core" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Renderer" = "*"
+"Sedulous.Shaders" = "*"
+"Sedulous.RenderGraph" = "*"
+"Sedulous.Materials" = "*"
+"Sedulous.Materials.Resources" = "*"
+"Sedulous.Core.Mathematics" = "*"
+"Sedulous.Resources" = "*"
+"Sedulous.Profiler" = "*"
+"Sedulous.Animation" = "*"
+"Sedulous.Geometry" = "*"
+"Sedulous.Geometry.Resources" = "*"
+"Sedulous.Textures" = "*"
+"Sedulous.Textures.Resources" = "*"
+"Sedulous.Images" = "*"
+"Sedulous.Particles" = "*"
+"Sedulous.Particles.Resources" = "*"
+"Sedulous.Engine.Animation" = "*"

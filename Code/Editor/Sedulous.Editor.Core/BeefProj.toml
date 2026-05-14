@@ -1,6 +1,21 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Core" = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Runtime" = "*", "Sedulous.Engine.Core" = "*", "Sedulous.Resources" = "*", "Sedulous.Jobs" = "*", "Sedulous.Shell" = "*", "Sedulous.UI" = "*", "Sedulous.UI.Toolkit" = "*", "Sedulous.Renderer" = "*", "Sedulous.Images" = "*", "Sedulous.Serialization" = "*", "Sedulous.VFS" = "*", "Sedulous.VFS.Disk" = "*"}
 
 [Project]
 Name = "Sedulous.Editor.Core"
-TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Core.Mathematics" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Engine.Core" = "*"
+"Sedulous.Resources" = "*"
+"Sedulous.Jobs" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.UI" = "*"
+"Sedulous.UI.Toolkit" = "*"
+"Sedulous.Renderer" = "*"
+"Sedulous.Images" = "*"
+"Sedulous.Serialization" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.VFS.Disk" = "*"

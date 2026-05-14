@@ -1,6 +1,14 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Runtime" = "*", "Sedulous.Engine.Core" = "*", "Sedulous.Audio" = "*", "Sedulous.Audio.SDL3" = "*", "Sedulous.Audio.Resources" = "*", "Sedulous.Resources" = "*", "Sedulous.Core.Mathematics" = "*"}
 
 [Project]
 Name = "Sedulous.Engine.Audio"
-TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Engine.Core" = "*"
+"Sedulous.Audio" = "*"
+"Sedulous.Audio.SDL3" = "*"
+"Sedulous.Audio.Resources" = "*"
+"Sedulous.Resources" = "*"
+"Sedulous.Core.Mathematics" = "*"

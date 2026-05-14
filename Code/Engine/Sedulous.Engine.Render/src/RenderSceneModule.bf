@@ -5,6 +5,7 @@ using Sedulous.Engine.Core;
 using Sedulous.Resources;
 using Sedulous.Textures;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// Scene-level render settings. One per scene, injected by RenderSubsystem.
 /// Stores skybox, ambient light, and exposure settings that serialize with

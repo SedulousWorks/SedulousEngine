@@ -6,6 +6,7 @@ using Sedulous.Materials;
 using Sedulous.Resources;
 using Sedulous.Core.Mathematics;
 using Sedulous.Particles;
+using Sedulous.Inspection;
 
 /// Component for a particle effect attached to an entity.
 ///

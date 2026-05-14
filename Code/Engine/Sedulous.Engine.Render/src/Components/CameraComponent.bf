@@ -3,6 +3,7 @@ namespace Sedulous.Engine.Render;
 using Sedulous.Engine.Core;
 using Sedulous.Core.Mathematics;
 using System;
+using Sedulous.Inspection;
 
 /// Component for a camera that defines a rendering viewpoint.
 [Component]

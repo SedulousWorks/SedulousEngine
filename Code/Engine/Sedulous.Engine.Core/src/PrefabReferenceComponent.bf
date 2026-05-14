@@ -3,6 +3,7 @@ namespace Sedulous.Engine.Core;
 using System;
 using System.Collections;
 using Sedulous.Resources;
+using Sedulous.Inspection;
 
 /// Component that instantiates a prefab's entity subgraph as children of
 /// its owning entity. Stores per-instance parameter overrides.

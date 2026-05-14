@@ -1,0 +1,11 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Inspection"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Inspection.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core.Mathematics" = "*"
+"Sedulous.Resources" = "*"

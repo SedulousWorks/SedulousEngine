@@ -4,6 +4,7 @@ using System;
 using Sedulous.Engine.Core;
 using Sedulous.Resources;
 using Sedulous.Animation;
+using Sedulous.Inspection;
 
 /// Component for property-based animation (animating entity transforms,
 /// component properties, etc. via string-identified tracks).

@@ -5,6 +5,7 @@ using Sedulous.Engine.Core;
 using Sedulous.Resources;
 using Sedulous.Animation;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// Component for simple skeletal animation playback on an entity.
 /// References a Skeleton and AnimationClip via ResourceRefs. The manager

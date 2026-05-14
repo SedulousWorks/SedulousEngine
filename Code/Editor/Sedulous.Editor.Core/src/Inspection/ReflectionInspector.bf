@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Collections;
 using Sedulous.Engine.Core;
 using Sedulous.UI.Toolkit;
+using Sedulous.Inspection;
 
 /// Holds the pre-edit value for undo command creation.
 /// Allocated once per editor, captures avoid stack ref issues.

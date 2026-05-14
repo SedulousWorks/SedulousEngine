@@ -204,6 +204,7 @@ TowerDefense = {Path = "Projects/TowerDefense"}
 "Sedulous.UI.Runtime" = {Path = "Foundation/Sedulous.UI.Runtime"}
 "Sedulous.Engine.UI" = {Path = "Engine/Sedulous.Engine.UI"}
 "Sedulous.UI.Viewport" = {Path = "Foundation/Sedulous.UI.Viewport"}
+"Sedulous.Inspection" = {Path = "Foundation/Sedulous.Inspection"}
 
 [WorkspaceFolders]
 Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
@@ -242,3 +243,4 @@ Experimental = []
 "Foundation/Messaging" = ["Sedulous.Messaging", "Sedulous.Messaging.Runtime", "Sedulous.Messaging.Tests"]
 Projects = ["TowerDefense"]
 "Deprecated/LegacyUI" = ["LegacyUISandbox", "Sedulous.LegacyUI", "Sedulous.LegacyUI.Resources", "Sedulous.LegacyUI.Runtime", "Sedulous.LegacyUI.Shell", "Sedulous.LegacyUI.Tests", "Sedulous.LegacyUI.Toolkit", "Sedulous.LegacyUI.Viewport", "Sedulous.Engine.LegacyUI"]
+"Foundation/CodeGen" = ["Sedulous.Inspection"]

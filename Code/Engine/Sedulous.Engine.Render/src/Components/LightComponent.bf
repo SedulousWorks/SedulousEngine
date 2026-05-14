@@ -3,6 +3,7 @@ namespace Sedulous.Engine.Render;
 using Sedulous.Engine.Core;
 using Sedulous.Renderer;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// Component for a light source.
 [Component]

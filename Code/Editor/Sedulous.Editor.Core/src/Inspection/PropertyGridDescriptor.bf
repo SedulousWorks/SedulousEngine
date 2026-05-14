@@ -5,6 +5,7 @@ using Sedulous.Engine.Core;
 using Sedulous.Core.Mathematics;
 using Sedulous.Resources;
 using Sedulous.UI.Toolkit;
+using Sedulous.Inspection;
 
 /// Implements IPropertyDescriptor to build PropertyGrid entries from
 /// comptime-generated DescribeProperties calls.

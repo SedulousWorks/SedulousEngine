@@ -1,6 +1,14 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Runtime" = "*", "Sedulous.Engine.Core" = "*", "Sedulous.Engine.Core" = "*", "Sedulous.Animation" = "*", "Sedulous.Animation.Resources" = "*", "Sedulous.Resources" = "*", "Sedulous.Core.Mathematics" = "*"}
 
 [Project]
 Name = "Sedulous.Engine.Animation"
-TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Engine.Core" = "*"
+"Sedulous.Engine.Core" = "*"
+"Sedulous.Animation" = "*"
+"Sedulous.Animation.Resources" = "*"
+"Sedulous.Resources" = "*"
+"Sedulous.Core.Mathematics" = "*"

@@ -6,6 +6,7 @@ using Sedulous.Renderer;
 using Sedulous.Resources;
 using Sedulous.Materials;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// Component for a renderable static mesh.
 /// One component per mesh - supports multiple materials via per-submesh material slots.

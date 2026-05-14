@@ -4,6 +4,7 @@ using Sedulous.Engine.Core;
 using Sedulous.Resources;
 using Sedulous.Audio;
 using System;
+using Sedulous.Inspection;
 
 /// Component for an audio source attached to an entity.
 /// The AudioSourceComponentManager resolves the clip resource, creates the

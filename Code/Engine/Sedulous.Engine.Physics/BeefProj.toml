@@ -1,6 +1,12 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Runtime" = "*", "Sedulous.Engine.Core" = "*", "Sedulous.Physics" = "*", "Sedulous.Physics.Jolt" = "*", "Sedulous.Core.Mathematics" = "*"}
 
 [Project]
 Name = "Sedulous.Engine.Physics"
-TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Engine.Core" = "*"
+"Sedulous.Physics" = "*"
+"Sedulous.Physics.Jolt" = "*"
+"Sedulous.Core.Mathematics" = "*"

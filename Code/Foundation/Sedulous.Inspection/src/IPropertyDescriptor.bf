@@ -1,4 +1,4 @@
-namespace Sedulous.Engine.Core;
+namespace Sedulous.Inspection;
 
 using System;
 using System.Collections;

@@ -2,6 +2,7 @@ namespace Sedulous.Editor.App;
 
 using System;
 using System.Reflection;
+using Sedulous.Inspection;
 
 /// Comptime helper that generates DescribeProperties for a [Component] type.
 /// Call from [OnCompile(.TypeInit)] in each component extension.
@@ -11,7 +12,7 @@ static class InspectorCodegen
 	public static void GenerateDescribeProperties(Type type)
 	{
 		String body = scope .();
-		body.Append("public void DescribeProperties(Sedulous.Engine.Core.IPropertyDescriptor desc)\n{\n");
+		body.Append("public void DescribeProperties(Sedulous.Inspection.IPropertyDescriptor desc)\n{\n");
 
 		// Category header: strip common suffixes for display name
 		let typeName = type.GetName(.. scope .());
@@ -29,7 +30,7 @@ static class InspectorCodegen
 			if (!field.IsInstanceField || field.DeclaringType != type)
 				continue;
 
-			if (!field.HasCustomAttribute<Sedulous.Engine.Core.PropertyAttribute>())
+			if (!field.HasCustomAttribute<PropertyAttribute>())
 				continue;
 
 			let ft = field.FieldType;
@@ -38,9 +39,9 @@ static class InspectorCodegen
 			float rangeMin = -1e9f;
 			float rangeMax = 1e9f;
 			bool hasRange = false;
-			if (field.HasCustomAttribute<Sedulous.Engine.Core.RangeAttribute>())
+			if (field.HasCustomAttribute<RangeAttribute>())
 			{
-				let rangeAttr = field.GetCustomAttribute<Sedulous.Engine.Core.RangeAttribute>().Value;
+				let rangeAttr = field.GetCustomAttribute<RangeAttribute>().Value;
 				rangeMin = rangeAttr.Min;
 				rangeMax = rangeAttr.Max;
 				hasRange = true;
@@ -98,6 +99,6 @@ static class InspectorCodegen
 		body.Append("}\n");
 
 		Compiler.EmitTypeBody(type, body);
-		Compiler.EmitAddInterface(type, typeof(Sedulous.Engine.Core.IInspectable));
+		Compiler.EmitAddInterface(type, typeof(IInspectable));
 	}
 }
