@@ -1657,12 +1657,16 @@ class EditorApplication : Application, IDockableWindowHost
 		if (mUIContext != null)
 		{
 			mUIContext.RemoveRootView(mMainRoot);
-			delete mUIContext;
-			mUIContext = null;
 		}
 
 		delete mMainRoot;
 		mMainRoot = null;
+		
+		if (mUIContext != null)
+		{
+			delete mUIContext;
+			mUIContext = null;
+		}
 
 		EditorIcons.Shutdown();
 
