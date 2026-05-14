@@ -23,6 +23,10 @@ static class InspectorCodegen
 			displayName.RemoveFromEnd(11);
 		else if (displayName.EndsWith("Module"))
 			displayName.RemoveFromEnd(6);
+		else if (displayName.EndsWith("Initializer"))
+			displayName.RemoveFromEnd(11);
+		else if (displayName.EndsWith("Behavior"))
+			displayName.RemoveFromEnd(8);
 		body.AppendF($"\tdesc.BeginCategory(\"{displayName}\");\n");
 
 		for (let field in type.GetFields())
@@ -93,6 +97,23 @@ static class InspectorCodegen
 			}
 			else if (ft.IsEnum)
 				body.AppendF($"\tdesc.EnumField(\"{field.Name}\", &{field.Name}, typeof({ft.GetFullName(.. scope .())}));\n");
+			// Particle-specific types reached via the IPropertyDescriptor extension
+			// declared in Sedulous.Particles. The descriptor implementation
+			// (EditorPropertyGridDescriptor) provides the editor surface.
+			else if (ft == typeof(Sedulous.Particles.RangeFloat))
+				body.AppendF($"\tdesc.RangeFloat(\"{field.Name}\", &{field.Name});\n");
+			else if (ft == typeof(Sedulous.Particles.RangeVector2))
+				body.AppendF($"\tdesc.RangeVector2(\"{field.Name}\", &{field.Name});\n");
+			else if (ft == typeof(Sedulous.Particles.RangeColor))
+				body.AppendF($"\tdesc.RangeColor(\"{field.Name}\", &{field.Name});\n");
+			else if (ft == typeof(Sedulous.Particles.ParticleCurveFloat))
+				body.AppendF($"\tdesc.CurveFloat(\"{field.Name}\", &{field.Name});\n");
+			else if (ft == typeof(Sedulous.Particles.ParticleCurveColor))
+				body.AppendF($"\tdesc.CurveColor(\"{field.Name}\", &{field.Name});\n");
+			else if (ft == typeof(Sedulous.Particles.ParticleCurveVector2))
+				body.AppendF($"\tdesc.CurveVector2(\"{field.Name}\", &{field.Name});\n");
+			else if (ft == typeof(Sedulous.Particles.EmissionShape))
+				body.AppendF($"\tdesc.EmissionShape(\"{field.Name}\", &{field.Name});\n");
 		}
 
 		body.Append("\tdesc.EndCategory();\n");
