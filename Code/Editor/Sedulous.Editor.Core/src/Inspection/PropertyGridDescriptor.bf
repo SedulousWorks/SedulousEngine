@@ -6,6 +6,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Resources;
 using Sedulous.UI.Toolkit;
 using Sedulous.Inspection;
+using Sedulous.Particles;
 
 /// Implements IPropertyDescriptor to build PropertyGrid entries from
 /// comptime-generated DescribeProperties calls.
@@ -145,6 +146,61 @@ class PropertyGridDescriptor : IPropertyDescriptor
 	public void EndCategory()
 	{
 		mCurrentCategory.Clear();
+	}
+
+	// ===== Particle IPropertyDescriptor extension methods =====
+	// These must live on the base PropertyGridDescriptor so the interface
+	// vtable carries slots for them everywhere PropertyGridDescriptor is
+	// used (including projects like Sedulous.Particles that emit calls
+	// through the extension). v1 implementations are read-only labels;
+	// EditorPropertyGridDescriptor overrides them with real editors.
+
+	public virtual void RangeFloat(StringView name, RangeFloat* ptr)
+	{
+		let summary = scope String();
+		summary.AppendF("{:F3} .. {:F3}", ptr.Min, ptr.Max);
+		mGrid.AddProperty(new StringEditor(name, summary, category: mCurrentCategory));
+	}
+
+	public virtual void RangeVector2(StringView name, RangeVector2* ptr)
+	{
+		let summary = scope String();
+		summary.AppendF("({:F2},{:F2}) .. ({:F2},{:F2})",
+			ptr.Min.X, ptr.Min.Y, ptr.Max.X, ptr.Max.Y);
+		mGrid.AddProperty(new StringEditor(name, summary, category: mCurrentCategory));
+	}
+
+	public virtual void RangeColor(StringView name, RangeColor* ptr)
+	{
+		let summary = scope String();
+		summary.AppendF("rgba ({:F2},{:F2},{:F2},{:F2}) .. ({:F2},{:F2},{:F2},{:F2})",
+			ptr.Min.X, ptr.Min.Y, ptr.Min.Z, ptr.Min.W,
+			ptr.Max.X, ptr.Max.Y, ptr.Max.Z, ptr.Max.W);
+		mGrid.AddProperty(new StringEditor(name, summary, category: mCurrentCategory));
+	}
+
+	public virtual void CurveFloat(StringView name, ParticleCurveFloat* ptr)
+	{
+		let summary = scope $"({ptr.KeyCount} keys)";
+		mGrid.AddProperty(new StringEditor(name, summary, category: mCurrentCategory));
+	}
+
+	public virtual void CurveColor(StringView name, ParticleCurveColor* ptr)
+	{
+		let summary = scope $"({ptr.KeyCount} keys)";
+		mGrid.AddProperty(new StringEditor(name, summary, category: mCurrentCategory));
+	}
+
+	public virtual void CurveVector2(StringView name, ParticleCurveVector2* ptr)
+	{
+		let summary = scope $"({ptr.KeyCount} keys)";
+		mGrid.AddProperty(new StringEditor(name, summary, category: mCurrentCategory));
+	}
+
+	public virtual void EmissionShape(StringView name, EmissionShape* ptr)
+	{
+		let summary = scope $"{ptr.Type}";
+		mGrid.AddProperty(new StringEditor(name, summary, category: mCurrentCategory));
 	}
 
 	// === Euler/Quaternion conversion helpers ===

@@ -9,12 +9,11 @@ using Sedulous.Shell;
 using Sedulous.UI.Toolkit;
 using Sedulous.Particles;
 
-/// Extends PropertyGridDescriptor with editor-specific controls
-/// (ResourceRefEditor with file browse dialogs, etc.) plus the
-/// particle-specific descriptor methods declared via interface extension
-/// in Sedulous.Particles (RangeFloat, RangeVector2, RangeColor,
-/// CurveFloat, CurveColor, CurveVector2, EmissionShape). Stub
-/// implementations show read-only labels; real editors land in follow-ups.
+/// Extends PropertyGridDescriptor with editor-specific controls:
+/// ResourceRefEditor with file browse dialogs, and real editors for the
+/// particle-specific types (Range*, EmissionShape). Curve editors land
+/// in task #38; until then they keep using the base class's read-only
+/// stub.
 class EditorPropertyGridDescriptor : PropertyGridDescriptor
 {
 	private IDialogService mDialogs;
@@ -51,56 +50,34 @@ class EditorPropertyGridDescriptor : PropertyGridDescriptor
 		mGrid.AddProperty(editor);
 	}
 
-	// ===== Particle IPropertyDescriptor extension methods (stub) =====
-	// Real editors land in tasks #37 and #38. For now, each surfaces a
-	// read-only summary so the property grid renders something instead of
-	// failing to compile.
+	// ===== Particle types: real editors =====
 
-	public void RangeFloat(StringView name, RangeFloat* ptr)
+	public override void RangeFloat(StringView name, RangeFloat* ptr)
 	{
-		let summary = scope String();
-		summary.AppendF("{:F3} .. {:F3}", ptr.Min, ptr.Max);
-		mGrid.AddProperty(new StringEditor(name, summary, category: CurrentCategory));
+		mGrid.AddProperty(new RangeFloatEditor(name, ptr, category: CurrentCategory));
 	}
 
-	public void RangeVector2(StringView name, RangeVector2* ptr)
+	public override void RangeVector2(StringView name, RangeVector2* ptr)
 	{
-		let summary = scope String();
-		summary.AppendF("({:F2},{:F2}) .. ({:F2},{:F2})",
-			ptr.Min.X, ptr.Min.Y, ptr.Max.X, ptr.Max.Y);
-		mGrid.AddProperty(new StringEditor(name, summary, category: CurrentCategory));
+		mGrid.AddProperty(new RangeVector2Editor(name, ptr, category: CurrentCategory));
 	}
 
-	public void RangeColor(StringView name, RangeColor* ptr)
+	public override void RangeColor(StringView name, RangeColor* ptr)
 	{
-		let summary = scope String();
-		summary.AppendF("rgba ({:F2},{:F2},{:F2},{:F2}) .. ({:F2},{:F2},{:F2},{:F2})",
-			ptr.Min.X, ptr.Min.Y, ptr.Min.Z, ptr.Min.W,
-			ptr.Max.X, ptr.Max.Y, ptr.Max.Z, ptr.Max.W);
-		mGrid.AddProperty(new StringEditor(name, summary, category: CurrentCategory));
+		mGrid.AddProperty(new RangeColorEditor(name, ptr, category: CurrentCategory));
 	}
 
-	public void CurveFloat(StringView name, ParticleCurveFloat* ptr)
+	public override void EmissionShape(StringView name, EmissionShape* ptr)
 	{
-		let summary = scope $"({ptr.KeyCount} keys)";
-		mGrid.AddProperty(new StringEditor(name, summary, category: CurrentCategory));
+		mGrid.AddProperty(new EmissionShapeEditor(name, ptr, category: CurrentCategory));
 	}
 
-	public void CurveColor(StringView name, ParticleCurveColor* ptr)
+	public override void CurveFloat(StringView name, ParticleCurveFloat* ptr)
 	{
-		let summary = scope $"({ptr.KeyCount} keys)";
-		mGrid.AddProperty(new StringEditor(name, summary, category: CurrentCategory));
+		mGrid.AddProperty(new CurveFloatEditor(name, ptr, category: CurrentCategory));
 	}
 
-	public void CurveVector2(StringView name, ParticleCurveVector2* ptr)
-	{
-		let summary = scope $"({ptr.KeyCount} keys)";
-		mGrid.AddProperty(new StringEditor(name, summary, category: CurrentCategory));
-	}
-
-	public void EmissionShape(StringView name, EmissionShape* ptr)
-	{
-		let summary = scope $"{ptr.Type}";
-		mGrid.AddProperty(new StringEditor(name, summary, category: CurrentCategory));
-	}
+	// CurveColor and CurveVector2 keep using the base class read-only stub
+	// for now - multi-channel shared-time editing needs a dedicated pass.
+	// See EditorRoadmap "TODO - multi-channel curve editors".
 }
