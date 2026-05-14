@@ -177,7 +177,6 @@ NetWebSocket = {Path = "Samples/Net/NetWebSocket"}
 AudioSandbox = {Path = "Samples/AudioSandbox"}
 recastnavigation-Beef = {Path = "Dependencies/recastnavigation-Beef"}
 "Sedulous.Particles" = {Path = "Foundation/Sedulous.Particles"}
-"Sedulous.Particles.Resources" = {Path = "Foundation/Sedulous.Particles.Resources"}
 EngineRenderStressTest = {Path = "Samples/EngineRenderStressTest"}
 "Sedulous.LegacyUI" = {Path = "Deprecated/Sedulous.LegacyUI"}
 "Sedulous.LegacyUI.Runtime" = {Path = "Deprecated/Sedulous.LegacyUI.Runtime"}
@@ -224,7 +223,7 @@ Foundation = []
 "Foundation/Imaging" = ["Sedulous.Images.IO", "Sedulous.Images.STB", "Sedulous.Images.Tests", "Sedulous.Images.Resources", "Sedulous.Images.SDL", "Sedulous.Images"]
 "Foundation/Models" = ["Sedulous.Models", "Sedulous.Models.FBX", "Sedulous.Models.GLTF", "Sedulous.Models.Tests"]
 "Foundation/Net" = ["Sedulous.Net", "Sedulous.Net.HTTP", "Sedulous.Net.HTTP.Tests", "Sedulous.Net.Tests"]
-"Foundation/Render" = ["Sedulous.Materials", "Sedulous.Shaders", "Sedulous.Textures", "Sedulous.Textures.Resources", "Sedulous.Textures.Importer", "Sedulous.Materials.Resources", "Sedulous.RenderGraph", "Sedulous.RenderGraph.Tests", "Sedulous.Renderer", "Sedulous.Particles", "Sedulous.Particles.Resources"]
+"Foundation/Render" = ["Sedulous.Materials", "Sedulous.Shaders", "Sedulous.Textures", "Sedulous.Textures.Resources", "Sedulous.Textures.Importer", "Sedulous.Materials.Resources", "Sedulous.RenderGraph", "Sedulous.RenderGraph.Tests", "Sedulous.Renderer", "Sedulous.Particles"]
 "Foundation/Runtime" = ["Sedulous.Runtime", "Sedulous.Runtime.Client"]
 "Foundation/Jobs" = ["Sedulous.Jobs", "Sedulous.Jobs.Tests"]
 "Foundation/Resources" = ["Sedulous.Resources", "Sedulous.Resources.Tests"]
