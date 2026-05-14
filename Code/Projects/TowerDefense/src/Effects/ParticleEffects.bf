@@ -119,6 +119,17 @@ class ParticleEffects
 	{
 		if (mScene == null || effect == null) { delete effect; return; }
 
+		// Texture lives on each ParticleSystem in the asset, not on the
+		// component. Apply the shared sprite to every system in this
+		// programmatically-built effect before spawning.
+		if (mParticleTexture != null)
+		{
+			var texRef = ResourceRef(mParticleTexture.Id, "");
+			defer texRef.Dispose();
+			for (let sys in effect.Systems)
+				sys.SetTextureRef(texRef);
+		}
+
 		let entity = mScene.CreateEntity("FX");
 		mScene.SetLocalTransform(entity, .() { Position = position, Rotation = .Identity, Scale = .One });
 
@@ -127,16 +138,7 @@ class ParticleEffects
 		{
 			let handle = particleMgr.CreateComponent(entity);
 			if (let comp = particleMgr.Get(handle))
-			{
 				comp.SetEffect(effect);
-
-				if (mParticleTexture != null)
-				{
-					var texRef = ResourceRef(mParticleTexture.Id, "");
-					defer texRef.Dispose();
-					comp.SetTextureRef(texRef);
-				}
-			}
 		}
 
 		mActiveEffects.Add(.() { Entity = entity, Effect = effect, RemainingTime = lifetime });

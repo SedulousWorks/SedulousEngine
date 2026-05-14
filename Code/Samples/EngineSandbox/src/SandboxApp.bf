@@ -1142,25 +1142,27 @@ class SandboxApp : EngineApplication
 		let entity = scene.CreateEntity(entityName);
 		scene.SetLocalTransform(entity, .() { Position = position, Rotation = .Identity, Scale = .One });
 
+		// Texture is per-ParticleSystem on the asset now; apply the loaded
+		// sprite to every system in the programmatically-built effect before
+		// spawning the component.
+		let fullPath = scope String();
+		GetAssetPath(texturePath, fullPath);
+
+		if (ImageLoaderFactory.LoadImage(fullPath) case .Ok(var image))
+		{
+			let texRes = new TextureResource(image, true);
+			resources.AddResource<TextureResource>(texRes);
+			mSpriteTextures.Add(texRes); // reuse shutdown list
+
+			var texRef = ResourceRef(texRes.Id, "");
+			defer texRef.Dispose();
+			for (let sys in effect.Systems)
+				sys.SetTextureRef(texRef);
+		}
+
 		let handle = particleMgr.CreateComponent(entity);
 		if (let comp = particleMgr.Get(handle))
-		{
 			comp.SetEffect(effect);
-
-			let fullPath = scope String();
-			GetAssetPath(texturePath, fullPath);
-
-			if (ImageLoaderFactory.LoadImage(fullPath) case .Ok(var image))
-			{
-				let texRes = new TextureResource(image, true);
-				resources.AddResource<TextureResource>(texRes);
-				mSpriteTextures.Add(texRes); // reuse shutdown list
-
-				var texRef = ResourceRef(texRes.Id, "");
-				defer texRef.Dispose();
-				comp.SetTextureRef(texRef);
-			}
-		}
 	}
 
 	protected override void OnUpdate(float deltaTime)
