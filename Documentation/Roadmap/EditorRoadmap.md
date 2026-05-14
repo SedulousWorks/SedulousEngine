@@ -1080,7 +1080,7 @@ a member and contributes its own UI layout.
 | **Skeleton** | `.skeleton` | DONE (read-only by design) | Bone hierarchy debug-drawn via `PreviewSceneHost.OnPreRender`. Info panel with bone names. |
 | **Material** | `.material` | Preview only — property editing pending | Sphere primitive (`builtin://primitives/sphere.mesh`) shaded with the material. Right pane currently shows shader name / blend / cull / property count; needs `PropertyGrid` binding for full editing. |
 | **Animation** | `.animation` | Metadata only — viewport empty | `AnimationClip` carries no skeleton link, so no skeletal preview yet. Play/Pause/Stop + scrubber UI present. Full preview needs a skeleton-binding flow (later phase). |
-| **Particle Effect** | `.particlefx` | DONE | Authoring tree (effect -> systems -> emitter / initializers / behaviors) with right-click context menus + drag-to-reorder for structural mutation (Add System / Add Initializer ▸ / Add Behavior ▸ / Move Up/Down / Delete via `ParticleTypeRegistry`). Inspector binds via the comptime-generated `DescribeProperties` path; per-edit `MarkDirty + Restart` hook subscribes to each editor's `OnEditEnd`. Real editors for Range\* / EmissionShape / `CurveFloat` (single-curve canvas) / `CurveVector2` (two linked channels on one `CurveCanvas`) / `CurveColor` (`GradientEditor` widget + 8-bit `ColorPicker` round-trip; HDR picker is a later upgrade). Per-system texture lives on `ParticleSystem.Texture` (asset-side `ResourceRef`); engine resolves per-system MaterialInstance keyed on `ITextureView` with dedup across systems and components. Live preview restarts on spawn-time edits, plays back through `PreviewSceneHost`. Toolbar Play / Stop / Restart respects authored `IsEmitting`. |
+| **Particle Effect** | `.particlefx` | DONE | Authoring tree (effect -> systems -> emitter / initializers / behaviors) with right-click context menus + drag-to-reorder for structural mutation (Add System / Add Initializer ▸ / Add Behavior ▸ / Move Up/Down / Delete via `ParticleTypeRegistry`). Inspector binds via the comptime-generated `DescribeProperties` path; per-edit `MarkDirty + Restart` hook subscribes to each editor's `OnEditEnd`. Real editors for Range\* / EmissionShape / `CurveFloat` (single-curve canvas) / `CurveVector2` (two linked channels on one `CurveCanvas`) / `CurveColor` (`GradientEditor` widget; stops open an `HDRColorPicker` for HDR-allowed Vector4 colors). `RangeColor` shows two clickable swatches that open the same picker. Per-system texture lives on `ParticleSystem.Texture` (asset-side `ResourceRef`); engine resolves per-system MaterialInstance keyed on `ITextureView` with dedup across systems and components. Live preview restarts on spawn-time edits, plays back through `PreviewSceneHost`. Toolbar Play / Stop / Restart respects authored `IsEmitting`. |
 | **Audio Clip** | `.audioclip` | DONE (read-only) | Metadata, Play/Pause/Stop, volume slider, loop toggle (playback via `IAudioSource`). Settings editing is a later polish pass. |
 | **Sound Cue** | `.soundcue` | Preview only — entry editing pending | Metadata, entry list (read-only), Play Cue button. Needs entry-management UI: list editor with `AudioClip` ResourceRef pickers + weight/volume/pitch sliders. Page owns the cue resource and releases on close. |
 | **Animation Graph** | `.animgraph` | Stub | Asset creator works; page is the generic `ResourceEditorPage` placeholder. Needs a node-graph widget in `Sedulous.UI.Toolkit`. |
@@ -1158,14 +1158,17 @@ tangent slope, channel descriptor's `Interpolation == .Hermite` gates
 whether handles render. Useful for `CurveFloat` and `CurveVector2`;
 `CurveColor` is linear-only so it doesn't apply.
 
-**TODO — HDR color picker for `GradientEditor` stops.**
-`CurveColorEditor` currently opens the existing 8-bit `ColorPicker`
-dialog for stop colors, which clamps HDR channels (Vector4 > 1) on the
-round-trip. The model storage is HDR-allowed and survives values that
-never go through the picker - so authoring is constrained, not the data
-path. A proper HDR picker (RGB picker + intensity slider, or a fully
-floating-point picker) would unblock authoring emissive ramps. Could
-also slot in as a generic `Vector4ColorEditor` for any HDR color field.
+**~~TODO — HDR color picker for `GradientEditor` stops.~~ DONE.**
+`HDRColorPicker` lives in `Foundation/Sedulous.UI.Toolkit/src/HDRColorPicker.bf`.
+Same SV-square + hue-strip + alpha-strip layout as the 8-bit
+`ColorPicker`, but the widgets drive a normalized [0, 1] color while a
+separate `Intensity` field multiplies RGB into HDR. R / G / B / A
+NumericFields accept full float values; entering R > 1 decomposes the
+typed triple back into (normalized color, intensity = max(R, G, B)) so
+the SV indicator stays anchored to chroma. Outputs a `Vector4`.
+`CurveColorEditor` and `RangeColorEditor` both opened by this picker;
+any future HDR color slot (material emissives, HDR light color, post-FX
+grading) can reuse it.
 
 **TODO — adopt `Property<T>` inside `PropertyEditor`.** Today each
 `PropertyEditor` subclass (FloatEditor, ColorEditor, Vector3Editor, etc.)

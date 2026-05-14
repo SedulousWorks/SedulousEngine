@@ -297,15 +297,17 @@ shader variants needed. Renderer does not reference the animation project.
 
 **Dependencies:** Needs depth buffer access (already available from prepass).
 
-## ~~Phase 10: Particles~~ DONE
+## Phase 10: Particles — DONE (core), with gaps
 
 Self-contained particle system following ezEngine's ParticlePlugin pattern.
-All rendering lives inside `Sedulous.Particles` (no split across projects).
+The core simulation, rendering, and resource pipeline are functional and
+in production use, but several declared features on `ParticleRenderMode`
+are stubs that fall through to `Billboard` — see "Missing render modes"
+below. Authoring surface (editor) is complete.
 
 ### Architecture
-- **Sedulous.Particles** - simulation + rendering (depends on Core.Mathematics, RHI, Renderer, Materials)
-- **Sedulous.Particles.Resources** - ParticleEffectResource + ResourceManager
-- **Engine.Render** - ParticleComponent, ParticleComponentManager (IRenderDataProvider)
+- **Sedulous.Particles** - simulation + rendering, and resource pipeline. Depends on Core.Mathematics, RHI, Renderer, Materials, Resources, Serialization. (The previous `Sedulous.Particles.Resources` companion project was folded back into the parent once `Sedulous.Particles` was allowed to depend on `Sedulous.Resources`. Namespace `Sedulous.Particles.Resources` is preserved.)
+- **Engine.Render** - ParticleComponent, ParticleComponentManager (IRenderDataProvider). Component holds only the effect ref; texture lives per-system on the asset.
 
 ### Simulation
 - **ParticleStream abstraction** - `ParticleStream` base, `CPUStream<T>` (system memory), `GPUStream` (storage buffer stub). `ParticleStreamContainer` owns streams, provides typed accessors, handles swap-remove compaction
@@ -314,7 +316,7 @@ All rendering lives inside `Sedulous.Particles` (no split across projects).
 - **ParticleEmitter** - spawning logic only (continuous, burst, combined). Spawn rate scaling by LOD
 - **ParticleEffect** - top-level container grouping multiple ParticleSystems. SubEmitterLinks for cross-system event routing
 - **ParticleEffectInstance** - runtime instance, routes sub-emitter events between systems
-- **12 behaviors** - Gravity, Drag, Wind, Turbulence, Vortex, Attractor, RadialForce, VelocityIntegration, ColorOverLifetime, SizeOverLifetime, SpeedOverLifetime, AlphaOverLifetime, RotationOverLifetime
+- **13 behaviors** - Gravity, Drag, Wind, Turbulence, Vortex, Attractor, RadialForce, VelocityIntegration, ColorOverLifetime, SizeOverLifetime, SpeedOverLifetime, AlphaOverLifetime, RotationOverLifetime
 - **6 initializers** - Position (emission shape), Velocity, Lifetime, Color, Size, Rotation
 - **Curves** - ParticleCurveFloat/Color/Vector2 with Hermite interpolation, factory methods
 - **Emission shapes** - Point, Sphere, Hemisphere, Cone, Box, Circle, Edge with volume/surface/arc
@@ -328,9 +330,40 @@ All rendering lives inside `Sedulous.Particles` (no split across projects).
 - **Per-system blend mode** - ParticleBlendMode (Alpha, Additive, Premultiplied, Multiply) correctly applied to pipeline state
 
 ### Engine Integration
-- **ParticleComponent** - holds effect ref (ResourceRef or direct), texture ref, MaterialInstance
-- **ParticleComponentManager** - resolves effect + texture resources, simulates effects, extracts ParticleBatchRenderData. LOD via stored camera position (one-frame delay)
+- **ParticleComponent** - holds the effect ref only (the runtime instance is created by the manager). No per-component texture; visuals come from each ParticleSystem on the asset.
+- **ParticleComponentManager** - resolves the effect resource, walks the effect's systems each frame, resolves `system.TextureRef` per system, looks up (or creates) a shared MaterialInstance keyed by ITextureView (dedupes across all systems and components), and stores per-(component, system) material references. ExtractRenderData binds the per-system material when building each batch. LOD via stored camera position (one-frame delay).
 - **RenderSubsystem** - registers ParticleRenderer + ParticleComponentManager automatically
+
+### Missing render modes (`ParticleRenderMode` stubs)
+
+`ParticleRenderMode` declares six values but the renderer only branches on
+`Billboard`, `StretchedBillboard`, and `Trail`. The remaining three values
+are accepted by the inspector (and serialized round-trip), but the draw
+path treats them as `Billboard`:
+
+- **`HorizontalBillboard`** - quad facing up (Y-axis normal), used for
+  ground decals / shockwaves / dust puffs. Cheap to add: vertex shader
+  branches on a per-batch flag, builds the quad in the XZ plane instead
+  of camera-facing. The data path is already in place - just needs a
+  shader variant and the renderer to bind it when `RenderMode ==
+  .HorizontalBillboard`.
+- **`VerticalBillboard`** - quad locked to Y-up but facing the camera
+  horizontally, used for grass / fire / tall sprites. Same shape of fix
+  as horizontal billboard, different basis construction.
+- **`Mesh`** - instanced mesh particles. Significant new work: needs
+  `[Property] ResourceRef Mesh` on ParticleSystem (mesh ref alongside
+  the texture ref), mesh resolution in ParticleComponentManager (similar
+  to texture resolution, dedup by mesh resource), a separate per-particle
+  transform instance buffer (position + rotation + scale per particle,
+  not the current 6-vert billboard data), and a parallel draw path in
+  ParticleRenderer that issues instanced indexed draws against the mesh
+  buffers instead of the billboard `Draw(6, count)`. ParticleVertex
+  layout would also need to extend or split into a mesh-specific layout
+  carrying transform data.
+
+The `RenderMode` field is otherwise plumbed end-to-end (serialized,
+extracted into ParticleBatchRenderData, available to the renderer) - the
+hookup is just missing at the shader/draw-call selection point.
 
 ### Deferred
 - **Grid-based atlas animation** - ParticleVertex already has TexCoordOffset/TexCoordScale fields. Needs AtlasColumns/AtlasRows/AtlasFPS/AtlasLoop on ParticleSystem and UV computation in ParticleRenderExtractor (port from old engine's CPUParticleEmitter atlas logic). Consider generic atlas format for shared use across particles, sprites, and UI
