@@ -2,11 +2,13 @@ namespace Sedulous.Particles;
 
 using System;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// Applies velocity damping (drag) to particles.
 public class DragBehavior : ParticleBehavior
 {
 	/// Drag coefficient. Higher values slow particles faster.
+	[Property, Range(0, 100)]
 	public float Drag = 1.0f;
 
 	public override BehaviorSupport Support => .Both;

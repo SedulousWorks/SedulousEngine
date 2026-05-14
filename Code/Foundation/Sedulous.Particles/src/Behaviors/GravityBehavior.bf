@@ -2,14 +2,17 @@ namespace Sedulous.Particles;
 
 using System;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// Applies gravitational acceleration to particle velocity.
 public class GravityBehavior : ParticleBehavior
 {
 	/// Gravity multiplier (1.0 = Earth gravity at 9.81 m/s²).
+	[Property, Range(-10, 10)]
 	public float Multiplier = 1.0f;
 
 	/// Gravity direction (default: negative Y).
+	[Property]
 	public Vector3 Direction = .(0, -1, 0);
 
 	public override BehaviorSupport Support => .Both;
