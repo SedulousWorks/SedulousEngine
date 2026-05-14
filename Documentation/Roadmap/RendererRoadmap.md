@@ -467,6 +467,45 @@ Recommended implementation order based on dependencies and game impact:
 12. ~~**Phase 10** - Particles (self-contained system, CPU simulation, billboard rendering, sub-emitters, LOD)~~ DONE
 13. ~~**Phase 5.3** - FXAA, TAA, SSAO~~ DONE (motion blur, color grading deferred)
 
+## Shader hot-reload (TODO, newly tractable)
+
+`Sedulous.Renderer` and `Sedulous.Particles` now depend on
+`Sedulous.Resources` directly (the foundation-may-not-depend-on-Resources
+rule was deliberately dropped for libraries that need cross-asset refs
+and hot-reload — see EngineRoadmap "Hot Reload Resource Lifecycle"). That
+unblocks turning shaders into first-class resources and getting in-editor
+hot-reload for them, which has been deferred since the rule made the
+plumbing awkward.
+
+Concrete shape:
+
+- **`ShaderResource`** wrapping the existing `ShaderModule` pair, owned
+  by a `ShaderResourceManager` that loads source from disk via the
+  `ResourceSystem` + the existing `ShaderCompiler`. The on-disk source
+  files in `Assets/shaders/` become resource-system-addressable assets.
+- **Hot reload**: ResourceSystem's `PollHotReload` already exists; the
+  manager's `Reload(resource, ctx)` would re-read the source, recompile
+  via the shader system's disk-cache-bypass path, swap the bound
+  ShaderModule(s) in place, and increment Resource.Generation.
+- **Pipeline cache invalidation**: `PipelineStateCache` keys on
+  `ShaderName + ShaderHash`. Pipelines pinned to a specific shader
+  generation get evicted when generation increments; next render
+  recreates them. (Same generation-driven pattern materials already
+  use.)
+- **Subscription**: consumer renderers (mesh, particles, decals, etc.)
+  subscribe to their specific shader resources via the per-handle
+  subscription API TODO in `EngineRoadmap`. When fired, they invalidate
+  their cached pipelines.
+- **Editor wins**: live shader edits update the running viewport
+  without restart. Particle/material/post-FX shader iteration goes from
+  "edit, restart editor, re-open asset" to "edit, save, see result".
+
+Scope ~300-500 LOC across Sedulous.Shaders + Sedulous.Renderer +
+Sedulous.Resources (the per-handle subscription API is the main shared
+dependency). The existing shader-compiler infrastructure handles disk
+reads + caching + reflection already; this work is primarily wrapping
+it in the Resource lifecycle.
+
 ## Architecture Notes
 
 ### ezEngine Patterns We Follow
