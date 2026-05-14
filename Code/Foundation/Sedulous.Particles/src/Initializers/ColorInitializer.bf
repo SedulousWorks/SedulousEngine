@@ -2,11 +2,13 @@ namespace Sedulous.Particles;
 
 using System;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// Initializes particle color from a constant or random range.
 public class ColorInitializer : ParticleInitializer
 {
 	/// Initial color range (component-wise lerp between min and max).
+	[Property]
 	public RangeColor Color = .Constant(.(1, 1, 1, 1));
 
 	public override BehaviorSupport Support => .Both;

@@ -2,17 +2,21 @@ namespace Sedulous.Particles;
 
 using System;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// Initializes particle position from an emission shape.
 public class PositionInitializer : ParticleInitializer
 {
 	/// Emission shape to sample positions from.
+	[Property]
 	public EmissionShape Shape = .Point();
 
 	/// Emitter world position (set by system before initialization).
+	[HideInInspector]
 	public Vector3 EmitterPosition = .Zero;
 
 	/// Whether particles are simulated in local space.
+	[Property]
 	public bool LocalSpace = false;
 
 	public override BehaviorSupport Support => .Both;

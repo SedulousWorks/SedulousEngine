@@ -2,18 +2,22 @@ namespace Sedulous.Particles;
 
 using System;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// Applies pseudo-noise turbulence force to particles.
 /// Uses fast sin-based approximation rather than true Perlin noise.
 public class TurbulenceBehavior : ParticleBehavior
 {
 	/// Turbulence force strength.
+	[Property, Range(0, 50)]
 	public float Strength = 1.0f;
 
 	/// Spatial frequency (higher = more detail/smaller vortices).
+	[Property, Range(0.01f, 10)]
 	public float Frequency = 1.0f;
 
 	/// Scroll speed (how fast the noise field moves over time).
+	[Property, Range(0, 10)]
 	public float Speed = 1.0f;
 
 	public override BehaviorSupport Support => .CPUOnly;

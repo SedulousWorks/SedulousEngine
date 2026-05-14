@@ -2,11 +2,13 @@ namespace Sedulous.Particles;
 
 using System;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// Modifies particle size over its lifetime using a Vector2 curve.
 public class SizeOverLifetimeBehavior : ParticleBehavior
 {
 	/// Size curve evaluated at normalized particle age [0, 1].
+	[Property]
 	public ParticleCurveVector2 Curve;
 
 	public override BehaviorSupport Support => .Both;

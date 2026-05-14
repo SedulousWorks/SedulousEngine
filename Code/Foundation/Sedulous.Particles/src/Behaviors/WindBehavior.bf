@@ -2,14 +2,17 @@ namespace Sedulous.Particles;
 
 using System;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// Applies a constant directional wind force to particles.
 public class WindBehavior : ParticleBehavior
 {
 	/// Wind direction and strength (vector magnitude = force).
+	[Property]
 	public Vector3 Force = .(1, 0, 0);
 
 	/// Wind turbulence - randomized variation applied each frame.
+	[Property, Range(0, 50)]
 	public float Turbulence = 0;
 
 	public override BehaviorSupport Support => .Both;

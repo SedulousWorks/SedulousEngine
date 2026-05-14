@@ -2,11 +2,13 @@ namespace Sedulous.Particles;
 
 using System;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// Modifies particle color over its lifetime using a color curve.
 public class ColorOverLifetimeBehavior : ParticleBehavior
 {
 	/// Color curve evaluated at normalized particle age [0, 1].
+	[Property]
 	public ParticleCurveColor Curve;
 
 	public override BehaviorSupport Support => .Both;

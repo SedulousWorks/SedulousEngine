@@ -2,12 +2,14 @@ namespace Sedulous.Particles;
 
 using System;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// Scales particle speed over its lifetime using a float curve.
 /// The curve value multiplies the initial speed (from StartVelocity).
 public class SpeedOverLifetimeBehavior : ParticleBehavior
 {
 	/// Speed multiplier curve evaluated at normalized particle age [0, 1].
+	[Property]
 	public ParticleCurveFloat Curve;
 
 	public override BehaviorSupport Support => .Both;

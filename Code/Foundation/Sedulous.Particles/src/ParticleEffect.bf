@@ -58,4 +58,35 @@ public class ParticleEffect
 
 	/// Gets a system by index.
 	public ParticleSystem GetSystem(int32 index) => mSystems[index];
+
+	/// Removes the system at the given index, deleting it. The effect owns
+	/// all systems and must free the removed entry.
+	public bool RemoveSystem(int32 index)
+	{
+		if (index < 0 || index >= mSystems.Count) return false;
+		delete mSystems[index];
+		mSystems.RemoveAt(index);
+		return true;
+	}
+
+	/// Inserts a system at the given index. The effect takes ownership.
+	public bool InsertSystem(int32 index, ParticleSystem system)
+	{
+		if (system == null) return false;
+		if (index < 0 || index > mSystems.Count) return false;
+		mSystems.Insert(index, system);
+		return true;
+	}
+
+	/// Moves a system from one index to another. Used for reordering in the editor.
+	public bool MoveSystem(int32 fromIndex, int32 toIndex)
+	{
+		if (fromIndex < 0 || fromIndex >= mSystems.Count) return false;
+		if (toIndex < 0 || toIndex >= mSystems.Count) return false;
+		if (fromIndex == toIndex) return true;
+		let system = mSystems[fromIndex];
+		mSystems.RemoveAt(fromIndex);
+		mSystems.Insert(toIndex, system);
+		return true;
+	}
 }

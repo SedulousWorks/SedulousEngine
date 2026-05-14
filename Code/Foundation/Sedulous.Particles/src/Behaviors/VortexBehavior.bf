@@ -2,17 +2,21 @@ namespace Sedulous.Particles;
 
 using System;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// Applies a rotational vortex force around an axis.
 public class VortexBehavior : ParticleBehavior
 {
 	/// Rotational strength (radians/sec at unit distance).
+	[Property, Range(-50, 50)]
 	public float Strength = 1.0f;
 
 	/// Vortex center offset from emitter.
+	[Property]
 	public Vector3 Center = .Zero;
 
 	/// Vortex axis (default: Y-up).
+	[Property]
 	public Vector3 Axis = .(0, 1, 0);
 
 	public override BehaviorSupport Support => .Both;

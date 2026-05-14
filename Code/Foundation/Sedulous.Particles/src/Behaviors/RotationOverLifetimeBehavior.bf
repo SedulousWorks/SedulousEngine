@@ -1,11 +1,13 @@
 namespace Sedulous.Particles;
 
 using System;
+using Sedulous.Inspection;
 
 /// Scales particle rotation speed over its lifetime using a float curve.
 public class RotationOverLifetimeBehavior : ParticleBehavior
 {
 	/// Rotation speed multiplier curve evaluated at normalized particle age [0, 1].
+	[Property]
 	public ParticleCurveFloat Curve;
 
 	public override BehaviorSupport Support => .Both;

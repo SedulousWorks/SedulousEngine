@@ -1,11 +1,13 @@
 namespace Sedulous.Particles;
 
 using System;
+using Sedulous.Inspection;
 
 /// Initializes particle lifetime with optional variance.
 public class LifetimeInitializer : ParticleInitializer
 {
 	/// Base lifetime in seconds.
+	[Property]
 	public RangeFloat Lifetime = .(1.0f, 1.0f);
 
 	public override BehaviorSupport Support => .Both;

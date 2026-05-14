@@ -2,18 +2,22 @@ namespace Sedulous.Particles;
 
 using System;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// Pulls (or repels) particles toward a point.
 public class AttractorBehavior : ParticleBehavior
 {
 	/// Force strength (positive = attract, negative = repel).
+	[Property, Range(-100, 100)]
 	public float Strength = 1.0f;
 
 	/// Attractor position in world space.
+	[Property]
 	public Vector3 Position = .Zero;
 
 	/// Attractor radius - force falls off outside this distance.
 	/// Set to 0 for no falloff.
+	[Property, Range(0, 100)]
 	public float Radius = 0;
 
 	public override BehaviorSupport Support => .Both;

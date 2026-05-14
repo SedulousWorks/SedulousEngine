@@ -2,11 +2,13 @@ namespace Sedulous.Particles;
 
 using System;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// Pushes particles radially away from (or toward) the emitter origin.
 public class RadialForceBehavior : ParticleBehavior
 {
 	/// Force strength (positive = outward, negative = inward).
+	[Property, Range(-100, 100)]
 	public float Strength = 1.0f;
 
 	public override BehaviorSupport Support => .Both;

@@ -3,6 +3,7 @@ namespace Sedulous.Particles;
 using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// A particle system - owns an emitter, behaviors, initializers, streams,
 /// and a simulation backend. This is the per-system class from the proposal:
@@ -23,21 +24,26 @@ public class ParticleSystem
 	public int32 MaxParticles { get; private set; }
 
 	/// Desired simulation mode (CPU, GPU, or Auto).
+	[Property]
 	public SimulationMode DesiredMode = .CPU;
 
 	/// Actual simulation mode resolved after checking behavior support.
 	public SimulationMode ResolvedMode { get; private set; } = .CPU;
 
 	/// Simulation space.
+	[Property]
 	public ParticleSpace SimulationSpace = .World;
 
 	/// Blend mode for rendering.
+	[Property]
 	public ParticleBlendMode BlendMode = .Alpha;
 
 	/// Render mode (billboard type, mesh, trail).
+	[Property]
 	public ParticleRenderMode RenderMode = .Billboard;
 
 	/// Whether to sort particles back-to-front for alpha blending.
+	[Property]
 	public bool SortParticles = false;
 
 	/// Trail configuration (only used when RenderMode == .Trail).
@@ -54,12 +60,15 @@ public class ParticleSystem
 	// --- LOD ---
 
 	/// Distance from camera where LOD reduction begins. 0 = no LOD.
+	[Property, Range(0, 10000)]
 	public float LODStartDistance = 0;
 
 	/// Distance from camera where particles are fully culled. 0 = no cull.
+	[Property, Range(0, 10000)]
 	public float LODCullDistance = 0;
 
 	/// Minimum spawn rate multiplier at LODCullDistance (before full cull).
+	[Property, Range(0, 1)]
 	public float LODMinRate = 0.1f;
 
 	/// Emitter - spawning logic.
@@ -69,9 +78,11 @@ public class ParticleSystem
 	public ParticleStreamContainer Streams { get; private set; } ~ delete _;
 
 	/// World-space position (set by owner before Update).
+	[HideInInspector]
 	public Vector3 Position;
 
 	/// Previous frame position (for velocity inheritance).
+	[HideInInspector]
 	public Vector3 PrevPosition;
 
 	/// Total elapsed simulation time.
@@ -139,6 +150,74 @@ public class ParticleSystem
 
 	/// Gets the list of behaviors.
 	public Span<ParticleBehavior> Behaviors => mBehaviors;
+
+	/// Removes the initializer at the given index, deleting it. The system
+	/// owns all initializers and must free the removed entry. Note that
+	/// streams previously declared by the removed initializer are NOT
+	/// removed - leaving them allocated is harmless (unused).
+	public bool RemoveInitializer(int32 index)
+	{
+		if (index < 0 || index >= mInitializers.Count) return false;
+		delete mInitializers[index];
+		mInitializers.RemoveAt(index);
+		return true;
+	}
+
+	/// Inserts an initializer at the given index. The system takes ownership.
+	public bool InsertInitializer(int32 index, ParticleInitializer initializer)
+	{
+		if (initializer == null) return false;
+		if (index < 0 || index > mInitializers.Count) return false;
+		initializer.DeclareStreams(Streams);
+		mInitializers.Insert(index, initializer);
+		return true;
+	}
+
+	/// Moves an initializer from one index to another. Used for reordering.
+	public bool MoveInitializer(int32 fromIndex, int32 toIndex)
+	{
+		if (fromIndex < 0 || fromIndex >= mInitializers.Count) return false;
+		if (toIndex < 0 || toIndex >= mInitializers.Count) return false;
+		if (fromIndex == toIndex) return true;
+		let init = mInitializers[fromIndex];
+		mInitializers.RemoveAt(fromIndex);
+		mInitializers.Insert(toIndex, init);
+		return true;
+	}
+
+	/// Removes the behavior at the given index, deleting it.
+	public bool RemoveBehavior(int32 index)
+	{
+		if (index < 0 || index >= mBehaviors.Count) return false;
+		delete mBehaviors[index];
+		mBehaviors.RemoveAt(index);
+		return true;
+	}
+
+	/// Inserts a behavior at the given index. The system takes ownership.
+	/// Behaviors execute in list order - position matters for behaviors like
+	/// VelocityIntegration which must run after force-applying behaviors.
+	public bool InsertBehavior(int32 index, ParticleBehavior behavior)
+	{
+		if (behavior == null) return false;
+		if (index < 0 || index > mBehaviors.Count) return false;
+		behavior.DeclareStreams(Streams);
+		mBehaviors.Insert(index, behavior);
+		return true;
+	}
+
+	/// Moves a behavior from one index to another. Critical for reordering
+	/// effects that depend on behavior execution order.
+	public bool MoveBehavior(int32 fromIndex, int32 toIndex)
+	{
+		if (fromIndex < 0 || fromIndex >= mBehaviors.Count) return false;
+		if (toIndex < 0 || toIndex >= mBehaviors.Count) return false;
+		if (fromIndex == toIndex) return true;
+		let beh = mBehaviors[fromIndex];
+		mBehaviors.RemoveAt(fromIndex);
+		mBehaviors.Insert(toIndex, beh);
+		return true;
+	}
 
 	/// Resolves the simulation mode and creates the appropriate simulator.
 	/// Call after all behaviors are added.

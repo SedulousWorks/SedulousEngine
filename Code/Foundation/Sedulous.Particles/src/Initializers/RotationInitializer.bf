@@ -1,14 +1,17 @@
 namespace Sedulous.Particles;
 
 using System;
+using Sedulous.Inspection;
 
 /// Initializes particle rotation angle and rotation speed.
 public class RotationInitializer : ParticleInitializer
 {
 	/// Initial rotation range in radians.
+	[Property]
 	public RangeFloat Rotation = .(0, Math.PI_f * 2.0f);
 
 	/// Initial rotation speed range in radians/sec.
+	[Property]
 	public RangeFloat RotationSpeed = .(-2.0f, 2.0f);
 
 	public override BehaviorSupport Support => .Both;

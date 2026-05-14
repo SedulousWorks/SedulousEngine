@@ -2,26 +2,33 @@ namespace Sedulous.Particles;
 
 using System;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// Initializes particle velocity from a base velocity plus emission shape direction.
 public class VelocityInitializer : ParticleInitializer
 {
 	/// Base initial velocity.
+	[Property]
 	public Vector3 BaseVelocity = .(0, 1, 0);
 
 	/// Per-axis randomness added to velocity.
+	[Property]
 	public Vector3 Randomness = .Zero;
 
 	/// Speed applied along the emission shape's outward direction.
+	[Property, Range(0, 50)]
 	public float ShapeDirectionSpeed = 0;
 
 	/// Factor for inheriting emitter movement velocity.
+	[Property, Range(0, 1)]
 	public float VelocityInheritance = 0;
 
 	/// Emission shape (shared with PositionInitializer to get the same direction).
+	[Property]
 	public EmissionShape Shape = .Point();
 
 	/// Emitter velocity (set by system before initialization).
+	[HideInInspector]
 	public Vector3 EmitterVelocity = .Zero;
 
 	public override BehaviorSupport Support => .Both;
