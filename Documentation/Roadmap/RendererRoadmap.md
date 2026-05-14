@@ -334,36 +334,51 @@ below. Authoring surface (editor) is complete.
 - **ParticleComponentManager** - resolves the effect resource, walks the effect's systems each frame, resolves `system.TextureRef` per system, looks up (or creates) a shared MaterialInstance keyed by ITextureView (dedupes across all systems and components), and stores per-(component, system) material references. ExtractRenderData binds the per-system material when building each batch. LOD via stored camera position (one-frame delay).
 - **RenderSubsystem** - registers ParticleRenderer + ParticleComponentManager automatically
 
-### Missing render modes (`ParticleRenderMode` stubs)
+### Render modes — status by value
 
-`ParticleRenderMode` declares six values but the renderer only branches on
-`Billboard`, `StretchedBillboard`, and `Trail`. The remaining three values
-are accepted by the inspector (and serialized round-trip), but the draw
-path treats them as `Billboard`:
+`ParticleRenderMode` declares six values; five share the billboard draw
+path and select orientation via a per-particle `RenderMode` field in
+`ParticleVertex` read by the vertex shader. `Mesh` is the only value
+still without an implementation.
 
-- **`HorizontalBillboard`** - quad facing up (Y-axis normal), used for
-  ground decals / shockwaves / dust puffs. Cheap to add: vertex shader
-  branches on a per-batch flag, builds the quad in the XZ plane instead
-  of camera-facing. The data path is already in place - just needs a
-  shader variant and the renderer to bind it when `RenderMode ==
-  .HorizontalBillboard`.
-- **`VerticalBillboard`** - quad locked to Y-up but facing the camera
-  horizontally, used for grass / fire / tall sprites. Same shape of fix
-  as horizontal billboard, different basis construction.
-- **`Mesh`** - instanced mesh particles. Significant new work: needs
-  `[Property] ResourceRef Mesh` on ParticleSystem (mesh ref alongside
-  the texture ref), mesh resolution in ParticleComponentManager (similar
-  to texture resolution, dedup by mesh resource), a separate per-particle
-  transform instance buffer (position + rotation + scale per particle,
-  not the current 6-vert billboard data), and a parallel draw path in
-  ParticleRenderer that issues instanced indexed draws against the mesh
-  buffers instead of the billboard `Draw(6, count)`. ParticleVertex
-  layout would also need to extend or split into a mesh-specific layout
-  carrying transform data.
+| Value | Status | Notes |
+|---|---|---|
+| `Billboard` | ✅ DONE | Camera-facing with per-particle rotation around the camera forward axis. |
+| `StretchedBillboard` | ✅ DONE | Elongated along velocity. The extractor only sets `Velocity2D` for this mode, and the shader uses a non-zero `Velocity2D` as the implicit gate, so this branch takes precedence over the explicit `RenderMode` value when present. |
+| `HorizontalBillboard` | ✅ DONE | Quad in the XZ plane with normal +Y. Per-particle rotation spins around the Y axis. Ground decals, shockwaves, dust puffs. |
+| `VerticalBillboard` | ✅ DONE | World-up locked; right is horizontal-camera-facing (with a degenerate-camera fallback when looking straight up/down). Rotation intentionally skipped — grass / flame sprites typically don't roll. |
+| `Trail` | ⚠️ Partial | Separate trail shader + draw path (`particle_trail.vert/frag.hlsl`), camera-facing ribbon mesh generation. Two rough edges: (1) the trail only records when both `RenderMode == .Trail` **and** `system.Trail.IsActive == true` — the second isn't implied by the first, so changing render mode alone produces nothing visible. (2) The billboard draw loop has no `RenderMode` filter, so trail particles still render their head sprite alongside the ribbon. Acceptable if you want a comet/meteor head, surprising if you wanted trail-only. Worth a small follow-up: either auto-enable `Trail.IsActive` when `RenderMode == .Trail` is selected (or hide the flag), and decide whether to suppress the billboard head for trail mode. |
+| `Mesh` | ❌ TODO | Significant new work — see "Missing: Mesh render mode" below. |
 
-The `RenderMode` field is otherwise plumbed end-to-end (serialized,
-extracted into ParticleBatchRenderData, available to the renderer) - the
-hookup is just missing at the shader/draw-call selection point.
+### Missing: Mesh render mode
+
+`Mesh` is the one `ParticleRenderMode` value still falling through to the
+billboard branch. It needs a parallel draw path, not just a shader
+variant. Concrete work:
+
+- **Foundation**: `[Property] [ResourceRefType(".mesh")] ResourceRef Mesh`
+  on `ParticleSystem` alongside the existing `TextureRef`. Serializer
+  round-trip via the same per-system serialize hook pattern.
+- **Engine**: `ParticleComponentManager` resolves `system.MeshRef` per
+  system (mirror of the per-system texture resolution), caches by
+  `MeshResource`/vertex+index buffer pair.
+- **Renderer**: separate draw path next to the billboard `Draw(6, count)`.
+  Per-particle transform instance buffer (position + 3D rotation +
+  scale, not the current billboard quad data). Instanced indexed draw
+  over the resolved mesh's buffers. New vertex shader keyed on
+  `RenderMode == Mesh` or compiled as a distinct shader (`particle_mesh`).
+- **Extractor**: build per-particle transforms instead of billboard
+  quad data when `RenderMode == .Mesh`. Likely a separate vertex
+  layout (or extended `ParticleVertex` with an optional transform
+  block).
+- **Rotation upgrade**: current `RotationInitializer` and
+  `RotationOverLifetimeBehavior` are 1D (rotation around the camera
+  forward axis). Mesh particles want 3D rotation (quaternion or euler
+  triplet). Either add new 3D variants or upgrade the existing ones
+  to be 3D when render mode is Mesh.
+
+Scope ~600-1000 LOC. 1-2 weeks of focused work. Worth a dedicated phase
+when there's a real game need.
 
 ### Deferred
 - **Grid-based atlas animation** - ParticleVertex already has TexCoordOffset/TexCoordScale fields. Needs AtlasColumns/AtlasRows/AtlasFPS/AtlasLoop on ParticleSystem and UV computation in ParticleRenderExtractor (port from old engine's CPUParticleEmitter atlas logic). Consider generic atlas format for shared use across particles, sprites, and UI
