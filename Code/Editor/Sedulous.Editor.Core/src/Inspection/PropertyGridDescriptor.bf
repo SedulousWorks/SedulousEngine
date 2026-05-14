@@ -104,10 +104,41 @@ class PropertyGridDescriptor : IPropertyDescriptor
 				names.Add(field.Name);
 		}
 
-		let currentVal = *(int32*)ptr;
+		// Read at the enum's actual storage size. Previously this code
+		// hard-coded `*(int32*)ptr`, which for a uint8 / uint16 enum reads
+		// 3-7 unrelated bytes of struct padding into the upper bits,
+		// producing a garbage SelectedIndex (combo box renders no
+		// selection). Same problem on write would clobber adjacent fields.
+		let size = enumType.Size;
+		int32 currentVal = ReadEnumValue(ptr, size);
+
 		let editor = new EnumEditor(name, currentVal, names, category: mCurrentCategory);
-		editor.Setter = new [=ptr] (v) => { *(int32*)ptr = v; };
+		editor.Setter = new [=ptr, =size] (v) => { WriteEnumValue(ptr, size, v); };
 		mGrid.AddProperty(editor);
+	}
+
+	private static int32 ReadEnumValue(void* ptr, int size)
+	{
+		switch (size)
+		{
+		case 1: return *(uint8*)ptr;
+		case 2: return *(uint16*)ptr;
+		case 4: return *(int32*)ptr;
+		case 8: return (int32)*(int64*)ptr;
+		default: return *(int32*)ptr;
+		}
+	}
+
+	private static void WriteEnumValue(void* ptr, int size, int32 value)
+	{
+		switch (size)
+		{
+		case 1: *(uint8*)ptr = (uint8)value;
+		case 2: *(uint16*)ptr = (uint16)value;
+		case 4: *(int32*)ptr = value;
+		case 8: *(int64*)ptr = value;
+		default: *(int32*)ptr = value;
+		}
 	}
 
 	public virtual void ResRef(StringView name, delegate ResourceRef() getter, delegate void(ResourceRef) setter,
