@@ -393,14 +393,14 @@ All applications migrated from Sedulous.LegacyUI to Sedulous.UI.
 - [ ] **UISandbox:** XML layout demo page
 
 ### Docking Enhancements (second pass)
-- [ ] Tabs at top of DockTabGroup (currently at bottom, matching current UI)
-- [ ] Per-tab close buttons in tab headers
+- [x] Tabs at top of DockTabGroup (moved from bottom to top)
+- [x] Per-tab close buttons in tab headers (active tab always, hovered inactive, uses CloseIcon style drawable)
 - [ ] Tab reordering within groups via drag (midpoint detection + insertion indicator)
 - [ ] DockableWindow edge/corner resize when floating (5px hit zones, min size)
 - [ ] DockableWindow self-drawn chrome for chromeless OS windows (HasOSChrome flag)
-- [ ] DockablePanel has no header (DockTabGroup/DockableWindow provide title bar)
-- [ ] Layout persistence via ISerializerProvider (serialize/deserialize dock tree)
-- [ ] PersistenceId on DockablePanel and DockSplit for layout save/restore
+- [x] DockablePanel header hidden when inside DockTabGroup (ShowHeader flag, tab strip replaces header)
+- [x] Layout persistence via ISerializerProvider (serialize/deserialize dock tree)
+- [x] PersistenceId on DockablePanel and DockSplit for layout save/restore
 
 ### Other
 - [ ] Performance comparison: measure/layout time LegacyUI vs UI

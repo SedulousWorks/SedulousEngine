@@ -12,6 +12,7 @@ public class DockablePanel : ViewGroup, IDragSource
 	private String mPersistenceId = new .() ~ delete _;
 	private View mContent; // in mChildren via AddView
 	private bool mClosable = true;
+	private bool mShowHeader = true;
 	private bool mHeaderDrag; // true if mouse-down was on header (enables drag)
 
 	// Last dock position for re-dock after floating.
@@ -53,6 +54,14 @@ public class DockablePanel : ViewGroup, IDragSource
 		set => mClosable = value;
 	}
 
+	/// Whether to show the panel's own header bar. Set to false when the panel
+	/// is inside a DockTabGroup (the tab strip replaces the header).
+	public bool ShowHeader
+	{
+		get => mShowHeader;
+		set { mShowHeader = value; Invalidate(); }
+	}
+
 	public View ContentView => mContent;
 
 	/// Set the content view (replaces existing).
@@ -92,22 +101,24 @@ public class DockablePanel : ViewGroup, IDragSource
 
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
+		let headerH = mShowHeader ? HeaderHeight : 0;
 		float contentH = 0;
 		if (mContent != null && mContent.Visibility != .Gone)
 		{
 			mContent.Measure(BoxConstraints.Expand());
 			contentH = mContent.MeasuredSize.Y;
 		}
-		MeasuredSize = .(constraints.ConstrainWidth(0), constraints.ConstrainHeight(HeaderHeight + contentH));
+		MeasuredSize = .(constraints.ConstrainWidth(0), constraints.ConstrainHeight(headerH + contentH));
 	}
 
 	protected override void OnLayout(float left, float top, float width, float height)
 	{
+		let headerH = mShowHeader ? HeaderHeight : 0;
 		if (mContent != null && mContent.Visibility != .Gone)
 		{
-			let contentH = height - HeaderHeight;
+			let contentH = height - headerH;
 			mContent.Measure(BoxConstraints.Tight(width, contentH));
-			mContent.Layout(0, HeaderHeight, width, contentH);
+			mContent.Layout(0, headerH, width, contentH);
 		}
 	}
 
@@ -116,43 +127,47 @@ public class DockablePanel : ViewGroup, IDragSource
 	public override void OnDraw(UIDrawContext ctx)
 	{
 		let w = Width;
+		let headerH = mShowHeader ? HeaderHeight : 0;
 
-		// Header background.
-		let headerDrawable = ResolveStyleDrawable(.HeaderDrawable);
-		if (headerDrawable != null)
-			headerDrawable.Draw(ctx, .(0, 0, w, HeaderHeight));
-		else
-			ctx.VG.FillRect(.(0, 0, w, HeaderHeight), .(40, 44, 55, 255));
-
-		// Header text.
-		if (ctx.FontService != null)
+		if (mShowHeader)
 		{
-			let font = ctx.FontService.GetFont(12);
-			if (font != null)
+			// Header background.
+			let headerDrawable = ResolveStyleDrawable(.HeaderDrawable);
+			if (headerDrawable != null)
+				headerDrawable.Draw(ctx, .(0, 0, w, HeaderHeight));
+			else
+				ctx.VG.FillRect(.(0, 0, w, HeaderHeight), .(40, 44, 55, 255));
+
+			// Header text.
+			if (ctx.FontService != null)
 			{
-				let textColor = ResolveStyleColor(.TextColor, .(220, 225, 235, 255));
-				ctx.VG.DrawText(mTitle, font, .(8, 0, w - 30, HeaderHeight), .Left, .Middle, textColor);
+				let font = ctx.FontService.GetFont(12);
+				if (font != null)
+				{
+					let textColor = ResolveStyleColor(.TextColor, .(220, 225, 235, 255));
+					ctx.VG.DrawText(mTitle, font, .(8, 0, w - 30, HeaderHeight), .Left, .Middle, textColor);
+				}
 			}
-		}
 
-		// Close button (X).
-		if (mClosable)
-		{
-			let cx = w - 14;
-			let cy = HeaderHeight * 0.5f;
-			let sz = 4.0f;
+			// Close button (X).
+			if (mClosable)
+			{
+				let cx = w - 14;
+				let cy = HeaderHeight * 0.5f;
+				let sz = 4.0f;
 
-			let closeColor = ResolveStyleColor(.CloseButtonColor, .(180, 185, 200, 150));
-			ctx.VG.DrawLine(.(cx - sz, cy - sz), .(cx + sz, cy + sz), closeColor, 1.5f);
-			ctx.VG.DrawLine(.(cx + sz, cy - sz), .(cx - sz, cy + sz), closeColor, 1.5f);
+				let closeColor = ResolveStyleColor(.CloseButtonColor, .(180, 185, 200, 150));
+				ctx.VG.DrawLine(.(cx - sz, cy - sz), .(cx + sz, cy + sz), closeColor, 1.5f);
+				ctx.VG.DrawLine(.(cx + sz, cy - sz), .(cx - sz, cy + sz), closeColor, 1.5f);
+			}
 		}
 
 		// Content background.
 		let contentDrawable = ResolveStyleDrawable(.ContentDrawable);
 		if (contentDrawable != null)
-			contentDrawable.Draw(ctx, .(0, HeaderHeight, w, Height - HeaderHeight));
+			contentDrawable.Draw(ctx, .(0, headerH, w, Height - headerH));
 		else
-			ctx.VG.FillRect(.(0, HeaderHeight, w, Height - HeaderHeight), .(42, 44, 54, 255));
+			ctx.VG.FillRect(.(0, headerH, w, Height - headerH), .(42, 44, 54, 255));
 
 		DrawChildren(ctx);
 	}
@@ -163,16 +178,19 @@ public class DockablePanel : ViewGroup, IDragSource
 	{
 		if (!IsEffectivelyEnabled || e.Button != .Left) return;
 
-		// Close button hit-test.
-		if (mClosable && e.X >= Width - 22 && e.Y <= HeaderHeight)
+		if (mShowHeader)
 		{
-			OnCloseRequested(this);
-			e.Handled = true;
-			return;
-		}
+			// Close button hit-test.
+			if (mClosable && e.X >= Width - 22 && e.Y <= HeaderHeight)
+			{
+				OnCloseRequested(this);
+				e.Handled = true;
+				return;
+			}
 
-		// Track header click for drag.
-		mHeaderDrag = (e.Y <= HeaderHeight);
+			// Track header click for drag.
+			mHeaderDrag = (e.Y <= HeaderHeight);
+		}
 	}
 
 	public override void OnMouseUp(MouseEventArgs e)

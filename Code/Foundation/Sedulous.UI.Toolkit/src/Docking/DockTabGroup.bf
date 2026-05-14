@@ -5,7 +5,9 @@ using System.Collections;
 using Sedulous.UI;
 using Sedulous.Core.Mathematics;
 
-/// Tab container for docked panels. Shows tabs at the bottom and content above.
+/// Tab container for docked panels. Shows tabs at the top and content below.
+/// Close buttons appear in the tab strip: always on the active tab (if closable),
+/// on hover for inactive tabs (if closable). Panel headers are hidden when tabbed.
 /// Implements IDragSource for tab dragging.
 public class DockTabGroup : ViewGroup, IDragSource
 {
@@ -14,6 +16,11 @@ public class DockTabGroup : ViewGroup, IDragSource
 	private float mTabHeight = 24;
 	private int mHoveredTabIndex = -1;
 	private List<RectangleF> mTabRects = new .() ~ delete _;
+	private List<RectangleF> mCloseRects = new .() ~ delete _; // Per-tab close button rects
+
+	private const float CloseButtonSize = 8.0f; // Icon size (half-extent of X lines)
+	private const float CloseButtonPadding = 6.0f; // Space reserved for close area
+	private const float CloseButtonWidth = CloseButtonSize + CloseButtonPadding * 2; // Total width
 
 	// Drag state for tab dragging.
 	private int mDragTabIndex = -1;
@@ -56,6 +63,7 @@ public class DockTabGroup : ViewGroup, IDragSource
 	{
 		mPanels.Add(panel);
 		panel.Visibility = .Gone;
+		panel.ShowHeader = false; // Tab strip replaces panel header
 		AddView(panel);
 
 		if (mSelectedIndex < 0)
@@ -70,6 +78,7 @@ public class DockTabGroup : ViewGroup, IDragSource
 		let idx = Math.Clamp(index, 0, mPanels.Count);
 		mPanels.Insert(idx, panel);
 		panel.Visibility = .Gone;
+		panel.ShowHeader = false;
 		AddView(panel);
 
 		if (mSelectedIndex < 0)
@@ -90,6 +99,7 @@ public class DockTabGroup : ViewGroup, IDragSource
 
 		mPanels.RemoveAt(idx);
 		RemoveView(panel);
+		panel.ShowHeader = true; // Restore header for standalone/floating
 
 		if (mSelectedIndex >= mPanels.Count)
 			SelectedIndex = mPanels.Count - 1;
@@ -147,6 +157,7 @@ public class DockTabGroup : ViewGroup, IDragSource
 	{
 		PurgeDeletedPanels();
 
+		let contentY = mTabHeight;
 		let contentH = Math.Max(0, height - mTabHeight);
 
 		for (int i = 0; i < mPanels.Count; i++)
@@ -156,7 +167,7 @@ public class DockTabGroup : ViewGroup, IDragSource
 			{
 				panel.Visibility = .Visible;
 				panel.Measure(BoxConstraints.Tight(width, contentH));
-				panel.Layout(0, 0, width, contentH);
+				panel.Layout(0, contentY, width, contentH);
 			}
 			else
 			{
@@ -169,14 +180,22 @@ public class DockTabGroup : ViewGroup, IDragSource
 
 	public override void OnDraw(UIDrawContext ctx)
 	{
+		let contentY = mTabHeight;
 		let contentH = Height - mTabHeight;
 
-		// Content area.
+		// Tab bar background (top).
+		let stripDrawable = ResolveStyleDrawable(.StripDrawable);
+		if (stripDrawable != null)
+			stripDrawable.Draw(ctx, .(0, 0, Width, mTabHeight));
+		else
+			ctx.VG.FillRect(.(0, 0, Width, mTabHeight), .(35, 37, 46, 255));
+
+		// Content area (below tabs).
 		let contentDrawable = ResolveStyleDrawable(.ContentDrawable);
 		if (contentDrawable != null)
-			contentDrawable.Draw(ctx, .(0, 0, Width, contentH));
+			contentDrawable.Draw(ctx, .(0, contentY, Width, contentH));
 		else
-			ctx.VG.FillRect(.(0, 0, Width, contentH), .(42, 44, 54, 255));
+			ctx.VG.FillRect(.(0, contentY, Width, contentH), .(42, 44, 54, 255));
 
 		// Draw selected panel.
 		if (mSelectedIndex >= 0 && mSelectedIndex < mPanels.Count)
@@ -191,15 +210,9 @@ public class DockTabGroup : ViewGroup, IDragSource
 			}
 		}
 
-		// Tab bar background.
-		let stripDrawable = ResolveStyleDrawable(.StripDrawable);
-		if (stripDrawable != null)
-			stripDrawable.Draw(ctx, .(0, contentH, Width, mTabHeight));
-		else
-			ctx.VG.FillRect(.(0, contentH, Width, mTabHeight), .(35, 37, 46, 255));
-
 		// Draw tabs.
 		mTabRects.Clear();
+		mCloseRects.Clear();
 		if (ctx.FontService == null) return;
 
 		let font = ctx.FontService.GetFont(11);
@@ -210,16 +223,20 @@ public class DockTabGroup : ViewGroup, IDragSource
 		let activeText = ResolveStyleColor(.ActiveTabTextColor, .(220, 225, 235, 255));
 		let inactiveText = ResolveStyleColor(.InactiveTabTextColor, .(180, 185, 200, 153));
 		let borderColor = ResolveStyleColor(.BorderColor, .(35, 37, 46, 255));
+		let closeColor = ResolveStyleColor(.CloseButtonColor, .(180, 185, 200, 150));
 
 		float tabX = 2;
 		for (int i = 0; i < mPanels.Count; i++)
 		{
 			let panel = mPanels[i];
 			let textW = font.Font.MeasureString(panel.Title);
-			let tabW = textW + 16;
-			let tabRect = RectangleF(tabX, contentH, tabW, mTabHeight);
+			var tabW = textW + 16;
+			if (panel.Closable)
+				tabW += CloseButtonWidth;
+			let tabRect = RectangleF(tabX, 0, tabW, mTabHeight);
 			mTabRects.Add(tabRect);
 
+			// Tab background
 			if (i == mSelectedIndex)
 			{
 				if (activeTabDrawable != null)
@@ -235,8 +252,43 @@ public class DockTabGroup : ViewGroup, IDragSource
 					ctx.VG.FillRect(tabRect, Palette.Lighten(borderColor, 0.1f));
 			}
 
+			// Tab text
 			let textColor = (i == mSelectedIndex) ? activeText : inactiveText;
-			ctx.VG.DrawText(panel.Title, font, .(tabX + 8, contentH, textW, mTabHeight), .Left, .Middle, textColor);
+			ctx.VG.DrawText(panel.Title, font, .(tabX + 8, 0, textW, mTabHeight), .Left, .Middle, textColor);
+
+			// Close button — show on active tab always, on hovered inactive tab
+			if (panel.Closable)
+			{
+				let cbX = tabX + tabW - CloseButtonPadding - CloseButtonSize;
+				let cbY = (mTabHeight - CloseButtonSize) * 0.5f;
+				let closeRect = RectangleF(tabX + tabW - CloseButtonWidth, 0, CloseButtonWidth, mTabHeight);
+				mCloseRects.Add(closeRect);
+
+				let showClose = (i == mSelectedIndex) || (i == mHoveredTabIndex);
+				if (showClose)
+				{
+					let closeIcon = ResolveStyleDrawable(.CloseIcon);
+					if (closeIcon != null)
+					{
+						ctx.VG.PushOpacity(closeColor.A / 255.0f);
+						closeIcon.Draw(ctx, .(cbX, cbY, CloseButtonSize, CloseButtonSize));
+						ctx.VG.PopOpacity();
+					}
+					else
+					{
+						// Fallback: draw X lines
+						let cx = cbX + CloseButtonSize * 0.5f;
+						let cy = cbY + CloseButtonSize * 0.5f;
+						let sz = 3.0f;
+						ctx.VG.DrawLine(.(cx - sz, cy - sz), .(cx + sz, cy + sz), closeColor, 1.5f);
+						ctx.VG.DrawLine(.(cx + sz, cy - sz), .(cx - sz, cy + sz), closeColor, 1.5f);
+					}
+				}
+			}
+			else
+			{
+				mCloseRects.Add(.Empty);  // Empty rect for non-closable tabs
+			}
 
 			tabX += tabW + 2;
 		}
@@ -248,6 +300,22 @@ public class DockTabGroup : ViewGroup, IDragSource
 	{
 		if (!IsEffectivelyEnabled || e.Button != .Left) return;
 
+		// Check close buttons first
+		for (int i = 0; i < mCloseRects.Count; i++)
+		{
+			let cr = mCloseRects[i];
+			if (cr.Width > 0 && i < mPanels.Count && mPanels[i].Closable)
+			{
+				if (e.X >= cr.X && e.X < cr.X + cr.Width && e.Y >= cr.Y && e.Y < cr.Y + cr.Height)
+				{
+					mPanels[i].OnCloseRequested(mPanels[i]);
+					e.Handled = true;
+					return;
+				}
+			}
+		}
+
+		// Check tab selection
 		mDragTabIndex = -1;
 		for (int i = 0; i < mTabRects.Count; i++)
 		{
@@ -273,12 +341,19 @@ public class DockTabGroup : ViewGroup, IDragSource
 		}
 
 		if (hovered != mHoveredTabIndex)
+		{
 			mHoveredTabIndex = hovered;
+			Invalidate(); // Redraw to show/hide close button on hover
+		}
 	}
 
 	public override void OnMouseLeave()
 	{
-		mHoveredTabIndex = -1;
+		if (mHoveredTabIndex != -1)
+		{
+			mHoveredTabIndex = -1;
+			Invalidate();
+		}
 	}
 
 	// === IDragSource ===
