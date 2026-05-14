@@ -1823,6 +1823,49 @@ class UISandboxApp : Application, IDockableWindowHost
 		}
 	}
 
+	public void ResizeDockableWindow(View dockableWindow, float screenX, float screenY, float width, float height)
+	{
+		if (mDockableWindowMap.TryGetValue(dockableWindow, let ctx))
+		{
+			ctx.Window.X = mWindow.X + (int32)screenX;
+			ctx.Window.Y = mWindow.Y + (int32)screenY;
+			ctx.Window.Width = (int32)width;
+			ctx.Window.Height = (int32)height;
+		}
+	}
+
+	public bool TryGetDockableWindowBounds(View dockableWindow, out float x, out float y, out float width, out float height)
+	{
+		if (mDockableWindowMap.TryGetValue(dockableWindow, let ctx))
+		{
+			x = ctx.Window.X - mWindow.X;
+			y = ctx.Window.Y - mWindow.Y;
+			width = ctx.Window.Width;
+			height = ctx.Window.Height;
+			return true;
+		}
+		x = 0;
+		y = 0;
+		width = 0;
+		height = 0;
+		return false;
+	}
+
+	public void GetGlobalMousePosition(out float globalX, out float globalY)
+	{
+		let mouse = Shell.InputManager.Mouse;
+		if (mouse != null)
+		{
+			globalX = mouse.GlobalX;
+			globalY = mouse.GlobalY;
+		}
+		else
+		{
+			globalX = 0;
+			globalY = 0;
+		}
+	}
+
 	private void DestroyDockableWindowImpl(View dockableWindow, bool detachView = true)
 	{
 		if (!mDockableWindowMap.TryGetValue(dockableWindow, let ctx))

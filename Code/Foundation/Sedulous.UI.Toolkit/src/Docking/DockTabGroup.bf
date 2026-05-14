@@ -415,9 +415,18 @@ public class DockTabGroup : ViewGroup, IDragSource
 			let dockHost = mDraggedPanel.DockHost;
 			if (dockHost != null)
 			{
-				let screenX = dockHost.Context?.DragDropManager.LastScreenX ?? 100;
-				let screenY = dockHost.Context?.DragDropManager.LastScreenY ?? 100;
-				dockHost.FloatPanel(mDraggedPanel, screenX, screenY);
+				// Re-apply the adorner offset used by the drag preview
+				// (`OnDragStarted` set it to (-30, -12) so the title bar sits
+				// under the cursor). `LastScreenX/Y` is the raw cursor
+				// position - without subtracting the offset the new floating
+				// window would land 30/12 px down-right of where the preview
+				// appeared, which reads as a "jump on drop".
+				let dragMgr = dockHost.Context?.DragDropManager;
+				let cursorX = dragMgr?.LastScreenX ?? 100;
+				let cursorY = dragMgr?.LastScreenY ?? 100;
+				let offsetX = dragMgr?.AdornerOffsetX ?? 0;
+				let offsetY = dragMgr?.AdornerOffsetY ?? 0;
+				dockHost.FloatPanel(mDraggedPanel, cursorX + offsetX, cursorY + offsetY);
 			}
 			else
 			{

@@ -1768,8 +1768,61 @@ class EditorApplication : Application, IDockableWindowHost
 	{
 		if (mDockableWindowMap.TryGetValue(dockableWindow, let ctx))
 		{
-			ctx.Window.X = Window.X + (int32)screenX;
-			ctx.Window.Y = Window.Y + (int32)screenY;
+			let nx = Window.X + (int32)screenX;
+			let ny = Window.Y + (int32)screenY;
+			if (ctx.Window.X != nx) ctx.Window.X = nx;
+			if (ctx.Window.Y != ny) ctx.Window.Y = ny;
+		}
+	}
+
+	public void ResizeDockableWindow(View dockableWindow, float screenX, float screenY, float width, float height)
+	{
+		if (mDockableWindowMap.TryGetValue(dockableWindow, let ctx))
+		{
+			// Only push when the value actually changes - SDL_SetWindowPosition
+			// and SDL_SetWindowSize fire a window event each call, invalidating
+			// the swapchain even on no-ops. Spammed VK_ERROR_OUT_OF_DATE_KHR
+			// during resize otherwise.
+			let nx = Window.X + (int32)screenX;
+			let ny = Window.Y + (int32)screenY;
+			let nw = (int32)width;
+			let nh = (int32)height;
+			if (ctx.Window.X != nx) ctx.Window.X = nx;
+			if (ctx.Window.Y != ny) ctx.Window.Y = ny;
+			if (ctx.Window.Width != nw) ctx.Window.Width = nw;
+			if (ctx.Window.Height != nh) ctx.Window.Height = nh;
+		}
+	}
+
+	public bool TryGetDockableWindowBounds(View dockableWindow, out float x, out float y, out float width, out float height)
+	{
+		if (mDockableWindowMap.TryGetValue(dockableWindow, let ctx))
+		{
+			x = ctx.Window.X - Window.X;
+			y = ctx.Window.Y - Window.Y;
+			width = ctx.Window.Width;
+			height = ctx.Window.Height;
+			return true;
+		}
+		x = 0;
+		y = 0;
+		width = 0;
+		height = 0;
+		return false;
+	}
+
+	public void GetGlobalMousePosition(out float globalX, out float globalY)
+	{
+		let mouse = Shell.InputManager.Mouse;
+		if (mouse != null)
+		{
+			globalX = mouse.GlobalX;
+			globalY = mouse.GlobalY;
+		}
+		else
+		{
+			globalX = 0;
+			globalY = 0;
 		}
 	}
 

@@ -538,7 +538,7 @@ abstract class Application
 			ICommandBuffer[1] bufs = .(commandBuffer);
 			mGraphicsQueue.Submit(bufs, mFrameFence, mFrameFenceValues[mainFrame.FrameIndex]);
 
-			ctx.SwapChain.Present(mGraphicsQueue);
+			ctx.SwapChain.Present(mGraphicsQueue).IgnoreError();
 
 			pool.DestroyEncoder(ref encoder);
 		}

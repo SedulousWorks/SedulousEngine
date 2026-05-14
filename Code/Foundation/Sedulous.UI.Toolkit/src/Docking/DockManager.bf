@@ -180,6 +180,7 @@ public class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 
 		dockable.OnDockRequested.Add(new (fw) => { RedockDockableWindow(fw); });
 		dockable.OnCloseRequested.Add(new (fw) => { CloseDockableWindow(fw); });
+		dockable.WindowHost = DockableWindowHost;
 
 		bool useOSWindow = (DockableWindowHost != null && DockableWindowHost.SupportsOSWindows);
 
