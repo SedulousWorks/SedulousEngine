@@ -2,9 +2,21 @@ Arr_ %Settings {
 	int32 %_count {0}
 }
 Arr_ %OpenPages {
-	int32 %_count {1}
+	int32 %_count {5}
 	Obj_ {
-		string %path {"C:/DEV/SedulousWorks/Repos/SedulousEngine/Code/Projects/TowerDefense/assets\\gamescene.scene"}
+		string %uri {"project://gamescene.scene"}
+	}
+	Obj_ {
+		string %uri {"project://prefabs/tower_cannon.prefab"}
+	}
+	Obj_ {
+		string %uri {"project://prefabs/tower_catapult.prefab"}
+	}
+	Obj_ {
+		string %uri {"project://prefabs/tower_turret.prefab"}
+	}
+	Obj_ {
+		string %uri {"project://prefabs/tower_ballista.prefab"}
 	}
 }
-int32 %ActivePageIndex {0}
+int32 %ActivePageIndex {4}
