@@ -77,7 +77,13 @@ class EditorPropertyGridDescriptor : PropertyGridDescriptor
 		mGrid.AddProperty(new CurveFloatEditor(name, ptr, category: CurrentCategory));
 	}
 
-	// CurveColor and CurveVector2 keep using the base class read-only stub
-	// for now - multi-channel shared-time editing needs a dedicated pass.
-	// See EditorRoadmap "TODO - multi-channel curve editors".
+	public override void CurveVector2(StringView name, ParticleCurveVector2* ptr)
+	{
+		mGrid.AddProperty(new CurveVector2Editor(name, ptr, category: CurrentCategory));
+	}
+
+	public override void CurveColor(StringView name, ParticleCurveColor* ptr)
+	{
+		mGrid.AddProperty(new CurveColorEditor(name, ptr, category: CurrentCategory));
+	}
 }
