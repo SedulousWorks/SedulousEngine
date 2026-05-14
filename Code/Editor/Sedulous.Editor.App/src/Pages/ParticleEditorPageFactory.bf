@@ -12,6 +12,7 @@ using Sedulous.Engine;
 using Sedulous.Engine.Core;
 using Sedulous.Engine.Render;
 using Sedulous.Particles;
+using Sedulous.Particles.Resources;
 
 namespace Sedulous.Editor.App.Pages;
 
@@ -113,7 +114,7 @@ class ParticleEditorPageFactory : IEditorPageFactory
 			Width = .Match, Height = .Fixed(.Px(24))
 		});
 
-		let tree = new TreeView();
+		let tree = new ParticleTreeView(page);
 		tree.ItemHeight = 22;
 		let adapter = new ParticleEffectTreeAdapter(fxRes);
 		tree.SetAdapter(adapter);
@@ -123,6 +124,12 @@ class ParticleEditorPageFactory : IEditorPageFactory
 		{
 			adapter.SelectNode(info.NodeId);
 			tree.Invalidate();
+		});
+
+		// Right-click on a tree node -> structural-mutation context menu.
+		tree.OnItemRightClick.Add(new [=adapter, =tree, =page] (nodeId, localX, localY) =>
+		{
+			ShowTreeContextMenu(page, adapter, tree.InternalTreeView, nodeId, localX, localY);
 		});
 
 		// Tree adapter forwards selection to the page so the property grid
@@ -157,7 +164,9 @@ class ParticleEditorPageFactory : IEditorPageFactory
 		column.Direction = .Vertical;
 		panel.AddView(column);
 
-		// Header strip: effect summary.
+		// Header strip: effect summary. (No page-level preview-texture row -
+		// texture is per-system on the asset; pick a System in the tree and
+		// set its Texture in the inspector below.)
 		let header = new FlexLayout();
 		header.Direction = .Horizontal;
 		header.Padding = .(8, 4, 8, 4);
@@ -176,7 +185,7 @@ class ParticleEditorPageFactory : IEditorPageFactory
 			Width = .Match, Height = .Fixed(.Px(24))
 		});
 
-		// Property grid.
+		// Main property grid (rebuilds on tree selection).
 		let grid = new PropertyGrid();
 		column.AddView(grid, new FlexLayout.LayoutParams() {
 			Width = .Match, Grow = 1
@@ -250,5 +259,285 @@ class ParticleEditorPageFactory : IEditorPageFactory
 		root.AddView(viewportPanel, new FlexLayout.LayoutParams() { Width = .Match, Grow = 1 });
 
 		return root;
+	}
+
+	// ==================== Tree context menu ====================
+
+	/// Build and show the per-node structural-mutation menu.
+	///
+	/// Mutations clear inspector selection first (so the property grid drops
+	/// any pointers it captured into the soon-to-be-deleted object), then
+	/// rebuild the tree and re-select either the new node (Add) or the moved
+	/// node (Move Up/Down). Removals leave selection cleared. Every mutation
+	/// marks the page dirty and restarts the live preview - structural
+	/// changes always need a sim restart so half-built behavior chains don't
+	/// spawn malformed particles.
+	private static void ShowTreeContextMenu(ParticleEditorPage page,
+		ParticleEffectTreeAdapter adapter, TreeView tree,
+		int32 nodeId, float localX, float localY)
+	{
+		let ctx = tree.Context;
+		if (ctx == null) return;
+
+		let menu = new ContextMenu();
+		let kind = adapter.GetNodeKind(nodeId);
+
+		switch (kind)
+		{
+		case .Root:
+			menu.AddItem("Add System", new [=page, =adapter] () =>
+				AddSystem(page, adapter));
+
+		case .System:
+			BuildAddInitializerSubmenu(menu, page, adapter, nodeId);
+			BuildAddBehaviorSubmenu(menu, page, adapter, nodeId);
+			AddMoveMenuItems(menu, page, adapter, nodeId);
+			menu.AddSeparator();
+			menu.AddItem("Delete System", new [=page, =adapter, =nodeId] () =>
+				DeleteSystem(page, adapter, nodeId));
+
+		case .Emitter:
+			// Every system has exactly one emitter; nothing to add or remove.
+			// Suppress the menu by not adding any items - ContextMenu with
+			// zero items just won't show meaningfully, so guard here.
+			delete menu;
+			return;
+
+		case .InitializersFolder:
+			BuildAddInitializerSubmenu(menu, page, adapter, nodeId);
+
+		case .Initializer:
+			AddMoveMenuItems(menu, page, adapter, nodeId);
+			menu.AddSeparator();
+			menu.AddItem("Delete", new [=page, =adapter, =nodeId] () =>
+				DeleteInitializer(page, adapter, nodeId));
+
+		case .BehaviorsFolder:
+			BuildAddBehaviorSubmenu(menu, page, adapter, nodeId);
+
+		case .Behavior:
+			AddMoveMenuItems(menu, page, adapter, nodeId);
+			menu.AddSeparator();
+			menu.AddItem("Delete", new [=page, =adapter, =nodeId] () =>
+				DeleteBehavior(page, adapter, nodeId));
+		}
+
+		if (menu.ItemCount == 0)
+		{
+			delete menu;
+			return;
+		}
+
+		// Local -> screen coordinate translation, same as ScenePageBuilder.
+		float screenX = localX;
+		float screenY = localY;
+		View v = tree;
+		while (v != null)
+		{
+			screenX += v.Bounds.X;
+			screenY += v.Bounds.Y;
+			v = v.Parent;
+		}
+		menu.Show(ctx, screenX, screenY);
+	}
+
+	private static void BuildAddInitializerSubmenu(ContextMenu menu,
+		ParticleEditorPage page, ParticleEffectTreeAdapter adapter, int32 nodeId)
+	{
+		let owner = (adapter.GetNodeKind(nodeId) == .System)
+			? adapter.GetNodeTarget(nodeId) as ParticleSystem
+			: adapter.GetOwningSystem(nodeId);
+		if (owner == null) return;
+
+		let sub = menu.AddSubmenu("Add Initializer");
+		let ids = scope List<StringView>();
+		ParticleTypeRegistry.GetInitializerTypeIds(ids);
+		for (let id in ids)
+		{
+			let typeId = new String(id);
+			sub.Submenu.AddOwnedObject(typeId);
+			sub.Submenu.AddItem(typeId, new [=page, =adapter, =owner, =typeId] () =>
+			{
+				let init = ParticleTypeRegistry.CreateInitializer(typeId);
+				if (init == null) return;
+				page.SelectObject(null);
+				owner.AddInitializer(init);
+				adapter.Rebuild();
+				ReSelect(page, adapter, init);
+				MutatedStructure(page);
+			});
+		}
+	}
+
+	private static void BuildAddBehaviorSubmenu(ContextMenu menu,
+		ParticleEditorPage page, ParticleEffectTreeAdapter adapter, int32 nodeId)
+	{
+		let owner = (adapter.GetNodeKind(nodeId) == .System)
+			? adapter.GetNodeTarget(nodeId) as ParticleSystem
+			: adapter.GetOwningSystem(nodeId);
+		if (owner == null) return;
+
+		let sub = menu.AddSubmenu("Add Behavior");
+		let ids = scope List<StringView>();
+		ParticleTypeRegistry.GetBehaviorTypeIds(ids);
+		for (let id in ids)
+		{
+			let typeId = new String(id);
+			sub.Submenu.AddOwnedObject(typeId);
+			sub.Submenu.AddItem(typeId, new [=page, =adapter, =owner, =typeId] () =>
+			{
+				let beh = ParticleTypeRegistry.CreateBehavior(typeId);
+				if (beh == null) return;
+				page.SelectObject(null);
+				owner.AddBehavior(beh);
+				adapter.Rebuild();
+				ReSelect(page, adapter, beh);
+				MutatedStructure(page);
+			});
+		}
+	}
+
+	private static void AddMoveMenuItems(ContextMenu menu,
+		ParticleEditorPage page, ParticleEffectTreeAdapter adapter, int32 nodeId)
+	{
+		let kind = adapter.GetNodeKind(nodeId);
+		let idx = adapter.GetDataIndex(nodeId);
+		if (idx < 0) return;
+		let target = adapter.GetNodeTarget(nodeId);
+
+		int32 siblingCount = -1;
+		switch (kind)
+		{
+		case .System:
+			siblingCount = page.EffectResource?.Effect?.SystemCount ?? 0;
+		case .Initializer:
+			let owner = adapter.GetOwningSystem(nodeId);
+			siblingCount = owner != null ? (int32)owner.Initializers.Length : 0;
+		case .Behavior:
+			let owner = adapter.GetOwningSystem(nodeId);
+			siblingCount = owner != null ? (int32)owner.Behaviors.Length : 0;
+		default:
+			return;
+		}
+
+		let canUp = idx > 0;
+		let canDown = idx < siblingCount - 1;
+		if (!canUp && !canDown) return;
+
+		menu.AddItem("Move Up", new [=page, =adapter, =nodeId, =target] () =>
+			MoveNode(page, adapter, nodeId, target, delta: -1), enabled: canUp);
+		menu.AddItem("Move Down", new [=page, =adapter, =nodeId, =target] () =>
+			MoveNode(page, adapter, nodeId, target, delta: 1), enabled: canDown);
+	}
+
+	// ==================== Mutations ====================
+
+	private static void AddSystem(ParticleEditorPage page, ParticleEffectTreeAdapter adapter)
+	{
+		let effect = page.EffectResource?.Effect;
+		if (effect == null) return;
+
+		page.SelectObject(null);
+		let sys = BuildMinimalSystem();
+		effect.AddSystem(sys);
+		adapter.Rebuild();
+		ReSelect(page, adapter, sys);
+		MutatedStructure(page);
+	}
+
+	/// A new system gets the bare minimum needed to render visibly: a
+	/// constant-lifetime initializer, point emission, zero-velocity start,
+	/// and the velocity-integration behavior. Users add forces / curves /
+	/// shape from the context menu.
+	private static ParticleSystem BuildMinimalSystem()
+	{
+		let sys = new ParticleSystem(200);
+		sys.AddInitializer(new LifetimeInitializer() { Lifetime = .(1.0f, 1.0f) });
+		sys.AddInitializer(new PositionInitializer());
+		sys.AddInitializer(new VelocityInitializer());
+		sys.AddBehavior(new VelocityIntegrationBehavior());
+		return sys;
+	}
+
+	private static void DeleteSystem(ParticleEditorPage page,
+		ParticleEffectTreeAdapter adapter, int32 nodeId)
+	{
+		let effect = page.EffectResource?.Effect;
+		if (effect == null) return;
+		let idx = adapter.GetDataIndex(nodeId);
+		if (idx < 0) return;
+		page.SelectObject(null);
+		effect.RemoveSystem(idx);
+		adapter.Rebuild();
+		MutatedStructure(page);
+	}
+
+	private static void DeleteInitializer(ParticleEditorPage page,
+		ParticleEffectTreeAdapter adapter, int32 nodeId)
+	{
+		let owner = adapter.GetOwningSystem(nodeId);
+		let idx = adapter.GetDataIndex(nodeId);
+		if (owner == null || idx < 0) return;
+		page.SelectObject(null);
+		owner.RemoveInitializer(idx);
+		adapter.Rebuild();
+		MutatedStructure(page);
+	}
+
+	private static void DeleteBehavior(ParticleEditorPage page,
+		ParticleEffectTreeAdapter adapter, int32 nodeId)
+	{
+		let owner = adapter.GetOwningSystem(nodeId);
+		let idx = adapter.GetDataIndex(nodeId);
+		if (owner == null || idx < 0) return;
+		page.SelectObject(null);
+		owner.RemoveBehavior(idx);
+		adapter.Rebuild();
+		MutatedStructure(page);
+	}
+
+	private static void MoveNode(ParticleEditorPage page,
+		ParticleEffectTreeAdapter adapter, int32 nodeId, Object target, int32 delta)
+	{
+		let kind = adapter.GetNodeKind(nodeId);
+		let idx = adapter.GetDataIndex(nodeId);
+		if (idx < 0) return;
+		let to = idx + delta;
+
+		page.SelectObject(null);
+		switch (kind)
+		{
+		case .System:
+			let effect = page.EffectResource?.Effect;
+			if (effect == null) return;
+			effect.MoveSystem(idx, to);
+		case .Initializer:
+			let owner = adapter.GetOwningSystem(nodeId);
+			if (owner == null) return;
+			owner.MoveInitializer(idx, to);
+		case .Behavior:
+			let owner = adapter.GetOwningSystem(nodeId);
+			if (owner == null) return;
+			owner.MoveBehavior(idx, to);
+		default:
+			return;
+		}
+		adapter.Rebuild();
+		ReSelect(page, adapter, target);
+		MutatedStructure(page);
+	}
+
+	private static void ReSelect(ParticleEditorPage page,
+		ParticleEffectTreeAdapter adapter, Object target)
+	{
+		let newId = adapter.FindNodeForTarget(target);
+		if (newId >= 0)
+			adapter.SelectNode(newId);
+	}
+
+	private static void MutatedStructure(ParticleEditorPage page)
+	{
+		page.MarkDirty();
+		page.Restart();
 	}
 }

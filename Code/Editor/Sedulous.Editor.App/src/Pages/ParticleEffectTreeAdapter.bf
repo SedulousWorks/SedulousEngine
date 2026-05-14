@@ -18,7 +18,7 @@ using Sedulous.Particles.Resources;
 /// type picker for structural mutations lands in a follow-up.
 class ParticleEffectTreeAdapter : ITreeAdapter
 {
-	enum NodeKind
+	public enum NodeKind
 	{
 		Root,                // The ParticleEffect itself
 		System,              // ParticleSystem
@@ -153,6 +153,82 @@ class ParticleEffectTreeAdapter : ITreeAdapter
 		if (mNodes.TryGetValue(nodeId, let node))
 			return node.Target;
 		return null;
+	}
+
+	/// Find the current node ID for a given model target. Useful after
+	/// Rebuild() when callers want to restore selection on a still-alive
+	/// object whose node ID was invalidated by the rebuild.
+	public int32 FindNodeForTarget(Object target)
+	{
+		if (target == null) return -1;
+		for (let kv in mNodes)
+			if (kv.value.Target === target) return kv.key;
+		return -1;
+	}
+
+	public NodeKind GetNodeKind(int32 nodeId)
+	{
+		if (mNodes.TryGetValue(nodeId, let node))
+			return node.Kind;
+		return .Root;
+	}
+
+	public int32 GetParentNodeId(int32 nodeId)
+	{
+		if (mNodes.TryGetValue(nodeId, let node))
+			return node.ParentId;
+		return -1;
+	}
+
+	/// Returns the ParticleSystem that owns this node (the system whose
+	/// Emitter/Initializers/Behaviors list contains the node's target).
+	/// Returns null for the effect root and for System nodes themselves.
+	public ParticleSystem GetOwningSystem(int32 nodeId)
+	{
+		if (!mNodes.TryGetValue(nodeId, let node)) return null;
+		// Walk up until we find a System node; that's the owner.
+		var current = node;
+		while (current.Kind != .System && current.ParentId >= 0)
+		{
+			if (!mNodes.TryGetValue(current.ParentId, let parent)) return null;
+			current = parent;
+		}
+		return current.Kind == .System ? current.Target as ParticleSystem : null;
+	}
+
+	/// Returns the node's index within its data container (System index in
+	/// effect, Initializer/Behavior index in system). Returns -1 for nodes
+	/// without a data slot (root, folders, emitter).
+	public int32 GetDataIndex(int32 nodeId)
+	{
+		if (!mNodes.TryGetValue(nodeId, let node)) return -1;
+		let effect = mEffectRes?.Effect;
+		if (effect == null) return -1;
+
+		switch (node.Kind)
+		{
+		case .System:
+			let sys = node.Target as ParticleSystem;
+			for (int32 i = 0; i < effect.Systems.Length; i++)
+				if (effect.Systems[i] === sys) return i;
+			return -1;
+		case .Initializer:
+			let owner = GetOwningSystem(nodeId);
+			let target = node.Target as ParticleInitializer;
+			if (owner == null || target == null) return -1;
+			for (int32 i = 0; i < owner.Initializers.Length; i++)
+				if (owner.Initializers[i] === target) return i;
+			return -1;
+		case .Behavior:
+			let owner = GetOwningSystem(nodeId);
+			let target = node.Target as ParticleBehavior;
+			if (owner == null || target == null) return -1;
+			for (int32 i = 0; i < owner.Behaviors.Length; i++)
+				if (owner.Behaviors[i] === target) return i;
+			return -1;
+		default:
+			return -1;
+		}
 	}
 
 	// === ITreeAdapter ===
