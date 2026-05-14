@@ -31,7 +31,7 @@ The VFS refactor splits these:
 
 The two are glued together by `ResourceSystem`'s mount table: each scheme
 (`builtin`, `project`, ...) maps to an `IMount`, and resolution flows
-`URI → (mount, locator) → stream`.
+`URI -> (mount, locator) -> stream`.
 
 ---
 
@@ -427,7 +427,7 @@ binary payload.
 
 ```
 LoadResource<T>("project://textures/foo.tex")
-  └─ cache hit by URI?  →  return cached handle
+  └─ cache hit by URI?  ->  return cached handle
   └─ parse scheme + locator
   └─ mount = ResourceSystem.GetMount("project")
   └─ stream = mount.Open("textures/foo.tex")
@@ -561,7 +561,7 @@ Hard cuts, no compat shims:
 | `registry.SaveToFile(path)` | `index.SerializeTo(memStream)` + `mount.Save("name.registry", memStream)` |
 | `registry.LoadFromFile(path)` | open via `mount.Open("name.registry")`, then `index.DeserializeFrom(stream)` |
 | `ResourceSystem.AddRegistry / RemoveRegistry / GetRegistries` | `Mount / Unmount / GetMount` for byte access; `AddIndex / RemoveIndex` for identity |
-| `ResourceSystem.TryMakeProtocolPath(absolutePath, ...)` | Removed. Editor code that needs absolute-path → URI conversion walks `EditorContext.MountEntries` for a matching `FileSystemMount.RootPath`. |
+| `ResourceSystem.TryMakeProtocolPath(absolutePath, ...)` | Removed. Editor code that needs absolute-path -> URI conversion walks `EditorContext.MountEntries` for a matching `FileSystemMount.RootPath`. |
 | `IResourceManager.Load(StringView path)` | `Load(ResourceLoadContext ctx)` |
 | `IResourceManager.Load(MemoryStream stream)` | `Load(ResourceLoadContext ctx)` (single entry point) |
 | `IResourceManager.ReloadFromFile(resource, path)` | `Reload(resource, ResourceLoadContext ctx)` |

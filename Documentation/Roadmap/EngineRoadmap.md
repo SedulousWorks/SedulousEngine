@@ -348,3 +348,63 @@ Each needs a `Reload()` override following the material pattern:
 - **`ParticleEffectResource`** - clear effect definition, re-read.
 - **`SceneResource`** - complex; probably not practical for hot-reload.
   Default `.NotSupported` is appropriate.
+
+### Subscription Model Improvements (TODO)
+
+Today `ResourceSystem` notifies via a single global `IResourceChangeListener`
+broadcast - every registered listener sees every reload event and filters
+by `resourceType` / URI in its own callback. Combined with the generation
+counter pattern, this is enough for coarse-grained cache invalidation
+(shader changed -> invalidate every pipeline using it; texture changed
+-> re-upload via the GPU cache). It does not scale well to two emerging
+needs:
+
+**1. Per-instance subscription.** As resource refs migrate into foundation
+types (e.g. `ParticleSystem.Texture` if/when texture is promoted into the
+particle asset), individual foundation objects want to react to "my
+specific texture changed" - not filter through a global broadcast +
+maintain their own consumer registry. The minimal additive API:
+
+```beef
+// On ResourceSystem (or extended onto ResourceHandle):
+void SubscribeToResource(ResourceRef @ref, delegate void(IResource newValue));
+void UnsubscribeFromResource(ResourceRef @ref, delegate void(IResource));
+```
+
+The API key is `ResourceRef`, not bare `Guid` - a ref can be valid with
+an unresolved `Id == Guid.Empty` but a populated `Path` (the common case
+for unresolved refs in editor-authored data), and keying on Id only
+would collide every such ref onto a single empty-Guid bucket. Storing
+subscriptions as `(ResourceRef, delegate)` pairs lets the matcher fire
+on either identity component:
+
+- if `subscribed.HasId && subscribed.Id == reloaded.Id` -> fire
+- if `subscribed.HasPath && subscribed.Path == reloaded.URI` -> fire
+
+For typical workloads a linear scan over a small subscription list is
+fine; dual-keyed indices can be added if profiling demands. PollHotReload
+fires the matching delegates after firing the global broadcast so the
+two paths stay independent.
+
+**2. Listener thread / lock model.** Notifications currently fire under
+ResourceSystem's internal lock (`mLock.Enter()`). Listeners can't safely
+take other locks that might cycle through Resources, and any non-trivial
+work in a listener stalls the polling thread. Listeners should defer
+work to a frame boundary instead of reloading-and-rebuilding inline.
+Worth documenting explicitly, and worth considering a "queue events,
+drain on Frame" model that decouples the polling thread from listener
+execution. Likely shape:
+
+```beef
+// ResourceSystem accumulates events into a thread-safe queue during
+// PollHotReload; engine drains the queue on the main thread between
+// frames and dispatches to listeners then.
+void DrainPendingNotifications();
+```
+
+**Priority:** add the per-instance API when a real consumer needs it
+(first candidate is the in-progress promotion of texture refs into
+foundation types, if/when that lands). The deferred-dispatch model can
+follow once we hit a concrete deadlock or perf issue with the inline
+broadcast. Both changes are additive - they don't break the existing
+`IResourceChangeListener` interface.

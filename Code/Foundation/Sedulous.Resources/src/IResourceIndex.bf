@@ -23,7 +23,7 @@ interface IResourceIndex
 	/// Looks up the GUID registered for a URI. Returns true if found.
 	bool TryResolveId(StringView uri, out Guid id);
 
-	/// Registers a GUID → URI mapping, replacing any prior mapping for that GUID.
+	/// Registers a GUID -> URI mapping, replacing any prior mapping for that GUID.
 	void Register(Guid id, StringView uri);
 
 	/// Removes the mapping for `id`. No-op if missing.

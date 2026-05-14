@@ -1080,7 +1080,7 @@ a member and contributes its own UI layout.
 | **Skeleton** | `.skeleton` | DONE (read-only by design) | Bone hierarchy debug-drawn via `PreviewSceneHost.OnPreRender`. Info panel with bone names. |
 | **Material** | `.material` | Preview only — property editing pending | Sphere primitive (`builtin://primitives/sphere.mesh`) shaded with the material. Right pane currently shows shader name / blend / cull / property count; needs `PropertyGrid` binding for full editing. |
 | **Animation** | `.animation` | Metadata only — viewport empty | `AnimationClip` carries no skeleton link, so no skeletal preview yet. Play/Pause/Stop + scrubber UI present. Full preview needs a skeleton-binding flow (later phase). |
-| **Particle Effect** | `.particlefx` | Preview only — system editing pending | Live `ParticleComponent` with `AutoPlay`. Toolbar with Play / Stop / Restart. Asset creator ships a default Sparks-style system so newly created effects render something on first open. |
+| **Particle Effect** | `.particlefx` | DONE | Authoring tree (effect -> systems -> emitter / initializers / behaviors) with right-click context menus + drag-to-reorder for structural mutation (Add System / Add Initializer ▸ / Add Behavior ▸ / Move Up/Down / Delete via `ParticleTypeRegistry`). Inspector binds via the comptime-generated `DescribeProperties` path; per-edit `MarkDirty + Restart` hook subscribes to each editor's `OnEditEnd`. Real editors for Range\* / EmissionShape / `CurveFloat` (single-curve canvas) / `CurveVector2` (two linked channels on one `CurveCanvas`) / `CurveColor` (`GradientEditor` widget + 8-bit `ColorPicker` round-trip; HDR picker is a later upgrade). Per-system texture lives on `ParticleSystem.Texture` (asset-side `ResourceRef`); engine resolves per-system MaterialInstance keyed on `ITextureView` with dedup across systems and components. Live preview restarts on spawn-time edits, plays back through `PreviewSceneHost`. Toolbar Play / Stop / Restart respects authored `IsEmitting`. |
 | **Audio Clip** | `.audioclip` | DONE (read-only) | Metadata, Play/Pause/Stop, volume slider, loop toggle (playback via `IAudioSource`). Settings editing is a later polish pass. |
 | **Sound Cue** | `.soundcue` | Preview only — entry editing pending | Metadata, entry list (read-only), Play Cue button. Needs entry-management UI: list editor with `AudioClip` ResourceRef pickers + weight/volume/pitch sliders. Page owns the cue resource and releases on close. |
 | **Animation Graph** | `.animgraph` | Stub | Asset creator works; page is the generic `ResourceEditorPage` placeholder. Needs a node-graph widget in `Sedulous.UI.Toolkit`. |
@@ -1093,9 +1093,9 @@ the engine editor: `Mesh`, `Skeleton`, `Animation`. Their `SaveFileExtension` is
 permanently empty.
 
 These pages are read-only *for now* and will gain edit capability later (each one a
-follow-up): `Material` (property grid + texture slot picking), `Particle Effect`
-(emitter/initializer/behavior editing surface), `Sound Cue` (entry list with ref
-pickers), `Texture` (filter/wrap/mip settings), `Audio Clip` (loop/volume defaults).
+follow-up): `Material` (property grid + texture slot picking), `Sound Cue` (entry
+list with ref pickers), `Texture` (filter/wrap/mip settings), `Audio Clip` (loop/
+volume defaults). `Particle Effect` already flipped — see its row above.
 When each flips, the change is local: implement `Save()`/`SaveAs()`, return the real
 extension from `SaveFileExtension`, optionally expose a `LastSavedGuid` for index
 registration. The global save plumbing (Phase 5.6) already handles them correctly.
@@ -1131,6 +1131,77 @@ every preview page's viewport. Now walks any open page's content tree for
 `PageManager.OnActivePageChanged` is now subscribed by `EditorApplication`;
 double-clicking an already-open asset surfaces its existing dock tab via
 `DockManager.ActivatePanel`.
+
+**TODO — investigate attribute-driven inspector codegen.** Today every
+inspectable type (Components, particle initializers/behaviors, the
+ParticleSystem/Emitter) gets a hand-written `extension Foo { [OnCompile]
+... }` block to wire up `DescribeProperties` codegen. That's ~30 blocks
+for Components and ~19 more for particle types — boilerplate identical
+except for the type name. A cleaner pattern would be a single
+`[Inspectable]` marker attribute (parallel to `[Component]`) plus a
+global comptime sweep that finds all marked types and runs the codegen
+on each, replacing every extension block with one attribute per type.
+Beef's comptime model needs to support "enumerate types with attribute X
+across the build" for this to work — not verified. Worth a minimal Beef
+sandbox experiment before committing. If it works, retrofit
+ComponentExtensions and ParticleInspectorExtensions in one pass.
+
+**TODO — tangent-handle editing on `CurveCanvas`.**
+`CurveCanvas` reads and writes tangents on its `Key` struct, but the UI
+doesn't expose them - tangents stay at whatever the model pushed in
+(zero for keys added via the canvas itself). Adding per-key Alt+drag
+handles for `TangentIn` / `TangentOut` would let authors shape Hermite
+curves directly instead of relying on programmatic curve presets. Scope
+~120 LOC inside the existing widget: hit-test handle squares offset
+along the tangent direction when a key is selected, drag updates the
+tangent slope, channel descriptor's `Interpolation == .Hermite` gates
+whether handles render. Useful for `CurveFloat` and `CurveVector2`;
+`CurveColor` is linear-only so it doesn't apply.
+
+**TODO — HDR color picker for `GradientEditor` stops.**
+`CurveColorEditor` currently opens the existing 8-bit `ColorPicker`
+dialog for stop colors, which clamps HDR channels (Vector4 > 1) on the
+round-trip. The model storage is HDR-allowed and survives values that
+never go through the picker - so authoring is constrained, not the data
+path. A proper HDR picker (RGB picker + intensity slider, or a fully
+floating-point picker) would unblock authoring emissive ramps. Could
+also slot in as a generic `Vector4ColorEditor` for any HDR color field.
+
+**TODO — adopt `Property<T>` inside `PropertyEditor`.** Today each
+`PropertyEditor` subclass (FloatEditor, ColorEditor, Vector3Editor, etc.)
+holds a `Setter` delegate that the descriptor wires to write back into
+the inspected object's field. v1 also adds a non-generic `Changed` event
+on `PropertyEditor` that subclasses fire after applying the setter, so
+the page can hook dirty tracking + simulation restart without coupling
+`PropertyGridDescriptor` to page-specific concerns. That's the right
+shape but a stopgap implementation — each subclass needs a manual
+`NotifyChanged()` call and the typed value lives outside any unified
+abstraction.
+
+The cleaner long-term shape is to give each editor a typed
+`Property<T> Value` (using the existing `Sedulous.UI.Property<T>` from
+`UI/Core/Property.bf`) instead of a raw `Setter` delegate. Property<T>
+already carries the value + Changed event + loop guard for two-way
+binding. Editors become thin views over their Property. Benefits:
+
+- The non-generic `Changed` event on `PropertyEditor` base stays (still
+  needed for type-erased subscribers like the page), but subclasses can
+  fire it once from the base by hooking their typed `Property<T>.Changed`
+  — no per-subclass `NotifyChanged()` ceremony.
+- Descriptors hand out the `Property<T>` instance so multiple
+  observers can bind: write-back to the model, page dirty tracking,
+  undo recorder, network sync, all subscribing to the same source.
+- Opens the door to bidirectional binding for inspector -> external
+  reactive UI (e.g. a gizmo handle that should track an inspector
+  field and vice versa).
+- Aligns with the binding idiom the UI layer already uses elsewhere.
+
+Cost is non-trivial: every editor subclass needs to expose a typed
+Property, the descriptor's per-type methods (`Float`, `Vec3`, etc.)
+become thin "create editor -> wire Property.Changed to pointer write"
+adapters, and the codegen stays the same. Plan it as a focused refactor
+once the v1 inspector ships and we've used the `Changed`-event shape
+enough to know what we want.
 
 ### Phase 5.6: Page-owned save handling
 

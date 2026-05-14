@@ -26,7 +26,7 @@ class TAAEffect : PostProcessEffect
 
 	/// Number of history color slots for the temporal ping-pong: one slot is
 	/// read while the other is written each frame. The resolve algorithm
-	/// (read previous → blend with current → write new) is fundamentally
+	/// (read previous -> blend with current -> write new) is fundamentally
 	/// 2-slot; a larger count would only matter for variants that sample
 	/// multiple frames back. Independent of MaxFramesInFlight (CPU/GPU
 	/// pipelining is fence-driven, not slot-driven).

@@ -9,7 +9,7 @@ using Sedulous.Particles;
 using Sedulous.Particles.Resources;
 
 /// Tree adapter for the particle editor's left pane. Mirrors the
-/// effect → system → (emitter + initializers folder + behaviors folder)
+/// effect -> system -> (emitter + initializers folder + behaviors folder)
 /// hierarchy. Selection fires OnObjectSelected with the model object
 /// represented by the picked node (or null for folder nodes).
 ///
