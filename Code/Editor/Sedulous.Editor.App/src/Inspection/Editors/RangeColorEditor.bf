@@ -7,15 +7,15 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Particles;
 
 /// Property editor for RangeColor (Min/Max Vector4 pair, HDR-allowed).
-/// Two rows of four NumericFields (R/G/B/A). The existing ColorEditor uses
-/// 8-bit Color and a picker dialog - particle colors need HDR float channels,
-/// so v1 uses plain numeric fields. A real HDR color picker can replace this
-/// later without changing the descriptor wiring.
+/// Two clickable swatches side-by-side; clicking either opens an
+/// HDRColorPicker dialog for that endpoint. The picker handles HDR
+/// channels natively (Intensity slider + float R/G/B/A fields), so the
+/// editor preserves HDR values through the round-trip.
 class RangeColorEditor : PropertyEditor
 {
 	private RangeColor* mPtr;
-	private NumericField mMinR, mMinG, mMinB, mMinA, mMaxR, mMaxG, mMaxB, mMaxA;
-	private bool mSyncing;
+	private RangeColorSwatch mMinSwatch;
+	private RangeColorSwatch mMaxSwatch;
 
 	public this(StringView name, RangeColor* ptr, StringView category = default) : base(name, category)
 	{
@@ -24,103 +24,114 @@ class RangeColorEditor : PropertyEditor
 
 	protected override View CreateEditorView()
 	{
-		let column = new FlexLayout();
-		column.Direction = .Vertical;
-		column.Spacing = 2;
-
-		mMinR = MakeField("R", mPtr.Min.X);
-		mMinR.OnValueChanged.Add(new (nf, val) => { if (!mSyncing) { mSyncing = true; mPtr.Min.X = (float)val; NotifyValueChanged(); mSyncing = false; } });
-
-		mMinG = MakeField("G", mPtr.Min.Y);
-		mMinG.OnValueChanged.Add(new (nf, val) => { if (!mSyncing) { mSyncing = true; mPtr.Min.Y = (float)val; NotifyValueChanged(); mSyncing = false; } });
-
-		mMinB = MakeField("B", mPtr.Min.Z);
-		mMinB.OnValueChanged.Add(new (nf, val) => { if (!mSyncing) { mSyncing = true; mPtr.Min.Z = (float)val; NotifyValueChanged(); mSyncing = false; } });
-
-		mMinA = MakeField("A", mPtr.Min.W);
-		mMinA.OnValueChanged.Add(new (nf, val) => { if (!mSyncing) { mSyncing = true; mPtr.Min.W = (float)val; NotifyValueChanged(); mSyncing = false; } });
-
-		mMaxR = MakeField("R", mPtr.Max.X);
-		mMaxR.OnValueChanged.Add(new (nf, val) => { if (!mSyncing) { mSyncing = true; mPtr.Max.X = (float)val; NotifyValueChanged(); mSyncing = false; } });
-
-		mMaxG = MakeField("G", mPtr.Max.Y);
-		mMaxG.OnValueChanged.Add(new (nf, val) => { if (!mSyncing) { mSyncing = true; mPtr.Max.Y = (float)val; NotifyValueChanged(); mSyncing = false; } });
-
-		mMaxB = MakeField("B", mPtr.Max.Z);
-		mMaxB.OnValueChanged.Add(new (nf, val) => { if (!mSyncing) { mSyncing = true; mPtr.Max.Z = (float)val; NotifyValueChanged(); mSyncing = false; } });
-
-		mMaxA = MakeField("A", mPtr.Max.W);
-		mMaxA.OnValueChanged.Add(new (nf, val) => { if (!mSyncing) { mSyncing = true; mPtr.Max.W = (float)val; NotifyValueChanged(); mSyncing = false; } });
-
-		column.AddView(BuildRow("Min", mMinR, mMinG, mMinB, mMinA), new FlexLayout.LayoutParams() { Width = .Match });
-		column.AddView(BuildRow("Max", mMaxR, mMaxG, mMaxB, mMaxA), new FlexLayout.LayoutParams() { Width = .Match });
-
-		return column;
-	}
-
-	private NumericField MakeField(StringView prefix, float initial)
-	{
-		let field = new RangeNumericField(this);
-		field.ShowSpinButtons = false;
-		field.Min = 0; field.Max = 8; field.Step = 0.05;
-		field.DecimalPlaces = 3;
-		field.SetPrefix(prefix);
-		field.Value = initial;
-		return field;
-	}
-
-	private View BuildRow(StringView label, NumericField r, NumericField g, NumericField b, NumericField a)
-	{
 		let row = new FlexLayout();
 		row.Direction = .Horizontal;
-		row.Spacing = 3;
+		row.Spacing = 6;
 
-		let lbl = new Label();
-		lbl.SetText(label);
-		lbl.FontSize = 11;
-		lbl.VAlign = .Middle;
-		row.AddView(lbl, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(28)) });
+		let minLabel = new Label();
+		minLabel.SetText("Min");
+		minLabel.FontSize = 11;
+		minLabel.VAlign = .Middle;
+		row.AddView(minLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(28)) });
 
-		row.AddView(r, new FlexLayout.LayoutParams() { Grow = 1 });
-		row.AddView(g, new FlexLayout.LayoutParams() { Grow = 1 });
-		row.AddView(b, new FlexLayout.LayoutParams() { Grow = 1 });
-		row.AddView(a, new FlexLayout.LayoutParams() { Grow = 1 });
+		mMinSwatch = new RangeColorSwatch(this, isMin: true);
+		mMinSwatch.Cursor = .Hand;
+		row.AddView(mMinSwatch, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
+
+		let maxLabel = new Label();
+		maxLabel.SetText("Max");
+		maxLabel.FontSize = 11;
+		maxLabel.VAlign = .Middle;
+		row.AddView(maxLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(28)) });
+
+		mMaxSwatch = new RangeColorSwatch(this, isMin: false);
+		mMaxSwatch.Cursor = .Hand;
+		row.AddView(mMaxSwatch, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
+
+		RefreshSwatches();
 		return row;
 	}
 
-	private class RangeNumericField : NumericField
+	private void RefreshSwatches()
 	{
-		private RangeColorEditor mEditor;
-		public this(RangeColorEditor editor) { mEditor = editor; }
-
-		public override void OnFocusGained()
-		{
-			base.OnFocusGained();
-			if (!mEditor.IsEditing) mEditor.BeginEdit();
-		}
-
-		public override void OnFocusLost()
-		{
-			base.OnFocusLost();
-			if (mEditor.IsEditing && !mEditor.AnyFieldFocused())
-				mEditor.EndEdit();
-		}
+		if (mMinSwatch != null) mMinSwatch.Color = ClampToLDR(mPtr.Min);
+		if (mMaxSwatch != null) mMaxSwatch.Color = ClampToLDR(mPtr.Max);
 	}
 
-	private bool AnyFieldFocused()
+	private static Color ClampToLDR(Vector4 c)
 	{
-		return Focused(mMinR) || Focused(mMinG) || Focused(mMinB) || Focused(mMinA)
-			|| Focused(mMaxR) || Focused(mMaxG) || Focused(mMaxB) || Focused(mMaxA);
+		let r = (uint8)Math.Clamp((int32)(c.X * 255), 0, 255);
+		let g = (uint8)Math.Clamp((int32)(c.Y * 255), 0, 255);
+		let b = (uint8)Math.Clamp((int32)(c.Z * 255), 0, 255);
+		let a = (uint8)Math.Clamp((int32)(c.W * 255), 0, 255);
+		return .(r, g, b, a);
 	}
 
-	private static bool Focused(NumericField f) => f != null && f.IsFocused;
+	/// Open an HDRColorPicker for one endpoint. Live picker updates write
+	/// straight into mPtr.Min/Max so the simulation reacts during edit;
+	/// Cancel restores the value the gesture started with.
+	private void OpenPickerFor(bool isMin)
+	{
+		let host = isMin ? (View)mMinSwatch : (View)mMaxSwatch;
+		let ctx = host?.Context;
+		if (ctx == null) return;
+
+		let originalColor = isMin ? mPtr.Min : mPtr.Max;
+		BeginEdit();
+
+		let picker = new HDRColorPicker();
+		picker.SetColor(originalColor);
+		picker.SetOriginalColor(originalColor);
+		picker.OnColorChanged.Add(new (p, c) =>
+		{
+			if (isMin) mPtr.Min = c;
+			else mPtr.Max = c;
+			RefreshSwatches();
+			NotifyValueChanged();
+		});
+
+		let dialog = new Dialog(isMin ? "Min Color" : "Max Color");
+		dialog.SetContent(picker);
+		dialog.AddButton("OK", .OK);
+		dialog.AddButton("Cancel", .Cancel);
+		dialog.OnClosed.Add(new (d, result) =>
+		{
+			if (result == .OK)
+				EndEdit();
+			else
+			{
+				if (isMin) mPtr.Min = originalColor;
+				else mPtr.Max = originalColor;
+				RefreshSwatches();
+				NotifyValueChanged();
+				CancelEdit();
+			}
+		});
+		dialog.Show(ctx);
+	}
 
 	public override void RefreshView()
 	{
-		if (mMinR == null || mSyncing) return;
-		mSyncing = true;
-		mMinR.Value = mPtr.Min.X; mMinG.Value = mPtr.Min.Y; mMinB.Value = mPtr.Min.Z; mMinA.Value = mPtr.Min.W;
-		mMaxR.Value = mPtr.Max.X; mMaxG.Value = mPtr.Max.Y; mMaxB.Value = mPtr.Max.Z; mMaxA.Value = mPtr.Max.W;
-		mSyncing = false;
+		RefreshSwatches();
+	}
+
+	/// Clickable swatch view. Mirrors ColorEditor.ClickableColorSwatch.
+	private class RangeColorSwatch : ColorView
+	{
+		private RangeColorEditor mEditor;
+		private bool mIsMin;
+
+		public this(RangeColorEditor editor, bool isMin)
+		{
+			mEditor = editor;
+			mIsMin = isMin;
+		}
+
+		public override void OnMouseDown(MouseEventArgs e)
+		{
+			if (e.Button != .Left) return;
+			mEditor.OpenPickerFor(mIsMin);
+			e.Handled = true;
+		}
 	}
 }

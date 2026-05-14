@@ -8,13 +8,8 @@ using Sedulous.Particles;
 
 /// Property editor for ParticleCurveColor. Wraps GradientEditor and
 /// projects its stop list back into the underlying ParticleCurveColor.
-/// Double-clicking a stop opens the existing ColorPicker dialog for that
-/// stop's color; commit writes the new color back through UpdateStopColor.
-///
-/// v1 limitation: ColorPicker is 8-bit RGBA so HDR values (channels > 1)
-/// get clamped on edit. The underlying ParticleCurveColor still stores
-/// HDR Vector4 values - they survive round-trips that don't touch the
-/// picker. An HDR color picker would unblock authoring HDR ramps.
+/// Double-clicking a stop opens an HDRColorPicker dialog so authors can
+/// pick HDR-range Vector4 colors directly without the 8-bit round-trip.
 class CurveColorEditor : PropertyEditor
 {
 	private ParticleCurveColor* mPtr;
@@ -75,9 +70,9 @@ class CurveColorEditor : PropertyEditor
 		mSyncing = false;
 	}
 
-	/// Open the existing 8-bit ColorPicker for the indicated stop. On OK,
-	/// write the picked color back to the gradient editor (which fires
-	/// OnStopChanged -> PullEditorIntoPtr). Cancel restores the prior color.
+	/// Open an HDRColorPicker for the indicated stop. On OK, the live
+	/// updates fired during the picker's drag are already committed via
+	/// UpdateStopColor. Cancel restores the prior color.
 	private void OpenColorPicker(int32 idx)
 	{
 		let ctx = mEditor?.Context;
@@ -89,12 +84,12 @@ class CurveColorEditor : PropertyEditor
 
 		BeginEdit();
 
-		let picker = new ColorPicker();
-		picker.SetColor(Vector4ToColor(originalColor));
-		picker.SetOriginalColor(Vector4ToColor(originalColor));
+		let picker = new HDRColorPicker();
+		picker.SetColor(originalColor);
+		picker.SetOriginalColor(originalColor);
 		picker.OnColorChanged.Add(new (p, c) =>
 		{
-			mEditor.UpdateStopColor(idx, ColorToVector4(c));
+			mEditor.UpdateStopColor(idx, c);
 		});
 
 		let dialog = new Dialog("Stop Color");
@@ -112,20 +107,6 @@ class CurveColorEditor : PropertyEditor
 			}
 		});
 		dialog.Show(ctx);
-	}
-
-	private static Color Vector4ToColor(Vector4 c)
-	{
-		let r = (uint8)Math.Clamp((int32)(c.X * 255), 0, 255);
-		let g = (uint8)Math.Clamp((int32)(c.Y * 255), 0, 255);
-		let b = (uint8)Math.Clamp((int32)(c.Z * 255), 0, 255);
-		let a = (uint8)Math.Clamp((int32)(c.W * 255), 0, 255);
-		return .(r, g, b, a);
-	}
-
-	private static Vector4 ColorToVector4(Color c)
-	{
-		return .(c.R / 255.0f, c.G / 255.0f, c.B / 255.0f, c.A / 255.0f);
 	}
 
 	public override void RefreshView()
