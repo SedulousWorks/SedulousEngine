@@ -11,18 +11,19 @@ using Sedulous.Inspection;
 /// Component for a particle effect attached to an entity.
 ///
 /// The app sets an effect ResourceRef (or a direct ParticleEffect pointer).
-/// ParticleComponentManager resolves the effect resource, creates a runtime
-/// instance, resolves the texture, creates a MaterialInstance, simulates the
-/// effect, and extracts ParticleBatchRenderData each frame.
+/// ParticleComponentManager resolves the effect resource, walks its systems
+/// to resolve each system.TextureRef, creates per-system MaterialInstances,
+/// simulates the effect, and extracts ParticleBatchRenderData each frame.
+/// Texture is per-ParticleSystem on the asset - the component no longer
+/// carries its own texture.
 [Component]
 class ParticleComponent : Component, ISerializableComponent
 {
-	public int32 SerializationVersion => 1;
+	public int32 SerializationVersion => 2;
 
 	public void Serialize(IComponentSerializer s)
 	{
 		s.ResourceRef("EffectRef", ref mEffectRef);
-		s.ResourceRef("TextureRef", ref mTextureRef);
 		s.Bool("IsVisible", ref IsVisible);
 		s.Bool("AutoPlay", ref AutoPlay);
 	}
@@ -38,14 +39,6 @@ class ParticleComponent : Component, ISerializableComponent
 	[Property]
 	[ResourceRefType(".particlefx")]
 	private ResourceRef mEffectRef ~ _.Dispose();
-
-	/// Texture resource reference (serialized). Overrides the effect's default texture.
-	[Property]
-	[ResourceRefType(".texture")]
-	private ResourceRef mTextureRef ~ _.Dispose();
-
-	/// Resolved MaterialInstance - created by the manager, released on destroy.
-	public MaterialInstance Material ~ _?.ReleaseRef();
 
 	/// Layer mask for filtering during extraction.
 	public uint32 LayerMask = 0xFFFFFFFF;
@@ -64,25 +57,6 @@ class ParticleComponent : Component, ISerializableComponent
 	{
 		mEffectRef.Dispose();
 		mEffectRef = ResourceRef(@ref.Id, @ref.Path ?? "");
-	}
-
-	/// Gets the texture resource ref.
-	public ResourceRef TextureRef => mTextureRef;
-
-	/// Sets the texture resource ref (deep copy).
-	public void SetTextureRef(ResourceRef @ref)
-	{
-		mTextureRef.Dispose();
-		mTextureRef = ResourceRef(@ref.Id, @ref.Path ?? "");
-	}
-
-	/// Assigns a MaterialInstance directly (takes ownership - AddRef/ReleaseRef pattern).
-	public void SetMaterial(MaterialInstance material)
-	{
-		if (Material == material) return;
-		material?.AddRef();
-		Material?.ReleaseRef();
-		Material = material;
 	}
 
 	/// Sets the effect and creates a runtime instance.

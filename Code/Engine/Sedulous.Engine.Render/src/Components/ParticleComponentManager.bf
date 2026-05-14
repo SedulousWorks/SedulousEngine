@@ -126,32 +126,75 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 
 			// Skip texture/material resolution if no effect instance yet
 			if (comp.Instance == null) continue;
+			let effect = comp.Effect;
+			if (effect == null) continue;
 
-			// --- Resolve texture resource ---
-			let texRef = comp.TextureRef;
-			if (!texRef.IsValid) continue;
+			let systemCount = effect.SystemCount;
 
-			ITextureView view = null;
-			if (!Resolver.ResolveTexture(ref state.Texture, texRef, out view))
-				continue;
-			if (view == null) continue;
+			// Grow the per-system slot list to match. Trimming happens after
+			// the resolve loop so we release stale slots cleanly.
+			while ((int32)state.Systems.Count < systemCount)
+				state.Systems.Add(new ParticleSystemResolveState());
 
-			// Look up (or create) the shared MaterialInstance for this texture.
-			let key = ObjectKey<ITextureView>(view);
-			MaterialInstance matInstance;
-			if (mMaterialCache.TryGetValue(key, let cached))
+			// Resolve each system's texture; look up (or create) the shared
+			// MaterialInstance keyed by texture view. Multiple systems
+			// (across one or many components) that point at the same texture
+			// share one MaterialInstance via mMaterialCache.
+			for (int32 i = 0; i < systemCount; i++)
 			{
-				matInstance = cached;
-			}
-			else
-			{
-				matInstance = new MaterialInstance(particleGPU.ParticleMaterial);
-				matInstance.SetTexture("ParticleTexture", view);
-				materialSystem.PrepareInstance(matInstance);
-				mMaterialCache[key] = matInstance;
+				let sysState = state.Systems[i];
+				let system = effect.GetSystem(i);
+				let texRef = system.TextureRef;
+
+				if (!texRef.IsValid)
+				{
+					// No texture on this system - clear cached slot.
+					sysState.Texture.Release();
+					if (sysState.Material != null)
+					{
+						sysState.Material.ReleaseRef();
+						sysState.Material = null;
+					}
+					continue;
+				}
+
+				ITextureView view = null;
+				if (!Resolver.ResolveTexture(ref sysState.Texture, texRef, out view))
+					continue;
+				if (view == null) continue;
+
+				let key = ObjectKey<ITextureView>(view);
+				MaterialInstance matInstance;
+				if (mMaterialCache.TryGetValue(key, let cached))
+				{
+					matInstance = cached;
+				}
+				else
+				{
+					matInstance = new MaterialInstance(particleGPU.ParticleMaterial);
+					matInstance.SetTexture("ParticleTexture", view);
+					materialSystem.PrepareInstance(matInstance);
+					mMaterialCache[key] = matInstance;
+				}
+
+				if (sysState.Material != matInstance)
+				{
+					matInstance.AddRef();
+					if (sysState.Material != null)
+						sysState.Material.ReleaseRef();
+					sysState.Material = matInstance;
+				}
 			}
 
-			comp.SetMaterial(matInstance);
+			// Release per-system slots beyond the current SystemCount (e.g.
+			// after the effect was edited and a system was removed).
+			while ((int32)state.Systems.Count > systemCount)
+			{
+				let last = state.Systems.Count - 1;
+				state.Systems[last].Release();
+				delete state.Systems[last];
+				state.Systems.RemoveAt(last);
+			}
 		}
 
 		// Keep cached instances' bind groups fresh.
@@ -186,6 +229,9 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 			let effect = comp.Effect;
 			if (effect == null) continue;
 
+			// Per-system resolve state, looked up once per component.
+			mResolveStates.TryGetValue(comp.Owner, let resolveState);
+
 			// Extract render data for each system in the effect
 			for (int32 sysIdx = 0; sysIdx < effect.SystemCount; sysIdx++)
 			{
@@ -206,19 +252,27 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 				let hasTrails = renderState.RenderData.TrailVertexCount > 0;
 				if (!hasBillboards && !hasTrails) continue;
 
+				// Pull the per-system material from the resolve state. May be
+				// null if the system has no texture set, or the texture is
+				// still pending resolution; renderer falls back to the
+				// engine's default 1x1 white sprite in that case.
+				MaterialInstance material = null;
+				if (resolveState != null && sysIdx < resolveState.Systems.Count)
+					material = resolveState.Systems[sysIdx].Material;
+
 				// Create frame-allocated batch entry
 				let data = new:frameAlloc ParticleBatchRenderData();
 				data.Position = instance.Position;
 				data.Bounds = renderState.RenderData.Bounds;
-				data.MaterialSortKey = (comp.Material != null)
-					? (uint32)(int)Internal.UnsafeCastToPtr(comp.Material)
+				data.MaterialSortKey = (material != null)
+					? (uint32)(int)Internal.UnsafeCastToPtr(material)
 					: 0;
 				data.Flags = .Dynamic;
 				data.Vertices = renderState.RenderData.Vertices.CArray();
 				data.VertexCount = renderState.RenderData.VertexCount;
 				data.BlendMode = system.BlendMode;
 				data.RenderMode = system.RenderMode;
-				data.MaterialBindGroup = (comp.Material != null) ? comp.Material.BindGroup : null;
+				data.MaterialBindGroup = (material != null) ? material.BindGroup : null;
 				data.MaterialKey = data.MaterialSortKey;
 
 				// Trail data
@@ -261,14 +315,6 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 
 	public override void OnEntityDestroyed(EntityHandle entity)
 	{
-		if (let comp = GetForEntity(entity))
-		{
-			if (comp.Material != null)
-			{
-				comp.Material.ReleaseRef();
-				comp.Material = null;
-			}
-		}
 		if (mResolveStates.TryGetValue(entity, let state))
 		{
 			state.Release();
@@ -306,18 +352,43 @@ class ParticleRenderState
 	}
 }
 
+/// Per-(component, system) resolution state. Holds the resolved texture
+/// handle plus an AddRef'd reference to the shared MaterialInstance. Lives
+/// as a heap-allocated slot in ParticleResolveState.Systems so the contained
+/// struct fields can be passed by ref into the resolver without copying.
+class ParticleSystemResolveState
+{
+	public ResolvedResource<TextureResource> Texture;
+	public MaterialInstance Material;
+
+	public void Release()
+	{
+		Texture.Release();
+		if (Material != null) { Material.ReleaseRef(); Material = null; }
+	}
+}
+
 /// Per-component resource resolution tracking for particles.
 class ParticleResolveState
 {
 	/// Resolved particle effect resource.
 	public ResolvedResource<ParticleEffectResource> Effect;
 
-	/// Resolved particle texture.
-	public ResolvedResource<TextureResource> Texture;
+	/// Per-system resolution state, indexed by system index. Grown/trimmed
+	/// by the manager each frame to match the effect's current SystemCount.
+	public System.Collections.List<ParticleSystemResolveState> Systems = new .() ~ {
+		for (let s in _) { s.Release(); delete s; }
+		delete _;
+	};
 
 	public void Release()
 	{
 		Effect.Release();
-		Texture.Release();
+		for (let s in Systems)
+		{
+			s.Release();
+			delete s;
+		}
+		Systems.Clear();
 	}
 }
