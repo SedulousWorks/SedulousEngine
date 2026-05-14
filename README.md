@@ -52,7 +52,7 @@ what to render and where.
 - GPU-instanced sprites (3 orientation modes)
 - Depth-reconstructed projected decals
 - CPU particle system with billboard/trail rendering, sub-emitters, LOD
-- Post-processing: bloom (5-level chain) + ACES tone mapping
+- Post-processing: SSAO, bloom, TAA, FXAA, ACES tone mapping
 - Debug draw (wire shapes, screen text, light gizmos)
 - Per-scene Pipeline -- multiple scenes render independently
 
@@ -82,30 +82,35 @@ what to render and where.
 - SkinnedMeshComponent decoupled from animation
 
 ### Audio
-- SDL3 audio backend
-- Volume categories (Master x SFX/Music)
-- Spatial audio with listener/source components
-- Music streaming, one-shot API
+- SDL3 audio backend with graph-based mixing
+- Bus hierarchy (Master/SFX/Music/custom) with per-bus volume and mute
+- DSP effects chain: reverb, delay, EQ, compressor, low/high-pass filters
+- 3D spatialization with configurable attenuation curves, cone emission, doppler
+- Sound cues with clip variation, pitch/volume randomization
+- Music streaming, one-shot API, AudioSourceComponent
 
 ### Navigation
 - Recast/Detour integration
 - NavMesh building, crowd management, obstacle avoidance
 - NavAgent and NavObstacle components
 
-### UI Framework (Sedulous.LegacyUI)
+### UI Framework (Sedulous.UI)
 - Android-inspired retained-mode: View/ViewGroup/RootView hierarchy
-- MeasureSpec layout system
-- Theme system with drawable-based skinning
-- Input routing, focus management, drag-drop
-- Animation, overlays, popups, dialogs
+- FlexLayout, DockLayout, GridLayout, FlowLayout, AbsoluteLayout
+- BoxConstraints / SizeSpec layout system
+- StyleSheet with type/class/state selectors, theme registry (Dark, Light, Rounded)
+- Input routing, focus management, drag-drop, shortcuts
+- Popups, dialogs, context menus, tooltips
+- Screen-space and world-space UI rendering
 - Runs headless for tests -- no engine dependency
 
-### UI Toolkit (Sedulous.LegacyUI.Toolkit)
-- DockManager with dockable OS windows
-- SplitView, MenuBar, StatusBar, Toolbar
-- PropertyGrid with transactional editing (BeginEdit/EndEdit for undo)
+### UI Toolkit (Sedulous.UI.Toolkit)
+- DockManager with tabs at top, per-tab close buttons, dockable OS windows
+- SplitView, MenuBar, StatusBar, Toolbar, BreadcrumbBar
+- PropertyGrid with type-specific editors (float, bool, string, vector3, enum, color)
 - TreeView, ColorPicker, TabView (closable)
 - DraggableTreeView, IDockableWindowHost
+- Layout persistence (ExportLayout/ApplyLayout with PersistenceId)
 
 ### Editor (Sedulous.Editor)
 - Plugin-based architecture ([EditorPlugin] auto-discovery)
@@ -155,7 +160,7 @@ dependencies for those platforms and filling any gaps in RHI bootstrapping.
 cd Code
 BeefBuild -workspace=. -project=EngineSandbox     # Game sandbox
 BeefBuild -workspace=. -project=Sedulous.Editor.App # Editor
-BeefBuild -workspace=. -project=LegacyUISandbox          # UI demo
+BeefBuild -workspace=. -project=UISandbox                 # UI demo
 ```
 
 **Shader compilation note:** The first run of EngineSandbox may take a while as
@@ -174,11 +179,11 @@ directory for them to recompile.
 
 ```
 Code/
-  Foundation/          -- Core libraries (RHI, Shell, VG, LegacyUI, Physics, Audio, etc.)
-  Engine/              -- Engine.Core (scene model) + subsystems (Input, Physics, Render, LegacyUI, etc.)
+  Foundation/          -- Core libraries (RHI, Shell, VG, UI, Physics, Audio, etc.)
+  Engine/              -- Engine.Core (scene model) + subsystems (Input, Physics, Render, UI, etc.)
   Editor/              -- Editor core + application
-  Samples/             -- EngineSandbox, LegacyUISandbox, RHI samples, etc.
-  Deprecated/          -- Sedulous.GUI (replaced by Sedulous.LegacyUI stack)
+  Samples/             -- EngineSandbox, UISandbox, RHI samples, etc.
+  Deprecated/          -- Legacy UI stack (replaced by Sedulous.UI)
   Dependencies/        -- Third-party bindings (Bulkan, SDL3, Jolt, Recast, etc.)
 
 Documentation/
@@ -188,11 +193,12 @@ Documentation/
 
 ## Documentation
 
+- [**Manual**](https://sedulousworks.github.io/Docs/) -- Getting started, tutorials, and API guides
 - [Architecture](Documentation/Architecture.md) -- Full architecture reference
 - [Editor Roadmap](Documentation/Roadmap/EditorRoadmap.md) -- Editor implementation plan
 - [Renderer Roadmap](Documentation/Roadmap/RendererRoadmap.md) -- Rendering feature plan
 - [Engine Roadmap](Documentation/Roadmap/EngineRoadmap.md) -- Engine gap analysis
-- [UI Plan](Documentation/Roadmap/UI.md) -- UI framework design and phase plan
+- [UI Plan](Documentation/Roadmap/UI2_PLAN.md) -- UI framework design and phase plan
 
 ## Contributing
 
