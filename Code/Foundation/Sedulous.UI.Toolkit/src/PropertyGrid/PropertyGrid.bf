@@ -84,6 +84,11 @@ public class PropertyGrid : ViewGroup
 	/// Number of properties.
 	public int PropertyCount => mEditors.Count;
 
+	/// Read-only view over the editors currently in the grid. Callers commonly
+	/// iterate this after a `DescribeProperties` pass to subscribe to each
+	/// editor's `OnEditEnd` / `OnValueChanged` (e.g. for page dirty tracking).
+	public Span<PropertyEditor> Properties => .(mEditors.Ptr, mEditors.Count);
+
 	// === Layout ===
 
 	protected override void OnMeasure(BoxConstraints constraints)
