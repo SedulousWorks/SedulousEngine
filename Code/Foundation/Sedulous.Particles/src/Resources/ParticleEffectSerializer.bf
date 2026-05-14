@@ -157,6 +157,9 @@ public static class ParticleEffectSerializer
 			system.Trail = trail;
 		}
 
+		// Texture ref (owned by the system; lives on the asset).
+		system.SerializeTexture(s);
+
 		// Initializers
 		int32 initCount = s.IsWriting ? (int32)system.Initializers.Length : 0;
 		s.Int32("initializerCount", ref initCount);

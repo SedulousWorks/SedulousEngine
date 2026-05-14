@@ -73,4 +73,24 @@ public static class ParticleTypeRegistry
 			return factory();
 		return null;
 	}
+
+	/// Enumerate registered behavior type IDs into outIds (sorted alphabetically).
+	/// Used by the editor's type-picker UI.
+	public static void GetBehaviorTypeIds(List<StringView> outIds)
+	{
+		EnsureInitialized();
+		for (let kv in sBehaviorFactories)
+			outIds.Add(kv.key);
+		outIds.Sort(scope (a, b) => a.CompareTo(b, true));
+	}
+
+	/// Enumerate registered initializer type IDs into outIds (sorted alphabetically).
+	/// Used by the editor's type-picker UI.
+	public static void GetInitializerTypeIds(List<StringView> outIds)
+	{
+		EnsureInitialized();
+		for (let kv in sInitializerFactories)
+			outIds.Add(kv.key);
+		outIds.Sort(scope (a, b) => a.CompareTo(b, true));
+	}
 }
