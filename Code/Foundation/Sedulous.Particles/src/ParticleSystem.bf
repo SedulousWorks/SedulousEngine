@@ -4,6 +4,9 @@ using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.Inspection;
+using Sedulous.Resources;
+using Sedulous.Serialization;
+using static Sedulous.Resources.ResourceSerializerExtensions;
 
 /// A particle system - owns an emitter, behaviors, initializers, streams,
 /// and a simulation backend. This is the per-system class from the proposal:
@@ -70,6 +73,29 @@ public class ParticleSystem
 	/// Minimum spawn rate multiplier at LODCullDistance (before full cull).
 	[Property, Range(0, 1)]
 	public float LODMinRate = 0.1f;
+
+	/// Sprite texture for this system, resolved by the engine layer into a
+	/// MaterialInstance and bound per draw. The asset is the source of truth
+	/// for visuals - the runtime no longer carries a separate per-component
+	/// texture; rendering pulls from each system here.
+	[Property]
+	[ResourceRefType(".texture")]
+	private ResourceRef mTextureRef ~ _.Dispose();
+
+	public ResourceRef TextureRef => mTextureRef;
+
+	public void SetTextureRef(ResourceRef @ref)
+	{
+		mTextureRef.Dispose();
+		mTextureRef = ResourceRef(@ref.Id, @ref.Path ?? "");
+	}
+
+	/// Round-trip the texture ref through `s`. Called from
+	/// ParticleEffectSerializer so the field's owning class manages access.
+	public void SerializeTexture(Serializer s)
+	{
+		s.ResourceRef("texture", ref mTextureRef);
+	}
 
 	/// Emitter - spawning logic.
 	public ParticleEmitter Emitter { get; private set; } ~ delete _;
