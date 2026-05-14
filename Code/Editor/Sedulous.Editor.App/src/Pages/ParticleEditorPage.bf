@@ -112,11 +112,12 @@ class ParticleEditorPage : IEditorPage
 
 	public void Restart()
 	{
+		// Clear alive particles and reset emission accumulators, but do not
+		// touch each system's IsEmitting flag - that's authored state and a
+		// system the user disabled should stay disabled across restarts.
+		// Use Play() if you want to force-resume emission on all systems.
 		let instance = ResolveInstance();
-		if (instance?.Effect == null) return;
-		instance.Reset();
-		for (let system in instance.Effect.Systems)
-			system.Emitter.IsEmitting = true;
+		instance?.Reset();
 	}
 
 	public void Save()
