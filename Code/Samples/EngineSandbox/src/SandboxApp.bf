@@ -330,7 +330,6 @@ class SandboxApp : EngineApplication
 				sys.AddBehavior(new DragBehavior() { Drag = 0.8f });
 				sys.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .FadeOut(1.0f) });
 				sys.AddBehavior(new RotationOverLifetimeBehavior());
-				sys.AddBehavior(new VelocityIntegrationBehavior());
 				mSparksEffect.AddSystem(sys);
 			}
 			CreateParticleEntity(scene, resources, particleMgr, mSparksEffect,
@@ -356,7 +355,6 @@ class SandboxApp : EngineApplication
 				sys.AddBehavior(new SizeOverLifetimeBehavior() { Curve = .Linear(.(0.3f, 0.3f), .(1.2f, 1.2f)) });
 				sys.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .FadeOut(1.0f, 0.5f) });
 				sys.AddBehavior(new RotationOverLifetimeBehavior());
-				sys.AddBehavior(new VelocityIntegrationBehavior());
 				mSmokeEffect.AddSystem(sys);
 			}
 			CreateParticleEntity(scene, resources, particleMgr, mSmokeEffect,
@@ -378,7 +376,6 @@ class SandboxApp : EngineApplication
 				sys.AddBehavior(new DragBehavior() { Drag = 0.5f });
 				sys.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .FadeOut(1.0f, 0.6f) });
 				sys.AddBehavior(new SizeOverLifetimeBehavior() { Curve = .Linear(.(0.3f, 0.3f), .(0.05f, 0.05f)) });
-				sys.AddBehavior(new VelocityIntegrationBehavior());
 				mMagicEffect.AddSystem(sys);
 			}
 			CreateParticleEntity(scene, resources, particleMgr, mMagicEffect,
@@ -417,7 +414,6 @@ class SandboxApp : EngineApplication
 				sys.AddBehavior(new SizeOverLifetimeBehavior() { Curve = fireSize });
 
 				sys.AddBehavior(new RotationOverLifetimeBehavior());
-				sys.AddBehavior(new VelocityIntegrationBehavior());
 				mFireEffect.AddSystem(sys);
 			}
 			CreateParticleEntity(scene, resources, particleMgr, mFireEffect,
@@ -456,7 +452,6 @@ class SandboxApp : EngineApplication
 				sys.AddBehavior(new GravityBehavior() { Multiplier = 0.15f });
 				sys.AddBehavior(new DragBehavior() { Drag = 0.3f });
 				sys.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .FadeOut(1.0f, 0.4f) });
-				sys.AddBehavior(new VelocityIntegrationBehavior());
 				mTrailEffect.AddSystem(sys);
 			}
 			CreateParticleEntity(scene, resources, particleMgr, mTrailEffect,
@@ -492,7 +487,6 @@ class SandboxApp : EngineApplication
 				rockets.AddInitializer(new SizeInitializer() { Size = .Constant(.(0.06f, 0.06f)) });
 				rockets.AddInitializer(new ColorInitializer() { Color = .Constant(.(1.5f, 1.2f, 0.5f, 1)) }); // bright yellow
 				rockets.AddBehavior(new GravityBehavior() { Multiplier = 0.4f });
-				rockets.AddBehavior(new VelocityIntegrationBehavior());
 				mFireworksEffect.AddSystem(rockets);
 
 				// System 1: Burst sparks - triggered by rocket death
@@ -512,7 +506,6 @@ class SandboxApp : EngineApplication
 				burst.AddBehavior(new GravityBehavior() { Multiplier = 0.5f });
 				burst.AddBehavior(new DragBehavior() { Drag = 1.0f });
 				burst.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .FadeOut(1.0f, 0.3f) });
-				burst.AddBehavior(new VelocityIntegrationBehavior());
 				let burstIdx = mFireworksEffect.AddSystem(burst);
 
 				// Link: rocket death -> burst sparks

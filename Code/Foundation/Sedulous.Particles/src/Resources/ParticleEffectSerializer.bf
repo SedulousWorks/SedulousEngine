@@ -230,7 +230,6 @@ public static class ParticleEffectSerializer
 		if (b is VortexBehavior) return "Vortex";
 		if (b is AttractorBehavior) return "Attractor";
 		if (b is RadialForceBehavior) return "RadialForce";
-		if (b is VelocityIntegrationBehavior) return "VelocityIntegration";
 		if (b is ColorOverLifetimeBehavior) return "ColorOverLifetime";
 		if (b is SizeOverLifetimeBehavior) return "SizeOverLifetime";
 		if (b is SpeedOverLifetimeBehavior) return "SpeedOverLifetime";
@@ -286,7 +285,6 @@ public static class ParticleEffectSerializer
 			SerializeCurveFloat(s, "curve", ref al.Curve);
 		else if (let rot = b as RotationOverLifetimeBehavior)
 			SerializeCurveFloat(s, "curve", ref rot.Curve);
-		// VelocityIntegrationBehavior has no parameters
 	}
 
 	private static ParticleBehavior DeserializeBehavior(Serializer s)

@@ -161,15 +161,6 @@ namespace Sedulous.Particles
 		}
 	}
 
-	extension VelocityIntegrationBehavior
-	{
-		[OnCompile(.TypeInit), Comptime]
-		static void GenerateInspector()
-		{
-			Sedulous.Editor.App.InspectorCodegen.GenerateDescribeProperties(typeof(Self));
-		}
-	}
-
 	extension AlphaOverLifetimeBehavior
 	{
 		[OnCompile(.TypeInit), Comptime]

@@ -161,7 +161,6 @@ class ParticleEffects
 		sys.AddInitializer(new ColorInitializer() { Color = .Constant(.(1.0f, 0.78f, 0.31f, 1.0f)) });
 		sys.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .Linear(1.0f, 0.0f) });
 		sys.AddBehavior(new SizeOverLifetimeBehavior() { Curve = .Linear(.(0.2f, 0.2f), .(0.06f, 0.06f)) });
-		sys.AddBehavior(new VelocityIntegrationBehavior());
 		effect.AddSystem(sys);
 		return effect;
 	}
@@ -182,7 +181,6 @@ class ParticleEffects
 		sys.AddBehavior(new GravityBehavior() { Multiplier = 0.5f });
 		sys.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .Linear(1.0f, 0.0f) });
 		sys.AddBehavior(new SizeOverLifetimeBehavior() { Curve = .Linear(.(0.25f, 0.25f), .(0.025f, 0.025f)) });
-		sys.AddBehavior(new VelocityIntegrationBehavior());
 		effect.AddSystem(sys);
 		return effect;
 	}
@@ -201,7 +199,6 @@ class ParticleEffects
 		sys.AddInitializer(new SizeInitializer() { Size = .Range(.(0.05f, 0.05f), .(0.12f, 0.12f)) });
 		sys.AddInitializer(new ColorInitializer() { Color = .Constant(.(1.0f, 0.86f, 0.39f, 1.0f)) });
 		sys.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .Linear(1.0f, 0.0f) });
-		sys.AddBehavior(new VelocityIntegrationBehavior());
 		effect.AddSystem(sys);
 		return effect;
 	}

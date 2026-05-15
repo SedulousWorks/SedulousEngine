@@ -90,9 +90,9 @@ class ParticleAssetCreator : IAssetCreator
 		sys.AddBehavior(new SpeedOverLifetimeBehavior());
 		sys.AddBehavior(new RotationOverLifetimeBehavior());
 
-		// Velocity integration must run last - it advances position from
-		// the velocity that every other behavior just modified.
-		sys.AddBehavior(new VelocityIntegrationBehavior());
+		// Velocity integration + age advance run automatically inside
+		// ParticleSystem.Update as a built-in final step (was a manually-
+		// added VelocityIntegrationBehavior before).
 
 		return sys;
 	}

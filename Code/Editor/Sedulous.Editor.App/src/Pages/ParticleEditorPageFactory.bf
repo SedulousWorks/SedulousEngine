@@ -446,16 +446,16 @@ class ParticleEditorPageFactory : IEditorPageFactory
 	}
 
 	/// A new system gets the bare minimum needed to render visibly: a
-	/// constant-lifetime initializer, point emission, zero-velocity start,
-	/// and the velocity-integration behavior. Users add forces / curves /
-	/// shape from the context menu.
+	/// constant-lifetime initializer, point emission, zero-velocity start.
+	/// Velocity integration + age advance are built into ParticleSystem.Update,
+	/// so no behavior is required. Users add forces / curves / shape from
+	/// the context menu.
 	private static ParticleSystem BuildMinimalSystem()
 	{
 		let sys = new ParticleSystem(200);
 		sys.AddInitializer(new LifetimeInitializer() { Lifetime = .(1.0f, 1.0f) });
 		sys.AddInitializer(new PositionInitializer());
 		sys.AddInitializer(new VelocityInitializer());
-		sys.AddBehavior(new VelocityIntegrationBehavior());
 		return sys;
 	}
 

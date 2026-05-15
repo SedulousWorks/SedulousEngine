@@ -268,8 +268,8 @@ public class ParticleSystem
 	}
 
 	/// Inserts a behavior at the given index. The system takes ownership.
-	/// Behaviors execute in list order - position matters for behaviors like
-	/// VelocityIntegration which must run after force-applying behaviors.
+	/// Behaviors execute in list order - position matters for ordering-
+	/// sensitive cases (e.g. drag should usually run after force application).
 	public bool InsertBehavior(int32 index, ParticleBehavior behavior)
 	{
 		if (behavior == null) return false;
@@ -371,6 +371,15 @@ public class ParticleSystem
 		// Run simulation
 		mSimulator.Simulate(Streams, mBehaviors, ref ctx);
 
+		// Implicit final pass: advance ages by dt and integrate velocity
+		// into position. Behaviors that modify Velocity (Gravity, Drag,
+		// Wind, etc.) have already executed via the simulator; this is the
+		// one operation that must always happen last and that every system
+		// needs, so it lives on ParticleSystem instead of as a user-
+		// managed behavior. Equivalent to ezEngine's
+		// ParticleFinalizer_ApplyVelocity + ParticleFinalizer_Age.
+		IntegrateVelocityAndAge(deltaTime);
+
 		// Record trail points after simulation (positions have been updated)
 		if (Trail.IsActive)
 			RecordTrailPoints();
@@ -383,6 +392,35 @@ public class ParticleSystem
 
 		// Save position for next frame
 		PrevPosition = Position;
+	}
+
+	/// Implicit final-step pass. Advances `Age` by `dt` for every alive
+	/// particle, and integrates `Velocity` into `Position` when a Velocity
+	/// stream is present. Replaces the old user-managed
+	/// `VelocityIntegrationBehavior` so every system gets correct motion
+	/// without having to remember to add the behavior + place it last.
+	private void IntegrateVelocityAndAge(float dt)
+	{
+		let positions = Streams.Positions;
+		let ages = Streams.Ages;
+		let velocities = Streams.Velocities;
+		if (positions == null || ages == null) return;
+
+		if (velocities != null)
+		{
+			for (int32 i = 0; i < Streams.AliveCount; i++)
+			{
+				positions[i] = positions[i] + velocities[i] * dt;
+				ages[i] += dt;
+			}
+		}
+		else
+		{
+			// No velocity stream allocated (no velocity initializer / force
+			// behavior wanted it). Particles stay put; only age advances.
+			for (int32 i = 0; i < Streams.AliveCount; i++)
+				ages[i] += dt;
+		}
 	}
 
 	/// Spawns particles immediately, bypassing emission timing.

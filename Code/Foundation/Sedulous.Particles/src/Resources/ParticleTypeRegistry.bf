@@ -28,7 +28,10 @@ public static class ParticleTypeRegistry
 		RegisterBehavior("Vortex", () => new VortexBehavior());
 		RegisterBehavior("Attractor", () => new AttractorBehavior());
 		RegisterBehavior("RadialForce", () => new RadialForceBehavior());
-		RegisterBehavior("VelocityIntegration", () => new VelocityIntegrationBehavior());
+		// VelocityIntegration is no longer registered - velocity integration
+		// is now a built-in ParticleSystem step that runs unconditionally
+		// after behaviors. Old assets that listed it explicitly deserialize
+		// cleanly (CreateBehavior returns null and the entry is dropped).
 		RegisterBehavior("ColorOverLifetime", () => new ColorOverLifetimeBehavior());
 		RegisterBehavior("SizeOverLifetime", () => new SizeOverLifetimeBehavior());
 		RegisterBehavior("SpeedOverLifetime", () => new SpeedOverLifetimeBehavior());
