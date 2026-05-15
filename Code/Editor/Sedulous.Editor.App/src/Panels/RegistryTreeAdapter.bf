@@ -199,12 +199,11 @@ class RegistryTreeAdapter : ITreeAdapter
 		if (node.IsMountRoot)
 			return true;
 
-		// Check if directory has subdirectories
-		if (node.AbsolutePath != null && !node.AbsolutePath.IsEmpty && Directory.Exists(node.AbsolutePath))
-		{
-			for (let entry in Directory.EnumerateDirectories(node.AbsolutePath))
-				return true;
-		}
+		// Has subdirectories? Probe through the mount (locator-space).
+		let probe = scope List<String>();
+		defer { for (let s in probe) delete s; }
+		if (EnumerateChildDirs(node, probe) && probe.Count > 0)
+			return true;
 
 		return false;
 	}
@@ -241,6 +240,39 @@ class RegistryTreeAdapter : ITreeAdapter
 
 	// === Internal ===
 
+	/// Enumerates immediate subdirectory display names under `node`'s
+	/// folder through the node's mount (locator-space). Returns false if
+	/// the mount isn't enumerable. Caller owns the appended strings.
+	private bool EnumerateChildDirs(TreeNode node, List<String> outDirNames)
+	{
+		if (node.Entry == null) return false;
+		let em = node.Entry.Mount as IEnumerableMount;
+		if (em == null) return false;
+
+		let folderLoc = scope String();
+		if (node.RelativePath != null && node.RelativePath.Length > 0)
+		{
+			folderLoc.Set(node.RelativePath);
+			folderLoc.Append('/');
+		}
+
+		let entries = scope List<String>();
+		defer { for (let s in entries) delete s; }
+		em.Enumerate(folderLoc, entries);
+
+		for (let e in entries)
+		{
+			if (!e.EndsWith('/')) continue; // directories only
+			let body = e.Substring(0, e.Length - 1);
+			let slash = body.LastIndexOf('/');
+			let name = (slash >= 0) ? body.Substring(slash + 1) : body;
+			if (name.StartsWith("."))
+				continue;
+			outDirNames.Add(new String(name));
+		}
+		return true;
+	}
+
 	private TreeNode CreateMountRootNode(MountEntry entry)
 	{
 		let node = new TreeNode();
@@ -266,26 +298,15 @@ class RegistryTreeAdapter : ITreeAdapter
 
 		node.ChildrenLoaded = true;
 
-		if (node.AbsolutePath == null || node.AbsolutePath.IsEmpty || !Directory.Exists(node.AbsolutePath))
-			return;
-
-		// Enumerate subdirectories and create child nodes
 		let sortedDirs = scope List<String>();
 		defer { for (let s in sortedDirs) delete s; }
-
-		for (let entry in Directory.EnumerateDirectories(node.AbsolutePath))
-		{
-			let dirName = scope String();
-			entry.GetFileName(dirName);
-
-			// Skip hidden directories
-			if (dirName.StartsWith("."))
-				continue;
-
-			sortedDirs.Add(new String(dirName));
-		}
-
+		if (!EnumerateChildDirs(node, sortedDirs))
+			return;
 		sortedDirs.Sort(scope (a, b) => a.CompareTo(b, true));
+
+		// Disk-backed mounts get a real AbsolutePath (shell reveal);
+		// otherwise it stays empty, mirroring CreateMountRootNode.
+		let fsMount = (node.Entry != null) ? node.Entry.Mount as FileSystemMount : null;
 
 		for (let dirName in sortedDirs)
 		{
@@ -294,14 +315,15 @@ class RegistryTreeAdapter : ITreeAdapter
 			childNode.ParentId = node.Id;
 			childNode.DisplayName = new String(dirName);
 
-			childNode.AbsolutePath = new String();
-			Path.InternalCombine(childNode.AbsolutePath, node.AbsolutePath, dirName);
-
 			childNode.RelativePath = new String();
 			if (node.RelativePath.Length > 0)
 				childNode.RelativePath.AppendF("{}/{}", node.RelativePath, dirName);
 			else
 				childNode.RelativePath.Set(dirName);
+
+			childNode.AbsolutePath = new String();
+			if (fsMount != null)
+				Path.InternalCombine(childNode.AbsolutePath, fsMount.RootPath, childNode.RelativePath);
 
 			childNode.Entry = node.Entry;
 			childNode.IsMountRoot = false;

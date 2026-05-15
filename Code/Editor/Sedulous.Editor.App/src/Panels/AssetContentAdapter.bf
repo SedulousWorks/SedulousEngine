@@ -52,7 +52,6 @@ class AssetContentAdapter : ListAdapterBase
 	private List<AssetContentItem> mItems = new .() ~ DeleteContainerAndItems!(_);
 	private MountEntry mEntry;
 	private String mCurrentFolder = new .() ~ delete _;  // Locator within mount (e.g. "primitives")
-	private String mAbsoluteRoot = new .() ~ delete _;   // Absolute root of active mount (disk only)
 
 	/// When true, only shows items that have a GUID in the active index.
 	/// Filesystem items without index entries are hidden.
@@ -107,12 +106,6 @@ class AssetContentAdapter : ListAdapterBase
 	{
 		mEntry = entry;
 		mCurrentFolder.Set(relativePath);
-		mAbsoluteRoot.Clear();
-		if (entry != null)
-		{
-			if (let fsMount = entry.Mount as FileSystemMount)
-				mAbsoluteRoot.Set(fsMount.RootPath);
-		}
 
 		Rebuild();
 
@@ -156,18 +149,26 @@ class AssetContentAdapter : ListAdapterBase
 	{
 		ClearItems();
 
-		if (mEntry == null || mAbsoluteRoot.Length == 0)
+		let enumMount = (mEntry != null) ? mEntry.Mount as IEnumerableMount : null;
+		if (mEntry == null || enumMount == null)
 		{
 			NotifyDataSetChanged();
 			return;
 		}
 
-		// Build absolute path for current folder
-		let absDir = scope String();
+		// Disk-backed mounts expose a real filesystem path, so items can
+		// carry an AbsolutePath (shell "reveal in explorer"). Non-disk
+		// mounts leave it null; addressing is otherwise (mount, locator).
+		let fsMount = mEntry.Mount as FileSystemMount;
+
+		// Mount enumeration is locator-space: "" for the root, "folder/"
+		// for a subfolder (note the trailing slash, per IEnumerableMount).
+		let folderLoc = scope String();
 		if (mCurrentFolder.Length > 0)
-			Path.InternalCombine(absDir, mAbsoluteRoot, mCurrentFolder);
-		else
-			absDir.Set(mAbsoluteRoot);
+		{
+			folderLoc.Set(mCurrentFolder);
+			folderLoc.Append('/');
+		}
 
 		// Collect index entries whose URI lives in this folder.
 		// URI prefix matches "scheme://currentFolder/" for the active mount.
@@ -206,105 +207,109 @@ class AssetContentAdapter : ListAdapterBase
 		for (let entry in registryEntries)
 			registryNames[entry.name] = entry.id;
 
-		// Scan filesystem
-		if (Directory.Exists(absDir))
+		// Enumerate the current folder through the mount (locator-space).
+		// Entries are full locators; directory entries end with '/'.
+		let rawEntries = scope List<String>();
+		defer { for (let s in rawEntries) delete s; }
+		enumMount.Enumerate(folderLoc, rawEntries);
+
+		let dirs = scope List<String>();
+		defer { for (let s in dirs) delete s; }
+		let files = scope List<String>();
+		defer { for (let s in files) delete s; }
+		for (let e in rawEntries)
 		{
-			// Subdirectories
-			let dirs = scope List<String>();
-			defer { for (let s in dirs) delete s; }
-
-			for (let entry in Directory.EnumerateDirectories(absDir))
+			bool isDir = e.EndsWith('/');
+			var body = StringView(e);
+			if (isDir)
+				body = body.Substring(0, body.Length - 1);
+			let slash = body.LastIndexOf('/');
+			let name = (slash >= 0) ? body.Substring(slash + 1) : body;
+			if (name.StartsWith("."))
+				continue;
+			if (isDir)
+				dirs.Add(new String(name));
+			else
 			{
-				let dirName = scope String();
-				entry.GetFileName(dirName);
-				if (dirName.StartsWith("."))
-					continue;
-				dirs.Add(new String(dirName));
-			}
-			dirs.Sort(scope (a, b) => a.CompareTo(b, true));
-
-			for (let dirName in dirs)
-			{
-				let item = new AssetContentItem();
-				item.Entry = mEntry;
-				item.Name = new String(dirName);
-				item.Kind = .Folder;
-				item.Extension = new String();
-
-				item.AbsolutePath = new String();
-				Path.InternalCombine(item.AbsolutePath, absDir, dirName);
-
-				item.RelativePath = new String();
-				if (mCurrentFolder.Length > 0)
-					item.RelativePath.AppendF("{}/{}", mCurrentFolder, dirName);
-				else
-					item.RelativePath.Set(dirName);
-
-				mItems.Add(item);
-			}
-
-			// Files
-			let files = scope List<String>();
-			defer { for (let s in files) delete s; }
-
-			for (let entry in Directory.EnumerateFiles(absDir))
-			{
-				let fileName = scope String();
-				entry.GetFileName(fileName);
-				if (fileName.StartsWith("."))
-					continue;
 				// Skip .registry files from the content view
-				if (fileName.EndsWith(".registry"))
+				if (name.EndsWith(".registry"))
 					continue;
-				files.Add(new String(fileName));
+				files.Add(new String(name));
 			}
-			files.Sort(scope (a, b) => a.CompareTo(b, true));
+		}
+		dirs.Sort(scope (a, b) => a.CompareTo(b, true));
+		files.Sort(scope (a, b) => a.CompareTo(b, true));
 
-			for (let fileName in files)
+		for (let dirName in dirs)
+		{
+			let item = new AssetContentItem();
+			item.Entry = mEntry;
+			item.Name = new String(dirName);
+			item.Kind = .Folder;
+			item.Extension = new String();
+
+			item.RelativePath = new String();
+			if (mCurrentFolder.Length > 0)
+				item.RelativePath.AppendF("{}/{}", mCurrentFolder, dirName);
+			else
+				item.RelativePath.Set(dirName);
+
+			if (fsMount != null)
 			{
-				let item = new AssetContentItem();
-				item.Entry = mEntry;
-				item.Name = new String(fileName);
-				item.Kind = .File;
-
-				item.Extension = new String();
-				let dotIdx = fileName.LastIndexOf('.');
-				if (dotIdx >= 0)
-					item.Extension.Set(fileName[dotIdx...]);
-
 				item.AbsolutePath = new String();
-				Path.InternalCombine(item.AbsolutePath, absDir, fileName);
-
-				item.RelativePath = new String();
-				if (mCurrentFolder.Length > 0)
-					item.RelativePath.AppendF("{}/{}", mCurrentFolder, fileName);
-				else
-					item.RelativePath.Set(fileName);
-
-				// Check if this file is in the index
-				if (registryNames.TryGetValueAlt(StringView(fileName), let guid))
-				{
-					item.IsRegistered = true;
-					item.RegistryId = guid;
-				}
-
-				// RegistryOnly mode: skip files without an index entry
-				if (RegistryOnly && !item.IsRegistered)
-				{
-					delete item;
-					continue;
-				}
-
-				// Extension filter: skip files that don't match
-				if (ExtensionFilter != null && !item.IsFolder &&
-					!item.Extension.Equals(ExtensionFilter, .OrdinalIgnoreCase))
-				{
-					delete item;
-					continue;
-				}
-
-				mItems.Add(item);
+				Path.InternalCombine(item.AbsolutePath, fsMount.RootPath, item.RelativePath);
 			}
+
+			mItems.Add(item);
+		}
+
+		for (let fileName in files)
+		{
+			let item = new AssetContentItem();
+			item.Entry = mEntry;
+			item.Name = new String(fileName);
+			item.Kind = .File;
+
+			item.Extension = new String();
+			let dotIdx = fileName.LastIndexOf('.');
+			if (dotIdx >= 0)
+				item.Extension.Set(fileName[dotIdx...]);
+
+			item.RelativePath = new String();
+			if (mCurrentFolder.Length > 0)
+				item.RelativePath.AppendF("{}/{}", mCurrentFolder, fileName);
+			else
+				item.RelativePath.Set(fileName);
+
+			if (fsMount != null)
+			{
+				item.AbsolutePath = new String();
+				Path.InternalCombine(item.AbsolutePath, fsMount.RootPath, item.RelativePath);
+			}
+
+			// Check if this file is in the index
+			if (registryNames.TryGetValueAlt(StringView(fileName), let guid))
+			{
+				item.IsRegistered = true;
+				item.RegistryId = guid;
+			}
+
+			// RegistryOnly mode: skip files without an index entry
+			if (RegistryOnly && !item.IsRegistered)
+			{
+				delete item;
+				continue;
+			}
+
+			// Extension filter: skip files that don't match
+			if (ExtensionFilter != null && !item.IsFolder &&
+				!item.Extension.Equals(ExtensionFilter, .OrdinalIgnoreCase))
+			{
+				delete item;
+				continue;
+			}
+
+			mItems.Add(item);
 		}
 
 		// Add index entries that point to missing files (warning items)
@@ -344,10 +349,14 @@ class AssetContentAdapter : ListAdapterBase
 				if (dotIdx >= 0)
 					item.Extension.Set(entry.name[dotIdx...]);
 
-				item.AbsolutePath = new String();
-				Path.InternalCombine(item.AbsolutePath, mAbsoluteRoot, entry.path);
-
 				item.RelativePath = new String(entry.path);
+
+				if (fsMount != null)
+				{
+					item.AbsolutePath = new String();
+					Path.InternalCombine(item.AbsolutePath, fsMount.RootPath, entry.path);
+				}
+
 				item.IsRegistered = true;
 				item.RegistryId = entry.id;
 
