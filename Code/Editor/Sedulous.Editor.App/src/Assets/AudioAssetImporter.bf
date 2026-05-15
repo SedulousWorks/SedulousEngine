@@ -105,8 +105,6 @@ class AudioAssetImporter : IAssetImporter
 		uri.Append(ctx.UriPrefix);
 		uri.Append(fileName);
 
-		// Record sidecar locator on the resource before writing metadata.
-		resource.BinaryPath.Set(sidecarName);
 
 		// Save text metadata
 		{

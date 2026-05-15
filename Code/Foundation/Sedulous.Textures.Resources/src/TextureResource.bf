@@ -8,7 +8,8 @@ namespace Sedulous.Textures.Resources;
 
 /// CPU-side texture resource wrapping an Image.
 /// Text metadata (filter, wrap, format) is serialized via Serialize().
-/// Pixel data is stored as a binary sidecar file referenced by BinaryPath.
+/// Pixel data is a binary sidecar at "<assetLocator>.bin" (derived by
+/// convention - not stored).
 class TextureResource : Resource
 {
 	public const int32 FileVersion = 1;
@@ -18,10 +19,6 @@ class TextureResource : Resource
 
 	private Image mImage;
 	private bool mOwnsImage;
-
-	/// Relative path to the binary sidecar file (pixel data).
-	/// Set during save, read during load.
-	public String BinaryPath = new .() ~ delete _;
 
 	/// Image dimensions and format - stored for deserialization (Image created by manager after loading sidecar).
 	public int32 ImageWidth;
@@ -191,15 +188,12 @@ class TextureResource : Resource
 		s.Int32("height", ref ImageHeight);
 		s.Int32("format", ref ImageFormat);
 
-		// Binary sidecar path
-		s.String("binaryPath", BinaryPath);
-
 		return .Ok;
 	}
 
-	/// Writes the raw pixel bytes to `stream`. Caller is responsible for writing
-	/// the text-metadata file via `WriteToStream` and ensuring `BinaryPath` was
-	/// set to the matching sidecar locator beforehand.
+	/// Writes the raw pixel bytes to `stream`. Caller writes the text
+	/// metadata via `WriteToStream` and saves these bytes to the
+	/// conventional "<assetLocator>.bin" sidecar.
 	public Result<void> WritePixelsToStream(Stream stream)
 	{
 		if (mImage == null)

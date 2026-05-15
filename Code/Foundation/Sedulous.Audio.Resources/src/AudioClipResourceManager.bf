@@ -8,11 +8,10 @@ using Sedulous.Serialization;
 namespace Sedulous.Audio.Resources;
 
 /// Resource manager for AudioClip. Handles .audioclip files: text metadata
-/// (sample rate, channels, format, sidecar path) plus a binary PCM sidecar.
+/// (sample rate, channels, format) plus a binary PCM sidecar.
 ///
-/// Sidecar path inside the resource file is mount-relative (e.g.
-/// "fx/explosion.audioclip.bin"), resolved by combining the locator's directory
-/// with the recorded `BinaryPath` and opening it through `ctx.Mount`.
+/// The PCM sidecar is the conventional "<assetLocator>.bin" - derived from
+/// the asset locator and opened through `ctx.Mount`, not stored in the file.
 class AudioClipResourceManager : ResourceManager<AudioClipResource>
 {
 	private IAudioSystem mAudioSystem;
@@ -43,15 +42,16 @@ class AudioClipResourceManager : ResourceManager<AudioClipResource>
 			return .Err(.InvalidFormat);
 		}
 
-		// Resolve sidecar locator: same directory as the main file.
-		if (resource.BinaryPath.IsEmpty || ctx.Mount == null)
+		// The PCM sidecar is always "<mainLocator>.bin" by convention, so
+		// it's derived from the asset locator - rename/delete stay
+		// pure-convention (no metadata rewrite, no resource load).
+		if (ctx.Mount == null)
 		{
 			delete resource;
 			return .Err(.InvalidFormat);
 		}
 
-		let sidecarLocator = scope String();
-		ResolveSiblingLocator(ctx.Locator, resource.BinaryPath, sidecarLocator);
+		let sidecarLocator = scope String()..AppendF("{}.bin", ctx.Locator);
 
 		// Load PCM data from binary sidecar through the same mount.
 		let sidecarResult = ctx.Mount.Open(sidecarLocator);
@@ -93,15 +93,4 @@ class AudioClipResourceManager : ResourceManager<AudioClipResource>
 			resource.ReleaseRef();
 	}
 
-	/// Combines the directory portion of `mainLocator` with `siblingName`. e.g.
-	/// "fx/explosion.audioclip" + "explosion.audioclip.bin" -> "fx/explosion.audioclip.bin".
-	private static void ResolveSiblingLocator(StringView mainLocator, StringView siblingName, String outLocator)
-	{
-		let slash = mainLocator.LastIndexOf('/');
-		if (slash >= 0)
-		{
-			outLocator.Append(mainLocator.Substring(0, slash + 1));
-		}
-		outLocator.Append(siblingName);
-	}
 }

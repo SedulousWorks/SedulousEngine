@@ -1076,12 +1076,11 @@ class EditorApplication : Application, IDockableWindowHost
 	}
 
 	/// Saves a TextureResource as a text metadata file plus a pixel sidecar
-	/// in the same directory. `sidecarName` is the filename portion only - it
-	/// gets recorded on the resource and combined with the main locator's
-	/// directory by `TextureResourceManager` on load.
+	/// in the same directory. `sidecarName` is the filename portion only
+	/// (conventionally "<assetFileName>.bin"); the manager derives the same
+	/// "<locator>.bin" on load.
 	private static Result<void> SaveTextureWithSidecar(TextureResource resource, IWritableMount mount, StringView locator, StringView sidecarName, ISerializerProvider provider)
 	{
-		resource.BinaryPath.Set(sidecarName);
 		Try!(SaveResourceText(resource, mount, locator, provider));
 
 		// Sidecar locator = main locator's directory + sidecar name.

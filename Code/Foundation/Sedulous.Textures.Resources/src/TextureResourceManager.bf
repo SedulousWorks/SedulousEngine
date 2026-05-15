@@ -10,9 +10,9 @@ namespace Sedulous.Textures.Resources;
 /// Resource manager for TextureResource.
 ///
 /// Two locator shapes are recognized:
-///   - `*.texture` - serialized metadata (filter, wrap, format, sidecar locator).
-///     The actual pixel bytes live in a sibling sidecar file opened through
-///     `ctx.Mount`.
+///   - `*.texture` - serialized metadata (filter, wrap, format). The pixel
+///     bytes live in the conventional "<assetLocator>.bin" sidecar, derived
+///     from the asset locator and opened through `ctx.Mount`.
 ///   - any other extension - raw image bytes parsed by `ImageLoaderFactory`.
 class TextureResourceManager : ResourceManager<TextureResource>
 {
@@ -78,15 +78,17 @@ class TextureResourceManager : ResourceManager<TextureResource>
 			return .Err(.InvalidFormat);
 		}
 
-		// Load pixel data from binary sidecar
-		if (resource.BinaryPath.IsEmpty || ctx.Mount == null)
+		// Load pixel data from the binary sidecar. The sidecar is always
+		// "<mainLocator>.bin" by convention, so it's derived from the asset
+		// locator - rename/delete stay pure-convention (no metadata
+		// rewrite, no resource load).
+		if (ctx.Mount == null)
 		{
 			delete resource;
 			return .Err(.InvalidFormat);
 		}
 
-		let sidecarLocator = scope String();
-		ResolveSiblingLocator(ctx.Locator, resource.BinaryPath, sidecarLocator);
+		let sidecarLocator = scope String()..AppendF("{}.bin", ctx.Locator);
 
 		let sidecarResult = ctx.Mount.Open(sidecarLocator);
 		if (sidecarResult case .Err)
@@ -155,11 +157,4 @@ class TextureResourceManager : ResourceManager<TextureResource>
 		target.Anisotropy = source.Anisotropy;
 	}
 
-	private static void ResolveSiblingLocator(StringView mainLocator, StringView siblingName, String outLocator)
-	{
-		let slash = mainLocator.LastIndexOf('/');
-		if (slash >= 0)
-			outLocator.Append(mainLocator.Substring(0, slash + 1));
-		outLocator.Append(siblingName);
-	}
 }

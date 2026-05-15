@@ -249,8 +249,6 @@ class ModelAssetImporter : IAssetImporter
 		sidecarLocator.Append(ctx.BaseLocator);
 		sidecarLocator.Append(sidecarName);
 
-		res.BinaryPath.Set(sidecarName);
-
 		{
 			let memStream = scope MemoryStream();
 			if (res.WriteToStream(memStream, ctx.Serializer) case .Err)

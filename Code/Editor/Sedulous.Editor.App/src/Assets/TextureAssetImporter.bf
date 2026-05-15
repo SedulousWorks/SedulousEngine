@@ -164,11 +164,6 @@ class TextureAssetImporter : IAssetImporter
 		uri.Append(ctx.UriPrefix);
 		uri.Append(fileName);
 
-		// Record the sidecar locator on the resource so the metadata file
-		// carries the binary path. The manager combines it with the main
-		// locator's directory on load.
-		texRes.BinaryPath.Set(sidecarName);
-
 		// Save text metadata through the mount
 		{
 			let memStream = scope MemoryStream();

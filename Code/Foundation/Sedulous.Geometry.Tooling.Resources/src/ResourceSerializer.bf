@@ -54,12 +54,9 @@ static class ResourceSerializer
 	{
 		if (resource == null) return .Err;
 
-		// Record the sidecar filename on the resource before writing metadata so
-		// the manager can find it on load.
+		// The pixel sidecar is the conventional "<path>.bin" next to the
+		// metadata; the manager derives it from the asset locator on load.
 		let sidecarPath = scope String()..AppendF("{}.bin", path);
-		let sidecarName = scope String();
-		Path.GetFileName(sidecarPath, sidecarName);
-		resource.BinaryPath.Set(sidecarName);
 
 		Try!(SaveResourceText(resource, path, provider));
 

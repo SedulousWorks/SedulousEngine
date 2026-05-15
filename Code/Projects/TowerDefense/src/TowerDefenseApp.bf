@@ -328,9 +328,6 @@ class TowerDefenseApp : EngineApplication
 			let locator = scope String()..AppendF("resources/{}.texture", baseName);
 			let sidecarName = scope String()..AppendF("{}.texture.bin", baseName);
 
-			// Set the sidecar locator on the resource so the text metadata records it.
-			texRes.BinaryPath.Set(sidecarName);
-
 			if (SaveResourceText(texRes, mount, locator, provider) case .Ok)
 			{
 				let sidecarLocator = scope String()..AppendF("resources/{}", sidecarName);

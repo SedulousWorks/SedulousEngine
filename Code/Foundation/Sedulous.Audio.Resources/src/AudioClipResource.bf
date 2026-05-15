@@ -8,7 +8,8 @@ namespace Sedulous.Audio.Resources;
 
 /// Resource wrapper for audio clips, enabling integration with the ResourceSystem.
 /// Text metadata (sample rate, channels, format) is serialized via Serialize().
-/// PCM data is stored as a binary sidecar file referenced by BinaryPath.
+/// PCM data is a binary sidecar at "<assetLocator>.bin" (derived by
+/// convention - not stored).
 class AudioClipResource : Resource
 {
 	public const int32 FileVersion = 2;
@@ -17,10 +18,6 @@ class AudioClipResource : Resource
 	public override int32 SerializationVersion => FileVersion;
 
 	private AudioClip mClip;
-
-	/// Relative path to the binary sidecar file (PCM data).
-	/// Set during save, read during load.
-	public String BinaryPath = new .() ~ delete _;
 
 	/// Audio metadata -- stored for deserialization (clip created by manager after loading sidecar).
 	public int32 ClipSampleRate;
@@ -52,14 +49,13 @@ class AudioClipResource : Resource
 		s.Int32("sampleRate", ref ClipSampleRate);
 		s.Int32("channels", ref ClipChannels);
 		s.Int32("format", ref ClipFormat);
-		s.String("binaryPath", BinaryPath);
 
 		return .Ok;
 	}
 
-	/// Writes the PCM bytes to `stream`. Caller is responsible for writing the
-	/// text-metadata file via `WriteToStream` and ensuring `BinaryPath` was set
-	/// to the matching sidecar locator beforehand.
+	/// Writes the PCM bytes to `stream`. Caller writes the text metadata
+	/// via `WriteToStream` and saves these bytes to the conventional
+	/// "<assetLocator>.bin" sidecar.
 	public Result<void> WritePcmToStream(Stream stream)
 	{
 		if (mClip == null || !mClip.IsLoaded)
