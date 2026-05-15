@@ -425,16 +425,6 @@ static class AssetBrowserBuilder
 		else if (Directory.Exists(item.AbsolutePath))
 			Directory.Move(item.AbsolutePath, newAbsPath);
 
-		// Rename .meta sidecar if exists
-		let oldMeta = scope String(item.AbsolutePath);
-		oldMeta.Append(".meta");
-		if (File.Exists(oldMeta))
-		{
-			let newMeta = scope String(newAbsPath);
-			newMeta.Append(".meta");
-			File.Move(oldMeta, newMeta);
-		}
-
 		// Update index entry if registered
 		if (item.IsRegistered)
 		{
@@ -529,12 +519,6 @@ static class AssetBrowserBuilder
 					entry.Index.Unregister(item.RegistryId);
 					PersistIndex(entry);
 				}
-
-				// Delete .meta sidecar if exists
-				let metaPath = scope String(item.AbsolutePath);
-				metaPath.Append(".meta");
-				if (File.Exists(metaPath))
-					File.Delete(metaPath);
 
 				panel.RefreshContent();
 			});

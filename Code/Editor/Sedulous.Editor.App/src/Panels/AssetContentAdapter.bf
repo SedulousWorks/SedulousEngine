@@ -240,8 +240,8 @@ class AssetContentAdapter : ListAdapterBase
 				entry.GetFileName(fileName);
 				if (fileName.StartsWith("."))
 					continue;
-				// Skip .registry and .meta files from the content view
-				if (fileName.EndsWith(".registry") || fileName.EndsWith(".meta"))
+				// Skip .registry files from the content view
+				if (fileName.EndsWith(".registry"))
 					continue;
 				files.Add(new String(fileName));
 			}
