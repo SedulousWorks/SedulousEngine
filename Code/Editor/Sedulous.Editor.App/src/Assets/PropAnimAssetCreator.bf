@@ -6,6 +6,7 @@ using Sedulous.Editor.Core;
 using Sedulous.Animation;
 using Sedulous.Animation.Resources;
 using Sedulous.Resources;
+using Sedulous.VFS;
 
 /// Creates a default empty property animation clip asset.
 class PropAnimAssetCreator : IAssetCreator
@@ -14,7 +15,7 @@ class PropAnimAssetCreator : IAssetCreator
 	public StringView Category => "Animation";
 	public StringView Extension => ".propanim";
 
-	public Result<Guid> Create(StringView path, EditorContext context)
+	public Result<Guid> Create(IWritableMount mount, StringView locator, EditorContext context)
 	{
 		let provider = context.ResourceSystem?.SerializerProvider;
 		if (provider == null)
@@ -25,10 +26,11 @@ class PropAnimAssetCreator : IAssetCreator
 		defer delete res;
 		res.Name.Set("New Property Animation");
 
-		let stream = scope FileStream();
-		if (stream.Create(path, .Write) case .Err)
-			return .Err;
+		let stream = scope MemoryStream();
 		if (res.WriteToStream(stream, provider) case .Err)
+			return .Err;
+		stream.Position = 0;
+		if (mount.Save(locator, stream) case .Err)
 			return .Err;
 
 		return .Ok(res.Id);

@@ -5,6 +5,7 @@ using System.IO;
 using Sedulous.Editor.Core;
 using Sedulous.Engine.Core;
 using Sedulous.Engine.Core.Resources;
+using Sedulous.VFS;
 
 /// Creates an empty prefab asset.
 class PrefabAssetCreator : IAssetCreator
@@ -13,7 +14,7 @@ class PrefabAssetCreator : IAssetCreator
 	public StringView Category => "Core";
 	public StringView Extension => ".prefab";
 
-	public Result<Guid> Create(StringView path, EditorContext context)
+	public Result<Guid> Create(IWritableMount mount, StringView locator, EditorContext context)
 	{
 		let provider = context.ResourceSystem?.SerializerProvider;
 		if (provider == null)
@@ -29,10 +30,11 @@ class PrefabAssetCreator : IAssetCreator
 
 		prefabRes.Scene = scene;
 
-		let stream = scope FileStream();
-		if (stream.Create(path, .Write) case .Err)
-			return .Err;
+		let stream = scope MemoryStream();
 		if (prefabRes.WriteToStream(stream, provider) case .Err)
+			return .Err;
+		stream.Position = 0;
+		if (mount.Save(locator, stream) case .Err)
 			return .Err;
 
 		return .Ok(prefabRes.Id);

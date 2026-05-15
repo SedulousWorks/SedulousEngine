@@ -5,6 +5,7 @@ using System.IO;
 using Sedulous.Editor.Core;
 using Sedulous.Audio.Resources;
 using Sedulous.Resources;
+using Sedulous.VFS;
 
 /// Creates a default empty sound cue asset.
 class SoundCueAssetCreator : IAssetCreator
@@ -13,7 +14,7 @@ class SoundCueAssetCreator : IAssetCreator
 	public StringView Category => "Audio";
 	public StringView Extension => ".soundcue";
 
-	public Result<Guid> Create(StringView path, EditorContext context)
+	public Result<Guid> Create(IWritableMount mount, StringView locator, EditorContext context)
 	{
 		let provider = context.ResourceSystem?.SerializerProvider;
 		if (provider == null)
@@ -23,10 +24,11 @@ class SoundCueAssetCreator : IAssetCreator
 		defer delete res;
 		res.Name.Set("New Sound Cue");
 
-		let stream = scope FileStream();
-		if (stream.Create(path, .Write) case .Err)
-			return .Err;
+		let stream = scope MemoryStream();
 		if (res.WriteToStream(stream, provider) case .Err)
+			return .Err;
+		stream.Position = 0;
+		if (mount.Save(locator, stream) case .Err)
 			return .Err;
 
 		return .Ok(res.Id);

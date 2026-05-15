@@ -439,6 +439,17 @@ static class AssetBrowserBuilder
 		return mount.Delete(loc) case .Ok;
 	}
 
+	/// Joins a mount-relative folder locator and a file name into a
+	/// forward-slash locator. Empty folder -> just the file name.
+	private static void BuildLocator(String dst, StringView folder, StringView fileName)
+	{
+		dst.Clear();
+		if (folder.Length > 0)
+			dst.AppendF("{}/{}", folder, fileName);
+		else
+			dst.Set(fileName);
+	}
+
 	private static bool MountCreateDir(EditorContext editorContext, StringView absPath)
 	{
 		if (editorContext == null) return false;
@@ -796,51 +807,42 @@ static class AssetBrowserBuilder
 		EditorContext editorContext, AssetBrowserPanel panel)
 	{
 		if (entry == null) return;
-		let fsMount = entry.Mount as FileSystemMount;
-		if (fsMount == null) return;
+		let writable = entry.Mount as IWritableMount;
+		if (writable == null) return;
 
-		// Build absolute output directory
-		let absDir = scope String();
+		// All paths here are mount-relative locators (forward-slash). The
+		// creator writes through the mount; nothing touches the filesystem
+		// directly, so this works for any writable mount.
+
+		// Ensure the target folder exists in locator space.
 		if (targetFolder.Length > 0)
-			Path.InternalCombine(absDir, fsMount.RootPath, targetFolder);
-		else
-			absDir.Set(fsMount.RootPath);
+			writable.CreateDirectory(targetFolder);
 
-		// Ensure directory exists
-		if (!Directory.Exists(absDir))
-			Directory.CreateDirectory(absDir);
-
-		// Generate unique filename
+		// Generate a unique locator within the target folder.
 		let baseName = scope String()..AppendF("New {}", creator.DisplayName);
 		let fileName = scope String()..AppendF("{}{}", baseName, creator.Extension);
-		let fullPath = scope String();
-		Path.InternalCombine(fullPath, absDir, fileName);
+		let locator = scope String();
+		BuildLocator(locator, targetFolder, fileName);
 
-		if (File.Exists(fullPath))
+		if (writable.Exists(locator))
 		{
 			for (int i = 1; i < 100; i++)
 			{
 				fileName.Clear();
 				fileName.AppendF("{} ({}){}", baseName, i, creator.Extension);
-				fullPath.Clear();
-				Path.InternalCombine(fullPath, absDir, fileName);
-				if (!File.Exists(fullPath))
+				locator.Clear();
+				BuildLocator(locator, targetFolder, fileName);
+				if (!writable.Exists(locator))
 					break;
 			}
 		}
 
-		// Create the asset
-		if (creator.Create(fullPath, editorContext) case .Ok(let resourceId))
+		// Create the asset through the mount.
+		if (creator.Create(writable, locator, editorContext) case .Ok(let resourceId))
 		{
-			// Register in the active index
+			// Register in the active index.
 			if (entry.Index != null)
 			{
-				let locator = scope String();
-				if (targetFolder.Length > 0)
-					locator.AppendF("{}/{}", targetFolder, fileName);
-				else
-					locator.Set(fileName);
-
 				let uri = scope String();
 				uri.AppendF("{}://{}", entry.Scheme, locator);
 				entry.Index.Register(resourceId, uri);
