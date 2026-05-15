@@ -486,6 +486,12 @@ static class AssetBrowserBuilder
 		if (mount.Move(oldLocator, newLocator) case .Err)
 			return;
 
+		// Move the conventional "<locator>.bin" pixel/PCM sidecar with the
+		// asset so the derived-name loader still finds it (no metadata).
+		let oldBin = scope String()..AppendF("{}.bin", oldLocator);
+		if (mount.Exists(oldBin))
+			mount.Move(oldBin, scope String()..AppendF("{}.bin", newLocator)).IgnoreError();
+
 		if (item.IsRegistered && item.Entry.Index != null)
 		{
 			item.Entry.Index.Register(item.RegistryId, newUri);
@@ -545,7 +551,14 @@ static class AssetBrowserBuilder
 				if (result != .OK) return;
 
 				if (let m = WritableMountOf(item))
+				{
 					m.Delete(item.Locator).IgnoreError();
+					// Remove the conventional "<locator>.bin" sidecar too,
+					// if this asset has one.
+					let bin = scope String()..AppendF("{}.bin", item.Locator);
+					if (m.Exists(bin))
+						m.Delete(bin).IgnoreError();
+				}
 
 				// Unregister from index and save
 				if (item.IsRegistered && entry != null && entry.Index != null)
