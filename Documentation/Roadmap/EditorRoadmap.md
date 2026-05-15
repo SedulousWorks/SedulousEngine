@@ -1290,6 +1290,64 @@ Move the responsibility to the active page:
 - Animation: CurveEditor, TimelinePanel
 - Navigation: NavMeshDebugPanel, "Bake NavMesh" menu item
 
+## Phase 8: VFS Mount-Correctness
+
+The editor must address assets through the VFS (`IMount` / `IWritableMount` /
+`IEnumerableMount`) rather than raw `System.IO` + absolute paths, so non-disk
+writable mounts (pak-writeback, overlay, remote) work and mounts keep their
+own state coherent.
+
+**Done:**
+- ✅ Write/lifecycle surface routed through `IWritableMount`: save + index
+  persistence, then create / rename / delete / mkdir. `IMount.Exists` +
+  `IWritableMount.Move` / `CreateDirectory` added; `FileSystemMount`
+  implements them; `Delete` recurses directories.
+- ✅ `IAssetCreator` migrated to `Create(IWritableMount mount, StringView
+  locator, EditorContext)` — creators serialize to a stream and
+  `mount.Save`, never touch the filesystem. `CreateAssetInFolder` is fully
+  locator-space.
+
+**Deferred (this phase, not forgotten):**
+
+**8a. Asset-browser enumeration → mount/locator.** `AssetContentAdapter`
+and `RegistryTreeAdapter` still build items/nodes from `fsMount.RootPath`
+via `Directory.Enumerate*` / `Path.InternalCombine`, and items carry
+`AbsolutePath` as the primary key (consumed by `AssetBrowserBuilder`,
+`AssetGridCellView`'s `isMissing`, and the `MountResolver.TryResolveAbsolute*`
+round-trips). `IEnumerableMount.Enumerate` already exists and
+`FileSystemMount` implements it. Re-base the model on `(mount, locator)`:
+  - P1: add `Scheme`/`Locator` (+ owning mount) to `AssetContentItem` and
+    the tree node alongside `AbsolutePath` (additive, no behavior change).
+  - P2: enumerate via `IEnumerableMount.Enumerate(folderLocator)`; build
+    in locator space; `AbsolutePath` becomes derived, set only for
+    `FileSystemMount` (for shell reveal), else null;
+    `RegistryTreeAdapter`'s eager recursive `Directory` walk becomes lazy
+    per-node `Enumerate`.
+  - P3: repoint `AssetBrowserBuilder` to `(entry.Mount as IWritableMount,
+    item.Locator)` directly (collapses the `MountResolver.TryResolveAbsolute*`
+    round-trips); compute `IsMissing` once in the adapter via
+    `mount.Exists(locator)`, expose as `item.IsMissing`; cell views just
+    read it (removes the per-cell `File.Exists` view-layer I/O).
+  - P4: demote `AbsolutePath` to optional/disk-only; gate "Show in
+    Explorer" on `entry.Mount is FileSystemMount` (OS shell action,
+    legitimately not mount-abstractable).
+  - P5 (cleanup): leave `MountResolver.TryResolveAbsolute*` only for its
+    non-browser callers (e.g. `EditorApplication` page-restore); don't
+    delete the resolver.
+
+**8b. `.bin` sidecar correctness on rename/delete.** Rename/delete handle
+only the primary asset file; a resource with a `BinaryPath` `.bin` sidecar
+(textures/audio/models) has its sidecar orphaned. Independent behavior
+fix (not a refactor); fold the sidecar op through the same `IWritableMount`
+path as the primary asset.
+
+**8c. Live browser refresh via `IWatchableMount.ChangeSource`.** The
+browser only refreshes on editor-initiated ops (explicit
+`RefreshContent()`); it does not react to external filesystem changes.
+`IWatchableMount.ChangeSource` exists (ResourceSystem hot-reload already
+uses it). Wiring it to auto-refresh is independent of 8a — its own design
+(debounce, full vs. partial re-enumerate, scope to visible folder).
+
 ## Editor Modules Architecture
 
 Each engine domain (physics, audio, animation, navigation) gets a paired editor
