@@ -142,6 +142,7 @@ class ParticleEditorPageFactory : IEditorPageFactory
 		// TreeView keeps a raw pointer to the adapter via SetAdapter, so the
 		// adapter must outlive the view tree. Stash it on the page for cleanup.
 		page.AddOwnedObject(adapter);
+		page.SetTreeAdapter(adapter);
 
 		column.AddView(tree, new FlexLayout.LayoutParams() {
 			Width = .Match, Grow = 1

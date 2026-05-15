@@ -39,6 +39,11 @@ class ParticleEditorPage : IEditorPage
 	/// Auxiliary objects (adapters, controllers) whose lifetime tracks the page.
 	private List<Object> mOwnedObjects = new .() ~ { for (let obj in _) delete obj; delete _; };
 
+	/// Tree adapter (non-owning - lives in mOwnedObjects). Set by the factory
+	/// so RestartIfSpawnTime can refresh the tree when a system's display
+	/// name changes.
+	private ParticleEffectTreeAdapter mTreeAdapter;
+
 	/// Currently inspected node. Owned by mEffectRes.Effect - do not delete.
 	private Object mSelectedObject;
 
@@ -94,6 +99,13 @@ class ParticleEditorPage : IEditorPage
 	public void AddOwnedObject(Object obj)
 	{
 		if (obj != null) mOwnedObjects.Add(obj);
+	}
+
+	/// Wires the factory-built tree adapter so the page can refresh its
+	/// labels after inspector edits that change the visible name.
+	public void SetTreeAdapter(ParticleEffectTreeAdapter adapter)
+	{
+		mTreeAdapter = adapter;
 	}
 
 	public void Play()
@@ -209,6 +221,18 @@ class ParticleEditorPage : IEditorPage
 	public void RestartIfSpawnTime(Object owner)
 	{
 		Restart();
+
+		// Editing a ParticleSystem may change its visible label (Name field),
+		// so rebuild the tree to refresh it. Rebuild invalidates node IDs;
+		// re-select by target identity so the inspector stays on the same
+		// object. Other owner kinds don't drive a tree label.
+		if (mTreeAdapter != null && owner is ParticleSystem)
+		{
+			mTreeAdapter.Rebuild();
+			let id = mTreeAdapter.FindNodeForTarget(owner);
+			if (id >= 0)
+				mTreeAdapter.SelectNode(id);
+		}
 	}
 
 	/// Whether the given owner represents a spawn-time-only property.

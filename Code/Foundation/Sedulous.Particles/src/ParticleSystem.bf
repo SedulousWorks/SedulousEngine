@@ -26,6 +26,11 @@ public class ParticleSystem
 	/// Maximum number of alive particles.
 	public int32 MaxParticles { get; private set; }
 
+	/// Optional user-facing label shown in editor tree views. Empty falls
+	/// back to "System {index}". Has no effect on simulation or rendering.
+	[Property]
+	public String Name = new .() ~ delete _;
+
 	/// Desired simulation mode (CPU, GPU, or Auto).
 	[Property]
 	public SimulationMode DesiredMode = .CPU;

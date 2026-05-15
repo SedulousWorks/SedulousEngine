@@ -75,16 +75,21 @@ class ParticleEffectTreeAdapter : ITreeAdapter
 			let root = CreateNode(.Root, scope String(effect.Name.Length > 0 ? effect.Name : "Effect"), effect, -1);
 			mRootIds.Add(root.Id);
 
-			for (let system in effect.Systems)
-				BuildSystemSubtree(root, system);
+			for (int32 i = 0; i < effect.Systems.Length; i++)
+				BuildSystemSubtree(root, effect.Systems[i], i);
 		}
 
 		mObserver?.OnTreeDataChanged();
 	}
 
-	private void BuildSystemSubtree(TreeNode parent, ParticleSystem system)
+	private void BuildSystemSubtree(TreeNode parent, ParticleSystem system, int32 index)
 	{
-		let sysNode = CreateNode(.System, scope String("System"), system, parent.Id);
+		let sysLabel = scope String();
+		if (system.Name != null && system.Name.Length > 0)
+			sysLabel.Set(system.Name);
+		else
+			sysLabel.AppendF(scope $"System {index}");
+		let sysNode = CreateNode(.System, sysLabel, system, parent.Id);
 		parent.ChildIds.Add(sysNode.Id);
 
 		// Emitter row.

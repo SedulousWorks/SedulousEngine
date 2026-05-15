@@ -85,6 +85,11 @@ public static class ParticleEffectSerializer
 		int32 maxParticles = existing?.MaxParticles ?? 1000;
 		s.Int32("maxParticles", ref maxParticles);
 
+		// Optional display name. Default empty for round-trip stability on
+		// systems that never had one set.
+		String systemName = scope String(existing?.Name ?? "");
+		s.String("name", systemName);
+
 		var simMode = (uint8)(existing?.DesiredMode ?? .CPU);
 		s.UInt8("simulationMode", ref simMode);
 
@@ -141,6 +146,7 @@ public static class ParticleEffectSerializer
 		if (s.IsReading)
 		{
 			system = new ParticleSystem(maxParticles);
+			system.Name.Set(systemName);
 			system.DesiredMode = (SimulationMode)simMode;
 			system.SimulationSpace = (ParticleSpace)space;
 			system.BlendMode = (ParticleBlendMode)blendMode;
