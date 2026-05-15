@@ -388,9 +388,12 @@ FragmentOutput main(FragmentInput input)
     float aoSample = OcclusionMap.SampleBias(MainSampler, uv, MaterialLodBias).r;
     float3 emissiveSample = EmissiveMap.SampleBias(MainSampler, uv, MaterialLodBias).rgb;
 
-    // Combine texture samples with uniform values
+    // Combine texture samples with uniform values. `input.Color` carries
+    // the per-vertex baked color multiplied by the per-instance tint
+    // (vertex shader applies that), so both contribute to RGB; alpha is
+    // also folded in so particle systems can fade meshes via Color.a.
     float3 albedo = BaseColor.rgb * albedoSample.rgb * input.Color.rgb;
-    float alpha = BaseColor.a * albedoSample.a;
+    float alpha = BaseColor.a * albedoSample.a * input.Color.a;
     float roughness = max(Roughness * mrSample.g, 0.045);
     float metallic = Metallic * mrSample.b;
     float ao = AO * aoSample;

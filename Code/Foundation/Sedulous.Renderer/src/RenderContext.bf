@@ -415,12 +415,14 @@ public class RenderContext : IDisposable
 	}
 
 	/// GPU-packed object uniforms. Must match forward.vert.hlsl ObjectUniforms.
+	/// Layout: 2 matrices (128) + Vector4 InstanceColor (16) = 144.
 	[CRepr]
 	private struct DefaultObjectUniforms
 	{
 		public Matrix WorldMatrix;
 		public Matrix PrevWorldMatrix;
-		public const uint64 Size = 128;
+		public Vector4 InstanceColor;
+		public const uint64 Size = 144;
 	}
 
 	private Result<void> CreateDefaultDrawCallBindGroup()
@@ -440,7 +442,8 @@ public class RenderContext : IDisposable
 			DefaultObjectUniforms objData = .()
 			{
 				WorldMatrix = .Identity,
-				PrevWorldMatrix = .Identity
+				PrevWorldMatrix = .Identity,
+				InstanceColor = .(1, 1, 1, 1)
 			};
 			TransferHelper.WriteMappedBuffer(drawBuf, 0,
 				Span<uint8>((uint8*)&objData, DefaultObjectUniforms.Size));

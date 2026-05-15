@@ -258,6 +258,7 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 			data.Flags = flags;
 			data.WorldMatrix = worldMatrix;
 			data.PrevWorldMatrix = prevWorldMatrix;
+			data.InstanceColor = mesh.Color;
 			data.MeshHandle = mesh.MeshHandle;
 			data.SubMeshIndex = (uint32)subIdx;
 			data.MaterialBindGroup = material?.BindGroup;

@@ -232,7 +232,10 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 
 	/// Writes object uniforms to the per-frame ring buffer (mirrors Pipeline.WriteObjectUniforms).
 	/// MeshRenderer calls this through the Pipeline reference passed to RenderBatch.
-	public uint32 WriteObjectUniforms(int32 frameIndex, Matrix worldMatrix, Matrix prevWorldMatrix)
+	/// The shadow path doesn't shade color, so the instanceColor argument is
+	/// accepted (to satisfy the IRenderingPipeline contract) but ignored -
+	/// the shadow shader's ObjectUniforms cbuffer is still 128 bytes.
+	public uint32 WriteObjectUniforms(int32 frameIndex, Matrix worldMatrix, Matrix prevWorldMatrix, Vector4 instanceColor)
 	{
 		let frame = mFrameResources[frameIndex % MaxFramesInFlight];
 		if (frame == null || frame.ObjectUniformBuffer == null)

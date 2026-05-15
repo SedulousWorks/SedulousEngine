@@ -305,6 +305,7 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 				data.Flags = flags;
 				data.WorldMatrix = worldMatrix;
 				data.PrevWorldMatrix = prevWorldMatrix;
+				data.InstanceColor = comp.Color;
 				data.MeshHandle = comp.MeshHandle;
 				data.SubMeshIndex = (uint32)subIdx;
 				data.MaterialBindGroup = material?.BindGroup;

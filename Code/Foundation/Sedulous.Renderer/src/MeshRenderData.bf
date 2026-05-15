@@ -16,6 +16,15 @@ public class MeshRenderData : RenderData
 	/// Previous frame world transform (for motion vectors).
 	public Matrix PrevWorldMatrix;
 
+	/// Per-instance color tint. Multiplied with vertex color + material
+	/// albedo in the shader, with alpha folded into final fragment alpha.
+	/// Default (1, 1, 1, 1) is a no-op (existing meshes look unchanged).
+	/// Used by mesh-particle extraction (per-particle Color stream) and
+	/// per-entity tinting via MeshComponent.Color / SkinnedMeshComponent.Color
+	/// (damage flash, team colors, status-effect overlays without
+	/// duplicating MaterialInstances).
+	public Vector4 InstanceColor = .(1, 1, 1, 1);
+
 	/// GPU mesh handle (resolved to vertex/index buffers at draw time via GPUResourceManager).
 	public GPUMeshHandle MeshHandle;
 

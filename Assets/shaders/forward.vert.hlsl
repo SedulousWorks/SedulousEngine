@@ -40,6 +40,12 @@ struct InstanceData
 {
     float4x4 WorldMatrix;
     float4x4 PrevWorldMatrix;
+    // Per-instance color tint. Multiplied with the mesh's vertex color
+    // and the material's albedo (frag shader). Default (1,1,1,1) is a
+    // no-op, so existing meshes that don't author this look identical.
+    // Used by mesh particles (Color stream per-particle) and entity-level
+    // tinting via MeshComponent.Color (damage flash / team colors / etc.).
+    float4 InstanceColor;
 };
 
 StructuredBuffer<InstanceData> Instances : register(t0, space3);
@@ -51,6 +57,7 @@ cbuffer ObjectUniforms : register(b0, space3)
 {
     float4x4 WorldMatrix;
     float4x4 PrevWorldMatrix;
+    float4 InstanceColor;
 };
 
 #endif
@@ -88,9 +95,11 @@ VertexOutput main(VertexInput input)
     uint instanceIndex = input.InstanceID + BaseInstance;
     float4x4 world = Instances[instanceIndex].WorldMatrix;
     float4x4 prevWorld = Instances[instanceIndex].PrevWorldMatrix;
+    float4 instanceColor = Instances[instanceIndex].InstanceColor;
 #else
     float4x4 world = WorldMatrix;
     float4x4 prevWorld = PrevWorldMatrix;
+    float4 instanceColor = InstanceColor;
 #endif
 
     float4 worldPos = mul(float4(input.Position, 1.0), world);
@@ -99,7 +108,10 @@ VertexOutput main(VertexInput input)
     output.WorldNormal = normalize(mul(input.Normal, (float3x3)world));
     output.WorldTangent = normalize(mul(input.Tangent, (float3x3)world));
     output.TexCoord = input.TexCoord;
-    output.Color = input.Color;
+    // Per-instance color tint flows through the existing vertex Color
+    // channel; frag shader already multiplies it with albedo + material
+    // BaseColor, and we extend the alpha path below.
+    output.Color = input.Color * instanceColor;
 
     // Clip-space positions for motion vector output.
     output.CurClipPos = output.Position;

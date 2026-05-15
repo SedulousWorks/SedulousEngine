@@ -33,6 +33,14 @@ interface IPropertyDescriptor
 	/// Vector3 field (3 numeric fields: X, Y, Z).
 	void Vec3(StringView name, Vector3* ptr);
 
+	/// Vector4 field (4 numeric fields: X, Y, Z, W). Used when the field
+	/// represents a generic 4-component vector with no color semantics.
+	void Vec4(StringView name, Vector4* ptr);
+
+	/// Vector4 field displayed as a color swatch with HDR picker.
+	/// Emitted when the field is tagged `[Property(.Color)]`.
+	void Color4(StringView name, Vector4* ptr);
+
 	/// Quaternion field displayed as euler angles (3 numeric fields).
 	void Quat(StringView name, Quaternion* ptr);
 

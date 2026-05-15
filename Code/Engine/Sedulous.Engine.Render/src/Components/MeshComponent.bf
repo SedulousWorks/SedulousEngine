@@ -27,6 +27,13 @@ class MeshComponent : Component, ISerializableComponent
 		s.Int32("LayerMask", ref layerMask);
 		if (s.IsReading) LayerMask = (uint32)layerMask;
 
+		// Per-instance color tint. Component default is white; round-trip
+		// is unconditional so authored values persist across saves.
+		s.Float("ColorR", ref Color.X);
+		s.Float("ColorG", ref Color.Y);
+		s.Float("ColorB", ref Color.Z);
+		s.Float("ColorA", ref Color.W);
+
 		// Material refs
 		var matCount = (int32)mMaterialRefs.Count;
 		s.BeginArray("Materials", ref matCount);
@@ -79,6 +86,14 @@ class MeshComponent : Component, ISerializableComponent
 	/// Whether this mesh is visible.
 	[Property]
 	public bool IsVisible = true;
+
+	/// Per-instance color tint applied on top of the material's albedo.
+	/// Multiplied with vertex color + albedo texture in the forward
+	/// shader, so default (1,1,1,1) is a no-op. Use for damage flash,
+	/// team colors, status-effect overlays, etc. without cloning the
+	/// material per entity.
+	[Property(.Color)]
+	public Vector4 Color = .(1, 1, 1, 1);
 
 	/// Gets the mesh resource ref.
 	public ResourceRef MeshRef => mMeshRef;

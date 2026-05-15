@@ -20,10 +20,13 @@ public interface IRenderingPipeline
 	/// Per-frame resources for the given frame in flight.
 	PerFrameResources GetFrameResources(int32 frameIndex);
 
-	/// Appends per-draw object uniforms (world + prev world) to the per-frame
-	/// ring buffer and returns the dynamic offset for the draw call bind group.
-	/// Returns uint32.MaxValue if the buffer is full.
-	uint32 WriteObjectUniforms(int32 frameIndex, Matrix worldMatrix, Matrix prevWorldMatrix);
+	/// Appends per-draw object uniforms (world + prev world + per-instance
+	/// color tint) to the per-frame ring buffer and returns the dynamic
+	/// offset for the draw call bind group. Returns uint32.MaxValue if the
+	/// buffer is full. Pipelines that don't render color (e.g. shadow
+	/// depth-only) ignore the instanceColor and still satisfy the contract
+	/// since their cbuffer layout is independent.
+	uint32 WriteObjectUniforms(int32 frameIndex, Matrix worldMatrix, Matrix prevWorldMatrix, Vector4 instanceColor);
 
 	/// Binds the frame-level bind group (set 0) with the current scene offset.
 	/// Must be called after setting a new pipeline (layout change invalidates bindings).

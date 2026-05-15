@@ -100,8 +100,8 @@ class PerFrameResources
 	/// Maximum instances for batched instanced draws.
 	public const int32 MaxInstances = 200000;
 
-	/// Size of one instance entry in the StructuredBuffer (2 matrices = 128 bytes).
-	public const int32 InstanceStride = 128;
+	/// Size of one instance entry in the StructuredBuffer (2 matrices + Color = 144 bytes).
+	public const int32 InstanceStride = 144;
 
 	/// Alignment for scene uniform slots. 512 bytes is a comfortable upper bound for
 	/// SceneUniforms (~432 bytes) and a multiple of 256 for Vulkan compatibility.

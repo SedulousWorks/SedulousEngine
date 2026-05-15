@@ -20,11 +20,13 @@ public class MeshRenderer : Renderer
 
 	/// Per-instance data written to the StructuredBuffer.
 	/// Must match the InstanceData struct in forward.vert.hlsl.
+	/// Layout: 2 matrices (128 bytes) + Vector4 InstanceColor (16 bytes) = 144.
 	[CRepr]
 	private struct InstanceData
 	{
 		public Matrix WorldMatrix;
 		public Matrix PrevWorldMatrix;
+		public Vector4 InstanceColor;
 	}
 
 	/// Key for grouping meshes by (GPUMesh + Material + SubMesh).
@@ -282,7 +284,8 @@ public class MeshRenderer : Renderer
 				cachedInstanceData[slot] = .()
 				{
 					WorldMatrix = mesh.WorldMatrix,
-					PrevWorldMatrix = mesh.PrevWorldMatrix
+					PrevWorldMatrix = mesh.PrevWorldMatrix,
+					InstanceColor = mesh.InstanceColor
 				};
 			}
 
@@ -496,7 +499,7 @@ public class MeshRenderer : Renderer
 			}
 
 			// Object uniforms via dynamic offset (non-instanced path)
-			let objOffset = pipeline.WriteObjectUniforms(view.FrameIndex, mesh.WorldMatrix, mesh.PrevWorldMatrix);
+			let objOffset = pipeline.WriteObjectUniforms(view.FrameIndex, mesh.WorldMatrix, mesh.PrevWorldMatrix, mesh.InstanceColor);
 			if (objOffset == uint32.MaxValue) continue;
 
 			uint32[1] dynamicOffsets = .(objOffset);

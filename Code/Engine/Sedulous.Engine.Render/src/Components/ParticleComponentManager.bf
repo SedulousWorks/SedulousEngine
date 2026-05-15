@@ -409,6 +409,7 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 		let sizes = streams.Sizes;
 		let rotations = streams.Rotations;
 		let axes = streams.Axes;
+		let colors = streams.Colors;
 		if (positions == null) return;
 
 		// Material's blend mode picks the render category. Mesh particles go
@@ -463,6 +464,11 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 			data.Flags = .Dynamic;
 			data.WorldMatrix = worldMatrix;
 			data.PrevWorldMatrix = worldMatrix;  // motion vectors: same as current for v1
+			// Per-particle color from ColorInitializer / ColorOverLifetime.
+			// Falls back to white when no Color stream exists (system has
+			// no color-touching initializer/behavior). Mesh shader multiplies
+			// this with the material's albedo, so HDR > 1 channels glow.
+			data.InstanceColor = (colors != null) ? colors[i] : .(1, 1, 1, 1);
 			data.MeshHandle = sysState.MeshHandle;
 			data.SubMeshIndex = 0;
 			data.MaterialBindGroup = material.BindGroup;

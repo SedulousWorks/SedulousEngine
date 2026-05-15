@@ -526,9 +526,9 @@ public class Pipeline : IRenderingPipeline, IDisposable
 			pass.OnResize(width, height);
 	}
 
-	/// Writes object uniforms (world matrix) to the per-frame object buffer and returns the dynamic offset.
+	/// Writes object uniforms (world matrix + per-instance color) to the per-frame object buffer and returns the dynamic offset.
 	/// Returns uint32.MaxValue if the buffer is full.
-	public uint32 WriteObjectUniforms(int32 frameIndex, Matrix worldMatrix, Matrix prevWorldMatrix)
+	public uint32 WriteObjectUniforms(int32 frameIndex, Matrix worldMatrix, Matrix prevWorldMatrix, Vector4 instanceColor)
 	{
 		let frame = mFrameResources[frameIndex % MaxFramesInFlight];
 		if (frame == null || frame.ObjectUniformBuffer == null)
@@ -542,7 +542,8 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		ObjectUniforms objData = .()
 		{
 			WorldMatrix = worldMatrix,
-			PrevWorldMatrix = prevWorldMatrix
+			PrevWorldMatrix = prevWorldMatrix,
+			InstanceColor = instanceColor
 		};
 
 		TransferHelper.WriteMappedBuffer(
@@ -584,12 +585,14 @@ public class Pipeline : IRenderingPipeline, IDisposable
 	// ==================== Internal ====================
 
 	/// GPU-packed object uniforms. Must match forward.vert.hlsl ObjectUniforms.
+	/// Layout: 2 matrices (128 bytes) + Vector4 InstanceColor (16 bytes) = 144.
 	[CRepr]
 	private struct ObjectUniforms
 	{
 		public Matrix WorldMatrix;
 		public Matrix PrevWorldMatrix;
-		public const uint64 Size = 128;
+		public Vector4 InstanceColor;
+		public const uint64 Size = 144;
 	}
 
 	/// Writes the view's scene uniforms into the per-frame ring buffer and returns

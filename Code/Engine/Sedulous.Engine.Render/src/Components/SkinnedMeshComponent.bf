@@ -23,6 +23,10 @@ class SkinnedMeshComponent : Component, ISerializableComponent
 		s.ResourceRef("MeshRef", ref mMeshRef);
 		s.Bool("CastsShadows", ref CastsShadows);
 		s.Bool("IsVisible", ref IsVisible);
+		s.Float("ColorR", ref Color.X);
+		s.Float("ColorG", ref Color.Y);
+		s.Float("ColorB", ref Color.Z);
+		s.Float("ColorA", ref Color.W);
 
 		// Material refs
 		var matCount = (int32)mMaterialRefs.Count;
@@ -73,6 +77,13 @@ class SkinnedMeshComponent : Component, ISerializableComponent
 
 	/// Whether this mesh casts shadows.
 	public bool CastsShadows = true;
+
+	/// Per-instance color tint applied on top of the material's albedo
+	/// (mirror of MeshComponent.Color). Default (1,1,1,1) is a no-op;
+	/// gameplay code drives damage flashes / team colors / status overlays
+	/// without cloning materials per entity.
+	[Property(.Color)]
+	public Vector4 Color = .(1, 1, 1, 1);
 
 	/// Gets the mesh resource ref.
 	public ResourceRef MeshRef => mMeshRef;
