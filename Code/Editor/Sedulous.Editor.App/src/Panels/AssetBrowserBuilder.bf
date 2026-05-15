@@ -189,7 +189,7 @@ static class AssetBrowserBuilder
 
 		// Wire rename commit -> rename file on disk and update index
 		listAdapter.OnItemRenamed.Add(new (item, newName) => {
-			HandleRename(item, newName, listAdapter, gridAdapter);
+			HandleRename(item, newName, listAdapter, gridAdapter, editorContext);
 		});
 
 		// Wire F2 key -> inline rename on selected item
@@ -203,7 +203,7 @@ static class AssetBrowserBuilder
 
 		// Wire grid adapter rename commit -> rename file on disk and update index
 		gridAdapter.OnItemRenamed.Add(new (item, newName) => {
-			HandleRename(item, newName, listAdapter, gridAdapter);
+			HandleRename(item, newName, listAdapter, gridAdapter, editorContext);
 		});
 
 		// Wire F2 key -> inline rename on selected grid item
@@ -394,7 +394,8 @@ static class AssetBrowserBuilder
 
 	/// Renames an item on disk and updates the active index if the item is registered.
 	private static void HandleRename(AssetContentItem item, StringView newName,
-		AssetContentAdapter listAdapter, AssetContentAdapter gridAdapter)
+		AssetContentAdapter listAdapter, AssetContentAdapter gridAdapter,
+		EditorContext editorContext)
 	{
 		if (item.AbsolutePath == null || newName.Length == 0) return;
 
@@ -407,6 +408,16 @@ static class AssetBrowserBuilder
 		// Don't rename if target already exists
 		if (File.Exists(newAbsPath) || Directory.Exists(newAbsPath))
 			return;
+
+		// Resolve the URI the resource cache keyed this asset under, while
+		// the OLD absolute path still maps. The cache is URI-keyed; after
+		// the move we re-key the cached entry from old -> new URI (see
+		// below) so the loaded resource keeps its single cache slot and
+		// its shutdown teardown anchor, and a later open of the renamed
+		// file reuses the same instance instead of duplicating it.
+		let oldUri = scope String();
+		bool haveOldUri = editorContext != null &&
+			MountResolver.TryResolveAbsoluteToUri(editorContext.MountEntries, item.AbsolutePath, oldUri);
 
 		// Rename file on disk
 		if (File.Exists(item.AbsolutePath))
@@ -443,6 +454,20 @@ static class AssetBrowserBuilder
 
 				PersistIndex(entry);
 			}
+		}
+
+		// Re-key the cached resource from the old URI to the new one. The
+		// resource didn't change, only its address - moving (not evicting)
+		// the cache entry leaves refcounts untouched, keeps the resource
+		// reachable by Shutdown for proper teardown, and makes a later
+		// open of the renamed file a cache hit that reuses the same
+		// instance. Resolve the new URI the same way the loader would,
+		// now that the file exists at the new path.
+		if (haveOldUri)
+		{
+			let newUri = scope String();
+			if (MountResolver.TryResolveAbsoluteToUri(editorContext.MountEntries, newAbsPath, newUri))
+				editorContext.ResourceSystem?.RecacheUri(oldUri, newUri);
 		}
 
 		// Refresh both views
