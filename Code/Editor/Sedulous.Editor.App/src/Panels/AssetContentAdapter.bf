@@ -17,14 +17,26 @@ class AssetContentItem
 	public enum ItemKind { Folder, File }
 
 	public String Name ~ delete _;              // Display name (filename or folder name)
-	public String AbsolutePath ~ delete _;      // Full filesystem path
+	public String AbsolutePath ~ delete _;      // Full filesystem path (disk mounts only; derived)
 	public String RelativePath ~ delete _;      // Path relative to mount root (locator)
 	public String Extension ~ delete _;         // File extension (e.g. ".mesh"), empty for folders
 	public ItemKind Kind;
 	public Guid RegistryId;                     // GUID if registered, default Guid if not
 	public bool IsRegistered;                   // Has a GUID in the active index
 
+	/// The mount entry this item belongs to (non-owning). Provides the
+	/// owning mount + scheme so consumers can address the item as
+	/// (mount, locator) without round-tripping through MountResolver.
+	public MountEntry Entry;
+
 	public bool IsFolder => Kind == .Folder;
+
+	/// Mount-relative locator for this item (alias of RelativePath - the
+	/// (mount, locator) address key for the VFS migration).
+	public StringView Locator => RelativePath;
+
+	/// URI scheme of the owning mount ("" if unknown).
+	public StringView Scheme => (Entry != null) ? Entry.Scheme : default;
 }
 
 /// List adapter for the asset browser content pane.
@@ -214,6 +226,7 @@ class AssetContentAdapter : ListAdapterBase
 			for (let dirName in dirs)
 			{
 				let item = new AssetContentItem();
+				item.Entry = mEntry;
 				item.Name = new String(dirName);
 				item.Kind = .Folder;
 				item.Extension = new String();
@@ -250,6 +263,7 @@ class AssetContentAdapter : ListAdapterBase
 			for (let fileName in files)
 			{
 				let item = new AssetContentItem();
+				item.Entry = mEntry;
 				item.Name = new String(fileName);
 				item.Kind = .File;
 
@@ -321,6 +335,7 @@ class AssetContentAdapter : ListAdapterBase
 				}
 
 				let item = new AssetContentItem();
+				item.Entry = mEntry;
 				item.Name = new String(entry.name);
 				item.Kind = .File;
 
