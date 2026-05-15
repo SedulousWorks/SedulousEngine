@@ -27,8 +27,8 @@ class RegistryTreeAdapter : ITreeAdapter
 		public int32 Id;
 		public int32 ParentId = -1;
 		public String DisplayName ~ delete _;
-		public String AbsolutePath ~ delete _;     // Full filesystem path
-		public String RelativePath ~ delete _;     // Path relative to mount root
+		public String AbsolutePath ~ delete _;     // Disk mounts only (shell reveal); empty otherwise
+		public String RelativePath ~ delete _;     // Mount-relative locator (primary key)
 		public MountEntry Entry;                    // Which mount this belongs to
 		public bool IsMountRoot;
 		public bool IsLocked;                       // Builtin/project can't be removed

@@ -587,8 +587,9 @@ static class AssetBrowserBuilder
 
 		menu.AddSeparator();
 
-		// Show in Explorer
-		if (item.AbsolutePath != null)
+		// Show in Explorer - OS shell action, only meaningful for a real
+		// filesystem mount (non-disk mounts have no AbsolutePath).
+		if (item.Entry != null && item.Entry.Mount is FileSystemMount && item.AbsolutePath != null)
 		{
 			menu.AddItem("Show in Explorer", new [=item, =editorContext] () => {
 				let dirPath = scope String();
@@ -651,8 +652,8 @@ static class AssetBrowserBuilder
 
 		menu.AddSeparator();
 
-		// Show in Explorer
-		if (folderItem.AbsolutePath != null)
+		// Show in Explorer - OS shell action, disk mounts only.
+		if (folderItem.Entry != null && folderItem.Entry.Mount is FileSystemMount && folderItem.AbsolutePath != null)
 		{
 			menu.AddItem("Show in Explorer", new [=folderItem, =editorContext] () => {
 				editorContext.Shell?.RevealInFileManager(folderItem.AbsolutePath);
@@ -970,10 +971,14 @@ static class AssetBrowserBuilder
 
 			menu.AddSeparator();
 
-			// Show in Explorer
-			menu.AddItem("Show in Explorer", new [=absPathOwned, =editorContext] () => {
-				editorContext.Shell?.RevealInFileManager(absPathOwned);
-			});
+			// Show in Explorer - disk mounts only (the node's AbsolutePath
+			// is empty for non-filesystem mounts).
+			if (!absPathOwned.IsEmpty)
+			{
+				menu.AddItem("Show in Explorer", new [=absPathOwned, =editorContext] () => {
+					editorContext.Shell?.RevealInFileManager(absPathOwned);
+				});
+			}
 		}
 		else
 		{
@@ -998,10 +1003,14 @@ static class AssetBrowserBuilder
 
 			menu.AddSeparator();
 
-			// Show in Explorer
-			menu.AddItem("Show in Explorer", new [=absPathOwned, =editorContext] () => {
-				editorContext.Shell?.RevealInFileManager(absPathOwned);
-			});
+			// Show in Explorer - disk mounts only (the node's AbsolutePath
+			// is empty for non-filesystem mounts).
+			if (!absPathOwned.IsEmpty)
+			{
+				menu.AddItem("Show in Explorer", new [=absPathOwned, =editorContext] () => {
+					editorContext.Shell?.RevealInFileManager(absPathOwned);
+				});
+			}
 
 			// Unmount (only for non-locked entries)
 			if (!isLocked)
