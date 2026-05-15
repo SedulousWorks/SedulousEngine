@@ -1340,18 +1340,68 @@ longer build from `fsMount.RootPath` / `Directory.Enumerate*`.
     (`MountExists`/`MountDelete`/`MountCreateDir`) remain live for these
     two callers only.
 
-**8b. `.bin` sidecar correctness on rename/delete.** Rename/delete handle
-only the primary asset file; a resource with a `BinaryPath` `.bin` sidecar
-(textures/audio/models) has its sidecar orphaned. Independent behavior
-fix (not a refactor); fold the sidecar op through the same `IWritableMount`
-path as the primary asset.
+**8b. `.bin` sidecar correctness on rename/delete. ✅ DONE.** `BinaryPath`
+was retired entirely: the sidecar is now the convention `<assetLocator>.bin`,
+*derived* at load (Texture/Audio managers) rather than stored - no
+fallback, no metadata key, six setter sites dropped. With load made
+convention-based, the browser handles the sidecar by pure convention:
+`HandleRename` moves `<oldLocator>.bin` → `<newLocator>.bin` when present;
+file-delete removes `<locator>.bin`; folder-delete recurses so contained
+sidecars go with the folder. No metadata rewrite or resource load on
+rename/delete.
 
-**8c. Live browser refresh via `IWatchableMount.ChangeSource`.** The
-browser only refreshes on editor-initiated ops (explicit
-`RefreshContent()`); it does not react to external filesystem changes.
-`IWatchableMount.ChangeSource` exists (ResourceSystem hot-reload already
-uses it). Wiring it to auto-refresh is independent of 8a — its own design
-(debounce, full vs. partial re-enumerate, scope to visible folder).
+**8c. Live browser refresh via `IWatchableMount.ChangeSource`. NOT
+STARTED — design recorded, decision deferred.**
+
+Problem: the browser only refreshes on editor-initiated ops (explicit
+`RefreshContent()` / `RefreshRegistries()`); it does not react to
+*external* filesystem changes (another process, git checkout, etc.).
+
+Mechanism reality: `FileSystemChangeSource` watches the last-write
+*timestamp of explicitly tracked locators*. `Track(locator)` snapshots
+a file's mtime; `Poll` reports tracked locators whose mtime changed;
+it self-debounces (0.5s min scan, safe to poll per-frame). This is
+built for **hot-reload of already-loaded resources** (watch a known
+file's mtime, reload on change) and is exactly how `ResourceSystem`
+uses it. It does **not** natively see a *new* file (nothing tracks it),
+a *deletion* (`Poll` skips on stat failure), or a *rename*.
+
+Key insight: on NTFS/most filesystems, adding/removing a *direct child*
+bumps the **containing directory's** mtime. So tracking the *current
+folder's* locator (not individual files) and polling it yields exactly
+the browser's signal — "visible folder membership changed,
+re-enumerate" — with **no VFS API change**. Content edits of children
+don't bump dir mtime (correctly — those belong to hot-reload, not the
+browser).
+
+Options:
+- **1 (recommended): track the current folder locator, poll, full
+  re-enumerate.** `Track(folderLocator)` on folder-enter, `Untrack` on
+  leave/close, re-track on mount switch; poll on the editor tick; on a
+  hit run the (8a P2) mount re-enumerate, preserving selection-by-
+  `Locator` + scroll. No API change; dir-mtime matches the single-folder
+  non-recursive view; tiny.
+- **2: extend the VFS API with real directory-membership watching.**
+  More general but new interface + per-mount impl; overkill for a
+  single-folder non-recursive browser.
+- **3: don't auto-refresh; manual Refresh affordance.** Editor-initiated
+  ops already refresh; only external changes are uncovered. If rare
+  enough, 8c downgrades to a Refresh button / won't-do.
+
+Open decisions (deferred):
+1. Go/no-go: is silent auto-refresh on external changes wanted enough
+   to wire a per-tick poll into the browser, or is manual refresh
+   acceptable? (The real product call.)
+2. Scope: content pane only first; the registry tree
+   (`RegistryTreeAdapter`, lazy/expanded-node) is a separate, bigger
+   question.
+3. Redundant post-op refresh: our own create/rename/delete bump dir
+   mtime *and* call `RefreshContent()`, so the watcher fires a second
+   idempotent refresh ~0.5s later — accept it, or reset the baseline by
+   re-`Track` after editor-initiated ops.
+4. Ownership/tick: the asset-browser panel owns Track/Untrack lifecycle
+   and needs a poll hook on the editor update loop (Poll is synchronous
+   main-thread mtime stat — fine, and debounced).
 
 ## Editor Modules Architecture
 
