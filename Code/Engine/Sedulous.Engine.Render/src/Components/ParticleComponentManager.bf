@@ -7,8 +7,11 @@ using Sedulous.Renderer;
 using Sedulous.Materials;
 using Sedulous.Resources;
 using Sedulous.Textures.Resources;
+using Sedulous.Geometry.Resources;
+using Sedulous.Materials.Resources;
 using Sedulous.Core;
 using Sedulous.Core.Mathematics;
+using Sedulous.Core.Memory;
 using Sedulous.RHI;
 using Sedulous.Particles;
 using Sedulous.Particles.Render;
@@ -136,19 +139,92 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 			while ((int32)state.Systems.Count < systemCount)
 				state.Systems.Add(new ParticleSystemResolveState());
 
-			// Resolve each system's texture; look up (or create) the shared
-			// MaterialInstance keyed by texture view. Multiple systems
-			// (across one or many components) that point at the same texture
-			// share one MaterialInstance via mMaterialCache.
+			// Resolve each system's resources. Billboards: texture -> shared
+			// MaterialInstance keyed by texture view (mMaterialCache, dedup
+			// across systems + components). Mesh particles: StaticMesh ref
+			// -> GPUMeshHandle + Material ref -> MaterialInstance (both via
+			// the engine's shared RenderResourceResolver, same caches the
+			// regular mesh path uses).
 			for (int32 i = 0; i < systemCount; i++)
 			{
 				let sysState = state.Systems[i];
 				let system = effect.GetSystem(i);
-				let texRef = system.TextureRef;
 
+				if (system.RenderMode == .Mesh)
+				{
+					// Mesh path: resolve mesh + material. Release any
+					// stale billboard-side state (Texture/Material) so
+					// flipping render mode at runtime doesn't leak.
+					sysState.Texture.Release();
+					if (sysState.Material != null)
+					{
+						sysState.Material.ReleaseRef();
+						sysState.Material = null;
+					}
+
+					let meshRef = system.MeshRef;
+					if (meshRef.IsValid)
+					{
+						GPUMeshHandle meshHandle;
+						BoundingBox meshBounds;
+						if (Resolver.ResolveMesh(ref sysState.Mesh, meshRef, out meshHandle, out meshBounds))
+						{
+							sysState.MeshHandle = meshHandle;
+							sysState.MeshBounds = meshBounds;
+						}
+					}
+					else
+					{
+						sysState.Mesh.Release();
+						sysState.MeshHandle = .Invalid;
+					}
+
+					let matRef = system.MaterialRef;
+					if (matRef.IsValid)
+					{
+						MaterialInstance matInstance;
+						if (Resolver.ResolveMaterial(ref sysState.MeshMaterial, matRef, out matInstance))
+						{
+							if (sysState.MeshMaterialInstance != matInstance)
+							{
+								if (sysState.MeshMaterialInstance != null)
+									sysState.MeshMaterialInstance.ReleaseRef();
+								sysState.MeshMaterialInstance = matInstance; // ResolveMaterial AddRef'd
+							}
+							else
+							{
+								// Same instance returned - ResolveMaterial AddRef'd, balance with a release.
+								matInstance.ReleaseRef();
+							}
+						}
+					}
+					else
+					{
+						sysState.MeshMaterial.Release();
+						if (sysState.MeshMaterialInstance != null)
+						{
+							sysState.MeshMaterialInstance.ReleaseRef();
+							sysState.MeshMaterialInstance = null;
+						}
+					}
+
+					continue;
+				}
+
+				// Billboard path: release any stale mesh-side state, then
+				// resolve the per-system texture.
+				sysState.Mesh.Release();
+				sysState.MeshHandle = .Invalid;
+				sysState.MeshMaterial.Release();
+				if (sysState.MeshMaterialInstance != null)
+				{
+					sysState.MeshMaterialInstance.ReleaseRef();
+					sysState.MeshMaterialInstance = null;
+				}
+
+				let texRef = system.TextureRef;
 				if (!texRef.IsValid)
 				{
-					// No texture on this system - clear cached slot.
 					sysState.Texture.Release();
 					if (sysState.Material != null)
 					{
@@ -238,6 +314,16 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 				let system = effect.GetSystem(sysIdx);
 				if (system.AliveCount == 0) continue;
 
+				// Mesh particles produce MeshRenderData entries (one per
+				// particle) that flow through the existing MeshRenderer.
+				// This reuses static-mesh batching, pipeline state, lighting,
+				// and shadow paths - no separate draw path.
+				if (system.RenderMode == .Mesh)
+				{
+					ExtractMeshParticles(system, sysIdx, comp, resolveState, frameAlloc, context);
+					continue;
+				}
+
 				// Get or create reusable render state for this system
 				let renderState = GetOrCreateRenderState(comp.Owner, sysIdx, system.MaxParticles);
 
@@ -297,6 +383,113 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 		return state;
 	}
 
+	/// Emit one MeshRenderData per particle for a mesh-mode system. Each
+	/// entry carries the resolved mesh handle, the system's material, and
+	/// the per-particle WorldMatrix built from streams (Position, Axis,
+	/// Rotation, Size). MeshRenderer batches them by (mesh, material,
+	/// submesh) so this collapses to a single instanced draw at render time.
+	private void ExtractMeshParticles(ParticleSystem system, int32 sysIdx,
+		ParticleComponent comp, ParticleResolveState resolveState,
+		FrameAllocator frameAlloc, in RenderExtractionContext context)
+	{
+		if (resolveState == null) return;
+		if (sysIdx >= resolveState.Systems.Count) return;
+		let sysState = resolveState.Systems[sysIdx];
+
+		// Need both mesh + material resolved; skip until they're available.
+		if (!sysState.MeshHandle.IsValid) return;
+		let material = sysState.MeshMaterialInstance;
+		if (material == null) return;
+
+		let streams = system.Streams;
+		let aliveCount = streams.AliveCount;
+		if (aliveCount == 0) return;
+
+		let positions = streams.Positions;
+		let sizes = streams.Sizes;
+		let rotations = streams.Rotations;
+		let axes = streams.Axes;
+		if (positions == null) return;
+
+		// Material's blend mode picks the render category. Mesh particles go
+		// through Opaque / Masked / Transparent just like regular meshes,
+		// inheriting depth-write, shadows, etc.
+		let category = CategoryForBlendMode(material.BlendMode);
+		let materialKey = (uint32)(int)Internal.UnsafeCastToPtr(material);
+
+		// Material's pipeline config drives pipeline variant selection.
+		let pipelineConfig = (material.Material != null)
+			? material.Material.PipelineConfig
+			: PipelineConfig();
+
+		// Compute coarse bounds across all alive particles (camera frustum
+		// culling happens per-entry; this lets each particle have its own
+		// AABB centered at its position with a small mesh-bound expansion).
+		let meshBoundsHalfExtent = (sysState.MeshBounds.Max - sysState.MeshBounds.Min) * 0.5f;
+		let meshBoundsExtent = Vector3(
+			Math.Max(Math.Max(Math.Abs(meshBoundsHalfExtent.X), Math.Abs(meshBoundsHalfExtent.Y)), Math.Abs(meshBoundsHalfExtent.Z)),
+			0, 0);
+
+		for (int32 i = 0; i < aliveCount; i++)
+		{
+			// Build axis-angle quaternion. When the Axis stream isn't
+			// present (no MeshOrientationInitializer was added), the axis
+			// defaults to world Y so a non-zero Rotation still produces a
+			// sensible spin around the up axis rather than degenerating.
+			Vector3 axis = (axes != null) ? axes[i] : .(0, 1, 0);
+			let lenSq = axis.X * axis.X + axis.Y * axis.Y + axis.Z * axis.Z;
+			if (lenSq < 0.0001f) axis = .(0, 1, 0);
+			let angle = (rotations != null) ? rotations[i] : 0.0f;
+			let quat = Quaternion.CreateFromAxisAngle(axis, angle);
+
+			// Uniform scale: drive off the X component of the per-particle
+			// Size (existing Vector2 stream) multiplied by the asset-side
+			// MeshScale. Falls back to MeshScale when no Size stream.
+			let sizeScalar = (sizes != null) ? sizes[i].X : 1.0f;
+			let finalScale = sizeScalar * system.MeshScale;
+			let scaleVec = Vector3(finalScale, finalScale, finalScale);
+
+			let worldMatrix = Matrix.CreateFromTranslationRotationScale(
+				positions[i], quat, scaleVec);
+
+			let data = new:frameAlloc MeshRenderData();
+			data.Position = positions[i];
+			// Per-particle bounds = position +/- one mesh extent in each axis
+			// (cheap conservative AABB; not tightly fit to the rotated mesh).
+			let halfExtent = meshBoundsExtent.X * finalScale;
+			let halfVec = Vector3(halfExtent, halfExtent, halfExtent);
+			data.Bounds = .(positions[i] - halfVec, positions[i] + halfVec);
+			data.SortOrder = 0;
+			data.Flags = .Dynamic;
+			data.WorldMatrix = worldMatrix;
+			data.PrevWorldMatrix = worldMatrix;  // motion vectors: same as current for v1
+			data.MeshHandle = sysState.MeshHandle;
+			data.SubMeshIndex = 0;
+			data.MaterialBindGroup = material.BindGroup;
+			data.MaterialBindGroupLayout = material.BindGroupLayout;
+			data.MaterialPipelineConfig = pipelineConfig;
+			data.MaterialSortKey = materialKey;
+			data.MaterialKey = materialKey;
+			data.EntityIndex = comp.Owner.Index;
+			data.IsSkinned = false;
+
+			context.RenderData.Add(category, data);
+		}
+	}
+
+	private static RenderDataCategory CategoryForBlendMode(BlendMode blend)
+	{
+		switch (blend)
+		{
+		case .Masked:
+			return RenderCategories.Masked;
+		case .AlphaBlend, .Additive, .Multiply, .PremultipliedAlpha:
+			return RenderCategories.Transparent;
+		default:
+			return RenderCategories.Opaque;
+		}
+	}
+
 	private int64 MakeRenderStateKey(EntityHandle entity, int32 systemIndex)
 	{
 		return ((int64)entity.Index << 16) | (int64)systemIndex;
@@ -352,19 +545,35 @@ class ParticleRenderState
 	}
 }
 
-/// Per-(component, system) resolution state. Holds the resolved texture
-/// handle plus an AddRef'd reference to the shared MaterialInstance. Lives
-/// as a heap-allocated slot in ParticleResolveState.Systems so the contained
-/// struct fields can be passed by ref into the resolver without copying.
+/// Per-(component, system) resolution state. For billboard particles:
+/// resolved texture handle + AddRef'd MaterialInstance (cached by the
+/// manager keyed on ITextureView). For mesh particles: resolved
+/// StaticMeshResource handle + GPUMeshHandle + AddRef'd MaterialInstance
+/// (cached by the engine's RenderResourceResolver keyed on MaterialResource).
+/// Lives as a heap-allocated slot in ParticleResolveState.Systems so the
+/// contained struct fields can be passed by ref into the resolver without
+/// copying.
 class ParticleSystemResolveState
 {
+	// Billboard path
 	public ResolvedResource<TextureResource> Texture;
 	public MaterialInstance Material;
+
+	// Mesh path
+	public ResolvedResource<StaticMeshResource> Mesh;
+	public ResolvedResource<MaterialResource> MeshMaterial;
+	public GPUMeshHandle MeshHandle = .Invalid;
+	public Sedulous.Core.Mathematics.BoundingBox MeshBounds;
+	public MaterialInstance MeshMaterialInstance;
 
 	public void Release()
 	{
 		Texture.Release();
 		if (Material != null) { Material.ReleaseRef(); Material = null; }
+		Mesh.Release();
+		MeshMaterial.Release();
+		MeshHandle = .Invalid;
+		if (MeshMaterialInstance != null) { MeshMaterialInstance.ReleaseRef(); MeshMaterialInstance = null; }
 	}
 }
 

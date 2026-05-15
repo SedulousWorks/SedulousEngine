@@ -93,6 +93,11 @@ public class ParticleStreamContainer
 	/// RotationSpeed stream (float rad/s, allocated on demand).
 	public CPUStream<float> RotationSpeeds => GetCPUStream<float>(.RotationSpeed);
 
+	/// Axis stream (Vector3 unit, allocated on demand). Used by mesh
+	/// particles to build axis-angle quaternions together with the
+	/// Rotation stream.
+	public CPUStream<Vector3> Axes => GetCPUStream<Vector3>(.Axis);
+
 	// ==================== Particle Management ====================
 
 	/// Gets the normalized life ratio [0, 1] for a particle.

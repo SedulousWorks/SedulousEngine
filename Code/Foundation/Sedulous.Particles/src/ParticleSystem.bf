@@ -90,11 +90,58 @@ public class ParticleSystem
 		mTextureRef = ResourceRef(@ref.Id, @ref.Path ?? "");
 	}
 
+	/// Static mesh used when `RenderMode == .Mesh`. Resolved by the engine
+	/// layer into a GPUMeshHandle; particles render as instances of this
+	/// mesh transformed per-particle (position from streams, axis-angle
+	/// rotation from Axis + Rotation streams, uniform scale from Size *
+	/// MeshScale).
+	[Property]
+	[ResourceRefType(".mesh")]
+	private ResourceRef mMeshRef ~ _.Dispose();
+
+	public ResourceRef MeshRef => mMeshRef;
+
+	public void SetMeshRef(ResourceRef @ref)
+	{
+		mMeshRef.Dispose();
+		mMeshRef = ResourceRef(@ref.Id, @ref.Path ?? "");
+	}
+
+	/// Material applied to mesh particles. Required when `RenderMode ==
+	/// .Mesh` - StaticMeshResource only carries geometry, not materials,
+	/// so the system must specify one.
+	[Property]
+	[ResourceRefType(".material")]
+	private ResourceRef mMaterialRef ~ _.Dispose();
+
+	public ResourceRef MaterialRef => mMaterialRef;
+
+	public void SetMaterialRef(ResourceRef @ref)
+	{
+		mMaterialRef.Dispose();
+		mMaterialRef = ResourceRef(@ref.Id, @ref.Path ?? "");
+	}
+
+	/// Uniform scale multiplier applied on top of the per-particle Size
+	/// when rendering as a mesh. The Size stream provides the per-particle
+	/// magnitude; MeshScale lets the author tune the asset to its mesh
+	/// (e.g. a 1-unit cube mesh with Size = 0.1 -> 0.1 final scale).
+	[Property, Range(0, 100)]
+	public float MeshScale = 1.0f;
+
 	/// Round-trip the texture ref through `s`. Called from
 	/// ParticleEffectSerializer so the field's owning class manages access.
 	public void SerializeTexture(Serializer s)
 	{
 		s.ResourceRef("texture", ref mTextureRef);
+	}
+
+	/// Round-trip the mesh-particle refs (mesh, material, scale).
+	public void SerializeMeshRefs(Serializer s)
+	{
+		s.ResourceRef("mesh", ref mMeshRef);
+		s.ResourceRef("material", ref mMaterialRef);
+		s.Float("meshScale", ref MeshScale);
 	}
 
 	/// Emitter - spawning logic.

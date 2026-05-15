@@ -42,6 +42,7 @@ public static class ParticleTypeRegistry
 		RegisterInitializer("Color", () => new ColorInitializer());
 		RegisterInitializer("Size", () => new SizeInitializer());
 		RegisterInitializer("Rotation", () => new RotationInitializer());
+		RegisterInitializer("MeshOrientation", () => new MeshOrientationInitializer());
 	}
 
 	/// Registers a custom behavior factory.

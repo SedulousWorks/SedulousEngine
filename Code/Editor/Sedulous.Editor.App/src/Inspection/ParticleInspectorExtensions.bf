@@ -87,6 +87,15 @@ namespace Sedulous.Particles
 		}
 	}
 
+	extension MeshOrientationInitializer
+	{
+		[OnCompile(.TypeInit), Comptime]
+		static void GenerateInspector()
+		{
+			Sedulous.Editor.App.InspectorCodegen.GenerateDescribeProperties(typeof(Self));
+		}
+	}
+
 	// ==================== Behaviors ====================
 
 	extension DragBehavior

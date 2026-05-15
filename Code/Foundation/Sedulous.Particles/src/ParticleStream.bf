@@ -15,6 +15,9 @@ public enum ParticleStreamId : uint8
 	Lifetime = 6,
 	Rotation = 7,
 	RotationSpeed = 8,
+	/// Per-particle rotation axis (unit Vector3). Used by mesh particles to
+	/// build an axis-angle quaternion together with the Rotation stream.
+	Axis = 9,
 
 	/// First index available for custom streams.
 	Custom = 32,

@@ -160,6 +160,11 @@ public static class ParticleEffectSerializer
 		// Texture ref (owned by the system; lives on the asset).
 		system.SerializeTexture(s);
 
+		// Mesh-particle refs (mesh + material + uniform scale). Round-trip
+		// even when RenderMode != Mesh so authored values survive a mode
+		// flip during editing.
+		system.SerializeMeshRefs(s);
+
 		// Initializers
 		int32 initCount = s.IsWriting ? (int32)system.Initializers.Length : 0;
 		s.Int32("initializerCount", ref initCount);
@@ -307,6 +312,7 @@ public static class ParticleEffectSerializer
 		if (init is ColorInitializer) return "Color";
 		if (init is SizeInitializer) return "Size";
 		if (init is RotationInitializer) return "Rotation";
+		if (init is MeshOrientationInitializer) return "MeshOrientation";
 		return "Unknown";
 	}
 
@@ -337,6 +343,11 @@ public static class ParticleEffectSerializer
 		{
 			SerializeRangeFloat(s, "rotation", ref r.Rotation);
 			SerializeRangeFloat(s, "rotationSpeed", ref r.RotationSpeed);
+		}
+		else if (let mo = init as MeshOrientationInitializer)
+		{
+			s.Bool("randomAxis", ref mo.RandomAxis);
+			SerializeVector3(s, "fixedAxis", ref mo.FixedAxis);
 		}
 	}
 
