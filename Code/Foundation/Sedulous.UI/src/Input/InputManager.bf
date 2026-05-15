@@ -412,12 +412,21 @@ public class InputManager
 		mContext.FocusManager.ClearFocus();
 	}
 
+	/// Walks up the parent chain calling OnMouseDown on each view. Coords on
+	/// `args` start in `target`-local space and are translated to each
+	/// successive ancestor's local space before its handler runs - otherwise
+	/// an ancestor that hit-tests on coords (DockTabGroup tab strip, button
+	/// regions, etc.) would interpret target-local coords as its own and
+	/// falsely match. After dispatching to `v`, adding `v.Bounds.X/Y`
+	/// converts `v`-local coords to `v.Parent`-local.
 	private void BubbleMouseDown(View target, MouseEventArgs args)
 	{
 		var v = target;
 		while (v != null && !args.Handled)
 		{
 			v.OnMouseDown(args);
+			args.X += v.Bounds.X;
+			args.Y += v.Bounds.Y;
 			v = v.Parent;
 		}
 	}
@@ -428,6 +437,8 @@ public class InputManager
 		while (v != null && !args.Handled)
 		{
 			v.OnMouseUp(args);
+			args.X += v.Bounds.X;
+			args.Y += v.Bounds.Y;
 			v = v.Parent;
 		}
 	}
