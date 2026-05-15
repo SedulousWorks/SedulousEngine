@@ -45,8 +45,6 @@ class EditorContext : IDisposable
 	public List<MountEntry> MountEntries = new .() ~ DeleteContainerAndItems!(_);
 
 	// Registries (owned)
-	private List<IComponentInspector> mInspectors = new .() ~ delete _;
-	private Dictionary<Type, IComponentInspector> mInspectorMap = new .() ~ delete _;
 	private List<IAssetImporter> mImporters = new .() ~ delete _;
 	private List<IAssetCreator> mCreators = new .() ~ delete _;
 	private Dictionary<String, IAssetThumbnailGenerator> mThumbnailGens = new .() ~ {
@@ -67,13 +65,6 @@ class EditorContext : IDisposable
 	public void RegisterPanelFactory(IEditorPanelFactory factory)
 	{
 		mPanelFactories.Add(factory);
-	}
-
-	/// Register a component inspector for a specific component type.
-	public void RegisterComponentInspector(Type componentType, IComponentInspector inspector)
-	{
-		mInspectors.Add(inspector);
-		mInspectorMap[componentType] = inspector;
 	}
 
 	/// Register an editor page factory for file types.
@@ -141,14 +132,6 @@ class EditorContext : IDisposable
 
 	// === Queries ===
 
-	/// Find the inspector for a component type. Returns null if none registered.
-	public IComponentInspector GetInspector(Type componentType)
-	{
-		if (mInspectorMap.TryGetValue(componentType, let inspector))
-			return inspector;
-		return null;
-	}
-
 	/// Find the gizmo renderer for a component type.
 	public IGizmoRenderer GetGizmoRenderer(Type componentType)
 	{
@@ -211,14 +194,6 @@ class EditorContext : IDisposable
 
 	public void Dispose()
 	{
-		for (let inspector in mInspectors)
-		{
-			inspector.Dispose();
-			delete inspector;
-		}
-		mInspectors.Clear();
-		mInspectorMap.Clear();
-
 		for (let gizmo in mGizmos)
 		{
 			gizmo.Dispose();
