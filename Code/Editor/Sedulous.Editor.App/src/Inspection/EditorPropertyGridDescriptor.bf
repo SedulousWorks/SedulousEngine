@@ -8,6 +8,7 @@ using Sedulous.Serialization;
 using Sedulous.Shell;
 using Sedulous.UI.Toolkit;
 using Sedulous.Particles;
+using Sedulous.Core.Mathematics;
 
 /// Extends PropertyGridDescriptor with editor-specific controls:
 /// ResourceRefEditor with file browse dialogs, and real editors for the
@@ -85,5 +86,15 @@ class EditorPropertyGridDescriptor : PropertyGridDescriptor
 	public override void CurveColor(StringView name, ParticleCurveColor* ptr)
 	{
 		mGrid.AddProperty(new CurveColorEditor(name, ptr, category: CurrentCategory));
+	}
+
+	public override void Vec4(StringView name, Vector4* ptr)
+	{
+		mGrid.AddProperty(new Vector4Editor(name, ptr, category: CurrentCategory));
+	}
+
+	public override void Color4(StringView name, Vector4* ptr)
+	{
+		mGrid.AddProperty(new Vector4ColorEditor(name, ptr, category: CurrentCategory));
 	}
 }

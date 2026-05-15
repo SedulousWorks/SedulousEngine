@@ -39,6 +39,12 @@ static class InspectorCodegen
 
 			let ft = field.FieldType;
 
+			// Read [Property] editor hint (Default / Color / Resource / Slider).
+			// Ambiguous types like Vector4 use this to choose a color picker
+			// versus a plain 4-numeric Vec4 row.
+			let propAttr = field.GetCustomAttribute<PropertyAttribute>().Value;
+			let editorHint = propAttr.Editor;
+
 			// Read [Range] if present
 			float rangeMin = -1e9f;
 			float rangeMax = 1e9f;
@@ -68,6 +74,16 @@ static class InspectorCodegen
 				body.AppendF($"\tdesc.Str(\"{field.Name}\", &{field.Name});\n");
 			else if (ft == typeof(Sedulous.Core.Mathematics.Vector3))
 				body.AppendF($"\tdesc.Vec3(\"{field.Name}\", &{field.Name});\n");
+			else if (ft == typeof(Sedulous.Core.Mathematics.Vector4))
+			{
+				// Vector4 is ambiguous (color vs 4-component vector). The
+				// [Property(.Color)] hint picks the swatch + HDR picker
+				// editor; otherwise we emit a generic 4-numeric Vec4 row.
+				if (editorHint == .Color)
+					body.AppendF($"\tdesc.Color4(\"{field.Name}\", &{field.Name});\n");
+				else
+					body.AppendF($"\tdesc.Vec4(\"{field.Name}\", &{field.Name});\n");
+			}
 			else if (ft == typeof(Sedulous.Core.Mathematics.Quaternion))
 				body.AppendF($"\tdesc.Quat(\"{field.Name}\", &{field.Name});\n");
 			else if (ft == typeof(Sedulous.Resources.ResourceRef))

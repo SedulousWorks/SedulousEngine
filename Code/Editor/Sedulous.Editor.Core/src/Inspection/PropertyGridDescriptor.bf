@@ -83,6 +83,29 @@ class PropertyGridDescriptor : IPropertyDescriptor
 		mGrid.AddProperty(editor);
 	}
 
+	/// Vector4 field with no color semantics (4 generic NumericFields).
+	/// Used when [Property] has no Color hint.
+	public virtual void Vec4(StringView name, Vector4* ptr)
+	{
+		// Base implementation: read-only display showing the four floats.
+		// EditorPropertyGridDescriptor overrides with a real four-field
+		// editor (or a Vector4Editor when one lands).
+		let summary = scope String();
+		summary.AppendF("({:F3}, {:F3}, {:F3}, {:F3})", ptr.X, ptr.Y, ptr.Z, ptr.W);
+		mGrid.AddProperty(new StringEditor(name, summary, category: mCurrentCategory));
+	}
+
+	/// Vector4 field tagged with `[Property(.Color)]`. HDR-allowed color
+	/// editor - swatch that opens an HDRColorPicker dialog on click.
+	public virtual void Color4(StringView name, Vector4* ptr)
+	{
+		// Base implementation: read-only RGBA display. Real swatch + HDR
+		// picker lives in EditorPropertyGridDescriptor's override.
+		let summary = scope String();
+		summary.AppendF("rgba ({:F2}, {:F2}, {:F2}, {:F2})", ptr.X, ptr.Y, ptr.Z, ptr.W);
+		mGrid.AddProperty(new StringEditor(name, summary, category: mCurrentCategory));
+	}
+
 	public void Quat(StringView name, Quaternion* ptr)
 	{
 		// Display as euler angles, convert back on set
