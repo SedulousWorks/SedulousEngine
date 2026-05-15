@@ -13,6 +13,15 @@ namespace Sedulous.Particles
 {
 	// ==================== Authoring container types ====================
 
+	extension ParticleEffect
+	{
+		[OnCompile(.TypeInit), Comptime]
+		static void GenerateInspector()
+		{
+			Sedulous.Editor.App.InspectorCodegen.GenerateDescribeProperties(typeof(Self));
+		}
+	}
+
 	extension ParticleEmitter
 	{
 		[OnCompile(.TypeInit), Comptime]

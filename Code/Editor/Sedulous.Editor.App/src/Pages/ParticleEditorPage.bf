@@ -233,7 +233,7 @@ class ParticleEditorPage : IEditorPage
 		// every editor, including the one whose event we're still unwinding
 		// from -> use-after-free. Defer via the UI mutation queue so it runs
 		// at the next safe sync point, after input dispatch completes.
-		if (mTreeAdapter != null && owner is ParticleSystem)
+		if (mTreeAdapter != null && (owner is ParticleSystem || owner is ParticleEffect))
 		{
 			let adapter = mTreeAdapter;
 			let target = owner;

@@ -148,9 +148,17 @@ class ParticleEditorPageFactory : IEditorPageFactory
 			Width = .Match, Grow = 1
 		});
 
-		// Auto-select the effect root so the inspector has something to show.
+		// Auto-select the effect root so the inspector has something to
+		// show, and expand it: there's only ever one effect root, so a
+		// collapsed root is just an extra click with no benefit. Node IDs
+		// are stable across adapter rebuilds (root is always id 1), so the
+		// FlattenedTreeAdapter keeps this expanded through later rebuilds.
 		if (adapter.RootCount > 0)
-			adapter.SelectNode(adapter.GetChildId(-1, 0));
+		{
+			let rootId = adapter.GetChildId(-1, 0);
+			adapter.SelectNode(rootId);
+			tree.InternalTreeView.FlatAdapter?.Expand(rootId);
+		}
 
 		return panel;
 	}

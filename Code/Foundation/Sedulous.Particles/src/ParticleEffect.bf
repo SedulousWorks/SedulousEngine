@@ -3,6 +3,7 @@ namespace Sedulous.Particles;
 using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// A particle effect - top-level container grouping multiple particle systems
 /// into a single logical effect (e.g., "campfire" = flame + smoke + sparks).
@@ -18,7 +19,10 @@ using Sedulous.Core.Mathematics;
 /// This is the "asset definition" - runtime instances are ParticleEffectInstance.
 public class ParticleEffect
 {
-	/// Display name for debugging.
+	/// User-facing effect name. Free-form label shown as the tree root in
+	/// the editor and serialized with the asset; intentionally independent
+	/// of the file name.
+	[Property]
 	public String Name ~ delete _;
 
 	/// Particle systems that compose this effect.

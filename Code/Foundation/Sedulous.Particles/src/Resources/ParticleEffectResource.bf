@@ -36,6 +36,24 @@ class ParticleEffectResource : Resource
 		return new ParticleEffectInstance(mEffect);
 	}
 
+	/// The Resource-level Name mirrors the effect's Name (single source of
+	/// truth - the effect's Name is the editable one). Sync before the
+	/// base writes `_name` so the persisted header matches, and re-sync
+	/// after a read once the effect (and its Name) has been deserialized,
+	/// so a stale on-disk `_name` can't shadow the real name.
+	public override SerializationResult Serialize(Serializer s)
+	{
+		if (s.IsWriting && mEffect != null)
+			Name.Set(mEffect.Name);
+
+		let result = base.Serialize(s);
+
+		if (s.IsReading && mEffect != null)
+			Name.Set(mEffect.Name);
+
+		return result;
+	}
+
 	protected override SerializationResult OnSerialize(Serializer s)
 	{
 		if (s.IsWriting)
