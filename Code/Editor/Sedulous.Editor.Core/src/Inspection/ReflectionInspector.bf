@@ -80,7 +80,7 @@ class ReflectionInspector : IComponentInspector
 			}
 
 			// Display name: attribute override or field name.
-			let displayName = (propAttr.DisplayName.Length > 0) ? propAttr.DisplayName : StringView(field.Name);
+			let displayName = /*(propAttr.DisplayName.Length > 0) ? propAttr.DisplayName :*/ StringView(field.Name);
 
 			// Get category for grouping.
 			StringView category = "";

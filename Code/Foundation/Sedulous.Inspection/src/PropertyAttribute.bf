@@ -25,18 +25,18 @@ struct PropertyAttribute : Attribute
 	public PropertyEditorHint Editor;
 
 	/// Optional display name override. Empty = use field name.
-	public StringView DisplayName;
+	//public StringView DisplayName;
 
 	public this()
 	{
 		Editor = .Default;
-		DisplayName = default;
+		//DisplayName = default;
 	}
 
 	public this(PropertyEditorHint editor)
 	{
 		Editor = editor;
-		DisplayName = default;
+		//DisplayName = default;
 	}
 }
 
