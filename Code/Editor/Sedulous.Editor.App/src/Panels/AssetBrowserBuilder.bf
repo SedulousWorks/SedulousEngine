@@ -392,6 +392,63 @@ static class AssetBrowserBuilder
 		return (sx, sy);
 	}
 
+	// === Mount-routed file ops ===
+	//
+	// The editor never touches the filesystem directly for asset lifecycle
+	// (rename / delete / mkdir / existence). Each op resolves the absolute
+	// path to its writable mount + mount-relative locator and goes through
+	// IWritableMount, so non-disk writable mounts work and the mount keeps
+	// its own state coherent. Asset browser items always live under a
+	// mounted entry, so a failed resolve means "not performed" (the op is
+	// skipped) rather than a silent raw-IO fallback.
+
+	private static bool MountExists(EditorContext editorContext, StringView absPath)
+	{
+		if (editorContext == null) return false;
+		IMount mount = null;
+		let loc = scope String();
+		if (!MountResolver.TryResolveAbsolute(editorContext.MountEntries, absPath, out mount, loc))
+			return false;
+		return mount.Exists(loc);
+	}
+
+	private static bool MountMove(EditorContext editorContext, StringView srcAbs, StringView dstAbs)
+	{
+		if (editorContext == null) return false;
+		IWritableMount srcMount = null;
+		let srcLoc = scope String();
+		if (!MountResolver.TryResolveAbsoluteWritable(editorContext.MountEntries, srcAbs, out srcMount, srcLoc))
+			return false;
+		IWritableMount dstMount = null;
+		let dstLoc = scope String();
+		if (!MountResolver.TryResolveAbsoluteWritable(editorContext.MountEntries, dstAbs, out dstMount, dstLoc))
+			return false;
+		// Editor rename/move flows always stay within the same directory
+		// (and thus the same mount); cross-mount moves don't arise here, so
+		// the op runs on srcMount with the resolved dst locator.
+		return srcMount.Move(srcLoc, dstLoc) case .Ok;
+	}
+
+	private static bool MountDelete(EditorContext editorContext, StringView absPath)
+	{
+		if (editorContext == null) return false;
+		IWritableMount mount = null;
+		let loc = scope String();
+		if (!MountResolver.TryResolveAbsoluteWritable(editorContext.MountEntries, absPath, out mount, loc))
+			return false;
+		return mount.Delete(loc) case .Ok;
+	}
+
+	private static bool MountCreateDir(EditorContext editorContext, StringView absPath)
+	{
+		if (editorContext == null) return false;
+		IWritableMount mount = null;
+		let loc = scope String();
+		if (!MountResolver.TryResolveAbsoluteWritable(editorContext.MountEntries, absPath, out mount, loc))
+			return false;
+		return mount.CreateDirectory(loc) case .Ok;
+	}
+
 	/// Renames an item on disk and updates the active index if the item is registered.
 	private static void HandleRename(AssetContentItem item, StringView newName,
 		AssetContentAdapter listAdapter, AssetContentAdapter gridAdapter,
@@ -406,7 +463,7 @@ static class AssetBrowserBuilder
 		Path.InternalCombine(newAbsPath, dir, newName);
 
 		// Don't rename if target already exists
-		if (File.Exists(newAbsPath) || Directory.Exists(newAbsPath))
+		if (MountExists(editorContext, newAbsPath))
 			return;
 
 		// Resolve the URI the resource cache keyed this asset under, while
@@ -419,11 +476,8 @@ static class AssetBrowserBuilder
 		bool haveOldUri = editorContext != null &&
 			MountResolver.TryResolveAbsoluteToUri(editorContext.MountEntries, item.AbsolutePath, oldUri);
 
-		// Rename file on disk
-		if (File.Exists(item.AbsolutePath))
-			File.Move(item.AbsolutePath, newAbsPath);
-		else if (Directory.Exists(item.AbsolutePath))
-			Directory.Move(item.AbsolutePath, newAbsPath);
+		// Rename through the mount (file or directory).
+		MountMove(editorContext, item.AbsolutePath, newAbsPath);
 
 		// Update index entry if registered
 		if (item.IsRegistered)
@@ -507,11 +561,11 @@ static class AssetBrowserBuilder
 			let confirmMsg = scope String();
 			confirmMsg.AppendF("Delete '{}'?", item.Name);
 			let dialog = Dialog.Confirm("Confirm Delete", confirmMsg);
-			dialog.OnClosed.Add(new [=item, =entry, =panel] (dlg, result) => {
+			dialog.OnClosed.Add(new [=item, =entry, =panel, =editorContext] (dlg, result) => {
 				if (result != .OK) return;
 
-				if (item.AbsolutePath != null && File.Exists(item.AbsolutePath))
-					File.Delete(item.AbsolutePath);
+				if (item.AbsolutePath != null)
+					MountDelete(editorContext, item.AbsolutePath);
 
 				// Unregister from index and save
 				if (item.IsRegistered && entry != null && entry.Index != null)
@@ -590,24 +644,24 @@ static class AssetBrowserBuilder
 		AddCreateNewSubmenu(menu, targetFolder, entry, editorContext, adapter, panel);
 
 		// Create Folder inside this folder
-		menu.AddItem("Create Folder", new [=folderItem, =panel] () => {
-			CreateSubfolder(folderItem.AbsolutePath);
+		menu.AddItem("Create Folder", new [=folderItem, =panel, =editorContext] () => {
+			CreateSubfolder(editorContext, folderItem.AbsolutePath);
 			panel.RefreshContent();
 		});
 
 		menu.AddSeparator();
 
 		// Delete folder
-		menu.AddItem("Delete", new [=folderItem, =panel, =ctx] () => {
+		menu.AddItem("Delete", new [=folderItem, =panel, =ctx, =editorContext] () => {
 			let confirmMsg = scope String();
 			confirmMsg.AppendF("Delete folder '{}' and all its contents?", folderItem.Name);
 			let dialog = Dialog.Confirm("Confirm Delete", confirmMsg);
 			let deletedRelPath = new String(folderItem.RelativePath);
-			dialog.OnClosed.Add(new [=folderItem, =panel, =deletedRelPath] (dlg, result) => {
+			dialog.OnClosed.Add(new [=folderItem, =panel, =deletedRelPath, =editorContext] (dlg, result) => {
 				if (result != .OK) { delete deletedRelPath; return; }
 
-				if (folderItem.AbsolutePath != null && Directory.Exists(folderItem.AbsolutePath))
-					Directory.DelTree(folderItem.AbsolutePath);
+				if (folderItem.AbsolutePath != null)
+					MountDelete(editorContext, folderItem.AbsolutePath);
 
 				panel.NavigateAwayFromDeletedFolder(deletedRelPath);
 				delete deletedRelPath;
@@ -655,7 +709,7 @@ static class AssetBrowserBuilder
 		menu.AddOwnedObject(currentAbsDir);
 
 		menu.AddItem("Create Folder", new () => {
-			CreateSubfolder(currentAbsDir);
+			CreateSubfolder(editorContext, currentAbsDir);
 			panel.RefreshContent();
 		});
 
@@ -712,26 +766,27 @@ static class AssetBrowserBuilder
 		}
 	}
 
-	/// Creates a new subfolder with a unique name inside parentDir.
-	private static void CreateSubfolder(StringView parentDir)
+	/// Creates a new subfolder with a unique name inside parentDir, through
+	/// the resolved writable mount.
+	private static void CreateSubfolder(EditorContext editorContext, StringView parentDir)
 	{
 		if (parentDir.Length == 0) return;
 
 		let newDir = scope String();
 		Path.InternalCombine(newDir, parentDir, "New Folder");
 
-		if (Directory.Exists(newDir))
+		if (MountExists(editorContext, newDir))
 		{
 			for (int i = 1; i < 100; i++)
 			{
 				newDir.Clear();
 				Path.InternalCombine(newDir, parentDir, scope $"New Folder ({i})");
-				if (!Directory.Exists(newDir))
+				if (!MountExists(editorContext, newDir))
 					break;
 			}
 		}
 
-		Directory.CreateDirectory(newDir);
+		MountCreateDir(editorContext, newDir);
 	}
 
 	/// Creates an asset in a specific folder and registers it in the index.
@@ -913,8 +968,8 @@ static class AssetBrowserBuilder
 			AddCreateNewSubmenu(menu, relPath, entry, editorContext, contentAdapter, panel);
 
 			// Create Folder
-			menu.AddItem("Create Folder", new [=absPathOwned, =panel] () => {
-				CreateSubfolder(absPathOwned);
+			menu.AddItem("Create Folder", new [=absPathOwned, =panel, =editorContext] () => {
+				CreateSubfolder(editorContext, absPathOwned);
 				panel.RefreshRegistries();
 				panel.RefreshContent();
 			});
@@ -925,15 +980,14 @@ static class AssetBrowserBuilder
 			// is deleted when the context menu closes (before the dialog callback fires).
 			let deleteRelPath = new String(relPath);
 			menu.AddOwnedObject(deleteRelPath);
-			menu.AddItem("Delete", new [=absPathOwned, =deleteRelPath, =panel, =ctx] () => {
+			menu.AddItem("Delete", new [=absPathOwned, =deleteRelPath, =panel, =ctx, =editorContext] () => {
 				let pathCopy = new String(absPathOwned);
 				let relPathCopy = new String(deleteRelPath);
 				let dialog = Dialog.Confirm("Confirm Delete", "Delete this folder and all its contents?");
-				dialog.OnClosed.Add(new [=pathCopy, =relPathCopy, =panel] (dlg, result) => {
+				dialog.OnClosed.Add(new [=pathCopy, =relPathCopy, =panel, =editorContext] (dlg, result) => {
 					if (result != .OK) { delete pathCopy; delete relPathCopy; return; }
 
-					if (Directory.Exists(pathCopy))
-						Directory.DelTree(pathCopy);
+					MountDelete(editorContext, pathCopy);
 
 					panel.NavigateAwayFromDeletedFolder(relPathCopy);
 					panel.RefreshRegistries();
@@ -958,8 +1012,8 @@ static class AssetBrowserBuilder
 			AddCreateNewSubmenu(menu, "", entry, editorContext, contentAdapter, panel);
 
 			// Create Folder at root
-			menu.AddItem("Create Folder", new [=absPathOwned, =panel] () => {
-				CreateSubfolder(absPathOwned);
+			menu.AddItem("Create Folder", new [=absPathOwned, =panel, =editorContext] () => {
+				CreateSubfolder(editorContext, absPathOwned);
 				panel.RefreshRegistries();
 				panel.RefreshContent();
 			});

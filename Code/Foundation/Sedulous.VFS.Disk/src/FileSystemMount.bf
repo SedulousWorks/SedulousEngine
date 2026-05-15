@@ -137,9 +137,60 @@ public class FileSystemMount : IMount, IEnumerableMount, IWatchableMount, IWrita
 	{
 		let abs = scope String();
 		ResolveAbsolute(locator, abs);
-		if (!File.Exists(abs))
-			return .Err(.NotFound);
-		if (File.Delete(abs) case .Err)
+		if (File.Exists(abs))
+		{
+			if (File.Delete(abs) case .Err)
+				return .Err(.IOError);
+			return .Ok;
+		}
+		if (Directory.Exists(abs))
+		{
+			if (Directory.DelTree(abs) case .Err)
+				return .Err(.IOError);
+			return .Ok;
+		}
+		return .Err(.NotFound);
+	}
+
+	public Result<void, MountError> Move(StringView srcLocator, StringView dstLocator)
+	{
+		let src = scope String();
+		ResolveAbsolute(srcLocator, src);
+		let dst = scope String();
+		ResolveAbsolute(dstLocator, dst);
+
+		// Ensure the destination's parent directory exists (OS rename does
+		// not create intermediate directories).
+		let parent = scope String();
+		Path.GetDirectoryPath(dst, parent).IgnoreError();
+		if (parent.Length > 0 && !Directory.Exists(parent))
+		{
+			if (Directory.CreateDirectory(parent) case .Err)
+				return .Err(.IOError);
+		}
+
+		if (File.Exists(src))
+		{
+			if (File.Move(src, dst) case .Err)
+				return .Err(.IOError);
+			return .Ok;
+		}
+		if (Directory.Exists(src))
+		{
+			if (Directory.Move(src, dst) case .Err)
+				return .Err(.IOError);
+			return .Ok;
+		}
+		return .Err(.NotFound);
+	}
+
+	public Result<void, MountError> CreateDirectory(StringView locator)
+	{
+		let abs = scope String();
+		ResolveAbsolute(locator, abs);
+		if (Directory.Exists(abs))
+			return .Ok;
+		if (Directory.CreateDirectory(abs) case .Err)
 			return .Err(.IOError);
 		return .Ok;
 	}
