@@ -226,12 +226,27 @@ class ParticleEditorPage : IEditorPage
 		// so rebuild the tree to refresh it. Rebuild invalidates node IDs;
 		// re-select by target identity so the inspector stays on the same
 		// object. Other owner kinds don't drive a tree label.
+		//
+		// This runs from inside a PropertyEditor's change callback (e.g. a
+		// ComboBox selection on the RenderMode enum). Rebuilding the tree
+		// re-fires selection -> the property grid tears down and recreates
+		// every editor, including the one whose event we're still unwinding
+		// from -> use-after-free. Defer via the UI mutation queue so it runs
+		// at the next safe sync point, after input dispatch completes.
 		if (mTreeAdapter != null && owner is ParticleSystem)
 		{
-			mTreeAdapter.Rebuild();
-			let id = mTreeAdapter.FindNodeForTarget(owner);
-			if (id >= 0)
-				mTreeAdapter.SelectNode(id);
+			let adapter = mTreeAdapter;
+			let target = owner;
+			let ctx = mContentView?.Context;
+			if (ctx != null)
+			{
+				ctx.MutationQueue.QueueAction(new () => {
+					adapter.Rebuild();
+					let id = adapter.FindNodeForTarget(target);
+					if (id >= 0)
+						adapter.SelectNode(id);
+				});
+			}
 		}
 	}
 

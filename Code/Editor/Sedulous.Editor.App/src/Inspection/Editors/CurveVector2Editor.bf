@@ -16,10 +16,15 @@ class CurveVector2Editor : PropertyEditor
 	private ParticleCurveVector2* mPtr;
 	private CurveCanvas mCanvas;
 	private bool mSyncing;
+	private float mDisplayMin;
+	private float mDisplayMax;
 
-	public this(StringView name, ParticleCurveVector2* ptr, StringView category = default) : base(name, category)
+	public this(StringView name, ParticleCurveVector2* ptr, StringView category = default,
+		float displayMin = 0, float displayMax = 0) : base(name, category)
 	{
 		mPtr = ptr;
+		mDisplayMin = displayMin;
+		mDisplayMax = displayMax;
 	}
 
 	protected override View CreateEditorView()
@@ -28,18 +33,29 @@ class CurveVector2Editor : PropertyEditor
 		mCanvas.MaxKeys = (int32)ParticleCurveVector2.MaxKeys;
 		mCanvas.LinkedTime = true;
 
+		// A [Range] attribute on the field (forwarded as displayMin/Max)
+		// overrides the default. Otherwise Vector2-over-lifetime components
+		// can be signed (offsets, directions), so frame a symmetric nominal
+		// [-1, 1]; the canvas expands automatically when a key is dragged
+		// past it.
+		float dMin = -1, dMax = 1;
+		if (mDisplayMin < mDisplayMax) { dMin = mDisplayMin; dMax = mDisplayMax; }
 		let channels = scope ChannelDescriptor[2];
 		channels[0] = .{
 			Name = "X",
 			StrokeColor = .(220, 80, 80, 255),
 			Interpolation = .Hermite,
-			Description = "X component over normalized lifetime"
+			Description = "X component over normalized lifetime",
+			DisplayMin = dMin,
+			DisplayMax = dMax
 		};
 		channels[1] = .{
 			Name = "Y",
 			StrokeColor = .(80, 200, 80, 255),
 			Interpolation = .Hermite,
-			Description = "Y component over normalized lifetime"
+			Description = "Y component over normalized lifetime",
+			DisplayMin = dMin,
+			DisplayMax = dMax
 		};
 		mCanvas.SetChannels(channels);
 

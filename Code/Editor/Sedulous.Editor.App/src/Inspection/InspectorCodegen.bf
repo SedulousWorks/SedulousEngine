@@ -123,11 +123,24 @@ static class InspectorCodegen
 			else if (ft == typeof(Sedulous.Particles.RangeColor))
 				body.AppendF($"\tdesc.RangeColor(\"{field.Name}\", &{field.Name});\n");
 			else if (ft == typeof(Sedulous.Particles.ParticleCurveFloat))
-				body.AppendF($"\tdesc.CurveFloat(\"{field.Name}\", &{field.Name});\n");
+			{
+				// A [Range] on the curve field sets the editor's nominal
+				// value-axis frame; without it the editor uses its own
+				// built-in default.
+				if (hasRange)
+					body.AppendF($"\tdesc.CurveFloat(\"{field.Name}\", &{field.Name}, {rangeMin}f, {rangeMax}f);\n");
+				else
+					body.AppendF($"\tdesc.CurveFloat(\"{field.Name}\", &{field.Name});\n");
+			}
 			else if (ft == typeof(Sedulous.Particles.ParticleCurveColor))
 				body.AppendF($"\tdesc.CurveColor(\"{field.Name}\", &{field.Name});\n");
 			else if (ft == typeof(Sedulous.Particles.ParticleCurveVector2))
-				body.AppendF($"\tdesc.CurveVector2(\"{field.Name}\", &{field.Name});\n");
+			{
+				if (hasRange)
+					body.AppendF($"\tdesc.CurveVector2(\"{field.Name}\", &{field.Name}, {rangeMin}f, {rangeMax}f);\n");
+				else
+					body.AppendF($"\tdesc.CurveVector2(\"{field.Name}\", &{field.Name});\n");
+			}
 			else if (ft == typeof(Sedulous.Particles.EmissionShape))
 				body.AppendF($"\tdesc.EmissionShape(\"{field.Name}\", &{field.Name});\n");
 		}

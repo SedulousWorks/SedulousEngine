@@ -52,6 +52,16 @@ public struct ChannelDescriptor
 	public float MinValue;
 	public float MaxValue;
 
+	/// Nominal value-axis range. When `DisplayMin < DisplayMax` the canvas
+	/// frames at least [DisplayMin, DisplayMax] and only expands when keys
+	/// fall outside it - it never shrinks below it, so the vertical framing
+	/// stays stable across edits instead of collapsing when keys cluster.
+	/// Zero-init (0,0) disables this and the canvas falls back to auto-fit
+	/// with a proportional-margin floor. Independent of MinValue/MaxValue
+	/// (those clamp edited values; these only frame the view).
+	public float DisplayMin;
+	public float DisplayMax;
+
 	/// How this channel's curve interpolates between keys. Hermite = 0 so
 	/// zero-init lands on the right pick for particle / animation curves.
 	public CurveInterpolation Interpolation;
@@ -243,11 +253,33 @@ public class CurveCanvas : View
 	private void UpdateAutoFit()
 	{
 		if (!AutoFitValueRange) return;
+
+		// Freeze the value range for the duration of an edit gesture.
+		// Re-fitting from live key values mid-drag is a feedback loop:
+		// YToValue maps the cursor through the range, the dragged value
+		// then widens the range, and ValueToY re-projects every key - the
+		// dragged point sticks ~margin from the edge (feels like it only
+		// moves horizontally) while every other key collapses toward the
+		// middle. HitKey fits the range just before BeginGesture, so the
+		// frozen range is already correct for the keys at drag start; the
+		// next draw after EndGesture re-fits.
+		if (mInGesture) return;
+
 		float lo = float.MaxValue, hi = float.MinValue;
 		bool any = false;
+		// Union of declared nominal display ranges across visible channels.
+		float nomLo = float.MaxValue, nomHi = float.MinValue;
+		bool hasNominal = false;
 		for (let ch in mChannels)
 		{
 			if (ch.Descriptor.Hidden) continue;
+			let d = ch.Descriptor;
+			if (d.DisplayMin < d.DisplayMax)
+			{
+				if (d.DisplayMin < nomLo) nomLo = d.DisplayMin;
+				if (d.DisplayMax > nomHi) nomHi = d.DisplayMax;
+				hasNominal = true;
+			}
 			for (let k in ch.Keys)
 			{
 				if (k.Value < lo) lo = k.Value;
@@ -255,11 +287,53 @@ public class CurveCanvas : View
 				any = true;
 			}
 		}
+
+		// Channel-declared nominal range: frame to it and only expand to
+		// admit keys that fall outside, never shrink below it. This keeps
+		// the vertical framing stable across edits (no collapse-when-keys-
+		// cluster spiral) and is the principled path for curves with a
+		// known domain (alpha 0..1, multipliers, etc.).
+		if (hasNominal)
+		{
+			var fLo = nomLo;
+			var fHi = nomHi;
+			if (any)
+			{
+				let pad = (nomHi - nomLo) * 0.05f;
+				if (lo < fLo) fLo = lo - pad;
+				if (hi > fHi) fHi = hi + pad;
+			}
+			ValueMin = fLo;
+			ValueMax = fHi;
+			return;
+		}
+
 		if (!any) { ValueMin = 0; ValueMax = 1; return; }
-		if (lo == hi) { ValueMin = lo - 1; ValueMax = hi + 1; return; }
-		let margin = (hi - lo) * 0.1f;
-		ValueMin = lo - margin;
-		ValueMax = hi + margin;
+
+		let center = (lo + hi) * 0.5f;
+		let span = hi - lo;
+
+		// No nominal range declared: auto-fit with a span floor. A purely
+		// proportional margin (span * 0.1) collapses the range to a sliver
+		// when keys cluster in value: YToValue then maps the whole canvas
+		// to that sliver, drag resolution drops to ~zero, every adjustment
+		// lands on the same value, and auto-fit keeps it tiny - a feedback
+		// loop that pins all keys to the canvas center and makes the curve
+		// uneditable. The floor scales with magnitude so large-valued
+		// curves aren't forced to an unusably tight zoom. This also
+		// subsumes the old lo == hi (constant curve) special case.
+		let minSpan = Math.Max(0.5f, Math.Abs(center) * 0.5f);
+		if (span < minSpan)
+		{
+			ValueMin = center - minSpan * 0.5f;
+			ValueMax = center + minSpan * 0.5f;
+		}
+		else
+		{
+			let margin = span * 0.1f;
+			ValueMin = lo - margin;
+			ValueMax = hi + margin;
+		}
 	}
 
 	// === Coordinate transforms ===
@@ -603,16 +677,59 @@ public class CurveCanvas : View
 		// Background.
 		ctx.VG.FillRect(.(0, 0, Width, Height), .(28, 28, 33, 255));
 
-		// Grid.
+		// Grid: 4 divisions on each axis (5 lines). Vertical lines mark
+		// Time 0..1; horizontal lines mark Value ValueMax..ValueMin. Labels
+		// make the auto-fit vertical scale legible - without them a range
+		// re-fit after a drag looks like the curve jumped for no reason.
+		const int32 DIVS = 4;
 		let gridColor = Color(50, 50, 58, 255);
-		for (int i = 0; i <= 4; i++)
+		let labelColor = Color(120, 122, 132, 255);
+		let font = ctx.FontService?.GetFont(9);
+
+		for (int32 i = 0; i <= DIVS; i++)
 		{
-			let x = (i / 4.0f) * Width;
+			let x = (i / (float)DIVS) * Width;
 			ctx.VG.FillRect(.(x, 0, 1, Height), gridColor);
 		}
-		ctx.VG.FillRect(.(0, 0, Width, 1), gridColor);
-		ctx.VG.FillRect(.(0, Height * 0.5f, Width, 1), gridColor);
-		ctx.VG.FillRect(.(0, Height - 1, Width, 1), gridColor);
+		for (int32 i = 0; i <= DIVS; i++)
+		{
+			let y = (i / (float)DIVS) * Height;
+			ctx.VG.FillRect(.(0, Math.Min(y, Height - 1), Width, 1), gridColor);
+		}
+
+		if (font != null)
+		{
+			// Y-axis value labels (top = ValueMax, bottom = ValueMin).
+			// First/last are kept inside the canvas instead of straddling
+			// the edge by aligning them Top / Bottom respectively.
+			for (int32 i = 0; i <= DIVS; i++)
+			{
+				let frac = i / (float)DIVS;
+				let val = ValueMax - frac * (ValueMax - ValueMin);
+				let lineY = frac * Height;
+				let txt = scope $"{val:0.##}";
+				if (i == 0)
+					ctx.VG.DrawText(txt, font, .(2, 1, 42, 14), .Left, .Top, labelColor);
+				else if (i == DIVS)
+					ctx.VG.DrawText(txt, font, .(2, Height - 15, 42, 14), .Left, .Bottom, labelColor);
+				else
+					ctx.VG.DrawText(txt, font, .(2, lineY - 7, 42, 14), .Left, .Middle, labelColor);
+			}
+
+			// X-axis time labels along the bottom.
+			for (int32 i = 0; i <= DIVS; i++)
+			{
+				let frac = i / (float)DIVS;
+				let lineX = frac * Width;
+				let txt = scope $"{frac:0.##}";
+				if (i == 0)
+					ctx.VG.DrawText(txt, font, .(2, Height - 13, 32, 12), .Left, .Bottom, labelColor);
+				else if (i == DIVS)
+					ctx.VG.DrawText(txt, font, .(Width - 34, Height - 13, 32, 12), .Right, .Bottom, labelColor);
+				else
+					ctx.VG.DrawText(txt, font, .(lineX - 16, Height - 13, 32, 12), .Center, .Bottom, labelColor);
+			}
+		}
 
 		// Draw each visible channel - polyline first, then markers.
 		for (int32 c = 0; c < mChannels.Count; c++)

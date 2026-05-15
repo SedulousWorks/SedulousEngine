@@ -24,13 +24,18 @@ extension IPropertyDescriptor
 	void RangeColor(StringView name, RangeColor* ptr);
 
 	/// ParticleCurveFloat field (up to 8 Hermite-interpolated keyframes).
-	void CurveFloat(StringView name, ParticleCurveFloat* ptr);
+	/// displayMin/displayMax give the curve editor a nominal value-axis
+	/// range (sourced from a [Range] attribute on the field). When
+	/// displayMin >= displayMax (the unset default) the editor keeps its
+	/// own built-in nominal range.
+	void CurveFloat(StringView name, ParticleCurveFloat* ptr, float displayMin = 0, float displayMax = 0);
 
 	/// ParticleCurveColor field (up to 8 linearly-interpolated color keyframes).
 	void CurveColor(StringView name, ParticleCurveColor* ptr);
 
-	/// ParticleCurveVector2 field (up to 8 per-component Hermite-interpolated keyframes).
-	void CurveVector2(StringView name, ParticleCurveVector2* ptr);
+	/// ParticleCurveVector2 field (up to 8 per-component Hermite-interpolated
+	/// keyframes). displayMin/displayMax as in CurveFloat.
+	void CurveVector2(StringView name, ParticleCurveVector2* ptr, float displayMin = 0, float displayMax = 0);
 
 	/// EmissionShape field (Type enum + shape parameters).
 	void EmissionShape(StringView name, EmissionShape* ptr);

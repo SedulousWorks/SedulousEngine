@@ -15,10 +15,15 @@ class CurveFloatEditor : PropertyEditor
 	private ParticleCurveFloat* mPtr;
 	private CurveCanvas mCanvas;
 	private bool mSyncing;
+	private float mDisplayMin;
+	private float mDisplayMax;
 
-	public this(StringView name, ParticleCurveFloat* ptr, StringView category = default) : base(name, category)
+	public this(StringView name, ParticleCurveFloat* ptr, StringView category = default,
+		float displayMin = 0, float displayMax = 0) : base(name, category)
 	{
 		mPtr = ptr;
+		mDisplayMin = displayMin;
+		mDisplayMax = displayMax;
 	}
 
 	protected override View CreateEditorView()
@@ -26,11 +31,21 @@ class CurveFloatEditor : PropertyEditor
 		mCanvas = new CurveCanvas();
 		mCanvas.MaxKeys = (int32)ParticleCurveFloat.MaxKeys;
 
+		// A [Range] attribute on the field (forwarded as displayMin/Max)
+		// overrides the default. Otherwise "over lifetime" float curves are
+		// normalized/multiplier curves that sit in 0..1 by convention
+		// (alpha, size/speed scale). Frame to the nominal range so the view
+		// stays stable; the canvas expands automatically if a key is
+		// dragged outside it.
+		float dMin = 0, dMax = 1;
+		if (mDisplayMin < mDisplayMax) { dMin = mDisplayMin; dMax = mDisplayMax; }
 		let channels = scope ChannelDescriptor[1];
 		channels[0] = .{
 			Name = "Value",
 			StrokeColor = .(180, 200, 255, 255),
-			Interpolation = .Hermite
+			Interpolation = .Hermite,
+			DisplayMin = dMin,
+			DisplayMax = dMax
 		};
 		mCanvas.SetChannels(channels);
 

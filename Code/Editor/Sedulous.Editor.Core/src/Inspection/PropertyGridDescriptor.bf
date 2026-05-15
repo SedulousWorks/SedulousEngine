@@ -233,7 +233,7 @@ class PropertyGridDescriptor : IPropertyDescriptor
 		mGrid.AddProperty(new StringEditor(name, summary, category: mCurrentCategory));
 	}
 
-	public virtual void CurveFloat(StringView name, ParticleCurveFloat* ptr)
+	public virtual void CurveFloat(StringView name, ParticleCurveFloat* ptr, float displayMin = 0, float displayMax = 0)
 	{
 		let summary = scope $"({ptr.KeyCount} keys)";
 		mGrid.AddProperty(new StringEditor(name, summary, category: mCurrentCategory));
@@ -245,7 +245,7 @@ class PropertyGridDescriptor : IPropertyDescriptor
 		mGrid.AddProperty(new StringEditor(name, summary, category: mCurrentCategory));
 	}
 
-	public virtual void CurveVector2(StringView name, ParticleCurveVector2* ptr)
+	public virtual void CurveVector2(StringView name, ParticleCurveVector2* ptr, float displayMin = 0, float displayMax = 0)
 	{
 		let summary = scope $"({ptr.KeyCount} keys)";
 		mGrid.AddProperty(new StringEditor(name, summary, category: mCurrentCategory));

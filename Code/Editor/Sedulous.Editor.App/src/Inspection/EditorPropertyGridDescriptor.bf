@@ -73,14 +73,16 @@ class EditorPropertyGridDescriptor : PropertyGridDescriptor
 		mGrid.AddProperty(new EmissionShapeEditor(name, ptr, category: CurrentCategory));
 	}
 
-	public override void CurveFloat(StringView name, ParticleCurveFloat* ptr)
+	public override void CurveFloat(StringView name, ParticleCurveFloat* ptr, float displayMin = 0, float displayMax = 0)
 	{
-		mGrid.AddProperty(new CurveFloatEditor(name, ptr, category: CurrentCategory));
+		mGrid.AddProperty(new CurveFloatEditor(name, ptr, category: CurrentCategory,
+			displayMin: displayMin, displayMax: displayMax));
 	}
 
-	public override void CurveVector2(StringView name, ParticleCurveVector2* ptr)
+	public override void CurveVector2(StringView name, ParticleCurveVector2* ptr, float displayMin = 0, float displayMax = 0)
 	{
-		mGrid.AddProperty(new CurveVector2Editor(name, ptr, category: CurrentCategory));
+		mGrid.AddProperty(new CurveVector2Editor(name, ptr, category: CurrentCategory,
+			displayMin: displayMin, displayMax: displayMax));
 	}
 
 	public override void CurveColor(StringView name, ParticleCurveColor* ptr)
