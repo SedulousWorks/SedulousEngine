@@ -566,7 +566,8 @@ editing their properties. This is the primary way to configure entities.
   - `enum` -> ComboBox
 - Respect attributes: `[HideInInspector]` skip, `[Range(min,max)]` slider,
   `[Category("name")]` grouping, `[Tooltip("text")]` hover text
-- PropertyEditor OnValueChanged -> `PropertyChangeCommand` -> page CommandStack
+- PropertyEditor `BeginEdit`/`EndEdit` -> typed `PropertyChangeCommand<T>` ->
+  page CommandStack (see 3e)
 
 **3b. Component enumeration**
 - Need API to iterate components on an entity across all registered managers
@@ -585,6 +586,37 @@ editing their properties. This is the primary way to configure entities.
 - `IComponentInspector` registered per component type (e.g. LightComponentInspector)
 - Override `BuildInspector` to create custom UI instead of reflection
 - Registered via `EditorContext.RegisterComponentInspector(type, inspector)`
+
+**3e. Property-edit undo (NOT WIRED)**
+
+Property-grid edits currently mutate the target through the editor's typed
+pointer but do not push onto the page CommandStack, so Ctrl+Z does nothing
+for inspector changes. The legacy `PropertyChangeCommand` (FieldInfo +
+Variant, paired with the deleted `ReflectionInspector`) was removed when
+the comptime `DescribeProperties` path replaced reflection — its successor
+should be typed:
+
+```beef
+class PropertyChangeCommand<T> : IEditorCommand
+    where T : struct
+{
+    T* mPtr; T mOld, mNew;
+    public this(T* ptr, T oldVal, T newVal) { mPtr = ptr; mOld = oldVal; mNew = newVal; }
+    public void Execute() { *mPtr = mNew; }
+    public void Undo()    { *mPtr = mOld; }
+}
+```
+
+PropertyEditor's `BeginEdit` snapshots `*mPtr` (live editors already track
+focus for transaction boundaries). `EndEdit` builds the typed command from
+the pre/post values and pushes it through `page.CommandStack.Execute(...)`.
+No `FieldInfo`, no `Variant`, no boxing on primitive edits. Reference-typed
+fields (String, ResourceRef) need a snapshot/clone in the command so undo
+restores the old value after the editor has overwritten it.
+
+Drag-style edits (NumericField scrubber, slider, color picker) coalesce
+into a single command via the existing `IEditorCommand.TryMerge` hook so
+the undo stack doesn't fill with per-pixel updates.
 
 **Dependencies:** PropertyGrid (done), PropertyEditor types (StringEditor done,
 NumericField done, need more types), component enumeration API on Scene.

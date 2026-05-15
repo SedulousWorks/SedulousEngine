@@ -301,9 +301,8 @@ shader variants needed. Renderer does not reference the animation project.
 
 Self-contained particle system following ezEngine's ParticlePlugin pattern.
 The core simulation, rendering, and resource pipeline are functional and
-in production use, but several declared features on `ParticleRenderMode`
-are stubs that fall through to `Billboard` - see "Missing render modes"
-below. Authoring surface (editor) is complete.
+in production use. All six `ParticleRenderMode` values now have working
+implementations. Authoring surface (editor) is complete.
 
 ### Architecture
 - **Sedulous.Particles** - simulation + rendering, and resource pipeline. Depends on Core.Mathematics, RHI, Renderer, Materials, Resources, Serialization. (The previous `Sedulous.Particles.Resources` companion project was folded back into the parent once `Sedulous.Particles` was allowed to depend on `Sedulous.Resources`. Namespace `Sedulous.Particles.Resources` is preserved.)
@@ -316,7 +315,7 @@ below. Authoring surface (editor) is complete.
 - **ParticleEmitter** - spawning logic only (continuous, burst, combined). Spawn rate scaling by LOD
 - **ParticleEffect** - top-level container grouping multiple ParticleSystems. SubEmitterLinks for cross-system event routing
 - **ParticleEffectInstance** - runtime instance, routes sub-emitter events between systems
-- **13 behaviors** - Gravity, Drag, Wind, Turbulence, Vortex, Attractor, RadialForce, VelocityIntegration, ColorOverLifetime, SizeOverLifetime, SpeedOverLifetime, AlphaOverLifetime, RotationOverLifetime
+- **12 behaviors** - Gravity, Drag, Wind, Turbulence, Vortex, Attractor, RadialForce, ColorOverLifetime, SizeOverLifetime, SpeedOverLifetime, AlphaOverLifetime, RotationOverLifetime. `Position += Velocity*dt` and `Age += dt` are integrated implicitly in `ParticleSystem.Update` after the simulator pass (equivalent to ezEngine's `ParticleFinalizer_ApplyVelocity` + `ParticleFinalizer_Age`), so the old `VelocityIntegrationBehavior` was removed - missing it used to silently strand particles in place.
 - **6 initializers** - Position (emission shape), Velocity, Lifetime, Color, Size, Rotation
 - **Curves** - ParticleCurveFloat/Color/Vector2 with Hermite interpolation, factory methods
 - **Emission shapes** - Point, Sphere, Hemisphere, Cone, Box, Circle, Edge with volume/surface/arc
@@ -336,10 +335,11 @@ below. Authoring surface (editor) is complete.
 
 ### Render modes - status by value
 
-`ParticleRenderMode` declares six values; five share the billboard draw
-path and select orientation via a per-particle `RenderMode` field in
-`ParticleVertex` read by the vertex shader. `Mesh` is the only value
-still without an implementation.
+`ParticleRenderMode` declares six values. The five billboard-family
+values share the billboard draw path and select orientation via a
+per-particle `RenderMode` field in `ParticleVertex` read by the vertex
+shader. `Mesh` runs through the regular `MeshRenderer` instead - see
+the row below.
 
 | Value | Status | Notes |
 |---|---|---|
@@ -348,37 +348,45 @@ still without an implementation.
 | `HorizontalBillboard` | ✅ DONE | Quad in the XZ plane with normal +Y. Per-particle rotation spins around the Y axis. Ground decals, shockwaves, dust puffs. |
 | `VerticalBillboard` | ✅ DONE | World-up locked; right is horizontal-camera-facing (with a degenerate-camera fallback when looking straight up/down). Rotation intentionally skipped - grass / flame sprites typically don't roll. |
 | `Trail` | ⚠️ Partial | Separate trail shader + draw path (`particle_trail.vert/frag.hlsl`), camera-facing ribbon mesh generation. Two rough edges: (1) the trail only records when both `RenderMode == .Trail` **and** `system.Trail.IsActive == true` - the second isn't implied by the first, so changing render mode alone produces nothing visible. (2) The billboard draw loop has no `RenderMode` filter, so trail particles still render their head sprite alongside the ribbon. Acceptable if you want a comet/meteor head, surprising if you wanted trail-only. Worth a small follow-up: either auto-enable `Trail.IsActive` when `RenderMode == .Trail` is selected (or hide the flag), and decide whether to suppress the billboard head for trail mode. |
-| `Mesh` | ❌ TODO | Significant new work - see "Missing: Mesh render mode" below. |
+| `Mesh` | ✅ DONE | Per-particle transforms emitted as `MeshRenderData` entries that flow through the regular `MeshRenderer`. See "Mesh render mode (shipped)" below. |
 
-### Missing: Mesh render mode
+### Mesh render mode (shipped)
 
-`Mesh` is the one `ParticleRenderMode` value still falling through to the
-billboard branch. It needs a parallel draw path, not just a shader
-variant. Concrete work:
+Followed ezEngine's `ezParticleTypeMesh` pattern - mesh particles emit
+standard `MeshRenderData` entries instead of getting a parallel draw
+path. The regular `MeshRenderer` batches by `(mesh, material, submesh)`
+and instances them through its existing `Draw(vertCount, instanceCount)`
+loop. Massive simplification vs. the earlier estimate of a separate
+particle-mesh shader and draw path.
 
-- **Foundation**: `[Property] [ResourceRefType(".mesh")] ResourceRef Mesh`
-  on `ParticleSystem` alongside the existing `TextureRef`. Serializer
-  round-trip via the same per-system serialize hook pattern.
-- **Engine**: `ParticleComponentManager` resolves `system.MeshRef` per
-  system (mirror of the per-system texture resolution), caches by
-  `MeshResource`/vertex+index buffer pair.
-- **Renderer**: separate draw path next to the billboard `Draw(6, count)`.
-  Per-particle transform instance buffer (position + 3D rotation +
-  scale, not the current billboard quad data). Instanced indexed draw
-  over the resolved mesh's buffers. New vertex shader keyed on
-  `RenderMode == Mesh` or compiled as a distinct shader (`particle_mesh`).
-- **Extractor**: build per-particle transforms instead of billboard
-  quad data when `RenderMode == .Mesh`. Likely a separate vertex
-  layout (or extended `ParticleVertex` with an optional transform
-  block).
-- **Rotation upgrade**: current `RotationInitializer` and
-  `RotationOverLifetimeBehavior` are 1D (rotation around the camera
-  forward axis). Mesh particles want 3D rotation (quaternion or euler
-  triplet). Either add new 3D variants or upgrade the existing ones
-  to be 3D when render mode is Mesh.
+Concrete pieces that landed:
+- **Foundation**: `[Property] [ResourceRefType(".mesh")] MeshRef` and
+  `MaterialRef` on `ParticleSystem`, plus a `MeshScale` multiplier.
+  Serializer hook is the existing per-system `SerializeMeshRefs`
+  pattern.
+- **Per-particle orientation**: new `Axis` stream (`ParticleStreamId.Axis`),
+  `MeshOrientationInitializer` populates it with a random unit vector
+  or a fixed axis. Per-particle world matrix is built as
+  `translate(position) * rotate(axisAngle(axis, rotation)) * scale(size * meshScale)`.
+- **Engine**: `ParticleComponentManager` resolves the mesh and material
+  per system, then `ExtractMeshParticles` emits one `MeshRenderData`
+  entry per alive particle with the computed world matrix and the
+  per-particle `InstanceColor` from the Color stream (see "Per-instance
+  color tint" below). Color and AlphaOverLifetime now affect mesh
+  particles for free.
+- **Editor**: `MeshOrientationInitializer` registered in the type
+  registry and inspector codegen hook.
 
-Scope ~600-1000 LOC. 1-2 weeks of focused work. Worth a dedicated phase
-when there's a real game need.
+### Per-instance color tint on mesh rendering
+
+`InstanceData` and `ObjectUniforms` carry a `Vector4 InstanceColor`
+(InstanceStride moved 128 -> 144 bytes). The forward vertex shader
+multiplies it into vertex color; the fragment shader uses its alpha
+when sampling base color so particle fades work. `MeshComponent.Color`
+and `SkinnedMeshComponent.Color` expose the slot to entities for damage
+flashes / team colors / status overlays without cloning materials per
+entity. Mesh particles plug into the same slot from the Color stream.
+Shadow path ignores it (shadow cbuffer stays at 128 bytes).
 
 ### Deferred
 - **Grid-based atlas animation** - ParticleVertex already has TexCoordOffset/TexCoordScale fields. Needs AtlasColumns/AtlasRows/AtlasFPS/AtlasLoop on ParticleSystem and UV computation in ParticleRenderExtractor (port from old engine's CPUParticleEmitter atlas logic). Consider generic atlas format for shared use across particles, sprites, and UI
