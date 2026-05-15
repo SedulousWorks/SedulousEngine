@@ -412,21 +412,11 @@ static class AssetBrowserBuilder
 		return mount.Exists(loc);
 	}
 
-	private static bool MountMove(EditorContext editorContext, StringView srcAbs, StringView dstAbs)
+	/// The writable mount that owns `item` (null if none / read-only).
+	private static IWritableMount WritableMountOf(AssetContentItem item)
 	{
-		if (editorContext == null) return false;
-		IWritableMount srcMount = null;
-		let srcLoc = scope String();
-		if (!MountResolver.TryResolveAbsoluteWritable(editorContext.MountEntries, srcAbs, out srcMount, srcLoc))
-			return false;
-		IWritableMount dstMount = null;
-		let dstLoc = scope String();
-		if (!MountResolver.TryResolveAbsoluteWritable(editorContext.MountEntries, dstAbs, out dstMount, dstLoc))
-			return false;
-		// Editor rename/move flows always stay within the same directory
-		// (and thus the same mount); cross-mount moves don't arise here, so
-		// the op runs on srcMount with the resolved dst locator.
-		return srcMount.Move(srcLoc, dstLoc) case .Ok;
+		if (item == null || item.Entry == null) return null;
+		return item.Entry.Mount as IWritableMount;
 	}
 
 	private static bool MountDelete(EditorContext editorContext, StringView absPath)
@@ -460,70 +450,49 @@ static class AssetBrowserBuilder
 		return mount.CreateDirectory(loc) case .Ok;
 	}
 
-	/// Renames an item on disk and updates the active index if the item is registered.
+	/// Renames an item through its mount and updates the active index if
+	/// the item is registered. Pure (mount, locator) - no absolute paths,
+	/// no MountResolver round-trips (the item already carries its owning
+	/// mount and locator).
 	private static void HandleRename(AssetContentItem item, StringView newName,
 		AssetContentAdapter listAdapter, AssetContentAdapter gridAdapter,
 		EditorContext editorContext)
 	{
-		if (item.AbsolutePath == null || newName.Length == 0) return;
+		if (item.Entry == null || newName.Length == 0) return;
+		let mount = item.Entry.Mount as IWritableMount;
+		if (mount == null) return;
 
-		// Build new absolute path
-		let dir = scope String();
-		Path.GetDirectoryPath(item.AbsolutePath, dir);
-		let newAbsPath = scope String();
-		Path.InternalCombine(newAbsPath, dir, newName);
+		let oldLocator = scope String(item.Locator);
+		if (oldLocator.Length == 0) return;
 
-		// Don't rename if target already exists
-		if (MountExists(editorContext, newAbsPath))
+		// New locator = old locator's parent folder + new name.
+		let newLocator = scope String();
+		let lastSlash = oldLocator.LastIndexOf('/');
+		if (lastSlash >= 0)
+			newLocator.AppendF("{}/{}", oldLocator.Substring(0, lastSlash), newName);
+		else
+			newLocator.Set(newName);
+
+		// Don't rename onto an existing entry.
+		if (mount.Exists(newLocator))
 			return;
 
-		// Resolve the URI the resource cache keyed this asset under, while
-		// the OLD absolute path still maps. The cache is URI-keyed; after
-		// the move we re-key the cached entry from old -> new URI (see
-		// below) so the loaded resource keeps its single cache slot and
-		// its shutdown teardown anchor, and a later open of the renamed
-		// file reuses the same instance instead of duplicating it.
-		let oldUri = scope String();
-		bool haveOldUri = editorContext != null &&
-			MountResolver.TryResolveAbsoluteToUri(editorContext.MountEntries, item.AbsolutePath, oldUri);
+		// Cache is URI-keyed; re-key (not evict) so the loaded resource
+		// keeps its single cache slot + Shutdown teardown anchor, and a
+		// later open of the renamed file reuses the same instance.
+		let oldUri = scope String()..AppendF("{}://{}", item.Entry.Scheme, oldLocator);
+		let newUri = scope String()..AppendF("{}://{}", item.Entry.Scheme, newLocator);
 
-		// Rename through the mount (file or directory).
-		MountMove(editorContext, item.AbsolutePath, newAbsPath);
+		if (mount.Move(oldLocator, newLocator) case .Err)
+			return;
 
-		// Update index entry if registered
-		if (item.IsRegistered)
+		if (item.IsRegistered && item.Entry.Index != null)
 		{
-			let entry = listAdapter.ActiveEntry;
-			if (entry != null && entry.Index != null)
-			{
-				// Build new mount-relative locator
-				let newLocator = scope String();
-				if (listAdapter.CurrentFolder.Length > 0)
-					newLocator.AppendF("{}/{}", listAdapter.CurrentFolder, newName);
-				else
-					newLocator.Set(newName);
-
-				let newUri = scope String();
-				newUri.AppendF("{}://{}", entry.Scheme, newLocator);
-				entry.Index.Register(item.RegistryId, newUri);
-
-				PersistIndex(entry);
-			}
+			item.Entry.Index.Register(item.RegistryId, newUri);
+			PersistIndex(item.Entry);
 		}
 
-		// Re-key the cached resource from the old URI to the new one. The
-		// resource didn't change, only its address - moving (not evicting)
-		// the cache entry leaves refcounts untouched, keeps the resource
-		// reachable by Shutdown for proper teardown, and makes a later
-		// open of the renamed file a cache hit that reuses the same
-		// instance. Resolve the new URI the same way the loader would,
-		// now that the file exists at the new path.
-		if (haveOldUri)
-		{
-			let newUri = scope String();
-			if (MountResolver.TryResolveAbsoluteToUri(editorContext.MountEntries, newAbsPath, newUri))
-				editorContext.ResourceSystem?.RecacheUri(oldUri, newUri);
-		}
+		editorContext?.ResourceSystem?.RecacheUri(oldUri, newUri);
 
 		// Refresh both views
 		listAdapter.Rebuild();
@@ -572,11 +541,11 @@ static class AssetBrowserBuilder
 			let confirmMsg = scope String();
 			confirmMsg.AppendF("Delete '{}'?", item.Name);
 			let dialog = Dialog.Confirm("Confirm Delete", confirmMsg);
-			dialog.OnClosed.Add(new [=item, =entry, =panel, =editorContext] (dlg, result) => {
+			dialog.OnClosed.Add(new [=item, =entry, =panel] (dlg, result) => {
 				if (result != .OK) return;
 
-				if (item.AbsolutePath != null)
-					MountDelete(editorContext, item.AbsolutePath);
+				if (let m = WritableMountOf(item))
+					m.Delete(item.Locator).IgnoreError();
 
 				// Unregister from index and save
 				if (item.IsRegistered && entry != null && entry.Index != null)
@@ -663,16 +632,16 @@ static class AssetBrowserBuilder
 		menu.AddSeparator();
 
 		// Delete folder
-		menu.AddItem("Delete", new [=folderItem, =panel, =ctx, =editorContext] () => {
+		menu.AddItem("Delete", new [=folderItem, =panel, =ctx] () => {
 			let confirmMsg = scope String();
 			confirmMsg.AppendF("Delete folder '{}' and all its contents?", folderItem.Name);
 			let dialog = Dialog.Confirm("Confirm Delete", confirmMsg);
 			let deletedRelPath = new String(folderItem.RelativePath);
-			dialog.OnClosed.Add(new [=folderItem, =panel, =deletedRelPath, =editorContext] (dlg, result) => {
+			dialog.OnClosed.Add(new [=folderItem, =panel, =deletedRelPath] (dlg, result) => {
 				if (result != .OK) { delete deletedRelPath; return; }
 
-				if (folderItem.AbsolutePath != null)
-					MountDelete(editorContext, folderItem.AbsolutePath);
+				if (let m = WritableMountOf(folderItem))
+					m.Delete(folderItem.Locator).IgnoreError();
 
 				panel.NavigateAwayFromDeletedFolder(deletedRelPath);
 				delete deletedRelPath;

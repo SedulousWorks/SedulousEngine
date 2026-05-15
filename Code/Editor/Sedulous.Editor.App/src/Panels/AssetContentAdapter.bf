@@ -23,6 +23,7 @@ class AssetContentItem
 	public ItemKind Kind;
 	public Guid RegistryId;                     // GUID if registered, default Guid if not
 	public bool IsRegistered;                   // Has a GUID in the active index
+	public bool IsMissing;                      // Registered but absent from the mount (broken ref)
 
 	/// The mount entry this item belongs to (non-owning). Provides the
 	/// owning mount + scheme so consumers can address the item as
@@ -359,6 +360,9 @@ class AssetContentAdapter : ListAdapterBase
 
 				item.IsRegistered = true;
 				item.RegistryId = entry.id;
+				// This item exists only in the index, not in the mount
+				// enumeration above - it's a broken/missing reference.
+				item.IsMissing = true;
 
 				mItems.Add(item);
 			}
@@ -551,9 +555,8 @@ class AssetContentItemView : FlexLayout
 		else
 			mBadgeLabel.SetText("");
 
-		// Dim missing files
-		let isMissing = item.IsRegistered && !item.IsFolder && item.AbsolutePath != null && !System.IO.File.Exists(item.AbsolutePath);
-		if (isMissing)
+		// Dim missing files (computed by the adapter from the mount).
+		if (item.IsMissing)
 			mNameLabel.TextColor = .(200, 80, 80, 255);
 		else
 			mNameLabel.TextColor = null; // Use default from style

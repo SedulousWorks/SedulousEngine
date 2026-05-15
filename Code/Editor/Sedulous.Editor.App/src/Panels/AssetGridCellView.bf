@@ -47,7 +47,7 @@ class AssetGridCellView : ViewGroup
 		mNameLabel.SetText(item.Name);
 		mIsFolder = item.IsFolder;
 		mIsRegistered = item.IsRegistered;
-		mIsMissing = item.IsRegistered && !item.IsFolder && item.AbsolutePath != null && !System.IO.File.Exists(item.AbsolutePath);
+		mIsMissing = item.IsMissing;
 
 		// Set name label color
 		if (mIsMissing)
