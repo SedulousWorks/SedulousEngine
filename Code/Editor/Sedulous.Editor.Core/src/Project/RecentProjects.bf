@@ -36,7 +36,7 @@ class RecentProjects
 	/// Add a project path (moves to front if already present).
 	public void Add(StringView path)
 	{
-		// Copy first — path may be a StringView into an entry we're about to delete.
+		// Copy first - path may be a StringView into an entry we're about to delete.
 		let pathCopy = scope String(path);
 
 		// Remove if already present.

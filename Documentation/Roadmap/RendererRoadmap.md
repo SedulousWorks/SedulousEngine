@@ -297,12 +297,12 @@ shader variants needed. Renderer does not reference the animation project.
 
 **Dependencies:** Needs depth buffer access (already available from prepass).
 
-## Phase 10: Particles — DONE (core), with gaps
+## Phase 10: Particles - DONE (core), with gaps
 
 Self-contained particle system following ezEngine's ParticlePlugin pattern.
 The core simulation, rendering, and resource pipeline are functional and
 in production use, but several declared features on `ParticleRenderMode`
-are stubs that fall through to `Billboard` — see "Missing render modes"
+are stubs that fall through to `Billboard` - see "Missing render modes"
 below. Authoring surface (editor) is complete.
 
 ### Architecture
@@ -334,7 +334,7 @@ below. Authoring surface (editor) is complete.
 - **ParticleComponentManager** - resolves the effect resource, walks the effect's systems each frame, resolves `system.TextureRef` per system, looks up (or creates) a shared MaterialInstance keyed by ITextureView (dedupes across all systems and components), and stores per-(component, system) material references. ExtractRenderData binds the per-system material when building each batch. LOD via stored camera position (one-frame delay).
 - **RenderSubsystem** - registers ParticleRenderer + ParticleComponentManager automatically
 
-### Render modes — status by value
+### Render modes - status by value
 
 `ParticleRenderMode` declares six values; five share the billboard draw
 path and select orientation via a per-particle `RenderMode` field in
@@ -346,9 +346,9 @@ still without an implementation.
 | `Billboard` | ✅ DONE | Camera-facing with per-particle rotation around the camera forward axis. |
 | `StretchedBillboard` | ✅ DONE | Elongated along velocity. The extractor only sets `Velocity2D` for this mode, and the shader uses a non-zero `Velocity2D` as the implicit gate, so this branch takes precedence over the explicit `RenderMode` value when present. |
 | `HorizontalBillboard` | ✅ DONE | Quad in the XZ plane with normal +Y. Per-particle rotation spins around the Y axis. Ground decals, shockwaves, dust puffs. |
-| `VerticalBillboard` | ✅ DONE | World-up locked; right is horizontal-camera-facing (with a degenerate-camera fallback when looking straight up/down). Rotation intentionally skipped — grass / flame sprites typically don't roll. |
-| `Trail` | ⚠️ Partial | Separate trail shader + draw path (`particle_trail.vert/frag.hlsl`), camera-facing ribbon mesh generation. Two rough edges: (1) the trail only records when both `RenderMode == .Trail` **and** `system.Trail.IsActive == true` — the second isn't implied by the first, so changing render mode alone produces nothing visible. (2) The billboard draw loop has no `RenderMode` filter, so trail particles still render their head sprite alongside the ribbon. Acceptable if you want a comet/meteor head, surprising if you wanted trail-only. Worth a small follow-up: either auto-enable `Trail.IsActive` when `RenderMode == .Trail` is selected (or hide the flag), and decide whether to suppress the billboard head for trail mode. |
-| `Mesh` | ❌ TODO | Significant new work — see "Missing: Mesh render mode" below. |
+| `VerticalBillboard` | ✅ DONE | World-up locked; right is horizontal-camera-facing (with a degenerate-camera fallback when looking straight up/down). Rotation intentionally skipped - grass / flame sprites typically don't roll. |
+| `Trail` | ⚠️ Partial | Separate trail shader + draw path (`particle_trail.vert/frag.hlsl`), camera-facing ribbon mesh generation. Two rough edges: (1) the trail only records when both `RenderMode == .Trail` **and** `system.Trail.IsActive == true` - the second isn't implied by the first, so changing render mode alone produces nothing visible. (2) The billboard draw loop has no `RenderMode` filter, so trail particles still render their head sprite alongside the ribbon. Acceptable if you want a comet/meteor head, surprising if you wanted trail-only. Worth a small follow-up: either auto-enable `Trail.IsActive` when `RenderMode == .Trail` is selected (or hide the flag), and decide whether to suppress the billboard head for trail mode. |
+| `Mesh` | ❌ TODO | Significant new work - see "Missing: Mesh render mode" below. |
 
 ### Missing: Mesh render mode
 
@@ -487,7 +487,7 @@ Recommended implementation order based on dependencies and game impact:
 `Sedulous.Renderer` and `Sedulous.Particles` now depend on
 `Sedulous.Resources` directly (the foundation-may-not-depend-on-Resources
 rule was deliberately dropped for libraries that need cross-asset refs
-and hot-reload — see EngineRoadmap "Hot Reload Resource Lifecycle"). That
+and hot-reload - see EngineRoadmap "Hot Reload Resource Lifecycle"). That
 unblocks turning shaders into first-class resources and getting in-editor
 hot-reload for them, which has been deferred since the rule made the
 plumbing awkward.

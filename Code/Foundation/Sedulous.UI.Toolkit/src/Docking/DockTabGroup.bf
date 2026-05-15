@@ -256,7 +256,7 @@ public class DockTabGroup : ViewGroup, IDragSource
 			let textColor = (i == mSelectedIndex) ? activeText : inactiveText;
 			ctx.VG.DrawText(panel.Title, font, .(tabX + 8, 0, textW, mTabHeight), .Left, .Middle, textColor);
 
-			// Close button — show on active tab always, on hovered inactive tab
+			// Close button - show on active tab always, on hovered inactive tab
 			if (panel.Closable)
 			{
 				let cbX = tabX + tabW - CloseButtonPadding - CloseButtonSize;

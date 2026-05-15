@@ -536,7 +536,7 @@ class EditorApplication : Application, IDockableWindowHost
 			}
 			else
 			{
-				// Pages were restored — dock them in center, remove placeholder.
+				// Pages were restored - dock them in center, remove placeholder.
 				DockablePanel firstPagePanel = null;
 				for (let kv in mPageDockPanels)
 				{
@@ -567,7 +567,7 @@ class EditorApplication : Application, IDockableWindowHost
 		}
 		else
 		{
-			// Layout restored — if pages were restored, the placeholder is not needed.
+			// Layout restored - if pages were restored, the placeholder is not needed.
 			if (mPageDockPanels.Count > 0 && mPlaceholderPanel != null)
 			{
 				dockManager.ClosePanel(mPlaceholderPanel);
@@ -788,7 +788,7 @@ class EditorApplication : Application, IDockableWindowHost
 			mEditorContext.PageManager.Close(capturedPage);
 		});
 
-		// During layout restore, skip auto-docking — ApplyLayout will position the panel.
+		// During layout restore, skip auto-docking - ApplyLayout will position the panel.
 		if (!mIsRestoringLayout)
 		{
 			// Dock in the right place.

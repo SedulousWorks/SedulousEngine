@@ -402,7 +402,7 @@ public class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 		}
 		else if (let panel = node as DockablePanel)
 		{
-			// Standalone panel not in a tab group — wrap in a TabGroup node.
+			// Standalone panel not in a tab group - wrap in a TabGroup node.
 			let layoutNode = new DockLayoutNode();
 			layoutNode.Type = .TabGroup;
 			layoutNode.ActiveTabIndex = 0;

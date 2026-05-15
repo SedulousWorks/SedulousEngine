@@ -1052,7 +1052,7 @@ Phases 4a-4d are the core functional path. 4e-4f are enhancement/polish.
 
 ### Phase 5.5: Resource Editor Pages
 
-Every resource type has a registered page factory and a page class — double-clicking
+Every resource type has a registered page factory and a page class - double-clicking
 any asset in the browser opens a real preview tab. The shared viewport infrastructure
 (`PreviewSceneHost`) was the missing prereq and is now in; each page composes it as
 a member and contributes its own UI layout.
@@ -1069,7 +1069,7 @@ a member and contributes its own UI layout.
   runs (skeleton page uses it for bone wireframes).
 - `FitToBounds(BoundingBox)` frames the camera; `Dispose` defers scene destruction
   to next-frame via `DestroyScene` (page is gone from `OpenPages` before the
-  deferred teardown fires — no orphan render).
+  deferred teardown fires - no orphan render).
 
 **Page status:**
 
@@ -1078,24 +1078,24 @@ a member and contributes its own UI layout.
 | **Texture** | `.texture` | DONE (read-only) | Image preview (ImageView FitCenter), metadata panel. Settings editing (filter / wrap / mips / anisotropy) is a later polish pass. |
 | **Mesh** | `.mesh` | DONE (read-only by design) | Mesh + default material in preview scene, info panel with vertex/triangle/submesh counts and bounds. Re-import to change geometry. |
 | **Skeleton** | `.skeleton` | DONE (read-only by design) | Bone hierarchy debug-drawn via `PreviewSceneHost.OnPreRender`. Info panel with bone names. |
-| **Material** | `.material` | Preview only — property editing pending | Sphere primitive (`builtin://primitives/sphere.mesh`) shaded with the material. Right pane currently shows shader name / blend / cull / property count; needs `PropertyGrid` binding for full editing. |
-| **Animation** | `.animation` | Metadata only — viewport empty | `AnimationClip` carries no skeleton link, so no skeletal preview yet. Play/Pause/Stop + scrubber UI present. Full preview needs a skeleton-binding flow (later phase). |
+| **Material** | `.material` | Preview only - property editing pending | Sphere primitive (`builtin://primitives/sphere.mesh`) shaded with the material. Right pane currently shows shader name / blend / cull / property count; needs `PropertyGrid` binding for full editing. |
+| **Animation** | `.animation` | Metadata only - viewport empty | `AnimationClip` carries no skeleton link, so no skeletal preview yet. Play/Pause/Stop + scrubber UI present. Full preview needs a skeleton-binding flow (later phase). |
 | **Particle Effect** | `.particlefx` | DONE | Authoring tree (effect -> systems -> emitter / initializers / behaviors) with right-click context menus + drag-to-reorder for structural mutation (Add System / Add Initializer ▸ / Add Behavior ▸ / Move Up/Down / Delete via `ParticleTypeRegistry`). Inspector binds via the comptime-generated `DescribeProperties` path; per-edit `MarkDirty + Restart` hook subscribes to each editor's `OnEditEnd`. Real editors for Range\* / EmissionShape / `CurveFloat` (single-curve canvas) / `CurveVector2` (two linked channels on one `CurveCanvas`) / `CurveColor` (`GradientEditor` widget; stops open an `HDRColorPicker` for HDR-allowed Vector4 colors). `RangeColor` shows two clickable swatches that open the same picker. Per-system texture lives on `ParticleSystem.Texture` (asset-side `ResourceRef`); engine resolves per-system MaterialInstance keyed on `ITextureView` with dedup across systems and components. Live preview restarts on spawn-time edits, plays back through `PreviewSceneHost`. Toolbar Play / Stop / Restart respects authored `IsEmitting`. |
 | **Audio Clip** | `.audioclip` | DONE (read-only) | Metadata, Play/Pause/Stop, volume slider, loop toggle (playback via `IAudioSource`). Settings editing is a later polish pass. |
-| **Sound Cue** | `.soundcue` | Preview only — entry editing pending | Metadata, entry list (read-only), Play Cue button. Needs entry-management UI: list editor with `AudioClip` ResourceRef pickers + weight/volume/pitch sliders. Page owns the cue resource and releases on close. |
+| **Sound Cue** | `.soundcue` | Preview only - entry editing pending | Metadata, entry list (read-only), Play Cue button. Needs entry-management UI: list editor with `AudioClip` ResourceRef pickers + weight/volume/pitch sliders. Page owns the cue resource and releases on close. |
 | **Animation Graph** | `.animgraph` | Stub | Asset creator works; page is the generic `ResourceEditorPage` placeholder. Needs a node-graph widget in `Sedulous.UI.Toolkit`. |
 | **Property Animation** | `.propanim` | Stub | Same shape. Needs a curve-editor widget in the toolkit. |
 
 **Read-only vs. editable split:**
 
-These pages stay read-only by design — their content comes from a model import, not
+These pages stay read-only by design - their content comes from a model import, not
 the engine editor: `Mesh`, `Skeleton`, `Animation`. Their `SaveFileExtension` is
 permanently empty.
 
 These pages are read-only *for now* and will gain edit capability later (each one a
 follow-up): `Material` (property grid + texture slot picking), `Sound Cue` (entry
 list with ref pickers), `Texture` (filter/wrap/mip settings), `Audio Clip` (loop/
-volume defaults). `Particle Effect` already flipped — see its row above.
+volume defaults). `Particle Effect` already flipped - see its row above.
 When each flips, the change is local: implement `Save()`/`SaveAs()`, return the real
 extension from `SaveFileExtension`, optionally expose a `LastSavedGuid` for index
 registration. The global save plumbing (Phase 5.6) already handles them correctly.
@@ -1123,7 +1123,7 @@ absolute-path `.sedproj` / `editor_layout.oddl` files don't restore (URI parse
 fails); they get rewritten on next save.
 
 **RenderActiveViewports filter fixed:**
-Was `if (let scenePage = page as SceneEditorPage)` — would have silently skipped
+Was `if (let scenePage = page as SceneEditorPage)` - would have silently skipped
 every preview page's viewport. Now walks any open page's content tree for
 `ViewportView` nodes.
 
@@ -1132,21 +1132,21 @@ every preview page's viewport. Now walks any open page's content tree for
 double-clicking an already-open asset surfaces its existing dock tab via
 `DockManager.ActivatePanel`.
 
-**TODO — investigate attribute-driven inspector codegen.** Today every
+**TODO - investigate attribute-driven inspector codegen.** Today every
 inspectable type (Components, particle initializers/behaviors, the
 ParticleSystem/Emitter) gets a hand-written `extension Foo { [OnCompile]
 ... }` block to wire up `DescribeProperties` codegen. That's ~30 blocks
-for Components and ~19 more for particle types — boilerplate identical
+for Components and ~19 more for particle types - boilerplate identical
 except for the type name. A cleaner pattern would be a single
 `[Inspectable]` marker attribute (parallel to `[Component]`) plus a
 global comptime sweep that finds all marked types and runs the codegen
 on each, replacing every extension block with one attribute per type.
 Beef's comptime model needs to support "enumerate types with attribute X
-across the build" for this to work — not verified. Worth a minimal Beef
+across the build" for this to work - not verified. Worth a minimal Beef
 sandbox experiment before committing. If it works, retrofit
 ComponentExtensions and ParticleInspectorExtensions in one pass.
 
-**TODO — tangent-handle editing on `CurveCanvas`.**
+**TODO - tangent-handle editing on `CurveCanvas`.**
 `CurveCanvas` reads and writes tangents on its `Key` struct, but the UI
 doesn't expose them - tangents stay at whatever the model pushed in
 (zero for keys added via the canvas itself). Adding per-key Alt+drag
@@ -1158,7 +1158,7 @@ tangent slope, channel descriptor's `Interpolation == .Hermite` gates
 whether handles render. Useful for `CurveFloat` and `CurveVector2`;
 `CurveColor` is linear-only so it doesn't apply.
 
-**~~TODO — HDR color picker for `GradientEditor` stops.~~ DONE.**
+**~~TODO - HDR color picker for `GradientEditor` stops.~~ DONE.**
 `HDRColorPicker` lives in `Foundation/Sedulous.UI.Toolkit/src/HDRColorPicker.bf`.
 Same SV-square + hue-strip + alpha-strip layout as the 8-bit
 `ColorPicker`, but the widgets drive a normalized [0, 1] color while a
@@ -1170,14 +1170,14 @@ the SV indicator stays anchored to chroma. Outputs a `Vector4`.
 any future HDR color slot (material emissives, HDR light color, post-FX
 grading) can reuse it.
 
-**TODO — adopt `Property<T>` inside `PropertyEditor`.** Today each
+**TODO - adopt `Property<T>` inside `PropertyEditor`.** Today each
 `PropertyEditor` subclass (FloatEditor, ColorEditor, Vector3Editor, etc.)
 holds a `Setter` delegate that the descriptor wires to write back into
 the inspected object's field. v1 also adds a non-generic `Changed` event
 on `PropertyEditor` that subclasses fire after applying the setter, so
 the page can hook dirty tracking + simulation restart without coupling
 `PropertyGridDescriptor` to page-specific concerns. That's the right
-shape but a stopgap implementation — each subclass needs a manual
+shape but a stopgap implementation - each subclass needs a manual
 `NotifyChanged()` call and the typed value lives outside any unified
 abstraction.
 
@@ -1190,7 +1190,7 @@ binding. Editors become thin views over their Property. Benefits:
 - The non-generic `Changed` event on `PropertyEditor` base stays (still
   needed for type-erased subscribers like the page), but subclasses can
   fire it once from the base by hooking their typed `Property<T>.Changed`
-  — no per-subclass `NotifyChanged()` ceremony.
+  - no per-subclass `NotifyChanged()` ceremony.
 - Descriptors hand out the `Property<T>` instance so multiple
   observers can bind: write-back to the model, page dirty tracking,
   undo recorder, network sync, all subscribing to the same source.

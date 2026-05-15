@@ -13,8 +13,8 @@ depends on it.
 
 The previous `IResourceRegistry` conflated two unrelated concerns:
 
-1. **Byte access** — "give me the bytes for `primitives/cube.mesh`."
-2. **Identity** — "what URI does GUID `abc-123` map to?"
+1. **Byte access** - "give me the bytes for `primitives/cube.mesh`."
+2. **Identity** - "what URI does GUID `abc-123` map to?"
 
 Worse, the byte-access side hardcoded "the bytes live in a folder on disk."
 There was no clean way to add pak archives, in-memory blobs, or remote
@@ -85,12 +85,12 @@ interface IMount
 ```
 
 A **locator** is a forward-slash, mount-relative path (`"textures/foo.tex"`).
-No leading slash. No scheme — the scheme is the consumer's concern, not the
+No leading slash. No scheme - the scheme is the consumer's concern, not the
 mount's. A mount could be registered under any scheme the application
 chooses.
 
 `Open` returns a `Stream` the caller owns (and must `delete`). Where the
-stream's bytes come from is the mount's business — a `FileStream` for disk,
+stream's bytes come from is the mount's business - a `FileStream` for disk,
 a `FixedMemoryStream` over a pak entry, a future async-readable
 network stream.
 
@@ -101,9 +101,9 @@ rather than calling and catching `NotSupported`.
 
 | Interface | Adds |
 | --- | --- |
-| `IEnumerableMount` | `Enumerate(folderLocator, outEntries)` — list direct children of a folder. Entries ending in `/` are directories. |
-| `IWatchableMount` | `ChangeSource` property — exposes an `IChangeSource` for hot reload. Owned by the mount. |
-| `IWritableMount` | `Save(locator, stream)` and `Delete(locator)` — write and delete entries. |
+| `IEnumerableMount` | `Enumerate(folderLocator, outEntries)` - list direct children of a folder. Entries ending in `/` are directories. |
+| `IWatchableMount` | `ChangeSource` property - exposes an `IChangeSource` for hot reload. Owned by the mount. |
+| `IWritableMount` | `Save(locator, stream)` and `Delete(locator)` - write and delete entries. |
 
 ### `IChangeSource`
 
@@ -120,7 +120,7 @@ interface IChangeSource
 
 Implementation is mount-specific: disk polls mtimes, a remote could push,
 paks return null (immutable). The polling cadence is the implementation's
-business — `ResourceSystem` calls `Poll` whenever it suits it; the mount
+business - `ResourceSystem` calls `Poll` whenever it suits it; the mount
 enforces its own min-interval if needed.
 
 ### `MountError`
@@ -151,7 +151,7 @@ let stream = mount.Open("textures/foo.tex").Value;
 
 - `RootPath` exposed for code that needs the absolute path (e.g. the editor's
   asset browser to invoke a "show in file explorer" action). Other mounts
-  don't have such a concept — code that uses `RootPath` is implicitly
+  don't have such a concept - code that uses `RootPath` is implicitly
   disk-only.
 - Trailing slashes and `\` separators in the constructor input are
   normalized; locators always use `/` internally.
@@ -160,7 +160,7 @@ let stream = mount.Open("textures/foo.tex").Value;
 ### `FileSystemChangeSource`
 
 Polling mtime watcher. Configurable minimum interval (`MinPollIntervalSeconds`,
-default 0.5s) — calls to `Poll` more often return `false` immediately without
+default 0.5s) - calls to `Poll` more often return `false` immediately without
 hitting disk.
 
 ```beef
@@ -178,7 +178,7 @@ Created lazily on first access, owned by the mount, destroyed with it.
 ## Pak Backend (`Sedulous.VFS.Pak`)
 
 Custom on-disk archive format. Implements `IMount` and `IEnumerableMount`
-only — paks are immutable at runtime (no `IWritableMount`, no
+only - paks are immutable at runtime (no `IWritableMount`, no
 `IWatchableMount`).
 
 ### File Format
@@ -206,13 +206,13 @@ only — paks are immutable at runtime (no `IWritableMount`, no
 ```
 
 All values little-endian. `Locator` uses forward slashes; path traversal
-(`..`) is the consumer's concern — the format itself permits any byte
+(`..`) is the consumer's concern - the format itself permits any byte
 string up to 65535 bytes.
 
 ### `PakMount`
 
 Loads the header + TOC into memory at construction. Entry bytes are read on
-demand via fresh `FileStream` opens — the **reopen-per-Open** policy. Trades a
+demand via fresh `FileStream` opens - the **reopen-per-Open** policy. Trades a
 file handle per active stream for not needing a seek lock across threads;
 fans out well across cores.
 
@@ -252,7 +252,7 @@ interface ICompressor
 ```
 
 `CompressionId` is a stable `uint16` written to TOC entries. Values are part
-of the on-disk format — never reassign an existing value, only add new ones.
+of the on-disk format - never reassign an existing value, only add new ones.
 `None = 0` is reserved. Future codecs (zstd, LZ4) live in their own libraries
 and register on the mount.
 
@@ -264,7 +264,7 @@ fails on an older reader.
 
 `FixedMemoryStream` subclass that owns its backing buffer. `PakMount.Open`
 reads (and decompresses) an entry into a fresh `uint8[]` and hands it to
-`PakEntryStream`. The buffer lives as long as the stream — `delete stream`
+`PakEntryStream`. The buffer lives as long as the stream - `delete stream`
 frees the bytes.
 
 **Fast path:** when `Compression == None`, the read buffer is handed straight
@@ -297,7 +297,7 @@ buffer right after.
 4. Seek to file start, patch in the real header (now that `TocOffset` and
    `TocSize` are known).
 
-Builders are reusable — call `Write` again to produce another copy, or `Add`
+Builders are reusable - call `Write` again to produce another copy, or `Add`
 more entries first.
 
 **Locator length limit:** 65535 bytes (uint16). `Write` returns an error if
@@ -353,7 +353,7 @@ scheme://locator
 Examples: `builtin://primitives/cube.mesh`, `project://scenes/level1.scene`.
 
 The new `LoadResource<T>` rejects URIs without a scheme. There is no
-"absolute filesystem path" fallback — call sites that previously passed
+"absolute filesystem path" fallback - call sites that previously passed
 absolute paths must mount the directory under some scheme and load via
 `scheme://...`.
 
@@ -380,7 +380,7 @@ stream-based persistence. The on-disk format is one `guid=uri` line per
 entry (UTF-8, `\n`-terminated). Same shape as the old `.registry` files,
 except entries now carry full URIs instead of just relative paths.
 
-Persistence is stream-based, not path-based — the caller routes the stream
+Persistence is stream-based, not path-based - the caller routes the stream
 to wherever it wants (a writable mount, a memory buffer, a network upload):
 
 ```beef
@@ -417,7 +417,7 @@ abstract class ResourceManager<T> : IResourceManager where T : IResource
 }
 ```
 
-Most managers only touch `ctx.Stream` — the `ReadAllText` / `ReadAllBytes`
+Most managers only touch `ctx.Stream` - the `ReadAllText` / `ReadAllBytes`
 helpers cover the common slurp-then-parse pattern. `AudioClipResourceManager`
 and `TextureResourceManager` are the sidecar cases: they parse text metadata
 from `ctx.Stream`, then `ctx.Mount.Open(ctx.Locator + "/<sidecar>")` for the
@@ -481,19 +481,19 @@ class MountEntry
 
 `EditorApplication` populates this list:
 
-- **builtin** — created in `EnsureDefaultAssets`. `FileSystemMount` over the
+- **builtin** - created in `EnsureDefaultAssets`. `FileSystemMount` over the
   editor's asset directory; `InMemoryResourceIndex` loaded from
   `builtin.registry` (auto-generated on first run with default primitives,
   materials, skies).
-- **project** — created/replaced in `OpenProject`. `FileSystemMount` over
+- **project** - created/replaced in `OpenProject`. `FileSystemMount` over
   the project directory; `InMemoryResourceIndex` loaded from
   `project.registry` if present.
-- **extras** — created by `AssetBrowserPanel.MountRegistry()` /
+- **extras** - created by `AssetBrowserPanel.MountRegistry()` /
   `CreateRegistry()`. Persisted in `.sedproj` and restored on project open.
 
 The asset browser's tree adapter (`RegistryTreeAdapter`) and content adapter
 (`AssetContentAdapter`) take `MountEntry` directly. Subdirectory traversal
-uses `FileSystemMount.RootPath` for disk mounts — non-disk mounts would need
+uses `FileSystemMount.RootPath` for disk mounts - non-disk mounts would need
 `IEnumerableMount.Enumerate` to feed the tree.
 
 ### `MountResolver`
@@ -543,7 +543,7 @@ struct AssetImportContext
 
 Importers build full locators as `BaseLocator + filename` for writes, and
 full URIs as `UriPrefix + filename` for index registration. They never need
-to know what scheme they're under — the dialog supplies it.
+to know what scheme they're under - the dialog supplies it.
 
 Index persistence is the dialog's job, not the importer's: `ImportDialog`
 serializes the index back through the mount after a successful import.
@@ -565,22 +565,22 @@ Hard cuts, no compat shims:
 | `IResourceManager.Load(StringView path)` | `Load(ResourceLoadContext ctx)` |
 | `IResourceManager.Load(MemoryStream stream)` | `Load(ResourceLoadContext ctx)` (single entry point) |
 | `IResourceManager.ReloadFromFile(resource, path)` | `Reload(resource, ResourceLoadContext ctx)` |
-| `Resource.SaveToFile(path, provider)` | `Resource.WriteToStream(Stream, provider)` — caller routes the stream |
+| `Resource.SaveToFile(path, provider)` | `Resource.WriteToStream(Stream, provider)` - caller routes the stream |
 | `SceneResourceManager.SaveSceneToFile(scene, path)` | `SaveScene(scene, IWritableMount mount, StringView locator)` |
 | `SceneResourceManager.InstantiateScene(resource, scene)` (re-read by SourcePath) | `InstantiateScene(resource, scene, IMount mount, StringView locator)` |
 | `PrefabResourceManager.SavePrefabToFile(scene, params, path)` | `SavePrefab(scene, params, IWritableMount mount, StringView locator)` |
 | `PrefabResourceManager.LoadPrefabIntoScene(resource, scene)` (re-read by SourcePath) | `LoadPrefabIntoScene(resource, scene, IMount mount, StringView locator)` |
-| `FileWatcher` (in `Sedulous.Resources`) | Removed — replaced by `FileSystemChangeSource` in `Sedulous.VFS.Disk`. |
+| `FileWatcher` (in `Sedulous.Resources`) | Removed - replaced by `FileSystemChangeSource` in `Sedulous.VFS.Disk`. |
 
 ### `Resource.SourcePath`
 
 Now stores the mount-relative locator (e.g. `"scenes/level1.scene"`), not an
 absolute filesystem path. Any code that previously did
-`File.ReadAllText(resource.SourcePath, ...)` is broken — open through the
+`File.ReadAllText(resource.SourcePath, ...)` is broken - open through the
 resource's mount instead. (Reach the mount via `ResourceSystem.GetMount(scheme)`
 where `scheme` comes from parsing `comp.PrefabRef.Path` or similar.)
 
-The fixed example is `PrefabComponentManager.InstantiatePrefab` — it parses
+The fixed example is `PrefabComponentManager.InstantiatePrefab` - it parses
 `comp.PrefabRef.Path` (a URI) into `(scheme, locator)`, looks up the mount
 via `ResourceSystem.GetMount(scheme)`, and reads the bytes through that mount.
 See that file for the canonical pattern.
@@ -636,13 +636,13 @@ Code/Foundation/
 
 Each project is registered under the `Experimental/VFS` workspace folder in
 `BeefSpace.toml`. Foundation/Resources depends on `Sedulous.VFS` (the core
-project only — backend choice is the application's call).
+project only - backend choice is the application's call).
 
 ---
 
 ## Test Coverage
 
-`Sedulous.VFS.Tests` — 36 tests.
+`Sedulous.VFS.Tests` - 36 tests.
 
 **FileSystemMount** (14): read/write/enumerate/delete, concurrent opens,
 save-replaces-existing, save-empty, intermediate directory creation, root
@@ -675,29 +675,29 @@ Gaps worth filling later if the experiment continues:
 ## Worth Knowing (Architecture Quirks)
 
 **`ResourceSystem.LoadResource` strictly requires a scheme.** No
-absolute-path fallback. This is intentional — the old behavior of accepting
+absolute-path fallback. This is intentional - the old behavior of accepting
 either confused the boundary between identity and location. If you need to
 load an arbitrary file, mount its directory under a scheme first.
 
 **Editor code with an absolute path in hand** (page factories, save flows,
 the file-picker callback in `ResourceRefEditor`) routes through
 `MountResolver.TryResolveAbsolute` / `TryResolveAbsoluteWritable` to find
-the owning mount. Files outside any mount are refused — they couldn't load
+the owning mount. Files outside any mount are refused - they couldn't load
 later anyway.
 
 **Disk-only editor code is implicit.** `MountResolver` only matches
 `FileSystemMount` entries; the moment a non-disk mount (pak, remote) is in
 play, code that calls `MountResolver` simply won't find it and will refuse
-to open. That's the right behavior — non-disk mounts have no absolute path
+to open. That's the right behavior - non-disk mounts have no absolute path
 to resolve from.
 
 **Reopen-per-Open** on `PakMount` is fine for typical asset loads but burns
 file handles under heavy concurrent read. If profiles show that's hot, swap
-to a shared FileStream + seek lock — the `IMount` surface doesn't change.
+to a shared FileStream + seek lock - the `IMount` surface doesn't change.
 
 **`Resource.SourcePath`** is now the mount-relative locator, not an absolute
 filesystem path. Anything reading `resource.SourcePath` and feeding it to
-`File.*` is broken — use the mount the resource was loaded from instead.
+`File.*` is broken - use the mount the resource was loaded from instead.
 `PrefabComponentManager.InstantiatePrefab` shows the canonical pattern:
 parse the URI from `comp.PrefabRef.Path`, look up the mount via
 `ResourceSystem.GetMount(scheme)`, and read through it.
@@ -710,14 +710,14 @@ parse the URI from `comp.PrefabRef.Path`, look up the mount via
   library and registers on `PakMount` via `RegisterCompressor`. The format
   reserves `CompressionId` values for them.
 - **Memory mounting (`MemoryMount`).** Useful for tests, embedded blobs, and
-  scripting-generated resources. Should be trivial — same `IMount` surface,
+  scripting-generated resources. Should be trivial - same `IMount` surface,
   back the bytes with a `List<uint8>` or a static array.
 - **Pak alignment / mmap.** The current format packs entries back-to-back
   with no alignment. Memory-mapping the pak file and returning
-  `FixedMemoryStream` slices would avoid the copy in `PakMount.Open` —
+  `FixedMemoryStream` slices would avoid the copy in `PakMount.Open` -
   worth a look once the engine is asset-heavy.
 - **Pak CRC.** Optional per-entry CRC32 in the TOC for corruption detection.
-  Not on by default — adds bytes to every entry.
+  Not on by default - adds bytes to every entry.
 - **Async `Open`.** Synchronous today. The day a real `HttpMount` exists,
   add an `OpenAsync` overload that returns a `Job<Stream>` rather than
   blocking the worker thread.
