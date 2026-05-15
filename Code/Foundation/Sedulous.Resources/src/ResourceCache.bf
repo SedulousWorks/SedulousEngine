@@ -161,6 +161,66 @@ class ResourceCache
 		}
 	}
 
+	/// Re-keys every cache entry from `oldPath` to `newPath`, preserving
+	/// the same handle with NO AddRef/Release - the cache's existing
+	/// reference is transferred, not duplicated, so a rename leaves
+	/// refcounts unchanged.
+	///
+	/// Used when an asset is renamed/moved. The cache is URI-keyed; a
+	/// rename only changes the URI, not the loaded resource. Re-keying
+	/// (rather than evicting) keeps the single cached instance and its
+	/// shutdown teardown anchor intact - Shutdown only iterates cached
+	/// resources to Unload them, so an evicted-but-still-held resource
+	/// would never be torn down and would leak. It also makes a later
+	/// open of the renamed file a cache hit on the new URI, reusing the
+	/// same instance instead of constructing a second one (which would
+	/// otherwise share the rename-preserved Id and defeat dedup). The
+	/// GUID cross-index key LoadByRef adds stays valid (Id is unchanged).
+	public void RecacheByPath(StringView oldPath, StringView newPath)
+	{
+		if (oldPath == newPath) return;
+		using (mMonitor.Enter())
+		{
+			// Snapshot matching entries - can't mutate the dictionary
+			// while iterating it.
+			let moves = scope List<(ResourceCacheKey key, ResourceHandle<IResource> handle)>();
+			for (var kv in mResources)
+			{
+				if (kv.key.Path == oldPath)
+					moves.Add((kv.key, kv.value));
+			}
+
+			for (let m in moves)
+			{
+				let type = m.key.ResourceType;
+
+				// Drop the old entry and free its key string (mirrors the
+				// stored-key disposal in Remove). Dictionary.Remove does
+				// not Release the handle, so the cache ref is preserved.
+				var storedKey = m.key;
+				mResources.Remove(m.key);
+				storedKey.Dispose();
+
+				var newKey = ResourceCacheKey(newPath, type);
+				if (mResources.ContainsKey(newKey))
+				{
+					// newPath was already cached independently - keep that
+					// entry and drop the moved handle's now-redundant cache
+					// ref so it isn't leaked.
+					var moved = m.handle;
+					moved.Release();
+					newKey.Dispose();
+				}
+				else
+				{
+					// Dictionary owns newKey (its mPath); Clear()/~this
+					// dispose it, consistent with every other entry.
+					mResources[newKey] = m.handle;
+				}
+			}
+		}
+	}
+
 	/// Removes all resources of a specific type from the cache.
 	/// Returns the removed handles for unloading. Releases the cache's ref on each handle.
 	public void RemoveByType(Type type, List<ResourceHandle<IResource>> removedHandles)

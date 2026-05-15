@@ -76,16 +76,25 @@ class ResourceSystem
 		let resources = scope List<ResourceHandle<IResource>>();
 		mCache.GetResources(resources);
 
-		// Dedup - same resource may appear under multiple keys.
+		// Dedup by object identity, NOT by Id. The same instance can be
+		// cached under multiple keys (LoadResource keys by URI; LoadByRef
+		// cross-indexes the same object by GUID) - those must collapse to
+		// one Unload. But two DISTINCT instances can legitimately share an
+		// Id: rename an asset while a tab is open, then reopen the renamed
+		// file - the registry GUID is preserved, so the still-open original
+		// and the freshly-loaded copy carry the same Id. Dedup-by-Id would
+		// drop one from `unique`, skip its manager.Unload, and leak it
+		// (cache.Clear releases only its cache ref, leaving RefCount 1).
+		// Reference identity unloads each distinct instance exactly once.
 		let unique = scope List<ResourceHandle<IResource>>();
 		for (var handle in resources)
 		{
-			let res = handle.Resource;
+			let res = handle.Resource as Resource;
 			if (res == null) continue;
 
 			bool found = false;
 			for (let existing in unique)
-				if (existing.Resource.Id == res.Id) { found = true; break; }
+				if ((existing.Resource as Resource) === res) { found = true; break; }
 			if (!found)
 				unique.Add(handle);
 		}
@@ -451,6 +460,19 @@ class ResourceSystem
 		let result = ResourceHandle<T>((T)handle.Resource);
 		handle.Release();
 		return result;
+	}
+
+	/// Re-keys cached entries from `oldUri` to `newUri` when an asset is
+	/// renamed/moved. The loaded resource is unchanged - only its URI is -
+	/// so the cache entry is moved, not evicted: refcounts are untouched,
+	/// the resource keeps its shutdown teardown anchor (Shutdown only
+	/// tears down cached resources), and a later open of the renamed file
+	/// hits the cache under the new URI and reuses the same instance
+	/// instead of constructing a duplicate that shares the (rename-
+	/// preserved) Id.
+	public void RecacheUri(StringView oldUri, StringView newUri)
+	{
+		mCache.RecacheByPath(oldUri, newUri);
 	}
 
 	public void UnloadResource<T>(ref ResourceHandle<IResource> resource) where T : IResource
