@@ -102,13 +102,20 @@ public class DockablePanel : ViewGroup, IDragSource
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
 		let headerH = mShowHeader ? HeaderHeight : 0;
-		float contentH = 0;
 		if (mContent != null && mContent.Visibility != .Gone)
 		{
-			mContent.Measure(BoxConstraints.Expand());
-			contentH = mContent.MeasuredSize.Y;
+			// A docked panel fills its dock-allocated region; its size is
+			// dictated by the dock layout, NOT its content. Measure content
+			// within the incoming constraints (minus the header), never
+			// unbounded - an unbounded measure makes Grow/Match content
+			// report a content-driven, region-ignoring size that leaks into
+			// dock sizing and overflows sibling panels.
+			mContent.Measure(BoxConstraints(
+				constraints.MinWidth, constraints.MaxWidth,
+				Math.Max(0, constraints.MinHeight - headerH),
+				Math.Max(0, constraints.MaxHeight - headerH)));
 		}
-		MeasuredSize = .(constraints.ConstrainWidth(0), constraints.ConstrainHeight(headerH + contentH));
+		MeasuredSize = .(constraints.ConstrainWidth(0), constraints.ConstrainHeight(0));
 	}
 
 	protected override void OnLayout(float left, float top, float width, float height)
