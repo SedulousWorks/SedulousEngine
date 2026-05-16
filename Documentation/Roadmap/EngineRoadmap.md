@@ -39,16 +39,18 @@ Sedulous engine (BeefGFX_Workspace_Compare) and ezEngine as references.
 
 **Post-Processing Effects (Phase 5.3):**
 Mini G-buffer already writes normals + motion vectors. These effects consume them.
+DONE so far: Bloom, Tonemap, **SSAO**, **TAA**, **FXAA**
+(`Foundation/Sedulous.Renderer/src/PostProcess/`).
 
-| Effect | Effort | Notes |
+| Effect | Status | Notes |
 |--------|--------|-------|
-| SSAO | Medium | Reads SceneNormals + SceneDepth. Screen-space hemisphere sampling |
-| TAA | Medium | Reads MotionVectors + history buffer. Jitter + resolve |
-| FXAA | Small | Single fullscreen pass, no extra inputs |
-| Motion Blur | Small | Reads MotionVectors. Per-pixel velocity blur |
-| Color Grading | Small | LUT-based, single fullscreen pass |
-| Auto Exposure | Medium | Luminance histogram + adaptation |
-| DOF | Medium | Circle of confusion from depth |
+| SSAO | ✅ DONE | Reads SceneNormals + SceneDepth. Screen-space hemisphere sampling |
+| TAA | ✅ DONE | Reads MotionVectors + history buffer. Jitter + resolve |
+| FXAA | ✅ DONE | Single fullscreen pass, no extra inputs |
+| Motion Blur | TODO (Small) | Reads MotionVectors. Per-pixel velocity blur |
+| Color Grading | TODO (Small) | LUT-based, single fullscreen pass |
+| Auto Exposure | TODO (Medium) | Luminance histogram + adaptation |
+| DOF | TODO (Medium) | Circle of confusion from depth |
 
 **Reflection Probes:**
 Old engine had capture-based reflection probes. Needed for PBR quality on
@@ -103,14 +105,22 @@ No intermediate ComponentData classes needed - components serialize directly.
 | Feature | ezEngine | Notes |
 |---------|----------|-------|
 | Prefab system | PrefabReferenceComponent | Entity templates |
-| Visual scripting | VisualScriptPlugin | Node-based logic |
 | Procedural generation | ProcGenPlugin | Level building |
 | XR/VR support | OpenXRPlugin | VR rendering |
 | Cloth/rope simulation | ClothSheetComponent | Physics-based |
 | AI/behavior | SensorComponent | Perception system |
 | Wind system | SimpleWindComponent | Global wind fields |
 
-## Simulation Control - Per-Scene Simulation Enable + Time Scale
+## Simulation Control - Per-Scene Simulation Enable + Time Scale - DONE
+
+**Status:** implemented on `Scene` / `SceneModule`
+(`Engine/Sedulous.Engine.Core/src/Scene.bf`, `SceneModule.bf`):
+`SimulationEnabled`, `TimeScale`, `UnscaledDeltaTime`, `IsStarted`,
+`StartSimulation()`/`StopSimulation()`, `SceneModule.OnSceneStarted()`/
+`OnSceneStopped()`, and `SimulationOnly` phase skipping. The only
+remaining work is editor-side (drive start/stop for play/pause) -
+tracked as **EditorRoadmap Phase 6 (Play Mode)**. Background and design
+rationale retained below.
 
 ### Problem
 
@@ -159,7 +169,7 @@ work. Used by games.
 
 ### Implementation Plan
 
-**Phase 1: SimulationOnly flag on update functions**
+**Phase 1: SimulationOnly flag on update functions ✅ DONE**
 - Add `SimulationOnly` bool to scene phase registration
   (similar to ezEngine's `bOnlyUpdateWhenSimulating`)
 - Add `Scene.SimulationEnabled` property (default `true`)
@@ -167,7 +177,7 @@ work. Used by games.
   marked `SimulationOnly`
 - Transforms (`UpdateTransforms` phase) and resource resolution always run
 
-**Phase 2: Mark existing update functions**
+**Phase 2: Mark existing update functions ✅ DONE**
 - Component managers mark their updates as simulation or presentation:
 
 | Manager | Function | SimulationOnly? |
@@ -186,7 +196,7 @@ work. Used by games.
 Some managers may need to split their update into two functions: resource
 resolution (always) and simulation (only when simulating).
 
-**Phase 3: Scene lifecycle - Start/Stop**
+**Phase 3: Scene lifecycle - Start/Stop ✅ DONE (engine side)**
 - `Scene.Start()` - sets `SimulationEnabled = true`, calls
   `OnSceneStarted()` on all component managers (initialize runtime state,
   connect signals, start AI, etc.)
@@ -196,18 +206,21 @@ resolution (always) and simulation (only when simulating).
 - Component managers override `OnSceneStarted()`/`OnSceneStopped()` for
   per-manager lifecycle (e.g. physics creates bodies, audio starts sources)
 - Editor play mode: serialize scene state -> `scene.Start()` -> ticking
+  *(editor wiring pending - EditorRoadmap Phase 6)*
 - Editor stop: `scene.Stop()` -> restore serialized scene state
+  *(editor wiring pending - EditorRoadmap Phase 6)*
 
-**Phase 4: TimeScale**
+**Phase 4: TimeScale ✅ DONE**
 - Add `Scene.TimeScale` property (default 1.0)
 - `Scene.Update()` multiplies deltaTime by `TimeScale`
 - Add `Scene.UnscaledDeltaTime` for pause-immune systems
 - Game pause: `TimeScale = 0`, UI reads `UnscaledDeltaTime`
 
 ### Dependencies
-- Phase 1-2 are engine-only (no editor changes)
-- Phase 3 depends on editor Play Mode (EditorRoadmap Phase 6)
-- Phase 4 is game-level, independent of editor
+- Phase 1-2 are engine-only (no editor changes) - done
+- Phase 3 engine side done; editor Play Mode integration pending
+  (EditorRoadmap Phase 6)
+- Phase 4 is game-level, independent of editor - done
 
 ## Particle System Gaps
 
