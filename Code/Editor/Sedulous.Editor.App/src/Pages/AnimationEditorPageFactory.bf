@@ -64,28 +64,29 @@ class AnimationEditorPageFactory : IEditorPageFactory
 
 	private static View BuildAnimationView(Sedulous.Animation.Resources.AnimationClipResource clipRes, PreviewSceneHost host, AnimationEditorPage page)
 	{
-		let root = new FlexLayout();
-		root.Direction = .Vertical;
+		// Standard resource-page shape: viewport center, details docked
+		// right, a thin transport strip below the viewport (room for a
+		// real timeline later). Matches MeshEditorPageFactory.
+		let root = new SplitView(.Horizontal);
+		root.SplitRatio = 0.8f;
+		root.MinPaneSize = 200;
 
-		// Viewport on top (currently empty - clip preview is metadata-only this phase).
+		// Left pane: viewport (fills) + transport strip below it.
+		let left = new FlexLayout();
+		left.Direction = .Vertical;
+
 		let viewportPanel = new Panel();
 		viewportPanel.Background = new ColorDrawable(.(25, 25, 30, 255));
 		viewportPanel.AddView(host.Viewport);
-		root.AddView(viewportPanel, new FlexLayout.LayoutParams() { Width = .Match, Grow = 1 });
+		left.AddView(viewportPanel, new FlexLayout.LayoutParams() { Width = .Match, Grow = 1 });
 
-		// Bottom: controls + metadata strip.
-		let bottomPanel = new Panel();
-		bottomPanel.Background = new ColorDrawable(.(20, 20, 25, 255));
-		let bottom = new FlexLayout();
-		bottom.Direction = .Vertical;
-		bottom.Padding = .(8);
-		bottom.Spacing = 6;
-		bottomPanel.AddView(bottom);
-
-		// Controls row.
+		let transportPanel = new Panel();
+		transportPanel.Background = new ColorDrawable(.(20, 20, 25, 255));
 		let controls = new FlexLayout();
 		controls.Direction = .Horizontal;
 		controls.Spacing = 6;
+		controls.Padding = .(8);
+		transportPanel.AddView(controls);
 
 		let playBtn = new Button("Play");
 		playBtn.OnClick.Add(new [=page] (btn) => { page.Play(); });
@@ -99,22 +100,30 @@ class AnimationEditorPageFactory : IEditorPageFactory
 		stopBtn.OnClick.Add(new [=page] (btn) => { page.Stop(); });
 		controls.AddView(stopBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(70)), Height = .Fixed(.Px(26)) });
 
-		// Scrubber.
 		let dur = clipRes?.Clip?.Duration ?? 1;
 		let scrubber = new Slider(0, dur, 0);
 		scrubber.OnValueChanged.Add(new [=page] (s, val) => { page.ScrubTime = val; });
 		controls.AddView(scrubber, new FlexLayout.LayoutParams() { Grow = 1, Height = .Fixed(.Px(26)) });
 
-		bottom.AddView(controls, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(30)) });
+		// Fixed strip, sized to exactly one 26px control row + 8px padding
+		// each side - no metadata crammed in here, so it can't overflow.
+		left.AddView(transportPanel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(42)) });
 
-		// Metadata rows.
-		MeshEditorPageFactory.AddInfoRow(bottom, "Duration", scope $"{dur:F2} s");
-		MeshEditorPageFactory.AddInfoRow(bottom, "Looping", (clipRes?.Clip?.IsLooping ?? false) ? "Yes" : "No");
-		MeshEditorPageFactory.AddInfoRow(bottom, "Position Tracks", scope $"{clipRes?.PositionTrackCount ?? 0}");
-		MeshEditorPageFactory.AddInfoRow(bottom, "Rotation Tracks", scope $"{clipRes?.RotationTrackCount ?? 0}");
-		MeshEditorPageFactory.AddInfoRow(bottom, "Scale Tracks", scope $"{clipRes?.ScaleTrackCount ?? 0}");
+		// Right pane: details column (full panel height - no clipping).
+		let infoPanel = new FlexLayout();
+		infoPanel.Direction = .Vertical;
+		infoPanel.Padding = .(8);
+		infoPanel.Spacing = 4;
 
-		root.AddView(bottomPanel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(160)) });
+		MeshEditorPageFactory.AddInfoHeader(infoPanel, "Animation");
+		MeshEditorPageFactory.AddSeparator(infoPanel);
+		MeshEditorPageFactory.AddInfoRow(infoPanel, "Duration", scope $"{dur:F2} s");
+		MeshEditorPageFactory.AddInfoRow(infoPanel, "Looping", (clipRes?.Clip?.IsLooping ?? false) ? "Yes" : "No");
+		MeshEditorPageFactory.AddInfoRow(infoPanel, "Position Tracks", scope $"{clipRes?.PositionTrackCount ?? 0}");
+		MeshEditorPageFactory.AddInfoRow(infoPanel, "Rotation Tracks", scope $"{clipRes?.RotationTrackCount ?? 0}");
+		MeshEditorPageFactory.AddInfoRow(infoPanel, "Scale Tracks", scope $"{clipRes?.ScaleTrackCount ?? 0}");
+
+		root.SetPanes(left, infoPanel);
 		return root;
 	}
 }

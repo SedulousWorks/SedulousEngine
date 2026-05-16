@@ -441,7 +441,10 @@ class EditorApplication : Application, IDockableWindowHost
 			}
 		}
 		ResourceSystem.AddIndex(mProjectIndex);
-		mEditorContext.MountEntries.Add(new MountEntry(
+		// Insert project at the front so it lists before builtin everywhere
+		// that iterates MountEntries in order (asset browser tree, asset
+		// picker) - the project mount is what's interacted with most.
+		mEditorContext.MountEntries.Insert(0, new MountEntry(
 			"project", mProjectMount, mProjectIndex, "project.registry", true));
 		mEditorLogger.Log(.Information, scope String()..AppendF("Project registry loaded ({} entries)", mProjectIndex.Count));
 

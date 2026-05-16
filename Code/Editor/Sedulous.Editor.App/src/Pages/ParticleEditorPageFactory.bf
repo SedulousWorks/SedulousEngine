@@ -70,22 +70,24 @@ class ParticleEditorPageFactory : IEditorPageFactory
 	private static View BuildParticleView(Sedulous.Particles.Resources.ParticleEffectResource fxRes,
 		PreviewSceneHost host, ParticleEditorPage page, EditorContext context)
 	{
-		// Outer horizontal split: tree on the left, inspector+viewport on the right.
+		// Standard resource-page shape (matches the scene editor): tree on
+		// the left, then viewport center + inspector docked right. The
+		// Play/Stop/Restart toolbar lives on the viewport pane.
 		let outer = new SplitView(.Horizontal);
-		outer.SplitRatio = 0.25f;
+		outer.SplitRatio = 0.2f;
 		outer.MinPaneSize = 160;
 
 		let treePanel = BuildTreePanel(fxRes, page);
 
-		// Right pane is a vertical split: property grid on top, viewport on bottom.
-		let inner = new SplitView(.Vertical);
-		inner.SplitRatio = 0.45f;
-		inner.MinPaneSize = 120;
+		// Right of the tree: viewport (center) + inspector (right).
+		let inner = new SplitView(.Horizontal);
+		inner.SplitRatio = 0.7f;
+		inner.MinPaneSize = 200;
 
-		let inspectorPane = BuildInspectorPanel(fxRes, page, context);
 		let viewportPane = BuildViewportPanel(host, page);
+		let inspectorPane = BuildInspectorPanel(fxRes, page, context);
 
-		inner.SetPanes(inspectorPane, viewportPane);
+		inner.SetPanes(viewportPane, inspectorPane);
 		outer.SetPanes(treePanel, inner);
 
 		return outer;
@@ -238,6 +240,13 @@ class ParticleEditorPageFactory : IEditorPageFactory
 		let root = new FlexLayout();
 		root.Direction = .Vertical;
 
+		// Viewport fills; transport toolbar sits below it (matches the
+		// animation page - scrubber/transport at the bottom of the viewport).
+		let viewportPanel = new Panel();
+		viewportPanel.Background = new ColorDrawable(.(25, 25, 30, 255));
+		viewportPanel.AddView(host.Viewport);
+		root.AddView(viewportPanel, new FlexLayout.LayoutParams() { Width = .Match, Grow = 1 });
+
 		// Toolbar: Play / Stop / Restart.
 		let toolbarPanel = new Panel();
 		toolbarPanel.Background = new ColorDrawable(.(28, 28, 33, 255));
@@ -260,12 +269,6 @@ class ParticleEditorPageFactory : IEditorPageFactory
 		toolbar.AddView(restartBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(80)), Height = .Fixed(.Px(24)) });
 
 		root.AddView(toolbarPanel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(32)) });
-
-		// Viewport.
-		let viewportPanel = new Panel();
-		viewportPanel.Background = new ColorDrawable(.(25, 25, 30, 255));
-		viewportPanel.AddView(host.Viewport);
-		root.AddView(viewportPanel, new FlexLayout.LayoutParams() { Width = .Match, Grow = 1 });
 
 		return root;
 	}
