@@ -199,14 +199,30 @@ public class PropertyGrid : ViewGroup
 		let row = new FlexLayout();
 		row.Direction = .Horizontal;
 
-		// Label.
-		let label = new Label();
-		label.SetText(editor.Name);
-		label.FontSize = 12;
-		label.VAlign = .Middle;
-		row.AddView(label, new FlexLayout.LayoutParams() {
-			Grow = LabelWidthRatio
-		});
+		// Label — editable if editor has OnLabelRenamed set.
+		if (editor.OnLabelRenamed != null)
+		{
+			let editableLabel = new EditableLabel();
+			editableLabel.SetText(editor.Name);
+			editableLabel.FontSize = 12;
+			let renameDelegate = editor.OnLabelRenamed;
+			editableLabel.OnRenameCommitted.Add(new (el, newName) => {
+				renameDelegate(newName);
+			});
+			row.AddView(editableLabel, new FlexLayout.LayoutParams() {
+				Grow = LabelWidthRatio
+			});
+		}
+		else
+		{
+			let label = new Label();
+			label.SetText(editor.Name);
+			label.FontSize = 12;
+			label.VAlign = .Middle;
+			row.AddView(label, new FlexLayout.LayoutParams() {
+				Grow = LabelWidthRatio
+			});
+		}
 
 		// Editor view.
 		let editorView = editor.EditorView;

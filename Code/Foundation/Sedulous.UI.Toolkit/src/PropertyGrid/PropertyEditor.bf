@@ -33,6 +33,10 @@ public abstract class PropertyEditor
 	/// Fired if an edit gesture is cancelled (Escape key, etc.).
 	public Event<delegate void(PropertyEditor)> OnEditCancelled ~ _.Dispose();
 
+	/// Optional callback for making the label editable. When set, PropertyGrid
+	/// renders the label as an EditText. The delegate receives the new name.
+	public delegate void(StringView) OnLabelRenamed ~ delete _;
+
 	public StringView Name => mName;
 	public StringView Category => (mCategory != null) ? mCategory : "";
 
