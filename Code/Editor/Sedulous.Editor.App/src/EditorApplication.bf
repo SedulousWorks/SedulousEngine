@@ -279,7 +279,7 @@ class EditorApplication : Application, IDockableWindowHost
 		mEditorContext.RegisterPageFactory(new MeshEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
 		mEditorContext.RegisterPageFactory(new AnimationEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
 		mEditorContext.RegisterPageFactory(new SkeletonEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
-		mEditorContext.RegisterPageFactory(new AnimGraphEditorPageFactory());
+		mEditorContext.RegisterPageFactory(new AnimGraphEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
 		mEditorContext.RegisterPageFactory(new AudioClipEditorPageFactory());
 		mEditorContext.RegisterPageFactory(new SoundCueEditorPageFactory());
 		mEditorContext.RegisterPageFactory(new PropAnimEditorPageFactory());
