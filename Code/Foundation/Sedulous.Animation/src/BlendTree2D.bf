@@ -3,20 +3,42 @@ namespace Sedulous.Animation;
 using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
+using Sedulous.Resources;
+using Sedulous.Inspection;
 
 /// An entry in a 2D blend tree, mapping a 2D position to a clip.
-struct BlendTree2DEntry
+class BlendTree2DEntry
 {
 	/// Position in 2D parameter space.
 	public Vector2 Position;
 
-	/// The animation clip at this position.
+	/// The animation clip at this position (resolved at runtime).
 	public AnimationClip Clip;
+
+	/// Resource reference for the clip (used by serialization/editor).
+	[Property]
+	[ResourceRefType(".animation")]
+	private ResourceRef mClipRef ~ _.Dispose();
+
+	public ResourceRef ClipRef => mClipRef;
 
 	public this(Vector2 position, AnimationClip clip)
 	{
 		Position = position;
 		Clip = clip;
+	}
+
+	public this(Vector2 position, AnimationClip clip, ResourceRef clipRef)
+	{
+		Position = position;
+		Clip = clip;
+		mClipRef = ResourceRef(clipRef.Id, clipRef.Path ?? "");
+	}
+
+	public void SetClipRef(ResourceRef @ref)
+	{
+		mClipRef.Dispose();
+		mClipRef = ResourceRef(@ref.Id, @ref.Path ?? "");
 	}
 }
 
@@ -24,7 +46,7 @@ struct BlendTree2DEntry
 class BlendTree2D : IAnimationStateNode
 {
 	/// Entries in 2D space.
-	public List<BlendTree2DEntry> Entries = new .() ~ delete _;
+	public List<BlendTree2DEntry> Entries = new .() ~ DeleteContainerAndItems!(_);
 
 	/// Current X parameter value (set by the graph player each frame).
 	public float ParameterX;
@@ -164,12 +186,24 @@ class BlendTree2D : IAnimationStateNode
 	/// Adds an entry at the given 2D position.
 	public void AddEntry(Vector2 position, AnimationClip clip)
 	{
-		Entries.Add(.(position, clip));
+		Entries.Add(new .(position, clip));
 	}
 
 	/// Adds an entry at the given X,Y coordinates.
 	public void AddEntry(float x, float y, AnimationClip clip)
 	{
-		Entries.Add(.(.(x, y), clip));
+		Entries.Add(new .(.(x, y), clip));
+	}
+
+	/// Adds an entry with a resource ref at the given 2D position.
+	public void AddEntry(Vector2 position, AnimationClip clip, ResourceRef clipRef)
+	{
+		Entries.Add(new .(position, clip, clipRef));
+	}
+
+	/// Adds an entry with a resource ref at the given X,Y coordinates.
+	public void AddEntry(float x, float y, AnimationClip clip, ResourceRef clipRef)
+	{
+		Entries.Add(new .(.(x, y), clip, clipRef));
 	}
 }

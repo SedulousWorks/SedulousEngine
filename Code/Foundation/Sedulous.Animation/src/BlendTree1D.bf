@@ -2,20 +2,43 @@ namespace Sedulous.Animation;
 
 using System;
 using System.Collections;
+using Sedulous.Resources;
+using Sedulous.Inspection;
 
 /// An entry in a 1D blend tree, mapping a threshold value to a clip.
-struct BlendTree1DEntry
+class BlendTree1DEntry
 {
 	/// The threshold value along the blend parameter axis.
+	[Property]
 	public float Threshold;
 
-	/// The animation clip at this threshold.
+	/// The animation clip at this threshold (resolved at runtime).
 	public AnimationClip Clip;
+
+	/// Resource reference for the clip (used by serialization/editor).
+	[Property]
+	[ResourceRefType(".animation")]
+	private ResourceRef mClipRef ~ _.Dispose();
+
+	public ResourceRef ClipRef => mClipRef;
 
 	public this(float threshold, AnimationClip clip)
 	{
 		Threshold = threshold;
 		Clip = clip;
+	}
+
+	public this(float threshold, AnimationClip clip, ResourceRef clipRef)
+	{
+		Threshold = threshold;
+		Clip = clip;
+		mClipRef = ResourceRef(clipRef.Id, clipRef.Path ?? "");
+	}
+
+	public void SetClipRef(ResourceRef @ref)
+	{
+		mClipRef.Dispose();
+		mClipRef = ResourceRef(@ref.Id, @ref.Path ?? "");
 	}
 }
 
@@ -25,7 +48,7 @@ struct BlendTree1DEntry
 class BlendTree1D : IAnimationStateNode
 {
 	/// Entries sorted by threshold.
-	public List<BlendTree1DEntry> Entries = new .() ~ delete _;
+	public List<BlendTree1DEntry> Entries = new .() ~ DeleteContainerAndItems!(_);
 
 	/// Current blend parameter value (set by the graph player each frame).
 	public float Parameter;
@@ -157,7 +180,25 @@ class BlendTree1D : IAnimationStateNode
 	/// Adds an entry and keeps the list sorted by threshold.
 	public void AddEntry(float threshold, AnimationClip clip)
 	{
-		let entry = BlendTree1DEntry(threshold, clip);
+		let entry = new BlendTree1DEntry(threshold, clip);
+
+		// Insert in sorted order
+		for (int i = 0; i < Entries.Count; i++)
+		{
+			if (threshold < Entries[i].Threshold)
+			{
+				Entries.Insert(i, entry);
+				return;
+			}
+		}
+
+		Entries.Add(entry);
+	}
+
+	/// Adds an entry with a resource ref and keeps the list sorted by threshold.
+	public void AddEntry(float threshold, AnimationClip clip, ResourceRef clipRef)
+	{
+		let entry = new BlendTree1DEntry(threshold, clip, clipRef);
 
 		// Insert in sorted order
 		for (int i = 0; i < Entries.Count; i++)

@@ -48,4 +48,15 @@ class AnimationGraph
 		Layers.Add(layer);
 		return idx;
 	}
+
+	/// Clears internal state for in-place hot-reload without deleting the graph object itself.
+	/// After this call, the graph is empty and ready to be repopulated via deserialization.
+	public void ClearForReload()
+	{
+		for (let p in Parameters) delete p;
+		Parameters.Clear();
+
+		for (let l in Layers) delete l;
+		Layers.Clear();
+	}
 }

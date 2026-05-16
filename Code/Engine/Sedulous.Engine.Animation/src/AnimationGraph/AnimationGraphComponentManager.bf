@@ -42,19 +42,37 @@ class AnimationGraphComponentManager : ComponentManager<AnimationGraphComponent>
 	}
 
 	/// Resolves skeleton and graph resources. Always runs (presentation).
+	/// Resolution runs regardless of Active flag — resources should be ready
+	/// when the user hits Play in the editor.
 	private void ResolveGraphResources(float deltaTime)
 	{
 		if (ResourceSystem == null) return;
 
 		for (let comp in ActiveComponents)
 		{
-			if (!comp.IsActive || !comp.Active) continue;
+			if (!comp.IsActive) continue;
 
-			ResolveResources(comp);
+			let state = GetOrCreateResolveState(comp.Owner);
+			ResolveResources(comp, state);
 
 			// Create graph player once resources are ready
 			if (comp.GraphPlayer == null && comp.Skeleton != null && comp.Graph != null)
+			{
 				comp.GraphPlayer = new AnimationGraphPlayer(comp.Graph, comp.Skeleton);
+				if (state.Graph.Handle.IsValid && state.Graph.Handle.Resource != null)
+					state.BoundGraphGeneration = state.Graph.Handle.Resource.Generation;
+			}
+			else if (comp.GraphPlayer != null && state.Graph.Handle.IsValid)
+			{
+				// Detect hot-reload via generation counter (matches material pattern).
+				let res = state.Graph.Handle.Resource;
+				if (res != null && res.Generation != state.BoundGraphGeneration)
+				{
+					state.BoundGraphGeneration = res.Generation;
+					delete comp.GraphPlayer;
+					comp.GraphPlayer = new AnimationGraphPlayer(comp.Graph, comp.Skeleton);
+				}
+			}
 		}
 	}
 
@@ -70,10 +88,8 @@ class AnimationGraphComponentManager : ComponentManager<AnimationGraphComponent>
 		}
 	}
 
-	private void ResolveResources(AnimationGraphComponent comp)
+	private void ResolveResources(AnimationGraphComponent comp, AnimGraphResolveState state)
 	{
-		let state = GetOrCreateResolveState(comp.Owner);
-
 		// Resolve skeleton from resource ref. Skip if no ref is set - the
 		// skeleton may have been assigned directly (programmatic setup).
 		if (comp.SkeletonRef.IsValid)
@@ -91,7 +107,13 @@ class AnimationGraphComponentManager : ComponentManager<AnimationGraphComponent>
 			if (state.Graph.Resolve(ResourceSystem, comp.GraphRef))
 			{
 				let res = state.Graph.Handle.Resource;
-				comp.Graph = (res != null) ? res.Graph : null;
+				if (res != null)
+				{
+					res.ResolveClips(ResourceSystem);
+					comp.Graph = res.Graph;
+				}
+				else
+					comp.Graph = null;
 			}
 		}
 	}
@@ -122,6 +144,10 @@ class AnimGraphResolveState
 {
 	public ResolvedResource<SkeletonResource> Skeleton;
 	public ResolvedResource<AnimationGraphResource> Graph;
+
+	/// Generation of the graph resource when the player was last created.
+	/// Used to detect hot-reloads and recreate the player.
+	public uint32 BoundGraphGeneration;
 
 	public void Release()
 	{

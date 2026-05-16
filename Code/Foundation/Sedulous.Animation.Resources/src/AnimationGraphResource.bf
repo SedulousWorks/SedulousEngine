@@ -18,8 +18,8 @@ enum AnimationStateNodeType : int32
 }
 
 /// Resource wrapping an AnimationGraph with full serialization support.
-/// Clip references are stored as ResourceRefs and must be resolved at runtime
-/// via ResolveClips() before the graph can be used.
+/// Clip references are stored as ResourceRefs on each state node and must be
+/// resolved at runtime via ResolveClips() before the graph can be used.
 class AnimationGraphResource : Resource
 {
 	public const int32 FileVersion = 1;
@@ -27,13 +27,6 @@ class AnimationGraphResource : Resource
 
 	private AnimationGraph mGraph;
 	private bool mOwnsGraph;
-
-	/// Clip ResourceRefs stored during deserialization, indexed to match clip slots.
-	/// Each entry corresponds to a clip reference in a state node or blend tree entry.
-	private List<ResourceRef> mClipRefs = new .() ~ {
-		for (var r in _) r.Dispose();
-		delete _;
-	};
 
 	/// Loaded clip resource handles (kept alive for the lifetime of this resource).
 	private List<ResourceHandle<AnimationClipResource>> mClipHandles = new .() ~ {
@@ -43,9 +36,6 @@ class AnimationGraphResource : Resource
 
 	/// The underlying animation graph.
 	public AnimationGraph Graph => mGraph;
-
-	/// Number of unresolved clip references.
-	public int ClipRefCount => mClipRefs.Count;
 
 	public this()
 	{
@@ -74,8 +64,8 @@ class AnimationGraphResource : Resource
 		mOwnsGraph = ownsGraph;
 	}
 
-	/// Resolves clip ResourceRefs to actual AnimationClip pointers via the resource system.
-	/// Call this after loading the resource and before creating an AnimationGraphPlayer.
+	/// Resolves clip ResourceRefs on each state node to actual AnimationClip pointers
+	/// via the resource system. Call this after loading and before creating a player.
 	public bool ResolveClips(ResourceSystem resourceSystem)
 	{
 		if (resourceSystem == null || mGraph == null)
@@ -86,7 +76,6 @@ class AnimationGraphResource : Resource
 			h.Release();
 		mClipHandles.Clear();
 
-		int refIndex = 0;
 		bool allResolved = true;
 
 		for (let layer in mGraph.Layers)
@@ -95,9 +84,9 @@ class AnimationGraphResource : Resource
 			{
 				if (let clipNode = state.Node as ClipStateNode)
 				{
-					if (refIndex < mClipRefs.Count && mClipRefs[refIndex].IsValid)
+					if (clipNode.ClipRef.IsValid)
 					{
-						if (resourceSystem.LoadByRef<AnimationClipResource>(mClipRefs[refIndex]) case .Ok(let handle))
+						if (resourceSystem.LoadByRef<AnimationClipResource>(clipNode.ClipRef) case .Ok(let handle))
 						{
 							clipNode.Clip = handle.Resource?.Clip;
 							mClipHandles.Add(handle);
@@ -105,44 +94,37 @@ class AnimationGraphResource : Resource
 						else
 							allResolved = false;
 					}
-					refIndex++;
 				}
 				else if (let blend1D = state.Node as BlendTree1D)
 				{
-					for (int i = 0; i < blend1D.Entries.Count; i++)
+					for (let entry in blend1D.Entries)
 					{
-						if (refIndex < mClipRefs.Count && mClipRefs[refIndex].IsValid)
+						if (entry.ClipRef.IsValid)
 						{
-							if (resourceSystem.LoadByRef<AnimationClipResource>(mClipRefs[refIndex]) case .Ok(let handle))
+							if (resourceSystem.LoadByRef<AnimationClipResource>(entry.ClipRef) case .Ok(let handle))
 							{
-								var entry = blend1D.Entries[i];
 								entry.Clip = handle.Resource?.Clip;
-								blend1D.Entries[i] = entry;
 								mClipHandles.Add(handle);
 							}
 							else
 								allResolved = false;
 						}
-						refIndex++;
 					}
 				}
 				else if (let blend2D = state.Node as BlendTree2D)
 				{
-					for (int i = 0; i < blend2D.Entries.Count; i++)
+					for (let entry in blend2D.Entries)
 					{
-						if (refIndex < mClipRefs.Count && mClipRefs[refIndex].IsValid)
+						if (entry.ClipRef.IsValid)
 						{
-							if (resourceSystem.LoadByRef<AnimationClipResource>(mClipRefs[refIndex]) case .Ok(let handle))
+							if (resourceSystem.LoadByRef<AnimationClipResource>(entry.ClipRef) case .Ok(let handle))
 							{
-								var entry = blend2D.Entries[i];
 								entry.Clip = handle.Resource?.Clip;
-								blend2D.Entries[i] = entry;
 								mClipHandles.Add(handle);
 							}
 							else
 								allResolved = false;
 						}
-						refIndex++;
 					}
 				}
 			}
@@ -151,10 +133,31 @@ class AnimationGraphResource : Resource
 		return allResolved;
 	}
 
-	/// Adds a clip ref (used during construction before saving).
-	public void AddClipRef(ResourceRef clipRef)
+	// ---- Hot-reload ----
+
+	/// In-place reload: clears existing graph state and clip handles, then re-reads.
+	/// The AnimationGraph object itself stays alive (same pointer), so any
+	/// AnimationGraphPlayer holding it won't get a dangling reference.
+	/// Players must be recreated after reload (detected via Generation counter).
+	public override Result<void, ResourceLoadError> Reload(Serializer s)
 	{
-		mClipRefs.Add(clipRef);
+		if (mGraph == null)
+			return .Err(.InvalidFormat);
+
+		// Clear existing graph state (parameters, layers, states, transitions)
+		mGraph.ClearForReload();
+
+		// Release clip handles from previous load
+		for (var h in mClipHandles)
+			h.Release();
+		mClipHandles.Clear();
+
+		// Re-read
+		let result = Serialize(s);
+		if (result != .Ok)
+			return .Err(.InvalidFormat);
+
+		return .Ok;
 	}
 
 	// ---- Serialization ----
@@ -209,8 +212,6 @@ class AnimationGraphResource : Resource
 		// Layers
 		int32 layerCount = (int32)mGraph.Layers.Count;
 		s.Int32("layerCount", ref layerCount);
-
-		int32 clipRefIndex = 0;
 
 		if (layerCount > 0)
 		{
@@ -281,7 +282,7 @@ class AnimationGraphResource : Resource
 							nodeType = (int32)AnimationStateNodeType.Clip;
 						s.Int32("nodeType", ref nodeType);
 
-						WriteNode(s, state.Node, ref clipRefIndex);
+						WriteNode(s, state.Node);
 
 						s.EndObject();
 					}
@@ -357,23 +358,13 @@ class AnimationGraphResource : Resource
 		return .Ok;
 	}
 
-	private void WriteNode(Serializer s, IAnimationStateNode node, ref int32 clipRefIndex)
+	private void WriteNode(Serializer s, IAnimationStateNode node)
 	{
-		if (node is ClipStateNode)
+		if (let clipNode = node as ClipStateNode)
 		{
 			s.BeginObject("clipNode");
-			if (clipRefIndex < mClipRefs.Count)
-			{
-				var clipRef = mClipRefs[clipRefIndex];
-				s.ResourceRef("clipRef", ref clipRef);
-			}
-			else
-			{
-				var emptyRef = ResourceRef();
-				s.ResourceRef("clipRef", ref emptyRef);
-				emptyRef.Dispose();
-			}
-			clipRefIndex++;
+			var clipRef = clipNode.ClipRef;
+			s.ResourceRef("clipRef", ref clipRef);
 			s.EndObject();
 		}
 		else if (let blend1D = node as BlendTree1D)
@@ -390,18 +381,8 @@ class AnimationGraphResource : Resource
 				float threshold = blend1D.Entries[ei].Threshold;
 				s.Float("threshold", ref threshold);
 
-				if (clipRefIndex < mClipRefs.Count)
-				{
-					var clipRef = mClipRefs[clipRefIndex];
-					s.ResourceRef("clipRef", ref clipRef);
-				}
-				else
-				{
-					var emptyRef = ResourceRef();
-					s.ResourceRef("clipRef", ref emptyRef);
-					emptyRef.Dispose();
-				}
-				clipRefIndex++;
+				var clipRef = blend1D.Entries[ei].ClipRef;
+				s.ResourceRef("clipRef", ref clipRef);
 
 				s.EndObject();
 			}
@@ -425,18 +406,8 @@ class AnimationGraphResource : Resource
 				float posY = blend2D.Entries[ei].Position.Y;
 				s.Float("posY", ref posY);
 
-				if (clipRefIndex < mClipRefs.Count)
-				{
-					var clipRef = mClipRefs[clipRefIndex];
-					s.ResourceRef("clipRef", ref clipRef);
-				}
-				else
-				{
-					var emptyRef = ResourceRef();
-					s.ResourceRef("clipRef", ref emptyRef);
-					emptyRef.Dispose();
-				}
-				clipRefIndex++;
+				var clipRef = blend2D.Entries[ei].ClipRef;
+				s.ResourceRef("clipRef", ref clipRef);
 
 				s.EndObject();
 			}
@@ -447,7 +418,9 @@ class AnimationGraphResource : Resource
 
 	private SerializationResult SerializeRead(Serializer s)
 	{
-		let graph = new AnimationGraph();
+		// Reuse existing graph on reload (in-place hot-reload pattern).
+		// On first load mGraph is null, so we create a new one.
+		let graph = (mGraph != null) ? mGraph : new AnimationGraph();
 
 		// Parameters
 		int32 paramCount = 0;
@@ -651,7 +624,10 @@ class AnimationGraphResource : Resource
 			s.EndObject();
 		}
 
-		SetGraph(graph, true);
+		// On first load, set ownership. On reload, mGraph == graph so skip SetGraph
+		// to avoid deleting the graph we just repopulated.
+		if (mGraph != graph)
+			SetGraph(graph, true);
 		return .Ok;
 	}
 
@@ -663,9 +639,10 @@ class AnimationGraphResource : Resource
 			s.BeginObject("clipNode");
 			var clipRef = ResourceRef();
 			s.ResourceRef("clipRef", ref clipRef);
-			mClipRefs.Add(clipRef);
 			s.EndObject();
-			return new ClipStateNode(null); // Clip resolved later via ResolveClips
+			let node = new ClipStateNode(null, clipRef);
+			clipRef.Dispose();
+			return node;
 
 		case .BlendTree1D:
 			s.BeginObject("blendTree1D");
@@ -680,11 +657,11 @@ class AnimationGraphResource : Resource
 				float threshold = 0;
 				s.Float("threshold", ref threshold);
 
-				var clipRef = ResourceRef();
-				s.ResourceRef("clipRef", ref clipRef);
-				mClipRefs.Add(clipRef);
+				var clipRef1D = ResourceRef();
+				s.ResourceRef("clipRef", ref clipRef1D);
 
-				blend1D.AddEntry(threshold, null); // Clip resolved later
+				blend1D.AddEntry(threshold, null, clipRef1D);
+				clipRef1D.Dispose();
 
 				s.EndObject();
 			}
@@ -707,11 +684,11 @@ class AnimationGraphResource : Resource
 				float posY = 0;
 				s.Float("posY", ref posY);
 
-				var clipRef = ResourceRef();
-				s.ResourceRef("clipRef", ref clipRef);
-				mClipRefs.Add(clipRef);
+				var clipRef2D = ResourceRef();
+				s.ResourceRef("clipRef", ref clipRef2D);
 
-				blend2D.AddEntry(posX, posY, null); // Clip resolved later
+				blend2D.AddEntry(posX, posY, null, clipRef2D);
+				clipRef2D.Dispose();
 
 				s.EndObject();
 			}

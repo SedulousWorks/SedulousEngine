@@ -1,6 +1,8 @@
 namespace Sedulous.Animation;
 
 using System;
+using Sedulous.Resources;
+using Sedulous.Inspection;
 
 /// Interface for nodes that produce an animation pose.
 /// Implemented by ClipStateNode and blend trees.
@@ -19,12 +21,31 @@ interface IAnimationStateNode
 /// A state node that wraps a single AnimationClip.
 class ClipStateNode : IAnimationStateNode
 {
-	/// The animation clip to sample.
+	/// The animation clip to sample (resolved at runtime).
 	public AnimationClip Clip;
+
+	/// Resource reference for the clip (used by serialization/editor, resolved by AnimationGraphResource).
+	[Property]
+	[ResourceRefType(".animation")]
+	private ResourceRef mClipRef ~ _.Dispose();
+
+	public ResourceRef ClipRef => mClipRef;
 
 	public this(AnimationClip clip)
 	{
 		Clip = clip;
+	}
+
+	public this(AnimationClip clip, ResourceRef clipRef)
+	{
+		Clip = clip;
+		mClipRef = ResourceRef(clipRef.Id, clipRef.Path ?? "");
+	}
+
+	public void SetClipRef(ResourceRef @ref)
+	{
+		mClipRef.Dispose();
+		mClipRef = ResourceRef(@ref.Id, @ref.Path ?? "");
 	}
 
 	public void Evaluate(Skeleton skeleton, float normalizedTime, Span<BoneTransform> outPoses)

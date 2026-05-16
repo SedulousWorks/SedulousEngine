@@ -55,7 +55,6 @@ class AnimationGraphResourceManager : ResourceManager<AnimationGraphResource>
 		if (version > AnimationGraphResource.FileVersion)
 			return .Err(.InvalidFormat);
 
-		resource.Serialize(reader);
-		return .Ok;
+		return resource.Reload(reader);
 	}
 }
