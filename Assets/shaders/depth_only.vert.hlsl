@@ -26,6 +26,10 @@ struct InstanceData
 {
     float4x4 WorldMatrix;
     float4x4 PrevWorldMatrix;
+    // Unused here, but the field must exist so this struct's stride
+    // matches the shared instance buffer (forward.vert). Without it,
+    // Instances[i] for i>0 reads at the wrong offset.
+    float4 InstanceColor;
 };
 
 StructuredBuffer<InstanceData> Instances : register(t0, space3);
@@ -37,6 +41,7 @@ cbuffer ObjectUniforms : register(b0, space3)
 {
     float4x4 WorldMatrix;
     float4x4 PrevWorldMatrix;
+    float4 InstanceColor; // unused; kept for layout parity with the CPU struct
 };
 
 #endif

@@ -36,6 +36,10 @@ struct InstanceData
 {
     float4x4 WorldMatrix;
     float4x4 PrevWorldMatrix;
+    // Per-instance color tint (entity MeshComponent.Color / mesh-particle
+    // Color stream). Must match forward.vert's layout so the shared
+    // instance buffer reads at the right stride.
+    float4 InstanceColor;
 };
 
 StructuredBuffer<InstanceData> Instances : register(t0, space3);
@@ -47,6 +51,7 @@ cbuffer ObjectUniforms : register(b0, space3)
 {
     float4x4 WorldMatrix;
     float4x4 PrevWorldMatrix;
+    float4 InstanceColor;
 };
 
 #endif
@@ -78,15 +83,17 @@ VertexOutput main(VertexInput input)
 
 #ifdef INSTANCED
     float4x4 world = Instances[input.InstanceID + BaseInstance].WorldMatrix;
+    float4 instanceColor = Instances[input.InstanceID + BaseInstance].InstanceColor;
 #else
     float4x4 world = WorldMatrix;
+    float4 instanceColor = InstanceColor;
 #endif
 
     float4 worldPos = mul(float4(input.Position, 1.0), world);
     output.Position = mul(worldPos, ViewProjectionMatrix);
     output.TexCoord = input.TexCoord;
 #ifdef VERTEX_COLORS
-    output.Color = input.Color;
+    output.Color = input.Color * instanceColor;
 #endif
 
     return output;
