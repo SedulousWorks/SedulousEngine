@@ -908,6 +908,88 @@ class UISandboxApp : Application, IDockableWindowHost
 		animDemo.AddView(transformRow);
 		animDemo.AddView(transformClickLabel);
 
+		// === Tab 13: Node Graph demo ===
+		{
+			let graphCanvas = new NodeGraphCanvas();
+			graphCanvas.ShowGrid = true;
+
+			// Sample nodes
+			let nodeA = new NodeGraphNode();
+			nodeA.Title.Set("Idle");
+			nodeA.Position = .(50, 50);
+			nodeA.HeaderColor = .(70, 130, 80, 255);
+			let aOut = new NodeGraphPort();
+			aOut.Direction = .Output;
+			aOut.Label.Set("Out");
+			nodeA.OutputPorts.Add(aOut);
+			let aIn = new NodeGraphPort();
+			aIn.Direction = .Input;
+			aIn.Label.Set("In");
+			nodeA.InputPorts.Add(aIn);
+			graphCanvas.AddNode(nodeA);
+
+			let nodeB = new NodeGraphNode();
+			nodeB.Title.Set("Walk");
+			nodeB.Position = .(300, 50);
+			nodeB.HeaderColor = .(70, 100, 180, 255);
+			let bOut = new NodeGraphPort();
+			bOut.Direction = .Output;
+			bOut.Label.Set("Out");
+			nodeB.OutputPorts.Add(bOut);
+			let bIn = new NodeGraphPort();
+			bIn.Direction = .Input;
+			bIn.Label.Set("In");
+			nodeB.InputPorts.Add(bIn);
+			graphCanvas.AddNode(nodeB);
+
+			let nodeC = new NodeGraphNode();
+			nodeC.Title.Set("Run");
+			nodeC.Subtitle.Set("BlendTree1D");
+			nodeC.Position = .(300, 200);
+			nodeC.HeaderColor = .(180, 100, 70, 255);
+			let cOut = new NodeGraphPort();
+			cOut.Direction = .Output;
+			cOut.Label.Set("Out");
+			nodeC.OutputPorts.Add(cOut);
+			let cIn = new NodeGraphPort();
+			cIn.Direction = .Input;
+			cIn.Label.Set("In");
+			nodeC.InputPorts.Add(cIn);
+			let cIn2 = new NodeGraphPort();
+			cIn2.Direction = .Input;
+			cIn2.Label.Set("Speed");
+			cIn2.PortType = .(1, .(100, 200, 100, 255));
+			nodeC.InputPorts.Add(cIn2);
+			graphCanvas.AddNode(nodeC);
+
+			let nodeD = new NodeGraphNode();
+			nodeD.Title.Set("Any State");
+			nodeD.Position = .(50, 200);
+			nodeD.HeaderColor = .(100, 100, 110, 255);
+			nodeD.IsDeletable = false;
+			let dOut = new NodeGraphPort();
+			dOut.Direction = .Output;
+			dOut.Label.Set("");
+			nodeD.OutputPorts.Add(dOut);
+			graphCanvas.AddNode(nodeD);
+
+			// Connections: Idle -> Walk, Idle -> Run, AnyState -> Walk
+			graphCanvas.AddConnection(.() { SourceNodeIndex = 0, SourcePortIndex = 0, DestNodeIndex = 1, DestPortIndex = 0 });
+			graphCanvas.AddConnection(.() { SourceNodeIndex = 0, SourcePortIndex = 0, DestNodeIndex = 2, DestPortIndex = 0 });
+			graphCanvas.AddConnection(.() { SourceNodeIndex = 3, SourcePortIndex = 0, DestNodeIndex = 1, DestPortIndex = 0 });
+
+			// Wire events to console
+			graphCanvas.OnNodeMoved.Add(new (idx) => { Console.WriteLine("Node moved: {}", idx); });
+			graphCanvas.OnConnectionCreated.Add(new (idx) => { Console.WriteLine("Connection created: {}", idx); });
+			graphCanvas.OnNodeDeleted.Add(new (idx) => { Console.WriteLine("Node deleted: {}", idx); });
+			graphCanvas.OnSelectionChanged.Add(new () => { Console.WriteLine("Selection changed"); });
+			graphCanvas.OnCanvasContextMenu.Add(new (x, y) => { Console.WriteLine("Canvas context menu at ({}, {})", x, y); });
+			graphCanvas.OnNodeContextMenu.Add(new (idx) => { Console.WriteLine("Node context menu: {}", idx); });
+			graphCanvas.OnNodeDoubleClicked.Add(new (idx) => { Console.WriteLine("Node double-clicked: {}", idx); });
+
+			tabView.AddTab("Node Graph", graphCanvas);
+		}
+
 		// Footer
 		let footer = new ThemedBox("panel", 0, 24);
 		main.AddView(footer, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(24)) });
