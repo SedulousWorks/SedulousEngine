@@ -158,6 +158,81 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 		sep.Background = new ColorDrawable(.(60, 65, 80, 255));
 		panel.AddView(sep, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(1)) });
 
+		// Layer selector
+		let layerRow = new FlexLayout();
+		layerRow.Direction = .Horizontal;
+		layerRow.Spacing = 4;
+
+		let layerLabel = new Label();
+		layerLabel.SetText("Layer");
+		layerLabel.FontSize = 11;
+		layerLabel.TextColor = .(160, 160, 175, 255);
+		layerLabel.VAlign = .Middle;
+		layerRow.AddView(layerLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(36)), Height = .Match });
+
+		let layerCombo = new ComboBox();
+		RebuildLayerCombo(layerCombo, page);
+		layerCombo.OnSelectionChanged.Add(new [=page] (combo, idx) => {
+			page.SetActiveLayer((int32)idx);
+		});
+		layerRow.AddView(layerCombo, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
+
+		let addLayerBtn = new Button("+");
+		addLayerBtn.OnClick.Add(new [=page, =layerCombo] (btn) => {
+			if (page.Graph == null) return;
+			let name = scope String();
+			name.AppendF("Layer {}", page.Graph.Layers.Count);
+			page.Graph.AddLayer(new AnimationLayer(name));
+			page.MarkDirty();
+			RebuildLayerCombo(layerCombo, page);
+			page.SetActiveLayer((int32)page.Graph.Layers.Count - 1);
+		});
+		layerRow.AddView(addLayerBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(24)), Height = .Match });
+
+		let removeLayerBtn = new Button("-");
+		removeLayerBtn.OnClick.Add(new [=page, =layerCombo] (btn) => {
+			if (page.Graph == null || page.Graph.Layers.Count <= 1) return; // Keep at least one layer
+			let idx = page.ActiveLayerIndex;
+			let layer = page.Graph.Layers[idx];
+			page.Graph.Layers.RemoveAt(idx);
+			delete layer;
+			page.MarkDirty();
+			let newIdx = Math.Min(idx, (int32)page.Graph.Layers.Count - 1);
+			page.SetActiveLayer(newIdx);
+			RebuildLayerCombo(layerCombo, page);
+		});
+		layerRow.AddView(removeLayerBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(24)), Height = .Match });
+
+		panel.AddView(layerRow, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(22)) });
+
+		// Layer name (editable)
+		let layerNameLabel = new EditableLabel();
+		if (page.GetActiveLayer() != null)
+			layerNameLabel.SetText(page.GetActiveLayer().Name);
+		layerNameLabel.FontSize = 11;
+		layerNameLabel.OnRenameCommitted.Add(new [=page] (el, newName) => {
+			let layer = page.GetActiveLayer();
+			if (layer != null)
+			{
+				layer.Name.Set(newName);
+				page.MarkDirty();
+				page.OnLayerChanged();
+			}
+		});
+		panel.AddView(layerNameLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });
+
+		// Wire layer change to update combo + name label
+		page.OnLayerChanged.Add(new [=layerCombo, =layerNameLabel, =page] () => {
+			RebuildLayerCombo(layerCombo, page);
+			let layer = page.GetActiveLayer();
+			if (layer != null)
+				layerNameLabel.SetText(layer.Name);
+		});
+
+		let sepLayer = new Panel();
+		sepLayer.Background = new ColorDrawable(.(60, 65, 80, 255));
+		panel.AddView(sepLayer, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(1)) });
+
 		// Preview asset assignment section
 		let previewLabel = new Label();
 		previewLabel.SetText("Preview");
@@ -245,21 +320,48 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 
 				// State properties
 				propGrid.AddProperty(new StringEditor("Name", state.Name,
-					new [=state] (newName) => { state.Name.Set(newName); }));
+					new [=state, =page] (newName) => {
+						state.Name.Set(newName);
+						// Update the canvas node title to match
+						let layer = page.GetActiveLayer();
+						if (layer != null)
+						{
+							let stateIdx = layer.States.IndexOf(state);
+							if (stateIdx >= 0)
+							{
+								let node = page.Canvas.GetNode((int32)stateIdx + 1);
+								if (node != null)
+									node.Title.Set(newName);
+							}
+						}
+						page.MarkDirty();
+					}));
 				propGrid.AddProperty(new FloatEditor("Speed", state.Speed,
 					setter: new [=state] (val) => { state.Speed = (float)val; }));
 				propGrid.AddProperty(new BoolEditor("Loop", state.Loop,
 					new [=state] (val) => { state.Loop = val; }));
 
-				// Node-specific properties via IInspectable (clip ref, blend tree entries)
-				if (let inspectable = state.Node as IInspectable)
+				// Node-specific properties
+				if (let clipNode = state.Node as ClipStateNode)
 				{
-					let desc = scope EditorPropertyGridDescriptor(propGrid,
-						context?.DialogService,
-						context?.ResourceSystem?.SerializerProvider,
-						context?.ResourceSystem,
-						context);
-					inspectable.DescribeProperties(desc);
+					// Clip ref via IInspectable
+					if (let inspectable = clipNode as IInspectable)
+					{
+						let desc = scope EditorPropertyGridDescriptor(propGrid,
+							context?.DialogService,
+							context?.ResourceSystem?.SerializerProvider,
+							context?.ResourceSystem,
+							context);
+						inspectable.DescribeProperties(desc);
+					}
+				}
+				else if (let blend1D = state.Node as BlendTree1D)
+				{
+					BuildBlendTree1DEditors(propGrid, blend1D, page, context);
+				}
+				else if (let blend2D = state.Node as BlendTree2D)
+				{
+					BuildBlendTree2DEditors(propGrid, blend2D, page, context);
 				}
 			}
 			else if (let trans = obj as AnimationGraphTransition)
@@ -323,6 +425,70 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 		return root;
 	}
 
+	// ========== Layer management ==========
+
+	private static void RebuildLayerCombo(ComboBox combo, AnimGraphEditorPage page)
+	{
+		combo.ClearItems();
+		if (page.Graph == null) return;
+		for (let layer in page.Graph.Layers)
+			combo.AddItem(layer.Name);
+		combo.SelectedIndex = page.ActiveLayerIndex;
+	}
+
+	// ========== Parameter index remapping ==========
+
+	/// After deleting a parameter at `deletedIdx`, shift all references down.
+	/// Indices pointing at the deleted parameter become -1 (unbound).
+	private static void RemapParameterIndices(AnimationGraph graph, int32 deletedIdx)
+	{
+		for (let layer in graph.Layers)
+		{
+			// Transition conditions
+			for (let trans in layer.Transitions)
+			{
+				for (int32 ci = 0; ci < trans.Conditions.Count; ci++)
+				{
+					var cond = trans.Conditions[ci];
+					if (cond.ParameterIndex == deletedIdx)
+					{
+						cond.ParameterIndex = -1;
+						trans.Conditions[ci] = cond;
+					}
+					else if (cond.ParameterIndex > deletedIdx)
+					{
+						cond.ParameterIndex--;
+						trans.Conditions[ci] = cond;
+					}
+				}
+			}
+
+			// Blend tree bindings
+			for (let state in layer.States)
+			{
+				if (let blend1D = state.Node as BlendTree1D)
+				{
+					if (blend1D.ParameterIndex == deletedIdx)
+						blend1D.ParameterIndex = -1;
+					else if (blend1D.ParameterIndex > deletedIdx)
+						blend1D.ParameterIndex--;
+				}
+				else if (let blend2D = state.Node as BlendTree2D)
+				{
+					if (blend2D.ParameterIndexX == deletedIdx)
+						blend2D.ParameterIndexX = -1;
+					else if (blend2D.ParameterIndexX > deletedIdx)
+						blend2D.ParameterIndexX--;
+
+					if (blend2D.ParameterIndexY == deletedIdx)
+						blend2D.ParameterIndexY = -1;
+					else if (blend2D.ParameterIndexY > deletedIdx)
+						blend2D.ParameterIndexY--;
+				}
+			}
+		}
+	}
+
 	// ========== Parameter management ==========
 
 	/// Helper object stored on the page so we can find the param grid later to rebuild it.
@@ -367,6 +533,19 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 				};
 				paramGrid.AddProperty(editor);
 			}
+
+			// Delete button
+			let paramIdx = i;
+			paramGrid.AddProperty(new ButtonEditor(scope $"Delete [{param.Name}]",
+				new [=page, =paramGrid, =paramIdx] () => {
+					if (page.Graph == null) return;
+					let p = page.Graph.Parameters[paramIdx];
+					page.Graph.Parameters.RemoveAt(paramIdx);
+					delete p;
+					RemapParameterIndices(page.Graph, paramIdx);
+					page.MarkDirty();
+					RebuildParameterGrid(paramGrid, page);
+				}));
 		}
 	}
 
@@ -438,6 +617,14 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 			// Threshold
 			propGrid.AddProperty(new FloatEditor(scope $"Cond[{ci}] Value", cond.Threshold,
 				setter: new [=trans, =condIdx] (val) => { trans.Conditions[condIdx].Threshold = (float)val; }));
+
+			// Remove button
+			propGrid.AddProperty(new ButtonEditor(scope $"Remove [{ci}]",
+				new [=trans, =condIdx, =page] () => {
+					trans.Conditions.RemoveAt(condIdx);
+					page.MarkDirty();
+					page.SelectObject(trans);
+				}));
 		}
 
 		// Add condition button
@@ -448,6 +635,122 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 				page.MarkDirty();
 				// Refresh by re-selecting
 				page.SelectObject(trans);
+			}));
+	}
+
+	// ========== BlendTree editing ==========
+
+	private static void BuildBlendTree1DEditors(PropertyGrid propGrid, BlendTree1D blend,
+		AnimGraphEditorPage page, EditorContext context)
+	{
+		// Parameter binding dropdown
+		if (page.Graph != null && page.Graph.Parameters.Count > 0)
+		{
+			let paramCount = page.Graph.Parameters.Count;
+			StringView[] paramNames = scope StringView[paramCount];
+			for (int32 pi = 0; pi < paramCount; pi++)
+				paramNames[pi] = page.Graph.Parameters[pi].Name;
+
+			propGrid.AddProperty(new EnumEditor("Parameter", blend.ParameterIndex,
+				paramNames, new [=blend, =page] (val) => { blend.ParameterIndex = val; page.MarkDirty(); }));
+		}
+
+		for (int32 ei = 0; ei < blend.Entries.Count; ei++)
+		{
+			let entryIdx = ei;
+			let entry = blend.Entries[ei];
+
+			// Threshold
+			propGrid.AddProperty(new FloatEditor(scope $"Entry[{ei}] Threshold", entry.Threshold,
+				setter: new [=entry, =page] (val) => { entry.Threshold = (float)val; page.MarkDirty(); }));
+
+			// Clip ref via IInspectable
+			if (let inspectable = entry as IInspectable)
+			{
+				let desc = scope EditorPropertyGridDescriptor(propGrid,
+					context?.DialogService,
+					context?.ResourceSystem?.SerializerProvider,
+					context?.ResourceSystem,
+					context);
+				inspectable.DescribeProperties(desc);
+			}
+
+			// Remove entry
+			propGrid.AddProperty(new ButtonEditor(scope $"Remove Entry [{ei}]",
+				new [=blend, =entryIdx, =page] () => {
+					delete blend.Entries[entryIdx];
+					blend.Entries.RemoveAt(entryIdx);
+					page.MarkDirty();
+					page.SelectObject(page.[Friend]mSelectedObject); // Refresh
+				}));
+		}
+
+		// Add entry
+		propGrid.AddProperty(new ButtonEditor("Add Entry",
+			new [=blend, =page] () => {
+				blend.AddEntry(0, null);
+				page.MarkDirty();
+				page.SelectObject(page.[Friend]mSelectedObject); // Refresh
+			}));
+	}
+
+	private static void BuildBlendTree2DEditors(PropertyGrid propGrid, BlendTree2D blend,
+		AnimGraphEditorPage page, EditorContext context)
+	{
+		// Parameter binding dropdowns
+		if (page.Graph != null && page.Graph.Parameters.Count > 0)
+		{
+			let paramCount = page.Graph.Parameters.Count;
+			StringView[] paramNames = scope StringView[paramCount];
+			for (int32 pi = 0; pi < paramCount; pi++)
+				paramNames[pi] = page.Graph.Parameters[pi].Name;
+
+			propGrid.AddProperty(new EnumEditor("Parameter X", blend.ParameterIndexX,
+				paramNames, new [=blend, =page] (val) => { blend.ParameterIndexX = val; page.MarkDirty(); }));
+			propGrid.AddProperty(new EnumEditor("Parameter Y", blend.ParameterIndexY,
+				paramNames, new [=blend, =page] (val) => { blend.ParameterIndexY = val; page.MarkDirty(); }));
+		}
+
+		for (int32 ei = 0; ei < blend.Entries.Count; ei++)
+		{
+			let entryIdx = ei;
+			let entry = blend.Entries[ei];
+
+			// Position X
+			propGrid.AddProperty(new FloatEditor(scope $"Entry[{ei}] X", entry.Position.X,
+				setter: new [=entry, =page] (val) => { entry.Position.X = (float)val; page.MarkDirty(); }));
+
+			// Position Y
+			propGrid.AddProperty(new FloatEditor(scope $"Entry[{ei}] Y", entry.Position.Y,
+				setter: new [=entry, =page] (val) => { entry.Position.Y = (float)val; page.MarkDirty(); }));
+
+			// Clip ref via IInspectable
+			if (let inspectable = entry as IInspectable)
+			{
+				let desc = scope EditorPropertyGridDescriptor(propGrid,
+					context?.DialogService,
+					context?.ResourceSystem?.SerializerProvider,
+					context?.ResourceSystem,
+					context);
+				inspectable.DescribeProperties(desc);
+			}
+
+			// Remove entry
+			propGrid.AddProperty(new ButtonEditor(scope $"Remove Entry [{ei}]",
+				new [=blend, =entryIdx, =page] () => {
+					delete blend.Entries[entryIdx];
+					blend.Entries.RemoveAt(entryIdx);
+					page.MarkDirty();
+					page.SelectObject(page.[Friend]mSelectedObject); // Refresh
+				}));
+		}
+
+		// Add entry
+		propGrid.AddProperty(new ButtonEditor("Add Entry",
+			new [=blend, =page] () => {
+				blend.AddEntry(0, 0, null);
+				page.MarkDirty();
+				page.SelectObject(page.[Friend]mSelectedObject); // Refresh
 			}));
 	}
 

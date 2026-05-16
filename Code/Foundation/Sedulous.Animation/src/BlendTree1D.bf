@@ -50,6 +50,10 @@ class BlendTree1D : IAnimationStateNode
 	/// Entries sorted by threshold.
 	public List<BlendTree1DEntry> Entries = new .() ~ DeleteContainerAndItems!(_);
 
+	/// Index of the graph parameter that drives this blend tree (-1 = unbound).
+	/// Persisted in the graph resource; the player calls LinkBlendTree1D with this.
+	public int32 ParameterIndex = -1;
+
 	/// Current blend parameter value (set by the graph player each frame).
 	public float Parameter;
 

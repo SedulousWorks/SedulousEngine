@@ -118,6 +118,24 @@ class AnimationGraphPlayer
 			mLayerRuntimes.Add(runtime);
 		}
 
+		// Auto-link blend trees from their stored ParameterIndex fields
+		for (let layer in graph.Layers)
+		{
+			for (let state in layer.States)
+			{
+				if (let blend1D = state.Node as BlendTree1D)
+				{
+					if (blend1D.ParameterIndex >= 0)
+						LinkBlendTree1D(blend1D, blend1D.ParameterIndex);
+				}
+				else if (let blend2D = state.Node as BlendTree2D)
+				{
+					if (blend2D.ParameterIndexX >= 0 || blend2D.ParameterIndexY >= 0)
+						LinkBlendTree2D(blend2D, blend2D.ParameterIndexX, blend2D.ParameterIndexY);
+				}
+			}
+		}
+
 		// Initialize to bind pose
 		ResetToBind();
 	}

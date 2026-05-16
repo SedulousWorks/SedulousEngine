@@ -48,6 +48,12 @@ class BlendTree2D : IAnimationStateNode
 	/// Entries in 2D space.
 	public List<BlendTree2DEntry> Entries = new .() ~ DeleteContainerAndItems!(_);
 
+	/// Index of the graph parameter that drives the X axis (-1 = unbound).
+	public int32 ParameterIndexX = -1;
+
+	/// Index of the graph parameter that drives the Y axis (-1 = unbound).
+	public int32 ParameterIndexY = -1;
+
 	/// Current X parameter value (set by the graph player each frame).
 	public float ParameterX;
 

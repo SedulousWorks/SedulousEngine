@@ -371,6 +371,9 @@ class AnimationGraphResource : Resource
 		{
 			s.BeginObject("blendTree1D");
 
+			int32 paramIdx = blend1D.ParameterIndex;
+			s.Int32("parameterIndex", ref paramIdx);
+
 			int32 entryCount = (int32)blend1D.Entries.Count;
 			s.Int32("entryCount", ref entryCount);
 
@@ -392,6 +395,12 @@ class AnimationGraphResource : Resource
 		else if (let blend2D = node as BlendTree2D)
 		{
 			s.BeginObject("blendTree2D");
+
+			int32 paramIdxX = blend2D.ParameterIndexX;
+			s.Int32("parameterIndexX", ref paramIdxX);
+
+			int32 paramIdxY = blend2D.ParameterIndexY;
+			s.Int32("parameterIndexY", ref paramIdxY);
 
 			int32 entryCount = (int32)blend2D.Entries.Count;
 			s.Int32("entryCount", ref entryCount);
@@ -646,10 +655,16 @@ class AnimationGraphResource : Resource
 
 		case .BlendTree1D:
 			s.BeginObject("blendTree1D");
+
+			int32 paramIdx1D = -1;
+			s.Int32("parameterIndex", ref paramIdx1D);
+
 			int32 entryCount = 0;
 			s.Int32("entryCount", ref entryCount);
 
 			let blend1D = new BlendTree1D();
+			blend1D.ParameterIndex = paramIdx1D;
+
 			for (int32 ei = 0; ei < entryCount; ei++)
 			{
 				s.BeginObject(scope $"e{ei}");
@@ -670,10 +685,20 @@ class AnimationGraphResource : Resource
 
 		case .BlendTree2D:
 			s.BeginObject("blendTree2D");
+
+			int32 paramIdxX = -1;
+			s.Int32("parameterIndexX", ref paramIdxX);
+
+			int32 paramIdxY = -1;
+			s.Int32("parameterIndexY", ref paramIdxY);
+
 			int32 entryCount2D = 0;
 			s.Int32("entryCount", ref entryCount2D);
 
 			let blend2D = new BlendTree2D();
+			blend2D.ParameterIndexX = paramIdxX;
+			blend2D.ParameterIndexY = paramIdxY;
+
 			for (int32 ei = 0; ei < entryCount2D; ei++)
 			{
 				s.BeginObject(scope $"e{ei}");

@@ -110,6 +110,22 @@ class AnimGraphEditorPage : IEditorPage, IResourceChangeListener
 
 	public void AddOwnedObject(Object obj) { mOwnedObjects.Add(obj); }
 
+	/// Switches to a different layer by index. Rebuilds the canvas.
+	public void SetActiveLayer(int32 layerIndex)
+	{
+		if (Graph == null || layerIndex < 0 || layerIndex >= Graph.Layers.Count)
+			return;
+		if (mActiveLayerIndex == layerIndex)
+			return;
+		mActiveLayerIndex = layerIndex;
+		SelectObject(null);
+		RebuildGraph();
+		OnLayerChanged();
+	}
+
+	/// Fires when the active layer changes or layer list changes.
+	public Event<delegate void()> OnLayerChanged ~ _.Dispose();
+
 	public void MarkDirty()
 	{
 		if (!mDirty)
