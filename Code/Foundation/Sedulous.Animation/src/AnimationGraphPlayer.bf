@@ -93,6 +93,13 @@ class AnimationGraphPlayer
 		mSkinningMatrices = new Matrix[boneCount];
 		mPrevSkinningMatrices = new Matrix[boneCount];
 
+		// Initialize to identity so the mesh renders in bind pose before first Update()
+		for (int i = 0; i < boneCount; i++)
+		{
+			mSkinningMatrices[i] = .Identity;
+			mPrevSkinningMatrices[i] = .Identity;
+		}
+
 		// Copy parameters from graph definition (each player has its own runtime values)
 		for (let param in graph.Parameters)
 		{
@@ -328,12 +335,12 @@ class AnimationGraphPlayer
 
 		for (let transition in layer.Transitions)
 		{
-			// Check source state matches (-1 = Any State)
+			// Check source state matches (-1 = Any State, matches any source)
 			if (transition.SourceStateIndex != -1 && transition.SourceStateIndex != runtime.CurrentStateIndex)
 				continue;
 
-			// Don't transition to self (unless from Any State)
-			if (transition.SourceStateIndex != -1 && transition.DestStateIndex == runtime.CurrentStateIndex)
+			// Don't transition to the state we're already in
+			if (transition.DestStateIndex == runtime.CurrentStateIndex)
 				continue;
 
 			// Check exit time gate
