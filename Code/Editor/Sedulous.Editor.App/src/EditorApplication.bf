@@ -368,7 +368,10 @@ class EditorApplication : Application, IDockableWindowHost
 				let btn = new Button(mRecentProjects.Get(i));
 				btn.OnClick.Add(new (b) => {
 					if (idx < mRecentProjects.Count)
-						OpenProject(mRecentProjects.Get(idx));
+					{
+						var path = mRecentProjects.Get(idx);
+						OpenProject(path);
+					}
 				});
 				center.AddView(btn, new FlexLayout.LayoutParams() {
 					Width = .Match, Height = .Fixed(.Px(28))
@@ -390,15 +393,16 @@ class EditorApplication : Application, IDockableWindowHost
 
 	private void OpenProject(StringView path)
 	{
-		if (mProject.Open(path) case .Err)
+		String pathToOpen = scope String(path);
+		if (mProject.Open(pathToOpen) case .Err)
 		{
-			mEditorLogger.Log(.Error, "Failed to open project: {}", path);
+			mEditorLogger.Log(.Error, "Failed to open project: {}", pathToOpen);
 			return;
 		}
 
-		mRecentProjects.Add(path);
+		mRecentProjects.Add(pathToOpen);
 		mProjectLoaded = true;
-		mEditorLogger.Log(.Information, "Project opened: {}", path);
+		mEditorLogger.Log(.Information, scope $"Project opened: {pathToOpen}");
 
 		// Mount the project directory under "project://" and load its identity index
 		let projectDir = scope String();
@@ -651,12 +655,12 @@ class EditorApplication : Application, IDockableWindowHost
 			defaultPath.Set(mProject.ProjectDirectory);
 
 		let filter = scope String()..AppendF("*{}", ext);
-		let extCopy = scope String(ext); // captured into the dialog callback
 
 		Shell.Dialogs.ShowSaveFileDialog(
 			new (paths) => {
 				if (paths.Length > 0)
 				{
+					let extCopy = scope String(ext); // captured into the dialog callback
 					let savePath = scope String(paths[0]);
 					if (!savePath.EndsWith(extCopy, .OrdinalIgnoreCase))
 						savePath.Append(extCopy);
