@@ -555,6 +555,234 @@ class PrefabTests
 		});
 	}
 
+	// ==================== OverrideApplicator ====================
+
+	[Test]
+	public static void OverrideApplicator_Float()
+	{
+		let comp = scope HealthComponent();
+		comp.Health = 100;
+
+		let applicator = scope OverrideApplicator("Health", "250");
+		comp.Serialize(applicator);
+
+		Test.Assert(Math.Abs(comp.Health - 250) < 0.001f);
+	}
+
+	[Test]
+	public static void OverrideApplicator_Int()
+	{
+		let comp = scope HealthComponent();
+		comp.Armor = 5;
+
+		let applicator = scope OverrideApplicator("Armor", "42");
+		comp.Serialize(applicator);
+
+		Test.Assert(comp.Armor == 42);
+	}
+
+	[Test]
+	public static void OverrideApplicator_Bool()
+	{
+		let comp = scope HealthComponent();
+		comp.IsInvulnerable = false;
+
+		let applicator = scope OverrideApplicator("IsInvulnerable", "true");
+		comp.Serialize(applicator);
+
+		Test.Assert(comp.IsInvulnerable == true);
+	}
+
+	[Test]
+	public static void OverrideApplicator_OnlyModifiesTarget()
+	{
+		let comp = scope HealthComponent();
+		comp.Health = 100;
+		comp.Armor = 5;
+		comp.IsInvulnerable = false;
+
+		let applicator = scope OverrideApplicator("Armor", "99");
+		comp.Serialize(applicator);
+
+		// Only Armor changed
+		Test.Assert(comp.Armor == 99);
+		// Others unchanged
+		Test.Assert(Math.Abs(comp.Health - 100) < 0.001f);
+		Test.Assert(comp.IsInvulnerable == false);
+	}
+
+	[Test]
+	public static void OverrideApplicator_InvalidValue_NoChange()
+	{
+		let comp = scope HealthComponent();
+		comp.Health = 100;
+
+		let applicator = scope OverrideApplicator("Health", "notanumber");
+		comp.Serialize(applicator);
+
+		// Should not crash, value stays unchanged
+		Test.Assert(Math.Abs(comp.Health - 100) < 0.001f);
+	}
+
+	[Test]
+	public static void OverrideApplicator_NonexistentProperty_NoChange()
+	{
+		let comp = scope HealthComponent();
+		comp.Health = 100;
+		comp.Armor = 5;
+
+		let applicator = scope OverrideApplicator("Mana", "999");
+		comp.Serialize(applicator);
+
+		// Nothing should change
+		Test.Assert(Math.Abs(comp.Health - 100) < 0.001f);
+		Test.Assert(comp.Armor == 5);
+	}
+
+	// ==================== Manager Override Application ====================
+
+	[Test]
+	public static void Manager_AppliesOverridesOnInstantiation()
+	{
+		let registry = CreateRegistry();
+		defer delete registry;
+
+		// Build prefab with HealthComponent (Health=100, Armor=5)
+		let prefabScene = scope Scene();
+		prefabScene.AddModule(new HealthManager());
+		let root = prefabScene.CreateEntity("Warrior");
+		let rootId = prefabScene.GetEntityId(root);
+
+		let healthMgr = prefabScene.GetModule<HealthManager>();
+		let hHandle = healthMgr.CreateComponent(root);
+		if (let comp = healthMgr.Get(hHandle))
+		{
+			comp.Health = 100;
+			comp.Armor = 5;
+		}
+
+		// Expose Health as "MaxHealth" parameter
+		let parameters = scope List<ExposedParameterDescriptor>();
+		let param = scope ExposedParameterDescriptor();
+		param.Name.Set("MaxHealth");
+		param.EntityId = rootId;
+		param.ComponentTypeId.Set("Test.HealthComponent");
+		param.PropertyName.Set("Health");
+		parameters.Add(param);
+
+		WithTempPrefabFile(prefabScene, parameters, registry, new [&] (mount, locator) =>
+		{
+			let provider = scope OpenDDLSerializerProvider();
+			let logger = scope ConsoleLogger(.Trace);
+			let resSys = scope ResourceSystem(logger);
+			resSys.Startup();
+			resSys.Mount("test", mount);
+			let prefabResMgr = new PrefabResourceManager(registry, provider);
+			defer { resSys.RemoveResourceManager(prefabResMgr); delete prefabResMgr; }
+			resSys.AddResourceManager(prefabResMgr);
+
+			let scene = scope Scene();
+			let prefabMgr = new PrefabComponentManager();
+			prefabMgr.ResourceSystem = resSys;
+			prefabMgr.SerializerProvider = provider;
+			prefabMgr.TypeRegistry = registry;
+			scene.AddModule(prefabMgr);
+
+			let instanceEntity = scene.CreateEntity("PrefabInstance");
+			let refHandle = prefabMgr.CreateComponent(instanceEntity);
+			if (let refComp = prefabMgr.Get(refHandle))
+			{
+				let uri = scope String()..AppendF("test://{}", locator);
+				var prefabRef = ResourceRef(.Empty, uri);
+				defer prefabRef.Dispose();
+				refComp.SetPrefabRef(prefabRef);
+
+				// Set override: Health -> 500
+				refComp.SetOverride("MaxHealth", "500");
+			}
+
+			// Update triggers instantiation + override application
+			scene.Update(0.016f);
+
+			// Verify Health was overridden to 500
+			let instWarrior = FindByName(scene, "Warrior");
+			Test.Assert(instWarrior.IsAssigned);
+
+			let destHealthMgr = scene.GetModule<HealthManager>();
+			Test.Assert(destHealthMgr != null);
+			let destComp = destHealthMgr.GetForEntity(instWarrior);
+			Test.Assert(destComp != null);
+			Test.Assert(Math.Abs(destComp.Health - 500) < 0.001f);
+
+			// Armor should be unchanged (no override for it)
+			Test.Assert(destComp.Armor == 5);
+		});
+	}
+
+	[Test]
+	public static void Manager_OrphanedOverrideIgnored()
+	{
+		let registry = CreateRegistry();
+		defer delete registry;
+
+		let prefabScene = scope Scene();
+		prefabScene.AddModule(new HealthManager());
+		let root = prefabScene.CreateEntity("Warrior");
+
+		let healthMgr = prefabScene.GetModule<HealthManager>();
+		let hHandle = healthMgr.CreateComponent(root);
+		if (let comp = healthMgr.Get(hHandle))
+			comp.Health = 100;
+
+		// No exposed parameters — override will be orphaned
+		let parameters = scope List<ExposedParameterDescriptor>();
+
+		WithTempPrefabFile(prefabScene, parameters, registry, new [&] (mount, locator) =>
+		{
+			let provider = scope OpenDDLSerializerProvider();
+			let logger = scope ConsoleLogger(.Trace);
+			let resSys = scope ResourceSystem(logger);
+			resSys.Startup();
+			resSys.Mount("test", mount);
+			let prefabResMgr = new PrefabResourceManager(registry, provider);
+			defer { resSys.RemoveResourceManager(prefabResMgr); delete prefabResMgr; }
+			resSys.AddResourceManager(prefabResMgr);
+
+			let scene = scope Scene();
+			let prefabMgr = new PrefabComponentManager();
+			prefabMgr.ResourceSystem = resSys;
+			prefabMgr.SerializerProvider = provider;
+			prefabMgr.TypeRegistry = registry;
+			scene.AddModule(prefabMgr);
+
+			let instanceEntity = scene.CreateEntity("PrefabInstance");
+			let refHandle = prefabMgr.CreateComponent(instanceEntity);
+			if (let refComp = prefabMgr.Get(refHandle))
+			{
+				let uri = scope String()..AppendF("test://{}", locator);
+				var prefabRef = ResourceRef(.Empty, uri);
+				defer prefabRef.Dispose();
+				refComp.SetPrefabRef(prefabRef);
+
+				// Override for non-existent parameter — should be silently ignored
+				refComp.SetOverride("NonExistent", "999");
+			}
+
+			// Should not crash
+			scene.Update(0.016f);
+
+			// Health should still be 100 (no valid override applied)
+			let instWarrior = FindByName(scene, "Warrior");
+			Test.Assert(instWarrior.IsAssigned);
+			let destHealthMgr = scene.GetModule<HealthManager>();
+			let destComp = destHealthMgr.GetForEntity(instWarrior);
+			Test.Assert(destComp != null);
+			Test.Assert(Math.Abs(destComp.Health - 100) < 0.001f);
+		});
+	}
+
+	// ==================== Stability ====================
+
 	[Test]
 	public static void Manager_DoesNotReinstantiateIfUnchanged()
 	{

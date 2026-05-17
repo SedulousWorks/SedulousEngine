@@ -151,8 +151,69 @@ class PrefabComponentManager : ComponentManager<PrefabReferenceComponent>
 				}
 			}
 
+			// Apply per-instance overrides
+			ApplyOverrides(comp, prefab, scene);
+
 			comp.IsInstantiated = true;
 			comp.ResolvedPrefabId = prefab.Id;
+		}
+	}
+
+	/// Applies per-instance overrides from the component's Overrides dictionary.
+	/// Matches override names to ExposedParameterDescriptors on the prefab resource,
+	/// then uses OverrideApplicator to set the matching property on the target component.
+	private void ApplyOverrides(PrefabReferenceComponent comp, PrefabResource prefab, Scene scene)
+	{
+		if (comp.Overrides.Count == 0 || prefab.ExposedParameters.Count == 0)
+			return;
+
+		for (let kv in comp.Overrides)
+		{
+			let paramName = kv.key;
+			let overrideValue = kv.value;
+
+			// Find the matching exposed parameter descriptor
+			ExposedParameterDescriptor descriptor = null;
+			for (let param in prefab.ExposedParameters)
+			{
+				if (param.Name == paramName)
+				{
+					descriptor = param;
+					break;
+				}
+			}
+			if (descriptor == null) continue; // Orphaned override — parameter removed from prefab
+
+			// Map prefab entity GUID to live entity handle
+			if (comp.GuidMap == null) continue;
+			EntityHandle targetEntity = .Invalid;
+			if (!comp.GuidMap.TryGetValue(descriptor.EntityId, out targetEntity))
+				continue;
+
+			// Find the component manager by type ID
+			SceneModule module = null;
+			for (let m in scene.Modules)
+			{
+				if (m.SerializationTypeId == descriptor.ComponentTypeId)
+				{
+					module = m;
+					break;
+				}
+			}
+			if (module == null) continue;
+
+			// Get the component and apply the override
+			if (let cmBase = module as ComponentManagerBase)
+			{
+				let component = cmBase.GetComponent(targetEntity);
+				if (component == null) continue;
+
+				if (let serializable = component as ISerializableComponent)
+				{
+					let applicator = scope OverrideApplicator(descriptor.PropertyName, overrideValue);
+					serializable.Serialize(applicator);
+				}
+			}
 		}
 	}
 
