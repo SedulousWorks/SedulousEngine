@@ -277,6 +277,7 @@ class EditorApplication : Application, IDockableWindowHost
 		mEditorContext.RegisterPageFactory(new TextureEditorPageFactory());
 		mEditorContext.RegisterPageFactory(new MaterialEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
 		mEditorContext.RegisterPageFactory(new MeshEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
+		mEditorContext.RegisterPageFactory(new SkinnedMeshEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
 		mEditorContext.RegisterPageFactory(new AnimationEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
 		mEditorContext.RegisterPageFactory(new SkeletonEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
 		mEditorContext.RegisterPageFactory(new AnimGraphEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
