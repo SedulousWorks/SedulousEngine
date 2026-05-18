@@ -20,6 +20,10 @@ public class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 	/// When null or unsupported, falls back to PopupLayer virtual floating.
 	public IDockableWindowHost DockableWindowHost;
 
+	/// Fired when a dock tab is selected (user click or programmatic).
+	/// The panel is the newly selected panel.
+	public Event<delegate void(DockablePanel)> OnPanelActivated ~ _.Dispose();
+
 	public View RootNode => mRootNode;
 
 	public this()

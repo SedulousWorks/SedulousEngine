@@ -27,6 +27,9 @@ public class DockTabGroup : ViewGroup, IDragSource
 	private DockablePanel mDraggedPanel;
 	private int mDragOriginalIndex = -1;
 
+	/// Fired when the selected tab changes (user click or programmatic).
+	public Event<delegate void(DockablePanel)> OnTabSelected ~ _.Dispose();
+
 	public this()
 	{
 		StyleId = new String("docktabgroup");
@@ -48,6 +51,19 @@ public class DockTabGroup : ViewGroup, IDragSource
 					mPanels[mSelectedIndex].Visibility = .Visible;
 
 				Invalidate();
+				OnTabSelected(SelectedPanel);
+
+				// Notify the DockManager (if any) about the tab change
+				View ancestor = Parent;
+				while (ancestor != null)
+				{
+					if (let dm = ancestor as DockManager)
+					{
+						dm.OnPanelActivated(SelectedPanel);
+						break;
+					}
+					ancestor = ancestor.Parent;
+				}
 			}
 		}
 	}
