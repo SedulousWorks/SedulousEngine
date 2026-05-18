@@ -1,298 +1,103 @@
-# Prefab System V2 Roadmap
-
-Clean-slate redesign of the prefab instance and override system. The template
-side (PrefabResource, PrefabSerializer, PrefabResourceManager) is reusable from
-V1. The instance side is rebuilt around sparse delta tracking inspired by
-ZeroEngine's LocalModifications architecture.
-
-## Vision
-
-Create a prefab. Add it to a scene in the editor. The prefab's entities appear
-in the scene hierarchy as real entities. Any property changes made to those
-entities are tracked as diffs from the template. The user can "Apply to Prefab"
-to push changes back to the template. Template changes propagate to all
-instances, preserving per-instance overrides.
-
-## Key Differences from V1
-
-| Aspect | V1 | V2 |
-|--------|----|----|
-| Override scope | Only exposed parameters | Every property |
-| Override storage | String dictionary on component | Sparse property-path set on scene |
-| Instance entities | Runtime-only, excluded from scene save | Real entities, serialized as diffs |
-| Instantiation | Runtime via PrefabComponentManager | Editor-time when dragging in, runtime for game spawning |
-| Template update | Destroy + recreate + re-apply string overrides | Rebuild: cache diffs → recreate → re-apply diffs |
-| "Apply to Prefab" | Not supported | Instance state written back as new template |
-| Exposed parameters | Required for each overridable property | Gone — everything overridable |
-
-## Architecture Overview
-
-```
-.prefab file (serialized entity subgraph, same format as V1)
-    ↓ editor drag-in or runtime spawn
-Scene entities with PrefabInstanceTagV2
-    ↓ property edit
-LocalModifications tracks which properties differ
-    ↓ scene save
-Only diffs serialized per prefab instance entity
-    ↓ scene load
-Template loaded, diffs re-applied, LocalModifications restored
-    ↓ template change
-PrefabRebuilderV2 caches diffs → recreates from new template → re-applies
-```
-
-## Data Model
-
-### LocalModifications
-
-Lives on the `Scene`. Tracks which properties on which entities differ from
-their prefab template. Does NOT store override values — the live component
-already has the current value. Stores only the fact that a property was modified.
-
-```beef
-class LocalModifications
-{
-    /// Per-entity modification state. Only entities that differ from
-    /// their template have an entry.
-    Dictionary<EntityHandle, ObjectState> mStates;
-
-    /// Check if a specific property is modified on an entity.
-    bool IsPropertyModified(EntityHandle entity, PropertyPath path);
-
-    /// Mark a property as modified (editor calls this on user edit).
-    void SetPropertyModified(EntityHandle entity, PropertyPath path, bool modified);
-
-    /// Get the full ObjectState for an entity (null if unmodified).
-    ObjectState GetObjectState(EntityHandle entity);
-
-    /// Remove all modification tracking for an entity (on destroy or revert all).
-    void ClearEntity(EntityHandle entity);
-}
-```
-
-### ObjectState
-
-All modifications for a single entity relative to its prefab template.
-
-```beef
-class ObjectState
-{
-    /// Set of properties that differ from the template.
-    /// PropertyPath = (componentTypeId, propertyName) pair.
-    HashSet<PropertyPath> ModifiedProperties;
-
-    /// Child entities locally added (not in the template).
-    HashSet<Guid> AddedChildren;
-
-    /// Child entities from the template that were removed on this instance.
-    HashSet<Guid> RemovedChildren;
-}
-```
-
-### PropertyPath
-
-Identifies a specific property on a specific component type.
-
-```beef
-struct PropertyPath : IHashable
-{
-    String ComponentTypeId;   // e.g. "Sedulous.MeshComponent"
-    String PropertyName;      // e.g. "MeshRef"
-}
-```
-
-### PrefabInstanceTagV2
-
-Tag component on every entity that belongs to a prefab instance. Carries
-enough information to reconstruct the link to the template.
-
-```beef
-class PrefabInstanceTagV2 : Component
-{
-    /// Resource ID of the .prefab file.
-    Guid PrefabId;
-
-    /// This entity's GUID within the .prefab file (for mapping back to template).
-    Guid SourceEntityId;
-
-    /// The root entity of this prefab instance (the entity the user dragged in).
-    /// For the root itself, this equals Owner.
-    EntityHandle InstanceRoot;
-}
-```
-
-Not serialized directly — reconstructed from the scene file's prefab
-instance metadata during load.
-
-### PrefabReferenceV2
-
-Stored per prefab instance root entity in the scene file. Not a component —
-it's metadata in the scene serialization format that the scene serializer
-reads to know "this entity and its children come from a prefab."
-
-```
-SceneFile Entity Entry:
-{
-    Id = <instance-guid>
-    Name = "Enemy"
-    PrefabSource = {
-        PrefabId = <prefab-resource-guid>
-        PrefabPath = "project://Prefabs/Enemy.prefab"
-        SourceEntityId = <root-entity-guid-in-prefab>
-    }
-    // Only modified properties listed:
-    Components = [
-        { TypeId = "Sedulous.HealthComponent", Overrides = { Health = 500 } }
-    ]
-    Children = [
-        {
-            SourceEntityId = <child-guid-in-prefab>
-            // Only overrides, or empty if matches template
-        }
-    ]
-}
-```
-
-## Scene Serialization
-
-### Saving a Scene with Prefab Instances
-
-For each entity with `PrefabInstanceTagV2`:
-
-1. If it's the instance root:
-   - Write `PrefabSource` header (prefab resource ID + path + source entity ID)
-   - For this entity and each child: check `LocalModifications`
-   - Only serialize properties that are in `ModifiedProperties`
-   - Serialize `AddedChildren` as full entities (they're not in the template)
-   - Record `RemovedChildren` GUIDs
-
-2. If it's a non-root prefab child:
-   - Skip (handled as part of the root's children block)
-
-3. Non-prefab entities serialize normally (full properties, as today)
-
-### Loading a Scene with Prefab Instances
-
-1. Read entity entry. If it has `PrefabSource`:
-   - Load the referenced .prefab template
-   - Instantiate template entities into the scene (new GUIDs, mapped from source GUIDs)
-   - For each override property in the scene file: apply to the instantiated entity
-   - Register all overrides in `LocalModifications`
-   - Add `PrefabInstanceTagV2` to each entity
-   - Handle `AddedChildren`: create them as normal entities, tag as locally added
-   - Handle `RemovedChildren`: destroy the corresponding instantiated entities
-
-2. Normal entities load as today.
-
-## Runtime Spawning
-
-Game code that spawns prefabs at runtime (e.g., projectile spawning, level
-generation) uses `PrefabSpawnerV2`:
-
-```beef
-class PrefabSpawnerV2
-{
-    /// Instantiate a prefab into the scene at runtime.
-    /// Returns the root entity handle.
-    EntityHandle Spawn(Scene scene, PrefabResource prefab,
-                       Transform transform, EntityHandle parent = .Invalid);
-}
-```
-
-This creates entities from the template with `PrefabInstanceTagV2` but no
-`LocalModifications` tracking (runtime instances don't need diff tracking).
-Overrides can be applied directly to components after spawning.
-
-## Template Update (Prefab Rebuild)
-
-When a .prefab file changes (hot-reload or manual save):
-
-```
-PrefabRebuilderV2.Rebuild(scene, prefabResourceId):
-  1. Find all instance roots with matching PrefabId
-  2. For each instance:
-     a. Read ObjectState from LocalModifications (the diffs)
-     b. Read current override values from live components
-     c. Store AddedChildren entity data (full serialization)
-     d. Store transform overrides
-     e. Destroy all instance entities
-     f. Instantiate from new template
-     g. Re-apply cached overrides
-     h. Re-create added children
-     i. Restore LocalModifications state
-  3. Refresh editor UI if affected entities are selected
-```
-
-## "Apply to Prefab"
-
-User selects a prefab instance root → context menu → "Apply to Prefab":
-
-```
-ApplyToPrefab(scene, instanceRoot):
-  1. Read PrefabInstanceTagV2 to get prefab resource ID
-  2. Get all instance entities (walk children with matching PrefabId)
-  3. Create a temporary scene with these entities (mapped back to source GUIDs)
-  4. Save via PrefabSerializer to the .prefab file
-  5. Clear LocalModifications for all affected entities
-  6. Hot-reload triggers rebuild of OTHER instances of the same prefab
-```
-
-## "Revert Property"
-
-User right-clicks an overridden property → "Revert to Prefab":
-
-```
-RevertProperty(entity, propertyPath):
-  1. Load the prefab template
-  2. Find the source entity by SourceEntityId
-  3. Read the template value for this property
-  4. Apply template value to the live component (via OverrideApplicator or direct deserialization)
-  5. Remove propertyPath from LocalModifications
-```
-
-## "Revert All"
-
-User right-clicks instance root → "Revert All Overrides":
-
-```
-RevertAll(instanceRoot):
-  1. Clear LocalModifications for all entities in this instance
-  2. Destroy all instance entities
-  3. Re-instantiate from template (no overrides applied)
-```
-
-## Editor Inspector Integration
-
-The property grid checks `LocalModifications` when displaying properties:
-
-- **Normal property**: regular label, regular editor
-- **Modified property**: bold label (or colored indicator), "Revert" button/context menu
-- **Added child**: special indicator in hierarchy (e.g., "+" icon)
-- **Removed child**: could show as strikethrough in a "template children" view
-
-When the user edits a property on a prefab instance entity:
-1. Normal edit flow (component value changes)
-2. Editor calls `LocalModifications.SetPropertyModified(entity, path, true)`
-3. Inspector refreshes to show the override indicator
-
-## Nesting
-
-A prefab can contain entities that are themselves prefab instances. The scene
-file nests the diff blocks:
-
-```
-Instance of PrefabA:
-  ├─ Entity "Room" (from PrefabA, no overrides)
-  │   └─ Instance of PrefabB:
-  │       ├─ Entity "Chair" (from PrefabB, color overridden)
-  │       └─ Entity "Table" (from PrefabB, no overrides)
-  └─ Entity "Light" (from PrefabA, intensity overridden)
-```
-
-Rebuild of PrefabB only affects the inner instance. Rebuild of PrefabA
-recreates the outer structure, which triggers inner instantiation too.
-
-Cycle detection: track prefab GUIDs during instantiation, reject if seen twice.
+# Prefab System Roadmap
+
+Sparse delta tracking prefab system. Every property is overridable.
+Only diffs are stored. Template changes propagate to instances while
+preserving per-instance overrides.
+
+## Status
+
+### Done
+
+- **Core data model**: `PropertyPath`, `ObjectState`, `LocalModifications` on `Scene`
+- **`PrefabInstanceTag`**: tag component on prefab instance entities (not serialized)
+- **`PrefabSpawner`**: instantiates prefab entities into scene via resource system, preserves template transform
+- **`PrefabRebuilder`**: template change propagation — caches overrides, destroys, respawns, re-applies per-property overrides, restores `LocalModifications`
+- **`SceneSerializer`**: unified serializer handling normal entities + prefab instance diffs. `PrefabInstances` section with per-entity per-component per-property overrides. Transform diff save/load (Position/Rotation/Scale as independent nested objects)
+- **`DiffComponentSerializer`**: writes only modified properties during save
+- **`TrackingComponentSerializer`**: records which properties were read during load, restores `LocalModifications`
+- **`SceneResource`**: delegates to manager-provided `SceneSerializer`
+- **Drag-drop**: asset browser items implement `IDragSource`, scene hierarchy accepts `"asset/file"` drops, spawns .prefab via `PrefabSpawner`
+- **Override tracking**: inspector `OnEditEnd` marks properties in `LocalModifications` for both component properties and transform (Position/Rotation/Scale)
+- **Gizmo tracking**: viewport gizmo drag marks transform overrides based on gizmo mode
+- **Hot-reload**: `PrefabSpawner` loads resource through `ResourceSystem` for cache tracking, `PrefabResourceManager.ReloadResource` signals generation bump, `SceneEditorPage` listens via `IResourceChangeListener` and triggers `PrefabRebuilder`
+- **`[Property]` attribute**: `DisplayName` and `SerializedName` String fields. Codegen reads them. All `[Property]` call sites specify explicit values.
+- **`IPropertyDescriptor`**: two-name API (`name` = identity, `displayName` = UI label). `PropertyEditor` has `Name` (identity) and `DisplayName` (UI label, falls back to Name)
+- **Serialization alignment**: component-wise fields (Color, AmbientColor, Size, Tint, UVRect) converted to nested objects. Transform serialized as Position/Rotation/Scale objects. `MaterialRefs` name aligned between `Serialize()` and codegen. All data files updated.
+- **V1 cleanup**: removed `PrefabReferenceComponent`, `PrefabComponentManager`, `PrefabInstanceTag` (V1), `OverrideApplicator`, `ExposedParameterDescriptor`. TowerDefense migrated to `PrefabSpawner`.
+- **Dock tab sync**: `DockTabGroup.OnTabSelected` → `DockManager.OnPanelActivated` → `PageManager.SetActive`. Save now targets the correct active page.
+- **Unit tests**: `LocalModificationsTests` (17 tests), `PrefabSpawnerTests` (spawn, round-trip with/without overrides, mixed scenes)
+
+### Remaining
+
+#### "Apply to Prefab"
+Push instance changes back to the template file. User selects a prefab
+instance root → context menu → "Apply to Prefab":
+1. Collect all instance entities and their current state
+2. Map live entity handles back to source GUIDs via `PrefabInstanceTag`
+3. Create a temporary scene with the entities (using source GUIDs)
+4. Save via `PrefabSerializer` to the .prefab file
+5. Clear `LocalModifications` for all affected entities
+6. Hot-reload triggers rebuild of OTHER instances of the same prefab
+
+#### "Revert Property"
+Right-click an overridden property → "Revert to Prefab":
+1. Load the prefab template
+2. Find the source entity by `SourceEntityId`
+3. Read the template value for this property
+4. Apply template value to the live component
+5. Remove property from `LocalModifications`
+
+#### "Revert All"
+Right-click instance root → "Revert All Overrides":
+1. Destroy all instance entities
+2. Re-instantiate from template (no overrides applied)
+3. Clear `LocalModifications` for all affected entities
+
+#### Inspector Override Indicators
+Show which properties differ from the template:
+- Bold or colored label for modified properties
+- Check `LocalModifications.IsPropertyModified` when building property grid
+- Requires the inspector to know the entity and component type ID
+
+#### "Create Prefab from Selection"
+Select entities in scene hierarchy → context menu → "Create Prefab from Selection":
+1. Serialize selected entities to a new .prefab file via save dialog
+2. Remove original entities from scene
+3. Create a prefab instance in their place via `PrefabSpawner`
+4. Register in project index
+
+#### Hierarchy Visual Indicators
+Prefab instance entities should be visually distinct in the hierarchy tree:
+- Badge/icon on prefab instance entities
+- Different text color or prefix for prefab children
+- Check `PrefabInstanceTagManager` when rendering tree items
+
+#### Viewport Drop
+Drag .prefab onto the 3D viewport (currently only hierarchy accepts drops):
+- `ViewportView` or `GizmoInputHandler` implements `IDropTarget`
+- Hit-test against scene geometry to determine drop position
+- Spawn prefab at the hit point
+
+#### Added/Removed Child Tracking
+Track children added to or removed from a prefab instance:
+- `ObjectState` already has `AddedChildren` / `RemovedChildren` sets
+- Scene serializer needs to save added children as full entities
+- Scene serializer needs to record removed children and destroy them after spawn
+- Editor hierarchy needs UI for adding/removing children on prefab instances
+
+#### Nested Prefab Support
+A prefab can contain entities that are themselves prefab instances:
+- Inner instances should rebuild independently when their template changes
+- Outer rebuild triggers inner re-instantiation
+- Override chains (outer overrides on inner instance properties)
+- Cycle detection (already implemented in `PrefabSpawner`)
+
+#### Undo/Redo
+Prefab operations should integrate with `EditorCommandStack`:
+- Override property → undoable
+- Revert property → undoable
+- Apply to prefab → undoable
+- Drag-drop prefab → undoable (via existing `CreateEntityCommand` pattern)
 
 ## File Layout
 
@@ -303,78 +108,35 @@ Cycle detection: track prefab GUIDs during instantiation, reject if seen twice.
 | `LocalModifications.bf` | Scene-owned modification tracker |
 | `ObjectState.bf` | Per-entity modification state |
 | `PropertyPath.bf` | Component type + property name identifier |
-| `PrefabInstanceTagV2.bf` | Tag component on prefab instance entities |
-| `PrefabSpawnerV2.bf` | Runtime prefab instantiation |
-| `PrefabRebuilderV2.bf` | Template change propagation |
-
-### Engine Layer (existing, modified)
-
-| File | Change |
-|------|--------|
-| `Scene.bf` | Owns `LocalModifications` instance |
-| `SceneSerializer.bf` | Diff-based save/load for prefab instance entities |
-
-### Editor
-
-| File | Purpose |
-|------|---------|
-| `PrefabEditorPageFactory.bf` | Opens .prefab (unchanged from V1) |
-| Inspector integration | Bold/colored overridden properties, revert menu |
-| Hierarchy integration | Prefab instance indicators, add/remove child tracking |
-| Context menus | "Apply to Prefab", "Revert", "Create Prefab from Selection" |
-
-### Reused from V1 (unchanged)
-
-| File | Purpose |
-|------|---------|
+| `PrefabInstanceTag.bf` | Tag component on prefab instance entities |
+| `PrefabSpawner.bf` | Prefab instantiation via resource system |
+| `PrefabRebuilder.bf` | Template change propagation |
+| `Resources/SceneSerializer.bf` | Unified scene serializer with prefab instance diffs |
+| `Resources/SceneResource.bf` | Scene resource (delegates to manager-provided serializer) |
+| `Resources/SceneResourceManager.bf` | Scene save/load coordination |
+| `Resources/DiffComponentSerializer.bf` | Writes only modified properties |
+| `Resources/TrackingComponentSerializer.bf` | Records read fields for LocalModifications restore |
 | `Resources/PrefabResource.bf` | Template resource |
-| `Resources/PrefabResourceManager.bf` | Template loading/saving |
-| `Resources/PrefabSerializer.bf` | Template serialization |
-| `PrefabAssetCreator.bf` | Create empty .prefab in editor |
+| `Resources/PrefabResourceManager.bf` | Template loading/saving with hot-reload support |
+| `Resources/PrefabSerializer.bf` | Template entity serialization |
 
-## Phased Implementation
+### Editor Layer
 
-### Phase 1: Core Data Model
-- `PropertyPath`, `ObjectState`, `LocalModifications`
-- `PrefabInstanceTagV2` component + manager
-- `Scene` owns `LocalModifications`
-- Unit tests for LocalModifications (add/remove/query modifications)
+| File | Purpose |
+|------|---------|
+| `SceneEditorPage.bf` | Listens for prefab hot-reload, triggers rebuild |
+| `ScenePageBuilder.bf` | Override tracking on inspector edits, asset drop handler |
+| `GizmoInputHandler.bf` | Transform override tracking on gizmo drag |
+| `AssetContentAdapter.bf` | `IDragSource` on asset browser items |
+| `AssetDragData.bf` | Drag data for asset files |
+| `SceneHierarchyView.bf` | Accepts asset drops, fires `OnAssetDropped` |
 
-### Phase 2: Editor Instantiation
-- Drag .prefab into scene → entities created with PrefabInstanceTagV2
-- LocalModifications tracks edits on prefab instance entities
-- Inspector shows override indicators (bold/color)
-- "Revert Property" context menu
+### Inspection Layer
 
-### Phase 3: Scene Serialization
-- SceneSerializer diff-based save for prefab instance entities
-- SceneSerializer load: template + patch application
-- LocalModifications restored on load
-- Round-trip tests: save scene with overrides → load → verify
-
-### Phase 4: Template Propagation
-- `PrefabRebuilderV2`: detect template change → cache diffs → rebuild
-- Override preservation across template updates
-- "Apply to Prefab" workflow
-- "Revert All" workflow
-
-### Phase 5: Polish
-- "Create Prefab from Selection" context menu
-- Added/removed child tracking
-- Nested prefab rebuild ordering
-- Hierarchy visual indicators (prefab badge, override markers)
-- Undo/redo for prefab operations
-- `PrefabSpawnerV2` for runtime game code
-
-## Verification
-
-1. Drag .prefab into scene → entities appear in hierarchy with prefab indicators
-2. Edit property on prefab instance → inspector shows override indicator
-3. Save scene → only overrides serialized for prefab entities
-4. Load scene → template instantiated, overrides applied, indicators restored
-5. Edit .prefab template → all instances in scene update, overrides preserved
-6. "Revert Property" → value returns to template default, indicator removed
-7. "Apply to Prefab" → template updated, other instances get the change
-8. Nested prefabs → inner/outer rebuild independently
-9. "Create Prefab from Selection" → entities replaced with prefab instance
-10. Runtime spawn via PrefabSpawnerV2 → entities created without diff tracking
+| File | Purpose |
+|------|---------|
+| `PropertyAttribute.bf` | `[Property]` with `DisplayName` and `SerializedName` |
+| `IPropertyDescriptor.bf` | Two-name API (name + displayName) |
+| `PropertyEditor.bf` | `Name` (identity) + `DisplayName` (UI label) |
+| `PropertyGrid.bf` | Renders `DisplayName` in label column |
+| `InspectorCodegen.bf` | Reads attribute values, emits two-name descriptor calls |
