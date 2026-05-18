@@ -10,11 +10,7 @@ using Sedulous.UI.Toolkit;
 using Sedulous.Particles;
 using Sedulous.Core.Mathematics;
 
-/// Extends PropertyGridDescriptor with editor-specific controls:
-/// ResourceRefEditor with file browse dialogs, and real editors for the
-/// particle-specific types (Range*, EmissionShape). Curve editors land
-/// in task #38; until then they keep using the base class's read-only
-/// stub.
+/// Extends PropertyGridDescriptor with editor-specific controls.
 class EditorPropertyGridDescriptor : PropertyGridDescriptor
 {
 	private IDialogService mDialogs;
@@ -31,7 +27,7 @@ class EditorPropertyGridDescriptor : PropertyGridDescriptor
 		mEditorContext = editorContext;
 	}
 
-	public override void ResRef(StringView name, delegate ResourceRef() getter, delegate void(ResourceRef) setter,
+	public override void ResRef(StringView name, StringView displayName, delegate ResourceRef() getter, delegate void(ResourceRef) setter,
 		StringView extensionFilter = default)
 	{
 		let editor = new ResourceRefEditor(name, getter, setter,
@@ -39,15 +35,17 @@ class EditorPropertyGridDescriptor : PropertyGridDescriptor
 			resourceSystem: mResourceSystem, editorContext: mEditorContext,
 			extensionFilter: extensionFilter,
 			ownsCallbacks: true, category: CurrentCategory);
+		ApplyDisplayName(editor, name, displayName);
 		mGrid.AddProperty(editor);
 	}
 
-	public override void ResRefList(StringView name, delegate int32() countGetter,
+	public override void ResRefList(StringView name, StringView displayName, delegate int32() countGetter,
 		delegate ResourceRef(int32) getter, delegate void(int32, ResourceRef) setter)
 	{
 		let editor = new ResourceRefListEditor(name, countGetter, getter, setter,
 			dialogs: mDialogs, editorContext: mEditorContext,
 			ownsCallbacks: true, category: CurrentCategory);
+		ApplyDisplayName(editor, name, displayName);
 		mGrid.AddProperty(editor);
 	}
 
@@ -90,13 +88,17 @@ class EditorPropertyGridDescriptor : PropertyGridDescriptor
 		mGrid.AddProperty(new CurveColorEditor(name, ptr, category: CurrentCategory));
 	}
 
-	public override void Vec4(StringView name, Vector4* ptr)
+	public override void Vec4(StringView name, StringView displayName, Vector4* ptr)
 	{
-		mGrid.AddProperty(new Vector4Editor(name, ptr, category: CurrentCategory));
+		let editor = new Vector4Editor(name, ptr, category: CurrentCategory);
+		ApplyDisplayName(editor, name, displayName);
+		mGrid.AddProperty(editor);
 	}
 
-	public override void Color4(StringView name, Vector4* ptr)
+	public override void Color4(StringView name, StringView displayName, Vector4* ptr)
 	{
-		mGrid.AddProperty(new Vector4ColorEditor(name, ptr, category: CurrentCategory));
+		let editor = new Vector4ColorEditor(name, ptr, category: CurrentCategory);
+		ApplyDisplayName(editor, name, displayName);
+		mGrid.AddProperty(editor);
 	}
 }

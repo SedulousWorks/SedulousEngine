@@ -16,18 +16,18 @@ static class InspectorCodegen
 
 		// Category header: strip common suffixes for display name
 		let typeName = type.GetName(.. scope .());
-		let displayName = scope String(typeName);
-		if (displayName.EndsWith("Component"))
-			displayName.RemoveFromEnd(9);
-		else if (displayName.EndsWith("SceneModule"))
-			displayName.RemoveFromEnd(11);
-		else if (displayName.EndsWith("Module"))
-			displayName.RemoveFromEnd(6);
-		else if (displayName.EndsWith("Initializer"))
-			displayName.RemoveFromEnd(11);
-		else if (displayName.EndsWith("Behavior"))
-			displayName.RemoveFromEnd(8);
-		body.AppendF($"\tdesc.BeginCategory(\"{displayName}\");\n");
+		let categoryName = scope String(typeName);
+		if (categoryName.EndsWith("Component"))
+			categoryName.RemoveFromEnd(9);
+		else if (categoryName.EndsWith("SceneModule"))
+			categoryName.RemoveFromEnd(11);
+		else if (categoryName.EndsWith("Module"))
+			categoryName.RemoveFromEnd(6);
+		else if (categoryName.EndsWith("Initializer"))
+			categoryName.RemoveFromEnd(11);
+		else if (categoryName.EndsWith("Behavior"))
+			categoryName.RemoveFromEnd(8);
+		body.AppendF($"\tdesc.BeginCategory(\"{categoryName}\");\n");
 
 		for (let field in type.GetFields())
 		{
@@ -40,10 +40,18 @@ static class InspectorCodegen
 			let ft = field.FieldType;
 
 			// Read [Property] editor hint (Default / Color / Resource / Slider).
-			// Ambiguous types like Vector4 use this to choose a color picker
-			// versus a plain 4-numeric Vec4 row.
 			let propAttr = field.GetCustomAttribute<PropertyAttribute>().Value;
 			let editorHint = propAttr.Editor;
+
+			// Derive default property name from field name.
+			// Convention: strip leading 'm' if followed by uppercase (mHealth -> Health).
+			String propName = scope .(field.Name);
+			if (propName.StartsWith("m") && propName.Length > 1 && propName[1].IsUpper)
+				propName.Remove(0, 1);
+
+			// Read names from attribute. Falls back to derived name if null.
+			String name = scope .(propAttr.SerializedName ?? propName);
+			String displayName = scope .(propAttr.DisplayName ?? propName);
 
 			// Read [Range] if present
 			float rangeMin = -1e9f;
@@ -60,62 +68,48 @@ static class InspectorCodegen
 			if (ft == typeof(float))
 			{
 				if (hasRange)
-					body.AppendF($"\tdesc.Slider(\"{field.Name}\", &{field.Name}, {rangeMin}f, {rangeMax}f);\n");
+					body.AppendF($"\tdesc.Slider(\"{name}\", \"{displayName}\", &{field.Name}, {rangeMin}f, {rangeMax}f);\n");
 				else
-					body.AppendF($"\tdesc.Float(\"{field.Name}\", &{field.Name}, {rangeMin}f, {rangeMax}f);\n");
+					body.AppendF($"\tdesc.Float(\"{name}\", \"{displayName}\", &{field.Name}, {rangeMin}f, {rangeMax}f);\n");
 			}
 			else if (ft == typeof(int32))
-				body.AppendF($"\tdesc.Int32(\"{field.Name}\", &{field.Name}, {(int32)rangeMin}, {(int32)rangeMax});\n");
+				body.AppendF($"\tdesc.Int32(\"{name}\", \"{displayName}\", &{field.Name}, {(int32)rangeMin}, {(int32)rangeMax});\n");
 			else if (ft == typeof(uint32))
-				body.AppendF($"\tdesc.UInt32(\"{field.Name}\", &{field.Name}, 0, {(uint32)rangeMax});\n");
+				body.AppendF($"\tdesc.UInt32(\"{name}\", \"{displayName}\", &{field.Name}, 0, {(uint32)rangeMax});\n");
 			else if (ft == typeof(bool))
-				body.AppendF($"\tdesc.Bool(\"{field.Name}\", &{field.Name});\n");
+				body.AppendF($"\tdesc.Bool(\"{name}\", \"{displayName}\", &{field.Name});\n");
 			else if (ft == typeof(String))
-				body.AppendF($"\tdesc.Str(\"{field.Name}\", &{field.Name});\n");
+				body.AppendF($"\tdesc.Str(\"{name}\", \"{displayName}\", &{field.Name});\n");
 			else if (ft == typeof(Sedulous.Core.Mathematics.Vector3))
-				body.AppendF($"\tdesc.Vec3(\"{field.Name}\", &{field.Name});\n");
+				body.AppendF($"\tdesc.Vec3(\"{name}\", \"{displayName}\", &{field.Name});\n");
 			else if (ft == typeof(Sedulous.Core.Mathematics.Vector4))
 			{
-				// Vector4 is ambiguous (color vs 4-component vector). The
-				// [Property(.Color)] hint picks the swatch + HDR picker
-				// editor; otherwise we emit a generic 4-numeric Vec4 row.
 				if (editorHint == .Color)
-					body.AppendF($"\tdesc.Color4(\"{field.Name}\", &{field.Name});\n");
+					body.AppendF($"\tdesc.Color4(\"{name}\", \"{displayName}\", &{field.Name});\n");
 				else
-					body.AppendF($"\tdesc.Vec4(\"{field.Name}\", &{field.Name});\n");
+					body.AppendF($"\tdesc.Vec4(\"{name}\", \"{displayName}\", &{field.Name});\n");
 			}
 			else if (ft == typeof(Sedulous.Core.Mathematics.Quaternion))
-				body.AppendF($"\tdesc.Quat(\"{field.Name}\", &{field.Name});\n");
+				body.AppendF($"\tdesc.Quat(\"{name}\", \"{displayName}\", &{field.Name});\n");
 			else if (ft == typeof(Sedulous.Resources.ResourceRef))
 			{
-				// Convention: mFooRef -> SetFooRef(ref), FooRef (getter property)
-				String baseName = scope .(field.Name);
-				if (baseName.StartsWith("m") && baseName.Length > 1 && baseName[1].IsUpper)
-					baseName.Remove(0, 1);
-
-				body.AppendF($"\tdesc.ResRef(\"{baseName}\", new () => {{ return {baseName}; }}, new (r) => {{ Set{baseName}(r); }});\n");
+				body.AppendF($"\tdesc.ResRef(\"{name}\", \"{displayName}\", new () => {{ return {propName}; }}, new (r) => {{ Set{propName}(r); }});\n");
 			}
 			else if (let specType = ft as SpecializedGenericType)
 			{
 				if (specType.UnspecializedType == typeof(System.Collections.List<>) &&
 					specType.GetGenericArg(0) == typeof(Sedulous.Resources.ResourceRef))
 				{
-					// Convention: mFooRefs -> singular FooRef -> GetFooRef(i), SetFooRef(i, ref), FooRefCount
-					String baseName = scope .(field.Name);
-					if (baseName.StartsWith("m") && baseName.Length > 1 && baseName[1].IsUpper)
-						baseName.Remove(0, 1);
-					String singularName = scope .(baseName);
+					String singularName = scope .(propName);
 					if (singularName.EndsWith("s"))
 						singularName.RemoveFromEnd(1);
 
-					body.AppendF($"\tdesc.ResRefList(\"{singularName}s\", new () => {{ return {singularName}Count; }}, new (i) => {{ return Get{singularName}(i); }}, new (i, r) => {{ Set{singularName}(i, r); }});\n");
+					body.AppendF($"\tdesc.ResRefList(\"{name}\", \"{displayName}\", new () => {{ return {singularName}Count; }}, new (i) => {{ return Get{singularName}(i); }}, new (i, r) => {{ Set{singularName}(i, r); }});\n");
 				}
 			}
 			else if (ft.IsEnum)
-				body.AppendF($"\tdesc.EnumField(\"{field.Name}\", &{field.Name}, typeof({ft.GetFullName(.. scope .())}));\n");
-			// Particle-specific types reached via the IPropertyDescriptor extension
-			// declared in Sedulous.Particles. The descriptor implementation
-			// (EditorPropertyGridDescriptor) provides the editor surface.
+				body.AppendF($"\tdesc.EnumField(\"{name}\", \"{displayName}\", &{field.Name}, typeof({ft.GetFullName(.. scope .())}));\n");
+			// Particle-specific types
 			else if (ft == typeof(Sedulous.Particles.RangeFloat))
 				body.AppendF($"\tdesc.RangeFloat(\"{field.Name}\", &{field.Name});\n");
 			else if (ft == typeof(Sedulous.Particles.RangeVector2))
@@ -124,9 +118,6 @@ static class InspectorCodegen
 				body.AppendF($"\tdesc.RangeColor(\"{field.Name}\", &{field.Name});\n");
 			else if (ft == typeof(Sedulous.Particles.ParticleCurveFloat))
 			{
-				// A [Range] on the curve field sets the editor's nominal
-				// value-axis frame; without it the editor uses its own
-				// built-in default.
 				if (hasRange)
 					body.AppendF($"\tdesc.CurveFloat(\"{field.Name}\", &{field.Name}, {rangeMin}f, {rangeMax}f);\n");
 				else

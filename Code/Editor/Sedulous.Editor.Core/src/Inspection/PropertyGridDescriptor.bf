@@ -22,41 +22,52 @@ class PropertyGridDescriptor : IPropertyDescriptor
 		mGrid = grid;
 	}
 
-	public void Float(StringView name, float* ptr, float min, float max)
+	/// Sets displayName on an editor if it differs from name.
+	protected void ApplyDisplayName(PropertyEditor editor, StringView name, StringView displayName)
+	{
+		if (displayName != name)
+			editor.SetDisplayName(displayName);
+	}
+
+	public void Float(StringView name, StringView displayName, float* ptr, float min, float max)
 	{
 		let editor = new FloatEditor(name, *ptr, min: min, max: max, decimalPlaces: 4, category: mCurrentCategory);
 		editor.Setter = new [=ptr, =min, =max] (v) => {
 			*ptr = (float)Math.Clamp(v, min, max);
 		};
+		ApplyDisplayName(editor, name, displayName);
 		mGrid.AddProperty(editor);
 	}
 
-	public void Int32(StringView name, int32* ptr, int32 min, int32 max)
+	public void Int32(StringView name, StringView displayName, int32* ptr, int32 min, int32 max)
 	{
 		let editor = new IntEditor(name, (int64)*ptr, min: (int64)min, max: (int64)max, category: mCurrentCategory);
 		editor.Setter = new [=ptr, =min, =max] (v) => {
 			*ptr = (int32)Math.Clamp(v, min, max);
 		};
+		ApplyDisplayName(editor, name, displayName);
 		mGrid.AddProperty(editor);
 	}
 
-	public void UInt32(StringView name, uint32* ptr, uint32 min, uint32 max)
+	public void UInt32(StringView name, StringView displayName, uint32* ptr, uint32 min, uint32 max)
 	{
 		let editor = new IntEditor(name, (int64)*ptr, min: (int64)min, max: (int64)max, category: mCurrentCategory);
 		editor.Setter = new [=ptr, =min, =max] (v) => {
 			*ptr = (uint32)Math.Clamp(v, (int64)min, (int64)max);
 		};
+		ApplyDisplayName(editor, name, displayName);
 		mGrid.AddProperty(editor);
 	}
 
-	public void Bool(StringView name, bool* ptr)
+	public void Bool(StringView name, StringView displayName, bool* ptr)
 	{
 		let editor = new BoolEditor(name, *ptr, category: mCurrentCategory);
 		editor.Setter = new [=ptr] (v) => { *ptr = v; };
+		ApplyDisplayName(editor, name, displayName);
 		mGrid.AddProperty(editor);
 	}
 
-	public void Str(StringView name, String* ptr)
+	public void Str(StringView name, StringView displayName, String* ptr)
 	{
 		let strVal = (*ptr != null) ? StringView(*ptr) : "";
 		let editor = new StringEditor(name, strVal, category: mCurrentCategory);
@@ -64,28 +75,31 @@ class PropertyGridDescriptor : IPropertyDescriptor
 			if (*ptr != null)
 				(*ptr).Set(v);
 		};
+		ApplyDisplayName(editor, name, displayName);
 		mGrid.AddProperty(editor);
 	}
 
-	public void Slider(StringView name, float* ptr, float min, float max)
+	public void Slider(StringView name, StringView displayName, float* ptr, float min, float max)
 	{
 		let editor = new RangeEditor(name, *ptr, min: min, max: max, category: mCurrentCategory);
 		editor.Setter = new [=ptr, =min, =max] (v) => {
 			*ptr = (float)Math.Clamp(v, min, max);
 		};
+		ApplyDisplayName(editor, name, displayName);
 		mGrid.AddProperty(editor);
 	}
 
-	public void Vec3(StringView name, Vector3* ptr)
+	public void Vec3(StringView name, StringView displayName, Vector3* ptr)
 	{
 		let editor = new Vector3Editor(name, *ptr, category: mCurrentCategory);
 		editor.Setter = new [=ptr] (v) => { *ptr = v; };
+		ApplyDisplayName(editor, name, displayName);
 		mGrid.AddProperty(editor);
 	}
 
 	/// Vector4 field with no color semantics (4 generic NumericFields).
 	/// Used when [Property] has no Color hint.
-	public virtual void Vec4(StringView name, Vector4* ptr)
+	public virtual void Vec4(StringView name, StringView displayName, Vector4* ptr)
 	{
 		// Base implementation: read-only display showing the four floats.
 		// EditorPropertyGridDescriptor overrides with a real four-field
@@ -97,7 +111,7 @@ class PropertyGridDescriptor : IPropertyDescriptor
 
 	/// Vector4 field tagged with `[Property(.Color)]`. HDR-allowed color
 	/// editor - swatch that opens an HDRColorPicker dialog on click.
-	public virtual void Color4(StringView name, Vector4* ptr)
+	public virtual void Color4(StringView name, StringView displayName, Vector4* ptr)
 	{
 		// Base implementation: read-only RGBA display. Real swatch + HDR
 		// picker lives in EditorPropertyGridDescriptor's override.
@@ -106,7 +120,7 @@ class PropertyGridDescriptor : IPropertyDescriptor
 		mGrid.AddProperty(new StringEditor(name, summary, category: mCurrentCategory));
 	}
 
-	public void Quat(StringView name, Quaternion* ptr)
+	public void Quat(StringView name, StringView displayName, Quaternion* ptr)
 	{
 		// Display as euler angles, convert back on set
 		let euler = QuaternionToEuler(*ptr);
@@ -114,10 +128,11 @@ class PropertyGridDescriptor : IPropertyDescriptor
 		editor.Setter = new [=ptr] (v) => {
 			*ptr = EulerToQuaternion(v);
 		};
+		ApplyDisplayName(editor, name, displayName);
 		mGrid.AddProperty(editor);
 	}
 
-	public void EnumField(StringView name, void* ptr, Type enumType)
+	public void EnumField(StringView name, StringView displayName, void* ptr, Type enumType)
 	{
 		// Get enum value names
 		let names = scope System.Collections.List<StringView>();
@@ -137,6 +152,7 @@ class PropertyGridDescriptor : IPropertyDescriptor
 
 		let editor = new EnumEditor(name, currentVal, names, category: mCurrentCategory);
 		editor.Setter = new [=ptr, =size] (v) => { WriteEnumValue(ptr, size, v); };
+		ApplyDisplayName(editor, name, displayName);
 		mGrid.AddProperty(editor);
 	}
 
@@ -164,7 +180,7 @@ class PropertyGridDescriptor : IPropertyDescriptor
 		}
 	}
 
-	public virtual void ResRef(StringView name, delegate ResourceRef() getter, delegate void(ResourceRef) setter,
+	public virtual void ResRef(StringView name, StringView displayName, delegate ResourceRef() getter, delegate void(ResourceRef) setter,
 		StringView extensionFilter = default)
 	{
 		// Base implementation: read-only display. Override in Editor.App for full editor.
@@ -181,7 +197,7 @@ class PropertyGridDescriptor : IPropertyDescriptor
 		delete setter;
 	}
 
-	public virtual void ResRefList(StringView name, delegate int32() countGetter,
+	public virtual void ResRefList(StringView name, StringView displayName, delegate int32() countGetter,
 		delegate ResourceRef(int32) getter, delegate void(int32, ResourceRef) setter)
 	{
 		// Base implementation: read-only count display. Override in Editor.App for full editor.
