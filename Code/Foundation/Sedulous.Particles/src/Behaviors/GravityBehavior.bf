@@ -8,11 +8,11 @@ using Sedulous.Inspection;
 public class GravityBehavior : ParticleBehavior
 {
 	/// Gravity multiplier (1.0 = Earth gravity at 9.81 m/s²).
-	[Property, Range(-10, 10)]
+	[Property(.Default, "Multiplier", "Multiplier"), Range(-10, 10)]
 	public float Multiplier = 1.0f;
 
 	/// Gravity direction (default: negative Y).
-	[Property]
+	[Property(.Default, "Direction", "Direction")]
 	public Vector3 Direction = .(0, -1, 0);
 
 	public override BehaviorSupport Support => .Both;

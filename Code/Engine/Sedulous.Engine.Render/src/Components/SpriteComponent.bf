@@ -20,16 +20,22 @@ class SpriteComponent : Component, ISerializableComponent
 	public void Serialize(IComponentSerializer s)
 	{
 		s.ResourceRef("TextureRef", ref mTextureRef);
-		s.Float("SizeW", ref Size.X);
-		s.Float("SizeH", ref Size.Y);
-		s.Float("TintR", ref Tint.X);
-		s.Float("TintG", ref Tint.Y);
-		s.Float("TintB", ref Tint.Z);
-		s.Float("TintA", ref Tint.W);
-		s.Float("UVRectU", ref UVRect.X);
-		s.Float("UVRectV", ref UVRect.Y);
-		s.Float("UVRectW", ref UVRect.Z);
-		s.Float("UVRectH", ref UVRect.W);
+		s.BeginObject("Size");
+		s.Float("X", ref Size.X);
+		s.Float("Y", ref Size.Y);
+		s.EndObject();
+		s.BeginObject("Tint");
+		s.Float("X", ref Tint.X);
+		s.Float("Y", ref Tint.Y);
+		s.Float("Z", ref Tint.Z);
+		s.Float("W", ref Tint.W);
+		s.EndObject();
+		s.BeginObject("UVRect");
+		s.Float("X", ref UVRect.X);
+		s.Float("Y", ref UVRect.Y);
+		s.Float("Z", ref UVRect.Z);
+		s.Float("W", ref UVRect.W);
+		s.EndObject();
 		var orientation = (uint8)Orientation;
 		s.UInt8("Orientation", ref orientation);
 		if (s.IsReading) Orientation = (SpriteOrientation)orientation;
@@ -38,7 +44,7 @@ class SpriteComponent : Component, ISerializableComponent
 
 	/// Texture resource reference (serialized). Resolved to a MaterialInstance
 	/// (with the texture bound to the "SpriteTexture" property) by the manager.
-	[Property]
+	[Property(.Default, "Texture Ref", "TextureRef")]
 	[ResourceRefType(".texture")]
 	private ResourceRef mTextureRef ~ _.Dispose();
 

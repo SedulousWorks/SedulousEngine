@@ -8,23 +8,23 @@ using Sedulous.Inspection;
 public class VelocityInitializer : ParticleInitializer
 {
 	/// Base initial velocity.
-	[Property]
+	[Property(.Default, "Base Velocity", "BaseVelocity")]
 	public Vector3 BaseVelocity = .(0, 1, 0);
 
 	/// Per-axis randomness added to velocity.
-	[Property]
+	[Property(.Default, "Randomness", "Randomness")]
 	public Vector3 Randomness = .Zero;
 
 	/// Speed applied along the emission shape's outward direction.
-	[Property, Range(0, 50)]
+	[Property(.Default, "Shape Direction Speed", "ShapeDirectionSpeed"), Range(0, 50)]
 	public float ShapeDirectionSpeed = 0;
 
 	/// Factor for inheriting emitter movement velocity.
-	[Property, Range(0, 1)]
+	[Property(.Default, "Velocity Inheritance", "VelocityInheritance"), Range(0, 1)]
 	public float VelocityInheritance = 0;
 
 	/// Emission shape (shared with PositionInitializer to get the same direction).
-	[Property]
+	[Property(.Default, "Shape", "Shape")]
 	public EmissionShape Shape = .Point();
 
 	/// Emitter velocity (set by system before initialization).

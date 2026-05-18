@@ -28,12 +28,12 @@ class AnimationGraphComponent : Component, ISerializableComponent
 	// --- Resource refs (serializable) ---
 
 	/// Skeleton resource reference.
-	[Property]
+	[Property(.Default, "Skeleton Ref", "SkeletonRef")]
 	[ResourceRefType(".skeleton")]
 	private ResourceRef mSkeletonRef ~ _.Dispose();
 
 	/// Animation graph resource reference.
-	[Property]
+	[Property(.Default, "Graph Ref", "GraphRef")]
 	[ResourceRefType(".animgraph")]
 	private ResourceRef mGraphRef ~ _.Dispose();
 

@@ -18,12 +18,12 @@ public class MeshOrientationInitializer : ParticleInitializer
 {
 	/// When true, every particle gets a uniformly random unit-vector axis
 	/// on spawn. When false, the FixedAxis is used for every particle.
-	[Property]
+	[Property(.Default, "Random Axis", "RandomAxis")]
 	public bool RandomAxis = true;
 
 	/// Used when `RandomAxis == false`. Defaults to world Y so particles
 	/// spin around the vertical axis (typical falling-debris look).
-	[Property]
+	[Property(.Default, "Fixed Axis", "FixedAxis")]
 	public Vector3 FixedAxis = .(0, 1, 0);
 
 	public override BehaviorSupport Support => .Both;

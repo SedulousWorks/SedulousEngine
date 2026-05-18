@@ -16,7 +16,7 @@ class BlendTree2DEntry
 	public AnimationClip Clip;
 
 	/// Resource reference for the clip (used by serialization/editor).
-	[Property]
+	[Property(.Default, "Clip Ref", "ClipRef")]
 	[ResourceRefType(".animation")]
 	private ResourceRef mClipRef ~ _.Dispose();
 

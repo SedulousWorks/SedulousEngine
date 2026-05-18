@@ -8,7 +8,7 @@ using Sedulous.Inspection;
 public class SizeInitializer : ParticleInitializer
 {
 	/// Initial size range.
-	[Property]
+	[Property(.Default, "Size", "Size")]
 	public RangeVector2 Size = .Constant(.(0.1f, 0.1f));
 
 	public override BehaviorSupport Support => .Both;

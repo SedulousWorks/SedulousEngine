@@ -8,7 +8,7 @@ using Sedulous.Inspection;
 public class PositionInitializer : ParticleInitializer
 {
 	/// Emission shape to sample positions from.
-	[Property]
+	[Property(.Default, "Shape", "Shape")]
 	public EmissionShape Shape = .Point();
 
 	/// Emitter world position (set by system before initialization).
@@ -16,7 +16,7 @@ public class PositionInitializer : ParticleInitializer
 	public Vector3 EmitterPosition = .Zero;
 
 	/// Whether particles are simulated in local space.
-	[Property]
+	[Property(.Default, "Local Space", "LocalSpace")]
 	public bool LocalSpace = false;
 
 	public override BehaviorSupport Support => .Both;

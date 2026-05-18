@@ -9,14 +9,14 @@ using Sedulous.Inspection;
 class BlendTree1DEntry
 {
 	/// The threshold value along the blend parameter axis.
-	[Property]
+	[Property(.Default, "Threshold", "Threshold")]
 	public float Threshold;
 
 	/// The animation clip at this threshold (resolved at runtime).
 	public AnimationClip Clip;
 
 	/// Resource reference for the clip (used by serialization/editor).
-	[Property]
+	[Property(.Default, "Clip Ref", "ClipRef")]
 	[ResourceRefType(".animation")]
 	private ResourceRef mClipRef ~ _.Dispose();
 

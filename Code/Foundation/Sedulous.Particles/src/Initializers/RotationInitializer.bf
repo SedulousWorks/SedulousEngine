@@ -7,11 +7,11 @@ using Sedulous.Inspection;
 public class RotationInitializer : ParticleInitializer
 {
 	/// Initial rotation range in radians.
-	[Property]
+	[Property(.Default, "Rotation", "Rotation")]
 	public RangeFloat Rotation = .(0, Math.PI_f * 2.0f);
 
 	/// Initial rotation speed range in radians/sec.
-	[Property]
+	[Property(.Default, "Rotation Speed", "RotationSpeed")]
 	public RangeFloat RotationSpeed = .(-2.0f, 2.0f);
 
 	public override BehaviorSupport Support => .Both;

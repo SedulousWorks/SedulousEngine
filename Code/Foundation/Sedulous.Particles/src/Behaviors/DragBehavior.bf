@@ -8,7 +8,7 @@ using Sedulous.Inspection;
 public class DragBehavior : ParticleBehavior
 {
 	/// Drag coefficient. Higher values slow particles faster.
-	[Property, Range(0, 100)]
+	[Property(.Default, "Drag", "Drag"), Range(0, 100)]
 	public float Drag = 1.0f;
 
 	public override BehaviorSupport Support => .Both;

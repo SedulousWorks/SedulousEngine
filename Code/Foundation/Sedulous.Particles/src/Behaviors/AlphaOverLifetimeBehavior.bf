@@ -9,7 +9,7 @@ using Sedulous.Inspection;
 public class AlphaOverLifetimeBehavior : ParticleBehavior
 {
 	/// Alpha multiplier curve evaluated at normalized particle age [0, 1].
-	[Property]
+	[Property(.Default, "Curve", "Curve")]
 	public ParticleCurveFloat Curve;
 
 	public override BehaviorSupport Support => .Both;

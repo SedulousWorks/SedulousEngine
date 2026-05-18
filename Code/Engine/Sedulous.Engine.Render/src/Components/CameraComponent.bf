@@ -24,30 +24,30 @@ class CameraComponent : Component, ISerializableComponent
 	}
 
 	/// Field of view in degrees (vertical).
-	[Property]
+	[Property(.Default, "Field Of View", "FieldOfView")]
 	[Range(1.0f, 179.0f)]
 	public float FieldOfView = 60.0f;
 
 	/// Near clip plane distance.
-	[Property]
+	[Property(.Default, "Near Plane", "NearPlane")]
 	[Range(0.001f, 1000.0f)]
 	public float NearPlane = 0.1f;
 
 	/// Far clip plane distance.
-	[Property]
+	[Property(.Default, "Far Plane", "FarPlane")]
 	[Range(1.0f, 100000.0f)]
 	public float FarPlane = 1000.0f;
 
 	/// Aspect ratio override (0 = use viewport aspect).
-	[Property]
+	[Property(.Default, "Aspect Ratio", "AspectRatio")]
 	public float AspectRatio = 0;
 
 	/// Whether this is the active camera for rendering.
-	[Property]
+	[Property(.Default, "Is Active Camera", "IsActiveCamera")]
 	public bool IsActiveCamera = true;
 
 	/// Render layer mask (which layers this camera sees).
-	[Property]
+	[Property(.Default, "Layer Mask", "LayerMask")]
 	public uint32 LayerMask = 0xFFFFFFFF;
 
 	/// Computes the view matrix from the entity's world transform.

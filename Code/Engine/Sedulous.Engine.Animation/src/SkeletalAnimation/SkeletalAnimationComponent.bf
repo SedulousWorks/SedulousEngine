@@ -30,12 +30,12 @@ class SkeletalAnimationComponent : Component, ISerializableComponent
 	// --- Resource refs (serializable) ---
 
 	/// Skeleton resource reference.
-	[Property]
+	[Property(.Default, "Skeleton Ref", "SkeletonRef")]
 	[ResourceRefType(".skeleton")]
 	private ResourceRef mSkeletonRef ~ _.Dispose();
 
 	/// Animation clip resource reference.
-	[Property]
+	[Property(.Default, "Clip Ref", "ClipRef")]
 	[ResourceRefType(".animation")]
 	private ResourceRef mClipRef ~ _.Dispose();
 

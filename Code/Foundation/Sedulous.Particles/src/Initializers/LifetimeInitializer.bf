@@ -7,7 +7,7 @@ using Sedulous.Inspection;
 public class LifetimeInitializer : ParticleInitializer
 {
 	/// Base lifetime in seconds.
-	[Property]
+	[Property(.Default, "Lifetime", "Lifetime")]
 	public RangeFloat Lifetime = .(1.0f, 1.0f);
 
 	public override BehaviorSupport Support => .Both;

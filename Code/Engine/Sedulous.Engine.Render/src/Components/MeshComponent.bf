@@ -29,14 +29,16 @@ class MeshComponent : Component, ISerializableComponent
 
 		// Per-instance color tint. Component default is white; round-trip
 		// is unconditional so authored values persist across saves.
-		s.Float("ColorR", ref Color.X);
-		s.Float("ColorG", ref Color.Y);
-		s.Float("ColorB", ref Color.Z);
-		s.Float("ColorA", ref Color.W);
+		s.BeginObject("Color");
+		s.Float("X", ref Color.X);
+		s.Float("Y", ref Color.Y);
+		s.Float("Z", ref Color.Z);
+		s.Float("W", ref Color.W);
+		s.EndObject();
 
 		// Material refs
 		var matCount = (int32)mMaterialRefs.Count;
-		s.BeginArray("Materials", ref matCount);
+		s.BeginArray("MaterialRefs", ref matCount);
 		if (s.IsReading)
 		{
 			for (int32 i = 0; i < matCount; i++)
@@ -57,7 +59,7 @@ class MeshComponent : Component, ISerializableComponent
 	}
 
 	/// Mesh resource reference (serialized). Resolved to GPU handle by manager.
-	[Property]
+	[Property(.Default, "Mesh Ref", "MeshRef")]
 	[ResourceRefType(".mesh")]
 	private ResourceRef mMeshRef ~ _.Dispose();
 
@@ -65,7 +67,7 @@ class MeshComponent : Component, ISerializableComponent
 	public GPUMeshHandle MeshHandle = .Invalid;
 
 	/// Material resource references per slot (serialized).
-	[Property]
+	[Property(.Default, "Material Refs", "MaterialRefs")]
 	[ResourceRefType(".material")]
 	private List<ResourceRef> mMaterialRefs = new .() ~ { for (var r in _) r.Dispose(); delete _; };
 
@@ -76,15 +78,15 @@ class MeshComponent : Component, ISerializableComponent
 	public BoundingBox LocalBounds;
 
 	/// Render layer mask (for filtering in extraction).
-	[Property]
+	[Property(.Default, "Layer Mask", "LayerMask")]
 	public uint32 LayerMask = 0xFFFFFFFF;
 
 	/// Whether this mesh casts shadows.
-	[Property]
+	[Property(.Default, "Casts Shadows", "CastsShadows")]
 	public bool CastsShadows = true;
 
 	/// Whether this mesh is visible.
-	[Property]
+	[Property(.Default, "Is Visible", "IsVisible")]
 	public bool IsVisible = true;
 
 	/// Per-instance color tint applied on top of the material's albedo.
@@ -92,7 +94,7 @@ class MeshComponent : Component, ISerializableComponent
 	/// shader, so default (1,1,1,1) is a no-op. Use for damage flash,
 	/// team colors, status-effect overlays, etc. without cloning the
 	/// material per entity.
-	[Property(.Color)]
+	[Property(.Color, "Color", "Color")]
 	public Vector4 Color = .(1, 1, 1, 1);
 
 	/// Gets the mesh resource ref.

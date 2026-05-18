@@ -21,25 +21,25 @@ class RenderSceneModule : SceneModule, IModuleSerializer
 	// ==================== Sky ====================
 
 	/// Sky texture resource reference (equirectangular HDR or cubemap).
-	[Property]
+	[Property(.Default, "Sky Texture Ref", "SkyTextureRef")]
 	[ResourceRefType(".texture")]
 	private ResourceRef mSkyTextureRef ~ _.Dispose();
 
 	/// Sky brightness multiplier.
-	[Property]
+	[Property(.Default, "Sky Intensity", "SkyIntensity")]
 	[Range(0, 10)]
 	public float SkyIntensity = 1.0f;
 
 	// ==================== Ambient ====================
 
 	/// Ambient light color (RGB, linear).
-	[Property]
+	[Property(.Default, "Ambient Color", "AmbientColor")]
 	public Vector3 AmbientColor = .(0.1f, 0.1f, 0.15f);
 
 	// ==================== Post-Processing ====================
 
 	/// Exposure multiplier for tone mapping (1.0 = no change).
-	[Property]
+	[Property(.Default, "Exposure", "Exposure")]
 	[Range(0.01f, 20)]
 	public float Exposure = 1.0f;
 
@@ -64,9 +64,11 @@ class RenderSceneModule : SceneModule, IModuleSerializer
 		s.Float("SkyIntensity", ref SkyIntensity);
 
 		// Ambient
-		s.Float("AmbientR", ref AmbientColor.X);
-		s.Float("AmbientG", ref AmbientColor.Y);
-		s.Float("AmbientB", ref AmbientColor.Z);
+		s.BeginObject("AmbientColor");
+		s.Float("X", ref AmbientColor.X);
+		s.Float("Y", ref AmbientColor.Y);
+		s.Float("Z", ref AmbientColor.Z);
+		s.EndObject();
 
 		// Post-processing
 		s.Float("Exposure", ref Exposure);

@@ -23,14 +23,16 @@ class SkinnedMeshComponent : Component, ISerializableComponent
 		s.ResourceRef("MeshRef", ref mMeshRef);
 		s.Bool("CastsShadows", ref CastsShadows);
 		s.Bool("IsVisible", ref IsVisible);
-		s.Float("ColorR", ref Color.X);
-		s.Float("ColorG", ref Color.Y);
-		s.Float("ColorB", ref Color.Z);
-		s.Float("ColorA", ref Color.W);
+		s.BeginObject("Color");
+		s.Float("X", ref Color.X);
+		s.Float("Y", ref Color.Y);
+		s.Float("Z", ref Color.Z);
+		s.Float("W", ref Color.W);
+		s.EndObject();
 
 		// Material refs
 		var matCount = (int32)mMaterialRefs.Count;
-		s.BeginArray("Materials", ref matCount);
+		s.BeginArray("MaterialRefs", ref matCount);
 		if (s.IsReading)
 		{
 			for (int32 i = 0; i < matCount; i++)
@@ -51,7 +53,7 @@ class SkinnedMeshComponent : Component, ISerializableComponent
 	}
 
 	/// Mesh resource reference (serialized). Resolved to GPU handle by manager.
-	[Property]
+	[Property(.Default, "Mesh Ref", "MeshRef")]
 	[ResourceRefType(".skinnedmesh")]
 	private ResourceRef mMeshRef ~ _.Dispose();
 
@@ -62,7 +64,7 @@ class SkinnedMeshComponent : Component, ISerializableComponent
 	public GPUBoneBufferHandle BoneBufferHandle = .Invalid;
 
 	/// Material resource references per slot (serialized).
-	[Property]
+	[Property(.Default, "Material Refs", "MaterialRefs")]
 	[ResourceRefType(".material")]
 	private List<ResourceRef> mMaterialRefs = new .() ~ { for (var r in _) r.Dispose(); delete _; };
 
@@ -82,7 +84,7 @@ class SkinnedMeshComponent : Component, ISerializableComponent
 	/// (mirror of MeshComponent.Color). Default (1,1,1,1) is a no-op;
 	/// gameplay code drives damage flashes / team colors / status overlays
 	/// without cloning materials per entity.
-	[Property(.Color)]
+	[Property(.Color, "Color", "Color")]
 	public Vector4 Color = .(1, 1, 1, 1);
 
 	/// Gets the mesh resource ref.

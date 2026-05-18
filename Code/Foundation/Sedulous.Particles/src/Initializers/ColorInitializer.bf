@@ -8,7 +8,7 @@ using Sedulous.Inspection;
 public class ColorInitializer : ParticleInitializer
 {
 	/// Initial color range (component-wise lerp between min and max).
-	[Property]
+	[Property(.Default, "Color", "Color")]
 	public RangeColor Color = .Constant(.(1, 1, 1, 1));
 
 	public override BehaviorSupport Support => .Both;

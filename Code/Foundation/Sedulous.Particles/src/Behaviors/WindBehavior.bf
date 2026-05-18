@@ -8,11 +8,11 @@ using Sedulous.Inspection;
 public class WindBehavior : ParticleBehavior
 {
 	/// Wind direction and strength (vector magnitude = force).
-	[Property]
+	[Property(.Default, "Force", "Force")]
 	public Vector3 Force = .(1, 0, 0);
 
 	/// Wind turbulence - randomized variation applied each frame.
-	[Property, Range(0, 50)]
+	[Property(.Default, "Turbulence", "Turbulence"), Range(0, 50)]
 	public float Turbulence = 0;
 
 	public override BehaviorSupport Support => .Both;

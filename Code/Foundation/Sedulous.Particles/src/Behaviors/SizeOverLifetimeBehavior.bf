@@ -8,7 +8,7 @@ using Sedulous.Inspection;
 public class SizeOverLifetimeBehavior : ParticleBehavior
 {
 	/// Size curve evaluated at normalized particle age [0, 1].
-	[Property]
+	[Property(.Default, "Curve", "Curve")]
 	public ParticleCurveVector2 Curve;
 
 	public override BehaviorSupport Support => .Both;

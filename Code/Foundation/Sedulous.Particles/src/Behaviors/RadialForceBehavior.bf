@@ -8,7 +8,7 @@ using Sedulous.Inspection;
 public class RadialForceBehavior : ParticleBehavior
 {
 	/// Force strength (positive = outward, negative = inward).
-	[Property, Range(-100, 100)]
+	[Property(.Default, "Strength", "Strength"), Range(-100, 100)]
 	public float Strength = 1.0f;
 
 	public override BehaviorSupport Support => .Both;

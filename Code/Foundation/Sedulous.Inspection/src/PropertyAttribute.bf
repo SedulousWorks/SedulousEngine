@@ -24,19 +24,19 @@ struct PropertyAttribute : Attribute
 	/// Editor hint for choosing the appropriate property editor.
 	public PropertyEditorHint Editor;
 
-	/// Optional display name override. Empty = use field name.
-	//public StringView DisplayName;
+	/// Optional display name shown in the inspector (e.g., "Casts Shadows").
+	/// When null, the codegen derives a name from the field.
+	public String DisplayName;
 
-	public this()
-	{
-		Editor = .Default;
-		//DisplayName = default;
-	}
+	/// Optional serialized name matching the key used in Serialize()
+	/// (e.g., "CastsShadows"). When null, the codegen derives from the field name.
+	public String SerializedName;
 
-	public this(PropertyEditorHint editor)
+	public this(PropertyEditorHint editor, String displayName, String serializedName)
 	{
 		Editor = editor;
-		//DisplayName = default;
+		DisplayName = displayName;
+		SerializedName = serializedName;
 	}
 }
 

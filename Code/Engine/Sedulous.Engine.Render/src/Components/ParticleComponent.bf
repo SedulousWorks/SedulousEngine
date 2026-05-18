@@ -36,7 +36,7 @@ class ParticleComponent : Component, ISerializableComponent
 	public ParticleEffectInstance Instance ~ delete _;
 
 	/// Particle effect resource reference (serialized).
-	[Property]
+	[Property(.Default, "Effect Ref", "EffectRef")]
 	[ResourceRefType(".particlefx")]
 	private ResourceRef mEffectRef ~ _.Dispose();
 

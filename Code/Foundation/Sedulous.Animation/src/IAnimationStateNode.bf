@@ -25,7 +25,7 @@ class ClipStateNode : IAnimationStateNode
 	public AnimationClip Clip;
 
 	/// Resource reference for the clip (used by serialization/editor, resolved by AnimationGraphResource).
-	[Property]
+	[Property(.Default, "Clip Ref", "ClipRef")]
 	[ResourceRefType(".animation")]
 	private ResourceRef mClipRef ~ _.Dispose();
 

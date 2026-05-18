@@ -8,7 +8,7 @@ using Sedulous.Inspection;
 public class ColorOverLifetimeBehavior : ParticleBehavior
 {
 	/// Color curve evaluated at normalized particle age [0, 1].
-	[Property]
+	[Property(.Default, "Curve", "Curve")]
 	public ParticleCurveColor Curve;
 
 	public override BehaviorSupport Support => .Both;

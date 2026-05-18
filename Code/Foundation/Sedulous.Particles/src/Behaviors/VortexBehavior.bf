@@ -8,15 +8,15 @@ using Sedulous.Inspection;
 public class VortexBehavior : ParticleBehavior
 {
 	/// Rotational strength (radians/sec at unit distance).
-	[Property, Range(-50, 50)]
+	[Property(.Default, "Strength", "Strength"), Range(-50, 50)]
 	public float Strength = 1.0f;
 
 	/// Vortex center offset from emitter.
-	[Property]
+	[Property(.Default, "Center", "Center")]
 	public Vector3 Center = .Zero;
 
 	/// Vortex axis (default: Y-up).
-	[Property]
+	[Property(.Default, "Axis", "Axis")]
 	public Vector3 Axis = .(0, 1, 0);
 
 	public override BehaviorSupport Support => .Both;

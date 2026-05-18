@@ -28,30 +28,30 @@ public class ParticleSystem
 
 	/// Optional user-facing label shown in editor tree views. Empty falls
 	/// back to "System {index}". Has no effect on simulation or rendering.
-	[Property]
+	[Property(.Default, "Name", "Name")]
 	public String Name = new .() ~ delete _;
 
 	/// Desired simulation mode (CPU, GPU, or Auto).
-	[Property]
+	[Property(.Default, "Desired Mode", "DesiredMode")]
 	public SimulationMode DesiredMode = .CPU;
 
 	/// Actual simulation mode resolved after checking behavior support.
 	public SimulationMode ResolvedMode { get; private set; } = .CPU;
 
 	/// Simulation space.
-	[Property]
+	[Property(.Default, "Simulation Space", "SimulationSpace")]
 	public ParticleSpace SimulationSpace = .World;
 
 	/// Blend mode for rendering.
-	[Property]
+	[Property(.Default, "Blend Mode", "BlendMode")]
 	public ParticleBlendMode BlendMode = .Alpha;
 
 	/// Render mode (billboard type, mesh, trail).
-	[Property]
+	[Property(.Default, "Render Mode", "RenderMode")]
 	public ParticleRenderMode RenderMode = .Billboard;
 
 	/// Whether to sort particles back-to-front for alpha blending.
-	[Property]
+	[Property(.Default, "Sort Particles", "SortParticles")]
 	public bool SortParticles = false;
 
 	/// Trail configuration (only used when RenderMode == .Trail).
@@ -68,22 +68,22 @@ public class ParticleSystem
 	// --- LOD ---
 
 	/// Distance from camera where LOD reduction begins. 0 = no LOD.
-	[Property, Range(0, 10000)]
+	[Property(.Default, "LOD Start Distance", "LODStartDistance"), Range(0, 10000)]
 	public float LODStartDistance = 0;
 
 	/// Distance from camera where particles are fully culled. 0 = no cull.
-	[Property, Range(0, 10000)]
+	[Property(.Default, "LOD Cull Distance", "LODCullDistance"), Range(0, 10000)]
 	public float LODCullDistance = 0;
 
 	/// Minimum spawn rate multiplier at LODCullDistance (before full cull).
-	[Property, Range(0, 1)]
+	[Property(.Default, "LOD Min Rate", "LODMinRate"), Range(0, 1)]
 	public float LODMinRate = 0.1f;
 
 	/// Sprite texture for this system, resolved by the engine layer into a
 	/// MaterialInstance and bound per draw. The asset is the source of truth
 	/// for visuals - the runtime no longer carries a separate per-component
 	/// texture; rendering pulls from each system here.
-	[Property]
+	[Property(.Default, "Texture Ref", "TextureRef")]
 	[ResourceRefType(".texture")]
 	private ResourceRef mTextureRef ~ _.Dispose();
 
@@ -100,7 +100,7 @@ public class ParticleSystem
 	/// mesh transformed per-particle (position from streams, axis-angle
 	/// rotation from Axis + Rotation streams, uniform scale from Size *
 	/// MeshScale).
-	[Property]
+	[Property(.Default, "Mesh Ref", "MeshRef")]
 	[ResourceRefType(".mesh")]
 	private ResourceRef mMeshRef ~ _.Dispose();
 
@@ -115,7 +115,7 @@ public class ParticleSystem
 	/// Material applied to mesh particles. Required when `RenderMode ==
 	/// .Mesh` - StaticMeshResource only carries geometry, not materials,
 	/// so the system must specify one.
-	[Property]
+	[Property(.Default, "Material Ref", "MaterialRef")]
 	[ResourceRefType(".material")]
 	private ResourceRef mMaterialRef ~ _.Dispose();
 
@@ -131,7 +131,7 @@ public class ParticleSystem
 	/// when rendering as a mesh. The Size stream provides the per-particle
 	/// magnitude; MeshScale lets the author tune the asset to its mesh
 	/// (e.g. a 1-unit cube mesh with Size = 0.1 -> 0.1 final scale).
-	[Property, Range(0, 100)]
+	[Property(.Default, "Mesh Scale", "MeshScale"), Range(0, 100)]
 	public float MeshScale = 1.0f;
 
 	/// Round-trip the texture ref through `s`. Called from

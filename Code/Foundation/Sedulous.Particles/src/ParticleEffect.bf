@@ -22,7 +22,7 @@ public class ParticleEffect
 	/// User-facing effect name. Free-form label shown as the tree root in
 	/// the editor and serialized with the asset; intentionally independent
 	/// of the file name.
-	[Property]
+	[Property(.Default, "Name", "Name")]
 	public String Name ~ delete _;
 
 	/// Particle systems that compose this effect.

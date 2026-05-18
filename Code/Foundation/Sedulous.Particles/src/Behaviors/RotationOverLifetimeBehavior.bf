@@ -7,7 +7,7 @@ using Sedulous.Inspection;
 public class RotationOverLifetimeBehavior : ParticleBehavior
 {
 	/// Rotation speed multiplier curve evaluated at normalized particle age [0, 1].
-	[Property]
+	[Property(.Default, "Curve", "Curve")]
 	public ParticleCurveFloat Curve;
 
 	public override BehaviorSupport Support => .Both;

@@ -24,27 +24,27 @@ public enum EmissionMode : uint8
 public class ParticleEmitter
 {
 	/// Emission mode.
-	[Property]
+	[Property(.Default, "Mode", "Mode")]
 	public EmissionMode Mode = .Continuous;
 
 	/// Continuous spawn rate (particles/sec).
-	[Property, Range(0, 10000)]
+	[Property(.Default, "Spawn Rate", "SpawnRate"), Range(0, 10000)]
 	public float SpawnRate = 10.0f;
 
 	/// Burst count (particles per burst).
-	[Property, Range(0, 10000)]
+	[Property(.Default, "Burst Count", "BurstCount"), Range(0, 10000)]
 	public int32 BurstCount = 0;
 
 	/// Time between bursts in seconds (0 = single burst on start).
-	[Property, Range(0, 60)]
+	[Property(.Default, "Burst Interval", "BurstInterval"), Range(0, 60)]
 	public float BurstInterval = 0;
 
 	/// Number of burst cycles (0 = infinite).
-	[Property, Range(0, 1000)]
+	[Property(.Default, "Burst Cycles", "BurstCycles"), Range(0, 1000)]
 	public int32 BurstCycles = 0;
 
 	/// Whether this emitter is actively spawning.
-	[Property]
+	[Property(.Default, "Is Emitting", "IsEmitting")]
 	public bool IsEmitting = true;
 
 	// --- Internal emission state ---

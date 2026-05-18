@@ -20,13 +20,17 @@ class DecalComponent : Component, ISerializableComponent
 	public void Serialize(IComponentSerializer s)
 	{
 		s.ResourceRef("TextureRef", ref mTextureRef);
-		s.Float("ColorR", ref Color.X);
-		s.Float("ColorG", ref Color.Y);
-		s.Float("ColorB", ref Color.Z);
-		s.Float("ColorA", ref Color.W);
-		s.Float("SizeX", ref Size.X);
-		s.Float("SizeY", ref Size.Y);
-		s.Float("SizeZ", ref Size.Z);
+		s.BeginObject("Color");
+		s.Float("X", ref Color.X);
+		s.Float("Y", ref Color.Y);
+		s.Float("Z", ref Color.Z);
+		s.Float("W", ref Color.W);
+		s.EndObject();
+		s.BeginObject("Size");
+		s.Float("X", ref Size.X);
+		s.Float("Y", ref Size.Y);
+		s.Float("Z", ref Size.Z);
+		s.EndObject();
 		s.Float("AngleFadeStart", ref AngleFadeStart);
 		s.Float("AngleFadeEnd", ref AngleFadeEnd);
 		s.Bool("IsVisible", ref IsVisible);
@@ -34,7 +38,7 @@ class DecalComponent : Component, ISerializableComponent
 
 	/// Texture resource reference (serialized). Resolved to a MaterialInstance
 	/// by DecalComponentManager.
-	[Property]
+	[Property(.Default, "Texture Ref", "TextureRef")]
 	[ResourceRefType(".texture")]
 	private ResourceRef mTextureRef ~ _.Dispose();
 
