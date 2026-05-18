@@ -17,6 +17,7 @@ using Sedulous.UI;
 public abstract class PropertyEditor
 {
 	private String mName ~ delete _;
+	private String mDisplayName ~ delete _;
 	private String mCategory ~ delete _;
 	private View mEditorView;
 	private bool mIsEditing;
@@ -37,7 +38,21 @@ public abstract class PropertyEditor
 	/// renders the label as an EditText. The delegate receives the new name.
 	public delegate void(StringView) OnLabelRenamed ~ delete _;
 
+	/// Property identity name. Stable, machine-readable (e.g., "CastsShadows").
 	public StringView Name => mName;
+
+	/// Display label shown in the inspector UI. Falls back to Name if not set.
+	public StringView DisplayName => (mDisplayName != null) ? mDisplayName : mName;
+
+	/// Sets the display label (for pretty names like "Casts Shadows").
+	public void SetDisplayName(StringView displayName)
+	{
+		if (mDisplayName == null)
+			mDisplayName = new String(displayName);
+		else
+			mDisplayName.Set(displayName);
+	}
+
 	public StringView Category => (mCategory != null) ? mCategory : "";
 
 	/// Whether an edit gesture is currently in progress.

@@ -203,7 +203,7 @@ public class PropertyGrid : ViewGroup
 		if (editor.OnLabelRenamed != null)
 		{
 			let editableLabel = new EditableLabel();
-			editableLabel.SetText(editor.Name);
+			editableLabel.SetText(editor.DisplayName);
 			editableLabel.FontSize = 12;
 			let renameDelegate = editor.OnLabelRenamed;
 			editableLabel.OnRenameCommitted.Add(new (el, newName) => {
@@ -216,7 +216,7 @@ public class PropertyGrid : ViewGroup
 		else
 		{
 			let label = new Label();
-			label.SetText(editor.Name);
+			label.SetText(editor.DisplayName);
 			label.FontSize = 12;
 			label.VAlign = .Middle;
 			row.AddView(label, new FlexLayout.LayoutParams() {
