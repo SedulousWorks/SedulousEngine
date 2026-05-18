@@ -7,14 +7,15 @@ using Sedulous.Engine.Core;
 
 /// A loadable scene asset.
 /// Serializes through the standard Resource path with header (_type, _id, _name),
-/// then delegates to SceneSerializer for entity/transform/component data.
+/// then delegates to a SceneSerializer for entity/transform/component data.
+/// The scene serializer is set by the manager — the resource does not create one.
 class SceneResource : Resource
 {
 	/// Live scene reference (set for saving, null for loading until InstantiateScene).
 	public Scene Scene;
 
-	/// Type registry for component deserialization (not owned).
-	public ComponentTypeRegistry TypeRegistry;
+	/// Scene serializer to use for save/load (not owned, set by manager before Serialize).
+	public SceneSerializer SceneSerializer;
 
 	public override ResourceType ResourceType => .("Sedulous.Engine.Core.Resources.SceneResource");
 
@@ -22,14 +23,12 @@ class SceneResource : Resource
 
 	protected override SerializationResult OnSerialize(Serializer serializer)
 	{
-		if (Scene == null)
+		if (Scene == null || SceneSerializer == null)
 			return .Ok;
 
-		let sceneSerializer = scope SceneSerializer(TypeRegistry);
-
 		if (serializer.IsWriting)
-			return sceneSerializer.Save(Scene, serializer);
+			return SceneSerializer.Save(Scene, serializer);
 		else
-			return sceneSerializer.Load(Scene, serializer);
+			return SceneSerializer.Load(Scene, serializer);
 	}
 }

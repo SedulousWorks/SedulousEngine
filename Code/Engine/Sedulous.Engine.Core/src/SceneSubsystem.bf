@@ -93,6 +93,7 @@ class SceneSubsystem : Subsystem, ISceneAware
 		if (serializerProvider != null)
 		{
 			mSceneResourceManager = new SceneResourceManager(mTypeRegistry, serializerProvider);
+			mSceneResourceManager.ResourceSystem = mResourceSystem;
 			mResourceSystem.AddResourceManager(mSceneResourceManager);
 
 			mPrefabResourceManager = new PrefabResourceManager(mTypeRegistry, serializerProvider);
@@ -187,14 +188,6 @@ class SceneSubsystem : Subsystem, ISceneAware
 
 	public void OnSceneCreated(Scene scene)
 	{
-		// Inject prefab component managers into every scene
-		let prefabMgr = new PrefabComponentManager();
-		prefabMgr.ResourceSystem = mResourceSystem;
-		prefabMgr.SerializerProvider = mResourceSystem?.SerializerProvider;
-		prefabMgr.TypeRegistry = mTypeRegistry;
-		scene.AddModule(prefabMgr);
-
-		scene.AddModule(new PrefabInstanceTagManager());
 	}
 
 	public void OnSceneReady(Scene scene) { }

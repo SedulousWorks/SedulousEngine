@@ -9,8 +9,8 @@ using static Sedulous.Resources.ResourceSerializerExtensions;
 using Sedulous.Core.Mathematics;
 
 /// Serializes and deserializes prefabs. Reuses the same entity/component
-/// format as SceneSerializer with an additional ExposedParameters section.
-/// No module-level data (prefabs are entity subgraphs, not full scenes).
+/// format as SceneSerializer. No module-level data (prefabs are entity
+/// subgraphs, not full scenes).
 class PrefabSerializer
 {
 	private ComponentTypeRegistry mTypeRegistry;
@@ -20,27 +20,9 @@ class PrefabSerializer
 		mTypeRegistry = typeRegistry;
 	}
 
-	/// Serializes a prefab (scene entities + exposed parameters) to a serializer.
-	public SerializationResult Save(Scene scene, List<ExposedParameterDescriptor> parameters, Serializer serializer)
+	/// Serializes a prefab (scene entities) to a serializer.
+	public SerializationResult Save(Scene scene, Serializer serializer)
 	{
-		// Exposed parameters
-		var paramCount = (int32)parameters.Count;
-		serializer.BeginArray("ExposedParameters", ref paramCount);
-
-		for (let param in parameters)
-		{
-			serializer.BeginObject("");
-			serializer.String("Name", param.Name);
-			var entityId = param.EntityId;
-			serializer.Guid("EntityId", ref entityId);
-			serializer.String("ComponentType", param.ComponentTypeId);
-			serializer.String("Property", param.PropertyName);
-			serializer.EndObject();
-		}
-
-		serializer.EndArray();
-
-		// Entities - same format as SceneSerializer
 		let entities = scope List<EntityHandle>();
 		for (let entity in scene.Entities)
 			entities.Add(entity);
@@ -119,13 +101,9 @@ class PrefabSerializer
 		return .Ok;
 	}
 
-	/// Deserializes a prefab into a scene (entities + parameters).
-	public SerializationResult Load(Scene scene, List<ExposedParameterDescriptor> parameters, Serializer serializer)
+	/// Deserializes a prefab into a scene.
+	public SerializationResult Load(Scene scene, Serializer serializer)
 	{
-		// Load exposed parameters
-		LoadParameters(parameters, serializer);
-
-		// Load entities - same pattern as SceneSerializer.Load
 		var entityCount = (int32)0;
 		serializer.BeginArray("Entities", ref entityCount);
 
@@ -213,27 +191,11 @@ class PrefabSerializer
 		return .Ok;
 	}
 
-	/// Loads only the ExposedParameters section (for resource metadata without
-	/// instantiating entities). Used when loading PrefabResource without a Scene.
-	public SerializationResult LoadParametersOnly(List<ExposedParameterDescriptor> parameters, Serializer serializer)
-	{
-		LoadParameters(parameters, serializer);
-		// Skip entity data - not needed for metadata-only load
-		return .Ok;
-	}
-
 	/// Instantiates a prefab's entities into an existing scene under a parent entity.
 	/// Returns a map from prefab entity GUIDs to live entity handles.
-	/// Used by PrefabReferenceComponent during runtime instantiation.
 	public Result<Dictionary<Guid, EntityHandle>> Instantiate(
-		Scene scene, EntityHandle parentEntity,
-		Serializer serializer, List<ExposedParameterDescriptor> parameters)
+		Scene scene, EntityHandle parentEntity, Serializer serializer)
 	{
-		// Skip parameters section (already loaded on PrefabResource)
-		let skipParams = new List<ExposedParameterDescriptor>();
-		LoadParameters(skipParams, serializer);
-		DeleteContainerAndItems!(skipParams);
-
 		let guidMap = new Dictionary<Guid, EntityHandle>();
 		let parentMap = scope Dictionary<Guid, Guid>();
 
@@ -320,13 +282,11 @@ class PrefabSerializer
 
 			if (parentMap.TryGetValue(sourceId, let sourceParentId))
 			{
-				// Has a parent within the prefab
 				if (guidMap.TryGetValue(sourceParentId, let liveParent))
 					scene.SetParent(liveHandle, liveParent);
 			}
 			else
 			{
-				// Root entity - parent to the reference entity
 				scene.SetParent(liveHandle, parentEntity);
 			}
 		}
@@ -335,29 +295,6 @@ class PrefabSerializer
 	}
 
 	// === Helpers ===
-
-	private void LoadParameters(List<ExposedParameterDescriptor> parameters, Serializer serializer)
-	{
-		var paramCount = (int32)0;
-		serializer.BeginArray("ExposedParameters", ref paramCount);
-
-		for (int32 i = 0; i < paramCount; i++)
-		{
-			serializer.BeginObject("");
-
-			let param = new ExposedParameterDescriptor();
-
-			serializer.String("Name", param.Name);
-			serializer.Guid("EntityId", ref param.EntityId);
-			serializer.String("ComponentType", param.ComponentTypeId);
-			serializer.String("Property", param.PropertyName);
-
-			parameters.Add(param);
-			serializer.EndObject();
-		}
-
-		serializer.EndArray();
-	}
 
 	private SceneModule FindModuleByTypeId(Scene scene, StringView typeId)
 	{
@@ -371,15 +308,23 @@ class PrefabSerializer
 
 	private void SerializeTransform(Serializer serializer, ref Transform transform)
 	{
-		serializer.Float("PosX", ref transform.Position.X);
-		serializer.Float("PosY", ref transform.Position.Y);
-		serializer.Float("PosZ", ref transform.Position.Z);
-		serializer.Float("RotX", ref transform.Rotation.X);
-		serializer.Float("RotY", ref transform.Rotation.Y);
-		serializer.Float("RotZ", ref transform.Rotation.Z);
-		serializer.Float("RotW", ref transform.Rotation.W);
-		serializer.Float("ScaleX", ref transform.Scale.X);
-		serializer.Float("ScaleY", ref transform.Scale.Y);
-		serializer.Float("ScaleZ", ref transform.Scale.Z);
+		serializer.BeginObject("Position");
+		serializer.Float("X", ref transform.Position.X);
+		serializer.Float("Y", ref transform.Position.Y);
+		serializer.Float("Z", ref transform.Position.Z);
+		serializer.EndObject();
+
+		serializer.BeginObject("Rotation");
+		serializer.Float("X", ref transform.Rotation.X);
+		serializer.Float("Y", ref transform.Rotation.Y);
+		serializer.Float("Z", ref transform.Rotation.Z);
+		serializer.Float("W", ref transform.Rotation.W);
+		serializer.EndObject();
+
+		serializer.BeginObject("Scale");
+		serializer.Float("X", ref transform.Scale.X);
+		serializer.Float("Y", ref transform.Scale.Y);
+		serializer.Float("Z", ref transform.Scale.Z);
+		serializer.EndObject();
 	}
 }

@@ -20,6 +20,10 @@ class SceneResourceManager : ResourceManager<SceneResource>
 	private ComponentTypeRegistry mTypeRegistry;
 	private ISerializerProvider mSerializerProvider;
 
+	/// Resource system for prefab instance loading during scene deserialization.
+	/// Set by the application after construction (same lifetime as the manager).
+	public ResourceSystem ResourceSystem { get; set; }
+
 	/// @param typeRegistry Registry mapping type IDs to component manager factories.
 	/// @param serializerProvider Format provider for reading/writing scene data.
 	public this(ComponentTypeRegistry typeRegistry, ISerializerProvider serializerProvider)
@@ -39,8 +43,7 @@ class SceneResourceManager : ResourceManager<SceneResource>
 		defer delete reader;
 
 		let resource = new SceneResource();
-		resource.TypeRegistry = mTypeRegistry;
-		// Scene is not set yet - InstantiateScene fills it in later.
+		// No scene or serializer set — header-only load (scene, name, id).
 		resource.Serialize(reader);
 		resource.AddRef();
 		return .Ok(resource);
@@ -75,11 +78,13 @@ class SceneResourceManager : ResourceManager<SceneResource>
 			return .Err;
 		defer delete reader;
 
-		// Set scene on resource so OnSerialize loads into it.
+		let sceneSerializer = scope SceneSerializer(mTypeRegistry, mSerializerProvider, ResourceSystem);
+
 		resource.Scene = scene;
-		resource.TypeRegistry = mTypeRegistry;
+		resource.SceneSerializer = sceneSerializer;
 		resource.Serialize(reader);
 		resource.Scene = null;
+		resource.SceneSerializer = null;
 
 		return .Ok;
 	}
@@ -88,9 +93,11 @@ class SceneResourceManager : ResourceManager<SceneResource>
 	/// exists, preserves its resource GUID. Returns the GUID that was written.
 	public Result<Guid> SaveScene(Scene scene, IWritableMount mount, StringView locator)
 	{
+		let sceneSerializer = scope SceneSerializer(mTypeRegistry, mSerializerProvider, ResourceSystem);
+
 		let resource = scope SceneResource();
 		resource.Scene = scene;
-		resource.TypeRegistry = mTypeRegistry;
+		resource.SceneSerializer = sceneSerializer;
 
 		// If an entry already exists at this locator, preserve its GUID.
 		if (mount.Exists(locator))

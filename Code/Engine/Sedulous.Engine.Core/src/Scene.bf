@@ -51,6 +51,10 @@ public class Scene : IDisposable
 	private List<SceneModule> mModules = new .() ~ delete _;
 	private Dictionary<Type, SceneModule> mModulesByType = new .() ~ delete _;
 
+	// --- Prefab modification tracking ---
+
+	private LocalModifications mLocalModifications = new .() ~ delete _;
+
 	// --- Phase update functions (collected from all modules) ---
 
 	private struct PhaseEntry
@@ -658,6 +662,10 @@ public class Scene : IDisposable
 	/// Gets all registered modules. Used by serialization.
 	public Span<SceneModule> Modules => mModules;
 
+	/// Prefab modification tracker. Tracks which properties on which
+	/// entities differ from their prefab template.
+	public LocalModifications LocalModifications => mLocalModifications;
+
 	/// Collects all components attached to the given entity across all managers.
 	public void GetComponents(EntityHandle entity, List<Component> outComponents)
 	{
@@ -953,6 +961,9 @@ public class Scene : IDisposable
 		// Notify all modules
 		for (let module in mModules)
 			module.OnEntityDestroyed(entity);
+
+		// Clean up V2 prefab modification tracking
+		mLocalModifications.ClearEntity(entity);
 
 		// Remove from ID map
 		var slot = ref mEntities[index];

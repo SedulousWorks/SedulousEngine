@@ -46,6 +46,15 @@ class PrefabResourceManager : ResourceManager<PrefabResource>
 			resource.ReleaseRef();
 	}
 
+	protected override Result<void, ResourceLoadError> ReloadResource(PrefabResource resource, ResourceLoadContext ctx)
+	{
+		// The cached PrefabResource is header-only (Scene == null). On hot-reload
+		// we don't need to re-read the header — just signal success so the resource
+		// system increments the generation and fires OnResourceReloaded. The actual
+		// entity re-instantiation is handled by PrefabRebuilder.
+		return .Ok;
+	}
+
 	/// Re-reads the prefab from `mount`/`locator` and instantiates its entities
 	/// into the provided `scene`. The scene should already have component
 	/// managers injected.
@@ -79,7 +88,7 @@ class PrefabResourceManager : ResourceManager<PrefabResource>
 
 	/// Saves a prefab through a writable mount. If an existing entry is at the
 	/// target locator, preserves its GUID.
-	public Result<Guid> SavePrefab(Scene scene, List<ExposedParameterDescriptor> parameters, IWritableMount mount, StringView locator)
+	public Result<Guid> SavePrefab(Scene scene, IWritableMount mount, StringView locator)
 	{
 		let resource = scope PrefabResource();
 		resource.Scene = scene;
@@ -105,17 +114,6 @@ class PrefabResourceManager : ResourceManager<PrefabResource>
 					}
 				}
 			}
-		}
-
-		// Copy parameters into the resource.
-		for (let param in parameters)
-		{
-			let copy = new ExposedParameterDescriptor();
-			copy.Name.Set(param.Name);
-			copy.EntityId = param.EntityId;
-			copy.ComponentTypeId.Set(param.ComponentTypeId);
-			copy.PropertyName.Set(param.PropertyName);
-			resource.ExposedParameters.Add(copy);
 		}
 
 		let name = scope String();
