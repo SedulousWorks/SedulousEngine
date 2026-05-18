@@ -5,6 +5,8 @@ using Sedulous.Engine.Core;
 using Sedulous.Engine.Render;
 using Sedulous.Core.Mathematics;
 using Sedulous.Resources;
+using Sedulous.Serialization;
+using Sedulous.Engine.Core.Resources;
 using Sedulous.Messaging;
 using Sedulous.Shell.Input;
 using Sedulous.Renderer.Debug;
@@ -21,6 +23,15 @@ class TowerPlacement
 
 	/// Model manifest for constructing ResourceRefs.
 	public ModelManifest Manifest;
+
+	/// Resource system for prefab spawning.
+	public ResourceSystem ResourceSystem;
+
+	/// Serializer provider for prefab spawning.
+	public Sedulous.Serialization.ISerializerProvider SerializerProvider;
+
+	/// Component type registry for prefab spawning.
+	public ComponentTypeRegistry TypeRegistry;
 
 
 	/// Hover grid position (valid when mouse is over a valid cell).
@@ -476,20 +487,18 @@ class TowerPlacement
 		transform.Scale = .One;
 		scene.SetLocalTransform(rootEntity, transform);
 
-		// Add PrefabReferenceComponent - PrefabComponentManager will instantiate
-		// the tower prefab hierarchy as children on the next update.
+		// Spawn tower prefab entities immediately as children
 		let towerName = GetTowerName(type);
-		let prefabMgr = scene.GetModule<PrefabComponentManager>();
-		if (prefabMgr != null)
+		if (ResourceSystem != null && SerializerProvider != null)
 		{
-			let prefabHandle = prefabMgr.CreateComponent(rootEntity);
-			if (let prefabComp = prefabMgr.Get(prefabHandle))
-			{
-				let prefabPath = scope String()..AppendF("project://prefabs/tower_{}.prefab", towerName);
-				var prefabRef = ResourceRef(.Empty, prefabPath);
-				defer prefabRef.Dispose();
-				prefabComp.SetPrefabRef(prefabRef);
-			}
+			let prefabPath = scope String()..AppendF("project://prefabs/tower_{}.prefab", towerName);
+			var prefabRef = ResourceRef(.Empty, prefabPath);
+			defer prefabRef.Dispose();
+
+			let spawnResult = PrefabSpawner.Spawn(scene, prefabRef, .Empty,
+				rootEntity, TypeRegistry, SerializerProvider, ResourceSystem);
+			if (spawnResult case .Ok(let sr))
+				delete sr.GuidMap;
 		}
 
 		let compHandle = towerMgr.CreateComponent(rootEntity);

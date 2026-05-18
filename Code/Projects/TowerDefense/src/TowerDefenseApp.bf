@@ -50,6 +50,7 @@ class TowerDefenseApp : EngineApplication
 
 	// Tower placement
 	private TowerPlacement mTowerPlacement = new .() ~ delete _;
+	private ComponentTypeRegistry mTypeRegistry = new .() ~ delete _;
 
 	// UI
 	private HUDManager mHUD = new .() ~ delete _;
@@ -101,8 +102,11 @@ class TowerDefenseApp : EngineApplication
 		else
 			BuildFromScratch(assetsDir);
 
-		// Wire manifest to tower placement
+		// Wire manifest and resource infrastructure to tower placement
 		mTowerPlacement.Manifest = mManifest;
+		mTowerPlacement.ResourceSystem = ResourceSystem;
+		mTowerPlacement.SerializerProvider = ResourceSystem.SerializerProvider;
+		mTowerPlacement.TypeRegistry = mTypeRegistry;
 
 		// Camera setup (both paths)
 		mCamera.LookTarget = .(6, 0, 6);
@@ -255,9 +259,10 @@ class TowerDefenseApp : EngineApplication
 		defer delete reader;
 
 		let typeReg = scope ComponentTypeRegistry();
+		let sceneSerializer = scope SceneSerializer(typeReg, provider, ResourceSystem);
 		let sceneRes = scope SceneResource();
 		sceneRes.Scene = mScene;
-		sceneRes.TypeRegistry = typeReg;
+		sceneRes.SceneSerializer = sceneSerializer;
 		sceneRes.Serialize(reader);
 
 		// Find camera entity by name
@@ -491,8 +496,7 @@ class TowerDefenseApp : EngineApplication
 			});
 
 			// Save prefab
-			let emptyParams = scope List<ExposedParameterDescriptor>();
-			if (prefabMgr.SavePrefab(prefabScene, emptyParams, mount, prefabLocator) case .Ok(let guid))
+			if (prefabMgr.SavePrefab(prefabScene, mount, prefabLocator) case .Ok(let guid))
 			{
 				index.Register(guid, scope $"project://{prefabLocator}");
 				Console.WriteLine("[Export] Saved tower prefab: tower_{}", towerName);

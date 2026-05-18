@@ -13,16 +13,22 @@ Arr_ %Entities {
 		string %Name {"TowerBase"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
-		float %PosX {0}
-		float %PosY {0}
-		float %PosZ {0}
-		float %RotX {0}
-		float %RotY {0}
-		float %RotZ {0}
-		float %RotW {1}
-		float %ScaleX {1}
-		float %ScaleY {1}
-		float %ScaleZ {1}
+		Obj_ %Position {
+			float %X {0}
+			float %Y {0}
+			float %Z {0}
+		}
+		Obj_ %Rotation {
+			float %X {0}
+			float %Y {0}
+			float %Z {0}
+			float %W {1}
+		}
+		Obj_ %Scale {
+			float %X {1}
+			float %Y {1}
+			float %Z {1}
+		}
 		Arr_ %Components {
 			int32 %_count {1}
 			Obj_ {
@@ -36,7 +42,7 @@ Arr_ %Entities {
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
-					Arr_ %Materials {
+					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
 							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
@@ -52,16 +58,22 @@ Arr_ %Entities {
 		string %Name {"Weapon"}
 		bool %Active {true}
 		string %Parent {"d1e4f9bc-ed71-4cd5-8101-49c227d27dee"}
-		float %PosX {0}
-		float %PosY {0.5}
-		float %PosZ {0}
-		float %RotX {0}
-		float %RotY {0}
-		float %RotZ {0}
-		float %RotW {1}
-		float %ScaleX {1}
-		float %ScaleY {1}
-		float %ScaleZ {1}
+		Obj_ %Position {
+			float %X {0}
+			float %Y {0.5}
+			float %Z {0}
+		}
+		Obj_ %Rotation {
+			float %X {0}
+			float %Y {0}
+			float %Z {0}
+			float %W {1}
+		}
+		Obj_ %Scale {
+			float %X {1}
+			float %Y {1}
+			float %Z {1}
+		}
 		Arr_ %Components {
 			int32 %_count {1}
 			Obj_ {
@@ -75,7 +87,7 @@ Arr_ %Entities {
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
-					Arr_ %Materials {
+					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
 							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
@@ -91,16 +103,22 @@ Arr_ %Entities {
 		string %Name {"ProjectileSpawnPoint"}
 		bool %Active {true}
 		string %Parent {"483f9b2f-2a45-4620-b728-1b7ed8490573"}
-		float %PosX {0}
-		float %PosY {0.100000001}
-		float %PosZ {0.300000012}
-		float %RotX {0}
-		float %RotY {0}
-		float %RotZ {0}
-		float %RotW {1}
-		float %ScaleX {1}
-		float %ScaleY {1}
-		float %ScaleZ {1}
+		Obj_ %Position {
+			float %X {0}
+			float %Y {0.100000001}
+			float %Z {0.300000012}
+		}
+		Obj_ %Rotation {
+			float %X {0}
+			float %Y {0}
+			float %Z {0}
+			float %W {1}
+		}
+		Obj_ %Scale {
+			float %X {1}
+			float %Y {1}
+			float %Z {1}
+		}
 		Arr_ %Components {
 			int32 %_count {0}
 		}
