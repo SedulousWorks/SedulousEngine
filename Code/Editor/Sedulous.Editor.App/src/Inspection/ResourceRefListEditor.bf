@@ -120,7 +120,10 @@ class ResourceRefListEditor : PropertyEditor
 					let picker = new AssetPickerDialog(mEditorContext, mExtensionFilter ?? "",
 						new (protocolPath, guid) => {
 							var newRef = ResourceRef(guid, protocolPath);
+							BeginEdit();
 							mSetter(slot, newRef);
+							NotifyValueChanged();
+							EndEdit();
 							newRef.Dispose();
 							RebuildSlots();
 						});
@@ -134,7 +137,10 @@ class ResourceRefListEditor : PropertyEditor
 							if (paths.Length > 0)
 							{
 								var newRef = ResourceRef(.(), paths[0]);
+								BeginEdit();
 								mSetter(slot, newRef);
+								NotifyValueChanged();
+								EndEdit();
 								newRef.Dispose();
 								RebuildSlots();
 							}
@@ -152,7 +158,10 @@ class ResourceRefListEditor : PropertyEditor
 			{
 				mContainer.Context?.MutationQueue.QueueAction(new () =>
 				{
+					BeginEdit();
 					mSetter(slot, .());
+					NotifyValueChanged();
+					EndEdit();
 					RebuildSlots();
 				});
 			});
@@ -172,7 +181,10 @@ class ResourceRefListEditor : PropertyEditor
 			// Defer mutation - this button will be deleted by RebuildSlots
 			mContainer.Context?.MutationQueue.QueueAction(new () =>
 			{
+				BeginEdit();
 				mSetter(mCountGetter(), .());
+				NotifyValueChanged();
+				EndEdit();
 				RebuildSlots();
 			});
 		});
