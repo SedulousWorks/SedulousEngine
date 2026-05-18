@@ -114,6 +114,21 @@ class GizmoInputHandler : IViewportInputHandler
 				let cmd = new SetTransformCommand(mScene, mDragEntity, mDragStartTransform, newTransform);
 				mPage.CommandStack.Execute(cmd);
 				mPage.MarkDirty();
+
+				// Track transform override for prefab instances
+				let tagMgr = mScene.GetModule<PrefabInstanceTagManager>();
+				if (tagMgr != null && tagMgr.GetForEntity(mDragEntity) != null)
+				{
+					switch (mDragMode)
+					{
+					case .Translate:
+						mScene.LocalModifications.SetPropertyModified(mDragEntity, "Transform", "Position");
+					case .Rotate:
+						mScene.LocalModifications.SetPropertyModified(mDragEntity, "Transform", "Rotation");
+					case .Scale:
+						mScene.LocalModifications.SetPropertyModified(mDragEntity, "Transform", "Scale");
+					}
+				}
 			}
 
 			mGizmo.EndDrag();

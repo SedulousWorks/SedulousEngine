@@ -30,6 +30,11 @@ class SceneHierarchyView : ViewGroup, IDragSource, IDropTarget
 	private int32 mDropTargetPosition = -1;
 	private HierarchyDropZone mDropZone = .None;
 
+	/// Fired when an asset file is dropped onto the hierarchy.
+	/// Parameters: (AssetDragData data, EntityHandle parentEntity)
+	/// parentEntity is .Invalid if dropped onto empty area (root level).
+	public Event<delegate void(AssetDragData, EntityHandle)> OnAssetDropped ~ _.Dispose();
+
 	// Forward TreeView properties
 	public TreeView InternalTreeView => mTreeView;
 	public SelectionModel Selection => mTreeView.Selection;
@@ -200,24 +205,29 @@ class SceneHierarchyView : ViewGroup, IDragSource, IDropTarget
 
 	public DragDropEffects CanAcceptDrop(DragData data, float localX, float localY)
 	{
-		if (data.Format != "hierarchy/entity") return .None;
-		if (let hierData = data as HierarchyDragData)
+		if (data.Format == "hierarchy/entity")
 		{
-			let (pos, zone) = HitTestDropZone(localX, localY);
-			if (pos < 0 || zone == .None) return .None;
+			if (let hierData = data as HierarchyDragData)
+			{
+				let (pos, zone) = HitTestDropZone(localX, localY);
+				if (pos < 0 || zone == .None) return .None;
 
-			let targetNodeId = mTreeView.FlatAdapter.GetNodeId(pos);
-			let targetEntity = mAdapter.GetEntityForNode(targetNodeId);
-			if (targetEntity == .Invalid) return .None;
+				let targetNodeId = mTreeView.FlatAdapter.GetNodeId(pos);
+				let targetEntity = mAdapter.GetEntityForNode(targetNodeId);
+				if (targetEntity == .Invalid) return .None;
 
-			if (WouldCreateCycle(hierData.Entity, targetEntity))
-				return .None;
+				if (WouldCreateCycle(hierData.Entity, targetEntity))
+					return .None;
 
-			// Can't reorder above/below self
-			if (hierData.Entity == targetEntity && zone != .Inside)
-				return .None;
+				if (hierData.Entity == targetEntity && zone != .Inside)
+					return .None;
 
-			return .Move;
+				return .Move;
+			}
+		}
+		else if (data.Format == "asset/file")
+		{
+			return .Copy;
 		}
 		return .None;
 	}
@@ -244,6 +254,29 @@ class SceneHierarchyView : ViewGroup, IDragSource, IDropTarget
 		let dropZone = mDropZone;
 		mDropTargetPosition = -1;
 		mDropZone = .None;
+
+		// Asset drop (e.g., .prefab from asset browser)
+		if (data.Format == "asset/file")
+		{
+			if (let assetData = data as AssetDragData)
+			{
+				// Determine parent entity from drop position
+				EntityHandle parentEntity = .Invalid;
+				if (dropPos >= 0 && dropZone == .Inside)
+				{
+					let flatAdapter = mTreeView.FlatAdapter;
+					if (flatAdapter != null)
+					{
+						let targetNodeId = flatAdapter.GetNodeId(dropPos);
+						parentEntity = mAdapter.GetEntityForNode(targetNodeId);
+					}
+				}
+
+				OnAssetDropped(assetData, parentEntity);
+				return .Copy;
+			}
+			return .None;
+		}
 
 		if (data.Format != "hierarchy/entity") return .None;
 		if (let hierData = data as HierarchyDragData)

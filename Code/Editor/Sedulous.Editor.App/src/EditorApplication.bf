@@ -211,6 +211,7 @@ class EditorApplication : Application, IDockableWindowHost
 
 		// Scene serialization
 		mSceneManager = new SceneResourceManager(mTypeRegistry, ResourceSystem.SerializerProvider);
+		mSceneManager.ResourceSystem = ResourceSystem;
 		mPrefabManager = new PrefabResourceManager(mTypeRegistry, ResourceSystem.SerializerProvider);
 
 		// Editor context
@@ -504,6 +505,19 @@ class EditorApplication : Application, IDockableWindowHost
 		// When SetActive runs (e.g. double-click on an already-open asset),
 		// surface the matching dock tab so the user sees the activation.
 		mEditorContext.PageManager.OnActivePageChanged.Add(new (page) => OnActivePageChanged(page));
+
+		// When a dock tab is clicked, update the active page in the page manager.
+		dockManager.OnPanelActivated.Add(new (panel) => {
+			if (panel == null) return;
+			for (let page in mEditorContext.PageManager.OpenPages)
+			{
+				if (mPageDockPanels.TryGetValue(.(page), let p) && p === panel)
+				{
+					mEditorContext.PageManager.SetActive(page);
+					break;
+				}
+			}
+		});
 
 		// Asset browser panel (bottom)
 		mAssetBrowserPanel = new AssetBrowserPanel(mEditorContext);

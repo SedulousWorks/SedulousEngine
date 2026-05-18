@@ -15,6 +15,9 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Renderer.Passes;
 using System.Collections;
 using Sedulous.Inspection;
+using Sedulous.Resources;
+using Sedulous.Engine;
+using Sedulous.Engine.Core.Resources;
 
 /// Builds the internal layout for a SceneEditorPage:
 /// Hierarchy (left) | Viewport (center) | Inspector (right)
@@ -192,6 +195,12 @@ static class ScenePageBuilder
 		adapter.OnEntityRenamed.Add(new () =>
 		{
 			page.OnSelectionChanged(page);
+		});
+
+		// Asset drop handler (e.g., .prefab from asset browser)
+		hierarchyView.OnAssetDropped.Add(new [=page, =adapter] (assetData, parentEntity) =>
+		{
+			OnAssetDroppedIntoHierarchy(page, adapter, assetData, parentEntity);
 		});
 
 		return container;
@@ -488,6 +497,10 @@ static class ScenePageBuilder
 					p.MarkDirty();
 				}));
 
+			// Check if this entity is a prefab instance (for override tracking)
+			let tagMgr = p.Scene.GetModule<PrefabInstanceTagManager>();
+			let isPrefabInstance = tagMgr != null && tagMgr.GetForEntity(selected) != null;
+
 			// Transform editors (every entity has a transform)
 			{
 				let transform = p.Scene.GetLocalTransform(selected);
@@ -499,6 +512,10 @@ static class ScenePageBuilder
 					t.Position = v;
 					p.Scene.SetLocalTransform(capturedEntity, t);
 				};
+				if (isPrefabInstance)
+					posEditor.OnEditEnd.Add(new [=p, =capturedEntity] (e) => {
+						p.Scene.LocalModifications.SetPropertyModified(capturedEntity, "Transform", "Position");
+					});
 				propertyGrid.AddProperty(posEditor);
 
 				// Rotation as euler angles
@@ -509,6 +526,10 @@ static class ScenePageBuilder
 					t.Rotation = PropertyGridDescriptor.EulerToQuaternion(v);
 					p.Scene.SetLocalTransform(capturedEntity, t);
 				};
+				if (isPrefabInstance)
+					rotEditor.OnEditEnd.Add(new [=p, =capturedEntity] (e) => {
+						p.Scene.LocalModifications.SetPropertyModified(capturedEntity, "Transform", "Rotation");
+					});
 				propertyGrid.AddProperty(rotEditor);
 
 				let scaleEditor = new Vector3Editor("Scale", transform.Scale, min: 0.001f, max: 10000, category: "Transform");
@@ -517,6 +538,10 @@ static class ScenePageBuilder
 					t.Scale = v;
 					p.Scene.SetLocalTransform(capturedEntity, t);
 				};
+				if (isPrefabInstance)
+					scaleEditor.OnEditEnd.Add(new [=p, =capturedEntity] (e) => {
+						p.Scene.LocalModifications.SetPropertyModified(capturedEntity, "Transform", "Scale");
+					});
 				propertyGrid.AddProperty(scaleEditor);
 			}
 
@@ -528,8 +553,46 @@ static class ScenePageBuilder
 			{
 				if (let inspectable = component as IInspectable)
 				{
+					let editorCountBefore = propertyGrid.PropertyCount;
+
 					let desc = scope EditorPropertyGridDescriptor(propertyGrid, editorContext?.DialogService, editorContext?.ResourceSystem?.SerializerProvider, editorContext?.ResourceSystem, editorContext);
 					inspectable.DescribeProperties(desc);
+
+					// For prefab instance entities, track property edits in LocalModifications
+					if (isPrefabInstance)
+					{
+						// Find the component's manager to get the serialization type ID
+						StringView compTypeId = default;
+						for (let module in p.Scene.Modules)
+						{
+							if (let cmBase = module as ComponentManagerBase)
+							{
+								if (cmBase.GetComponent(selected) === component && module.IsSerializable)
+								{
+									compTypeId = module.SerializationTypeId;
+									break;
+								}
+							}
+						}
+
+						if (compTypeId.Length > 0)
+						{
+							let capturedTypeId = new String(compTypeId);
+							let capturedScene = p.Scene;
+							let capturedEntity = selected;
+							p.AddOwnedObject(capturedTypeId);
+
+							// Subscribe only the editors just added by this component
+							let props = propertyGrid.Properties;
+							for (int ei = editorCountBefore; ei < props.Length; ei++)
+							{
+								props[ei].OnEditEnd.Add(new [=capturedScene, =capturedEntity, =capturedTypeId] (e) => {
+									capturedScene.LocalModifications.SetPropertyModified(
+										capturedEntity, capturedTypeId, e.Name);
+								});
+							}
+						}
+					}
 				}
 			}
 
@@ -571,6 +634,46 @@ static class ScenePageBuilder
 		});
 
 		return container;
+	}
+
+	// ==================== Asset Drop ====================
+
+	private static void OnAssetDroppedIntoHierarchy(SceneEditorPage page,
+		SceneHierarchyAdapter adapter, AssetDragData assetData, EntityHandle parentEntity)
+	{
+		// Only handle .prefab files for now
+		if (assetData.Extension != ".prefab")
+			return;
+
+		let context = page.EditorContext;
+		if (context?.ResourceSystem == null || context?.RuntimeContext == null) return;
+
+		let resSys = context.ResourceSystem;
+		let provider = resSys.SerializerProvider;
+		if (provider == null) return;
+
+		let sceneSub = context.RuntimeContext.GetSubsystem<SceneSubsystem>();
+		if (sceneSub == null) return;
+
+		var prefabRef = ResourceRef(assetData.ResourceId, assetData.UriPath);
+		defer prefabRef.Dispose();
+
+		let result = PrefabSpawner.Spawn(
+			page.Scene, prefabRef, assetData.ResourceId,
+			parentEntity,
+			sceneSub.TypeRegistry, provider, resSys);
+
+		if (result case .Ok(let spawnResult))
+		{
+			delete spawnResult.GuidMap;
+			adapter.Rebuild();
+			page.SelectEntity(spawnResult.RootEntity);
+			page.MarkDirty();
+		}
+		else
+		{
+			Console.WriteLine("ERROR: Failed to spawn prefab from asset drop: {}", assetData.UriPath);
+		}
 	}
 
 	// ==================== Hierarchy Context Menu ====================

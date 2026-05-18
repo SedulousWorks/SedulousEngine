@@ -4,12 +4,15 @@ using System;
 using System.Collections;
 using Sedulous.UI;
 using Sedulous.Engine.Core;
+using Sedulous.Engine.Core.Resources;
+using Sedulous.Engine;
+using Sedulous.Resources;
 using Sedulous.VFS;
 using Sedulous.VFS.Disk;
 
 /// Scene editing page. Owns hierarchy, viewport, and inspector layout.
 /// Per-scene entity selection with change notifications.
-class SceneEditorPage : IEditorPage
+class SceneEditorPage : IEditorPage, IResourceChangeListener
 {
 	private String mPageId = new .() ~ delete _;
 	private String mTitle = new .() ~ delete _;
@@ -63,11 +66,14 @@ class SceneEditorPage : IEditorPage
 			mPageId.AppendF("scene_{}", (int)Internal.UnsafeCastToPtr(scene));
 
 		UpdateTitle();
+
+		// Listen for resource hot-reloads to rebuild prefab instances
+		mEditorContext?.ResourceSystem?.AddChangeListener(this);
 	}
 
 	public ~this()
 	{
-
+		mEditorContext?.ResourceSystem?.RemoveChangeListener(this);
 	}
 
 	// === IEditorPage ===
@@ -89,6 +95,7 @@ class SceneEditorPage : IEditorPage
 	public void SetContentView(View view) { mContentView = view; }
 
 	public Scene Scene => mScene;
+	public EditorContext EditorContext => mEditorContext;
 
 	public Guid LastSavedGuid => mLastSavedGuid;
 
@@ -113,11 +120,7 @@ class SceneEditorPage : IEditorPage
 		{
 			let prefabMgr = mEditorContext?.PrefabManager;
 			if (prefabMgr == null) { Console.WriteLine("ERROR: No PrefabResourceManager"); return; }
-
-			// TODO: store ExposedParameters on the page so they survive save.
-			// Currently saves with empty params - exposed parameters not yet editable.
-			let parameters = scope List<ExposedParameterDescriptor>();
-			result = prefabMgr.SavePrefab(mScene, parameters, mount, locator);
+			result = prefabMgr.SavePrefab(mScene, mount, locator);
 		}
 		else
 		{
@@ -227,6 +230,31 @@ class SceneEditorPage : IEditorPage
 
 		if (mDirty)
 			mTitle.Append("*");
+	}
+
+	// === IResourceChangeListener ===
+
+	public void OnResourceReloaded(StringView uri, Type resourceType, IResource resource)
+	{
+		// Rebuild prefab instances when a .prefab resource is reloaded
+		if (resource is PrefabResource)
+		{
+			let resSys = mEditorContext?.ResourceSystem;
+			let provider = resSys?.SerializerProvider;
+			if (resSys == null || provider == null) return;
+
+			let sceneSub = mEditorContext?.RuntimeContext?.GetSubsystem<SceneSubsystem>();
+			if (sceneSub == null) return;
+
+			var prefabRef = ResourceRef(resource.Id, uri);
+			defer prefabRef.Dispose();
+
+			PrefabRebuilder.Rebuild(mScene, resource.Id, prefabRef,
+				sceneSub.TypeRegistry, provider, resSys);
+
+			// Refresh editor UI
+			OnSelectionChanged(this);
+		}
 	}
 
 	public void Dispose()

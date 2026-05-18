@@ -497,11 +497,15 @@ class AssetContentAdapter : ListAdapterBase
 
 /// View for a single item in the asset browser content list.
 /// Shows: [icon] [name (editable)] [registry badge]
-class AssetContentItemView : FlexLayout
+/// Implements IDragSource so items can be dragged from the asset browser.
+class AssetContentItemView : FlexLayout, IDragSource
 {
 	private Label mIconLabel;
 	private EditableLabel mNameLabel;
 	private Label mBadgeLabel;
+
+	/// The currently bound item (non-owning, lives in adapter's item list).
+	public AssetContentItem BoundItem;
 
 	/// The editable name label - used by the adapter to trigger rename.
 	public EditableLabel NameLabel => mNameLabel;
@@ -534,6 +538,7 @@ class AssetContentItemView : FlexLayout
 
 	public void Bind(AssetContentItem item)
 	{
+		BoundItem = item;
 		mNameLabel.SetText(item.Name);
 
 		// Icon by type
@@ -561,6 +566,41 @@ class AssetContentItemView : FlexLayout
 		else
 			mNameLabel.TextColor = null; // Use default from style
 	}
+
+	// === IDragSource ===
+
+	public DragData CreateDragData()
+	{
+		if (BoundItem == null || BoundItem.IsFolder)
+			return null;
+
+		// Build URI from mount entry
+		let uri = scope String();
+		if (BoundItem.Entry != null)
+			uri.AppendF("{}://{}", BoundItem.Entry.Scheme, BoundItem.RelativePath);
+
+		return new AssetDragData(
+			BoundItem.AbsolutePath ?? "",
+			uri,
+			BoundItem.Extension ?? "",
+			BoundItem.RegistryId);
+	}
+
+	public View CreateDragVisual(DragData data)
+	{
+		if (BoundItem != null)
+		{
+			let label = new Label();
+			label.FontSize = 12;
+			label.SetText(BoundItem.Name);
+			label.TextColor = .(200, 200, 210, 200);
+			return label;
+		}
+		return null;
+	}
+
+	public void OnDragStarted(DragData data) { Opacity = 0.5f; }
+	public void OnDragCompleted(DragData data, DragDropEffects effect, bool cancelled) { Opacity = 1.0f; }
 
 	private StringView GetIconForExtension(StringView ext)
 	{

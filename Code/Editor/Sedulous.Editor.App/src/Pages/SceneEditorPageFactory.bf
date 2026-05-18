@@ -88,9 +88,11 @@ class SceneEditorPageFactory : IEditorPageFactory
 		defer delete reader;
 
 		// Deserialize via SceneResource
+		let sceneSerializer = scope SceneSerializer(mTypeRegistry,
+			context.ResourceSystem?.SerializerProvider, context.ResourceSystem);
 		let tempResource = scope SceneResource();
 		tempResource.Scene = scene;
-		tempResource.TypeRegistry = mTypeRegistry;
+		tempResource.SceneSerializer = sceneSerializer;
 		tempResource.Serialize(reader);
 
 		// Create page
