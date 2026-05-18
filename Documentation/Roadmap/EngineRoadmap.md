@@ -104,7 +104,7 @@ No intermediate ComponentData classes needed - components serialize directly.
 
 | Feature | ezEngine | Notes |
 |---------|----------|-------|
-| Prefab system | PrefabReferenceComponent | Entity templates |
+| Prefab system | DONE (PrefabSpawner + LocalModifications) | Sparse delta tracking, per-property overrides, template propagation |
 | Procedural generation | ProcGenPlugin | Level building |
 | XR/VR support | OpenXRPlugin | VR rendering |
 | Cloth/rope simulation | ClothSheetComponent | Physics-based |

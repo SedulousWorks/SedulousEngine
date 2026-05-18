@@ -580,10 +580,9 @@ absolute filesystem path. Any code that previously did
 resource's mount instead. (Reach the mount via `ResourceSystem.GetMount(scheme)`
 where `scheme` comes from parsing `comp.PrefabRef.Path` or similar.)
 
-The fixed example is `PrefabComponentManager.InstantiatePrefab` - it parses
-`comp.PrefabRef.Path` (a URI) into `(scheme, locator)`, looks up the mount
-via `ResourceSystem.GetMount(scheme)`, and reads the bytes through that mount.
-See that file for the canonical pattern.
+The canonical example is `PrefabSpawner.Spawn` - it parses the prefab URI
+into `(scheme, locator)`, looks up the mount via `ResourceSystem.GetMount(scheme)`,
+and reads the bytes through that mount. See that file for the pattern.
 
 ### Test Helpers
 
@@ -698,9 +697,8 @@ to a shared FileStream + seek lock - the `IMount` surface doesn't change.
 **`Resource.SourcePath`** is now the mount-relative locator, not an absolute
 filesystem path. Anything reading `resource.SourcePath` and feeding it to
 `File.*` is broken - use the mount the resource was loaded from instead.
-`PrefabComponentManager.InstantiatePrefab` shows the canonical pattern:
-parse the URI from `comp.PrefabRef.Path`, look up the mount via
-`ResourceSystem.GetMount(scheme)`, and read through it.
+`PrefabSpawner.Spawn` shows the canonical pattern: parse the URI,
+look up the mount via `ResourceSystem.GetMount(scheme)`, and read through it.
 
 ---
 

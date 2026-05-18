@@ -1,4 +1,8 @@
-# Prefab System Roadmap
+# Prefab System Roadmap (V1 — Superseded)
+
+> **This document describes the V1 prefab system which has been replaced.**
+> See `PrefabV2Roadmap.md` for the current implementation using sparse delta
+> tracking with `LocalModifications`, `PrefabSpawner`, and `PrefabRebuilder`.
 
 Reusable entity subgraphs that can be instantiated multiple times across scenes
 with per-instance property overrides. Changes to a prefab propagate to all
