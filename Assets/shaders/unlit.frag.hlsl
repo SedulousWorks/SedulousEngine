@@ -24,19 +24,13 @@ struct FragmentInput
 {
     float4 Position : SV_Position;
     float2 TexCoord : TEXCOORD0;
-#ifdef VERTEX_COLORS
     float4 Color : TEXCOORD1;
-#endif
 };
 
 float4 main(FragmentInput input) : SV_Target
 {
-    // Sample albedo texture
-    float4 albedo = AlbedoMap.Sample(MainSampler, input.TexCoord) * BaseColor;
-
-#ifdef VERTEX_COLORS
-    albedo *= input.Color;
-#endif
+    // Sample albedo texture, apply instance color tint
+    float4 albedo = AlbedoMap.Sample(MainSampler, input.TexCoord) * BaseColor * input.Color;
 
 #ifdef ALPHA_TEST
     if (albedo.a < AlphaCutoff)

@@ -72,9 +72,7 @@ struct VertexOutput
 {
     float4 Position : SV_Position;
     float2 TexCoord : TEXCOORD0;
-#ifdef VERTEX_COLORS
     float4 Color : TEXCOORD1;
-#endif
 };
 
 VertexOutput main(VertexInput input)
@@ -92,8 +90,11 @@ VertexOutput main(VertexInput input)
     float4 worldPos = mul(float4(input.Position, 1.0), world);
     output.Position = mul(worldPos, ViewProjectionMatrix);
     output.TexCoord = input.TexCoord;
+
 #ifdef VERTEX_COLORS
     output.Color = input.Color * instanceColor;
+#else
+    output.Color = instanceColor;
 #endif
 
     return output;
