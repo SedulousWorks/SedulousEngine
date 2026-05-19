@@ -63,9 +63,9 @@ struct RangeAttribute : Attribute
 [AttributeUsage(.Field, .ReflectAttribute)]
 struct CategoryAttribute : Attribute
 {
-	public StringView Name;
+	public String Name;
 
-	public this(StringView name)
+	public this(String name)
 	{
 		Name = name;
 	}
@@ -75,9 +75,9 @@ struct CategoryAttribute : Attribute
 [AttributeUsage(.Field, .ReflectAttribute)]
 struct TooltipAttribute : Attribute
 {
-	public StringView Text;
+	public String Text;
 
-	public this(StringView text)
+	public this(String text)
 	{
 		Text = text;
 	}
@@ -89,9 +89,9 @@ struct TooltipAttribute : Attribute
 [AttributeUsage(.Field, .ReflectAttribute)]
 struct ResourceRefTypeAttribute : Attribute
 {
-	public StringView Extension;
+	public String Extension;
 
-	public this(StringView @extension)
+	public this(String @extension)
 	{
 		Extension = @extension;
 	}

@@ -40,10 +40,12 @@ class EditorPropertyGridDescriptor : PropertyGridDescriptor
 	}
 
 	public override void ResRefList(StringView name, StringView displayName, delegate int32() countGetter,
-		delegate ResourceRef(int32) getter, delegate void(int32, ResourceRef) setter)
+		delegate ResourceRef(int32) getter, delegate void(int32, ResourceRef) setter,
+		StringView extensionFilter = default)
 	{
 		let editor = new ResourceRefListEditor(name, countGetter, getter, setter,
 			dialogs: mDialogs, editorContext: mEditorContext,
+			extensionFilter: extensionFilter,
 			ownsCallbacks: true, category: CurrentCategory);
 		ApplyDisplayName(editor, name, displayName);
 		mGrid.AddProperty(editor);

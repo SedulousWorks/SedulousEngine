@@ -93,7 +93,7 @@ static class InspectorCodegen
 				body.AppendF($"\tdesc.Quat(\"{name}\", \"{displayName}\", &{field.Name});\n");
 			else if (ft == typeof(Sedulous.Resources.ResourceRef))
 			{
-				body.AppendF($"\tdesc.ResRef(\"{name}\", \"{displayName}\", new () => {{ return {propName}; }}, new (r) => {{ Set{propName}(r); }});\n");
+				{ String extFilter = scope .(); if (field.HasCustomAttribute<ResourceRefTypeAttribute>()) extFilter.Set(field.GetCustomAttribute<ResourceRefTypeAttribute>().Value.Extension); body.AppendF($"\tdesc.ResRef(\"{name}\", \"{displayName}\", new () => {{ return {propName}; }}, new (r) => {{ Set{propName}(r); }}, \"{extFilter}\");\n"); }
 			}
 			else if (let specType = ft as SpecializedGenericType)
 			{
@@ -104,7 +104,7 @@ static class InspectorCodegen
 					if (singularName.EndsWith("s"))
 						singularName.RemoveFromEnd(1);
 
-					body.AppendF($"\tdesc.ResRefList(\"{name}\", \"{displayName}\", new () => {{ return {singularName}Count; }}, new (i) => {{ return Get{singularName}(i); }}, new (i, r) => {{ Set{singularName}(i, r); }});\n");
+					{ String extFilter = scope .(); if (field.HasCustomAttribute<ResourceRefTypeAttribute>()) extFilter.Set(field.GetCustomAttribute<ResourceRefTypeAttribute>().Value.Extension); body.AppendF($"\tdesc.ResRefList(\"{name}\", \"{displayName}\", new () => {{ return {singularName}Count; }}, new (i) => {{ return Get{singularName}(i); }}, new (i, r) => {{ Set{singularName}(i, r); }}, \"{extFilter}\");\n"); }
 				}
 			}
 			else if (ft.IsEnum)

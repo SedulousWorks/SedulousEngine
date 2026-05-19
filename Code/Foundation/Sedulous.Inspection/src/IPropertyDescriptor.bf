@@ -55,7 +55,8 @@ interface IPropertyDescriptor
 
 	/// List of ResourceRef fields.
 	void ResRefList(StringView name, StringView displayName, delegate int32() countGetter,
-		delegate ResourceRef(int32) getter, delegate void(int32, ResourceRef) setter);
+		delegate ResourceRef(int32) getter, delegate void(int32, ResourceRef) setter,
+		StringView extensionFilter = default);
 
 	/// Begin a named category group (Expander).
 	void BeginCategory(StringView name);

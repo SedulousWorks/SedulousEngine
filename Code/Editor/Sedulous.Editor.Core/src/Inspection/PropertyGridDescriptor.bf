@@ -198,7 +198,8 @@ class PropertyGridDescriptor : IPropertyDescriptor
 	}
 
 	public virtual void ResRefList(StringView name, StringView displayName, delegate int32() countGetter,
-		delegate ResourceRef(int32) getter, delegate void(int32, ResourceRef) setter)
+		delegate ResourceRef(int32) getter, delegate void(int32, ResourceRef) setter,
+		StringView extensionFilter = default)
 	{
 		// Base implementation: read-only count display. Override in Editor.App for full editor.
 		let count = countGetter();
