@@ -8,7 +8,9 @@ using Sedulous.Audio;
 using Sedulous.Engine.Audio;
 namespace Sedulous.Editor.App.Pages;
 
-/// Creates editor pages for .soundcue files with preview playback.
+/// Creates editor pages for .soundcue files: editable cue params + a
+/// bespoke per-entry list (clip ResourceRef + weight + volume/pitch
+/// ranges), with Play preview and Save through the mount.
 class SoundCueEditorPageFactory : IEditorPageFactory
 {
 	public void GetSupportedExtensions(List<String> outExtensions)
@@ -36,17 +38,40 @@ class SoundCueEditorPageFactory : IEditorPageFactory
 		if (let audioSub = context.RuntimeContext?.GetSubsystem<AudioSubsystem>())
 			audioSystem = audioSub.AudioSystem;
 
-		let page = new SoundCueEditorPage(path, cueRes, audioSystem);
+		let page = new SoundCueEditorPage(path, cueRes, audioSystem, context);
+		// Initial resolve so the cue's Entry.Clip pointers are populated for
+		// preview playback - the manager only deserializes; resolution is the
+		// consumer's job (see AudioSourceComponentManager for the in-game path).
+		page.ResolveClips();
 		page.SetContentView(BuildSoundCueView(cueRes, page));
 		return page;
 	}
 
+	// --- Small labeled-row helper (label left, control right) ---
+	private static void AddFieldRow(FlexLayout container, StringView label, View control)
+	{
+		let row = new FlexLayout();
+		row.Direction = .Horizontal;
+		row.Spacing = 8;
+
+		let lbl = new Label();
+		lbl.SetText(label);
+		lbl.TextColor = .(170, 175, 190, 255);
+		lbl.VAlign = .Middle;
+		row.AddView(lbl, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(120)), Height = .Match });
+		row.AddView(control, new FlexLayout.LayoutParams() { Grow = 1, Height = .Fixed(.Px(26)) });
+
+		container.AddView(row, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(28)) });
+	}
+
 	private static View BuildSoundCueView(SoundCueResource cueRes, SoundCueEditorPage page)
 	{
+		let cue = cueRes.Cue;
+
 		let root = new FlexLayout();
 		root.Direction = .Vertical;
 		root.Padding = .(16);
-		root.Spacing = 12;
+		root.Spacing = 8;
 
 		// Title
 		let name = scope String();
@@ -57,53 +82,190 @@ class SoundCueEditorPageFactory : IEditorPageFactory
 		titleLabel.TextColor = .(220, 225, 235, 255);
 		root.AddView(titleLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(28)) });
 
-		let sep = new Panel();
-		sep.Background = new ColorDrawable(.(60, 65, 80, 255));
-		root.AddView(sep, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(1)) });
+		AddSeparator(root);
 
-		let cue = cueRes.Cue;
+		// --- Cue params ---
+		let modeBox = new ComboBox();
+		modeBox.AddItem("Random");
+		modeBox.AddItem("Sequential");
+		modeBox.AddItem("Shuffle");
+		modeBox.SelectedIndex = (int)cue.SelectionMode;
+		modeBox.OnSelectionChanged.Add(new [=cue, =page] (cb, idx) => {
+			cue.SelectionMode = (CueSelectionMode)idx;
+			page.MarkDirty();
+		});
+		AddFieldRow(root, "Selection Mode", modeBox);
 
-		// Cue properties
-		AudioClipEditorPageFactory.AddInfoRow(root, "Selection Mode", scope $"{cue.SelectionMode}");
-		AudioClipEditorPageFactory.AddInfoRow(root, "Entries", scope $"{cue.Entries.Count}");
-		AudioClipEditorPageFactory.AddInfoRow(root, "Max Instances", scope $"{cue.MaxInstances}");
-		AudioClipEditorPageFactory.AddInfoRow(root, "Priority", scope $"{cue.Priority}");
-		AudioClipEditorPageFactory.AddInfoRow(root, "Cooldown", scope $"{cue.Cooldown:F2}s");
-		AudioClipEditorPageFactory.AddInfoRow(root, "Bus", cue.BusName);
+		let maxInst = new NumericField();
+		maxInst.DecimalPlaces = 0; maxInst.Step = 1; maxInst.Min = 0; maxInst.Max = 1024;
+		maxInst.Value = cue.MaxInstances;
+		maxInst.OnValueChanged.Add(new [=cue, =page] (f, v) => { cue.MaxInstances = (int32)v; page.MarkDirty(); });
+		AddFieldRow(root, "Max Instances", maxInst);
 
-		// Entry list
-		if (cue.Entries.Count > 0)
+		let prio = new NumericField();
+		prio.DecimalPlaces = 0; prio.Step = 1; prio.Min = -1000; prio.Max = 1000;
+		prio.Value = cue.Priority;
+		prio.OnValueChanged.Add(new [=cue, =page] (f, v) => { cue.Priority = (int32)v; page.MarkDirty(); });
+		AddFieldRow(root, "Priority", prio);
+
+		let cooldown = new NumericField();
+		cooldown.DecimalPlaces = 2; cooldown.Step = 0.1; cooldown.Min = 0; cooldown.Max = 600;
+		cooldown.Value = cue.Cooldown;
+		cooldown.OnValueChanged.Add(new [=cue, =page] (f, v) => { cue.Cooldown = (float)v; page.MarkDirty(); });
+		AddFieldRow(root, "Cooldown (s)", cooldown);
+
+		let bus = new EditText();
+		if (cue.BusName == null) cue.BusName = new String();
+		bus.SetText(cue.BusName);
+		bus.OnTextChanged.Add(new [=cue, =page] (t) => { cue.BusName.Set(t.Text); page.MarkDirty(); });
+		AddFieldRow(root, "Bus", bus);
+
+		AddSeparator(root);
+
+		// --- Entries (bespoke list) ---
+		let header = new FlexLayout();
+		header.Direction = .Horizontal;
+		header.Spacing = 8;
+		let entriesLabel = new Label();
+		entriesLabel.SetText("Entries");
+		entriesLabel.FontSize = 13;
+		entriesLabel.TextColor = .(180, 180, 195, 255);
+		entriesLabel.VAlign = .Middle;
+		header.AddView(entriesLabel, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
+		let addBtn = new Button("+ Add Entry");
+		addBtn.OnClick.Add(new [=cue, =cueRes, =page] (btn) => {
+			cue.Entries.Add(SoundCueEntry());
+			cueRes.ClipRefs.Add(ResourceRef());
+			page.ResolveClips();
+			page.MarkDirty();
+			page.RequestRebuildEntries();
+		});
+		header.AddView(addBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(100)), Height = .Fixed(.Px(26)) });
+		root.AddView(header, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(28)) });
+
+		let entriesHost = new FlexLayout();
+		entriesHost.Direction = .Vertical;
+		entriesHost.Spacing = 6;
+		root.AddView(entriesHost, new FlexLayout.LayoutParams() { Width = .Match, Grow = 1 });
+
+		// Rebuilds the entry rows from the current cue/clipref lists.
+		void RebuildEntries()
 		{
-			let sep2 = new Panel();
-			sep2.Background = new ColorDrawable(.(60, 65, 80, 255));
-			root.AddView(sep2, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(1)) });
-
-			let entriesLabel = new Label();
-			entriesLabel.SetText("Entries");
-			entriesLabel.FontSize = 13;
-			entriesLabel.TextColor = .(180, 180, 195, 255);
-			root.AddView(entriesLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(22)) });
-
+			entriesHost.RemoveAllViews(true);
 			for (int i = 0; i < cue.Entries.Count; i++)
 			{
-				let entry = cue.Entries[i];
-				let clipRef = (i < cueRes.ClipRefs.Count) ? cueRes.ClipRefs[i] : ResourceRef();
+				int idx = i;
 
-				let entryLabel = scope String();
-				entryLabel.AppendF("  [{0}] W:{1:F1} Vol:{2:F2}-{3:F2} Pitch:{4:F2}-{5:F2}",
-					i, entry.Weight, entry.VolumeMin, entry.VolumeMax, entry.PitchMin, entry.PitchMax);
+				let rowPanel = new Panel();
+				rowPanel.Background = new ColorDrawable(.(30, 32, 38, 255));
+				let rowCol = new FlexLayout();
+				rowCol.Direction = .Vertical;
+				rowCol.Padding = .(8);
+				rowCol.Spacing = 4;
+				rowPanel.AddView(rowCol);
 
+				// Clip picker row.
+				let clipRow = new FlexLayout();
+				clipRow.Direction = .Horizontal;
+				clipRow.Spacing = 8;
+
+				let clipRef = (idx < cueRes.ClipRefs.Count) ? cueRes.ClipRefs[idx] : ResourceRef();
+				let clipText = scope String();
+				clipText.AppendF("[{}] ", idx);
 				if (clipRef.Path != null && clipRef.Path.Length > 0)
-					entryLabel.AppendF(" -> {}", clipRef.Path);
+					clipText.Append(clipRef.Path);
+				else
+					clipText.Append("(no clip - click to assign)");
 
-				AudioClipEditorPageFactory.AddInfoRow(root, scope $"Entry {i}", entryLabel);
+				let clipBtn = new Button(clipText);
+				clipBtn.OnClick.Add(new (btn) => {
+					let ctx = btn.Context;
+					if (ctx == null) return;
+					let dlg = new AssetPickerDialog(page.EditorContext, ".audioclip",
+						new (protocolPath, id) => {
+							if (idx < cueRes.ClipRefs.Count)
+							{
+								var old = cueRes.ClipRefs[idx];
+								old.Dispose();
+								cueRes.ClipRefs[idx] = ResourceRef(id, protocolPath);
+								page.ResolveClips();
+								page.MarkDirty();
+								page.RequestRebuildEntries();
+							}
+						});
+					dlg.Show(ctx);
+				});
+				clipRow.AddView(clipBtn, new FlexLayout.LayoutParams() { Grow = 1, Height = .Fixed(.Px(24)) });
+
+				let removeBtn = new Button("Remove");
+				removeBtn.OnClick.Add(new (btn) => {
+					if (idx < cue.Entries.Count)
+					{
+						if (idx < cueRes.ClipRefs.Count)
+						{
+							var r = cueRes.ClipRefs[idx];
+							r.Dispose();
+							cueRes.ClipRefs.RemoveAt(idx);
+						}
+						cue.Entries.RemoveAt(idx);
+						page.ResolveClips();
+						page.MarkDirty();
+						page.RequestRebuildEntries();
+					}
+				});
+				clipRow.AddView(removeBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(80)), Height = .Fixed(.Px(24)) });
+				rowCol.AddView(clipRow, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(26)) });
+
+				// Params row: Weight / Vol min-max / Pitch min-max.
+				// onChanged is handed straight to the event, which owns it and
+				// deletes it with the NumericField - do not wrap it in another
+				// closure, or the wrapped delegate orphans and leaks on rebuild.
+				void AddNum(FlexLayout into, StringView lbl, float val, delegate void(NumericField, double) onChanged)
+				{
+					let cell = new FlexLayout();
+					cell.Direction = .Vertical;
+					let cl = new Label();
+					cl.SetText(lbl);
+					cl.FontSize = 10;
+					cl.TextColor = .(140, 145, 160, 255);
+					cell.AddView(cl, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(12)) });
+					let nf = new NumericField();
+					nf.DecimalPlaces = 2; nf.Step = 0.05; nf.Min = 0; nf.Max = 4;
+					nf.Value = val;
+					nf.OnValueChanged.Add(onChanged);
+					cell.AddView(nf, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(24)) });
+					into.AddView(cell, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
+				}
+
+				let paramRow = new FlexLayout();
+				paramRow.Direction = .Horizontal;
+				paramRow.Spacing = 6;
+				let e = cue.Entries[idx];
+				AddNum(paramRow, "Weight", e.Weight, new (f, v) => {
+					var ent = cue.Entries[idx]; ent.Weight = (float)v; cue.Entries[idx] = ent; page.MarkDirty();
+				});
+				AddNum(paramRow, "Vol Min", e.VolumeMin, new (f, v) => {
+					var ent = cue.Entries[idx]; ent.VolumeMin = (float)v; cue.Entries[idx] = ent; page.MarkDirty();
+				});
+				AddNum(paramRow, "Vol Max", e.VolumeMax, new (f, v) => {
+					var ent = cue.Entries[idx]; ent.VolumeMax = (float)v; cue.Entries[idx] = ent; page.MarkDirty();
+				});
+				AddNum(paramRow, "Pitch Min", e.PitchMin, new (f, v) => {
+					var ent = cue.Entries[idx]; ent.PitchMin = (float)v; cue.Entries[idx] = ent; page.MarkDirty();
+				});
+				AddNum(paramRow, "Pitch Max", e.PitchMax, new (f, v) => {
+					var ent = cue.Entries[idx]; ent.PitchMax = (float)v; cue.Entries[idx] = ent; page.MarkDirty();
+				});
+				rowCol.AddView(paramRow, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(40)) });
+
+				entriesHost.AddView(rowPanel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(78)) });
 			}
 		}
 
-		// Play button (routes through the page so the cue stays alive via mCueResource)
-		let sep3 = new Panel();
-		sep3.Background = new ColorDrawable(.(60, 65, 80, 255));
-		root.AddView(sep3, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(1)) });
+		RebuildEntries();
+		page.SetRebuildEntries(new () => RebuildEntries());
+
+		AddSeparator(root);
 
 		if (page.AudioSystem != null)
 		{
@@ -113,5 +275,12 @@ class SoundCueEditorPageFactory : IEditorPageFactory
 		}
 
 		return root;
+	}
+
+	private static void AddSeparator(FlexLayout container)
+	{
+		let sep = new Panel();
+		sep.Background = new ColorDrawable(.(60, 65, 80, 255));
+		container.AddView(sep, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(1)) });
 	}
 }

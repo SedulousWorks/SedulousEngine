@@ -135,7 +135,13 @@ class AudioSourceComponentManager : ComponentManager<AudioSourceComponent>
 		{
 			let res = state.Cue.Handle.Resource;
 			if (res != null && res.Cue != null)
+			{
+				// Resolve the cue's nested clip refs so PlayCue can find Entry.Clip.
+				// Mirrors AnimationGraphComponentManager: parent resolves, then
+				// asks the resolved resource to resolve its own internal refs.
+				res.ResolveClips(ResourceSystem);
 				comp.Cue = res.Cue;
+			}
 			else
 				comp.Cue = null;
 		}
