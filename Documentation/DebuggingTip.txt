@@ -1,0 +1,2 @@
+Just a tip if you guys don't know already:
+If you are trying to profile one single slow event, you can insert a var profilerInstance = Profiler.StartSampling(); at the start and profilerInstance.Dispose(); at the end and the IDE will perform a profiling session for that region.
