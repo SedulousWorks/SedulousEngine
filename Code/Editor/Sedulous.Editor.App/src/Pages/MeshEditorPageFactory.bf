@@ -47,22 +47,22 @@ class MeshEditorPageFactory : IEditorPageFactory
 	{
 		let runtimeContext = context.RuntimeContext;
 		if (runtimeContext == null)
-			return BuildErrorPage(path, "Mesh", "No runtime context - render subsystem unavailable.");
+			return BuildErrorPage(path, "Mesh", "No runtime context - render subsystem unavailable.", context);
 
 		let sceneSub = runtimeContext.GetSubsystem<SceneSubsystem>();
 		let sceneRenderer = runtimeContext.GetSubsystemByInterface<ISceneRenderer>();
 		if (sceneSub == null || sceneRenderer == null)
-			return BuildErrorPage(path, "Mesh", "SceneSubsystem or ISceneRenderer not available.");
+			return BuildErrorPage(path, "Mesh", "SceneSubsystem or ISceneRenderer not available.", context);
 
 		let uri = scope String();
 		if (!MountResolver.TryResolveAbsoluteToUri(context.MountEntries, path, uri))
-			return BuildErrorPage(path, "Mesh", "Path is not inside any mounted scheme.");
+			return BuildErrorPage(path, "Mesh", "Path is not inside any mounted scheme.", context);
 
 		StaticMeshResource meshRes = null;
 		if (context.ResourceSystem.LoadResource<StaticMeshResource>(uri) case .Ok(let handle))
 			meshRes = handle.Resource;
 		if (meshRes == null)
-			return BuildErrorPage(path, "Mesh", "Failed to load mesh resource.");
+			return BuildErrorPage(path, "Mesh", "Failed to load mesh resource.", context);
 
 		let host = new PreviewSceneHost(mDevice, mVGRenderer, mKeyboard, sceneSub, sceneRenderer, "MeshPreview");
 		let page = new MeshEditorPage(path, uri, meshRes, host);
@@ -114,8 +114,12 @@ class MeshEditorPageFactory : IEditorPageFactory
 		return root;
 	}
 
-	public static IEditorPage BuildErrorPage(StringView path, StringView resourceType, StringView message)
+	public static IEditorPage BuildErrorPage(StringView path, StringView resourceType, StringView message, EditorContext context = null)
 	{
+		// Visible error page + log entry so the failure also surfaces in the
+		// LogView panel for diagnostics, not just the open tab.
+		context?.Logger?.LogError("Open {} failed: {} ({})", resourceType, message, path);
+
 		let page = new ResourceEditorPage(path, scope String(resourceType));
 		let container = new FlexLayout();
 		container.Direction = .Vertical;

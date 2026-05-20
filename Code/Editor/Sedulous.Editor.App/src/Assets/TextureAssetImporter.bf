@@ -10,12 +10,20 @@ using Sedulous.Textures.Resources;
 using Sedulous.Textures.Importer;
 using Sedulous.Geometry.Tooling.Resources;
 using Sedulous.VFS;
+using Sedulous.Core.Logging.Abstractions;
 
 /// Imports image files (.png, .jpg, .tga, .bmp, .hdr) as TextureResource.
 /// Supports 2D textures with preset selection (3D, Sprite, UI, Sky) and
 /// cubemap import when 6 face images are detected.
 class TextureAssetImporter : IAssetImporter
 {
+	private ILogger mLogger;
+
+	public this(ILogger logger = null)
+	{
+		mLogger = logger;
+	}
+
 	public void GetSupportedExtensions(List<String> outExtensions)
 	{
 		outExtensions.Add(new .(".png"));
@@ -73,6 +81,7 @@ class TextureAssetImporter : IAssetImporter
 			return .Ok(preview);
 		}
 
+		mLogger?.LogError("Texture import preview: load failed for {}", sourcePath);
 		return .Err;
 	}
 
@@ -82,6 +91,9 @@ class TextureAssetImporter : IAssetImporter
 			return .Ok;
 
 		let options = (preview.Options as TextureImportOptions) ?? scope TextureImportOptions();
+
+		ctx.Logger?.LogInformation("Texture import: {} (preset={}) -> {}{}",
+			preview.SourcePath, options.Preset, ctx.UriPrefix, preview.Items[0].Name);
 
 		TextureResource texRes = null;
 		defer { if (texRes != null) delete texRes; }
@@ -99,7 +111,10 @@ class TextureAssetImporter : IAssetImporter
 				if (TextureImporter.ImportCubemap(facePaths) case .Ok(let res))
 					texRes = res;
 				else
+				{
+					ctx.Logger?.LogError("Texture import: cubemap import failed for {}", preview.SourcePath);
 					return .Err;
+				}
 			}
 			else
 			{
@@ -107,14 +122,20 @@ class TextureAssetImporter : IAssetImporter
 				if (TextureImporter.ImportEquirectangular(preview.SourcePath) case .Ok(let res))
 					texRes = res;
 				else
+				{
+					ctx.Logger?.LogError("Texture import: equirectangular fallback import failed for {}", preview.SourcePath);
 					return .Err;
+				}
 			}
 
 		case .EquirectangularSky:
 			if (TextureImporter.ImportEquirectangular(preview.SourcePath) case .Ok(let res))
 				texRes = res;
 			else
+			{
+				ctx.Logger?.LogError("Texture import: equirectangular import failed for {}", preview.SourcePath);
 				return .Err;
+			}
 
 		case .Sprite:
 			if (TextureImporter.Import2D(preview.SourcePath) case .Ok(let res))
@@ -123,7 +144,10 @@ class TextureAssetImporter : IAssetImporter
 				texRes = res;
 			}
 			else
+			{
+				ctx.Logger?.LogError("Texture import: sprite 2D import failed for {}", preview.SourcePath);
 				return .Err;
+			}
 
 		case .UI:
 			if (TextureImporter.Import2D(preview.SourcePath) case .Ok(let res))
@@ -132,13 +156,19 @@ class TextureAssetImporter : IAssetImporter
 				texRes = res;
 			}
 			else
+			{
+				ctx.Logger?.LogError("Texture import: UI 2D import failed for {}", preview.SourcePath);
 				return .Err;
+			}
 
 		case .Texture3D:
 			if (TextureImporter.Import2D(preview.SourcePath) case .Ok(let res))
 				texRes = res;
 			else
+			{
+				ctx.Logger?.LogError("Texture import: 3D 2D import failed for {}", preview.SourcePath);
 				return .Err;
+			}
 		}
 
 		// Use user-provided name from preview
@@ -168,26 +198,39 @@ class TextureAssetImporter : IAssetImporter
 		{
 			let memStream = scope MemoryStream();
 			if (texRes.WriteToStream(memStream, ctx.Serializer) case .Err)
+			{
+				ctx.Logger?.LogError("Texture import: metadata serialization failed for {}", locator);
 				return .Err;
+			}
 			memStream.Position = 0;
-			if (ctx.Mount.Save(locator, memStream) case .Err)
+			if (ctx.Mount.Save(locator, memStream) case .Err(let err))
+			{
+				ctx.Logger?.LogError("Texture import: mount save failed for {}: {}", locator, err);
 				return .Err;
+			}
 		}
 
 		// Save pixel sidecar through the mount
 		{
 			let pcmStream = scope MemoryStream();
 			if (texRes.WritePixelsToStream(pcmStream) case .Err)
+			{
+				ctx.Logger?.LogError("Texture import: pixel sidecar serialization failed for {}", sidecarLocator);
 				return .Err;
+			}
 			pcmStream.Position = 0;
-			if (ctx.Mount.Save(sidecarLocator, pcmStream) case .Err)
+			if (ctx.Mount.Save(sidecarLocator, pcmStream) case .Err(let err))
+			{
+				ctx.Logger?.LogError("Texture import: pixel sidecar save failed for {}: {}", sidecarLocator, err);
 				return .Err;
+			}
 		}
 
 		// Register the GUID -> URI mapping. Caller is responsible for
 		// persisting the index after the import.
 		ctx.Index.Register(texRes.Id, uri);
 
+		ctx.Logger?.LogInformation("Texture import: wrote {}", uri);
 		return .Ok;
 	}
 }

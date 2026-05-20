@@ -47,8 +47,13 @@ class EditorPluginRegistry
 	/// Initialize all discovered plugins. Call after UI is ready.
 	public void InitializeAll(EditorContext context)
 	{
+		context?.Logger?.LogInformation("Initializing {} editor plugin(s)", mPlugins.Count);
 		for (let plugin in mPlugins)
+		{
+			let typeName = plugin.GetType().GetName(.. scope .());
+			context?.Logger?.LogDebug("Initializing plugin: {}", typeName);
 			plugin.Initialize(context);
+		}
 		mInitialized = true;
 	}
 

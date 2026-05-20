@@ -112,7 +112,9 @@ class EditorApplication : Application, IDockableWindowHost
 
 	protected override ILogger CreateLogger()
 	{
-		mEditorLogger = new EditorLogger();
+		// Editor ships at Debug during active development so page-open,
+		// asset-resolve, and mount traces are visible in the LogView panel.
+		mEditorLogger = new EditorLogger(.Debug);
 		mEditorLogger.AddListener(mLogBuffer);
 		return mEditorLogger;
 	}
@@ -218,6 +220,7 @@ class EditorApplication : Application, IDockableWindowHost
 		mEditorContext = new EditorContext();
 		mEditorContext.EditorAppContext = mContext;
 		mEditorContext.RuntimeContext = mRuntimeContext;
+		mEditorContext.Logger = mEditorLogger;
 		mEditorContext.SceneManager = mSceneManager;
 		mEditorContext.PrefabManager = mPrefabManager;
 		mEditorContext.PageManager = new EditorPageManager();
@@ -263,12 +266,12 @@ class EditorApplication : Application, IDockableWindowHost
 		mEditorContext.RegisterAssetCreator(new PropAnimAssetCreator());
 
 		// Register built-in asset importers
-		mEditorContext.RegisterAssetImporter(new ModelAssetImporter());
-		mEditorContext.RegisterAssetImporter(new TextureAssetImporter());
+		mEditorContext.RegisterAssetImporter(new ModelAssetImporter(mEditorLogger));
+		mEditorContext.RegisterAssetImporter(new TextureAssetImporter(mEditorLogger));
 
 		mAudioDecoder = new AudioDecoderFactory();
 		mAudioDecoder.RegisterDefaultDecoders();
-		mEditorContext.RegisterAssetImporter(new AudioAssetImporter(mAudioDecoder));
+		mEditorContext.RegisterAssetImporter(new AudioAssetImporter(mAudioDecoder, mEditorLogger));
 
 		// Register built-in page factories
 		mEditorContext.RegisterPageFactory(new SceneEditorPageFactory(
@@ -1085,15 +1088,22 @@ class EditorApplication : Application, IDockableWindowHost
 	}
 
 	/// Serializes a Resource's text representation into memory and writes it to
-	/// `mount` at `locator`.
-	private static Result<void> SaveResourceText(Resource resource, IWritableMount mount, StringView locator, ISerializerProvider provider)
+	/// `mount` at `locator`. Logs failures through the editor logger so builtin
+	/// asset generation problems surface in the LogView panel.
+	private Result<void> SaveResourceText(Resource resource, IWritableMount mount, StringView locator, ISerializerProvider provider)
 	{
 		let memStream = scope MemoryStream();
 		if (resource.WriteToStream(memStream, provider) case .Err)
+		{
+			mEditorLogger?.Log(.Error, scope $"Builtin asset save: serialization failed for {locator}");
 			return .Err;
+		}
 		memStream.Position = 0;
-		if (mount.Save(locator, memStream) case .Err)
+		if (mount.Save(locator, memStream) case .Err(let err))
+		{
+			mEditorLogger?.Log(.Error, scope $"Builtin asset save: mount save failed for {locator}: {err}");
 			return .Err;
+		}
 		return .Ok;
 	}
 
@@ -1101,7 +1111,7 @@ class EditorApplication : Application, IDockableWindowHost
 	/// in the same directory. `sidecarName` is the filename portion only
 	/// (conventionally "<assetFileName>.bin"); the manager derives the same
 	/// "<locator>.bin" on load.
-	private static Result<void> SaveTextureWithSidecar(TextureResource resource, IWritableMount mount, StringView locator, StringView sidecarName, ISerializerProvider provider)
+	private Result<void> SaveTextureWithSidecar(TextureResource resource, IWritableMount mount, StringView locator, StringView sidecarName, ISerializerProvider provider)
 	{
 		Try!(SaveResourceText(resource, mount, locator, provider));
 
@@ -1114,10 +1124,16 @@ class EditorApplication : Application, IDockableWindowHost
 
 		let pcmStream = scope MemoryStream();
 		if (resource.WritePixelsToStream(pcmStream) case .Err)
+		{
+			mEditorLogger?.Log(.Error, scope $"Builtin texture save: pixel sidecar serialization failed for {sidecarLocator}");
 			return .Err;
+		}
 		pcmStream.Position = 0;
-		if (mount.Save(sidecarLocator, pcmStream) case .Err)
+		if (mount.Save(sidecarLocator, pcmStream) case .Err(let err))
+		{
+			mEditorLogger?.Log(.Error, scope $"Builtin texture save: sidecar mount save failed for {sidecarLocator}: {err}");
 			return .Err;
+		}
 		return .Ok;
 	}
 
@@ -1429,7 +1445,7 @@ class EditorApplication : Application, IDockableWindowHost
 
 		if (CreateSecondaryWindow(settings) case .Err)
 		{
-			Console.WriteLine("Failed to create floating OS window");
+			mEditorLogger.Log(.Error, "Failed to create floating OS window");
 			delete onCloseRequested;
 			return;
 		}
@@ -1543,12 +1559,29 @@ class EditorApplication : Application, IDockableWindowHost
 	{
 		let layoutPath = scope String();
 		GetLayoutFilePath(layoutPath);
-		if (layoutPath.Length == 0) return false;
+		if (layoutPath.Length == 0)
+		{
+			mEditorLogger?.Log(.Debug, "Restore layout: no project loaded, skipping");
+			return false;
+		}
 
 		let provider = ResourceSystem?.SerializerProvider;
-		if (provider == null) return false;
+		if (provider == null)
+		{
+			mEditorLogger?.Log(.Warning, "Restore layout: no serializer provider");
+			return false;
+		}
 
-		return EditorLayoutPersistence.RestoreLayout(dockManager, layoutPath, provider) == .Ok;
+		if (EditorLayoutPersistence.RestoreLayout(dockManager, layoutPath, provider) case .Ok)
+		{
+			mEditorLogger?.Log(.Debug, scope $"Editor layout restored from {layoutPath}");
+			return true;
+		}
+		else
+		{
+			mEditorLogger?.Log(.Debug, scope $"No saved layout found at {layoutPath}");
+			return false;
+		}
 	}
 
 	private void SaveEditorLayout()
@@ -1561,10 +1594,16 @@ class EditorApplication : Application, IDockableWindowHost
 		if (layoutPath.Length == 0) return;
 
 		let provider = ResourceSystem?.SerializerProvider;
-		if (provider == null) return;
+		if (provider == null)
+		{
+			mEditorLogger?.Log(.Warning, "Save layout: no serializer provider");
+			return;
+		}
 
 		if (EditorLayoutPersistence.SaveLayout(dockManager, layoutPath, provider) case .Ok)
 			mEditorLogger.Log(.Information, "Editor layout saved.");
+		else
+			mEditorLogger.Log(.Warning, "Editor layout save failed");
 	}
 
 	private void SaveOpenPages()

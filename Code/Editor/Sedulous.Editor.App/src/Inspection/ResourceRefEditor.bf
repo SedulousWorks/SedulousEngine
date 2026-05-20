@@ -145,7 +145,7 @@ class ResourceRefEditor : PropertyEditor
 				if (mEditorContext == null ||
 					!MountResolver.TryResolveAbsolute(mEditorContext.MountEntries, absolutePath, out mount, locator))
 				{
-					Console.WriteLine("ResourceRefEditor: picked file is not inside any mount: {}", absolutePath);
+					mEditorContext?.Logger?.LogWarning("ResourceRefEditor: picked file is not inside any mount: {}", absolutePath);
 					return;
 				}
 

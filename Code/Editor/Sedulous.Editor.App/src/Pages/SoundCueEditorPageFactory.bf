@@ -25,13 +25,13 @@ class SoundCueEditorPageFactory : IEditorPageFactory
 	{
 		let uri = scope String();
 		if (!MountResolver.TryResolveAbsoluteToUri(context.MountEntries, path, uri))
-			return MeshEditorPageFactory.BuildErrorPage(path, "Sound Cue", "Path is not inside any mounted scheme.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Sound Cue", "Path is not inside any mounted scheme.", context);
 
 		SoundCueResource cueRes = null;
 		if (context.ResourceSystem.LoadResource<SoundCueResource>(uri) case .Ok(let handle))
 			cueRes = handle.Resource;
 		if (cueRes == null)
-			return MeshEditorPageFactory.BuildErrorPage(path, "Sound Cue", "Failed to load sound cue resource.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Sound Cue", "Failed to load sound cue resource.", context);
 
 		// Get audio system from the editor's own context
 		IAudioSystem audioSystem = null;

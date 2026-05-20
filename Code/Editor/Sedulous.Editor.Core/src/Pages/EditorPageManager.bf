@@ -63,6 +63,7 @@ class EditorPageManager
 		{
 			if (page.FilePath == path)
 			{
+				context?.Logger?.LogDebug("Page already open, activating: {}", path);
 				SetActive(page);
 				return page;
 			}
@@ -76,12 +77,16 @@ class EditorPageManager
 				let page = factory.CreatePage(path, context);
 				if (page != null)
 				{
+					context?.Logger?.LogInformation("Opened page: {}", path);
 					AddPage(page);
 					return page;
 				}
+				context?.Logger?.LogError("Page factory matched but failed to create: {}", path);
+				return null;
 			}
 		}
 
+		context?.Logger?.LogWarning("No page factory found for: {}", path);
 		return null;
 	}
 

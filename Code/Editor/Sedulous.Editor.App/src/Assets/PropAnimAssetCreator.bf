@@ -19,7 +19,10 @@ class PropAnimAssetCreator : IAssetCreator
 	{
 		let provider = context.ResourceSystem?.SerializerProvider;
 		if (provider == null)
+		{
+			context.Logger?.LogError("PropertyAnimation create: no serializer provider");
 			return .Err;
+		}
 
 		let clip = new PropertyAnimationClip();
 		let res = new PropertyAnimationClipResource(clip, true);
@@ -28,11 +31,18 @@ class PropAnimAssetCreator : IAssetCreator
 
 		let stream = scope MemoryStream();
 		if (res.WriteToStream(stream, provider) case .Err)
+		{
+			context.Logger?.LogError("PropertyAnimation create: serialization failed for {}", locator);
 			return .Err;
+		}
 		stream.Position = 0;
-		if (mount.Save(locator, stream) case .Err)
+		if (mount.Save(locator, stream) case .Err(let err))
+		{
+			context.Logger?.LogError("PropertyAnimation create: mount save failed for {}: {}", locator, err);
 			return .Err;
+		}
 
+		context.Logger?.LogInformation("PropertyAnimation created: {}", locator);
 		return .Ok(res.Id);
 	}
 }

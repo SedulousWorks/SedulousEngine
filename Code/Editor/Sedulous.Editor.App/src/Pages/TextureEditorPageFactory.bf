@@ -27,7 +27,7 @@ class TextureEditorPageFactory : IEditorPageFactory
 		// us an absolute filesystem path. Resolve via the editor's mount table.
 		let uri = scope String();
 		if (!MountResolver.TryResolveAbsoluteToUri(context.MountEntries, path, uri))
-			return MeshEditorPageFactory.BuildErrorPage(path, "Texture", "Path is not inside any mounted scheme.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Texture", "Path is not inside any mounted scheme.", context);
 
 		TextureResource texRes = null;
 		if (context.ResourceSystem.LoadResource<TextureResource>(uri) case .Ok(let handle))

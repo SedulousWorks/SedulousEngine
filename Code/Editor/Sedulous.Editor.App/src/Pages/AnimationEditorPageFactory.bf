@@ -39,22 +39,22 @@ class AnimationEditorPageFactory : IEditorPageFactory
 	{
 		let runtimeContext = context.RuntimeContext;
 		if (runtimeContext == null)
-			return MeshEditorPageFactory.BuildErrorPage(path, "Animation", "No runtime context.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Animation", "No runtime context.", context);
 
 		let sceneSub = runtimeContext.GetSubsystem<SceneSubsystem>();
 		let sceneRenderer = runtimeContext.GetSubsystemByInterface<ISceneRenderer>();
 		if (sceneSub == null || sceneRenderer == null)
-			return MeshEditorPageFactory.BuildErrorPage(path, "Animation", "SceneSubsystem or ISceneRenderer unavailable.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Animation", "SceneSubsystem or ISceneRenderer unavailable.", context);
 
 		let uri = scope String();
 		if (!MountResolver.TryResolveAbsoluteToUri(context.MountEntries, path, uri))
-			return MeshEditorPageFactory.BuildErrorPage(path, "Animation", "Path is not inside any mounted scheme.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Animation", "Path is not inside any mounted scheme.", context);
 
 		Sedulous.Animation.Resources.AnimationClipResource clipRes = null;
 		if (context.ResourceSystem.LoadResource<Sedulous.Animation.Resources.AnimationClipResource>(uri) case .Ok(let handle))
 			clipRes = handle.Resource;
 		if (clipRes == null)
-			return MeshEditorPageFactory.BuildErrorPage(path, "Animation", "Failed to load animation clip.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Animation", "Failed to load animation clip.", context);
 
 		let host = new PreviewSceneHost(mDevice, mVGRenderer, mKeyboard, sceneSub, sceneRenderer, "AnimationPreview");
 		let page = new AnimationEditorPage(path, clipRes, host);

@@ -10,6 +10,7 @@ using Sedulous.Geometry.Tooling;
 using Sedulous.Geometry.Tooling.Resources;
 using Sedulous.Textures.Resources;
 using Sedulous.VFS;
+using Sedulous.Core.Logging.Abstractions;
 
 /// Options for model import, shown in the import dialog.
 class ModelImportDialogOptions : ImportOptions
@@ -29,6 +30,13 @@ class ModelImportDialogOptions : ImportOptions
 /// Resources are written through the import context's mount and registered in its index.
 class ModelAssetImporter : IAssetImporter
 {
+	private ILogger mLogger;
+
+	public this(ILogger logger = null)
+	{
+		mLogger = logger;
+	}
+
 	public void GetSupportedExtensions(List<String> outExtensions)
 	{
 		outExtensions.Add(new .(".gltf"));
@@ -42,7 +50,10 @@ class ModelAssetImporter : IAssetImporter
 		// Load the model to discover its contents
 		let model = scope Model();
 		if (ModelLoaderFactory.LoadModel(sourcePath, model) != .Ok)
+		{
+			mLogger?.LogError("Model import preview: load failed for {}", sourcePath);
 			return .Err;
+		}
 
 		// Get the directory of the source file for texture resolution
 		let baseDir = scope String();
@@ -138,10 +149,15 @@ class ModelAssetImporter : IAssetImporter
 
 	public Result<void> Import(ImportPreview preview, AssetImportContext ctx)
 	{
+		ctx.Logger?.LogInformation("Model import: {} -> {}", preview.SourcePath, ctx.UriPrefix);
+
 		// Re-import the model (CreatePreview was a dry run to enumerate items)
 		let model = scope Model();
 		if (ModelLoaderFactory.LoadModel(preview.SourcePath, model) != .Ok)
+		{
+			ctx.Logger?.LogError("Model import: load failed for {}", preview.SourcePath);
 			return .Err;
+		}
 
 		// Use dialog options if available, otherwise defaults
 		let baseDir = scope String();
@@ -182,29 +198,32 @@ class ModelAssetImporter : IAssetImporter
 
 		// Save and register each selected resource. Textures get a binary
 		// pixel sidecar; everything else is text-only.
+		int written = 0;
 		for (let res in resResult.Textures)
-			SaveTexture(res, selectedNames, ctx);
+			if (SaveTexture(res, selectedNames, ctx)) written++;
 		for (let res in resResult.Materials)
-			SaveText(res, ".material", selectedNames, ctx);
+			if (SaveText(res, ".material", selectedNames, ctx)) written++;
 		for (let res in resResult.StaticMeshes)
-			SaveText(res, ".mesh", selectedNames, ctx);
+			if (SaveText(res, ".mesh", selectedNames, ctx)) written++;
 		for (let res in resResult.SkinnedMeshes)
-			SaveText(res, ".skinnedmesh", selectedNames, ctx);
+			if (SaveText(res, ".skinnedmesh", selectedNames, ctx)) written++;
 		for (let res in resResult.Skeletons)
-			SaveText(res, ".skeleton", selectedNames, ctx);
+			if (SaveText(res, ".skeleton", selectedNames, ctx)) written++;
 		for (let res in resResult.Animations)
-			SaveText(res, ".animation", selectedNames, ctx);
+			if (SaveText(res, ".animation", selectedNames, ctx)) written++;
 
+		ctx.Logger?.LogInformation("Model import: wrote {} resource(s) from {}", written, preview.SourcePath);
 		return .Ok;
 	}
 
 	/// Saves a text-only resource through the context's mount and registers
-	/// its GUID in the context's index.
-	private static void SaveText(Resource res, StringView @extension,
+	/// its GUID in the context's index. Returns true on success so the caller
+	/// can count what was actually written for the summary log line.
+	private static bool SaveText(Resource res, StringView @extension,
 		List<StringView> selectedNames, AssetImportContext ctx)
 	{
 		if (res.Name == null || !selectedNames.Contains(res.Name))
-			return;
+			return false;
 
 		let fileName = scope String();
 		fileName.AppendF("{}{}", res.Name, @extension);
@@ -216,23 +235,30 @@ class ModelAssetImporter : IAssetImporter
 
 		let memStream = scope MemoryStream();
 		if (res.WriteToStream(memStream, ctx.Serializer) case .Err)
-			return;
+		{
+			ctx.Logger?.LogError("Model import: serialization failed for {}", locator);
+			return false;
+		}
 		memStream.Position = 0;
-		if (ctx.Mount.Save(locator, memStream) case .Err)
-			return;
+		if (ctx.Mount.Save(locator, memStream) case .Err(let err))
+		{
+			ctx.Logger?.LogError("Model import: mount save failed for {}: {}", locator, err);
+			return false;
+		}
 
 		let uri = scope String();
 		uri.Append(ctx.UriPrefix);
 		uri.Append(fileName);
 		ctx.Index.Register(res.Id, uri);
+		return true;
 	}
 
 	/// Saves a TextureResource (text metadata + pixel sidecar) through the
 	/// context's mount and registers its GUID.
-	private static void SaveTexture(TextureResource res, List<StringView> selectedNames, AssetImportContext ctx)
+	private static bool SaveTexture(TextureResource res, List<StringView> selectedNames, AssetImportContext ctx)
 	{
 		if (res.Name == null || !selectedNames.Contains(res.Name))
-			return;
+			return false;
 
 		let fileName = scope String();
 		fileName.AppendF("{}.texture", res.Name);
@@ -252,23 +278,36 @@ class ModelAssetImporter : IAssetImporter
 		{
 			let memStream = scope MemoryStream();
 			if (res.WriteToStream(memStream, ctx.Serializer) case .Err)
-				return;
+			{
+				ctx.Logger?.LogError("Model import: texture metadata serialization failed for {}", locator);
+				return false;
+			}
 			memStream.Position = 0;
-			if (ctx.Mount.Save(locator, memStream) case .Err)
-				return;
+			if (ctx.Mount.Save(locator, memStream) case .Err(let err))
+			{
+				ctx.Logger?.LogError("Model import: texture mount save failed for {}: {}", locator, err);
+				return false;
+			}
 		}
 		{
 			let pcmStream = scope MemoryStream();
 			if (res.WritePixelsToStream(pcmStream) case .Err)
-				return;
+			{
+				ctx.Logger?.LogError("Model import: texture pixel sidecar serialization failed for {}", sidecarLocator);
+				return false;
+			}
 			pcmStream.Position = 0;
-			if (ctx.Mount.Save(sidecarLocator, pcmStream) case .Err)
-				return;
+			if (ctx.Mount.Save(sidecarLocator, pcmStream) case .Err(let err))
+			{
+				ctx.Logger?.LogError("Model import: texture pixel sidecar save failed for {}: {}", sidecarLocator, err);
+				return false;
+			}
 		}
 
 		let uri = scope String();
 		uri.Append(ctx.UriPrefix);
 		uri.Append(fileName);
 		ctx.Index.Register(res.Id, uri);
+		return true;
 	}
 }

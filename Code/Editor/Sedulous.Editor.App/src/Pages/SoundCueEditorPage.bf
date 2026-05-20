@@ -113,7 +113,24 @@ class SoundCueEditorPage : IEditorPage
 	public void ResolveClips()
 	{
 		if (mCueResource == null || mEditorContext == null) return;
-		mCueResource.ResolveClips(mEditorContext.ResourceSystem);
+		let allResolved = mCueResource.ResolveClips(mEditorContext.ResourceSystem);
+
+		// Surface unresolved entries so users get a hint why Play Cue is silent
+		// instead of having to guess.
+		if (!allResolved && mEditorContext.Logger != null)
+		{
+			let cue = mCueResource.Cue;
+			let refs = mCueResource.ClipRefs;
+			let count = (refs.Count < cue.Entries.Count) ? refs.Count : cue.Entries.Count;
+			for (int i = 0; i < count; i++)
+			{
+				if (refs[i].IsValid && cue.Entries[i].Clip == null)
+				{
+					let path = (refs[i].Path != null) ? refs[i].Path : "<no path>";
+					mEditorContext.Logger.LogWarning("SoundCue entry {} failed to resolve clip: {}", i, path);
+				}
+			}
+		}
 	}
 
 	public void Save()
@@ -124,34 +141,34 @@ class SoundCueEditorPage : IEditorPage
 		let locator = scope String();
 		if (!MountResolver.TryResolveAbsoluteWritable(mEditorContext.MountEntries, mFilePath, out mount, locator))
 		{
-			Console.WriteLine("ERROR: Save target is not inside any writable mount: {}", mFilePath);
+			mEditorContext.Logger?.LogError("Save target is not inside any writable mount: {}", mFilePath);
 			return;
 		}
 
 		let provider = mEditorContext.ResourceSystem?.SerializerProvider;
 		if (provider == null)
 		{
-			Console.WriteLine("ERROR: No serializer provider available for sound cue save");
+			mEditorContext.Logger?.LogError("No serializer provider available for sound cue save");
 			return;
 		}
 
 		let memStream = scope MemoryStream();
 		if (mCueResource.WriteToStream(memStream, provider) case .Err)
 		{
-			Console.WriteLine("ERROR: Sound cue serialization failed: {}", mFilePath);
+			mEditorContext.Logger?.LogError("Sound cue serialization failed: {}", mFilePath);
 			return;
 		}
 		memStream.Position = 0;
 
 		if (mount.Save(locator, memStream) case .Err(let err))
 		{
-			Console.WriteLine("ERROR: Mount save failed for {}: {}", mFilePath, err);
+			mEditorContext.Logger?.LogError("Mount save failed for {}: {}", mFilePath, err);
 			return;
 		}
 
 		mDirty = false;
 		UpdateTitle();
-		Console.WriteLine("Sound cue saved: {}", mFilePath);
+		mEditorContext.Logger?.LogInformation("Sound cue saved: {}", mFilePath);
 	}
 
 	public void SaveAs(StringView path)

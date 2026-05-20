@@ -49,22 +49,22 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 	{
 		let runtimeContext = context.RuntimeContext;
 		if (runtimeContext == null)
-			return MeshEditorPageFactory.BuildErrorPage(path, "Animation Graph", "No runtime context.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Animation Graph", "No runtime context.", context);
 
 		let sceneSub = runtimeContext.GetSubsystem<SceneSubsystem>();
 		let sceneRenderer = runtimeContext.GetSubsystemByInterface<ISceneRenderer>();
 		if (sceneSub == null || sceneRenderer == null)
-			return MeshEditorPageFactory.BuildErrorPage(path, "Animation Graph", "SceneSubsystem or ISceneRenderer unavailable.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Animation Graph", "SceneSubsystem or ISceneRenderer unavailable.", context);
 
 		let uri = scope String();
 		if (!MountResolver.TryResolveAbsoluteToUri(context.MountEntries, path, uri))
-			return MeshEditorPageFactory.BuildErrorPage(path, "Animation Graph", "Path is not inside any mounted scheme.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Animation Graph", "Path is not inside any mounted scheme.", context);
 
 		AnimationGraphResource graphRes = null;
 		if (context.ResourceSystem.LoadResource<AnimationGraphResource>(uri) case .Ok(let handle))
 			graphRes = handle.Resource;
 		if (graphRes == null)
-			return MeshEditorPageFactory.BuildErrorPage(path, "Animation Graph", "Failed to load animation graph.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Animation Graph", "Failed to load animation graph.", context);
 
 		let host = new PreviewSceneHost(mDevice, mVGRenderer, mKeyboard, sceneSub, sceneRenderer, "AnimGraphPreview");
 		let page = new AnimGraphEditorPage(path, uri, graphRes, host, context);

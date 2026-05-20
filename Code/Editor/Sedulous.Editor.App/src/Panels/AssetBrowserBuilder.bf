@@ -880,7 +880,7 @@ static class AssetBrowserBuilder
 				let importer = editorContext.GetImporterForExtension(ext);
 				if (importer == null)
 				{
-					Console.WriteLine("No importer found for extension: {}", ext);
+					editorContext.Logger?.LogWarning("No importer found for extension: {}", ext);
 					continue;
 				}
 
@@ -890,7 +890,7 @@ static class AssetBrowserBuilder
 					preview = p;
 				else
 				{
-					Console.WriteLine("Failed to create import preview for: {}", sourcePath);
+					editorContext.Logger?.LogError("Failed to create import preview for: {}", sourcePath);
 					continue;
 				}
 
@@ -915,7 +915,8 @@ static class AssetBrowserBuilder
 					{
 						// Dialog takes ownership of preview and is deleted by PopupLayer on close
 						let importDialog = new ImportDialog(preview, importer, writable, baseLocator,
-							entry.Index, uriPrefix, entry.IndexLocator, serializer, panel);
+							entry.Index, uriPrefix, entry.IndexLocator, serializer, panel,
+							editorContext.Logger);
 						importDialog.Show(ctx);
 						continue; // Don't delete preview - dialog owns it now
 					}

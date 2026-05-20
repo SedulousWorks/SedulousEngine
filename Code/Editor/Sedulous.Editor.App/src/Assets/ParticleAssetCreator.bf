@@ -25,7 +25,10 @@ class ParticleAssetCreator : IAssetCreator
 	{
 		let provider = context.ResourceSystem?.SerializerProvider;
 		if (provider == null)
+		{
+			context.Logger?.LogError("Particle effect create: no serializer provider");
 			return .Err;
+		}
 
 		let effect = new ParticleEffect("New Effect");
 		effect.AddSystem(BuildDefaultSystem());
@@ -36,11 +39,18 @@ class ParticleAssetCreator : IAssetCreator
 
 		let stream = scope MemoryStream();
 		if (res.WriteToStream(stream, provider) case .Err)
+		{
+			context.Logger?.LogError("Particle effect create: serialization failed for {}", locator);
 			return .Err;
+		}
 		stream.Position = 0;
-		if (mount.Save(locator, stream) case .Err)
+		if (mount.Save(locator, stream) case .Err(let err))
+		{
+			context.Logger?.LogError("Particle effect create: mount save failed for {}: {}", locator, err);
 			return .Err;
+		}
 
+		context.Logger?.LogInformation("Particle effect created: {}", locator);
 		return .Ok(res.Id);
 	}
 

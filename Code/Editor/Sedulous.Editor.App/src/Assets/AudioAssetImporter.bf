@@ -9,6 +9,7 @@ using Sedulous.Audio;
 using Sedulous.Audio.Decoders;
 using Sedulous.Audio.Resources;
 using Sedulous.VFS;
+using Sedulous.Core.Logging.Abstractions;
 
 /// Imports audio files (.wav, .ogg, .mp3, .flac) as AudioClipResource.
 /// The source audio file is decoded to PCM and stored as a text metadata file
@@ -16,10 +17,12 @@ using Sedulous.VFS;
 class AudioAssetImporter : IAssetImporter
 {
 	private AudioDecoderFactory mDecoder;
+	private ILogger mLogger;
 
-	public this(AudioDecoderFactory decoder)
+	public this(AudioDecoderFactory decoder, ILogger logger = null)
 	{
 		mDecoder = decoder;
+		mLogger = logger;
 	}
 
 	public void GetSupportedExtensions(List<String> outExtensions)
@@ -32,7 +35,11 @@ class AudioAssetImporter : IAssetImporter
 
 	public Result<ImportPreview> CreatePreview(StringView sourcePath)
 	{
-		if (mDecoder == null) return .Err;
+		if (mDecoder == null)
+		{
+			mLogger?.LogError("Audio import preview: no decoder available for {}", sourcePath);
+			return .Err;
+		}
 
 		// Decode to verify validity and get metadata
 		if (mDecoder.DecodeFile(sourcePath) case .Ok(let clip))
@@ -62,6 +69,7 @@ class AudioAssetImporter : IAssetImporter
 			return .Ok(preview);
 		}
 
+		mLogger?.LogError("Audio import preview: decode failed for {}", sourcePath);
 		return .Err;
 	}
 
@@ -70,14 +78,23 @@ class AudioAssetImporter : IAssetImporter
 		if (preview.Items.Count == 0 || !preview.Items[0].Selected)
 			return .Ok;
 
-		if (mDecoder == null) return .Err;
+		if (mDecoder == null)
+		{
+			mLogger?.LogError("Audio import: no decoder available for {}", preview.SourcePath);
+			return .Err;
+		}
+
+		mLogger?.LogInformation("Audio import: {} -> {}{}", preview.SourcePath, ctx.UriPrefix, preview.Items[0].Name);
 
 		// Decode the audio file to PCM
 		AudioClip clip;
 		if (mDecoder.DecodeFile(preview.SourcePath) case .Ok(let c))
 			clip = c;
 		else
+		{
+			mLogger?.LogError("Audio import: decode failed for {}", preview.SourcePath);
 			return .Err;
+		}
 
 		// Create resource with decoded PCM data
 		let resource = new AudioClipResource();
@@ -110,24 +127,38 @@ class AudioAssetImporter : IAssetImporter
 		{
 			let memStream = scope MemoryStream();
 			if (resource.WriteToStream(memStream, ctx.Serializer) case .Err)
+			{
+				mLogger?.LogError("Audio import: metadata serialization failed for {}", locator);
 				return .Err;
+			}
 			memStream.Position = 0;
-			if (ctx.Mount.Save(locator, memStream) case .Err)
+			if (ctx.Mount.Save(locator, memStream) case .Err(let err))
+			{
+				mLogger?.LogError("Audio import: mount save failed for {}: {}", locator, err);
 				return .Err;
+			}
 		}
 
 		// Save PCM sidecar
 		{
 			let pcmStream = scope MemoryStream();
 			if (resource.WritePcmToStream(pcmStream) case .Err)
+			{
+				mLogger?.LogError("Audio import: PCM sidecar serialization failed for {}", sidecarLocator);
 				return .Err;
+			}
 			pcmStream.Position = 0;
-			if (ctx.Mount.Save(sidecarLocator, pcmStream) case .Err)
+			if (ctx.Mount.Save(sidecarLocator, pcmStream) case .Err(let err))
+			{
+				mLogger?.LogError("Audio import: PCM sidecar save failed for {}: {}", sidecarLocator, err);
 				return .Err;
+			}
 		}
 
 		ctx.Index.Register(resource.Id, uri);
 
+		mLogger?.LogInformation("Audio import: wrote {} ({} frames, {} bytes PCM)",
+			uri, clip.FrameCount, clip.DataLength);
 		return .Ok;
 	}
 }

@@ -19,7 +19,10 @@ class MaterialAssetCreator : IAssetCreator
 	{
 		let provider = context.ResourceSystem?.SerializerProvider;
 		if (provider == null)
+		{
+			context.Logger?.LogError("Material create: no serializer provider");
 			return .Err;
+		}
 
 		let mat = Materials.CreatePBR("New Material", "forward");
 		let res = new MaterialResource(mat, true);
@@ -29,11 +32,18 @@ class MaterialAssetCreator : IAssetCreator
 
 		let stream = scope MemoryStream();
 		if (res.WriteToStream(stream, provider) case .Err)
+		{
+			context.Logger?.LogError("Material create: serialization failed for {}", locator);
 			return .Err;
+		}
 		stream.Position = 0;
-		if (mount.Save(locator, stream) case .Err)
+		if (mount.Save(locator, stream) case .Err(let err))
+		{
+			context.Logger?.LogError("Material create: mount save failed for {}: {}", locator, err);
 			return .Err;
+		}
 
+		context.Logger?.LogInformation("Material created: {}", locator);
 		return .Ok(res.Id);
 	}
 }

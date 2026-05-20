@@ -18,7 +18,10 @@ class PrefabAssetCreator : IAssetCreator
 	{
 		let provider = context.ResourceSystem?.SerializerProvider;
 		if (provider == null)
+		{
+			context.Logger?.LogError("Prefab create: no serializer provider");
 			return .Err;
+		}
 
 		// Create an empty scene (prefabs are entity subgraphs serialized like scenes)
 		let scene = new Scene();
@@ -32,11 +35,18 @@ class PrefabAssetCreator : IAssetCreator
 
 		let stream = scope MemoryStream();
 		if (prefabRes.WriteToStream(stream, provider) case .Err)
+		{
+			context.Logger?.LogError("Prefab create: serialization failed for {}", locator);
 			return .Err;
+		}
 		stream.Position = 0;
-		if (mount.Save(locator, stream) case .Err)
+		if (mount.Save(locator, stream) case .Err(let err))
+		{
+			context.Logger?.LogError("Prefab create: mount save failed for {}: {}", locator, err);
 			return .Err;
+		}
 
+		context.Logger?.LogInformation("Prefab created: {}", locator);
 		return .Ok(prefabRes.Id);
 	}
 }

@@ -40,6 +40,9 @@ struct AssetImportContext
 	public IResourceIndex Index;
 	public StringView UriPrefix;
 	public Sedulous.Serialization.ISerializerProvider Serializer;
+	/// Optional logger - importers should use it to report progress and reasons
+	/// for `return .Err` paths so failures surface in the editor's log panel.
+	public Sedulous.Core.Logging.Abstractions.ILogger Logger;
 }
 
 /// One importable item discovered in a source file.

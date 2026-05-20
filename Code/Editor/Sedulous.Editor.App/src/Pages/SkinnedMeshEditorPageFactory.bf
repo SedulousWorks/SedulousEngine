@@ -43,22 +43,22 @@ class SkinnedMeshEditorPageFactory : IEditorPageFactory
 	{
 		let runtimeContext = context.RuntimeContext;
 		if (runtimeContext == null)
-			return MeshEditorPageFactory.BuildErrorPage(path, "Skinned Mesh", "No runtime context - render subsystem unavailable.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Skinned Mesh", "No runtime context - render subsystem unavailable.", context);
 
 		let sceneSub = runtimeContext.GetSubsystem<SceneSubsystem>();
 		let sceneRenderer = runtimeContext.GetSubsystemByInterface<ISceneRenderer>();
 		if (sceneSub == null || sceneRenderer == null)
-			return MeshEditorPageFactory.BuildErrorPage(path, "Skinned Mesh", "SceneSubsystem or ISceneRenderer not available.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Skinned Mesh", "SceneSubsystem or ISceneRenderer not available.", context);
 
 		let uri = scope String();
 		if (!MountResolver.TryResolveAbsoluteToUri(context.MountEntries, path, uri))
-			return MeshEditorPageFactory.BuildErrorPage(path, "Skinned Mesh", "Path is not inside any mounted scheme.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Skinned Mesh", "Path is not inside any mounted scheme.", context);
 
 		SkinnedMeshResource meshRes = null;
 		if (context.ResourceSystem.LoadResource<SkinnedMeshResource>(uri) case .Ok(let handle))
 			meshRes = handle.Resource;
 		if (meshRes == null)
-			return MeshEditorPageFactory.BuildErrorPage(path, "Skinned Mesh", "Failed to load skinned mesh resource.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Skinned Mesh", "Failed to load skinned mesh resource.", context);
 
 		let host = new PreviewSceneHost(mDevice, mVGRenderer, mKeyboard, sceneSub, sceneRenderer, "SkinnedMeshPreview");
 		let page = new SkinnedMeshEditorPage(path, uri, meshRes, host);

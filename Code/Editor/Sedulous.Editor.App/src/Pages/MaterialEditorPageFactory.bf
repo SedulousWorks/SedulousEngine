@@ -41,22 +41,22 @@ class MaterialEditorPageFactory : IEditorPageFactory
 	{
 		let runtimeContext = context.RuntimeContext;
 		if (runtimeContext == null)
-			return MeshEditorPageFactory.BuildErrorPage(path, "Material", "No runtime context.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Material", "No runtime context.", context);
 
 		let sceneSub = runtimeContext.GetSubsystem<SceneSubsystem>();
 		let sceneRenderer = runtimeContext.GetSubsystemByInterface<ISceneRenderer>();
 		if (sceneSub == null || sceneRenderer == null)
-			return MeshEditorPageFactory.BuildErrorPage(path, "Material", "SceneSubsystem or ISceneRenderer unavailable.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Material", "SceneSubsystem or ISceneRenderer unavailable.", context);
 
 		let uri = scope String();
 		if (!MountResolver.TryResolveAbsoluteToUri(context.MountEntries, path, uri))
-			return MeshEditorPageFactory.BuildErrorPage(path, "Material", "Path is not inside any mounted scheme.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Material", "Path is not inside any mounted scheme.", context);
 
 		Sedulous.Materials.Resources.MaterialResource matRes = null;
 		if (context.ResourceSystem.LoadResource<Sedulous.Materials.Resources.MaterialResource>(uri) case .Ok(let handle))
 			matRes = handle.Resource;
 		if (matRes == null)
-			return MeshEditorPageFactory.BuildErrorPage(path, "Material", "Failed to load material resource.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Material", "Failed to load material resource.", context);
 
 		Sedulous.Geometry.Resources.StaticMeshResource sphereRes = null;
 		if (context.ResourceSystem.LoadResource<Sedulous.Geometry.Resources.StaticMeshResource>(SPHERE_URI) case .Ok(let sphereHandle))
@@ -64,7 +64,7 @@ class MaterialEditorPageFactory : IEditorPageFactory
 		if (sphereRes == null)
 		{
 			matRes.ReleaseRef();
-			return MeshEditorPageFactory.BuildErrorPage(path, "Material", "Failed to load builtin sphere mesh.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Material", "Failed to load builtin sphere mesh.", context);
 		}
 
 		let host = new PreviewSceneHost(mDevice, mVGRenderer, mKeyboard, sceneSub, sceneRenderer, "MaterialPreview");

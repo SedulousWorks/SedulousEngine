@@ -672,7 +672,7 @@ static class ScenePageBuilder
 		}
 		else
 		{
-			Console.WriteLine("ERROR: Failed to spawn prefab from asset drop: {}", assetData.UriPath);
+			context?.Logger?.LogError("Failed to spawn prefab from asset drop: {}", assetData.UriPath);
 		}
 	}
 

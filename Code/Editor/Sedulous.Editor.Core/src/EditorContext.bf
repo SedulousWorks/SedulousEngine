@@ -8,6 +8,7 @@ using Sedulous.UI.Toolkit;
 using Sedulous.UI;
 using Sedulous.Engine.Core.Resources;
 using Sedulous.Resources;
+using Sedulous.Core.Logging.Abstractions;
 
 /// Central access point for all editor services.
 /// Passed to plugins during initialization so they can register extensions.
@@ -38,6 +39,11 @@ class EditorContext : IDisposable
 	public IDialogService DialogService;
 	public IShell Shell;
 	public ResourceSystem ResourceSystem;
+
+	/// Application-wide logger. Routes through EditorLogger so output appears in
+	/// the LogView panel (and the console) at the configured minimum level.
+	/// Prefer this over Console.WriteLine in editor code.
+	public ILogger Logger;
 
 	/// Asset-browser-facing list of registered (scheme, mount, index) bundles.
 	/// EditorApplication populates this when builtin/project mounts are set up

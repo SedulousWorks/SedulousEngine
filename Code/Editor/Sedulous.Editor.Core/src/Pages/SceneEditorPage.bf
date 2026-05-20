@@ -110,21 +110,30 @@ class SceneEditorPage : IEditorPage, IResourceChangeListener
 		if (mEditorContext == null ||
 			!MountResolver.TryResolveAbsoluteWritable(mEditorContext.MountEntries, mFilePath, out mount, locator))
 		{
-			Console.WriteLine("ERROR: Save target is not inside any writable mount: {}", mFilePath);
+			mEditorContext?.Logger?.LogError("Save target is not inside any writable mount: {}", mFilePath);
 			return;
 		}
 
 		Result<Guid> result;
+		let isPrefab = mFilePath.EndsWith(".prefab", .OrdinalIgnoreCase);
 
-		if (mFilePath.EndsWith(".prefab", .OrdinalIgnoreCase))
+		if (isPrefab)
 		{
 			let prefabMgr = mEditorContext?.PrefabManager;
-			if (prefabMgr == null) { Console.WriteLine("ERROR: No PrefabResourceManager"); return; }
+			if (prefabMgr == null)
+			{
+				mEditorContext?.Logger?.LogError("Prefab save aborted: no PrefabResourceManager");
+				return;
+			}
 			result = prefabMgr.SavePrefab(mScene, mount, locator);
 		}
 		else
 		{
-			if (mEditorContext?.SceneManager == null) return;
+			if (mEditorContext?.SceneManager == null)
+			{
+				mEditorContext?.Logger?.LogError("Scene save aborted: no SceneResourceManager");
+				return;
+			}
 			result = mEditorContext.SceneManager.SaveScene(mScene, mount, locator);
 		}
 
@@ -133,11 +142,11 @@ class SceneEditorPage : IEditorPage, IResourceChangeListener
 			mLastSavedGuid = guid;
 			mDirty = false;
 			UpdateTitle();
-			Console.WriteLine("{} saved: {}", mFilePath.EndsWith(".prefab", .OrdinalIgnoreCase) ? "Prefab" : "Scene", mFilePath);
+			mEditorContext?.Logger?.LogInformation("{} saved: {}", isPrefab ? "Prefab" : "Scene", mFilePath);
 		}
 		else
 		{
-			Console.WriteLine("ERROR: Failed to save: {}", mFilePath);
+			mEditorContext?.Logger?.LogError("Failed to save: {}", mFilePath);
 		}
 	}
 

@@ -39,22 +39,22 @@ class SkeletonEditorPageFactory : IEditorPageFactory
 	{
 		let runtimeContext = context.RuntimeContext;
 		if (runtimeContext == null)
-			return MeshEditorPageFactory.BuildErrorPage(path, "Skeleton", "No runtime context.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Skeleton", "No runtime context.", context);
 
 		let sceneSub = runtimeContext.GetSubsystem<SceneSubsystem>();
 		let sceneRenderer = runtimeContext.GetSubsystemByInterface<ISceneRenderer>();
 		if (sceneSub == null || sceneRenderer == null)
-			return MeshEditorPageFactory.BuildErrorPage(path, "Skeleton", "SceneSubsystem or ISceneRenderer unavailable.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Skeleton", "SceneSubsystem or ISceneRenderer unavailable.", context);
 
 		let uri = scope String();
 		if (!MountResolver.TryResolveAbsoluteToUri(context.MountEntries, path, uri))
-			return MeshEditorPageFactory.BuildErrorPage(path, "Skeleton", "Path is not inside any mounted scheme.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Skeleton", "Path is not inside any mounted scheme.", context);
 
 		Sedulous.Animation.Resources.SkeletonResource skelRes = null;
 		if (context.ResourceSystem.LoadResource<Sedulous.Animation.Resources.SkeletonResource>(uri) case .Ok(let handle))
 			skelRes = handle.Resource;
 		if (skelRes == null)
-			return MeshEditorPageFactory.BuildErrorPage(path, "Skeleton", "Failed to load skeleton resource.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Skeleton", "Failed to load skeleton resource.", context);
 
 		let host = new PreviewSceneHost(mDevice, mVGRenderer, mKeyboard, sceneSub, sceneRenderer, "SkeletonPreview");
 		let page = new SkeletonEditorPage(path, skelRes, host);

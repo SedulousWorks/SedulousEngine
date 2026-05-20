@@ -31,6 +31,7 @@ class ImportDialog : Dialog
 	private String mIndexLocator = new .() ~ delete _; // locator the index is persisted to
 	private ISerializerProvider mSerializer;
 	private AssetBrowserPanel mPanel;
+	private Sedulous.Core.Logging.Abstractions.ILogger mLogger;
 
 	// Item checkboxes (parallel to mPreview.Items)
 	private List<CheckBox> mItemChecks = new .() ~ delete _;
@@ -38,7 +39,8 @@ class ImportDialog : Dialog
 	public this(ImportPreview preview, IAssetImporter importer,
 		IWritableMount mount, StringView baseLocator,
 		IResourceIndex index, StringView uriPrefix, StringView indexLocator,
-		ISerializerProvider serializer, AssetBrowserPanel panel)
+		ISerializerProvider serializer, AssetBrowserPanel panel,
+		Sedulous.Core.Logging.Abstractions.ILogger logger = null)
 		: base("Import Assets")
 	{
 		mPreview = preview;
@@ -50,6 +52,7 @@ class ImportDialog : Dialog
 		mIndexLocator.Set(indexLocator);
 		mSerializer = serializer;
 		mPanel = panel;
+		mLogger = logger;
 
 		MaxWidth = 550;
 		MaxHeight = 500;
@@ -277,11 +280,12 @@ class ImportDialog : Dialog
 			Index = mIndex,
 			UriPrefix = mUriPrefix,
 			Serializer = mSerializer,
+			Logger = mLogger,
 		};
 
 		if (mImporter.Import(mPreview, ctx) case .Ok)
 		{
-			Console.WriteLine("Imported: {} ({} items selected)", mPreview.SourcePath, mItemChecks.Count);
+			mLogger?.LogInformation("Imported: {} ({} items selected)", mPreview.SourcePath, mItemChecks.Count);
 
 			// Persist the index back through the mount so subsequent loads
 			// pick up the new GUID -> URI mappings.
@@ -296,7 +300,7 @@ class ImportDialog : Dialog
 			}
 		}
 		else
-			Console.WriteLine("Import failed: {}", mPreview.SourcePath);
+			mLogger?.LogError("Import failed: {}", mPreview.SourcePath);
 
 		mPanel.RefreshContent();
 	}

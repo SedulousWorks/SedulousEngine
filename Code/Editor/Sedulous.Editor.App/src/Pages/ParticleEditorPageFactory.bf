@@ -44,22 +44,22 @@ class ParticleEditorPageFactory : IEditorPageFactory
 	{
 		let runtimeContext = context.RuntimeContext;
 		if (runtimeContext == null)
-			return MeshEditorPageFactory.BuildErrorPage(path, "Particle Effect", "No runtime context.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Particle Effect", "No runtime context.", context);
 
 		let sceneSub = runtimeContext.GetSubsystem<SceneSubsystem>();
 		let sceneRenderer = runtimeContext.GetSubsystemByInterface<ISceneRenderer>();
 		if (sceneSub == null || sceneRenderer == null)
-			return MeshEditorPageFactory.BuildErrorPage(path, "Particle Effect", "SceneSubsystem or ISceneRenderer unavailable.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Particle Effect", "SceneSubsystem or ISceneRenderer unavailable.", context);
 
 		let uri = scope String();
 		if (!MountResolver.TryResolveAbsoluteToUri(context.MountEntries, path, uri))
-			return MeshEditorPageFactory.BuildErrorPage(path, "Particle Effect", "Path is not inside any mounted scheme.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Particle Effect", "Path is not inside any mounted scheme.", context);
 
 		Sedulous.Particles.Resources.ParticleEffectResource fxRes = null;
 		if (context.ResourceSystem.LoadResource<Sedulous.Particles.Resources.ParticleEffectResource>(uri) case .Ok(let handle))
 			fxRes = handle.Resource;
 		if (fxRes == null)
-			return MeshEditorPageFactory.BuildErrorPage(path, "Particle Effect", "Failed to load particle effect.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Particle Effect", "Failed to load particle effect.", context);
 
 		let host = new PreviewSceneHost(mDevice, mVGRenderer, mKeyboard, sceneSub, sceneRenderer, "ParticlePreview");
 		let page = new ParticleEditorPage(path, uri, fxRes, host, context);

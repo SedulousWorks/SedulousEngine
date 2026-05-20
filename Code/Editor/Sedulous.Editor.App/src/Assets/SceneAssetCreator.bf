@@ -18,7 +18,10 @@ class SceneAssetCreator : IAssetCreator
 	{
 		let provider = context.ResourceSystem?.SerializerProvider;
 		if (provider == null)
+		{
+			context.Logger?.LogError("Scene create: no serializer provider");
 			return .Err;
+		}
 
 		// Create an empty scene, serialize it, then destroy it.
 		// We don't go through SceneSubsystem because we don't want the scene
@@ -34,11 +37,18 @@ class SceneAssetCreator : IAssetCreator
 
 		let stream = scope MemoryStream();
 		if (sceneRes.WriteToStream(stream, provider) case .Err)
+		{
+			context.Logger?.LogError("Scene create: serialization failed for {}", locator);
 			return .Err;
+		}
 		stream.Position = 0;
-		if (mount.Save(locator, stream) case .Err)
+		if (mount.Save(locator, stream) case .Err(let err))
+		{
+			context.Logger?.LogError("Scene create: mount save failed for {}: {}", locator, err);
 			return .Err;
+		}
 
+		context.Logger?.LogInformation("Scene created: {}", locator);
 		return .Ok(sceneRes.Id);
 	}
 }

@@ -5,6 +5,7 @@ using Sedulous.UI;
 using Sedulous.Audio;
 using Sedulous.Audio.Resources;
 using Sedulous.Editor.Core;
+using Sedulous.Core.Logging.Abstractions;
 
 /// Editor page for previewing audio clips.
 /// Holds the AudioClipResource alive via ref counting and provides
@@ -23,13 +24,15 @@ class AudioClipEditorPage : IEditorPage
 	// Playback
 	private IAudioSystem mAudioSystem;
 	private IAudioSource mSource;
+	private ILogger mLogger;
 
-	public this(StringView filePath, AudioClipResource clipResource, IAudioSystem audioSystem)
+	public this(StringView filePath, AudioClipResource clipResource, IAudioSystem audioSystem, ILogger logger = null)
 	{
 		mFilePath.Set(filePath);
 		mPageId.Set(filePath);
 		mClipResource = clipResource;
 		mAudioSystem = audioSystem;
+		mLogger = logger;
 
 		if (mAudioSystem != null)
 			mSource = mAudioSystem.CreateSource();
@@ -67,33 +70,25 @@ class AudioClipEditorPage : IEditorPage
 	public void Play()
 	{
 		let clip = mClipResource?.Clip;
-		Console.WriteLine("[AudioClipEditor] Play called");
-		Console.WriteLine("  source: {}", mSource != null ? "yes" : "null");
-		Console.WriteLine("  clip: {}", clip != null ? "yes" : "null");
-		if (clip != null)
+
+		if (mLogger != null)
 		{
-			Console.WriteLine("  clip.IsLoaded: {}", clip.IsLoaded);
-			Console.WriteLine("  clip.SampleRate: {}", clip.SampleRate);
-			Console.WriteLine("  clip.Channels: {}", clip.Channels);
-			Console.WriteLine("  clip.Format: {}", clip.Format);
-			Console.WriteLine("  clip.Duration: {:.2}s", clip.Duration);
-			Console.WriteLine("  clip.DataLength: {} bytes", clip.DataLength);
-			Console.WriteLine("  clip.FrameCount: {}", clip.FrameCount);
+			if (clip != null)
+				mLogger.LogDebug("AudioClipEditor.Play: clip {}Hz {}ch fmt={} loaded={} duration={:0.2}s frames={} bytes={}",
+					clip.SampleRate, clip.Channels, clip.Format, clip.IsLoaded, clip.Duration, clip.FrameCount, clip.DataLength);
+			else
+				mLogger.LogDebug("AudioClipEditor.Play: no clip");
+
+			if (mSource != null)
+				mLogger.LogDebug("AudioClipEditor.Play: source state={} volume={} bus={}",
+					mSource.State, mSource.Volume, mSource.BusName);
 		}
-		if (mSource != null)
-		{
-			Console.WriteLine("  source.State: {}", mSource.State);
-			Console.WriteLine("  source.Volume: {}", mSource.Volume);
-			Console.WriteLine("  source.BusName: {}", mSource.BusName);
-		}
-		Console.WriteLine("  audioSystem: {}", mAudioSystem != null ? "yes" : "null");
 
 		if (mSource != null && clip != null)
+		{
 			mSource.Play(clip);
-
-		if (mSource != null)
-			Console.WriteLine("  source.State after Play: {}", mSource.State);
-
+			mLogger?.LogDebug("AudioClipEditor.Play: source state after Play = {}", mSource.State);
+		}
 	}
 
 	public void Pause()

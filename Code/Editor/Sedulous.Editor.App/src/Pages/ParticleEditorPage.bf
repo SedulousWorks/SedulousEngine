@@ -140,14 +140,14 @@ class ParticleEditorPage : IEditorPage
 		let locator = scope String();
 		if (!MountResolver.TryResolveAbsoluteWritable(mEditorContext.MountEntries, mFilePath, out mount, locator))
 		{
-			Console.WriteLine("ERROR: Save target is not inside any writable mount: {}", mFilePath);
+			mEditorContext.Logger?.LogError("Save target is not inside any writable mount: {}", mFilePath);
 			return;
 		}
 
 		let provider = mEditorContext.ResourceSystem?.SerializerProvider;
 		if (provider == null)
 		{
-			Console.WriteLine("ERROR: No serializer provider available for particle effect save");
+			mEditorContext.Logger?.LogError("No serializer provider available for particle effect save");
 			return;
 		}
 
@@ -155,20 +155,20 @@ class ParticleEditorPage : IEditorPage
 		let memStream = scope MemoryStream();
 		if (mEffectRes.WriteToStream(memStream, provider) case .Err)
 		{
-			Console.WriteLine("ERROR: Particle effect serialization failed: {}", mFilePath);
+			mEditorContext.Logger?.LogError("Particle effect serialization failed: {}", mFilePath);
 			return;
 		}
 		memStream.Position = 0;
 
 		if (mount.Save(locator, memStream) case .Err(let err))
 		{
-			Console.WriteLine("ERROR: Mount save failed for {}: {}", mFilePath, err);
+			mEditorContext.Logger?.LogError("Mount save failed for {}: {}", mFilePath, err);
 			return;
 		}
 
 		mDirty = false;
 		UpdateTitle();
-		Console.WriteLine("Particle effect saved: {}", mFilePath);
+		mEditorContext.Logger?.LogInformation("Particle effect saved: {}", mFilePath);
 	}
 
 	public void SaveAs(StringView path)

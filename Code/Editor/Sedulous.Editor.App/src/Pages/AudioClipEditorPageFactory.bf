@@ -24,7 +24,7 @@ class AudioClipEditorPageFactory : IEditorPageFactory
 	{
 		let uri = scope String();
 		if (!MountResolver.TryResolveAbsoluteToUri(context.MountEntries, path, uri))
-			return MeshEditorPageFactory.BuildErrorPage(path, "Audio Clip", "Path is not inside any mounted scheme.");
+			return MeshEditorPageFactory.BuildErrorPage(path, "Audio Clip", "Path is not inside any mounted scheme.", context);
 
 		AudioClipResource clipRes = null;
 		if (context.ResourceSystem.LoadResource<AudioClipResource>(uri) case .Ok(let handle))
@@ -35,7 +35,7 @@ class AudioClipEditorPageFactory : IEditorPageFactory
 		if (let audioSub = context.RuntimeContext?.GetSubsystem<AudioSubsystem>())
 			audioSystem = audioSub.AudioSystem;
 
-		let page = new AudioClipEditorPage(path, clipRes, audioSystem);
+		let page = new AudioClipEditorPage(path, clipRes, audioSystem, context.Logger);
 		page.SetContentView(BuildAudioClipView(clipRes, page));
 		return page;
 	}
