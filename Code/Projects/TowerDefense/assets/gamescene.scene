@@ -8870,8 +8870,8 @@ Arr_ %Modules {
 		int32 %Version {1}
 		Obj_ %Data {
 			Obj_ %SkyTextureRef {
-				string %_id {"00000000-0000-0000-0000-000000000000"}
-				string %path {""}
+				string %_id {"705c0bd8-b8e3-451c-8a19-7cb033cb1e1c"}
+				string %path {"builtin://skies/stylized_sky.texture"}
 			}
 			float %SkyIntensity {1}
 			Obj_ %AmbientColor {
