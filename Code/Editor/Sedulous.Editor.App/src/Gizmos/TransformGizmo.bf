@@ -30,6 +30,13 @@ class TransformGizmo
 	private float mDragStartAngle;  // for rotate
 	private float mDragStartScale;  // for scale
 
+	// Rotation frame captured at BeginDrag so the rotation axis and the
+	// plane the drag is measured on don't drift as the entity (and hence
+	// the gizmo's Orientation) rotates during the drag itself.
+	private Vector3 mDragRotationAxis;
+	private Vector3 mDragRotationU;
+	private Vector3 mDragRotationV;
+
 	// Colors
 	private static readonly Color sColorX = .(220, 50, 50, 255);
 	private static readonly Color sColorY = .(50, 220, 50, 255);
@@ -92,22 +99,28 @@ class TransformGizmo
 
 	// ==================== Hover Detection ====================
 
-	/// Updates hover state based on gizmo mode.
-	public GizmoAxis UpdateHover(Ray pickRay, GizmoMode mode, float pickThreshold = 0.15f)
+	/// Updates hover state based on gizmo mode. The pick threshold scales
+	/// with Size so the grab zone tracks the gizmo's on-screen size as the
+	/// camera moves. A pickThreshold > 0 overrides the auto-scaled default.
+	public GizmoAxis UpdateHover(Ray pickRay, GizmoMode mode, float pickThreshold = -1.0f)
 	{
 		if (IsDragging)
 			return HoveredAxis;
 
 		HoveredAxis = .None;
 
+		// Auto-scale: match the visual thickness (~3-4 px) plus a margin so
+		// the grab zone is slightly larger than the rendered ribbon.
+		let threshold = (pickThreshold > 0) ? pickThreshold : Size * 0.12f;
+
 		switch (mode)
 		{
 		case .Translate, .Scale:
 			// Both use axis lines for hover detection
-			HoveredAxis = HoverAxisLines(pickRay, pickThreshold);
+			HoveredAxis = HoverAxisLines(pickRay, threshold);
 		case .Rotate:
 			// Test ring proximity
-			HoveredAxis = HoverRings(pickRay, pickThreshold);
+			HoveredAxis = HoverRings(pickRay, threshold);
 		}
 
 		return HoveredAxis;
@@ -167,7 +180,22 @@ class TransformGizmo
 		mDragStartHitPoint = GetOrientedDragHitPoint(pickRay, SelectedAxis, mDragStartPosition);
 
 		if (mode == .Rotate)
-			mDragStartAngle = GetOrientedRotateAngle(pickRay, SelectedAxis, mDragStartPosition);
+		{
+			// Capture the rotation frame now - the gizmo's Orientation tracks
+			// the entity's rotation each frame (in Local space), so re-deriving
+			// these from the current orientation mid-drag would let the plane
+			// drift as the entity rotates.
+			mDragRotationAxis = GetAxisDirection(SelectedAxis);
+			switch (SelectedAxis)
+			{
+			case .X: mDragRotationU = AxisY; mDragRotationV = AxisZ;
+			case .Y: mDragRotationU = AxisZ; mDragRotationV = AxisX;
+			case .Z: mDragRotationU = AxisX; mDragRotationV = AxisY;
+			default: mDragRotationU = .UnitX; mDragRotationV = .UnitY;
+			}
+			mDragStartAngle = ComputeRotateAngle(pickRay, mDragStartPosition,
+				mDragRotationAxis, mDragRotationU, mDragRotationV);
+		}
 
 		return true;
 	}
@@ -187,14 +215,25 @@ class TransformGizmo
 	}
 
 	/// Updates rotate drag and returns the rotation axis and angle delta.
+	/// Uses the rotation frame captured at BeginDrag so the axis and plane
+	/// don't drift as the entity rotates, and unwraps the delta so crossing
+	/// the atan2 discontinuity (at +/- pi) doesn't cause a 360 deg jump.
 	public (Vector3 axis, float angle) UpdateRotateDrag(Ray pickRay)
 	{
 		if (!IsDragging || SelectedAxis == .None)
 			return (.Zero, 0);
 
-		let currentAngle = GetOrientedRotateAngle(pickRay, SelectedAxis, mDragStartPosition);
-		let axisDir = GetAxisDirection(SelectedAxis);
-		return (axisDir, currentAngle - mDragStartAngle);
+		let currentAngle = ComputeRotateAngle(pickRay, mDragStartPosition,
+			mDragRotationAxis, mDragRotationU, mDragRotationV);
+
+		var delta = currentAngle - mDragStartAngle;
+		// Wrap delta into (-pi, pi] so a sweep across the atan2 seam stays
+		// continuous instead of snapping a full revolution.
+		const float twoPi = Math.PI_f * 2.0f;
+		if (delta >  Math.PI_f) delta -= twoPi;
+		if (delta < -Math.PI_f) delta += twoPi;
+
+		return (mDragRotationAxis, delta);
 	}
 
 	/// Updates scale drag and returns scale delta along the selected local axis.
@@ -232,11 +271,12 @@ class TransformGizmo
 
 	// ==================== Drawing ====================
 
-	/// Draws the translate gizmo using DebugDraw overlay lines.
-	public void DrawTranslate(DebugDraw debugDraw)
+	/// Draws the translate gizmo as thick screen-facing ribbons.
+	public void DrawTranslate(DebugDraw debugDraw, Vector3 cameraPos)
 	{
 		let axisLen = Size;
 		let headSize = Size * 0.1f;
+		let thickness = Size * 0.03f;
 		let ax = AxisX;
 		let ay = AxisY;
 		let az = AxisZ;
@@ -244,62 +284,109 @@ class TransformGizmo
 		// X axis (red)
 		let xColor = GetAxisColor(.X);
 		let xEnd = Position + ax * axisLen;
-		debugDraw.DrawLineOverlay(Position, xEnd, xColor);
-		debugDraw.DrawLineOverlay(xEnd, xEnd - ax * headSize + ay * headSize, xColor);
-		debugDraw.DrawLineOverlay(xEnd, xEnd - ax * headSize - ay * headSize, xColor);
+		DrawThickLineOverlay(debugDraw, Position, xEnd, cameraPos, xColor, thickness);
+		DrawThickLineOverlay(debugDraw, xEnd, xEnd - ax * headSize + ay * headSize, cameraPos, xColor, thickness);
+		DrawThickLineOverlay(debugDraw, xEnd, xEnd - ax * headSize - ay * headSize, cameraPos, xColor, thickness);
 
 		// Y axis (green)
 		let yColor = GetAxisColor(.Y);
 		let yEnd = Position + ay * axisLen;
-		debugDraw.DrawLineOverlay(Position, yEnd, yColor);
-		debugDraw.DrawLineOverlay(yEnd, yEnd + ax * headSize - ay * headSize, yColor);
-		debugDraw.DrawLineOverlay(yEnd, yEnd - ax * headSize - ay * headSize, yColor);
+		DrawThickLineOverlay(debugDraw, Position, yEnd, cameraPos, yColor, thickness);
+		DrawThickLineOverlay(debugDraw, yEnd, yEnd + ax * headSize - ay * headSize, cameraPos, yColor, thickness);
+		DrawThickLineOverlay(debugDraw, yEnd, yEnd - ax * headSize - ay * headSize, cameraPos, yColor, thickness);
 
 		// Z axis (blue)
 		let zColor = GetAxisColor(.Z);
 		let zEnd = Position + az * axisLen;
-		debugDraw.DrawLineOverlay(Position, zEnd, zColor);
-		debugDraw.DrawLineOverlay(zEnd, zEnd + ay * headSize - az * headSize, zColor);
-		debugDraw.DrawLineOverlay(zEnd, zEnd - ay * headSize - az * headSize, zColor);
+		DrawThickLineOverlay(debugDraw, Position, zEnd, cameraPos, zColor, thickness);
+		DrawThickLineOverlay(debugDraw, zEnd, zEnd + ay * headSize - az * headSize, cameraPos, zColor, thickness);
+		DrawThickLineOverlay(debugDraw, zEnd, zEnd - ay * headSize - az * headSize, cameraPos, zColor, thickness);
 	}
 
-	/// Draws the scale gizmo using DebugDraw overlay lines.
-	public void DrawScale(DebugDraw debugDraw)
+	/// Draws the scale gizmo as thick screen-facing ribbons with cube handles.
+	public void DrawScale(DebugDraw debugDraw, Vector3 cameraPos)
 	{
 		let axisLen = Size;
 		let boxSize = Size * 0.08f;
+		let thickness = Size * 0.03f;
 
-		debugDraw.DrawLineOverlay(Position, Position + AxisX * axisLen, GetAxisColor(.X));
-		debugDraw.DrawLineOverlay(Position, Position + AxisY * axisLen, GetAxisColor(.Y));
-		debugDraw.DrawLineOverlay(Position, Position + AxisZ * axisLen, GetAxisColor(.Z));
+		DrawThickLineOverlay(debugDraw, Position, Position + AxisX * axisLen, cameraPos, GetAxisColor(.X), thickness);
+		DrawThickLineOverlay(debugDraw, Position, Position + AxisY * axisLen, cameraPos, GetAxisColor(.Y), thickness);
+		DrawThickLineOverlay(debugDraw, Position, Position + AxisZ * axisLen, cameraPos, GetAxisColor(.Z), thickness);
 
 		DrawBoxOverlay(debugDraw, Position + AxisX * axisLen, boxSize, GetAxisColor(.X));
 		DrawBoxOverlay(debugDraw, Position + AxisY * axisLen, boxSize, GetAxisColor(.Y));
 		DrawBoxOverlay(debugDraw, Position + AxisZ * axisLen, boxSize, GetAxisColor(.Z));
 	}
 
-	/// Draws the rotate gizmo (three rings) using DebugDraw overlay lines.
-	public void DrawRotate(DebugDraw debugDraw)
+	/// Draws the rotate gizmo as three thick rings.
+	public void DrawRotate(DebugDraw debugDraw, Vector3 cameraPos)
 	{
 		let radius = Size * 0.8f;
-		let segments = 32;
+		let segments = 48;
+		let thickness = Size * 0.03f;
 
 		// X rotation ring (plane perpendicular to oriented X)
-		debugDraw.DrawCircleOverlay(Position, AxisY, AxisZ, radius, GetAxisColor(.X), segments);
+		DrawThickCircleOverlay(debugDraw, Position, AxisY, AxisZ, radius, cameraPos, GetAxisColor(.X), thickness, segments);
 		// Y rotation ring (plane perpendicular to oriented Y)
-		debugDraw.DrawCircleOverlay(Position, AxisX, AxisZ, radius, GetAxisColor(.Y), segments);
+		DrawThickCircleOverlay(debugDraw, Position, AxisX, AxisZ, radius, cameraPos, GetAxisColor(.Y), thickness, segments);
 		// Z rotation ring (plane perpendicular to oriented Z)
-		debugDraw.DrawCircleOverlay(Position, AxisX, AxisY, radius, GetAxisColor(.Z), segments);
+		DrawThickCircleOverlay(debugDraw, Position, AxisX, AxisY, radius, cameraPos, GetAxisColor(.Z), thickness, segments);
 	}
 
 	/// Draws the gizmo based on the current mode.
-	public void Draw(DebugDraw debugDraw, GizmoMode mode)
+	public void Draw(DebugDraw debugDraw, GizmoMode mode, Vector3 cameraPos)
 	{
 		switch (mode)
 		{
-		case .Translate: DrawTranslate(debugDraw);
-		case .Rotate: DrawRotate(debugDraw);
-		case .Scale: DrawScale(debugDraw);
+		case .Translate: DrawTranslate(debugDraw, cameraPos);
+		case .Rotate: DrawRotate(debugDraw, cameraPos);
+		case .Scale: DrawScale(debugDraw, cameraPos);
+		}
+	}
+
+	// ==================== Thick-line helpers ====================
+
+	/// Draws a line as a screen-facing quad. The quad lies in the plane
+	/// formed by the line direction and the view direction (line crossed
+	/// with view), so the ribbon always faces the camera. Uses overlay
+	/// triangles so the gizmo remains visible through geometry.
+	private static void DrawThickLineOverlay(DebugDraw debugDraw, Vector3 from, Vector3 to,
+		Vector3 cameraPos, Color color, float thickness)
+	{
+		let lineDir = to - from;
+		if (lineDir.LengthSquared() < 0.0001f) return;
+
+		let mid = (from + to) * 0.5f;
+		let viewDir = mid - cameraPos;
+
+		// `side` is perpendicular to both the line and the view direction,
+		// which makes the resulting quad face the camera. When the line
+		// points directly at the camera the cross product collapses; fall
+		// back to skipping the segment (the line would have zero apparent
+		// thickness anyway).
+		var side = Vector3.Cross(lineDir, viewDir);
+		let sideLenSq = side.LengthSquared();
+		if (sideLenSq < 0.0001f) return;
+
+		side *= (thickness * 0.5f / Math.Sqrt(sideLenSq));
+
+		debugDraw.DrawQuad(from - side, from + side, to + side, to - side, color, true);
+	}
+
+	/// Draws a circle in the plane spanned by u and v using thick segments.
+	private static void DrawThickCircleOverlay(DebugDraw debugDraw, Vector3 center, Vector3 u, Vector3 v,
+		float radius, Vector3 cameraPos, Color color, float thickness, int32 segments)
+	{
+		let uN = Vector3.Normalize(u);
+		let vN = Vector3.Normalize(v);
+		Vector3 prev = center + uN * radius;
+		for (int32 i = 1; i <= segments; i++)
+		{
+			let t = (float)i / (float)segments * Math.PI_f * 2.0f;
+			let point = center + uN * (radius * Math.Cos(t)) + vN * (radius * Math.Sin(t));
+			DrawThickLineOverlay(debugDraw, prev, point, cameraPos, color, thickness);
+			prev = point;
 		}
 	}
 
@@ -434,12 +521,13 @@ class TransformGizmo
 		return ray.Position + ray.Direction * t;
 	}
 
-	/// Gets the rotation angle around an oriented axis from a pick ray.
-	private float GetOrientedRotateAngle(Ray ray, GizmoAxis axis, Vector3 center)
+	/// Computes the polar angle of the pick-ray hit point on the rotation
+	/// plane described by `normal` + `u`/`v` basis. Callers should capture
+	/// the basis once (at BeginDrag) and reuse it across the drag so the
+	/// returned angle is measured in a fixed frame.
+	private static float ComputeRotateAngle(Ray ray, Vector3 center,
+		Vector3 normal, Vector3 u, Vector3 v)
 	{
-		let normal = GetAxisDirection(axis);
-
-		// Intersect ray with the rotation plane
 		let denom = Vector3.Dot(normal, ray.Direction);
 		if (Math.Abs(denom) < 0.0001f)
 			return 0;
@@ -447,16 +535,6 @@ class TransformGizmo
 		let t = Vector3.Dot(normal, center - ray.Position) / denom;
 		let hitPoint = ray.Position + ray.Direction * t;
 		let offset = hitPoint - center;
-
-		// Get two perpendicular axes in the plane for atan2
-		Vector3 u, v;
-		switch (axis)
-		{
-		case .X: u = AxisY; v = AxisZ;
-		case .Y: u = AxisZ; v = AxisX;
-		case .Z: u = AxisX; v = AxisY;
-		default: return 0;
-		}
 
 		return (float)Math.Atan2(Vector3.Dot(offset, v), Vector3.Dot(offset, u));
 	}

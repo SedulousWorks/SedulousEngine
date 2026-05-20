@@ -1,5 +1,5 @@
 int32 %type {0}
-float %ratio {0.699999988}
+float %ratio {0.5}
 int32 %direction {1}
 Obj_ %first {
 	int32 %type {1}

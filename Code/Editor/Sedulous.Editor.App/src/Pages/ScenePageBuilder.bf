@@ -354,7 +354,7 @@ static class ScenePageBuilder
 					let camDist = Vector3.Distance(editorCamera.Position, gizmo.Position);
 					gizmo.Size = camDist * 0.15f;
 
-					gizmo.Draw(pipelineDbg, page.GizmoMode);
+					gizmo.Draw(pipelineDbg, page.GizmoMode, editorCamera.Position);
 				}
 
 				// Component gizmo renderers (light wireframes, camera frustums, etc.)
