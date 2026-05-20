@@ -33,6 +33,7 @@ class SceneEditorPage : IEditorPage, IResourceChangeListener
 	// Viewport state
 	private GizmoMode mGizmoMode = .Translate;
 	private bool mWorldSpace = false;
+	private bool mShowGrid = true;
 
 	public GizmoMode GizmoMode
 	{
@@ -44,6 +45,12 @@ class SceneEditorPage : IEditorPage, IResourceChangeListener
 	{
 		get => mWorldSpace;
 		set => mWorldSpace = value;
+	}
+
+	public bool ShowGrid
+	{
+		get => mShowGrid;
+		set => mShowGrid = value;
 	}
 
 	// Per-scene entity selection

@@ -13,6 +13,7 @@ static class EditorIcons
 	public static SVGDrawable ScaleIcon;
 	public static SVGDrawable WorldSpaceIcon;
 	public static SVGDrawable LocalSpaceIcon;
+	public static SVGDrawable GridIcon;
 
 	public static void Initialize()
 	{
@@ -21,6 +22,7 @@ static class EditorIcons
 		ScaleIcon = SVGDrawable.FromString(Scale);
 		WorldSpaceIcon = SVGDrawable.FromString(WorldSpace);
 		LocalSpaceIcon = SVGDrawable.FromString(LocalSpace);
+		GridIcon = SVGDrawable.FromString(Grid);
 	}
 
 	public static void Shutdown()
@@ -30,6 +32,7 @@ static class EditorIcons
 		delete ScaleIcon; ScaleIcon = null;
 		delete WorldSpaceIcon; WorldSpaceIcon = null;
 		delete LocalSpaceIcon; LocalSpaceIcon = null;
+		delete GridIcon; GridIcon = null;
 	}
 
 	/// Translate gizmo - four arrows pointing outward from center.
@@ -75,6 +78,17 @@ static class EditorIcons
 		<svg viewBox="0 0 24 24">
 		  <path d="M12 2L4 7v10l8 5 8-5V7l-8-5z" fill="none" stroke="#E0E0E0" stroke-width="1.5" stroke-linejoin="round"/>
 		  <path d="M12 22V12M4 7l8 5 8-5" fill="none" stroke="#E0E0E0" stroke-width="1" stroke-linejoin="round"/>
+		</svg>
+		""";
+
+	/// Debug grid - 4x4 grid pattern.
+	public static readonly String Grid = """
+		<svg viewBox="0 0 24 24">
+		  <rect x="3" y="3" width="18" height="18" fill="none" stroke="#E0E0E0" stroke-width="1.4"/>
+		  <line x1="9"  y1="3" x2="9"  y2="21" stroke="#E0E0E0" stroke-width="1"/>
+		  <line x1="15" y1="3" x2="15" y2="21" stroke="#E0E0E0" stroke-width="1"/>
+		  <line x1="3" y1="9"  x2="21" y2="9"  stroke="#E0E0E0" stroke-width="1"/>
+		  <line x1="3" y1="15" x2="21" y2="15" stroke="#E0E0E0" stroke-width="1"/>
 		</svg>
 		""";
 }

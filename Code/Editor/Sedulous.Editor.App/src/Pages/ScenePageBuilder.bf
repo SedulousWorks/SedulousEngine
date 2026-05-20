@@ -7,6 +7,7 @@ using Sedulous.RHI;
 using Sedulous.VG.Renderer;
 using Sedulous.Engine.Core;
 using Sedulous.Renderer;
+using Sedulous.Renderer.Debug;
 using Sedulous.Engine.Render;
 using Sedulous.UI.Viewport;
 using Sedulous.Shell.Input;
@@ -264,6 +265,14 @@ static class ScenePageBuilder
 			btn.SetText(val ? "World" : "Local");
 		});
 
+		toolbar.AddSeparator();
+
+		let gridBtn = toolbar.AddToggle("Grid");
+		if (EditorIcons.GridIcon != null)
+			gridBtn.SetIcon(new (ctx, rect) => { EditorIcons.GridIcon.Draw(ctx, rect); });
+		gridBtn.IsChecked = page.ShowGrid;
+		gridBtn.OnCheckedChanged.Add(new (btn, val) => { page.ShowGrid = val; });
+
 		container.AddView(toolbar, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Wrap
 		});
@@ -323,6 +332,10 @@ static class ScenePageBuilder
 			{
 				let pipeline = sceneRenderer.GetPipeline(capturedScene);
 				let pipelineDbg = (pipeline != null) ? pipeline.DebugDraw : sceneRenderer.RenderContext.DebugDraw;
+
+				// World-XZ debug grid (toggled via the viewport toolbar)
+				if (page.ShowGrid)
+					DrawSceneGrid(pipelineDbg);
 
 				// Transform gizmo for selected entity
 				let selected = page.PrimarySelection;
@@ -731,5 +744,34 @@ static class ScenePageBuilder
 		}
 
 		menu.Show(ctx, screenX, screenY);
+	}
+
+	/// World-XZ floor grid anchored at the world origin. Mirrors the model
+	/// viewer's grid: depth-tested (geometry occludes), no camera follow.
+	/// The two lines passing through the origin are colored to match the
+	/// gizmo (X axis red at Z=0, Z axis blue at X=0). Drawn through the
+	/// per-pipeline DebugDraw so it only appears in this viewport.
+	private static void DrawSceneGrid(DebugDraw debugDraw)
+	{
+		const float gridSize = 50.0f; // half-extent in metres
+		const float gridStep = 1.0f;
+		let gridColor = Color(80, 80, 80);
+		let xAxisColor = Color(180, 60, 60);  // Z=0 line - runs along X
+		let zAxisColor = Color(60, 80, 180);  // X=0 line - runs along Z
+
+		var x = -gridSize;
+		while (x <= gridSize)
+		{
+			let c = (Math.Abs(x) < 0.001f) ? zAxisColor : gridColor;
+			debugDraw.DrawLine(Vector3(x, 0, -gridSize), Vector3(x, 0, gridSize), c);
+			x += gridStep;
+		}
+		var z = -gridSize;
+		while (z <= gridSize)
+		{
+			let c = (Math.Abs(z) < 0.001f) ? xAxisColor : gridColor;
+			debugDraw.DrawLine(Vector3(-gridSize, 0, z), Vector3(gridSize, 0, z), c);
+			z += gridStep;
+		}
 	}
 }
