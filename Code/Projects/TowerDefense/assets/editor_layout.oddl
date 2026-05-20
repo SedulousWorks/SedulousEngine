@@ -1,31 +1,19 @@
 int32 %type {0}
-float %ratio {0.655213296}
+float %ratio {0.699999988}
 int32 %direction {1}
 Obj_ %first {
 	int32 %type {1}
 	Arr_ %panels {
-		int32 %_count {5}
+		int32 %_count {1}
 		Obj_ {
 			string %id {"page:project://gamescene.scene"}
 		}
-		Obj_ {
-			string %id {"page:project://prefabs/tower_cannon.prefab"}
-		}
-		Obj_ {
-			string %id {"page:project://prefabs/tower_catapult.prefab"}
-		}
-		Obj_ {
-			string %id {"page:project://prefabs/tower_turret.prefab"}
-		}
-		Obj_ {
-			string %id {"page:project://prefabs/tower_ballista.prefab"}
-		}
 	}
-	int32 %activeTab {1}
+	int32 %activeTab {0}
 }
 Obj_ %second {
 	int32 %type {0}
-	float %ratio {0.5}
+	float %ratio {0.711061835}
 	int32 %direction {0}
 	Obj_ %first {
 		int32 %type {1}

@@ -1,12 +1,12 @@
 uint64 %_type {13717371974708956927}
 int32 %_version {1}
-string %_id {"efc023a3-24e2-4175-9b25-a607863f33c2"}
+string %_id {"50546b89-9ee5-4110-b326-911f1904c2cd"}
 string %_name {"gamescene"}
 string %_sourcePath {"gamescene.scene"}
 Arr_ %Entities {
 	int32 %_count {174}
 	Obj_ {
-		string %Id {"5422063e-20c2-443c-815a-a4a053fe30fa"}
+		string %Id {"acb6f80e-49bd-4e3d-8d48-344a968ad041"}
 		string %Name {"Camera"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -43,7 +43,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"2a4b6d6b-4029-4a46-85fe-fc1fd8168bdb"}
+		string %Id {"13d6c855-6751-4d50-9e00-73382097e0d9"}
 		string %Name {"Sun"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -82,12 +82,13 @@ Arr_ %Entities {
 					bool %CastsShadows {true}
 					float %ShadowBias {0.00100000005}
 					float %ShadowNormalBias {0.0199999996}
+					uint32 %LayerMask {4294967295}
 				}
 			}
 		}
 	}
 	Obj_ {
-		string %Id {"1ad31386-08af-46f7-b4db-7c1de07e8c0b"}
+		string %Id {"459adb57-0833-45e0-8f34-b03412bf8daf"}
 		string %Name {"Tile_0_0"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -114,16 +115,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"52a191fa-30f1-438c-824f-8c6c39d24dfd"}
+						string %_id {"792efa83-110e-447c-9dfd-8208af171bd1"}
 						string %path {"project://resources/tile-spawn-round.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -132,7 +139,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"db32c6eb-b67d-4257-9280-649af3b43caf"}
+		string %Id {"f7e953e4-e259-4353-b2fd-19945316289e"}
 		string %Name {"Tile_1_0"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -159,16 +166,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -177,7 +190,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"bb2b0a4c-4819-4a5f-b441-15b8f815568e"}
+		string %Id {"be117a7f-4b2b-418d-9af8-c6a4adccd9e9"}
 		string %Name {"Tile_2_0"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -204,16 +217,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -222,7 +241,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"83845e3c-d8a7-40b7-857e-ac2e20a86593"}
+		string %Id {"e36fdca4-2701-4fd8-ad4b-76750de4b3ef"}
 		string %Name {"Tile_3_0"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -249,16 +268,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -267,7 +292,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"8e74b728-26c8-4420-83ae-19889eb96108"}
+		string %Id {"8ad16dcf-da50-40a3-9351-eb0806816e01"}
 		string %Name {"Tile_4_0"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -294,16 +319,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -312,7 +343,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"bf91ff5a-b1d6-4e8a-b4bd-e395ad260b3c"}
+		string %Id {"cbfb971c-cd6e-40ea-b799-f8ec3a2aeafe"}
 		string %Name {"Tile_5_0"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -339,16 +370,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -357,7 +394,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"152a971e-7b91-45aa-9571-241ddac48687"}
+		string %Id {"591d305f-ce65-4e79-a724-907d87e06e90"}
 		string %Name {"Tile_6_0"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -384,16 +421,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -402,7 +445,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"92292aed-4155-45cd-b6f1-05abf6a0c609"}
+		string %Id {"8c15f0bc-0c71-4698-a6de-228d80030779"}
 		string %Name {"Tile_7_0"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -429,16 +472,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -447,7 +496,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"6a651929-8e4a-4b3d-9d3d-340ff7a42e44"}
+		string %Id {"822e0880-1c22-4418-9c27-9dc66f4d0e99"}
 		string %Name {"Tile_8_0"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -474,16 +523,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -492,7 +547,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"b6fb7e07-78e3-4816-a917-c400a00ac43d"}
+		string %Id {"2cbade67-1dbf-4094-93c9-df400f5a9dfd"}
 		string %Name {"Tile_9_0"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -519,16 +574,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -537,7 +598,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"f6ac5bb1-6f34-468b-bca9-07df712743bc"}
+		string %Id {"18fce893-32ef-48d3-800e-ae6f51b58c8e"}
 		string %Name {"Tile_10_0"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -564,16 +625,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"cb0c8bc8-402e-4350-81b8-e0d4b1aced69"}
+						string %_id {"76b2a830-2002-432a-9446-e0b344aa1c55"}
 						string %path {"project://resources/tile-corner-round.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -582,7 +649,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"f64fb610-254a-42b4-a271-c7405c9a20d9"}
+		string %Id {"8c744250-0c3d-4237-b562-5ffee83f5be8"}
 		string %Name {"Tile_11_0"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -609,16 +676,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -627,7 +700,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"1523d7d2-0de0-4660-9ff8-dd3133b66f54"}
+		string %Id {"0db1139d-2ab3-4a70-a4eb-f72d76f14fba"}
 		string %Name {"Tile_0_1"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -654,16 +727,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -672,7 +751,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"22ed7962-5ca7-4fa9-9ef9-075d8871e627"}
+		string %Id {"3f776084-9650-487a-9901-8d9fda441207"}
 		string %Name {"Tile_1_1"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -699,16 +778,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -717,7 +802,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"a6b60b5c-97c1-49a1-a74d-73157074e656"}
+		string %Id {"8991c33e-c0ea-4e52-84bd-b6da0ba94eb8"}
 		string %Name {"Tile_2_1"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -744,16 +829,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -762,7 +853,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"01ebc4e9-d23f-447b-bd9d-30a881ea2b69"}
+		string %Id {"4c7d08a9-f519-4974-b261-89093af3108a"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -789,16 +880,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -807,7 +904,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"ef104a2c-57e7-4649-a33c-68f52ef12ef7"}
+		string %Id {"a2ba4421-c654-4a60-b0ff-60454597c4dc"}
 		string %Name {"Tile_3_1"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -834,16 +931,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -852,7 +955,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"5a80561d-0c5c-4cd2-9ab2-d739f0483886"}
+		string %Id {"b98b718c-ba37-4bc8-bb25-70abc808d64a"}
 		string %Name {"Tile_4_1"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -879,16 +982,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -897,7 +1006,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"ef456641-6400-48df-8ae0-ac2e27105422"}
+		string %Id {"72f680c4-3706-42ef-8e3c-6aef7c286270"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -924,16 +1033,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -942,7 +1057,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"33174035-904a-4ad9-af14-b91fcbc7e742"}
+		string %Id {"4f249599-d219-4979-a1fa-cbaca90c2193"}
 		string %Name {"Tile_5_1"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -969,16 +1084,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -987,7 +1108,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"0ba29955-50fb-4e91-a997-a326b31cb6f6"}
+		string %Id {"5d5d11ac-f217-476b-92be-74c7cc33a461"}
 		string %Name {"Tile_6_1"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1014,16 +1135,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1032,7 +1159,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"598a7885-3f2b-45e5-a77b-9baa2db98c3e"}
+		string %Id {"e9e280da-8848-482d-ade7-9e55cadfb38c"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1059,16 +1186,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1077,7 +1210,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"aa4a0c9e-a456-424d-b368-5a402747e375"}
+		string %Id {"6dce6322-60ab-46a4-9160-cef843d6c05b"}
 		string %Name {"Tile_7_1"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1104,16 +1237,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1122,7 +1261,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"6c56ee29-1377-4750-934d-254246e9f1a2"}
+		string %Id {"7c29fb67-9aab-4fd7-9d9f-184a5291016f"}
 		string %Name {"Tile_8_1"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1149,16 +1288,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1167,7 +1312,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"25ba0175-6e53-4220-8d97-62612ec591a5"}
+		string %Id {"b310a77c-7908-4c55-85d8-26089e3e054f"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1194,16 +1339,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1212,7 +1363,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"af620cd4-d44a-4ae6-8547-f3c3f7438a29"}
+		string %Id {"b96ceff8-0c8a-43ce-9721-daaca14f572d"}
 		string %Name {"Tile_9_1"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1239,16 +1390,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1257,7 +1414,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"b81214b7-e6b0-4b17-a1e8-5bcf3b8aa87d"}
+		string %Id {"ddb9ecba-3e74-497c-8f18-1122057814ec"}
 		string %Name {"Tile_10_1"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1284,16 +1441,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1302,7 +1465,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"77ee89ff-704a-4e1f-8901-8a61b48b9eb6"}
+		string %Id {"1af8dfe0-aa63-456a-a59e-710a2776181b"}
 		string %Name {"Tile_11_1"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1329,16 +1492,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"cd6e1eb6-b2fc-41b9-88b2-3c993c214bae"}
+						string %_id {"9d6e73ba-fe96-47d7-a731-5daaebb36d1a"}
 						string %path {"project://resources/tile-rock.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1347,7 +1516,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"e0772109-7a59-45bf-acb8-0be011986526"}
+		string %Id {"8e00f2e9-3ebc-492a-94e2-7d99629f7ca5"}
 		string %Name {"Tile_0_2"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1374,16 +1543,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"cd6e1eb6-b2fc-41b9-88b2-3c993c214bae"}
+						string %_id {"9d6e73ba-fe96-47d7-a731-5daaebb36d1a"}
 						string %path {"project://resources/tile-rock.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1392,7 +1567,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"e3a3c280-7aed-42b7-bef9-b0778230b91b"}
+		string %Id {"8526e1bb-c853-485c-831a-07ee7b8e4e21"}
 		string %Name {"Tile_1_2"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1419,16 +1594,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1437,7 +1618,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"2d785862-1c83-4443-adff-981989ad1277"}
+		string %Id {"7c09e38c-269f-427f-9eed-a4981bcfe9e1"}
 		string %Name {"Tile_2_2"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1464,16 +1645,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1482,7 +1669,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"361f6aef-ce80-428d-a5e4-f7e4f091271b"}
+		string %Id {"4081438f-41d6-4e82-b036-727f29c7b011"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1509,16 +1696,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1527,7 +1720,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"75d52cff-ac97-41d8-8c91-8a4a42350bd4"}
+		string %Id {"e0da56e8-f04f-4588-b5b5-ba36b0104d19"}
 		string %Name {"Tile_3_2"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1554,16 +1747,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1572,7 +1771,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"8ba83a20-b178-41de-862b-e5d29845d13d"}
+		string %Id {"c939aa6c-4f11-4da7-b6be-8e578f0766b4"}
 		string %Name {"Tile_4_2"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1599,16 +1798,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1617,7 +1822,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"002f5a74-abfa-48e2-945e-1146d4f5b697"}
+		string %Id {"288015f4-56d5-4258-b0b7-a746c672f394"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1644,16 +1849,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1662,7 +1873,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"4572ba20-20b6-4a8c-9837-8a6642d61e44"}
+		string %Id {"7e1ee75e-7bae-47c0-a0a3-dbc31b058a78"}
 		string %Name {"Tile_5_2"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1689,16 +1900,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1707,7 +1924,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"8d96fe64-260b-49b5-baf3-b38a216b3b78"}
+		string %Id {"4f5c3db2-4930-44e0-aba4-ab618e7ea414"}
 		string %Name {"Tile_6_2"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1734,16 +1951,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1752,7 +1975,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"14fb538e-44b0-47f1-be90-8f5a8a90ca59"}
+		string %Id {"ed716047-e38a-4f69-8ad2-9702d185ffac"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1779,16 +2002,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1797,7 +2026,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"bc78abb1-d5d3-46b0-bd5b-86fb141b8481"}
+		string %Id {"31e0bfb4-fb85-4a29-b074-8d8af9620025"}
 		string %Name {"Tile_7_2"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1824,16 +2053,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1842,7 +2077,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"230af069-5d15-4bb5-9685-37c2a2a6efd8"}
+		string %Id {"7498e69f-d467-472e-9d61-86f276d97db7"}
 		string %Name {"Tile_8_2"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1869,16 +2104,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1887,7 +2128,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"5b5cab57-6a0d-4898-8013-2260e37506d6"}
+		string %Id {"76101a79-03cc-4ef8-b708-a7c65cda51d7"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1914,16 +2155,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1932,7 +2179,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"96e10c6b-507d-4803-bfc4-f29c42af198c"}
+		string %Id {"6090f253-0e65-441b-9e09-21da902000e6"}
 		string %Name {"Tile_9_2"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -1959,16 +2206,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -1977,7 +2230,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"8c4ef02f-6062-4b47-8da9-942cd29057a6"}
+		string %Id {"12e390b5-e8b0-4af9-960e-9860663d8410"}
 		string %Name {"Tile_10_2"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2004,16 +2257,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2022,7 +2281,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"c1e05373-5fa6-44c9-8fc8-3dd29a465192"}
+		string %Id {"abe0624d-7422-471e-913e-bdf892cb8bfa"}
 		string %Name {"Tile_11_2"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2049,16 +2308,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2067,7 +2332,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"8cc036bb-5dcd-4d23-8868-4091e49d11af"}
+		string %Id {"4ea865f5-9dfc-4ef7-9d13-85d0592a115b"}
 		string %Name {"Tile_0_3"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2094,16 +2359,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2112,7 +2383,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"4de24966-01aa-4b55-9793-aa0e272f61f9"}
+		string %Id {"10a255af-51d0-4101-ba0d-ce224618cac7"}
 		string %Name {"Tile_1_3"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2139,16 +2410,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"cb0c8bc8-402e-4350-81b8-e0d4b1aced69"}
+						string %_id {"76b2a830-2002-432a-9446-e0b344aa1c55"}
 						string %path {"project://resources/tile-corner-round.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2157,7 +2434,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"39092aa4-3081-4b5f-92ed-d3c04c666f1b"}
+		string %Id {"8cddfdaf-495b-4ee4-804d-62277c56583d"}
 		string %Name {"Tile_2_3"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2184,16 +2461,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2202,7 +2485,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"be2cc83c-d781-4377-b315-4ad30885ac2d"}
+		string %Id {"4b3de885-4c55-4e12-91ea-fabc2d58e60c"}
 		string %Name {"Tile_3_3"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2229,16 +2512,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2247,7 +2536,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"a168ceed-439e-4c16-a045-471d18435657"}
+		string %Id {"516a2d58-bb77-410f-b95a-9083d39a95f2"}
 		string %Name {"Tile_4_3"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2274,16 +2563,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2292,7 +2587,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"54a499b0-f7f3-4aa2-9534-0621f90fb1c9"}
+		string %Id {"abee9ae0-8077-4aa6-bf2d-52e6fc8d80e0"}
 		string %Name {"Tile_5_3"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2319,16 +2614,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2337,7 +2638,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"a8dab5f4-8aed-48ad-ac1b-94a77d8df415"}
+		string %Id {"8cf74f26-201e-4ad2-af03-8b8b2ac83cea"}
 		string %Name {"Tile_6_3"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2364,16 +2665,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2382,7 +2689,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"d8491591-7ab0-4927-b345-29687fef5e68"}
+		string %Id {"90b71543-43cb-4c1f-95e4-8a91b446fc7b"}
 		string %Name {"Tile_7_3"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2409,16 +2716,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2427,7 +2740,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"f0c772cd-27ae-45e8-a116-130c7e56a195"}
+		string %Id {"5314bd99-dc33-4328-97de-e8d1dcfa459d"}
 		string %Name {"Tile_8_3"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2454,16 +2767,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2472,7 +2791,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"3b63b36b-6839-4ca6-b086-c3b3e2590285"}
+		string %Id {"a426107c-a0fd-49f5-a926-152833a4ddd9"}
 		string %Name {"Tile_9_3"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2499,16 +2818,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2517,7 +2842,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"5b07e098-0188-44f7-858c-edbeaa632d2a"}
+		string %Id {"a47b93b6-3100-4a89-b89b-71e47dad9589"}
 		string %Name {"Tile_10_3"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2544,16 +2869,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"cb0c8bc8-402e-4350-81b8-e0d4b1aced69"}
+						string %_id {"76b2a830-2002-432a-9446-e0b344aa1c55"}
 						string %path {"project://resources/tile-corner-round.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2562,7 +2893,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"d156b62e-25d4-4225-8dde-dcf2585132bc"}
+		string %Id {"f89dac7e-fb99-4340-9ab1-335bdfab5433"}
 		string %Name {"Tile_11_3"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2589,16 +2920,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2607,7 +2944,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"291b088c-fa58-47a7-a595-8706b5f18b25"}
+		string %Id {"3cabef6e-3063-4000-a746-4131b3e4f8e9"}
 		string %Name {"Tile_0_4"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2634,16 +2971,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2652,7 +2995,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"f3d6ba85-91ad-4500-8693-b8ad9ff7107e"}
+		string %Id {"4084b4d5-b41c-4f90-92d7-32843bb306eb"}
 		string %Name {"Tile_1_4"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2679,16 +3022,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2697,7 +3046,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"3a03aa39-b58b-4396-a3e4-200b2cbe29f1"}
+		string %Id {"22d88147-e7ec-4057-b7b4-b4fbbc92ed7b"}
 		string %Name {"Tile_2_4"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2724,16 +3073,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2742,7 +3097,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"6ebb8b80-c1e9-4141-a459-24ddc5698bcb"}
+		string %Id {"31e2f1e2-578c-4d6d-bd8c-74a333d82a31"}
 		string %Name {"Tile_3_4"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2769,16 +3124,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2787,7 +3148,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"d5d99495-ff56-48b7-9960-03464717c3b2"}
+		string %Id {"507ec8ae-98a7-40ff-b90f-c5ecfa5f6ea6"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2814,16 +3175,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2832,7 +3199,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"1d1b5b72-4931-403c-825d-949f1cf39983"}
+		string %Id {"8060c9f7-8f00-4ee1-83ec-2cea19c18c02"}
 		string %Name {"Tile_4_4"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2859,16 +3226,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2877,7 +3250,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"422e6189-5814-4624-98b7-7ff8aba9a0ab"}
+		string %Id {"a4ebb834-2101-4ae8-ba55-f15aeca0fb1b"}
 		string %Name {"Tile_5_4"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2904,16 +3277,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2922,7 +3301,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"44356763-bc72-47c4-ac38-c3ee6fc8389b"}
+		string %Id {"26a80dc1-7ee2-4bd9-a413-5f6f91caeb76"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2949,16 +3328,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -2967,7 +3352,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"893a12ea-efef-49dd-9219-baf9f18b4253"}
+		string %Id {"fd8b3d63-5ae4-4c25-a37b-28d4a1ecd9ab"}
 		string %Name {"Tile_6_4"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -2994,16 +3379,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3012,7 +3403,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"847d2bd5-c319-46b7-ab8a-b30bce99a551"}
+		string %Id {"cce7bf3f-d9e4-4923-824e-9eb1a5f9cd3e"}
 		string %Name {"Tile_7_4"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3039,16 +3430,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3057,7 +3454,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"8b825003-841b-4181-aa88-834124c01b0e"}
+		string %Id {"084ccc55-1ffd-4db9-b1c6-2205435bf9d6"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3084,16 +3481,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3102,7 +3505,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"3a7c80fa-a928-46a2-8c3c-be54792076ba"}
+		string %Id {"da6647e7-3d01-4839-b9ff-6d5512680368"}
 		string %Name {"Tile_8_4"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3129,16 +3532,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3147,7 +3556,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"a4681540-9fc1-46cb-bbaf-764f1d428ff6"}
+		string %Id {"41d23ad6-090c-4173-a488-e3114b30ffa2"}
 		string %Name {"Tile_9_4"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3174,16 +3583,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3192,7 +3607,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"ecd9b218-0ff2-41ff-91a4-1dcb97dc18e6"}
+		string %Id {"d09d2b98-6758-45b0-ab41-5d4355e63366"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3219,16 +3634,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3237,7 +3658,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"89a9506c-06ea-4947-9c5b-c35d54712b02"}
+		string %Id {"f3c96fb2-d3bd-43c5-b2c6-2423dbdb99fd"}
 		string %Name {"Tile_10_4"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3264,16 +3685,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3282,7 +3709,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"c84613e0-37c2-4d52-b047-3ae264aa227d"}
+		string %Id {"16598f16-c3e0-43cc-8285-3e094449388f"}
 		string %Name {"Tile_11_4"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3309,16 +3736,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"cd6e1eb6-b2fc-41b9-88b2-3c993c214bae"}
+						string %_id {"9d6e73ba-fe96-47d7-a731-5daaebb36d1a"}
 						string %path {"project://resources/tile-rock.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3327,7 +3760,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"7e94cc78-798e-4cc1-94a1-6ace4e24c6bb"}
+		string %Id {"bff6860e-ff9c-4464-835d-d329d9ef0e9d"}
 		string %Name {"Tile_0_5"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3354,16 +3787,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"cd6e1eb6-b2fc-41b9-88b2-3c993c214bae"}
+						string %_id {"9d6e73ba-fe96-47d7-a731-5daaebb36d1a"}
 						string %path {"project://resources/tile-rock.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3372,7 +3811,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"483b98d2-930c-4fa8-8375-ea0e827cde31"}
+		string %Id {"be5f1e51-2941-4059-897b-15f0298bfc90"}
 		string %Name {"Tile_1_5"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3399,16 +3838,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3417,7 +3862,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"89d34e4b-38b4-4fe3-9bc3-642443259fd9"}
+		string %Id {"50721445-c09e-4289-89f5-84cdb816d357"}
 		string %Name {"Tile_2_5"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3444,16 +3889,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3462,7 +3913,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"93385ad8-151f-41a4-8f85-a76749b26a07"}
+		string %Id {"518f362f-7cac-4fa1-b5d9-8f5594d58b90"}
 		string %Name {"Tile_3_5"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3489,16 +3940,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3507,7 +3964,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"0f66f049-daaf-48fe-aafd-1e3dff005fe8"}
+		string %Id {"ab3e3784-88b0-4bca-8c9c-65d8b1160816"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3534,16 +3991,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3552,7 +4015,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"4cee981e-6936-40d5-859b-0a6dc51aef09"}
+		string %Id {"7cc62a0d-942b-4530-a64c-88d85d6d5d67"}
 		string %Name {"Tile_4_5"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3579,16 +4042,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3597,7 +4066,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"7677e1bd-4fff-47dd-9421-e17835777612"}
+		string %Id {"53697f81-1111-49f9-9011-5bc84b77989a"}
 		string %Name {"Tile_5_5"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3624,16 +4093,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3642,7 +4117,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"f27d7b85-2c48-4605-9860-f75542254a89"}
+		string %Id {"21306259-b217-4726-a04b-346e7988e3ce"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3669,16 +4144,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3687,7 +4168,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"1faa0d85-e5f1-4745-84bb-e81cad9deef1"}
+		string %Id {"e3061e58-99a4-4bcd-861f-2da8cd86c204"}
 		string %Name {"Tile_6_5"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3714,16 +4195,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3732,7 +4219,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"bd9b884f-b18b-4727-bc16-a466209c4f83"}
+		string %Id {"deeb7916-94d6-4c1a-8c59-7526226e9faf"}
 		string %Name {"Tile_7_5"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3759,16 +4246,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3777,7 +4270,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"57bb9964-4211-4747-a6e3-c8327ba655c6"}
+		string %Id {"7e8f6a3b-2cc2-4ff5-a847-bee528371df5"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3804,16 +4297,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3822,7 +4321,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"8ff1ca53-0057-45ef-a902-ac7ac5ab898a"}
+		string %Id {"473cfa6a-aa1c-48e8-a2f4-d3b925396d7e"}
 		string %Name {"Tile_8_5"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3849,16 +4348,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3867,7 +4372,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"b4df627b-b7e2-4eac-b78c-7172c146c019"}
+		string %Id {"da07a4fe-5c11-4700-bfba-a130f6b90297"}
 		string %Name {"Tile_9_5"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3894,16 +4399,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3912,7 +4423,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"112ff552-0019-4948-9cc5-85650249943f"}
+		string %Id {"c5c2c44e-505b-4bc2-b9d5-45215855a855"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3939,16 +4450,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -3957,7 +4474,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"520844f0-b4bd-42c1-9e99-7b80a4b9d37a"}
+		string %Id {"c3f0d78d-c4bd-4f20-a5be-e161c9de1215"}
 		string %Name {"Tile_10_5"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -3984,16 +4501,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4002,7 +4525,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"9ced01c0-1494-4170-aa0b-20a7f435862a"}
+		string %Id {"8d395212-53aa-458b-a4e5-7becbc86f770"}
 		string %Name {"Tile_11_5"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4029,16 +4552,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4047,7 +4576,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"23a0d808-099c-4c6a-bd79-877f3bf8149b"}
+		string %Id {"dfbd39c7-4484-4482-a45d-5f4178c9ec8a"}
 		string %Name {"Tile_0_6"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4074,16 +4603,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4092,7 +4627,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"ade8a632-e32f-4ffd-8894-3517ac8ed38d"}
+		string %Id {"2dea6bb5-e254-492a-8d98-facad6dab6d9"}
 		string %Name {"Tile_1_6"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4119,16 +4654,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"cb0c8bc8-402e-4350-81b8-e0d4b1aced69"}
+						string %_id {"76b2a830-2002-432a-9446-e0b344aa1c55"}
 						string %path {"project://resources/tile-corner-round.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4137,7 +4678,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"5e5b02f1-9556-43ff-ad1c-c6d886f02ddc"}
+		string %Id {"b885c458-a0ae-4014-8926-ef061bc6a32f"}
 		string %Name {"Tile_2_6"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4164,16 +4705,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4182,7 +4729,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"be55c1c0-724d-4326-9968-b2270cbdf540"}
+		string %Id {"ec8b85a4-f379-4639-9f42-8dd2eb32833b"}
 		string %Name {"Tile_3_6"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4209,16 +4756,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4227,7 +4780,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"35776ed7-3f6a-4c60-bd40-8e02187355c8"}
+		string %Id {"b4716c0e-aaf2-4c29-a604-6ed39185b448"}
 		string %Name {"Tile_4_6"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4254,16 +4807,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4272,7 +4831,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"43977d0a-e631-4855-9300-c9ae7bddaa48"}
+		string %Id {"5e668241-722c-42d6-a9cf-7822f4f0f7ac"}
 		string %Name {"Tile_5_6"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4299,16 +4858,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4317,7 +4882,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"497d6ac7-7605-4dfe-a289-71f8b7c36776"}
+		string %Id {"cdcd4efd-a9d5-4784-8be2-be766d44e91f"}
 		string %Name {"Tile_6_6"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4344,16 +4909,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4362,7 +4933,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"d45f9416-48c5-4bc3-96b5-72bcdfca5a36"}
+		string %Id {"64b0fde4-bf6b-4c38-b9a6-26cfc0656417"}
 		string %Name {"Tile_7_6"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4389,16 +4960,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4407,7 +4984,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"695b5d76-f9d7-4df4-a259-585f6015450e"}
+		string %Id {"47acce1a-77f9-4d2b-b76d-8d2314b36872"}
 		string %Name {"Tile_8_6"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4434,16 +5011,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4452,7 +5035,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"953274f0-3ff0-4c72-81f0-19cf6e71d18e"}
+		string %Id {"100c8b05-0c29-48c8-879a-fdf3c65b29ad"}
 		string %Name {"Tile_9_6"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4479,16 +5062,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4497,7 +5086,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"3893240b-aae9-4d59-9bc1-5defb03e926b"}
+		string %Id {"ca19ccb8-ca91-4e52-9d8d-6abf5f1902f1"}
 		string %Name {"Tile_10_6"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4524,16 +5113,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"cb0c8bc8-402e-4350-81b8-e0d4b1aced69"}
+						string %_id {"76b2a830-2002-432a-9446-e0b344aa1c55"}
 						string %path {"project://resources/tile-corner-round.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4542,7 +5137,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"d8935a84-298c-4cde-a29b-5a6d2e72b87a"}
+		string %Id {"e3d7acf1-c2c3-4b8d-8550-60cec3cc7d25"}
 		string %Name {"Tile_11_6"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4569,16 +5164,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4587,7 +5188,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"357b61de-f6f2-4e69-92ee-7442e0f9fc9d"}
+		string %Id {"b9f02c18-389e-48f5-88fc-255e1613f912"}
 		string %Name {"Tile_0_7"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4614,16 +5215,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4632,7 +5239,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"18db6725-337b-42e7-8fb8-a23f85202e65"}
+		string %Id {"f833b802-1bfe-41f8-ae8b-fef54905cb26"}
 		string %Name {"Tile_1_7"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4659,16 +5266,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4677,7 +5290,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"1ec5504a-2e9c-418b-91d0-892b70ddd608"}
+		string %Id {"48e1227e-652e-4cbd-83c3-9f09d158e58f"}
 		string %Name {"Tile_2_7"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4704,16 +5317,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4722,7 +5341,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"f2424cb7-1c65-408d-bab1-49e69dec7e29"}
+		string %Id {"482422c6-21e6-4a75-88f2-064ec0f86063"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4749,16 +5368,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4767,7 +5392,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"68e79704-be68-4501-8017-1c0d505a0071"}
+		string %Id {"8a31c8e6-99ee-4570-ab5c-79a23f65db01"}
 		string %Name {"Tile_3_7"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4794,16 +5419,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4812,7 +5443,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"c1999946-9bed-4bf0-8a19-61f9d3cfd76b"}
+		string %Id {"8b60f3d4-ddc3-49e1-9854-3e98aa8d0606"}
 		string %Name {"Tile_4_7"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4839,16 +5470,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4857,7 +5494,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"07c0fb10-ed37-4884-8c08-caac76ac14cb"}
+		string %Id {"55b4294e-87f1-46ea-a559-86a1e834556e"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4884,16 +5521,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4902,7 +5545,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"9e6890d5-7c2b-47f9-845d-37b4a03b8e00"}
+		string %Id {"65087a04-52d0-4c9a-b58c-0a87edcbc3a2"}
 		string %Name {"Tile_5_7"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4929,16 +5572,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4947,7 +5596,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"b97569bf-d017-4e4d-a852-25ff3e476c58"}
+		string %Id {"ce8214e3-d8ec-49ef-9356-13e58ed3c343"}
 		string %Name {"Tile_6_7"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -4974,16 +5623,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -4992,7 +5647,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"51390174-0464-444a-9b47-bdb6424861fd"}
+		string %Id {"b00be381-8bfd-4b30-816d-f44e290e6532"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5019,16 +5674,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5037,7 +5698,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"fd7fbb37-7589-46da-aac8-6ff3430dc531"}
+		string %Id {"03b49a99-e226-4e10-9993-74f3c16b018f"}
 		string %Name {"Tile_7_7"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5064,16 +5725,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5082,7 +5749,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"800e2e8a-9ea0-4403-8f25-23569f52c43a"}
+		string %Id {"1f63c1b6-980e-4f3a-8e72-677a0f8c3b81"}
 		string %Name {"Tile_8_7"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5109,16 +5776,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5127,7 +5800,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"b8fa6a1b-906a-492f-be2c-e14e606eaf08"}
+		string %Id {"3ba82cfc-843e-4743-ac25-96c3181e72c7"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5154,16 +5827,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5172,7 +5851,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"457fcce5-8503-4baf-a75f-dc591cb7c53e"}
+		string %Id {"c325960f-5f4e-4446-b445-41dac40d6987"}
 		string %Name {"Tile_9_7"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5199,16 +5878,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5217,7 +5902,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"1494f2c9-644b-4a45-a9de-9a884868a36c"}
+		string %Id {"0ec125e9-a74b-42f9-8bc9-09e5eb03ce9f"}
 		string %Name {"Tile_10_7"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5244,16 +5929,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5262,7 +5953,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"59772018-51c6-492a-ba8e-3f8927342b1e"}
+		string %Id {"03d90892-19a3-436f-b0c9-de9fd66940b4"}
 		string %Name {"Tile_11_7"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5289,16 +5980,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"cd6e1eb6-b2fc-41b9-88b2-3c993c214bae"}
+						string %_id {"9d6e73ba-fe96-47d7-a731-5daaebb36d1a"}
 						string %path {"project://resources/tile-rock.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5307,7 +6004,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"d539902e-602f-4617-8bd3-a82f98a354df"}
+		string %Id {"7eff364b-6506-4c86-b501-340158dfe0ac"}
 		string %Name {"Tile_0_8"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5334,16 +6031,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"cd6e1eb6-b2fc-41b9-88b2-3c993c214bae"}
+						string %_id {"9d6e73ba-fe96-47d7-a731-5daaebb36d1a"}
 						string %path {"project://resources/tile-rock.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5352,7 +6055,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"82da2d4d-a3aa-4476-b66c-2cd67cd712af"}
+		string %Id {"331568a9-e1a2-46f0-81c0-ab1d22d1252d"}
 		string %Name {"Tile_1_8"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5379,16 +6082,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5397,7 +6106,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"a2cdb1a5-f6c0-4dec-bb7a-f340953fb482"}
+		string %Id {"f35219c2-4ede-4cef-8fd2-f5c09f00e314"}
 		string %Name {"Tile_2_8"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5424,16 +6133,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5442,7 +6157,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"17fcf73c-5832-4914-8467-521a216ce20b"}
+		string %Id {"cd38d0c9-c624-4032-9391-540b35ea2896"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5469,16 +6184,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5487,7 +6208,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"e11544b8-bda7-4a7c-9ae7-acff06e2d811"}
+		string %Id {"c3dcd510-e290-40ee-9136-165b2715f7c4"}
 		string %Name {"Tile_3_8"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5514,16 +6235,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5532,7 +6259,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"077f3db6-e171-480c-8080-7614704ec51c"}
+		string %Id {"db7f9a38-2326-4930-ac81-96e8a45f435d"}
 		string %Name {"Tile_4_8"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5559,16 +6286,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5577,7 +6310,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"ea67907c-7711-4dc9-a821-187fe553abd5"}
+		string %Id {"0b99cefb-25c7-4dcb-ada3-2f826070395d"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5604,16 +6337,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5622,7 +6361,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"93b50ece-6279-48cd-baff-12b7636b888f"}
+		string %Id {"09112230-b1ef-42e3-83c1-84a973553ba0"}
 		string %Name {"Tile_5_8"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5649,16 +6388,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5667,7 +6412,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"337a4ddb-d972-411d-a2b3-0132e0957e03"}
+		string %Id {"fc16dc80-6400-44ab-bdfb-1bdeeadd5212"}
 		string %Name {"Tile_6_8"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5694,16 +6439,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5712,7 +6463,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"0d64503d-3daa-4e02-84f3-7adf32fc1abf"}
+		string %Id {"04651e34-1db5-4a26-87c8-2996a3a4f81c"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5739,16 +6490,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5757,7 +6514,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"c3ffdc86-ced1-4235-8ff8-dfaf02ec14c6"}
+		string %Id {"6dc52d25-5534-4366-a58c-c1be1903e4a9"}
 		string %Name {"Tile_7_8"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5784,16 +6541,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5802,7 +6565,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"8e53d8dc-21bc-4253-a96b-b01b4ec6e74b"}
+		string %Id {"01a0f71b-385b-42cc-9cb1-39f46bd17237"}
 		string %Name {"Tile_8_8"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5829,16 +6592,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5847,7 +6616,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"8f86e070-022e-4e9b-bf83-c829b64c9d11"}
+		string %Id {"54e02679-d826-4734-baeb-2c42b19d1448"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5874,16 +6643,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5892,7 +6667,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"6f656bfb-f49d-438a-892c-5dc22b1c6af0"}
+		string %Id {"c3393e04-b9cb-4053-be22-5bcfea19918c"}
 		string %Name {"Tile_9_8"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5919,16 +6694,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5937,7 +6718,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"63fa7864-9278-4286-8f2f-57ca7d00224f"}
+		string %Id {"844944c8-bb6c-402b-842a-07b93ef5d577"}
 		string %Name {"Tile_10_8"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -5964,16 +6745,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -5982,7 +6769,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"251dba14-2ee3-4a88-80b0-4be9838f2996"}
+		string %Id {"94782b06-5abc-44dc-ad24-08e1f142a1fd"}
 		string %Name {"Tile_11_8"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6009,16 +6796,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6027,7 +6820,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"4f1e4424-817e-4b4e-8a3b-3f1aeb6cd5f0"}
+		string %Id {"2fe08a29-0430-47bd-ba2b-019b0f5bb104"}
 		string %Name {"Tile_0_9"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6054,16 +6847,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6072,7 +6871,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"253f0f04-3359-48e1-9025-92e5014d6ba4"}
+		string %Id {"35fb8565-144e-4851-b68b-ba7e88c2eaa1"}
 		string %Name {"Tile_1_9"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6099,16 +6898,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"cb0c8bc8-402e-4350-81b8-e0d4b1aced69"}
+						string %_id {"76b2a830-2002-432a-9446-e0b344aa1c55"}
 						string %path {"project://resources/tile-corner-round.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6117,7 +6922,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"2500010c-dafe-4d0b-ad2b-45dc8fad4cc4"}
+		string %Id {"1aa4e172-7bb1-43fe-8485-f2ddbd963619"}
 		string %Name {"Tile_2_9"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6144,16 +6949,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6162,7 +6973,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"b97f45ff-8c33-4bf7-b298-98c3c676d180"}
+		string %Id {"da42166c-fb18-4323-a203-b6009c5bfbdf"}
 		string %Name {"Tile_3_9"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6189,16 +7000,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6207,7 +7024,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"ef4dc54e-58e7-45de-a55a-58e55cf4924e"}
+		string %Id {"8435490f-1d33-422c-b584-3eb998e35ad5"}
 		string %Name {"Tile_4_9"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6234,16 +7051,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6252,7 +7075,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"eb9829fc-99c3-4160-91a5-f5e7f9aa2180"}
+		string %Id {"c76a8712-2f57-4a71-893f-896a6649c669"}
 		string %Name {"Tile_5_9"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6279,16 +7102,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6297,7 +7126,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"ea975f76-9aab-46ac-a4ab-264224c36f3e"}
+		string %Id {"c43d72ee-c87e-463f-b2ea-d7bc679f9fd4"}
 		string %Name {"Tile_6_9"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6324,16 +7153,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6342,7 +7177,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"cb258234-749b-4dec-b029-9bcc649d1062"}
+		string %Id {"2fd87c46-2605-4263-ab58-731f97951010"}
 		string %Name {"Tile_7_9"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6369,16 +7204,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6387,7 +7228,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"78ef21fd-67de-40f6-993c-add526c25939"}
+		string %Id {"8b19976a-6000-4d4b-b8e8-499624cf5ee3"}
 		string %Name {"Tile_8_9"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6414,16 +7255,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6432,7 +7279,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"d86d8e17-a147-484b-8c92-ad0ca33414bd"}
+		string %Id {"a84b4761-ec6a-41b2-b143-52ced4d1db1e"}
 		string %Name {"Tile_9_9"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6459,16 +7306,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6477,7 +7330,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"e5c6784b-87e6-4477-87b1-d3a6b61936b1"}
+		string %Id {"4e0013b5-fed8-43de-ae22-012699de14ec"}
 		string %Name {"Tile_10_9"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6504,16 +7357,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"cb0c8bc8-402e-4350-81b8-e0d4b1aced69"}
+						string %_id {"76b2a830-2002-432a-9446-e0b344aa1c55"}
 						string %path {"project://resources/tile-corner-round.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6522,7 +7381,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"51df4141-bcb7-4176-9256-8c79441cc12f"}
+		string %Id {"acc59878-0709-4e09-9914-fb3310f1f190"}
 		string %Name {"Tile_11_9"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6549,16 +7408,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6567,7 +7432,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"0492464a-d8b5-49fd-aee6-a645990cb577"}
+		string %Id {"2c3e49c7-b82e-4a5a-ac30-a46758d9f2da"}
 		string %Name {"Tile_0_10"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6594,16 +7459,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6612,7 +7483,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"d78f8031-1ace-464a-a30c-013ac64e4807"}
+		string %Id {"5bc51429-b9a0-4cb3-89fa-f4dbba01eb1a"}
 		string %Name {"Tile_1_10"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6639,16 +7510,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"d04b523d-e099-471e-bb77-96b0ebbfd661"}
+						string %_id {"64b82bba-b88a-4a9a-a38a-c1dfb2f9e150"}
 						string %path {"project://resources/tile-straight.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6657,7 +7534,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"60aa5636-7e4b-4120-a8bd-675bcd36fbd3"}
+		string %Id {"2ddbfd1d-ce93-43f5-ad69-a76eace493d3"}
 		string %Name {"Tile_2_10"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6684,16 +7561,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6702,7 +7585,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"b8aa5d4a-cf43-48be-b58f-f701194ae078"}
+		string %Id {"1d0392b9-6b07-478d-b715-a77bc0471299"}
 		string %Name {"Tile_3_10"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6729,16 +7612,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6747,7 +7636,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"b3c39670-87ba-426b-bef0-2fae519388e6"}
+		string %Id {"e1a9dc48-8f87-4949-95a2-3e9a123d4167"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6774,16 +7663,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6792,7 +7687,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"c49862ba-2f94-461a-ad1c-6a24fede2231"}
+		string %Id {"d9c17772-2ac3-439a-9b4b-b971100701dd"}
 		string %Name {"Tile_4_10"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6819,16 +7714,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6837,7 +7738,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"8e3c5b9b-d351-4ed4-86df-fac8aa6e36cb"}
+		string %Id {"366a612d-20c9-4afd-adba-90727d6a4e54"}
 		string %Name {"Tile_5_10"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6864,16 +7765,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6882,7 +7789,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"f77f8c20-f680-4265-9d0e-24bb33f24aa3"}
+		string %Id {"02c5fb08-20e1-47ed-b793-d45aaf6b0dfe"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6909,16 +7816,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6927,7 +7840,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"3702915b-139e-4654-9a09-90edd1de6d86"}
+		string %Id {"4011dde7-b253-4020-9e26-823576702b7c"}
 		string %Name {"Tile_6_10"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6954,16 +7867,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -6972,7 +7891,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"b0ed5a2f-2c29-4b80-a739-a4ea0d423165"}
+		string %Id {"65466438-c3c2-461a-9619-cf8126123d22"}
 		string %Name {"Tile_7_10"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -6999,16 +7918,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -7017,7 +7942,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"5e7d0279-1b1c-42f3-b095-be5e71227cd7"}
+		string %Id {"3f893af6-3343-4f87-a219-bf8c76a00c84"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -7044,16 +7969,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -7062,7 +7993,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"85521340-8dfc-4eeb-8256-3454fab174e3"}
+		string %Id {"a4d3c2a8-e631-452e-9021-6403a2c486e5"}
 		string %Name {"Tile_8_10"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -7089,16 +8020,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -7107,7 +8044,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"3fc33f6f-7c96-4235-b8fd-63d5be893c20"}
+		string %Id {"2187506c-a7a7-4946-85dc-1edfb7ad2c43"}
 		string %Name {"Tile_9_10"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -7134,16 +8071,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -7152,7 +8095,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"67b91d63-b78d-422b-a484-ccdff6524147"}
+		string %Id {"c442a398-93af-49e8-95ad-b38d956ad00e"}
 		string %Name {"Marker"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -7179,16 +8122,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"2818c203-02f9-41f5-b1d9-377f7d2e8d54"}
+						string %_id {"43326c51-3b9a-4b7f-a977-dc09edf85998"}
 						string %path {"project://resources/selection-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -7197,7 +8146,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"b83cb735-f590-4cc3-9bb7-8a27bf5747b4"}
+		string %Id {"04a8cf97-c429-4f4e-acd6-69c468072583"}
 		string %Name {"Tile_10_10"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -7224,16 +8173,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -7242,7 +8197,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"ecd34485-abcb-4c49-8166-b3eed2003526"}
+		string %Id {"821d2b8d-248b-4f55-856c-5600f2e166ca"}
 		string %Name {"Tile_11_10"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -7269,16 +8224,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"cd6e1eb6-b2fc-41b9-88b2-3c993c214bae"}
+						string %_id {"9d6e73ba-fe96-47d7-a731-5daaebb36d1a"}
 						string %path {"project://resources/tile-rock.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -7287,7 +8248,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"1bb0edae-147a-4724-b594-a03f5f81c074"}
+		string %Id {"1e3ae682-e29a-4a3c-9d3e-6a227695dad6"}
 		string %Name {"Tile_0_11"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -7314,16 +8275,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"cd6e1eb6-b2fc-41b9-88b2-3c993c214bae"}
+						string %_id {"9d6e73ba-fe96-47d7-a731-5daaebb36d1a"}
 						string %path {"project://resources/tile-rock.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -7332,7 +8299,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"9a6398f0-37b3-4ffa-b361-422e655c946b"}
+		string %Id {"dee06c80-b439-4b40-b57e-0610a5f8e501"}
 		string %Name {"Tile_1_11"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -7359,16 +8326,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"8e443d45-80fe-47a8-8f7e-944e5b2847ab"}
+						string %_id {"e952be42-a3bd-4f59-8ccd-07fa0e8c12b8"}
 						string %path {"project://resources/tile-end-round.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -7377,7 +8350,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"2ec1f9f4-c865-417a-b178-6d076b7311c6"}
+		string %Id {"aee049ad-1938-48a4-ba98-8b857576c056"}
 		string %Name {"Tile_2_11"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -7404,16 +8377,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -7422,7 +8401,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"c333806a-491f-4fb6-8998-c246d1a3ac10"}
+		string %Id {"f6711b28-6bd7-4b56-b706-391f5130547b"}
 		string %Name {"Tile_3_11"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -7449,16 +8428,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -7467,7 +8452,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"ed060cc1-5df8-4431-bee3-9c039f7d2dac"}
+		string %Id {"b7b1faee-b026-4f92-9205-0149f17f88a2"}
 		string %Name {"Tile_4_11"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -7494,16 +8479,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -7512,7 +8503,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"c3917c2f-81cd-4654-9f3a-ae1faac7c284"}
+		string %Id {"3e2c6b03-5184-4702-ae89-6930887a1f9f"}
 		string %Name {"Tile_5_11"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -7539,16 +8530,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -7557,7 +8554,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"f89b02af-3c0b-4556-8ff1-122fb6b54eca"}
+		string %Id {"ef41969b-928f-4a19-90de-37df6dbab548"}
 		string %Name {"Tile_6_11"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -7584,16 +8581,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -7602,7 +8605,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"020cd4f5-f3f8-4b71-8630-485b766b4e6f"}
+		string %Id {"785e855a-d5f6-42ca-b1ee-88c6c7907809"}
 		string %Name {"Tile_7_11"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -7629,16 +8632,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -7647,7 +8656,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"0bec1730-76b9-433b-9b66-bc906b245238"}
+		string %Id {"de103722-2791-4d46-9292-d83a9f4b20e4"}
 		string %Name {"Tile_8_11"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -7674,16 +8683,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -7692,7 +8707,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"3d8c9b68-42a9-4e29-af7f-3702825046c4"}
+		string %Id {"c0e00363-02e2-4c77-bcce-1397b25190d4"}
 		string %Name {"Tile_9_11"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -7719,16 +8734,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -7737,7 +8758,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"a7fa33f4-2399-4fc9-9baf-8a571d51bd7f"}
+		string %Id {"6fc37db0-2ee3-4b7c-a7a0-5ca5c7498fd0"}
 		string %Name {"Tile_10_11"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -7764,16 +8785,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -7782,7 +8809,7 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"80c6f8ba-1c4d-4bcf-ba61-9eed90eb4b6c"}
+		string %Id {"2fb1afb2-72fc-4986-9446-67fd36a63224"}
 		string %Name {"Tile_11_11"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -7809,16 +8836,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f9265534-8211-4007-8ea0-42f07b50591a"}
+						string %_id {"7551d8c3-3d8a-4cb5-8df8-61deb0e2f56f"}
 						string %path {"project://resources/tile.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -7827,6 +8860,9 @@ Arr_ %Entities {
 		}
 	}
 }
+Arr_ %PrefabInstances {
+	int32 %_count {0}
+}
 Arr_ %Modules {
 	int32 %_count {1}
 	Obj_ {
@@ -7834,8 +8870,8 @@ Arr_ %Modules {
 		int32 %Version {1}
 		Obj_ %Data {
 			Obj_ %SkyTextureRef {
-				string %_id {"705c0bd8-b8e3-451c-8a19-7cb033cb1e1c"}
-				string %path {"builtin://skies/stylized_sky.texture"}
+				string %_id {"00000000-0000-0000-0000-000000000000"}
+				string %path {""}
 			}
 			float %SkyIntensity {1}
 			Obj_ %AmbientColor {

@@ -1,6 +1,6 @@
 uint64 %_type {8462204072068577150}
 int32 %_version {1}
-string %_id {"47db88f0-701b-4c46-a797-0395296d83ef"}
+string %_id {"27af05d4-e476-4ade-acc1-a2cd88815889"}
 string %_name {"weapon-turret"}
 string %_sourcePath {""}
 int32 %vertexCount {1022}

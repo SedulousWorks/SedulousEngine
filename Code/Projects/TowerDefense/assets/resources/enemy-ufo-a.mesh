@@ -1,6 +1,6 @@
 uint64 %_type {8462204072068577150}
 int32 %_version {1}
-string %_id {"18f3a570-68bb-4b47-baf7-ea7c4433aa31"}
+string %_id {"4d6cb4f3-cde1-47c2-ba5a-b48f90b957c3"}
 string %_name {"enemy-ufo-a"}
 string %_sourcePath {""}
 int32 %vertexCount {738}

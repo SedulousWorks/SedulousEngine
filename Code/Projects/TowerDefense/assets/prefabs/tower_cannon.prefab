@@ -1,15 +1,12 @@
 uint64 %_type {2260132839145735983}
-int32 %_version {1}
-string %_id {"bddfa1df-8384-47cb-aa8e-7dabc50b2bf9"}
+int32 %_version {2}
+string %_id {"3dbecaf8-cc0d-4af4-9cac-eaf7ab45c393"}
 string %_name {"tower_cannon"}
 string %_sourcePath {"prefabs/tower_cannon.prefab"}
-Arr_ %ExposedParameters {
-	int32 %_count {0}
-}
 Arr_ %Entities {
 	int32 %_count {3}
 	Obj_ {
-		string %Id {"f2350b79-96fc-442c-b645-013aaf28c1ac"}
+		string %Id {"24385e0d-d0e2-409a-9aef-7fc319d68ba6"}
 		string %Name {"TowerBase"}
 		bool %Active {true}
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
@@ -36,16 +33,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"c537489e-e14f-408f-9cfa-6336e07a7466"}
+						string %_id {"1c35299e-0900-43a6-934e-7be28fe3db38"}
 						string %path {"project://resources/tower-square-bottom-a.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -54,10 +57,10 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"765e757d-e7c7-49ef-946e-46010c4badb0"}
+		string %Id {"146da3b0-53ef-4119-88aa-fe2627409156"}
 		string %Name {"Weapon"}
 		bool %Active {true}
-		string %Parent {"f2350b79-96fc-442c-b645-013aaf28c1ac"}
+		string %Parent {"24385e0d-d0e2-409a-9aef-7fc319d68ba6"}
 		Obj_ %Position {
 			float %X {0}
 			float %Y {0.5}
@@ -81,16 +84,22 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					Obj_ %MeshRef {
-						string %_id {"f52ac18d-e8f1-44f1-aaf0-c5db75245774"}
+						string %_id {"fb4ad060-4f5f-4768-8b00-e36f8fb39657"}
 						string %path {"project://resources/weapon-cannon.mesh"}
 					}
 					bool %CastsShadows {true}
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
+					Obj_ %Color {
+						float %X {1}
+						float %Y {1}
+						float %Z {1}
+						float %W {1}
+					}
 					Arr_ %MaterialRefs {
 						int32 %_count {1}
 						Obj_ {
-							string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+							string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 							string %path {"project://resources/colormap.material"}
 						}
 					}
@@ -99,10 +108,10 @@ Arr_ %Entities {
 		}
 	}
 	Obj_ {
-		string %Id {"557961b9-9710-4be2-ab27-53131084ae50"}
+		string %Id {"ce2731d1-c726-4a2f-92c4-713021602296"}
 		string %Name {"ProjectileSpawnPoint"}
 		bool %Active {true}
-		string %Parent {"765e757d-e7c7-49ef-946e-46010c4badb0"}
+		string %Parent {"146da3b0-53ef-4119-88aa-fe2627409156"}
 		Obj_ %Position {
 			float %X {0}
 			float %Y {0.100000001}

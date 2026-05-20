@@ -1,6 +1,6 @@
 uint64 %_type {8462204072068577150}
 int32 %_version {1}
-string %_id {"d0c3cc9f-8ebf-4ea3-a149-ed81d333dfcd"}
+string %_id {"23f0f193-761b-44c4-836f-3c2592a63d2f"}
 string %_name {"weapon-ammo-boulder"}
 string %_sourcePath {""}
 int32 %vertexCount {152}

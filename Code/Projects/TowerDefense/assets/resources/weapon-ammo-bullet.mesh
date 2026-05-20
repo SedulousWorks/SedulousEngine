@@ -1,6 +1,6 @@
 uint64 %_type {8462204072068577150}
 int32 %_version {1}
-string %_id {"316bebe9-7671-4777-ab31-5d3e0150b615"}
+string %_id {"6c0618ea-5c5d-494f-99c1-e65cd3c98746"}
 string %_name {"weapon-ammo-bullet"}
 string %_sourcePath {""}
 int32 %vertexCount {260}

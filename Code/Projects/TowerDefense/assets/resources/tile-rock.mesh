@@ -1,6 +1,6 @@
 uint64 %_type {8462204072068577150}
 int32 %_version {1}
-string %_id {"cd6e1eb6-b2fc-41b9-88b2-3c993c214bae"}
+string %_id {"9d6e73ba-fe96-47d7-a731-5daaebb36d1a"}
 string %_name {"tile-rock"}
 string %_sourcePath {""}
 int32 %vertexCount {648}

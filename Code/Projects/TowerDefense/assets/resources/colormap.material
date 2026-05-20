@@ -1,6 +1,6 @@
 uint64 %_type {175488002581160416}
 int32 %_version {1}
-string %_id {"4f1ae153-3ae9-4cc5-babf-e965efe03762"}
+string %_id {"7dfde376-b2ef-4d70-ae59-848dabfc28df"}
 string %_name {"colormap"}
 string %_sourcePath {"colormap"}
 string %materialName {"colormap"}
@@ -121,7 +121,7 @@ int32 %textureCount {1}
 Obj_ %tex0 {
 	string %slot {"AlbedoMap"}
 	Obj_ %texture {
-		string %_id {"14d8322f-e775-43ba-a940-5fc30f156a92"}
+		string %_id {"2b92d234-fc4a-4bf0-bed5-6f8b81b91a94"}
 		string %path {"DiffuseColor_Texture.texture"}
 	}
 }

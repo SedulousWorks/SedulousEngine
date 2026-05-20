@@ -1,6 +1,6 @@
 uint64 %_type {126269861530532084}
 int32 %_version {1}
-string %_id {"14d8322f-e775-43ba-a940-5fc30f156a92"}
+string %_id {"2b92d234-fc4a-4bf0-bed5-6f8b81b91a94"}
 string %_name {"DiffuseColor_Texture"}
 string %_sourcePath {"c:\\DEV\\SedulousWorks\\Repos\\SedulousEngine\\Assets\\samples/models/kenney_tower-defense-kit/Models/FBX format\\Textures\\colormap.png"}
 int32 %shape {0}
@@ -14,4 +14,3 @@ float %anisotropy {16}
 int32 %width {512}
 int32 %height {512}
 int32 %format {3}
-string %binaryPath {"DiffuseColor_Texture.texture.bin"}
