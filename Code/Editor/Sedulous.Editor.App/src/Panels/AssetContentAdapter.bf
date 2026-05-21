@@ -500,7 +500,7 @@ class AssetContentAdapter : ListAdapterBase
 /// Implements IDragSource so items can be dragged from the asset browser.
 class AssetContentItemView : FlexLayout, IDragSource
 {
-	private Label mIconLabel;
+	private DrawableView mIconView;
 	private EditableLabel mNameLabel;
 	private Label mBadgeLabel;
 
@@ -516,11 +516,10 @@ class AssetContentItemView : FlexLayout, IDragSource
 		Spacing = 4;
 		Padding = .(4, 2, 4, 2);
 
-		// Icon (text-based for now, replaced with proper icons in Phase 4e)
-		mIconLabel = new Label();
-		mIconLabel.FontSize = 11;
-		mIconLabel.TextColor = .(140, 145, 165, 255);
-		AddView(mIconLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(20)), Height = .Match });
+		// Per-extension SVG icon (Phase 1 of thumbnail rollout - was a text
+		// label with `[M]` / `[T]` / etc. placeholders before).
+		mIconView = new DrawableView();
+		AddView(mIconView, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(20)), Height = .Match });
 
 		// Name (editable label - acts as plain label, switches to edit on BeginEdit)
 		mNameLabel = new EditableLabel();
@@ -541,18 +540,11 @@ class AssetContentItemView : FlexLayout, IDragSource
 		BoundItem = item;
 		mNameLabel.SetText(item.Name);
 
-		// Icon by type
-		if (item.IsFolder)
-		{
-			mIconLabel.SetText("[D]");
-			mIconLabel.TextColor = .(200, 180, 80, 255);
-		}
-		else
-		{
-			let icon = GetIconForExtension(item.Extension);
-			mIconLabel.SetText(icon);
-			mIconLabel.TextColor = GetIconColor(item.Extension);
-		}
+		// Icon by type. EditorIcons.GetForExtension dispatches on folder
+		// flag first, then extension, with an Unknown fallback for anything
+		// unrecognized. The returned drawable is owned by EditorIcons -
+		// we only hold a non-owning reference here.
+		mIconView.Drawable = EditorIcons.GetForExtension(item.Extension, item.IsFolder);
 
 		// Registry badge
 		if (item.IsRegistered)
@@ -602,28 +594,4 @@ class AssetContentItemView : FlexLayout, IDragSource
 	public void OnDragStarted(DragData data) { Opacity = 0.5f; }
 	public void OnDragCompleted(DragData data, DragDropEffects effect, bool cancelled) { Opacity = 1.0f; }
 
-	private StringView GetIconForExtension(StringView ext)
-	{
-		if (ext == ".mesh" || ext == ".staticmesh") return "[M]";
-		if (ext == ".skinnedmesh") return "[S]";
-		if (ext == ".material") return "[*]";
-		if (ext == ".texture") return "[T]";
-		if (ext == ".skeleton") return "[B]";
-		if (ext == ".animation") return "[A]";
-		if (ext == ".scene") return "[W]";
-		if (ext == ".png" || ext == ".jpg" || ext == ".hdr" || ext == ".tga") return "[I]";
-		if (ext == ".gltf" || ext == ".glb" || ext == ".fbx" || ext == ".obj") return "[3]";
-		return "[.]";
-	}
-
-	private Color GetIconColor(StringView ext)
-	{
-		if (ext == ".mesh" || ext == ".staticmesh" || ext == ".skinnedmesh") return .(100, 180, 220, 255);
-		if (ext == ".material") return .(220, 140, 60, 255);
-		if (ext == ".texture" || ext == ".png" || ext == ".jpg" || ext == ".hdr") return .(140, 200, 100, 255);
-		if (ext == ".skeleton" || ext == ".animation") return .(200, 120, 200, 255);
-		if (ext == ".scene") return .(220, 200, 80, 255);
-		if (ext == ".gltf" || ext == ".glb" || ext == ".fbx") return .(180, 180, 220, 255);
-		return .(140, 145, 165, 255);
-	}
 }

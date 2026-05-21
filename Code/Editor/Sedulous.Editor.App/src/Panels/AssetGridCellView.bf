@@ -8,8 +8,7 @@ using Sedulous.Core.Mathematics;
 /// Shows: icon/thumbnail area (top) + editable name label (bottom).
 class AssetGridCellView : ViewGroup
 {
-	private String mIconText = new .() ~ delete _;
-	private Color mIconColor = .(140, 145, 165, 255);
+	private SVGDrawable mIconDrawable;
 	private bool mIsFolder;
 	private bool mIsRegistered;
 	private bool mIsMissing;
@@ -49,23 +48,15 @@ class AssetGridCellView : ViewGroup
 		mIsRegistered = item.IsRegistered;
 		mIsMissing = item.IsMissing;
 
-		// Set name label color
 		if (mIsMissing)
 			mNameLabel.TextColor = .(200, 80, 80, 255);
 		else
 			mNameLabel.TextColor = .(200, 205, 220, 255);
 
-		if (item.IsFolder)
-		{
-			mIconText.Set("DIR");
-			mIconColor = .(200, 180, 80, 255);
-		}
-		else
-		{
-			let icon = GetIconForExtension(item.Extension);
-			mIconText.Set(icon);
-			mIconColor = GetIconColor(item.Extension);
-		}
+		// Per-extension SVG icon. EditorIcons returns a non-owning reference
+		// to a shared drawable, so rebinding during grid cell recycling is
+		// just a pointer copy (no per-bind allocation).
+		mIconDrawable = EditorIcons.GetForExtension(item.Extension, item.IsFolder);
 	}
 
 	protected override void OnMeasure(BoxConstraints constraints)
@@ -85,8 +76,6 @@ class AssetGridCellView : ViewGroup
 
 	public override void OnDraw(UIDrawContext ctx)
 	{
-		let iconFont = ctx.FontService?.GetFont(14);
-
 		// Thumbnail/icon area (top portion)
 		let nameHeight = 18.0f;
 		let iconAreaHeight = Height - nameHeight;
@@ -96,9 +85,17 @@ class AssetGridCellView : ViewGroup
 		let bgColor = ResolveStyleColor(.Background, .(35, 38, 48, 255));
 		ctx.VG.FillRoundedRect(iconBounds, 4, bgColor);
 
-		// Icon text centered in area
-		if (iconFont != null && mIconText.Length > 0)
-			ctx.VG.DrawText(mIconText, iconFont, iconBounds, .Center, .Middle, mIconColor);
+		// SVG icon centered in the icon area. The drawable is owned by
+		// EditorIcons; we just paint into our bounds.
+		if (mIconDrawable != null)
+		{
+			// Inset slightly so the icon doesn't touch the rounded corners.
+			let iconInset = 8.0f;
+			let drawBounds = RectangleF(
+				iconBounds.X + iconInset, iconBounds.Y + iconInset,
+				iconBounds.Width - iconInset * 2, iconBounds.Height - iconInset * 2);
+			mIconDrawable.Draw(ctx, drawBounds, GetControlState());
+		}
 
 		// Registry badge (small dot in top-right corner)
 		if (mIsRegistered)
@@ -109,30 +106,5 @@ class AssetGridCellView : ViewGroup
 
 		// Draw the name label (child view)
 		DrawChildren(ctx);
-	}
-
-	private StringView GetIconForExtension(StringView ext)
-	{
-		if (ext == ".mesh" || ext == ".staticmesh") return "MESH";
-		if (ext == ".skinnedmesh") return "SKIN";
-		if (ext == ".material") return "MAT";
-		if (ext == ".texture") return "TEX";
-		if (ext == ".skeleton") return "SKEL";
-		if (ext == ".animation") return "ANIM";
-		if (ext == ".scene") return "SCN";
-		if (ext == ".png" || ext == ".jpg" || ext == ".hdr" || ext == ".tga") return "IMG";
-		if (ext == ".gltf" || ext == ".glb" || ext == ".fbx" || ext == ".obj") return "3D";
-		return "FILE";
-	}
-
-	private Color GetIconColor(StringView ext)
-	{
-		if (ext == ".mesh" || ext == ".staticmesh" || ext == ".skinnedmesh") return .(100, 180, 220, 255);
-		if (ext == ".material") return .(220, 140, 60, 255);
-		if (ext == ".texture" || ext == ".png" || ext == ".jpg" || ext == ".hdr") return .(140, 200, 100, 255);
-		if (ext == ".skeleton" || ext == ".animation") return .(200, 120, 200, 255);
-		if (ext == ".scene") return .(220, 200, 80, 255);
-		if (ext == ".gltf" || ext == ".glb" || ext == ".fbx") return .(180, 180, 220, 255);
-		return .(140, 145, 165, 255);
 	}
 }
