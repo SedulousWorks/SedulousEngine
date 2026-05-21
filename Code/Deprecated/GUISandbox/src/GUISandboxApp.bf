@@ -29,7 +29,7 @@ class GUISandboxApp : Application
 	private MainShell mMainShell ~ delete _;
 
 	// Font service
-	private FontService mFontService ~ delete _;
+	private TrueTypeFontService mFontService ~ delete _;
 
 	// Drawing context
 	private DrawContext mDrawContext ~ delete _;
@@ -69,7 +69,7 @@ class GUISandboxApp : Application
 		Sedulous.Images.SDL.SDLImageLoader.Initialize();
 
 		// Initialize fonts
-		mFontService = new FontService();
+		mFontService = new TrueTypeFontService();
 
 		String fontPath = scope .();
 		GetAssetPath("fonts/roboto/Roboto-Regular.ttf", fontPath);

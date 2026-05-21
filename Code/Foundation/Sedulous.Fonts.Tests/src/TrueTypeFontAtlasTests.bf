@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using Sedulous.Fonts;
+using Sedulous.Fonts.IO;
 using Sedulous.Fonts.TTF;
 
 namespace Sedulous.Fonts.Tests;
@@ -33,11 +34,11 @@ class TrueTypeFontAtlasTests
 		TrueTypeFonts.Initialize();
 		defer TrueTypeFonts.Shutdown();
 
-		if (FontLoaderFactory.LoadFont(fontPath, .Default) case .Ok(let font))
+		if (FontParserFactory.ParseFromFile(fontPath, .Default) case .Ok(let font))
 		{
 			defer delete (Object)font;
 
-			if (FontLoaderFactory.CreateAtlas(font, .Default) case .Ok(let atlas))
+			if (FontAtlasBakerFactory.Bake(font, .Default) case .Ok(let atlas))
 			{
 				defer delete (Object)atlas;
 
@@ -62,11 +63,11 @@ class TrueTypeFontAtlasTests
 		TrueTypeFonts.Initialize();
 		defer TrueTypeFonts.Shutdown();
 
-		if (FontLoaderFactory.LoadFont(fontPath, .Default) case .Ok(let font))
+		if (FontParserFactory.ParseFromFile(fontPath, .Default) case .Ok(let font))
 		{
 			defer delete (Object)font;
 
-			if (FontLoaderFactory.CreateAtlas(font, .Default) case .Ok(let atlas))
+			if (FontAtlasBakerFactory.Bake(font, .Default) case .Ok(let atlas))
 			{
 				defer delete (Object)atlas;
 
@@ -94,11 +95,11 @@ class TrueTypeFontAtlasTests
 		TrueTypeFonts.Initialize();
 		defer TrueTypeFonts.Shutdown();
 
-		if (FontLoaderFactory.LoadFont(fontPath, .Default) case .Ok(let font))
+		if (FontParserFactory.ParseFromFile(fontPath, .Default) case .Ok(let font))
 		{
 			defer delete (Object)font;
 
-			if (FontLoaderFactory.CreateAtlas(font, .Default) case .Ok(let atlas))
+			if (FontAtlasBakerFactory.Bake(font, .Default) case .Ok(let atlas))
 			{
 				defer delete (Object)atlas;
 

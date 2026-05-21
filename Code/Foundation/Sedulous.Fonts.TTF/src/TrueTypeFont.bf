@@ -56,10 +56,124 @@ public class TrueTypeFont : IFont
 			mScale
 		);
 
-		// Set font name (simplified - could extract from font tables)
-		mFamilyName.Set("TrueType Font");
+		// Extract the font's family name from the name table. Tries the
+		// most common platform/encoding/language tuples in order and falls
+		// back to a generic placeholder if none yield a usable string.
+		ExtractFamilyName(&mFontInfo, mFamilyName);
 
 		return .Ok;
+	}
+
+	/// Populates `outName` with the font's family name read from the name
+	/// table. Tries (in order): Microsoft Unicode English, Microsoft
+	/// Unicode any-language, Macintosh Roman English. Each Microsoft
+	/// platform string is big-endian UTF-16 - we decode it to UTF-8.
+	/// Falls back to "TrueType Font" if no name can be extracted.
+	private static void ExtractFamilyName(stbtt_fontinfo* font, String outName)
+	{
+		outName.Clear();
+
+		// nameID 1 = Font Family. The OpenType "Typographic Family Name"
+		// (nameID 16) is sometimes preferred for OT but stb's older fonts
+		// use 1 everywhere; ID 1 is the safe default.
+		const int32 NAME_ID_FAMILY = 1;
+
+		// Microsoft Unicode BMP, English (US).
+		if (TryReadUtf16Name(font, 3, 1, 0x0409, NAME_ID_FAMILY, outName))
+			return;
+		// Microsoft Unicode BMP, any language.
+		if (TryReadUtf16NameAnyLanguage(font, 3, 1, NAME_ID_FAMILY, outName))
+			return;
+		// Macintosh Roman, English. 8-bit, treat as Latin-1.
+		if (TryReadLatin1Name(font, 1, 0, 0, NAME_ID_FAMILY, outName))
+			return;
+
+		outName.Set("TrueType Font");
+	}
+
+	/// Reads a big-endian UTF-16 name string with the exact platform/
+	/// encoding/language/nameID tuple. Returns true if found + non-empty.
+	private static bool TryReadUtf16Name(stbtt_fontinfo* font, int32 platformID, int32 encodingID, int32 languageID, int32 nameID, String outName)
+	{
+		int32 byteLen = 0;
+		let bytes = stbtt_GetFontNameString(font, &byteLen, platformID, encodingID, languageID, nameID);
+		if (bytes == null || byteLen <= 0)
+			return false;
+		AppendBigEndianUtf16(bytes, byteLen, outName);
+		return !outName.IsEmpty;
+	}
+
+	/// Like TryReadUtf16Name but walks common English language codes when
+	/// the exact language isn't present (some fonts only ship one
+	/// language).
+	private static bool TryReadUtf16NameAnyLanguage(stbtt_fontinfo* font, int32 platformID, int32 encodingID, int32 nameID, String outName)
+	{
+		// Common Microsoft language IDs to try (English variants, then 0).
+		int32[?] languages = .(0x0809, 0x0c09, 0x1009, 0x1409, 0);
+		for (let lang in languages)
+		{
+			if (TryReadUtf16Name(font, platformID, encodingID, lang, nameID, outName))
+				return true;
+		}
+		return false;
+	}
+
+	/// Reads an 8-bit name string (Macintosh Roman, treat as Latin-1).
+	private static bool TryReadLatin1Name(stbtt_fontinfo* font, int32 platformID, int32 encodingID, int32 languageID, int32 nameID, String outName)
+	{
+		int32 byteLen = 0;
+		let bytes = stbtt_GetFontNameString(font, &byteLen, platformID, encodingID, languageID, nameID);
+		if (bytes == null || byteLen <= 0)
+			return false;
+		outName.Clear();
+		for (int32 i = 0; i < byteLen; i++)
+		{
+			let b = (uint8)bytes[i];
+			if (b == 0) continue; // skip embedded nulls just in case
+			if (b < 0x80)
+				outName.Append((char8)b);
+			else
+			{
+				// Latin-1 high bytes -> UTF-8 two-byte sequence.
+				outName.Append((char8)(0xC0 | (b >> 6)));
+				outName.Append((char8)(0x80 | (b & 0x3F)));
+			}
+		}
+		return !outName.IsEmpty;
+	}
+
+	/// Decodes `byteLen` bytes of big-endian UTF-16 starting at `bytes`
+	/// into `out` as UTF-8. Surrogate pairs are passed through as-is; for
+	/// font family names that's almost never an issue (basic Latin /
+	/// non-Latin scripts in the BMP).
+	private static void AppendBigEndianUtf16(char8* bytes, int32 byteLen, String @out)
+	{
+		@out.Clear();
+		let p = (uint8*)bytes;
+		var i = 0;
+		while (i + 1 < byteLen)
+		{
+			let hi = (uint16)p[i];
+			let lo = (uint16)p[i + 1];
+			let cp = (hi << 8) | lo;
+			i += 2;
+			if (cp == 0) continue;
+			if (cp < 0x80)
+			{
+				@out.Append((char8)cp);
+			}
+			else if (cp < 0x800)
+			{
+				@out.Append((char8)(0xC0 | (cp >> 6)));
+				@out.Append((char8)(0x80 | (cp & 0x3F)));
+			}
+			else
+			{
+				@out.Append((char8)(0xE0 | (cp >> 12)));
+				@out.Append((char8)(0x80 | ((cp >> 6) & 0x3F)));
+				@out.Append((char8)(0x80 | (cp & 0x3F)));
+			}
+		}
 	}
 
 	public GlyphInfo GetGlyphInfo(int32 codepoint)

@@ -9,6 +9,7 @@ using Sedulous.Shaders;
 using Sedulous.Runtime.Client;
 using Sedulous.Runtime;
 using Sedulous.Fonts;
+using Sedulous.Fonts.IO;
 using Sedulous.Fonts.TTF;
 
 /// Vertex structure for text rendering with position, UV, and color.
@@ -129,7 +130,7 @@ class FontRenderingSample : Application
 		options.AtlasWidth = 512;
 		options.AtlasHeight = 512;
 
-		if (FontLoaderFactory.LoadFont(fontPath, options) case .Ok(let font))
+		if (FontParserFactory.ParseFromFile(fontPath, options) case .Ok(let font))
 		{
 			mFont = font;
 		}
@@ -140,7 +141,7 @@ class FontRenderingSample : Application
 		}
 
 		// Create font atlas
-		if (FontLoaderFactory.CreateAtlas(mFont, options) case .Ok(let atlas))
+		if (FontAtlasBakerFactory.Bake(mFont, options) case .Ok(let atlas))
 		{
 			mFontAtlas = atlas;
 			Console.WriteLine(scope $"Font atlas created: {mFontAtlas.Width}x{mFontAtlas.Height}");

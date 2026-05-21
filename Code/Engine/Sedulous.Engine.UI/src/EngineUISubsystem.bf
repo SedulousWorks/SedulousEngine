@@ -35,7 +35,7 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 
 	// Owned.
 	private UIContext mUIContext;
-	private FontService mFontService;
+	private TrueTypeFontService mFontService;
 	private ScreenUIView mScreenView;
 	private WorldUIPass mWorldUIPass;
 	private bool mWorldUIPassRegistered;
@@ -47,7 +47,7 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 
 	// Public access.
 	public UIContext UIContext => mUIContext;
-	public FontService FontService => mFontService;
+	public TrueTypeFontService FontService => mFontService;
 	public ScreenUIView ScreenView => mScreenView;
 
 	/// Returns true if the mouse is over a UI element (screen or world).
@@ -79,7 +79,7 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 	protected override void OnInit()
 	{
 		// Font service.
-		mFontService = new FontService();
+		mFontService = new TrueTypeFontService();
 
 		// UIContext (shared across screen + world views).
 		mUIContext = new UIContext();

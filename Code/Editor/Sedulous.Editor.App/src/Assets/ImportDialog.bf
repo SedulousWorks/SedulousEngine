@@ -183,11 +183,14 @@ class ImportDialog : Dialog
 			mItemChecks.Add(check);
 			itemRow.AddView(check, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(20)), Height = .Match });
 
-			// Type label
+			// Type label. Ellipsis-truncate if the importer hands us a label
+			// that's longer than the 90px column (e.g., audio importer
+			// stuffs sample-rate / channel / duration into TypeLabel).
 			let typeLabel = new Label();
 			typeLabel.SetText(item.TypeLabel);
 			typeLabel.FontSize = 10;
 			typeLabel.TextColor = .(140, 160, 200, 255);
+			typeLabel.Ellipsis = true;
 			itemRow.AddView(typeLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(90)), Height = .Match });
 
 			// Editable name (slow-click or double-click to rename) + read-only

@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Collections;
 using Sedulous.Fonts;
+using Sedulous.Fonts.IO;
 using Sedulous.Fonts.TTF;
 
 namespace Sedulous.Fonts.Tests;
@@ -117,7 +118,7 @@ class UIFeaturesTests
 		TrueTypeFonts.Initialize();
 		defer TrueTypeFonts.Shutdown();
 
-		if (FontLoaderFactory.LoadFont(fontPath, .Default) case .Ok(let font))
+		if (FontParserFactory.ParseFromFile(fontPath, .Default) case .Ok(let font))
 		{
 			defer delete (Object)font;
 
@@ -138,7 +139,7 @@ class UIFeaturesTests
 		TrueTypeFonts.Initialize();
 		defer TrueTypeFonts.Shutdown();
 
-		if (FontLoaderFactory.LoadFont(fontPath, .Default) case .Ok(let font))
+		if (FontParserFactory.ParseFromFile(fontPath, .Default) case .Ok(let font))
 		{
 			defer delete (Object)font;
 
@@ -164,7 +165,7 @@ class UIFeaturesTests
 		TrueTypeFonts.Initialize();
 		defer TrueTypeFonts.Shutdown();
 
-		if (FontLoaderFactory.LoadFont(fontPath, .Default) case .Ok(let font))
+		if (FontParserFactory.ParseFromFile(fontPath, .Default) case .Ok(let font))
 		{
 			defer delete (Object)font;
 
@@ -196,7 +197,7 @@ class UIFeaturesTests
 		TrueTypeFonts.Initialize();
 		defer TrueTypeFonts.Shutdown();
 
-		if (FontLoaderFactory.LoadFont(fontPath, .Default) case .Ok(let font))
+		if (FontParserFactory.ParseFromFile(fontPath, .Default) case .Ok(let font))
 		{
 			defer delete (Object)font;
 
@@ -231,7 +232,7 @@ class UIFeaturesTests
 		TrueTypeFonts.Initialize();
 		defer TrueTypeFonts.Shutdown();
 
-		if (FontLoaderFactory.LoadFont(fontPath, .Default) case .Ok(let font))
+		if (FontParserFactory.ParseFromFile(fontPath, .Default) case .Ok(let font))
 		{
 			defer delete (Object)font;
 
@@ -256,7 +257,7 @@ class UIFeaturesTests
 		TrueTypeFonts.Initialize();
 		defer TrueTypeFonts.Shutdown();
 
-		if (FontLoaderFactory.LoadFont(fontPath, .Default) case .Ok(let font))
+		if (FontParserFactory.ParseFromFile(fontPath, .Default) case .Ok(let font))
 		{
 			defer delete (Object)font;
 
@@ -286,7 +287,7 @@ class UIFeaturesTests
 		TrueTypeFonts.Initialize();
 		defer TrueTypeFonts.Shutdown();
 
-		if (FontLoaderFactory.LoadFont(fontPath, .Default) case .Ok(let font))
+		if (FontParserFactory.ParseFromFile(fontPath, .Default) case .Ok(let font))
 		{
 			defer delete (Object)font;
 
@@ -316,7 +317,7 @@ class UIFeaturesTests
 		TrueTypeFonts.Initialize();
 		defer TrueTypeFonts.Shutdown();
 
-		if (FontLoaderFactory.LoadFont(fontPath, .Default) case .Ok(let font))
+		if (FontParserFactory.ParseFromFile(fontPath, .Default) case .Ok(let font))
 		{
 			defer delete (Object)font;
 
@@ -342,7 +343,7 @@ class UIFeaturesTests
 		TrueTypeFonts.Initialize();
 		defer TrueTypeFonts.Shutdown();
 
-		if (FontLoaderFactory.LoadFont(fontPath, .Default) case .Ok(let font))
+		if (FontParserFactory.ParseFromFile(fontPath, .Default) case .Ok(let font))
 		{
 			defer delete (Object)font;
 
@@ -376,7 +377,7 @@ class UIFeaturesTests
 		TrueTypeFonts.Initialize();
 		defer TrueTypeFonts.Shutdown();
 
-		if (FontLoaderFactory.LoadFont(fontPath, .Default) case .Ok(let font))
+		if (FontParserFactory.ParseFromFile(fontPath, .Default) case .Ok(let font))
 		{
 			defer delete (Object)font;
 

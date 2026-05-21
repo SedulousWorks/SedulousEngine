@@ -10,6 +10,7 @@ using Sedulous.Shell.Input;
 using Sedulous.Shaders;
 using Sedulous.Fonts;
 using Sedulous.Fonts.TTF;
+using Sedulous.Fonts.Resources;
 using Sedulous.VG;
 using Sedulous.VG.Renderer;
 using Sedulous.UI;
@@ -75,7 +76,7 @@ class EditorApplication : Application, IDockableWindowHost
 	// UI (owned directly, not via subsystem)
 	private UIContext mUIContext;
 	private RootView mMainRoot;
-	private FontService mFontService ~ delete _;
+	private TrueTypeFontService mFontService ~ delete _;
 	private VGContext mVGContext ~ delete _;
 	private VGRenderer mVGRenderer;
 	private VGExternalTextureCache mExternalTextureCache = new .() ~ delete _;
@@ -130,6 +131,7 @@ class EditorApplication : Application, IDockableWindowHost
 		// and disk-cache writes fail (thumbnails still work in-memory).
 		STBImageLoader.Initialize();
 		Sedulous.Images.SDL.SDLImageWriter.Initialize();
+		TrueTypeFonts.Initialize();
 		GltfModels.Initialize();
 		FbxModels.Initialize();
 
@@ -144,7 +146,7 @@ class EditorApplication : Application, IDockableWindowHost
 		mShaderSystem.Initialize(Device, shaderPaths, shaderCacheDir);
 
 		// Font service
-		mFontService = new FontService();
+		mFontService = new TrueTypeFontService();
 		let fontPath = scope String();
 		GetAssetPath("fonts/roboto/Roboto-Regular.ttf", fontPath);
 		if (System.IO.File.Exists(fontPath))
@@ -277,10 +279,17 @@ class EditorApplication : Application, IDockableWindowHost
 		mAudioDecoder = new AudioDecoderFactory();
 		mAudioDecoder.RegisterDefaultDecoders();
 		mEditorContext.RegisterAssetImporter(new AudioAssetImporter(mAudioDecoder, mEditorLogger));
+		mEditorContext.RegisterAssetImporter(new FontAssetImporter(mEditorLogger));
+
+		// Register the font resource manager so .font files load through
+		// the standard ResourceSystem path (used by the editor page and the
+		// thumbnail generator).
+		BakedFonts.Initialize(ResourceSystem);
 
 		// Register asset thumbnail generators. Only registered extensions
 		// generate thumbnails - everything else stays on its default icon.
 		mEditorContext.RegisterThumbnailGenerator(".texture", new TextureThumbnailGenerator(ResourceSystem));
+		mEditorContext.RegisterThumbnailGenerator(".font", new FontThumbnailGenerator(ResourceSystem));
 
 		// Register built-in page factories
 		mEditorContext.RegisterPageFactory(new SceneEditorPageFactory(
@@ -296,6 +305,7 @@ class EditorApplication : Application, IDockableWindowHost
 		mEditorContext.RegisterPageFactory(new AnimGraphEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
 		mEditorContext.RegisterPageFactory(new AudioClipEditorPageFactory());
 		mEditorContext.RegisterPageFactory(new SoundCueEditorPageFactory());
+		mEditorContext.RegisterPageFactory(new FontEditorPageFactory());
 		mEditorContext.RegisterPageFactory(new PropAnimEditorPageFactory());
 		mEditorContext.RegisterPageFactory(new ParticleEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
 
@@ -1744,6 +1754,10 @@ class EditorApplication : Application, IDockableWindowHost
 		}
 
 		EditorIcons.Shutdown();
+
+		// Unregister + dispose the baked-font resource manager that
+		// BakedFonts.Initialize created earlier.
+		BakedFonts.Shutdown();
 
 		if (mVGRenderer != null)
 		{

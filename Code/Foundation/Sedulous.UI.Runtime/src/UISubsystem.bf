@@ -27,7 +27,7 @@ public class UISubsystem : Subsystem
 	private VGContext mVGContext;
 	private VGRenderer mVGRenderer;
 	private ShaderSystem mShaderSystem;
-	private FontService mFontService;
+	private TrueTypeFontService mFontService;
 
 	// Input bridge (owned)
 	private UIInputHelper mInputHelper;
@@ -61,7 +61,7 @@ public class UISubsystem : Subsystem
 	public UIInputHelper InputHelper => mInputHelper;
 
 	/// The font service for loading/caching fonts.
-	public FontService FontService => mFontService;
+	public TrueTypeFontService FontService => mFontService;
 
 	/// The shader system.
 	public ShaderSystem ShaderSystem => mShaderSystem;
@@ -89,7 +89,7 @@ public class UISubsystem : Subsystem
 		mFrameCount = frameCount;
 
 		// Font service
-		mFontService = new FontService();
+		mFontService = new TrueTypeFontService();
 
 		// Shader system (for VG rendering)
 		mShaderSystem = new ShaderSystem();

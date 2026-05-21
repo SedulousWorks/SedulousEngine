@@ -91,13 +91,11 @@ class AssetGridCellView : ViewGroup
 				item.RegistryId, uri, item.Extension,
 				/* w */ 96, /* h */ 96,
 				new (drawable) => {
-					// Clear the local handle - the service has deleted the
-					// request by the time this callback fires, so Cancel on
-					// it later would be use-after-free.
-					mPendingRequest = null;
 					if (drawable != null)
 						mIconOrThumb = drawable;
-				});
+				},
+				/* ownsCallback */ true,
+				/* ownerSlot */ &mPendingRequest);
 		}
 	}
 

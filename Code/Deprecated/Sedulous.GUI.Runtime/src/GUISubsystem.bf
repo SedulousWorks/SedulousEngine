@@ -30,7 +30,7 @@ public class GUISubsystem : Subsystem
 	private ShaderSystem mShaderSystem;
 
 	// Services (owned)
-	private FontService mFontService;
+	private TrueTypeFontService mFontService;
 	private ShellClipboardAdapter mClipboardAdapter;
 	private ITheme mTheme;
 
@@ -105,7 +105,7 @@ public class GUISubsystem : Subsystem
 		mWindow = window;
 
 		// Font service (owned)
-		mFontService = new FontService();
+		mFontService = new TrueTypeFontService();
 
 		// Shader system (owned)
 		mShaderSystem = new ShaderSystem();

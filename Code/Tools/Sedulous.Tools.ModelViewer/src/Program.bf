@@ -51,7 +51,7 @@ class ModelViewerApp : Application
 	public String[] InitialFiles;
 	// UI -- deleted explicitly in OnShutdown in safe order
 	private ShaderSystem mShaderSystem;
-	private FontService mFontService ~ delete _;
+	private TrueTypeFontService mFontService ~ delete _;
 	private VGContext mVGContext ~ delete _;
 	private VGRenderer mVGRenderer;
 	private UIContext mUIContext;
@@ -100,7 +100,7 @@ class ModelViewerApp : Application
 		mShaderSystem.Initialize(Device, .(scope StringView[](shaderDir)), mSettings.EnableShaderCache ? shaderCacheDir : default);
 
 		// Font service
-		mFontService = new FontService();
+		mFontService = new TrueTypeFontService();
 		let fontPath = scope String();
 		GetAssetPath("fonts/roboto/Roboto-Regular.ttf", fontPath);
 		if (File.Exists(fontPath))

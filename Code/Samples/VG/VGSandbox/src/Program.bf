@@ -23,7 +23,7 @@ class VGSandboxApp : Application
 	private OwnedImageData mCheckerboard ~ delete _;
 
 	// Font service + cached fonts for text rendering.
-	private FontService mFontService;
+	private TrueTypeFontService mFontService;
 	private CachedFont mFontSmall;
 	private CachedFont mFontMedium;
 	private CachedFont mFontLarge;
@@ -52,7 +52,7 @@ class VGSandboxApp : Application
 		// Load fonts at a few sizes - Roboto-Regular from the shared assets.
 		// FontService already converts the R8 atlas to RGBA8 under the hood,
 		// so VG consumes the atlas just like any other IImageData image.
-		mFontService = new FontService();
+		mFontService = new TrueTypeFontService();
 		String fontPath = scope .();
 		GetAssetPath("fonts/roboto/Roboto-Regular.ttf", fontPath);
 

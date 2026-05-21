@@ -3,13 +3,22 @@ namespace Sedulous.Fonts.TTF;
 using System;
 using System.Collections;
 using Sedulous.Fonts;
+using Sedulous.Fonts.IO;
 using Sedulous.Fonts.TTF;
 using Sedulous.Images;
 
-/// Font service implementation that loads fonts and creates atlas textures.
-/// This service manages CPU-side font data and atlas pixel data.
-/// GPU texture creation is handled by the renderer.
-public class FontService : IFontService
+/// IFontService implementation that loads TrueType / OpenType fonts.
+///
+/// `LoadFont(name, path, options)` runs the source-format pipeline: parse
+/// via `FontParserFactory`, then bake the atlas via `FontAtlasBakerFactory`.
+/// The parse + bake steps are TTF-specific and don't appear in
+/// `IFontService` itself - that contract is purely about querying cached
+/// fonts and their atlas textures.
+///
+/// Baked `.font` resources go through `BakedFontService` instead. Both
+/// implement `IFontService`; consumers don't care which service they're
+/// talking to.
+public class TrueTypeFontService : IFontService
 {
 	// Key format: "FamilyName@PixelHeight" (e.g., "Roboto@16", "Roboto@32")
 	private Dictionary<String, FontEntry> mFonts = new .() ~ { for (let kv in _) { delete kv.key; delete kv.value; } delete _; };
@@ -67,16 +76,16 @@ public class FontService : IFontService
 	/// The first font loaded becomes the default.
 	public Result<void> LoadFont(StringView familyName, StringView filePath, FontLoadOptions options = .ExtendedLatin)
 	{
-		// Load font
+		// Parse the source font into an IFont via the parser factory.
 		IFont font;
-		if (FontLoaderFactory.LoadFont(filePath, options) case .Ok(let f))
+		if (FontParserFactory.ParseFromFile(filePath, options) case .Ok(let f))
 			font = f;
 		else
 			return .Err;
 
-		// Create atlas
+		// Bake an atlas for the parsed font via the baker factory.
 		IFontAtlas atlas;
-		if (FontLoaderFactory.CreateAtlas(font, options) case .Ok(let a))
+		if (FontAtlasBakerFactory.Bake(font, options) case .Ok(let a))
 			atlas = a;
 		else
 		{
@@ -84,27 +93,16 @@ public class FontService : IFontService
 			return .Err;
 		}
 
-		// Get atlas dimensions and pixel data
-		let atlasWidth = atlas.Width;
-		let atlasHeight = atlas.Height;
-		let r8Data = atlas.PixelData;
-
-		// Convert R8 to RGBA8 (white with alpha from R8)
-		let pixelCount = (int)(atlasWidth * atlasHeight);
-		uint8[] rgba8Data = new uint8[pixelCount * 4];
-
-		for (int i = 0; i < pixelCount; i++)
+		// Expand the R8 atlas into an RGBA8 texture for the renderer.
+		let texture = FontAtlasTexture.ExpandR8ToRGBA8(atlas);
+		if (texture == null)
 		{
-			rgba8Data[i * 4 + 0] = 255;       // R
-			rgba8Data[i * 4 + 1] = 255;       // G
-			rgba8Data[i * 4 + 2] = 255;       // B
-			rgba8Data[i * 4 + 3] = r8Data[i]; // A
+			delete (Object)atlas;
+			delete (Object)font;
+			return .Err;
 		}
 
-		// Create texture with owned pixel data
-		let texture = new OwnedImageData(atlasWidth, atlasHeight, .RGBA8, rgba8Data);
-
-		// Create text shaper for word wrapping support
+		// Wrap font + atlas + shaper in a CachedFont for IFontService queries.
 		let shaper = new TrueTypeTextShaper();
 		let cachedFont = new CachedFont(font, atlas, shaper);
 
@@ -112,12 +110,11 @@ public class FontService : IFontService
 		entry.CachedFont = cachedFont;
 		entry.Texture = texture;
 
-		// Use composite key: "FamilyName@PixelHeight"
 		let key = new String();
 		MakeKey(familyName, options.PixelHeight, key);
 		mFonts[key] = entry;
 
-		// First font becomes the default
+		// First font loaded becomes the default.
 		if (mDefaultFont == null)
 		{
 			mDefaultFont = cachedFont;

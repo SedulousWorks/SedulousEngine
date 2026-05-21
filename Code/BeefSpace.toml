@@ -79,7 +79,10 @@ SR001_ReflectedPBR = {Path = "Samples/ShaderReflection/SR001_ReflectedPBR"}
 "Sedulous.Drawing" = {Path = "Foundation/Sedulous.Drawing"}
 "Sedulous.Drawing.Tests" = {Path = "Foundation/Sedulous.Drawing.Tests"}
 "Sedulous.Fonts" = {Path = "Foundation/Sedulous.Fonts"}
+"Sedulous.Fonts.IO" = {Path = "Foundation/Sedulous.Fonts.IO"}
 "Sedulous.Fonts.TTF" = {Path = "Foundation/Sedulous.Fonts.TTF"}
+"Sedulous.Fonts.Baked" = {Path = "Foundation/Sedulous.Fonts.Baked"}
+"Sedulous.Fonts.Importer" = {Path = "Foundation/Sedulous.Fonts.Importer"}
 "Sedulous.Fonts.Tests" = {Path = "Foundation/Sedulous.Fonts.Tests"}
 "Sedulous.Geometry" = {Path = "Foundation/Sedulous.Geometry"}
 "Sedulous.Geometry.Tests" = {Path = "Foundation/Sedulous.Geometry.Tests"}
@@ -218,7 +221,7 @@ Foundation = []
 "Foundation/Animation" = ["Sedulous.Animation", "Sedulous.Animation.Tests", "Sedulous.Animation.Resources"]
 "Foundation/Audio" = ["Sedulous.Audio", "Sedulous.Audio.Decoders", "Sedulous.Audio.SDL3", "Sedulous.Audio.Tests", "Sedulous.Audio.Resources", "Sedulous.Audio.Importer", "Sedulous.Audio.Effects", "Sedulous.Audio.Effects.Tests"]
 "Foundation/Drawing" = ["Sedulous.DebugFont", "Sedulous.Drawing", "Sedulous.Drawing.Tests", "Sedulous.Drawing.Renderer"]
-"Foundation/Fonts" = ["Sedulous.Fonts", "Sedulous.Fonts.TTF", "Sedulous.Fonts.Tests", "Sedulous.Fonts.Resources"]
+"Foundation/Fonts" = ["Sedulous.Fonts", "Sedulous.Fonts.IO", "Sedulous.Fonts.TTF", "Sedulous.Fonts.Baked", "Sedulous.Fonts.Importer", "Sedulous.Fonts.Tests", "Sedulous.Fonts.Resources"]
 "Foundation/Geometry" = ["Sedulous.Geometry", "Sedulous.Geometry.Tests", "Sedulous.Geometry.Tooling", "Sedulous.Geometry.Resources", "Sedulous.Geometry.Tooling.Resources"]
 "Foundation/VG" = ["Sedulous.VG", "Sedulous.VG.SVG", "Sedulous.VG.Tests", "Sedulous.VG.Renderer"]
 "Foundation/Imaging" = ["Sedulous.Images.IO", "Sedulous.Images.STB", "Sedulous.Images.Tests", "Sedulous.Images.Resources", "Sedulous.Images.SDL", "Sedulous.Images"]

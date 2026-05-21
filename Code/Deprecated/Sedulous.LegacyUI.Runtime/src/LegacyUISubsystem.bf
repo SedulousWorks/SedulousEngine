@@ -26,7 +26,7 @@ public class LegacyUISubsystem : Subsystem
 	private VGContext mVGContext;
 	private VGRenderer mVGRenderer;
 	private ShaderSystem mShaderSystem;
-	private FontService mFontService;
+	private TrueTypeFontService mFontService;
 
 	// Input bridge (Shell -> UI)
 	private Sedulous.LegacyUI.Shell.UIInputHelper mInputHelper;
@@ -57,7 +57,7 @@ public class LegacyUISubsystem : Subsystem
 	public Sedulous.LegacyUI.Shell.UIInputHelper InputHelper => mInputHelper;
 
 	/// The font service for loading/caching fonts.
-	public FontService FontService => mFontService;
+	public TrueTypeFontService FontService => mFontService;
 
 	/// The shader system.
 	public ShaderSystem ShaderSystem => mShaderSystem;
@@ -85,7 +85,7 @@ public class LegacyUISubsystem : Subsystem
 		mFrameCount = frameCount;
 
 		// Font service
-		mFontService = new FontService();
+		mFontService = new TrueTypeFontService();
 
 		// Shader system
 		mShaderSystem = new ShaderSystem();

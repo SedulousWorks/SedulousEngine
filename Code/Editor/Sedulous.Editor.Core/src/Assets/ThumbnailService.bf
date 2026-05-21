@@ -25,6 +25,13 @@ class CachedThumbnail
 /// the pending queue; the requesting cell holds a non-owning handle so it can
 /// cancel before delivery. After the request finalizes (delivered or cancelled)
 /// the service deletes the request.
+///
+/// `OwnerSlot` is a back-pointer to the cell's handle field. The service nulls
+/// `*OwnerSlot` whenever it's about to delete the request (completion,
+/// cancellation, or service shutdown) so the cell can't end up holding a
+/// stale pointer. Cells that may outlive the service need to clear OwnerSlot
+/// from their destructor; cells that may NOT outlive the service can rely on
+/// the service to null their field for them.
 class ThumbnailRequest
 {
 	public Guid Id;
@@ -35,6 +42,7 @@ class ThumbnailRequest
 	public delegate void(Drawable) OnReady ~ if (OwnsCallback) delete _;
 	public bool OwnsCallback = true;
 	public bool Cancelled;
+	public ThumbnailRequest* OwnerSlot;
 }
 
 /// Asset thumbnail cache + dispatcher. Cells call `Request` to get a thumbnail
@@ -63,7 +71,18 @@ class ThumbnailService
 		delete _;
 	};
 
-	private Queue<ThumbnailRequest> mPending = new .() ~ delete _;
+	private Queue<ThumbnailRequest> mPending = new .() ~ {
+		// On shutdown null every still-pending request's owner slot so cells
+		// outliving the service don't see a dangling pointer, then free the
+		// requests themselves (the queue destructor only frees its own
+		// internal array; without this the queued requests leak).
+		for (let req in _)
+		{
+			if (req.OwnerSlot != null) *req.OwnerSlot = null;
+			delete req;
+		}
+		delete _;
+	};
 
 	/// Maximum number of pending requests processed per `Update()` call.
 	/// Keeps a folder full of textures from stalling a single frame; the
@@ -108,25 +127,27 @@ class ThumbnailService
 		while (mPending.Count > 0 && processed < MaxRequestsPerFrame)
 		{
 			let req = mPending.PopFront();
-			if (req.Cancelled)
-			{
-				delete req;
-				continue;
-			}
-			ProcessRequest(req);
-			delete req;
-			processed++;
+			// Snapshot Cancelled before FinalizeRequest - it deletes req,
+			// so we can't read req.Cancelled afterwards.
+			let wasCancelled = req.Cancelled;
+			FinalizeRequest(req); // nulls OwnerSlot (if any), runs work, deletes req
+			if (!wasCancelled)
+				processed++;
 		}
 	}
 
-	/// Request a thumbnail for an asset. The returned `ThumbnailRequest`
-	/// handle is owned by the service; the caller must call `Cancel(handle)`
-	/// when the cell goes away. Returns null when the cache had an immediate
-	/// hit (callback fires synchronously) or when no generator is registered
-	/// for the extension (callback fires synchronously with null).
+	/// Request a thumbnail for an asset. `ownerSlot` is the address of the
+	/// caller's handle field - the service nulls `*ownerSlot` automatically
+	/// when the request is delivered, cancelled, or the service shuts down,
+	/// so the caller never sees a dangling pointer. Returns the same handle
+	/// (also stored at `*ownerSlot`) or null when resolved synchronously
+	/// (cache hit, no generator registered, empty Guid). Caller must call
+	/// `Cancel(handle)` on rebind / detach so the request is dropped without
+	/// firing a stale callback.
 	public ThumbnailRequest Request(Guid id, StringView uri, StringView @extension,
 		int32 width, int32 height,
-		delegate void(Drawable) onReady, bool ownsCallback = true)
+		delegate void(Drawable) onReady, bool ownsCallback = true,
+		ThumbnailRequest* ownerSlot = null)
 	{
 		// Empty Guid means the asset isn't registered - we have no stable
 		// identity for the cache, so don't generate anything.
@@ -162,16 +183,46 @@ class ThumbnailService
 		req.Height = height;
 		req.OnReady = onReady;
 		req.OwnsCallback = ownsCallback;
+		req.OwnerSlot = ownerSlot;
 		mPending.Add(req);
 		return req;
 	}
 
-	/// Cancel a pending request. The cell must call this on detach / rebind
-	/// so a delivered callback doesn't fire after the cell is gone.
+	/// Cancel a pending request. After this call returns, the request will
+	/// not invoke its callback. The service still defers the actual delete
+	/// to a later `Update()` so a cell calling Cancel inside its destructor
+	/// doesn't race with the service - just mark it dead. The OwnerSlot is
+	/// nulled here too so any subsequent access through the cell's handle
+	/// is a safe no-op.
 	public void Cancel(ThumbnailRequest req)
 	{
 		if (req == null) return;
 		req.Cancelled = true;
+		if (req.OwnerSlot != null)
+		{
+			*req.OwnerSlot = null;
+			req.OwnerSlot = null;
+		}
+	}
+
+	/// Common cleanup path - nulls OwnerSlot, runs ProcessRequest if the
+	/// request wasn't cancelled, deletes the request. Update calls this
+	/// per popped item.
+	private void FinalizeRequest(ThumbnailRequest req)
+	{
+		// Null out the cell's handle BEFORE running the callback or deleting
+		// the request, so the cell can't read a stale pointer even from
+		// within its own callback.
+		if (req.OwnerSlot != null)
+		{
+			*req.OwnerSlot = null;
+			req.OwnerSlot = null;
+		}
+
+		if (!req.Cancelled)
+			ProcessRequest(req);
+
+		delete req;
 	}
 
 	/// Discard the cached thumbnail for an asset (memory + disk). Useful

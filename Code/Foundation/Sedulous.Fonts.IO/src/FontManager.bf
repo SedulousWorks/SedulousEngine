@@ -1,8 +1,9 @@
 using System;
 using System.Collections;
 using System.Threading;
+using Sedulous.Fonts;
 
-namespace Sedulous.Fonts;
+namespace Sedulous.Fonts.IO;
 
 /// Font manager with caching for multiple sizes
 /// Thread-safe for concurrent access
@@ -61,11 +62,11 @@ public class FontManager
 		IFontAtlas atlas = null;
 		ITextShaper shaper = null;
 
-		if (FontLoaderFactory.LoadFont(path, options) case .Ok(let loadedFont))
+		if (FontParserFactory.ParseFromFile(path, options) case .Ok(let loadedFont))
 		{
 			font = loadedFont;
 
-			if (FontLoaderFactory.CreateAtlas(font, options) case .Ok(let loadedAtlas))
+			if (FontAtlasBakerFactory.Bake(font, options) case .Ok(let loadedAtlas))
 			{
 				atlas = loadedAtlas;
 

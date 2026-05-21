@@ -1,0 +1,5132 @@
+uint64 %_type {15928939931811099664}
+int32 %_version {1}
+string %_id {"c289f9e0-1aeb-4d7e-9fde-3a1677510235"}
+string %_name {"Attack Of Monster"}
+string %_sourcePath {""}
+float %pixelHeight {32}
+int32 %firstCodepoint {32}
+int32 %lastCodepoint {126}
+uint32 %atlasWidth {512}
+uint32 %atlasHeight {512}
+string %familyName {"Attack Of Monster"}
+float %ascent {25.5288181}
+float %descent {-6.4711833}
+float %lineGap {0}
+float %metricsPxH {32}
+float %metricsScale {0.0323559158}
+uint32 %atlasW {512}
+uint32 %atlasH {512}
+float %whiteU {0.997070313}
+float %whiteV {0.997070313}
+Arr_ %glyphs {
+	int32 %_count {95}
+	Obj_ {
+		int32 %cp {32}
+		int32 %gIdx {5}
+		float %advW {9.54499531}
+		float %lsb {0}
+		float %bx {0}
+		float %by {0}
+		float %bw {0}
+		float %bh {0}
+		bool %hb {false}
+		uint16 %rx {2}
+		uint16 %ry {2}
+		uint16 %rw {1}
+		uint16 %rh {1}
+		float %rox {-0.25}
+		float %roy {-0.25}
+		float %rax {9.54499531}
+	}
+	Obj_ {
+		int32 %cp {33}
+		int32 %gIdx {6}
+		float %advW {11.7451973}
+		float %lsb {0.582406461}
+		float %bx {0}
+		float %by {-32}
+		float %bw {11}
+		float %bh {37}
+		bool %hb {true}
+		uint16 %rx {5}
+		uint16 %ry {2}
+		uint16 %rw {22}
+		uint16 %rh {74}
+		float %rox {0.25}
+		float %roy {-31.75}
+		float %rax {11.7451973}
+	}
+	Obj_ {
+		int32 %cp {34}
+		int32 %gIdx {7}
+		float %advW {15.7896872}
+		float %lsb {-0.420626909}
+		float %bx {-1}
+		float %by {-29}
+		float %bw {17}
+		float %bh {11}
+		bool %hb {true}
+		uint16 %rx {29}
+		uint16 %ry {2}
+		uint16 %rw {34}
+		uint16 %rh {21}
+		float %rox {-0.75}
+		float %roy {-28.75}
+		float %rax {15.7896872}
+	}
+	Obj_ {
+		int32 %cp {35}
+		int32 %gIdx {8}
+		float %advW {20.5136509}
+		float %lsb {0.905965626}
+		float %bx {0}
+		float %by {-25}
+		float %bw {20}
+		float %bh {23}
+		bool %hb {true}
+		uint16 %rx {65}
+		uint16 %ry {2}
+		uint16 %rw {40}
+		uint16 %rh {46}
+		float %rox {0.25}
+		float %roy {-24.75}
+		float %rax {20.5136509}
+	}
+	Obj_ {
+		int32 %cp {36}
+		int32 %gIdx {9}
+		float %advW {20.3842278}
+		float %lsb {0.808897913}
+		float %bx {0}
+		float %by {-30}
+		float %bw {20}
+		float %bh {34}
+		bool %hb {true}
+		uint16 %rx {107}
+		uint16 %ry {2}
+		uint16 %rw {39}
+		uint16 %rh {68}
+		float %rox {0.25}
+		float %roy {-30.25}
+		float %rax {20.3842278}
+	}
+	Obj_ {
+		int32 %cp {37}
+		int32 %gIdx {10}
+		float %advW {28.0202236}
+		float %lsb {1.48837209}
+		float %bx {1}
+		float %by {-30}
+		float %bw {27}
+		float %bh {33}
+		bool %hb {true}
+		uint16 %rx {148}
+		uint16 %ry {2}
+		uint16 %rw {55}
+		uint16 %rh {66}
+		float %rox {0.75}
+		float %roy {-29.75}
+		float %rax {28.0202236}
+	}
+	Obj_ {
+		int32 %cp {38}
+		int32 %gIdx {11}
+		float %advW {21.9049549}
+		float %lsb {0.938321531}
+		float %bx {0}
+		float %by {-27}
+		float %bw {22}
+		float %bh {28}
+		bool %hb {true}
+		uint16 %rx {205}
+		uint16 %ry {2}
+		uint16 %rw {44}
+		uint16 %rh {56}
+		float %rox {0.25}
+		float %roy {-27.25}
+		float %rax {21.9049549}
+	}
+	Obj_ {
+		int32 %cp {39}
+		int32 %gIdx {12}
+		float %advW {7.15065718}
+		float %lsb {-0.420626909}
+		float %bx {-1}
+		float %by {-29}
+		float %bw {9}
+		float %bh {11}
+		bool %hb {true}
+		uint16 %rx {251}
+		uint16 %ry {2}
+		uint16 %rw {17}
+		uint16 %rh {21}
+		float %rox {-0.75}
+		float %roy {-28.75}
+		float %rax {7.15065718}
+	}
+	Obj_ {
+		int32 %cp {40}
+		int32 %gIdx {13}
+		float %advW {11.2922144}
+		float %lsb {1.0030334}
+		float %bx {1}
+		float %by {-29}
+		float %bw {10}
+		float %bh {32}
+		bool %hb {true}
+		uint16 %rx {270}
+		uint16 %ry {2}
+		uint16 %rw {21}
+		uint16 %rh {64}
+		float %rox {0.75}
+		float %roy {-29.25}
+		float %rax {11.2922144}
+	}
+	Obj_ {
+		int32 %cp {41}
+		int32 %gIdx {14}
+		float %advW {12.4893837}
+		float %lsb {1.61779583}
+		float %bx {1}
+		float %by {-29}
+		float %bw {11}
+		float %bh {32}
+		bool %hb {true}
+		uint16 %rx {293}
+		uint16 %ry {2}
+		uint16 %rw {21}
+		uint16 %rh {64}
+		float %rox {1.25}
+		float %roy {-29.25}
+		float %rax {12.4893837}
+	}
+	Obj_ {
+		int32 %cp {42}
+		int32 %gIdx {15}
+		float %advW {11.2922144}
+		float %lsb {-0.226491407}
+		float %bx {-1}
+		float %by {-30}
+		float %bw {12}
+		float %bh {13}
+		bool %hb {true}
+		uint16 %rx {316}
+		uint16 %ry {2}
+		uint16 %rw {24}
+		uint16 %rh {25}
+		float %rox {-0.75}
+		float %roy {-29.75}
+		float %rax {11.2922144}
+	}
+	Obj_ {
+		int32 %cp {43}
+		int32 %gIdx {16}
+		float %advW {15.7249746}
+		float %lsb {0.582406461}
+		float %bx {0}
+		float %by {-21}
+		float %bw {16}
+		float %bh {15}
+		bool %hb {true}
+		uint16 %rx {342}
+		uint16 %ry {2}
+		uint16 %rw {31}
+		uint16 %rh {29}
+		float %rox {0.25}
+		float %roy {-20.75}
+		float %rax {15.7249746}
+	}
+	Obj_ {
+		int32 %cp {44}
+		int32 %gIdx {17}
+		float %advW {8.99494457}
+		float %lsb {0.614762425}
+		float %bx {0}
+		float %by {-9}
+		float %bw {9}
+		float %bh {11}
+		bool %hb {true}
+		uint16 %rx {375}
+		uint16 %ry {2}
+		uint16 %rw {17}
+		uint16 %rh {21}
+		float %rox {0.25}
+		float %roy {-8.75}
+		float %rax {8.99494457}
+	}
+	Obj_ {
+		int32 %cp {45}
+		int32 %gIdx {18}
+		float %advW {14.7866535}
+		float %lsb {0.614762425}
+		float %bx {0}
+		float %by {-17}
+		float %bw {15}
+		float %bh {7}
+		bool %hb {true}
+		uint16 %rx {394}
+		uint16 %ry {2}
+		uint16 %rw {29}
+		uint16 %rh {13}
+		float %rox {0.25}
+		float %roy {-16.75}
+		float %rax {14.7866535}
+	}
+	Obj_ {
+		int32 %cp {46}
+		int32 %gIdx {19}
+		float %advW {8.96258831}
+		float %lsb {0.64711833}
+		float %bx {0}
+		float %by {-9}
+		float %bw {9}
+		float %bh {9}
+		bool %hb {true}
+		uint16 %rx {425}
+		uint16 %ry {2}
+		uint16 %rw {17}
+		uint16 %rh {18}
+		float %rox {0.25}
+		float %roy {-8.75}
+		float %rax {8.96258831}
+	}
+	Obj_ {
+		int32 %cp {47}
+		int32 %gIdx {20}
+		float %advW {22.4226494}
+		float %lsb {1.61779583}
+		float %bx {1}
+		float %by {-30}
+		float %bw {20}
+		float %bh {33}
+		bool %hb {true}
+		uint16 %rx {444}
+		uint16 %ry {2}
+		uint16 %rw {40}
+		uint16 %rh {66}
+		float %rox {1.25}
+		float %roy {-29.75}
+		float %rax {22.4226494}
+	}
+	Obj_ {
+		int32 %cp {48}
+		int32 %gIdx {21}
+		float %advW {19.5753288}
+		float %lsb {0.0323559158}
+		float %bx {0}
+		float %by {-21}
+		float %bw {20}
+		float %bh {22}
+		bool %hb {true}
+		uint16 %rx {2}
+		uint16 %ry {78}
+		uint16 %rw {40}
+		uint16 %rh {43}
+		float %rox {-0.25}
+		float %roy {-20.75}
+		float %rax {19.5753288}
+	}
+	Obj_ {
+		int32 %cp {49}
+		int32 %gIdx {22}
+		float %advW {13.4277048}
+		float %lsb {0.226491407}
+		float %bx {0}
+		float %by {-24}
+		float %bw {13}
+		float %bh {28}
+		bool %hb {true}
+		uint16 %rx {44}
+		uint16 %ry {78}
+		uint16 %rw {26}
+		uint16 %rh {56}
+		float %rox {-0.25}
+		float %roy {-24.25}
+		float %rax {13.4277048}
+	}
+	Obj_ {
+		int32 %cp {50}
+		int32 %gIdx {23}
+		float %advW {17.1486359}
+		float %lsb {0.970677495}
+		float %bx {0}
+		float %by {-23}
+		float %bw {17}
+		float %bh {26}
+		bool %hb {true}
+		uint16 %rx {72}
+		uint16 %ry {78}
+		uint16 %rw {33}
+		uint16 %rh {53}
+		float %rox {0.25}
+		float %roy {-23.25}
+		float %rax {17.1486359}
+	}
+	Obj_ {
+		int32 %cp {51}
+		int32 %gIdx {24}
+		float %advW {18.1516685}
+		float %lsb {0.808897913}
+		float %bx {0}
+		float %by {-24}
+		float %bw {18}
+		float %bh {28}
+		bool %hb {true}
+		uint16 %rx {107}
+		uint16 %ry {78}
+		uint16 %rw {35}
+		uint16 %rh {57}
+		float %rox {0.25}
+		float %roy {-24.25}
+		float %rax {18.1516685}
+	}
+	Obj_ {
+		int32 %cp {52}
+		int32 %gIdx {25}
+		float %advW {18.8311424}
+		float %lsb {0.35591507}
+		float %bx {0}
+		float %by {-24}
+		float %bw {18}
+		float %bh {28}
+		bool %hb {true}
+		uint16 %rx {144}
+		uint16 %ry {78}
+		uint16 %rw {37}
+		uint16 %rh {55}
+		float %rox {-0.25}
+		float %roy {-23.75}
+		float %rax {18.8311424}
+	}
+	Obj_ {
+		int32 %cp {53}
+		int32 %gIdx {26}
+		float %advW {18.3458042}
+		float %lsb {1.0353893}
+		float %bx {1}
+		float %by {-21}
+		float %bw {17}
+		float %bh {22}
+		bool %hb {true}
+		uint16 %rx {183}
+		uint16 %ry {78}
+		uint16 %rw {35}
+		uint16 %rh {45}
+		float %rox {0.75}
+		float %roy {-21.25}
+		float %rax {18.3458042}
+	}
+	Obj_ {
+		int32 %cp {54}
+		int32 %gIdx {27}
+		float %advW {17.7957535}
+		float %lsb {1.06774521}
+		float %bx {1}
+		float %by {-22}
+		float %bw {16}
+		float %bh {24}
+		bool %hb {true}
+		uint16 %rx {220}
+		uint16 %ry {78}
+		uint16 %rw {33}
+		uint16 %rh {49}
+		float %rox {0.75}
+		float %roy {-22.25}
+		float %rax {17.7957535}
+	}
+	Obj_ {
+		int32 %cp {55}
+		int32 %gIdx {28}
+		float %advW {15.4337721}
+		float %lsb {0.711830139}
+		float %bx {0}
+		float %by {-23}
+		float %bw {15}
+		float %bh {26}
+		bool %hb {true}
+		uint16 %rx {255}
+		uint16 %ry {78}
+		uint16 %rw {30}
+		uint16 %rh {51}
+		float %rox {0.25}
+		float %roy {-22.75}
+		float %rax {15.4337721}
+	}
+	Obj_ {
+		int32 %cp {56}
+		int32 %gIdx {29}
+		float %advW {19.704752}
+		float %lsb {1.06774521}
+		float %bx {1}
+		float %by {-24}
+		float %bw {18}
+		float %bh {28}
+		bool %hb {true}
+		uint16 %rx {287}
+		uint16 %ry {78}
+		uint16 %rw {37}
+		uint16 %rh {57}
+		float %rox {0.75}
+		float %roy {-24.25}
+		float %rax {19.704752}
+	}
+	Obj_ {
+		int32 %cp {57}
+		int32 %gIdx {30}
+		float %advW {18.313448}
+		float %lsb {0.64711833}
+		float %bx {0}
+		float %by {-22}
+		float %bw {18}
+		float %bh {24}
+		bool %hb {true}
+		uint16 %rx {326}
+		uint16 %ry {78}
+		uint16 %rw {35}
+		uint16 %rh {48}
+		float %rox {0.25}
+		float %roy {-22.25}
+		float %rax {18.313448}
+	}
+	Obj_ {
+		int32 %cp {58}
+		int32 %gIdx {31}
+		float %advW {9.54499531}
+		float %lsb {0.938321531}
+		float %bx {0}
+		float %by {-19}
+		float %bw {9}
+		float %bh {20}
+		bool %hb {true}
+		uint16 %rx {363}
+		uint16 %ry {78}
+		uint16 %rw {18}
+		uint16 %rh {40}
+		float %rox {0.25}
+		float %roy {-18.75}
+		float %rax {9.54499531}
+	}
+	Obj_ {
+		int32 %cp {59}
+		int32 %gIdx {32}
+		float %advW {9.60970688}
+		float %lsb {0.905965626}
+		float %bx {0}
+		float %by {-19}
+		float %bw {9}
+		float %bh {21}
+		bool %hb {true}
+		uint16 %rx {383}
+		uint16 %ry {78}
+		uint16 %rw {18}
+		uint16 %rh {41}
+		float %rox {0.25}
+		float %roy {-18.75}
+		float %rax {9.60970688}
+	}
+	Obj_ {
+		int32 %cp {60}
+		int32 %gIdx {33}
+		float %advW {19.1547012}
+		float %lsb {0.258847326}
+		float %bx {0}
+		float %by {-24}
+		float %bw {19}
+		float %bh {21}
+		bool %hb {true}
+		uint16 %rx {403}
+		uint16 %ry {78}
+		uint16 %rw {39}
+		uint16 %rh {42}
+		float %rox {-0.25}
+		float %roy {-23.75}
+		float %rax {19.1547012}
+	}
+	Obj_ {
+		int32 %cp {61}
+		int32 %gIdx {34}
+		float %advW {15.3690596}
+		float %lsb {0.905965626}
+		float %bx {0}
+		float %by {-20}
+		float %bw {15}
+		float %bh {14}
+		bool %hb {true}
+		uint16 %rx {444}
+		uint16 %ry {78}
+		uint16 %rw {29}
+		uint16 %rh {28}
+		float %rox {0.25}
+		float %roy {-20.25}
+		float %rax {15.3690596}
+	}
+	Obj_ {
+		int32 %cp {62}
+		int32 %gIdx {35}
+		float %advW {18.7987862}
+		float %lsb {0.614762425}
+		float %bx {0}
+		float %by {-24}
+		float %bw {19}
+		float %bh {21}
+		bool %hb {true}
+		uint16 %rx {2}
+		uint16 %ry {137}
+		uint16 %rw {37}
+		uint16 %rh {42}
+		float %rox {0.25}
+		float %roy {-23.75}
+		float %rax {18.7987862}
+	}
+	Obj_ {
+		int32 %cp {63}
+		int32 %gIdx {36}
+		float %advW {18.4752274}
+		float %lsb {0.64711833}
+		float %bx {0}
+		float %by {-29}
+		float %bw {17}
+		float %bh {31}
+		bool %hb {true}
+		uint16 %rx {41}
+		uint16 %ry {137}
+		uint16 %rw {34}
+		uint16 %rh {62}
+		float %rox {0.25}
+		float %roy {-28.75}
+		float %rax {18.4752274}
+	}
+	Obj_ {
+		int32 %cp {64}
+		int32 %gIdx {37}
+		float %advW {22.5844288}
+		float %lsb {1.10010111}
+		float %bx {1}
+		float %by {-27}
+		float %bw {21}
+		float %bh {27}
+		bool %hb {true}
+		uint16 %rx {77}
+		uint16 %ry {137}
+		uint16 %rw {43}
+		uint16 %rh {53}
+		float %rox {0.75}
+		float %roy {-26.75}
+		float %rax {22.5844288}
+	}
+	Obj_ {
+		int32 %cp {65}
+		int32 %gIdx {38}
+		float %advW {19.2194138}
+		float %lsb {0.388270974}
+		float %bx {0}
+		float %by {-23}
+		float %bw {20}
+		float %bh {26}
+		bool %hb {true}
+		uint16 %rx {122}
+		uint16 %ry {137}
+		uint16 %rw {40}
+		uint16 %rh {53}
+		float %rox {-0.25}
+		float %roy {-23.25}
+		float %rax {19.2194138}
+	}
+	Obj_ {
+		int32 %cp {66}
+		int32 %gIdx {39}
+		float %advW {24.2992935}
+		float %lsb {0.0323559158}
+		float %bx {0}
+		float %by {-25}
+		float %bw {25}
+		float %bh {30}
+		bool %hb {true}
+		uint16 %rx {164}
+		uint16 %ry {137}
+		uint16 %rw {50}
+		uint16 %rh {60}
+		float %rox {-0.25}
+		float %roy {-24.75}
+		float %rax {24.2992935}
+	}
+	Obj_ {
+		int32 %cp {67}
+		int32 %gIdx {40}
+		float %advW {16.2750263}
+		float %lsb {0.808897913}
+		float %bx {0}
+		float %by {-21}
+		float %bw {16}
+		float %bh {23}
+		bool %hb {true}
+		uint16 %rx {216}
+		uint16 %ry {137}
+		uint16 %rw {32}
+		uint16 %rh {46}
+		float %rox {0.25}
+		float %roy {-21.25}
+		float %rax {16.2750263}
+	}
+	Obj_ {
+		int32 %cp {68}
+		int32 %gIdx {41}
+		float %advW {17.860466}
+		float %lsb {0.388270974}
+		float %bx {0}
+		float %by {-23}
+		float %bw {18}
+		float %bh {25}
+		bool %hb {true}
+		uint16 %rx {250}
+		uint16 %ry {137}
+		uint16 %rw {36}
+		uint16 %rh {50}
+		float %rox {-0.25}
+		float %roy {-22.75}
+		float %rax {17.860466}
+	}
+	Obj_ {
+		int32 %cp {69}
+		int32 %gIdx {42}
+		float %advW {17.3751259}
+		float %lsb {0.420626909}
+		float %bx {0}
+		float %by {-23}
+		float %bw {17}
+		float %bh {25}
+		bool %hb {true}
+		uint16 %rx {288}
+		uint16 %ry {137}
+		uint16 %rw {35}
+		uint16 %rh {49}
+		float %rox {-0.25}
+		float %roy {-22.75}
+		float %rax {17.3751259}
+	}
+	Obj_ {
+		int32 %cp {70}
+		int32 %gIdx {43}
+		float %advW {18.3458042}
+		float %lsb {0.582406461}
+		float %bx {0}
+		float %by {-23}
+		float %bw {19}
+		float %bh {26}
+		bool %hb {true}
+		uint16 %rx {325}
+		uint16 %ry {137}
+		uint16 %rw {37}
+		uint16 %rh {52}
+		float %rox {0.25}
+		float %roy {-22.75}
+		float %rax {18.3458042}
+	}
+	Obj_ {
+		int32 %cp {71}
+		int32 %gIdx {44}
+		float %advW {20.9342766}
+		float %lsb {0.841253817}
+		float %bx {0}
+		float %by {-23}
+		float %bw {21}
+		float %bh {26}
+		bool %hb {true}
+		uint16 %rx {364}
+		uint16 %ry {137}
+		uint16 %rw {41}
+		uint16 %rh {51}
+		float %rox {0.25}
+		float %roy {-22.75}
+		float %rax {20.9342766}
+	}
+	Obj_ {
+		int32 %cp {72}
+		int32 %gIdx {45}
+		float %advW {20.3842278}
+		float %lsb {0.550050557}
+		float %bx {0}
+		float %by {-24}
+		float %bw {20}
+		float %bh {28}
+		bool %hb {true}
+		uint16 %rx {407}
+		uint16 %ry {137}
+		uint16 %rw {39}
+		uint16 %rh {57}
+		float %rox {0.25}
+		float %roy {-24.25}
+		float %rax {20.3842278}
+	}
+	Obj_ {
+		int32 %cp {73}
+		int32 %gIdx {46}
+		float %advW {11.130435}
+		float %lsb {0.452982813}
+		float %bx {0}
+		float %by {-21}
+		float %bw {11}
+		float %bh {21}
+		bool %hb {true}
+		uint16 %rx {448}
+		uint16 %ry {137}
+		uint16 %rw {22}
+		uint16 %rh {43}
+		float %rox {-0.25}
+		float %roy {-21.25}
+		float %rax {11.130435}
+	}
+	Obj_ {
+		int32 %cp {74}
+		int32 %gIdx {47}
+		float %advW {16.5662289}
+		float %lsb {-0.194135487}
+		float %bx {-1}
+		float %by {-21}
+		float %bw {17}
+		float %bh {27}
+		bool %hb {true}
+		uint16 %rx {472}
+		uint16 %ry {137}
+		uint16 %rw {34}
+		uint16 %rh {55}
+		float %rox {-0.75}
+		float %roy {-21.25}
+		float %rax {16.5662289}
+	}
+	Obj_ {
+		int32 %cp {75}
+		int32 %gIdx {48}
+		float %advW {21.4843273}
+		float %lsb {0.550050557}
+		float %bx {0}
+		float %by {-25}
+		float %bw {22}
+		float %bh {30}
+		bool %hb {true}
+		uint16 %rx {2}
+		uint16 %ry {201}
+		uint16 %rw {44}
+		uint16 %rh {59}
+		float %rox {0.25}
+		float %roy {-24.75}
+		float %rax {21.4843273}
+	}
+	Obj_ {
+		int32 %cp {76}
+		int32 %gIdx {49}
+		float %advW {14.4307384}
+		float %lsb {0.517694652}
+		float %bx {0}
+		float %by {-22}
+		float %bw {15}
+		float %bh {24}
+		bool %hb {true}
+		uint16 %rx {48}
+		uint16 %ry {201}
+		uint16 %rw {29}
+		uint16 %rh {48}
+		float %rox {0.25}
+		float %roy {-21.75}
+		float %rax {14.4307384}
+	}
+	Obj_ {
+		int32 %cp {77}
+		int32 %gIdx {50}
+		float %advW {27.9231548}
+		float %lsb {0.776541948}
+		float %bx {0}
+		float %by {-25}
+		float %bw {28}
+		float %bh {30}
+		bool %hb {true}
+		uint16 %rx {79}
+		uint16 %ry {201}
+		uint16 %rw {56}
+		uint16 %rh {59}
+		float %rox {0.25}
+		float %roy {-24.75}
+		float %rax {27.9231548}
+	}
+	Obj_ {
+		int32 %cp {78}
+		int32 %gIdx {51}
+		float %advW {21.1607685}
+		float %lsb {0.323559165}
+		float %bx {0}
+		float %by {-23}
+		float %bw {20}
+		float %bh {27}
+		bool %hb {true}
+		uint16 %rx {137}
+		uint16 %ry {201}
+		uint16 %rw {41}
+		uint16 %rh {54}
+		float %rox {-0.25}
+		float %roy {-23.25}
+		float %rax {21.1607685}
+	}
+	Obj_ {
+		int32 %cp {79}
+		int32 %gIdx {52}
+		float %advW {16.9221439}
+		float %lsb {0.452982813}
+		float %bx {0}
+		float %by {-21}
+		float %bw {17}
+		float %bh {22}
+		bool %hb {true}
+		uint16 %rx {180}
+		uint16 %ry {201}
+		uint16 %rw {34}
+		uint16 %rh {45}
+		float %rox {-0.25}
+		float %roy {-21.25}
+		float %rax {16.9221439}
+	}
+	Obj_ {
+		int32 %cp {80}
+		int32 %gIdx {53}
+		float %advW {18.6370068}
+		float %lsb {0.452982813}
+		float %bx {0}
+		float %by {-23}
+		float %bw {19}
+		float %bh {26}
+		bool %hb {true}
+		uint16 %rx {216}
+		uint16 %ry {201}
+		uint16 %rw {38}
+		uint16 %rh {52}
+		float %rox {-0.25}
+		float %roy {-22.75}
+		float %rax {18.6370068}
+	}
+	Obj_ {
+		int32 %cp {81}
+		int32 %gIdx {54}
+		float %advW {17.3104153}
+		float %lsb {0.452982813}
+		float %bx {0}
+		float %by {-22}
+		float %bw {17}
+		float %bh {24}
+		bool %hb {true}
+		uint16 %rx {256}
+		uint16 %ry {201}
+		uint16 %rw {35}
+		uint16 %rh {49}
+		float %rox {-0.25}
+		float %roy {-22.25}
+		float %rax {17.3104153}
+	}
+	Obj_ {
+		int32 %cp {82}
+		int32 %gIdx {55}
+		float %advW {19.5106163}
+		float %lsb {0.420626909}
+		float %bx {0}
+		float %by {-24}
+		float %bw {20}
+		float %bh {27}
+		bool %hb {true}
+		uint16 %rx {293}
+		uint16 %ry {201}
+		uint16 %rw {40}
+		uint16 %rh {54}
+		float %rox {-0.25}
+		float %roy {-23.75}
+		float %rax {19.5106163}
+	}
+	Obj_ {
+		int32 %cp {83}
+		int32 %gIdx {56}
+		float %advW {15.0131445}
+		float %lsb {0.744186044}
+		float %bx {0}
+		float %by {-20}
+		float %bw {15}
+		float %bh {21}
+		bool %hb {true}
+		uint16 %rx {335}
+		uint16 %ry {201}
+		uint16 %rw {29}
+		uint16 %rh {42}
+		float %rox {0.25}
+		float %roy {-20.25}
+		float %rax {15.0131445}
+	}
+	Obj_ {
+		int32 %cp {84}
+		int32 %gIdx {57}
+		float %advW {18.6370068}
+		float %lsb {0.161779583}
+		float %bx {0}
+		float %by {-22}
+		float %bw {19}
+		float %bh {25}
+		bool %hb {true}
+		uint16 %rx {366}
+		uint16 %ry {201}
+		uint16 %rw {39}
+		uint16 %rh {50}
+		float %rox {-0.25}
+		float %roy {-22.25}
+		float %rax {18.6370068}
+	}
+	Obj_ {
+		int32 %cp {85}
+		int32 %gIdx {58}
+		float %advW {17.6339741}
+		float %lsb {0.517694652}
+		float %bx {0}
+		float %by {-21}
+		float %bw {17}
+		float %bh {22}
+		bool %hb {true}
+		uint16 %rx {407}
+		uint16 %ry {201}
+		uint16 %rw {33}
+		uint16 %rh {44}
+		float %rox {0.25}
+		float %roy {-20.75}
+		float %rax {17.6339741}
+	}
+	Obj_ {
+		int32 %cp {86}
+		int32 %gIdx {59}
+		float %advW {19.834177}
+		float %lsb {0.129423663}
+		float %bx {0}
+		float %by {-21}
+		float %bw {20}
+		float %bh {23}
+		bool %hb {true}
+		uint16 %rx {442}
+		uint16 %ry {201}
+		uint16 %rw {41}
+		uint16 %rh {46}
+		float %rox {-0.25}
+		float %roy {-21.25}
+		float %rax {19.834177}
+	}
+	Obj_ {
+		int32 %cp {87}
+		int32 %gIdx {60}
+		float %advW {26.5642071}
+		float %lsb {0.323559165}
+		float %bx {0}
+		float %by {-23}
+		float %bw {26}
+		float %bh {26}
+		bool %hb {true}
+		uint16 %rx {2}
+		uint16 %ry {262}
+		uint16 %rw {53}
+		uint16 %rh {53}
+		float %rox {-0.25}
+		float %roy {-23.25}
+		float %rax {26.5642071}
+	}
+	Obj_ {
+		int32 %cp {88}
+		int32 %gIdx {61}
+		float %advW {20.7077866}
+		float %lsb {0.161779583}
+		float %bx {0}
+		float %by {-23}
+		float %bw {21}
+		float %bh {26}
+		bool %hb {true}
+		uint16 %rx {57}
+		uint16 %ry {262}
+		uint16 %rw {43}
+		uint16 %rh {51}
+		float %rox {-0.25}
+		float %roy {-22.75}
+		float %rax {20.7077866}
+	}
+	Obj_ {
+		int32 %cp {89}
+		int32 %gIdx {62}
+		float %advW {17.4398384}
+		float %lsb {0.64711833}
+		float %bx {0}
+		float %by {-23}
+		float %bw {17}
+		float %bh {26}
+		bool %hb {true}
+		uint16 %rx {102}
+		uint16 %ry {262}
+		uint16 %rw {33}
+		uint16 %rh {52}
+		float %rox {0.25}
+		float %roy {-22.75}
+		float %rax {17.4398384}
+	}
+	Obj_ {
+		int32 %cp {90}
+		int32 %gIdx {63}
+		float %advW {16.3073807}
+		float %lsb {0.582406461}
+		float %bx {0}
+		float %by {-21}
+		float %bw {16}
+		float %bh {22}
+		bool %hb {true}
+		uint16 %rx {137}
+		uint16 %ry {262}
+		uint16 %rw {32}
+		uint16 %rh {45}
+		float %rox {0.25}
+		float %roy {-21.25}
+		float %rax {16.3073807}
+	}
+	Obj_ {
+		int32 %cp {91}
+		int32 %gIdx {64}
+		float %advW {13.5571289}
+		float %lsb {1.26188076}
+		float %bx {1}
+		float %by {-30}
+		float %bw {11}
+		float %bh {33}
+		bool %hb {true}
+		uint16 %rx {171}
+		uint16 %ry {262}
+		uint16 %rw {23}
+		uint16 %rh {66}
+		float %rox {0.75}
+		float %roy {-29.75}
+		float %rax {13.5571289}
+	}
+	Obj_ {
+		int32 %cp {92}
+		int32 %gIdx {65}
+		float %advW {22.6814976}
+		float %lsb {1.61779583}
+		float %bx {1}
+		float %by {-30}
+		float %bw {21}
+		float %bh {33}
+		bool %hb {true}
+		uint16 %rx {196}
+		uint16 %ry {262}
+		uint16 %rw {41}
+		uint16 %rh {67}
+		float %rox {1.25}
+		float %roy {-30.25}
+		float %rax {22.6814976}
+	}
+	Obj_ {
+		int32 %cp {93}
+		int32 %gIdx {66}
+		float %advW {13.1688576}
+		float %lsb {1.61779583}
+		float %bx {1}
+		float %by {-30}
+		float %bw {11}
+		float %bh {33}
+		bool %hb {true}
+		uint16 %rx {239}
+		uint16 %ry {262}
+		uint16 %rw {22}
+		uint16 %rh {66}
+		float %rox {1.25}
+		float %roy {-29.75}
+		float %rax {13.1688576}
+	}
+	Obj_ {
+		int32 %cp {94}
+		int32 %gIdx {67}
+		float %advW {11.2275028}
+		float %lsb {0.485338748}
+		float %bx {0}
+		float %by {-30}
+		float %bw {11}
+		float %bh {13}
+		bool %hb {true}
+		uint16 %rx {263}
+		uint16 %ry {262}
+		uint16 %rw {23}
+		uint16 %rh {25}
+		float %rox {-0.25}
+		float %roy {-29.75}
+		float %rax {11.2275028}
+	}
+	Obj_ {
+		int32 %cp {95}
+		int32 %gIdx {68}
+		float %advW {18.5722961}
+		float %lsb {0.485338748}
+		float %bx {0}
+		float %by {-4}
+		float %bw {19}
+		float %bh {4}
+		bool %hb {true}
+		uint16 %rx {288}
+		uint16 %ry {262}
+		uint16 %rw {38}
+		uint16 %rh {9}
+		float %rox {-0.25}
+		float %roy {-4.25}
+		float %rax {18.5722961}
+	}
+	Obj_ {
+		int32 %cp {96}
+		int32 %gIdx {69}
+		float %advW {5.7269969}
+		float %lsb {-2.16784644}
+		float %bx {-3}
+		float %by {-32}
+		float %bw {9}
+		float %bh {11}
+		bool %hb {true}
+		uint16 %rx {328}
+		uint16 %ry {262}
+		uint16 %rw {17}
+		uint16 %rh {23}
+		float %rox {-2.75}
+		float %roy {-32.25}
+		float %rax {5.7269969}
+	}
+	Obj_ {
+		int32 %cp {97}
+		int32 %gIdx {70}
+		float %advW {19.2841263}
+		float %lsb {0.161779583}
+		float %bx {0}
+		float %by {-22}
+		float %bw {20}
+		float %bh {21}
+		bool %hb {true}
+		uint16 %rx {347}
+		uint16 %ry {262}
+		uint16 %rw {40}
+		uint16 %rh {43}
+		float %rox {-0.25}
+		float %roy {-22.25}
+		float %rax {19.2841263}
+	}
+	Obj_ {
+		int32 %cp {98}
+		int32 %gIdx {71}
+		float %advW {22.843277}
+		float %lsb {0.161779583}
+		float %bx {0}
+		float %by {-27}
+		float %bw {23}
+		float %bh {31}
+		bool %hb {true}
+		uint16 %rx {389}
+		uint16 %ry {262}
+		uint16 %rw {47}
+		uint16 %rh {61}
+		float %rox {-0.25}
+		float %roy {-26.75}
+		float %rax {22.843277}
+	}
+	Obj_ {
+		int32 %cp {99}
+		int32 %gIdx {72}
+		float %advW {17.6339741}
+		float %lsb {0.905965626}
+		float %bx {0}
+		float %by {-23}
+		float %bw {17}
+		float %bh {23}
+		bool %hb {true}
+		uint16 %rx {438}
+		uint16 %ry {262}
+		uint16 %rw {34}
+		uint16 %rh {45}
+		float %rox {0.25}
+		float %roy {-22.75}
+		float %rax {17.6339741}
+	}
+	Obj_ {
+		int32 %cp {100}
+		int32 %gIdx {73}
+		float %advW {16.4044495}
+		float %lsb {1.0030334}
+		float %bx {1}
+		float %by {-25}
+		float %bw {16}
+		float %bh {27}
+		bool %hb {true}
+		uint16 %rx {474}
+		uint16 %ry {262}
+		uint16 %rw {32}
+		uint16 %rh {53}
+		float %rox {0.75}
+		float %roy {-24.75}
+		float %rax {16.4044495}
+	}
+	Obj_ {
+		int32 %cp {101}
+		int32 %gIdx {74}
+		float %advW {16.7280083}
+		float %lsb {0.64711833}
+		float %bx {0}
+		float %by {-22}
+		float %bw {17}
+		float %bh {21}
+		bool %hb {true}
+		uint16 %rx {2}
+		uint16 %ry {331}
+		uint16 %rw {33}
+		uint16 %rh {43}
+		float %rox {0.25}
+		float %roy {-22.25}
+		float %rax {16.7280083}
+	}
+	Obj_ {
+		int32 %cp {102}
+		int32 %gIdx {75}
+		float %advW {17.860466}
+		float %lsb {0.841253817}
+		float %bx {0}
+		float %by {-25}
+		float %bw {18}
+		float %bh {27}
+		bool %hb {true}
+		uint16 %rx {37}
+		uint16 %ry {331}
+		uint16 %rw {36}
+		uint16 %rh {54}
+		float %rox {0.25}
+		float %roy {-25.25}
+		float %rax {17.860466}
+	}
+	Obj_ {
+		int32 %cp {103}
+		int32 %gIdx {76}
+		float %advW {19.7371082}
+		float %lsb {0.938321531}
+		float %bx {0}
+		float %by {-25}
+		float %bw {20}
+		float %bh {27}
+		bool %hb {true}
+		uint16 %rx {75}
+		uint16 %ry {331}
+		uint16 %rw {39}
+		uint16 %rh {55}
+		float %rox {0.25}
+		float %roy {-25.25}
+		float %rax {19.7371082}
+	}
+	Obj_ {
+		int32 %cp {104}
+		int32 %gIdx {77}
+		float %advW {20.3842278}
+		float %lsb {0.970677495}
+		float %bx {0}
+		float %by {-26}
+		float %bw {20}
+		float %bh {29}
+		bool %hb {true}
+		uint16 %rx {116}
+		uint16 %ry {331}
+		uint16 %rw {39}
+		uint16 %rh {57}
+		float %rox {0.25}
+		float %roy {-25.75}
+		float %rax {20.3842278}
+	}
+	Obj_ {
+		int32 %cp {105}
+		int32 %gIdx {78}
+		float %advW {9.25379181}
+		float %lsb {0.873609722}
+		float %bx {0}
+		float %by {-30}
+		float %bw {9}
+		float %bh {30}
+		bool %hb {true}
+		uint16 %rx {157}
+		uint16 %ry {331}
+		uint16 %rw {17}
+		uint16 %rh {61}
+		float %rox {0.25}
+		float %roy {-30.25}
+		float %rax {9.25379181}
+	}
+	Obj_ {
+		int32 %cp {106}
+		int32 %gIdx {79}
+		float %advW {16.2426701}
+		float %lsb {0.0970677435}
+		float %bx {0}
+		float %by {-25}
+		float %bw {16}
+		float %bh {27}
+		bool %hb {true}
+		uint16 %rx {176}
+		uint16 %ry {331}
+		uint16 %rw {32}
+		uint16 %rh {55}
+		float %rox {-0.25}
+		float %roy {-25.25}
+		float %rax {16.2426701}
+	}
+	Obj_ {
+		int32 %cp {107}
+		int32 %gIdx {80}
+		float %advW {20.9989891}
+		float %lsb {1.26188076}
+		float %bx {1}
+		float %by {-26}
+		float %bw {20}
+		float %bh {29}
+		bool %hb {true}
+		uint16 %rx {210}
+		uint16 %ry {331}
+		uint16 %rw {41}
+		uint16 %rh {57}
+		float %rox {0.75}
+		float %roy {-25.75}
+		float %rax {20.9989891}
+	}
+	Obj_ {
+		int32 %cp {108}
+		int32 %gIdx {81}
+		float %advW {13.330637}
+		float %lsb {1.06774521}
+		float %bx {1}
+		float %by {-23}
+		float %bw {13}
+		float %bh {23}
+		bool %hb {true}
+		uint16 %rx {253}
+		uint16 %ry {331}
+		uint16 %rw {26}
+		uint16 %rh {47}
+		float %rox {0.75}
+		float %roy {-23.25}
+		float %rax {13.330637}
+	}
+	Obj_ {
+		int32 %cp {109}
+		int32 %gIdx {82}
+		float %advW {27.6319523}
+		float %lsb {0.291203231}
+		float %bx {0}
+		float %by {-26}
+		float %bw {28}
+		float %bh {29}
+		bool %hb {true}
+		uint16 %rx {281}
+		uint16 %ry {331}
+		uint16 %rw {56}
+		uint16 %rh {59}
+		float %rox {-0.25}
+		float %roy {-26.25}
+		float %rax {27.6319523}
+	}
+	Obj_ {
+		int32 %cp {110}
+		int32 %gIdx {83}
+		float %advW {19.704752}
+		float %lsb {1.0353893}
+		float %bx {1}
+		float %by {-25}
+		float %bw {18}
+		float %bh {27}
+		bool %hb {true}
+		uint16 %rx {339}
+		uint16 %ry {331}
+		uint16 %rw {36}
+		uint16 %rh {55}
+		float %rox {0.75}
+		float %roy {-25.25}
+		float %rax {19.704752}
+	}
+	Obj_ {
+		int32 %cp {111}
+		int32 %gIdx {84}
+		float %advW {16.4368057}
+		float %lsb {0.873609722}
+		float %bx {0}
+		float %by {-22}
+		float %bw {16}
+		float %bh {22}
+		bool %hb {true}
+		uint16 %rx {377}
+		uint16 %ry {331}
+		uint16 %rw {31}
+		uint16 %rh {44}
+		float %rox {0.25}
+		float %roy {-22.25}
+		float %rax {16.4368057}
+	}
+	Obj_ {
+		int32 %cp {112}
+		int32 %gIdx {85}
+		float %advW {17.5692616}
+		float %lsb {1.29423666}
+		float %bx {1}
+		float %by {-26}
+		float %bw {17}
+		float %bh {29}
+		bool %hb {true}
+		uint16 %rx {410}
+		uint16 %ry {331}
+		uint16 %rw {34}
+		uint16 %rh {57}
+		float %rox {0.75}
+		float %roy {-25.75}
+		float %rax {17.5692616}
+	}
+	Obj_ {
+		int32 %cp {113}
+		int32 %gIdx {86}
+		float %advW {17.0839233}
+		float %lsb {0.938321531}
+		float %bx {0}
+		float %by {-24}
+		float %bw {17}
+		float %bh {25}
+		bool %hb {true}
+		uint16 %rx {446}
+		uint16 %ry {331}
+		uint16 %rw {33}
+		uint16 %rh {50}
+		float %rox {0.25}
+		float %roy {-24.25}
+		float %rax {17.0839233}
+	}
+	Obj_ {
+		int32 %cp {114}
+		int32 %gIdx {87}
+		float %advW {17.7957535}
+		float %lsb {1.19716883}
+		float %bx {1}
+		float %by {-25}
+		float %bw {17}
+		float %bh {27}
+		bool %hb {true}
+		uint16 %rx {2}
+		uint16 %ry {394}
+		uint16 %rw {34}
+		uint16 %rh {54}
+		float %rox {0.75}
+		float %roy {-25.25}
+		float %rax {17.7957535}
+	}
+	Obj_ {
+		int32 %cp {115}
+		int32 %gIdx {88}
+		float %advW {17.5369072}
+		float %lsb {0.776541948}
+		float %bx {0}
+		float %by {-24}
+		float %bw {18}
+		float %bh {25}
+		bool %hb {true}
+		uint16 %rx {38}
+		uint16 %ry {394}
+		uint16 %rw {35}
+		uint16 %rh {51}
+		float %rox {0.25}
+		float %roy {-24.25}
+		float %rax {17.5369072}
+	}
+	Obj_ {
+		int32 %cp {116}
+		int32 %gIdx {89}
+		float %advW {17.4074821}
+		float %lsb {-0.226491407}
+		float %bx {-1}
+		float %by {-26}
+		float %bw {19}
+		float %bh {29}
+		bool %hb {true}
+		uint16 %rx {75}
+		uint16 %ry {394}
+		uint16 %rw {38}
+		uint16 %rh {57}
+		float %rox {-0.75}
+		float %roy {-25.75}
+		float %rax {17.4074821}
+	}
+	Obj_ {
+		int32 %cp {117}
+		int32 %gIdx {90}
+		float %advW {17.7957535}
+		float %lsb {1.26188076}
+		float %bx {1}
+		float %by {-23}
+		float %bw {16}
+		float %bh {23}
+		bool %hb {true}
+		uint16 %rx {115}
+		uint16 %ry {394}
+		uint16 %rw {33}
+		uint16 %rh {45}
+		float %rox {0.75}
+		float %roy {-22.75}
+		float %rax {17.7957535}
+	}
+	Obj_ {
+		int32 %cp {118}
+		int32 %gIdx {91}
+		float %advW {18.7664318}
+		float %lsb {0}
+		float %bx {0}
+		float %by {-23}
+		float %bw {19}
+		float %bh {23}
+		bool %hb {true}
+		uint16 %rx {150}
+		uint16 %ry {394}
+		uint16 %rw {38}
+		uint16 %rh {45}
+		float %rox {-0.25}
+		float %roy {-22.75}
+		float %rax {18.7664318}
+	}
+	Obj_ {
+		int32 %cp {119}
+		int32 %gIdx {92}
+		float %advW {25.3993931}
+		float %lsb {0.614762425}
+		float %bx {0}
+		float %by {-25}
+		float %bw {25}
+		float %bh {27}
+		bool %hb {true}
+		uint16 %rx {190}
+		uint16 %ry {394}
+		uint16 %rw {50}
+		uint16 %rh {53}
+		float %rox {0.25}
+		float %roy {-24.75}
+		float %rax {25.3993931}
+	}
+	Obj_ {
+		int32 %cp {120}
+		int32 %gIdx {93}
+		float %advW {21.8725986}
+		float %lsb {-0.0323559158}
+		float %bx {-1}
+		float %by {-23}
+		float %bw {23}
+		float %bh {23}
+		bool %hb {true}
+		uint16 %rx {242}
+		uint16 %ry {394}
+		uint16 %rw {46}
+		uint16 %rh {45}
+		float %rox {-0.75}
+		float %roy {-22.75}
+		float %rax {21.8725986}
+	}
+	Obj_ {
+		int32 %cp {121}
+		int32 %gIdx {94}
+		float %advW {16.1456013}
+		float %lsb {0.64711833}
+		float %bx {0}
+		float %by {-24}
+		float %bw {15}
+		float %bh {25}
+		bool %hb {true}
+		uint16 %rx {290}
+		uint16 %ry {394}
+		uint16 %rw {30}
+		uint16 %rh {51}
+		float %rox {0.25}
+		float %roy {-24.25}
+		float %rax {16.1456013}
+	}
+	Obj_ {
+		int32 %cp {122}
+		int32 %gIdx {95}
+		float %advW {16.0485344}
+		float %lsb {0.452982813}
+		float %bx {0}
+		float %by {-23}
+		float %bw {16}
+		float %bh {23}
+		bool %hb {true}
+		uint16 %rx {322}
+		uint16 %ry {394}
+		uint16 %rw {32}
+		uint16 %rh {45}
+		float %rox {-0.25}
+		float %roy {-22.75}
+		float %rax {16.0485344}
+	}
+	Obj_ {
+		int32 %cp {123}
+		int32 %gIdx {96}
+		float %advW {12.8129425}
+		float %lsb {0.291203231}
+		float %bx {0}
+		float %by {-28}
+		float %bw {13}
+		float %bh {30}
+		bool %hb {true}
+		uint16 %rx {356}
+		uint16 %ry {394}
+		uint16 %rw {26}
+		uint16 %rh {60}
+		float %rox {-0.25}
+		float %roy {-28.25}
+		float %rax {12.8129425}
+	}
+	Obj_ {
+		int32 %cp {124}
+		int32 %gIdx {97}
+		float %advW {9.15672398}
+		float %lsb {1.16481292}
+		float %bx {1}
+		float %by {-34}
+		float %bw {8}
+		float %bh {42}
+		bool %hb {true}
+		uint16 %rx {384}
+		uint16 %ry {394}
+		uint16 %rw {16}
+		uint16 %rh {84}
+		float %rox {0.75}
+		float %roy {-34.25}
+		float %rax {9.15672398}
+	}
+	Obj_ {
+		int32 %cp {125}
+		int32 %gIdx {98}
+		float %advW {14.0748234}
+		float %lsb {0.420626909}
+		float %bx {0}
+		float %by {-28}
+		float %bw {13}
+		float %bh {29}
+		bool %hb {true}
+		uint16 %rx {402}
+		uint16 %ry {394}
+		uint16 %rw {26}
+		uint16 %rh {59}
+		float %rox {-0.25}
+		float %roy {-28.25}
+		float %rax {14.0748234}
+	}
+	Obj_ {
+		int32 %cp {126}
+		int32 %gIdx {99}
+		float %advW {19.3811932}
+		float %lsb {0.744186044}
+		float %bx {0}
+		float %by {-19}
+		float %bw {19}
+		float %bh {11}
+		bool %hb {true}
+		uint16 %rx {430}
+		uint16 %ry {394}
+		uint16 %rw {38}
+		uint16 %rh {22}
+		float %rox {0.25}
+		float %roy {-18.75}
+		float %rax {19.3811932}
+	}
+}
+Arr_ %kerning {
+	int32 %_count {849}
+	Obj_ {
+		int64 %p {206158430257}
+		float %a {-0.776541948}
+	}
+	Obj_ {
+		int64 %p {206158430258}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {206158430261}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {206158430263}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {206158430265}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {210453397555}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {210453397556}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {210453397560}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {214748364851}
+		float %a {-1.06774521}
+	}
+	Obj_ {
+		int64 %p {214748364852}
+		float %a {-0.970677495}
+	}
+	Obj_ {
+		int64 %p {214748364856}
+		float %a {-0.711830139}
+	}
+	Obj_ {
+		int64 %p {219043332145}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {219043332149}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {219043332150}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {219043332151}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {219043332153}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {223338299441}
+		float %a {-0.711830139}
+	}
+	Obj_ {
+		int64 %p {223338299442}
+		float %a {-0.905965626}
+	}
+	Obj_ {
+		int64 %p {223338299445}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {223338299447}
+		float %a {-0.873609722}
+	}
+	Obj_ {
+		int64 %p {223338299449}
+		float %a {-0.744186044}
+	}
+	Obj_ {
+		int64 %p {227633266737}
+		float %a {-1.26188076}
+	}
+	Obj_ {
+		int64 %p {227633266738}
+		float %a {-0.744186044}
+	}
+	Obj_ {
+		int64 %p {227633266743}
+		float %a {-1.16481292}
+	}
+	Obj_ {
+		int64 %p {227633266745}
+		float %a {-0.873609722}
+	}
+	Obj_ {
+		int64 %p {231928234033}
+		float %a {-1.19716883}
+	}
+	Obj_ {
+		int64 %p {231928234034}
+		float %a {-0.776541948}
+	}
+	Obj_ {
+		int64 %p {231928234037}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {231928234039}
+		float %a {-1.06774521}
+	}
+	Obj_ {
+		int64 %p {231928234041}
+		float %a {-0.841253817}
+	}
+	Obj_ {
+		int64 %p {236223201328}
+		float %a {-0.517694652}
+	}
+	Obj_ {
+		int64 %p {236223201331}
+		float %a {-0.808897913}
+	}
+	Obj_ {
+		int64 %p {236223201332}
+		float %a {-1.35894847}
+	}
+	Obj_ {
+		int64 %p {236223201334}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {236223201336}
+		float %a {-0.517694652}
+	}
+	Obj_ {
+		int64 %p {240518168625}
+		float %a {-1.19716883}
+	}
+	Obj_ {
+		int64 %p {240518168629}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {240518168631}
+		float %a {-0.841253817}
+	}
+	Obj_ {
+		int64 %p {240518168633}
+		float %a {-0.776541948}
+	}
+	Obj_ {
+		int64 %p {244813135921}
+		float %a {-0.808897913}
+	}
+	Obj_ {
+		int64 %p {244813135922}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {244813135925}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {244813135927}
+		float %a {-0.679474235}
+	}
+	Obj_ {
+		int64 %p {279172874274}
+		float %a {-2.16784644}
+	}
+	Obj_ {
+		int64 %p {279172874279}
+		float %a {-2.16784644}
+	}
+	Obj_ {
+		int64 %p {279172874280}
+		float %a {-0.873609722}
+	}
+	Obj_ {
+		int64 %p {279172874281}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {279172874282}
+		float %a {-1.90899909}
+	}
+	Obj_ {
+		int64 %p {279172874285}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {279172874287}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {279172874299}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {279172874303}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {279172874306}
+		float %a {-1.45601618}
+	}
+	Obj_ {
+		int64 %p {279172874308}
+		float %a {-0.938321531}
+	}
+	Obj_ {
+		int64 %p {279172874309}
+		float %a {-0.873609722}
+	}
+	Obj_ {
+		int64 %p {279172874310}
+		float %a {-0.582406461}
+	}
+	Obj_ {
+		int64 %p {279172874312}
+		float %a {-0.744186044}
+	}
+	Obj_ {
+		int64 %p {279172874313}
+		float %a {-0.711830139}
+	}
+	Obj_ {
+		int64 %p {279172874315}
+		float %a {-0.614762425}
+	}
+	Obj_ {
+		int64 %p {279172874316}
+		float %a {-0.744186044}
+	}
+	Obj_ {
+		int64 %p {279172874318}
+		float %a {-0.970677495}
+	}
+	Obj_ {
+		int64 %p {279172874320}
+		float %a {-0.582406461}
+	}
+	Obj_ {
+		int64 %p {279172874321}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {279172874322}
+		float %a {-0.970677495}
+	}
+	Obj_ {
+		int64 %p {279172874324}
+		float %a {-0.873609722}
+	}
+	Obj_ {
+		int64 %p {279172874325}
+		float %a {-0.550050557}
+	}
+	Obj_ {
+		int64 %p {279172874326}
+		float %a {-0.938321531}
+	}
+	Obj_ {
+		int64 %p {279172874327}
+		float %a {-0.970677495}
+	}
+	Obj_ {
+		int64 %p {279172874328}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {279172874329}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {279172874332}
+		float %a {-2.20020223}
+	}
+	Obj_ {
+		int64 %p {279172874333}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {279172874338}
+		float %a {-0.614762425}
+	}
+	Obj_ {
+		int64 %p {279172874340}
+		float %a {-0.679474235}
+	}
+	Obj_ {
+		int64 %p {279172874341}
+		float %a {-0.64711833}
+	}
+	Obj_ {
+		int64 %p {279172874353}
+		float %a {-0.582406461}
+	}
+	Obj_ {
+		int64 %p {279172874355}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {279172874356}
+		float %a {-1.22952485}
+	}
+	Obj_ {
+		int64 %p {279172874357}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {279172874358}
+		float %a {-1.29423666}
+	}
+	Obj_ {
+		int64 %p {279172874359}
+		float %a {-0.970677495}
+	}
+	Obj_ {
+		int64 %p {279172874360}
+		float %a {-0.938321531}
+	}
+	Obj_ {
+		int64 %p {279172874361}
+		float %a {-0.582406461}
+	}
+	Obj_ {
+		int64 %p {279172874363}
+		float %a {-0.776541948}
+	}
+	Obj_ {
+		int64 %p {283467841570}
+		float %a {-2.62082911}
+	}
+	Obj_ {
+		int64 %p {283467841575}
+		float %a {-2.62082911}
+	}
+	Obj_ {
+		int64 %p {283467841576}
+		float %a {-0.64711833}
+	}
+	Obj_ {
+		int64 %p {283467841577}
+		float %a {-1.16481292}
+	}
+	Obj_ {
+		int64 %p {283467841578}
+		float %a {-1.90899909}
+	}
+	Obj_ {
+		int64 %p {283467841581}
+		float %a {-1.29423666}
+	}
+	Obj_ {
+		int64 %p {283467841583}
+		float %a {-0.550050557}
+	}
+	Obj_ {
+		int64 %p {283467841604}
+		float %a {-0.841253817}
+	}
+	Obj_ {
+		int64 %p {283467841605}
+		float %a {-0.744186044}
+	}
+	Obj_ {
+		int64 %p {283467841606}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {283467841608}
+		float %a {-0.550050557}
+	}
+	Obj_ {
+		int64 %p {283467841609}
+		float %a {-0.550050557}
+	}
+	Obj_ {
+		int64 %p {283467841611}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {283467841612}
+		float %a {-0.550050557}
+	}
+	Obj_ {
+		int64 %p {283467841614}
+		float %a {-1.16481292}
+	}
+	Obj_ {
+		int64 %p {283467841616}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {283467841618}
+		float %a {-0.905965626}
+	}
+	Obj_ {
+		int64 %p {283467841620}
+		float %a {-2.20020223}
+	}
+	Obj_ {
+		int64 %p {283467841621}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {283467841622}
+		float %a {-2.03842258}
+	}
+	Obj_ {
+		int64 %p {283467841623}
+		float %a {-1.65015173}
+	}
+	Obj_ {
+		int64 %p {283467841624}
+		float %a {-0.776541948}
+	}
+	Obj_ {
+		int64 %p {283467841628}
+		float %a {-2.13549042}
+	}
+	Obj_ {
+		int64 %p {283467841629}
+		float %a {-0.452982813}
+	}
+	Obj_ {
+		int64 %p {283467841634}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {283467841637}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {283467841652}
+		float %a {-2.23255825}
+	}
+	Obj_ {
+		int64 %p {283467841654}
+		float %a {-2.10313463}
+	}
+	Obj_ {
+		int64 %p {283467841655}
+		float %a {-0.64711833}
+	}
+	Obj_ {
+		int64 %p {283467841656}
+		float %a {-0.517694652}
+	}
+	Obj_ {
+		int64 %p {283467841657}
+		float %a {-0.679474235}
+	}
+	Obj_ {
+		int64 %p {283467841659}
+		float %a {-1.32659256}
+	}
+	Obj_ {
+		int64 %p {287762808865}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {287762808866}
+		float %a {-0.711830139}
+	}
+	Obj_ {
+		int64 %p {287762808871}
+		float %a {-0.711830139}
+	}
+	Obj_ {
+		int64 %p {287762808873}
+		float %a {-1.35894847}
+	}
+	Obj_ {
+		int64 %p {287762808879}
+		float %a {-1.45601618}
+	}
+	Obj_ {
+		int64 %p {287762808924}
+		float %a {-2.20020223}
+	}
+	Obj_ {
+		int64 %p {287762808925}
+		float %a {-1.81193125}
+	}
+	Obj_ {
+		int64 %p {292057776161}
+		float %a {-0.452982813}
+	}
+	Obj_ {
+		int64 %p {292057776162}
+		float %a {-1.90899909}
+	}
+	Obj_ {
+		int64 %p {292057776167}
+		float %a {-1.90899909}
+	}
+	Obj_ {
+		int64 %p {292057776169}
+		float %a {-1.39130437}
+	}
+	Obj_ {
+		int64 %p {292057776170}
+		float %a {-1.06774521}
+	}
+	Obj_ {
+		int64 %p {292057776175}
+		float %a {-1.52072799}
+	}
+	Obj_ {
+		int64 %p {292057776191}
+		float %a {-0.938321531}
+	}
+	Obj_ {
+		int64 %p {292057776194}
+		float %a {-0.679474235}
+	}
+	Obj_ {
+		int64 %p {292057776202}
+		float %a {-0.679474235}
+	}
+	Obj_ {
+		int64 %p {292057776203}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {292057776220}
+		float %a {-2.10313463}
+	}
+	Obj_ {
+		int64 %p {292057776221}
+		float %a {-1.77957535}
+	}
+	Obj_ {
+		int64 %p {292057776225}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {292057776226}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {292057776244}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {292057776253}
+		float %a {-1.13245702}
+	}
+	Obj_ {
+		int64 %p {296352743458}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {296352743463}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {296352743464}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {296352743465}
+		float %a {-0.938321531}
+	}
+	Obj_ {
+		int64 %p {296352743466}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {296352743471}
+		float %a {-0.614762425}
+	}
+	Obj_ {
+		int64 %p {296352743516}
+		float %a {-2.13549042}
+	}
+	Obj_ {
+		int64 %p {296352743517}
+		float %a {-0.905965626}
+	}
+	Obj_ {
+		int64 %p {296352743547}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {300647710761}
+		float %a {-1.48837209}
+	}
+	Obj_ {
+		int64 %p {300647710764}
+		float %a {-1.42366028}
+	}
+	Obj_ {
+		int64 %p {300647710766}
+		float %a {-1.39130437}
+	}
+	Obj_ {
+		int64 %p {300647710767}
+		float %a {-1.65015173}
+	}
+	Obj_ {
+		int64 %p {300647710794}
+		float %a {-2.39433765}
+	}
+	Obj_ {
+		int64 %p {300647710812}
+		float %a {-2.13549042}
+	}
+	Obj_ {
+		int64 %p {300647710813}
+		float %a {-1.90899909}
+	}
+	Obj_ {
+		int64 %p {300647710817}
+		float %a {-1.35894847}
+	}
+	Obj_ {
+		int64 %p {300647710826}
+		float %a {-1.68250763}
+	}
+	Obj_ {
+		int64 %p {300647710829}
+		float %a {-0.452982813}
+	}
+	Obj_ {
+		int64 %p {304942678049}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {304942678050}
+		float %a {-2.10313463}
+	}
+	Obj_ {
+		int64 %p {304942678055}
+		float %a {-2.10313463}
+	}
+	Obj_ {
+		int64 %p {304942678057}
+		float %a {-1.39130437}
+	}
+	Obj_ {
+		int64 %p {304942678058}
+		float %a {-1.84428716}
+	}
+	Obj_ {
+		int64 %p {304942678063}
+		float %a {-1.48837209}
+	}
+	Obj_ {
+		int64 %p {304942678079}
+		float %a {-1.0030334}
+	}
+	Obj_ {
+		int64 %p {304942678081}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {304942678082}
+		float %a {-1.26188076}
+	}
+	Obj_ {
+		int64 %p {304942678084}
+		float %a {-0.744186044}
+	}
+	Obj_ {
+		int64 %p {304942678085}
+		float %a {-0.679474235}
+	}
+	Obj_ {
+		int64 %p {304942678086}
+		float %a {-0.452982813}
+	}
+	Obj_ {
+		int64 %p {304942678088}
+		float %a {-0.550050557}
+	}
+	Obj_ {
+		int64 %p {304942678089}
+		float %a {-0.64711833}
+	}
+	Obj_ {
+		int64 %p {304942678091}
+		float %a {-0.517694652}
+	}
+	Obj_ {
+		int64 %p {304942678092}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {304942678093}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {304942678094}
+		float %a {-0.841253817}
+	}
+	Obj_ {
+		int64 %p {304942678096}
+		float %a {-0.452982813}
+	}
+	Obj_ {
+		int64 %p {304942678098}
+		float %a {-0.744186044}
+	}
+	Obj_ {
+		int64 %p {304942678100}
+		float %a {-0.808897913}
+	}
+	Obj_ {
+		int64 %p {304942678101}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {304942678102}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {304942678103}
+		float %a {-0.841253817}
+	}
+	Obj_ {
+		int64 %p {304942678104}
+		float %a {-0.970677495}
+	}
+	Obj_ {
+		int64 %p {304942678105}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {304942678106}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {304942678108}
+		float %a {-2.20020223}
+	}
+	Obj_ {
+		int64 %p {304942678109}
+		float %a {-1.77957535}
+	}
+	Obj_ {
+		int64 %p {304942678114}
+		float %a {-0.517694652}
+	}
+	Obj_ {
+		int64 %p {304942678131}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {304942678132}
+		float %a {-0.970677495}
+	}
+	Obj_ {
+		int64 %p {304942678134}
+		float %a {-1.0353893}
+	}
+	Obj_ {
+		int64 %p {304942678135}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {304942678136}
+		float %a {-1.16481292}
+	}
+	Obj_ {
+		int64 %p {304942678141}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {309237645345}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {309237645353}
+		float %a {-1.29423666}
+	}
+	Obj_ {
+		int64 %p {309237645359}
+		float %a {-1.0353893}
+	}
+	Obj_ {
+		int64 %p {309237645404}
+		float %a {-2.03842258}
+	}
+	Obj_ {
+		int64 %p {309237645405}
+		float %a {-1.29423666}
+	}
+	Obj_ {
+		int64 %p {313532612641}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {313532612642}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {313532612647}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {313532612649}
+		float %a {-1.32659256}
+	}
+	Obj_ {
+		int64 %p {313532612650}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {313532612655}
+		float %a {-1.45601618}
+	}
+	Obj_ {
+		int64 %p {313532612700}
+		float %a {-2.13549042}
+	}
+	Obj_ {
+		int64 %p {313532612701}
+		float %a {-1.77957535}
+	}
+	Obj_ {
+		int64 %p {317827579937}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {317827579938}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {317827579943}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {317827579945}
+		float %a {-1.32659256}
+	}
+	Obj_ {
+		int64 %p {317827579946}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {317827579951}
+		float %a {-1.45601618}
+	}
+	Obj_ {
+		int64 %p {317827579996}
+		float %a {-2.13549042}
+	}
+	Obj_ {
+		int64 %p {317827579997}
+		float %a {-1.77957535}
+	}
+	Obj_ {
+		int64 %p {322122547240}
+		float %a {-1.13245702}
+	}
+	Obj_ {
+		int64 %p {322122547242}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {322122547245}
+		float %a {-1.22952485}
+	}
+	Obj_ {
+		int64 %p {322122547259}
+		float %a {-0.679474235}
+	}
+	Obj_ {
+		int64 %p {322122547279}
+		float %a {-0.808897913}
+	}
+	Obj_ {
+		int64 %p {322122547281}
+		float %a {-1.10010111}
+	}
+	Obj_ {
+		int64 %p {322122547283}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {322122547285}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {322122547292}
+		float %a {-2.10313463}
+	}
+	Obj_ {
+		int64 %p {322122547299}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {322122547300}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {322122547303}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {322122547311}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {322122547313}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {322122547317}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {322122547320}
+		float %a {-0.776541948}
+	}
+	Obj_ {
+		int64 %p {322122547323}
+		float %a {-1.29423666}
+	}
+	Obj_ {
+		int64 %p {326417514530}
+		float %a {-2.52376151}
+	}
+	Obj_ {
+		int64 %p {326417514535}
+		float %a {-2.52376151}
+	}
+	Obj_ {
+		int64 %p {326417514536}
+		float %a {-1.16481292}
+	}
+	Obj_ {
+		int64 %p {326417514538}
+		float %a {-2.13549042}
+	}
+	Obj_ {
+		int64 %p {326417514541}
+		float %a {-1.06774521}
+	}
+	Obj_ {
+		int64 %p {326417514555}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {326417514562}
+		float %a {-1.71486354}
+	}
+	Obj_ {
+		int64 %p {326417514564}
+		float %a {-0.970677495}
+	}
+	Obj_ {
+		int64 %p {326417514565}
+		float %a {-0.841253817}
+	}
+	Obj_ {
+		int64 %p {326417514566}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {326417514568}
+		float %a {-0.582406461}
+	}
+	Obj_ {
+		int64 %p {326417514569}
+		float %a {-0.582406461}
+	}
+	Obj_ {
+		int64 %p {326417514571}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {326417514574}
+		float %a {-1.19716883}
+	}
+	Obj_ {
+		int64 %p {326417514575}
+		float %a {-0.452982813}
+	}
+	Obj_ {
+		int64 %p {326417514576}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {326417514577}
+		float %a {-0.905965626}
+	}
+	Obj_ {
+		int64 %p {326417514578}
+		float %a {-1.0030334}
+	}
+	Obj_ {
+		int64 %p {326417514580}
+		float %a {-1.42366028}
+	}
+	Obj_ {
+		int64 %p {326417514581}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {326417514582}
+		float %a {-1.58543992}
+	}
+	Obj_ {
+		int64 %p {326417514583}
+		float %a {-1.48837209}
+	}
+	Obj_ {
+		int64 %p {326417514585}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {326417514588}
+		float %a {-2.23255825}
+	}
+	Obj_ {
+		int64 %p {326417514594}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {326417514596}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {326417514597}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {326417514609}
+		float %a {-0.938321531}
+	}
+	Obj_ {
+		int64 %p {326417514612}
+		float %a {-1.39130437}
+	}
+	Obj_ {
+		int64 %p {326417514614}
+		float %a {-1.65015173}
+	}
+	Obj_ {
+		int64 %p {326417514615}
+		float %a {-1.0030334}
+	}
+	Obj_ {
+		int64 %p {326417514616}
+		float %a {-0.64711833}
+	}
+	Obj_ {
+		int64 %p {326417514617}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {326417514619}
+		float %a {-1.26188076}
+	}
+	Obj_ {
+		int64 %p {330712481826}
+		float %a {-1.48837209}
+	}
+	Obj_ {
+		int64 %p {330712481831}
+		float %a {-1.48837209}
+	}
+	Obj_ {
+		int64 %p {330712481832}
+		float %a {-0.452982813}
+	}
+	Obj_ {
+		int64 %p {330712481833}
+		float %a {-0.711830139}
+	}
+	Obj_ {
+		int64 %p {330712481834}
+		float %a {-0.841253817}
+	}
+	Obj_ {
+		int64 %p {330712481839}
+		float %a {-0.452982813}
+	}
+	Obj_ {
+		int64 %p {330712481855}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {330712481858}
+		float %a {-0.841253817}
+	}
+	Obj_ {
+		int64 %p {330712481860}
+		float %a {-0.582406461}
+	}
+	Obj_ {
+		int64 %p {330712481861}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {330712481862}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {330712481864}
+		float %a {-0.517694652}
+	}
+	Obj_ {
+		int64 %p {330712481865}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {330712481867}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {330712481868}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {330712481870}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {330712481872}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {330712481874}
+		float %a {-0.517694652}
+	}
+	Obj_ {
+		int64 %p {330712481876}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {330712481877}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {330712481878}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {330712481879}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {330712481880}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {330712481881}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {330712481884}
+		float %a {-2.03842258}
+	}
+	Obj_ {
+		int64 %p {330712481885}
+		float %a {-0.711830139}
+	}
+	Obj_ {
+		int64 %p {330712481890}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {330712481892}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {330712481893}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {330712481905}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {330712481907}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {330712481908}
+		float %a {-0.64711833}
+	}
+	Obj_ {
+		int64 %p {330712481910}
+		float %a {-0.841253817}
+	}
+	Obj_ {
+		int64 %p {330712481911}
+		float %a {-0.679474235}
+	}
+	Obj_ {
+		int64 %p {330712481912}
+		float %a {-0.517694652}
+	}
+	Obj_ {
+		int64 %p {330712481913}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {330712481915}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {335007449121}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {335007449129}
+		float %a {-1.32659256}
+	}
+	Obj_ {
+		int64 %p {335007449130}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {335007449135}
+		float %a {-1.35894847}
+	}
+	Obj_ {
+		int64 %p {335007449180}
+		float %a {-2.10313463}
+	}
+	Obj_ {
+		int64 %p {335007449181}
+		float %a {-1.68250763}
+	}
+	Obj_ {
+		int64 %p {335007449193}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {339302416417}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {339302416418}
+		float %a {-3.23559165}
+	}
+	Obj_ {
+		int64 %p {339302416423}
+		float %a {-3.23559165}
+	}
+	Obj_ {
+		int64 %p {339302416425}
+		float %a {-1.35894847}
+	}
+	Obj_ {
+		int64 %p {339302416426}
+		float %a {-2.0060668}
+	}
+	Obj_ {
+		int64 %p {339302416431}
+		float %a {-1.45601618}
+	}
+	Obj_ {
+		int64 %p {339302416447}
+		float %a {-1.10010111}
+	}
+	Obj_ {
+		int64 %p {339302416450}
+		float %a {-1.22952485}
+	}
+	Obj_ {
+		int64 %p {339302416452}
+		float %a {-0.452982813}
+	}
+	Obj_ {
+		int64 %p {339302416454}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {339302416458}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {339302416459}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {339302416461}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {339302416462}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {339302416464}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {339302416472}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {339302416476}
+		float %a {-2.20020223}
+	}
+	Obj_ {
+		int64 %p {339302416477}
+		float %a {-1.81193125}
+	}
+	Obj_ {
+		int64 %p {339302416482}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {339302416500}
+		float %a {-1.52072799}
+	}
+	Obj_ {
+		int64 %p {339302416502}
+		float %a {-0.614762425}
+	}
+	Obj_ {
+		int64 %p {339302416506}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {339302416509}
+		float %a {-1.0030334}
+	}
+	Obj_ {
+		int64 %p {343597383713}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {343597383714}
+		float %a {-2.16784644}
+	}
+	Obj_ {
+		int64 %p {343597383719}
+		float %a {-2.16784644}
+	}
+	Obj_ {
+		int64 %p {343597383721}
+		float %a {-1.48837209}
+	}
+	Obj_ {
+		int64 %p {343597383722}
+		float %a {-0.970677495}
+	}
+	Obj_ {
+		int64 %p {343597383724}
+		float %a {-0.970677495}
+	}
+	Obj_ {
+		int64 %p {343597383726}
+		float %a {-1.26188076}
+	}
+	Obj_ {
+		int64 %p {343597383727}
+		float %a {-1.61779583}
+	}
+	Obj_ {
+		int64 %p {343597383743}
+		float %a {-1.16481292}
+	}
+	Obj_ {
+		int64 %p {343597383746}
+		float %a {-0.64711833}
+	}
+	Obj_ {
+		int64 %p {343597383754}
+		float %a {-2.20020223}
+	}
+	Obj_ {
+		int64 %p {343597383755}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {343597383772}
+		float %a {-2.13549042}
+	}
+	Obj_ {
+		int64 %p {343597383773}
+		float %a {-1.87664306}
+	}
+	Obj_ {
+		int64 %p {343597383777}
+		float %a {-0.873609722}
+	}
+	Obj_ {
+		int64 %p {343597383778}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {343597383786}
+		float %a {-0.776541948}
+	}
+	Obj_ {
+		int64 %p {343597383789}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {343597383796}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {343597383805}
+		float %a {-1.26188076}
+	}
+	Obj_ {
+		int64 %p {347892351009}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {347892351010}
+		float %a {-2.78260875}
+	}
+	Obj_ {
+		int64 %p {347892351015}
+		float %a {-2.78260875}
+	}
+	Obj_ {
+		int64 %p {347892351017}
+		float %a {-1.35894847}
+	}
+	Obj_ {
+		int64 %p {347892351018}
+		float %a {-1.84428716}
+	}
+	Obj_ {
+		int64 %p {347892351023}
+		float %a {-0.744186044}
+	}
+	Obj_ {
+		int64 %p {347892351039}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {347892351042}
+		float %a {-1.29423666}
+	}
+	Obj_ {
+		int64 %p {347892351044}
+		float %a {-0.517694652}
+	}
+	Obj_ {
+		int64 %p {347892351045}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {347892351046}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {347892351048}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {347892351051}
+		float %a {-0.550050557}
+	}
+	Obj_ {
+		int64 %p {347892351054}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {347892351056}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {347892351058}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {347892351064}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {347892351065}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {347892351068}
+		float %a {-2.20020223}
+	}
+	Obj_ {
+		int64 %p {347892351069}
+		float %a {-0.744186044}
+	}
+	Obj_ {
+		int64 %p {347892351074}
+		float %a {-0.550050557}
+	}
+	Obj_ {
+		int64 %p {347892351076}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {347892351077}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {347892351092}
+		float %a {-1.29423666}
+	}
+	Obj_ {
+		int64 %p {347892351094}
+		float %a {-0.679474235}
+	}
+	Obj_ {
+		int64 %p {347892351095}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {352187318306}
+		float %a {-2.39433765}
+	}
+	Obj_ {
+		int64 %p {352187318311}
+		float %a {-2.39433765}
+	}
+	Obj_ {
+		int64 %p {352187318312}
+		float %a {-0.711830139}
+	}
+	Obj_ {
+		int64 %p {352187318313}
+		float %a {-0.744186044}
+	}
+	Obj_ {
+		int64 %p {352187318314}
+		float %a {-1.58543992}
+	}
+	Obj_ {
+		int64 %p {352187318331}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {352187318338}
+		float %a {-1.26188076}
+	}
+	Obj_ {
+		int64 %p {352187318340}
+		float %a {-0.582406461}
+	}
+	Obj_ {
+		int64 %p {352187318341}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {352187318342}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {352187318344}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {352187318345}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {352187318347}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {352187318348}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {352187318350}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {352187318351}
+		float %a {-0.550050557}
+	}
+	Obj_ {
+		int64 %p {352187318352}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {352187318353}
+		float %a {-0.614762425}
+	}
+	Obj_ {
+		int64 %p {352187318357}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {352187318358}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {352187318359}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {352187318360}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {352187318361}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {352187318364}
+		float %a {-2.20020223}
+	}
+	Obj_ {
+		int64 %p {352187318365}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {352187318370}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {352187318372}
+		float %a {-0.614762425}
+	}
+	Obj_ {
+		int64 %p {352187318373}
+		float %a {-0.517694652}
+	}
+	Obj_ {
+		int64 %p {352187318383}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {352187318385}
+		float %a {-0.517694652}
+	}
+	Obj_ {
+		int64 %p {352187318387}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {352187318388}
+		float %a {-0.873609722}
+	}
+	Obj_ {
+		int64 %p {352187318389}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {352187318390}
+		float %a {-0.776541948}
+	}
+	Obj_ {
+		int64 %p {352187318391}
+		float %a {-0.679474235}
+	}
+	Obj_ {
+		int64 %p {352187318393}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {352187318395}
+		float %a {-0.452982813}
+	}
+	Obj_ {
+		int64 %p {356482285601}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {356482285602}
+		float %a {-2.94438839}
+	}
+	Obj_ {
+		int64 %p {356482285607}
+		float %a {-2.94438839}
+	}
+	Obj_ {
+		int64 %p {356482285609}
+		float %a {-1.32659256}
+	}
+	Obj_ {
+		int64 %p {356482285610}
+		float %a {-1.39130437}
+	}
+	Obj_ {
+		int64 %p {356482285615}
+		float %a {-1.39130437}
+	}
+	Obj_ {
+		int64 %p {356482285631}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {356482285634}
+		float %a {-1.0030334}
+	}
+	Obj_ {
+		int64 %p {356482285636}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {356482285638}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {356482285643}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {356482285648}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {356482285650}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {356482285656}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {356482285660}
+		float %a {-2.23255825}
+	}
+	Obj_ {
+		int64 %p {356482285661}
+		float %a {-1.13245702}
+	}
+	Obj_ {
+		int64 %p {356482285666}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {356482285684}
+		float %a {-0.776541948}
+	}
+	Obj_ {
+		int64 %p {356482285686}
+		float %a {-0.64711833}
+	}
+	Obj_ {
+		int64 %p {356482285687}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {360777252905}
+		float %a {-1.52072799}
+	}
+	Obj_ {
+		int64 %p {360777252908}
+		float %a {-1.45601618}
+	}
+	Obj_ {
+		int64 %p {360777252910}
+		float %a {-1.42366028}
+	}
+	Obj_ {
+		int64 %p {360777252911}
+		float %a {-1.65015173}
+	}
+	Obj_ {
+		int64 %p {360777252938}
+		float %a {-2.32962584}
+	}
+	Obj_ {
+		int64 %p {360777252956}
+		float %a {-2.20020223}
+	}
+	Obj_ {
+		int64 %p {360777252957}
+		float %a {-1.90899909}
+	}
+	Obj_ {
+		int64 %p {360777252961}
+		float %a {-1.35894847}
+	}
+	Obj_ {
+		int64 %p {360777252970}
+		float %a {-2.52376151}
+	}
+	Obj_ {
+		int64 %p {360777252973}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {365072220193}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {365072220194}
+		float %a {-1.52072799}
+	}
+	Obj_ {
+		int64 %p {365072220199}
+		float %a {-1.52072799}
+	}
+	Obj_ {
+		int64 %p {365072220201}
+		float %a {-1.32659256}
+	}
+	Obj_ {
+		int64 %p {365072220202}
+		float %a {-0.517694652}
+	}
+	Obj_ {
+		int64 %p {365072220207}
+		float %a {-1.35894847}
+	}
+	Obj_ {
+		int64 %p {365072220223}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {365072220226}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {365072220252}
+		float %a {-2.20020223}
+	}
+	Obj_ {
+		int64 %p {365072220253}
+		float %a {-1.61779583}
+	}
+	Obj_ {
+		int64 %p {369367187489}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {369367187490}
+		float %a {-2.13549042}
+	}
+	Obj_ {
+		int64 %p {369367187495}
+		float %a {-2.13549042}
+	}
+	Obj_ {
+		int64 %p {369367187497}
+		float %a {-1.42366028}
+	}
+	Obj_ {
+		int64 %p {369367187498}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {369367187500}
+		float %a {-1.0353893}
+	}
+	Obj_ {
+		int64 %p {369367187502}
+		float %a {-1.10010111}
+	}
+	Obj_ {
+		int64 %p {369367187503}
+		float %a {-1.5530839}
+	}
+	Obj_ {
+		int64 %p {369367187519}
+		float %a {-0.905965626}
+	}
+	Obj_ {
+		int64 %p {369367187530}
+		float %a {-1.77957535}
+	}
+	Obj_ {
+		int64 %p {369367187548}
+		float %a {-2.20020223}
+	}
+	Obj_ {
+		int64 %p {369367187549}
+		float %a {-1.84428716}
+	}
+	Obj_ {
+		int64 %p {369367187553}
+		float %a {-1.22952485}
+	}
+	Obj_ {
+		int64 %p {369367187562}
+		float %a {-0.808897913}
+	}
+	Obj_ {
+		int64 %p {369367187565}
+		float %a {-0.517694652}
+	}
+	Obj_ {
+		int64 %p {369367187581}
+		float %a {-1.22952485}
+	}
+	Obj_ {
+		int64 %p {373662154785}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {373662154793}
+		float %a {-1.35894847}
+	}
+	Obj_ {
+		int64 %p {373662154794}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {373662154796}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {373662154799}
+		float %a {-1.52072799}
+	}
+	Obj_ {
+		int64 %p {373662154826}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {373662154844}
+		float %a {-2.10313463}
+	}
+	Obj_ {
+		int64 %p {373662154845}
+		float %a {-1.77957535}
+	}
+	Obj_ {
+		int64 %p {373662154849}
+		float %a {-0.452982813}
+	}
+	Obj_ {
+		int64 %p {373662154857}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {373662154858}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {373662154861}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {377957122081}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {377957122082}
+		float %a {-0.970677495}
+	}
+	Obj_ {
+		int64 %p {377957122087}
+		float %a {-0.970677495}
+	}
+	Obj_ {
+		int64 %p {377957122089}
+		float %a {-1.45601618}
+	}
+	Obj_ {
+		int64 %p {377957122092}
+		float %a {-0.679474235}
+	}
+	Obj_ {
+		int64 %p {377957122093}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {377957122094}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {377957122095}
+		float %a {-1.52072799}
+	}
+	Obj_ {
+		int64 %p {377957122106}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {377957122107}
+		float %a {-0.582406461}
+	}
+	Obj_ {
+		int64 %p {377957122119}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {377957122127}
+		float %a {-0.905965626}
+	}
+	Obj_ {
+		int64 %p {377957122129}
+		float %a {-0.744186044}
+	}
+	Obj_ {
+		int64 %p {377957122140}
+		float %a {-2.20020223}
+	}
+	Obj_ {
+		int64 %p {377957122141}
+		float %a {-1.42366028}
+	}
+	Obj_ {
+		int64 %p {377957122151}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {377957122154}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {377957122157}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {377957122159}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {377957122171}
+		float %a {-0.905965626}
+	}
+	Obj_ {
+		int64 %p {382252089377}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {382252089385}
+		float %a {-1.32659256}
+	}
+	Obj_ {
+		int64 %p {382252089386}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {382252089391}
+		float %a {-1.35894847}
+	}
+	Obj_ {
+		int64 %p {382252089436}
+		float %a {-2.10313463}
+	}
+	Obj_ {
+		int64 %p {382252089437}
+		float %a {-1.68250763}
+	}
+	Obj_ {
+		int64 %p {382252089449}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {386547056673}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {386547056674}
+		float %a {-0.873609722}
+	}
+	Obj_ {
+		int64 %p {386547056679}
+		float %a {-0.873609722}
+	}
+	Obj_ {
+		int64 %p {386547056681}
+		float %a {-1.22952485}
+	}
+	Obj_ {
+		int64 %p {386547056682}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {386547056687}
+		float %a {-0.873609722}
+	}
+	Obj_ {
+		int64 %p {386547056732}
+		float %a {-2.20020223}
+	}
+	Obj_ {
+		int64 %p {386547056733}
+		float %a {-1.19716883}
+	}
+	Obj_ {
+		int64 %p {416611827745}
+		float %a {-0.744186044}
+	}
+	Obj_ {
+		int64 %p {416611827746}
+		float %a {-2.58847332}
+	}
+	Obj_ {
+		int64 %p {416611827751}
+		float %a {-2.58847332}
+	}
+	Obj_ {
+		int64 %p {416611827752}
+		float %a {-0.711830139}
+	}
+	Obj_ {
+		int64 %p {416611827753}
+		float %a {-1.42366028}
+	}
+	Obj_ {
+		int64 %p {416611827754}
+		float %a {-2.07077861}
+	}
+	Obj_ {
+		int64 %p {416611827757}
+		float %a {-0.517694652}
+	}
+	Obj_ {
+		int64 %p {416611827759}
+		float %a {-1.10010111}
+	}
+	Obj_ {
+		int64 %p {416611827804}
+		float %a {-2.20020223}
+	}
+	Obj_ {
+		int64 %p {416611827805}
+		float %a {-0.808897913}
+	}
+	Obj_ {
+		int64 %p {416611827812}
+		float %a {-0.582406461}
+	}
+	Obj_ {
+		int64 %p {416611827813}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {416611827825}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {416611827828}
+		float %a {-1.52072799}
+	}
+	Obj_ {
+		int64 %p {416611827830}
+		float %a {-1.45601618}
+	}
+	Obj_ {
+		int64 %p {416611827831}
+		float %a {-0.808897913}
+	}
+	Obj_ {
+		int64 %p {416611827832}
+		float %a {-0.744186044}
+	}
+	Obj_ {
+		int64 %p {416611827833}
+		float %a {-0.711830139}
+	}
+	Obj_ {
+		int64 %p {416611827835}
+		float %a {-0.776541948}
+	}
+	Obj_ {
+		int64 %p {420906795041}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {420906795042}
+		float %a {-1.94135499}
+	}
+	Obj_ {
+		int64 %p {420906795047}
+		float %a {-1.94135499}
+	}
+	Obj_ {
+		int64 %p {420906795048}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {420906795049}
+		float %a {-1.48837209}
+	}
+	Obj_ {
+		int64 %p {420906795050}
+		float %a {-1.42366028}
+	}
+	Obj_ {
+		int64 %p {420906795053}
+		float %a {-1.13245702}
+	}
+	Obj_ {
+		int64 %p {420906795055}
+		float %a {-1.52072799}
+	}
+	Obj_ {
+		int64 %p {420906795071}
+		float %a {-0.452982813}
+	}
+	Obj_ {
+		int64 %p {420906795100}
+		float %a {-1.94135499}
+	}
+	Obj_ {
+		int64 %p {420906795101}
+		float %a {-1.19716883}
+	}
+	Obj_ {
+		int64 %p {420906795109}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {420906795124}
+		float %a {-2.20020223}
+	}
+	Obj_ {
+		int64 %p {420906795126}
+		float %a {-2.0060668}
+	}
+	Obj_ {
+		int64 %p {420906795127}
+		float %a {-0.550050557}
+	}
+	Obj_ {
+		int64 %p {420906795128}
+		float %a {-0.938321531}
+	}
+	Obj_ {
+		int64 %p {420906795129}
+		float %a {-1.0030334}
+	}
+	Obj_ {
+		int64 %p {420906795131}
+		float %a {-1.29423666}
+	}
+	Obj_ {
+		int64 %p {425201762337}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {425201762338}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {425201762343}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {425201762345}
+		float %a {-1.35894847}
+	}
+	Obj_ {
+		int64 %p {425201762346}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {425201762351}
+		float %a {-1.48837209}
+	}
+	Obj_ {
+		int64 %p {425201762396}
+		float %a {-2.10313463}
+	}
+	Obj_ {
+		int64 %p {425201762397}
+		float %a {-1.77957535}
+	}
+	Obj_ {
+		int64 %p {429496729633}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {429496729634}
+		float %a {-2.5561173}
+	}
+	Obj_ {
+		int64 %p {429496729639}
+		float %a {-2.5561173}
+	}
+	Obj_ {
+		int64 %p {429496729641}
+		float %a {-1.42366028}
+	}
+	Obj_ {
+		int64 %p {429496729642}
+		float %a {-1.84428716}
+	}
+	Obj_ {
+		int64 %p {429496729647}
+		float %a {-1.5530839}
+	}
+	Obj_ {
+		int64 %p {429496729663}
+		float %a {-1.13245702}
+	}
+	Obj_ {
+		int64 %p {429496729692}
+		float %a {-2.10313463}
+	}
+	Obj_ {
+		int64 %p {429496729693}
+		float %a {-1.81193125}
+	}
+	Obj_ {
+		int64 %p {429496729697}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {429496729716}
+		float %a {-1.48837209}
+	}
+	Obj_ {
+		int64 %p {429496729718}
+		float %a {-0.582406461}
+	}
+	Obj_ {
+		int64 %p {429496729722}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {429496729725}
+		float %a {-1.19716883}
+	}
+	Obj_ {
+		int64 %p {433791696929}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {433791696930}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {433791696935}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {433791696936}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {433791696937}
+		float %a {-1.39130437}
+	}
+	Obj_ {
+		int64 %p {433791696938}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {433791696941}
+		float %a {-1.19716883}
+	}
+	Obj_ {
+		int64 %p {433791696943}
+		float %a {-1.10010111}
+	}
+	Obj_ {
+		int64 %p {433791696988}
+		float %a {-2.20020223}
+	}
+	Obj_ {
+		int64 %p {433791696989}
+		float %a {-0.938321531}
+	}
+	Obj_ {
+		int64 %p {433791697016}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {433791697019}
+		float %a {-1.16481292}
+	}
+	Obj_ {
+		int64 %p {438086664232}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {438086664233}
+		float %a {-1.48837209}
+	}
+	Obj_ {
+		int64 %p {438086664236}
+		float %a {-1.5530839}
+	}
+	Obj_ {
+		int64 %p {438086664238}
+		float %a {-1.5530839}
+	}
+	Obj_ {
+		int64 %p {438086664239}
+		float %a {-1.71486354}
+	}
+	Obj_ {
+		int64 %p {438086664250}
+		float %a {-0.517694652}
+	}
+	Obj_ {
+		int64 %p {438086664251}
+		float %a {-0.550050557}
+	}
+	Obj_ {
+		int64 %p {438086664284}
+		float %a {-1.5530839}
+	}
+	Obj_ {
+		int64 %p {438086664285}
+		float %a {-1.39130437}
+	}
+	Obj_ {
+		int64 %p {438086664289}
+		float %a {-1.68250763}
+	}
+	Obj_ {
+		int64 %p {438086664291}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {438086664295}
+		float %a {-0.452982813}
+	}
+	Obj_ {
+		int64 %p {438086664298}
+		float %a {-1.87664306}
+	}
+	Obj_ {
+		int64 %p {438086664301}
+		float %a {-0.808897913}
+	}
+	Obj_ {
+		int64 %p {438086664303}
+		float %a {-0.517694652}
+	}
+	Obj_ {
+		int64 %p {442381631521}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {442381631522}
+		float %a {-1.22952485}
+	}
+	Obj_ {
+		int64 %p {442381631527}
+		float %a {-1.22952485}
+	}
+	Obj_ {
+		int64 %p {442381631529}
+		float %a {-1.32659256}
+	}
+	Obj_ {
+		int64 %p {442381631530}
+		float %a {-0.744186044}
+	}
+	Obj_ {
+		int64 %p {442381631535}
+		float %a {-0.970677495}
+	}
+	Obj_ {
+		int64 %p {442381631551}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {442381631580}
+		float %a {-1.94135499}
+	}
+	Obj_ {
+		int64 %p {442381631581}
+		float %a {-1.22952485}
+	}
+	Obj_ {
+		int64 %p {442381631589}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {442381631603}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {442381631604}
+		float %a {-0.550050557}
+	}
+	Obj_ {
+		int64 %p {442381631606}
+		float %a {-0.938321531}
+	}
+	Obj_ {
+		int64 %p {442381631607}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {442381631608}
+		float %a {-1.06774521}
+	}
+	Obj_ {
+		int64 %p {446676598817}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {446676598825}
+		float %a {-1.29423666}
+	}
+	Obj_ {
+		int64 %p {446676598831}
+		float %a {-1.0353893}
+	}
+	Obj_ {
+		int64 %p {446676598876}
+		float %a {-2.03842258}
+	}
+	Obj_ {
+		int64 %p {446676598877}
+		float %a {-1.29423666}
+	}
+	Obj_ {
+		int64 %p {450971566121}
+		float %a {-1.26188076}
+	}
+	Obj_ {
+		int64 %p {450971566124}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {450971566127}
+		float %a {-1.06774521}
+	}
+	Obj_ {
+		int64 %p {450971566139}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {450971566172}
+		float %a {-0.744186044}
+	}
+	Obj_ {
+		int64 %p {450971566173}
+		float %a {-0.582406461}
+	}
+	Obj_ {
+		int64 %p {450971566183}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {450971566188}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {455266533409}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {455266533417}
+		float %a {-1.35894847}
+	}
+	Obj_ {
+		int64 %p {455266533420}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {455266533422}
+		float %a {-0.64711833}
+	}
+	Obj_ {
+		int64 %p {455266533423}
+		float %a {-1.5530839}
+	}
+	Obj_ {
+		int64 %p {455266533434}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {455266533435}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {455266533468}
+		float %a {-1.90899909}
+	}
+	Obj_ {
+		int64 %p {455266533469}
+		float %a {-1.68250763}
+	}
+	Obj_ {
+		int64 %p {455266533473}
+		float %a {-0.711830139}
+	}
+	Obj_ {
+		int64 %p {455266533485}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {459561500712}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {459561500713}
+		float %a {-1.35894847}
+	}
+	Obj_ {
+		int64 %p {459561500716}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {459561500717}
+		float %a {-0.517694652}
+	}
+	Obj_ {
+		int64 %p {459561500719}
+		float %a {-1.29423666}
+	}
+	Obj_ {
+		int64 %p {459561500730}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {459561500731}
+		float %a {-0.614762425}
+	}
+	Obj_ {
+		int64 %p {459561500764}
+		float %a {-1.65015173}
+	}
+	Obj_ {
+		int64 %p {459561500765}
+		float %a {-1.45601618}
+	}
+	Obj_ {
+		int64 %p {459561500771}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {459561500775}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {459561500778}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {459561500783}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {459561500795}
+		float %a {-1.06774521}
+	}
+	Obj_ {
+		int64 %p {463856468002}
+		float %a {-2.20020223}
+	}
+	Obj_ {
+		int64 %p {463856468007}
+		float %a {-2.20020223}
+	}
+	Obj_ {
+		int64 %p {463856468008}
+		float %a {-1.10010111}
+	}
+	Obj_ {
+		int64 %p {463856468009}
+		float %a {-0.614762425}
+	}
+	Obj_ {
+		int64 %p {463856468010}
+		float %a {-1.97371089}
+	}
+	Obj_ {
+		int64 %p {463856468013}
+		float %a {-1.0353893}
+	}
+	Obj_ {
+		int64 %p {463856468060}
+		float %a {-2.20020223}
+	}
+	Obj_ {
+		int64 %p {463856468061}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {463856468068}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {463856468069}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {463856468081}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {463856468084}
+		float %a {-1.22952485}
+	}
+	Obj_ {
+		int64 %p {463856468086}
+		float %a {-1.48837209}
+	}
+	Obj_ {
+		int64 %p {463856468087}
+		float %a {-0.776541948}
+	}
+	Obj_ {
+		int64 %p {463856468088}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {463856468089}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {463856468091}
+		float %a {-1.22952485}
+	}
+	Obj_ {
+		int64 %p {468151435298}
+		float %a {-0.873609722}
+	}
+	Obj_ {
+		int64 %p {468151435303}
+		float %a {-0.873609722}
+	}
+	Obj_ {
+		int64 %p {468151435304}
+		float %a {-0.452982813}
+	}
+	Obj_ {
+		int64 %p {468151435305}
+		float %a {-0.808897913}
+	}
+	Obj_ {
+		int64 %p {468151435311}
+		float %a {-0.550050557}
+	}
+	Obj_ {
+		int64 %p {468151435327}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {468151435356}
+		float %a {-1.84428716}
+	}
+	Obj_ {
+		int64 %p {468151435357}
+		float %a {-0.808897913}
+	}
+	Obj_ {
+		int64 %p {468151435364}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {468151435365}
+		float %a {-0.420626909}
+	}
+	Obj_ {
+		int64 %p {468151435377}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {468151435379}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {468151435380}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {468151435382}
+		float %a {-0.614762425}
+	}
+	Obj_ {
+		int64 %p {468151435383}
+		float %a {-0.517694652}
+	}
+	Obj_ {
+		int64 %p {468151435384}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {468151435385}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {468151435387}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {472446402593}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {472446402601}
+		float %a {-1.29423666}
+	}
+	Obj_ {
+		int64 %p {472446402607}
+		float %a {-1.0353893}
+	}
+	Obj_ {
+		int64 %p {472446402652}
+		float %a {-2.03842258}
+	}
+	Obj_ {
+		int64 %p {472446402653}
+		float %a {-1.29423666}
+	}
+	Obj_ {
+		int64 %p {476741369889}
+		float %a {-0.517694652}
+	}
+	Obj_ {
+		int64 %p {476741369890}
+		float %a {-1.35894847}
+	}
+	Obj_ {
+		int64 %p {476741369895}
+		float %a {-1.35894847}
+	}
+	Obj_ {
+		int64 %p {476741369897}
+		float %a {-1.35894847}
+	}
+	Obj_ {
+		int64 %p {476741369898}
+		float %a {-1.0353893}
+	}
+	Obj_ {
+		int64 %p {476741369903}
+		float %a {-1.48837209}
+	}
+	Obj_ {
+		int64 %p {476741369919}
+		float %a {-0.452982813}
+	}
+	Obj_ {
+		int64 %p {476741369948}
+		float %a {-2.13549042}
+	}
+	Obj_ {
+		int64 %p {476741369949}
+		float %a {-1.42366028}
+	}
+	Obj_ {
+		int64 %p {481036337185}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {481036337186}
+		float %a {-0.744186044}
+	}
+	Obj_ {
+		int64 %p {481036337191}
+		float %a {-0.744186044}
+	}
+	Obj_ {
+		int64 %p {481036337193}
+		float %a {-1.48837209}
+	}
+	Obj_ {
+		int64 %p {481036337196}
+		float %a {-1.42366028}
+	}
+	Obj_ {
+		int64 %p {481036337198}
+		float %a {-1.39130437}
+	}
+	Obj_ {
+		int64 %p {481036337199}
+		float %a {-1.68250763}
+	}
+	Obj_ {
+		int64 %p {481036337244}
+		float %a {-1.94135499}
+	}
+	Obj_ {
+		int64 %p {481036337245}
+		float %a {-1.84428716}
+	}
+	Obj_ {
+		int64 %p {481036337249}
+		float %a {-1.19716883}
+	}
+	Obj_ {
+		int64 %p {481036337258}
+		float %a {-1.74721944}
+	}
+	Obj_ {
+		int64 %p {481036337261}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {481036337277}
+		float %a {-1.22952485}
+	}
+	Obj_ {
+		int64 %p {485331304481}
+		float %a {-0.744186044}
+	}
+	Obj_ {
+		int64 %p {485331304482}
+		float %a {-0.873609722}
+	}
+	Obj_ {
+		int64 %p {485331304487}
+		float %a {-0.873609722}
+	}
+	Obj_ {
+		int64 %p {485331304488}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {485331304489}
+		float %a {-1.35894847}
+	}
+	Obj_ {
+		int64 %p {485331304490}
+		float %a {-0.873609722}
+	}
+	Obj_ {
+		int64 %p {485331304495}
+		float %a {-1.48837209}
+	}
+	Obj_ {
+		int64 %p {485331304511}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {485331304540}
+		float %a {-2.10313463}
+	}
+	Obj_ {
+		int64 %p {485331304541}
+		float %a {-1.26188076}
+	}
+	Obj_ {
+		int64 %p {485331304548}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {489626271778}
+		float %a {-1.77957535}
+	}
+	Obj_ {
+		int64 %p {489626271783}
+		float %a {-1.77957535}
+	}
+	Obj_ {
+		int64 %p {489626271784}
+		float %a {-0.452982813}
+	}
+	Obj_ {
+		int64 %p {489626271785}
+		float %a {-0.841253817}
+	}
+	Obj_ {
+		int64 %p {489626271786}
+		float %a {-1.22952485}
+	}
+	Obj_ {
+		int64 %p {489626271791}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {489626271807}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {489626271836}
+		float %a {-2.03842258}
+	}
+	Obj_ {
+		int64 %p {489626271837}
+		float %a {-0.808897913}
+	}
+	Obj_ {
+		int64 %p {489626271844}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {489626271845}
+		float %a {-0.35591507}
+	}
+	Obj_ {
+		int64 %p {489626271857}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {489626271860}
+		float %a {-0.614762425}
+	}
+	Obj_ {
+		int64 %p {489626271862}
+		float %a {-0.711830139}
+	}
+	Obj_ {
+		int64 %p {489626271863}
+		float %a {-0.517694652}
+	}
+	Obj_ {
+		int64 %p {489626271864}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {489626271865}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {489626271867}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {493921239073}
+		float %a {-0.550050557}
+	}
+	Obj_ {
+		int64 %p {493921239074}
+		float %a {-1.16481292}
+	}
+	Obj_ {
+		int64 %p {493921239079}
+		float %a {-1.16481292}
+	}
+	Obj_ {
+		int64 %p {493921239081}
+		float %a {-1.39130437}
+	}
+	Obj_ {
+		int64 %p {493921239082}
+		float %a {-1.22952485}
+	}
+	Obj_ {
+		int64 %p {493921239087}
+		float %a {-1.52072799}
+	}
+	Obj_ {
+		int64 %p {493921239098}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {493921239103}
+		float %a {-0.808897913}
+	}
+	Obj_ {
+		int64 %p {493921239132}
+		float %a {-2.10313463}
+	}
+	Obj_ {
+		int64 %p {493921239133}
+		float %a {-1.77957535}
+	}
+	Obj_ {
+		int64 %p {493921239141}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {493921239156}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {493921239158}
+		float %a {-0.517694652}
+	}
+	Obj_ {
+		int64 %p {493921239159}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {493921239160}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {493921239161}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {493921239163}
+		float %a {-0.64711833}
+	}
+	Obj_ {
+		int64 %p {493921239165}
+		float %a {-0.64711833}
+	}
+	Obj_ {
+		int64 %p {498216206376}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {498216206377}
+		float %a {-0.970677495}
+	}
+	Obj_ {
+		int64 %p {498216206380}
+		float %a {-2.0060668}
+	}
+	Obj_ {
+		int64 %p {498216206381}
+		float %a {-2.23255825}
+	}
+	Obj_ {
+		int64 %p {498216206382}
+		float %a {-2.03842258}
+	}
+	Obj_ {
+		int64 %p {498216206383}
+		float %a {-1.71486354}
+	}
+	Obj_ {
+		int64 %p {498216206394}
+		float %a {-1.71486354}
+	}
+	Obj_ {
+		int64 %p {498216206395}
+		float %a {-1.71486354}
+	}
+	Obj_ {
+		int64 %p {498216206428}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {498216206429}
+		float %a {-0.161779583}
+	}
+	Obj_ {
+		int64 %p {498216206433}
+		float %a {-2.0060668}
+	}
+	Obj_ {
+		int64 %p {498216206439}
+		float %a {-0.550050557}
+	}
+	Obj_ {
+		int64 %p {498216206442}
+		float %a {-2.81496477}
+	}
+	Obj_ {
+		int64 %p {498216206445}
+		float %a {-0.582406461}
+	}
+	Obj_ {
+		int64 %p {498216206447}
+		float %a {-0.905965626}
+	}
+	Obj_ {
+		int64 %p {498216206456}
+		float %a {-0.452982813}
+	}
+	Obj_ {
+		int64 %p {498216206459}
+		float %a {-1.39130437}
+	}
+	Obj_ {
+		int64 %p {502511173665}
+		float %a {-0.550050557}
+	}
+	Obj_ {
+		int64 %p {502511173666}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {502511173671}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {502511173673}
+		float %a {-1.35894847}
+	}
+	Obj_ {
+		int64 %p {502511173674}
+		float %a {-0.452982813}
+	}
+	Obj_ {
+		int64 %p {502511173679}
+		float %a {-1.48837209}
+	}
+	Obj_ {
+		int64 %p {502511173724}
+		float %a {-2.10313463}
+	}
+	Obj_ {
+		int64 %p {502511173725}
+		float %a {-1.77957535}
+	}
+	Obj_ {
+		int64 %p {502511173757}
+		float %a {-0.452982813}
+	}
+	Obj_ {
+		int64 %p {506806140961}
+		float %a {-0.388270974}
+	}
+	Obj_ {
+		int64 %p {506806140962}
+		float %a {-0.582406461}
+	}
+	Obj_ {
+		int64 %p {506806140967}
+		float %a {-0.582406461}
+	}
+	Obj_ {
+		int64 %p {506806140969}
+		float %a {-1.45601618}
+	}
+	Obj_ {
+		int64 %p {506806140972}
+		float %a {-1.19716883}
+	}
+	Obj_ {
+		int64 %p {506806140974}
+		float %a {-1.16481292}
+	}
+	Obj_ {
+		int64 %p {506806140975}
+		float %a {-1.58543992}
+	}
+	Obj_ {
+		int64 %p {506806141020}
+		float %a {-2.13549042}
+	}
+	Obj_ {
+		int64 %p {506806141021}
+		float %a {-1.87664306}
+	}
+	Obj_ {
+		int64 %p {506806141025}
+		float %a {-1.5530839}
+	}
+	Obj_ {
+		int64 %p {506806141034}
+		float %a {-1.26188076}
+	}
+	Obj_ {
+		int64 %p {506806141037}
+		float %a {-0.711830139}
+	}
+	Obj_ {
+		int64 %p {506806141053}
+		float %a {-1.22952485}
+	}
+	Obj_ {
+		int64 %p {511101108257}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {511101108265}
+		float %a {-1.35894847}
+	}
+	Obj_ {
+		int64 %p {511101108268}
+		float %a {-0.64711833}
+	}
+	Obj_ {
+		int64 %p {511101108270}
+		float %a {-0.64711833}
+	}
+	Obj_ {
+		int64 %p {511101108271}
+		float %a {-1.52072799}
+	}
+	Obj_ {
+		int64 %p {511101108282}
+		float %a {-0.291203231}
+	}
+	Obj_ {
+		int64 %p {511101108283}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {511101108316}
+		float %a {-1.94135499}
+	}
+	Obj_ {
+		int64 %p {511101108317}
+		float %a {-1.74721944}
+	}
+	Obj_ {
+		int64 %p {511101108321}
+		float %a {-0.679474235}
+	}
+	Obj_ {
+		int64 %p {511101108323}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {511101108330}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {511101108333}
+		float %a {-0.452982813}
+	}
+	Obj_ {
+		int64 %p {511101108335}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {515396075553}
+		float %a {-0.550050557}
+	}
+	Obj_ {
+		int64 %p {515396075554}
+		float %a {-1.77957535}
+	}
+	Obj_ {
+		int64 %p {515396075559}
+		float %a {-1.77957535}
+	}
+	Obj_ {
+		int64 %p {515396075561}
+		float %a {-1.45601618}
+	}
+	Obj_ {
+		int64 %p {515396075562}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {515396075567}
+		float %a {-1.58543992}
+	}
+	Obj_ {
+		int64 %p {515396075583}
+		float %a {-0.841253817}
+	}
+	Obj_ {
+		int64 %p {515396075612}
+		float %a {-2.13549042}
+	}
+	Obj_ {
+		int64 %p {515396075613}
+		float %a {-1.84428716}
+	}
+	Obj_ {
+		int64 %p {515396075617}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {515396075629}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {515396075643}
+		float %a {-0.485338748}
+	}
+	Obj_ {
+		int64 %p {515396075645}
+		float %a {-1.22952485}
+	}
+	Obj_ {
+		int64 %p {519691042849}
+		float %a {-0.258847326}
+	}
+	Obj_ {
+		int64 %p {519691042857}
+		float %a {-1.29423666}
+	}
+	Obj_ {
+		int64 %p {519691042863}
+		float %a {-1.0353893}
+	}
+	Obj_ {
+		int64 %p {519691042908}
+		float %a {-2.03842258}
+	}
+	Obj_ {
+		int64 %p {519691042909}
+		float %a {-1.29423666}
+	}
+	Obj_ {
+		int64 %p {523986010145}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {523986010153}
+		float %a {-1.39130437}
+	}
+	Obj_ {
+		int64 %p {523986010156}
+		float %a {-0.776541948}
+	}
+	Obj_ {
+		int64 %p {523986010158}
+		float %a {-0.194135487}
+	}
+	Obj_ {
+		int64 %p {523986010159}
+		float %a {-1.52072799}
+	}
+	Obj_ {
+		int64 %p {523986010204}
+		float %a {-2.13549042}
+	}
+	Obj_ {
+		int64 %p {523986010205}
+		float %a {-1.81193125}
+	}
+	Obj_ {
+		int64 %p {523986010209}
+		float %a {-0.226491407}
+	}
+	Obj_ {
+		int64 %p {523986010218}
+		float %a {-0.614762425}
+	}
+	Obj_ {
+		int64 %p {523986010221}
+		float %a {-0.323559165}
+	}
+	Obj_ {
+		int64 %p {523986010237}
+		float %a {-0.452982813}
+	}
+}

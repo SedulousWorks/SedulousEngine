@@ -16,7 +16,7 @@ using Sedulous.Runtime;
 class DrawingSandboxApp : Application
 {
 	// Font service
-	private FontService mFontService;
+	private TrueTypeFontService mTrueTypeFontService;
 
 	// Drawing context (created after font service)
 	private DrawContext mDrawContext;
@@ -58,7 +58,7 @@ class DrawingSandboxApp : Application
 		}
 
 		// Create draw context with font service
-		mDrawContext = new DrawContext(mFontService);
+		mDrawContext = new DrawContext(mTrueTypeFontService);
 
 		// Create and initialize the drawing renderer
 		mDrawingRenderer = new DrawingRenderer();
@@ -73,7 +73,7 @@ class DrawingSandboxApp : Application
 
 	private bool InitializeFont()
 	{
-		mFontService = new FontService();
+		mTrueTypeFontService = new TrueTypeFontService();
 
 		String fontPath = scope .();
 		GetAssetPath("fonts/roboto/Roboto-Regular.ttf", fontPath);
@@ -82,7 +82,7 @@ class DrawingSandboxApp : Application
 		FontLoadOptions options = .ExtendedLatin;
 		options.PixelHeight = (int32)FONT_SIZE;
 
-		if (mFontService.LoadFont("Roboto", fontPath, options) case .Err)
+		if (mTrueTypeFontService.LoadFont("Roboto", fontPath, options) case .Err)
 		{
 			Console.WriteLine(scope $"Failed to load font: {fontPath}");
 			return false;
@@ -336,7 +336,7 @@ class DrawingSandboxApp : Application
 		}
 
 		if (mDrawContext != null) delete mDrawContext;
-		if (mFontService != null) delete mFontService;
+		if (mTrueTypeFontService != null) delete mTrueTypeFontService;
 
 		if (mShaderSystem != null)
 		{
