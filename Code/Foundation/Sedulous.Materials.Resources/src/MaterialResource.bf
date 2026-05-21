@@ -68,6 +68,26 @@ class MaterialResource : Resource
 		mOwnsMaterial = ownsMaterial;
 	}
 
+	/// Rewrites texture-slot ResourceRef paths for any slot whose ref Guid
+	/// appears in `finalPaths`. Used by the asset import pipeline so that
+	/// when the user renames a texture in the import dialog, the materials
+	/// importing alongside it pick up the renamed filename. The ref's Guid
+	/// is the stable identity; only its Path changes.
+	public override void RemapReferences(Dictionary<Guid, String> finalPaths)
+	{
+		for (var kv in ref TextureRefs)
+		{
+			let texRef = ref kv.valueRef;
+			if (texRef.Id == .()) continue;
+			if (finalPaths.TryGetValue(texRef.Id, let newPath))
+			{
+				if (texRef.Path != null)
+					delete texRef.Path;
+				texRef.Path = new String(newPath);
+			}
+		}
+	}
+
 	/// Sets a texture reference for a slot.
 	public void SetTextureRef(StringView slot, ResourceRef @ref)
 	{

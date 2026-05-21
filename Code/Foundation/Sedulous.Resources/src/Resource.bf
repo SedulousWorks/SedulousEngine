@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading;
 using System.Diagnostics;
 using System.Reflection;
+using System.Collections;
 using Sedulous.Serialization;
 
 namespace Sedulous.Resources;
@@ -141,6 +142,17 @@ abstract class Resource : IResource, ISerializable
 	{
 		return .Err(.NotSupported);
 	}
+
+	/// Rewrites internal cross-resource references using the given GUID -> new
+	/// Path map. Default no-op; resource types that hold ResourceRefs to other
+	/// resources (materials -> textures, skinned meshes -> skeletons, sound
+	/// cues -> audio clips, animation graphs -> animation clips, particle
+	/// effects -> meshes/textures/materials, etc.) override this to walk
+	/// their refs and substitute Path when the ref's Guid matches an entry
+	/// in the map. Called during asset import after the user renames items
+	/// in the import dialog, so the saved resources point at the user-chosen
+	/// filenames instead of the source's authored names.
+	public virtual void RemapReferences(Dictionary<Guid, String> finalPaths) { }
 
 	/// Writes this resource into `stream` using the given serializer provider.
 	/// Caller owns the stream and routes it to wherever it needs to go (a mount

@@ -64,6 +64,55 @@ class AnimationGraphResource : Resource
 		mOwnsGraph = ownsGraph;
 	}
 
+	/// Rewrites ClipRef paths on each state node (ClipStateNode, BlendTree1D
+	/// entries, BlendTree2D entries) for refs whose Guid appears in
+	/// `finalPaths`. Used by the asset import pipeline so renamed animation
+	/// clips flow through to animation graphs importing alongside them. The
+	/// Guid is the stable identity; only Path changes. Mirrors the walk
+	/// pattern in ResolveClips below.
+	public override void RemapReferences(Dictionary<Guid, String> finalPaths)
+	{
+		if (mGraph == null) return;
+
+		for (let layer in mGraph.Layers)
+		{
+			for (let state in layer.States)
+			{
+				if (let clipNode = state.Node as ClipStateNode)
+				{
+					RemapClipRef(clipNode.ClipRef, finalPaths,
+						scope (newRef) => clipNode.SetClipRef(newRef));
+				}
+				else if (let blend1D = state.Node as BlendTree1D)
+				{
+					for (let entry in blend1D.Entries)
+					{
+						RemapClipRef(entry.ClipRef, finalPaths,
+							scope (newRef) => entry.SetClipRef(newRef));
+					}
+				}
+				else if (let blend2D = state.Node as BlendTree2D)
+				{
+					for (let entry in blend2D.Entries)
+					{
+						RemapClipRef(entry.ClipRef, finalPaths,
+							scope (newRef) => entry.SetClipRef(newRef));
+					}
+				}
+			}
+		}
+	}
+
+	private static void RemapClipRef(ResourceRef cur, Dictionary<Guid, String> finalPaths,
+		delegate void(ResourceRef) apply)
+	{
+		if (cur.Id == .()) return;
+		if (!finalPaths.TryGetValue(cur.Id, let newPath)) return;
+		var tmp = ResourceRef(cur.Id, newPath);
+		apply(tmp);
+		tmp.Dispose();
+	}
+
 	/// Resolves clip ResourceRefs on each state node to actual AnimationClip pointers
 	/// via the resource system. Call this after loading and before creating a player.
 	public bool ResolveClips(ResourceSystem resourceSystem)

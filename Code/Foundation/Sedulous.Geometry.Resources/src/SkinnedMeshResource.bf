@@ -49,6 +49,21 @@ class SkinnedMeshResource : Resource
 		SkeletonRef.Dispose();
 	}
 
+	/// Rewrites SkeletonRef.Path if its Guid appears in `finalPaths`. Used
+	/// by the asset import pipeline so a renamed skeleton flows through to
+	/// the skinned meshes that reference it. The Guid is the stable
+	/// identity; only Path changes.
+	public override void RemapReferences(Dictionary<Guid, String> finalPaths)
+	{
+		if (SkeletonRef.Id == .()) return;
+		if (finalPaths.TryGetValue(SkeletonRef.Id, let newPath))
+		{
+			if (SkeletonRef.Path != null)
+				delete SkeletonRef.Path;
+			SkeletonRef.Path = new String(newPath);
+		}
+	}
+
 	// ---- Serialization ----
 
 	public override int32 SerializationVersion => FileVersion;

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Resources;
 using Sedulous.Serialization;
 using Sedulous.Particles;
@@ -27,6 +28,35 @@ class ParticleEffectResource : Resource
 		mEffect = effect;
 		if (effect != null && Name.IsEmpty)
 			Name.Set(effect.Name);
+	}
+
+	/// Rewrites texture / mesh / material ResourceRef paths on each
+	/// ParticleSystem in this effect for refs whose Guid appears in
+	/// `finalPaths`. Used by the asset import pipeline so renamed
+	/// textures, meshes, or materials flow through to particle effects
+	/// importing alongside them. The Guid is the stable identity; only
+	/// Path changes. Each ParticleSystem's SetXxxRef setter copies the
+	/// new ResourceRef, so the temporary on this side is freed after.
+	public override void RemapReferences(Dictionary<Guid, String> finalPaths)
+	{
+		if (mEffect == null) return;
+
+		for (let system in mEffect.Systems)
+		{
+			RemapOne(system.TextureRef, finalPaths, scope (newRef) => system.SetTextureRef(newRef));
+			RemapOne(system.MeshRef,    finalPaths, scope (newRef) => system.SetMeshRef(newRef));
+			RemapOne(system.MaterialRef, finalPaths, scope (newRef) => system.SetMaterialRef(newRef));
+		}
+	}
+
+	private static void RemapOne(ResourceRef cur, Dictionary<Guid, String> finalPaths,
+		delegate void(ResourceRef) apply)
+	{
+		if (cur.Id == .()) return;
+		if (!finalPaths.TryGetValue(cur.Id, let newPath)) return;
+		var tmp = ResourceRef(cur.Id, newPath);
+		apply(tmp);
+		tmp.Dispose();
 	}
 
 	/// Creates a runtime instance of this effect.

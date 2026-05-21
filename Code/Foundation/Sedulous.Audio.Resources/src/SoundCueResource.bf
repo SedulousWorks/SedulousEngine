@@ -38,6 +38,26 @@ class SoundCueResource : Resource
 		mCue = new SoundCue();
 	}
 
+	/// Rewrites each entry's ClipRef path for refs whose Guid appears in
+	/// `finalPaths`. Used by the asset import pipeline so a renamed audio
+	/// clip flows through to any sound cue importing alongside it (or to
+	/// a user rename via the asset browser in the future). The Guid is the
+	/// stable identity; only Path changes.
+	public override void RemapReferences(Dictionary<Guid, String> finalPaths)
+	{
+		for (int i = 0; i < ClipRefs.Count; i++)
+		{
+			let cur = ClipRefs[i];
+			if (cur.Id == .()) continue;
+			if (finalPaths.TryGetValue(cur.Id, let newPath))
+			{
+				var replaced = ClipRefs[i];
+				replaced.Dispose();
+				ClipRefs[i] = ResourceRef(cur.Id, newPath);
+			}
+		}
+	}
+
 	/// Resolves the per-entry ClipRefs to AudioClips via the resource system and
 	/// populates Cue.Entries[i].Clip. Call after load and after any mutation that
 	/// changes ClipRefs (editor picker, add, remove). Releases previously-resolved
