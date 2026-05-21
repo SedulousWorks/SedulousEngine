@@ -62,8 +62,8 @@ class EditorApplication : Application, IDockableWindowHost
 	private SceneResourceManager mSceneManager ~ delete _;
 	private PrefabResourceManager mPrefabManager ~ delete _;
 
-	// Default primitive mount + index (builtin:// scheme)
-	private FileSystemMount mBuiltinMount ~ delete _;
+	// Default primitive identity index (builtin:// scheme). The mount
+	// itself is owned by the base Application class.
 	private InMemoryResourceIndex mBuiltinIndex ~ delete _;
 
 	// Project asset mount + index (project:// scheme)
@@ -240,11 +240,12 @@ class EditorApplication : Application, IDockableWindowHost
 		mEditorContext.ResourceSystem = mResourceSystem;
 
 		// Surface the builtin mount entry to panels (asset browser, etc.).
-		// The project entry is added later when a project is opened.
-		if (mBuiltinMount != null)
+		// The mount itself is owned by the base Application class; we just
+		// pair it with the editor's identity index for browser display.
+		if (BuiltinMount != null)
 		{
 			mEditorContext.MountEntries.Add(new MountEntry(
-				"builtin", mBuiltinMount, mBuiltinIndex, "builtin.registry", true));
+				"builtin", BuiltinMount, mBuiltinIndex, "builtin.registry", true));
 		}
 
 		// Discover plugins
@@ -968,17 +969,17 @@ class EditorApplication : Application, IDockableWindowHost
 	// ==================== Default Assets ====================
 
 	/// Ensures default builtin assets (primitives, materials) exist on disk.
-	/// Creates them if missing, mounts the builtin scheme, loads the identity
-	/// index, and registers it with ResourceSystem.
+	/// Generates them on first run if missing, then loads the identity
+	/// index and registers it with ResourceSystem. The `builtin://` mount
+	/// itself is created by the base Application class before this runs.
 	private void EnsureDefaultAssets()
 	{
 		let assetRoot = scope String();
 		GetAssetPath("", assetRoot);
 
-		// Mount the asset directory under "builtin://" so subsequent saves and
-		// loads route through the VFS. Generation reuses this same mount.
-		mBuiltinMount = new FileSystemMount(assetRoot);
-		ResourceSystem.Mount("builtin", mBuiltinMount);
+		// Use the mount owned by the base Application class. We generate
+		// and persist through this same mount so saves go through VFS.
+		let mBuiltinMount = BuiltinMount;
 
 		// Check if assets need generating
 		bool needsGeneration = !mBuiltinMount.Exists("builtin.registry");

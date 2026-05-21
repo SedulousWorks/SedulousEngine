@@ -11,6 +11,8 @@ using Sedulous.Runtime;
 using Sedulous.Profiler;
 using Sedulous.Serialization.OpenDDL;
 using Sedulous.Resources;
+using Sedulous.VFS;
+using Sedulous.VFS.Disk;
 using Sedulous.Core.Logging.Abstractions;
 using System.Threading;
 using Sedulous.Jobs;
@@ -56,7 +58,19 @@ abstract class Application
 	private ILogger mLogger ~ delete _;
 	protected ResourceSystem mResourceSystem ~ delete _;
 
+	// VFS mount over the discovered asset directory, registered with
+	// ResourceSystem under the `builtin://` scheme. Apps (editor, runtime
+	// clients) read bundled assets through this mount instead of via raw
+	// disk paths, keeping the asset pipeline uniformly VFS-routed.
+	protected FileSystemMount mBuiltinMount ~ delete _;
+
 	public ResourceSystem ResourceSystem => mResourceSystem;
+
+	/// The application's built-in asset mount. Points at `AssetDirectory`
+	/// and is registered with `ResourceSystem` under `builtin://`. Created
+	/// before `OnInitialize` is called, so derived apps can use it during
+	/// their startup (e.g., to load fonts via VFS).
+	public FileSystemMount BuiltinMount => mBuiltinMount;
 
 	// Asset directories (discovered at construction time)
 	private String mAssetDirectory = new .() ~ delete _;
@@ -171,6 +185,15 @@ abstract class Application
 		mResourceSystem.EnableHotReload();
 		mResourceSystem.SetSerializerProvider(new Sedulous.Serialization.OpenDDL.OpenDDLSerializerProvider());
 		mResourceSystem.Startup();
+
+		// Mount the app's discovered asset directory under `builtin://` so
+		// derived apps can read bundled assets (fonts, shaders, default
+		// primitives, etc.) through the VFS rather than raw disk paths.
+		// Created here - after the resource system is up but before the
+		// user-overridable OnInitialize hook - so apps can rely on it
+		// during their own startup.
+		mBuiltinMount = new FileSystemMount(mAssetDirectory);
+		mResourceSystem.Mount("builtin", mBuiltinMount);
 
 		// Create the framework context
 		mContext = CreateContext();
