@@ -11,7 +11,6 @@ using Sedulous.RHI;
 using Sedulous.UI;
 using Sedulous.UI.Shell;
 using Sedulous.Fonts;
-using Sedulous.Fonts.TTF;
 using Sedulous.Shaders;
 using Sedulous.Core.Mathematics;
 using Sedulous.Engine.Render;
@@ -29,13 +28,18 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 	public IWindow Window;
 	public IShell Shell;
 	public ShaderSystem ShaderSystem;
-	public String AssetDirectory ~ delete _;
 	public TextureFormat SwapChainFormat = .BGRA8UnormSrgb;
 	public int32 FrameCount = 2;
 
+	/// IFontService used by the screen + world UI. Non-owning: the host
+	/// application creates the concrete service (TrueTypeFontService /
+	/// BakedFontService / etc.), pre-loads its fonts, and assigns it here
+	/// before subsystem Startup. Required - subsystem will skip its UI
+	/// init if this is null.
+	public IFontService FontService;
+
 	// Owned.
 	private UIContext mUIContext;
-	private TrueTypeFontService mFontService;
 	private ScreenUIView mScreenView;
 	private WorldUIPass mWorldUIPass;
 	private bool mWorldUIPassRegistered;
@@ -47,7 +51,6 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 
 	// Public access.
 	public UIContext UIContext => mUIContext;
-	public TrueTypeFontService FontService => mFontService;
 	public ScreenUIView ScreenView => mScreenView;
 
 	/// Returns true if the mouse is over a UI element (screen or world).
@@ -78,12 +81,11 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 
 	protected override void OnInit()
 	{
-		// Font service.
-		mFontService = new TrueTypeFontService();
-
-		// UIContext (shared across screen + world views).
+		// UIContext (shared across screen + world views). FontService
+		// must have been assigned by the host application before this
+		// subsystem started.
 		mUIContext = new UIContext();
-		mUIContext.FontService = mFontService;
+		mUIContext.FontService = FontService;
 		let sheet = DarkTheme.Create();
 		mUIContext.StyleSheet = sheet;
 		sheet.ReleaseRef();
@@ -103,7 +105,7 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 		if (Device != null)
 		{
 			mScreenView = new ScreenUIView(mUIContext, Device, SwapChainFormat,
-				FrameCount, mFontService, ShaderSystem);
+				FrameCount, FontService, ShaderSystem);
 
 			// Set initial viewport size from window so dialogs shown before
 			// the first RenderOverlay call can center correctly.
@@ -112,18 +114,6 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 
 			// Create world UI render pass (registered with pipeline in OnReady).
 			mWorldUIPass = new WorldUIPass();
-		}
-
-		// Load default font if asset directory is available.
-		if (AssetDirectory != null && AssetDirectory.Length > 0)
-		{
-			let fontPath = scope String();
-			System.IO.Path.InternalCombine(fontPath, AssetDirectory, "fonts/roboto/Roboto-Regular.ttf");
-			if (System.IO.File.Exists(fontPath))
-			{
-				mFontService.LoadFont("Roboto", fontPath, .() { PixelHeight = 16 });
-				mFontService.LoadFont("Roboto", fontPath, .() { PixelHeight = 24 });
-			}
 		}
 	}
 
@@ -407,7 +397,7 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 		let uiMgr = new UIComponentManager();
 		uiMgr.Device = Device;
 		uiMgr.SharedStyleSheet = mUIContext?.StyleSheet;
-		uiMgr.FontService = mFontService;
+		uiMgr.FontService = FontService;
 		uiMgr.ShaderSystem = ShaderSystem;
 		uiMgr.RenderPass = mWorldUIPass;
 		uiMgr.RenderContext = sceneRenderer?.RenderContext;
@@ -475,11 +465,8 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 			mScreenView = null;
 		}
 
-		if (mFontService != null)
-		{
-			delete mFontService;
-			mFontService = null;
-		}
+		// FontService is not owned - the host application created it and
+		// is responsible for tearing it down.
 
 		// WorldUIPass is owned by the Pipeline once registered (Pipeline.Shutdown
 		// deletes its passes). If no scene was ever created, we still own it.

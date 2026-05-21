@@ -68,18 +68,18 @@ class GUISandboxApp : Application
 		// Initialize image loader (must be before any image loading)
 		Sedulous.Images.SDL.SDLImageLoader.Initialize();
 
-		// Initialize fonts
-		mFontService = new TrueTypeFontService();
+		// Initialize fonts via the inherited `builtin://` VFS mount. The
+		// locator is relative to the asset directory.
+		mFontService = new TrueTypeFontService(BuiltinMount);
 
-		String fontPath = scope .();
-		GetAssetPath("fonts/roboto/Roboto-Regular.ttf", fontPath);
+		let fontLocator = "fonts/roboto/Roboto-Regular.ttf";
 
 		FontLoadOptions options = .ExtendedLatin;
 		options.PixelHeight = 16;
 
-		if (mFontService.LoadFont("Roboto", fontPath, options) case .Err)
+		if (mFontService.LoadFont("Roboto", fontLocator, options) case .Err)
 		{
-			Console.WriteLine(scope $"Failed to load font: {fontPath}");
+			Console.WriteLine(scope $"Failed to load font: {fontLocator}");
 			return;
 		}
 

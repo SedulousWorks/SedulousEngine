@@ -7,6 +7,7 @@ using Sedulous.Runtime.Client;
 using Sedulous.LegacyUI;
 using Sedulous.LegacyUI.Runtime;
 using Sedulous.Fonts;
+using Sedulous.Fonts.TTF;
 using Sedulous.Shell.Input;
 using Sedulous.Images;
 using Sedulous.Images.STB;
@@ -382,6 +383,7 @@ class DockableWindowRenderData
 class UISandboxApp : Application, Sedulous.LegacyUI.Toolkit.IDockableWindowHost
 {
 	private LegacyUISubsystem mUI;
+	private TrueTypeFontService mFontService ~ delete _;
 	private OwnedImageData mCheckerboard ~ delete _;
 	private OwnedImageData mButtonNormal ~ delete _;
 	private OwnedImageData mButtonPressed ~ delete _;
@@ -697,7 +699,15 @@ class UISandboxApp : Application, Sedulous.LegacyUI.Toolkit.IDockableWindowHost
 		Theme.RegisterExtension(new Sedulous.LegacyUI.Toolkit.ToolkitThemeExtension());
 
 		// Create the UI subsystem.
+		// Font service - owned by the sandbox app, injected into the
+		// subsystem. Loads through the inherited `builtin://` mount.
+		mFontService = new TrueTypeFontService(BuiltinMount);
+		let fontLocator = "fonts/roboto/Roboto-Regular.ttf";
+		mFontService.LoadFont("Roboto", fontLocator, .() { PixelHeight = 16 });
+		mFontService.LoadFont("Roboto", fontLocator, .() { PixelHeight = 24 });
+
 		mUI = new LegacyUISubsystem();
+		mUI.FontService = mFontService;
 		context.RegisterSubsystem(mUI);
 
 		// Initialize rendering.
@@ -710,12 +720,6 @@ class UISandboxApp : Application, Sedulous.LegacyUI.Toolkit.IDockableWindowHost
 			Console.WriteLine("Failed to initialize UI rendering");
 			return;
 		}
-
-		// Load font.
-		String fontPath = scope .();
-		GetAssetPath("fonts/roboto/Roboto-Regular.ttf", fontPath);
-		mUI.LoadFont("Roboto", fontPath, .() { PixelHeight = 16 });
-		mUI.LoadFont("Roboto", fontPath, .() { PixelHeight = 24 });
 
 		// Register STB image loader for PNG loading.
 		STBImageLoader.Initialize();

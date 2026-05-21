@@ -8,17 +8,22 @@ using Sedulous.VG.Renderer;
 using Sedulous.RHI;
 using Sedulous.Shaders;
 using Sedulous.Fonts;
-using Sedulous.Fonts.TTF;
 using Sedulous.Core.Mathematics;
 using Sedulous.Profiler;
 
 /// Foundation-layer subsystem for screen-space UI.
-/// Owns UIContext, VGContext, VGRenderer, FontService, and ShaderSystem.
+/// Owns UIContext, VGContext, VGRenderer, and ShaderSystem. The font
+/// service is injected by the host application (non-owning).
 /// Register with Context to get automatic Update() calls.
 /// Call Render() explicitly after 3D scene rendering, before present.
 public class LegacyUISubsystem : Subsystem
 {
 	public override int32 UpdateOrder => 400;
+
+	/// IFontService used by this subsystem. Non-owning: the host
+	/// application creates the concrete service and assigns it here
+	/// before InitializeRendering runs.
+	public IFontService FontService;
 
 	// Core UI
 	private UIContext mUIContext;
@@ -26,7 +31,6 @@ public class LegacyUISubsystem : Subsystem
 	private VGContext mVGContext;
 	private VGRenderer mVGRenderer;
 	private ShaderSystem mShaderSystem;
-	private TrueTypeFontService mFontService;
 
 	// Input bridge (Shell -> UI)
 	private Sedulous.LegacyUI.Shell.UIInputHelper mInputHelper;
@@ -56,9 +60,6 @@ public class LegacyUISubsystem : Subsystem
 	/// The input helper for manual input routing (when ManualInputRouting is true).
 	public Sedulous.LegacyUI.Shell.UIInputHelper InputHelper => mInputHelper;
 
-	/// The font service for loading/caching fonts.
-	public TrueTypeFontService FontService => mFontService;
-
 	/// The shader system.
 	public ShaderSystem ShaderSystem => mShaderSystem;
 
@@ -84,17 +85,15 @@ public class LegacyUISubsystem : Subsystem
 		mWindow = window;
 		mFrameCount = frameCount;
 
-		// Font service
-		mFontService = new TrueTypeFontService();
-
 		// Shader system
 		mShaderSystem = new ShaderSystem();
 		if (mShaderSystem.Initialize(device, shaderPaths) case .Err)
 			return .Err;
 
-		// UIContext (connect font service + default theme)
+		// UIContext (connect font service + default theme). FontService
+		// was assigned by the host before InitializeRendering was called.
 		mUIContext = new UIContext();
-		mUIContext.FontService = mFontService;
+		mUIContext.FontService = FontService;
 		mUIContext.SetTheme(DarkTheme.Create(), true);
 
 		// Create and register the main root view.
@@ -113,7 +112,7 @@ public class LegacyUISubsystem : Subsystem
 		}
 
 		// VGContext (with font service so DrawText convenience overloads work)
-		mVGContext = new VGContext(mFontService);
+		mVGContext = new VGContext(FontService);
 
 		// VGRenderer
 		mVGRenderer = new VGRenderer();
@@ -122,12 +121,6 @@ public class LegacyUISubsystem : Subsystem
 
 		mRenderingInitialized = true;
 		return .Ok;
-	}
-
-	/// Load a font into the font service.
-	public Result<void> LoadFont(StringView familyName, StringView filePath, FontLoadOptions options = .ExtendedLatin)
-	{
-		return mFontService.LoadFont(familyName, filePath, options);
 	}
 
 	/// Called each frame by the Context. Routes input, runs mutation queue, layout.
@@ -237,11 +230,8 @@ public class LegacyUISubsystem : Subsystem
 			mShaderSystem = null;
 		}
 
-		if (mFontService != null)
-		{
-			delete mFontService;
-			mFontService = null;
-		}
+		// FontService is not owned - the host application created it and
+		// is responsible for tearing it down.
 
 		if (mUIContext != null)
 		{

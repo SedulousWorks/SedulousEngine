@@ -145,15 +145,16 @@ class EditorApplication : Application, IDockableWindowHost
 		GetAssetCachePath("shaders", shaderCacheDir);
 		mShaderSystem.Initialize(Device, shaderPaths, shaderCacheDir);
 
-		// Font service
-		mFontService = new TrueTypeFontService();
-		let fontPath = scope String();
-		GetAssetPath("fonts/roboto/Roboto-Regular.ttf", fontPath);
-		if (System.IO.File.Exists(fontPath))
+		// Font service. Loads Roboto through the inherited `builtin://`
+		// mount (created by the base Application class) instead of via raw
+		// disk paths. Locator is relative to the mount root.
+		mFontService = new TrueTypeFontService(BuiltinMount);
+		let robotoLocator = "fonts/roboto/Roboto-Regular.ttf";
+		if (BuiltinMount.Exists(robotoLocator))
 		{
 			float[?] sizes = .(11, 12, 13, 14, 16, 18, 20, 24);
 			for (let size in sizes)
-				mFontService.LoadFont("Roboto", fontPath, .() { PixelHeight = size });
+				mFontService.LoadFont("Roboto", robotoLocator, .() { PixelHeight = size });
 		}
 
 		// VG renderer (for UI drawing)
@@ -207,9 +208,10 @@ class EditorApplication : Application, IDockableWindowHost
 		uiSub.Window = Window;
 		uiSub.Shell = Shell;
 		uiSub.ShaderSystem = mShaderSystem;
-		let uiAssetDir = scope String();
-		GetAssetPath("", uiAssetDir);
-		uiSub.AssetDirectory = new String(uiAssetDir);
+		// Reuse the editor's font service for the embedded engine UI - the
+		// editor and the engine UI render through the same VFS-mounted
+		// Roboto. Non-owning: the editor still tears it down.
+		uiSub.FontService = mFontService;
 		mRuntimeContext.RegisterSubsystem(uiSub);
 
 		mRuntimeContext.Startup();

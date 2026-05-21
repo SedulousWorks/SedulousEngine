@@ -12,10 +12,10 @@ using Sedulous.Shell;
 using Sedulous.Shell.Input;
 using Sedulous.Shaders;
 using Sedulous.Profiler;
-using Sedulous.Fonts.TTF;
 
 /// Foundation-layer subsystem for screen-space GUI overlays.
-/// Owns GUIContext, DrawingRenderer, FontService, Theme, and ShaderSystem.
+/// Owns GUIContext, DrawingRenderer, Theme, and ShaderSystem. The font
+/// service is injected by the host application (non-owning).
 /// Register with Context to get automatic Update() calls for input routing.
 /// Call Render() explicitly after 3D scene rendering, before present.
 public class GUISubsystem : Subsystem
@@ -29,8 +29,12 @@ public class GUISubsystem : Subsystem
 	private DrawingRenderer mDrawingRenderer;
 	private ShaderSystem mShaderSystem;
 
+	/// IFontService used by this subsystem. Non-owning: the host
+	/// application creates the concrete service, pre-loads fonts, and
+	/// assigns it here before InitializeRendering runs.
+	public IFontService FontService;
+
 	// Services (owned)
-	private TrueTypeFontService mFontService;
 	private ShellClipboardAdapter mClipboardAdapter;
 	private ITheme mTheme;
 
@@ -58,9 +62,6 @@ public class GUISubsystem : Subsystem
 
 	/// The DrawingRenderer.
 	public DrawingRenderer DrawingRenderer => mDrawingRenderer;
-
-	/// The font service.
-	public IFontService FontService => mFontService;
 
 	/// The shader system (can be shared with WorldUISubsystem).
 	public ShaderSystem ShaderSystem => mShaderSystem;
@@ -96,16 +97,14 @@ public class GUISubsystem : Subsystem
 	}
 
 	/// Initialize rendering resources. Call after the device is ready.
-	/// Creates FontService, ShaderSystem, DrawingRenderer, DrawContext, GUIContext, Theme, Clipboard.
+	/// Creates ShaderSystem, DrawingRenderer, DrawContext, GUIContext,
+	/// Theme, Clipboard. FontService must already be assigned by the host.
 	public Result<void> InitializeRendering(IDevice device, TextureFormat targetFormat, int32 frameCount, IShell shell, IWindow window, Span<StringView> shaderPaths)
 	{
 		mDevice = device;
 		mFrameCount = frameCount;
 		mShell = shell;
 		mWindow = window;
-
-		// Font service (owned)
-		mFontService = new TrueTypeFontService();
 
 		// Shader system (owned)
 		mShaderSystem = new ShaderSystem();
@@ -125,8 +124,8 @@ public class GUISubsystem : Subsystem
 		}
 
 		// DrawContext
-		mDrawContext = new DrawContext(mFontService);
-		mGUIContext.RegisterService<IFontService>(mFontService);
+		mDrawContext = new DrawContext(FontService);
+		mGUIContext.RegisterService<IFontService>(FontService);
 
 		// Default theme
 		mTheme = new DarkTheme();
@@ -156,12 +155,6 @@ public class GUISubsystem : Subsystem
 
 		mRenderingInitialized = true;
 		return .Ok;
-	}
-
-	/// Load a font into the font service.
-	public Result<void> LoadFont(StringView familyName, StringView filePath, FontLoadOptions options = .ExtendedLatin)
-	{
-		return mFontService.LoadFont(familyName, filePath, options);
 	}
 
 	/// Called each frame. Routes input to GUIContext and checks consumption.
@@ -284,11 +277,8 @@ public class GUISubsystem : Subsystem
 			mGUIContext = null;
 		}
 
-		if (mFontService != null)
-		{
-			delete mFontService;
-			mFontService = null;
-		}
+		// FontService is not owned - the host application created it and
+		// is responsible for tearing it down.
 
 		if (mKeyEventDelegate != null)
 		{

@@ -68,19 +68,20 @@ class UISandboxApp : Application, IDockableWindowHost
 		let shaderPath = scope String();
 		GetAssetPath("shaders", shaderPath);
 
+		// Pass BuiltinMount so the UI subsystem's font service routes
+		// font loads through the `builtin://` VFS scheme.
 		if (mUI.InitializeRendering(
 			mUIContext, mRoot,
 			Device, SwapChain.Format, (int32)SwapChain.BufferCount,
-			scope StringView[](shaderPath), Shell, Window) case .Err)
+			scope StringView[](shaderPath), Shell, Window, BuiltinMount) case .Err)
 		{
 			Console.WriteLine("ERROR: Failed to initialize UI2 rendering");
 			return;
 		}
 
-		// Load fonts
-		let fontPath = scope String();
-		GetAssetPath("fonts/roboto/Roboto-Regular.ttf", fontPath);
-		mUI.LoadFont("Roboto", fontPath, .()
+		// Load fonts. Locator is relative to BuiltinMount.
+		let fontLocator = "fonts/roboto/Roboto-Regular.ttf";
+		mUI.LoadFont("Roboto", fontLocator, .()
 			{
 				PixelHeight = 16, FirstCodepoint = 32,
 				LastCodepoint = 255,
@@ -90,7 +91,7 @@ class UISandboxApp : Application, IDockableWindowHost
 				OversampleY = 2,
 				Padding = 2
 			});
-		mUI.LoadFont("Roboto", fontPath, .()
+		mUI.LoadFont("Roboto", fontLocator, .()
 			{
 				PixelHeight = 24, FirstCodepoint = 32,
 				LastCodepoint = 255,

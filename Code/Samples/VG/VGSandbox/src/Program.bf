@@ -52,13 +52,13 @@ class VGSandboxApp : Application
 		// Load fonts at a few sizes - Roboto-Regular from the shared assets.
 		// FontService already converts the R8 atlas to RGBA8 under the hood,
 		// so VG consumes the atlas just like any other IImageData image.
-		mFontService = new TrueTypeFontService();
-		String fontPath = scope .();
-		GetAssetPath("fonts/roboto/Roboto-Regular.ttf", fontPath);
+		// Loads via the inherited `builtin://` mount (locator is relative).
+		mFontService = new TrueTypeFontService(BuiltinMount);
+		let fontLocator = "fonts/roboto/Roboto-Regular.ttf";
 
-		LoadFontSize(fontPath, 14);
-		LoadFontSize(fontPath, 20);
-		LoadFontSize(fontPath, 36);
+		LoadFontSize(fontLocator, 14);
+		LoadFontSize(fontLocator, 20);
+		LoadFontSize(fontLocator, 36);
 
 		mFontSmall  = mFontService.GetFont("Roboto", 14);
 		mFontMedium = mFontService.GetFont("Roboto", 20);

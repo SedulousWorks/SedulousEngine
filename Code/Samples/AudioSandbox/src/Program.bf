@@ -76,17 +76,19 @@ class AudioSandboxApp : Application
 
 		String shaderPath = scope .();
 		GetAssetPath("shaders", shaderPath);
-		if (mUI.InitializeRendering(mUIContext, mRoot, mDevice, mSwapChain.Format, (int32)mSwapChain.BufferCount, scope StringView[](shaderPath), mShell, mWindow) case .Err)
+		// Pass BuiltinMount so the UI subsystem's font service routes font
+		// loads through the `builtin://` VFS scheme.
+		if (mUI.InitializeRendering(mUIContext, mRoot, mDevice, mSwapChain.Format, (int32)mSwapChain.BufferCount, scope StringView[](shaderPath), mShell, mWindow, BuiltinMount) case .Err)
 		{
 			Console.WriteLine("Failed to initialize UI rendering");
 			return;
 		}
 
-		// Load font
-		String fontPath = scope .();
-		GetAssetPath("fonts/roboto/Roboto-Regular.ttf", fontPath);
-		mUI.LoadFont("Roboto", fontPath, .() { PixelHeight = 16 });
-		mUI.LoadFont("Roboto", fontPath, .() { PixelHeight = 20 });
+		// Load font through the VFS-routed service. Locator is relative to
+		// BuiltinMount.
+		let fontLocator = "fonts/roboto/Roboto-Regular.ttf";
+		mUI.LoadFont("Roboto", fontLocator, .() { PixelHeight = 16 });
+		mUI.LoadFont("Roboto", fontLocator, .() { PixelHeight = 20 });
 
 		// Build UI
 		BuildUI();

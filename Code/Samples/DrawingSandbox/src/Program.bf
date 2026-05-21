@@ -73,18 +73,19 @@ class DrawingSandboxApp : Application
 
 	private bool InitializeFont()
 	{
-		mTrueTypeFontService = new TrueTypeFontService();
+		// Route font loading through the inherited `builtin://` mount so we
+		// open via VFS rather than raw disk paths.
+		mTrueTypeFontService = new TrueTypeFontService(BuiltinMount);
 
-		String fontPath = scope .();
-		GetAssetPath("fonts/roboto/Roboto-Regular.ttf", fontPath);
+		let locator = "fonts/roboto/Roboto-Regular.ttf";
 
 		// Load font with extended Latin for diacritics
 		FontLoadOptions options = .ExtendedLatin;
 		options.PixelHeight = (int32)FONT_SIZE;
 
-		if (mTrueTypeFontService.LoadFont("Roboto", fontPath, options) case .Err)
+		if (mTrueTypeFontService.LoadFont("Roboto", locator, options) case .Err)
 		{
-			Console.WriteLine(scope $"Failed to load font: {fontPath}");
+			Console.WriteLine(scope $"Failed to load font: {locator}");
 			return false;
 		}
 

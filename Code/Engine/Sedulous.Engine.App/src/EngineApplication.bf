@@ -23,6 +23,8 @@ using Sedulous.Engine.Animation;
 using Sedulous.Engine.Audio;
 using Sedulous.Engine.Navigation;
 using Sedulous.Engine.UI;
+using Sedulous.Fonts;
+using Sedulous.Fonts.TTF;
 using Sedulous.Engine.Render;
 using Sedulous.Renderer;
 using Sedulous.Engine.Renderer;
@@ -80,6 +82,17 @@ abstract class EngineApplication : IDisposable
 	// "builtin.registry" file is present, maps GUIDs to URIs.
 	private FileSystemMount mBuiltinMount ~ delete _;
 	private InMemoryResourceIndex mBuiltinIndex ~ delete _;
+
+	// Default font service for the engine UI. Loads Roboto through the
+	// `builtin://` mount and is handed to the UI subsystem before it
+	// starts. Owned by the application so the subsystem can stay
+	// purely non-owning.
+	private TrueTypeFontService mFontService ~ delete _;
+
+	/// The default IFontService used by the engine UI. Derived apps can
+	/// read this (e.g., to register additional font sizes) but should not
+	/// delete it.
+	public IFontService FontService => mFontService;
 
 	// Runtime directory (working directory at startup - where the application project lives)
 	private String mRuntimeDirectory = new .() ~ delete _;
@@ -317,6 +330,18 @@ abstract class EngineApplication : IDisposable
 		mContext.RegisterSubsystem(new AnimationSubsystem(mResourceSystem));  //  100
 		mContext.RegisterSubsystem(new AudioSubsystem(mResourceSystem));      //  200
 		mContext.RegisterSubsystem(new NavigationSubsystem());   //  300
+		// Create the default font service and pre-load Roboto through the
+		// `builtin://` mount. The UI subsystem doesn't own the service -
+		// the application does - so it stays alive across subsystem
+		// shutdown / restart and can be shared with other consumers.
+		mFontService = new TrueTypeFontService(mBuiltinMount);
+		let robotoLocator = "fonts/roboto/Roboto-Regular.ttf";
+		if (mBuiltinMount != null && mBuiltinMount.Exists(robotoLocator))
+		{
+			mFontService.LoadFont("Roboto", robotoLocator, .() { PixelHeight = 16 });
+			mFontService.LoadFont("Roboto", robotoLocator, .() { PixelHeight = 24 });
+		}
+
 		let uiSub = new EngineUISubsystem();
 		uiSub.Device = mDevice;
 		uiSub.Window = mWindow;
@@ -324,8 +349,7 @@ abstract class EngineApplication : IDisposable
 		uiSub.ShaderSystem = mShaderSystem;
 		uiSub.SwapChainFormat = mSettings.SwapChainFormat;
 		uiSub.FrameCount = MAX_FRAMES_IN_FLIGHT;
-		if (mAssetDirectory.Length > 0)
-			uiSub.AssetDirectory = new String(mAssetDirectory);
+		uiSub.FontService = mFontService;
 		mContext.RegisterSubsystem(uiSub);                      //  400
 
 		let renderSub = new RenderSubsystem(mResourceSystem);

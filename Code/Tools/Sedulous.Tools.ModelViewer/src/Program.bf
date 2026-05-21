@@ -99,14 +99,14 @@ class ModelViewerApp : Application
 		GetAssetCachePath("shaders", shaderCacheDir);
 		mShaderSystem.Initialize(Device, .(scope StringView[](shaderDir)), mSettings.EnableShaderCache ? shaderCacheDir : default);
 
-		// Font service
-		mFontService = new TrueTypeFontService();
-		let fontPath = scope String();
-		GetAssetPath("fonts/roboto/Roboto-Regular.ttf", fontPath);
-		if (File.Exists(fontPath))
+		// Font service - loads through the inherited `builtin://` mount,
+		// so the locator is relative to the asset directory.
+		mFontService = new TrueTypeFontService(BuiltinMount);
+		let fontLocator = "fonts/roboto/Roboto-Regular.ttf";
+		if (BuiltinMount.Exists(fontLocator))
 		{
 			for (let size in float[](12, 14, 16, 18, 20))
-				mFontService.LoadFont("Roboto", fontPath, .() { PixelHeight = size });
+				mFontService.LoadFont("Roboto", fontLocator, .() { PixelHeight = size });
 		}
 
 		// VG renderer

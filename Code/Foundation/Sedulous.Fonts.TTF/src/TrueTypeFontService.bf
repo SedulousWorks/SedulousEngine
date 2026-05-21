@@ -1,25 +1,38 @@
 namespace Sedulous.Fonts.TTF;
 
 using System;
+using System.IO;
 using System.Collections;
 using Sedulous.Fonts;
 using Sedulous.Fonts.IO;
 using Sedulous.Fonts.TTF;
 using Sedulous.Images;
+using Sedulous.VFS;
 
 /// IFontService implementation that loads TrueType / OpenType fonts.
 ///
-/// `LoadFont(name, path, options)` runs the source-format pipeline: parse
-/// via `FontParserFactory`, then bake the atlas via `FontAtlasBakerFactory`.
-/// The parse + bake steps are TTF-specific and don't appear in
-/// `IFontService` itself - that contract is purely about querying cached
-/// fonts and their atlas textures.
+/// `LoadFont(name, locator, options)` runs the source-format pipeline:
+/// parse via `FontParserFactory`, then bake the atlas via
+/// `FontAtlasBakerFactory`. The parse + bake steps are TTF-specific and
+/// don't appear in `IFontService` itself - that contract is purely about
+/// querying cached fonts and their atlas textures.
+///
+/// When constructed with an `IMount`, the `locator` argument to `LoadFont`
+/// is interpreted as a VFS path relative to that mount and the bytes are
+/// opened through the mount. With a null mount the service falls back to
+/// reading from disk, treating `locator` as a file path - kept around for
+/// sandboxes / tools / tests that don't have VFS set up.
 ///
 /// Baked `.font` resources go through `BakedFontService` instead. Both
 /// implement `IFontService`; consumers don't care which service they're
 /// talking to.
 public class TrueTypeFontService : IFontService
 {
+	// Optional VFS mount. When set, LoadFont treats locator as a path
+	// relative to this mount; otherwise locator is a disk path.
+	// Non-owning - the application owns the mount.
+	private IMount mMount;
+
 	// Key format: "FamilyName@PixelHeight" (e.g., "Roboto@16", "Roboto@32")
 	private Dictionary<String, FontEntry> mFonts = new .() ~ { for (let kv in _) { delete kv.key; delete kv.value; } delete _; };
 	private String mDefaultFontFamily = new .("Default") ~ delete _;
@@ -38,8 +51,9 @@ public class TrueTypeFontService : IFontService
 		}
 	}
 
-	public this()
+	public this(IMount mount)
 	{
+		mMount = mount;
 		TrueTypeFonts.Initialize();
 	}
 
@@ -72,18 +86,49 @@ public class TrueTypeFontService : IFontService
 		return 16; // Default
 	}
 
-	/// Loads a font from a file path and creates its atlas texture data.
+	/// Loads a font from `locator` and creates its atlas texture data.
+	/// When this service was constructed with a mount, `locator` is a VFS
+	/// path relative to that mount. Otherwise `locator` is a disk path.
 	/// The first font loaded becomes the default.
-	public Result<void> LoadFont(StringView familyName, StringView filePath, FontLoadOptions options = .ExtendedLatin)
+	public Result<void> LoadFont(StringView familyName, StringView locator, FontLoadOptions options = .ExtendedLatin)
 	{
-		// Parse the source font into an IFont via the parser factory.
 		IFont font;
-		if (FontParserFactory.ParseFromFile(filePath, options) case .Ok(let f))
-			font = f;
-		else
-			return .Err;
+		if (mMount != null)
+		{
+			// Open through the mount and parse from the resulting stream.
+			let openResult = mMount.Open(locator);
+			if (openResult case .Err)
+				return .Err;
+			let stream = openResult.Value;
+			defer delete stream;
 
-		// Bake an atlas for the parsed font via the baker factory.
+			// Format hint from the locator extension - the parser factory
+			// uses it to pick the matching parser.
+			let ext = Path.GetExtension(locator, .. scope .());
+			if (FontParserFactory.ParseFromStream(stream, ext, options) case .Ok(let f))
+				font = f;
+			else
+				return .Err;
+		}
+		else
+		{
+			// Disk-path fallback for sandboxes / tools / tests that don't
+			// have VFS set up.
+			if (FontParserFactory.ParseFromFile(locator, options) case .Ok(let f))
+				font = f;
+			else
+				return .Err;
+		}
+
+		return CacheFont(familyName, font, options);
+	}
+
+	/// Bakes an atlas for the parsed font, wraps everything in a
+	/// CachedFont, inserts it into the cache, and updates the default
+	/// font tracking. Takes ownership of `font` - on failure it's
+	/// deleted before returning.
+	private Result<void> CacheFont(StringView familyName, IFont font, FontLoadOptions options)
+	{
 		IFontAtlas atlas;
 		if (FontAtlasBakerFactory.Bake(font, options) case .Ok(let a))
 			atlas = a;

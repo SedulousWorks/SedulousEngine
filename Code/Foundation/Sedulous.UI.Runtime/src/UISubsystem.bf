@@ -13,6 +13,7 @@ using Sedulous.Profiler;
 using Sedulous.UI;
 using Sedulous.UI.Shell;
 using Sedulous.Fonts.TTF;
+using Sedulous.VFS;
 
 /// Subsystem that provides UI rendering and lifecycle management.
 /// Owns rendering pipeline (VGContext, VGRenderer, ShaderSystem, FontService).
@@ -71,6 +72,9 @@ public class UISubsystem : Subsystem
 
 	/// Initialize rendering resources. Call after the device is ready.
 	/// uiContext and root are created and owned by the application.
+	/// Pass `fontMount` to route font loading through a VFS mount (e.g.,
+	/// the host application's `BuiltinMount`); when null, the font service
+	/// reads fonts via raw disk paths (back-compat).
 	public Result<void> InitializeRendering(
 		UIContext uiContext,
 		RootView root,
@@ -79,7 +83,8 @@ public class UISubsystem : Subsystem
 		int32 frameCount,
 		Span<StringView> shaderPaths,
 		IShell shell = null,
-		IWindow window = null)
+		IWindow window = null,
+		IMount fontMount = null)
 	{
 		mUIContext = uiContext;
 		mRoot = root;
@@ -88,8 +93,9 @@ public class UISubsystem : Subsystem
 		mWindow = window;
 		mFrameCount = frameCount;
 
-		// Font service
-		mFontService = new TrueTypeFontService();
+		// Font service - VFS-routed if a mount was supplied, disk-path
+		// fallback otherwise.
+		mFontService = new TrueTypeFontService(fontMount);
 
 		// Shader system (for VG rendering)
 		mShaderSystem = new ShaderSystem();
