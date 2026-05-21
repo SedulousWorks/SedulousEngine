@@ -45,6 +45,13 @@ class EditorContext : IDisposable
 	/// Prefer this over Console.WriteLine in editor code.
 	public ILogger Logger;
 
+	/// Async thumbnail dispatch + in-memory + disk cache. Owned and lifecycled
+	/// by EditorApplication (created at startup, pumped each frame). Cells
+	/// that want thumbnails for their bound asset call `Thumbnails.Request(...)`;
+	/// per-extension generators registered via RegisterThumbnailGenerator are
+	/// dispatched on demand.
+	public ThumbnailService Thumbnails;
+
 	/// Asset-browser-facing list of registered (scheme, mount, index) bundles.
 	/// EditorApplication populates this when builtin/project mounts are set up
 	/// and when the user mounts/unmounts extras through the asset browser.
@@ -91,10 +98,26 @@ class EditorContext : IDisposable
 		mCreators.Add(creator);
 	}
 
-	/// Register a thumbnail generator for a file extension.
+	/// Register a thumbnail generator for a file extension. Re-registering an
+	/// extension replaces (and disposes) the prior generator while reusing
+	/// the existing String key - the indexer assignment would otherwise
+	/// silently leak a fresh String allocation per call.
 	public void RegisterThumbnailGenerator(StringView @extension, IAssetThumbnailGenerator generator)
 	{
-		mThumbnailGens[new String(@extension)] = generator;
+		String key = new String(@extension);
+		IAssetThumbnailGenerator* valPtr = ?;
+		if (mThumbnailGens.TryAdd(key, ?, out valPtr))
+		{
+			*valPtr = generator;
+		}
+		else
+		{
+			// Key already in dictionary; free our just-allocated copy and
+			// delete the prior generator before swapping in the new one.
+			delete key;
+			delete *valPtr;
+			*valPtr = generator;
+		}
 	}
 
 	/// Register a gizmo renderer for a component type.
@@ -216,12 +239,24 @@ class EditorContext : IDisposable
 			delete creator;
 		mCreators.Clear();
 
+		// Delete both the owned String keys and the owned generators here;
+		// after Clear() the field's destructor block sees an empty dict and
+		// can't clean up. Doing both in one pass avoids leaking the keys.
 		for (let kv in mThumbnailGens)
+		{
+			delete kv.key;
 			delete kv.value;
+		}
 		mThumbnailGens.Clear();
 
 		for (let factory in mPanelFactories)
 			delete factory;
 		mPanelFactories.Clear();
+
+		if (Thumbnails != null)
+		{
+			delete Thumbnails;
+			Thumbnails = null;
+		}
 	}
 }

@@ -1,0 +1,371 @@
+namespace Sedulous.Editor.Core;
+
+using System;
+using System.IO;
+using System.Collections;
+using Sedulous.UI;
+using Sedulous.Images;
+using Sedulous.Core.Logging.Abstractions;
+using Sedulous.VFS;
+using Sedulous.VFS.Disk;
+
+/// Holds one cached thumbnail. Owns its pixel data and the drawable that wraps
+/// it; the service deletes both when the entry is evicted or invalidated.
+class CachedThumbnail
+{
+	public Guid Id;
+	public OwnedImageData Data ~ delete _;
+	public ImageDrawable Drawable ~ delete _;
+	public int64 SourceMtime;
+	public int32 Width;
+	public int32 Height;
+}
+
+/// One outstanding thumbnail request. Owned by the service while it sits in
+/// the pending queue; the requesting cell holds a non-owning handle so it can
+/// cancel before delivery. After the request finalizes (delivered or cancelled)
+/// the service deletes the request.
+class ThumbnailRequest
+{
+	public Guid Id;
+	public String Uri = new .() ~ delete _;
+	public String Extension = new .() ~ delete _;
+	public int32 Width;
+	public int32 Height;
+	public delegate void(Drawable) OnReady ~ if (OwnsCallback) delete _;
+	public bool OwnsCallback = true;
+	public bool Cancelled;
+}
+
+/// Asset thumbnail cache + dispatcher. Cells call `Request` to get a thumbnail
+/// for an asset; the service answers from its in-memory cache synchronously,
+/// from a disk cache on a later frame, or runs a per-extension generator (as
+/// registered through `EditorContext.RegisterThumbnailGenerator`). When a
+/// generator isn't registered the request resolves with a null drawable and
+/// the cell keeps its default icon.
+///
+/// Generator dispatch is throttled - at most a couple of requests run per
+/// frame from `Update()` so a folder full of textures doesn't stall the UI.
+/// Disk cache writes happen inline after generation; reads happen inline
+/// during request processing. Source mtime is recorded in a sidecar `.meta`
+/// file next to each `.png` so stale entries get regenerated.
+class ThumbnailService
+{
+	private EditorContext mContext;
+	private ILogger mLogger;
+
+	/// `<projectRoot>/.editor/thumbnails/` once a project is opened; empty
+	/// otherwise. Empty disables disk caching - everything lives in memory.
+	private String mDiskCacheDir = new .() ~ delete _;
+
+	private Dictionary<Guid, CachedThumbnail> mCache = new .() ~ {
+		for (let kv in _) delete kv.value;
+		delete _;
+	};
+
+	private Queue<ThumbnailRequest> mPending = new .() ~ delete _;
+
+	/// Maximum number of pending requests processed per `Update()` call.
+	/// Keeps a folder full of textures from stalling a single frame; the
+	/// remaining requests light up over the next few frames.
+	public int32 MaxRequestsPerFrame = 2;
+
+	public this(EditorContext context, ILogger logger)
+	{
+		mContext = context;
+		mLogger = logger;
+	}
+
+	/// Point the service at a project's disk cache directory. Creates the
+	/// directory if it doesn't exist. Passing an empty StringView disables
+	/// disk caching (e.g. when no project is open).
+	public void SetProjectDirectory(StringView projectDir)
+	{
+		mDiskCacheDir.Clear();
+		if (projectDir.Length == 0) return;
+
+		mDiskCacheDir.Append(projectDir);
+		// Use forward-slash uniformly - the rest of the editor mostly does.
+		if (!mDiskCacheDir.EndsWith("/") && !mDiskCacheDir.EndsWith("\\"))
+			mDiskCacheDir.Append('/');
+		mDiskCacheDir.Append(".editor/thumbnails");
+
+		if (!Directory.Exists(mDiskCacheDir))
+		{
+			if (Directory.CreateDirectory(mDiskCacheDir) case .Err(let err))
+			{
+				mLogger?.LogWarning("ThumbnailService: failed to create cache dir {}: {}", mDiskCacheDir, err);
+				mDiskCacheDir.Clear();
+			}
+		}
+	}
+
+	/// Drain up to `MaxRequestsPerFrame` pending requests. Call once per
+	/// frame from the main thread.
+	public void Update()
+	{
+		int processed = 0;
+		while (mPending.Count > 0 && processed < MaxRequestsPerFrame)
+		{
+			let req = mPending.PopFront();
+			if (req.Cancelled)
+			{
+				delete req;
+				continue;
+			}
+			ProcessRequest(req);
+			delete req;
+			processed++;
+		}
+	}
+
+	/// Request a thumbnail for an asset. The returned `ThumbnailRequest`
+	/// handle is owned by the service; the caller must call `Cancel(handle)`
+	/// when the cell goes away. Returns null when the cache had an immediate
+	/// hit (callback fires synchronously) or when no generator is registered
+	/// for the extension (callback fires synchronously with null).
+	public ThumbnailRequest Request(Guid id, StringView uri, StringView @extension,
+		int32 width, int32 height,
+		delegate void(Drawable) onReady, bool ownsCallback = true)
+	{
+		// Empty Guid means the asset isn't registered - we have no stable
+		// identity for the cache, so don't generate anything.
+		if (id == .())
+		{
+			onReady(null);
+			if (ownsCallback) delete onReady;
+			return null;
+		}
+
+		// Memory cache hit: deliver immediately.
+		if (mCache.TryGetValue(id, let cached))
+		{
+			onReady(cached.Drawable);
+			if (ownsCallback) delete onReady;
+			return null;
+		}
+
+		// Confirm a generator exists before queuing - no point in dispatching
+		// a request whose generator is null.
+		if (mContext.GetThumbnailGenerator(@extension) == null)
+		{
+			onReady(null);
+			if (ownsCallback) delete onReady;
+			return null;
+		}
+
+		let req = new ThumbnailRequest();
+		req.Id = id;
+		req.Uri.Set(uri);
+		req.Extension.Set(@extension);
+		req.Width = width;
+		req.Height = height;
+		req.OnReady = onReady;
+		req.OwnsCallback = ownsCallback;
+		mPending.Add(req);
+		return req;
+	}
+
+	/// Cancel a pending request. The cell must call this on detach / rebind
+	/// so a delivered callback doesn't fire after the cell is gone.
+	public void Cancel(ThumbnailRequest req)
+	{
+		if (req == null) return;
+		req.Cancelled = true;
+	}
+
+	/// Discard the cached thumbnail for an asset (memory + disk). Useful
+	/// when the source asset is known to have changed.
+	public void Invalidate(Guid id)
+	{
+		if (mCache.TryGetValue(id, let cached))
+		{
+			delete cached;
+			mCache.Remove(id);
+		}
+
+		if (mDiskCacheDir.Length > 0)
+		{
+			let png = scope String();
+			BuildDiskPath(id, ".png", png);
+			let meta = scope String();
+			BuildDiskPath(id, ".meta", meta);
+			if (File.Exists(png)) File.Delete(png).IgnoreError();
+			if (File.Exists(meta)) File.Delete(meta).IgnoreError();
+		}
+	}
+
+	// ==================== Internals ====================
+
+	private void ProcessRequest(ThumbnailRequest req)
+	{
+		// Disk-cache hit + fresh -> load and serve.
+		if (TryLoadFromDisk(req, var loaded))
+		{
+			mCache[req.Id] = loaded;
+			req.OnReady(loaded.Drawable);
+			return;
+		}
+
+		// Generate via the registered per-extension generator.
+		let gen = mContext.GetThumbnailGenerator(req.Extension);
+		if (gen == null)
+		{
+			req.OnReady(null);
+			return;
+		}
+
+		OwnedImageData data = null;
+		if (gen.GenerateThumbnail(req.Uri, req.Width, req.Height) case .Ok(let result))
+			data = result;
+
+		if (data == null)
+		{
+			mLogger?.LogWarning("Thumbnail generation failed for {} (extension {})", req.Uri, req.Extension);
+			req.OnReady(null);
+			return;
+		}
+
+		let drawable = new ImageDrawable(data);
+		let entry = new CachedThumbnail();
+		entry.Id = req.Id;
+		entry.Data = data;
+		entry.Drawable = drawable;
+		entry.Width = req.Width;
+		entry.Height = req.Height;
+		entry.SourceMtime = GetSourceMtime(req.Uri);
+
+		mCache[req.Id] = entry;
+		SaveToDisk(req, entry);
+		req.OnReady(drawable);
+	}
+
+	/// Last-write-time of the source file, or 0 if we can't tell (synthetic
+	/// mounts, file-not-on-disk, etc.). Used only for cache freshness, so
+	/// returning 0 just means the disk cache never invalidates - safer than
+	/// silently regenerating each session.
+	private int64 GetSourceMtime(StringView uri)
+	{
+		// Resolve the URI back to an absolute path via mount entries. The
+		// mtime is only meaningful for disk-backed mounts.
+		let absolute = scope String();
+		for (let mount in mContext.MountEntries)
+		{
+			let scheme = scope $"{mount.Scheme}://";
+			if (uri.StartsWith(scheme))
+			{
+				let locator = uri.Substring(scheme.Length);
+				if (mount.Mount is FileSystemMount)
+				{
+					let disk = (FileSystemMount)mount.Mount;
+					Path.InternalCombine(absolute, disk.RootPath, scope String(locator));
+					break;
+				}
+			}
+		}
+
+		if (absolute.Length == 0 || !File.Exists(absolute))
+			return 0;
+
+		if (File.GetLastWriteTime(absolute) case .Ok(let dt))
+			return dt.ToFileTime();
+		return 0;
+	}
+
+	private void BuildDiskPath(Guid id, StringView suffix, String outPath)
+	{
+		outPath.Append(mDiskCacheDir);
+		if (!outPath.EndsWith("/") && !outPath.EndsWith("\\"))
+			outPath.Append('/');
+		id.ToString(outPath);
+		outPath.Append(suffix);
+	}
+
+	/// Attempt to load `req.Id`'s thumbnail from the on-disk cache. Returns
+	/// true (and populates `out entry`) only if the cached file exists and
+	/// its recorded source mtime matches the source file's current mtime.
+	private bool TryLoadFromDisk(ThumbnailRequest req, out CachedThumbnail entry)
+	{
+		entry = null;
+		if (mDiskCacheDir.Length == 0) return false;
+
+		let png = scope String();
+		BuildDiskPath(req.Id, ".png", png);
+		let meta = scope String();
+		BuildDiskPath(req.Id, ".meta", meta);
+
+		if (!File.Exists(png) || !File.Exists(meta))
+			return false;
+
+		// Parse the sidecar - simple "mtime=<int64>" single line.
+		let metaText = scope String();
+		if (File.ReadAllText(meta, metaText) case .Err)
+			return false;
+
+		int64 recordedMtime = 0;
+		if (metaText.StartsWith("mtime="))
+		{
+			let rest = StringView(metaText, 6);
+			if (int64.Parse(rest) case .Ok(let v))
+				recordedMtime = v;
+		}
+
+		let currentMtime = GetSourceMtime(req.Uri);
+		// If we can't determine the current mtime, assume cache is valid -
+		// otherwise we'd regenerate on every editor restart for mounts that
+		// don't expose mtime. Only invalidate on a known mismatch.
+		if (currentMtime != 0 && recordedMtime != currentMtime)
+			return false;
+
+		// Load the PNG.
+		Image img = null;
+		if (ImageLoaderFactory.LoadImage(png) case .Ok(let loaded))
+			img = loaded;
+		if (img == null)
+			return false;
+		defer delete img;
+
+		// Convert Image -> OwnedImageData. Image owns its uint8[]; we copy
+		// the span into OwnedImageData's owned buffer.
+		let data = new OwnedImageData(img.Width, img.Height, img.Format, img.Data);
+		let drawable = new ImageDrawable(data);
+
+		entry = new CachedThumbnail();
+		entry.Id = req.Id;
+		entry.Data = data;
+		entry.Drawable = drawable;
+		entry.Width = req.Width;
+		entry.Height = req.Height;
+		entry.SourceMtime = currentMtime;
+		return true;
+	}
+
+	private void SaveToDisk(ThumbnailRequest req, CachedThumbnail entry)
+	{
+		if (mDiskCacheDir.Length == 0) return;
+
+		// Convert OwnedImageData -> Image for the writer (Image ctor copies).
+		let buf = scope uint8[entry.Data.PixelData.Length];
+		entry.Data.PixelData.CopyTo(Span<uint8>(buf));
+		let img = scope Image(entry.Data.Width, entry.Data.Height, entry.Data.Format, buf);
+
+		let png = scope String();
+		BuildDiskPath(req.Id, ".png", png);
+
+		if (ImageWriterFactory.SaveImage(img, png, .PNG) case .Err)
+		{
+			mLogger?.LogWarning("Thumbnail disk save failed for {}", png);
+			return;
+		}
+
+		// Sidecar.
+		let meta = scope String();
+		BuildDiskPath(req.Id, ".meta", meta);
+		let metaText = scope String();
+		metaText.AppendF("mtime={}", entry.SourceMtime);
+		if (File.WriteAllText(meta, metaText) case .Err)
+		{
+			mLogger?.LogWarning("Thumbnail sidecar save failed for {}", meta);
+		}
+	}
+}

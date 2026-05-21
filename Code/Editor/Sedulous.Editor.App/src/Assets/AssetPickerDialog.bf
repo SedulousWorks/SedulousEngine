@@ -64,11 +64,13 @@ class AssetPickerDialog : Dialog
 		mListAdapter = new AssetContentAdapter();
 		mListAdapter.ViewMode = .List;
 		mListAdapter.RegistryOnly = true;
+		mListAdapter.Thumbnails = mEditorContext.Thumbnails;
 		mListAdapter.SetExtensionFilter(extensionFilter);
 
 		mGridAdapter = new AssetContentAdapter();
 		mGridAdapter.ViewMode = .Grid;
 		mGridAdapter.RegistryOnly = true;
+		mGridAdapter.Thumbnails = mEditorContext.Thumbnails;
 		mGridAdapter.SetExtensionFilter(extensionFilter);
 
 		// Populate tree from the editor's mount entries

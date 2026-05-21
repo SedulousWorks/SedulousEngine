@@ -4,6 +4,7 @@ recovery/
 BeefSpace_User.toml
 
 .claude/
+.editor/
 .vscode/
 nul
 

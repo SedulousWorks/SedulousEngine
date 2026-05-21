@@ -3,17 +3,21 @@ namespace Sedulous.Editor.App;
 using System;
 using Sedulous.UI;
 using Sedulous.Core.Mathematics;
+using Sedulous.Editor.Core;
 
 /// View for a single cell in the asset browser grid/tile mode.
 /// Shows: icon/thumbnail area (top) + editable name label (bottom).
 class AssetGridCellView : ViewGroup
 {
-	private SVGDrawable mIconDrawable;
+	private Drawable mIconOrThumb;
 	private bool mIsFolder;
 	private bool mIsRegistered;
 	private bool mIsMissing;
 
 	private EditableLabel mNameLabel;
+
+	private ThumbnailService mThumbnails;
+	private ThumbnailRequest mPendingRequest;
 
 	/// The editable name label - used by the adapter to trigger rename.
 	public EditableLabel NameLabel => mNameLabel;
@@ -41,6 +45,18 @@ class AssetGridCellView : ViewGroup
 		AddView(mNameLabel);
 	}
 
+	public ~this()
+	{
+		CancelPending();
+	}
+
+	/// Wire the thumbnail service (called once by the adapter after CreateView).
+	/// Non-owning - the EditorContext owns the service.
+	public void SetThumbnailService(ThumbnailService service)
+	{
+		mThumbnails = service;
+	}
+
 	public void Bind(AssetContentItem item)
 	{
 		mNameLabel.SetText(item.Name);
@@ -53,10 +69,45 @@ class AssetGridCellView : ViewGroup
 		else
 			mNameLabel.TextColor = .(200, 205, 220, 255);
 
-		// Per-extension SVG icon. EditorIcons returns a non-owning reference
-		// to a shared drawable, so rebinding during grid cell recycling is
-		// just a pointer copy (no per-bind allocation).
-		mIconDrawable = EditorIcons.GetForExtension(item.Extension, item.IsFolder);
+		// Start with the default icon (so rebind during scroll never shows a
+		// blank cell, and so unsupported extensions stay on the icon).
+		mIconOrThumb = EditorIcons.GetForExtension(item.Extension, item.IsFolder);
+
+		// Cancel any in-flight request from the previous bind. Cells get
+		// recycled freely during scroll - if the previous request resolved
+		// after rebind, the callback would write a stale thumbnail.
+		CancelPending();
+
+		// Ask the service for a thumbnail. Returns null when there's an
+		// immediate cache hit (callback fires synchronously) or when no
+		// generator is registered. Holding a non-null handle means the
+		// request is queued; we must cancel it on rebind / destruction.
+		if (mThumbnails != null && !item.IsFolder && item.RegistryId != .())
+		{
+			let uri = scope String();
+			uri.AppendF("{}://{}", item.Scheme, item.RelativePath);
+
+			mPendingRequest = mThumbnails.Request(
+				item.RegistryId, uri, item.Extension,
+				/* w */ 96, /* h */ 96,
+				new (drawable) => {
+					// Clear the local handle - the service has deleted the
+					// request by the time this callback fires, so Cancel on
+					// it later would be use-after-free.
+					mPendingRequest = null;
+					if (drawable != null)
+						mIconOrThumb = drawable;
+				});
+		}
+	}
+
+	private void CancelPending()
+	{
+		if (mPendingRequest != null && mThumbnails != null)
+		{
+			mThumbnails.Cancel(mPendingRequest);
+			mPendingRequest = null;
+		}
 	}
 
 	protected override void OnMeasure(BoxConstraints constraints)
@@ -85,16 +136,23 @@ class AssetGridCellView : ViewGroup
 		let bgColor = ResolveStyleColor(.Background, .(35, 38, 48, 255));
 		ctx.VG.FillRoundedRect(iconBounds, 4, bgColor);
 
-		// SVG icon centered in the icon area. The drawable is owned by
-		// EditorIcons; we just paint into our bounds.
-		if (mIconDrawable != null)
+		// Draw the icon or thumbnail. SVG icons want a small inset so they
+		// don't touch the rounded corners; bitmap thumbnails want to fill
+		// the area for maximum size.
+		if (mIconOrThumb != null)
 		{
-			// Inset slightly so the icon doesn't touch the rounded corners.
-			let iconInset = 8.0f;
-			let drawBounds = RectangleF(
-				iconBounds.X + iconInset, iconBounds.Y + iconInset,
-				iconBounds.Width - iconInset * 2, iconBounds.Height - iconInset * 2);
-			mIconDrawable.Draw(ctx, drawBounds, GetControlState());
+			if (mIconOrThumb is SVGDrawable)
+			{
+				let iconInset = 8.0f;
+				let drawBounds = RectangleF(
+					iconBounds.X + iconInset, iconBounds.Y + iconInset,
+					iconBounds.Width - iconInset * 2, iconBounds.Height - iconInset * 2);
+				mIconOrThumb.Draw(ctx, drawBounds, GetControlState());
+			}
+			else
+			{
+				mIconOrThumb.Draw(ctx, iconBounds, GetControlState());
+			}
 		}
 
 		// Registry badge (small dot in top-right corner)

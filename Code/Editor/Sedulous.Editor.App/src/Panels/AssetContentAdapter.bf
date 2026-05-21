@@ -54,6 +54,12 @@ class AssetContentAdapter : ListAdapterBase
 	private MountEntry mEntry;
 	private String mCurrentFolder = new .() ~ delete _;  // Locator within mount (e.g. "primitives")
 
+	/// Optional thumbnail service. When set (non-null), grid and list cells
+	/// request a thumbnail for their bound asset on Bind and swap their
+	/// drawable when it arrives. When null, cells stay on their default icon.
+	/// Non-owning - the EditorContext owns the service's lifetime.
+	public ThumbnailService Thumbnails;
+
 	/// When true, only shows items that have a GUID in the active index.
 	/// Filesystem items without index entries are hidden.
 	public bool RegistryOnly;
@@ -411,6 +417,7 @@ class AssetContentAdapter : ListAdapterBase
 		if (ViewMode == .Grid)
 		{
 			let gridCell = new AssetGridCellView();
+			gridCell.SetThumbnailService(Thumbnails);
 
 			// Wire rename events
 			gridCell.NameLabel.OnRenameCommitted.Add(new (label, newName) => {
@@ -430,6 +437,7 @@ class AssetContentAdapter : ListAdapterBase
 		}
 
 		let itemView = new AssetContentItemView();
+		itemView.SetThumbnailService(Thumbnails);
 
 		// Disable double-click-to-edit - double-click navigates into folders
 		itemView.NameLabel.DoubleClickToEdit = false;
@@ -504,6 +512,9 @@ class AssetContentItemView : FlexLayout, IDragSource
 	private EditableLabel mNameLabel;
 	private Label mBadgeLabel;
 
+	private ThumbnailService mThumbnails;
+	private ThumbnailRequest mPendingRequest;
+
 	/// The currently bound item (non-owning, lives in adapter's item list).
 	public AssetContentItem BoundItem;
 
@@ -517,7 +528,9 @@ class AssetContentItemView : FlexLayout, IDragSource
 		Padding = .(4, 2, 4, 2);
 
 		// Per-extension SVG icon (Phase 1 of thumbnail rollout - was a text
-		// label with `[M]` / `[T]` / etc. placeholders before).
+		// label with `[M]` / `[T]` / etc. placeholders before). Swapped to
+		// a real thumbnail bitmap on Bind via the ThumbnailService when one
+		// is available for the asset.
 		mIconView = new DrawableView();
 		AddView(mIconView, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(20)), Height = .Match });
 
@@ -535,6 +548,18 @@ class AssetContentItemView : FlexLayout, IDragSource
 		AddView(mBadgeLabel, new FlexLayout.LayoutParams() { Width = .Wrap, Height = .Match });
 	}
 
+	public ~this()
+	{
+		CancelPending();
+	}
+
+	/// Wire the thumbnail service (called once by the adapter after CreateView).
+	/// Non-owning - the EditorContext owns the service.
+	public void SetThumbnailService(ThumbnailService service)
+	{
+		mThumbnails = service;
+	}
+
 	public void Bind(AssetContentItem item)
 	{
 		BoundItem = item;
@@ -545,6 +570,33 @@ class AssetContentItemView : FlexLayout, IDragSource
 		// unrecognized. The returned drawable is owned by EditorIcons -
 		// we only hold a non-owning reference here.
 		mIconView.Drawable = EditorIcons.GetForExtension(item.Extension, item.IsFolder);
+
+		// Cancel any prior in-flight request - cells get recycled during
+		// scroll, and a stale callback would write a thumbnail for the
+		// previous item.
+		CancelPending();
+
+		// Request a thumbnail. Folder cells and items without a registered
+		// Guid skip - we have no stable cache identity otherwise. The
+		// returned handle is null on synchronous resolution (cache hit or
+		// no generator); a non-null handle means we must Cancel on rebind.
+		if (mThumbnails != null && !item.IsFolder && item.RegistryId != .())
+		{
+			let uri = scope String();
+			uri.AppendF("{}://{}", item.Scheme, item.RelativePath);
+
+			mPendingRequest = mThumbnails.Request(
+				item.RegistryId, uri, item.Extension,
+				/* w */ 32, /* h */ 32,
+				new (drawable) => {
+					// Clear the local handle - the service has deleted the
+					// request by the time this callback fires, so Cancel on
+					// it later would be use-after-free.
+					mPendingRequest = null;
+					if (drawable != null)
+						mIconView.Drawable = drawable;
+				});
+		}
 
 		// Registry badge
 		if (item.IsRegistered)
@@ -557,6 +609,15 @@ class AssetContentItemView : FlexLayout, IDragSource
 			mNameLabel.TextColor = .(200, 80, 80, 255);
 		else
 			mNameLabel.TextColor = null; // Use default from style
+	}
+
+	private void CancelPending()
+	{
+		if (mPendingRequest != null && mThumbnails != null)
+		{
+			mThumbnails.Cancel(mPendingRequest);
+			mPendingRequest = null;
+		}
 	}
 
 	// === IDragSource ===

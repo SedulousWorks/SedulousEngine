@@ -36,6 +36,7 @@ static class AssetBrowserBuilder
 		// === Create adapters ===
 		let treeAdapter = new RegistryTreeAdapter();
 		let contentAdapter = new AssetContentAdapter();
+		contentAdapter.Thumbnails = editorContext.Thumbnails;
 
 		// Populate tree from current mount entries
 		treeAdapter.SetEntries(editorContext.MountEntries);
@@ -84,6 +85,7 @@ static class AssetBrowserBuilder
 
 		let gridAdapter = new AssetContentAdapter();
 		gridAdapter.ViewMode = .Grid;
+		gridAdapter.Thumbnails = editorContext.Thumbnails;
 
 		// Navigation bar: breadcrumbs (left, fills) + view mode toggles (right)
 		let navBar = new FlexLayout();

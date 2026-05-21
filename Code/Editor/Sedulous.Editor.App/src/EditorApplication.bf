@@ -124,8 +124,12 @@ class EditorApplication : Application, IDockableWindowHost
 		// Set serializer provider on project for OpenDDL-based .sedproj files
 		mProject.SetSerializerProvider(ResourceSystem.SerializerProvider);
 
-		// Initialize model and image loaders
+		// Initialize model and image loaders + writers. The writer is needed
+		// by the ThumbnailService to persist generated thumbnails to disk;
+		// without it, ImageWriterFactory.SaveImage has no registered backend
+		// and disk-cache writes fail (thumbnails still work in-memory).
 		STBImageLoader.Initialize();
+		Sedulous.Images.SDL.SDLImageWriter.Initialize();
 		GltfModels.Initialize();
 		FbxModels.Initialize();
 
@@ -229,6 +233,7 @@ class EditorApplication : Application, IDockableWindowHost
 		mEditorContext.PluginRegistry = new EditorPluginRegistry();
 		mEditorContext.Project = mProject;
 		mEditorContext.DialogService = Shell.Dialogs;
+		mEditorContext.Thumbnails = new ThumbnailService(mEditorContext, mEditorLogger);
 		mEditorContext.Shell = Shell;
 		mEditorContext.ResourceSystem = mResourceSystem;
 
@@ -272,6 +277,10 @@ class EditorApplication : Application, IDockableWindowHost
 		mAudioDecoder = new AudioDecoderFactory();
 		mAudioDecoder.RegisterDefaultDecoders();
 		mEditorContext.RegisterAssetImporter(new AudioAssetImporter(mAudioDecoder, mEditorLogger));
+
+		// Register asset thumbnail generators. Only registered extensions
+		// generate thumbnails - everything else stays on its default icon.
+		mEditorContext.RegisterThumbnailGenerator(".texture", new TextureThumbnailGenerator(ResourceSystem));
 
 		// Register built-in page factories
 		mEditorContext.RegisterPageFactory(new SceneEditorPageFactory(
@@ -412,6 +421,9 @@ class EditorApplication : Application, IDockableWindowHost
 		// Mount the project directory under "project://" and load its identity index
 		let projectDir = scope String();
 		projectDir.Set(mProject.ProjectDirectory);
+
+		// Point the thumbnail disk cache at this project's .editor/thumbnails/.
+		mEditorContext.Thumbnails?.SetProjectDirectory(projectDir);
 
 		if (mProjectIndex != null)
 		{
@@ -1356,6 +1368,9 @@ class EditorApplication : Application, IDockableWindowHost
 
 		// Flush buffered log messages to the LogView on the main thread.
 		mLogBuffer.Flush();
+
+		// Process queued thumbnail requests (throttled per frame inside Update).
+		mEditorContext.Thumbnails?.Update();
 
 		// Tick RuntimeContext (component init, scene updates for editor mode).
 		mRuntimeContext.BeginFrame(frame.DeltaTime);
