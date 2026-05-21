@@ -278,12 +278,62 @@ static class ScenePageBuilder
 		});
 
 		// === Viewport ===
-		let viewportView = new ViewportView();
-		viewportView.Initialize(device, vgRenderer);
-
-		container.AddView(viewportView, new FlexLayout.LayoutParams() {
+		// Wrap the viewport + camera-preview overlay in a FrameLayout so the
+		// preview can anchor over the top-right corner of the viewport.
+		let viewportStack = new FrameLayout();
+		container.AddView(viewportStack, new FlexLayout.LayoutParams() {
 			Width = .Match, Grow = 1
 		});
+
+		let viewportView = new ViewportView();
+		viewportView.Initialize(device, vgRenderer);
+		viewportStack.AddView(viewportView, new FrameLayout.LayoutParams() {
+			Width = .Match, Height = .Match
+		});
+
+		// Camera preview overlay - hidden until a camera-bearing entity is
+		// selected, with a Pin toggle to stay visible after deselection. Runs
+		// through its own ISceneRenderer pipeline (keyed on the panel) so it
+		// doesn't thrash the main viewport's SceneDepth.
+		CameraPreviewPanel previewPanel = null;
+		if (sceneRenderer != null)
+		{
+			previewPanel = new CameraPreviewPanel(device, vgRenderer, sceneRenderer, page.Scene);
+			viewportStack.AddView(previewPanel, new FrameLayout.LayoutParams()
+			{
+				Width = .Fixed(.Px(280)),
+				Height = .Fixed(.Px(180)),
+				Margin = .(0, 12, 12, 0),
+				Gravity = .TopRight,
+			});
+
+			let capturedPanel = previewPanel;
+			capturedPanel.OnRequestClose.Add(new () => {
+				capturedPanel.SetCamera(.Invalid, null);
+			});
+
+			let capturedScene2 = page.Scene;
+			page.OnSelectionChanged.Add(new (changedPage) => {
+				let sel = changedPage.PrimarySelection;
+				if (sel == .Invalid || !capturedScene2.IsValid(sel))
+				{
+					capturedPanel.HandleSelectionChanged(.Invalid, null);
+					return;
+				}
+				CameraComponent cam = null;
+				let comps = scope System.Collections.List<Component>();
+				capturedScene2.GetComponents(sel, comps);
+				for (let c in comps)
+				{
+					if (let cc = c as CameraComponent)
+					{
+						cam = cc;
+						break;
+					}
+				}
+				capturedPanel.HandleSelectionChanged(sel, cam);
+			});
+		}
 
 		// Editor camera (independent of scene camera entities)
 		let editorCamera = new EditorCamera();
