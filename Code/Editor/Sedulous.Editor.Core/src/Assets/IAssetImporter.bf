@@ -51,6 +51,14 @@ class ImportPreviewItem
 	/// Suggested filename (user-editable in import dialog).
 	public String Name ~ delete _;
 
+	/// Authored name from the source asset (immutable snapshot, set at
+	/// preview-build time alongside Name). The importer uses this to
+	/// match against converted resources whose Name still reflects what
+	/// was in the source - look-up keys for the post-conversion rename
+	/// pass go through OriginalName, then resolve the resource's stable
+	/// Guid to write the user-chosen Name into the GUID -> Path remap.
+	public String OriginalName ~ delete _;
+
 	/// File extension for the output (e.g. ".mesh", ".texture").
 	public String Extension ~ delete _;
 

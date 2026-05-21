@@ -171,16 +171,34 @@ class ImportDialog : Dialog
 			typeLabel.TextColor = .(140, 160, 200, 255);
 			itemRow.AddView(typeLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(90)), Height = .Match });
 
-			// Name + extension
-			let nameLabel = new Label();
-			let nameText = scope String();
-			nameText.AppendF("{}{}", item.Name, item.Extension);
-			nameLabel.SetText(nameText);
-			nameLabel.FontSize = 11;
-			nameLabel.Ellipsis = true;
-			itemRow.AddView(nameLabel, new FlexLayout.LayoutParams() { Height = .Match, Grow = 1 });
+			// Editable name (slow-click or double-click to rename) + read-only
+			// extension. Stash OriginalName at preview-build time so the
+			// importer can find this resource by its source-authored name
+			// post-conversion. The user is free to edit Name without losing
+			// the link to the converted resource.
+			if (item.OriginalName == null)
+			{
+				item.OriginalName = new String();
+				item.OriginalName.Set(item.Name);
+			}
 
-			itemList.AddView(itemRow, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });
+			let nameField = new EditableLabel();
+			nameField.SetText(item.Name);
+			nameField.FontSize = 11;
+			nameField.Ellipsis = true;
+			let capturedItem = item;
+			nameField.OnRenameCommitted.Add(new (label, newName) => {
+				capturedItem.Name.Set(newName);
+			});
+			itemRow.AddView(nameField, new FlexLayout.LayoutParams() { Height = .Match, Grow = 1 });
+
+			let extLabel = new Label();
+			extLabel.SetText(item.Extension);
+			extLabel.FontSize = 11;
+			extLabel.TextColor = .(140, 145, 165, 255);
+			itemRow.AddView(extLabel, new FlexLayout.LayoutParams() { Width = .Wrap, Height = .Match });
+
+			itemList.AddView(itemRow, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(22)) });
 		}
 
 		// Wrap item list in a ScrollView for many items
