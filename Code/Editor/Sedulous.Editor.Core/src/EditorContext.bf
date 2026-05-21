@@ -49,24 +49,40 @@ class EditorContext : IDisposable
 	/// by EditorApplication (created at startup, pumped each frame). Cells
 	/// that want thumbnails for their bound asset call `Thumbnails.Request(...)`;
 	/// per-extension generators registered via RegisterThumbnailGenerator are
-	/// dispatched on demand.
-	public ThumbnailService Thumbnails;
+	/// dispatched on demand. The destructor frees it - Dispose also nulls it
+	/// for symmetry but skipping Dispose still cleans up.
+	public ThumbnailService Thumbnails ~ delete _;
 
 	/// Asset-browser-facing list of registered (scheme, mount, index) bundles.
 	/// EditorApplication populates this when builtin/project mounts are set up
 	/// and when the user mounts/unmounts extras through the asset browser.
 	public List<MountEntry> MountEntries = new .() ~ DeleteContainerAndItems!(_);
 
-	// Registries (owned)
-	private List<IAssetImporter> mImporters = new .() ~ delete _;
-	private List<IAssetCreator> mCreators = new .() ~ delete _;
-	private Dictionary<String, IAssetThumbnailGenerator> mThumbnailGens = new .() ~ {
-		for (let kv in _) delete kv.key;
+	// Registries (owned). Each destructor block both deletes owned items AND
+	// frees the container, so if Dispose() is skipped the items don't leak.
+	// Dispose() Clear()s the containers first, so the destructor loops are
+	// no-ops when Dispose did run - no double-free either way.
+	private List<IAssetImporter> mImporters = new .() ~ {
+		for (let item in _) delete item;
 		delete _;
 	};
-	private List<IGizmoRenderer> mGizmos = new .() ~ delete _;
-	private Dictionary<Type, IGizmoRenderer> mGizmoMap = new .() ~ delete _;
-	private List<IEditorPanelFactory> mPanelFactories = new .() ~ delete _;
+	private List<IAssetCreator> mCreators = new .() ~ {
+		for (let item in _) delete item;
+		delete _;
+	};
+	private Dictionary<String, IAssetThumbnailGenerator> mThumbnailGens = new .() ~ {
+		for (let kv in _) { delete kv.key; delete kv.value; }
+		delete _;
+	};
+	private List<IGizmoRenderer> mGizmos = new .() ~ {
+		for (let g in _) { g.Dispose(); delete g; }
+		delete _;
+	};
+	private Dictionary<Type, IGizmoRenderer> mGizmoMap = new .() ~ delete _; // non-owning - mirrors mGizmos
+	private List<IEditorPanelFactory> mPanelFactories = new .() ~ {
+		for (let f in _) delete f;
+		delete _;
+	};
 	private List<(String name, ContextMenu menu)> mMenuLookup = new .() ~ {
 		for (let entry in _) delete entry.name;
 		delete _;
