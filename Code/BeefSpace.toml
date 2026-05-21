@@ -204,6 +204,7 @@ TowerDefense = {Path = "Projects/TowerDefense"}
 "Sedulous.Engine.UI" = {Path = "Engine/Sedulous.Engine.UI"}
 "Sedulous.UI.Viewport" = {Path = "Foundation/Sedulous.UI.Viewport"}
 "Sedulous.Inspection" = {Path = "Foundation/Sedulous.Inspection"}
+"Sedulous.Fonts.Resources" = {Path = "Foundation/Sedulous.Fonts.Resources"}
 
 [WorkspaceFolders]
 Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
@@ -217,7 +218,7 @@ Foundation = []
 "Foundation/Animation" = ["Sedulous.Animation", "Sedulous.Animation.Tests", "Sedulous.Animation.Resources"]
 "Foundation/Audio" = ["Sedulous.Audio", "Sedulous.Audio.Decoders", "Sedulous.Audio.SDL3", "Sedulous.Audio.Tests", "Sedulous.Audio.Resources", "Sedulous.Audio.Importer", "Sedulous.Audio.Effects", "Sedulous.Audio.Effects.Tests"]
 "Foundation/Drawing" = ["Sedulous.DebugFont", "Sedulous.Drawing", "Sedulous.Drawing.Tests", "Sedulous.Drawing.Renderer"]
-"Foundation/Fonts" = ["Sedulous.Fonts", "Sedulous.Fonts.TTF", "Sedulous.Fonts.Tests"]
+"Foundation/Fonts" = ["Sedulous.Fonts", "Sedulous.Fonts.TTF", "Sedulous.Fonts.Tests", "Sedulous.Fonts.Resources"]
 "Foundation/Geometry" = ["Sedulous.Geometry", "Sedulous.Geometry.Tests", "Sedulous.Geometry.Tooling", "Sedulous.Geometry.Resources", "Sedulous.Geometry.Tooling.Resources"]
 "Foundation/VG" = ["Sedulous.VG", "Sedulous.VG.SVG", "Sedulous.VG.Tests", "Sedulous.VG.Renderer"]
 "Foundation/Imaging" = ["Sedulous.Images.IO", "Sedulous.Images.STB", "Sedulous.Images.Tests", "Sedulous.Images.Resources", "Sedulous.Images.SDL", "Sedulous.Images"]

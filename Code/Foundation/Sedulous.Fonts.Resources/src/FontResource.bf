@@ -8,6 +8,8 @@ namespace Sedulous.Fonts.Resources;
 /// Font as a loadable resource
 public class FontResource : Resource
 {
+	public override ResourceType ResourceType => .("font");
+
 	private IFont mFont ~ if (_ != null) delete (Object)_;
 	private IFontAtlas mAtlas ~ if (_ != null) delete (Object)_;
 	private FontLoadOptions mOptions;
