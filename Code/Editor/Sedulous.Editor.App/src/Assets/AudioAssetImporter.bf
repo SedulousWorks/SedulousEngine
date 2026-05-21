@@ -61,6 +61,7 @@ class AudioAssetImporter : IAssetImporter
 
 			let item = new ImportPreviewItem();
 			item.Name = new String(fileName);
+			item.OriginalName = new String(fileName);
 			item.Extension = new String(".audioclip");
 			item.TypeLabel = new String(scope $"Audio ({clip.SampleRate}Hz, {clip.Channels}ch, {durationStr})");
 			item.InternalIndex = 0;

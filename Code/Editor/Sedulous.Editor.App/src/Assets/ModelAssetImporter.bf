@@ -88,6 +88,7 @@ class ModelAssetImporter : IAssetImporter
 		{
 			let item = new ImportPreviewItem();
 			item.Name = new String((mesh.Name != null && !mesh.Name.IsEmpty) ? StringView(mesh.Name) : StringView(modelBaseName));
+			item.OriginalName = new String(item.Name);
 			item.Extension = new String(".mesh");
 			item.TypeLabel = new String("Static Mesh");
 			item.InternalIndex = idx++;
@@ -98,6 +99,7 @@ class ModelAssetImporter : IAssetImporter
 		{
 			let item = new ImportPreviewItem();
 			item.Name = new String((mesh.Name != null && !mesh.Name.IsEmpty) ? StringView(mesh.Name) : StringView(modelBaseName));
+			item.OriginalName = new String(item.Name);
 			item.Extension = new String(".skinnedmesh");
 			item.TypeLabel = new String("Skinned Mesh");
 			item.InternalIndex = idx++;
@@ -108,6 +110,7 @@ class ModelAssetImporter : IAssetImporter
 		{
 			let item = new ImportPreviewItem();
 			item.Name = new String((tex.Name != null && !tex.Name.IsEmpty) ? StringView(tex.Name) : StringView(modelBaseName));
+			item.OriginalName = new String(item.Name);
 			item.Extension = new String(".texture");
 			item.TypeLabel = new String("Texture");
 			item.InternalIndex = idx++;
@@ -118,6 +121,7 @@ class ModelAssetImporter : IAssetImporter
 		{
 			let item = new ImportPreviewItem();
 			item.Name = new String((mat.Name != null && !mat.Name.IsEmpty) ? StringView(mat.Name) : StringView(modelBaseName));
+			item.OriginalName = new String(item.Name);
 			item.Extension = new String(".material");
 			item.TypeLabel = new String("Material");
 			item.InternalIndex = idx++;
@@ -128,6 +132,7 @@ class ModelAssetImporter : IAssetImporter
 		{
 			let item = new ImportPreviewItem();
 			item.Name = new String((skel.Name != null && !skel.Name.IsEmpty) ? StringView(skel.Name) : StringView(modelBaseName));
+			item.OriginalName = new String(item.Name);
 			item.Extension = new String(".skeleton");
 			item.TypeLabel = new String("Skeleton");
 			item.InternalIndex = idx++;
@@ -138,6 +143,7 @@ class ModelAssetImporter : IAssetImporter
 		{
 			let item = new ImportPreviewItem();
 			item.Name = new String((anim.Name != null && !anim.Name.IsEmpty) ? StringView(anim.Name) : StringView(modelBaseName));
+			item.OriginalName = new String(item.Name);
 			item.Extension = new String(".animation");
 			item.TypeLabel = new String("Animation");
 			item.InternalIndex = idx++;
@@ -188,7 +194,19 @@ class ModelAssetImporter : IAssetImporter
 		let resResult = ResourceImportResult.ConvertFrom(importResult, null, preview.SourcePath);
 		defer delete resResult;
 
-		// Build list of selected item names for filtering
+		// User-rename pass: walk preview items, find each one's converted
+		// resource by (OriginalName, Extension), update the resource's Name
+		// to the user's choice, and ask every resource to rewrite its
+		// cross-refs by Guid so material -> texture etc. point at the new
+		// filenames. Owns the remap dict's string values; freed on scope
+		// exit.
+		let remap = scope Dictionary<Guid, String>();
+		defer { for (let kv in remap) delete kv.value; }
+		ApplyUserRenames(preview, resResult, remap, ctx);
+
+		// Build list of selected item names for filtering. Resources have
+		// already been renamed by ApplyUserRenames, so this uses the same
+		// item.Name the user chose - which now matches res.Name.
 		let selectedNames = scope List<StringView>();
 		for (let item in preview.Items)
 		{
@@ -290,14 +308,14 @@ class ModelAssetImporter : IAssetImporter
 			}
 		}
 		{
-			let pcmStream = scope MemoryStream();
-			if (res.WritePixelsToStream(pcmStream) case .Err)
+			let pixelStream = scope MemoryStream();
+			if (res.WritePixelsToStream(pixelStream) case .Err)
 			{
 				ctx.Logger?.LogError("Model import: texture pixel sidecar serialization failed for {}", sidecarLocator);
 				return false;
 			}
-			pcmStream.Position = 0;
-			if (ctx.Mount.Save(sidecarLocator, pcmStream) case .Err(let err))
+			pixelStream.Position = 0;
+			if (ctx.Mount.Save(sidecarLocator, pixelStream) case .Err(let err))
 			{
 				ctx.Logger?.LogError("Model import: texture pixel sidecar save failed for {}: {}", sidecarLocator, err);
 				return false;
@@ -309,5 +327,70 @@ class ModelAssetImporter : IAssetImporter
 		uri.Append(fileName);
 		ctx.Index.Register(res.Id, uri);
 		return true;
+	}
+
+	/// Walks preview items, matches each to its converted resource by
+	/// (OriginalName, Extension), and:
+	///   1. Updates the matched resource's Name to the user-edited Name
+	///      (so SaveText / SaveTexture write the renamed filename).
+	///   2. Records resource.Id -> "<newName><extension>" in `outRemap`.
+	///   3. After all matches, calls RemapReferences(outRemap) on every
+	///      converted resource so cross-refs (material -> texture,
+	///      skinnedmesh -> skeleton, etc.) point at the new filenames.
+	/// The remap dict's values are heap strings owned by the caller (see
+	/// the `defer { delete kv.value; }` in Import).
+	private static void ApplyUserRenames(ImportPreview preview, ResourceImportResult resResult,
+		Dictionary<Guid, String> outRemap, AssetImportContext ctx)
+	{
+		for (let item in preview.Items)
+		{
+			let original = item.OriginalName ?? item.Name;
+			let resource = FindResourceByName(resResult, original, item.Extension);
+			if (resource == null)
+				continue;
+
+			// Update the resource's Name to the user's choice (no-op when
+			// the user didn't rename).
+			resource.Name.Set(item.Name);
+
+			// Record GUID -> filename for cross-ref rewriting.
+			let finalPath = new String();
+			finalPath.AppendF("{}{}", item.Name, item.Extension);
+			outRemap[resource.Id] = finalPath;
+
+			if (item.Name != original)
+				ctx.Logger?.LogDebug("Model import: rename {}{} -> {}", original, item.Extension, finalPath);
+		}
+
+		// Ask every converted resource to rewrite its cross-refs by Guid.
+		// Most are no-ops (base default); MaterialResource and SkinnedMeshResource
+		// actually do the rewriting for texture / skeleton refs.
+		for (let res in resResult.Textures)     res.RemapReferences(outRemap);
+		for (let res in resResult.Materials)    res.RemapReferences(outRemap);
+		for (let res in resResult.StaticMeshes) res.RemapReferences(outRemap);
+		for (let res in resResult.SkinnedMeshes) res.RemapReferences(outRemap);
+		for (let res in resResult.Skeletons)    res.RemapReferences(outRemap);
+		for (let res in resResult.Animations)   res.RemapReferences(outRemap);
+	}
+
+	private static Resource FindResourceByName(ResourceImportResult res,
+		StringView name, StringView @extension)
+	{
+		switch (@extension)
+		{
+		case ".texture":
+			for (let t in res.Textures) if (StringView(t.Name) == name) return t;
+		case ".material":
+			for (let m in res.Materials) if (StringView(m.Name) == name) return m;
+		case ".mesh":
+			for (let m in res.StaticMeshes) if (StringView(m.Name) == name) return m;
+		case ".skinnedmesh":
+			for (let m in res.SkinnedMeshes) if (StringView(m.Name) == name) return m;
+		case ".skeleton":
+			for (let s in res.Skeletons) if (StringView(s.Name) == name) return s;
+		case ".animation":
+			for (let a in res.Animations) if (StringView(a.Name) == name) return a;
+		}
+		return null;
 	}
 }

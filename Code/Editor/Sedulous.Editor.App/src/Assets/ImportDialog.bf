@@ -36,6 +36,14 @@ class ImportDialog : Dialog
 	// Item checkboxes (parallel to mPreview.Items)
 	private List<CheckBox> mItemChecks = new .() ~ delete _;
 
+	// Inline warning label for duplicate (Name, Extension) pairs across
+	// selected items. Refreshed after each EditableLabel commit; visible
+	// only when at least one duplicate exists. The Import button stays
+	// enabled regardless (per the "allow + warn" UX), but a final log
+	// warning fires in ExecuteImport so the issue is captured for the
+	// post-import session record.
+	private Label mDupWarningLabel;
+
 	public this(ImportPreview preview, IAssetImporter importer,
 		IWritableMount mount, StringView baseLocator,
 		IResourceIndex index, StringView uriPrefix, StringView indexLocator,
@@ -105,11 +113,11 @@ class ImportDialog : Dialog
 		outputRow.AddView(outputLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(50)), Height = .Match });
 
 		let outputPath = new Label();
-		// Show URI prefix + base locator so the user sees the scheme-prefixed
-		// destination (e.g. "project://imports/").
-		let display = scope String();
-		display.AppendF("{}{}", mUriPrefix, mBaseLocator);
-		outputPath.SetText(display);
+		// mUriPrefix is constructed as "{scheme}://{baseLocator}" by the
+		// caller (AssetBrowserBuilder), so it already includes the folder.
+		// Don't append mBaseLocator again - that would double-count and
+		// show "project://Fox/Fox/" when saving to "project://Fox/".
+		outputPath.SetText(mUriPrefix);
 		outputPath.FontSize = 11;
 		outputPath.Ellipsis = true;
 		outputRow.AddView(outputPath, new FlexLayout.LayoutParams() { Height = .Match, Grow = 1 });
@@ -134,6 +142,7 @@ class ImportDialog : Dialog
 		selectAllCheck.OnCheckedChanged.Add(new (cb, val) => {
 			for (let check in mItemChecks)
 				check.IsChecked = val;
+			RefreshDupWarning();
 		});
 		headerRow.AddView(selectAllCheck, new FlexLayout.LayoutParams() { Width = .Wrap, Height = .Match });
 
@@ -148,6 +157,15 @@ class ImportDialog : Dialog
 
 		content.AddView(headerRow, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(22)) });
 
+		// Duplicate-name warning - hidden until a dup exists. Sits between
+		// the items header and the list so it's adjacent to what the user
+		// is editing.
+		mDupWarningLabel = new Label();
+		mDupWarningLabel.FontSize = 10;
+		mDupWarningLabel.TextColor = .(230, 170, 80, 255);
+		mDupWarningLabel.Visibility = .Gone;
+		content.AddView(mDupWarningLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Wrap });
+
 		// Item list (scrollable)
 		let itemList = new FlexLayout();
 		itemList.Direction = .Vertical;
@@ -161,6 +179,7 @@ class ImportDialog : Dialog
 
 			let check = new CheckBox();
 			check.IsChecked = item.Selected;
+			check.OnCheckedChanged.Add(new (cb, val) => { RefreshDupWarning(); });
 			mItemChecks.Add(check);
 			itemRow.AddView(check, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(20)), Height = .Match });
 
@@ -189,6 +208,7 @@ class ImportDialog : Dialog
 			let capturedItem = item;
 			nameField.OnRenameCommitted.Add(new (label, newName) => {
 				capturedItem.Name.Set(newName);
+				RefreshDupWarning();
 			});
 			itemRow.AddView(nameField, new FlexLayout.LayoutParams() { Height = .Match, Grow = 1 });
 
@@ -207,6 +227,64 @@ class ImportDialog : Dialog
 		content.AddView(scrollView, new FlexLayout.LayoutParams() { Width = .Match, Grow = 1 });
 
 		SetContent(content);
+
+		// In case the source data has natural duplicates before the user
+		// has edited anything, show the warning immediately.
+		RefreshDupWarning();
+	}
+
+	/// Walks the selected preview items and flags duplicate (Name, Extension)
+	/// pairs in the inline warning label. Called after every EditableLabel
+	/// commit and once at dialog build time.
+	private void RefreshDupWarning()
+	{
+		if (mDupWarningLabel == null) return;
+
+		// Count occurrences of each (Name, Extension) pair among selected
+		// items. Selection check matches mItemChecks position-by-position
+		// against mPreview.Items.
+		let counts = scope Dictionary<String, int>();
+		defer { for (let kv in counts) delete kv.key; }
+
+		for (int i = 0; i < mPreview.Items.Count; i++)
+		{
+			if (i < mItemChecks.Count && !mItemChecks[i].IsChecked) continue;
+			let item = mPreview.Items[i];
+			let key = new String();
+			key.AppendF("{}{}", item.Name, item.Extension);
+			if (counts.TryGetValue(key, let prev))
+			{
+				counts[key] = prev + 1;
+				delete key;
+			}
+			else
+			{
+				counts[key] = 1;
+			}
+		}
+
+		let conflicts = scope List<String>();
+		for (let kv in counts)
+		{
+			if (kv.value > 1)
+				conflicts.Add(kv.key);
+		}
+
+		if (conflicts.Count == 0)
+		{
+			mDupWarningLabel.Visibility = .Gone;
+			return;
+		}
+
+		let msg = scope String();
+		msg.AppendF("⚠ {} duplicate name(s) — importing will overwrite: ", conflicts.Count);
+		for (int i = 0; i < conflicts.Count; i++)
+		{
+			if (i > 0) msg.Append(", ");
+			msg.Append(conflicts[i]);
+		}
+		mDupWarningLabel.SetText(msg);
+		mDupWarningLabel.Visibility = .Visible;
 	}
 
 	/// Builds importer-specific options UI if the preview has options.
@@ -270,6 +348,39 @@ class ImportDialog : Dialog
 		}
 	}
 
+	/// Logs a warning naming every duplicate (Name, Extension) among the
+	/// selected items. Called from ExecuteImport just before invoking the
+	/// importer so the conflict is captured even though we proceed anyway.
+	private void LogDuplicatesIfAny()
+	{
+		if (mLogger == null) return;
+
+		let counts = scope Dictionary<String, int>();
+		defer { for (let kv in counts) delete kv.key; }
+
+		for (let item in mPreview.Items)
+		{
+			if (!item.Selected) continue;
+			let key = new String();
+			key.AppendF("{}{}", item.Name, item.Extension);
+			if (counts.TryGetValue(key, let prev))
+			{
+				counts[key] = prev + 1;
+				delete key;
+			}
+			else
+			{
+				counts[key] = 1;
+			}
+		}
+
+		for (let kv in counts)
+		{
+			if (kv.value > 1)
+				mLogger.LogWarning("Import contains duplicate name '{}' x{} - earlier writes will be overwritten", kv.key, kv.value);
+		}
+	}
+
 	/// Runs the import with only the checked items.
 	private void ExecuteImport()
 	{
@@ -290,6 +401,11 @@ class ImportDialog : Dialog
 
 		if (!anySelected)
 			return;
+
+		// Final warning: any duplicate (Name, Extension) among selected
+		// items will cause one to overwrite another. The dialog already
+		// flagged this inline; this is the record-for-posterity log.
+		LogDuplicatesIfAny();
 
 		AssetImportContext ctx = .()
 		{

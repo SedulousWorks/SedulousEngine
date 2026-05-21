@@ -50,6 +50,7 @@ class TextureAssetImporter : IAssetImporter
 
 			let item = new ImportPreviewItem();
 			item.Name = new String(fileName);
+			item.OriginalName = new String(fileName);
 			item.Extension = new String(".texture");
 			item.TypeLabel = new String(scope $"Texture ({image.Width}x{image.Height})");
 			item.InternalIndex = 0;
@@ -212,14 +213,14 @@ class TextureAssetImporter : IAssetImporter
 
 		// Save pixel sidecar through the mount
 		{
-			let pcmStream = scope MemoryStream();
-			if (texRes.WritePixelsToStream(pcmStream) case .Err)
+			let pixelStream = scope MemoryStream();
+			if (texRes.WritePixelsToStream(pixelStream) case .Err)
 			{
 				ctx.Logger?.LogError("Texture import: pixel sidecar serialization failed for {}", sidecarLocator);
 				return .Err;
 			}
-			pcmStream.Position = 0;
-			if (ctx.Mount.Save(sidecarLocator, pcmStream) case .Err(let err))
+			pixelStream.Position = 0;
+			if (ctx.Mount.Save(sidecarLocator, pixelStream) case .Err(let err))
 			{
 				ctx.Logger?.LogError("Texture import: pixel sidecar save failed for {}: {}", sidecarLocator, err);
 				return .Err;
