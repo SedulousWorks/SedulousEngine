@@ -83,6 +83,54 @@ Shared on RenderContext (read-only or spatially partitioned):
 The editor additionally skips rendering for viewports in inactive dock tabs
 (`IsViewEffectivelyVisible` ancestor walk) to avoid unnecessary GPU work.
 
+## Multi-Pipeline Per Scene (Secondary Viewports)
+
+`ISceneRenderer` supports multiple `Pipeline` instances per `Scene`, keyed
+on a caller-supplied `void* viewportKey`. The scene-default pipeline lives
+under `key = null` and is owned by `OnSceneCreated`/`OnSceneDestroyed`;
+secondary pipelines are explicitly acquired and released by the consumer:
+
+```beef
+Pipeline GetPipeline(Scene scene, void* viewportKey = null);
+void RenderScene(... void* viewportKey = null);
+Pipeline AcquirePipeline(Scene scene, void* viewportKey);
+void ReleasePipeline(Scene scene, void* viewportKey);
+```
+
+Each secondary pipeline owns its own SceneDepth ping-pong, pass list,
+per-frame uniform buffers, light buffer, debug-line VBs, post-process
+stack, TAA history, and `DebugDraw` instance. This lets a single scene be
+rendered to multiple RTs of different sizes within one frame (camera
+preview, ortho sub-viewports, reflection probes, cubemap captures)
+without thrashing the scene-default pipeline's RT-tied resources.
+
+`OnSceneDestroyed` disposes every pipeline keyed to the scene, so a still-
+acquired secondary pipeline gets cleaned up if the scene goes away first.
+`ReleasePipeline` is a safe no-op for unknown keys (and refuses to release
+the null key, which is the scene-default's lifecycle).
+
+**Known compromises (not yet addressed):**
+
+- **Initial-resize allocation cycle.** `Pipeline.Initialize` allocates
+  SceneDepth at the window's default dimensions. A secondary pipeline
+  acquired by, e.g. a 280×180 camera preview, immediately triggers an
+  `OnResize` to its true dimensions on first `RenderScene`, throwing away
+  the just-allocated full-size textures. Wastes one allocation cycle per
+  acquire (bounded; not per-frame). Fix: add a `Pipeline.Initialize`
+  overload that takes the intended initial dimensions, or defer Initialize
+  until first render with known dims.
+- **Shadow-caster job duplication.** `mShadowDraws` accumulates across
+  `RenderScene` calls within a frame. Rendering the same scene twice
+  (main + preview) adds the same shadow-caster jobs to the atlas twice
+  per frame — each shadow map is rendered into the atlas once per
+  pipeline. Atlas memory is shared (not doubled), but render time is.
+  Fix: dedupe shadow casters by light identity within a frame, reuse the
+  atlas allocation from the first render.
+- **No frame-rate throttling on secondary pipelines.** Every frame
+  renders through every active pipeline at full quality. Half-rate
+  sampling or re-render-on-change would cut cost when a preview is
+  static, but those knobs aren't built.
+
 ## Phase 5: Tone Mapping & Post-Processing Foundation
 
 HDR pipeline outputs RGBA16Float - need tone mapping at minimum to see correct colors.

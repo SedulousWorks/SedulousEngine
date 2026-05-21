@@ -1278,6 +1278,59 @@ Move the responsibility to the active page:
 - `Ctrl+S` (active page Save), `Ctrl+Shift+S` (active page Save As),
   `Ctrl+Alt+S` (Save All).
 
+### Phase 5.7: Camera Preview - PARTIAL
+
+Picture-in-picture preview of the selected `CameraComponent` in the scene
+editor. Anchored top-right of the viewport (280×180), header with a Pin
+toggle and Close button. Renders through a secondary
+`ISceneRenderer` pipeline keyed on the panel (`AcquirePipeline` /
+`ReleasePipeline`) so it has its own SceneDepth and pass state and
+doesn't thrash the main viewport's RT (see RendererRoadmap → Multi-
+Pipeline Per Scene).
+
+**Behavior:**
+- Hidden by default. Shows when a camera-bearing entity is selected.
+- Unpinned: tracks selection (hides for non-camera selections).
+- Pinned: keeps showing its cached camera even after the selection
+  changes; auto-hides only if the pinned entity is destroyed.
+- Close (×) clears back to hidden.
+
+**Side-effect of the separate pipeline (intended):** the preview's
+`DebugDraw` is its own instance, so the editor's world-XZ grid and
+transform gizmos (drawn into the *main* pipeline's `DebugDraw`) do not
+bleed into the preview. The preview shows only the scene as the camera
+sees it.
+
+**Known compromises (v1, deferred):**
+
+- **Aspect ratio mismatch.** The preview renders at the panel's RT
+  aspect (~1.55:1 from 280×180) regardless of `CameraComponent.AspectRatio`.
+  Correct only when the camera authored `AspectRatio = 0` (use viewport).
+  Fix: letterbox inside the panel, or size the panel to the camera's
+  aspect.
+- **Pinned camera title doesn't auto-refresh on rename.** Title updates
+  on `SetCamera` / Pin toggle. Renaming the pinned entity from the
+  hierarchy leaves the panel title stale until the next selection-change
+  tick or pin-toggle. Fix: subscribe to entity-rename events.
+- **Stale `CameraComponent` reference on partial destruction.**
+  `IsValid(entity)` is only checked on selection-change ticks. If a
+  `CameraComponent` is removed from an otherwise-alive entity, the panel
+  keeps the stale pointer until a selection-change reroutes it. Fix:
+  re-validate the cached component on each render, or subscribe to
+  component-removed events.
+- **No reposition / resize.** Fixed corner, fixed size. Could be made
+  draggable / resizable later.
+- **Single camera at a time.** Multi-pin (one panel per pinned camera)
+  would require lifting the panel into a manager that owns N instances.
+- **`WorldUIPass` and `PickPass` don't run in the preview.** They're
+  added to the null-key (main) pipeline only. World-space UI won't
+  appear, and you can't click inside the preview to pick entities.
+  Probably correct UX, but a compromise if either is wanted later.
+- **No frame-rate throttling** (see also RendererRoadmap →
+  Multi-Pipeline Per Scene). Every frame renders the scene twice, full
+  quality. Cheap dials: render at half-rate, render-on-change-only, or
+  drop the preview RT to a quarter size.
+
 ### Phase 6: Play Mode
 - `EditorSceneManager` - serialize/restore scene around play
 - Play/Pause/Stop controls
