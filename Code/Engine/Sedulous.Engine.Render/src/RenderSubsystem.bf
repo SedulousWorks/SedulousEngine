@@ -41,8 +41,40 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 	// Renderer (shared infrastructure)
 	private RenderContext mRenderContext ~ delete _;
 
-	// Per-scene pipelines (created in OnSceneCreated, destroyed in OnSceneDestroyed)
-	private Dictionary<Scene, Pipeline> mScenePipelines = new .() ~ {
+	/// Identity for a (scene, viewport) pipeline. The scene-default pipeline
+	/// uses ViewportKey = null and is owned by OnSceneCreated/OnSceneDestroyed;
+	/// secondary pipelines (camera preview, sub-viewports, reflection probes)
+	/// are created via AcquirePipeline and torn down via ReleasePipeline.
+	private struct PipelineKey : IHashable, IEquatable<PipelineKey>
+	{
+		public Scene Scene;
+		public void* ViewportKey;
+
+		public this(Scene scene, void* viewportKey)
+		{
+			Scene = scene;
+			ViewportKey = viewportKey;
+		}
+
+		public int GetHashCode()
+		{
+			// Hash the Scene by reference identity (pointer) rather than by
+			// value - Scene doesn't override GetHashCode and we only care
+			// about same-instance equality here.
+			let scenePtr = (int)(void*)Internal.UnsafeCastToPtr(Scene);
+			return scenePtr ^ (int)(void*)ViewportKey;
+		}
+
+		public bool Equals(PipelineKey other) =>
+			Scene === other.Scene && ViewportKey == other.ViewportKey;
+
+		public static bool operator==(PipelineKey a, PipelineKey b) => a.Equals(b);
+	}
+
+	// Per-(scene, viewport) pipelines. The scene-default pipeline lives under
+	// PipelineKey(scene, null); secondary pipelines (e.g. the editor camera
+	// preview panel) live under their own viewport key.
+	private Dictionary<PipelineKey, Pipeline> mScenePipelines = new .() ~ {
 		for (let kv in _) { kv.value.Shutdown(); delete kv.value; }
 		delete _;
 	};
@@ -103,11 +135,44 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 	public IQueue GraphicsQueue => mGraphicsQueue;
 	public RenderContext RenderContext => mRenderContext;
 
-	public Pipeline GetPipeline(Scene scene)
+	public Pipeline GetPipeline(Scene scene, void* viewportKey = null)
 	{
-		if (mScenePipelines.TryGetValue(scene, let pipeline))
+		if (mScenePipelines.TryGetValue(PipelineKey(scene, viewportKey), let pipeline))
 			return pipeline;
 		return null;
+	}
+
+	/// Lazily allocate a secondary pipeline for the given viewport key. Used
+	/// by camera previews / sub-viewports that need to render the same scene
+	/// to an independent RT without thrashing the scene-default pipeline's
+	/// RT-tied resources.
+	public Pipeline AcquirePipeline(Scene scene, void* viewportKey)
+	{
+		let key = PipelineKey(scene, viewportKey);
+		if (mScenePipelines.TryGetValue(key, let existing))
+			return existing;
+
+		// Same construction path as the scene-default pipeline.
+		let pipeline = CreatePipelineForScene();
+		mScenePipelines[key] = pipeline;
+		return pipeline;
+	}
+
+	/// Tear down a pipeline previously acquired via AcquirePipeline. No-op if
+	/// the key was never acquired or has already been released. Cannot release
+	/// the scene-default pipeline (viewportKey = null) - that lifecycle is
+	/// tied to OnSceneCreated/OnSceneDestroyed.
+	public void ReleasePipeline(Scene scene, void* viewportKey)
+	{
+		if (viewportKey == null) return;
+
+		let key = PipelineKey(scene, viewportKey);
+		if (mScenePipelines.TryGetValue(key, let pipeline))
+		{
+			pipeline.Shutdown();
+			delete pipeline;
+			mScenePipelines.Remove(key);
+		}
 	}
 
 	/// Convenience accessor for the immediate-mode debug draw API.
@@ -205,7 +270,9 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		if (mRenderContext != null && mRenderContext.DebugDraw != null)
 			mRenderContext.DebugDraw.Clear();
 
-		// Clear per-pipeline debug draws (scene-specific gizmos, editor shapes)
+		// Clear per-pipeline debug draws (scene-specific gizmos, editor shapes).
+		// Iterates every (scene, viewport) pipeline so secondary pipelines like
+		// the editor's camera preview also get cleared each frame.
 		for (let kv in mScenePipelines)
 			kv.value.DebugDraw.Clear();
 	}
@@ -276,12 +343,17 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 	///   - frameIndex is the application's frame-in-flight index (0..MAX_FRAMES-1).
 	///   - w/h are the output dimensions.
 	public void RenderScene(Scene scene, ICommandEncoder encoder, ITexture colorTexture, ITextureView colorTarget,
-		uint32 w, uint32 h, int32 frameIndex, CameraOverride? camera = null)
+		uint32 w, uint32 h, int32 frameIndex, CameraOverride? camera = null,
+		void* viewportKey = null)
 	{
 		if (mDevice == null || scene == null)
 			return;
 
-		if (!mScenePipelines.TryGetValue(scene, let pipeline))
+		// Look up the pipeline for this (scene, viewport) pair. Secondary
+		// pipelines must be brought up via AcquirePipeline before the first
+		// RenderScene call - we don't lazy-create here to keep lifecycle
+		// ownership explicit.
+		if (!mScenePipelines.TryGetValue(PipelineKey(scene, viewportKey), let pipeline))
 			return;
 
 		mFrameIndex = frameIndex;
@@ -796,20 +868,33 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		// Scene-level render settings (sky, ambient, exposure).
 		scene.AddModule(new RenderSceneModule());
 
-		// Create a pipeline for this scene.
+		// Create the scene-default pipeline (key = null).
 		let pipeline = CreatePipelineForScene();
-		mScenePipelines[scene] = pipeline;
+		mScenePipelines[PipelineKey(scene, null)] = pipeline;
 	}
 
 	public void OnSceneReady(Scene scene) { }
 
 	public void OnSceneDestroyed(Scene scene)
 	{
-		if (mScenePipelines.TryGetValue(scene, let pipeline))
+		// Tear down every pipeline associated with this scene - the default
+		// one and any secondary ones still acquired by previews/sub-viewports
+		// that haven't been released yet. Collect keys first to avoid mutating
+		// the dictionary during iteration.
+		let toRemove = scope List<PipelineKey>();
+		for (let kv in mScenePipelines)
 		{
-			pipeline.Shutdown();
-			delete pipeline;
-			mScenePipelines.Remove(scene);
+			if (kv.key.Scene === scene)
+				toRemove.Add(kv.key);
+		}
+		for (let key in toRemove)
+		{
+			if (mScenePipelines.TryGetValue(key, let pipeline))
+			{
+				pipeline.Shutdown();
+				delete pipeline;
+				mScenePipelines.Remove(key);
+			}
 		}
 
 		if (mSkyResolveStates.ContainsKey(scene))
