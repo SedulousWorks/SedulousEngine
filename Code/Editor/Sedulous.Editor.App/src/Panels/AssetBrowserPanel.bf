@@ -66,6 +66,11 @@ class AssetBrowserPanel : IEditorPanel
 	public StringView Title => "Assets";
 	public View ContentView => mContentView;
 
+	/// Active content adapter (current folder + active mount). Used by
+	/// the drag-drop-from-OS path to dispatch dropped files into the
+	/// folder the user is currently viewing.
+	public AssetContentAdapter ActiveContentAdapter => mBuildResult.ListAdapter;
+
 	public void OnActivated() { }
 	public void OnDeactivated() { }
 	public void Update(float deltaTime) { }

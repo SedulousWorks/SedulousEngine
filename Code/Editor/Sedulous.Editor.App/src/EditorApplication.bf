@@ -1301,6 +1301,53 @@ class EditorApplication : Application, IDockableWindowHost
 		mMainRoot.ViewportSize = .((float)Window.Width, (float)Window.Height);
 		mUIContext.BeginFrame(frame.DeltaTime);
 		mUIContext.UpdateRootView(mMainRoot);
+
+		// Process OS file drops *after* UpdateRootView so the asset
+		// browser panel's bounds reflect the current frame's layout
+		// (LocalToScreen depends on cached layout positions). Drops
+		// outside the panel's screen rect are silently ignored - this
+		// is the gating UX the user asked for.
+		ProcessFileDrops();
+	}
+
+	private void ProcessFileDrops()
+	{
+		let input = Shell.InputManager;
+		if (input.DroppedFileCount == 0 || mAssetBrowserPanel == null) return;
+
+		let panelView = mAssetBrowserPanel.ContentView;
+		if (panelView == null || panelView.Context == null) return;
+
+		let adapter = mAssetBrowserPanel.ActiveContentAdapter;
+		let entry = adapter?.ActiveEntry;
+		if (entry == null) return;
+		let writable = entry.Mount as IWritableMount;
+		if (writable == null) return;
+
+		// SDL drops report window-relative *physical* pixels; UI views
+		// live in logical pixels. Divide by ContentScale once.
+		let scale = Window.ContentScale;
+		let dpiScale = (scale > 0.0001f) ? scale : 1.0f;
+
+		let topLeft = panelView.LocalToScreen(.Zero);
+		let panelRect = Sedulous.Core.Mathematics.RectangleF(
+			topLeft.X, topLeft.Y, panelView.Width, panelView.Height);
+
+		for (int i = 0; i < input.DroppedFileCount; i++)
+		{
+			let path = input.GetDroppedFile(i);
+			if (path.IsEmpty) continue;
+
+			float dropX, dropY;
+			if (!input.TryGetDroppedFilePosition(i, out dropX, out dropY)) continue;
+			let logicalX = dropX / dpiScale;
+			let logicalY = dropY / dpiScale;
+
+			if (!panelRect.Contains(logicalX, logicalY)) continue;
+
+			AssetBrowserBuilder.DispatchImportFile(mEditorContext, adapter,
+				mAssetBrowserPanel, entry, writable, path);
+		}
 	}
 
 	protected override void OnPrepareFrame(FrameContext frame)

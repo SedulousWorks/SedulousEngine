@@ -874,60 +874,71 @@ static class AssetBrowserBuilder
 			if (paths.Length == 0) return;
 
 			for (let sourcePath in paths)
-			{
-				// Find importer for this file
-				let ext = scope String();
-				Path.GetExtension(sourcePath, ext);
-
-				let importer = editorContext.GetImporterForExtension(ext);
-				if (importer == null)
-				{
-					editorContext.Logger?.LogWarning("No importer found for extension: {}", ext);
-					continue;
-				}
-
-				// Create preview
-				ImportPreview preview;
-				if (importer.CreatePreview(sourcePath) case .Ok(let p))
-					preview = p;
-				else
-				{
-					editorContext.Logger?.LogError("Failed to create import preview for: {}", sourcePath);
-					continue;
-				}
-
-				// Build base locator (current folder in the active mount, with trailing slash)
-				let baseLocator = scope String();
-				if (adapter.CurrentFolder.Length > 0)
-				{
-					baseLocator.Append(adapter.CurrentFolder);
-					baseLocator.Append('/');
-				}
-
-				// URI prefix: "scheme://baseLocator"
-				let uriPrefix = scope String();
-				uriPrefix.AppendF("{}://{}", entry.Scheme, baseLocator);
-
-				// Show import dialog
-				let serializer = editorContext.ResourceSystem?.SerializerProvider;
-				if (serializer != null)
-				{
-					let ctx = panel.ContentView?.Context;
-					if (ctx != null)
-					{
-						// Dialog takes ownership of preview and is deleted by PopupLayer on close
-						let importDialog = new ImportDialog(preview, importer, writable, baseLocator,
-							entry.Index, uriPrefix, entry.IndexLocator, serializer, panel,
-							editorContext.Logger);
-						importDialog.Show(ctx);
-						continue; // Don't delete preview - dialog owns it now
-					}
-				}
-
-				// Fallback: delete preview if dialog wasn't shown
-				delete preview;
-			}
+				DispatchImportFile(editorContext, adapter, panel, entry, writable, sourcePath);
 		}, filters, default, true);
+	}
+
+	/// Runs the importer-lookup + preview + ImportDialog flow for a single
+	/// source file in the context of `panel`. Shared between the manual
+	/// "Import..." button (which iterates paths from the OS file picker)
+	/// and the drag-drop-from-OS path in EditorApplication. Both call sites
+	/// already have the entry / writable mount resolved; pass them in to
+	/// avoid double-resolving.
+	public static void DispatchImportFile(EditorContext editorContext,
+		AssetContentAdapter adapter, AssetBrowserPanel panel,
+		MountEntry entry, IWritableMount writable, StringView sourcePath)
+	{
+		// Find importer for this file
+		let ext = scope String();
+		Path.GetExtension(sourcePath, ext);
+
+		let importer = editorContext.GetImporterForExtension(ext);
+		if (importer == null)
+		{
+			editorContext.Logger?.LogWarning("No importer found for extension: {}", ext);
+			return;
+		}
+
+		// Create preview
+		ImportPreview preview;
+		if (importer.CreatePreview(sourcePath) case .Ok(let p))
+			preview = p;
+		else
+		{
+			editorContext.Logger?.LogError("Failed to create import preview for: {}", sourcePath);
+			return;
+		}
+
+		// Build base locator (current folder in the active mount, with trailing slash)
+		let baseLocator = scope String();
+		if (adapter.CurrentFolder.Length > 0)
+		{
+			baseLocator.Append(adapter.CurrentFolder);
+			baseLocator.Append('/');
+		}
+
+		// URI prefix: "scheme://baseLocator"
+		let uriPrefix = scope String();
+		uriPrefix.AppendF("{}://{}", entry.Scheme, baseLocator);
+
+		// Show import dialog
+		let serializer = editorContext.ResourceSystem?.SerializerProvider;
+		if (serializer != null)
+		{
+			let ctx = panel.ContentView?.Context;
+			if (ctx != null)
+			{
+				// Dialog takes ownership of preview and is deleted by PopupLayer on close
+				let importDialog = new ImportDialog(preview, importer, writable, baseLocator,
+					entry.Index, uriPrefix, entry.IndexLocator, serializer, panel,
+					editorContext.Logger);
+				importDialog.Show(ctx);
+				return; // Don't delete preview - dialog owns it now
+			}
+		}
+
+		// Fallback: delete preview if dialog wasn't shown
+		delete preview;
 	}
 
 	/// Context menu for the mount tree view nodes.
