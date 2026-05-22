@@ -1,0 +1,16 @@
+uint64 %_type {126269861530532084}
+int32 %_version {1}
+string %_id {"9d3f7a4c-5b2e-4f1d-ae4b-3c6d9b5f8a2e"}
+string %_name {"flame_06"}
+string %_sourcePath {"c:\\DEV\\SedulousWorks\\Repos\\SedulousEngine\\Assets\\textures/kenney_particle-pack/PNG (Transparent)/flame_06.png"}
+int32 %shape {0}
+int32 %minFilter {3}
+int32 %magFilter {1}
+int32 %wrapU {0}
+int32 %wrapV {0}
+int32 %wrapW {0}
+bool %generateMipmaps {true}
+float %anisotropy {16}
+int32 %width {512}
+int32 %height {512}
+int32 %format {3}

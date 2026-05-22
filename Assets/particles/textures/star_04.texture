@@ -1,0 +1,16 @@
+uint64 %_type {126269861530532084}
+int32 %_version {1}
+string %_id {"8c2e6f3b-4a1d-4e9c-9d3f-2b5a8c4e7f1a"}
+string %_name {"star_04"}
+string %_sourcePath {"c:\\DEV\\SedulousWorks\\Repos\\SedulousEngine\\Assets\\textures/kenney_particle-pack/PNG (Transparent)/star_04.png"}
+int32 %shape {0}
+int32 %minFilter {3}
+int32 %magFilter {1}
+int32 %wrapU {0}
+int32 %wrapV {0}
+int32 %wrapW {0}
+bool %generateMipmaps {true}
+float %anisotropy {16}
+int32 %width {512}
+int32 %height {512}
+int32 %format {3}

@@ -1008,6 +1008,16 @@ class EditorApplication : Application, IDockableWindowHost
 	private static readonly Guid BuiltinRealisticSkyId      = Guid.Parse("5653f8c1-87c0-4855-9498-504ac8e67832").GetValueOrDefault();
 	private static readonly Guid BuiltinStylizedSkyId       = Guid.Parse("705c0bd8-b8e3-451c-8a19-7cb033cb1e1c").GetValueOrDefault();
 
+	// Particle pack textures (Kenney particle-pack, "PNG (Transparent)"
+	// subdir). Referenced by the default particle effects. Stable GUIDs
+	// so referencing effects survive a builtin regen.
+	private static readonly Guid BuiltinParticleTexCircleId = Guid.Parse("6a9c8f4a-5b3e-4d8a-9c1f-2b7e8a3d1c4b").GetValueOrDefault();
+	private static readonly Guid BuiltinParticleTexSmokeId  = Guid.Parse("7b1d5e2a-3f8c-4a9b-8d2e-1c4f9a5b6e3d").GetValueOrDefault();
+	private static readonly Guid BuiltinParticleTexStarId   = Guid.Parse("8c2e6f3b-4a1d-4e9c-9d3f-2b5a8c4e7f1a").GetValueOrDefault();
+	private static readonly Guid BuiltinParticleTexFlameId  = Guid.Parse("9d3f7a4c-5b2e-4f1d-ae4b-3c6d9b5f8a2e").GetValueOrDefault();
+	private static readonly Guid BuiltinParticleTexTraceId  = Guid.Parse("ae4a8b5d-6c3f-4a2e-bf5c-4d7eac6a9b3f").GetValueOrDefault();
+	private static readonly Guid BuiltinParticleTexSparkId  = Guid.Parse("bf5b9c6e-7d4a-4b3f-806d-5e8fbd7b0c4a").GetValueOrDefault();
+
 	/// Ensures default builtin assets (primitives, materials) exist on disk.
 	/// Generates them on first run if missing, then loads the identity
 	/// index and registers it with ResourceSystem. The `builtin://` mount
@@ -1034,6 +1044,7 @@ class EditorApplication : Application, IDockableWindowHost
 			GenerateDefaultPrimitives(mBuiltinMount, tempIndex, provider);
 			GenerateDefaultMaterials(mBuiltinMount, tempIndex, provider);
 			GenerateDefaultSkies(mBuiltinMount, tempIndex, provider, assetRoot);
+			GenerateDefaultParticleTextures(mBuiltinMount, tempIndex, provider);
 
 			let indexStream = scope MemoryStream();
 			if (tempIndex.SerializeTo(indexStream) case .Ok)
@@ -1154,6 +1165,47 @@ class EditorApplication : Application, IDockableWindowHost
 				index.Register(res.Id, "builtin://skies/stylized_sky.texture");
 				delete res;
 			}
+		}
+	}
+
+	/// Imports particle sprites from the Kenney particle pack PNGs and
+	/// publishes them as builtin `.texture` resources. These back the
+	/// default particle effects (next phase) - each effect references
+	/// one of these textures by stable GUID.
+	///
+	/// Source PNGs live under `Assets/textures/kenney_particle-pack/PNG
+	/// (Transparent)/` (already on disk, shipped with the engine);
+	/// generated `.texture` + `.texture.bin` files land under
+	/// `builtin://particles/textures/`.
+	private void GenerateDefaultParticleTextures(IWritableMount mount, IResourceIndex index, ISerializerProvider provider)
+	{
+		ImportParticleSprite(mount, index, provider, "circle_05", BuiltinParticleTexCircleId);
+		ImportParticleSprite(mount, index, provider, "smoke_07",  BuiltinParticleTexSmokeId);
+		ImportParticleSprite(mount, index, provider, "star_04",   BuiltinParticleTexStarId);
+		ImportParticleSprite(mount, index, provider, "flame_06",  BuiltinParticleTexFlameId);
+		ImportParticleSprite(mount, index, provider, "trace_05",  BuiltinParticleTexTraceId);
+		ImportParticleSprite(mount, index, provider, "spark_07",  BuiltinParticleTexSparkId);
+	}
+
+	private void ImportParticleSprite(IWritableMount mount, IResourceIndex index, ISerializerProvider provider,
+		StringView spriteName, Guid stableId)
+	{
+		let srcPath = scope String();
+		GetAssetPath(scope $"textures/kenney_particle-pack/PNG (Transparent)/{spriteName}.png", srcPath);
+
+		if (TextureImporter.Import2D(srcPath) case .Ok(let res))
+		{
+			res.Id = stableId;
+			res.Name.Set(spriteName);
+			let locator = scope $"particles/textures/{spriteName}.texture";
+			let sidecar = scope $"{spriteName}.texture.bin";
+			SaveTextureWithSidecar(res, mount, locator, sidecar, provider);
+			index.Register(res.Id, scope $"builtin://particles/textures/{spriteName}.texture");
+			delete res;
+		}
+		else
+		{
+			mEditorLogger?.Log(.Error, scope $"Builtin asset: particle sprite import failed for {srcPath}");
 		}
 	}
 

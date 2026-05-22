@@ -14,4 +14,3 @@ float %anisotropy {1}
 int32 %width {4096}
 int32 %height {2048}
 int32 %format {11}
-string %binaryPath {"realistic_sky.texture.bin"}
