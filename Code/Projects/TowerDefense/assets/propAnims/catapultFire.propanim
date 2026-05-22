@@ -4,10 +4,18 @@ string %_id {"b40352b1-f717-4b2a-998d-4daaa0259cc6"}
 string %_name {"New Property Animation"}
 string %_sourcePath {""}
 string %name {""}
-float %duration {0}
-bool %isLooping {false}
+float %duration {0.73333329}
+bool %isLooping {true}
 int32 %floatTracksCount {0}
 int32 %vector2TracksCount {0}
 int32 %vector3TracksCount {0}
 int32 %vector4TracksCount {0}
-int32 %quaternionTracksCount {0}
+int32 %quaternionTracksCount {1}
+Obj_ %quaternionTracks0 {
+	string %propertyPath {"Transform.Rotation"}
+	int32 %interpolation {1}
+	int32 %easing {0}
+	int32 %keyframeCount {3}
+	float %times {0, 0.414285809, 0.73333329}
+	float %values {0, 0, 0, 1, 0.173648179, 0, 0, 0.98480773, 0.382683456, 0, 0, 0.923879504}
+}
