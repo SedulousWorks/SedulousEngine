@@ -108,6 +108,12 @@ public class ThumbnailRenderer
 
 		mScene = sceneSubsystem.CreateScene("__Thumbnails__");
 
+		// Particle simulation is registered as `simulationOnly`, so we
+		// have to opt in explicitly. Mesh/material/skinnedmesh/prefab
+		// thumbnails don't care, but particle thumbnails won't tick
+		// otherwise.
+		mScene.SimulationEnabled = true;
+
 		// Procedurally generate the built-in sphere mesh and register it
 		// so generators can reference it via ResourceRef without shipping
 		// a `.mesh` asset for primitives.
@@ -132,6 +138,13 @@ public class ThumbnailRenderer
 		let skinnedMgr = mScene.GetModule<SkinnedMeshComponentManager>();
 		if (skinnedMgr != null)
 			skinnedMgr.CreateComponent(AssetEntity);
+		let particleMgr = mScene.GetModule<ParticleComponentManager>();
+		if (particleMgr != null)
+		{
+			let handle = particleMgr.CreateComponent(AssetEntity);
+			if (let comp = particleMgr.Get(handle))
+				comp.AutoPlay = true;
+		}
 
 		CreateRenderTarget();
 	}
@@ -166,6 +179,17 @@ public class ThumbnailRenderer
 				var emptyRef = ResourceRef();
 				comp.SetMeshRef(emptyRef);
 				comp.SetMaterialRef(0, emptyRef);
+				emptyRef.Dispose();
+			}
+		}
+
+		let particleMgr = mScene.GetModule<ParticleComponentManager>();
+		if (particleMgr != null)
+		{
+			if (let comp = particleMgr.GetForEntity(AssetEntity))
+			{
+				var emptyRef = ResourceRef();
+				comp.SetEffectRef(emptyRef);
 				emptyRef.Dispose();
 			}
 		}
