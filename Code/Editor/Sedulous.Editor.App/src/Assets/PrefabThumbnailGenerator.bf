@@ -88,24 +88,13 @@ class PrefabThumbnailGenerator : IAssetThumbnailGenerator, IAsyncAssetThumbnailG
 		let prefabId = prefabRes.Id;
 		let assetPathCopy = new String(assetPath);
 
-		let assetEntity = mThumbnailRenderer.AssetEntity;
+		let thumbnailRenderer = mThumbnailRenderer;
 		ThumbnailBuildFn build = new (scene, cam) => {
 			mSpawnedScene = scene;
 
-			// Hide the persistent asset entity by clearing its MeshRef.
-			// On the next resolver tick, MeshHandle becomes Invalid and
-			// the extraction loop skips it. Prefab-spawned entities are
-			// independent of this one.
-			let meshMgr = scene.GetModule<MeshComponentManager>();
-			if (meshMgr != null)
-			{
-				if (let comp = meshMgr.GetForEntity(assetEntity))
-				{
-					var emptyRef = ResourceRef();
-					comp.SetMeshRef(emptyRef);
-					emptyRef.Dispose();
-				}
-			}
+			// Hide the persistent asset entity. The prefab spawns its
+			// own entity tree; the persistent entity isn't used here.
+			thumbnailRenderer.ResetAssetEntity();
 
 			// Spawn the prefab as a root entity tree. The spawn pulls in
 			// its meshes/materials through the resource system (cached

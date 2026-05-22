@@ -118,16 +118,57 @@ public class ThumbnailRenderer
 		// fixed; intensity matches Lumix's tile-world defaults.
 		AddDefaultLight();
 
-		// Persistent asset entity. Pre-create the MeshComponent so the
-		// generator only has to call SetMeshRef per request - no entity
-		// or component creation/destruction churn.
+		// Persistent asset entity. Pre-create MeshComponent and
+		// SkinnedMeshComponent so generators only have to set MeshRef
+		// per request - no per-thumbnail component creation/destruction.
+		// Only one of the two components has a valid MeshRef at a time;
+		// the unused one's MeshHandle stays Invalid and gets skipped by
+		// the extraction loop.
 		AssetEntity = mScene.CreateEntity("__ThumbnailAsset__");
 		mScene.SetLocalTransform(AssetEntity, .() { Position = .Zero, Rotation = .Identity, Scale = .One });
 		let meshMgr = mScene.GetModule<MeshComponentManager>();
 		if (meshMgr != null)
 			meshMgr.CreateComponent(AssetEntity);
+		let skinnedMgr = mScene.GetModule<SkinnedMeshComponentManager>();
+		if (skinnedMgr != null)
+			skinnedMgr.CreateComponent(AssetEntity);
 
 		CreateRenderTarget();
+	}
+
+	/// Clear every renderable ref on the persistent asset entity. Each
+	/// generator's build closure should call this before setting the
+	/// refs it cares about, so a previous thumbnail's MeshRef /
+	/// SkinnedMeshRef / MaterialRef doesn't bleed into the new one
+	/// when the asset type changes (e.g., mesh → skinned mesh, or
+	/// material → mesh).
+	public void ResetAssetEntity()
+	{
+		if (mScene == null) return;
+
+		let meshMgr = mScene.GetModule<MeshComponentManager>();
+		if (meshMgr != null)
+		{
+			if (let comp = meshMgr.GetForEntity(AssetEntity))
+			{
+				var emptyRef = ResourceRef();
+				comp.SetMeshRef(emptyRef);
+				comp.SetMaterialRef(0, emptyRef);
+				emptyRef.Dispose();
+			}
+		}
+
+		let skinnedMgr = mScene.GetModule<SkinnedMeshComponentManager>();
+		if (skinnedMgr != null)
+		{
+			if (let comp = skinnedMgr.GetForEntity(AssetEntity))
+			{
+				var emptyRef = ResourceRef();
+				comp.SetMeshRef(emptyRef);
+				comp.SetMaterialRef(0, emptyRef);
+				emptyRef.Dispose();
+			}
+		}
 	}
 
 	public ~this()

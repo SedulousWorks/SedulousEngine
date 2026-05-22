@@ -82,8 +82,10 @@ class MaterialThumbnailGenerator : IAssetThumbnailGenerator, IAsyncAssetThumbnai
 		let assetPathCopy = new String(assetPath);
 
 		let assetEntity = mThumbnailRenderer.AssetEntity;
+		let thumbnailRenderer = mThumbnailRenderer;
 		ThumbnailBuildFn build = new (scene, cam) => {
 			cam = camera;
+			thumbnailRenderer.ResetAssetEntity();
 			let meshMgr = scene.GetModule<MeshComponentManager>();
 			if (meshMgr == null)
 			{

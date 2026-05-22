@@ -313,6 +313,7 @@ class EditorApplication : Application, IDockableWindowHost
 		if (mThumbnailRenderer != null)
 		{
 			mEditorContext.RegisterThumbnailGenerator(".mesh", new MeshThumbnailGenerator(ResourceSystem, mThumbnailRenderer, mEditorLogger));
+			mEditorContext.RegisterThumbnailGenerator(".skinnedmesh", new SkinnedMeshThumbnailGenerator(ResourceSystem, mThumbnailRenderer, mEditorLogger));
 			mEditorContext.RegisterThumbnailGenerator(".material", new MaterialThumbnailGenerator(ResourceSystem, mThumbnailRenderer, mEditorLogger));
 			mEditorContext.RegisterThumbnailGenerator(".prefab", new PrefabThumbnailGenerator(ResourceSystem, mThumbnailRenderer, mTypeRegistry, mEditorLogger));
 		}

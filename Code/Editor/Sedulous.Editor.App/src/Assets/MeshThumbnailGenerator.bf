@@ -85,8 +85,10 @@ class MeshThumbnailGenerator : IAssetThumbnailGenerator, IAsyncAssetThumbnailGen
 		// component-manager tick has a frame to resolve the new
 		// MeshRef before the render fires.
 		let assetEntity = mThumbnailRenderer.AssetEntity;
+		let thumbnailRenderer = mThumbnailRenderer;
 		ThumbnailBuildFn build = new (scene, cam) => {
 			cam = camera;
+			thumbnailRenderer.ResetAssetEntity();
 			let meshMgr = scene.GetModule<MeshComponentManager>();
 			if (meshMgr == null) return;
 			if (let comp = meshMgr.GetForEntity(assetEntity))
@@ -98,14 +100,6 @@ class MeshThumbnailGenerator : IAssetThumbnailGenerator, IAsyncAssetThumbnailGen
 				var meshRef = ResourceRef(meshId, assetPath);
 				comp.SetMeshRef(meshRef);
 				meshRef.Dispose();
-
-				// Clear any material ref left over from a prior material
-				// thumbnail render. Without this, .mesh previews would
-				// inherit the last-rendered .material when the persistent
-				// entity is shared between generators.
-				var emptyMatRef = ResourceRef();
-				comp.SetMaterialRef(0, emptyMatRef);
-				emptyMatRef.Dispose();
 			}
 		};
 
