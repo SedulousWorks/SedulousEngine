@@ -835,6 +835,66 @@ class UISandboxApp : Application, IDockableWindowHost
 		propGrid.AddProperty(new Vector3Editor("Scale", .(1, 1, 1), category: "Transform"));
 		pgDemo.AddView(propGrid, new FlexLayout.LayoutParams() { Grow = 1 });
 
+		// === Tab 12a: CurveCanvas / tangent editor demo ===
+		let curveDemo = new FlexLayout() { Direction = .Vertical, Spacing = 8 };
+		curveDemo.Padding = .(12, 8);
+		tabView.AddTab("Curve Editor", curveDemo);
+
+		let curveHelp = new Label();
+		curveHelp.SetText("Left-click empty space: add key.  Left-click + drag key: move.  Right-click key: delete.\nLeft-click + drag the colored handles on the selected key: edit tangent.  Right-click handle: cycle TangentMode (Mirrored / Free / Flat).");
+		curveDemo.AddView(curveHelp, new FlexLayout.LayoutParams() { Width = .Match });
+
+		let curve = new CurveCanvas();
+		curve.MaxKeys = 12;
+		ChannelDescriptor[1] curveChannels = .(.()
+			{
+				Name = "easeOut",
+				StrokeColor = .(120, 220, 160, 255),
+				DefaultValue = 0,
+				DisplayMin = 0, DisplayMax = 1,
+				Interpolation = .Hermite,
+			});
+		curve.SetChannels(curveChannels);
+
+		// Seed with a default ease-in / ease-out shape so the user sees
+		// curving tangents immediately - flat keys would hide what the
+		// new handle UI is actually doing.
+		CurveCanvas.Key[3] seedKeys = .(
+			.(0.0f, 0.0f, 0,    1.5f, .Mirrored),
+			.(0.5f, 0.5f, 1.5f, 1.5f, .Mirrored),
+			.(1.0f, 1.0f, 1.5f, 0,    .Mirrored));
+		curve.SetKeys(0, seedKeys);
+		curveDemo.AddView(curve, new FlexLayout.LayoutParams() { Width = .Match, Grow = 1 });
+
+		let curveStatus = new Label();
+		curveStatus.SetText("Selected key: (none)");
+		curveDemo.AddView(curveStatus, new FlexLayout.LayoutParams() { Width = .Match });
+
+		// Refresh the status line whenever a key is edited - both
+		// position drags and tangent drags hit OnKeyChanged.
+		delegate void(int32, int32) refreshStatus = new [=curve, =curveStatus] (c, k) =>
+		{
+			let selCh = curve.SelectedChannel;
+			let selKey = curve.SelectedKeyIndex;
+			if (selCh < 0 || selKey < 0 || selKey >= curve.GetKeyCount(selCh))
+			{
+				curveStatus.SetText("Selected key: (none)");
+				return;
+			}
+			let key = curve.GetKey(selCh, selKey);
+			let modeName = scope String();
+			switch (key.Mode)
+			{
+			case .Mirrored: modeName.Set("Mirrored");
+			case .Free:     modeName.Set("Free");
+			case .Flat:     modeName.Set("Flat");
+			}
+			curveStatus.SetText(scope $"Key #{selKey}  t={key.Time:0.00}  v={key.Value:0.00}  tIn={key.TangentIn:0.00}  tOut={key.TangentOut:0.00}  mode={modeName}");
+		};
+		curve.OnKeyChanged.Add(refreshStatus);
+		curve.OnKeyAdded.Add(new  (c, k) => refreshStatus(c, k));
+		curve.OnKeyRemoved.Add(new  (c, k) => refreshStatus(c, k));
+
 		// === Tab 12: Animations & Transforms demo ===
 		let animDemo = new FlexLayout() { Direction = .Vertical, Spacing = 8 };
 		animDemo.Padding = .(12, 8);

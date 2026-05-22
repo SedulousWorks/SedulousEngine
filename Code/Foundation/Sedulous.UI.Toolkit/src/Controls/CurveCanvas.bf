@@ -18,6 +18,23 @@ public enum CurveInterpolation : uint8
 	Step
 }
 
+/// Tangent-handle behavior on a Hermite key. Mirrored is the zero-init
+/// default so freshly-constructed keys get a single visible "smoothness"
+/// control out of the box.
+public enum TangentMode : uint8
+{
+	/// Drag one handle and the opposite handle mirrors it (TangentIn ==
+	/// TangentOut). The smooth default.
+	Mirrored,
+	/// Handles move independently. Use for sharp corners or asymmetric
+	/// ease in/out. ("Broken" in some DCC tools.)
+	Free,
+	/// Both tangents pinned to zero - the curve flattens through the key.
+	/// Handles are visible but ignore drag input (right-click to leave
+	/// Flat mode).
+	Flat,
+}
+
 /// Per-channel metadata pushed into CurveCanvas via SetChannels. Lets the
 /// widget render N curves on the same canvas without knowing what the
 /// channels represent (X/Y, R/G/B/A, gain/cutoff/resonance, ...).
@@ -90,25 +107,29 @@ public struct ChannelDescriptor
 ///   - Right click on key          -> delete (LinkedTime: removes the
 ///                                    matching index in every channel)
 ///
-/// Tangent handle editing is not yet exposed; tangents stay at the values
-/// pushed via SetKeys (typically zero for newly added keys).
+/// Tangent handles are rendered on the selected key only (left = In,
+/// right = Out). Drag a handle to change the slope; right-click to cycle
+/// TangentMode (Mirrored / Free / Flat).
 public class CurveCanvas : View
 {
 	/// One keypoint. Times in [0, 1]; Values in user space. Tangents are
-	/// slope (dy/dt) at the key.
+	/// slope (dy/dt) at the key. `Mode` controls how tangent edits propagate.
 	public struct Key
 	{
 		public float Time;
 		public float Value;
 		public float TangentIn;
 		public float TangentOut;
+		public TangentMode Mode;
 
-		public this(float time, float value, float tangentIn = 0, float tangentOut = 0)
+		public this(float time, float value, float tangentIn = 0, float tangentOut = 0,
+			TangentMode mode = .Mirrored)
 		{
 			Time = time;
 			Value = value;
 			TangentIn = tangentIn;
 			TangentOut = tangentOut;
+			Mode = mode;
 		}
 	}
 
@@ -125,6 +146,13 @@ public class CurveCanvas : View
 	private int32 mDraggingChannelIdx = -1;
 	private int32 mDraggingKeyIdx = -1;
 	private bool mInGesture;
+
+	/// Which tangent handle (if any) the current drag is editing. Set
+	/// from OnMouseDown when a handle is hit; cleared on OnMouseUp.
+	/// While non-None, OnMouseMove updates the key's tangent instead of
+	/// its position.
+	private enum DraggingHandle : uint8 { None, In, Out }
+	private DraggingHandle mDraggingHandle = .None;
 
 	/// Max keypoints per channel. Default matches the particle limit.
 	public int32 MaxKeys = 8;
@@ -356,6 +384,114 @@ public class CurveCanvas : View
 
 	private const float KeyHitRadius = 8;
 	private const float KeyDrawRadius = 4;
+	/// Pixel distance from key to tangent-handle endpoint. Fixed in
+	/// screen space so handles stay legible regardless of zoom.
+	private const float HandleScreenLen = 32;
+	private const float HandleHitRadius = 7;
+	private const float HandleDrawRadius = 4;
+
+	/// Computes the screen position of one tangent handle. `outgoing`
+	/// = false picks the incoming handle (left of key); true picks the
+	/// outgoing handle (right of key). The handle sits at a fixed
+	/// `HandleScreenLen` distance from the key, oriented along the
+	/// data slope projected to screen.
+	private void ComputeHandlePos(int32 channelIdx, int32 keyIdx, bool outgoing,
+		out float hx, out float hy)
+	{
+		let k = mChannels[channelIdx].Keys[keyIdx];
+		let kx = TimeToX(k.Time);
+		let ky = ValueToY(k.Value);
+		let pV = (ValueMax > ValueMin + 0.0001f) ? Height / (ValueMax - ValueMin) : 0;
+		let slope = outgoing ? k.TangentOut : k.TangentIn;
+		// Direction vector in screen space: outgoing = (+Width, -S*pV),
+		// incoming = (-Width, +S*pV). Length normalized to HandleScreenLen.
+		let dx = outgoing ? Width : -Width;
+		let dy = outgoing ? (-slope * pV) : (slope * pV);
+		let norm = Math.Sqrt(dx * dx + dy * dy);
+		if (norm < 0.0001f)
+		{
+			hx = kx + (outgoing ? HandleScreenLen : -HandleScreenLen);
+			hy = ky;
+			return;
+		}
+		hx = kx + HandleScreenLen * dx / norm;
+		hy = ky + HandleScreenLen * dy / norm;
+	}
+
+	/// Inverse of ComputeHandlePos's slope projection: given a desired
+	/// handle screen position relative to the key, returns the data
+	/// slope (dy/dt) that places the handle there. Caller is expected
+	/// to clamp the screen dx sign per handle (incoming = negative,
+	/// outgoing = positive).
+	private float HandleScreenToDataSlope(float screenDx, float screenDy)
+	{
+		if (Math.Abs(screenDx) < 0.0001f) return 0;
+		let pV = (ValueMax > ValueMin + 0.0001f) ? Height / (ValueMax - ValueMin) : 1;
+		if (pV < 0.0001f) return 0;
+		// screen_slope = dy/dx along the handle's outgoing direction.
+		// For outgoing handle: screen_slope = -S * pV / Width, so S = -screen_slope * Width / pV.
+		// For incoming handle: dx is negative, dy positive -> -(dy / dx) * Width / pV = same formula.
+		let screenSlope = screenDy / screenDx;
+		return -screenSlope * Width / pV;
+	}
+
+	/// True iff (x, y) is within HandleHitRadius of either tangent
+	/// handle on the currently selected key. Out-params identify which
+	/// handle. No-op when no key is selected or its mode hides handles.
+	private bool HitHandle(float x, float y, out bool outgoing)
+	{
+		outgoing = false;
+		if (mSelectedChannelIdx < 0 || mSelectedKeyIdx < 0) return false;
+		if (mSelectedChannelIdx >= mChannels.Count) return false;
+		let ch = mChannels[mSelectedChannelIdx];
+		if (ch.Descriptor.Hidden || ch.Descriptor.Locked) return false;
+		if (ch.Descriptor.Interpolation != .Hermite) return false;
+		if (mSelectedKeyIdx >= ch.Keys.Count) return false;
+
+		float hx, hy;
+		ComputeHandlePos(mSelectedChannelIdx, mSelectedKeyIdx, true, out hx, out hy);
+		var dx = x - hx;
+		var dy = y - hy;
+		if (dx * dx + dy * dy <= HandleHitRadius * HandleHitRadius)
+		{
+			outgoing = true;
+			return true;
+		}
+		ComputeHandlePos(mSelectedChannelIdx, mSelectedKeyIdx, false, out hx, out hy);
+		dx = x - hx;
+		dy = y - hy;
+		if (dx * dx + dy * dy <= HandleHitRadius * HandleHitRadius)
+		{
+			outgoing = false;
+			return true;
+		}
+		return false;
+	}
+
+	/// Cycles the selected key's TangentMode: Mirrored -> Free -> Flat.
+	/// When entering Mirrored, snaps TangentIn to TangentOut so the
+	/// transition is visible immediately. When entering Flat, zeroes
+	/// both tangents. Caller fires OnKeyChanged.
+	private void CycleSelectedTangentMode()
+	{
+		if (mSelectedChannelIdx < 0 || mSelectedKeyIdx < 0) return;
+		let ch = mChannels[mSelectedChannelIdx];
+		if (mSelectedKeyIdx >= ch.Keys.Count) return;
+		var k = ch.Keys[mSelectedKeyIdx];
+		switch (k.Mode)
+		{
+		case .Mirrored: k.Mode = .Free;
+		case .Free:
+			k.Mode = .Flat;
+			k.TangentIn = 0;
+			k.TangentOut = 0;
+		case .Flat:
+			k.Mode = .Mirrored;
+			// Sync In to Out so the handles snap together visibly.
+			k.TangentIn = k.TangentOut;
+		}
+		ch.Keys[mSelectedKeyIdx] = k;
+	}
 
 	private bool HitKey(float x, float y, out int32 channelIdx, out int32 keyIdx)
 	{
@@ -410,6 +546,41 @@ public class CurveCanvas : View
 	public override void OnMouseDown(MouseEventArgs e)
 	{
 		if (mChannels.Count == 0) return;
+
+		// Tangent handles take priority over key markers - they're only
+		// drawn for the selected key, so the hit-test is cheap and
+		// unambiguous, and overlapping cases are rare except at flat
+		// tangents where the In/Out handles cluster near the key.
+		bool handleOutgoing;
+		if (e.Button == .Left && HitHandle(e.X, e.Y, out handleOutgoing))
+		{
+			let ch = mChannels[mSelectedChannelIdx];
+			let k = ch.Keys[mSelectedKeyIdx];
+			// Flat keys ignore drag - user must right-click to switch
+			// mode first. Keeps the "Flat" mode actually flat.
+			if (k.Mode == .Flat) { e.Handled = true; return; }
+			mDraggingChannelIdx = mSelectedChannelIdx;
+			mDraggingKeyIdx = mSelectedKeyIdx;
+			mDraggingHandle = handleOutgoing ? .Out : .In;
+			BeginGesture();
+			Context?.FocusManager.SetCapture(this);
+			e.Handled = true;
+			Invalidate();
+			return;
+		}
+
+		if (e.Button == .Right && HitHandle(e.X, e.Y, out handleOutgoing))
+		{
+			let ch = mChannels[mSelectedChannelIdx];
+			if (ch.Descriptor.Locked) return;
+			BeginGesture();
+			CycleSelectedTangentMode();
+			OnKeyChanged(mSelectedChannelIdx, mSelectedKeyIdx);
+			EndGesture();
+			e.Handled = true;
+			Invalidate();
+			return;
+		}
 
 		if (e.Button == .Left)
 		{
@@ -515,6 +686,42 @@ public class CurveCanvas : View
 		if (dragCh >= mChannels.Count) return;
 		if (mDraggingKeyIdx >= mChannels[dragCh].Keys.Count) return;
 
+		// Tangent-handle drag: keep the key in place and rotate the
+		// handle around it. Mode controls whether the opposite handle
+		// follows along.
+		if (mDraggingHandle != .None)
+		{
+			let ch = mChannels[dragCh];
+			var k = ch.Keys[mDraggingKeyIdx];
+			let kx = TimeToX(k.Time);
+			let ky = ValueToY(k.Value);
+			var dx = e.X - kx;
+			var dy = e.Y - ky;
+			// Constrain dx to the handle's side so the user can't flip
+			// the In handle to the right (and vice versa) - that would
+			// invert the slope sign and feel like a teleport.
+			let outgoing = (mDraggingHandle == .Out);
+			let minDx = 4.0f;
+			if (outgoing && dx < minDx) dx = minDx;
+			if (!outgoing && dx > -minDx) dx = -minDx;
+			let newSlope = HandleScreenToDataSlope(dx, dy);
+			if (outgoing)
+			{
+				k.TangentOut = newSlope;
+				if (k.Mode == .Mirrored) k.TangentIn = newSlope;
+			}
+			else
+			{
+				k.TangentIn = newSlope;
+				if (k.Mode == .Mirrored) k.TangentOut = newSlope;
+			}
+			ch.Keys[mDraggingKeyIdx] = k;
+			OnKeyChanged(dragCh, mDraggingKeyIdx);
+			e.Handled = true;
+			Invalidate();
+			return;
+		}
+
 		let newTime = XToTime(e.X);
 		let newValue = ClampToChannel(dragCh, YToValue(e.Y));
 
@@ -565,6 +772,7 @@ public class CurveCanvas : View
 		{
 			mDraggingChannelIdx = -1;
 			mDraggingKeyIdx = -1;
+			mDraggingHandle = .None;
 			Context?.FocusManager.ReleaseCapture();
 			EndGesture();
 			e.Handled = true;
@@ -770,6 +978,44 @@ public class CurveCanvas : View
 					}
 					ctx.VG.Stroke(.(255, 220, 100, 255), 1.5f);
 				}
+			}
+
+			// Tangent handles - drawn only on the selected key of a
+			// Hermite channel. Mirrored mode reuses one color; Free
+			// uses distinct In/Out colors so the user can tell at a
+			// glance the handles are independent; Flat is dimmed to
+			// signal handles are uneditable until mode changes.
+			if (c == mSelectedChannelIdx && mSelectedKeyIdx >= 0 && mSelectedKeyIdx < ch.Keys.Count
+				&& ch.Descriptor.Interpolation == .Hermite)
+			{
+				let k = ch.Keys[mSelectedKeyIdx];
+				let kx = TimeToX(k.Time);
+				let ky = ValueToY(k.Value);
+
+				Color colIn, colOut;
+				switch (k.Mode)
+				{
+				case .Mirrored:
+					colIn  = .(180, 200, 255, 255);
+					colOut = .(180, 200, 255, 255);
+				case .Free:
+					colIn  = .(255, 140, 120, 255);
+					colOut = .(120, 220, 160, 255);
+				case .Flat:
+					colIn  = .(120, 122, 132, 255);
+					colOut = .(120, 122, 132, 255);
+				}
+
+				float ohx, ohy, ihx, ihy;
+				ComputeHandlePos(c, mSelectedKeyIdx, true, out ohx, out ohy);
+				ComputeHandlePos(c, mSelectedKeyIdx, false, out ihx, out ihy);
+
+				ctx.VG.DrawLine(.(kx, ky), .(ihx, ihy), colIn, 1);
+				ctx.VG.DrawLine(.(kx, ky), .(ohx, ohy), colOut, 1);
+				ctx.VG.FillRect(.(ihx - HandleDrawRadius, ihy - HandleDrawRadius,
+					HandleDrawRadius * 2, HandleDrawRadius * 2), colIn);
+				ctx.VG.FillRect(.(ohx - HandleDrawRadius, ohy - HandleDrawRadius,
+					HandleDrawRadius * 2, HandleDrawRadius * 2), colOut);
 			}
 		}
 	}
