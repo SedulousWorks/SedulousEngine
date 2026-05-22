@@ -927,4 +927,50 @@ public static class MathUtil
 	{
 		return (value + alignment - 1) / alignment;
 	}
+
+	/// <summary>
+	/// Decodes an IEEE 754 half-precision float (16 bits) into a
+	/// 32-bit single-precision float. Handles denormals, infinities,
+	/// and NaN; sign is preserved. Useful for sampling RGBA16F /
+	/// RGB16F textures and depth/normal G-buffer reads on the CPU.
+	/// </summary>
+	/// <param name="h">The 16-bit half-float bit pattern.</param>
+	/// <returns>The corresponding 32-bit float value.</returns>
+	public static float HalfToFloat(uint16 h)
+	{
+		uint32 sign = (uint32)((h >> 15) & 0x1);
+		uint32 exp  = (uint32)((h >> 10) & 0x1F);
+		uint32 mant = (uint32)(h & 0x3FF);
+
+		uint32 f;
+		if (exp == 0)
+		{
+			if (mant == 0)
+			{
+				// Zero (positive or negative).
+				f = sign << 31;
+			}
+			else
+			{
+				// Denormal - renormalize to a 32-bit normal.
+				while ((mant & 0x400) == 0) { mant <<= 1; exp = (uint32)((int32)exp - 1); }
+				exp = (uint32)((int32)exp + 1);
+				mant &= ~(uint32)0x400;
+				let expF = exp + (127 - 15);
+				f = (sign << 31) | (expF << 23) | (mant << 13);
+			}
+		}
+		else if (exp == 31)
+		{
+			// Infinity or NaN.
+			f = (sign << 31) | (0xFF << 23) | (mant << 13);
+		}
+		else
+		{
+			// Normal - rebias exponent (15 -> 127) and shift mantissa.
+			let expF = exp + (127 - 15);
+			f = (sign << 31) | (expF << 23) | (mant << 13);
+		}
+		return *(float*)&f;
+	}
 }

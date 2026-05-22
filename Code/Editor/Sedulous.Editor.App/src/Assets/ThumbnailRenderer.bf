@@ -357,7 +357,7 @@ public class ThumbnailRenderer
 			let halfPtr = (uint16*)mappedPtr;
 			for (int i = 0; i < pixelCount * 4; i++)
 			{
-				let f = HalfToFloat(halfPtr[i]);
+				let f = MathUtil.HalfToFloat(halfPtr[i]);
 				let clamped = Math.Clamp(f, 0.0f, 1.0f);
 				rgba[i] = (uint8)(clamped * 255.0f + 0.5f);
 			}
@@ -422,47 +422,6 @@ public class ThumbnailRenderer
 		};
 		if (mDevice.CreateBuffer(bufDesc) case .Ok(let buf))
 			mReadback = buf;
-	}
-
-	/// IEEE 754 half-float (16-bit) -> 32-bit float. Used to decode the
-	/// RGBA16Float readback into the byte-per-channel image we save as
-	/// PNG. Handles denormals + infinities; we then clamp to [0,1].
-	private static float HalfToFloat(uint16 h)
-	{
-		uint32 sign = (uint32)((h >> 15) & 0x1);
-		uint32 exp  = (uint32)((h >> 10) & 0x1F);
-		uint32 mant = (uint32)(h & 0x3FF);
-
-		uint32 f;
-		if (exp == 0)
-		{
-			if (mant == 0)
-			{
-				// Zero (positive or negative).
-				f = sign << 31;
-			}
-			else
-			{
-				// Denormalized half - renormalize to a normal float.
-				while ((mant & 0x400) == 0) { mant <<= 1; exp = (uint32)((int32)exp - 1); }
-				exp = (uint32)((int32)exp + 1);
-				mant &= ~(uint32)0x400;
-				let expF = exp + (127 - 15);
-				f = (sign << 31) | (expF << 23) | (mant << 13);
-			}
-		}
-		else if (exp == 31)
-		{
-			// Infinity / NaN.
-			f = (sign << 31) | (0xFF << 23) | (mant << 13);
-		}
-		else
-		{
-			// Normal: rebias exponent and shift mantissa.
-			let expF = exp + (127 - 15);
-			f = (sign << 31) | (expF << 23) | (mant << 13);
-		}
-		return *(float*)&f;
 	}
 
 	private void AddDefaultLight()

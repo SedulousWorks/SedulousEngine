@@ -787,7 +787,12 @@ public class Image
     // Helper: Get channel count
 	public int GetChannelCount()
 	{
-		switch (mFormat)
+		return GetChannelCount(mFormat);
+	}
+
+	public static int GetChannelCount(PixelFormat format)
+	{
+		switch (format)
 		{
 		case .R8, .R16F, .R32F: return 1;
 		case .RG8, .RG16F, .RG32F: return 2;
