@@ -314,6 +314,7 @@ class EditorApplication : Application, IDockableWindowHost
 		{
 			mEditorContext.RegisterThumbnailGenerator(".mesh", new MeshThumbnailGenerator(ResourceSystem, mThumbnailRenderer, mEditorLogger));
 			mEditorContext.RegisterThumbnailGenerator(".material", new MaterialThumbnailGenerator(ResourceSystem, mThumbnailRenderer, mEditorLogger));
+			mEditorContext.RegisterThumbnailGenerator(".prefab", new PrefabThumbnailGenerator(ResourceSystem, mThumbnailRenderer, mTypeRegistry, mEditorLogger));
 		}
 
 		// Register built-in page factories
