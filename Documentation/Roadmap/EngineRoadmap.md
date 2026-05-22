@@ -348,19 +348,30 @@ re-uploaded / re-created.
 6. `RenderResourceResolver` detects generation change -> discards cached
    `MaterialInstance` -> creates fresh instance from updated Material
 
-### Remaining Resource Types
+### Resource Type Coverage
 
-Each needs a `Reload()` override following the material pattern:
+All resource types that own a long-lived payload now reload in place. The
+fix pattern is uniform across types: `ClearForReload()` on the data
+class (preserves the instance, wipes its contents), `Resource.Reload(s)`
+that clears-then-serializes, `OnSerialize` read path that reuses the
+existing payload, and a manager `ReloadResource` that dispatches through
+`Reload` instead of `Serialize`.
 
-- **`StaticMeshResource`** - clear mesh vertex/index data, re-read. GPU cache
-  detects generation change and re-uploads.
-- **`SkinnedMeshResource`** - same as static mesh + skeleton data.
-- **`TextureResource`** - clear pixel data, re-read. GPU cache re-uploads.
-- **`AudioClipResource`** - clear audio buffer, re-read. ResolvedResource
-  detects generation change automatically.
-- **`ParticleEffectResource`** - clear effect definition, re-read.
-- **`SceneResource`** - complex; probably not practical for hot-reload.
-  Default `.NotSupported` is appropriate.
+| Resource | Status | Notes |
+|---|---|---|
+| `MaterialResource` | ✅ DONE | Original reference implementation. |
+| `AnimationGraphResource` | ✅ DONE | Editor preview state (`AnimGraphEditorPage`) refreshes via `IResourceChangeListener`. |
+| `SoundCueResource` | ✅ DONE | In-place via `Entries.Clear/Add` - no SetCue swap to fix. |
+| `PrefabResource`, `SceneResource` | ✅ DONE | Delegate to externally-owned `Scene`; no payload swap. |
+| `PropertyAnimationClipResource` | ✅ DONE | Editor `PropAnimEditorPage` refreshes via `OnClipReloaded`. |
+| `AnimationClipResource` | ✅ DONE | Skeletal `AnimationPlayer` clip pointer survives reload. |
+| `SkeletonResource` | ✅ DONE | `Skeleton.ClearForReload(boneCount)` resizes in place. |
+| `StaticMeshResource` | ✅ DONE | GPU upload cache detects generation change and re-uploads. |
+| `SkinnedMeshResource` | ✅ DONE | Plus resets `SkeletonRef` so the new file's ref reads in cleanly. |
+| `TextureResource` | ✅ DONE | `Image.ReplaceData` swaps the pixel buffer in place; `UpdateImageInPlace` helper. |
+| `FontResource` | ✅ DONE | `BakedFont` and `BakedFontAtlas` each got `ClearForReload`; manager re-reads metadata + atlas sidecar. |
+| `ParticleEffectResource` | ✅ DONE | `ParticleEffect.ClearForReload`. |
+| `AudioClipResource` | ⊘ N/A | Manager builds the `AudioClip` from the binary PCM sidecar; nothing to reload in-place via `OnSerialize`. If/when reload is wired up, the pattern is "re-read sidecar via manager, swap PCM buffer in place on the existing `AudioClip`". |
 
 ### Subscription Model Improvements (TODO)
 
