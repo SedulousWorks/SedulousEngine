@@ -177,77 +177,90 @@ public class MeshRenderer : Renderer
 		// instance buffer pointer so different scenes (with different Pipelines
 		// and PerFrameResources) never collide. Same scene's main + shadow passes
 		// share the same buffer and still cache correctly.
+		//
+		// Important: entries[0]'s pointer is allocated from the per-frame
+		// FrameAllocator and gets recycled across renders. For small/single-mesh
+		// scenes (e.g. asset thumbnails), the same address can appear with
+		// different mesh content on the next call, producing a false cache hit.
+		// We re-validate below and rebuild inline if the cached groups don't
+		// match the new entries.
 		let batchIdentity = (entries.Count > 0)
 			? ((int)Internal.UnsafeCastToPtr(entries[0]) * 397 ^ entries.Count ^ (int)Internal.UnsafeCastToPtr(frame.InstanceBuffer))
 			: 0;
 
 		let cachedIdentity = bindMaterial ? mMatCachedBatchIdentity : mNoMatCachedBatchIdentity;
 
-		if (batchIdentity != cachedIdentity || cachedGroups.Count == 0)
+		bool rebuildGroups = batchIdentity != cachedIdentity || cachedGroups.Count == 0;
+
+		// Up to two passes: first attempt may discover the cache is stale (entries
+		// don't match cached keys), forcing a rebuild on the second pass.
+		for (int attempt = 0; attempt < 2; attempt++)
 		{
-			// Cache miss - rebuild batch groups.
-			// Pass 1: count instances per group to determine grouping structure.
-			groupCache.Clear();
-			cachedGroups.Clear();
-			cachedInstanceData.Clear();
-
-			for (let mesh in entries)
+			if (rebuildGroups)
 			{
-				let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
-				if (gpuMesh == null) continue;
+				// Cache miss - rebuild batch groups.
+				// Pass 1: count instances per group to determine grouping structure.
+				groupCache.Clear();
+				cachedGroups.Clear();
+				cachedInstanceData.Clear();
 
-				let key = BatchKey()
+				for (let mesh in entries)
 				{
-					MeshIndex = mesh.MeshHandle.Index,
-					MaterialPtr = bindMaterial ? (int)Internal.UnsafeCastToPtr(mesh.MaterialBindGroup) : 0,
-					SubMeshIndex = mesh.SubMeshIndex
-				};
+					let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
+					if (gpuMesh == null) continue;
 
-				if (groupCache.TryGetValue(key, let groupIdx))
-				{
-					var group = cachedGroups[groupIdx];
-					group.InstanceCount++;
-					cachedGroups[groupIdx] = group;
-				}
-				else
-				{
-					groupCache[key] = (int32)cachedGroups.Count;
-					cachedGroups.Add(.()
+					let key = BatchKey()
 					{
-						MeshHandle = mesh.MeshHandle,
-						MaterialBindGroup = mesh.MaterialBindGroup,
-						MaterialBindGroupLayout = mesh.MaterialBindGroupLayout,
-						MaterialConfig = mesh.MaterialPipelineConfig,
-						SubMeshIndex = mesh.SubMeshIndex,
-						InstanceStart = 0,
-						InstanceCount = 1
-					});
+						MeshIndex = mesh.MeshHandle.Index,
+						MaterialPtr = bindMaterial ? (int)Internal.UnsafeCastToPtr(mesh.MaterialBindGroup) : 0,
+						SubMeshIndex = mesh.SubMeshIndex
+					};
+
+					if (groupCache.TryGetValue(key, let groupIdx))
+					{
+						var group = cachedGroups[groupIdx];
+						group.InstanceCount++;
+						cachedGroups[groupIdx] = group;
+					}
+					else
+					{
+						groupCache[key] = (int32)cachedGroups.Count;
+						cachedGroups.Add(.()
+						{
+							MeshHandle = mesh.MeshHandle,
+							MaterialBindGroup = mesh.MaterialBindGroup,
+							MaterialBindGroupLayout = mesh.MaterialBindGroupLayout,
+							MaterialConfig = mesh.MaterialPipelineConfig,
+							SubMeshIndex = mesh.SubMeshIndex,
+							InstanceStart = 0,
+							InstanceCount = 1
+						});
+					}
 				}
+
+				// Compute contiguous InstanceStart offsets from the counts
+				int32 offset = 0;
+				for (int32 g = 0; g < cachedGroups.Count; g++)
+				{
+					var group = cachedGroups[g];
+					group.InstanceStart = offset;
+					offset += group.InstanceCount;
+					cachedGroups[g] = group;
+				}
+
+				cachedInstanceData.Count = offset;
+
+				if (bindMaterial)
+					mMatCachedBatchIdentity = batchIdentity;
+				else
+					mNoMatCachedBatchIdentity = batchIdentity;
 			}
 
-			// Compute contiguous InstanceStart offsets from the counts
-			int32 offset = 0;
-			for (int32 g = 0; g < cachedGroups.Count; g++)
-			{
-				var group = cachedGroups[g];
-				group.InstanceStart = offset;
-				offset += group.InstanceCount;
-				cachedGroups[g] = group;
-			}
-
-			cachedInstanceData.Count = offset;
-
-			if (bindMaterial)
-				mMatCachedBatchIdentity = batchIdentity;
-			else
-				mNoMatCachedBatchIdentity = batchIdentity;
-		}
-
-		// Always re-fill instance data with current world matrices.
-		// Grouping structure is cached but transforms change every frame.
-		// If any entry's key isn't found in the group cache, the grouping is
-		// stale (different scene rendered through same renderer) -- force rebuild.
-		{
+			// Always re-fill instance data with current world matrices.
+			// Grouping structure is cached but transforms change every frame.
+			// If any entry's key isn't found in the group cache, the grouping is
+			// stale (identity collision via recycled allocator address) -- force
+			// rebuild and try again on the next loop iteration.
 			bool needsRebuild = false;
 
 			// Reset instance counts for filling
@@ -289,20 +302,23 @@ public class MeshRenderer : Renderer
 				};
 			}
 
-			if (needsRebuild)
+			if (!needsRebuild)
 			{
-				// Stale grouping (identity collision) -- invalidate and rebuild inline
-				if (bindMaterial)
-					mMatCachedBatchIdentity = 0;
-				else
-					mNoMatCachedBatchIdentity = 0;
-				cachedGroups.Clear();
-				// Fall through to return -- next frame will rebuild with correct identity
-				return;
+				// Force re-upload since matrices changed
+				uploadOffsets.Clear();
+				break;
 			}
 
-			// Force re-upload since matrices changed
-			uploadOffsets.Clear();
+			// Stale cache (false-positive identity match). Invalidate and try
+			// again with a full rebuild. attempt=1 will skip this branch on
+			// failure (defensive cap; needsRebuild after a fresh rebuild
+			// would indicate a logic error, not a recoverable cache stale).
+			rebuildGroups = true;
+			if (bindMaterial)
+				mMatCachedBatchIdentity = 0;
+			else
+				mNoMatCachedBatchIdentity = 0;
+			cachedGroups.Clear();
 		}
 
 		if (cachedGroups.Count == 0) return;
