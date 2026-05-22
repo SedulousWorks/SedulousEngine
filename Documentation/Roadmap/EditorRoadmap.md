@@ -937,7 +937,7 @@ shows conflicts with skip/reimport/rename choices per item.
 | `Editor.App/src/Panels/AssetBrowserBuilder.bf` | MODIFY -- IDropTarget, import trigger |
 | `Editor.App/src/EditorApplication.bf` | MODIFY -- register built-in importers |
 
-#### Phase 4e: Thumbnails & Grid View - PARTIAL
+#### Phase 4e: Thumbnails & Grid View - DONE
 
 **Goal:** Visual asset browsing with thumbnails and tile layout.
 
@@ -957,27 +957,121 @@ Purpose-built `GridContentView : ViewGroup` for the asset browser:
 Both modes use separate `AssetContentAdapter` instances, synced on folder changes.
 ✅ `AssetGridCellView` with icon area, name label (ellipsis), registry badge.
 
-**4e-2. Thumbnail Generators - DEFERRED**
+**4e-2. Thumbnail Generators - DONE**
 
-Per-type generators registered with `EditorContext.RegisterThumbnailGenerator()`:
-- **TextureThumbnailGenerator** -- downsample the texture's pixel data
-- **MeshThumbnailGenerator** -- (future: render mesh to small offscreen target)
-- **MaterialThumbnailGenerator** -- (future: render sphere with material)
-- **Default** -- icon by file extension (gear for .material, cube for .mesh, etc.)
+Generators registered with `EditorContext.RegisterThumbnailGenerator()`.
+Two flavors: `IAssetThumbnailGenerator` (sync, CPU) and
+`IAsyncAssetThumbnailGenerator` (returns a handle; the service requeues
+declined requests and frees the completion callback on success). The
+service falls back from sync (`.Err`) to async automatically so
+generators that need GPU work just implement both interfaces and
+return `.Err` from the sync entry.
 
-**4e-3. Thumbnail Cache - DEFERRED**
+Per-extension generators shipped:
 
-Thumbnails cached to disk in project's `.cache/thumbnails/` directory.
-Cache key: resource GUID + file modification time. Regenerate on mismatch.
+| Extension | Path | Notes |
+|---|---|---|
+| `.texture` | CPU | Nearest-neighbor downscale for 8-bit formats; Reinhard tonemap for HDR (R16F/RG16F/RGB16F/RGBA16F + the 32F variants). Uses `MathUtil.HalfToFloat`. |
+| `.font` | CPU | Renders from the baked atlas. |
+| `.audioclip` | CPU | Peak-rendered waveform (mono-mix); supports Int16/Int32/Float32 PCM. |
+| `.soundcue` | CPU | Up to 4 stacked-band waveforms, one per cue entry; resolves clips transiently. |
+| `.mesh` | GPU | `StaticMeshResource` on a persistent thumbnail entity; sphere-fit camera. |
+| `.skinnedmesh` | GPU | Mirrors `.mesh`; bind pose comes for free because `SkinnedMeshComponentManager` uploads identity bone matrices when no animation component is present. |
+| `.material` | GPU | Material applied to a built-in unit sphere registered via `ResourceSystem.AddResource` (no `.mesh` asset on disk for primitives). |
+| `.prefab` | GPU | Spawns the prefab into the thumbnail scene, walks the just-spawned tree for bounds (manual world-matrix walk - the scene tick hasn't run yet), destroys roots after readback. |
+| `.scene` | GPU | Same pattern as prefab but via `SceneSerializer.Load` into the thumbnail scene + pre/post-snapshot of roots; uses the scene's `CameraComponent` if it has one, otherwise auto-frames. |
+| `.skeleton` | GPU | Bind-pose stick figure via the per-pipeline `DebugDraw`. Lines must be pushed in a pre-render hook (see infrastructure below) because the editor's `RenderSubsystem.OnUpdate` clears DebugDraws between Submit and our render. |
+| `.particlefx` | GPU | Fast-forwards 30 ticks @ 1/60 in the build closure so particles have emitted before readback; thumbnail scene has `SimulationEnabled = true` for the simulationOnly-gated particle update. |
+
+Icon-only by design (no static visual identity worth rendering):
+`.animation`, `.animgraph`, `.propanim`.
+
+**4e-3. Thumbnail Cache - DONE**
+
+Cached to `<projectRoot>/.editor/thumbnails/<guid>.png` plus a small
+`<guid>.meta` sidecar carrying the source's mtime. `ThumbnailService`
+invalidates when the source file's mtime no longer matches.
+
+**4e-4. GPU Thumbnail Infrastructure - DONE**
+
+The GPU generators all funnel through `ThumbnailRenderer`:
+
+- Persistent thumbnail `Scene` (created via `SceneSubsystem.CreateScene("__Thumbnails__")` so `RenderSubsystem.OnSceneCreated` wires the per-scene Pipeline + component managers). Single persistent sun light + one persistent asset entity with pre-attached `MeshComponent` / `SkinnedMeshComponent` / `ParticleComponent` so per-thumbnail churn is just `SetMeshRef`/`SetEffectRef`. Built-in sphere mesh registered up-front via `ResourceSystem.AddResource` so the material generator can use a stock primitive without shipping a `.mesh`.
+- One in-flight job: `Submit(build, ready, preRender = null)` accepts and rejects subsequent submits until readback completes. `build` runs synchronously inside `Submit` (scene tick runs after, before render); `preRender` runs inside `RenderPending` (after the editor's `RenderSubsystem.OnUpdate`, so it's the only safe place to push `DebugDraw` lines); `ready` fires from `TickReadback` once the GPU fence has cleared.
+- 256x256 RGBA16Float offscreen RT + readback buffer. Half-float pixels decode to RGBA8 via `MathUtil.HalfToFloat` on the CPU.
+- `ResetAssetEntity()` clears all renderable refs on the persistent entity (mesh / skinned / particle / material) so cross-type bleed between consecutive thumbnails is impossible.
+- Renderer exposes `DebugDraw` (looks up `ISceneRenderer.GetPipeline(scene).DebugDraw`) so skeleton-style generators don't have to plumb the renderer themselves.
+
+**4e-5. Default builtin assets - DONE**
+
+Moved out of `EditorApplication.EnsureDefaultAssets` into a dedicated
+`BuiltinAssets` static class so the editor's main file doesn't grow with
+every new default. Stable GUIDs are `public static readonly` so future
+scene templates / sample projects can reference defaults by name and
+survive registry regeneration (delete `builtin.registry`, fresh
+checkout, different dev machine).
+
+Shipped:
+
+- Primitives: `plane.mesh`, `cube.mesh`, `sphere.mesh`.
+- Materials: `default.material`, `default_unlit.material`.
+- Skies: `realistic_sky.texture` (HDR), `stylized_sky.texture` (PNG).
+- Particle textures: 6 sprites from the Kenney particle-pack (`circle_05`, `smoke_07`, `star_04`, `flame_06`, `trace_05`, `spark_07`) imported as `.texture` resources.
+- Particle effects: 6 effects copied from EngineSandbox - Sparks, Smoke, Magic, Fire, Comet trail, Fireworks (incl. sub-emitter link). Each references its texture by stable GUID + URI.
 
 **Files:**
 
 | File | Change |
 |------|--------|
 | `Editor.App/src/Panels/GridContentView.bf` | NEW -- grid layout view |
+| `Editor.App/src/Assets/ThumbnailService.bf` | MODIFY -- async dispatch + cancellation race handling |
+| `Editor.App/src/Assets/IAsyncAssetThumbnailGenerator.bf` | NEW -- async generator contract |
+| `Editor.App/src/Assets/ThumbnailRenderer.bf` | NEW -- offscreen RT + readback + persistent scene |
 | `Editor.App/src/Assets/TextureThumbnailGenerator.bf` | NEW |
-| `Editor.App/src/Assets/ThumbnailCache.bf` | NEW -- disk cache |
+| `Editor.App/src/Assets/FontThumbnailGenerator.bf` | NEW |
+| `Editor.App/src/Assets/AudioClipThumbnailGenerator.bf` | NEW |
+| `Editor.App/src/Assets/SoundCueThumbnailGenerator.bf` | NEW |
+| `Editor.App/src/Assets/MeshThumbnailGenerator.bf` | NEW |
+| `Editor.App/src/Assets/SkinnedMeshThumbnailGenerator.bf` | NEW |
+| `Editor.App/src/Assets/MaterialThumbnailGenerator.bf` | NEW |
+| `Editor.App/src/Assets/PrefabThumbnailGenerator.bf` | NEW |
+| `Editor.App/src/Assets/SceneThumbnailGenerator.bf` | NEW |
+| `Editor.App/src/Assets/SkeletonThumbnailGenerator.bf` | NEW |
+| `Editor.App/src/Assets/ParticleFxThumbnailGenerator.bf` | NEW |
+| `Editor.App/src/Assets/BuiltinAssets.bf` | NEW -- stable-GUID default-asset generator |
 | `Editor.App/src/Panels/AssetBrowserBuilder.bf` | MODIFY -- view mode toggle |
+
+**Potential follow-ups (not blocking)**
+
+- **Framerate-aware throttle.** `ThumbnailService` currently dispatches up to 4 CPU thumbnails + 1 GPU thumbnail per frame as static caps. Folder-warm scrolling could be made smoother by raising the caps when frame budget allows, and dropping them when the editor is under load. The original Phase 6 plan flagged this; not done.
+- **Pipelined GPU thumbnails.** `ThumbnailRenderer` enforces a single in-flight job. Pipelining 2-3 jobs simultaneously (parallel offscreen RTs + readback buffers) would let the GPU stay busy across the readback latency, cutting wall-clock time to fill a large asset folder. Original plan said "raise the throttle if needed"; never measured.
+- **Per-effect particle warmup time.** `ParticleFxThumbnailGenerator` fast-forwards a fixed 0.5s (30 ticks @ 1/60) before capture. Short bursts that fully resolve in 0.2s look post-fade; long-lifetime emitters that need 1s+ to reach steady state look sparse. A per-effect hint in the resource metadata (or just an effect-property heuristic on max particle lifetime) would let each effect capture at its best moment.
+- **Letterbox for non-square texture aspects.** Equirectangular sky textures (2:1) currently get squashed into the 1:1 thumbnail. Letterboxing into the larger axis preserves recognizable horizon shape at the cost of unused pixels - probably the right tradeoff for any texture with aspect != 1:1.
+
+**Engine bugs found and fixed during this phase**
+
+- `MeshRenderer.RenderStaticInstanced` was returning early on stale
+  identity-cache hits caused by FrameAllocator pointer reuse (single-mesh
+  scenes like thumbnails recycle the same address). Now rebuilds inline
+  via a 2-pass loop instead of dropping the draw.
+- `ParticleComponentManager.ResolveResources` was gated on
+  `comp.Instance == null`, so swapping an EffectRef on an entity that
+  already had an instance never picked up the new effect. Now always
+  drives through `ResolvedResource.Resolve` and re-creates the instance
+  on real changes; programmatic-only effects (sandbox) are unaffected.
+- `ParticleComponentManager.GetOrCreateRenderState` reused cached state
+  regardless of MaxParticles, so a recycled entity whose system grew
+  (e.g. Comet 50 -> Fire 800) overran the cached Vertices array. Now
+  recreates when capacity is insufficient.
+- `ParticleEffectSerializer.VelocityInitializer` wasn't serializing
+  `Shape`, so authored sphere/circle emission with `ShapeDirectionSpeed`
+  > 0 silently collapsed to Point() on load. Comet and Fireworks burst
+  were the visible symptoms.
+- `SDL3AudioSystem` race on shutdown: audio thread mixed via
+  `SourceNode.ProcessAudio` while resource teardown freed AudioClips.
+  Fixed with `IAudioSystem.StopAll()` called early in editor shutdown,
+  plus per-handle `Stop(AudioPlaybackHandle)` for the sound-cue editor
+  page's "stop preview" button.
 
 #### Phase 4f: Drag into Scene & Asset Preview - NOT STARTED
 
