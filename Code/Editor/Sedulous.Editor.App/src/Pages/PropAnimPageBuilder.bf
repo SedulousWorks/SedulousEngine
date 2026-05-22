@@ -7,6 +7,7 @@ using Sedulous.UI.Toolkit;
 using Sedulous.Core.Mathematics;
 using Sedulous.Editor.Core;
 using Sedulous.Engine.Core;
+using Sedulous.Engine.Animation;
 
 /// Phase 1 layout for `PropAnimEditorPage`. Three regions in a split:
 ///
@@ -17,7 +18,14 @@ static class PropAnimPageBuilder
 {
 	public static View Build(PropAnimEditorPage page)
 	{
-		// Vertical: toolbar + main split + bottom scrub region.
+		// Hoisted: the timeline is referenced by both the bottom region
+		// (where it's drawn) and the left panel's keyframe inspector
+		// (which subscribes to its selection event).
+		let timeline = new TimelineView();
+		timeline.Clip = page.Clip;
+		timeline.PlayheadTime = page.CurrentTime;
+
+		// Vertical: toolbar + main split + bottom timeline region.
 		let outer = new FlexLayout();
 		outer.Direction = .Vertical;
 
@@ -27,14 +35,14 @@ static class PropAnimPageBuilder
 
 		// Main split: left panel | viewport.
 		let split = new SplitView(.Horizontal);
-		split.SetPanes(BuildLeftPanel(page), BuildViewport(page));
+		split.SetPanes(BuildLeftPanel(page, timeline), BuildViewport(page));
 		split.SplitRatio = 0.28f;
 
 		outer.AddView(split, new FlexLayout.LayoutParams() {
 			Width = .Match, Grow = 1
 		});
 
-		outer.AddView(BuildTimelineRegion(page), new FlexLayout.LayoutParams() {
+		outer.AddView(BuildTimelineRegion(page, timeline), new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Fixed(.Px(220))
 		});
 
@@ -60,11 +68,52 @@ static class PropAnimPageBuilder
 		timeLabel.TextColor = .(200, 200, 210, 255);
 		bar.AddItem(timeLabel);
 
+		bar.AddSeparator();
+
+		// Duration field. The clip's Duration is user-authored - editing
+		// keyframes never shrinks it (see TimelineView.ExtendDurationIfNeeded).
+		let durLabel = new Label();
+		durLabel.SetText("Duration:");
+		durLabel.TextColor = .(200, 200, 210, 255);
+		bar.AddItem(durLabel);
+
+		let durField = new NumericField();
+		durField.Min = 0;
+		durField.Max = 600;
+		durField.Step = 0.1;
+		durField.DecimalPlaces = 2;
+		durField.ShowSpinButtons = false;
+		durField.Value = (page.Clip != null) ? page.Clip.Duration : 0.0;
+		durField.OnValueChanged.Add(new [=page] (nf, v) =>
+		{
+			if (page.Clip == null) return;
+			let f = (float)v;
+			if (page.Clip.Duration == f) return;
+			page.Clip.Duration = f;
+			page.MarkDirty();
+		});
+		// Toolbar extends FlexLayout - add the field with explicit
+		// LayoutParams since NumericField's intrinsic measure won't
+		// give us a useful width.
+		bar.AddView(durField, new FlexLayout.LayoutParams() {
+			Width = .Fixed(.Px(70)), Height = .Match
+		});
+
 		// Refresh time readout on every scrub (timeline drives the page's
 		// CurrentTime, which fires OnCurrentTimeChanged) and whenever the
 		// target swaps (resets time to whatever the player reports).
-		page.OnTargetChanged.Add(new [=timeLabel] (p) => UpdateTimeLabel(timeLabel, p));
+		page.OnTargetChanged.Add(new [=timeLabel, =durField] (p) => {
+			UpdateTimeLabel(timeLabel, p);
+			if (p.Clip != null) durField.Value = p.Clip.Duration;
+		});
 		page.OnCurrentTimeChanged.Add(new [=timeLabel] (p) => UpdateTimeLabel(timeLabel, p));
+
+		// Hot-reload of the .propanim file: clip is the same pointer but
+		// duration / track counts may differ. Refresh the toolbar readouts.
+		page.OnClipReloaded.Add(new [=timeLabel, =durField] (p) => {
+			UpdateTimeLabel(timeLabel, p);
+			if (p.Clip != null) durField.Value = p.Clip.Duration;
+		});
 
 		return bar;
 	}
@@ -78,7 +127,7 @@ static class PropAnimPageBuilder
 
 	// === Left panel: preview source + hierarchy + track list ===
 
-	private static View BuildLeftPanel(PropAnimEditorPage page)
+	private static View BuildLeftPanel(PropAnimEditorPage page, TimelineView timeline)
 	{
 		let container = new FlexLayout();
 		container.Direction = .Vertical;
@@ -87,7 +136,7 @@ static class PropAnimPageBuilder
 
 		BuildPreviewSourceSection(container, page);
 		BuildHierarchySection(container, page);
-		BuildTrackListSection(container, page);
+		BuildKeyframeInspectorSection(container, page, timeline);
 
 		return container;
 	}
@@ -230,44 +279,241 @@ static class PropAnimPageBuilder
 		}
 	}
 
-	private static void BuildTrackListSection(FlexLayout parent, PropAnimEditorPage page)
+	private static void BuildKeyframeInspectorSection(FlexLayout parent, PropAnimEditorPage page, TimelineView timeline)
 	{
-		AddSectionHeader(parent, "Tracks");
+		AddSectionHeader(parent, "Keyframe");
 
-		// Phase 1 placeholder - real dopesheet replaces the bottom region
-		// in Phase 2; this side panel will become an editable list view.
-		let placeholder = new Label();
-		placeholder.SetText(BuildTrackSummary(page, .. scope .()));
-		placeholder.TextColor = .(180, 180, 195, 255);
-		placeholder.FontSize = 11;
-		parent.AddView(placeholder, new FlexLayout.LayoutParams() {
+		// Content host (KeyframeInspectorHost owns the IsEditing flag so
+		// it survives across rebuilds). Editors are rebuilt on every
+		// selection change since they're type-specific; cheap, and
+		// avoids the cell-recycling complexity of a property grid.
+		let host = new KeyframeInspectorHost();
+		host.Direction = .Vertical;
+		host.Spacing = 4;
+		parent.AddView(host, new FlexLayout.LayoutParams() {
 			Width = .Match, Grow = 1
 		});
 
-		page.OnTargetChanged.Add(new [=placeholder] (p) =>
+		RefreshKeyframeInspector(host, page, timeline);
+
+		// Rebuild on selection change and clip mutation - but defer
+		// while the user is typing in one of the inspector's fields,
+		// otherwise per-keystroke OnValueChanged -> SetSelectedX ->
+		// OnClipMutated would tear down the very NumericField whose
+		// callback we're still inside, taking focus with it.
+		timeline.OnSelectionChanged.Add(new [=host, =page, =timeline] (tl) =>
 		{
-			placeholder.SetText(BuildTrackSummary(p, .. scope .()));
+			RequestRefresh(host, page, timeline);
+		});
+		timeline.OnClipMutated.Add(new [=host, =page, =timeline] (tl) =>
+		{
+			RequestRefresh(host, page, timeline);
 		});
 	}
 
-	private static void BuildTrackSummary(PropAnimEditorPage page, String outText)
+	private static void RequestRefresh(KeyframeInspectorHost host, PropAnimEditorPage page, TimelineView timeline)
 	{
-		let clip = page.Clip;
-		if (clip == null)
+		if (host.IsEditing)
 		{
-			outText.Set("(no clip)");
+			// Inspector field is focused - rebuild would steal focus.
+			// Defer until the user leaves the field (OnEditEnded path
+			// in RefreshKeyframeInspector reruns RequestRefresh).
+			host.PendingRefresh = true;
+			return;
+		}
+		QueueRefreshKeyframeInspector(host, page, timeline);
+	}
+
+	private static void QueueRefreshKeyframeInspector(KeyframeInspectorHost host, PropAnimEditorPage page, TimelineView timeline)
+	{
+		host.PendingRefresh = false;
+		let ctx = host.Context;
+		if (ctx == null)
+		{
+			RefreshKeyframeInspector(host, page, timeline);
+			return;
+		}
+		ctx.MutationQueue.QueueAction(new () =>
+		{
+			RefreshKeyframeInspector(host, page, timeline);
+		});
+	}
+
+	private static void RefreshKeyframeInspector(KeyframeInspectorHost host, PropAnimEditorPage page, TimelineView timeline)
+	{
+		host.RemoveAllViews(true);
+
+		if (page.Clip == null)
+		{
+			AddInspectorPlaceholder(host, "(no clip)");
 			return;
 		}
 
-		outText.AppendF("Duration: {:0.00}s\n", clip.Duration);
-		outText.AppendF("Float tracks: {}\n", clip.FloatTracks.Count);
-		outText.AppendF("Vector2 tracks: {}\n", clip.Vector2Tracks.Count);
-		outText.AppendF("Vector3 tracks: {}\n", clip.Vector3Tracks.Count);
-		outText.AppendF("Vector4 tracks: {}\n", clip.Vector4Tracks.Count);
-		outText.AppendF("Quaternion tracks: {}\n", clip.QuaternionTracks.Count);
+		let kf = timeline.SelectedKeyframe;
+		if (!kf.IsValid)
+		{
+			AddInspectorPlaceholder(host, "(click a keyframe to edit its value)");
+			return;
+		}
 
-		if (page.TargetAutoAddedComponent)
-			outText.Append("\n[Component auto-added on target]\n(shipping scene needs it too)");
+		// Track path readout.
+		let pathLabel = new Label();
+		let path = scope String();
+		AppendTrackPathFor(page, kf.Track, path);
+		pathLabel.SetText(path);
+		pathLabel.TextColor = .(180, 180, 195, 255);
+		pathLabel.FontSize = 11;
+		host.AddView(pathLabel, new FlexLayout.LayoutParams() {
+			Width = .Match, Height = .Fixed(.Px(18))
+		});
+
+		// Time field.
+		let timeNf = new NumericField();
+		timeNf.Min = 0; timeNf.Max = 600; timeNf.Step = 0.1; timeNf.DecimalPlaces = 3;
+		timeNf.ShowSpinButtons = false;
+		timeNf.Value = timeline.GetSelectedKeyframeTime();
+		timeNf.OnValueChanged.Add(new [=timeline] (_, v) =>
+		{
+			timeline.SetSelectedKeyframeTime((float)v);
+		});
+		WireNumericFieldEditTracking(host, page, timeline, timeNf);
+		AppendInspectorRow(host, "Time", timeNf);
+
+		// Value field(s) - one per component based on kind. Vector2/3/4
+		// and Quaternion use the toolkit's standalone VectorN fields so
+		// the look matches the property-grid inspector.
+		switch (kf.Track.Kind)
+		{
+		case .Float:
+			float fv = 0;
+			timeline.TryGetSelectedFloat(out fv);
+			let nf = new NumericField();
+			nf.Min = -1e6; nf.Max = 1e6; nf.Step = 0.1; nf.DecimalPlaces = 3;
+			nf.ShowSpinButtons = false;
+			nf.Value = fv;
+			nf.OnValueChanged.Add(new [=timeline] (_, v) =>
+			{
+				timeline.SetSelectedFloat((float)v);
+			});
+			WireNumericFieldEditTracking(host, page, timeline, nf);
+			AppendInspectorRow(host, "Value", nf);
+
+		case .Vector2:
+			Vector2 v2 = .Zero;
+			timeline.TryGetSelectedVector2(out v2);
+			let field = new Vector2Field();
+			field.Value = v2;
+			field.OnValueChanged.Add(new [=timeline] (val) =>
+			{
+				timeline.SetSelectedVector2(val);
+			});
+			WireVectorFieldEditTracking(host, page, timeline, field);
+			AppendInspectorRow(host, "Value", field);
+
+		case .Vector3:
+			Vector3 v3 = .Zero;
+			timeline.TryGetSelectedVector3(out v3);
+			let field = new Vector3Field();
+			field.Value = v3;
+			field.OnValueChanged.Add(new [=timeline] (val) =>
+			{
+				timeline.SetSelectedVector3(val);
+			});
+			WireVectorFieldEditTracking(host, page, timeline, field);
+			AppendInspectorRow(host, "Value", field);
+
+		case .Vector4:
+			Vector4 v4 = .Zero;
+			timeline.TryGetSelectedVector4(out v4);
+			let field = new Vector4Field();
+			field.Value = v4;
+			field.OnValueChanged.Add(new [=timeline] (val) =>
+			{
+				timeline.SetSelectedVector4(val);
+			});
+			WireVectorFieldEditTracking(host, page, timeline, field);
+			AppendInspectorRow(host, "Value", field);
+
+		case .Quaternion:
+			Quaternion q = .Identity;
+			timeline.TryGetSelectedQuaternion(out q);
+			let field = new QuaternionField();
+			field.Value = q;
+			field.OnValueChanged.Add(new [=timeline] (val) =>
+			{
+				timeline.SetSelectedQuaternion(val);
+			});
+			WireVectorFieldEditTracking(host, page, timeline, field);
+			AppendInspectorRow(host, "Rotation (Euler)", field);
+		}
+	}
+
+	private static void WireNumericFieldEditTracking(KeyframeInspectorHost host,
+		PropAnimEditorPage page, TimelineView timeline, NumericField nf)
+	{
+		nf.OnEditBegan.Add(new [=host] (_) => { host.IsEditing = true; });
+		nf.OnEditEnded.Add(new [=host, =page, =timeline] (_) =>
+		{
+			host.IsEditing = false;
+			if (host.PendingRefresh)
+				QueueRefreshKeyframeInspector(host, page, timeline);
+		});
+	}
+
+	private static void WireVectorFieldEditTracking(KeyframeInspectorHost host,
+		PropAnimEditorPage page, TimelineView timeline, AggregatingVectorField field)
+	{
+		field.OnEditBegan.Add(new [=host] (_) => { host.IsEditing = true; });
+		field.OnEditEnded.Add(new [=host, =page, =timeline] (_) =>
+		{
+			host.IsEditing = false;
+			if (host.PendingRefresh)
+				QueueRefreshKeyframeInspector(host, page, timeline);
+		});
+	}
+
+	private static void AppendInspectorRow(FlexLayout host, StringView name, View field)
+	{
+		let row = new FlexLayout();
+		row.Direction = .Horizontal;
+		row.Spacing = 4;
+
+		let label = new Label();
+		label.SetText(name);
+		label.TextColor = .(200, 200, 210, 255);
+		label.FontSize = 11;
+		row.AddView(label, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(54)), Height = .Match });
+
+		row.AddView(field, new FlexLayout.LayoutParams() { Grow = 1, Height = .Fixed(.Px(22)) });
+
+		host.AddView(row, new FlexLayout.LayoutParams() {
+			Width = .Match, Height = .Fixed(.Px(24))
+		});
+	}
+
+	private static void AddInspectorPlaceholder(FlexLayout host, StringView text)
+	{
+		let label = new Label();
+		label.SetText(text);
+		label.TextColor = .(140, 140, 155, 255);
+		label.FontSize = 11;
+		host.AddView(label, new FlexLayout.LayoutParams() {
+			Width = .Match, Height = .Fixed(.Px(18))
+		});
+	}
+
+	private static void AppendTrackPathFor(PropAnimEditorPage page, PropTrackRef tr, String outText)
+	{
+		let clip = page.Clip;
+		if (clip == null) { outText.Set("(no track)"); return; }
+		switch (tr.Kind)
+		{
+		case .Float:      outText.Set(clip.FloatTracks[tr.Index].PropertyPath);
+		case .Vector2:    outText.Set(clip.Vector2Tracks[tr.Index].PropertyPath);
+		case .Vector3:    outText.Set(clip.Vector3Tracks[tr.Index].PropertyPath);
+		case .Vector4:    outText.Set(clip.Vector4Tracks[tr.Index].PropertyPath);
+		case .Quaternion: outText.Set(clip.QuaternionTracks[tr.Index].PropertyPath);
+		}
 	}
 
 	// === Center viewport ===
@@ -284,20 +530,23 @@ static class PropAnimPageBuilder
 
 	// === Bottom timeline region (Phase 2) ===
 
-	private static View BuildTimelineRegion(PropAnimEditorPage page)
+	private static View BuildTimelineRegion(PropAnimEditorPage page, TimelineView timeline)
 	{
 		let container = new FlexLayout();
 		container.Direction = .Vertical;
 
-		// Mini-toolbar above the timeline for keyframe ops. Phase 3 adds
-		// an "Add Track" button here that opens the property picker.
+		// Mini-toolbar above the timeline for track/keyframe ops.
 		let toolbar = new FlexLayout();
 		toolbar.Direction = .Horizontal;
 		toolbar.Padding = .(6, 4, 6, 4);
 		toolbar.Spacing = 4;
 
+		let addTrackBtn = new Button("Add Track...");
 		let addKfBtn = new Button("Add Keyframe");
 		let delKfBtn = new Button("Delete Keyframe");
+		toolbar.AddView(addTrackBtn, new FlexLayout.LayoutParams() {
+			Width = .Fixed(.Px(100)), Height = .Fixed(.Px(24))
+		});
 		toolbar.AddView(addKfBtn, new FlexLayout.LayoutParams() {
 			Width = .Fixed(.Px(110)), Height = .Fixed(.Px(24))
 		});
@@ -309,9 +558,6 @@ static class PropAnimPageBuilder
 			Width = .Match, Height = .Wrap
 		});
 
-		let timeline = new TimelineView();
-		timeline.Clip = page.Clip;
-		timeline.PlayheadTime = page.CurrentTime;
 		container.AddView(timeline, new FlexLayout.LayoutParams() {
 			Width = .Match, Grow = 1
 		});
@@ -336,6 +582,14 @@ static class PropAnimPageBuilder
 			timeline.PlayheadTime = p.CurrentTime;
 		});
 
+		// Hot-reload: the clip object is the same but its tracks have
+		// been replaced. Rebuild the timeline's flat-track cache and
+		// drop stale selection.
+		page.OnClipReloaded.Add(new [=timeline] (p) =>
+		{
+			timeline.RefreshFromClip();
+		});
+
 		addKfBtn.OnClick.Add(new [=timeline] (btn) =>
 		{
 			timeline.AddKeyframeAtPlayheadOnSelectedTrack();
@@ -345,7 +599,41 @@ static class PropAnimPageBuilder
 			timeline.DeleteSelectedKeyframe();
 		});
 
+		addTrackBtn.OnClick.Add(new [=page, =timeline] (btn) =>
+		{
+			OpenPropertyPicker(page, timeline);
+		});
+
 		return container;
+	}
+
+	private static void OpenPropertyPicker(PropAnimEditorPage page, TimelineView timeline)
+	{
+		let ctx = page.ContentView?.Context;
+		let runtime = page.EditorContext?.RuntimeContext;
+		if (ctx == null || runtime == null) return;
+
+		let animSub = runtime.GetSubsystem<AnimationSubsystem>();
+		if (animSub == null || animSub.PropertyBinderRegistry == null) return;
+
+		let dlg = new PropertyPickerDialog(animSub.PropertyBinderRegistry,
+			new [=page, =timeline] (path, kind) =>
+			{
+				let clip = page.Clip;
+				if (clip == null) return;
+				switch (kind)
+				{
+				case .Float:      clip.AddFloatTrack(path);
+				case .Vector2:    clip.AddVector2Track(path);
+				case .Vector3:    clip.AddVector3Track(path);
+				case .Vector4:    clip.AddVector4Track(path);
+				case .Quaternion: clip.AddQuaternionTrack(path);
+				}
+				clip.ComputeDuration();
+				page.MarkDirty();
+				timeline.RefreshFromClip();
+			});
+		dlg.Show(ctx);
 	}
 
 	// === Common UI helpers ===
@@ -359,3 +647,13 @@ static class PropAnimPageBuilder
 		parent.AddView(label, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });
 	}
 }
+
+/// Keyframe-inspector content host. Holds IsEditing/PendingRefresh
+/// across rebuilds so per-keystroke OnClipMutated / OnSelectionChanged
+/// events don't tear down the field the user is currently typing in.
+class KeyframeInspectorHost : FlexLayout
+{
+	public bool IsEditing;
+	public bool PendingRefresh;
+}
+

@@ -176,13 +176,15 @@ public class TimelineView : View
 			track.SortKeyframes();
 		}
 
-		mClip.ComputeDuration();
+		ExtendDurationIfNeeded(t);
 		OnClipMutated(this);
 		Invalidate();
 		return true;
 	}
 
 	/// Deletes the currently-selected keyframe. No-op when none selected.
+	/// Deliberately does NOT shrink `Clip.Duration` - the editor's
+	/// duration field is user-authored, not derived from keyframe count.
 	public bool DeleteSelectedKeyframe()
 	{
 		if (!mSelectedKeyframe.IsValid || mClip == null) return false;
@@ -210,8 +212,172 @@ public class TimelineView : View
 		}
 
 		mSelectedKeyframe = .Invalid;
-		mClip.ComputeDuration();
 		OnSelectionChanged(this);
+		OnClipMutated(this);
+		Invalidate();
+		return true;
+	}
+
+	/// Bumps Clip.Duration up to `t` if needed. Never shrinks - the
+	/// editor's duration field is user-authored.
+	public void ExtendDurationIfNeeded(float t)
+	{
+		if (mClip == null) return;
+		if (t > mClip.Duration)
+			mClip.Duration = t;
+	}
+
+	// === Selected-keyframe value accessors (used by the inspector panel) ===
+
+	public bool TryGetSelectedFloat(out float value)
+	{
+		value = 0;
+		if (!mSelectedKeyframe.IsValid || mClip == null) return false;
+		let tr = mSelectedKeyframe.Track;
+		if (tr.Kind != .Float) return false;
+		let kfs = mClip.FloatTracks[tr.Index].Keyframes;
+		if (mSelectedKeyframe.Index >= kfs.Count) return false;
+		value = kfs[mSelectedKeyframe.Index].Value;
+		return true;
+	}
+
+	public bool TryGetSelectedVector2(out Vector2 value)
+	{
+		value = .Zero;
+		if (!mSelectedKeyframe.IsValid || mClip == null) return false;
+		let tr = mSelectedKeyframe.Track;
+		if (tr.Kind != .Vector2) return false;
+		let kfs = mClip.Vector2Tracks[tr.Index].Keyframes;
+		if (mSelectedKeyframe.Index >= kfs.Count) return false;
+		value = kfs[mSelectedKeyframe.Index].Value;
+		return true;
+	}
+
+	public bool TryGetSelectedVector3(out Vector3 value)
+	{
+		value = .Zero;
+		if (!mSelectedKeyframe.IsValid || mClip == null) return false;
+		let tr = mSelectedKeyframe.Track;
+		if (tr.Kind != .Vector3) return false;
+		let kfs = mClip.Vector3Tracks[tr.Index].Keyframes;
+		if (mSelectedKeyframe.Index >= kfs.Count) return false;
+		value = kfs[mSelectedKeyframe.Index].Value;
+		return true;
+	}
+
+	public bool TryGetSelectedVector4(out Vector4 value)
+	{
+		value = .Zero;
+		if (!mSelectedKeyframe.IsValid || mClip == null) return false;
+		let tr = mSelectedKeyframe.Track;
+		if (tr.Kind != .Vector4) return false;
+		let kfs = mClip.Vector4Tracks[tr.Index].Keyframes;
+		if (mSelectedKeyframe.Index >= kfs.Count) return false;
+		value = kfs[mSelectedKeyframe.Index].Value;
+		return true;
+	}
+
+	public bool TryGetSelectedQuaternion(out Quaternion value)
+	{
+		value = .Identity;
+		if (!mSelectedKeyframe.IsValid || mClip == null) return false;
+		let tr = mSelectedKeyframe.Track;
+		if (tr.Kind != .Quaternion) return false;
+		let kfs = mClip.QuaternionTracks[tr.Index].Keyframes;
+		if (mSelectedKeyframe.Index >= kfs.Count) return false;
+		value = kfs[mSelectedKeyframe.Index].Value;
+		return true;
+	}
+
+	public bool SetSelectedFloat(float value)
+	{
+		if (!mSelectedKeyframe.IsValid || mClip == null) return false;
+		let tr = mSelectedKeyframe.Track;
+		if (tr.Kind != .Float) return false;
+		let kfs = mClip.FloatTracks[tr.Index].Keyframes;
+		if (mSelectedKeyframe.Index >= kfs.Count) return false;
+		var kf = kfs[mSelectedKeyframe.Index];
+		kf.Value = value;
+		kfs[mSelectedKeyframe.Index] = kf;
+		OnClipMutated(this);
+		Invalidate();
+		return true;
+	}
+
+	public bool SetSelectedVector2(Vector2 value)
+	{
+		if (!mSelectedKeyframe.IsValid || mClip == null) return false;
+		let tr = mSelectedKeyframe.Track;
+		if (tr.Kind != .Vector2) return false;
+		let kfs = mClip.Vector2Tracks[tr.Index].Keyframes;
+		if (mSelectedKeyframe.Index >= kfs.Count) return false;
+		var kf = kfs[mSelectedKeyframe.Index];
+		kf.Value = value;
+		kfs[mSelectedKeyframe.Index] = kf;
+		OnClipMutated(this);
+		Invalidate();
+		return true;
+	}
+
+	public bool SetSelectedVector3(Vector3 value)
+	{
+		if (!mSelectedKeyframe.IsValid || mClip == null) return false;
+		let tr = mSelectedKeyframe.Track;
+		if (tr.Kind != .Vector3) return false;
+		let kfs = mClip.Vector3Tracks[tr.Index].Keyframes;
+		if (mSelectedKeyframe.Index >= kfs.Count) return false;
+		var kf = kfs[mSelectedKeyframe.Index];
+		kf.Value = value;
+		kfs[mSelectedKeyframe.Index] = kf;
+		OnClipMutated(this);
+		Invalidate();
+		return true;
+	}
+
+	public bool SetSelectedVector4(Vector4 value)
+	{
+		if (!mSelectedKeyframe.IsValid || mClip == null) return false;
+		let tr = mSelectedKeyframe.Track;
+		if (tr.Kind != .Vector4) return false;
+		let kfs = mClip.Vector4Tracks[tr.Index].Keyframes;
+		if (mSelectedKeyframe.Index >= kfs.Count) return false;
+		var kf = kfs[mSelectedKeyframe.Index];
+		kf.Value = value;
+		kfs[mSelectedKeyframe.Index] = kf;
+		OnClipMutated(this);
+		Invalidate();
+		return true;
+	}
+
+	public bool SetSelectedQuaternion(Quaternion value)
+	{
+		if (!mSelectedKeyframe.IsValid || mClip == null) return false;
+		let tr = mSelectedKeyframe.Track;
+		if (tr.Kind != .Quaternion) return false;
+		let kfs = mClip.QuaternionTracks[tr.Index].Keyframes;
+		if (mSelectedKeyframe.Index >= kfs.Count) return false;
+		var kf = kfs[mSelectedKeyframe.Index];
+		kf.Value = value;
+		kfs[mSelectedKeyframe.Index] = kf;
+		OnClipMutated(this);
+		Invalidate();
+		return true;
+	}
+
+	public float GetSelectedKeyframeTime()
+	{
+		if (!mSelectedKeyframe.IsValid) return 0;
+		return GetKeyframeTime(mSelectedKeyframe.Track, mSelectedKeyframe.Index);
+	}
+
+	/// Retimes the selected keyframe and resorts. Clamps to >= 0.
+	public bool SetSelectedKeyframeTime(float newTime)
+	{
+		if (!mSelectedKeyframe.IsValid || mClip == null) return false;
+		let clamped = Math.Max(0.0f, newTime);
+		SetKeyframeTime(mSelectedKeyframe, clamped);
+		SortAndReselect(mSelectedKeyframe);
+		ExtendDurationIfNeeded(clamped);
 		OnClipMutated(this);
 		Invalidate();
 		return true;
