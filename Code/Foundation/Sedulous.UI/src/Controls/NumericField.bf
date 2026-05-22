@@ -54,6 +54,13 @@ public class NumericField : View, ITextEditHost
 
 	public Event<delegate void(NumericField, double)> OnValueChanged ~ _.Dispose();
 
+	// Transactional edit events for consumers that need to know when the
+	// user starts/finishes interacting (typing, dragging). OnValueChanged
+	// fires per keystroke during edits; OnEditBegan/Ended bracket the
+	// session and let listeners defer rebuilds until the user is done.
+	public Event<delegate void(NumericField)> OnEditBegan ~ _.Dispose();
+	public Event<delegate void(NumericField)> OnEditEnded ~ _.Dispose();
+
 	public double Value
 	{
 		get => mValue;
@@ -628,12 +635,17 @@ public class NumericField : View, ITextEditHost
 		}
 	}
 
-	public override void OnFocusGained() { ResetBlink(); }
+	public override void OnFocusGained()
+	{
+		ResetBlink();
+		OnEditBegan(this);
+	}
 
 	public override void OnFocusLost()
 	{
 		mIsDragging = false;
 		CommitText();
+		OnEditEnded(this);
 	}
 
 	// === Internal ===
