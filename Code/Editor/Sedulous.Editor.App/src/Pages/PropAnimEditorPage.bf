@@ -66,6 +66,7 @@ class PropAnimEditorPage : IEditorPage
 	// changing the preview source can mutate the right pieces.
 	public Event<delegate void(PropAnimEditorPage)> OnPreviewSourceChanged ~ _.Dispose();
 	public Event<delegate void(PropAnimEditorPage)> OnTargetChanged ~ _.Dispose();
+	public Event<delegate void(PropAnimEditorPage)> OnCurrentTimeChanged ~ _.Dispose();
 
 	public this(StringView filePath, PropertyAnimationClipResource clip,
 		PreviewSceneHost host, EditorContext editorContext,
@@ -363,8 +364,10 @@ class PropAnimEditorPage : IEditorPage
 			let clip = mClipResource?.Clip;
 			let duration = (clip != null) ? clip.Duration : 0.0f;
 			let clamped = (duration > 0) ? Math.Clamp(value, 0.0f, duration) : 0.0f;
+			if (player.CurrentTime == clamped) return;
 			player.CurrentTime = clamped;
 			player.Evaluate();
+			OnCurrentTimeChanged(this);
 		}
 	}
 

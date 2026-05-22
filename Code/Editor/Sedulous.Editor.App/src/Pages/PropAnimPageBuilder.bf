@@ -34,8 +34,8 @@ static class PropAnimPageBuilder
 			Width = .Match, Grow = 1
 		});
 
-		outer.AddView(BuildScrubRegion(page), new FlexLayout.LayoutParams() {
-			Width = .Match, Height = .Fixed(.Px(80))
+		outer.AddView(BuildTimelineRegion(page), new FlexLayout.LayoutParams() {
+			Width = .Match, Height = .Fixed(.Px(220))
 		});
 
 		return outer;
@@ -60,10 +60,11 @@ static class PropAnimPageBuilder
 		timeLabel.TextColor = .(200, 200, 210, 255);
 		bar.AddItem(timeLabel);
 
-		// Refresh time readout when the user scrubs or when playback advances.
-		// Phase 1 doesn't watch playback; refreshing on target change is good
-		// enough until the slider's OnValueChanged plumbs through to here.
+		// Refresh time readout on every scrub (timeline drives the page's
+		// CurrentTime, which fires OnCurrentTimeChanged) and whenever the
+		// target swaps (resets time to whatever the player reports).
 		page.OnTargetChanged.Add(new [=timeLabel] (p) => UpdateTimeLabel(timeLabel, p));
+		page.OnCurrentTimeChanged.Add(new [=timeLabel] (p) => UpdateTimeLabel(timeLabel, p));
 
 		return bar;
 	}
@@ -281,40 +282,67 @@ static class PropAnimPageBuilder
 		return panel;
 	}
 
-	// === Bottom scrub region ===
+	// === Bottom timeline region (Phase 2) ===
 
-	private static View BuildScrubRegion(PropAnimEditorPage page)
+	private static View BuildTimelineRegion(PropAnimEditorPage page)
 	{
 		let container = new FlexLayout();
 		container.Direction = .Vertical;
-		container.Padding = .(8);
-		container.Spacing = 4;
 
-		let header = new Label();
-		header.SetText("Time (Phase 1 stub - dopesheet lands in Phase 2)");
-		header.TextColor = .(140, 140, 155, 255);
-		header.FontSize = 11;
-		container.AddView(header, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(16)) });
+		// Mini-toolbar above the timeline for keyframe ops. Phase 3 adds
+		// an "Add Track" button here that opens the property picker.
+		let toolbar = new FlexLayout();
+		toolbar.Direction = .Horizontal;
+		toolbar.Padding = .(6, 4, 6, 4);
+		toolbar.Spacing = 4;
 
-		let slider = new Slider();
-		slider.Min = 0;
-		slider.Max = (page.Clip != null) ? Math.Max(0.001f, page.Clip.Duration) : 1.0f;
-		slider.Value = 0;
-		slider.OnValueChanged.Add(new [=page] (s, v) =>
-		{
-			page.CurrentTime = v;
+		let addKfBtn = new Button("Add Keyframe");
+		let delKfBtn = new Button("Delete Keyframe");
+		toolbar.AddView(addKfBtn, new FlexLayout.LayoutParams() {
+			Width = .Fixed(.Px(110)), Height = .Fixed(.Px(24))
 		});
-		container.AddView(slider, new FlexLayout.LayoutParams() {
-			Width = .Match, Height = .Fixed(.Px(28))
+		toolbar.AddView(delKfBtn, new FlexLayout.LayoutParams() {
+			Width = .Fixed(.Px(120)), Height = .Fixed(.Px(24))
 		});
 
-		// Keep the slider's max in sync with the clip duration if the
-		// clip's mutated (Phase 2's keyframe ops will adjust duration).
-		page.OnTargetChanged.Add(new [=slider] (p) =>
+		container.AddView(toolbar, new FlexLayout.LayoutParams() {
+			Width = .Match, Height = .Wrap
+		});
+
+		let timeline = new TimelineView();
+		timeline.Clip = page.Clip;
+		timeline.PlayheadTime = page.CurrentTime;
+		container.AddView(timeline, new FlexLayout.LayoutParams() {
+			Width = .Match, Grow = 1
+		});
+
+		// Two-way sync between the timeline's playhead and the page's
+		// CurrentTime. Both setters are idempotent (skip when the value
+		// hasn't changed) so the timeline -> page -> timeline ricochet
+		// terminates after one step; no re-entry guard needed.
+		timeline.OnPlayheadChanged.Add(new [=page] (tl) =>
 		{
-			let dur = (p.Clip != null) ? Math.Max(0.001f, p.Clip.Duration) : 1.0f;
-			slider.Max = dur;
-			if (slider.Value > dur) slider.Value = dur;
+			page.CurrentTime = tl.PlayheadTime;
+		});
+
+		timeline.OnClipMutated.Add(new [=page] (tl) =>
+		{
+			page.MarkDirty();
+		});
+
+		page.OnTargetChanged.Add(new [=timeline] (p) =>
+		{
+			timeline.Clip = p.Clip;
+			timeline.PlayheadTime = p.CurrentTime;
+		});
+
+		addKfBtn.OnClick.Add(new [=timeline] (btn) =>
+		{
+			timeline.AddKeyframeAtPlayheadOnSelectedTrack();
+		});
+		delKfBtn.OnClick.Add(new [=timeline] (btn) =>
+		{
+			timeline.DeleteSelectedKeyframe();
 		});
 
 		return container;
