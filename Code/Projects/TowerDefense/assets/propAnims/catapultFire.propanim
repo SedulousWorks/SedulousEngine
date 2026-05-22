@@ -5,7 +5,7 @@ string %_name {"New Property Animation"}
 string %_sourcePath {""}
 string %name {""}
 float %duration {0.73333329}
-bool %isLooping {true}
+bool %isLooping {false}
 int32 %floatTracksCount {0}
 int32 %vector2TracksCount {0}
 int32 %vector3TracksCount {0}
