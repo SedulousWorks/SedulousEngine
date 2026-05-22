@@ -152,6 +152,17 @@ public class PropertyBinderRegistry
 		return null;
 	}
 
+	// ---- Enumeration ----
+	// Editor's property picker needs to list every registered path. Each
+	// returns the underlying dictionary's KeyEnumerator (String entries
+	// owned by the registry - callers must not mutate or free them).
+
+	public Dictionary<String, FloatPropertySetter>.KeyEnumerator FloatPaths => mFloatSetters.Keys;
+	public Dictionary<String, Vector2PropertySetter>.KeyEnumerator Vector2Paths => mVector2Setters.Keys;
+	public Dictionary<String, Vector3PropertySetter>.KeyEnumerator Vector3Paths => mVector3Setters.Keys;
+	public Dictionary<String, Vector4PropertySetter>.KeyEnumerator Vector4Paths => mVector4Setters.Keys;
+	public Dictionary<String, QuaternionPropertySetter>.KeyEnumerator QuaternionPaths => mQuaternionSetters.Keys;
+
 	// ---- Built-in Bindings ----
 
 	private void RegisterBuiltinBindings()
