@@ -31,7 +31,7 @@ using Sedulous.VFS;
 /// (component auto-add, evaluated property writes) are scoped to that
 /// temp scene and discarded on page close. The on-disk source file is
 /// never modified.
-class PropAnimEditorPage : IEditorPage
+class PropAnimEditorPage : IEditorPage, IResourceChangeListener
 {
 	private String mPageId = new .() ~ delete _;
 	private String mTitle = new .() ~ delete _;
@@ -67,6 +67,11 @@ class PropAnimEditorPage : IEditorPage
 	public Event<delegate void(PropAnimEditorPage)> OnPreviewSourceChanged ~ _.Dispose();
 	public Event<delegate void(PropAnimEditorPage)> OnTargetChanged ~ _.Dispose();
 	public Event<delegate void(PropAnimEditorPage)> OnCurrentTimeChanged ~ _.Dispose();
+	/// Fires after the underlying `.propanim` file has been hot-reloaded
+	/// from disk. The clip object is the same pointer (in-place reload),
+	/// but tracks/keyframes have been replaced - subscribers should
+	/// refresh any cached track indices or selection state.
+	public Event<delegate void(PropAnimEditorPage)> OnClipReloaded ~ _.Dispose();
 
 	public this(StringView filePath, PropertyAnimationClipResource clip,
 		PreviewSceneHost host, EditorContext editorContext,
@@ -79,6 +84,12 @@ class PropAnimEditorPage : IEditorPage
 		mEditorContext = editorContext;
 		mTypeRegistry = typeRegistry;
 		UpdateTitle();
+
+		// Hot-reload: the resource system reloads `.propanim` in place
+		// (PropertyAnimationClipResource.Reload), but cached timeline
+		// state (mFlatTracks, mSelectedKeyframe indices) is stale after
+		// the rebuild - fire OnClipReloaded so subscribers can refresh.
+		mEditorContext?.ResourceSystem?.AddChangeListener(this);
 	}
 
 	public ~this()
@@ -97,6 +108,7 @@ class PropAnimEditorPage : IEditorPage
 		// entity in the temp scene, including spawned preview roots
 		// and the auto-added PropertyAnimationComponent on the
 		// target). `~_` on the events disposes their subscriber lists.
+		mEditorContext?.ResourceSystem?.RemoveChangeListener(this);
 		if (mClipResource != null)
 			mClipResource.ReleaseRef();
 	}
@@ -472,6 +484,16 @@ class PropAnimEditorPage : IEditorPage
 	public void OnActivated() { }
 	public void OnDeactivated() { }
 	public void Update(float deltaTime) { }
+
+	// === IResourceChangeListener ===
+
+	public void OnResourceReloaded(StringView uri, Type resourceType, IResource resource)
+	{
+		// Only react to our own clip being reloaded.
+		if (resource !== mClipResource)
+			return;
+		OnClipReloaded(this);
+	}
 
 	public void Dispose()
 	{
