@@ -334,7 +334,7 @@ class EditorApplication : Application, IDockableWindowHost
 		mEditorContext.RegisterPageFactory(new AudioClipEditorPageFactory());
 		mEditorContext.RegisterPageFactory(new SoundCueEditorPageFactory());
 		mEditorContext.RegisterPageFactory(new FontEditorPageFactory());
-		mEditorContext.RegisterPageFactory(new PropAnimEditorPageFactory());
+		mEditorContext.RegisterPageFactory(new PropAnimEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard, mTypeRegistry));
 		mEditorContext.RegisterPageFactory(new ParticleEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
 
 		// Register built-in gizmo renderers

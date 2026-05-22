@@ -1,0 +1,13 @@
+uint64 %_type {5547314161571905712}
+int32 %_version {1}
+string %_id {"b40352b1-f717-4b2a-998d-4daaa0259cc6"}
+string %_name {"New Property Animation"}
+string %_sourcePath {""}
+string %name {""}
+float %duration {0}
+bool %isLooping {false}
+int32 %floatTracksCount {0}
+int32 %vector2TracksCount {0}
+int32 %vector3TracksCount {0}
+int32 %vector4TracksCount {0}
+int32 %quaternionTracksCount {0}

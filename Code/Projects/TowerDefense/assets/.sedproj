@@ -2,12 +2,15 @@ Arr_ %Settings {
 	int32 %_count {0}
 }
 Arr_ %OpenPages {
-	int32 %_count {2}
+	int32 %_count {3}
 	Obj_ {
 		string %uri {"project://gamescene.scene"}
 	}
 	Obj_ {
 		string %uri {"project://Attack Of Monster.font"}
 	}
+	Obj_ {
+		string %uri {"project://propAnims/catapultFire.propanim"}
+	}
 }
-int32 %ActivePageIndex {1}
+int32 %ActivePageIndex {2}
