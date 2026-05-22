@@ -38,6 +38,29 @@ public class Skeleton
 			Bones[i] = new Bone();
 	}
 
+	/// Clears all bones and resizes to `boneCount`. Used by resource
+	/// hot-reload so the same `Skeleton` instance can be re-populated
+	/// from disk without invalidating outside references (skinned
+	/// meshes, AnimationPlayers, etc.).
+	public void ClearForReload(int32 boneCount)
+	{
+		if (Bones != null)
+		{
+			for (let bone in Bones) delete bone;
+			delete Bones;
+		}
+		delete RootBones;
+		delete mHierarchicalOrder;
+		mHierarchicalOrder = null;
+		mBoneNameMap.Clear();
+		Name.Clear();
+
+		Bones = new .[boneCount];
+		for (int i = 0; i < boneCount; i++)
+			Bones[i] = new Bone();
+		RootBones = new .[0];
+	}
+
 	/// Gets the number of bones in this skeleton.
 	public int32 BoneCount => (int32)Bones.Count;
 

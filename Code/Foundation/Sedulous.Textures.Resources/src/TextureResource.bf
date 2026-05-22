@@ -79,6 +79,21 @@ class TextureResource : Resource
 		mOwnsImage = ownsImage;
 	}
 
+	/// Hot-reload helper: updates the existing `Image`'s dimensions /
+	/// format / pixel buffer in place instead of swapping the `Image`
+	/// pointer. Outside references (texture upload caches, debug
+	/// viewers) stay valid across reload. Allocates a new owned Image
+	/// on first call (when `mImage` is null).
+	public void UpdateImageInPlace(uint32 width, uint32 height, PixelFormat format, Span<uint8> data)
+	{
+		if (mImage == null)
+		{
+			mImage = new Image(width, height, format);
+			mOwnsImage = true;
+		}
+		mImage.ReplaceData(width, height, format, data);
+	}
+
 	/// Setup for UI textures (no mipmaps, linear, clamped).
 	public void SetupForUI()
 	{
@@ -142,6 +157,19 @@ class TextureResource : Resource
 	}
 
 	// ---- Serialization ----
+
+	/// Reloads the texture resource in place. Re-reads the metadata
+	/// (filters, dimensions, format) - the manager is responsible for
+	/// re-applying the pixel sidecar through `UpdateImageInPlace`, which
+	/// preserves the existing `Image` instance so outside references
+	/// stay valid.
+	public override Result<void, ResourceLoadError> Reload(Serializer s)
+	{
+		let result = Serialize(s);
+		if (result != .Ok)
+			return .Err(.InvalidFormat);
+		return .Ok;
+	}
 
 	/// Serializes texture metadata (not pixel data - that's in the binary sidecar).
 	protected override SerializationResult OnSerialize(Serializer s)

@@ -68,6 +68,26 @@ class SkinnedMeshResource : Resource
 
 	public override int32 SerializationVersion => FileVersion;
 
+	/// Reloads the skinned-mesh resource in place. Clears the existing
+	/// mesh's data and re-reads from the serializer without replacing
+	/// the `SkinnedMesh` object - outside references (GPU upload caches,
+	/// AnimationPlayers, editor preview state) stay valid.
+	public override Result<void, ResourceLoadError> Reload(Serializer s)
+	{
+		if (mMesh != null)
+			mMesh.ClearForReload();
+
+		// Reset the skeleton ref so the new file's ref is read in cleanly
+		// (DeserializeMesh + the ResourceRef read populate it).
+		SkeletonRef.Dispose();
+		SkeletonRef = .();
+
+		let result = Serialize(s);
+		if (result != .Ok)
+			return .Err(.InvalidFormat);
+		return .Ok;
+	}
+
 	protected override SerializationResult OnSerialize(Serializer s)
 	{
 		if (s.IsWriting)
@@ -183,7 +203,13 @@ class SkinnedMeshResource : Resource
 	{
 		s.BeginObject("mesh");
 
-		let mesh = new SkinnedMesh();
+		// Reuse the existing mesh on reload (cleared by Reload() before
+		// Serialize is called); allocate on first load.
+		SkinnedMesh mesh;
+		if (mMesh != null)
+			mesh = mMesh;
+		else
+			mesh = new SkinnedMesh();
 
 		int32 vertexCount = 0;
 		s.Int32("vertexCount", ref vertexCount);
@@ -275,11 +301,15 @@ class SkinnedMeshResource : Resource
 		mesh.CalculateBounds();
 		s.EndObject();
 
-		// Set the mesh
-		if (mOwnsMesh && mMesh != null)
-			delete mMesh;
-		mMesh = mesh;
-		mOwnsMesh = true;
+		// Only adopt as owned on first load (new instance).
+		// On reload, mMesh == mesh - skip to avoid deleting it.
+		if (mMesh != mesh)
+		{
+			if (mOwnsMesh && mMesh != null)
+				delete mMesh;
+			mMesh = mesh;
+			mOwnsMesh = true;
+		}
 	}
 
 }

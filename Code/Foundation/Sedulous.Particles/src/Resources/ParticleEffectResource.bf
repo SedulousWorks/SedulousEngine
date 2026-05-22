@@ -102,9 +102,28 @@ class ParticleEffectResource : Resource
 			if (version > FileVersion)
 				return .UnsupportedVersion;
 
-			delete mEffect;
-			mEffect = new ParticleEffect();
+			// Reuse the existing effect on reload (cleared by Reload()
+			// before Serialize is called); allocate on first load. Keeps
+			// outside references (live ParticleEffectInstances, editor
+			// preview state) valid across hot-reload.
+			if (mEffect == null)
+				mEffect = new ParticleEffect();
 			return ParticleEffectSerializer.Serialize(s, mEffect);
 		}
+	}
+
+	/// Reloads the particle-effect resource in place. Clears the
+	/// existing `ParticleEffect`'s systems and re-reads from the
+	/// serializer without replacing the object - outside references
+	/// stay valid.
+	public override Result<void, ResourceLoadError> Reload(Serializer s)
+	{
+		if (mEffect != null)
+			mEffect.ClearForReload();
+
+		let result = Serialize(s);
+		if (result != .Ok)
+			return .Err(.InvalidFormat);
+		return .Ok;
 	}
 }

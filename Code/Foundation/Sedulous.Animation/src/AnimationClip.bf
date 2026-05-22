@@ -206,6 +206,27 @@ public class AnimationClip
 			track.SortKeyframes();
 	}
 
+	/// Clears all tracks and events back to empty in-place. Used by
+	/// resource hot-reload so the same `AnimationClip` instance can be
+	/// re-populated from disk without invalidating outside references
+	/// (skeletal AnimationPlayers, editor previews).
+	public void ClearForReload()
+	{
+		ClearList!(PositionTracks);
+		ClearList!(RotationTracks);
+		ClearList!(ScaleTracks);
+		ClearList!(Events);
+		Duration = 0;
+		IsLooping = false;
+		Name.Clear();
+	}
+
+	private mixin ClearList(var list)
+	{
+		for (let t in list) delete t;
+		list.Clear();
+	}
+
 	/// Adds an animation event at the specified time.
 	public void AddEvent(float time, StringView name)
 	{

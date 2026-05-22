@@ -86,4 +86,50 @@ public class FontResourceManager : ResourceManager<FontResource>
 		if (resource != null)
 			resource.ReleaseRef();
 	}
+
+	protected override Result<void, ResourceLoadError> ReloadResource(FontResource resource, ResourceLoadContext ctx)
+	{
+		if (SerializerProvider == null)
+			return .Err(.NotSupported);
+
+		let text = scope String();
+		Try!(ReadAllText(ctx.Stream, text));
+
+		let reader = SerializerProvider.CreateReader(text);
+		if (reader == null)
+			return .Err(.InvalidFormat);
+		defer delete reader;
+
+		// Dispatch through Reload so the existing BakedFont/BakedFontAtlas
+		// instances are reused (ClearForReload clears them in place).
+		// Reading via Serialize directly would delete outside references.
+		if (resource.Reload(reader) case .Err(let err))
+			return .Err(err);
+
+		// Re-load the atlas pixel sidecar into the existing atlas.
+		if (ctx.Mount == null)
+			return .Err(.InvalidFormat);
+		let sidecarLocator = scope String()..AppendF("{}.bin", ctx.Locator);
+		let sidecarResult = ctx.Mount.Open(sidecarLocator);
+		if (sidecarResult case .Err)
+			return .Err(.NotFound);
+		let binStream = sidecarResult.Value;
+		defer delete binStream;
+
+		let binBytes = scope List<uint8>();
+		if (ReadAllBytes(binStream, binBytes) case .Err)
+			return .Err(.ReadError);
+
+		let opts = resource.Options;
+		let expected = (int)opts.AtlasWidth * (int)opts.AtlasHeight;
+		let pixels = new uint8[expected];
+		let copyCount = Math.Min(expected, binBytes.Count);
+		for (int i = 0; i < copyCount; i++)
+			pixels[i] = binBytes[i];
+		// SetPixels takes ownership and deletes the placeholder buffer
+		// that OnSerialize allocated as a stand-in.
+		resource.BakedAtlas.SetPixels(opts.AtlasWidth, opts.AtlasHeight, pixels);
+
+		return .Ok;
+	}
 }

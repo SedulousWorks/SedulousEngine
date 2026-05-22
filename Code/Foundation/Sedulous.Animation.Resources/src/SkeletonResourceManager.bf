@@ -56,8 +56,10 @@ class SkeletonResourceManager : ResourceManager<SkeletonResource>
 		if (version > SkeletonResource.FileVersion)
 			return .Err(.InvalidFormat);
 
-		resource.Serialize(reader);
-		return .Ok;
+		// Dispatch through Reload so the existing Skeleton instance is
+		// reused (ClearForReload resizes in place). Reading via Serialize
+		// directly would call SetSkeleton and delete outside references.
+		return resource.Reload(reader);
 	}
 
 	/// Create a skeleton resource from an existing Skeleton. The resource takes ownership.

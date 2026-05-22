@@ -131,8 +131,13 @@ class StaticMeshResource : Resource
 		}
 		else
 		{
-			// Reading
-			let mesh = new StaticMesh();
+			// Reading - reuse the existing mesh on reload (cleared by
+			// Reload() before Serialize is called), allocate on first load.
+			StaticMesh mesh;
+			if (mMesh != null)
+				mesh = mMesh;
+			else
+				mesh = new StaticMesh();
 
 			int32 vertexCount = 0;
 			s.Int32("vertexCount", ref vertexCount);
@@ -211,9 +216,27 @@ class StaticMeshResource : Resource
 				s.EndObject();
 			}
 
-			SetMesh(mesh, true);
+			// Only call SetMesh on first load (new instance).
+			// On reload, mMesh == mesh - skip to avoid deleting it.
+			if (mMesh != mesh)
+				SetMesh(mesh, true);
 		}
 
+		return .Ok;
+	}
+
+	/// Reloads the static-mesh resource in place. Clears the existing
+	/// mesh's data and re-reads from the serializer without replacing
+	/// the `StaticMesh` object - outside references (GPU upload caches,
+	/// mesh renderers, editor preview state) stay valid.
+	public override Result<void, ResourceLoadError> Reload(Serializer s)
+	{
+		if (mMesh != null)
+			mMesh.ClearForReload();
+
+		let result = Serialize(s);
+		if (result != .Ok)
+			return .Err(.InvalidFormat);
 		return .Ok;
 	}
 

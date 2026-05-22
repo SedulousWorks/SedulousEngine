@@ -55,7 +55,9 @@ class PropertyAnimationClipResourceManager : ResourceManager<PropertyAnimationCl
 		if (version > PropertyAnimationClipResource.FileVersion)
 			return .Err(.InvalidFormat);
 
-		resource.Serialize(reader);
-		return .Ok;
+		// Dispatch through Reload so the existing PropertyAnimationClip
+		// is reused in-place. Reading via Serialize directly would call
+		// SetClip and delete outside references.
+		return resource.Reload(reader);
 	}
 }

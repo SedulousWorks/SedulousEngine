@@ -70,6 +70,20 @@ public class SkinnedMesh
 		mBounds = BoundingBox(.Zero, .Zero);
 	}
 
+	/// Clears all mesh data back to empty in-place. Used by resource
+	/// hot-reload so the same `SkinnedMesh` instance can be re-populated
+	/// from disk without invalidating outside references (GPU upload
+	/// caches, mesh renderers, AnimationPlayers, editor preview state).
+	public void ClearForReload()
+	{
+		mVertices.Clear();
+		mIndices.Resize(0);
+		mSubMeshes.Clear();
+		mBounds = BoundingBox(.Zero, .Zero);
+		mIndexWritePos = 0;
+		Name.Clear();
+	}
+
 	/// Get raw vertex data pointer for GPU upload
 	public uint8* GetVertexData()
 	{

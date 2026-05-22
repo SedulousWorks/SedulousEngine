@@ -54,8 +54,10 @@ class SkinnedMeshResourceManager : ResourceManager<SkinnedMeshResource>
 		int32 version = 0;
 		reader.Int32("version", ref version);
 
-		resource.Serialize(reader);
-		return .Ok;
+		// Dispatch through Reload so the existing SkinnedMesh instance is
+		// reused (ClearForReload empties it in place). Reading via Serialize
+		// directly would delete outside references.
+		return resource.Reload(reader);
 	}
 
 	/// Registers a pre-created skinned mesh resource.

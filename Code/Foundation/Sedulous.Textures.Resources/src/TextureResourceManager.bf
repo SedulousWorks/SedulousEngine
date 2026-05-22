@@ -50,7 +50,11 @@ class TextureResourceManager : ResourceManager<TextureResource>
 		Try!(ReadAllBytes(ctx.Stream, bytes));
 		if (ImageLoaderFactory.LoadImageFromMemory(.(bytes.Ptr, bytes.Count)) case .Ok(let image))
 		{
-			resource.SetImage(image, true);
+			// Update in place so any outside reference to resource.Image
+			// stays valid (renderer's texture-upload cache, thumbnail
+			// views, etc.). The transient `image` is consumed here.
+			resource.UpdateImageInPlace(image.Width, image.Height, image.Format, image.Data);
+			delete image;
 			return .Ok;
 		}
 		return .Err(.NotFound);
@@ -143,10 +147,14 @@ class TextureResourceManager : ResourceManager<TextureResource>
 	}
 
 	/// Transfers data from a newly loaded resource into an existing one (for reload).
+	/// Updates the target's Image buffer in place rather than swapping
+	/// the Image pointer, so any outside reference to `target.Image`
+	/// stays valid across hot-reload.
 	private void TransferData(TextureResource target, TextureResource source)
 	{
-		target.SetImage(source.[Friend]mImage, true);
-		source.[Friend]mOwnsImage = false;
+		let srcImg = source.[Friend]mImage;
+		if (srcImg != null)
+			target.UpdateImageInPlace(srcImg.Width, srcImg.Height, srcImg.Format, srcImg.Data);
 		target.Name.Set(source.Name);
 		target.MinFilter = source.MinFilter;
 		target.MagFilter = source.MagFilter;

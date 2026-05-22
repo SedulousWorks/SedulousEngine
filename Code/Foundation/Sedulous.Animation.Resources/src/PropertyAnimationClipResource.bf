@@ -54,6 +54,23 @@ class PropertyAnimationClipResource : Resource
 
 	public override int32 SerializationVersion => FileVersion;
 
+	/// Reloads the clip resource in place. Clears the existing clip's
+	/// tracks and re-reads from the serializer without replacing the
+	/// `PropertyAnimationClip` object - outside references (the editor's
+	/// TimelineView, runtime PropertyAnimationPlayers) stay valid.
+	public override Result<void, ResourceLoadError> Reload(Serializer s)
+	{
+		// First-load fallback: if we don't have a clip yet, fall through
+		// to OnSerialize which will create one.
+		if (mClip != null)
+			mClip.ClearForReload();
+
+		let result = Serialize(s);
+		if (result != .Ok)
+			return .Err(.InvalidFormat);
+		return .Ok;
+	}
+
 	protected override SerializationResult OnSerialize(Serializer s)
 	{
 		if (s.IsWriting)
@@ -65,9 +82,14 @@ class PropertyAnimationClipResource : Resource
 		}
 		else
 		{
-			let clip = new PropertyAnimationClip();
-			clip.Serialize(s);
-			SetClip(clip, true);
+			// Reuse the existing clip on reload (Reload() clears its
+			// state before calling Serialize). Only allocate on first load.
+			if (mClip == null)
+			{
+				let clip = new PropertyAnimationClip();
+				SetClip(clip, true);
+			}
+			mClip.Serialize(s);
 		}
 
 		return .Ok;

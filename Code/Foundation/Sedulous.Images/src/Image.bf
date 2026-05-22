@@ -73,6 +73,32 @@ public class Image
 		other.mData.CopyTo(mData);
 	}
 
+	/// Replaces this image's dimensions, format, and pixel buffer
+	/// in-place. Used by resource hot-reload so the same `Image`
+	/// instance can receive new content without invalidating outside
+	/// references (texture upload caches, thumbnail views, etc.). If
+	/// `srcData` is shorter than the new buffer it's copied as-is and
+	/// the remainder is zeroed.
+	public void ReplaceData(uint32 width, uint32 height, PixelFormat format, Span<uint8> srcData)
+	{
+		mWidth = width;
+		mHeight = height;
+		mFormat = format;
+
+		let needed = (int)DataSize;
+		if (mData == null || mData.Count != needed)
+		{
+			if (mData != null) delete mData;
+			mData = new uint8[needed];
+		}
+
+		let copy = Math.Min(needed, srcData.Length);
+		if (copy > 0)
+			Internal.MemCpy(mData.Ptr, srcData.Ptr, copy);
+		if (copy < needed)
+			Internal.MemSet(&mData[copy], 0, needed - copy);
+	}
+
     // Clear image to default values
 	public void Clear(Color? color = null)
 	{

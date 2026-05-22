@@ -66,6 +66,21 @@ class AnimationClipResource : Resource
 
 	public override int32 SerializationVersion => FileVersion;
 
+	/// Reloads the clip resource in place. Clears the existing clip's
+	/// tracks and re-reads from the serializer without replacing the
+	/// `AnimationClip` object - outside references (skeletal
+	/// AnimationPlayers, editor preview state) stay valid.
+	public override Result<void, ResourceLoadError> Reload(Serializer s)
+	{
+		if (mClip != null)
+			mClip.ClearForReload();
+
+		let result = Serialize(s);
+		if (result != .Ok)
+			return .Err(.InvalidFormat);
+		return .Ok;
+	}
+
 	protected override SerializationResult OnSerialize(Serializer s)
 	{
 		if (s.IsWriting)
@@ -205,8 +220,20 @@ class AnimationClipResource : Resource
 			bool isLooping = false;
 			s.Bool("isLooping", ref isLooping);
 
-			// Create new clip
-			let clip = new AnimationClip(clipName, duration, isLooping);
+			// Reuse the existing clip on reload (Reload() clears its
+			// state before calling Serialize). Only allocate on first load.
+			AnimationClip clip;
+			if (mClip == null)
+			{
+				clip = new AnimationClip(clipName, duration, isLooping);
+			}
+			else
+			{
+				clip = mClip;
+				clip.Name.Set(clipName);
+				clip.Duration = duration;
+				clip.IsLooping = isLooping;
+			}
 
 			// Deserialize position tracks
 			int32 posTrackCount = 0;
@@ -328,8 +355,10 @@ class AnimationClipResource : Resource
 				s.EndObject();
 			}
 
-			// Set the clip
-			SetClip(clip, true);
+			// Only call SetClip on first load (new clip).
+			// On reload, mClip is the same object - skip to avoid deleting it.
+			if (mClip != clip)
+				SetClip(clip, true);
 		}
 
 		return .Ok;

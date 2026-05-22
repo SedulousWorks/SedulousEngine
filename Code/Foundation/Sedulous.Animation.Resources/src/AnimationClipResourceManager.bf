@@ -55,7 +55,9 @@ class AnimationClipResourceManager : ResourceManager<AnimationClipResource>
 		if (version > AnimationClipResource.FileVersion)
 			return .Err(.InvalidFormat);
 
-		resource.Serialize(reader);
-		return .Ok;
+		// Dispatch through Reload so the existing AnimationClip is reused
+		// in-place. Reading via Serialize directly would call SetClip and
+		// delete outside references (skeletal players, editor preview state).
+		return resource.Reload(reader);
 	}
 }

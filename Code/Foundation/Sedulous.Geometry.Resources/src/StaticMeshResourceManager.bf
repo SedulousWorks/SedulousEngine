@@ -58,8 +58,10 @@ class StaticMeshResourceManager : ResourceManager<StaticMeshResource>
 		if (version > StaticMeshResource.FileVersion)
 			return .Err(.InvalidFormat);
 
-		resource.Serialize(reader);
-		return .Ok;
+		// Dispatch through Reload so the existing StaticMesh instance is
+		// reused (ClearForReload empties it in place). Reading via Serialize
+		// directly would call SetMesh and delete outside references.
+		return resource.Reload(reader);
 	}
 
 	/// Registers a pre-created mesh resource.

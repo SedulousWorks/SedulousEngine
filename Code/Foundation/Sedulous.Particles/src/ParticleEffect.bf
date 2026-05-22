@@ -36,6 +36,19 @@ public class ParticleEffect
 		Name = new .(name);
 	}
 
+	/// Clears all systems and sub-emitter links back to empty in-place.
+	/// Used by resource hot-reload so the same `ParticleEffect`
+	/// instance can be re-populated from disk without invalidating
+	/// outside references (live `ParticleEffectInstance`s, editor
+	/// preview state).
+	public void ClearForReload()
+	{
+		for (let sys in mSystems) delete sys;
+		mSystems.Clear();
+		mSubEmitterLinks.Clear();
+		Name.Clear();
+	}
+
 	/// Adds a particle system. The effect takes ownership.
 	/// Returns the system's index within the effect.
 	public int32 AddSystem(ParticleSystem system)

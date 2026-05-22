@@ -28,6 +28,24 @@ public class BakedFontAtlas : IFontAtlas
 
 	public this() { }
 
+	/// Clears all glyph regions + pixel buffer back to empty in-place.
+	/// Used by resource hot-reload so the same `BakedFontAtlas`
+	/// instance can be re-populated from disk without invalidating
+	/// outside references.
+	public void ClearForReload()
+	{
+		mRegions.Clear();
+		if (mPixelData != null)
+		{
+			delete mPixelData;
+			mPixelData = null;
+		}
+		mWidth = 0;
+		mHeight = 0;
+		mWhitePixelU = 0;
+		mWhitePixelV = 0;
+	}
+
 	/// Hand the atlas its dimensions + pixel buffer ownership. The buffer
 	/// must be `width * height` bytes (single-channel alpha). Replaces any
 	/// previously held buffer.

@@ -30,6 +30,19 @@ public class BakedFont : IFont
 
 	public this() { }
 
+	/// Clears all glyph + kerning tables and resets metadata back to
+	/// empty in-place. Used by resource hot-reload so the same
+	/// `BakedFont` instance can be re-populated from disk without
+	/// invalidating outside references.
+	public void ClearForReload()
+	{
+		mGlyphs.Clear();
+		mKerning.Clear();
+		mFamilyName.Clear();
+		mPixelHeight = 0;
+		mMetrics = .Default;
+	}
+
 	public void SetFamilyName(StringView name) { mFamilyName.Set(name); }
 	public void SetMetrics(FontMetrics m) { mMetrics = m; }
 	public void SetPixelHeight(float h) { mPixelHeight = h; }

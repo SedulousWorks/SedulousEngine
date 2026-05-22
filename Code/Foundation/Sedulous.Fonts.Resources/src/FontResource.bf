@@ -80,6 +80,22 @@ public class FontResource : Resource
 		return .Ok;
 	}
 
+	/// Reloads the font resource in place. Clears the existing
+	/// `BakedFont` and `BakedFontAtlas` and re-reads metadata from the
+	/// serializer without replacing those instances - outside references
+	/// (text renderers, glyph caches) stay valid. The atlas pixel
+	/// sidecar must be re-applied by the manager after this returns.
+	public override Result<void, ResourceLoadError> Reload(Serializer s)
+	{
+		if (mFont != null) mFont.ClearForReload();
+		if (mAtlas != null) mAtlas.ClearForReload();
+
+		let result = Serialize(s);
+		if (result != .Ok)
+			return .Err(.InvalidFormat);
+		return .Ok;
+	}
+
 	protected override SerializationResult OnSerialize(Serializer s)
 	{
 		if (s.IsWriting)
@@ -89,11 +105,12 @@ public class FontResource : Resource
 		}
 		else
 		{
-			// Reading - reset / construct the baked instances we'll fill.
-			if (mFont != null) delete mFont;
-			if (mAtlas != null) delete mAtlas;
-			mFont = new BakedFont();
-			mAtlas = new BakedFontAtlas();
+			// Reading - reuse the existing instances on reload (cleared
+			// by Reload() before Serialize), allocate on first load.
+			// Outside references (text renderers, glyph caches) stay
+			// valid across hot-reload.
+			if (mFont == null) mFont = new BakedFont();
+			if (mAtlas == null) mAtlas = new BakedFontAtlas();
 		}
 
 		// --- Top-level options (capture the import settings for reference). ---

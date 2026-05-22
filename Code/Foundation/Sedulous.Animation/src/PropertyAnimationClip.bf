@@ -86,6 +86,28 @@ public class PropertyAnimationClip : ISerializable
 		return track;
 	}
 
+	/// Clears all tracks back to empty in-place. Used by resource hot-reload
+	/// so the same `PropertyAnimationClip` instance can be re-populated from
+	/// disk without invalidating outside references (the editor's
+	/// TimelineView, runtime PropertyAnimationPlayers etc.).
+	public void ClearForReload()
+	{
+		ClearList!(FloatTracks);
+		ClearList!(Vector2Tracks);
+		ClearList!(Vector3Tracks);
+		ClearList!(Vector4Tracks);
+		ClearList!(QuaternionTracks);
+		Duration = 0;
+		IsLooping = false;
+		Name.Clear();
+	}
+
+	private mixin ClearList(var list)
+	{
+		for (let t in list) delete t;
+		list.Clear();
+	}
+
 	/// Sorts all keyframes in all tracks by time.
 	public void SortAllKeyframes()
 	{

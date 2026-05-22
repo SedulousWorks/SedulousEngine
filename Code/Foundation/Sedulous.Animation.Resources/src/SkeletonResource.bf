@@ -64,6 +64,18 @@ class SkeletonResource : Resource
 
 	public override int32 SerializationVersion => FileVersion;
 
+	/// Reloads the skeleton resource in place. Reuses the existing
+	/// `Skeleton` instance (resizing as needed) so outside references
+	/// (skinned meshes, AnimationPlayers, editor preview state) stay
+	/// valid across a hot-reload.
+	public override Result<void, ResourceLoadError> Reload(Serializer s)
+	{
+		let result = Serialize(s);
+		if (result != .Ok)
+			return .Err(.InvalidFormat);
+		return .Ok;
+	}
+
 	protected override SerializationResult OnSerialize(Serializer s)
 	{
 		if (s.IsWriting)
@@ -118,7 +130,18 @@ class SkeletonResource : Resource
 			int32 boneCount = 0;
 			s.Int32("boneCount", ref boneCount);
 
-			let skeleton = new Skeleton(boneCount);
+			// Reuse the existing Skeleton on reload (resize in place);
+			// only allocate on first load.
+			Skeleton skeleton;
+			if (mSkeleton != null)
+			{
+				skeleton = mSkeleton;
+				skeleton.ClearForReload(boneCount);
+			}
+			else
+			{
+				skeleton = new Skeleton(boneCount);
+			}
 
 			if (boneCount > 0)
 			{
@@ -169,7 +192,10 @@ class SkeletonResource : Resource
 			skeleton.FindRootBones();
 			skeleton.BuildChildIndices();
 
-			SetSkeleton(skeleton, true);
+			// Only call SetSkeleton on first load (new instance). On
+			// reload, mSkeleton == skeleton - skip to avoid deleting it.
+			if (mSkeleton != skeleton)
+				SetSkeleton(skeleton, true);
 		}
 
 		return .Ok;
