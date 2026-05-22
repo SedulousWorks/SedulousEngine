@@ -272,6 +272,10 @@ class SoundCueEditorPageFactory : IEditorPageFactory
 			let playBtn = new Button("Play Cue");
 			playBtn.OnClick.Add(new [=page] (btn) => { page.Play(); });
 			root.AddView(playBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(100)), Height = .Fixed(.Px(28)) });
+
+			let stopBtn = new Button("Stop");
+			stopBtn.OnClick.Add(new [=page] (btn) => { page.Stop(); });
+			root.AddView(stopBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(80)), Height = .Fixed(.Px(28)) });
 		}
 
 		return root;

@@ -15,7 +15,28 @@ class SDL3AudioSystem : IAudioSystem
 	private SDL_AudioDeviceID mDeviceId;
 	private AudioListener mListener = new .() ~ delete _;
 	private List<AudioSource> mSources = new .() ~ DeleteContainerAndItems!(_);
-	private List<AudioSource> mOneShotSources = new .() ~ DeleteContainerAndItems!(_);
+
+	/// Slot-pooled storage for fire-and-forget one-shot sources. Each
+	/// slot's generation bumps when it's (re)assigned in PlayCue /
+	/// PlayOneShot; AudioPlaybackHandles are (slot, generation) pairs
+	/// the system validates against this list so a Stop call against a
+	/// long-finished playback can't kill a newer one that happens to
+	/// live in the same slot. Slots persist forever; their Source is
+	/// the field that gets created/deleted as playbacks come and go.
+	private class OneShotSlot
+	{
+		public AudioSource Source;
+		public uint32 Generation; // 0 = never assigned; otherwise current generation
+		public bool InUse;
+	}
+	private List<OneShotSlot> mOneShotSlots = new .() ~ {
+		for (let slot in _)
+		{
+			if (slot.Source != null) delete slot.Source;
+			delete slot;
+		}
+		delete _;
+	};
 	private List<SDL3AudioStream> mStreams = new .() ~ DeleteContainerAndItems!(_);
 	private float mMasterVolume = 1.0f;
 	private bool mOwnedAudioInit;
@@ -82,13 +103,15 @@ class SDL3AudioSystem : IAudioSystem
 		}
 		mSources.Clear();
 
-		for (let source in mOneShotSources)
+		for (let slot in mOneShotSlots)
 		{
-			source.Stop();
-			source.DisconnectFromBus();
-			delete source;
+			if (!slot.InUse || slot.Source == null) continue;
+			slot.Source.Stop();
+			slot.Source.DisconnectFromBus();
+			delete slot.Source;
+			slot.Source = null;
+			slot.InUse = false;
 		}
-		mOneShotSources.Clear();
 
 		for (let stream in mStreams)
 			delete stream;
@@ -162,10 +185,10 @@ class SDL3AudioSystem : IAudioSystem
 		}
 	}
 
-	public void PlayOneShot(AudioClip clip, float volume)
+	public AudioPlaybackHandle PlayOneShot(AudioClip clip, float volume)
 	{
 		if (mDeviceId == 0 || clip == null || !clip.IsLoaded)
-			return;
+			return .Invalid;
 
 		let source = new AudioSource();
 		source.IsOneShot = true;
@@ -174,13 +197,13 @@ class SDL3AudioSystem : IAudioSystem
 		source.Play(clip);
 		// Route enqueues the node connection for the mix thread
 		RouteSourceToBus(source);
-		mOneShotSources.Add(source);
+		return AllocOneShotSlot(source);
 	}
 
-	public void PlayOneShot3D(AudioClip clip, Vector3 position, float volume)
+	public AudioPlaybackHandle PlayOneShot3D(AudioClip clip, Vector3 position, float volume)
 	{
 		if (mDeviceId == 0 || clip == null || !clip.IsLoaded)
-			return;
+			return .Invalid;
 
 		let source = new AudioSource();
 		source.IsOneShot = true;
@@ -189,21 +212,21 @@ class SDL3AudioSystem : IAudioSystem
 		source.Update3D(mListener);
 		source.Play(clip);
 		RouteSourceToBus(source);
-		mOneShotSources.Add(source);
+		return AllocOneShotSlot(source);
 	}
 
 	private Random mCueRandom = new .() ~ delete _;
 	private float mCueTime;
 
-	public void PlayCue(SoundCue cue, float volume)
+	public AudioPlaybackHandle PlayCue(SoundCue cue, float volume)
 	{
 		if (mDeviceId == 0 || cue == null)
-			return;
+			return .Invalid;
 
 		if (let entry = cue.SelectEntry(mCueTime))
 		{
 			if (entry.Clip == null || !entry.Clip.IsLoaded)
-				return;
+				return .Invalid;
 
 			let source = new AudioSource();
 			source.IsOneShot = true;
@@ -212,20 +235,21 @@ class SDL3AudioSystem : IAudioSystem
 			source.BusName = cue.BusName;
 			source.Play(entry.Clip);
 			RouteSourceToBus(source);
-			mOneShotSources.Add(source);
 			cue.NotifyInstanceStarted();
+			return AllocOneShotSlot(source);
 		}
+		return .Invalid;
 	}
 
-	public void PlayCue3D(SoundCue cue, Vector3 position, float volume)
+	public AudioPlaybackHandle PlayCue3D(SoundCue cue, Vector3 position, float volume)
 	{
 		if (mDeviceId == 0 || cue == null)
-			return;
+			return .Invalid;
 
 		if (let entry = cue.SelectEntry(mCueTime))
 		{
 			if (entry.Clip == null || !entry.Clip.IsLoaded)
-				return;
+				return .Invalid;
 
 			let source = new AudioSource();
 			source.IsOneShot = true;
@@ -236,9 +260,65 @@ class SDL3AudioSystem : IAudioSystem
 			source.Update3D(mListener);
 			source.Play(entry.Clip);
 			RouteSourceToBus(source);
-			mOneShotSources.Add(source);
 			cue.NotifyInstanceStarted();
+			return AllocOneShotSlot(source);
 		}
+		return .Invalid;
+	}
+
+	/// Assigns `source` to the next available one-shot slot (growing
+	/// the slot list if needed), bumps the slot's generation, and
+	/// returns the resulting handle. Real generations start at 1 - the
+	/// `Generation == 0` slot state means "never used", which Invalid
+	/// (default-constructed) matches.
+	private AudioPlaybackHandle AllocOneShotSlot(AudioSource source)
+	{
+		// Find a free slot.
+		for (int i = 0; i < mOneShotSlots.Count; i++)
+		{
+			let slot = mOneShotSlots[i];
+			if (slot.InUse) continue;
+			slot.Source = source;
+			slot.Generation++;
+			if (slot.Generation == 0) slot.Generation = 1; // skip 0 on wrap
+			slot.InUse = true;
+			return .() { Slot = (uint32)i, Generation = slot.Generation };
+		}
+
+		// Grow.
+		let slot = new OneShotSlot();
+		slot.Source = source;
+		slot.Generation = 1;
+		slot.InUse = true;
+		mOneShotSlots.Add(slot);
+		return .() { Slot = (uint32)(mOneShotSlots.Count - 1), Generation = 1 };
+	}
+
+	/// Returns the slot backing `handle`, or null if the handle is
+	/// invalid, out-of-range, or has been recycled.
+	private OneShotSlot ResolveSlot(AudioPlaybackHandle handle)
+	{
+		if (!handle.IsValid) return null;
+		if (handle.Slot >= (uint32)mOneShotSlots.Count) return null;
+		let slot = mOneShotSlots[handle.Slot];
+		if (!slot.InUse || slot.Generation != handle.Generation) return null;
+		return slot;
+	}
+
+	public void Stop(AudioPlaybackHandle handle)
+	{
+		let slot = ResolveSlot(handle);
+		if (slot == null || slot.Source == null) return;
+		slot.Source.Stop();
+		// Slot stays InUse - Update() reclaims after the audio thread
+		// has settled (source.IsFinished + DisconnectFromBus + delete).
+	}
+
+	public bool IsPlaying(AudioPlaybackHandle handle)
+	{
+		let slot = ResolveSlot(handle);
+		if (slot == null || slot.Source == null) return false;
+		return !slot.Source.IsFinished;
 	}
 
 	public Result<AudioClip> LoadClip(Span<uint8> data)
@@ -336,8 +416,11 @@ class SDL3AudioSystem : IAudioSystem
 		// even after the device resumes the node mixes silence.
 		for (let source in mSources)
 			source.Stop();
-		for (let source in mOneShotSources)
-			source.Stop();
+		for (let slot in mOneShotSlots)
+		{
+			if (slot.InUse && slot.Source != null)
+				slot.Source.Stop();
+		}
 
 		if (mDeviceId != 0 && !wasPaused)
 			SDL3.SDL_ResumeAudioDevice(mDeviceId);
@@ -364,27 +447,32 @@ class SDL3AudioSystem : IAudioSystem
 			UpdateSourceBusRouting(source);
 		}
 
-		// Update and clean up one-shot sources
-		for (var i = mOneShotSources.Count - 1; i >= 0; i--)
+		// Update and clean up one-shot sources. Iterate slots rather
+		// than ripping the source out of the list - the slot has to
+		// stay around so future handles into the same slot index can
+		// be generation-checked against current state.
+		for (let slot in mOneShotSlots)
 		{
-			let source = mOneShotSources[i];
+			if (!slot.InUse || slot.Source == null) continue;
 
-			// Update 3D audio (distance attenuation + stereo panning)
+			let source = slot.Source;
 			source.Update3D(mListener);
-
-			// Update playback state
 			source.UpdateState();
 
-			// Clean up finished one-shots - enqueue disconnect, then delete
 			if (source.IsFinished)
 			{
-				mOneShotSources.RemoveAt(i);
 				let capturedSource = source;
 				mMixer.EnqueueCommand(new () =>
 					{
 						capturedSource.DisconnectFromBus();
 						delete capturedSource;
 					});
+				slot.Source = null;
+				slot.InUse = false;
+				// Generation isn't bumped here - it bumps on next
+				// assignment in AllocOneShotSlot. Any in-flight Stop
+				// against this handle becomes a safe no-op because
+				// ResolveSlot returns null when !InUse.
 			}
 		}
 

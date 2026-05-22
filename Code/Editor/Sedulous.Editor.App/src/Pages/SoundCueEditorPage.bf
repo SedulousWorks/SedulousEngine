@@ -28,6 +28,12 @@ class SoundCueEditorPage : IEditorPage
 	private EditorContext mEditorContext;
 	private bool mDirty;
 
+	// Handle to the in-flight preview, if any. Each Play overwrites the
+	// previous one's handle (the prior playback is stopped explicitly so
+	// holding multiple isn't useful). Stays at Invalid when nothing is
+	// playing; Stop() makes it Invalid again.
+	private AudioPlaybackHandle mPlayingHandle = .Invalid;
+
 	/// Rebuilds the entries list region. Set by the factory; invoked
 	/// (deferred via the UI mutation queue) after a structural change so
 	/// we never tear down the list from inside a row's own button event.
@@ -46,12 +52,10 @@ class SoundCueEditorPage : IEditorPage
 
 	public ~this()
 	{
-		// Stop any preview that's still playing BEFORE releasing the
-		// cue's clip refs. Otherwise the audio thread may still be
-		// mixing samples from a clip we're about to free, and we'll
-		// crash deep inside SourceNode.ProcessAudio.
-		if (mAudioSystem != null)
-			mAudioSystem.StopAll();
+		// Stop this page's own preview if it's still running. Closing
+		// the cue editor used to leave the auditioned sound playing to
+		// natural completion - now it cancels cleanly.
+		Stop();
 
 		if (mCueResource != null)
 			mCueResource.ReleaseRef();
@@ -109,9 +113,30 @@ class SoundCueEditorPage : IEditorPage
 	public void Play()
 	{
 		let cue = mCueResource?.Cue;
-		if (mAudioSystem != null && cue != null)
-			mAudioSystem.PlayCue(cue);
+		if (mAudioSystem == null || cue == null) return;
+
+		// Stop the previous preview before starting a new one - the
+		// page only ever has one playback in flight, and stacking
+		// auditions of the same cue tends to overdrive the bus.
+		if (mPlayingHandle.IsValid)
+			mAudioSystem.Stop(mPlayingHandle);
+
+		mPlayingHandle = mAudioSystem.PlayCue(cue);
 	}
+
+	/// Stops the currently-playing preview (if any). No-op when nothing
+	/// is playing. UI button in the cue page's preview region.
+	public void Stop()
+	{
+		if (mAudioSystem != null && mPlayingHandle.IsValid)
+			mAudioSystem.Stop(mPlayingHandle);
+		mPlayingHandle = .Invalid;
+	}
+
+	/// True while the most recent Play()'s playback is still emitting
+	/// samples. Goes false when playback finishes naturally or after
+	/// Stop is called.
+	public bool IsPlaying => mAudioSystem != null && mAudioSystem.IsPlaying(mPlayingHandle);
 
 	/// Re-resolves ClipRefs -> Entries[i].Clip via the resource system.
 	/// Without this Play Cue stays silent: SDL3AudioSystem.PlayCue returns

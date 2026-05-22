@@ -26,10 +26,12 @@ interface IAudioSystem : IDisposable
 	void DestroySource(IAudioSource source);
 
 	/// Plays an audio clip with fire-and-forget semantics (no source management needed).
-	void PlayOneShot(AudioClip clip, float volume = 1.0f);
+	/// Returns a handle that callers can pass to `Stop` if they later want to
+	/// cancel this specific playback; fire-and-forget callers ignore it.
+	AudioPlaybackHandle PlayOneShot(AudioClip clip, float volume = 1.0f);
 
 	/// Plays an audio clip at a 3D position with fire-and-forget semantics.
-	void PlayOneShot3D(AudioClip clip, Vector3 position, float volume = 1.0f);
+	AudioPlaybackHandle PlayOneShot3D(AudioClip clip, Vector3 position, float volume = 1.0f);
 
 	/// Loads an audio clip from raw audio file data (WAV format).
 	Result<AudioClip> LoadClip(Span<uint8> data);
@@ -40,10 +42,12 @@ interface IAudioSystem : IDisposable
 
 	/// Plays a sound cue with fire-and-forget semantics.
 	/// Selects an entry, applies randomization, routes to the cue's bus.
-	void PlayCue(SoundCue cue, float volume = 1.0f);
+	/// Returns a handle that callers can pass to `Stop` to cancel this
+	/// specific playback; fire-and-forget callers ignore it.
+	AudioPlaybackHandle PlayCue(SoundCue cue, float volume = 1.0f);
 
 	/// Plays a sound cue at a 3D position with fire-and-forget semantics.
-	void PlayCue3D(SoundCue cue, Vector3 position, float volume = 1.0f);
+	AudioPlaybackHandle PlayCue3D(SoundCue cue, Vector3 position, float volume = 1.0f);
 
 	/// Pauses all audio playback.
 	void PauseAll();
@@ -58,6 +62,16 @@ interface IAudioSystem : IDisposable
 	/// teardown sequences that free the AudioClips the graph was
 	/// referencing.
 	void StopAll();
+
+	/// Stops the specific one-shot playback identified by `handle`.
+	/// Silently no-ops when the handle has already expired (the slot
+	/// has been recycled for another playback) or was never valid.
+	void Stop(AudioPlaybackHandle handle);
+
+	/// Returns true if the one-shot identified by `handle` is still
+	/// playing. False after natural completion, after a Stop call, or
+	/// for an expired/invalid handle.
+	bool IsPlaying(AudioPlaybackHandle handle);
 
 	/// Updates the audio system, processing 3D spatialization and cleaning up finished one-shots.
 	/// Should be called once per frame.

@@ -197,36 +197,57 @@ class AudioSubsystem : Subsystem, ISceneAware
 	// ==================== One-Shot API ====================
 
 	/// Plays a clip once with fire-and-forget (no component needed).
-	/// Volume is the per-source volume; bus volumes are applied by the graph.
-	public void PlayOneShot(AudioClip clip, float volume = 1.0f)
+	/// Returns a handle that can later be passed to `Stop` to cancel
+	/// this specific playback; fire-and-forget callers ignore it.
+	public AudioPlaybackHandle PlayOneShot(AudioClip clip, float volume = 1.0f)
 	{
 		if (mAudioSystem != null)
-			mAudioSystem.PlayOneShot(clip, volume);
+			return mAudioSystem.PlayOneShot(clip, volume);
+		return .Invalid;
 	}
 
 	/// Plays a clip at a 3D position with fire-and-forget.
-	/// Volume is the per-source volume; bus volumes are applied by the graph.
-	public void PlayOneShot3D(AudioClip clip, Vector3 position, float volume = 1.0f)
+	public AudioPlaybackHandle PlayOneShot3D(AudioClip clip, Vector3 position, float volume = 1.0f)
 	{
 		if (mAudioSystem != null)
-			mAudioSystem.PlayOneShot3D(clip, position, volume);
+			return mAudioSystem.PlayOneShot3D(clip, position, volume);
+		return .Invalid;
 	}
 
 	// ==================== Sound Cue API ====================
 
 	/// Plays a sound cue with fire-and-forget semantics.
 	/// Selects entry, applies volume/pitch randomization, routes to cue's bus.
-	public void PlayCue(SoundCue cue, float volume = 1.0f)
+	public AudioPlaybackHandle PlayCue(SoundCue cue, float volume = 1.0f)
 	{
 		if (mAudioSystem != null)
-			mAudioSystem.PlayCue(cue, volume);
+			return mAudioSystem.PlayCue(cue, volume);
+		return .Invalid;
 	}
 
 	/// Plays a sound cue at a 3D position with fire-and-forget.
-	public void PlayCue3D(SoundCue cue, Vector3 position, float volume = 1.0f)
+	public AudioPlaybackHandle PlayCue3D(SoundCue cue, Vector3 position, float volume = 1.0f)
 	{
 		if (mAudioSystem != null)
-			mAudioSystem.PlayCue3D(cue, position, volume);
+			return mAudioSystem.PlayCue3D(cue, position, volume);
+		return .Invalid;
+	}
+
+	/// Stops a specific playback identified by `handle`. Safe no-op if
+	/// the handle has expired or was never valid.
+	public void Stop(AudioPlaybackHandle handle)
+	{
+		if (mAudioSystem != null)
+			mAudioSystem.Stop(handle);
+	}
+
+	/// Returns true if the playback identified by `handle` is still
+	/// emitting samples.
+	public bool IsPlaying(AudioPlaybackHandle handle)
+	{
+		if (mAudioSystem != null)
+			return mAudioSystem.IsPlaying(handle);
+		return false;
 	}
 
 	/// Stops every active source. Used by editor pages to cancel
