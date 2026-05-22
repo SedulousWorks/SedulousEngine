@@ -13,6 +13,7 @@ using Sedulous.Resources;
 using Sedulous.Textures.Importer;
 using Sedulous.Textures.Resources;
 using Sedulous.VFS;
+using Sedulous.Serialization;
 
 /// Builds and persists the engine's default `builtin://` asset set. Lives
 /// in its own file so EditorApplication doesn't accumulate every new
