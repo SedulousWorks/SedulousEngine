@@ -43,6 +43,11 @@ class ThumbnailRequest
 	public bool OwnsCallback = true;
 	public bool Cancelled;
 	public ThumbnailRequest* OwnerSlot;
+
+	/// Completion delegate handed to an async generator. Owned by the
+	/// request so the service can free it after the generator's callback
+	/// fires. Null for sync generators.
+	public delegate void(OwnedImageData) AsyncCompletion ~ if (_ != null) delete _;
 }
 
 /// Asset thumbnail cache + dispatcher. Cells call `Request` to get a thumbnail
@@ -76,6 +81,24 @@ class ThumbnailService
 		// outliving the service don't see a dangling pointer, then free the
 		// requests themselves (the queue destructor only frees its own
 		// internal array; without this the queued requests leak).
+		for (let req in _)
+		{
+			if (req.OwnerSlot != null) *req.OwnerSlot = null;
+			delete req;
+		}
+		delete _;
+	};
+
+	/// Requests currently dispatched to async generators - kept alive
+	/// until the generator's completion callback fires. On shutdown we
+	/// null OwnerSlot pointers (so any surviving cells don't dereference
+	/// freed memory) and free the requests outright. The generator's
+	/// closure still references the freed request, so the editor must
+	/// drain in-flight async work before destroying the service - the
+	/// editor's shutdown sequence guarantees the GPU is idle and all
+	/// pending CompleteAsync callbacks have fired before this point.
+	/// The list is owning so each surviving request is freed here too.
+	private List<ThumbnailRequest> mInFlightAsync = new .() ~ {
 		for (let req in _)
 		{
 			if (req.OwnerSlot != null) *req.OwnerSlot = null;
@@ -120,19 +143,35 @@ class ThumbnailService
 	}
 
 	/// Drain up to `MaxRequestsPerFrame` pending requests. Call once per
-	/// frame from the main thread.
+	/// frame from the main thread. Snapshots the queue size at the top
+	/// so requests requeued during this tick (e.g., async generator
+	/// declined transiently) wait until next frame instead of being
+	/// re-processed in a loop.
 	public void Update()
 	{
-		int processed = 0;
-		while (mPending.Count > 0 && processed < MaxRequestsPerFrame)
+		// Process up to MaxRequestsPerFrame NON-cancelled requests per
+		// frame. Cancellations are essentially free (just delete) so
+		// we don't count them against the budget - otherwise asset
+		// cells that rebind every frame (e.g., scroll, layout pass)
+		// fill the queue with stale cancellations that crowd out real
+		// work. `MaxPopsPerFrame` caps absolute popping so a huge
+		// queue of cancellations doesn't burn an entire frame.
+		// `snapshotCount` ensures requests requeued by declined async
+		// generators wait until next frame rather than spinning.
+		const int32 MaxPopsPerFrame = 64;
+		var slotsLeft = MaxRequestsPerFrame;
+		var popsLeft = MaxPopsPerFrame;
+		let snapshotCount = mPending.Count;
+		var popped = 0;
+		while (slotsLeft > 0 && popsLeft > 0 && popped < snapshotCount && mPending.Count > 0)
 		{
 			let req = mPending.PopFront();
-			// Snapshot Cancelled before FinalizeRequest - it deletes req,
-			// so we can't read req.Cancelled afterwards.
+			popsLeft--;
+			popped++;
 			let wasCancelled = req.Cancelled;
-			FinalizeRequest(req); // nulls OwnerSlot (if any), runs work, deletes req
+			FinalizeRequest(req); // sync path: deletes req. Async: keeps it alive or re-queues.
 			if (!wasCancelled)
-				processed++;
+				slotsLeft--;
 		}
 	}
 
@@ -206,8 +245,9 @@ class ThumbnailService
 	}
 
 	/// Common cleanup path - nulls OwnerSlot, runs ProcessRequest if the
-	/// request wasn't cancelled, deletes the request. Update calls this
-	/// per popped item.
+	/// request wasn't cancelled. Sync requests are deleted here; async
+	/// requests are transferred to mInFlightAsync and deleted when the
+	/// generator's completion callback fires.
 	private void FinalizeRequest(ThumbnailRequest req)
 	{
 		// Null out the cell's handle BEFORE running the callback or deleting
@@ -219,10 +259,17 @@ class ThumbnailService
 			req.OwnerSlot = null;
 		}
 
-		if (!req.Cancelled)
-			ProcessRequest(req);
+		if (req.Cancelled)
+		{
+			delete req;
+			return;
+		}
 
-		delete req;
+		// Process the request; sync generators run inline, async ones hold
+		// onto `req` via mInFlightAsync until their completion fires.
+		bool ownedByService = ProcessRequest(req);
+		if (!ownedByService)
+			delete req;
 	}
 
 	/// Discard the cached thumbnail for an asset (memory + disk). Useful
@@ -248,24 +295,56 @@ class ThumbnailService
 
 	// ==================== Internals ====================
 
-	private void ProcessRequest(ThumbnailRequest req)
+	/// Runs the generator for this request. Returns true if the service
+	/// now owns the request (async path; caller must NOT delete it - the
+	/// async completion will), false if the request has been resolved
+	/// synchronously and the caller should delete it.
+	private bool ProcessRequest(ThumbnailRequest req)
 	{
 		// Disk-cache hit + fresh -> load and serve.
 		if (TryLoadFromDisk(req, var loaded))
 		{
-			mCache[req.Id] = loaded;
+			InsertOrReplaceCache(req.Id, loaded);
 			req.OnReady(loaded.Drawable);
-			return;
+			return false;
 		}
 
-		// Generate via the registered per-extension generator.
 		let gen = mContext.GetThumbnailGenerator(req.Extension);
 		if (gen == null)
 		{
 			req.OnReady(null);
-			return;
+			return false;
 		}
 
+		// Async generator: dispatch and keep `req` alive in mInFlightAsync.
+		// The completion callback we hand the generator owns delivery +
+		// cleanup; service deletes both the request and the callback after
+		// the generator invokes it.
+		if (let asyncGen = gen as IAsyncAssetThumbnailGenerator)
+		{
+			// Stash the delegate on the request so the request's destructor
+			// frees it (Beef requires explicit delete for `new` delegates).
+			req.AsyncCompletion = new (data) => CompleteAsyncRequest(req, data);
+			if (asyncGen.GenerateThumbnailAsync(req.Uri, req.Width, req.Height, req.AsyncCompletion))
+			{
+				// Accepted; the completion callback will fire on a later
+				// frame and finalize the request.
+				mInFlightAsync.Add(req);
+				return true;
+			}
+
+			// Declined transiently (e.g., GPU renderer already has a job
+			// in flight). Re-queue at the back of mPending so other items
+			// get a chance first, then we try again next frame. Free the
+			// completion delegate the generator didn't get to use; a new
+			// one will be created when we retry.
+			delete req.AsyncCompletion;
+			req.AsyncCompletion = null;
+			mPending.Add(req);
+			return true; // service still owns req via mPending
+		}
+
+		// Sync generator path.
 		OwnedImageData data = null;
 		if (gen.GenerateThumbnail(req.Uri, req.Width, req.Height) case .Ok(let result))
 			data = result;
@@ -274,9 +353,48 @@ class ThumbnailService
 		{
 			mLogger?.LogWarning("Thumbnail generation failed for {} (extension {})", req.Uri, req.Extension);
 			req.OnReady(null);
+			return false;
+		}
+
+		FinishAsImage(req, data);
+		return false;
+	}
+
+	/// Completes an async request after the generator delivers pixel data.
+	/// Runs on the editor's main thread (the async generator is responsible
+	/// for marshalling there). Handles both success (data != null) and
+	/// failure (data == null) paths, and the cancellation race where the
+	/// cell was unbound while GPU work was in flight.
+	private void CompleteAsyncRequest(ThumbnailRequest req, OwnedImageData data)
+	{
+		// Remove from in-flight tracking. If we can't find it, it's already
+		// been removed (shouldn't happen, but be defensive).
+		mInFlightAsync.Remove(req);
+
+		if (req.Cancelled)
+		{
+			// Cell unbound while GPU work was running; drop the pixels.
+			if (data != null) delete data;
+			delete req;
 			return;
 		}
 
+		if (data == null)
+		{
+			mLogger?.LogWarning("Async thumbnail generation failed for {} (extension {})", req.Uri, req.Extension);
+			req.OnReady(null);
+			delete req;
+			return;
+		}
+
+		FinishAsImage(req, data);
+		delete req;
+	}
+
+	/// Shared finalization for sync + async success paths: build the
+	/// cached entry, save it to disk, and deliver the drawable.
+	private void FinishAsImage(ThumbnailRequest req, OwnedImageData data)
+	{
 		let drawable = new ImageDrawable(data);
 		let entry = new CachedThumbnail();
 		entry.Id = req.Id;
@@ -286,9 +404,20 @@ class ThumbnailService
 		entry.Height = req.Height;
 		entry.SourceMtime = GetSourceMtime(req.Uri);
 
-		mCache[req.Id] = entry;
+		InsertOrReplaceCache(req.Id, entry);
 		SaveToDisk(req, entry);
 		req.OnReady(drawable);
+	}
+
+	/// Insert into mCache, deleting any prior entry for the same id so it
+	/// doesn't leak. Dictionary indexer assignment overwrites the value
+	/// without disposing the old one, which is a problem here since the
+	/// values are owning class references.
+	private void InsertOrReplaceCache(Guid id, CachedThumbnail entry)
+	{
+		if (mCache.TryGetValue(id, let existing))
+			delete existing;
+		mCache[id] = entry;
 	}
 
 	/// Last-write-time of the source file, or 0 if we can't tell (synthetic

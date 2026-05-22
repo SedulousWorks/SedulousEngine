@@ -79,6 +79,12 @@ class EditorApplication : Application, IDockableWindowHost
 	private TrueTypeFontService mFontService ~ delete _;
 	private VGContext mVGContext ~ delete _;
 	private VGRenderer mVGRenderer;
+
+	// GPU thumbnail renderer for mesh/material/scene/prefab/etc. Created
+	// after the RuntimeContext starts (so SceneSubsystem + ISceneRenderer
+	// are available). Owned by the editor; generators borrow a reference
+	// through their constructors.
+	private ThumbnailRenderer mThumbnailRenderer ~ delete _;
 	private VGExternalTextureCache mExternalTextureCache = new .() ~ delete _;
 	private ShaderSystem mShaderSystem;
 	private ShellClipboardAdapter mClipboard ~ delete _;
@@ -289,10 +295,23 @@ class EditorApplication : Application, IDockableWindowHost
 		// thumbnail generator).
 		BakedFonts.Initialize(ResourceSystem);
 
+		// Create the GPU thumbnail renderer. Needs SceneSubsystem +
+		// ISceneRenderer from the RuntimeContext (already started above)
+		// and the application's Device. Generators that produce 3D
+		// thumbnails take this through their constructor.
+		{
+			let sceneSub = mRuntimeContext.GetSubsystem<SceneSubsystem>();
+			let sceneRenderer = mRuntimeContext.GetSubsystemByInterface<ISceneRenderer>();
+			if (sceneSub != null && sceneRenderer != null)
+				mThumbnailRenderer = new ThumbnailRenderer(sceneSub, sceneRenderer, Device);
+		}
+
 		// Register asset thumbnail generators. Only registered extensions
 		// generate thumbnails - everything else stays on its default icon.
 		mEditorContext.RegisterThumbnailGenerator(".texture", new TextureThumbnailGenerator(ResourceSystem));
 		mEditorContext.RegisterThumbnailGenerator(".font", new FontThumbnailGenerator(ResourceSystem));
+		if (mThumbnailRenderer != null)
+			mEditorContext.RegisterThumbnailGenerator(".mesh", new MeshThumbnailGenerator(ResourceSystem, mThumbnailRenderer, mEditorLogger));
 
 		// Register built-in page factories
 		mEditorContext.RegisterPageFactory(new SceneEditorPageFactory(
@@ -1382,6 +1401,13 @@ class EditorApplication : Application, IDockableWindowHost
 		// Flush buffered log messages to the LogView on the main thread.
 		mLogBuffer.Flush();
 
+		// TickReadback first so a finished GPU thumbnail clears the
+		// renderer's in-flight slot BEFORE the service tries to
+		// dispatch the next request. Otherwise we lose a frame per
+		// thumbnail (service sees busy, then we clear it - same frame
+		// wasted).
+		mThumbnailRenderer?.TickReadback(mFrameFence);
+
 		// Process queued thumbnail requests (throttled per frame inside Update).
 		mEditorContext.Thumbnails?.Update();
 
@@ -1431,6 +1457,13 @@ class EditorApplication : Application, IDockableWindowHost
 			sceneRenderer.BeginRendering(encoder, frame.FrameIndex);
 
 		RenderActiveViewports(encoder, frame.FrameIndex);
+
+		// Drive GPU thumbnail rendering inside the same Begin/End scope as
+		// the viewports. `mNextFenceValue` is the value the editor's
+		// submission for this frame will signal; ThumbnailRenderer records
+		// it so TickReadback (called at frame start) knows when to read.
+		if (mThumbnailRenderer != null && sceneRenderer != null)
+			mThumbnailRenderer.RenderPending(encoder, frame.FrameIndex, mNextFenceValue);
 
 		if (sceneRenderer != null)
 			sceneRenderer.EndRendering();
@@ -1729,6 +1762,11 @@ class EditorApplication : Application, IDockableWindowHost
 
 		// Clean up editor context
 		mEditorContext.Dispose();
+
+		// Tear down the thumbnail renderer's scene BEFORE the runtime
+		// context's SceneSubsystem is destroyed - the renderer's
+		// destructor can't safely touch SceneSubsystem after that point.
+		mThumbnailRenderer?.Shutdown();
 
 		// Clean up runtime context (must be deleted before Device is destroyed
 		// since its subsystems share the Device).
