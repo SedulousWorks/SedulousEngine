@@ -303,7 +303,7 @@ class EditorApplication : Application, IDockableWindowHost
 			let sceneSub = mRuntimeContext.GetSubsystem<SceneSubsystem>();
 			let sceneRenderer = mRuntimeContext.GetSubsystemByInterface<ISceneRenderer>();
 			if (sceneSub != null && sceneRenderer != null)
-				mThumbnailRenderer = new ThumbnailRenderer(sceneSub, sceneRenderer, Device);
+				mThumbnailRenderer = new ThumbnailRenderer(sceneSub, sceneRenderer, Device, ResourceSystem);
 		}
 
 		// Register asset thumbnail generators. Only registered extensions
@@ -311,7 +311,10 @@ class EditorApplication : Application, IDockableWindowHost
 		mEditorContext.RegisterThumbnailGenerator(".texture", new TextureThumbnailGenerator(ResourceSystem));
 		mEditorContext.RegisterThumbnailGenerator(".font", new FontThumbnailGenerator(ResourceSystem));
 		if (mThumbnailRenderer != null)
+		{
 			mEditorContext.RegisterThumbnailGenerator(".mesh", new MeshThumbnailGenerator(ResourceSystem, mThumbnailRenderer, mEditorLogger));
+			mEditorContext.RegisterThumbnailGenerator(".material", new MaterialThumbnailGenerator(ResourceSystem, mThumbnailRenderer, mEditorLogger));
+		}
 
 		// Register built-in page factories
 		mEditorContext.RegisterPageFactory(new SceneEditorPageFactory(

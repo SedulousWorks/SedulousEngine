@@ -98,6 +98,14 @@ class MeshThumbnailGenerator : IAssetThumbnailGenerator, IAsyncAssetThumbnailGen
 				var meshRef = ResourceRef(meshId, assetPath);
 				comp.SetMeshRef(meshRef);
 				meshRef.Dispose();
+
+				// Clear any material ref left over from a prior material
+				// thumbnail render. Without this, .mesh previews would
+				// inherit the last-rendered .material when the persistent
+				// entity is shared between generators.
+				var emptyMatRef = ResourceRef();
+				comp.SetMaterialRef(0, emptyMatRef);
+				emptyMatRef.Dispose();
 			}
 		};
 

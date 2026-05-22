@@ -9,6 +9,8 @@ using Sedulous.Engine.Core;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Renderer;
 using Sedulous.Renderer;
+using Sedulous.Resources;
+using Sedulous.Geometry.Resources;
 using Sedulous.Images;
 using Sedulous.Editor.Core;
 
@@ -45,6 +47,13 @@ public class ThumbnailRenderer
 	private SceneSubsystem mSceneSubsystem; // not owned
 	private ISceneRenderer mSceneRenderer; // not owned
 	private IDevice mDevice; // not owned
+	private ResourceSystem mResourceSystem; // not owned
+
+	// Built-in sphere mesh registered with the resource system at startup.
+	// AddResource returns a handle that the caller must retain and Release
+	// on shutdown - otherwise the resource leaks (the cache holds a ref
+	// but never drops it on its own). Released in Shutdown.
+	private ResourceHandle<StaticMeshResource> mSphereMesh;
 
 	// Persistent thumbnail Scene. Created via SceneSubsystem so the
 	// renderer's per-scene modules and Pipeline get set up. We swap
@@ -84,13 +93,25 @@ public class ThumbnailRenderer
 	// MeshComponent inside the build closure.
 	public EntityHandle AssetEntity { get; private set; }
 
-	public this(SceneSubsystem sceneSubsystem, ISceneRenderer sceneRenderer, IDevice device)
+	/// GUID of the built-in unit sphere mesh registered with the resource
+	/// system. Generators that want stock geometry (material previews,
+	/// etc.) build a `ResourceRef(SphereMeshId, "")` and assign it to the
+	/// asset entity's MeshComponent.
+	public Guid SphereMeshId { get; private set; }
+
+	public this(SceneSubsystem sceneSubsystem, ISceneRenderer sceneRenderer, IDevice device, ResourceSystem resourceSystem)
 	{
 		mSceneSubsystem = sceneSubsystem;
 		mSceneRenderer = sceneRenderer;
 		mDevice = device;
+		mResourceSystem = resourceSystem;
 
 		mScene = sceneSubsystem.CreateScene("__Thumbnails__");
+
+		// Procedurally generate the built-in sphere mesh and register it
+		// so generators can reference it via ResourceRef without shipping
+		// a `.mesh` asset for primitives.
+		CreateSphereMesh();
 
 		// Add a default directional light entity to the thumbnail scene so
 		// the rendered asset isn't a black silhouette. Light orientation is
@@ -140,6 +161,12 @@ public class ThumbnailRenderer
 			mScene = null;
 		}
 		mSceneSubsystem = null;
+
+		// Drop our reference to the built-in sphere resource. AddResource
+		// returned a handle the caller must release; without this the
+		// procedural sphere mesh + its vertex/index data leak on shutdown.
+		mSphereMesh.Release();
+		mResourceSystem = null;
 
 		// Release GPU resources while IDevice is still alive.
 		if (mColorView != null) mDevice.DestroyTextureView(ref mColorView);
@@ -394,5 +421,18 @@ public class ThumbnailRenderer
 				light.CastsShadows = false;
 			}
 		}
+	}
+
+	private void CreateSphereMesh()
+	{
+		// Procedurally build a unit-diameter sphere (radius 0.5 → bounds
+		// fit in the [-0.5, 0.5] cube, matching the framing math the mesh
+		// generator already uses). AddResource caches by GUID with no
+		// URI so a ResourceRef(SphereMeshId, "") resolves through the
+		// usual RenderResourceResolver path.
+		let sphere = StaticMeshResource.CreateSphere();
+		SphereMeshId = sphere.Id;
+		if (mResourceSystem.AddResource<StaticMeshResource>(sphere) case .Ok(let handle))
+			mSphereMesh = handle;
 	}
 }
