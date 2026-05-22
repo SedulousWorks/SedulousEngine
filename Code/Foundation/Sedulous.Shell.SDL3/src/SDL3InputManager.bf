@@ -12,7 +12,17 @@ class SDL3InputManager : IInputManager
 	private SDL3Mouse mMouse = new .() ~ delete _;
 	private SDL3Touch mTouch = new .() ~ delete _;
 	private List<SDL3Gamepad> mGamepads = new .() ~ DeleteContainerAndItems!(_);
-	private List<String> mDroppedFiles = new .() ~ DeleteContainerAndItems!(_);
+
+	private struct DroppedFile
+	{
+		public String Path;
+		public float X;
+		public float Y;
+	}
+	private List<DroppedFile> mDroppedFiles = new .() ~ {
+		for (let d in _) delete d.Path;
+		delete _;
+	};
 
 	public const int MaxGamepads = 8;
 
@@ -41,8 +51,21 @@ class SDL3InputManager : IInputManager
 	public StringView GetDroppedFile(int index)
 	{
 		if (index >= 0 && index < mDroppedFiles.Count)
-			return mDroppedFiles[index];
+			return mDroppedFiles[index].Path;
 		return default;
+	}
+
+	public bool TryGetDroppedFilePosition(int index, out float x, out float y)
+	{
+		if (index >= 0 && index < mDroppedFiles.Count)
+		{
+			let d = mDroppedFiles[index];
+			x = d.X;
+			y = d.Y;
+			return true;
+		}
+		x = 0; y = 0;
+		return false;
 	}
 
 	public void Update()
@@ -58,8 +81,9 @@ class SDL3InputManager : IInputManager
 		for (let gamepad in mGamepads)
 			gamepad.BeginFrame();
 
-		// Clear dropped files from previous frame
-		ClearAndDeleteItems(mDroppedFiles);
+		// Clear dropped files from previous frame.
+		for (let d in mDroppedFiles) delete d.Path;
+		mDroppedFiles.Clear();
 	}
 
 	/// Sets the focus window for mouse relative mode.
@@ -170,7 +194,7 @@ class SDL3InputManager : IInputManager
 		if (e.data != null)
 		{
 			let path = new String(StringView(e.data));
-			mDroppedFiles.Add(path);
+			mDroppedFiles.Add(.() { Path = path, X = e.x, Y = e.y });
 		}
 	}
 

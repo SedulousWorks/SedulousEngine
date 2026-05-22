@@ -28,6 +28,12 @@ public interface IInputManager
 	/// Returns null if index is out of range.
 	StringView GetDroppedFile(int index);
 
+	/// Gets the window-relative cursor position (physical pixels) for the
+	/// dropped file at `index`. Returns false if the index is out of range.
+	/// Callers that hit-test against UI views must divide by the window's
+	/// ContentScale to get logical coordinates.
+	bool TryGetDroppedFilePosition(int index, out float x, out float y);
+
 	/// Updates input state. Called once per frame after processing events.
 	void Update();
 }
