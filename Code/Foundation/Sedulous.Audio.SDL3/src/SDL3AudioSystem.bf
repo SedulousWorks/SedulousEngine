@@ -322,6 +322,27 @@ class SDL3AudioSystem : IAudioSystem
 		}
 	}
 
+	public void StopAll()
+	{
+		// Pause the device first so the audio thread can't be mid-mix
+		// while we mutate source state. We resume only if we were
+		// running before; this is a quiescence step, not a user-visible
+		// pause.
+		bool wasPaused = mPaused;
+		if (mDeviceId != 0 && !wasPaused)
+			SDL3.SDL_PauseAudioDevice(mDeviceId);
+
+		// Each source.Stop() nulls the SourceNode's mClip + mPlaying so
+		// even after the device resumes the node mixes silence.
+		for (let source in mSources)
+			source.Stop();
+		for (let source in mOneShotSources)
+			source.Stop();
+
+		if (mDeviceId != 0 && !wasPaused)
+			SDL3.SDL_ResumeAudioDevice(mDeviceId);
+	}
+
 	public void Update()
 	{
 		// Update 3D parameters - these write floats to nodes, safe without locking

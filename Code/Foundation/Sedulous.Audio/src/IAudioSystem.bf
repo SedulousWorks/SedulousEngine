@@ -51,6 +51,14 @@ interface IAudioSystem : IDisposable
 	/// Resumes all audio playback.
 	void ResumeAll();
 
+	/// Stops every active source - both long-lived sources created via
+	/// CreateSource and fire-and-forget one-shots from PlayOneShot /
+	/// PlayCue. After this returns, no graph nodes are reading clip
+	/// samples and the audio thread emits silence. Useful before
+	/// teardown sequences that free the AudioClips the graph was
+	/// referencing.
+	void StopAll();
+
 	/// Updates the audio system, processing 3D spatialization and cleaning up finished one-shots.
 	/// Should be called once per frame.
 	void Update();

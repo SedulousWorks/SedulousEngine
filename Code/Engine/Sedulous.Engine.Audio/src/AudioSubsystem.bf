@@ -229,6 +229,16 @@ class AudioSubsystem : Subsystem, ISceneAware
 			mAudioSystem.PlayCue3D(cue, position, volume);
 	}
 
+	/// Stops every active source. Used by editor pages to cancel
+	/// previews on close, and by editor shutdown to silence the audio
+	/// thread before resource teardown frees the AudioClips the graph
+	/// was referencing.
+	public void StopAll()
+	{
+		if (mAudioSystem != null)
+			mAudioSystem.StopAll();
+	}
+
 	// ==================== Internal ====================
 
 	private void SyncMusicVolume()

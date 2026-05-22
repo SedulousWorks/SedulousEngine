@@ -46,6 +46,13 @@ class SoundCueEditorPage : IEditorPage
 
 	public ~this()
 	{
+		// Stop any preview that's still playing BEFORE releasing the
+		// cue's clip refs. Otherwise the audio thread may still be
+		// mixing samples from a clip we're about to free, and we'll
+		// crash deep inside SourceNode.ProcessAudio.
+		if (mAudioSystem != null)
+			mAudioSystem.StopAll();
+
 		if (mCueResource != null)
 			mCueResource.ReleaseRef();
 	}

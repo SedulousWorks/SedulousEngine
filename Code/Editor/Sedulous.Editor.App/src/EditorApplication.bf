@@ -307,6 +307,7 @@ class EditorApplication : Application, IDockableWindowHost
 		mEditorContext.RegisterThumbnailGenerator(".texture", new TextureThumbnailGenerator(ResourceSystem));
 		mEditorContext.RegisterThumbnailGenerator(".font", new FontThumbnailGenerator(ResourceSystem));
 		mEditorContext.RegisterThumbnailGenerator(".audioclip", new AudioClipThumbnailGenerator(ResourceSystem, mEditorLogger));
+		mEditorContext.RegisterThumbnailGenerator(".soundcue", new SoundCueThumbnailGenerator(ResourceSystem, mEditorLogger));
 		if (mThumbnailRenderer != null)
 		{
 			mEditorContext.RegisterThumbnailGenerator(".mesh", new MeshThumbnailGenerator(ResourceSystem, mThumbnailRenderer, mEditorLogger));
@@ -1611,6 +1612,16 @@ class EditorApplication : Application, IDockableWindowHost
 		// Save editor state before shutting down
 		SaveEditorLayout();
 		SaveOpenPages();
+
+		// Silence the audio system before anything starts releasing
+		// resources. Pages own SoundCue / AudioClip refs and the audio
+		// thread holds raw AudioClip pointers via SourceNode; if we
+		// free clips while the graph is still mixing them we UAF in
+		// SourceNode.ProcessAudio. Pages also call StopAll on their
+		// own destructors, but doing it once up here is the
+		// defense-in-depth.
+		if (let audio = mRuntimeContext?.GetSubsystem<Sedulous.Engine.Audio.AudioSubsystem>())
+			audio.StopAll();
 
 		// Shutdown plugins
 		mEditorContext.PluginRegistry.ShutdownAll();
