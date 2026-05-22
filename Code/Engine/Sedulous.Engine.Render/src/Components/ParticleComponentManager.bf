@@ -114,17 +114,19 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 			let state = GetOrCreateResolveState(comp.Owner);
 
 			// --- Resolve effect resource ---
-			if (comp.Instance == null && comp.EffectRef.IsValid)
+			// Drive everything through ResolvedResource.Resolve - it
+			// returns true only when the *resolved* state actually
+			// changes (load, ref swap, hot reload, or ref-cleared-after-
+			// being-resolved). For programmatic-only effects the ref is
+			// never valid and Resolve returns false, so we leave the
+			// app-managed Instance alone.
+			if (state.Effect.Resolve(Resolver.ResourceSystem, comp.EffectRef))
 			{
-				if (state.Effect.Resolve(Resolver.ResourceSystem, comp.EffectRef))
-				{
-					// Effect resource changed - create a new runtime instance
-					let effectResource = state.Effect.Handle.Resource;
-					if (effectResource != null && effectResource.Effect != null)
-					{
-						comp.SetEffect(effectResource.Effect);
-					}
-				}
+				let effectResource = state.Effect.Handle.IsValid ? state.Effect.Handle.Resource : null;
+				if (effectResource != null && effectResource.Effect != null)
+					comp.SetEffect(effectResource.Effect);
+				else
+					comp.SetEffect(null);
 			}
 
 			// Skip texture/material resolution if no effect instance yet
@@ -505,7 +507,20 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 	{
 		let key = MakeRenderStateKey(entity, systemIndex);
 		if (mRenderStates.TryGetValue(key, let existing))
-			return existing;
+		{
+			// Re-use the cached state only if its vertex buffer can hold
+			// `maxParticles`. The cache is keyed on entity+system index,
+			// so an entity whose effect changes (e.g. asset thumbnail
+			// renderer cycling effects on a persistent entity) can
+			// produce a system with a higher MaxParticles than the
+			// originally-sized buffer. Without this check, ParticleRender-
+			// Extractor.Extract walks past the end of Vertices.
+			if (existing.MaxParticles >= maxParticles)
+				return existing;
+
+			delete existing;
+			mRenderStates.Remove(key);
+		}
 
 		let state = new ParticleRenderState(maxParticles);
 		mRenderStates[key] = state;
@@ -544,10 +559,15 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 class ParticleRenderState
 {
 	public ParticleRenderData RenderData ~ delete _;
+	/// Capacity the underlying vertex buffers were sized for. Used by
+	/// the manager to detect when a re-cached entity's system has grown
+	/// beyond the existing buffer and a fresh state is needed.
+	public int32 MaxParticles { get; private set; }
 
 	public this(int32 maxParticles)
 	{
 		RenderData = new ParticleRenderData(maxParticles);
+		MaxParticles = maxParticles;
 	}
 }
 
