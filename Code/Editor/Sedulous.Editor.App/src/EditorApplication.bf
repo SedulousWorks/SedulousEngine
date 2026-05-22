@@ -27,13 +27,9 @@ using Sedulous.Engine.Core.Resources;
 using Sedulous.Engine;
 using Sedulous.Engine.Render;
 using Sedulous.Geometry.Resources;
-using Sedulous.Particles;
-using Sedulous.Particles.Resources;
 using Sedulous.Resources;
 using Sedulous.VFS;
 using Sedulous.VFS.Disk;
-using Sedulous.Textures.Importer;
-using Sedulous.Textures.Resources;
 using Sedulous.Engine.Navigation;
 using Sedulous.Engine.Audio;
 using Sedulous.Audio;
@@ -46,8 +42,6 @@ using Sedulous.Models.GLTF;
 using Sedulous.Images.STB;
 using System.IO;
 using Sedulous.Serialization;
-using Sedulous.Materials;
-using Sedulous.Materials.Resources;
 using Sedulous.Editor.App.Pages;
 
 /// The Sedulous Editor application.
@@ -997,44 +991,15 @@ class EditorApplication : Application, IDockableWindowHost
 
 	// ==================== Default Assets ====================
 
-	/// Stable GUIDs for built-in assets. Hardcoded so the GUIDs survive
-	/// regeneration (delete `builtin.registry`, fresh checkout, different
-	/// dev machine) and project assets that reference defaults by ID
-	/// never go stale. Once a GUID is shipped here, treat it as a public
-	/// API - changing it breaks every reference downstream.
-	private static readonly Guid BuiltinPlaneMeshId         = Guid.Parse("afda3f71-a2d6-479b-8564-7e343f22d12f").GetValueOrDefault();
-	private static readonly Guid BuiltinCubeMeshId          = Guid.Parse("5763a2f1-580a-49bb-a439-9fbd25f82015").GetValueOrDefault();
-	private static readonly Guid BuiltinSphereMeshId        = Guid.Parse("dc1de03f-efd4-453e-8007-b2c66374cbb1").GetValueOrDefault();
-	private static readonly Guid BuiltinDefaultMaterialId   = Guid.Parse("107f851e-6e86-4c3a-b5c8-bc75a0f1e25f").GetValueOrDefault();
-	private static readonly Guid BuiltinDefaultUnlitId      = Guid.Parse("54e50e89-eb97-4631-a1e2-ffb3b297b68a").GetValueOrDefault();
-	private static readonly Guid BuiltinRealisticSkyId      = Guid.Parse("5653f8c1-87c0-4855-9498-504ac8e67832").GetValueOrDefault();
-	private static readonly Guid BuiltinStylizedSkyId       = Guid.Parse("705c0bd8-b8e3-451c-8a19-7cb033cb1e1c").GetValueOrDefault();
-
-	// Particle pack textures (Kenney particle-pack, "PNG (Transparent)"
-	// subdir). Referenced by the default particle effects. Stable GUIDs
-	// so referencing effects survive a builtin regen.
-	private static readonly Guid BuiltinParticleTexCircleId = Guid.Parse("6a9c8f4a-5b3e-4d8a-9c1f-2b7e8a3d1c4b").GetValueOrDefault();
-	private static readonly Guid BuiltinParticleTexSmokeId  = Guid.Parse("7b1d5e2a-3f8c-4a9b-8d2e-1c4f9a5b6e3d").GetValueOrDefault();
-	private static readonly Guid BuiltinParticleTexStarId   = Guid.Parse("8c2e6f3b-4a1d-4e9c-9d3f-2b5a8c4e7f1a").GetValueOrDefault();
-	private static readonly Guid BuiltinParticleTexFlameId  = Guid.Parse("9d3f7a4c-5b2e-4f1d-ae4b-3c6d9b5f8a2e").GetValueOrDefault();
-	private static readonly Guid BuiltinParticleTexTraceId  = Guid.Parse("ae4a8b5d-6c3f-4a2e-bf5c-4d7eac6a9b3f").GetValueOrDefault();
-	private static readonly Guid BuiltinParticleTexSparkId  = Guid.Parse("bf5b9c6e-7d4a-4b3f-806d-5e8fbd7b0c4a").GetValueOrDefault();
-
-	// Default particle effects shipped under builtin://particles/.
-	// Construction copied from EngineSandbox so visuals stay aligned
-	// with the canonical samples; each effect references one of the
-	// builtin particle textures above by GUID.
-	private static readonly Guid BuiltinParticleSparksId    = Guid.Parse("c1d2e3f4-aa01-4b1a-9c01-110a220b330c").GetValueOrDefault();
-	private static readonly Guid BuiltinParticleSmokeId     = Guid.Parse("c1d2e3f4-aa02-4b2b-9c02-220b330c440d").GetValueOrDefault();
-	private static readonly Guid BuiltinParticleMagicId     = Guid.Parse("c1d2e3f4-aa03-4b3c-9c03-330c440d550e").GetValueOrDefault();
-	private static readonly Guid BuiltinParticleFireId      = Guid.Parse("c1d2e3f4-aa04-4b4d-9c04-440d550e660f").GetValueOrDefault();
-	private static readonly Guid BuiltinParticleCometId     = Guid.Parse("c1d2e3f4-aa05-4b5e-9c05-550e660faabb").GetValueOrDefault();
-	private static readonly Guid BuiltinParticleFireworksId = Guid.Parse("c1d2e3f4-aa06-4b6f-9c06-660faabbccdd").GetValueOrDefault();
-
-	/// Ensures default builtin assets (primitives, materials) exist on disk.
-	/// Generates them on first run if missing, then loads the identity
-	/// index and registers it with ResourceSystem. The `builtin://` mount
-	/// itself is created by the base Application class before this runs.
+	/// Ensures default builtin assets exist on disk. Generates them on
+	/// first run if missing, then loads the identity index and registers
+	/// it with ResourceSystem. The `builtin://` mount itself is created
+	/// by the base Application class before this runs.
+	///
+	/// Asset content lives in `BuiltinAssets.GenerateAll` - this method
+	/// owns only the gate (skip when `builtin.registry` exists) and the
+	/// index lifecycle. New default assets should be added to
+	/// `BuiltinAssets`, not here.
 	private void EnsureDefaultAssets()
 	{
 		let assetRoot = scope String();
@@ -1044,21 +1009,15 @@ class EditorApplication : Application, IDockableWindowHost
 		// and persist through this same mount so saves go through VFS.
 		let mBuiltinMount = BuiltinMount;
 
-		// Check if assets need generating
 		bool needsGeneration = !mBuiltinMount.Exists("builtin.registry");
-
 		let tempIndex = scope InMemoryResourceIndex();
 
 		if (needsGeneration)
 		{
 			mEditorLogger.Log(.Information, "Generating default builtin assets...");
-			let provider = ResourceSystem.SerializerProvider;
 
-			GenerateDefaultPrimitives(mBuiltinMount, tempIndex, provider);
-			GenerateDefaultMaterials(mBuiltinMount, tempIndex, provider);
-			GenerateDefaultSkies(mBuiltinMount, tempIndex, provider, assetRoot);
-			GenerateDefaultParticleTextures(mBuiltinMount, tempIndex, provider);
-			GenerateDefaultParticleEffects(mBuiltinMount, tempIndex, provider);
+			BuiltinAssets.GenerateAll(mBuiltinMount, tempIndex,
+				ResourceSystem.SerializerProvider, assetRoot, mEditorLogger);
 
 			let indexStream = scope MemoryStream();
 			if (tempIndex.SerializeTo(indexStream) case .Ok)
@@ -1089,425 +1048,6 @@ class EditorApplication : Application, IDockableWindowHost
 		{
 			mEditorLogger.Log(.Warning, "Failed to load builtin registry.");
 		}
-	}
-
-	private void GenerateDefaultPrimitives(IWritableMount mount, IResourceIndex index, ISerializerProvider provider)
-	{
-		// Plane
-		{
-			let res = StaticMeshResource.CreatePlane(10, 10, 1, 1);
-			res.Id = BuiltinPlaneMeshId;
-			res.Name = "Plane";
-			SaveResourceText(res, mount, "primitives/plane.mesh", provider);
-			index.Register(res.Id, "builtin://primitives/plane.mesh");
-			delete res;
-		}
-
-		// Cube
-		{
-			let res = StaticMeshResource.CreateCube(1.0f);
-			res.Id = BuiltinCubeMeshId;
-			res.Name = "Cube";
-			SaveResourceText(res, mount, "primitives/cube.mesh", provider);
-			index.Register(res.Id, "builtin://primitives/cube.mesh");
-			delete res;
-		}
-
-		// Sphere
-		{
-			let res = StaticMeshResource.CreateSphere(0.5f, 32, 16);
-			res.Id = BuiltinSphereMeshId;
-			res.Name = "Sphere";
-			SaveResourceText(res, mount, "primitives/sphere.mesh", provider);
-			index.Register(res.Id, "builtin://primitives/sphere.mesh");
-			delete res;
-		}
-	}
-
-	private void GenerateDefaultMaterials(IWritableMount mount, IResourceIndex index, ISerializerProvider provider)
-	{
-		// Default PBR material
-		{
-			let mat = Materials.CreatePBR("Default", "forward");
-			let res = new MaterialResource(mat, true);
-			res.Id = BuiltinDefaultMaterialId;
-			res.Name = "Default";
-			SaveResourceText(res, mount, "materials/default.material", provider);
-			index.Register(res.Id, "builtin://materials/default.material");
-			delete res;
-		}
-
-		// Default Unlit material
-		{
-			let mat = Materials.CreateUnlit("DefaultUnlit");
-			let res = new MaterialResource(mat, true);
-			res.Id = BuiltinDefaultUnlitId;
-			res.Name = "DefaultUnlit";
-			SaveResourceText(res, mount, "materials/default_unlit.material", provider);
-			index.Register(res.Id, "builtin://materials/default_unlit.material");
-			delete res;
-		}
-	}
-
-	private void GenerateDefaultSkies(IWritableMount mount, IResourceIndex index, ISerializerProvider provider, StringView assetRoot)
-	{
-		// Realistic sky (equirectangular HDR)
-		{
-			let srcPath = scope String();
-			GetAssetPath("textures/environment/BlueSky.hdr", srcPath);
-
-			if (TextureImporter.ImportEquirectangular(srcPath) case .Ok(let res))
-			{
-				res.Id = BuiltinRealisticSkyId;
-				res.Name.Set("realistic_sky");
-				SaveTextureWithSidecar(res, mount, "skies/realistic_sky.texture", "realistic_sky.texture.bin", provider);
-				index.Register(res.Id, "builtin://skies/realistic_sky.texture");
-				delete res;
-			}
-		}
-
-		// Stylized sky (equirectangular PNG)
-		{
-			let srcPath = scope String();
-			GetAssetPath("textures/environment/sky_75_2k/sky_75_2k.png", srcPath);
-
-			if (TextureImporter.ImportEquirectangular(srcPath) case .Ok(let res))
-			{
-				res.Id = BuiltinStylizedSkyId;
-				res.Name.Set("stylized_sky");
-				SaveTextureWithSidecar(res, mount, "skies/stylized_sky.texture", "stylized_sky.texture.bin", provider);
-				index.Register(res.Id, "builtin://skies/stylized_sky.texture");
-				delete res;
-			}
-		}
-	}
-
-	/// Imports particle sprites from the Kenney particle pack PNGs and
-	/// publishes them as builtin `.texture` resources. These back the
-	/// default particle effects (next phase) - each effect references
-	/// one of these textures by stable GUID.
-	///
-	/// Source PNGs live under `Assets/textures/kenney_particle-pack/PNG
-	/// (Transparent)/` (already on disk, shipped with the engine);
-	/// generated `.texture` + `.texture.bin` files land under
-	/// `builtin://particles/textures/`.
-	private void GenerateDefaultParticleTextures(IWritableMount mount, IResourceIndex index, ISerializerProvider provider)
-	{
-		ImportParticleSprite(mount, index, provider, "circle_05", BuiltinParticleTexCircleId);
-		ImportParticleSprite(mount, index, provider, "smoke_07",  BuiltinParticleTexSmokeId);
-		ImportParticleSprite(mount, index, provider, "star_04",   BuiltinParticleTexStarId);
-		ImportParticleSprite(mount, index, provider, "flame_06",  BuiltinParticleTexFlameId);
-		ImportParticleSprite(mount, index, provider, "trace_05",  BuiltinParticleTexTraceId);
-		ImportParticleSprite(mount, index, provider, "spark_07",  BuiltinParticleTexSparkId);
-	}
-
-	private void ImportParticleSprite(IWritableMount mount, IResourceIndex index, ISerializerProvider provider,
-		StringView spriteName, Guid stableId)
-	{
-		let srcPath = scope String();
-		GetAssetPath(scope $"textures/kenney_particle-pack/PNG (Transparent)/{spriteName}.png", srcPath);
-
-		if (TextureImporter.Import2D(srcPath) case .Ok(let res))
-		{
-			res.Id = stableId;
-			res.Name.Set(spriteName);
-			let locator = scope $"particles/textures/{spriteName}.texture";
-			let sidecar = scope $"{spriteName}.texture.bin";
-			SaveTextureWithSidecar(res, mount, locator, sidecar, provider);
-			index.Register(res.Id, scope $"builtin://particles/textures/{spriteName}.texture");
-			delete res;
-		}
-		else
-		{
-			mEditorLogger?.Log(.Error, scope $"Builtin asset: particle sprite import failed for {srcPath}");
-		}
-	}
-
-	/// Constructs the six default particle effects programmatically and
-	/// publishes them as `.particlefx` resources under builtin://particles/.
-	/// Construction mirrors EngineSandbox so the canonical samples and the
-	/// builtin asset set stay visually consistent.
-	private void GenerateDefaultParticleEffects(IWritableMount mount, IResourceIndex index, ISerializerProvider provider)
-	{
-		SaveParticleEffect(mount, index, provider, "sparks",    BuiltinParticleSparksId,    BuildSparksEffect());
-		SaveParticleEffect(mount, index, provider, "smoke",     BuiltinParticleSmokeId,     BuildSmokeEffect());
-		SaveParticleEffect(mount, index, provider, "magic",     BuiltinParticleMagicId,     BuildMagicEffect());
-		SaveParticleEffect(mount, index, provider, "fire",      BuiltinParticleFireId,      BuildFireEffect());
-		SaveParticleEffect(mount, index, provider, "comet",     BuiltinParticleCometId,     BuildCometEffect());
-		SaveParticleEffect(mount, index, provider, "fireworks", BuiltinParticleFireworksId, BuildFireworksEffect());
-	}
-
-	private void SaveParticleEffect(IWritableMount mount, IResourceIndex index, ISerializerProvider provider,
-		StringView effectName, Guid stableId, ParticleEffect effect)
-	{
-		let res = new ParticleEffectResource(effect);
-		res.Id = stableId;
-		res.Name.Set(effectName);
-		let locator = scope $"particles/{effectName}.particlefx";
-		SaveResourceText(res, mount, locator, provider);
-		index.Register(res.Id, scope $"builtin://particles/{effectName}.particlefx");
-		delete res;
-	}
-
-	/// Applies the same texture ref to every system in an effect. All the
-	/// default effects use a single sprite for every system; if a future
-	/// effect needs per-system textures we'd inline the assignment instead.
-	private void SetEffectTexture(ParticleEffect effect, Guid textureId, StringView texturePath)
-	{
-		var texRef = ResourceRef(textureId, texturePath);
-		for (let sys in effect.Systems)
-			sys.SetTextureRef(texRef);
-		texRef.Dispose();
-	}
-
-	private ParticleEffect BuildSparksEffect()
-	{
-		let effect = new ParticleEffect("Sparks");
-		let sys = new ParticleSystem(500);
-		sys.Emitter.SpawnRate = 40;
-		sys.BlendMode = .Additive;
-		sys.AddInitializer(new LifetimeInitializer() { Lifetime = .(0.5f, 1.5f) });
-		sys.AddInitializer(new PositionInitializer() { Shape = .Sphere(0.3f) });
-		sys.AddInitializer(new VelocityInitializer() { BaseVelocity = .(0, 3, 0), Randomness = .(1.5f, 1, 1.5f) });
-		sys.AddInitializer(new SizeInitializer() { Size = .Constant(.(0.08f, 0.08f)) });
-		sys.AddInitializer(new ColorInitializer() { Color = .Range(.(1, 0.4f, 0, 1), .(1, 0.9f, 0.2f, 1)) });
-		sys.AddInitializer(new RotationInitializer());
-		sys.AddBehavior(new GravityBehavior() { Multiplier = 0.3f });
-		sys.AddBehavior(new DragBehavior() { Drag = 0.8f });
-		sys.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .FadeOut(1.0f) });
-		sys.AddBehavior(new RotationOverLifetimeBehavior());
-		effect.AddSystem(sys);
-		SetEffectTexture(effect, BuiltinParticleTexCircleId, "builtin://particles/textures/circle_05.texture");
-		return effect;
-	}
-
-	private ParticleEffect BuildSmokeEffect()
-	{
-		let effect = new ParticleEffect("Smoke");
-		let sys = new ParticleSystem(300);
-		sys.Emitter.SpawnRate = 15;
-		sys.BlendMode = .Alpha;
-		sys.SortParticles = true;
-		sys.AddInitializer(new LifetimeInitializer() { Lifetime = .(2.0f, 4.0f) });
-		sys.AddInitializer(new PositionInitializer() { Shape = .Circle(0.4f) });
-		sys.AddInitializer(new VelocityInitializer() { BaseVelocity = .(0, 1.5f, 0), Randomness = .(0.3f, 0.2f, 0.3f) });
-		sys.AddInitializer(new SizeInitializer() { Size = .Range(.(0.3f, 0.3f), .(0.5f, 0.5f)) });
-		sys.AddInitializer(new ColorInitializer() { Color = .Range(.(0.4f, 0.4f, 0.4f, 0.6f), .(0.6f, 0.6f, 0.6f, 0.4f)) });
-		sys.AddInitializer(new RotationInitializer() { RotationSpeed = .(-0.5f, 0.5f) });
-		sys.AddBehavior(new GravityBehavior() { Multiplier = -0.05f, Direction = .(0, -1, 0) });
-		sys.AddBehavior(new DragBehavior() { Drag = 0.3f });
-		sys.AddBehavior(new WindBehavior() { Force = .(0.3f, 0, 0.1f) });
-		sys.AddBehavior(new SizeOverLifetimeBehavior() { Curve = .Linear(.(0.3f, 0.3f), .(1.2f, 1.2f)) });
-		sys.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .FadeOut(1.0f, 0.5f) });
-		sys.AddBehavior(new RotationOverLifetimeBehavior());
-		effect.AddSystem(sys);
-		SetEffectTexture(effect, BuiltinParticleTexSmokeId, "builtin://particles/textures/smoke_07.texture");
-		return effect;
-	}
-
-	private ParticleEffect BuildMagicEffect()
-	{
-		let effect = new ParticleEffect("Magic");
-		let sys = new ParticleSystem(400);
-		sys.Emitter.SpawnRate = 60;
-		sys.BlendMode = .Additive;
-		sys.AddInitializer(new LifetimeInitializer() { Lifetime = .(1.0f, 2.0f) });
-		sys.AddInitializer(new PositionInitializer() { Shape = .Sphere(0.8f, true) });
-		sys.AddInitializer(new VelocityInitializer() { BaseVelocity = .(0, 0.5f, 0), Randomness = .(0.2f, 0.3f, 0.2f) });
-		sys.AddInitializer(new SizeInitializer() { Size = .Range(.(0.15f, 0.15f), .(0.3f, 0.3f)) });
-		sys.AddInitializer(new ColorInitializer() { Color = .Range(.(0.5f, 0.7f, 1.5f, 1), .(1.2f, 0.5f, 1.5f, 1)) });
-		sys.AddBehavior(new VortexBehavior() { Strength = 3.0f, Axis = .(0, 1, 0) });
-		sys.AddBehavior(new DragBehavior() { Drag = 0.5f });
-		sys.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .FadeOut(1.0f, 0.6f) });
-		sys.AddBehavior(new SizeOverLifetimeBehavior() { Curve = .Linear(.(0.3f, 0.3f), .(0.05f, 0.05f)) });
-		effect.AddSystem(sys);
-		SetEffectTexture(effect, BuiltinParticleTexStarId, "builtin://particles/textures/star_04.texture");
-		return effect;
-	}
-
-	private ParticleEffect BuildFireEffect()
-	{
-		let effect = new ParticleEffect("Fire");
-		let sys = new ParticleSystem(800);
-		sys.Emitter.SpawnRate = 120;
-		sys.BlendMode = .Additive;
-		sys.AddInitializer(new LifetimeInitializer() { Lifetime = .(0.3f, 0.8f) });
-		sys.AddInitializer(new PositionInitializer() { Shape = .Circle(0.15f) });
-		sys.AddInitializer(new VelocityInitializer() { BaseVelocity = .(0, 2.0f, 0), Randomness = .(0.15f, 0.5f, 0.15f) });
-		sys.AddInitializer(new SizeInitializer() { Size = .Range(.(0.2f, 0.2f), .(0.35f, 0.35f)) });
-		sys.AddInitializer(new ColorInitializer() { Color = .Constant(.(1, 0.9f, 0.5f, 1)) });
-		sys.AddInitializer(new RotationInitializer());
-		sys.AddBehavior(new GravityBehavior() { Multiplier = -0.3f, Direction = .(0, -1, 0) });
-		sys.AddBehavior(new DragBehavior() { Drag = 2.0f });
-		sys.AddBehavior(new TurbulenceBehavior() { Strength = 0.8f, Frequency = 3.0f, Speed = 4.0f });
-
-		var fireColor = ParticleCurveColor();
-		fireColor.AddKey(0.0f, .(1.5f, 1.2f, 0.5f, 1));
-		fireColor.AddKey(0.25f, .(1.2f, 0.5f, 0.05f, 1));
-		fireColor.AddKey(0.6f, .(0.6f, 0.1f, 0.0f, 0.7f));
-		fireColor.AddKey(1.0f, .(0.2f, 0.02f, 0.0f, 0.0f));
-		sys.AddBehavior(new ColorOverLifetimeBehavior() { Curve = fireColor });
-
-		var fireSize = ParticleCurveVector2();
-		fireSize.AddKey(0.0f, .(0.2f, 0.2f));
-		fireSize.AddKey(0.15f, .(0.35f, 0.35f));
-		fireSize.AddKey(1.0f, .(0.02f, 0.02f));
-		sys.AddBehavior(new SizeOverLifetimeBehavior() { Curve = fireSize });
-
-		sys.AddBehavior(new RotationOverLifetimeBehavior());
-		effect.AddSystem(sys);
-		SetEffectTexture(effect, BuiltinParticleTexFlameId, "builtin://particles/textures/flame_06.texture");
-		return effect;
-	}
-
-	private ParticleEffect BuildCometEffect()
-	{
-		let effect = new ParticleEffect("Comet");
-		let sys = new ParticleSystem(50);
-		sys.Emitter.SpawnRate = 8;
-		sys.BlendMode = .Additive;
-		sys.RenderMode = .Trail;
-		sys.Trail = .()
-		{
-			Enabled = true,
-			MaxPoints = 32,
-			RecordInterval = 0.016f,
-			Lifetime = 1.5f,
-			WidthStart = 0.15f,
-			WidthEnd = 0.0f,
-			MinVertexDistance = 0.01f,
-			UseParticleColor = true,
-			TrailColor = .(1, 1, 1, 1)
-		};
-		sys.AddInitializer(new LifetimeInitializer() { Lifetime = .(2.0f, 3.0f) });
-		sys.AddInitializer(new PositionInitializer() { Shape = .Point() });
-		sys.AddInitializer(new VelocityInitializer()
-		{
-			BaseVelocity = .Zero,
-			ShapeDirectionSpeed = 3.0f,
-			Shape = .Sphere(0.1f)
-		});
-		sys.AddInitializer(new SizeInitializer() { Size = .Constant(.(0.12f, 0.12f)) });
-		sys.AddInitializer(new ColorInitializer() { Color = .Range(.(0.5f, 0.8f, 1.5f, 1), .(1.5f, 0.5f, 1.0f, 1)) });
-		sys.AddBehavior(new GravityBehavior() { Multiplier = 0.15f });
-		sys.AddBehavior(new DragBehavior() { Drag = 0.3f });
-		sys.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .FadeOut(1.0f, 0.4f) });
-		effect.AddSystem(sys);
-		SetEffectTexture(effect, BuiltinParticleTexTraceId, "builtin://particles/textures/trace_05.texture");
-		return effect;
-	}
-
-	private ParticleEffect BuildFireworksEffect()
-	{
-		let effect = new ParticleEffect("Fireworks");
-
-		// System 0: rockets rising upward, short lifetime, trail trail.
-		let rockets = new ParticleSystem(10);
-		rockets.Emitter.Mode = .Burst;
-		rockets.Emitter.BurstCount = 3;
-		rockets.Emitter.BurstInterval = 2.0f;
-		rockets.Emitter.BurstCycles = 0; // infinite
-		rockets.BlendMode = .Additive;
-		rockets.RenderMode = .Trail;
-		rockets.Trail = .()
-		{
-			Enabled = true,
-			MaxPoints = 24,
-			RecordInterval = 0.02f,
-			Lifetime = 0.8f,
-			WidthStart = 0.06f,
-			WidthEnd = 0.0f,
-			MinVertexDistance = 0.01f,
-			UseParticleColor = true,
-			TrailColor = .(1, 1, 1, 1)
-		};
-		rockets.AddInitializer(new LifetimeInitializer() { Lifetime = .(0.8f, 1.2f) });
-		rockets.AddInitializer(new PositionInitializer() { Shape = .Circle(0.5f) });
-		rockets.AddInitializer(new VelocityInitializer() { BaseVelocity = .(0, 8, 0), Randomness = .(1.5f, 2, 1.5f) });
-		rockets.AddInitializer(new SizeInitializer() { Size = .Constant(.(0.06f, 0.06f)) });
-		rockets.AddInitializer(new ColorInitializer() { Color = .Constant(.(1.5f, 1.2f, 0.5f, 1)) });
-		rockets.AddBehavior(new GravityBehavior() { Multiplier = 0.4f });
-		effect.AddSystem(rockets);
-
-		// System 1: burst sparks - sub-emitted from each rocket on death.
-		let burst = new ParticleSystem(500);
-		burst.Emitter.IsEmitting = false; // sub-emitter only
-		burst.BlendMode = .Additive;
-		burst.AddInitializer(new LifetimeInitializer() { Lifetime = .(0.5f, 1.5f) });
-		burst.AddInitializer(new PositionInitializer() { Shape = .Point() });
-		burst.AddInitializer(new VelocityInitializer()
-		{
-			BaseVelocity = .Zero,
-			ShapeDirectionSpeed = 5.0f,
-			Shape = .Sphere(0.1f)
-		});
-		burst.AddInitializer(new SizeInitializer() { Size = .Range(.(0.06f, 0.06f), .(0.12f, 0.12f)) });
-		burst.AddInitializer(new ColorInitializer() { Color = .Range(.(1.5f, 0.3f, 0.1f, 1), .(0.3f, 1.5f, 0.3f, 1)) });
-		burst.AddBehavior(new GravityBehavior() { Multiplier = 0.5f });
-		burst.AddBehavior(new DragBehavior() { Drag = 1.0f });
-		burst.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .FadeOut(1.0f, 0.3f) });
-		let burstIdx = effect.AddSystem(burst);
-
-		var link = SubEmitterLink.Default();
-		link.Trigger = .OnDeath;
-		link.ChildSystemIndex = burstIdx;
-		link.SpawnCount = 30;
-		link.Probability = 1.0f;
-		link.InheritPosition = true;
-		effect.AddSubEmitterLink(link);
-
-		SetEffectTexture(effect, BuiltinParticleTexSparkId, "builtin://particles/textures/spark_07.texture");
-		return effect;
-	}
-
-	/// Serializes a Resource's text representation into memory and writes it to
-	/// `mount` at `locator`. Logs failures through the editor logger so builtin
-	/// asset generation problems surface in the LogView panel.
-	private Result<void> SaveResourceText(Resource resource, IWritableMount mount, StringView locator, ISerializerProvider provider)
-	{
-		let memStream = scope MemoryStream();
-		if (resource.WriteToStream(memStream, provider) case .Err)
-		{
-			mEditorLogger?.Log(.Error, scope $"Builtin asset save: serialization failed for {locator}");
-			return .Err;
-		}
-		memStream.Position = 0;
-		if (mount.Save(locator, memStream) case .Err(let err))
-		{
-			mEditorLogger?.Log(.Error, scope $"Builtin asset save: mount save failed for {locator}: {err}");
-			return .Err;
-		}
-		return .Ok;
-	}
-
-	/// Saves a TextureResource as a text metadata file plus a pixel sidecar
-	/// in the same directory. `sidecarName` is the filename portion only
-	/// (conventionally "<assetFileName>.bin"); the manager derives the same
-	/// "<locator>.bin" on load.
-	private Result<void> SaveTextureWithSidecar(TextureResource resource, IWritableMount mount, StringView locator, StringView sidecarName, ISerializerProvider provider)
-	{
-		Try!(SaveResourceText(resource, mount, locator, provider));
-
-		// Sidecar locator = main locator's directory + sidecar name.
-		let sidecarLocator = scope String();
-		let slash = locator.LastIndexOf('/');
-		if (slash >= 0)
-			sidecarLocator.Append(locator.Substring(0, slash + 1));
-		sidecarLocator.Append(sidecarName);
-
-		let pcmStream = scope MemoryStream();
-		if (resource.WritePixelsToStream(pcmStream) case .Err)
-		{
-			mEditorLogger?.Log(.Error, scope $"Builtin texture save: pixel sidecar serialization failed for {sidecarLocator}");
-			return .Err;
-		}
-		pcmStream.Position = 0;
-		if (mount.Save(sidecarLocator, pcmStream) case .Err(let err))
-		{
-			mEditorLogger?.Log(.Error, scope $"Builtin texture save: sidecar mount save failed for {sidecarLocator}: {err}");
-			return .Err;
-		}
-		return .Ok;
 	}
 
 	// ==================== Scene Creation ====================
