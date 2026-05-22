@@ -13,6 +13,7 @@ using Sedulous.Resources;
 using Sedulous.Geometry.Resources;
 using Sedulous.Images;
 using Sedulous.Editor.Core;
+using Sedulous.Renderer.Debug;
 
 /// Per-thumbnail build closure. Receives the persistent thumbnail
 /// Scene and configures the persistent asset entity (read via
@@ -21,6 +22,15 @@ using Sedulous.Editor.Core;
 /// component-manager tick has a frame to resolve resource refs before
 /// the render pass.
 typealias ThumbnailBuildFn = delegate void(Scene scene, out CameraOverride camera);
+
+/// Optional second callback that runs inside RenderPending, AFTER
+/// RenderSubsystem.OnUpdate has cleared per-pipeline DebugDraws and
+/// JUST BEFORE the RenderScene call. Generators that push transient
+/// debug lines / gizmos (skeleton bones, AABB visualization, etc.)
+/// queue them here - if they were pushed during the build closure
+/// instead, the editor's render-subsystem tick would clear them
+/// before our render fires.
+typealias ThumbnailPreRenderFn = delegate void(Scene scene);
 
 /// Completion callback fired with the RGBA8 readback pixels after the
 /// GPU finishes the draw + copy. Caller takes ownership of the array.
@@ -74,6 +84,10 @@ public class ThumbnailRenderer
 	private class Job
 	{
 		public ThumbnailReadyFn OnReady ~ delete _;
+		/// Optional pre-render callback (skeleton lines, etc).
+		/// Fires from RenderPending, after RenderSubsystem.OnUpdate has
+		/// cleared DebugDraws for the frame.
+		public ThumbnailPreRenderFn PreRender ~ if (_ != null) delete _;
 		/// Camera matrices captured at Submit time. Passed to
 		/// RenderScene when the draw fires.
 		public CameraOverride Camera;
@@ -248,11 +262,17 @@ public class ThumbnailRenderer
 	/// and the render pass) have a frame to resolve resource refs set on
 	/// the persistent asset entity. The build callback is freed after
 	/// invocation.
-	public bool Submit(ThumbnailBuildFn build, ThumbnailReadyFn onReady)
+	public bool Submit(ThumbnailBuildFn build, ThumbnailReadyFn onReady, ThumbnailPreRenderFn preRender = null)
 	{
-		if (mPending != null) return false;
+		if (mPending != null)
+		{
+			// Caller still owns build/onReady/preRender since we
+			// rejected; don't take ownership.
+			return false;
+		}
 		mPending = new Job();
 		mPending.OnReady = onReady;
+		mPending.PreRender = preRender;
 		mPending.SubmittedFenceValue = 0;
 
 		// Configure the persistent asset entity + compute camera. The
@@ -297,6 +317,12 @@ public class ThumbnailRenderer
 		RenderPassDesc clearDesc = .() { ColorAttachments = .(clearAttachments) };
 		let clearPass = encoder.BeginRenderPass(clearDesc);
 		clearPass?.End();
+
+		// Pre-render hook: now that RenderSubsystem.OnUpdate has run
+		// (and cleared DebugDraws for the frame), generators with
+		// transient debug-line content (skeleton bones, gizmos) push
+		// it here so it survives into the RenderScene call below.
+		mPending.PreRender?.Invoke(mScene);
 
 		// Render the thumbnail scene into the offscreen RT. The scene's
 		// component-manager tick has run since Submit, so the persistent
@@ -373,6 +399,21 @@ public class ThumbnailRenderer
 	/// Is the renderer currently idle? Used by the service-side throttle
 	/// to decide whether to dispatch a new GPU thumbnail this frame.
 	public bool IsIdle => mPending == null;
+
+	/// Per-scene `DebugDraw` for the thumbnail scene, or null if the
+	/// scene's pipeline isn't allocated yet. Generators that want to
+	/// draw debug lines / gizmos as part of their thumbnail (skeleton
+	/// bones, AABB visualization, etc.) use this. Lines submitted here
+	/// only show up in the thumbnail render - the editor's main scene
+	/// has its own pipeline-scoped DebugDraw.
+	public DebugDraw DebugDraw
+	{
+		get
+		{
+			let pipeline = mSceneRenderer.GetPipeline(mScene);
+			return pipeline?.DebugDraw;
+		}
+	}
 
 	// ==================== Internals ====================
 

@@ -306,6 +306,7 @@ class EditorApplication : Application, IDockableWindowHost
 		// generate thumbnails - everything else stays on its default icon.
 		mEditorContext.RegisterThumbnailGenerator(".texture", new TextureThumbnailGenerator(ResourceSystem));
 		mEditorContext.RegisterThumbnailGenerator(".font", new FontThumbnailGenerator(ResourceSystem));
+		mEditorContext.RegisterThumbnailGenerator(".audioclip", new AudioClipThumbnailGenerator(ResourceSystem, mEditorLogger));
 		if (mThumbnailRenderer != null)
 		{
 			mEditorContext.RegisterThumbnailGenerator(".mesh", new MeshThumbnailGenerator(ResourceSystem, mThumbnailRenderer, mEditorLogger));
@@ -313,6 +314,7 @@ class EditorApplication : Application, IDockableWindowHost
 			mEditorContext.RegisterThumbnailGenerator(".material", new MaterialThumbnailGenerator(ResourceSystem, mThumbnailRenderer, mEditorLogger));
 			mEditorContext.RegisterThumbnailGenerator(".prefab", new PrefabThumbnailGenerator(ResourceSystem, mThumbnailRenderer, mTypeRegistry, mEditorLogger));
 			mEditorContext.RegisterThumbnailGenerator(".scene", new SceneThumbnailGenerator(ResourceSystem, mThumbnailRenderer, mTypeRegistry, mEditorLogger));
+			mEditorContext.RegisterThumbnailGenerator(".skeleton", new SkeletonThumbnailGenerator(ResourceSystem, mThumbnailRenderer, mEditorLogger));
 			mEditorContext.RegisterThumbnailGenerator(".particlefx", new ParticleFxThumbnailGenerator(ResourceSystem, mThumbnailRenderer, mEditorLogger));
 		}
 
