@@ -376,6 +376,19 @@ class PropAnimEditorPage : IEditorPage, IResourceChangeListener
 			let clip = mClipResource?.Clip;
 			let duration = (clip != null) ? clip.Duration : 0.0f;
 			let clamped = (duration > 0) ? Math.Clamp(value, 0.0f, duration) : 0.0f;
+
+			// Player.Evaluate samples `player.Clip`, which the component
+			// manager only assigns when AutoPlay is set. Without this,
+			// scrubbing before the user ever presses Play would no-op
+			// because the player was constructed with a null clip. Hand
+			// the clip over now and leave the player paused so the
+			// manager's Update path doesn't advance time underneath us.
+			if (player.Clip == null && clip != null)
+			{
+				player.Play(clip);
+				player.Pause();
+			}
+
 			if (player.CurrentTime == clamped) return;
 			player.CurrentTime = clamped;
 			player.Evaluate();
