@@ -40,7 +40,11 @@ class TextureResourceManager : ResourceManager<TextureResource>
 			if (result case .Ok(let reloaded))
 			{
 				TransferData(resource, reloaded);
-				delete reloaded;
+				// LoadTextFormat AddRef'd the temporary. Calling delete
+				// directly would skip the refcount path and either trip
+				// the ~Resource refcount assert (debug) or corrupt any
+				// outside refs (release).
+				reloaded.ReleaseRef();
 				return .Ok;
 			}
 			return .Err(.ReadError);
