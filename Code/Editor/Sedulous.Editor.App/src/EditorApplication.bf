@@ -994,6 +994,19 @@ class EditorApplication : Application, IDockableWindowHost
 
 	// ==================== Default Assets ====================
 
+	/// Stable GUIDs for built-in assets. Hardcoded so the GUIDs survive
+	/// regeneration (delete `builtin.registry`, fresh checkout, different
+	/// dev machine) and project assets that reference defaults by ID
+	/// never go stale. Once a GUID is shipped here, treat it as a public
+	/// API - changing it breaks every reference downstream.
+	private static readonly Guid BuiltinPlaneMeshId         = Guid.Parse("afda3f71-a2d6-479b-8564-7e343f22d12f").GetValueOrDefault();
+	private static readonly Guid BuiltinCubeMeshId          = Guid.Parse("5763a2f1-580a-49bb-a439-9fbd25f82015").GetValueOrDefault();
+	private static readonly Guid BuiltinSphereMeshId        = Guid.Parse("dc1de03f-efd4-453e-8007-b2c66374cbb1").GetValueOrDefault();
+	private static readonly Guid BuiltinDefaultMaterialId   = Guid.Parse("107f851e-6e86-4c3a-b5c8-bc75a0f1e25f").GetValueOrDefault();
+	private static readonly Guid BuiltinDefaultUnlitId      = Guid.Parse("54e50e89-eb97-4631-a1e2-ffb3b297b68a").GetValueOrDefault();
+	private static readonly Guid BuiltinRealisticSkyId      = Guid.Parse("5653f8c1-87c0-4855-9498-504ac8e67832").GetValueOrDefault();
+	private static readonly Guid BuiltinStylizedSkyId       = Guid.Parse("705c0bd8-b8e3-451c-8a19-7cb033cb1e1c").GetValueOrDefault();
+
 	/// Ensures default builtin assets (primitives, materials) exist on disk.
 	/// Generates them on first run if missing, then loads the identity
 	/// index and registers it with ResourceSystem. The `builtin://` mount
@@ -1057,6 +1070,7 @@ class EditorApplication : Application, IDockableWindowHost
 		// Plane
 		{
 			let res = StaticMeshResource.CreatePlane(10, 10, 1, 1);
+			res.Id = BuiltinPlaneMeshId;
 			res.Name = "Plane";
 			SaveResourceText(res, mount, "primitives/plane.mesh", provider);
 			index.Register(res.Id, "builtin://primitives/plane.mesh");
@@ -1066,6 +1080,7 @@ class EditorApplication : Application, IDockableWindowHost
 		// Cube
 		{
 			let res = StaticMeshResource.CreateCube(1.0f);
+			res.Id = BuiltinCubeMeshId;
 			res.Name = "Cube";
 			SaveResourceText(res, mount, "primitives/cube.mesh", provider);
 			index.Register(res.Id, "builtin://primitives/cube.mesh");
@@ -1075,6 +1090,7 @@ class EditorApplication : Application, IDockableWindowHost
 		// Sphere
 		{
 			let res = StaticMeshResource.CreateSphere(0.5f, 32, 16);
+			res.Id = BuiltinSphereMeshId;
 			res.Name = "Sphere";
 			SaveResourceText(res, mount, "primitives/sphere.mesh", provider);
 			index.Register(res.Id, "builtin://primitives/sphere.mesh");
@@ -1088,6 +1104,7 @@ class EditorApplication : Application, IDockableWindowHost
 		{
 			let mat = Materials.CreatePBR("Default", "forward");
 			let res = new MaterialResource(mat, true);
+			res.Id = BuiltinDefaultMaterialId;
 			res.Name = "Default";
 			SaveResourceText(res, mount, "materials/default.material", provider);
 			index.Register(res.Id, "builtin://materials/default.material");
@@ -1098,6 +1115,7 @@ class EditorApplication : Application, IDockableWindowHost
 		{
 			let mat = Materials.CreateUnlit("DefaultUnlit");
 			let res = new MaterialResource(mat, true);
+			res.Id = BuiltinDefaultUnlitId;
 			res.Name = "DefaultUnlit";
 			SaveResourceText(res, mount, "materials/default_unlit.material", provider);
 			index.Register(res.Id, "builtin://materials/default_unlit.material");
@@ -1114,6 +1132,7 @@ class EditorApplication : Application, IDockableWindowHost
 
 			if (TextureImporter.ImportEquirectangular(srcPath) case .Ok(let res))
 			{
+				res.Id = BuiltinRealisticSkyId;
 				res.Name.Set("realistic_sky");
 				SaveTextureWithSidecar(res, mount, "skies/realistic_sky.texture", "realistic_sky.texture.bin", provider);
 				index.Register(res.Id, "builtin://skies/realistic_sky.texture");
@@ -1128,6 +1147,7 @@ class EditorApplication : Application, IDockableWindowHost
 
 			if (TextureImporter.ImportEquirectangular(srcPath) case .Ok(let res))
 			{
+				res.Id = BuiltinStylizedSkyId;
 				res.Name.Set("stylized_sky");
 				SaveTextureWithSidecar(res, mount, "skies/stylized_sky.texture", "stylized_sky.texture.bin", provider);
 				index.Register(res.Id, "builtin://skies/stylized_sky.texture");
