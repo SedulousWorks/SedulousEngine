@@ -336,6 +336,11 @@ public static class ParticleEffectSerializer
 			SerializeVector3(s, "randomness", ref v.Randomness);
 			s.Float("shapeDirectionSpeed", ref v.ShapeDirectionSpeed);
 			s.Float("velocityInheritance", ref v.VelocityInheritance);
+			// Shape provides the outward direction that ShapeDirectionSpeed
+			// is multiplied by. Without it, an authored sphere/circle/etc.
+			// is silently dropped to Point on load and particles get no
+			// radial velocity (Comet, fireworks burst, etc.).
+			SerializeEmissionShape(s, "shape", ref v.Shape);
 		}
 		else if (let l = init as LifetimeInitializer)
 			SerializeRangeFloat(s, "lifetime", ref l.Lifetime);
