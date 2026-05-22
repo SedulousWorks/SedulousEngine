@@ -1,0 +1,317 @@
+uint64 %_type {8763635004750592442}
+int32 %_version {1}
+string %_id {"c1d2e3f4-aa06-4b6f-9c06-660faabbccdd"}
+string %_name {"Fireworks"}
+string %_sourcePath {""}
+int32 %version {1}
+string %name {"Fireworks"}
+int32 %systemCount {2}
+Obj_ %system0 {
+	int32 %maxParticles {10}
+	string %name {""}
+	uint8 %simulationMode {0}
+	uint8 %simulationSpace {0}
+	uint8 %blendMode {1}
+	uint8 %renderMode {5}
+	bool %sortParticles {false}
+	Obj_ %trail {
+		bool %enabled {true}
+		int32 %maxPoints {24}
+		float %recordInterval {0.0199999996}
+		float %lifetime {0.800000012}
+		float %widthStart {0.0599999987}
+		float %widthEnd {0}
+		float %minVertexDistance {0.00999999978}
+		bool %useParticleColor {true}
+		Obj_ %trailColor {
+			float %x {1}
+			float %y {1}
+			float %z {1}
+			float %w {1}
+		}
+	}
+	float %lodStartDistance {0}
+	float %lodCullDistance {0}
+	float %lodMinRate {0.100000001}
+	Obj_ %emitter {
+		uint8 %emissionMode {1}
+		float %spawnRate {10}
+		int32 %burstCount {3}
+		float %burstInterval {2}
+		int32 %burstCycles {0}
+	}
+	Obj_ %texture {
+		string %_id {"bf5b9c6e-7d4a-4b3f-806d-5e8fbd7b0c4a"}
+		string %path {"builtin://particles/textures/spark_07.texture"}
+	}
+	Obj_ %mesh {
+		string %_id {"00000000-0000-0000-0000-000000000000"}
+	}
+	Obj_ %material {
+		string %_id {"00000000-0000-0000-0000-000000000000"}
+	}
+	float %meshScale {1}
+	int32 %initializerCount {5}
+	Obj_ %init0 {
+		string %type {"Lifetime"}
+		Obj_ %lifetime {
+			float %min {0.800000012}
+			float %max {1.20000005}
+		}
+	}
+	Obj_ %init1 {
+		string %type {"Position"}
+		Obj_ %shape {
+			uint8 %type {5}
+			Obj_ %size {
+				float %x {0.5}
+				float %y {0}
+				float %z {0}
+			}
+			float %coneAngle {0}
+			float %arc {0}
+			bool %emitFromSurface {false}
+		}
+		bool %localSpace {false}
+	}
+	Obj_ %init2 {
+		string %type {"Velocity"}
+		Obj_ %baseVelocity {
+			float %x {0}
+			float %y {8}
+			float %z {0}
+		}
+		Obj_ %randomness {
+			float %x {1.5}
+			float %y {2}
+			float %z {1.5}
+		}
+		float %shapeDirectionSpeed {0}
+		float %velocityInheritance {0}
+		Obj_ %shape {
+			uint8 %type {0}
+			Obj_ %size {
+				float %x {0}
+				float %y {0}
+				float %z {0}
+			}
+			float %coneAngle {0}
+			float %arc {0}
+			bool %emitFromSurface {false}
+		}
+	}
+	Obj_ %init3 {
+		string %type {"Size"}
+		Obj_ %size {
+			Obj_ %min {
+				float %x {0.0599999987}
+				float %y {0.0599999987}
+			}
+			Obj_ %max {
+				float %x {0.0599999987}
+				float %y {0.0599999987}
+			}
+		}
+	}
+	Obj_ %init4 {
+		string %type {"Color"}
+		Obj_ %color {
+			Obj_ %min {
+				float %x {1.5}
+				float %y {1.20000005}
+				float %z {0.5}
+				float %w {1}
+			}
+			Obj_ %max {
+				float %x {1.5}
+				float %y {1.20000005}
+				float %z {0.5}
+				float %w {1}
+			}
+		}
+	}
+	int32 %behaviorCount {1}
+	Obj_ %behavior0 {
+		string %type {"Gravity"}
+		float %multiplier {0.400000006}
+		Obj_ %direction {
+			float %x {0}
+			float %y {-1}
+			float %z {0}
+		}
+	}
+}
+Obj_ %system1 {
+	int32 %maxParticles {500}
+	string %name {""}
+	uint8 %simulationMode {0}
+	uint8 %simulationSpace {0}
+	uint8 %blendMode {1}
+	uint8 %renderMode {0}
+	bool %sortParticles {false}
+	Obj_ %trail {
+		bool %enabled {false}
+		int32 %maxPoints {16}
+		float %recordInterval {0.0329999998}
+		float %lifetime {1}
+		float %widthStart {0.0500000007}
+		float %widthEnd {0}
+		float %minVertexDistance {0.0199999996}
+		bool %useParticleColor {true}
+		Obj_ %trailColor {
+			float %x {1}
+			float %y {1}
+			float %z {1}
+			float %w {1}
+		}
+	}
+	float %lodStartDistance {0}
+	float %lodCullDistance {0}
+	float %lodMinRate {0.100000001}
+	Obj_ %emitter {
+		uint8 %emissionMode {0}
+		float %spawnRate {10}
+		int32 %burstCount {0}
+		float %burstInterval {0}
+		int32 %burstCycles {0}
+	}
+	Obj_ %texture {
+		string %_id {"bf5b9c6e-7d4a-4b3f-806d-5e8fbd7b0c4a"}
+		string %path {"builtin://particles/textures/spark_07.texture"}
+	}
+	Obj_ %mesh {
+		string %_id {"00000000-0000-0000-0000-000000000000"}
+	}
+	Obj_ %material {
+		string %_id {"00000000-0000-0000-0000-000000000000"}
+	}
+	float %meshScale {1}
+	int32 %initializerCount {5}
+	Obj_ %init0 {
+		string %type {"Lifetime"}
+		Obj_ %lifetime {
+			float %min {0.5}
+			float %max {1.5}
+		}
+	}
+	Obj_ %init1 {
+		string %type {"Position"}
+		Obj_ %shape {
+			uint8 %type {0}
+			Obj_ %size {
+				float %x {0}
+				float %y {0}
+				float %z {0}
+			}
+			float %coneAngle {0}
+			float %arc {0}
+			bool %emitFromSurface {false}
+		}
+		bool %localSpace {false}
+	}
+	Obj_ %init2 {
+		string %type {"Velocity"}
+		Obj_ %baseVelocity {
+			float %x {0}
+			float %y {0}
+			float %z {0}
+		}
+		Obj_ %randomness {
+			float %x {0}
+			float %y {0}
+			float %z {0}
+		}
+		float %shapeDirectionSpeed {5}
+		float %velocityInheritance {0}
+		Obj_ %shape {
+			uint8 %type {1}
+			Obj_ %size {
+				float %x {0.100000001}
+				float %y {0.100000001}
+				float %z {0.100000001}
+			}
+			float %coneAngle {0}
+			float %arc {0}
+			bool %emitFromSurface {false}
+		}
+	}
+	Obj_ %init3 {
+		string %type {"Size"}
+		Obj_ %size {
+			Obj_ %min {
+				float %x {0.0599999987}
+				float %y {0.0599999987}
+			}
+			Obj_ %max {
+				float %x {0.119999997}
+				float %y {0.119999997}
+			}
+		}
+	}
+	Obj_ %init4 {
+		string %type {"Color"}
+		Obj_ %color {
+			Obj_ %min {
+				float %x {1.5}
+				float %y {0.300000012}
+				float %z {0.100000001}
+				float %w {1}
+			}
+			Obj_ %max {
+				float %x {0.300000012}
+				float %y {1.5}
+				float %z {0.300000012}
+				float %w {1}
+			}
+		}
+	}
+	int32 %behaviorCount {3}
+	Obj_ %behavior0 {
+		string %type {"Gravity"}
+		float %multiplier {0.5}
+		Obj_ %direction {
+			float %x {0}
+			float %y {-1}
+			float %z {0}
+		}
+	}
+	Obj_ %behavior1 {
+		string %type {"Drag"}
+		float %drag {1}
+	}
+	Obj_ %behavior2 {
+		string %type {"AlphaOverLifetime"}
+		Obj_ %curve {
+			int32 %keyCount {3}
+			Obj_ %key0 {
+				float %time {0}
+				float %value {1}
+				float %tangentIn {0}
+				float %tangentOut {0}
+			}
+			Obj_ %key1 {
+				float %time {0.300000012}
+				float %value {1}
+				float %tangentIn {0}
+				float %tangentOut {0}
+			}
+			Obj_ %key2 {
+				float %time {1}
+				float %value {0}
+				float %tangentIn {-1.42857146}
+				float %tangentOut {0}
+			}
+		}
+	}
+}
+int32 %linkCount {1}
+Obj_ %link0 {
+	uint8 %trigger {1}
+	int32 %childSystemIndex {1}
+	int32 %spawnCount {30}
+	float %probability {1}
+	bool %inheritPosition {true}
+	bool %inheritVelocity {false}
+	float %velocityInheritFactor {0.5}
+	bool %inheritColor {false}
+}

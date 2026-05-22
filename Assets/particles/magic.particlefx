@@ -1,0 +1,213 @@
+uint64 %_type {8763635004750592442}
+int32 %_version {1}
+string %_id {"c1d2e3f4-aa03-4b3c-9c03-330c440d550e"}
+string %_name {"Magic"}
+string %_sourcePath {""}
+int32 %version {1}
+string %name {"Magic"}
+int32 %systemCount {1}
+Obj_ %system0 {
+	int32 %maxParticles {400}
+	string %name {""}
+	uint8 %simulationMode {0}
+	uint8 %simulationSpace {0}
+	uint8 %blendMode {1}
+	uint8 %renderMode {0}
+	bool %sortParticles {false}
+	Obj_ %trail {
+		bool %enabled {false}
+		int32 %maxPoints {16}
+		float %recordInterval {0.0329999998}
+		float %lifetime {1}
+		float %widthStart {0.0500000007}
+		float %widthEnd {0}
+		float %minVertexDistance {0.0199999996}
+		bool %useParticleColor {true}
+		Obj_ %trailColor {
+			float %x {1}
+			float %y {1}
+			float %z {1}
+			float %w {1}
+		}
+	}
+	float %lodStartDistance {0}
+	float %lodCullDistance {0}
+	float %lodMinRate {0.100000001}
+	Obj_ %emitter {
+		uint8 %emissionMode {0}
+		float %spawnRate {60}
+		int32 %burstCount {0}
+		float %burstInterval {0}
+		int32 %burstCycles {0}
+	}
+	Obj_ %texture {
+		string %_id {"8c2e6f3b-4a1d-4e9c-9d3f-2b5a8c4e7f1a"}
+		string %path {"builtin://particles/textures/star_04.texture"}
+	}
+	Obj_ %mesh {
+		string %_id {"00000000-0000-0000-0000-000000000000"}
+	}
+	Obj_ %material {
+		string %_id {"00000000-0000-0000-0000-000000000000"}
+	}
+	float %meshScale {1}
+	int32 %initializerCount {5}
+	Obj_ %init0 {
+		string %type {"Lifetime"}
+		Obj_ %lifetime {
+			float %min {1}
+			float %max {2}
+		}
+	}
+	Obj_ %init1 {
+		string %type {"Position"}
+		Obj_ %shape {
+			uint8 %type {1}
+			Obj_ %size {
+				float %x {0.800000012}
+				float %y {0.800000012}
+				float %z {0.800000012}
+			}
+			float %coneAngle {0}
+			float %arc {0}
+			bool %emitFromSurface {true}
+		}
+		bool %localSpace {false}
+	}
+	Obj_ %init2 {
+		string %type {"Velocity"}
+		Obj_ %baseVelocity {
+			float %x {0}
+			float %y {0.5}
+			float %z {0}
+		}
+		Obj_ %randomness {
+			float %x {0.200000003}
+			float %y {0.300000012}
+			float %z {0.200000003}
+		}
+		float %shapeDirectionSpeed {0}
+		float %velocityInheritance {0}
+		Obj_ %shape {
+			uint8 %type {0}
+			Obj_ %size {
+				float %x {0}
+				float %y {0}
+				float %z {0}
+			}
+			float %coneAngle {0}
+			float %arc {0}
+			bool %emitFromSurface {false}
+		}
+	}
+	Obj_ %init3 {
+		string %type {"Size"}
+		Obj_ %size {
+			Obj_ %min {
+				float %x {0.150000006}
+				float %y {0.150000006}
+			}
+			Obj_ %max {
+				float %x {0.300000012}
+				float %y {0.300000012}
+			}
+		}
+	}
+	Obj_ %init4 {
+		string %type {"Color"}
+		Obj_ %color {
+			Obj_ %min {
+				float %x {0.5}
+				float %y {0.699999988}
+				float %z {1.5}
+				float %w {1}
+			}
+			Obj_ %max {
+				float %x {1.20000005}
+				float %y {0.5}
+				float %z {1.5}
+				float %w {1}
+			}
+		}
+	}
+	int32 %behaviorCount {4}
+	Obj_ %behavior0 {
+		string %type {"Vortex"}
+		float %strength {3}
+		Obj_ %center {
+			float %x {0}
+			float %y {0}
+			float %z {0}
+		}
+		Obj_ %axis {
+			float %x {0}
+			float %y {1}
+			float %z {0}
+		}
+	}
+	Obj_ %behavior1 {
+		string %type {"Drag"}
+		float %drag {0.5}
+	}
+	Obj_ %behavior2 {
+		string %type {"AlphaOverLifetime"}
+		Obj_ %curve {
+			int32 %keyCount {3}
+			Obj_ %key0 {
+				float %time {0}
+				float %value {1}
+				float %tangentIn {0}
+				float %tangentOut {0}
+			}
+			Obj_ %key1 {
+				float %time {0.600000024}
+				float %value {1}
+				float %tangentIn {0}
+				float %tangentOut {0}
+			}
+			Obj_ %key2 {
+				float %time {1}
+				float %value {0}
+				float %tangentIn {-2.50000024}
+				float %tangentOut {0}
+			}
+		}
+	}
+	Obj_ %behavior3 {
+		string %type {"SizeOverLifetime"}
+		Obj_ %curve {
+			int32 %keyCount {2}
+			Obj_ %key0 {
+				float %time {0}
+				Obj_ %value {
+					float %x {0.300000012}
+					float %y {0.300000012}
+				}
+				Obj_ %tangentIn {
+					float %x {0}
+					float %y {0}
+				}
+				Obj_ %tangentOut {
+					float %x {-0.25}
+					float %y {-0.25}
+				}
+			}
+			Obj_ %key1 {
+				float %time {1}
+				Obj_ %value {
+					float %x {0.0500000007}
+					float %y {0.0500000007}
+				}
+				Obj_ %tangentIn {
+					float %x {-0.25}
+					float %y {-0.25}
+				}
+				Obj_ %tangentOut {
+					float %x {0}
+					float %y {0}
+				}
+			}
+		}
+	}
+}
+int32 %linkCount {0}

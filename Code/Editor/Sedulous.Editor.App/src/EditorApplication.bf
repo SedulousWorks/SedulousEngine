@@ -27,6 +27,8 @@ using Sedulous.Engine.Core.Resources;
 using Sedulous.Engine;
 using Sedulous.Engine.Render;
 using Sedulous.Geometry.Resources;
+using Sedulous.Particles;
+using Sedulous.Particles.Resources;
 using Sedulous.Resources;
 using Sedulous.VFS;
 using Sedulous.VFS.Disk;
@@ -1018,6 +1020,17 @@ class EditorApplication : Application, IDockableWindowHost
 	private static readonly Guid BuiltinParticleTexTraceId  = Guid.Parse("ae4a8b5d-6c3f-4a2e-bf5c-4d7eac6a9b3f").GetValueOrDefault();
 	private static readonly Guid BuiltinParticleTexSparkId  = Guid.Parse("bf5b9c6e-7d4a-4b3f-806d-5e8fbd7b0c4a").GetValueOrDefault();
 
+	// Default particle effects shipped under builtin://particles/.
+	// Construction copied from EngineSandbox so visuals stay aligned
+	// with the canonical samples; each effect references one of the
+	// builtin particle textures above by GUID.
+	private static readonly Guid BuiltinParticleSparksId    = Guid.Parse("c1d2e3f4-aa01-4b1a-9c01-110a220b330c").GetValueOrDefault();
+	private static readonly Guid BuiltinParticleSmokeId     = Guid.Parse("c1d2e3f4-aa02-4b2b-9c02-220b330c440d").GetValueOrDefault();
+	private static readonly Guid BuiltinParticleMagicId     = Guid.Parse("c1d2e3f4-aa03-4b3c-9c03-330c440d550e").GetValueOrDefault();
+	private static readonly Guid BuiltinParticleFireId      = Guid.Parse("c1d2e3f4-aa04-4b4d-9c04-440d550e660f").GetValueOrDefault();
+	private static readonly Guid BuiltinParticleCometId     = Guid.Parse("c1d2e3f4-aa05-4b5e-9c05-550e660faabb").GetValueOrDefault();
+	private static readonly Guid BuiltinParticleFireworksId = Guid.Parse("c1d2e3f4-aa06-4b6f-9c06-660faabbccdd").GetValueOrDefault();
+
 	/// Ensures default builtin assets (primitives, materials) exist on disk.
 	/// Generates them on first run if missing, then loads the identity
 	/// index and registers it with ResourceSystem. The `builtin://` mount
@@ -1045,6 +1058,7 @@ class EditorApplication : Application, IDockableWindowHost
 			GenerateDefaultMaterials(mBuiltinMount, tempIndex, provider);
 			GenerateDefaultSkies(mBuiltinMount, tempIndex, provider, assetRoot);
 			GenerateDefaultParticleTextures(mBuiltinMount, tempIndex, provider);
+			GenerateDefaultParticleEffects(mBuiltinMount, tempIndex, provider);
 
 			let indexStream = scope MemoryStream();
 			if (tempIndex.SerializeTo(indexStream) case .Ok)
@@ -1207,6 +1221,243 @@ class EditorApplication : Application, IDockableWindowHost
 		{
 			mEditorLogger?.Log(.Error, scope $"Builtin asset: particle sprite import failed for {srcPath}");
 		}
+	}
+
+	/// Constructs the six default particle effects programmatically and
+	/// publishes them as `.particlefx` resources under builtin://particles/.
+	/// Construction mirrors EngineSandbox so the canonical samples and the
+	/// builtin asset set stay visually consistent.
+	private void GenerateDefaultParticleEffects(IWritableMount mount, IResourceIndex index, ISerializerProvider provider)
+	{
+		SaveParticleEffect(mount, index, provider, "sparks",    BuiltinParticleSparksId,    BuildSparksEffect());
+		SaveParticleEffect(mount, index, provider, "smoke",     BuiltinParticleSmokeId,     BuildSmokeEffect());
+		SaveParticleEffect(mount, index, provider, "magic",     BuiltinParticleMagicId,     BuildMagicEffect());
+		SaveParticleEffect(mount, index, provider, "fire",      BuiltinParticleFireId,      BuildFireEffect());
+		SaveParticleEffect(mount, index, provider, "comet",     BuiltinParticleCometId,     BuildCometEffect());
+		SaveParticleEffect(mount, index, provider, "fireworks", BuiltinParticleFireworksId, BuildFireworksEffect());
+	}
+
+	private void SaveParticleEffect(IWritableMount mount, IResourceIndex index, ISerializerProvider provider,
+		StringView effectName, Guid stableId, ParticleEffect effect)
+	{
+		let res = new ParticleEffectResource(effect);
+		res.Id = stableId;
+		res.Name.Set(effectName);
+		let locator = scope $"particles/{effectName}.particlefx";
+		SaveResourceText(res, mount, locator, provider);
+		index.Register(res.Id, scope $"builtin://particles/{effectName}.particlefx");
+		delete res;
+	}
+
+	/// Applies the same texture ref to every system in an effect. All the
+	/// default effects use a single sprite for every system; if a future
+	/// effect needs per-system textures we'd inline the assignment instead.
+	private void SetEffectTexture(ParticleEffect effect, Guid textureId, StringView texturePath)
+	{
+		var texRef = ResourceRef(textureId, texturePath);
+		for (let sys in effect.Systems)
+			sys.SetTextureRef(texRef);
+		texRef.Dispose();
+	}
+
+	private ParticleEffect BuildSparksEffect()
+	{
+		let effect = new ParticleEffect("Sparks");
+		let sys = new ParticleSystem(500);
+		sys.Emitter.SpawnRate = 40;
+		sys.BlendMode = .Additive;
+		sys.AddInitializer(new LifetimeInitializer() { Lifetime = .(0.5f, 1.5f) });
+		sys.AddInitializer(new PositionInitializer() { Shape = .Sphere(0.3f) });
+		sys.AddInitializer(new VelocityInitializer() { BaseVelocity = .(0, 3, 0), Randomness = .(1.5f, 1, 1.5f) });
+		sys.AddInitializer(new SizeInitializer() { Size = .Constant(.(0.08f, 0.08f)) });
+		sys.AddInitializer(new ColorInitializer() { Color = .Range(.(1, 0.4f, 0, 1), .(1, 0.9f, 0.2f, 1)) });
+		sys.AddInitializer(new RotationInitializer());
+		sys.AddBehavior(new GravityBehavior() { Multiplier = 0.3f });
+		sys.AddBehavior(new DragBehavior() { Drag = 0.8f });
+		sys.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .FadeOut(1.0f) });
+		sys.AddBehavior(new RotationOverLifetimeBehavior());
+		effect.AddSystem(sys);
+		SetEffectTexture(effect, BuiltinParticleTexCircleId, "builtin://particles/textures/circle_05.texture");
+		return effect;
+	}
+
+	private ParticleEffect BuildSmokeEffect()
+	{
+		let effect = new ParticleEffect("Smoke");
+		let sys = new ParticleSystem(300);
+		sys.Emitter.SpawnRate = 15;
+		sys.BlendMode = .Alpha;
+		sys.SortParticles = true;
+		sys.AddInitializer(new LifetimeInitializer() { Lifetime = .(2.0f, 4.0f) });
+		sys.AddInitializer(new PositionInitializer() { Shape = .Circle(0.4f) });
+		sys.AddInitializer(new VelocityInitializer() { BaseVelocity = .(0, 1.5f, 0), Randomness = .(0.3f, 0.2f, 0.3f) });
+		sys.AddInitializer(new SizeInitializer() { Size = .Range(.(0.3f, 0.3f), .(0.5f, 0.5f)) });
+		sys.AddInitializer(new ColorInitializer() { Color = .Range(.(0.4f, 0.4f, 0.4f, 0.6f), .(0.6f, 0.6f, 0.6f, 0.4f)) });
+		sys.AddInitializer(new RotationInitializer() { RotationSpeed = .(-0.5f, 0.5f) });
+		sys.AddBehavior(new GravityBehavior() { Multiplier = -0.05f, Direction = .(0, -1, 0) });
+		sys.AddBehavior(new DragBehavior() { Drag = 0.3f });
+		sys.AddBehavior(new WindBehavior() { Force = .(0.3f, 0, 0.1f) });
+		sys.AddBehavior(new SizeOverLifetimeBehavior() { Curve = .Linear(.(0.3f, 0.3f), .(1.2f, 1.2f)) });
+		sys.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .FadeOut(1.0f, 0.5f) });
+		sys.AddBehavior(new RotationOverLifetimeBehavior());
+		effect.AddSystem(sys);
+		SetEffectTexture(effect, BuiltinParticleTexSmokeId, "builtin://particles/textures/smoke_07.texture");
+		return effect;
+	}
+
+	private ParticleEffect BuildMagicEffect()
+	{
+		let effect = new ParticleEffect("Magic");
+		let sys = new ParticleSystem(400);
+		sys.Emitter.SpawnRate = 60;
+		sys.BlendMode = .Additive;
+		sys.AddInitializer(new LifetimeInitializer() { Lifetime = .(1.0f, 2.0f) });
+		sys.AddInitializer(new PositionInitializer() { Shape = .Sphere(0.8f, true) });
+		sys.AddInitializer(new VelocityInitializer() { BaseVelocity = .(0, 0.5f, 0), Randomness = .(0.2f, 0.3f, 0.2f) });
+		sys.AddInitializer(new SizeInitializer() { Size = .Range(.(0.15f, 0.15f), .(0.3f, 0.3f)) });
+		sys.AddInitializer(new ColorInitializer() { Color = .Range(.(0.5f, 0.7f, 1.5f, 1), .(1.2f, 0.5f, 1.5f, 1)) });
+		sys.AddBehavior(new VortexBehavior() { Strength = 3.0f, Axis = .(0, 1, 0) });
+		sys.AddBehavior(new DragBehavior() { Drag = 0.5f });
+		sys.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .FadeOut(1.0f, 0.6f) });
+		sys.AddBehavior(new SizeOverLifetimeBehavior() { Curve = .Linear(.(0.3f, 0.3f), .(0.05f, 0.05f)) });
+		effect.AddSystem(sys);
+		SetEffectTexture(effect, BuiltinParticleTexStarId, "builtin://particles/textures/star_04.texture");
+		return effect;
+	}
+
+	private ParticleEffect BuildFireEffect()
+	{
+		let effect = new ParticleEffect("Fire");
+		let sys = new ParticleSystem(800);
+		sys.Emitter.SpawnRate = 120;
+		sys.BlendMode = .Additive;
+		sys.AddInitializer(new LifetimeInitializer() { Lifetime = .(0.3f, 0.8f) });
+		sys.AddInitializer(new PositionInitializer() { Shape = .Circle(0.15f) });
+		sys.AddInitializer(new VelocityInitializer() { BaseVelocity = .(0, 2.0f, 0), Randomness = .(0.15f, 0.5f, 0.15f) });
+		sys.AddInitializer(new SizeInitializer() { Size = .Range(.(0.2f, 0.2f), .(0.35f, 0.35f)) });
+		sys.AddInitializer(new ColorInitializer() { Color = .Constant(.(1, 0.9f, 0.5f, 1)) });
+		sys.AddInitializer(new RotationInitializer());
+		sys.AddBehavior(new GravityBehavior() { Multiplier = -0.3f, Direction = .(0, -1, 0) });
+		sys.AddBehavior(new DragBehavior() { Drag = 2.0f });
+		sys.AddBehavior(new TurbulenceBehavior() { Strength = 0.8f, Frequency = 3.0f, Speed = 4.0f });
+
+		var fireColor = ParticleCurveColor();
+		fireColor.AddKey(0.0f, .(1.5f, 1.2f, 0.5f, 1));
+		fireColor.AddKey(0.25f, .(1.2f, 0.5f, 0.05f, 1));
+		fireColor.AddKey(0.6f, .(0.6f, 0.1f, 0.0f, 0.7f));
+		fireColor.AddKey(1.0f, .(0.2f, 0.02f, 0.0f, 0.0f));
+		sys.AddBehavior(new ColorOverLifetimeBehavior() { Curve = fireColor });
+
+		var fireSize = ParticleCurveVector2();
+		fireSize.AddKey(0.0f, .(0.2f, 0.2f));
+		fireSize.AddKey(0.15f, .(0.35f, 0.35f));
+		fireSize.AddKey(1.0f, .(0.02f, 0.02f));
+		sys.AddBehavior(new SizeOverLifetimeBehavior() { Curve = fireSize });
+
+		sys.AddBehavior(new RotationOverLifetimeBehavior());
+		effect.AddSystem(sys);
+		SetEffectTexture(effect, BuiltinParticleTexFlameId, "builtin://particles/textures/flame_06.texture");
+		return effect;
+	}
+
+	private ParticleEffect BuildCometEffect()
+	{
+		let effect = new ParticleEffect("Comet");
+		let sys = new ParticleSystem(50);
+		sys.Emitter.SpawnRate = 8;
+		sys.BlendMode = .Additive;
+		sys.RenderMode = .Trail;
+		sys.Trail = .()
+		{
+			Enabled = true,
+			MaxPoints = 32,
+			RecordInterval = 0.016f,
+			Lifetime = 1.5f,
+			WidthStart = 0.15f,
+			WidthEnd = 0.0f,
+			MinVertexDistance = 0.01f,
+			UseParticleColor = true,
+			TrailColor = .(1, 1, 1, 1)
+		};
+		sys.AddInitializer(new LifetimeInitializer() { Lifetime = .(2.0f, 3.0f) });
+		sys.AddInitializer(new PositionInitializer() { Shape = .Point() });
+		sys.AddInitializer(new VelocityInitializer()
+		{
+			BaseVelocity = .Zero,
+			ShapeDirectionSpeed = 3.0f,
+			Shape = .Sphere(0.1f)
+		});
+		sys.AddInitializer(new SizeInitializer() { Size = .Constant(.(0.12f, 0.12f)) });
+		sys.AddInitializer(new ColorInitializer() { Color = .Range(.(0.5f, 0.8f, 1.5f, 1), .(1.5f, 0.5f, 1.0f, 1)) });
+		sys.AddBehavior(new GravityBehavior() { Multiplier = 0.15f });
+		sys.AddBehavior(new DragBehavior() { Drag = 0.3f });
+		sys.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .FadeOut(1.0f, 0.4f) });
+		effect.AddSystem(sys);
+		SetEffectTexture(effect, BuiltinParticleTexTraceId, "builtin://particles/textures/trace_05.texture");
+		return effect;
+	}
+
+	private ParticleEffect BuildFireworksEffect()
+	{
+		let effect = new ParticleEffect("Fireworks");
+
+		// System 0: rockets rising upward, short lifetime, trail trail.
+		let rockets = new ParticleSystem(10);
+		rockets.Emitter.Mode = .Burst;
+		rockets.Emitter.BurstCount = 3;
+		rockets.Emitter.BurstInterval = 2.0f;
+		rockets.Emitter.BurstCycles = 0; // infinite
+		rockets.BlendMode = .Additive;
+		rockets.RenderMode = .Trail;
+		rockets.Trail = .()
+		{
+			Enabled = true,
+			MaxPoints = 24,
+			RecordInterval = 0.02f,
+			Lifetime = 0.8f,
+			WidthStart = 0.06f,
+			WidthEnd = 0.0f,
+			MinVertexDistance = 0.01f,
+			UseParticleColor = true,
+			TrailColor = .(1, 1, 1, 1)
+		};
+		rockets.AddInitializer(new LifetimeInitializer() { Lifetime = .(0.8f, 1.2f) });
+		rockets.AddInitializer(new PositionInitializer() { Shape = .Circle(0.5f) });
+		rockets.AddInitializer(new VelocityInitializer() { BaseVelocity = .(0, 8, 0), Randomness = .(1.5f, 2, 1.5f) });
+		rockets.AddInitializer(new SizeInitializer() { Size = .Constant(.(0.06f, 0.06f)) });
+		rockets.AddInitializer(new ColorInitializer() { Color = .Constant(.(1.5f, 1.2f, 0.5f, 1)) });
+		rockets.AddBehavior(new GravityBehavior() { Multiplier = 0.4f });
+		effect.AddSystem(rockets);
+
+		// System 1: burst sparks - sub-emitted from each rocket on death.
+		let burst = new ParticleSystem(500);
+		burst.Emitter.IsEmitting = false; // sub-emitter only
+		burst.BlendMode = .Additive;
+		burst.AddInitializer(new LifetimeInitializer() { Lifetime = .(0.5f, 1.5f) });
+		burst.AddInitializer(new PositionInitializer() { Shape = .Point() });
+		burst.AddInitializer(new VelocityInitializer()
+		{
+			BaseVelocity = .Zero,
+			ShapeDirectionSpeed = 5.0f,
+			Shape = .Sphere(0.1f)
+		});
+		burst.AddInitializer(new SizeInitializer() { Size = .Range(.(0.06f, 0.06f), .(0.12f, 0.12f)) });
+		burst.AddInitializer(new ColorInitializer() { Color = .Range(.(1.5f, 0.3f, 0.1f, 1), .(0.3f, 1.5f, 0.3f, 1)) });
+		burst.AddBehavior(new GravityBehavior() { Multiplier = 0.5f });
+		burst.AddBehavior(new DragBehavior() { Drag = 1.0f });
+		burst.AddBehavior(new AlphaOverLifetimeBehavior() { Curve = .FadeOut(1.0f, 0.3f) });
+		let burstIdx = effect.AddSystem(burst);
+
+		var link = SubEmitterLink.Default();
+		link.Trigger = .OnDeath;
+		link.ChildSystemIndex = burstIdx;
+		link.SpawnCount = 30;
+		link.Probability = 1.0f;
+		link.InheritPosition = true;
+		effect.AddSubEmitterLink(link);
+
+		SetEffectTexture(effect, BuiltinParticleTexSparkId, "builtin://particles/textures/spark_07.texture");
+		return effect;
 	}
 
 	/// Serializes a Resource's text representation into memory and writes it to

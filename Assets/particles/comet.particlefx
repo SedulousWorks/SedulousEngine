@@ -1,0 +1,172 @@
+uint64 %_type {8763635004750592442}
+int32 %_version {1}
+string %_id {"c1d2e3f4-aa05-4b5e-9c05-550e660faabb"}
+string %_name {"Comet"}
+string %_sourcePath {""}
+int32 %version {1}
+string %name {"Comet"}
+int32 %systemCount {1}
+Obj_ %system0 {
+	int32 %maxParticles {50}
+	string %name {""}
+	uint8 %simulationMode {0}
+	uint8 %simulationSpace {0}
+	uint8 %blendMode {1}
+	uint8 %renderMode {5}
+	bool %sortParticles {false}
+	Obj_ %trail {
+		bool %enabled {true}
+		int32 %maxPoints {32}
+		float %recordInterval {0.0160000008}
+		float %lifetime {1.5}
+		float %widthStart {0.150000006}
+		float %widthEnd {0}
+		float %minVertexDistance {0.00999999978}
+		bool %useParticleColor {true}
+		Obj_ %trailColor {
+			float %x {1}
+			float %y {1}
+			float %z {1}
+			float %w {1}
+		}
+	}
+	float %lodStartDistance {0}
+	float %lodCullDistance {0}
+	float %lodMinRate {0.100000001}
+	Obj_ %emitter {
+		uint8 %emissionMode {0}
+		float %spawnRate {8}
+		int32 %burstCount {0}
+		float %burstInterval {0}
+		int32 %burstCycles {0}
+	}
+	Obj_ %texture {
+		string %_id {"ae4a8b5d-6c3f-4a2e-bf5c-4d7eac6a9b3f"}
+		string %path {"builtin://particles/textures/trace_05.texture"}
+	}
+	Obj_ %mesh {
+		string %_id {"00000000-0000-0000-0000-000000000000"}
+	}
+	Obj_ %material {
+		string %_id {"00000000-0000-0000-0000-000000000000"}
+	}
+	float %meshScale {1}
+	int32 %initializerCount {5}
+	Obj_ %init0 {
+		string %type {"Lifetime"}
+		Obj_ %lifetime {
+			float %min {2}
+			float %max {3}
+		}
+	}
+	Obj_ %init1 {
+		string %type {"Position"}
+		Obj_ %shape {
+			uint8 %type {0}
+			Obj_ %size {
+				float %x {0}
+				float %y {0}
+				float %z {0}
+			}
+			float %coneAngle {0}
+			float %arc {0}
+			bool %emitFromSurface {false}
+		}
+		bool %localSpace {false}
+	}
+	Obj_ %init2 {
+		string %type {"Velocity"}
+		Obj_ %baseVelocity {
+			float %x {0}
+			float %y {0}
+			float %z {0}
+		}
+		Obj_ %randomness {
+			float %x {0}
+			float %y {0}
+			float %z {0}
+		}
+		float %shapeDirectionSpeed {3}
+		float %velocityInheritance {0}
+		Obj_ %shape {
+			uint8 %type {1}
+			Obj_ %size {
+				float %x {0.100000001}
+				float %y {0.100000001}
+				float %z {0.100000001}
+			}
+			float %coneAngle {0}
+			float %arc {0}
+			bool %emitFromSurface {false}
+		}
+	}
+	Obj_ %init3 {
+		string %type {"Size"}
+		Obj_ %size {
+			Obj_ %min {
+				float %x {0.119999997}
+				float %y {0.119999997}
+			}
+			Obj_ %max {
+				float %x {0.119999997}
+				float %y {0.119999997}
+			}
+		}
+	}
+	Obj_ %init4 {
+		string %type {"Color"}
+		Obj_ %color {
+			Obj_ %min {
+				float %x {0.5}
+				float %y {0.800000012}
+				float %z {1.5}
+				float %w {1}
+			}
+			Obj_ %max {
+				float %x {1.5}
+				float %y {0.5}
+				float %z {1}
+				float %w {1}
+			}
+		}
+	}
+	int32 %behaviorCount {3}
+	Obj_ %behavior0 {
+		string %type {"Gravity"}
+		float %multiplier {0.150000006}
+		Obj_ %direction {
+			float %x {0}
+			float %y {-1}
+			float %z {0}
+		}
+	}
+	Obj_ %behavior1 {
+		string %type {"Drag"}
+		float %drag {0.300000012}
+	}
+	Obj_ %behavior2 {
+		string %type {"AlphaOverLifetime"}
+		Obj_ %curve {
+			int32 %keyCount {3}
+			Obj_ %key0 {
+				float %time {0}
+				float %value {1}
+				float %tangentIn {0}
+				float %tangentOut {0}
+			}
+			Obj_ %key1 {
+				float %time {0.400000006}
+				float %value {1}
+				float %tangentIn {0}
+				float %tangentOut {0}
+			}
+			Obj_ %key2 {
+				float %time {1}
+				float %value {0}
+				float %tangentIn {-1.66666663}
+				float %tangentOut {0}
+			}
+		}
+	}
+}
+int32 %linkCount {0}
