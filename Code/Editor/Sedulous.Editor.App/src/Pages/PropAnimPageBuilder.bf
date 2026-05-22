@@ -99,20 +99,44 @@ static class PropAnimPageBuilder
 			Width = .Fixed(.Px(70)), Height = .Match
 		});
 
+		bar.AddSeparator();
+
+		// Looping flag. Serialized on PropertyAnimationClip.IsLooping
+		// and consumed by PropertyAnimationPlayer at runtime - without
+		// this toggle the editor had no way to author the field.
+		let loopCheck = new CheckBox("Loop", (page.Clip != null) ? page.Clip.IsLooping : false);
+		loopCheck.OnCheckedChanged.Add(new [=page] (cb, isChecked) =>
+		{
+			if (page.Clip == null) return;
+			if (page.Clip.IsLooping == isChecked) return;
+			page.Clip.IsLooping = isChecked;
+			page.MarkDirty();
+		});
+		bar.AddItem(loopCheck);
+
 		// Refresh time readout on every scrub (timeline drives the page's
 		// CurrentTime, which fires OnCurrentTimeChanged) and whenever the
 		// target swaps (resets time to whatever the player reports).
-		page.OnTargetChanged.Add(new [=timeLabel, =durField] (p) => {
+		page.OnTargetChanged.Add(new [=timeLabel, =durField, =loopCheck] (p) => {
 			UpdateTimeLabel(timeLabel, p);
-			if (p.Clip != null) durField.Value = p.Clip.Duration;
+			if (p.Clip != null)
+			{
+				durField.Value = p.Clip.Duration;
+				loopCheck.IsChecked = p.Clip.IsLooping;
+			}
 		});
 		page.OnCurrentTimeChanged.Add(new [=timeLabel] (p) => UpdateTimeLabel(timeLabel, p));
 
 		// Hot-reload of the .propanim file: clip is the same pointer but
-		// duration / track counts may differ. Refresh the toolbar readouts.
-		page.OnClipReloaded.Add(new [=timeLabel, =durField] (p) => {
+		// duration / looping / track counts may differ. Refresh the
+		// toolbar readouts.
+		page.OnClipReloaded.Add(new [=timeLabel, =durField, =loopCheck] (p) => {
 			UpdateTimeLabel(timeLabel, p);
-			if (p.Clip != null) durField.Value = p.Clip.Duration;
+			if (p.Clip != null)
+			{
+				durField.Value = p.Clip.Duration;
+				loopCheck.IsChecked = p.Clip.IsLooping;
+			}
 		});
 
 		return bar;
