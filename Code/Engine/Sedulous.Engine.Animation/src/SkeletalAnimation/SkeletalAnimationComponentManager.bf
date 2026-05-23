@@ -52,6 +52,16 @@ class SkeletalAnimationComponentManager : ComponentManager<SkeletalAnimationComp
 			if (!comp.IsActive) continue;
 			ResolveResources(comp);
 
+			// Skeleton swap: tear down the player so it gets rebuilt
+			// below against the new skeleton. AnimationPlayer captures
+			// its Skeleton at construction; mutating refs without this
+			// would leave the player driving the wrong bone hierarchy.
+			if (comp.Player != null && comp.Skeleton != null && comp.Player.Skeleton !== comp.Skeleton)
+			{
+				delete comp.Player;
+				comp.Player = null;
+			}
+
 			// Create player once resources are ready
 			if (comp.Player == null && comp.Skeleton != null && comp.CurrentClip != null)
 			{
@@ -62,6 +72,18 @@ class SkeletalAnimationComponentManager : ComponentManager<SkeletalAnimationComp
 					comp.Player.Play(comp.CurrentClip);
 					comp.Playing = true;
 				}
+			}
+			// Clip swap on an existing player: rebind to the new clip.
+			// Without this, ClipRef changes propagate to CurrentClip
+			// but the player keeps animating its original Play(clip)
+			// argument - editor "pick a different animation" would
+			// silently do nothing.
+			else if (comp.Player != null && comp.CurrentClip != null
+				&& comp.Player.CurrentClip !== comp.CurrentClip)
+			{
+				comp.CurrentClip.IsLooping = comp.Loop;
+				comp.Player.Play(comp.CurrentClip);
+				comp.Playing = true;
 			}
 		}
 	}
