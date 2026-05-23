@@ -238,6 +238,8 @@ class EditorApplication : Application, IDockableWindowHost
 		mEditorContext.AssetSelection = new AssetSelection();
 		mEditorContext.PluginRegistry = new EditorPluginRegistry();
 		mEditorContext.Project = mProject;
+		mEditorContext.AssetCache = new EditorAssetCache();
+		mEditorContext.AssetCache.SetSerializerProvider(ResourceSystem.SerializerProvider);
 		mEditorContext.DialogService = Shell.Dialogs;
 		mEditorContext.Thumbnails = new ThumbnailService(mEditorContext, mEditorLogger);
 		mEditorContext.Shell = Shell;
@@ -451,6 +453,12 @@ class EditorApplication : Application, IDockableWindowHost
 			mEditorLogger.Log(.Error, "Failed to open project: {}", pathToOpen);
 			return;
 		}
+
+		// Editor-side per-asset state (preview rig assignments, anim
+		// graph node positions, etc.). Lives next to the project under
+		// .editor/ so it travels with the repo if checked in, and is
+		// cheap to wipe if not.
+		mEditorContext.AssetCache?.Open(pathToOpen);
 
 		mRecentProjects.Add(pathToOpen);
 		mProjectLoaded = true;
@@ -1687,7 +1695,8 @@ class EditorApplication : Application, IDockableWindowHost
 		// Shutdown pages (deletes pages + their content views)
 		mEditorContext.PageManager.Shutdown();
 
-		// Close project
+		// Close project (and the per-asset editor cache)
+		mEditorContext.AssetCache?.Close();
 		mProject.Close();
 
 		// Clean up editor context

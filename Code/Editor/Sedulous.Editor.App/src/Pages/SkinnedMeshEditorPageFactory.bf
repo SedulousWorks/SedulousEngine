@@ -15,9 +15,10 @@ using Sedulous.Geometry.Resources;
 namespace Sedulous.Editor.App.Pages;
 
 /// Creates editor pages for .skinnedmesh files.
-/// Mirrors MeshEditorPageFactory: a 3D preview viewport rendering the
-/// skinned mesh (bind pose) with a default material, alongside a metadata
-/// panel (vertex/triangle/submesh counts, bounds, skeleton ref).
+/// 3D preview viewport rendering the skinned mesh (bind pose by default)
+/// alongside a metadata + preview-rig panel. The user can pick a clip +
+/// skeleton in the panel to animate the mesh; picks are persisted
+/// per-asset through `EditorContext.AssetCache`.
 class SkinnedMeshEditorPageFactory : IEditorPageFactory
 {
 	private IDevice mDevice;
@@ -61,12 +62,13 @@ class SkinnedMeshEditorPageFactory : IEditorPageFactory
 			return MeshEditorPageFactory.BuildErrorPage(path, "Skinned Mesh", "Failed to load skinned mesh resource.", context);
 
 		let host = new PreviewSceneHost(mDevice, mVGRenderer, mKeyboard, sceneSub, sceneRenderer, "SkinnedMeshPreview");
-		let page = new SkinnedMeshEditorPage(path, uri, meshRes, host);
-		page.SetContentView(BuildView(meshRes, host));
+		let page = new SkinnedMeshEditorPage(path, uri, meshRes, host, context);
+		page.SetContentView(BuildView(meshRes, host, page, context));
 		return page;
 	}
 
-	private static View BuildView(SkinnedMeshResource meshRes, PreviewSceneHost host)
+	private static View BuildView(SkinnedMeshResource meshRes, PreviewSceneHost host,
+		SkinnedMeshEditorPage page, EditorContext context)
 	{
 		// Standard resource-page shape: viewport left, details docked right.
 		let root = new SplitView(.Horizontal);
@@ -104,6 +106,122 @@ class SkinnedMeshEditorPageFactory : IEditorPageFactory
 			errorLabel.SetText("Failed to load skinned mesh");
 			errorLabel.TextColor = .(220, 100, 100, 255);
 			infoPanel.AddView(errorLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });
+		}
+
+		// === Preview rig section ===
+		MeshEditorPageFactory.AddSeparator(infoPanel);
+		MeshEditorPageFactory.AddInfoHeader(infoPanel, "Preview Animation");
+
+		// Clip picker row.
+		let clipRow = new FlexLayout() { Direction = .Horizontal, Spacing = 4 };
+		let clipLabel = new Label();
+		clipLabel.SetText("Clip:");
+		clipLabel.TextColor = .(180, 180, 195, 255);
+		clipLabel.FontSize = 11;
+		clipRow.AddView(clipLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(64)), Height = .Match });
+
+		let clipPathLabel = new Label();
+		clipPathLabel.SetText("(none)");
+		clipPathLabel.TextColor = .(220, 220, 230, 255);
+		clipPathLabel.FontSize = 11;
+		clipRow.AddView(clipPathLabel, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
+
+		let pickClipBtn = new Button("Pick");
+		pickClipBtn.OnClick.Add(new [=context, =page] (btn) =>
+		{
+			let ctx = page.ContentView?.Context;
+			if (ctx == null || context == null) return;
+			let dlg = new AssetPickerDialog(context, ".animation",
+				new [=page] (path, id) => { page.SetClipUri(path); });
+			dlg.Show(ctx);
+		});
+		clipRow.AddView(pickClipBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(48)), Height = .Fixed(.Px(22)) });
+
+		let clearClipBtn = new Button("Clear");
+		clearClipBtn.OnClick.Add(new [=page] (btn) => page.SetClipUri(""));
+		clipRow.AddView(clearClipBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(50)), Height = .Fixed(.Px(22)) });
+		infoPanel.AddView(clipRow, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(24)) });
+
+		// Skeleton picker row (defaults to mesh's SkeletonRef when empty).
+		let skelRow = new FlexLayout() { Direction = .Horizontal, Spacing = 4 };
+		let skelLabel = new Label();
+		skelLabel.SetText("Skeleton:");
+		skelLabel.TextColor = .(180, 180, 195, 255);
+		skelLabel.FontSize = 11;
+		skelRow.AddView(skelLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(64)), Height = .Match });
+
+		let skelPathLabel = new Label();
+		skelPathLabel.SetText("(none)");
+		skelPathLabel.TextColor = .(220, 220, 230, 255);
+		skelPathLabel.FontSize = 11;
+		skelRow.AddView(skelPathLabel, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
+
+		let pickSkelBtn = new Button("Pick");
+		pickSkelBtn.OnClick.Add(new [=context, =page] (btn) =>
+		{
+			let ctx = page.ContentView?.Context;
+			if (ctx == null || context == null) return;
+			let dlg = new AssetPickerDialog(context, ".skeleton",
+				new [=page] (path, id) => { page.SetSkeletonUri(path); });
+			dlg.Show(ctx);
+		});
+		skelRow.AddView(pickSkelBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(48)), Height = .Fixed(.Px(22)) });
+
+		let clearSkelBtn = new Button("Clear");
+		clearSkelBtn.OnClick.Add(new [=page] (btn) => page.SetSkeletonUri(""));
+		skelRow.AddView(clearSkelBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(50)), Height = .Fixed(.Px(22)) });
+		infoPanel.AddView(skelRow, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(24)) });
+
+		// Hand the labels to the page so SetClipUri / SetSkeletonUri
+		// can refresh them when picks change (avoids rebuilding the
+		// panel on every pick).
+		page.RegisterStateLabels(clipPathLabel, skelPathLabel);
+
+		// Per-submesh material override pickers. SkinnedMeshComponent's
+		// MaterialRefs list is indexed by submesh.materialIndex; expose
+		// one row per submesh so the user can swap any of them. Empty
+		// pick falls back to the component manager's default material.
+		if (meshRes?.Mesh?.SubMeshes != null && meshRes.Mesh.SubMeshes.Count > 0)
+		{
+			MeshEditorPageFactory.AddSeparator(infoPanel);
+			MeshEditorPageFactory.AddInfoHeader(infoPanel, "Preview Materials");
+
+			let submeshCount = (int32)meshRes.Mesh.SubMeshes.Count;
+			for (int32 slot = 0; slot < submeshCount; slot++)
+			{
+				let row = new FlexLayout() { Direction = .Horizontal, Spacing = 4 };
+				let label = new Label();
+				label.SetText(scope $"Mat {slot}:");
+				label.TextColor = .(180, 180, 195, 255);
+				label.FontSize = 11;
+				row.AddView(label, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(64)), Height = .Match });
+
+				let pathLabel = new Label();
+				pathLabel.SetText("(none)");
+				pathLabel.TextColor = .(220, 220, 230, 255);
+				pathLabel.FontSize = 11;
+				row.AddView(pathLabel, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
+
+				let slotCopy = slot;
+				let pickBtn = new Button("Pick");
+				pickBtn.OnClick.Add(new [=context, =page, =slotCopy] (btn) =>
+				{
+					let ctx = page.ContentView?.Context;
+					if (ctx == null || context == null) return;
+					let dlg = new AssetPickerDialog(context, ".material",
+						new [=page, =slotCopy] (path, id) => { page.SetMaterialUri(slotCopy, path); });
+					dlg.Show(ctx);
+				});
+				row.AddView(pickBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(48)), Height = .Fixed(.Px(22)) });
+
+				let clearBtn = new Button("Clear");
+				clearBtn.OnClick.Add(new [=page, =slotCopy] (btn) => page.SetMaterialUri(slotCopy, ""));
+				row.AddView(clearBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(50)), Height = .Fixed(.Px(22)) });
+
+				infoPanel.AddView(row, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(24)) });
+
+				page.RegisterMaterialLabel(slot, pathLabel);
+			}
 		}
 
 		root.SetPanes(viewportPanel, infoPanel);

@@ -26,6 +26,7 @@ class EditorContext : IDisposable
 	public AssetSelection AssetSelection ~ delete _;
 	public EditorPluginRegistry PluginRegistry ~ delete _;
 	public EditorProject Project;
+	public EditorAssetCache AssetCache ~ delete _;
 
 	// Scene serialization
 	public SceneResourceManager SceneManager;
