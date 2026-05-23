@@ -334,6 +334,32 @@ texture, material instance) store the resource generation alongside the cached
 handle. On generation mismatch, the stale entry is discarded and the resource is
 re-uploaded / re-created.
 
+**Deferred MaterialInstance eviction** - when the resolver evicts a cached
+`MaterialInstance` (generation mismatch from hot-reload or editor
+live-edit), it pushes the `+1` ref into `mPendingMaterialEvictions`
+keyed by the current frame number instead of dropping the ref
+synchronously. `BeginFrame(frameNumber)` (called from
+`RenderSubsystem.BeginRendering`) drains entries past
+`MaterialEvictionDelay = 4` frames - matches `GPUResourceManager.
+DeletionDelay`. Required because a synchronous `ReleaseRef` from cache
+eviction triggers `~MaterialInstance` -> `MaterialSystem.ReleaseInstance` ->
+`mDevice.DestroyBindGroup` -> immediate `vkFreeDescriptorSets` while
+the previous frame's command buffer still has the descriptor set
+bound (VUID-vkFreeDescriptorSets-pDescriptorSets-00309). Pattern
+mirrors `GPUResourceManager`'s `PendingDeletion` queue. The RHI stays
+dumb - no deferred-destruction concept in `IDevice` - the per-frame
+window lives in the renderer layer that knows the frame counter.
+
+**Deferred follow-up:** for editor live-edit cases (per-keystroke
+generation bump on uniform-only changes), the resolver still recreates
+the whole `MaterialInstance` rather than updating uniform contents +
+texture refs on the existing instance. Functionally correct now but
+wasteful. An in-place-update path in the resolver (when the property
+defs / bind group layout haven't changed, only the uniform data or
+texture refs have) would avoid the destroy+recreate cycle entirely
+and remove the per-keystroke eviction churn. Pure perf, not
+correctness.
+
 ### MaterialResource - Reference Implementation (DONE)
 
 `MaterialResource.Reload()` is the model for other resource types:
