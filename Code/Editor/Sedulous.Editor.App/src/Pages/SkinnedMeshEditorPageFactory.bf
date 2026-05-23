@@ -177,17 +177,19 @@ class SkinnedMeshEditorPageFactory : IEditorPageFactory
 		// panel on every pick).
 		page.RegisterStateLabels(clipPathLabel, skelPathLabel);
 
-		// Per-submesh material override pickers. SkinnedMeshComponent's
-		// MaterialRefs list is indexed by submesh.materialIndex; expose
-		// one row per submesh so the user can swap any of them. Empty
-		// pick falls back to the component manager's default material.
-		if (meshRes?.Mesh?.SubMeshes != null && meshRes.Mesh.SubMeshes.Count > 0)
+		// Material override pickers - one row per distinct material slot
+		// referenced by submeshes (via SubMesh.materialIndex), NOT per
+		// submesh. SkinnedMeshComponent.MaterialRefs is indexed by
+		// materialIndex, so multiple submeshes sharing a slot share one
+		// row. Empty pick falls back to the component manager's default
+		// material.
+		let slotCount = SkinnedMeshEditorPage.ComputeMaterialSlotCount(meshRes);
+		if (slotCount > 0)
 		{
 			MeshEditorPageFactory.AddSeparator(infoPanel);
 			MeshEditorPageFactory.AddInfoHeader(infoPanel, "Preview Materials");
 
-			let submeshCount = (int32)meshRes.Mesh.SubMeshes.Count;
-			for (int32 slot = 0; slot < submeshCount; slot++)
+			for (int32 slot = 0; slot < slotCount; slot++)
 			{
 				let row = new FlexLayout() { Direction = .Horizontal, Spacing = 4 };
 				let label = new Label();

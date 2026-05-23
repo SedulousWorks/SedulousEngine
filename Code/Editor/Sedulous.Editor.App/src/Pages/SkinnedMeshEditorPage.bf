@@ -72,11 +72,13 @@ class SkinnedMeshEditorPage : IEditorPage
 		mEditorContext = editorContext;
 		UpdateTitle();
 
-		// Pre-allocate one material slot per submesh - the picker UI
-		// indexes into this list and ApplyToPreviewEntity walks all
-		// slots when pushing refs to the component.
-		let submeshCount = (mMesh?.Mesh?.SubMeshes?.Count) ?? 0;
-		for (int i = 0; i < submeshCount; i++)
+		// Pre-allocate one slot per distinct material index referenced
+		// by the submeshes - NOT one per submesh. Multiple submeshes
+		// can share a material slot (e.g. submesh.materialIndex values
+		// [0,1,0,2,1] -> 3 slots, not 5). The picker UI then has a
+		// 1:1 mapping with `SkinnedMeshComponent.MaterialRefs[slot]`.
+		let slotCount = ComputeMaterialSlotCount(mMesh);
+		for (int i = 0; i < slotCount; i++)
 			mMaterialUris.Add(new String());
 
 		SpawnMeshEntity();
@@ -323,6 +325,24 @@ class SkinnedMeshEditorPage : IEditorPage
 	private static void MaterialCacheKey(int32 slot, String outKey)
 	{
 		outKey.AppendF("preview.material.{}", slot);
+	}
+
+	/// Counts distinct material slots a skinned mesh actually
+	/// references via `SubMesh.materialIndex`. Slot indices are not
+	/// guaranteed dense - the model importer may skip values - so
+	/// returning `max + 1` keeps the picker UI 1:1 with
+	/// `SkinnedMeshComponent.MaterialRefs[slot]`. Negative or absent
+	/// data returns 0.
+	public static int32 ComputeMaterialSlotCount(SkinnedMeshResource mesh)
+	{
+		if (mesh?.Mesh?.SubMeshes == null) return 0;
+		int32 maxIdx = -1;
+		for (let sm in mesh.Mesh.SubMeshes)
+		{
+			if (sm.materialIndex > maxIdx)
+				maxIdx = sm.materialIndex;
+		}
+		return (maxIdx >= 0) ? maxIdx + 1 : 0;
 	}
 
 	private void WriteCache(StringView key, StringView value)
