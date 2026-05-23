@@ -276,6 +276,92 @@ class ResourceSystem
 	public void DisableHotReload() { mHotReloadEnabled = false; }
 	public bool HotReloadEnabled => mHotReloadEnabled;
 
+	/// Forces a cached resource to be reloaded from disk in place.
+	/// Same path PollHotReload uses, triggered explicitly. The ref
+	/// can carry a Guid, a Path, or both - URI resolution mirrors
+	/// LoadByRef: prefer the index lookup by Guid, fall back to the
+	/// ref's Path. Use cases: editor "discard unsaved in-memory edits"
+	/// (re-reads the disk state into the existing resource object), or
+	/// any code that knows a file changed without going through the
+	/// mount's file-watcher.
+	public Result<void, ResourceLoadError> ReloadResource(ResourceRef @ref)
+	{
+		// Resolve to URI. Same precedence as LoadByRef: index lookup
+		// by Id wins over the ref's path so renamed assets reload
+		// from their current location.
+		String resolvedUri = null;
+		String tempUri = null;
+		defer { delete tempUri; }
+
+		if (@ref.HasId)
+		{
+			tempUri = new String();
+			if (ResolveUriFromId(@ref.Id, tempUri))
+				resolvedUri = tempUri;
+		}
+		if (resolvedUri == null && @ref.HasPath)
+			resolvedUri = @ref.Path;
+		if (resolvedUri == null || resolvedUri.Length == 0)
+			return .Err(.NotFound);
+
+		return ReloadByUri(resolvedUri);
+	}
+
+	private Result<void, ResourceLoadError> ReloadByUri(StringView uri)
+	{
+		using (mLock.Enter())
+		{
+			let entries = scope List<CacheEntry>();
+			mCache.GetByPath(uri, entries);
+			if (entries.Count == 0) return .Err(.NotFound);
+
+			// Split URI into scheme + locator to open a fresh stream
+			// from the right mount.
+			let sep = uri.IndexOf("://");
+			if (sep <= 0) return .Err(.InvalidFormat);
+			let scheme = uri.Substring(0, sep);
+			let locator = uri.Substring(sep + 3);
+
+			if (!mMounts.TryGetValueAlt(scheme, let mount)) return .Err(.NotFound);
+
+			Result<void, ResourceLoadError> last = .Err(.NotFound);
+			for (let entry in entries)
+			{
+				let manager = GetManager(entry.ResourceType);
+				if (manager == null) continue;
+
+				let resource = entry.Handle.Resource;
+				if (resource == null) continue;
+
+				let openResult = mount.Open(scope String(locator));
+				// MountError -> ResourceLoadError mapping: mount-level
+				// open failures surface as NotFound from this API.
+				if (openResult case .Err) { last = .Err(.NotFound); continue; }
+				let stream = openResult.Value;
+				defer delete stream;
+
+				let reload = manager.Reload(resource, .(stream, mount, scope String(locator)));
+				if (reload case .Ok)
+				{
+					if (let r = resource as Resource)
+						r.IncrementGeneration();
+					mLogger?.LogInformation("Reloaded resource '{0}' ({1})",
+						uri, entry.ResourceType.GetName(.. scope .()));
+					for (let listener in mListeners)
+						listener.OnResourceReloaded(uri, entry.ResourceType, resource);
+					last = .Ok;
+				}
+				else if (reload case .Err(let err))
+				{
+					if (err != .NotSupported)
+						mLogger?.LogWarning("Failed to reload resource '{0}': {1}", uri, err);
+					last = .Err(err);
+				}
+			}
+			return last;
+		}
+	}
+
 	public void AddChangeListener(IResourceChangeListener listener)
 	{
 		if (!mListeners.Contains(listener))
