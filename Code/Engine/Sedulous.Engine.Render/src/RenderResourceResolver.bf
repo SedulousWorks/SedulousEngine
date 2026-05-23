@@ -58,6 +58,36 @@ class RenderResourceResolver
 		delete _;
 	};
 
+	/// Deferred-release entry for evicted MaterialInstances. Holds the
+	/// `+1` ref that was on the cache - the instance stays alive until
+	/// `MaterialEvictionDelay` frames have passed, by which point any
+	/// command buffer that bound its descriptor set has completed on
+	/// the GPU. Mirrors `GPUResourceManager.PendingDeletion`.
+	private struct PendingMaterialEviction
+	{
+		public MaterialInstance Instance;
+		public uint64 FrameNumber;
+	}
+	private List<PendingMaterialEviction> mPendingMaterialEvictions = new .() ~ {
+		// Final flush: drop any refs still queued at shutdown.
+		for (let p in _)
+			p.Instance?.ReleaseRef();
+		delete _;
+	};
+
+	/// Frames to keep an evicted MaterialInstance alive before
+	/// dropping its ref. Must exceed `MaxFramesInFlight` so any
+	/// in-flight command buffer referencing the bind group completes
+	/// before `vkFreeDescriptorSets` runs. Matches the conservative
+	/// window `GPUResourceManager.DeletionDelay` uses for other GPU
+	/// resources (= 4).
+	private const uint64 MaterialEvictionDelay = 4;
+
+	/// Monotonic frame counter, set from `RenderSubsystem.BeginRendering`
+	/// once per frame. Used both to tag new evictions and to age out
+	/// existing ones.
+	private uint64 mCurrentFrame = 0;
+
 	// ==================== Setup ====================
 
 	public this(ResourceSystem resourceSystem, GPUResourceManager gpuResources, MaterialSystem materialSystem)
@@ -68,6 +98,28 @@ class RenderResourceResolver
 	}
 
 	public ResourceSystem ResourceSystem => mResourceSystem;
+
+	/// Called once per frame by `RenderSubsystem.BeginRendering` before
+	/// any resolves run. Updates the monotonic frame counter and drains
+	/// material evictions whose holding window has elapsed.
+	public void BeginFrame(uint64 frameNumber)
+	{
+		mCurrentFrame = frameNumber;
+		ProcessMaterialEvictions();
+	}
+
+	private void ProcessMaterialEvictions()
+	{
+		for (int i = mPendingMaterialEvictions.Count - 1; i >= 0; i--)
+		{
+			let p = mPendingMaterialEvictions[i];
+			if (mCurrentFrame >= p.FrameNumber + MaterialEvictionDelay)
+			{
+				p.Instance?.ReleaseRef();
+				mPendingMaterialEvictions.RemoveAtFast(i);
+			}
+		}
+	}
 
 	// ==================== Mesh Resolution ====================
 
@@ -186,8 +238,20 @@ class RenderResourceResolver
 				return true;
 			}
 
-			// Generation changed (hot-reload) - discard stale instance
-			cached.Instance?.ReleaseRef();
+			// Generation changed (hot-reload, editor live-edit). Don't
+			// drop the cache's ref immediately - if any in-flight
+			// command buffer still references the instance's bind
+			// group, vkFreeDescriptorSets would fire on a descriptor
+			// set still in use. Queue the ref-drop for
+			// `MaterialEvictionDelay` frames out; ProcessMaterialEvictions
+			// drains the queue once the GPU is guaranteed to be done.
+			if (cached.Instance != null)
+			{
+				mPendingMaterialEvictions.Add(.() {
+					Instance = cached.Instance,
+					FrameNumber = mCurrentFrame
+				});
+			}
 			mMaterialInstanceCache.Remove(resourceId);
 		}
 

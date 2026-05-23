@@ -285,6 +285,13 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 	{
 		mFrameIndex = frameIndex;
 
+		// Tick the resolver's deferred-eviction queue before any new
+		// ResolveMaterial calls this frame. Pending MaterialInstance
+		// refs whose holding window has elapsed get released here, so
+		// `vkFreeDescriptorSets` runs only after the GPU has finished
+		// with the bind group.
+		mResolver.BeginFrame((uint64)frameIndex);
+
 		// Reset the view pool first - drops references to last frame's arena entries
 		// before BeginFrame() rewinds the frame allocator.
 		mViewPool.BeginFrame();
