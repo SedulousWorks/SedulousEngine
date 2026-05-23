@@ -31,7 +31,7 @@ using Sedulous.VFS;
 /// (component auto-add, evaluated property writes) are scoped to that
 /// temp scene and discarded on page close. The on-disk source file is
 /// never modified.
-class PropAnimEditorPage : IEditorPage, IResourceChangeListener
+class PropAnimEditorPage : IEditorPage, IResourceChangeListener, IEditableAssetPage
 {
 	private String mPageId = new .() ~ delete _;
 	private String mTitle = new .() ~ delete _;
@@ -41,6 +41,9 @@ class PropAnimEditorPage : IEditorPage, IResourceChangeListener
 	private bool mDirty;
 
 	private PropertyAnimationClipResource mClipResource;
+	// Cached ref handed out by AssetRef (IEditableAssetPage). Built
+	// once with empty Path; URI resolves through the index from Id.
+	private ResourceRef mAssetRef ~ _.Dispose();
 	private PreviewSceneHost mHost ~ delete _;
 	private EditorContext mEditorContext;
 	private ComponentTypeRegistry mTypeRegistry;
@@ -83,6 +86,7 @@ class PropAnimEditorPage : IEditorPage, IResourceChangeListener
 		mHost = host;
 		mEditorContext = editorContext;
 		mTypeRegistry = typeRegistry;
+		mAssetRef = ResourceRef((clip != null) ? clip.Id : .Empty, "");
 		UpdateTitle();
 
 		// Hot-reload: the resource system reloads `.propanim` in place
@@ -129,6 +133,13 @@ class PropAnimEditorPage : IEditorPage, IResourceChangeListener
 
 	public PropertyAnimationClipResource ClipResource => mClipResource;
 	public PropertyAnimationClip Clip => mClipResource?.Clip;
+
+	// === IEditableAssetPage ===
+	// Close-without-save reverts in-memory clip mutations by reloading
+	// from disk. Centralized in EditorPageManager.Close. URI resolves
+	// through the index from the resource's Id - mFilePath is the
+	// absolute path, not a `scheme://locator` URI.
+	public readonly ref ResourceRef AssetRef => ref mAssetRef;
 	public PreviewSceneHost Host => mHost;
 	public EditorContext EditorContext => mEditorContext;
 	public StringView PreviewSourcePath => mPreviewSourcePath;

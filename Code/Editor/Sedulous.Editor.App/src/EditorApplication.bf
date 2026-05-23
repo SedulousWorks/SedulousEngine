@@ -234,6 +234,7 @@ class EditorApplication : Application, IDockableWindowHost
 		mEditorContext.SceneManager = mSceneManager;
 		mEditorContext.PrefabManager = mPrefabManager;
 		mEditorContext.PageManager = new EditorPageManager();
+		mEditorContext.PageManager.SetResourceSystem(mResourceSystem);
 		mEditorContext.SceneEditor = new EditorSceneManager();
 		mEditorContext.AssetSelection = new AssetSelection();
 		mEditorContext.PluginRegistry = new EditorPluginRegistry();

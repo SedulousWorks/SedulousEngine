@@ -2,6 +2,7 @@ namespace Sedulous.Editor.Core;
 
 using System;
 using System.Collections;
+using Sedulous.Resources;
 
 /// Manages all open editor pages (scenes + assets). Tracks active page.
 class EditorPageManager
@@ -9,6 +10,7 @@ class EditorPageManager
 	private List<IEditorPage> mPages = new .() ~ delete _;
 	private List<IEditorPageFactory> mFactories = new .() ~ delete _;
 	private IEditorPage mActivePage;
+	private ResourceSystem mResourceSystem;
 
 	public Event<delegate void(IEditorPage)> OnActivePageChanged ~ _.Dispose();
 	public Event<delegate void(IEditorPage)> OnPageOpened ~ _.Dispose();
@@ -20,6 +22,15 @@ class EditorPageManager
 	/// All open pages.
 	public Span<IEditorPage> OpenPages =>
 		mPages.Count > 0 ? .(mPages.Ptr, mPages.Count) : .();
+
+	/// Hands the manager a reference to the ResourceSystem so it can
+	/// revert in-memory edits on a dirty page close (see Close - any
+	/// page implementing `IEditableAssetPage` gets its backing asset
+	/// reloaded from disk via `ResourceSystem.ReloadResource`).
+	public void SetResourceSystem(ResourceSystem resourceSystem)
+	{
+		mResourceSystem = resourceSystem;
+	}
 
 	/// Register a page factory for file types.
 	public void RegisterFactory(IEditorPageFactory factory)
@@ -124,6 +135,22 @@ class EditorPageManager
 
 		let idx = mPages.IndexOf(page);
 		if (idx < 0) return false;
+
+		// Revert uncommitted in-memory edits to the backing asset.
+		// Pages that edit a cached Resource opt in via IEditableAssetPage;
+		// reloading from disk through the ResourceSystem's same in-place
+		// Reload path PollHotReload uses restores the cached resource so
+		// the next page opened against the same URI sees disk state, not
+		// the user's discarded changes.
+		if (page.IsDirty && mResourceSystem != null)
+		{
+			if (let editable = page as IEditableAssetPage)
+			{
+				let @ref = editable.AssetRef;
+				if (@ref.HasId || @ref.HasPath)
+					mResourceSystem.ReloadResource(@ref);
+			}
+		}
 
 		mPages.RemoveAt(idx);
 		OnPageClosed(page);
