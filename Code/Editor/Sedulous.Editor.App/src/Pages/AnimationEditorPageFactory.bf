@@ -57,12 +57,12 @@ class AnimationEditorPageFactory : IEditorPageFactory
 			return MeshEditorPageFactory.BuildErrorPage(path, "Animation", "Failed to load animation clip.", context);
 
 		let host = new PreviewSceneHost(mDevice, mVGRenderer, mKeyboard, sceneSub, sceneRenderer, "AnimationPreview");
-		let page = new AnimationEditorPage(path, clipRes, host);
-		page.SetContentView(BuildAnimationView(clipRes, host, page));
+		let page = new AnimationEditorPage(path, uri, clipRes, host, context);
+		page.SetContentView(BuildAnimationView(clipRes, host, page, context));
 		return page;
 	}
 
-	private static View BuildAnimationView(Sedulous.Animation.Resources.AnimationClipResource clipRes, PreviewSceneHost host, AnimationEditorPage page)
+	private static View BuildAnimationView(Sedulous.Animation.Resources.AnimationClipResource clipRes, PreviewSceneHost host, AnimationEditorPage page, EditorContext context)
 	{
 		// Standard resource-page shape: viewport center, details docked
 		// right, a thin transport strip below the viewport (room for a
@@ -122,6 +122,72 @@ class AnimationEditorPageFactory : IEditorPageFactory
 		MeshEditorPageFactory.AddInfoRow(infoPanel, "Position Tracks", scope $"{clipRes?.PositionTrackCount ?? 0}");
 		MeshEditorPageFactory.AddInfoRow(infoPanel, "Rotation Tracks", scope $"{clipRes?.RotationTrackCount ?? 0}");
 		MeshEditorPageFactory.AddInfoRow(infoPanel, "Scale Tracks", scope $"{clipRes?.ScaleTrackCount ?? 0}");
+
+		// === Preview rig section ===
+		MeshEditorPageFactory.AddSeparator(infoPanel);
+		MeshEditorPageFactory.AddInfoHeader(infoPanel, "Preview Rig");
+
+		// Mesh picker row.
+		let meshRow = new FlexLayout() { Direction = .Horizontal, Spacing = 4 };
+		let meshLabel = new Label();
+		meshLabel.SetText("Mesh:");
+		meshLabel.TextColor = .(180, 180, 195, 255);
+		meshLabel.FontSize = 11;
+		meshRow.AddView(meshLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(64)), Height = .Match });
+
+		let meshPathLabel = new Label();
+		meshPathLabel.SetText("(none)");
+		meshPathLabel.TextColor = .(220, 220, 230, 255);
+		meshPathLabel.FontSize = 11;
+		meshRow.AddView(meshPathLabel, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
+
+		let pickMeshBtn = new Button("Pick");
+		pickMeshBtn.OnClick.Add(new [=context, =page] (btn) =>
+		{
+			let ctx = page.ContentView?.Context;
+			if (ctx == null || context == null) return;
+			let dlg = new AssetPickerDialog(context, ".skinnedmesh",
+				new [=page] (path, id) => { page.SetMeshUri(path); });
+			dlg.Show(ctx);
+		});
+		meshRow.AddView(pickMeshBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(48)), Height = .Fixed(.Px(22)) });
+
+		let clearMeshBtn = new Button("Clear");
+		clearMeshBtn.OnClick.Add(new [=page] (btn) => page.SetMeshUri(""));
+		meshRow.AddView(clearMeshBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(50)), Height = .Fixed(.Px(22)) });
+		infoPanel.AddView(meshRow, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(24)) });
+
+		// Skeleton picker row.
+		let skelRow = new FlexLayout() { Direction = .Horizontal, Spacing = 4 };
+		let skelLabel = new Label();
+		skelLabel.SetText("Skeleton:");
+		skelLabel.TextColor = .(180, 180, 195, 255);
+		skelLabel.FontSize = 11;
+		skelRow.AddView(skelLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(64)), Height = .Match });
+
+		let skelPathLabel = new Label();
+		skelPathLabel.SetText("(none)");
+		skelPathLabel.TextColor = .(220, 220, 230, 255);
+		skelPathLabel.FontSize = 11;
+		skelRow.AddView(skelPathLabel, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
+
+		let pickSkelBtn = new Button("Pick");
+		pickSkelBtn.OnClick.Add(new [=context, =page] (btn) =>
+		{
+			let ctx = page.ContentView?.Context;
+			if (ctx == null || context == null) return;
+			let dlg = new AssetPickerDialog(context, ".skeleton",
+				new [=page] (path, id) => { page.SetSkeletonUri(path); });
+			dlg.Show(ctx);
+		});
+		skelRow.AddView(pickSkelBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(48)), Height = .Fixed(.Px(22)) });
+
+		let clearSkelBtn = new Button("Clear");
+		clearSkelBtn.OnClick.Add(new [=page] (btn) => page.SetSkeletonUri(""));
+		skelRow.AddView(clearSkelBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(50)), Height = .Fixed(.Px(22)) });
+		infoPanel.AddView(skelRow, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(24)) });
+
+		page.RegisterStateLabels(meshPathLabel, skelPathLabel);
 
 		root.SetPanes(left, infoPanel);
 		return root;
