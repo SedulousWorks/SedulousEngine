@@ -571,16 +571,16 @@ class ManifestImporter
 				float rx = 0, ry = 0, rz = 0, rw = 1;
 				float sx = 1, sy = 1, sz = 1;
 
-				if (float.Parse(entityEl.GetAttribute("px")) case .Ok(let v)) px = v;
-				if (float.Parse(entityEl.GetAttribute("py")) case .Ok(let v)) py = v;
-				if (float.Parse(entityEl.GetAttribute("pz")) case .Ok(let v)) pz = v;
-				if (float.Parse(entityEl.GetAttribute("rx")) case .Ok(let v)) rx = v;
-				if (float.Parse(entityEl.GetAttribute("ry")) case .Ok(let v)) ry = v;
-				if (float.Parse(entityEl.GetAttribute("rz")) case .Ok(let v)) rz = v;
-				if (float.Parse(entityEl.GetAttribute("rw")) case .Ok(let v)) rw = v;
-				if (float.Parse(entityEl.GetAttribute("sx")) case .Ok(let v)) sx = v;
-				if (float.Parse(entityEl.GetAttribute("sy")) case .Ok(let v)) sy = v;
-				if (float.Parse(entityEl.GetAttribute("sz")) case .Ok(let v)) sz = v;
+				if (float.Parse(entityEl.GetAttribute("px")) case .Ok(let vpx)) px = vpx;
+				if (float.Parse(entityEl.GetAttribute("py")) case .Ok(let vpy)) py = vpy;
+				if (float.Parse(entityEl.GetAttribute("pz")) case .Ok(let vpz)) pz = vpz;
+				if (float.Parse(entityEl.GetAttribute("rx")) case .Ok(let vrx)) rx = vrx;
+				if (float.Parse(entityEl.GetAttribute("ry")) case .Ok(let vry)) ry = vry;
+				if (float.Parse(entityEl.GetAttribute("rz")) case .Ok(let vrz)) rz = vrz;
+				if (float.Parse(entityEl.GetAttribute("rw")) case .Ok(let vrw)) rw = vrw;
+				if (float.Parse(entityEl.GetAttribute("sx")) case .Ok(let vsx)) sx = vsx;
+				if (float.Parse(entityEl.GetAttribute("sy")) case .Ok(let vsy)) sy = vsy;
+				if (float.Parse(entityEl.GetAttribute("sz")) case .Ok(let vsz)) sz = vsz;
 
 				var entry = GeneratedScenePrefab.EntityEntry();
 				entry.Name = new String(entityName);
@@ -1017,10 +1017,10 @@ class ManifestImporter
 				{
 					let propName = el.GetAttribute("name");
 					float r = 0, g = 0, b = 0, a = 1;
-					if (float.Parse(el.GetAttribute("r")) case .Ok(let v)) r = v;
-					if (float.Parse(el.GetAttribute("g")) case .Ok(let v)) g = v;
-					if (float.Parse(el.GetAttribute("b")) case .Ok(let v)) b = v;
-					if (float.Parse(el.GetAttribute("a")) case .Ok(let v)) a = v;
+					if (float.Parse(el.GetAttribute("r")) case .Ok(let vr)) r = vr;
+					if (float.Parse(el.GetAttribute("g")) case .Ok(let vg)) g = vg;
+					if (float.Parse(el.GetAttribute("b")) case .Ok(let vb)) b = vb;
+					if (float.Parse(el.GetAttribute("a")) case .Ok(let va)) a = va;
 					if (propName == "BaseColor") baseColor = .(r, g, b, a);
 					else if (propName == "EmissiveColor") emissiveColor = .(r, g, b, a);
 				}
