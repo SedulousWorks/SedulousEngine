@@ -194,6 +194,7 @@ class AssetBrowserPanel : IEditorPanel
 			mEditorContext.ResourceSystem.AddIndex(index);
 
 			let entry = new MountEntry(scheme, mount, index, indexLocator, false);
+			entry.OwnsResources = true;
 			mEditorContext.MountEntries.Add(entry);
 
 			// Track for persistence
@@ -248,6 +249,7 @@ class AssetBrowserPanel : IEditorPanel
 			mEditorContext.ResourceSystem.AddIndex(index);
 
 			let entry = new MountEntry(scheme, mount, index, indexLocator, false);
+			entry.OwnsResources = true;
 			mEditorContext.MountEntries.Add(entry);
 
 			// Track for persistence
@@ -397,6 +399,7 @@ class AssetBrowserPanel : IEditorPanel
 			mEditorContext.ResourceSystem.AddIndex(index);
 
 			let entry = new MountEntry(scheme, mount, index, indexLocator, false);
+			entry.OwnsResources = true;
 			mEditorContext.MountEntries.Add(entry);
 
 			mExtraMounts.Add(.()

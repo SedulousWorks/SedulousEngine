@@ -35,6 +35,11 @@ class MountEntry
 	/// When true, the entry can't be unmounted by the user (builtin / project).
 	public bool IsLocked;
 
+	/// When true, this entry owns the Mount and Index and deletes them on destruction.
+	/// Dynamically added mounts (e.g., from the asset browser) set this to true.
+	/// Static mounts (builtin, project) are owned by EditorApplication fields.
+	public bool OwnsResources;
+
 	public this(StringView scheme, IMount mount, IResourceIndex index, StringView indexLocator = "", bool isLocked = false)
 	{
 		Scheme.Set(scheme);
@@ -42,6 +47,15 @@ class MountEntry
 		Index = index;
 		IndexLocator.Set(indexLocator);
 		IsLocked = isLocked;
+	}
+
+	public ~this()
+	{
+		if (OwnsResources)
+		{
+			if (Mount != null) delete Mount;
+			if (Index != null) delete Index;
+		}
 	}
 }
 
