@@ -208,6 +208,7 @@ TowerDefense = {Path = "Projects/TowerDefense"}
 "Sedulous.UI.Viewport" = {Path = "Foundation/Sedulous.UI.Viewport"}
 "Sedulous.Inspection" = {Path = "Foundation/Sedulous.Inspection"}
 "Sedulous.Fonts.Resources" = {Path = "Foundation/Sedulous.Fonts.Resources"}
+CuteSeriesImporter = {Path = "Tools/CuteSeriesImporter"}
 
 [WorkspaceFolders]
 Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
@@ -239,7 +240,7 @@ Engine = ["Sedulous.Engine.Core", "Sedulous.Engine.App", "Sedulous.Engine.Input"
 "Foundation/RHI" = ["Sedulous.RHI", "Sedulous.RHI.DX12", "Sedulous.RHI.Null", "Sedulous.RHI.Validation", "Sedulous.RHI.Vulkan", "Sedulous.ShaderReflection", "Sedulous.ShaderReflection.DXIL", "Sedulous.ShaderReflection.SPIRV", "Sedulous.ShaderReflection.Tests"]
 "Foundation/UI" = ["Sedulous.UI", "Sedulous.UI.Runtime", "Sedulous.UI.Shell", "Sedulous.UI.Tests", "Sedulous.UI.Toolkit", "Sedulous.UI.Viewport"]
 Editor = ["Sedulous.Editor.Core", "Sedulous.Editor.App"]
-Tools = ["ModelViewer"]
+Tools = ["ModelViewer", "CuteSeriesImporter"]
 Experimental = []
 "Experimental/Slug" = ["Sedulous.Slug", "Sedulous.Slug.Renderer", "Sedulous.Slug.Tests", "Sedulous.Slug.TTF", "SlugSample"]
 "Foundation/VFS" = ["Sedulous.VFS", "Sedulous.VFS.Disk", "Sedulous.VFS.Pak", "Sedulous.VFS.Pak.Tool", "Sedulous.VFS.Tests"]

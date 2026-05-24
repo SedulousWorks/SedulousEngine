@@ -1,0 +1,37 @@
+FileVersion = 1
+
+[Project]
+Name = "CuteSeriesImporter"
+StartupObject = "CuteSeriesImporter.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Xml" = "*"
+"Sedulous.Models" = "*"
+"Sedulous.Models.FBX" = "*"
+"Sedulous.Images" = "*"
+"Sedulous.Images.STB" = "*"
+"Sedulous.Geometry" = "*"
+"Sedulous.Geometry.Tooling" = "*"
+"Sedulous.Geometry.Tooling.Resources" = "*"
+"Sedulous.Geometry.Resources" = "*"
+"Sedulous.Resources" = "*"
+"Sedulous.Serialization" = "*"
+"Sedulous.Serialization.OpenDDL" = "*"
+"Sedulous.OpenDDL" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.VFS.Disk" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Core.Mathematics" = "*"
+"Sedulous.Animation" = "*"
+"Sedulous.Animation.Resources" = "*"
+"Sedulous.Materials" = "*"
+"Sedulous.Materials.Resources" = "*"
+"Sedulous.Textures" = "*"
+"Sedulous.Textures.Importer" = "*"
+"Sedulous.Textures.Resources" = "*"
+"Sedulous.Fonts" = "*"
+"Sedulous.Inspection" = "*"
+
+[Configs.Debug.Win64]
+DebugCommandArguments = "\"D:\\Dev\\Beef\\BeefGFX\\SedulousEngine\\Code\\Tools\\CuteSeriesImporter\\CuteSeriesManifest.xml\" --pack \"Snow Forest Pack\""
