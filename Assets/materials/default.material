@@ -115,6 +115,6 @@ Obj_ %prop11 {
 }
 int32 %uniformSize {48}
 float[12] %uniformData {
-	{1, 1, 1, 1, 0, 0.5, 1, 0, 1, 1, 1, 1}
+	{1, 1, 1, 1, 0, 0.5, 1, 0, 0, 0, 0, 1}
 }
 int32 %textureCount {0}
