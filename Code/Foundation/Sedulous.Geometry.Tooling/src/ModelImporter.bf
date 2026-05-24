@@ -675,39 +675,54 @@ class ModelImporter
 		if (model.Animations.Count == 0)
 			return;
 
-		int32[] nodeToBoneMapping;
-
 		if (model.Skins.Count > 0)
 		{
 			// Get node-to-bone mapping from the skeleton converter (includes ancestor nodes
 			// so that root motion animation channels on non-joint ancestors are preserved)
 			let skin = model.Skins[0];
-			nodeToBoneMapping = SkeletonConverter.CreateNodeToBoneMapping(model, skin);
+			let nodeToBoneMapping = SkeletonConverter.CreateNodeToBoneMapping(model, skin);
 			if (nodeToBoneMapping == null)
 				return;
+			defer delete nodeToBoneMapping;
+
+			for (let modelAnim in model.Animations)
+			{
+				let clip = AnimationConverter.Convert(modelAnim, nodeToBoneMapping);
+				if (clip != null)
+					result.Animations.Add(clip);
+				else
+					result.AddWarning(scope $"Failed to convert animation '{modelAnim.Name}'");
+			}
+		}
+		else if (mOptions.TargetSkeleton != null)
+		{
+			// No skins — animation-only file. Use name-based matching against
+			// the target skeleton to remap channels correctly.
+			for (let modelAnim in model.Animations)
+			{
+				let clip = AnimationConverter.ConvertByName(modelAnim, model, mOptions.TargetSkeleton);
+				if (clip != null)
+					result.Animations.Add(clip);
+				else
+					result.AddWarning(scope $"Failed to convert animation '{modelAnim.Name}'");
+			}
 		}
 		else
 		{
-			// No skins - animation-only file (e.g. separate Mixamo animation clips).
-			// Use identity mapping: node index = bone index. The consumer is responsible
-			// for ensuring the skeleton's bone order matches the node order, which is the
-			// common case for standard exports sharing the same rig.
-			nodeToBoneMapping = new int32[model.Bones.Count];
+			// No skins, no target skeleton — use identity mapping.
+			// The consumer is responsible for ensuring bone order matches.
+			let nodeToBoneMapping = new int32[model.Bones.Count];
 			for (int32 i = 0; i < nodeToBoneMapping.Count; i++)
 				nodeToBoneMapping[i] = i;
-		}
-		defer delete nodeToBoneMapping;
+			defer delete nodeToBoneMapping;
 
-		for (let modelAnim in model.Animations)
-		{
-			let clip = AnimationConverter.Convert(modelAnim, nodeToBoneMapping);
-			if (clip != null)
+			for (let modelAnim in model.Animations)
 			{
-				result.Animations.Add(clip);
-			}
-			else
-			{
-				result.AddWarning(scope $"Failed to convert animation '{modelAnim.Name}'");
+				let clip = AnimationConverter.Convert(modelAnim, nodeToBoneMapping);
+				if (clip != null)
+					result.Animations.Add(clip);
+				else
+					result.AddWarning(scope $"Failed to convert animation '{modelAnim.Name}'");
 			}
 		}
 	}

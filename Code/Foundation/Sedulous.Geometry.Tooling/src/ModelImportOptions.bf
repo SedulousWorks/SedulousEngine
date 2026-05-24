@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Animation;
 
 namespace Sedulous.Geometry.Tooling;
 
@@ -68,6 +69,12 @@ class ModelImportOptions
 
 	/// Maximum bones per vertex for skinned meshes.
 	public int32 MaxBonesPerVertex = 4;
+
+	/// Target skeleton for name-based animation remapping.
+	/// When set and the imported model has no skins (animation-only file),
+	/// animation channels are matched to skeleton bones by name instead of
+	/// using raw node indices. Not owned — caller keeps it alive.
+	public Skeleton TargetSkeleton;
 
 	/// Create default options importing everything.
 	public static ModelImportOptions Default => new .();
