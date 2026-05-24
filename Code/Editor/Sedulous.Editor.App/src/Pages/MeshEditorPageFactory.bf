@@ -65,12 +65,13 @@ class MeshEditorPageFactory : IEditorPageFactory
 			return BuildErrorPage(path, "Mesh", "Failed to load mesh resource.", context);
 
 		let host = new PreviewSceneHost(mDevice, mVGRenderer, mKeyboard, sceneSub, sceneRenderer, "MeshPreview");
-		let page = new MeshEditorPage(path, uri, meshRes, host);
-		page.SetContentView(BuildMeshView(meshRes, host));
+		let page = new MeshEditorPage(path, uri, meshRes, host, context);
+		page.SetContentView(BuildMeshView(meshRes, host, page, context));
 		return page;
 	}
 
-	private static View BuildMeshView(StaticMeshResource meshRes, PreviewSceneHost host)
+	private static View BuildMeshView(StaticMeshResource meshRes, PreviewSceneHost host,
+		MeshEditorPage page, EditorContext context)
 	{
 		let root = new SplitView(.Horizontal);
 
@@ -107,6 +108,54 @@ class MeshEditorPageFactory : IEditorPageFactory
 			errorLabel.SetText("Failed to load mesh");
 			errorLabel.TextColor = .(220, 100, 100, 255);
 			infoPanel.AddView(errorLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });
+		}
+
+		// Per-slot material override pickers, mirroring the
+		// SkinnedMeshEditorPage rig. Slot count comes from the unique
+		// SubMesh.materialIndex values rather than SubMeshes.Count -
+		// MeshComponent.MaterialRefs is indexed by materialIndex, so
+		// multiple submeshes that share a slot share one row.
+		let slotCount = MeshEditorPage.ComputeMaterialSlotCount(meshRes);
+		if (slotCount > 0)
+		{
+			AddSeparator(infoPanel);
+			AddInfoHeader(infoPanel, "Preview Materials");
+
+			for (int32 slot = 0; slot < slotCount; slot++)
+			{
+				let row = new FlexLayout() { Direction = .Horizontal, Spacing = 4 };
+				let label = new Label();
+				label.SetText(scope $"Mat {slot}:");
+				label.TextColor = .(180, 180, 195, 255);
+				label.FontSize = 11;
+				row.AddView(label, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(64)), Height = .Match });
+
+				let pathLabel = new Label();
+				pathLabel.SetText("(none)");
+				pathLabel.TextColor = .(220, 220, 230, 255);
+				pathLabel.FontSize = 11;
+				row.AddView(pathLabel, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
+
+				let slotCopy = slot;
+				let pickBtn = new Button("Pick");
+				pickBtn.OnClick.Add(new [=context, =page, =slotCopy] (btn) =>
+				{
+					let ctx = page.ContentView?.Context;
+					if (ctx == null || context == null) return;
+					let dlg = new AssetPickerDialog(context, ".material",
+						new [=page, =slotCopy] (path, id) => { page.SetMaterialUri(slotCopy, path); });
+					dlg.Show(ctx);
+				});
+				row.AddView(pickBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(48)), Height = .Fixed(.Px(22)) });
+
+				let clearBtn = new Button("Clear");
+				clearBtn.OnClick.Add(new [=page, =slotCopy] (btn) => page.SetMaterialUri(slotCopy, ""));
+				row.AddView(clearBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(50)), Height = .Fixed(.Px(22)) });
+
+				infoPanel.AddView(row, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(24)) });
+
+				page.RegisterMaterialLabel(slot, pathLabel);
+			}
 		}
 
 		root.SetPanes(viewportPanel, infoPanel);
