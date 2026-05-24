@@ -4866,113 +4866,47 @@
         <Variant name="Egg 20E" base="Egg" mesh="Egg Spike" texture="Textures/Egg 20E.psd"/>
     </Pack>
     <Pack name="Desert Pack" type="environment" sourceDir="Desert Pack Cute Series" outputDir="Environment/DesertPack">
-        <Asset name="Border Connect 01">
-            <Mesh file="FBX/Border Connect 01.FBX"/>
-        </Asset>
-        <Asset name="Border Wall 01">
-            <Mesh file="FBX/Border Wall 01.FBX"/>
-        </Asset>
-        <Asset name="Cactus 01">
-            <Mesh file="FBX/Cactus 01.FBX"/>
-        </Asset>
-        <Asset name="Cactus 02">
-            <Mesh file="FBX/Cactus 02.FBX"/>
-        </Asset>
-        <Asset name="Cactus 03">
-            <Mesh file="FBX/Cactus 03.FBX"/>
-        </Asset>
-        <Asset name="Cactus 04">
-            <Mesh file="FBX/Cactus 04.FBX"/>
-        </Asset>
-        <Asset name="Cactus 05">
-            <Mesh file="FBX/Cactus 05.FBX"/>
-        </Asset>
-        <Asset name="Edge Wall 01">
-            <Mesh file="FBX/Edge Wall 01.FBX"/>
-        </Asset>
-        <Asset name="Fence 01">
-            <Mesh file="FBX/Fence 01.FBX"/>
-        </Asset>
-        <Asset name="Fence 02">
-            <Mesh file="FBX/Fence 02.FBX"/>
-        </Asset>
-        <Asset name="Fence 03">
-            <Mesh file="FBX/Fence 03.FBX"/>
-        </Asset>
-        <Asset name="Fence 04">
-            <Mesh file="FBX/Fence 04.FBX"/>
-        </Asset>
-        <Asset name="Fence 05">
-            <Mesh file="FBX/Fence 05.FBX"/>
-        </Asset>
-        <Asset name="Ground 01">
-            <Mesh file="FBX/Ground 01.FBX"/>
-        </Asset>
-        <Asset name="Ground 02">
-            <Mesh file="FBX/Ground 02.FBX"/>
-        </Asset>
-        <Asset name="Ground 03">
-            <Mesh file="FBX/Ground 03.FBX"/>
-        </Asset>
-        <Asset name="Pillar 01">
-            <Mesh file="FBX/Pillar 01.FBX"/>
-        </Asset>
-        <Asset name="Pillar 02">
-            <Mesh file="FBX/Pillar 02.FBX"/>
-        </Asset>
-        <Asset name="Pillar 03">
-            <Mesh file="FBX/Pillar 03.FBX"/>
-        </Asset>
-        <Asset name="Pyramid 01">
-            <Mesh file="FBX/Pyramid 01.FBX"/>
-        </Asset>
-        <Asset name="Rock 01">
-            <Mesh file="FBX/Rock 01.FBX"/>
-        </Asset>
-        <Asset name="Rock 02">
-            <Mesh file="FBX/Rock 02.FBX"/>
-        </Asset>
-        <Asset name="Rock 03">
-            <Mesh file="FBX/Rock 03.FBX"/>
-        </Asset>
-        <Asset name="Rock Pillar 01">
-            <Mesh file="FBX/Rock Pillar 01.FBX"/>
-        </Asset>
-        <Asset name="Rock Pillar 02">
-            <Mesh file="FBX/Rock Pillar 02.FBX"/>
-        </Asset>
-        <Asset name="Shrine 01">
-            <Mesh file="FBX/Shrine 01.FBX"/>
-        </Asset>
-        <Asset name="Stairs 01">
-            <Mesh file="FBX/Stairs 01.FBX"/>
-        </Asset>
-        <Asset name="Step 01">
-            <Mesh file="FBX/Step 01.FBX"/>
-        </Asset>
-        <Asset name="Stone 01">
-            <Mesh file="FBX/Stone 01.FBX"/>
-        </Asset>
-        <Asset name="Stone 02">
-            <Mesh file="FBX/Stone 02.FBX"/>
-        </Asset>
-        <Asset name="Stone 03">
-            <Mesh file="FBX/Stone 03.FBX"/>
-        </Asset>
-        <Asset name="Tiles 01">
-            <Mesh file="FBX/Tiles 01.FBX"/>
-        </Asset>
-        <Asset name="Tiles 02">
-            <Mesh file="FBX/Tiles 02.FBX"/>
-        </Asset>
-        <Asset name="Tiles 03">
-            <Mesh file="FBX/Tiles 03.FBX"/>
-        </Asset>
-        <SharedTextures>
-            <Texture file="Textures/Desert.psd"/>
-            <Texture file="Textures/FX Circle.psd"/>
-            <Texture file="Textures/FX Dust.psd"/>
-        </SharedTextures>
+        <SharedMaterial name="Desert">
+            <Texture file="Textures/Desert.psd" slot="AlbedoMap"/>
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+            <Float name="AlphaCutoff" value="0.5"/>
+        </SharedMaterial>
+        <Asset name="Border Connect 01" sharedMaterial="Desert"><Mesh file="FBX/Border Connect 01.FBX"/></Asset>
+        <Asset name="Border Wall 01" sharedMaterial="Desert"><Mesh file="FBX/Border Wall 01.FBX"/></Asset>
+        <Asset name="Cactus 01" sharedMaterial="Desert"><Mesh file="FBX/Cactus 01.FBX"/></Asset>
+        <Asset name="Cactus 02" sharedMaterial="Desert"><Mesh file="FBX/Cactus 02.FBX"/></Asset>
+        <Asset name="Cactus 03" sharedMaterial="Desert"><Mesh file="FBX/Cactus 03.FBX"/></Asset>
+        <Asset name="Cactus 04" sharedMaterial="Desert"><Mesh file="FBX/Cactus 04.FBX"/></Asset>
+        <Asset name="Cactus 05" sharedMaterial="Desert"><Mesh file="FBX/Cactus 05.FBX"/></Asset>
+        <Asset name="Edge Wall 01" sharedMaterial="Desert"><Mesh file="FBX/Edge Wall 01.FBX"/></Asset>
+        <Asset name="Fence 01" sharedMaterial="Desert"><Mesh file="FBX/Fence 01.FBX"/></Asset>
+        <Asset name="Fence 02" sharedMaterial="Desert"><Mesh file="FBX/Fence 02.FBX"/></Asset>
+        <Asset name="Fence 03" sharedMaterial="Desert"><Mesh file="FBX/Fence 03.FBX"/></Asset>
+        <Asset name="Fence 04" sharedMaterial="Desert"><Mesh file="FBX/Fence 04.FBX"/></Asset>
+        <Asset name="Fence 05" sharedMaterial="Desert"><Mesh file="FBX/Fence 05.FBX"/></Asset>
+        <Asset name="Ground 01" sharedMaterial="Desert"><Mesh file="FBX/Ground 01.FBX"/></Asset>
+        <Asset name="Ground 02" sharedMaterial="Desert"><Mesh file="FBX/Ground 02.FBX"/></Asset>
+        <Asset name="Ground 03" sharedMaterial="Desert"><Mesh file="FBX/Ground 03.FBX"/></Asset>
+        <Asset name="Pillar 01" sharedMaterial="Desert"><Mesh file="FBX/Pillar 01.FBX"/></Asset>
+        <Asset name="Pillar 02" sharedMaterial="Desert"><Mesh file="FBX/Pillar 02.FBX"/></Asset>
+        <Asset name="Pillar 03" sharedMaterial="Desert"><Mesh file="FBX/Pillar 03.FBX"/></Asset>
+        <Asset name="Pyramid 01" sharedMaterial="Desert"><Mesh file="FBX/Pyramid 01.FBX"/></Asset>
+        <Asset name="Rock 01" sharedMaterial="Desert"><Mesh file="FBX/Rock 01.FBX"/></Asset>
+        <Asset name="Rock 02" sharedMaterial="Desert"><Mesh file="FBX/Rock 02.FBX"/></Asset>
+        <Asset name="Rock 03" sharedMaterial="Desert"><Mesh file="FBX/Rock 03.FBX"/></Asset>
+        <Asset name="Rock Pillar 01" sharedMaterial="Desert"><Mesh file="FBX/Rock Pillar 01.FBX"/></Asset>
+        <Asset name="Rock Pillar 02" sharedMaterial="Desert"><Mesh file="FBX/Rock Pillar 02.FBX"/></Asset>
+        <Asset name="Shrine 01" sharedMaterial="Desert"><Mesh file="FBX/Shrine 01.FBX"/></Asset>
+        <Asset name="Stairs 01" sharedMaterial="Desert"><Mesh file="FBX/Stairs 01.FBX"/></Asset>
+        <Asset name="Step 01" sharedMaterial="Desert"><Mesh file="FBX/Step 01.FBX"/></Asset>
+        <Asset name="Stone 01" sharedMaterial="Desert"><Mesh file="FBX/Stone 01.FBX"/></Asset>
+        <Asset name="Stone 02" sharedMaterial="Desert"><Mesh file="FBX/Stone 02.FBX"/></Asset>
+        <Asset name="Stone 03" sharedMaterial="Desert"><Mesh file="FBX/Stone 03.FBX"/></Asset>
+        <Asset name="Tiles 01" sharedMaterial="Desert"><Mesh file="FBX/Tiles 01.FBX"/></Asset>
+        <Asset name="Tiles 02" sharedMaterial="Desert"><Mesh file="FBX/Tiles 02.FBX"/></Asset>
+        <Asset name="Tiles 03" sharedMaterial="Desert"><Mesh file="FBX/Tiles 03.FBX"/></Asset>
+        <SceneManifest file="DesertDemo01.scene.xml" rotX90="true" noRotMeshes="Ground 01,Ground 02,Ground 03"/>
     </Pack>
     <Pack name="Dungeon" type="environment" sourceDir="Dungeon Cute Series" outputDir="Environment/Dungeon">
         <Asset name="Arch 01">
@@ -5417,266 +5351,226 @@
         <Asset name="Tree 01" sharedMaterial="Tree 01"><Mesh file="FBX/Tree 01.FBX"/></Asset>
         <Asset name="Tree 02" sharedMaterial="Tree 01"><Mesh file="FBX/Tree 02.FBX"/></Asset>
         <!-- Demo scenes generated from Unity .unity files -->
-        <SceneManifest file="Demo01.scene.xml"/>
+        <SceneManifest file="Demo01.scene.xml" rotX90="true" noRotMeshes="Ground 01"/>
     </Pack>
     <Pack name="Sci Fi Hexagon Battlefields" type="environment" sourceDir="Sci Fi Hexagon Battlefields Cute Series" outputDir="Environment/SciFiHexagonBattlefields">
-        <Asset name="Arrow 01">
+        <SharedMaterial name="SF Hex 01">
+            <Texture file="Textures/SF Hex 01.psd" slot="AlbedoMap"/>
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+            <Float name="AlphaCutoff" value="0.5"/>
+        </SharedMaterial>
+        <SharedMaterial name="Ground 01">
+            <Texture file="Textures/Ground 01.psd" slot="AlbedoMap"/>
+            <Texture file="Textures/Ground 01 Normal.psd" slot="NormalMap"/>
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+        </SharedMaterial>
+        <SharedMaterial name="Ground 02 Blue">
+            <Texture file="Textures/Ground 02.psd" slot="AlbedoMap"/>
+            <Texture file="Textures/Ground 02 Normal.psd" slot="NormalMap"/>
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+            <Color name="BaseColor" r="0.645" g="0.730" b="0.915" a="1"/>
+        </SharedMaterial>
+        <SharedMaterial name="Ground 02 Brown">
+            <Texture file="Textures/Ground 02.psd" slot="AlbedoMap"/>
+            <Texture file="Textures/Ground 02 Normal.psd" slot="NormalMap"/>
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+            <Color name="BaseColor" r="1.0" g="0.692" b="0.535" a="1"/>
+        </SharedMaterial>
+        <SharedMaterial name="Ground 02 Magenta">
+            <Texture file="Textures/Ground 02.psd" slot="AlbedoMap"/>
+            <Texture file="Textures/Ground 02 Normal.psd" slot="NormalMap"/>
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+            <Color name="BaseColor" r="1.0" g="0.403" b="0.552" a="1"/>
+        </SharedMaterial>
+        <SharedMaterial name="Ground 02 Silver">
+            <Texture file="Textures/Ground 02.psd" slot="AlbedoMap"/>
+            <Texture file="Textures/Ground 02 Normal.psd" slot="NormalMap"/>
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+            <Color name="BaseColor" r="0.813" g="0.893" b="0.972" a="1"/>
+        </SharedMaterial>
+        <SharedMaterial name="Ground 03">
+            <Texture file="Textures/Ground 03.psd" slot="AlbedoMap"/>
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+        </SharedMaterial>
+        <SharedMaterial name="Ground 04">
+            <Texture file="Textures/Ground 04.psd" slot="AlbedoMap"/>
+            <Texture file="Textures/Ground 04 Normal.psd" slot="NormalMap"/>
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+        </SharedMaterial>
+        <SharedMaterial name="Ground 05">
+            <Texture file="Textures/Ground 05.psd" slot="AlbedoMap"/>
+            <Texture file="Textures/Ground 05 Normal.psd" slot="NormalMap"/>
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+        </SharedMaterial>
+        <SharedMaterial name="Ground 06" emissive="true">
+            <Texture file="Textures/Ground 06.psd" slot="AlbedoMap"/>
+            <Texture file="Textures/Ground 06 Normal.psd" slot="NormalMap"/>
+            <Texture file="Textures/Ground 06.psd" slot="EmissiveMap"/>
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+            <Color name="EmissiveColor" r="0.122" g="0.529" b="1.491" a="1"/>
+        </SharedMaterial>
+        <SharedMaterial name="Ground 07">
+            <Texture file="Textures/Ground 07.psd" slot="AlbedoMap"/>
+            <Texture file="Textures/Ground 07 Normal.psd" slot="NormalMap"/>
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+        </SharedMaterial>
+        <SharedMaterial name="Ground 08">
+            <Texture file="Textures/Ground 08.psd" slot="AlbedoMap"/>
+            <Texture file="Textures/Ground 08 Normal.psd" slot="NormalMap"/>
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+        </SharedMaterial>
+        <SharedMaterial name="Ground 09">
+            <Texture file="Textures/Ground 09.psd" slot="AlbedoMap"/>
+            <Texture file="Textures/Ground 08 Normal.psd" slot="NormalMap"/>
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+        </SharedMaterial>
+        <SharedMaterial name="Ground 10">
+            <Texture file="Textures/Ground 10.psd" slot="AlbedoMap"/>
+            <Texture file="Textures/Ground 08 Normal.psd" slot="NormalMap"/>
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+        </SharedMaterial>
+        <SharedMaterial name="Ground 11">
+            <Texture file="Textures/Ground 11.psd" slot="AlbedoMap"/>
+            <Texture file="Textures/Ground 07 Normal.psd" slot="NormalMap"/>
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+        </SharedMaterial>
+        <SharedMaterial name="Ground 12" emissive="true">
+            <Texture file="Textures/Ground 12.psd" slot="AlbedoMap"/>
+            <Texture file="Textures/Ground 12 Normal.psd" slot="NormalMap"/>
+            <Texture file="Textures/Ground 12 Emission.psd" slot="EmissiveMap"/>
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+            <Color name="EmissiveColor" r="1.498" g="0.0" b="0.0" a="1"/>
+        </SharedMaterial>
+        <SharedMaterial name="Ground 13">
+            <Texture file="Textures/Ground 13.psd" slot="AlbedoMap"/>
+            <Texture file="Textures/Ground 01 Normal.psd" slot="NormalMap"/>
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+        </SharedMaterial>
+        <SharedMaterial name="Liquid Blue" emissive="true">
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+            <Color name="BaseColor" r="0" g="0.682" b="0.877" a="1"/>
+            <Color name="EmissiveColor" r="0" g="0.676" b="1.198" a="1"/>
+        </SharedMaterial>
+        <SharedMaterial name="Liquid Green" emissive="true">
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+            <Color name="BaseColor" r="0" g="0.878" b="0.027" a="1"/>
+            <Color name="EmissiveColor" r="0" g="1.198" b="0" a="1"/>
+        </SharedMaterial>
+        <SharedMaterial name="Liquid Orange" emissive="true">
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+            <Color name="BaseColor" r="0.878" g="0.458" b="0" a="1"/>
+            <Color name="EmissiveColor" r="1.198" g="0.279" b="0" a="1"/>
+        </SharedMaterial>
+        <SharedMaterial name="Liquid Purple" emissive="true">
+            <Float name="Metallic" value="0.0"/>
+            <Float name="Roughness" value="1.0"/>
+            <Color name="BaseColor" r="0.878" g="0" b="0.816" a="1"/>
+            <Color name="EmissiveColor" r="1.198" g="0" b="1.198" a="1"/>
+        </SharedMaterial>
+        <Asset name="Arrow 01" sharedMaterial="SF Hex 01">
             <Mesh file="FBX/Arrow 01.FBX"/>
         </Asset>
-        <Asset name="Barrel 01">
+        <Asset name="Barrel 01" sharedMaterial="SF Hex 01">
             <Mesh file="FBX/Barrel 01.FBX"/>
         </Asset>
-        <Asset name="Barrel 02">
+        <Asset name="Barrel 02" sharedMaterial="SF Hex 01">
             <Mesh file="FBX/Barrel 02.FBX"/>
         </Asset>
-        <Asset name="Barrel 03">
+        <Asset name="Barrel 03" sharedMaterial="SF Hex 01">
             <Mesh file="FBX/Barrel 03.FBX"/>
         </Asset>
-        <Asset name="Cactus 01">
-            <Mesh file="FBX/Cactus 01.FBX"/>
-        </Asset>
-        <Asset name="Cactus 02">
-            <Mesh file="FBX/Cactus 02.FBX"/>
-        </Asset>
-        <Asset name="Cactus 03">
-            <Mesh file="FBX/Cactus 03.FBX"/>
-        </Asset>
-        <Asset name="Cactus 04">
-            <Mesh file="FBX/Cactus 04.FBX"/>
-        </Asset>
-        <Asset name="Dead Tree 01">
-            <Mesh file="FBX/Dead Tree 01.FBX"/>
-        </Asset>
-        <Asset name="Dead Tree 02">
-            <Mesh file="FBX/Dead Tree 02.FBX"/>
-        </Asset>
-        <Asset name="Dead Tree 03">
-            <Mesh file="FBX/Dead Tree 03.FBX"/>
-        </Asset>
-        <Asset name="Debris 01">
-            <Mesh file="FBX/Debris 01.FBX"/>
-        </Asset>
-        <Asset name="Debris 02">
-            <Mesh file="FBX/Debris 02.FBX"/>
-        </Asset>
-        <Asset name="Debris 03">
-            <Mesh file="FBX/Debris 03.FBX"/>
-        </Asset>
-        <Asset name="Debris 04">
-            <Mesh file="FBX/Debris 04.FBX"/>
-        </Asset>
-        <Asset name="Desert Rock 01">
-            <Mesh file="FBX/Desert Rock 01.FBX"/>
-        </Asset>
-        <Asset name="Desert Rock 02">
-            <Mesh file="FBX/Desert Rock 02.FBX"/>
-        </Asset>
-        <Asset name="Factory 01">
-            <Mesh file="FBX/Factory 01.FBX"/>
-        </Asset>
-        <Asset name="Gas Tank 01">
-            <Mesh file="FBX/Gas Tank 01.FBX"/>
-        </Asset>
-        <Asset name="Ground 01">
-            <Mesh file="FBX/Ground 01.FBX"/>
-        </Asset>
-        <Asset name="Health Kit 01">
-            <Mesh file="FBX/Health Kit 01.FBX"/>
-        </Asset>
-        <Asset name="Hexagon 01">
-            <Mesh file="FBX/Hexagon 01.FBX"/>
-        </Asset>
-        <Asset name="Hexagon 02">
-            <Mesh file="FBX/Hexagon 02.FBX"/>
-        </Asset>
-        <Asset name="Hexagon 03">
-            <Mesh file="FBX/Hexagon 03.FBX"/>
-        </Asset>
-        <Asset name="Hexagon 04">
-            <Mesh file="FBX/Hexagon 04.FBX"/>
-        </Asset>
-        <Asset name="Hexagon 05">
-            <Mesh file="FBX/Hexagon 05.FBX"/>
-        </Asset>
-        <Asset name="Hexagon 06">
-            <Mesh file="FBX/Hexagon 06.FBX"/>
-        </Asset>
-        <Asset name="Hexagon 07">
-            <Mesh file="FBX/Hexagon 07.FBX"/>
-        </Asset>
-        <Asset name="Hexagon 08">
-            <Mesh file="FBX/Hexagon 08.FBX"/>
-        </Asset>
-        <Asset name="Hexagon 09">
-            <Mesh file="FBX/Hexagon 09.FBX"/>
-        </Asset>
-        <Asset name="Hexagon 10">
-            <Mesh file="FBX/Hexagon 10.FBX"/>
-        </Asset>
-        <Asset name="Hexagon 11">
-            <Mesh file="FBX/Hexagon 11.FBX"/>
-        </Asset>
-        <Asset name="Hexagon 12">
-            <Mesh file="FBX/Hexagon 12.FBX"/>
-        </Asset>
-        <Asset name="Hexagon 13">
-            <Mesh file="FBX/Hexagon 13.FBX"/>
-        </Asset>
-        <Asset name="Hexagon 14">
-            <Mesh file="FBX/Hexagon 14.FBX"/>
-        </Asset>
-        <Asset name="Hexagon 15">
-            <Mesh file="FBX/Hexagon 15.FBX"/>
-        </Asset>
-        <Asset name="Hexagon 16">
-            <Mesh file="FBX/Hexagon 16.FBX"/>
-        </Asset>
-        <Asset name="Hexagon 17">
-            <Mesh file="FBX/Hexagon 17.FBX"/>
-        </Asset>
-        <Asset name="Pillar 01">
-            <Mesh file="FBX/Pillar 01.FBX"/>
-        </Asset>
-        <Asset name="Pillar 02">
-            <Mesh file="FBX/Pillar 02.FBX"/>
-        </Asset>
-        <Asset name="Pillar 03">
-            <Mesh file="FBX/Pillar 03.FBX"/>
-        </Asset>
-        <Asset name="Pillar 04">
-            <Mesh file="FBX/Pillar 04.FBX"/>
-        </Asset>
-        <Asset name="Pillar 05">
-            <Mesh file="FBX/Pillar 05.FBX"/>
-        </Asset>
-        <Asset name="Pillar 06">
-            <Mesh file="FBX/Pillar 06.FBX"/>
-        </Asset>
-        <Asset name="Pillar 07">
-            <Mesh file="FBX/Pillar 07.FBX"/>
-        </Asset>
-        <Asset name="Pillar 08">
-            <Mesh file="FBX/Pillar 08.FBX"/>
-        </Asset>
-        <Asset name="Pillar 09">
-            <Mesh file="FBX/Pillar 09.FBX"/>
-        </Asset>
-        <Asset name="Pillar 10">
-            <Mesh file="FBX/Pillar 10.FBX"/>
-        </Asset>
-        <Asset name="Pillar 11">
-            <Mesh file="FBX/Pillar 11.FBX"/>
-        </Asset>
-        <Asset name="Pillar 12">
-            <Mesh file="FBX/Pillar 12.FBX"/>
-        </Asset>
-        <Asset name="Pillar 13">
-            <Mesh file="FBX/Pillar 13.FBX"/>
-        </Asset>
-        <Asset name="Pump 01">
-            <Mesh file="FBX/Pump 01.FBX"/>
-        </Asset>
-        <Asset name="Pump 02">
-            <Mesh file="FBX/Pump 02.FBX"/>
-        </Asset>
-        <Asset name="Pump 03">
-            <Mesh file="FBX/Pump 03.FBX"/>
-        </Asset>
-        <Asset name="Pump 04">
-            <Mesh file="FBX/Pump 04.FBX"/>
-        </Asset>
-        <Asset name="Pump 05">
-            <Mesh file="FBX/Pump 05.FBX"/>
-        </Asset>
-        <Asset name="Pump 06">
-            <Mesh file="FBX/Pump 06.FBX"/>
-        </Asset>
-        <Asset name="Pump 07">
-            <Mesh file="FBX/Pump 07.FBX"/>
-        </Asset>
-        <Asset name="Pump 08">
-            <Mesh file="FBX/Pump 08.FBX"/>
-        </Asset>
-        <Asset name="Pump 09">
-            <Mesh file="FBX/Pump 09.FBX"/>
-        </Asset>
-        <Asset name="Pump 10">
-            <Mesh file="FBX/Pump 10.FBX"/>
-        </Asset>
-        <Asset name="Rail Track 01">
-            <Mesh file="FBX/Rail Track 01.FBX"/>
-        </Asset>
-        <Asset name="Rock 01">
-            <Mesh file="FBX/Rock 01.FBX"/>
-        </Asset>
-        <Asset name="Rock 02">
-            <Mesh file="FBX/Rock 02.FBX"/>
-        </Asset>
-        <Asset name="Satelite 01">
-            <Mesh file="FBX/Satelite 01.FBX"/>
-        </Asset>
-        <Asset name="Snow Clump 01">
-            <Mesh file="FBX/Snow Clump 01.FBX"/>
-        </Asset>
-        <Asset name="Switch 01">
-            <Mesh file="FBX/Switch 01.FBX"/>
-        </Asset>
-        <Asset name="Tank 01">
-            <Mesh file="FBX/Tank 01.FBX"/>
-        </Asset>
-        <Asset name="Tank 02">
-            <Mesh file="FBX/Tank 02.FBX"/>
-        </Asset>
-        <Asset name="Tank 03">
-            <Mesh file="FBX/Tank 03.FBX"/>
-        </Asset>
-        <Asset name="Tank 04">
-            <Mesh file="FBX/Tank 04.FBX"/>
-        </Asset>
-        <Asset name="Tower 01">
-            <Mesh file="FBX/Tower 01.FBX"/>
-        </Asset>
-        <Asset name="Tower 02">
-            <Mesh file="FBX/Tower 02.FBX"/>
-        </Asset>
-        <Asset name="Tub 01">
-            <Mesh file="FBX/Tub 01.FBX"/>
-        </Asset>
-        <SharedTextures>
-            <Texture file="Textures/FX Hex.psd"/>
-            <Texture file="Textures/FX Sand.psd"/>
-            <Texture file="Textures/FX Smoke.psd"/>
-            <Texture file="Textures/FX Snow.psd"/>
-            <Texture file="Textures/FX Square.psd"/>
-            <Texture file="Textures/Ground 01 Normal.psd"/>
-            <Texture file="Textures/Ground 01.psd"/>
-            <Texture file="Textures/Ground 02 Normal.psd"/>
-            <Texture file="Textures/Ground 02.psd"/>
-            <Texture file="Textures/Ground 03.psd"/>
-            <Texture file="Textures/Ground 04 Normal.psd"/>
-            <Texture file="Textures/Ground 04.psd"/>
-            <Texture file="Textures/Ground 05 Normal.psd"/>
-            <Texture file="Textures/Ground 05.psd"/>
-            <Texture file="Textures/Ground 06 Normal.psd"/>
-            <Texture file="Textures/Ground 06.psd"/>
-            <Texture file="Textures/Ground 07 Normal.psd"/>
-            <Texture file="Textures/Ground 07.psd"/>
-            <Texture file="Textures/Ground 08 Normal.psd"/>
-            <Texture file="Textures/Ground 08.psd"/>
-            <Texture file="Textures/Ground 09.psd"/>
-            <Texture file="Textures/Ground 10.psd"/>
-            <Texture file="Textures/Ground 11.psd"/>
-            <Texture file="Textures/Ground 12 Emission.psd"/>
-            <Texture file="Textures/Ground 12 Normal.psd"/>
-            <Texture file="Textures/Ground 12.psd"/>
-            <Texture file="Textures/Ground 13.psd"/>
-            <Texture file="Textures/SF Hex 01.psd"/>
-        </SharedTextures>
-        <EmissiveMaterial name="Ground 12" color="1.498,0.000,0.000,1.000"/>
-        <EmissiveMaterial name="Liquid Blue" color="0.000,0.676,1.198,1.000"/>
-        <EmissiveMaterial name="Liquid Green" color="0.000,1.198,0.000,1.000"/>
-        <EmissiveMaterial name="Liquid Orange" color="1.198,0.279,0.000,1.000"/>
-        <EmissiveMaterial name="Liquid Purple" color="1.198,0.000,1.198,1.000"/>
+        <Asset name="Cactus 01" sharedMaterial="SF Hex 01"><Mesh file="FBX/Cactus 01.FBX"/></Asset>
+        <Asset name="Cactus 02" sharedMaterial="SF Hex 01"><Mesh file="FBX/Cactus 02.FBX"/></Asset>
+        <Asset name="Cactus 03" sharedMaterial="SF Hex 01"><Mesh file="FBX/Cactus 03.FBX"/></Asset>
+        <Asset name="Cactus 04" sharedMaterial="SF Hex 01"><Mesh file="FBX/Cactus 04.FBX"/></Asset>
+        <Asset name="Dead Tree 01" sharedMaterial="SF Hex 01"><Mesh file="FBX/Dead Tree 01.FBX"/></Asset>
+        <Asset name="Dead Tree 02" sharedMaterial="SF Hex 01"><Mesh file="FBX/Dead Tree 02.FBX"/></Asset>
+        <Asset name="Dead Tree 03" sharedMaterial="SF Hex 01"><Mesh file="FBX/Dead Tree 03.FBX"/></Asset>
+        <Asset name="Debris 01" sharedMaterial="SF Hex 01"><Mesh file="FBX/Debris 01.FBX"/></Asset>
+        <Asset name="Debris 02" sharedMaterial="SF Hex 01"><Mesh file="FBX/Debris 02.FBX"/></Asset>
+        <Asset name="Debris 03" sharedMaterial="SF Hex 01"><Mesh file="FBX/Debris 03.FBX"/></Asset>
+        <Asset name="Debris 04" sharedMaterial="SF Hex 01"><Mesh file="FBX/Debris 04.FBX"/></Asset>
+        <Asset name="Desert Rock 01" sharedMaterial="SF Hex 01"><Mesh file="FBX/Desert Rock 01.FBX"/></Asset>
+        <Asset name="Desert Rock 02" sharedMaterial="SF Hex 01"><Mesh file="FBX/Desert Rock 02.FBX"/></Asset>
+        <Asset name="Factory 01" sharedMaterial="SF Hex 01"><Mesh file="FBX/Factory 01.FBX"/></Asset>
+        <Asset name="Gas Tank 01" sharedMaterial="SF Hex 01"><Mesh file="FBX/Gas Tank 01.FBX"/></Asset>
+        <Asset name="Ground 01" sharedMaterial="SF Hex 01"><Mesh file="FBX/Ground 01.FBX"/></Asset>
+        <Asset name="Health Kit 01" sharedMaterial="SF Hex 01"><Mesh file="FBX/Health Kit 01.FBX"/></Asset>
+        <Asset name="Hexagon 01" sharedMaterial="SF Hex 01"><Mesh file="FBX/Hexagon 01.FBX"/></Asset>
+        <Asset name="Hexagon 02" sharedMaterial="SF Hex 01"><Mesh file="FBX/Hexagon 02.FBX"/></Asset>
+        <Asset name="Hexagon 03" sharedMaterial="SF Hex 01"><Mesh file="FBX/Hexagon 03.FBX"/></Asset>
+        <Asset name="Hexagon 04" sharedMaterial="SF Hex 01"><Mesh file="FBX/Hexagon 04.FBX"/></Asset>
+        <Asset name="Hexagon 05" sharedMaterial="SF Hex 01"><Mesh file="FBX/Hexagon 05.FBX"/></Asset>
+        <Asset name="Hexagon 06" sharedMaterial="SF Hex 01"><Mesh file="FBX/Hexagon 06.FBX"/></Asset>
+        <Asset name="Hexagon 07" sharedMaterial="SF Hex 01"><Mesh file="FBX/Hexagon 07.FBX"/></Asset>
+        <Asset name="Hexagon 08" sharedMaterial="SF Hex 01"><Mesh file="FBX/Hexagon 08.FBX"/></Asset>
+        <Asset name="Hexagon 09" sharedMaterial="SF Hex 01"><Mesh file="FBX/Hexagon 09.FBX"/></Asset>
+        <Asset name="Hexagon 10" sharedMaterial="SF Hex 01"><Mesh file="FBX/Hexagon 10.FBX"/></Asset>
+        <Asset name="Hexagon 11" sharedMaterial="SF Hex 01"><Mesh file="FBX/Hexagon 11.FBX"/></Asset>
+        <Asset name="Hexagon 12" sharedMaterial="SF Hex 01"><Mesh file="FBX/Hexagon 12.FBX"/></Asset>
+        <Asset name="Hexagon 13" sharedMaterial="SF Hex 01"><Mesh file="FBX/Hexagon 13.FBX"/></Asset>
+        <Asset name="Hexagon 14" sharedMaterial="SF Hex 01"><Mesh file="FBX/Hexagon 14.FBX"/></Asset>
+        <Asset name="Hexagon 15" sharedMaterial="SF Hex 01"><Mesh file="FBX/Hexagon 15.FBX"/></Asset>
+        <Asset name="Hexagon 16" sharedMaterial="SF Hex 01"><Mesh file="FBX/Hexagon 16.FBX"/></Asset>
+        <Asset name="Hexagon 17" sharedMaterial="SF Hex 01"><Mesh file="FBX/Hexagon 17.FBX"/></Asset>
+        <Asset name="Pillar 01" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pillar 01.FBX"/></Asset>
+        <Asset name="Pillar 02" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pillar 02.FBX"/></Asset>
+        <Asset name="Pillar 03" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pillar 03.FBX"/></Asset>
+        <Asset name="Pillar 04" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pillar 04.FBX"/></Asset>
+        <Asset name="Pillar 05" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pillar 05.FBX"/></Asset>
+        <Asset name="Pillar 06" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pillar 06.FBX"/></Asset>
+        <Asset name="Pillar 07" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pillar 07.FBX"/></Asset>
+        <Asset name="Pillar 08" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pillar 08.FBX"/></Asset>
+        <Asset name="Pillar 09" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pillar 09.FBX"/></Asset>
+        <Asset name="Pillar 10" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pillar 10.FBX"/></Asset>
+        <Asset name="Pillar 11" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pillar 11.FBX"/></Asset>
+        <Asset name="Pillar 12" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pillar 12.FBX"/></Asset>
+        <Asset name="Pillar 13" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pillar 13.FBX"/></Asset>
+        <Asset name="Pump 01" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pump 01.FBX"/></Asset>
+        <Asset name="Pump 02" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pump 02.FBX"/></Asset>
+        <Asset name="Pump 03" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pump 03.FBX"/></Asset>
+        <Asset name="Pump 04" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pump 04.FBX"/></Asset>
+        <Asset name="Pump 05" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pump 05.FBX"/></Asset>
+        <Asset name="Pump 06" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pump 06.FBX"/></Asset>
+        <Asset name="Pump 07" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pump 07.FBX"/></Asset>
+        <Asset name="Pump 08" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pump 08.FBX"/></Asset>
+        <Asset name="Pump 09" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pump 09.FBX"/></Asset>
+        <Asset name="Pump 10" sharedMaterial="SF Hex 01"><Mesh file="FBX/Pump 10.FBX"/></Asset>
+        <Asset name="Rail Track 01" sharedMaterial="SF Hex 01"><Mesh file="FBX/Rail Track 01.FBX"/></Asset>
+        <Asset name="Rock 01" sharedMaterial="SF Hex 01"><Mesh file="FBX/Rock 01.FBX"/></Asset>
+        <Asset name="Rock 02" sharedMaterial="SF Hex 01"><Mesh file="FBX/Rock 02.FBX"/></Asset>
+        <Asset name="Satelite 01" sharedMaterial="SF Hex 01"><Mesh file="FBX/Satelite 01.FBX"/></Asset>
+        <Asset name="Snow Clump 01" sharedMaterial="SF Hex 01"><Mesh file="FBX/Snow Clump 01.FBX"/></Asset>
+        <Asset name="Switch 01" sharedMaterial="SF Hex 01"><Mesh file="FBX/Switch 01.FBX"/></Asset>
+        <Asset name="Tank 01" sharedMaterial="SF Hex 01"><Mesh file="FBX/Tank 01.FBX"/></Asset>
+        <Asset name="Tank 02" sharedMaterial="SF Hex 01"><Mesh file="FBX/Tank 02.FBX"/></Asset>
+        <Asset name="Tank 03" sharedMaterial="SF Hex 01"><Mesh file="FBX/Tank 03.FBX"/></Asset>
+        <Asset name="Tank 04" sharedMaterial="SF Hex 01"><Mesh file="FBX/Tank 04.FBX"/></Asset>
+        <Asset name="Tower 01" sharedMaterial="SF Hex 01"><Mesh file="FBX/Tower 01.FBX"/></Asset>
+        <Asset name="Tower 02" sharedMaterial="SF Hex 01"><Mesh file="FBX/Tower 02.FBX"/></Asset>
+        <Asset name="Tub 01" sharedMaterial="SF Hex 01"><Mesh file="FBX/Tub 01.FBX"/></Asset>
+        <!-- Demo scene -->
+        <SceneManifest file="SciFiDemo01.scene.xml"/>
     </Pack>
     <!-- Icons For Monsters Ultimate Pack 02 - PNG icons only, skip for 3D import -->
 </ImportManifest>

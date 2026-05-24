@@ -278,17 +278,15 @@ def resolve_prefab(prefab_name, prefab_dir, guid_map, fbx_guid_map, mat_guid_map
 
 
 def parse_scene(scene_path, guid_map, prefab_dir, fbx_guid_map, mat_guid_map):
-    """Parse Unity scene and resolve all prefab instances to mesh entities."""
+    """Parse Unity scene and resolve all prefab instances to mesh entities.
+    Outputs raw transforms — rotation correction is handled by the importer
+    based on manifest attributes (rotX90, noRotMeshes)."""
     with open(scene_path, 'r', encoding='utf-8') as f:
         content = f.read()
 
     scene_instances = parse_prefab_instances(content)
     resolved_cache = {}
     entities = []
-
-    # 90-degree rotation around X axis (Unity Z-up FBX correction)
-    half = math.radians(90) / 2
-    rot_x90 = [math.sin(half), 0, 0, math.cos(half)]
 
     for i, inst in enumerate(scene_instances):
         prefab_name = guid_map.get(inst['guid'])
@@ -305,9 +303,6 @@ def parse_scene(scene_path, guid_map, prefab_dir, fbx_guid_map, mat_guid_map):
             pos, rot, scale = transform_combine(
                 inst['position'], inst['rotation'], inst['scale'],
                 local_pos, local_rot, local_scale)
-
-            # Apply 90-degree X rotation correction per entity
-            rot = quat_mul(rot, rot_x90)
 
             entity_name = inst['name'] or f'{prefab_name}_{i}'
 

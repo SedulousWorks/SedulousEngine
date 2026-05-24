@@ -598,8 +598,6 @@ class MaterialSystem : IDisposable
 				{
 					if (prop.Name.Contains("normal", true) || prop.Name.Contains("Normal", true))
 						view = mNormalTextureView;
-					else if (prop.Name.Contains("emissive", true) || prop.Name.Contains("Emissive", true))
-						view = mBlackTextureView;
 					else
 						view = mWhiteTextureView;
 				}
