@@ -213,22 +213,87 @@ class AnimGraphEditorPage : IEditorPage, IResourceChangeListener
 
 		// Graph starts inactive — user presses Play to animate
 		mIsPlaying = false;
+
+		// Reapply the user's last preview rig picks for this asset.
+		// Must run after the SkinnedMesh + AnimationGraph components
+		// have been created since Apply* writes ref fields on them.
+		RestoreFromCache();
 	}
 
+	// Cache keys used to persist preview rig assignments per-asset
+	// (keyed by the .animgraph's URI) so closing + reopening restores
+	// the user's mesh + skeleton picks. Same convention as the
+	// SkinnedMeshEditorPage rig.
+	private const String CacheKey_PreviewSkeleton = "preview.skeleton";
+	private const String CacheKey_PreviewMesh = "preview.mesh";
+
 	/// Sets the preview skeleton on the AnimationGraphComponent.
+	/// Persists the pick through EditorContext.AssetCache so reopening
+	/// the page restores it.
 	public void SetPreviewSkeleton(ResourceRef skeletonRef)
+	{
+		ApplyPreviewSkeleton(skeletonRef);
+		WriteCache(CacheKey_PreviewSkeleton, skeletonRef.HasPath ? skeletonRef.Path : "");
+	}
+
+	/// Sets the preview skinned mesh on the SkinnedMeshComponent.
+	/// Persists the pick through EditorContext.AssetCache so reopening
+	/// the page restores it.
+	public void SetPreviewMesh(ResourceRef meshRef)
+	{
+		ApplyPreviewMesh(meshRef);
+		WriteCache(CacheKey_PreviewMesh, meshRef.HasPath ? meshRef.Path : "");
+	}
+
+	private void ApplyPreviewSkeleton(ResourceRef skeletonRef)
 	{
 		let comp = GetPreviewGraphComponent();
 		if (comp != null)
 			comp.SetSkeletonRef(skeletonRef);
 	}
 
-	/// Sets the preview skinned mesh on the SkinnedMeshComponent.
-	public void SetPreviewMesh(ResourceRef meshRef)
+	private void ApplyPreviewMesh(ResourceRef meshRef)
 	{
 		let comp = GetPreviewMeshComponent();
 		if (comp != null)
 			comp.SetMeshRef(meshRef);
+	}
+
+	/// Reads cached preview-rig picks for this .animgraph URI and
+	/// applies them through the Apply* helpers (bypassing the cache
+	/// write that the public Set* methods would re-issue). Called at
+	/// the end of SpawnPreviewEntity so the preview components exist
+	/// by the time we set refs on them.
+	private void RestoreFromCache()
+	{
+		let cache = mEditorContext?.AssetCache;
+		if (cache == null || mUri.Length == 0) return;
+
+		let cachedSkel = cache.Get(mUri, CacheKey_PreviewSkeleton);
+		if (cachedSkel.Length > 0)
+		{
+			var skelRef = ResourceRef(.Empty, cachedSkel);
+			defer skelRef.Dispose();
+			ApplyPreviewSkeleton(skelRef);
+		}
+
+		let cachedMesh = cache.Get(mUri, CacheKey_PreviewMesh);
+		if (cachedMesh.Length > 0)
+		{
+			var meshRef = ResourceRef(.Empty, cachedMesh);
+			defer meshRef.Dispose();
+			ApplyPreviewMesh(meshRef);
+		}
+	}
+
+	private void WriteCache(StringView key, StringView value)
+	{
+		let cache = mEditorContext?.AssetCache;
+		if (cache == null || mUri.Length == 0) return;
+		if (value.Length == 0)
+			cache.Clear(mUri, key);
+		else
+			cache.Set(mUri, key, value);
 	}
 
 	internal AnimationGraphComponent GetPreviewGraphComponent()

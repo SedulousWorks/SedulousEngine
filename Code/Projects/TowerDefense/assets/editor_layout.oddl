@@ -4,7 +4,7 @@ int32 %direction {1}
 Obj_ %first {
 	int32 %type {1}
 	Arr_ %panels {
-		int32 %_count {3}
+		int32 %_count {6}
 		Obj_ {
 			string %id {"page:project://gamescene.scene"}
 		}
@@ -14,8 +14,17 @@ Obj_ %first {
 		Obj_ {
 			string %id {"page:project://propAnims/catapultFire.propanim"}
 		}
+		Obj_ {
+			string %id {"page:project://Fox/fox1.skinnedmesh"}
+		}
+		Obj_ {
+			string %id {"page:project://Fox/Run.animation"}
+		}
+		Obj_ {
+			string %id {"page:project://Fox/fox_material.material"}
+		}
 	}
-	int32 %activeTab {2}
+	int32 %activeTab {5}
 }
 Obj_ %second {
 	int32 %type {0}

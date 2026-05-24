@@ -2,7 +2,7 @@ Arr_ %Settings {
 	int32 %_count {0}
 }
 Arr_ %OpenPages {
-	int32 %_count {3}
+	int32 %_count {6}
 	Obj_ {
 		string %uri {"project://gamescene.scene"}
 	}
@@ -12,5 +12,14 @@ Arr_ %OpenPages {
 	Obj_ {
 		string %uri {"project://propAnims/catapultFire.propanim"}
 	}
+	Obj_ {
+		string %uri {"project://Fox/fox1.skinnedmesh"}
+	}
+	Obj_ {
+		string %uri {"project://Fox/Run.animation"}
+	}
+	Obj_ {
+		string %uri {"project://Fox/fox_material.material"}
+	}
 }
-int32 %ActivePageIndex {2}
+int32 %ActivePageIndex {5}

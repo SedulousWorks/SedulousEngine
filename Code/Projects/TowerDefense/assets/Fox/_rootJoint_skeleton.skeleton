@@ -1,0 +1,464 @@
+uint64 %_type {6801494594526287214}
+int32 %_version {1}
+string %_id {"e1eb8d4d-d1fe-4455-8feb-1069676a4207"}
+string %_name {"_rootJoint_skeleton"}
+string %_sourcePath {"C:\\DEV\\SedulousWorks\\Repos\\SedulousEngine\\Assets\\samples\\models\\Fox\\glTF\\Fox.gltf"}
+int32 %boneCount {24}
+Obj_ %bones {
+	Obj_ %bone0 {
+		string %name {"_rootJoint"}
+		int32 %parentIndex {-1}
+		float[16] %inverseBindMatrix {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+		float[3] %bindTranslation {
+			{0, 0, 0}
+		}
+		float[4] %bindRotation {
+			{0, 0, 0, 1}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone1 {
+		string %name {"b_Root_00"}
+		int32 %parentIndex {0}
+		float[16] %inverseBindMatrix {
+			{1, 0, 0, 0, 0, -3.67469806E-06, 1.00000012, 0, 0, -1.00000012, -3.67469806E-06, 0, 0, 0, 0, 1}
+		}
+		float[3] %bindTranslation {
+			{0, 0, 0}
+		}
+		float[4] %bindRotation {
+			{-0.70710808, 0, 0, 0.707105458}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone2 {
+		string %name {"b_Hip_01"}
+		int32 %parentIndex {1}
+		float[16] %inverseBindMatrix {
+			{-5.63038647E-08, -1.03685284E-06, -1, 0, 0.93478179, 0.355222553, -4.21626055E-07, 0, 0.355222553, -0.93478179, 9.52938535E-07, 0, -30.636034, -40.2566376, 4.35935399E-05, 1}
+		}
+		float[3] %bindTranslation {
+			{0, 26.7484035, 42.9381714}
+		}
+		float[4] %bindRotation {
+			{0.127690941, -0.695482016, -0.127690226, 0.695481837}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone3 {
+		string %name {"b_Spine01_02"}
+		int32 %parentIndex {2}
+		float[16] %inverseBindMatrix {
+			{9.71120812E-07, -3.67638393E-07, -1, 0, -0.055475086, 0.998460054, -4.21626055E-07, 0, 0.998460054, 0.055475086, 9.52938478E-07, 0, 25.1979618, -53.6353111, 4.35935399E-05, 1}
+		}
+		float[3] %bindTranslation {
+			{12.8506012, 0, 0}
+		}
+		float[4] %bindRotation {
+			{0, 0, -0.590415776, 0.807099283}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone4 {
+		string %name {"b_Spine02_03"}
+		int32 %parentIndex {3}
+		float[16] %inverseBindMatrix {
+			{9.57731345E-07, -4.0122859E-07, -1, 0, -0.0206764378, 0.999786198, -4.21626055E-07, 0, 0.999786198, 0.0206764378, 9.52938535E-07, 0, 1.67255735, -53.7260056, 4.35935435E-05, 1}
+		}
+		float[3] %bindTranslation {
+			{21.6557541, -0.000118255615, 0}
+		}
+		float[4] %bindRotation {
+			{0, 0, 0.0174119528, 0.999848425}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone5 {
+		string %name {"b_Neck_04"}
+		int32 %parentIndex {4}
+		float[16] %inverseBindMatrix {
+			{5.4945923E-07, -8.81094991E-07, -1, 0, 0.561167836, 0.827702105, -4.21626027E-07, 0, 0.827702105, -0.561167836, 9.52938592E-07, 0, -50.6253548, -29.973896, 4.35935399E-05, 1}
+		}
+		float[3] %bindTranslation {
+			{25.6491432, 0, 0}
+		}
+		float[4] %bindRotation {
+			{0, 0, 0.303379148, 0.952869952}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone6 {
+		string %name {"b_Head_05"}
+		int32 %parentIndex {5}
+		float[16] %inverseBindMatrix {
+			{1.01978389E-06, -1.95639245E-07, -1, 0, -0.225893945, 0.974151969, -4.21626055E-07, 0, 0.974151969, 0.225893945, 9.52938592E-07, 0, -21.5024204, -67.3229294, 4.35935399E-05, 1}
+		}
+		float[3] %bindTranslation {
+			{13.3769608, 0, 0}
+		}
+		float[4] %bindRotation {
+			{0, 0, -0.400285423, 0.916390538}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone7 {
+		string %name {"b_RightUpperArm_06"}
+		int32 %parentIndex {4}
+		float[16] %inverseBindMatrix {
+			{3.96390788E-05, -0.0012906373, -0.999999166, 0, -0.99938488, -0.0350703597, 5.64779157E-06, 0, -0.0350703374, 0.999384046, -0.00129122974, 0, 49.6686821, -16.300848, -6.94453382, 1}
+		}
+		float[3] %bindTranslation {
+			{18.6779137, -4.29734039, 6.96757507}
+		}
+		float[4] %bindRotation {
+			{0.000467327336, -0.000446148479, -0.712179303, 0.70199734}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone8 {
+		string %name {"b_RightForeArm_07"}
+		int32 %parentIndex {7}
+		float[16] %inverseBindMatrix {
+			{-5.62362657E-05, -0.00129002053, -0.999999166, 0, -0.999232173, 0.0391812883, 5.64779884E-06, 0, 0.0391812511, 0.999231339, -0.00129122951, 0, 25.3406296, -18.2313938, -6.94453382, 1}
+		}
+		float[3] %bindTranslation {
+			{23.045126, 0, 0}
+		}
+		float[4] %bindRotation {
+			{0, 0, 0.0371259004, 0.999310613}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone9 {
+		string %name {"b_RightHand_08"}
+		int32 %parentIndex {8}
+		float[16] %inverseBindMatrix {
+			{-0.00388386357, 0.0278754625, -0.999603868, 0, -0.543162048, 0.839240372, 0.0255138837, 0, 0.8396191, 0.543045819, 0.011881399, 0, -11.3593731, -15.1054964, -7.34738684, 1}
+		}
+		float[3] %bindTranslation {
+			{19.3500557, -0.145986557, 0}
+		}
+		float[4] %bindRotation {
+			{-0.0120374067, -0.00782220997, 0.460562319, 0.887511253}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone10 {
+		string %name {"b_LeftUpperArm_09"}
+		int32 %parentIndex {4}
+		float[16] %inverseBindMatrix {
+			{-0.000530181103, -0.00195367821, -0.999997973, 0, -0.999393821, -0.0348090567, 0.000597866136, 0, -0.0348101519, 0.999392092, -0.00193403533, 0, 49.6678505, -16.2911968, 6.97353697, 1}
+		}
+		float[3] %bindTranslation {
+			{18.6779175, -4.29734421, -6.96798706}
+		}
+		float[4] %bindRotation {
+			{0.000497261935, -0.00088219234, -0.712087512, 0.702090025}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone11 {
+		string %name {"b_LeftForeArm_010"}
+		int32 %parentIndex {10}
+		float[16] %inverseBindMatrix {
+			{-0.000673683709, -0.00190895284, -0.999997973, 0, -0.999221683, 0.0394425429, 0.000597866077, 0, 0.039441321, 0.999220073, -0.00193403533, 0, 25.3405151, -18.2217102, 6.97353649, 1}
+		}
+		float[3] %bindTranslation {
+			{23.0451241, 0, 0}
+		}
+		float[4] %bindRotation {
+			{0, 0, 0.0371259004, 0.999310613}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone12 {
+		string %name {"b_LeftHand_011"}
+		int32 %parentIndex {11}
+		float[16] %inverseBindMatrix {
+			{0.00773040112, -0.0427676514, -0.999055147, 0, -0.543592811, 0.838390708, -0.0400960818, 0, 0.839313447, 0.543389082, -0.0167670846, 0, -11.386919, -15.0091705, 7.50402355, 1}
+		}
+		float[3] %bindTranslation {
+			{19.3500519, -0.145990372, 0}
+		}
+		float[4] %bindRotation {
+			{0.0165179148, 0.0140137402, 0.460075587, 0.887615502}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone13 {
+		string %name {"b_Tail01_012"}
+		int32 %parentIndex {2}
+		float[16] %inverseBindMatrix {
+			{-3.3346052E-07, 9.83381028E-07, -1, 0, -0.735542417, -0.67747879, -4.21626112E-07, 0, -0.67747879, 0.735542417, 9.52938535E-07, 0, 11.4789066, 65.1626205, 4.35935362E-05, 1}
+		}
+		float[3] %bindTranslation {
+			{4.26037598, 15.9587708, 0}
+		}
+		float[4] %bindRotation {
+			{0, 0, 0.981892884, 0.189436913}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone14 {
+		string %name {"b_Tail02_013"}
+		int32 %parentIndex {13}
+		float[16] %inverseBindMatrix {
+			{-4.66816402E-07, 9.27532369E-07, -1, 0, -0.634313285, -0.773076177, -4.21626055E-07, 0, -0.773076177, 0.634313285, 9.52938478E-07, 0, -9.97482204, 64.4013901, 4.35935399E-05, 1}
+		}
+		float[3] %bindTranslation {
+			{12.4119186, 0, 0}
+		}
+		float[4] %bindRotation {
+			{0, 0, -0.0696171671, 0.997573793}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone15 {
+		string %name {"b_Tail03_014"}
+		int32 %parentIndex {14}
+		float[16] %inverseBindMatrix {
+			{-5.6382919E-07, 8.71969462E-07, -1, 0, -0.547523975, -0.836790144, -4.21626112E-07, 0, -0.836790144, 0.547523975, 9.52938535E-07, 0, -40.9405975, 60.3496857, 4.35935435E-05, 1}
+		}
+		float[3] %bindTranslation {
+			{24.2403221, 0, 0}
+		}
+		float[4] %bindRotation {
+			{0, 0, -0.0538327433, 0.998549938}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone16 {
+		string %name {"b_LeftLeg01_015"}
+		int32 %parentIndex {2}
+		float[16] %inverseBindMatrix {
+			{8.40243883E-05, 0.000334092678, -0.99999994, 0, -0.991838574, 0.127500117, -4.07424559E-05, 0, 0.127500102, 0.991838515, 0.000342082814, 0, 52.6727371, 23.3287201, 6.98022079, 1}
+		}
+		float[3] %bindTranslation {
+			{4.81377029, 5.1540184, -6.96800613}
+		}
+		float[4] %bindRotation {
+			{0, -0.000171752254, 0.970015883, -0.243041471}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone17 {
+		string %name {"b_LeftLeg02_016"}
+		int32 %parentIndex {16}
+		float[16] %inverseBindMatrix {
+			{-0.000167398728, 0.000301090855, -1, 0, -0.810400963, -0.585875869, -4.07424486E-05, 0, -0.585875809, 0.810400903, 0.000342082814, 0, 8.62442207, 40.0932045, 6.98022127, 1}
+		}
+		float[3] %bindTranslation {
+			{18.9441757, 0, 0}
+		}
+		float[4] %bindRotation {
+			{0, 0, -0.36804378, 0.929808438}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone18 {
+		string %name {"b_LeftFoot01_017"}
+		int32 %parentIndex {17}
+		float[16] %inverseBindMatrix {
+			{-7.94437728E-05, -0.000130603425, -1, 0, -0.947133183, 0.320840806, 3.33402822E-05, 0, 0.320840806, 0.947133183, -0.000149184008, 0, 27.273222, 30.8341408, 6.96039486, 1}
+		}
+		float[3] %bindTranslation {
+			{17.942812, 0, 0}
+		}
+		float[4] %bindRotation {
+			{0.000248410593, 0, 0.458484113, 0.888702571}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone19 {
+		string %name {"b_LeftFoot02_018"}
+		int32 %parentIndex {18}
+		float[16] %inverseBindMatrix {
+			{-0.000151498811, 2.04128282E-05, -1, 0, -0.0858319327, 0.996309757, 3.33402859E-05, 0, 0.996309757, 0.0858319402, -0.000149184023, 0, 32.8553886, 1.83399105, 6.96039534, 1}
+		}
+		float[3] %bindTranslation {
+			{15.7799387, 0, 0}
+		}
+		float[4] %bindRotation {
+			{0, 0, 0.547288299, 0.836944163}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone20 {
+		string %name {"b_RightLeg01_019"}
+		int32 %parentIndex {2}
+		float[16] %inverseBindMatrix {
+			{5.38955248E-07, 8.87559054E-07, -1, 0, -0.991778374, 0.127967611, -4.21626083E-07, 0, 0.127967611, 0.991778374, 9.52938478E-07, 0, 52.6843224, 23.3062172, -6.96751928, 1}
+		}
+		float[3] %bindTranslation {
+			{4.81377792, 5.15402603, 6.96756363}
+		}
+		float[4] %bindRotation {
+			{0, 0, 0.969958603, -0.243270069}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone21 {
+		string %name {"b_RightLeg02_020"}
+		int32 %parentIndex {20}
+		float[16] %inverseBindMatrix {
+			{-2.14518053E-07, 1.01598016E-06, -1, 0, -0.810676873, -0.585493803, -4.21626055E-07, 0, -0.585493803, 0.810676873, 9.52938478E-07, 0, 8.64826202, 40.0847092, -6.96752024, 1}
+		}
+		float[3] %bindTranslation {
+			{18.9441833, 0, 0}
+		}
+		float[4] %bindRotation {
+			{0, 0, -0.36804381, 0.929808438}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone22 {
+		string %name {"b_RightFoot01_021"}
+		int32 %parentIndex {21}
+		float[16] %inverseBindMatrix {
+			{0.000141239216, 0.000273606449, -1.00000012, 0, -0.947396517, 0.32006228, -4.62390926E-05, 0, 0.32006228, 0.947396517, 0.000304422836, 0, 27.2396526, 30.843874, -6.95527697, 1}
+		}
+		float[3] %bindTranslation {
+			{17.9428101, 0, 0}
+		}
+		float[4] %bindRotation {
+			{-0.000153454559, 0, 0.457909375, 0.888998866}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+	Obj_ %bone23 {
+		string %name {"b_RightFoot02_022"}
+		int32 %parentIndex {22}
+		float[16] %inverseBindMatrix {
+			{0.000307280716, -1.96863766E-05, -1, 0, -0.0866507143, 0.996238768, -4.6239089E-05, 0, 0.996238768, 0.0866507068, 0.000304422865, 0, 32.8508377, 1.86864042, -6.95527697, 1}
+		}
+		float[3] %bindTranslation {
+			{15.7799358, 0, 0}
+		}
+		float[4] %bindRotation {
+			{0, 0, 0.547288299, 0.836944163}
+		}
+		float[3] %bindScale {
+			{1, 1, 1}
+		}
+		float[16] %rootCorrection {
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		}
+	}
+}
