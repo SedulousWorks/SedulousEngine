@@ -2,7 +2,7 @@ uint64 %_type {126269861530532084}
 int32 %_version {1}
 string %_id {"ae4a8b5d-6c3f-4a2e-bf5c-4d7eac6a9b3f"}
 string %_name {"trace_05"}
-string %_sourcePath {"c:\\DEV\\SedulousWorks\\Repos\\SedulousEngine\\Assets\\textures/kenney_particle-pack/PNG (Transparent)/trace_05.png"}
+string %_sourcePath {"d:\\Dev\\Beef\\BeefGFX\\SedulousEngine\\Assets\\textures/kenney_particle-pack/PNG (Transparent)/trace_05.png"}
 int32 %shape {0}
 int32 %minFilter {3}
 int32 %magFilter {1}

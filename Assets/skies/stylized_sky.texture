@@ -2,7 +2,7 @@ uint64 %_type {126269861530532084}
 int32 %_version {1}
 string %_id {"705c0bd8-b8e3-451c-8a19-7cb033cb1e1c"}
 string %_name {"stylized_sky"}
-string %_sourcePath {"c:\\DEV\\SedulousWorks\\Repos\\SedulousEngine\\Assets\\textures/environment/sky_75_2k/sky_75_2k.png"}
+string %_sourcePath {"d:\\Dev\\Beef\\BeefGFX\\SedulousEngine\\Assets\\textures/environment/sky_75_2k/sky_75_2k.png"}
 int32 %shape {0}
 int32 %minFilter {1}
 int32 %magFilter {1}

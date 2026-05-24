@@ -2,7 +2,7 @@ uint64 %_type {126269861530532084}
 int32 %_version {1}
 string %_id {"5653f8c1-87c0-4855-9498-504ac8e67832"}
 string %_name {"realistic_sky"}
-string %_sourcePath {"c:\\DEV\\SedulousWorks\\Repos\\SedulousEngine\\Assets\\textures/environment/BlueSky.hdr"}
+string %_sourcePath {"d:\\Dev\\Beef\\BeefGFX\\SedulousEngine\\Assets\\textures/environment/BlueSky.hdr"}
 int32 %shape {0}
 int32 %minFilter {1}
 int32 %magFilter {1}

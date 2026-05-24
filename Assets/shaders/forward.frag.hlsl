@@ -397,7 +397,7 @@ FragmentOutput main(FragmentInput input)
     float roughness = max(Roughness * mrSample.g, 0.045);
     float metallic = Metallic * mrSample.b;
     float ao = AO * aoSample;
-    float3 emissive = EmissiveColor.rgb + emissiveSample;
+    float3 emissive = EmissiveColor.rgb * emissiveSample;
 
     // Alpha cutoff
     if (alpha < AlphaCutoff)
