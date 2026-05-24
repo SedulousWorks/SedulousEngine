@@ -535,6 +535,24 @@ class ManifestImporter
 			return;
 		}
 
+		// Rotation correction: some packs have Z-up FBX geometry despite
+		// declaring Y-up. Read rotX90 and noRotMeshes from the manifest element.
+		let applyRotX90 = sceneEl.GetAttribute("rotX90") == "true";
+		let noRotMeshesAttr = sceneEl.GetAttribute("noRotMeshes");
+		let noRotMeshes = scope HashSet<String>();
+		if (!noRotMeshesAttr.IsEmpty)
+		{
+			for (let part in noRotMeshesAttr.Split(','))
+			{
+				let trimmed = scope:: String();
+				trimmed.Set(part);
+				trimmed.Trim();
+				noRotMeshes.Add(trimmed);
+			}
+		}
+		// 90-degree X rotation quaternion: sin(45°), 0, 0, cos(45°)
+		Quaternion rotX90 = .(0.7071068f, 0, 0, 0.7071068f);
+
 		// Build the scene prefab
 		let prefab = new GeneratedScenePrefab();
 		defer delete prefab;
@@ -582,12 +600,17 @@ class ManifestImporter
 				if (float.Parse(entityEl.GetAttribute("sy")) case .Ok(let vsy)) sy = vsy;
 				if (float.Parse(entityEl.GetAttribute("sz")) case .Ok(let vsz)) sz = vsz;
 
+				var rotation = Quaternion(rx, ry, rz, rw);
+				var nn = scope String(meshName);
+				if (applyRotX90 && !noRotMeshes.Contains(nn))
+					rotation = rotation * rotX90;
+
 				var entry = GeneratedScenePrefab.EntityEntry();
 				entry.Name = new String(entityName);
 				entry.MeshRef = meshRef;
 				entry.MaterialRef = matRef;
 				entry.Position = .(px, py, pz);
-				entry.Rotation = .(rx, ry, rz, rw);
+				entry.Rotation = rotation;
 				entry.Scale = .(sx, sy, sz);
 				prefab.Entities.Add(entry);
 			}

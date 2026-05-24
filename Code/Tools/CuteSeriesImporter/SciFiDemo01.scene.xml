@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SceneManifest name="Demo 01 Pump">
+    <Entity name="Debris 04" mesh="Debris 04" material="SF Hex 01" px="0.030000" py="0.000000" pz="-5.190000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 01 (7)" mesh="Hexagon 01" material="SF Hex 01" px="-6.000000" py="0.000000" pz="10.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 01 (9)" mesh="Hexagon 01" material="SF Hex 01" px="-1.500000" py="0.000000" pz="-7.500000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Debris Cluster 02" mesh="Debris 02" material="SF Hex 01" px="-1.870000" py="0.128000" pz="13.780000" rx="0.066416" ry="0.580432" rz="-0.084318" rw="0.807204" sx="0.860746" sy="0.860746" sz="0.860746"/>
+    <Entity name="Debris Cluster 02" mesh="Debris 03" material="SF Hex 01" px="-1.980000" py="0.000000" pz="12.310000" rx="0.000000" ry="0.498794" rz="-0.000000" rw="0.866720" sx="0.708320" sy="0.708320" sz="0.708320"/>
+    <Entity name="Debris Cluster 02" mesh="Debris 02" material="SF Hex 01" px="-3.540000" py="0.000000" pz="14.010000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000" sx="1.185600" sy="1.185600" sz="1.185600"/>
+    <Entity name="Hexagon 02 (4)" mesh="Hexagon 02" material="SF Hex 01" px="-4.500000" py="0.000000" pz="-7.500000" rx="0.000000" ry="-0.499999" rz="0.000000" rw="0.866026"/>
+    <Entity name="Barrels Cluster 03" mesh="Barrel 02" material="SF Hex 01" px="4.067709" py="0.000000" pz="7.347899" rx="0.000000" ry="0.212047" rz="0.000000" rw="0.977260"/>
+    <Entity name="Barrels Cluster 03" mesh="Barrel 02" material="SF Hex 01" px="4.648709" py="0.000000" pz="6.661899" rx="0.000000" ry="0.893856" rz="0.000000" rw="0.448354"/>
+    <Entity name="Barrels Cluster 03" mesh="Barrel 02" material="SF Hex 01" px="5.027709" py="0.000000" pz="7.519899" rx="0.000000" ry="0.407710" rz="0.000000" rw="0.913111"/>
+    <Entity name="Barrels Cluster 03" mesh="Barrel 02" material="SF Hex 01" px="4.576709" py="1.122000" pz="7.045899" rx="0.000000" ry="0.972098" rz="0.000000" rw="0.234575"/>
+    <Entity name="Hexagon 02 (2)" mesh="Hexagon 02" material="SF Hex 01" px="-6.000000" py="0.000000" pz="5.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Ground 01 Blue (1)" mesh="Ground 01" material="Ground 01" px="-20.000000" py="0.000000" pz="0.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 03 (1)" mesh="Hexagon 03" material="SF Hex 01" px="4.500000" py="0.000000" pz="-7.500000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 02 (2)" mesh="Hexagon 02" material="SF Hex 01" px="9.000000" py="0.000000" pz="0.000000" rx="0.000000" ry="-0.866024" rz="0.000000" rw="0.500002"/>
+    <Entity name="Barrel 01 (1)" mesh="Barrel 01" material="SF Hex 01" px="4.380000" py="0.000000" pz="-11.740000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 01 (5)" mesh="Hexagon 01" material="SF Hex 01" px="3.000000" py="0.000000" pz="0.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 01 (12)" mesh="Hexagon 01" material="SF Hex 01" px="6.000000" py="0.000000" pz="5.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Pump 01C" mesh="Pump 01" material="SF Hex 01" px="13.000000" py="0.000000" pz="2.500000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Ground 01 Blue (4)" mesh="Ground 01" material="Ground 01" px="-20.000000" py="0.000000" pz="-20.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 04 (1)" mesh="Hexagon 04" material="SF Hex 01" px="3.000000" py="0.000000" pz="5.000000" rx="-0.000000" ry="-0.866027" rz="0.000000" rw="-0.499997"/>
+    <Entity name="Pillar 02 (3)" mesh="Pillar 02" material="SF Hex 01" px="-10.500000" py="0.000000" pz="-2.500000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 02 (3)" mesh="Hexagon 02" material="SF Hex 01" px="-7.500000" py="0.000000" pz="-2.500000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Pillar 02 W Smoke (1)" mesh="Pillar 02" material="SF Hex 01" px="6.000000" py="0.000000" pz="-10.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 01 (16)" mesh="Hexagon 01" material="SF Hex 01" px="7.500000" py="0.000000" pz="7.500000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 04" mesh="Hexagon 04" material="SF Hex 01" px="3.000000" py="0.000000" pz="-5.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 11" mesh="Hexagon 11" material="SF Hex 01" px="-6.000000" py="0.000000" pz="0.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 01 (3)" mesh="Hexagon 01" material="SF Hex 01" px="6.000000" py="0.000000" pz="0.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Ground 01 Blue (2)" mesh="Ground 01" material="Ground 01" px="20.000000" py="0.000000" pz="0.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Pillar 01 (10)" mesh="Pillar 01" material="SF Hex 01" px="-9.000000" py="0.000000" pz="-5.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Tower 02 (1)" mesh="Tower 02" material="SF Hex 01" px="11.130000" py="0.000000" pz="-4.420000" rx="-0.000000" ry="-1.000000" rz="-0.000000" rw="0.000000" sx="1.014389" sy="1.014389" sz="1.014389"/>
+    <Entity name="Pillar 01 (4)" mesh="Pillar 01" material="SF Hex 01" px="-3.000000" py="0.000000" pz="-10.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Pillar 01 (5)" mesh="Pillar 01" material="SF Hex 01" px="12.000000" py="0.000000" pz="0.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Pillar 02 W Smoke" mesh="Pillar 02" material="SF Hex 01" px="0.000000" py="0.000000" pz="5.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 01 (17)" mesh="Hexagon 01" material="SF Hex 01" px="0.000000" py="0.000000" pz="10.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 02 (1)" mesh="Hexagon 02" material="SF Hex 01" px="-3.000000" py="0.000000" pz="5.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Pump 01B" mesh="Pump 01" material="SF Hex 01" px="0.000000" py="0.000000" pz="-10.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 01 (11)" mesh="Hexagon 01" material="SF Hex 01" px="7.500000" py="0.000000" pz="2.500000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Pillar 01 (8)" mesh="Pillar 01" material="SF Hex 01" px="1.500000" py="0.000000" pz="7.500000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Tower 02" mesh="Tower 02" material="SF Hex 01" px="-13.700000" py="0.000000" pz="0.750000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000" sx="1.014389" sy="1.014389" sz="1.014389"/>
+    <Entity name="Barrels Cluster 04" mesh="Barrel 01" material="SF Hex 01" px="-7.472432" py="0.000000" pz="1.944648" rx="0.000000" ry="-0.407081" rz="0.000000" rw="0.913392"/>
+    <Entity name="Barrels Cluster 04" mesh="Barrel 01" material="SF Hex 01" px="-6.671432" py="0.000000" pz="2.256648" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Barrels Cluster 04" mesh="Barrel 03" material="SF Hex 01" px="-7.094432" py="1.142000" pz="2.122648" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 01 (1)" mesh="Hexagon 01" material="SF Hex 01" px="1.500000" py="0.000000" pz="2.500000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Ground 01 Blue (5)" mesh="Ground 01" material="Ground 01" px="20.000000" py="0.000000" pz="-20.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 01 (4)" mesh="Hexagon 01" material="SF Hex 01" px="4.500000" py="0.000000" pz="2.500000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Ground 01 Blue (6)" mesh="Ground 01" material="Ground 01" px="0.000000" py="0.000000" pz="19.999998" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 01 (10)" mesh="Hexagon 01" material="SF Hex 01" px="10.500000" py="0.000000" pz="2.500000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Pump 01A" mesh="Pump 01" material="SF Hex 01" px="-1.500000" py="0.000000" pz="7.500000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Ground 01 Blue (3)" mesh="Ground 01" material="Ground 01" px="0.000000" py="0.000000" pz="-20.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 01 (6)" mesh="Hexagon 01" material="SF Hex 01" px="-3.000000" py="0.000000" pz="10.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 02" mesh="Hexagon 02" material="SF Hex 01" px="-4.500000" py="0.000000" pz="2.500000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Pillar 01 (6)" mesh="Pillar 01" material="SF Hex 01" px="-7.500000" py="0.000000" pz="7.500000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Debris 03" mesh="Debris 03" material="SF Hex 01" px="6.601305" py="0.394222" pz="1.562141" rx="0.000000" ry="0.174191" rz="-0.000000" rw="0.984712"/>
+    <Entity name="Hexagon 02 (9)" mesh="Hexagon 02" material="SF Hex 01" px="-9.000000" py="0.000000" pz="0.000000" rx="0.000000" ry="-0.866024" rz="0.000000" rw="0.500002"/>
+    <Entity name="Ground 01 Blue (8)" mesh="Ground 01" material="Ground 01" px="20.000000" py="0.000000" pz="20.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 01 (14)" mesh="Hexagon 01" material="SF Hex 01" px="4.500000" py="0.000000" pz="-2.500000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 02 (5)" mesh="Hexagon 02" material="SF Hex 01" px="-7.500000" py="0.000000" pz="-7.500000" rx="0.000000" ry="-0.866024" rz="0.000000" rw="0.500002"/>
+    <Entity name="Debris 01" mesh="Debris 01" material="SF Hex 01" px="-2.702548" py="0.000000" pz="-4.261254" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Tank 01A Orange" mesh="Tank 01" material="Liquid Orange" px="6.000000" py="0.000000" pz="-5.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Ground 01 Blue (7)" mesh="Ground 01" material="Ground 01" px="-20.000000" py="0.000000" pz="20.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 01 (8)" mesh="Hexagon 01" material="SF Hex 01" px="-9.000000" py="0.000000" pz="10.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 02 (6)" mesh="Hexagon 02" material="SF Hex 01" px="-6.000000" py="0.000000" pz="-5.000000" rx="0.000000" ry="-0.866024" rz="0.000000" rw="0.500002"/>
+    <Entity name="Pillar 02 (1)" mesh="Pillar 02" material="SF Hex 01" px="7.500000" py="0.000000" pz="-7.500000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 02 (3)" mesh="Hexagon 02" material="SF Hex 01" px="3.000000" py="0.000000" pz="-10.000000" rx="0.000000" ry="-0.499999" rz="0.000000" rw="0.866026"/>
+    <Entity name="Tank 01B Blue" mesh="Tank 01" material="Liquid Blue" px="-4.500000" py="0.000000" pz="7.500000" rx="0.000000" ry="0.499999" rz="-0.000000" rw="0.866026"/>
+    <Entity name="Debris Cluster 01" mesh="Debris 03" material="SF Hex 01" px="0.034161" py="0.327974" pz="0.033028" rx="-0.000000" ry="-0.988530" rz="0.000000" rw="-0.151026" sx="0.708320" sy="0.708320" sz="0.708320"/>
+    <Entity name="Debris Cluster 01" mesh="Debris 01" material="SF Hex 01" px="-1.410915" py="0.000000" pz="-0.113855" rx="-0.000000" ry="-0.954700" rz="0.000000" rw="-0.297569" sx="0.867420" sy="0.683518" sz="0.867420"/>
+    <Entity name="Debris Cluster 01" mesh="Debris 02" material="SF Hex 01" px="0.010000" py="0.000000" pz="-0.770000" rx="-0.000000" ry="-0.998121" rz="0.000000" rw="-0.061266"/>
+    <Entity name="Ground 01 Blue" mesh="Ground 01" material="Ground 01" px="0.000000" py="0.000000" pz="0.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Hexagon 03" mesh="Hexagon 03" material="SF Hex 01" px="-1.500000" py="0.000000" pz="2.500000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+    <Entity name="Health Kit 01 Animated" mesh="Health Kit 01" material="SF Hex 01" px="-1.595793" py="-0.488472" pz="2.490951" rx="-0.025197" ry="0.029526" rz="-0.211097" rw="0.976694"/>
+    <Entity name="Pillar 01" mesh="Pillar 01" material="SF Hex 01" px="9.000000" py="0.000000" pz="5.000000" rx="0.000000" ry="0.000000" rz="0.000000" rw="1.000000"/>
+</SceneManifest>
