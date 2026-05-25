@@ -35,6 +35,10 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 		DeleteDictionaryAndValues!(_);
 	};
 
+	/// Entity indices whose LocalBounds was written this frame. Drained in
+	/// RefreshWorldBounds. See MeshComponentManager for the same pattern.
+	private List<int32> mBoundsDirtyEntities = new .() ~ delete _;
+
 
 	public override StringView SerializationTypeId => "Sedulous.SkinnedMeshComponent";
 
@@ -47,6 +51,9 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 		// Bind-pose matrices are uploaded once during resource resolution so skinned meshes
 		// are visible even without simulation (editor mode).
 		RegisterUpdate(.PostUpdate, new => UploadBoneMatrices, simulationOnly: true);
+
+		// World-space bounds refresh runs after transforms are final.
+		RegisterUpdate(.PostTransform, new => RefreshWorldBounds);
 	}
 
 	/// Resolves mesh and material resources. Always runs (presentation).
@@ -144,6 +151,7 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 		{
 			comp.MeshHandle = meshHandle;
 			comp.LocalBounds = bounds;
+			MarkBoundsDirty(comp);
 
 			// Create bone buffer - prefer skeleton from animation component,
 			// fall back to mesh's RequiredBoneCount for T-pose rendering.
@@ -211,6 +219,7 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 		{
 			comp.MeshHandle = .Invalid;
 			comp.LocalBounds = .(.Zero, .Zero);
+			MarkBoundsDirty(comp);
 		}
 
 		// Resolve materials
@@ -245,6 +254,43 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 		}
 	}
 
+	/// Marks a component for WorldBounds refresh on the next PostTransform.
+	private void MarkBoundsDirty(SkinnedMeshComponent comp)
+	{
+		if (comp.BoundsDirty)
+			return;
+		comp.BoundsDirty = true;
+		mBoundsDirtyEntities.Add((int32)comp.Owner.Index);
+	}
+
+	/// PostTransform-phase refresh of cached world bounds. See
+	/// MeshComponentManager.RefreshWorldBounds for the same pattern -
+	/// total work is "entities moved" + "LocalBounds changes", not
+	/// total component count.
+	private void RefreshWorldBounds(float deltaTime)
+	{
+		let scene = Scene;
+		if (scene == null)
+			return;
+
+		for (let entityIdx in scene.TransformsUpdatedThisFrame)
+		{
+			let comp = GetByEntityIndex(entityIdx);
+			if (comp == null) continue;
+			comp.WorldBounds = BoundingBox.Transform(comp.LocalBounds, scene.GetWorldMatrix(comp.Owner));
+			comp.BoundsDirty = false;
+		}
+
+		for (let entityIdx in mBoundsDirtyEntities)
+		{
+			let comp = GetByEntityIndex(entityIdx);
+			if (comp == null || !comp.BoundsDirty) continue;
+			comp.WorldBounds = BoundingBox.Transform(comp.LocalBounds, scene.GetWorldMatrix(comp.Owner));
+			comp.BoundsDirty = false;
+		}
+		mBoundsDirtyEntities.Clear();
+	}
+
 	/// Extracts MeshRenderData for all active skinned mesh components.
 	public void ExtractRenderData(in RenderExtractionContext context)
 	{
@@ -268,7 +314,7 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 
 			let worldMatrix = scene.GetWorldMatrix(comp.Owner);
 			let prevWorldMatrix = scene.GetPrevWorldMatrix(comp.Owner);
-			let center = Vector3.Transform(comp.LocalBounds.Center, worldMatrix);
+			let center = comp.WorldBounds.Center;
 
 			var flags = RenderDataFlags.None;
 			if (comp.CastsShadows)
@@ -299,7 +345,7 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 
 				let data = new:frameAlloc MeshRenderData();
 				data.Position = center;
-				data.Bounds = comp.LocalBounds;
+				data.Bounds = comp.WorldBounds;
 				data.MaterialSortKey = materialKey;
 				data.SortOrder = 0;
 				data.Flags = flags;

@@ -71,8 +71,21 @@ class SkinnedMeshComponent : Component, ISerializableComponent
 	/// Resolved material instances per slot (runtime).
 	public List<MaterialInstance> Materials = new .() ~ { for (let m in _) m?.ReleaseRef(); delete _; };
 
-	/// Local-space bounding box.
+	/// Local-space bounding box. Captured from the resource at the rest
+	/// pose - animated poses (windups, stretches) may extend outside.
+	/// Conservative-loose by design for culling.
 	public BoundingBox LocalBounds;
+
+	/// World-space bounding box, refreshed in PostTransform when the entity
+	/// moves or LocalBounds changes. AABB of the rest-pose mesh transformed
+	/// by the entity's world matrix - same conservative-loose tradeoff as
+	/// LocalBounds for animated meshes.
+	public BoundingBox WorldBounds;
+
+	/// Set when LocalBounds is written (mesh ref swap, mesh resolution).
+	/// Forces a WorldBounds refresh next PostTransform even if the entity
+	/// itself didn't move. Cleared during the refresh.
+	public bool BoundsDirty;
 
 	/// Whether this mesh is visible.
 	public bool IsVisible = true;

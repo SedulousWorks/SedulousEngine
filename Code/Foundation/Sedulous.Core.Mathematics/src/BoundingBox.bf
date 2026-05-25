@@ -637,4 +637,35 @@ struct BoundingBox : IEquatable<BoundingBox>, IEquatable, IHashable
     /// The half-extents of the bounding box (distance from center to max).
     /// </summary>
     public Vector3 Extents => (Max - Min) * 0.5f;
+
+    /// <summary>
+    /// Returns the axis-aligned bounding box that contains the OBB
+    /// produced by transforming this box by <paramref name="transform"/>.
+    /// Uses the "absolute matrix" trick: transform the center as a point
+    /// and transform the half-extents by |M| (component-wise absolute
+    /// value of the 3x3 rotation/scale part). Cheaper than transforming
+    /// all 8 corners and taking min/max, and produces an identical
+    /// result for the AABB that bounds the rotated OBB.
+    ///
+    /// Slightly looser than the original OBB under rotation - that is
+    /// inherent to AABB-of-rotated-OBB and is conservative for frustum
+    /// culling (we never cull something we shouldn't).
+    /// </summary>
+    public static BoundingBox Transform(BoundingBox @box, Matrix transform)
+    {
+        let center = @box.Center;
+        let extents = @box.Extents;
+
+        let newCenter = Vector3.Transform(center, transform);
+
+        // |M| applied to the half-extents. Inlining the multiply with
+        // Math.Abs on each row of the 3x3 avoids constructing a temp
+        // Matrix just to call Vector3.TransformNormal.
+        Vector3 newExtents;
+        newExtents.X = Math.Abs(transform.M11) * extents.X + Math.Abs(transform.M21) * extents.Y + Math.Abs(transform.M31) * extents.Z;
+        newExtents.Y = Math.Abs(transform.M12) * extents.X + Math.Abs(transform.M22) * extents.Y + Math.Abs(transform.M32) * extents.Z;
+        newExtents.Z = Math.Abs(transform.M13) * extents.X + Math.Abs(transform.M23) * extents.Y + Math.Abs(transform.M33) * extents.Z;
+
+        return BoundingBox(newCenter - newExtents, newCenter + newExtents);
+    }
 }

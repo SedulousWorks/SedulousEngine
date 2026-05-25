@@ -77,6 +77,16 @@ class MeshComponent : Component, ISerializableComponent
 	/// Local-space bounding box.
 	public BoundingBox LocalBounds;
 
+	/// World-space bounding box, refreshed in PostTransform when the entity
+	/// moves or LocalBounds changes. Read at extraction time and by future
+	/// frustum-culling consumers - never recompute on demand.
+	public BoundingBox WorldBounds;
+
+	/// Set when LocalBounds is written (mesh ref swap, mesh resolution).
+	/// Forces a WorldBounds refresh next PostTransform even if the entity
+	/// itself didn't move. Cleared during the refresh.
+	public bool BoundsDirty;
+
 	/// Render layer mask (for filtering in extraction).
 	[Property(.Default, "Layer Mask", "LayerMask")]
 	public uint32 LayerMask = 0xFFFFFFFF;

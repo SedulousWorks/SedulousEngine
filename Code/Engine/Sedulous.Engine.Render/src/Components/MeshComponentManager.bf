@@ -36,12 +36,19 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 		DeleteDictionaryAndValues!(_);
 	};
 
+	/// Entity indices whose LocalBounds was written this frame (mesh ref
+	/// resolved or cleared). Drained in RefreshWorldBounds. Set semantics
+	/// are not required - duplicates are deduped by the BoundsDirty gate
+	/// inside the drain loop.
+	private List<int32> mBoundsDirtyEntities = new .() ~ delete _;
+
 
 	public override StringView SerializationTypeId => "Sedulous.MeshComponent";
 
 	protected override void OnRegisterUpdateFunctions()
 	{
 		RegisterUpdate(.PostUpdate, new => ResolveResources);
+		RegisterUpdate(.PostTransform, new => RefreshWorldBounds);
 	}
 
 	/// Per-frame resource resolution. Loads resources, uploads to GPU, creates materials.
@@ -77,12 +84,14 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 			{
 				comp.MeshHandle = meshHandle;
 				comp.LocalBounds = bounds;
+				MarkBoundsDirty(comp);
 			}
 			else if (!meshRef.IsValid && comp.MeshHandle.IsValid)
 			{
 				// Ref was cleared - reset GPU handle
 				comp.MeshHandle = .Invalid;
 				comp.LocalBounds = .(.Zero, .Zero);
+				MarkBoundsDirty(comp);
 			}
 
 			// Resolve materials from refs
@@ -118,6 +127,48 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 					Resolver.PrepareMaterial(material);
 			}
 		}
+	}
+
+	/// Marks a component for WorldBounds refresh on the next PostTransform
+	/// pass. Guarded so we only enqueue once per dirty cycle.
+	private void MarkBoundsDirty(MeshComponent comp)
+	{
+		if (comp.BoundsDirty)
+			return;
+		comp.BoundsDirty = true;
+		mBoundsDirtyEntities.Add((int32)comp.Owner.Index);
+	}
+
+	/// PostTransform-phase refresh of cached world bounds. Walks the
+	/// per-frame "what moved" list from Scene and the per-manager dirty
+	/// queue. Total work is proportional to "entities that moved" +
+	/// "LocalBounds changes", not to total component count - a fully
+	/// static scene does zero work after initial resolution.
+	private void RefreshWorldBounds(float deltaTime)
+	{
+		let scene = Scene;
+		if (scene == null)
+			return;
+
+		// 1. Entities whose transform changed this frame.
+		for (let entityIdx in scene.TransformsUpdatedThisFrame)
+		{
+			let comp = GetByEntityIndex(entityIdx);
+			if (comp == null) continue;
+			comp.WorldBounds = BoundingBox.Transform(comp.LocalBounds, scene.GetWorldMatrix(comp.Owner));
+			comp.BoundsDirty = false;
+		}
+
+		// 2. LocalBounds-only changes (mesh ref swaps, etc.). Skip entries
+		// step 1 already refreshed (BoundsDirty == false then).
+		for (let entityIdx in mBoundsDirtyEntities)
+		{
+			let comp = GetByEntityIndex(entityIdx);
+			if (comp == null || !comp.BoundsDirty) continue;
+			comp.WorldBounds = BoundingBox.Transform(comp.LocalBounds, scene.GetWorldMatrix(comp.Owner));
+			comp.BoundsDirty = false;
+		}
+		mBoundsDirtyEntities.Clear();
 	}
 
 	/// Extracts MeshRenderData for all active, visible mesh components.
@@ -221,9 +272,9 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 
 		let (prevWorldMatrix, worldMatrix) = scene.GetWorldMatrices(mesh.Owner);
 
-		//let worldMatrix = scene.GetWorldMatrix(mesh.Owner);
-		//let prevWorldMatrix = scene.GetPrevWorldMatrix(mesh.Owner);
-		let center = Vector3.Transform(mesh.LocalBounds.Center, worldMatrix);
+		// Cached world-space bounds (refreshed in PostTransform). Used
+		// for both the sort-key center and the world-space data.Bounds.
+		let center = mesh.WorldBounds.Center;
 
 		var flags = RenderDataFlags.None;
 		if (mesh.CastsShadows)
@@ -252,7 +303,7 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 
 			let data = new:alloc MeshRenderData();
 			data.Position = center;
-			data.Bounds = mesh.LocalBounds;
+			data.Bounds = mesh.WorldBounds;
 			data.MaterialSortKey = materialKey;
 			data.SortOrder = 0;
 			data.Flags = flags;

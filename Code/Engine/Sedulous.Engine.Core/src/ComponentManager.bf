@@ -27,6 +27,12 @@ public abstract class ComponentManager<T> : ComponentManagerBase, IComponentMana
 	private List<int32> mPendingInit = new .() ~ delete _;
 	private int32 mActiveCount = 0;
 
+	/// Reverse map: entity.Index -> slot index in mSlots, or NoSlot if no
+	/// component on that entity. Kept in lock-step with slot create/destroy
+	/// so GetForEntity is O(1) instead of an O(n) linear scan.
+	private List<int32> mEntityToSlot = new .() ~ delete _;
+	private const int32 NoSlot = -1;
+
 	/// Number of active components.
 	public int32 ActiveCount => mActiveCount;
 
@@ -70,6 +76,12 @@ public abstract class ComponentManager<T> : ComponentManagerBase, IComponentMana
 		mActiveCount++;
 		mPendingInit.Add(index);
 
+		// Update reverse map. Lazy-extend on demand: most managers won't have
+		// a component for every entity, so we don't pre-allocate.
+		while ((int)entity.Index >= mEntityToSlot.Count)
+			mEntityToSlot.Add(NoSlot);
+		mEntityToSlot[(int)entity.Index] = index;
+
 		OnComponentCreated(component);
 
 		return .() { Index = (uint32)index, Generation = slot.Generation };
@@ -85,6 +97,8 @@ public abstract class ComponentManager<T> : ComponentManagerBase, IComponentMana
 		if (!slot.Occupied || slot.Generation != handle.Generation)
 			return;
 
+		let owner = slot.Component.Owner;
+
 		OnComponentDestroyed(slot.Component);
 
 		delete slot.Component;
@@ -92,6 +106,12 @@ public abstract class ComponentManager<T> : ComponentManagerBase, IComponentMana
 		slot.Occupied = false;
 		mFreeList.Add((int32)handle.Index);
 		mActiveCount--;
+
+		// Clear the reverse-map entry only if it still points at this slot.
+		// In pathological multi-component-per-entity cases the map may point
+		// at a different slot; leaving that one alone keeps it reachable.
+		if ((int)owner.Index < mEntityToSlot.Count && mEntityToSlot[(int)owner.Index] == (int32)handle.Index)
+			mEntityToSlot[(int)owner.Index] = NoSlot;
 	}
 
 	/// Resolves a handle to the component. Returns null if invalid or destroyed.
@@ -107,16 +127,40 @@ public abstract class ComponentManager<T> : ComponentManagerBase, IComponentMana
 		return slot.Component;
 	}
 
-	/// Finds the first component attached to the given entity.
-	/// Linear scan - cache the result if called frequently.
+	/// Finds the component attached to the given entity, or null.
+	/// O(1) via the entity->slot reverse map. The slot.Component.Owner check
+	/// is a backstop against stale lookups where the entity index was
+	/// destroyed and recycled to a new entity with a different Generation
+	/// before the map was updated (in practice OnEntityDestroyed clears the
+	/// map first, but the guard removes a footgun class).
 	public T GetForEntity(EntityHandle entity)
 	{
-		for (let slot in ref mSlots)
-		{
-			if (slot.Occupied && slot.Component.Owner == entity)
-				return slot.Component;
-		}
-		return null;
+		if ((int)entity.Index >= mEntityToSlot.Count)
+			return null;
+		let slotIdx = mEntityToSlot[(int)entity.Index];
+		if (slotIdx < 0)
+			return null;
+		let slot = ref mSlots[slotIdx];
+		if (!slot.Occupied || slot.Component.Owner != entity)
+			return null;
+		return slot.Component;
+	}
+
+	/// Returns the component for the entity at the given index, or null.
+	/// Convenience for frame-aware iteration paths that walk a list of
+	/// raw entity indices (e.g. Scene.TransformsUpdatedThisFrame). Caller
+	/// is responsible for index-recycling correctness, but in practice
+	/// the map is cleared on entity destroy so a non-null result
+	/// references the currently-alive component for that index.
+	public T GetByEntityIndex(int32 entityIndex)
+	{
+		if (entityIndex < 0 || entityIndex >= mEntityToSlot.Count)
+			return null;
+		let slotIdx = mEntityToSlot[entityIndex];
+		if (slotIdx < 0)
+			return null;
+		let slot = ref mSlots[slotIdx];
+		return slot.Occupied ? slot.Component : null;
 	}
 
 	/// Non-generic: whether the given entity has a component of this type.
@@ -222,6 +266,9 @@ public abstract class ComponentManager<T> : ComponentManagerBase, IComponentMana
 	/// Called when an entity is destroyed - destroys all components owned by that entity.
 	public override void OnEntityDestroyed(EntityHandle entity)
 	{
+		// Linear scan preserved so a pathological multi-component-per-entity
+		// state still gets fully cleaned up. The reverse map only points at
+		// one slot per entity; using it here would leak the others.
 		for (int32 i = 0; i < mSlots.Count; i++)
 		{
 			var slot = ref mSlots[i];
@@ -235,6 +282,9 @@ public abstract class ComponentManager<T> : ComponentManagerBase, IComponentMana
 				mActiveCount--;
 			}
 		}
+
+		if ((int)entity.Index < mEntityToSlot.Count)
+			mEntityToSlot[(int)entity.Index] = NoSlot;
 	}
 
 	/// Called when an entity's active state changes - syncs to all components owned by that entity.
@@ -292,6 +342,7 @@ public abstract class ComponentManager<T> : ComponentManagerBase, IComponentMana
 		}
 		mActiveCount = 0;
 		mFreeList.Clear();
+		mEntityToSlot.Clear();
 
 		base.Dispose();
 	}
