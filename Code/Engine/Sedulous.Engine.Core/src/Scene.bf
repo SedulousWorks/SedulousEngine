@@ -38,10 +38,34 @@ public class Scene : IDisposable
 		public EntityHandle Parent;
 		public EntityHandle FirstChild;
 		public EntityHandle NextSibling;
+		/// "Needs world-matrix recompute". Set by MarkDirty (which cascades
+		/// to children and ancestors). Cleared immediately by
+		/// UpdateTransformRecursive after the recompute. Internal state -
+		/// consumers wanting "did this move this frame?" should read
+		/// UpdatedThisFrame instead.
 		public bool Dirty;
+		/// "World matrix was recomputed in the most recent UpdateTransforms".
+		/// Set by UpdateTransformRecursive, cleared at the start of the
+		/// next UpdateTransforms via mTransformsUpdatedThisFrame.
+		/// Read this in the PostTransform phase (consumers of "what moved").
+		public bool UpdatedThisFrame;
 	}
 
 	private List<TransformData> mTransforms = new .() ~ delete _;
+
+	/// Entity indices whose world matrix was recomputed during the most
+	/// recent UpdateTransforms. Cleared and rebuilt each frame. Doubles
+	/// as the iteration source for PostTransform consumers (bounds
+	/// caches, etc.) AND as the deferred clear list for UpdatedThisFrame.
+	///
+	/// Lifetime hazard: an entity that updated this frame and was then
+	/// destroyed (either immediately or via mPendingDestroys) leaves its
+	/// index in this list with the slot already marked Alive=false.
+	/// Consumers iterating this list MUST gate slot reads on
+	/// `mEntities[i].Alive` (or call IsValid with the rebuilt handle) -
+	/// the index stays in-range, but the slot's components are gone and
+	/// reading them would be a use-after-free in spirit.
+	private List<int32> mTransformsUpdatedThisFrame = new .() ~ delete _;
 
 	/// Head of the root entity linked list (entities with no parent).
 	private EntityHandle mFirstRoot = .Invalid;
@@ -190,6 +214,7 @@ public class Scene : IDisposable
 		transform.FirstChild = .Invalid;
 		transform.NextSibling = .Invalid;
 		transform.Dirty = false;
+		transform.UpdatedThisFrame = false;
 
 		mAliveCount++;
 
@@ -370,6 +395,42 @@ public class Scene : IDisposable
 
 		return (mTransforms[(int32)entity.Index].PrevWorldMatrix, mTransforms[(int32)entity.Index].WorldMatrix);
 	}
+
+	/// True if the entity's world matrix was recomputed during the most
+	/// recent UpdateTransforms - i.e. SetLocalTransform was called this
+	/// frame, the entity was reparented this frame, or a dirty ancestor's
+	/// update cascaded through it.
+	///
+	/// Intended for PostTransform-phase consumers (cached world bounds,
+	/// physics sync, audio listener position, etc.). PostUpdate is too
+	/// early (UpdateTransforms hasn't run yet); reads outside the
+	/// PostTransform window are still valid but the "this frame" window
+	/// extends until the start of the next UpdateTransforms.
+	///
+	/// Returns false for invalid handles.
+	public bool IsTransformUpdatedThisFrame(EntityHandle entity)
+	{
+		if (!IsValid(entity))
+			return false;
+		return mTransforms[(int32)entity.Index].UpdatedThisFrame;
+	}
+
+	/// Entity-index list of every transform whose world matrix was
+	/// recomputed during the most recent UpdateTransforms. Cheaper than
+	/// iterating all entities and testing IsTransformUpdatedThisFrame
+	/// when only a small fraction moved.
+	///
+	/// Lifetime hazard: if an entity updates this frame and is then
+	/// destroyed (immediately, or via DestroyEntity during PostTransform
+	/// which routes through mPendingDestroys), its index stays in this
+	/// list with the slot already marked Alive=false. Iterating
+	/// consumers MUST gate slot/component reads on
+	/// `IsValid(handle)` or check `mEntities[i].Alive` directly - the
+	/// index is in-bounds but the slot is gone.
+	///
+	/// Read-only. Lifetime is bounded by the next UpdateTransforms call,
+	/// which clears and rewrites this list.
+	public List<int32> TransformsUpdatedThisFrame => mTransformsUpdatedThisFrame;
 
 	/// Sets the parent of an entity. Pass EntityHandle.Invalid to unparent.
 	public void SetParent(EntityHandle child, EntityHandle parent)
@@ -785,6 +846,24 @@ public class Scene : IDisposable
 	    let count = (int32)mTransforms.Count;
 	    if (count == 0) return;
 
+	    // Pass 0: Clear last frame's UpdatedThisFrame flags via the
+	    // tracked list, then clear the list itself. Safe to do here
+	    // (and NOT mid-frame) because UpdatedThisFrame is purely
+	    // informational - the scan in Pass 2 reads Dirty, not
+	    // UpdatedThisFrame. Indices for entities destroyed since last
+	    // frame point at slots with Alive=false; the flag write is
+	    // harmless (destroyed transform slots are zeroed anyway), and
+	    // the index gate keeps us in-bounds.
+	    for (let idx in mTransformsUpdatedThisFrame)
+	        mTransforms[idx].UpdatedThisFrame = false;
+	    mTransformsUpdatedThisFrame.Clear();
+
+	    // Reserve capacity to current entity count so per-frame Adds
+	    // don't trigger growth-time reallocations. List capacity is
+	    // sticky: this is a one-shot allocation matching peak entity
+	    // count after the first call at scale.
+	    mTransformsUpdatedThisFrame.Reserve(count);
+
 	    // Pass 1: Snapshot previous world matrices
 	    for (int32 i = 0; i < count; i++)
 	    {
@@ -840,6 +919,8 @@ public class Scene : IDisposable
 		var data = ref mTransforms[index];
 		data.WorldMatrix = data.Local.ToMatrix() * parentWorld;
 		data.Dirty = false;
+		data.UpdatedThisFrame = true;
+		mTransformsUpdatedThisFrame.Add(index);
 
 		// Update children
 		var childHandle = data.FirstChild;

@@ -12,21 +12,35 @@ With shadows (Debug, 48k):
 
 ---
 
-## Phase 1: Dirty Transform Flags
+## Phase 1: Dirty Transform Flags - **DONE**
 
 **Target:** SceneSubsystem.Update (3.4ms -> ~0ms for static scenes)
 
-**Problem:** Transform hierarchy is recalculated for all 56k entities every frame, even when nothing has moved.
+**Problem:** Transform hierarchy was recalculated for all 56k entities every frame, even when nothing had moved.
 
-**Approach:**
-- Add a dirty flag per entity in the Scene's transform storage
-- `SetLocalTransform` / `SetWorldMatrix` sets the flag
-- `SceneSubsystem.Update` only recalculates transforms for dirty entities and their children
-- Clear dirty flags after update
+**Implementation:**
+- `TransformData.Dirty` per-entity flag in `Scene.mTransforms`. Set by
+  `MarkDirty` (called from `SetLocalTransform` / `SetParent`), cleared
+  by `UpdateTransformRecursive` immediately after recompute.
+- `MarkDirty` cascades to all descendants AND ancestors so
+  `UpdateTransforms` only needs to scan for dirty *roots* before
+  recursing.
+- Companion flag `TransformData.UpdatedThisFrame` exposes "did this
+  entity's world matrix change this frame?" to PostTransform-phase
+  consumers (bounds caches, physics sync, etc.). Set by
+  `UpdateTransformRecursive`, cleared at the start of the next
+  `UpdateTransforms` via `mTransformsUpdatedThisFrame` (an entity-index
+  list that doubles as the iterate-what-moved API).
+- Two flags rather than one: keeping "needs recompute" and "moved this
+  frame" disjoint avoids a clearing race where the next frame's
+  Update-phase `SetLocalTransform` would otherwise be clobbered by the
+  end-of-last-frame clear pass.
 
-**Expected savings:** ~3ms CPU (stress test is fully static after spawn)
+**Public API on Scene:**
+- `IsTransformUpdatedThisFrame(EntityHandle) -> bool`
+- `TransformsUpdatedThisFrame -> List<int32>` (indices, read-only; iterators must check `Alive` to skip entities destroyed this frame)
 
-**Complexity:** Low
+**Actual savings:** ~3ms CPU on static stress test (as predicted).
 
 ---
 
@@ -124,7 +138,7 @@ With shadows (Debug, 48k):
 
 | Phase | Target | Savings | Complexity |
 |-------|--------|---------|------------|
-| 1. Dirty transforms | CPU 3.4ms -> ~0ms | ~3ms | Low |
+| 1. Dirty transforms **(done)** | CPU 3.4ms -> ~0ms | ~3ms | Low |
 | 2. Extraction pre-alloc | CPU 6.3ms -> ~4ms | ~2ms | Low |
 | 3. LOD system | GPU vertex cost | 30-50% GPU | Medium |
 | 4. Shadow cascade cull | Shadow GPU cost | 60-80% shadow GPU | Medium |
