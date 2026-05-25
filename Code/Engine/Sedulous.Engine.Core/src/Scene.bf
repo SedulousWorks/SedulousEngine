@@ -854,16 +854,24 @@ public class Scene : IDisposable
 	    let count = (int32)mTransforms.Count;
 	    if (count == 0) return;
 
-	    // Pass 0: Clear last frame's UpdatedThisFrame flags via the
-	    // tracked list, then clear the list itself. Safe to do here
-	    // (and NOT mid-frame) because UpdatedThisFrame is purely
-	    // informational - the scan in Pass 2 reads Dirty, not
-	    // UpdatedThisFrame. Indices for entities destroyed since last
-	    // frame point at slots with Alive=false; the flag write is
-	    // harmless (destroyed transform slots are zeroed anyway), and
-	    // the index gate keeps us in-bounds.
+	    // Pass 1: walk last frame's update list (still in
+	    // mTransformsUpdatedThisFrame at this point, not yet cleared).
+	    // Two jobs in one loop for cache-locality:
+	    //   a) clear UpdatedThisFrame so this frame's consumers see a
+	    //      fresh signal.
+	    //   b) for entities that moved last frame but AREN'T dirty
+	    //      this frame ("just stopped"), snapshot PrevWorldMatrix =
+	    //      WorldMatrix so their motion-vector reads zero this frame.
+	    //      Entities still moving this frame skip the snapshot here
+	    //      and let UpdateTransformRecursive do the inline save
+	    //      (avoids redundant copy in the stress-test case).
 	    for (let idx in mTransformsUpdatedThisFrame)
-	        mTransforms[idx].UpdatedThisFrame = false;
+	    {
+	        var data = ref mTransforms[idx];
+	        data.UpdatedThisFrame = false;
+	        if (!data.Dirty && mEntities[idx].Alive)
+	            data.PrevWorldMatrix = data.WorldMatrix;
+	    }
 	    mTransformsUpdatedThisFrame.Clear();
 
 	    // Reserve capacity to current entity count so per-frame Adds
@@ -872,14 +880,9 @@ public class Scene : IDisposable
 	    // count after the first call at scale.
 	    mTransformsUpdatedThisFrame.Reserve(count);
 
-	    // Pass 1: Snapshot previous world matrices
-	    for (int32 i = 0; i < count; i++)
-	    {
-	        if (mEntities[i].Alive)
-	            mTransforms[i].PrevWorldMatrix = mTransforms[i].WorldMatrix;
-	    }
-
-	    // Pass 2: Collect dirty roots, then update each subtree
+	    // Pass 2: Collect dirty roots, then update each subtree.
+	    // UpdateTransformRecursive saves PrevWorldMatrix = WorldMatrix
+	    // inline before overwriting WorldMatrix.
 	    for (int32 i = 0; i < count; i++)
 	    {
 	        if (mTransforms[i].Dirty && mEntities[i].Alive && !mTransforms[i].Parent.IsAssigned)
@@ -925,6 +928,12 @@ public class Scene : IDisposable
 	private void UpdateTransformRecursive(int32 index, Matrix parentWorld)
 	{
 		var data = ref mTransforms[index];
+		// Snapshot previous world matrix before overwriting. Pass 1
+		// already handled "moved last, stopped this" entities; for
+		// "moving this frame" entities this save is the only place
+		// PrevWorldMatrix gets set, and the value we capture (current
+		// WorldMatrix, pre-recompute) is exactly "last frame's world".
+		data.PrevWorldMatrix = data.WorldMatrix;
 		data.WorldMatrix = data.Local.ToMatrix() * parentWorld;
 		data.Dirty = false;
 		data.UpdatedThisFrame = true;
