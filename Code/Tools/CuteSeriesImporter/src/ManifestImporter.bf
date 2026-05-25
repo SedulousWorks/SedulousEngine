@@ -384,13 +384,25 @@ class ManifestImporter
 			}
 		}
 
-		// Import animation clips (collects clip refs)
+		// Import animation clips (collects clip refs).
+		// Pass skeleton for name-based bone remapping in animation-only FBX files.
 		let clipInfos = scope List<ClipInfo>();
 		defer { for (var ci in ref clipInfos) ci.Dispose(); }
 
 		let animsEl = FindChild(assetEl, "Animations");
 		if (animsEl != null)
-			ProcessAnimations(animsEl, assetSourcePath, assetName, mount, clipInfos);
+		{
+			// Load skeleton from saved file for name-based animation remapping
+			Skeleton targetSkel = null;
+			let skelFileName = scope String();
+			skelFileName.AppendF("{}.skeleton", assetName);
+			ResourceSerializer.SanitizePath(skelFileName);
+			if (mount.Exists(skelFileName))
+				targetSkel = LoadSkeletonFromFile(mount, skelFileName);
+			defer { if (targetSkel != null) delete targetSkel; }
+
+			ProcessAnimations(animsEl, assetSourcePath, assetName, mount, clipInfos, targetSkel);
+		}
 
 		// Generate animation graph
 		if (clipInfos.Count > 0)
@@ -913,7 +925,8 @@ class ManifestImporter
 	}
 
 	private void ProcessAnimations(XmlElement animsEl, StringView assetSourcePath,
-		StringView assetName, FileSystemMount mount, List<ClipInfo> outClips)
+		StringView assetName, FileSystemMount mount, List<ClipInfo> outClips,
+		Skeleton targetSkeleton = null)
 	{
 		for (let child in animsEl.Children)
 		{
@@ -953,7 +966,7 @@ class ManifestImporter
 					continue;
 				}
 
-				if (ImportModel(clipPath, .Animations | .Skeletons) case .Ok(var bundle))
+				if (ImportModel(clipPath, .Animations | .Skeletons, targetSkeleton) case .Ok(var bundle))
 				{
 					// Rename clips from Take001 to the manifest name
 					for (let anim in bundle.ResResult.Animations)
@@ -1366,7 +1379,8 @@ class ManifestImporter
 		}
 	}
 
-	private Result<ImportBundle> ImportModel(StringView modelPath, ModelImportFlags flags)
+	private Result<ImportBundle> ImportModel(StringView modelPath, ModelImportFlags flags,
+		Skeleton targetSkeleton = null)
 	{
 		let model = new Model();
 		if (ModelLoaderFactory.LoadModel(modelPath, model) != .Ok)
@@ -1382,6 +1396,7 @@ class ManifestImporter
 		options.Flags = flags;
 		options.BasePath.Set(baseDir);
 		options.ModelPath.Set(modelPath);
+		options.TargetSkeleton = targetSkeleton;
 
 		let importer = scope ModelImporter(options);
 		let importResult = importer.Import(model);
@@ -1497,6 +1512,57 @@ class ManifestImporter
 		mRegistry.Register(res.Id, uri);
 
 		return true;
+	}
+
+	/// Loads a Skeleton from a saved .skeleton resource file.
+	/// Caller owns the returned skeleton.
+	private Skeleton LoadSkeletonFromFile(FileSystemMount mount, StringView fileName)
+	{
+		let openResult = mount.Open(fileName);
+		if (openResult case .Err)
+			return null;
+		let stream = openResult.Value;
+		defer delete stream;
+
+		let text = scope String();
+		let buf = scope uint8[stream.Length];
+		switch (stream.TryRead(.((.)&buf[0], buf.Count)))
+		{
+		case .Ok(let bytesRead):
+			text.Append((char8*)&buf[0], bytesRead);
+		case .Err:
+			return null;
+		}
+
+		let reader = mSerializerProvider.CreateReader(text);
+		if (reader == null)
+			return null;
+		defer delete reader;
+
+		let skelRes = scope SkeletonResource();
+		skelRes.Serialize(reader);
+
+		let skeleton = skelRes.Skeleton;
+		if (skeleton == null)
+			return null;
+
+		// Take ownership — create a copy since skelRes is scoped
+		let copy = new Skeleton(skeleton.BoneCount);
+		for (int i = 0; i < skeleton.BoneCount; i++)
+		{
+			let src = skeleton.Bones[i];
+			let dst = copy.Bones[i];
+			dst.Name.Set(src.Name);
+			dst.Index = src.Index;
+			dst.ParentIndex = src.ParentIndex;
+			dst.InverseBindPose = src.InverseBindPose;
+			dst.LocalBindPose = src.LocalBindPose;
+			dst.RootCorrection = src.RootCorrection;
+		}
+		copy.BuildNameMap();
+		copy.FindRootBones();
+		copy.BuildChildIndices();
+		return copy;
 	}
 
 	/// Builds the full registry URI for a file in the given mount.

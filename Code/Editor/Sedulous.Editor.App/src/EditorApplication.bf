@@ -281,7 +281,7 @@ class EditorApplication : Application, IDockableWindowHost
 		mEditorContext.RegisterAssetCreator(new PropAnimAssetCreator());
 
 		// Register built-in asset importers
-		mEditorContext.RegisterAssetImporter(new ModelAssetImporter(mEditorLogger));
+		mEditorContext.RegisterAssetImporter(new ModelAssetImporter(mEditorLogger, mEditorContext.ResourceSystem));
 		mEditorContext.RegisterAssetImporter(new TextureAssetImporter(mEditorLogger));
 
 		mAudioDecoder = new AudioDecoderFactory();

@@ -931,7 +931,7 @@ static class AssetBrowserBuilder
 				// Dialog takes ownership of preview and is deleted by PopupLayer on close
 				let importDialog = new ImportDialog(preview, importer, writable, baseLocator,
 					entry.Index, uriPrefix, entry.IndexLocator, serializer, panel,
-					editorContext.Logger);
+					editorContext.Logger, editorContext);
 				importDialog.Show(ctx);
 				return; // Don't delete preview - dialog owns it now
 			}

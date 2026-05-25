@@ -2,18 +2,9 @@ namespace CuteSeriesImporter;
 
 using System;
 using System.IO;
-using System.Collections;
-using Sedulous.Xml;
 using Sedulous.Models;
 using Sedulous.Models.FBX;
 using Sedulous.Images.STB;
-using Sedulous.Geometry.Tooling;
-using Sedulous.Geometry.Tooling.Resources;
-using Sedulous.Resources;
-using Sedulous.Serialization;
-using Sedulous.Serialization.OpenDDL;
-using Sedulous.VFS;
-using Sedulous.VFS.Disk;
 
 class Program
 {

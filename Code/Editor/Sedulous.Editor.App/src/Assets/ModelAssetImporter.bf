@@ -11,11 +11,18 @@ using Sedulous.Geometry.Tooling.Resources;
 using Sedulous.Textures.Resources;
 using Sedulous.VFS;
 using Sedulous.Core.Logging.Abstractions;
+using Sedulous.Animation;
+using Sedulous.Animation.Resources;
 
 /// Options for model import, shown in the import dialog.
 class ModelImportDialogOptions : ImportOptions
 {
 	public ModelImportOptions Options = new .();
+
+	/// Optional skeleton reference for name-based animation remapping.
+	/// When set, animation-only models will match channels by bone name
+	/// against this skeleton instead of using raw node indices.
+	public ResourceRef SkeletonRef ~ _.Dispose();
 
 	public ~this()
 	{
@@ -31,10 +38,13 @@ class ModelImportDialogOptions : ImportOptions
 class ModelAssetImporter : IAssetImporter
 {
 	private ILogger mLogger;
+	private ResourceSystem mResourceSystem;
+	private ResourceHandle<SkeletonResource> mSkeletonHandle;
 
-	public this(ILogger logger = null)
+	public this(ILogger logger, ResourceSystem resourceSystem)
 	{
 		mLogger = logger;
+		mResourceSystem = resourceSystem;
 	}
 
 	public void GetSupportedExtensions(List<String> outExtensions)
@@ -184,11 +194,21 @@ class ModelAssetImporter : IAssetImporter
 			options.GenerateTangents = dialogOpts.Options.GenerateTangents;
 			options.RecenterMeshes = dialogOpts.Options.RecenterMeshes;
 			options.MaxBonesPerVertex = dialogOpts.Options.MaxBonesPerVertex;
+
+			// Load target skeleton if specified (for animation-only imports)
+			if (dialogOpts.SkeletonRef.IsValid)
+			{
+				if (LoadSkeletonFromRef(dialogOpts.SkeletonRef, ctx) case .Ok(let skel))
+					options.TargetSkeleton = skel;
+			}
 		}
 
 		let importer = scope ModelImporter(options);
 		let importResult = importer.Import(model);
 		defer delete importResult;
+
+		// Release skeleton handle (loaded via resource system, not owned)
+		mSkeletonHandle.Release();
 
 		// Convert to resources
 		let resResult = ResourceImportResult.ConvertFrom(importResult, null, preview.SourcePath);
@@ -371,6 +391,23 @@ class ModelAssetImporter : IAssetImporter
 		for (let res in resResult.SkinnedMeshes) res.RemapReferences(outRemap);
 		for (let res in resResult.Skeletons)    res.RemapReferences(outRemap);
 		for (let res in resResult.Animations)   res.RemapReferences(outRemap);
+	}
+
+	/// Loads a Skeleton from a resource ref via the resource system.
+	/// Returns the skeleton pointer (not owned — lives in the resource system cache).
+	private Result<Skeleton> LoadSkeletonFromRef(ResourceRef skelRef, AssetImportContext ctx)
+	{
+		if (!skelRef.IsValid || mResourceSystem == null)
+			return .Err;
+
+		if (mResourceSystem.LoadByRef<SkeletonResource>(skelRef) case .Ok(let handle))
+		{
+			mSkeletonHandle = handle;
+			if (handle.Resource?.Skeleton != null)
+				return .Ok(handle.Resource.Skeleton);
+		}
+
+		return .Err;
 	}
 
 	private static Resource FindResourceByName(ResourceImportResult res,

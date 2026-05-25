@@ -32,6 +32,7 @@ class ImportDialog : Dialog
 	private ISerializerProvider mSerializer;
 	private AssetBrowserPanel mPanel;
 	private Sedulous.Core.Logging.Abstractions.ILogger mLogger;
+	private Sedulous.Editor.Core.EditorContext mEditorContext;
 
 	// Item checkboxes (parallel to mPreview.Items)
 	private List<CheckBox> mItemChecks = new .() ~ delete _;
@@ -48,7 +49,8 @@ class ImportDialog : Dialog
 		IWritableMount mount, StringView baseLocator,
 		IResourceIndex index, StringView uriPrefix, StringView indexLocator,
 		ISerializerProvider serializer, AssetBrowserPanel panel,
-		Sedulous.Core.Logging.Abstractions.ILogger logger = null)
+		Sedulous.Core.Logging.Abstractions.ILogger logger = null,
+		Sedulous.Editor.Core.EditorContext editorContext = null)
 		: base("Import Assets")
 	{
 		mPreview = preview;
@@ -61,6 +63,7 @@ class ImportDialog : Dialog
 		mSerializer = serializer;
 		mPanel = panel;
 		mLogger = logger;
+		mEditorContext = editorContext;
 
 		MaxWidth = 550;
 		MaxHeight = 500;
@@ -348,6 +351,60 @@ class ImportDialog : Dialog
 			let optSep = new Panel();
 			optSep.Background = new ColorDrawable(.(60, 65, 80, 255));
 			content.AddView(optSep, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(1)) });
+		}
+
+		if (let modelOptions = mPreview.Options as ModelImportDialogOptions)
+		{
+			let skelRow = new FlexLayout();
+			skelRow.Direction = .Horizontal;
+			skelRow.Spacing = 6;
+
+			let skelLabel = new Label();
+			skelLabel.SetText("Skeleton:");
+			skelLabel.FontSize = 11;
+			skelLabel.TextColor = .(140, 145, 165, 255);
+			skelRow.AddView(skelLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(60)), Height = .Match });
+
+			let skelPathLabel = new Label();
+			skelPathLabel.SetText("(none)");
+			skelPathLabel.FontSize = 11;
+			skelPathLabel.Ellipsis = true;
+			skelRow.AddView(skelPathLabel, new FlexLayout.LayoutParams() { Height = .Match, Grow = 1 });
+
+			let browseBtn = new Button("...");
+			browseBtn.FontSize = 10;
+			let editorCtx = mEditorContext;
+			browseBtn.OnClick.Add(new [=modelOptions, =skelPathLabel, =editorCtx] (btn) => {
+				if (editorCtx != null)
+				{
+					let ctx = skelPathLabel.Context;
+					if (ctx == null) return;
+					let picker = new AssetPickerDialog(editorCtx, ".skeleton",
+						new [=modelOptions, =skelPathLabel] (protocolPath, guid) => {
+							skelPathLabel.SetText(protocolPath);
+							modelOptions.SkeletonRef.Dispose();
+							modelOptions.SkeletonRef = ResourceRef(guid, protocolPath);
+						});
+					picker.Show(ctx);
+				}
+			});
+			skelRow.AddView(browseBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(30)), Height = .Match });
+
+			let clearBtn = new Button("X");
+			clearBtn.FontSize = 10;
+			clearBtn.OnClick.Add(new [=modelOptions, =skelPathLabel] (btn) => {
+				skelPathLabel.SetText("(none)");
+				modelOptions.SkeletonRef.Dispose();
+				modelOptions.SkeletonRef = ResourceRef();
+			});
+			skelRow.AddView(clearBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(22)), Height = .Match });
+
+			content.AddView(skelRow, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(24)) });
+
+			// Separator after model options
+			let modelSep = new Panel();
+			modelSep.Background = new ColorDrawable(.(60, 65, 80, 255));
+			content.AddView(modelSep, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(1)) });
 		}
 	}
 

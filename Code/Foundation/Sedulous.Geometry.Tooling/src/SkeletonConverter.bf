@@ -141,16 +141,27 @@ static class SkeletonConverter
 		return mapping;
 	}
 
-	/// Collects non-joint ancestor nodes that should be included in the skeleton.
-	/// For each skeleton root bone (whose parent is not a skin joint), walks up the
-	/// ancestor chain and collects non-joint nodes. This ensures animated transforms
-	/// on these nodes (e.g. root motion) are part of the skeleton hierarchy.
+	/// Collects non-joint nodes that should be included in the skeleton:
+	/// 1. Ancestor nodes: for each skeleton root bone whose parent is not a skin joint,
+	///    walks up the ancestor chain collecting non-joint nodes.
+	/// 2. Sibling rig nodes: non-mesh nodes that share a parent with skin joints.
+	///    These are often animated transform nodes (e.g. "Rig") that drive the skeleton
+	///    but aren't weighted to any vertices.
 	///
 	/// Scene root nodes (ParentIndex < 0) are NOT included - their transforms are
 	/// captured via RootCorrection on the topmost included ancestor instead.
 	private static void CollectAncestorNodes(Model model, ModelSkin skin, int32[] nodeToSkinJoint, List<int32> outAncestors)
 	{
 		let seen = scope HashSet<int32>();
+
+		// Collect parents of all skin joints
+		let jointParents = scope HashSet<int32>();
+		for (int32 skinJointIdx = 0; skinJointIdx < skin.Joints.Count; skinJointIdx++)
+		{
+			let nodeIdx = skin.Joints[skinJointIdx];
+			if (nodeIdx >= 0 && nodeIdx < model.Bones.Count)
+				jointParents.Add(model.Bones[nodeIdx].ParentIndex);
+		}
 
 		for (int32 skinJointIdx = 0; skinJointIdx < skin.Joints.Count; skinJointIdx++)
 		{
@@ -185,6 +196,29 @@ static class SkeletonConverter
 					outAncestors.Add(current);
 
 				current = currentBone.ParentIndex;
+			}
+		}
+
+		// Collect sibling rig nodes: non-mesh, non-joint nodes that share a parent
+		// with skin joints. These are often animated transform helpers.
+		for (int32 nodeIdx = 0; nodeIdx < (int32)model.Bones.Count; nodeIdx++)
+		{
+			if (nodeToSkinJoint[nodeIdx] >= 0)
+				continue; // Already a skin joint
+			if (seen.Contains(nodeIdx))
+				continue; // Already collected as ancestor
+
+			let bone = model.Bones[nodeIdx];
+			if (bone.MeshIndex >= 0)
+				continue; // Has a mesh — not a rig helper
+			if (bone.ParentIndex < 0)
+				continue; // Scene root
+
+			// Check if this node shares a parent with any skin joint
+			if (jointParents.Contains(bone.ParentIndex))
+			{
+				seen.Add(nodeIdx);
+				outAncestors.Add(nodeIdx);
 			}
 		}
 	}

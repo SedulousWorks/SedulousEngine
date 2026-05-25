@@ -34,4 +34,4 @@ corlib = "*"
 "Sedulous.Inspection" = "*"
 
 [Configs.Debug.Win64]
-DebugCommandArguments = "\"D:\\Dev\\Beef\\BeefGFX\\SedulousEngine\\Code\\Tools\\CuteSeriesImporter\\CuteSeriesManifest.xml\" --pack \"Sci Fi Hexagon Battlefields\""
+DebugCommandArguments = "\"D:\\Dev\\Beef\\BeefGFX\\SedulousEngine\\Code\\Tools\\CuteSeriesImporter\\CuteSeriesManifest.xml\" --pack \"100 Eggs Pack\"\""

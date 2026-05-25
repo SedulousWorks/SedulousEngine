@@ -66,6 +66,39 @@ static class AnimationConverter
 		return clip;
 	}
 
+	/// Converts a ModelAnimation using name-based bone matching.
+	/// For animation-only files (no skin), matches channel target nodes by name
+	/// against the model's bone names, producing bone indices that correspond to
+	/// the node order. The resulting clip can then be remapped to a specific
+	/// skeleton via RemapClipToSkeleton.
+	public static AnimationClip ConvertByName(ModelAnimation modelAnim, Model model, Skeleton targetSkeleton)
+	{
+		if (modelAnim == null || model == null || targetSkeleton == null)
+			return null;
+
+		// Build name -> skeleton bone index map
+		let nameToSkeletonBone = scope Dictionary<StringView, int32>();
+		for (int32 i = 0; i < targetSkeleton.BoneCount; i++)
+		{
+			let bone = targetSkeleton.Bones[i];
+			if (bone != null && !bone.Name.IsEmpty)
+				nameToSkeletonBone[bone.Name] = i;
+		}
+
+		// Build node index -> skeleton bone index mapping using names
+		let nodeToBoneMapping = scope int32[model.Bones.Count];
+		for (int32 i = 0; i < nodeToBoneMapping.Count; i++)
+		{
+			let boneName = model.Bones[i].Name;
+			if (nameToSkeletonBone.TryGetValue(boneName, let skeletonIdx))
+				nodeToBoneMapping[i] = skeletonIdx;
+			else
+				nodeToBoneMapping[i] = -1;
+		}
+
+		return Convert(modelAnim, nodeToBoneMapping);
+	}
+
 	/// Converts all animations from a Model, remapping bone indices using the provided mapping.
 	/// Caller owns the returned list and its contents.
 	public static List<AnimationClip> ConvertAll(Model model, int32[] nodeToBoneMapping)
