@@ -12,6 +12,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
 using Sedulous.Jobs;
 using Sedulous.Core.Memory;
+using Sedulous.Profiler;
 
 /// Manages mesh components: resolves resource refs, uploads to GPU, extracts render data.
 /// Injected into scenes by RenderSubsystem via ISceneAware.
@@ -54,6 +55,8 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 	/// Per-frame resource resolution. Loads resources, uploads to GPU, creates materials.
 	private void ResolveResources(float deltaTime)
 	{
+		using (Profiler.Begin("Mesh.ResolveResources"))
+		{
 		if (Resolver == null)
 			return;
 
@@ -127,6 +130,7 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 					Resolver.PrepareMaterial(material);
 			}
 		}
+		}
 	}
 
 	/// Marks a component for WorldBounds refresh on the next PostTransform
@@ -146,6 +150,8 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 	/// static scene does zero work after initial resolution.
 	private void RefreshWorldBounds(float deltaTime)
 	{
+		using (Profiler.Begin("Mesh.RefreshWorldBounds"))
+		{
 		let scene = Scene;
 		if (scene == null)
 			return;
@@ -169,6 +175,7 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 			comp.BoundsDirty = false;
 		}
 		mBoundsDirtyEntities.Clear();
+		}
 	}
 
 	/// Extracts MeshRenderData for all active, visible mesh components.

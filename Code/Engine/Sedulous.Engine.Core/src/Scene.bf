@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.Jobs;
+using Sedulous.Profiler;
 
 /// A scene containing entities, transforms, and component managers.
 /// Multiple scenes can coexist - each is fully isolated (own physics world, own components, etc.).
@@ -753,21 +754,28 @@ public class Scene : IDisposable
 
 		mIsUpdating = true;
 
-		RunPhase(.Initialize, scaledDelta);
-		RunPhase(.PreUpdate, scaledDelta);
-		RunPhase(.Update, scaledDelta);
-		RunAsyncPhase(scaledDelta);
-		RunPhase(.PostUpdate, scaledDelta);
+		using (Profiler.Begin("Scene.Initialize"))
+			RunPhase(.Initialize, scaledDelta);
+		using (Profiler.Begin("Scene.PreUpdate"))
+			RunPhase(.PreUpdate, scaledDelta);
+		using (Profiler.Begin("Scene.Update"))
+			RunPhase(.Update, scaledDelta);
+		using (Profiler.Begin("Scene.AsyncUpdate"))
+			RunAsyncPhase(scaledDelta);
+		using (Profiler.Begin("Scene.PostUpdate"))
+			RunPhase(.PostUpdate, scaledDelta);
 
 		// Transform propagation (internal, not user-registered)
-		UpdateTransforms();
+		using (Profiler.Begin("Scene.UpdateTransforms"))
+			UpdateTransforms();
 
-		RunPhase(.PostTransform, scaledDelta);
+		using (Profiler.Begin("Scene.PostTransform"))
+			RunPhase(.PostTransform, scaledDelta);
 
 		mIsUpdating = false;
 
-		// Process deferred destroys
-		ProcessDeferredDestroys();
+		using (Profiler.Begin("Scene.ProcessDeferredDestroys"))
+			ProcessDeferredDestroys();
 	}
 
 	/// Initializes any components created since the last frame.
