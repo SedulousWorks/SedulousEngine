@@ -50,14 +50,17 @@ class RenderStressTestApp : EngineApplication
 	private int32 mBatchCount = 0;
 	private int32 mGridSize = 0;
 	private bool mUseUniqueMaterials = false;
-	private List<MaterialInstance> mUniqueMaterials = new .() ~ {
-		for (let m in _) m?.ReleaseRef();
-		delete _;
-	};
+	private List<MaterialInstance> mUniqueMaterials = new .() ~
+		{
+			for (let m in _) m?.ReleaseRef();
+			delete _;
+		};
 
 	// FPS tracking
 	private float mFpsSmoothed = 0.0f;
 	private float mFrameTimeMs = 0.0f;
+
+	private bool mSinWaveBob = false;
 
 	// Sky
 	ITexture mSkyTexture;
@@ -154,18 +157,18 @@ class RenderStressTestApp : EngineApplication
 			let queue = renderer.Queue;
 
 			TextureDesc skyTexDesc = .()
-			{
-				Label = "Sky HDR",
-				Width = image.Width,
-				Height = image.Height,
-				Depth = 1,
-				Format = .RGBA32Float,
-				Usage = .Sampled | .CopyDst,
-				Dimension = .Texture2D,
-				MipLevelCount = 1,
-				ArrayLayerCount = 1,
-				SampleCount = 1
-			};
+				{
+					Label = "Sky HDR",
+					Width = image.Width,
+					Height = image.Height,
+					Depth = 1,
+					Format = .RGBA32Float,
+					Usage = .Sampled | .CopyDst,
+					Dimension = .Texture2D,
+					MipLevelCount = 1,
+					ArrayLayerCount = 1,
+					SampleCount = 1
+				};
 
 			if (device.CreateTexture(skyTexDesc) case .Ok(let tex))
 			{
@@ -306,24 +309,27 @@ class RenderStressTestApp : EngineApplication
 
 		const float planeY = 0.0f;
 
-		int i = 0;
-		for (var entity in ref mSphereEntities)
+		if (mSinWaveBob)
 		{
-		    var transform = mScene.GetLocalTransform(entity);
+			int i = 0;
+			for (var entity in ref mSphereEntities)
+			{
+				var transform = mScene.GetLocalTransform(entity);
 
-		    float amplitude = 1.0f;
-		    float speed = 2.0f;
-		    int32 gridX = (int32)(i % mGridSize);
-		    int32 gridZ = (int32)(i / mGridSize);
-		    float phaseOffset = (gridX + gridZ) * 0.3f;
+				float amplitude = 1.0f;
+				float speed = 2.0f;
+				int32 gridX = (int32)(i % mGridSize);
+				int32 gridZ = (int32)(i / mGridSize);
+				float phaseOffset = (gridX + gridZ) * 0.3f;
 
-		    // Shift wave up by amplitude so min = planeY
-		    float y = Math.Sin(m_Time * speed + phaseOffset) * amplitude + amplitude;
+				// Shift wave up by amplitude so min = planeY
+				float y = Math.Sin(m_Time * speed + phaseOffset) * amplitude + amplitude;
 
-		    transform.Position.Y = planeY + y;
+				transform.Position.Y = planeY + y;
 
-		    mScene.SetLocalTransform(entity, transform);
-		    i++;
+				mScene.SetLocalTransform(entity, transform);
+				i++;
+			}
 		}
 
 		// U: toggle unique materials
@@ -331,6 +337,11 @@ class RenderStressTestApp : EngineApplication
 		{
 			mUseUniqueMaterials = !mUseUniqueMaterials;
 			Console.WriteLine("Unique materials: {}", mUseUniqueMaterials ? "ON (more draw calls)" : "OFF (shared material)");
+		}
+
+		if(keyboard.IsKeyPressed(.B))
+		{
+			mSinWaveBob = !mSinWaveBob;
 		}
 
 		// HUD
@@ -351,7 +362,7 @@ class RenderStressTestApp : EngineApplication
 		dbg.DrawScreenText(8, 8, fpsText, .White);
 
 		let controlText = scope String();
-		controlText.AppendF("Space=+8K  Backspace=-8K  U=UniqueMats({0})  P=Profile  Esc=Exit",
+		controlText.AppendF("Space=+8K  Backspace=-8K B=Sin Wave Bob  U=UniqueMats({0})  P=Profile  Esc=Exit",
 			mUseUniqueMaterials ? "ON" : "OFF");
 		dbg.DrawScreenText(8, 20, controlText, .LightGray);
 
