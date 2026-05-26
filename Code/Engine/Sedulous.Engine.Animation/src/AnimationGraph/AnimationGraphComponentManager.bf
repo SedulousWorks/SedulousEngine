@@ -13,7 +13,7 @@ using Sedulous.Core.Mathematics;
 ///
 /// Updates at PostUpdate with priority 11 - before SkeletalAnimationComponentManager
 /// (priority 10) so graph output can override simple clip playback.
-class AnimationGraphComponentManager : ComponentManager<AnimationGraphComponent>
+class AnimationGraphComponentManager : ComponentManager<AnimationGraphComponent>, IResourceChangeListener
 {
 	/// Resource system for resolving skeleton/graph refs.
 	public ResourceSystem ResourceSystem { get; set; }
@@ -28,6 +28,12 @@ class AnimationGraphComponentManager : ComponentManager<AnimationGraphComponent>
 		delete _;
 	};
 
+	/// Entity indices that need (re)resolving this frame. See
+	/// MeshComponentManager for the same pattern.
+	private List<int32> mResolveDirtyEntities = new .() ~ delete _;
+
+	private bool mListenerRegistered;
+
 	public override StringView SerializationTypeId => "Sedulous.AnimationGraphComponent";
 
 	protected override void OnRegisterUpdateFunctions()
@@ -41,6 +47,47 @@ class AnimationGraphComponentManager : ComponentManager<AnimationGraphComponent>
 		RegisterUpdate(.PostUpdate, new => UpdateGraphs, 11, simulationOnly: true);
 	}
 
+	public override void OnSceneCreate(Scene scene)
+	{
+		base.OnSceneCreate(scene);
+		if (ResourceSystem != null)
+		{
+			ResourceSystem.AddChangeListener(this);
+			mListenerRegistered = true;
+		}
+	}
+
+	public override void OnSceneDestroy()
+	{
+		if (mListenerRegistered && ResourceSystem != null)
+		{
+			ResourceSystem.RemoveChangeListener(this);
+			mListenerRegistered = false;
+		}
+		base.OnSceneDestroy();
+	}
+
+	protected override void OnComponentCreated(AnimationGraphComponent comp)
+	{
+		comp.SkeletonChanged.Add(new (c) => MarkResolveDirty(c));
+		comp.GraphChanged.Add(new (c) => MarkResolveDirty(c));
+		MarkResolveDirty(comp);
+	}
+
+	public void MarkResolveDirty(AnimationGraphComponent comp)
+	{
+		if (comp.ResolveDirty)
+			return;
+		comp.ResolveDirty = true;
+		mResolveDirtyEntities.Add((int32)comp.Owner.Index);
+	}
+
+	public void OnResourceReloaded(StringView uri, Type resourceType, IResource resource)
+	{
+		for (let comp in ActiveComponents)
+			MarkResolveDirty(comp);
+	}
+
 	/// Resolves skeleton and graph resources. Always runs (presentation).
 	/// Resolution runs regardless of Active flag — resources should be ready
 	/// when the user hits Play in the editor.
@@ -48,9 +95,13 @@ class AnimationGraphComponentManager : ComponentManager<AnimationGraphComponent>
 	{
 		if (ResourceSystem == null) return;
 
-		for (let comp in ActiveComponents)
+		// Drain dirty queue. Hot-reload flows through OnResourceReloaded
+		// (marks all components dirty), so the generation comparison below
+		// only fires for legitimate work.
+		for (let entityIdx in mResolveDirtyEntities)
 		{
-			if (!comp.IsActive) continue;
+			let comp = GetByEntityIndex(entityIdx);
+			if (comp == null || !comp.IsActive || !comp.ResolveDirty) continue;
 
 			let state = GetOrCreateResolveState(comp.Owner);
 			ResolveResources(comp, state);
@@ -73,7 +124,10 @@ class AnimationGraphComponentManager : ComponentManager<AnimationGraphComponent>
 					comp.GraphPlayer = new AnimationGraphPlayer(comp.Graph, comp.Skeleton);
 				}
 			}
+
+			comp.ResolveDirty = false;
 		}
+		mResolveDirtyEntities.Clear();
 	}
 
 	/// Evaluates animation graphs. Simulation only.

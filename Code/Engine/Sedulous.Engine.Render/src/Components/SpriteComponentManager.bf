@@ -18,7 +18,7 @@ using Sedulous.RHI;
 /// Textures shared across multiple SpriteComponents produce shared
 /// MaterialInstances (via an internal cache) so sprites with the same
 /// texture batch into a single instanced draw call.
-class SpriteComponentManager : ComponentManager<SpriteComponent>, IRenderDataProvider
+class SpriteComponentManager : ComponentManager<SpriteComponent>, IRenderDataProvider, IResourceChangeListener
 {
 	/// Shared resource resolver (set by RenderSubsystem).
 	public RenderResourceResolver Resolver { get; set; }
@@ -41,11 +41,57 @@ class SpriteComponentManager : ComponentManager<SpriteComponent>, IRenderDataPro
 		delete _;
 	};
 
+	/// Entity indices that need (re)resolving this frame. See
+	/// MeshComponentManager for the same pattern.
+	private List<int32> mResolveDirtyEntities = new .() ~ delete _;
+
+	private bool mListenerRegistered;
+
 	public override StringView SerializationTypeId => "Sedulous.SpriteComponent";
 
 	protected override void OnRegisterUpdateFunctions()
 	{
 		RegisterUpdate(.PostUpdate, new => ResolveResources);
+	}
+
+	public override void OnSceneCreate(Scene scene)
+	{
+		base.OnSceneCreate(scene);
+		if (Resolver?.ResourceSystem != null)
+		{
+			Resolver.ResourceSystem.AddChangeListener(this);
+			mListenerRegistered = true;
+		}
+	}
+
+	public override void OnSceneDestroy()
+	{
+		if (mListenerRegistered && Resolver?.ResourceSystem != null)
+		{
+			Resolver.ResourceSystem.RemoveChangeListener(this);
+			mListenerRegistered = false;
+		}
+		base.OnSceneDestroy();
+	}
+
+	protected override void OnComponentCreated(SpriteComponent comp)
+	{
+		comp.TextureChanged.Add(new (c) => MarkResolveDirty(c));
+		MarkResolveDirty(comp);
+	}
+
+	public void MarkResolveDirty(SpriteComponent comp)
+	{
+		if (comp.ResolveDirty)
+			return;
+		comp.ResolveDirty = true;
+		mResolveDirtyEntities.Add((int32)comp.Owner.Index);
+	}
+
+	public void OnResourceReloaded(StringView uri, Type resourceType, IResource resource)
+	{
+		for (let comp in ActiveComponents)
+			MarkResolveDirty(comp);
 	}
 
 	private void ResolveResources(float deltaTime)
@@ -56,11 +102,17 @@ class SpriteComponentManager : ComponentManager<SpriteComponent>, IRenderDataPro
 		let materialSystem = RenderContext.MaterialSystem;
 		if (spriteSystem == null || materialSystem == null) return;
 
-		for (let comp in ActiveComponents)
+		// Pass 1: drain resolve-dirty queue.
+		for (let entityIdx in mResolveDirtyEntities)
 		{
-			if (!comp.IsActive) continue;
+			let comp = GetByEntityIndex(entityIdx);
+			if (comp == null || !comp.IsActive || !comp.ResolveDirty) continue;
 			let texRef = comp.TextureRef;
-			if (!texRef.IsValid) continue;
+			if (!texRef.IsValid)
+			{
+				comp.ResolveDirty = false;
+				continue;
+			}
 
 			SpriteResolveState state;
 			if (!mResolveStates.TryGetValue(comp.Owner, var existing))
@@ -95,9 +147,12 @@ class SpriteComponentManager : ComponentManager<SpriteComponent>, IRenderDataPro
 			}
 
 			comp.SetMaterial(matInstance);
+			comp.ResolveDirty = false;
 		}
+		mResolveDirtyEntities.Clear();
 
-		// Keep cached instances' bind groups fresh (no-op if clean).
+		// Pass 2: keep cached MaterialInstances' bind groups fresh.
+		// O(unique materials), not O(components).
 		for (let kv in mMaterialCache)
 		{
 			let mat = kv.value;

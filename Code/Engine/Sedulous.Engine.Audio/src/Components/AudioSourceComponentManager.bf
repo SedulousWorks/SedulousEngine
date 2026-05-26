@@ -14,7 +14,7 @@ using Sedulous.Core.Mathematics;
 ///
 /// Updates in PostTransform phase - after transforms are finalized so 3D
 /// positions are correct.
-class AudioSourceComponentManager : ComponentManager<AudioSourceComponent>
+class AudioSourceComponentManager : ComponentManager<AudioSourceComponent>, IResourceChangeListener
 {
 	/// Audio system for creating/destroying sources.
 	public IAudioSystem AudioSystem { get; set; }
@@ -35,6 +35,11 @@ class AudioSourceComponentManager : ComponentManager<AudioSourceComponent>
 		delete _;
 	};
 
+	/// Entity indices that need (re)resolving this frame.
+	private List<int32> mResolveDirtyEntities = new .() ~ delete _;
+
+	private bool mListenerRegistered;
+
 	public override StringView SerializationTypeId => "Sedulous.AudioSourceComponent";
 
 	protected override void OnRegisterUpdateFunctions()
@@ -43,17 +48,60 @@ class AudioSourceComponentManager : ComponentManager<AudioSourceComponent>
 		RegisterUpdate(.PostTransform, new => UpdateAudioSources, simulationOnly: true);
 	}
 
+	public override void OnSceneCreate(Scene scene)
+	{
+		base.OnSceneCreate(scene);
+		if (ResourceSystem != null)
+		{
+			ResourceSystem.AddChangeListener(this);
+			mListenerRegistered = true;
+		}
+	}
+
+	public override void OnSceneDestroy()
+	{
+		if (mListenerRegistered && ResourceSystem != null)
+		{
+			ResourceSystem.RemoveChangeListener(this);
+			mListenerRegistered = false;
+		}
+		base.OnSceneDestroy();
+	}
+
+	protected override void OnComponentCreated(AudioSourceComponent comp)
+	{
+		comp.ClipChanged.Add(new (c) => MarkResolveDirty(c));
+		comp.CueChanged.Add(new (c) => MarkResolveDirty(c));
+		MarkResolveDirty(comp);
+	}
+
+	public void MarkResolveDirty(AudioSourceComponent comp)
+	{
+		if (comp.ResolveDirty)
+			return;
+		comp.ResolveDirty = true;
+		mResolveDirtyEntities.Add((int32)comp.Owner.Index);
+	}
+
+	public void OnResourceReloaded(StringView uri, Type resourceType, IResource resource)
+	{
+		for (let comp in ActiveComponents)
+			MarkResolveDirty(comp);
+	}
+
 	private void UpdateAudioSources(float deltaTime)
 	{
 		if (AudioSystem == null || ResourceSystem == null) return;
 		let scene = Scene;
 		if (scene == null) return;
 
-		for (let comp in ActiveComponents)
+		// Pass 1: drain dirty queue - resolve clip/cue refs and create
+		// the audio source once a clip is available.
+		for (let entityIdx in mResolveDirtyEntities)
 		{
-			if (!comp.IsActive) continue;
+			let comp = GetByEntityIndex(entityIdx);
+			if (comp == null || !comp.IsActive || !comp.ResolveDirty) continue;
 
-			// Resolve clip resource
 			ResolveResources(comp);
 
 			// Create source once clip is ready
@@ -64,6 +112,17 @@ class AudioSourceComponentManager : ComponentManager<AudioSourceComponent>
 					comp.PlayRequested = true;
 			}
 
+			comp.ResolveDirty = false;
+		}
+		mResolveDirtyEntities.Clear();
+
+		// Pass 2: per-frame source property sync + play handling for all
+		// active components with a source. Position can change every
+		// frame (entity moves) and Play requests can fire any frame, so
+		// this stays O(N) by design.
+		for (let comp in ActiveComponents)
+		{
+			if (!comp.IsActive) continue;
 			if (comp.Source == null) continue;
 
 			// Apply properties - bus volumes are handled by the graph, not here

@@ -1,5 +1,6 @@
 namespace Sedulous.Engine.Render;
 
+using System;
 using Sedulous.Engine.Core;
 using Sedulous.Renderer;
 using Sedulous.Resources;
@@ -65,12 +66,22 @@ class DecalComponent : Component, ISerializableComponent
 	/// Whether the decal is visible this frame.
 	public bool IsVisible = true;
 
+	/// Set when the texture ref changes or on first resolve. Drains the
+	/// manager's resolve queue. Cleared by the manager after resolving.
+	public bool ResolveDirty;
+
+	/// Fires after SetTextureRef changes the texture resource ref.
+	public Event<delegate void(DecalComponent)> TextureChanged ~ _.Dispose();
+
 	public ResourceRef TextureRef => mTextureRef;
 
+	/// Sets the texture resource ref (deep copy). Fires TextureChanged so
+	/// the manager can enqueue a re-resolve.
 	public void SetTextureRef(ResourceRef @ref)
 	{
 		mTextureRef.Dispose();
 		mTextureRef = ResourceRef(@ref.Id, @ref.Path ?? "");
+		TextureChanged(this);
 	}
 
 	public void SetMaterial(MaterialInstance material)

@@ -1,5 +1,6 @@
 namespace Sedulous.Engine.Render;
 
+using System;
 using System.Collections;
 using Sedulous.Engine.Core;
 using Sedulous.Renderer;
@@ -87,6 +88,20 @@ class MeshComponent : Component, ISerializableComponent
 	/// itself didn't move. Cleared during the refresh.
 	public bool BoundsDirty;
 
+	/// Set when the mesh ref or any material ref changes, or on first
+	/// resolve. Drains the manager's resolve queue and triggers a
+	/// re-resolve in PostUpdate. Cleared by the manager after resolving.
+	public bool ResolveDirty;
+
+	/// Fires after SetMeshRef changes the mesh resource ref. The manager
+	/// subscribes to enqueue this component for re-resolution.
+	public Event<delegate void(MeshComponent)> MeshChanged ~ _.Dispose();
+
+	/// Fires after SetMaterialRef changes a slot's material resource ref.
+	/// Slot index is passed so consumers (e.g. editor previews) can react
+	/// per-slot if needed; the manager just uses the component identity.
+	public Event<delegate void(MeshComponent, int32)> MaterialChanged ~ _.Dispose();
+
 	/// Render layer mask (for filtering in extraction).
 	[Property(.Default, "Layer Mask", "LayerMask")]
 	public uint32 LayerMask = 0xFFFFFFFF;
@@ -111,10 +126,12 @@ class MeshComponent : Component, ISerializableComponent
 	public ResourceRef MeshRef => mMeshRef;
 
 	/// Sets the mesh resource ref (deep copy - allocates new String for path).
+	/// Fires MeshChanged so the manager can enqueue a re-resolve.
 	public void SetMeshRef(ResourceRef @ref)
 	{
 		mMeshRef.Dispose();
 		mMeshRef = ResourceRef(@ref.Id, @ref.Path ?? "");
+		MeshChanged(this);
 	}
 
 	/// Gets the material ref count.
@@ -130,12 +147,14 @@ class MeshComponent : Component, ISerializableComponent
 
 	/// Sets a material resource ref at the given slot (deep copy).
 	/// The MeshComponentManager resolves refs to instances during its update phase.
+	/// Fires MaterialChanged so the manager can enqueue a re-resolve.
 	public void SetMaterialRef(int32 slot, ResourceRef @ref)
 	{
 		while (mMaterialRefs.Count <= slot)
 			mMaterialRefs.Add(.());
 		mMaterialRefs[slot].Dispose();
 		mMaterialRefs[slot] = ResourceRef(@ref.Id, @ref.Path ?? "");
+		MaterialChanged(this, slot);
 	}
 
 	/// Gets the material for a given slot, or null if not assigned.

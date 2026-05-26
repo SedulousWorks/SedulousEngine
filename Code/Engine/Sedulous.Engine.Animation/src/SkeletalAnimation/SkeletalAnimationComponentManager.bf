@@ -13,7 +13,7 @@ using Sedulous.Core.Mathematics;
 ///
 /// Updates at PostUpdate with priority 10 - before SkinnedMeshComponentManager
 /// (priority 0) so bone matrices are ready for GPU skinning upload.
-class SkeletalAnimationComponentManager : ComponentManager<SkeletalAnimationComponent>
+class SkeletalAnimationComponentManager : ComponentManager<SkeletalAnimationComponent>, IResourceChangeListener
 {
 	/// Resource system for resolving skeleton/clip refs.
 	public ResourceSystem ResourceSystem { get; set; }
@@ -27,6 +27,11 @@ class SkeletalAnimationComponentManager : ComponentManager<SkeletalAnimationComp
 		}
 		delete _;
 	};
+
+	/// Entity indices that need (re)resolving this frame.
+	private List<int32> mResolveDirtyEntities = new .() ~ delete _;
+
+	private bool mListenerRegistered;
 
 	public override StringView SerializationTypeId => "Sedulous.SkeletalAnimationComponent";
 
@@ -42,14 +47,57 @@ class SkeletalAnimationComponentManager : ComponentManager<SkeletalAnimationComp
 		RegisterUpdate(.PostUpdate, new => UpdateAnimations, 10, simulationOnly: true);
 	}
 
-	/// Resolves skeleton and clip resources. Always runs (presentation).
+	public override void OnSceneCreate(Scene scene)
+	{
+		base.OnSceneCreate(scene);
+		if (ResourceSystem != null)
+		{
+			ResourceSystem.AddChangeListener(this);
+			mListenerRegistered = true;
+		}
+	}
+
+	public override void OnSceneDestroy()
+	{
+		if (mListenerRegistered && ResourceSystem != null)
+		{
+			ResourceSystem.RemoveChangeListener(this);
+			mListenerRegistered = false;
+		}
+		base.OnSceneDestroy();
+	}
+
+	protected override void OnComponentCreated(SkeletalAnimationComponent comp)
+	{
+		comp.SkeletonChanged.Add(new (c) => MarkResolveDirty(c));
+		comp.ClipChanged.Add(new (c) => MarkResolveDirty(c));
+		MarkResolveDirty(comp);
+	}
+
+	public void MarkResolveDirty(SkeletalAnimationComponent comp)
+	{
+		if (comp.ResolveDirty)
+			return;
+		comp.ResolveDirty = true;
+		mResolveDirtyEntities.Add((int32)comp.Owner.Index);
+	}
+
+	public void OnResourceReloaded(StringView uri, Type resourceType, IResource resource)
+	{
+		for (let comp in ActiveComponents)
+			MarkResolveDirty(comp);
+	}
+
+	/// Resolves skeleton and clip resources. Drains the dirty queue.
 	private void ResolveAnimationResources(float deltaTime)
 	{
 		if (ResourceSystem == null) return;
 
-		for (let comp in ActiveComponents)
+		for (let entityIdx in mResolveDirtyEntities)
 		{
-			if (!comp.IsActive) continue;
+			let comp = GetByEntityIndex(entityIdx);
+			if (comp == null || !comp.IsActive || !comp.ResolveDirty) continue;
+
 			ResolveResources(comp);
 
 			// Skeleton swap: tear down the player so it gets rebuilt
@@ -85,7 +133,10 @@ class SkeletalAnimationComponentManager : ComponentManager<SkeletalAnimationComp
 				comp.Player.Play(comp.CurrentClip);
 				comp.Playing = true;
 			}
+
+			comp.ResolveDirty = false;
 		}
+		mResolveDirtyEntities.Clear();
 	}
 
 	/// Advances animation playback. Simulation only.

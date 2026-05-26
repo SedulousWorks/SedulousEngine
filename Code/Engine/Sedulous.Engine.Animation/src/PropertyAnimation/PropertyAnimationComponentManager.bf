@@ -12,7 +12,7 @@ using Sedulous.Animation.Resources;
 ///
 /// Updates at Update phase with priority 0 - applies property changes
 /// during main game logic phase so they're visible to PostUpdate.
-class PropertyAnimationComponentManager : ComponentManager<PropertyAnimationComponent>
+class PropertyAnimationComponentManager : ComponentManager<PropertyAnimationComponent>, IResourceChangeListener
 {
 	/// Resource system for resolving clip refs.
 	public ResourceSystem ResourceSystem { get; set; }
@@ -30,11 +30,56 @@ class PropertyAnimationComponentManager : ComponentManager<PropertyAnimationComp
 		delete _;
 	};
 
+	/// Entity indices that need (re)resolving this frame.
+	private List<int32> mResolveDirtyEntities = new .() ~ delete _;
+
+	private bool mListenerRegistered;
+
 	public override StringView SerializationTypeId => "Sedulous.PropertyAnimationComponent";
 
 	protected override void OnRegisterUpdateFunctions()
 	{
 		RegisterUpdate(.AsyncUpdate, new => UpdatePropertyAnimations, simulationOnly: true);
+	}
+
+	public override void OnSceneCreate(Scene scene)
+	{
+		base.OnSceneCreate(scene);
+		if (ResourceSystem != null)
+		{
+			ResourceSystem.AddChangeListener(this);
+			mListenerRegistered = true;
+		}
+	}
+
+	public override void OnSceneDestroy()
+	{
+		if (mListenerRegistered && ResourceSystem != null)
+		{
+			ResourceSystem.RemoveChangeListener(this);
+			mListenerRegistered = false;
+		}
+		base.OnSceneDestroy();
+	}
+
+	protected override void OnComponentCreated(PropertyAnimationComponent comp)
+	{
+		comp.ClipChanged.Add(new (c) => MarkResolveDirty(c));
+		MarkResolveDirty(comp);
+	}
+
+	public void MarkResolveDirty(PropertyAnimationComponent comp)
+	{
+		if (comp.ResolveDirty)
+			return;
+		comp.ResolveDirty = true;
+		mResolveDirtyEntities.Add((int32)comp.Owner.Index);
+	}
+
+	public void OnResourceReloaded(StringView uri, Type resourceType, IResource resource)
+	{
+		for (let comp in ActiveComponents)
+			MarkResolveDirty(comp);
 	}
 
 	private void UpdatePropertyAnimations(float deltaTime)
@@ -43,11 +88,12 @@ class PropertyAnimationComponentManager : ComponentManager<PropertyAnimationComp
 		let scene = Scene;
 		if (scene == null) return;
 
-		for (let comp in ActiveComponents)
+		// Pass 1: drain dirty queue - resolve clip + create player if ready.
+		for (let entityIdx in mResolveDirtyEntities)
 		{
-			if (!comp.IsActive) continue;
+			let comp = GetByEntityIndex(entityIdx);
+			if (comp == null || !comp.IsActive || !comp.ResolveDirty) continue;
 
-			// Resolve resources if needed
 			ResolveResources(comp);
 
 			// Create player once clip is ready
@@ -62,7 +108,16 @@ class PropertyAnimationComponentManager : ComponentManager<PropertyAnimationComp
 				}
 			}
 
-			// Update playback
+			comp.ResolveDirty = false;
+		}
+		mResolveDirtyEntities.Clear();
+
+		// Pass 2: per-frame playback update for every active component
+		// with a Player. This is the work that has to run every frame
+		// regardless of dirty state (animation time advancement).
+		for (let comp in ActiveComponents)
+		{
+			if (!comp.IsActive) continue;
 			if (comp.Player != null && comp.Playing)
 			{
 				comp.Player.Speed = comp.Speed;

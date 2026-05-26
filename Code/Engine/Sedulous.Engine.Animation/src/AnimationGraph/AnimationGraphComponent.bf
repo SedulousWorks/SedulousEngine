@@ -56,22 +56,38 @@ class AnimationGraphComponent : Component, ISerializableComponent
 	/// Whether resources have been resolved and the player created.
 	public bool IsReady => GraphPlayer != null;
 
+	/// Set when SkeletonRef or GraphRef changes, or on first resolve.
+	/// Drains the manager's resolve queue. Cleared after resolving.
+	public bool ResolveDirty;
+
+	/// Fires after SetSkeletonRef changes the skeleton resource ref.
+	public Event<delegate void(AnimationGraphComponent)> SkeletonChanged ~ _.Dispose();
+
+	/// Fires after SetGraphRef changes the graph resource ref.
+	public Event<delegate void(AnimationGraphComponent)> GraphChanged ~ _.Dispose();
+
 	// --- Resource ref accessors ---
 
 	public ResourceRef SkeletonRef => mSkeletonRef;
 
+	/// Sets the skeleton resource ref (deep copy). Fires SkeletonChanged
+	/// so the manager can enqueue a re-resolve.
 	public void SetSkeletonRef(ResourceRef @ref)
 	{
 		mSkeletonRef.Dispose();
 		mSkeletonRef = ResourceRef(@ref.Id, @ref.Path ?? "");
+		SkeletonChanged(this);
 	}
 
 	public ResourceRef GraphRef => mGraphRef;
 
+	/// Sets the graph resource ref (deep copy). Fires GraphChanged so
+	/// the manager can enqueue a re-resolve.
 	public void SetGraphRef(ResourceRef @ref)
 	{
 		mGraphRef.Dispose();
 		mGraphRef = ResourceRef(@ref.Id, @ref.Path ?? "");
+		GraphChanged(this);
 	}
 
 	/// Gets the current skinning matrices from the graph player.

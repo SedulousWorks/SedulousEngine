@@ -1,5 +1,6 @@
 namespace Sedulous.Engine.Render;
 
+using System;
 using Sedulous.Engine.Core;
 using Sedulous.Renderer;
 using Sedulous.Materials;
@@ -49,14 +50,23 @@ class ParticleComponent : Component, ISerializableComponent
 	/// Whether to auto-play on creation.
 	public bool AutoPlay = true;
 
+	/// Set when the effect ref changes or on first resolve. Drains the
+	/// manager's resolve queue. Cleared by the manager after resolving.
+	public bool ResolveDirty;
+
+	/// Fires after SetEffectRef changes the effect resource ref.
+	public Event<delegate void(ParticleComponent)> EffectChanged ~ _.Dispose();
+
 	/// Gets the effect resource ref.
 	public ResourceRef EffectRef => mEffectRef;
 
-	/// Sets the effect resource ref (deep copy).
+	/// Sets the effect resource ref (deep copy). Fires EffectChanged so
+	/// the manager can enqueue a re-resolve.
 	public void SetEffectRef(ResourceRef @ref)
 	{
 		mEffectRef.Dispose();
 		mEffectRef = ResourceRef(@ref.Id, @ref.Path ?? "");
+		EffectChanged(this);
 	}
 
 	/// Sets the effect and creates a runtime instance.

@@ -20,7 +20,7 @@ using Sedulous.RHI;
 ///   1. PostUpdate: resolve mesh/material refs via RenderResourceResolver
 ///   2. PostUpdate: read bone matrices from animation component -> upload to bone buffer
 ///   3. Extraction: emit MeshRenderData with IsSkinned + BoneBufferHandle
-class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRenderDataProvider
+class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRenderDataProvider, IResourceChangeListener
 {
 	/// Reference to GPU resource manager (set by RenderSubsystem).
 	public GPUResourceManager GPUResources { get; set; }
@@ -39,6 +39,12 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 	/// RefreshWorldBounds. See MeshComponentManager for the same pattern.
 	private List<int32> mBoundsDirtyEntities = new .() ~ delete _;
 
+	/// Entity indices that need (re)resolving this frame. See
+	/// MeshComponentManager for the same pattern.
+	private List<int32> mResolveDirtyEntities = new .() ~ delete _;
+
+	private bool mListenerRegistered;
+
 
 	public override StringView SerializationTypeId => "Sedulous.SkinnedMeshComponent";
 
@@ -56,16 +62,79 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 		RegisterUpdate(.PostTransform, new => RefreshWorldBounds);
 	}
 
-	/// Resolves mesh and material resources. Always runs (presentation).
+	public override void OnSceneCreate(Scene scene)
+	{
+		base.OnSceneCreate(scene);
+		if (Resolver?.ResourceSystem != null)
+		{
+			Resolver.ResourceSystem.AddChangeListener(this);
+			mListenerRegistered = true;
+		}
+	}
+
+	public override void OnSceneDestroy()
+	{
+		if (mListenerRegistered && Resolver?.ResourceSystem != null)
+		{
+			Resolver.ResourceSystem.RemoveChangeListener(this);
+			mListenerRegistered = false;
+		}
+		base.OnSceneDestroy();
+	}
+
+	protected override void OnComponentCreated(SkinnedMeshComponent comp)
+	{
+		comp.MeshChanged.Add(new (c) => MarkResolveDirty(c));
+		comp.MaterialChanged.Add(new (c, slot) => MarkResolveDirty(c));
+		MarkResolveDirty(comp);
+	}
+
+	public void MarkResolveDirty(SkinnedMeshComponent comp)
+	{
+		if (comp.ResolveDirty)
+			return;
+		comp.ResolveDirty = true;
+		mResolveDirtyEntities.Add((int32)comp.Owner.Index);
+	}
+
+	public void OnResourceReloaded(StringView uri, Type resourceType, IResource resource)
+	{
+		for (let comp in ActiveComponents)
+			MarkResolveDirty(comp);
+	}
+
+	/// Resolves mesh and material resources. Two passes:
+	///   1. Drain the resolve-dirty queue.
+	///   2. Per-frame material-instance prep over all active components.
 	private void ResolveSkinnedMeshResources(float deltaTime)
 	{
 		if (Resolver == null) return;
 
-		for (let comp in ActiveComponents)
+		// Pass 1: drain dirty queue.
+		for (let entityIdx in mResolveDirtyEntities)
 		{
-			if (!comp.IsActive)
+			let comp = GetByEntityIndex(entityIdx);
+			if (comp == null || !comp.IsActive || !comp.ResolveDirty)
 				continue;
 			ResolveComponentResources(comp);
+			comp.ResolveDirty = false;
+		}
+		mResolveDirtyEntities.Clear();
+
+		// Pass 2: dirty material-instance prep over all active components.
+		// Decoupled from ref changes (uniform/bind-group edits in the
+		// editor don't go through SetMaterialRef). Residual O(N) bool
+		// reads; consider moving to a global Resolver-side dirty pass
+		// if profiling shows it matters.
+		for (let comp in ActiveComponents)
+		{
+			if (!comp.IsActive) continue;
+			for (int32 slot = 0; slot < comp.Materials.Count; slot++)
+			{
+				let material = comp.Materials[slot];
+				if (material != null && (material.IsBindGroupDirty || material.IsUniformDirty))
+					Resolver.PrepareMaterial(material);
+			}
 		}
 	}
 
@@ -245,13 +314,9 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 			}
 		}
 
-		// Prepare any dirty material instances (handles both resolved and manually-set materials)
-		for (int32 slot = 0; slot < comp.Materials.Count; slot++)
-		{
-			let material = comp.Materials[slot];
-			if (material != null && (material.IsBindGroupDirty || material.IsUniformDirty))
-				Resolver.PrepareMaterial(material);
-		}
+		// NOTE: material-instance dirty prep moved out to the caller's
+		// Pass 2 loop so it covers all active components (uniform / bind
+		// group edits don't trip ref-change dirty tracking).
 	}
 
 	/// Marks a component for WorldBounds refresh on the next PostTransform.

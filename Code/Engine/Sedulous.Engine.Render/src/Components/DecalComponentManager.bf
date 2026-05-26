@@ -15,7 +15,7 @@ using Sedulous.RHI;
 /// Manages decal components: resolves texture ResourceRefs, creates/caches
 /// MaterialInstances from the shared decal Material template, and extracts
 /// DecalRenderData each frame with world + inverse world matrices.
-class DecalComponentManager : ComponentManager<DecalComponent>, IRenderDataProvider
+class DecalComponentManager : ComponentManager<DecalComponent>, IRenderDataProvider, IResourceChangeListener
 {
 	public RenderResourceResolver Resolver { get; set; }
 	public RenderContext RenderContext { get; set; }
@@ -33,11 +33,57 @@ class DecalComponentManager : ComponentManager<DecalComponent>, IRenderDataProvi
 		delete _;
 	};
 
+	/// Entity indices that need (re)resolving this frame. See
+	/// MeshComponentManager for the same pattern.
+	private List<int32> mResolveDirtyEntities = new .() ~ delete _;
+
+	private bool mListenerRegistered;
+
 	public override StringView SerializationTypeId => "Sedulous.DecalComponent";
 
 	protected override void OnRegisterUpdateFunctions()
 	{
 		RegisterUpdate(.PostUpdate, new => ResolveResources);
+	}
+
+	public override void OnSceneCreate(Scene scene)
+	{
+		base.OnSceneCreate(scene);
+		if (Resolver?.ResourceSystem != null)
+		{
+			Resolver.ResourceSystem.AddChangeListener(this);
+			mListenerRegistered = true;
+		}
+	}
+
+	public override void OnSceneDestroy()
+	{
+		if (mListenerRegistered && Resolver?.ResourceSystem != null)
+		{
+			Resolver.ResourceSystem.RemoveChangeListener(this);
+			mListenerRegistered = false;
+		}
+		base.OnSceneDestroy();
+	}
+
+	protected override void OnComponentCreated(DecalComponent comp)
+	{
+		comp.TextureChanged.Add(new (c) => MarkResolveDirty(c));
+		MarkResolveDirty(comp);
+	}
+
+	public void MarkResolveDirty(DecalComponent comp)
+	{
+		if (comp.ResolveDirty)
+			return;
+		comp.ResolveDirty = true;
+		mResolveDirtyEntities.Add((int32)comp.Owner.Index);
+	}
+
+	public void OnResourceReloaded(StringView uri, Type resourceType, IResource resource)
+	{
+		for (let comp in ActiveComponents)
+			MarkResolveDirty(comp);
 	}
 
 	private void ResolveResources(float deltaTime)
@@ -60,11 +106,17 @@ class DecalComponentManager : ComponentManager<DecalComponent>, IRenderDataProvi
 
 		let materialSystem = RenderContext.MaterialSystem;
 
-		for (let comp in ActiveComponents)
+		// Pass 1: drain resolve-dirty queue.
+		for (let entityIdx in mResolveDirtyEntities)
 		{
-			if (!comp.IsActive) continue;
+			let comp = GetByEntityIndex(entityIdx);
+			if (comp == null || !comp.IsActive || !comp.ResolveDirty) continue;
 			let texRef = comp.TextureRef;
-			if (!texRef.IsValid) continue;
+			if (!texRef.IsValid)
+			{
+				comp.ResolveDirty = false;
+				continue;
+			}
 
 			DecalResolveState state;
 			if (!mResolveStates.TryGetValue(comp.Owner, var existing))
@@ -98,8 +150,12 @@ class DecalComponentManager : ComponentManager<DecalComponent>, IRenderDataProvi
 			}
 
 			comp.SetMaterial(matInstance);
+			comp.ResolveDirty = false;
 		}
+		mResolveDirtyEntities.Clear();
 
+		// Pass 2: keep cached MaterialInstances' bind groups fresh.
+		// O(unique materials), not O(components).
 		for (let kv in mMaterialCache)
 		{
 			let mat = kv.value;

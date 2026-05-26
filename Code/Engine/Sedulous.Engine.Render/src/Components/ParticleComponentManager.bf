@@ -20,7 +20,7 @@ using Sedulous.Particles.Resources;
 /// Manages particle components: resolves effect and texture resources,
 /// creates MaterialInstances, simulates particle effects, and extracts
 /// ParticleBatchRenderData each frame.
-class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDataProvider
+class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDataProvider, IResourceChangeListener
 {
 	/// Shared resource resolver (set by RenderSubsystem).
 	public RenderResourceResolver Resolver { get; set; }
@@ -56,12 +56,58 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 		delete _;
 	};
 
+	/// Entity indices that need (re)resolving this frame. See
+	/// MeshComponentManager for the same pattern.
+	private List<int32> mResolveDirtyEntities = new .() ~ delete _;
+
+	private bool mListenerRegistered;
+
 	public override StringView SerializationTypeId => "Sedulous.ParticleComponent";
 
 	protected override void OnRegisterUpdateFunctions()
 	{
 		RegisterUpdate(.PostTransform, new => SimulateParticles, simulationOnly: true);
 		RegisterUpdate(.PostUpdate, new => ResolveResources);
+	}
+
+	public override void OnSceneCreate(Scene scene)
+	{
+		base.OnSceneCreate(scene);
+		if (Resolver?.ResourceSystem != null)
+		{
+			Resolver.ResourceSystem.AddChangeListener(this);
+			mListenerRegistered = true;
+		}
+	}
+
+	public override void OnSceneDestroy()
+	{
+		if (mListenerRegistered && Resolver?.ResourceSystem != null)
+		{
+			Resolver.ResourceSystem.RemoveChangeListener(this);
+			mListenerRegistered = false;
+		}
+		base.OnSceneDestroy();
+	}
+
+	protected override void OnComponentCreated(ParticleComponent comp)
+	{
+		comp.EffectChanged.Add(new (c) => MarkResolveDirty(c));
+		MarkResolveDirty(comp);
+	}
+
+	public void MarkResolveDirty(ParticleComponent comp)
+	{
+		if (comp.ResolveDirty)
+			return;
+		comp.ResolveDirty = true;
+		mResolveDirtyEntities.Add((int32)comp.Owner.Index);
+	}
+
+	public void OnResourceReloaded(StringView uri, Type resourceType, IResource resource)
+	{
+		for (let comp in ActiveComponents)
+			MarkResolveDirty(comp);
 	}
 
 	/// Simulates all active particle effects.
@@ -107,9 +153,13 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 		let materialSystem = RenderContext.MaterialSystem;
 		if (materialSystem == null) return;
 
-		for (let comp in ActiveComponents)
+		// Pass 1: drain resolve-dirty queue. Effect ref changes and
+		// hot-reloads enqueue components; the body resolves everything
+		// (effect + per-system mesh/material/texture) for each.
+		for (let entityIdx in mResolveDirtyEntities)
 		{
-			if (!comp.IsActive) continue;
+			let comp = GetByEntityIndex(entityIdx);
+			if (comp == null || !comp.IsActive || !comp.ResolveDirty) continue;
 
 			let state = GetOrCreateResolveState(comp.Owner);
 
@@ -273,9 +323,14 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 				delete state.Systems[last];
 				state.Systems.RemoveAt(last);
 			}
-		}
 
-		// Keep cached instances' bind groups fresh.
+			comp.ResolveDirty = false;
+		}
+		mResolveDirtyEntities.Clear();
+
+		// Pass 2: keep cached MaterialInstances' bind groups fresh.
+		// Iterates the per-manager material cache (texture-view -> instance),
+		// not active components, so the cost is O(unique materials) not O(N).
 		for (let kv in mMaterialCache)
 		{
 			let mat = kv.value;

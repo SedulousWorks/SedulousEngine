@@ -87,6 +87,17 @@ class SkinnedMeshComponent : Component, ISerializableComponent
 	/// itself didn't move. Cleared during the refresh.
 	public bool BoundsDirty;
 
+	/// Set when the mesh ref or any material ref changes, or on first
+	/// resolve. Drains the manager's resolve queue and triggers a
+	/// re-resolve in PostUpdate. Cleared by the manager after resolving.
+	public bool ResolveDirty;
+
+	/// Fires after SetMeshRef changes the mesh resource ref.
+	public Event<delegate void(SkinnedMeshComponent)> MeshChanged ~ _.Dispose();
+
+	/// Fires after SetMaterialRef changes a slot's material resource ref.
+	public Event<delegate void(SkinnedMeshComponent, int32)> MaterialChanged ~ _.Dispose();
+
 	/// Whether this mesh is visible.
 	public bool IsVisible = true;
 
@@ -103,11 +114,13 @@ class SkinnedMeshComponent : Component, ISerializableComponent
 	/// Gets the mesh resource ref.
 	public ResourceRef MeshRef => mMeshRef;
 
-	/// Sets the mesh resource ref (deep copy).
+	/// Sets the mesh resource ref (deep copy). Fires MeshChanged so the
+	/// manager can enqueue a re-resolve.
 	public void SetMeshRef(ResourceRef @ref)
 	{
 		mMeshRef.Dispose();
 		mMeshRef = ResourceRef(@ref.Id, @ref.Path ?? "");
+		MeshChanged(this);
 	}
 
 	/// Gets the material ref count.
@@ -122,12 +135,14 @@ class SkinnedMeshComponent : Component, ISerializableComponent
 	}
 
 	/// Sets a material resource ref at the given slot (deep copy).
+	/// Fires MaterialChanged so the manager can enqueue a re-resolve.
 	public void SetMaterialRef(int32 slot, ResourceRef @ref)
 	{
 		while (mMaterialRefs.Count <= slot)
 			mMaterialRefs.Add(.());
 		mMaterialRefs[slot].Dispose();
 		mMaterialRefs[slot] = ResourceRef(@ref.Id, @ref.Path ?? "");
+		MaterialChanged(this, slot);
 	}
 
 	/// Gets the material for a given slot, or null if not assigned.

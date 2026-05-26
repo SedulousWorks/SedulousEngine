@@ -22,7 +22,7 @@ using Sedulous.Profiler;
 ///   2. Resolve MaterialRefs -> MaterialResource -> MaterialInstance + bind group
 ///
 /// Extraction emits one MeshRenderData per submesh.
-class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvider
+class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvider, IResourceChangeListener
 {
 	/// Reference to GPU resource manager (set by RenderSubsystem).
 	public GPUResourceManager GPUResources { get; set; }
@@ -43,6 +43,17 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 	/// inside the drain loop.
 	private List<int32> mBoundsDirtyEntities = new .() ~ delete _;
 
+	/// Entity indices that need (re)resolving this frame. Drained in
+	/// ResolveResources. Filled by:
+	///   - OnComponentCreated (first resolve)
+	///   - MeshChanged / MaterialChanged events on components (ref edits)
+	///   - OnResourceReloaded (hot-reload, coarse: marks all components)
+	private List<int32> mResolveDirtyEntities = new .() ~ delete _;
+
+	/// Tracks whether we've registered as a resource change listener so
+	/// OnSceneDestroy can cleanly unregister.
+	private bool mListenerRegistered;
+
 
 	public override StringView SerializationTypeId => "Sedulous.MeshComponent";
 
@@ -52,7 +63,70 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 		RegisterUpdate(.PostTransform, new => RefreshWorldBounds);
 	}
 
-	/// Per-frame resource resolution. Loads resources, uploads to GPU, creates materials.
+	public override void OnSceneCreate(Scene scene)
+	{
+		base.OnSceneCreate(scene);
+		// Resolver is injected by RenderSubsystem before AddModule, so
+		// the resource system is available here. Listener catches
+		// hot-reloads (rare event) and marks every component dirty so
+		// the next ResolveResources picks up fresh resources.
+		if (Resolver?.ResourceSystem != null)
+		{
+			Resolver.ResourceSystem.AddChangeListener(this);
+			mListenerRegistered = true;
+		}
+	}
+
+	public override void OnSceneDestroy()
+	{
+		if (mListenerRegistered && Resolver?.ResourceSystem != null)
+		{
+			Resolver.ResourceSystem.RemoveChangeListener(this);
+			mListenerRegistered = false;
+		}
+		base.OnSceneDestroy();
+	}
+
+	protected override void OnComponentCreated(MeshComponent comp)
+	{
+		// Subscribe to ref-change events. Closures are owned by the
+		// component's Event<T> and disposed when the component dies.
+		comp.MeshChanged.Add(new (c) => MarkResolveDirty(c));
+		comp.MaterialChanged.Add(new (c, slot) => MarkResolveDirty(c));
+
+		// First-frame resolve. Even if SetMeshRef hasn't been called
+		// yet, the empty-ref path through ResolveResources is correct.
+		MarkResolveDirty(comp);
+	}
+
+	/// Marks a component for re-resolution on the next ResolveResources
+	/// pass. Guarded so we only enqueue once per dirty cycle.
+	public void MarkResolveDirty(MeshComponent comp)
+	{
+		if (comp.ResolveDirty)
+			return;
+		comp.ResolveDirty = true;
+		mResolveDirtyEntities.Add((int32)comp.Owner.Index);
+	}
+
+	// IResourceChangeListener - any reload marks every component dirty.
+	// Coarse but correct: hot-reloads happen rarely (editor save), and a
+	// one-time O(N) sweep on the reload frame amortizes to zero. If
+	// reload frequency ever becomes hot, swap for a per-resource reverse
+	// index.
+	public void OnResourceReloaded(StringView uri, Type resourceType, IResource resource)
+	{
+		for (let comp in ActiveComponents)
+			MarkResolveDirty(comp);
+	}
+
+	/// Per-frame resource resolution. Two passes:
+	///   1. Drain the resolve-dirty queue (mesh + material ref resolution
+	///      for components whose refs changed or hot-reload fired).
+	///   2. Per-frame material-instance prep pass over ALL active
+	///      components - catches live-edit of MaterialInstance uniforms
+	///      / bind groups that didn't go through a ref change. Cheap
+	///      bool reads in the common case (no work to do).
 	private void ResolveResources(float deltaTime)
 	{
 		using (Profiler.Begin("Mesh.ResolveResources"))
@@ -60,9 +134,11 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 		if (Resolver == null)
 			return;
 
-		for (let comp in ActiveComponents)
+		// Pass 1: drain dirty queue.
+		for (let entityIdx in mResolveDirtyEntities)
 		{
-			if (!comp.IsActive)
+			let comp = GetByEntityIndex(entityIdx);
+			if (comp == null || !comp.IsActive || !comp.ResolveDirty)
 				continue;
 
 			let entityHandle = comp.Owner;
@@ -122,7 +198,20 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 				}
 			}
 
-			// Prepare any dirty material instances (handles both resolved and manually-set materials)
+			comp.ResolveDirty = false;
+		}
+		mResolveDirtyEntities.Clear();
+
+		// Pass 2: prep dirty MaterialInstances on EVERY active component.
+		// MaterialInstance dirty (uniform/bind-group edits from editor or
+		// runtime mutation) is decoupled from ref changes - a component's
+		// material may need PrepareMaterial even though its refs are
+		// unchanged. Residual O(N) work; consider moving to a global
+		// per-frame Resolver-side dirty pass when this shows up in
+		// profiling.
+		for (let comp in ActiveComponents)
+		{
+			if (!comp.IsActive) continue;
 			for (int32 slot = 0; slot < comp.Materials.Count; slot++)
 			{
 				let material = comp.Materials[slot];

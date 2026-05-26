@@ -67,22 +67,38 @@ class SkeletalAnimationComponent : Component, ISerializableComponent
 	/// Whether resources have been resolved and the player created.
 	public bool IsReady => Player != null;
 
+	/// Set when SkeletonRef or ClipRef changes, or on first resolve.
+	/// Drains the manager's resolve queue. Cleared after resolving.
+	public bool ResolveDirty;
+
+	/// Fires after SetSkeletonRef changes the skeleton resource ref.
+	public Event<delegate void(SkeletalAnimationComponent)> SkeletonChanged ~ _.Dispose();
+
+	/// Fires after SetClipRef changes the clip resource ref.
+	public Event<delegate void(SkeletalAnimationComponent)> ClipChanged ~ _.Dispose();
+
 	// --- Resource ref accessors ---
 
 	public ResourceRef SkeletonRef => mSkeletonRef;
 
+	/// Sets the skeleton resource ref (deep copy). Fires SkeletonChanged
+	/// so the manager can enqueue a re-resolve.
 	public void SetSkeletonRef(ResourceRef @ref)
 	{
 		mSkeletonRef.Dispose();
 		mSkeletonRef = ResourceRef(@ref.Id, @ref.Path ?? "");
+		SkeletonChanged(this);
 	}
 
 	public ResourceRef ClipRef => mClipRef;
 
+	/// Sets the clip resource ref (deep copy). Fires ClipChanged so the
+	/// manager can enqueue a re-resolve.
 	public void SetClipRef(ResourceRef @ref)
 	{
 		mClipRef.Dispose();
 		mClipRef = ResourceRef(@ref.Id, @ref.Path ?? "");
+		ClipChanged(this);
 	}
 
 	/// Gets the current skinning matrices (valid after Update).

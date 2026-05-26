@@ -56,13 +56,23 @@ class PropertyAnimationComponent : Component, ISerializableComponent
 	/// Whether the clip has been resolved and the player created.
 	public bool IsReady => Player != null;
 
+	/// Set when ClipRef changes, or on first resolve. Drains the manager's
+	/// resolve queue. Cleared after resolving.
+	public bool ResolveDirty;
+
+	/// Fires after SetClipRef changes the clip resource ref.
+	public Event<delegate void(PropertyAnimationComponent)> ClipChanged ~ _.Dispose();
+
 	// --- Resource ref accessors ---
 
 	public ResourceRef ClipRef => mClipRef;
 
+	/// Sets the clip resource ref (deep copy). Fires ClipChanged so the
+	/// manager can enqueue a re-resolve.
 	public void SetClipRef(ResourceRef @ref)
 	{
 		mClipRef.Dispose();
 		mClipRef = ResourceRef(@ref.Id, @ref.Path ?? "");
+		ClipChanged(this);
 	}
 }

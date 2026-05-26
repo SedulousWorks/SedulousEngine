@@ -103,21 +103,37 @@ class AudioSourceComponent : Component, ISerializableComponent
 	/// Whether playback has been requested (set by AutoPlay or Play()).
 	public bool PlayRequested = false;
 
+	/// Set when ClipRef or CueRef changes, or on first resolve. Drains
+	/// the manager's resolve queue. Cleared after resolving.
+	public bool ResolveDirty;
+
+	/// Fires after SetClipRef changes the clip resource ref.
+	public Event<delegate void(AudioSourceComponent)> ClipChanged ~ _.Dispose();
+
+	/// Fires after SetCueRef changes the cue resource ref.
+	public Event<delegate void(AudioSourceComponent)> CueChanged ~ _.Dispose();
+
 	// --- Resource ref accessors ---
 
 	public ResourceRef ClipRef => mClipRef;
 	public ResourceRef CueRef => mCueRef;
 
+	/// Sets the clip resource ref (deep copy). Fires ClipChanged so the
+	/// manager can enqueue a re-resolve.
 	public void SetClipRef(ResourceRef @ref)
 	{
 		mClipRef.Dispose();
 		mClipRef = ResourceRef(@ref.Id, @ref.Path ?? "");
+		ClipChanged(this);
 	}
 
+	/// Sets the cue resource ref (deep copy). Fires CueChanged so the
+	/// manager can enqueue a re-resolve.
 	public void SetCueRef(ResourceRef @ref)
 	{
 		mCueRef.Dispose();
 		mCueRef = ResourceRef(@ref.Id, @ref.Path ?? "");
+		CueChanged(this);
 	}
 
 	/// Requests playback to start. Will begin once the clip is resolved.
