@@ -15,6 +15,7 @@ using Sedulous.Core.Memory;
 using Sedulous.Profiler;
 
 #define REFRESH_WORLD_BOUNDS_THREADED
+#define FRUSTUM_CULL_MAIN_VIEW
 
 /// Manages mesh components: resolves resource refs, uploads to GPU, extracts render data.
 /// Injected into scenes by RenderSubsystem via ISceneAware.
@@ -361,6 +362,13 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 	/// Emits one entry per submesh, each with its own material.
 	/// Uses ParallelFor with per-thread allocators and output lists - zero
 	/// contention during extraction, one cheap merge pass after.
+	///
+	/// Frustum culling: the view frustum is built from
+	/// context.ViewProjectionMatrix once and threaded through to ExtractSlot,
+	/// which (when FRUSTUM_CULL_MAIN_VIEW is defined) early-outs on entities
+	/// whose WorldBounds don't intersect. Construction cost is fixed
+	/// (~6 plane extractions); we pay it unconditionally so the code shape
+	/// stays uniform across the toggle.
 	public void ExtractRenderData(in RenderExtractionContext context)
 	{
 		let scene = Scene;
@@ -373,10 +381,12 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 
 		let workerCount = Jobs.JobSystem.IsInitialized ? Jobs.JobSystem.WorkerCount : 0;
 
+		let mainFrustum = BoundingFrustum(context.ViewProjectionMatrix);
+
 		// For small counts or no job system, extract sequentially
 		if (slotCount < 256 || workerCount == 0)
 		{
-			ExtractRange(0, slotCount, context.RenderContext.FrameAllocator, context.RenderData);
+			ExtractRange(0, slotCount, context.RenderContext.FrameAllocator, context.RenderData, mainFrustum);
 			return;
 		}
 
@@ -397,7 +407,7 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 
 			// Build per-category output for this chunk
 			let baseIdx = chunkIdx * (int32)catCount;
-			ExtractRangeToLists(begin, end, alloc, context, threadLists, baseIdx);
+			ExtractRangeToLists(begin, end, alloc, context, threadLists, baseIdx, mainFrustum);
 		});
 
 		// Merge per-thread lists into the shared ExtractedRenderData (single-threaded)
@@ -416,34 +426,42 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 	/// Sequential extraction into ExtractedRenderData directly.
 	private void ExtractRange(int32 begin, int32 end,
 		Sedulous.Core.Memory.FrameAllocator alloc,
-		ExtractedRenderData renderData)
+		ExtractedRenderData renderData,
+		in BoundingFrustum mainFrustum)
 	{
 		let scene = Scene;
 		let gpuResources = GPUResources;
 
 		for (int32 i = begin; i < end; i++)
-			ExtractSlot(i, scene, gpuResources, alloc, renderData, null, 0);
+			ExtractSlot(i, scene, gpuResources, alloc, renderData, null, 0, mainFrustum);
 	}
 
 	/// Parallel extraction into per-thread lists (no shared state).
 	private void ExtractRangeToLists(int32 begin, int32 end,
 		FrameAllocator alloc,
 		in RenderExtractionContext context,
-		List<RenderData>[] threadLists, int32 baseIdx)
+		List<RenderData>[] threadLists, int32 baseIdx,
+		in BoundingFrustum mainFrustum)
 	{
 		let scene = Scene;
 		let gpuResources = GPUResources;
 
 		for (int32 i = begin; i < end; i++)
-			ExtractSlot(i, scene, gpuResources, alloc, null, threadLists, baseIdx);
+			ExtractSlot(i, scene, gpuResources, alloc, null, threadLists, baseIdx, mainFrustum);
 	}
 
 	/// Extracts a single slot. Writes to either renderData (sequential) or
 	/// threadLists (parallel). Exactly one of renderData/threadLists is non-null.
+	///
+	/// With FRUSTUM_CULL_MAIN_VIEW defined, the mesh's WorldBounds is tested
+	/// against the view frustum before per-submesh emission. Skipping here
+	/// saves all per-submesh allocations + sort key work + downstream
+	/// instance buffer / draw command overhead for off-screen entities.
 	private void ExtractSlot(int32 slotIdx, Scene scene, GPUResourceManager gpuResources,
 		FrameAllocator alloc,
 		ExtractedRenderData renderData,
-		List<RenderData>[] threadLists, int32 threadListBase)
+		List<RenderData>[] threadLists, int32 threadListBase,
+		in BoundingFrustum mainFrustum)
 	{
 		let mesh = GetAtSlot(slotIdx);
 		if (mesh == null || !mesh.IsActive || !mesh.IsVisible)
@@ -451,6 +469,11 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 
 		if (!mesh.MeshHandle.IsValid)
 			return;
+
+#if FRUSTUM_CULL_MAIN_VIEW
+		if (!mainFrustum.Intersects(mesh.WorldBounds))
+			return;
+#endif
 
 		let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
 		if (gpuMesh == null)

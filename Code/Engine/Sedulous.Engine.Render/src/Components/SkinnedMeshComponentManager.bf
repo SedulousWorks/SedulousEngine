@@ -16,6 +16,7 @@ using Sedulous.Jobs;
 using Sedulous.Profiler;
 
 #define REFRESH_WORLD_BOUNDS_THREADED
+#define FRUSTUM_CULL_MAIN_VIEW
 
 /// Manages skinned mesh components: resolves resource refs, reads bone matrices
 /// from SkeletalAnimationComponent, uploads to GPU, and extracts render data.
@@ -429,6 +430,11 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 #endif
 
 	/// Extracts MeshRenderData for all active skinned mesh components.
+	///
+	/// With FRUSTUM_CULL_MAIN_VIEW defined, each skinned mesh's WorldBounds
+	/// (rest-pose AABB transformed by world matrix - conservative for
+	/// animated poses, see SkinnedMeshComponent.WorldBounds comment) is
+	/// tested against the view frustum before per-submesh emission.
 	public void ExtractRenderData(in RenderExtractionContext context)
 	{
 		let scene = Scene;
@@ -436,6 +442,7 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 			return;
 
 		let frameAlloc = context.RenderContext.FrameAllocator;
+		let mainFrustum = BoundingFrustum(context.ViewProjectionMatrix);
 
 		for (let comp in ActiveComponents)
 		{
@@ -444,6 +451,11 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 
 			if (!comp.MeshHandle.IsValid || !comp.BoneBufferHandle.IsValid)
 				continue;
+
+#if FRUSTUM_CULL_MAIN_VIEW
+			if (!mainFrustum.Intersects(comp.WorldBounds))
+				continue;
+#endif
 
 			let gpuMesh = GPUResources.GetMesh(comp.MeshHandle);
 			if (gpuMesh == null)

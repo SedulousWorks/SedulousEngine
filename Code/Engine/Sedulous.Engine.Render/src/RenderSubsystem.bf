@@ -22,6 +22,8 @@ using Sedulous.Materials.Resources;
 using Sedulous.Particles.Resources;
 using System.Collections;
 
+#define FRUSTUM_CULL_SHADOWS
+
 /// Implements ISceneRenderer - renders the 3D scene to application-provided output targets.
 /// Runs late (UpdateOrder 500) - all scene updates and extraction are complete by this point.
 /// Injects render component managers (Mesh, Light, Camera, etc.) into scenes via ISceneAware.
@@ -799,6 +801,16 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 	/// Copies shadow-relevant render data (Opaque + Masked) from the main view
 	/// into a shadow view. Avoids re-extracting the entire scene per shadow view.
 	/// The RenderData entries are arena-allocated and valid until BeginFrame().
+	///
+	/// With FRUSTUM_CULL_SHADOWS: tests each entry's world-space Bounds
+	/// against the shadow view's frustum (constructed from its
+	/// ViewProjectionMatrix). Entries outside the cascade / spot / point-face
+	/// volume can't cast shadows into it, so they're skipped. The cascade
+	/// matrices produced by ShadowMatrices.DirectionalCascades already
+	/// extend in the light direction to capture shadow casters from outside
+	/// the camera frustum, so a plain Intersects test is correct - we
+	/// aren't under-culling shadow casters.
+#if !FRUSTUM_CULL_SHADOWS
 	private void CopyShadowData(RenderView shadowView, RenderView mainView)
 	{
 		let srcOpaque = mainView.RenderData.GetBatch(RenderCategories.Opaque);
@@ -817,6 +829,30 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 				dst.Add(entry);
 		}
 	}
+#else
+	private void CopyShadowData(RenderView shadowView, RenderView mainView)
+	{
+		let frustum = BoundingFrustum(shadowView.ViewProjectionMatrix);
+
+		let srcOpaque = mainView.RenderData.GetBatch(RenderCategories.Opaque);
+		if (srcOpaque != null)
+		{
+			let dst = shadowView.RenderData.GetBatch(RenderCategories.Opaque);
+			for (let entry in srcOpaque)
+				if (frustum.Intersects(entry.Bounds))
+					dst.Add(entry);
+		}
+
+		let srcMasked = mainView.RenderData.GetBatch(RenderCategories.Masked);
+		if (srcMasked != null)
+		{
+			let dst = shadowView.RenderData.GetBatch(RenderCategories.Masked);
+			for (let entry in srcMasked)
+				if (frustum.Intersects(entry.Bounds))
+					dst.Add(entry);
+		}
+	}
+#endif
 
 	/// Renders a range of shadow jobs into the atlas. Each scene renders only its
 	/// own shadow jobs (startIndex..endIndex) so scenes don't re-render each
