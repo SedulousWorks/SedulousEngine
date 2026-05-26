@@ -14,6 +14,8 @@ using Sedulous.Jobs;
 using Sedulous.Core.Memory;
 using Sedulous.Profiler;
 
+#define REFRESH_WORLD_BOUNDS_THREADED
+
 /// Manages mesh components: resolves resource refs, uploads to GPU, extracts render data.
 /// Injected into scenes by RenderSubsystem via ISceneAware.
 ///
@@ -202,23 +204,13 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 		}
 		mResolveDirtyEntities.Clear();
 
-		// Pass 2: prep dirty MaterialInstances on EVERY active component.
-		// MaterialInstance dirty (uniform/bind-group edits from editor or
-		// runtime mutation) is decoupled from ref changes - a component's
-		// material may need PrepareMaterial even though its refs are
-		// unchanged. Residual O(N) work; consider moving to a global
-		// per-frame Resolver-side dirty pass when this shows up in
-		// profiling.
-		for (let comp in ActiveComponents)
-		{
-			if (!comp.IsActive) continue;
-			for (int32 slot = 0; slot < comp.Materials.Count; slot++)
-			{
-				let material = comp.Materials[slot];
-				if (material != null && (material.IsBindGroupDirty || material.IsUniformDirty))
-					Resolver.PrepareMaterial(material);
-			}
-		}
+		// Pass 2: drain the global MaterialSystem dirty list. MaterialInstance
+		// setters route through this list, so any uniform/bind-group edit
+		// (live editor mutation, hot-reload propagation, etc.) is captured
+		// regardless of which component is using the instance. Idempotent
+		// across managers - the first caller this frame does the work; the
+		// rest find an empty list.
+		Resolver.MaterialSystem.PrepareDirtyInstances();
 		}
 	}
 
@@ -237,6 +229,16 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 	/// queue. Total work is proportional to "entities that moved" +
 	/// "LocalBounds changes", not to total component count - a fully
 	/// static scene does zero work after initial resolution.
+	///
+	/// Thread-safety (parallel variant): each iteration writes only to
+	/// its component's WorldBounds / BoundsDirty fields. Components are
+	/// at-most-one-per-entity in this manager, and TransformsUpdatedThisFrame
+	/// entries are unique slots (MarkDirty's dedupe guard), so workers
+	/// don't collide on writes. mBoundsDirtyEntities CAN contain rare
+	/// duplicates (re-dirty after clear within a frame); the BoundsDirty
+	/// gate inside the loop dedupes - parallel duplicate processing is
+	/// benign (same input, same output).
+#if !REFRESH_WORLD_BOUNDS_THREADED
 	private void RefreshWorldBounds(float deltaTime)
 	{
 		using (Profiler.Begin("Mesh.RefreshWorldBounds"))
@@ -266,6 +268,75 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 		mBoundsDirtyEntities.Clear();
 		}
 	}
+#else
+	private void RefreshWorldBounds(float deltaTime)
+	{
+		using (Profiler.Begin("Mesh.RefreshWorldBounds"))
+		{
+		let scene = Scene;
+		if (scene == null)
+			return;
+
+		let workerCount = JobSystem.IsInitialized ? JobSystem.WorkerCount : 0;
+		let updatedList = scene.TransformsUpdatedThisFrame;
+		let updatedCount = (int32)updatedList.Count;
+
+		// Pass 1: entities whose transform changed this frame.
+		if (updatedCount >= 256 && workerCount > 0)
+		{
+			JobSystem.ParallelFor(0, updatedCount, scope [&](begin, end) => {
+				for (int32 i = begin; i < end; i++)
+				{
+					let entityIdx = updatedList[i];
+					let comp = GetByEntityIndex(entityIdx);
+					if (comp == null) continue;
+					comp.WorldBounds = BoundingBox.Transform(comp.LocalBounds, scene.GetWorldMatrix(comp.Owner));
+					comp.BoundsDirty = false;
+				}
+			});
+		}
+		else
+		{
+			for (let entityIdx in updatedList)
+			{
+				let comp = GetByEntityIndex(entityIdx);
+				if (comp == null) continue;
+				comp.WorldBounds = BoundingBox.Transform(comp.LocalBounds, scene.GetWorldMatrix(comp.Owner));
+				comp.BoundsDirty = false;
+			}
+		}
+
+		// Pass 2: LocalBounds-only changes (mesh ref swaps). Pass 1 already
+		// cleared BoundsDirty for any entity in both lists; the gate skips
+		// those. Typically small (only changed-this-frame components).
+		let dirtyCount = (int32)mBoundsDirtyEntities.Count;
+		if (dirtyCount >= 256 && workerCount > 0)
+		{
+			JobSystem.ParallelFor(0, dirtyCount, scope [&](begin, end) => {
+				for (int32 i = begin; i < end; i++)
+				{
+					let entityIdx = mBoundsDirtyEntities[i];
+					let comp = GetByEntityIndex(entityIdx);
+					if (comp == null || !comp.BoundsDirty) continue;
+					comp.WorldBounds = BoundingBox.Transform(comp.LocalBounds, scene.GetWorldMatrix(comp.Owner));
+					comp.BoundsDirty = false;
+				}
+			});
+		}
+		else
+		{
+			for (let entityIdx in mBoundsDirtyEntities)
+			{
+				let comp = GetByEntityIndex(entityIdx);
+				if (comp == null || !comp.BoundsDirty) continue;
+				comp.WorldBounds = BoundingBox.Transform(comp.LocalBounds, scene.GetWorldMatrix(comp.Owner));
+				comp.BoundsDirty = false;
+			}
+		}
+		mBoundsDirtyEntities.Clear();
+		}
+	}
+#endif
 
 	/// Extracts MeshRenderData for all active, visible mesh components.
 	/// Emits one entry per submesh, each with its own material.

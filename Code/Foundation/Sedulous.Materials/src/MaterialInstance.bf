@@ -74,6 +74,11 @@ class MaterialInstance : RefCounted, IDisposable
 	/// Whether bind group needs recreation.
 	private bool mBindGroupDirty = true;
 
+	/// True while this instance is in MaterialSystem.mDirtyInstances. Gates
+	/// the notify-on-dirty path so we enqueue at most once per dirty cycle.
+	/// Cleared by MaterialSystem.PrepareDirtyInstances after the drain.
+	private bool mInDirtyList;
+
 	/// GPU bind group for this material instance.
 	private IBindGroup mBindGroup;
 
@@ -121,10 +126,41 @@ class MaterialInstance : RefCounted, IDisposable
 	/// Whether bind group is dirty.
 	public bool IsBindGroupDirty => mBindGroupDirty;
 
+	/// Whether this instance is currently queued in MaterialSystem's
+	/// dirty list. Used by MaterialSystem to dedupe enqueues.
+	public bool IsInDirtyList => mInDirtyList;
+
+	/// Sets the in-dirty-list flag. Called only by MaterialSystem.
+	public void SetInDirtyList(bool value)
+	{
+		mInDirtyList = value;
+	}
+
 	/// Sets the material system reference. Called by MaterialSystem.PrepareInstance.
 	public void SetMaterialSystem(MaterialSystem system)
 	{
 		mMaterialSystem = system;
+	}
+
+	/// Marks uniform data dirty and notifies the material system. Internal
+	/// helper - all uniform-mutating paths route through here so the
+	/// notify happens exactly once per (false -> true) transition.
+	private void SetUniformDirty()
+	{
+		if (mUniformDirty) return;
+		mUniformDirty = true;
+		if (!mInDirtyList && mMaterialSystem != null)
+			mMaterialSystem.MarkInstanceDirty(this);
+	}
+
+	/// Marks bind group dirty and notifies the material system. Internal
+	/// helper - all bind-group-mutating paths route through here.
+	private void SetBindGroupDirty()
+	{
+		if (mBindGroupDirty) return;
+		mBindGroupDirty = true;
+		if (!mInDirtyList && mMaterialSystem != null)
+			mMaterialSystem.MarkInstanceDirty(this);
 	}
 
 	public ~this()
@@ -162,7 +198,7 @@ class MaterialInstance : RefCounted, IDisposable
 		{
 			*(float*)(&mUniformData[prop.Offset]) = value;
 			mOverrideMask.Set(index);
-			mUniformDirty = true;
+			SetUniformDirty();
 		}
 	}
 
@@ -177,7 +213,7 @@ class MaterialInstance : RefCounted, IDisposable
 		{
 			*(Vector2*)(&mUniformData[prop.Offset]) = value;
 			mOverrideMask.Set(index);
-			mUniformDirty = true;
+			SetUniformDirty();
 		}
 	}
 
@@ -192,7 +228,7 @@ class MaterialInstance : RefCounted, IDisposable
 		{
 			*(Vector3*)(&mUniformData[prop.Offset]) = value;
 			mOverrideMask.Set(index);
-			mUniformDirty = true;
+			SetUniformDirty();
 		}
 	}
 
@@ -207,7 +243,7 @@ class MaterialInstance : RefCounted, IDisposable
 		{
 			*(Vector4*)(&mUniformData[prop.Offset]) = value;
 			mOverrideMask.Set(index);
-			mUniformDirty = true;
+			SetUniformDirty();
 		}
 	}
 
@@ -228,7 +264,7 @@ class MaterialInstance : RefCounted, IDisposable
 		{
 			mTextures[index] = texture;
 			mOverrideMask.Set(index);
-			mBindGroupDirty = true;
+			SetBindGroupDirty();
 		}
 	}
 
@@ -243,7 +279,7 @@ class MaterialInstance : RefCounted, IDisposable
 		{
 			mSamplers[index] = sampler;
 			mOverrideMask.Set(index);
-			mBindGroupDirty = true;
+			SetBindGroupDirty();
 		}
 	}
 
@@ -286,17 +322,17 @@ class MaterialInstance : RefCounted, IDisposable
 			let defaults = mMaterial.DefaultUniformData;
 			if (defaults.Length >= prop.Offset + prop.Size)
 				Internal.MemCpy(&mUniformData[prop.Offset], &defaults[prop.Offset], prop.Size);
-			mUniformDirty = true;
+			SetUniformDirty();
 		}
 		else if (prop.IsTexture)
 		{
 			mTextures.Remove(index);
-			mBindGroupDirty = true;
+			SetBindGroupDirty();
 		}
 		else if (prop.IsSampler)
 		{
 			mSamplers.Remove(index);
-			mBindGroupDirty = true;
+			SetBindGroupDirty();
 		}
 
 		mOverrideMask.Clear(index);
@@ -316,8 +352,8 @@ class MaterialInstance : RefCounted, IDisposable
 		mTextures.Clear();
 		mSamplers.Clear();
 		mOverrideMask.Reset();
-		mUniformDirty = true;
-		mBindGroupDirty = true;
+		SetUniformDirty();
+		SetBindGroupDirty();
 	}
 
 	/// Clears dirty flags after GPU upload.
@@ -335,13 +371,13 @@ class MaterialInstance : RefCounted, IDisposable
 	/// Marks uniform data as dirty (e.g., after external modification).
 	public void MarkUniformDirty()
 	{
-		mUniformDirty = true;
+		SetUniformDirty();
 	}
 
 	/// Marks bind group as dirty.
 	public void MarkBindGroupDirty()
 	{
-		mBindGroupDirty = true;
+		SetBindGroupDirty();
 	}
 
 	public void Dispose()

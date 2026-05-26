@@ -12,6 +12,10 @@ using Sedulous.Materials.Resources;
 using Sedulous.Core.Mathematics;
 using Sedulous.Materials;
 using Sedulous.RHI;
+using Sedulous.Jobs;
+using Sedulous.Profiler;
+
+#define REFRESH_WORLD_BOUNDS_THREADED
 
 /// Manages skinned mesh components: resolves resource refs, reads bone matrices
 /// from SkeletalAnimationComponent, uploads to GPU, and extracts render data.
@@ -121,21 +125,9 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 		}
 		mResolveDirtyEntities.Clear();
 
-		// Pass 2: dirty material-instance prep over all active components.
-		// Decoupled from ref changes (uniform/bind-group edits in the
-		// editor don't go through SetMaterialRef). Residual O(N) bool
-		// reads; consider moving to a global Resolver-side dirty pass
-		// if profiling shows it matters.
-		for (let comp in ActiveComponents)
-		{
-			if (!comp.IsActive) continue;
-			for (int32 slot = 0; slot < comp.Materials.Count; slot++)
-			{
-				let material = comp.Materials[slot];
-				if (material != null && (material.IsBindGroupDirty || material.IsUniformDirty))
-					Resolver.PrepareMaterial(material);
-			}
-		}
+		// Pass 2: drain the global MaterialSystem dirty list. See
+		// MeshComponentManager.ResolveResources for the same pattern.
+		Resolver.MaterialSystem.PrepareDirtyInstances();
 	}
 
 	/// Reads bone matrices from animation components and uploads to GPU.
@@ -329,11 +321,14 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 	}
 
 	/// PostTransform-phase refresh of cached world bounds. See
-	/// MeshComponentManager.RefreshWorldBounds for the same pattern -
-	/// total work is "entities moved" + "LocalBounds changes", not
-	/// total component count.
+	/// MeshComponentManager.RefreshWorldBounds for the same pattern and
+	/// thread-safety reasoning - total work is "entities moved" +
+	/// "LocalBounds changes", not total component count.
+#if !REFRESH_WORLD_BOUNDS_THREADED
 	private void RefreshWorldBounds(float deltaTime)
 	{
+		using (Profiler.Begin("SkinnedMesh.RefreshWorldBounds"))
+		{
 		let scene = Scene;
 		if (scene == null)
 			return;
@@ -354,7 +349,75 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 			comp.BoundsDirty = false;
 		}
 		mBoundsDirtyEntities.Clear();
+		}
 	}
+#else
+	private void RefreshWorldBounds(float deltaTime)
+	{
+		using (Profiler.Begin("SkinnedMesh.RefreshWorldBounds"))
+		{
+		let scene = Scene;
+		if (scene == null)
+			return;
+
+		let workerCount = JobSystem.IsInitialized ? JobSystem.WorkerCount : 0;
+		let updatedList = scene.TransformsUpdatedThisFrame;
+		let updatedCount = (int32)updatedList.Count;
+
+		// Pass 1: entities whose transform changed this frame.
+		if (updatedCount >= 256 && workerCount > 0)
+		{
+			JobSystem.ParallelFor(0, updatedCount, scope [&](begin, end) => {
+				for (int32 i = begin; i < end; i++)
+				{
+					let entityIdx = updatedList[i];
+					let comp = GetByEntityIndex(entityIdx);
+					if (comp == null) continue;
+					comp.WorldBounds = BoundingBox.Transform(comp.LocalBounds, scene.GetWorldMatrix(comp.Owner));
+					comp.BoundsDirty = false;
+				}
+			});
+		}
+		else
+		{
+			for (let entityIdx in updatedList)
+			{
+				let comp = GetByEntityIndex(entityIdx);
+				if (comp == null) continue;
+				comp.WorldBounds = BoundingBox.Transform(comp.LocalBounds, scene.GetWorldMatrix(comp.Owner));
+				comp.BoundsDirty = false;
+			}
+		}
+
+		// Pass 2: LocalBounds-only changes.
+		let dirtyCount = (int32)mBoundsDirtyEntities.Count;
+		if (dirtyCount >= 256 && workerCount > 0)
+		{
+			JobSystem.ParallelFor(0, dirtyCount, scope [&](begin, end) => {
+				for (int32 i = begin; i < end; i++)
+				{
+					let entityIdx = mBoundsDirtyEntities[i];
+					let comp = GetByEntityIndex(entityIdx);
+					if (comp == null || !comp.BoundsDirty) continue;
+					comp.WorldBounds = BoundingBox.Transform(comp.LocalBounds, scene.GetWorldMatrix(comp.Owner));
+					comp.BoundsDirty = false;
+				}
+			});
+		}
+		else
+		{
+			for (let entityIdx in mBoundsDirtyEntities)
+			{
+				let comp = GetByEntityIndex(entityIdx);
+				if (comp == null || !comp.BoundsDirty) continue;
+				comp.WorldBounds = BoundingBox.Transform(comp.LocalBounds, scene.GetWorldMatrix(comp.Owner));
+				comp.BoundsDirty = false;
+			}
+		}
+		mBoundsDirtyEntities.Clear();
+		}
+	}
+#endif
 
 	/// Extracts MeshRenderData for all active skinned mesh components.
 	public void ExtractRenderData(in RenderExtractionContext context)

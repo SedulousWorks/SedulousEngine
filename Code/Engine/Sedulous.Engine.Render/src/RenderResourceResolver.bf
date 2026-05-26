@@ -98,6 +98,7 @@ class RenderResourceResolver
 	}
 
 	public ResourceSystem ResourceSystem => mResourceSystem;
+	public MaterialSystem MaterialSystem => mMaterialSystem;
 
 	/// Called once per frame by `RenderSubsystem.BeginRendering` before
 	/// any resolves run. Updates the monotonic frame counter and drains

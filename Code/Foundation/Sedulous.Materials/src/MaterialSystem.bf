@@ -21,6 +21,17 @@ class MaterialSystem : IDisposable
 	/// Material bind groups (per material instance).
 	private Dictionary<MaterialInstance, IBindGroup> mBindGroups = new .() ~ delete _;
 
+	/// Instances whose uniform buffer or bind group is dirty and needs
+	/// re-prep before next render. Populated by MarkInstanceDirty (called
+	/// from MaterialInstance setters via SetUniformDirty / SetBindGroupDirty).
+	/// Drained by PrepareDirtyInstances exactly once per frame; subsequent
+	/// drain calls in the same frame are no-ops.
+	///
+	/// Replaces the previous pattern of every renderable component manager
+	/// iterating its components / cache every frame doing IsBindGroupDirty
+	/// bool checks. Now O(dirty) instead of O(N components).
+	private List<MaterialInstance> mDirtyInstances = new .() ~ delete _;
+
 	/// Default resources.
 	private ISampler mDefaultSampler;
 	private ITexture mWhiteTexture;
@@ -216,11 +227,58 @@ class MaterialSystem : IDisposable
 		return null;
 	}
 
+	/// Adds an instance to the per-frame dirty list if it's not already in it.
+	/// Called by MaterialInstance's internal SetUniformDirty / SetBindGroupDirty
+	/// helpers when a flag flips false -> true. Idempotent within a frame
+	/// via instance.IsInDirtyList, so multiple setter calls on the same
+	/// instance only enqueue once.
+	public void MarkInstanceDirty(MaterialInstance instance)
+	{
+		if (instance == null || instance.IsInDirtyList)
+			return;
+		instance.SetInDirtyList(true);
+		mDirtyInstances.Add(instance);
+	}
+
+	/// Drains the dirty list: re-prepares every instance whose uniforms
+	/// or bind group changed since the last drain. Safe to call multiple
+	/// times per frame - the second call finds an empty list. Called by
+	/// renderable component managers in place of the old per-component
+	/// material bool-check pass.
+	public void PrepareDirtyInstances()
+	{
+		// Index-based iteration so re-entrancy (a PrepareInstance call
+		// dirtying a different instance) doesn't invalidate the loop.
+		// In practice PrepareInstance shouldn't trigger further dirties,
+		// but the iteration shape is defensive.
+		int32 i = 0;
+		while (i < mDirtyInstances.Count)
+		{
+			let inst = mDirtyInstances[i];
+			i++;
+			if (inst == null) continue;
+			inst.SetInDirtyList(false);
+			if (inst.IsUniformDirty || inst.IsBindGroupDirty)
+				PrepareInstance(inst);
+		}
+		mDirtyInstances.Clear();
+	}
+
 	/// Releases resources associated with a material instance.
 	public void ReleaseInstance(MaterialInstance instance)
 	{
 		if (instance == null)
 			return;
+
+		// Drop from the dirty list if queued - if the instance is about to
+		// be destroyed, PrepareDirtyInstances would otherwise dereference
+		// a freed object on next drain.
+		if (instance.IsInDirtyList)
+		{
+			let removed = mDirtyInstances.Remove(instance);
+			if (removed)
+				instance.SetInDirtyList(false);
+		}
 
 		if (mBindGroups.TryGetValue(instance, var bg))
 		{
@@ -242,6 +300,12 @@ class MaterialSystem : IDisposable
 	/// call back into this (already-disposed) MaterialSystem.
 	public void ClearCache()
 	{
+		// Drop any pending dirty notifications - the destination caches
+		// are about to be torn down so re-prep would touch dead state.
+		for (let inst in mDirtyInstances)
+			inst?.SetInDirtyList(false);
+		mDirtyInstances.Clear();
+
 		// Detach all instances from this system before destroying GPU resources.
 		// Their destructors may run later (during scene teardown) and must not
 		// call ReleaseInstance on a disposed MaterialSystem.

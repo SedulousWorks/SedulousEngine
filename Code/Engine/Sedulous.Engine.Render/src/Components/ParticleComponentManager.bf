@@ -328,15 +328,9 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 		}
 		mResolveDirtyEntities.Clear();
 
-		// Pass 2: keep cached MaterialInstances' bind groups fresh.
-		// Iterates the per-manager material cache (texture-view -> instance),
-		// not active components, so the cost is O(unique materials) not O(N).
-		for (let kv in mMaterialCache)
-		{
-			let mat = kv.value;
-			if (mat != null && (mat.IsBindGroupDirty || mat.IsUniformDirty))
-				Resolver.PrepareMaterial(mat);
-		}
+		// Pass 2: drain the global MaterialSystem dirty list. See
+		// MeshComponentManager.ResolveResources for the same pattern.
+		Resolver.MaterialSystem.PrepareDirtyInstances();
 	}
 
 	/// Extracts render data for all active particle effects.

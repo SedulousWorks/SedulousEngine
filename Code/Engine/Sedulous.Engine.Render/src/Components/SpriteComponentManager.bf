@@ -151,14 +151,9 @@ class SpriteComponentManager : ComponentManager<SpriteComponent>, IRenderDataPro
 		}
 		mResolveDirtyEntities.Clear();
 
-		// Pass 2: keep cached MaterialInstances' bind groups fresh.
-		// O(unique materials), not O(components).
-		for (let kv in mMaterialCache)
-		{
-			let mat = kv.value;
-			if (mat != null && (mat.IsBindGroupDirty || mat.IsUniformDirty))
-				Resolver.PrepareMaterial(mat);
-		}
+		// Pass 2: drain the global MaterialSystem dirty list. See
+		// MeshComponentManager.ResolveResources for the same pattern.
+		Resolver.MaterialSystem.PrepareDirtyInstances();
 	}
 
 	public void ExtractRenderData(in RenderExtractionContext context)

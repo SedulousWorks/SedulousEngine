@@ -6,6 +6,8 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Jobs;
 using Sedulous.Profiler;
 
+#define UPDATE_TRANSFORMS_THREADED
+
 /// A scene containing entities, transforms, and component managers.
 /// Multiple scenes can coexist - each is fully isolated (own physics world, own components, etc.).
 public class Scene : IDisposable
@@ -849,6 +851,8 @@ public class Scene : IDisposable
 		});
 	}
 
+#if !UPDATE_TRANSFORMS_THREADED
+
 	private void UpdateTransforms()
 	{
 	    let count = (int32)mTransforms.Count;
@@ -889,6 +893,111 @@ public class Scene : IDisposable
 	            UpdateTransformRecursive(i, .Identity);
 	    }
 	}
+#else
+	private void UpdateTransforms()
+	{
+	    let count = (int32)mTransforms.Count;
+	    if (count == 0) return;
+
+	    let workerCount = JobSystem.IsInitialized ? JobSystem.WorkerCount : 0;
+
+	    // Pass 1: walk last frame's update list to clear UpdatedThisFrame
+	    // flags and snapshot PrevWorldMatrix for "just stopped" entities.
+	    //
+	    // Thread-safety: entries in mTransformsUpdatedThisFrame point to
+	    // UNIQUE slots (MarkDirty's "if already dirty, return" guard
+	    // ensures an entity is enqueued at most once per dirty cycle, and
+	    // UpdateTransformRecursive only Adds an entity whose Dirty was
+	    // true when recursion started). So workers writing to
+	    // data.UpdatedThisFrame / data.PrevWorldMatrix on disjoint slots
+	    // don't race. Reads of data.Dirty / mEntities[idx].Alive are
+	    // never raced because those slots are also unique to one chunk.
+	    let lastFrameCount = (int32)mTransformsUpdatedThisFrame.Count;
+	    if (lastFrameCount >= 256 && workerCount > 0)
+	    {
+	        JobSystem.ParallelFor(0, lastFrameCount, scope [&](begin, end) => {
+	            for (int32 i = begin; i < end; i++)
+	            {
+	                let idx = mTransformsUpdatedThisFrame[i];
+	                var data = ref mTransforms[idx];
+	                data.UpdatedThisFrame = false;
+	                if (!data.Dirty && mEntities[idx].Alive)
+	                    data.PrevWorldMatrix = data.WorldMatrix;
+	            }
+	        });
+	    }
+	    else
+	    {
+	        for (let idx in mTransformsUpdatedThisFrame)
+	        {
+	            var data = ref mTransforms[idx];
+	            data.UpdatedThisFrame = false;
+	            if (!data.Dirty && mEntities[idx].Alive)
+	                data.PrevWorldMatrix = data.WorldMatrix;
+	        }
+	    }
+	    mTransformsUpdatedThisFrame.Clear();
+	    mTransformsUpdatedThisFrame.Reserve(count);
+
+	    // Pass 2: collect dirty roots (serial), then dispatch each subtree
+	    // recursion in parallel. Each dirty root has no parent (filter
+	    // below) so all root subtrees are pairwise disjoint - workers
+	    // writing to different subtrees never touch the same slot.
+	    //
+	    // Per-thread accumulator pattern (same as MeshComponentManager.
+	    // ExtractRenderData): each worker chunk claims a unique index via
+	    // Interlocked.Increment and appends "updated this frame" indices
+	    // into its own List<int32>. After ParallelFor returns, a single-
+	    // threaded merge concatenates them into mTransformsUpdatedThisFrame.
+	    // This avoids racing on the shared list's Add (Count + grow are
+	    // not thread-safe).
+	    let dirtyRoots = scope List<int32>();
+	    for (int32 i = 0; i < count; i++)
+	    {
+	        if (mTransforms[i].Dirty && mEntities[i].Alive && !mTransforms[i].Parent.IsAssigned)
+	            dirtyRoots.Add(i);
+	    }
+
+	    let rootCount = (int32)dirtyRoots.Count;
+	    if (rootCount == 0) return;
+
+	    if (rootCount < 64 || workerCount == 0)
+	    {
+	        // Too few roots to justify ParallelFor dispatch overhead, or
+	        // no workers - fall back to serial. The serial recursion uses
+	        // the same UpdateTransformRecursive (parallel-safe variant);
+	        // it appends to mTransformsUpdatedThisFrame directly since
+	        // there's no contention.
+	        for (let rootIdx in dirtyRoots)
+	            UpdateTransformRecursive(rootIdx, .Identity, mTransformsUpdatedThisFrame);
+	        return;
+	    }
+
+	    let chunkCount = Math.Min(rootCount, workerCount + 1);
+	    let threadLists = scope List<int32>[chunkCount];
+	    for (int i = 0; i < chunkCount; i++)
+	        threadLists[i] = scope:: List<int32>();
+
+	    int32 nextChunkIdx = 0;
+
+	    JobSystem.ParallelFor(0, rootCount, scope [&](begin, end) => {
+	        let chunkIdx = System.Threading.Interlocked.Increment(ref nextChunkIdx) - 1;
+	        let localList = threadLists[chunkIdx];
+	        for (int32 r = begin; r < end; r++)
+	            UpdateTransformRecursive(dirtyRoots[r], .Identity, localList);
+	    });
+
+	    // Merge per-thread accumulators into mTransformsUpdatedThisFrame.
+	    // Reserve once to avoid per-Add growth churn.
+	    int32 totalUpdated = 0;
+	    for (let list in threadLists)
+	        totalUpdated += (int32)list.Count;
+	    mTransformsUpdatedThisFrame.Reserve(mTransformsUpdatedThisFrame.Count + totalUpdated);
+	    for (let list in threadLists)
+	        for (let idx in list)
+	            mTransformsUpdatedThisFrame.Add(idx);
+	}
+#endif
 
 	/*private void UpdateTransforms()
 	{
@@ -925,6 +1034,7 @@ public class Scene : IDisposable
 		}
 	}*/
 
+#if !UPDATE_TRANSFORMS_THREADED
 	private void UpdateTransformRecursive(int32 index, Matrix parentWorld)
 	{
 		var data = ref mTransforms[index];
@@ -954,6 +1064,47 @@ public class Scene : IDisposable
 			}
 		}
 	}
+#else
+	/// Parallel-safe recursion variant. Appends updated entity indices
+	/// to a caller-provided `updatedList` instead of the shared
+	/// `mTransformsUpdatedThisFrame`. Callers from a ParallelFor worker
+	/// pass their own per-thread list; the serial fallback in
+	/// UpdateTransforms passes mTransformsUpdatedThisFrame directly.
+	///
+	/// Other field writes (WorldMatrix, PrevWorldMatrix, Dirty,
+	/// UpdatedThisFrame) target this entity's slot exclusively - dirty
+	/// roots have no parent so their subtrees are pairwise disjoint, and
+	/// the recursion only visits the current root's descendants.
+	private void UpdateTransformRecursive(int32 index, Matrix parentWorld, List<int32> updatedList)
+	{
+		var data = ref mTransforms[index];
+		// Snapshot previous world matrix before overwriting. Pass 1
+		// already handled "moved last, stopped this" entities; for
+		// "moving this frame" entities this save is the only place
+		// PrevWorldMatrix gets set, and the value we capture (current
+		// WorldMatrix, pre-recompute) is exactly "last frame's world".
+		data.PrevWorldMatrix = data.WorldMatrix;
+		data.WorldMatrix = data.Local.ToMatrix() * parentWorld;
+		data.Dirty = false;
+		data.UpdatedThisFrame = true;
+		updatedList.Add(index);
+
+		// Update children
+		var childHandle = data.FirstChild;
+		while (childHandle.IsAssigned)
+		{
+			if (IsValid(childHandle))
+			{
+				UpdateTransformRecursive((int32)childHandle.Index, data.WorldMatrix, updatedList);
+				childHandle = mTransforms[(int32)childHandle.Index].NextSibling;
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
+#endif
 
 	private void MarkDirty(EntityHandle entity)
 	{
