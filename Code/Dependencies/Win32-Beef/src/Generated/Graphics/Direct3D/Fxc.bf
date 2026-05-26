@@ -1,7 +1,5 @@
 using Win32.Foundation;
 using Win32.Graphics.Direct3D;
-using Win32.Graphics.Direct3D11;
-using Win32.Graphics.Direct3D10;
 using System;
 
 namespace Win32.Graphics.Direct3D.Fxc;
@@ -151,14 +149,14 @@ public static
 	[Import("D3DCOMPILER_47.dll"), CLink, CallingConvention(.Stdcall)]
 	public static extern HRESULT D3DDisassembleRegion(void* pSrcData, uint SrcDataSize, uint32 Flags, PSTR szComments, uint StartByteOffset, uint NumInsts, uint* pFinishByteOffset, ID3DBlob** ppDisassembly);
 
-	[Import("D3DCOMPILER_47.dll"), CLink, CallingConvention(.Stdcall)]
+	/*[Import("D3DCOMPILER_47.dll"), CLink, CallingConvention(.Stdcall)]
 	public static extern HRESULT D3DCreateLinker(ID3D11Linker** ppLinker);
 
 	[Import("D3DCOMPILER_47.dll"), CLink, CallingConvention(.Stdcall)]
 	public static extern HRESULT D3DLoadModule(void* pSrcData, uint cbSrcDataSize, ID3D11Module** ppModule);
 
 	[Import("D3DCOMPILER_47.dll"), CLink, CallingConvention(.Stdcall)]
-	public static extern HRESULT D3DCreateFunctionLinkingGraph(uint32 uFlags, ID3D11FunctionLinkingGraph** ppFunctionLinkingGraph);
+	public static extern HRESULT D3DCreateFunctionLinkingGraph(uint32 uFlags, ID3D11FunctionLinkingGraph** ppFunctionLinkingGraph);*/
 
 	[Import("D3DCOMPILER_47.dll"), CLink, CallingConvention(.Stdcall)]
 	public static extern HRESULT D3DGetTraceInstructionOffsets(void* pSrcData, uint SrcDataSize, uint32 Flags, uint StartInstIndex, uint NumInsts, uint* pOffsets, uint* pTotalInsts);
@@ -189,9 +187,6 @@ public static
 
 	[Import("D3DCOMPILER_47.dll"), CLink, CallingConvention(.Stdcall)]
 	public static extern HRESULT D3DDecompressShaders(void* pSrcData, uint SrcDataSize, uint32 uNumShaders, uint32 uStartIndex, uint32* pIndices, uint32 uFlags, ID3DBlob** ppShaders, uint32* pTotalShaders);
-
-	[Import("D3DCOMPILER_47.dll"), CLink, CallingConvention(.Stdcall)]
-	public static extern HRESULT D3DDisassemble10Effect(ID3D10Effect* pEffect, uint32 Flags, ID3DBlob** ppDisassembly);
 
 }
 #endregion

@@ -679,7 +679,7 @@ public struct APP_MEMORY_INFORMATION
 [CRepr]
 public struct PROCESS_MACHINE_INFORMATION
 {
-	public IMAGE_FILE_MACHINE ProcessMachine;
+	public void* ProcessMachine;
 	public uint16 Res0;
 	public MACHINE_ATTRIBUTES MachineAttributes;
 }
@@ -1576,7 +1576,7 @@ public static
 	public static extern uint16 Wow64SetThreadDefaultGuestMachine(uint16 Machine);
 
 	[Import("KERNEL32.lib"), CLink, CallingConvention(.Stdcall)]
-	public static extern BOOL IsWow64Process2(HANDLE hProcess, IMAGE_FILE_MACHINE* pProcessMachine, IMAGE_FILE_MACHINE* pNativeMachine);
+	public static extern BOOL IsWow64Process2(HANDLE hProcess, void* pProcessMachine, void* pNativeMachine);
 
 	[Import("KERNEL32.lib"), CLink, CallingConvention(.Stdcall)]
 	public static extern uint32 Wow64SuspendThread(HANDLE hThread);
