@@ -73,6 +73,10 @@ class DecalComponent : Component, ISerializableComponent
 	/// Fires after SetTextureRef changes the texture resource ref.
 	public Event<delegate void(DecalComponent)> TextureChanged ~ _.Dispose();
 
+	/// Fires after SetMaterial attaches a non-null MaterialInstance directly.
+	/// See MeshComponent for rationale.
+	public Event<delegate void(MaterialInstance)> MaterialInstanceAttached ~ _.Dispose();
+
 	public ResourceRef TextureRef => mTextureRef;
 
 	/// Sets the texture resource ref (deep copy). Fires TextureChanged so
@@ -84,11 +88,17 @@ class DecalComponent : Component, ISerializableComponent
 		TextureChanged(this);
 	}
 
+	/// Assigns a MaterialInstance directly. Fires MaterialInstanceAttached
+	/// for non-null materials so the manager can prepare them
+	/// (manually-created instances bypass the resolve path).
 	public void SetMaterial(MaterialInstance material)
 	{
 		if (Material == material) return;
 		material?.AddRef();
 		Material?.ReleaseRef();
 		Material = material;
+
+		if (material != null)
+			MaterialInstanceAttached(material);
 	}
 }

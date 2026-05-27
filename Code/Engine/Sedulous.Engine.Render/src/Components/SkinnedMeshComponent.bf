@@ -98,6 +98,10 @@ class SkinnedMeshComponent : Component, ISerializableComponent
 	/// Fires after SetMaterialRef changes a slot's material resource ref.
 	public Event<delegate void(SkinnedMeshComponent, int32)> MaterialChanged ~ _.Dispose();
 
+	/// Fires after SetMaterial(slot, instance) attaches a non-null
+	/// MaterialInstance directly. See MeshComponent for rationale.
+	public Event<delegate void(MaterialInstance)> MaterialInstanceAttached ~ _.Dispose();
+
 	/// Whether this mesh is visible.
 	public bool IsVisible = true;
 
@@ -155,6 +159,8 @@ class SkinnedMeshComponent : Component, ISerializableComponent
 
 	/// Sets a material instance at the given slot, growing the list if needed.
 	/// Takes ownership - AddRefs the new material, ReleaseRefs the old.
+	/// Fires MaterialInstanceAttached for non-null materials so the manager
+	/// can prepare them (manually-created instances bypass the resolve path).
 	public void SetMaterial(int32 slot, MaterialInstance material)
 	{
 		while (Materials.Count <= slot)
@@ -166,5 +172,8 @@ class SkinnedMeshComponent : Component, ISerializableComponent
 		material?.AddRef();
 		old?.ReleaseRef();
 		Materials[slot] = material;
+
+		if (material != null)
+			MaterialInstanceAttached(material);
 	}
 }

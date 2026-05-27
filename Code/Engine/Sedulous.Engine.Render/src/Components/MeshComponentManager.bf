@@ -96,9 +96,28 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 		comp.MeshChanged.Add(new (c) => MarkResolveDirty(c));
 		comp.MaterialChanged.Add(new (c, slot) => MarkResolveDirty(c));
 
+		// Manually-created MaterialInstances attached via SetMaterial bypass
+		// the resolve path entirely, so PrepareInstance never fires from
+		// ResolveMaterial. Subscribe here to prepare them on attach -
+		// otherwise the bind group / uniform buffer never get built and
+		// the renderer falls back to the default material.
+		comp.MaterialInstanceAttached.Add(new (mat) => OnMaterialInstanceAttached(mat));
+
 		// First-frame resolve. Even if SetMeshRef hasn't been called
 		// yet, the empty-ref path through ResolveResources is correct.
 		MarkResolveDirty(comp);
+	}
+
+	private void OnMaterialInstanceAttached(MaterialInstance material)
+	{
+		if (material == null || Resolver == null)
+			return;
+		// Idempotent: PrepareInstance is no-op when the instance is already
+		// prepared (dirty flags cleared). For freshly-constructed instances
+		// it sets up the bind group + uniform buffer and registers the
+		// MaterialSystem reference so subsequent SetUniform/SetTexture
+		// calls notify the global dirty list.
+		Resolver.MaterialSystem.PrepareInstance(material);
 	}
 
 	/// Marks a component for re-resolution on the next ResolveResources

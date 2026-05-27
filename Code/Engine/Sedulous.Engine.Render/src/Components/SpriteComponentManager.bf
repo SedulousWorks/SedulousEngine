@@ -77,7 +77,16 @@ class SpriteComponentManager : ComponentManager<SpriteComponent>, IRenderDataPro
 	protected override void OnComponentCreated(SpriteComponent comp)
 	{
 		comp.TextureChanged.Add(new (c) => MarkResolveDirty(c));
+		// Manually-created MaterialInstances - see MeshComponentManager.
+		comp.MaterialInstanceAttached.Add(new (mat) => OnMaterialInstanceAttached(mat));
 		MarkResolveDirty(comp);
+	}
+
+	private void OnMaterialInstanceAttached(MaterialInstance material)
+	{
+		if (material == null || Resolver == null)
+			return;
+		Resolver.MaterialSystem.PrepareInstance(material);
 	}
 
 	public void MarkResolveDirty(SpriteComponent comp)

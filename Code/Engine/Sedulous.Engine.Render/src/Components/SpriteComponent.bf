@@ -77,6 +77,10 @@ class SpriteComponent : Component, ISerializableComponent
 	/// Fires after SetTextureRef changes the texture resource ref.
 	public Event<delegate void(SpriteComponent)> TextureChanged ~ _.Dispose();
 
+	/// Fires after SetMaterial attaches a non-null MaterialInstance directly.
+	/// See MeshComponent for rationale.
+	public Event<delegate void(MaterialInstance)> MaterialInstanceAttached ~ _.Dispose();
+
 	/// Gets the texture resource ref.
 	public ResourceRef TextureRef => mTextureRef;
 
@@ -90,11 +94,16 @@ class SpriteComponent : Component, ISerializableComponent
 	}
 
 	/// Assigns a MaterialInstance directly (takes ownership - AddRef/ReleaseRef pattern).
+	/// Fires MaterialInstanceAttached for non-null materials so the manager
+	/// can prepare them (manually-created instances bypass the resolve path).
 	public void SetMaterial(MaterialInstance material)
 	{
 		if (Material == material) return;
 		material?.AddRef();
 		Material?.ReleaseRef();
 		Material = material;
+
+		if (material != null)
+			MaterialInstanceAttached(material);
 	}
 }

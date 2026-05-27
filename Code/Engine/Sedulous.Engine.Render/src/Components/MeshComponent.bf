@@ -102,6 +102,14 @@ class MeshComponent : Component, ISerializableComponent
 	/// per-slot if needed; the manager just uses the component identity.
 	public Event<delegate void(MeshComponent, int32)> MaterialChanged ~ _.Dispose();
 
+	/// Fires after SetMaterial(slot, instance) attaches a non-null
+	/// MaterialInstance directly (not through a ResourceRef). The manager
+	/// subscribes to ensure the instance is registered with MaterialSystem
+	/// and has its bind group / uniform buffer set up - manually-created
+	/// instances would otherwise never reach PrepareInstance because the
+	/// resolve path is the only thing that calls it.
+	public Event<delegate void(MaterialInstance)> MaterialInstanceAttached ~ _.Dispose();
+
 	/// Render layer mask (for filtering in extraction).
 	[Property(.Default, "Layer Mask", "LayerMask")]
 	public uint32 LayerMask = 0xFFFFFFFF;
@@ -167,6 +175,9 @@ class MeshComponent : Component, ISerializableComponent
 
 	/// Sets a material instance at the given slot, growing the list if needed.
 	/// Takes ownership - AddRefs the new material, ReleaseRefs the old.
+	/// Fires MaterialInstanceAttached for non-null materials so the manager
+	/// can ensure they're prepared (manually-created instances bypass the
+	/// resolve path and would otherwise never call PrepareInstance).
 	public void SetMaterial(int32 slot, MaterialInstance material)
 	{
 		while (Materials.Count <= slot)
@@ -178,5 +189,8 @@ class MeshComponent : Component, ISerializableComponent
 		material?.AddRef();
 		old?.ReleaseRef();
 		Materials[slot] = material;
+
+		if (material != null)
+			MaterialInstanceAttached(material);
 	}
 }

@@ -90,7 +90,16 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 	{
 		comp.MeshChanged.Add(new (c) => MarkResolveDirty(c));
 		comp.MaterialChanged.Add(new (c, slot) => MarkResolveDirty(c));
+		// Manually-created MaterialInstances - see MeshComponentManager.
+		comp.MaterialInstanceAttached.Add(new (mat) => OnMaterialInstanceAttached(mat));
 		MarkResolveDirty(comp);
+	}
+
+	private void OnMaterialInstanceAttached(MaterialInstance material)
+	{
+		if (material == null || Resolver == null)
+			return;
+		Resolver.MaterialSystem.PrepareInstance(material);
 	}
 
 	public void MarkResolveDirty(SkinnedMeshComponent comp)
