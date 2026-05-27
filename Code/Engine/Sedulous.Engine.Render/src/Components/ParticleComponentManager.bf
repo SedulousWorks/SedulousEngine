@@ -16,6 +16,7 @@ using Sedulous.RHI;
 using Sedulous.Particles;
 using Sedulous.Particles.Render;
 using Sedulous.Particles.Resources;
+using Sedulous.Profiler;
 
 /// Manages particle components: resolves effect and texture resources,
 /// creates MaterialInstances, simulates particle effects, and extracts
@@ -336,6 +337,8 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 	/// Extracts render data for all active particle effects.
 	public void ExtractRenderData(in RenderExtractionContext context)
 	{
+		using (Profiler.Begin("Particle.Extract"))
+		{
 		let scene = Scene;
 		if (scene == null) return;
 
@@ -423,6 +426,7 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 
 				context.RenderData.Add(RenderCategories.Particle, data);
 			}
+		}
 		}
 	}
 

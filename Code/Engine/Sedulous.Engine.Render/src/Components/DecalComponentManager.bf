@@ -11,6 +11,7 @@ using Sedulous.Textures.Resources;
 using Sedulous.Core;
 using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
+using Sedulous.Profiler;
 
 /// Manages decal components: resolves texture ResourceRefs, creates/caches
 /// MaterialInstances from the shared decal Material template, and extracts
@@ -170,6 +171,8 @@ class DecalComponentManager : ComponentManager<DecalComponent>, IRenderDataProvi
 
 	public void ExtractRenderData(in RenderExtractionContext context)
 	{
+		using (Profiler.Begin("Decal.Extract"))
+		{
 		let scene = Scene;
 		if (scene == null) return;
 
@@ -211,6 +214,7 @@ class DecalComponentManager : ComponentManager<DecalComponent>, IRenderDataProvi
 			data.MaterialKey = materialKey;
 
 			context.RenderData.Add(RenderCategories.Decal, data);
+		}
 		}
 	}
 

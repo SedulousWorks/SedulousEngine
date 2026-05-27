@@ -7,6 +7,7 @@ using Sedulous.Renderer;
 using Sedulous.Core.Mathematics;
 using Sedulous.Materials;
 using Sedulous.Shaders;
+using Sedulous.Profiler;
 
 /// Renders MeshRenderData entries: static and skinned meshes.
 /// Participates in the Opaque, Masked, and Transparent categories.
@@ -198,6 +199,8 @@ public class MeshRenderer : Renderer
 		{
 			if (rebuildGroups)
 			{
+				using (Profiler.Begin("Mesh.BuildBatchGroups"))
+				{
 				// Cache miss - rebuild batch groups.
 				// Pass 1: count instances per group to determine grouping structure.
 				groupCache.Clear();
@@ -254,6 +257,7 @@ public class MeshRenderer : Renderer
 					mMatCachedBatchIdentity = batchIdentity;
 				else
 					mNoMatCachedBatchIdentity = batchIdentity;
+				}
 			}
 
 			// Always re-fill instance data with current world matrices.
@@ -262,44 +266,46 @@ public class MeshRenderer : Renderer
 			// stale (identity collision via recycled allocator address) -- force
 			// rebuild and try again on the next loop iteration.
 			bool needsRebuild = false;
-
-			// Reset instance counts for filling
-			for (int32 g = 0; g < cachedGroups.Count; g++)
+			using (Profiler.Begin("Mesh.FillInstanceData"))
 			{
-				var group = cachedGroups[g];
-				group.InstanceCount = 0;
-				cachedGroups[g] = group;
-			}
-
-			for (let mesh in entries)
-			{
-				let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
-				if (gpuMesh == null) continue;
-
-				let key = BatchKey()
+				// Reset instance counts for filling
+				for (int32 g = 0; g < cachedGroups.Count; g++)
 				{
-					MeshIndex = mesh.MeshHandle.Index,
-					MaterialPtr = bindMaterial ? (int)Internal.UnsafeCastToPtr(mesh.MaterialBindGroup) : 0,
-					SubMeshIndex = mesh.SubMeshIndex
-				};
-
-				if (!groupCache.TryGetValue(key, let groupIdx))
-				{
-					needsRebuild = true;
-					break;
+					var group = cachedGroups[g];
+					group.InstanceCount = 0;
+					cachedGroups[g] = group;
 				}
 
-				var group = cachedGroups[groupIdx];
-				let slot = group.InstanceStart + group.InstanceCount;
-				group.InstanceCount++;
-				cachedGroups[groupIdx] = group;
-
-				cachedInstanceData[slot] = .()
+				for (let mesh in entries)
 				{
-					WorldMatrix = mesh.WorldMatrix,
-					PrevWorldMatrix = mesh.PrevWorldMatrix,
-					InstanceColor = mesh.InstanceColor
-				};
+					let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
+					if (gpuMesh == null) continue;
+
+					let key = BatchKey()
+					{
+						MeshIndex = mesh.MeshHandle.Index,
+						MaterialPtr = bindMaterial ? (int)Internal.UnsafeCastToPtr(mesh.MaterialBindGroup) : 0,
+						SubMeshIndex = mesh.SubMeshIndex
+					};
+
+					if (!groupCache.TryGetValue(key, let groupIdx))
+					{
+						needsRebuild = true;
+						break;
+					}
+
+					var group = cachedGroups[groupIdx];
+					let slot = group.InstanceStart + group.InstanceCount;
+					group.InstanceCount++;
+					cachedGroups[groupIdx] = group;
+
+					cachedInstanceData[slot] = .()
+					{
+						WorldMatrix = mesh.WorldMatrix,
+						PrevWorldMatrix = mesh.PrevWorldMatrix,
+						InstanceColor = mesh.InstanceColor
+					};
+				}
 			}
 
 			if (!needsRebuild)
@@ -335,6 +341,8 @@ public class MeshRenderer : Renderer
 		}
 		else
 		{
+			using (Profiler.Begin("Mesh.UploadInstanceBuffer"))
+			{
 			startOffset = frame.InstanceOffset;
 			let totalInstances = (int32)cachedInstanceData.Count;
 
@@ -348,6 +356,7 @@ public class MeshRenderer : Renderer
 
 			frame.InstanceOffset += totalInstances;
 			uploadOffsets[bufferKey] = startOffset;
+			}
 		}
 
 		let vertexLayout = VertexLayoutHelper.CreateBufferLayout(.Mesh);
@@ -363,6 +372,8 @@ public class MeshRenderer : Renderer
 		IBindGroup lastMaterialBg = null;
 		IRenderPipeline currentPipeline = null;
 
+		using (Profiler.Begin("Mesh.RecordDraws"))
+		{
 		for (let group in cachedGroups)
 		{
 			let gpuMesh = gpuResources.GetMesh(group.MeshHandle);
@@ -440,6 +451,7 @@ public class MeshRenderer : Renderer
 				let vertCount = subMesh.IndexCount > 0 ? subMesh.IndexCount : gpuMesh.VertexCount;
 				encoder.Draw(vertCount, (uint32)group.InstanceCount, 0, 0);
 			}
+		}
 		}
 	}
 

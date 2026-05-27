@@ -371,6 +371,8 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 	/// stays uniform across the toggle.
 	public void ExtractRenderData(in RenderExtractionContext context)
 	{
+		using (Profiler.Begin("Mesh.Extract"))
+		{
 		let scene = Scene;
 		if (scene == null || GPUResources == null)
 			return;
@@ -441,6 +443,7 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 				for (let entry in list)
 					sharedList.Add(entry);
 			}
+		}
 		}
 	}
 

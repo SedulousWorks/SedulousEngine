@@ -531,7 +531,8 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		// Extractors populate SortKey inline (Phase 2a), so we can skip the
 		// per-entry sort-key recomputation pass. SortOnly is just the
 		// in-place sort over each category list.
-		view.RenderData.SortOnly();
+		using (Profiler.Begin("SceneExtraction.SortOnly"))
+			view.RenderData.SortOnly();
 	}
 
 

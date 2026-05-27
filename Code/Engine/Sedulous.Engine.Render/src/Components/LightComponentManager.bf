@@ -4,6 +4,7 @@ using System;
 using Sedulous.Engine.Core;
 using Sedulous.Renderer;
 using Sedulous.Core.Mathematics;
+using Sedulous.Profiler;
 
 /// Manages light components and extracts light data for the renderer.
 /// Injected into scenes by RenderSubsystem via ISceneAware.
@@ -18,6 +19,8 @@ class LightComponentManager : ComponentManager<LightComponent>, IRenderDataProvi
 	/// Extracts LightRenderData for all active light components.
 	public void ExtractRenderData(in RenderExtractionContext context)
 	{
+		using (Profiler.Begin("Light.Extract"))
+		{
 		let scene = Scene;
 		if (scene == null)
 			return;
@@ -65,6 +68,7 @@ class LightComponentManager : ComponentManager<LightComponent>, IRenderDataProvi
 			data.ShadowBias = light.ShadowBias;
 			data.ShadowNormalBias = light.ShadowNormalBias;
 			context.RenderData.Add(RenderCategories.Light, data);
+		}
 		}
 	}
 }

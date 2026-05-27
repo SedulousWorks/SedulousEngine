@@ -10,6 +10,7 @@ using Sedulous.Textures.Resources;
 using Sedulous.Core;
 using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
+using Sedulous.Profiler;
 
 /// Manages sprite components: resolves texture ResourceRefs, creates a
 /// MaterialInstance from SpriteSystem's shared sprite material template,
@@ -167,6 +168,8 @@ class SpriteComponentManager : ComponentManager<SpriteComponent>, IRenderDataPro
 
 	public void ExtractRenderData(in RenderExtractionContext context)
 	{
+		using (Profiler.Begin("Sprite.Extract"))
+		{
 		let scene = Scene;
 		if (scene == null) return;
 
@@ -202,6 +205,7 @@ class SpriteComponentManager : ComponentManager<SpriteComponent>, IRenderDataPro
 			data.MaterialKey = materialKey;
 
 			context.RenderData.Add(RenderCategories.Transparent, data);
+		}
 		}
 	}
 

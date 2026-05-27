@@ -437,6 +437,8 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 	/// tested against the view frustum before per-submesh emission.
 	public void ExtractRenderData(in RenderExtractionContext context)
 	{
+		using (Profiler.Begin("SkinnedMesh.Extract"))
+		{
 		let scene = Scene;
 		if (scene == null || GPUResources == null)
 			return;
@@ -526,6 +528,7 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 				data.EntityIndex = comp.Owner.Index;
 				context.RenderData.Add(category, data);
 			}
+		}
 		}
 	}
 
