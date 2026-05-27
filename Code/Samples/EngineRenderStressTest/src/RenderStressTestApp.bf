@@ -206,6 +206,8 @@ class RenderStressTestApp : EngineApplication
 
 	private void AddSphereBatch()
 	{
+		using (Profiler.Begin("AddSphereBatch"))
+		{
 		let meshMgr = mScene.GetModule<MeshComponentManager>();
 		if (meshMgr == null) return;
 
@@ -221,43 +223,94 @@ class RenderStressTestApp : EngineApplication
 		Console.WriteLine("Adding batch {} ({} spheres, total {}, grid {}x{})...",
 			mBatchCount + 1, SpheresPerBatch, newTotal, mGridSize, mGridSize);
 
-		for (int32 i = 0; i < SpheresPerBatch; i++)
+		// Each phase wraps the entire batch loop so the profiler captures
+		// one aggregate sample per phase instead of 8000 individual ones.
+		// Original per-iteration scoping flooded the profile with 40k+
+		// samples, all small and noisy. Phase-batched: 6 samples, each
+		// summing the work for all spheres.
+		let entities = scope EntityHandle[SpheresPerBatch];
+		let handles = scope ComponentHandle<MeshComponent>[SpheresPerBatch];
+
+		using (Profiler.Begin("Spawn.CreateEntity"))
 		{
-			int32 index = startIndex + i;
-			int32 gridX = index % mGridSize;
-			int32 gridZ = index / mGridSize;
+			for (int32 i = 0; i < SpheresPerBatch; i++)
+				entities[i] = mScene.CreateEntity();
+		}
 
-			float x = ((float)gridX - (float)mGridSize * 0.5f) * SphereSpacing;
-			float z = ((float)gridZ - (float)mGridSize * 0.5f) * SphereSpacing;
-
-			let entity = mScene.CreateEntity();
-			mScene.SetLocalTransform(entity, .() { Position = .(x, 0.5f, z), Rotation = .Identity, Scale = .One });
-
-			let handle = meshMgr.CreateComponent(entity);
-			if (let comp = meshMgr.Get(handle))
+		using (Profiler.Begin("Spawn.SetLocalTransform"))
+		{
+			for (int32 i = 0; i < SpheresPerBatch; i++)
 			{
-				comp.SetMeshRef(sphereRef);
+				int32 index = startIndex + i;
+				int32 gridX = index % mGridSize;
+				int32 gridZ = index / mGridSize;
+				float x = ((float)gridX - (float)mGridSize * 0.5f) * SphereSpacing;
+				float z = ((float)gridZ - (float)mGridSize * 0.5f) * SphereSpacing;
+				mScene.SetLocalTransform(entities[i], .() { Position = .(x, 0.5f, z), Rotation = .Identity, Scale = .One });
+			}
+		}
 
-				if (mUseUniqueMaterials)
+		using (Profiler.Begin("Spawn.CreateComponent"))
+		{
+			for (int32 i = 0; i < SpheresPerBatch; i++)
+				handles[i] = meshMgr.CreateComponent(entities[i]);
+		}
+
+		using (Profiler.Begin("Spawn.SetMeshRef"))
+		{
+			for (int32 i = 0; i < SpheresPerBatch; i++)
+			{
+				if (let comp = meshMgr.Get(handles[i]))
+					comp.SetMeshRef(sphereRef);
+			}
+		}
+
+		if (mUseUniqueMaterials)
+		{
+			using (Profiler.Begin("Spawn.UniqueMaterial"))
+			{
+				for (int32 i = 0; i < SpheresPerBatch; i++)
 				{
-					let uniqueMat = new MaterialInstance(mPbrMaterial);
-					let hue = (float)(index % 360) / 360.0f;
-					let color = HSVtoRGB(hue, 0.8f, 0.9f);
-					uniqueMat.SetColor("BaseColor", .(color.X, color.Y, color.Z, 1.0f));
-					comp.SetMaterial(0, uniqueMat);
-					mUniqueMaterials.Add(uniqueMat);
-				}
-				else
-				{
-					comp.SetMaterial(0, mSharedMaterial);
+					int32 index = startIndex + i;
+					if (let comp = meshMgr.Get(handles[i]))
+					{
+						let uniqueMat = new MaterialInstance(mPbrMaterial);
+						let hue = (float)(index % 360) / 360.0f;
+						let color = HSVtoRGB(hue, 0.8f, 0.9f);
+						uniqueMat.SetColor("BaseColor", .(color.X, color.Y, color.Z, 1.0f));
+						comp.SetMaterial(0, uniqueMat);
+						mUniqueMaterials.Add(uniqueMat);
+					}
 				}
 			}
+		}
+		else
+		{
+			using (Profiler.Begin("Spawn.SetMaterial"))
+			{
+				for (int32 i = 0; i < SpheresPerBatch; i++)
+				{
+					if (let comp = meshMgr.Get(handles[i]))
+						comp.SetMaterial(0, mSharedMaterial);
+				}
+			}
+		}
 
-			mSphereEntities.Add(entity);
+		using (Profiler.Begin("Spawn.TrackEntities"))
+		{
+			for (int32 i = 0; i < SpheresPerBatch; i++)
+				mSphereEntities.Add(entities[i]);
 		}
 
 		mBatchCount++;
 		Console.WriteLine("  Done. Total spheres: {}", mSphereEntities.Count);
+		}
+
+		// Capture the spawn frame's profile breakdown without having to
+		// time the P hotkey. Prints right after SProfiler.EndFrame() of
+		// the current frame so AddSphereBatch and its sub-scopes are
+		// fully accounted for.
+		RequestProfilePrint();
 	}
 
 	private void RemoveLastBatch()

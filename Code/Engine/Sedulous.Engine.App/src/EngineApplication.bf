@@ -115,6 +115,14 @@ abstract class EngineApplication : IDisposable
 	private float mInitTimeMs;
 	private int32 mMaxFixedStepsPerFrame = 8;
 
+	/// Set via RequestProfilePrint() from any code running inside the
+	/// current frame's update path. The run loop checks this flag after
+	/// SProfiler.EndFrame() and prints the just-completed frame, then
+	/// clears the flag. Useful for "print right when X happens" cases
+	/// (asset spawn, big state transition) that are hard to catch via
+	/// the manual P hotkey.
+	private bool mProfilePrintRequested = false;
+
 	// Screenshot
 	private bool mScreenshotRequested = false;
 	private String mScreenshotPath ~ delete _;
@@ -257,6 +265,15 @@ abstract class EngineApplication : IDisposable
 			let keyboard = mShell.InputManager.Keyboard;
 			if (keyboard.IsKeyPressed(.P) /*&& keyboard.Modifiers.HasFlag(.Shift)*/)
 				PrintProfileFrame();
+
+			// Programmatic profile print request (e.g. set by AddSphereBatch
+			// in the stress test so the spawn frame's breakdown is captured
+			// without racing the user's P hotkey).
+			if (mProfilePrintRequested)
+			{
+				mProfilePrintRequested = false;
+				PrintProfileFrame();
+			}
 		}
 
 		Shutdown();
@@ -274,6 +291,15 @@ abstract class EngineApplication : IDisposable
 
 	// ==================== Profiling ====================
 
+	/// Request that the current frame's profile be printed after
+	/// SProfiler.EndFrame() runs. Call from inside OnUpdate (or any
+	/// other code in the frame's update path) when something interesting
+	/// happens and you want the breakdown without timing the P hotkey.
+	public void RequestProfilePrint()
+	{
+		mProfilePrintRequested = true;
+	}
+
 	private void PrintProfileFrame()
 	{
 		let frame = SProfiler.GetCompletedFrame();
@@ -283,7 +309,8 @@ abstract class EngineApplication : IDisposable
 		Console.WriteLine("Frame {0}: {1:F2}ms ({2} samples)", frame.FrameNumber, frame.FrameDurationMs, frame.SampleCount);
 
 		// Sort by start time so parents appear before children
-		let sorted = scope List<ProfileSample>(frame.Samples.Count);
+		let sorted = new List<ProfileSample>(frame.Samples.Count);
+		defer delete sorted;
 		for (let sample in frame.Samples)
 			sorted.Add(sample);
 		sorted.Sort(scope (a, b) => a.StartTimeUs <=> b.StartTimeUs);

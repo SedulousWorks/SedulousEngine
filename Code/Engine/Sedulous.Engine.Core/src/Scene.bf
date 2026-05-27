@@ -40,7 +40,14 @@ public class Scene : IDisposable
 		public Matrix PrevWorldMatrix;
 		public EntityHandle Parent;
 		public EntityHandle FirstChild;
+		/// Tail of the child sibling list. Paired with FirstChild to make
+		/// AppendToList O(1) instead of walking the list to find the end
+		/// (which caused O(N²) batch-spawn cost in flat hierarchies).
+		public EntityHandle LastChild;
 		public EntityHandle NextSibling;
+		/// Back-pointer in the sibling linked list. Makes RemoveFromParent
+		/// O(1) - no need to walk from the head to find the predecessor.
+		public EntityHandle PrevSibling;
 		/// "Needs world-matrix recompute". Set by MarkDirty (which cascades
 		/// to children and ancestors). Cleared immediately by
 		/// UpdateTransformRecursive after the recompute. Internal state -
@@ -72,6 +79,12 @@ public class Scene : IDisposable
 
 	/// Head of the root entity linked list (entities with no parent).
 	private EntityHandle mFirstRoot = .Invalid;
+	/// Tail of the root entity linked list. Paired with mFirstRoot so
+	/// CreateEntity's append step is O(1). Without this, mass-spawn
+	/// workloads (e.g. the stress test creating 8000 roots per batch)
+	/// degraded into O(N²) territory as AppendToList walked from the
+	/// head every call.
+	private EntityHandle mLastRoot = .Invalid;
 
 	// --- Scene modules ---
 
@@ -215,7 +228,9 @@ public class Scene : IDisposable
 		transform.WorldMatrix = .Identity;
 		transform.Parent = .Invalid;
 		transform.FirstChild = .Invalid;
+		transform.LastChild = .Invalid;
 		transform.NextSibling = .Invalid;
+		transform.PrevSibling = .Invalid;
 		transform.Dirty = false;
 		transform.UpdatedThisFrame = false;
 
@@ -225,7 +240,7 @@ public class Scene : IDisposable
 		mEntityIdMap[id] = handle;
 
 		// Append to root list (new entities start as roots)
-		AppendToList(handle, ref mFirstRoot);
+		AppendToList(handle, ref mFirstRoot, ref mLastRoot);
 
 		return handle;
 	}
@@ -454,11 +469,11 @@ public class Scene : IDisposable
 		if (parent.IsAssigned)
 		{
 			var parentTransform = ref mTransforms[(int32)parent.Index];
-			AppendToList(child, ref parentTransform.FirstChild);
+			AppendToList(child, ref parentTransform.FirstChild, ref parentTransform.LastChild);
 		}
 		else
 		{
-			AppendToList(child, ref mFirstRoot);
+			AppendToList(child, ref mFirstRoot, ref mLastRoot);
 		}
 
 		MarkDirty(child);
@@ -482,25 +497,57 @@ public class Scene : IDisposable
 
 		if (!afterSibling.IsAssigned)
 		{
-			// Prepend
+			// Prepend - new entity becomes the head; the old head's
+			// PrevSibling now points at us. If the list was empty, we're
+			// also the new tail.
+			childTransform.PrevSibling = .Invalid;
 			if (parent.IsAssigned)
 			{
 				var parentTransform = ref mTransforms[(int32)parent.Index];
 				childTransform.NextSibling = parentTransform.FirstChild;
+				if (parentTransform.FirstChild.IsAssigned)
+					mTransforms[(int32)parentTransform.FirstChild.Index].PrevSibling = child;
+				else
+					parentTransform.LastChild = child;
 				parentTransform.FirstChild = child;
 			}
 			else
 			{
 				childTransform.NextSibling = mFirstRoot;
+				if (mFirstRoot.IsAssigned)
+					mTransforms[(int32)mFirstRoot.Index].PrevSibling = child;
+				else
+					mLastRoot = child;
 				mFirstRoot = child;
 			}
 		}
 		else
 		{
-			// Insert after the specified sibling
+			// Insert after the specified sibling - splice in. If afterSibling
+			// was the tail, we're the new tail; otherwise the old next's
+			// PrevSibling now points at us.
 			var afterTransform = ref mTransforms[(int32)afterSibling.Index];
-			childTransform.NextSibling = afterTransform.NextSibling;
+			let oldNext = afterTransform.NextSibling;
+			childTransform.PrevSibling = afterSibling;
+			childTransform.NextSibling = oldNext;
 			afterTransform.NextSibling = child;
+			if (oldNext.IsAssigned)
+			{
+				mTransforms[(int32)oldNext.Index].PrevSibling = child;
+			}
+			else
+			{
+				// afterSibling was the tail - update the appropriate tail ref
+				if (parent.IsAssigned)
+				{
+					var parentTransform = ref mTransforms[(int32)parent.Index];
+					parentTransform.LastChild = child;
+				}
+				else
+				{
+					mLastRoot = child;
+				}
+			}
 		}
 
 		MarkDirty(child);
@@ -607,70 +654,88 @@ public class Scene : IDisposable
 		if (parent.IsAssigned)
 		{
 			var parentTransform = ref mTransforms[(int32)parent.Index];
-			InsertIntoList(entity, ref parentTransform.FirstChild, targetIndex);
+			InsertIntoList(entity, ref parentTransform.FirstChild, ref parentTransform.LastChild, targetIndex);
 		}
 		else
 		{
-			InsertIntoList(entity, ref mFirstRoot, targetIndex);
+			InsertIntoList(entity, ref mFirstRoot, ref mLastRoot, targetIndex);
 		}
 
 		MarkDirty(entity);
 	}
 
-	/// Inserts an entity into a sibling linked list at the given index.
-	private void InsertIntoList(EntityHandle entity, ref EntityHandle listHead, int32 targetIndex)
+	/// Inserts an entity into a doubly-linked sibling list at the given index.
+	/// Maintains PrevSibling on the inserted entity + its neighbors, and
+	/// updates the tail ref if the insertion lands at the end (or the list
+	/// was empty).
+	private void InsertIntoList(EntityHandle entity, ref EntityHandle listHead, ref EntityHandle listTail, int32 targetIndex)
 	{
 		var childTransform = ref mTransforms[(int32)entity.Index];
-
-		if (targetIndex <= 0 || !listHead.IsAssigned)
-		{
-			// Prepend
-			childTransform.NextSibling = listHead;
-			listHead = entity;
-		}
-		else
-		{
-			// Walk to the sibling before the target position
-			var prev = listHead;
-			int32 i = 0;
-			while (i < targetIndex - 1 && IsValid(prev))
-			{
-				let next = mTransforms[(int32)prev.Index].NextSibling;
-				if (!next.IsAssigned || !IsValid(next))
-					break;
-				prev = next;
-				i++;
-			}
-
-			var prevTransform = ref mTransforms[(int32)prev.Index];
-			childTransform.NextSibling = prevTransform.NextSibling;
-			prevTransform.NextSibling = entity;
-		}
-	}
-
-	/// Appends an entity to the end of a sibling linked list.
-	private void AppendToList(EntityHandle entity, ref EntityHandle listHead)
-	{
-		var childTransform = ref mTransforms[(int32)entity.Index];
-		childTransform.NextSibling = .Invalid;
 
 		if (!listHead.IsAssigned)
 		{
+			// Empty list - entity is both head and tail.
+			childTransform.PrevSibling = .Invalid;
+			childTransform.NextSibling = .Invalid;
+			listHead = entity;
+			listTail = entity;
+			return;
+		}
+
+		if (targetIndex <= 0)
+		{
+			// Prepend - new head, old head's PrevSibling now points at us.
+			childTransform.PrevSibling = .Invalid;
+			childTransform.NextSibling = listHead;
+			mTransforms[(int32)listHead.Index].PrevSibling = entity;
 			listHead = entity;
 			return;
 		}
 
-		// Walk to the end
-		var tail = listHead;
-		while (true)
+		// Walk to the sibling at target position - 1 (the predecessor).
+		var prev = listHead;
+		int32 i = 0;
+		while (i < targetIndex - 1 && IsValid(prev))
 		{
-			let next = mTransforms[(int32)tail.Index].NextSibling;
+			let next = mTransforms[(int32)prev.Index].NextSibling;
 			if (!next.IsAssigned || !IsValid(next))
 				break;
-			tail = next;
+			prev = next;
+			i++;
 		}
 
-		mTransforms[(int32)tail.Index].NextSibling = entity;
+		var prevTransform = ref mTransforms[(int32)prev.Index];
+		let oldNext = prevTransform.NextSibling;
+		childTransform.PrevSibling = prev;
+		childTransform.NextSibling = oldNext;
+		prevTransform.NextSibling = entity;
+		if (oldNext.IsAssigned)
+			mTransforms[(int32)oldNext.Index].PrevSibling = entity;
+		else
+			listTail = entity;  // Inserted at the end - new tail.
+	}
+
+	/// Appends an entity to the end of a doubly-linked sibling list in O(1).
+	/// Caller supplies refs to both the head and tail of the list:
+	///   - Root list: listHead = mFirstRoot, listTail = mLastRoot.
+	///   - Child list: listHead = parent.FirstChild, listTail = parent.LastChild.
+	/// Both refs are updated in place when the list was previously empty or
+	/// when the new entity becomes the new tail.
+	private void AppendToList(EntityHandle entity, ref EntityHandle listHead, ref EntityHandle listTail)
+	{
+		var entityTransform = ref mTransforms[(int32)entity.Index];
+		entityTransform.NextSibling = .Invalid;
+		entityTransform.PrevSibling = listTail;
+
+		if (!listHead.IsAssigned)
+		{
+			listHead = entity;
+			listTail = entity;
+			return;
+		}
+
+		mTransforms[(int32)listTail.Index].NextSibling = entity;
+		listTail = entity;
 	}
 
 	// ==================== Module Management ====================
@@ -912,6 +977,8 @@ public class Scene : IDisposable
 	    // data.UpdatedThisFrame / data.PrevWorldMatrix on disjoint slots
 	    // don't race. Reads of data.Dirty / mEntities[idx].Alive are
 	    // never raced because those slots are also unique to one chunk.
+	    using (Profiler.Begin("UpdateTransforms.Pass1"))
+	    {
 	    let lastFrameCount = (int32)mTransformsUpdatedThisFrame.Count;
 	    if (lastFrameCount >= 256 && workerCount > 0)
 	    {
@@ -938,6 +1005,7 @@ public class Scene : IDisposable
 	    }
 	    mTransformsUpdatedThisFrame.Clear();
 	    mTransformsUpdatedThisFrame.Reserve(count);
+	    }
 
 	    // Pass 2: collect dirty roots (serial), then dispatch each subtree
 	    // recursion in parallel. Each dirty root has no parent (filter
@@ -952,10 +1020,13 @@ public class Scene : IDisposable
 	    // This avoids racing on the shared list's Add (Count + grow are
 	    // not thread-safe).
 	    let dirtyRoots = scope List<int32>();
-	    for (int32 i = 0; i < count; i++)
+	    using (Profiler.Begin("UpdateTransforms.Pass2.CollectRoots"))
 	    {
-	        if (mTransforms[i].Dirty && mEntities[i].Alive && !mTransforms[i].Parent.IsAssigned)
-	            dirtyRoots.Add(i);
+	        for (int32 i = 0; i < count; i++)
+	        {
+	            if (mTransforms[i].Dirty && mEntities[i].Alive && !mTransforms[i].Parent.IsAssigned)
+	                dirtyRoots.Add(i);
+	        }
 	    }
 
 	    let rootCount = (int32)dirtyRoots.Count;
@@ -968,8 +1039,11 @@ public class Scene : IDisposable
 	        // the same UpdateTransformRecursive (parallel-safe variant);
 	        // it appends to mTransformsUpdatedThisFrame directly since
 	        // there's no contention.
-	        for (let rootIdx in dirtyRoots)
-	            UpdateTransformRecursive(rootIdx, .Identity, mTransformsUpdatedThisFrame);
+	        using (Profiler.Begin("UpdateTransforms.Pass2.RecurseSerial"))
+	        {
+	            for (let rootIdx in dirtyRoots)
+	                UpdateTransformRecursive(rootIdx, .Identity, mTransformsUpdatedThisFrame);
+	        }
 	        return;
 	    }
 
@@ -980,22 +1054,28 @@ public class Scene : IDisposable
 
 	    int32 nextChunkIdx = 0;
 
-	    JobSystem.ParallelFor(0, rootCount, scope [&](begin, end) => {
-	        let chunkIdx = System.Threading.Interlocked.Increment(ref nextChunkIdx) - 1;
-	        let localList = threadLists[chunkIdx];
-	        for (int32 r = begin; r < end; r++)
-	            UpdateTransformRecursive(dirtyRoots[r], .Identity, localList);
-	    });
+	    using (Profiler.Begin("UpdateTransforms.Pass2.RecurseParallel"))
+	    {
+	        JobSystem.ParallelFor(0, rootCount, scope [&](begin, end) => {
+	            let chunkIdx = System.Threading.Interlocked.Increment(ref nextChunkIdx) - 1;
+	            let localList = threadLists[chunkIdx];
+	            for (int32 r = begin; r < end; r++)
+	                UpdateTransformRecursive(dirtyRoots[r], .Identity, localList);
+	        });
+	    }
 
 	    // Merge per-thread accumulators into mTransformsUpdatedThisFrame.
 	    // Reserve once to avoid per-Add growth churn.
-	    int32 totalUpdated = 0;
-	    for (let list in threadLists)
-	        totalUpdated += (int32)list.Count;
-	    mTransformsUpdatedThisFrame.Reserve(mTransformsUpdatedThisFrame.Count + totalUpdated);
-	    for (let list in threadLists)
-	        for (let idx in list)
-	            mTransformsUpdatedThisFrame.Add(idx);
+	    using (Profiler.Begin("UpdateTransforms.Pass2.Merge"))
+	    {
+	        int32 totalUpdated = 0;
+	        for (let list in threadLists)
+	            totalUpdated += (int32)list.Count;
+	        mTransformsUpdatedThisFrame.Reserve(mTransformsUpdatedThisFrame.Count + totalUpdated);
+	        for (let list in threadLists)
+	            for (let idx in list)
+	                mTransformsUpdatedThisFrame.Add(idx);
+	    }
 	}
 #endif
 
@@ -1132,60 +1212,44 @@ public class Scene : IDisposable
 			MarkDirty(data.Parent);
 	}
 
+	/// O(1) doubly-linked unlink. Uses childTransform.PrevSibling /
+	/// NextSibling to splice the entity out without walking from the head.
+	/// Updates the appropriate head/tail pointer when the child was at an
+	/// end of the list.
 	private void RemoveFromParent(EntityHandle child)
 	{
 		var childTransform = ref mTransforms[(int32)child.Index];
 		let parentHandle = childTransform.Parent;
+		let prev = childTransform.PrevSibling;
+		let next = childTransform.NextSibling;
+
+		// Splice this entity out: connect prev <-> next directly.
+		if (prev.IsAssigned)
+			mTransforms[(int32)prev.Index].NextSibling = next;
+		if (next.IsAssigned)
+			mTransforms[(int32)next.Index].PrevSibling = prev;
 
 		if (parentHandle.IsAssigned)
 		{
-			// Remove from parent's child list
+			// Update parent's head/tail if we were at either end.
 			var parentTransform = ref mTransforms[(int32)parentHandle.Index];
-
 			if (parentTransform.FirstChild == child)
-			{
-				parentTransform.FirstChild = childTransform.NextSibling;
-			}
-			else
-			{
-				var prev = parentTransform.FirstChild;
-				while (prev.IsAssigned && IsValid(prev))
-				{
-					var prevTransform = ref mTransforms[(int32)prev.Index];
-					if (prevTransform.NextSibling == child)
-					{
-						prevTransform.NextSibling = childTransform.NextSibling;
-						break;
-					}
-					prev = prevTransform.NextSibling;
-				}
-			}
+				parentTransform.FirstChild = next;
+			if (parentTransform.LastChild == child)
+				parentTransform.LastChild = prev;
 		}
 		else
 		{
-			// Remove from root list
+			// Update root head/tail.
 			if (mFirstRoot == child)
-			{
-				mFirstRoot = childTransform.NextSibling;
-			}
-			else
-			{
-				var prev = mFirstRoot;
-				while (prev.IsAssigned && IsValid(prev))
-				{
-					var prevTransform = ref mTransforms[(int32)prev.Index];
-					if (prevTransform.NextSibling == child)
-					{
-						prevTransform.NextSibling = childTransform.NextSibling;
-						break;
-					}
-					prev = prevTransform.NextSibling;
-				}
-			}
+				mFirstRoot = next;
+			if (mLastRoot == child)
+				mLastRoot = prev;
 		}
 
 		childTransform.Parent = .Invalid;
 		childTransform.NextSibling = .Invalid;
+		childTransform.PrevSibling = .Invalid;
 	}
 
 	private void DestroyEntityImmediate(EntityHandle entity)
