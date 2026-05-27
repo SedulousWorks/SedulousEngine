@@ -29,22 +29,18 @@ cbuffer SceneUniforms : register(b0, space0)
 
 #ifdef INSTANCED
 
-// Set 3: Per-instance data (instanced path)
-// See CONVENTIONS.md for BaseInstance and StructuredBuffer matrix rules.
-cbuffer InstanceParams : register(b0, space3)
-{
-    uint BaseInstance;
-};
-
+// Set 3: Per-instance data (instanced path).
+// The per-frame Instances buffer is indexed by entity (extraction order).
+// Each draw delivers per-instance DataOffsets via vertex attribute (slot 1);
+// the shader uses .x to fetch this instance's slot in Instances[].
 struct InstanceData
 {
     float4x4 WorldMatrix;
     float4x4 PrevWorldMatrix;
     // Per-instance color tint. Multiplied with the mesh's vertex color
     // and the material's albedo (frag shader). Default (1,1,1,1) is a
-    // no-op, so existing meshes that don't author this look identical.
-    // Used by mesh particles (Color stream per-particle) and entity-level
-    // tinting via MeshComponent.Color (damage flash / team colors / etc.).
+    // no-op. Used by mesh particles (per-particle Color stream) and
+    // entity-level tinting via MeshComponent.Color.
     float4 InstanceColor;
 };
 
@@ -70,7 +66,9 @@ struct VertexInput
     float4 Color : TEXCOORD3;
     float3 Tangent : TEXCOORD4;
 #ifdef INSTANCED
-    uint InstanceID : SV_InstanceID;
+    // Per-instance data offsets delivered via vertex buffer slot 1.
+    // .x = entity index into Instances[]; .y/.z/.w reserved.
+    uint4 DataOffsets : TEXCOORD5;
 #endif
 };
 
@@ -92,7 +90,7 @@ VertexOutput main(VertexInput input)
     VertexOutput output;
 
 #ifdef INSTANCED
-    uint instanceIndex = input.InstanceID + BaseInstance;
+    uint instanceIndex = input.DataOffsets.x;
     float4x4 world = Instances[instanceIndex].WorldMatrix;
     float4x4 prevWorld = Instances[instanceIndex].PrevWorldMatrix;
     float4 instanceColor = Instances[instanceIndex].InstanceColor;

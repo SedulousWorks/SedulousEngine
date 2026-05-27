@@ -32,11 +32,6 @@ public interface IRenderingPipeline
 	/// Must be called after setting a new pipeline (layout change invalidates bindings).
 	void BindFrameGroup(IRenderPassEncoder encoder, PerFrameResources frame);
 
-	/// Writes a BaseInstance value to the ring buffer and returns the byte offset
-	/// for use as a dynamic offset when binding the instance bind group.
-	/// Needed because SV_InstanceID is 0-based on DX12 regardless of firstInstance.
-	uint32 WriteBaseInstance(int32 frameIndex, uint32 baseInstance);
-
 	/// Output texture format (HDR scene color for main pipeline, Undefined for shadow).
 	TextureFormat OutputFormat { get; }
 }

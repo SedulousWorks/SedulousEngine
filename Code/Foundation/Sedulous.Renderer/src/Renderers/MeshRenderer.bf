@@ -30,6 +30,15 @@ public class MeshRenderer : Renderer
 		public Vector4 InstanceColor;
 	}
 
+	/// Per-instance DataOffsets vertex attribute (uint4). Delivered to the
+	/// vertex shader as TEXCOORD5 in the instanced path. .x = entity index into
+	/// Instances[]; .y/.z/.w reserved for future per-instance buffers.
+	[CRepr]
+	private struct DataOffsets
+	{
+		public uint32 X, Y, Z, W;
+	}
+
 	/// Key for grouping meshes by (GPUMesh + Material + SubMesh).
 	private struct BatchKey : IHashable
 	{
@@ -61,24 +70,28 @@ public class MeshRenderer : Renderer
 		public int32 InstanceCount;
 	}
 
-	// Per-frame batch caches - built once on first use, reused across passes.
-	// Two caches: material-aware (forward passes group by mesh+material+submesh)
-	// and material-agnostic (depth/shadow passes group by mesh+submesh only,
-	// collapsing unique materials into single instanced draws).
-
-	// Material-aware cache (forward opaque, forward transparent)
-	private Dictionary<BatchKey, int32> mMatGroupCache = new .() ~ delete _;
-	private List<BatchGroup> mMatCachedGroups = new .() ~ delete _;
-	private List<InstanceData> mMatCachedInstanceData = new .() ~ delete _;
-	private int mMatCachedBatchIdentity = 0;
-	private Dictionary<int, int32> mMatUploadOffsets = new .() ~ delete _;
-
-	// Material-agnostic cache (depth prepass, shadow passes)
-	private Dictionary<BatchKey, int32> mNoMatGroupCache = new .() ~ delete _;
-	private List<BatchGroup> mNoMatCachedGroups = new .() ~ delete _;
-	private List<InstanceData> mNoMatCachedInstanceData = new .() ~ delete _;
-	private int mNoMatCachedBatchIdentity = 0;
-	private Dictionary<int, int32> mNoMatUploadOffsets = new .() ~ delete _;
+	// Per-frame batch cache. Material-aware grouping is used for ALL passes —
+	// depth/shadow paths just skip the material bind group binding. Both passes
+	// within a view (e.g. DepthPrepass + ForwardOpaque) hit the same identity
+	// → second pass runs only RecordDraws.
+	private Dictionary<BatchKey, int32> mGroupCache = new .() ~ delete _;
+	private List<BatchGroup> mCachedGroups = new .() ~ delete _;
+	// Per-frame instance data, indexed by entry index (extraction order). Stable
+	// across a frame; uploaded once per (PerFrameResources.InstanceBuffer) pointer.
+	private List<InstanceData> mCachedInstanceData = new .() ~ delete _;
+	// Per-frame DataOffsets in group-major order. Holds LOCAL entry indices
+	// (0..N-1); rebased to absolute Instances[] slot at upload time.
+	private List<DataOffsets> mCachedOffsets = new .() ~ delete _;
+	// Scratch buffer used when rebasing offsets for upload. Reused across calls.
+	private List<DataOffsets> mRebaseScratch = new .() ~ delete _;
+	// Parallel list of per-group fill counters, used during BuildInstanceOffsets
+	// to write each entry into its group's next free slot.
+	private List<int32> mGroupFillCounters = new .() ~ delete _;
+	private int mCachedBatchIdentity = 0;
+	// Per-buffer-pointer cache of "this buffer already has the current frame's
+	// data uploaded — start at this offset." Cleared whenever batch identity changes.
+	private Dictionary<int, int32> mInstancesUploadOffsets = new .() ~ delete _;
+	private Dictionary<int, int32> mOffsetsUploadOffsets = new .() ~ delete _;
 
 	public this()
 	{
@@ -131,11 +144,16 @@ public class MeshRenderer : Renderer
 			RenderSkinnedIndividual(encoder, skinnedEntries, renderContext, pipeline, frame, view, flags, passConfig);
 	}
 
-	/// Groups static mesh entries by (mesh + material + submesh), packs instance data,
-	/// and issues one DrawIndexedInstanced per group.
-	/// Batch groups are cached per frame - the first call builds them, subsequent
-	/// calls (depth prepass, forward, shadow views) reuse the cached grouping and
-	/// only re-upload instance data to the current pipeline's buffer.
+	/// Groups static mesh entries by (mesh + material + submesh), packs instance
+	/// data into a per-frame StructuredBuffer indexed by entry order, and emits
+	/// per-instance DataOffsets via a second vertex buffer. The shader fetches
+	/// `Instances[input.DataOffsets.x]` per vertex.
+	///
+	/// Cache is keyed on (entries[0] ptr, count, frame.InstanceBuffer ptr) — so
+	/// DepthPrepass and ForwardOpaque within the same view hit the same cache
+	/// and the second pass runs only RecordDraws. Material-aware grouping is
+	/// used for ALL passes (depth/shadow simply skip the material bind group
+	/// binding via the `bindMaterial` flag).
 	private void RenderStaticInstanced(
 		IRenderPassEncoder encoder,
 		List<MeshRenderData> entries,
@@ -146,312 +164,297 @@ public class MeshRenderer : Renderer
 		RenderBatchFlags flags,
 		PipelineConfig passConfig)
 	{
+		if (entries.Count == 0 || frame.InstanceBuffer == null || frame.InstanceOffsetsBuffer == null)
+			return;
+
 		let gpuResources = renderContext.GPUResources;
 		let cache = renderContext.PipelineStateCache;
 		let bindMaterial = flags.HasFlag(.BindMaterial);
 
-		// Select cache set based on whether materials matter for grouping.
-		// Depth/shadow passes don't bind materials, so all meshes sharing the same
-		// geometry collapse into one instanced draw regardless of material.
-		// Forward passes need material-aware grouping for correct bind group switches.
-		Dictionary<BatchKey, int32> groupCache;
-		List<BatchGroup> cachedGroups;
-		List<InstanceData> cachedInstanceData;
-		Dictionary<int, int32> uploadOffsets;
-
-		if (bindMaterial)
-		{
-			groupCache = mMatGroupCache;
-			cachedGroups = mMatCachedGroups;
-			cachedInstanceData = mMatCachedInstanceData;
-			uploadOffsets = mMatUploadOffsets;
-		}
-		else
-		{
-			groupCache = mNoMatGroupCache;
-			cachedGroups = mNoMatCachedGroups;
-			cachedInstanceData = mNoMatCachedInstanceData;
-			uploadOffsets = mNoMatUploadOffsets;
-		}
-
-		// Check if we can reuse cached batch groups. Identity includes the
-		// instance buffer pointer so different scenes (with different Pipelines
-		// and PerFrameResources) never collide. Same scene's main + shadow passes
-		// share the same buffer and still cache correctly.
+		// Identity includes the instance buffer pointer so different views (with
+		// different PerFrameResources) never collide. Same view's depth + forward
+		// share the buffer and hit the cache.
 		//
-		// Important: entries[0]'s pointer is allocated from the per-frame
-		// FrameAllocator and gets recycled across renders. For small/single-mesh
-		// scenes (e.g. asset thumbnails), the same address can appear with
-		// different mesh content on the next call, producing a false cache hit.
-		// We re-validate below and rebuild inline if the cached groups don't
-		// match the new entries.
-		let batchIdentity = (entries.Count > 0)
-			? ((int)Internal.UnsafeCastToPtr(entries[0]) * 397 ^ entries.Count ^ (int)Internal.UnsafeCastToPtr(frame.InstanceBuffer))
-			: 0;
+		// entries[0]'s pointer is from the per-frame FrameAllocator and can
+		// recycle across renders. The post-fill validation loop below catches
+		// false-positive hits and forces a rebuild.
+		let batchIdentity = ((int)Internal.UnsafeCastToPtr(entries[0]) * 397)
+			^ entries.Count
+			^ (int)Internal.UnsafeCastToPtr(frame.InstanceBuffer);
 
-		let cachedIdentity = bindMaterial ? mMatCachedBatchIdentity : mNoMatCachedBatchIdentity;
+		bool rebuild = batchIdentity != mCachedBatchIdentity || mCachedGroups.Count == 0;
 
-		bool rebuildGroups = batchIdentity != cachedIdentity || cachedGroups.Count == 0;
-
-		// Up to two passes: first attempt may discover the cache is stale (entries
-		// don't match cached keys), forcing a rebuild on the second pass.
+		// Up to two attempts: false-positive cache hit -> force rebuild on second pass.
 		for (int attempt = 0; attempt < 2; attempt++)
 		{
-			if (rebuildGroups)
+			if (rebuild)
 			{
 				using (Profiler.Begin("Mesh.BuildBatchGroups"))
 				{
-				// Cache miss - rebuild batch groups.
-				// Pass 1: count instances per group to determine grouping structure.
-				groupCache.Clear();
-				cachedGroups.Clear();
-				cachedInstanceData.Clear();
+					mGroupCache.Clear();
+					mCachedGroups.Clear();
 
-				for (let mesh in entries)
-				{
-					let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
-					if (gpuMesh == null) continue;
+					for (let mesh in entries)
+					{
+						let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
+						if (gpuMesh == null) continue;
 
-					let key = BatchKey()
-					{
-						MeshIndex = mesh.MeshHandle.Index,
-						MaterialPtr = bindMaterial ? (int)Internal.UnsafeCastToPtr(mesh.MaterialBindGroup) : 0,
-						SubMeshIndex = mesh.SubMeshIndex
-					};
-
-					if (groupCache.TryGetValue(key, let groupIdx))
-					{
-						var group = cachedGroups[groupIdx];
-						group.InstanceCount++;
-						cachedGroups[groupIdx] = group;
-					}
-					else
-					{
-						groupCache[key] = (int32)cachedGroups.Count;
-						cachedGroups.Add(.()
+						let key = BatchKey()
 						{
-							MeshHandle = mesh.MeshHandle,
-							MaterialBindGroup = mesh.MaterialBindGroup,
-							MaterialBindGroupLayout = mesh.MaterialBindGroupLayout,
-							MaterialConfig = mesh.MaterialPipelineConfig,
-							SubMeshIndex = mesh.SubMeshIndex,
-							InstanceStart = 0,
-							InstanceCount = 1
-						});
+							MeshIndex = mesh.MeshHandle.Index,
+							MaterialPtr = (int)Internal.UnsafeCastToPtr(mesh.MaterialBindGroup),
+							SubMeshIndex = mesh.SubMeshIndex
+						};
+
+						if (mGroupCache.TryGetValue(key, let groupIdx))
+						{
+							var group = mCachedGroups[groupIdx];
+							group.InstanceCount++;
+							mCachedGroups[groupIdx] = group;
+						}
+						else
+						{
+							mGroupCache[key] = (int32)mCachedGroups.Count;
+							mCachedGroups.Add(.()
+							{
+								MeshHandle = mesh.MeshHandle,
+								MaterialBindGroup = mesh.MaterialBindGroup,
+								MaterialBindGroupLayout = mesh.MaterialBindGroupLayout,
+								MaterialConfig = mesh.MaterialPipelineConfig,
+								SubMeshIndex = mesh.SubMeshIndex,
+								InstanceStart = 0,
+								InstanceCount = 1
+							});
+						}
+					}
+
+					// Compute contiguous InstanceStart offsets from the counts
+					int32 offset = 0;
+					for (int32 g = 0; g < mCachedGroups.Count; g++)
+					{
+						var group = mCachedGroups[g];
+						group.InstanceStart = offset;
+						offset += group.InstanceCount;
+						mCachedGroups[g] = group;
+					}
+					mCachedOffsets.Count = offset;
+				}
+
+				using (Profiler.Begin("Mesh.FillInstanceData"))
+				{
+					// InstanceData is indexed by ENTRY index (extraction order) — stable
+					// per-frame, shared across DepthPrepass and ForwardOpaque.
+					mCachedInstanceData.Count = entries.Count;
+					for (int i = 0; i < entries.Count; i++)
+					{
+						let mesh = entries[i];
+						mCachedInstanceData[i] = .()
+						{
+							WorldMatrix = mesh.WorldMatrix,
+							PrevWorldMatrix = mesh.PrevWorldMatrix,
+							InstanceColor = mesh.InstanceColor
+						};
 					}
 				}
 
-				// Compute contiguous InstanceStart offsets from the counts
-				int32 offset = 0;
-				for (int32 g = 0; g < cachedGroups.Count; g++)
+				bool needsRebuild = false;
+				using (Profiler.Begin("Mesh.BuildInstanceOffsets"))
 				{
-					var group = cachedGroups[g];
-					group.InstanceStart = offset;
-					offset += group.InstanceCount;
-					cachedGroups[g] = group;
-				}
+					// Per-group fill counters track where the next entry goes within
+					// each group's contiguous offsets slice.
+					mGroupFillCounters.Count = mCachedGroups.Count;
+					for (int g = 0; g < mGroupFillCounters.Count; g++)
+						mGroupFillCounters[g] = 0;
 
-				cachedInstanceData.Count = offset;
-
-				if (bindMaterial)
-					mMatCachedBatchIdentity = batchIdentity;
-				else
-					mNoMatCachedBatchIdentity = batchIdentity;
-				}
-			}
-
-			// Always re-fill instance data with current world matrices.
-			// Grouping structure is cached but transforms change every frame.
-			// If any entry's key isn't found in the group cache, the grouping is
-			// stale (identity collision via recycled allocator address) -- force
-			// rebuild and try again on the next loop iteration.
-			bool needsRebuild = false;
-			using (Profiler.Begin("Mesh.FillInstanceData"))
-			{
-				// Reset instance counts for filling
-				for (int32 g = 0; g < cachedGroups.Count; g++)
-				{
-					var group = cachedGroups[g];
-					group.InstanceCount = 0;
-					cachedGroups[g] = group;
-				}
-
-				for (let mesh in entries)
-				{
-					let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
-					if (gpuMesh == null) continue;
-
-					let key = BatchKey()
+					for (int i = 0; i < entries.Count; i++)
 					{
-						MeshIndex = mesh.MeshHandle.Index,
-						MaterialPtr = bindMaterial ? (int)Internal.UnsafeCastToPtr(mesh.MaterialBindGroup) : 0,
-						SubMeshIndex = mesh.SubMeshIndex
-					};
+						let mesh = entries[i];
+						let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
+						if (gpuMesh == null) continue;
 
-					if (!groupCache.TryGetValue(key, let groupIdx))
-					{
-						needsRebuild = true;
-						break;
+						let key = BatchKey()
+						{
+							MeshIndex = mesh.MeshHandle.Index,
+							MaterialPtr = (int)Internal.UnsafeCastToPtr(mesh.MaterialBindGroup),
+							SubMeshIndex = mesh.SubMeshIndex
+						};
+
+						if (!mGroupCache.TryGetValue(key, let groupIdx))
+						{
+							needsRebuild = true;
+							break;
+						}
+
+						let group = mCachedGroups[groupIdx];
+						let slot = group.InstanceStart + mGroupFillCounters[groupIdx];
+						mGroupFillCounters[groupIdx]++;
+
+						// Store LOCAL entry index; rebased to absolute Instances[] slot at upload.
+						mCachedOffsets[slot] = .() { X = (uint32)i, Y = 0, Z = 0, W = 0 };
 					}
-
-					var group = cachedGroups[groupIdx];
-					let slot = group.InstanceStart + group.InstanceCount;
-					group.InstanceCount++;
-					cachedGroups[groupIdx] = group;
-
-					cachedInstanceData[slot] = .()
-					{
-						WorldMatrix = mesh.WorldMatrix,
-						PrevWorldMatrix = mesh.PrevWorldMatrix,
-						InstanceColor = mesh.InstanceColor
-					};
 				}
-			}
 
-			if (!needsRebuild)
+				if (!needsRebuild)
+				{
+					mCachedBatchIdentity = batchIdentity;
+					// Cache rebuilt with new data; any previous upload offsets are stale.
+					mInstancesUploadOffsets.Clear();
+					mOffsetsUploadOffsets.Clear();
+					break;
+				}
+
+				// Stale cache (false-positive identity match). Invalidate and retry.
+				mCachedBatchIdentity = 0;
+				mCachedGroups.Clear();
+				continue;
+			}
+			else
 			{
-				// Force re-upload since matrices changed
-				uploadOffsets.Clear();
 				break;
 			}
-
-			// Stale cache (false-positive identity match). Invalidate and try
-			// again with a full rebuild. attempt=1 will skip this branch on
-			// failure (defensive cap; needsRebuild after a fresh rebuild
-			// would indicate a logic error, not a recoverable cache stale).
-			rebuildGroups = true;
-			if (bindMaterial)
-				mMatCachedBatchIdentity = 0;
-			else
-				mNoMatCachedBatchIdentity = 0;
-			cachedGroups.Clear();
 		}
 
-		if (cachedGroups.Count == 0) return;
+		if (mCachedGroups.Count == 0) return;
 
-		// Reuse previous upload if this buffer already has the cached data.
-		// Each pipeline (main, shadow) has its own instance buffer - upload once
-		// per buffer, then all passes sharing that buffer reuse the same offset.
-		let bufferKey = (int)Internal.UnsafeCastToPtr(frame.InstanceBuffer);
-		int32 startOffset;
+		// Upload (once per (frame.InstanceBuffer, frame.InstanceOffsetsBuffer) pair).
+		// If both buffers already have this frame's data, reuse the offsets.
+		let instanceBufKey = (int)Internal.UnsafeCastToPtr(frame.InstanceBuffer);
+		let offsetsBufKey = (int)Internal.UnsafeCastToPtr(frame.InstanceOffsetsBuffer);
+		int32 startInstance;
+		int32 startOffsets;
 
-		if (uploadOffsets.TryGetValue(bufferKey, let cachedOffset))
+		if (mInstancesUploadOffsets.TryGetValue(instanceBufKey, let cachedInst) &&
+			mOffsetsUploadOffsets.TryGetValue(offsetsBufKey, let cachedOff))
 		{
-			startOffset = cachedOffset;
+			startInstance = cachedInst;
+			startOffsets = cachedOff;
 		}
 		else
 		{
 			using (Profiler.Begin("Mesh.UploadInstanceBuffer"))
 			{
-			startOffset = frame.InstanceOffset;
-			let totalInstances = (int32)cachedInstanceData.Count;
+				startInstance = frame.InstanceOffset;
+				startOffsets = frame.InstanceOffsetsCount;
 
-			if (startOffset + totalInstances > PerFrameResources.MaxInstances)
-				return; // buffer full
+				let totalInstances = (int32)mCachedInstanceData.Count;
+				let totalOffsets = (int32)mCachedOffsets.Count;
 
-			let byteOffset = (uint64)(startOffset * PerFrameResources.InstanceStride);
-			TransferHelper.WriteMappedBuffer(
-				frame.InstanceBuffer, byteOffset,
-				Span<uint8>((uint8*)cachedInstanceData.Ptr, totalInstances * PerFrameResources.InstanceStride));
+				if (startInstance + totalInstances > PerFrameResources.MaxInstances)
+					return;
+				if (startOffsets + totalOffsets > PerFrameResources.MaxInstances)
+					return;
 
-			frame.InstanceOffset += totalInstances;
-			uploadOffsets[bufferKey] = startOffset;
+				// Upload InstanceData verbatim — indices are entry-relative (0..N-1)
+				// and we'll rebase the offsets buffer below to point at the absolute slot.
+				let instByteOff = (uint64)(startInstance * PerFrameResources.InstanceStride);
+				TransferHelper.WriteMappedBuffer(
+					frame.InstanceBuffer, instByteOff,
+					Span<uint8>((uint8*)mCachedInstanceData.Ptr, totalInstances * PerFrameResources.InstanceStride));
+				frame.InstanceOffset += totalInstances;
+				mInstancesUploadOffsets[instanceBufKey] = startInstance;
+
+				// Rebase offsets and upload. Each cached uint4 holds a local entry index;
+				// the GPU needs (startInstance + i) so its shader fetch lands in the
+				// right Instances[] slot.
+				mRebaseScratch.Count = totalOffsets;
+				for (int slot = 0; slot < totalOffsets; slot++)
+				{
+					let local = mCachedOffsets[slot];
+					mRebaseScratch[slot] = .() { X = (uint32)startInstance + local.X, Y = local.Y, Z = local.Z, W = local.W };
+				}
+				let offsetsByteOff = (uint64)(startOffsets * PerFrameResources.DataOffsetsStride);
+				TransferHelper.WriteMappedBuffer(
+					frame.InstanceOffsetsBuffer, offsetsByteOff,
+					Span<uint8>((uint8*)mRebaseScratch.Ptr, totalOffsets * PerFrameResources.DataOffsetsStride));
+				frame.InstanceOffsetsCount += totalOffsets;
+				mOffsetsUploadOffsets[offsetsBufKey] = startOffsets;
 			}
 		}
 
 		let vertexLayout = VertexLayoutHelper.CreateBufferLayout(.Mesh);
-		VertexBufferLayout[1] vertexBuffers = .(vertexLayout);
+		let offsetsLayout = VertexLayoutHelper.CreateDataOffsetsBufferLayout();
+		VertexBufferLayout[2] vertexBuffers = .(vertexLayout, offsetsLayout);
 
 		let colorFormat = pipeline.OutputFormat;
 		let depthFormat = passConfig.DepthFormat;
 		let shadowSystem = renderContext.ShadowSystem;
 
-		// Draw each group with per-material pipeline config.
-		// Start from the pass config (shader, formats, depth), then apply
-		// material-specific render state (cull mode, blend mode, shader flags).
 		IBindGroup lastMaterialBg = null;
 		IRenderPipeline currentPipeline = null;
 
 		using (Profiler.Begin("Mesh.RecordDraws"))
 		{
-		for (let group in cachedGroups)
-		{
-			let gpuMesh = gpuResources.GetMesh(group.MeshHandle);
-			if (gpuMesh == null) continue;
-
-			let subMesh = gpuMesh.SubMeshes[group.SubMeshIndex];
-
-			// Start from pass config, overlay material-specific state
-			var config = passConfig;
-			config.ShaderFlags |= .Instanced;
-			config.ShaderFlags |= group.MaterialConfig.ShaderFlags;
-			config.CullMode = group.MaterialConfig.CullMode;
-			config.BlendMode = group.MaterialConfig.BlendMode;
-			config.FillMode = group.MaterialConfig.FillMode;
-			config.FrontFace = group.MaterialConfig.FrontFace;
-			if (!group.MaterialConfig.ShaderName.IsEmpty)
-				config.ShaderName = group.MaterialConfig.ShaderName;
-
-			let pipelineResult = cache.GetPipeline(config, vertexBuffers, group.MaterialBindGroupLayout, colorFormat, depthFormat);
-			if (pipelineResult case .Err) continue;
-
-			let groupPipeline = pipelineResult.Value;
-			if (groupPipeline != currentPipeline)
+			for (let group in mCachedGroups)
 			{
-				encoder.SetPipeline(groupPipeline);
-				currentPipeline = groupPipeline;
+				let gpuMesh = gpuResources.GetMesh(group.MeshHandle);
+				if (gpuMesh == null) continue;
 
-				// Re-bind groups after pipeline switch
-				pipeline.BindFrameGroup(encoder, frame);
-				if (shadowSystem != null)
+				let subMesh = gpuMesh.SubMeshes[group.SubMeshIndex];
+
+				var config = passConfig;
+				config.ShaderFlags |= .Instanced;
+				config.ShaderFlags |= group.MaterialConfig.ShaderFlags;
+				config.CullMode = group.MaterialConfig.CullMode;
+				config.BlendMode = group.MaterialConfig.BlendMode;
+				config.FillMode = group.MaterialConfig.FillMode;
+				config.FrontFace = group.MaterialConfig.FrontFace;
+				if (!group.MaterialConfig.ShaderName.IsEmpty)
+					config.ShaderName = group.MaterialConfig.ShaderName;
+
+				let pipelineResult = cache.GetPipeline(config, vertexBuffers, group.MaterialBindGroupLayout, colorFormat, depthFormat);
+				if (pipelineResult case .Err) continue;
+
+				let groupPipeline = pipelineResult.Value;
+				if (groupPipeline != currentPipeline)
 				{
-					let shadowBg2 = shadowSystem.GetBindGroup(view.FrameIndex);
-					if (shadowBg2 != null)
-						encoder.SetBindGroup(BindGroupFrequency.Shadow, shadowBg2, default);
-				}
-				lastMaterialBg = null; // force re-bind after pipeline switch
-			}
+					encoder.SetPipeline(groupPipeline);
+					currentPipeline = groupPipeline;
 
-			// Bind material
-			if (bindMaterial)
-			{
-				let materialBg = (group.MaterialBindGroup != null) ? group.MaterialBindGroup : renderContext.DefaultMaterialBindGroup;
-				if (materialBg != null && materialBg != lastMaterialBg)
+					pipeline.BindFrameGroup(encoder, frame);
+					if (shadowSystem != null)
+					{
+						let shadowBg2 = shadowSystem.GetBindGroup(view.FrameIndex);
+						if (shadowBg2 != null)
+							encoder.SetBindGroup(BindGroupFrequency.Shadow, shadowBg2, default);
+					}
+					// Rebind InstanceBindGroup after pipeline switch (layout change
+					// invalidates set bindings).
+					if (frame.InstanceBindGroup != null)
+						encoder.SetBindGroup(BindGroupFrequency.DrawCall, frame.InstanceBindGroup, default);
+					lastMaterialBg = null;
+				}
+
+				if (bindMaterial)
 				{
-					encoder.SetBindGroup(BindGroupFrequency.Material, materialBg, default);
-					lastMaterialBg = materialBg;
+					let materialBg = (group.MaterialBindGroup != null) ? group.MaterialBindGroup : renderContext.DefaultMaterialBindGroup;
+					if (materialBg != null && materialBg != lastMaterialBg)
+					{
+						encoder.SetBindGroup(BindGroupFrequency.Material, materialBg, default);
+						lastMaterialBg = materialBg;
+					}
+				}
+
+				// Per-instance offsets vertex buffer slice for this group.
+				let offsetsByteOff = (uint64)((startOffsets + group.InstanceStart) * PerFrameResources.DataOffsetsStride);
+				encoder.SetVertexBuffer(0, gpuMesh.VertexBuffer, 0);
+				encoder.SetVertexBuffer(1, frame.InstanceOffsetsBuffer, offsetsByteOff);
+
+				if (gpuMesh.IndexBuffer != null)
+				{
+					encoder.SetIndexBuffer(gpuMesh.IndexBuffer, gpuMesh.IndexFormat);
+					encoder.DrawIndexed(
+						subMesh.IndexCount,
+						(uint32)group.InstanceCount,
+						subMesh.IndexStart,
+						subMesh.BaseVertex,
+						0);
+				}
+				else
+				{
+					let vertCount = subMesh.IndexCount > 0 ? subMesh.IndexCount : gpuMesh.VertexCount;
+					encoder.Draw(vertCount, (uint32)group.InstanceCount, 0, 0);
 				}
 			}
-
-			// Write BaseInstance and bind instance group with dynamic offset per draw.
-			// SV_InstanceID is 0-based on DX12 regardless of firstInstance, so we
-			// pass the offset explicitly and always use firstInstance=0.
-			let baseInst = (uint32)(startOffset + group.InstanceStart);
-			let baseInstOffset = pipeline.WriteBaseInstance(view.FrameIndex, baseInst);
-			if (frame.InstanceBindGroup != null)
-			{
-				uint32[1] dynOffset = .(baseInstOffset);
-				encoder.SetBindGroup(BindGroupFrequency.DrawCall, frame.InstanceBindGroup, dynOffset);
-			}
-
-			encoder.SetVertexBuffer(0, gpuMesh.VertexBuffer, 0);
-
-			if (gpuMesh.IndexBuffer != null)
-			{
-				encoder.SetIndexBuffer(gpuMesh.IndexBuffer, gpuMesh.IndexFormat);
-				encoder.DrawIndexed(
-					subMesh.IndexCount,
-					(uint32)group.InstanceCount,
-					subMesh.IndexStart,
-					subMesh.BaseVertex,
-					0);
-			}
-			else
-			{
-				let vertCount = subMesh.IndexCount > 0 ? subMesh.IndexCount : gpuMesh.VertexCount;
-				encoder.Draw(vertCount, (uint32)group.InstanceCount, 0, 0);
-			}
-		}
 		}
 	}
 

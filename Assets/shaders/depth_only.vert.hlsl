@@ -16,19 +16,14 @@ cbuffer SceneUniforms : register(b0, space0)
 
 #ifdef INSTANCED
 
-// Set 3: Per-instance data - see CONVENTIONS.md
-cbuffer InstanceParams : register(b0, space3)
-{
-    uint BaseInstance;
-};
-
+// Set 3: shared per-frame instance buffer (matches forward.vert).
+// The InstanceColor field is unused here but kept so the struct stride
+// matches the shared layout (144 bytes); otherwise Instances[i] for i>0
+// would read at the wrong offset.
 struct InstanceData
 {
     float4x4 WorldMatrix;
     float4x4 PrevWorldMatrix;
-    // Unused here, but the field must exist so this struct's stride
-    // matches the shared instance buffer (forward.vert). Without it,
-    // Instances[i] for i>0 reads at the wrong offset.
     float4 InstanceColor;
 };
 
@@ -54,14 +49,14 @@ struct VertexInput
     float4 Color : TEXCOORD3;
     float3 Tangent : TEXCOORD4;
 #ifdef INSTANCED
-    uint InstanceID : SV_InstanceID;
+    uint4 DataOffsets : TEXCOORD5;
 #endif
 };
 
 float4 main(VertexInput input) : SV_Position
 {
 #ifdef INSTANCED
-    float4x4 world = Instances[input.InstanceID + BaseInstance].WorldMatrix;
+    float4x4 world = Instances[input.DataOffsets.x].WorldMatrix;
 #else
     float4x4 world = WorldMatrix;
 #endif

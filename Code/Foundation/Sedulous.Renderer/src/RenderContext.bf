@@ -388,12 +388,10 @@ public class RenderContext : IDisposable
 		else
 			return .Err;
 
-		// Instance bind group layout (set 3: b0 = BaseInstance cbuffer with dynamic
-		// offset, t0 = StructuredBuffer<InstanceData>).
-		// BaseInstance corrects SV_InstanceID differences between DX12 and Vulkan.
-		BindGroupLayoutEntry[2] instanceEntries = .(
-			.() { Binding = 0, Visibility = .Vertex, Type = .UniformBuffer, HasDynamicOffset = true },
-			.() { Binding = 0, Visibility = .Vertex, Type = .StorageBufferReadOnly, StorageBufferStride = 128 }
+		// Instance bind group layout (set 3: t0 = StructuredBuffer<InstanceData>).
+		// Per-instance DataOffsets arrive via vertex attribute (slot 1), not a bind group.
+		BindGroupLayoutEntry[1] instanceEntries = .(
+			.() { Binding = 0, Visibility = .Vertex, Type = .StorageBufferReadOnly, StorageBufferStride = 144 }
 		);
 
 		BindGroupLayoutDesc instanceLayoutDesc = .()

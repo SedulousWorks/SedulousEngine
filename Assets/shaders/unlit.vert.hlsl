@@ -26,12 +26,9 @@ cbuffer SceneUniforms : register(b0, space0)
 
 #ifdef INSTANCED
 
-// Set 3: Per-instance data - see CONVENTIONS.md
-cbuffer InstanceParams : register(b0, space3)
-{
-    uint BaseInstance;
-};
-
+// Set 3: shared per-frame instance buffer (matches forward.vert layout).
+// Per-instance DataOffsets arrives via vertex attribute (slot 1); .x is the
+// index into Instances[].
 struct InstanceData
 {
     float4x4 WorldMatrix;
@@ -64,7 +61,7 @@ struct VertexInput
     float4 Color : TEXCOORD3;
     float3 Tangent : TEXCOORD4;
 #ifdef INSTANCED
-    uint InstanceID : SV_InstanceID;
+    uint4 DataOffsets : TEXCOORD5;
 #endif
 };
 
@@ -80,8 +77,9 @@ VertexOutput main(VertexInput input)
     VertexOutput output;
 
 #ifdef INSTANCED
-    float4x4 world = Instances[input.InstanceID + BaseInstance].WorldMatrix;
-    float4 instanceColor = Instances[input.InstanceID + BaseInstance].InstanceColor;
+    uint instanceIndex = input.DataOffsets.x;
+    float4x4 world = Instances[instanceIndex].WorldMatrix;
+    float4 instanceColor = Instances[instanceIndex].InstanceColor;
 #else
     float4x4 world = WorldMatrix;
     float4 instanceColor = InstanceColor;

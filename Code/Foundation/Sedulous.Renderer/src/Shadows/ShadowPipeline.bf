@@ -77,7 +77,7 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 		frame.SceneBufferOffset = 0;
 		frame.ObjectBufferOffset = 0;
 		frame.InstanceOffset = 0;
-		frame.BaseInstanceOffset = 0;
+		frame.InstanceOffsetsCount = 0;
 		frame.CurrentSceneOffset = 0;
 	}
 
@@ -195,25 +195,7 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 		encoder.SetBindGroup(BindGroupFrequency.Frame, frame.FrameBindGroup, sceneOffsets);
 	}
 
-	public uint32 WriteBaseInstance(int32 frameIndex, uint32 baseInstance)
-	{
-		let frame = mFrameResources[frameIndex % MaxFramesInFlight];
-		if (frame == null || frame.BaseInstanceBuffer == null)
-			return 0;
-
-		if (frame.BaseInstanceOffset >= PerFrameResources.MaxBaseInstanceSlots * PerFrameResources.BaseInstanceAlignment)
-			return 0;
-
-		let offset = frame.BaseInstanceOffset;
-		uint32[1] data = .(baseInstance);
-		TransferHelper.WriteMappedBuffer(frame.BaseInstanceBuffer, (uint64)offset,
-			Span<uint8>((uint8*)&data[0], 4));
-
-		frame.BaseInstanceOffset += PerFrameResources.BaseInstanceAlignment;
-		return offset;
-	}
-
-	/// Dispatches a category to all registered renderers - exposed so MeshRenderer
+/// Dispatches a category to all registered renderers - exposed so MeshRenderer
 	/// is reachable through the shadow pipeline. Mirrors Pipeline.RenderCategory.
 	public void RenderCategory(IRenderPassEncoder encoder, RenderDataCategory category,
 		PerFrameResources frame, RenderView view, RenderBatchFlags flags, PipelineConfig passConfig)
@@ -396,25 +378,24 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 			if (device.CreateBuffer(instanceBufDesc) case .Ok(let instanceBuf))
 				frame.InstanceBuffer = instanceBuf;
 
-			// BaseInstance ring buffer
-			let baseInstBufSize = (uint64)(PerFrameResources.BaseInstanceAlignment * PerFrameResources.MaxBaseInstanceSlots);
-			BufferDesc baseInstBufDesc = .()
+			// Per-instance DataOffsets vertex buffer
+			let offsetsBufferSize = (uint64)(PerFrameResources.MaxInstances * PerFrameResources.DataOffsetsStride);
+			BufferDesc offsetsBufDesc = .()
 			{
-				Label = "Shadow BaseInstance Buffer",
-				Size = baseInstBufSize,
-				Usage = .Uniform,
+				Label = "Shadow Instance Offsets Buffer",
+				Size = offsetsBufferSize,
+				Usage = .Vertex,
 				Memory = .CpuToGpu
 			};
 
-			if (device.CreateBuffer(baseInstBufDesc) case .Ok(let baseInstBuf))
-				frame.BaseInstanceBuffer = baseInstBuf;
+			if (device.CreateBuffer(offsetsBufDesc) case .Ok(let offsetsBuf))
+				frame.InstanceOffsetsBuffer = offsetsBuf;
 
-			// Instance bind group (set 3: b0=BaseInstance + t0=InstanceBuffer)
+			// Instance bind group (set 3: t0=InstanceBuffer)
 			let instanceLayout = mRenderContext.InstanceBindGroupLayout;
-			if (instanceLayout != null && frame.BaseInstanceBuffer != null && frame.InstanceBuffer != null)
+			if (instanceLayout != null && frame.InstanceBuffer != null)
 			{
-				BindGroupEntry[2] instanceBgEntries = .(
-					BindGroupEntry.Buffer(frame.BaseInstanceBuffer, 0, PerFrameResources.BaseInstanceAlignment),
+				BindGroupEntry[1] instanceBgEntries = .(
 					BindGroupEntry.Buffer(frame.InstanceBuffer, 0, instanceBufferSize)
 				);
 

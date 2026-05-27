@@ -45,17 +45,28 @@ Inter-stage semantics (VertexOutput -> FragmentInput) keep their descriptive
 names (COLOR0, TEXCOORD0, etc.) since those are matched between shader stages,
 not against the input layout.
 
-## Instancing (BaseInstance)
+## Instancing (DataOffsets vertex attribute)
 
-DX12 `SV_InstanceID` is always 0-based regardless of `firstInstance`.
-Vulkan `gl_InstanceIndex` (which DXC maps `SV_InstanceID` to) includes
-`firstInstance`. To avoid this divergence, all instanced draw calls use
-`firstInstance = 0` and pass the offset explicitly via a `BaseInstance`
-cbuffer with dynamic offset:
+DX12 `SV_InstanceID` is always 0-based regardless of `firstInstance`;
+Vulkan `gl_InstanceIndex` includes `firstInstance`. To avoid both this
+divergence and per-draw uniform-buffer juggling, instanced draws use a
+per-instance vertex attribute (`uint4 DataOffsets` at TEXCOORD5, vertex
+buffer slot 1, `.Instance` step rate). Each draw binds a slice of the
+per-frame DataOffsets buffer via vertex-buffer byte offset; the GPU
+delivers the right `DataOffsets` to each instance automatically.
 
 ```hlsl
-cbuffer InstanceParams : register(b0, space3) { uint BaseInstance; };
 StructuredBuffer<InstanceData> Instances : register(t0, space3);
 
-uint idx = SV_InstanceID + BaseInstance;
+struct VertexInput {
+    // ... per-vertex mesh attributes ...
+    uint4 DataOffsets : TEXCOORD5;   // .x = entity index into Instances[]
+};
+
+uint idx = input.DataOffsets.x;
+InstanceData data = Instances[idx];
 ```
+
+`DataOffsets.y/.z/.w` are reserved for future per-instance buffer
+indices (custom data, material data, skinning offsets). Today they're
+written as zero.

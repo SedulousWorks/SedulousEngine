@@ -58,29 +58,25 @@ class PerFrameResources
 	/// Current write offset into ObjectUniformBuffer (reset each frame).
 	public uint32 ObjectBufferOffset;
 
-	/// Instance buffer for batched instanced draws (StructuredBuffer of InstanceData).
-	/// Each entry = 128 bytes (WorldMatrix + PrevWorldMatrix).
+	/// Per-frame instance buffer (StructuredBuffer<InstanceData>, bound at set 3 t0).
+	/// Indexed by per-instance DataOffsets.x via the vertex attribute. Each entry =
+	/// WorldMatrix + PrevWorldMatrix + InstanceColor = 144 bytes.
 	public IBuffer InstanceBuffer;
 
-	/// BaseInstance uniform ring buffer (set 3, binding 0 with dynamic offset).
-	/// Each slot holds a uint BaseInstance value (256-byte aligned for Vulkan).
-	/// Written before each instanced draw call; the dynamic offset selects the slot.
-	public IBuffer BaseInstanceBuffer;
+	/// Per-frame DataOffsets vertex buffer (uint4 per instance, .Instance step rate).
+	/// Bound as the second vertex buffer for instanced draws; the GPU vertex-pulling
+	/// hardware delivers each instance's DataOffsets to the vertex shader, which
+	/// uses .x to index into InstanceBuffer.
+	public IBuffer InstanceOffsetsBuffer;
 
-	/// Current write offset into BaseInstanceBuffer (in bytes, 256-byte aligned).
-	public uint32 BaseInstanceOffset;
-
-	/// Bind group for the instance data (set 3: b0=BaseInstance + t0=InstanceBuffer).
+	/// Bind group for the instance data (set 3: t0 = StructuredBuffer<InstanceData>).
 	public IBindGroup InstanceBindGroup;
 
 	/// Current write offset into InstanceBuffer (in instances, not bytes).
 	public int32 InstanceOffset;
 
-	/// Maximum BaseInstance slots per frame (matching MaxObjects for safety).
-	public const uint32 MaxBaseInstanceSlots = 4096;
-
-	/// Alignment for BaseInstance buffer entries (256 bytes for Vulkan).
-	public const uint32 BaseInstanceAlignment = 256;
+	/// Current write offset into InstanceOffsetsBuffer (in uint4 entries, not bytes).
+	public int32 InstanceOffsetsCount;
 
 	/// Current write offset into SceneUniformBuffer (reset each frame).
 	/// Pipeline.WriteSceneUniforms returns the slot offset before advancing this.
@@ -103,6 +99,9 @@ class PerFrameResources
 	/// Size of one instance entry in the StructuredBuffer (2 matrices + Color = 144 bytes).
 	public const int32 InstanceStride = 144;
 
+	/// Size of one DataOffsets entry (uint4 = 16 bytes).
+	public const int32 DataOffsetsStride = 16;
+
 	/// Alignment for scene uniform slots. 512 bytes is a comfortable upper bound for
 	/// SceneUniforms (~432 bytes) and a multiple of 256 for Vulkan compatibility.
 	public const uint32 SceneAlignment = 512;
@@ -121,7 +120,7 @@ class PerFrameResources
 		device.DestroyBuffer(ref ObjectUniformBuffer);
 		if (InstanceBuffer != null)
 			device.DestroyBuffer(ref InstanceBuffer);
-		if (BaseInstanceBuffer != null)
-			device.DestroyBuffer(ref BaseInstanceBuffer);
+		if (InstanceOffsetsBuffer != null)
+			device.DestroyBuffer(ref InstanceOffsetsBuffer);
 	}
 }

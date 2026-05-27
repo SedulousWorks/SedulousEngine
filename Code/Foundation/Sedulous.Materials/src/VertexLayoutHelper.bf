@@ -49,19 +49,17 @@ public static class VertexLayoutHelper
 		.(VertexFormat.Float32x4, 56, 6)   // Joint Weights
 	);
 
-	/// Instance data: 4 x float4 (world matrix rows) - for GPU instancing
-	/// Used as second vertex buffer with per-instance step rate
-	/// Instance data starts at location 5 (after Position=0, Normal=1, UV=2, Color=3, Tangent=4)
-	/// Use CreateInstanceDataAttributes() to get attributes at a custom starting location if needed.
-	public static VertexAttribute[4] InstanceDataAttributes = .(
-		.(VertexFormat.Float32x4, 0, 5),   // WorldRow0 (location 5)
-		.(VertexFormat.Float32x4, 16, 6),  // WorldRow1 (location 6)
-		.(VertexFormat.Float32x4, 32, 7),  // WorldRow2 (location 7)
-		.(VertexFormat.Float32x4, 48, 8)   // WorldRow3 (location 8)
+	/// Per-instance DataOffsets attribute: uint4 of indices into per-frame data buffers.
+	/// Bound as a second vertex buffer at slot 1 with per-instance step rate.
+	/// Used by the instanced mesh path; .x = entity index into Instances[], .y/.z/.w reserved
+	/// for future per-instance buffers (custom data, material data, skinning).
+	/// Starts at location 5 (after Position=0, Normal=1, UV=2, Color=3, Tangent=4).
+	public static VertexAttribute[1] DataOffsetsAttributes = .(
+		.(VertexFormat.Uint32x4, 0, 5)
 	);
 
-	/// Instance data stride (4 x float4 = 64 bytes).
-	public const uint32 InstanceDataStride = 64;
+	/// DataOffsets stride (1 x uint4 = 16 bytes).
+	public const uint32 DataOffsetsStride = 16;
 
 	/// Gets the vertex stride for a layout type.
 	public static uint32 GetStride(VertexLayoutType layoutType)
@@ -137,44 +135,22 @@ public static class VertexLayoutHelper
 		outLayouts = .(CreateBufferLayout(layoutType));
 	}
 
-	/// Creates instance data attributes at a given starting location.
-	/// Use this when the shader has a different number of per-vertex attributes.
-	/// For a depth shader (Position, Normal, UV), startLocation should be 3.
-	/// For a forward shader with tangent (Position, Normal, UV, Tangent), startLocation should be 4.
-	public static void CreateInstanceDataAttributes(uint32 startLocation, out VertexAttribute[4] outAttributes)
+	/// Creates a DataOffsets vertex buffer layout for instanced mesh rendering.
+	/// Single uint4 attribute at location 5, per-instance step rate.
+	public static VertexBufferLayout CreateDataOffsetsBufferLayout()
 	{
-		outAttributes = .(
-			.(VertexFormat.Float32x4, 0, startLocation),       // WorldRow0
-			.(VertexFormat.Float32x4, 16, startLocation + 1),  // WorldRow1
-			.(VertexFormat.Float32x4, 32, startLocation + 2),  // WorldRow2
-			.(VertexFormat.Float32x4, 48, startLocation + 3)   // WorldRow3
-		);
-	}
-
-	/// Creates an instance buffer layout for GPU instancing.
-	/// The instance buffer uses per-instance step mode (advances once per instance, not per vertex).
-	public static VertexBufferLayout CreateInstanceBufferLayout()
-	{
-		return .(InstanceDataStride, InstanceDataAttributes, .Instance);
-	}
-
-	/// Creates an instance buffer layout at a custom starting location.
-	public static VertexBufferLayout CreateInstanceBufferLayoutAt(uint32 startLocation)
-	{
-		VertexAttribute[4] attrs = default;
-		CreateInstanceDataAttributes(startLocation, out attrs);
-		return .(InstanceDataStride, attrs, .Instance);
+		return .(DataOffsetsStride, DataOffsetsAttributes, .Instance);
 	}
 
 	/// Creates a vertex buffer layout array for instanced mesh rendering.
-	/// First buffer is per-vertex mesh data, second buffer is per-instance data.
+	/// First buffer is per-vertex mesh data, second buffer is per-instance DataOffsets.
 	public static void CreateInstancedMeshLayout(
 		VertexLayoutType vertexLayout,
 		out VertexBufferLayout[2] outLayouts)
 	{
 		outLayouts = .(
 			CreateBufferLayout(vertexLayout),
-			CreateInstanceBufferLayout()
+			CreateDataOffsetsBufferLayout()
 		);
 	}
 }
