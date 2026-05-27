@@ -311,16 +311,23 @@ class RenderStressTestApp : EngineApplication
 
 		if (mSinWaveBob)
 		{
-			int i = 0;
+			float amplitude = 1.0f;
+			float speed = 2.0f;
 			for (var entity in ref mSphereEntities)
 			{
 				var transform = mScene.GetLocalTransform(entity);
 
-				float amplitude = 1.0f;
-				float speed = 2.0f;
-				int32 gridX = (int32)(i % mGridSize);
-				int32 gridZ = (int32)(i / mGridSize);
-				float phaseOffset = (gridX + gridZ) * 0.3f;
+				// Phase from world position, not list index + grid size.
+				// AddSphereBatch grows mGridSize every batch, but already-
+				// placed spheres keep their original world positions. Using
+				// the list index + current mGridSize would shift their
+				// phases non-uniformly every time a new batch spawns
+				// (sphere at row-1-start of the old grid suddenly thinks
+				// it's at row 0 of the new wider grid). World-position-based
+				// phase stays continuous regardless of batch count.
+				let worldX = transform.Position.X;
+				let worldZ = transform.Position.Z;
+				float phaseOffset = (worldX + worldZ) * 0.2f;
 
 				// Shift wave up by amplitude so min = planeY
 				float y = Math.Sin(m_Time * speed + phaseOffset) * amplitude + amplitude;
@@ -328,7 +335,6 @@ class RenderStressTestApp : EngineApplication
 				transform.Position.Y = planeY + y;
 
 				mScene.SetLocalTransform(entity, transform);
-				i++;
 			}
 		}
 
