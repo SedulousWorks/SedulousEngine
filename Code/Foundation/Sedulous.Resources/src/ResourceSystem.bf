@@ -373,6 +373,24 @@ class ResourceSystem
 		mListeners.Remove(listener);
 	}
 
+	/// Notifies all listeners that a resource has changed in place
+	/// without going through ReloadResource - used for editor live-edits
+	/// that bump Resource.Generation directly (material editor color
+	/// pickers, etc.). Existing listeners (component managers) treat it
+	/// the same as a hot-reload: mark all dependent components dirty.
+	///
+	/// Takes a ResourceRef so callers identify the resource by the same
+	/// (Guid + URI) handle they use everywhere else in the engine.
+	/// `ref.Path` may be empty for runtime-created resources - the
+	/// listener API accepts an empty URI.
+	public void NotifyResourceChanged(ResourceRef @ref, IResource resource)
+	{
+		let uri = @ref.Path ?? "";
+		let resourceType = resource?.GetType();
+		for (let listener in mListeners)
+			listener.OnResourceReloaded(uri, resourceType, resource);
+	}
+
 	// ==================== Loading ====================
 
 	/// Loads a resource by URI (`scheme://locator`).

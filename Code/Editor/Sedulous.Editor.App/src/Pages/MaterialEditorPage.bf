@@ -123,6 +123,17 @@ class MaterialEditorPage : IEditorPage, IEditableAssetPage
 	{
 		if (mMaterial == null) return;
 		mMaterial.IncrementGeneration();
+
+		// Live-edit (in-memory mutation) doesn't go through ReloadResource,
+		// so component managers' IResourceChangeListener.OnResourceReloaded
+		// never fires - the dirty-driven ResolveResources path can't tell
+		// the material changed and no MeshComponent gets re-resolved. Fire
+		// the notification manually so dependent components pick up the
+		// new color / uniform / texture next frame.
+		let rs = mEditorContext?.ResourceSystem;
+		if (rs != null)
+			rs.NotifyResourceChanged(mAssetRef, mMaterial);
+
 		MarkDirty();
 	}
 
