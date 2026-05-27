@@ -171,6 +171,7 @@ class SpriteComponentManager : ComponentManager<SpriteComponent>, IRenderDataPro
 		if (scene == null) return;
 
 		let frameAlloc = context.RenderContext.FrameAllocator;
+		let viewMatrix = context.ViewMatrix;
 
 		for (let comp in ActiveComponents)
 		{
@@ -191,6 +192,8 @@ class SpriteComponentManager : ComponentManager<SpriteComponent>, IRenderDataPro
 			data.MaterialSortKey = materialKey;
 			data.SortOrder = 0;
 			data.Flags = .None;
+			// Sprites go in the Transparent category - inline back-to-front sort key.
+			data.SortKey = ExtractedRenderData.ComputeBackToFrontSortKey(worldPos, viewMatrix);
 			data.Size = comp.Size;
 			data.Tint = comp.Tint;
 			data.UVRect = comp.UVRect;

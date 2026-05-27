@@ -443,6 +443,7 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 
 		let frameAlloc = context.RenderContext.FrameAllocator;
 		let mainFrustum = BoundingFrustum(context.ViewProjectionMatrix);
+		let viewMatrix = context.ViewMatrix;
 
 		for (let comp in ActiveComponents)
 		{
@@ -464,6 +465,11 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 			let worldMatrix = scene.GetWorldMatrix(comp.Owner);
 			let prevWorldMatrix = scene.GetPrevWorldMatrix(comp.Owner);
 			let center = comp.WorldBounds.Center;
+
+			// View-space depth shared across all submeshes of this entity.
+			let viewPos = Vector3.Transform(center, viewMatrix);
+			let depth = Math.Max(viewPos.Z, 0);
+			let depthBits = (uint32)(depth * 1000.0f);
 
 			var flags = RenderDataFlags.None;
 			if (comp.CastsShadows)
@@ -492,12 +498,20 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 
 				let materialKey = (material != null) ? (uint32)(int)Internal.UnsafeCastToPtr(material) : 0;
 
+				// Inline sort key: same shape as MeshComponentManager.ExtractSlot.
+				uint64 sortKey;
+				if (category == RenderCategories.Transparent)
+					sortKey = (uint64)(uint32.MaxValue - depthBits);
+				else
+					sortKey = ((uint64)materialKey << 32) | (uint64)depthBits;
+
 				let data = new:frameAlloc MeshRenderData();
 				data.Position = center;
 				data.Bounds = comp.WorldBounds;
 				data.MaterialSortKey = materialKey;
 				data.SortOrder = 0;
 				data.Flags = flags;
+				data.SortKey = sortKey;
 				data.WorldMatrix = worldMatrix;
 				data.PrevWorldMatrix = prevWorldMatrix;
 				data.InstanceColor = comp.Color;

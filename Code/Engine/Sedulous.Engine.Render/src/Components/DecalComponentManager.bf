@@ -200,6 +200,8 @@ class DecalComponentManager : ComponentManager<DecalComponent>, IRenderDataProvi
 			data.MaterialSortKey = materialKey;
 			data.SortOrder = 0;
 			data.Flags = .None;
+			// Decals sort by SortOrder (decals overlay in author-defined order).
+			data.SortKey = (uint64)(uint32)data.SortOrder;
 			data.WorldMatrix = worldMatrix;
 			data.InvWorldMatrix = invWorld;
 			data.Color = comp.Color;

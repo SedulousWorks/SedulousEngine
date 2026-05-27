@@ -382,11 +382,12 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 		let workerCount = Jobs.JobSystem.IsInitialized ? Jobs.JobSystem.WorkerCount : 0;
 
 		let mainFrustum = BoundingFrustum(context.ViewProjectionMatrix);
+		let viewMatrix = context.ViewMatrix;
 
 		// For small counts or no job system, extract sequentially
 		if (slotCount < 256 || workerCount == 0)
 		{
-			ExtractRange(0, slotCount, context.RenderContext.FrameAllocator, context.RenderData, mainFrustum);
+			ExtractRange(0, slotCount, context.RenderContext.FrameAllocator, context.RenderData, mainFrustum, viewMatrix);
 			return;
 		}
 
@@ -394,10 +395,19 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 		let chunkCount = Math.Min((int32)slotCount, workerCount + 1);
 		let catCount = RenderCategories.Count;
 
-		// Per-chunk output lists: chunkCount × catCount flat array
+		// Per-chunk output lists: chunkCount × catCount flat array.
+		// Pre-size each per-chunk list to (slotCount / chunkCount) so per-Add
+		// growth doesn't realloc - the upper bound assumes one entry per slot
+		// per category, which over-reserves for the no-shared-mesh path but
+		// is still cheap (List.Reserve is O(1) on the underlying array).
+		let perChunkReserve = (slotCount + chunkCount - 1) / chunkCount;
 		let threadLists = scope List<RenderData>[chunkCount * catCount];
 		for (int i = 0; i < threadLists.Count; i++)
-			threadLists[i] = scope:: List<RenderData>();
+		{
+			let list = scope:: List<RenderData>();
+			list.Reserve(perChunkReserve);
+			threadLists[i] = list;
+		}
 
 		int32 nextAllocIdx = 0;
 
@@ -407,18 +417,29 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 
 			// Build per-category output for this chunk
 			let baseIdx = chunkIdx * (int32)catCount;
-			ExtractRangeToLists(begin, end, alloc, context, threadLists, baseIdx, mainFrustum);
+			ExtractRangeToLists(begin, end, alloc, context, threadLists, baseIdx, mainFrustum, viewMatrix);
 		});
 
-		// Merge per-thread lists into the shared ExtractedRenderData (single-threaded)
+		// Merge per-thread lists into the shared ExtractedRenderData
+		// (single-threaded). Pre-reserve shared category lists from the
+		// summed per-chunk counts so the inner Adds don't trigger growth.
 		for (int32 c = 0; c < catCount; c++)
 		{
 			let category = RenderDataCategory((uint16)c);
+			let sharedList = context.RenderData.GetBatch(category);
+			if (sharedList == null) continue;
+
+			int32 catTotal = 0;
+			for (int32 t = 0; t < chunkCount; t++)
+				catTotal += (int32)threadLists[t * catCount + c].Count;
+			if (catTotal == 0) continue;
+
+			sharedList.Reserve(sharedList.Count + catTotal);
 			for (int32 t = 0; t < chunkCount; t++)
 			{
 				let list = threadLists[t * catCount + c];
 				for (let entry in list)
-					context.RenderData.Add(category, entry);
+					sharedList.Add(entry);
 			}
 		}
 	}
@@ -427,13 +448,14 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 	private void ExtractRange(int32 begin, int32 end,
 		Sedulous.Core.Memory.FrameAllocator alloc,
 		ExtractedRenderData renderData,
-		in BoundingFrustum mainFrustum)
+		in BoundingFrustum mainFrustum,
+		in Matrix viewMatrix)
 	{
 		let scene = Scene;
 		let gpuResources = GPUResources;
 
 		for (int32 i = begin; i < end; i++)
-			ExtractSlot(i, scene, gpuResources, alloc, renderData, null, 0, mainFrustum);
+			ExtractSlot(i, scene, gpuResources, alloc, renderData, null, 0, mainFrustum, viewMatrix);
 	}
 
 	/// Parallel extraction into per-thread lists (no shared state).
@@ -441,13 +463,14 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 		FrameAllocator alloc,
 		in RenderExtractionContext context,
 		List<RenderData>[] threadLists, int32 baseIdx,
-		in BoundingFrustum mainFrustum)
+		in BoundingFrustum mainFrustum,
+		in Matrix viewMatrix)
 	{
 		let scene = Scene;
 		let gpuResources = GPUResources;
 
 		for (int32 i = begin; i < end; i++)
-			ExtractSlot(i, scene, gpuResources, alloc, null, threadLists, baseIdx, mainFrustum);
+			ExtractSlot(i, scene, gpuResources, alloc, null, threadLists, baseIdx, mainFrustum, viewMatrix);
 	}
 
 	/// Extracts a single slot. Writes to either renderData (sequential) or
@@ -457,11 +480,15 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 	/// against the view frustum before per-submesh emission. Skipping here
 	/// saves all per-submesh allocations + sort key work + downstream
 	/// instance buffer / draw command overhead for off-screen entities.
+	///
+	/// Computes data.SortKey inline so ExtractedRenderData.SortOnly() can
+	/// skip the per-entry sort-key recomputation pass.
 	private void ExtractSlot(int32 slotIdx, Scene scene, GPUResourceManager gpuResources,
 		FrameAllocator alloc,
 		ExtractedRenderData renderData,
 		List<RenderData>[] threadLists, int32 threadListBase,
-		in BoundingFrustum mainFrustum)
+		in BoundingFrustum mainFrustum,
+		in Matrix viewMatrix)
 	{
 		let mesh = GetAtSlot(slotIdx);
 		if (mesh == null || !mesh.IsActive || !mesh.IsVisible)
@@ -484,6 +511,11 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 		// Cached world-space bounds (refreshed in PostTransform). Used
 		// for both the sort-key center and the world-space data.Bounds.
 		let center = mesh.WorldBounds.Center;
+
+		// View-space depth shared across all submeshes of this entity.
+		let viewPos = Vector3.Transform(center, viewMatrix);
+		let depth = Math.Max(viewPos.Z, 0);
+		let depthBits = (uint32)(depth * 1000.0f);
 
 		var flags = RenderDataFlags.None;
 		if (mesh.CastsShadows)
@@ -510,12 +542,22 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 
 			let materialKey = (material != null) ? (uint32)(int)Internal.UnsafeCastToPtr(material) : 0;
 
+			// Inline sort key: mirrors RenderCategories.SortFrontToBack/BackToFront.
+			// Front-to-back for opaque/masked (material in upper bits, depth in lower);
+			// back-to-front for transparent (inverted depth).
+			uint64 sortKey;
+			if (category == RenderCategories.Transparent)
+				sortKey = (uint64)(uint32.MaxValue - depthBits);
+			else
+				sortKey = ((uint64)materialKey << 32) | (uint64)depthBits;
+
 			let data = new:alloc MeshRenderData();
 			data.Position = center;
 			data.Bounds = mesh.WorldBounds;
 			data.MaterialSortKey = materialKey;
 			data.SortOrder = 0;
 			data.Flags = flags;
+			data.SortKey = sortKey;
 			data.WorldMatrix = worldMatrix;
 			data.PrevWorldMatrix = prevWorldMatrix;
 			data.InstanceColor = mesh.Color;

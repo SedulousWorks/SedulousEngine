@@ -83,8 +83,29 @@ public class ExtractedRenderData
 
 	// ==================== Sorting ====================
 
-	/// Computes sort keys and sorts each category in place.
-	/// Call once after all data has been added, before rendering.
+	/// Sorts each category in place by entry.SortKey. Assumes SortKey was
+	/// already populated by the extractor (inline during the parallel
+	/// extraction pass). Use this instead of SortAndBatch when the
+	/// extractor knows how to compute its own sort key.
+	public void SortOnly()
+	{
+		for (int i = 0; i < RenderCategories.Count; i++)
+		{
+			let list = mCategories[i];
+			if (list.Count > 1)
+			{
+				list.Sort(scope (a, b) => {
+					if (a.SortKey < b.SortKey) return -1;
+					if (a.SortKey > b.SortKey) return 1;
+					return 0;
+				});
+			}
+		}
+	}
+
+	/// Computes sort keys and sorts each category in place. Retained for
+	/// callers that don't populate SortKey during extraction; new code
+	/// should inline SortKey and call SortOnly() instead.
 	public void SortAndBatch()
 	{
 		for (int i = 0; i < RenderCategories.Count; i++)
@@ -107,6 +128,30 @@ public class ExtractedRenderData
 				});
 			}
 		}
+	}
+
+	// ==================== Sort key helpers (extractor-inline use) ====================
+
+	/// Compute the front-to-back sort key for opaque / masked geometry.
+	/// Material key in the upper 32 bits (minimize state changes), view-space
+	/// depth in the lower 32 (closer first). Mirrors RenderCategories.SortFrontToBack.
+	public static uint64 ComputeFrontToBackSortKey(Vector3 worldPos, in Matrix viewMatrix, uint32 materialKey)
+	{
+		let viewPos = Vector3.Transform(worldPos, viewMatrix);
+		let depth = Math.Max(viewPos.Z, 0);
+		uint32 depthBits = (uint32)(depth * 1000.0f);
+		return ((uint64)materialKey << 32) | (uint64)depthBits;
+	}
+
+	/// Compute the back-to-front sort key for transparent / particle geometry.
+	/// Inverted depth so further objects sort first. Mirrors
+	/// RenderCategories.SortBackToFront.
+	public static uint64 ComputeBackToFrontSortKey(Vector3 worldPos, in Matrix viewMatrix)
+	{
+		let viewPos = Vector3.Transform(worldPos, viewMatrix);
+		let depth = Math.Max(viewPos.Z, 0);
+		uint32 depthBits = (uint32)(depth * 1000.0f);
+		return (uint64)(uint32.MaxValue - depthBits);
 	}
 
 	// ==================== Accessing Data ====================

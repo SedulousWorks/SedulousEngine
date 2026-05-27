@@ -405,6 +405,8 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 					? (uint32)(int)Internal.UnsafeCastToPtr(material)
 					: 0;
 				data.Flags = .Dynamic;
+				// Particle category sorts back-to-front (depth-inverted).
+				data.SortKey = ExtractedRenderData.ComputeBackToFrontSortKey(instance.Position, context.ViewMatrix);
 				data.Vertices = renderState.RenderData.Vertices.CArray();
 				data.VertexCount = renderState.RenderData.VertexCount;
 				data.BlendMode = system.BlendMode;
@@ -468,6 +470,8 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 		// inheriting depth-write, shadows, etc.
 		let category = CategoryForBlendMode(material.BlendMode);
 		let materialKey = (uint32)(int)Internal.UnsafeCastToPtr(material);
+		let viewMatrix = context.ViewMatrix;
+		let isTransparent = (category == RenderCategories.Transparent);
 
 		// Material's pipeline config drives pipeline variant selection.
 		let pipelineConfig = (material.Material != null)
@@ -513,6 +517,10 @@ class ParticleComponentManager : ComponentManager<ParticleComponent>, IRenderDat
 			data.Bounds = .(positions[i] - halfVec, positions[i] + halfVec);
 			data.SortOrder = 0;
 			data.Flags = .Dynamic;
+			// Inline sort key (same shape as MeshComponentManager).
+			data.SortKey = isTransparent
+				? ExtractedRenderData.ComputeBackToFrontSortKey(positions[i], viewMatrix)
+				: ExtractedRenderData.ComputeFrontToBackSortKey(positions[i], viewMatrix, materialKey);
 			data.WorldMatrix = worldMatrix;
 			data.PrevWorldMatrix = worldMatrix;  // motion vectors: same as current for v1
 			// Per-particle color from ColorInitializer / ColorOverLifetime.
