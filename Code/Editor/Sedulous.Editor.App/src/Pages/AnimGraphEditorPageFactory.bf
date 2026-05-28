@@ -278,7 +278,7 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 		paramsLabel.TextColor = .(160, 160, 175, 255);
 		paramsHeader.AddView(paramsLabel, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
 		let addParamBtn = new Button("+");
-		addParamBtn.OnClick.Add(new [=page, =panel] (btn) => {
+		addParamBtn.OnClick.Add(new [=page] (btn) => {
 			ShowAddParameterMenu(page, btn);
 		});
 		paramsHeader.AddView(addParamBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(24)), Height = .Fixed(.Px(18)) });
@@ -345,7 +345,7 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 				if (let clipNode = state.Node as ClipStateNode)
 				{
 					// Clip ref via IInspectable
-					if (let inspectable = clipNode as IInspectable)
+					if (let inspectable = clipNode)
 					{
 						let desc = scope EditorPropertyGridDescriptor(propGrid,
 							context?.DialogService,
@@ -665,7 +665,7 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 				setter: new [=entry, =page] (val) => { entry.Threshold = (float)val; page.MarkDirty(); }));
 
 			// Clip ref via IInspectable
-			if (let inspectable = entry as IInspectable)
+			if (let inspectable = entry)
 			{
 				let desc = scope EditorPropertyGridDescriptor(propGrid,
 					context?.DialogService,
@@ -725,7 +725,7 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 				setter: new [=entry, =page] (val) => { entry.Position.Y = (float)val; page.MarkDirty(); }));
 
 			// Clip ref via IInspectable
-			if (let inspectable = entry as IInspectable)
+			if (let inspectable = entry)
 			{
 				let desc = scope EditorPropertyGridDescriptor(propGrid,
 					context?.DialogService,
