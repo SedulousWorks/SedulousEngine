@@ -256,6 +256,7 @@ class PrefabSpawnerTests
 		let prefabScene = scope Scene();
 		prefabScene.AddModule(new HealthManager());
 		let root = prefabScene.CreateEntity("Warrior");
+#unwarn
 		let rootId = prefabScene.GetEntityId(root);
 		let healthMgr = prefabScene.GetModule<HealthManager>();
 		let hHandle = healthMgr.CreateComponent(root);
