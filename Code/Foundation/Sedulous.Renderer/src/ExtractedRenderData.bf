@@ -20,6 +20,16 @@ public class ExtractedRenderData
 	// frame allocator and are dropped on Clear().
 	private List<RenderData>[RenderCategories.Count] mCategories;
 
+	// Scratch buffers for radix sort. Per-view instance; safe under parallel
+	// view extraction since each view has its own ExtractedRenderData.
+	private struct SortPair
+	{
+		public uint64 Key;
+		public RenderData Value;
+	}
+	private List<SortPair> mSortPairsA = new .() ~ delete _;
+	private List<SortPair> mSortPairsB = new .() ~ delete _;
+
 	// View info
 	private Matrix mViewMatrix;
 	private Matrix mProjectionMatrix;
@@ -87,20 +97,75 @@ public class ExtractedRenderData
 	/// already populated by the extractor (inline during the parallel
 	/// extraction pass). Use this instead of SortAndBatch when the
 	/// extractor knows how to compute its own sort key.
+	///
+	/// Uses LSD radix sort on the uint64 SortKey - O(N) instead of the
+	/// O(N log N) of a comparison sort, with much better cache behavior
+	/// (key+ptr pairs are 16 bytes and traversed sequentially per pass).
 	public void SortOnly()
 	{
 		for (int i = 0; i < RenderCategories.Count; i++)
 		{
 			let list = mCategories[i];
 			if (list.Count > 1)
-			{
-				list.Sort(scope (a, b) => {
-					if (a.SortKey < b.SortKey) return -1;
-					if (a.SortKey > b.SortKey) return 1;
-					return 0;
-				});
-			}
+				RadixSortByKey(list);
 		}
+	}
+
+	/// LSD radix sort by uint64 SortKey: 8 byte-level passes, each pass
+	/// distributes (key, ptr) pairs into 256 bins by one byte of the key.
+	/// Buffers ping-pong; after 8 passes the sorted result is back in mSortPairsA.
+	private void RadixSortByKey(List<RenderData> list)
+	{
+		let n = list.Count;
+		mSortPairsA.Count = n;
+		mSortPairsB.Count = n;
+
+		// Seed the working buffer with (key, ptr) pairs.
+		for (int i = 0; i < n; i++)
+		{
+			let entry = list[i];
+			mSortPairsA[i] = .() { Key = entry.SortKey, Value = entry };
+		}
+
+		uint32[256] hist = ?;
+		bool sourceIsA = true;
+
+		for (int pass = 0; pass < 8; pass++)
+		{
+			let shift = pass * 8;
+			let src = sourceIsA ? mSortPairsA : mSortPairsB;
+			let dst = sourceIsA ? mSortPairsB : mSortPairsA;
+
+			// Histogram: count entries per bucket.
+			for (int b = 0; b < 256; b++) hist[b] = 0;
+			for (int i = 0; i < n; i++)
+				hist[(uint8)(src[i].Key >> shift)]++;
+
+			// Prefix-sum into write offsets per bucket (turns hist into "next write pos").
+			uint32 sum = 0;
+			for (int b = 0; b < 256; b++)
+			{
+				let c = hist[b];
+				hist[b] = sum;
+				sum += c;
+			}
+
+			// Scatter into dst at the bucketed offset.
+			for (int i = 0; i < n; i++)
+			{
+				let entry = src[i];
+				let bucket = (uint8)(entry.Key >> shift);
+				dst[hist[bucket]] = entry;
+				hist[bucket]++;
+			}
+
+			sourceIsA = !sourceIsA;
+		}
+
+		// 8 passes is even -> sorted result is back in mSortPairsA. Write
+		// ordered pointers back into the category list.
+		for (int i = 0; i < n; i++)
+			list[i] = mSortPairsA[i].Value;
 	}
 
 	/// Computes sort keys and sorts each category in place. Retained for
