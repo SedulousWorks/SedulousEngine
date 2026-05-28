@@ -121,6 +121,24 @@ public class Scene : IDisposable
 	/// Number of alive entities.
 	public int32 EntityCount => mAliveCount;
 
+	/// Monotonic structural-revision counter. Incremented when entities are
+	/// added/destroyed or when render-relevant component state changes (mesh,
+	/// material, submesh, visibility). Renderers key per-scene caches on this
+	/// so they can skip rebuilding work when the scene is structurally stable
+	/// across frames. Transform/animation changes do NOT bump this — those
+	/// only affect per-instance data, not render grouping.
+	public uint64 Revision => mRevision;
+	private uint64 mRevision = 1;
+
+	/// Bumps the revision counter. Call from any code path that changes the
+	/// structural shape of the scene as renderers see it (entity create/destroy,
+	/// mesh swap, material swap, visibility toggle, layer mask change).
+	[Inline]
+	public void BumpRevision()
+	{
+		mRevision++;
+	}
+
 	/// Scene name (for debugging/identification).
 	public String Name { get; set; } = new .("Scene") ~ delete _;
 
@@ -235,6 +253,7 @@ public class Scene : IDisposable
 		transform.UpdatedThisFrame = false;
 
 		mAliveCount++;
+		mRevision++;
 
 		let handle = EntityHandle() { Index = (uint32)index, Generation = slot.Generation };
 		mEntityIdMap[id] = handle;
@@ -1293,6 +1312,7 @@ public class Scene : IDisposable
 		slot.PersistentId = .Empty;
 		mEntityFreeList.Add(index);
 		mAliveCount--;
+		mRevision++;
 
 		// Clear transform
 		var transform = ref mTransforms[index];

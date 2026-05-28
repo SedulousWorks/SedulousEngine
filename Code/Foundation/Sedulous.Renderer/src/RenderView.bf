@@ -73,4 +73,10 @@ class RenderView
 	/// Owned by the view - extracted by the engine layer per frame, consumed by
 	/// pipeline passes. Never reassigned externally.
 	public ExtractedRenderData RenderData = new .() ~ delete _;
+
+	/// Scene structural-revision counter captured at extraction time. Renderers
+	/// key per-scene caches on this value so they can skip rebuilding when the
+	/// scene is structurally unchanged across frames. Set by the engine when
+	/// populating the view.
+	public uint64 SceneRevision;
 }

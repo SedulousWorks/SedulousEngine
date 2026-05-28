@@ -119,6 +119,8 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 		// MaterialSystem reference so subsequent SetUniform/SetTexture
 		// calls notify the global dirty list.
 		Resolver.MaterialSystem.PrepareInstance(material);
+		// Material bind-group pointer is part of BatchKey; structural rebump.
+		Scene?.BumpRevision();
 	}
 
 	/// Marks a component for re-resolution on the next ResolveResources
@@ -127,6 +129,10 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 	{
 		if (comp.ResolveDirty)
 			return;
+		// Structural change relevant to render grouping (mesh/material ref edit,
+		// component creation, hot-reload). Renderers key per-scene caches on
+		// Scene.Revision; bumping here invalidates any cached batch grouping.
+		Scene?.BumpRevision();
 		comp.ResolveDirty = true;
 		mResolveDirtyEntities.Add((int32)comp.Owner.Index);
 	}

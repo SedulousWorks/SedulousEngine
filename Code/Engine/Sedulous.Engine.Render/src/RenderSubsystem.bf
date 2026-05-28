@@ -507,6 +507,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 	{
 		view.RenderData.SetView(view.ViewMatrix, view.ProjectionMatrix, view.CameraPosition,
 			view.NearPlane, view.FarPlane, view.Width, view.Height);
+		view.SceneRevision = scene.Revision;
 
 		RenderExtractionContext context = .()
 		{
@@ -817,6 +818,8 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 #if !FRUSTUM_CULL_SHADOWS
 	private void CopyShadowData(RenderView shadowView, RenderView mainView)
 	{
+		shadowView.SceneRevision = mainView.SceneRevision;
+
 		let srcOpaque = mainView.RenderData.GetBatch(RenderCategories.Opaque);
 		if (srcOpaque != null)
 		{
@@ -836,6 +839,8 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 #else
 	private void CopyShadowData(RenderView shadowView, RenderView mainView)
 	{
+		shadowView.SceneRevision = mainView.SceneRevision;
+
 		let frustum = BoundingFrustum(shadowView.ViewProjectionMatrix);
 
 		let srcOpaque = mainView.RenderData.GetBatch(RenderCategories.Opaque);
