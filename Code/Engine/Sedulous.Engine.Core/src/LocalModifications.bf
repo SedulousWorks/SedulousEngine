@@ -6,9 +6,9 @@ using System.Collections;
 /// Scene-owned tracker for prefab instance modifications.
 /// Maps entity handles to their ObjectState (per-entity diff state).
 ///
-/// NOT a SceneModule — it is a plain class owned directly by Scene
+/// NOT a SceneModule - it is a plain class owned directly by Scene
 /// as a member field. Tracks which properties on which entities differ
-/// from their prefab template. Does NOT store override values — the
+/// from their prefab template. Does NOT store override values - the
 /// live component already has the current value.
 public class LocalModifications
 {

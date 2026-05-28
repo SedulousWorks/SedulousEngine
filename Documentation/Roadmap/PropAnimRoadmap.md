@@ -11,7 +11,7 @@ editor UI/UX layer.
 | 1 | Page scaffolding (preview source, hierarchy, scrub, play/stop, save) | **DONE** |
 | 2 | Dopesheet widget + keyframe drag/add/delete | **DONE** |
 | 2.5 | Toolbar duration field, looping toggle, keyframe inspector with type-specific value editors | **DONE** |
-| 3 | Property picker (add track from registry) | **DONE** (scoped — see below) |
+| 3 | Property picker (add track from registry) | **DONE** (scoped - see below) |
 | 4 | Record mode | **DEFERRED** (design documented, not needed for current game) |
 | 5+ | Curve editor (CubicSpline tangent authoring on existing `CurveCanvas`) | **DEFERRED** |
 
@@ -24,7 +24,7 @@ edit times/values, scrub, play, save.
 
 ## Current state
 
-**Runtime — DONE** (`Sedulous.Animation` + `Sedulous.Animation.Resources` + `Sedulous.Engine.Animation`):
+**Runtime - DONE** (`Sedulous.Animation` + `Sedulous.Animation.Resources` + `Sedulous.Engine.Animation`):
 
 - `PropertyAnimationClip`: name, duration, looping flag, plus five
   parallel type-specific track lists (`FloatTracks`, `Vector2Tracks`,
@@ -48,7 +48,7 @@ edit times/values, scrub, play, save.
   (multi-track, multi-type, easing preservation), and in-place
   hot-reload that preserves outside references to the clip pointer.
 
-**Editor — DONE through Phase 3** (`PropAnimEditorPage` +
+**Editor - DONE through Phase 3** (`PropAnimEditorPage` +
 `PropAnimPageBuilder` + `TimelineView` + `PropertyPickerDialog`):
 
 - `PropAnimEditorPageFactory` registers `.propanim` and constructs a
@@ -77,7 +77,7 @@ edit times/values, scrub, play, save.
   a plain `NumericField` for floats. `OnEditBegan` / `OnEditEnded`
   events from those fields drive an "is editing" flag that defers
   inspector rebuilds via `MutationQueue`, so per-keystroke
-  `OnValueChanged` → `OnClipMutated` doesn't tear down the field the
+  `OnValueChanged` -> `OnClipMutated` doesn't tear down the field the
   user is typing in.
 - Scrub-before-Play works: the page's `CurrentTime` setter hands the
   clip to the player and immediately pauses it so `Evaluate()` has a
@@ -100,7 +100,7 @@ edit times/values, scrub, play, save.
   consumer appears.
 - **Scene/prefab swap doesn't reset animation work.** Tracks stay on
   the clip across preview-source swaps.
-- **Preview-target persistence — session-only.** Editor doesn't
+- **Preview-target persistence - session-only.** Editor doesn't
   persist the picked preview/target across restarts. No metadata
   baked into the `.propanim` file.
 - **Hot-reload preserves outside references.** The resource reloads
@@ -115,13 +115,13 @@ edit times/values, scrub, play, save.
 - **Multi-target tracks.** Runtime supports one component per entity
   with paths relative to that entity. No editor work for multi-target.
 - **Constraint / parent-of / look-at rigs.** Just property tracks.
-- **Animation blending / state machine** — `.animgraph` territory.
-- **Generic reusable timeline widget** — page-scope until a second
+- **Animation blending / state machine** - `.animgraph` territory.
+- **Generic reusable timeline widget** - page-scope until a second
   user materializes.
 
 ---
 
-## Phase 1 — Page scaffolding [DONE]
+## Phase 1 - Page scaffolding [DONE]
 
 Shipped: `PropAnimEditorPage` + `PropAnimPageBuilder` Phase-1 layout
 + `PreviewSceneHost`, scrub slider stub, Play / Stop / Save, entity
@@ -130,7 +130,7 @@ session-only preview state.
 
 ---
 
-## Phase 2 — Dopesheet + keyframe editing [DONE]
+## Phase 2 - Dopesheet + keyframe editing [DONE]
 
 Shipped: `TimelineView` widget with ruler + playhead + per-track rows
 + diamond keyframes. Interactions: select track (label-column click),
@@ -138,13 +138,13 @@ hit-test keyframe, drag-to-retime, Add/Delete Keyframe buttons,
 Delete key. Two-way sync of playhead time with `page.CurrentTime`.
 `OnClipMutated` fires `page.MarkDirty()`.
 
-Drag-retime never shrinks `Clip.Duration` — the editor's duration is
+Drag-retime never shrinks `Clip.Duration` - the editor's duration is
 user-authored and uses `ExtendDurationIfNeeded(t)` instead of the
 runtime's `ComputeDuration()`.
 
 ---
 
-## Phase 2.5 — Duration, looping, value editing [DONE]
+## Phase 2.5 - Duration, looping, value editing [DONE]
 
 Shipped after Phase 2 user feedback:
 
@@ -158,7 +158,7 @@ Shipped after Phase 2 user feedback:
   path + a time `NumericField` + per-type value editor (single
   `NumericField` for float, the toolkit's `VectorNField` / `QuaternionField`
   for vectors / quaternions). Quaternion editor presents Euler degrees
-  internally but emits `Quaternion` on the wire — same convention as
+  internally but emits `Quaternion` on the wire - same convention as
   `PropertyGridDescriptor.QuaternionToEuler`.
 - **Edit-transaction handling**. `NumericField` got
   `OnEditBegan` / `OnEditEnded` events on focus gain/loss; vector
@@ -173,9 +173,9 @@ Shipped after Phase 2 user feedback:
 
 ---
 
-## Phase 3 — Property picker [DONE, scoped]
+## Phase 3 - Property picker [DONE, scoped]
 
-Shipped: `PropertyPickerDialog` — modal dialog grouped by value type,
+Shipped: `PropertyPickerDialog` - modal dialog grouped by value type,
 listing every path the `PropertyBinderRegistry` knows about
 (Transform.Position, Transform.Rotation, Transform.Position.X, etc.).
 "Add Track..." button in the timeline mini-toolbar opens it; selection
@@ -203,13 +203,13 @@ to filter the list per-entity. That landed differently:
 ### Future work for Phase 3 (deferred)
 
 - Filter by target entity's components.
-- "Doesn't resolve on this entity — add component for preview?" prompt.
+- "Doesn't resolve on this entity - add component for preview?" prompt.
 - Allow picking from a runtime binder that doesn't have a matching
   `[Property]` field (generated paths).
 
 ---
 
-## Phase 4 — Record mode [DEFERRED]
+## Phase 4 - Record mode [DEFERRED]
 
 Big UX win for animator workflows, but not blocking the current game.
 Design captured here from the audit done before deferral.
@@ -258,7 +258,7 @@ if it doesn't exist).
   paths produce silent runtime no-ops; not useful.
 - **Component auto-add on first record?** If the user enables record
   mode on an entity that doesn't have a `LightComponent`, should
-  twiddling `Light.Intensity` somehow appear? Probably no — record
+  twiddling `Light.Intensity` somehow appear? Probably no - record
   mode records what the inspector exposes; the inspector exposes
   components the entity has.
 
@@ -271,7 +271,7 @@ if it doesn't exist).
   keystroke (this is intentional for live editing); the
   `OnEditEnd` event brackets the gesture.
 - `InspectorCodegen.bf` derives property names from field names
-  (`mIntensity` → `"Intensity"`); honors `[Property("DisplayName", "SerializedName")]`
+  (`mIntensity` -> `"Intensity"`); honors `[Property("DisplayName", "SerializedName")]`
   for overrides.
 - Component `SerializationTypeId` is fully-qualified (e.g.
   `"Sedulous.TransformComponent"`). Binder paths are short
@@ -279,7 +279,7 @@ if it doesn't exist).
 
 ---
 
-## Phase 5+ — Curve editor [DEFERRED]
+## Phase 5+ - Curve editor [DEFERRED]
 
 Deferred until a real authoring need arises.
 
@@ -288,7 +288,7 @@ The toolkit already has a working curve widget at
 `Keypoint` carries `TangentIn` / `TangentOut` (lines 103-104) and the
 Hermite evaluation uses them (line 240+). The curve renders correctly
 end-to-end. What's missing for Phase 5 is the **tangent-handle editing
-UI** — file comment at line 93 explicitly notes "Tangent handle
+UI** - file comment at line 93 explicitly notes "Tangent handle
 editing is not yet exposed; tangents stay at the values set by code".
 
 Phase 5 work (when it lands):
@@ -297,7 +297,7 @@ Phase 5 work (when it lands):
    (the geometry + hit-testing; the math already consumes them).
 2. Tangent modes: free / locked / mirrored / flat / broken.
 3. Wire `CurveCanvas` into the PropAnim editor as an alternate view
-   of a single track — switch between dopesheet row and curve view.
+   of a single track - switch between dopesheet row and curve view.
 4. Round-trip `PropertyAnimationTrack<T>.Keyframes[i].InTangent` /
    `OutTangent` through the canvas (per-component for vector tracks).
 

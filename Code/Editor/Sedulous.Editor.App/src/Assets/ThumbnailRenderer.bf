@@ -167,8 +167,8 @@ public class ThumbnailRenderer
 	/// generator's build closure should call this before setting the
 	/// refs it cares about, so a previous thumbnail's MeshRef /
 	/// SkinnedMeshRef / MaterialRef doesn't bleed into the new one
-	/// when the asset type changes (e.g., mesh → skinned mesh, or
-	/// material → mesh).
+	/// when the asset type changes (e.g., mesh -> skinned mesh, or
+	/// material -> mesh).
 	public void ResetAssetEntity()
 	{
 		if (mScene == null) return;
@@ -490,7 +490,7 @@ public class ThumbnailRenderer
 
 	private void CreateSphereMesh()
 	{
-		// Procedurally build a unit-diameter sphere (radius 0.5 → bounds
+		// Procedurally build a unit-diameter sphere (radius 0.5 -> bounds
 		// fit in the [-0.5, 0.5] cube, matching the framing math the mesh
 		// generator already uses). AddResource caches by GUID with no
 		// URI so a ResourceRef(SphereMeshId, "") resolves through the

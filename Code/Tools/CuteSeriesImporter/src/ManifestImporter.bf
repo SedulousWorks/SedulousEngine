@@ -361,7 +361,7 @@ class ManifestImporter
 			return;
 		}
 
-		// Collect material ref — shared material or per-asset manifest material
+		// Collect material ref - shared material or per-asset manifest material
 		let sharedMatName = assetEl.GetAttribute("sharedMaterial");
 		if (!sharedMatName.IsEmpty && sharedMaterialRefs != null)
 		{
@@ -426,7 +426,7 @@ class ManifestImporter
 			}
 		}
 
-		// Generate prefab (skip for variant bases — variants generate their own)
+		// Generate prefab (skip for variant bases - variants generate their own)
 		let isVariantBase = assetEl.GetAttribute("variantBase") == "true";
 		if (!isVariantBase && (assetRefs.SkinnedMeshRef.IsValid || assetRefs.StaticMeshRef.IsValid))
 		{
@@ -763,7 +763,7 @@ class ManifestImporter
 		}
 
 		// Import albedo texture
-		// Note: don't Dispose albedoRef — SetTextureRef takes ownership of the Path string
+		// Note: don't Dispose albedoRef - SetTextureRef takes ownership of the Path string
 		var albedoRef = ResourceRef();
 		if (!textureFile.IsEmpty)
 		{
@@ -797,7 +797,7 @@ class ManifestImporter
 		}
 
 		// Import emissive texture if present
-		// Note: don't Dispose emissiveRef — SetTextureRef takes ownership of the Path string
+		// Note: don't Dispose emissiveRef - SetTextureRef takes ownership of the Path string
 		var emissiveRef = ResourceRef();
 		if (!emissiveTextureFile.IsEmpty)
 		{
@@ -886,7 +886,7 @@ class ManifestImporter
 			matRef = ResourceRef(matRes.Id, matUri);
 		}
 
-		// Resolve mesh ref — use override if specified, otherwise base
+		// Resolve mesh ref - use override if specified, otherwise base
 		var meshRef = baseRefs.SkinnedMeshRef;
 		if (!meshOverride.IsEmpty)
 		{
@@ -902,7 +902,7 @@ class ManifestImporter
 		variantRefs.SkeletonRef = baseRefs.SkeletonRef;
 		variantRefs.MaterialRef = matRef;
 		variantRefs.AnimGraphRef = baseRefs.AnimGraphRef;
-		// Don't dispose variantRefs — it borrows base/mesh refs
+		// Don't dispose variantRefs - it borrows base/mesh refs
 
 		if (GeneratePrefab(variantName, variantRefs, baseRefs.AnimGraphRef, prefabFileName, mount))
 		{
@@ -953,7 +953,7 @@ class ManifestImporter
 					continue;
 				}
 
-				// Check if already imported — still collect ref for animgraph
+				// Check if already imported - still collect ref for animgraph
 				if (mount.Exists(animFileName))
 				{
 					// We need the GUID. Re-read the header from the saved file.
@@ -1187,7 +1187,7 @@ class ManifestImporter
 	private void SaveFbxMaterials(ResourceImportResult result, StringView assetName,
 		FileSystemMount mount)
 	{
-		// Save textures first — rename each to include _Imported suffix.
+		// Save textures first - rename each to include _Imported suffix.
 		// The FBX converter already set texture names and material refs point to "{texName}.texture".
 		// After renaming textures, we update material refs to match.
 		for (let texRes in result.Textures)
@@ -1214,7 +1214,7 @@ class ManifestImporter
 			}
 		}
 
-		// Save materials — rename and remap texture refs to full registry URIs
+		// Save materials - rename and remap texture refs to full registry URIs
 		for (let matRes in result.Materials)
 		{
 			let matName = scope String();
@@ -1347,7 +1347,7 @@ class ManifestImporter
 			return .Err;
 		defer delete reader;
 
-		// Read just the header — _id is the GUID
+		// Read just the header - _id is the GUID
 		var typeHash = (uint64)0;
 		reader.UInt64("_type", ref typeHash);
 		var version = (int32)0;
@@ -1546,7 +1546,7 @@ class ManifestImporter
 		if (skeleton == null)
 			return null;
 
-		// Take ownership — create a copy since skelRes is scoped
+		// Take ownership - create a copy since skelRes is scoped
 		let copy = new Skeleton(skeleton.BoneCount);
 		for (int i = 0; i < skeleton.BoneCount; i++)
 		{

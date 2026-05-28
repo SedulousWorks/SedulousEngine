@@ -29,7 +29,7 @@ public struct NodeGraphPortType
 		Color = color;
 	}
 
-	/// Untyped port — connects to anything.
+	/// Untyped port - connects to anything.
 	public static NodeGraphPortType Untyped => .(0, .(180, 180, 190, 255));
 }
 

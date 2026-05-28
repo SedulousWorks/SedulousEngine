@@ -196,7 +196,7 @@ def resolve_prefab(prefab_name, prefab_dir, guid_map, fbx_guid_map, mat_guid_map
         resolved_cache[prefab_name] = result
         return result
 
-    # Compound prefab — find and parse it
+    # Compound prefab - find and parse it
     prefab_path = None
     for p in glob.glob(os.path.join(prefab_dir, '**', f'{prefab_name}.prefab'), recursive=True):
         prefab_path = p
@@ -231,7 +231,7 @@ def resolve_prefab(prefab_name, prefab_dir, guid_map, fbx_guid_map, mat_guid_map
 
     # Include the parent's own mesh (e.g. tree trunk) if present.
     # We need to find the MeshRenderer that has the actual mesh, and get
-    # its material — not a child particle system's material.
+    # its material - not a child particle system's material.
     # Split into YAML documents and find the MeshRenderer with a valid m_Mesh.
     prefab_docs = re.split(r'^---.*$', content, flags=re.MULTILINE)
     for pdoc in prefab_docs:
@@ -279,7 +279,7 @@ def resolve_prefab(prefab_name, prefab_dir, guid_map, fbx_guid_map, mat_guid_map
 
 def parse_scene(scene_path, guid_map, prefab_dir, fbx_guid_map, mat_guid_map):
     """Parse Unity scene and resolve all prefab instances to mesh entities.
-    Outputs raw transforms — rotation correction is handled by the importer
+    Outputs raw transforms - rotation correction is handled by the importer
     based on manifest attributes (rotX90, noRotMeshes)."""
     with open(scene_path, 'r', encoding='utf-8') as f:
         content = f.read()

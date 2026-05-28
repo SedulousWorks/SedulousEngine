@@ -125,7 +125,7 @@ public class Scene : IDisposable
 	/// added/destroyed or when render-relevant component state changes (mesh,
 	/// material, submesh, visibility). Renderers key per-scene caches on this
 	/// so they can skip rebuilding work when the scene is structurally stable
-	/// across frames. Transform/animation changes do NOT bump this — those
+	/// across frames. Transform/animation changes do NOT bump this - those
 	/// only affect per-instance data, not render grouping.
 	public uint64 Revision => mRevision;
 	private uint64 mRevision = 1;

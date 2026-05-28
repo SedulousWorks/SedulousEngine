@@ -1,4 +1,4 @@
-# Prefab System Roadmap (V1 — Superseded)
+# Prefab System Roadmap (V1 - Superseded)
 
 > **This document describes the V1 prefab system which has been replaced.**
 > See `PrefabV2Roadmap.md` for the current implementation using sparse delta

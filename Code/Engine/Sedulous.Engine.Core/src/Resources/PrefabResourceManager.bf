@@ -49,7 +49,7 @@ class PrefabResourceManager : ResourceManager<PrefabResource>
 	protected override Result<void, ResourceLoadError> ReloadResource(PrefabResource resource, ResourceLoadContext ctx)
 	{
 		// The cached PrefabResource is header-only (Scene == null). On hot-reload
-		// we don't need to re-read the header — just signal success so the resource
+		// we don't need to re-read the header - just signal success so the resource
 		// system increments the generation and fires OnResourceReloaded. The actual
 		// entity re-instantiation is handled by PrefabRebuilder.
 		return .Ok;

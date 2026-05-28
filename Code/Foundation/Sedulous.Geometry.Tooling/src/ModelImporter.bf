@@ -696,7 +696,7 @@ class ModelImporter
 		}
 		else if (mOptions.TargetSkeleton != null)
 		{
-			// No skins — animation-only file. Use name-based matching against
+			// No skins - animation-only file. Use name-based matching against
 			// the target skeleton to remap channels correctly.
 			for (let modelAnim in model.Animations)
 			{
@@ -709,7 +709,7 @@ class ModelImporter
 		}
 		else
 		{
-			// No skins, no target skeleton — use identity mapping.
+			// No skins, no target skeleton - use identity mapping.
 			// The consumer is responsible for ensuring bone order matches.
 			let nodeToBoneMapping = new int32[model.Bones.Count];
 			for (int32 i = 0; i < nodeToBoneMapping.Count; i++)

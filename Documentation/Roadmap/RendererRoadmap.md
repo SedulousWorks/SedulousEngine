@@ -122,7 +122,7 @@ the null key, which is the scene-default's lifecycle).
 - **Shadow-caster job duplication.** `mShadowDraws` accumulates across
   `RenderScene` calls within a frame. Rendering the same scene twice
   (main + preview) adds the same shadow-caster jobs to the atlas twice
-  per frame — each shadow map is rendered into the atlas once per
+  per frame - each shadow map is rendered into the atlas once per
   pipeline. Atlas memory is shared (not doubled), but render time is.
   Fix: dedupe shadow casters by light identity within a frame, reuse the
   atlas allocation from the first render.

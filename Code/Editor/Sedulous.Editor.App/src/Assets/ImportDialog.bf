@@ -283,7 +283,7 @@ class ImportDialog : Dialog
 		}
 
 		let msg = scope String();
-		msg.AppendF("⚠ {} duplicate name(s) — importing will overwrite: ", conflicts.Count);
+		msg.AppendF("⚠ {} duplicate name(s) - importing will overwrite: ", conflicts.Count);
 		for (int i = 0; i < conflicts.Count; i++)
 		{
 			if (i > 0) msg.Append(", ");

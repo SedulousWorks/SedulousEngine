@@ -43,7 +43,7 @@ class SceneResourceManager : ResourceManager<SceneResource>
 		defer delete reader;
 
 		let resource = new SceneResource();
-		// No scene or serializer set — header-only load (scene, name, id).
+		// No scene or serializer set - header-only load (scene, name, id).
 		resource.Serialize(reader);
 		resource.AddRef();
 		return .Ok(resource);

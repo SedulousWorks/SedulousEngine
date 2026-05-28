@@ -8,7 +8,7 @@ using Sedulous.Engine.Core;
 /// A loadable scene asset.
 /// Serializes through the standard Resource path with header (_type, _id, _name),
 /// then delegates to a SceneSerializer for entity/transform/component data.
-/// The scene serializer is set by the manager — the resource does not create one.
+/// The scene serializer is set by the manager - the resource does not create one.
 class SceneResource : Resource
 {
 	/// Live scene reference (set for saving, null for loading until InstantiateScene).

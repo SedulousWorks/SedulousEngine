@@ -161,11 +161,11 @@ public class MeshRenderer : Renderer
 	/// across frames per (view, category)):
 	///   1. Group structure (state.GroupCache + state.Groups + state.EntityToGroup):
 	///      keyed on view.SceneRevision. Built by hashing BatchKeys + populating
-	///      entity→group annotations. Survives across frames when the scene is
+	///      entity->group annotations. Survives across frames when the scene is
 	///      structurally unchanged.
 	///   2. Per-frame fill (state.InstanceData + state.Offsets): keyed on
 	///      (view.FrameIndex, frame.InstanceBuffer ptr). Recomputed using the
-	///      annotation map — no BatchKey hashing per entry on stable frames.
+	///      annotation map - no BatchKey hashing per entry on stable frames.
 	///
 	/// The shader fetches `Instances[input.DataOffsets.x]` per vertex; DataOffsets
 	/// arrives as a per-instance vertex attribute via slot 1.
@@ -205,7 +205,7 @@ public class MeshRenderer : Renderer
 		// isn't in the cache, invalidate and retry with a fresh build.
 		for (int attempt = 0; attempt < 2; attempt++)
 		{
-			// Level 1: scene-structural rebuild — populate the BatchKey -> group
+			// Level 1: scene-structural rebuild - populate the BatchKey -> group
 			// index map. Survives across frames when scene.Revision is stable.
 			if (sceneRev != state.SceneRevision || state.Groups.Count == 0)
 			{
@@ -244,7 +244,7 @@ public class MeshRenderer : Renderer
 				}
 
 				state.SceneRevision = sceneRev;
-				// Group structure changed — any cached fill+upload state is stale.
+				// Group structure changed - any cached fill+upload state is stale.
 				state.FillIdentity = 0;
 				state.InstancesUploadOffsets.Clear();
 				state.OffsetsUploadOffsets.Clear();
@@ -253,7 +253,7 @@ public class MeshRenderer : Renderer
 			if (state.Groups.Count == 0) return;
 
 			// Level 2: per-frame fill (counts + InstanceStart + offsets + InstanceData).
-			// Re-hashes BatchKey per entry — required because multi-submesh meshes
+			// Re-hashes BatchKey per entry - required because multi-submesh meshes
 			// produce multiple entries with the same EntityIndex but different
 			// SubMeshIndex (so we can't annotate by entity).
 			if (fillIdentity != state.FillIdentity)
@@ -353,7 +353,7 @@ public class MeshRenderer : Renderer
 				if (needRebuild)
 					continue;  // retry from the top of the attempt loop
 
-				// Per-frame fill done — upload offsets cleared since the data changed.
+				// Per-frame fill done - upload offsets cleared since the data changed.
 				state.InstancesUploadOffsets.Clear();
 				state.OffsetsUploadOffsets.Clear();
 				state.FillIdentity = fillIdentity;
@@ -392,7 +392,7 @@ public class MeshRenderer : Renderer
 				if (startOffsets + totalOffsets > PerFrameResources.MaxInstances)
 					return;
 
-				// Upload InstanceData verbatim — indices are entry-relative (0..N-1)
+				// Upload InstanceData verbatim - indices are entry-relative (0..N-1)
 				// and we'll rebase the offsets buffer below to point at the absolute slot.
 				let instByteOff = (uint64)(startInstance * PerFrameResources.InstanceStride);
 				TransferHelper.WriteMappedBuffer(

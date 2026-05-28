@@ -199,7 +199,7 @@ public class PropertyGrid : ViewGroup
 		let row = new FlexLayout();
 		row.Direction = .Horizontal;
 
-		// Label — editable if editor has OnLabelRenamed set.
+		// Label - editable if editor has OnLabelRenamed set.
 		if (editor.OnLabelRenamed != null)
 		{
 			let editableLabel = new EditableLabel();

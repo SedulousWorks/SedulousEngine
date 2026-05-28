@@ -89,7 +89,7 @@ class AnimationGraphComponentManager : ComponentManager<AnimationGraphComponent>
 	}
 
 	/// Resolves skeleton and graph resources. Always runs (presentation).
-	/// Resolution runs regardless of Active flag — resources should be ready
+	/// Resolution runs regardless of Active flag - resources should be ready
 	/// when the user hits Play in the editor.
 	private void ResolveGraphResources(float deltaTime)
 	{

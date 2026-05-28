@@ -50,7 +50,7 @@ class AnimGraphEditorPage : IEditorPage, IResourceChangeListener
 	private PropertyGrid mPropertyGrid;
 
 	// Selection state
-	private Object mSelectedObject ~ { }; // Not owned — points into graph data
+	private Object mSelectedObject ~ { }; // Not owned - points into graph data
 
 	// Owned objects for cleanup
 	private List<Object> mOwnedObjects = new .() ~ { for (let obj in _) delete obj; delete _; };
@@ -194,7 +194,7 @@ class AnimGraphEditorPage : IEditorPage, IResourceChangeListener
 		if (mResource != null && mEditorContext?.ResourceSystem != null)
 			mResource.ResolveClips(mEditorContext.ResourceSystem);
 
-		// AnimationGraphComponent — set the graph directly (it's in memory)
+		// AnimationGraphComponent - set the graph directly (it's in memory)
 		let graphMgr = scene.GetModule<AnimationGraphComponentManager>();
 		if (graphMgr != null)
 		{
@@ -202,16 +202,16 @@ class AnimGraphEditorPage : IEditorPage, IResourceChangeListener
 			if (let comp = graphMgr.Get(handle))
 			{
 				comp.Graph = mResource?.Graph;
-				comp.Active = false; // Starts paused — Play activates
+				comp.Active = false; // Starts paused - Play activates
 			}
 		}
 
-		// SkinnedMeshComponent — initially empty, user assigns preview mesh
+		// SkinnedMeshComponent - initially empty, user assigns preview mesh
 		let meshMgr = scene.GetModule<SkinnedMeshComponentManager>();
 		if (meshMgr != null)
 			meshMgr.CreateComponent(mPreviewEntity);
 
-		// Graph starts inactive — user presses Play to animate
+		// Graph starts inactive - user presses Play to animate
 		mIsPlaying = false;
 
 		// Reapply the user's last preview rig picks for this asset.

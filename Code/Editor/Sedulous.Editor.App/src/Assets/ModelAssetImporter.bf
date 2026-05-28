@@ -394,7 +394,7 @@ class ModelAssetImporter : IAssetImporter
 	}
 
 	/// Loads a Skeleton from a resource ref via the resource system.
-	/// Returns the skeleton pointer (not owned — lives in the resource system cache).
+	/// Returns the skeleton pointer (not owned - lives in the resource system cache).
 	private Result<Skeleton> LoadSkeletonFromRef(ResourceRef skelRef, AssetImportContext ctx)
 	{
 		if (!skelRef.IsValid || mResourceSystem == null)

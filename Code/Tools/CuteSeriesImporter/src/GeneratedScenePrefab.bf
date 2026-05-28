@@ -23,7 +23,7 @@ class GeneratedScenePrefab : Resource
 		public void Dispose() mut
 		{
 			delete Name;
-			// Don't dispose refs — they borrow from caller's dictionaries
+			// Don't dispose refs - they borrow from caller's dictionaries
 		}
 	}
 

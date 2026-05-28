@@ -14,7 +14,7 @@ class GeneratedPrefabResource : Resource
 {
 	public String EntityName = new .() ~ delete _;
 
-	// Component refs (not owned — caller keeps them alive)
+	// Component refs (not owned - caller keeps them alive)
 	public ResourceRef SkinnedMeshRef;
 	public ResourceRef StaticMeshRef;
 	public ResourceRef SkeletonRef;

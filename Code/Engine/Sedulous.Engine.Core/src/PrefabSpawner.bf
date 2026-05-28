@@ -8,7 +8,7 @@ using Sedulous.Engine.Core.Resources;
 using Sedulous.Core.Mathematics;
 
 /// Instantiates a prefab's entities into a scene with PrefabInstanceTag.
-/// Static utility — no state. Used by both the editor (drag-drop) and
+/// Static utility - no state. Used by both the editor (drag-drop) and
 /// SceneSerializer (loading prefab instances from scene files).
 static class PrefabSpawner
 {

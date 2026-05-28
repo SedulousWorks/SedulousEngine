@@ -210,7 +210,7 @@ static class SkeletonConverter
 
 			let bone = model.Bones[nodeIdx];
 			if (bone.MeshIndex >= 0)
-				continue; // Has a mesh — not a rig helper
+				continue; // Has a mesh - not a rig helper
 			if (bone.ParentIndex < 0)
 				continue; // Scene root
 

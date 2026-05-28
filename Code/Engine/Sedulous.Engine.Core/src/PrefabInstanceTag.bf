@@ -5,7 +5,7 @@ using System;
 /// Tag component on every entity that belongs to a V2 prefab instance.
 /// Carries enough information to reconstruct the link to the template.
 ///
-/// Not serialized — reconstructed from scene file prefab instance
+/// Not serialized - reconstructed from scene file prefab instance
 /// metadata during load.
 class PrefabInstanceTag : Component
 {
@@ -33,7 +33,7 @@ class PrefabInstanceTag : Component
 }
 
 /// Manages PrefabInstanceTag components. No update logic, just storage.
-/// Empty SerializationTypeId opts out of serialization entirely —
+/// Empty SerializationTypeId opts out of serialization entirely -
 /// tags are runtime-only, recreated on each prefab instantiation or scene load.
 class PrefabInstanceTagManager : ComponentManager<PrefabInstanceTag>
 {

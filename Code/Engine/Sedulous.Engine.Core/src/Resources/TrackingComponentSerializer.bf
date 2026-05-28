@@ -137,7 +137,7 @@ class TrackingComponentSerializer : IComponentSerializer
 	{
 		if (IsSkipping)
 		{
-			// Already inside a skipped structure — just track depth
+			// Already inside a skipped structure - just track depth
 			mSkipDepth++;
 			mObjectDepth++;
 			return;
@@ -151,7 +151,7 @@ class TrackingComponentSerializer : IComponentSerializer
 		}
 		else
 		{
-			// Object not found — skip everything inside
+			// Object not found - skip everything inside
 			mSkipDepth++;
 			mObjectDepth++;
 		}

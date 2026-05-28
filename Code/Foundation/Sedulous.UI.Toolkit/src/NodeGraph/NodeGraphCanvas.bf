@@ -389,7 +389,7 @@ public class NodeGraphCanvas : View
 		else
 			ctx.VG.FillRoundedRect(.(pos.X, pos.Y, size.X, size.Y), cornerR, .(38, 40, 48, 255));
 
-		// Header (uses node's HeaderColor — caller controls this per node)
+		// Header (uses node's HeaderColor - caller controls this per node)
 		ctx.VG.FillRoundedRect(.(pos.X, pos.Y, size.X, headerH), cornerR, node.HeaderColor);
 		// Square off bottom corners of header
 		ctx.VG.FillRect(.(pos.X, pos.Y + headerH - cornerR, size.X, cornerR), node.HeaderColor);
@@ -436,7 +436,7 @@ public class NodeGraphCanvas : View
 			let portPos = GetPortScreenPos(nodeIdx, i, dir);
 			let r = PortRadius * mZoom;
 
-			// Port circle (colored by port type — not themed, since callers define type colors)
+			// Port circle (colored by port type - not themed, since callers define type colors)
 			ctx.VG.FillCircle(portPos, r, port.PortType.Color);
 			ctx.VG.StrokeCircle(portPos, r, .(0, 0, 0, 100), 1);
 
@@ -564,13 +564,13 @@ public class NodeGraphCanvas : View
 
 		if (ReadOnly) { e.Handled = true; return; }
 
-		// Port hit — start connection drag
+		// Port hit - start connection drag
 		let portHit = HitTestPort(e.X, e.Y);
 		if (portHit.nodeIdx >= 0)
 		{
 			// If dragging from an input port that already has a connection,
 			// detach the existing connection and drag from the original source
-			// output port instead — allows re-routing.
+			// output port instead - allows re-routing.
 			if (portHit.dir == .Input)
 			{
 				let existingIdx = FindConnectionToInput(portHit.nodeIdx, portHit.portIdx);
@@ -604,7 +604,7 @@ public class NodeGraphCanvas : View
 			return;
 		}
 
-		// Node hit — select and start drag
+		// Node hit - select and start drag
 		let nodeHit = HitTestNode(e.X, e.Y);
 		if (nodeHit >= 0)
 		{
@@ -645,7 +645,7 @@ public class NodeGraphCanvas : View
 			return;
 		}
 
-		// Connection hit — select
+		// Connection hit - select
 		let connHit = HitTestConnection(e.X, e.Y);
 		if (connHit >= 0)
 		{
@@ -658,7 +658,7 @@ public class NodeGraphCanvas : View
 			return;
 		}
 
-		// Empty space — start box selection
+		// Empty space - start box selection
 		if (!e.Modifiers.HasFlag(.Shift))
 		{
 			ClearSelectionSilent();

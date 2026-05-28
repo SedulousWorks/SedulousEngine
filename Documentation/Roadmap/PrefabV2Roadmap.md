@@ -11,7 +11,7 @@ preserving per-instance overrides.
 - **Core data model**: `PropertyPath`, `ObjectState`, `LocalModifications` on `Scene`
 - **`PrefabInstanceTag`**: tag component on prefab instance entities (not serialized)
 - **`PrefabSpawner`**: instantiates prefab entities into scene via resource system, preserves template transform
-- **`PrefabRebuilder`**: template change propagation — caches overrides, destroys, respawns, re-applies per-property overrides, restores `LocalModifications`
+- **`PrefabRebuilder`**: template change propagation - caches overrides, destroys, respawns, re-applies per-property overrides, restores `LocalModifications`
 - **`SceneSerializer`**: unified serializer handling normal entities + prefab instance diffs. `PrefabInstances` section with per-entity per-component per-property overrides. Transform diff save/load (Position/Rotation/Scale as independent nested objects)
 - **`DiffComponentSerializer`**: writes only modified properties during save
 - **`TrackingComponentSerializer`**: records which properties were read during load, restores `LocalModifications`
@@ -24,14 +24,14 @@ preserving per-instance overrides.
 - **`IPropertyDescriptor`**: two-name API (`name` = identity, `displayName` = UI label). `PropertyEditor` has `Name` (identity) and `DisplayName` (UI label, falls back to Name)
 - **Serialization alignment**: component-wise fields (Color, AmbientColor, Size, Tint, UVRect) converted to nested objects. Transform serialized as Position/Rotation/Scale objects. `MaterialRefs` name aligned between `Serialize()` and codegen. All data files updated.
 - **V1 cleanup**: removed `PrefabReferenceComponent`, `PrefabComponentManager`, `PrefabInstanceTag` (V1), `OverrideApplicator`, `ExposedParameterDescriptor`. TowerDefense migrated to `PrefabSpawner`.
-- **Dock tab sync**: `DockTabGroup.OnTabSelected` → `DockManager.OnPanelActivated` → `PageManager.SetActive`. Save now targets the correct active page.
+- **Dock tab sync**: `DockTabGroup.OnTabSelected` -> `DockManager.OnPanelActivated` -> `PageManager.SetActive`. Save now targets the correct active page.
 - **Unit tests**: `LocalModificationsTests` (17 tests), `PrefabSpawnerTests` (spawn, round-trip with/without overrides, mixed scenes)
 
 ### Remaining
 
 #### "Apply to Prefab"
 Push instance changes back to the template file. User selects a prefab
-instance root → context menu → "Apply to Prefab":
+instance root -> context menu -> "Apply to Prefab":
 1. Collect all instance entities and their current state
 2. Map live entity handles back to source GUIDs via `PrefabInstanceTag`
 3. Create a temporary scene with the entities (using source GUIDs)
@@ -40,7 +40,7 @@ instance root → context menu → "Apply to Prefab":
 6. Hot-reload triggers rebuild of OTHER instances of the same prefab
 
 #### "Revert Property"
-Right-click an overridden property → "Revert to Prefab":
+Right-click an overridden property -> "Revert to Prefab":
 1. Load the prefab template
 2. Find the source entity by `SourceEntityId`
 3. Read the template value for this property
@@ -48,7 +48,7 @@ Right-click an overridden property → "Revert to Prefab":
 5. Remove property from `LocalModifications`
 
 #### "Revert All"
-Right-click instance root → "Revert All Overrides":
+Right-click instance root -> "Revert All Overrides":
 1. Destroy all instance entities
 2. Re-instantiate from template (no overrides applied)
 3. Clear `LocalModifications` for all affected entities
@@ -60,7 +60,7 @@ Show which properties differ from the template:
 - Requires the inspector to know the entity and component type ID
 
 #### "Create Prefab from Selection"
-Select entities in scene hierarchy → context menu → "Create Prefab from Selection":
+Select entities in scene hierarchy -> context menu -> "Create Prefab from Selection":
 1. Serialize selected entities to a new .prefab file via save dialog
 2. Remove original entities from scene
 3. Create a prefab instance in their place via `PrefabSpawner`
@@ -94,10 +94,10 @@ A prefab can contain entities that are themselves prefab instances:
 
 #### Undo/Redo
 Prefab operations should integrate with `EditorCommandStack`:
-- Override property → undoable
-- Revert property → undoable
-- Apply to prefab → undoable
-- Drag-drop prefab → undoable (via existing `CreateEntityCommand` pattern)
+- Override property -> undoable
+- Revert property -> undoable
+- Apply to prefab -> undoable
+- Drag-drop prefab -> undoable (via existing `CreateEntityCommand` pattern)
 
 ## File Layout
 

@@ -71,18 +71,18 @@ def main():
 def parse_unity_material(mat_path):
     """Parse a Unity .mat YAML file and extract PBR properties.
 
-    Unity Standard Shader → our PBR mapping:
-      _MainTex        → AlbedoMap
-      _BumpMap         → NormalMap
-      _MetallicGlossMap → MetallicRoughnessMap
-      _OcclusionMap    → OcclusionMap
-      _EmissionMap     → EmissiveMap
-      _Color           → BaseColor
-      _EmissionColor   → EmissiveColor
-      _Metallic        → Metallic
-      _Glossiness      → Roughness (1 - glossiness)
-      _OcclusionStrength → AO
-      _Cutoff          → AlphaCutoff
+    Unity Standard Shader -> our PBR mapping:
+      _MainTex        -> AlbedoMap
+      _BumpMap         -> NormalMap
+      _MetallicGlossMap -> MetallicRoughnessMap
+      _OcclusionMap    -> OcclusionMap
+      _EmissionMap     -> EmissiveMap
+      _Color           -> BaseColor
+      _EmissionColor   -> EmissiveColor
+      _Metallic        -> Metallic
+      _Glossiness      -> Roughness (1 - glossiness)
+      _OcclusionStrength -> AO
+      _Cutoff          -> AlphaCutoff
     """
     info = {
         "has_emission": False,
@@ -145,7 +145,7 @@ def parse_unity_material(mat_path):
 
     glossiness = parse_float("_Glossiness")
     if glossiness is not None:
-        info["roughness"] = 1.0 - glossiness  # Unity glossiness → our roughness
+        info["roughness"] = 1.0 - glossiness  # Unity glossiness -> our roughness
 
     ao = parse_float("_OcclusionStrength")
     if ao is not None:

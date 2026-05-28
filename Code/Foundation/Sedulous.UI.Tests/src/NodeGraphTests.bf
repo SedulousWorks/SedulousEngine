@@ -136,7 +136,7 @@ class NodeGraphTests
 		// Connection: B(1) -> C(2)
 		canvas.AddConnection(.() { SourceNodeIndex = 1, SourcePortIndex = 0, DestNodeIndex = 2, DestPortIndex = 0 });
 
-		// Remove A(0) — B becomes 0, C becomes 1
+		// Remove A(0) - B becomes 0, C becomes 1
 		canvas.RemoveNode(0);
 		Test.Assert(canvas.ConnectionCount == 1);
 		let conn = canvas.GetConnection(0);

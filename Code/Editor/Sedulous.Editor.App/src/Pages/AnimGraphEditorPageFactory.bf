@@ -853,7 +853,7 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 			let canvasIdx = selected[0];
 			if (canvasIdx == 0)
 			{
-				page.SelectObject(null); // Any State — no properties
+				page.SelectObject(null); // Any State - no properties
 			}
 			else
 			{
@@ -864,7 +864,7 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 		}
 		else
 		{
-			// Check for selected connection → transition
+			// Check for selected connection -> transition
 			for (int32 i = 0; i < page.Canvas.ConnectionCount; i++)
 			{
 				let conn = page.Canvas.GetConnection(i);

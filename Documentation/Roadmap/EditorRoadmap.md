@@ -593,7 +593,7 @@ Property-grid edits currently mutate the target through the editor's typed
 pointer but do not push onto the page CommandStack, so Ctrl+Z does nothing
 for inspector changes. The legacy `PropertyChangeCommand` (FieldInfo +
 Variant, paired with the deleted `ReflectionInspector`) was removed when
-the comptime `DescribeProperties` path replaced reflection — its successor
+the comptime `DescribeProperties` path replaced reflection - its successor
 should be typed:
 
 ```beef
@@ -1379,7 +1379,7 @@ editor. Anchored top-right of the viewport (280×180), header with a Pin
 toggle and Close button. Renders through a secondary
 `ISceneRenderer` pipeline keyed on the panel (`AcquirePipeline` /
 `ReleasePipeline`) so it has its own SceneDepth and pass state and
-doesn't thrash the main viewport's RT (see RendererRoadmap → Multi-
+doesn't thrash the main viewport's RT (see RendererRoadmap -> Multi-
 Pipeline Per Scene).
 
 **Behavior:**
@@ -1420,7 +1420,7 @@ sees it.
   added to the null-key (main) pipeline only. World-space UI won't
   appear, and you can't click inside the preview to pick entities.
   Probably correct UX, but a compromise if either is wanted later.
-- **No frame-rate throttling** (see also RendererRoadmap →
+- **No frame-rate throttling** (see also RendererRoadmap ->
   Multi-Pipeline Per Scene). Every frame renders the scene twice, full
   quality. Cheap dials: render at half-rate, render-on-change-only, or
   drop the preview RT to a quarter size.
@@ -1450,13 +1450,13 @@ own state coherent.
   `IWritableMount.Move` / `CreateDirectory` added; `FileSystemMount`
   implements them; `Delete` recurses directories.
 - ✅ `IAssetCreator` migrated to `Create(IWritableMount mount, StringView
-  locator, EditorContext)` — creators serialize to a stream and
+  locator, EditorContext)` - creators serialize to a stream and
   `mount.Save`, never touch the filesystem. `CreateAssetInFolder` is fully
   locator-space.
 
 **Deferred (this phase, not forgotten):**
 
-**8a. Asset-browser enumeration → mount/locator. ✅ DONE.** The browser
+**8a. Asset-browser enumeration -> mount/locator. ✅ DONE.** The browser
 model is re-based on `(mount, locator)`; `AssetContentAdapter` /
 `RegistryTreeAdapter` enumerate via `IEnumerableMount.Enumerate` and no
 longer build from `fsMount.RootPath` / `Directory.Enumerate*`.
@@ -1472,12 +1472,12 @@ longer build from `fsMount.RootPath` / `Directory.Enumerate*`.
   - ✅ P4: `AbsolutePath` demoted to disk-only shell-reveal; "Show in
     Explorer" gated on `Mount is FileSystemMount` (item/folder) and
     non-empty node path (tree).
-  - ✅ P5: audited — the resolver is retained and correctly used by
+  - ✅ P5: audited - the resolver is retained and correctly used by
     non-browser callers (page open/save/restore: `EditorApplication`,
     `*EditorPageFactory`, page saves, `ResourceRefEditor`). Nothing to
     delete; not orphaned.
 
-  **8a carve-outs (acknowledged, out of 8a scope — deeper contracts):**
+  **8a carve-outs (acknowledged, out of 8a scope - deeper contracts):**
   - Open-asset uses `PageManager.OpenWithContext(item.AbsolutePath, …)`.
     Open-by-URI is a `PageManager`/page-restore contract change (page
     `FilePath` is absolute by contract); its own task.
@@ -1492,13 +1492,13 @@ was retired entirely: the sidecar is now the convention `<assetLocator>.bin`,
 *derived* at load (Texture/Audio managers) rather than stored - no
 fallback, no metadata key, six setter sites dropped. With load made
 convention-based, the browser handles the sidecar by pure convention:
-`HandleRename` moves `<oldLocator>.bin` → `<newLocator>.bin` when present;
+`HandleRename` moves `<oldLocator>.bin` -> `<newLocator>.bin` when present;
 file-delete removes `<locator>.bin`; folder-delete recurses so contained
 sidecars go with the folder. No metadata rewrite or resource load on
 rename/delete.
 
 **8c. Live browser refresh via `IWatchableMount.ChangeSource`. NOT
-STARTED — design recorded, decision deferred.**
+STARTED - design recorded, decision deferred.**
 
 Problem: the browser only refreshes on editor-initiated ops (explicit
 `RefreshContent()` / `RefreshRegistries()`); it does not react to
@@ -1516,9 +1516,9 @@ a *deletion* (`Poll` skips on stat failure), or a *rename*.
 Key insight: on NTFS/most filesystems, adding/removing a *direct child*
 bumps the **containing directory's** mtime. So tracking the *current
 folder's* locator (not individual files) and polling it yields exactly
-the browser's signal — "visible folder membership changed,
-re-enumerate" — with **no VFS API change**. Content edits of children
-don't bump dir mtime (correctly — those belong to hot-reload, not the
+the browser's signal - "visible folder membership changed,
+re-enumerate" - with **no VFS API change**. Content edits of children
+don't bump dir mtime (correctly - those belong to hot-reload, not the
 browser).
 
 Options:
@@ -1544,11 +1544,11 @@ Open decisions (deferred):
    question.
 3. Redundant post-op refresh: our own create/rename/delete bump dir
    mtime *and* call `RefreshContent()`, so the watcher fires a second
-   idempotent refresh ~0.5s later — accept it, or reset the baseline by
+   idempotent refresh ~0.5s later - accept it, or reset the baseline by
    re-`Track` after editor-initiated ops.
 4. Ownership/tick: the asset-browser panel owns Track/Untrack lifecycle
    and needs a poll hook on the editor update loop (Poll is synchronous
-   main-thread mtime stat — fine, and debounced).
+   main-thread mtime stat - fine, and debounced).
 
 ## Editor Modules Architecture
 

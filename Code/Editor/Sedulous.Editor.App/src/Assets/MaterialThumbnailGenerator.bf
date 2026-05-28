@@ -70,7 +70,7 @@ class MaterialThumbnailGenerator : IAssetThumbnailGenerator, IAsyncAssetThumbnai
 			return true;
 		}
 
-		// Sphere bounds are constant (radius 0.5 → unit cube), so the
+		// Sphere bounds are constant (radius 0.5 -> unit cube), so the
 		// camera framing is fixed across every material thumbnail.
 		let camera = FrameSphere();
 		let materialId = matRes.Id;

@@ -261,7 +261,7 @@ class SceneSerializer
 	{
 		outEntities.Add(root);
 
-		// Walk all entities (not just children — tags identify membership)
+		// Walk all entities (not just children - tags identify membership)
 		for (let entity in scene.Entities)
 		{
 			if (entity == root) continue;
@@ -373,7 +373,7 @@ class SceneSerializer
 	{
 		var instanceCount = (int32)0;
 		if (serializer.BeginArray("PrefabInstances", ref instanceCount) not case .Ok)
-			return; // No prefab instances section — older scene file
+			return; // No prefab instances section - older scene file
 
 		if (mSerializerProvider == null || mResourceSystem == null)
 		{
@@ -460,7 +460,7 @@ class SceneSerializer
 								{
 									// Apply override values to the existing component.
 									// The component was already created by PrefabSpawner with
-									// template defaults. The adapter reads from the Data block —
+									// template defaults. The adapter reads from the Data block -
 									// fields not present are left unchanged (FieldNotFound = no-op).
 									let adapter = scope TrackingComponentSerializer(serializer, version);
 									ApplyComponentOverrides(targetEntity, cms, adapter);
@@ -498,7 +498,7 @@ class SceneSerializer
 	private void ApplyComponentOverrides(EntityHandle entity,
 		IComponentManagerSerializer cms, IComponentSerializer adapter)
 	{
-		// The adapter is in read mode — calling SerializeEntityComponent with a
+		// The adapter is in read mode - calling SerializeEntityComponent with a
 		// read-mode adapter would create a new component. Instead, we need to
 		// get the existing component and call its Serialize with the reader.
 		// SerializeEntityComponent on an existing entity's component writes (in write mode)
