@@ -96,6 +96,13 @@ public class MeshRenderer : Renderer
 		public List<DataOffsets> Offsets = new .() ~ delete _;
 		public List<DataOffsets> RebaseScratch = new .() ~ delete _;
 		public List<int32> GroupFillCounters = new .() ~ delete _;
+		/// Per-call annotation: entries[i] -> group index. Populated as a side
+		/// effect of the count walk's BatchKey hash; consumed by the placement
+		/// walk to skip the second hash. Sentinel -1 = entry was skipped
+		/// (e.g. null gpuMesh). Resized per call to entries.Count, so this is
+		/// not cross-call state - safe with multi-submesh entities since each
+		/// entry position is unique within a single call.
+		public List<int32> EntryToGroup = new .() ~ delete _;
 		public uint64 SceneRevision = uint64.MaxValue;
 		public int FillIdentity = 0;
 		public Dictionary<int, int32> InstancesUploadOffsets = new .() ~ delete _;
@@ -253,9 +260,12 @@ public class MeshRenderer : Renderer
 			if (state.Groups.Count == 0) return;
 
 			// Level 2: per-frame fill (counts + InstanceStart + offsets + InstanceData).
-			// Re-hashes BatchKey per entry - required because multi-submesh meshes
-			// produce multiple entries with the same EntityIndex but different
-			// SubMeshIndex (so we can't annotate by entity).
+			// The count walk hashes BatchKey per entry and stores the resulting
+			// group index in state.EntryToGroup[i] as a side effect. The placement
+			// walk reads the annotation back, skipping the second hash.
+			// Annotation is per-call (size = entries.Count, repopulated each call),
+			// so it's safe for multi-submesh entities — each entry position is
+			// unique within a single call.
 			if (fillIdentity != state.FillIdentity)
 			{
 				bool needRebuild = false;
@@ -270,11 +280,18 @@ public class MeshRenderer : Renderer
 						state.Groups[g] = group;
 					}
 
-					// Count walk
-					for (let mesh in entries)
+					// Count walk. Annotate mEntryToGroup[i] as a side effect so
+					// the placement walk can skip the BatchKey hash.
+					state.EntryToGroup.Count = entries.Count;
+					for (int i = 0; i < entries.Count; i++)
 					{
+						let mesh = entries[i];
 						let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
-						if (gpuMesh == null) continue;
+						if (gpuMesh == null)
+						{
+							state.EntryToGroup[i] = -1;
+							continue;
+						}
 
 						let key = BatchKey()
 						{
@@ -288,6 +305,7 @@ public class MeshRenderer : Renderer
 							needRebuild = true;
 							break;
 						}
+						state.EntryToGroup[i] = groupIdx;
 						var group = state.Groups[groupIdx];
 						group.InstanceCount++;
 						state.Groups[groupIdx] = group;
@@ -318,23 +336,15 @@ public class MeshRenderer : Renderer
 						for (int g = 0; g < state.GroupFillCounters.Count; g++)
 							state.GroupFillCounters[g] = 0;
 
-						// Placement walk: write offsets + InstanceData together.
+						// Placement walk: use the annotations from the count walk to
+						// skip the BatchKey hash. Writes offsets + InstanceData together.
 						state.InstanceData.Count = entries.Count;
 						for (int i = 0; i < entries.Count; i++)
 						{
+							let groupIdx = state.EntryToGroup[i];
+							if (groupIdx < 0) continue;  // skipped (null gpuMesh)
+
 							let mesh = entries[i];
-							let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
-							if (gpuMesh == null) continue;
-
-							let key = BatchKey()
-							{
-								MeshIndex = mesh.MeshHandle.Index,
-								MaterialPtr = (int)Internal.UnsafeCastToPtr(mesh.MaterialBindGroup),
-								SubMeshIndex = mesh.SubMeshIndex
-							};
-
-							// Cache populated by count walk; lookup is guaranteed.
-							state.GroupCache.TryGetValue(key, let groupIdx);
 							var group = state.Groups[groupIdx];
 							let slot = group.InstanceStart + state.GroupFillCounters[groupIdx];
 							state.GroupFillCounters[groupIdx]++;
