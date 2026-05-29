@@ -765,7 +765,12 @@ abstract class EngineApplication : IDisposable
 		if (adapters.IsEmpty)
 			return false;
 
-		if (adapters[0].CreateDevice(.() { DeviceValidationEnabled = mSettings.EnableValidation }) case .Ok(let rawDevice))
+		let adapter = adapters[0];
+		let adapterInfo = adapter.GetInfo();
+		defer delete adapterInfo;
+		mLogger?.LogInformation("GPU: {} ({})", adapterInfo.Name, adapterInfo.Type);
+
+		if (adapter.CreateDevice(.() { DeviceValidationEnabled = mSettings.EnableValidation }) case .Ok(let rawDevice))
 		{
 			mDevice = mSettings.EnableValidation ? new ValidatedDevice(rawDevice) : rawDevice;
 			return true;
