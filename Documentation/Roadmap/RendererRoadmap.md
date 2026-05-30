@@ -57,6 +57,13 @@ Targeted feature set for game-readiness. Not a port of the old renderer - each f
 - **5-set bind group model** - Frame (0), RenderPass (1), Material (2), DrawCall (3), Shadow (4)
 - **Profiler instrumentation** - press P for profile frame
 
+### Instancing Architecture (ezEngine pattern)
+- **DataOffsets vertex attribute** - per-instance `uint4` at vertex slot 1 (`.Instance` step rate, location 5). `.x` indexes a per-frame `StructuredBuffer<InstanceData>` at set 3 t0; `.y/.z/.w` reserved for future per-instance offsets (material data, skinning, custom). Replaces the previous BaseInstance + SV_InstanceID indexing model
+- **Per-category cache state** - `MeshRenderer.mCategoryCaches` keyed on the per-view per-category batch list pointer (stable across frames). Each category holds its own `GroupCache + Groups + InstanceData + Offsets` so depth + forward of the same category share within a frame without colliding across categories
+- **Two-level cache identity** - Group structure (BatchKey -> group index map) keyed on `scene.Revision` and survives across frames when no entity is added/removed and no mesh/material/visibility changes. Per-frame fill (counts + offsets + InstanceData) keyed on `(view.FrameIndex, frame.InstanceBuffer ptr)` and rebuilds per frame
+- **LSD radix sort for SortOnly** - 8-pass byte-level radix on uint64 SortKey replaces comparison sort; ~2x faster at 80k entries. Per-view ping-pong scratch pairs (16 B each)
+- **MeshRenderer profiler scopes** - `Mesh.BuildBatchGroups`, `Mesh.BuildInstanceOffsets`, `Mesh.UploadInstanceBuffer`, `Mesh.RecordDraws`
+
 ## Multi-Scene Rendering
 
 ISceneRenderer uses an explicit `BeginRendering`/`EndRendering` frame wrapper.
@@ -722,3 +729,44 @@ For textures that exist as render graph intermediates - SceneDepth, SceneNormals
 - Build features properly - follow established engine architecture patterns, not shortcuts that need rework later
 - Test each phase with the sandbox before moving on
 - Shader variants via `ShaderFlags` when needed (e.g., skinned vs static)
+
+## Performance: EngineRenderStressTest baseline
+
+Reference scene: 80,000 spheres on a regular grid, single shared mesh +
+material, no animation. Release build, single discrete GPU.
+
+| Stage @ 80k stable | Time |
+|---|---|
+| `SceneExtraction.Mesh.Extract` | ~4 ms (parallel) |
+| `SceneExtraction.SortOnly` (radix) | ~2.4 ms |
+| `Mesh.BuildBatchGroups` | 0 ms (scene-revision cache hit) |
+| `Mesh.BuildInstanceOffsets` | ~4 ms |
+| `Mesh.UploadInstanceBuffer` | ~1.2 ms |
+| `Mesh.RecordDraws` (depth) | <0.05 ms |
+| `Mesh.RecordDraws` (forward, cache hit) | <0.05 ms |
+| Frame total | **~17-19 ms** |
+
+Godot at the same entity count and a static scene is meaningfully faster
+because its scene-graph cache skips per-frame instance work entirely
+once the scene stabilizes. We re-fill InstanceData every frame even when
+no entity moved.
+
+### Pending: static-scene fill skip
+
+When `Scene.TransformsUpdatedThisFrame.IsEmpty` AND `scene.Revision`
+unchanged AND view matrix unchanged since this exact GPU buffer was
+last filled, the entire `BuildInstanceOffsets + FillInstanceData +
+UploadInstanceBuffer` can be skipped - the GPU buffer already holds
+the correct data. Reuses the cached `(startInstance, startOffsets)`
+and jumps straight to `RecordDraws`.
+
+Estimated impact at 80k static: ~5 ms saved per frame, closing the
+static-scene gap with Godot. Requires:
+- `Scene.TransformsRevision: uint64` counter (bumps once per frame when
+  any transform updated)
+- Per-buffer "stamp" on `CategoryCache` (sceneRev, transformsRev,
+  viewMatrix hash); skip when stamp matches current state
+
+Next step beyond this: persistent entity-indexed InstanceData (Bevy/
+Unity-DOTS style) so the savings hold even when the camera moves.
+Requires un-cycling the InstanceBuffer or per-buffer dirty propagation.

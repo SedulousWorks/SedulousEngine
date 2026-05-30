@@ -6,11 +6,19 @@ using System.Collections;
 /// Manages a pool of components of type T.
 /// IS-A SceneModule - one instance per scene, owns the pool, handles lifecycle.
 ///
+/// **Invariant: at most one component of type T per entity.** The entity ->
+/// slot reverse map (mEntityToSlot) stores a single int32 per entity, so a
+/// second component of the same type on the same entity would silently
+/// orphan the first from lookup. CreateComponent asserts against this in
+/// debug builds. Callers that need multiple instances of the same data
+/// per entity should either compose them into a single component or use
+/// a different ComponentManager<T> subclass.
+///
 /// Provides:
 ///   - CreateComponent(entity) -> ComponentHandle<T>
 ///   - DestroyComponent(handle)
 ///   - Get(handle) -> T (nullable)
-///   - GetForEntity(entity) -> T (nullable, linear scan)
+///   - GetForEntity(entity) -> T (nullable, O(1) via reverse map)
 ///   - Iteration over active components
 public abstract class ComponentManager<T> : ComponentManagerBase, IComponentManagerSerializer where T : Component, class, new, delete
 {
@@ -50,8 +58,24 @@ public abstract class ComponentManager<T> : ComponentManagerBase, IComponentMana
 
 	/// Creates a component and attaches it to the given entity.
 	/// Returns a handle for future access.
+	///
+	/// Asserts (debug builds) that the entity does not already have a
+	/// component of type T. The single-component-per-entity invariant
+	/// is required by mEntityToSlot, which can only point at one slot
+	/// per entity.
 	public ComponentHandle<T> CreateComponent(EntityHandle entity)
 	{
+		// Lazy-extend the reverse map; most managers won't have a component for
+		// every entity so we don't pre-allocate.
+		while ((int)entity.Index >= mEntityToSlot.Count)
+			mEntityToSlot.Add(NoSlot);
+
+		// Enforce the one-component-per-entity invariant. Without this, the
+		// second CreateComponent would orphan the first from the reverse map
+		// and break OnEntityDestroyed / GetForEntity semantics.
+		Runtime.Assert(mEntityToSlot[(int)entity.Index] == NoSlot,
+			"ComponentManager<T>: entity already has a component of this type");
+
 		int32 index;
 		if (mFreeList.Count > 0)
 		{
@@ -76,10 +100,6 @@ public abstract class ComponentManager<T> : ComponentManagerBase, IComponentMana
 		mActiveCount++;
 		mPendingInit.Add(index);
 
-		// Update reverse map. Lazy-extend on demand: most managers won't have
-		// a component for every entity, so we don't pre-allocate.
-		while ((int)entity.Index >= mEntityToSlot.Count)
-			mEntityToSlot.Add(NoSlot);
 		mEntityToSlot[(int)entity.Index] = index;
 
 		OnComponentCreated(component);
@@ -107,10 +127,10 @@ public abstract class ComponentManager<T> : ComponentManagerBase, IComponentMana
 		mFreeList.Add((int32)handle.Index);
 		mActiveCount--;
 
-		// Clear the reverse-map entry only if it still points at this slot.
-		// In pathological multi-component-per-entity cases the map may point
-		// at a different slot; leaving that one alone keeps it reachable.
-		if ((int)owner.Index < mEntityToSlot.Count && mEntityToSlot[(int)owner.Index] == (int32)handle.Index)
+		// Clear the reverse-map entry. The one-component-per-entity invariant
+		// (enforced by CreateComponent's assert) guarantees the map points at
+		// this slot.
+		if ((int)owner.Index < mEntityToSlot.Count)
 			mEntityToSlot[(int)owner.Index] = NoSlot;
 	}
 
@@ -263,38 +283,39 @@ public abstract class ComponentManager<T> : ComponentManagerBase, IComponentMana
 		mPendingInit.Clear();
 	}
 
-	/// Called when an entity is destroyed - destroys all components owned by that entity.
+	/// Called when an entity is destroyed - destroys the component (if any)
+	/// owned by that entity. O(1) via the reverse map, under the one-component-
+	/// per-entity invariant enforced by CreateComponent.
 	public override void OnEntityDestroyed(EntityHandle entity)
 	{
-		// Linear scan preserved so a pathological multi-component-per-entity
-		// state still gets fully cleaned up. The reverse map only points at
-		// one slot per entity; using it here would leak the others.
-		for (int32 i = 0; i < mSlots.Count; i++)
+		if ((int)entity.Index >= mEntityToSlot.Count) return;
+		let slotIdx = mEntityToSlot[(int)entity.Index];
+		if (slotIdx < 0) return;
+
+		var slot = ref mSlots[slotIdx];
+		if (slot.Occupied && slot.Component.Owner == entity)
 		{
-			var slot = ref mSlots[i];
-			if (slot.Occupied && slot.Component.Owner == entity)
-			{
-				OnComponentDestroyed(slot.Component);
-				delete slot.Component;
-				slot.Component = null;
-				slot.Occupied = false;
-				mFreeList.Add(i);
-				mActiveCount--;
-			}
+			OnComponentDestroyed(slot.Component);
+			delete slot.Component;
+			slot.Component = null;
+			slot.Occupied = false;
+			mFreeList.Add(slotIdx);
+			mActiveCount--;
 		}
 
-		if ((int)entity.Index < mEntityToSlot.Count)
-			mEntityToSlot[(int)entity.Index] = NoSlot;
+		mEntityToSlot[(int)entity.Index] = NoSlot;
 	}
 
-	/// Called when an entity's active state changes - syncs to all components owned by that entity.
+	/// Called when an entity's active state changes - syncs to the component
+	/// (if any) owned by that entity. O(1) via the reverse map.
 	public override void OnEntityActiveChanged(EntityHandle entity, bool active)
 	{
-		for (var slot in ref mSlots)
-		{
-			if (slot.Occupied && slot.Component.Owner == entity)
-				slot.Component.IsActive = active;
-		}
+		if ((int)entity.Index >= mEntityToSlot.Count) return;
+		let slotIdx = mEntityToSlot[(int)entity.Index];
+		if (slotIdx < 0) return;
+		var slot = ref mSlots[slotIdx];
+		if (slot.Occupied && slot.Component.Owner == entity)
+			slot.Component.IsActive = active;
 	}
 
 	/// Creates a component on the given entity. Non-generic accessor for editor use.
@@ -304,19 +325,17 @@ public abstract class ComponentManager<T> : ComponentManagerBase, IComponentMana
 		return Get(handle);
 	}
 
-	/// Destroys the component on the given entity. Non-generic accessor for editor use.
+	/// Destroys the component on the given entity. Non-generic accessor for
+	/// editor use. O(1) via the reverse map.
 	public override void DestroyComponentOnEntity(EntityHandle entity)
 	{
-		for (int32 i = 0; i < mSlots.Count; i++)
-		{
-			var slot = ref mSlots[i];
-			if (slot.Occupied && slot.Component.Owner == entity)
-			{
-				ComponentHandle<T> handle = .() { Index = (uint32)i, Generation = slot.Generation };
-				DestroyComponent(handle);
-				return;
-			}
-		}
+		if ((int)entity.Index >= mEntityToSlot.Count) return;
+		let slotIdx = mEntityToSlot[(int)entity.Index];
+		if (slotIdx < 0) return;
+		let slot = ref mSlots[slotIdx];
+		if (!slot.Occupied || slot.Component.Owner != entity) return;
+		ComponentHandle<T> handle = .() { Index = (uint32)slotIdx, Generation = slot.Generation };
+		DestroyComponent(handle);
 	}
 
 	/// Display name for this component type. Defaults to the type name without "Component" suffix.

@@ -472,10 +472,42 @@ Engine.Particles  -> ParticleComponentManager : IRenderDataProvider
 | 0 | space0 | Per-frame | VP matrices, time, lights (dynamic offset ring buffer) |
 | 1 | space1 | Per-pass | Pass-specific inputs (e.g., SceneDepth for decals) |
 | 2 | space2 | Per-material | Textures, params, samplers |
-| 3 | space3 | Per-draw | Object transforms (dynamic offset ring buffer) |
+| 3 | space3 | Per-frame instances / per-draw | Instanced path: `StructuredBuffer<InstanceData>` (per-frame buffer, indexed via DataOffsets vertex attribute). Non-instanced path: `ObjectUniforms` (dynamic offset ring buffer) |
 | 4 | space4 | Shadow | Shadow atlas + comparison sampler + ShadowDataBuffer |
 
 Convention-based - no shader reflection. Shaders place resources in the right space.
+
+### Instanced Mesh Rendering (DataOffsets pattern)
+
+`MeshRenderer` batches static meshes by `(GPUMeshHandle, MaterialBindGroup,
+SubMeshIndex)` into instanced draws. Per-instance data flows through two
+GPU resources:
+
+- **`InstanceBuffer`** (set 3 t0) - per-frame `StructuredBuffer<InstanceData>`
+  holding `WorldMatrix + PrevWorldMatrix + InstanceColor` (144 B per
+  instance, indexed by entry order within the frame's batch)
+- **`InstanceOffsetsBuffer`** (vertex slot 1, `.Instance` step rate) -
+  per-frame `uint4` per instance. `.x` indexes into `InstanceBuffer`;
+  `.y/.z/.w` reserved for future per-instance buffer offsets (custom
+  data, material data, skinning)
+
+Each draw binds a byte-offset slice of `InstanceOffsetsBuffer` for its
+group. The vertex shader receives `uint4 DataOffsets : TEXCOORD5` directly
+via vertex pulling and indexes `Instances[input.DataOffsets.x]`. No
+`BaseInstance` uniform - vertex pulling delivers the per-instance offset
+automatically.
+
+`MeshRenderer` maintains a per-`(view, category)` `CategoryCache` with
+two identity levels:
+1. **Group structure** (BatchKey -> group index map) keyed on
+   `scene.Revision` - survives across frames when no entity is added/
+   removed and no mesh/material/visibility changes
+2. **Per-frame fill** (counts + offsets + InstanceData) keyed on
+   `(view.FrameIndex, frame.InstanceBuffer ptr)` - within a frame,
+   DepthPrepass + ForwardOpaque of the same category share
+
+Sort step is LSD radix sort on the uint64 SortKey (8 byte-level passes
+over ping-pong key/ptr pairs) instead of a comparison sort.
 
 ### GPU Resource Management
 
@@ -534,6 +566,38 @@ only pick up ready entries, preventing UNDEFINED layout errors.
 - **Component** - ref type, pooled per type in ComponentManager<T>. Has `Initialized` flag.
 - **ComponentManager<T>** - owns pool, registers update functions, handles lifecycle.
 - **Transform** - not a component. Every entity has one. Hierarchical parent-child with dirty-flag propagation.
+
+### ComponentManager<T> Invariants
+
+- **At most one component of type T per entity.** The manager keeps a
+  reverse map `mEntityToSlot: List<int32>` (sized lazily to max entity
+  index) so `GetForEntity`, `OnEntityDestroyed`, `OnEntityActiveChanged`,
+  and `DestroyComponentOnEntity` are all O(1). `CreateComponent` asserts
+  in debug builds when an entity already has a component of the same
+  type. Multi-instance use cases (e.g. multiple audio sources on one
+  entity) should compose data into a single component or use distinct
+  manager subclasses for each role.
+- **Slot indices are stable** within a manager. `DestroyComponent`
+  frees the slot to a free list; `CreateComponent` reuses freed slots
+  with an incremented generation. Holders of `ComponentHandle<T>` are
+  protected by the generation check.
+
+### Scene.Revision Counter
+
+`Scene.Revision: uint64` is a monotonic counter that bumps on
+structural changes affecting render grouping:
+
+- Entity create/destroy
+- Mesh component mesh-ref or material-ref change (via
+  `MeshComponentManager.MarkResolveDirty`)
+- Manually-attached `MaterialInstance` (via
+  `OnMaterialInstanceAttached`)
+
+Transform and animation changes do NOT bump it - they affect per-
+instance data, not grouping. Renderers (notably `MeshRenderer`'s
+per-category cache) key cross-frame caches on `view.SceneRevision`
+captured at extraction time, so structural-rebuild work is skipped
+when the scene is stable.
 
 ### Component Lifecycle
 

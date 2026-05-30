@@ -240,6 +240,52 @@ resolution (always) and simulation (only when simulating).
 - **Animation decoupling** - animation separate from skinned mesh (old engine coupled them)
 - **Render pass architecture** - cleaner pass-based pipeline vs old engine's feature-based system
 
+### Scene Revision Counter
+
+`Scene.Revision: uint64` is a monotonic structural counter. It bumps when
+entities are added or destroyed and when render-relevant component state
+changes (mesh ref, material ref, submesh index, visibility, layer mask).
+Transform/animation changes do NOT bump it - they only affect per-instance
+data, not render grouping.
+
+Renderers (notably `MeshRenderer.CategoryCache`) key per-scene caches on
+this counter so they can skip rebuilding work when the scene is
+structurally stable across frames. Captured at extraction time into
+`RenderView.SceneRevision` so all views (main + shadows) see a consistent
+snapshot.
+
+Bump sites:
+- `Scene.CreateEntityInternal` / `Scene.DestroyEntityImmediate`
+- `MeshComponentManager.MarkResolveDirty` (covers mesh/material ref edits
+  and component creation)
+- `MeshComponentManager.OnMaterialInstanceAttached` (covers manually-
+  attached MaterialInstances bypassing the resolver)
+
+A future `TransformsRevision: uint64` counter (bumps once per frame when
+`Scene.TransformsUpdatedThisFrame` is non-empty) is the trigger needed
+for the static-scene fill-skip optimization in MeshRenderer.
+
+### One-component-per-entity invariant
+
+`ComponentManager<T>` enforces at most one component of type T per entity.
+The reverse map `mEntityToSlot: List<int32>` stores a single slot index
+per entity, so a second component would silently orphan the first from
+lookup. `CreateComponent` asserts against this in debug builds.
+
+Under the invariant:
+- `GetForEntity` - O(1) array index into mEntityToSlot
+- `OnEntityDestroyed` - O(1), single slot freed via mEntityToSlot lookup
+- `OnEntityActiveChanged` - O(1)
+- `DestroyComponentOnEntity` - O(1)
+
+Without the invariant (the previous defensive scan), removing 8000
+entities from an 80k-entity scene cost ~3 billion iterations across all
+ComponentManagers. The fix dropped that to 8000 O(1) lookups.
+
+Multi-instance use cases (e.g. multiple AudioSources on one entity)
+should compose them into a single component holding a list, or use
+distinct ComponentManager<T> subclasses for each role.
+
 ### Material and Texture Deduplication
 
 **Resource deduplication -- DONE.** `ImportDeduplicationContext` deduplicates
