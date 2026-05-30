@@ -60,7 +60,7 @@ class DepthPrepass : PipelinePass
 		config.ShaderName = "depth_only";
 		config.DepthMode = .ReadWrite;
 		config.DepthCompare = .Less;
-		config.DepthFormat = .Depth24PlusStencil8;
+		config.DepthFormat = Pipeline.DepthFormat;
 		config.CullMode = .Back;
 		config.ColorTargetCount = 0;
 		config.DepthOnly = true;
@@ -68,7 +68,7 @@ class DepthPrepass : PipelinePass
 		let vertexLayout = VertexLayoutHelper.CreateBufferLayout(.Mesh);
 		VertexBufferLayout[1] vertexBuffers = .(vertexLayout);
 
-		let pipelineResult = cache.GetPipeline(config, vertexBuffers, null, .Undefined, .Depth24PlusStencil8);
+		let pipelineResult = cache.GetPipeline(config, vertexBuffers, null, .Undefined, Pipeline.DepthFormat);
 		if (pipelineResult case .Err)
 			return;
 

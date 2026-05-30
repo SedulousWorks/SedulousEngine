@@ -34,7 +34,7 @@ class ForwardTransparentPass : PipelinePass
 			builder.SetColorTarget(0, outputHandle, .Load, .Store);
 
 			if (hasDepth)
-				builder.SetDepthTarget(depthHandle, .Load, .Store, 1.0f);
+				builder.SetReadOnlyDepthTarget(depthHandle);
 
 			builder
 				.NeverCull()
@@ -69,7 +69,7 @@ class ForwardTransparentPass : PipelinePass
 		{
 			config.DepthMode = .ReadOnly;
 			config.DepthCompare = .LessEqual;
-			config.DepthFormat = .Depth24PlusStencil8;
+			config.DepthFormat = Pipeline.DepthFormat;
 		}
 		else
 		{
@@ -80,7 +80,7 @@ class ForwardTransparentPass : PipelinePass
 		VertexBufferLayout[1] vertexBuffers = .(vertexLayout);
 
 		let pipelineResult = cache.GetPipeline(config, vertexBuffers, null, pipeline.OutputFormat,
-			hasDepth ? .Depth24PlusStencil8 : .Undefined);
+			hasDepth ? Pipeline.DepthFormat : .Undefined);
 		if (pipelineResult case .Err)
 			return;
 

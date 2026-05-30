@@ -132,7 +132,7 @@ class SkyPass : PipelinePass
 		graph.AddRenderPass("Sky", scope (builder) => {
 			builder
 				.SetColorTarget(0, outputHandle, .Load, .Store)
-				.SetDepthTarget(depthHandle, .Load, .Store, 1.0f)
+				.SetReadOnlyDepthTarget(depthHandle)
 				.NeverCull()
 				.SetExecute(new [=] (encoder) => {
 					ExecuteSky(encoder, view, pipeline);
@@ -309,7 +309,7 @@ class SkyPass : PipelinePass
 		// Depth test LessEqual, no write - only render where depth == 1.0
 		DepthStencilState depthState = .()
 		{
-			Format = .Depth24PlusStencil8,
+			Format = Pipeline.DepthFormat,
 			DepthTestEnabled = true,
 			DepthWriteEnabled = false,
 			DepthCompare = .LessEqual

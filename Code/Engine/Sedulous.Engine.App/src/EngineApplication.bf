@@ -530,6 +530,9 @@ abstract class EngineApplication : IDisposable
 			}
 		}
 
+		// Transition swapchain from Present to RenderTarget before use
+		encoder.TransitionTexture(mSwapChain.CurrentTexture, .Present, .RenderTarget);
+
 		// Blit scene output -> swapchain
 		using (SProfiler.Begin("Blit"))
 			BlitToSwapchain(encoder);

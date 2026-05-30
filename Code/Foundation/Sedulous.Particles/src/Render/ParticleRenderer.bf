@@ -170,7 +170,7 @@ public class ParticleRenderer : Sedulous.Renderer.Renderer
 					ToMaterialBlendMode(run.blend),
 					vertexBuffers,
 					mainPipeline.OutputFormat,
-					.Depth24PlusStencil8);
+					Pipeline.DepthFormat);
 				if (pipelineResult case .Err)
 					continue;
 
@@ -301,7 +301,7 @@ public class ParticleRenderer : Sedulous.Renderer.Renderer
 					ToMaterialBlendMode(run.blend),
 					trailBuffers,
 					mainPipeline.OutputFormat,
-					.Depth24PlusStencil8);
+					Pipeline.DepthFormat);
 				if (pipelineResult case .Err)
 					continue;
 

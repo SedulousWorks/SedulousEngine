@@ -69,7 +69,13 @@ public class Pipeline : IRenderingPipeline, IDisposable
 	/// PrevSceneDepth reads as far-plane (1.0) instead of uninitialized
 	/// memory until normal ping-pong writes have populated each slot.
 	private bool mSceneDepthAllSlotsCleared = false;
+	/// Tracked resource state per depth slot so ImportTarget gets the actual
+	/// current state instead of the stale creation-time InitialState.
+	private ResourceState[SceneDepthHistoryCount] mSceneDepthStates;
 	private const TextureFormat SceneDepthFormat = .Depth24PlusStencil8;
+	/// Expose SceneDepthFormat so render passes can reference it for pipeline
+	/// state creation instead of hardcoding Depth24PlusStencil8.
+	public static TextureFormat DepthFormat => SceneDepthFormat;
 
 	// Post-processing
 	private PostProcessStack mPostProcessStack;
@@ -405,15 +411,19 @@ public class Pipeline : IRenderingPipeline, IDisposable
 			// Current slot: this frame's depth writes. Pass both views so
 			// RenderGraph.GetDepthOnlyTextureView returns a valid sampled view
 			// for ParticlePass / DecalPass / SSAO / TAA.
+			// Pass the tracked state so the barrier solver knows the actual DX12
+			// resource state instead of the stale creation-time InitialState.
 			let depthHandle = mRenderGraph.ImportTarget("SceneDepth",
-				mSceneDepthTextures[currIdx], mSceneDepthViews[currIdx], mSceneDepthOnlyViews[currIdx]);
+				mSceneDepthTextures[currIdx], mSceneDepthViews[currIdx], mSceneDepthOnlyViews[currIdx],
+				currentState: mSceneDepthStates[currIdx]);
 
 			// Previous slot: last frame's depth, exposed by name for effects
 			// that want disocclusion testing / temporal stability. If nothing
 			// reads it, the import is harmless - no pass writes to it so
 			// nothing depends on it.
 			mRenderGraph.ImportTarget("PrevSceneDepth",
-				mSceneDepthTextures[prevIdx], mSceneDepthViews[prevIdx], mSceneDepthOnlyViews[prevIdx]);
+				mSceneDepthTextures[prevIdx], mSceneDepthViews[prevIdx], mSceneDepthOnlyViews[prevIdx],
+				currentState: mSceneDepthStates[prevIdx]);
 
 			mRenderGraph.AddRenderPass("SceneDepthClear", scope (builder) => {
 				builder
@@ -436,7 +446,8 @@ public class Pipeline : IRenderingPipeline, IDisposable
 				{
 					if (s == currIdx) continue;
 					let staleHandle = mRenderGraph.ImportTarget(scope $"SceneDepthInitClear[{s}]",
-						mSceneDepthTextures[s], mSceneDepthViews[s], mSceneDepthOnlyViews[s]);
+						mSceneDepthTextures[s], mSceneDepthViews[s], mSceneDepthOnlyViews[s],
+						currentState: mSceneDepthStates[s]);
 					mRenderGraph.AddRenderPass(scope $"SceneDepthInitClear[{s}]", scope (builder) => {
 						builder
 							.SetDepthTarget(staleHandle, .Clear, .Store, 1.0f)
@@ -494,6 +505,19 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		// Compile and execute the graph
 		using (Profiler.Begin("RenderGraph.Execute"))
 			mRenderGraph.Execute(encoder);
+
+		// Save SceneDepth states before EndFrame clears the resource list.
+		// This ensures the next frame's ImportTarget gets the actual post-execution
+		// state instead of the stale creation-time InitialState.
+		if (allDepthSlotsReady)
+		{
+			let currIdx = mSceneDepthCurrIndex;
+			let prevIdx = (currIdx + SceneDepthHistoryCount - 1) % SceneDepthHistoryCount;
+			let currHandle = mRenderGraph.GetResource("SceneDepth");
+			let prevHandle = mRenderGraph.GetResource("PrevSceneDepth");
+			if (currHandle.IsValid) mSceneDepthStates[currIdx] = mRenderGraph.GetResourceState(currHandle);
+			if (prevHandle.IsValid) mSceneDepthStates[prevIdx] = mRenderGraph.GetResourceState(prevHandle);
+		}
 
 		// End render graph frame
 		mRenderGraph.EndFrame();
@@ -735,6 +759,8 @@ public class Pipeline : IRenderingPipeline, IDisposable
 
 		mSceneDepthCurrIndex = 0;
 		mSceneDepthAllSlotsCleared = false;
+		for (int i = 0; i < SceneDepthHistoryCount; i++)
+			mSceneDepthStates[i] = mSceneDepthTextures[i] != null ? mSceneDepthTextures[i].InitialState : .Undefined;
 	}
 
 	private Result<void> CreatePerFrameResources()

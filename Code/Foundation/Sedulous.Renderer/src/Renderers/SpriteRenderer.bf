@@ -110,12 +110,12 @@ public class SpriteRenderer : Renderer
 		config.ShaderName = "sprite";
 		config.ColorTargetCount = 1;
 		config.Topology = .TriangleList;
-		config.DepthFormat = .Depth24PlusStencil8; // matches main forward prepass
+		config.DepthFormat = Pipeline.DepthFormat; // matches main forward prepass
 
 		let pipelineResult = cache.GetPipeline(config, vertexBuffers,
 			spriteSystem.SpriteMaterialLayout,
 			mainPipeline.OutputFormat,
-			.Depth24PlusStencil8);
+			Pipeline.DepthFormat);
 		if (pipelineResult case .Err)
 			return;
 

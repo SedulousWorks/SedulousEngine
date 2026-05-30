@@ -132,14 +132,14 @@ class DebugPass : PipelinePass
 		VertexBufferLayout[1] vertexBuffers = .(vertexLayout);
 
 		let frame = pipeline.GetFrameResources(view.FrameIndex);
-		let depthFormat = hasDepth ? TextureFormat.Depth24PlusStencil8 : TextureFormat.Undefined;
+		let depthFormat = hasDepth ? Pipeline.DepthFormat : TextureFormat.Undefined;
 
 		var config = PipelineConfig();
 		config.ShaderName = "debug_line";
 		config.BlendMode = .AlphaBlend;
 		config.CullMode = .None;
 		config.ColorTargetCount = 1;
-		config.DepthFormat = .Depth24PlusStencil8;
+		config.DepthFormat = Pipeline.DepthFormat;
 
 		// 1. Depth-tested lines
 		if (depthLinesClamped > 0)

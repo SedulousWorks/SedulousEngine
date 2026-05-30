@@ -289,15 +289,16 @@ public class RenderGraph
 		return AddResource(res);
 	}
 
-	/// Import an external texture for this frame (not owned by graph)
-	public RGHandle ImportTarget(StringView name, ITexture texture, ITextureView view, ResourceState? finalState = null)
+	/// Import an external texture for this frame (not owned by graph).
+	/// currentState overrides the initial state if the caller has already
+	/// transitioned the resource outside the graph (e.g., after a manual clear).
+	public RGHandle ImportTarget(StringView name, ITexture texture, ITextureView view, ResourceState? finalState = null, ResourceState? currentState = null)
 	{
 		let res = new RenderGraphResource(name, .Texture, .Imported);
 		res.Texture = texture;
 		res.TextureView = view;
 		res.FinalState = finalState;
-		// Imported resources start in their current state
-		res.LastKnownState = texture != null ? texture.InitialState : .Undefined;
+		res.LastKnownState = currentState ?? (texture != null ? texture.InitialState : .Undefined);
 		return AddResource(res);
 	}
 
@@ -306,14 +307,14 @@ public class RenderGraph
 	/// view for shader sampling (soft particles, decals, etc.). The graph
 	/// does not own either view - the caller is responsible for their
 	/// lifetime, matching the no-depth-only ImportTarget contract.
-	public RGHandle ImportTarget(StringView name, ITexture texture, ITextureView view, ITextureView depthOnlyView, ResourceState? finalState = null)
+	public RGHandle ImportTarget(StringView name, ITexture texture, ITextureView view, ITextureView depthOnlyView, ResourceState? finalState = null, ResourceState? currentState = null)
 	{
 		let res = new RenderGraphResource(name, .Texture, .Imported);
 		res.Texture = texture;
 		res.TextureView = view;
 		res.DepthOnlyView = depthOnlyView;
 		res.FinalState = finalState;
-		res.LastKnownState = texture != null ? texture.InitialState : .Undefined;
+		res.LastKnownState = currentState ?? (texture != null ? texture.InitialState : .Undefined);
 		return AddResource(res);
 	}
 
@@ -469,6 +470,18 @@ public class RenderGraph
 				return RGHandle((uint32)i, res.Generation);
 		}
 		return .Invalid;
+	}
+
+	/// Get the last known resource state after execution (valid between Execute and EndFrame/BeginFrame).
+	/// Returns .Undefined for invalid handles or resources without state tracking.
+	public ResourceState GetResourceState(RGHandle handle)
+	{
+		if (!handle.IsValid || handle.Index >= (uint32)mResources.Count)
+			return .Undefined;
+		let res = mResources[handle.Index];
+		if (res == null || res.Generation != handle.Generation)
+			return .Undefined;
+		return res.LastKnownState;
 	}
 
 	/// The compiled execution order (valid after Execute)

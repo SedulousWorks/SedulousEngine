@@ -116,7 +116,9 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 		mRenderGraph.BeginFrame((int32)frameSlot);
 
 		// Import with finalState = ShaderRead so the graph emits the final transition.
-		let atlasHandle = mRenderGraph.ImportTarget("ShadowAtlas", atlas, atlasView, .ShaderRead);
+		// currentState = ShaderRead because ClearShadowAtlas already cleared and
+		// transitioned the atlas to ShaderRead before RenderAll is called.
+		let atlasHandle = mRenderGraph.ImportTarget("ShadowAtlas", atlas, atlasView, .ShaderRead, .ShaderRead);
 
 		for (int i = 0; i < count; i++)
 		{

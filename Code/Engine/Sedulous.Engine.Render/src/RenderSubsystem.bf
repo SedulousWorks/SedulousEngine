@@ -318,6 +318,11 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		let atlasView = shadowSystem.Atlas.TextureView;
 		if (atlas == null || atlasView == null) return;
 
+		// The atlas may be in ShaderRead from the previous frame's final transition
+		// (ShadowPipeline imports it with finalState=ShaderRead). Transition to
+		// DepthStencilWrite before the clear render pass.
+		encoder.TransitionTexture(atlas, .ShaderRead, .DepthStencilWrite);
+
 		DepthStencilAttachment depthAttachment = .()
 		{
 			View = atlasView,

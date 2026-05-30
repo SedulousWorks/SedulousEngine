@@ -90,7 +90,7 @@ class ForwardOpaquePass : PipelinePass
 			// masked pixels because their depth is still at far-plane.
 			config.DepthMode = .ReadWrite;
 			config.DepthCompare = .LessEqual;
-			config.DepthFormat = .Depth24PlusStencil8;
+			config.DepthFormat = Pipeline.DepthFormat;
 		}
 		else
 		{
@@ -101,7 +101,7 @@ class ForwardOpaquePass : PipelinePass
 		VertexBufferLayout[1] vertexBuffers = .(vertexLayout);
 
 		let pipelineResult = cache.GetPipeline(config, vertexBuffers, null, pipeline.OutputFormat,
-			hasDepth ? .Depth24PlusStencil8 : .Undefined);
+			hasDepth ? Pipeline.DepthFormat : .Undefined);
 		if (pipelineResult case .Err)
 			return;
 

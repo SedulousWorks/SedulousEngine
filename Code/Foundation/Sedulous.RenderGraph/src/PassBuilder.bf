@@ -88,6 +88,26 @@ public struct PassBuilder
 		return this;
 	}
 
+	/// Set a read-only depth target (depth test without write).
+	/// Use this instead of SetDepthTarget when the pipeline state has DepthWriteEnabled=false.
+	/// This transitions to DepthStencilRead (D3D12: DEPTH_READ) which prevents D3D12's
+	/// implicit state promotion from desynchronizing barrier tracking.
+	public Self SetReadOnlyDepthTarget(RGHandle handle, RGSubresourceRange subresource = default) mut
+	{
+		mPass.DepthTarget = RGDepthTarget(handle)
+		{
+			DepthLoadOp = .Load,
+			DepthStoreOp = .Store,
+			DepthClearValue = 1.0f,
+			ReadOnly = true,
+			Subresource = subresource
+		};
+
+		mPass.Accesses.Add(.(handle, .ReadDepthStencil, subresource));
+
+		return this;
+	}
+
 	// === Storage (UAV) ===
 
 	/// Declare a storage (UAV) write
