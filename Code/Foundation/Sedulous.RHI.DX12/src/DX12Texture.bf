@@ -15,6 +15,8 @@ class DX12Texture : ITexture
 	private ID3D12Resource* mResource;
 	private TextureDesc mDesc;
 	private D3D12_RESOURCE_STATES mState;
+	/// Per-subresource states, indexed as [mip + layer * mipCount]. Null when uniform.
+	private D3D12_RESOURCE_STATES[] mSubresourceStates ~ delete _;
 	private ResourceState mInitialState = .Undefined;
 	private bool mOwnsResource = true;
 
@@ -114,5 +116,66 @@ class DX12Texture : ITexture
 
 	// --- Internal ---
 	public ID3D12Resource* Handle => mResource;
-	public D3D12_RESOURCE_STATES State { get => mState; set => mState = value; }
+
+	/// Whole-resource state (uniform fast path). Setting this clears per-subresource state.
+	public D3D12_RESOURCE_STATES State
+	{
+		get => mState;
+		set
+		{
+			mState = value;
+			DeleteAndNullify!(mSubresourceStates);
+		}
+	}
+
+	/// Get the state for a specific subresource
+	public D3D12_RESOURCE_STATES GetSubresourceState(uint32 mip, uint32 layer)
+	{
+		if (mSubresourceStates == null)
+			return mState;
+		let idx = mip + layer * mDesc.MipLevelCount;
+		if (idx >= (uint32)mSubresourceStates.Count)
+			return mState;
+		return mSubresourceStates[idx];
+	}
+
+	/// Update state for a subresource range. Promotes to per-subresource tracking when needed.
+	public void SetSubresourceState(uint32 baseMip, uint32 mipCount, uint32 baseLayer, uint32 layerCount, D3D12_RESOURCE_STATES state)
+	{
+		let totalMips = mDesc.MipLevelCount;
+		let totalLayers = Math.Max((mDesc.Dimension == .Texture3D) ? mDesc.Depth : mDesc.ArrayLayerCount, 1);
+		let resolvedMipEnd = (mipCount == uint32.MaxValue) ? totalMips : Math.Min(baseMip + mipCount, totalMips);
+		let resolvedLayerEnd = (layerCount == uint32.MaxValue) ? totalLayers : Math.Min(baseLayer + layerCount, totalLayers);
+
+		// All subresources? Collapse to uniform.
+		if (baseMip == 0 && resolvedMipEnd >= totalMips && baseLayer == 0 && resolvedLayerEnd >= totalLayers)
+		{
+			mState = state;
+			DeleteAndNullify!(mSubresourceStates);
+			return;
+		}
+
+		// Promote to per-subresource
+		if (mSubresourceStates == null)
+		{
+			if (state == mState) return;
+			mSubresourceStates = new D3D12_RESOURCE_STATES[totalMips * totalLayers];
+			for (int idx = 0; idx < mSubresourceStates.Count; idx++)
+				mSubresourceStates[idx] = mState;
+		}
+
+		for (uint32 l = baseLayer; l < resolvedLayerEnd; l++)
+			for (uint32 m = baseMip; m < resolvedMipEnd; m++)
+				mSubresourceStates[m + l * totalMips] = state;
+
+		// Try to collapse back to uniform
+		let first = mSubresourceStates[0];
+		for (int idx = 1; idx < mSubresourceStates.Count; idx++)
+		{
+			if (mSubresourceStates[idx] != first)
+				return;
+		}
+		mState = first;
+		DeleteAndNullify!(mSubresourceStates);
+	}
 }

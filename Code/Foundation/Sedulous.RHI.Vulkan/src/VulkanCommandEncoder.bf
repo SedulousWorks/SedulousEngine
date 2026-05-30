@@ -168,7 +168,20 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 			let newLayout = VulkanBarrierHelper.GetImageLayout(tb.NewState);
 
-			let resolvedOldLayout = (vkTex != null) ? vkTex.CurrentLayout : VulkanBarrierHelper.GetImageLayout(tb.OldState);
+			// Resolve old layout from per-subresource tracking when available
+			VkImageLayout resolvedOldLayout;
+			if (vkTex != null)
+			{
+				let isWholeResource = tb.MipLevelCount == uint32.MaxValue && tb.ArrayLayerCount == uint32.MaxValue;
+				if (isWholeResource)
+					resolvedOldLayout = vkTex.CurrentLayout;
+				else
+					resolvedOldLayout = vkTex.GetSubresourceLayout(tb.BaseMipLevel, tb.BaseArrayLayer);
+			}
+			else
+			{
+				resolvedOldLayout = VulkanBarrierHelper.GetImageLayout(tb.OldState);
+			}
 
 			VkImageMemoryBarrier2 vkBarrier = .();
 			// When the actual old layout is UNDEFINED (first use), there is no prior
@@ -192,7 +205,8 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 			if (vkTex != null)
 			{
 				vkBarrier.image = vkTex.Handle;
-				vkTex.CurrentLayout = newLayout;
+				// Update per-subresource layout tracking
+				vkTex.SetSubresourceLayout(tb.BaseMipLevel, tb.MipLevelCount, tb.BaseArrayLayer, tb.ArrayLayerCount, newLayout);
 			}
 			vkBarrier.subresourceRange.aspectMask = VulkanConversions.GetAspectMask(format);
 			vkBarrier.subresourceRange.baseMipLevel = tb.BaseMipLevel;

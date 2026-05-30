@@ -143,6 +143,28 @@ public class RenderGraphResource
 			device.DestroyBuffer(ref Buffer);
 	}
 
+	/// Total mip levels for this resource (from allocated texture or descriptor)
+	public uint32 TotalMipLevels
+	{
+		get
+		{
+			if (Texture != null) return Texture.Desc.MipLevelCount;
+			if (ResourceType == .Texture) return TextureDesc.MipLevelCount;
+			return 1;
+		}
+	}
+
+	/// Total array layers for this resource (from allocated texture or descriptor)
+	public uint32 TotalArrayLayers
+	{
+		get
+		{
+			if (Texture != null) return Texture.Desc.ArrayLayerCount;
+			if (ResourceType == .Texture) return TextureDesc.ArrayLayerCount;
+			return 1;
+		}
+	}
+
 	/// Reset per-frame tracking data
 	public void ResetTracking()
 	{

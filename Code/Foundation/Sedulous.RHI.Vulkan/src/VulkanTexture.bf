@@ -12,6 +12,8 @@ class VulkanTexture : ITexture
 	private TextureDesc mDesc;
 	private bool mOwnsImage = true;
 	private VkImageLayout mCurrentLayout = .VK_IMAGE_LAYOUT_UNDEFINED;
+	/// Per-subresource layouts, indexed as [mip + layer * mipCount]. Null when uniform.
+	private VkImageLayout[] mSubresourceLayouts ~ delete _;
 
 	public TextureDesc Desc => mDesc;
 	public ResourceState InitialState => .Undefined;
@@ -104,9 +106,66 @@ class VulkanTexture : ITexture
 	// --- Internal ---
 	public VkImage Handle => mImage;
 	public VkFormat VkFormat => VulkanConversions.ToVkFormat(mDesc.Format);
+
+	/// Whole-resource layout (uniform fast path). Setting this clears per-subresource state.
 	public VkImageLayout CurrentLayout
 	{
 		get => mCurrentLayout;
-		set => mCurrentLayout = value;
+		set
+		{
+			mCurrentLayout = value;
+			DeleteAndNullify!(mSubresourceLayouts);
+		}
+	}
+
+	/// Get the layout for a specific subresource
+	public VkImageLayout GetSubresourceLayout(uint32 mip, uint32 layer)
+	{
+		if (mSubresourceLayouts == null)
+			return mCurrentLayout;
+		let idx = mip + layer * mDesc.MipLevelCount;
+		if (idx >= (uint32)mSubresourceLayouts.Count)
+			return mCurrentLayout;
+		return mSubresourceLayouts[idx];
+	}
+
+	/// Update layout for a subresource range. Promotes to per-subresource tracking when needed.
+	public void SetSubresourceLayout(uint32 baseMip, uint32 mipCount, uint32 baseLayer, uint32 layerCount, VkImageLayout layout)
+	{
+		let totalMips = mDesc.MipLevelCount;
+		let totalLayers = Math.Max(mDesc.ArrayLayerCount, 1);
+		let resolvedMipEnd = (mipCount == uint32.MaxValue) ? totalMips : Math.Min(baseMip + mipCount, totalMips);
+		let resolvedLayerEnd = (layerCount == uint32.MaxValue) ? totalLayers : Math.Min(baseLayer + layerCount, totalLayers);
+
+		// All subresources? Collapse to uniform.
+		if (baseMip == 0 && resolvedMipEnd >= totalMips && baseLayer == 0 && resolvedLayerEnd >= totalLayers)
+		{
+			mCurrentLayout = layout;
+			DeleteAndNullify!(mSubresourceLayouts);
+			return;
+		}
+
+		// Promote to per-subresource
+		if (mSubresourceLayouts == null)
+		{
+			if (layout == mCurrentLayout) return;
+			mSubresourceLayouts = new VkImageLayout[totalMips * totalLayers];
+			for (int idx = 0; idx < mSubresourceLayouts.Count; idx++)
+				mSubresourceLayouts[idx] = mCurrentLayout;
+		}
+
+		for (uint32 l = baseLayer; l < resolvedLayerEnd; l++)
+			for (uint32 m = baseMip; m < resolvedMipEnd; m++)
+				mSubresourceLayouts[m + l * totalMips] = layout;
+
+		// Try to collapse back to uniform
+		let first = mSubresourceLayouts[0];
+		for (int idx = 1; idx < mSubresourceLayouts.Count; idx++)
+		{
+			if (mSubresourceLayouts[idx] != first)
+				return;
+		}
+		mCurrentLayout = first;
+		DeleteAndNullify!(mSubresourceLayouts);
 	}
 }

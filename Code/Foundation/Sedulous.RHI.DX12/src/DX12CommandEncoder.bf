@@ -6,6 +6,7 @@ using Win32.Foundation;
 using Win32.Graphics.Direct3D12;
 using Win32.Graphics.Dxgi.Common;
 using Sedulous.RHI;
+using System.Collections;
 
 /// DX12 implementation of ICommandEncoder and IRayTracingEncoderExt.
 /// Wraps an ID3D12GraphicsCommandList for recording commands.
@@ -118,8 +119,8 @@ class DX12CommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		int totalBarriers = barriers.BufferBarriers.Length + barriers.TextureBarriers.Length + barriers.MemoryBarriers.Length;
 		if (totalBarriers == 0) return;
 
-		D3D12_RESOURCE_BARRIER[] dxBarriers = scope D3D12_RESOURCE_BARRIER[totalBarriers];
-		int idx = 0;
+		// Use a list since per-subresource texture barriers may expand to multiple D3D12 barriers
+		List<D3D12_RESOURCE_BARRIER> dxBarriers = scope .(totalBarriers);
 
 		for (let bb in barriers.BufferBarriers)
 		{
@@ -129,15 +130,15 @@ class DX12CommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 				let newState = ToResourceStates(bb.NewState);
 				if (oldState == newState) continue;
 
-				dxBarriers[idx] = default;
-				dxBarriers[idx].Type = .D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-				dxBarriers[idx].Flags = .D3D12_RESOURCE_BARRIER_FLAG_NONE;
-				dxBarriers[idx].Transition.pResource = dxBuf.Handle;
-				dxBarriers[idx].Transition.StateBefore = oldState;
-				dxBarriers[idx].Transition.StateAfter = newState;
-				dxBarriers[idx].Transition.Subresource = 0xFFFFFFFF; // D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES
+				var barrier = D3D12_RESOURCE_BARRIER();
+				barrier.Type = .D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+				barrier.Flags = .D3D12_RESOURCE_BARRIER_FLAG_NONE;
+				barrier.Transition.pResource = dxBuf.Handle;
+				barrier.Transition.StateBefore = oldState;
+				barrier.Transition.StateAfter = newState;
+				barrier.Transition.Subresource = 0xFFFFFFFF; // D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES
 				dxBuf.State = newState;
-				idx++;
+				dxBarriers.Add(barrier);
 			}
 		}
 
@@ -145,33 +146,68 @@ class DX12CommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		{
 			if (let dxTex = tb.Texture as DX12Texture)
 			{
-				let oldState = ToResourceStates(tb.OldState);
 				let newState = ToResourceStates(tb.NewState);
-				if (oldState == newState) continue;
+				let isWholeResource = tb.MipLevelCount == uint32.MaxValue && tb.ArrayLayerCount == uint32.MaxValue;
 
-				dxBarriers[idx] = default;
-				dxBarriers[idx].Type = .D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-				dxBarriers[idx].Flags = .D3D12_RESOURCE_BARRIER_FLAG_NONE;
-				dxBarriers[idx].Transition.pResource = dxTex.Handle;
-				dxBarriers[idx].Transition.StateBefore = oldState;
-				dxBarriers[idx].Transition.StateAfter = newState;
-				dxBarriers[idx].Transition.Subresource = 0xFFFFFFFF;
-				dxTex.State = newState;
-				idx++;
+				if (isWholeResource)
+				{
+					// Whole-resource barrier: use resolved state from texture tracking
+					let resolvedOldState = dxTex.State;
+					if (resolvedOldState == newState) continue;
+
+					var barrier = D3D12_RESOURCE_BARRIER();
+					barrier.Type = .D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+					barrier.Flags = .D3D12_RESOURCE_BARRIER_FLAG_NONE;
+					barrier.Transition.pResource = dxTex.Handle;
+					barrier.Transition.StateBefore = resolvedOldState;
+					barrier.Transition.StateAfter = newState;
+					barrier.Transition.Subresource = 0xFFFFFFFF;
+					dxTex.State = newState;
+					dxBarriers.Add(barrier);
+				}
+				else
+				{
+					// Per-subresource barrier: expand range to individual D3D12 barriers
+					let mipCount = dxTex.Desc.MipLevelCount;
+					let layerCount = Math.Max((dxTex.Desc.Dimension == .Texture3D) ? dxTex.Desc.Depth : dxTex.Desc.ArrayLayerCount, 1);
+					let baseMip = tb.BaseMipLevel;
+					let mipEnd = Math.Min(baseMip + tb.MipLevelCount, mipCount);
+					let baseLayer = tb.BaseArrayLayer;
+					let layerEnd = Math.Min(baseLayer + tb.ArrayLayerCount, layerCount);
+
+					for (uint32 layer = baseLayer; layer < layerEnd; layer++)
+					{
+						for (uint32 mip = baseMip; mip < mipEnd; mip++)
+						{
+							let resolvedOldState = dxTex.GetSubresourceState(mip, layer);
+							if (resolvedOldState == newState) continue;
+
+							var barrier = D3D12_RESOURCE_BARRIER();
+							barrier.Type = .D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+							barrier.Flags = .D3D12_RESOURCE_BARRIER_FLAG_NONE;
+							barrier.Transition.pResource = dxTex.Handle;
+							barrier.Transition.StateBefore = resolvedOldState;
+							barrier.Transition.StateAfter = newState;
+							barrier.Transition.Subresource = (uint32)(mip + layer * mipCount);
+							dxBarriers.Add(barrier);
+						}
+					}
+					dxTex.SetSubresourceState(baseMip, tb.MipLevelCount, baseLayer, tb.ArrayLayerCount, newState);
+				}
 			}
 		}
 
 		for (let mb in barriers.MemoryBarriers)
 		{
-			dxBarriers[idx] = default;
-			dxBarriers[idx].Type = .D3D12_RESOURCE_BARRIER_TYPE_UAV;
-			dxBarriers[idx].Flags = .D3D12_RESOURCE_BARRIER_FLAG_NONE;
-			dxBarriers[idx].UAV.pResource = null; // Global UAV barrier
-			idx++;
+			var barrier = D3D12_RESOURCE_BARRIER();
+			barrier.Type = .D3D12_RESOURCE_BARRIER_TYPE_UAV;
+			barrier.Flags = .D3D12_RESOURCE_BARRIER_FLAG_NONE;
+			barrier.UAV.pResource = null; // Global UAV barrier
+			dxBarriers.Add(barrier);
 		}
 
-		if (idx > 0)
-			mCmdList.ResourceBarrier((uint32)idx, dxBarriers.CArray());
+		if (dxBarriers.Count > 0)
+			mCmdList.ResourceBarrier((uint32)dxBarriers.Count, dxBarriers.Ptr);
 	}
 
 	// ===== Copy Operations =====

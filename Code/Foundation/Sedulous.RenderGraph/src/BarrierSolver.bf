@@ -6,8 +6,8 @@ namespace Sedulous.RenderGraph;
 
 /// Computes and emits resource barriers between render graph passes.
 /// Tracks state at two levels:
-/// - Per-resource-handle (fast lookup for the common case)
-/// - Per-ITexture (source of truth when multiple handles reference the same GPU texture)
+/// - Per-resource-handle (fast lookup for buffers and simple queries)
+/// - Per-ITexture with per-subresource granularity (source of truth for textures)
 public class BarrierSolver
 {
 	/// Identity key for ITexture - hashes by object pointer so the same
@@ -29,10 +29,13 @@ public class BarrierSolver
 		}
 	}
 
-	/// Per-resource-handle tracked state (kept in sync with texture-level state)
+	/// Per-resource-handle tracked state (buffers: source of truth; textures: last-set convenience)
 	private Dictionary<int32, ResourceState> mResourceStates = new .() ~ delete _;
-	/// Per-ITexture tracked state - source of truth for actual GPU layout
-	private Dictionary<TextureKey, ResourceState> mTextureStates = new .() ~ delete _;
+	/// Per-ITexture tracked state with per-subresource granularity - source of truth for textures
+	private Dictionary<TextureKey, SubresourceStateTracker> mTextureStates = new .() ~ {
+		for (let v in _.Values) delete v;
+		delete _;
+	};
 	/// Temporary barrier lists to avoid per-pass allocation
 	private List<TextureBarrier> mTextureBarriers = new .() ~ delete _;
 	private List<BufferBarrier> mBufferBarriers = new .() ~ delete _;
@@ -43,6 +46,7 @@ public class BarrierSolver
 	public void Reset(List<RenderGraphResource> resources)
 	{
 		mResourceStates.Clear();
+		for (let v in mTextureStates.Values) delete v;
 		mTextureStates.Clear();
 
 		for (int32 i = 0; i < (int32)resources.Count; i++)
@@ -74,32 +78,40 @@ public class BarrierSolver
 
 			mResourceStates[i] = initialState;
 
-			// For textures, also register in the ITexture-keyed dictionary.
-			// If the same ITexture was already registered by another handle,
-			// use whichever state is more recent (non-Undefined preferred).
+			// For textures, register in the ITexture-keyed dictionary with per-subresource tracking.
 			if (res.ResourceType == .Texture && res.Texture != null)
 			{
 				let key = TextureKey(res.Texture);
-				if (mTextureStates.TryGetValue(key, let existingState))
+				if (mTextureStates.TryGetValue(key, let existingTracker))
 				{
 					// Same GPU texture seen from another handle - unify state.
 					// Prefer the existing tracked state if our handle says Undefined.
-					if (initialState == .Undefined && existingState != .Undefined)
-						mResourceStates[i] = existingState;
-					else
-						mTextureStates[key] = initialState;
+					if (initialState == .Undefined && existingTracker.IsUniform && existingTracker.UniformState != .Undefined)
+						mResourceStates[i] = existingTracker.UniformState;
+					else if (initialState != .Undefined)
+						existingTracker.SetAll(initialState);
 				}
 				else
 				{
-					mTextureStates[key] = initialState;
+					let mipCount = res.Texture.Desc.MipLevelCount;
+					let layerCount = res.Texture.Desc.ArrayLayerCount;
+					let tracker = new SubresourceStateTracker(mipCount, layerCount, initialState);
+
+					// Restore per-subresource state from persistent data if available
+					if (res.Lifetime == .Persistent && res.PersistentData != null
+						&& !res.PersistentData.FirstFrame && res.PersistentData.SubresourceStates != null)
+					{
+						tracker.InitFromStates(res.PersistentData.SubresourceStates, initialState);
+					}
+
+					mTextureStates[key] = tracker;
 				}
 			}
 		}
 	}
 
 	/// Emit barriers needed before executing the given pass.
-	/// State lookups use the ITexture-keyed dictionary so that when two handles
-	/// reference the same GPU texture, a state change through one is visible to the other.
+	/// For textures with non-uniform subresource states, emits per-subresource barriers.
 	public void EmitBarriers(RenderGraphPass pass, List<RenderGraphResource> resources, ICommandEncoder encoder)
 	{
 		mTextureBarriers.Clear();
@@ -119,34 +131,17 @@ public class BarrierSolver
 
 			if (res.ResourceType == .Texture && res.Texture != null)
 			{
-				// Look up current state by ITexture (source of truth)
 				let key = TextureKey(res.Texture);
-				ResourceState currentState = .Undefined;
-				mTextureStates.TryGetValue(key, out currentState);
+				SubresourceStateTracker tracker = null;
+				mTextureStates.TryGetValue(key, out tracker);
+				if (tracker == null) continue;
 
-				// Skip if same state, UNLESS this is a read+write access that needs
-				// previous writes to be visible (e.g., depth Load+Store after depth Clear+Store)
-				if (currentState == requiredState && !accessIsReadWrite)
-					continue;
+				EmitTextureBarriers(tracker, res.Texture, access.Subresource, requiredState, accessIsReadWrite);
 
-				var barrier = TextureBarrier();
-				barrier.Texture = res.Texture;
-				barrier.OldState = currentState;
-				barrier.NewState = requiredState;
+				// Update tracker state for the accessed range
+				tracker.SetState(access.Subresource, requiredState);
 
-				// Apply subresource range if specified
-				if (!access.Subresource.IsAll)
-				{
-					barrier.BaseMipLevel = access.Subresource.BaseMipLevel;
-					barrier.MipLevelCount = access.Subresource.MipLevelCount == 0 ? uint32.MaxValue : access.Subresource.MipLevelCount;
-					barrier.BaseArrayLayer = access.Subresource.BaseArrayLayer;
-					barrier.ArrayLayerCount = access.Subresource.ArrayLayerCount == 0 ? uint32.MaxValue : access.Subresource.ArrayLayerCount;
-				}
-
-				mTextureBarriers.Add(barrier);
-
-				// Update both tracking levels
-				mTextureStates[key] = requiredState;
+				// Update per-handle state (lossy for non-uniform, but only used for convenience queries)
 				mResourceStates[resIdx] = requiredState;
 			}
 			else if (res.ResourceType == .Buffer && res.Buffer != null)
@@ -157,11 +152,12 @@ public class BarrierSolver
 				if (currentState == requiredState)
 					continue;
 
-				var barrier = BufferBarrier();
-				barrier.Buffer = res.Buffer;
-				barrier.OldState = currentState;
-				barrier.NewState = requiredState;
-				mBufferBarriers.Add(barrier);
+				var barrier = TextureBarrier();
+				var bufBarrier = BufferBarrier();
+				bufBarrier.Buffer = res.Buffer;
+				bufBarrier.OldState = currentState;
+				bufBarrier.NewState = requiredState;
+				mBufferBarriers.Add(bufBarrier);
 
 				mResourceStates[resIdx] = requiredState;
 			}
@@ -176,6 +172,66 @@ public class BarrierSolver
 			if (mBufferBarriers.Count > 0)
 				group.BufferBarriers = Span<BufferBarrier>(mBufferBarriers.Ptr, mBufferBarriers.Count);
 			encoder.Barrier(group);
+		}
+	}
+
+	/// Emit texture barriers for an access, handling uniform and non-uniform state.
+	private void EmitTextureBarriers(SubresourceStateTracker tracker, ITexture texture,
+		RGSubresourceRange subresource, ResourceState requiredState, bool accessIsReadWrite)
+	{
+		let totalMips = tracker.MipCount;
+		let totalLayers = tracker.LayerCount;
+
+		if (tracker.IsUniform)
+		{
+			// Fast path: all subresources in same state
+			let currentState = tracker.UniformState;
+			if (currentState == requiredState && !accessIsReadWrite)
+				return;
+
+			var barrier = TextureBarrier();
+			barrier.Texture = texture;
+			barrier.OldState = currentState;
+			barrier.NewState = requiredState;
+
+			// Apply subresource range if specified
+			if (!subresource.IsAll)
+			{
+				barrier.BaseMipLevel = subresource.BaseMipLevel;
+				barrier.MipLevelCount = subresource.MipLevelCount == 0 ? uint32.MaxValue : subresource.MipLevelCount;
+				barrier.BaseArrayLayer = subresource.BaseArrayLayer;
+				barrier.ArrayLayerCount = subresource.ArrayLayerCount == 0 ? uint32.MaxValue : subresource.ArrayLayerCount;
+			}
+
+			mTextureBarriers.Add(barrier);
+		}
+		else
+		{
+			// Non-uniform: emit per-subresource barriers for subresources that need transitioning
+			let baseMip = subresource.BaseMipLevel;
+			let mipEnd = (subresource.MipLevelCount == 0) ? totalMips : Math.Min(baseMip + subresource.MipLevelCount, totalMips);
+			let baseLayer = subresource.BaseArrayLayer;
+			let layerEnd = (subresource.ArrayLayerCount == 0) ? totalLayers : Math.Min(baseLayer + subresource.ArrayLayerCount, totalLayers);
+
+			for (uint32 layer = baseLayer; layer < layerEnd; layer++)
+			{
+				for (uint32 mip = baseMip; mip < mipEnd; mip++)
+				{
+					let currentState = tracker.GetState(mip, layer);
+					if (currentState == requiredState && !accessIsReadWrite)
+						continue;
+
+					var barrier = TextureBarrier();
+					barrier.Texture = texture;
+					barrier.OldState = currentState;
+					barrier.NewState = requiredState;
+					barrier.BaseMipLevel = mip;
+					barrier.MipLevelCount = 1;
+					barrier.BaseArrayLayer = layer;
+					barrier.ArrayLayerCount = 1;
+					mTextureBarriers.Add(barrier);
+				}
+			}
 		}
 	}
 
@@ -197,19 +253,13 @@ public class BarrierSolver
 			if (res.ResourceType != .Texture || res.Texture == null) continue;
 
 			let key = TextureKey(res.Texture);
-			ResourceState currentState = .Undefined;
-			mTextureStates.TryGetValue(key, out currentState);
+			SubresourceStateTracker tracker = null;
+			mTextureStates.TryGetValue(key, out tracker);
+			if (tracker == null) continue;
 
-			if (currentState == .ShaderRead)
-				continue;
-
-			var barrier = TextureBarrier();
-			barrier.Texture = res.Texture;
-			barrier.OldState = currentState;
-			barrier.NewState = .ShaderRead;
-			mTextureBarriers.Add(barrier);
-
-			mTextureStates[key] = .ShaderRead;
+			// Transition the written subresource range to ShaderRead
+			EmitTextureBarriers(tracker, res.Texture, access.Subresource, .ShaderRead, false);
+			tracker.SetState(access.Subresource, .ShaderRead);
 			mResourceStates[resIdx] = .ShaderRead;
 		}
 
@@ -236,21 +286,14 @@ public class BarrierSolver
 
 			if (res.Texture != null)
 			{
-				// Use ITexture-keyed state for current state
 				let key = TextureKey(res.Texture);
-				ResourceState currentState = .Undefined;
-				mTextureStates.TryGetValue(key, out currentState);
+				SubresourceStateTracker tracker = null;
+				mTextureStates.TryGetValue(key, out tracker);
+				if (tracker == null) continue;
 
-				if (currentState == finalState)
-					continue;
-
-				var barrier = TextureBarrier();
-				barrier.Texture = res.Texture;
-				barrier.OldState = currentState;
-				barrier.NewState = finalState;
-				mTextureBarriers.Add(barrier);
-
-				mTextureStates[key] = finalState;
+				// Transition all subresources to final state
+				EmitTextureBarriers(tracker, res.Texture, .All, finalState, false);
+				tracker.SetAll(finalState);
 				mResourceStates[i] = finalState;
 			}
 		}
@@ -271,18 +314,35 @@ public class BarrierSolver
 			let res = resources[i];
 			if (res == null) continue;
 
-			// For textures, read back from the ITexture-keyed state
+			// For textures, read back from the per-subresource tracker
 			if (res.ResourceType == .Texture && res.Texture != null)
 			{
 				let key = TextureKey(res.Texture);
-				if (mTextureStates.TryGetValue(key, let state))
+				if (mTextureStates.TryGetValue(key, let tracker))
 				{
-					res.LastKnownState = state;
-
-					if (res.PersistentData != null)
+					if (tracker.IsUniform)
 					{
-						res.PersistentData.LastKnownState = state;
-						res.PersistentData.FirstFrame = false;
+						res.LastKnownState = tracker.UniformState;
+						if (res.PersistentData != null)
+						{
+							res.PersistentData.LastKnownState = tracker.UniformState;
+							res.PersistentData.FirstFrame = false;
+							// Clear per-subresource state since we're uniform
+							DeleteAndNullify!(res.PersistentData.SubresourceStates);
+						}
+					}
+					else
+					{
+						// Non-uniform: store per-subresource states for next frame
+						res.LastKnownState = tracker.GetState(0, 0);
+						if (res.PersistentData != null)
+						{
+							res.PersistentData.LastKnownState = tracker.GetState(0, 0);
+							res.PersistentData.FirstFrame = false;
+							// Save per-subresource state array
+							delete res.PersistentData.SubresourceStates;
+							res.PersistentData.SubresourceStates = tracker.CopyStates();
+						}
 					}
 				}
 			}
@@ -299,7 +359,7 @@ public class BarrierSolver
 		}
 	}
 
-	/// Get the current tracked state for a resource
+	/// Get the current tracked state for a resource (whole-resource, lossy for non-uniform textures)
 	public ResourceState GetState(int32 resourceIndex)
 	{
 		ResourceState state = .Undefined;
@@ -307,12 +367,22 @@ public class BarrierSolver
 		return state;
 	}
 
-	/// Get the current tracked state for a texture by its ITexture identity
+	/// Get the current tracked state for a texture by its ITexture identity.
+	/// Returns the uniform state, or the state of subresource (0,0) if non-uniform.
 	public ResourceState GetTextureState(ITexture texture)
 	{
 		if (texture == null) return .Undefined;
-		ResourceState state = .Undefined;
-		mTextureStates.TryGetValue(TextureKey(texture), out state);
-		return state;
+		if (mTextureStates.TryGetValue(TextureKey(texture), let tracker))
+			return tracker.IsUniform ? tracker.UniformState : tracker.GetState(0, 0);
+		return .Undefined;
+	}
+
+	/// Get the per-subresource state tracker for a texture. Returns null if not tracked.
+	public SubresourceStateTracker GetTextureTracker(ITexture texture)
+	{
+		if (texture == null) return null;
+		SubresourceStateTracker tracker = null;
+		mTextureStates.TryGetValue(TextureKey(texture), out tracker);
+		return tracker;
 	}
 }

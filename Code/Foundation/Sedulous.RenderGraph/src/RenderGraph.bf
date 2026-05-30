@@ -630,68 +630,61 @@ public class RenderGraph
 		}
 	}
 
-	/// Step 3: Build pass dependencies from resource flow
+	/// Step 3: Build pass dependencies from resource flow (subresource-aware)
 	private void BuildDependencies()
 	{
-		// For each resource, track the last writer pass index
-		// Then add dependency: reader depends on latest writer
+		// For each pass's reads, find the latest writer of the same resource
+		// whose subresource range overlaps the read range.
 		for (int passIdx = 0; passIdx < mPasses.Count; passIdx++)
 		{
 			let pass = mPasses[passIdx];
 			if (pass.IsCulled) continue;
 
-			// Collect all resource handles this pass reads (from accesses + Load ops)
-			List<RGHandle> readHandles = scope .();
+			// Collect all read accesses (with subresource info)
+			let readAccesses = scope List<RGResourceAccess>();
+			pass.GetInputs(readAccesses);
 
-			// Explicit reads from the access list
-			for (let access in pass.Accesses)
-			{
-				if (!access.IsRead) continue;
-				if (access.Handle.IsValid)
-					readHandles.Add(access.Handle);
-			}
+			// Implicit reads from LoadOp.Load on color targets (already handled by GetInputs)
+			// Implicit read from LoadOp.Load on depth target (already handled by GetInputs)
 
-			// Implicit reads from LoadOp.Load on color targets
-			for (let ct in pass.ColorTargets)
+			// Find dependencies for each read access
+			for (let readAccess in readAccesses)
 			{
-				if (ct.LoadOp == .Load && ct.Handle.IsValid)
-					readHandles.Add(ct.Handle);
-			}
-
-			// Implicit read from LoadOp.Load on depth target
-			if (pass.DepthTarget.HasValue)
-			{
-				let dt = pass.DepthTarget.Value;
-				if (dt.DepthLoadOp == .Load && dt.Handle.IsValid)
-					readHandles.Add(dt.Handle);
-			}
-
-			// Find dependencies for each read handle
-			for (let readHandle in readHandles)
-			{
-				if (!readHandle.IsValid || readHandle.Index >= (uint32)mResources.Count)
+				if (!readAccess.Handle.IsValid || readAccess.Handle.Index >= (uint32)mResources.Count)
 					continue;
 
-				// Find the latest non-culled writer before this pass
+				let res = mResources[readAccess.Handle.Index];
+				let totalMips = (res != null) ? res.TotalMipLevels : (uint32)1;
+				let totalLayers = (res != null) ? res.TotalArrayLayers : (uint32)1;
+
+				// Find the latest non-culled writer before this pass whose subresources overlap
 				for (int j = passIdx - 1; j >= 0; j--)
 				{
 					let writerPass = mPasses[j];
 					if (writerPass.IsCulled) continue;
 
-					bool writes = false;
-					for (let writerAccess in writerPass.Accesses)
+					let writerOutputs = scope List<RGResourceAccess>();
+					writerPass.GetOutputs(writerOutputs);
+
+					bool overlaps = false;
+					for (let writerAccess in writerOutputs)
 					{
-						if (writerAccess.Handle == readHandle && writerAccess.IsWrite)
+						if (writerAccess.Handle == readAccess.Handle)
 						{
-							writes = true;
-							break;
+							// Same resource - check subresource overlap
+							if (readAccess.Subresource.IsAll || writerAccess.Subresource.IsAll ||
+								readAccess.Subresource.Overlaps(writerAccess.Subresource, totalMips, totalLayers))
+							{
+								overlaps = true;
+								break;
+							}
 						}
 					}
 
-					if (writes)
+					if (overlaps)
 					{
 						AddDependencyIfNew(pass, PassHandle((uint32)j));
-						break; // Only depend on the latest writer
+						break; // Only depend on the latest overlapping writer
 					}
 				}
 			}

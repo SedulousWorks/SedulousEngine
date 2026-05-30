@@ -27,8 +27,12 @@ public class PersistentResource
 	private bool mIsPingPong;
 	/// Whether this is the first frame this resource is being used
 	public bool FirstFrame = true;
-	/// Last known resource state (persists across graph.Reset() calls)
+	/// Last known resource state (persists across graph.Reset() calls).
+	/// When SubresourceStates is non-null, this is the fallback/uniform value.
 	public ResourceState LastKnownState = .Undefined;
+	/// Per-subresource states when the resource ended the previous frame in non-uniform state.
+	/// Null when all subresources share the same state (stored in LastKnownState).
+	public ResourceState[] SubresourceStates ~ delete _;
 
 	/// Create a single persistent resource
 	public this(ITexture texture, ITextureView view)
