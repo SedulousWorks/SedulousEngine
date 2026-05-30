@@ -71,9 +71,13 @@ public class BarrierSolver
 			}
 			else
 			{
-				// Transient resources start from their initial state after allocation
-				if (res.Texture != null)
-					initialState = res.Texture.InitialState;
+				// Transient resources always start from Undefined, even if the pooled
+				// texture reports an InitialState. The texture may have been reused from
+				// the pool in a different state than its creation default. Starting from
+				// Undefined forces a barrier on first access; the DX12/Vulkan backends
+				// use the texture's actual tracked state (dxTex.State / vkTex.CurrentLayout)
+				// for the "before" side, so the transition is always correct.
+				initialState = .Undefined;
 			}
 
 			mResourceStates[i] = initialState;
