@@ -9,6 +9,7 @@ using Sedulous.Core.Memory;
 using Sedulous.Jobs;
 using Sedulous.Renderer.Shadows;
 using Sedulous.Renderer.Debug;
+using Sedulous.Renderer.IBL;
 
 /// Shared rendering infrastructure - owns GPU resources, materials, pipeline cache,
 /// lighting, and bind group layouts that are common across all views/pipelines.
@@ -38,6 +39,9 @@ public class RenderContext : IDisposable
 
 	// Shadow system (atlas + data buffer + bind group)
 	private ShadowSystem mShadowSystem ~ { _?.Dispose(); delete _; };
+
+	// IBL system (BRDF LUT, environment cubemaps, sampler)
+	private IBLSystem mIBLSystem ~ delete _;
 
 	// Debug draw system (font texture + per-frame vertex buffers) + immediate-mode API
 	private DebugDrawSystem mDebugDrawSystem ~ { _?.Dispose(); delete _; };
@@ -111,6 +115,9 @@ public class RenderContext : IDisposable
 
 	/// Shadow system (atlas + data buffer + bind group). Created in Initialize.
 	public ShadowSystem ShadowSystem => mShadowSystem;
+
+	/// IBL system (BRDF LUT, environment cubemaps, sampler). Created in Initialize.
+	public IBLSystem IBLSystem => mIBLSystem;
 
 	/// Debug draw system (GPU resources backing DebugDraw).
 	public DebugDrawSystem DebugDrawSystem => mDebugDrawSystem;
@@ -236,6 +243,11 @@ public class RenderContext : IDisposable
 		if (mShadowSystem.Initialize(device) case .Err)
 			return .Err;
 
+		// IBL system (BRDF LUT, environment cubemaps, sampler)
+		mIBLSystem = new IBLSystem();
+		if (mIBLSystem.Initialize(device, queue) case .Err)
+			return .Err;
+
 		// Debug draw (font + per-frame vertex buffers)
 		mDebugDrawSystem = new DebugDrawSystem();
 		if (mDebugDrawSystem.Initialize(device, queue) case .Err)
@@ -283,6 +295,14 @@ public class RenderContext : IDisposable
 			mDevice.DestroyBindGroup(ref mDefaultDrawCallBindGroup);
 		if (mDefaultDrawCallBuffer != null)
 			mDevice.DestroyBuffer(ref mDefaultDrawCallBuffer);
+
+		// IBL system
+		if (mIBLSystem != null)
+		{
+			mIBLSystem.Shutdown();
+			delete mIBLSystem;
+			mIBLSystem = null;
+		}
 
 		// Bind group layouts
 		if (mFrameBindGroupLayout != null)
@@ -347,12 +367,20 @@ public class RenderContext : IDisposable
 	{
 		// Frame bind group layout (set 0):
 		//   b0: SceneUniforms (dynamic offset - per-view ring buffer)
-		//   b1: LightParams (light count, ambient)
+		//   b1: LightParams (light count, ambient, IBL params)
 		//   t0: Light buffer (StructuredBuffer<GPULight>)
-		BindGroupLayoutEntry[3] frameEntries = .(
+		//   t1: IrradianceMap (TextureCube - diffuse IBL)
+		//   t2: PrefilterMap (TextureCube - specular IBL)
+		//   t3: BRDFLookup (Texture2D - BRDF integration LUT)
+		//   s0: EnvironmentSampler (linear-clamp for IBL cubemap sampling)
+		BindGroupLayoutEntry[7] frameEntries = .(
 			.() { Binding = 0, Visibility = .Vertex | .Fragment | .Compute, Type = .UniformBuffer, HasDynamicOffset = true }, // b0: SceneUniforms
 			.UniformBuffer(1, .Fragment),                                           // b1: LightParams
-			.() { Binding = 0, Visibility = .Fragment, Type = .StorageBufferReadOnly, StorageBufferStride = (uint32)GPULight.Size } // t0: Lights
+			.() { Binding = 0, Visibility = .Fragment, Type = .StorageBufferReadOnly, StorageBufferStride = (uint32)GPULight.Size }, // t0: Lights
+			.SampledTexture(1, .Fragment, .TextureCube),                            // t1: IrradianceMap
+			.SampledTexture(2, .Fragment, .TextureCube),                            // t2: PrefilterMap
+			.SampledTexture(3, .Fragment, .Texture2D),                              // t3: BRDFLookup
+			.Sampler(0, .Fragment)                                                  // s0: EnvironmentSampler
 		);
 
 		BindGroupLayoutDesc frameLayoutDesc = .()

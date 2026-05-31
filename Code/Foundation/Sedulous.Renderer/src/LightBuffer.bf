@@ -49,8 +49,10 @@ public struct LightParams
 {
 	public uint32 LightCount;
 	public Vector3 AmbientColor;
+	public float IBLMaxLod;
+	public Vector3 _Pad;
 
-	public const int32 Size = 16; // 1 x float4
+	public const int32 Size = 32; // 2 x float4
 }
 
 /// Manages the GPU light buffer. Uploads extracted light data each frame.
@@ -66,6 +68,9 @@ public class LightBuffer : IDisposable
 
 	/// Ambient light color (set per frame).
 	public Vector3 AmbientColor = .(0.1f, 0.1f, 0.15f);
+
+	/// Maximum mip LOD for IBL prefilter roughness mapping. Set by Pipeline from IBLSystem.
+	public float IBLMaxLod = 0.0f;
 
 	/// Number of lights uploaded last frame.
 	public int32 LightCount => mLightCount;
@@ -139,7 +144,8 @@ public class LightBuffer : IDisposable
 			LightParams @params = .()
 			{
 				LightCount = (uint32)mLightCount,
-				AmbientColor = AmbientColor
+				AmbientColor = AmbientColor,
+				IBLMaxLod = IBLMaxLod
 			};
 
 			TransferHelper.WriteMappedBuffer(

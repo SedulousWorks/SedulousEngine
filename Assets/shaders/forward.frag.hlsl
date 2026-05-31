@@ -34,6 +34,8 @@ cbuffer LightParams : register(b1, space0)
 {
     uint LightCount;
     float3 AmbientColor;
+    float IBLMaxLod;        // max mip level for prefilter roughness mapping
+    float3 _LightPad;
 };
 
 struct GPULight
@@ -51,6 +53,12 @@ struct GPULight
 };
 
 StructuredBuffer<GPULight> Lights : register(t0, space0);
+
+// IBL (Image-Based Lighting) resources
+TextureCube IrradianceMap : register(t1, space0);
+TextureCube PrefilterMap  : register(t2, space0);
+Texture2D   BRDFLookup    : register(t3, space0);
+SamplerState EnvSampler   : register(s0, space0);
 
 // Set 4: Shadow data
 // float4 rows instead of float4x4 - see CONVENTIONS.md (StructuredBuffer matrix layout).
@@ -438,7 +446,26 @@ FragmentOutput main(FragmentInput input)
         Lo += EvaluateLight(Lights[i], input.WorldPos, geomNormal, viewDepth, N, V, albedo, roughness, metallic, F0);
     }
 
-    float3 ambient = AmbientColor * albedo * ao;
+    // ==================== IBL (Image-Based Lighting) ====================
+    // Split-sum approximation: diffuse irradiance + specular prefilter + BRDF LUT.
+    float NdotV = max(dot(N, V), 0.0);
+    float3 F_ibl = FresnelSchlick(NdotV, F0) * (1.0 - roughness) + FresnelSchlick(NdotV, F0) * roughness;
+    // Roughness-aware Fresnel for IBL (reduces Fresnel at high roughness)
+    F_ibl = F0 + (max(1.0 - roughness, F0) - F0) * pow(1.0 - NdotV, 5.0);
+
+    float3 kD_ibl = (1.0 - F_ibl) * (1.0 - metallic);
+
+    // Diffuse IBL: sample irradiance cubemap with surface normal
+    float3 irradiance = IrradianceMap.Sample(EnvSampler, N).rgb;
+    float3 diffuseIBL = kD_ibl * irradiance * albedo;
+
+    // Specular IBL: sample prefilter cubemap with reflection vector at roughness-mapped LOD
+    float3 R = reflect(-V, N);
+    float3 prefilteredColor = PrefilterMap.SampleLevel(EnvSampler, R, roughness * IBLMaxLod).rgb;
+    float2 brdf = BRDFLookup.Sample(EnvSampler, float2(NdotV, roughness)).rg;
+    float3 specularIBL = prefilteredColor * (F0 * brdf.x + brdf.y);
+
+    float3 ambient = (diffuseIBL + specularIBL) * ao + AmbientColor * albedo * ao;
     float3 color = ambient + Lo + emissive;
 
     // ==================== MRT Output ====================

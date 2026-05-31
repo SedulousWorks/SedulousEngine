@@ -437,10 +437,21 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 
 		let lightBufferSize = (uint64)(Math.Max(lightBuffer.LightCount, 1) * GPULight.Size);
 
-		BindGroupEntry[3] bgEntries = .(
+		// IBL system resources must match the frame bind group layout (7 entries)
+		let iblSystem = mRenderContext.IBLSystem;
+		if (iblSystem == null || iblSystem.BRDFLutView == null ||
+			iblSystem.IrradianceMapView == null || iblSystem.PrefilterMapView == null ||
+			iblSystem.EnvironmentSampler == null)
+			return;
+
+		BindGroupEntry[7] bgEntries = .(
 			BindGroupEntry.Buffer(frame.SceneUniformBuffer, 0, SceneUniforms.Size),
 			BindGroupEntry.Buffer(lightParamsBuf, 0, (uint64)LightParams.Size),
-			BindGroupEntry.Buffer(lightBuf, 0, lightBufferSize)
+			BindGroupEntry.Buffer(lightBuf, 0, lightBufferSize),
+			BindGroupEntry.Texture(iblSystem.IrradianceMapView),
+			BindGroupEntry.Texture(iblSystem.PrefilterMapView),
+			BindGroupEntry.Texture(iblSystem.BRDFLutView),
+			BindGroupEntry.Sampler(iblSystem.EnvironmentSampler)
 		);
 
 		BindGroupDesc bgDesc = .()

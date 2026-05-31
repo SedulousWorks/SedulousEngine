@@ -375,6 +375,8 @@ public class Pipeline : IRenderingPipeline, IDisposable
 			frame.CurrentSceneOffset = WriteSceneUniforms(frame, view);
 
 			// Upload light data to this pipeline's own light buffer
+			if (mRenderContext.IBLSystem != null)
+				mLightBuffer.IBLMaxLod = mRenderContext.IBLSystem.PrefilterMaxLod;
 			if (view.RenderData != null)
 				mLightBuffer.Upload(view.RenderData, frameIndex);
 
@@ -902,12 +904,26 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		// Light buffer size: at least 1 light worth (Vulkan requires non-zero)
 		let lightBufferSize = (uint64)(Math.Max(mLightBuffer.LightCount, 1) * GPULight.Size);
 
+		// IBL system resources (fallback black cubemaps if no environment is set)
+		let iblSystem = mRenderContext.IBLSystem;
+		if (iblSystem == null || iblSystem.BRDFLutView == null ||
+			iblSystem.IrradianceMapView == null || iblSystem.PrefilterMapView == null ||
+			iblSystem.EnvironmentSampler == null)
+		{
+			System.Diagnostics.Debug.WriteLine("RebuildFrameBindGroup: IBL system not ready, skipping frame bind group");
+			return;
+		}
+
 		// Scene UBO is bound at offset 0 with size = one slot - the dynamic offset
 		// at SetBindGroup time selects which slot in the ring buffer to read.
-		BindGroupEntry[3] bgEntries = .(
+		BindGroupEntry[7] bgEntries = .(
 			BindGroupEntry.Buffer(frame.SceneUniformBuffer, 0, SceneUniforms.Size),
 			BindGroupEntry.Buffer(lightParamsBuf, 0, (uint64)LightParams.Size),
-			BindGroupEntry.Buffer(lightBuf, 0, lightBufferSize)
+			BindGroupEntry.Buffer(lightBuf, 0, lightBufferSize),
+			BindGroupEntry.Texture(iblSystem.IrradianceMapView),
+			BindGroupEntry.Texture(iblSystem.PrefilterMapView),
+			BindGroupEntry.Texture(iblSystem.BRDFLutView),
+			BindGroupEntry.Sampler(iblSystem.EnvironmentSampler)
 		);
 
 		BindGroupDesc bgDesc = .()
