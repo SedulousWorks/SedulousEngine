@@ -156,7 +156,6 @@ public class BarrierSolver
 				if (currentState == requiredState)
 					continue;
 
-				var barrier = TextureBarrier();
 				var bufBarrier = BufferBarrier();
 				bufBarrier.Buffer = res.Buffer;
 				bufBarrier.OldState = currentState;

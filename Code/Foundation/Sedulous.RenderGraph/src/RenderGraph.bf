@@ -44,6 +44,11 @@ public class RenderGraph
 		delete _;
 	};
 
+	// Per-frame subresource views created during ExecuteRenderPass for
+	// rendering to specific array layers or mip levels. Deferred-deleted
+	// at the end of Execute since the GPU may still reference them.
+	private List<ITextureView> mSubresourceViews = new .() ~ delete _;
+
 	// Frame tracking
 	private int32 mFrameIndex;
 	private uint32 mOutputWidth = 1920;
@@ -203,6 +208,16 @@ public class RenderGraph
 
 		// Update persistent resource states
 		mBarrierSolver.UpdatePersistentStates(mResources);
+
+		// Defer-delete any per-subresource views created this frame
+		if (mSubresourceViews.Count > 0)
+		{
+			let slotIndex = mFrameIndex % (int32)mDeferredDeletions.Count;
+			let deletions = mDeferredDeletions[slotIndex];
+			for (let view in mSubresourceViews)
+				deletions.Add(.() { View = view });
+			mSubresourceViews.Clear();
+		}
 
 		// Return transient resources to pool
 		ReturnTransientResources();
@@ -415,6 +430,35 @@ public class RenderGraph
 		if (res == null || res.Generation != handle.Generation)
 			return null;
 		return res.Buffer;
+	}
+
+	/// Create a texture view for a specific subresource range (array layer / mip level).
+	/// Used by ExecuteRenderPass to bind a specific cubemap face or mip as a render target.
+	/// The view is deferred-deleted at the end of Execute.
+	private ITextureView CreateSubresourceView(RGHandle handle, RGSubresourceRange subresource)
+	{
+		if (mDevice == null) return null;
+		let texture = GetTexture(handle);
+		if (texture == null) return null;
+
+		uint32 mipCount = subresource.MipLevelCount == 0 ? 1 : subresource.MipLevelCount;
+		uint32 layerCount = subresource.ArrayLayerCount == 0 ? 1 : subresource.ArrayLayerCount;
+
+		var viewDesc = TextureViewDesc();
+		viewDesc.BaseMipLevel = subresource.BaseMipLevel;
+		viewDesc.MipLevelCount = mipCount;
+		viewDesc.BaseArrayLayer = subresource.BaseArrayLayer;
+		viewDesc.ArrayLayerCount = layerCount;
+		// Single layer uses Texture2D dimension; multiple layers use Texture2DArray.
+		viewDesc.Dimension = (layerCount == 1) ? .Texture2D : .Texture2DArray;
+
+		if (mDevice.CreateTextureView(texture, viewDesc) case .Ok(let view))
+		{
+			mSubresourceViews.Add(view);
+			return view;
+		}
+
+		return null;
 	}
 
 	/// Swap a ping-pong persistent resource
@@ -875,10 +919,17 @@ public class RenderGraph
 		for (int i = 0; i < pass.ColorTargets.Count; i++)
 		{
 			let ct = pass.ColorTargets[i];
-			let view = GetTextureView(ct.Handle);
+			var view = GetTextureView(ct.Handle);
 			if (view == null) continue;
 
-			// TODO: if subresource is not All, create a per-layer view
+			// Create a per-layer/mip view when targeting a specific subresource
+			// (e.g., rendering to a single cubemap face or mip level).
+			if (!ct.Subresource.IsAll)
+			{
+				if (let subView = CreateSubresourceView(ct.Handle, ct.Subresource))
+					view = subView;
+			}
+
 			rpDesc.ColorAttachments.Add(ColorAttachment()
 			{
 				View = view,
@@ -892,9 +943,15 @@ public class RenderGraph
 		if (pass.DepthTarget.HasValue)
 		{
 			let dt = pass.DepthTarget.Value;
-			let view = GetTextureView(dt.Handle);
+			var view = GetTextureView(dt.Handle);
 			if (view != null)
 			{
+				if (!dt.Subresource.IsAll)
+				{
+					if (let subView = CreateSubresourceView(dt.Handle, dt.Subresource))
+						view = subView;
+				}
+
 				rpDesc.DepthStencilAttachment = DepthStencilAttachment()
 				{
 					View = view,
