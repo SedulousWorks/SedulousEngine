@@ -927,6 +927,8 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 
 		scene.AddModule(new LightComponentManager());
 
+		scene.AddModule(new ReflectionProbeComponentManager());
+
 		// Scene-level render settings (sky, ambient, exposure).
 		scene.AddModule(new RenderSceneModule());
 

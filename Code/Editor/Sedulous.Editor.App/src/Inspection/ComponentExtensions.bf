@@ -72,6 +72,15 @@ namespace Sedulous.Engine.Render
 			Sedulous.Editor.App.InspectorCodegen.GenerateDescribeProperties(typeof(Self));
 		}
 	}
+	extension ReflectionProbeComponent
+	{
+		[OnCompile(.TypeInit), Comptime]
+		static void GenerateInspector()
+		{
+			Sedulous.Editor.App.InspectorCodegen.GenerateDescribeProperties(typeof(Self));
+		}
+	}
+
 	extension RenderSceneModule
 	{
 		[OnCompile(.TypeInit), Comptime]
