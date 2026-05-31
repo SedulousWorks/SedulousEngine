@@ -264,7 +264,7 @@ public class MeshRenderer : Renderer
 			// group index in state.EntryToGroup[i] as a side effect. The placement
 			// walk reads the annotation back, skipping the second hash.
 			// Annotation is per-call (size = entries.Count, repopulated each call),
-			// so it's safe for multi-submesh entities — each entry position is
+			// so it's safe for multi-submesh entities - each entry position is
 			// unique within a single call.
 			if (fillIdentity != state.FillIdentity)
 			{
