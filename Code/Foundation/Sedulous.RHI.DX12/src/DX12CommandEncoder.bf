@@ -113,6 +113,13 @@ class DX12CommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 	}
 
 	// ===== Barriers =====
+	struct CoalescedEntry
+	{
+		public ID3D12Resource* Resource;
+		public uint32 Subresource;
+		public D3D12_RESOURCE_STATES FirstBefore;
+		public D3D12_RESOURCE_STATES LastAfter;
+	}
 
 	public void Barrier(BarrierGroup barriers)
 	{
@@ -142,58 +149,100 @@ class DX12CommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 			}
 		}
 
-		for (let tb in barriers.TextureBarriers)
+		// Texture barriers: coalesce chained transitions per (resource, subresource).
+		// The barrier solver can emit multiple barriers for the same ITexture in one
+		// batch (e.g., ParticlePass declares both ReadDepth and ReadTexture on SceneDepth,
+		// producing DEPTH_WRITE->DEPTH_READ then DEPTH_READ->SHADER_READ). D3D12 processes
+		// all barriers in one ResourceBarrier() call simultaneously, so the second barrier's
+		// StateBefore won't match reality. Fix: coalesce A->B, B->C into a single A->C.
+		//
+		// Note: mixing whole-resource (sub=0xFFFFFFFF) and per-subresource barriers for the
+		// same resource in one batch is not handled - the current engine doesn't produce this.
 		{
-			if (let dxTex = tb.Texture as DX12Texture)
+			// Phase 1: collect coalesced (firstBefore, lastAfter) per (resource, subresource).
+			// Use a flat list of tuples instead of a dictionary since barrier counts are small.
+			List<CoalescedEntry> coalesced = scope .(barriers.TextureBarriers.Length);
+
+			for (let tb in barriers.TextureBarriers)
 			{
-				let newState = ToResourceStates(tb.NewState);
-				let isWholeResource = tb.MipLevelCount == uint32.MaxValue && tb.ArrayLayerCount == uint32.MaxValue;
-
-				if (isWholeResource)
+				if (let dxTex = tb.Texture as DX12Texture)
 				{
-					// Whole-resource barrier: use resolved state from texture tracking
-					let resolvedOldState = dxTex.State;
-					if (resolvedOldState == newState) continue;
+					let newState = ToResourceStates(tb.NewState);
+					let isWholeResource = tb.MipLevelCount == uint32.MaxValue && tb.ArrayLayerCount == uint32.MaxValue;
 
-					var barrier = D3D12_RESOURCE_BARRIER();
-					barrier.Type = .D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-					barrier.Flags = .D3D12_RESOURCE_BARRIER_FLAG_NONE;
-					barrier.Transition.pResource = dxTex.Handle;
-					barrier.Transition.StateBefore = resolvedOldState;
-					barrier.Transition.StateAfter = newState;
-					barrier.Transition.Subresource = 0xFFFFFFFF;
-					dxTex.State = newState;
-					dxBarriers.Add(barrier);
-				}
-				else
-				{
-					// Per-subresource barrier: expand range to individual D3D12 barriers
-					let mipCount = dxTex.Desc.MipLevelCount;
-					let layerCount = Math.Max((dxTex.Desc.Dimension == .Texture3D) ? dxTex.Desc.Depth : dxTex.Desc.ArrayLayerCount, 1);
-					let baseMip = tb.BaseMipLevel;
-					let mipEnd = Math.Min(baseMip + tb.MipLevelCount, mipCount);
-					let baseLayer = tb.BaseArrayLayer;
-					let layerEnd = Math.Min(baseLayer + tb.ArrayLayerCount, layerCount);
-
-					for (uint32 layer = baseLayer; layer < layerEnd; layer++)
+					if (isWholeResource)
 					{
-						for (uint32 mip = baseMip; mip < mipEnd; mip++)
-						{
-							let resolvedOldState = dxTex.GetSubresourceState(mip, layer);
-							if (resolvedOldState == newState) continue;
+						let resolvedOldState = dxTex.State;
+						if (resolvedOldState == newState) { continue; }
 
-							var barrier = D3D12_RESOURCE_BARRIER();
-							barrier.Type = .D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-							barrier.Flags = .D3D12_RESOURCE_BARRIER_FLAG_NONE;
-							barrier.Transition.pResource = dxTex.Handle;
-							barrier.Transition.StateBefore = resolvedOldState;
-							barrier.Transition.StateAfter = newState;
-							barrier.Transition.Subresource = (uint32)(mip + layer * mipCount);
-							dxBarriers.Add(barrier);
+						// Check if we already have an entry for this resource+subresource
+						bool found = false;
+						for (int ci = 0; ci < coalesced.Count; ci++)
+						{
+							if (coalesced[ci].Resource == dxTex.Handle && coalesced[ci].Subresource == 0xFFFFFFFF)
+							{
+								// Chain: keep FirstBefore, update LastAfter
+								coalesced[ci].LastAfter = newState;
+								found = true;
+								break;
+							}
 						}
+						if (!found)
+							coalesced.Add(.() { Resource = dxTex.Handle, Subresource = 0xFFFFFFFF, FirstBefore = resolvedOldState, LastAfter = newState });
+
+						// Update tracking so subsequent barriers in this batch chain correctly
+						dxTex.State = newState;
 					}
-					dxTex.SetSubresourceState(baseMip, tb.MipLevelCount, baseLayer, tb.ArrayLayerCount, newState);
+					else
+					{
+						// Per-subresource: expand range and coalesce each subresource individually
+						let mipCount = dxTex.Desc.MipLevelCount;
+						let layerCount = Math.Max((dxTex.Desc.Dimension == .Texture3D) ? dxTex.Desc.Depth : dxTex.Desc.ArrayLayerCount, 1);
+						let baseMip = tb.BaseMipLevel;
+						let mipEnd = Math.Min(baseMip + tb.MipLevelCount, mipCount);
+						let baseLayer = tb.BaseArrayLayer;
+						let layerEnd = Math.Min(baseLayer + tb.ArrayLayerCount, layerCount);
+
+						for (uint32 layer = baseLayer; layer < layerEnd; layer++)
+						{
+							for (uint32 mip = baseMip; mip < mipEnd; mip++)
+							{
+								let resolvedOldState = dxTex.GetSubresourceState(mip, layer);
+								let sub = (uint32)(mip + layer * mipCount);
+								if (resolvedOldState == newState) continue;
+
+								bool found = false;
+								for (int ci = 0; ci < coalesced.Count; ci++)
+								{
+									if (coalesced[ci].Resource == dxTex.Handle && coalesced[ci].Subresource == sub)
+									{
+										coalesced[ci].LastAfter = newState;
+										found = true;
+										break;
+									}
+								}
+								if (!found)
+									coalesced.Add(.() { Resource = dxTex.Handle, Subresource = sub, FirstBefore = resolvedOldState, LastAfter = newState });
+							}
+						}
+						dxTex.SetSubresourceState(baseMip, tb.MipLevelCount, baseLayer, tb.ArrayLayerCount, newState);
+					}
 				}
+			}
+
+			// Phase 2: emit one D3D12 barrier per coalesced entry
+			for (let entry in coalesced)
+			{
+				if (entry.FirstBefore == entry.LastAfter) continue; // A->B->A cancelled out
+
+				var barrier = D3D12_RESOURCE_BARRIER();
+				barrier.Type = .D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+				barrier.Flags = .D3D12_RESOURCE_BARRIER_FLAG_NONE;
+				barrier.Transition.pResource = entry.Resource;
+				barrier.Transition.StateBefore = entry.FirstBefore;
+				barrier.Transition.StateAfter = entry.LastAfter;
+				barrier.Transition.Subresource = entry.Subresource;
+				dxBarriers.Add(barrier);
 			}
 		}
 
