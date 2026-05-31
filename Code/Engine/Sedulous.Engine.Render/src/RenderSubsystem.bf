@@ -439,8 +439,13 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 
 					// Determine sky mode from the resolved texture's shape
 					let texRes = skyState.Handle.Resource;
+					let isCubemap = (texRes != null) && (texRes.Shape == .Cubemap);
 					if (texRes != null)
-						skyPass.Mode = (texRes.Shape == .Cubemap) ? .Cubemap : .Equirectangular;
+						skyPass.Mode = isCubemap ? .Cubemap : .Equirectangular;
+
+					// Feed sky texture to IBL system for environment lighting
+					if (let iblSystem = mRenderContext.IBLSystem)
+						iblSystem.SetSkyTexture(skyView, isCubemap);
 				}
 			}
 

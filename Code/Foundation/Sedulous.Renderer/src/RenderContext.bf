@@ -193,6 +193,10 @@ public class RenderContext : IDisposable
 				mSkinningSystem = new SkinningSystem();
 				mSkinningSystem.Initialize(mDevice, value);
 			}
+
+			// Initialize IBL render pipelines with shader system
+			if (value != null && mIBLSystem != null)
+				mIBLSystem.InitializeRenderPipelines(value);
 		}
 	}
 

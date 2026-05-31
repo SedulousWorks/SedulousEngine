@@ -380,7 +380,11 @@ public class Pipeline : IRenderingPipeline, IDisposable
 			if (view.RenderData != null)
 				mLightBuffer.Upload(view.RenderData, frameIndex);
 
-			// Rebuild frame bind group (includes this pipeline's light buffer)
+			// Process pending IBL generation (equirect->cubemap->irradiance)
+			if (mRenderContext.IBLSystem != null)
+				mRenderContext.IBLSystem.ProcessPending(encoder);
+
+			// Rebuild frame bind group (includes this pipeline's light buffer + IBL views)
 			RebuildFrameBindGroup(frame, frameIndex);
 		}
 
