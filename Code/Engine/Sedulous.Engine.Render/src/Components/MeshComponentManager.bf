@@ -577,6 +577,7 @@ class MeshComponentManager : ComponentManager<MeshComponent>, IRenderDataProvide
 			data.MaterialPipelineConfig = material?.Material?.PipelineConfig ?? .();
 			data.MaterialKey = materialKey;
 			data.EntityIndex = mesh.Owner.Index;
+			data.LayerMask = mesh.LayerMask;
 
 			if (renderData != null)
 				renderData.Add(category, data);

@@ -342,6 +342,7 @@ class EditorApplication : Application, IDockableWindowHost
 
 		// Register built-in gizmo renderers
 		mEditorContext.RegisterGizmoRenderer(typeof(LightComponent), new LightGizmoRenderer());
+		mEditorContext.RegisterGizmoRenderer(typeof(ReflectionProbeComponent), new ReflectionProbeGizmoRenderer());
 
 		// Initialize plugins after UI is set up.
 		mEditorContext.PluginRegistry.InitializeAll(mEditorContext);

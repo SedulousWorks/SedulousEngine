@@ -921,6 +921,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		scene.AddModule(new CameraComponentManager());
 
 		scene.AddModule(new LightComponentManager());
+		scene.AddModule(new ReflectionProbeManager());
 
 		// Scene-level render settings (sky, ambient, exposure).
 		scene.AddModule(new RenderSceneModule());
@@ -978,6 +979,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		//   6. Forward transparent (sprites/particles blend over sky + opaque)
 		//   7. Debug lines (depth-tested on top of everything)
 		//   8. 2D overlay (no depth)
+		pipeline.AddPass(new ProbeCapturePass());
 		pipeline.AddPass(new SkinningPass());
 		pipeline.AddPass(new DepthPrepass());
 		pipeline.AddPass(new ForwardOpaquePass());

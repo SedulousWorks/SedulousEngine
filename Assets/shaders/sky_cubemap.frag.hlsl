@@ -89,7 +89,11 @@ float4 main(FragmentInput input) : SV_Target
     float3 sky;
     if (HasEnvironmentMap > 0.5)
     {
-        sky = EnvironmentMap.Sample(SkySampler, dir).rgb * SkyIntensity;
+        // Force mip 0 (see sky.frag.hlsl for the rationale): probe-capture
+        // face renders pick different implicit mips per face from the same
+        // world direction, which would otherwise bake seam discontinuities
+        // into the cubemap at face boundaries.
+        sky = EnvironmentMap.SampleLevel(SkySampler, dir, 0).rgb * SkyIntensity;
     }
     else
     {

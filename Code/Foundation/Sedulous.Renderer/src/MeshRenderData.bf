@@ -52,4 +52,12 @@ public class MeshRenderData : RenderData
 
 	/// Entity index for GPU picking (encoded as color in pick pass).
 	public uint32 EntityIndex;
+
+	/// Layer mask for visibility filtering. Bitwise AND against the active
+	/// pass's `PerFrameResources.CurrentLayerMask` determines whether this
+	/// entry is rendered. Defaults to "in every layer" - the metal sphere
+	/// and other glossy meshes clear the high bit so ProbeCapturePass (which
+	/// sets CurrentLayerMask = 0x7FFFFFFF for its captures) excludes them
+	/// from the cubemap, preventing self-reflection feedback.
+	public uint32 LayerMask = 0xFFFFFFFF;
 }

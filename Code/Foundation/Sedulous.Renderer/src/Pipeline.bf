@@ -243,6 +243,7 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		frame.InstanceOffset = 0;
 		frame.InstanceOffsetsCount = 0;
 		frame.CurrentSceneOffset = 0;
+		frame.CurrentLayerMask = 0xFFFFFFFF;
 	}
 
 	/// Dispatches a render batch for a category to every renderer registered with
@@ -374,9 +375,22 @@ public class Pipeline : IRenderingPipeline, IDisposable
 			// offset so passes can bind the frame group with the right dynamic offset.
 			frame.CurrentSceneOffset = WriteSceneUniforms(frame, view);
 
-			// Upload light data to this pipeline's own light buffer
+			// Upload reflection probe data into the shared probe buffer on
+			// RenderContext. Until per-scene probe buffers land, the last
+			// view wins; for the typical single-camera scene this is fine.
+			// Runs before LightBuffer.Upload so the returned active count can
+			// be folded into LightParams.ProbeCount in the same frame.
+			int32 activeProbeCount = 0;
 			if (view.RenderData != null)
+				activeProbeCount = Sedulous.Renderer.IBL.ReflectionProbeUploader.Upload(view.RenderData, mRenderContext.ProbeBuffer);
+
+			// Upload light data to this pipeline's own light buffer (also
+			// writes LightParams, which carries the active probe count).
+			if (view.RenderData != null)
+			{
+				mLightBuffer.ProbeCount = (uint32)activeProbeCount;
 				mLightBuffer.Upload(view.RenderData, frameIndex);
+			}
 
 			// Rebuild frame bind group (includes this pipeline's light buffer)
 			RebuildFrameBindGroup(frame, frameIndex);
@@ -672,6 +686,65 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		return offset;
 	}
 
+	/// Writes a scene-uniform slot built from raw matrices/position rather than
+	/// a RenderView. Used by passes that render from a non-pooled viewpoint
+	/// (currently: probe captures, which build per-face matrices on the fly
+	/// without acquiring a RenderView from the pool).
+	///
+	/// Returns the byte offset of the slot in the per-frame scene-uniform ring
+	/// buffer. The caller stores this offset and assigns it to
+	/// `frame.CurrentSceneOffset` before binding the frame group, so the
+	/// dynamic-offset bind picks the right slot.
+	public uint32 WriteSceneUniformsForCapture(PerFrameResources frame,
+		Matrix viewMatrix, Matrix projectionMatrix, Vector3 cameraPosition,
+		float nearPlane, float farPlane, uint32 width, uint32 height)
+	{
+		if (frame.SceneUniformBuffer == null)
+			return 0;
+
+		if (frame.SceneBufferOffset >= PerFrameResources.MaxScenes * PerFrameResources.SceneAlignment)
+			frame.SceneBufferOffset = 0;
+
+		let offset = frame.SceneBufferOffset;
+
+		Matrix viewProj = viewMatrix * projectionMatrix;
+		Matrix invView = .Identity;
+		Matrix.Invert(viewMatrix, out invView);
+		Matrix invProj = .Identity;
+		Matrix.Invert(projectionMatrix, out invProj);
+		Matrix invViewProj = .Identity;
+		Matrix.Invert(viewProj, out invViewProj);
+
+		SceneUniforms uniforms = .()
+		{
+			ViewMatrix = viewMatrix,
+			ProjectionMatrix = projectionMatrix,
+			ViewProjectionMatrix = viewProj,
+			InvViewMatrix = invView,
+			InvProjectionMatrix = invProj,
+			InvViewProjectionMatrix = invViewProj,
+			PrevViewProjectionMatrix = viewProj,   // no temporal feedback into probe captures
+			CameraPosition = cameraPosition,
+			NearPlane = nearPlane,
+			FarPlane = farPlane,
+			Time = 0,
+			DeltaTime = 0,
+			ScreenSize = .(width, height),
+			InvScreenSize = .(1.0f / Math.Max(width, 1), 1.0f / Math.Max(height, 1)),
+			JitterOffset = .Zero,
+			PrevJitterOffset = .Zero,
+			MaterialLodBias = 0
+		};
+
+		TransferHelper.WriteMappedBuffer(
+			frame.SceneUniformBuffer, (uint64)offset,
+			Span<uint8>((uint8*)&uniforms, SceneUniforms.Size)
+		);
+
+		frame.SceneBufferOffset += PerFrameResources.SceneAlignment;
+		return offset;
+	}
+
 	/// Helper for passes - binds the Frame bind group with the dynamic offset for
 	/// the view currently being rendered. Use this instead of calling SetBindGroup
 	/// directly so passes don't need to know about the scene UBO ring buffer layout.
@@ -902,12 +975,21 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		// Light buffer size: at least 1 light worth (Vulkan requires non-zero)
 		let lightBufferSize = (uint64)(Math.Max(mLightBuffer.LightCount, 1) * GPULight.Size);
 
+		// IBL resources from RenderContext (placeholders until probes come online).
+		let probeBufferSize = (uint64)(Sedulous.Renderer.RenderContext.MaxIBLProbes * Sedulous.Renderer.RenderContext.ProbeStride);
+		let sh9BufferSize = (uint64)(Sedulous.Renderer.RenderContext.MaxIBLProbes * Sedulous.Renderer.RenderContext.IBLSH9CoeffPerProbe * 16);
+
 		// Scene UBO is bound at offset 0 with size = one slot - the dynamic offset
 		// at SetBindGroup time selects which slot in the ring buffer to read.
-		BindGroupEntry[3] bgEntries = .(
+		BindGroupEntry[8] bgEntries = .(
 			BindGroupEntry.Buffer(frame.SceneUniformBuffer, 0, SceneUniforms.Size),
 			BindGroupEntry.Buffer(lightParamsBuf, 0, (uint64)LightParams.Size),
-			BindGroupEntry.Buffer(lightBuf, 0, lightBufferSize)
+			BindGroupEntry.Buffer(lightBuf, 0, lightBufferSize),
+			BindGroupEntry.Texture(mRenderContext.BRDFLutView),               // t1: BRDF LUT
+			BindGroupEntry.Texture(mRenderContext.PrefilteredCubemapView),    // t2: prefiltered cubemap array
+			BindGroupEntry.Buffer(mRenderContext.ProbeBuffer, 0, probeBufferSize),  // t3
+			BindGroupEntry.Buffer(mRenderContext.SH9Buffer, 0, sh9BufferSize),       // t4
+			BindGroupEntry.Sampler(mRenderContext.LinearSampler)              // s1
 		);
 
 		BindGroupDesc bgDesc = .()

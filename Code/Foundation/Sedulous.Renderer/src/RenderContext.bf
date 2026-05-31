@@ -9,6 +9,7 @@ using Sedulous.Core.Memory;
 using Sedulous.Jobs;
 using Sedulous.Renderer.Shadows;
 using Sedulous.Renderer.Debug;
+using Sedulous.Renderer.IBL;
 
 /// Shared rendering infrastructure - owns GPU resources, materials, pipeline cache,
 /// lighting, and bind group layouts that are common across all views/pipelines.
@@ -35,6 +36,8 @@ public class RenderContext : IDisposable
 
 	// Compute skinning
 	private SkinningSystem mSkinningSystem ~ { _?.Dispose(); delete _; };
+	private Sedulous.Renderer.IBL.IBLPrefilterSystem mIBLPrefilterSystem ~ { _?.Dispose(); delete _; };
+	private Sedulous.Renderer.IBL.IBLSH9System mIBLSH9System ~ { _?.Dispose(); delete _; };
 
 	// Shadow system (atlas + data buffer + bind group)
 	private ShadowSystem mShadowSystem ~ { _?.Dispose(); delete _; };
@@ -74,6 +77,60 @@ public class RenderContext : IDisposable
 	/// Bind group layout for instanced draws (set 3): StructuredBuffer<InstanceData>.
 	private IBindGroupLayout mInstanceBindGroupLayout;
 
+	// ==================== IBL ====================
+	//
+	// Resources bound at the frame level for image-based lighting. The cubemap
+	// array, probe buffer, and SH9 buffer are placeholders until reflection
+	// probes come online (Sub-phase C); the BRDF LUT and linear sampler are
+	// the real shipping resources used directly by the forward shader.
+	//
+	// All five live on RenderContext (not PerFrameResources) because they're
+	// shared across views and frames. Per-scene replacement (when probes
+	// actually exist) will happen by Pipeline binding scene-specific
+	// alternatives in place of the defaults at frame-bind-group rebuild time.
+
+	private ITexture mBRDFLutTexture;
+	private ITextureView mBRDFLutView;
+	/// Placeholder cubemap-array for prefiltered reflections. Sized to the
+	/// final probe layout (128 x 128 x 6*MaxProbes, 5 mips) so Sub-phase C
+	/// just writes into existing memory rather than reallocating.
+	private ITexture mPrefilteredCubemapArray;
+	private ITextureView mPrefilteredCubemapView;
+	/// Mip-0-only TextureCubeArray view of the prefiltered cubemap, used as
+	/// the SOURCE descriptor by the prefilter + SH9 compute passes. A separate
+	/// view is required because Vulkan tracks per-subresource layout via the
+	/// view: the prefilter pass writes mips 1..N as General, while the source
+	/// descriptor demands ShaderRead for every subresource the view covers.
+	/// Restricting the source view to mip 0 keeps those write-only mips out
+	/// of the read view's coverage.
+	private ITextureView mPrefilteredCubemapSourceView;
+	/// Placeholder per-probe data StructuredBuffer (MaxProbes entries, all
+	/// Enabled=0). Replaced when a scene gains probes.
+	private IBuffer mProbeBuffer;
+	/// Placeholder SH9 coefficients buffer (9 float4 entries per probe).
+	private IBuffer mSH9Buffer;
+	/// Linear, clamp sampler shared by the BRDF LUT and prefiltered cubemap.
+	private ISampler mLinearSampler;
+
+	/// IBL probe count cap. Matches the BeefGFX reference; sized for our
+	/// scene scales. Bumping this means resizing mPrefilteredCubemapArray,
+	/// mProbeBuffer, mSH9Buffer to match.
+	public const int32 MaxIBLProbes = 8;
+	/// Per-probe cube-face resolution. 128 matches Unity's default + the
+	/// BeefGFX reference.
+	public const int32 IBLProbeFaceSize = 128;
+	/// Number of prefilter mip levels. Mip 0 is mirror (roughness 0), mip
+	/// (Count-1) is the roughest sample.
+	public const int32 IBLPrefilterMipCount = 5;
+	/// SH9 coefficients per probe (9 RGB bands, each stored as float4).
+	public const int32 IBLSH9CoeffPerProbe = 9;
+	/// Byte stride of one GPU reflection probe entry. Hand-coded for now; will be
+	/// replaced by `sizeof(GPUReflectionProbe)` when that struct lands in Sub-phase B.
+	/// Layout: Position (12) + InfluenceRadius (4) + BoxMin (12) + Padding (4) +
+	///         BoxMax (12) + SHCoeffStart (4) + CubemapLayer (4) + Enabled (4) +
+	///         PrefilterMipCount (4) + BlendEdge (4) = 64 bytes (HLSL StructuredBuffer aligns to 16).
+	public const uint32 ProbeStride = 64;
+
 	// Default draw call bind group (identity transform)
 	private IBindGroup mDefaultDrawCallBindGroup;
 	private IBuffer mDefaultDrawCallBuffer;
@@ -108,6 +165,14 @@ public class RenderContext : IDisposable
 
 	/// Compute skinning system.
 	public SkinningSystem SkinningSystem => mSkinningSystem;
+
+	/// GGX prefilter compute system. Owns the compute pipeline that builds
+	/// the prefiltered specular mip chain for each reflection probe.
+	public Sedulous.Renderer.IBL.IBLPrefilterSystem IBLPrefilterSystem => mIBLPrefilterSystem;
+
+	/// SH9 projection compute system. Projects each probe's captured cubemap
+	/// onto 9 SH coefficients per RGB channel (pre-convolved for irradiance).
+	public Sedulous.Renderer.IBL.IBLSH9System IBLSH9System => mIBLSH9System;
 
 	/// Shadow system (atlas + data buffer + bind group). Created in Initialize.
 	public ShadowSystem ShadowSystem => mShadowSystem;
@@ -186,6 +251,31 @@ public class RenderContext : IDisposable
 				mSkinningSystem = new SkinningSystem();
 				mSkinningSystem.Initialize(mDevice, value);
 			}
+
+			// Initialize IBL prefilter system once the cubemap + sampler exist.
+			// InitializeIBL runs before ShaderSystem is assigned, so these
+			// resources are already in place by now.
+			if (value != null && mIBLPrefilterSystem == null
+				&& mPrefilteredCubemapArray != null
+				&& mPrefilteredCubemapSourceView != null
+				&& mLinearSampler != null)
+			{
+				mIBLPrefilterSystem = new Sedulous.Renderer.IBL.IBLPrefilterSystem();
+				mIBLPrefilterSystem.Initialize(mDevice, value,
+					mPrefilteredCubemapArray, mPrefilteredCubemapSourceView, mLinearSampler);
+			}
+
+			// SH9 projection system uses the mip-0 source view (same view as
+			// the prefilter source) and writes into the shared SH9 buffer.
+			if (value != null && mIBLSH9System == null
+				&& mPrefilteredCubemapSourceView != null
+				&& mSH9Buffer != null
+				&& mLinearSampler != null)
+			{
+				mIBLSH9System = new Sedulous.Renderer.IBL.IBLSH9System();
+				mIBLSH9System.Initialize(mDevice, value,
+					mPrefilteredCubemapSourceView, mSH9Buffer, mLinearSampler);
+			}
 		}
 	}
 
@@ -200,6 +290,31 @@ public class RenderContext : IDisposable
 
 	/// Bind group layout for instanced draws (StructuredBuffer at set 3).
 	public IBindGroupLayout InstanceBindGroupLayout => mInstanceBindGroupLayout;
+
+	// ==================== IBL accessors ====================
+
+	/// BRDF integration LUT view (set 0 t1). Real data; sampled by the forward
+	/// shader for split-sum indirect specular.
+	public ITextureView BRDFLutView => mBRDFLutView;
+
+	/// Prefiltered cubemap-array view (set 0 t2). Placeholder until probes come
+	/// online; Sub-phase C populates content per probe slot.
+	public ITextureView PrefilteredCubemapView => mPrefilteredCubemapView;
+
+	/// Underlying cubemap-array texture (rendered to per face by the probe
+	/// capture pass, sampled via PrefilteredCubemapView by the forward shader).
+	public ITexture PrefilteredCubemapTexture => mPrefilteredCubemapArray;
+
+	/// Per-probe data StructuredBuffer (set 0 t3). Placeholder until probes
+	/// exist. Sub-phase B writes from extracted ReflectionProbeRenderData.
+	public IBuffer ProbeBuffer => mProbeBuffer;
+
+	/// SH9 coefficients buffer (set 0 t4). Placeholder until SH9 projection
+	/// compute pass runs (Sub-phase E).
+	public IBuffer SH9Buffer => mSH9Buffer;
+
+	/// Linear+clamp sampler shared by BRDF LUT and prefiltered cubemap (set 0 s1).
+	public ISampler LinearSampler => mLinearSampler;
 
 	// ==================== Lifecycle ====================
 
@@ -246,6 +361,17 @@ public class RenderContext : IDisposable
 		if (mSpriteSystem.Initialize(device, mMaterialSystem) case .Err)
 			return .Err;
 
+		// IBL resources bound at frame set 0 t1..t4 + s1:
+		//   t1 BRDF LUT, t2 prefiltered cubemap array, t3 probe buffer,
+		//   t4 SH9 buffer, s1 linear sampler.
+		// The cubemap is the live target ProbeCapturePass renders into and the
+		// prefilter/SH9 passes consume; the probe and SH9 buffers are populated
+		// per-frame by ReflectionProbeUploader + IBLSH9System. Scenes without
+		// probes leave the buffers zero-initialized (Enabled=0 short-circuits
+		// the forward shader's IBL loop).
+		if (InitializeIBL() case .Err)
+			return .Err;
+
 		return .Ok;
 	}
 
@@ -283,6 +409,16 @@ public class RenderContext : IDisposable
 			mDevice.DestroyBindGroup(ref mDefaultDrawCallBindGroup);
 		if (mDefaultDrawCallBuffer != null)
 			mDevice.DestroyBuffer(ref mDefaultDrawCallBuffer);
+
+		// IBL resources
+		if (mBRDFLutView != null) mDevice.DestroyTextureView(ref mBRDFLutView);
+		if (mBRDFLutTexture != null) mDevice.DestroyTexture(ref mBRDFLutTexture);
+		if (mPrefilteredCubemapView != null) mDevice.DestroyTextureView(ref mPrefilteredCubemapView);
+		if (mPrefilteredCubemapSourceView != null) mDevice.DestroyTextureView(ref mPrefilteredCubemapSourceView);
+		if (mPrefilteredCubemapArray != null) mDevice.DestroyTexture(ref mPrefilteredCubemapArray);
+		if (mProbeBuffer != null) mDevice.DestroyBuffer(ref mProbeBuffer);
+		if (mSH9Buffer != null) mDevice.DestroyBuffer(ref mSH9Buffer);
+		if (mLinearSampler != null) mDevice.DestroySampler(ref mLinearSampler);
 
 		// Bind group layouts
 		if (mFrameBindGroupLayout != null)
@@ -349,10 +485,20 @@ public class RenderContext : IDisposable
 		//   b0: SceneUniforms (dynamic offset - per-view ring buffer)
 		//   b1: LightParams (light count, ambient)
 		//   t0: Light buffer (StructuredBuffer<GPULight>)
-		BindGroupLayoutEntry[3] frameEntries = .(
+		//   t1: BRDF integration LUT (Texture2D RG16Float, for split-sum IBL)
+		//   t2: Prefiltered cubemap array (TextureCubeArray RGBA16Float, IBL specular)
+		//   t3: Reflection probe data (StructuredBuffer<GPUReflectionProbe>)
+		//   t4: SH9 coefficients (StructuredBuffer<float4>, IBL diffuse)
+		//   s1: Linear+clamp sampler shared by t1 and t2
+		BindGroupLayoutEntry[8] frameEntries = .(
 			.() { Binding = 0, Visibility = .Vertex | .Fragment | .Compute, Type = .UniformBuffer, HasDynamicOffset = true }, // b0: SceneUniforms
 			.UniformBuffer(1, .Fragment),                                           // b1: LightParams
-			.() { Binding = 0, Visibility = .Fragment, Type = .StorageBufferReadOnly, StorageBufferStride = (uint32)GPULight.Size } // t0: Lights
+			.() { Binding = 0, Visibility = .Fragment, Type = .StorageBufferReadOnly, StorageBufferStride = (uint32)GPULight.Size }, // t0: Lights
+			.SampledTexture(1, .Fragment, .Texture2D),                              // t1: BRDFLut
+			.SampledTexture(2, .Fragment, .TextureCubeArray),                       // t2: Prefiltered cubemap array
+			.() { Binding = 3, Visibility = .Fragment, Type = .StorageBufferReadOnly, StorageBufferStride = ProbeStride }, // t3: Probes
+			.() { Binding = 4, Visibility = .Fragment, Type = .StorageBufferReadOnly, StorageBufferStride = 16 }, // t4: SH9 (float4 stride)
+			.Sampler(1, .Fragment)                                                  // s1: LinearSampler
 		);
 
 		BindGroupLayoutDesc frameLayoutDesc = .()
@@ -408,6 +554,173 @@ public class RenderContext : IDisposable
 		// Default draw call bind group (identity transform)
 		if (CreateDefaultDrawCallBindGroup() case .Err)
 			return .Err;
+
+		return .Ok;
+	}
+
+	/// Creates the BRDF LUT GPU texture, placeholder cubemap array + structured
+	/// buffers, and the linear sampler. All five end up bound at set 0 t1..t4
+	/// and s1 by Pipeline.RebuildFrameBindGroup.
+	private Result<void> InitializeIBL()
+	{
+		// --- BRDF LUT (real data, sampled by forward shader in Sub-phase F) ---
+		TextureDesc lutDesc = TextureDesc.Texture2D(
+			(uint32)BRDFLutData.Width, (uint32)BRDFLutData.Height,
+			.RG16Float, .Sampled | .CopyDst, 1, "BRDF LUT");
+
+		if (mDevice.CreateTexture(lutDesc) case .Ok(let lutTex))
+			mBRDFLutTexture = lutTex;
+		else
+			return .Err;
+
+		TextureDataLayout lutLayout = .()
+		{
+			Offset = 0,
+			BytesPerRow = (uint32)(BRDFLutData.Width * 4),  // 2 channels * 2 bytes per channel
+			RowsPerImage = (uint32)BRDFLutData.Height
+		};
+		Extent3D lutExtent = .((uint32)BRDFLutData.Width, (uint32)BRDFLutData.Height, 1);
+		TransferHelper.WriteTextureSync(mQueue, mDevice, mBRDFLutTexture,
+			Span<uint8>(&BRDFLutData.Data[0], BRDFLutData.DataSize), lutLayout, lutExtent);
+
+		if (mDevice.CreateTextureView(mBRDFLutTexture, .() { Format = .RG16Float }) case .Ok(let lutView))
+			mBRDFLutView = lutView;
+		else
+			return .Err;
+
+		// --- Placeholder prefiltered cubemap array ---
+		// Sized to the final probe layout so Sub-phase C just writes content
+		// into existing memory. 6*MaxProbes layers, 5 mips, RGBA16Float at 128x128.
+		TextureDesc cubeDesc = .()
+		{
+			Dimension = .Texture2D,
+			Format = .RGBA16Float,
+			Width = (uint32)IBLProbeFaceSize,
+			Height = (uint32)IBLProbeFaceSize,
+			ArrayLayerCount = (uint32)(6 * MaxIBLProbes),
+			MipLevelCount = (uint32)IBLPrefilterMipCount,
+			// RenderTarget: ProbeCapturePass renders directly into face slices (Sub-phase C).
+			// Storage: GGX prefilter compute writes mip chain (Sub-phase D).
+			// Sampled: forward shader reads via TextureCubeArray (Sub-phase F).
+			Usage = .Sampled | .Storage | .RenderTarget,
+			Label = "IBL Prefiltered Cubemap Array"
+		};
+
+		if (mDevice.CreateTexture(cubeDesc) case .Ok(let cubeTex))
+			mPrefilteredCubemapArray = cubeTex;
+		else
+			return .Err;
+
+		// Cubemap-array view exposing ALL mips AND every probe's 6 layers.
+		// Vulkan requires a TextureCubeArray view's layerCount to be a multiple
+		// of 6 (one cubemap = 6 layers); the descriptor default of 1 fails
+		// validation. The forward shader's IBL eval (Sub-phase F) needs every
+		// mip so SampleLevel(N, roughness*maxMip) can pick the right
+		// pre-filtered LOD.
+		if (mDevice.CreateTextureView(mPrefilteredCubemapArray, .()
+			{
+				Format = .RGBA16Float,
+				Dimension = .TextureCubeArray,
+				MipLevelCount = (uint32)IBLPrefilterMipCount,
+				ArrayLayerCount = (uint32)(6 * MaxIBLProbes)
+			}) case .Ok(let cubeView))
+			mPrefilteredCubemapView = cubeView;
+		else
+			return .Err;
+
+		// Mip-0-only source view used by the prefilter + SH9 compute passes.
+		// The prefilter writes mips 1..N as General within the same compute
+		// dispatch, so the source descriptor's view must NOT cover those mips
+		// or Vulkan flags a layout-mismatch validation error.
+		if (mDevice.CreateTextureView(mPrefilteredCubemapArray, .()
+			{
+				Format = .RGBA16Float,
+				Dimension = .TextureCubeArray,
+				BaseMipLevel = 0,
+				MipLevelCount = 1,
+				ArrayLayerCount = (uint32)(6 * MaxIBLProbes),
+				Label = "IBL Prefiltered Cubemap Source (mip 0)"
+			}) case .Ok(let srcView))
+			mPrefilteredCubemapSourceView = srcView;
+		else
+			return .Err;
+
+		// --- Placeholder per-probe data StructuredBuffer ---
+		// MaxProbes entries, all zero (Enabled = 0 disables them in the shader loop).
+		let probeBufferSize = (uint64)(MaxIBLProbes * ProbeStride);
+		BufferDesc probeBufDesc = .()
+		{
+			Label = "IBL Probe Buffer",
+			Size = probeBufferSize,
+			Usage = .StorageRead,
+			Memory = .CpuToGpu
+		};
+		if (mDevice.CreateBuffer(probeBufDesc) case .Ok(let probeBuf))
+			mProbeBuffer = probeBuf;
+		else
+			return .Err;
+
+		// --- Placeholder SH9 coefficients buffer ---
+		// 9 float4 per probe, all zero (no irradiance contribution).
+		let sh9BufferSize = (uint64)(MaxIBLProbes * IBLSH9CoeffPerProbe * 16); // float4 = 16 bytes
+		BufferDesc sh9BufDesc = .()
+		{
+			Label = "IBL SH9 Buffer",
+			Size = sh9BufferSize,
+			Usage = .StorageRead,
+			Memory = .CpuToGpu
+		};
+		if (mDevice.CreateBuffer(sh9BufDesc) case .Ok(let sh9Buf))
+			mSH9Buffer = sh9Buf;
+		else
+			return .Err;
+
+		// --- Linear+clamp sampler shared by BRDF LUT and prefiltered cubemap ---
+		SamplerDesc samplerDesc = .()
+		{
+			MinFilter = .Linear,
+			MagFilter = .Linear,
+			MipmapFilter = .Linear,  // smooth mip transitions on the prefiltered cubemap
+			AddressU = .ClampToEdge,
+			AddressV = .ClampToEdge,
+			AddressW = .ClampToEdge
+		};
+		if (mDevice.CreateSampler(samplerDesc) case .Ok(let sampler))
+			mLinearSampler = sampler;
+		else
+			return .Err;
+
+		// Transition the cubemap from VK_IMAGE_LAYOUT_UNDEFINED (its initial
+		// state after creation) to ShaderRead so the very first frame's bind
+		// group passes Vulkan validation - the forward shader has the
+		// PrefilteredCubemap descriptor bound every frame regardless of
+		// whether the IBL loop actually samples it, and Vulkan requires the
+		// resource to match the descriptor's expected layout when the
+		// descriptor is written, not just when it is sampled.
+		if (mQueue.CreateTransferBatch() case .Ok(var tb))
+		{
+			// Submit an empty batch just to flush any pending uploads, then
+			// use a fresh command encoder for the transition itself - the
+			// transfer batch API doesn't expose raw barrier injection.
+			tb.Submit();
+			mDevice.WaitIdle();
+			mQueue.DestroyTransferBatch(ref tb);
+		}
+		if (mDevice.CreateCommandPool(.Graphics) case .Ok(let pool))
+		{
+			defer { var poolRef = pool; mDevice.DestroyCommandPool(ref poolRef); }
+			if (pool.CreateEncoder() case .Ok(var encoder))
+			{
+				encoder.TransitionTexture(mPrefilteredCubemapArray, .Undefined, .ShaderRead);
+				let cmdBuf = encoder.Finish();
+				if (cmdBuf != null)
+				{
+					mQueue.Submit(cmdBuf);
+					mQueue.WaitIdle();
+				}
+				pool.DestroyEncoder(ref encoder);
+			}
+		}
 
 		return .Ok;
 	}

@@ -138,6 +138,16 @@ public class MeshRenderer : Renderer
 		if (batch == null || batch.Count == 0)
 			return;
 
+		// Note: the layer-mask filter for ProbeCapturePass etc. is applied
+		// inside RenderStaticInstanced's fill walk + RenderSkinnedIndividual's
+		// per-mesh loop, not here. Filtering at this entry-split level would
+		// shrink the cached group table for the restricted-mask pass and the
+		// later main pass would inherit that stale table - the metal sphere
+		// (excluded from probe captures) would also disappear from the main
+		// view. By passing every entry through here we keep the group table
+		// consistent across passes and only the per-entry count / draw step
+		// honors the mask.
+
 		// Separate skinned meshes (individual draws) from static meshes (batched)
 		let skinnedEntries = scope List<MeshRenderData>();
 		let staticEntries = scope List<MeshRenderData>();
@@ -205,7 +215,15 @@ public class MeshRenderer : Renderer
 		}
 
 		let sceneRev = view.SceneRevision;
-		let fillIdentity = view.FrameIndex ^ (int)Internal.UnsafeCastToPtr(frame.InstanceBuffer);
+		let layerMask = frame.CurrentLayerMask;
+		// Mix the layer mask into fillIdentity so a probe-capture pass (mask
+		// = 0x7FFFFFFF) and the main forward pass (mask = 0xFFFFFFFF) within
+		// the same frame each get their own fill: per-entry counts and
+		// InstanceData differ when the mask changes, and the cache would
+		// otherwise hand back the prior pass's counts.
+		let fillIdentity = view.FrameIndex
+			^ (int)Internal.UnsafeCastToPtr(frame.InstanceBuffer)
+			^ (int)layerMask;
 
 		// Two-attempt loop guards against stale group cache (false-positive
 		// identity hit). Attempt 1: trust the cache. If an entry's BatchKey
@@ -286,6 +304,17 @@ public class MeshRenderer : Renderer
 					for (int i = 0; i < entries.Count; i++)
 					{
 						let mesh = entries[i];
+						// Layer-mask filter: entries whose layer is not in the
+						// active mask are marked as skipped (group index -1).
+						// The placement walk treats -1 as a no-op so the
+						// entry contributes neither to a group's InstanceCount
+						// nor to its InstanceData slot. Groups themselves stay
+						// in the cache; we don't reshape it per pass.
+						if ((mesh.LayerMask & layerMask) == 0)
+						{
+							state.EntryToGroup[i] = -1;
+							continue;
+						}
 						let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
 						if (gpuMesh == null)
 						{
@@ -552,8 +581,13 @@ public class MeshRenderer : Renderer
 		IBindGroup lastMaterialBindGroup = null;
 		IRenderPipeline currentPipeline = null;
 
+		let layerMask = frame.CurrentLayerMask;
+
 		for (let mesh in entries)
 		{
+			// Skip entries whose layer mask doesn't intersect the active pass mask.
+			// Same purpose as the static path's fill-walk filter.
+			if ((mesh.LayerMask & layerMask) == 0) continue;
 			let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
 			if (gpuMesh == null) continue;
 

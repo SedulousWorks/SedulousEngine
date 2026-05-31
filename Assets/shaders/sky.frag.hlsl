@@ -99,10 +99,14 @@ float4 main(FragmentInput input) : SV_Target
     float3 dir = normalize(input.ViewDir);
 
     float3 sky;
-    if (HasEnvironmentMap > 0.5)
+    // DIAGNOSTIC: force procedural sky path to test whether the equirect
+    // texture's pole content is the source of the "square at the top of the
+    // sphere" artifact on glossy IBL reflections. Revert by restoring
+    // `if (HasEnvironmentMap > 0.5)`.
+    if (false && HasEnvironmentMap > 0.5)
     {
         float2 uv = DirectionToEquirectangular(dir);
-        sky = EnvironmentMap.Sample(SkySampler, uv).rgb * SkyIntensity;
+        sky = EnvironmentMap.SampleLevel(SkySampler, uv, 0).rgb * SkyIntensity;
     }
     else
     {

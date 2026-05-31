@@ -87,6 +87,16 @@ class PerFrameResources
 	/// as the dynamic offset for the Frame bind group.
 	public uint32 CurrentSceneOffset;
 
+	/// Layer-mask filter for the pass currently being executed. Defaults to
+	/// 0xFFFFFFFF (every layer rendered) and is restored to that at frame
+	/// start. ProbeCapturePass temporarily clears the high bit so glossy
+	/// meshes flagged with `MeshRenderData.LayerMask = 0x80000000` (the metal
+	/// sphere in the sandbox, principally) get excluded from the cubemap
+	/// captures and don't self-reflect. Pattern mirrors `CurrentSceneOffset`:
+	/// passes that need a non-default value save the old value, set their
+	/// override, and restore on exit so downstream passes see the default.
+	public uint32 CurrentLayerMask = 0xFFFFFFFF;
+
 	/// Alignment for object uniform entries (256 bytes - Vulkan minUniformBufferOffsetAlignment).
 	public const uint32 ObjectAlignment = 256;
 

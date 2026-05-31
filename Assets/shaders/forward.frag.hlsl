@@ -32,8 +32,9 @@ cbuffer SceneUniforms : register(b0, space0)
 
 cbuffer LightParams : register(b1, space0)
 {
-    uint LightCount;
+    uint   LightCount;
     float3 AmbientColor;
+    uint   ProbeCount;       // active reflection probes for the IBL loop
 };
 
 struct GPULight
@@ -51,6 +52,29 @@ struct GPULight
 };
 
 StructuredBuffer<GPULight> Lights : register(t0, space0);
+
+// IBL bindings (set 0). Layout matches RenderContext.RebuildFrameBindGroup.
+// Skipped at probe-capture time (#ifndef IBL_CAPTURE) so probes don't
+// recursively sample their own previous output.
+struct GPUReflectionProbe
+{
+    float3 Position;
+    float  InfluenceRadius;
+    float3 BoxMin;
+    float  Padding0;
+    float3 BoxMax;
+    int    SHCoeffStart;       // first SH9 float4 index for this probe
+    int    CubemapLayer;       // first cube layer (= ArraySlot * 6)
+    int    Enabled;            // 0 = skip in the loop
+    int    PrefilterMipCount;
+    float  BlendEdge;          // world-units falloff outside the box bounds
+};
+
+Texture2D                          BRDFLut          : register(t1, space0);
+TextureCubeArray                   PrefilteredCubemap : register(t2, space0);
+StructuredBuffer<GPUReflectionProbe> Probes         : register(t3, space0);
+StructuredBuffer<float4>           SH9Coefficients  : register(t4, space0);
+SamplerState                       LinearSampler    : register(s1, space0);
 
 // Set 4: Shadow data
 // float4 rows instead of float4x4 - see CONVENTIONS.md (StructuredBuffer matrix layout).
@@ -234,11 +258,15 @@ struct FragmentInput
 };
 
 /// MRT output: scene color + mini G-buffer (normals + velocity).
+/// IBL capture (probe cubemap face rendering) uses a single-RT variant -
+/// no normals, no motion vectors, no post-process consumers downstream.
 struct FragmentOutput
 {
     float4 Color     : SV_Target0;  // HDR scene color
+#ifndef IBL_CAPTURE
     float2 Normal    : SV_Target1;  // view-space normal XY (reconstruct Z)
     float2 Velocity  : SV_Target2;  // screen-space motion vector (UV delta)
+#endif
 };
 
 // ==================== PBR Functions ====================
@@ -294,6 +322,67 @@ float3 FresnelSchlick(float cosTheta, float3 F0)
     float F90 = saturate(50.0 * dot(F0, float3(0.2126, 0.7152, 0.0722)));
     return F0 + (F90 - F0) * f;
 }
+
+// Fresnel-Schlick with roughness compensation for IBL. Without the (1-rough)
+// term, rough metals lose energy at grazing angles. Matches Karis 2013.
+float3 FresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
+{
+    float f = pow(saturate(1.0 - cosTheta), 5.0);
+    return F0 + (max(float3(1.0 - roughness, 1.0 - roughness, 1.0 - roughness), F0) - F0) * f;
+}
+
+#ifndef IBL_CAPTURE
+// Pre-convolved SH9 evaluation. Coefficients were baked with the Lambertian
+// cosine kernel in ibl_sh9_project.comp.hlsl, so the runtime lookup is a
+// direct linear combination of the 9 basis functions at the surface normal.
+float3 EvaluateSH9(int coeffStart, float3 N)
+{
+    float x = N.x, y = N.y, z = N.z;
+    float Y[9] = {
+        0.282095,
+        0.488603 * y,
+        0.488603 * z,
+        0.488603 * x,
+        1.092548 * x * y,
+        1.092548 * y * z,
+        0.315392 * (3.0 * z * z - 1.0),
+        1.092548 * x * z,
+        0.546274 * (x * x - y * y)
+    };
+    float3 c = float3(0, 0, 0);
+    [unroll]
+    for (uint j = 0; j < 9; j++)
+        c += SH9Coefficients[coeffStart + j].rgb * Y[j];
+    return max(c, float3(0, 0, 0));
+}
+
+// Probe influence weight at a world-space point. Combines:
+//   - Sphere falloff: 1 at probe center, 0 at InfluenceRadius (smooth)
+//   - Box affinity: 1 inside LocalBoxMin..LocalBoxMax, blends out over
+//     BlendEdge world units past the box surface
+// The two terms multiply so a probe needs to "claim" the fragment in both
+// senses to contribute meaningfully. Returns 0 outside the probe's reach.
+float ComputeProbeWeight(GPUReflectionProbe probe, float3 worldPos)
+{
+    float3 localPos = worldPos - probe.Position;
+
+    // Sphere influence (smoothstep on radius).
+    float r = length(localPos);
+    float sphereWeight = saturate(1.0 - r / max(probe.InfluenceRadius, 0.0001));
+    if (sphereWeight <= 0.0) return 0.0;
+
+    // Box distance: 0 inside the box, positive outside.
+    float3 outsideMin = max(probe.BoxMin - localPos, 0.0);
+    float3 outsideMax = max(localPos - probe.BoxMax, 0.0);
+    float3 outside    = outsideMin + outsideMax;
+    float  boxDist    = length(outside);
+
+    float blend = max(probe.BlendEdge, 0.0001);
+    float boxWeight = saturate(1.0 - boxDist / blend);
+
+    return sphereWeight * boxWeight;
+}
+#endif
 
 // ==================== Light Evaluation ====================
 
@@ -438,26 +527,90 @@ FragmentOutput main(FragmentInput input)
         Lo += EvaluateLight(Lights[i], input.WorldPos, geomNormal, viewDepth, N, V, albedo, roughness, metallic, F0);
     }
 
-    float3 ambient = AmbientColor * albedo * ao;
-    float3 color = ambient + Lo + emissive;
+    // ==================== Indirect Lighting (IBL) ====================
+    // Probe captures bypass IBL entirely so probes don't recursively sample
+    // their own previous output; the capture pass uses a flat ambient fall-back.
+    float3 indirect;
+#ifndef IBL_CAPTURE
+    {
+        float3 R     = reflect(-V, N);
+        float  NdotV = max(dot(N, V), 0.001);
+        float3 F     = FresnelSchlickRoughness(NdotV, F0, roughness);
+        // Split-sum BRDF LUT: x = scale, y = bias - multiplies F0 + adds bias.
+        float2 brdf  = BRDFLut.SampleLevel(LinearSampler, float2(NdotV, roughness), 0).xy;
+
+        float3 indirectSpecular = 0;
+        float3 indirectDiffuse  = 0;
+        float  totalWeight      = 0;
+
+        [loop]
+        for (uint i = 0; i < ProbeCount; i++)
+        {
+            GPUReflectionProbe probe = Probes[i];
+            if (probe.Enabled == 0) continue;
+
+            float weight = ComputeProbeWeight(probe, input.WorldPos);
+            if (weight <= 0.0) continue;
+
+            // The cubemap array's stable slot index for this probe.
+            // CubemapLayer == ArraySlot * 6, so dividing by 6 recovers it.
+            float arrayIndex = float(probe.CubemapLayer / 6);
+
+            // Roughness -> mip selection. Mip 0 is mirror, highest mip is rough.
+            float maxMip = float(max(probe.PrefilterMipCount - 1, 1));
+            float cubeMip = roughness * maxMip;
+
+            float3 prefiltered = PrefilteredCubemap
+                .SampleLevel(LinearSampler, float4(R, arrayIndex), cubeMip).rgb;
+            float3 diffuseSH = EvaluateSH9(probe.SHCoeffStart, N);
+
+            indirectSpecular += prefiltered * weight;
+            indirectDiffuse  += diffuseSH  * weight;
+            totalWeight      += weight;
+        }
+
+        if (totalWeight > 0.0)
+        {
+            indirectSpecular /= totalWeight;
+            indirectDiffuse  /= totalWeight;
+
+            float3 kS = F * brdf.x + brdf.y;
+            float3 kD = (1.0 - F) * (1.0 - metallic);
+            indirect = (indirectDiffuse * albedo * kD + indirectSpecular * kS) * ao;
+        }
+        else
+        {
+            // No probe overlap - fall back to the legacy flat ambient term
+            // so unprobed scenes don't regress.
+            indirect = AmbientColor * albedo * ao;
+        }
+    }
+#else
+    // Probe capture: flat ambient only (mirrors the pre-IBL renderer).
+    indirect = AmbientColor * albedo * ao;
+#endif
+
+    float3 color = indirect + Lo + emissive;
 
     // ==================== MRT Output ====================
     FragmentOutput output;
 
+    // Target 0: HDR scene color (always written).
+    output.Color = float4(color, alpha);
+
+#ifndef IBL_CAPTURE
     // Target 1: view-space normal XY. Post-FX reconstruct Z via
     // sqrt(1 - x² - y²). Using the shading normal (N) which includes
     // normal mapping, not the geometric interpolant.
     float3 viewNormal = normalize(mul(float4(N, 0.0), ViewMatrix).xyz);
     output.Normal = viewNormal.xy;
 
-    // Target 0: HDR scene color.
-    output.Color = float4(color, alpha);
-
     // Target 2: screen-space motion vector (NDC delta × 0.5 -> UV delta).
     // Used by TAA / motion blur to reproject from current to previous frame.
     float2 curNDC  = input.CurClipPos.xy / input.CurClipPos.w;
     float2 prevNDC = input.PrevClipPos.xy / input.PrevClipPos.w;
     output.Velocity = (curNDC - prevNDC) * 0.5;
+#endif
 
     return output;
 }

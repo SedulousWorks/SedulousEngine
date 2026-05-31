@@ -61,6 +61,14 @@ enum ShaderFlags : uint32
 	/// Enable depth-based soft particle fading.
 	SoftParticles = 1 << 13,
 
+	// ===== IBL =====
+
+	/// Set when rendering FROM a reflection probe (the capture pass) so
+	/// the forward shader skips its IBL evaluation block. Without this
+	/// guard, captured probes would feed their own previous output back
+	/// in and diverge over a few frames.
+	IBLCapture = 1 << 14,
+
 	// ===== Common Combinations =====
 
 	/// Default opaque mesh flags.
@@ -116,6 +124,8 @@ extension ShaderFlags
 			outDefines.Append("#define VERTEX_COLORS 1\n");
 		if (HasFlag(.SoftParticles))
 			outDefines.Append("#define SOFT_PARTICLES 1\n");
+		if (HasFlag(.IBLCapture))
+			outDefines.Append("#define IBL_CAPTURE 1\n");
 	}
 
 	/// Gets a short string representation for cache keys.
@@ -135,5 +145,6 @@ extension ShaderFlags
 		if (HasFlag(.DoubleSided)) outKey.Append("Ds");
 		if (HasFlag(.VertexColors)) outKey.Append("Vc");
 		if (HasFlag(.SoftParticles)) outKey.Append("Sp");
+		if (HasFlag(.IBLCapture)) outKey.Append("Ic");
 	}
 }

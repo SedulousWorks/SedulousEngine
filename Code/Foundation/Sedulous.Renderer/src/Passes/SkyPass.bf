@@ -143,8 +143,27 @@ class SkyPass : PipelinePass
 	private void ExecuteSky(IRenderPassEncoder encoder, RenderView view, Pipeline pipeline)
 	{
 		using (Profiler.Begin("Sky"))
-		{
+			RenderInto(encoder, view, pipeline, view.Width, view.Height);
+	}
 
+	/// Renders the sky into an arbitrary render pass already in progress on
+	/// `encoder`. The caller is responsible for the surrounding render pass
+	/// (color target, read-only depth, depth comparison setup). Used by the
+	/// main pipeline pass above AND by ProbeCapturePass to fill the cubemap
+	/// face's depth-far pixels with sky content - the probe's IBL otherwise
+	/// has black sky and the top of any glossy surface looks dead.
+	///
+	/// `width`/`height` configure the viewport for this pass. For the main
+	/// view they match the output target; for probe captures they're the
+	/// cubemap face size (IBLProbeFaceSize x IBLProbeFaceSize).
+	///
+	/// The caller must set `frame.CurrentSceneOffset` to the slot of the
+	/// view-matrices it wants the sky shader to use. The sky reads camera
+	/// position + inv-view-proj from the scene UBO bound through the frame
+	/// bind group.
+	public void RenderInto(IRenderPassEncoder encoder, RenderView view, Pipeline pipeline,
+		uint32 width, uint32 height)
+	{
 		// Tick down retired state and destroy when safe
 		if (mRetired != null)
 		{
@@ -212,8 +231,8 @@ class SkyPass : PipelinePass
 				mActive.BindGroups[frameSlot] = bg;
 		}
 
-		encoder.SetViewport(0, 0, (float)view.Width, (float)view.Height, 0.0f, 1.0f);
-		encoder.SetScissor(0, 0, view.Width, view.Height);
+		encoder.SetViewport(0, 0, (float)width, (float)height, 0.0f, 1.0f);
+		encoder.SetScissor(0, 0, width, height);
 		encoder.SetPipeline(mActive.Pipeline);
 
 		pipeline.BindFrameGroup(encoder, frame);
@@ -222,8 +241,6 @@ class SkyPass : PipelinePass
 			encoder.SetBindGroup(BindGroupFrequency.RenderPass, mActive.BindGroups[frameSlot], default);
 
 		encoder.Draw(3, 1, 0, 0);
-
-		} // Sky scope
 	}
 
 	/// Retires the active state so it stays alive until in-flight frames complete.

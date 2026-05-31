@@ -44,13 +44,21 @@ public struct GPULight
 }
 
 /// GPU-packed light params. Must match forward.frag.hlsl LightParams cbuffer.
+///
+/// HLSL packing puts AmbientColor (float3) in offset 4..15 since it fits in the
+/// remaining 12 bytes of the first 16-byte slot. ProbeCount starts a new slot
+/// at offset 16 (next 4-DWORD boundary). Size = 32 bytes (2 x float4).
 [CRepr]
 public struct LightParams
 {
 	public uint32 LightCount;
 	public Vector3 AmbientColor;
+	public uint32 ProbeCount;       // active reflection probes for the forward IBL loop
+	public uint32 _Pad0;
+	public uint32 _Pad1;
+	public uint32 _Pad2;
 
-	public const int32 Size = 16; // 1 x float4
+	public const int32 Size = 32; // 2 x float4
 }
 
 /// Manages the GPU light buffer. Uploads extracted light data each frame.
@@ -66,6 +74,10 @@ public class LightBuffer : IDisposable
 
 	/// Ambient light color (set per frame).
 	public Vector3 AmbientColor = .(0.1f, 0.1f, 0.15f);
+
+	/// Active reflection probe count for the forward IBL evaluation loop.
+	/// Set by Pipeline after ReflectionProbeUploader.Upload returns the count.
+	public uint32 ProbeCount;
 
 	/// Number of lights uploaded last frame.
 	public int32 LightCount => mLightCount;
@@ -139,7 +151,8 @@ public class LightBuffer : IDisposable
 			LightParams @params = .()
 			{
 				LightCount = (uint32)mLightCount,
-				AmbientColor = AmbientColor
+				AmbientColor = AmbientColor,
+				ProbeCount = ProbeCount
 			};
 
 			TransferHelper.WriteMappedBuffer(

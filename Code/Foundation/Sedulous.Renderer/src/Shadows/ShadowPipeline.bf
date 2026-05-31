@@ -437,10 +437,25 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 
 		let lightBufferSize = (uint64)(Math.Max(lightBuffer.LightCount, 1) * GPULight.Size);
 
-		BindGroupEntry[3] bgEntries = .(
+		// Frame layout is shared with the forward pipeline (RenderContext owns
+		// it), so we must populate all 8 entries even though the shadow shader
+		// only consumes the first 3. Non-bindless descriptor sets require every
+		// layout entry to have a matching bind group entry, or CreateBindGroup
+		// fails and the shadow draws hit "set 0 not bound".
+		let probeBufferSize = (uint64)(Sedulous.Renderer.RenderContext.MaxIBLProbes
+			* Sedulous.Renderer.RenderContext.ProbeStride);
+		let sh9BufferSize = (uint64)(Sedulous.Renderer.RenderContext.MaxIBLProbes
+			* Sedulous.Renderer.RenderContext.IBLSH9CoeffPerProbe * 16);
+
+		BindGroupEntry[8] bgEntries = .(
 			BindGroupEntry.Buffer(frame.SceneUniformBuffer, 0, SceneUniforms.Size),
 			BindGroupEntry.Buffer(lightParamsBuf, 0, (uint64)LightParams.Size),
-			BindGroupEntry.Buffer(lightBuf, 0, lightBufferSize)
+			BindGroupEntry.Buffer(lightBuf, 0, lightBufferSize),
+			BindGroupEntry.Texture(mRenderContext.BRDFLutView),
+			BindGroupEntry.Texture(mRenderContext.PrefilteredCubemapView),
+			BindGroupEntry.Buffer(mRenderContext.ProbeBuffer, 0, probeBufferSize),
+			BindGroupEntry.Buffer(mRenderContext.SH9Buffer, 0, sh9BufferSize),
+			BindGroupEntry.Sampler(mRenderContext.LinearSampler)
 		);
 
 		BindGroupDesc bgDesc = .()

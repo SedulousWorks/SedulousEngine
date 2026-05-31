@@ -208,7 +208,13 @@ class SandboxApp : EngineApplication
 		let resources = ResourceSystem;
 
 		// Create mesh resources and register with resource system
-		mPlaneRes = StaticMeshResource.CreatePlane(30, 30, 1, 1);
+		// Big enough that probe captures clip on the far plane (40 units from
+		// (0,3,0)) before they hit the plane's actual edge. With a 30x30 plane
+		// the four corners showed up as a square edge in glossy IBL
+		// reflections; 100x100 puts the plane edge beyond every probe's
+		// frustum so the reflection ring is a smooth circular horizon
+		// (far-plane clip on the ground) instead of a square.
+		mPlaneRes = StaticMeshResource.CreatePlane(100, 100, 1, 1);
 		mCubeRes = StaticMeshResource.CreateCube(1.0f);
 		mSphereRes = StaticMeshResource.CreateSphere(0.5f, 32, 16);
 		resources.AddResource<StaticMeshResource>(mPlaneRes);
@@ -256,11 +262,24 @@ class SandboxApp : EngineApplication
 		SetupMeshComponent(scene, cube3Entity, cubeRef, mYellowMaterial);
 		SetupRigidBody(scene, physicsMgr, cube3Entity, .Box(0.5f), .Dynamic);
 
-		// White metallic sphere (center back) - dynamic, larger
+		// White metallic sphere - STATIC, raised off the ground, clear of the
+		// falling pile at origin. Headline IBL target: its low roughness +
+		// high metallic value make the prefiltered cubemap reflection the
+		// dominant visual term. With the cardinal compass pillars below it's
+		// easy to verify probe orientation: the right side of the sphere
+		// (from camera) should reflect the red pillar, the left side should
+		// reflect the green pillar, etc. Anything else => probe axes are
+		// flipped or sample direction is wrong.
 		let sphere2Entity = scene.CreateEntity("MetalSphere");
-		scene.SetLocalTransform(sphere2Entity, .() { Position = .(0, 8, -2.0f), Rotation = .Identity, Scale = .(1.5f, 1.5f, 1.5f) });
+		scene.SetLocalTransform(sphere2Entity, .() { Position = .(0, 1.5f, 4.0f), Rotation = .Identity, Scale = .(1.5f, 1.5f, 1.5f) });
 		SetupMeshComponent(scene, sphere2Entity, sphereRef, mWhiteMaterial);
-		SetupRigidBody(scene, physicsMgr, sphere2Entity, .Sphere(0.75f), .Dynamic);
+		SetupRigidBody(scene, physicsMgr, sphere2Entity, .Sphere(0.75f), .Static);
+		// Tag this mesh as the "glossy" layer (bit 31 only). ProbeCapturePass
+		// renders with CurrentLayerMask = 0x7FFFFFFF and AND-tests entries -
+		// (0x80000000 & 0x7FFFFFFF) == 0 - so the sphere is skipped during
+		// cubemap capture and doesn't end up reflecting itself.
+		if (let meshComp = scene.GetModule<MeshComponentManager>().GetForEntity(sphere2Entity))
+			meshComp.LayerMask = 0x80000000;
 
 		// Small green sphere (front left) - dynamic
 		let sphere3Entity = scene.CreateEntity("GreenSphere");
@@ -305,9 +324,12 @@ class SandboxApp : EngineApplication
 		}
 
 		// ==================== Decal ====================
-		// Projects a Kenney animal icon downward onto the ground plane.
+		// Projects a Kenney animal icon downward onto the ground plane. Sits to
+		// the left of origin so it doesn't smear under the metal sphere at
+		// (0, 1.5, 4) - the sphere's bottom hemisphere would otherwise catch
+		// the decal in its IBL reflections.
 		CreateDecal(scene, resources, "textures/kenney_animal-pack-remastered/PNG/Round/panda.png",
-			.(0.0f, 0.5f, 2.5f), .(3.0f, 3.0f, 3.0f));
+			.(-3.0f, 0.5f, 0.0f), .(3.0f, 3.0f, 3.0f));
 
 		// ==================== Particles ====================
 		// Four effects spaced across the scene to showcase different particle types.
@@ -910,6 +932,55 @@ class SandboxApp : EngineApplication
 			light.CastsShadows = true;
 			light.ShadowBias = 0.001f;
 			light.ShadowNormalBias = 0.05f;
+		}
+
+		// ==================== Compass Pillars ====================
+		// Tall colored static pillars at known cardinal positions around origin.
+		// Reflected on the metal sphere they make probe orientation trivially
+		// readable: right side of sphere should show red (+X), left should show
+		// green (-X), back-facing surfaces should show yellow (-Z). +Z is left
+		// open because the camera sits there - reflections from "behind the
+		// camera" on the sphere's front would otherwise be obscured anyway.
+		void CreatePillar(StringView name, Vector3 position, MaterialInstance material)
+		{
+			let entity = scene.CreateEntity(name);
+			scene.SetLocalTransform(entity, .()
+			{
+				Position = position,
+				Rotation = .Identity,
+				Scale = .(0.5f, 4.0f, 0.5f)
+			});
+			SetupMeshComponent(scene, entity, cubeRef, material);
+			SetupRigidBody(scene, physicsMgr, entity, .Box(0.5f), .Static);
+		}
+		CreatePillar("CompassRed",    .( 8.0f, 2.0f,  0.0f), mRedMaterial);
+		CreatePillar("CompassGreen",  .(-8.0f, 2.0f,  0.0f), mGreenMaterial);
+		CreatePillar("CompassYellow", .( 0.0f, 2.0f, -7.0f), mYellowMaterial);
+
+		// ==================== Reflection Probe ====================
+		// Drives IBL for the metal sphere + any other glossy surfaces in the
+		// scene. Captures one face per frame round-robin; converges over ~6
+		// frames. Box bounds straddle the play area; the sphere falloff lets
+		// objects at the edges of InfluenceRadius fade smoothly out instead of
+		// popping when they leave the box.
+		let probeMgr = scene.GetModule<ReflectionProbeManager>();
+		if (probeMgr != null)
+		{
+			let probeEntity = scene.CreateEntity("ReflectionProbe");
+			scene.SetLocalTransform(probeEntity, .()
+			{
+				Position = .(0, 3, 0),
+				Rotation = .Identity,
+				Scale = .One
+			});
+			let probeHandle = probeMgr.CreateComponent(probeEntity);
+			if (let probe = probeMgr.Get(probeHandle))
+			{
+				probe.InfluenceRadius = 20.0f;
+				probe.LocalBoxMin = .(-10, -2, -10);
+				probe.LocalBoxMax = .(10, 10, 10);
+				probe.BlendEdge = 2.0f;
+			}
 		}
 
 		// Shadow-casting point light - sits near the scene, casts shadows in every
