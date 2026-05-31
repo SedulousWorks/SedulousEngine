@@ -56,7 +56,20 @@ public class IBLSystem
 	private IPipelineLayout mIrradianceLayout;
 	private IBindGroupLayout mIrradianceBGLayout;
 
-	// Per-face params buffers and bind groups
+	private IRenderPipeline mPrefilterPipeline;
+	private IPipelineLayout mPrefilterLayout;
+	private IBindGroupLayout mPrefilterBGLayout;
+
+	// Prefilter cubemap (specular IBL with mip chain for roughness-dependent reflections)
+	private ITexture mPrefilterCubemap;
+	private ITextureView mPrefilterCubemapView;
+	// Per-face-per-mip views, params buffers, bind groups
+	// Index = mip * 6 + face, total = PrefilterMipCount * 6 = 30
+	private ITextureView[30] mPrefilterFaceViews;
+	private IBuffer[30] mPrefilterParamsBuffers;
+	private IBindGroup[30] mPrefilterBindGroups;
+
+	// Per-face params buffers and bind groups (equirect + irradiance)
 	private IBuffer[6] mParamsBuffers;
 	private IBindGroup[6] mEquirectBindGroups;
 	private IBindGroup[6] mIrradianceBindGroups;
@@ -69,6 +82,8 @@ public class IBLSystem
 	// Resolution constants
 	private const uint32 EnvCubemapSize = 256;
 	private const uint32 IrradianceSize = 32;
+	private const uint32 PrefilterSize = 256;
+	private const int PrefilterMipCount = 5; // 256, 128, 64, 32, 16
 
 	/// BRDF integration LUT texture view (RG16Float, 256x256)
 	public ITextureView BRDFLutView => mBRDFLutView;
@@ -176,11 +191,17 @@ public class IBLSystem
 			return .Err;
 		}
 
+		if (CreatePrefilterPipeline(shaderSystem) case .Err)
+		{
+			System.Diagnostics.Debug.WriteLine("IBLSystem: Failed to create prefilter pipeline");
+			return .Err;
+		}
+
 		return .Ok;
 	}
 
-	/// Generate environment cubemap from equirectangular source and convolve
-	/// irradiance map. Call when the sky texture changes.
+	/// Generate environment cubemap from equirectangular source, convolve
+	/// irradiance map, and generate prefilter mip chain. Call when the sky texture changes.
 	private void GenerateFromEquirectangular(ICommandEncoder encoder, ITextureView equirectView)
 	{
 		if (mEquirectToCubePipeline == null || mIrradiancePipeline == null)
@@ -191,20 +212,34 @@ public class IBLSystem
 			if (CreateEnvCubemap() case .Err) return;
 		if (mIrradianceCubemap == null)
 			if (CreateIrradianceCubemap() case .Err) return;
+		if (mPrefilterCubemap == null)
+			if (CreatePrefilterCubemap() case .Err) return;
 
 		// Convert equirect -> cubemap (6 render passes, one per face)
 		RenderEquirectToCube(encoder, equirectView);
 
+		// Env cubemap is now in RenderTarget state; transition to ShaderRead for sampling
+		encoder.TransitionTexture(mEnvCubemap, .RenderTarget, .ShaderRead);
+
 		// Convolve cubemap -> irradiance (6 render passes, one per face)
 		RenderIrradianceConvolution(encoder, mEnvCubemapView);
 
+		// Generate prefilter mip chain (6 faces x PrefilterMipCount mips)
+		if (mPrefilterPipeline != null)
+			RenderPrefilterConvolution(encoder, mEnvCubemapView);
+
+		// Transition irradiance and prefilter cubemaps to ShaderRead for forward pass
+		encoder.TransitionTexture(mIrradianceCubemap, .RenderTarget, .ShaderRead);
+		if (mPrefilterCubemap != null)
+			encoder.TransitionTexture(mPrefilterCubemap, .RenderTarget, .ShaderRead);
+
 		// Update active views
 		mActiveIrradianceView = mIrradianceCubemapView;
-		mActivePrefilterView = mEnvCubemapView;
-		mPrefilterMaxLod = 0.0f; // No mip chain yet — sample mip 0 only
+		mActivePrefilterView = (mPrefilterCubemapView != null) ? mPrefilterCubemapView : mEnvCubemapView;
+		mPrefilterMaxLod = (mPrefilterCubemap != null) ? (float)(PrefilterMipCount - 1) : 0.0f;
 	}
 
-	/// Generate irradiance map from an already-existing cubemap source.
+	/// Generate irradiance and prefilter maps from an already-existing cubemap source.
 	private void GenerateFromCubemap(ICommandEncoder encoder, ITextureView cubemapView)
 	{
 		if (mIrradiancePipeline == null)
@@ -212,12 +247,22 @@ public class IBLSystem
 
 		if (mIrradianceCubemap == null)
 			if (CreateIrradianceCubemap() case .Err) return;
+		if (mPrefilterCubemap == null)
+			if (CreatePrefilterCubemap() case .Err) return;
 
 		RenderIrradianceConvolution(encoder, cubemapView);
 
+		if (mPrefilterPipeline != null)
+			RenderPrefilterConvolution(encoder, cubemapView);
+
+		// Transition irradiance and prefilter cubemaps to ShaderRead for forward pass
+		encoder.TransitionTexture(mIrradianceCubemap, .RenderTarget, .ShaderRead);
+		if (mPrefilterCubemap != null)
+			encoder.TransitionTexture(mPrefilterCubemap, .RenderTarget, .ShaderRead);
+
 		mActiveIrradianceView = mIrradianceCubemapView;
-		mActivePrefilterView = cubemapView;
-		mPrefilterMaxLod = 0.0f;
+		mActivePrefilterView = (mPrefilterCubemapView != null) ? mPrefilterCubemapView : cubemapView;
+		mPrefilterMaxLod = (mPrefilterCubemap != null) ? (float)(PrefilterMipCount - 1) : 0.0f;
 	}
 
 	/// Release all GPU resources.
@@ -234,7 +279,23 @@ public class IBLSystem
 		if (mIrradianceLayout != null) mDevice.DestroyPipelineLayout(ref mIrradianceLayout);
 		if (mIrradianceBGLayout != null) mDevice.DestroyBindGroupLayout(ref mIrradianceBGLayout);
 
-		// Per-face resources
+		if (mPrefilterPipeline != null) mDevice.DestroyRenderPipeline(ref mPrefilterPipeline);
+		if (mPrefilterLayout != null) mDevice.DestroyPipelineLayout(ref mPrefilterLayout);
+		if (mPrefilterBGLayout != null) mDevice.DestroyBindGroupLayout(ref mPrefilterBGLayout);
+
+		// Per-face-per-mip prefilter resources
+		for (int i = 0; i < PrefilterMipCount * 6; i++)
+		{
+			if (mPrefilterBindGroups[i] != null) mDevice.DestroyBindGroup(ref mPrefilterBindGroups[i]);
+			if (mPrefilterParamsBuffers[i] != null) mDevice.DestroyBuffer(ref mPrefilterParamsBuffers[i]);
+			if (mPrefilterFaceViews[i] != null) mDevice.DestroyTextureView(ref mPrefilterFaceViews[i]);
+		}
+
+		// Prefilter cubemap
+		if (mPrefilterCubemapView != null) mDevice.DestroyTextureView(ref mPrefilterCubemapView);
+		if (mPrefilterCubemap != null) mDevice.DestroyTexture(ref mPrefilterCubemap);
+
+		// Per-face resources (equirect + irradiance)
 		for (int i = 0; i < 6; i++)
 		{
 			if (mEquirectBindGroups[i] != null) mDevice.DestroyBindGroup(ref mEquirectBindGroups[i]);
@@ -589,6 +650,124 @@ public class IBLSystem
 		return .Ok;
 	}
 
+	private Result<void> CreatePrefilterPipeline(Sedulous.Shaders.ShaderSystem shaderSystem)
+	{
+		let vertResult = shaderSystem.GetShader("fullscreen", .Vertex);
+		if (vertResult case .Err) return .Err;
+		let fragResult = shaderSystem.GetShader("prefilter_convolve", .Fragment);
+		if (fragResult case .Err) return .Err;
+
+		// Layout: b0 params (face + roughness), t0 env cubemap, s0 sampler
+		BindGroupLayoutEntry[3] entries = .(
+			.UniformBuffer(0, .Fragment),
+			.SampledTexture(0, .Fragment, .TextureCube),
+			.Sampler(0, .Fragment)
+		);
+
+		if (mDevice.CreateBindGroupLayout(.() { Label = "Prefilter BGL", Entries = entries }) case .Ok(let bgl))
+			mPrefilterBGLayout = bgl;
+		else
+			return .Err;
+
+		IBindGroupLayout[1] layouts = .(mPrefilterBGLayout);
+		if (mDevice.CreatePipelineLayout(.(layouts)) case .Ok(let pl))
+			mPrefilterLayout = pl;
+		else
+			return .Err;
+
+		ColorTargetState[1] colorTargets = .(.(TextureFormat.RGBA16Float));
+
+		RenderPipelineDesc pipelineDesc = .()
+		{
+			Label = "Prefilter Pipeline",
+			Layout = mPrefilterLayout,
+			Vertex = .() { Shader = .(vertResult.Value.Module, "main") },
+			Fragment = .()
+			{
+				Shader = .(fragResult.Value.Module, "main"),
+				Targets = .(&colorTargets[0], 1)
+			},
+			Primitive = .() { Topology = .TriangleList, CullMode = .None },
+			DepthStencil = null,
+			Multisample = .() { Count = 1, Mask = uint32.MaxValue }
+		};
+
+		if (mDevice.CreateRenderPipeline(pipelineDesc) case .Ok(let pipe))
+			mPrefilterPipeline = pipe;
+		else
+			return .Err;
+
+		return .Ok;
+	}
+
+	/// Create the prefilter cubemap with mip chain, per-face-per-mip views, and params buffers.
+	private Result<void> CreatePrefilterCubemap()
+	{
+		let desc = TextureDesc.Cube(.RGBA16Float, PrefilterSize, .Sampled | .RenderTarget,
+			mipLevels: (uint32)PrefilterMipCount, label: "IBL Prefilter Cubemap");
+
+		if (mDevice.CreateTexture(desc) case .Ok(let tex))
+			mPrefilterCubemap = tex;
+		else
+			return .Err;
+
+		// Full cubemap view for sampling (all mips, all faces)
+		if (mDevice.CreateTextureView(mPrefilterCubemap, .()
+		{
+			Format = .RGBA16Float, Dimension = .TextureCube,
+			BaseArrayLayer = 0, ArrayLayerCount = 6,
+			BaseMipLevel = 0, MipLevelCount = (uint32)PrefilterMipCount,
+			Label = "IBL Prefilter View"
+		}) case .Ok(let cubeView))
+			mPrefilterCubemapView = cubeView;
+		else
+			return .Err;
+
+		// Per-face-per-mip views for rendering as color attachments
+		for (int mip = 0; mip < PrefilterMipCount; mip++)
+		{
+			float roughness = (float)mip / (float)(PrefilterMipCount - 1);
+
+			for (uint32 face = 0; face < 6; face++)
+			{
+				int idx = mip * 6 + (int)face;
+
+				// Texture view targeting single face at single mip
+				if (mDevice.CreateTextureView(mPrefilterCubemap, .()
+				{
+					Format = .RGBA16Float, Dimension = .Texture2D,
+					BaseMipLevel = (uint32)mip, MipLevelCount = 1,
+					BaseArrayLayer = face, ArrayLayerCount = 1,
+					Label = "IBL Prefilter Face"
+				}) case .Ok(let faceView))
+					mPrefilterFaceViews[idx] = faceView;
+				else
+					return .Err;
+
+				// Params buffer with pre-written face index and roughness
+				BufferDesc bufDesc = .()
+				{
+					Label = "IBL Prefilter Params",
+					Size = 16,
+					Usage = .Uniform,
+					Memory = .CpuToGpu
+				};
+
+				if (mDevice.CreateBuffer(bufDesc) case .Ok(let buf))
+				{
+					mPrefilterParamsBuffers[idx] = buf;
+					uint32[4] data = .((uint32)face, 0, 0, 0);
+					*((float*)&data[1]) = roughness;
+					TransferHelper.WriteMappedBuffer(buf, 0, Span<uint8>((uint8*)&data[0], 16));
+				}
+				else
+					return .Err;
+			}
+		}
+
+		return .Ok;
+	}
+
 	// ==================== Render Dispatch ====================
 
 	/// Render equirectangular map to 6 cubemap faces via fullscreen triangle passes.
@@ -682,6 +861,66 @@ public class IBLSystem
 			rp.SetScissor(0, 0, IrradianceSize, IrradianceSize);
 			rp.Draw(3, 1, 0, 0); // Fullscreen triangle
 			rp.End();
+		}
+	}
+
+	/// Render prefilter convolution: GGX importance sampling at each mip level.
+	/// Each mip maps to a roughness value: roughness = mip / (mipCount - 1).
+	private void RenderPrefilterConvolution(ICommandEncoder encoder, ITextureView sourceCubemapView)
+	{
+		// Create/update bind groups for all mip-face combinations
+		for (int mip = 0; mip < PrefilterMipCount; mip++)
+		{
+			for (int face = 0; face < 6; face++)
+			{
+				int idx = mip * 6 + face;
+
+				if (mPrefilterBindGroups[idx] != null)
+					mDevice.DestroyBindGroup(ref mPrefilterBindGroups[idx]);
+
+				BindGroupEntry[3] entries = .(
+					BindGroupEntry.Buffer(mPrefilterParamsBuffers[idx], 0, 16),
+					BindGroupEntry.Texture(sourceCubemapView),
+					BindGroupEntry.Sampler(mEnvironmentSampler)
+				);
+
+				if (mDevice.CreateBindGroup(.() { Label = "Prefilter BG", Layout = mPrefilterBGLayout, Entries = entries }) case .Ok(let bg))
+					mPrefilterBindGroups[idx] = bg;
+			}
+		}
+
+		// Render each mip level at its corresponding resolution
+		for (int mip = 0; mip < PrefilterMipCount; mip++)
+		{
+			uint32 mipSize = PrefilterSize >> (uint32)mip;
+
+			for (uint32 face = 0; face < 6; face++)
+			{
+				int idx = mip * 6 + (int)face;
+
+				if (mPrefilterBindGroups[idx] == null || mPrefilterFaceViews[idx] == null) continue;
+
+				ColorAttachment[1] colorAttachments = .(.()
+				{
+					View = mPrefilterFaceViews[idx],
+					LoadOp = .DontCare,
+					StoreOp = .Store
+				});
+
+				RenderPassDesc rpDesc = .()
+				{
+					Label = "PrefilterConvolve",
+					ColorAttachments = .(colorAttachments)
+				};
+
+				let rp = encoder.BeginRenderPass(rpDesc);
+				rp.SetPipeline(mPrefilterPipeline);
+				rp.SetBindGroup(0, mPrefilterBindGroups[idx], default);
+				rp.SetViewport(0, 0, mipSize, mipSize, 0, 1);
+				rp.SetScissor(0, 0, mipSize, mipSize);
+				rp.Draw(3, 1, 0, 0); // Fullscreen triangle
+				rp.End();
+			}
 		}
 	}
 }

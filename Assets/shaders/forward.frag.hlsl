@@ -449,9 +449,8 @@ FragmentOutput main(FragmentInput input)
     // ==================== IBL (Image-Based Lighting) ====================
     // Split-sum approximation: diffuse irradiance + specular prefilter + BRDF LUT.
     float NdotV = max(dot(N, V), 0.0);
-    float3 F_ibl = FresnelSchlick(NdotV, F0) * (1.0 - roughness) + FresnelSchlick(NdotV, F0) * roughness;
     // Roughness-aware Fresnel for IBL (reduces Fresnel at high roughness)
-    F_ibl = F0 + (max(1.0 - roughness, F0) - F0) * pow(1.0 - NdotV, 5.0);
+    float3 F_ibl = F0 + (max(1.0 - roughness, F0) - F0) * pow(1.0 - NdotV, 5.0);
 
     float3 kD_ibl = (1.0 - F_ibl) * (1.0 - metallic);
 
