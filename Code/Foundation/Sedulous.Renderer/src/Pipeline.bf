@@ -238,6 +238,16 @@ public class Pipeline : IRenderingPipeline, IDisposable
 	{
 		let frame = mFrameResources[frameIndex % MaxFramesInFlight];
 		if (frame == null) return;
+
+		// Flush deferred bind group destructions from previous frame
+		if (frame.StaleFrameBindGroups.Count > 0)
+		{
+			let device = mRenderContext.Device;
+			for (var bg in frame.StaleFrameBindGroups)
+				device.DestroyBindGroup(ref bg);
+			frame.StaleFrameBindGroups.Clear();
+		}
+
 		frame.SceneBufferOffset = 0;
 		frame.ObjectBufferOffset = 0;
 		frame.InstanceOffset = 0;
@@ -382,7 +392,7 @@ public class Pipeline : IRenderingPipeline, IDisposable
 
 			// Process pending IBL generation (equirect->cubemap->irradiance)
 			if (mRenderContext.IBLSystem != null)
-				mRenderContext.IBLSystem.ProcessPending(encoder);
+				mRenderContext.IBLSystem.ProcessPending(encoder, frameIndex);
 
 			// Rebuild frame bind group (includes this pipeline's light buffer + IBL views)
 			RebuildFrameBindGroup(frame, frameIndex);
@@ -895,9 +905,13 @@ public class Pipeline : IRenderingPipeline, IDisposable
 
 		let device = mRenderContext.Device;
 
-		// Destroy previous bind group
+		// Defer destruction of the previous bind group — it may still be referenced
+		// by commands recorded into the current command buffer.
 		if (frame.FrameBindGroup != null)
-			device.DestroyBindGroup(ref frame.FrameBindGroup);
+		{
+			frame.StaleFrameBindGroups.Add(frame.FrameBindGroup);
+			frame.FrameBindGroup = null;
+		}
 
 		let lightBuf = mLightBuffer.GetLightBuffer(frameIndex);
 		let lightParamsBuf = mLightBuffer.GetLightParamsBuffer(frameIndex);

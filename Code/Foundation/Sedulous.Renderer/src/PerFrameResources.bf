@@ -1,6 +1,7 @@
 namespace Sedulous.Renderer;
 
 using System;
+using System.Collections;
 using Sedulous.RHI;
 using Sedulous.Core.Mathematics;
 
@@ -78,6 +79,10 @@ class PerFrameResources
 	/// Current write offset into InstanceOffsetsBuffer (in uint4 entries, not bytes).
 	public int32 InstanceOffsetsCount;
 
+	/// Deferred bind group destruction list. Old frame bind groups are kept alive
+	/// until BeginFrame to avoid invalidating in-flight command buffer references.
+	public List<IBindGroup> StaleFrameBindGroups = new .() ~ delete _;
+
 	/// Current write offset into SceneUniformBuffer (reset each frame).
 	/// Pipeline.WriteSceneUniforms returns the slot offset before advancing this.
 	public uint32 SceneBufferOffset;
@@ -112,6 +117,11 @@ class PerFrameResources
 	/// Frees GPU resources.
 	public void Release(IDevice device)
 	{
+		// Flush deferred bind group destructions
+		for (var bg in StaleFrameBindGroups)
+			device.DestroyBindGroup(ref bg);
+		StaleFrameBindGroups.Clear();
+
 		device.DestroyBindGroup(ref FrameBindGroup);
 		device.DestroyBindGroup(ref DrawCallBindGroup);
 		if (InstanceBindGroup != null)

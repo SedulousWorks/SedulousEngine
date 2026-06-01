@@ -1,6 +1,7 @@
 namespace Sedulous.Renderer.IBL;
 
 using System;
+using System.Collections;
 using Sedulous.RHI;
 
 /// Manages IBL (Image-Based Lighting) GPU resources for the split-sum approximation.
@@ -74,10 +75,18 @@ public class IBLSystem
 	private IBindGroup[6] mEquirectBindGroups;
 	private IBindGroup[6] mIrradianceBindGroups;
 
+	// Deferred bind group destruction with double-buffering. Bind groups must
+	// survive at least 2 frames (MaxFramesInFlight) because the command buffer
+	// referencing them may still be executing on the GPU.
+	// mStaleBindGroups[0] = ready to destroy (2+ frames old)
+	// mStaleBindGroups[1] = deferred from last frame
+	private List<IBindGroup>[2] mStaleBindGroups = .(new .(), new .()) ~ { delete _[0]; delete _[1]; };
+
 	// Pending sky texture for deferred IBL generation
 	private ITextureView mPendingSkyView;
 	private bool mPendingIsCubemap = false;
 	private bool mIBLDirty = false;
+	private int32 mLastFlushFrame = -1;
 
 	// Resolution constants
 	private const uint32 EnvCubemapSize = 256;
@@ -105,15 +114,25 @@ public class IBLSystem
 	/// The actual render work is deferred to the next ProcessPending() call.
 	public void SetSkyTexture(ITextureView skyView, bool isCubemap = false)
 	{
+		// Skip if the same source is already set — avoids re-triggering
+		// expensive IBL convolution when nothing has changed.
+		if (mPendingSkyView == skyView && mPendingIsCubemap == isCubemap)
+			return;
+
 		mPendingSkyView = skyView;
 		mPendingIsCubemap = isCubemap;
 		mIBLDirty = true;
 	}
 
-	/// Process any pending IBL generation. Call once per frame from Pipeline.Render()
+	/// Process any pending IBL generation. Call from Pipeline.Render()
 	/// when an encoder is available. Returns true if IBL was regenerated.
-	public bool ProcessPending(ICommandEncoder encoder)
+	/// frameIndex is used to guard stale bind group rotation (once per frame).
+	public bool ProcessPending(ICommandEncoder encoder, int32 frameIndex)
 	{
+		// Flush deferred bind group destructions. Only rotates the double-buffer
+		// once per frame even if called multiple times.
+		FlushStaleBindGroups(frameIndex);
+
 		if (!mIBLDirty)
 			return false;
 
@@ -265,10 +284,48 @@ public class IBLSystem
 		mPrefilterMaxLod = (mPrefilterCubemap != null) ? (float)(PrefilterMipCount - 1) : 0.0f;
 	}
 
+	/// Moves a bind group to the current frame's stale list for deferred destruction.
+	private void DeferBindGroup(ref IBindGroup bg)
+	{
+		if (bg != null)
+		{
+			mStaleBindGroups[1].Add(bg);
+			bg = null;
+		}
+	}
+
+	/// Rotates the double-buffered stale lists and destroys the oldest batch.
+	/// Only rotates once per frame (ProcessPending may be called multiple times
+	/// per frame from different pipelines).
+	private void FlushStaleBindGroups(int32 frameIndex)
+	{
+		if (mLastFlushFrame == frameIndex)
+			return; // Already rotated this frame
+		mLastFlushFrame = frameIndex;
+
+		// Destroy bind groups from 2 frames ago (guaranteed to be done on GPU)
+		for (var bg in mStaleBindGroups[0])
+			mDevice.DestroyBindGroup(ref bg);
+		mStaleBindGroups[0].Clear();
+
+		// Rotate: last frame's deferred list becomes the "old" list
+		let temp = mStaleBindGroups[0];
+		mStaleBindGroups[0] = mStaleBindGroups[1];
+		mStaleBindGroups[1] = temp;
+	}
+
 	/// Release all GPU resources.
 	public void Shutdown()
 	{
 		if (mDevice == null) return;
+
+		// Flush all deferred bind groups (both slots)
+		for (int s = 0; s < 2; s++)
+		{
+			for (var bg in mStaleBindGroups[s])
+				mDevice.DestroyBindGroup(ref bg);
+			mStaleBindGroups[s].Clear();
+		}
 
 		// Render pipelines
 		if (mEquirectToCubePipeline != null) mDevice.DestroyRenderPipeline(ref mEquirectToCubePipeline);
@@ -776,8 +833,7 @@ public class IBLSystem
 		// Create/update bind groups (one per face, each with its own params buffer)
 		for (int i = 0; i < 6; i++)
 		{
-			if (mEquirectBindGroups[i] != null)
-				mDevice.DestroyBindGroup(ref mEquirectBindGroups[i]);
+			DeferBindGroup(ref mEquirectBindGroups[i]);
 
 			BindGroupEntry[3] entries = .(
 				BindGroupEntry.Buffer(mParamsBuffers[i], 0, 16),
@@ -823,8 +879,7 @@ public class IBLSystem
 		// Create/update bind groups
 		for (int i = 0; i < 6; i++)
 		{
-			if (mIrradianceBindGroups[i] != null)
-				mDevice.DestroyBindGroup(ref mIrradianceBindGroups[i]);
+			DeferBindGroup(ref mIrradianceBindGroups[i]);
 
 			BindGroupEntry[3] entries = .(
 				BindGroupEntry.Buffer(mParamsBuffers[i], 0, 16),
@@ -875,8 +930,7 @@ public class IBLSystem
 			{
 				int idx = mip * 6 + face;
 
-				if (mPrefilterBindGroups[idx] != null)
-					mDevice.DestroyBindGroup(ref mPrefilterBindGroups[idx]);
+				DeferBindGroup(ref mPrefilterBindGroups[idx]);
 
 				BindGroupEntry[3] entries = .(
 					BindGroupEntry.Buffer(mPrefilterParamsBuffers[idx], 0, 16),
