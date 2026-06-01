@@ -402,8 +402,9 @@ public class Pipeline : IRenderingPipeline, IDisposable
 			if (view.RenderData != null)
 				mLightBuffer.Upload(view.RenderData, frameIndex);
 
-			// Process pending IBL generation (equirect->cubemap->irradiance)
-			if (mRenderContext.IBLSystem != null)
+			// Process pending IBL generation (equirect->cubemap->irradiance).
+			// Probe capture pipelines skip this to avoid feedback loops.
+			if (mRenderContext.IBLSystem != null && !SkipIBLProcessing)
 				mRenderContext.IBLSystem.ProcessPending(encoder, frameIndex);
 
 			// Rebuild frame bind group (includes this pipeline's light buffer + IBL views)

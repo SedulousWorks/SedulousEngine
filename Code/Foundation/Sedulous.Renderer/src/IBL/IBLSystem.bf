@@ -126,6 +126,24 @@ public class IBLSystem
 		mIBLDirty = true;
 	}
 
+	/// Marks IBL as needing re-processing without changing the source texture.
+	/// Use when the source texture's content has changed (e.g. probe recapture)
+	/// but the view pointer is the same.
+	public void MarkDirty()
+	{
+		mIBLDirty = true;
+	}
+
+	/// Swap active IBL views to default black fallbacks for probe capture.
+	/// Prevents the feedback loop where probes render with their own IBL output.
+	/// After capture, the next SetSkyTexture + ProcessPending restores real IBL.
+	public void UseBlackFallbacks()
+	{
+		mActiveIrradianceView = mDefaultIrradianceView;
+		mActivePrefilterView = mDefaultPrefilterView;
+		mPrefilterMaxLod = 0.0f;
+	}
+
 	/// Process any pending IBL generation. Call from Pipeline.Render()
 	/// when an encoder is available. Returns true if IBL was regenerated.
 	/// frameIndex is used to guard stale bind group rotation (once per frame).
