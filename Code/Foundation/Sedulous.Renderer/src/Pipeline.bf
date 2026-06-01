@@ -173,6 +173,12 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		set => mPostProcessStack = value;
 	}
 
+	/// Optional cull mode override for all render passes. When set, passes
+	/// should use this instead of their default. Used by probe capture to
+	/// flip culling for left-handed cubemap view matrices.
+	public CullModeConfig? CullModeOverride;
+
+
 	// ==================== Lifecycle ====================
 
 	/// Initializes the pipeline with a reference to the shared renderer.

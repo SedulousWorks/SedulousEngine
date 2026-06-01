@@ -77,7 +77,7 @@ class ForwardOpaquePass : PipelinePass
 		var config = PipelineConfig();
 		config.ShaderName = "forward";
 		config.BlendMode = .Opaque;
-		config.CullMode = .Back;
+		config.CullMode = pipeline.CullModeOverride ?? .Back;
 		config.ColorTargetCount = 3;
 		config.ColorFormats[1] = .RG16Float;  // SceneNormals (view-space XY)
 		config.ColorFormats[2] = .RG16Float;  // MotionVectors (screen-space delta)

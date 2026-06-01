@@ -94,6 +94,9 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 	// Shared resource resolver
 	private RenderResourceResolver mResolver ~ delete _;
 
+	// Shared probe capture pipeline (stripped-down: forward + sky only, no post-processing)
+	private Pipeline mProbePipeline;
+
 	// Per-scene sky texture resolution state.
 	private Dictionary<Scene, ResolvedResource<TextureResource>> mSkyResolveStates = new .() ~ {
 		for (var kv in _) kv.value.Release();
@@ -253,6 +256,12 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 			delete kv.value;
 		}
 		mScenePipelines.Clear();
+		if (mProbePipeline != null)
+		{
+			mProbePipeline.Shutdown();
+			delete mProbePipeline;
+			mProbePipeline = null;
+		}
 		if (mShadowPipeline != null)
 			mShadowPipeline.Shutdown();
 		if (mRenderContext != null)
@@ -394,6 +403,11 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 
 		// Push scene-level render settings to renderer objects.
 		ApplyRenderSettings(scene, pipeline);
+
+		// Capture any dirty reflection probes before the main render.
+		// Probe cubemaps feed into IBLSystem for environment lighting.
+		using (Profiler.Begin("ProbeCap"))
+			CaptureProbes(scene, encoder, frameIndex);
 
 		// Reset per-pipeline ring buffer offsets.
 		pipeline.BeginFrame(frameIndex);
@@ -546,6 +560,105 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 			view.RenderData.SortOnly();
 	}
 
+
+	// ==================== Reflection Probe Capture ====================
+
+	/// Captures all dirty reflection probes in the scene. For each probe, renders
+	/// the scene to a 6-face cubemap and feeds it to IBLSystem for processing.
+	/// Must be called before the main render pass.
+	private void CaptureProbes(Scene scene, ICommandEncoder encoder, int32 frameIndex)
+	{
+		let probeMgr = scene.GetModule<ReflectionProbeComponentManager>();
+		if (probeMgr == null || probeMgr.ProbeData.Count == 0)
+			return;
+
+		// Check for any dirty probes
+		bool anyDirty = false;
+		for (let probeData in probeMgr.ProbeData)
+		{
+			if (probeData.Dirty) { anyDirty = true; break; }
+		}
+		if (!anyDirty) return;
+
+		// Create probe pipeline on first use (stripped-down: forward + sky only)
+		if (mProbePipeline == null)
+			mProbePipeline = CreateProbePipeline();
+
+		// Apply sky settings to probe pipeline so sky renders correctly
+		ApplyRenderSettings(scene, mProbePipeline);
+
+		for (let probeData in probeMgr.ProbeData)
+		{
+			if (!probeData.Dirty) continue;
+
+			let probePos = scene.GetWorldMatrix(probeData.Owner).Translation;
+			let size = (uint32)probeData.Resolution;
+
+			// Resize probe pipeline if needed
+			if (size != mProbePipeline.OutputWidth || size != mProbePipeline.OutputHeight)
+				mProbePipeline.OnResize(size, size);
+
+			// Reset ring buffer offsets once per probe (not per face — stale bind
+			// groups from earlier faces must survive until the command buffer is submitted).
+			mProbePipeline.BeginFrame(frameIndex);
+
+			// Render 6 cubemap faces
+			for (int face = 0; face < 6; face++)
+			{
+				Matrix viewMatrix = .Identity;
+				Matrix projMatrix = .Identity;
+				ReflectionProbeComponentManager.GetCubeFaceCamera(probePos, face,
+					probeData.NearClip, probeData.FarClip, out viewMatrix, out projMatrix);
+
+				let probeView = mViewPool.Acquire();
+				probeView.FrameIndex = frameIndex;
+				probeView.DeltaTime = mDeltaTime;
+				probeView.TotalTime = mTotalTime;
+				probeView.Width = size;
+				probeView.Height = size;
+				probeView.ViewMatrix = viewMatrix;
+				probeView.ProjectionMatrix = projMatrix;
+				probeView.ViewProjectionMatrix = viewMatrix * projMatrix;
+				probeView.PrevViewProjectionMatrix = probeView.ViewProjectionMatrix;
+				probeView.CameraPosition = probePos;
+				probeView.NearPlane = probeData.NearClip;
+				probeView.FarPlane = probeData.FarClip;
+
+				ExtractIntoView(probeView, scene);
+
+				mProbePipeline.Render(encoder, probeView, probeData.CaptureCubemap,
+					probeData.CaptureFaceViews[face], frameIndex);
+			}
+
+			// Transition captured cubemap from RenderTarget to ShaderRead
+			encoder.TransitionTexture(probeData.CaptureCubemap, .RenderTarget, .ShaderRead);
+
+			// Feed probe cubemap to IBLSystem as environment source.
+			// This replaces the sky IBL for the main render — a temporary integration
+			// until per-probe shader blending is implemented.
+			if (let iblSystem = mRenderContext.IBLSystem)
+				iblSystem.SetSkyTexture(probeData.CaptureCubemapView, true);
+
+			probeData.Dirty = false;
+		}
+	}
+
+	/// Creates a stripped-down pipeline for probe capture (forward + sky only, no post-processing).
+	private Pipeline CreateProbePipeline()
+	{
+		let pipeline = new Pipeline();
+		pipeline.Initialize(mRenderContext, 128, 128);
+
+		// Left-handed cubemap view matrices require flipped culling
+		pipeline.CullModeOverride = .Front;
+
+		// Only the passes needed for probe capture:
+		// Forward rendering + sky background
+		pipeline.AddPass(new ForwardOpaquePass());
+		pipeline.AddPass(new SkyPass());
+
+		return pipeline;
+	}
 
 	/// Allocates atlas regions for all shadow-casting lights in the main view, builds
 	/// per-shadow RenderViews, extracts each, and uploads shadow data to the GPU.
@@ -927,7 +1040,9 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 
 		scene.AddModule(new LightComponentManager());
 
-		scene.AddModule(new ReflectionProbeComponentManager());
+		let probeMgr = new ReflectionProbeComponentManager();
+		probeMgr.Device = mDevice;
+		scene.AddModule(probeMgr);
 
 		// Scene-level render settings (sky, ambient, exposure).
 		scene.AddModule(new RenderSceneModule());
@@ -941,6 +1056,15 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 
 	public void OnSceneDestroyed(Scene scene)
 	{
+		// Reset IBL to default cubemaps before destroying scene resources.
+		// The probe capture may have set the probe's cubemap as the active IBL source;
+		// that cubemap is about to be destroyed with the scene's probe manager.
+		if (let iblSystem = mRenderContext?.IBLSystem)
+			iblSystem.SetSkyTexture(null);
+
+		// Wait for GPU to finish before destroying resources that may be in-flight.
+		mDevice?.WaitIdle();
+
 		// Tear down every pipeline associated with this scene - the default
 		// one and any secondary ones still acquired by previews/sub-viewports
 		// that haven't been released yet. Collect keys first to avoid mutating

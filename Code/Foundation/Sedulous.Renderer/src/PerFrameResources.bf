@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using Sedulous.RHI;
 using Sedulous.Core.Mathematics;
+using System.Collections;
 
 /// GPU uniform data for per-frame scene constants (bind group set 0).
 /// Layout must match the SceneUniforms cbuffer in all shaders that declare it.
