@@ -18,10 +18,14 @@ class ProbeGPUData
 	/// Probe needs recapture
 	public bool Dirty = true;
 
+	/// Whether the cubemap has been captured at least once
+	public bool HasCaptured = false;
+
 	/// The entity this probe belongs to (for world position lookup)
 	public EntityHandle Owner = .Invalid;
 
 	/// Cached probe settings
+	public ReflectionProbeUpdateMode UpdateMode;
 	public uint16 Resolution;
 	public float InfluenceRadius;
 	public float Intensity;
@@ -59,6 +63,39 @@ class ReflectionProbeComponentManager : ComponentManager<ReflectionProbeComponen
 
 	public ITextureView ProbeDepthView => mProbeDepthView;
 
+	protected override void OnRegisterUpdateFunctions()
+	{
+		RegisterUpdate(.PostUpdate, new => SyncProbeSettings);
+	}
+
+	/// Syncs cached GPU data from component properties each frame.
+	/// Allows editor property changes to take effect at runtime.
+	private void SyncProbeSettings(float dt)
+	{
+		for (let gpuData in mProbeData)
+		{
+			let comp = GetForEntity(gpuData.Owner);
+			if (comp == null) continue;
+
+			gpuData.UpdateMode = comp.UpdateMode;
+			gpuData.InfluenceRadius = comp.InfluenceRadius;
+			gpuData.Intensity = comp.Intensity;
+			gpuData.NearClip = comp.NearClip;
+			gpuData.FarClip = comp.FarClip;
+
+			// Resolution changes require texture recreation — mark dirty
+			if (comp.CaptureResolution != gpuData.Resolution)
+			{
+				gpuData.Release(mDevice);
+				gpuData.Resolution = comp.CaptureResolution;
+				CreateProbeTextures(gpuData);
+				EnsureProbeDepth(gpuData.Resolution);
+				gpuData.Dirty = true;
+				gpuData.HasCaptured = false;
+			}
+		}
+	}
+
 	protected override void OnComponentInitialized(ReflectionProbeComponent comp)
 	{
 		base.OnComponentInitialized(comp);
@@ -66,6 +103,7 @@ class ReflectionProbeComponentManager : ComponentManager<ReflectionProbeComponen
 
 		let gpuData = new ProbeGPUData();
 		gpuData.Owner = comp.Owner;
+		gpuData.UpdateMode = comp.UpdateMode;
 		gpuData.Resolution = comp.CaptureResolution;
 		gpuData.InfluenceRadius = comp.InfluenceRadius;
 		gpuData.Intensity = comp.Intensity;
@@ -101,16 +139,13 @@ class ReflectionProbeComponentManager : ComponentManager<ReflectionProbeComponen
 	}
 
 	/// Cubemap face view/projection matrices for probe capture.
-	/// View matrices are constructed manually (not via CreateLookAt) to match
-	/// the cubemap face UV convention used by CubeUVToDirection in our shaders.
-	/// This produces left-handed view matrices — the caller must flip cull mode
-	/// (use Front instead of Back) to compensate.
+	/// Uses manually constructed left-handed view matrices that match the
+	/// cubemap face UV convention used by CubeUVToDirection in our shaders.
+	/// The caller must set CullMode to Front to compensate for the
+	/// left-handed winding.
 	public static void GetCubeFaceCamera(Vector3 position, int faceIndex, float nearClip, float farClip,
 		out Matrix viewMatrix, out Matrix projMatrix)
 	{
-		// Each face's basis vectors are derived from the CubeUVToDirection mapping:
-		//   viewDir = ndc_x * right + ndc_y * up + forward
-		// must equal the cubemap convention direction for that face.
 		Vector3 right = .Zero;
 		Vector3 up = .Zero;
 		Vector3 forward = .Zero;
@@ -125,13 +160,11 @@ class ReflectionProbeComponentManager : ComponentManager<ReflectionProbeComponen
 		}
 
 		viewMatrix = BuildCubeViewMatrix(right, up, forward, position);
-
-		// 90° FOV, 1:1 aspect ratio — no projection flip needed
 		projMatrix = Matrix.CreatePerspectiveFieldOfView(Math.PI_f * 0.5f, 1.0f, nearClip, farClip);
 	}
 
-	/// Builds an XNA-style view matrix from explicit basis vectors.
-	/// zAxis = -forward (XNA convention: camera looks down -Z in view space).
+	/// Builds a view matrix from explicit basis vectors for cubemap face rendering.
+	/// zAxis = -forward (XNA convention).
 	private static Matrix BuildCubeViewMatrix(Vector3 right, Vector3 up, Vector3 forward, Vector3 pos)
 	{
 		let zAxis = -forward;

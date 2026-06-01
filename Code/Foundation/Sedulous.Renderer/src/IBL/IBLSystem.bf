@@ -42,6 +42,7 @@ public class IBLSystem
 	private ITextureView mActiveIrradianceView;
 	private ITextureView mActivePrefilterView;
 
+
 	// Linear-clamp sampler for environment map sampling
 	private ISampler mEnvironmentSampler;
 
@@ -102,6 +103,7 @@ public class IBLSystem
 
 	/// Active prefilter cubemap view (specular IBL)
 	public ITextureView PrefilterMapView => mActivePrefilterView;
+
 
 	/// Linear-clamp sampler for environment map sampling
 	public ISampler EnvironmentSampler => mEnvironmentSampler;
@@ -256,6 +258,7 @@ public class IBLSystem
 		mActiveIrradianceView = mIrradianceCubemapView;
 		mActivePrefilterView = (mPrefilterCubemapView != null) ? mPrefilterCubemapView : mEnvCubemapView;
 		mPrefilterMaxLod = (mPrefilterCubemap != null) ? (float)(PrefilterMipCount - 1) : 0.0f;
+
 	}
 
 	/// Generate irradiance and prefilter maps from an already-existing cubemap source.

@@ -460,6 +460,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 					// Feed sky texture to IBL system for environment lighting
 					if (let iblSystem = mRenderContext.IBLSystem)
 						iblSystem.SetSkyTexture(skyView, isCubemap);
+
 				}
 			}
 
@@ -572,24 +573,25 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		if (probeMgr == null || probeMgr.ProbeData.Count == 0)
 			return;
 
-		// Check for any dirty probes
-		bool anyDirty = false;
-		for (let probeData in probeMgr.ProbeData)
-		{
-			if (probeData.Dirty) { anyDirty = true; break; }
-		}
-		if (!anyDirty) return;
-
-		// Create probe pipeline on first use (stripped-down: forward + sky only)
-		if (mProbePipeline == null)
-			mProbePipeline = CreateProbePipeline();
-
-		// Apply sky settings to probe pipeline so sky renders correctly
-		ApplyRenderSettings(scene, mProbePipeline);
-
+		// Capture any dirty probes
+		bool anyCaptured = false;
 		for (let probeData in probeMgr.ProbeData)
 		{
 			if (!probeData.Dirty) continue;
+
+
+			// Create probe pipeline on first use (stripped-down: forward + sky only)
+			if (mProbePipeline == null)
+				mProbePipeline = CreateProbePipeline();
+
+			// Apply sky settings to probe pipeline so sky renders correctly
+			ApplyRenderSettings(scene, mProbePipeline);
+
+			// Use black IBL fallbacks during probe capture to prevent the
+			// feedback loop where probes render with their own IBL output.
+			// Direct lighting and sky background still contribute.
+			if (let iblSystem = mRenderContext.IBLSystem)
+				iblSystem.UseBlackFallbacks();
 
 			let probePos = scene.GetWorldMatrix(probeData.Owner).Translation;
 			let size = (uint32)probeData.Resolution;
@@ -601,6 +603,11 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 			// Reset ring buffer offsets once per probe (not per face — stale bind
 			// groups from earlier faces must survive until the command buffer is submitted).
 			mProbePipeline.BeginFrame(frameIndex);
+
+			// Tell the render graph the cubemap's actual current state so it emits
+			// the correct barrier. First capture: null (use InitialState from texture).
+			// Subsequent captures: ShaderRead (from post-capture transition).
+			ResourceState? cubemapState = probeData.HasCaptured ? ResourceState.ShaderRead : (ResourceState?)null;
 
 			// Render 6 cubemap faces
 			for (int face = 0; face < 6; face++)
@@ -627,19 +634,41 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 				ExtractIntoView(probeView, scene);
 
 				mProbePipeline.Render(encoder, probeView, probeData.CaptureCubemap,
-					probeData.CaptureFaceViews[face], frameIndex);
+					probeData.CaptureFaceViews[face], frameIndex, cubemapState);
+
+				// After first face render, the texture is in RenderTarget state
+				cubemapState = .RenderTarget;
 			}
 
 			// Transition captured cubemap from RenderTarget to ShaderRead
 			encoder.TransitionTexture(probeData.CaptureCubemap, .RenderTarget, .ShaderRead);
 
-			// Feed probe cubemap to IBLSystem as environment source.
-			// This replaces the sky IBL for the main render — a temporary integration
-			// until per-probe shader blending is implemented.
-			if (let iblSystem = mRenderContext.IBLSystem)
-				iblSystem.SetSkyTexture(probeData.CaptureCubemapView, true);
+			probeData.HasCaptured = true;
 
-			probeData.Dirty = false;
+			// EveryFrame probes stay dirty so they recapture next frame.
+			// OnLoad and Manual probes clear dirty after first capture.
+			if (probeData.UpdateMode != .EveryFrame)
+				probeData.Dirty = false;
+			anyCaptured = true;
+		}
+
+		// Re-apply the last probe's cubemap as IBL source every frame.
+		// SetSkyTexture skips if the same view is already set, so this only
+		// triggers expensive IBL processing on the frame the probe captures.
+		// This is a temporary integration — proper per-probe blending comes later.
+		if (let iblSystem = mRenderContext.IBLSystem)
+		{
+			// Use the last probe's cubemap (simple single-probe support)
+			let lastProbe = probeMgr.ProbeData[probeMgr.ProbeData.Count - 1];
+			if (lastProbe.CaptureCubemapView != null)
+			{
+				iblSystem.SetSkyTexture(lastProbe.CaptureCubemapView, true);
+
+				// For EveryFrame probes, force IBL re-processing even though the
+				// view pointer hasn't changed — the cubemap content has.
+				if (anyCaptured)
+					iblSystem.MarkDirty();
+			}
 		}
 	}
 
@@ -651,6 +680,10 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 
 		// Left-handed cubemap view matrices require flipped culling
 		pipeline.CullModeOverride = .Front;
+
+		// Don't process IBL during probe capture — the probe should render
+		// with the sky IBL, not its own output from the previous frame.
+		pipeline.SkipIBLProcessing = true;
 
 		// Only the passes needed for probe capture:
 		// Forward rendering + sky background

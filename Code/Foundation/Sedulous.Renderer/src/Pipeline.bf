@@ -178,6 +178,12 @@ public class Pipeline : IRenderingPipeline, IDisposable
 	/// flip culling for left-handed cubemap view matrices.
 	public CullModeConfig? CullModeOverride;
 
+	/// When true, Pipeline.Render skips IBLSystem.ProcessPending. Used by the
+	/// probe capture pipeline to avoid a feedback loop where the probe renders
+	/// with its own IBL output from the previous frame.
+	public bool SkipIBLProcessing;
+
+
 
 	// ==================== Lifecycle ====================
 
@@ -356,7 +362,7 @@ public class Pipeline : IRenderingPipeline, IDisposable
 	///     The caller is responsible for transitioning to ShaderRead (for blit sampling)
 	///     or any other required state after this call.
 	///   - frameIndex is provided by the caller (application owns frame pacing).
-	public void Render(ICommandEncoder encoder, RenderView view, ITexture outputTexture, ITextureView outputTextureView, int32 frameIndex)
+	public void Render(ICommandEncoder encoder, RenderView view, ITexture outputTexture, ITextureView outputTextureView, int32 frameIndex, ResourceState? outputCurrentState = null)
 	{
 		using (Profiler.Begin("Pipeline.Render"))
 		{
@@ -518,7 +524,7 @@ public class Pipeline : IRenderingPipeline, IDisposable
 			// uses LoadOp.Clear, so the caller's clear is technically redundant here - but
 			// the contract requires it for correctness if the pass order ever changes.
 			// Import so passes can find it by name via graph.GetResource("PipelineOutput").
-			mRenderGraph.ImportTarget("PipelineOutput", outputTexture, outputTextureView);
+			mRenderGraph.ImportTarget("PipelineOutput", outputTexture, outputTextureView, currentState: outputCurrentState);
 
 			for (let pass in mPasses)
 				pass.AddPasses(mRenderGraph, view, this);
