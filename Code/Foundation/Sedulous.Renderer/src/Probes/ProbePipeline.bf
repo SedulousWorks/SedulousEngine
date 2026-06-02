@@ -275,7 +275,8 @@ public class ProbePipeline : IRenderingPipeline, IDisposable
 		ObjectUniforms objData = .()
 		{
 			WorldMatrix = worldMatrix,
-			PrevWorldMatrix = prevWorldMatrix
+			PrevWorldMatrix = prevWorldMatrix,
+			InstanceColor = instanceColor
 		};
 
 		TransferHelper.WriteMappedBuffer(
@@ -294,12 +295,22 @@ public class ProbePipeline : IRenderingPipeline, IDisposable
 
 	// ==================== Internal ====================
 
+	/// GPU-packed object uniforms. Must match the layout in forward.vert.hlsl's
+	/// ObjectUniforms cbuffer AND the main Pipeline's identical struct - if this
+	/// drifts, the shader reads garbage from past the end of our write. The
+	/// previous 128-byte version dropped InstanceColor, leaving the 16 bytes
+	/// after PrevWorldMatrix as whatever was last in the ring buffer. The
+	/// shader's `alpha = BaseColor.a * albedoSample.a * input.Color.a`
+	/// computation then multiplied by garbage `.a` (often ~0), tripped the
+	/// AlphaCutoff `discard`, and skinned meshes silently vanished from probe
+	/// captures.
 	[CRepr]
 	private struct ObjectUniforms
 	{
 		public Matrix WorldMatrix;
 		public Matrix PrevWorldMatrix;
-		public const uint64 Size = 128;
+		public Vector4 InstanceColor;
+		public const uint64 Size = 144;
 	}
 
 	/// Configure the main view for one cubemap face (modifies in place).
