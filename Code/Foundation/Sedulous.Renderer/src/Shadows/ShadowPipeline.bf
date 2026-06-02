@@ -216,9 +216,14 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 
 	/// Writes object uniforms to the per-frame ring buffer (mirrors Pipeline.WriteObjectUniforms).
 	/// MeshRenderer calls this through the Pipeline reference passed to RenderBatch.
-	/// The shadow path doesn't shade color, so the instanceColor argument is
-	/// accepted (to satisfy the IRenderingPipeline contract) but ignored -
-	/// the shadow shader's ObjectUniforms cbuffer is still 128 bytes.
+	/// depth_only.vert.hlsl declares the cbuffer at 144 bytes (matching the
+	/// main forward shader's layout) but doesn't reference InstanceColor today
+	/// - it's only along for the ride for layout parity. We write the full
+	/// 144 bytes anyway: the InstanceColor pass-through costs nothing
+	/// (per-slot alignment is already 256), keeps every pipeline writing the
+	/// same struct, and pre-empts the latent landmine where a future
+	/// alpha-tested shadow variant references InstanceColor and silently
+	/// reads garbage from the 16 bytes past our previous 128-byte write.
 	public uint32 WriteObjectUniforms(int32 frameIndex, Matrix worldMatrix, Matrix prevWorldMatrix, Vector4 instanceColor)
 	{
 		let frame = mFrameResources[frameIndex % MaxFramesInFlight];
@@ -233,7 +238,8 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 		ObjectUniforms objData = .()
 		{
 			WorldMatrix = worldMatrix,
-			PrevWorldMatrix = prevWorldMatrix
+			PrevWorldMatrix = prevWorldMatrix,
+			InstanceColor = instanceColor
 		};
 
 		TransferHelper.WriteMappedBuffer(
@@ -257,7 +263,8 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 	{
 		public Matrix WorldMatrix;
 		public Matrix PrevWorldMatrix;
-		public const uint64 Size = 128;
+		public Vector4 InstanceColor;
+		public const uint64 Size = 144;
 	}
 
 	private uint32 WriteSceneUniforms(PerFrameResources frame, RenderView view)
