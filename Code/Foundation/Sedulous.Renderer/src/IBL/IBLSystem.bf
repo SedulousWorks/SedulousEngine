@@ -38,9 +38,15 @@ public class IBLSystem
 	private ITextureView mIrradianceCubemapView;
 	private ITextureView[6] mIrradianceFaceViews;
 
-	// Active environment cubemap views (point to default or real environment)
+	// Active environment cubemap views (point to default, sky, or probe-overridden)
 	private ITextureView mActiveIrradianceView;
 	private ITextureView mActivePrefilterView;
+
+	// Sky-only IBL views — set when sky IBL is generated, never overwritten by
+	// probe IBL. ProbePipeline binds these to prevent feedback loops.
+	private ITextureView mSkyIrradianceView;
+	private ITextureView mSkyPrefilterView;
+	private float mSkyPrefilterMaxLod;
 
 	// Linear-clamp sampler for environment map sampling
 	private ISampler mEnvironmentSampler;
@@ -97,17 +103,68 @@ public class IBLSystem
 	/// BRDF integration LUT texture view (RG16Float, 256x256)
 	public ITextureView BRDFLutView => mBRDFLutView;
 
-	/// Active irradiance cubemap view (diffuse IBL)
+	/// Active irradiance cubemap view (diffuse IBL — may be probe-overridden)
 	public ITextureView IrradianceMapView => mActiveIrradianceView;
 
-	/// Active prefilter cubemap view (specular IBL)
+	/// Active prefilter cubemap view (specular IBL — may be probe-overridden)
 	public ITextureView PrefilterMapView => mActivePrefilterView;
+
+	/// Sky-only irradiance view. Always returns sky-derived irradiance, never
+	/// probe-derived. Used by ProbePipeline to prevent feedback loops.
+	public ITextureView SkyIrradianceView => (mSkyIrradianceView != null) ? mSkyIrradianceView : mDefaultIrradianceView;
+
+	/// Sky-only prefilter view. Always returns sky-derived prefilter, never
+	/// probe-derived. Used by ProbePipeline to prevent feedback loops.
+	public ITextureView SkyPrefilterView => (mSkyPrefilterView != null) ? mSkyPrefilterView : mDefaultPrefilterView;
+
+	/// Sky-only prefilter max LOD.
+	public float SkyPrefilterMaxLod => mSkyPrefilterMaxLod;
 
 	/// Linear-clamp sampler for environment map sampling
 	public ISampler EnvironmentSampler => mEnvironmentSampler;
 
 	/// Maximum mip LOD for prefilter roughness mapping
 	public float PrefilterMaxLod => mPrefilterMaxLod;
+
+	/// Override active IBL views with probe-derived cubemaps. Sky-only views
+	/// remain unchanged so probe rendering can sample them without feedback.
+	public void SetProbeIBL(ITextureView probeIrradiance, ITextureView probePrefilter, float maxLod)
+	{
+		mActiveIrradianceView = probeIrradiance;
+		mActivePrefilterView = probePrefilter;
+		mPrefilterMaxLod = maxLod;
+	}
+
+	/// Revert active IBL views to sky-derived (no probe override).
+	public void ClearProbeIBL()
+	{
+		mActiveIrradianceView = (mSkyIrradianceView != null) ? mSkyIrradianceView : mDefaultIrradianceView;
+		mActivePrefilterView = (mSkyPrefilterView != null) ? mSkyPrefilterView : mDefaultPrefilterView;
+		mPrefilterMaxLod = mSkyPrefilterMaxLod;
+	}
+
+	/// Irradiance bind group layout — exposed for ProbePipeline to create
+	/// temporary bind groups when convolving probe cubemaps.
+	public IBindGroupLayout IrradianceBGLayout => mIrradianceBGLayout;
+
+	/// Prefilter bind group layout — exposed for ProbePipeline to create
+	/// temporary bind groups when convolving probe cubemaps.
+	public IBindGroupLayout PrefilterBGLayout => mPrefilterBGLayout;
+
+	/// Irradiance render pipeline — exposed for probe convolution.
+	public IRenderPipeline IrradiancePipeline => mIrradiancePipeline;
+
+	/// Prefilter render pipeline — exposed for probe convolution.
+	public IRenderPipeline PrefilterPipeline => mPrefilterPipeline;
+
+	/// Prefilter mip count constant.
+	public static int PrefilterMipLevels => PrefilterMipCount;
+
+	/// Irradiance face resolution constant.
+	public static uint32 IrradianceFaceSize => IrradianceSize;
+
+	/// Prefilter face resolution constant.
+	public static uint32 PrefilterFaceSize => PrefilterSize;
 
 	/// Set the sky texture for IBL generation. Accepts either an equirectangular
 	/// 2D texture or a cubemap. Pass null to revert to black fallbacks (procedural sky).
@@ -256,6 +313,11 @@ public class IBLSystem
 		mActiveIrradianceView = mIrradianceCubemapView;
 		mActivePrefilterView = (mPrefilterCubemapView != null) ? mPrefilterCubemapView : mEnvCubemapView;
 		mPrefilterMaxLod = (mPrefilterCubemap != null) ? (float)(PrefilterMipCount - 1) : 0.0f;
+
+		// Save sky-only views (never overwritten by probe IBL)
+		mSkyIrradianceView = mActiveIrradianceView;
+		mSkyPrefilterView = mActivePrefilterView;
+		mSkyPrefilterMaxLod = mPrefilterMaxLod;
 	}
 
 	/// Generate irradiance and prefilter maps from an already-existing cubemap source.

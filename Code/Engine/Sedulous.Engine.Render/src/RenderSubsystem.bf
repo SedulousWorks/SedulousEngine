@@ -12,6 +12,7 @@ using Sedulous.Renderer.Passes;
 using Sedulous.Renderer.Renderers;
 using Sedulous.Particles;
 using Sedulous.Renderer.Shadows;
+using Sedulous.Renderer.Probes;
 using Sedulous.Core.Mathematics;
 using Sedulous.Profiler;
 using Sedulous.Resources;
@@ -21,6 +22,7 @@ using Sedulous.Textures.Resources;
 using Sedulous.Materials.Resources;
 using Sedulous.Particles.Resources;
 using System.Collections;
+using Sedulous.Renderer.IBL;
 
 #define FRUSTUM_CULL_SHADOWS
 
@@ -83,6 +85,19 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 
 	// Shadow pipeline (renders depth into the shared shadow atlas, one call per shadow caster)
 	private ShadowPipeline mShadowPipeline ~ delete _;
+
+	// Probe capture pipeline (renders scene into per-probe cubemaps)
+	private ProbePipeline mProbePipeline ~ delete _;
+
+	// Per-probe GPU resources keyed by probe identifier
+	private Dictionary<uint64, ProbeResources> mProbeResources = new .() ~ {
+		for (let kv in _) { kv.value.Destroy(mDevice); delete kv.value; }
+		delete _;
+	};
+
+	// Deferred bind group destruction for probe convolution bind groups.
+	// Double-buffered: bind groups must survive 2 frames (MaxFramesInFlight).
+	private List<IBindGroup>[2] mStaleProbeBindGroups = .(new .(), new .()) ~ { delete _[0]; delete _[1]; };
 
 	// Resource managers (registered with mResourceSystem)
 	private StaticMeshResourceManager mStaticMeshManager ~ delete _;
@@ -207,6 +222,10 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		mShadowPipeline = new ShadowPipeline();
 		mShadowPipeline.Initialize(mRenderContext);
 
+		// Probe capture pipeline (renders scene into per-probe cubemaps)
+		mProbePipeline = new ProbePipeline();
+		mProbePipeline.Initialize(mRenderContext);
+
 		// Per-scene pipelines are created in OnSceneCreated.
 
 		// Register resource managers with the resource system
@@ -253,6 +272,8 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 			delete kv.value;
 		}
 		mScenePipelines.Clear();
+		if (mProbePipeline != null)
+			mProbePipeline.Shutdown();
 		if (mShadowPipeline != null)
 			mShadowPipeline.Shutdown();
 		if (mRenderContext != null)
@@ -395,6 +416,10 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		// Push scene-level render settings to renderer objects.
 		ApplyRenderSettings(scene, pipeline);
 
+		// Capture reflection probes before the main render.
+		using (Profiler.Begin("ProbeCapture"))
+			CaptureProbes(encoder, mainView, pipeline, frameIndex);
+
 		// Reset per-pipeline ring buffer offsets.
 		pipeline.BeginFrame(frameIndex);
 
@@ -407,6 +432,10 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 
 		// Save this frame's VP to the pipeline for next frame's motion vectors.
 		pipeline.PrevViewProjectionMatrix = mainView.ViewProjectionMatrix;
+
+		// Revert active IBL to sky so the next scene (if any) doesn't inherit probe IBL
+		if (let iblSystem = mRenderContext.IBLSystem)
+			iblSystem.ClearProbeIBL();
 
 		// Transition output to ShaderRead for the application to blit.
 		encoder.TransitionTexture(colorTexture, .RenderTarget, .ShaderRead);
@@ -546,6 +575,196 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 			view.RenderData.SortOnly();
 	}
 
+
+	// ==================== Reflection Probe Capture ====================
+
+	/// Captures dirty reflection probes and sets the closest probe's IBL as active.
+	private void CaptureProbes(ICommandEncoder encoder, RenderView mainView, Pipeline pipeline, int32 frameIndex)
+	{
+		let probes = mainView.RenderData.GetBatch(RenderCategories.ReflectionProbe);
+		if (probes == null || probes.Count == 0)
+			return;
+
+		// Flush deferred convolution bind groups (2+ frames old, safe to destroy)
+		{
+			let device = mRenderContext.Device;
+			for (var bg in mStaleProbeBindGroups[0])
+				device.DestroyBindGroup(ref bg);
+			mStaleProbeBindGroups[0].Clear();
+
+			// Rotate: last frame's deferred list becomes the old list
+			let temp = mStaleProbeBindGroups[0];
+			mStaleProbeBindGroups[0] = mStaleProbeBindGroups[1];
+			mStaleProbeBindGroups[1] = temp;
+		}
+
+		// Get SkyPass from the main pipeline for probe sky rendering
+		let skyPass = pipeline.GetPass<SkyPass>();
+
+		mProbePipeline.BeginFrame(frameIndex);
+
+		for (let entry in probes)
+		{
+			let probe = entry as ReflectionProbeRenderData;
+			if (probe == null) continue;
+
+			// Get or create per-probe GPU resources
+			let key = probe.ProbeKey;
+			ProbeResources res = null;
+			if (mProbeResources.TryGetValue(key, let existing))
+			{
+				res = existing;
+			}
+			else
+			{
+				res = new ProbeResources();
+				if (res.Create(mRenderContext.Device, (uint32)probe.CaptureResolution) case .Err)
+				{
+					delete res;
+					continue;
+				}
+				mProbeResources[key] = res;
+			}
+
+			// Check update mode
+			if (res.IsCaptured && probe.UpdateMode == 0) continue; // OnLoad — already captured
+			if (probe.UpdateMode == 2 && !res.NeedsCapture) continue; // Manual — not requested
+
+			// Capture the probe cubemap
+			mProbePipeline.Capture(
+				encoder, probe.ProbePosition, probe.NearClip, probe.FarClip,
+				(uint32)probe.CaptureResolution, res.CapturedFaceViews,
+				frameIndex, pipeline.LightBuffer, mainView, skyPass);
+
+			// Transition captured cubemap to ShaderRead for IBL convolution
+			encoder.TransitionTexture(res.CapturedCubemap, .RenderTarget, .ShaderRead);
+
+			// Convolve irradiance + prefilter from captured cubemap
+			ConvolveProbe(encoder, res, frameIndex);
+
+			res.IsCaptured = true;
+			if (probe.UpdateMode != 1) // Not EveryFrame
+				res.NeedsCapture = false;
+		}
+
+		// Set the closest probe's IBL as active for the main render
+		ReflectionProbeRenderData closestProbe = null;
+		float closestDist = float.MaxValue;
+		for (let entry in probes)
+		{
+			let probe = entry as ReflectionProbeRenderData;
+			if (probe == null) continue;
+			let dist = Vector3.DistanceSquared(probe.ProbePosition, mainView.CameraPosition);
+			if (dist < closestDist)
+			{
+				closestDist = dist;
+				closestProbe = probe;
+			}
+		}
+
+		if (closestProbe != null)
+		{
+			if (mProbeResources.TryGetValue(closestProbe.ProbeKey, let res))
+			{
+				if (res.IsCaptured)
+				{
+					mRenderContext.IBLSystem.SetProbeIBL(
+						res.IrradianceCubemapView, res.PrefilterCubemapView, res.PrefilterMaxLod);
+				}
+			}
+		}
+	}
+
+	/// Convolves a probe's captured cubemap into irradiance + prefilter maps
+	/// using IBLSystem's existing render pipelines.
+	private void ConvolveProbe(ICommandEncoder encoder, ProbeResources res, int32 frameIndex)
+	{
+		let ibl = mRenderContext.IBLSystem;
+		if (ibl == null || ibl.IrradiancePipeline == null || ibl.PrefilterPipeline == null)
+			return;
+
+		let device = mRenderContext.Device;
+
+		// --- Irradiance convolution (6 face passes) ---
+		for (int i = 0; i < 6; i++)
+		{
+			BindGroupEntry[3] entries = .(
+				BindGroupEntry.Buffer(res.IrradianceParamsBuffers[i], 0, 16),
+				BindGroupEntry.Texture(res.CapturedCubemapView),
+				BindGroupEntry.Sampler(ibl.EnvironmentSampler)
+			);
+
+			IBindGroup bg = null;
+			if (device.CreateBindGroup(.() { Label = "Probe Irradiance BG", Layout = ibl.IrradianceBGLayout, Entries = entries }) case .Ok(let created))
+				bg = created;
+			else
+				continue;
+
+			ColorAttachment[1] colorAttachments = .(.()
+			{
+				View = res.IrradianceFaceViews[i],
+				LoadOp = .DontCare,
+				StoreOp = .Store
+			});
+
+			let irradSize = IBLSystem.IrradianceFaceSize;
+			let rp = encoder.BeginRenderPass(.() { Label = "ProbeIrradiance", ColorAttachments = .(colorAttachments) });
+			rp.SetPipeline(ibl.IrradiancePipeline);
+			rp.SetBindGroup(0, bg, default);
+			rp.SetViewport(0, 0, irradSize, irradSize, 0, 1);
+			rp.SetScissor(0, 0, irradSize, irradSize);
+			rp.Draw(3, 1, 0, 0);
+			rp.End();
+
+			mStaleProbeBindGroups[1].Add(bg);
+		}
+
+		encoder.TransitionTexture(res.IrradianceCubemap, .RenderTarget, .ShaderRead);
+
+		// --- Prefilter convolution (mipCount * 6 face passes) ---
+		let mipCount = IBLSystem.PrefilterMipLevels;
+
+		for (int mip = 0; mip < mipCount; mip++)
+		{
+			uint32 mipSize = IBLSystem.PrefilterFaceSize >> (uint32)mip;
+
+			for (int face = 0; face < 6; face++)
+			{
+				int idx = mip * 6 + face;
+
+				BindGroupEntry[3] entries = .(
+					BindGroupEntry.Buffer(res.PrefilterParamsBuffers[idx], 0, 16),
+					BindGroupEntry.Texture(res.CapturedCubemapView),
+					BindGroupEntry.Sampler(ibl.EnvironmentSampler)
+				);
+
+				IBindGroup bg = null;
+				if (device.CreateBindGroup(.() { Label = "Probe Prefilter BG", Layout = ibl.PrefilterBGLayout, Entries = entries }) case .Ok(let created))
+					bg = created;
+				else
+					continue;
+
+				ColorAttachment[1] colorAttachments = .(.()
+				{
+					View = res.PrefilterFaceViews[idx],
+					LoadOp = .DontCare,
+					StoreOp = .Store
+				});
+
+				let rp = encoder.BeginRenderPass(.() { Label = "ProbePrefilter", ColorAttachments = .(colorAttachments) });
+				rp.SetPipeline(ibl.PrefilterPipeline);
+				rp.SetBindGroup(0, bg, default);
+				rp.SetViewport(0, 0, mipSize, mipSize, 0, 1);
+				rp.SetScissor(0, 0, mipSize, mipSize);
+				rp.Draw(3, 1, 0, 0);
+				rp.End();
+
+				mStaleProbeBindGroups[1].Add(bg);
+			}
+		}
+
+		encoder.TransitionTexture(res.PrefilterCubemap, .RenderTarget, .ShaderRead);
+	}
 
 	/// Allocates atlas regions for all shadow-casting lights in the main view, builds
 	/// per-shadow RenderViews, extracts each, and uploads shadow data to the GPU.
@@ -941,6 +1160,36 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 
 	public void OnSceneDestroyed(Scene scene)
 	{
+		// Reset IBL to sky before destroying probe resources
+		if (let iblSystem = mRenderContext?.IBLSystem)
+			iblSystem.ClearProbeIBL();
+
+		// Wait for GPU to finish before destroying probe resources
+		mDevice?.WaitIdle();
+
+		// Flush all deferred probe bind groups
+		for (int s = 0; s < 2; s++)
+		{
+			for (var bg in mStaleProbeBindGroups[s])
+				mDevice.DestroyBindGroup(ref bg);
+			mStaleProbeBindGroups[s].Clear();
+		}
+
+		// Destroy probe resources for this scene
+		// (All probes from this scene will be re-created if the scene is reopened)
+		let keysToRemove = scope List<uint64>();
+		for (let kv in mProbeResources)
+			keysToRemove.Add(kv.key);
+		for (let key in keysToRemove)
+		{
+			if (mProbeResources.TryGetValue(key, let res))
+			{
+				res.Destroy(mDevice);
+				delete res;
+				mProbeResources.Remove(key);
+			}
+		}
+
 		// Tear down every pipeline associated with this scene - the default
 		// one and any secondary ones still acquired by previews/sub-viewports
 		// that haven't been released yet. Collect keys first to avoid mutating

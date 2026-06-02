@@ -226,6 +226,50 @@ class SkyPass : PipelinePass
 		} // Sky scope
 	}
 
+	/// Render sky for a probe face. Creates a temporary bind group each call
+	/// to avoid sharing the main SkyPass's cached bind groups (which may be
+	/// invalidated during the same frame when the sky texture resolves).
+	/// The caller is responsible for deferring destruction of the returned bind group.
+	public IBindGroup ExecuteForProbe(IRenderPassEncoder encoder, RenderView view,
+		IRenderingPipeline pipeline, PerFrameResources frame)
+	{
+		if (mActive == null || mActive.Pipeline == null) return null;
+
+		// Upload sky params
+		SkyParams @params = .()
+		{
+			SkyIntensity = Intensity,
+			HasEnvironmentMap = (mSkyTextureView != null) ? 1.0f : 0.0f
+		};
+		TransferHelper.WriteMappedBuffer(mActive.ParamsBuffer, 0,
+			Span<uint8>((uint8*)&@params, SkyParams.Size));
+
+		// Create a temporary bind group (caller defers destruction)
+		let texView = (mSkyTextureView != null) ? mSkyTextureView : mRenderContext.MaterialSystem.WhiteTexture;
+
+		BindGroupEntry[3] bgEntries = .(
+			BindGroupEntry.Buffer(mActive.ParamsBuffer, 0, SkyParams.Size),
+			BindGroupEntry.Texture(texView),
+			BindGroupEntry.Sampler(mActive.Sampler)
+		);
+
+		IBindGroup probeSkyBG = null;
+		if (mDevice.CreateBindGroup(.() { Label = "Probe Sky BG", Layout = mActive.BindGroupLayout, Entries = bgEntries }) case .Ok(let bg))
+			probeSkyBG = bg;
+		else
+			return null;
+
+		encoder.SetViewport(0, 0, (float)view.Width, (float)view.Height, 0.0f, 1.0f);
+		encoder.SetScissor(0, 0, view.Width, view.Height);
+		encoder.SetPipeline(mActive.Pipeline);
+
+		pipeline.BindFrameGroup(encoder, frame);
+		encoder.SetBindGroup(BindGroupFrequency.RenderPass, probeSkyBG, default);
+		encoder.Draw(3, 1, 0, 0);
+
+		return probeSkyBG;
+	}
+
 	/// Retires the active state so it stays alive until in-flight frames complete.
 	private void RetireActive()
 	{
