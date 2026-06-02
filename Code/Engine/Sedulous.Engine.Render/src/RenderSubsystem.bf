@@ -425,16 +425,16 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		using (Profiler.Begin("Skinning"))
 			DispatchSkinning(encoder, mainView);
 
-		// Capture reflection probes before the main render.
-		using (Profiler.Begin("ProbeCapture"))
-			CaptureProbes(encoder, mainView, pipeline, frameIndex);
-
 		// Reset per-pipeline ring buffer offsets.
 		pipeline.BeginFrame(frameIndex);
 
 		// Render only this scene's shadow views (not other scenes' accumulated jobs).
 		using (Profiler.Begin("ShadowRender"))
 			RenderShadowRange(encoder, frameIndex, pipeline, shadowStart, mShadowDraws.Count);
+
+		// Capture reflection probes after shadows so the shadow atlas is populated.
+		using (Profiler.Begin("ProbeCapture"))
+			CaptureProbes(encoder, mainView, pipeline, frameIndex);
 
 		// Render to the application-provided output target.
 		pipeline.Render(encoder, mainView, colorTexture, colorTarget, frameIndex);
