@@ -256,11 +256,10 @@ class SandboxApp : EngineApplication
 		SetupMeshComponent(scene, cube3Entity, cubeRef, mYellowMaterial);
 		SetupRigidBody(scene, physicsMgr, cube3Entity, .Box(0.5f), .Dynamic);
 
-		// White metallic sphere (center back) - dynamic, larger
+		// White metallic sphere (front center, placed directly) - static showcase for IBL
 		let sphere2Entity = scene.CreateEntity("MetalSphere");
-		scene.SetLocalTransform(sphere2Entity, .() { Position = .(0, 8, -2.0f), Rotation = .Identity, Scale = .(1.5f, 1.5f, 1.5f) });
+		scene.SetLocalTransform(sphere2Entity, .() { Position = .(0, 1.5f, 4.0f), Rotation = .Identity, Scale = .(1.5f, 1.5f, 1.5f) });
 		SetupMeshComponent(scene, sphere2Entity, sphereRef, mWhiteMaterial);
-		SetupRigidBody(scene, physicsMgr, sphere2Entity, .Sphere(0.75f), .Dynamic);
 
 		// Small green sphere (front left) - dynamic
 		let sphere3Entity = scene.CreateEntity("GreenSphere");
@@ -292,6 +291,21 @@ class SandboxApp : EngineApplication
 		SetupMeshComponent(scene, unlitEntity, sphereRef, mUnlitInstance);
 		SetupRigidBody(scene, physicsMgr, unlitEntity, .Sphere(0.5f), .Dynamic);
 
+		// ==================== Reflection Probe ====================
+		// Placed above ground near center for local reflections on the metallic sphere.
+		{
+			let probeEntity = scene.CreateEntity("ReflectionProbe");
+			scene.SetLocalTransform(probeEntity, .() { Position = .(0, 3, 0), Rotation = .Identity, Scale = .One });
+			let probeMgr = scene.GetModule<ReflectionProbeComponentManager>();
+			let probeHandle = probeMgr.CreateComponent(probeEntity);
+			if (let probeComp = probeMgr.Get(probeHandle))
+			{
+				probeComp.UpdateMode = .EveryFrame;
+				probeComp.InfluenceRadius = 20.0f;
+				probeComp.CaptureResolution = 128;
+			}
+		}
+
 		// ==================== Sprites ====================
 		// Load a few animal icons from the Kenney pack and spawn sprites exercising
 		// all three billboard orientation modes.
@@ -307,7 +321,7 @@ class SandboxApp : EngineApplication
 		// ==================== Decal ====================
 		// Projects a Kenney animal icon downward onto the ground plane.
 		CreateDecal(scene, resources, "textures/kenney_animal-pack-remastered/PNG/Round/panda.png",
-			.(0.0f, 0.5f, 2.5f), .(3.0f, 3.0f, 3.0f));
+			.(-3.0f, 0.5f, 0.0f), .(3.0f, 3.0f, 3.0f));
 
 		// ==================== Particles ====================
 		// Four effects spaced across the scene to showcase different particle types.
