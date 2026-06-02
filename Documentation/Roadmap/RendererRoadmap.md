@@ -19,7 +19,9 @@ Targeted feature set for game-readiness. Not a port of the old renderer - each f
 - **Masked rendering** - BlendMode.Masked with AlphaCutoff + discard, drawn in ForwardOpaquePass
 - **Transparent rendering** - ForwardTransparentPass with alpha blending, back-to-front sorted
 - **Sky rendering** - equirectangular HDR environment map with procedural gradient fallback. Runs after opaque but before transparent
-- **Compute skinning** - SkinningSystem + SkinningPass pre-skins vertices via compute shader (72->48 bytes)
+- **Compute skinning** - SkinningSystem pre-skins vertices via compute shader (72->48 bytes). Dispatched once per frame from `RenderSubsystem.DispatchSkinning` (between `ApplyRenderSettings` and `CaptureProbes`) with a `ShaderWrite -> VertexBuffer` global memory barrier, so probe captures and the main render share the same per-frame skinned VBs
+- **Image-based lighting (IBL)** - split-sum specular + cosine-convolved irradiance. Pre-baked BRDF LUT (RG16Float, 256² generated via `Scripts/generate_brdf_lut.py` -> `BRDFLutData.bf`, no runtime cost). `IBLSystem` owns the cubemap convolution pipelines. Active probe IBL is bound at set 0 with sky fallback when no probe overlaps the fragment
+- **Reflection probes** - standalone `ProbePipeline` (mirrors `ShadowPipeline`): own render graph + per-frame resources, captures all 6 cube faces per dirty probe per frame into an intermediate face texture, blits to the cubemap layer with horizontal flip (`probe_blit.frag.hlsl`) to correct RH `CreateLookAt` mirroring without forcing a LH convention into the rest of the engine. Probe captures bind `IBLSystem.SkyIrradianceView`/`SkyPrefilterView` (not the active probe IBL) so probes don't sample themselves. RenderSubsystem picks the closest dirty probe per frame, convolves irradiance + GGX prefilter mip chain, and `SetProbeIBL`s it for the main view. Shadows render before `CaptureProbes` so reflections include shadows
 - **Decal rendering** - DecalRenderer draws unit cube, fragment shader reads SceneDepth, reconstructs world position, transforms to local decal space, clips + angle-fades. Own 4-set pipeline layout with depth sampling at set 1
 - **GPU-instanced sprites** - SpriteRenderer uses SV_VertexID for quad corners + per-instance vertex buffer (64 B/sprite). Three orientation modes: CameraFacing, CameraFacingY, WorldAligned
 
@@ -527,6 +529,81 @@ own specialised billboard path) but shares the underlying quad rendering.
 for the 2D screen-space path. Quad rendering infrastructure is also useful for
 particles later.
 
+## Phase 14: Image-Based Lighting & Reflection Probes - DONE
+
+Real-time PBR indirect lighting via captured cubemaps with split-sum
+approximation. Active probe is bound per-frame as the IBL source for the
+main render; sky environment provides the fallback when no probe overlaps
+a fragment.
+
+### 14.1 - BRDF LUT (offline-baked)
+- `Scripts/generate_brdf_lut.py` produces `BRDFLutData.bf` - 256² RG16Float
+  byte array embedded in source. GGX importance sampling, 1024 samples per
+  texel. Bake-once, runtime-zero
+- `IBLSystem` uploads the LUT to a `Texture2D` at init via `TransferHelper.WriteTextureSync`
+
+### 14.2 - Cubemap capture (`ProbePipeline`)
+- Standalone pipeline mirroring `ShadowPipeline`: own `RenderGraph` and `PerFrameResources`, receives main pipeline's `LightBuffer`
+- All 6 faces captured per dirty probe per frame (not round-robin) into an
+  intermediate face color + depth target
+- Renders Opaque + Masked + Sky into the face texture, then blits to the
+  destination cubemap layer via `probe_blit.frag.hlsl` (single-line `uv.x = 1 - uv.x`
+  flip to correct for the RH `CreateLookAt` mirroring vs. the LH cube-face spec).
+  Avoids forcing LH conventions into the engine's main matrix code
+- Probe captures bind `IBLSystem.SkyIrradianceView`/`SkyPrefilterView` (sky-only IBL)
+  as set 0 t1/t2 - prevents feedback loops where probes sample their own previous output
+- Shadows are bound and rendered into probe captures (atlas was populated
+  by `RenderShadowRange` earlier in the frame)
+- Compute skinning runs once per frame from `RenderSubsystem.DispatchSkinning`
+  before `CaptureProbes`, so animated meshes appear in reflections at this
+  frame's pose
+
+### 14.3 - Convolution (`IBLSystem`)
+- **Irradiance** - cosine-convolved cubemap (32², 6 faces) for diffuse IBL.
+  Replaces SH9 path - simpler, hardware-filtered, no shader basis evaluation
+- **GGX prefilter** - mip chain (128² base, 5 mips, RGBA16Float) for split-sum
+  specular. Roughness = mip / (mipCount - 1). 64 importance samples per output
+  texel via Hammersley sequence
+- Both run as compute dispatches per probe per frame after capture
+
+### 14.4 - Forward shader integration
+- Frame bind group set 0 grew to include t1 BRDFLut, t2 PrefilteredCubemap
+  (`TextureCubeArray`), t3 IrradianceCubemap, s1 LinearSampler
+- Indirect specular = prefilteredCube(R, roughness*maxMip) × (F0 * brdf.x + brdf.y)
+- Indirect diffuse = irradianceCube(N) × albedo × (1-F)(1-metallic)
+- `RenderSubsystem` selects the closest dirty probe per frame and calls
+  `IBLSystem.SetProbeIBL` to swap the active probe IBL for the main render.
+  `ClearProbeIBL` after the scene render restores sky IBL for the next scene
+
+### Architecture wins
+- `ProbePipeline` is structurally a sibling of `ShadowPipeline` - same
+  isolation pattern, same lifecycle. Adding more capture-based features
+  (planar reflections, etc.) follows the same template
+- `ObjectUniforms` is now uniform (144 bytes with `InstanceColor`) across
+  main `Pipeline`, `ShadowPipeline`, and `ProbePipeline`. Earlier layout
+  divergence between pipelines caused skinned meshes to silently `discard`
+  in probe captures via garbage-`.a` -> AlphaCutoff
+
+### Known limitations / future work
+- **No parallax correction** - reflection sample direction is untranslated,
+  so off-centre reflective surfaces inside the probe's bounds show
+  reflections as if they were at the probe's position. Box-projected
+  parallax correction is the standard fix
+- **Single active probe per main render** - per-pixel weighted blending
+  across multiple overlapping probes was considered and dropped in favour
+  of simpler closest-probe selection. Acceptable for typical "one probe
+  per room" layouts; revisit for scenes with overlapping influence zones
+- **Per-frame full re-capture per dirty probe** - cheaper than round-robin
+  for stationary probes but worth a dirty-flag refresh policy for scenes
+  with many probes
+- **No baked probes yet** - all captures are runtime. Baked cubemap +
+  irradiance assets would let static scenes skip the per-frame capture
+  cost. Deferred until a real use case
+- **Sun in cubemap + low-roughness sphere** - the GGX prefilter at 64
+  samples produces visible importance-sample pattern when a tiny bright
+  source (sun disc) is in the source cubemap. Standard fixes: HDR clamp
+  before accumulation, or bump sample count
+
 ## Priority Order
 
 Recommended implementation order based on dependencies and game impact:
@@ -544,6 +621,7 @@ Recommended implementation order based on dependencies and game impact:
 11. ~~**Mini G-buffer** - SceneNormals + MotionVectors MRT~~ DONE
 12. ~~**Phase 10** - Particles (self-contained system, CPU simulation, billboard rendering, sub-emitters, LOD)~~ DONE
 13. ~~**Phase 5.3** - FXAA, TAA, SSAO~~ DONE (motion blur, color grading deferred)
+14. ~~**Phase 14** - IBL + reflection probes (BRDF LUT, ProbePipeline, irradiance + GGX prefilter)~~ DONE
 
 ## Shader hot-reload (TODO, newly tractable)
 

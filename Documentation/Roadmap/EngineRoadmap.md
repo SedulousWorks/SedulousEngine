@@ -17,8 +17,9 @@ Sedulous engine (BeefGFX_Workspace_Compare) and ezEngine as references.
 - ~~Forward PBR~~ with Cook-Torrance BRDF
 - ~~Depth prepass~~ with masked geometry
 - ~~Shadows~~ - cascaded directional (4 cascades), point cubemap, spot, hierarchical atlas
-- ~~Compute skinning~~
+- ~~Compute skinning~~ - dispatched once per frame from RenderSubsystem (shared by probe captures + main render)
 - ~~Sky/HDR environment~~
+- ~~IBL + reflection probes~~ - BRDF LUT (offline-baked), standalone ProbePipeline captures all 6 faces per dirty probe, irradiance + GGX prefilter mip chain. Closest probe set as active IBL for the main render; sky IBL fallback
 - ~~Decals~~ - depth-reconstructed projected
 - ~~Sprites~~ - GPU instanced, 3 orientation modes
 - ~~Particles~~ - CPU simulation, billboard + trail rendering, soft particles, sub-emitters, LOD
@@ -52,9 +53,14 @@ DONE so far: Bloom, Tonemap, **SSAO**, **TAA**, **FXAA**
 | Auto Exposure | TODO (Medium) | Luminance histogram + adaptation |
 | DOF | TODO (Medium) | Circle of confusion from depth |
 
-**Reflection Probes:**
-Old engine had capture-based reflection probes. Needed for PBR quality on
-metallic/reflective surfaces. ezEngine has baked probes with light caching.
+**~~Reflection Probes:~~** DONE
+Capture-based reflection probes via standalone `ProbePipeline` (mirrors
+ShadowPipeline). All 6 cube faces captured per dirty probe per frame,
+followed by irradiance convolution + GGX prefilter mip chain. Closest
+probe per main render is set as active IBL; sky IBL falls back when no
+probe applies. Architecture details + remaining limitations (no parallax
+correction, no baked probes yet, sun-in-cubemap sample artifact at low
+roughness) in `RendererRoadmap.md` Phase 14.
 
 **Cluster Lighting:**
 Old engine had ClusterGrid for efficient many-light rendering. Current engine
@@ -328,10 +334,8 @@ imports will then skip re-creating resources that already exist from prior sessi
 
 ### What the old engine does that we don't yet
 - 14 post-processing effects (we have 2)
-- Reflection probes with scene capture
 - Cluster lighting for many lights
 - Hi-Z occlusion culling
-- Comprehensive component serialization (ComponentData pattern)
 - Scene system tests
 
 ### Resource GUID Remapping
