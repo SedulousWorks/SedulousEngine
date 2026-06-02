@@ -416,6 +416,15 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		// Push scene-level render settings to renderer objects.
 		ApplyRenderSettings(scene, pipeline);
 
+		// Dispatch compute skinning ONCE per frame BEFORE probe captures so
+		// the skinned vertex buffers exist by the time ProbePipeline's
+		// MeshRenderer iterates skinned entries (otherwise GetSkinnedVertexBuffer
+		// returns null and animated meshes silently drop out of probe captures).
+		// The result is keyed per (mesh, entity) in SkinningSystem and shared by
+		// the main pipeline + every probe capture for this frame.
+		using (Profiler.Begin("Skinning"))
+			DispatchSkinning(encoder, mainView);
+
 		// Capture reflection probes before the main render.
 		using (Profiler.Begin("ProbeCapture"))
 			CaptureProbes(encoder, mainView, pipeline, frameIndex);
@@ -439,6 +448,58 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 
 		// Transition output to ShaderRead for the application to blit.
 		encoder.TransitionTexture(colorTexture, .RenderTarget, .ShaderRead);
+	}
+
+	// ==================== Compute Skinning ====================
+
+	/// Dispatches compute skinning for every skinned mesh in `view`'s render
+	/// data. Opens a top-level compute pass on `encoder` and calls into
+	/// SkinningSystem to process each instance. The output (skinned vertex
+	/// buffers, keyed per (mesh, entity) inside SkinningSystem) is consumed
+	/// by both ProbePipeline and the main Pipeline later in the same frame.
+	///
+	/// Centralising the dispatch here - instead of as a PipelinePass inside
+	/// the main pipeline's render graph - means probe captures (which run
+	/// BEFORE the main pipeline.Render) see this frame's skinned buffers and
+	/// can include animated meshes in their cubemap.
+	private void DispatchSkinning(ICommandEncoder encoder, RenderView view)
+	{
+		let skinningSystem = mRenderContext?.SkinningSystem;
+		let data = view?.RenderData;
+		if (skinningSystem == null || data == null) return;
+
+		// Skip the whole pass if there's nothing skinned this frame.
+		bool hasAny = HasSkinned(data, RenderCategories.Opaque)
+			|| HasSkinned(data, RenderCategories.Masked)
+			|| HasSkinned(data, RenderCategories.Transparent);
+		if (!hasAny) return;
+
+		let computeEnc = encoder.BeginComputePass("Skinning");
+		if (computeEnc == null) return;
+		skinningSystem.DispatchAllForView(computeEnc, data, mRenderContext.GPUResources);
+		computeEnc.End();
+
+		// Compute write -> vertex fetch barrier. The skinned vertex buffers were
+		// created with Storage|Vertex usage; without an explicit transition the
+		// probe pipeline's later vertex bind reads whatever was last in the
+		// buffer (potentially uninitialised memory on the first frame, stale
+		// pose on subsequent frames), so animated meshes either disappear or
+		// render at the wrong pose in probe captures. Global memory barrier is
+		// enough because every skinned-vertex consumer reads as a vertex
+		// attribute, all matching the same NewState.
+		MemoryBarrier[1] memBarriers = .(.() { OldState = .ShaderWrite, NewState = .VertexBuffer });
+		BarrierGroup barriers = .() { MemoryBarriers = .(&memBarriers[0], 1) };
+		encoder.Barrier(barriers);
+	}
+
+	private static bool HasSkinned(ExtractedRenderData data, RenderDataCategory category)
+	{
+		let batch = data.GetBatch(category);
+		if (batch == null) return false;
+		for (let entry in batch)
+			if (let mesh = entry as MeshRenderData)
+				if (mesh.IsSkinned) return true;
+		return false;
 	}
 
 	// ==================== Scene Render Settings ====================
@@ -1226,15 +1287,16 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 
 		// Register default passes.
 		// Order is significant:
-		//   1. Skinning (compute)
-		//   2. Depth prepass (opaque + masked)
-		//   3. Forward opaque + masked (fills color + uses prepass depth)
-		//   4. Decal pass (samples SceneDepth, composes on top of opaque)
-		//   5. Sky (fills where depth == far)
-		//   6. Forward transparent (sprites/particles blend over sky + opaque)
-		//   7. Debug lines (depth-tested on top of everything)
-		//   8. 2D overlay (no depth)
-		pipeline.AddPass(new SkinningPass());
+		//   1. Depth prepass (opaque + masked)
+		//   2. Forward opaque + masked (fills color + uses prepass depth)
+		//   3. Decal pass (samples SceneDepth, composes on top of opaque)
+		//   4. Sky (fills where depth == far)
+		//   5. Forward transparent (sprites/particles blend over sky + opaque)
+		//   6. Debug lines (depth-tested on top of everything)
+		//   7. 2D overlay (no depth)
+		// Compute skinning runs ONCE per frame from RenderSubsystem.DispatchSkinning
+		// (called BEFORE CaptureProbes + pipeline.Render) so both probe captures
+		// and the main pipeline consume the same per-frame skinned buffers.
 		pipeline.AddPass(new DepthPrepass());
 		pipeline.AddPass(new ForwardOpaquePass());
 		pipeline.AddPass(new DecalPass());

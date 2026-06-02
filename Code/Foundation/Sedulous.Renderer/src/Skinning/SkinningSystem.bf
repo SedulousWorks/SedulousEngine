@@ -10,8 +10,10 @@ using Sedulous.Core.Mathematics;
 /// Owned by Renderer (shared infrastructure). Creates output vertex buffers
 /// and dispatches compute shaders to transform skinned vertices.
 ///
-/// The SkinningPass (PipelinePass) calls DispatchSkinning() during render graph execution.
-/// Forward/depth passes call GetSkinnedVertexBuffer() to bind the pre-skinned output.
+/// RenderSubsystem.DispatchSkinning() invokes DispatchAllForView() once per
+/// frame BEFORE probe captures and the main pipeline render, so both
+/// consumers see the same skinned vertex buffers. Forward/depth passes call
+/// GetSkinnedVertexBuffer() to bind the pre-skinned output.
 class SkinningSystem : IDisposable
 {
 	private IDevice mDevice;
@@ -145,7 +147,7 @@ class SkinningSystem : IDisposable
 	}
 
 	/// Dispatches compute skinning for an instance.
-	/// Called from SkinningPass during render graph execution.
+	/// Called per-instance from DispatchAllForView.
 	public void DispatchSkinning(IComputePassEncoder encoder, SkinningInstance instance, IBuffer boneBuffer)
 	{
 		if (mPipeline == null || instance == null)
@@ -192,6 +194,52 @@ class SkinningSystem : IDisposable
 
 		uint32 vertCount = (uint32)instance.VertexCount;
 		encoder.Dispatch((vertCount + WorkgroupSize - 1) / WorkgroupSize, 1, 1);
+	}
+
+	/// Iterates every skinned mesh in the given view's render data and dispatches
+	/// the skinning compute for each. Skips meshes whose source or bone buffer
+	/// hasn't resolved yet. Callable from any compute-pass encoder - the result
+	/// (per-instance skinned vertex buffers, keyed on SkinningKey) is shared by
+	/// every subsequent consumer that calls GetSkinnedVertexBuffer.
+	///
+	/// Centralising the dispatch here lets the engine run skinning once per
+	/// frame from RenderSubsystem - before probe captures, shadows, and the
+	/// main pipeline render - rather than relying on each pipeline's render
+	/// graph to dispatch its own. Probe captures previously couldn't reflect
+	/// animated meshes because their `Capture` runs before the main pipeline's
+	/// in-graph SkinningPass writes the skinned buffers.
+	public void DispatchAllForView(IComputePassEncoder encoder, ExtractedRenderData data,
+		GPUResourceManager gpuResources)
+	{
+		if (data == null || gpuResources == null) return;
+		DispatchCategory(encoder, data, RenderCategories.Opaque, gpuResources);
+		DispatchCategory(encoder, data, RenderCategories.Masked, gpuResources);
+		DispatchCategory(encoder, data, RenderCategories.Transparent, gpuResources);
+	}
+
+	private void DispatchCategory(IComputePassEncoder encoder, ExtractedRenderData data,
+		RenderDataCategory category, GPUResourceManager gpuResources)
+	{
+		let batch = data.GetBatch(category);
+		if (batch == null) return;
+
+		for (let entry in batch)
+		{
+			let mesh = entry as MeshRenderData;
+			if (mesh == null || !mesh.IsSkinned) continue;
+
+			let boneBuffer = gpuResources.GetBoneBuffer(mesh.BoneBufferHandle);
+			if (boneBuffer == null) continue;
+
+			let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
+			if (gpuMesh == null) continue;
+
+			let key = SkinningKey() { MeshHandle = mesh.MeshHandle, EntityId = mesh.MaterialKey };
+			let instance = GetOrCreateInstance(key, gpuMesh.VertexBuffer, mesh.BoneBufferHandle,
+				(int32)gpuMesh.VertexCount, boneBuffer.BoneCount);
+
+			DispatchSkinning(encoder, instance, boneBuffer.Buffer);
+		}
 	}
 
 	/// Marks all instances as inactive. Called at start of frame.
