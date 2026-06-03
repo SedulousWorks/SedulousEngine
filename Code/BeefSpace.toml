@@ -2,7 +2,7 @@ FileVersion = 1
 Locked = ["Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "dr_libs-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
 
 [Workspace]
-StartupProject = "EngineRenderStressTest"
+StartupProject = "SummonersLeague"
 
 [Projects]
 "Sedulous.RHI" = {Path = "Foundation/Sedulous.RHI"}
@@ -209,6 +209,7 @@ TowerDefense = {Path = "Projects/TowerDefense"}
 "Sedulous.Inspection" = {Path = "Foundation/Sedulous.Inspection"}
 "Sedulous.Fonts.Resources" = {Path = "Foundation/Sedulous.Fonts.Resources"}
 CuteSeriesImporter = {Path = "Tools/CuteSeriesImporter"}
+SummonersLeague = {Path = "Projects/SummonersLeague"}
 
 [WorkspaceFolders]
 Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
@@ -245,6 +246,6 @@ Experimental = []
 "Experimental/Slug" = ["Sedulous.Slug", "Sedulous.Slug.Renderer", "Sedulous.Slug.Tests", "Sedulous.Slug.TTF", "SlugSample"]
 "Foundation/VFS" = ["Sedulous.VFS", "Sedulous.VFS.Disk", "Sedulous.VFS.Pak", "Sedulous.VFS.Pak.Tool", "Sedulous.VFS.Tests"]
 "Foundation/Messaging" = ["Sedulous.Messaging", "Sedulous.Messaging.Runtime", "Sedulous.Messaging.Tests"]
-Projects = ["TowerDefense"]
+Projects = ["TowerDefense", "SummonersLeague"]
 "Deprecated/LegacyUI" = ["LegacyUISandbox", "Sedulous.LegacyUI", "Sedulous.LegacyUI.Resources", "Sedulous.LegacyUI.Runtime", "Sedulous.LegacyUI.Shell", "Sedulous.LegacyUI.Tests", "Sedulous.LegacyUI.Toolkit", "Sedulous.LegacyUI.Viewport", "Sedulous.Engine.LegacyUI"]
 "Foundation/CodeGen" = ["Sedulous.Inspection"]

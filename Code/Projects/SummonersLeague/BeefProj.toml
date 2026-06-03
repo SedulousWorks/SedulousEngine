@@ -1,0 +1,5 @@
+FileVersion = 1
+
+[Project]
+Name = "SummonersLeague"
+StartupObject = "SummonersLeague.Program"
