@@ -3,6 +3,17 @@ namespace Sedulous.Renderer.Probes;
 using Sedulous.Core.Mathematics;
 using Sedulous.Renderer;
 
+/// How often a reflection probe recaptures the scene.
+public enum ReflectionProbeUpdateMode : uint8
+{
+	/// Capture once on load, never update.
+	OnLoad,
+	/// Re-capture every frame (expensive).
+	EveryFrame,
+	/// Re-capture when manually requested.
+	Manual
+}
+
 /// Render data for a reflection probe. Not drawn — consumed by the probe
 /// capture system to determine which probes need cubemap capture this frame.
 ///
@@ -12,8 +23,8 @@ public class ReflectionProbeRenderData : RenderData
 	/// World-space position of the probe.
 	public Vector3 ProbePosition;
 
-	/// Capture update mode (0=OnLoad, 1=EveryFrame, 2=Manual).
-	public uint8 UpdateMode;
+	/// Capture update mode.
+	public ReflectionProbeUpdateMode UpdateMode;
 
 	/// Cubemap face resolution.
 	public uint16 CaptureResolution;

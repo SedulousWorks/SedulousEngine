@@ -2,17 +2,7 @@ namespace Sedulous.Engine.Render;
 
 using Sedulous.Engine.Core;
 using Sedulous.Inspection;
-
-/// How often a reflection probe recaptures the scene.
-enum ReflectionProbeUpdateMode : uint8
-{
-	/// Capture once on load, never update.
-	OnLoad,
-	/// Re-capture every frame (expensive).
-	EveryFrame,
-	/// Re-capture when manually requested.
-	Manual
-}
+using Sedulous.Renderer.Probes;
 
 /// Component for a reflection probe that captures the local environment
 /// into a cubemap for image-based lighting.

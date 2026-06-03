@@ -33,7 +33,7 @@ class ReflectionProbeComponentManager : ComponentManager<ReflectionProbeComponen
 			data.ProbePosition = worldMatrix.Translation;
 			data.Bounds = .(.Zero, .Zero); // Probes are not culled
 			data.Flags = .None;
-			data.UpdateMode = (uint8)probe.UpdateMode;
+			data.UpdateMode = probe.UpdateMode;
 			data.CaptureResolution = probe.CaptureResolution;
 			data.NearClip = probe.NearClip;
 			data.FarClip = probe.FarClip;

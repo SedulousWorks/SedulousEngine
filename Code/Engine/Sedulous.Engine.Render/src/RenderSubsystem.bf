@@ -688,8 +688,8 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 			}
 
 			// Check update mode
-			if (res.IsCaptured && probe.UpdateMode == 0) continue; // OnLoad — already captured
-			if (probe.UpdateMode == 2 && !res.NeedsCapture) continue; // Manual — not requested
+			if (res.IsCaptured && probe.UpdateMode == .OnLoad) continue;
+			if (probe.UpdateMode == .Manual && !res.NeedsCapture) continue;
 
 			// Determine which faces to capture this frame.
 			// OnLoad/Manual: all 6 faces at once (one-time cost).
@@ -697,7 +697,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 			int32 startFace = 0;
 			int32 faceCount = 6;
 
-			if (probe.UpdateMode == 1 && res.IsCaptured) // EveryFrame, already has initial capture
+			if (probe.UpdateMode == .EveryFrame && res.IsCaptured)
 			{
 				startFace = res.NextFace;
 				faceCount = 1;
@@ -722,7 +722,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 			// Convolve only when all 6 faces are complete (or on first full capture)
 			if (res.FacesCaptured >= 6)
 			{
-				if (probe.UpdateMode == 1 && res.IsCaptured)
+				if (probe.UpdateMode == .EveryFrame && res.IsCaptured)
 				{
 					// EveryFrame: fast mipmap-based filter (hardware bilinear downsample).
 					// Skips the 36-pass importance-sampled GGX convolution — generates
@@ -738,7 +738,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 			}
 
 			res.IsCaptured = true;
-			if (probe.UpdateMode != 1) // Not EveryFrame
+			if (probe.UpdateMode != .EveryFrame)
 				res.NeedsCapture = false;
 		}
 
@@ -766,7 +766,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 					// EveryFrame probes use captured cubemap directly as prefilter
 					// (no mip chain -> maxLod=0, sharp reflections only).
 					// OnLoad/Manual probes use the full GGX-convolved prefilter cubemap.
-					let useRawCapture = (closestProbe.UpdateMode == 1);
+					let useRawCapture = (closestProbe.UpdateMode == .EveryFrame);
 					let prefilterView = useRawCapture ? res.CapturedCubemapView : res.PrefilterCubemapView;
 					let maxLod = useRawCapture ? 0.0f : res.PrefilterMaxLod;
 					mRenderContext.IBLSystem.SetProbeIBL(
