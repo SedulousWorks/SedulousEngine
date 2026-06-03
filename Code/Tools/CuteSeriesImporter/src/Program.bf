@@ -16,6 +16,7 @@ class Program
 
 		let manifestPath = scope String();
 		String packFilter = null;
+		String outputRoot = null;
 
 		// Parse arguments
 		for (int i = 0; i < args.Count; i++)
@@ -23,6 +24,10 @@ class Program
 			if ((args[i] == "--pack" || args[i] == "-p") && i + 1 < args.Count)
 			{
 				packFilter = args[++i];
+			}
+			else if ((args[i] == "--output" || args[i] == "-o") && i + 1 < args.Count)
+			{
+				outputRoot = args[++i];
 			}
 			else if (manifestPath.IsEmpty)
 			{
@@ -54,6 +59,12 @@ class Program
 		{
 			importer.SetPackFilter(packFilter);
 			Console.WriteLine("Pack filter: {}", packFilter);
+		}
+
+		if (outputRoot != null)
+		{
+			importer.SetOutputRoot(outputRoot);
+			Console.WriteLine("Output root: {}", outputRoot);
 		}
 
 		if (importer.Run(manifestPath) case .Err)
