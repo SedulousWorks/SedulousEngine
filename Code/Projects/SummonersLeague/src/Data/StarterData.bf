@@ -176,7 +176,7 @@ static class StarterData
 		{
 			Id = "dragon_spark", Name = "Dragon Spark",
 			Element = .Fire, Rarity = .Rare,
-			Stats = .() { HP = 45, ATK = 18, DEF = 12, SPD = 14 },
+			Stats = .() { HP = 32, ATK = 18, DEF = 12, SPD = 14 },
 			Abilities = new .(db.GetAbility("basic_fire"), db.GetAbility("fireball")),
 			EvolvesInto = "dragon_fire",
 			ModelAsset = "Dragon Spark",
@@ -187,7 +187,7 @@ static class StarterData
 		{
 			Id = "dragon_fire", Name = "Dragon Fire",
 			Element = .Fire, Rarity = .Epic,
-			Stats = .() { HP = 60, ATK = 25, DEF = 16, SPD = 16 },
+			Stats = .() { HP = 42, ATK = 25, DEF = 16, SPD = 16 },
 			Abilities = new .(db.GetAbility("basic_fire"), db.GetAbility("fireball"), db.GetAbility("inferno")),
 			EvolvesInto = "dragon_inferno",
 			ModelAsset = "Dragon Fire",
@@ -198,7 +198,7 @@ static class StarterData
 		{
 			Id = "dragon_inferno", Name = "Dragon Inferno",
 			Element = .Fire, Rarity = .Legendary,
-			Stats = .() { HP = 80, ATK = 35, DEF = 20, SPD = 18 },
+			Stats = .() { HP = 55, ATK = 35, DEF = 20, SPD = 18 },
 			Abilities = new .(db.GetAbility("basic_fire"), db.GetAbility("fireball"), db.GetAbility("inferno")),
 			ModelAsset = "Dragon Inferno",
 			Description = "An ancient dragon of devastating power."
@@ -209,7 +209,7 @@ static class StarterData
 		{
 			Id = "seed", Name = "Seed",
 			Element = .Earth, Rarity = .Common,
-			Stats = .() { HP = 35, ATK = 10, DEF = 14, SPD = 10 },
+			Stats = .() { HP = 25, ATK = 10, DEF = 14, SPD = 10 },
 			Abilities = new .(db.GetAbility("basic_earth"), db.GetAbility("thorn_wall")),
 			EvolvesInto = "sprout",
 			ModelAsset = "Seed",
@@ -220,7 +220,7 @@ static class StarterData
 		{
 			Id = "sprout", Name = "Sprout",
 			Element = .Earth, Rarity = .Uncommon,
-			Stats = .() { HP = 50, ATK = 14, DEF = 18, SPD = 12 },
+			Stats = .() { HP = 35, ATK = 14, DEF = 18, SPD = 12 },
 			Abilities = new .(db.GetAbility("basic_earth"), db.GetAbility("thorn_wall"), db.GetAbility("bloom_heal")),
 			EvolvesInto = "bloom",
 			ModelAsset = "Sprout",
@@ -231,7 +231,7 @@ static class StarterData
 		{
 			Id = "bloom", Name = "Bloom",
 			Element = .Earth, Rarity = .Rare,
-			Stats = .() { HP = 70, ATK = 18, DEF = 24, SPD = 14 },
+			Stats = .() { HP = 48, ATK = 18, DEF = 24, SPD = 14 },
 			Abilities = new .(db.GetAbility("basic_earth"), db.GetAbility("thorn_wall"), db.GetAbility("bloom_heal")),
 			ModelAsset = "Bloom",
 			Description = "A fully bloomed flower with powerful defenses."
@@ -242,7 +242,7 @@ static class StarterData
 		{
 			Id = "dragon_water", Name = "Dragon Water",
 			Element = .Water, Rarity = .Rare,
-			Stats = .() { HP = 50, ATK = 16, DEF = 14, SPD = 15 },
+			Stats = .() { HP = 35, ATK = 16, DEF = 14, SPD = 15 },
 			Abilities = new .(db.GetAbility("basic_water"), db.GetAbility("frost_bite")),
 			EvolvesInto = "dragon_ice",
 			ModelAsset = "Dragon Water",
@@ -254,7 +254,7 @@ static class StarterData
 		{
 			Id = "cat_meow", Name = "Cat Meow",
 			Element = .Electric, Rarity = .Common,
-			Stats = .() { HP = 30, ATK = 12, DEF = 10, SPD = 18 },
+			Stats = .() { HP = 22, ATK = 12, DEF = 10, SPD = 18 },
 			Abilities = new .(db.GetAbility("basic_electric"), db.GetAbility("thunder_bolt")),
 			EvolvesInto = "cat_bolt",
 			ModelAsset = "Cat Meow",
@@ -266,7 +266,7 @@ static class StarterData
 		{
 			Id = "shade", Name = "Shade",
 			Element = .Dark, Rarity = .Common,
-			Stats = .() { HP = 32, ATK = 14, DEF = 10, SPD = 16 },
+			Stats = .() { HP = 23, ATK = 14, DEF = 10, SPD = 16 },
 			Abilities = new .(db.GetAbility("basic_dark"), db.GetAbility("shadow_curse")),
 			EvolvesInto = "shadow",
 			ModelAsset = "Shade",
@@ -278,7 +278,7 @@ static class StarterData
 		{
 			Id = "bat", Name = "Bat",
 			Element = .Wind, Rarity = .Common,
-			Stats = .() { HP = 28, ATK = 13, DEF = 9, SPD = 20 },
+			Stats = .() { HP = 20, ATK = 13, DEF = 9, SPD = 20 },
 			Abilities = new .(db.GetAbility("basic_wind"), db.GetAbility("gale_force")),
 			EvolvesInto = "vampire_bat",
 			ModelAsset = "Bat",
@@ -290,7 +290,7 @@ static class StarterData
 		{
 			Id = "angel", Name = "Angel",
 			Element = .Light, Rarity = .Epic,
-			Stats = .() { HP = 55, ATK = 15, DEF = 18, SPD = 16 },
+			Stats = .() { HP = 38, ATK = 15, DEF = 18, SPD = 16 },
 			Abilities = new .(db.GetAbility("basic_light"), db.GetAbility("divine_light")),
 			EvolvesInto = "angel_mage",
 			ModelAsset = "Angel",
@@ -302,7 +302,7 @@ static class StarterData
 		{
 			Id = "wolf_pup", Name = "Wolf Pup",
 			Element = .Neutral, Rarity = .Common,
-			Stats = .() { HP = 34, ATK = 13, DEF = 11, SPD = 15 },
+			Stats = .() { HP = 24, ATK = 13, DEF = 11, SPD = 15 },
 			Abilities = new .(db.GetAbility("basic_neutral")),
 			EvolvesInto = "wolf",
 			ModelAsset = "Wolf Pup",

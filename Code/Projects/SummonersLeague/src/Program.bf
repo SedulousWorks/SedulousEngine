@@ -2,6 +2,7 @@ namespace SummonersLeague;
 
 using System;
 using SummonersLeague.Data;
+using SummonersLeague.Battle;
 using System.Collections;
 
 class Program
@@ -57,6 +58,37 @@ class Program
 		Console.WriteLine("--- Dual Type Test (Dragon Nightfall: Dark/Fire) ---");
 		Console.WriteLine(scope $"  Wind vs Dark/Fire: {TypeChart.GetDualTypeMultiplier(.Wind, .Dark, .Fire)}* (should be 1.5 - SE vs Fire, neutral vs Dark)");
 		Console.WriteLine(scope $"  Water vs Dark/Fire: {TypeChart.GetDualTypeMultiplier(.Water, .Dark, .Fire)}* (should be 1.0 - neutral vs both)");
+
+		// ==================== Battle Test ====================
+		Console.WriteLine("=== Battle Test ===\n");
+
+		let battleState = scope BattleState();
+
+		// Team A: Dragon Spark (Fire) + Seed (Earth) + Cat Meow (Electric)
+		battleState.AddToTeamA(db.GetMonster("dragon_spark"), 10);
+		battleState.AddToTeamA(db.GetMonster("seed"), 10);
+		battleState.AddToTeamA(db.GetMonster("cat_meow"), 10);
+
+		// Team B: Shade (Dark) + Bat (Wind) + Wolf Pup (Neutral)
+		battleState.AddToTeamB(db.GetMonster("shade"), 10);
+		battleState.AddToTeamB(db.GetMonster("bat"), 10);
+		battleState.AddToTeamB(db.GetMonster("wolf_pup"), 10);
+
+		Console.WriteLine("Team A:");
+		for (let m in battleState.TeamA)
+			Console.WriteLine(scope $"  {m.Def.Name} Lv{m.Level} [{m.Def.Element}] HP:{m.MaxHP} ATK:{m.ATK} DEF:{m.DEF} SPD:{m.SPD}");
+		Console.WriteLine("Team B:");
+		for (let m in battleState.TeamB)
+			Console.WriteLine(scope $"  {m.Def.Name} Lv{m.Level} [{m.Def.Element}] HP:{m.MaxHP} ATK:{m.ATK} DEF:{m.DEF} SPD:{m.SPD}");
+		Console.WriteLine();
+
+		// Both sides controlled by AI
+		let aiA = scope AIParticipant();
+		let aiB = scope AIParticipant();
+
+		let result = BattleRunner.RunBattle(battleState, aiA, aiB);
+		BattleRunner.PrintBattleLog(result);
+		delete result;
 
 		Console.Read();
 	}
