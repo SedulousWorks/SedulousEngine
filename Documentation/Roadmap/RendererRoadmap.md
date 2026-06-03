@@ -593,9 +593,6 @@ a fragment.
   across multiple overlapping probes was considered and dropped in favour
   of simpler closest-probe selection. Acceptable for typical "one probe
   per room" layouts; revisit for scenes with overlapping influence zones
-- **Per-frame full re-capture per dirty probe** - cheaper than round-robin
-  for stationary probes but worth a dirty-flag refresh policy for scenes
-  with many probes
 - **No baked probes yet** - all captures are runtime. Baked cubemap +
   irradiance assets would let static scenes skip the per-frame capture
   cost. Deferred until a real use case
@@ -603,6 +600,36 @@ a fragment.
   samples produces visible importance-sample pattern when a tiny bright
   source (sun disc) is in the source cubemap. Standard fixes: HDR clamp
   before accumulation, or bump sample count
+
+### Probe capture performance optimizations
+
+EveryFrame probe capture at 128x128 adds ~48 GPU passes per frame
+(6 faces × 2 passes + 6 blits + 36 convolution), dropping FPS from ~60
+to ~30 in the sandbox scene. Four independent optimizations to address this:
+
+1. **Batch all 6 faces in one render graph Execute** — currently each face
+   gets its own `BeginFrame`/`Execute`/`EndFrame` cycle (6 graph compiles +
+   6 executions). Importing all 6 face+depth textures into one graph and
+   adding 12 render passes (6 forward + 6 sky) eliminates 5 compile/execute
+   cycles. Reduces fixed overhead, doesn't change GPU fill work. Compatible
+   with all other optimizations.
+
+2. **Spread capture across frames (round-robin)** — render 1 face per frame
+   instead of all 6. Full cubemap updates every 6 frames. ezEngine does this
+   (configurable max faces per frame). Reduces per-frame GPU work by ~6x at
+   the cost of 6-frame latency for reflection updates. Combined with option 1:
+   1 face per Execute, 1 graph compile per frame.
+
+3. **Skip convolution on EveryFrame probes** — use the raw captured cubemap
+   directly as prefilter mip 0, skip irradiance/prefilter convolution
+   entirely. Sharp reflections update every frame; rough reflections stay
+   stale. Re-convolve only every N frames (e.g., every 6th frame when the
+   full cubemap is complete in round-robin mode). Eliminates the 36
+   convolution passes most frames.
+
+4. **Lower capture resolution** — 64x64 instead of 128x128 per face. Cuts
+   fill rate by 4x. Reflections become blurrier but for rough surfaces this
+   is acceptable. Could be a per-probe quality setting.
 
 ## Priority Order
 

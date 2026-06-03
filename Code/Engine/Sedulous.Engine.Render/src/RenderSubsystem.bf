@@ -691,17 +691,40 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 			if (res.IsCaptured && probe.UpdateMode == 0) continue; // OnLoad — already captured
 			if (probe.UpdateMode == 2 && !res.NeedsCapture) continue; // Manual — not requested
 
-			// Capture the probe cubemap
-			mProbePipeline.Capture(
-				encoder, probe.ProbePosition, probe.NearClip, probe.FarClip,
-				(uint32)probe.CaptureResolution, res.CapturedFaceViews,
-				frameIndex, pipeline.LightBuffer, mainView, skyPass);
+			// Determine which faces to capture this frame.
+			// OnLoad/Manual: all 6 faces at once (one-time cost).
+			// EveryFrame: 1 face per frame (round-robin, full cubemap every 6 frames).
+			int32 startFace = 0;
+			int32 faceCount = 6;
+
+			if (probe.UpdateMode == 1 && res.IsCaptured) // EveryFrame, already has initial capture
+			{
+				startFace = res.NextFace;
+				faceCount = 1;
+			}
+
+			for (int32 i = 0; i < faceCount; i++)
+			{
+				let faceIdx = (startFace + i) % 6;
+				mProbePipeline.CaptureFace(
+					encoder, probe.ProbePosition, probe.NearClip, probe.FarClip,
+					(uint32)probe.CaptureResolution, (int32)faceIdx, res.CapturedFaceViews[faceIdx],
+					frameIndex, pipeline.LightBuffer, mainView, skyPass);
+			}
+
+			// Advance round-robin counter
+			res.NextFace = (int32)((startFace + faceCount) % 6);
+			res.FacesCaptured += faceCount;
 
 			// Transition captured cubemap to ShaderRead for IBL convolution
 			encoder.TransitionTexture(res.CapturedCubemap, .RenderTarget, .ShaderRead);
 
-			// Convolve irradiance + prefilter from captured cubemap
-			ConvolveProbe(encoder, res, frameIndex);
+			// Convolve only when all 6 faces are complete (or on first full capture)
+			if (res.FacesCaptured >= 6)
+			{
+				ConvolveProbe(encoder, res, frameIndex);
+				res.FacesCaptured = 0;
+			}
 
 			res.IsCaptured = true;
 			if (probe.UpdateMode != 1) // Not EveryFrame

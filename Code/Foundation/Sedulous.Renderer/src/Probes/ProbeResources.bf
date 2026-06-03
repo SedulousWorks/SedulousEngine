@@ -32,8 +32,10 @@ class ProbeResources
 
 	public uint32 FaceSize;
 	public float PrefilterMaxLod;
-	public bool IsCaptured = false;    // True after first successful capture
+	public bool IsCaptured = false;    // True after first successful capture (all 6 faces done)
 	public bool NeedsCapture = true;   // True when capture is pending
+	public int32 NextFace = 0;         // Round-robin face index (0-5) for EveryFrame probes
+	public int32 FacesCaptured = 0;    // Number of faces captured in current cycle (0-6)
 
 	/// Create all GPU resources for this probe.
 	public Result<void> Create(IDevice device, uint32 faceSize)

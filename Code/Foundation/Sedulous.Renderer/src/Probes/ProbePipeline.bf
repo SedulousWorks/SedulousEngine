@@ -127,22 +127,21 @@ public class ProbePipeline : IRenderingPipeline, IDisposable
 		frame.CurrentSceneOffset = 0;
 	}
 
-	/// Captures a probe cubemap. Renders 6 faces with forward + sky, blits each
-	/// with horizontal flip into the output cubemap layers.
-	public void Capture(
+	/// Captures one cubemap face. Call once per face; the caller controls which
+	/// faces are rendered each frame (all 6 for OnLoad, 1 for round-robin).
+	/// A single render graph Execute handles forward + sky for the face.
+	public void CaptureFace(
 		ICommandEncoder encoder,
 		Vector3 probePosition,
 		float nearClip, float farClip,
 		uint32 faceSize,
-		ITextureView[6] outputFaceViews,
+		int32 faceIndex,
+		ITextureView outputFaceView,
 		int32 frameIndex,
 		LightBuffer lightBuffer,
 		RenderView mainView,
 		SkyPass skyPass)
 	{
-		using (Profiler.Begin("ProbePipeline.Capture"))
-		{
-
 		EnsureFaceTextures(faceSize);
 		if (mFaceColor == null || mFaceDepth == null) return;
 
@@ -158,7 +157,7 @@ public class ProbePipeline : IRenderingPipeline, IDisposable
 		// Build frame bind group with sky IBL (not probe IBL — prevents feedback)
 		RebuildFrameBindGroup(frame, frameIndex, lightBuffer);
 
-		// Save main view camera state (restored after all faces)
+		// Save main view camera state (restored after rendering)
 		let savedViewMatrix = mainView.ViewMatrix;
 		let savedProjMatrix = mainView.ProjectionMatrix;
 		let savedVPMatrix = mainView.ViewProjectionMatrix;
@@ -169,61 +168,55 @@ public class ProbePipeline : IRenderingPipeline, IDisposable
 		let savedWidth = mainView.Width;
 		let savedHeight = mainView.Height;
 
-		for (int face = 0; face < 6; face++)
+		let viewMatrix = Matrix.CreateLookAt(probePosition, probePosition + forwards[faceIndex], ups[faceIndex]);
+		let vpMatrix = viewMatrix * projMatrix;
+
+		ConfigureFaceView(mainView, viewMatrix, projMatrix, vpMatrix, probePosition,
+			nearClip, farClip, faceSize, frameIndex);
+		frame.CurrentSceneOffset = WriteSceneUniforms(frame, mainView);
+
+		// --- Render forward + sky into intermediate face texture ---
+		mRenderGraph.SetOutputSize(faceSize, faceSize);
+		mRenderGraph.BeginFrame(frameSlot);
+
+		let colorHandle = mRenderGraph.ImportTarget("ProbeColor", mFaceColor, mFaceColorView);
+		let depthHandle = mRenderGraph.ImportTarget("ProbeDepth", mFaceDepth, mFaceDepthView);
+
+		let capturedFrame = frame;
+		let capturedSelf = this;
+		let capturedFaceView = mainView;
+
+		mRenderGraph.AddRenderPass("ProbeForward", scope [&] (builder) => {
+			builder
+				.SetColorTarget(0, colorHandle, .Clear, .Store, ClearColor(0, 0, 0, 1))
+				.SetDepthTarget(depthHandle, .Clear, .Store, 1.0f)
+				.NeverCull()
+				.SetExecute(new [=] (passEncoder) => {
+					capturedSelf.ExecuteForward(passEncoder, capturedFaceView, capturedFrame);
+				});
+		});
+
+		if (skyPass != null)
 		{
-			let viewMatrix = Matrix.CreateLookAt(probePosition, probePosition + forwards[face], ups[face]);
-			let vpMatrix = viewMatrix * projMatrix;
-
-			// Configure main view for this face (restored after all faces)
-			ConfigureFaceView(mainView, viewMatrix, projMatrix, vpMatrix, probePosition,
-				nearClip, farClip, faceSize, frameIndex);
-			frame.CurrentSceneOffset = WriteSceneUniforms(frame, mainView);
-
-			// --- Render forward + sky into intermediate face texture ---
-			mRenderGraph.SetOutputSize(faceSize, faceSize);
-			mRenderGraph.BeginFrame(frameSlot);
-
-			let colorHandle = mRenderGraph.ImportTarget("ProbeColor", mFaceColor, mFaceColorView);
-			let depthHandle = mRenderGraph.ImportTarget("ProbeDepth", mFaceDepth, mFaceDepthView);
-
-			// Forward opaque pass
-			let capturedFrame = frame;
-			let capturedSelf = this;
-			let capturedFaceView = mainView;
-
-			mRenderGraph.AddRenderPass("ProbeForward", scope [&] (builder) => {
+			let capturedSkyPass = skyPass;
+			mRenderGraph.AddRenderPass("ProbeSky", scope [&] (builder) => {
 				builder
-					.SetColorTarget(0, colorHandle, .Clear, .Store, ClearColor(0, 0, 0, 1))
-					.SetDepthTarget(depthHandle, .Clear, .Store, 1.0f)
+					.SetColorTarget(0, colorHandle, .Load, .Store)
+					.SetReadOnlyDepthTarget(depthHandle)
 					.NeverCull()
 					.SetExecute(new [=] (passEncoder) => {
-						capturedSelf.ExecuteForward(passEncoder, capturedFaceView, capturedFrame);
+						capturedSelf.ExecuteSky(passEncoder, capturedFaceView, capturedFrame, capturedSkyPass);
 					});
 			});
-
-			// Sky pass (renders at far depth where nothing was drawn)
-			if (skyPass != null)
-			{
-				let capturedSkyPass = skyPass;
-				mRenderGraph.AddRenderPass("ProbeSky", scope [&] (builder) => {
-					builder
-						.SetColorTarget(0, colorHandle, .Load, .Store)
-						.SetReadOnlyDepthTarget(depthHandle)
-						.NeverCull()
-						.SetExecute(new [=] (passEncoder) => {
-							capturedSelf.ExecuteSky(passEncoder, capturedFaceView, capturedFrame, capturedSkyPass);
-						});
-				});
-			}
-
-			mRenderGraph.Execute(encoder);
-			mRenderGraph.EndFrame();
-
-			// --- Blit face to cubemap layer with horizontal flip ---
-			encoder.TransitionTexture(mFaceColor, .RenderTarget, .ShaderRead);
-			BlitFaceToLayer(encoder, mFaceColorView, outputFaceViews[face], faceSize);
-			encoder.TransitionTexture(mFaceColor, .ShaderRead, .RenderTarget);
 		}
+
+		mRenderGraph.Execute(encoder);
+		mRenderGraph.EndFrame();
+
+		// --- Blit face to cubemap layer with horizontal flip ---
+		encoder.TransitionTexture(mFaceColor, .RenderTarget, .ShaderRead);
+		BlitFaceToLayer(encoder, mFaceColorView, outputFaceView, faceSize);
+		encoder.TransitionTexture(mFaceColor, .ShaderRead, .RenderTarget);
 
 		// Restore main view camera state
 		mainView.ViewMatrix = savedViewMatrix;
@@ -235,8 +228,6 @@ public class ProbePipeline : IRenderingPipeline, IDisposable
 		mainView.FarPlane = savedFar;
 		mainView.Width = savedWidth;
 		mainView.Height = savedHeight;
-
-		} // ProbePipeline.Capture scope
 	}
 
 	// ==================== IRenderingPipeline ====================
