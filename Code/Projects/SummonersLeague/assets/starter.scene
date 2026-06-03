@@ -1,0 +1,31 @@
+uint64 %_type {13717371974708956927}
+int32 %_version {1}
+string %_id {"47ad7a71-bc37-4b61-9a48-60bafa89ad5c"}
+string %_name {"starter"}
+string %_sourcePath {"starter.scene"}
+Arr_ %Entities {
+	int32 %_count {0}
+}
+Arr_ %PrefabInstances {
+	int32 %_count {0}
+}
+Arr_ %Modules {
+	int32 %_count {1}
+	Obj_ {
+		string %TypeId {"Sedulous.RenderSettings"}
+		int32 %Version {1}
+		Obj_ %Data {
+			Obj_ %SkyTextureRef {
+				string %_id {"00000000-0000-0000-0000-000000000000"}
+				string %path {""}
+			}
+			float %SkyIntensity {1}
+			Obj_ %AmbientColor {
+				float %X {0.100000001}
+				float %Y {0.100000001}
+				float %Z {0.150000006}
+			}
+			float %Exposure {1}
+		}
+	}
+}

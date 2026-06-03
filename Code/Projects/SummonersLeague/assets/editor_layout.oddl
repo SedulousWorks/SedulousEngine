@@ -1,0 +1,26 @@
+int32 %type {0}
+float %ratio {0.699999988}
+int32 %direction {1}
+Obj_ %first {
+	int32 %type {1}
+	Arr_ %panels {
+		int32 %_count {1}
+		Obj_ {
+			string %id {"page:project://starter.scene"}
+		}
+	}
+	int32 %activeTab {0}
+}
+Obj_ %second {
+	int32 %type {1}
+	Arr_ %panels {
+		int32 %_count {2}
+		Obj_ {
+			string %id {"assets"}
+		}
+		Obj_ {
+			string %id {"console"}
+		}
+	}
+	int32 %activeTab {0}
+}

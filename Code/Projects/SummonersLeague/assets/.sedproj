@@ -1,0 +1,10 @@
+Arr_ %Settings {
+	int32 %_count {0}
+}
+Arr_ %OpenPages {
+	int32 %_count {1}
+	Obj_ {
+		string %uri {"project://starter.scene"}
+	}
+}
+int32 %ActivePageIndex {0}
