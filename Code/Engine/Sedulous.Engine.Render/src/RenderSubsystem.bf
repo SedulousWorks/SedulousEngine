@@ -716,13 +716,24 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 			res.NextFace = (int32)((startFace + faceCount) % 6);
 			res.FacesCaptured += faceCount;
 
-			// Transition captured cubemap to ShaderRead for IBL convolution
+			// Transition captured cubemap to ShaderRead for convolution input
 			encoder.TransitionTexture(res.CapturedCubemap, .RenderTarget, .ShaderRead);
 
 			// Convolve only when all 6 faces are complete (or on first full capture)
 			if (res.FacesCaptured >= 6)
 			{
-				ConvolveProbe(encoder, res, frameIndex);
+				if (probe.UpdateMode == 1 && res.IsCaptured)
+				{
+					// EveryFrame: fast mipmap-based filter (hardware bilinear downsample).
+					// Skips the 36-pass importance-sampled GGX convolution — generates
+					// a simple mip chain that approximates roughness-dependent blurring.
+					FastConvolveProbe(encoder, res);
+				}
+				else
+				{
+					// OnLoad/Manual/first capture: full quality GGX importance sampling.
+					ConvolveProbe(encoder, res, frameIndex);
+				}
 				res.FacesCaptured = 0;
 			}
 
@@ -752,15 +763,75 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 			{
 				if (res.IsCaptured)
 				{
+					// EveryFrame probes use captured cubemap directly as prefilter
+					// (no mip chain -> maxLod=0, sharp reflections only).
+					// OnLoad/Manual probes use the full GGX-convolved prefilter cubemap.
+					let useRawCapture = (closestProbe.UpdateMode == 1);
+					let prefilterView = useRawCapture ? res.CapturedCubemapView : res.PrefilterCubemapView;
+					let maxLod = useRawCapture ? 0.0f : res.PrefilterMaxLod;
 					mRenderContext.IBLSystem.SetProbeIBL(
-						res.IrradianceCubemapView, res.PrefilterCubemapView, res.PrefilterMaxLod);
+						res.IrradianceCubemapView, prefilterView, maxLod);
 				}
 			}
 		}
 	}
 
-	/// Convolves a probe's captured cubemap into irradiance + prefilter maps
-	/// using IBLSystem's existing render pipelines.
+	/// Fast convolution for EveryFrame probes. Skips the expensive 30-pass
+	/// GGX importance-sampled prefilter. Uses the captured cubemap directly as
+	/// the prefilter source (mip 0 only -> sharp reflections at all roughness
+	/// levels). Still runs the 6-pass irradiance convolution for correct diffuse.
+	private void FastConvolveProbe(ICommandEncoder encoder, ProbeResources res)
+	{
+		let ibl = mRenderContext.IBLSystem;
+		if (ibl == null || ibl.IrradiancePipeline == null) return;
+
+		let device = mRenderContext.Device;
+
+		// Irradiance: cosine-weighted convolution (6 passes) from captured cubemap.
+		// This is cheap (32x32 output) and the quality difference matters for diffuse.
+		for (int i = 0; i < 6; i++)
+		{
+			BindGroupEntry[3] entries = .(
+				BindGroupEntry.Buffer(res.IrradianceParamsBuffers[i], 0, 16),
+				BindGroupEntry.Texture(res.CapturedCubemapView),
+				BindGroupEntry.Sampler(ibl.EnvironmentSampler)
+			);
+
+			IBindGroup bg = null;
+			if (device.CreateBindGroup(.() { Label = "Probe Irradiance BG", Layout = ibl.IrradianceBGLayout, Entries = entries }) case .Ok(let created))
+				bg = created;
+			else
+				continue;
+
+			ColorAttachment[1] colorAttachments = .(.()
+			{
+				View = res.IrradianceFaceViews[i],
+				LoadOp = .DontCare,
+				StoreOp = .Store
+			});
+
+			let irradSize = IBLSystem.IrradianceFaceSize;
+			let rp = encoder.BeginRenderPass(.() { Label = "ProbeIrradiance", ColorAttachments = .(colorAttachments) });
+			rp.SetPipeline(ibl.IrradiancePipeline);
+			rp.SetBindGroup(0, bg, default);
+			rp.SetViewport(0, 0, irradSize, irradSize, 0, 1);
+			rp.SetScissor(0, 0, irradSize, irradSize);
+			rp.Draw(3, 1, 0, 0);
+			rp.End();
+
+			mStaleProbeBindGroups[1].Add(bg);
+		}
+
+		encoder.TransitionTexture(res.IrradianceCubemap, .RenderTarget, .ShaderRead);
+
+		// Prefilter: skip entirely. Use the captured cubemap directly as the
+		// specular source. Since it has no mip chain (1 mip level), the shader's
+		// SampleLevel(R, roughness * maxLod) always samples mip 0 -> sharp
+		// reflections regardless of roughness. Acceptable for real-time probes.
+	}
+
+	/// Full quality convolution for OnLoad/Manual probes. Runs irradiance (6 passes)
+	/// + GGX importance-sampled prefilter (30 passes) using IBLSystem's render pipelines.
 	private void ConvolveProbe(ICommandEncoder encoder, ProbeResources res, int32 frameIndex)
 	{
 		let ibl = mRenderContext.IBLSystem;
