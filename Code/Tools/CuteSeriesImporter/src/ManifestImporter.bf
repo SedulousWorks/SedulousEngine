@@ -36,12 +36,21 @@ class ManifestImporter
 	private int mTotalSkipped;
 	private bool mDebugFirstOnly;
 	private String mPackFilter ~ delete _;  // null = all packs
+	private String mOutputRootOverride ~ delete _;  // null = derive from sourceRoot
 
 	/// Sets a pack name filter. Only the matching pack will be imported.
 	public void SetPackFilter(StringView packName)
 	{
 		delete mPackFilter;
 		mPackFilter = new String(packName);
+	}
+
+	/// Sets an explicit output root directory. If not set, output is derived
+	/// from the source root (sourceRoot/../CuteSeriesOutput).
+	public void SetOutputRoot(StringView outputRoot)
+	{
+		delete mOutputRootOverride;
+		mOutputRootOverride = new String(outputRoot);
 	}
 
 	public Result<void> Run(StringView manifestPath)
@@ -76,7 +85,10 @@ class ManifestImporter
 			return .Err;
 		}
 
-		Path.InternalCombine(mOutputRoot, mSourceRoot, "..", "CuteSeriesOutput");
+		if (mOutputRootOverride != null)
+			mOutputRoot.Set(mOutputRootOverride);
+		else
+			Path.InternalCombine(mOutputRoot, mSourceRoot, "..", "CuteSeriesOutput");
 
 		Console.WriteLine("Source root: {}", mSourceRoot);
 		Console.WriteLine("Output root: {}", mOutputRoot);
