@@ -72,4 +72,15 @@ class AnimationLayer
 			return States[index];
 		return null;
 	}
+
+	/// Finds a state by name, returning its index or -1 if not found.
+	public int32 FindStateIndex(StringView name)
+	{
+		for (int32 i = 0; i < States.Count; i++)
+		{
+			if (States[i].Name == name)
+				return i;
+		}
+		return -1;
+	}
 }
