@@ -26,6 +26,9 @@ class SkinningSystem : IDisposable
 	/// (different bone transforms -> different output).
 	private Dictionary<SkinningKey, SkinningInstance> mInstances = new .() ~ delete _;
 
+	/// Deferred bind group destruction (double-buffered for MaxFramesInFlight).
+	private List<IBindGroup>[2] mStaleBindGroups = .(new .(), new .()) ~ { delete _[0]; delete _[1]; };
+
 	/// Output vertex stride (standard Mesh layout: 48 bytes).
 	private const uint32 OutputVertexStride = 48;
 
@@ -94,10 +97,11 @@ class SkinningSystem : IDisposable
 		if (mInstances.TryGetValue(key, let existing))
 		{
 			existing.Active = true;
-			// Update bone buffer if changed
-			if (existing.BoneBufferHandle != boneBufferHandle)
+			// Update bone buffer or bone count if changed
+			if (existing.BoneBufferHandle != boneBufferHandle || existing.BoneCount != boneCount)
 			{
 				existing.BoneBufferHandle = boneBufferHandle;
+				existing.BoneCount = boneCount;
 				existing.BindGroupDirty = true;
 			}
 			return existing;
@@ -166,7 +170,10 @@ class SkinningSystem : IDisposable
 		if (instance.BindGroupDirty || instance.BindGroup == null)
 		{
 			if (instance.BindGroup != null)
-				mDevice.DestroyBindGroup(ref instance.BindGroup);
+			{
+				mStaleBindGroups[1].Add(instance.BindGroup);
+				instance.BindGroup = null;
+			}
 
 			let boneBufferSize = (uint64)instance.BoneCount * (uint64)sizeof(Matrix) * 2; // current + prev
 			let sourceSize = (uint64)(instance.VertexCount * 72); // SkinnedVertex stride
@@ -246,12 +253,28 @@ class SkinningSystem : IDisposable
 	/// Inactive instances can be cleaned up after N frames.
 	public void BeginFrame()
 	{
+		// Flush stale bind groups (2+ frames old, safe to destroy)
+		for (var bg in mStaleBindGroups[0])
+			mDevice.DestroyBindGroup(ref bg);
+		mStaleBindGroups[0].Clear();
+		let temp = mStaleBindGroups[0];
+		mStaleBindGroups[0] = mStaleBindGroups[1];
+		mStaleBindGroups[1] = temp;
+
 		for (let kv in mInstances)
 			kv.value.Active = false;
 	}
 
 	public void Dispose()
 	{
+		// Flush all deferred bind groups
+		for (int s = 0; s < 2; s++)
+		{
+			for (var bg in mStaleBindGroups[s])
+				mDevice.DestroyBindGroup(ref bg);
+			mStaleBindGroups[s].Clear();
+		}
+
 		for (let kv in mInstances)
 		{
 			kv.value.Release(mDevice);
