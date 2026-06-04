@@ -33,6 +33,9 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 	/// Shared resource resolver (set by RenderSubsystem).
 	public RenderResourceResolver Resolver { get; set; }
 
+	/// Frame counter for deferred bone buffer deletion.
+	private uint64 mFrameCounter;
+
 	/// Per-component resolve state, keyed by entity handle.
 	private Dictionary<EntityHandle, SkinnedMeshResolveState> mResolveStates = new .() ~ {
 		for (let kv in _)
@@ -145,6 +148,8 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 	/// Bind-pose is uploaded once during resource resolution for editor visibility.
 	private void UploadBoneMatrices(float deltaTime)
 	{
+		mFrameCounter++;
+
 		for (let comp in ActiveComponents)
 		{
 			if (!comp.IsActive)
@@ -181,16 +186,40 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 					let boneBuffer = GPUResources.GetBoneBuffer(comp.BoneBufferHandle);
 					if (boneBuffer != null && boneBuffer.Buffer != null)
 					{
-						let matrixSize = (uint64)(currentMatrices.Length * sizeof(Matrix));
+						// If the bone count changed (e.g., skeleton assigned in editor),
+						// the existing buffer is too small. Recreate it.
+						if (currentMatrices.Length > boneBuffer.BoneCount)
+						{
+							GPUResources.ReleaseBoneBuffer(comp.BoneBufferHandle, mFrameCounter);
+							if (GPUResources.CreateBoneBuffer((uint16)currentMatrices.Length) case .Ok(let newHandle))
+							{
+								comp.BoneBufferHandle = newHandle;
+								// Invalidate the skinning instance so it picks up the new bone buffer
+								comp.ResolveDirty = true;
+							}
+							else
+								continue;
 
-						// Current frame matrices at offset 0
-						TransferHelper.WriteMappedBuffer(boneBuffer.Buffer, 0,
-							Span<uint8>((uint8*)currentMatrices.Ptr, (int)matrixSize));
+							let newBoneBuffer = GPUResources.GetBoneBuffer(comp.BoneBufferHandle);
+							if (newBoneBuffer == null || newBoneBuffer.Buffer == null)
+								continue;
 
-						// Previous frame matrices at offset matrixSize
-						if (prevMatrices.Length > 0)
-							TransferHelper.WriteMappedBuffer(boneBuffer.Buffer, matrixSize,
-								Span<uint8>((uint8*)prevMatrices.Ptr, (int)matrixSize));
+							let matrixSize = (uint64)(currentMatrices.Length * sizeof(Matrix));
+							TransferHelper.WriteMappedBuffer(newBoneBuffer.Buffer, 0,
+								Span<uint8>((uint8*)currentMatrices.Ptr, (int)matrixSize));
+							if (prevMatrices.Length > 0)
+								TransferHelper.WriteMappedBuffer(newBoneBuffer.Buffer, matrixSize,
+									Span<uint8>((uint8*)prevMatrices.Ptr, (int)matrixSize));
+						}
+						else
+						{
+							let matrixSize = (uint64)(currentMatrices.Length * sizeof(Matrix));
+							TransferHelper.WriteMappedBuffer(boneBuffer.Buffer, 0,
+								Span<uint8>((uint8*)currentMatrices.Ptr, (int)matrixSize));
+							if (prevMatrices.Length > 0)
+								TransferHelper.WriteMappedBuffer(boneBuffer.Buffer, matrixSize,
+									Span<uint8>((uint8*)prevMatrices.Ptr, (int)matrixSize));
+						}
 					}
 				}
 			}
