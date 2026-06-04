@@ -1,10 +1,13 @@
 int32 %type {0}
-float %ratio {0.699999988}
+float %ratio {0.650473952}
 int32 %direction {1}
 Obj_ %first {
 	int32 %type {1}
 	Arr_ %panels {
-		int32 %_count {0}
+		int32 %_count {1}
+		Obj_ {
+			string %id {"page:project://Sandbox.scene"}
+		}
 	}
 	int32 %activeTab {0}
 }
