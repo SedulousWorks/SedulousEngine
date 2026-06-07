@@ -1,0 +1,231 @@
+/* Breeze Dark theme for Sedulous.GUI
+ * Inspired by KDE Breeze Dark color scheme.
+ * Palette variables are pre-set by the loader.
+ */
+
+@palette breeze {
+	primary:        #3daee9;
+	primary-accent: #3daee9;
+	background:     #232629;
+	surface:        #31363b;
+	surface-bright: #30353a;
+	border:         #6b6f73;
+	text:           #eff0f1;
+	text-dim:       #898b8d;
+	error:          #ff4040;
+	success:        #40ff40;
+	warning:        #ffff40;
+}
+
+/* === Global defaults === */
+
+View {
+	text-color: $text;
+	font-size: 14;
+}
+
+/* === Button === */
+
+ButtonBase {
+	background: state-list(
+		normal=rounded-rect(#3b4046, radius=2, border=#6b6f73, border-width=1),
+		hover=rounded-rect(#3b4046, radius=2, border=#3daee9, border-width=1),
+		pressed=rounded-rect(#3daee9, radius=2, border=#3daee9, border-width=1),
+		focused=rounded-rect(#3b4046, radius=2, border=#3daee9, border-width=1),
+		disabled=rounded-rect(#2e3338, radius=2, border=#43474c, border-width=1)
+	);
+	text-color: $text;
+	padding: 5 10;
+	corner-radius: 2;
+}
+
+ButtonBase:disabled {
+	text-color: #727679;
+}
+
+/* === Panel === */
+
+.panel {
+	background: rounded-rect($surface, radius=2, border=$border, border-width=1);
+}
+
+/* === Label === */
+
+.label {
+	text-color: $text;
+}
+
+.label-dim {
+	text-color: $text-dim;
+}
+
+/* === EditText === */
+
+EditText {
+	background: rounded-rect($background, radius=2, border=$border, border-width=1);
+	text-color: $text;
+	placeholder-color: $text-dim;
+	font-size: 14;
+	padding: 5 6;
+	cursor-color: $primary;
+	selection-color: rgba(61, 174, 233, 0.4);
+	corner-radius: 2;
+}
+
+/* === NumericField === */
+
+NumericField {
+	background: rounded-rect($background, radius=2, border=$border, border-width=1);
+	text-color: $text;
+	placeholder-color: $text-dim;
+	font-size: 14;
+	padding: 5 6;
+	cursor-color: $primary;
+	selection-color: rgba(61, 174, 233, 0.4);
+	corner-radius: 2;
+	spin-up-drawable: state-rounded(#3a3f44, radius=2);
+	spin-down-drawable: state-rounded(#3a3f44, radius=2);
+}
+
+/* === CheckBox === */
+
+CheckBox {
+	box-drawable: rounded-rect($background, radius=2, border=$border, border-width=1);
+	checked-background: rounded-rect($primary, radius=2, border=$primary, border-width=1);
+	checkmark-icon: svg(checkmark);
+	box-size: 18;
+	spacing: 6;
+}
+
+/* === RadioButton === */
+
+RadioButton {
+	box-drawable: rounded-rect($background, radius=9, border=$border, border-width=1);
+	checked-background: rounded-rect($primary, radius=9, border=$primary, border-width=1);
+	radio-mark-icon: svg(radio-mark-round);
+}
+
+/* === Slider === */
+
+Slider {
+	track-drawable: rounded-rect(#676a6e, radius=2);
+	fill-drawable: rounded-rect($primary, radius=2);
+	thumb-drawable: rounded-rect($surface, radius=8, border=#787b80, border-width=1);
+	thumb-size: 16;
+	track-height: 4;
+}
+
+/* === ProgressBar === */
+
+ProgressBar {
+	track-drawable: rounded-rect(#676a6e, radius=2);
+	fill-drawable: rounded-rect($primary, radius=2);
+}
+
+/* === ToggleSwitch === */
+
+ToggleSwitch {
+	track-drawable: rounded-rect($surface, radius=12, border=$border, border-width=1);
+	track-on-drawable: rounded-rect($primary, radius=12, border=$primary, border-width=1);
+	knob-drawable: rounded-rect(#eff0f1, radius=10);
+}
+
+/* === ComboBox === */
+
+ComboBox {
+	background: rounded-rect($surface-bright, radius=2, border=$border, border-width=1);
+	arrow-color: #b6bbc2;
+	corner-radius: 2;
+}
+
+/* === ScrollBar === */
+
+ScrollBar {
+	track-drawable: color(rgba(55, 58, 61, 0.6));
+	thumb-drawable: rounded-rect(#4085a9, radius=3);
+}
+
+/* === Separator === */
+
+Separator {
+	border-color: $surface;
+}
+
+/* === Expander === */
+
+Expander {
+	header-drawable: rounded-rect(#2b3034, radius=2);
+	header-hover-drawable: rounded-rect(#334e5e, radius=2);
+	arrow-color: #b6bbc2;
+	chevron-expanded-icon: svg(chevron-down);
+	chevron-collapsed-icon: svg(chevron-right);
+}
+
+/* === TabView === */
+
+TabView {
+	strip-drawable: color(#2b3034);
+	content-drawable: color($surface);
+	active-tab-drawable: color($surface);
+	hover-tab-drawable: color(#334e5e);
+	border-color: #616569;
+	accent-color: $primary;
+	active-tab-text-color: white;
+	inactive-tab-text-color: #c0c5cc;
+	hover-tab-text-color: white;
+	close-button-color: #909396;
+	close-button-hover-color: #863d47;
+	close-icon: svg(close);
+}
+
+/* === ContextMenu === */
+
+.contextmenu {
+	background: rounded-rect(#2d3136, radius=2, border=#616569, border-width=1);
+	menu-item-hover-drawable: rounded-rect(#284150, radius=2);
+	text-color: $text;
+	border-color: #616569;
+	accent-color: rgba(61, 174, 233, 0.4);
+}
+
+/* === Dialog === */
+
+Dialog {
+	background: rounded-rect($surface, radius=4, border=#616569, border-width=1);
+}
+
+/* === Tooltip === */
+
+TooltipView {
+	background: rounded-rect(#2d3136, radius=3, border=#616569, border-width=1);
+	text-color: $text;
+}
+
+/* === ListView === */
+
+ListView {
+	background: color($background);
+	selection-color: rgba(61, 174, 233, 0.3);
+}
+
+/* === TreeView === */
+
+TreeView {
+	background: color($background);
+	chevron-expanded-icon: svg(chevron-down);
+	chevron-collapsed-icon: svg(chevron-right);
+}
+
+/* === GridView === */
+
+GridView {
+	background: color($background);
+	selection-color: rgba(61, 174, 233, 0.3);
+}
+
+/* === Global icons === */
+
+View {
+	arrow-down-icon: svg(arrow-down);
+	arrow-up-icon: svg(arrow-up);
+}

@@ -8,7 +8,10 @@ using Sedulous.RHI;
 using Sedulous.Shell.Input;
 using Sedulous.GUI;
 using Sedulous.GUI.Runtime;
+using Sedulous.GUI.IO;
 using Sedulous.Images;
+using Sedulous.VFS;
+using Sedulous.VFS.Disk;
 using System.Collections;
 
 /// Minimal UI sandbox application. Extends Application directly (no engine).
@@ -28,6 +31,12 @@ class GUISandboxApp : Application
 	private DemoTreeAdapter mDemoTreeAdapter ~ delete _;
 	private DemoGridAdapter mDemoGridAdapter ~ delete _;
 
+	// .sss theme loading infrastructure
+	private FileSystemMount mGuiMount ~ delete _;
+	private VfsResourceProvider mGuiResourceProvider ~ delete _;
+
+	private Label mThemeLabel;
+
 	private Sedulous.Shell.IWindow mDragSourceWindow; // OS window being dragged cross-window
 	private float mDragWindowOffsetX;
 	private float mDragWindowOffsetY;
@@ -38,6 +47,13 @@ class GUISandboxApp : Application
 		// Create app-owned UI state
 		mUIContext = new UIContext();
 		mRoot = new RootView();
+
+		// Initialize .sss theme loading infrastructure
+		StyleSheetLoader.InitializeGlobals();
+		let guiPath = scope String();
+		GetAssetPath("gui", guiPath);
+		mGuiMount = new FileSystemMount(guiPath);
+		mGuiResourceProvider = new VfsResourceProvider(mGuiMount);
 
 		// Set default theme
 		ApplyTheme();
@@ -776,9 +792,15 @@ class GUISandboxApp : Application
 		animDemo.AddView(transformRow);
 		animDemo.AddView(transformClickLabel);
 
-		// Footer
-		let footer = new ThemedBox("panel", 0, 24);
+		// Footer with theme label
+		let footer = new Panel();
+		footer.AddClass("panel");
+		footer.Padding = .(8, 2, 8, 2);
+		mThemeLabel = new Label("Theme: Dark (F5)");
+		mThemeLabel.FontSize = 11;
+		footer.AddView(mThemeLabel);
 		main.AddView(footer, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(24)) });
+		UpdateThemeLabel();
 	}
 
 	protected override void OnInput(FrameContext frame)
@@ -854,10 +876,10 @@ class GUISandboxApp : Application
 			mUIContext.DebugSettings.ShowHitTarget = !mUIContext.DebugSettings.ShowHitTarget;
 			mUIContext.DebugSettings.ShowFocusPath = !mUIContext.DebugSettings.ShowFocusPath;
 		}
-		// F5: cycle themes (Dark -> Light -> RoundedDark)
+		// F5: cycle themes
 		if (keyboard.IsKeyPressed(.F5))
 		{
-			mThemeIndex = (mThemeIndex + 1) % 4;
+			mThemeIndex = (mThemeIndex + 1) % 5;
 			ApplyTheme();
 		}
 	}
@@ -870,10 +892,50 @@ class GUISandboxApp : Application
 		case 0:  sheet = DarkTheme.Create(); mPalette = .Dark;
 		case 1:  sheet = LightTheme.Create(); mPalette = .Light;
 		case 2:  sheet = RoundedDarkTheme.Create(); mPalette = .Dark;
-		default: sheet = CreateTexturedTheme(); mPalette = .Light;
+		case 3:  sheet = CreateTexturedTheme(); mPalette = .Light;
+		default: sheet = LoadSSSTheme("themes/breeze.sss", .Dark); mPalette = .Dark;
 		}
 		mUIContext.StyleSheet = sheet;
 		sheet.ReleaseRef();
+		UpdateThemeLabel();
+	}
+
+	private void UpdateThemeLabel()
+	{
+		if (mThemeLabel != null)
+		{
+			StringView[5] names = .("Dark", "Light", "Rounded Dark", "Textured", "Breeze (.sss)");
+			let name = (mThemeIndex >= 0 && mThemeIndex < 5) ? names[mThemeIndex] : "Unknown";
+			mThemeLabel.SetText(scope $"Theme: {name} (F5)");
+		}
+	}
+
+	/// Load a .sss theme file from Assets/gui/.
+	private StyleSheet LoadSSSTheme(StringView path, ThemePalette palette)
+	{
+		let loader = scope StyleSheetLoader();
+		loader.ResourceProvider = mGuiResourceProvider;
+		loader.SetPalette(palette);
+
+		// Register built-in SVG icons
+		loader.RegisterSvg("checkmark", ThemeIcons.Checkmark);
+		loader.RegisterSvg("radio-mark-square", ThemeIcons.RadioMarkSquare);
+		loader.RegisterSvg("radio-mark-round", ThemeIcons.RadioMarkRound);
+		loader.RegisterSvg("close", ThemeIcons.Close);
+		loader.RegisterSvg("chevron-down", ThemeIcons.ChevronDown);
+		loader.RegisterSvg("chevron-right", ThemeIcons.ChevronRight);
+		loader.RegisterSvg("arrow-down", ThemeIcons.ArrowDown);
+		loader.RegisterSvg("arrow-up", ThemeIcons.ArrowUp);
+
+		let sssText = scope String();
+		if (mGuiResourceProvider.LoadText(path, sssText) case .Err)
+		{
+			// Fallback to Beef-coded dark theme
+			Console.WriteLine(scope $"WARNING: Failed to load {path}, falling back to DarkTheme");
+			return DarkTheme.Create();
+		}
+
+		return loader.Load(sssText);
 	}
 
 	/// Create a textured theme with procedurally generated game-styled images.
