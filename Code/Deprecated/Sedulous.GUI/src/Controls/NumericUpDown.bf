@@ -5,7 +5,7 @@ using Sedulous.Drawing;
 using Sedulous.Fonts;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A numeric input control with up/down buttons.
 public class NumericUpDown : Control
@@ -278,7 +278,7 @@ public class NumericUpDown : Control
 
 	// === Child Management ===
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		mTextBox.OnAttachedToContext(context);

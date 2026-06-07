@@ -1,6 +1,6 @@
 using System;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Represents size constraints for layout calculation.
 /// Provides minimum, maximum, and preferred sizes.

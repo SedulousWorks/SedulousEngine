@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI.Tests;
+namespace Sedulous.LegacyGUI.Tests;
 
 class UIElementTests
 {
@@ -112,7 +112,7 @@ class UIElementTests
 	[Test]
 	public static void GUIContext_RegistersRootElement()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let elem = new TestElement();
 
 		ctx.RootElement = elem;
@@ -128,7 +128,7 @@ class UIElementTests
 	[Test]
 	public static void ElementHandle_ResolvesValidElement()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let elem = new TestElement();
 		ctx.RootElement = elem;
 
@@ -144,7 +144,7 @@ class UIElementTests
 	[Test]
 	public static void ElementHandle_InvalidAfterDeletion()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let elem = new TestElement();
 		ctx.RootElement = elem;
 
@@ -165,7 +165,7 @@ class UIElementTests
 	[Test]
 	public static void MutationQueue_QueuesAndProcesses()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let queue = ctx.MutationQueue;
 
 		let elem = new TestElement();
@@ -189,7 +189,7 @@ class UIElementTests
 	[Test]
 	public static void GUIContext_SetViewport()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 
 		ctx.SetViewportSize(800, 600);
 
@@ -200,7 +200,7 @@ class UIElementTests
 	[Test]
 	public static void UIElement_MeasureWithFixedSize()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let elem = new TestElement();
 		elem.Width = 100;
 		elem.Height = 50;

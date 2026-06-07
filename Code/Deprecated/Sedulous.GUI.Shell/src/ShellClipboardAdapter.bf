@@ -1,9 +1,9 @@
-namespace Sedulous.GUI.Shell;
+namespace Sedulous.LegacyGUI.Shell;
 
 using System;
 
-/// Adapter that bridges Sedulous.Shell.IClipboard to Sedulous.GUI.IClipboard.
-public class ShellClipboardAdapter : Sedulous.GUI.IClipboard
+/// Adapter that bridges Sedulous.Shell.IClipboard to Sedulous.LegacyGUI.IClipboard.
+public class ShellClipboardAdapter : Sedulous.LegacyGUI.IClipboard
 {
 	private Sedulous.Shell.IClipboard mShellClipboard;
 

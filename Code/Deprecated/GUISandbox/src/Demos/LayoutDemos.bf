@@ -1,7 +1,7 @@
 namespace GUISandbox;
 
 using Sedulous.Core.Mathematics;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 
 /// Phase 4: Layout Panel Demos
 static class LayoutDemos

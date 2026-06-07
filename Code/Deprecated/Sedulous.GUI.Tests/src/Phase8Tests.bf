@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI.Tests;
+namespace Sedulous.LegacyGUI.Tests;
 
 /// Phase 8 tests: scrolling and range controls.
 class Phase8Tests
@@ -65,7 +65,7 @@ class Phase8Tests
 	[Test]
 	public static void Slider_ValueChangedEvent()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -92,7 +92,7 @@ class Phase8Tests
 	[Test]
 	public static void Slider_VerticalOrientation()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -128,7 +128,7 @@ class Phase8Tests
 	[Test]
 	public static void Slider_KeyboardNavigation()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -195,7 +195,7 @@ class Phase8Tests
 	[Test]
 	public static void ScrollBar_ScrollEvent()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -284,7 +284,7 @@ class Phase8Tests
 	[Test]
 	public static void ScrollViewer_ContentExtent()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -311,7 +311,7 @@ class Phase8Tests
 	[Test]
 	public static void ScrollViewer_CanScroll()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -338,7 +338,7 @@ class Phase8Tests
 	[Test]
 	public static void ScrollViewer_ScrollToMethods()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -374,7 +374,7 @@ class Phase8Tests
 	[Test]
 	public static void ScrollViewer_ScrollChangedEvent()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -404,7 +404,7 @@ class Phase8Tests
 	[Test]
 	public static void ScrollViewer_OffsetClamping()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -483,7 +483,7 @@ class Phase8Tests
 	[Test]
 	public static void Splitter_MeasuresCorrectly()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -504,7 +504,7 @@ class Phase8Tests
 	[Test]
 	public static void Splitter_SplitterMovedEvent()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -537,7 +537,7 @@ class Phase8Tests
 	[Test]
 	public static void Splitter_DragEvents()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 

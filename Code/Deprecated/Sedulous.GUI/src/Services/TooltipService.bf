@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Placement options for tooltips.
 public enum TooltipPlacement
@@ -41,10 +41,10 @@ public class TooltipService
 	private TooltipPlacement mPlacement = .Mouse;
 
 	// Owning context
-	private GUIContext mContext;
+	private LegacyGUIContext mContext;
 
 	/// Creates a TooltipService for the given context.
-	public this(GUIContext context)
+	public this(LegacyGUIContext context)
 	{
 		mContext = context;
 		mTooltip = new Tooltip();

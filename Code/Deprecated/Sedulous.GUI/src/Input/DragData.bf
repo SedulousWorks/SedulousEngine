@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Standard format identifiers for drag data.
 public static class DragDataFormats

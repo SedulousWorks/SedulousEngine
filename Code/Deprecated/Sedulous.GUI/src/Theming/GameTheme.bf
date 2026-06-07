@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Game-oriented theme with vibrant colors and larger controls.
 /// Features gold accents, high contrast, and a fantasy/adventure aesthetic.
@@ -39,26 +39,26 @@ public class GameTheme : ITheme
 	{
 		// Precompute derived colors
 		let buttonBase = Color(50, 55, 65, 255);
-		let buttonHover = Sedulous.GUI.Palette.ComputeHover(buttonBase);
-		let buttonPressed = Sedulous.GUI.Palette.ComputePressed(buttonBase);
+		let buttonHover = Sedulous.LegacyGUI.Palette.ComputeHover(buttonBase);
+		let buttonPressed = Sedulous.LegacyGUI.Palette.ComputePressed(buttonBase);
 		let inputBase = Color(25, 28, 35, 255);
 		let hoverBorder = mPalette.Accent;  // Gold border on hover
-		let separatorBorder = Sedulous.GUI.Palette.Darken(mPalette.Border, 0.1f);
+		let separatorBorder = Sedulous.LegacyGUI.Palette.Darken(mPalette.Border, 0.1f);
 		let checkHoverBorder = mPalette.Accent;
 		let toggleBase = Color(55, 60, 70, 255);
-		let toggleBorder = Sedulous.GUI.Palette.ComputeHover(toggleBase);
+		let toggleBorder = Sedulous.LegacyGUI.Palette.ComputeHover(toggleBase);
 		let toggleHoverBorder = mPalette.Accent;
-		let hyperlinkHover = Sedulous.GUI.Palette.ComputeHover(mPalette.Link);
+		let hyperlinkHover = Sedulous.LegacyGUI.Palette.ComputeHover(mPalette.Link);
 		let scrollThumb = Color(70, 75, 85, 255);
-		let scrollThumbHover = Sedulous.GUI.Palette.ComputeHover(scrollThumb);
+		let scrollThumbHover = Sedulous.LegacyGUI.Palette.ComputeHover(scrollThumb);
 		let splitterBase = Color(40, 45, 55, 255);
-		let splitterHover = Sedulous.GUI.Palette.ComputeHover(splitterBase);
+		let splitterHover = Sedulous.LegacyGUI.Palette.ComputeHover(splitterBase);
 		let splitterGrip = mPalette.Border;
 		let itemHover = Color(50, 55, 70, 255);
 		let tabItemBase = Color(45, 50, 60, 255);
-		let tabItemHover = Sedulous.GUI.Palette.ComputeHover(tabItemBase);
+		let tabItemHover = Sedulous.LegacyGUI.Palette.ComputeHover(tabItemBase);
 		let expanderBase = Color(38, 42, 52, 255);
-		let expanderHover = Sedulous.GUI.Palette.ComputeHover(expanderBase);
+		let expanderHover = Sedulous.LegacyGUI.Palette.ComputeHover(expanderBase);
 
 		// Default control style
 		mStyles[new String("Control")] = .()

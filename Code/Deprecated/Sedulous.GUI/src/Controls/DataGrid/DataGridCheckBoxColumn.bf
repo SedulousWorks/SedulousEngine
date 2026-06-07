@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A DataGrid column that displays boolean values as checkboxes.
 public class DataGridCheckBoxColumn : DataGridColumn

@@ -1,7 +1,8 @@
 FileVersion = 1
 
 [Project]
-Name = "Sedulous.GUI"
+Name = "Sedulous.LegacyGUI"
+DefaultNamespace = "Sedulous.LegacyGUI"
 
 [Dependencies]
 corlib = "*"

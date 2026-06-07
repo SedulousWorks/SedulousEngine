@@ -1,8 +1,9 @@
 FileVersion = 1
 
 [Project]
-Name = "GUISandbox"
+Name = "LegacyGUISandbox"
 StartupObject = "GUISandbox.Program"
+DefaultNamespace = "GUISandbox"
 
 [Dependencies]
 corlib = "*"
@@ -12,8 +13,8 @@ corlib = "*"
 "Sedulous.Runtime.Client" = "*"
 "Sedulous.Drawing" = "*"
 "Sedulous.Fonts" = "*"
-"Sedulous.GUI" = "*"
-"Sedulous.GUI.Shell" = "*"
+"Sedulous.LegacyGUI" = "*"
+"Sedulous.LegacyGUI.Shell" = "*"
 "Sedulous.Drawing.Renderer" = "*"
 "Sedulous.Shell" = "*"
 "Sedulous.Shaders" = "*"

@@ -3,7 +3,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Images;
 
-namespace Sedulous.GUI.Tests;
+namespace Sedulous.LegacyGUI.Tests;
 
 /// Phase 5 tests: display controls, text rendering, UI scaling.
 class Phase5Tests
@@ -28,7 +28,7 @@ class Phase5Tests
 	[Test]
 	public static void TextBlock_MeasuresText()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -49,7 +49,7 @@ class Phase5Tests
 	[Test]
 	public static void TextBlock_EmptyTextMeasuresZero()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -69,7 +69,7 @@ class Phase5Tests
 	[Test]
 	public static void TextBlock_WrappingIncreasesHeight()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -94,7 +94,7 @@ class Phase5Tests
 	[Test]
 	public static void Label_MeasuresContentText()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -113,7 +113,7 @@ class Phase5Tests
 	[Test]
 	public static void Label_FocusesTarget()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -148,13 +148,13 @@ class Phase5Tests
 	[Test]
 	public static void Image_StretchNone_KeepsSourceSize()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
 		// Create a mock image data
 		let imageData = new OwnedImageData(100, 50, .RGBA8, .());
-		let image = new Sedulous.GUI.Image(imageData);
+		let image = new Sedulous.LegacyGUI.Image(imageData);
 		image.Stretch = .None;
 		panel.AddChild(image);
 
@@ -172,11 +172,11 @@ class Phase5Tests
 	[Test]
 	public static void Image_NullSource_MeasuresZero()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
-		let image = new Sedulous.GUI.Image();
+		let image = new Sedulous.LegacyGUI.Image();
 		panel.AddChild(image);
 
 		ctx.SetViewportSize(800, 600);
@@ -194,7 +194,7 @@ class Phase5Tests
 	[Test]
 	public static void Border_AddsThicknessToChildSize()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -221,7 +221,7 @@ class Phase5Tests
 	[Test]
 	public static void Border_NonUniformThickness()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -251,7 +251,7 @@ class Phase5Tests
 	[Test]
 	public static void Separator_HorizontalMeasuresThin()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -270,7 +270,7 @@ class Phase5Tests
 	[Test]
 	public static void Separator_VerticalMeasuresThin()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -338,14 +338,14 @@ class Phase5Tests
 	[Test]
 	public static void ScaleFactor_DefaultIsOne()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		Test.Assert(ctx.ScaleFactor == 1.0f);
 	}
 
 	[Test]
 	public static void ScaleFactor_ClampsRange()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 
 		ctx.ScaleFactor = 0.1f;  // Below min
 		Test.Assert(ctx.ScaleFactor == 0.5f, "Scale should clamp to minimum 0.5");
@@ -357,7 +357,7 @@ class Phase5Tests
 	[Test]
 	public static void ScaleFactor_AffectsHitTesting()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		panel.Width = 100;
 		panel.Height = 100;
@@ -394,7 +394,7 @@ class Phase5Tests
 	[Test]
 	public static void ServiceRegistry_RegisterAndGet()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let service = scope TestService();
 
 		ctx.RegisterService<TestService>(service);
@@ -413,7 +413,7 @@ class Phase5Tests
 	[Test]
 	public static void ServiceRegistry_HasService()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 
 		Test.Assert(!ctx.HasService<TestService>(), "Service should not exist initially");
 
@@ -426,7 +426,7 @@ class Phase5Tests
 	[Test]
 	public static void ServiceRegistry_GetMissingService()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 
 		if (ctx.GetService<TestService>() case .Err)
 		{
@@ -443,7 +443,7 @@ class Phase5Tests
 	[Test]
 	public static void TextBlock_CachesTextMeasurement()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -470,7 +470,7 @@ class Phase5Tests
 	[Test]
 	public static void TextBlock_InvalidatesCacheOnTextChange()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 

@@ -1,12 +1,12 @@
-namespace Sedulous.GUI.Shell;
+namespace Sedulous.LegacyGUI.Shell;
 
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 
 /// Polling-based keyboard input helper for routing shell keyboard state to a GUIContext.
 /// Handles navigation keys, text input from key codes, Ctrl/Alt shortcuts,
 /// and key repeat with configurable delay/rate.
 /// Create an instance and call ProcessKeyboardInput() each frame.
-class GUIInputHelper
+class LegacyGUIInputHelper
 {
 	private typealias ShellKeyCode = Sedulous.Shell.Input.KeyCode;
 	// Key repeat state
@@ -57,7 +57,7 @@ class GUIInputHelper
 
 	/// Process all keyboard input from a polled keyboard and route to a GUIContext.
 	/// Call this once per frame.
-	public void ProcessKeyboardInput(Sedulous.Shell.Input.IKeyboard keyboard, GUIContext context, float deltaTime)
+	public void ProcessKeyboardInput(Sedulous.Shell.Input.IKeyboard keyboard, LegacyGUIContext context, float deltaTime)
 	{
 		let mods = InputMapping.MapModifiers(keyboard.Modifiers);
 
@@ -101,9 +101,9 @@ class GUIInputHelper
 
 	/// Route mouse input from a polled mouse to a GUIContext.
 	/// Call this once per frame.
-	public static void ProcessMouseInput(Sedulous.Shell.Input.IMouse mouse, Sedulous.Shell.Input.IKeyboard keyboard, GUIContext context)
+	public static void ProcessMouseInput(Sedulous.Shell.Input.IMouse mouse, Sedulous.Shell.Input.IKeyboard keyboard, LegacyGUIContext context)
 	{
-		let mods = keyboard != null ? InputMapping.MapModifiers(keyboard.Modifiers) : Sedulous.GUI.KeyModifiers.None;
+		let mods = keyboard != null ? InputMapping.MapModifiers(keyboard.Modifiers) : Sedulous.LegacyGUI.KeyModifiers.None;
 		let mx = mouse.X;
 		let my = mouse.Y;
 
@@ -118,13 +118,13 @@ class GUIInputHelper
 			context.ProcessMouseWheel(mx, my, mouse.ScrollY, mods);
 	}
 
-	private static void ForwardKeyIfPressed(Sedulous.Shell.Input.IKeyboard keyboard, GUIContext context, ShellKeyCode shellKey, Sedulous.GUI.KeyModifiers mods)
+	private static void ForwardKeyIfPressed(Sedulous.Shell.Input.IKeyboard keyboard, LegacyGUIContext context, ShellKeyCode shellKey, Sedulous.LegacyGUI.KeyModifiers mods)
 	{
 		if (keyboard.IsKeyPressed(shellKey))
 			context.ProcessKeyDown(InputMapping.MapKey(shellKey), mods);
 	}
 
-	private static void CheckMouseButton(Sedulous.Shell.Input.IMouse mouse, GUIContext context, Sedulous.Shell.Input.MouseButton shellButton, float x, float y, Sedulous.GUI.KeyModifiers mods)
+	private static void CheckMouseButton(Sedulous.Shell.Input.IMouse mouse, LegacyGUIContext context, Sedulous.Shell.Input.MouseButton shellButton, float x, float y, Sedulous.LegacyGUI.KeyModifiers mods)
 	{
 		let uiButton = InputMapping.MapMouseButton(shellButton);
 		if (mouse.IsButtonPressed(shellButton))
@@ -133,7 +133,7 @@ class GUIInputHelper
 			context.ProcessMouseUp(x, y, uiButton, mods);
 	}
 
-	private void HandleKeyRepeat(Sedulous.Shell.Input.IKeyboard keyboard, GUIContext context, Sedulous.GUI.KeyModifiers mods, float deltaTime)
+	private void HandleKeyRepeat(Sedulous.Shell.Input.IKeyboard keyboard, LegacyGUIContext context, Sedulous.LegacyGUI.KeyModifiers mods, float deltaTime)
 	{
 		// Detect newly pressed repeatable key
 		for (let key in sRepeatableKeys)

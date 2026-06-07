@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Attached properties for Canvas positioning.
 /// Since Beef doesn't have WPF-style attached properties, we use a static dictionary.

@@ -4,7 +4,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A popup menu that appears on right-click or programmatic invocation.
 public class ContextMenu : Control, IPopupOwner
@@ -497,7 +497,7 @@ public class ContextMenu : Control, IPopupOwner
 
 	// === Lifecycle ===
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		mItemsPanel.OnAttachedToContext(context);

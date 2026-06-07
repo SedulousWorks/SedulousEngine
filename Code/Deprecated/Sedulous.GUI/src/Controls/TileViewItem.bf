@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// An item displayed in a TileView as a tile with custom content.
 /// Extends ContentControl to allow any UIElement as tile content.

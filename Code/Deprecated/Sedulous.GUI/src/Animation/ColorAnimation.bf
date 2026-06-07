@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Delegate for getting a Color property value from a UIElement.
 public delegate Color ColorGetter(UIElement element);

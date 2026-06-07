@@ -3,7 +3,7 @@ using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI.Tests;
+namespace Sedulous.LegacyGUI.Tests;
 
 /// Phase 9 tests: list controls (ItemsControl, ListBox, ComboBox).
 class Phase9Tests
@@ -44,7 +44,7 @@ class Phase9Tests
 	[Test]
 	public static void ItemsControl_AddItem()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -72,7 +72,7 @@ class Phase9Tests
 	[Test]
 	public static void ItemsControl_InsertItem()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -102,7 +102,7 @@ class Phase9Tests
 	[Test]
 	public static void ItemsControl_RemoveItem()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -132,7 +132,7 @@ class Phase9Tests
 	[Test]
 	public static void ItemsControl_RemoveItemAt()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -164,7 +164,7 @@ class Phase9Tests
 	[Test]
 	public static void ItemsControl_ClearItems()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -190,7 +190,7 @@ class Phase9Tests
 	[Test]
 	public static void ItemsControl_IndexOf()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -218,7 +218,7 @@ class Phase9Tests
 	[Test]
 	public static void ItemsControl_GetContainer()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -258,7 +258,7 @@ class Phase9Tests
 	[Test]
 	public static void ListBox_SingleSelection_SelectedIndex()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -288,7 +288,7 @@ class Phase9Tests
 	[Test]
 	public static void ListBox_SingleSelection_ReplaceSelection()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -318,7 +318,7 @@ class Phase9Tests
 	[Test]
 	public static void ListBox_SingleSelection_InvalidIndex()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -346,7 +346,7 @@ class Phase9Tests
 	[Test]
 	public static void ListBox_SelectAll_SingleMode()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -373,7 +373,7 @@ class Phase9Tests
 	[Test]
 	public static void ListBox_ExtendedSelection_SelectAll()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -405,7 +405,7 @@ class Phase9Tests
 	[Test]
 	public static void ListBox_ExtendedSelection_SelectRange()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -440,7 +440,7 @@ class Phase9Tests
 	[Test]
 	public static void ListBox_ToggleSelection()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -468,7 +468,7 @@ class Phase9Tests
 	[Test]
 	public static void ListBox_ClearSelection()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -500,7 +500,7 @@ class Phase9Tests
 	[Test]
 	public static void ListBox_SelectionChangedEvent()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -529,7 +529,7 @@ class Phase9Tests
 	[Test]
 	public static void ListBox_SelectionModeChange_ClearsSelection()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -559,7 +559,7 @@ class Phase9Tests
 	[Test]
 	public static void ListBox_KeyboardNavigation_UpDown()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -604,7 +604,7 @@ class Phase9Tests
 	[Test]
 	public static void ListBox_KeyboardNavigation_HomeEnd()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -643,7 +643,7 @@ class Phase9Tests
 	[Test]
 	public static void ListBox_RemoveSelectedItem_UpdatesSelection()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -713,7 +713,7 @@ class Phase9Tests
 	[Test]
 	public static void ComboBox_AddItem()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -741,7 +741,7 @@ class Phase9Tests
 	[Test]
 	public static void ComboBox_SelectedIndex()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -772,7 +772,7 @@ class Phase9Tests
 	[Test]
 	public static void ComboBox_InvalidSelectedIndex()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -798,7 +798,7 @@ class Phase9Tests
 	[Test]
 	public static void ComboBox_ClearItems()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -823,7 +823,7 @@ class Phase9Tests
 	[Test]
 	public static void ComboBox_RemoveSelectedItem()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -851,7 +851,7 @@ class Phase9Tests
 	[Test]
 	public static void ComboBox_SelectionChangedEvent()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -892,7 +892,7 @@ class Phase9Tests
 	[Test]
 	public static void ComboBox_InsertItem()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 

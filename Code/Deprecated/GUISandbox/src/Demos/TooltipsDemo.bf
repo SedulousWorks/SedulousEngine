@@ -2,7 +2,7 @@ namespace GUISandbox;
 
 using System;
 using Sedulous.Core.Mathematics;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 
 /// Demonstrates tooltip functionality.
 class TooltipsDemo

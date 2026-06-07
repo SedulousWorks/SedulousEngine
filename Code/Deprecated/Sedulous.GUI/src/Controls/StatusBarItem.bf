@@ -3,7 +3,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A segment in a status bar.
 /// Can display text and optionally be clickable.
@@ -168,7 +168,7 @@ public class StatusBarItem : Control
 	public override int VisualChildCount => 1;
 	public override UIElement GetVisualChild(int index) => index == 0 ? mTextBlock : null;
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		mTextBlock.OnAttachedToContext(context);

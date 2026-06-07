@@ -3,7 +3,7 @@ using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A horizontal menu bar containing MenuBarItem elements.
 /// Supports keyboard navigation with Alt+key accelerators.
@@ -402,7 +402,7 @@ public class Menu : Control, IAcceleratorHandler
 	public override int VisualChildCount => 1;
 	public override UIElement GetVisualChild(int index) => index == 0 ? mItemsPanel : null;
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		mItemsPanel.OnAttachedToContext(context);

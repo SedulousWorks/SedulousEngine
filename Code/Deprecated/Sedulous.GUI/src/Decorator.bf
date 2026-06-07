@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Base class for controls that wrap a single child element visually.
 /// Similar to ContentControl but semantically indicates a visual wrapper
@@ -99,7 +99,7 @@ public class Decorator : Control
 	}
 
 	/// Override to propagate context to child.
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		if (mChild != null)

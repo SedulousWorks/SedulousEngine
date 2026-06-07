@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI.Tests;
+namespace Sedulous.LegacyGUI.Tests;
 
 /// Phase 3 tests: Theming system.
 class Phase3Tests
@@ -23,7 +23,7 @@ class Phase3Tests
 	[Test]
 	public static void Theme_DefaultIsDarkTheme()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		Test.Assert(ctx.Theme != null);
 		Test.Assert(ctx.Theme.Name == "Dark");
 	}
@@ -31,7 +31,7 @@ class Phase3Tests
 	[Test]
 	public static void Theme_CanSetNewTheme()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		Test.Assert(ctx.Theme.Name == "Dark");
 
 		ctx.Theme = new LightTheme();
@@ -41,7 +41,7 @@ class Phase3Tests
 	[Test]
 	public static void Theme_SettingSameThemeNoOp()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let originalTheme = ctx.Theme;
 
 		// Set same theme - should not change
@@ -54,7 +54,7 @@ class Phase3Tests
 	[Test]
 	public static void ThemeChanged_FiresOnThemeChange()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		bool eventFired = false;
 		ITheme receivedTheme = null;
 
@@ -77,7 +77,7 @@ class Phase3Tests
 	[Test]
 	public static void ThemeChanged_PassesCorrectTheme()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		StringView themeName = default;
 
 		delegate void(ITheme) handler = new [&] (theme) =>
@@ -100,7 +100,7 @@ class Phase3Tests
 	[Test]
 	public static void Control_UsesThemeBackgroundWhenNotSet()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let control = new TestControl();
 		ctx.RootElement = control;
 
@@ -117,7 +117,7 @@ class Phase3Tests
 	[Test]
 	public static void Control_ExplicitBackgroundOverridesTheme()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let control = new TestControl();
 		ctx.RootElement = control;
 
@@ -133,7 +133,7 @@ class Phase3Tests
 	[Test]
 	public static void Control_UsesDifferentStyleByControlType()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new Panel();
 		ctx.RootElement = panel;
 
@@ -156,7 +156,7 @@ class Phase3Tests
 	[Test]
 	public static void Control_ThemeBorderColor()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let control = new TestControl();
 		ctx.RootElement = control;
 
@@ -170,7 +170,7 @@ class Phase3Tests
 	[Test]
 	public static void Control_ThemeBorderThickness()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let control = new TestControl();
 		ctx.RootElement = control;
 
@@ -258,7 +258,7 @@ class Phase3Tests
 	[Test]
 	public static void Control_UpdatesColorsOnThemeChange()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let control = new TestControl();
 		ctx.RootElement = control;
 
@@ -283,7 +283,7 @@ class Phase3Tests
 	[Test]
 	public static void Control_ExplicitColorSurvivesThemeChange()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let control = new TestControl();
 		ctx.RootElement = control;
 
@@ -305,7 +305,7 @@ class Phase3Tests
 	[Test]
 	public static void Theme_FocusIndicatorColor()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let focusColor = ctx.Theme.FocusIndicatorColor;
 
 		// Should be the theme's accent color
@@ -315,7 +315,7 @@ class Phase3Tests
 	[Test]
 	public static void Theme_FocusIndicatorThickness()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let thickness = ctx.Theme.FocusIndicatorThickness;
 
 		// Should have a positive thickness
@@ -325,7 +325,7 @@ class Phase3Tests
 	[Test]
 	public static void Control_FocusBorderUsesThemeDefault()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let control = new TestControl();
 		ctx.RootElement = control;
 
@@ -340,7 +340,7 @@ class Phase3Tests
 	[Test]
 	public static void Control_ExplicitFocusBorderOverridesTheme()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let control = new TestControl();
 		ctx.RootElement = control;
 

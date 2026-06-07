@@ -3,7 +3,7 @@ using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// An item in a TreeView that can contain child items.
 public class TreeViewItem : Control, ISelectable
@@ -269,7 +269,7 @@ public class TreeViewItem : Control, ISelectable
 
 	// === Context ===
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		for (let child in mChildren)

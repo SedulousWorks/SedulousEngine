@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A command implementation that delegates to provided functions.
 /// This is the most common way to create commands in application code.

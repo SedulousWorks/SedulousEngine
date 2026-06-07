@@ -3,7 +3,7 @@ using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Base class for controls that display a collection of items.
 /// ItemsControl manages the items collection and generates visual containers for each item.
@@ -303,7 +303,7 @@ public class ItemsControl : Control
 
 	// === Context Propagation ===
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		mScrollViewer.OnAttachedToContext(context);

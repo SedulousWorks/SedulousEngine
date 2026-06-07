@@ -4,7 +4,7 @@ using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 
 /// Demo 16: Docking System
 /// Shows DockManager, DockablePanel, DockTabGroup, and DockSplit components.
@@ -12,11 +12,11 @@ class DockingDemo
 {
 	private DockPanel mRoot;
 	private DockManager mDockManager;
-	private GUIContext mContext;
+	private LegacyGUIContext mContext;
 	private int mPanelCounter = 0;
 	private List<DockablePanel> mCreatedPanels = new .() ~ DeleteContainerAndItems!(_);
 
-	public UIElement CreateDemo(GUIContext context)
+	public UIElement CreateDemo(LegacyGUIContext context)
 	{
 		mContext = context;
 
@@ -205,7 +205,7 @@ class DockingDemo
 
 		// Simulated code editor content
 		AddCodeLine(panel, "using System;", Color(86, 156, 214, 255));
-		AddCodeLine(panel, "using Sedulous.GUI;", Color(86, 156, 214, 255));
+		AddCodeLine(panel, "using Sedulous.LegacyGUI;", Color(86, 156, 214, 255));
 		AddCodeLine(panel, "", Color.White);
 		AddCodeLine(panel, "class MyApp", Color(78, 201, 176, 255));
 		AddCodeLine(panel, "{", Color.White);

@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Delegate for getting a RectangleF property value.
 public delegate RectangleF RectangleGetter(UIElement element);

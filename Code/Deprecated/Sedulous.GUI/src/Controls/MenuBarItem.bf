@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A top-level menu bar item (File, Edit, View, etc.).
 /// Contains a dropdown menu that opens when clicked.
@@ -334,7 +334,7 @@ public class MenuBarItem : Control, IPopupOwner
 	public override int VisualChildCount => 1;
 	public override UIElement GetVisualChild(int index) => index == 0 ? mTextBlock : null;
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		mTextBlock.OnAttachedToContext(context);

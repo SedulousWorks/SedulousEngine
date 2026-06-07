@@ -1,17 +1,17 @@
 using System;
 using System.Collections;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Manages keyboard focus and tab navigation for a GUIContext.
 public class FocusManager
 {
-	private GUIContext mContext;
+	private LegacyGUIContext mContext;
 	private ElementHandle<UIElement> mFocusedElement;
 	private ElementHandle<UIElement> mCapturedElement;
 
 	/// Creates a FocusManager for the specified context.
-	public this(GUIContext context)
+	public this(LegacyGUIContext context)
 	{
 		mContext = context;
 		mFocusedElement = .Invalid;

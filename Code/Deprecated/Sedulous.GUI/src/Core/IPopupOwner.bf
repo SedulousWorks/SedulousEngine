@@ -1,4 +1,4 @@
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Interface for controls that own popups and need to be notified when popups close.
 public interface IPopupOwner

@@ -3,7 +3,7 @@ namespace GUISandbox;
 using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 using Sedulous.Drawing;
 using Sedulous.Images;
 
@@ -11,7 +11,7 @@ using Sedulous.Images;
 /// Provides a professional UI shell with theme switching, scaling, and demo selection.
 class MainShell
 {
-	private GUIContext mContext;
+	private LegacyGUIContext mContext;
 	private DockPanel mRoot ~ delete _;
 	private Panel mContentArea;
 	private UIElement mCurrentDemo /*~ delete _*/;
@@ -55,7 +55,7 @@ class MainShell
 	// Current Breeze theme reference (null if not active)
 	private BreezeTheme mBreezeTheme;
 
-	public this(GUIContext context, OwnedImageData checkerboard, OwnedImageData gradient, StringView assetDirectory)
+	public this(LegacyGUIContext context, OwnedImageData checkerboard, OwnedImageData gradient, StringView assetDirectory)
 	{
 		mContext = context;
 		mCheckerboard = checkerboard;
@@ -102,7 +102,7 @@ class MainShell
 		header.Child = layout;
 
 		// Title
-		let title = new TextBlock("Sedulous.GUI Sandbox");
+		let title = new TextBlock("Sedulous.LegacyGUI Sandbox");
 		title.FontSize = 18;
 		title.VerticalAlignment = .Center;
 		title.Margin = .(0, 0, 30, 0);

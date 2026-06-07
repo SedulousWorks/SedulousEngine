@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Base class for controls that display a single piece of content.
 /// The Content property can be a UIElement or will be converted to text.
@@ -98,7 +98,7 @@ public class ContentControl : Control
 	}
 
 	/// Override to propagate context to content.
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		if (mContent != null)

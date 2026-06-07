@@ -3,7 +3,7 @@ using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Base class for elements that can contain multiple children.
 /// Provides child management with clear ownership semantics.
@@ -191,7 +191,7 @@ public abstract class Container : UIElement
 	}
 
 	/// Override to propagate context to children.
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		for (let child in mChildren)

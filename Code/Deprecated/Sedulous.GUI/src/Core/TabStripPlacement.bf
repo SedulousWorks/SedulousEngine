@@ -1,4 +1,4 @@
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Specifies where the tab strip is positioned relative to the content area.
 public enum TabStripPlacement

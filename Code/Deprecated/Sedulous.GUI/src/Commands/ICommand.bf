@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Interface for commands that can be executed and have enabled state.
 /// Commands decouple UI controls from the actions they trigger.

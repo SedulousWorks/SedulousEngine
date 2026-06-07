@@ -1,4 +1,4 @@
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Interface for UI elements that can handle global accelerator key events.
 /// Elements implementing this interface will receive Alt and Alt+letter key events

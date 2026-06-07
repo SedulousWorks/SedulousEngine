@@ -1,3 +1,3 @@
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 

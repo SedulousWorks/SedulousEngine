@@ -4,7 +4,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Fonts;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Displays text with optional wrapping and alignment.
 /// TextBlock is a leaf control that cannot have children.

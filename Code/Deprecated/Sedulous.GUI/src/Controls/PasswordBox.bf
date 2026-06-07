@@ -5,7 +5,7 @@ using Sedulous.Drawing;
 using Sedulous.Fonts;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A single-line password input control that masks characters.
 public class PasswordBox : Control

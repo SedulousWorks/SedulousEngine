@@ -4,7 +4,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A selectable item in a menu or context menu.
 /// Can have text, icon, shortcut text, command, and submenu items.
@@ -59,7 +59,7 @@ public class MenuItem : Control
 	}
 
 	/// Applies theme-based styling on attach.
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		mTextBlock.OnAttachedToContext(context);

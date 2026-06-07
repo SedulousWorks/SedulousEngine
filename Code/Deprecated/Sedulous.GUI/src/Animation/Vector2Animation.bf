@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Delegate for getting a Vector2 property value.
 public delegate Vector2 Vector2Getter(UIElement element);

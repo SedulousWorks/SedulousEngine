@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Visual indicator showing where a panel will dock during drag operations.
 /// Displays semi-transparent highlight over the target drop zone.

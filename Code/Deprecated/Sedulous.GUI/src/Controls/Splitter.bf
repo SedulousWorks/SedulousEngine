@@ -3,7 +3,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A draggable splitter/resize handle for resizing adjacent elements.
 /// Can be used standalone or within container layouts like SplitPanel.

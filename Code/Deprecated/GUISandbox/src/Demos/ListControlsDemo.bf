@@ -3,7 +3,7 @@ namespace GUISandbox;
 using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 
 /// Demo 11: List Controls
 /// Shows ListBox with selection modes and ComboBox dropdown.

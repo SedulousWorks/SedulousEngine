@@ -1,22 +1,22 @@
-# Sedulous.GUI Gaps Analysis
+# Sedulous.LegacyGUI Gaps Analysis
 
-Comparison of Sedulous.UI vs Sedulous.GUI to identify gaps and areas for improvement.
+Comparison of Sedulous.UI vs Sedulous.LegacyGUI to identify gaps and areas for improvement.
 
 ## Summary
 
-**Sedulous.GUI** is the newer, more feature-rich framework with ~128 files and many advanced controls.
-**Sedulous.UI** is the older framework with ~68 files but has some features Sedulous.GUI lacks.
+**Sedulous.LegacyGUI** is the newer, more feature-rich framework with ~128 files and many advanced controls.
+**Sedulous.UI** is the older framework with ~68 files but has some features Sedulous.LegacyGUI lacks.
 
 ---
 
 ## Things Sedulous.UI Does Better
 
 ### 1. Animation Types
-Sedulous.UI has additional animation types that Sedulous.GUI is missing:
+Sedulous.UI has additional animation types that Sedulous.LegacyGUI is missing:
 - **Vector2Animation** - Animate 2D positions/offsets
 - **RectangleAnimation** - Animate rectangular bounds
 
-*Sedulous.GUI only has: FloatAnimation, ColorAnimation, ThicknessAnimation*
+*Sedulous.LegacyGUI only has: FloatAnimation, ColorAnimation, ThicknessAnimation*
 
 ### 2. Double-Click Detection
 Sedulous.UI has **system-level double-click detection** in InputManager:
@@ -25,7 +25,7 @@ Sedulous.UI has **system-level double-click detection** in InputManager:
 - `ClickCount` property on MouseButtonEventArgs
 - ListBox, TreeView, TileView all expose `ItemDoubleClick` events
 
-*Sedulous.GUI only has double-click handling in TextBox/PasswordBox for word selection, not as a general input feature.*
+*Sedulous.LegacyGUI only has double-click handling in TextBox/PasswordBox for word selection, not as a general input feature.*
 
 ### 3. Popup Control
 Sedulous.UI has a dedicated **Popup** class with:
@@ -35,7 +35,7 @@ Sedulous.UI has a dedicated **Popup** class with:
 - HorizontalOffset/VerticalOffset
 - Open/Close events
 
-*Sedulous.GUI has PopupLayer for internal popup management but no standalone Popup control for user consumption.*
+*Sedulous.LegacyGUI has PopupLayer for internal popup management but no standalone Popup control for user consumption.*
 
 ### 4. Style System
 Sedulous.UI has a more formal **Style** class with:
@@ -43,11 +43,11 @@ Sedulous.UI has a more formal **Style** class with:
 - Named color/float/thickness properties
 - StateStyle for per-state overrides
 
-*Sedulous.GUI uses Palette with computed state colors but lacks a formal Style registry pattern.*
+*Sedulous.LegacyGUI uses Palette with computed state colors but lacks a formal Style registry pattern.*
 
 ---
 
-## Things Sedulous.GUI Has That Sedulous.UI Lacks
+## Things Sedulous.LegacyGUI Has That Sedulous.UI Lacks
 
 ### Controls
 | Control | Description |
@@ -168,7 +168,7 @@ Sedulous.UI has a more formal **Style** class with:
 
 ## Notes
 
-- Sedulous.GUI is clearly the more actively developed framework
+- Sedulous.LegacyGUI is clearly the more actively developed framework
 - Most gaps are minor or edge cases
 - The command pattern (ICommand) is valuable for editor applications
 - Double-click detection would improve UX significantly

@@ -3,7 +3,7 @@ namespace GUISandbox;
 using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 using Sedulous.Images;
 
 /// Demo 13: Tree & Hierarchical Controls
@@ -218,7 +218,7 @@ class TreeViewDemo
 		stack.VerticalAlignment = .Center;
 
 		// Add image (thumbnail preview)
-		let image = new Sedulous.GUI.Image(mTileImage);
+		let image = new Sedulous.LegacyGUI.Image(mTileImage);
 		image.Stretch = .Uniform;
 		image.Width = 40;
 		image.Height = 40;

@@ -3,7 +3,7 @@ namespace GUISandbox;
 using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 
 /// Demo 12: Tab & Navigation Controls
 /// Shows TabControl, Expander, GroupBox, and Breadcrumb.

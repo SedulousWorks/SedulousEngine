@@ -4,7 +4,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A container that holds one or more DockablePanels as tabs.
 /// When only one panel is present, acts as a simple container.
@@ -262,7 +262,7 @@ public class DockTabGroup : Control, IDragSource, IDropTarget
 
 	// === Context ===
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		// Update tab height from theme

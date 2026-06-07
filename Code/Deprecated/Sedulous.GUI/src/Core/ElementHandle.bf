@@ -1,6 +1,6 @@
 using System;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Safe weak reference to a UI element.
 /// Uses ID lookup through GUIContext to avoid dangling pointers.
@@ -8,10 +8,10 @@ namespace Sedulous.GUI;
 public struct ElementHandle<T> where T : UIElement
 {
 	private UIElementId mId;
-	private GUIContext mContext;
+	private LegacyGUIContext mContext;
 
 	/// Creates a handle from an element ID and context.
-	public this(UIElementId id, GUIContext context)
+	public this(UIElementId id, LegacyGUIContext context)
 	{
 		mId = id;
 		mContext = context;
@@ -21,7 +21,7 @@ public struct ElementHandle<T> where T : UIElement
 	public UIElementId Id => mId;
 
 	/// The context that owns the element.
-	public GUIContext Context => mContext;
+	public LegacyGUIContext Context => mContext;
 
 	/// Attempts to resolve the handle to an element.
 	/// Returns null if the element has been deleted or the handle is invalid.

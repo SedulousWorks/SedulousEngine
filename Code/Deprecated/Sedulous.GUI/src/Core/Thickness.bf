@@ -1,6 +1,6 @@
 using System;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Represents the thickness of a frame around a rectangle.
 /// Used for margins, padding, and border thickness.

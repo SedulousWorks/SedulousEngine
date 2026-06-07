@@ -3,7 +3,7 @@ using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Information about an active modal.
 public class ModalInfo
@@ -37,10 +37,10 @@ public class ModalManager
 	private Color mBackdropColor = Color(0, 0, 0, 128);
 
 	// Owning context
-	private GUIContext mContext;
+	private LegacyGUIContext mContext;
 
 	/// Creates a ModalManager for the given context.
-	public this(GUIContext context)
+	public this(LegacyGUIContext context)
 	{
 		mContext = context;
 		mModalStack = new .();

@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI.Tests;
+namespace Sedulous.LegacyGUI.Tests;
 
 /// Phase 6 tests: commands and interactive controls.
 class Phase6Tests
@@ -81,7 +81,7 @@ class Phase6Tests
 	[Test]
 	public static void Button_FiresClickOnMouseUp()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -114,7 +114,7 @@ class Phase6Tests
 	[Test]
 	public static void Button_ExecutesCommand()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -147,7 +147,7 @@ class Phase6Tests
 	[Test]
 	public static void Button_DisabledWhenCanExecuteFalse()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -181,7 +181,7 @@ class Phase6Tests
 	[Test]
 	public static void Button_KeyboardActivation()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -214,7 +214,7 @@ class Phase6Tests
 	[Test]
 	public static void ToggleButton_TogglesOnClick()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -250,7 +250,7 @@ class Phase6Tests
 	[Test]
 	public static void ToggleButton_FiresCheckedEvent()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -291,7 +291,7 @@ class Phase6Tests
 	[Test]
 	public static void CheckBox_MeasuresWithIndicator()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -312,7 +312,7 @@ class Phase6Tests
 	[Test]
 	public static void CheckBox_TogglesOnClick()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -344,7 +344,7 @@ class Phase6Tests
 	[Test]
 	public static void RadioButton_MutualExclusion()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -399,7 +399,7 @@ class Phase6Tests
 	[Test]
 	public static void RadioButton_DoesNotUncheckSelf()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -430,7 +430,7 @@ class Phase6Tests
 	[Test]
 	public static void ToggleSwitch_TogglesOnClick()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -458,7 +458,7 @@ class Phase6Tests
 	[Test]
 	public static void ToggleSwitch_MeasuresCorrectly()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -480,7 +480,7 @@ class Phase6Tests
 	[Test]
 	public static void Hyperlink_FiresRequestNavigate()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -511,7 +511,7 @@ class Phase6Tests
 	[Test]
 	public static void Hyperlink_AlsoFiresClick()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -542,7 +542,7 @@ class Phase6Tests
 	[Test]
 	public static void RepeatButton_FiresImmediatelyOnPress()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -576,7 +576,7 @@ class Phase6Tests
 	[Test]
 	public static void Button_VisualStates()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -615,7 +615,7 @@ class Phase6Tests
 	[Test]
 	public static void Button_DisabledState()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 

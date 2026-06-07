@@ -9,21 +9,21 @@ using Sedulous.Runtime.Client;
 using Sedulous.Runtime;
 using Sedulous.Drawing;
 using Sedulous.Fonts;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 using Sedulous.Fonts.TTF;
 using Sedulous.Drawing.Renderer;
 using Sedulous.Shell.Input;
-using Sedulous.GUI.Shell;
+using Sedulous.LegacyGUI.Shell;
 using Sedulous.Shaders;
 using Sedulous.Images;
 using Sedulous.Fonts.TTF;
 
-/// GUI Sandbox sample demonstrating the Sedulous.GUI framework.
+/// GUI Sandbox sample demonstrating the Sedulous.LegacyGUI framework.
 /// Features a professional header with theme/scale switching and demo navigation.
-class GUISandboxApp : Application
+class LegacyGUISandboxApp : Application
 {
 	// GUI System
-	private GUIContext mGUIContext ~ delete _;
+	private LegacyGUIContext mGUIContext ~ delete _;
 
 	// Main shell with header and navigation
 	private MainShell mMainShell ~ delete _;
@@ -53,10 +53,10 @@ class GUISandboxApp : Application
 	private ShellClipboardAdapter mClipboard ~ delete _;
 
 	// Cursor tracking
-	private Sedulous.GUI.CursorType mLastCursor = .Default;
+	private Sedulous.LegacyGUI.CursorType mLastCursor = .Default;
 
 	// Input helper for polling-based keyboard/mouse routing
-	private GUIInputHelper mInputHelper = new .() ~ delete _;
+	private LegacyGUIInputHelper mInputHelper = new .() ~ delete _;
 	private float mFrameDelta = 0;
 
 	public this() : base()
@@ -110,7 +110,7 @@ class GUISandboxApp : Application
 		// Initialize GUI
 		InitializeGUI();
 
-		Console.WriteLine("Sedulous.GUI Sandbox initialized.");
+		Console.WriteLine("Sedulous.LegacyGUI Sandbox initialized.");
 		Console.WriteLine("  Use the header controls to switch demos, themes, and scale.");
 		Console.WriteLine("  F2: Toggle debug overlay | ESC: Exit");
 	}
@@ -130,7 +130,7 @@ class GUISandboxApp : Application
 
 	private void InitializeGUI()
 	{
-		mGUIContext = new GUIContext();
+		mGUIContext = new LegacyGUIContext();
 		mGUIContext.SetViewportSize((float)SwapChain.Width, (float)SwapChain.Height);
 
 		// Register clipboard adapter
@@ -163,7 +163,7 @@ class GUISandboxApp : Application
 		}
 
 		// Route mouse and keyboard input to GUI via shared helper
-		GUIInputHelper.ProcessMouseInput(mouse, keyboard, mGUIContext);
+		LegacyGUIInputHelper.ProcessMouseInput(mouse, keyboard, mGUIContext);
 		mInputHelper.ProcessKeyboardInput(keyboard, mGUIContext, mFrameDelta);
 
 		// Update cursor

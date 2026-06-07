@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI.Tests;
+namespace Sedulous.LegacyGUI.Tests;
 
 /// Phase 4 tests: Layout panels.
 class Phase4Tests
@@ -23,7 +23,7 @@ class Phase4Tests
 	[Test]
 	public static void StackPanel_Vertical_StacksChildren()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new StackPanel();
 		panel.Orientation = .Vertical;
 		panel.Width = 200;
@@ -54,7 +54,7 @@ class Phase4Tests
 	[Test]
 	public static void StackPanel_Horizontal_StacksChildren()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new StackPanel();
 		panel.Orientation = .Horizontal;
 		panel.Width = 300;
@@ -85,7 +85,7 @@ class Phase4Tests
 	[Test]
 	public static void StackPanel_WithSpacing()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new StackPanel();
 		panel.Orientation = .Vertical;
 		panel.Spacing = 10;
@@ -117,7 +117,7 @@ class Phase4Tests
 	[Test]
 	public static void Canvas_PositionsWithLeft()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let canvas = new Canvas();
 		canvas.Width = 400;
 		canvas.Height = 300;
@@ -141,7 +141,7 @@ class Phase4Tests
 	[Test]
 	public static void Canvas_PositionsWithTop()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let canvas = new Canvas();
 		canvas.Width = 400;
 		canvas.Height = 300;
@@ -165,7 +165,7 @@ class Phase4Tests
 	[Test]
 	public static void Canvas_PositionsWithLeftAndTop()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let canvas = new Canvas();
 		canvas.Width = 400;
 		canvas.Height = 300;
@@ -193,7 +193,7 @@ class Phase4Tests
 	[Test]
 	public static void DockPanel_DocksLeft()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new DockPanel();
 		panel.Width = 400;
 		panel.Height = 300;
@@ -222,7 +222,7 @@ class Phase4Tests
 	[Test]
 	public static void DockPanel_DocksTop()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new DockPanel();
 		panel.Width = 400;
 		panel.Height = 300;
@@ -251,7 +251,7 @@ class Phase4Tests
 	[Test]
 	public static void DockPanel_LastChildFills()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new DockPanel();
 		panel.Width = 400;
 		panel.Height = 300;
@@ -281,7 +281,7 @@ class Phase4Tests
 	[Test]
 	public static void WrapPanel_Horizontal_Wraps()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new WrapPanel();
 		panel.Orientation = .Horizontal;
 		panel.Width = 150;  // Only fits 2 items per row
@@ -318,7 +318,7 @@ class Phase4Tests
 	[Test]
 	public static void UniformGrid_EqualSizedCells()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let grid = new UniformGrid();
 		grid.Columns = 2;
 		grid.Rows = 2;
@@ -356,7 +356,7 @@ class Phase4Tests
 	[Test]
 	public static void Grid_StarSizing()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let grid = new Grid();
 		grid.Width = 300;
 		grid.Height = 200;
@@ -397,7 +397,7 @@ class Phase4Tests
 	[Test]
 	public static void Grid_FixedSizing()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let grid = new Grid();
 		grid.Width = 300;
 		grid.Height = 200;
@@ -437,7 +437,7 @@ class Phase4Tests
 	[Test]
 	public static void Grid_RowAndColumnSpan()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let grid = new Grid();
 		grid.Width = 200;
 		grid.Height = 200;
@@ -487,7 +487,7 @@ class Phase4Tests
 	[Test]
 	public static void SplitPanel_HorizontalSplit()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new SplitPanel();
 		panel.Orientation = .Horizontal;
 		panel.SplitRatio = 0.5f;
@@ -520,7 +520,7 @@ class Phase4Tests
 	[Test]
 	public static void SplitPanel_VerticalSplit()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new SplitPanel();
 		panel.Orientation = .Vertical;
 		panel.SplitRatio = 0.5f;

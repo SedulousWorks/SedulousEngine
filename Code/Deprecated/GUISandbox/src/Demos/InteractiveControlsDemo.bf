@@ -2,7 +2,7 @@ namespace GUISandbox;
 
 using System;
 using Sedulous.Core.Mathematics;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 
 /// Phase 6: Interactive Controls Demo
 /// This is a class (not static) because it has state for event handling.

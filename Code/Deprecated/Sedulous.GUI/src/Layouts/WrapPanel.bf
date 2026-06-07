@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A panel that arranges children in a wrapping flow, starting a new row/column when space runs out.
 public class WrapPanel : Panel
