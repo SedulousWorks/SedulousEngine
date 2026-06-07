@@ -137,6 +137,31 @@ public class ViewGroup : View
 		);
 	}
 
+	/// Find a descendant view by name. Searches recursively.
+	/// Returns null if not found.
+	public View FindByName(StringView name)
+	{
+		for (int i = 0; i < ChildCount; i++)
+		{
+			let child = GetChildAt(i);
+			if (child.Name != null && StringView(child.Name) == name)
+				return child;
+			if (let childGroup = child as ViewGroup)
+			{
+				let found = childGroup.FindByName(name);
+				if (found != null)
+					return found;
+			}
+		}
+		return null;
+	}
+
+	/// Find a descendant view by name, cast to T.
+	public T FindByName<T>(StringView name) where T : View
+	{
+		return FindByName(name) as T;
+	}
+
 	/// Creates a default LayoutParams for children added without one.
 	/// Subclasses override to return their own LayoutParams type.
 	protected virtual LayoutParams CreateDefaultLayoutParams()

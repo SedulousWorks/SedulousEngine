@@ -48,8 +48,9 @@ class GUISandboxApp : Application
 		mUIContext = new UIContext();
 		mRoot = new RootView();
 
-		// Initialize .sss theme loading infrastructure
+		// Initialize .sss and .sml loading infrastructure
 		StyleSheetLoader.InitializeGlobals();
+		MarkupLoader.Initialize();
 		let guiPath = scope String();
 		GetAssetPath("gui", guiPath);
 		mGuiMount = new FileSystemMount(guiPath);
@@ -810,6 +811,29 @@ class GUISandboxApp : Application
 
 		animDemo.AddView(transformRow);
 		animDemo.AddView(transformClickLabel);
+
+		// === Pause Menu (.sml demo) ===
+		let pauseMenu = MarkupLoader.LoadFromFile("screens/pause-menu.sml", mGuiResourceProvider);
+		if (pauseMenu != null)
+		{
+			tabView.AddTab("Pause (.sml)", pauseMenu, true);
+
+			// Wire up button events by name lookup
+			let pauseRoot = pauseMenu as ViewGroup;
+			if (pauseRoot != null)
+			{
+				if (let resumeBtn = pauseRoot.FindByName<Button>("resume-btn"))
+					resumeBtn.OnClick.Add(new (b) => { Console.WriteLine("Resume clicked!"); });
+				if (let settingsBtn = pauseRoot.FindByName<Button>("settings-btn"))
+					settingsBtn.OnClick.Add(new (b) => { Console.WriteLine("Settings clicked!"); });
+				if (let saveBtn = pauseRoot.FindByName<Button>("save-btn"))
+					saveBtn.OnClick.Add(new (b) => { Console.WriteLine("Save clicked!"); });
+				if (let loadBtn = pauseRoot.FindByName<Button>("load-btn"))
+					loadBtn.OnClick.Add(new (b) => { Console.WriteLine("Load clicked!"); });
+				if (let quitBtn = pauseRoot.FindByName<Button>("quit-btn"))
+					quitBtn.OnClick.Add(new (b) => { Console.WriteLine("Quit clicked!"); });
+			}
+		}
 
 		// Footer with theme label
 		let footer = new Panel();
