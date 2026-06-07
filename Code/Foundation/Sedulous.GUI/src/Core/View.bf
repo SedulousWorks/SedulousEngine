@@ -257,10 +257,11 @@ public abstract class View
 	/// Override in controls with additional states (e.g., Button adds Pressed).
 	public virtual ControlState GetControlState()
 	{
-		if (!IsEffectivelyEnabled) return .Disabled;
-		if (IsFocused) return .Focused;
-		if (IsHovered) return .Hover;
-		return .Normal;
+		var state = ControlState.Normal;
+		if (!IsEffectivelyEnabled) state |= .Disabled;
+		if (IsFocused) state |= .Focused;
+		if (IsHovered) state |= .Hover;
+		return state;
 	}
 
 	// === Style resolution helpers ===

@@ -99,7 +99,7 @@ class ControlTests
 		let args = scope MouseEventArgs();
 		args.Set(10, 10, .Left);
 		btn.OnMouseDown(args);
-		Test.Assert(btn.GetControlState() == .Pressed);
+		Test.Assert(btn.GetControlState().HasFlag(.Pressed));
 	}
 
 	// === Label ===

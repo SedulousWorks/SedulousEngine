@@ -31,12 +31,13 @@ public abstract class ButtonBase : View
 
 	public override ControlState GetControlState()
 	{
-		if (!IsEffectivelyEnabled) return .Disabled;
-		if (Command != null && !Command.CanExecute()) return .Disabled;
-		if (mIsPressed) return .Pressed;
-		if (IsFocused) return .Focused;
-		if (IsHovered) return .Hover;
-		return .Normal;
+		var state = ControlState.Normal;
+		if (!IsEffectivelyEnabled || (Command != null && !Command.CanExecute()))
+			state |= .Disabled;
+		if (mIsPressed) state |= .Pressed;
+		if (IsFocused) state |= .Focused;
+		if (IsHovered) state |= .Hover;
+		return state;
 	}
 
 	/// Fire the click event and execute command if bound.
@@ -72,14 +73,10 @@ public abstract class ButtonBase : View
 	private void DrawDefaultBackground(UIDrawContext ctx, RectangleF bounds, ControlState state, float radius)
 	{
 		Color bg = .(55, 58, 70, 255);
-		switch (state)
-		{
-		case .Hover:    bg = Palette.ComputeHover(bg);
-		case .Pressed:  bg = Palette.ComputePressed(bg);
-		case .Disabled: bg = Palette.ComputeDisabled(bg);
-		case .Focused:  bg = Palette.ComputeFocused(bg);
-		default:
-		}
+		if (state.HasFlag(.Disabled))       bg = Palette.ComputeDisabled(bg);
+		else if (state.HasFlag(.Pressed))   bg = Palette.ComputePressed(bg);
+		else if (state.HasFlag(.Focused))   bg = Palette.ComputeFocused(bg);
+		else if (state.HasFlag(.Hover))     bg = Palette.ComputeHover(bg);
 
 		if (radius > 0)
 			ctx.VG.FillRoundedRect(bounds, radius, bg);
