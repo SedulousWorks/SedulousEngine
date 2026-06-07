@@ -2,7 +2,6 @@ FileVersion = 1
 
 [Project]
 Name = "GUISandbox"
-TargetType = "BeefLib"
 StartupObject = "GUISandbox.Program"
 
 [Dependencies]

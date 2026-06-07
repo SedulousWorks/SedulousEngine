@@ -2,7 +2,7 @@ FileVersion = 1
 Locked = ["Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "dr_libs-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
 
 [Workspace]
-StartupProject = "LegacyGUISandbox"
+StartupProject = "GUISandbox"
 
 [Projects]
 "Sedulous.RHI" = {Path = "Foundation/Sedulous.RHI"}
@@ -170,7 +170,7 @@ VGSandbox = {Path = "Samples/VG/VGSandbox"}
 "Sedulous.VFS.Pak.Tool" = {Path = "Foundation/Sedulous.VFS.Pak.Tool"}
 "Sedulous.VFS.Tests" = {Path = "Foundation/Sedulous.VFS.Tests"}
 FontRendering = {Path = "Samples/FontRendering"}
-LegacyGUISandbox = {Path = "Deprecated/GUISandbox"}
+LegacyGUISandbox = {Path = "Deprecated/LegacyGUISandbox"}
 ImGuiSample = {Path = "Samples/ImGuiSample"}
 NuklearSample = {Path = "Samples/NuklearSample"}
 SlugSample = {Path = "Experimental/SlugSample"}
@@ -214,7 +214,6 @@ SummonersLeague = {Path = "Projects/SummonersLeague"}
 "Sedulous.LegacyGUI.Runtime" = {Path = "Foundation/Sedulous.GUI.Runtime"}
 "Sedulous.LegacyGUI.Shell" = {Path = "Foundation/Sedulous.GUI.Shell"}
 "Sedulous.LegacyGUI.Tests" = {Path = "Foundation/Sedulous.GUI.Tests"}
-LegacyGUISandbox = {Path = "Samples/GUI/GUISandbox"}
 "Sedulous.GUI" = {Path = "Foundation/Sedulous.GUI"}
 "Sedulous.GUI.Runtime" = {Path = "Foundation/Sedulous.GUI.Runtime"}
 "Sedulous.GUI.Shell" = {Path = "Foundation/Sedulous.GUI.Shell"}
