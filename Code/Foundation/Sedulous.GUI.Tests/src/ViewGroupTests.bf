@@ -325,4 +325,89 @@ class ViewGroupTests
 		let hit = root.HitTest(.(10, 10));
 		Test.Assert(hit === b); // topmost wins
 	}
+
+	// === FindByName ===
+
+	[Test]
+	public static void FindByName_DirectChild()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let child = new TestView();
+		child.Name = new String("target");
+		root.AddView(child);
+
+		let found = root.FindByName("target");
+		Test.Assert(found === child);
+	}
+
+	[Test]
+	public static void FindByName_NestedChild()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let group = new TestGroup();
+		root.AddView(group);
+		let nested = new TestView();
+		nested.Name = new String("deep");
+		group.AddView(nested);
+
+		let found = root.FindByName("deep");
+		Test.Assert(found === nested);
+	}
+
+	[Test]
+	public static void FindByName_NotFound()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		root.AddView(new TestView());
+
+		let found = root.FindByName("nonexistent");
+		Test.Assert(found == null);
+	}
+
+	[Test]
+	public static void FindByName_Typed()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let child = new TestView();
+		child.Name = new String("typed");
+		root.AddView(child);
+
+		let found = root.FindByName<TestView>("typed");
+		Test.Assert(found === child);
+
+		// Wrong type returns null
+		let wrong = root.FindByName<TestGroup>("typed");
+		Test.Assert(wrong == null);
+	}
+
+	[Test]
+	public static void FindByName_DeeplyNested()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let level1 = new TestGroup();
+		let level2 = new TestGroup();
+		let target = new TestView();
+		target.Name = new String("deep-target");
+		root.AddView(level1);
+		level1.AddView(level2);
+		level2.AddView(target);
+
+		let found = root.FindByName("deep-target");
+		Test.Assert(found === target);
+	}
 }
