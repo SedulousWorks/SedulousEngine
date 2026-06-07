@@ -1,12 +1,12 @@
 namespace Sedulous.GUI;
 
-/// Command binding interface (MVVM pattern).
-/// Used by ButtonBase to bind click actions with enable/disable state.
+/// Command interface for MVVM-style command binding on controls.
+/// Button.Command executes this when clicked if CanExecute returns true.
 public interface ICommand
 {
-	/// Returns true if the command can currently execute.
+	/// Whether the command can currently execute.
 	bool CanExecute();
 
-	/// Executes the command.
+	/// Execute the command.
 	void Execute();
 }

@@ -1,22 +1,40 @@
 namespace Sedulous.GUI;
 
-/// Specifies one axis of sizing for a view within its parent container.
+/// Specifies how a view should be sized along one axis.
+/// Stored on LayoutParams (Width/Height fields).
 public enum SizeSpec
 {
-	/// Explicit size with unit (dp/pt/px).
+	/// Explicit size with a unit (dp/pt/px).
 	case Fixed(Unit size);
-	/// Fill parent's available space.
+
+	/// Fill the parent's available space.
 	case Match;
-	/// Fit to content (default).
+
+	/// Fit to the view's content (intrinsic size).
 	case Wrap;
 
-	/// Resolves a Fixed size to pixels, or returns 0 for Match/Wrap.
+	/// Resolves this spec to a float given the DPI scale.
+	/// For Fixed: resolves the Unit. For Match/Wrap: returns 0 (parent handles these).
 	public float ResolveFixed(float dpiScale)
 	{
-		if (this case .Fixed(let unit))
-			return unit.Resolve(dpiScale);
-		return 0;
+		switch (this)
+		{
+		case .Fixed(let unit): return unit.Resolve(dpiScale);
+		case .Match: return 0;
+		case .Wrap: return 0;
+		}
 	}
 
-	public bool IsFixed => this case .Fixed;
+	/// Whether this is a fixed size (not Match or Wrap).
+	public bool IsFixed
+	{
+		get
+		{
+			switch (this)
+			{
+			case .Fixed: return true;
+			default: return false;
+			}
+		}
+	}
 }

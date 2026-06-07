@@ -2,16 +2,17 @@ namespace Sedulous.GUI;
 
 using System;
 
-/// Clipboard adapter interface. Implemented by the shell layer
-/// (e.g. ShellClipboardAdapter) to bridge platform clipboard.
+/// Interface for clipboard operations.
+/// Defined in the UI layer to avoid Shell dependencies.
+/// Applications provide an adapter that bridges their platform's clipboard.
 public interface IClipboard
 {
-	/// Reads current clipboard text into outText.
+	/// Gets text from the clipboard.
 	Result<void> GetText(String outText);
 
-	/// Sets the clipboard text.
+	/// Sets text to the clipboard.
 	Result<void> SetText(StringView text);
 
-	/// Returns true if the clipboard contains text.
+	/// Returns whether the clipboard contains text.
 	bool HasText { get; }
 }

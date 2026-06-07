@@ -2,138 +2,109 @@ namespace Sedulous.GUI.Tests;
 
 using System;
 using Sedulous.GUI;
+using Sedulous.Core.Mathematics;
 
 class UIContextTests
 {
 	[Test]
-	public static void GetViewById_FindsRegisteredView()
+	public static void AddRootView_RegistersAndSetsActive()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
+
+		Test.Assert(ctx.RootViewCount == 1);
+		Test.Assert(ctx.ActiveInputRoot === root);
+		Test.Assert(root.Context === ctx);
+	}
+
+	[Test]
+	public static void AddRootView_FirstBecomesActive()
+	{
+		let ctx = scope UIContext();
+		let root1 = scope RootView();
+		let root2 = scope RootView();
+
+		ctx.AddRootView(root1);
+		ctx.AddRootView(root2);
+
+		Test.Assert(ctx.ActiveInputRoot === root1);
+	}
+
+	[Test]
+	public static void RemoveRootView_UpdatesActive()
+	{
+		let ctx = scope UIContext();
+		let root1 = scope RootView();
+		let root2 = scope RootView();
+
+		ctx.AddRootView(root1);
+		ctx.AddRootView(root2);
+		ctx.RemoveRootView(root1);
+
+		Test.Assert(ctx.RootViewCount == 1);
+		Test.Assert(ctx.ActiveInputRoot === root2);
+	}
+
+	[Test]
+	public static void RemoveRootView_ClearsContext()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		ctx.AddRootView(root);
+		ctx.RemoveRootView(root);
+
+		Test.Assert(root.Context == null);
+		Test.Assert(ctx.RootViewCount == 0);
+		Test.Assert(ctx.ActiveInputRoot == null);
+	}
+
+	[Test]
+	public static void Register_ViewLookupByIdWorks()
 	{
 		let ctx = scope UIContext();
 		let root = scope RootView();
 		TestSetup.Init(ctx, root);
 
-		let view = new TestView();
-		root.AddView(view);
+		let child = new TestView();
+		root.AddView(child);
 
-		let found = ctx.GetViewById(view.Id);
-		Test.Assert(found === view);
+		let found = ctx.GetViewById(child.Id);
+		Test.Assert(found === child);
 	}
 
 	[Test]
-	public static void GetViewById_ReturnsNullForInvalid()
-	{
-		let ctx = scope UIContext();
-		let found = ctx.GetViewById(ViewId.Invalid);
-		Test.Assert(found == null);
-	}
-
-	[Test]
-	public static void GetViewById_ReturnsNullAfterDetach()
+	public static void Register_TypedLookup()
 	{
 		let ctx = scope UIContext();
 		let root = scope RootView();
 		TestSetup.Init(ctx, root);
 
-		let view = new TestView();
-		root.AddView(view);
-		let id = view.Id;
+		let child = new TestView();
+		root.AddView(child);
 
-		root.RemoveView(view);
-		let found = ctx.GetViewById(id);
-		Test.Assert(found == null);
-
-		delete view;
+		let found = ctx.GetViewById<TestView>(child.Id);
+		Test.Assert(found === child);
 	}
 
 	[Test]
-	public static void GetViewById_Typed()
+	public static void Unregister_LookupReturnsNull()
 	{
 		let ctx = scope UIContext();
 		let root = scope RootView();
 		TestSetup.Init(ctx, root);
 
-		let view = new TestView();
-		root.AddView(view);
+		let child = new TestView();
+		root.AddView(child);
+		let id = child.Id;
 
-		let found = ctx.GetViewById<TestView>(view.Id);
-		Test.Assert(found === view);
+		root.RemoveView(child, true); // delete child
 
-		// Wrong type returns null
-		let wrong = ctx.GetViewById<TestGroup>(view.Id);
-		Test.Assert(wrong == null);
+		Test.Assert(ctx.GetViewById(id) == null);
 	}
 
 	[Test]
-	public static void NameRegistry_FindByName()
-	{
-		let ctx = scope UIContext();
-		let root = scope RootView();
-		TestSetup.Init(ctx, root);
-
-		let view = new TestView();
-		view.Name.Value = "my-button";
-		root.AddView(view);
-
-		let found = ctx.FindByName("my-button");
-		Test.Assert(found === view);
-	}
-
-	[Test]
-	public static void NameRegistry_FindByName_Typed()
-	{
-		let ctx = scope UIContext();
-		let root = scope RootView();
-		TestSetup.Init(ctx, root);
-
-		let view = new TestView();
-		view.Name.Value = "test-view";
-		root.AddView(view);
-
-		let found = ctx.FindByName<TestView>("test-view");
-		Test.Assert(found === view);
-	}
-
-	[Test]
-	public static void NameRegistry_ReturnsNullForUnknown()
-	{
-		let ctx = scope UIContext();
-		let found = ctx.FindByName("nonexistent");
-		Test.Assert(found == null);
-	}
-
-	[Test]
-	public static void FrameLifecycle()
-	{
-		let ctx = scope UIContext();
-		Test.Assert(ctx.CurrentPhase == .Idle);
-
-		ctx.BeginFrame(0.016f);
-		Test.Assert(ctx.CurrentPhase == .Layout);
-		Test.Assert(ctx.DeltaTime == 0.016f);
-
-		ctx.BeginDraw();
-		Test.Assert(ctx.CurrentPhase == .Drawing);
-
-		ctx.EndDraw();
-		Test.Assert(ctx.CurrentPhase == .Idle);
-
-		ctx.EndFrame();
-		Test.Assert(ctx.CurrentPhase == .Idle);
-	}
-
-	[Test]
-	public static void EndFrame_DrainsMutationQueue()
-	{
-		let ctx = scope UIContext();
-		int counter = 0;
-		ctx.QueueMutation(new [&counter] () => { counter++; });
-
-		ctx.EndFrame();
-		Test.Assert(counter == 1);
-	}
-
-	[Test]
-	public static void AttachView_PropagatesContext()
+	public static void AttachView_RegistersSubtree()
 	{
 		let ctx = scope UIContext();
 		let root = scope RootView();
@@ -141,21 +112,18 @@ class UIContextTests
 
 		let group = new TestGroup();
 		let child = new TestView();
+		// Build subtree before attaching
 		group.AddView(child);
-
-		// Not attached yet
-		Test.Assert(group.Context == null);
-		Test.Assert(child.Context == null);
-
+		// Now attach to root - should register both
 		root.AddView(group);
 
-		// Now both should be attached
-		Test.Assert(group.Context === ctx);
+		Test.Assert(ctx.GetViewById(group.Id) === group);
+		Test.Assert(ctx.GetViewById(child.Id) === child);
 		Test.Assert(child.Context === ctx);
 	}
 
 	[Test]
-	public static void DetachView_ClearsContext()
+	public static void DetachView_UnregistersSubtree()
 	{
 		let ctx = scope UIContext();
 		let root = scope RootView();
@@ -163,15 +131,56 @@ class UIContextTests
 
 		let group = new TestGroup();
 		let child = new TestView();
-		group.AddView(child);
 		root.AddView(group);
-
-		Test.Assert(child.Context === ctx);
+		group.AddView(child);
+		let groupId = group.Id;
+		let childId = child.Id;
 
 		root.RemoveView(group);
-		Test.Assert(group.Context == null);
-		Test.Assert(child.Context == null);
+		Test.Assert(ctx.GetViewById(groupId) == null);
+		Test.Assert(ctx.GetViewById(childId) == null);
+		delete group; // also deletes child
+	}
 
-		delete group;
+	[Test]
+	public static void BeginFrame_UpdatesTime()
+	{
+		let ctx = scope UIContext();
+		ctx.BeginFrame(0.016f);
+		Test.Assert(Math.Abs(ctx.DeltaTime - 0.016f) < 0.001f);
+		Test.Assert(Math.Abs(ctx.TotalTime - 0.016f) < 0.001f);
+
+		ctx.BeginFrame(0.016f);
+		Test.Assert(Math.Abs(ctx.TotalTime - 0.032f) < 0.001f);
+	}
+
+	[Test]
+	public static void Managers_CreatedByDefault()
+	{
+		let ctx = scope UIContext();
+		Test.Assert(ctx.InputManager != null);
+		Test.Assert(ctx.FocusManager != null);
+		Test.Assert(ctx.DragDropManager != null);
+		Test.Assert(ctx.Animations != null);
+		Test.Assert(ctx.Shortcuts != null);
+		Test.Assert(ctx.Tooltips != null);
+	}
+
+	[Test]
+	public static void DpiScale_DefaultsTo1()
+	{
+		let ctx = scope UIContext();
+		Test.Assert(ctx.DpiScale == 1.0f);
+	}
+
+	[Test]
+	public static void DpiScale_FromActiveRoot()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		root.DpiScale = 2.0f;
+		ctx.AddRootView(root);
+
+		Test.Assert(ctx.DpiScale == 2.0f);
 	}
 }

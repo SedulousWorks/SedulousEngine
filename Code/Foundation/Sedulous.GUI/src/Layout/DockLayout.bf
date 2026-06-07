@@ -6,24 +6,29 @@ using Sedulous.Core.Mathematics;
 /// Dock position for children of a DockLayout.
 public enum Dock
 {
+	/// Dock to the left edge. Child gets its measured width, full remaining height.
 	Left,
+	/// Dock to the top edge. Child gets full remaining width, its measured height.
 	Top,
+	/// Dock to the right edge. Child gets its measured width, full remaining height.
 	Right,
+	/// Dock to the bottom edge. Child gets full remaining width, its measured height.
 	Bottom,
+	/// Fill all remaining space.
 	Fill
 }
 
 /// Layout that docks children to edges, with the last child optionally
 /// filling the remaining space.
+///
+/// Children are processed in order. Each docked child claims space from
+/// the corresponding edge, shrinking the remaining area for subsequent
+/// children.
 public class DockLayout : ViewGroup
 {
-	public Property<bool> LastChildFill = new .(false) ~ delete _;
-
-	protected override void InitializePropertyOwners()
-	{
-		base.InitializePropertyOwners();
-		LastChildFill.SetOwner(this);
-	}
+	/// When true, the last child fills all remaining space
+	/// regardless of its Dock setting. Default is false (changed from current UI).
+	public bool LastChildFill = false;
 
 	public class LayoutParams : Sedulous.GUI.LayoutParams
 	{
@@ -38,23 +43,22 @@ public class DockLayout : ViewGroup
 
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
-		let pad = Padding.Value;
 		float usedLeft = 0, usedTop = 0, usedRight = 0, usedBottom = 0;
 		float maxW = 0, maxH = 0;
 
 		for (int i = 0; i < ChildCount; i++)
 		{
 			let child = GetChildAt(i);
-			if (child.Visibility.Value == .Gone) continue;
+			if (child.Visibility == .Gone) continue;
 
 			let lp = child.LayoutParams as DockLayout.LayoutParams;
 			let dock = (lp != null) ? lp.Dock : Dock.Left;
 			let margin = child.LayoutParams?.Margin ?? Thickness();
 
-			let remainW = Math.Max(0, constraints.MaxWidth - pad.TotalHorizontal - usedLeft - usedRight);
-			let remainH = Math.Max(0, constraints.MaxHeight - pad.TotalVertical - usedTop - usedBottom);
+			let remainW = Math.Max(0, constraints.MaxWidth - Padding.TotalHorizontal - usedLeft - usedRight);
+			let remainH = Math.Max(0, constraints.MaxHeight - Padding.TotalVertical - usedTop - usedBottom);
 
-			bool isFill = (LastChildFill.Value && i == ChildCount - 1) || dock == .Fill;
+			bool isFill = (LastChildFill && i == ChildCount - 1) || dock == .Fill;
 
 			BoxConstraints childConstraints;
 			if (isFill)
@@ -63,7 +67,13 @@ public class DockLayout : ViewGroup
 					Math.Max(0, remainW - margin.TotalHorizontal),
 					Math.Max(0, remainH - margin.TotalVertical));
 			}
-			else
+			else if (dock == .Left || dock == .Right)
+			{
+				childConstraints = BoxConstraints(
+					0, Math.Max(0, remainW - margin.TotalHorizontal),
+					0, Math.Max(0, remainH - margin.TotalVertical));
+			}
+			else // Top or Bottom
 			{
 				childConstraints = BoxConstraints(
 					0, Math.Max(0, remainW - margin.TotalHorizontal),
@@ -78,7 +88,7 @@ public class DockLayout : ViewGroup
 			case .Right:  usedRight += child.MeasuredSize.X + margin.TotalHorizontal;
 			case .Top:    usedTop += child.MeasuredSize.Y + margin.TotalVertical;
 			case .Bottom: usedBottom += child.MeasuredSize.Y + margin.TotalVertical;
-			case .Fill:
+			case .Fill:   // doesn't consume edge space
 			}
 
 			maxW = Math.Max(maxW, usedLeft + usedRight);
@@ -86,28 +96,27 @@ public class DockLayout : ViewGroup
 		}
 
 		MeasuredSize = .(
-			constraints.ConstrainWidth(maxW + pad.TotalHorizontal),
-			constraints.ConstrainHeight(maxH + pad.TotalVertical));
+			constraints.ConstrainWidth(maxW + Padding.TotalHorizontal),
+			constraints.ConstrainHeight(maxH + Padding.TotalVertical));
 	}
 
 	protected override void OnLayout(float left, float top, float width, float height)
 	{
-		let pad = Padding.Value;
-		float dockLeft = pad.Left;
-		float dockTop = pad.Top;
-		float dockRight = width - pad.Right;
-		float dockBottom = height - pad.Bottom;
+		float dockLeft = Padding.Left;
+		float dockTop = Padding.Top;
+		float dockRight = width - Padding.Right;
+		float dockBottom = height - Padding.Bottom;
 
 		for (int i = 0; i < ChildCount; i++)
 		{
 			let child = GetChildAt(i);
-			if (child.Visibility.Value == .Gone) continue;
+			if (child.Visibility == .Gone) continue;
 
 			let lp = child.LayoutParams as DockLayout.LayoutParams;
 			let dock = (lp != null) ? lp.Dock : Dock.Left;
 			let margin = child.LayoutParams?.Margin ?? Thickness();
 
-			bool isFill = (LastChildFill.Value && i == ChildCount - 1) || dock == .Fill;
+			bool isFill = (LastChildFill && i == ChildCount - 1) || dock == .Fill;
 
 			if (isFill)
 			{
@@ -153,7 +162,7 @@ public class DockLayout : ViewGroup
 						child.MeasuredSize.Y);
 					dockBottom -= child.MeasuredSize.Y + margin.TotalVertical;
 
-				case .Fill:
+				case .Fill: // handled above
 				}
 			}
 		}

@@ -12,8 +12,13 @@ public struct TrackSize
 	public TrackSizeMode Mode;
 	public float Value;
 
+	/// Size to content.
 	public static TrackSize Auto() => .() { Mode = .Auto };
+
+	/// Explicit pixel size.
 	public static TrackSize Fixed(float px) => .() { Mode = .Fixed, Value = px };
+
+	/// Proportional (weighted) sizing.
 	public static TrackSize Flex(float weight = 1) => .() { Mode = .Flex, Value = weight };
 }
 
@@ -24,23 +29,22 @@ public class GridLayout : ViewGroup
 {
 	public List<TrackSize> Columns = new .() ~ delete _;
 	public List<TrackSize> Rows = new .() ~ delete _;
-	public Property<float> ColumnSpacing = new .(0) ~ delete _;
-	public Property<float> RowSpacing = new .(0) ~ delete _;
-	public Property<bool> AutoFlow = new .(true) ~ delete _;
+	public float ColumnSpacing;
+	public float RowSpacing;
 
-	protected override void InitializePropertyOwners()
-	{
-		base.InitializePropertyOwners();
-		ColumnSpacing.SetOwner(this);
-		RowSpacing.SetOwner(this);
-		AutoFlow.SetOwner(this);
-	}
+	/// When true (default), children without explicit Row/Column are placed
+	/// in the next available cell left-to-right, top-to-bottom.
+	public bool AutoFlow = true;
 
 	public class LayoutParams : Sedulous.GUI.LayoutParams
 	{
+		/// Row index (-1 = auto-flow).
 		public int32 Row = -1;
+		/// Column index (-1 = auto-flow).
 		public int32 Column = -1;
+		/// Number of rows this child spans.
 		public int32 RowSpan = 1;
+		/// Number of columns this child spans.
 		public int32 ColumnSpan = 1;
 	}
 
@@ -52,24 +56,24 @@ public class GridLayout : ViewGroup
 
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
-		let pad = Padding.Value;
 		let cols = ColCount;
 		let rows = RowCount;
-		let colSpacing = ColumnSpacing.Value;
-		let rowSpacing = RowSpacing.Value;
 
-		if (AutoFlow.Value) AssignAutoFlow(cols, rows);
+		// Assign auto-flow positions.
+		if (AutoFlow) AssignAutoFlow(cols, rows);
 
 		float[] colWidths = scope float[cols];
 		float[] rowHeights = scope float[rows];
 
+		// Initialize Fixed tracks (may have no children in them).
 		InitFixedTracks(Columns, colWidths, cols);
 		InitFixedTracks(Rows, rowHeights, rows);
 
+		// Pass 1: measure children, compute Auto sizes.
 		for (int i = 0; i < ChildCount; i++)
 		{
 			let child = GetChildAt(i);
-			if (child.Visibility.Value == .Gone) continue;
+			if (child.Visibility == .Gone) continue;
 
 			let glp = child.LayoutParams as GridLayout.LayoutParams;
 			let col = Math.Clamp((glp != null) ? glp.Column : 0, 0, cols - 1);
@@ -82,18 +86,20 @@ public class GridLayout : ViewGroup
 
 			if (colDef.Mode == .Auto)
 				colWidths[col] = Math.Max(colWidths[col], child.MeasuredSize.X);
+
 			if (rowDef.Mode == .Auto)
 				rowHeights[row] = Math.Max(rowHeights[row], child.MeasuredSize.Y);
 		}
 
-		let totalAvailW = constraints.MaxWidth - pad.TotalHorizontal - colSpacing * Math.Max(0, cols - 1);
-		let totalAvailH = constraints.MaxHeight - pad.TotalVertical - rowSpacing * Math.Max(0, rows - 1);
+		// Distribute remaining space to Flex tracks.
+		let totalAvailW = constraints.MaxWidth - Padding.TotalHorizontal - ColumnSpacing * Math.Max(0, cols - 1);
+		let totalAvailH = constraints.MaxHeight - Padding.TotalVertical - RowSpacing * Math.Max(0, rows - 1);
 
 		DistributeFlex(Columns, colWidths, cols, totalAvailW);
 		DistributeFlex(Rows, rowHeights, rows, totalAvailH);
 
-		float totalW = pad.TotalHorizontal + colSpacing * Math.Max(0, cols - 1);
-		float totalH = pad.TotalVertical + rowSpacing * Math.Max(0, rows - 1);
+		float totalW = Padding.TotalHorizontal + ColumnSpacing * Math.Max(0, cols - 1);
+		float totalH = Padding.TotalVertical + RowSpacing * Math.Max(0, rows - 1);
 		for (let w in colWidths) totalW += w;
 		for (let h in rowHeights) totalH += h;
 
@@ -102,22 +108,21 @@ public class GridLayout : ViewGroup
 
 	protected override void OnLayout(float left, float top, float width, float height)
 	{
-		let pad = Padding.Value;
 		let cols = ColCount;
 		let rows = RowCount;
-		let colSpacing = ColumnSpacing.Value;
-		let rowSpacing = RowSpacing.Value;
 
 		float[] colWidths = scope float[cols];
 		float[] rowHeights = scope float[rows];
 
+		// Initialize Fixed tracks.
 		InitFixedTracks(Columns, colWidths, cols);
 		InitFixedTracks(Rows, rowHeights, rows);
 
+		// Recompute Auto sizes with final constraints.
 		for (int i = 0; i < ChildCount; i++)
 		{
 			let child = GetChildAt(i);
-			if (child.Visibility.Value == .Gone) continue;
+			if (child.Visibility == .Gone) continue;
 
 			let glp = child.LayoutParams as GridLayout.LayoutParams;
 			let col = Math.Clamp((glp != null) ? glp.Column : 0, 0, cols - 1);
@@ -128,28 +133,31 @@ public class GridLayout : ViewGroup
 
 			if (colDef.Mode == .Auto)
 				colWidths[col] = Math.Max(colWidths[col], child.MeasuredSize.X);
+
 			if (rowDef.Mode == .Auto)
 				rowHeights[row] = Math.Max(rowHeights[row], child.MeasuredSize.Y);
 		}
 
-		let contentW = width - pad.TotalHorizontal - colSpacing * Math.Max(0, cols - 1);
-		let contentH = height - pad.TotalVertical - rowSpacing * Math.Max(0, rows - 1);
+		let contentW = width - Padding.TotalHorizontal - ColumnSpacing * Math.Max(0, cols - 1);
+		let contentH = height - Padding.TotalVertical - RowSpacing * Math.Max(0, rows - 1);
 		DistributeFlex(Columns, colWidths, cols, contentW);
 		DistributeFlex(Rows, rowHeights, rows, contentH);
 
+		// Compute cumulative offsets.
 		float[] colX = scope float[cols];
 		float[] rowY = scope float[rows];
-		colX[0] = pad.Left;
+		colX[0] = Padding.Left;
 		for (int c = 1; c < cols; c++)
-			colX[c] = colX[c - 1] + colWidths[c - 1] + colSpacing;
-		rowY[0] = pad.Top;
+			colX[c] = colX[c - 1] + colWidths[c - 1] + ColumnSpacing;
+		rowY[0] = Padding.Top;
 		for (int r = 1; r < rows; r++)
-			rowY[r] = rowY[r - 1] + rowHeights[r - 1] + rowSpacing;
+			rowY[r] = rowY[r - 1] + rowHeights[r - 1] + RowSpacing;
 
+		// Position children.
 		for (int i = 0; i < ChildCount; i++)
 		{
 			let child = GetChildAt(i);
-			if (child.Visibility.Value == .Gone) continue;
+			if (child.Visibility == .Gone) continue;
 
 			let glp = child.LayoutParams as GridLayout.LayoutParams;
 			let col = Math.Clamp((glp != null) ? glp.Column : 0, 0, cols - 1);
@@ -157,23 +165,25 @@ public class GridLayout : ViewGroup
 			let colSpan = Math.Clamp((glp != null) ? glp.ColumnSpan : 1, 1, cols - col);
 			let rowSpan = Math.Clamp((glp != null) ? glp.RowSpan : 1, 1, rows - row);
 
+			// Compute spanned width/height.
 			float cellW = 0;
 			for (int c = col; c < col + colSpan; c++)
 			{
 				cellW += colWidths[c];
-				if (c > col) cellW += colSpacing;
+				if (c > col) cellW += ColumnSpacing;
 			}
 			float cellH = 0;
 			for (int r = row; r < row + rowSpan; r++)
 			{
 				cellH += rowHeights[r];
-				if (r > row) cellH += rowSpacing;
+				if (r > row) cellH += RowSpacing;
 			}
 
 			child.Layout(colX[col], rowY[row], cellW, cellH);
 		}
 	}
 
+	/// Assign auto-flow positions to children that don't have explicit Row/Column.
 	private void AssignAutoFlow(int32 cols, int32 rows)
 	{
 		int32 nextRow = 0, nextCol = 0;
@@ -181,7 +191,7 @@ public class GridLayout : ViewGroup
 		for (int i = 0; i < ChildCount; i++)
 		{
 			let child = GetChildAt(i);
-			if (child.Visibility.Value == .Gone) continue;
+			if (child.Visibility == .Gone) continue;
 
 			let glp = child.LayoutParams as GridLayout.LayoutParams;
 			if (glp == null) continue;
@@ -201,6 +211,7 @@ public class GridLayout : ViewGroup
 		}
 	}
 
+	/// Set Fixed track sizes upfront (they don't depend on children).
 	private static void InitFixedTracks(List<TrackSize> defs, float[] sizes, int32 count)
 	{
 		for (int i = 0; i < count; i++)
@@ -211,6 +222,7 @@ public class GridLayout : ViewGroup
 		}
 	}
 
+	/// Distribute remaining space to Flex tracks by weight.
 	private static void DistributeFlex(List<TrackSize> defs, float[] sizes, int32 count, float totalAvail)
 	{
 		float usedByFixed = 0;

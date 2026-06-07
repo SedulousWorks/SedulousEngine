@@ -36,6 +36,7 @@ class GravityTests
 	[Test]
 	public static void FlagsAreDistinct()
 	{
+		// Each flag should be a unique bit
 		Test.Assert((Gravity.Left & Gravity.Right) == 0);
 		Test.Assert((Gravity.Top & Gravity.Bottom) == 0);
 		Test.Assert((Gravity.CenterH & Gravity.FillH) == 0);

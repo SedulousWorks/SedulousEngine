@@ -46,6 +46,7 @@ class GravityHelperTests
 	public static void WithMargin()
 	{
 		let r = GravityHelper.Apply(.Center, 400, 300, 100, 50, .(10, 20, 10, 20));
+		// Available: 380 x 260, center child in that
 		Test.Assert(Math.Abs(r.X - 150) < 0.01f); // 10 + (380-100)/2
 		Test.Assert(Math.Abs(r.Y - 125) < 0.01f); // 20 + (260-50)/2
 	}
@@ -56,7 +57,7 @@ class GravityHelperTests
 		let r = GravityHelper.Apply(.Fill, 400, 300, 100, 50, .(10, 20, 30, 40));
 		Test.Assert(Math.Abs(r.X - 10) < 0.01f);
 		Test.Assert(Math.Abs(r.Y - 20) < 0.01f);
-		Test.Assert(Math.Abs(r.Width - 360) < 0.01f);
-		Test.Assert(Math.Abs(r.Height - 240) < 0.01f);
+		Test.Assert(Math.Abs(r.Width - 360) < 0.01f); // 400-10-30
+		Test.Assert(Math.Abs(r.Height - 240) < 0.01f); // 300-20-40
 	}
 }

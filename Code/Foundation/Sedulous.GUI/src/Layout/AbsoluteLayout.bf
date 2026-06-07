@@ -16,15 +16,14 @@ public class AbsoluteLayout : ViewGroup
 
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
-		let pad = Padding.Value;
 		float maxR = 0, maxB = 0;
 
 		for (int i = 0; i < ChildCount; i++)
 		{
 			let child = GetChildAt(i);
-			if (child.Visibility.Value == .Gone) continue;
+			if (child.Visibility == .Gone) continue;
 
-			let childConstraints = MakeAbsoluteChildConstraints(constraints, child);
+			let childConstraints = MakeChildConstraints(constraints, child);
 			child.Measure(childConstraints);
 
 			let alp = child.LayoutParams as AbsoluteLayout.LayoutParams;
@@ -36,23 +35,21 @@ public class AbsoluteLayout : ViewGroup
 		}
 
 		MeasuredSize = .(
-			constraints.ConstrainWidth(maxR + pad.TotalHorizontal),
-			constraints.ConstrainHeight(maxB + pad.TotalVertical));
+			constraints.ConstrainWidth(maxR + Padding.TotalHorizontal),
+			constraints.ConstrainHeight(maxB + Padding.TotalVertical));
 	}
 
 	protected override void OnLayout(float left, float top, float width, float height)
 	{
-		let pad = Padding.Value;
-
 		for (int i = 0; i < ChildCount; i++)
 		{
 			let child = GetChildAt(i);
-			if (child.Visibility.Value == .Gone) continue;
+			if (child.Visibility == .Gone) continue;
 
 			let lp = child.LayoutParams;
 			let alp = lp as AbsoluteLayout.LayoutParams;
-			let x = pad.Left + ((alp != null) ? alp.X : 0);
-			let y = pad.Top + ((alp != null) ? alp.Y : 0);
+			let x = Padding.Left + ((alp != null) ? alp.X : 0);
+			let y = Padding.Top + ((alp != null) ? alp.Y : 0);
 
 			float w = child.MeasuredSize.X;
 			float h = child.MeasuredSize.Y;
@@ -60,18 +57,17 @@ public class AbsoluteLayout : ViewGroup
 			if (lp != null)
 			{
 				if (lp.Width case .Match)
-					w = Math.Max(0, width - pad.TotalHorizontal - ((alp != null) ? alp.X : 0));
+					w = Math.Max(0, width - Padding.TotalHorizontal - ((alp != null) ? alp.X : 0));
 				if (lp.Height case .Match)
-					h = Math.Max(0, height - pad.TotalVertical - ((alp != null) ? alp.Y : 0));
+					h = Math.Max(0, height - Padding.TotalVertical - ((alp != null) ? alp.Y : 0));
 			}
 
 			child.Layout(x, y, w, h);
 		}
 	}
 
-	private BoxConstraints MakeAbsoluteChildConstraints(BoxConstraints parentConstraints, View child)
+	private BoxConstraints MakeChildConstraints(BoxConstraints parentConstraints, View child)
 	{
-		let pad = Padding.Value;
 		let lp = child.LayoutParams;
 		float minW = 0, maxW = float.MaxValue;
 		float minH = 0, maxH = float.MaxValue;
@@ -84,7 +80,7 @@ public class AbsoluteLayout : ViewGroup
 				let v = u.Resolve(1.0f);
 				minW = v; maxW = v;
 			case .Match:
-				let avail = Math.Max(0, parentConstraints.MaxWidth - pad.TotalHorizontal);
+				let avail = Math.Max(0, parentConstraints.MaxWidth - Padding.TotalHorizontal);
 				minW = avail; maxW = avail;
 			case .Wrap:
 			}
@@ -95,7 +91,7 @@ public class AbsoluteLayout : ViewGroup
 				let v = u.Resolve(1.0f);
 				minH = v; maxH = v;
 			case .Match:
-				let avail = Math.Max(0, parentConstraints.MaxHeight - pad.TotalVertical);
+				let avail = Math.Max(0, parentConstraints.MaxHeight - Padding.TotalVertical);
 				minH = avail; maxH = avail;
 			case .Wrap:
 			}

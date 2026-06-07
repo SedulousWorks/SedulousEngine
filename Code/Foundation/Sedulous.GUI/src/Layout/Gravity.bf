@@ -4,6 +4,7 @@ using System;
 
 /// Alignment flags for positioning a view within its parent's available space.
 /// Combine horizontal and vertical flags with bitwise OR.
+//[Flags]
 public enum Gravity
 {
 	None     = 0,

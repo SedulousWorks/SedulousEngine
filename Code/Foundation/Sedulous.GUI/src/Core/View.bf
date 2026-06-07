@@ -4,75 +4,97 @@ using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
 
-using internal Sedulous.GUI;
-
-/// Base class for all GUI views. A view is a rectangular element that can
+/// Base class for all UI2 views. A view is a rectangular element that can
 /// measure itself, be positioned by a parent, and draw itself.
-///
-/// All externally-settable state is exposed as Property<T> for uniform
-/// change notification, invalidation, and markup binding.
 public abstract class View
 {
 	// === Identity ===
 
-	/// Unique identifier for safe tracking by managers.
+	/// Unique identifier for safe tracking by managers (Input, Focus, DragDrop).
 	public readonly ViewId Id = ViewId.Create();
 
-	/// Indirection wrapper for safe external references.
-	/// handle.View is set to null immediately on deletion.
-	/// Owned by ViewHandleRegistry, not by this view.
-	public readonly ViewHandle Handle;
+	/// Optional debug/lookup name.
+	public String Name;
 
-	/// User-assigned name (CSS id equivalent). Unique per UIContext.
-	/// Setting this registers/unregisters in UIContext.NameRegistry.
-	public Property<String> Name = new .(null) ~ delete _;
+	/// Style class for stylesheet matching (e.g., "primary", "toolbar-btn").
+	public String StyleId;
 
-	/// User-assigned style classes (CSS class equivalent).
-	public List<String> StyleClasses = new .() ~ DeleteContainerAndItems!(_);
+	// === Layout state ===
 
-	// === Layout state (not Property<T> — set by layout engine) ===
+	/// Size computed by OnMeasure. Set during the measure pass.
+	public Vector2 MeasuredSize;
 
-	/// Size computed by OnMeasure. Only set by subclasses in OnMeasure.
-	public Vector2 MeasuredSize { get; protected set; }
+	/// Final position and size in parent-relative coordinates. Set during layout pass.
+	public RectangleF Bounds;
 
-	/// Final position and size in parent-relative coordinates. Set by Layout().
-	public RectangleF Bounds { get; protected set; }
-
-	/// Convenience accessors.
+	/// Convenience accessors for Bounds dimensions.
 	public float Width => Bounds.Width;
 	public float Height => Bounds.Height;
 
 	/// Layout parameters (owned by the view, set by parent container).
-	public LayoutParams LayoutParams ~ delete _;
+	public LayoutParams LayoutParams;
 
 	// === Visibility & interaction ===
 
-	public Property<Visibility> Visibility = new .(.Visible) ~ delete _;
-	public Property<bool> IsEnabled = new .(true) ~ delete _;
-	public Property<bool> IsInteractionEnabled = new .(true) ~ delete _;
-	public Property<bool> IsHitTestVisible = new .(true) ~ delete _;
-	public Property<bool> IsFocusable = new .(false) ~ delete _;
-	public Property<bool> IsTabStop = new .(false) ~ delete _;
-	public Property<int32> TabIndex = new .(0) ~ delete _;
-	public Property<bool> ClipsContent = new .(false) ~ delete _;
+	/// Controls whether and how this view participates in layout and drawing.
+	public Visibility Visibility = .Visible;
 
-	/// Set by QueueDestroy to prevent double-delete.
+	/// Whether this view responds to user interaction (e.g. button clicks, text input).
+	/// A disabled view is still visible and hit-testable; controls should use this to
+	/// render a disabled visual state.
+	public bool IsEnabled = true;
+
+	/// Whether this view and its entire subtree can receive input.
+	/// When false, HitTest returns null for this view and all descendants.
+	/// Use to disable interaction on a whole panel (e.g. loading overlay, disabled pane).
+	public bool IsInteractionEnabled = true;
+
+	/// Whether this view is a valid hit-test target. When false, the view itself
+	/// won't be returned from HitTest, but its children are still tested.
+	/// Use for layout containers that should pass through clicks to children.
+	public bool IsHitTestVisible = true;
+
+	/// Whether this view can receive keyboard focus.
+	public bool IsFocusable = false;
+
+	/// Whether this view participates in tab navigation.
+	public bool IsTabStop = false;
+
+	/// Tab order within the parent. Lower values are visited first.
+	public int32 TabIndex = 0;
+
+	/// Whether child content is clipped to this view's bounds during drawing.
+	public bool ClipsContent = false;
+
+	/// Set by MutationQueue.QueueDelete to prevent double-delete.
 	public bool IsPendingDeletion;
 
 	// === Visual ===
 
-	public Property<float> Opacity = new .(1.0f, .Visual) ~ delete _;
-	public Property<ViewTransform> Transform = new .(.Identity) ~ delete _;
+	/// Opacity (0 = fully transparent, 1 = fully opaque).
+	/// Composes multiplicatively with parent opacity during drawing.
+	public float Opacity = 1.0f;
+
+	/// Post-layout transform (translate, rotate, scale). Does not affect layout,
+	/// but is accounted for during drawing and hit testing.
+	public ViewTransform Transform = .Identity;
 
 	// === Tooltip ===
 
-	public Property<String> TooltipText = new .(null, .Visual) ~ delete _;
-	public Property<TooltipPlacement> TooltipPlacement = new .(.Bottom, .Visual) ~ delete _;
-	public Property<bool> IsTooltipInteractive = new .(false, .Visual) ~ delete _;
+	/// Tooltip text shown after hover delay. Null/empty = no tooltip.
+	public String TooltipText;
+
+	/// Where the tooltip appears relative to this view.
+	public TooltipPlacement TooltipPlacement = .Bottom;
+
+	/// Whether the tooltip stays visible and interactive when hovered.
+	public bool IsTooltipInteractive;
 
 	// === Cursor ===
 
-	public Property<CursorType> Cursor = new .(.Default, .Visual) ~ delete _;
+	/// Cursor type to display when this view is hovered.
+	/// Set to .Default to inherit from the parent chain.
+	public CursorType Cursor = .Default;
 
 	/// Effective cursor - walks the parent chain, returning the first non-Default value.
 	public CursorType EffectiveCursor
@@ -82,33 +104,24 @@ public abstract class View
 			var v = this;
 			while (v != null)
 			{
-				if (v.Cursor.Value != .Default)
-					return v.Cursor.Value;
+				if (v.Cursor != .Default)
+					return v.Cursor;
 				v = v.Parent;
 			}
 			return .Default;
 		}
 	}
 
-	// === Focus (directional) ===
-
-	public ViewId? NextFocusUp;
-	public ViewId? NextFocusDown;
-	public ViewId? NextFocusLeft;
-	public ViewId? NextFocusRight;
-
-	/// When true, arrow keys go to this view's OnKeyDown instead of
-	/// moving directional focus. EditText and NumericField override to true.
-	public bool WantsArrowKeys;
-
 	// === Tree ===
 
-	private View mParent;
-	private UIContext mContext;
+	/// Parent view (null for root). Set by ViewGroup on AddView/RemoveView.
+	public View Parent { get; set; }
 
-	public View Parent => mParent;
-	public UIContext Context => mContext;
-	public bool IsAttached => mContext != null;
+	/// UI context this view is attached to. Propagated from root on attach.
+	public UIContext Context { get; set; }
+
+	/// Whether this view is part of a context-connected tree.
+	public bool IsAttached => Context != null;
 
 	/// The RootView this view belongs to. Walks up the parent chain.
 	public RootView Root
@@ -120,40 +133,38 @@ public abstract class View
 			{
 				if (let root = view as RootView)
 					return root;
-				view = view.mParent;
+				view = view.Parent;
 			}
 			return null;
 		}
 	}
 
-	// === Constructor ===
+	// === User data ===
 
-	public this()
+	private Dictionary<String, Object> mUserData;
+
+	/// Stores arbitrary data by key. Lazily allocates storage.
+	public void SetUserData(StringView key, Object data)
 	{
-		Handle = ViewHandleRegistry.Create(this);
-		InitializePropertyOwners();
+		if (mUserData == null)
+			mUserData = new .();
+		mUserData[new String(key)] = data;
 	}
 
-	/// Registers all Property<T> fields with this view as owner.
-	/// Called from constructor. Subclasses should override and call base
-	/// to register their own properties.
-	protected virtual void InitializePropertyOwners()
+	/// Retrieves stored data by key. Returns null if not set.
+	public Object GetUserData(StringView key)
 	{
-		Name.SetOwner(this, .Visual);
-		Visibility.SetOwner(this);
-		IsEnabled.SetOwner(this);
-		IsInteractionEnabled.SetOwner(this);
-		IsHitTestVisible.SetOwner(this);
-		IsFocusable.SetOwner(this);
-		IsTabStop.SetOwner(this);
-		TabIndex.SetOwner(this);
-		ClipsContent.SetOwner(this);
-		Opacity.SetOwner(this, .Visual);
-		Transform.SetOwner(this, .Visual);
-		TooltipText.SetOwner(this, .Visual);
-		TooltipPlacement.SetOwner(this, .Visual);
-		IsTooltipInteractive.SetOwner(this, .Visual);
-		Cursor.SetOwner(this, .Visual);
+		if (mUserData == null)
+			return null;
+		if (mUserData.TryGetValue(scope String(key), let val))
+			return val;
+		return null;
+	}
+
+	/// Typed retrieval.
+	public T GetUserData<T>(StringView key) where T : class
+	{
+		return GetUserData(key) as T;
 	}
 
 	// === Coordinate conversion ===
@@ -167,12 +178,18 @@ public abstract class View
 		{
 			result.X += view.Bounds.X;
 			result.Y += view.Bounds.Y;
-			view = view.mParent;
+			view = view.Parent;
 		}
 		return result;
 	}
 
 	/// Converts screen (root-relative) coordinates to local coordinates.
+	/// Note: This uses layout Bounds only and does not account for ViewTransform
+	/// (translation, rotation, scale). This is correct for normal use because
+	/// mouse events go through HitTest first, which applies inverse transforms
+	/// to identify the hit target. For views with non-identity transforms, the
+	/// coordinates will be relative to the untransformed layout position - this
+	/// matches the local coordinate space that OnDraw receives.
 	public Vector2 ScreenToLocal(Vector2 screen)
 	{
 		var result = screen;
@@ -181,7 +198,7 @@ public abstract class View
 		{
 			result.X -= view.Bounds.X;
 			result.Y -= view.Bounds.Y;
-			view = view.mParent;
+			view = view.Parent;
 		}
 		return result;
 	}
@@ -189,44 +206,20 @@ public abstract class View
 	// === Draw invalidation ===
 
 	private bool mNeedsRedraw = true;
-	private bool mNeedsLayout = true;
 
+	/// Marks this view as needing a redraw.
 	public void Invalidate()
 	{
 		mNeedsRedraw = true;
-		if (mContext != null)
-			mContext.MarkNeedsRedraw();
+		if (Context != null)
+			Context.MarkNeedsRedraw();
 	}
 
-	public void InvalidateLayout()
-	{
-		mNeedsLayout = true;
-		mNeedsRedraw = true;
-		if (mContext != null)
-			mContext.MarkNeedsLayout();
-	}
-
+	/// Whether this view needs to be redrawn.
 	public bool NeedsRedraw => mNeedsRedraw;
-	public bool NeedsLayout => mNeedsLayout;
 
+	/// Clears the redraw flag (called after drawing).
 	public void ClearRedrawFlag() { mNeedsRedraw = false; }
-	public void ClearLayoutFlag() { mNeedsLayout = false; }
-
-	/// Called by Property<T> when a property value changes.
-	protected internal virtual void OnPropertyChanged(Object property, InvalidationKind kind)
-	{
-		if (kind == .Layout)
-			InvalidateLayout();
-		else
-			Invalidate();
-
-		// Handle Name changes: update NameRegistry.
-		if (property === Name && mContext != null)
-		{
-			mContext.UnregisterName(this);
-			mContext.RegisterName(this);
-		}
-	}
 
 	// === Layout ===
 
@@ -241,10 +234,9 @@ public abstract class View
 	{
 		Bounds = .(x, y, width, height);
 		OnLayout(x, y, width, height);
-		mNeedsLayout = false;
 	}
 
-	// === Virtual methods ===
+	// === Virtual methods - override in subclasses ===
 
 	/// Compute desired size given constraints. Set MeasuredSize.
 	protected virtual void OnMeasure(BoxConstraints constraints)
@@ -255,36 +247,79 @@ public abstract class View
 	/// Position children within the layout bounds.
 	protected virtual void OnLayout(float left, float top, float width, float height) { }
 
-	/// Draw this view.
-	public virtual void OnDraw(/*UIDrawContext ctx*/) { }
+	/// Draw this view. Called during the draw pass.
+	public virtual void OnDraw(UIDrawContext ctx) { }
 
 	/// Returns the text baseline offset, or -1 if not applicable.
 	public virtual float GetBaseline() => -1;
 
-	/// Returns the current visual state for drawable/theme lookups.
-	/// Controls override to add Pressed, Checked, etc.
+	/// Returns the current visual state of this view for drawable/theme lookups.
+	/// Override in controls with additional states (e.g., Button adds Pressed).
 	public virtual ControlState GetControlState()
 	{
-		var state = ControlState.Normal;
-		if (!IsEffectivelyEnabled) state |= .Disabled;
-		if (IsFocused) state |= .Focused;
-		if (IsHovered) state |= .Hover;
-		return state;
+		if (!IsEffectivelyEnabled) return .Disabled;
+		if (IsFocused) return .Focused;
+		if (IsHovered) return .Hover;
+		return .Normal;
+	}
+
+	// === Style resolution helpers ===
+
+	/// Resolve a style property from the active StyleSheet.
+	/// Returns .None if no StyleSheet is set or no match found.
+	public StyleValue ResolveStyle(StyleProperty prop)
+	{
+		let sheet = Context?.StyleSheet;
+		if (sheet == null) return .None;
+		return sheet.Resolve(this, prop);
+	}
+
+	/// Resolve a Color style property with fallback default.
+	public Color ResolveStyleColor(StyleProperty prop, Color defaultVal = .White)
+	{
+		let sheet = Context?.StyleSheet;
+		if (sheet == null) return defaultVal;
+		return sheet.ResolveColor(this, prop, defaultVal);
+	}
+
+	/// Resolve a float style property with fallback default.
+	public float ResolveStyleFloat(StyleProperty prop, float defaultVal = 0)
+	{
+		let sheet = Context?.StyleSheet;
+		if (sheet == null) return defaultVal;
+		return sheet.ResolveFloat(this, prop, defaultVal);
+	}
+
+	/// Resolve a Thickness style property with fallback default.
+	public Thickness ResolveStyleThickness(StyleProperty prop, Thickness defaultVal = .())
+	{
+		let sheet = Context?.StyleSheet;
+		if (sheet == null) return defaultVal;
+		return sheet.ResolveThickness(this, prop, defaultVal);
+	}
+
+	/// Resolve a Drawable style property. Returns null if not found.
+	public Drawable ResolveStyleDrawable(StyleProperty prop)
+	{
+		let sheet = Context?.StyleSheet;
+		if (sheet == null) return null;
+		return sheet.ResolveDrawable(this, prop);
 	}
 
 	// === Hit testing ===
 
 	/// Returns this view (or a descendant) at the given local-space point, or null.
+	/// Override in ViewGroup to test children in reverse draw order.
 	public virtual View HitTest(Vector2 localPoint)
 	{
-		if (!IsInteractionEnabled.Value || Visibility.Value != .Visible)
+		if (!IsInteractionEnabled || Visibility != .Visible)
 			return null;
 
 		if (localPoint.X < 0 || localPoint.Y < 0 ||
 			localPoint.X >= Width || localPoint.Y >= Height)
 			return null;
 
-		if (!IsHitTestVisible.Value)
+		if (!IsHitTestVisible)
 			return null;
 
 		return this;
@@ -300,44 +335,38 @@ public abstract class View
 			var v = this;
 			while (v != null)
 			{
-				if (!v.IsEnabled.Value) return false;
-				v = v.mParent;
+				if (!v.IsEnabled) return false;
+				v = v.Parent;
 			}
 			return true;
 		}
 	}
 
-	/// True if this view is currently hovered (checked via InputManager).
-	public bool IsHovered
-	{
-		get
-		{
-			// TODO: wire to InputManager in Phase F.
-			return false;
-		}
-	}
+	/// True if this view is currently hovered.
+	public bool IsHovered => Context?.InputManager?.HoveredId == Id;
 
-	/// True if this view currently has keyboard focus (checked via FocusManager).
-	public bool IsFocused
-	{
-		get
-		{
-			// TODO: wire to FocusManager in Phase F.
-			return false;
-		}
-	}
+	/// True if this view currently has keyboard focus.
+	public bool IsFocused => Context?.FocusManager?.FocusedId == Id;
 
 	/// True if this view or any descendant has keyboard focus.
 	public bool IsFocusWithin
 	{
 		get
 		{
-			// TODO: wire to FocusManager in Phase F.
+			if (Context?.FocusManager == null) return false;
+			let focusedView = Context.FocusManager.FocusedView;
+			if (focusedView == null) return false;
+			var v = focusedView;
+			while (v != null)
+			{
+				if (v.Id == Id) return true;
+				v = v.Parent;
+			}
 			return false;
 		}
 	}
 
-	// === Input events (bubble phase) ===
+	// === Input events ===
 
 	public virtual void OnMouseDown(MouseEventArgs e) { }
 	public virtual void OnMouseUp(MouseEventArgs e) { }
@@ -351,96 +380,33 @@ public abstract class View
 	public virtual void OnFocusGained() { }
 	public virtual void OnFocusLost() { }
 
-	// === Input events (capture phase) ===
+	// === Deferred mutation convenience ===
 
-	public virtual void OnMouseDownCapture(MouseEventArgs e) { }
-	public virtual void OnMouseUpCapture(MouseEventArgs e) { }
-	public virtual void OnMouseMoveCapture(MouseEventArgs e) { }
-	public virtual void OnMouseWheelCapture(MouseWheelEventArgs e) { }
-	public virtual void OnKeyDownCapture(KeyEventArgs e) { }
-	public virtual void OnKeyUpCapture(KeyEventArgs e) { }
-	public virtual void OnTextInputCapture(TextInputEventArgs e) { }
-
-	// === Gamepad / directional activation ===
-
-	/// Called when the view is activated (Gamepad A / Enter).
-	/// ButtonBase overrides to fire OnClick.
-	public virtual void OnActivate() { }
-
-	/// Called when cancel is pressed (Gamepad B / Escape).
-	/// Default: bubbles to parent.
-	public virtual void OnCancel()
-	{
-		mParent?.OnCancel();
-	}
-
-	// === Style class helpers ===
-
-	public void AddClass(StringView name)
-	{
-		for (let cls in StyleClasses)
-			if (StringView(cls) == name)
-				return;
-		StyleClasses.Add(new String(name));
-		Invalidate();
-	}
-
-	public void RemoveClass(StringView name)
-	{
-		for (int i = 0; i < StyleClasses.Count; i++)
-		{
-			if (StringView(StyleClasses[i]) == name)
-			{
-				delete StyleClasses[i];
-				StyleClasses.RemoveAt(i);
-				Invalidate();
-				return;
-			}
-		}
-	}
-
-	public bool HasClass(StringView name)
-	{
-		for (let cls in StyleClasses)
-			if (StringView(cls) == name)
-				return true;
-		return false;
-	}
-
-	public void ToggleClass(StringView name)
-	{
-		if (HasClass(name))
-			RemoveClass(name);
-		else
-			AddClass(name);
-	}
-
-	// === Deferred mutation ===
-
-	/// Queue removal from parent (deferred to frame end).
+	/// Queue removal from parent (deferred to next drain point).
+	/// View stays alive for reuse after removal.
 	public void QueueRemove()
 	{
-		if (mContext == null || IsPendingDeletion) return;
+		if (Context == null || IsPendingDeletion) return;
 		IsPendingDeletion = true;
-		mContext.QueueMutation(new () =>
+		Context.MutationQueue.QueueAction(new () =>
 		{
-			if (mParent != null)
-				if (let parentGroup = mParent as ViewGroup)
+			if (Parent != null)
+				if (let parentGroup = Parent as ViewGroup)
 					parentGroup.RemoveView(this, false);
 			IsPendingDeletion = false;
 		});
 	}
 
-	/// Queue removal from parent AND deletion (deferred to frame end).
+	/// Queue removal from parent AND deletion (deferred to next drain point).
+	/// After this call the view will be deleted - do not reference it.
 	public void QueueDestroy()
 	{
-		if (mContext == null || IsPendingDeletion) return;
+		if (Context == null || IsPendingDeletion) return;
 		IsPendingDeletion = true;
-		Handle.Invalidate(); // null out immediately
-		mContext.QueueMutation(new () =>
+		Context.MutationQueue.QueueAction(new () =>
 		{
-			if (mParent != null)
-				if (let parentGroup = mParent as ViewGroup)
+			if (Parent != null)
+				if (let parentGroup = Parent as ViewGroup)
 					parentGroup.RemoveView(this, true);
 				else
 					delete this;
@@ -449,12 +415,36 @@ public abstract class View
 		});
 	}
 
+	/// Walk up the parent chain to find a ScrollView ancestor and scroll
+	/// to make this view visible within it.
+	public void ScrollIntoView()
+	{
+		var parent = Parent;
+		while (parent != null)
+		{
+			if (let sv = parent as ScrollView)
+			{
+				sv.ScrollToView(this);
+				return;
+			}
+			parent = parent.Parent;
+		}
+	}
+
 	// === Destructor ===
 
 	public ~this()
 	{
-		// Null out the handle immediately. The handle object itself is
-		// owned by ViewHandleRegistry and purged at frame end.
-		Handle.Invalidate();
+		delete Name;
+		delete StyleId;
+		delete TooltipText;
+		delete LayoutParams;
+
+		if (mUserData != null)
+		{
+			for (let kv in mUserData)
+				delete kv.key;
+			delete mUserData;
+		}
 	}
 }

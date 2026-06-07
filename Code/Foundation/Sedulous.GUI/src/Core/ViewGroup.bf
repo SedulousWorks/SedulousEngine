@@ -4,59 +4,43 @@ using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
 
-/// Container view that manages a list of child views. Provides padding,
-/// child add/remove/insert, and default measure/layout/hit-test behavior.
+/// Container view that manages a list of child views.
+/// Subclasses implement OnMeasure/OnLayout to arrange children
+/// (FlexLayout, GridLayout, DockLayout, etc.).
 public class ViewGroup : View
 {
-	private List<View> mChildren = new .() ~ delete _;
+	private List<View> mChildren = new .();
 
-	// === Padding ===
+	/// Padding inside this container (space between edges and children).
+	public Thickness Padding;
 
-	public Property<Thickness> Padding = new .(.()) ~ delete _;
-
-	protected override void InitializePropertyOwners()
-	{
-		base.InitializePropertyOwners();
-		Padding.SetOwner(this);
-	}
-
-	/// Bounds after subtracting padding.
-	public RectangleF ContentBounds
-	{
-		get
-		{
-			let p = Padding.Value;
-			return .(
-				p.Left, p.Top,
-				Math.Max(0, Width - p.TotalHorizontal),
-				Math.Max(0, Height - p.TotalVertical)
-			);
-		}
-	}
-
-	// === Child management ===
-
+	/// Number of logical children.
 	public int ChildCount => mChildren.Count;
 
+	/// Gets the logical child at the given index.
 	public View GetChildAt(int index) => mChildren[index];
 
-	/// Override to include non-logical visual children (e.g. scrollbars).
+	/// Number of visual children (logical + internal auxiliary views like scrollbars).
+	/// Subclasses override to append internal views.
 	public virtual int VisualChildCount => mChildren.Count;
 
-	/// Override to return non-logical visual children.
-	public virtual View GetVisualChild(int index) => mChildren[index];
+	/// Gets a visual child at the given index.
+	/// Indices 0..ChildCount-1 are logical children; beyond that are internal views.
+	public virtual View GetVisualChild(int index) => (index < mChildren.Count) ? mChildren[index] : null;
 
-	/// Adds a child view with optional layout params. Returns this for chaining.
+	/// Adds a child view with optional layout params. Returns this for fluent chaining.
 	public virtual ViewGroup AddView(View child, LayoutParams lp = null)
 	{
-		// Remove from previous parent if any.
-		if (child.[Friend]mParent != null)
+		if (child == null || child == this || mChildren.Contains(child))
+			return this;
+
+		// Remove from previous parent
+		if (child.Parent != null)
 		{
-			if (let prevParent = child.[Friend]mParent as ViewGroup)
-				prevParent.RemoveView(child, false);
+			if (let oldParent = child.Parent as ViewGroup)
+				oldParent.RemoveView(child, false);
 		}
 
-		child.[Friend]mParent = this;
 		if (lp != null)
 		{
 			delete child.LayoutParams;
@@ -66,61 +50,61 @@ public class ViewGroup : View
 		{
 			child.LayoutParams = CreateDefaultLayoutParams();
 		}
-		mChildren.Add(child);
 
-		// Propagate context.
+		child.Parent = this;
 		if (Context != null)
 			Context.AttachView(child);
-
-		InvalidateLayout();
+		else
+			child.Context = null;
+		mChildren.Add(child);
+		Invalidate();
 		return this;
 	}
 
-	/// Removes a child view, optionally deleting it.
+	/// Removes a child view. If deleteChild is true, the child is disposed and deleted.
 	public void RemoveView(View child, bool deleteChild = false)
 	{
-		let index = mChildren.IndexOf(child);
-		if (index < 0) return;
+		if (child == null || !mChildren.Contains(child))
+			return;
 
-		if (Context != null)
-			Context.DetachView(child);
-
-		child.[Friend]mParent = null;
-		mChildren.RemoveAt(index);
-
-		InvalidateLayout();
+		if (child.Context != null)
+			child.Context.DetachView(child);
+		mChildren.Remove(child);
+		child.Parent = null;
+		Invalidate();
 
 		if (deleteChild)
 			delete child;
 	}
 
-	/// Removes all children, optionally deleting them.
+	/// Removes all children.
 	public void RemoveAllViews(bool deleteChildren = false)
 	{
 		for (let child in mChildren)
 		{
-			if (Context != null)
-				Context.DetachView(child);
-
-			child.[Friend]mParent = null;
-
+			if (child.Context != null)
+				child.Context.DetachView(child);
+			child.Parent = null;
 			if (deleteChildren)
 				delete child;
 		}
 		mChildren.Clear();
-		InvalidateLayout();
+		Invalidate();
 	}
 
-	/// Inserts a child at a specific index.
+	/// Inserts a child at a specific index. Used by RootView to maintain PopupLayer as last child.
 	public void InsertView(View child, int index, LayoutParams lp = null)
 	{
-		if (child.[Friend]mParent != null)
+		if (child == null || child == this || mChildren.Contains(child))
+			return;
+
+		// Remove from previous parent
+		if (child.Parent != null)
 		{
-			if (let prevParent = child.[Friend]mParent as ViewGroup)
-				prevParent.RemoveView(child, false);
+			if (let oldParent = child.Parent as ViewGroup)
+				oldParent.RemoveView(child, false);
 		}
 
-		child.[Friend]mParent = this;
 		if (lp != null)
 		{
 			delete child.LayoutParams;
@@ -130,48 +114,39 @@ public class ViewGroup : View
 		{
 			child.LayoutParams = CreateDefaultLayoutParams();
 		}
-		mChildren.Insert(index, child);
 
+		child.Parent = this;
 		if (Context != null)
 			Context.AttachView(child);
+		else
+			child.Context = null;
 
-		InvalidateLayout();
+		let clampedIndex = Math.Clamp(index, 0, mChildren.Count);
+		mChildren.Insert(clampedIndex, child);
+		Invalidate();
 	}
 
-	/// Creates default layout params for children that don't have any.
-	/// Override in layout subclasses to return their specific LayoutParams type.
+	/// Content bounds (after padding).
+	public RectangleF ContentBounds
+	{
+		get => .(
+			Padding.Left,
+			Padding.Top,
+			Math.Max(0, Width - Padding.Left - Padding.Right),
+			Math.Max(0, Height - Padding.Top - Padding.Bottom)
+		);
+	}
+
+	/// Creates a default LayoutParams for children added without one.
+	/// Subclasses override to return their own LayoutParams type.
 	protected virtual LayoutParams CreateDefaultLayoutParams()
 	{
 		return new LayoutParams();
 	}
 
-	// === Measurement ===
-
-	/// Default: wraps to largest child + padding.
-	protected override void OnMeasure(BoxConstraints constraints)
-	{
-		let p = Padding.Value;
-		let inner = constraints.Deflate(p);
-
-		float maxW = 0, maxH = 0;
-		for (int i = 0; i < ChildCount; i++)
-		{
-			let child = mChildren[i];
-			if (child.Visibility.Value == .Gone) continue;
-
-			child.Measure(inner);
-			maxW = Math.Max(maxW, child.MeasuredSize.X);
-			maxH = Math.Max(maxH, child.MeasuredSize.Y);
-		}
-
-		MeasuredSize = .(
-			constraints.ConstrainWidth(maxW + p.TotalHorizontal),
-			constraints.ConstrainHeight(maxH + p.TotalVertical)
-		);
-	}
-
-	/// Builds child constraints from parent constraints + child's LayoutParams.
-	///   Fixed -> tight constraint at resolved unit value
+	/// Build child constraints from parent constraints and the child's LayoutParams SizeSpec.
+	/// Accounts for used space (padding, margin, consumed space).
+	///   Fixed -> tight constraint at the resolved pixel size
 	///   Match -> tight constraint at available space
 	///   Wrap  -> loose constraint (min=0, max=available)
 	protected static BoxConstraints MakeChildConstraints(BoxConstraints parent, View child, float usedW = 0, float usedH = 0)
@@ -213,71 +188,177 @@ public class ViewGroup : View
 		return BoxConstraints(minW, maxW, minH, maxH);
 	}
 
-	// === Hit testing ===
+	/// Default measure: wraps to the largest child + padding.
+	protected override void OnMeasure(BoxConstraints constraints)
+	{
+		let inner = constraints.Deflate(Padding);
+		float maxW = 0, maxH = 0;
 
-	/// Tests children in reverse draw order (topmost first), then self.
+		for (let child in mChildren)
+		{
+			if (child.Visibility == .Gone)
+				continue;
+			child.Measure(inner);
+			maxW = Math.Max(maxW, child.MeasuredSize.X);
+			maxH = Math.Max(maxH, child.MeasuredSize.Y);
+		}
+
+		MeasuredSize = .(
+			constraints.ConstrainWidth(maxW + Padding.Left + Padding.Right),
+			constraints.ConstrainHeight(maxH + Padding.Top + Padding.Bottom)
+		);
+	}
+
+	/// Default draw: draws each child with bounds offset, opacity, and render transform.
+	/// Uses a single PushState/PopState pair per child, matching current UI's DrawChildren pattern.
+	public override void OnDraw(UIDrawContext ctx)
+	{
+		DrawChildren(ctx);
+	}
+
+	protected void DrawChildren(UIDrawContext ctx)
+	{
+		let count = VisualChildCount;
+		for (int i = 0; i < count; i++)
+		{
+			let child = GetVisualChild(i);
+			if (child == null || child.Visibility != .Visible)
+				continue;
+
+			// Single PushState wraps translate + transform + opacity + clip + draw.
+			ctx.VG.PushState();
+			ctx.VG.Translate(child.Bounds.X, child.Bounds.Y);
+
+			// Apply view transform around the child's transform origin.
+			if (!child.Transform.IsIdentity)
+			{
+				let ox = child.Width * child.Transform.Origin.X;
+				let oy = child.Height * child.Transform.Origin.Y;
+
+				if (child.Transform.Translation.X != 0 || child.Transform.Translation.Y != 0)
+					ctx.VG.Translate(child.Transform.Translation.X, child.Transform.Translation.Y);
+
+				if (child.Transform.Rotation != 0 || child.Transform.Scale.X != 1 || child.Transform.Scale.Y != 1)
+				{
+					ctx.VG.Translate(ox, oy);
+
+					if (child.Transform.Scale.X != 1 || child.Transform.Scale.Y != 1)
+						ctx.VG.Scale(child.Transform.Scale.X, child.Transform.Scale.Y);
+
+					if (child.Transform.Rotation != 0)
+						ctx.VG.Rotate(child.Transform.Rotation);
+
+					ctx.VG.Translate(-ox, -oy);
+				}
+			}
+
+			// Apply opacity.
+			if (child.Opacity < 1.0f)
+				ctx.VG.PushOpacity(child.Opacity);
+
+			if (child.ClipsContent)
+				ctx.PushClip(.(0, 0, child.Width, child.Height));
+
+			child.OnDraw(ctx);
+
+			if (ctx.DebugSettings.AnyEnabled)
+				UIDebugOverlay.DrawOverlays(ctx, child);
+
+			if (child.ClipsContent)
+				ctx.PopClip();
+
+			if (child.Opacity < 1.0f)
+				ctx.VG.PopOpacity();
+
+			ctx.VG.PopState();
+		}
+	}
+
+	// === Hit testing (reverse order - topmost visual child first) ===
+
 	public override View HitTest(Vector2 localPoint)
 	{
-		if (!IsInteractionEnabled.Value || Visibility.Value != .Visible)
+		// IsInteractionEnabled blocks the entire subtree.
+		if (!IsInteractionEnabled || Visibility != .Visible)
 			return null;
 
+		// Outside our bounds - no hit.
 		if (localPoint.X < 0 || localPoint.Y < 0 ||
 			localPoint.X >= Width || localPoint.Y >= Height)
 			return null;
 
-		// Test visual children in reverse order.
-		for (int i = VisualChildCount - 1; i >= 0; i--)
+		// Test visual children in reverse order (last drawn = topmost).
+		let count = VisualChildCount;
+		for (int i = count - 1; i >= 0; i--)
 		{
 			let child = GetVisualChild(i);
-			if (child == null || !child.IsInteractionEnabled.Value || child.Visibility.Value != .Visible)
+			if (child == null || child.Visibility != .Visible || !child.IsInteractionEnabled)
 				continue;
 
+			// Translate point into child's local space.
 			var childLocal = Vector2(localPoint.X - child.Bounds.X, localPoint.Y - child.Bounds.Y);
 
 			// Apply inverse ViewTransform if present.
-			if (!child.Transform.Value.IsIdentity)
+			if (!child.Transform.IsIdentity)
 			{
-				let t = child.Transform.Value;
-				childLocal.X -= t.Translation.X;
-				childLocal.Y -= t.Translation.Y;
-				// TODO: full inverse rotation/scale for non-trivial transforms.
+				let ox = child.Width * child.Transform.Origin.X;
+				let oy = child.Height * child.Transform.Origin.Y;
+
+				// Undo translation.
+				childLocal.X -= child.Transform.Translation.X;
+				childLocal.Y -= child.Transform.Translation.Y;
+
+				// Undo origin-relative scale and rotation.
+				childLocal.X -= ox;
+				childLocal.Y -= oy;
+
+				if (child.Transform.Rotation != 0)
+				{
+					let cos = Math.Cos(-child.Transform.Rotation);
+					let sin = Math.Sin(-child.Transform.Rotation);
+					let rx = childLocal.X * cos - childLocal.Y * sin;
+					let ry = childLocal.X * sin + childLocal.Y * cos;
+					childLocal.X = rx;
+					childLocal.Y = ry;
+				}
+
+				if (child.Transform.Scale.X != 0 && child.Transform.Scale.Y != 0)
+				{
+					childLocal.X /= child.Transform.Scale.X;
+					childLocal.Y /= child.Transform.Scale.Y;
+				}
+
+				childLocal.X += ox;
+				childLocal.Y += oy;
 			}
 
 			let hit = child.HitTest(childLocal);
-			if (hit != null) return hit;
+			if (hit != null)
+				return hit;
 		}
 
-		if (!IsHitTestVisible.Value)
+		// No child hit - return this container if it's a hit target.
+		if (!IsHitTestVisible)
 			return null;
 
 		return this;
 	}
 
-	// === Drawing ===
-
-	/// Draws all visual children with transform, opacity, and clipping.
-	protected void DrawChildren(/*UIDrawContext ctx*/)
-	{
-		for (int i = 0; i < VisualChildCount; i++)
-		{
-			let child = GetVisualChild(i);
-			if (child == null || child.Visibility.Value != .Visible)
-				continue;
-
-			// TODO: PushState, translate, apply transform, opacity, clip, draw, PopState.
-			// Requires UIDrawContext (Phase C).
-			child.OnDraw();
-		}
-	}
-
-	// === Destructor ===
-
 	public ~this()
 	{
-		for (let child in mChildren)
+		// Delete all children, then the list itself.
+		// DetachView must run before delete so OnViewDeleted fires
+		// (clears tooltip targets, focus, shortcuts, etc.) while memory is valid.
+		if (mChildren != null)
 		{
-			child.[Friend]mParent = null;
-			delete child;
+			for (let child in mChildren)
+			{
+				if (child.Context != null)
+					child.Context.DetachView(child);
+				child.Parent = null;
+				delete child;
+			}
+			delete mChildren;
 		}
 	}
 }
