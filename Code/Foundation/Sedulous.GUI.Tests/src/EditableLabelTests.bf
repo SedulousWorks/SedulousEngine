@@ -9,7 +9,7 @@ class EditableLabelTests
 	{
 		let el = scope EditableLabel();
 		Test.Assert(!el.IsEditing);
-		Test.Assert(el.IsReadOnly == true);
+		Test.Assert(el.IsReadOnly.Value == true);
 		Test.Assert(el.IsFocusable == false);
 		Test.Assert(el.Cursor == .Arrow);
 	}
@@ -29,7 +29,7 @@ class EditableLabelTests
 		el.BeginEdit();
 
 		Test.Assert(el.IsEditing);
-		Test.Assert(el.IsReadOnly == false);
+		Test.Assert(el.IsReadOnly.Value == false);
 		Test.Assert(el.IsFocusable == true);
 		Test.Assert(el.Cursor == .IBeam);
 	}
@@ -165,8 +165,8 @@ class EditableLabelTests
 	public static void EditableLabel_DoubleClickToEditDefault()
 	{
 		let el = scope EditableLabel();
-		Test.Assert(el.DoubleClickToEdit == true);
-		Test.Assert(el.SlowClickToEdit == true);
+		Test.Assert(el.DoubleClickToEdit.Value == true);
+		Test.Assert(el.SlowClickToEdit.Value == true);
 	}
 
 	[Test]

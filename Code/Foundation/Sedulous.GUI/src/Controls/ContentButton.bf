@@ -7,15 +7,16 @@ using Sedulous.Core.Mathematics;
 /// or any custom content layout.
 public class ContentButton : ButtonBase
 {
+	/// The content view (owned by this button).
 	private View mContent ~ delete _;
 
-	/// The content view (owned by this button).
 	public View Content
 	{
 		get => mContent;
 		set
 		{
-			delete mContent;
+			if (mContent != null)
+				delete mContent;
 			mContent = value;
 			Invalidate();
 		}

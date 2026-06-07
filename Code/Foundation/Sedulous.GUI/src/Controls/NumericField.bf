@@ -34,10 +34,10 @@ public class NumericField : View, ITextEditHost
 
 	// === Layout ===
 	/// Width of the spin button area when ShowSpinButtons is true.
-	public float ButtonWidth = 20;
+	public Property<float> ButtonWidth = new .(20) ~ delete _;
 
 	/// Whether to show spin buttons on the right side.
-	public bool ShowSpinButtons = true;
+	public Property<bool> ShowSpinButtons = new .(true) ~ delete _;
 
 	// === Prefix/Suffix ===
 	private String mPrefixText ~ delete _;
@@ -105,6 +105,8 @@ public class NumericField : View, ITextEditHost
 		IsFocusable = true;
 		IsTabStop = true;
 		Cursor = .IBeam;
+		ButtonWidth.SetOwner(this);
+		ShowSpinButtons.SetOwner(this);
 		mBehavior = new TextEditingBehavior(this);
 		// Only allow digits, minus, and decimal point.
 		let filter = new InputFilter();
@@ -248,7 +250,7 @@ public class NumericField : View, ITextEditHost
 
 	private float TextPaddingLeft => 6;
 	private float TextPaddingRight => 6;
-	private float EffectiveButtonWidth => ShowSpinButtons ? ButtonWidth : 0;
+	private float EffectiveButtonWidth => ShowSpinButtons.Value ? ButtonWidth.Value : 0;
 	private float TextAreaWidth
 	{
 		get
@@ -287,7 +289,7 @@ public class NumericField : View, ITextEditHost
 			ctx.VG.FillRect(bounds, .(30, 32, 42, 255));
 
 		// Spin buttons.
-		if (ShowSpinButtons)
+		if (ShowSpinButtons.Value)
 			DrawSpinButtons(ctx, fontSize);
 
 		// Focused border overlay.
@@ -348,7 +350,7 @@ public class NumericField : View, ITextEditHost
 
 	private void DrawSpinButtons(UIDrawContext ctx, float fontSize)
 	{
-		let btnX = Width - ButtonWidth;
+		let btnX = Width - ButtonWidth.Value;
 		let halfH = Height * 0.5f;
 		let btnBorder = ResolveStyleColor(.BorderColor, .(80, 85, 100, 255));
 
@@ -356,26 +358,26 @@ public class NumericField : View, ITextEditHost
 		let upState = (mPressedButton == 1) ? ControlState.Pressed : ((mHoveredButton == 1) ? ControlState.Hover : ControlState.Normal);
 		let upDrawable = ResolveStyleDrawable(.SpinUpDrawable);
 		if (upDrawable != null)
-			upDrawable.Draw(ctx, .(btnX, 0, ButtonWidth, halfH), upState);
+			upDrawable.Draw(ctx, .(btnX, 0, ButtonWidth.Value, halfH), upState);
 		else
 		{
 			var upBg = Color(50, 55, 68, 255);
 			if (mPressedButton == 1) upBg = Palette.ComputePressed(upBg);
 			else if (mHoveredButton == 1) upBg = Palette.ComputeHover(upBg);
-			ctx.VG.FillRect(.(btnX, 0, ButtonWidth, halfH), upBg);
+			ctx.VG.FillRect(.(btnX, 0, ButtonWidth.Value, halfH), upBg);
 		}
 
 		// Down button state.
 		let downState = (mPressedButton == -1) ? ControlState.Pressed : ((mHoveredButton == -1) ? ControlState.Hover : ControlState.Normal);
 		let downDrawable = ResolveStyleDrawable(.SpinDownDrawable);
 		if (downDrawable != null)
-			downDrawable.Draw(ctx, .(btnX, halfH, ButtonWidth, halfH), downState);
+			downDrawable.Draw(ctx, .(btnX, halfH, ButtonWidth.Value, halfH), downState);
 		else
 		{
 			var downBg = Color(50, 55, 68, 255);
 			if (mPressedButton == -1) downBg = Palette.ComputePressed(downBg);
 			else if (mHoveredButton == -1) downBg = Palette.ComputeHover(downBg);
-			ctx.VG.FillRect(.(btnX, halfH, ButtonWidth, halfH), downBg);
+			ctx.VG.FillRect(.(btnX, halfH, ButtonWidth.Value, halfH), downBg);
 		}
 
 		// Divider lines - use the background drawable's border color for consistency.
@@ -384,15 +386,15 @@ public class NumericField : View, ITextEditHost
 		if (let rrd = bgDrawable as RoundedRectDrawable)
 			sepColor = rrd.BorderColor;
 		ctx.VG.FillRect(.(btnX, 1, 1, Height - 2), sepColor);
-		ctx.VG.FillRect(.(btnX, halfH, ButtonWidth, 1), sepColor);
+		ctx.VG.FillRect(.(btnX, halfH, ButtonWidth.Value, 1), sepColor);
 
 		// Arrows.
 		let arrowColor = ResolveStyleColor(.TextColor, .(220, 225, 235, 255));
-		let arrowSz = Math.Min(ButtonWidth, halfH) * 0.25f;
+		let arrowSz = Math.Min(ButtonWidth.Value, halfH) * 0.25f;
 
 		// Up arrow - try SVG icon, fallback to VG triangle.
 		let upIcon = ResolveStyleDrawable(.ArrowUpIcon);
-		let cx = btnX + ButtonWidth * 0.5f;
+		let cx = btnX + ButtonWidth.Value * 0.5f;
 		if (upIcon != null)
 		{
 			let iconSize = arrowSz * 2;
@@ -511,9 +513,9 @@ public class NumericField : View, ITextEditHost
 	{
 		if (!IsEffectivelyEnabled || e.Button != .Left) return;
 
-		if (ShowSpinButtons)
+		if (ShowSpinButtons.Value)
 		{
-			let btnX = Width - ButtonWidth;
+			let btnX = Width - ButtonWidth.Value;
 			if (e.X >= btnX)
 			{
 				let halfH = Height * 0.5f;
@@ -548,9 +550,9 @@ public class NumericField : View, ITextEditHost
 
 	public override void OnMouseMove(MouseEventArgs e)
 	{
-		if (ShowSpinButtons)
+		if (ShowSpinButtons.Value)
 		{
-			let btnX = Width - ButtonWidth;
+			let btnX = Width - ButtonWidth.Value;
 			if (e.X >= btnX)
 			{
 				mHoveredButton = (e.Y < Height * 0.5f) ? 1 : -1;

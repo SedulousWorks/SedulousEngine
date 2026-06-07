@@ -6,7 +6,7 @@ using Sedulous.Core.Mathematics;
 
 /// Base class for all UI2 views. A view is a rectangular element that can
 /// measure itself, be positioned by a parent, and draw itself.
-public abstract class View
+public abstract class View : IPropertyOwner
 {
 	// === Identity ===
 
@@ -214,6 +214,15 @@ public abstract class View
 		mNeedsRedraw = true;
 		if (Context != null)
 			Context.MarkNeedsRedraw();
+	}
+
+	/// IPropertyOwner: called when a Property<T> value changes.
+	public virtual void OnPropertyChanged(InvalidationKind kind)
+	{
+		if (kind == .Layout)
+			Invalidate(); // TODO: separate layout invalidation when supported
+		else
+			Invalidate();
 	}
 
 	/// Whether this view needs to be redrawn.

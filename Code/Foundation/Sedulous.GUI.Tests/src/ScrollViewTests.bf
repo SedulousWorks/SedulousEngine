@@ -101,7 +101,7 @@ class ScrollViewTests
 		TestSetup.Init(ctx, root, 200, 100);
 
 		let scroll = new ScrollView();
-		scroll.VScrollBarPolicy = .Never;
+		scroll.VScrollBarPolicy.Value = .Never;
 		scroll.AddView(new TestView(200, 500));
 		root.AddView(scroll);
 		TestSetup.Layout(ctx, root);

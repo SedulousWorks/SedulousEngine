@@ -6,41 +6,63 @@ using Sedulous.Core.Mathematics;
 /// Value slider with track, fill, and draggable thumb.
 public class Slider : View
 {
-	private float mValue;
-	private float mMin;
-	private float mMax = 1.0f;
-	private float mStep;
 	private bool mDragging;
 
-	public Orientation Orientation = .Horizontal;
-
-	public float Value
-	{
-		get => mValue;
-		set
-		{
-			let clamped = SnapToStep(Math.Clamp(value, mMin, mMax));
-			if (mValue == clamped) return;
-			mValue = clamped;
-			Invalidate();
-			OnValueChanged(this, mValue);
-		}
-	}
-
-	public float Min { get => mMin; set { mMin = value; Value = mValue; } }
-	public float Max { get => mMax; set { mMax = value; Value = mValue; } }
-	public float Step { get => mStep; set => mStep = Math.Max(0, value); }
+	public Property<float> Value = new .(0) ~ delete _;
+	public Property<float> Min = new .(0) ~ delete _;
+	public Property<float> Max = new .(1.0f) ~ delete _;
+	public Property<float> Step = new .(0) ~ delete _;
+	public Property<Orientation> Orientation = new .(.Horizontal) ~ delete _;
 
 	public Event<delegate void(Slider, float)> OnValueChanged ~ _.Dispose();
 	public Event<delegate void(Slider)> OnDragStarted ~ _.Dispose();
 	public Event<delegate void(Slider)> OnDragEnded ~ _.Dispose();
 
-	public this() { IsFocusable = true; IsTabStop = true; Cursor = .Hand; }
-	public this(float min, float max, float value = 0) : this() { mMin = min; mMax = max; mValue = Math.Clamp(value, min, max); }
+	public this()
+	{
+		IsFocusable = true;
+		IsTabStop = true;
+		Cursor = .Hand;
+
+		Value.SetOwner(this, .Visual);
+		Min.SetOwner(this, .Visual);
+		Max.SetOwner(this, .Visual);
+		Step.SetOwner(this, .Visual);
+		Orientation.SetOwner(this);
+
+		// Clamp and snap Value whenever it, Min, Max, or Step change.
+		Value.Changed.Add(new [&] (val) => {
+			let clamped = SnapToStep(Math.Clamp(val, Min.Value, Max.Value));
+			if (clamped != val)
+				Value.SetSilent(clamped);
+			OnValueChanged(this, Value.Value);
+		});
+
+		Min.Changed.Add(new [&] (val) => { ReclampValue(); });
+		Max.Changed.Add(new [&] (val) => { ReclampValue(); });
+		Step.Changed.Add(new [&] (val) => {
+			Step.SetSilent(Math.Max(0, val));
+			ReclampValue();
+		});
+	}
+
+	public this(float min, float max, float value = 0) : this()
+	{
+		Min.SetSilent(min);
+		Max.SetSilent(max);
+		Value.SetSilent(Math.Clamp(value, min, max));
+	}
+
+	private void ReclampValue()
+	{
+		let clamped = SnapToStep(Math.Clamp(Value.Value, Min.Value, Max.Value));
+		if (clamped != Value.Value)
+			Value.Value = clamped;
+	}
 
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
-		if (Orientation == .Horizontal)
+		if (Orientation.Value == .Horizontal)
 			MeasuredSize = .(constraints.ConstrainWidth(constraints.MaxWidth), constraints.ConstrainHeight(20));
 		else
 			MeasuredSize = .(constraints.ConstrainWidth(20), constraints.ConstrainHeight(constraints.MaxHeight));
@@ -56,9 +78,9 @@ public class Slider : View
 		let fillDrawable = ResolveStyleDrawable(.FillDrawable);
 		let thumbDrawable = ResolveStyleDrawable(.ThumbDrawable);
 
-		let progress = (mMax > mMin) ? (mValue - mMin) / (mMax - mMin) : 0;
+		let progress = (Max.Value > Min.Value) ? (Value.Value - Min.Value) / (Max.Value - Min.Value) : 0;
 
-		if (Orientation == .Horizontal)
+		if (Orientation.Value == .Horizontal)
 		{
 			let trackY = (Height - trackHeight) * 0.5f;
 			let trackLeft = thumbHalf;
@@ -159,15 +181,15 @@ public class Slider : View
 	public override void OnKeyDown(KeyEventArgs e)
 	{
 		if (!IsEffectivelyEnabled) return;
-		let range = mMax - mMin;
-		let smallStep = (mStep > 0) ? mStep : range * 0.05f;
+		let range = Max.Value - Min.Value;
+		let smallStep = (Step.Value > 0) ? Step.Value : range * 0.05f;
 
 		switch (e.Key)
 		{
-		case .Right, .Up:    Value = mValue + smallStep; e.Handled = true;
-		case .Left, .Down:   Value = mValue - smallStep; e.Handled = true;
-		case .Home:          Value = mMin; e.Handled = true;
-		case .End:           Value = mMax; e.Handled = true;
+		case .Right, .Up:    Value.Value = Value.Value + smallStep; e.Handled = true;
+		case .Left, .Down:   Value.Value = Value.Value - smallStep; e.Handled = true;
+		case .Home:          Value.Value = Min.Value; e.Handled = true;
+		case .End:           Value.Value = Max.Value; e.Handled = true;
 		default:
 		}
 	}
@@ -178,7 +200,7 @@ public class Slider : View
 		let thumbHalf = thumbSize * 0.5f;
 
 		float progress;
-		if (Orientation == .Horizontal)
+		if (Orientation.Value == .Horizontal)
 		{
 			let trackW = Width - thumbSize;
 			progress = (trackW > 0) ? (localX - thumbHalf) / trackW : 0;
@@ -189,12 +211,12 @@ public class Slider : View
 			progress = (trackH > 0) ? 1.0f - (localY - thumbHalf) / trackH : 0;
 		}
 
-		Value = mMin + (mMax - mMin) * Math.Clamp(progress, 0, 1);
+		Value.Value = Min.Value + (Max.Value - Min.Value) * Math.Clamp(progress, 0, 1);
 	}
 
 	private float SnapToStep(float value)
 	{
-		if (mStep <= 0) return value;
-		return mMin + Math.Round((value - mMin) / mStep) * mStep;
+		if (Step.Value <= 0) return value;
+		return Min.Value + Math.Round((value - Min.Value) / Step.Value) * Step.Value;
 	}
 }

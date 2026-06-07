@@ -13,6 +13,8 @@ public class Property<T> where bool : operator T == T
 {
 	private T mValue;
 	private bool mIsUpdating; // loop guard for two-way binding
+	private IPropertyOwner mOwner;
+	private InvalidationKind mInvalidationKind;
 
 	/// Fired when the value changes. Receives the new value.
 	public Event<delegate void(T)> Changed ~ _.Dispose();
@@ -33,18 +35,36 @@ public class Property<T> where bool : operator T == T
 			mIsUpdating = true;
 			mValue = value;
 			Changed(mValue);
+
+			// Notify owner of the change for invalidation.
+			if (mOwner != null)
+				mOwner.OnPropertyChanged(mInvalidationKind);
+
 			mIsUpdating = false;
 		}
 	}
 
 	public this() { }
 	public this(T initialValue) { mValue = initialValue; }
+	public this(T initialValue, InvalidationKind kind)
+	{
+		mValue = initialValue;
+		mInvalidationKind = kind;
+	}
 
-	/// Set value without firing Changed event.
+	/// Set value without firing Changed event or invalidating.
 	/// Used for initialization or when the source already knows about the change.
 	public void SetSilent(T value)
 	{
 		mValue = value;
+	}
+
+	/// Set the owner and invalidation kind for this property.
+	/// Called during view construction to wire up auto-invalidation.
+	public void SetOwner(IPropertyOwner owner, InvalidationKind kind = .Layout)
+	{
+		mOwner = owner;
+		mInvalidationKind = kind;
 	}
 
 	/// Bind one-way: when this property changes, update the target property.

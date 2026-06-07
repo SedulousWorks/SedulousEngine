@@ -25,16 +25,16 @@ public class TabView : ViewGroup
 	private List<RectangleF> mTabRects = new .() ~ delete _;
 
 	/// Height of tab headers (horizontal placement) or width (vertical).
-	public float TabHeight = 28;
+	public Property<float> TabHeight = new .(28) ~ delete _;
 
 	/// Where the tab strip appears.
-	public TabPlacement Placement = .Top;
+	public Property<TabPlacement> Placement = new .(.Top) ~ delete _;
 
 	/// Whether tabs can be closed.
-	public bool TabsClosable = false;
+	public Property<bool> TabsClosable = new .(false) ~ delete _;
 
 	/// Size of close button icon.
-	public float CloseButtonSize = 12;
+	public Property<float> CloseButtonSize = new .(12) ~ delete _;
 
 	/// Currently selected tab index.
 	public int32 SelectedIndex
@@ -65,12 +65,17 @@ public class TabView : ViewGroup
 	public Event<delegate void(TabView, int32)> OnTabCloseRequested ~ _.Dispose();
 
 	/// Minimum width for each tab header.
-	public float MinTabWidth = 50;
+	public Property<float> MinTabWidth = new .(50) ~ delete _;
 
 	public this()
 	{
 		IsFocusable = true;
 		ClipsContent = true;
+		TabHeight.SetOwner(this);
+		Placement.SetOwner(this);
+		TabsClosable.SetOwner(this, .Visual);
+		CloseButtonSize.SetOwner(this, .Visual);
+		MinTabWidth.SetOwner(this);
 	}
 
 	/// Add a tab with title and content view. Returns the index of the added tab.
@@ -79,7 +84,7 @@ public class TabView : ViewGroup
 		var item = TabItem();
 		item.Title = new String(title);
 		item.Content = content;
-		item.IsClosable = closable || TabsClosable;
+		item.IsClosable = closable || TabsClosable.Value;
 		mTabs.Add(item);
 
 		let index = (int32)(mTabs.Count - 1);
@@ -114,8 +119,8 @@ public class TabView : ViewGroup
 	{
 		// Compute space available for content after tab strip
 		BoxConstraints contentConstraints;
-		if (Placement == .Top || Placement == .Bottom)
-			contentConstraints = constraints.Deflate(.(0, TabHeight, 0, 0));
+		if (Placement.Value == .Top || Placement.Value == .Bottom)
+			contentConstraints = constraints.Deflate(.(0, TabHeight.Value, 0, 0));
 		else
 			contentConstraints = constraints.Deflate(.(ComputeStripWidth(), 0, 0, 0));
 
@@ -132,8 +137,8 @@ public class TabView : ViewGroup
 			}
 		}
 
-		if (Placement == .Top || Placement == .Bottom)
-			MeasuredSize = .(constraints.ConstrainWidth(contentW), constraints.ConstrainHeight(contentH + TabHeight));
+		if (Placement.Value == .Top || Placement.Value == .Bottom)
+			MeasuredSize = .(constraints.ConstrainWidth(contentW), constraints.ConstrainHeight(contentH + TabHeight.Value));
 		else
 			MeasuredSize = .(constraints.ConstrainWidth(contentW + ComputeStripWidth()), constraints.ConstrainHeight(contentH));
 	}
@@ -145,12 +150,12 @@ public class TabView : ViewGroup
 		let content = mTabs[mSelectedIndex].Content;
 		if (content.Visibility == .Gone) return;
 
-		switch (Placement)
+		switch (Placement.Value)
 		{
 		case .Top:
-			content.Layout(0, TabHeight, width, Math.Max(0, height - TabHeight));
+			content.Layout(0, TabHeight.Value, width, Math.Max(0, height - TabHeight.Value));
 		case .Bottom:
-			content.Layout(0, 0, width, Math.Max(0, height - TabHeight));
+			content.Layout(0, 0, width, Math.Max(0, height - TabHeight.Value));
 		case .Left:
 			let stripW = ComputeStripWidth();
 			content.Layout(stripW, 0, Math.Max(0, width - stripW), height);
@@ -182,16 +187,16 @@ public class TabView : ViewGroup
 
 		// Draw strip and content backgrounds using drawables
 		// Content uses placement-aware corner masking so rounding only appears on outer edges.
-		switch (Placement)
+		switch (Placement.Value)
 		{
 		case .Top:
-			DrawRegion(ctx, stripDrawable, .(0, 0, Width, TabHeight));
-			DrawContentRegion(ctx, contentDrawable, .(0, TabHeight, Width, Height - TabHeight));
-			ctx.VG.DrawLine(.(0, TabHeight), .(Width, TabHeight), borderColor, 1);
+			DrawRegion(ctx, stripDrawable, .(0, 0, Width, TabHeight.Value));
+			DrawContentRegion(ctx, contentDrawable, .(0, TabHeight.Value, Width, Height - TabHeight.Value));
+			ctx.VG.DrawLine(.(0, TabHeight.Value), .(Width, TabHeight.Value), borderColor, 1);
 		case .Bottom:
-			DrawContentRegion(ctx, contentDrawable, .(0, 0, Width, Height - TabHeight));
-			DrawRegion(ctx, stripDrawable, .(0, Height - TabHeight, Width, TabHeight));
-			ctx.VG.DrawLine(.(0, Height - TabHeight), .(Width, Height - TabHeight), borderColor, 1);
+			DrawContentRegion(ctx, contentDrawable, .(0, 0, Width, Height - TabHeight.Value));
+			DrawRegion(ctx, stripDrawable, .(0, Height - TabHeight.Value, Width, TabHeight.Value));
+			ctx.VG.DrawLine(.(0, Height - TabHeight.Value), .(Width, Height - TabHeight.Value), borderColor, 1);
 		case .Left:
 			let stripW = ComputeStripWidth();
 			DrawRegion(ctx, stripDrawable, .(0, 0, stripW, Height));
@@ -222,7 +227,7 @@ public class TabView : ViewGroup
 			// Active indicator bar
 			if (isActive)
 			{
-				switch (Placement)
+				switch (Placement.Value)
 				{
 				case .Top:    ctx.VG.FillRect(.(rect.X, rect.Y + rect.Height - 2, rect.Width, 2), accentColor);
 				case .Bottom: ctx.VG.FillRect(.(rect.X, rect.Y, rect.Width, 2), accentColor);
@@ -239,14 +244,14 @@ public class TabView : ViewGroup
 				textRect.X += 8;
 				textRect.Width -= 16;
 				if (mTabs[i].IsClosable)
-					textRect.Width -= CloseButtonSize + 4;
+					textRect.Width -= CloseButtonSize.Value + 4;
 				ctx.VG.DrawText(mTabs[i].Title, font, textRect, .Left, .Middle, textColor);
 			}
 
 			// Close button
 			if (mTabs[i].IsClosable)
 			{
-				let cbSize = CloseButtonSize;
+				let cbSize = CloseButtonSize.Value;
 				let cbX = rect.X + rect.Width - cbSize - 4;
 				let cbY = rect.Y + (rect.Height - cbSize) * 0.5f;
 				let cbColor = (isActive || isHovered) ? cbActiveColor : cbInactiveColor;
@@ -287,7 +292,7 @@ public class TabView : ViewGroup
 				// Check close button
 				if (mTabs[i].IsClosable)
 				{
-					let cbSize = CloseButtonSize;
+					let cbSize = CloseButtonSize.Value;
 					let cbX = rect.X + rect.Width - cbSize - 4;
 					let cbY = rect.Y + (rect.Height - cbSize) * 0.5f;
 					if (local.X >= cbX && local.X <= cbX + cbSize &&
@@ -357,9 +362,9 @@ public class TabView : ViewGroup
 		let fontSize = ResolveStyleFloat(.FontSize, 14);
 		let font = Context?.FontService?.GetFont(fontSize);
 
-		if (Placement == .Top || Placement == .Bottom)
+		if (Placement.Value == .Top || Placement.Value == .Bottom)
 		{
-			let stripY = (Placement == .Top) ? 0.0f : Height - TabHeight;
+			let stripY = (Placement.Value == .Top) ? 0.0f : Height - TabHeight.Value;
 			float xPos = 0;
 			for (let tab in mTabs)
 			{
@@ -367,28 +372,28 @@ public class TabView : ViewGroup
 				if (font != null)
 					tabW = font.Font.MeasureString(tab.Title) + 24;
 				if (tab.IsClosable)
-					tabW += CloseButtonSize + 4;
-				tabW = Math.Max(MinTabWidth, tabW);
-				mTabRects.Add(.(xPos, stripY, tabW, TabHeight));
+					tabW += CloseButtonSize.Value + 4;
+				tabW = Math.Max(MinTabWidth.Value, tabW);
+				mTabRects.Add(.(xPos, stripY, tabW, TabHeight.Value));
 				xPos += tabW;
 			}
 		}
 		else
 		{
 			let stripW = ComputeStripWidth();
-			let stripX = (Placement == .Left) ? 0.0f : Width - stripW;
+			let stripX = (Placement.Value == .Left) ? 0.0f : Width - stripW;
 			float yPos = 0;
 			for (let tab in mTabs)
 			{
-				mTabRects.Add(.(stripX, yPos, stripW, TabHeight));
-				yPos += TabHeight;
+				mTabRects.Add(.(stripX, yPos, stripW, TabHeight.Value));
+				yPos += TabHeight.Value;
 			}
 		}
 	}
 
 	private float ComputeStripWidth()
 	{
-		if (Placement == .Top || Placement == .Bottom) return 0;
+		if (Placement.Value == .Top || Placement.Value == .Bottom) return 0;
 
 		let fontSize = ResolveStyleFloat(.FontSize, 14);
 		let font = Context?.FontService?.GetFont(fontSize);
@@ -400,7 +405,7 @@ public class TabView : ViewGroup
 			let w = font.Font.MeasureString(tab.Title);
 			maxW = Math.Max(maxW, w);
 		}
-		return maxW + 24 + (TabsClosable ? CloseButtonSize + 4 : 0);
+		return maxW + 24 + (TabsClosable.Value ? CloseButtonSize.Value + 4 : 0);
 	}
 
 	/// Draw a visual region with a drawable. Falls back to a dark rect if null.
@@ -461,7 +466,7 @@ public class TabView : ViewGroup
 	/// Zero out corners on the side where tabs meet content.
 	private CornerRadii MaskRadiiForTab(CornerRadii radii)
 	{
-		switch (Placement)
+		switch (Placement.Value)
 		{
 		case .Top:    return .(radii.TopLeft, radii.TopRight, 0, 0);
 		case .Bottom: return .(0, 0, radii.BottomRight, radii.BottomLeft);
@@ -473,7 +478,7 @@ public class TabView : ViewGroup
 	/// Zero out corners on the side adjacent to the tab strip.
 	private CornerRadii MaskRadiiForContent(CornerRadii radii)
 	{
-		switch (Placement)
+		switch (Placement.Value)
 		{
 		case .Top:    return .(0, 0, radii.BottomRight, radii.BottomLeft);
 		case .Bottom: return .(radii.TopLeft, radii.TopRight, 0, 0);

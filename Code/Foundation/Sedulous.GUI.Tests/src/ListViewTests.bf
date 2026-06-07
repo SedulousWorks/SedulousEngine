@@ -38,7 +38,7 @@ class ListViewTests
 		defer delete adapter;
 
 		let lv = new ListView();
-		lv.ItemHeight = 30;
+		lv.ItemHeight.Value = 30;
 		lv.Adapter = adapter;
 		root.AddView(lv);
 		TestSetup.Layout(ctx, root);
@@ -58,7 +58,7 @@ class ListViewTests
 		defer delete adapter;
 
 		let lv = new ListView();
-		lv.ItemHeight = 30;
+		lv.ItemHeight.Value = 30;
 		lv.Adapter = adapter;
 		root.AddView(lv);
 		TestSetup.Layout(ctx, root);
@@ -81,7 +81,7 @@ class ListViewTests
 		defer delete adapter;
 
 		let lv = new ListView();
-		lv.ItemHeight = 30;
+		lv.ItemHeight.Value = 30;
 		lv.Adapter = adapter;
 		root.AddView(lv);
 		TestSetup.Layout(ctx, root);

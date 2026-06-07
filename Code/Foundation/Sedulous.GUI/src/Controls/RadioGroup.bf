@@ -36,7 +36,7 @@ public class RadioGroup : FlexLayout
 			if (let radio = GetChildAt(i) as RadioButton)
 			{
 				if (i == index)
-					radio.IsChecked = true;
+					radio.IsChecked.Value = true;
 			}
 		}
 	}
@@ -50,7 +50,7 @@ public class RadioGroup : FlexLayout
 		for (int i = 0; i < ChildCount; i++)
 		{
 			if (let radio = GetChildAt(i) as RadioButton)
-				radio.IsChecked = false;
+				radio.IsChecked.Value = false;
 		}
 		mCheckedButton = null;
 
@@ -68,7 +68,7 @@ public class RadioGroup : FlexLayout
 			if (let other = GetChildAt(i) as RadioButton)
 			{
 				if (other !== radio)
-					other.IsChecked = false;
+					other.IsChecked.Value = false;
 			}
 		}
 

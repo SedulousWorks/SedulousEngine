@@ -7,58 +7,47 @@ using Sedulous.Core.Mathematics;
 /// Use RadioGroup for mutual exclusion.
 public class RadioButton : View
 {
-	private bool mIsChecked;
-	private String mText ~ delete _;
-
 	private static float CircleSize = 18;
 	private static float CircleTextSpacing = 8;
 
 	/// Whether this radio button is selected.
-	public bool IsChecked
-	{
-		get => mIsChecked;
-		set
-		{
-			if (mIsChecked == value) return;
-			mIsChecked = value;
-			Invalidate();
-			OnCheckedChanged(this, mIsChecked);
-		}
-	}
+	public Property<bool> IsChecked = new .(false) ~ delete _;
 
-	public StringView Text
-	{
-		get => (mText != null) ? StringView(mText) : StringView();
-		set
-		{
-			if (mText == null) mText = new String(value);
-			else mText.Set(value);
-			Invalidate();
-		}
-	}
+	/// Text label next to the radio button.
+	public Property<String> Text = new .(null) ~ { if (_.Value != null) delete _.Value; delete _; };
 
 	/// Override font size for the label text.
-	public float? FontSize;
+	public Property<float?> FontSize = new .(null) ~ delete _;
 
 	/// Override text color for the label text.
-	public Color? TextColor;
+	public Property<Color?> TextColor = new .(null, .Visual) ~ delete _;
 
 	public Event<delegate void(RadioButton, bool)> OnCheckedChanged ~ _.Dispose();
 
-	public this() { IsFocusable = true; IsTabStop = true; Cursor = .Hand; }
-	public this(StringView text) : this() { mText = new String(text); }
+	public this()
+	{
+		IsChecked.SetOwner(this, .Visual);
+		Text.SetOwner(this);
+		FontSize.SetOwner(this);
+		TextColor.SetOwner(this, .Visual);
+
+		IsChecked.Changed.Add(new (val) => { OnCheckedChanged(this, val); });
+
+		IsFocusable = true; IsTabStop = true; Cursor = .Hand;
+	}
+	public this(StringView text) : this() { Text.SetSilent(new String(text)); }
 
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
-		let fontSize = FontSize ?? ResolveStyleFloat(.FontSize, 16);
+		let fontSize = FontSize.Value ?? ResolveStyleFloat(.FontSize, 16);
 		float textW = 0, textH = 0;
 
-		if (mText != null && !mText.IsEmpty)
+		if (Text.Value != null && !Text.Value.IsEmpty)
 		{
 			let font = Context?.FontService?.GetFont(fontSize);
 			if (font != null)
 			{
-				textW = font.Font.MeasureString(mText);
+				textW = font.Font.MeasureString(Text.Value);
 				textH = font.Font.Metrics.LineHeight;
 			}
 		}
@@ -71,14 +60,14 @@ public class RadioButton : View
 
 	public override void OnDraw(UIDrawContext ctx)
 	{
-		let fontSize = FontSize ?? ResolveStyleFloat(.FontSize, 16);
+		let fontSize = FontSize.Value ?? ResolveStyleFloat(.FontSize, 16);
 		let r = CircleSize * 0.5f;
 		let cy = Height * 0.5f;
 
 		let boxRect = RectangleF(0, cy - r, CircleSize, CircleSize);
 
 		// Draw the appropriate drawable for checked/unchecked state.
-		if (mIsChecked)
+		if (IsChecked.Value)
 		{
 			let checkedDrawable = ResolveStyleDrawable(.CheckedBackground);
 			if (checkedDrawable != null)
@@ -102,17 +91,17 @@ public class RadioButton : View
 		}
 
 		// Text
-		if (mText != null && !mText.IsEmpty)
+		if (Text.Value != null && !Text.Value.IsEmpty)
 		{
 			let font = ctx.FontService?.GetFont(fontSize);
 			if (font != null)
 			{
-				var textColor = TextColor ?? ResolveStyleColor(.TextColor, .(220, 225, 235, 255));
+				var textColor = TextColor.Value ?? ResolveStyleColor(.TextColor, .(220, 225, 235, 255));
 				if (!IsEffectivelyEnabled)
 					textColor = Palette.ComputeDisabled(textColor);
 
 				let textX = CircleSize + CircleTextSpacing;
-				ctx.VG.DrawText(mText, font, .(textX, 0, Width - textX, Height), .Left, .Middle, textColor);
+				ctx.VG.DrawText(Text.Value, font, .(textX, 0, Width - textX, Height), .Left, .Middle, textColor);
 			}
 		}
 	}
@@ -136,9 +125,9 @@ public class RadioButton : View
 	public override void OnMouseDown(MouseEventArgs e)
 	{
 		if (!IsEffectivelyEnabled) return;
-		if (e.Button == .Left && !mIsChecked)
+		if (e.Button == .Left && !IsChecked.Value)
 		{
-			IsChecked = true;
+			IsChecked.Value = true;
 			e.Handled = true;
 		}
 	}
@@ -146,9 +135,9 @@ public class RadioButton : View
 	public override void OnKeyDown(KeyEventArgs e)
 	{
 		if (!IsEffectivelyEnabled) return;
-		if ((e.Key == .Space || e.Key == .Return) && !mIsChecked)
+		if ((e.Key == .Space || e.Key == .Return) && !IsChecked.Value)
 		{
-			IsChecked = true;
+			IsChecked.Value = true;
 			e.Handled = true;
 		}
 	}

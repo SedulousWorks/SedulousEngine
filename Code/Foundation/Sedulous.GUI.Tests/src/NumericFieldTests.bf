@@ -131,7 +131,7 @@ class NumericFieldTests
 	public static void NumericField_ShowSpinButtonsDefault()
 	{
 		let nf = scope NumericField();
-		Test.Assert(nf.ShowSpinButtons == true);
+		Test.Assert(nf.ShowSpinButtons.Value == true);
 	}
 
 }
