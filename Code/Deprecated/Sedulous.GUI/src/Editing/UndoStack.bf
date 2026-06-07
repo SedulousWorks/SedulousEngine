@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// The type of text editing action for undo/redo.
 public enum TextEditActionType

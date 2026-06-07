@@ -1,4 +1,4 @@
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Interface for elements that can receive dropped items.
 public interface IDropTarget

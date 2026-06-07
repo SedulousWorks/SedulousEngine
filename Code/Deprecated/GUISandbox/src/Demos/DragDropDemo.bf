@@ -3,7 +3,7 @@ namespace GUISandbox;
 using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 
 /// Demo 15: Drag and Drop System
 /// Shows draggable items, drop targets, and visual feedback during drag operations.
@@ -11,9 +11,9 @@ class DragDropDemo
 {
 	private StackPanel mRoot;
 	private TextBlock mStatusLabel;
-	private GUIContext mContext;
+	private LegacyGUIContext mContext;
 
-	public UIElement CreateDemo(GUIContext context)
+	public UIElement CreateDemo(LegacyGUIContext context)
 	{
 		mContext = context;
 
@@ -202,7 +202,7 @@ class DraggableItem : Control, IDragSource
 	public override int VisualChildCount => 1;
 	public override UIElement GetVisualChild(int index) => index == 0 ? mTextBlock : null;
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		mTextBlock.OnAttachedToContext(context);
@@ -404,7 +404,7 @@ class TrashDropZone : Control, IDropTarget
 	public override int VisualChildCount => 1;
 	public override UIElement GetVisualChild(int index) => index == 0 ? mLabel : null;
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		mLabel.OnAttachedToContext(context);

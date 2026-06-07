@@ -1,4 +1,4 @@
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Describes how a child element is positioned horizontally within a parent element.
 public enum HorizontalAlignment

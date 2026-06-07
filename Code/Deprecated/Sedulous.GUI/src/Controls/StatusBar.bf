@@ -3,7 +3,7 @@ using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A horizontal status bar typically displayed at the bottom of an application.
 /// Contains StatusBarItem segments with optional separators.
@@ -22,7 +22,7 @@ public class StatusBar : Control
 		mSeparatorColor = Color(80, 80, 80, 255);  // Default, will be updated by theme
 	}
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		ApplyThemeDefaults();

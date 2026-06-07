@@ -1,4 +1,4 @@
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Specifies the direction of stacking for layout containers.
 public enum Orientation

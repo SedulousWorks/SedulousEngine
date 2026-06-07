@@ -4,7 +4,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A hierarchical tree control with expand/collapse support.
 public class TreeView : Control
@@ -541,7 +541,7 @@ public class TreeView : Control
 
 	// === Context ===
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		mScrollViewer.OnAttachedToContext(context);

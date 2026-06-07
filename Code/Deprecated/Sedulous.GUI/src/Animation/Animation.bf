@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Animation state enumeration.
 public enum AnimationState

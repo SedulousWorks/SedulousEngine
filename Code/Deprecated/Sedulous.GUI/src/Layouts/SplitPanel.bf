@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A panel that splits its area into two resizable sections with a draggable splitter.
 /// Uses the Splitter control internally for consistent drag behavior.
@@ -116,7 +116,7 @@ public class SplitPanel : Panel
 
 	// === Context Management ===
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		mSplitter.OnAttachedToContext(context);

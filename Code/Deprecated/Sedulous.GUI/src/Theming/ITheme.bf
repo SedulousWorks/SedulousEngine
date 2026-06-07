@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Interface for theme providers.
 /// Themes define the visual appearance of controls.

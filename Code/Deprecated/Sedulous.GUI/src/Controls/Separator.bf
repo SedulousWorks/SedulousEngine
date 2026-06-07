@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A visual divider line used to separate sections of UI.
 /// Can be oriented horizontally or vertically.
@@ -27,7 +27,7 @@ public class Separator : Control
 		mOrientation = orientation;
 	}
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		ApplyThemeDefaults();

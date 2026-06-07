@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A node in the dock layout that splits space between two children.
 /// Children can be either DockTabGroup or DockSplit (for nested splits).
@@ -183,7 +183,7 @@ public class DockSplit : Control
 
 	// === Context ===
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		mSplitter.OnAttachedToContext(context);

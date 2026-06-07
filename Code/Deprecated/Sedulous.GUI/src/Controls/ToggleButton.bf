@@ -3,7 +3,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A button that toggles between checked and unchecked states.
 /// Base class for CheckBox and RadioButton.

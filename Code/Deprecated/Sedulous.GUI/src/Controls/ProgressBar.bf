@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Displays progress as a horizontal or vertical bar.
 /// Supports both determinate (showing specific progress) and

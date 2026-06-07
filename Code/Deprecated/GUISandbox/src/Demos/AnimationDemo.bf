@@ -2,8 +2,8 @@ namespace GUISandbox;
 
 using System;
 using Sedulous.Core.Mathematics;
-using Sedulous.GUI;
-using static Sedulous.GUI.UIElementAnimations;
+using Sedulous.LegacyGUI;
+using static Sedulous.LegacyGUI.UIElementAnimations;
 
 /// Phase 16: Animation Demo - demonstrates property animations, easing, and storyboards.
 class AnimationDemo
@@ -20,7 +20,7 @@ class AnimationDemo
 	private TextBlock mStatusLabel;
 
 	// Track storyboard for restart
-	private GUIContext mContext;
+	private LegacyGUIContext mContext;
 
 	public Panel CreateDemo()
 	{

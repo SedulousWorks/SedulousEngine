@@ -4,7 +4,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A modal dialog with title bar, content area, and button row.
 public class Dialog : Control
@@ -379,7 +379,7 @@ public class Dialog : Control
 
 	// === Lifecycle ===
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		ApplyThemeDefaults();
@@ -403,7 +403,7 @@ public class Dialog : Control
 		// Title bar uses darker background
 		mTitleBackground = palette.Background.A > 0
 			? palette.Background
-			: Sedulous.GUI.Palette.Darken(Background, 0.2f);
+			: Sedulous.LegacyGUI.Palette.Darken(Background, 0.2f);
 		mTitleForeground = Foreground;
 		mBorderColor = palette.Border.A > 0 ? palette.Border : Color(80, 80, 80, 255);
 

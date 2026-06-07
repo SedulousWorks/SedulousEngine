@@ -3,7 +3,7 @@ namespace GUISandbox;
 using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 
 /// Demo 15: Menu & Toolbar System
 /// Shows menu bar, toolbar, and status bar components.
@@ -11,14 +11,14 @@ class MenuToolbarDemo
 {
 	private DockPanel mRoot /*~ delete _*/;
 	private TextBlock mStatusLabel /*~ delete _*/;
-	private GUIContext mContext;
+	private LegacyGUIContext mContext;
 
 	// Track document state for demo
 	private bool mIsBold = false;
 	private bool mIsItalic = false;
 	private String mCurrentFile = new .("Untitled") ~ delete _;
 
-	public UIElement CreateDemo(GUIContext context)
+	public UIElement CreateDemo(LegacyGUIContext context)
 	{
 		mContext = context;
 
@@ -136,7 +136,7 @@ class MenuToolbarDemo
 		// Help menu
 		let helpMenu = menuBar.AddItem("&Help");
 		let aboutItem = helpMenu.AddDropdownItem("&About");
-		aboutItem.Click.Subscribe(new (mi) => UpdateStatus("About: Sedulous.GUI Menu Demo"));
+		aboutItem.Click.Subscribe(new (mi) => UpdateStatus("About: Sedulous.LegacyGUI Menu Demo"));
 
 		return menuBar;
 	}

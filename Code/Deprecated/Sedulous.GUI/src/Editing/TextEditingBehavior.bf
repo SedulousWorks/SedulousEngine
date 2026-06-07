@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core;
 using Sedulous.Fonts;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Shared text editing logic for text input controls.
 /// This class manages the text buffer, caret, selection, and undo/redo.

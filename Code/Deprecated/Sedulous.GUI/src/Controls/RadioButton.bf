@@ -3,7 +3,7 @@ using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A radio button control for mutually exclusive selections.
 /// RadioButtons with the same GroupName are mutually exclusive.
@@ -36,7 +36,7 @@ public class RadioButton : ToggleButton
 		GroupName = groupName;
 	}
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		ApplyThemeDefaults();

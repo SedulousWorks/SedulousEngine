@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A separator line for use in toolbars.
 /// Renders as a vertical line in horizontal toolbars, horizontal line in vertical toolbars.
@@ -21,7 +21,7 @@ public class ToolBarSeparator : Control
 		IsTabStop = false;
 	}
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		ApplyThemeDefaults();

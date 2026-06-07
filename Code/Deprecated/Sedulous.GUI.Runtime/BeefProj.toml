@@ -1,14 +1,15 @@
 FileVersion = 1
 
 [Project]
-Name = "Sedulous.GUI.Runtime"
+Name = "Sedulous.LegacyGUI.Runtime"
+DefaultNamespace = "Sedulous.LegacyGUI.Runtime"
 
 [Dependencies]
 corlib = "*"
 "Sedulous.Runtime" = "*"
 "Sedulous.Core" = "*"
-"Sedulous.GUI" = "*"
-"Sedulous.GUI.Shell" = "*"
+"Sedulous.LegacyGUI" = "*"
+"Sedulous.LegacyGUI.Shell" = "*"
 "Sedulous.Drawing" = "*"
 "Sedulous.Drawing.Renderer" = "*"
 "Sedulous.Fonts" = "*"

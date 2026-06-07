@@ -2,7 +2,7 @@ namespace GUISandbox;
 
 using System;
 using Sedulous.Core.Mathematics;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 
 /// Phase 7: Text Input Controls Demo
 class TextInputDemo

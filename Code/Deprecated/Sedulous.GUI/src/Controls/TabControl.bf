@@ -4,7 +4,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A control that displays multiple tabs with selectable content.
 public class TabControl : Control
@@ -33,7 +33,7 @@ public class TabControl : Control
 		IsTabStop = true;
 	}
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		ApplyThemeDefaults();

@@ -1,7 +1,7 @@
 namespace GUISandbox;
 
 using Sedulous.Core.Mathematics;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 
 /// Phase 3: Focus and Theme Demo
 static class FocusAndThemeDemo

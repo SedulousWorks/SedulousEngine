@@ -4,7 +4,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A control for displaying tabular data with sortable, resizable columns.
 public class DataGrid : Control
@@ -346,7 +346,7 @@ public class DataGrid : Control
 
 	// === Context ===
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		mVerticalScrollBar.OnAttachedToContext(context);

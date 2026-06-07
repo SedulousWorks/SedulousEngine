@@ -4,7 +4,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A selectable item list control with support for single, multiple, and extended selection modes.
 public class ListBox : ItemsControl

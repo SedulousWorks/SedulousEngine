@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A panel that arranges its children in a single line, either horizontally or vertically.
 public class StackPanel : Panel

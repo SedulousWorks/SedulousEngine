@@ -3,7 +3,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A scrollbar control for scrolling content.
 /// The thumb size represents the viewport size relative to content size.
@@ -45,7 +45,7 @@ public class ScrollBar : Control
 		mOrientation = orientation;
 	}
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		ApplyThemeDefaults();

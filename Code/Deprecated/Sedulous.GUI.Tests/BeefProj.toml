@@ -1,10 +1,11 @@
 FileVersion = 1
 
 [Project]
-Name = "Sedulous.GUI.Tests"
+Name = "Sedulous.LegacyGUI.Tests"
 TargetType = "BeefTest"
-StartupObject = "Sedulous.GUI.Tests.Program"
+StartupObject = "Sedulous.LegacyGUI.Tests.Program"
+DefaultNamespace = "Sedulous.LegacyGUI.Tests"
 
 [Dependencies]
 corlib = "*"
-"Sedulous.GUI" = "*"
+"Sedulous.LegacyGUI" = "*"

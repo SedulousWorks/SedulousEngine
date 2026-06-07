@@ -3,7 +3,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A panel that can be docked, floated, or tabbed within a DockManager.
 /// Has a title bar with close and optional pin buttons.
@@ -202,7 +202,7 @@ public class DockablePanel : Control, IDragSource, IDropTarget
 
 	// === Context ===
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		// Update title bar height from theme

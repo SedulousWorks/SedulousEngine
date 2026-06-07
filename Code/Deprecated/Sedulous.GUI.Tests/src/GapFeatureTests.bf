@@ -1,8 +1,8 @@
 using System;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI.Tests;
+namespace Sedulous.LegacyGUI.Tests;
 
 /// Tests for gap-filling features: Vector2Animation, RectangleAnimation, Double-click detection, Popup control
 
@@ -32,7 +32,7 @@ class Vector2AnimationTests
 	[Test]
 	public static void Vector2AnimationWithGetterSetter()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let panel = new Panel();
 		context.RootElement = panel;
 		context.SetViewportSize(800, 600);
@@ -110,7 +110,7 @@ class RectangleAnimationTests
 	[Test]
 	public static void RectangleAnimationWithGetterSetter()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let panel = new Panel();
 		context.RootElement = panel;
 		context.SetViewportSize(800, 600);
@@ -177,7 +177,7 @@ class DoubleClickTests
 	[Test]
 	public static void InputManagerSingleClick()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let control = new ClickTestControl();
 		control.Width = .Fixed(100);
 		control.Height = .Fixed(50);
@@ -196,7 +196,7 @@ class DoubleClickTests
 	[Test]
 	public static void InputManagerDoubleClick()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let control = new ClickTestControl();
 		control.Width = .Fixed(100);
 		control.Height = .Fixed(50);
@@ -222,7 +222,7 @@ class DoubleClickTests
 	[Test]
 	public static void InputManagerTripleClick()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let control = new ClickTestControl();
 		control.Width = .Fixed(100);
 		control.Height = .Fixed(50);
@@ -245,7 +245,7 @@ class DoubleClickTests
 	[Test]
 	public static void InputManagerClickResetOnDifferentButton()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let control = new ClickTestControl();
 		control.Width = .Fixed(100);
 		control.Height = .Fixed(50);
@@ -269,7 +269,7 @@ class DoubleClickTests
 	[Test]
 	public static void InputManagerClickResetOnDistance()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let control = new ClickTestControl();
 		control.Width = .Fixed(200);
 		control.Height = .Fixed(200);
@@ -337,7 +337,7 @@ class PopupTests
 	[Test]
 	public static void PopupOpenClose()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let root = new Panel();
 		context.RootElement = root;
 		context.SetViewportSize(800, 600);
@@ -373,7 +373,7 @@ class PopupTests
 	[Test]
 	public static void PopupOpenAt()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let root = new Panel();
 		context.RootElement = root;
 		context.SetViewportSize(800, 600);
@@ -397,7 +397,7 @@ class PopupTests
 	[Test]
 	public static void PopupOpenAtAnchor()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let root = new Panel();
 		context.RootElement = root;
 		context.SetViewportSize(800, 600);

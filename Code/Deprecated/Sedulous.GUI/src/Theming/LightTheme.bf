@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Light theme variant.
 public class LightTheme : ITheme
@@ -38,26 +38,26 @@ public class LightTheme : ITheme
 	{
 		// Precompute derived colors (using fully qualified type to avoid conflict with property)
 		let buttonBase = Color(240, 240, 240, 255);
-		let buttonHover = Sedulous.GUI.Palette.Darken(buttonBase, 0.04f);
-		let buttonPressed = Sedulous.GUI.Palette.Darken(buttonBase, 0.12f);
-		let hoverBorder = Sedulous.GUI.Palette.Darken(mPalette.Border, 0.25f);
-		let separatorBorder = Sedulous.GUI.Palette.Lighten(mPalette.Border, 0.1f);
-		let checkBorder = Sedulous.GUI.Palette.Darken(mPalette.Border, 0.25f);
-		let checkHoverBorder = Sedulous.GUI.Palette.Darken(checkBorder, 0.25f);
+		let buttonHover = Sedulous.LegacyGUI.Palette.Darken(buttonBase, 0.04f);
+		let buttonPressed = Sedulous.LegacyGUI.Palette.Darken(buttonBase, 0.12f);
+		let hoverBorder = Sedulous.LegacyGUI.Palette.Darken(mPalette.Border, 0.25f);
+		let separatorBorder = Sedulous.LegacyGUI.Palette.Lighten(mPalette.Border, 0.1f);
+		let checkBorder = Sedulous.LegacyGUI.Palette.Darken(mPalette.Border, 0.25f);
+		let checkHoverBorder = Sedulous.LegacyGUI.Palette.Darken(checkBorder, 0.25f);
 		let toggleBase = mPalette.Border;
-		let toggleBorder = Sedulous.GUI.Palette.Darken(toggleBase, 0.1f);
-		let toggleHoverBorder = Sedulous.GUI.Palette.Darken(toggleBase, 0.25f);
-		let hyperlinkHover = Sedulous.GUI.Palette.Darken(mPalette.Accent, 0.15f);
-		let scrollTrack = Sedulous.GUI.Palette.Lighten(mPalette.Border, 0.18f);
-		let scrollThumb = Sedulous.GUI.Palette.Darken(mPalette.Border, 0.1f);
-		let scrollThumbHover = Sedulous.GUI.Palette.Darken(scrollThumb, 0.12f);
-		let splitterBase = Sedulous.GUI.Palette.Lighten(mPalette.Border, 0.1f);
-		let splitterHover = Sedulous.GUI.Palette.Darken(splitterBase, 0.1f);
-		let splitterGrip = Sedulous.GUI.Palette.Darken(mPalette.Border, 0.2f);
-		let itemHover = Sedulous.GUI.Palette.Darken(mPalette.Surface, 0.1f);
-		let tabItemBase = Sedulous.GUI.Palette.Darken(mPalette.Surface, 0.1f);
-		let tabItemHover = Sedulous.GUI.Palette.Darken(tabItemBase, 0.04f);
-		let expanderHover = Sedulous.GUI.Palette.Darken(mPalette.Background, 0.02f);
+		let toggleBorder = Sedulous.LegacyGUI.Palette.Darken(toggleBase, 0.1f);
+		let toggleHoverBorder = Sedulous.LegacyGUI.Palette.Darken(toggleBase, 0.25f);
+		let hyperlinkHover = Sedulous.LegacyGUI.Palette.Darken(mPalette.Accent, 0.15f);
+		let scrollTrack = Sedulous.LegacyGUI.Palette.Lighten(mPalette.Border, 0.18f);
+		let scrollThumb = Sedulous.LegacyGUI.Palette.Darken(mPalette.Border, 0.1f);
+		let scrollThumbHover = Sedulous.LegacyGUI.Palette.Darken(scrollThumb, 0.12f);
+		let splitterBase = Sedulous.LegacyGUI.Palette.Lighten(mPalette.Border, 0.1f);
+		let splitterHover = Sedulous.LegacyGUI.Palette.Darken(splitterBase, 0.1f);
+		let splitterGrip = Sedulous.LegacyGUI.Palette.Darken(mPalette.Border, 0.2f);
+		let itemHover = Sedulous.LegacyGUI.Palette.Darken(mPalette.Surface, 0.1f);
+		let tabItemBase = Sedulous.LegacyGUI.Palette.Darken(mPalette.Surface, 0.1f);
+		let tabItemHover = Sedulous.LegacyGUI.Palette.Darken(tabItemBase, 0.04f);
+		let expanderHover = Sedulous.LegacyGUI.Palette.Darken(mPalette.Background, 0.02f);
 
 		// Default control style
 		mStyles[new String("Control")] = .()

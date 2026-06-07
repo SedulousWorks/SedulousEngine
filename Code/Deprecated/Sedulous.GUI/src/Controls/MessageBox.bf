@@ -2,13 +2,13 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Pre-built message dialogs for common scenarios.
 public static class MessageBox
 {
 	/// Shows a simple message dialog with an OK button.
-	public static void Show(GUIContext context, StringView message, StringView title = "Message")
+	public static void Show(LegacyGUIContext context, StringView message, StringView title = "Message")
 	{
 		let dialog = new Dialog(title);
 		dialog.Padding = .(12, 8, 12, 8);
@@ -29,13 +29,13 @@ public static class MessageBox
 	}
 
 	/// Shows an information dialog with an OK button.
-	public static void ShowInfo(GUIContext context, StringView message, StringView title = "Information")
+	public static void ShowInfo(LegacyGUIContext context, StringView message, StringView title = "Information")
 	{
 		Show(context, message, title);
 	}
 
 	/// Shows a warning dialog with an OK button.
-	public static void ShowWarning(GUIContext context, StringView message, StringView title = "Warning")
+	public static void ShowWarning(LegacyGUIContext context, StringView message, StringView title = "Warning")
 	{
 		let dialog = new Dialog(title);
 		dialog.Padding = .(12, 8, 12, 8);
@@ -69,7 +69,7 @@ public static class MessageBox
 	}
 
 	/// Shows an error dialog with an OK button.
-	public static void ShowError(GUIContext context, StringView message, StringView title = "Error")
+	public static void ShowError(LegacyGUIContext context, StringView message, StringView title = "Error")
 	{
 		let dialog = new Dialog(title);
 		dialog.Padding = .(12, 8, 12, 8);
@@ -104,7 +104,7 @@ public static class MessageBox
 
 	/// Shows a question dialog with Yes/No buttons.
 	/// Returns the dialog for result tracking via Closed event.
-	public static Dialog ShowQuestion(GUIContext context, StringView message, StringView title = "Question")
+	public static Dialog ShowQuestion(LegacyGUIContext context, StringView message, StringView title = "Question")
 	{
 		let dialog = new Dialog(title);
 		dialog.Padding = .(12, 8, 12, 8);
@@ -138,7 +138,7 @@ public static class MessageBox
 
 	/// Shows a confirmation dialog with OK/Cancel buttons.
 	/// Returns the dialog for result tracking via Closed event.
-	public static Dialog ShowConfirm(GUIContext context, StringView message, StringView title = "Confirm")
+	public static Dialog ShowConfirm(LegacyGUIContext context, StringView message, StringView title = "Confirm")
 	{
 		let dialog = new Dialog(title);
 		dialog.Padding = .(12, 8, 12, 8);
@@ -158,7 +158,7 @@ public static class MessageBox
 
 	/// Shows a retry/abort dialog.
 	/// Returns the dialog for result tracking via Closed event.
-	public static Dialog ShowRetryAbort(GUIContext context, StringView message, StringView title = "Error")
+	public static Dialog ShowRetryAbort(LegacyGUIContext context, StringView message, StringView title = "Error")
 	{
 		let dialog = new Dialog(title);
 		dialog.Padding = .(12, 8, 12, 8);

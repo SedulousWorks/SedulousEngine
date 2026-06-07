@@ -3,7 +3,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Fonts;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A label that displays text and can be associated with a target control.
 /// When clicked, the label focuses its target control.

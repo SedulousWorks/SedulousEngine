@@ -1,4 +1,4 @@
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Represents the allowed effects for a drag-drop operation.
 public enum DragDropEffects

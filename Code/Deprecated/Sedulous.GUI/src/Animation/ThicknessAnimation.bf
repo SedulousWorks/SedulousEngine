@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Delegate for getting a Thickness property value.
 public delegate Thickness ThicknessGetter(UIElement element);

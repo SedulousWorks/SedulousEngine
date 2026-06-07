@@ -2,7 +2,7 @@ namespace GUISandbox;
 
 using System;
 using Sedulous.Core.Mathematics;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 using Sedulous.Drawing;
 using Sedulous.Images;
 
@@ -203,7 +203,7 @@ static class DisplayControlsDemo
 		imageBorder1.BorderBrush = Color(100, 100, 100, 255);
 		imageBorder1.Width = 100;
 		imageBorder1.Height = 100;
-		let image1 = new Sedulous.GUI.Image(checkerboard);
+		let image1 = new Sedulous.LegacyGUI.Image(checkerboard);
 		image1.Stretch = .Uniform;
 		imageBorder1.Child = image1;
 		imageRow.AddChild(imageBorder1);
@@ -214,7 +214,7 @@ static class DisplayControlsDemo
 		imageBorder2.BorderBrush = Color(100, 100, 100, 255);
 		imageBorder2.Width = 100;
 		imageBorder2.Height = 100;
-		let image2 = new Sedulous.GUI.Image(gradient);
+		let image2 = new Sedulous.LegacyGUI.Image(gradient);
 		image2.Stretch = .Fill;
 		imageBorder2.Child = image2;
 		imageRow.AddChild(imageBorder2);
@@ -225,7 +225,7 @@ static class DisplayControlsDemo
 		imageBorder3.BorderBrush = Color(100, 100, 100, 255);
 		imageBorder3.Width = 100;
 		imageBorder3.Height = 100;
-		let image3 = new Sedulous.GUI.Image(checkerboard);
+		let image3 = new Sedulous.LegacyGUI.Image(checkerboard);
 		image3.Stretch = .None;
 		imageBorder3.Child = image3;
 		imageRow.AddChild(imageBorder3);
@@ -236,7 +236,7 @@ static class DisplayControlsDemo
 		imageBorder4.BorderBrush = Color(100, 100, 100, 255);
 		imageBorder4.Width = 100;
 		imageBorder4.Height = 100;
-		let image4 = new Sedulous.GUI.Image(gradient);
+		let image4 = new Sedulous.LegacyGUI.Image(gradient);
 		image4.Stretch = .UniformToFill;
 		imageBorder4.Child = image4;
 		imageRow.AddChild(imageBorder4);

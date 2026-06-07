@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A dockable window containing a dockable panel.
 /// Can be dragged to reposition and docked back into the layout.
@@ -105,7 +105,7 @@ public class DockableWindow : Control
 
 	// === Context ===
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		if (mPanel != null)

@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Manages all active animations in a GUIContext.
 /// Updates animations each frame and handles lifecycle.
@@ -17,10 +17,10 @@ public class AnimationManager
 	private bool mIsUpdating = false;
 
 	// Owning context
-	private GUIContext mContext;
+	private LegacyGUIContext mContext;
 
 	/// Creates an AnimationManager for the given context.
-	public this(GUIContext context)
+	public this(LegacyGUIContext context)
 	{
 		mContext = context;
 	}

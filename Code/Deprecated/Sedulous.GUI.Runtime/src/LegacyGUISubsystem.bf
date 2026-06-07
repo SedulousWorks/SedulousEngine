@@ -1,9 +1,9 @@
-namespace Sedulous.GUI.Runtime;
+namespace Sedulous.LegacyGUI.Runtime;
 
 using System;
 using Sedulous.Runtime;
-using Sedulous.GUI;
-using Sedulous.GUI.Shell;
+using Sedulous.LegacyGUI;
+using Sedulous.LegacyGUI.Shell;
 using Sedulous.Drawing;
 using Sedulous.Drawing.Renderer;
 using Sedulous.Fonts;
@@ -24,7 +24,7 @@ public class GUISubsystem : Subsystem
 	public override int32 UpdateOrder => 400;
 
 	// Core UI
-	private GUIContext mGUIContext;
+	private LegacyGUIContext mGUIContext;
 	private DrawContext mDrawContext;
 	private DrawingRenderer mDrawingRenderer;
 	private ShaderSystem mShaderSystem;
@@ -44,7 +44,7 @@ public class GUISubsystem : Subsystem
 	private IWindow mWindow;
 
 	// Input
-	private GUIInputHelper mInputHelper = new .() ~ delete _;
+	private LegacyGUIInputHelper mInputHelper = new .() ~ delete _;
 	private bool mUIConsumedInput;
 
 	// State
@@ -58,7 +58,7 @@ public class GUISubsystem : Subsystem
 	private delegate void(IWindow, WindowEvent) mWindowEventDelegate;
 
 	/// The global GUIContext for screen-space overlays.
-	public GUIContext GUIContext => mGUIContext;
+	public LegacyGUIContext GUIContext => mGUIContext;
 
 	/// The DrawingRenderer.
 	public DrawingRenderer DrawingRenderer => mDrawingRenderer;
@@ -112,7 +112,7 @@ public class GUISubsystem : Subsystem
 			return .Err;
 
 		// GUIContext
-		mGUIContext = new GUIContext();
+		mGUIContext = new LegacyGUIContext();
 
 		// DrawingRenderer
 		mDrawingRenderer = new DrawingRenderer();
@@ -316,7 +316,7 @@ public class GUISubsystem : Subsystem
 			return;
 
 		let keyboard = mShell.InputManager.Keyboard;
-		GUIInputHelper.ProcessMouseInput(mouse, keyboard, mGUIContext);
+		LegacyGUIInputHelper.ProcessMouseInput(mouse, keyboard, mGUIContext);
 	}
 
 	private void UpdateCursor()
@@ -374,7 +374,7 @@ public class GUISubsystem : Subsystem
 
 		let uiKey = InputMapping.MapKey(key);
 		let keyboard = mShell?.InputManager?.Keyboard;
-		let mods = keyboard != null ? InputMapping.MapModifiers(keyboard.Modifiers) : Sedulous.GUI.KeyModifiers.None;
+		let mods = keyboard != null ? InputMapping.MapModifiers(keyboard.Modifiers) : Sedulous.LegacyGUI.KeyModifiers.None;
 
 		if (down)
 		{

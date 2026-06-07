@@ -3,7 +3,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A slider control for selecting a value within a range.
 /// Supports horizontal and vertical orientations.
@@ -44,7 +44,7 @@ public class Slider : Control
 		Cursor = .Pointer;
 	}
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		ApplyThemeDefaults();

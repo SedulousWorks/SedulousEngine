@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Specifies how a row or column is sized.
 public enum GridUnitType

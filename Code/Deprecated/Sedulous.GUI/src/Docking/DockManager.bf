@@ -4,7 +4,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Manages a docking layout with panels that can be docked, tabbed, or floated.
 /// Contains a tree of DockSplit and DockTabGroup nodes.
@@ -633,7 +633,7 @@ public class DockManager : Control, IDropTarget
 
 	// === Context ===
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		if (mRootNode != null)

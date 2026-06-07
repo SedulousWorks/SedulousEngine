@@ -1,6 +1,6 @@
 using System;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Unique identifier for UI elements.
 /// Uses a monotonically increasing counter to guarantee uniqueness.

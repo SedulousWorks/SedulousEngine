@@ -3,7 +3,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A single tab within a TabControl.
 /// Contains a Header (displayed in the tab strip) and Content (displayed when selected).
@@ -148,7 +148,7 @@ public class TabItem : ContentControl, ISelectable
 
 	// === Context ===
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		if (mHeader != null)

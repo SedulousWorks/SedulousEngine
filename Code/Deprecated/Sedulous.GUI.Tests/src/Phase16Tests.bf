@@ -1,8 +1,8 @@
 using System;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI.Tests;
+namespace Sedulous.LegacyGUI.Tests;
 
 /// Tests for Phase 16: Animation System
 
@@ -78,7 +78,7 @@ class AnimationBaseTests
 	[Test]
 	public static void AnimationCompletes()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let panel = scope Panel();
 		context.RootElement = panel;
 
@@ -94,7 +94,7 @@ class AnimationBaseTests
 	[Test]
 	public static void AnimationProgressUpdates()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let panel = scope Panel();
 		context.RootElement = panel;
 
@@ -110,7 +110,7 @@ class AnimationBaseTests
 	[Test]
 	public static void AnimationDelayWorks()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let panel = scope Panel();
 		context.RootElement = panel;
 
@@ -131,7 +131,7 @@ class AnimationBaseTests
 	[Test]
 	public static void AnimationLoops()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let panel = scope Panel();
 		context.RootElement = panel;
 
@@ -149,7 +149,7 @@ class AnimationBaseTests
 	[Test]
 	public static void AnimationAutoReverse()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let panel = scope Panel();
 		context.RootElement = panel;
 
@@ -172,7 +172,7 @@ class AnimationBaseTests
 	[Test]
 	public static void AnimationSetTarget()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let panel = scope Panel();
 		context.RootElement = panel;
 
@@ -398,7 +398,7 @@ class AnimationManagerTests
 	[Test]
 	public static void AnimationManagerDefaultState()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let manager = context.AnimationManager;
 		Test.Assert(manager != null);
 		Test.Assert(manager.ActiveCount == 0);
@@ -408,7 +408,7 @@ class AnimationManagerTests
 	[Test]
 	public static void AnimationManagerStartAnimation()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let manager = context.AnimationManager;
 		let anim = new TestAnimation();
 		anim.Duration = 1.0f;
@@ -419,7 +419,7 @@ class AnimationManagerTests
 	[Test]
 	public static void AnimationManagerStopAnimation()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let manager = context.AnimationManager;
 		let anim = new TestAnimation();
 		anim.Duration = 1.0f;
@@ -432,7 +432,7 @@ class AnimationManagerTests
 	[Test]
 	public static void AnimationManagerUpdateRemovesCompleted()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let manager = context.AnimationManager;
 		let anim = new TestAnimation();
 		anim.Duration = 0.1f;
@@ -446,7 +446,7 @@ class AnimationManagerTests
 	[Test]
 	public static void AnimationManagerStopAll()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let manager = context.AnimationManager;
 		manager.Start(new TestAnimation());
 		manager.Start(new TestAnimation());
@@ -459,7 +459,7 @@ class AnimationManagerTests
 	[Test]
 	public static void AnimationManagerStopAllFor()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let panel = scope Panel();
 		context.RootElement = panel;
 		let manager = context.AnimationManager;
@@ -483,7 +483,7 @@ class AnimationManagerTests
 	[Test]
 	public static void AnimationManagerStartStoryboard()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let manager = context.AnimationManager;
 		let sb = new Storyboard();
 		sb.Add(new TestAnimation(), 0);
@@ -583,7 +583,7 @@ class StoryboardTests
 	[Test]
 	public static void StoryboardCompletes()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let panel = scope Panel();
 		context.RootElement = panel;
 
@@ -600,7 +600,7 @@ class StoryboardTests
 	[Test]
 	public static void StoryboardSequencesAnimations()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let panel = scope Panel();
 		context.RootElement = panel;
 

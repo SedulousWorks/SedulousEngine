@@ -3,7 +3,7 @@ using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A toolbar container that arranges buttons and controls horizontally or vertically.
 /// Supports overflow handling when items don't fit.
@@ -335,7 +335,7 @@ public class ToolBar : Control
 		return null;
 	}
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		mItemsPanel.OnAttachedToContext(context);

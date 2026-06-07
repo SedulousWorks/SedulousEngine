@@ -1,4 +1,4 @@
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Specifies where a panel can be docked within a DockManager.
 public enum DockPosition

@@ -4,7 +4,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Debug visualization settings for the GUI system.
 public struct DebugSettings
@@ -42,7 +42,7 @@ public struct DebugSettings
 
 /// Central context that owns and manages the UI system.
 /// All UI elements belong to a context, and services are registered here.
-public class GUIContext
+public class LegacyGUIContext
 {
 	// Element registry - maps IDs to elements for safe handle resolution
 	private Dictionary<UIElementId, UIElement> mElementRegistry = new .() ~ delete _;

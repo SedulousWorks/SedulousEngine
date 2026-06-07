@@ -5,7 +5,7 @@ using Sedulous.Drawing;
 using Sedulous.Fonts;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A property item in the PropertyGrid.
 public class PropertyItem
@@ -398,7 +398,7 @@ public class PropertyGrid : Control
 
 	// === Context ===
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		mVerticalScrollBar.OnAttachedToContext(context);

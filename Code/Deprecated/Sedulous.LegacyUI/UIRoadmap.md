@@ -2,9 +2,9 @@
 
 Plan for a retained-mode game UI framework built on `Sedulous.VG`, with XML
 authoring and code-first authoring both first-class. Designed to replace
-`Sedulous.GUI` (WPF-style, too heavy) for game UI use cases. The architecture
+`Sedulous.LegacyGUI` (WPF-style, too heavy) for game UI use cases. The architecture
 draws explicitly from two prior frameworks reviewed in detail:
-`Sedulous.GUI` (WPF-derived) and the legacy `Sedulous.UI` in BansheeBeef
+`Sedulous.LegacyGUI` (WPF-derived) and the legacy `Sedulous.UI` in BansheeBeef
 (Android-derived). Where the two diverge, this plan picks the simpler,
 more game-loop-friendly choice - usually the Android one.
 
@@ -97,7 +97,7 @@ more game-loop-friendly choice - usually the Android one.
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-UI is rendered the same way `Sedulous.GUI` is: it draws into a `VGContext`,
+UI is rendered the same way `Sedulous.LegacyGUI` is: it draws into a `VGContext`,
 producing a `VGBatch`. `VGRenderer` handles the GPU side - there's no
 dedicated UI renderer. This is the existing engine pattern.
 
@@ -113,7 +113,7 @@ dedicated UI renderer. This is the existing engine pattern.
   (input helper, clipboard adapter, input mapping). This is what standalone
   apps - including `LegacyUISandbox` - use. Depends on `Sedulous.Runtime` +
   `Sedulous.Shell`, but **not** on `Sedulous.Engine.*`. Follows the
-  existing `Sedulous.GUI.Runtime` precedent.
+  existing `Sedulous.LegacyGUI.Runtime` precedent.
 
 - **`Sedulous.LegacyUI.Toolkit`** builds advanced/tooling widgets on top of core
   UI - dock manager, dockable windows, property grid, data grid, UI tree

@@ -1,6 +1,6 @@
 using System;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Drag data format for dockable panels.
 public static class DockPanelDragDataFormat

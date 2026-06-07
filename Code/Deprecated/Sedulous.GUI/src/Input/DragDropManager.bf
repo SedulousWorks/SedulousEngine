@@ -3,12 +3,12 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Manages drag and drop operations for a GUIContext.
 public class DragDropManager
 {
-	private GUIContext mContext;
+	private LegacyGUIContext mContext;
 
 	// Current drag state
 	private bool mIsDragging = false;
@@ -32,7 +32,7 @@ public class DragDropManager
 	private EventAccessor<delegate void(DragEventArgs)> mDragCompleted = new .() ~ delete _;
 
 	/// Creates a DragDropManager for the given context.
-	public this(GUIContext context)
+	public this(LegacyGUIContext context)
 	{
 		mContext = context;
 		mDragSource = .Invalid;

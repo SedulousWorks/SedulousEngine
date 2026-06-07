@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Type of tree mutation.
 public enum MutationType
@@ -102,7 +102,7 @@ public class MutationQueue
 
 	/// Process all pending mutations.
 	/// Called at the end of each frame by GUIContext.
-	public void Process(GUIContext context)
+	public void Process(LegacyGUIContext context)
 	{
 		if (mPending.Count == 0 && mQueuedActions.Count == 0)
 			return;

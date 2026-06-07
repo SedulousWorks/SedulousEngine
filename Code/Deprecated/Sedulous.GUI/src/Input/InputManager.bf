@@ -1,13 +1,13 @@
 using System;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Manages input routing for a GUIContext.
 /// Routes mouse and keyboard events to the appropriate UI elements.
 public class InputManager
 {
-	private GUIContext mContext;
+	private LegacyGUIContext mContext;
 	private ElementHandle<UIElement> mHoveredElement;
 	private Vector2 mLastMousePosition;
 
@@ -25,7 +25,7 @@ public class InputManager
 	public const float DoubleClickDistance = 4.0f;
 
 	/// Creates an InputManager for the specified context.
-	public this(GUIContext context)
+	public this(LegacyGUIContext context)
 	{
 		mContext = context;
 		mHoveredElement = .Invalid;

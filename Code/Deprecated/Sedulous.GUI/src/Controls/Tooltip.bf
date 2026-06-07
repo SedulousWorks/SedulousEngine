@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A popup that displays helpful information when hovering over a control.
 public class Tooltip : ContentControl
@@ -19,7 +19,7 @@ public class Tooltip : ContentControl
 	}
 
 	/// Applies theme-based styling on attach.
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		ApplyThemeDefaults();

@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// An event that validates element existence before invoking handlers.
 /// Handlers are associated with their owning element, and skipped if the element

@@ -1,4 +1,4 @@
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 // Note: TextAlignment is defined in Sedulous.Fonts.TextAlignment
 // Use that enum instead of duplicating here.

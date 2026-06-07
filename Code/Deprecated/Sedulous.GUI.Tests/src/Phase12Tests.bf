@@ -1,8 +1,8 @@
 using System;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI.Tests;
+namespace Sedulous.LegacyGUI.Tests;
 
 /// Tests for Phase 12: Popup & Dialog System
 class Phase12Tests
@@ -12,7 +12,7 @@ class Phase12Tests
 	[Test]
 	public static void TooltipDefaultProperties()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let tooltip = scope Tooltip();
 		ctx.RootElement = tooltip;  // Trigger OnAttachedToContext and ApplyThemeDefaults
 		Test.Assert(tooltip.Text == "");
@@ -285,7 +285,7 @@ class Phase12Tests
 	[Test]
 	public static void TooltipServiceDefaultProperties()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let service = context.TooltipService;
 
 		Test.Assert(service != null);
@@ -296,7 +296,7 @@ class Phase12Tests
 	[Test]
 	public static void TooltipServiceSetDelay()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let service = context.TooltipService;
 
 		service.ShowDelay = 1.0f;
@@ -311,7 +311,7 @@ class Phase12Tests
 	[Test]
 	public static void ModalManagerDefaultProperties()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let manager = context.ModalManager;
 
 		Test.Assert(manager != null);
@@ -322,7 +322,7 @@ class Phase12Tests
 	[Test]
 	public static void ModalManagerBackdropOpacity()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let manager = context.ModalManager;
 
 		manager.BackdropOpacity = 0.8f;
@@ -441,7 +441,7 @@ class Phase12Tests
 	public static void ElementDragDataCreation()
 	{
 		// ElementHandle requires a GUIContext to resolve elements
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let button = new Button("Test");
 		context.RootElement = button;
 
@@ -546,7 +546,7 @@ class Phase12Tests
 	[Test]
 	public static void DragDropManagerDefaultProperties()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let manager = context.DragDropManager;
 
 		Test.Assert(manager != null);
@@ -561,7 +561,7 @@ class Phase12Tests
 	[Test]
 	public static void DragDropManagerDragThreshold()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let manager = context.DragDropManager;
 
 		Test.Assert(manager.DragThreshold == 4.0f);  // Default
@@ -577,7 +577,7 @@ class Phase12Tests
 	[Test]
 	public static void DragDropManagerAdorner()
 	{
-		let context = scope GUIContext();
+		let context = scope LegacyGUIContext();
 		let manager = context.DragDropManager;
 
 		Test.Assert(manager.Adorner != null);

@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Default dark theme with modern styling.
 public class DarkTheme : ITheme
@@ -38,26 +38,26 @@ public class DarkTheme : ITheme
 	{
 		// Precompute derived colors (using type alias to avoid conflict with property)
 		let buttonBase = Color(55, 55, 55, 255);
-		let buttonHover = Sedulous.GUI.Palette.ComputeHover(buttonBase);
-		let buttonPressed = Sedulous.GUI.Palette.ComputePressed(buttonBase);
+		let buttonHover = Sedulous.LegacyGUI.Palette.ComputeHover(buttonBase);
+		let buttonPressed = Sedulous.LegacyGUI.Palette.ComputePressed(buttonBase);
 		let inputBase = Color(25, 25, 25, 255);
-		let hoverBorder = Sedulous.GUI.Palette.ComputeHover(mPalette.Border);
-		let separatorBorder = Sedulous.GUI.Palette.Darken(mPalette.Border, 0.15f);
-		let checkHoverBorder = Sedulous.GUI.Palette.ComputeHover(mPalette.Border);
+		let hoverBorder = Sedulous.LegacyGUI.Palette.ComputeHover(mPalette.Border);
+		let separatorBorder = Sedulous.LegacyGUI.Palette.Darken(mPalette.Border, 0.15f);
+		let checkHoverBorder = Sedulous.LegacyGUI.Palette.ComputeHover(mPalette.Border);
 		let toggleBase = Color(60, 60, 60, 255);
-		let toggleBorder = Sedulous.GUI.Palette.ComputeHover(toggleBase);
-		let toggleHoverBorder = Sedulous.GUI.Palette.ComputeHover(toggleBorder);
-		let hyperlinkHover = Sedulous.GUI.Palette.ComputeHover(mPalette.Accent);
+		let toggleBorder = Sedulous.LegacyGUI.Palette.ComputeHover(toggleBase);
+		let toggleHoverBorder = Sedulous.LegacyGUI.Palette.ComputeHover(toggleBorder);
+		let hyperlinkHover = Sedulous.LegacyGUI.Palette.ComputeHover(mPalette.Accent);
 		let scrollThumb = Color(80, 80, 80, 255);
-		let scrollThumbHover = Sedulous.GUI.Palette.ComputeHover(scrollThumb);
+		let scrollThumbHover = Sedulous.LegacyGUI.Palette.ComputeHover(scrollThumb);
 		let splitterBase = Color(45, 45, 45, 255);
-		let splitterHover = Sedulous.GUI.Palette.ComputeHover(splitterBase);
-		let splitterGrip = Sedulous.GUI.Palette.ComputeHover(mPalette.Border);
-		let itemHover = Sedulous.GUI.Palette.ComputeHover(mPalette.Surface);
+		let splitterHover = Sedulous.LegacyGUI.Palette.ComputeHover(splitterBase);
+		let splitterGrip = Sedulous.LegacyGUI.Palette.ComputeHover(mPalette.Border);
+		let itemHover = Sedulous.LegacyGUI.Palette.ComputeHover(mPalette.Surface);
 		let tabItemBase = Color(60, 60, 60, 255);
-		let tabItemHover = Sedulous.GUI.Palette.ComputeHover(tabItemBase);
+		let tabItemHover = Sedulous.LegacyGUI.Palette.ComputeHover(tabItemBase);
 		let expanderBase = Color(40, 40, 40, 255);
-		let expanderHover = Sedulous.GUI.Palette.ComputeHover(expanderBase);
+		let expanderHover = Sedulous.LegacyGUI.Palette.ComputeHover(expanderBase);
 
 		// Default control style
 		mStyles[new String("Control")] = .()

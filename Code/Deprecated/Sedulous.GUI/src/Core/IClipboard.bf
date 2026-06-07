@@ -1,5 +1,5 @@
 using System;
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Interface for clipboard operations.
 /// This interface is defined in the GUI layer to avoid Shell dependencies.

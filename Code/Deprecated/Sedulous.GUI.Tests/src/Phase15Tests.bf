@@ -1,9 +1,9 @@
 using System;
 using System.Collections;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI.Tests;
+namespace Sedulous.LegacyGUI.Tests;
 
 /// Tests for Phase 15: Data Display Controls
 

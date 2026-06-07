@@ -3,7 +3,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Defines how a popup is positioned relative to its anchor.
 public enum PopupPlacement
@@ -150,7 +150,7 @@ public class Popup : ContentControl, IPopupOwner
 	}
 
 	/// Opens the popup at the specified screen position.
-	public void OpenAt(GUIContext context, float x, float y)
+	public void OpenAt(LegacyGUIContext context, float x, float y)
 	{
 		if (context == null)
 			return;
@@ -178,7 +178,7 @@ public class Popup : ContentControl, IPopupOwner
 	}
 
 	/// Opens the popup at the current mouse position.
-	public void OpenAtMouse(GUIContext context)
+	public void OpenAtMouse(LegacyGUIContext context)
 	{
 		if (context == null)
 			return;

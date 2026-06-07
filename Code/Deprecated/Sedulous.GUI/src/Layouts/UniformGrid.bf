@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A grid where all cells have equal size.
 /// Children are placed in order, filling rows first.

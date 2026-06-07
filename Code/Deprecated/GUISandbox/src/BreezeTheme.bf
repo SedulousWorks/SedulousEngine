@@ -4,7 +4,7 @@ using System;
 using System.IO;
 using System.Collections;
 using Sedulous.Core.Mathematics;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 using Sedulous.Drawing;
 using Sedulous.Images;
 
@@ -382,7 +382,7 @@ class BreezeTheme : ITheme
 			BorderColor = mPalette.Border,
 			BorderThickness = 2,
 			CornerRadius = 0,
-			Hover = .() { BorderColor = Sedulous.GUI.Palette.ComputeHover(mPalette.Border) },
+			Hover = .() { BorderColor = Sedulous.LegacyGUI.Palette.ComputeHover(mPalette.Border) },
 			Focused = .() { BorderColor = mPalette.Accent }
 		};
 
@@ -394,7 +394,7 @@ class BreezeTheme : ITheme
 			BorderColor = mPalette.Border,
 			BorderThickness = 2,
 			CornerRadius = 0,
-			Hover = .() { BorderColor = Sedulous.GUI.Palette.ComputeHover(mPalette.Border) },
+			Hover = .() { BorderColor = Sedulous.LegacyGUI.Palette.ComputeHover(mPalette.Border) },
 			Focused = .() { BorderColor = mPalette.Accent }
 		};
 
@@ -406,7 +406,7 @@ class BreezeTheme : ITheme
 			BorderColor = mPalette.Border,
 			BorderThickness = 1,
 			CornerRadius = 12,
-			Hover = .() { BorderColor = Sedulous.GUI.Palette.ComputeHover(mPalette.Border) },
+			Hover = .() { BorderColor = Sedulous.LegacyGUI.Palette.ComputeHover(mPalette.Border) },
 			Focused = .() { BorderColor = mPalette.Accent }
 		};
 
@@ -419,7 +419,7 @@ class BreezeTheme : ITheme
 			BorderThickness = 0,
 			CornerRadius = 0,
 			Padding = .(2, 2, 2, 2),
-			Hover = .() { Foreground = Sedulous.GUI.Palette.ComputeHover(mPalette.Accent) }
+			Hover = .() { Foreground = Sedulous.LegacyGUI.Palette.ComputeHover(mPalette.Accent) }
 		};
 
 		// Slider
@@ -462,7 +462,7 @@ class BreezeTheme : ITheme
 			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
-			Hover = .() { Background = Sedulous.GUI.Palette.ComputeHover(Color(45, 50, 55)) }
+			Hover = .() { Background = Sedulous.LegacyGUI.Palette.ComputeHover(Color(45, 50, 55)) }
 		};
 
 		// ItemsControl
@@ -548,7 +548,7 @@ class BreezeTheme : ITheme
 			BorderColor = mPalette.Border,
 			BorderThickness = 1,
 			CornerRadius = 0,
-			Hover = .() { Background = Sedulous.GUI.Palette.ComputeHover(Color(40, 44, 48)) },
+			Hover = .() { Background = Sedulous.LegacyGUI.Palette.ComputeHover(Color(40, 44, 48)) },
 			Focused = .() { BorderColor = mPalette.Accent }
 		};
 

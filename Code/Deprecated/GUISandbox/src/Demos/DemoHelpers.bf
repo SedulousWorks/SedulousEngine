@@ -3,7 +3,7 @@ namespace GUISandbox;
 using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 
 /// A focusable colored rectangle control for testing input and focus.
 class FocusableRect : Control

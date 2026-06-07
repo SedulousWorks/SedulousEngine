@@ -1,12 +1,12 @@
-namespace Sedulous.GUI.Shell;
+namespace Sedulous.LegacyGUI.Shell;
 
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 
 /// Utility class for mapping Shell input types to GUI input types.
 static class InputMapping
 {
 	/// Maps Shell.Input.KeyCode to GUI.KeyCode.
-	public static Sedulous.GUI.KeyCode MapKey(Sedulous.Shell.Input.KeyCode shellKey)
+	public static Sedulous.LegacyGUI.KeyCode MapKey(Sedulous.Shell.Input.KeyCode shellKey)
 	{
 		switch (shellKey)
 		{
@@ -119,9 +119,9 @@ static class InputMapping
 	}
 
 	/// Maps Shell.Input.KeyModifiers to GUI.KeyModifiers.
-	public static Sedulous.GUI.KeyModifiers MapModifiers(Sedulous.Shell.Input.KeyModifiers shellMods)
+	public static Sedulous.LegacyGUI.KeyModifiers MapModifiers(Sedulous.Shell.Input.KeyModifiers shellMods)
 	{
-		Sedulous.GUI.KeyModifiers result = .None;
+		Sedulous.LegacyGUI.KeyModifiers result = .None;
 		if (shellMods.HasFlag(.LeftShift) || shellMods.HasFlag(.RightShift))
 			result |= .Shift;
 		if (shellMods.HasFlag(.LeftCtrl) || shellMods.HasFlag(.RightCtrl))
@@ -136,13 +136,13 @@ static class InputMapping
 	}
 
 	/// Maps Shell.Input.MouseButton to GUI.MouseButton.
-	public static Sedulous.GUI.MouseButton MapMouseButton(Sedulous.Shell.Input.MouseButton shellButton)
+	public static Sedulous.LegacyGUI.MouseButton MapMouseButton(Sedulous.Shell.Input.MouseButton shellButton)
 	{
 		return (.)shellButton;
 	}
 
 	/// Maps GUI.CursorType to Shell.Input.CursorType.
-	public static Sedulous.Shell.Input.CursorType MapCursor(Sedulous.GUI.CursorType guiCursor)
+	public static Sedulous.Shell.Input.CursorType MapCursor(Sedulous.LegacyGUI.CursorType guiCursor)
 	{
 		switch (guiCursor)
 		{
@@ -172,7 +172,7 @@ static class InputMapping
 	/// Converts a key-down event to text input if the key is printable.
 	/// Call this alongside ProcessKeyDown to provide text input from key events
 	/// when OS text input events are unavailable.
-	public static void ForwardKeyAsTextInput(Sedulous.Shell.Input.KeyCode shellKey, Sedulous.GUI.KeyModifiers mods, GUIContext context)
+	public static void ForwardKeyAsTextInput(Sedulous.Shell.Input.KeyCode shellKey, Sedulous.LegacyGUI.KeyModifiers mods, LegacyGUIContext context)
 	{
 		if (mods.HasFlag(.Ctrl) || mods.HasFlag(.Alt))
 			return;

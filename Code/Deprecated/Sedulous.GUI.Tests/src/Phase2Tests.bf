@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI.Tests;
+namespace Sedulous.LegacyGUI.Tests;
 
 /// Phase 2 tests: ownership, hierarchy, input, and safety.
 class Phase2Tests
@@ -31,7 +31,7 @@ class Phase2Tests
 	[Test]
 	public static void Container_AddChild_TransfersOwnership()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -51,7 +51,7 @@ class Phase2Tests
 	[Test]
 	public static void Container_RemoveChild_DeletesByDefault()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -72,7 +72,7 @@ class Phase2Tests
 	[Test]
 	public static void Container_RemoveChild_ReturnsOwnershipWhenNotDeleting()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -96,7 +96,7 @@ class Phase2Tests
 	[Test]
 	public static void Container_DetachChild_ReturnsOwnership()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -118,7 +118,7 @@ class Phase2Tests
 	[Test]
 	public static void Container_ClearChildren_DeletesAll()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -138,7 +138,7 @@ class Phase2Tests
 	[Test]
 	public static void ContentControl_SetContent_DeletesPrevious()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let control = new ContentControl();
 		ctx.RootElement = control;
 
@@ -161,7 +161,7 @@ class Phase2Tests
 	[Test]
 	public static void ContentControl_DetachContent_ReturnsOwnership()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let control = new ContentControl();
 		ctx.RootElement = control;
 
@@ -182,7 +182,7 @@ class Phase2Tests
 	[Test]
 	public static void Decorator_SetChild_DeletesPrevious()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let decorator = new Decorator();
 		ctx.RootElement = decorator;
 
@@ -204,7 +204,7 @@ class Phase2Tests
 	[Test]
 	public static void Decorator_DetachChild_ReturnsOwnership()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let decorator = new Decorator();
 		ctx.RootElement = decorator;
 
@@ -226,7 +226,7 @@ class Phase2Tests
 	[Test]
 	public static void Hierarchy_ParentChildRelationships()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -248,7 +248,7 @@ class Phase2Tests
 	[Test]
 	public static void Hierarchy_Reparenting()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel1 = new TestPanel();
 		let panel2 = new TestPanel();
 		ctx.RootElement = panel1;
@@ -272,7 +272,7 @@ class Phase2Tests
 	[Test]
 	public static void Hierarchy_DetachFromParent()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -296,7 +296,7 @@ class Phase2Tests
 	[Test]
 	public static void Input_HitTest_ReturnsCorrectElement()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		panel.Width = 400;
 		panel.Height = 300;
@@ -334,7 +334,7 @@ class Phase2Tests
 	[Test]
 	public static void Input_TabNavigation()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -382,7 +382,7 @@ class Phase2Tests
 	[Test]
 	public static void Input_ClickToFocus()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		panel.Width = 400;
 		panel.Height = 300;
@@ -413,7 +413,7 @@ class Phase2Tests
 	[Test]
 	public static void Safety_MutationQueue_DefersDeletion()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -440,7 +440,7 @@ class Phase2Tests
 	[Test]
 	public static void Safety_ElementHandle_InvalidatesOnDeletion()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -465,7 +465,7 @@ class Phase2Tests
 	[Test]
 	public static void Safety_FocusManagerClearsOnDeletion()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -493,7 +493,7 @@ class Phase2Tests
 	[Test]
 	public static void Safety_InputManager_ClearsHoverOnDeletion()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		panel.Width = 400;
 		panel.Height = 300;

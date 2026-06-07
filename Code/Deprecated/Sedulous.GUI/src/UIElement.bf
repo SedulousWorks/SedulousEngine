@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Base class for all UI elements.
 /// Provides layout properties, visibility, transforms, and input handling.
@@ -11,7 +11,7 @@ public abstract class UIElement
 {
 	// Identity
 	private UIElementId mId;
-	private GUIContext mContext;
+	private LegacyGUIContext mContext;
 	private UIElement mParent;
 
 	// Lifecycle
@@ -68,7 +68,7 @@ public abstract class UIElement
 	public UIElementId Id => mId;
 
 	/// The context that owns this element, or null if not attached.
-	public GUIContext Context => mContext;
+	public LegacyGUIContext Context => mContext;
 
 	/// The parent element, or null if this is a root element.
 	public UIElement Parent => mParent;
@@ -602,7 +602,7 @@ public abstract class UIElement
 
 	/// Called when this element is attached to a context.
 	/// (Public for access from GUIContext; not intended for external use)
-	public virtual void OnAttachedToContext(GUIContext context)
+	public virtual void OnAttachedToContext(LegacyGUIContext context)
 	{
 		mContext = context;
 		context.RegisterElement(this);

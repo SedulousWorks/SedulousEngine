@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI.Tests;
+namespace Sedulous.LegacyGUI.Tests;
 
 /// Phase 7 tests: text input controls.
 class Phase7Tests
@@ -444,7 +444,7 @@ class Phase7Tests
 	[Test]
 	public static void TextBox_TextChangedEvent()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -491,7 +491,7 @@ class Phase7Tests
 	[Test]
 	public static void TextBox_ReadOnly()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -580,7 +580,7 @@ class Phase7Tests
 	[Test]
 	public static void PasswordBox_PasswordChangedEvent()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 
@@ -723,7 +723,7 @@ class Phase7Tests
 	[Test]
 	public static void NumericUpDown_ValueChangedEvent()
 	{
-		let ctx = scope GUIContext();
+		let ctx = scope LegacyGUIContext();
 		let panel = new TestPanel();
 		ctx.RootElement = panel;
 

@@ -1,8 +1,8 @@
 using System;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI.Tests;
+namespace Sedulous.LegacyGUI.Tests;
 
 /// Tests for Phase 14: Docking System
 class Phase14Tests

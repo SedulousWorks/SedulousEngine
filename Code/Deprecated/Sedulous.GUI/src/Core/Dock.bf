@@ -1,4 +1,4 @@
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Specifies which edge of a parent element a child should dock to.
 public enum Dock

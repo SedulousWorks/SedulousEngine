@@ -3,7 +3,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Images;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// How an image is scaled to fit its container.
 public enum Stretch

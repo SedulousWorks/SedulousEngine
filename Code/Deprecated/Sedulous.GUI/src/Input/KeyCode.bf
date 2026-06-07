@@ -1,4 +1,4 @@
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Keyboard key codes for the UI system.
 /// These are logical key identifiers independent of the underlying input system.

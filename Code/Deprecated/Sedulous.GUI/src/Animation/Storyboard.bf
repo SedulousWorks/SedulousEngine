@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Entry in a storyboard timeline.
 public struct StoryboardEntry

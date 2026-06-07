@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// Convenience wrapper for easing functions.
 /// Re-exports Sedulous.Core.Mathematics.Easings with GUI-friendly names.

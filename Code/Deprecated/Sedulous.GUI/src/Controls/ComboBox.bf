@@ -4,7 +4,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
 using Sedulous.Core;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A dropdown selection control that displays a list of items when opened.
 public class ComboBox : Control, IPopupOwner
@@ -330,7 +330,7 @@ public class ComboBox : Control, IPopupOwner
 
 	// === Context ===
 
-	public override void OnAttachedToContext(GUIContext context)
+	public override void OnAttachedToContext(LegacyGUIContext context)
 	{
 		base.OnAttachedToContext(context);
 		mSelectedText.OnAttachedToContext(context);

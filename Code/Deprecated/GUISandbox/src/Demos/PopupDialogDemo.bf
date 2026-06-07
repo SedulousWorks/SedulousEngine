@@ -3,7 +3,7 @@ namespace GUISandbox;
 using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Drawing;
-using Sedulous.GUI;
+using Sedulous.LegacyGUI;
 
 /// Demo 14: Popup & Dialog System
 /// Shows tooltips, context menus, dialogs, and message boxes.
@@ -11,9 +11,9 @@ class PopupDialogDemo
 {
 	private StackPanel mRoot /*~ delete _*/;
 	private TextBlock mStatusLabel /*~ delete _*/;
-	private GUIContext mContext;
+	private LegacyGUIContext mContext;
 
-	public UIElement CreateDemo(GUIContext context)
+	public UIElement CreateDemo(LegacyGUIContext context)
 	{
 		mContext = context;
 

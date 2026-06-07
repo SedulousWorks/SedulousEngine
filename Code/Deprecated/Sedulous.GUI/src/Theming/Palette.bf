@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Mathematics;
 
-namespace Sedulous.GUI;
+namespace Sedulous.LegacyGUI;
 
 /// A color palette with seed colors and computed derived colors.
 /// Provides consistent color schemes with automatic state variations.
