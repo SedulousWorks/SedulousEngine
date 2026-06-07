@@ -7,39 +7,49 @@ using Sedulous.Core.Mathematics;
 /// Content-bearing - set Content for custom content, or construct with text.
 public class ToggleButton : ButtonBase
 {
-	private View mContent ~ delete _;
-	private bool mIsChecked;
+	/// Whether the toggle is checked.
+	public Property<bool> IsChecked = new .(false) ~ delete _;
 
 	/// Per-instance background for checked state (owned).
 	public Drawable CheckedBackground ~ delete _;
 
-	/// Whether the toggle is checked.
-	public bool IsChecked
-	{
-		get => mIsChecked;
-		set
-		{
-			if (mIsChecked == value) return;
-			mIsChecked = value;
-			Invalidate();
-			OnCheckedChanged(this, mIsChecked);
-		}
-	}
+	/// The content view (owned by this button).
+	private View mContent ~ delete _;
 
 	public View Content
 	{
 		get => mContent;
-		set { delete mContent; mContent = value; Invalidate(); }
+		set
+		{
+			if (mContent != null)
+				delete mContent;
+			mContent = value;
+			Invalidate();
+		}
 	}
 
 	public Event<delegate void(ToggleButton, bool)> OnCheckedChanged ~ _.Dispose();
 
 	public this(StringView text) : base()
 	{
+		IsChecked.SetOwner(this, .Visual);
 		mContent = new Label(text);
+
+		IsChecked.Changed.Add(new (val) =>
+			{
+				OnCheckedChanged(this, val);
+			});
 	}
 
-	public this() : base() { }
+	public this() : base()
+	{
+		IsChecked.SetOwner(this, .Visual);
+
+		IsChecked.Changed.Add(new (val) =>
+			{
+				OnCheckedChanged(this, val);
+			});
+	}
 
 	public override ControlState GetControlState()
 	{
@@ -48,7 +58,7 @@ public class ToggleButton : ButtonBase
 		if (IsPressed) state |= .Pressed;
 		if (IsFocused) state |= .Focused;
 		if (IsHovered) state |= .Hover;
-		if (IsChecked) state |= .Checked;
+		if (IsChecked.Value) state |= .Checked;
 		return state;
 	}
 
@@ -89,12 +99,12 @@ public class ToggleButton : ButtonBase
 		let radius = ResolveStyleFloat(.CornerRadius, 4);
 
 		// Background based on checked state
-		let bg = mIsChecked ? (CheckedBackground ?? Background) : Background;
+		let bg = IsChecked.Value ? (CheckedBackground ?? Background) : Background;
 		if (bg != null)
 		{
 			bg.Draw(ctx, bounds, state);
 		}
-		else if (mIsChecked)
+		else if (IsChecked.Value)
 		{
 			// Checked: try CheckedBackground from theme, fall back to accent color
 			let checkedBg = ResolveStyleDrawable(.CheckedBackground);
@@ -128,7 +138,7 @@ public class ToggleButton : ButtonBase
 	{
 		if (e.Button == .Left && IsPressed)
 		{
-			if (IsHovered) IsChecked = !mIsChecked;
+			if (IsHovered) IsChecked.Value = !IsChecked.Value;
 		}
 		base.OnMouseUp(e);
 	}
@@ -137,7 +147,7 @@ public class ToggleButton : ButtonBase
 	{
 		if (e.Key == .Space || e.Key == .Return)
 		{
-			IsChecked = !mIsChecked;
+			IsChecked.Value = !IsChecked.Value;
 			e.Handled = true;
 		}
 	}

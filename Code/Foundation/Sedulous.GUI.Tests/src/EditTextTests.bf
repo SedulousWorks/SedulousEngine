@@ -52,7 +52,7 @@ class EditTextTests
 		TestSetup.Init(ctx, root);
 
 		let edit = new EditText();
-		edit.MaxLength = 5;
+		edit.MaxLength.Value = 5;
 		root.AddView(edit);
 		TestSetup.Layout(ctx, root);
 
@@ -95,7 +95,7 @@ class EditTextTests
 
 		let edit = new EditText();
 		edit.SetText("Original");
-		edit.IsReadOnly = true;
+		edit.IsReadOnly.Value = true;
 		root.AddView(edit);
 		TestSetup.Layout(ctx, root);
 
@@ -109,7 +109,7 @@ class EditTextTests
 	{
 		let edit = scope EditText();
 		edit.SetPlaceholder("Enter text...");
-		Test.Assert(edit.Placeholder == "Enter text...");
+		Test.Assert(edit.Placeholder.Value == "Enter text...");
 	}
 
 	[Test]
@@ -125,9 +125,9 @@ class EditTextTests
 	public static void EditText_MultilineProperty()
 	{
 		let edit = scope EditText();
-		Test.Assert(edit.Multiline == false);
-		edit.Multiline = true;
-		Test.Assert(edit.Multiline == true);
+		Test.Assert(edit.Multiline.Value == false);
+		edit.Multiline.Value = true;
+		Test.Assert(edit.Multiline.Value == true);
 	}
 
 	[Test]
@@ -239,7 +239,7 @@ class EditTextTests
 	{
 		let pw = scope PasswordBox();
 		pw.SetText("abc");
-		pw.PasswordChar = '#';
+		pw.PasswordChar.Value = '#';
 
 		let display = scope String();
 		pw.[Friend]GetDisplayText(display);

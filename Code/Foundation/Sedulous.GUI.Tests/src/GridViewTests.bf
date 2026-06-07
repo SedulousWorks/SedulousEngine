@@ -38,8 +38,8 @@ class GridViewTests
 		defer delete adapter;
 
 		let gv = new GridView();
-		gv.CellWidth = 60;
-		gv.CellSpacing = 4;
+		gv.CellWidth.Value = 60;
+		gv.CellSpacing.Value = 4;
 		gv.Adapter = adapter;
 		root.AddView(gv);
 		TestSetup.Layout(ctx, root);
@@ -61,8 +61,8 @@ class GridViewTests
 		defer delete adapter;
 
 		let gv = new GridView();
-		gv.CellWidth = 60;
-		gv.CellHeight = 60;
+		gv.CellWidth.Value = 60;
+		gv.CellHeight.Value = 60;
 		gv.Adapter = adapter;
 		root.AddView(gv);
 		TestSetup.Layout(ctx, root);
@@ -90,9 +90,9 @@ class GridViewTests
 	public static void GridView_DefaultValues()
 	{
 		let gv = scope GridView();
-		Test.Assert(gv.CellWidth == 60);
-		Test.Assert(gv.CellHeight == 60);
-		Test.Assert(gv.CellSpacing == 4);
+		Test.Assert(gv.CellWidth.Value == 60);
+		Test.Assert(gv.CellHeight.Value == 60);
+		Test.Assert(gv.CellSpacing.Value == 4);
 		Test.Assert(gv.ScrollY == 0);
 	}
 }

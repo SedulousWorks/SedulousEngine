@@ -6,25 +6,20 @@ using System;
 /// instead of the actual text. Clipboard copy is disabled for security.
 public class PasswordBox : EditText
 {
-	private char32 mPasswordChar = '*';
-
 	/// The character used to mask each real character.
-	public char32 PasswordChar
-	{
-		get => mPasswordChar;
-		set { mPasswordChar = value; Invalidate(); }
-	}
+	public Property<char32> PasswordChar = new .('*') ~ delete _;
 
 	public this() : base()
 	{
 		mBehavior.AllowClipboardCopy = false;
+		PasswordChar.SetOwner(this, .Visual);
 	}
 
 	protected override void GetDisplayText(String outText)
 	{
 		outText.Clear();
 		for (let c in Text.DecodedChars)
-			outText.Append(mPasswordChar);
+			outText.Append(PasswordChar.Value);
 	}
 
 	public override void OnKeyDown(KeyEventArgs e)

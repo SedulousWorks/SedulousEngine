@@ -11,10 +11,10 @@ public class Expander : ViewGroup
 	private bool mIsExpanded = true;
 
 	/// Header height in pixels.
-	public float HeaderHeight = 28;
+	public Property<float> HeaderHeight = new .(28) ~ delete _;
 
 	/// Spacing between header and content.
-	public float ContentSpacing = 4;
+	public Property<float> ContentSpacing = new .(4) ~ delete _;
 
 	/// Whether the content is expanded (visible).
 	public bool IsExpanded
@@ -33,7 +33,7 @@ public class Expander : ViewGroup
 
 	public Event<delegate void(Expander, bool)> OnExpandedChanged ~ _.Dispose();
 
-	public this() { IsFocusable = true; Cursor = .Hand; }
+	public this() { IsFocusable = true; Cursor = .Hand; HeaderHeight.SetOwner(this); ContentSpacing.SetOwner(this); }
 	public this(StringView headerText) : this() { mHeaderText = new String(headerText); }
 
 	/// Set the expandable body content.
@@ -74,12 +74,12 @@ public class Expander : ViewGroup
 			let inner = constraints.Deflate(Padding).Loosen();
 			let margin = mContent.LayoutParams?.Margin ?? Thickness();
 			mContent.Measure(inner.Deflate(margin));
-			contentH = ContentSpacing + mContent.MeasuredSize.Y + margin.TotalVertical;
+			contentH = ContentSpacing.Value + mContent.MeasuredSize.Y + margin.TotalVertical;
 		}
 
 		MeasuredSize = .(
 			constraints.ConstrainWidth(constraints.MaxWidth),
-			constraints.ConstrainHeight(HeaderHeight + contentH));
+			constraints.ConstrainHeight(HeaderHeight.Value + contentH));
 	}
 
 	protected override void OnLayout(float left, float top, float width, float height)
@@ -87,7 +87,7 @@ public class Expander : ViewGroup
 		if (mContent != null && mContent.Visibility != .Gone)
 		{
 			let margin = mContent.LayoutParams?.Margin ?? Thickness();
-			let contentTop = HeaderHeight + ContentSpacing;
+			let contentTop = HeaderHeight.Value + ContentSpacing.Value;
 			mContent.Layout(
 				margin.Left,
 				contentTop + margin.Top,
@@ -99,7 +99,7 @@ public class Expander : ViewGroup
 	public override void OnDraw(UIDrawContext ctx)
 	{
 		let fontSize = ResolveStyleFloat(.FontSize, 16);
-		let headerRect = RectangleF(0, 0, Width, HeaderHeight);
+		let headerRect = RectangleF(0, 0, Width, HeaderHeight.Value);
 
 		// Header background - try hover drawable first, then normal
 		let hoverDrawable = IsHovered ? ResolveStyleDrawable(.HeaderHoverDrawable) : null;
@@ -112,7 +112,7 @@ public class Expander : ViewGroup
 		// Arrow indicator
 		let arrowSize = 8.0f;
 		let arrowX = 8.0f;
-		let arrowCY = HeaderHeight * 0.5f;
+		let arrowCY = HeaderHeight.Value * 0.5f;
 		let arrowColor = ResolveStyleColor(.ArrowColor, .(180, 185, 200, 255));
 
 		let chevronIcon = mIsExpanded
@@ -151,7 +151,7 @@ public class Expander : ViewGroup
 			{
 				let textColor = ResolveStyleColor(.TextColor, .(220, 225, 235, 255));
 				let textX = arrowX + arrowSize + 8;
-				ctx.VG.DrawText(mHeaderText, font, .(textX, 0, Width - textX - 4, HeaderHeight), .Left, .Middle, textColor);
+				ctx.VG.DrawText(mHeaderText, font, .(textX, 0, Width - textX - 4, HeaderHeight.Value), .Left, .Middle, textColor);
 			}
 		}
 
@@ -169,7 +169,7 @@ public class Expander : ViewGroup
 		let screenY = Context?.InputManager?.MouseY ?? 0;
 		let local = ScreenToLocal(.(screenX, screenY));
 
-		if (local.Y >= 0 && local.Y <= HeaderHeight)
+		if (local.Y >= 0 && local.Y <= HeaderHeight.Value)
 		{
 			Toggle();
 			e.Handled = true;

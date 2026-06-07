@@ -14,38 +14,36 @@ public class DrawableView : View
 	public bool OwnsDrawable;
 
 	/// Explicit desired width. Overrides intrinsic size.
-	public float? DesiredWidth;
+	public Property<float?> DesiredWidth = new .(null) ~ delete _;
 
 	/// Explicit desired height. Overrides intrinsic size.
-	public float? DesiredHeight;
+	public Property<float?> DesiredHeight = new .(null) ~ delete _;
 
-	public this() { }
+	public this()
+	{
+		DesiredWidth.SetOwner(this);
+		DesiredHeight.SetOwner(this);
+	}
 
-	public this(Drawable drawable, bool ownsDrawable = false)
+	public this(Drawable drawable, bool ownsDrawable = false) : this()
 	{
 		Drawable = drawable;
 		OwnsDrawable = ownsDrawable;
 	}
 
-	public this(Drawable drawable, float width, float height, bool ownsDrawable = false)
+	public this(Drawable drawable, float width, float height, bool ownsDrawable = false) : this()
 	{
 		Drawable = drawable;
-		DesiredWidth = width;
-		DesiredHeight = height;
+		DesiredWidth.SetSilent(width);
+		DesiredHeight.SetSilent(height);
 		OwnsDrawable = ownsDrawable;
-	}
-
-	public ~this()
-	{
-		if (OwnsDrawable)
-			delete Drawable;
 	}
 
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
 		let intrinsic = Drawable?.IntrinsicSize;
-		let w = DesiredWidth ?? intrinsic?.X ?? 0;
-		let h = DesiredHeight ?? intrinsic?.Y ?? 0;
+		let w = DesiredWidth.Value ?? intrinsic?.X ?? 0;
+		let h = DesiredHeight.Value ?? intrinsic?.Y ?? 0;
 		MeasuredSize = .(constraints.ConstrainWidth(w), constraints.ConstrainHeight(h));
 	}
 
@@ -53,5 +51,11 @@ public class DrawableView : View
 	{
 		if (Drawable != null)
 			Drawable.Draw(ctx, .(0, 0, Width, Height), GetControlState());
+	}
+
+	public ~this()
+	{
+		if (OwnsDrawable && Drawable != null)
+			delete Drawable;
 	}
 }

@@ -12,9 +12,9 @@ public class GridView : ViewGroup, IListAdapterObserver
 	public SelectionModel Selection = new .() ~ delete _;
 
 	/// Fixed cell dimensions.
-	public float CellWidth = 60;
-	public float CellHeight = 60;
-	public float CellSpacing = 4;
+	public Property<float> CellWidth = new .(60) ~ delete _;
+	public Property<float> CellHeight = new .(60) ~ delete _;
+	public Property<float> CellSpacing = new .(4) ~ delete _;
 
 	/// Fired when an item is clicked. Args: (position, clickCount, localX, localY).
 	public Event<delegate void(int32, int32, float, float)> OnItemClicked ~ _.Dispose();
@@ -62,6 +62,9 @@ public class GridView : ViewGroup, IListAdapterObserver
 		ClipsContent = true;
 		IsFocusable = true;
 		IsTabStop = true;
+		CellWidth.SetOwner(this);
+		CellHeight.SetOwner(this);
+		CellSpacing.SetOwner(this);
 		mScrollBar = new ScrollBar();
 		mScrollBar.Parent = this;
 		mScrollBar.OnValueChanged.Add(new (bar, val) => { mScrollY = val; Invalidate(); });
@@ -117,7 +120,7 @@ public class GridView : ViewGroup, IListAdapterObserver
 	{
 		if (MaxScrollY > 0)
 		{
-			ScrollBy(-e.DeltaY * (CellHeight + CellSpacing) * 2);
+			ScrollBy(-e.DeltaY * (CellHeight.Value + CellSpacing.Value) * 2);
 			mMomentum.VelocityY = -e.DeltaY * 200;
 			e.Handled = true;
 		}
@@ -191,13 +194,13 @@ public class GridView : ViewGroup, IListAdapterObserver
 			ScrollToPosition(count - 1);
 			e.Handled = true;
 		case .PageDown:
-			let visibleRows = (int32)(Height / (CellHeight + CellSpacing));
+			let visibleRows = (int32)(Height / (CellHeight.Value + CellSpacing.Value));
 			let pageNext = Math.Min(sel + visibleRows * mColumnsCount, count - 1);
 			Selection.Select(pageNext);
 			ScrollToPosition(pageNext);
 			e.Handled = true;
 		case .PageUp:
-			let visibleRowsUp = (int32)(Height / (CellHeight + CellSpacing));
+			let visibleRowsUp = (int32)(Height / (CellHeight.Value + CellSpacing.Value));
 			let pagePrev = Math.Max(sel - visibleRowsUp * mColumnsCount, 0);
 			Selection.Select(pagePrev);
 			ScrollToPosition(pagePrev);
@@ -213,8 +216,8 @@ public class GridView : ViewGroup, IListAdapterObserver
 		let scrolledY = localY + mScrollY - Padding.Top;
 		let x = localX - Padding.Left;
 
-		let col = (int32)(x / (CellWidth + CellSpacing));
-		let row = (int32)(scrolledY / (CellHeight + CellSpacing));
+		let col = (int32)(x / (CellWidth.Value + CellSpacing.Value));
+		let row = (int32)(scrolledY / (CellHeight.Value + CellSpacing.Value));
 
 		if (col < 0 || col >= mColumnsCount) return -1;
 		let pos = row * mColumnsCount + col;
@@ -228,13 +231,13 @@ public class GridView : ViewGroup, IListAdapterObserver
 		if (mAdapter == null || mColumnsCount <= 0 || position < 0) return;
 
 		let row = position / mColumnsCount;
-		let rowY = row * (CellHeight + CellSpacing);
+		let rowY = row * (CellHeight.Value + CellSpacing.Value);
 		let viewportH = Height - Padding.TotalVertical;
 
 		if (rowY < mScrollY)
 			mScrollY = rowY;
-		else if (rowY + CellHeight > mScrollY + viewportH)
-			mScrollY = rowY + CellHeight - viewportH;
+		else if (rowY + CellHeight.Value > mScrollY + viewportH)
+			mScrollY = rowY + CellHeight.Value - viewportH;
 
 		mScrollY = Math.Clamp(mScrollY, 0, MaxScrollY);
 		Invalidate();
@@ -254,10 +257,10 @@ public class GridView : ViewGroup, IListAdapterObserver
 		let viewportH = height - Padding.TotalVertical;
 
 		// Compute grid layout.
-		mColumnsCount = Math.Max(1, (int32)((viewportW + CellSpacing) / (CellWidth + CellSpacing)));
+		mColumnsCount = Math.Max(1, (int32)((viewportW + CellSpacing.Value) / (CellWidth.Value + CellSpacing.Value)));
 		let itemCount = (mAdapter != null) ? mAdapter.ItemCount : 0;
 		mRowCount = (itemCount > 0) ? (itemCount + mColumnsCount - 1) / mColumnsCount : 0;
-		mTotalContentHeight = (mRowCount > 0) ? mRowCount * (CellHeight + CellSpacing) - CellSpacing : 0;
+		mTotalContentHeight = (mRowCount > 0) ? mRowCount * (CellHeight.Value + CellSpacing.Value) - CellSpacing.Value : 0;
 
 		mScrollBarVisible = MaxScrollY > 0;
 		mScrollBar.Visibility = mScrollBarVisible ? .Visible : .Gone;
@@ -270,8 +273,8 @@ public class GridView : ViewGroup, IListAdapterObserver
 			Context.AttachView(mScrollBar);
 
 		// Compute visible row range.
-		let firstRow = (int32)(mScrollY / (CellHeight + CellSpacing));
-		let lastRow = Math.Min(firstRow + (int32)(viewportH / (CellHeight + CellSpacing)) + 1, mRowCount - 1);
+		let firstRow = (int32)(mScrollY / (CellHeight.Value + CellSpacing.Value));
+		let lastRow = Math.Min(firstRow + (int32)(viewportH / (CellHeight.Value + CellSpacing.Value)) + 1, mRowCount - 1);
 		let firstPos = firstRow * mColumnsCount;
 		let lastPos = Math.Min((lastRow + 1) * mColumnsCount - 1, itemCount - 1);
 
@@ -296,11 +299,11 @@ public class GridView : ViewGroup, IListAdapterObserver
 
 			let row = pos / mColumnsCount;
 			let col = pos % mColumnsCount;
-			let cellX = Padding.Left + col * (CellWidth + CellSpacing);
-			let cellY = Padding.Top + row * (CellHeight + CellSpacing) - mScrollY;
+			let cellX = Padding.Left + col * (CellWidth.Value + CellSpacing.Value);
+			let cellY = Padding.Top + row * (CellHeight.Value + CellSpacing.Value) - mScrollY;
 
-			mActiveViews[pos].Measure(BoxConstraints.Tight(CellWidth, CellHeight));
-			mActiveViews[pos].Layout(cellX, cellY, CellWidth, CellHeight);
+			mActiveViews[pos].Measure(BoxConstraints.Tight(CellWidth.Value, CellHeight.Value));
+			mActiveViews[pos].Layout(cellX, cellY, CellWidth.Value, CellHeight.Value);
 		}
 
 		// Layout scrollbar.

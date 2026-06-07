@@ -6,60 +6,48 @@ using Sedulous.Core.Mathematics;
 /// Toggle checkbox with text label.
 public class CheckBox : View
 {
-	private bool mIsChecked;
-	private String mText ~ delete _;
-
 	/// Whether the checkbox is checked.
-	public bool IsChecked
-	{
-		get => mIsChecked;
-		set
-		{
-			if (mIsChecked == value) return;
-			mIsChecked = value;
-			Invalidate();
-			OnCheckedChanged(this, mIsChecked);
-		}
-	}
+	public Property<bool> IsChecked = new .(false) ~ delete _;
 
 	/// Text label next to the checkbox.
-	public StringView Text
-	{
-		get => (mText != null) ? StringView(mText) : StringView();
-		set
-		{
-			if (mText == null) mText = new String(value);
-			else mText.Set(value);
-			Invalidate();
-		}
-	}
+	public Property<String> Text = new .(null) ~ { if (_.Value != null) delete _.Value; delete _; };
 
 	/// Override font size for the label text.
-	public float? FontSize;
+	public Property<float?> FontSize = new .(null) ~ delete _;
 
 	/// Override text color for the label text.
-	public Color? TextColor;
+	public Property<Color?> TextColor = new .(null, .Visual) ~ delete _;
 
 	/// Fired when checked state changes.
 	public Event<delegate void(CheckBox, bool)> OnCheckedChanged ~ _.Dispose();
 
-	public this() { IsFocusable = true; IsTabStop = true; Cursor = .Hand; }
-	public this(StringView text) : this() { mText = new String(text); }
-	public this(StringView text, bool isChecked) : this(text) { mIsChecked = isChecked; }
+	public this()
+	{
+		IsChecked.SetOwner(this, .Visual);
+		Text.SetOwner(this);
+		FontSize.SetOwner(this);
+		TextColor.SetOwner(this, .Visual);
+
+		IsChecked.Changed.Add(new (val) => { OnCheckedChanged(this, val); });
+
+		IsFocusable = true; IsTabStop = true; Cursor = .Hand;
+	}
+	public this(StringView text) : this() { Text.SetSilent(new String(text)); }
+	public this(StringView text, bool isChecked) : this(text) { IsChecked.SetSilent(isChecked); }
 
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
 		let boxSize = ResolveStyleFloat(.BoxSize, 18);
 		let spacing = ResolveStyleFloat(.Spacing, 6);
-		let fontSize = FontSize ?? ResolveStyleFloat(.FontSize, 16);
+		let fontSize = FontSize.Value ?? ResolveStyleFloat(.FontSize, 16);
 
 		float textW = 0, textH = 0;
-		if (mText != null && !mText.IsEmpty)
+		if (Text.Value != null && !Text.Value.IsEmpty)
 		{
 			let font = Context?.FontService?.GetFont(fontSize);
 			if (font != null)
 			{
-				textW = font.Font.MeasureString(mText);
+				textW = font.Font.MeasureString(Text.Value);
 				textH = font.Font.Metrics.LineHeight;
 			}
 		}
@@ -74,7 +62,7 @@ public class CheckBox : View
 	{
 		let boxSize = ResolveStyleFloat(.BoxSize, 18);
 		let spacing = ResolveStyleFloat(.Spacing, 6);
-		let fontSize = FontSize ?? ResolveStyleFloat(.FontSize, 16);
+		let fontSize = FontSize.Value ?? ResolveStyleFloat(.FontSize, 16);
 		let state = GetControlState();
 
 		// Box position (vertically centered)
@@ -82,7 +70,7 @@ public class CheckBox : View
 		let boxRect = RectangleF(0, boxY, boxSize, boxSize);
 
 		// Draw the appropriate drawable for checked/unchecked state.
-		if (mIsChecked)
+		if (IsChecked.Value)
 		{
 			let checkedDrawable = ResolveStyleDrawable(.CheckedBackground);
 			if (checkedDrawable != null)
@@ -106,18 +94,18 @@ public class CheckBox : View
 		}
 
 		// Text label
-		if (mText != null && !mText.IsEmpty)
+		if (Text.Value != null && !Text.Value.IsEmpty)
 		{
 			let font = ctx.FontService?.GetFont(fontSize);
 			if (font != null)
 			{
-				var textColor = TextColor ?? ResolveStyleColor(.TextColor, .(220, 225, 235, 255));
+				var textColor = TextColor.Value ?? ResolveStyleColor(.TextColor, .(220, 225, 235, 255));
 				if (!IsEffectivelyEnabled)
 					textColor = Palette.ComputeDisabled(textColor);
 
 				let textX = boxSize + spacing;
 				let textRect = RectangleF(textX, 0, Width - textX, Height);
-				ctx.VG.DrawText(mText, font, textRect, .Left, .Middle, textColor);
+				ctx.VG.DrawText(Text.Value, font, textRect, .Left, .Middle, textColor);
 			}
 		}
 	}
@@ -151,7 +139,7 @@ public class CheckBox : View
 		if (!IsEffectivelyEnabled) return;
 		if (e.Button == .Left)
 		{
-			IsChecked = !mIsChecked;
+			IsChecked.Value = !IsChecked.Value;
 			e.Handled = true;
 		}
 	}
@@ -161,7 +149,7 @@ public class CheckBox : View
 		if (!IsEffectivelyEnabled) return;
 		if (e.Key == .Space || e.Key == .Return)
 		{
-			IsChecked = !mIsChecked;
+			IsChecked.Value = !IsChecked.Value;
 			e.Handled = true;
 		}
 	}

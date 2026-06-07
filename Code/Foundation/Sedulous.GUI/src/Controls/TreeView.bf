@@ -10,7 +10,7 @@ public class TreeView : ViewGroup
 {
 	public ITreeAdapter TreeAdapter;
 	public SelectionModel Selection => mListView.Selection;
-	public float ItemHeight { get => mListView.ItemHeight; set => mListView.ItemHeight = value; }
+	public float ItemHeight { get => mListView.ItemHeight.Value; set => mListView.ItemHeight.Value = value; }
 
 	public struct ItemClickInfo
 	{
@@ -32,17 +32,16 @@ public class TreeView : ViewGroup
 
 	private FlattenedTreeAdapter mFlatAdapter ~ delete _;
 	private ListView mListView ~ delete _;
-	private float mIndentWidth = 20;
-	private float mArrowSize = 8;
-
-	public float IndentWidth { get => mIndentWidth; set => mIndentWidth = value; }
-	public float ArrowSize { get => mArrowSize; set => mArrowSize = value; }
+	public Property<float> IndentWidth = new .(20) ~ delete _;
+	public Property<float> ArrowSize = new .(8) ~ delete _;
 	public FlattenedTreeAdapter FlatAdapter => mFlatAdapter;
 	public ListView InternalListView => mListView;
 
 	public this()
 	{
 		ClipsContent = true;
+		IndentWidth.SetOwner(this);
+		ArrowSize.SetOwner(this);
 		mListView = new ListView();
 		mListView.Parent = this;
 
@@ -96,8 +95,8 @@ public class TreeView : ViewGroup
 		if (nodeId < 0 || !TreeAdapter.HasChildren(nodeId)) return false;
 
 		let depth = mFlatAdapter.GetDepth(position);
-		let arrowLeft = depth * mIndentWidth;
-		let arrowRight = arrowLeft + mIndentWidth;
+		let arrowLeft = depth * IndentWidth.Value;
+		let arrowRight = arrowLeft + IndentWidth.Value;
 
 		return localX >= arrowLeft && localX < arrowRight;
 	}
@@ -170,7 +169,7 @@ public class TreeView : ViewGroup
 		if (mFlatAdapter == null || TreeAdapter == null) return;
 
 		let scrollY = mListView.ScrollY;
-		let itemH = mListView.ItemHeight;
+		let itemH = mListView.ItemHeight.Value;
 		let viewportH = Height;
 
 		let firstVisible = (int32)(scrollY / itemH);
@@ -184,9 +183,9 @@ public class TreeView : ViewGroup
 
 			let depth = mFlatAdapter.GetDepth(i);
 			let itemY = i * itemH - scrollY;
-			let arrowX = depth * mIndentWidth + (mIndentWidth - mArrowSize) * 0.5f;
+			let arrowX = depth * IndentWidth.Value + (IndentWidth.Value - ArrowSize.Value) * 0.5f;
 			let arrowCY = itemY + itemH * 0.5f;
-			let halfSize = mArrowSize * 0.5f;
+			let halfSize = ArrowSize.Value * 0.5f;
 
 			// Try themed chevron icons first.
 			let isExpanded = mFlatAdapter.IsExpanded(nodeId);
@@ -196,7 +195,7 @@ public class TreeView : ViewGroup
 
 			if (chevron != null)
 			{
-				let iconRect = RectangleF(arrowX, arrowCY - halfSize, mArrowSize, mArrowSize);
+				let iconRect = RectangleF(arrowX, arrowCY - halfSize, ArrowSize.Value, ArrowSize.Value);
 				chevron.Draw(ctx, iconRect);
 			}
 			else
@@ -207,13 +206,13 @@ public class TreeView : ViewGroup
 				if (isExpanded)
 				{
 					ctx.VG.MoveTo(arrowX, arrowCY - halfSize * 0.6f);
-					ctx.VG.LineTo(arrowX + mArrowSize, arrowCY - halfSize * 0.6f);
+					ctx.VG.LineTo(arrowX + ArrowSize.Value, arrowCY - halfSize * 0.6f);
 					ctx.VG.LineTo(arrowX + halfSize, arrowCY + halfSize * 0.6f);
 				}
 				else
 				{
 					ctx.VG.MoveTo(arrowX, arrowCY - halfSize * 0.8f);
-					ctx.VG.LineTo(arrowX + mArrowSize * 0.6f, arrowCY);
+					ctx.VG.LineTo(arrowX + ArrowSize.Value * 0.6f, arrowCY);
 					ctx.VG.LineTo(arrowX, arrowCY + halfSize * 0.8f);
 				}
 				ctx.VG.ClosePath();

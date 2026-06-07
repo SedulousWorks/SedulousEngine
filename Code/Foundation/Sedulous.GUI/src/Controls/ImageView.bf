@@ -20,10 +20,8 @@ public enum ScaleType
 /// Displays an image with configurable scaling.
 public class ImageView : View
 {
+	/// The image to display (not owned by this view).
 	private IImageData mImage;
-	private ScaleType mScaleType = .FitCenter;
-
-	/// The image to display (not owned).
 	public IImageData Image
 	{
 		get => mImage;
@@ -36,22 +34,21 @@ public class ImageView : View
 	}
 
 	/// How the image is scaled to fit bounds.
-	public ScaleType ScaleType
-	{
-		get => mScaleType;
-		set
-		{
-			if (mScaleType == value) return;
-			mScaleType = value;
-			Invalidate();
-		}
-	}
+	public Property<ScaleType> ScaleType = new .(.FitCenter) ~ delete _;
 
 	/// Tint color applied to the image.
-	public Color Tint = .White;
+	public Property<Color> Tint = new .(.White) ~ delete _;
 
-	public this() { }
-	public this(IImageData image) { mImage = image; }
+	public this()
+	{
+		ScaleType.SetOwner(this, .Visual);
+		Tint.SetOwner(this, .Visual);
+	}
+
+	public this(IImageData image) : this()
+	{
+		Image = image;
+	}
 
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
@@ -68,20 +65,20 @@ public class ImageView : View
 		let srcRect = RectangleF(0, 0, Image.Width, Image.Height);
 		let dstRect = RectangleF(0, 0, Width, Height);
 
-		switch (ScaleType)
+		switch (ScaleType.Value)
 		{
 		case .None:
-			ctx.VG.DrawImage(Image, .(0, 0, Image.Width, Image.Height), srcRect, Tint);
+			ctx.VG.DrawImage(Image, .(0, 0, Image.Width, Image.Height), srcRect, Tint.Value);
 
 		case .FillBounds:
-			ctx.VG.DrawImage(Image, dstRect, srcRect, Tint);
+			ctx.VG.DrawImage(Image, dstRect, srcRect, Tint.Value);
 
 		case .FitCenter:
 			let scale = Math.Min(Width / Image.Width, Height / Image.Height);
 			let fitW = Image.Width * scale;
 			let fitH = Image.Height * scale;
 			let fitRect = RectangleF((Width - fitW) * 0.5f, (Height - fitH) * 0.5f, fitW, fitH);
-			ctx.VG.DrawImage(Image, fitRect, srcRect, Tint);
+			ctx.VG.DrawImage(Image, fitRect, srcRect, Tint.Value);
 
 		case .CenterCrop:
 			let scale = Math.Max(Width / Image.Width, Height / Image.Height);
@@ -89,7 +86,7 @@ public class ImageView : View
 			let cropH = Height / scale;
 			let cropX = (Image.Width - cropW) * 0.5f;
 			let cropY = (Image.Height - cropH) * 0.5f;
-			ctx.VG.DrawImage(Image, dstRect, .(cropX, cropY, cropW, cropH), Tint);
+			ctx.VG.DrawImage(Image, dstRect, .(cropX, cropY, cropW, cropH), Tint.Value);
 		}
 	}
 }

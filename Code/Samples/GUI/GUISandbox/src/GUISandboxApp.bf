@@ -117,7 +117,8 @@ class GUISandboxApp : Application
 		mRoot.AddView(main);
 
 		// TabView as the main navigation
-		let tabView = new TabView() { TabsClosable = false };
+		let tabView = new TabView();
+		tabView.TabsClosable.Value = false;
 		tabView.OnTabCloseRequested.Add(new (tv, idx) => { tv.RemoveTab(idx); });
 		main.AddView(tabView, new FlexLayout.LayoutParams() { Grow = 1 });
 
@@ -144,8 +145,10 @@ class GUISandboxApp : Application
 		iconTextLayout.AddView(new Label("Icon + Text"));
 		contentBtnRow.AddView(new ContentButton(iconTextLayout));
 		let multiLineContent = new FlexLayout() { Direction = .Vertical, Spacing = 2, AlignItems = .Center };
-		multiLineContent.AddView(new Label("Line 1") { FontSize = 12 });
-		multiLineContent.AddView(new Label("Line 2") { FontSize = 10 });
+		let lblLine1 = new Label("Line 1"); lblLine1.FontSize.Value = 12;
+		multiLineContent.AddView(lblLine1);
+		let lblLine2 = new Label("Line 2"); lblLine2.FontSize.Value = 10;
+		multiLineContent.AddView(lblLine2);
 		contentBtnRow.AddView(new ContentButton(multiLineContent));
 		leftPanel.AddView(contentBtnRow);
 
@@ -191,7 +194,9 @@ class GUISandboxApp : Application
 
 		// Progress bar
 		leftPanel.AddView(new Label("Loading..."));
-		leftPanel.AddView(new ProgressBar() { Value = 0.65f });
+		let progressBar = new ProgressBar();
+		progressBar.Value.Value = 0.65f;
+		leftPanel.AddView(progressBar);
 
 		// Center panel - Panel with Expanders
 		let centerPanel = new FlexLayout() { Direction = .Vertical, Spacing = 8 };
@@ -229,38 +234,44 @@ class GUISandboxApp : Application
 		body.AddView(rightPanel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(200)) });
 
 		// ImageView demos - all ScaleType modes
-		rightPanel.AddView(new Label("None") { VAlign = .Top });
+		let lblNone = new Label("None"); lblNone.VAlign.Value = .Top;
+		rightPanel.AddView(lblNone);
 		let imgNone = new ImageView(mTestImage);
-		imgNone.ScaleType = .None;
+		imgNone.ScaleType.Value = .None;
 		imgNone.ClipsContent = true;
 		rightPanel.AddView(imgNone, new FlexLayout.LayoutParams() { Height = .Fixed(.Px(48)) });
 
-		rightPanel.AddView(new Label("FitCenter") { VAlign = .Top });
+		let lblFitCenter = new Label("FitCenter"); lblFitCenter.VAlign.Value = .Top;
+		rightPanel.AddView(lblFitCenter);
 		let imgFit = new ImageView(mTestImage);
-		imgFit.ScaleType = .FitCenter;
+		imgFit.ScaleType.Value = .FitCenter;
 		rightPanel.AddView(imgFit, new FlexLayout.LayoutParams() { Height = .Fixed(.Px(48)) });
 
-		rightPanel.AddView(new Label("FillBounds") { VAlign = .Top });
+		let lblFillBounds = new Label("FillBounds"); lblFillBounds.VAlign.Value = .Top;
+		rightPanel.AddView(lblFillBounds);
 		let imgFill = new ImageView(mTestImage);
-		imgFill.ScaleType = .FillBounds;
+		imgFill.ScaleType.Value = .FillBounds;
 		rightPanel.AddView(imgFill, new FlexLayout.LayoutParams() { Height = .Fixed(.Px(48)) });
 
-		rightPanel.AddView(new Label("CenterCrop") { VAlign = .Top });
+		let lblCenterCrop = new Label("CenterCrop"); lblCenterCrop.VAlign.Value = .Top;
+		rightPanel.AddView(lblCenterCrop);
 		let imgCrop = new ImageView(mTestImage);
-		imgCrop.ScaleType = .CenterCrop;
+		imgCrop.ScaleType.Value = .CenterCrop;
 		rightPanel.AddView(imgCrop, new FlexLayout.LayoutParams() { Height = .Fixed(.Px(48)) });
 
 		// Tinted image
-		rightPanel.AddView(new Label("Tinted") { VAlign = .Top });
+		let lblTinted = new Label("Tinted"); lblTinted.VAlign.Value = .Top;
+		rightPanel.AddView(lblTinted);
 		let imgTint = new ImageView(mTestImage);
-		imgTint.ScaleType = .FitCenter;
-		imgTint.Tint = .(255, 100, 100, 255);
+		imgTint.ScaleType.Value = .FitCenter;
+		imgTint.Tint.Value = .(255, 100, 100, 255);
 		rightPanel.AddView(imgTint, new FlexLayout.LayoutParams() { Height = .Fixed(.Px(48)) });
 
 		rightPanel.AddView(new Separator());
 
 		// Color swatches
-		rightPanel.AddView(new Label("ColorView") { VAlign = .Top });
+		let lblColorView = new Label("ColorView"); lblColorView.VAlign.Value = .Top;
+		rightPanel.AddView(lblColorView);
 		let swatchFlow = new FlowLayout() { Orientation = .Horizontal, HSpacing = 4, VSpacing = 4 };
 		rightPanel.AddView(swatchFlow);
 
@@ -278,7 +289,8 @@ class GUISandboxApp : Application
 		rightPanel.AddView(new Separator());
 
 		// DrawableView + SVGDrawable demos
-		rightPanel.AddView(new Label("DrawableView + SVG") { VAlign = .Top });
+		let lblDrawSvg = new Label("DrawableView + SVG"); lblDrawSvg.VAlign.Value = .Top;
+		rightPanel.AddView(lblDrawSvg);
 
 		let svgRow = new FlowLayout() { Orientation = .Horizontal, HSpacing = 6, VSpacing = 6 };
 		rightPanel.AddView(svgRow);
@@ -323,9 +335,10 @@ class GUISandboxApp : Application
 
 		// Overlay mode (default)
 		let overlayCol = new FlexLayout() { Direction = .Vertical, Spacing = 4 };
-		overlayCol.AddView(new Label("Overlay Mode") { VAlign = .Top });
+		let lblOverlay = new Label("Overlay Mode"); lblOverlay.VAlign.Value = .Top;
+		overlayCol.AddView(lblOverlay);
 		let scrollOverlay = new ScrollView();
-		scrollOverlay.ScrollBarMode = .Overlay;
+		scrollOverlay.ScrollBarMode.Value = .Overlay;
 		let overlayContent = new FlexLayout() { Direction = .Vertical, Spacing = 4 };
 		for (int i = 0; i < 30; i++)
 			overlayContent.AddView(new Label(scope String()..AppendF("Overlay item {}", i + 1)));
@@ -335,9 +348,10 @@ class GUISandboxApp : Application
 
 		// Reserved mode
 		let reservedCol = new FlexLayout() { Direction = .Vertical, Spacing = 4 };
-		reservedCol.AddView(new Label("Reserved Mode") { VAlign = .Top });
+		let lblReserved = new Label("Reserved Mode"); lblReserved.VAlign.Value = .Top;
+		reservedCol.AddView(lblReserved);
 		let scrollReserved = new ScrollView();
-		scrollReserved.ScrollBarMode = .Reserved;
+		scrollReserved.ScrollBarMode.Value = .Reserved;
 		let reservedContent = new FlexLayout() { Direction = .Vertical, Spacing = 4 };
 		for (int i = 0; i < 30; i++)
 			reservedContent.AddView(new Label(scope String()..AppendF("Reserved item {}", i + 1)));
@@ -347,11 +361,12 @@ class GUISandboxApp : Application
 
 		// Horizontal scroll
 		let hScrollCol = new FlexLayout() { Direction = .Vertical, Spacing = 4 };
-		hScrollCol.AddView(new Label("Horizontal") { VAlign = .Top });
+		let lblHoriz = new Label("Horizontal"); lblHoriz.VAlign.Value = .Top;
+		hScrollCol.AddView(lblHoriz);
 		let scrollH = new ScrollView();
-		scrollH.VScrollBarPolicy = .Always;
-		scrollH.HScrollBarPolicy = .Always;
-		scrollH.ScrollBarMode = .Reserved;
+		scrollH.VScrollBarPolicy.Value = .Always;
+		scrollH.HScrollBarPolicy.Value = .Always;
+		scrollH.ScrollBarMode.Value = .Reserved;
 		let hContent = new FlexLayout() { Direction = .Horizontal, Spacing = 4 };
 		for (int i = 0; i < 20; i++)
 		{
@@ -398,32 +413,36 @@ class GUISandboxApp : Application
 		tabView.AddTab("Tab Placement", tabPlacementDemo, true);
 
 		// Top placement
-		let topTabs = new TabView() { Placement = .Top };
+		let topTabs = new TabView();
+		topTabs.Placement.Value = .Top;
 		topTabs.AddTab("Top A", new Label("Top placement A"));
 		topTabs.AddTab("Top B", new Label("Top placement B"));
 		tabPlacementDemo.AddView(topTabs, new GridLayout.LayoutParams() { Row = 0, Column = 0 });
 
 		// Bottom placement
-		let bottomTabs = new TabView() { Placement = .Bottom };
+		let bottomTabs = new TabView();
+		bottomTabs.Placement.Value = .Bottom;
 		bottomTabs.AddTab("Bot A", new Label("Bottom placement A"));
 		bottomTabs.AddTab("Bot B", new Label("Bottom placement B"));
 		tabPlacementDemo.AddView(bottomTabs, new GridLayout.LayoutParams() { Row = 0, Column = 1 });
 
 		// Left placement
-		let leftTabs = new TabView() { Placement = .Left };
+		let leftTabs = new TabView();
+		leftTabs.Placement.Value = .Left;
 		leftTabs.AddTab("Left A", new Label("Left placement A"));
 		leftTabs.AddTab("Left B", new Label("Left placement B"));
 		tabPlacementDemo.AddView(leftTabs, new GridLayout.LayoutParams() { Row = 1, Column = 0 });
 
 		// Right placement
-		let rightTabs = new TabView() { Placement = .Right };
+		let rightTabs = new TabView();
+		rightTabs.Placement.Value = .Right;
 		rightTabs.AddTab("Right A", new Label("Right placement A"));
 		rightTabs.AddTab("Right B", new Label("Right placement B"));
 		tabPlacementDemo.AddView(rightTabs, new GridLayout.LayoutParams() { Row = 1, Column = 1 });
 
 		// === Tab 5: Text Input demo ===
 		let textInputScroll = new ScrollView();
-		textInputScroll.VScrollBarPolicy = .Auto;
+		textInputScroll.VScrollBarPolicy.Value = .Auto;
 		tabView.AddTab("Text Input", textInputScroll);
 
 		let textInputDemo = new FlexLayout() { Direction = .Vertical, Spacing = 8 };
@@ -444,16 +463,16 @@ class GUISandboxApp : Application
 
 		let editReadOnly = new EditText();
 		editReadOnly.SetText("Read-only text");
-		editReadOnly.IsReadOnly = true;
+		editReadOnly.IsReadOnly.Value = true;
 		textInputDemo.AddView(editReadOnly, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(300)) });
 
 		let editMultiline = new EditText();
-		editMultiline.Multiline = true;
+		editMultiline.Multiline.Value = true;
 		editMultiline.SetText("Line 1\nLine 2\nLine 3");
 		textInputDemo.AddView(editMultiline, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(300)), Height = .Fixed(.Px(80)) });
 
 		let editMaxLen = new EditText();
-		editMaxLen.MaxLength = 10;
+		editMaxLen.MaxLength.Value = 10;
 		editMaxLen.SetPlaceholder("Max 10 chars");
 		textInputDemo.AddView(editMaxLen, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(300)) });
 
@@ -482,7 +501,7 @@ class GUISandboxApp : Application
 		textInputDemo.AddView(pw1, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(300)) });
 
 		let pw2 = new PasswordBox();
-		pw2.PasswordChar = '\u{25CF}'; // ● bullet
+		pw2.PasswordChar.Value = '\u{25CF}'; // ● bullet
 		pw2.SetPlaceholder("Custom mask");
 		textInputDemo.AddView(pw2, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(300)) });
 
@@ -500,7 +519,7 @@ class GUISandboxApp : Application
 		let nfNoSpin = new NumericField();
 		nfNoSpin.Min = 0;
 		nfNoSpin.Max = 100;
-		nfNoSpin.ShowSpinButtons = false;
+		nfNoSpin.ShowSpinButtons.Value = false;
 		nfNoSpin.Value = 25;
 		textInputDemo.AddView(nfNoSpin, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(200)) });
 
@@ -538,7 +557,7 @@ class GUISandboxApp : Application
 			nf.Max = 999;
 			nf.Step = 0.1;
 			nf.DecimalPlaces = 2;
-			nf.ShowSpinButtons = false;
+			nf.ShowSpinButtons.Value = false;
 			nf.Value = val;
 			let prefixView = new ColoredLabel(axis, axisColor);
 			nf.SetPrefix(prefixView);
@@ -557,12 +576,12 @@ class GUISandboxApp : Application
 
 		let el1 = new EditableLabel();
 		el1.SetText("Double-click me");
-		el1.SlowClickToEdit = false;
+		el1.SlowClickToEdit.Value = false;
 		textInputDemo.AddView(el1, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(300)) });
 
 		let el2 = new EditableLabel();
 		el2.SetText("Slow-click me");
-		el2.DoubleClickToEdit = false;
+		el2.DoubleClickToEdit.Value = false;
 		textInputDemo.AddView(el2, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(300)) });
 
 		let el3 = new EditableLabel();
@@ -572,7 +591,7 @@ class GUISandboxApp : Application
 
 		// === Tab 6: Overlays demo ===
 		let overlaysScroll = new ScrollView();
-		overlaysScroll.VScrollBarPolicy = .Auto;
+		overlaysScroll.VScrollBarPolicy.Value = .Auto;
 		tabView.AddTab("Overlays", overlaysScroll);
 
 		let overlaysDemo = new FlexLayout() { Direction = .Vertical, Spacing = 8 };
@@ -797,7 +816,7 @@ class GUISandboxApp : Application
 		footer.AddClass("panel");
 		footer.Padding = .(8, 2, 8, 2);
 		mThemeLabel = new Label("Theme: Dark (F5)");
-		mThemeLabel.FontSize = 11;
+		mThemeLabel.FontSize.Value = 11;
 		footer.AddView(mThemeLabel);
 		main.AddView(footer, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(24)) });
 		UpdateThemeLabel();
@@ -1409,7 +1428,7 @@ class DragChip : ColorView, IDragSource
 	{
 		let panel = new Panel();
 		panel.Padding = .(6, 2);
-		let label = new Label(scope String()..AppendF("#{0:X2}{1:X2}{2:X2}", Color.R, Color.G, Color.B));
+		let label = new Label(scope String()..AppendF("#{0:X2}{1:X2}{2:X2}", Color.Value.R, Color.Value.G, Color.Value.B));
 		panel.AddView(label);
 		return panel;
 	}
@@ -1444,9 +1463,9 @@ class ChipReorderContainer : FlexLayout, IDropTarget
 					{
 						if (targetChip !== sourceChip)
 						{
-							let tempColor = sourceChip.Color;
-							sourceChip.Color = targetChip.Color;
-							targetChip.Color = tempColor;
+							let tempColor = sourceChip.Color.Value;
+							sourceChip.Color.Value = targetChip.Color.Value;
+							targetChip.Color.Value = tempColor;
 						}
 						return .Move;
 					}
@@ -1495,7 +1514,7 @@ class ColorDropBox : View, IDropTarget
 	{
 		if (let chipData = data as ChipDragData)
 		{
-			mBgColor = chipData.SourceChip.Color;
+			mBgColor = chipData.SourceChip.Color.Value;
 			mText.Set("Dropped!");
 			Invalidate();
 		}
@@ -1614,7 +1633,7 @@ class DemoGridAdapter : ListAdapterBase
 			let r = (uint8)(60 + (position * 7) % 160);
 			let g = (uint8)(80 + (position * 13) % 140);
 			let b = (uint8)(100 + (position * 23) % 120);
-			cv.Color = .(r, g, b, 255);
+			cv.Color.Value = .(r, g, b, 255);
 		}
 	}
 }

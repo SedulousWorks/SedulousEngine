@@ -11,7 +11,7 @@ public class ListView : ViewGroup, IListAdapterObserver
 {
 	private IListAdapter mAdapter;
 	public SelectionModel Selection = new .() ~ delete _;
-	public float ItemHeight = 30;
+	public Property<float> ItemHeight = new .(30) ~ delete _;
 
 	/// Fired when an item is clicked. Args: (position, clickCount, localX, localY).
 	public Event<delegate void(int32, int32, float, float)> OnItemClicked ~ _.Dispose();
@@ -85,7 +85,7 @@ public class ListView : ViewGroup, IListAdapterObserver
 	{
 		get
 		{
-			let contentH = mVariableHeight ? mTotalContentHeight : ((mAdapter != null) ? mAdapter.ItemCount * ItemHeight : 0);
+			let contentH = mVariableHeight ? mTotalContentHeight : ((mAdapter != null) ? mAdapter.ItemCount * ItemHeight.Value : 0);
 			let viewportH = Height - Padding.TotalVertical;
 			return Math.Max(0, contentH - viewportH);
 		}
@@ -96,6 +96,7 @@ public class ListView : ViewGroup, IListAdapterObserver
 		ClipsContent = true;
 		IsFocusable = true;
 		IsTabStop = true;
+		ItemHeight.SetOwner(this);
 		mScrollBar = new ScrollBar();
 		mScrollBar.Parent = this;
 		mScrollBar.OnValueChanged.Add(new (bar, val) => { mScrollY = val; Invalidate(); });
@@ -163,7 +164,7 @@ public class ListView : ViewGroup, IListAdapterObserver
 			}
 			else
 			{
-				offset += ItemHeight;
+				offset += ItemHeight.Value;
 			}
 		}
 		mItemOffsets.Add(offset);
@@ -174,7 +175,7 @@ public class ListView : ViewGroup, IListAdapterObserver
 	{
 		if (mVariableHeight && position < mItemOffsets.Count)
 			return mItemOffsets[position];
-		return position * ItemHeight;
+		return position * ItemHeight.Value;
 	}
 
 	private float GetItemHeightAt(int32 position)
@@ -184,13 +185,13 @@ public class ListView : ViewGroup, IListAdapterObserver
 			let h = mAdapter.GetItemHeight(position);
 			if (h > 0) return h;
 		}
-		return ItemHeight;
+		return ItemHeight.Value;
 	}
 
 	private int32 FindFirstVisible(float scrollY)
 	{
 		if (!mVariableHeight || mItemOffsets.Count <= 1)
-			return (int32)(scrollY / ItemHeight);
+			return (int32)(scrollY / ItemHeight.Value);
 
 		int32 lo = 0, hi = (int32)(mItemOffsets.Count - 2);
 		while (lo < hi)
@@ -230,7 +231,7 @@ public class ListView : ViewGroup, IListAdapterObserver
 	{
 		if (MaxScrollY > 0)
 		{
-			ScrollBy(-e.DeltaY * ItemHeight * 2);
+			ScrollBy(-e.DeltaY * ItemHeight.Value * 2);
 			mMomentum.VelocityY = -e.DeltaY * 200;
 			e.Handled = true;
 		}
@@ -356,14 +357,14 @@ public class ListView : ViewGroup, IListAdapterObserver
 			ScrollToPosition(count - 1);
 			e.Handled = true;
 		case .PageDown:
-			let pageSize = (int32)(Height / ItemHeight);
+			let pageSize = (int32)(Height / ItemHeight.Value);
 			let pageNext = Math.Min(sel + pageSize, count - 1);
 			if (shift) Selection.SelectRange(sel, pageNext);
 			else Selection.Select(pageNext);
 			ScrollToPosition(pageNext);
 			e.Handled = true;
 		case .PageUp:
-			let pageSizeUp = (int32)(Height / ItemHeight);
+			let pageSizeUp = (int32)(Height / ItemHeight.Value);
 			let pagePrev = Math.Max(sel - pageSizeUp, 0);
 			if (shift) Selection.SelectRange(sel, pagePrev);
 			else Selection.Select(pagePrev);
@@ -405,14 +406,14 @@ public class ListView : ViewGroup, IListAdapterObserver
 		let scrolledY = localY + mScrollY - Padding.Top;
 		if (mVariableHeight)
 			return FindFirstVisible(scrolledY);
-		return (int32)(scrolledY / ItemHeight);
+		return (int32)(scrolledY / ItemHeight.Value);
 	}
 
 	// === Layout ===
 
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
-		let contentH = mVariableHeight ? mTotalContentHeight : ((mAdapter != null) ? mAdapter.ItemCount * ItemHeight : 0);
+		let contentH = mVariableHeight ? mTotalContentHeight : ((mAdapter != null) ? mAdapter.ItemCount * ItemHeight.Value : 0);
 		float desiredH = contentH + Padding.TotalVertical;
 		MeasuredSize = .(constraints.ConstrainWidth(constraints.MaxWidth), constraints.ConstrainHeight(desiredH));
 
