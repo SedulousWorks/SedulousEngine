@@ -43,4 +43,13 @@ static class TestSetup
 		root.ViewportSize = .(width, height);
 		ctx.AddRootView(root);
 	}
+
+	/// Run measure + layout on the root view.
+	public static void Layout(UIContext ctx, RootView root)
+	{
+		ctx.BeginFrame(0.016f);
+		let logical = root.LogicalSize;
+		root.Measure(BoxConstraints.Tight(logical.X, logical.Y));
+		root.Layout(0, 0, logical.X, logical.Y);
+	}
 }

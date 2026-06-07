@@ -62,6 +62,10 @@ public class ViewGroup : View
 			delete child.LayoutParams;
 			child.LayoutParams = lp;
 		}
+		else if (child.LayoutParams == null)
+		{
+			child.LayoutParams = CreateDefaultLayoutParams();
+		}
 		mChildren.Add(child);
 
 		// Propagate context.
@@ -122,6 +126,10 @@ public class ViewGroup : View
 			delete child.LayoutParams;
 			child.LayoutParams = lp;
 		}
+		else if (child.LayoutParams == null)
+		{
+			child.LayoutParams = CreateDefaultLayoutParams();
+		}
 		mChildren.Insert(index, child);
 
 		if (Context != null)
@@ -132,7 +140,7 @@ public class ViewGroup : View
 
 	/// Creates default layout params for children that don't have any.
 	/// Override in layout subclasses to return their specific LayoutParams type.
-	public virtual LayoutParams CreateDefaultLayoutParams()
+	protected virtual LayoutParams CreateDefaultLayoutParams()
 	{
 		return new LayoutParams();
 	}
@@ -160,6 +168,49 @@ public class ViewGroup : View
 			constraints.ConstrainWidth(maxW + p.TotalHorizontal),
 			constraints.ConstrainHeight(maxH + p.TotalVertical)
 		);
+	}
+
+	/// Builds child constraints from parent constraints + child's LayoutParams.
+	///   Fixed -> tight constraint at resolved unit value
+	///   Match -> tight constraint at available space
+	///   Wrap  -> loose constraint (min=0, max=available)
+	protected static BoxConstraints MakeChildConstraints(BoxConstraints parent, View child, float usedW = 0, float usedH = 0)
+	{
+		let lp = child.LayoutParams;
+		let margin = (lp != null) ? lp.Margin : Thickness();
+		let dpiScale = child.Root?.DpiScale ?? 1.0f;
+
+		let availW = Math.Max(0, parent.MaxWidth - usedW - margin.TotalHorizontal);
+		let availH = Math.Max(0, parent.MaxHeight - usedH - margin.TotalVertical);
+
+		let widthSpec = (lp != null) ? lp.Width : SizeSpec.Wrap;
+		let heightSpec = (lp != null) ? lp.Height : SizeSpec.Wrap;
+
+		float minW, maxW, minH, maxH;
+
+		switch (widthSpec)
+		{
+		case .Fixed(let unit):
+			let w = unit.Resolve(dpiScale);
+			minW = w; maxW = w;
+		case .Match:
+			minW = availW; maxW = availW;
+		case .Wrap:
+			minW = 0; maxW = availW;
+		}
+
+		switch (heightSpec)
+		{
+		case .Fixed(let unit):
+			let h = unit.Resolve(dpiScale);
+			minH = h; maxH = h;
+		case .Match:
+			minH = availH; maxH = availH;
+		case .Wrap:
+			minH = 0; maxH = availH;
+		}
+
+		return BoxConstraints(minW, maxW, minH, maxH);
 	}
 
 	// === Hit testing ===
