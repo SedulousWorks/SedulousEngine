@@ -776,25 +776,28 @@ label.Text.BindTo(controller.Title);
 label.Text.Changed.Add(new (text) => { Log(text); });
 ```
 
-#### Composite controls
+#### Composite controls and pseudo-elements
 
 TabView, Slider, ScrollBar, ProgressBar, ToggleSwitch, Expander,
 ComboBox, NumericField, CheckBox, RadioButton — all keep the
-single-View custom-rendered model. Styled via flat named properties
-in `.sss`:
+single-View custom-rendered model. Sub-parts are styled via
+pseudo-element selectors using the generic property set:
 
 ```css
-Slider {
-  track-drawable: rounded-rect($border, radius=2);
-  fill-drawable:  rounded-rect($primary, radius=2);
-  thumb-drawable: rounded-rect($text, radius=6);
-  thumb-size:     12;
-  track-height:   4;
-}
+Slider::track  { background: rounded-rect($border, radius=2); height: 4; }
+Slider::fill   { background: rounded-rect($primary, radius=2); }
+Slider::thumb  { background: rounded-rect($text, radius=6); width: 12; height: 12; }
+
+Slider:disabled::thumb { background: rounded-rect($text-dim, radius=6); }
 ```
 
-Pseudo-element syntax (`Slider::thumb { ... }`) deferred to v2 as
-parser-side sugar that rewrites to the flat properties.
+Controls query sub-part styles via `ResolvePartDrawable("thumb", .Background, partState)`.
+Each control computes per-part state internally (e.g., Slider knows if
+the thumb is hovered/dragged) and passes it to the resolution method.
+
+StyleProperty is a small generic set (~17 entries): Background,
+TextColor, FontSize, Padding, Margin, CornerRadius, BorderColor,
+BorderWidth, Width, Height, etc. No component-specific properties.
 
 #### Control state overrides for checkable controls
 
@@ -802,9 +805,9 @@ With `Checked` in `ControlState`, checkable controls participate in the
 normal state cascade:
 
 ```css
-CheckBox:checked         { checkmark-icon: svg(checkmark, tint=$text); }
-ToggleSwitch:checked     { track-drawable: rounded-rect($primary, radius=8); }
-ToggleButton:checked     { background: rounded-rect($primary, radius=6); }
+CheckBox:checked::checkmark { background: svg(checkmark, tint=$text); }
+ToggleSwitch:checked::track { background: rounded-rect($primary, radius=8); }
+ToggleButton:checked        { background: rounded-rect($primary, radius=6); }
 ```
 
 No separate `CheckedBackground` property needed.

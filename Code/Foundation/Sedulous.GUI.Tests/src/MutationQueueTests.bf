@@ -55,11 +55,41 @@ class MutationQueueTests
 		queue.QueueAction(new [&] () =>
 		{
 			counter++;
+			// Enqueue another action during drain
 			queue.QueueAction(new [&counter] () => { counter++; });
 		});
 
 		queue.Drain();
-		Test.Assert(counter == 2);
+		Test.Assert(counter == 2); // Both original and re-entrant executed
 		Test.Assert(!queue.HasPending);
+	}
+
+	[Test]
+	public static void Drain_IntegratedWithBeginFrame()
+	{
+		let ctx = scope UIContext();
+		int counter = 0;
+		ctx.MutationQueue.QueueAction(new [&counter] () => { counter++; });
+		ctx.BeginFrame(0.016f);
+		Test.Assert(counter == 1);
+	}
+
+	[Test]
+	public static void QueueDelete_PreventsDoubleDelete()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let view = new TestView();
+		root.AddView(view);
+
+		ctx.MutationQueue.QueueDelete(view);
+		Test.Assert(view.IsPendingDeletion);
+
+		// Second queue should be no-op
+		ctx.MutationQueue.QueueDelete(view);
+		// Drain should only delete once
+		ctx.MutationQueue.Drain();
 	}
 }

@@ -6,21 +6,13 @@ using System;
 /// wrapping to the next line/column when space runs out.
 public class FlowLayout : ViewGroup
 {
-	public Property<Orientation> Orientation = new .(.Horizontal) ~ delete _;
-	public Property<float> HSpacing = new .(0) ~ delete _;
-	public Property<float> VSpacing = new .(0) ~ delete _;
-
-	protected override void InitializePropertyOwners()
-	{
-		base.InitializePropertyOwners();
-		Orientation.SetOwner(this);
-		HSpacing.SetOwner(this);
-		VSpacing.SetOwner(this);
-	}
+	public Orientation Orientation = .Horizontal;
+	public float HSpacing;
+	public float VSpacing;
 
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
-		if (Orientation.Value == .Horizontal)
+		if (Orientation == .Horizontal)
 			MeasureHorizontal(constraints);
 		else
 			MeasureVertical(constraints);
@@ -28,11 +20,8 @@ public class FlowLayout : ViewGroup
 
 	private void MeasureHorizontal(BoxConstraints constraints)
 	{
-		let pad = Padding.Value;
-		let hSpace = HSpacing.Value;
-		let vSpace = VSpacing.Value;
 		let maxWidth = (constraints.MaxWidth < float.MaxValue)
-			? constraints.MaxWidth - pad.TotalHorizontal : 100000.0f;
+			? constraints.MaxWidth - Padding.TotalHorizontal : 100000.0f;
 
 		float lineW = 0, lineH = 0;
 		float totalW = 0, totalH = 0;
@@ -41,20 +30,20 @@ public class FlowLayout : ViewGroup
 		for (int i = 0; i < ChildCount; i++)
 		{
 			let child = GetChildAt(i);
-			if (child.Visibility.Value == .Gone) continue;
+			if (child.Visibility == .Gone) continue;
 
 			child.Measure(BoxConstraints.Expand());
 			let cw = child.MeasuredSize.X;
 			let ch = child.MeasuredSize.Y;
 
-			if (!firstInLine && lineW + hSpace + cw > maxWidth)
+			if (!firstInLine && lineW + HSpacing + cw > maxWidth)
 			{
 				totalW = Math.Max(totalW, lineW);
-				totalH += lineH + vSpace;
+				totalH += lineH + VSpacing;
 				lineW = 0; lineH = 0; firstInLine = true;
 			}
 
-			if (!firstInLine) lineW += hSpace;
+			if (!firstInLine) lineW += HSpacing;
 			lineW += cw;
 			lineH = Math.Max(lineH, ch);
 			firstInLine = false;
@@ -64,17 +53,14 @@ public class FlowLayout : ViewGroup
 		totalH += lineH;
 
 		MeasuredSize = .(
-			constraints.ConstrainWidth(totalW + pad.TotalHorizontal),
-			constraints.ConstrainHeight(totalH + pad.TotalVertical));
+			constraints.ConstrainWidth(totalW + Padding.TotalHorizontal),
+			constraints.ConstrainHeight(totalH + Padding.TotalVertical));
 	}
 
 	private void MeasureVertical(BoxConstraints constraints)
 	{
-		let pad = Padding.Value;
-		let hSpace = HSpacing.Value;
-		let vSpace = VSpacing.Value;
 		let maxHeight = (constraints.MaxHeight < float.MaxValue)
-			? constraints.MaxHeight - pad.TotalVertical : 100000.0f;
+			? constraints.MaxHeight - Padding.TotalVertical : 100000.0f;
 
 		float colW = 0, colH = 0;
 		float totalW = 0, totalH = 0;
@@ -83,20 +69,20 @@ public class FlowLayout : ViewGroup
 		for (int i = 0; i < ChildCount; i++)
 		{
 			let child = GetChildAt(i);
-			if (child.Visibility.Value == .Gone) continue;
+			if (child.Visibility == .Gone) continue;
 
 			child.Measure(BoxConstraints.Expand());
 			let cw = child.MeasuredSize.X;
 			let ch = child.MeasuredSize.Y;
 
-			if (!firstInCol && colH + vSpace + ch > maxHeight)
+			if (!firstInCol && colH + VSpacing + ch > maxHeight)
 			{
 				totalH = Math.Max(totalH, colH);
-				totalW += colW + hSpace;
+				totalW += colW + HSpacing;
 				colW = 0; colH = 0; firstInCol = true;
 			}
 
-			if (!firstInCol) colH += vSpace;
+			if (!firstInCol) colH += VSpacing;
 			colH += ch;
 			colW = Math.Max(colW, cw);
 			firstInCol = false;
@@ -106,13 +92,13 @@ public class FlowLayout : ViewGroup
 		totalW += colW;
 
 		MeasuredSize = .(
-			constraints.ConstrainWidth(totalW + pad.TotalHorizontal),
-			constraints.ConstrainHeight(totalH + pad.TotalVertical));
+			constraints.ConstrainWidth(totalW + Padding.TotalHorizontal),
+			constraints.ConstrainHeight(totalH + Padding.TotalVertical));
 	}
 
 	protected override void OnLayout(float left, float top, float width, float height)
 	{
-		if (Orientation.Value == .Horizontal)
+		if (Orientation == .Horizontal)
 			LayoutHorizontal(width, height);
 		else
 			LayoutVertical(width, height);
@@ -120,31 +106,28 @@ public class FlowLayout : ViewGroup
 
 	private void LayoutHorizontal(float width, float height)
 	{
-		let pad = Padding.Value;
-		let hSpace = HSpacing.Value;
-		let vSpace = VSpacing.Value;
-		let maxWidth = width - pad.TotalHorizontal;
-		var xPos = pad.Left;
-		var yPos = pad.Top;
+		let maxWidth = width - Padding.TotalHorizontal;
+		var xPos = Padding.Left;
+		var yPos = Padding.Top;
 		float lineH = 0;
 		bool firstInLine = true;
 
 		for (int i = 0; i < ChildCount; i++)
 		{
 			let child = GetChildAt(i);
-			if (child.Visibility.Value == .Gone) continue;
+			if (child.Visibility == .Gone) continue;
 
 			let cw = child.MeasuredSize.X;
 			let ch = child.MeasuredSize.Y;
 
-			if (!firstInLine && xPos - pad.Left + hSpace + cw > maxWidth)
+			if (!firstInLine && xPos - Padding.Left + HSpacing + cw > maxWidth)
 			{
-				yPos += lineH + vSpace;
-				xPos = pad.Left;
+				yPos += lineH + VSpacing;
+				xPos = Padding.Left;
 				lineH = 0; firstInLine = true;
 			}
 
-			if (!firstInLine) xPos += hSpace;
+			if (!firstInLine) xPos += HSpacing;
 			child.Layout(xPos, yPos, cw, ch);
 			xPos += cw;
 			lineH = Math.Max(lineH, ch);
@@ -154,31 +137,28 @@ public class FlowLayout : ViewGroup
 
 	private void LayoutVertical(float width, float height)
 	{
-		let pad = Padding.Value;
-		let hSpace = HSpacing.Value;
-		let vSpace = VSpacing.Value;
-		let maxHeight = height - pad.TotalVertical;
-		var xPos = pad.Left;
-		var yPos = pad.Top;
+		let maxHeight = height - Padding.TotalVertical;
+		var xPos = Padding.Left;
+		var yPos = Padding.Top;
 		float colW = 0;
 		bool firstInCol = true;
 
 		for (int i = 0; i < ChildCount; i++)
 		{
 			let child = GetChildAt(i);
-			if (child.Visibility.Value == .Gone) continue;
+			if (child.Visibility == .Gone) continue;
 
 			let cw = child.MeasuredSize.X;
 			let ch = child.MeasuredSize.Y;
 
-			if (!firstInCol && yPos - pad.Top + vSpace + ch > maxHeight)
+			if (!firstInCol && yPos - Padding.Top + VSpacing + ch > maxHeight)
 			{
-				xPos += colW + hSpace;
-				yPos = pad.Top;
+				xPos += colW + HSpacing;
+				yPos = Padding.Top;
 				colW = 0; firstInCol = true;
 			}
 
-			if (!firstInCol) yPos += vSpace;
+			if (!firstInCol) yPos += VSpacing;
 			child.Layout(xPos, yPos, cw, ch);
 			yPos += ch;
 			colW = Math.Max(colW, cw);

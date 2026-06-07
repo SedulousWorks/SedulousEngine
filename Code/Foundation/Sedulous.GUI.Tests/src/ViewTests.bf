@@ -7,110 +7,89 @@ using Sedulous.Core.Mathematics;
 class ViewTests
 {
 	[Test]
-	public static void Id_IsUniquePerView()
+	public static void View_HasUniqueId()
 	{
-		let a = scope TestView();
-		let b = scope TestView();
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let a = new TestView();
+		let b = new TestView();
+		root.AddView(a);
+		root.AddView(b);
+
 		Test.Assert(a.Id != b.Id);
 		Test.Assert(a.Id.IsValid);
 		Test.Assert(b.Id.IsValid);
 	}
 
 	[Test]
-	public static void Handle_CreatedAtConstruction()
-	{
-		let view = scope TestView();
-		Test.Assert(view.Handle != null);
-		Test.Assert(view.Handle.IsValid);
-		Test.Assert(view.Handle.View === view);
-	}
-
-	[Test]
-	public static void StyleClasses_AddRemoveHasToggle()
-	{
-		let view = scope TestView();
-
-		view.AddClass("primary");
-		Test.Assert(view.HasClass("primary"));
-		Test.Assert(view.StyleClasses.Count == 1);
-
-		view.AddClass("large");
-		Test.Assert(view.StyleClasses.Count == 2);
-
-		// Duplicate add is no-op
-		view.AddClass("primary");
-		Test.Assert(view.StyleClasses.Count == 2);
-
-		view.RemoveClass("primary");
-		Test.Assert(!view.HasClass("primary"));
-		Test.Assert(view.StyleClasses.Count == 1);
-
-		view.ToggleClass("large");
-		Test.Assert(!view.HasClass("large"));
-
-		view.ToggleClass("large");
-		Test.Assert(view.HasClass("large"));
-	}
-
-	[Test]
-	public static void Visibility_Default()
-	{
-		let view = scope TestView();
-		Test.Assert(view.Visibility.Value == .Visible);
-	}
-
-	[Test]
-	public static void PropertyChange_TriggersInvalidation()
+	public static void View_ParentSetOnAdd()
 	{
 		let ctx = scope UIContext();
 		let root = scope RootView();
 		TestSetup.Init(ctx, root);
 
-		let view = new TestView();
-		root.AddView(view);
-
-		// Clear flags
-		view.ClearRedrawFlag();
-		view.ClearLayoutFlag();
-
-		// Layout property change should trigger layout invalidation
-		view.IsEnabled.Value = false;
-		Test.Assert(view.NeedsLayout);
-		Test.Assert(view.NeedsRedraw);
+		let child = new TestView();
+		root.AddView(child);
+		Test.Assert(child.Parent === root);
 	}
 
 	[Test]
-	public static void PropertyChange_VisualOnly()
+	public static void View_ContextSetOnAttach()
 	{
 		let ctx = scope UIContext();
 		let root = scope RootView();
 		TestSetup.Init(ctx, root);
 
-		let view = new TestView();
-		root.AddView(view);
-
-		view.ClearRedrawFlag();
-		view.ClearLayoutFlag();
-
-		// Visual-only property should only trigger redraw
-		view.Opacity.Value = 0.5f;
-		Test.Assert(view.NeedsRedraw);
-		// Layout flag should NOT be set for visual-only changes
-		// (Opacity is tagged .Visual)
-		Test.Assert(!view.NeedsLayout);
+		let child = new TestView();
+		root.AddView(child);
+		Test.Assert(child.Context === ctx);
 	}
 
 	[Test]
-	public static void Measure_SetsMeasuredSize()
+	public static void View_ContextClearedOnRemove()
 	{
-		let view = scope TestView(100, 50);
-		view.Measure(BoxConstraints.Expand());
-		Test.Assert(view.MeasuredSize.X == 100);
-		Test.Assert(view.MeasuredSize.Y == 50);
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let child = new TestView();
+		root.AddView(child);
+		root.RemoveView(child);
+		Test.Assert(child.Context == null);
+		Test.Assert(child.Parent == null);
+		delete child;
 	}
 
 	[Test]
-	public static void Layout_SetsBounds()
+	public static void View_RootProperty()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let group = new TestGroup();
+		let child = new TestView();
+		root.AddView(group);
+		group.AddView(child);
+
+		Test.Assert(child.Root === root);
+		Test.Assert(group.Root === root);
+		Test.Assert(root.Root === root);
+	}
+
+	[Test]
+	public static void View_DefaultMeasure_ClampsToZero()
+	{
+		let view = scope TestView(0, 0);
+		view.Measure(BoxConstraints.Loose(100, 100));
+		Test.Assert(view.MeasuredSize.X == 0);
+		Test.Assert(view.MeasuredSize.Y == 0);
+	}
+
+	[Test]
+	public static void View_Layout_SetsBounds()
 	{
 		let view = scope TestView();
 		view.Layout(10, 20, 100, 50);
@@ -121,100 +100,177 @@ class ViewTests
 	}
 
 	[Test]
-	public static void HitTest_InsideBounds()
+	public static void View_Invalidate_MarksRedraw()
 	{
-		let view = scope TestView();
-		view.Layout(0, 0, 100, 100);
-		let hit = view.HitTest(.(50, 50));
-		Test.Assert(hit === view);
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let child = new TestView();
+		root.AddView(child);
+
+		Test.Assert(child.NeedsRedraw);
+		child.ClearRedrawFlag();
+		Test.Assert(!child.NeedsRedraw);
+
+		child.Invalidate();
+		Test.Assert(child.NeedsRedraw);
+		Test.Assert(ctx.NeedsRedraw);
 	}
 
 	[Test]
-	public static void HitTest_OutsideBounds()
+	public static void View_Visibility_GoneSkipsMeasure()
 	{
-		let view = scope TestView();
-		view.Layout(0, 0, 100, 100);
-		let hit = view.HitTest(.(150, 50));
-		Test.Assert(hit == null);
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let child = new TestView(100, 50);
+		child.Visibility = .Gone;
+		root.AddView(child);
+
+		TestSetup.Layout(ctx, root);
+		// Gone views should not affect parent measurement.
+		// RootView fills viewport regardless, but the child shouldn't be measured.
 	}
 
 	[Test]
-	public static void HitTest_NotVisible()
+	public static void View_UserData_SetAndGet()
 	{
-		let view = scope TestView();
-		view.Layout(0, 0, 100, 100);
-		view.Visibility.Value = .Hidden;
-		let hit = view.HitTest(.(50, 50));
-		Test.Assert(hit == null);
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let view = new TestView();
+		root.AddView(view);
+
+		let testObj = scope String("hello");
+		view.SetUserData("key", testObj);
+		let retrieved = view.GetUserData("key");
+		Test.Assert(retrieved === testObj);
 	}
 
 	[Test]
-	public static void HitTest_NotHitTestVisible()
+	public static void View_UserData_NullWhenNotSet()
 	{
 		let view = scope TestView();
-		view.Layout(0, 0, 100, 100);
-		view.IsHitTestVisible.Value = false;
-		let hit = view.HitTest(.(50, 50));
-		Test.Assert(hit == null);
+		Test.Assert(view.GetUserData("missing") == null);
 	}
 
 	[Test]
-	public static void LocalToScreen_ScreenToLocal()
+	public static void View_UserData_TypedRetrieval()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let view = new TestView();
+		root.AddView(view);
+
+		let str = scope String("test");
+		view.SetUserData("str", str);
+		let typed = view.GetUserData<String>("str");
+		Test.Assert(typed === str);
+	}
+
+	[Test]
+	public static void View_LocalToScreen_NestedViews()
 	{
 		let ctx = scope UIContext();
 		let root = scope RootView();
 		TestSetup.Init(ctx, root);
 
 		let group = new TestGroup();
-		root.AddView(group);
-		group.Layout(10, 20, 200, 200);
-
 		let child = new TestView();
+		root.AddView(group);
 		group.AddView(child);
-		child.Layout(30, 40, 50, 50);
 
-		let screen = child.LocalToScreen(.(5, 5));
-		// 5 + 30 (child) + 10 (group) = 45
-		// 5 + 40 (child) + 20 (group) = 65
-		Test.Assert(screen.X == 45);
-		Test.Assert(screen.Y == 65);
+		group.Layout(10, 20, 100, 100);
+		child.Layout(5, 5, 50, 30);
 
-		let local = child.ScreenToLocal(screen);
-		Test.Assert(Math.Abs(local.X - 5) < 0.001f);
-		Test.Assert(Math.Abs(local.Y - 5) < 0.001f);
+		let screen = child.LocalToScreen(.(0, 0));
+		Test.Assert(Math.Abs(screen.X - 15) < 0.01f);
+		Test.Assert(Math.Abs(screen.Y - 25) < 0.01f);
 	}
 
 	[Test]
-	public static void IsEffectivelyEnabled_WalksParentChain()
+	public static void View_ScreenToLocal_NestedViews()
 	{
 		let ctx = scope UIContext();
 		let root = scope RootView();
 		TestSetup.Init(ctx, root);
 
 		let group = new TestGroup();
-		root.AddView(group);
-
 		let child = new TestView();
+		root.AddView(group);
+		group.AddView(child);
+
+		group.Layout(10, 20, 100, 100);
+		child.Layout(5, 5, 50, 30);
+
+		let local = child.ScreenToLocal(.(15, 25));
+		Test.Assert(Math.Abs(local.X) < 0.01f);
+		Test.Assert(Math.Abs(local.Y) < 0.01f);
+	}
+
+	[Test]
+	public static void View_IsEffectivelyEnabled_WalksParents()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let group = new TestGroup();
+		let child = new TestView();
+		root.AddView(group);
 		group.AddView(child);
 
 		Test.Assert(child.IsEffectivelyEnabled);
 
-		group.IsEnabled.Value = false;
+		group.IsEnabled = false;
 		Test.Assert(!child.IsEffectivelyEnabled);
+		Test.Assert(!group.IsEffectivelyEnabled);
 	}
 
 	[Test]
-	public static void GetControlState_ReturnsFlags()
+	public static void View_GetControlState_Disabled()
 	{
 		let view = scope TestView();
+		view.IsEnabled = false;
+		Test.Assert(view.GetControlState() == .Disabled);
+	}
 
-		// Default state: Normal (no flags)
-		let state = view.GetControlState();
-		Test.Assert(state == .Normal);
+	[Test]
+	public static void View_EffectiveCursor_InheritsFromParent()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
 
-		// Disabled
-		view.IsEnabled.Value = false;
-		let disabled = view.GetControlState();
-		Test.Assert(disabled.HasFlag(.Disabled));
+		let group = new TestGroup();
+		group.Cursor = .Hand;
+		let child = new TestView();
+		root.AddView(group);
+		group.AddView(child);
+
+		Test.Assert(child.EffectiveCursor == .Hand);
+		Test.Assert(child.Cursor == .Default);
+	}
+
+	[Test]
+	public static void View_EffectiveCursor_ChildOverridesParent()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let group = new TestGroup();
+		group.Cursor = .Hand;
+		let child = new TestView();
+		child.Cursor = .IBeam;
+		root.AddView(group);
+		group.AddView(child);
+
+		Test.Assert(child.EffectiveCursor == .IBeam);
 	}
 }

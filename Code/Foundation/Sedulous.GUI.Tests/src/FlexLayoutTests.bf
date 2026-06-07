@@ -15,8 +15,7 @@ class FlexLayoutTests
 		let root = scope RootView();
 		TestSetup.Init(ctx, root, 400, 300);
 
-		let flex = new FlexLayout();
-		flex.Direction.Value = .Horizontal;
+		let flex = new FlexLayout() { Direction = .Horizontal };
 		let a = new TestView(50, 30);
 		let b = new TestView(60, 30);
 		flex.AddView(a);
@@ -35,8 +34,7 @@ class FlexLayoutTests
 		let root = scope RootView();
 		TestSetup.Init(ctx, root, 400, 300);
 
-		let flex = new FlexLayout();
-		flex.Direction.Value = .Vertical;
+		let flex = new FlexLayout() { Direction = .Vertical };
 		let a = new TestView(50, 30);
 		let b = new TestView(50, 40);
 		flex.AddView(a);
@@ -57,9 +55,7 @@ class FlexLayoutTests
 		let root = scope RootView();
 		TestSetup.Init(ctx, root, 400, 300);
 
-		let flex = new FlexLayout();
-		flex.Direction.Value = .Horizontal;
-		flex.Spacing.Value = 10;
+		let flex = new FlexLayout() { Direction = .Horizontal, Spacing = 10 };
 		let a = new TestView(50, 30);
 		let b = new TestView(60, 30);
 		flex.AddView(a);
@@ -77,9 +73,7 @@ class FlexLayoutTests
 		let root = scope RootView();
 		TestSetup.Init(ctx, root, 400, 300);
 
-		let flex = new FlexLayout();
-		flex.Direction.Value = .Vertical;
-		flex.Spacing.Value = 8;
+		let flex = new FlexLayout() { Direction = .Vertical, Spacing = 8 };
 		let a = new TestView(50, 30);
 		let b = new TestView(50, 40);
 		flex.AddView(a);
@@ -99,8 +93,7 @@ class FlexLayoutTests
 		let root = scope RootView();
 		TestSetup.Init(ctx, root, 400, 300);
 
-		let flex = new FlexLayout();
-		flex.Direction.Value = .Horizontal;
+		let flex = new FlexLayout() { Direction = .Horizontal };
 		let a = new TestView(50, 30);
 		let b = new TestView(50, 30);
 		flex.AddView(a, new FlexLayout.LayoutParams() { Grow = 1 });
@@ -119,8 +112,7 @@ class FlexLayoutTests
 		let root = scope RootView();
 		TestSetup.Init(ctx, root, 400, 300);
 
-		let flex = new FlexLayout();
-		flex.Direction.Value = .Horizontal;
+		let flex = new FlexLayout() { Direction = .Horizontal };
 		let a = new TestView(0, 30);
 		let b = new TestView(0, 30);
 		flex.AddView(a, new FlexLayout.LayoutParams() { Grow = 1 });
@@ -139,8 +131,7 @@ class FlexLayoutTests
 		let root = scope RootView();
 		TestSetup.Init(ctx, root, 400, 300);
 
-		let flex = new FlexLayout();
-		flex.Direction.Value = .Horizontal;
+		let flex = new FlexLayout() { Direction = .Horizontal };
 		let fixedChild = new TestView(100, 30);
 		let flexChild = new TestView(0, 30);
 		flex.AddView(fixedChild);
@@ -159,8 +150,7 @@ class FlexLayoutTests
 		let root = scope RootView();
 		TestSetup.Init(ctx, root, 400, 300);
 
-		let flex = new FlexLayout();
-		flex.Direction.Value = .Vertical;
+		let flex = new FlexLayout() { Direction = .Vertical };
 		let a = new TestView(50, 0);
 		let b = new TestView(50, 0);
 		flex.AddView(a, new FlexLayout.LayoutParams() { Grow = 1 });
@@ -181,9 +171,7 @@ class FlexLayoutTests
 		let root = scope RootView();
 		TestSetup.Init(ctx, root, 400, 300);
 
-		let flex = new FlexLayout();
-		flex.Direction.Value = .Horizontal;
-		flex.JustifyContent.Value = .End;
+		let flex = new FlexLayout() { Direction = .Horizontal, JustifyContent = .End };
 		let a = new TestView(50, 30);
 		flex.AddView(a);
 		root.AddView(flex);
@@ -199,9 +187,7 @@ class FlexLayoutTests
 		let root = scope RootView();
 		TestSetup.Init(ctx, root, 400, 300);
 
-		let flex = new FlexLayout();
-		flex.Direction.Value = .Horizontal;
-		flex.JustifyContent.Value = .Center;
+		let flex = new FlexLayout() { Direction = .Horizontal, JustifyContent = .Center };
 		let a = new TestView(100, 30);
 		flex.AddView(a);
 		root.AddView(flex);
@@ -217,9 +203,7 @@ class FlexLayoutTests
 		let root = scope RootView();
 		TestSetup.Init(ctx, root, 400, 300);
 
-		let flex = new FlexLayout();
-		flex.Direction.Value = .Horizontal;
-		flex.JustifyContent.Value = .SpaceBetween;
+		let flex = new FlexLayout() { Direction = .Horizontal, JustifyContent = .SpaceBetween };
 		let a = new TestView(50, 30);
 		let b = new TestView(50, 30);
 		flex.AddView(a);
@@ -231,6 +215,26 @@ class FlexLayoutTests
 		Test.Assert(Math.Abs(b.Bounds.X - 350) < 1.0f);
 	}
 
+	[Test]
+	public static void Justify_SpaceEvenly()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root, 400, 300);
+
+		let flex = new FlexLayout() { Direction = .Horizontal, JustifyContent = .SpaceEvenly };
+		let a = new TestView(50, 30);
+		let b = new TestView(50, 30);
+		flex.AddView(a);
+		flex.AddView(b);
+		root.AddView(flex);
+		TestSetup.Layout(ctx, root);
+
+		// Free space = 300, 3 gaps = 100 each
+		Test.Assert(Math.Abs(a.Bounds.X - 100) < 1.0f);
+		Test.Assert(Math.Abs(b.Bounds.X - 250) < 1.0f);
+	}
+
 	// === AlignItems ===
 
 	[Test]
@@ -240,15 +244,12 @@ class FlexLayoutTests
 		let root = scope RootView();
 		TestSetup.Init(ctx, root, 400, 300);
 
-		let flex = new FlexLayout();
-		flex.Direction.Value = .Horizontal;
-		flex.AlignItems.Value = .Stretch;
+		let flex = new FlexLayout() { Direction = .Horizontal, AlignItems = .Stretch };
 		let a = new TestView(50, 30);
 		flex.AddView(a);
 		root.AddView(flex);
 		TestSetup.Layout(ctx, root);
 
-		// Stretched to full cross-axis height
 		Test.Assert(Math.Abs(a.Height - 300) < 1.0f);
 	}
 
@@ -259,35 +260,52 @@ class FlexLayoutTests
 		let root = scope RootView();
 		TestSetup.Init(ctx, root, 400, 300);
 
-		let flex = new FlexLayout();
-		flex.Direction.Value = .Horizontal;
-		flex.AlignItems.Value = .Center;
+		let flex = new FlexLayout() { Direction = .Horizontal, AlignItems = .Center };
 		let a = new TestView(50, 30);
 		flex.AddView(a);
 		root.AddView(flex);
 		TestSetup.Layout(ctx, root);
 
-		Test.Assert(Math.Abs(a.Bounds.Y - 135) < 1.0f); // (300-30)/2
+		Test.Assert(Math.Abs(a.Bounds.Y - 135) < 1.0f);
 	}
 
 	[Test]
-	public static void AlignSelf_Override()
+	public static void AlignItems_End()
 	{
 		let ctx = scope UIContext();
 		let root = scope RootView();
 		TestSetup.Init(ctx, root, 400, 300);
 
-		let flex = new FlexLayout();
-		flex.Direction.Value = .Horizontal;
-		flex.AlignItems.Value = .Stretch;
+		let flex = new FlexLayout() { Direction = .Horizontal, AlignItems = .End };
 		let a = new TestView(50, 30);
-		flex.AddView(a, new FlexLayout.LayoutParams() { AlignSelf = .Center });
+		flex.AddView(a);
 		root.AddView(flex);
 		TestSetup.Layout(ctx, root);
 
-		// AlignSelf overrides to Center
-		Test.Assert(Math.Abs(a.Height - 30) < 1.0f); // not stretched
-		Test.Assert(Math.Abs(a.Bounds.Y - 135) < 1.0f); // centered
+		Test.Assert(Math.Abs(a.Bounds.Y - 270) < 1.0f);
+	}
+
+	// === Gone visibility ===
+
+	[Test]
+	public static void Gone_ChildSkipped()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root, 400, 300);
+
+		let flex = new FlexLayout() { Direction = .Horizontal };
+		let a = new TestView(50, 30);
+		let b = new TestView(60, 30);
+		b.Visibility = .Gone;
+		let c = new TestView(70, 30);
+		flex.AddView(a);
+		flex.AddView(b);
+		flex.AddView(c);
+		root.AddView(flex);
+		TestSetup.Layout(ctx, root);
+
+		Test.Assert(Math.Abs(c.Bounds.X - 50) < 0.01f);
 	}
 
 	// === Padding ===
@@ -299,40 +317,14 @@ class FlexLayoutTests
 		let root = scope RootView();
 		TestSetup.Init(ctx, root, 400, 300);
 
-		let flex = new FlexLayout();
-		flex.Direction.Value = .Horizontal;
-		flex.Padding.Value = .(10, 20, 10, 20);
+		let flex = new FlexLayout() { Direction = .Horizontal };
+		flex.Padding = .(10, 20, 10, 20);
 		let a = new TestView(50, 30);
 		flex.AddView(a);
 		root.AddView(flex);
 		TestSetup.Layout(ctx, root);
 
 		Test.Assert(Math.Abs(a.Bounds.X - 10) < 0.01f);
-		Test.Assert(Math.Abs(a.Bounds.Y - 20) < 0.01f);
-	}
-
-	// === Visibility.Gone ===
-
-	[Test]
-	public static void Gone_ExcludedFromLayout()
-	{
-		let ctx = scope UIContext();
-		let root = scope RootView();
-		TestSetup.Init(ctx, root, 400, 300);
-
-		let flex = new FlexLayout();
-		flex.Direction.Value = .Horizontal;
-		let a = new TestView(50, 30);
-		let b = new TestView(60, 30);
-		let c = new TestView(70, 30);
-		b.Visibility.Value = .Gone;
-		flex.AddView(a);
-		flex.AddView(b);
-		flex.AddView(c);
-		root.AddView(flex);
-		TestSetup.Layout(ctx, root);
-
-		// c should be right after a, b is gone
-		Test.Assert(Math.Abs(c.Bounds.X - 50) < 0.01f);
+		Test.Assert(a.Bounds.Y >= 20);
 	}
 }

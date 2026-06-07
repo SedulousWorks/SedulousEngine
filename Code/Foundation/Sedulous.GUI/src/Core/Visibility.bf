@@ -1,12 +1,12 @@
 namespace Sedulous.GUI;
 
-/// Controls whether a view is drawn and whether it participates in layout.
+/// View visibility state.
 public enum Visibility
 {
-	/// Visible and participates in layout.
+	/// View is visible and participates in layout.
 	Visible,
-	/// Invisible but still occupies space in layout (like CSS visibility: hidden).
+	/// View is invisible but still occupies space in layout.
 	Hidden,
-	/// Invisible and removed from layout entirely (like CSS display: none).
+	/// View is invisible and does not participate in layout.
 	Gone
 }

@@ -37,12 +37,12 @@ class PropertyTests
 		int fireCount = 0;
 		prop.Changed.Add(new [&fireCount] (val) => { fireCount++; });
 
-		prop.Value = 42;
+		prop.Value = 42; // same value
 		Test.Assert(fireCount == 0);
 	}
 
 	[Test]
-	public static void SetValue_DifferentValue_FiresEachTime()
+	public static void SetValue_DifferentValue_Fires()
 	{
 		let prop = scope Property<int32>(0);
 		int fireCount = 0;
@@ -76,7 +76,7 @@ class PropertyTests
 		source.Value = 50;
 		Test.Assert(target.Value == 50);
 
-		// Reverse should not propagate
+		// Reverse should not propagate back
 		target.Value = 99;
 		Test.Assert(source.Value == 50);
 	}
@@ -118,21 +118,5 @@ class PropertyTests
 		prop.Value = true;
 		Test.Assert(received == true);
 		Test.Assert(prop.Value == true);
-	}
-
-	[Test]
-	public static void InvalidationKind_DefaultIsLayout()
-	{
-		let prop = scope Property<float>(0);
-		// Default kind should trigger layout invalidation on owner.
-		// Without owner set, no crash.
-		prop.Value = 1;
-	}
-
-	[Test]
-	public static void InvalidationKind_VisualOnly()
-	{
-		let prop = scope Property<float>(0, .Visual);
-		prop.Value = 1;
 	}
 }

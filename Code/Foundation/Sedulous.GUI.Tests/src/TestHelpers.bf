@@ -22,6 +22,7 @@ class TestView : View
 }
 
 /// Minimal concrete ViewGroup for testing.
+/// Lays out each child to fill its own bounds (like a simple FrameLayout).
 class TestGroup : ViewGroup
 {
 	protected override void OnLayout(float left, float top, float width, float height)
@@ -29,13 +30,14 @@ class TestGroup : ViewGroup
 		for (int i = 0; i < ChildCount; i++)
 		{
 			let child = GetChildAt(i);
-			if (child.Visibility.Value != .Gone)
+			if (child.Visibility != .Gone)
 				child.Layout(0, 0, width, height);
 		}
 	}
 }
 
 /// Helper to set up a UIContext + RootView for tests.
+/// Both are scope-allocated by the caller.
 static class TestSetup
 {
 	public static void Init(UIContext ctx, RootView root, float width = 800, float height = 600)
@@ -44,12 +46,9 @@ static class TestSetup
 		ctx.AddRootView(root);
 	}
 
-	/// Run measure + layout on the root view.
 	public static void Layout(UIContext ctx, RootView root)
 	{
 		ctx.BeginFrame(0.016f);
-		let logical = root.LogicalSize;
-		root.Measure(BoxConstraints.Tight(logical.X, logical.Y));
-		root.Layout(0, 0, logical.X, logical.Y);
+		ctx.UpdateRootView(root);
 	}
 }

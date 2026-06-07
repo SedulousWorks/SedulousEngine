@@ -1,6 +1,8 @@
 namespace Sedulous.GUI;
 
-/// Mouse cursor appearance. Mapped to platform cursors by the shell layer.
+/// Cursor appearance when hovering a view. Views set Cursor to change
+/// the cursor on hover. EffectiveCursor walks the parent chain to find
+/// the first non-Default value.
 public enum CursorType
 {
 	Default,
