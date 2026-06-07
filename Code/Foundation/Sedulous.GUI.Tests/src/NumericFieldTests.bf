@@ -134,11 +134,4 @@ class NumericFieldTests
 		Test.Assert(nf.ShowSpinButtons == true);
 	}
 
-	[Test]
-	public static void NumericField_HasStyleId()
-	{
-		let nf = scope NumericField();
-		Test.Assert(nf.StyleId != null);
-		Test.Assert(StringView(nf.StyleId) == "edittext");
-	}
 }

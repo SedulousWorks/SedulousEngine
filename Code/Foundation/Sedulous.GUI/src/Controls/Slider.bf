@@ -35,7 +35,7 @@ public class Slider : View
 	public Event<delegate void(Slider)> OnDragStarted ~ _.Dispose();
 	public Event<delegate void(Slider)> OnDragEnded ~ _.Dispose();
 
-	public this() { IsFocusable = true; IsTabStop = true; Cursor = .Hand; StyleId = new String("slider"); }
+	public this() { IsFocusable = true; IsTabStop = true; Cursor = .Hand; }
 	public this(float min, float max, float value = 0) : this() { mMin = min; mMax = max; mValue = Math.Clamp(value, min, max); }
 
 	protected override void OnMeasure(BoxConstraints constraints)

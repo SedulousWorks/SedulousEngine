@@ -26,7 +26,6 @@ public abstract class ButtonBase : View
 	{
 		IsFocusable = true;
 		IsTabStop = true;
-		StyleId = new String("button");
 	}
 
 	public override ControlState GetControlState()

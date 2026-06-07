@@ -21,7 +21,7 @@ public class StateListDrawable : Drawable
 	{
 		if (mOwnsDrawables)
 			for (var kv in ref mDrawables)
-				if (kv.value != null) { delete kv.value; kv.value = null; }
+				if (kv.valueRef != null) { delete *kv.valueRef; kv.valueRef = null; }
 	}
 
 	/// Set the drawable for a specific state (or flag combination).

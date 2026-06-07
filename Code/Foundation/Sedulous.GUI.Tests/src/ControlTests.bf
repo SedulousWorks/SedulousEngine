@@ -71,14 +71,6 @@ class ControlTests
 	}
 
 	[Test]
-	public static void Button_HasStyleId()
-	{
-		let btn = scope Button("Test");
-		Test.Assert(btn.StyleId != null);
-		Test.Assert(String.Equals(btn.StyleId, "button", .OrdinalIgnoreCase));
-	}
-
-	[Test]
 	public static void Button_IsFocusable()
 	{
 		let btn = scope Button("Test");

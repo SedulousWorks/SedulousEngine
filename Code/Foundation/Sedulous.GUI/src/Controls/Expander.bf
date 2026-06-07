@@ -33,7 +33,7 @@ public class Expander : ViewGroup
 
 	public Event<delegate void(Expander, bool)> OnExpandedChanged ~ _.Dispose();
 
-	public this() { IsFocusable = true; Cursor = .Hand; StyleId = new String("expander"); }
+	public this() { IsFocusable = true; Cursor = .Hand; }
 	public this(StringView headerText) : this() { mHeaderText = new String(headerText); }
 
 	/// Set the expandable body content.

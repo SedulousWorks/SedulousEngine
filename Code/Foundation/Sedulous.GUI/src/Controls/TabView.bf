@@ -71,7 +71,6 @@ public class TabView : ViewGroup
 	{
 		IsFocusable = true;
 		ClipsContent = true;
-		StyleId = new String("tabview");
 	}
 
 	/// Add a tab with title and content view. Returns the index of the added tab.

@@ -20,14 +20,6 @@ class ListViewTests
 	}
 
 	[Test]
-	public static void ListView_HasStyleId()
-	{
-		let lv = scope ListView();
-		Test.Assert(lv.StyleId != null);
-		Test.Assert(StringView(lv.StyleId) == "listview");
-	}
-
-	[Test]
 	public static void ListView_IsFocusable()
 	{
 		let lv = scope ListView();

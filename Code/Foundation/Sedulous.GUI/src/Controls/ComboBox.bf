@@ -42,7 +42,6 @@ public class ComboBox : View, IPopupOwner
 		IsFocusable = true;
 		IsTabStop = true;
 		Cursor = .Hand;
-		StyleId = new String("combobox");
 	}
 
 	/// Add an item. Returns the item index.
@@ -132,7 +131,13 @@ public class ComboBox : View, IPopupOwner
 					ctx.VG.StrokeRect(bounds, accentColor, 2.0f);
 			}
 			else
-				ctx.VG.StrokeRect(bounds, accentColor, 2.0f);
+			{
+				let cr = ResolveStyleFloat(.CornerRadius);
+				if (cr > 0)
+					ctx.VG.StrokeRoundedRect(bounds, cr, accentColor, 2.0f);
+				else
+					ctx.VG.StrokeRect(bounds, accentColor, 2.0f);
+			}
 		}
 
 		// Selected text
@@ -263,7 +268,7 @@ class ComboBoxDropdown : View
 	{
 		IsFocusable = true;
 		mOwner = owner;
-		StyleId = new String("contextmenu"); // reuse context menu styling for background
+		AddClass("contextmenu"); // reuse context menu styling for background
 	}
 
 	protected override void OnMeasure(BoxConstraints constraints)

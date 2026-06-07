@@ -39,7 +39,7 @@ public class ToggleSwitch : View
 
 	public Event<delegate void(ToggleSwitch, bool)> OnCheckedChanged ~ _.Dispose();
 
-	public this() { IsFocusable = true; IsTabStop = true; Cursor = .Hand; StyleId = new String("toggleswitch"); }
+	public this() { IsFocusable = true; IsTabStop = true; Cursor = .Hand; }
 	public this(StringView text) : this() { mText = new String(text); }
 
 	protected override void OnMeasure(BoxConstraints constraints)

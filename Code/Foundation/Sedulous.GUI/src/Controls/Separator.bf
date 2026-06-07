@@ -9,7 +9,7 @@ public class Separator : View
 	public Orientation Orientation = .Horizontal;
 	public float SeparatorThickness = 1;
 
-	public this() { StyleId = new String("separator"); }
+	public this() { }
 	public this(Orientation orientation) : this() { Orientation = orientation; }
 
 	protected override void OnMeasure(BoxConstraints constraints)

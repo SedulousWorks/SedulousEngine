@@ -16,8 +16,9 @@ public abstract class View
 	/// Optional debug/lookup name.
 	public String Name;
 
-	/// Style class for stylesheet matching (e.g., "primary", "toolbar-btn").
-	public String StyleId;
+	/// Style classes for stylesheet matching (CSS class equivalent).
+	/// Multiple classes allowed. Use AddClass/RemoveClass/HasClass helpers.
+	public List<String> StyleClasses = new .() ~ DeleteContainerAndItems!(_);
 
 	// === Layout state ===
 
@@ -432,12 +433,52 @@ public abstract class View
 		}
 	}
 
+	// === Style class helpers ===
+
+	public void AddClass(StringView name)
+	{
+		for (let cls in StyleClasses)
+			if (StringView(cls) == name)
+				return;
+		StyleClasses.Add(new String(name));
+		Invalidate();
+	}
+
+	public void RemoveClass(StringView name)
+	{
+		for (int i = 0; i < StyleClasses.Count; i++)
+		{
+			if (StringView(StyleClasses[i]) == name)
+			{
+				delete StyleClasses[i];
+				StyleClasses.RemoveAt(i);
+				Invalidate();
+				return;
+			}
+		}
+	}
+
+	public bool HasClass(StringView name)
+	{
+		for (let cls in StyleClasses)
+			if (StringView(cls) == name)
+				return true;
+		return false;
+	}
+
+	public void ToggleClass(StringView name)
+	{
+		if (HasClass(name))
+			RemoveClass(name);
+		else
+			AddClass(name);
+	}
+
 	// === Destructor ===
 
 	public ~this()
 	{
 		delete Name;
-		delete StyleId;
 		delete TooltipText;
 		delete LayoutParams;
 

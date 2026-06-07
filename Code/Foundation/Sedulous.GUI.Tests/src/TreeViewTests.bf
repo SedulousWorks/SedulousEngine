@@ -6,14 +6,6 @@ using System.Collections;
 class TreeViewTests
 {
 	[Test]
-	public static void TreeView_HasStyleId()
-	{
-		let tv = scope TreeView();
-		Test.Assert(tv.StyleId != null);
-		Test.Assert(StringView(tv.StyleId) == "treeview");
-	}
-
-	[Test]
 	public static void TreeView_SetAdapter_ShowsRootItems()
 	{
 		let ctx = scope UIContext();

@@ -185,7 +185,7 @@ class GUISandboxApp : Application
 		// Themed panel containing expanders
 		let settingsPanel = new Panel();
 		settingsPanel.Padding = .(8);
-		settingsPanel.StyleId = new String("panel");
+		settingsPanel.AddClass("panel");
 		let settingsLayout = new FlexLayout() { Direction = .Vertical, Spacing = 4 };
 		settingsPanel.AddView(settingsLayout);
 		centerPanel.AddView(settingsPanel);
@@ -899,6 +899,20 @@ class GUISandboxApp : Application
 		let etFocus = MakeRoundedRectImage(48, 28, .(245, 248, 252, 255), .(80, 130, 200, 255), 4);
 		defer { delete etNorm; delete etFocus; }
 		images.AddStateImages("edittext:Background", etNorm, focused: etFocus, slices: .(6, 6, 6, 6));
+		images.AddStateImages("numericfield:Background", etNorm, focused: etFocus, slices: .(6, 6, 6, 6));
+
+		// --- NumericField spin buttons: light gray, rounded on right side only ---
+		let spinUpN = MakeRoundedRectImage(20, 16, .(225, 230, 240, 255), .(170, 185, 210, 255), 0, 3, 0, 0);
+		let spinUpH = MakeRoundedRectImage(20, 16, .(210, 218, 230, 255), .(150, 170, 200, 255), 0, 3, 0, 0);
+		let spinUpP = MakeRoundedRectImage(20, 16, .(195, 205, 220, 255), .(140, 160, 190, 255), 0, 3, 0, 0);
+		defer { delete spinUpN; delete spinUpH; delete spinUpP; }
+		images.AddStateImages("numericfield:SpinUpDrawable", spinUpN, spinUpH, spinUpP, slices: .(4, 4, 4, 4));
+
+		let spinDnN = MakeRoundedRectImage(20, 16, .(225, 230, 240, 255), .(170, 185, 210, 255), 0, 0, 3, 0);
+		let spinDnH = MakeRoundedRectImage(20, 16, .(210, 218, 230, 255), .(150, 170, 200, 255), 0, 0, 3, 0);
+		let spinDnP = MakeRoundedRectImage(20, 16, .(195, 205, 220, 255), .(140, 160, 190, 255), 0, 0, 3, 0);
+		defer { delete spinDnN; delete spinDnH; delete spinDnP; }
+		images.AddStateImages("numericfield:SpinDownDrawable", spinDnN, spinDnH, spinDnP, slices: .(4, 4, 4, 4));
 
 		// --- CheckBox ---
 		let cbUnchecked = MakeRoundedRectImage(16, 16, .(240, 244, 250, 255), .(160, 175, 200, 255), 3);
@@ -991,6 +1005,53 @@ class GUISandboxApp : Application
 		images.AddImage("expander:HeaderHoverDrawable", expH, .(4, 4, 4, 4));
 
 		return TexturedTheme.Create(images, .Light);
+	}
+
+	/// Generate a rounded rectangle image with per-corner radii.
+	private static OwnedImageData MakeRoundedRectImage(uint32 w, uint32 h,
+		Color fill, Color border, int radiusTL, int radiusTR, int radiusBR, int radiusBL)
+	{
+		let data = new uint8[w * h * 4];
+
+		for (uint32 y = 0; y < h; y++)
+		{
+			for (uint32 x = 0; x < w; x++)
+			{
+				bool inside = true;
+				bool isBorder = false;
+
+				int cx = -1, cy = -1;
+				int r = 0;
+				if (x < (uint32)radiusTL && y < (uint32)radiusTL) { cx = radiusTL; cy = radiusTL; r = radiusTL; }
+				else if (x >= w - (uint32)radiusTR && y < (uint32)radiusTR) { cx = (int)w - radiusTR - 1; cy = radiusTR; r = radiusTR; }
+				else if (x < (uint32)radiusBL && y >= h - (uint32)radiusBL) { cx = radiusBL; cy = (int)h - radiusBL - 1; r = radiusBL; }
+				else if (x >= w - (uint32)radiusBR && y >= h - (uint32)radiusBR) { cx = (int)w - radiusBR - 1; cy = (int)h - radiusBR - 1; r = radiusBR; }
+
+				if (cx >= 0)
+				{
+					let dx = (int)x - cx;
+					let dy = (int)y - cy;
+					let dist = Math.Sqrt((float)(dx * dx + dy * dy));
+					if (dist > (float)r) inside = false;
+					else if (dist > (float)(r - 1)) isBorder = true;
+				}
+
+				if (inside && cx < 0)
+				{
+					if (x == 0 || x == w - 1 || y == 0 || y == h - 1)
+						isBorder = true;
+				}
+
+				let c = inside ? (isBorder ? border : fill) : Color(0, 0, 0, 0);
+				let offset = (int)(y * w + x) * 4;
+				data[offset] = c.R;
+				data[offset + 1] = c.G;
+				data[offset + 2] = c.B;
+				data[offset + 3] = c.A;
+			}
+		}
+
+		return new OwnedImageData(w, h, .RGBA8, data);
 	}
 
 	/// Generate a rounded rectangle image with fill and border colors.
@@ -1173,7 +1234,7 @@ class ColorBox : View
 }
 
 /// View that draws its background from the theme via StyleSheet.
-/// Set StyleId to match a theme rule (e.g., "panel", "button").
+/// Add a style class to match a theme rule (e.g., "panel").
 class ThemedBox : View
 {
 	private float mDesiredW;
@@ -1181,7 +1242,7 @@ class ThemedBox : View
 
 	public this(StringView styleClass, float desiredW = 0, float desiredH = 0)
 	{
-		StyleId = new String(styleClass);
+		AddClass(styleClass);
 		mDesiredW = desiredW;
 		mDesiredH = desiredH;
 	}
@@ -1509,8 +1570,12 @@ class RichTooltipButton : Button, ITooltipProvider
 		let layout = new FlexLayout() { Direction = .Vertical, Spacing = 4 };
 		layout.AddView(new Label("Rich Tooltip"));
 		layout.AddView(new Separator());
-		layout.AddView(new Label("This tooltip has multiple lines,") { StyleId = new String("label-dim") });
-		layout.AddView(new Label("a separator, and custom content.") { StyleId = new String("label-dim") });
+		let tipLine1 = new Label("This tooltip has multiple lines,");
+		tipLine1.AddClass("label-dim");
+		layout.AddView(tipLine1);
+		let tipLine2 = new Label("a separator, and custom content.");
+		tipLine2.AddClass("label-dim");
+		layout.AddView(tipLine2);
 		let colorRow = new FlexLayout() { Direction = .Horizontal, Spacing = 4 };
 		colorRow.AddView(new ColorView(.(220, 60, 60, 255), 16, 16));
 		colorRow.AddView(new ColorView(.(60, 180, 60, 255), 16, 16));

@@ -151,7 +151,6 @@ public class EditText : View, ITextEditHost
 		IsFocusable = true;
 		IsTabStop = true;
 		Cursor = .IBeam;
-		StyleId = new String("edittext");
 		mBehavior = new TextEditingBehavior(this);
 	}
 
@@ -397,7 +396,13 @@ public class EditText : View, ITextEditHost
 					ctx.VG.StrokeRect(bounds, accentColor, 2.0f);
 			}
 			else
-				ctx.VG.StrokeRect(bounds, accentColor, 2.0f);
+			{
+				let cr = ResolveStyleFloat(.CornerRadius);
+				if (cr > 0)
+					ctx.VG.StrokeRoundedRect(bounds, cr, accentColor, 2.0f);
+				else
+					ctx.VG.StrokeRect(bounds, accentColor, 2.0f);
+			}
 		}
 
 		// Content area.

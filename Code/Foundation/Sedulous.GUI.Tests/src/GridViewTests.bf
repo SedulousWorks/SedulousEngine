@@ -20,14 +20,6 @@ class GridViewTests
 	}
 
 	[Test]
-	public static void GridView_HasStyleId()
-	{
-		let gv = scope GridView();
-		Test.Assert(gv.StyleId != null);
-		Test.Assert(StringView(gv.StyleId) == "gridview");
-	}
-
-	[Test]
 	public static void GridView_IsFocusable()
 	{
 		let gv = scope GridView();

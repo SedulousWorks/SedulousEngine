@@ -12,7 +12,6 @@ public class TooltipView : ViewGroup
 	public this()
 	{
 		Padding = .(8, 4);
-		StyleId = new String("tooltip");
 	}
 
 	/// Set custom view as tooltip content.

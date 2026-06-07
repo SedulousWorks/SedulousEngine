@@ -34,7 +34,7 @@ public static class DarkTheme
 		let btnChecked = Palette.CreateStateColors(p.PrimaryAccent);
 		sheet.OwnDrawable(btnBg);
 		sheet.OwnDrawable(btnChecked);
-		sheet.ForType(typeof(View), "button")
+		sheet.ForType(typeof(ButtonBase))
 			.Set(.Background, btnBg)
 			.Set(.CheckedBackground, btnChecked)
 			.Set(.TextColor, Color(240, 240, 245, 255))
@@ -44,20 +44,20 @@ public static class DarkTheme
 		// === Panel ===
 		let panelBg = new RoundedRectDrawable(p.Surface, 0, p.Border, 1);
 		sheet.OwnDrawable(panelBg);
-		sheet.ForType(typeof(View), "panel")
+		sheet.ForClass("panel")
 			.Set(.Background, panelBg);
 
 		// === Label ===
-		sheet.ForType(typeof(View), "label")
+		sheet.ForClass("label")
 			.Set(.TextColor, p.Text);
 
-		sheet.ForType(typeof(View), "label-dim")
+		sheet.ForClass("label-dim")
 			.Set(.TextColor, p.TextDim);
 
 		// === EditText ===
 		let editBg = new RoundedRectDrawable(.(30, 32, 42, 255), 0, p.Border, 1);
 		sheet.OwnDrawable(editBg);
-		sheet.ForType(typeof(View), "edittext")
+		sheet.ForType(typeof(EditText))
 			.Set(.Background, editBg)
 			.Set(.TextColor, p.Text)
 			.Set(.PlaceholderColor, p.TextDim)
@@ -66,10 +66,17 @@ public static class DarkTheme
 			.Set(.CursorColor, p.PrimaryAccent)
 			.Set(.SelectionColor, Color(60, 120, 200, 80));
 
-		// === NumericField spin buttons ===
+		// === NumericField (shares EditText styling + spin buttons) ===
 		let spinBg = Palette.CreateStateColors(.(50, 55, 68, 255));
 		sheet.OwnDrawable(spinBg);
-		sheet.ForType(typeof(View), "edittext")
+		sheet.ForType(typeof(NumericField))
+			.Set(.Background, editBg)
+			.Set(.TextColor, p.Text)
+			.Set(.PlaceholderColor, p.TextDim)
+			.Set(.FontSize, 14.0f)
+			.Set(.Padding, Thickness(6, 4))
+			.Set(.CursorColor, p.PrimaryAccent)
+			.Set(.SelectionColor, Color(60, 120, 200, 80))
 			.Set(.SpinUpDrawable, spinBg)
 			.Set(.SpinDownDrawable, spinBg);
 
@@ -79,7 +86,7 @@ public static class DarkTheme
 		let cbChecked = new RoundedRectDrawable(p.PrimaryAccent, 0, cbBorder, 1);
 		sheet.OwnDrawable(cbUnchecked);
 		sheet.OwnDrawable(cbChecked);
-		sheet.ForType(typeof(View), "checkbox")
+		sheet.ForType(typeof(CheckBox))
 			.Set(.BoxDrawable, cbUnchecked)
 			.Set(.CheckedBackground, cbChecked)
 			.Set(.BoxSize, 18.0f)
@@ -91,12 +98,12 @@ public static class DarkTheme
 		let rbChecked = new RoundedRectDrawable(p.PrimaryAccent, 0, rbBorder, 1);
 		sheet.OwnDrawable(rbUnchecked);
 		sheet.OwnDrawable(rbChecked);
-		sheet.ForType(typeof(View), "radiobutton")
+		sheet.ForType(typeof(RadioButton))
 			.Set(.BoxDrawable, rbUnchecked)
 			.Set(.CheckedBackground, rbChecked);
 
 		// === Slider ===
-		sheet.ForType(typeof(View), "slider")
+		sheet.ForType(typeof(Slider))
 			.Set(.TrackDrawable, sheet.OwnColor(.(50, 52, 62, 255)))
 			.Set(.FillDrawable, sheet.OwnColor(p.PrimaryAccent))
 			.Set(.ThumbDrawable, sheet.OwnColor(.(220, 220, 230, 255)))
@@ -104,7 +111,7 @@ public static class DarkTheme
 			.Set(.TrackHeight, 4.0f);
 
 		// === ProgressBar ===
-		sheet.ForType(typeof(View), "progressbar")
+		sheet.ForType(typeof(ProgressBar))
 			.Set(.TrackDrawable, sheet.OwnColor(.(50, 52, 62, 255)))
 			.Set(.FillDrawable, sheet.OwnColor(p.PrimaryAccent));
 
@@ -114,7 +121,7 @@ public static class DarkTheme
 			let swOn = new RoundedRectDrawable(p.PrimaryAccent, 0, p.Border, 1);
 			sheet.OwnDrawable(swOff);
 			sheet.OwnDrawable(swOn);
-			sheet.ForType(typeof(View), "toggleswitch")
+			sheet.ForType(typeof(ToggleSwitch))
 				.Set(.TrackDrawable, swOff)
 				.Set(.TrackOnDrawable, swOn)
 				.Set(.KnobDrawable, sheet.OwnColor(.(230, 230, 235, 255)));
@@ -123,27 +130,27 @@ public static class DarkTheme
 		// === ComboBox ===
 		let comboBg = new RoundedRectDrawable(.(40, 42, 52, 255), 0, p.Border, 1);
 		sheet.OwnDrawable(comboBg);
-		sheet.ForType(typeof(View), "combobox")
+		sheet.ForType(typeof(ComboBox))
 			.Set(.Background, comboBg)
 			.Set(.ArrowColor, Color(180, 185, 200, 255));
 
 		// === ScrollBar ===
-		sheet.ForType(typeof(View), "scrollbar")
+		sheet.ForType(typeof(ScrollBar))
 			.Set(.TrackDrawable, sheet.OwnColor(.(40, 42, 50, 150)))
 			.Set(.ThumbDrawable, sheet.OwnColor(.(100, 110, 130, 200)));
 
 		// === Separator ===
-		sheet.ForType(typeof(View), "separator")
+		sheet.ForType(typeof(Separator))
 			.Set(.BorderColor, p.Border);
 
 		// === Expander ===
-		sheet.ForType(typeof(View), "expander")
+		sheet.ForType(typeof(Expander))
 			.Set(.HeaderDrawable, sheet.OwnColor(.(50, 55, 68, 255)))
 			.Set(.HeaderHoverDrawable, sheet.OwnColor(Palette.Lighten(.(50, 55, 68, 255), 0.1f)))
 			.Set(.ArrowColor, Color(180, 185, 200, 255));
 
 		// === TabView ===
-		sheet.ForType(typeof(View), "tabview")
+		sheet.ForType(typeof(TabView))
 			.Set(.StripDrawable, sheet.OwnColor(Palette.Darken(p.Surface, 0.15f)))
 			.Set(.ContentDrawable, sheet.OwnColor(p.Surface))
 			.Set(.ActiveTabDrawable, sheet.OwnColor(p.Surface))
@@ -161,7 +168,7 @@ public static class DarkTheme
 		sheet.OwnDrawable(menuBg);
 		let menuHover = new RoundedRectDrawable(.(60, 120, 200, 100), 0);
 		sheet.OwnDrawable(menuHover);
-		sheet.ForType(typeof(View), "contextmenu")
+		sheet.ForClass("contextmenu")
 			.Set(.Background, menuBg)
 			.Set(.MenuItemHoverDrawable, menuHover)
 			.Set(.TextColor, p.Text)
@@ -171,27 +178,27 @@ public static class DarkTheme
 		// === Dialog ===
 		let dialogBg = new RoundedRectDrawable(.(50, 52, 62, 255), 0, .(80, 85, 100, 255), 1);
 		sheet.OwnDrawable(dialogBg);
-		sheet.ForType(typeof(View), "dialog")
+		sheet.ForType(typeof(Dialog))
 			.Set(.Background, dialogBg);
 
 		// === Tooltip ===
 		let tooltipBg = new RoundedRectDrawable(.(40, 42, 50, 230), 0, .(70, 75, 85, 255), 1);
 		sheet.OwnDrawable(tooltipBg);
-		sheet.ForType(typeof(View), "tooltip")
+		sheet.ForType(typeof(TooltipView))
 			.Set(.Background, tooltipBg)
 			.Set(.TextColor, p.Text);
 
 		// === ListView ===
-		sheet.ForType(typeof(View), "listview")
+		sheet.ForType(typeof(ListView))
 			.Set(.Background, sheet.OwnColor(p.Background))
 			.Set(.SelectionColor, Color(60, 120, 200, 80));
 
 		// === TreeView ===
-		sheet.ForType(typeof(View), "treeview")
+		sheet.ForType(typeof(TreeView))
 			.Set(.Background, sheet.OwnColor(p.Background));
 
 		// === GridView ===
-		sheet.ForType(typeof(View), "gridview")
+		sheet.ForType(typeof(GridView))
 			.Set(.Background, sheet.OwnColor(p.Background))
 			.Set(.SelectionColor, Color(60, 120, 200, 80));
 
@@ -206,26 +213,26 @@ public static class DarkTheme
 
 	private static void RegisterIcons(StyleSheet sheet)
 	{
-		void Reg(StyleProperty prop, StringView svg, StringView styleId = default)
+		void Reg(StyleProperty prop, StringView svg, Type type = null)
 		{
 			let d = SVGDrawable.FromString(svg);
 			if (d != null)
 			{
 				sheet.OwnDrawable(d);
-				if (styleId.IsEmpty)
-					sheet.ForType(typeof(View)).Set(prop, d);
+				if (type != null)
+					sheet.ForType(type).Set(prop, d);
 				else
-					sheet.ForType(typeof(View), styleId).Set(prop, d);
+					sheet.ForType(typeof(View)).Set(prop, d);
 			}
 		}
 
-		Reg(.CheckmarkIcon, ThemeIcons.Checkmark, "checkbox");
-		Reg(.RadioMarkIcon, ThemeIcons.RadioMarkSquare, "radiobutton");
-		Reg(.CloseIcon, ThemeIcons.Close, "tabview");
-		Reg(.ChevronExpandedIcon, ThemeIcons.ChevronDown, "expander");
-		Reg(.ChevronCollapsedIcon, ThemeIcons.ChevronRight, "expander");
-		Reg(.ChevronExpandedIcon, ThemeIcons.ChevronDown, "treeview");
-		Reg(.ChevronCollapsedIcon, ThemeIcons.ChevronRight, "treeview");
+		Reg(.CheckmarkIcon, ThemeIcons.Checkmark, typeof(CheckBox));
+		Reg(.RadioMarkIcon, ThemeIcons.RadioMarkSquare, typeof(RadioButton));
+		Reg(.CloseIcon, ThemeIcons.Close, typeof(TabView));
+		Reg(.ChevronExpandedIcon, ThemeIcons.ChevronDown, typeof(Expander));
+		Reg(.ChevronCollapsedIcon, ThemeIcons.ChevronRight, typeof(Expander));
+		Reg(.ChevronExpandedIcon, ThemeIcons.ChevronDown, typeof(TreeView));
+		Reg(.ChevronCollapsedIcon, ThemeIcons.ChevronRight, typeof(TreeView));
 		Reg(.ArrowDownIcon, ThemeIcons.ArrowDown);
 		Reg(.ArrowUpIcon, ThemeIcons.ArrowUp);
 	}

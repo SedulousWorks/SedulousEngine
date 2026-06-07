@@ -119,35 +119,45 @@ public static class TexturedTheme
 			.Set(.FontSize, 16.0f);
 
 		// Per-control non-drawable properties (colors, padding, sizes).
-		sheet.ForType(typeof(View), "button")
+		sheet.ForType(typeof(ButtonBase))
 			.Set(.TextColor, Color(30, 30, 40, 255))
 			.Set(.Padding, Thickness(12, 8));
 
-		sheet.ForType(typeof(View), "label")
+		sheet.ForClass("label")
 			.Set(.TextColor, p.Text);
-		sheet.ForType(typeof(View), "label-dim")
+		sheet.ForClass("label-dim")
 			.Set(.TextColor, p.TextDim);
 
-		sheet.ForType(typeof(View), "edittext")
+		sheet.ForType(typeof(EditText))
 			.Set(.TextColor, p.Text)
 			.Set(.PlaceholderColor, p.TextDim)
 			.Set(.FontSize, 14.0f)
 			.Set(.Padding, Thickness(6, 4))
 			.Set(.CursorColor, p.PrimaryAccent)
-			.Set(.SelectionColor, Color(60, 120, 200, 80));
+			.Set(.SelectionColor, Color(60, 120, 200, 80))
+			.Set(.CornerRadius, 4.0f);
 
-		sheet.ForType(typeof(View), "checkbox")
+		sheet.ForType(typeof(NumericField))
+			.Set(.TextColor, p.Text)
+			.Set(.PlaceholderColor, p.TextDim)
+			.Set(.FontSize, 14.0f)
+			.Set(.Padding, Thickness(6, 4))
+			.Set(.CursorColor, p.PrimaryAccent)
+			.Set(.SelectionColor, Color(60, 120, 200, 80))
+			.Set(.CornerRadius, 4.0f);
+
+		sheet.ForType(typeof(CheckBox))
 			.Set(.BoxSize, 18.0f)
 			.Set(.Spacing, 6.0f);
 
-		sheet.ForType(typeof(View), "slider")
+		sheet.ForType(typeof(Slider))
 			.Set(.ThumbSize, 16.0f)
 			.Set(.TrackHeight, 4.0f);
 
-		sheet.ForType(typeof(View), "separator")
+		sheet.ForType(typeof(Separator))
 			.Set(.BorderColor, p.Border);
 
-		sheet.ForType(typeof(View), "tabview")
+		sheet.ForType(typeof(TabView))
 			.Set(.BorderColor, p.Border)
 			.Set(.AccentColor, p.PrimaryAccent)
 			.Set(.ActiveTabTextColor, p.Text)
@@ -156,24 +166,25 @@ public static class TexturedTheme
 			.Set(.CloseButtonColor, p.TextDim)
 			.Set(.CloseButtonHoverColor, p.Text);
 
-		sheet.ForType(typeof(View), "contextmenu")
+		sheet.ForClass("contextmenu")
 			.Set(.TextColor, p.Text)
 			.Set(.BorderColor, p.Border)
 			.Set(.AccentColor, Color(60, 120, 200, 80));
 
-		sheet.ForType(typeof(View), "expander")
+		sheet.ForType(typeof(Expander))
 			.Set(.ArrowColor, Color(80, 85, 100, 255));
 
-		sheet.ForType(typeof(View), "combobox")
-			.Set(.ArrowColor, Color(80, 85, 100, 255));
+		sheet.ForType(typeof(ComboBox))
+			.Set(.ArrowColor, Color(80, 85, 100, 255))
+			.Set(.CornerRadius, 4.0f);
 
-		sheet.ForType(typeof(View), "tooltip")
+		sheet.ForType(typeof(TooltipView))
 			.Set(.TextColor, Color(240, 240, 245, 255));
 
-		sheet.ForType(typeof(View), "listview")
+		sheet.ForType(typeof(ListView))
 			.Set(.SelectionColor, Color(60, 120, 200, 80));
 
-		sheet.ForType(typeof(View), "gridview")
+		sheet.ForType(typeof(GridView))
 			.Set(.SelectionColor, Color(60, 120, 200, 80));
 
 		// Register icons with appropriate tint for the palette.
@@ -260,23 +271,26 @@ public static class TexturedTheme
 		return sheet;
 	}
 
-	/// Map a string key ("styleClass:propertyName") to a StyleSheet rule.
+	/// Map a string key ("typeName:propertyName") to a StyleSheet rule.
 	private static void SetDrawableByKey(StyleSheet sheet, StringView key, Drawable drawable)
 	{
-		// Parse "styleClass:propertyName" format.
+		// Parse "typeName:propertyName" format.
 		let colonIdx = key.IndexOf(':');
 		if (colonIdx < 0) return;
 
-		let styleClass = key.Substring(0, colonIdx);
+		let typeName = key.Substring(0, colonIdx);
 		let propName = key.Substring(colonIdx + 1);
 
 		let prop = ParsePropertyName(propName);
 		if (prop == null) return;
 
-		if (styleClass.IsEmpty)
+		let type = ResolveTypeName(typeName);
+		if (type != null)
+			sheet.ForType(type).Set(prop.Value, drawable);
+		else if (typeName.IsEmpty)
 			sheet.ForType(typeof(View)).Set(prop.Value, drawable);
 		else
-			sheet.ForType(typeof(View), styleClass).Set(prop.Value, drawable);
+			sheet.ForClass(typeName).Set(prop.Value, drawable);
 	}
 
 	/// Map a property name string to a StyleProperty enum value.
@@ -302,6 +316,31 @@ public static class TexturedTheme
 		return null;
 	}
 
+	/// Map old style class name to concrete Beef type for type-based selectors.
+	private static Type ResolveTypeName(StringView name)
+	{
+		if (name == "button")       return typeof(ButtonBase);
+		if (name == "edittext")     return typeof(EditText);
+		if (name == "checkbox")     return typeof(CheckBox);
+		if (name == "radiobutton")  return typeof(RadioButton);
+		if (name == "slider")       return typeof(Slider);
+		if (name == "progressbar")  return typeof(ProgressBar);
+		if (name == "toggleswitch") return typeof(ToggleSwitch);
+		if (name == "combobox")     return typeof(ComboBox);
+		if (name == "scrollbar")    return typeof(ScrollBar);
+		if (name == "separator")    return typeof(Separator);
+		if (name == "expander")     return typeof(Expander);
+		if (name == "tabview")      return typeof(TabView);
+		// "contextmenu" is class-based (shared by ContextMenu and ComboBoxDropdown)
+		if (name == "dialog")       return typeof(Dialog);
+		if (name == "tooltip")      return typeof(TooltipView);
+		if (name == "listview")     return typeof(ListView);
+		if (name == "treeview")     return typeof(TreeView);
+		if (name == "gridview")     return typeof(GridView);
+		if (name == "numericfield") return typeof(NumericField);
+		return null;
+	}
+
 	/// Register SVG icons with appropriate tint for the palette.
 	private static void RegisterIcons(StyleSheet sheet, ThemePalette p)
 	{
@@ -310,7 +349,7 @@ public static class TexturedTheme
 		Color? tint = null;
 		if (isLight) tint =  Color(60, 60, 70, 255);
 
-		void Reg(StyleProperty prop, StringView svg, StringView styleId = default)
+		void Reg(StyleProperty prop, StringView svg, Type type = null)
 		{
 			SVGDrawable d;
 			if (tint.HasValue)
@@ -320,20 +359,20 @@ public static class TexturedTheme
 			if (d != null)
 			{
 				sheet.OwnDrawable(d);
-				if (styleId.IsEmpty)
-					sheet.ForType(typeof(View)).Set(prop, d);
+				if (type != null)
+					sheet.ForType(type).Set(prop, d);
 				else
-					sheet.ForType(typeof(View), styleId).Set(prop, d);
+					sheet.ForType(typeof(View)).Set(prop, d);
 			}
 		}
 
-		Reg(.CheckmarkIcon, ThemeIcons.Checkmark, "checkbox");
-		Reg(.RadioMarkIcon, ThemeIcons.RadioMarkRound, "radiobutton");
-		Reg(.CloseIcon, ThemeIcons.Close, "tabview");
-		Reg(.ChevronExpandedIcon, ThemeIcons.ChevronDown, "expander");
-		Reg(.ChevronCollapsedIcon, ThemeIcons.ChevronRight, "expander");
-		Reg(.ChevronExpandedIcon, ThemeIcons.ChevronDown, "treeview");
-		Reg(.ChevronCollapsedIcon, ThemeIcons.ChevronRight, "treeview");
+		Reg(.CheckmarkIcon, ThemeIcons.Checkmark, typeof(CheckBox));
+		Reg(.RadioMarkIcon, ThemeIcons.RadioMarkRound, typeof(RadioButton));
+		Reg(.CloseIcon, ThemeIcons.Close, typeof(TabView));
+		Reg(.ChevronExpandedIcon, ThemeIcons.ChevronDown, typeof(Expander));
+		Reg(.ChevronCollapsedIcon, ThemeIcons.ChevronRight, typeof(Expander));
+		Reg(.ChevronExpandedIcon, ThemeIcons.ChevronDown, typeof(TreeView));
+		Reg(.ChevronCollapsedIcon, ThemeIcons.ChevronRight, typeof(TreeView));
 		Reg(.ArrowDownIcon, ThemeIcons.ArrowDown);
 		Reg(.ArrowUpIcon, ThemeIcons.ArrowUp);
 	}
