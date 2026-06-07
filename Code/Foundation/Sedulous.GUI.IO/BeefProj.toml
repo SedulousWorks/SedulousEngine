@@ -1,0 +1,12 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.GUI.IO"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.GUI.IO.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Images.IO" = "*"

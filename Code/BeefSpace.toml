@@ -218,6 +218,7 @@ CuteSeriesImporter = {Path = "Tools/CuteSeriesImporter"}
 "Sedulous.GUI.Shell" = {Path = "Foundation/Sedulous.GUI.Shell"}
 "Sedulous.GUI.Tests" = {Path = "Foundation/Sedulous.GUI.Tests"}
 GUISandbox = {Path = "Samples/GUI/GUISandbox"}
+"Sedulous.GUI.IO" = {Path = "Foundation/Sedulous.GUI.IO"}
 
 [WorkspaceFolders]
 Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
@@ -257,4 +258,4 @@ Experimental = []
 Projects = ["TowerDefense"]
 "Deprecated/LegacyUI" = ["LegacyUISandbox", "Sedulous.LegacyUI", "Sedulous.LegacyUI.Resources", "Sedulous.LegacyUI.Runtime", "Sedulous.LegacyUI.Shell", "Sedulous.LegacyUI.Tests", "Sedulous.LegacyUI.Toolkit", "Sedulous.LegacyUI.Viewport", "Sedulous.Engine.LegacyUI"]
 "Foundation/CodeGen" = ["Sedulous.Inspection"]
-"Foundation/GUI" = ["Sedulous.GUI", "Sedulous.GUI.Runtime", "Sedulous.GUI.Shell", "Sedulous.GUI.Tests"]
+"Foundation/GUI" = ["Sedulous.GUI", "Sedulous.GUI.Runtime", "Sedulous.GUI.Shell", "Sedulous.GUI.Tests", "Sedulous.GUI.IO"]
