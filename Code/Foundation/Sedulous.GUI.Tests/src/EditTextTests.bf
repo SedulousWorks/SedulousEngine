@@ -7,21 +7,6 @@ class EditTextTests
 	// === EditText ===
 
 	[Test]
-	public static void EditText_HasStyleId()
-	{
-		let ctx = scope UIContext();
-		let root = scope RootView();
-		TestSetup.Init(ctx, root);
-
-		let edit = new EditText();
-		root.AddView(edit);
-		TestSetup.Layout(ctx, root);
-
-		Test.Assert(edit.StyleId != null);
-		Test.Assert(StringView(edit.StyleId) == "edittext");
-	}
-
-	[Test]
 	public static void EditText_TextGetSet()
 	{
 		let ctx = scope UIContext();

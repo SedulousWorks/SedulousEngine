@@ -96,8 +96,6 @@ public class ListView : ViewGroup, IListAdapterObserver
 		ClipsContent = true;
 		IsFocusable = true;
 		IsTabStop = true;
-		StyleId = new String("listview");
-
 		mScrollBar = new ScrollBar();
 		mScrollBar.Parent = this;
 		mScrollBar.OnValueChanged.Add(new (bar, val) => { mScrollY = val; Invalidate(); });

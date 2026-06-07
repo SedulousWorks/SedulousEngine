@@ -62,8 +62,6 @@ public class GridView : ViewGroup, IListAdapterObserver
 		ClipsContent = true;
 		IsFocusable = true;
 		IsTabStop = true;
-		StyleId = new String("gridview");
-
 		mScrollBar = new ScrollBar();
 		mScrollBar.Parent = this;
 		mScrollBar.OnValueChanged.Add(new (bar, val) => { mScrollY = val; Invalidate(); });

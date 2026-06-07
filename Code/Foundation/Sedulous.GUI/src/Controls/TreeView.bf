@@ -43,8 +43,6 @@ public class TreeView : ViewGroup
 	public this()
 	{
 		ClipsContent = true;
-		StyleId = new String("treeview");
-
 		mListView = new ListView();
 		mListView.Parent = this;
 

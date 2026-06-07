@@ -31,7 +31,7 @@ public class ContextMenu : View, IPopupOwner
 	public this()
 	{
 		IsFocusable = true;
-		StyleId = new String("contextmenu");
+		AddClass("contextmenu");
 	}
 
 	public void AddItem(StringView label, delegate void() action, bool enabled = true)

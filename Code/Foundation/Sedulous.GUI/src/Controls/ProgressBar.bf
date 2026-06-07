@@ -24,7 +24,7 @@ public class ProgressBar : View
 	/// Whether to show an indeterminate animation (not yet implemented).
 	public bool IsIndeterminate;
 
-	public this() { StyleId = new String("progressbar"); }
+	public this() { }
 
 	protected override void OnMeasure(BoxConstraints constraints)
 	{

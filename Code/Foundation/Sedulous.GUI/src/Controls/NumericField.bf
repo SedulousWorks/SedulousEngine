@@ -105,7 +105,6 @@ public class NumericField : View, ITextEditHost
 		IsFocusable = true;
 		IsTabStop = true;
 		Cursor = .IBeam;
-		StyleId = new String("edittext");
 		mBehavior = new TextEditingBehavior(this);
 		// Only allow digits, minus, and decimal point.
 		let filter = new InputFilter();
@@ -303,7 +302,13 @@ public class NumericField : View, ITextEditHost
 					ctx.VG.StrokeRect(bounds, accentColor, 2.0f);
 			}
 			else
-				ctx.VG.StrokeRect(bounds, accentColor, 2.0f);
+			{
+				let cr = ResolveStyleFloat(.CornerRadius);
+				if (cr > 0)
+					ctx.VG.StrokeRoundedRect(bounds, cr, accentColor, 2.0f);
+				else
+					ctx.VG.StrokeRect(bounds, accentColor, 2.0f);
+			}
 		}
 
 		// Prefix/suffix and text content.

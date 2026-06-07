@@ -5,14 +5,6 @@ using System;
 class DialogTests
 {
 	[Test]
-	public static void Dialog_HasStyleId()
-	{
-		let dlg = scope Dialog("Test");
-		Test.Assert(dlg.StyleId != null);
-		Test.Assert(StringView(dlg.StyleId) == "dialog");
-	}
-
-	[Test]
 	public static void Dialog_TitleProperty()
 	{
 		let dlg = scope Dialog("Hello");

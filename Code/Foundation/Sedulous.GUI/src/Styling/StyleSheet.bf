@@ -69,7 +69,7 @@ public class StyleSheet : RefCounted
 	{
 		let rule = new StyleRule();
 		rule.Selector.ViewType = viewType;
-		rule.Selector.StyleClass = new String(styleClass);
+		rule.Selector.AddClass(styleClass);
 		mRules.Add(rule);
 		return rule;
 	}
@@ -89,7 +89,7 @@ public class StyleSheet : RefCounted
 	{
 		let rule = new StyleRule();
 		rule.Selector.ViewType = viewType;
-		rule.Selector.StyleClass = new String(styleClass);
+		rule.Selector.AddClass(styleClass);
 		rule.Selector.State = state;
 		mRules.Add(rule);
 		return rule;
@@ -99,7 +99,7 @@ public class StyleSheet : RefCounted
 	public StyleRule ForClass(StringView styleClass)
 	{
 		let rule = new StyleRule();
-		rule.Selector.StyleClass = new String(styleClass);
+		rule.Selector.AddClass(styleClass);
 		mRules.Add(rule);
 		return rule;
 	}

@@ -30,7 +30,6 @@ public class Dialog : ViewGroup
 	public this(StringView title)
 	{
 		ClipsContent = true;
-		StyleId = new String("dialog");
 		Title = new String(title);
 
 		mLayout = new FlexLayout();

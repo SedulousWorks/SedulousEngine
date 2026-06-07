@@ -45,7 +45,7 @@ public class RadioButton : View
 
 	public Event<delegate void(RadioButton, bool)> OnCheckedChanged ~ _.Dispose();
 
-	public this() { IsFocusable = true; IsTabStop = true; Cursor = .Hand; StyleId = new String("radiobutton"); }
+	public this() { IsFocusable = true; IsTabStop = true; Cursor = .Hand; }
 	public this(StringView text) : this() { mText = new String(text); }
 
 	protected override void OnMeasure(BoxConstraints constraints)
