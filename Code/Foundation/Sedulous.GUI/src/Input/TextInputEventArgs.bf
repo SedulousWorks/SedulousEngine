@@ -9,9 +9,13 @@ public class TextInputEventArgs
 	/// Set by handler to stop event propagation.
 	public bool Handled;
 
+	/// Current phase of event propagation.
+	public EventPhase Phase;
+
 	public void Reset()
 	{
 		Character = 0;
 		Handled = false;
+		Phase = .Target;
 	}
 }

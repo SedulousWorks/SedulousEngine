@@ -377,7 +377,7 @@ public abstract class View : IPropertyOwner
 		}
 	}
 
-	// === Input events ===
+	// === Input events (bubble phase — default) ===
 
 	public virtual void OnMouseDown(MouseEventArgs e) { }
 	public virtual void OnMouseUp(MouseEventArgs e) { }
@@ -390,6 +390,19 @@ public abstract class View : IPropertyOwner
 	public virtual void OnTextInput(TextInputEventArgs e) { }
 	public virtual void OnFocusGained() { }
 	public virtual void OnFocusLost() { }
+
+	// === Input events (capture phase) ===
+	// Called during the capture walk (root -> target) before the event
+	// reaches the target. Set e.Handled = true to prevent the event
+	// from reaching the target or the bubble phase.
+
+	public virtual void OnMouseDownCapture(MouseEventArgs e) { }
+	public virtual void OnMouseUpCapture(MouseEventArgs e) { }
+	public virtual void OnMouseMoveCapture(MouseEventArgs e) { }
+	public virtual void OnMouseWheelCapture(MouseWheelEventArgs e) { }
+	public virtual void OnKeyDownCapture(KeyEventArgs e) { }
+	public virtual void OnKeyUpCapture(KeyEventArgs e) { }
+	public virtual void OnTextInputCapture(TextInputEventArgs e) { }
 
 	// === Deferred mutation convenience ===
 

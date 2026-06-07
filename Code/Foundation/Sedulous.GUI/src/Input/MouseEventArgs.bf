@@ -26,6 +26,9 @@ public class MouseEventArgs
 	/// Set by handler to stop event propagation.
 	public bool Handled;
 
+	/// Current phase of event propagation.
+	public EventPhase Phase;
+
 	public Vector2 Position => .(X, Y);
 
 	public void Reset()
@@ -36,6 +39,7 @@ public class MouseEventArgs
 		Modifiers = .None;
 		Timestamp = 0;
 		Handled = false;
+		Phase = .Target;
 	}
 
 	public void Set(float x, float y, MouseButton button = .Left, int32 clickCount = 1,
@@ -47,5 +51,6 @@ public class MouseEventArgs
 		Modifiers = modifiers;
 		Timestamp = timestamp;
 		Handled = false;
+		Phase = .Target;
 	}
 }
