@@ -39,8 +39,13 @@ public class StyleSelector
 			if (view.StyleId == null || view.StyleId != StyleClass)
 				return false;
 		}
-		if (State.HasValue && State.Value != state)
-			return false;
+		// State check: all selector state flags must be present in the view's state.
+		if (State.HasValue)
+		{
+			let required = State.Value;
+			if (required != .Normal && !state.HasFlag(required))
+				return false;
+		}
 		return true;
 	}
 }

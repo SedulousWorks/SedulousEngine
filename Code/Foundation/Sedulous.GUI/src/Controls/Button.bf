@@ -76,7 +76,7 @@ public class Button : ButtonBase
 			{
 				let pad = ResolveStyleThickness(.Padding, .(12, 8));
 				var textColor = ResolveStyleColor(.TextColor, .(220, 225, 235, 255));
-				if (state == .Disabled)
+				if (state.HasFlag(.Disabled))
 					textColor = Palette.ComputeDisabled(textColor);
 
 				let textRect = RectangleF(pad.Left, pad.Top,

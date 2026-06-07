@@ -43,11 +43,13 @@ public class ToggleButton : ButtonBase
 
 	public override ControlState GetControlState()
 	{
-		if (!IsEffectivelyEnabled) return .Disabled;
-		if (IsPressed) return .Pressed;
-		if (IsFocused) return .Focused;
-		if (IsHovered) return .Hover;
-		return .Normal;
+		var state = ControlState.Normal;
+		if (!IsEffectivelyEnabled) state |= .Disabled;
+		if (IsPressed) state |= .Pressed;
+		if (IsFocused) state |= .Focused;
+		if (IsHovered) state |= .Hover;
+		if (IsChecked) state |= .Checked;
+		return state;
 	}
 
 	protected override void OnMeasure(BoxConstraints constraints)
@@ -101,9 +103,9 @@ public class ToggleButton : ButtonBase
 			else
 			{
 				var color = ResolveStyleColor(.AccentColor, .(80, 150, 240, 255));
-				if (state == .Hover) color = Palette.ComputeHover(color);
-				else if (state == .Pressed) color = Palette.ComputePressed(color);
-				else if (state == .Disabled) color = Palette.ComputeDisabled(color);
+				if (state.HasFlag(.Disabled)) color = Palette.ComputeDisabled(color);
+				else if (state.HasFlag(.Pressed)) color = Palette.ComputePressed(color);
+				else if (state.HasFlag(.Hover)) color = Palette.ComputeHover(color);
 				ctx.VG.FillRoundedRect(bounds, radius, color);
 			}
 		}
