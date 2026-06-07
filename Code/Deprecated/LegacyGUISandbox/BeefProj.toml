@@ -2,8 +2,8 @@ FileVersion = 1
 
 [Project]
 Name = "LegacyGUISandbox"
-StartupObject = "GUISandbox.Program"
-DefaultNamespace = "GUISandbox"
+StartupObject = "LegacyGUISandbox.Program"
+DefaultNamespace = "LegacyGUISandbox"
 
 [Dependencies]
 corlib = "*"

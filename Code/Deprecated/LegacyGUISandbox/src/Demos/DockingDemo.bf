@@ -1,4 +1,4 @@
-namespace GUISandbox;
+namespace LegacyGUISandbox;
 
 using System;
 using System.Collections;

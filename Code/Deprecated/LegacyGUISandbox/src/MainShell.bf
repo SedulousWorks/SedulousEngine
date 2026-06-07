@@ -1,4 +1,4 @@
-namespace GUISandbox;
+namespace LegacyGUISandbox;
 
 using System;
 using System.Collections;
@@ -7,7 +7,7 @@ using Sedulous.LegacyGUI;
 using Sedulous.Drawing;
 using Sedulous.Images;
 
-/// Main shell for the GUISandbox with header bar and navigation.
+/// Main shell for the LegacyGUISandbox with header bar and navigation.
 /// Provides a professional UI shell with theme switching, scaling, and demo selection.
 class MainShell
 {
