@@ -1,4 +1,4 @@
-namespace GUISandbox;
+namespace LegacyGUISandbox;
 
 using Sedulous.Core.Mathematics;
 using Sedulous.LegacyGUI;
