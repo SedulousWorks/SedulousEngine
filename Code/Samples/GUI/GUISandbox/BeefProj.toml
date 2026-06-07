@@ -1,0 +1,21 @@
+FileVersion = 1
+
+[Project]
+Name = "GUISandbox"
+TargetType = "BeefLib"
+StartupObject = "GUISandbox.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Runtime" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Core.Mathematics" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Images.STB" = "*"
+"Sedulous.Images.SDL" = "*"
+"Sedulous.Fonts" = "*"
+"Sedulous.Fonts.TTF" = "*"
+corlib = "*"
