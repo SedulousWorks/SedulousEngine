@@ -5,7 +5,6 @@ using System.IO;
 using Sedulous.GUI;
 using Sedulous.VFS;
 using Sedulous.Images;
-using Sedulous.Images.IO;
 
 /// IResourceProvider implementation that loads resources from a VFS mount.
 /// Used by StyleSheetLoader for @import, @icon, @image, and drawable
