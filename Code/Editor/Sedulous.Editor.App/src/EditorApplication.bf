@@ -362,16 +362,16 @@ class EditorApplication : Application, IDockableWindowHost
 
 		let title = new Label();
 		title.SetText("Sedulous Editor");
-		title.FontSize = 24;
-		title.HAlign = .Center;
+		title.FontSize.Value = 24;
+		title.HAlign.Value = .Center;
 		center.AddView(title, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Fixed(.Px(32))
 		});
 
 		let subtitle = new Label();
 		subtitle.SetText("Select a project to get started");
-		subtitle.FontSize = 13;
-		subtitle.HAlign = .Center;
+		subtitle.FontSize.Value = 13;
+		subtitle.HAlign.Value = .Center;
 		center.AddView(subtitle, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Fixed(.Px(20))
 		});
@@ -413,7 +413,7 @@ class EditorApplication : Application, IDockableWindowHost
 		{
 			let recentLabel = new Label();
 			recentLabel.SetText("Recent Projects:");
-			recentLabel.FontSize = 12;
+			recentLabel.FontSize.Value = 12;
 			center.AddView(recentLabel, new FlexLayout.LayoutParams() {
 				Width = .Match, Height = .Fixed(.Px(20))
 			});
@@ -554,10 +554,10 @@ class EditorApplication : Application, IDockableWindowHost
 		// Placeholder panel (center) - shown until first page is opened.
 		let placeholderContent = new Label();
 		placeholderContent.SetText("Open an asset from the Asset Browser, or File > New Scene");
-		placeholderContent.FontSize = 14;
-		placeholderContent.HAlign = .Center;
-		placeholderContent.VAlign = .Middle;
-		placeholderContent.TextColor = .(100, 100, 115, 255);
+		placeholderContent.FontSize.Value = 14;
+		placeholderContent.HAlign.Value = .Center;
+		placeholderContent.VAlign.Value = .Middle;
+		placeholderContent.TextColor.Value = .(100, 100, 115, 255);
 		mPlaceholderPanel = dockManager.AddPanel("Editor", placeholderContent);
 		mPlaceholderPanel.SetPersistenceId("editor");
 		mPlaceholderPanel.OnCloseRequested.Add(new (p) => { mPlaceholderPanel = null; });
@@ -932,10 +932,10 @@ class EditorApplication : Application, IDockableWindowHost
 			{
 				let placeholderContent = new Label();
 				placeholderContent.SetText("Open an asset from the Asset Browser, or File > New Scene");
-				placeholderContent.FontSize = 14;
-				placeholderContent.HAlign = .Center;
-				placeholderContent.VAlign = .Middle;
-				placeholderContent.TextColor = .(100, 100, 115, 255);
+				placeholderContent.FontSize.Value = 14;
+				placeholderContent.HAlign.Value = .Center;
+				placeholderContent.VAlign.Value = .Middle;
+				placeholderContent.TextColor.Value = .(100, 100, 115, 255);
 				mPlaceholderPanel = dockManager.AddPanel("Editor", placeholderContent);
 				mPlaceholderPanel.OnCloseRequested.Add(new (p) => { mPlaceholderPanel = null; });
 				// Dock above the remaining root (console/assets) to recreate the original split

@@ -32,16 +32,16 @@ class MainMenuUI
 
 		// Title
 		let title = new Label("TOWER DEFENSE");
-		title.FontSize = 32;
-		title.TextColor = .(220, 230, 240, 255);
-		title.HAlign = .Center;
+		title.FontSize.Value = 32;
+		title.TextColor.Value = .(220, 230, 240, 255);
+		title.HAlign.Value = .Center;
 		content.AddView(title);
 
 		// Subtitle
 		let subtitle = new Label("Defend your base against waves of enemies!");
-		subtitle.FontSize = 14;
-		subtitle.TextColor = .(150, 160, 170, 255);
-		subtitle.HAlign = .Center;
+		subtitle.FontSize.Value = 14;
+		subtitle.TextColor.Value = .(150, 160, 170, 255);
+		subtitle.HAlign.Value = .Center;
 		content.AddView(subtitle);
 
 		// Spacer
@@ -49,7 +49,7 @@ class MainMenuUI
 
 		// Start button
 		let startBtn = new Button("Start Game");
-		startBtn.FontSize = 18;
+		startBtn.FontSize.Value = 18;
 		startBtn.Background = new ColorDrawable(.(40, 120, 60, 255));
 		startBtn.OnClick.Add(new (btn) =>
 			{
@@ -61,9 +61,9 @@ class MainMenuUI
 		// Controls hint
 		content.AddView(new Spacer(0, 20));
 		let controls = new Label("1-4: Select tower  |  Click: Place  |  Space: Start wave  |  P: Pause");
-		controls.FontSize = 11;
-		controls.TextColor = .(120, 125, 130, 255);
-		controls.HAlign = .Center;
+		controls.FontSize.Value = 11;
+		controls.TextColor.Value = .(120, 125, 130, 255);
+		controls.HAlign.Value = .Center;
 		content.AddView(controls);
 
 		// Add to view tree immediately - view tree owns mRoot

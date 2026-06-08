@@ -59,8 +59,8 @@ class ResourceRefEditor : PropertyEditor
 
 		// Path/ID display
 		mPathLabel = new Label();
-		mPathLabel.FontSize = 11;
-		mPathLabel.TextColor = .(180, 185, 200, 255);
+		mPathLabel.FontSize.Value = 11;
+		mPathLabel.TextColor.Value = .(180, 185, 200, 255);
 		RefreshPathLabel();
 		row.AddView(mPathLabel, new FlexLayout.LayoutParams() {
 			Height = .Match, Grow = 1

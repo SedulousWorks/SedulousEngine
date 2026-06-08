@@ -44,34 +44,34 @@ class TowerInfoPanel
 
 		// Tower name + level
 		mNameLabel = new Label("Tower");
-		mNameLabel.FontSize = 16;
-		mNameLabel.TextColor = .(220, 230, 240, 255);
-		mNameLabel.HAlign = .Center;
+		mNameLabel.FontSize.Value = 16;
+		mNameLabel.TextColor.Value = .(220, 230, 240, 255);
+		mNameLabel.HAlign.Value = .Center;
 		layout.AddView(mNameLabel, new FlexLayout.LayoutParams() { Width = .Match });
 
 		layout.AddView(new Separator());
 
 		// Stats
 		mDamageLabel = new Label("Damage: 0");
-		mDamageLabel.FontSize = 13;
-		mDamageLabel.TextColor = .(255, 180, 80, 255);
+		mDamageLabel.FontSize.Value = 13;
+		mDamageLabel.TextColor.Value = .(255, 180, 80, 255);
 		layout.AddView(mDamageLabel);
 
 		mRangeLabel = new Label("Range: 0");
-		mRangeLabel.FontSize = 13;
-		mRangeLabel.TextColor = .(100, 200, 255, 255);
+		mRangeLabel.FontSize.Value = 13;
+		mRangeLabel.TextColor.Value = .(100, 200, 255, 255);
 		layout.AddView(mRangeLabel);
 
 		mFireRateLabel = new Label("Fire Rate: 0/s");
-		mFireRateLabel.FontSize = 13;
-		mFireRateLabel.TextColor = .(180, 255, 150, 255);
+		mFireRateLabel.FontSize.Value = 13;
+		mFireRateLabel.TextColor.Value = .(180, 255, 150, 255);
 		layout.AddView(mFireRateLabel);
 
 		layout.AddView(new Spacer(0, 4));
 
 		// Upgrade button
 		mUpgradeBtn = new Button("Upgrade");
-		mUpgradeBtn.FontSize = 13;
+		mUpgradeBtn.FontSize.Value = 13;
 		mUpgradeBtn.Background = new ColorDrawable(.(40, 120, 60, 255));
 		mUpgradeBtn.OnClick.Add(new (btn) =>
 			{
@@ -82,7 +82,7 @@ class TowerInfoPanel
 
 		// Sell button
 		mSellBtn = new Button("Sell");
-		mSellBtn.FontSize = 13;
+		mSellBtn.FontSize.Value = 13;
 		mSellBtn.Background = new ColorDrawable(.(150, 50, 50, 255));
 		mSellBtn.OnClick.Add(new (btn) =>
 			{

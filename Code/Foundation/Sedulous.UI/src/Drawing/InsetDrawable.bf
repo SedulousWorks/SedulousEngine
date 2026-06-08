@@ -7,13 +7,23 @@ using Sedulous.Core.Mathematics;
 /// the inset as DrawablePadding so layout can query it.
 public class InsetDrawable : Drawable
 {
-	public Drawable Inner ~ delete _;
+	public Drawable Inner { get; private set; }
 	public Thickness Inset;
+	private bool mOwnsInner;
 
-	public this(Drawable inner, Thickness inset)
+	/// If ownsInner is true (default), the InsetDrawable deletes the
+	/// inner drawable on destruction.
+	public this(Drawable inner, Thickness inset, bool ownsInner = true)
 	{
 		Inner = inner;
 		Inset = inset;
+		mOwnsInner = ownsInner;
+	}
+
+	public ~this()
+	{
+		if (mOwnsInner && Inner != null)
+			delete Inner;
 	}
 
 	public override void Draw(UIDrawContext ctx, RectangleF bounds)

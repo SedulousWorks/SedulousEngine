@@ -29,25 +29,25 @@ public class EditableLabel : EditText
 	public bool IsEditing => mIsEditing;
 
 	/// Optional left padding for text (e.g. for tree item indentation).
-	public float TextOffsetX;
+	public Property<float> TextOffsetX = new .(0) ~ delete _;
 
 	/// Horizontal text alignment in label mode.
-	public TextAlignment HAlign = .Left;
+	public Property<TextAlignment> HAlign = new .(.Left) ~ delete _;
 
 	/// Whether to truncate text with "..." when it overflows in label mode.
-	public bool Ellipsis = false;
+	public Property<bool> Ellipsis = new .(false) ~ delete _;
 
 	/// Override font size. When set, takes precedence over style resolution.
-	public float? FontSize;
+	public Property<float?> FontSize = new .(null) ~ delete _;
 
 	/// Override text color. When set, takes precedence over style resolution.
-	public Color? TextColor;
+	public Property<Color?> TextColor = new .(null) ~ delete _;
 
 	/// Whether double-click enters edit mode.
-	public bool DoubleClickToEdit = true;
+	public Property<bool> DoubleClickToEdit = new .(true) ~ delete _;
 
 	/// Whether slow-click (second single-click after delay) enters edit mode.
-	public bool SlowClickToEdit = true;
+	public Property<bool> SlowClickToEdit = new .(true) ~ delete _;
 
 	/// Optional validation delegate. Return true if the name is valid.
 	public delegate bool(StringView) ValidateRename ~ delete _;
@@ -55,9 +55,17 @@ public class EditableLabel : EditText
 	public this()
 	{
 		Cursor = .Arrow;
-		IsReadOnly = true;
+		IsReadOnly.Value = true;
 		IsFocusable = false;
 		IsTabStop = false;
+
+		TextOffsetX.SetOwner(this);
+		HAlign.SetOwner(this, .Visual);
+		Ellipsis.SetOwner(this, .Visual);
+		FontSize.SetOwner(this);
+		TextColor.SetOwner(this, .Visual);
+		DoubleClickToEdit.SetOwner(this);
+		SlowClickToEdit.SetOwner(this);
 	}
 
 	/// Set the display text. Does not interrupt an active edit.
@@ -75,7 +83,7 @@ public class EditableLabel : EditText
 		mIsEditing = true;
 		mWasClickedOnce = false;
 		mPreEditText.Set(Text);
-		IsReadOnly = false;
+		IsReadOnly.Value = false;
 		IsFocusable = true;
 		IsTabStop = true;
 		Cursor = .IBeam;
@@ -113,7 +121,7 @@ public class EditableLabel : EditText
 		}
 
 		mIsEditing = false;
-		IsReadOnly = true;
+		IsReadOnly.Value = true;
 		IsFocusable = false;
 		IsTabStop = false;
 		Cursor = .Arrow;
@@ -125,7 +133,7 @@ public class EditableLabel : EditText
 	{
 		if (!mIsEditing) return;
 		mIsEditing = false;
-		IsReadOnly = true;
+		IsReadOnly.Value = true;
 		IsFocusable = false;
 		IsTabStop = false;
 		Cursor = .Arrow;
@@ -175,7 +183,7 @@ public class EditableLabel : EditText
 			return;
 
 		// Double-click -> enter edit mode immediately
-		if (DoubleClickToEdit && e.ClickCount >= 2)
+		if (DoubleClickToEdit.Value && e.ClickCount >= 2)
 		{
 			BeginEdit();
 			e.Handled = true;
@@ -183,7 +191,7 @@ public class EditableLabel : EditText
 		}
 
 		// Slow-click: second single-click after 0.4-1.5s delay
-		if (SlowClickToEdit && e.ClickCount == 1)
+		if (SlowClickToEdit.Value && e.ClickCount == 1)
 		{
 			let now = Context?.TotalTime ?? 0;
 			if (mWasClickedOnce)
@@ -209,7 +217,7 @@ public class EditableLabel : EditText
 		if (mIsEditing)
 		{
 			// Draw editing state: subtle background + accent border + text content
-			let editBounds = RectangleF(TextOffsetX - 2, 0, Width - TextOffsetX + 2, Height);
+			let editBounds = RectangleF(TextOffsetX.Value - 2, 0, Width - TextOffsetX.Value + 2, Height);
 
 			let bgDrawable = ResolveStyleDrawable(.Background);
 			if (bgDrawable != null)
@@ -220,21 +228,21 @@ public class EditableLabel : EditText
 			let borderColor = ResolveStyleColor(.AccentColor, ResolveStyleColor(.CursorColor, .(80, 160, 255, 255)));
 			ctx.VG.StrokeRect(editBounds, borderColor, 1);
 
-			DrawEditContent(ctx, TextOffsetX);
+			DrawEditContent(ctx, TextOffsetX.Value);
 		}
 		else
 		{
 			// Label mode: draw text with optional ellipsis truncation.
-			let fontSize = FontSize ?? ResolveStyleFloat(.FontSize, 14);
+			let fontSize = FontSize.Value ?? ResolveStyleFloat(.FontSize, 14);
 			if (Text.Length > 0 && ctx.FontService != null)
 			{
 				let font = ctx.FontService.GetFont(fontSize);
 				if (font != null)
 				{
-					let textColor = TextColor ?? ResolveStyleColor(.TextColor, .(220, 225, 235, 255));
-					let textBounds = RectangleF(TextOffsetX, 0, Width - TextOffsetX, Height);
+					let textColor = TextColor.Value ?? ResolveStyleColor(.TextColor, .(220, 225, 235, 255));
+					let textBounds = RectangleF(TextOffsetX.Value, 0, Width - TextOffsetX.Value, Height);
 
-					if (Ellipsis)
+					if (Ellipsis.Value)
 					{
 						let textW = font.Font.MeasureString(Text);
 						if (textW > textBounds.Width)
@@ -245,7 +253,7 @@ public class EditableLabel : EditText
 
 							if (availW <= 0)
 							{
-								ctx.VG.DrawText(ellipsisStr, font, textBounds, HAlign, .Middle, textColor);
+								ctx.VG.DrawText(ellipsisStr, font, textBounds, HAlign.Value, .Middle, textColor);
 							}
 							else
 							{
@@ -260,17 +268,17 @@ public class EditableLabel : EditText
 									}
 								}
 								truncated.Append(ellipsisStr);
-								ctx.VG.DrawText(truncated, font, textBounds, HAlign, .Middle, textColor);
+								ctx.VG.DrawText(truncated, font, textBounds, HAlign.Value, .Middle, textColor);
 							}
 						}
 						else
 						{
-							ctx.VG.DrawText(Text, font, textBounds, HAlign, .Middle, textColor);
+							ctx.VG.DrawText(Text, font, textBounds, HAlign.Value, .Middle, textColor);
 						}
 					}
 					else
 					{
-						ctx.VG.DrawText(Text, font, textBounds, HAlign, .Middle, textColor);
+						ctx.VG.DrawText(Text, font, textBounds, HAlign.Value, .Middle, textColor);
 					}
 				}
 			}
@@ -280,7 +288,7 @@ public class EditableLabel : EditText
 	/// Draw edit content (selection, glyphs, cursor) offset to the given X.
 	private void DrawEditContent(UIDrawContext ctx, float offsetX)
 	{
-		let fontSize = FontSize ?? ResolveStyleFloat(.FontSize, 14);
+		let fontSize = FontSize.Value ?? ResolveStyleFloat(.FontSize, 14);
 		let contentW = Width - offsetX;
 
 		ctx.VG.PushClipRect(.(offsetX, 0, contentW, Height));

@@ -39,11 +39,10 @@ class SceneHierarchyView : ViewGroup, IDragSource, IDropTarget
 	public TreeView InternalTreeView => mTreeView;
 	public SelectionModel Selection => mTreeView.Selection;
 	public float ItemHeight { get => mTreeView.ItemHeight; set => mTreeView.ItemHeight = value; }
-	public float IndentWidth { get => mTreeView.IndentWidth; set => mTreeView.IndentWidth = value; }
+	public float IndentWidth { get => mTreeView.IndentWidth.Value; set => mTreeView.IndentWidth.Value = value; }
 
 	public this(Scene scene)
 	{
-		StyleId = new String("scenehierarchy");
 		mScene = scene;
 		mTreeView = new TreeView();
 		AddView(mTreeView);
@@ -100,7 +99,7 @@ class SceneHierarchyView : ViewGroup, IDragSource, IDropTarget
 		let itemY = mDropTargetPosition * itemH - scrollY;
 
 		let depth = flatAdapter.GetDepth(mDropTargetPosition);
-		let indent = (depth + 1) * mTreeView.IndentWidth;
+		let indent = (depth + 1) * mTreeView.IndentWidth.Value;
 
 		let accentColor = ResolveStyleColor(.AccentColor, .(80, 160, 255, 255));
 
@@ -184,10 +183,10 @@ class SceneHierarchyView : ViewGroup, IDragSource, IDropTarget
 		if (let hierData = data as HierarchyDragData)
 		{
 			let label = new Label();
-			label.FontSize = 12;
+			label.FontSize.Value = 12;
 			let name = mScene.GetEntityName(hierData.Entity);
 			label.SetText(name.Length > 0 ? name : "Entity");
-			label.TextColor = .(200, 200, 210, 200);
+			label.TextColor.Value = .(200, 200, 210, 200);
 			return label;
 		}
 		return null;

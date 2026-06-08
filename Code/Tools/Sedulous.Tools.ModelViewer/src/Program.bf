@@ -175,7 +175,7 @@ class ModelViewerApp : Application
 
 		// Tab bar (closable tabs) - hidden until a model is loaded
 		mTabView = new TabView();
-		mTabView.TabHeight = 28;
+		mTabView.TabHeight.Value = 28;
 
 		mTabView.Visibility = .Gone;
 		mTabView.OnTabChanged.Add(new (tv, idx) => OnTabChanged(idx));
@@ -191,10 +191,10 @@ class ModelViewerApp : Application
 
 		mDropIndicator = new Label();
 		mDropIndicator.SetText("Drop a model here\n\nSupported: glTF, GLB, OBJ, FBX");
-		mDropIndicator.FontSize = 20;
-		mDropIndicator.HAlign = .Center;
-		mDropIndicator.VAlign = .Middle;
-		mDropIndicator.WordWrap = true;
+		mDropIndicator.FontSize.Value = 20;
+		mDropIndicator.HAlign.Value = .Center;
+		mDropIndicator.VAlign.Value = .Middle;
+		mDropIndicator.WordWrap.Value = true;
 		mViewportContainer.AddView(mDropIndicator, new LayoutParams() { Width = .Match, Height = .Match });
 
 		// Side panel
@@ -207,8 +207,8 @@ class ModelViewerApp : Application
 	private ScrollView BuildSidePanel()
 	{
 		let scroll = new ScrollView();
-		scroll.VScrollBarPolicy = .Auto;
-		scroll.HScrollBarPolicy = .Never;
+		scroll.VScrollBarPolicy.Value = .Auto;
+		scroll.HScrollBarPolicy.Value = .Never;
 
 		let panel = new FlexLayout();
 		panel.Direction = .Vertical;
@@ -218,7 +218,7 @@ class ModelViewerApp : Application
 		// Title
 		let title = new Label();
 		title.SetText("Model Viewer");
-		title.FontSize = 18;
+		title.FontSize.Value = 18;
 		panel.AddView(title);
 
 		// Separator
@@ -238,8 +238,8 @@ class ModelViewerApp : Application
 		// Help text
 		let help = new Label();
 		help.SetText("Controls:\nLMB: Orbit\nRMB: Fly Look\nWASD: Move\nMMB: Pan\nScroll: Zoom\nR: Focus Model\n\nDrop .gltf/.glb files to load models.");
-		help.FontSize = 12;
-		help.WordWrap = true;
+		help.FontSize.Value = 12;
+		help.WordWrap.Value = true;
 		panel.AddView(help, new FlexLayout.LayoutParams() { Width = .Match });
 
 		scroll.AddView(panel, new LayoutParams() { Width = .Match });
@@ -254,12 +254,12 @@ class ModelViewerApp : Application
 
 		let lbl = new Label();
 		lbl.SetText(label);
-		lbl.FontSize = 12;
+		lbl.FontSize.Value = 12;
 		row.AddView(lbl, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(75)) });
 
 		valueLabel = new Label();
 		valueLabel.SetText("-");
-		valueLabel.FontSize = 12;
+		valueLabel.FontSize.Value = 12;
 		row.AddView(valueLabel, new FlexLayout.LayoutParams() { Grow = 1 });
 
 		parent.AddView(row, new FlexLayout.LayoutParams() { Width = .Match });
@@ -326,48 +326,48 @@ class ModelViewerApp : Application
 		// Scale label + slider + value
 		let scaleTitle = new Label();
 		scaleTitle.SetText("Scale:");
-		scaleTitle.FontSize = 12;
+		scaleTitle.FontSize.Value = 12;
 		bar.AddView(scaleTitle, new FlexLayout.LayoutParams() { Gravity = .CenterV });
 
 		let scaleSlider = new Slider();
-		scaleSlider.Min = 0.1f;
-		scaleSlider.Max = 10.0f;
-		scaleSlider.Value = tab.ModelScale;
-		scaleSlider.Step = 0.1f;
+		scaleSlider.Min.Value = 0.1f;
+		scaleSlider.Max.Value = 10.0f;
+		scaleSlider.Value.Value = tab.ModelScale;
+		scaleSlider.Step.Value = 0.1f;
 		scaleSlider.OnValueChanged.Add(new (s, v) => OnScaleChanged(v));
 		bar.AddView(scaleSlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(120)), Gravity = .CenterV });
 
 		let scaleLabel = new Label();
 		scaleLabel.SetText("1.0x");
-		scaleLabel.FontSize = 12;
+		scaleLabel.FontSize.Value = 12;
 		bar.AddView(scaleLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(40)), Gravity = .CenterV });
 		tab.ScaleValueLabel = scaleLabel;
 
 		// Exposure slider
 		let expTitle = new Label();
 		expTitle.SetText("Exp:");
-		expTitle.FontSize = 12;
+		expTitle.FontSize.Value = 12;
 		bar.AddView(expTitle, new FlexLayout.LayoutParams() { Gravity = .CenterV });
 
 		let expSlider = new Slider();
-		expSlider.Min = 0.1f;
-		expSlider.Max = 3.0f;
-		expSlider.Value = tab.Exposure;
-		expSlider.Step = 0.1f;
+		expSlider.Min.Value = 0.1f;
+		expSlider.Max.Value = 3.0f;
+		expSlider.Value.Value = tab.Exposure;
+		expSlider.Step.Value = 0.1f;
 		expSlider.OnValueChanged.Add(new (s, v) => OnExposureChanged(v));
 		bar.AddView(expSlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(80)), Gravity = .CenterV });
 
 		// Ambient slider
 		let ambTitle = new Label();
 		ambTitle.SetText("Amb:");
-		ambTitle.FontSize = 12;
+		ambTitle.FontSize.Value = 12;
 		bar.AddView(ambTitle, new FlexLayout.LayoutParams() { Gravity = .CenterV });
 
 		let ambSlider = new Slider();
-		ambSlider.Min = 0.0f;
-		ambSlider.Max = 1.0f;
-		ambSlider.Value = tab.AmbientIntensity;
-		ambSlider.Step = 0.05f;
+		ambSlider.Min.Value = 0.0f;
+		ambSlider.Max.Value = 1.0f;
+		ambSlider.Value.Value = tab.AmbientIntensity;
+		ambSlider.Step.Value = 0.05f;
 		ambSlider.OnValueChanged.Add(new (s, v) => OnAmbientChanged(v));
 		bar.AddView(ambSlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(80)), Gravity = .CenterV });
 
@@ -384,7 +384,7 @@ class ModelViewerApp : Application
 		// Animation clip selector
 		let animLabel = new Label();
 		animLabel.SetText("Animation:");
-		animLabel.FontSize = 12;
+		animLabel.FontSize.Value = 12;
 		bar.AddView(animLabel, new FlexLayout.LayoutParams() { Gravity = .CenterV });
 
 		let comboBox = new ComboBox();

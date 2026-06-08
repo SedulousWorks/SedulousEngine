@@ -2,9 +2,9 @@ FileVersion = 1
 
 [Project]
 Name = "Sedulous.UI.Shell"
-TargetType = "BeefLib"
 
 [Dependencies]
 corlib = "*"
 "Sedulous.UI" = "*"
 "Sedulous.Shell" = "*"
+corlib = "*"

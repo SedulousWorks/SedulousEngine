@@ -85,14 +85,6 @@ class ComboBoxTests
 	}
 
 	[Test]
-	public static void HasStyleId()
-	{
-		let cb = scope ComboBox();
-		Test.Assert(cb.StyleId != null);
-		Test.Assert(StringView(cb.StyleId) == "combobox");
-	}
-
-	[Test]
 	public static void IsFocusable()
 	{
 		let cb = scope ComboBox();

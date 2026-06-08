@@ -68,7 +68,6 @@ class GridContentView : ViewGroup, IListAdapterObserver
 
 	public this()
 	{
-		StyleId = new String("gridcontentview");
 		ClipsContent = true;
 		IsFocusable = true;
 

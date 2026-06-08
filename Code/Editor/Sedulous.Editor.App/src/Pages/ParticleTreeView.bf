@@ -121,8 +121,8 @@ class ParticleTreeView : ViewGroup, IDragSource, IDropTarget
 	public View CreateDragVisual(DragData data)
 	{
 		let label = new Label();
-		label.FontSize = 12;
-		label.TextColor = .(200, 200, 210, 220);
+		label.FontSize.Value = 12;
+		label.TextColor.Value = .(200, 200, 210, 220);
 		if (let drag = data as ParticleNodeDragData)
 		{
 			let target = mAdapter?.GetNodeTarget(drag.SourceNodeId);

@@ -44,10 +44,9 @@ class LogView : ViewGroup
 
 	public this()
 	{
-		StyleId = new String("logview");
 		mAdapter = new LogAdapter(this);
 		mListView = new ListView();
-		mListView.ItemHeight = mItemHeight;
+		mListView.ItemHeight.Value = mItemHeight;
 		mListView.Adapter = mAdapter;
 		AddView(mListView);
 	}
@@ -203,8 +202,8 @@ class LogView : ViewGroup
 
 			// Message text
 			let label = new Label();
-			label.FontSize = mOwner.mFontSize;
-			label.VAlign = .Middle;
+			label.FontSize.Value = mOwner.mFontSize;
+			label.VAlign.Value = .Middle;
 			row.AddView(label, new FlexLayout.LayoutParams() {
 				Height = .Match, Grow = 1
 			});

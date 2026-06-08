@@ -104,7 +104,7 @@ class SkinnedMeshEditorPageFactory : IEditorPageFactory
 		{
 			let errorLabel = new Label();
 			errorLabel.SetText("Failed to load skinned mesh");
-			errorLabel.TextColor = .(220, 100, 100, 255);
+			errorLabel.TextColor.Value = .(220, 100, 100, 255);
 			infoPanel.AddView(errorLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });
 		}
 
@@ -116,14 +116,14 @@ class SkinnedMeshEditorPageFactory : IEditorPageFactory
 		let clipRow = new FlexLayout() { Direction = .Horizontal, Spacing = 4 };
 		let clipLabel = new Label();
 		clipLabel.SetText("Clip:");
-		clipLabel.TextColor = .(180, 180, 195, 255);
-		clipLabel.FontSize = 11;
+		clipLabel.TextColor.Value = .(180, 180, 195, 255);
+		clipLabel.FontSize.Value = 11;
 		clipRow.AddView(clipLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(64)), Height = .Match });
 
 		let clipPathLabel = new Label();
 		clipPathLabel.SetText("(none)");
-		clipPathLabel.TextColor = .(220, 220, 230, 255);
-		clipPathLabel.FontSize = 11;
+		clipPathLabel.TextColor.Value = .(220, 220, 230, 255);
+		clipPathLabel.FontSize.Value = 11;
 		clipRow.AddView(clipPathLabel, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
 
 		let pickClipBtn = new Button("Pick");
@@ -146,14 +146,14 @@ class SkinnedMeshEditorPageFactory : IEditorPageFactory
 		let skelRow = new FlexLayout() { Direction = .Horizontal, Spacing = 4 };
 		let skelLabel = new Label();
 		skelLabel.SetText("Skeleton:");
-		skelLabel.TextColor = .(180, 180, 195, 255);
-		skelLabel.FontSize = 11;
+		skelLabel.TextColor.Value = .(180, 180, 195, 255);
+		skelLabel.FontSize.Value = 11;
 		skelRow.AddView(skelLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(64)), Height = .Match });
 
 		let skelPathLabel = new Label();
 		skelPathLabel.SetText("(none)");
-		skelPathLabel.TextColor = .(220, 220, 230, 255);
-		skelPathLabel.FontSize = 11;
+		skelPathLabel.TextColor.Value = .(220, 220, 230, 255);
+		skelPathLabel.FontSize.Value = 11;
 		skelRow.AddView(skelPathLabel, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
 
 		let pickSkelBtn = new Button("Pick");
@@ -194,14 +194,14 @@ class SkinnedMeshEditorPageFactory : IEditorPageFactory
 				let row = new FlexLayout() { Direction = .Horizontal, Spacing = 4 };
 				let label = new Label();
 				label.SetText(scope $"Mat {slot}:");
-				label.TextColor = .(180, 180, 195, 255);
-				label.FontSize = 11;
+				label.TextColor.Value = .(180, 180, 195, 255);
+				label.FontSize.Value = 11;
 				row.AddView(label, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(64)), Height = .Match });
 
 				let pathLabel = new Label();
 				pathLabel.SetText("(none)");
-				pathLabel.TextColor = .(220, 220, 230, 255);
-				pathLabel.FontSize = 11;
+				pathLabel.TextColor.Value = .(220, 220, 230, 255);
+				pathLabel.FontSize.Value = 11;
 				row.AddView(pathLabel, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
 
 				let slotCopy = slot;

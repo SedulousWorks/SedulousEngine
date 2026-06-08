@@ -87,7 +87,7 @@ class SkeletonEditorPageFactory : IEditorPageFactory
 			// Compact bone list (first ~30 entries).
 			let listLabel = new Label();
 			listLabel.SetText("Bones:");
-			listLabel.TextColor = .(180, 180, 195, 255);
+			listLabel.TextColor.Value = .(180, 180, 195, 255);
 			infoPanel.AddView(listLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });
 
 			let maxList = Math.Min(30, skeleton.BoneCount);
@@ -97,16 +97,16 @@ class SkeletonEditorPageFactory : IEditorPageFactory
 				if (bone == null) continue;
 				let row = new Label();
 				row.SetText(scope $"  [{i}] {bone.Name}");
-				row.TextColor = .(200, 200, 210, 255);
-				row.FontSize = 11;
+				row.TextColor.Value = .(200, 200, 210, 255);
+				row.FontSize.Value = 11;
 				infoPanel.AddView(row, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(16)) });
 			}
 			if (skeleton.BoneCount > maxList)
 			{
 				let more = new Label();
 				more.SetText(scope $"  ... +{skeleton.BoneCount - maxList} more");
-				more.TextColor = .(140, 140, 155, 255);
-				more.FontSize = 11;
+				more.TextColor.Value = .(140, 140, 155, 255);
+				more.FontSize.Value = 11;
 				infoPanel.AddView(more, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(16)) });
 			}
 		}

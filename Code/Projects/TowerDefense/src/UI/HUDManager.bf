@@ -88,8 +88,8 @@ class HUDManager
 		if (let coinIcon = SVGDrawable.FromString(sCoinSVG))
 			goldGroup.AddView(new DrawableView(coinIcon, 20, 20, ownsDrawable: true));
 		mGoldLabel = new Label();
-		mGoldLabel.FontSize = 16;
-		mGoldLabel.TextColor = .(255, 220, 50, 255);
+		mGoldLabel.FontSize.Value = 16;
+		mGoldLabel.TextColor.Value = .(255, 220, 50, 255);
 		goldGroup.AddView(mGoldLabel);
 		topLayout.AddView(goldGroup);
 
@@ -98,8 +98,8 @@ class HUDManager
 		if (let heartIcon = SVGDrawable.FromString(sHeartSVG))
 			livesGroup.AddView(new DrawableView(heartIcon, 20, 20, ownsDrawable: true));
 		mLivesLabel = new Label();
-		mLivesLabel.FontSize = 16;
-		mLivesLabel.TextColor = .(255, 80, 80, 255);
+		mLivesLabel.FontSize.Value = 16;
+		mLivesLabel.TextColor.Value = .(255, 80, 80, 255);
 		livesGroup.AddView(mLivesLabel);
 		topLayout.AddView(livesGroup);
 
@@ -108,20 +108,20 @@ class HUDManager
 		if (let waveIcon = SVGDrawable.FromString(sWaveSVG))
 			waveGroup.AddView(new DrawableView(waveIcon, 20, 20, ownsDrawable: true));
 		mWaveLabel = new Label();
-		mWaveLabel.FontSize = 16;
-		mWaveLabel.TextColor = .(150, 180, 255, 255);
+		mWaveLabel.FontSize.Value = 16;
+		mWaveLabel.TextColor.Value = .(150, 180, 255, 255);
 		waveGroup.AddView(mWaveLabel);
 		topLayout.AddView(waveGroup);
 
 		mStatusLabel = new Label();
-		mStatusLabel.FontSize = 14;
-		mStatusLabel.TextColor = .(180, 180, 180, 255);
-		mStatusLabel.HAlign = .Right;
+		mStatusLabel.FontSize.Value = 14;
+		mStatusLabel.TextColor.Value = .(180, 180, 180, 255);
+		mStatusLabel.HAlign.Value = .Right;
 		topLayout.AddView(mStatusLabel, new FlexLayout.LayoutParams() { Grow = 1 });
 
 		// Start Wave button
 		mStartWaveBtn = new Button("Start Wave");
-		mStartWaveBtn.FontSize = 12;
+		mStartWaveBtn.FontSize.Value = 12;
 		mStartWaveBtn.Background = new ColorDrawable(.(40, 120, 60, 255));
 		mStartWaveBtn.OnClick.Add(new (btn) => { if (StartWaveCallback != null) StartWaveCallback(); });
 		topLayout.AddView(mStartWaveBtn);
@@ -129,18 +129,18 @@ class HUDManager
 		// Speed controls
 		let speedGroup = new FlexLayout() { Direction = .Horizontal, Spacing = 2, AlignItems = .Center };
 		mSpeed1Btn = new Button("1x");
-		mSpeed1Btn.FontSize = 11;
+		mSpeed1Btn.FontSize.Value = 11;
 		mSpeed1Btn.Background = new ColorDrawable(.(80, 140, 200, 255)); // active by default
 		mSpeed1Btn.OnClick.Add(new (btn) => SetSpeed(1.0f));
 		speedGroup.AddView(mSpeed1Btn);
 
 		mSpeed2Btn = new Button("2x");
-		mSpeed2Btn.FontSize = 11;
+		mSpeed2Btn.FontSize.Value = 11;
 		mSpeed2Btn.OnClick.Add(new (btn) => SetSpeed(2.0f));
 		speedGroup.AddView(mSpeed2Btn);
 
 		mSpeed3Btn = new Button("3x");
-		mSpeed3Btn.FontSize = 11;
+		mSpeed3Btn.FontSize.Value = 11;
 		mSpeed3Btn.OnClick.Add(new (btn) => SetSpeed(3.0f));
 		speedGroup.AddView(mSpeed3Btn);
 
@@ -165,10 +165,10 @@ class HUDManager
 		AddTowerButton(bottomLayout, .Turret, "Turret", placement, previewDir);
 
 		let infoLabel = new Label("Click to place | RMB cancel | Space = wave");
-		infoLabel.FontSize = 12;
-		infoLabel.TextColor = .(150, 150, 150, 255);
-		infoLabel.HAlign = .Right;
-		infoLabel.VAlign = .Middle;
+		infoLabel.FontSize.Value = 12;
+		infoLabel.TextColor.Value = .(150, 150, 150, 255);
+		infoLabel.HAlign.Value = .Right;
+		infoLabel.VAlign.Value = .Middle;
 		bottomLayout.AddView(infoLabel, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
 
 		mRoot.AddView(bottomBar, new DockLayout.LayoutParams(.Bottom) { Height = .Fixed(.Px(60)) });
@@ -257,7 +257,7 @@ class HUDManager
 		if (previewImage != null)
 		{
 			let imgView = new ImageView(previewImage);
-			imgView.ScaleType = .FitCenter;
+			imgView.ScaleType.Value = .FitCenter;
 			content.AddView(imgView, new FlexLayout.LayoutParams() {
 				Width = .Fixed(.Px(36)), Height = .Fixed(.Px(36))
 			});
@@ -268,14 +268,14 @@ class HUDManager
 		textCol.Spacing = 1;
 
 		let nameLabel = new Label(name);
-		nameLabel.FontSize = 12;
+		nameLabel.FontSize.Value = 12;
 		textCol.AddView(nameLabel);
 
 		let costText = scope String();
 		costText.AppendF("${}", cost);
 		let costLabel = new Label(costText);
-		costLabel.FontSize = 10;
-		costLabel.TextColor = .(255, 220, 50, 200);
+		costLabel.FontSize.Value = 10;
+		costLabel.TextColor.Value = .(255, 220, 50, 200);
 		textCol.AddView(costLabel);
 
 		content.AddView(textCol);

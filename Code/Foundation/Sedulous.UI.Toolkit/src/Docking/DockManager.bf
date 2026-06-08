@@ -28,7 +28,6 @@ public class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 
 	public this()
 	{
-		StyleId = new String("dockmanager");
 		mZoneIndicator = new DockZoneIndicator();
 		mZoneIndicator.Visibility = .Gone;
 	}

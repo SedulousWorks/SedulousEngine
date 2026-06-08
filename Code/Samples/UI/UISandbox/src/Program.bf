@@ -1,9 +1,7 @@
-namespace UISandbox;
-
 using System;
-using Sedulous.Runtime.Client;
 using Sedulous.Images.STB;
 using Sedulous.Images.SDL;
+namespace UISandbox;
 
 class Program
 {

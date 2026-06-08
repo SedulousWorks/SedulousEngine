@@ -6,7 +6,7 @@ using Sedulous.Core.Mathematics;
 
 /// Base class for all UI2 views. A view is a rectangular element that can
 /// measure itself, be positioned by a parent, and draw itself.
-public abstract class View
+public abstract class View : IPropertyOwner
 {
 	// === Identity ===
 
@@ -16,8 +16,9 @@ public abstract class View
 	/// Optional debug/lookup name.
 	public String Name;
 
-	/// Style class for stylesheet matching (e.g., "primary", "toolbar-btn").
-	public String StyleId;
+	/// Style classes for stylesheet matching (CSS class equivalent).
+	/// Multiple classes allowed. Use AddClass/RemoveClass/HasClass helpers.
+	public List<String> StyleClasses = new .() ~ DeleteContainerAndItems!(_);
 
 	// === Layout state ===
 
@@ -65,6 +66,19 @@ public abstract class View
 
 	/// Whether child content is clipped to this view's bounds during drawing.
 	public bool ClipsContent = false;
+
+	// === Directional focus ===
+
+	/// Explicit override for directional focus navigation. When set,
+	/// FocusManager.MoveFocus uses this instead of the spatial picker.
+	public ViewId? NextFocusUp;
+	public ViewId? NextFocusDown;
+	public ViewId? NextFocusLeft;
+	public ViewId? NextFocusRight;
+
+	/// When true, arrow keys go to this view's OnKeyDown instead of
+	/// moving directional focus. EditText and NumericField override to true.
+	public bool WantsArrowKeys;
 
 	/// Set by MutationQueue.QueueDelete to prevent double-delete.
 	public bool IsPendingDeletion;
@@ -215,6 +229,15 @@ public abstract class View
 			Context.MarkNeedsRedraw();
 	}
 
+	/// IPropertyOwner: called when a Property<T> value changes.
+	public virtual void OnPropertyChanged(InvalidationKind kind)
+	{
+		if (kind == .Layout)
+			Invalidate(); // TODO: separate layout invalidation when supported
+		else
+			Invalidate();
+	}
+
 	/// Whether this view needs to be redrawn.
 	public bool NeedsRedraw => mNeedsRedraw;
 
@@ -257,10 +280,11 @@ public abstract class View
 	/// Override in controls with additional states (e.g., Button adds Pressed).
 	public virtual ControlState GetControlState()
 	{
-		if (!IsEffectivelyEnabled) return .Disabled;
-		if (IsFocused) return .Focused;
-		if (IsHovered) return .Hover;
-		return .Normal;
+		var state = ControlState.Normal;
+		if (!IsEffectivelyEnabled) state |= .Disabled;
+		if (IsFocused) state |= .Focused;
+		if (IsHovered) state |= .Hover;
+		return state;
 	}
 
 	// === Style resolution helpers ===
@@ -304,6 +328,38 @@ public abstract class View
 		let sheet = Context?.StyleSheet;
 		if (sheet == null) return null;
 		return sheet.ResolveDrawable(this, prop);
+	}
+
+	// === Pseudo-element (part) style resolution ===
+
+	/// Resolve a style property for a named sub-part of this control.
+	/// partState is the part's interaction state (e.g., thumb hovered).
+	public StyleValue ResolvePartStyle(StringView part, StyleProperty prop, ControlState partState)
+	{
+		let sheet = Context?.StyleSheet;
+		if (sheet == null) return .None;
+		return sheet.ResolvePart(this, part, prop, partState);
+	}
+
+	public Drawable ResolvePartDrawable(StringView part, StyleProperty prop, ControlState partState)
+	{
+		let sheet = Context?.StyleSheet;
+		if (sheet == null) return null;
+		return sheet.ResolvePartDrawable(this, part, prop, partState);
+	}
+
+	public Color ResolvePartColor(StringView part, StyleProperty prop, ControlState partState, Color defaultVal = .White)
+	{
+		let sheet = Context?.StyleSheet;
+		if (sheet == null) return defaultVal;
+		return sheet.ResolvePartColor(this, part, prop, partState, defaultVal);
+	}
+
+	public float ResolvePartFloat(StringView part, StyleProperty prop, ControlState partState, float defaultVal = 0)
+	{
+		let sheet = Context?.StyleSheet;
+		if (sheet == null) return defaultVal;
+		return sheet.ResolvePartFloat(this, part, prop, partState, defaultVal);
 	}
 
 	// === Hit testing ===
@@ -366,7 +422,7 @@ public abstract class View
 		}
 	}
 
-	// === Input events ===
+	// === Input events (bubble phase — default) ===
 
 	public virtual void OnMouseDown(MouseEventArgs e) { }
 	public virtual void OnMouseUp(MouseEventArgs e) { }
@@ -379,6 +435,32 @@ public abstract class View
 	public virtual void OnTextInput(TextInputEventArgs e) { }
 	public virtual void OnFocusGained() { }
 	public virtual void OnFocusLost() { }
+
+	// === Input events (capture phase) ===
+	// Called during the capture walk (root -> target) before the event
+	// reaches the target. Set e.Handled = true to prevent the event
+	// from reaching the target or the bubble phase.
+
+	public virtual void OnMouseDownCapture(MouseEventArgs e) { }
+	public virtual void OnMouseUpCapture(MouseEventArgs e) { }
+	public virtual void OnMouseMoveCapture(MouseEventArgs e) { }
+	public virtual void OnMouseWheelCapture(MouseWheelEventArgs e) { }
+	public virtual void OnKeyDownCapture(KeyEventArgs e) { }
+	public virtual void OnKeyUpCapture(KeyEventArgs e) { }
+	public virtual void OnTextInputCapture(TextInputEventArgs e) { }
+
+	// === Gamepad / directional activation ===
+
+	/// Called when the view is activated (Gamepad A / Enter on focused view).
+	/// ButtonBase overrides to fire OnClick.
+	public virtual void OnActivate() { }
+
+	/// Called when cancel is pressed (Gamepad B / Escape on focused view).
+	/// Default: bubbles to parent.
+	public virtual void OnCancel()
+	{
+		Parent?.OnCancel();
+	}
 
 	// === Deferred mutation convenience ===
 
@@ -431,12 +513,52 @@ public abstract class View
 		}
 	}
 
+	// === Style class helpers ===
+
+	public void AddClass(StringView name)
+	{
+		for (let cls in StyleClasses)
+			if (StringView(cls) == name)
+				return;
+		StyleClasses.Add(new String(name));
+		Invalidate();
+	}
+
+	public void RemoveClass(StringView name)
+	{
+		for (int i = 0; i < StyleClasses.Count; i++)
+		{
+			if (StringView(StyleClasses[i]) == name)
+			{
+				delete StyleClasses[i];
+				StyleClasses.RemoveAt(i);
+				Invalidate();
+				return;
+			}
+		}
+	}
+
+	public bool HasClass(StringView name)
+	{
+		for (let cls in StyleClasses)
+			if (StringView(cls) == name)
+				return true;
+		return false;
+	}
+
+	public void ToggleClass(StringView name)
+	{
+		if (HasClass(name))
+			RemoveClass(name);
+		else
+			AddClass(name);
+	}
+
 	// === Destructor ===
 
 	public ~this()
 	{
 		delete Name;
-		delete StyleId;
 		delete TooltipText;
 		delete LayoutParams;
 

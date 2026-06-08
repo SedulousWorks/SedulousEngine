@@ -6,19 +6,27 @@ using System;
 /// Horizontal or vertical divider line.
 public class Separator : View
 {
-	public Orientation Orientation = .Horizontal;
-	public float SeparatorThickness = 1;
+	public Property<Orientation> Orientation = new .(.Horizontal) ~ delete _;
+	public Property<float> SeparatorThickness = new .(1) ~ delete _;
 
-	public this() { StyleId = new String("separator"); }
-	public this(Orientation orientation) : this() { Orientation = orientation; }
+	public this()
+	{
+		Orientation.SetOwner(this);
+		SeparatorThickness.SetOwner(this);
+	}
+
+	public this(Orientation orientation) : this()
+	{
+		Orientation.SetSilent(orientation);
+	}
 
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
-		if (Orientation == .Horizontal)
+		if (Orientation.Value == .Horizontal)
 			MeasuredSize = .(constraints.ConstrainWidth(constraints.MaxWidth),
-				constraints.ConstrainHeight(SeparatorThickness));
+				constraints.ConstrainHeight(SeparatorThickness.Value));
 		else
-			MeasuredSize = .(constraints.ConstrainWidth(SeparatorThickness),
+			MeasuredSize = .(constraints.ConstrainWidth(SeparatorThickness.Value),
 				constraints.ConstrainHeight(constraints.MaxHeight));
 	}
 

@@ -3,11 +3,11 @@ FileVersion = 1
 [Project]
 Name = "Sedulous.UI.Tests"
 TargetType = "BeefTest"
-StartupObject = "Sedulous.UI.Tests.Program"
 
 [Dependencies]
 corlib = "*"
 "Sedulous.UI" = "*"
 "Sedulous.Core.Mathematics" = "*"
 "Sedulous.Images" = "*"
+corlib = "*"
 "Sedulous.UI.Toolkit" = "*"

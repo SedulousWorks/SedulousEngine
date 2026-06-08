@@ -140,6 +140,143 @@ public class FocusManager
 	}
 
 	// =================================================================
+	// Directional focus navigation
+	// =================================================================
+
+	/// Move focus in the given direction using the spatial picker.
+	/// Checks explicit NextFocus overrides first, then uses distance-based
+	/// scoring (Android FocusFinder-style).
+	/// Returns true if focus moved to a new view.
+	public bool MoveFocus(FocusDirection direction)
+	{
+		let focused = FocusedView;
+		if (focused == null) return false;
+
+		// Check explicit override first
+		ViewId? explicitId = null;
+		switch (direction)
+		{
+		case .Up:    explicitId = focused.NextFocusUp;
+		case .Down:  explicitId = focused.NextFocusDown;
+		case .Left:  explicitId = focused.NextFocusLeft;
+		case .Right: explicitId = focused.NextFocusRight;
+		}
+
+		if (explicitId.HasValue && explicitId.Value.IsValid)
+		{
+			let target = mContext.GetViewById(explicitId.Value);
+			if (target != null && target.IsFocusable && target.IsEffectivelyEnabled)
+			{
+				SetFocus(target);
+				return true;
+			}
+		}
+
+		// Spatial picker: find the best candidate in the given direction
+		let focusables = scope List<View>();
+		CollectFocusable(GetFocusRoot(), focusables);
+		if (focusables.Count <= 1) return false;
+
+		// If the focused view is a container, check if we should descend
+		// into it (focus the first/last child in the direction).
+		if (let group = focused as ViewGroup)
+		{
+			let childFocusables = scope List<View>();
+			CollectFocusable(group, childFocusables);
+			if (childFocusables.Count > 0)
+			{
+				SortByTabIndex(childFocusables);
+				switch (direction)
+				{
+				case .Down, .Right:
+					SetFocus(childFocusables[0]); // first child
+					return true;
+				case .Up, .Left:
+					SetFocus(childFocusables[childFocusables.Count - 1]); // last child
+					return true;
+				}
+			}
+		}
+
+		let focusedScreen = focused.LocalToScreen(.(0, 0));
+		let focusedCX = focusedScreen.X + focused.Width * 0.5f;
+		let focusedCY = focusedScreen.Y + focused.Height * 0.5f;
+
+		View bestCandidate = null;
+		float bestScore = float.MaxValue;
+
+		for (let candidate in focusables)
+		{
+			if (candidate.Id == focused.Id) continue;
+
+			// Skip candidates that are descendants of the focused view —
+			// those were handled by the "descend into container" logic above.
+			if (IsDescendantOf(candidate, focused)) continue;
+
+			let candidateScreen = candidate.LocalToScreen(.(0, 0));
+			let candidateCX = candidateScreen.X + candidate.Width * 0.5f;
+			let candidateCY = candidateScreen.Y + candidate.Height * 0.5f;
+
+			let dx = candidateCX - focusedCX;
+			let dy = candidateCY - focusedCY;
+
+			bool inDirection = false;
+			float axialDist = 0;
+			float perpDist = 0;
+
+			switch (direction)
+			{
+			case .Up:
+				inDirection = dy < 0;
+				axialDist = Math.Abs(dy);
+				perpDist = Math.Abs(dx);
+			case .Down:
+				inDirection = dy > 0;
+				axialDist = Math.Abs(dy);
+				perpDist = Math.Abs(dx);
+			case .Left:
+				inDirection = dx < 0;
+				axialDist = Math.Abs(dx);
+				perpDist = Math.Abs(dy);
+			case .Right:
+				inDirection = dx > 0;
+				axialDist = Math.Abs(dx);
+				perpDist = Math.Abs(dy);
+			}
+
+			if (!inDirection) continue;
+
+			// Score: axial distance + perpendicular penalty (weighted)
+			let score = axialDist + perpDist * 2.0f;
+			if (score < bestScore)
+			{
+				bestScore = score;
+				bestCandidate = candidate;
+			}
+		}
+
+		if (bestCandidate != null)
+		{
+			SetFocus(bestCandidate);
+			return true;
+		}
+
+		return false;
+	}
+
+	/// Check if a view is a descendant of an ancestor.
+	private static bool IsDescendantOf(View view, View ancestor)
+	{
+		var v = view.Parent;
+		while (v != null)
+		{
+			if (v === ancestor) return true;
+			v = v.Parent;
+		}
+		return false;
+	}
+
+	// =================================================================
 	// Deletion safety
 	// =================================================================
 
@@ -171,8 +308,8 @@ public class FocusManager
 
 	private void SortByTabIndex(List<View> list)
 	{
-		// TabIndex > 0 sorted by value first, then TabIndex == 0 in tree order
-		// (tree order is already the order CollectFocusable produced).
+		// TabIndex > 0 sorted by value first, then TabIndex == 0 sorted
+		// by spatial position (top-to-bottom, left-to-right).
 		list.Sort(scope (a, b) =>
 		{
 			let aIdx = a.TabIndex;
@@ -180,7 +317,17 @@ public class FocusManager
 			if (aIdx > 0 && bIdx > 0) return aIdx <=> bIdx;
 			if (aIdx > 0 && bIdx == 0) return -1; // explicit before natural
 			if (aIdx == 0 && bIdx > 0) return 1;
-			return 0; // both 0 -> preserve tree order
+
+			// Both TabIndex == 0: sort by screen position (top-to-bottom, left-to-right)
+			let aScreen = a.LocalToScreen(.(0, 0));
+			let bScreen = b.LocalToScreen(.(0, 0));
+			let yDiff = aScreen.Y - bScreen.Y;
+			if (Math.Abs(yDiff) > 1.0f)
+				return (yDiff < 0) ? -1 : 1;
+			let xDiff = aScreen.X - bScreen.X;
+			if (Math.Abs(xDiff) > 1.0f)
+				return (xDiff < 0) ? -1 : 1;
+			return 0;
 		});
 	}
 

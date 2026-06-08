@@ -108,9 +108,9 @@ class ParticleEditorPageFactory : IEditorPageFactory
 		headerPanel.Background = new ColorDrawable(.(33, 33, 39, 255));
 		let header = new Label();
 		header.SetText("Effect");
-		header.FontSize = 12;
-		header.VAlign = .Middle;
-		header.HAlign = .Left;
+		header.FontSize.Value = 12;
+		header.VAlign.Value = .Middle;
+		header.HAlign.Value = .Left;
 		headerPanel.AddView(header);
 		column.AddView(headerPanel, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Fixed(.Px(24))
@@ -186,8 +186,8 @@ class ParticleEditorPageFactory : IEditorPageFactory
 		let systemCount = fxRes?.Effect?.Systems.Length ?? 0;
 		let systemsLabel = new Label();
 		systemsLabel.SetText(scope $"Systems: {systemCount}");
-		systemsLabel.FontSize = 11;
-		systemsLabel.VAlign = .Middle;
+		systemsLabel.FontSize.Value = 11;
+		systemsLabel.VAlign.Value = .Middle;
 		header.AddView(systemsLabel, new FlexLayout.LayoutParams() {
 			Grow = 1, Height = .Match
 		});

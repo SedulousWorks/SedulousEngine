@@ -35,7 +35,7 @@ class CameraPreviewPanel : Panel
 
 	public Event<delegate void()> OnRequestClose ~ _.Dispose();
 
-	public bool Pinned => mPinBtn?.IsChecked ?? false;
+	public bool Pinned => mPinBtn != null ? mPinBtn.IsChecked.Value : false;
 	public EntityHandle CameraEntity => mCameraEntity;
 
 	/// Stable, per-panel viewport key for ISceneRenderer.AcquirePipeline.
@@ -88,9 +88,9 @@ class CameraPreviewPanel : Panel
 
 		mTitleLabel = new Label();
 		mTitleLabel.SetText("Camera");
-		mTitleLabel.FontSize = 11;
-		mTitleLabel.VAlign = .Middle;
-		mTitleLabel.TextColor = .(220, 220, 230, 255);
+		mTitleLabel.FontSize.Value = 11;
+		mTitleLabel.VAlign.Value = .Middle;
+		mTitleLabel.TextColor.Value = .(220, 220, 230, 255);
 		header.AddView(mTitleLabel, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
 
 		mPinBtn = new ToggleButton("Pin");

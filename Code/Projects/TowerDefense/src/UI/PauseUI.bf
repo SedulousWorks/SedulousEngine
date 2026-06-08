@@ -34,16 +34,16 @@ class PauseUI
 
 		// Title
 		let title = new Label("PAUSED");
-		title.FontSize = 28;
-		title.TextColor = .(220, 230, 240, 255);
-		title.HAlign = .Center;
+		title.FontSize.Value = 28;
+		title.TextColor.Value = .(220, 230, 240, 255);
+		title.HAlign.Value = .Center;
 		content.AddView(title);
 
 		content.AddView(new Spacer(0, 12));
 
 		// Resume button
 		let resumeBtn = new Button("Resume");
-		resumeBtn.FontSize = 16;
+		resumeBtn.FontSize.Value = 16;
 		resumeBtn.Background = new ColorDrawable(.(40, 120, 60, 255));
 		resumeBtn.OnClick.Add(new (btn) =>
 			{
@@ -53,7 +53,7 @@ class PauseUI
 
 		// Main Menu button
 		let menuBtn = new Button("Main Menu");
-		menuBtn.FontSize = 16;
+		menuBtn.FontSize.Value = 16;
 		menuBtn.Background = new ColorDrawable(.(120, 50, 50, 255));
 		menuBtn.OnClick.Add(new (btn) =>
 			{

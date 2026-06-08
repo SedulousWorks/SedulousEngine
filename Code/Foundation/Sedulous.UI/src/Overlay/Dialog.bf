@@ -14,13 +14,13 @@ public class Dialog : ViewGroup
 	public Event<delegate void(Dialog, DialogResult)> OnClosed ~ _.Dispose();
 
 	/// Minimum dialog width.
-	public float MinWidth = 250;
+	public Property<float> MinWidth = new .(250) ~ delete _;
 	/// Minimum dialog height.
-	public float MinHeight = 120;
+	public Property<float> MinHeight = new .(120) ~ delete _;
 	/// Maximum dialog width. Clamped to 80% of viewport if larger.
-	public float MaxWidth = 400;
+	public Property<float> MaxWidth = new .(400) ~ delete _;
 	/// Maximum dialog height. Clamped to 80% of viewport if larger.
-	public float MaxHeight = 300;
+	public Property<float> MaxHeight = new .(300) ~ delete _;
 
 	private FlexLayout mLayout ~ delete _;
 	private Label mTitleLabel;
@@ -30,7 +30,10 @@ public class Dialog : ViewGroup
 	public this(StringView title)
 	{
 		ClipsContent = true;
-		StyleId = new String("dialog");
+		MinWidth.SetOwner(this);
+		MinHeight.SetOwner(this);
+		MaxWidth.SetOwner(this);
+		MaxHeight.SetOwner(this);
 		Title = new String(title);
 
 		mLayout = new FlexLayout();
@@ -101,9 +104,9 @@ public class Dialog : ViewGroup
 		let dpi = Math.Max(root.DpiScale, 0.01f);
 		let viewportW = root.ViewportSize.X / dpi;
 		let viewportH = root.ViewportSize.Y / dpi;
-		let maxW = Math.Min(MaxWidth, viewportW * 0.8f);
-		let maxH = Math.Min(MaxHeight, viewportH * 0.8f);
-		Measure(BoxConstraints(MinWidth, maxW, MinHeight, maxH));
+		let maxW = Math.Min(MaxWidth.Value, viewportW * 0.8f);
+		let maxH = Math.Min(MaxHeight.Value, viewportH * 0.8f);
+		Measure(BoxConstraints(MinWidth.Value, maxW, MinHeight.Value, maxH));
 
 		let finalW = MeasuredSize.X;
 		let finalH = MeasuredSize.Y;
@@ -138,10 +141,10 @@ public class Dialog : ViewGroup
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
 		// Apply Dialog's own min/max, then intersect with input constraints.
-		let effMinW = Math.Max(MinWidth, constraints.MinWidth);
-		let effMaxW = Math.Min(MaxWidth > 0 ? MaxWidth : float.MaxValue, constraints.MaxWidth);
-		let effMinH = Math.Max(MinHeight, constraints.MinHeight);
-		let effMaxH = Math.Min(MaxHeight > 0 ? MaxHeight : float.MaxValue, constraints.MaxHeight);
+		let effMinW = Math.Max(MinWidth.Value, constraints.MinWidth);
+		let effMaxW = Math.Min(MaxWidth.Value > 0 ? MaxWidth.Value : float.MaxValue, constraints.MaxWidth);
+		let effMinH = Math.Max(MinHeight.Value, constraints.MinHeight);
+		let effMaxH = Math.Min(MaxHeight.Value > 0 ? MaxHeight.Value : float.MaxValue, constraints.MaxHeight);
 
 		// First pass: measure with unconstrained height so simple content
 		// (text labels) wraps to its natural size.

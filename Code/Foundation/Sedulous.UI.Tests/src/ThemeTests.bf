@@ -99,11 +99,10 @@ class ThemeTests
 		ctx.StyleSheet = sheet;
 		sheet.ReleaseRef();
 
-		let view = new TestView();
-		view.StyleId = new String("button");
+		let view = new Button("Test");
 		root.AddView(view);
 
-		// Button should have a background drawable
+		// Button should have a background drawable (matched by type)
 		let bg = view.ResolveStyleDrawable(.Background);
 		Test.Assert(bg != null);
 

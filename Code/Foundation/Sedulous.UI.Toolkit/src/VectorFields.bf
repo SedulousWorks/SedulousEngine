@@ -154,7 +154,7 @@ public class Vector2Field : AggregatingVectorField
 	public void SetRange(double min, double max) { mX.Min = min; mX.Max = max; mY.Min = min; mY.Max = max; }
 	public double Step { get => mX.Step; set { mX.Step = value; mY.Step = value; } }
 	public int32 DecimalPlaces { get => mX.DecimalPlaces; set { mX.DecimalPlaces = value; mY.DecimalPlaces = value; } }
-	public bool ShowSpinButtons { get => mX.ShowSpinButtons; set { mX.ShowSpinButtons = value; mY.ShowSpinButtons = value; } }
+	public bool ShowSpinButtons { get => mX.ShowSpinButtons.Value; set { mX.ShowSpinButtons.Value = value; mY.ShowSpinButtons.Value = value; } }
 
 	private void SyncToFields()
 	{
@@ -168,7 +168,7 @@ public class Vector2Field : AggregatingVectorField
 	private static NumericField MakeField(StringView axisText, Color axisColor)
 	{
 		let f = new NumericField();
-		f.ShowSpinButtons = false;
+		f.ShowSpinButtons.Value = false;
 		f.Min = -1e6; f.Max = 1e6;
 		f.Step = 0.1;
 		f.DecimalPlaces = 3;
@@ -217,7 +217,7 @@ public class Vector3Field : AggregatingVectorField
 	public void SetRange(double min, double max) { mX.Min = min; mX.Max = max; mY.Min = min; mY.Max = max; mZ.Min = min; mZ.Max = max; }
 	public double Step { get => mX.Step; set { mX.Step = value; mY.Step = value; mZ.Step = value; } }
 	public int32 DecimalPlaces { get => mX.DecimalPlaces; set { mX.DecimalPlaces = value; mY.DecimalPlaces = value; mZ.DecimalPlaces = value; } }
-	public bool ShowSpinButtons { get => mX.ShowSpinButtons; set { mX.ShowSpinButtons = value; mY.ShowSpinButtons = value; mZ.ShowSpinButtons = value; } }
+	public bool ShowSpinButtons { get => mX.ShowSpinButtons.Value; set { mX.ShowSpinButtons.Value = value; mY.ShowSpinButtons.Value = value; mZ.ShowSpinButtons.Value = value; } }
 
 	private void SyncToFields()
 	{
@@ -232,7 +232,7 @@ public class Vector3Field : AggregatingVectorField
 	private static NumericField MakeField(StringView axisText, Color axisColor)
 	{
 		let f = new NumericField();
-		f.ShowSpinButtons = false;
+		f.ShowSpinButtons.Value = false;
 		f.Min = -1e6; f.Max = 1e6;
 		f.Step = 0.1;
 		f.DecimalPlaces = 3;
@@ -285,7 +285,7 @@ public class Vector4Field : AggregatingVectorField
 	public void SetRange(double min, double max) { mX.Min = min; mX.Max = max; mY.Min = min; mY.Max = max; mZ.Min = min; mZ.Max = max; mW.Min = min; mW.Max = max; }
 	public double Step { get => mX.Step; set { mX.Step = value; mY.Step = value; mZ.Step = value; mW.Step = value; } }
 	public int32 DecimalPlaces { get => mX.DecimalPlaces; set { mX.DecimalPlaces = value; mY.DecimalPlaces = value; mZ.DecimalPlaces = value; mW.DecimalPlaces = value; } }
-	public bool ShowSpinButtons { get => mX.ShowSpinButtons; set { mX.ShowSpinButtons = value; mY.ShowSpinButtons = value; mZ.ShowSpinButtons = value; mW.ShowSpinButtons = value; } }
+	public bool ShowSpinButtons { get => mX.ShowSpinButtons.Value; set { mX.ShowSpinButtons.Value = value; mY.ShowSpinButtons.Value = value; mZ.ShowSpinButtons.Value = value; mW.ShowSpinButtons.Value = value; } }
 
 	private void SyncToFields()
 	{
@@ -301,7 +301,7 @@ public class Vector4Field : AggregatingVectorField
 	private static NumericField MakeField(StringView axisText, Color axisColor)
 	{
 		let f = new NumericField();
-		f.ShowSpinButtons = false;
+		f.ShowSpinButtons.Value = false;
 		f.Min = -1e6; f.Max = 1e6;
 		f.Step = 0.1;
 		f.DecimalPlaces = 3;
@@ -370,7 +370,7 @@ public class QuaternionField : AggregatingVectorField
 	public void SetRange(double min, double max) { mX.Min = min; mX.Max = max; mY.Min = min; mY.Max = max; mZ.Min = min; mZ.Max = max; }
 	public double Step { get => mX.Step; set { mX.Step = value; mY.Step = value; mZ.Step = value; } }
 	public int32 DecimalPlaces { get => mX.DecimalPlaces; set { mX.DecimalPlaces = value; mY.DecimalPlaces = value; mZ.DecimalPlaces = value; } }
-	public bool ShowSpinButtons { get => mX.ShowSpinButtons; set { mX.ShowSpinButtons = value; mY.ShowSpinButtons = value; mZ.ShowSpinButtons = value; } }
+	public bool ShowSpinButtons { get => mX.ShowSpinButtons.Value; set { mX.ShowSpinButtons.Value = value; mY.ShowSpinButtons.Value = value; mZ.ShowSpinButtons.Value = value; } }
 
 	private void RebuildQuaternionFromEulers()
 	{
@@ -391,7 +391,7 @@ public class QuaternionField : AggregatingVectorField
 	private static NumericField MakeField(StringView axisText, Color axisColor)
 	{
 		let f = new NumericField();
-		f.ShowSpinButtons = false;
+		f.ShowSpinButtons.Value = false;
 		f.Min = -360; f.Max = 360;
 		f.Step = 1;
 		f.DecimalPlaces = 2;

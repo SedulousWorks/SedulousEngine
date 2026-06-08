@@ -440,7 +440,7 @@ class AssetContentAdapter : ListAdapterBase
 		itemView.SetThumbnailService(Thumbnails);
 
 		// Disable double-click-to-edit - double-click navigates into folders
-		itemView.NameLabel.DoubleClickToEdit = false;
+		itemView.NameLabel.DoubleClickToEdit.Value = false;
 
 		// Validate filenames: reject invalid filesystem characters
 		itemView.NameLabel.ValidateRename = new (name) => {
@@ -536,15 +536,15 @@ class AssetContentItemView : FlexLayout, IDragSource
 
 		// Name (editable label - acts as plain label, switches to edit on BeginEdit)
 		mNameLabel = new EditableLabel();
-		mNameLabel.FontSize = 12;
-		mNameLabel.TextColor = .(200, 205, 220, 255);
+		mNameLabel.FontSize.Value = 12;
+		mNameLabel.TextColor.Value = .(200, 205, 220, 255);
 		AddView(mNameLabel, new FlexLayout.LayoutParams() { Height = .Match, Grow = 1 });
 
 		// Registry badge
 		mBadgeLabel = new Label();
-		mBadgeLabel.FontSize = 9;
-		mBadgeLabel.TextColor = .(80, 160, 80, 255);
-		mBadgeLabel.HAlign = .Right;
+		mBadgeLabel.FontSize.Value = 9;
+		mBadgeLabel.TextColor.Value = .(80, 160, 80, 255);
+		mBadgeLabel.HAlign.Value = .Right;
 		AddView(mBadgeLabel, new FlexLayout.LayoutParams() { Width = .Wrap, Height = .Match });
 	}
 
@@ -604,9 +604,9 @@ class AssetContentItemView : FlexLayout, IDragSource
 
 		// Dim missing files (computed by the adapter from the mount).
 		if (item.IsMissing)
-			mNameLabel.TextColor = .(200, 80, 80, 255);
+			mNameLabel.TextColor.Value = .(200, 80, 80, 255);
 		else
-			mNameLabel.TextColor = null; // Use default from style
+			mNameLabel.TextColor.Value = null; // Use default from style
 	}
 
 	private void CancelPending()
@@ -642,9 +642,9 @@ class AssetContentItemView : FlexLayout, IDragSource
 		if (BoundItem != null)
 		{
 			let label = new Label();
-			label.FontSize = 12;
+			label.FontSize.Value = 12;
 			label.SetText(BoundItem.Name);
-			label.TextColor = .(200, 200, 210, 200);
+			label.TextColor.Value = .(200, 200, 210, 200);
 			return label;
 		}
 		return null;

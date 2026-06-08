@@ -20,14 +20,6 @@ class ListViewTests
 	}
 
 	[Test]
-	public static void ListView_HasStyleId()
-	{
-		let lv = scope ListView();
-		Test.Assert(lv.StyleId != null);
-		Test.Assert(StringView(lv.StyleId) == "listview");
-	}
-
-	[Test]
 	public static void ListView_IsFocusable()
 	{
 		let lv = scope ListView();
@@ -46,7 +38,7 @@ class ListViewTests
 		defer delete adapter;
 
 		let lv = new ListView();
-		lv.ItemHeight = 30;
+		lv.ItemHeight.Value = 30;
 		lv.Adapter = adapter;
 		root.AddView(lv);
 		TestSetup.Layout(ctx, root);
@@ -66,7 +58,7 @@ class ListViewTests
 		defer delete adapter;
 
 		let lv = new ListView();
-		lv.ItemHeight = 30;
+		lv.ItemHeight.Value = 30;
 		lv.Adapter = adapter;
 		root.AddView(lv);
 		TestSetup.Layout(ctx, root);
@@ -89,7 +81,7 @@ class ListViewTests
 		defer delete adapter;
 
 		let lv = new ListView();
-		lv.ItemHeight = 30;
+		lv.ItemHeight.Value = 30;
 		lv.Adapter = adapter;
 		root.AddView(lv);
 		TestSetup.Layout(ctx, root);

@@ -2,7 +2,7 @@ FileVersion = 1
 Locked = ["Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "dr_libs-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
 
 [Workspace]
-StartupProject = "GUISandbox"
+StartupProject = "Sedulous.Editor.App"
 
 [Projects]
 "Sedulous.RHI" = {Path = "Foundation/Sedulous.RHI"}
@@ -137,10 +137,10 @@ EngineSandbox = {Path = "Samples/EngineSandbox"}
 "Sedulous.OpenDDL.Tests" = {Path = "Foundation/Sedulous.OpenDDL/Sedulous.OpenDDL.Tests"}
 "Sedulous.Xml" = {Path = "Foundation/Sedulous.Xml"}
 "Sedulous.Xml.Tests" = {Path = "Foundation/Sedulous.Xml/Sedulous.Xml.Tests"}
-"Sedulous.LegacyGUI" = {Path = "Deprecated/Sedulous.GUI"}
-"Sedulous.LegacyGUI.Shell" = {Path = "Deprecated/Sedulous.GUI.Shell"}
-"Sedulous.LegacyGUI.Tests" = {Path = "Deprecated/Sedulous.GUI.Tests"}
-"Sedulous.LegacyGUI.Runtime" = {Path = "Deprecated/Sedulous.GUI.Runtime"}
+"Sedulous.LegacyGUI" = {Path = "Deprecated/Sedulous.LegacyGUI"}
+"Sedulous.LegacyGUI.Shell" = {Path = "Deprecated/Sedulous.LegacyGUI.Shell"}
+"Sedulous.LegacyGUI.Tests" = {Path = "Deprecated/Sedulous.LegacyGUI.Tests"}
+"Sedulous.LegacyGUI.Runtime" = {Path = "Deprecated/Sedulous.LegacyGUI.Runtime"}
 "Sedulous.Drawing.Renderer" = {Path = "Foundation/Sedulous.Drawing.Renderer"}
 "Sedulous.Audio.Resources" = {Path = "Foundation/Sedulous.Audio.Resources"}
 "Sedulous.Audio.Importer" = {Path = "Foundation/Sedulous.Audio.Importer"}
@@ -192,40 +192,29 @@ LegacyUISandbox = {Path = "Deprecated/LegacyUISandbox"}
 Showcase = {Path = "Samples/Showcase"}
 "Sedulous.LegacyUI.Viewport" = {Path = "Deprecated/Sedulous.LegacyUI.Viewport"}
 ModelViewer = {Path = "Tools/Sedulous.Tools.ModelViewer"}
-"Sedulous.UI" = {Path = "Foundation/Sedulous.UI"}
-"Sedulous.UI.Tests" = {Path = "Foundation/Sedulous.UI.Tests"}
-"Sedulous.UI.Shell" = {Path = "Foundation/Sedulous.UI.Shell"}
-"Sedulous.UI.Toolkit" = {Path = "Foundation/Sedulous.UI.Toolkit"}
-UISandbox = {Path = "Samples/UI/UISandbox"}
 "Sedulous.Messaging" = {Path = "Foundation/Sedulous.Messaging"}
 "Sedulous.Messaging.Runtime" = {Path = "Foundation/Sedulous.Messaging.Runtime"}
 "Sedulous.Messaging.Tests" = {Path = "Foundation/Sedulous.Messaging.Tests"}
 "Sedulous.Audio.Effects" = {Path = "Foundation/Sedulous.Audio.Effects"}
 "Sedulous.Audio.Effects.Tests" = {Path = "Foundation/Sedulous.Audio.Effects.Tests"}
 TowerDefense = {Path = "Projects/TowerDefense"}
-"Sedulous.UI.Runtime" = {Path = "Foundation/Sedulous.UI.Runtime"}
 "Sedulous.Engine.UI" = {Path = "Engine/Sedulous.Engine.UI"}
-"Sedulous.UI.Viewport" = {Path = "Foundation/Sedulous.UI.Viewport"}
 "Sedulous.Inspection" = {Path = "Foundation/Sedulous.Inspection"}
 "Sedulous.Fonts.Resources" = {Path = "Foundation/Sedulous.Fonts.Resources"}
 CuteSeriesImporter = {Path = "Tools/CuteSeriesImporter"}
 SummonersLeague = {Path = "Projects/SummonersLeague"}
-"Sedulous.LegacyGUI" = {Path = "Foundation/Sedulous.GUI"}
-"Sedulous.LegacyGUI.Runtime" = {Path = "Foundation/Sedulous.GUI.Runtime"}
-"Sedulous.LegacyGUI.Shell" = {Path = "Foundation/Sedulous.GUI.Shell"}
-"Sedulous.LegacyGUI.Tests" = {Path = "Foundation/Sedulous.GUI.Tests"}
-"Sedulous.GUI" = {Path = "Foundation/Sedulous.GUI"}
-"Sedulous.GUI.Runtime" = {Path = "Foundation/Sedulous.GUI.Runtime"}
-"Sedulous.GUI.Shell" = {Path = "Foundation/Sedulous.GUI.Shell"}
-"Sedulous.GUI.Tests" = {Path = "Foundation/Sedulous.GUI.Tests"}
-GUISandbox = {Path = "Samples/GUI/GUISandbox"}
-"Sedulous.GUI.IO" = {Path = "Foundation/Sedulous.GUI.IO"}
-"Sedulous.GUI.Toolkit" = {Path = "Foundation/Sedulous.GUI.Toolkit"}
-"Sedulous.GUI.Viewport" = {Path = "Foundation/Sedulous.GUI.Viewport"}
+"Sedulous.UI" = {Path = "Foundation/Sedulous.UI"}
+"Sedulous.UI.Runtime" = {Path = "Foundation/Sedulous.UI.Runtime"}
+"Sedulous.UI.Shell" = {Path = "Foundation/Sedulous.UI.Shell"}
+"Sedulous.UI.Tests" = {Path = "Foundation/Sedulous.UI.Tests"}
+"Sedulous.UI.IO" = {Path = "Foundation/Sedulous.UI.IO"}
+"Sedulous.UI.Toolkit" = {Path = "Foundation/Sedulous.UI.Toolkit"}
+"Sedulous.UI.Viewport" = {Path = "Foundation/Sedulous.UI.Viewport"}
+UISandbox = {Path = "Samples/UI/UISandbox"}
 
 [WorkspaceFolders]
 Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
-Samples = ["SampleFramework", "SampleVG001_Shapes", "DrawingSandbox", "VGSandbox", "FontRendering", "ImGuiSample", "NuklearSample", "NetEcho", "NetHttpClient", "NetWebSocket", "AudioSandbox", "EngineSandbox", "EngineRenderStressTest", "Showcase", "UISandbox", "GUISandbox"]
+Samples = ["SampleFramework", "SampleVG001_Shapes", "DrawingSandbox", "VGSandbox", "FontRendering", "ImGuiSample", "NuklearSample", "NetEcho", "NetHttpClient", "NetWebSocket", "AudioSandbox", "EngineSandbox", "EngineRenderStressTest", "Showcase", "UISandbox"]
 "Samples/RHISamples" = ["Sample002_Textures", "Sample003_UniformBuffers", "Sample004_Compute", "Sample005_BindGroups", "Sample006_Blending", "Sample007_Instancing", "Sample008_DepthBuffer", "Sample009_Mipmaps", "Sample010_MSAA", "Sample011_MRT", "Sample012_Wireframe", "Sample013_BorderSampler", "Sample014_Blit", "Sample015_Queries", "Sample016_Readback", "Sample017_MultiQueue", "Sample018_Bindless", "Sample019_BatchUpload", "Sample020_MeshShaders", "Sample021_RayTracing", "Sample022_StencilOutline", "Sample023_CubeMap", "Sample024_OcclusionQuery", "Sample025_MultiDrawIndirect", "Sample026_DynamicOffsets", "Sample027_3DTexture", "Sample028_ProceduralRT", "Sample029_ResolveTexture", "Sample001_Triangle"]
 "Samples/ShaderReflection" = ["SR001_ReflectedPBR"]
 Foundation = []
@@ -251,7 +240,6 @@ Deprecated = []
 "Foundation/Physics" = ["Sedulous.Physics", "Sedulous.Physics.Jolt", "Sedulous.Physics.Tests"]
 Engine = ["Sedulous.Engine.Core", "Sedulous.Engine.App", "Sedulous.Engine.Input", "Sedulous.Engine.Physics", "Sedulous.Engine.Audio", "Sedulous.Engine.Animation", "Sedulous.Engine.Navigation", "Sedulous.Engine.Render", "Sedulous.Engine.Core.Tests", "Sedulous.Engine.UI"]
 "Foundation/RHI" = ["Sedulous.RHI", "Sedulous.RHI.DX12", "Sedulous.RHI.Null", "Sedulous.RHI.Validation", "Sedulous.RHI.Vulkan", "Sedulous.ShaderReflection", "Sedulous.ShaderReflection.DXIL", "Sedulous.ShaderReflection.SPIRV", "Sedulous.ShaderReflection.Tests"]
-"Foundation/UI" = ["Sedulous.UI", "Sedulous.UI.Runtime", "Sedulous.UI.Shell", "Sedulous.UI.Tests", "Sedulous.UI.Toolkit", "Sedulous.UI.Viewport"]
 Editor = ["Sedulous.Editor.Core", "Sedulous.Editor.App"]
 Tools = ["ModelViewer", "CuteSeriesImporter"]
 Experimental = []
@@ -261,4 +249,4 @@ Experimental = []
 Projects = ["TowerDefense", "SummonersLeague"]
 "Deprecated/LegacyUI" = ["LegacyUISandbox", "Sedulous.LegacyUI", "Sedulous.LegacyUI.Resources", "Sedulous.LegacyUI.Runtime", "Sedulous.LegacyUI.Shell", "Sedulous.LegacyUI.Tests", "Sedulous.LegacyUI.Toolkit", "Sedulous.LegacyUI.Viewport", "Sedulous.Engine.LegacyUI"]
 "Foundation/CodeGen" = ["Sedulous.Inspection"]
-"Foundation/GUI" = ["Sedulous.GUI", "Sedulous.GUI.Runtime", "Sedulous.GUI.Shell", "Sedulous.GUI.Tests", "Sedulous.GUI.IO", "Sedulous.GUI.Toolkit", "Sedulous.GUI.Viewport"]
+"Foundation/UI" = ["Sedulous.UI", "Sedulous.UI.Runtime", "Sedulous.UI.Shell", "Sedulous.UI.Tests", "Sedulous.UI.IO", "Sedulous.UI.Toolkit", "Sedulous.UI.Viewport"]

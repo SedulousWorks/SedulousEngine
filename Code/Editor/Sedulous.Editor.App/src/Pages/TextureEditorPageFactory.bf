@@ -47,7 +47,7 @@ class TextureEditorPageFactory : IEditorPageFactory
 		previewPanel.Background = new ColorDrawable(.(30, 30, 35, 255));
 
 		let imageView = new ImageView();
-		imageView.ScaleType = .FitCenter;
+		imageView.ScaleType.Value = .FitCenter;
 
 		if (texRes?.Image != null)
 		{
@@ -96,7 +96,7 @@ class TextureEditorPageFactory : IEditorPageFactory
 		{
 			let errLabel = new Label();
 			errLabel.SetText("Failed to load texture");
-			errLabel.TextColor = .(220, 100, 100, 255);
+			errLabel.TextColor.Value = .(220, 100, 100, 255);
 			infoPanel.AddView(errLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });
 		}
 
@@ -131,9 +131,9 @@ class TextureEditorPageFactory : IEditorPageFactory
 
 		let titleLabel = new Label();
 		titleLabel.SetText(scope $"{resourceType}: {name}");
-		titleLabel.FontSize = 16;
-		titleLabel.HAlign = .Center;
-		titleLabel.VAlign = .Middle;
+		titleLabel.FontSize.Value = 16;
+		titleLabel.HAlign.Value = .Center;
+		titleLabel.VAlign.Value = .Middle;
 		container.AddView(titleLabel, new FlexLayout.LayoutParams() { Width = .Match, Grow = 1 });
 
 		return container;

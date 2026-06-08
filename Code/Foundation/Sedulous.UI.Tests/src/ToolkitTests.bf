@@ -21,14 +21,6 @@ class ToolkitTests
 		Test.Assert(menuBar.MenuCount == 2);
 	}
 
-	[Test]
-	public static void MenuBar_HasStyleId()
-	{
-		let menuBar = scope MenuBar();
-		Test.Assert(menuBar.StyleId != null);
-		Test.Assert(StringView(menuBar.StyleId) == "menubar");
-	}
-
 	// === Toolbar ===
 
 	[Test]
@@ -61,14 +53,6 @@ class ToolkitTests
 		Test.Assert(toggle.IsChecked);
 	}
 
-	[Test]
-	public static void Toolbar_HasStyleId()
-	{
-		let toolbar = scope Toolbar();
-		Test.Assert(toolbar.StyleId != null);
-		Test.Assert(StringView(toolbar.StyleId) == "toolbar");
-	}
-
 	// === StatusBar ===
 
 	[Test]
@@ -86,14 +70,6 @@ class ToolkitTests
 		let statusBar = scope StatusBar();
 		let section = statusBar.AddSection("UTF-8");
 		Test.Assert(section != null);
-	}
-
-	[Test]
-	public static void StatusBar_HasStyleId()
-	{
-		let statusBar = scope StatusBar();
-		Test.Assert(statusBar.StyleId != null);
-		Test.Assert(StringView(statusBar.StyleId) == "statusbar");
 	}
 
 	// === SplitView ===
@@ -119,14 +95,6 @@ class ToolkitTests
 
 		Test.Assert(sv.FirstPane === first);
 		Test.Assert(sv.SecondPane === second);
-	}
-
-	[Test]
-	public static void SplitView_HasStyleId()
-	{
-		let sv = scope SplitView();
-		Test.Assert(sv.StyleId != null);
-		Test.Assert(StringView(sv.StyleId) == "splitview");
 	}
 
 	// === BreadcrumbBar ===
@@ -163,14 +131,6 @@ class ToolkitTests
 		let path = scope String();
 		bar.GetPathUpTo(1, path);
 		Test.Assert(path == "A/B");
-	}
-
-	[Test]
-	public static void BreadcrumbBar_HasStyleId()
-	{
-		let bar = scope BreadcrumbBar();
-		Test.Assert(bar.StyleId != null);
-		Test.Assert(StringView(bar.StyleId) == "breadcrumbbar");
 	}
 
 	[Test]
@@ -294,14 +254,6 @@ class ToolkitTests
 		Test.Assert(Math.Abs((int)c.B - 64) <= 1);
 	}
 
-	[Test]
-	public static void ColorPicker_HasStyleId()
-	{
-		let picker = scope ColorPicker();
-		Test.Assert(picker.StyleId != null);
-		Test.Assert(StringView(picker.StyleId) == "colorpicker");
-	}
-
 	// === PropertyGrid ===
 
 	[Test]
@@ -347,14 +299,6 @@ class ToolkitTests
 		grid.AddProperty(new IntEditor("B", 42));
 		grid.Clear();
 		Test.Assert(grid.PropertyCount == 0);
-	}
-
-	[Test]
-	public static void PropertyGrid_HasStyleId()
-	{
-		let grid = scope PropertyGrid();
-		Test.Assert(grid.StyleId != null);
-		Test.Assert(StringView(grid.StyleId) == "propertygrid");
 	}
 
 	// === PropertyEditor types ===

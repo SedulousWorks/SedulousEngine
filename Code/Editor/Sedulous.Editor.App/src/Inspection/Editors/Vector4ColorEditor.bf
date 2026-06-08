@@ -30,7 +30,7 @@ class Vector4ColorEditor : PropertyEditor
 
 	private void RefreshSwatch()
 	{
-		if (mSwatch != null) mSwatch.Color = ClampToLDR(*mPtr);
+		if (mSwatch != null) mSwatch.Color.Value = ClampToLDR(*mPtr);
 	}
 
 	private static Color ClampToLDR(Vector4 c)

@@ -40,21 +40,21 @@ class GameOverUI
 
 		// Title (set dynamically)
 		mTitleLabel = new Label();
-		mTitleLabel.FontSize = 28;
-		mTitleLabel.HAlign = .Center;
+		mTitleLabel.FontSize.Value = 28;
+		mTitleLabel.HAlign.Value = .Center;
 		content.AddView(mTitleLabel);
 
 		// Result message
 		mResultLabel = new Label();
-		mResultLabel.FontSize = 16;
-		mResultLabel.HAlign = .Center;
+		mResultLabel.FontSize.Value = 16;
+		mResultLabel.HAlign.Value = .Center;
 		content.AddView(mResultLabel);
 
 		// Stats
 		mStatsLabel = new Label();
-		mStatsLabel.FontSize = 13;
-		mStatsLabel.TextColor = .(180, 180, 180, 255);
-		mStatsLabel.HAlign = .Center;
+		mStatsLabel.FontSize.Value = 13;
+		mStatsLabel.TextColor.Value = .(180, 180, 180, 255);
+		mStatsLabel.HAlign.Value = .Center;
 		content.AddView(mStatsLabel);
 
 		content.AddView(new Spacer(0, 12));
@@ -63,7 +63,7 @@ class GameOverUI
 		let btnRow = new FlexLayout() { Direction = .Horizontal, Spacing = 12, AlignItems = .Center };
 
 		let restartBtn = new Button("Restart");
-		restartBtn.FontSize = 16;
+		restartBtn.FontSize.Value = 16;
 		restartBtn.Background = new ColorDrawable(.(40, 120, 60, 255));
 		restartBtn.OnClick.Add(new (btn) =>
 			{
@@ -73,7 +73,7 @@ class GameOverUI
 		btnRow.AddView(restartBtn);
 
 		let menuBtn = new Button("Main Menu");
-		menuBtn.FontSize = 16;
+		menuBtn.FontSize.Value = 16;
 		menuBtn.Background = new ColorDrawable(.(120, 50, 50, 255));
 		menuBtn.OnClick.Add(new (btn) =>
 			{
@@ -102,16 +102,16 @@ class GameOverUI
 		if (won)
 		{
 			mTitleLabel.SetText("VICTORY!");
-			mTitleLabel.TextColor = .(50, 255, 50, 255);
+			mTitleLabel.TextColor.Value = .(50, 255, 50, 255);
 			mResultLabel.SetText("You defended your base!");
-			mResultLabel.TextColor = .(150, 255, 150, 255);
+			mResultLabel.TextColor.Value = .(150, 255, 150, 255);
 		}
 		else
 		{
 			mTitleLabel.SetText("GAME OVER");
-			mTitleLabel.TextColor = .(255, 80, 80, 255);
+			mTitleLabel.TextColor.Value = .(255, 80, 80, 255);
 			mResultLabel.SetText("Your base was overrun!");
-			mResultLabel.TextColor = .(255, 150, 150, 255);
+			mResultLabel.TextColor.Value = .(255, 150, 150, 255);
 		}
 
 		mRoot.Visibility = .Visible;

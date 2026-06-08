@@ -106,7 +106,7 @@ class MeshEditorPageFactory : IEditorPageFactory
 		{
 			let errorLabel = new Label();
 			errorLabel.SetText("Failed to load mesh");
-			errorLabel.TextColor = .(220, 100, 100, 255);
+			errorLabel.TextColor.Value = .(220, 100, 100, 255);
 			infoPanel.AddView(errorLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });
 		}
 
@@ -126,14 +126,14 @@ class MeshEditorPageFactory : IEditorPageFactory
 				let row = new FlexLayout() { Direction = .Horizontal, Spacing = 4 };
 				let label = new Label();
 				label.SetText(scope $"Mat {slot}:");
-				label.TextColor = .(180, 180, 195, 255);
-				label.FontSize = 11;
+				label.TextColor.Value = .(180, 180, 195, 255);
+				label.FontSize.Value = 11;
 				row.AddView(label, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(64)), Height = .Match });
 
 				let pathLabel = new Label();
 				pathLabel.SetText("(none)");
-				pathLabel.TextColor = .(220, 220, 230, 255);
-				pathLabel.FontSize = 11;
+				pathLabel.TextColor.Value = .(220, 220, 230, 255);
+				pathLabel.FontSize.Value = 11;
 				row.AddView(pathLabel, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
 
 				let slotCopy = slot;
@@ -180,12 +180,12 @@ class MeshEditorPageFactory : IEditorPageFactory
 
 		let titleLabel = new Label();
 		titleLabel.SetText(scope $"{resourceType}: {name}");
-		titleLabel.FontSize = 16;
+		titleLabel.FontSize.Value = 16;
 		container.AddView(titleLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(28)) });
 
 		let errLabel = new Label();
 		errLabel.SetText(message);
-		errLabel.TextColor = .(220, 100, 100, 255);
+		errLabel.TextColor.Value = .(220, 100, 100, 255);
 		container.AddView(errLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });
 
 		page.SetContentView(container);
@@ -196,8 +196,8 @@ class MeshEditorPageFactory : IEditorPageFactory
 	{
 		let label = new Label();
 		label.SetText(text);
-		label.FontSize = 14;
-		label.TextColor = .(180, 180, 195, 255);
+		label.FontSize.Value = 14;
+		label.TextColor.Value = .(180, 180, 195, 255);
 		container.AddView(label, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(24)) });
 	}
 
@@ -208,12 +208,12 @@ class MeshEditorPageFactory : IEditorPageFactory
 
 		let nameLabel = new Label();
 		nameLabel.SetText(scope $"{name}:");
-		nameLabel.TextColor = .(140, 140, 155, 255);
+		nameLabel.TextColor.Value = .(140, 140, 155, 255);
 		row.AddView(nameLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(100)), Height = .Match });
 
 		let valueLabel = new Label();
 		valueLabel.SetText(value);
-		valueLabel.TextColor = .(220, 220, 230, 255);
+		valueLabel.TextColor.Value = .(220, 220, 230, 255);
 		row.AddView(valueLabel, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
 
 		container.AddView(row, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });

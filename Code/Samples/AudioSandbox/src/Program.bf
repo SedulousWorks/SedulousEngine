@@ -129,7 +129,7 @@ class AudioSandboxApp : Application
 		header.Spacing = 5;
 
 		let title = new Label("Audio Player");
-		title.FontSize = 20;
+		title.FontSize.Value = 20;
 		header.AddView(title);
 
 		mNowPlayingLabel = new Label("No track selected");
@@ -139,8 +139,8 @@ class AudioSandboxApp : Application
 
 		// Track list (scrollable, fills remaining space)
 		let scrollView = new ScrollView();
-		scrollView.VScrollBarPolicy = .Auto;
-		scrollView.HScrollBarPolicy = .Never;
+		scrollView.VScrollBarPolicy.Value = .Auto;
+		scrollView.HScrollBarPolicy.Value = .Never;
 
 		mTrackList = new FlexLayout();
 		mTrackList.Direction = .Vertical;
@@ -178,7 +178,7 @@ class AudioSandboxApp : Application
 
 		// Volume label
 		mVolumeLabel = new Label("70%");
-		mVolumeLabel.HAlign = .Center;
+		mVolumeLabel.HAlign.Value = .Center;
 		controlsBar.AddView(mVolumeLabel);
 
 		// Volume up

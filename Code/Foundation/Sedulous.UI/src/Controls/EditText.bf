@@ -13,10 +13,10 @@ public class EditText : View, ITextEditHost
 {
 	// === Text state ===
 	private String mText = new .() ~ delete _;
-	private String mPlaceholder ~ delete _;
-	private bool mReadOnly;
-	private bool mMultiline;
-	private int32 mMaxLength;
+	public Property<String> Placeholder = new .(null) ~ { if (_.Value != null) delete _.Value; delete _; };
+	public Property<bool> IsReadOnly = new .(false) ~ delete _;
+	public Property<bool> Multiline = new .(false) ~ delete _;
+	public Property<int32> MaxLength = new .(0) ~ delete _;
 
 	// === Glyph cache ===
 	protected List<GlyphPosition> mGlyphPositions = new .() ~ delete _;
@@ -64,33 +64,10 @@ public class EditText : View, ITextEditHost
 		Invalidate();
 	}
 
-	public StringView Placeholder
-	{
-		get => (mPlaceholder != null) ? mPlaceholder : "";
-	}
-
 	public void SetPlaceholder(StringView text)
 	{
-		if (mPlaceholder == null) mPlaceholder = new String(text);
-		else mPlaceholder.Set(text);
-	}
-
-	public bool IsReadOnly
-	{
-		get => mReadOnly;
-		set => mReadOnly = value;
-	}
-
-	public bool Multiline
-	{
-		get => mMultiline;
-		set { mMultiline = value; mGlyphsDirty = true; Invalidate(); }
-	}
-
-	public int32 MaxLength
-	{
-		get => mMaxLength;
-		set => mMaxLength = value;
+		if (Placeholder.Value == null) Placeholder.Value = new String(text);
+		else Placeholder.Value.Set(text);
 	}
 
 	public InputFilter Filter
@@ -150,17 +127,24 @@ public class EditText : View, ITextEditHost
 	{
 		IsFocusable = true;
 		IsTabStop = true;
+		WantsArrowKeys = true;
 		Cursor = .IBeam;
-		StyleId = new String("edittext");
 		mBehavior = new TextEditingBehavior(this);
+
+		Placeholder.SetOwner(this, .Visual);
+		IsReadOnly.SetOwner(this, .Visual);
+		Multiline.SetOwner(this);
+		MaxLength.SetOwner(this);
+
+		Multiline.Changed.Add(new (val) => { mGlyphsDirty = true; });
 	}
 
 	// === ITextEditHost ===
 
 	StringView ITextEditHost.Text => mText;
-	int32 ITextEditHost.MaxLength => mMaxLength;
-	bool ITextEditHost.IsReadOnly => mReadOnly;
-	bool ITextEditHost.IsMultiline => mMultiline;
+	int32 ITextEditHost.MaxLength => MaxLength.Value;
+	bool ITextEditHost.IsReadOnly => IsReadOnly.Value;
+	bool ITextEditHost.IsMultiline => Multiline.Value;
 
 	int32 ITextEditHost.TextCharCount
 	{
@@ -208,7 +192,7 @@ public class EditText : View, ITextEditHost
 		let hitX = localX - padding.Left - prefixW + mScrollOffsetX;
 		let hitY = localY - padding.Top + mScrollOffsetY;
 
-		if (mMultiline)
+		if (Multiline.Value)
 			return MultilineHitTest(font, hitX, hitY);
 		else
 		{
@@ -226,7 +210,7 @@ public class EditText : View, ITextEditHost
 		let font = Context.FontService.GetFont(fontSize);
 		if (font == null || font.Shaper == null) return 0;
 
-		if (mMultiline)
+		if (Multiline.Value)
 			return MultilineHitTest(font, glyphX, glyphY);
 		else
 		{
@@ -302,7 +286,7 @@ public class EditText : View, ITextEditHost
 		let font = Context.FontService.GetFont(fontSize);
 		if (font == null || font.Shaper == null) return 0;
 
-		if (!mMultiline)
+		if (!Multiline.Value)
 			return font.Shaper.GetCursorPosition(font.Font, mGlyphPositions, charIndex);
 
 		return GetMultilineCursorX(charIndex);
@@ -357,7 +341,7 @@ public class EditText : View, ITextEditHost
 			if (font != null)
 			{
 				textH = font.Font.Metrics.LineHeight;
-				if (mMultiline)
+				if (Multiline.Value)
 					textH *= 3;
 			}
 		}
@@ -397,7 +381,13 @@ public class EditText : View, ITextEditHost
 					ctx.VG.StrokeRect(bounds, accentColor, 2.0f);
 			}
 			else
-				ctx.VG.StrokeRect(bounds, accentColor, 2.0f);
+			{
+				let cr = ResolveStyleFloat(.CornerRadius);
+				if (cr > 0)
+					ctx.VG.StrokeRoundedRect(bounds, cr, accentColor, 2.0f);
+				else
+					ctx.VG.StrokeRect(bounds, accentColor, 2.0f);
+			}
 		}
 
 		// Content area.
@@ -438,7 +428,7 @@ public class EditText : View, ITextEditHost
 		if (font == null) return;
 
 		let lineH = font.Font.Metrics.LineHeight;
-		let textY = mMultiline
+		let textY = Multiline.Value
 			? (areaY - mScrollOffsetY)
 			: (areaY + (areaH - lineH) * 0.5f);
 
@@ -451,13 +441,13 @@ public class EditText : View, ITextEditHost
 
 		let textX = areaX - mScrollOffsetX;
 
-		if (mText.IsEmpty && !IsFocused && mPlaceholder != null && mPlaceholder.Length > 0)
+		if (mText.IsEmpty && !IsFocused && Placeholder.Value != null && Placeholder.Value.Length > 0)
 		{
 			// Draw placeholder.
 			let placeholderColor = ResolveStyleColor(.PlaceholderColor, .(140, 150, 170, 255));
-			ctx.VG.DrawText(mPlaceholder, font,
+			ctx.VG.DrawText(Placeholder.Value, font,
 				.(areaX, areaY, areaW, areaH),
-				.Left, mMultiline ? .Top : .Middle, placeholderColor);
+				.Left, Multiline.Value ? .Top : .Middle, placeholderColor);
 		}
 		else
 		{
@@ -466,7 +456,7 @@ public class EditText : View, ITextEditHost
 			{
 				let selColor = ResolveStyleColor(.SelectionColor, .(60, 120, 200, 80));
 
-				if (mMultiline)
+				if (Multiline.Value)
 				{
 					let glyphStart = CharToGlyphIndex(mBehavior.SelectionStart);
 					let glyphEnd = CharToGlyphIndex(mBehavior.SelectionEnd);
@@ -496,7 +486,7 @@ public class EditText : View, ITextEditHost
 		}
 
 		// Draw cursor (blinking).
-		if (IsFocused && !mReadOnly)
+		if (IsFocused && !IsReadOnly.Value)
 		{
 			let elapsed = (Context?.TotalTime ?? 0) - mCursorBlinkResetTime;
 			let cursorVisible = ((int)(elapsed / 0.5f) % 2) == 0;
@@ -505,12 +495,12 @@ public class EditText : View, ITextEditHost
 				float cursorX = 0;
 				if (font.Shaper != null)
 				{
-					if (mMultiline)
+					if (Multiline.Value)
 						cursorX = GetMultilineCursorX(mBehavior.CursorPosition);
 					else
 						cursorX = font.Shaper.GetCursorPosition(font.Font, mGlyphPositions, mBehavior.CursorPosition);
 				}
-				let cursorY = mMultiline ? GetCursorYFromCharIndex(mBehavior.CursorPosition, lineH) : 0;
+				let cursorY = Multiline.Value ? GetCursorYFromCharIndex(mBehavior.CursorPosition, lineH) : 0;
 				let cursorColor = ResolveStyleColor(.CursorColor, .(220, 225, 235, 255));
 				ctx.VG.FillRect(.(textX + cursorX - 1, textY + cursorY, 2, lineH), cursorColor);
 			}
@@ -569,7 +559,7 @@ public class EditText : View, ITextEditHost
 		if (!IsEffectivelyEnabled) return;
 
 		// Enter -> submit for single-line, newline for multiline (handled by behavior).
-		if (e.Key == .Return && !mMultiline)
+		if (e.Key == .Return && !Multiline.Value)
 		{
 			OnSubmit(this);
 			e.Handled = true;
@@ -592,7 +582,7 @@ public class EditText : View, ITextEditHost
 
 	public override void OnMouseWheel(MouseWheelEventArgs e)
 	{
-		if (!mMultiline) return;
+		if (!Multiline.Value) return;
 
 		let padding = ResolveStyleThickness(.Padding, .(6, 4));
 		let contentHeight = Height - padding.TotalVertical;
@@ -637,7 +627,7 @@ public class EditText : View, ITextEditHost
 
 		if (!mCachedDisplayText.IsEmpty)
 		{
-			if (mMultiline && font.Shaper != null)
+			if (Multiline.Value && font.Shaper != null)
 			{
 				let padding = ResolveStyleThickness(.Padding, .(6, 4));
 				let prefixW = GetPrefixWidth(fontSize);
@@ -674,7 +664,7 @@ public class EditText : View, ITextEditHost
 	{
 		if (font?.Shaper == null) return;
 
-		let cursorX = mMultiline
+		let cursorX = Multiline.Value
 			? GetMultilineCursorX(mBehavior.CursorPosition)
 			: font.Shaper.GetCursorPosition(font.Font, mGlyphPositions, mBehavior.CursorPosition);
 
@@ -685,7 +675,7 @@ public class EditText : View, ITextEditHost
 		let contentWidth = Width - padding.TotalHorizontal - prefixW - suffixW;
 
 		// Horizontal scroll.
-		if (!mMultiline)
+		if (!Multiline.Value)
 		{
 			if (cursorX - mScrollOffsetX < 0)
 				mScrollOffsetX = cursorX;
@@ -697,7 +687,7 @@ public class EditText : View, ITextEditHost
 		}
 
 		// Vertical scroll (multiline).
-		if (mMultiline)
+		if (Multiline.Value)
 		{
 			let lineH = font.Font.Metrics.LineHeight;
 			let contentHeight = Height - padding.TotalVertical;
@@ -814,7 +804,7 @@ public class EditText : View, ITextEditHost
 
 		let menu = new ContextMenu();
 
-		if (!mReadOnly)
+		if (!IsReadOnly.Value)
 		{
 			delegate void() cutAction = new () => { mBehavior.HandleKeyDown(.X, .Ctrl); };
 			menu.AddItem("Cut", cutAction, mBehavior.IsSelecting);
@@ -823,7 +813,7 @@ public class EditText : View, ITextEditHost
 		delegate void() copyAction = new () => { mBehavior.HandleKeyDown(.C, .Ctrl); };
 		menu.AddItem("Copy", copyAction, mBehavior.IsSelecting);
 
-		if (!mReadOnly)
+		if (!IsReadOnly.Value)
 		{
 			let hasClipText = Context.Clipboard != null && Context.Clipboard.HasText;
 			delegate void() pasteAction = new () => { mBehavior.HandleKeyDown(.V, .Ctrl); };
@@ -975,5 +965,10 @@ public class EditText : View, ITextEditHost
 			return (int32)text.Length;
 
 		return byteOffset;
+	}
+
+	public override void OnActivate()
+	{
+		OnSubmit(this);
 	}
 }

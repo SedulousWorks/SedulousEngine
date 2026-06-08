@@ -1,13 +1,16 @@
 namespace Sedulous.UI;
 
 using Sedulous.Core.Mathematics;
+using System.Collections;
 
-/// Maps ControlState -> Drawable via pre-allocated array for O(1) lookup.
-/// Falls back to Normal state if the requested state has no drawable.
+/// Maps ControlState flags -> Drawable with fallback lookup.
+/// Supports compound states (e.g., .Checked | .Hover).
+///
+/// Lookup: tries exact flag combination first, then strips flags
+/// one at a time until a match is found. Ultimate fallback is Normal (0).
 public class StateListDrawable : Drawable
 {
-	private const int StateCount = 5; // Normal, Hover, Pressed, Focused, Disabled
-	private Drawable[StateCount] mDrawables;
+	private Dictionary<int, Drawable> mDrawables = new .() ~ delete _;
 	private bool mOwnsDrawables;
 
 	/// If ownsDrawables is true, the StateListDrawable deletes the
@@ -17,22 +20,40 @@ public class StateListDrawable : Drawable
 	public ~this()
 	{
 		if (mOwnsDrawables)
-			for (var d in ref mDrawables)
-				if (d != null) { delete d; d = null; }
+			for (var kv in ref mDrawables)
+				if (kv.valueRef != null) { delete *kv.valueRef; kv.valueRef = null; }
 	}
 
-	/// Set the drawable for a specific state.
+	/// Set the drawable for a specific state (or flag combination).
 	public void Set(ControlState state, Drawable drawable)
 	{
 		mDrawables[(int)state] = drawable;
 	}
 
-	/// Get the drawable for a state, with fallback to Normal.
+	/// Get the drawable for a state. Tries exact match first, then
+	/// strips flags one at a time. Fallback is Normal (0).
 	public Drawable Get(ControlState state)
 	{
-		let d = mDrawables[(int)state];
-		if (d != null) return d;
-		return mDrawables[(int)ControlState.Normal];
+		// Exact match
+		let key = (int)state;
+		if (mDrawables.TryGetValue(key, let d))
+			return d;
+
+		// Strip flags from highest to lowest until we find a match
+		var remaining = key;
+		for (let flag in int[?](32, 16, 8, 4, 2, 1))
+		{
+			if ((remaining & flag) == 0) continue;
+			remaining &= ~flag;
+			if (mDrawables.TryGetValue(remaining, let fallback))
+				return fallback;
+		}
+
+		// Ultimate fallback: Normal
+		if (mDrawables.TryGetValue(0, let normal))
+			return normal;
+
+		return null;
 	}
 
 	public override void Draw(UIDrawContext ctx, RectangleF bounds)

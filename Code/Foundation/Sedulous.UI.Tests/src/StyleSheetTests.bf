@@ -82,7 +82,7 @@ class StyleSheetTests
 			.Set(.FontSize, 24.0f);
 
 		let view = new TestView();
-		view.StyleId = new String("primary");
+		view.AddClass("primary");
 		root.AddView(view);
 
 		Test.Assert(view.ResolveStyleFloat(.FontSize, 14) == 24.0f);
@@ -100,7 +100,7 @@ class StyleSheetTests
 			.Set(.FontSize, 24.0f);
 
 		let view = new TestView();
-		view.StyleId = new String("secondary");
+		view.AddClass("secondary");
 		root.AddView(view);
 
 		Test.Assert(view.ResolveStyleFloat(.FontSize, 14) == 14.0f);
@@ -118,7 +118,7 @@ class StyleSheetTests
 			.Set(.FontSize, 24.0f);
 
 		let view = new TestView();
-		view.StyleId = new String("primary");
+		view.AddClass("primary");
 		root.AddView(view);
 
 		Test.Assert(view.ResolveStyleFloat(.FontSize, 14) == 14.0f);
@@ -140,7 +140,7 @@ class StyleSheetTests
 			.Set(.FontSize, 30.0f);
 
 		let view = new TestView();
-		view.StyleId = new String("big");
+		view.AddClass("big");
 		root.AddView(view);
 
 		Test.Assert(view.ResolveStyleFloat(.FontSize) == 30.0f);
@@ -181,7 +181,7 @@ class StyleSheetTests
 			.Set(.FontSize, 12.0f);
 
 		let view = new TestView();
-		view.StyleId = new String("btn");
+		view.AddClass("btn");
 		view.IsEnabled = false;
 		root.AddView(view);
 
@@ -578,7 +578,7 @@ class StyleSheetTests
 		Test.Assert(selType.Specificity == 1);
 
 		let selClass = scope StyleSelector();
-		selClass.StyleClass = new String("primary");
+		selClass.AddClass("primary");
 		Test.Assert(selClass.Specificity == 10);
 
 		let selState = scope StyleSelector();
@@ -587,7 +587,7 @@ class StyleSheetTests
 
 		let selAll = scope StyleSelector();
 		selAll.ViewType = typeof(TestView);
-		selAll.StyleClass = new String("primary");
+		selAll.AddClass("primary");
 		selAll.State = .Hover;
 		Test.Assert(selAll.Specificity == 12);
 	}

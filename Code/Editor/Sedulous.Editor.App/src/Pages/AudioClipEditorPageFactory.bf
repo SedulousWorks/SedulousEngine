@@ -52,8 +52,8 @@ class AudioClipEditorPageFactory : IEditorPageFactory
 		System.IO.Path.GetFileNameWithoutExtension(page.FilePath, name);
 		let titleLabel = new Label();
 		titleLabel.SetText(scope $"Audio Clip: {name}");
-		titleLabel.FontSize = 16;
-		titleLabel.TextColor = .(220, 225, 235, 255);
+		titleLabel.FontSize.Value = 16;
+		titleLabel.TextColor.Value = .(220, 225, 235, 255);
 		root.AddView(titleLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(28)) });
 
 		// Separator
@@ -82,7 +82,7 @@ class AudioClipEditorPageFactory : IEditorPageFactory
 		{
 			let errorLabel = new Label();
 			errorLabel.SetText("Failed to load audio clip");
-			errorLabel.TextColor = .(220, 100, 100, 255);
+			errorLabel.TextColor.Value = .(220, 100, 100, 255);
 			root.AddView(errorLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });
 		}
 
@@ -117,7 +117,7 @@ class AudioClipEditorPageFactory : IEditorPageFactory
 
 		let volumeLabel = new Label();
 		volumeLabel.SetText("Volume:");
-		volumeLabel.TextColor = .(140, 140, 155, 255);
+		volumeLabel.TextColor.Value = .(140, 140, 155, 255);
 		volumeRow.AddView(volumeLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(60)), Height = .Match });
 
 		let volumeSlider = new Slider(0, 1, 1);
@@ -147,12 +147,12 @@ class AudioClipEditorPageFactory : IEditorPageFactory
 
 		let nameLabel = new Label();
 		nameLabel.SetText(scope $"{name}:");
-		nameLabel.TextColor = .(140, 140, 155, 255);
+		nameLabel.TextColor.Value = .(140, 140, 155, 255);
 		row.AddView(nameLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(100)), Height = .Match });
 
 		let valueLabel = new Label();
 		valueLabel.SetText(value);
-		valueLabel.TextColor = .(220, 220, 230, 255);
+		valueLabel.TextColor.Value = .(220, 220, 230, 255);
 		row.AddView(valueLabel, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
 
 		container.AddView(row, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });
