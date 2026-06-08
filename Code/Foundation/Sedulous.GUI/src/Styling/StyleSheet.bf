@@ -104,6 +104,29 @@ public class StyleSheet : RefCounted
 		return rule;
 	}
 
+	/// Create a rule targeting a pseudo-element on a view type.
+	/// e.g., ForTypePseudo(typeof(Slider), "thumb") -> Slider::thumb { ... }
+	public StyleRule ForTypePseudo(Type viewType, StringView pseudoElement)
+	{
+		let rule = new StyleRule();
+		rule.Selector.ViewType = viewType;
+		rule.Selector.SetPseudoElement(pseudoElement);
+		mRules.Add(rule);
+		return rule;
+	}
+
+	/// Create a rule targeting a pseudo-element + state.
+	/// e.g., Slider:disabled::thumb { ... }
+	public StyleRule ForTypePseudoState(Type viewType, StringView pseudoElement, ControlState state)
+	{
+		let rule = new StyleRule();
+		rule.Selector.ViewType = viewType;
+		rule.Selector.SetPseudoElement(pseudoElement);
+		rule.Selector.State = state;
+		mRules.Add(rule);
+		return rule;
+	}
+
 	// === Resource ownership ===
 
 	/// Take ownership of a drawable (deleted when StyleSheet is released).
@@ -204,6 +227,52 @@ public class StyleSheet : RefCounted
 	{
 		let val = Resolve(view, prop);
 		if (let b = val.AsBool) return b;
+		return defaultVal;
+	}
+
+	// === Pseudo-element (part) resolution ===
+
+	/// Resolve a style property for a pseudo-element on a view.
+	/// The partState is the part's interaction state (e.g., thumb hovered).
+	public StyleValue ResolvePart(View view, StringView pseudoElement, StyleProperty prop, ControlState partState)
+	{
+		StyleValue bestValue = .None;
+		int32 bestSpecificity = -1;
+
+		for (let rule in mRules)
+		{
+			if (!rule.Selector.Matches(view, partState, pseudoElement))
+				continue;
+
+			let val = rule.GetValue(prop);
+			if (val == null)
+				continue;
+
+			let specificity = rule.Selector.Specificity;
+			if (specificity > bestSpecificity)
+			{
+				bestSpecificity = specificity;
+				bestValue = val.Value;
+			}
+		}
+
+		return bestValue;
+	}
+
+	public Drawable ResolvePartDrawable(View view, StringView part, StyleProperty prop, ControlState partState)
+	{
+		return ResolvePart(view, part, prop, partState).AsDrawable;
+	}
+
+	public Color ResolvePartColor(View view, StringView part, StyleProperty prop, ControlState partState, Color defaultVal = .White)
+	{
+		if (let c = ResolvePart(view, part, prop, partState).AsColor) return c;
+		return defaultVal;
+	}
+
+	public float ResolvePartFloat(View view, StringView part, StyleProperty prop, ControlState partState, float defaultVal = 0)
+	{
+		if (let f = ResolvePart(view, part, prop, partState).AsFloat) return f;
 		return defaultVal;
 	}
 
