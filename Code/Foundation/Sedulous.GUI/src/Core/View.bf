@@ -330,6 +330,38 @@ public abstract class View : IPropertyOwner
 		return sheet.ResolveDrawable(this, prop);
 	}
 
+	// === Pseudo-element (part) style resolution ===
+
+	/// Resolve a style property for a named sub-part of this control.
+	/// partState is the part's interaction state (e.g., thumb hovered).
+	public StyleValue ResolvePartStyle(StringView part, StyleProperty prop, ControlState partState)
+	{
+		let sheet = Context?.StyleSheet;
+		if (sheet == null) return .None;
+		return sheet.ResolvePart(this, part, prop, partState);
+	}
+
+	public Drawable ResolvePartDrawable(StringView part, StyleProperty prop, ControlState partState)
+	{
+		let sheet = Context?.StyleSheet;
+		if (sheet == null) return null;
+		return sheet.ResolvePartDrawable(this, part, prop, partState);
+	}
+
+	public Color ResolvePartColor(StringView part, StyleProperty prop, ControlState partState, Color defaultVal = .White)
+	{
+		let sheet = Context?.StyleSheet;
+		if (sheet == null) return defaultVal;
+		return sheet.ResolvePartColor(this, part, prop, partState, defaultVal);
+	}
+
+	public float ResolvePartFloat(StringView part, StyleProperty prop, ControlState partState, float defaultVal = 0)
+	{
+		let sheet = Context?.StyleSheet;
+		if (sheet == null) return defaultVal;
+		return sheet.ResolvePartFloat(this, part, prop, partState, defaultVal);
+	}
+
 	// === Hit testing ===
 
 	/// Returns this view (or a descendant) at the given local-space point, or null.

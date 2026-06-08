@@ -248,6 +248,26 @@ public class SSSParser
 		if (hasState)
 			rule.Selector.State = state;
 
+		// Pseudo-element (::thumb, ::track, etc.)
+		// Tokenizer produces :: as Colon + PseudoState(:name), since the
+		// second : followed by a letter is read as a PseudoState token.
+		if (Peek().Kind == .Colon && mPos + 1 < mTokens.Count && mTokens[mPos + 1].Kind == .PseudoState)
+		{
+			Consume(); // first : (Colon)
+			let ps = Consume(); // :name (PseudoState)
+			rule.Selector.SetPseudoElement(ps.Text.Substring(1)); // skip leading :
+		}
+
+		// Allow :state after ::pseudo (e.g., ::tab:hover)
+		while (Peek().Kind == .PseudoState)
+		{
+			let ps = Consume();
+			state |= ParsePseudoStateName(ps.Text.Substring(1));
+			hasState = true;
+		}
+		if (hasState)
+			rule.Selector.State = state;
+
 		// Property block
 		Expect(.LBrace);
 		while (!IsAtEnd() && Peek().Kind != .RBrace)
@@ -557,6 +577,8 @@ public class SSSParser
 		if (name == "opacity") return .Opacity;
 		if (name == "header-height") return .HeaderHeight;
 		if (name == "close-button-size") return .CloseButtonSize;
+		if (name == "width") return .Width;
+		if (name == "height") return .Height;
 
 		// Thickness properties
 		if (name == "padding") return .Padding;

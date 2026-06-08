@@ -127,6 +127,10 @@ public enum StyleProperty
 	HeaderHeight,
 	/// Close button icon size (TabView)
 	CloseButtonSize,
+	/// Explicit width for pseudo-elements (e.g., thumb size, box size)
+	Width,
+	/// Explicit height for pseudo-elements
+	Height,
 
 	// =================================================================
 	// Thickness properties
