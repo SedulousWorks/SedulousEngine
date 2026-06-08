@@ -108,4 +108,10 @@ public class ToggleSwitch : View
 		if (!IsEffectivelyEnabled) return;
 		if (e.Key == .Space || e.Key == .Return) { IsChecked.Value = !IsChecked.Value; e.Handled = true; }
 	}
+
+	public override void OnActivate()
+	{
+		if (!IsEffectivelyEnabled) return;
+		IsChecked.Value = !IsChecked.Value;
+	}
 }

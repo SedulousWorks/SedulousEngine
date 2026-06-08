@@ -76,6 +76,7 @@ public class TabView : ViewGroup
 		TabsClosable.SetOwner(this, .Visual);
 		CloseButtonSize.SetOwner(this, .Visual);
 		MinTabWidth.SetOwner(this);
+		WantsArrowKeys = true;
 	}
 
 	/// Add a tab with title and content view. Returns the index of the added tab.
@@ -343,13 +344,14 @@ public class TabView : ViewGroup
 
 		switch (e.Key)
 		{
-		case .Left, .Up:
+		case .Left:
 			if (mSelectedIndex > 0) SelectedIndex = mSelectedIndex - 1;
 			e.Handled = true;
-		case .Right, .Down:
+		case .Right:
 			if (mSelectedIndex < mTabs.Count - 1) SelectedIndex = mSelectedIndex + 1;
 			e.Handled = true;
 		default:
+			// Up/Down not handled — falls through to directional focus navigation
 		}
 	}
 

@@ -41,6 +41,7 @@ public class ComboBox : View, IPopupOwner
 	{
 		IsFocusable = true;
 		IsTabStop = true;
+		WantsArrowKeys = true;
 		Cursor = .Hand;
 	}
 
@@ -253,6 +254,12 @@ public class ComboBox : View, IPopupOwner
 	{
 		mIsOpen = false;
 		Invalidate();
+	}
+
+	public override void OnActivate()
+	{
+		if (!IsEffectivelyEnabled) return;
+		OpenDropdown();
 	}
 }
 

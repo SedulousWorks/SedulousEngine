@@ -40,6 +40,7 @@ public class TreeView : ViewGroup
 	public this()
 	{
 		ClipsContent = true;
+		WantsArrowKeys = true;
 		IndentWidth.SetOwner(this);
 		ArrowSize.SetOwner(this);
 		mListView = new ListView();

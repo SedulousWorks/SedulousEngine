@@ -283,14 +283,43 @@ public class InputManager
 			return;
 		}
 
-		// Dispatch to focused view first (bubble up).
 		let focused = focus.FocusedView;
+
+		// Activate for gamepad-style navigation (Enter key).
+		if (focused != null && !isRepeat && key == .Return)
+		{
+			focused.OnActivate();
+			return;
+		}
+
+		// Dispatch to focused view (capture -> target -> bubble).
 		if (focused != null)
 		{
 			mKeyArgs.Set(key, modifiers, isRepeat, timestamp);
 			DispatchKeyDown(focused, mKeyArgs);
 			if (mKeyArgs.Handled)
 				return;
+		}
+
+		// Arrow key fallback: if the focused view didn't handle the arrow key,
+		// try directional focus navigation.
+		if (focused != null && !isRepeat)
+		{
+			FocusDirection? dir = null;
+			switch (key)
+			{
+			case .Up:    dir = .Up;
+			case .Down:  dir = .Down;
+			case .Left:  dir = .Left;
+			case .Right: dir = .Right;
+			default:
+			}
+
+			if (dir.HasValue)
+			{
+				if (focus.MoveFocus(dir.Value))
+					return;
+			}
 		}
 
 		// Shortcut manager (scoped first, then global).

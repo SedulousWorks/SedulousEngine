@@ -96,6 +96,7 @@ public class ListView : ViewGroup, IListAdapterObserver
 		ClipsContent = true;
 		IsFocusable = true;
 		IsTabStop = true;
+		WantsArrowKeys = true;
 		ItemHeight.SetOwner(this);
 		mScrollBar = new ScrollBar();
 		mScrollBar.Parent = this;

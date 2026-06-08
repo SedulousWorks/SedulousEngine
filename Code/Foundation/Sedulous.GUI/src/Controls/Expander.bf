@@ -187,4 +187,9 @@ public class Expander : ViewGroup
 		default:
 		}
 	}
+
+	public override void OnActivate()
+	{
+		Toggle();
+	}
 }

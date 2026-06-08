@@ -22,6 +22,7 @@ public class Slider : View
 	{
 		IsFocusable = true;
 		IsTabStop = true;
+		WantsArrowKeys = true;
 		Cursor = .Hand;
 
 		Value.SetOwner(this, .Visual);

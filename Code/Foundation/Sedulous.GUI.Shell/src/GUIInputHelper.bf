@@ -91,6 +91,9 @@ public class GUIInputHelper
 
 		if (kb != null)
 			ProcessKeyboardInput(kb, context, deltaTime);
+
+		// Gamepad input
+		ProcessGamepadInput(shellInput, context, deltaTime);
 	}
 
 	/// Route mouse input from a polled mouse to a UIContext.
@@ -249,6 +252,104 @@ public class GUIInputHelper
 				if (c != '\0')
 					context.InputManager.ProcessTextInput(c);
 			}
+		}
+	}
+
+	// Previous D-pad state for edge detection.
+	private bool mPrevDPadUp;
+	private bool mPrevDPadDown;
+	private bool mPrevDPadLeft;
+	private bool mPrevDPadRight;
+	private bool mPrevGamepadA;
+	private bool mPrevGamepadB;
+
+	// Left stick repeat state.
+	private float mStickRepeatTimer;
+	private FocusDirection? mStickDirection;
+	private float mStickDeadzone = 0.5f;
+	private float mStickRepeatDelay = 0.4f;
+	private float mStickRepeatRate = 0.12f;
+
+	private void ProcessGamepadInput(IInputManager shellInput, UIContext context, float deltaTime)
+	{
+		let gamepad = shellInput.GetGamepad(0);
+		if (gamepad == null || !gamepad.Connected) return;
+
+		let focus = context.FocusManager;
+
+		// D-pad: edge detection for directional focus
+		let dpadUp = gamepad.IsButtonDown(.DPadUp);
+		let dpadDown = gamepad.IsButtonDown(.DPadDown);
+		let dpadLeft = gamepad.IsButtonDown(.DPadLeft);
+		let dpadRight = gamepad.IsButtonDown(.DPadRight);
+
+		if (dpadUp && !mPrevDPadUp) focus.MoveFocus(.Up);
+		if (dpadDown && !mPrevDPadDown) focus.MoveFocus(.Down);
+		if (dpadLeft && !mPrevDPadLeft) focus.MoveFocus(.Left);
+		if (dpadRight && !mPrevDPadRight) focus.MoveFocus(.Right);
+
+		mPrevDPadUp = dpadUp;
+		mPrevDPadDown = dpadDown;
+		mPrevDPadLeft = dpadLeft;
+		mPrevDPadRight = dpadRight;
+
+		// A button (South): activate focused view
+		let aDown = gamepad.IsButtonDown(.South);
+		if (aDown && !mPrevGamepadA)
+		{
+			let focused = focus.FocusedView;
+			if (focused != null)
+				focused.OnActivate();
+		}
+		mPrevGamepadA = aDown;
+
+		// B button (East): cancel
+		let bDown = gamepad.IsButtonDown(.East);
+		if (bDown && !mPrevGamepadB)
+		{
+			let focused = focus.FocusedView;
+			if (focused != null)
+				focused.OnCancel();
+		}
+		mPrevGamepadB = bDown;
+
+		// Left stick: alternate D-pad with deadzone + repeat
+		let stickX = gamepad.GetAxis(.LeftX);
+		let stickY = gamepad.GetAxis(.LeftY);
+
+		FocusDirection? newDir = null;
+		if (Math.Abs(stickX) > mStickDeadzone || Math.Abs(stickY) > mStickDeadzone)
+		{
+			if (Math.Abs(stickX) > Math.Abs(stickY))
+				newDir = (stickX > 0) ? .Right : .Left;
+			else
+				newDir = (stickY > 0) ? .Down : .Up;
+		}
+
+		if (newDir.HasValue)
+		{
+			if (mStickDirection == null || mStickDirection.Value != newDir.Value)
+			{
+				// New direction: move immediately, start repeat timer
+				focus.MoveFocus(newDir.Value);
+				mStickDirection = newDir;
+				mStickRepeatTimer = 0;
+			}
+			else
+			{
+				// Same direction held: repeat
+				mStickRepeatTimer += deltaTime;
+				if (mStickRepeatTimer >= mStickRepeatDelay)
+				{
+					mStickRepeatTimer -= mStickRepeatRate;
+					focus.MoveFocus(newDir.Value);
+				}
+			}
+		}
+		else
+		{
+			mStickDirection = null;
+			mStickRepeatTimer = 0;
 		}
 	}
 }
