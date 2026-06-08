@@ -35,8 +35,10 @@ public class ProgressBar : View
 	{
 		let bounds = RectangleF(0, 0, Width, Height);
 
+		let state = GetControlState();
+
 		// Track
-		let trackDrawable = ResolveStyleDrawable(.TrackDrawable);
+		let trackDrawable = ResolvePartDrawable("track", .Background, state);
 		if (trackDrawable != null)
 			trackDrawable.Draw(ctx, bounds);
 		else
@@ -46,7 +48,7 @@ public class ProgressBar : View
 		if (Value.Value > 0)
 		{
 			let fillW = Width * Value.Value;
-			let fillDrawable = ResolveStyleDrawable(.FillDrawable);
+			let fillDrawable = ResolvePartDrawable("fill", .Background, state);
 			if (fillDrawable != null)
 			{
 				ctx.VG.PushClipRect(.(0, 0, fillW, Height));

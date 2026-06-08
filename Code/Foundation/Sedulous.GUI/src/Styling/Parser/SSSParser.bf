@@ -525,30 +525,7 @@ public class SSSParser
 		// Drawable properties
 		if (name == "background") return .Background;
 		if (name == "checked-background") return .CheckedBackground;
-		if (name == "track-drawable") return .TrackDrawable;
-		if (name == "thumb-drawable") return .ThumbDrawable;
-		if (name == "fill-drawable") return .FillDrawable;
-		if (name == "knob-drawable") return .KnobDrawable;
-		if (name == "track-on-drawable") return .TrackOnDrawable;
-		if (name == "box-drawable") return .BoxDrawable;
-		if (name == "strip-drawable") return .StripDrawable;
-		if (name == "content-drawable") return .ContentDrawable;
-		if (name == "active-tab-drawable") return .ActiveTabDrawable;
-		if (name == "hover-tab-drawable") return .HoverTabDrawable;
 		if (name == "menu-item-hover-drawable") return .MenuItemHoverDrawable;
-		if (name == "header-drawable") return .HeaderDrawable;
-		if (name == "header-hover-drawable") return .HeaderHoverDrawable;
-		if (name == "spin-up-drawable") return .SpinUpDrawable;
-		if (name == "spin-down-drawable") return .SpinDownDrawable;
-
-		// Icon properties
-		if (name == "checkmark-icon") return .CheckmarkIcon;
-		if (name == "radio-mark-icon") return .RadioMarkIcon;
-		if (name == "close-icon") return .CloseIcon;
-		if (name == "chevron-expanded-icon") return .ChevronExpandedIcon;
-		if (name == "chevron-collapsed-icon") return .ChevronCollapsedIcon;
-		if (name == "arrow-down-icon") return .ArrowDownIcon;
-		if (name == "arrow-up-icon") return .ArrowUpIcon;
 
 		// Color properties
 		if (name == "text-color") return .TextColor;
@@ -557,26 +534,14 @@ public class SSSParser
 		if (name == "border-color") return .BorderColor;
 		if (name == "cursor-color") return .CursorColor;
 		if (name == "selection-color") return .SelectionColor;
-		if (name == "check-color") return .CheckColor;
-		if (name == "arrow-color") return .ArrowColor;
 		if (name == "accent-color") return .AccentColor;
-		if (name == "active-tab-text-color") return .ActiveTabTextColor;
-		if (name == "inactive-tab-text-color") return .InactiveTabTextColor;
-		if (name == "hover-tab-text-color") return .HoverTabTextColor;
-		if (name == "close-button-color") return .CloseButtonColor;
-		if (name == "close-button-hover-color") return .CloseButtonHoverColor;
 
 		// Float properties
 		if (name == "font-size") return .FontSize;
 		if (name == "corner-radius") return .CornerRadius;
 		if (name == "border-width") return .BorderWidth;
 		if (name == "spacing") return .Spacing;
-		if (name == "thumb-size") return .ThumbSize;
-		if (name == "track-height") return .TrackHeight;
-		if (name == "box-size") return .BoxSize;
 		if (name == "opacity") return .Opacity;
-		if (name == "header-height") return .HeaderHeight;
-		if (name == "close-button-size") return .CloseButtonSize;
 		if (name == "width") return .Width;
 		if (name == "height") return .Height;
 
@@ -604,12 +569,12 @@ public class SSSParser
 
 	private static bool IsDrawableProperty(StyleProperty prop)
 	{
-		return prop <= .ArrowUpIcon;
+		return prop <= .MenuItemHoverDrawable;
 	}
 
 	private static bool IsColorProperty(StyleProperty prop)
 	{
-		return prop >= .TextColor && prop <= .CloseButtonHoverColor;
+		return prop >= .TextColor && prop <= .AccentColor;
 	}
 
 	private static bool IsThicknessProperty(StyleProperty prop)

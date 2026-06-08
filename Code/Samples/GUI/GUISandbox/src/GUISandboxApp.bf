@@ -1011,52 +1011,52 @@ class GUISandboxApp : Application
 		let spinUpH = MakeRoundedRectImage(20, 16, .(210, 218, 230, 255), .(150, 170, 200, 255), 0, 3, 0, 0);
 		let spinUpP = MakeRoundedRectImage(20, 16, .(195, 205, 220, 255), .(140, 160, 190, 255), 0, 3, 0, 0);
 		defer { delete spinUpN; delete spinUpH; delete spinUpP; }
-		images.AddStateImages("numericfield:SpinUpDrawable", spinUpN, spinUpH, spinUpP, slices: .(4, 4, 4, 4));
+		images.AddStateImages("numericfield::spin-up", spinUpN, spinUpH, spinUpP, slices: .(4, 4, 4, 4));
 
 		let spinDnN = MakeRoundedRectImage(20, 16, .(225, 230, 240, 255), .(170, 185, 210, 255), 0, 0, 3, 0);
 		let spinDnH = MakeRoundedRectImage(20, 16, .(210, 218, 230, 255), .(150, 170, 200, 255), 0, 0, 3, 0);
 		let spinDnP = MakeRoundedRectImage(20, 16, .(195, 205, 220, 255), .(140, 160, 190, 255), 0, 0, 3, 0);
 		defer { delete spinDnN; delete spinDnH; delete spinDnP; }
-		images.AddStateImages("numericfield:SpinDownDrawable", spinDnN, spinDnH, spinDnP, slices: .(4, 4, 4, 4));
+		images.AddStateImages("numericfield::spin-down", spinDnN, spinDnH, spinDnP, slices: .(4, 4, 4, 4));
 
 		// --- CheckBox ---
 		let cbUnchecked = MakeRoundedRectImage(16, 16, .(240, 244, 250, 255), .(160, 175, 200, 255), 3);
 		let cbChecked = MakeRoundedRectImage(16, 16, .(80, 140, 220, 255), .(60, 120, 200, 255), 3);
 		defer { delete cbUnchecked; delete cbChecked; }
-		images.AddImage("checkbox:BoxDrawable", cbUnchecked);
-		images.AddImage("checkbox:CheckedBackground", cbChecked);
+		images.AddImage("checkbox::box", cbUnchecked);
+		images.AddImage("checkbox::box:checked", cbChecked);
 
 		// --- RadioButton ---
 		let rbCircle = MakeRoundedRectImage(16, 16, .(240, 244, 250, 255), .(160, 175, 200, 255), 8);
 		let rbDot = MakeRoundedRectImage(16, 16, .(80, 140, 220, 255), .(60, 120, 200, 255), 8);
 		defer { delete rbCircle; delete rbDot; }
-		images.AddImage("radiobutton:BoxDrawable", rbCircle);
-		images.AddImage("radiobutton:CheckedBackground", rbDot);
+		images.AddImage("radiobutton::box", rbCircle);
+		images.AddImage("radiobutton::box:checked", rbDot);
 
 		// --- Slider ---
 		let slTrack = MakeRoundedRectImage(32, 6, .(195, 205, 220, 255), .(195, 205, 220, 0), 3);
 		let slFill = MakeRoundedRectImage(32, 6, .(80, 140, 220, 255), .(80, 140, 220, 0), 3);
 		let slThumb = MakeRoundedRectImage(14, 14, .(255, 255, 255, 255), .(140, 165, 200, 255), 7);
 		defer { delete slTrack; delete slFill; delete slThumb; }
-		images.AddImage("slider:TrackDrawable", slTrack, .(3, 2, 3, 2));
-		images.AddImage("slider:FillDrawable", slFill, .(3, 2, 3, 2));
-		images.AddImage("slider:ThumbDrawable", slThumb);
+		images.AddImage("slider::track", slTrack, .(3, 2, 3, 2));
+		images.AddImage("slider::fill", slFill, .(3, 2, 3, 2));
+		images.AddImage("slider::thumb", slThumb);
 
 		// --- ProgressBar ---
 		let progTrack = MakeRoundedRectImage(32, 12, .(195, 205, 220, 255), .(195, 205, 220, 0), 4);
 		let progFill = MakeRoundedRectImage(32, 12, .(80, 140, 220, 255), .(80, 140, 220, 0), 4);
 		defer { delete progTrack; delete progFill; }
-		images.AddImage("progressbar:TrackDrawable", progTrack, .(4, 4, 4, 4));
-		images.AddImage("progressbar:FillDrawable", progFill, .(4, 4, 4, 4));
+		images.AddImage("progressbar::track", progTrack, .(4, 4, 4, 4));
+		images.AddImage("progressbar::fill", progFill, .(4, 4, 4, 4));
 
 		// --- ToggleSwitch ---
 		let tsOff = MakeRoundedRectImage(44, 24, .(190, 200, 215, 255), .(170, 185, 205, 255), 12);
 		let tsOn = MakeRoundedRectImage(44, 24, .(80, 140, 220, 255), .(60, 120, 200, 255), 12);
 		let tsKnob = MakeRoundedRectImage(20, 20, .(255, 255, 255, 255), .(210, 215, 225, 255), 10);
 		defer { delete tsOff; delete tsOn; delete tsKnob; }
-		images.AddImage("toggleswitch:TrackDrawable", tsOff, .(12, 12, 12, 12));
-		images.AddImage("toggleswitch:TrackOnDrawable", tsOn, .(12, 12, 12, 12));
-		images.AddImage("toggleswitch:KnobDrawable", tsKnob);
+		images.AddImage("toggleswitch::track", tsOff, .(12, 12, 12, 12));
+		images.AddImage("toggleswitch::track:checked", tsOn, .(12, 12, 12, 12));
+		images.AddImage("toggleswitch::knob", tsKnob);
 
 		// --- ComboBox ---
 		let cbxN = MakeRoundedRectImage(48, 28, .(240, 244, 250, 255), .(170, 185, 210, 255), 4);
@@ -1068,8 +1068,8 @@ class GUISandboxApp : Application
 		let scrollTrack = MakeRoundedRectImage(12, 32, .(210, 218, 230, 150), .(210, 218, 230, 0), 3);
 		let scrollThumb = MakeRoundedRectImage(12, 24, .(150, 170, 200, 200), .(150, 170, 200, 0), 3);
 		defer { delete scrollTrack; delete scrollThumb; }
-		images.AddImage("scrollbar:TrackDrawable", scrollTrack, .(4, 6, 4, 6));
-		images.AddImage("scrollbar:ThumbDrawable", scrollThumb, .(4, 6, 4, 6));
+		images.AddImage("scrollbar::track", scrollTrack, .(4, 6, 4, 6));
+		images.AddImage("scrollbar::thumb", scrollThumb, .(4, 6, 4, 6));
 
 		// --- Dialog ---
 		let dialogImg = MakeRoundedRectImage(64, 64, .(235, 240, 248, 255), .(170, 185, 210, 255), 8);
@@ -1077,7 +1077,7 @@ class GUISandboxApp : Application
 		images.AddImage("dialog:Background", dialogImg, .(10, 10, 10, 10));
 
 		// --- Tooltip ---
-		let tooltipImg = MakeRoundedRectImage(32, 24, .(50, 60, 75, 230), .(80, 95, 120, 255), 4);
+		let tooltipImg = MakeRoundedRectImage(32, 24, .(255, 255, 225, 245), .(180, 175, 140, 255), 4);
 		defer delete tooltipImg;
 		images.AddImage("tooltip:Background", tooltipImg, .(6, 6, 6, 6));
 
@@ -1097,17 +1097,17 @@ class GUISandboxApp : Application
 		let tabActive = MakeRoundedRectImage(64, 28, .(240, 244, 250, 255), .(240, 244, 250, 0), 4);
 		let tabHover = MakeRoundedRectImage(64, 28, .(220, 228, 240, 255), .(220, 228, 240, 0), 4);
 		defer { delete tabStrip; delete tabContent; delete tabActive; delete tabHover; }
-		images.AddImage("tabview:StripDrawable", tabStrip, .(4, 4, 4, 4));
-		images.AddImage("tabview:ContentDrawable", tabContent, .(4, 4, 4, 4));
-		images.AddImage("tabview:ActiveTabDrawable", tabActive, .(6, 6, 6, 4));
-		images.AddImage("tabview:HoverTabDrawable", tabHover, .(6, 6, 6, 4));
+		images.AddImage("tabview::strip", tabStrip, .(4, 4, 4, 4));
+		images.AddImage("tabview::content", tabContent, .(4, 4, 4, 4));
+		images.AddImage("tabview::tab:checked", tabActive, .(6, 6, 6, 4));
+		images.AddImage("tabview::tab:hover", tabHover, .(6, 6, 6, 4));
 
 		// --- Expander header ---
 		let expN = MakeRoundedRectImage(48, 24, .(215, 222, 235, 255), .(215, 222, 235, 0), 0);
 		let expH = MakeRoundedRectImage(48, 24, .(205, 215, 230, 255), .(205, 215, 230, 0), 0);
 		defer { delete expN; delete expH; }
-		images.AddImage("expander:HeaderDrawable", expN, .(4, 4, 4, 4));
-		images.AddImage("expander:HeaderHoverDrawable", expH, .(4, 4, 4, 4));
+		images.AddImage("expander::header", expN, .(4, 4, 4, 4));
+		images.AddImage("expander::header:hover", expH, .(4, 4, 4, 4));
 
 		return TexturedTheme.Create(images, .Light);
 	}

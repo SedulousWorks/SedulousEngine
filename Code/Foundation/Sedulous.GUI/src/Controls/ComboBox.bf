@@ -154,8 +154,8 @@ public class ComboBox : View, IPopupOwner
 			}
 		}
 
-		// Dropdown arrow
-		let arrowDrawable = ResolveStyleDrawable(.ArrowDownIcon);
+		// Dropdown arrow via pseudo-element
+		let arrowDrawable = ResolvePartDrawable("arrow", .Background, state);
 		let arrowX = Width - mArrowAreaWidth * 0.5f;
 		let arrowY = Height * 0.5f;
 		let arrowSize = 8.0f;
@@ -166,7 +166,7 @@ public class ComboBox : View, IPopupOwner
 		}
 		else
 		{
-			let arrowColor = ResolveStyleColor(.ArrowColor, .(180, 185, 200, 255));
+			let arrowColor = ResolvePartColor("arrow", .TextColor, state, .(180, 185, 200, 255));
 			let aSize = 4.0f;
 			ctx.VG.BeginPath();
 			ctx.VG.MoveTo(arrowX - aSize, arrowY - aSize * 0.5f);

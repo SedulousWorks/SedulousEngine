@@ -173,18 +173,15 @@ public class TabView : ViewGroup
 		let fontSize = ResolveStyleFloat(.FontSize, 14);
 		let font = ctx.FontService?.GetFont(fontSize);
 
-		// Resolve drawables for visual regions, colors for text/strokes
-		let stripDrawable = ResolveStyleDrawable(.StripDrawable);
-		let contentDrawable = ResolveStyleDrawable(.ContentDrawable);
-		let activeTabDrawable = ResolveStyleDrawable(.ActiveTabDrawable);
-		let hoverTabDrawable = ResolveStyleDrawable(.HoverTabDrawable);
+		let controlState = GetControlState();
+
+		// Resolve pseudo-element drawables for visual regions
+		let stripDrawable = ResolvePartDrawable("strip", .Background, controlState);
+		let contentDrawable = ResolvePartDrawable("content", .Background, controlState);
+
+		// Element-level colors
 		let borderColor = ResolveStyleColor(.BorderColor, .(60, 65, 80, 255));
 		let accentColor = ResolveStyleColor(.AccentColor, .(80, 150, 240, 255));
-		let activeTextColor = ResolveStyleColor(.ActiveTabTextColor, .(240, 240, 245, 255));
-		let inactiveTextColor = ResolveStyleColor(.InactiveTabTextColor, .(140, 145, 160, 255));
-		let hoverTextColor = ResolveStyleColor(.HoverTabTextColor, .(200, 205, 215, 255));
-		let cbActiveColor = ResolveStyleColor(.CloseButtonHoverColor, .(200, 200, 210, 255));
-		let cbInactiveColor = ResolveStyleColor(.CloseButtonColor, .(120, 125, 140, 255));
 
 		// Draw strip and content backgrounds using drawables
 		// Content uses placement-aware corner masking so rounding only appears on outer edges.
@@ -219,11 +216,15 @@ public class TabView : ViewGroup
 			let isActive = i == mSelectedIndex;
 			let isHovered = i == mHoveredTabIndex;
 
-			// Tab background - corners adjusted for placement
-			if (isActive)
-				DrawTabRegion(ctx, activeTabDrawable, rect);
-			else if (isHovered)
-				DrawTabRegion(ctx, hoverTabDrawable, rect);
+			// Tab background via pseudo-element: selected=Checked, hovered=Hover
+			{
+				var tabState = ControlState.Normal;
+				if (isActive) tabState |= .Checked;
+				if (isHovered) tabState |= .Hover;
+				let tabDrawable = ResolvePartDrawable("tab", .Background, tabState);
+				if (tabDrawable != null)
+					DrawTabRegion(ctx, tabDrawable, rect);
+			}
 
 			// Active indicator bar
 			if (isActive)
@@ -237,26 +238,32 @@ public class TabView : ViewGroup
 				}
 			}
 
-			// Tab text
+			// Tab text — resolve color from pseudo-element
 			if (font != null)
 			{
-				let textColor = isActive ? activeTextColor : (isHovered ? hoverTextColor : inactiveTextColor);
+				var tabState = ControlState.Normal;
+				if (isActive) tabState |= .Checked;
+				if (isHovered) tabState |= .Hover;
+				let textColor = ResolvePartColor("tab", .TextColor, tabState,
+					isActive ? .(240, 240, 245, 255) : (isHovered ? .(200, 205, 215, 255) : .(140, 145, 160, 255)));
 				var textRect = rect;
 				textRect.X += 8;
 				textRect.Width -= 16;
 				if (mTabs[i].IsClosable)
-					textRect.Width -= CloseButtonSize.Value + 4;
+					textRect.Width -= ResolvePartFloat("close-button", .Width, controlState, 12) + 4;
 				ctx.VG.DrawText(mTabs[i].Title, font, textRect, .Left, .Middle, textColor);
 			}
 
 			// Close button
 			if (mTabs[i].IsClosable)
 			{
-				let cbSize = CloseButtonSize.Value;
+				let cbSize = ResolvePartFloat("close-button", .Width, controlState, 12);
 				let cbX = rect.X + rect.Width - cbSize - 4;
 				let cbY = rect.Y + (rect.Height - cbSize) * 0.5f;
-				let cbColor = (isActive || isHovered) ? cbActiveColor : cbInactiveColor;
-				let closeIcon = ResolveStyleDrawable(.CloseIcon);
+				var cbState = ControlState.Normal;
+				if (isActive || isHovered) cbState |= .Hover;
+				let cbColor = ResolvePartColor("close-button", .TextColor, cbState, .(120, 125, 140, 255));
+				let closeIcon = ResolvePartDrawable("close-button", .Background, cbState);
 				if (closeIcon != null)
 				{
 					ctx.VG.PushOpacity(cbColor.A / 255.0f);

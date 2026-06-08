@@ -66,29 +66,24 @@ public class RadioButton : View
 
 		let boxRect = RectangleF(0, cy - r, CircleSize, CircleSize);
 
-		// Draw the appropriate drawable for checked/unchecked state.
-		if (IsChecked.Value)
+		// Draw box with checked state for cascade selection
+		var state = GetControlState();
+		if (IsChecked.Value) state |= .Checked;
+		let boxDrawable = ResolvePartDrawable("box", .Background, state);
+		if (boxDrawable != null)
 		{
-			let checkedDrawable = ResolveStyleDrawable(.CheckedBackground);
-			if (checkedDrawable != null)
+			boxDrawable.Draw(ctx, boxRect, state);
+			if (IsChecked.Value)
 			{
-				checkedDrawable.Draw(ctx, boxRect, GetControlState());
-				// Draw radio dot icon on top of checked background
-				let dotIcon = ResolveStyleDrawable(.RadioMarkIcon);
+				let dotIcon = ResolvePartDrawable("mark", .Background, state);
 				if (dotIcon != null)
 					dotIcon.Draw(ctx, boxRect);
 			}
-			else
-				DrawFallbackChecked(ctx, boxRect, cy);
 		}
+		else if (IsChecked.Value)
+			DrawFallbackChecked(ctx, boxRect, cy);
 		else
-		{
-			let boxDrawable = ResolveStyleDrawable(.BoxDrawable);
-			if (boxDrawable != null)
-				boxDrawable.Draw(ctx, boxRect, GetControlState());
-			else
-				DrawFallbackUnchecked(ctx, boxRect);
-		}
+			DrawFallbackUnchecked(ctx, boxRect);
 
 		// Text
 		if (Text.Value != null && !Text.Value.IsEmpty)
