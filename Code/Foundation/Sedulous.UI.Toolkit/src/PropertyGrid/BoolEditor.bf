@@ -12,7 +12,7 @@ public class BoolEditor : PropertyEditor
 	public bool Value
 	{
 		get => mValue;
-		set { mValue = value; if (mCheckBox != null) mCheckBox.IsChecked = value; }
+		set { mValue = value; if (mCheckBox != null) mCheckBox.IsChecked.Value = value; }
 	}
 
 	public delegate void(bool) Setter ~ delete _;
@@ -27,7 +27,7 @@ public class BoolEditor : PropertyEditor
 	protected override View CreateEditorView()
 	{
 		mCheckBox = new CheckBox();
-		mCheckBox.IsChecked = mValue;
+		mCheckBox.IsChecked.Value = mValue;
 		mCheckBox.OnCheckedChanged.Add(new (cb, val) => {
 			BeginEdit();
 			mValue = val;
@@ -40,6 +40,6 @@ public class BoolEditor : PropertyEditor
 
 	public override void RefreshView()
 	{
-		if (mCheckBox != null) mCheckBox.IsChecked = mValue;
+		if (mCheckBox != null) mCheckBox.IsChecked.Value = mValue;
 	}
 }

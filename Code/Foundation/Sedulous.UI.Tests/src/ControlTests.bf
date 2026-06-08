@@ -71,14 +71,6 @@ class ControlTests
 	}
 
 	[Test]
-	public static void Button_HasStyleId()
-	{
-		let btn = scope Button("Test");
-		Test.Assert(btn.StyleId != null);
-		Test.Assert(String.Equals(btn.StyleId, "button", .OrdinalIgnoreCase));
-	}
-
-	[Test]
 	public static void Button_IsFocusable()
 	{
 		let btn = scope Button("Test");
@@ -99,7 +91,7 @@ class ControlTests
 		let args = scope MouseEventArgs();
 		args.Set(10, 10, .Left);
 		btn.OnMouseDown(args);
-		Test.Assert(btn.GetControlState() == .Pressed);
+		Test.Assert(btn.GetControlState().HasFlag(.Pressed));
 	}
 
 	// === Label ===
@@ -108,8 +100,8 @@ class ControlTests
 	public static void Label_SetText()
 	{
 		let label = scope Label("Hello");
-		Test.Assert(label.Text != null);
-		Test.Assert(String.Equals(label.Text, "Hello", .OrdinalIgnoreCase));
+		Test.Assert(label.Text.Value != null);
+		Test.Assert(String.Equals(label.Text.Value, "Hello", .OrdinalIgnoreCase));
 	}
 
 	[Test]
@@ -117,7 +109,7 @@ class ControlTests
 	{
 		let label = scope Label();
 		label.SetText("World");
-		Test.Assert(String.Equals(label.Text, "World", .OrdinalIgnoreCase));
+		Test.Assert(String.Equals(label.Text.Value, "World", .OrdinalIgnoreCase));
 	}
 
 	[Test]
@@ -147,16 +139,16 @@ class ControlTests
 		let cb = new CheckBox("Option");
 		root.AddView(cb);
 
-		Test.Assert(!cb.IsChecked);
+		Test.Assert(!cb.IsChecked.Value);
 
 		bool fired = false;
 		bool newVal = false;
 		cb.OnCheckedChanged.Add(new [&] (c, val) => { fired = true; newVal = val; });
 
-		cb.IsChecked = true;
+		cb.IsChecked.Value = true;
 		Test.Assert(fired);
 		Test.Assert(newVal == true);
-		Test.Assert(cb.IsChecked);
+		Test.Assert(cb.IsChecked.Value);
 	}
 
 	[Test]
@@ -172,12 +164,12 @@ class ControlTests
 		let args = scope MouseEventArgs();
 		args.Set(5, 5, .Left);
 		cb.OnMouseDown(args);
-		Test.Assert(cb.IsChecked);
+		Test.Assert(cb.IsChecked.Value);
 
 		let args2 = scope MouseEventArgs();
 		args2.Set(5, 5, .Left);
 		cb.OnMouseDown(args2);
-		Test.Assert(!cb.IsChecked);
+		Test.Assert(!cb.IsChecked.Value);
 	}
 
 	[Test]
@@ -187,7 +179,7 @@ class ControlTests
 		int fireCount = 0;
 		cb.OnCheckedChanged.Add(new [&fireCount] (c, v) => { fireCount++; });
 
-		cb.IsChecked = true; // same value
+		cb.IsChecked.Value = true; // same value
 		Test.Assert(fireCount == 0);
 	}
 
@@ -201,13 +193,13 @@ class ControlTests
 		TestSetup.Init(ctx, root, 400, 300);
 
 		let radio = new RadioButton("Option");
-		radio.IsChecked = true;
+		radio.IsChecked.Value = true;
 		root.AddView(radio);
 
 		let args = scope MouseEventArgs();
 		args.Set(5, 5, .Left);
 		radio.OnMouseDown(args);
-		Test.Assert(radio.IsChecked); // still checked
+		Test.Assert(radio.IsChecked.Value); // still checked
 	}
 
 	[Test]
@@ -227,13 +219,13 @@ class ControlTests
 		root.AddView(group);
 
 		group.CheckAt(0);
-		Test.Assert(a.IsChecked);
-		Test.Assert(!b.IsChecked);
+		Test.Assert(a.IsChecked.Value);
+		Test.Assert(!b.IsChecked.Value);
 
-		b.IsChecked = true;
-		Test.Assert(!a.IsChecked);
-		Test.Assert(b.IsChecked);
-		Test.Assert(!c.IsChecked);
+		b.IsChecked.Value = true;
+		Test.Assert(!a.IsChecked.Value);
+		Test.Assert(b.IsChecked.Value);
+		Test.Assert(!c.IsChecked.Value);
 	}
 
 	[Test]
@@ -253,10 +245,10 @@ class ControlTests
 		RadioButton selected = null;
 		group.OnSelectionChanged.Add(new [&selected] (g, r) => { selected = r; });
 
-		a.IsChecked = true;
+		a.IsChecked.Value = true;
 		Test.Assert(selected === a);
 
-		b.IsChecked = true;
+		b.IsChecked.Value = true;
 		Test.Assert(selected === b);
 	}
 
@@ -272,7 +264,7 @@ class ControlTests
 		let toggle = new ToggleButton("Toggle");
 		root.AddView(toggle);
 
-		Test.Assert(!toggle.IsChecked);
+		Test.Assert(!toggle.IsChecked.Value);
 
 		bool fired = false;
 		toggle.OnCheckedChanged.Add(new [&fired] (t, v) => { fired = true; });
@@ -280,7 +272,7 @@ class ControlTests
 		let args = scope KeyEventArgs();
 		args.Set(.Space, .None, false);
 		toggle.OnKeyDown(args);
-		Test.Assert(toggle.IsChecked);
+		Test.Assert(toggle.IsChecked.Value);
 		Test.Assert(fired);
 	}
 
@@ -296,7 +288,7 @@ class ControlTests
 		let sw = new ToggleSwitch("VSync");
 		root.AddView(sw);
 
-		Test.Assert(!sw.IsChecked);
+		Test.Assert(!sw.IsChecked.Value);
 
 		bool toggled = false;
 		sw.OnCheckedChanged.Add(new [&toggled] (s, v) => { toggled = true; });
@@ -304,7 +296,7 @@ class ControlTests
 		let args = scope MouseEventArgs();
 		args.Set(10, 10, .Left);
 		sw.OnMouseDown(args);
-		Test.Assert(sw.IsChecked);
+		Test.Assert(sw.IsChecked.Value);
 		Test.Assert(toggled);
 	}
 
@@ -314,22 +306,22 @@ class ControlTests
 	public static void Slider_ValueClamped()
 	{
 		let slider = scope Slider(0, 100, 50);
-		Test.Assert(slider.Value == 50);
+		Test.Assert(slider.Value.Value == 50);
 
-		slider.Value = -10;
-		Test.Assert(slider.Value == 0);
+		slider.Value.Value = -10;
+		Test.Assert(slider.Value.Value == 0);
 
-		slider.Value = 200;
-		Test.Assert(slider.Value == 100);
+		slider.Value.Value = 200;
+		Test.Assert(slider.Value.Value == 100);
 	}
 
 	[Test]
 	public static void Slider_Step()
 	{
 		let slider = scope Slider(0, 100);
-		slider.Step = 10;
-		slider.Value = 33;
-		Test.Assert(Math.Abs(slider.Value - 30) < 0.01f); // snapped to nearest 10
+		slider.Step.Value = 10;
+		slider.Value.Value = 33;
+		Test.Assert(Math.Abs(slider.Value.Value - 30) < 0.01f); // snapped to nearest 10
 	}
 
 	[Test]
@@ -345,7 +337,7 @@ class ControlTests
 		float lastVal = -1;
 		slider.OnValueChanged.Add(new [&lastVal] (s, v) => { lastVal = v; });
 
-		slider.Value = 42;
+		slider.Value.Value = 42;
 		Test.Assert(lastVal == 42);
 	}
 
@@ -353,27 +345,27 @@ class ControlTests
 	public static void Slider_KeyboardControl()
 	{
 		let slider = scope Slider(0, 100, 50);
-		slider.Step = 5;
+		slider.Step.Value = 5;
 
 		let args = scope KeyEventArgs();
 		args.Set(.Right, .None, false);
 		slider.OnKeyDown(args);
-		Test.Assert(slider.Value == 55);
+		Test.Assert(slider.Value.Value == 55);
 
 		let args2 = scope KeyEventArgs();
 		args2.Set(.Left, .None, false);
 		slider.OnKeyDown(args2);
-		Test.Assert(slider.Value == 50);
+		Test.Assert(slider.Value.Value == 50);
 
 		let args3 = scope KeyEventArgs();
 		args3.Set(.Home, .None, false);
 		slider.OnKeyDown(args3);
-		Test.Assert(slider.Value == 0);
+		Test.Assert(slider.Value.Value == 0);
 
 		let args4 = scope KeyEventArgs();
 		args4.Set(.End, .None, false);
 		slider.OnKeyDown(args4);
-		Test.Assert(slider.Value == 100);
+		Test.Assert(slider.Value.Value == 100);
 	}
 
 	// === ProgressBar ===
@@ -382,14 +374,14 @@ class ControlTests
 	public static void ProgressBar_ValueClamped()
 	{
 		let bar = scope ProgressBar();
-		bar.Value = 0.5f;
-		Test.Assert(bar.Value == 0.5f);
+		bar.Value.Value = 0.5f;
+		Test.Assert(bar.Value.Value == 0.5f);
 
-		bar.Value = -1;
-		Test.Assert(bar.Value == 0);
+		bar.Value.Value = -1;
+		Test.Assert(bar.Value.Value == 0);
 
-		bar.Value = 2;
-		Test.Assert(bar.Value == 1);
+		bar.Value.Value = 2;
+		Test.Assert(bar.Value.Value == 1);
 	}
 
 	// === Spacer ===
@@ -409,7 +401,7 @@ class ControlTests
 	public static void ColorView_StoresColor()
 	{
 		let cv = scope ColorView(.(255, 0, 0, 255));
-		Test.Assert(cv.Color.R == 255 && cv.Color.G == 0);
+		Test.Assert(cv.Color.Value.R == 255 && cv.Color.Value.G == 0);
 	}
 
 	// === Separator ===
@@ -503,7 +495,7 @@ class ControlTests
 
 		// Expanded: header + content, Collapsed: just header
 		Test.Assert(collapsedH < expandedH);
-		Test.Assert(Math.Abs(collapsedH - expander.HeaderHeight) < 1.0f);
+		Test.Assert(Math.Abs(collapsedH - expander.HeaderHeight.Value) < 1.0f);
 	}
 
 	// === ImageView ===

@@ -41,10 +41,10 @@ class AssetPickerDialog : Dialog
 		mEditorContext = editorContext;
 		mOnSelected = onSelected;
 
-		MinWidth = 500;
-		MinHeight = 400;
-		MaxWidth = 700;
-		MaxHeight = 550;
+		MinWidth.Value = 500;
+		MinHeight.Value = 400;
+		MaxWidth.Value = 700;
+		MaxHeight.Value = 550;
 
 		BuildContent(extensionFilter);
 
@@ -83,7 +83,7 @@ class AssetPickerDialog : Dialog
 		// Left: registry tree
 		let treeView = new TreeView();
 		treeView.ItemHeight = 22;
-		treeView.IndentWidth = 16;
+		treeView.IndentWidth.Value = 16;
 		treeView.SetAdapter(mTreeAdapter);
 
 		// Right: nav bar + content
@@ -99,7 +99,7 @@ class AssetPickerDialog : Dialog
 		navBar.AddView(breadcrumb, new FlexLayout.LayoutParams() { Height = .Match, Grow = 1 });
 
 		let listBtn = new ToggleButton("List");
-		listBtn.IsChecked = true;
+		listBtn.IsChecked.Value = true;
 		let gridBtn = new ToggleButton("Grid");
 		navBar.AddView(listBtn, new FlexLayout.LayoutParams() { Height = .Match });
 		navBar.AddView(gridBtn, new FlexLayout.LayoutParams() { Height = .Match });
@@ -123,7 +123,7 @@ class AssetPickerDialog : Dialog
 
 		// List view (default)
 		mContentList = new ListView();
-		mContentList.ItemHeight = 24;
+		mContentList.ItemHeight.Value = 24;
 		mContentList.Adapter = mListAdapter;
 		mContentList.Selection.Mode = .Single;
 		mListAdapter.OwnerListView = mContentList;
@@ -213,7 +213,7 @@ class AssetPickerDialog : Dialog
 		listBtn.OnCheckedChanged.Add(new (btn, val) => {
 			if (val)
 			{
-				gridBtn.IsChecked = false;
+				gridBtn.IsChecked.Value = false;
 				mContentList.Visibility = .Visible;
 				mContentGrid.Visibility = .Gone;
 				mGridMode = false;
@@ -222,7 +222,7 @@ class AssetPickerDialog : Dialog
 		gridBtn.OnCheckedChanged.Add(new (btn, val) => {
 			if (val)
 			{
-				listBtn.IsChecked = false;
+				listBtn.IsChecked.Value = false;
 				mContentList.Visibility = .Gone;
 				mContentGrid.Visibility = .Visible;
 				mGridMode = true;

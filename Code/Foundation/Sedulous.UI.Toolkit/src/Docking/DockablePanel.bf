@@ -82,17 +82,15 @@ public class DockablePanel : ViewGroup, IDragSource
 		mLastRelativeToId = (relativeTo != null) ? relativeTo.Id : .Invalid;
 	}
 
-	public this() { StyleId = new String("dockablepanel"); }
+	public this() { }
 
 	public this(StringView title)
 	{
-		StyleId = new String("dockablepanel");
 		mTitle.Set(title);
 	}
 
 	public this(StringView title, View content)
 	{
-		StyleId = new String("dockablepanel");
 		mTitle.Set(title);
 		SetContent(content);
 	}
@@ -139,7 +137,7 @@ public class DockablePanel : ViewGroup, IDragSource
 		if (mShowHeader)
 		{
 			// Header background.
-			let headerDrawable = ResolveStyleDrawable(.HeaderDrawable);
+			let headerDrawable = ResolvePartDrawable("header", .Background, .Normal);
 			if (headerDrawable != null)
 				headerDrawable.Draw(ctx, .(0, 0, w, HeaderHeight));
 			else
@@ -163,14 +161,14 @@ public class DockablePanel : ViewGroup, IDragSource
 				let cy = HeaderHeight * 0.5f;
 				let sz = 4.0f;
 
-				let closeColor = ResolveStyleColor(.CloseButtonColor, .(180, 185, 200, 150));
+				let closeColor = ResolvePartColor("close-button", .TextColor, .Normal, .(180, 185, 200, 150));
 				ctx.VG.DrawLine(.(cx - sz, cy - sz), .(cx + sz, cy + sz), closeColor, 1.5f);
 				ctx.VG.DrawLine(.(cx + sz, cy - sz), .(cx - sz, cy + sz), closeColor, 1.5f);
 			}
 		}
 
 		// Content background.
-		let contentDrawable = ResolveStyleDrawable(.ContentDrawable);
+		let contentDrawable = ResolvePartDrawable("content", .Background, .Normal);
 		if (contentDrawable != null)
 			contentDrawable.Draw(ctx, .(0, headerH, w, Height - headerH));
 		else

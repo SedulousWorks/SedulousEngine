@@ -38,10 +38,10 @@ class PropertyPickerDialog : Dialog
 		mRegistry = registry;
 		mOnSelected = onSelected;
 
-		MinWidth = 360;
-		MinHeight = 360;
-		MaxWidth = 480;
-		MaxHeight = 560;
+		MinWidth.Value = 360;
+		MinHeight.Value = 360;
+		MaxWidth.Value = 480;
+		MaxHeight.Value = 560;
 
 		BuildContent();
 		AddButton("Cancel", .Cancel);
@@ -70,7 +70,7 @@ class PropertyPickerDialog : Dialog
 		{
 			let empty = new Label();
 			empty.SetText("(no animatable properties registered)");
-			empty.TextColor = .(160, 160, 170, 255);
+			empty.TextColor.Value = .(160, 160, 170, 255);
 			list.AddView(empty, new FlexLayout.LayoutParams() {
 				Width = .Match, Height = .Fixed(.Px(20))
 			});
@@ -120,8 +120,8 @@ class PropertyPickerDialog : Dialog
 
 		let header = new Label();
 		header.SetText(scope $"{label} ({paths.Count})");
-		header.TextColor = .(220, 220, 230, 255);
-		header.FontSize = 12;
+		header.TextColor.Value = .(220, 220, 230, 255);
+		header.FontSize.Value = 12;
 		list.AddView(header, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Fixed(.Px(22))
 		});

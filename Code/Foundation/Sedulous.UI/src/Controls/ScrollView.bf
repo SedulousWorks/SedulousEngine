@@ -36,19 +36,19 @@ public class ScrollView : ViewGroup
 	private ScrollBar mHBar;
 
 	/// Vertical scroll bar policy.
-	public ScrollBarPolicy VScrollBarPolicy = .Auto;
+	public Property<ScrollBarPolicy> VScrollBarPolicy = new .(.Auto) ~ delete _;
 
 	/// Horizontal scroll bar policy.
-	public ScrollBarPolicy HScrollBarPolicy = .Auto;
+	public Property<ScrollBarPolicy> HScrollBarPolicy = new .(.Auto) ~ delete _;
 
 	/// How scrollbars affect content layout.
-	public ScrollBarMode ScrollBarMode = .Overlay;
+	public Property<ScrollBarMode> ScrollBarMode = new .(.Overlay) ~ delete _;
 
 	/// Whether momentum scrolling is enabled.
-	public bool MomentumEnabled = true;
+	public Property<bool> MomentumEnabled = new .(true) ~ delete _;
 
 	/// Scroll bar thickness.
-	public float ScrollBarThickness = 10;
+	public Property<float> ScrollBarThickness = new .(10) ~ delete _;
 
 	/// Current horizontal scroll offset.
 	public float ScrollX
@@ -93,7 +93,7 @@ public class ScrollView : ViewGroup
 	{
 		get
 		{
-			float barSpace = (ScrollBarMode == .Reserved && NeedsVBar) ? ScrollBarThickness : 0;
+			float barSpace = (ScrollBarMode.Value == .Reserved && NeedsVBar) ? ScrollBarThickness.Value : 0;
 			return Math.Max(0, Width - Padding.TotalHorizontal - barSpace);
 		}
 	}
@@ -103,7 +103,7 @@ public class ScrollView : ViewGroup
 	{
 		get
 		{
-			float barSpace = (ScrollBarMode == .Reserved && NeedsHBar) ? ScrollBarThickness : 0;
+			float barSpace = (ScrollBarMode.Value == .Reserved && NeedsHBar) ? ScrollBarThickness.Value : 0;
 			return Math.Max(0, Height - Padding.TotalVertical - barSpace);
 		}
 	}
@@ -112,8 +112,8 @@ public class ScrollView : ViewGroup
 	{
 		get
 		{
-			if (VScrollBarPolicy == .Never) return false;
-			if (VScrollBarPolicy == .Always) return true;
+			if (VScrollBarPolicy.Value == .Never) return false;
+			if (VScrollBarPolicy.Value == .Always) return true;
 			return mContentHeight > Height - Padding.TotalVertical;
 		}
 	}
@@ -122,8 +122,8 @@ public class ScrollView : ViewGroup
 	{
 		get
 		{
-			if (HScrollBarPolicy == .Never) return false;
-			if (HScrollBarPolicy == .Always) return true;
+			if (HScrollBarPolicy.Value == .Never) return false;
+			if (HScrollBarPolicy.Value == .Always) return true;
 			return mContentWidth > Width - Padding.TotalHorizontal;
 		}
 	}
@@ -131,14 +131,21 @@ public class ScrollView : ViewGroup
 	public this()
 	{
 		ClipsContent = true;
+		VScrollBarPolicy.SetOwner(this);
+		HScrollBarPolicy.SetOwner(this);
+		ScrollBarMode.SetOwner(this);
+		MomentumEnabled.SetOwner(this);
+		ScrollBarThickness.SetOwner(this);
 
 		// Scrollbars are visual children (not logical) - they participate in
 		// draw and hit-test via VisualChildCount/GetVisualChild but don't
 		// affect content measurement or layout.
-		mVBar = new ScrollBar(false) { BarThickness = ScrollBarThickness, Visibility = .Gone };
+		mVBar = new ScrollBar(false) { Visibility = .Gone };
+		mVBar.BarThickness = ScrollBarThickness.Value;
 		mVBar.OnValueChanged.Add(new (bar, val) => { ScrollY = val; });
 
-		mHBar = new ScrollBar(true) { BarThickness = ScrollBarThickness, Visibility = .Gone };
+		mHBar = new ScrollBar(true) { Visibility = .Gone };
+		mHBar.BarThickness = ScrollBarThickness.Value;
 		mHBar.OnValueChanged.Add(new (bar, val) => { ScrollX = val; });
 	}
 
@@ -240,8 +247,8 @@ public class ScrollView : ViewGroup
 		let fullW = Math.Max(0, constraints.MaxWidth - Padding.TotalHorizontal);
 		let fullH = Math.Max(0, constraints.MaxHeight - Padding.TotalVertical);
 
-		let childMaxW = (HScrollBarPolicy == .Always) ? float.MaxValue : fullW;
-		let childMaxH = (VScrollBarPolicy == .Never) ? fullH : float.MaxValue;
+		let childMaxW = (HScrollBarPolicy.Value == .Always) ? float.MaxValue : fullW;
+		let childMaxH = (VScrollBarPolicy.Value == .Never) ? fullH : float.MaxValue;
 		let childConstraints = BoxConstraints(0, childMaxW, 0, childMaxH);
 
 		float maxW = 0, maxH = 0;
@@ -261,20 +268,20 @@ public class ScrollView : ViewGroup
 
 		// Second pass: if Reserved mode and content overflows, re-measure with
 		// scrollbar space subtracted so children account for the narrower viewport.
-		if (ScrollBarMode == .Reserved)
+		if (ScrollBarMode.Value == .Reserved)
 		{
-			bool needsVBar = (VScrollBarPolicy == .Always) || (VScrollBarPolicy == .Auto && maxH > fullH);
-			bool needsHBar = (HScrollBarPolicy == .Always) || (HScrollBarPolicy == .Auto && maxW > fullW);
+			bool needsVBar = (VScrollBarPolicy.Value == .Always) || (VScrollBarPolicy.Value == .Auto && maxH > fullH);
+			bool needsHBar = (HScrollBarPolicy.Value == .Always) || (HScrollBarPolicy.Value == .Auto && maxW > fullW);
 
 			if (needsVBar || needsHBar)
 			{
-				let barW = needsVBar ? ScrollBarThickness : 0;
-				let barH = needsHBar ? ScrollBarThickness : 0;
+				let barW = needsVBar ? ScrollBarThickness.Value : 0;
+				let barH = needsHBar ? ScrollBarThickness.Value : 0;
 				let adjustedW = Math.Max(0, fullW - barW);
 				let adjustedH = Math.Max(0, fullH - barH);
 
-				let adjChildMaxW = (HScrollBarPolicy == .Always) ? float.MaxValue : adjustedW;
-				let adjChildMaxH = (VScrollBarPolicy == .Never) ? adjustedH : float.MaxValue;
+				let adjChildMaxW = (HScrollBarPolicy.Value == .Always) ? float.MaxValue : adjustedW;
+				let adjChildMaxH = (VScrollBarPolicy.Value == .Never) ? adjustedH : float.MaxValue;
 				let adjConstraints = BoxConstraints(0, adjChildMaxW, 0, adjChildMaxH);
 
 				maxW = 0; maxH = 0;
@@ -295,15 +302,15 @@ public class ScrollView : ViewGroup
 		}
 
 		// Width: fill available if horizontal scrolling, else wrap to content
-		let measuredW = (HScrollBarPolicy == .Never)
+		let measuredW = (HScrollBarPolicy.Value == .Never)
 			? maxW + Padding.TotalHorizontal
 			: constraints.MaxWidth;
 
 		// Height: fill available if vertical scrolling, else wrap to content + scrollbar
 		float measuredH;
-		if (VScrollBarPolicy == .Never)
+		if (VScrollBarPolicy.Value == .Never)
 		{
-			let hBarH = (HScrollBarPolicy != .Never && ScrollBarMode == .Reserved) ? ScrollBarThickness : 0;
+			let hBarH = (HScrollBarPolicy.Value != .Never && ScrollBarMode.Value == .Reserved) ? ScrollBarThickness.Value : 0;
 			measuredH = maxH + Padding.TotalVertical + hBarH;
 		}
 		else
@@ -355,8 +362,8 @@ public class ScrollView : ViewGroup
 			mVBar.MaxValue = MaxScrollY;
 			mVBar.ViewportSize = ViewportHeight;
 			mVBar.Value = mScrollY;
-			mVBar.Measure(BoxConstraints.Tight(ScrollBarThickness, ViewportHeight));
-			mVBar.Layout(width - ScrollBarThickness, Padding.Top, ScrollBarThickness, ViewportHeight);
+			mVBar.Measure(BoxConstraints.Tight(ScrollBarThickness.Value, ViewportHeight));
+			mVBar.Layout(width - ScrollBarThickness.Value, Padding.Top, ScrollBarThickness.Value, ViewportHeight);
 		}
 
 		if (NeedsHBar)
@@ -364,15 +371,15 @@ public class ScrollView : ViewGroup
 			mHBar.MaxValue = MaxScrollX;
 			mHBar.ViewportSize = ViewportWidth;
 			mHBar.Value = mScrollX;
-			mHBar.Measure(BoxConstraints.Tight(ViewportWidth, ScrollBarThickness));
-			mHBar.Layout(Padding.Left, height - ScrollBarThickness, ViewportWidth, ScrollBarThickness);
+			mHBar.Measure(BoxConstraints.Tight(ViewportWidth, ScrollBarThickness.Value));
+			mHBar.Layout(Padding.Left, height - ScrollBarThickness.Value, ViewportWidth, ScrollBarThickness.Value);
 		}
 	}
 
 	public override void OnDraw(UIDrawContext ctx)
 	{
 		// Tick momentum
-		if (MomentumEnabled && mMomentum.IsActive)
+		if (MomentumEnabled.Value && mMomentum.IsActive)
 		{
 			let (dx, dy) = mMomentum.Update(Context?.DeltaTime ?? 0.016f);
 			ScrollX = mScrollX + dx;
@@ -400,14 +407,14 @@ public class ScrollView : ViewGroup
 		if (NeedsHBar && hDelta != 0)
 		{
 			ScrollX = mScrollX - hDelta * scrollAmount;
-			if (MomentumEnabled)
+			if (MomentumEnabled.Value)
 				mMomentum.VelocityX = -hDelta * scrollAmount * 3;
 			e.Handled = true;
 		}
 		else if (NeedsVBar && e.DeltaY != 0)
 		{
 			ScrollY = mScrollY - e.DeltaY * scrollAmount;
-			if (MomentumEnabled)
+			if (MomentumEnabled.Value)
 				mMomentum.VelocityY = -e.DeltaY * scrollAmount * 3;
 			e.Handled = true;
 		}

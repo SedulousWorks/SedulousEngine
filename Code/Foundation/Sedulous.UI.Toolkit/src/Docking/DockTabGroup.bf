@@ -32,7 +32,6 @@ public class DockTabGroup : ViewGroup, IDragSource
 
 	public this()
 	{
-		StyleId = new String("docktabgroup");
 	}
 
 	public int SelectedIndex
@@ -200,14 +199,14 @@ public class DockTabGroup : ViewGroup, IDragSource
 		let contentH = Height - mTabHeight;
 
 		// Tab bar background (top).
-		let stripDrawable = ResolveStyleDrawable(.StripDrawable);
+		let stripDrawable = ResolvePartDrawable("strip", .Background, .Normal);
 		if (stripDrawable != null)
 			stripDrawable.Draw(ctx, .(0, 0, Width, mTabHeight));
 		else
 			ctx.VG.FillRect(.(0, 0, Width, mTabHeight), .(35, 37, 46, 255));
 
 		// Content area (below tabs).
-		let contentDrawable = ResolveStyleDrawable(.ContentDrawable);
+		let contentDrawable = ResolvePartDrawable("content", .Background, .Normal);
 		if (contentDrawable != null)
 			contentDrawable.Draw(ctx, .(0, contentY, Width, contentH));
 		else
@@ -234,12 +233,8 @@ public class DockTabGroup : ViewGroup, IDragSource
 		let font = ctx.FontService.GetFont(11);
 		if (font == null) return;
 
-		let activeTabDrawable = ResolveStyleDrawable(.ActiveTabDrawable);
-		let hoverTabDrawable = ResolveStyleDrawable(.HoverTabDrawable);
-		let activeText = ResolveStyleColor(.ActiveTabTextColor, .(220, 225, 235, 255));
-		let inactiveText = ResolveStyleColor(.InactiveTabTextColor, .(180, 185, 200, 153));
 		let borderColor = ResolveStyleColor(.BorderColor, .(35, 37, 46, 255));
-		let closeColor = ResolveStyleColor(.CloseButtonColor, .(180, 185, 200, 150));
+		let closeColor = ResolvePartColor("close-button", .TextColor, .Normal, .(180, 185, 200, 150));
 
 		float tabX = 2;
 		for (int i = 0; i < mPanels.Count; i++)
@@ -255,6 +250,7 @@ public class DockTabGroup : ViewGroup, IDragSource
 			// Tab background
 			if (i == mSelectedIndex)
 			{
+				let activeTabDrawable = ResolvePartDrawable("tab", .Background, .Checked);
 				if (activeTabDrawable != null)
 					activeTabDrawable.Draw(ctx, tabRect);
 				else
@@ -262,6 +258,7 @@ public class DockTabGroup : ViewGroup, IDragSource
 			}
 			else if (i == mHoveredTabIndex)
 			{
+				let hoverTabDrawable = ResolvePartDrawable("tab", .Background, .Hover);
 				if (hoverTabDrawable != null)
 					hoverTabDrawable.Draw(ctx, tabRect);
 				else
@@ -269,7 +266,9 @@ public class DockTabGroup : ViewGroup, IDragSource
 			}
 
 			// Tab text
-			let textColor = (i == mSelectedIndex) ? activeText : inactiveText;
+			let textColor = (i == mSelectedIndex)
+				? ResolvePartColor("tab", .TextColor, .Checked, .(220, 225, 235, 255))
+				: ResolvePartColor("tab", .TextColor, .Normal, .(180, 185, 200, 153));
 			ctx.VG.DrawText(panel.Title, font, .(tabX + 8, 0, textW, mTabHeight), .Left, .Middle, textColor);
 
 			// Close button - show on active tab always, on hovered inactive tab
@@ -283,7 +282,7 @@ public class DockTabGroup : ViewGroup, IDragSource
 				let showClose = (i == mSelectedIndex) || (i == mHoveredTabIndex);
 				if (showClose)
 				{
-					let closeIcon = ResolveStyleDrawable(.CloseIcon);
+					let closeIcon = ResolvePartDrawable("close-button", .Background, .Normal);
 					if (closeIcon != null)
 					{
 						ctx.VG.PushOpacity(closeColor.A / 255.0f);

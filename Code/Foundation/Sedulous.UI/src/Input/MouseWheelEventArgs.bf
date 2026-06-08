@@ -14,8 +14,11 @@ public class MouseWheelEventArgs
 	/// Modifier keys held during this event.
 	public KeyModifiers Modifiers;
 
-	/// Set by handler to stop event bubbling.
+	/// Set by handler to stop event propagation.
 	public bool Handled;
+
+	/// Current phase of event propagation.
+	public EventPhase Phase;
 
 	public void Reset()
 	{
@@ -23,5 +26,6 @@ public class MouseWheelEventArgs
 		DeltaX = 0; DeltaY = 0;
 		Modifiers = .None;
 		Handled = false;
+		Phase = .Target;
 	}
 }

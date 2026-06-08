@@ -150,8 +150,8 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 		// Header
 		let headerLabel = new Label();
 		headerLabel.SetText("Inspector");
-		headerLabel.FontSize = 12;
-		headerLabel.TextColor = .(140, 140, 155, 255);
+		headerLabel.FontSize.Value = 12;
+		headerLabel.TextColor.Value = .(140, 140, 155, 255);
 		panel.AddView(headerLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(24)) });
 
 		let sep = new Panel();
@@ -165,9 +165,9 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 
 		let layerLabel = new Label();
 		layerLabel.SetText("Layer");
-		layerLabel.FontSize = 11;
-		layerLabel.TextColor = .(160, 160, 175, 255);
-		layerLabel.VAlign = .Middle;
+		layerLabel.FontSize.Value = 11;
+		layerLabel.TextColor.Value = .(160, 160, 175, 255);
+		layerLabel.VAlign.Value = .Middle;
 		layerRow.AddView(layerLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(36)), Height = .Match });
 
 		let layerCombo = new ComboBox();
@@ -209,7 +209,7 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 		let layerNameLabel = new EditableLabel();
 		if (page.GetActiveLayer() != null)
 			layerNameLabel.SetText(page.GetActiveLayer().Name);
-		layerNameLabel.FontSize = 11;
+		layerNameLabel.FontSize.Value = 11;
 		layerNameLabel.OnRenameCommitted.Add(new [=page] (el, newName) => {
 			let layer = page.GetActiveLayer();
 			if (layer != null)
@@ -236,8 +236,8 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 		// Preview asset assignment section
 		let previewLabel = new Label();
 		previewLabel.SetText("Preview");
-		previewLabel.FontSize = 11;
-		previewLabel.TextColor = .(160, 160, 175, 255);
+		previewLabel.FontSize.Value = 11;
+		previewLabel.TextColor.Value = .(160, 160, 175, 255);
 		panel.AddView(previewLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });
 
 		let previewGrid = new PropertyGrid();
@@ -274,8 +274,8 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 		paramsHeader.Direction = .Horizontal;
 		let paramsLabel = new Label();
 		paramsLabel.SetText("Parameters");
-		paramsLabel.FontSize = 11;
-		paramsLabel.TextColor = .(160, 160, 175, 255);
+		paramsLabel.FontSize.Value = 11;
+		paramsLabel.TextColor.Value = .(160, 160, 175, 255);
 		paramsHeader.AddView(paramsLabel, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
 		let addParamBtn = new Button("+");
 		addParamBtn.OnClick.Add(new [=page] (btn) => {
@@ -297,8 +297,8 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 		// Selection property grid
 		let selLabel = new Label();
 		selLabel.SetText("Selection");
-		selLabel.FontSize = 11;
-		selLabel.TextColor = .(160, 160, 175, 255);
+		selLabel.FontSize.Value = 11;
+		selLabel.TextColor.Value = .(160, 160, 175, 255);
 		panel.AddView(selLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });
 
 		let propGrid = new PropertyGrid();

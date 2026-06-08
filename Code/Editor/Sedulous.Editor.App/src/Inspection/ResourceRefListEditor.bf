@@ -77,16 +77,16 @@ class ResourceRefListEditor : PropertyEditor
 			// Slot label
 			let label = new Label();
 			label.SetText(scope $"[{i}]");
-			label.FontSize = 10;
-			label.TextColor = .(140, 145, 160, 255);
+			label.FontSize.Value = 10;
+			label.TextColor.Value = .(140, 145, 160, 255);
 			row.AddView(label, new FlexLayout.LayoutParams() {
 				Width = .Fixed(.Px(24)), Height = .Match
 			});
 
 			// Path display
 			let pathLabel = new Label();
-			pathLabel.FontSize = 11;
-			pathLabel.TextColor = .(180, 185, 200, 255);
+			pathLabel.FontSize.Value = 11;
+			pathLabel.TextColor.Value = .(180, 185, 200, 255);
 			let @ref = mGetter(i);
 			if (@ref.HasPath)
 			{

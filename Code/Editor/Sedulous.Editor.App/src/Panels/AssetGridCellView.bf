@@ -24,15 +24,14 @@ class AssetGridCellView : ViewGroup
 
 	public this()
 	{
-		StyleId = new String("gridcell");
 		ClipsContent = true;
 
 		mNameLabel = new EditableLabel();
-		mNameLabel.FontSize = 10;
-		mNameLabel.HAlign = .Center;
-		mNameLabel.Ellipsis = true;
-		mNameLabel.DoubleClickToEdit = false;
-		mNameLabel.SlowClickToEdit = false; // Rename via context menu or F2 only in grid
+		mNameLabel.FontSize.Value = 10;
+		mNameLabel.HAlign.Value = .Center;
+		mNameLabel.Ellipsis.Value = true;
+		mNameLabel.DoubleClickToEdit.Value = false;
+		mNameLabel.SlowClickToEdit.Value = false; // Rename via context menu or F2 only in grid
 		mNameLabel.ValidateRename = new (name) => {
 			for (let c in name.RawChars)
 			{
@@ -65,9 +64,9 @@ class AssetGridCellView : ViewGroup
 		mIsMissing = item.IsMissing;
 
 		if (mIsMissing)
-			mNameLabel.TextColor = .(200, 80, 80, 255);
+			mNameLabel.TextColor.Value = .(200, 80, 80, 255);
 		else
-			mNameLabel.TextColor = .(200, 205, 220, 255);
+			mNameLabel.TextColor.Value = .(200, 205, 220, 255);
 
 		// Start with the default icon (so rebind during scroll never shows a
 		// blank cell, and so unsupported extensions stay on the icon).

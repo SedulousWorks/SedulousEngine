@@ -499,8 +499,8 @@ static class ScenePageBuilder
 
 		let headerLabel = new Label();
 		headerLabel.SetText("Inspector");
-		headerLabel.FontSize = 13;
-		headerLabel.TextColor = .(128, 128, 140, 255);
+		headerLabel.FontSize.Value = 13;
+		headerLabel.TextColor.Value = .(128, 128, 140, 255);
 		container.AddView(headerLabel, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Fixed(.Px(24))
 		});

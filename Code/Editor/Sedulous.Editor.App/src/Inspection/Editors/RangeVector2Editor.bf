@@ -68,7 +68,7 @@ class RangeVector2Editor : PropertyEditor
 	private NumericField MakeField(StringView prefix, float initial)
 	{
 		let field = new RangeNumericField(this);
-		field.ShowSpinButtons = false;
+		field.ShowSpinButtons.Value = false;
 		field.Min = mMin; field.Max = mMax; field.Step = 0.1;
 		field.DecimalPlaces = 3;
 		field.SetPrefix(prefix);
@@ -84,8 +84,8 @@ class RangeVector2Editor : PropertyEditor
 
 		let lbl = new Label();
 		lbl.SetText(label);
-		lbl.FontSize = 11;
-		lbl.VAlign = .Middle;
+		lbl.FontSize.Value = 11;
+		lbl.VAlign.Value = .Middle;
 		row.AddView(lbl, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(28)) });
 
 		row.AddView(xf, new FlexLayout.LayoutParams() { Grow = 1 });

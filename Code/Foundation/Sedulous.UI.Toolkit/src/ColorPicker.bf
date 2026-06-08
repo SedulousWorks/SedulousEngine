@@ -42,8 +42,6 @@ public class ColorPicker : ViewGroup
 
 	public this()
 	{
-		StyleId = new String("colorpicker");
-
 		// SV Square.
 		mSVSquare = new SVSquare(this);
 		AddView(mSVSquare);
@@ -58,17 +56,17 @@ public class ColorPicker : ViewGroup
 
 		// Preview swatches.
 		mPreviewCurrent = new ColorView();
-		mPreviewCurrent.Color = .White;
+		mPreviewCurrent.Color.Value = .White;
 		AddView(mPreviewCurrent);
 
 		mPreviewOriginal = new ColorView();
-		mPreviewOriginal.Color = .White;
+		mPreviewOriginal.Color.Value = .White;
 		AddView(mPreviewOriginal);
 
 		// Hex input.
 		mHexInput = new EditText();
 		mHexInput.SetPlaceholder("#RRGGBB");
-		mHexInput.MaxLength = 7;
+		mHexInput.MaxLength.Value = 7;
 		mHexInput.OnSubmit.Add(new (e) => OnHexSubmit());
 		AddView(mHexInput);
 
@@ -112,7 +110,7 @@ public class ColorPicker : ViewGroup
 	public void SetOriginalColor(Color color)
 	{
 		mOriginalColor = color;
-		mPreviewOriginal.Color = color;
+		mPreviewOriginal.Color.Value = color;
 	}
 
 	// === Internal sync ===
@@ -138,7 +136,7 @@ public class ColorPicker : ViewGroup
 		hex.AppendF("#{0:X2}{1:X2}{2:X2}", (int)color.R, (int)color.G, (int)color.B);
 		mHexInput.SetText(hex);
 
-		mPreviewCurrent.Color = color;
+		mPreviewCurrent.Color.Value = color;
 	}
 
 	private void SyncFromRGB()

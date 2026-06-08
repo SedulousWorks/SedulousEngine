@@ -23,6 +23,9 @@ public class KeyEventArgs
 	/// Set by handler to stop event propagation.
 	public bool Handled;
 
+	/// Current phase of event propagation.
+	public EventPhase Phase;
+
 	public void Reset()
 	{
 		Key = .Unknown;
@@ -31,6 +34,7 @@ public class KeyEventArgs
 		IsRepeat = false;
 		Timestamp = 0;
 		Handled = false;
+		Phase = .Target;
 	}
 
 	public void Set(KeyCode key, KeyModifiers modifiers, bool isRepeat,
@@ -42,5 +46,6 @@ public class KeyEventArgs
 		IsRepeat = isRepeat;
 		Timestamp = timestamp;
 		Handled = false;
+		Phase = .Target;
 	}
 }

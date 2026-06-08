@@ -24,13 +24,8 @@ class HierarchyItemView : EditText
 
 	public this()
 	{
-		if(StyleId == null)
-		{
-			StyleId = new .();
-		}
-		StyleId.Set("hierarchyitem");
 		Cursor = .Arrow;
-		IsReadOnly = true;
+		IsReadOnly.Value = true;
 		IsFocusable = false;
 	}
 
@@ -49,7 +44,7 @@ class HierarchyItemView : EditText
 		if (IsEditing) return;
 		IsEditing = true;
 		mPreEditText.Set(Text);
-		IsReadOnly = false;
+		IsReadOnly.Value = false;
 		IsFocusable = true;
 		Cursor = .IBeam;
 
@@ -63,7 +58,7 @@ class HierarchyItemView : EditText
 	{
 		if (!IsEditing) return;
 		IsEditing = false;
-		IsReadOnly = true;
+		IsReadOnly.Value = true;
 		IsFocusable = false;
 		Cursor = .Arrow;
 		OnRenameCommitted(this, Text);
@@ -74,7 +69,7 @@ class HierarchyItemView : EditText
 	{
 		if (!IsEditing) return;
 		IsEditing = false;
-		IsReadOnly = true;
+		IsReadOnly.Value = true;
 		IsFocusable = false;
 		Cursor = .Arrow;
 		SetText(mPreEditText);

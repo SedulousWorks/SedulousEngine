@@ -61,14 +61,6 @@ class ContextMenuTests
 	}
 
 	[Test]
-	public static void HasStyleId()
-	{
-		let menu = scope ContextMenu();
-		Test.Assert(menu.StyleId != null);
-		Test.Assert(StringView(menu.StyleId) == "contextmenu");
-	}
-
-	[Test]
 	public static void IsFocusable()
 	{
 		let menu = scope ContextMenu();

@@ -131,14 +131,14 @@ class AnimationEditorPageFactory : IEditorPageFactory
 		let meshRow = new FlexLayout() { Direction = .Horizontal, Spacing = 4 };
 		let meshLabel = new Label();
 		meshLabel.SetText("Mesh:");
-		meshLabel.TextColor = .(180, 180, 195, 255);
-		meshLabel.FontSize = 11;
+		meshLabel.TextColor.Value = .(180, 180, 195, 255);
+		meshLabel.FontSize.Value = 11;
 		meshRow.AddView(meshLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(64)), Height = .Match });
 
 		let meshPathLabel = new Label();
 		meshPathLabel.SetText("(none)");
-		meshPathLabel.TextColor = .(220, 220, 230, 255);
-		meshPathLabel.FontSize = 11;
+		meshPathLabel.TextColor.Value = .(220, 220, 230, 255);
+		meshPathLabel.FontSize.Value = 11;
 		meshRow.AddView(meshPathLabel, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
 
 		let pickMeshBtn = new Button("Pick");
@@ -161,14 +161,14 @@ class AnimationEditorPageFactory : IEditorPageFactory
 		let skelRow = new FlexLayout() { Direction = .Horizontal, Spacing = 4 };
 		let skelLabel = new Label();
 		skelLabel.SetText("Skeleton:");
-		skelLabel.TextColor = .(180, 180, 195, 255);
-		skelLabel.FontSize = 11;
+		skelLabel.TextColor.Value = .(180, 180, 195, 255);
+		skelLabel.FontSize.Value = 11;
 		skelRow.AddView(skelLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(64)), Height = .Match });
 
 		let skelPathLabel = new Label();
 		skelPathLabel.SetText("(none)");
-		skelPathLabel.TextColor = .(220, 220, 230, 255);
-		skelPathLabel.FontSize = 11;
+		skelPathLabel.TextColor.Value = .(220, 220, 230, 255);
+		skelPathLabel.FontSize.Value = 11;
 		skelRow.AddView(skelPathLabel, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
 
 		let pickSkelBtn = new Button("Pick");

@@ -119,61 +119,81 @@ public static class TexturedTheme
 			.Set(.FontSize, 16.0f);
 
 		// Per-control non-drawable properties (colors, padding, sizes).
-		sheet.ForType(typeof(View), "button")
+		sheet.ForType(typeof(ButtonBase))
 			.Set(.TextColor, Color(30, 30, 40, 255))
 			.Set(.Padding, Thickness(12, 8));
 
-		sheet.ForType(typeof(View), "label")
+		sheet.ForClass("label")
 			.Set(.TextColor, p.Text);
-		sheet.ForType(typeof(View), "label-dim")
+		sheet.ForClass("label-dim")
 			.Set(.TextColor, p.TextDim);
 
-		sheet.ForType(typeof(View), "edittext")
+		sheet.ForType(typeof(EditText))
 			.Set(.TextColor, p.Text)
 			.Set(.PlaceholderColor, p.TextDim)
 			.Set(.FontSize, 14.0f)
 			.Set(.Padding, Thickness(6, 4))
 			.Set(.CursorColor, p.PrimaryAccent)
-			.Set(.SelectionColor, Color(60, 120, 200, 80));
+			.Set(.SelectionColor, Color(60, 120, 200, 80))
+			.Set(.CornerRadius, 4.0f);
 
-		sheet.ForType(typeof(View), "checkbox")
-			.Set(.BoxSize, 18.0f)
+		sheet.ForType(typeof(NumericField))
+			.Set(.TextColor, p.Text)
+			.Set(.PlaceholderColor, p.TextDim)
+			.Set(.FontSize, 14.0f)
+			.Set(.Padding, Thickness(6, 4))
+			.Set(.CursorColor, p.PrimaryAccent)
+			.Set(.SelectionColor, Color(60, 120, 200, 80))
+			.Set(.CornerRadius, 4.0f);
+
+		sheet.ForTypePseudo(typeof(CheckBox), "box")
+			.Set(.Width, 18.0f);
+		sheet.ForType(typeof(CheckBox))
 			.Set(.Spacing, 6.0f);
 
-		sheet.ForType(typeof(View), "slider")
-			.Set(.ThumbSize, 16.0f)
-			.Set(.TrackHeight, 4.0f);
+		sheet.ForTypePseudo(typeof(Slider), "track")
+			.Set(.Height, 4.0f);
+		sheet.ForTypePseudo(typeof(Slider), "thumb")
+			.Set(.Width, 16.0f);
 
-		sheet.ForType(typeof(View), "separator")
+		sheet.ForType(typeof(Separator))
 			.Set(.BorderColor, p.Border);
 
-		sheet.ForType(typeof(View), "tabview")
+		sheet.ForTypePseudo(typeof(TabView), "tab")
+			.Set(.TextColor, p.TextDim);
+		sheet.ForTypePseudoState(typeof(TabView), "tab", .Checked)
+			.Set(.TextColor, p.Text);
+		sheet.ForTypePseudoState(typeof(TabView), "tab", .Hover)
+			.Set(.TextColor, Palette.Darken(p.TextDim, 0.2f));
+		sheet.ForTypePseudo(typeof(TabView), "close-button")
+			.Set(.TextColor, p.TextDim)
+			.Set(.Width, 12.0f);
+		sheet.ForTypePseudoState(typeof(TabView), "close-button", .Hover)
+			.Set(.TextColor, p.Text);
+		sheet.ForType(typeof(TabView))
 			.Set(.BorderColor, p.Border)
-			.Set(.AccentColor, p.PrimaryAccent)
-			.Set(.ActiveTabTextColor, p.Text)
-			.Set(.InactiveTabTextColor, p.TextDim)
-			.Set(.HoverTabTextColor, Palette.Darken(p.TextDim, 0.2f))
-			.Set(.CloseButtonColor, p.TextDim)
-			.Set(.CloseButtonHoverColor, p.Text);
+			.Set(.AccentColor, p.PrimaryAccent);
 
-		sheet.ForType(typeof(View), "contextmenu")
+		sheet.ForClass("contextmenu")
 			.Set(.TextColor, p.Text)
 			.Set(.BorderColor, p.Border)
 			.Set(.AccentColor, Color(60, 120, 200, 80));
 
-		sheet.ForType(typeof(View), "expander")
-			.Set(.ArrowColor, Color(80, 85, 100, 255));
+		sheet.ForTypePseudo(typeof(Expander), "chevron")
+			.Set(.TextColor, Color(80, 85, 100, 255));
 
-		sheet.ForType(typeof(View), "combobox")
-			.Set(.ArrowColor, Color(80, 85, 100, 255));
+		sheet.ForType(typeof(ComboBox))
+			.Set(.CornerRadius, 4.0f);
+		sheet.ForTypePseudo(typeof(ComboBox), "arrow")
+			.Set(.TextColor, Color(80, 85, 100, 255));
 
-		sheet.ForType(typeof(View), "tooltip")
-			.Set(.TextColor, Color(240, 240, 245, 255));
+		sheet.ForType(typeof(TooltipView))
+			.Set(.TextColor, p.Text);
 
-		sheet.ForType(typeof(View), "listview")
+		sheet.ForType(typeof(ListView))
 			.Set(.SelectionColor, Color(60, 120, 200, 80));
 
-		sheet.ForType(typeof(View), "gridview")
+		sheet.ForType(typeof(GridView))
 			.Set(.SelectionColor, Color(60, 120, 200, 80));
 
 		// Register icons with appropriate tint for the palette.
@@ -260,45 +280,101 @@ public static class TexturedTheme
 		return sheet;
 	}
 
-	/// Map a string key ("styleClass:propertyName") to a StyleSheet rule.
+	/// Map a string key to a StyleSheet rule.
+	/// Supports two formats:
+	///   "typeName:propertyName"       → element-level rule (ForType.Set)
+	///   "typeName::pseudo"            → pseudo-element rule (ForTypePseudo.Set(.Background))
+	///   "typeName::pseudo:state"      → pseudo-element + state rule
 	private static void SetDrawableByKey(StyleSheet sheet, StringView key, Drawable drawable)
 	{
-		// Parse "styleClass:propertyName" format.
+		// Check for "::" pseudo-element separator first.
+		let pseudoIdx = key.IndexOf("::");
+		if (pseudoIdx >= 0)
+		{
+			let typeName = key.Substring(0, pseudoIdx);
+			let remainder = key.Substring(pseudoIdx + 2);
+			let type = ResolveTypeName(typeName);
+			if (type == null) return;
+
+			// Check for ":state" suffix on pseudo name
+			let stateIdx = remainder.IndexOf(':');
+			if (stateIdx >= 0)
+			{
+				let pseudo = remainder.Substring(0, stateIdx);
+				let stateName = remainder.Substring(stateIdx + 1);
+				let state = ParseStateName(stateName);
+				if (state.HasValue)
+					sheet.ForTypePseudoState(type, pseudo, state.Value).Set(.Background, drawable);
+			}
+			else
+			{
+				sheet.ForTypePseudo(type, remainder).Set(.Background, drawable);
+			}
+			return;
+		}
+
+		// Legacy format: "typeName:propertyName"
 		let colonIdx = key.IndexOf(':');
 		if (colonIdx < 0) return;
 
-		let styleClass = key.Substring(0, colonIdx);
+		let typeName = key.Substring(0, colonIdx);
 		let propName = key.Substring(colonIdx + 1);
 
 		let prop = ParsePropertyName(propName);
 		if (prop == null) return;
 
-		if (styleClass.IsEmpty)
+		let type = ResolveTypeName(typeName);
+		if (type != null)
+			sheet.ForType(type).Set(prop.Value, drawable);
+		else if (typeName.IsEmpty)
 			sheet.ForType(typeof(View)).Set(prop.Value, drawable);
 		else
-			sheet.ForType(typeof(View), styleClass).Set(prop.Value, drawable);
+			sheet.ForClass(typeName).Set(prop.Value, drawable);
+	}
+
+	/// Parse a state name to ControlState.
+	private static ControlState? ParseStateName(StringView name)
+	{
+		if (name == "hover") return .Hover;
+		if (name == "pressed") return .Pressed;
+		if (name == "checked") return .Checked;
+		if (name == "disabled") return .Disabled;
+		if (name == "focused") return .Focused;
+		return null;
 	}
 
 	/// Map a property name string to a StyleProperty enum value.
+	/// Only needed for element-level properties that haven't been
+	/// migrated to pseudo-elements.
 	private static StyleProperty? ParsePropertyName(StringView name)
 	{
 		if (name == "Background") return .Background;
-		if (name == "CheckedBackground") return .CheckedBackground;
-		if (name == "TrackDrawable") return .TrackDrawable;
-		if (name == "ThumbDrawable") return .ThumbDrawable;
-		if (name == "FillDrawable") return .FillDrawable;
-		if (name == "KnobDrawable") return .KnobDrawable;
-		if (name == "TrackOnDrawable") return .TrackOnDrawable;
-		if (name == "BoxDrawable") return .BoxDrawable;
-		if (name == "StripDrawable") return .StripDrawable;
-		if (name == "ContentDrawable") return .ContentDrawable;
-		if (name == "ActiveTabDrawable") return .ActiveTabDrawable;
-		if (name == "HoverTabDrawable") return .HoverTabDrawable;
-		if (name == "HeaderDrawable") return .HeaderDrawable;
-		if (name == "HeaderHoverDrawable") return .HeaderHoverDrawable;
-		if (name == "SpinUpDrawable") return .SpinUpDrawable;
-		if (name == "SpinDownDrawable") return .SpinDownDrawable;
 		if (name == "MenuItemHoverDrawable") return .MenuItemHoverDrawable;
+		return null;
+	}
+
+	/// Map old style class name to concrete Beef type for type-based selectors.
+	private static Type ResolveTypeName(StringView name)
+	{
+		if (name == "button")       return typeof(ButtonBase);
+		if (name == "edittext")     return typeof(EditText);
+		if (name == "checkbox")     return typeof(CheckBox);
+		if (name == "radiobutton")  return typeof(RadioButton);
+		if (name == "slider")       return typeof(Slider);
+		if (name == "progressbar")  return typeof(ProgressBar);
+		if (name == "toggleswitch") return typeof(ToggleSwitch);
+		if (name == "combobox")     return typeof(ComboBox);
+		if (name == "scrollbar")    return typeof(ScrollBar);
+		if (name == "separator")    return typeof(Separator);
+		if (name == "expander")     return typeof(Expander);
+		if (name == "tabview")      return typeof(TabView);
+		// "contextmenu" is class-based (shared by ContextMenu and ComboBoxDropdown)
+		if (name == "dialog")       return typeof(Dialog);
+		if (name == "tooltip")      return typeof(TooltipView);
+		if (name == "listview")     return typeof(ListView);
+		if (name == "treeview")     return typeof(TreeView);
+		if (name == "gridview")     return typeof(GridView);
+		if (name == "numericfield") return typeof(NumericField);
 		return null;
 	}
 
@@ -310,31 +386,60 @@ public static class TexturedTheme
 		Color? tint = null;
 		if (isLight) tint =  Color(60, 60, 70, 255);
 
-		void Reg(StyleProperty prop, StringView svg, StringView styleId = default)
+		SVGDrawable MakeSVG(StringView svg)
 		{
-			SVGDrawable d;
 			if (tint.HasValue)
-				d = SVGDrawable.FromString(svg, tint.Value);
-			else
-				d = SVGDrawable.FromString(svg);
-			if (d != null)
-			{
-				sheet.OwnDrawable(d);
-				if (styleId.IsEmpty)
-					sheet.ForType(typeof(View)).Set(prop, d);
-				else
-					sheet.ForType(typeof(View), styleId).Set(prop, d);
-			}
+				return SVGDrawable.FromString(svg, tint.Value);
+			return SVGDrawable.FromString(svg);
 		}
 
-		Reg(.CheckmarkIcon, ThemeIcons.Checkmark, "checkbox");
-		Reg(.RadioMarkIcon, ThemeIcons.RadioMarkRound, "radiobutton");
-		Reg(.CloseIcon, ThemeIcons.Close, "tabview");
-		Reg(.ChevronExpandedIcon, ThemeIcons.ChevronDown, "expander");
-		Reg(.ChevronCollapsedIcon, ThemeIcons.ChevronRight, "expander");
-		Reg(.ChevronExpandedIcon, ThemeIcons.ChevronDown, "treeview");
-		Reg(.ChevronCollapsedIcon, ThemeIcons.ChevronRight, "treeview");
-		Reg(.ArrowDownIcon, ThemeIcons.ArrowDown);
-		Reg(.ArrowUpIcon, ThemeIcons.ArrowUp);
+		// CheckBox checkmark and RadioButton mark use pseudo-elements
+		{
+			let checkmark = MakeSVG(ThemeIcons.Checkmark);
+			if (checkmark != null) { sheet.OwnDrawable(checkmark); sheet.ForTypePseudo(typeof(CheckBox), "checkmark").Set(.Background, checkmark); }
+			let radioMark = MakeSVG(ThemeIcons.RadioMarkRound);
+			if (radioMark != null) { sheet.OwnDrawable(radioMark); sheet.ForTypePseudo(typeof(RadioButton), "mark").Set(.Background, radioMark); }
+		}
+		// TabView close button uses pseudo-element
+		{
+			let closeIcon = MakeSVG(ThemeIcons.Close);
+			if (closeIcon != null) { sheet.OwnDrawable(closeIcon); sheet.ForTypePseudo(typeof(TabView), "close-button").Set(.Background, closeIcon); }
+		}
+		// Expander chevrons use pseudo-elements (expanded=Checked state)
+		{
+			let chevExpanded = MakeSVG(ThemeIcons.ChevronDown);
+			if (chevExpanded != null) { sheet.OwnDrawable(chevExpanded); sheet.ForTypePseudoState(typeof(Expander), "chevron", .Checked).Set(.Background, chevExpanded); }
+			let chevCollapsed = MakeSVG(ThemeIcons.ChevronRight);
+			if (chevCollapsed != null) { sheet.OwnDrawable(chevCollapsed); sheet.ForTypePseudo(typeof(Expander), "chevron").Set(.Background, chevCollapsed); }
+		}
+		// TreeView chevrons use pseudo-elements
+		{
+			let tvChevExpanded = MakeSVG(ThemeIcons.ChevronDown);
+			if (tvChevExpanded != null) { sheet.OwnDrawable(tvChevExpanded); sheet.ForTypePseudoState(typeof(TreeView), "chevron", .Checked).Set(.Background, tvChevExpanded); }
+			let tvChevCollapsed = MakeSVG(ThemeIcons.ChevronRight);
+			if (tvChevCollapsed != null) { sheet.OwnDrawable(tvChevCollapsed); sheet.ForTypePseudo(typeof(TreeView), "chevron").Set(.Background, tvChevCollapsed); }
+		}
+		// ContextMenu submenu arrow
+		{
+			let subArrow = MakeSVG(ThemeIcons.ChevronRight);
+			if (subArrow != null)
+			{
+				sheet.OwnDrawable(subArrow);
+				let rule = new StyleRule();
+				rule.Selector.AddClass("contextmenu");
+				rule.Selector.SetPseudoElement("submenu-arrow");
+				rule.Set(.Background, subArrow);
+				sheet.AddRule(rule);
+			}
+		}
+		// ComboBox and NumericField arrow icons use pseudo-elements
+		{
+			let arrowDown = MakeSVG(ThemeIcons.ArrowDown);
+			if (arrowDown != null) { sheet.OwnDrawable(arrowDown); sheet.ForTypePseudo(typeof(ComboBox), "arrow").Set(.Background, arrowDown); }
+			let arrowUp = MakeSVG(ThemeIcons.ArrowUp);
+			let arrowDn2 = MakeSVG(ThemeIcons.ArrowDown);
+			if (arrowUp != null) { sheet.OwnDrawable(arrowUp); sheet.ForTypePseudo(typeof(NumericField), "arrow-up").Set(.Background, arrowUp); }
+			if (arrowDn2 != null) { sheet.OwnDrawable(arrowDn2); sheet.ForTypePseudo(typeof(NumericField), "arrow-down").Set(.Background, arrowDn2); }
+		}
 	}
 }

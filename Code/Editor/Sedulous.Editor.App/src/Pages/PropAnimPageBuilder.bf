@@ -65,7 +65,7 @@ static class PropAnimPageBuilder
 
 		let timeLabel = new Label();
 		UpdateTimeLabel(timeLabel, page);
-		timeLabel.TextColor = .(200, 200, 210, 255);
+		timeLabel.TextColor.Value = .(200, 200, 210, 255);
 		bar.AddItem(timeLabel);
 
 		bar.AddSeparator();
@@ -74,7 +74,7 @@ static class PropAnimPageBuilder
 		// keyframes never shrinks it (see TimelineView.ExtendDurationIfNeeded).
 		let durLabel = new Label();
 		durLabel.SetText("Duration:");
-		durLabel.TextColor = .(200, 200, 210, 255);
+		durLabel.TextColor.Value = .(200, 200, 210, 255);
 		bar.AddItem(durLabel);
 
 		let durField = new NumericField();
@@ -82,7 +82,7 @@ static class PropAnimPageBuilder
 		durField.Max = 600;
 		durField.Step = 0.1;
 		durField.DecimalPlaces = 2;
-		durField.ShowSpinButtons = false;
+		durField.ShowSpinButtons.Value = false;
 		durField.Value = (page.Clip != null) ? page.Clip.Duration : 0.0;
 		durField.OnValueChanged.Add(new [=page] (nf, v) =>
 		{
@@ -122,7 +122,7 @@ static class PropAnimPageBuilder
 			if (p.Clip != null)
 			{
 				durField.Value = p.Clip.Duration;
-				loopCheck.IsChecked = p.Clip.IsLooping;
+				loopCheck.IsChecked.Value = p.Clip.IsLooping;
 			}
 		});
 		page.OnCurrentTimeChanged.Add(new [=timeLabel] (p) => UpdateTimeLabel(timeLabel, p));
@@ -135,7 +135,7 @@ static class PropAnimPageBuilder
 			if (p.Clip != null)
 			{
 				durField.Value = p.Clip.Duration;
-				loopCheck.IsChecked = p.Clip.IsLooping;
+				loopCheck.IsChecked.Value = p.Clip.IsLooping;
 			}
 		});
 
@@ -171,8 +171,8 @@ static class PropAnimPageBuilder
 
 		let pathLabel = new Label();
 		RefreshPreviewSourceLabel(pathLabel, page);
-		pathLabel.TextColor = .(180, 180, 195, 255);
-		pathLabel.FontSize = 11;
+		pathLabel.TextColor.Value = .(180, 180, 195, 255);
+		pathLabel.FontSize.Value = 11;
 		parent.AddView(pathLabel, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Fixed(.Px(18))
 		});
@@ -275,8 +275,8 @@ static class PropAnimPageBuilder
 		{
 			let empty = new Label();
 			empty.SetText("(no preview loaded)");
-			empty.TextColor = .(140, 140, 155, 255);
-			empty.FontSize = 11;
+			empty.TextColor.Value = .(140, 140, 155, 255);
+			empty.FontSize.Value = 11;
 			list.AddView(empty, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(16)) });
 		}
 	}
@@ -385,8 +385,8 @@ static class PropAnimPageBuilder
 		let path = scope String();
 		AppendTrackPathFor(page, kf.Track, path);
 		pathLabel.SetText(path);
-		pathLabel.TextColor = .(180, 180, 195, 255);
-		pathLabel.FontSize = 11;
+		pathLabel.TextColor.Value = .(180, 180, 195, 255);
+		pathLabel.FontSize.Value = 11;
 		host.AddView(pathLabel, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Fixed(.Px(18))
 		});
@@ -394,7 +394,7 @@ static class PropAnimPageBuilder
 		// Time field.
 		let timeNf = new NumericField();
 		timeNf.Min = 0; timeNf.Max = 600; timeNf.Step = 0.1; timeNf.DecimalPlaces = 3;
-		timeNf.ShowSpinButtons = false;
+		timeNf.ShowSpinButtons.Value = false;
 		timeNf.Value = timeline.GetSelectedKeyframeTime();
 		timeNf.OnValueChanged.Add(new [=timeline] (_, v) =>
 		{
@@ -413,7 +413,7 @@ static class PropAnimPageBuilder
 			timeline.TryGetSelectedFloat(out fv);
 			let nf = new NumericField();
 			nf.Min = -1e6; nf.Max = 1e6; nf.Step = 0.1; nf.DecimalPlaces = 3;
-			nf.ShowSpinButtons = false;
+			nf.ShowSpinButtons.Value = false;
 			nf.Value = fv;
 			nf.OnValueChanged.Add(new [=timeline] (_, v) =>
 			{
@@ -504,8 +504,8 @@ static class PropAnimPageBuilder
 
 		let label = new Label();
 		label.SetText(name);
-		label.TextColor = .(200, 200, 210, 255);
-		label.FontSize = 11;
+		label.TextColor.Value = .(200, 200, 210, 255);
+		label.FontSize.Value = 11;
 		row.AddView(label, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(54)), Height = .Match });
 
 		row.AddView(field, new FlexLayout.LayoutParams() { Grow = 1, Height = .Fixed(.Px(22)) });
@@ -519,8 +519,8 @@ static class PropAnimPageBuilder
 	{
 		let label = new Label();
 		label.SetText(text);
-		label.TextColor = .(140, 140, 155, 255);
-		label.FontSize = 11;
+		label.TextColor.Value = .(140, 140, 155, 255);
+		label.FontSize.Value = 11;
 		host.AddView(label, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Fixed(.Px(18))
 		});
@@ -666,8 +666,8 @@ static class PropAnimPageBuilder
 	{
 		let label = new Label();
 		label.SetText(text);
-		label.TextColor = .(220, 220, 230, 255);
-		label.FontSize = 12;
+		label.TextColor.Value = .(220, 220, 230, 255);
+		label.FontSize.Value = 12;
 		parent.AddView(label, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });
 	}
 }

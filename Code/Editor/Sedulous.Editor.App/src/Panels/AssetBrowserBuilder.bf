@@ -67,8 +67,8 @@ static class AssetBrowserBuilder
 		});
 
 		let treeView = new TreeView();
-		treeView.ItemHeight = 22;
-		treeView.IndentWidth = 16;
+		treeView.ItemHeight= 22;
+		treeView.IndentWidth.Value = 16;
 		treeView.SetAdapter(treeAdapter);
 
 		leftPane.AddView(treeView, new FlexLayout.LayoutParams() {
@@ -96,7 +96,7 @@ static class AssetBrowserBuilder
 		navBar.AddView(breadcrumb, new FlexLayout.LayoutParams() { Height = .Match, Grow = 1 });
 
 		let listBtn = new ToggleButton("List");
-		listBtn.IsChecked = true;
+		listBtn.IsChecked.Value = true;
 		let gridBtn = new ToggleButton("Grid");
 
 		navBar.AddView(listBtn, new FlexLayout.LayoutParams() { Height = .Match });
@@ -121,7 +121,7 @@ static class AssetBrowserBuilder
 
 		// List view (default, visible)
 		let contentList = new ListView();
-		contentList.ItemHeight = 24;
+		contentList.ItemHeight.Value = 24;
 		contentList.Adapter = listAdapter;
 		contentList.Selection.Mode = .Single;
 		listAdapter.OwnerListView = contentList;
@@ -145,7 +145,7 @@ static class AssetBrowserBuilder
 		listBtn.OnCheckedChanged.Add(new [=contentList, =contentGrid, =gridBtn] (btn, val) => {
 			if (val)
 			{
-				gridBtn.IsChecked = false;
+				gridBtn.IsChecked.Value = false;
 				contentList.Visibility = .Visible;
 				contentGrid.Visibility = .Gone;
 			}
@@ -153,7 +153,7 @@ static class AssetBrowserBuilder
 		gridBtn.OnCheckedChanged.Add(new [=contentList, =contentGrid, =listBtn] (btn, val) => {
 			if (val)
 			{
-				listBtn.IsChecked = false;
+				listBtn.IsChecked.Value = false;
 				contentList.Visibility = .Gone;
 				contentGrid.Visibility = .Visible;
 			}
@@ -1094,14 +1094,14 @@ class EditorBreadcrumbBar : FlexLayout
 			{
 				let arrow = new Label();
 				arrow.SetText("  >  ");
-				arrow.FontSize = 10;
-				arrow.TextColor = .(100, 105, 120, 255);
+				arrow.FontSize.Value = 10;
+				arrow.TextColor.Value = .(100, 105, 120, 255);
 				AddView(arrow, new FlexLayout.LayoutParams() { Height = .Match });
 			}
 
 			let segIndex = i;
 			let btn = new Button(mSegments[i]);
-			btn.FontSize = 11;
+			btn.FontSize.Value = 11;
 			btn.Background = null;
 			btn.OnClick.Add(new (b) => {
 				OnSegmentClicked(segIndex);

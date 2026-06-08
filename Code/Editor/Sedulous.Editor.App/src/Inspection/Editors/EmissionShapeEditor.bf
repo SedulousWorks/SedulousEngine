@@ -154,12 +154,12 @@ class EmissionShapeEditor : PropertyEditor
 
 		let lbl = new Label();
 		lbl.SetText("Surface");
-		lbl.FontSize = 11;
-		lbl.VAlign = .Middle;
+		lbl.FontSize.Value = 11;
+		lbl.VAlign.Value = .Middle;
 		row.AddView(lbl, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(60)) });
 
 		let check = new CheckBox();
-		check.IsChecked = mPtr.EmitFromSurface;
+		check.IsChecked.Value = mPtr.EmitFromSurface;
 		check.OnCheckedChanged.Add(new (cb, val) =>
 		{
 			if (mSyncing) return;
@@ -183,8 +183,8 @@ class EmissionShapeEditor : PropertyEditor
 
 		let lbl = new Label();
 		lbl.SetText("Half Ext");
-		lbl.FontSize = 11;
-		lbl.VAlign = .Middle;
+		lbl.FontSize.Value = 11;
+		lbl.VAlign.Value = .Middle;
 		row.AddView(lbl, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(60)) });
 
 		let xf = MakeNumeric("X", mPtr.Size.X, 0, 1000);
@@ -218,7 +218,7 @@ class EmissionShapeEditor : PropertyEditor
 	private NumericField MakeNumeric(StringView prefix, float initial, float min, float max)
 	{
 		let field = new ShapeNumericField(this);
-		field.ShowSpinButtons = false;
+		field.ShowSpinButtons.Value = false;
 		field.Min = min; field.Max = max; field.Step = 0.1;
 		field.DecimalPlaces = 3;
 		if (prefix.Length > 0)
@@ -235,8 +235,8 @@ class EmissionShapeEditor : PropertyEditor
 
 		let lbl = new Label();
 		lbl.SetText(label);
-		lbl.FontSize = 11;
-		lbl.VAlign = .Middle;
+		lbl.FontSize.Value = 11;
+		lbl.VAlign.Value = .Middle;
 		row.AddView(lbl, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(60)) });
 		row.AddView(inner, new FlexLayout.LayoutParams() { Grow = 1 });
 		return row;

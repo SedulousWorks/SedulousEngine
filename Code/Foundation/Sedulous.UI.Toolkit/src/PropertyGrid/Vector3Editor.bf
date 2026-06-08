@@ -46,7 +46,7 @@ public class Vector3Editor : PropertyEditor
 
 		// X - colored prefix label inside NumericField
 		mXField = new VectorNumericField(this, 0);
-		mXField.ShowSpinButtons = false;
+		mXField.ShowSpinButtons.Value = false;
 		mXField.Min = mMin; mXField.Max = mMax; mXField.Step = mStep;
 		mXField.DecimalPlaces = 3;
 		mXField.Value = mValue.X;
@@ -58,7 +58,7 @@ public class Vector3Editor : PropertyEditor
 
 		// Y
 		mYField = new VectorNumericField(this, 1);
-		mYField.ShowSpinButtons = false;
+		mYField.ShowSpinButtons.Value = false;
 		mYField.Min = mMin; mYField.Max = mMax; mYField.Step = mStep;
 		mYField.DecimalPlaces = 3;
 		mYField.Value = mValue.Y;
@@ -70,7 +70,7 @@ public class Vector3Editor : PropertyEditor
 
 		// Z
 		mZField = new VectorNumericField(this, 2);
-		mZField.ShowSpinButtons = false;
+		mZField.ShowSpinButtons.Value = false;
 		mZField.Min = mMin; mZField.Max = mMax; mZField.Step = mStep;
 		mZField.DecimalPlaces = 3;
 		mZField.Value = mValue.Z;

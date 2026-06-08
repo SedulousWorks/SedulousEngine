@@ -8,30 +8,28 @@ using Sedulous.Fonts;
 /// Has a Text property for direct text access. No child view overhead.
 public class Button : ButtonBase
 {
-	private String mText ~ delete _;
-
 	/// The button text.
-	public String Text
-	{
-		get => mText;
-	}
+	public Property<String> Text = new .(null) ~ { if (_.Value != null) delete _.Value; delete _; };
 
 	/// Per-instance font size override. When set, overrides the style-resolved FontSize.
-	public float? FontSize;
+	public Property<float?> FontSize = new .(null) ~ delete _;
 
 	/// Text button constructor.
 	public this(StringView text) : base()
 	{
-		mText = new String(text);
+		Text.SetOwner(this);
+		FontSize.SetOwner(this);
+
+		Text.SetSilent(new String(text));
 	}
 
 	/// Set the button text.
 	public void SetText(StringView text)
 	{
-		if (mText == null)
-			mText = new String(text);
+		if (Text.Value == null)
+			Text.Value = new String(text);
 		else
-			mText.Set(text);
+			Text.Value.Set(text);
 		Invalidate();
 	}
 
@@ -41,14 +39,14 @@ public class Button : ButtonBase
 		let inner = constraints.Deflate(pad).Loosen();
 
 		float textW = 0, textH = 0;
-		let fontSize = FontSize ?? ResolveStyleFloat(.FontSize, 16);
+		let fontSize = FontSize.Value ?? ResolveStyleFloat(.FontSize, 16);
 
-		if (mText != null && mText.Length > 0 && Context?.FontService != null)
+		if (Text.Value != null && Text.Value.Length > 0 && Context?.FontService != null)
 		{
 			let font = Context.FontService.GetFont(fontSize);
 			if (font != null)
 			{
-				textW = font.Font.MeasureString(mText);
+				textW = font.Font.MeasureString(Text.Value);
 				textH = font.Font.Metrics.LineHeight;
 			}
 		}
@@ -68,20 +66,20 @@ public class Button : ButtonBase
 		DrawButtonBackground(ctx, bounds, state);
 
 		// Draw text
-		if (mText != null && mText.Length > 0 && ctx.FontService != null)
+		if (Text.Value != null && Text.Value.Length > 0 && ctx.FontService != null)
 		{
-			let fontSize = FontSize ?? ResolveStyleFloat(.FontSize, 16);
+			let fontSize = FontSize.Value ?? ResolveStyleFloat(.FontSize, 16);
 			let font = ctx.FontService.GetFont(fontSize);
 			if (font != null)
 			{
 				let pad = ResolveStyleThickness(.Padding, .(12, 8));
 				var textColor = ResolveStyleColor(.TextColor, .(220, 225, 235, 255));
-				if (state == .Disabled)
+				if (state.HasFlag(.Disabled))
 					textColor = Palette.ComputeDisabled(textColor);
 
 				let textRect = RectangleF(pad.Left, pad.Top,
 					Width - pad.TotalHorizontal, Height - pad.TotalVertical);
-				ctx.VG.DrawText(mText, font, textRect, .Center, .Middle, textColor);
+				ctx.VG.DrawText(Text.Value, font, textRect, .Center, .Middle, textColor);
 			}
 		}
 	}

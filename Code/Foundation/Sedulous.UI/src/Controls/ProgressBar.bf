@@ -6,25 +6,24 @@ using Sedulous.Core.Mathematics;
 /// Progress indicator showing a filled bar from 0 to 1.
 public class ProgressBar : View
 {
-	private float mValue;
-
 	/// Progress value (0 to 1).
-	public float Value
-	{
-		get => mValue;
-		set
-		{
-			let clamped = Math.Clamp(value, 0, 1);
-			if (mValue == clamped) return;
-			mValue = clamped;
-			Invalidate();
-		}
-	}
+	public Property<float> Value = new .(0) ~ delete _;
 
 	/// Whether to show an indeterminate animation (not yet implemented).
-	public bool IsIndeterminate;
+	public Property<bool> IsIndeterminate = new .(false) ~ delete _;
 
-	public this() { StyleId = new String("progressbar"); }
+	public this()
+	{
+		Value.SetOwner(this, .Visual);
+		IsIndeterminate.SetOwner(this, .Visual);
+
+		// Clamp Value to 0-1 range on change.
+		Value.Changed.Add(new [&] (val) => {
+			let clamped = Math.Clamp(val, 0, 1);
+			if (clamped != val)
+				Value.SetSilent(clamped);
+		});
+	}
 
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
@@ -36,18 +35,20 @@ public class ProgressBar : View
 	{
 		let bounds = RectangleF(0, 0, Width, Height);
 
+		let state = GetControlState();
+
 		// Track
-		let trackDrawable = ResolveStyleDrawable(.TrackDrawable);
+		let trackDrawable = ResolvePartDrawable("track", .Background, state);
 		if (trackDrawable != null)
 			trackDrawable.Draw(ctx, bounds);
 		else
 			ctx.VG.FillRect(bounds, .(50, 52, 62, 255));
 
 		// Fill
-		if (mValue > 0)
+		if (Value.Value > 0)
 		{
-			let fillW = Width * mValue;
-			let fillDrawable = ResolveStyleDrawable(.FillDrawable);
+			let fillW = Width * Value.Value;
+			let fillDrawable = ResolvePartDrawable("fill", .Background, state);
 			if (fillDrawable != null)
 			{
 				ctx.VG.PushClipRect(.(0, 0, fillW, Height));
@@ -57,7 +58,7 @@ public class ProgressBar : View
 			else
 			{
 				ctx.VG.PushClipRect(.(0, 0, fillW, Height));
-				ctx.VG.FillRect(.(0, 0, Width * mValue, Height), .(80, 150, 240, 255));
+				ctx.VG.FillRect(.(0, 0, Width * Value.Value, Height), .(80, 150, 240, 255));
 				ctx.VG.PopClip();
 			}
 		}

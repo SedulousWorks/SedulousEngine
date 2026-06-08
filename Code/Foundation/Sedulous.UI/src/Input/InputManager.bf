@@ -184,7 +184,7 @@ public class InputManager
 		{
 			let local = hitView.ScreenToLocal(.(mMouseX, mMouseY));
 			mMouseArgs.Set(local.X, local.Y, button, mClickCount, totalTime);
-			BubbleMouseDown(hitView, mMouseArgs);
+			DispatchMouseDown(hitView, mMouseArgs);
 		}
 	}
 
@@ -227,7 +227,7 @@ public class InputManager
 		{
 			let local = pressedView.ScreenToLocal(.(mMouseX, mMouseY));
 			mMouseArgs.Set(local.X, local.Y, button);
-			BubbleMouseUp(pressedView, mMouseArgs);
+			DispatchMouseUp(pressedView, mMouseArgs);
 		}
 
 		UpdateHover(mMouseX, mMouseY);
@@ -247,16 +247,13 @@ public class InputManager
 		mWheelArgs.DeltaY = deltaY;
 		mWheelArgs.Modifiers = modifiers;
 
-		// Mouse wheel bubbles up from hit target to root.
+		// Mouse wheel: capture -> target -> bubble.
 		let root = mContext.ActiveInputRoot;
 		if (root == null) return;
 
-		var target = root.HitTest(.(scaledX, scaledY));
-		while (target != null && !mWheelArgs.Handled)
-		{
-			target.OnMouseWheel(mWheelArgs);
-			target = target.Parent;
-		}
+		let target = root.HitTest(.(scaledX, scaledY));
+		if (target != null)
+			DispatchMouseWheel(target, mWheelArgs);
 	}
 
 	// =================================================================
@@ -286,14 +283,43 @@ public class InputManager
 			return;
 		}
 
-		// Dispatch to focused view first (bubble up).
 		let focused = focus.FocusedView;
+
+		// Activate for gamepad-style navigation (Enter key).
+		if (focused != null && !isRepeat && key == .Return)
+		{
+			focused.OnActivate();
+			return;
+		}
+
+		// Dispatch to focused view (capture -> target -> bubble).
 		if (focused != null)
 		{
 			mKeyArgs.Set(key, modifiers, isRepeat, timestamp);
-			BubbleKeyDown(focused, mKeyArgs);
+			DispatchKeyDown(focused, mKeyArgs);
 			if (mKeyArgs.Handled)
 				return;
+		}
+
+		// Arrow key fallback: if the focused view didn't handle the arrow key,
+		// try directional focus navigation.
+		if (focused != null && !isRepeat)
+		{
+			FocusDirection? dir = null;
+			switch (key)
+			{
+			case .Up:    dir = .Up;
+			case .Down:  dir = .Down;
+			case .Left:  dir = .Left;
+			case .Right: dir = .Right;
+			default:
+			}
+
+			if (dir.HasValue)
+			{
+				if (focus.MoveFocus(dir.Value))
+					return;
+			}
 		}
 
 		// Shortcut manager (scoped first, then global).
@@ -317,7 +343,7 @@ public class InputManager
 		if (focused == null) return;
 
 		mKeyArgs.Set(key, modifiers, false, timestamp);
-		BubbleKeyUp(focused, mKeyArgs);
+		DispatchKeyUp(focused, mKeyArgs);
 	}
 
 	/// Process text input (post-IME composition).
@@ -328,7 +354,7 @@ public class InputManager
 
 		mTextArgs.Reset();
 		mTextArgs.Character = character;
-		focused.OnTextInput(mTextArgs);
+		DispatchTextInput(focused, mTextArgs);
 	}
 
 	// =================================================================
@@ -412,16 +438,63 @@ public class InputManager
 		mContext.FocusManager.ClearFocus();
 	}
 
-	/// Walks up the parent chain calling OnMouseDown on each view. Coords on
-	/// `args` start in `target`-local space and are translated to each
-	/// successive ancestor's local space before its handler runs - otherwise
-	/// an ancestor that hit-tests on coords (DockTabGroup tab strip, button
-	/// regions, etc.) would interpret target-local coords as its own and
-	/// falsely match. After dispatching to `v`, adding `v.Bounds.X/Y`
-	/// converts `v`-local coords to `v.Parent`-local.
-	private void BubbleMouseDown(View target, MouseEventArgs args)
+	// === Ancestor chain for capture phase ===
+
+	/// Reusable buffer for building the ancestor chain (root first).
+	private View[64] mAncestorChain;
+
+	/// Build the ancestor chain from root to target (inclusive).
+	/// Returns the count of views in the chain.
+	private int BuildAncestorChain(View target)
 	{
+		// Walk up to root, store in reverse
+		int count = 0;
 		var v = target;
+		while (v != null && count < 64)
+		{
+			mAncestorChain[count++] = v;
+			v = v.Parent;
+		}
+		// Reverse to get root-first order
+		for (int i = 0; i < count / 2; i++)
+		{
+			let temp = mAncestorChain[i];
+			mAncestorChain[i] = mAncestorChain[count - 1 - i];
+			mAncestorChain[count - 1 - i] = temp;
+		}
+		return count;
+	}
+
+	// === Three-phase dispatch: Capture -> Target -> Bubble ===
+
+	/// Dispatch a mouse down event through all three phases.
+	/// Capture walks root->target calling OnMouseDownCapture.
+	/// If not handled, target gets OnMouseDown.
+	/// Then bubble walks target->root calling OnMouseDown on ancestors.
+	/// Coords on args start in target-local space and are translated
+	/// to each ancestor's local space during bubble.
+	private void DispatchMouseDown(View target, MouseEventArgs args)
+	{
+		let chainLen = BuildAncestorChain(target);
+
+		// Capture phase: root -> target (exclusive — target gets Target phase)
+		args.Phase = .Capture;
+		for (int i = 0; i < chainLen - 1; i++)
+		{
+			if (args.Handled) return;
+			mAncestorChain[i].OnMouseDownCapture(args);
+		}
+
+		// Target phase
+		if (args.Handled) return;
+		args.Phase = .Target;
+		target.OnMouseDown(args);
+
+		// Bubble phase: target's parent -> root
+		args.Phase = .Bubble;
+		args.X += target.Bounds.X;
+		args.Y += target.Bounds.Y;
+		var v = target.Parent;
 		while (v != null && !args.Handled)
 		{
 			v.OnMouseDown(args);
@@ -431,9 +504,25 @@ public class InputManager
 		}
 	}
 
-	private void BubbleMouseUp(View target, MouseEventArgs args)
+	private void DispatchMouseUp(View target, MouseEventArgs args)
 	{
-		var v = target;
+		let chainLen = BuildAncestorChain(target);
+
+		args.Phase = .Capture;
+		for (int i = 0; i < chainLen - 1; i++)
+		{
+			if (args.Handled) return;
+			mAncestorChain[i].OnMouseUpCapture(args);
+		}
+
+		if (args.Handled) return;
+		args.Phase = .Target;
+		target.OnMouseUp(args);
+
+		args.Phase = .Bubble;
+		args.X += target.Bounds.X;
+		args.Y += target.Bounds.Y;
+		var v = target.Parent;
 		while (v != null && !args.Handled)
 		{
 			v.OnMouseUp(args);
@@ -443,9 +532,23 @@ public class InputManager
 		}
 	}
 
-	private void BubbleKeyDown(View target, KeyEventArgs args)
+	private void DispatchKeyDown(View target, KeyEventArgs args)
 	{
-		var v = target;
+		let chainLen = BuildAncestorChain(target);
+
+		args.Phase = .Capture;
+		for (int i = 0; i < chainLen - 1; i++)
+		{
+			if (args.Handled) return;
+			mAncestorChain[i].OnKeyDownCapture(args);
+		}
+
+		if (args.Handled) return;
+		args.Phase = .Target;
+		target.OnKeyDown(args);
+
+		args.Phase = .Bubble;
+		var v = target.Parent;
 		while (v != null && !args.Handled)
 		{
 			v.OnKeyDown(args);
@@ -453,12 +556,76 @@ public class InputManager
 		}
 	}
 
-	private void BubbleKeyUp(View target, KeyEventArgs args)
+	private void DispatchKeyUp(View target, KeyEventArgs args)
 	{
-		var v = target;
+		let chainLen = BuildAncestorChain(target);
+
+		args.Phase = .Capture;
+		for (int i = 0; i < chainLen - 1; i++)
+		{
+			if (args.Handled) return;
+			mAncestorChain[i].OnKeyUpCapture(args);
+		}
+
+		if (args.Handled) return;
+		args.Phase = .Target;
+		target.OnKeyUp(args);
+
+		args.Phase = .Bubble;
+		var v = target.Parent;
 		while (v != null && !args.Handled)
 		{
 			v.OnKeyUp(args);
+			v = v.Parent;
+		}
+	}
+
+	private void DispatchMouseWheel(View target, MouseWheelEventArgs args)
+	{
+		let chainLen = BuildAncestorChain(target);
+
+		args.Phase = .Capture;
+		for (int i = 0; i < chainLen - 1; i++)
+		{
+			if (args.Handled) return;
+			mAncestorChain[i].OnMouseWheelCapture(args);
+		}
+
+		if (args.Handled) return;
+		args.Phase = .Target;
+		target.OnMouseWheel(args);
+
+		args.Phase = .Bubble;
+		var v = target.Parent;
+		while (v != null && !args.Handled)
+		{
+			v.OnMouseWheel(args);
+			v = v.Parent;
+		}
+	}
+
+	private void DispatchTextInput(View target, TextInputEventArgs args)
+	{
+		let chainLen = BuildAncestorChain(target);
+
+		args.Phase = .Capture;
+		for (int i = 0; i < chainLen - 1; i++)
+		{
+			if (args.Handled) return;
+			mAncestorChain[i].OnTextInputCapture(args);
+		}
+
+		if (args.Handled) return;
+		args.Phase = .Target;
+		target.OnTextInput(args);
+
+		// Text input doesn't traditionally bubble, but for consistency
+		// with the three-phase model we allow it.
+		args.Phase = .Bubble;
+		var v = target.Parent;
+		while (v != null && !args.Handled)
+		{
+			v.OnTextInput(args);
 			v = v.Parent;
 		}
 	}

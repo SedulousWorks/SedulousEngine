@@ -56,8 +56,8 @@ class SoundCueEditorPageFactory : IEditorPageFactory
 
 		let lbl = new Label();
 		lbl.SetText(label);
-		lbl.TextColor = .(170, 175, 190, 255);
-		lbl.VAlign = .Middle;
+		lbl.TextColor.Value = .(170, 175, 190, 255);
+		lbl.VAlign.Value = .Middle;
 		row.AddView(lbl, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(120)), Height = .Match });
 		row.AddView(control, new FlexLayout.LayoutParams() { Grow = 1, Height = .Fixed(.Px(26)) });
 
@@ -78,8 +78,8 @@ class SoundCueEditorPageFactory : IEditorPageFactory
 		System.IO.Path.GetFileNameWithoutExtension(page.FilePath, name);
 		let titleLabel = new Label();
 		titleLabel.SetText(scope $"Sound Cue: {name}");
-		titleLabel.FontSize = 16;
-		titleLabel.TextColor = .(220, 225, 235, 255);
+		titleLabel.FontSize.Value = 16;
+		titleLabel.TextColor.Value = .(220, 225, 235, 255);
 		root.AddView(titleLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(28)) });
 
 		AddSeparator(root);
@@ -128,9 +128,9 @@ class SoundCueEditorPageFactory : IEditorPageFactory
 		header.Spacing = 8;
 		let entriesLabel = new Label();
 		entriesLabel.SetText("Entries");
-		entriesLabel.FontSize = 13;
-		entriesLabel.TextColor = .(180, 180, 195, 255);
-		entriesLabel.VAlign = .Middle;
+		entriesLabel.FontSize.Value = 13;
+		entriesLabel.TextColor.Value = .(180, 180, 195, 255);
+		entriesLabel.VAlign.Value = .Middle;
 		header.AddView(entriesLabel, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
 		let addBtn = new Button("+ Add Entry");
 		addBtn.OnClick.Add(new [=cue, =cueRes, =page] (btn) => {
@@ -226,8 +226,8 @@ class SoundCueEditorPageFactory : IEditorPageFactory
 					cell.Direction = .Vertical;
 					let cl = new Label();
 					cl.SetText(lbl);
-					cl.FontSize = 10;
-					cl.TextColor = .(140, 145, 160, 255);
+					cl.FontSize.Value = 10;
+					cl.TextColor.Value = .(140, 145, 160, 255);
 					cell.AddView(cl, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(12)) });
 					let nf = new NumericField();
 					nf.DecimalPlaces = 2; nf.Step = 0.05; nf.Min = 0; nf.Max = 4;

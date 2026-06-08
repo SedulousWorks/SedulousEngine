@@ -2,8 +2,6 @@ FileVersion = 1
 
 [Project]
 Name = "Sedulous.UI.Runtime"
-TargetType = "BeefLib"
-StartupObject = "Sedulous.UI.Runtime.Program"
 
 [Dependencies]
 corlib = "*"
@@ -22,3 +20,4 @@ corlib = "*"
 "Sedulous.VFS" = "*"
 "Sedulous.Images" = "*"
 "Sedulous.Profiler" = "*"
+corlib = "*"

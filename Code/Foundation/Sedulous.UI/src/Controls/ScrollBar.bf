@@ -76,8 +76,9 @@ public class ScrollBar : View
 
 	public override void OnDraw(UIDrawContext ctx)
 	{
-		let trackDrawable = ResolveStyleDrawable(.TrackDrawable);
-		let thumbDrawable = ResolveStyleDrawable(.ThumbDrawable);
+		let state = GetControlState();
+		let trackDrawable = ResolvePartDrawable("track", .Background, state);
+		let thumbDrawable = ResolvePartDrawable("thumb", .Background, state);
 
 		let bounds = RectangleF(0, 0, Width, Height);
 

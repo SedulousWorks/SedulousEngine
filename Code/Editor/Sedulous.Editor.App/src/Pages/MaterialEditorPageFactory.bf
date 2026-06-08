@@ -129,7 +129,7 @@ class MaterialEditorPageFactory : IEditorPageFactory
 		{
 			let err = new Label();
 			err.SetText("Material data unavailable");
-			err.TextColor = .(220, 100, 100, 255);
+			err.TextColor.Value = .(220, 100, 100, 255);
 			panel.AddView(err, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });
 		}
 	}
@@ -202,7 +202,7 @@ class MaterialEditorPageFactory : IEditorPageFactory
 		case .Float:
 			let cur = *(float*)basePtr;
 			let nf = new NumericField();
-			nf.ShowSpinButtons = false;
+			nf.ShowSpinButtons.Value = false;
 			nf.Min = -1e9; nf.Max = 1e9;
 			nf.DecimalPlaces = 4;
 			nf.Step = 0.01;
@@ -251,8 +251,8 @@ class MaterialEditorPageFactory : IEditorPageFactory
 			// Int* / Matrix4x4: no editor yet, just show as read-only.
 			let note = new Label();
 			note.SetText(scope $"({prop.Type} - read-only)");
-			note.TextColor = .(140, 140, 155, 255);
-			note.FontSize = 11;
+			note.TextColor.Value = .(140, 140, 155, 255);
+			note.FontSize.Value = 11;
 			AddLabeledRow(panel, propName, note, .Px(18));
 		}
 	}
@@ -268,15 +268,15 @@ class MaterialEditorPageFactory : IEditorPageFactory
 
 		let label = new Label();
 		label.SetText(scope $"{propName}:");
-		label.TextColor = .(180, 180, 195, 255);
-		label.FontSize = 11;
+		label.TextColor.Value = .(180, 180, 195, 255);
+		label.FontSize.Value = 11;
 		row.AddView(label, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(110)), Height = .Match });
 
 		let pathLabel = new Label();
 		let curRef = matRes.GetTextureRef(propName);
 		pathLabel.SetText(TextureRefDisplay(curRef));
-		pathLabel.TextColor = .(220, 220, 230, 255);
-		pathLabel.FontSize = 11;
+		pathLabel.TextColor.Value = .(220, 220, 230, 255);
+		pathLabel.FontSize.Value = 11;
 		row.AddView(pathLabel, new FlexLayout.LayoutParams() { Grow = 1, Height = .Match });
 
 		let pickBtn = new Button("Pick");
@@ -413,8 +413,8 @@ class MaterialEditorPageFactory : IEditorPageFactory
 
 		let label = new Label();
 		label.SetText(scope $"{name}:");
-		label.TextColor = .(180, 180, 195, 255);
-		label.FontSize = 11;
+		label.TextColor.Value = .(180, 180, 195, 255);
+		label.FontSize.Value = 11;
 		row.AddView(label, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(110)), Height = .Match });
 
 		row.AddView(editor, new FlexLayout.LayoutParams() { Grow = 1, Height = .Fixed(rowHeight) });

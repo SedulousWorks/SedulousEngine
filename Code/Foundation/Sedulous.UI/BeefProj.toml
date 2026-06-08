@@ -3,7 +3,6 @@ FileVersion = 1
 [Project]
 Name = "Sedulous.UI"
 TargetType = "BeefLib"
-StartupObject = "Sedulous.UI.Program"
 
 [Dependencies]
 corlib = "*"
@@ -13,3 +12,4 @@ corlib = "*"
 "Sedulous.Fonts" = "*"
 "Sedulous.Images" = "*"
 "Sedulous.VG.SVG" = "*"
+"Sedulous.Xml" = "*"

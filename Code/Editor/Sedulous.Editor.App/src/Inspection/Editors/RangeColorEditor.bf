@@ -30,8 +30,8 @@ class RangeColorEditor : PropertyEditor
 
 		let minLabel = new Label();
 		minLabel.SetText("Min");
-		minLabel.FontSize = 11;
-		minLabel.VAlign = .Middle;
+		minLabel.FontSize.Value = 11;
+		minLabel.VAlign.Value = .Middle;
 		row.AddView(minLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(28)) });
 
 		mMinSwatch = new RangeColorSwatch(this, isMin: true);
@@ -40,8 +40,8 @@ class RangeColorEditor : PropertyEditor
 
 		let maxLabel = new Label();
 		maxLabel.SetText("Max");
-		maxLabel.FontSize = 11;
-		maxLabel.VAlign = .Middle;
+		maxLabel.FontSize.Value = 11;
+		maxLabel.VAlign.Value = .Middle;
 		row.AddView(maxLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(28)) });
 
 		mMaxSwatch = new RangeColorSwatch(this, isMin: false);
@@ -54,8 +54,8 @@ class RangeColorEditor : PropertyEditor
 
 	private void RefreshSwatches()
 	{
-		if (mMinSwatch != null) mMinSwatch.Color = ClampToLDR(mPtr.Min);
-		if (mMaxSwatch != null) mMaxSwatch.Color = ClampToLDR(mPtr.Max);
+		if (mMinSwatch != null) mMinSwatch.Color.Value = ClampToLDR(mPtr.Min);
+		if (mMaxSwatch != null) mMaxSwatch.Color.Value = ClampToLDR(mPtr.Max);
 	}
 
 	private static Color ClampToLDR(Vector4 c)

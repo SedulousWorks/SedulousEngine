@@ -237,7 +237,7 @@ class ViewTests
 	{
 		let view = scope TestView();
 		view.IsEnabled = false;
-		Test.Assert(view.GetControlState() == .Disabled);
+		Test.Assert(view.GetControlState().HasFlag(.Disabled));
 	}
 
 	[Test]

@@ -65,8 +65,8 @@ class ImportDialog : Dialog
 		mLogger = logger;
 		mEditorContext = editorContext;
 
-		MaxWidth = 550;
-		MaxHeight = 500;
+		MaxWidth.Value = 550;
+		MaxHeight.Value = 500;
 
 		BuildContent();
 
@@ -92,14 +92,14 @@ class ImportDialog : Dialog
 
 		let sourceLabel = new Label();
 		sourceLabel.SetText("Source:");
-		sourceLabel.FontSize = 11;
-		sourceLabel.TextColor = .(140, 145, 165, 255);
+		sourceLabel.FontSize.Value = 11;
+		sourceLabel.TextColor.Value = .(140, 145, 165, 255);
 		sourceRow.AddView(sourceLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(50)), Height = .Match });
 
 		let sourcePath = new Label();
 		sourcePath.SetText(mPreview.SourcePath);
-		sourcePath.FontSize = 11;
-		sourcePath.Ellipsis = true;
+		sourcePath.FontSize.Value = 11;
+		sourcePath.Ellipsis.Value = true;
 		sourceRow.AddView(sourcePath, new FlexLayout.LayoutParams() { Height = .Match, Grow = 1 });
 
 		content.AddView(sourceRow, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(18)) });
@@ -111,8 +111,8 @@ class ImportDialog : Dialog
 
 		let outputLabel = new Label();
 		outputLabel.SetText("Output:");
-		outputLabel.FontSize = 11;
-		outputLabel.TextColor = .(140, 145, 165, 255);
+		outputLabel.FontSize.Value = 11;
+		outputLabel.TextColor.Value = .(140, 145, 165, 255);
 		outputRow.AddView(outputLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(50)), Height = .Match });
 
 		let outputPath = new Label();
@@ -121,8 +121,8 @@ class ImportDialog : Dialog
 		// Don't append mBaseLocator again - that would double-count and
 		// show "project://Fox/Fox/" when saving to "project://Fox/".
 		outputPath.SetText(mUriPrefix);
-		outputPath.FontSize = 11;
-		outputPath.Ellipsis = true;
+		outputPath.FontSize.Value = 11;
+		outputPath.Ellipsis.Value = true;
 		outputRow.AddView(outputPath, new FlexLayout.LayoutParams() { Height = .Match, Grow = 1 });
 
 		content.AddView(outputRow, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(18)) });
@@ -141,10 +141,10 @@ class ImportDialog : Dialog
 		headerRow.Spacing = 6;
 
 		let selectAllCheck = new CheckBox("Select All", true);
-		selectAllCheck.FontSize = 11;
+		selectAllCheck.FontSize.Value = 11;
 		selectAllCheck.OnCheckedChanged.Add(new (cb, val) => {
 			for (let check in mItemChecks)
-				check.IsChecked = val;
+				check.IsChecked.Value = val;
 			RefreshDupWarning();
 		});
 		headerRow.AddView(selectAllCheck, new FlexLayout.LayoutParams() { Width = .Wrap, Height = .Match });
@@ -153,9 +153,9 @@ class ImportDialog : Dialog
 		let countText = scope String();
 		countText.AppendF("{} items", mPreview.Items.Count);
 		countLabel.SetText(countText);
-		countLabel.FontSize = 10;
-		countLabel.TextColor = .(120, 125, 140, 255);
-		countLabel.HAlign = .Right;
+		countLabel.FontSize.Value = 10;
+		countLabel.TextColor.Value = .(120, 125, 140, 255);
+		countLabel.HAlign.Value = .Right;
 		headerRow.AddView(countLabel, new FlexLayout.LayoutParams() { Height = .Match, Grow = 1 });
 
 		content.AddView(headerRow, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(22)) });
@@ -164,8 +164,8 @@ class ImportDialog : Dialog
 		// the items header and the list so it's adjacent to what the user
 		// is editing.
 		mDupWarningLabel = new Label();
-		mDupWarningLabel.FontSize = 10;
-		mDupWarningLabel.TextColor = .(230, 170, 80, 255);
+		mDupWarningLabel.FontSize.Value = 10;
+		mDupWarningLabel.TextColor.Value = .(230, 170, 80, 255);
 		mDupWarningLabel.Visibility = .Gone;
 		content.AddView(mDupWarningLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Wrap });
 
@@ -181,7 +181,7 @@ class ImportDialog : Dialog
 			itemRow.Spacing = 8;
 
 			let check = new CheckBox();
-			check.IsChecked = item.Selected;
+			check.IsChecked.Value = item.Selected;
 			check.OnCheckedChanged.Add(new (cb, val) => { RefreshDupWarning(); });
 			mItemChecks.Add(check);
 			itemRow.AddView(check, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(20)), Height = .Match });
@@ -191,9 +191,9 @@ class ImportDialog : Dialog
 			// stuffs sample-rate / channel / duration into TypeLabel).
 			let typeLabel = new Label();
 			typeLabel.SetText(item.TypeLabel);
-			typeLabel.FontSize = 10;
-			typeLabel.TextColor = .(140, 160, 200, 255);
-			typeLabel.Ellipsis = true;
+			typeLabel.FontSize.Value = 10;
+			typeLabel.TextColor.Value = .(140, 160, 200, 255);
+			typeLabel.Ellipsis.Value = true;
 			itemRow.AddView(typeLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(90)), Height = .Match });
 
 			// Editable name (slow-click or double-click to rename) + read-only
@@ -209,8 +209,8 @@ class ImportDialog : Dialog
 
 			let nameField = new EditableLabel();
 			nameField.SetText(item.Name);
-			nameField.FontSize = 11;
-			nameField.Ellipsis = true;
+			nameField.FontSize.Value = 11;
+			nameField.Ellipsis.Value = true;
 			let capturedItem = item;
 			nameField.OnRenameCommitted.Add(new (label, newName) => {
 				capturedItem.Name.Set(newName);
@@ -220,8 +220,8 @@ class ImportDialog : Dialog
 
 			let extLabel = new Label();
 			extLabel.SetText(item.Extension);
-			extLabel.FontSize = 11;
-			extLabel.TextColor = .(140, 145, 165, 255);
+			extLabel.FontSize.Value = 11;
+			extLabel.TextColor.Value = .(140, 145, 165, 255);
 			itemRow.AddView(extLabel, new FlexLayout.LayoutParams() { Width = .Wrap, Height = .Match });
 
 			itemList.AddView(itemRow, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(22)) });
@@ -254,7 +254,7 @@ class ImportDialog : Dialog
 
 		for (int i = 0; i < mPreview.Items.Count; i++)
 		{
-			if (i < mItemChecks.Count && !mItemChecks[i].IsChecked) continue;
+			if (i < mItemChecks.Count && !mItemChecks[i].IsChecked.Value) continue;
 			let item = mPreview.Items[i];
 			let key = new String();
 			key.AppendF("{}{}", item.Name, item.Extension);
@@ -304,8 +304,8 @@ class ImportDialog : Dialog
 
 			let presetLabel = new Label();
 			presetLabel.SetText("Preset:");
-			presetLabel.FontSize = 11;
-			presetLabel.TextColor = .(140, 145, 165, 255);
+			presetLabel.FontSize.Value = 11;
+			presetLabel.TextColor.Value = .(140, 145, 165, 255);
 			optionsRow.AddView(presetLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(50)), Height = .Match });
 
 			let combo = new ComboBox();
@@ -361,18 +361,18 @@ class ImportDialog : Dialog
 
 			let skelLabel = new Label();
 			skelLabel.SetText("Skeleton:");
-			skelLabel.FontSize = 11;
-			skelLabel.TextColor = .(140, 145, 165, 255);
+			skelLabel.FontSize.Value = 11;
+			skelLabel.TextColor.Value = .(140, 145, 165, 255);
 			skelRow.AddView(skelLabel, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(60)), Height = .Match });
 
 			let skelPathLabel = new Label();
 			skelPathLabel.SetText("(none)");
-			skelPathLabel.FontSize = 11;
-			skelPathLabel.Ellipsis = true;
+			skelPathLabel.FontSize.Value = 11;
+			skelPathLabel.Ellipsis.Value = true;
 			skelRow.AddView(skelPathLabel, new FlexLayout.LayoutParams() { Height = .Match, Grow = 1 });
 
 			let browseBtn = new Button("...");
-			browseBtn.FontSize = 10;
+			browseBtn.FontSize.Value = 10;
 			let editorCtx = mEditorContext;
 			browseBtn.OnClick.Add(new [=modelOptions, =skelPathLabel, =editorCtx] (btn) => {
 				if (editorCtx != null)
@@ -391,7 +391,7 @@ class ImportDialog : Dialog
 			skelRow.AddView(browseBtn, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(30)), Height = .Match });
 
 			let clearBtn = new Button("X");
-			clearBtn.FontSize = 10;
+			clearBtn.FontSize.Value = 10;
 			clearBtn.OnClick.Add(new [=modelOptions, =skelPathLabel] (btn) => {
 				skelPathLabel.SetText("(none)");
 				modelOptions.SkeletonRef.Dispose();
@@ -446,7 +446,7 @@ class ImportDialog : Dialog
 	{
 		// Sync checkbox states to preview items
 		for (int i = 0; i < mPreview.Items.Count && i < mItemChecks.Count; i++)
-			mPreview.Items[i].Selected = mItemChecks[i].IsChecked;
+			mPreview.Items[i].Selected = mItemChecks[i].IsChecked.Value;
 
 		// Check if anything is selected
 		bool anySelected = false;

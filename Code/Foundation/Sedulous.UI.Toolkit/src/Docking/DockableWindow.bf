@@ -21,7 +21,6 @@ public class DockableWindow : ViewGroup, IDockableWindow
 
 	public this(DockablePanel panel)
 	{
-		StyleId = new String("dockablewindow");
 		mPanel = panel;
 		if (panel != null)
 			AddView(panel);

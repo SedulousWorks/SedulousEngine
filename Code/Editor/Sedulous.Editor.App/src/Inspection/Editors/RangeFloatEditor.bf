@@ -33,7 +33,7 @@ class RangeFloatEditor : PropertyEditor
 		row.Spacing = 4;
 
 		mMinField = new RangeNumericField(this);
-		mMinField.ShowSpinButtons = false;
+		mMinField.ShowSpinButtons.Value = false;
 		mMinField.Min = mMin; mMinField.Max = mMax; mMinField.Step = 0.1;
 		mMinField.DecimalPlaces = 3;
 		mMinField.Value = mPtr.Min;
@@ -49,7 +49,7 @@ class RangeFloatEditor : PropertyEditor
 		row.AddView(mMinField, new FlexLayout.LayoutParams() { Grow = 1 });
 
 		mMaxField = new RangeNumericField(this);
-		mMaxField.ShowSpinButtons = false;
+		mMaxField.ShowSpinButtons.Value = false;
 		mMaxField.Min = mMin; mMaxField.Max = mMax; mMaxField.Step = 0.1;
 		mMaxField.DecimalPlaces = 3;
 		mMaxField.Value = mPtr.Max;

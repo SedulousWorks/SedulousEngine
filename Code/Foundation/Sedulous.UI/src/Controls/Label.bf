@@ -9,60 +9,73 @@ using Sedulous.Fonts;
 /// Uses TextAlignment and VerticalAlignment from the Fonts library.
 public class Label : View
 {
-	public String Text ~ delete _;
+	public Property<String> Text = new .(null) ~ { if (_.Value != null) delete _.Value; delete _; };
 
 	/// Horizontal text alignment.
-	public TextAlignment HAlign = .Left;
+	public Property<TextAlignment> HAlign = new .(.Left) ~ delete _;
 
 	/// Vertical text alignment.
-	public VerticalAlignment VAlign = .Middle;
+	public Property<VerticalAlignment> VAlign = new .(.Middle) ~ delete _;
 
 	/// Whether text wraps at the view width.
-	public bool WordWrap = false;
+	public Property<bool> WordWrap = new .(false) ~ delete _;
 
 	/// Whether text is truncated with "..." when it exceeds width.
-	public bool Ellipsis = false;
+	public Property<bool> Ellipsis = new .(false) ~ delete _;
 
 	/// Per-instance font size override. When set, overrides the style-resolved FontSize.
-	public float? FontSize;
+	public Property<float?> FontSize = new .(null, .Visual) ~ delete _;
 
 	/// Per-instance text color override. When set, overrides the style-resolved TextColor.
-	public Color? TextColor;
+	public Property<Color?> TextColor = new .(null, .Visual) ~ delete _;
 
-	public this() { }
-	public this(StringView text) { Text = new String(text); }
+	public this()
+	{
+		Text.SetOwner(this);
+		HAlign.SetOwner(this, .Visual);
+		VAlign.SetOwner(this, .Visual);
+		WordWrap.SetOwner(this);
+		Ellipsis.SetOwner(this, .Visual);
+		FontSize.SetOwner(this);
+		TextColor.SetOwner(this, .Visual);
+	}
+
+	public this(StringView text) : this()
+	{
+		Text.SetSilent(new String(text));
+	}
 
 	/// Convenience: set text and return this for chaining.
 	public Label SetText(StringView text)
 	{
-		if (Text == null)
-			Text = new String(text);
+		if (Text.Value == null)
+			Text.Value = new String(text);
 		else
-			Text.Set(text);
+			Text.Value.Set(text);
 		Invalidate();
 		return this;
 	}
 
-	private bool HasNewlines => Text != null && Text.Contains('\n');
+	private bool HasNewlines => Text.Value != null && Text.Value.Contains('\n');
 
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
-		let fontSize = (FontSize ?? ResolveStyleFloat(.FontSize, 16));
+		let fontSize = (FontSize.Value ?? ResolveStyleFloat(.FontSize, 16));
 		float textW = 0, textH = fontSize;
 
-		if (Text != null && Text.Length > 0 && Context?.FontService != null)
+		if (Text.Value != null && Text.Value.Length > 0 && Context?.FontService != null)
 		{
 			let font = Context.FontService.GetFont(fontSize);
 			if (font != null)
 			{
-				if (WordWrap && font.Shaper != null)
+				if (WordWrap.Value && font.Shaper != null)
 				{
 					let maxWidth = (constraints.MaxWidth < float.MaxValue) ? constraints.MaxWidth : 10000.0f;
 					textW = maxWidth;
 
 					let positions = scope List<GlyphPosition>();
 					float totalHeight = 0;
-					if (font.Shaper.ShapeTextWrapped(font.Font, Text, maxWidth, positions, out totalHeight) case .Ok)
+					if (font.Shaper.ShapeTextWrapped(font.Font, Text.Value, maxWidth, positions, out totalHeight) case .Ok)
 						textH = totalHeight;
 				}
 				else if (HasNewlines)
@@ -70,7 +83,7 @@ public class Label : View
 					let lineHeight = font.Font.Metrics.LineHeight;
 					float maxW = 0;
 					int lineCount = 0;
-					for (let line in Text.Split('\n'))
+					for (let line in Text.Value.Split('\n'))
 					{
 						let w = font.Font.MeasureString(scope String(line));
 						if (w > maxW) maxW = w;
@@ -81,7 +94,7 @@ public class Label : View
 				}
 				else
 				{
-					textW = font.Font.MeasureString(Text);
+					textW = font.Font.MeasureString(Text.Value);
 					textH = font.Font.Metrics.LineHeight;
 				}
 			}
@@ -94,7 +107,7 @@ public class Label : View
 	{
 		if (Context?.FontService != null)
 		{
-			let font = Context.FontService.GetFont((FontSize ?? ResolveStyleFloat(.FontSize, 16)));
+			let font = Context.FontService.GetFont((FontSize.Value ?? ResolveStyleFloat(.FontSize, 16)));
 			if (font != null)
 				return font.Font.Metrics.Ascent;
 		}
@@ -103,60 +116,60 @@ public class Label : View
 
 	public override void OnDraw(UIDrawContext ctx)
 	{
-		if (Text == null || Text.Length == 0) return;
+		if (Text.Value == null || Text.Value.Length == 0) return;
 		if (ctx.FontService == null) return;
 
-		let fontSize = (FontSize ?? ResolveStyleFloat(.FontSize, 16));
+		let fontSize = (FontSize.Value ?? ResolveStyleFloat(.FontSize, 16));
 		let font = ctx.FontService.GetFont(fontSize);
 		if (font == null) return;
 
-		var textColor = TextColor ?? ResolveStyleColor(.TextColor, .(220, 225, 235, 255));
+		var textColor = TextColor.Value ?? ResolveStyleColor(.TextColor, .(220, 225, 235, 255));
 		if (!IsEffectivelyEnabled)
 			textColor = Palette.ComputeDisabled(textColor);
 
-		if (WordWrap)
+		if (WordWrap.Value)
 		{
 			float y = 0;
-			if (VAlign != .Top && font.Shaper != null)
+			if (VAlign.Value != .Top && font.Shaper != null)
 			{
 				let positions = scope List<GlyphPosition>();
 				float totalH = 0;
-				if (font.Shaper.ShapeTextWrapped(font.Font, Text, Width, positions, out totalH) case .Ok)
+				if (font.Shaper.ShapeTextWrapped(font.Font, Text.Value, Width, positions, out totalH) case .Ok)
 				{
-					if (VAlign == .Middle)
+					if (VAlign.Value == .Middle)
 						y = (Height - totalH) * 0.5f;
-					else if (VAlign == .Bottom)
+					else if (VAlign.Value == .Bottom)
 						y = Height - totalH;
 				}
 			}
-			ctx.VG.DrawTextWrapped(Text, font, .(0, y), Width, textColor, HAlign);
+			ctx.VG.DrawTextWrapped(Text.Value, font, .(0, y), Width, textColor, HAlign.Value);
 		}
 		else if (HasNewlines)
 		{
 			let lineHeight = font.Font.Metrics.LineHeight;
 			int lineCount = 0;
-			for (let _ in Text.Split('\n'))
+			for (let _ in Text.Value.Split('\n'))
 				lineCount++;
 
 			let totalH = lineHeight * lineCount;
 			float startY = 0;
-			if (VAlign == .Middle) startY = (Height - totalH) * 0.5f;
-			else if (VAlign == .Bottom) startY = Height - totalH;
+			if (VAlign.Value == .Middle) startY = (Height - totalH) * 0.5f;
+			else if (VAlign.Value == .Bottom) startY = Height - totalH;
 
 			float yy = startY;
-			for (let line in Text.Split('\n'))
+			for (let line in Text.Value.Split('\n'))
 			{
 				let lineStr = scope String(line);
-				ctx.VG.DrawText(lineStr, font, .(0, yy, Width, lineHeight), HAlign, .Top, textColor);
+				ctx.VG.DrawText(lineStr, font, .(0, yy, Width, lineHeight), HAlign.Value, .Top, textColor);
 				yy += lineHeight;
 			}
 		}
-		else if (Ellipsis)
+		else if (Ellipsis.Value)
 		{
-			let textW = font.Font.MeasureString(Text);
+			let textW = font.Font.MeasureString(Text.Value);
 			if (textW <= Width)
 			{
-				ctx.VG.DrawText(Text, font, .(0, 0, Width, Height), HAlign, VAlign, textColor);
+				ctx.VG.DrawText(Text.Value, font, .(0, 0, Width, Height), HAlign.Value, VAlign.Value, textColor);
 			}
 			else
 			{
@@ -166,13 +179,13 @@ public class Label : View
 
 				if (availW <= 0)
 				{
-					ctx.VG.DrawText(ellipsis, font, .(0, 0, Width, Height), HAlign, VAlign, textColor);
+					ctx.VG.DrawText(ellipsis, font, .(0, 0, Width, Height), HAlign.Value, VAlign.Value, textColor);
 				}
 				else
 				{
 					let truncated = scope String();
 					float w = 0;
-					for (let c in Text.RawChars)
+					for (let c in Text.Value.RawChars)
 					{
 						let charStr = scope String();
 						charStr.Append(c);
@@ -182,13 +195,13 @@ public class Label : View
 						w += charW;
 					}
 					truncated.Append(ellipsis);
-					ctx.VG.DrawText(truncated, font, .(0, 0, Width, Height), HAlign, VAlign, textColor);
+					ctx.VG.DrawText(truncated, font, .(0, 0, Width, Height), HAlign.Value, VAlign.Value, textColor);
 				}
 			}
 		}
 		else
 		{
-			ctx.VG.DrawText(Text, font, .(0, 0, Width, Height), HAlign, VAlign, textColor);
+			ctx.VG.DrawText(Text.Value, font, .(0, 0, Width, Height), HAlign.Value, VAlign.Value, textColor);
 		}
 	}
 }

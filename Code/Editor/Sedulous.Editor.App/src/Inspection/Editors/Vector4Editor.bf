@@ -49,7 +49,7 @@ class Vector4Editor : PropertyEditor
 	private NumericField MakeField(StringView prefix, float initial)
 	{
 		let f = new Vec4NumericField(this);
-		f.ShowSpinButtons = false;
+		f.ShowSpinButtons.Value = false;
 		f.Min = -1e6f; f.Max = 1e6f; f.Step = 0.1;
 		f.DecimalPlaces = 3;
 		f.SetPrefix(prefix);

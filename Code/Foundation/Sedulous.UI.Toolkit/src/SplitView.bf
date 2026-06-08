@@ -23,7 +23,6 @@ public class SplitView : ViewGroup
 
 	public this(Orientation orietation = .Horizontal)
 	{
-		StyleId = new String("splitview");
 		Orientation = orietation;
 	}
 

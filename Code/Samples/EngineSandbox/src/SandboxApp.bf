@@ -1650,22 +1650,22 @@ class SandboxApp : EngineApplication
 		});
 
 		let title = new Label("World UI Panel");
-		title.FontSize = 16;
-		title.HAlign = .Center;
+		title.FontSize.Value = 16;
+		title.HAlign.Value = .Center;
 		layout.AddView(title, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Fixed(.Px(24))
 		});
 
 		let info = new Label("Rendered to texture");
-		info.FontSize = 12;
-		info.HAlign = .Center;
+		info.FontSize.Value = 12;
+		info.HAlign.Value = .Center;
 		layout.AddView(info, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Fixed(.Px(16))
 		});
 
 		let info2 = new Label("Displayed as sprite");
-		info2.FontSize = 12;
-		info2.HAlign = .Center;
+		info2.FontSize.Value = 12;
+		info2.HAlign.Value = .Center;
 		layout.AddView(info2, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Fixed(.Px(16))
 		});
@@ -1693,10 +1693,10 @@ class SandboxApp : EngineApplication
 		});
 
 		let label = new Label("NPC Nameplate");
-		label.FontSize = 14;
-		label.HAlign = .Center;
-		label.VAlign = .Middle;
-		label.TextColor = .(255, 220, 100, 255);
+		label.FontSize.Value = 14;
+		label.HAlign.Value = .Center;
+		label.VAlign.Value = .Middle;
+		label.TextColor.Value = .(255, 220, 100, 255);
 		panel.AddView(label, new LayoutParams() {
 			Width = .Match,
 			Height = .Match
@@ -1730,17 +1730,17 @@ class SandboxApp : EngineApplication
 
 		// FPS label.
 		mFpsLabel = new Label("FPS --");
-		mFpsLabel.FontSize = 14;
+		mFpsLabel.FontSize.Value = 14;
 		hudLayout.AddView(mFpsLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(18)) });
 
 		// Controls hint.
 		mControlsLabel = new Label("WASD=Move QE=Up/Down RMB=Look Tab=Capture Shift=Fast M=SFX");
-		mControlsLabel.FontSize = 11;
+		mControlsLabel.FontSize.Value = 11;
 		hudLayout.AddView(mControlsLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(14)) });
 
 		// Post-processing toggles
 		let ssaoToggle = new CheckBox("SSAO");
-		ssaoToggle.IsChecked = false;
+		ssaoToggle.IsChecked.Value = false;
 		ssaoToggle.OnCheckedChanged.Add(new (cb, isChecked) =>
 		{
 			let rs = Context.GetSubsystem<RenderSubsystem>();
@@ -1755,7 +1755,7 @@ class SandboxApp : EngineApplication
 
 		// SSAO parameter sliders
 		let radiusLabel = new Label("SSAO Radius: 0.50");
-		radiusLabel.FontSize = 11;
+		radiusLabel.FontSize.Value = 11;
 		hudLayout.AddView(radiusLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(14)) });
 
 		let radiusSlider = new Slider(0.1f, 3.0f, 0.5f);
@@ -1773,7 +1773,7 @@ class SandboxApp : EngineApplication
 		hudLayout.AddView(radiusSlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(400)), Height = .Fixed(.Px(24)) });
 
 		let intensityLabel = new Label("SSAO Intensity: 1.50");
-		intensityLabel.FontSize = 11;
+		intensityLabel.FontSize.Value = 11;
 		hudLayout.AddView(intensityLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(14)) });
 
 		let intensitySlider = new Slider(0.5f, 5.0f, 1.5f);
@@ -1791,7 +1791,7 @@ class SandboxApp : EngineApplication
 		hudLayout.AddView(intensitySlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(400)), Height = .Fixed(.Px(24)) });
 
 		let biasLabel = new Label("SSAO Bias: 0.025");
-		biasLabel.FontSize = 11;
+		biasLabel.FontSize.Value = 11;
 		hudLayout.AddView(biasLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(14)) });
 
 		let biasSlider = new Slider(0.0f, 0.2f, 0.025f);
@@ -1823,14 +1823,14 @@ class SandboxApp : EngineApplication
 			{
 				let fxaa = pipeline.PostProcessStack.GetEffect<FXAAEffect>();
 				if (fxaa != null) fxaa.Enabled = isChecked;
-				if (isChecked && taaToggle.IsChecked)
-					taaToggle.IsChecked = false;
+				if (isChecked && taaToggle.IsChecked.Value)
+					taaToggle.IsChecked.Value = false;
 			}
 		});
 
 		// TAA parameter sliders
 		let blendLabel = new Label("TAA Blend: 0.95");
-		blendLabel.FontSize = 11;
+		blendLabel.FontSize.Value = 11;
 		hudLayout.AddView(blendLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(14)) });
 
 		let blendSlider = new Slider(0.5f, 0.99f, 0.95f);
@@ -1848,7 +1848,7 @@ class SandboxApp : EngineApplication
 		hudLayout.AddView(blendSlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(400)), Height = .Fixed(.Px(24)) });
 
 		let jitterLabel = new Label("Jitter Scale: 1.00");
-		jitterLabel.FontSize = 11;
+		jitterLabel.FontSize.Value = 11;
 		hudLayout.AddView(jitterLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(14)) });
 
 		let jitterSlider = new Slider(0.0f, 2.0f, 1.0f);
@@ -1873,8 +1873,8 @@ class SandboxApp : EngineApplication
 				{
 					let taa = pipeline.PostProcessStack.GetEffect<TAAEffect>();
 					if (taa != null) taa.Enabled = isChecked;
-					if (isChecked && fxaaToggle.IsChecked)
-						fxaaToggle.IsChecked = false;
+					if (isChecked && fxaaToggle.IsChecked.Value)
+						fxaaToggle.IsChecked.Value = false;
 				}
 			}
 		});
