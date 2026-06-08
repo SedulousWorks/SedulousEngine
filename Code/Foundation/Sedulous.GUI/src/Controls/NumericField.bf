@@ -357,7 +357,7 @@ public class NumericField : View, ITextEditHost
 
 		// Up button state.
 		let upState = (mPressedButton == 1) ? ControlState.Pressed : ((mHoveredButton == 1) ? ControlState.Hover : ControlState.Normal);
-		let upDrawable = ResolveStyleDrawable(.SpinUpDrawable);
+		let upDrawable = ResolvePartDrawable("spin-up", .Background, upState);
 		if (upDrawable != null)
 			upDrawable.Draw(ctx, .(btnX, 0, ButtonWidth.Value, halfH), upState);
 		else
@@ -370,7 +370,7 @@ public class NumericField : View, ITextEditHost
 
 		// Down button state.
 		let downState = (mPressedButton == -1) ? ControlState.Pressed : ((mHoveredButton == -1) ? ControlState.Hover : ControlState.Normal);
-		let downDrawable = ResolveStyleDrawable(.SpinDownDrawable);
+		let downDrawable = ResolvePartDrawable("spin-down", .Background, downState);
 		if (downDrawable != null)
 			downDrawable.Draw(ctx, .(btnX, halfH, ButtonWidth.Value, halfH), downState);
 		else
@@ -394,7 +394,7 @@ public class NumericField : View, ITextEditHost
 		let arrowSz = Math.Min(ButtonWidth.Value, halfH) * 0.25f;
 
 		// Up arrow - try SVG icon, fallback to VG triangle.
-		let upIcon = ResolveStyleDrawable(.ArrowUpIcon);
+		let upIcon = ResolvePartDrawable("arrow-up", .Background, upState);
 		let cx = btnX + ButtonWidth.Value * 0.5f;
 		if (upIcon != null)
 		{
@@ -413,7 +413,7 @@ public class NumericField : View, ITextEditHost
 		}
 
 		// Down arrow.
-		let downIcon = ResolveStyleDrawable(.ArrowDownIcon);
+		let downIcon = ResolvePartDrawable("arrow-down", .Background, downState);
 		if (downIcon != null)
 		{
 			let iconSize = arrowSz * 2;

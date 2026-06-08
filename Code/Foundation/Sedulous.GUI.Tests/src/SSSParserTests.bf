@@ -478,7 +478,7 @@ class SSSParserTests
 
 		let sheet = loader.Load(
 			"""
-			CheckBox { checkmark-icon: svg(checkmark); }
+			CheckBox::checkmark { background: svg(checkmark); }
 			""");
 
 		let (ctx, root) = SetupContext(sheet);
@@ -487,7 +487,7 @@ class SSSParserTests
 		let cb = new CheckBox("Test");
 		root.AddView(cb);
 
-		let icon = cb.ResolveStyleDrawable(.CheckmarkIcon);
+		let icon = cb.ResolvePartDrawable("checkmark", .Background, .Normal);
 		Test.Assert(icon != null);
 		Test.Assert(icon is SVGDrawable);
 	}
@@ -505,7 +505,7 @@ class SSSParserTests
 
 		let sheet = loader.Load(
 			"""
-			CheckBox { checkmark-icon: svg(checkmark, tint=#ff0000); }
+			CheckBox::checkmark { background: svg(checkmark, tint=#ff0000); }
 			""");
 
 		let (ctx, root) = SetupContext(sheet);
@@ -514,7 +514,7 @@ class SSSParserTests
 		let cb = new CheckBox("Test");
 		root.AddView(cb);
 
-		let icon = cb.ResolveStyleDrawable(.CheckmarkIcon);
+		let icon = cb.ResolvePartDrawable("checkmark", .Background, .Normal);
 		Test.Assert(icon != null);
 		Test.Assert(icon is SVGDrawable);
 		let svgd = icon as SVGDrawable;
@@ -607,35 +607,14 @@ class SSSParserTests
 			View {
 				background: color(#111);
 				checked-background: color(#222);
-				track-drawable: color(#333);
-				thumb-drawable: color(#444);
-				fill-drawable: color(#555);
-				knob-drawable: color(#666);
-				track-on-drawable: color(#777);
-				box-drawable: color(#888);
-				strip-drawable: color(#999);
-				content-drawable: color(#aaa);
-				active-tab-drawable: color(#bbb);
-				hover-tab-drawable: color(#ccc);
-				menu-item-hover-drawable: color(#ddd);
-				header-drawable: color(#eee);
-				header-hover-drawable: color(#fff);
-				spin-up-drawable: color(#123);
-				spin-down-drawable: color(#456);
-				checkmark-icon: color(#789);
-				radio-mark-icon: color(#abc);
-				close-icon: color(#def);
-				chevron-expanded-icon: color(#111);
-				chevron-collapsed-icon: color(#222);
-				arrow-down-icon: color(#333);
-				arrow-up-icon: color(#444);
+				menu-item-hover-drawable: color(#333);
 			}
 			""");
 
-		// 24 drawable properties = 24 property-value pairs in one rule
+		// 3 drawable properties
 		Test.Assert(sheet.RuleCount == 1);
 		let rule = sheet.[Friend]mRules[0];
-		Test.Assert(rule.PropertyCount == 24);
+		Test.Assert(rule.PropertyCount == 3);
 
 		sheet.ReleaseRef();
 	}
@@ -652,19 +631,12 @@ class SSSParserTests
 				border-color: #444;
 				cursor-color: #555;
 				selection-color: #666;
-				check-color: #777;
-				arrow-color: #888;
-				accent-color: #999;
-				active-tab-text-color: #aaa;
-				inactive-tab-text-color: #bbb;
-				hover-tab-text-color: #ccc;
-				close-button-color: #ddd;
-				close-button-hover-color: #eee;
+				accent-color: #777;
 			}
 			""");
 
 		let rule = sheet.[Friend]mRules[0];
-		Test.Assert(rule.PropertyCount == 14);
+		Test.Assert(rule.PropertyCount == 7);
 
 		sheet.ReleaseRef();
 	}
@@ -679,17 +651,14 @@ class SSSParserTests
 				corner-radius: 4;
 				border-width: 1;
 				spacing: 8;
-				thumb-size: 12;
-				track-height: 4;
-				box-size: 16;
 				opacity: 0.5;
-				header-height: 28;
-				close-button-size: 12;
+				width: 100;
+				height: 50;
 			}
 			""");
 
 		let rule = sheet.[Friend]mRules[0];
-		Test.Assert(rule.PropertyCount == 10);
+		Test.Assert(rule.PropertyCount == 7);
 
 		sheet.ReleaseRef();
 	}
@@ -935,7 +904,7 @@ class SSSParserTests
 		let sheet = loader.Load(
 			"""
 			@icon checkmark "icons/check.svg";
-			CheckBox { checkmark-icon: svg(checkmark); }
+			CheckBox::checkmark { background: svg(checkmark); }
 			""");
 
 		let (ctx, root) = SetupContext(sheet);
@@ -944,7 +913,7 @@ class SSSParserTests
 		let cb = new CheckBox("Test");
 		root.AddView(cb);
 
-		let icon = cb.ResolveStyleDrawable(.CheckmarkIcon);
+		let icon = cb.ResolvePartDrawable("checkmark", .Background, .Normal);
 		Test.Assert(icon != null);
 		Test.Assert(icon is SVGDrawable);
 	}
@@ -964,7 +933,7 @@ class SSSParserTests
 		// No resource provider needed — SVG is pre-registered
 		let sheet = loader.Load(
 			"""
-			CheckBox { checkmark-icon: svg(checkmark); }
+			CheckBox::checkmark { background: svg(checkmark); }
 			""");
 
 		let (ctx, root) = SetupContext(sheet);
@@ -973,7 +942,7 @@ class SSSParserTests
 		let cb = new CheckBox("Test");
 		root.AddView(cb);
 
-		let icon = cb.ResolveStyleDrawable(.CheckmarkIcon);
+		let icon = cb.ResolvePartDrawable("checkmark", .Background, .Normal);
 		Test.Assert(icon != null);
 		Test.Assert(icon is SVGDrawable);
 	}
@@ -998,7 +967,7 @@ class SSSParserTests
 		// No resource provider, no pre-registered SVG — svg() returns null
 		let sheet = LoadSSS(
 			"""
-			CheckBox { checkmark-icon: svg(missing); }
+			CheckBox::checkmark { background: svg(missing); }
 			""");
 
 		let (ctx, root) = SetupContext(sheet);
@@ -1009,7 +978,7 @@ class SSSParserTests
 
 		// Should gracefully return null (no crash)
 #unwarn
-		let icon = cb.ResolveStyleDrawable(.CheckmarkIcon);
+		let icon = cb.ResolvePartDrawable("checkmark", .Background, .Normal);
 		// Icon may be null or a fallback — either way, no crash
 	}
 

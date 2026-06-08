@@ -83,66 +83,95 @@ NumericField {
 	cursor-color: $primary;
 	selection-color: rgba(61, 174, 233, 0.4);
 	corner-radius: 2;
-	spin-up-drawable: state-rounded(#3a3f44, radius=2);
-	spin-down-drawable: state-rounded(#3a3f44, radius=2);
+}
+NumericField::spin-up {
+	background: state-rounded(#3a3f44, radius=2);
+}
+NumericField::spin-down {
+	background: state-rounded(#3a3f44, radius=2);
 }
 
 /* === CheckBox === */
 
 CheckBox {
-	box-drawable: rounded-rect($background, radius=2, border=$border, border-width=1);
-	checked-background: rounded-rect($primary, radius=2, border=$primary, border-width=1);
-	checkmark-icon: svg(checkmark);
-	box-size: 18;
 	spacing: 6;
+}
+CheckBox::box {
+	background: rounded-rect($background, radius=2, border=$border, border-width=1);
+	width: 18;
+}
+CheckBox::box:checked {
+	background: rounded-rect($primary, radius=2, border=$primary, border-width=1);
+}
+CheckBox::checkmark {
+	background: svg(checkmark);
 }
 
 /* === RadioButton === */
 
-RadioButton {
-	box-drawable: rounded-rect($background, radius=9, border=$border, border-width=1);
-	checked-background: rounded-rect($primary, radius=9, border=$primary, border-width=1);
-	radio-mark-icon: svg(radio-mark-round);
+RadioButton::box {
+	background: rounded-rect($background, radius=9, border=$border, border-width=1);
+}
+RadioButton::box:checked {
+	background: rounded-rect($primary, radius=9, border=$primary, border-width=1);
+}
+RadioButton::mark {
+	background: svg(radio-mark-round);
 }
 
 /* === Slider === */
 
-Slider {
-	track-drawable: rounded-rect(#676a6e, radius=2);
-	fill-drawable: rounded-rect($primary, radius=2);
-	thumb-drawable: rounded-rect($surface, radius=8, border=#787b80, border-width=1);
-	thumb-size: 16;
-	track-height: 4;
+Slider::track {
+	background: rounded-rect(#676a6e, radius=2);
+	height: 4;
+}
+Slider::fill {
+	background: rounded-rect($primary, radius=2);
+}
+Slider::thumb {
+	background: rounded-rect($surface, radius=8, border=#787b80, border-width=1);
+	width: 16;
 }
 
 /* === ProgressBar === */
 
-ProgressBar {
-	track-drawable: rounded-rect(#676a6e, radius=2);
-	fill-drawable: rounded-rect($primary, radius=2);
+ProgressBar::track {
+	background: rounded-rect(#676a6e, radius=2);
+}
+ProgressBar::fill {
+	background: rounded-rect($primary, radius=2);
 }
 
 /* === ToggleSwitch === */
 
-ToggleSwitch {
-	track-drawable: rounded-rect($surface, radius=12, border=$border, border-width=1);
-	track-on-drawable: rounded-rect($primary, radius=12, border=$primary, border-width=1);
-	knob-drawable: rounded-rect(#eff0f1, radius=10);
+ToggleSwitch::track {
+	background: rounded-rect($surface, radius=12, border=$border, border-width=1);
+}
+ToggleSwitch::track:checked {
+	background: rounded-rect($primary, radius=12, border=$primary, border-width=1);
+}
+ToggleSwitch::knob {
+	background: rounded-rect(#eff0f1, radius=10);
 }
 
 /* === ComboBox === */
 
 ComboBox {
 	background: rounded-rect($surface-bright, radius=2, border=$border, border-width=1);
-	arrow-color: #b6bbc2;
 	corner-radius: 2;
+}
+ComboBox::arrow {
+	text-color: #b6bbc2;
+	background: svg(arrow-down);
 }
 
 /* === ScrollBar === */
 
-ScrollBar {
-	track-drawable: color(rgba(55, 58, 61, 0.6));
-	thumb-drawable: rounded-rect(#4085a9, radius=3);
+ScrollBar::track {
+	background: color(rgba(55, 58, 61, 0.6));
+}
+ScrollBar::thumb {
+	background: rounded-rect(#4085a9, radius=3);
 }
 
 /* === Separator === */
@@ -153,29 +182,50 @@ Separator {
 
 /* === Expander === */
 
-Expander {
-	header-drawable: rounded-rect(#2b3034, radius=2);
-	header-hover-drawable: rounded-rect(#334e5e, radius=2);
-	arrow-color: #b6bbc2;
-	chevron-expanded-icon: svg(chevron-down);
-	chevron-collapsed-icon: svg(chevron-right);
+Expander::header {
+	background: rounded-rect(#2b3034, radius=2);
+}
+Expander::header:hover {
+	background: rounded-rect(#334e5e, radius=2);
+}
+Expander::chevron {
+	background: svg(chevron-right);
+	text-color: #b6bbc2;
+}
+Expander::chevron:checked {
+	background: svg(chevron-down);
 }
 
 /* === TabView === */
 
+TabView::strip {
+	background: color(#2b3034);
+}
+TabView::content {
+	background: color($surface);
+}
+TabView::tab {
+	text-color: #c0c5cc;
+}
+TabView::tab:checked {
+	background: color($surface);
+	text-color: white;
+}
+TabView::tab:hover {
+	background: color(#334e5e);
+	text-color: white;
+}
+TabView::close-button {
+	background: svg(close);
+	text-color: #909396;
+	width: 12;
+}
+TabView::close-button:hover {
+	text-color: #863d47;
+}
 TabView {
-	strip-drawable: color(#2b3034);
-	content-drawable: color($surface);
-	active-tab-drawable: color($surface);
-	hover-tab-drawable: color(#334e5e);
 	border-color: #616569;
 	accent-color: $primary;
-	active-tab-text-color: white;
-	inactive-tab-text-color: #c0c5cc;
-	hover-tab-text-color: white;
-	close-button-color: #909396;
-	close-button-hover-color: #863d47;
-	close-icon: svg(close);
 }
 
 /* === ContextMenu === */
@@ -212,8 +262,12 @@ ListView {
 
 TreeView {
 	background: color($background);
-	chevron-expanded-icon: svg(chevron-down);
-	chevron-collapsed-icon: svg(chevron-right);
+}
+TreeView::chevron {
+	background: svg(chevron-right);
+}
+TreeView::chevron:checked {
+	background: svg(chevron-down);
 }
 
 /* === GridView === */
@@ -225,7 +279,12 @@ GridView {
 
 /* === Global icons === */
 
-View {
-	arrow-down-icon: svg(arrow-down);
-	arrow-up-icon: svg(arrow-up);
+NumericField::arrow-up {
+	background: svg(arrow-up);
+}
+NumericField::arrow-down {
+	background: svg(arrow-down);
+}
+.contextmenu::submenu-arrow {
+	background: svg(chevron-right);
 }

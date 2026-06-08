@@ -190,9 +190,9 @@ public class TreeView : ViewGroup
 
 			// Try themed chevron icons first.
 			let isExpanded = mFlatAdapter.IsExpanded(nodeId);
-			let chevron = isExpanded
-				? ResolveStyleDrawable(.ChevronExpandedIcon)
-				: ResolveStyleDrawable(.ChevronCollapsedIcon);
+			var chevronState = GetControlState();
+			if (isExpanded) chevronState |= .Checked;
+			let chevron = ResolvePartDrawable("chevron", .Background, chevronState);
 
 			if (chevron != null)
 			{

@@ -60,8 +60,10 @@ public class ToggleSwitch : View
 		let trackY = (Height - TrackHeight.Value) * 0.5f;
 		let trackRect = RectangleF(0, trackY, TrackWidth.Value, TrackHeight.Value);
 
-		// Track - use drawable if available, fallback to squared rect
-		let trackDrawable = IsChecked.Value ? ResolveStyleDrawable(.TrackOnDrawable) : ResolveStyleDrawable(.TrackDrawable);
+		// Track - query with Checked state flag when on so checked-specific rules win
+		var trackState = GetControlState();
+		if (IsChecked.Value) trackState |= .Checked;
+		let trackDrawable = ResolvePartDrawable("track", .Background, trackState);
 		if (trackDrawable != null)
 			trackDrawable.Draw(ctx, trackRect);
 		else
@@ -77,7 +79,7 @@ public class ToggleSwitch : View
 		let knobX = IsChecked.Value ? (TrackWidth.Value - KnobSize.Value - knobPad) : knobPad;
 		let knobY = trackY + knobPad;
 		let knobRect = RectangleF(knobX, knobY, KnobSize.Value, KnobSize.Value);
-		let knobDrawable = ResolveStyleDrawable(.KnobDrawable);
+		let knobDrawable = ResolvePartDrawable("knob", .Background, trackState);
 		if (knobDrawable != null)
 			knobDrawable.Draw(ctx, knobRect);
 		else

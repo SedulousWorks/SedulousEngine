@@ -101,23 +101,22 @@ public class Expander : ViewGroup
 		let fontSize = ResolveStyleFloat(.FontSize, 16);
 		let headerRect = RectangleF(0, 0, Width, HeaderHeight.Value);
 
-		// Header background - try hover drawable first, then normal
-		let hoverDrawable = IsHovered ? ResolveStyleDrawable(.HeaderHoverDrawable) : null;
-		let headerDrawable = hoverDrawable ?? ResolveStyleDrawable(.HeaderDrawable);
+		// Header background via pseudo-element with hover state
+		var headerState = GetControlState();
+		let headerDrawable = ResolvePartDrawable("header", .Background, headerState);
 		if (headerDrawable != null)
-			headerDrawable.Draw(ctx, headerRect, GetControlState());
+			headerDrawable.Draw(ctx, headerRect, headerState);
 		else
 			ctx.VG.FillRect(headerRect, .(50, 55, 68, 255)); // fallback
 
-		// Arrow indicator
+		// Chevron indicator via pseudo-element (expanded=Checked state)
 		let arrowSize = 8.0f;
 		let arrowX = 8.0f;
 		let arrowCY = HeaderHeight.Value * 0.5f;
-		let arrowColor = ResolveStyleColor(.ArrowColor, .(180, 185, 200, 255));
-
-		let chevronIcon = mIsExpanded
-			? ResolveStyleDrawable(.ChevronExpandedIcon)
-			: ResolveStyleDrawable(.ChevronCollapsedIcon);
+		var chevronState = headerState;
+		if (mIsExpanded) chevronState |= .Checked;
+		let chevronIcon = ResolvePartDrawable("chevron", .Background, chevronState);
+		let arrowColor = ResolvePartColor("chevron", .TextColor, chevronState, .(180, 185, 200, 255));
 
 		if (chevronIcon != null)
 		{

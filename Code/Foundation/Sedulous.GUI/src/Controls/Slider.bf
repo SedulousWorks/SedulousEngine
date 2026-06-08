@@ -71,13 +71,14 @@ public class Slider : View
 
 	public override void OnDraw(UIDrawContext ctx)
 	{
-		let trackHeight = ResolveStyleFloat(.TrackHeight, 4);
-		let thumbSize = ResolveStyleFloat(.ThumbSize, 16);
+		let state = GetControlState();
+		let trackHeight = ResolvePartFloat("track", .Height, state, 4);
+		let thumbSize = ResolvePartFloat("thumb", .Width, state, 16);
 		let thumbHalf = thumbSize * 0.5f;
 
-		let trackDrawable = ResolveStyleDrawable(.TrackDrawable);
-		let fillDrawable = ResolveStyleDrawable(.FillDrawable);
-		let thumbDrawable = ResolveStyleDrawable(.ThumbDrawable);
+		let trackDrawable = ResolvePartDrawable("track", .Background, state);
+		let fillDrawable = ResolvePartDrawable("fill", .Background, state);
+		let thumbDrawable = ResolvePartDrawable("thumb", .Background, state);
 
 		let progress = (Max.Value > Min.Value) ? (Value.Value - Min.Value) / (Max.Value - Min.Value) : 0;
 
@@ -197,7 +198,7 @@ public class Slider : View
 
 	private void UpdateValueFromMouse(float localX, float localY)
 	{
-		let thumbSize = ResolveStyleFloat(.ThumbSize, 16);
+		let thumbSize = ResolvePartFloat("thumb", .Width, GetControlState(), 16);
 		let thumbHalf = thumbSize * 0.5f;
 
 		float progress;

@@ -206,7 +206,7 @@ public class ContextMenu : View, IPopupOwner
 			// Submenu arrow
 			if (item.Submenu != null)
 			{
-				let arrowIcon = ResolveStyleDrawable(.ChevronCollapsedIcon);
+				let arrowIcon = ResolvePartDrawable("submenu-arrow", .Background, GetControlState());
 				let arrowX = w - 16;
 				let arrowCY = y + mItemHeight * 0.5f;
 				let arrowSize = 6.0f;

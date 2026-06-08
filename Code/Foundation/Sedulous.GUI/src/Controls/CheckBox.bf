@@ -37,7 +37,7 @@ public class CheckBox : View
 
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
-		let boxSize = ResolveStyleFloat(.BoxSize, 18);
+		let boxSize = ResolvePartFloat("box", .Width, GetControlState(), 18);
 		let spacing = ResolveStyleFloat(.Spacing, 6);
 		let fontSize = FontSize.Value ?? ResolveStyleFloat(.FontSize, 16);
 
@@ -60,38 +60,33 @@ public class CheckBox : View
 
 	public override void OnDraw(UIDrawContext ctx)
 	{
-		let boxSize = ResolveStyleFloat(.BoxSize, 18);
+		var state = GetControlState();
+		if (IsChecked.Value) state |= .Checked;
+		let boxSize = ResolvePartFloat("box", .Width, state, 18);
 		let spacing = ResolveStyleFloat(.Spacing, 6);
 		let fontSize = FontSize.Value ?? ResolveStyleFloat(.FontSize, 16);
-		let state = GetControlState();
 
 		// Box position (vertically centered)
 		let boxY = (Height - boxSize) * 0.5f;
 		let boxRect = RectangleF(0, boxY, boxSize, boxSize);
 
-		// Draw the appropriate drawable for checked/unchecked state.
-		if (IsChecked.Value)
+		// Draw box background (checked state selects checked-specific rule via cascade)
+		let boxDrawable = ResolvePartDrawable("box", .Background, state);
+		if (boxDrawable != null)
 		{
-			let checkedDrawable = ResolveStyleDrawable(.CheckedBackground);
-			if (checkedDrawable != null)
+			boxDrawable.Draw(ctx, boxRect, state);
+			// Draw checkmark icon when checked
+			if (IsChecked.Value)
 			{
-				checkedDrawable.Draw(ctx, boxRect, state);
-				// Draw checkmark icon on top of checked background
-				let checkIcon = ResolveStyleDrawable(.CheckmarkIcon);
+				let checkIcon = ResolvePartDrawable("checkmark", .Background, state);
 				if (checkIcon != null)
 					checkIcon.Draw(ctx, boxRect);
 			}
-			else
-				DrawFallbackChecked(ctx, boxRect, boxSize);
 		}
+		else if (IsChecked.Value)
+			DrawFallbackChecked(ctx, boxRect, boxSize);
 		else
-		{
-			let boxDrawable = ResolveStyleDrawable(.BoxDrawable);
-			if (boxDrawable != null)
-				boxDrawable.Draw(ctx, boxRect, state);
-			else
-				DrawFallbackUnchecked(ctx, boxRect);
-		}
+			DrawFallbackUnchecked(ctx, boxRect);
 
 		// Text label
 		if (Text.Value != null && !Text.Value.IsEmpty)

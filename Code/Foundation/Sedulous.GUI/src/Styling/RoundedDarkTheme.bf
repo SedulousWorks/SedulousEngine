@@ -84,9 +84,11 @@ public static class RoundedDarkTheme
 				.Set(.FontSize, 14.0f)
 				.Set(.Padding, Thickness(6, 4))
 				.Set(.CursorColor, p.PrimaryAccent)
-				.Set(.SelectionColor, Color(60, 120, 200, 80))
-				.Set(.SpinUpDrawable, spinUp)
-				.Set(.SpinDownDrawable, spinDown);
+				.Set(.SelectionColor, Color(60, 120, 200, 80));
+			sheet.ForTypePseudo(typeof(NumericField), "spin-up")
+				.Set(.Background, spinUp);
+			sheet.ForTypePseudo(typeof(NumericField), "spin-down")
+				.Set(.Background, spinDown);
 		}
 
 		// === CheckBox - rounded ===
@@ -95,10 +97,12 @@ public static class RoundedDarkTheme
 		let cbChecked = new RoundedRectDrawable(p.PrimaryAccent, 3, cbBorder, 1);
 		sheet.OwnDrawable(cbUnchecked);
 		sheet.OwnDrawable(cbChecked);
+		sheet.ForTypePseudo(typeof(CheckBox), "box")
+			.Set(.Background, cbUnchecked)
+			.Set(.Width, 18.0f);
+		sheet.ForTypePseudoState(typeof(CheckBox), "box", .Checked)
+			.Set(.Background, cbChecked);
 		sheet.ForType(typeof(CheckBox))
-			.Set(.BoxDrawable, cbUnchecked)
-			.Set(.CheckedBackground, cbChecked)
-			.Set(.BoxSize, 18.0f)
 			.Set(.Spacing, 6.0f);
 
 		// === RadioButton - circular ===
@@ -107,9 +111,10 @@ public static class RoundedDarkTheme
 		let rbChecked = new RoundedRectDrawable(p.PrimaryAccent, 9, rbBorder, 1);
 		sheet.OwnDrawable(rbUnchecked);
 		sheet.OwnDrawable(rbChecked);
-		sheet.ForType(typeof(RadioButton))
-			.Set(.BoxDrawable, rbUnchecked)
-			.Set(.CheckedBackground, rbChecked);
+		sheet.ForTypePseudo(typeof(RadioButton), "box")
+			.Set(.Background, rbUnchecked);
+		sheet.ForTypePseudoState(typeof(RadioButton), "box", .Checked)
+			.Set(.Background, rbChecked);
 
 		// === Slider - rounded track and thumb ===
 		let sliderTrack = new RoundedRectDrawable(.(50, 52, 62, 255), 2);
@@ -118,21 +123,24 @@ public static class RoundedDarkTheme
 		sheet.OwnDrawable(sliderTrack);
 		sheet.OwnDrawable(sliderFill);
 		sheet.OwnDrawable(sliderThumb);
-		sheet.ForType(typeof(Slider))
-			.Set(.TrackDrawable, sliderTrack)
-			.Set(.FillDrawable, sliderFill)
-			.Set(.ThumbDrawable, sliderThumb)
-			.Set(.ThumbSize, 16.0f)
-			.Set(.TrackHeight, 4.0f);
+		sheet.ForTypePseudo(typeof(Slider), "track")
+			.Set(.Background, sliderTrack)
+			.Set(.Height, 4.0f);
+		sheet.ForTypePseudo(typeof(Slider), "fill")
+			.Set(.Background, sliderFill);
+		sheet.ForTypePseudo(typeof(Slider), "thumb")
+			.Set(.Background, sliderThumb)
+			.Set(.Width, 16.0f);
 
 		// === ProgressBar - rounded ===
 		let progTrack = new RoundedRectDrawable(.(50, 52, 62, 255), 4);
 		let progFill = new RoundedRectDrawable(p.PrimaryAccent, 4);
 		sheet.OwnDrawable(progTrack);
 		sheet.OwnDrawable(progFill);
-		sheet.ForType(typeof(ProgressBar))
-			.Set(.TrackDrawable, progTrack)
-			.Set(.FillDrawable, progFill);
+		sheet.ForTypePseudo(typeof(ProgressBar), "track")
+			.Set(.Background, progTrack);
+		sheet.ForTypePseudo(typeof(ProgressBar), "fill")
+			.Set(.Background, progFill);
 
 		// === ToggleSwitch - pill-shaped track (with border) and round knob ===
 		let switchTrackOff = new RoundedRectDrawable(p.Surface, 12, p.Border, 1);
@@ -141,27 +149,32 @@ public static class RoundedDarkTheme
 		sheet.OwnDrawable(switchTrackOff);
 		sheet.OwnDrawable(switchTrackOn);
 		sheet.OwnDrawable(switchKnob);
+		sheet.ForTypePseudo(typeof(ToggleSwitch), "track")
+			.Set(.Background, switchTrackOff);
+		sheet.ForTypePseudoState(typeof(ToggleSwitch), "track", .Checked)
+			.Set(.Background, switchTrackOn);
+		sheet.ForTypePseudo(typeof(ToggleSwitch), "knob")
+			.Set(.Background, switchKnob);
 		sheet.ForType(typeof(ToggleSwitch))
-			.Set(.TrackDrawable, switchTrackOff)
-			.Set(.TrackOnDrawable, switchTrackOn)
-			.Set(.KnobDrawable, switchKnob)
 			.Set(.BorderColor, p.Border);
 
 		// === ComboBox ===
 		let comboBg = new RoundedRectDrawable(.(40, 42, 52, 255), R, p.Border, 1);
 		sheet.OwnDrawable(comboBg);
 		sheet.ForType(typeof(ComboBox))
-			.Set(.Background, comboBg)
-			.Set(.ArrowColor, Color(180, 185, 200, 255));
+			.Set(.Background, comboBg);
+		sheet.ForTypePseudo(typeof(ComboBox), "arrow")
+			.Set(.TextColor, Color(180, 185, 200, 255));
 
 		// === ScrollBar - rounded ===
 		let scrollTrack = new RoundedRectDrawable(.(40, 42, 50, 150), 5);
 		let scrollThumb = new RoundedRectDrawable(.(100, 110, 130, 200), 5);
 		sheet.OwnDrawable(scrollTrack);
 		sheet.OwnDrawable(scrollThumb);
-		sheet.ForType(typeof(ScrollBar))
-			.Set(.TrackDrawable, scrollTrack)
-			.Set(.ThumbDrawable, scrollThumb);
+		sheet.ForTypePseudo(typeof(ScrollBar), "track")
+			.Set(.Background, scrollTrack);
+		sheet.ForTypePseudo(typeof(ScrollBar), "thumb")
+			.Set(.Background, scrollThumb);
 
 		// === Separator ===
 		sheet.ForType(typeof(Separator))
@@ -172,10 +185,12 @@ public static class RoundedDarkTheme
 		let expanderHover = new RoundedRectDrawable(Palette.Lighten(.(50, 55, 68, 255), 0.1f), R);
 		sheet.OwnDrawable(expanderHeader);
 		sheet.OwnDrawable(expanderHover);
-		sheet.ForType(typeof(Expander))
-			.Set(.HeaderDrawable, expanderHeader)
-			.Set(.HeaderHoverDrawable, expanderHover)
-			.Set(.ArrowColor, Color(180, 185, 200, 255));
+		sheet.ForTypePseudo(typeof(Expander), "header")
+			.Set(.Background, expanderHeader);
+		sheet.ForTypePseudoState(typeof(Expander), "header", .Hover)
+			.Set(.Background, expanderHover);
+		sheet.ForTypePseudo(typeof(Expander), "chevron")
+			.Set(.TextColor, Color(180, 185, 200, 255));
 
 		// === TabView - rounded tab backgrounds ===
 		{
@@ -188,18 +203,26 @@ public static class RoundedDarkTheme
 			sheet.OwnDrawable(contentBg);
 			sheet.OwnDrawable(activeTab);
 			sheet.OwnDrawable(hoverTab);
+			sheet.ForTypePseudo(typeof(TabView), "strip")
+				.Set(.Background, stripBg);
+			sheet.ForTypePseudo(typeof(TabView), "content")
+				.Set(.Background, contentBg);
+			sheet.ForTypePseudo(typeof(TabView), "tab")
+				.Set(.TextColor, p.TextDim);
+			sheet.ForTypePseudoState(typeof(TabView), "tab", .Checked)
+				.Set(.Background, activeTab)
+				.Set(.TextColor, p.Text);
+			sheet.ForTypePseudoState(typeof(TabView), "tab", .Hover)
+				.Set(.Background, hoverTab)
+				.Set(.TextColor, Palette.Lighten(p.TextDim, 0.3f));
+			sheet.ForTypePseudo(typeof(TabView), "close-button")
+				.Set(.TextColor, p.TextDim)
+				.Set(.Width, 12.0f);
+			sheet.ForTypePseudoState(typeof(TabView), "close-button", .Hover)
+				.Set(.TextColor, p.Text);
 			sheet.ForType(typeof(TabView))
-				.Set(.StripDrawable, stripBg)
-				.Set(.ContentDrawable, contentBg)
-				.Set(.ActiveTabDrawable, activeTab)
-				.Set(.HoverTabDrawable, hoverTab)
 				.Set(.BorderColor, p.Border)
-				.Set(.AccentColor, p.PrimaryAccent)
-				.Set(.ActiveTabTextColor, p.Text)
-				.Set(.InactiveTabTextColor, p.TextDim)
-				.Set(.HoverTabTextColor, Palette.Lighten(p.TextDim, 0.3f))
-				.Set(.CloseButtonColor, p.TextDim)
-				.Set(.CloseButtonHoverColor, p.Text);
+				.Set(.AccentColor, p.PrimaryAccent);
 		}
 
 		// === ContextMenu ===
@@ -250,27 +273,53 @@ public static class RoundedDarkTheme
 
 	private static void RegisterIcons(StyleSheet sheet)
 	{
-		void Reg(StyleProperty prop, StringView svg, Type type = null)
+		// CheckBox checkmark and RadioButton mark use pseudo-elements
 		{
-			let d = SVGDrawable.FromString(svg);
-			if (d != null)
+			let checkmark = SVGDrawable.FromString(ThemeIcons.Checkmark);
+			if (checkmark != null) { sheet.OwnDrawable(checkmark); sheet.ForTypePseudo(typeof(CheckBox), "checkmark").Set(.Background, checkmark); }
+			let radioMark = SVGDrawable.FromString(ThemeIcons.RadioMarkRound);
+			if (radioMark != null) { sheet.OwnDrawable(radioMark); sheet.ForTypePseudo(typeof(RadioButton), "mark").Set(.Background, radioMark); }
+		}
+		// TabView close button uses pseudo-element
+		{
+			let closeIcon = SVGDrawable.FromString(ThemeIcons.Close);
+			if (closeIcon != null) { sheet.OwnDrawable(closeIcon); sheet.ForTypePseudo(typeof(TabView), "close-button").Set(.Background, closeIcon); }
+		}
+		// Expander chevrons use pseudo-elements (expanded=Checked state)
+		{
+			let chevExpanded = SVGDrawable.FromString(ThemeIcons.ChevronDown);
+			if (chevExpanded != null) { sheet.OwnDrawable(chevExpanded); sheet.ForTypePseudoState(typeof(Expander), "chevron", .Checked).Set(.Background, chevExpanded); }
+			let chevCollapsed = SVGDrawable.FromString(ThemeIcons.ChevronRight);
+			if (chevCollapsed != null) { sheet.OwnDrawable(chevCollapsed); sheet.ForTypePseudo(typeof(Expander), "chevron").Set(.Background, chevCollapsed); }
+		}
+		// TreeView chevrons use pseudo-elements
+		{
+			let tvChevExpanded = SVGDrawable.FromString(ThemeIcons.ChevronDown);
+			if (tvChevExpanded != null) { sheet.OwnDrawable(tvChevExpanded); sheet.ForTypePseudoState(typeof(TreeView), "chevron", .Checked).Set(.Background, tvChevExpanded); }
+			let tvChevCollapsed = SVGDrawable.FromString(ThemeIcons.ChevronRight);
+			if (tvChevCollapsed != null) { sheet.OwnDrawable(tvChevCollapsed); sheet.ForTypePseudo(typeof(TreeView), "chevron").Set(.Background, tvChevCollapsed); }
+		}
+		// ContextMenu submenu arrow
+		{
+			let subArrow = SVGDrawable.FromString(ThemeIcons.ChevronRight);
+			if (subArrow != null)
 			{
-				sheet.OwnDrawable(d);
-				if (type != null)
-					sheet.ForType(type).Set(prop, d);
-				else
-					sheet.ForType(typeof(View)).Set(prop, d);
+				sheet.OwnDrawable(subArrow);
+				let rule = new StyleRule();
+				rule.Selector.AddClass("contextmenu");
+				rule.Selector.SetPseudoElement("submenu-arrow");
+				rule.Set(.Background, subArrow);
+				sheet.AddRule(rule);
 			}
 		}
-
-		Reg(.CheckmarkIcon, ThemeIcons.Checkmark, typeof(CheckBox));
-		Reg(.RadioMarkIcon, ThemeIcons.RadioMarkRound, typeof(RadioButton));
-		Reg(.CloseIcon, ThemeIcons.Close, typeof(TabView));
-		Reg(.ChevronExpandedIcon, ThemeIcons.ChevronDown, typeof(Expander));
-		Reg(.ChevronCollapsedIcon, ThemeIcons.ChevronRight, typeof(Expander));
-		Reg(.ChevronExpandedIcon, ThemeIcons.ChevronDown, typeof(TreeView));
-		Reg(.ChevronCollapsedIcon, ThemeIcons.ChevronRight, typeof(TreeView));
-		Reg(.ArrowDownIcon, ThemeIcons.ArrowDown);
-		Reg(.ArrowUpIcon, ThemeIcons.ArrowUp);
+		// ComboBox and NumericField arrow icons use pseudo-elements
+		{
+			let arrowDown = SVGDrawable.FromString(ThemeIcons.ArrowDown);
+			if (arrowDown != null) { sheet.OwnDrawable(arrowDown); sheet.ForTypePseudo(typeof(ComboBox), "arrow").Set(.Background, arrowDown); }
+			let arrowUp = SVGDrawable.FromString(ThemeIcons.ArrowUp);
+			let arrowDn2 = SVGDrawable.FromString(ThemeIcons.ArrowDown);
+			if (arrowUp != null) { sheet.OwnDrawable(arrowUp); sheet.ForTypePseudo(typeof(NumericField), "arrow-up").Set(.Background, arrowUp); }
+			if (arrowDn2 != null) { sheet.OwnDrawable(arrowDn2); sheet.ForTypePseudo(typeof(NumericField), "arrow-down").Set(.Background, arrowDn2); }
+		}
 	}
 }
