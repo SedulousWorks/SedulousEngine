@@ -62,6 +62,7 @@ public class GridView : ViewGroup, IListAdapterObserver
 		ClipsContent = true;
 		IsFocusable = true;
 		IsTabStop = true;
+		WantsArrowKeys = true;
 		CellWidth.SetOwner(this);
 		CellHeight.SetOwner(this);
 		CellSpacing.SetOwner(this);

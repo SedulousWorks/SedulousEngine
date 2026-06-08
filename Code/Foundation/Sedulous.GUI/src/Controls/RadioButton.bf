@@ -141,4 +141,10 @@ public class RadioButton : View
 			e.Handled = true;
 		}
 	}
+
+	public override void OnActivate()
+	{
+		if (!IsEffectivelyEnabled) return;
+		IsChecked.Value = true;
+	}
 }

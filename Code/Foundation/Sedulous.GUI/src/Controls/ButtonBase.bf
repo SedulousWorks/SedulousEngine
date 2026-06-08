@@ -118,4 +118,9 @@ public abstract class ButtonBase : View
 			e.Handled = true;
 		}
 	}
+
+	public override void OnActivate()
+	{
+		FireClick();
+	}
 }

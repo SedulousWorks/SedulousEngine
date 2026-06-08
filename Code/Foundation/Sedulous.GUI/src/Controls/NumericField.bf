@@ -104,6 +104,7 @@ public class NumericField : View, ITextEditHost
 	{
 		IsFocusable = true;
 		IsTabStop = true;
+		WantsArrowKeys = true;
 		Cursor = .IBeam;
 		ButtonWidth.SetOwner(this);
 		ShowSpinButtons.SetOwner(this);

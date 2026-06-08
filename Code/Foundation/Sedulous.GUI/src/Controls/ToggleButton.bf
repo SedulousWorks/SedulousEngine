@@ -151,4 +151,10 @@ public class ToggleButton : ButtonBase
 			e.Handled = true;
 		}
 	}
+
+	public override void OnActivate()
+	{
+		if (!IsEffectivelyEnabled) return;
+		IsChecked.Value = !IsChecked.Value;
+	}
 }

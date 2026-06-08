@@ -127,6 +127,7 @@ public class EditText : View, ITextEditHost
 	{
 		IsFocusable = true;
 		IsTabStop = true;
+		WantsArrowKeys = true;
 		Cursor = .IBeam;
 		mBehavior = new TextEditingBehavior(this);
 
@@ -964,5 +965,10 @@ public class EditText : View, ITextEditHost
 			return (int32)text.Length;
 
 		return byteOffset;
+	}
+
+	public override void OnActivate()
+	{
+		OnSubmit(this);
 	}
 }

@@ -67,6 +67,19 @@ public abstract class View : IPropertyOwner
 	/// Whether child content is clipped to this view's bounds during drawing.
 	public bool ClipsContent = false;
 
+	// === Directional focus ===
+
+	/// Explicit override for directional focus navigation. When set,
+	/// FocusManager.MoveFocus uses this instead of the spatial picker.
+	public ViewId? NextFocusUp;
+	public ViewId? NextFocusDown;
+	public ViewId? NextFocusLeft;
+	public ViewId? NextFocusRight;
+
+	/// When true, arrow keys go to this view's OnKeyDown instead of
+	/// moving directional focus. EditText and NumericField override to true.
+	public bool WantsArrowKeys;
+
 	/// Set by MutationQueue.QueueDelete to prevent double-delete.
 	public bool IsPendingDeletion;
 
@@ -403,6 +416,19 @@ public abstract class View : IPropertyOwner
 	public virtual void OnKeyDownCapture(KeyEventArgs e) { }
 	public virtual void OnKeyUpCapture(KeyEventArgs e) { }
 	public virtual void OnTextInputCapture(TextInputEventArgs e) { }
+
+	// === Gamepad / directional activation ===
+
+	/// Called when the view is activated (Gamepad A / Enter on focused view).
+	/// ButtonBase overrides to fire OnClick.
+	public virtual void OnActivate() { }
+
+	/// Called when cancel is pressed (Gamepad B / Escape on focused view).
+	/// Default: bubbles to parent.
+	public virtual void OnCancel()
+	{
+		Parent?.OnCancel();
+	}
 
 	// === Deferred mutation convenience ===
 
