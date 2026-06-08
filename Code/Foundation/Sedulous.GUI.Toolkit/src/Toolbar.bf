@@ -221,7 +221,6 @@ public class Toolbar : FlexLayout
 {
 	public this()
 	{
-		StyleId = new String("toolbar");
 		Direction = .Horizontal;
 		Spacing = 2;
 		Padding = .(4);

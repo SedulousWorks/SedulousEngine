@@ -40,7 +40,6 @@ public class MenuBar : ViewGroup, IPopupOwner
 	public this()
 	{
 		IsFocusable = true;
-		StyleId = new String("menubar");
 	}
 
 	/// Add a menu with the given title. Returns the ContextMenu to add items to.

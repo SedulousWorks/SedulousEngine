@@ -13,10 +13,21 @@ using Sedulous.Images;
 using Sedulous.VFS;
 using Sedulous.VFS.Disk;
 using System.Collections;
+using Sedulous.GUI.Toolkit;
+
+/// Render data for each dockable OS window (secondary window).
+class DockableWindowRenderData
+{
+	public RootView RootView ~ delete _;
+	public Sedulous.VG.VGContext VGContext ~ delete _;
+	public Sedulous.VG.Renderer.VGRenderer VGRenderer ~ { _.Dispose(); delete _; };
+	public View DockableView; // non-owning ref
+	public delegate void(View) OnCloseDelegate ~ delete _;
+}
 
 /// Minimal UI sandbox application. Extends Application directly (no engine).
 /// App owns UIContext and RootView. Subsystem owns rendering pipeline.
-class GUISandboxApp : Application
+class GUISandboxApp : Application, IDockableWindowHost
 {
 	// Subsystem (registered with Context, cleaned up by Context)
 	private GUISubsystem mUI;
@@ -30,6 +41,10 @@ class GUISandboxApp : Application
 	private DemoListAdapter mDemoListAdapter ~ delete _;
 	private DemoTreeAdapter mDemoTreeAdapter ~ delete _;
 	private DemoGridAdapter mDemoGridAdapter ~ delete _;
+	private ReorderableListAdapter mReorderAdapter ~ delete _;
+
+	// Dockable window OS multi-window support.
+	private System.Collections.Dictionary<View, SecondaryWindowContext> mDockableWindowMap = new .() ~ delete _;
 
 	// .sss theme loading infrastructure
 	private FileSystemMount mGuiMount ~ delete _;
@@ -47,6 +62,9 @@ class GUISandboxApp : Application
 		// Create app-owned UI state
 		mUIContext = new UIContext();
 		mRoot = new RootView();
+
+		// Register toolkit theme extension before creating themes.
+		ThemeRegistry.RegisterExtension(new ToolkitThemeExtension());
 
 		// Initialize .sss and .sml loading infrastructure
 		StyleSheetLoader.InitializeGlobals();
@@ -737,6 +755,182 @@ class GUISandboxApp : Application
 		gridCol.AddView(gridView, new FlexLayout.LayoutParams() { Grow = 1 });
 		dataDemo.AddView(gridCol, new FlexLayout.LayoutParams() { Grow = 1 });
 
+		// === Tab 9: Docking demo ===
+		let dockDemo = new FlexLayout() { Direction = .Vertical, Spacing = 8 };
+		dockDemo.Padding = .(8);
+		tabView.AddTab("Docking", dockDemo);
+
+		let dockManager = new DockManager();
+		dockManager.DockableWindowHost = this;
+		dockDemo.AddView(dockManager, new FlexLayout.LayoutParams() { Grow = 1 });
+
+		// Create panels with content.
+		let dockP1 = dockManager.AddPanel("Scene", new Label("Scene viewport"));
+		let dockP2 = dockManager.AddPanel("Inspector", new Label("Inspector properties"));
+		let dockP3 = dockManager.AddPanel("Hierarchy", new Label("Scene hierarchy"));
+		let dockP4 = dockManager.AddPanel("Console", new Label("Console output"));
+		let dockP5 = dockManager.AddPanel("Assets", new Label("Asset browser"));
+
+		// Build an IDE-like layout: Scene center, Inspector right, Hierarchy left, Console+Assets bottom.
+		dockManager.DockPanel(dockP1, .Center);
+		dockManager.DockPanel(dockP3, .Left);
+		dockManager.DockPanel(dockP2, .Right);
+		dockManager.DockPanel(dockP4, .Bottom);
+		dockManager.DockPanelRelativeTo(dockP5, .Center, dockP4.Parent); // tab alongside Console
+
+		// === Tab 10: Toolkit demo ===
+		let toolkitDemo = new FlexLayout() { Direction = .Vertical, Spacing = 0 };
+		tabView.AddTab("Toolkit", toolkitDemo);
+
+		// MenuBar at top (fixed height).
+		let menuBar = new MenuBar();
+		let fileMenu = menuBar.AddMenu("File");
+		fileMenu.AddItem("New", new () => {});
+		fileMenu.AddItem("Open", new () => {});
+		fileMenu.AddSeparator();
+		fileMenu.AddItem("Exit", new () => {});
+		let editMenu = menuBar.AddMenu("Edit");
+		editMenu.AddItem("Undo", new () => {});
+		editMenu.AddItem("Redo", new () => {});
+		editMenu.AddSeparator();
+		editMenu.AddItem("Cut", new () => {});
+		editMenu.AddItem("Copy", new () => {});
+		editMenu.AddItem("Paste", new () => {});
+		let viewMenu = menuBar.AddMenu("View");
+		viewMenu.AddItem("Zoom In", new () => {});
+		viewMenu.AddItem("Zoom Out", new () => {});
+		toolkitDemo.AddView(menuBar, new FlexLayout.LayoutParams() { Width = .Match });
+
+		// Toolbar below menu.
+		let toolbar = new Toolbar();
+		toolbar.AddButton("New");
+		toolbar.AddButton("Open");
+		toolbar.AddButton("Save");
+		toolbar.AddSeparator();
+		toolbar.AddToggle("Bold");
+		toolbar.AddToggle("Italic");
+		toolkitDemo.AddView(toolbar, new FlexLayout.LayoutParams() { Width = .Match });
+
+		// BreadcrumbBar.
+		let breadcrumb = new BreadcrumbBar();
+		breadcrumb.SetPath("Project/Assets/Textures/Environment");
+		toolkitDemo.AddView(breadcrumb, new FlexLayout.LayoutParams() { Width = .Match });
+
+		// Center area: SplitView on left, DraggableTreeView on right.
+		let centerRow = new FlexLayout() { Direction = .Horizontal, Spacing = 4 };
+		toolkitDemo.AddView(centerRow, new FlexLayout.LayoutParams() { Width = .Match, Grow = 1 });
+
+		// SplitView.
+		let splitView = new SplitView(.Horizontal);
+		let leftPane = new Label("Left Pane");
+		let rightPane = new Label("Right Pane");
+		splitView.SetPanes(leftPane, rightPane);
+		splitView.SplitRatio = 0.4f;
+		centerRow.AddView(splitView, new FlexLayout.LayoutParams() { Grow = 1 });
+
+		// DraggableTreeView.
+		let dragCol = new FlexLayout() { Direction = .Vertical, Spacing = 4 };
+		dragCol.AddView(new Label("Drag to reorder:"));
+		let reorderAdapter = new ReorderableListAdapter(
+			StringView[]("Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot"));
+		mReorderAdapter = reorderAdapter;
+		let dragTree = new DraggableTreeView();
+		dragTree.SetAdapter(reorderAdapter);
+		dragTree.ItemHeight = 22;
+		dragCol.AddView(dragTree, new FlexLayout.LayoutParams() { Grow = 1 });
+		centerRow.AddView(dragCol, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(200)) });
+
+		// ColorPicker.
+		let colorPicker = new ColorPicker();
+		colorPicker.CurrentColor = .(80, 160, 240, 255);
+		colorPicker.SetOriginalColor(.(80, 160, 240, 255));
+		centerRow.AddView(colorPicker);
+
+		// StatusBar at bottom.
+		let statusBar = new StatusBar();
+		statusBar.SetText("Ready");
+		statusBar.AddSection("Ln 42, Col 8");
+		statusBar.AddSection("UTF-8");
+		toolkitDemo.AddView(statusBar, new FlexLayout.LayoutParams() { Width = .Match });
+
+		// === Tab 11: PropertyGrid demo ===
+		let pgDemo = new FlexLayout() { Direction = .Vertical, Spacing = 8 };
+		pgDemo.Padding = .(8);
+		tabView.AddTab("PropertyGrid", pgDemo);
+
+		let propGrid = new PropertyGrid();
+		propGrid.AddProperty(new BoolEditor("Enabled", true));
+		propGrid.AddProperty(new BoolEditor("Visible", true));
+		propGrid.AddProperty(new StringEditor("Name", "Player"));
+		propGrid.AddProperty(new FloatEditor("Speed", 5.0, 0, 100, 0.5, 1));
+		propGrid.AddProperty(new IntEditor("Health", 100, 0, 999));
+		propGrid.AddProperty(new RangeEditor("Volume", 0.75f, 0, 1, 0.01f));
+		propGrid.AddProperty(new EnumEditor("Mode", 0, StringView[]("Easy", "Normal", "Hard")));
+		propGrid.AddProperty(new ColorEditor("Tint", .(255, 200, 100, 255)));
+		propGrid.AddProperty(new Vector3Editor("Position", .(1.0f, 2.5f, -3.0f), category: "Transform"));
+		propGrid.AddProperty(new Vector3Editor("Rotation", .(0, 45, 0), category: "Transform"));
+		propGrid.AddProperty(new Vector3Editor("Scale", .(1, 1, 1), category: "Transform"));
+		pgDemo.AddView(propGrid, new FlexLayout.LayoutParams() { Grow = 1 });
+
+		// === Tab 12a: CurveCanvas / tangent editor demo ===
+		let curveDemo = new FlexLayout() { Direction = .Vertical, Spacing = 8 };
+		curveDemo.Padding = .(12, 8);
+		tabView.AddTab("Curve Editor", curveDemo);
+
+		let curveHelp = new Label();
+		curveHelp.SetText("Left-click empty space: add key.  Left-click + drag key: move.  Right-click key: delete.\nLeft-click + drag the colored handles on the selected key: edit tangent.  Right-click handle: cycle TangentMode (Mirrored / Free / Flat).");
+		curveDemo.AddView(curveHelp, new FlexLayout.LayoutParams() { Width = .Match });
+
+		let curve = new CurveCanvas();
+		curve.MaxKeys = 12;
+		ChannelDescriptor[1] curveChannels = .(.()
+			{
+				Name = "easeOut",
+				StrokeColor = .(120, 220, 160, 255),
+				DefaultValue = 0,
+				DisplayMin = 0, DisplayMax = 1,
+				Interpolation = .Hermite,
+			});
+		curve.SetChannels(curveChannels);
+
+		// Seed with a default ease-in / ease-out shape so the user sees
+		// curving tangents immediately - flat keys would hide what the
+		// new handle UI is actually doing.
+		CurveCanvas.Key[3] seedKeys = .(
+			.(0.0f, 0.0f, 0,    1.5f, .Mirrored),
+			.(0.5f, 0.5f, 1.5f, 1.5f, .Mirrored),
+			.(1.0f, 1.0f, 1.5f, 0,    .Mirrored));
+		curve.SetKeys(0, seedKeys);
+		curveDemo.AddView(curve, new FlexLayout.LayoutParams() { Width = .Match, Grow = 1 });
+
+		let curveStatus = new Label();
+		curveStatus.SetText("Selected key: (none)");
+		curveDemo.AddView(curveStatus, new FlexLayout.LayoutParams() { Width = .Match });
+
+		// Refresh the status line whenever a key is edited - both
+		// position drags and tangent drags hit OnKeyChanged.
+		delegate void(int32, int32) refreshStatus = new [=curve, =curveStatus] (c, k) =>
+		{
+			let selCh = curve.SelectedChannel;
+			let selKey = curve.SelectedKeyIndex;
+			if (selCh < 0 || selKey < 0 || selKey >= curve.GetKeyCount(selCh))
+			{
+				curveStatus.SetText("Selected key: (none)");
+				return;
+			}
+			let key = curve.GetKey(selCh, selKey);
+			let modeName = scope String();
+			switch (key.Mode)
+			{
+			case .Mirrored: modeName.Set("Mirrored");
+			case .Free:     modeName.Set("Free");
+			case .Flat:     modeName.Set("Flat");
+			}
+			curveStatus.SetText(scope $"Key #{selKey}  t={key.Time:0.00}  v={key.Value:0.00}  tIn={key.TangentIn:0.00}  tOut={key.TangentOut:0.00}  mode={modeName}");
+		};
+		curve.OnKeyChanged.Add(refreshStatus);
+		curve.OnKeyAdded.Add(new  (c, k) => refreshStatus(c, k));
+		curve.OnKeyRemoved.Add(new  (c, k) => refreshStatus(c, k));
 
 		// === Tab 12: Animations & Transforms demo ===
 		let animDemo = new FlexLayout() { Direction = .Vertical, Spacing = 8 };
@@ -812,6 +1006,88 @@ class GUISandboxApp : Application
 		animDemo.AddView(transformRow);
 		animDemo.AddView(transformClickLabel);
 
+		// === Tab 13: Node Graph demo ===
+		{
+			let graphCanvas = new NodeGraphCanvas();
+			graphCanvas.ShowGrid = true;
+
+			// Sample nodes
+			let nodeA = new NodeGraphNode();
+			nodeA.Title.Set("Idle");
+			nodeA.Position = .(50, 50);
+			nodeA.HeaderColor = .(70, 130, 80, 255);
+			let aOut = new NodeGraphPort();
+			aOut.Direction = .Output;
+			aOut.Label.Set("Out");
+			nodeA.OutputPorts.Add(aOut);
+			let aIn = new NodeGraphPort();
+			aIn.Direction = .Input;
+			aIn.Label.Set("In");
+			nodeA.InputPorts.Add(aIn);
+			graphCanvas.AddNode(nodeA);
+
+			let nodeB = new NodeGraphNode();
+			nodeB.Title.Set("Walk");
+			nodeB.Position = .(300, 50);
+			nodeB.HeaderColor = .(70, 100, 180, 255);
+			let bOut = new NodeGraphPort();
+			bOut.Direction = .Output;
+			bOut.Label.Set("Out");
+			nodeB.OutputPorts.Add(bOut);
+			let bIn = new NodeGraphPort();
+			bIn.Direction = .Input;
+			bIn.Label.Set("In");
+			nodeB.InputPorts.Add(bIn);
+			graphCanvas.AddNode(nodeB);
+
+			let nodeC = new NodeGraphNode();
+			nodeC.Title.Set("Run");
+			nodeC.Subtitle.Set("BlendTree1D");
+			nodeC.Position = .(300, 200);
+			nodeC.HeaderColor = .(180, 100, 70, 255);
+			let cOut = new NodeGraphPort();
+			cOut.Direction = .Output;
+			cOut.Label.Set("Out");
+			nodeC.OutputPorts.Add(cOut);
+			let cIn = new NodeGraphPort();
+			cIn.Direction = .Input;
+			cIn.Label.Set("In");
+			nodeC.InputPorts.Add(cIn);
+			let cIn2 = new NodeGraphPort();
+			cIn2.Direction = .Input;
+			cIn2.Label.Set("Speed");
+			cIn2.PortType = .(1, .(100, 200, 100, 255));
+			nodeC.InputPorts.Add(cIn2);
+			graphCanvas.AddNode(nodeC);
+
+			let nodeD = new NodeGraphNode();
+			nodeD.Title.Set("Any State");
+			nodeD.Position = .(50, 200);
+			nodeD.HeaderColor = .(100, 100, 110, 255);
+			nodeD.IsDeletable = false;
+			let dOut = new NodeGraphPort();
+			dOut.Direction = .Output;
+			dOut.Label.Set("");
+			nodeD.OutputPorts.Add(dOut);
+			graphCanvas.AddNode(nodeD);
+
+			// Connections: Idle -> Walk, Idle -> Run, AnyState -> Walk
+			graphCanvas.AddConnection(.() { SourceNodeIndex = 0, SourcePortIndex = 0, DestNodeIndex = 1, DestPortIndex = 0 });
+			graphCanvas.AddConnection(.() { SourceNodeIndex = 0, SourcePortIndex = 0, DestNodeIndex = 2, DestPortIndex = 0 });
+			graphCanvas.AddConnection(.() { SourceNodeIndex = 3, SourcePortIndex = 0, DestNodeIndex = 1, DestPortIndex = 0 });
+
+			// Wire events to console
+			graphCanvas.OnNodeMoved.Add(new (idx) => { Console.WriteLine("Node moved: {}", idx); });
+			graphCanvas.OnConnectionCreated.Add(new (idx) => { Console.WriteLine("Connection created: {}", idx); });
+			graphCanvas.OnNodeDeleted.Add(new (idx) => { Console.WriteLine("Node deleted: {}", idx); });
+			graphCanvas.OnSelectionChanged.Add(new () => { Console.WriteLine("Selection changed"); });
+			graphCanvas.OnCanvasContextMenu.Add(new (x, y) => { Console.WriteLine("Canvas context menu at ({}, {})", x, y); });
+			graphCanvas.OnNodeContextMenu.Add(new (idx) => { Console.WriteLine("Node context menu: {}", idx); });
+			graphCanvas.OnNodeDoubleClicked.Add(new (idx) => { Console.WriteLine("Node double-clicked: {}", idx); });
+
+			tabView.AddTab("Node Graph", graphCanvas);
+		}
+
 		// === Pause Menu (.sml demo) ===
 		let pauseMenu = MarkupLoader.LoadFromFile("screens/pause-menu.sml", mGuiResourceProvider);
 		if (pauseMenu != null)
@@ -862,6 +1138,15 @@ class GUISandboxApp : Application
 
 			// Determine which window has the mouse.
 			RootView inputRoot = mRoot;
+			for (let kv in mDockableWindowMap)
+			{
+				if (kv.value.Window.Focused)
+				{
+					if (let data = kv.value.UserData as DockableWindowRenderData)
+						inputRoot = data.RootView;
+					break;
+				}
+			}
 
 			// Update keyboard modifiers for shift+wheel and other modifier-aware input.
 			inputHelper.UpdateModifiers(kb);
@@ -874,6 +1159,16 @@ class GUISandboxApp : Application
 
 				if (dragDrop.IsDragging && mDragSourceWindow == null)
 				{
+					for (let kv in mDockableWindowMap)
+					{
+						if (kv.value.Window.Focused)
+						{
+							mDragSourceWindow = kv.value.Window;
+							mDragWindowOffsetX = globalX - (float)mDragSourceWindow.X;
+							mDragWindowOffsetY = globalY - (float)mDragSourceWindow.Y;
+							break;
+						}
+					}
 				}
 
 				if (mDragSourceWindow != null)
@@ -1235,6 +1530,14 @@ class GUISandboxApp : Application
 
 	protected override void OnShutdown()
 	{
+		// Destroy all dockable OS windows before UI shutdown.
+		let dockableViews = scope System.Collections.List<View>();
+		for (let kv in mDockableWindowMap)
+			dockableViews.Add(kv.key);
+		for (let view in dockableViews)
+			DestroyDockableWindowImpl(view, detachView: false);
+		mDockableWindowMap.Clear();
+
 		// Remove root from context before deletion (unregisters all views)
 		if (mUIContext != null && mRoot != null)
 			mUIContext.RemoveRootView(mRoot);
@@ -1250,6 +1553,129 @@ class GUISandboxApp : Application
 		{
 			delete mUIContext;
 			mUIContext = null;
+		}
+	}
+
+	// =================================================================
+	// IDockableWindowHost
+	// =================================================================
+
+	public bool SupportsOSWindows => true;
+
+	public void CreateDockableWindow(View dockableWindow, float width, float height,
+		float screenX, float screenY, delegate void(View) onCloseRequested = null)
+	{
+		let settings = Sedulous.Shell.WindowSettings()
+		{
+			Title = scope .("Float"),
+			Width = (int32)width,
+			Height = (int32)height,
+			Resizable = true,
+			Bordered = false
+		};
+
+		if (CreateSecondaryWindow(settings) case .Err)
+		{
+			Console.WriteLine("Failed to create dockable OS window");
+			delete onCloseRequested;
+			return;
+		}
+
+		let ctx = mSecondaryWindows[mSecondaryWindows.Count - 1];
+		ctx.Window.X = mWindow.X + (int32)screenX;
+		ctx.Window.Y = mWindow.Y + (int32)screenY;
+
+		let data = new DockableWindowRenderData();
+		data.OnCloseDelegate = onCloseRequested;
+		if (onCloseRequested != null)
+			ctx.OnCloseRequested = new (swCtx) => { data.OnCloseDelegate(dockableWindow); };
+		else
+			ctx.OnCloseRequested = new (swCtx) => { };
+
+		data.RootView = new RootView();
+		data.RootView.DpiScale = ctx.Window.ContentScale;
+		data.RootView.ViewportSize = .((float)ctx.Window.Width, (float)ctx.Window.Height);
+		mUIContext.AddRootView(data.RootView);
+		data.RootView.AddView(dockableWindow);
+		data.DockableView = dockableWindow;
+
+		data.VGContext = new Sedulous.VG.VGContext(mUI.FontService);
+
+		data.VGRenderer = new Sedulous.VG.Renderer.VGRenderer();
+		if (data.VGRenderer.Initialize(Device, ctx.SwapChain.Format,
+			(int32)ctx.SwapChain.BufferCount, mUI.ShaderSystem) case .Err)
+		{
+			Console.WriteLine("Failed to initialize VGRenderer for dockable window");
+		}
+
+		ctx.UserData = data;
+		mDockableWindowMap[dockableWindow] = ctx;
+	}
+
+	public void DestroyDockableWindow(View dockableWindow)
+	{
+		DestroyDockableWindowImpl(dockableWindow);
+	}
+
+	public void MoveDockableWindow(View dockableWindow, float screenX, float screenY)
+	{
+		if (mDockableWindowMap.TryGetValue(dockableWindow, let ctx))
+		{
+			ctx.Window.X = mWindow.X + (int32)screenX;
+			ctx.Window.Y = mWindow.Y + (int32)screenY;
+		}
+	}
+
+	private void DestroyDockableWindowImpl(View dockableWindow, bool detachView = true)
+	{
+		if (!mDockableWindowMap.TryGetValue(dockableWindow, let ctx))
+			return;
+
+		mDockableWindowMap.Remove(dockableWindow);
+
+		if (let data = ctx.UserData as DockableWindowRenderData)
+		{
+			if (detachView && dockableWindow.Parent == data.RootView)
+				data.RootView.RemoveView(dockableWindow, false);
+
+			mUIContext.RemoveRootView(data.RootView);
+			mDevice.WaitIdle();
+			delete data;
+		}
+
+		ctx.UserData = null;
+		DestroySecondaryWindow(ctx);
+	}
+
+	protected override void OnPrepareSecondaryFrame(SecondaryWindowContext ctx, FrameContext frame)
+	{
+		if (let data = ctx.UserData as DockableWindowRenderData)
+		{
+			data.RootView.DpiScale = ctx.Window.ContentScale;
+			data.RootView.ViewportSize = .((float)ctx.Window.Width, (float)ctx.Window.Height);
+			mUIContext.UpdateRootView(data.RootView);
+		}
+	}
+
+	protected override void OnRenderSecondaryWindow(SecondaryWindowContext ctx,
+		IRenderPassEncoder renderPass, FrameContext frame)
+	{
+		if (let data = ctx.UserData as DockableWindowRenderData)
+		{
+			let vg = data.VGContext;
+			let renderer = data.VGRenderer;
+			let w = ctx.SwapChain.Width;
+			let h = ctx.SwapChain.Height;
+
+			vg.Clear();
+			mUIContext.DrawRootView(data.RootView, vg);
+			let batch = vg.GetBatch();
+			if (batch == null || batch.Commands.Count == 0)
+				return;
+
+			renderer.UpdateProjection(w, h, frame.FrameIndex);
+			renderer.Prepare(batch, frame.FrameIndex);
+			renderer.Render(renderPass, w, h, frame.FrameIndex);
 		}
 	}
 
@@ -1659,6 +2085,49 @@ class DemoGridAdapter : ListAdapterBase
 			let b = (uint8)(100 + (position * 23) % 120);
 			cv.Color.Value = .(r, g, b, 255);
 		}
+	}
+}
+
+/// Simple flat list that supports drag-to-reorder.
+class ReorderableListAdapter : IReorderableTreeAdapter
+{
+	private List<String> mItems = new .() ~ { for (let s in _) delete s; delete _; };
+
+	public this(Span<StringView> items)
+	{
+		for (let item in items)
+			mItems.Add(new String(item));
+	}
+
+	public int32 RootCount => (int32)mItems.Count;
+	public int32 GetChildCount(int32 nodeId) => (nodeId == -1) ? (int32)mItems.Count : 0;
+	public int32 GetChildId(int32 parentId, int32 childIndex) => childIndex;
+	public int32 GetDepth(int32 nodeId) => 0;
+	public bool HasChildren(int32 nodeId) => false;
+
+	public View CreateView(int32 viewType) => new Label("");
+
+	public void BindView(View view, int32 nodeId, int32 depth, bool isExpanded)
+	{
+		if (let label = view as Label)
+			if (nodeId >= 0 && nodeId < mItems.Count)
+				label.SetText(mItems[nodeId]);
+	}
+
+	public bool CanMove(int32 fromPosition, int32 toPosition)
+	{
+		return fromPosition >= 0 && fromPosition < mItems.Count &&
+			   toPosition >= 0 && toPosition <= mItems.Count &&
+			   fromPosition != toPosition;
+	}
+
+	public void MoveItem(int32 fromPosition, int32 toPosition)
+	{
+		if (!CanMove(fromPosition, toPosition)) return;
+		let item = mItems[fromPosition];
+		mItems.RemoveAt(fromPosition);
+		let insertAt = (toPosition > fromPosition) ? toPosition - 1 : toPosition;
+		mItems.Insert(Math.Min(insertAt, mItems.Count), item);
 	}
 }
 

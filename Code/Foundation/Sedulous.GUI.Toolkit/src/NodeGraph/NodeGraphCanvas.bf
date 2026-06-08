@@ -383,7 +383,7 @@ public class NodeGraphCanvas : View
 		let cornerR = ResolveStyleFloat(.CornerRadius, 4) * mZoom;
 
 		// Body
-		let contentDrawable = ResolveStyleDrawable(.ContentDrawable);
+		let contentDrawable = ResolvePartDrawable("node-body", .Background, .Normal);
 		if (contentDrawable != null)
 			contentDrawable.Draw(ctx, .(pos.X, pos.Y, size.X, size.Y));
 		else

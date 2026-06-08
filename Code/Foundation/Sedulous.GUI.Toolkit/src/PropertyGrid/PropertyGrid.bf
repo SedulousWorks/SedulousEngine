@@ -28,11 +28,10 @@ public class PropertyGrid : ViewGroup
 
 	public this()
 	{
-		StyleId = new String("propertygrid");
 		mScrollView = new ScrollView();
-		mScrollView.VScrollBarPolicy = .Auto;
-		mScrollView.HScrollBarPolicy = .Never;
-		mScrollView.ScrollBarMode = .Reserved;
+		mScrollView.VScrollBarPolicy.Value = .Auto;
+		mScrollView.HScrollBarPolicy.Value = .Never;
+		mScrollView.ScrollBarMode.Value = .Reserved;
 		AddView(mScrollView);
 
 		mContent = new FlexLayout();
@@ -204,7 +203,7 @@ public class PropertyGrid : ViewGroup
 		{
 			let editableLabel = new EditableLabel();
 			editableLabel.SetText(editor.DisplayName);
-			editableLabel.FontSize = 12;
+			editableLabel.FontSize.Value = 12;
 			let renameDelegate = editor.OnLabelRenamed;
 			editableLabel.OnRenameCommitted.Add(new (el, newName) => {
 				renameDelegate(newName);
@@ -217,8 +216,8 @@ public class PropertyGrid : ViewGroup
 		{
 			let label = new Label();
 			label.SetText(editor.DisplayName);
-			label.FontSize = 12;
-			label.VAlign = .Middle;
+			label.FontSize.Value = 12;
+			label.VAlign.Value = .Middle;
 			row.AddView(label, new FlexLayout.LayoutParams() {
 				Grow = LabelWidthRatio
 			});

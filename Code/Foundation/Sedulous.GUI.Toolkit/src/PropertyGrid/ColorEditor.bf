@@ -13,7 +13,7 @@ public class ColorEditor : PropertyEditor
 	public Color Value
 	{
 		get => mValue;
-		set { mValue = value; if (mSwatch != null) mSwatch.Color = value; }
+		set { mValue = value; if (mSwatch != null) mSwatch.Color.Value = value; }
 	}
 
 	public delegate void(Color) Setter ~ delete _;
@@ -28,7 +28,7 @@ public class ColorEditor : PropertyEditor
 	protected override View CreateEditorView()
 	{
 		mSwatch = new ClickableColorSwatch(this);
-		mSwatch.Color = mValue;
+		mSwatch.Color.Value = mValue;
 		mSwatch.Cursor = .Hand;
 		return mSwatch;
 	}
@@ -53,7 +53,7 @@ public class ColorEditor : PropertyEditor
 			picker.OnColorChanged.Add(new (p, color) =>
 			{
 				mEditor.mValue = color;
-				mEditor.mSwatch.Color = color;
+				mEditor.mSwatch.Color.Value = color;
 				mEditor.Setter?.Invoke(color);
 				mEditor.NotifyValueChanged();
 			});
@@ -71,7 +71,7 @@ public class ColorEditor : PropertyEditor
 				else
 				{
 					mEditor.mValue = originalColor;
-					mEditor.mSwatch.Color = originalColor;
+					mEditor.mSwatch.Color.Value = originalColor;
 					mEditor.Setter?.Invoke(originalColor);
 					mEditor.CancelEdit();
 				}
@@ -83,6 +83,6 @@ public class ColorEditor : PropertyEditor
 
 	public override void RefreshView()
 	{
-		if (mSwatch != null) mSwatch.Color = mValue;
+		if (mSwatch != null) mSwatch.Color.Value = mValue;
 	}
 }

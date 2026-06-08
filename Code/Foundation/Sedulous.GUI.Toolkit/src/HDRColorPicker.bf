@@ -60,8 +60,6 @@ public class HDRColorPicker : ViewGroup
 
 	public this()
 	{
-		StyleId = new String("hdrcolorpicker");
-
 		mSVSquare = new SVSquare(this);
 		AddView(mSVSquare);
 
@@ -72,11 +70,11 @@ public class HDRColorPicker : ViewGroup
 		AddView(mAlphaStrip);
 
 		mPreviewCurrent = new ColorView();
-		mPreviewCurrent.Color = .White;
+		mPreviewCurrent.Color.Value = .White;
 		AddView(mPreviewCurrent);
 
 		mPreviewOriginal = new ColorView();
-		mPreviewOriginal.Color = .White;
+		mPreviewOriginal.Color.Value = .White;
 		AddView(mPreviewOriginal);
 
 		mIntensityField = new NumericField();
@@ -134,7 +132,7 @@ public class HDRColorPicker : ViewGroup
 	public void SetOriginalColor(Vector4 color)
 	{
 		mOriginalColor = color;
-		mPreviewOriginal.Color = ClampToLDRColor(color);
+		mPreviewOriginal.Color.Value = ClampToLDRColor(color);
 	}
 
 	// === Internal sync ===
@@ -158,7 +156,7 @@ public class HDRColorPicker : ViewGroup
 		mAField.Value = color.W;
 		mIntensityField.Value = mIntensity;
 
-		mPreviewCurrent.Color = ClampToLDRColor(color);
+		mPreviewCurrent.Color.Value = ClampToLDRColor(color);
 	}
 
 	private void SyncFromRGB()

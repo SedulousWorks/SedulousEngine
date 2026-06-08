@@ -23,7 +23,6 @@ public class BreadcrumbBar : ViewGroup
 
 	public this()
 	{
-		StyleId = new String("breadcrumbbar");
 		Cursor = .Hand;
 	}
 
