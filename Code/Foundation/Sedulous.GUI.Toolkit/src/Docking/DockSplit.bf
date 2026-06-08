@@ -43,7 +43,6 @@ public class DockSplit : ViewGroup
 
 	public this(Orientation orientation = .Horizontal)
 	{
-		StyleId = new String("docksplit");
 		mOrientation = orientation;
 	}
 

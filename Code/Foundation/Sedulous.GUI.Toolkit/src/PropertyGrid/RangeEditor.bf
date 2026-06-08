@@ -41,8 +41,8 @@ public class RangeEditor : PropertyEditor
 
 		// Slider (fills available space)
 		mSlider = new Slider();
-		mSlider.Min = mMin; mSlider.Max = mMax; mSlider.Step = mStep;
-		mSlider.Value = mValue;
+		mSlider.Min.Value = mMin; mSlider.Max.Value = mMax; mSlider.Step.Value = mStep;
+		mSlider.Value.Value = mValue;
 		mSlider.OnDragStarted.Add(new (s) => BeginEdit());
 		mSlider.OnValueChanged.Add(new (s, val) => {
 			if (!mSyncing)
@@ -73,7 +73,7 @@ public class RangeEditor : PropertyEditor
 				mSyncing = true;
 				mValue = (float)val;
 				if (mSlider != null)
-					mSlider.Value = (float)val;
+					mSlider.Value.Value = (float)val;
 				Setter?.Invoke((float)val);
 				NotifyValueChanged();
 				mSyncing = false;
@@ -113,7 +113,7 @@ public class RangeEditor : PropertyEditor
 		if (!mSyncing)
 		{
 			mSyncing = true;
-			if (mSlider != null) mSlider.Value = mValue;
+			if (mSlider != null) mSlider.Value.Value = mValue;
 			if (mNumericField != null) mNumericField.Value = mValue;
 			mSyncing = false;
 		}

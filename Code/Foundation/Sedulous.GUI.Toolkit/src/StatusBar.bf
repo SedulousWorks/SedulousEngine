@@ -11,7 +11,6 @@ public class StatusBar : FlexLayout
 
 	public this()
 	{
-		StyleId = new String("statusbar");
 		Direction = .Horizontal;
 		Spacing = 12;
 		Padding = .(4);
@@ -23,7 +22,7 @@ public class StatusBar : FlexLayout
 		if (mDefaultLabel == null)
 		{
 			mDefaultLabel = new Label();
-			mDefaultLabel.FontSize = 12;
+			mDefaultLabel.FontSize.Value = 12;
 			InsertView(mDefaultLabel, 0, new FlexLayout.LayoutParams() {
 				Width = .Match,
 				Height = .Match,
@@ -37,7 +36,7 @@ public class StatusBar : FlexLayout
 	public Label AddSection(StringView text)
 	{
 		let label = new Label();
-		label.FontSize = 12;
+		label.FontSize.Value = 12;
 		label.SetText(text);
 		AddView(label, new FlexLayout.LayoutParams() { Height = .Match });
 		return label;
