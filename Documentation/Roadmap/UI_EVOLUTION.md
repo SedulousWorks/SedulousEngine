@@ -1,5 +1,12 @@
 # Sedulous.UI - Evolution Plan (v2)
 
+> **STATUS: SHIPPED.** Preserved as the historical **planning record**.
+> The work landed in engine master as 8 discrete changes; framing,
+> scope, and a few of the details diverged from this plan. For the
+> canonical "what shipped" summary, see [UIV3.md](UIV3.md). For the
+> roadmap-style COMPLETE entries that fit the existing UI2_PLAN format,
+> see the "v2 Evolution" section appended to [UI2_PLAN.md](UI2_PLAN.md).
+
 Next-generation evolution of Sedulous.UI focused on making the framework
 ergonomic for **game UIs** and **designer iteration**. Continues the phase
 numbering from `UI2_PLAN.md` (which covers Phases 0-10).

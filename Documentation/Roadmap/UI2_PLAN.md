@@ -385,12 +385,9 @@ All applications migrated from Sedulous.LegacyUI to Sedulous.UI.
 ## Phase 10 - Future Enhancements
 
 ### XML Layout Loading
-- [ ] XML layout loader - element names -> View types (factory registry), attributes -> properties + LayoutParams
-- [ ] XML id resolution - FindById<T> after load
-- [ ] XML styleClass attribute -> View.StyleId for stylesheet matching
-- [ ] **Tests:** XML loader creates correct view hierarchy from XML string
-- [ ] **Tests:** XML attributes map to correct properties and LayoutParams
-- [ ] **UISandbox:** XML layout demo page
+- [x] **Shipped as part of v2 Evolution** - see ".sml markup loader"
+  below. Element names map via `MarkupRegistry`; `FindByName<T>` for id
+  resolution; `class` attribute populates `StyleClasses`.
 
 ### Docking Enhancements (second pass)
 - [x] Tabs at top of DockTabGroup (moved from bottom to top)
@@ -404,6 +401,68 @@ All applications migrated from Sedulous.LegacyUI to Sedulous.UI.
 
 ### Other
 - [ ] Performance comparison: measure/layout time LegacyUI vs UI
+
+---
+
+## v2 Evolution (COMPLETE)
+
+Eight discrete changes shipped to make the framework more ergonomic for
+game UIs and designer iteration. Originally developed in a `Sedulous.GUI*`
+fork alongside `Sedulous.UI*`, then ported back to `Sedulous.UI` after
+stabilization. See [UIV3.md](UIV3.md) for the canonical summary;
+[UI_EVOLUTION.md](UI_EVOLUTION.md) preserves the historical planning
+record.
+
+- [x] **ControlState as bit flags** - compound states like
+  `Checked | Hover`. `StateListDrawable` uses flag-based lookup with
+  fallback. Checkable controls return `.Checked` from `GetControlState()`.
+- [x] **StyleClasses (multi-class support)** - replaces single
+  `StyleId: String` with `StyleClasses: List<String>`. Theme rules use
+  type-based selectors (`ForType(typeof(Slider))`) instead of string
+  matching. Constructors no longer set a StyleId. Specificity: class=10,
+  type=1, state=1, pseudo=1.
+- [x] **Capture-phase events** - HTML/CSS three-phase propagation
+  (Capture root->target, Target, Bubble target->root). `EventPhase` enum
+  on event args. `View` gains capture virtuals (`OnMouseDownCapture`,
+  `OnKeyDownCapture`, etc.). Mouse capture bypasses phases entirely.
+- [x] **Directional focus + gamepad** - `View` gains
+  `NextFocusUp/Down/Left/Right`, `WantsArrowKeys`, `OnActivate()`,
+  `OnCancel()`. `FocusManager.MoveFocus(FocusDirection)` with spatial
+  picker (axial + perpendicular scoring). Arrow keys dispatch to focused
+  view first, fall back to directional navigation. `UIInputHelper`
+  polls gamepad: D-pad, A/B buttons, left stick with deadzone + repeat.
+- [x] **.sss stylesheet parser** - CSS-flavored text format for
+  declaring themes. Tokenizer, parser, `StyleSheetLoader`, drawable
+  factory registry (color, rounded-rect, gradient, state-list,
+  state-colors, state-rounded, layer, inset, svg, image, nine-slice),
+  color functions (lighten, darken, alpha, mix), directives (`@palette`
+  with extends, `@icon`, `@image`, `@import`). Breeze theme authored in
+  `.sss`.
+- [x] **.sml markup loader** - XML-based declarative layout using
+  `Sedulous.Xml`. `MarkupRegistry` (factory + setter pattern);
+  `MarkupLoader` walks DOM; supports all built-in controls and layouts.
+  Special attributes: `id`, `class`, `visibility`, `is-enabled`,
+  `opacity`, `padding`, `cursor`, `tooltip`. Events wired in code via
+  `FindByName<T>()` after load.
+- [x] **`Property<T>` normalization** - markup-settable properties use
+  `Property<T>` with `IPropertyOwner` auto-invalidation. Code-only
+  properties remain plain fields. `Property<T>` has `SetOwner()`,
+  `InvalidationKind` (.Layout / .Visual), `Changed` event, `SetSilent()`,
+  `BindTo()` / `BindTwoWay()`.
+- [x] **Pseudo-element styling** - replaces ~35 flat `StyleProperty`
+  entries with pseudo-element selectors. `StyleProperty` enum reduced
+  from ~48 to 17 entries. 10 controls migrated (Slider, ProgressBar,
+  ScrollBar, ToggleSwitch, CheckBox, RadioButton, TabView, Expander,
+  NumericField, ComboBox) with ~25 pseudo-element parts. TreeView,
+  ContextMenu also migrated. All 5 theme files updated. `.sss` supports
+  `::pseudo` and `::pseudo:state` syntax.
+
+**Deferred:** ViewHandle (safe reference indirection layer - not needed,
+v2 already handles use-after-free via `ViewId` + `MutationQueue`).
+
+**Not in scope:** CSS descendant/child combinators, touch input,
+accessibility, Gamekit (HUD primitives, modal screens, dialogue,
+inventory, radial menus, floating numbers, localization, world-space UI).
 
 ---
 
