@@ -87,6 +87,11 @@ public class Pipeline : IRenderingPipeline, IDisposable
 	// Separate from RenderContext.DebugDraw which is global.
 	private DebugDraw mDebugDraw = new .() ~ delete _;
 
+	// Per-pipeline overlay registry. Non-owning - callers manage
+	// implementation lifetime via Register/UnregisterOverlay. Insertion-
+	// sorted by Order so iteration is a forward walk.
+	private List<IPipelineOverlay> mOverlays = new .() ~ delete _;
+
 	// Per-pipeline light buffer. Each scene has different lights; the forward
 	// pass reads this pipeline's buffer, not a shared one.
 	private LightBuffer mLightBuffer ~ delete _;
@@ -114,6 +119,30 @@ public class Pipeline : IRenderingPipeline, IDisposable
 	/// Use this instead of RenderContext.DebugDraw for draws that should only
 	/// appear in this pipeline's viewport.
 	public DebugDraw DebugDraw => mDebugDraw;
+
+	/// Iterates the per-pipeline overlay registry in Order-sorted sequence.
+	public Span<IPipelineOverlay> Overlays => mOverlays;
+
+	/// Registers an overlay with this pipeline. Insertion-sorted by Order;
+	/// ties preserve registration order. Non-owning - the caller must
+	/// `UnregisterOverlay` before deleting the implementation.
+	public void RegisterOverlay(IPipelineOverlay overlay)
+	{
+		if (overlay == null) return;
+
+		int idx = 0;
+		while (idx < mOverlays.Count && mOverlays[idx].Order <= overlay.Order)
+			idx++;
+		mOverlays.Insert(idx, overlay);
+	}
+
+	/// Removes an overlay from this pipeline's registry. No-op if not
+	/// registered.
+	public void UnregisterOverlay(IPipelineOverlay overlay)
+	{
+		if (overlay == null) return;
+		mOverlays.Remove(overlay);
+	}
 
 	/// Per-pipeline light buffer. Each scene uploads its own lights here.
 	public LightBuffer LightBuffer => mLightBuffer;
