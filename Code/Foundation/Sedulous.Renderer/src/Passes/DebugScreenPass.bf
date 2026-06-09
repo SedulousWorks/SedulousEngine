@@ -22,7 +22,7 @@ class DebugScreenPass : PipelinePass
 	// Sized to match DebugDrawSystem.MaxOverlayVertices.
 	private List<DebugTextVertex> mScratch = new .() ~ delete _;
 
-	public override StringView Name => "Overlay";
+	public override StringView Name => "DebugScreen";
 
 	public override void AddPasses(Sedulous.RenderGraph.RenderGraph graph, RenderView view, Pipeline pipeline)
 	{
@@ -41,7 +41,7 @@ class DebugScreenPass : PipelinePass
 		if (!outputHandle.IsValid)
 			return;
 
-		graph.AddRenderPass("Overlay", scope (builder) => {
+		graph.AddRenderPass("DebugScreen", scope (builder) => {
 			builder
 				.SetColorTarget(0, outputHandle, .Load, .Store)
 				.NeverCull()

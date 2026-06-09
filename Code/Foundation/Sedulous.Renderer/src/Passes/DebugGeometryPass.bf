@@ -15,7 +15,7 @@ using Sedulous.Materials;
 /// post-processing so the primitives compose into the HDR scene color.
 class DebugGeometryPass : PipelinePass
 {
-	public override StringView Name => "DebugLines";
+	public override StringView Name => "DebugGeometry";
 
 	public override void AddPasses(Sedulous.RenderGraph.RenderGraph graph, RenderView view, Pipeline pipeline)
 	{
@@ -37,7 +37,7 @@ class DebugGeometryPass : PipelinePass
 		let depthHandle = graph.GetResource("SceneDepth");
 		let hasDepth = depthHandle.IsValid;
 
-		graph.AddRenderPass("DebugLines", scope (builder) => {
+		graph.AddRenderPass("DebugGeometry", scope (builder) => {
 			builder.SetColorTarget(0, outputHandle, .Load, .Store);
 			if (hasDepth)
 				builder.SetDepthTarget(depthHandle, .Load, .Store, 1.0f);
