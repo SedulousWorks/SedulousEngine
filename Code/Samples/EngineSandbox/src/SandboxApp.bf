@@ -1177,6 +1177,9 @@ class SandboxApp : EngineApplication
 		// Add world UI content once component is initialized.
 		TryAddWorldUIContent();
 
+		// Add scene HUD content once UISceneModule is initialized.
+		TryAddSceneHUDContent();
+
 		// ==================== UI Debug ====================
 		let uiSub = Context.GetSubsystem<EngineUISubsystem>();
 
@@ -1608,6 +1611,73 @@ class SandboxApp : EngineApplication
 
 	/// Add UI content to world panels once they're initialized.
 	private int mWorldUIContentCount;
+
+	// Scene HUD demo state.
+	private bool mSceneHUDAdded;
+	private int mSceneHUDClickCount;
+	private Label mSceneHUDClickLabel;
+
+	/// Add a minimal HUD (Label + Button) to the scene's UISceneModule.
+	/// Runs once per scene, on the first frame the module's Root is ready.
+	private void TryAddSceneHUDContent()
+	{
+		if (mSceneHUDAdded || mScene == null) return;
+
+		let hud = mScene.GetModule<UISceneModule>();
+		if (hud?.Root == null) return; // Not initialized yet.
+
+		// FrameLayout fills the viewport but passes clicks through
+		// (IsHitTestVisible = false) so the scene HUD doesn't swallow
+		// input outside its anchored panel. Gravity positions the panel
+		// relative to viewport edges, so it stays clear of the window-level
+		// HUD regardless of window UI size.
+		let container = new FrameLayout();
+		container.IsHitTestVisible = false;
+		hud.Root.AddView(container, new LayoutParams() { Width = .Match, Height = .Match });
+
+		// Anchor the HUD to the bottom-left of the scene viewport.
+		let panel = new Panel();
+		panel.Background = new ColorDrawable(.(20, 25, 40, 220));
+		panel.Padding = .(10, 8, 10, 8);
+		container.AddView(panel, new FrameLayout.LayoutParams() {
+			Width = .Fixed(.Px(220)),
+			Height = .Fixed(.Px(110)),
+			Gravity = .BottomLeft,
+			Margin = .(12, 0, 0, 12)
+		});
+
+		let column = new FlexLayout();
+		column.Direction = .Vertical;
+		column.Spacing = 6;
+		panel.AddView(column, new LayoutParams() {
+			Width = .Match, Height = .Match
+		});
+
+		let title = new Label("Scene HUD");
+		title.FontSize.Value = 16;
+		column.AddView(title, new FlexLayout.LayoutParams() {
+			Width = .Match, Height = .Fixed(.Px(20))
+		});
+
+		mSceneHUDClickLabel = new Label("Clicks: 0");
+		mSceneHUDClickLabel.FontSize.Value = 12;
+		column.AddView(mSceneHUDClickLabel, new FlexLayout.LayoutParams() {
+			Width = .Match, Height = .Fixed(.Px(16))
+		});
+
+		let btn = new Button("Click me");
+		btn.OnClick.Add(new (b) => {
+			mSceneHUDClickCount++;
+			let buf = scope String();
+			buf.AppendF("Clicks: {}", mSceneHUDClickCount);
+			mSceneHUDClickLabel?.SetText(buf);
+		});
+		column.AddView(btn, new FlexLayout.LayoutParams() {
+			Width = .Match, Height = .Fixed(.Px(28))
+		});
+
+		mSceneHUDAdded = true;
+	}
 
 	private void TryAddWorldUIContent()
 	{

@@ -62,7 +62,10 @@ public class InputManager
 	// =================================================================
 
 	/// Process mouse movement. Coordinates in physical pixels.
-	public void ProcessMouseMove(float physicalX, float physicalY)
+	/// Returns true if the event was handled by this context (drag active,
+	/// capture active, or hovering over an interactive view); false if the
+	/// caller may route the event to a lower-priority context.
+	public bool ProcessMouseMove(float physicalX, float physicalY)
 	{
 		let dpiScale = mContext.DpiScale;
 		mMouseX = physicalX / dpiScale;
@@ -71,7 +74,7 @@ public class InputManager
 		// Drag-drop takes priority over normal mouse processing.
 		let dragDrop = mContext.DragDropManager;
 		if (dragDrop != null && dragDrop.UpdateDrag(mMouseX, mMouseY))
-			return;
+			return true;
 
 		let focus = mContext.FocusManager;
 
@@ -85,7 +88,7 @@ public class InputManager
 				mMouseArgs.Set(local.X, local.Y);
 				captured.OnMouseMove(mMouseArgs);
 			}
-			return;
+			return true;
 		}
 
 		UpdateHover(mMouseX, mMouseY);
@@ -96,11 +99,19 @@ public class InputManager
 			let local = hovered.ScreenToLocal(.(mMouseX, mMouseY));
 			mMouseArgs.Set(local.X, local.Y);
 			hovered.OnMouseMove(mMouseArgs);
+			// Only count as handled if a non-root view received the move -
+			// otherwise lower-priority contexts in the input chain should
+			// still see hover updates.
+			return hovered !== mContext.ActiveInputRoot;
 		}
+
+		return false;
 	}
 
 	/// Process mouse button press. Coordinates in physical pixels.
-	public void ProcessMouseDown(MouseButton button, float physicalX, float physicalY, float totalTime)
+	/// Returns true if a view received and (potentially) handled the event,
+	/// or if a popup consumed the click-outside.
+	public bool ProcessMouseDown(MouseButton button, float physicalX, float physicalY, float totalTime)
 	{
 		let dpiScale = mContext.DpiScale;
 		mMouseX = physicalX / dpiScale;
@@ -131,7 +142,7 @@ public class InputManager
 				if (!hitIsPopup)
 				{
 					if (popupLayer.HandleClickOutside((int32)button))
-						return; // LMB consumed by popup close
+						return true; // LMB consumed by popup close
 				}
 			}
 		}
@@ -185,11 +196,19 @@ public class InputManager
 			let local = hitView.ScreenToLocal(.(mMouseX, mMouseY));
 			mMouseArgs.Set(local.X, local.Y, button, mClickCount, totalTime);
 			DispatchMouseDown(hitView, mMouseArgs);
+			// Only count as handled if a non-root view received the click -
+			// hitting just the root means no interactive view was at the
+			// position, so lower-priority chain contexts should still try.
+			return hitView !== mContext.ActiveInputRoot;
 		}
+
+		return false;
 	}
 
 	/// Process mouse button release. Coordinates in physical pixels.
-	public void ProcessMouseUp(MouseButton button, float physicalX, float physicalY)
+	/// Returns true if a view received the up event (typically the same
+	/// view that received the matching MouseDown), false otherwise.
+	public bool ProcessMouseUp(MouseButton button, float physicalX, float physicalY)
 	{
 		let dpiScale = mContext.DpiScale;
 		mMouseX = physicalX / dpiScale;
@@ -198,7 +217,7 @@ public class InputManager
 		// Drag-drop end takes priority.
 		let dragDrop = mContext.DragDropManager;
 		if (dragDrop != null && dragDrop.EndDrag(mMouseX, mMouseY))
-			return;
+			return true;
 
 		let focus = mContext.FocusManager;
 
@@ -223,18 +242,25 @@ public class InputManager
 		}
 
 		// Dispatch mouse up.
+		bool handled = false;
 		if (pressedView != null)
 		{
 			let local = pressedView.ScreenToLocal(.(mMouseX, mMouseY));
 			mMouseArgs.Set(local.X, local.Y, button);
 			DispatchMouseUp(pressedView, mMouseArgs);
+			// Same filter as ProcessMouseDown - only count as handled if a
+			// non-root view received the up.
+			handled = pressedView !== mContext.ActiveInputRoot;
 		}
 
 		UpdateHover(mMouseX, mMouseY);
+		return handled;
 	}
 
 	/// Process mouse wheel. Coordinates in physical pixels.
-	public void ProcessMouseWheel(float physicalX, float physicalY, float deltaX, float deltaY, KeyModifiers modifiers = .None)
+	/// Returns true if a view received the wheel event, false if no view
+	/// was hit at the cursor position.
+	public bool ProcessMouseWheel(float physicalX, float physicalY, float deltaX, float deltaY, KeyModifiers modifiers = .None)
 	{
 		let dpiScale = mContext.DpiScale;
 		let scaledX = physicalX / dpiScale;
@@ -249,11 +275,17 @@ public class InputManager
 
 		// Mouse wheel: capture -> target -> bubble.
 		let root = mContext.ActiveInputRoot;
-		if (root == null) return;
+		if (root == null) return false;
 
 		let target = root.HitTest(.(scaledX, scaledY));
 		if (target != null)
+		{
 			DispatchMouseWheel(target, mWheelArgs);
+			// Only count as handled if a non-root view received the wheel.
+			return target !== root;
+		}
+
+		return false;
 	}
 
 	// =================================================================
@@ -261,14 +293,17 @@ public class InputManager
 	// =================================================================
 
 	/// Process key press.
-	public void ProcessKeyDown(KeyCode key, KeyModifiers modifiers, bool isRepeat, float timestamp = 0)
+	/// Returns true if the key was consumed (drag cancel, focus nav,
+	/// dispatched view handled it, shortcut hit, accelerator fired);
+	/// false if the caller may route it to a lower-priority context.
+	public bool ProcessKeyDown(KeyCode key, KeyModifiers modifiers, bool isRepeat, float timestamp = 0)
 	{
 		// Escape cancels active drag.
 		let dragDrop = mContext.DragDropManager;
 		if (key == .Escape && dragDrop != null && dragDrop.IsDragging)
 		{
 			dragDrop.CancelDrag();
-			return;
+			return true;
 		}
 
 		let focus = mContext.FocusManager;
@@ -280,7 +315,7 @@ public class InputManager
 				focus.FocusPrev();
 			else
 				focus.FocusNext();
-			return;
+			return true;
 		}
 
 		let focused = focus.FocusedView;
@@ -289,7 +324,7 @@ public class InputManager
 		if (focused != null && !isRepeat && key == .Return)
 		{
 			focused.OnActivate();
-			return;
+			return true;
 		}
 
 		// Dispatch to focused view (capture -> target -> bubble).
@@ -298,7 +333,7 @@ public class InputManager
 			mKeyArgs.Set(key, modifiers, isRepeat, timestamp);
 			DispatchKeyDown(focused, mKeyArgs);
 			if (mKeyArgs.Handled)
-				return;
+				return true;
 		}
 
 		// Arrow key fallback: if the focused view didn't handle the arrow key,
@@ -318,43 +353,51 @@ public class InputManager
 			if (dir.HasValue)
 			{
 				if (focus.MoveFocus(dir.Value))
-					return;
+					return true;
 			}
 		}
 
 		// Shortcut manager (scoped first, then global).
 		let shortcuts = mContext.Shortcuts;
 		if (shortcuts != null && shortcuts.TryDispatch(key, modifiers))
-			return;
+			return true;
 
 		// Alt+key: search tree top-down for IAcceleratorHandler.
 		if (modifiers.HasFlag(.Alt))
 		{
 			let root = mContext.ActiveInputRoot;
 			if (root != null && SearchAccelerator(root, key, modifiers))
-				return;
+				return true;
 		}
+
+		return false;
 	}
 
 	/// Process key release.
-	public void ProcessKeyUp(KeyCode key, KeyModifiers modifiers, float timestamp = 0)
+	/// Returns true if a focused view received the event, false if there
+	/// was no focused view.
+	public bool ProcessKeyUp(KeyCode key, KeyModifiers modifiers, float timestamp = 0)
 	{
 		let focused = mContext.FocusManager.FocusedView;
-		if (focused == null) return;
+		if (focused == null) return false;
 
 		mKeyArgs.Set(key, modifiers, false, timestamp);
 		DispatchKeyUp(focused, mKeyArgs);
+		return mKeyArgs.Handled;
 	}
 
 	/// Process text input (post-IME composition).
-	public void ProcessTextInput(char32 character)
+	/// Returns true if a focused view received the text event, false if
+	/// no view was focused.
+	public bool ProcessTextInput(char32 character)
 	{
 		let focused = mContext.FocusManager.FocusedView;
-		if (focused == null) return;
+		if (focused == null) return false;
 
 		mTextArgs.Reset();
 		mTextArgs.Character = character;
 		DispatchTextInput(focused, mTextArgs);
+		return mTextArgs.Handled;
 	}
 
 	// =================================================================

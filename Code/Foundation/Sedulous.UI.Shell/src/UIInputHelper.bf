@@ -96,6 +96,34 @@ public class UIInputHelper
 		ProcessGamepadInput(shellInput, context, deltaTime);
 	}
 
+	/// Poll all shell input and route through a priority chain of UIContexts.
+	/// Each event is dispatched to contexts in order; the first context whose
+	/// dispatch returns `true` (handled) wins and lower-priority contexts
+	/// don't see the event. This is the multi-tier path used by the engine
+	/// to route through window UI -> scene UI -> world UI.
+	public void Update(IInputManager shellInput, Span<UIContext> contextChain, float deltaTime)
+	{
+		if (contextChain.Length == 0) return;
+
+		mTotalTime += deltaTime;
+
+		let mouse = shellInput.Mouse;
+		let kb = shellInput.Keyboard;
+
+		if (kb != null)
+			mCurrentModifiers = InputMapping.MapModifiers(kb.Modifiers);
+		else
+			mCurrentModifiers = .None;
+
+		if (mouse != null)
+			ProcessMouseInputChain(mouse, contextChain);
+
+		if (kb != null)
+			ProcessKeyboardInputChain(kb, contextChain, deltaTime);
+
+		ProcessGamepadInputChain(shellInput, contextChain, deltaTime);
+	}
+
 	/// Route mouse input from a polled mouse to a UIContext.
 	public void ProcessMouseInput(IMouse mouse, UIContext context)
 	{
@@ -351,5 +379,203 @@ public class UIInputHelper
 			mStickDirection = null;
 			mStickRepeatTimer = 0;
 		}
+	}
+
+	// =================================================================
+	// Chain-dispatch internals
+	// =================================================================
+
+	private void ProcessMouseInputChain(IMouse mouse, Span<UIContext> chain)
+	{
+		let mx = mouse.X;
+		let my = mouse.Y;
+
+		// Mouse move - chain stops on first context that consumes.
+		if (mouse.DeltaX != 0 || mouse.DeltaY != 0)
+		{
+			for (let ctx in chain)
+			{
+				if (ctx.InputManager.ProcessMouseMove(mx, my))
+					break;
+			}
+		}
+
+		// Mouse buttons (edge-detected, chain on dispatch).
+		ProcessMouseButtonChain(mouse, chain, .Left, ref mPrevLeftDown, mx, my);
+		ProcessMouseButtonChain(mouse, chain, .Right, ref mPrevRightDown, mx, my);
+		ProcessMouseButtonChain(mouse, chain, .Middle, ref mPrevMiddleDown, mx, my);
+
+		// Mouse wheel - chain stops on first consumer.
+		if (mouse.ScrollX != 0 || mouse.ScrollY != 0)
+		{
+			for (let ctx in chain)
+			{
+				if (ctx.InputManager.ProcessMouseWheel(mx, my, mouse.ScrollX, mouse.ScrollY, mCurrentModifiers))
+					break;
+			}
+		}
+	}
+
+	private void ProcessMouseButtonChain(IMouse mouse, Span<UIContext> chain,
+		Sedulous.Shell.Input.MouseButton shellBtn, ref bool prevDown, float mx, float my)
+	{
+		let down = mouse.IsButtonDown(shellBtn);
+		let uiBtn = InputMapping.MapMouseButton(shellBtn);
+
+		if (down && !prevDown)
+		{
+			for (let ctx in chain)
+			{
+				if (ctx.InputManager.ProcessMouseDown(uiBtn, mx, my, mTotalTime))
+					break;
+			}
+		}
+		else if (!down && prevDown)
+		{
+			for (let ctx in chain)
+			{
+				if (ctx.InputManager.ProcessMouseUp(uiBtn, mx, my))
+					break;
+			}
+		}
+
+		prevDown = down;
+	}
+
+	private void ProcessKeyboardInputChain(IKeyboard keyboard, Span<UIContext> chain, float deltaTime)
+	{
+		let mods = InputMapping.MapModifiers(keyboard.Modifiers);
+
+		// Navigation + editing keys.
+		for (let key in sNavigationKeys)
+		{
+			if (keyboard.IsKeyPressed(key))
+				DispatchKeyDownChain(chain, InputMapping.MapKey(key), mods, false);
+		}
+
+		// Function keys.
+		for (let key in sFunctionKeys)
+		{
+			if (keyboard.IsKeyPressed(key))
+				DispatchKeyDownChain(chain, InputMapping.MapKey(key), mods, false);
+		}
+
+		// Ctrl+key shortcuts.
+		if (mods.HasFlag(.Ctrl))
+		{
+			for (let key in sCtrlShortcutKeys)
+			{
+				if (keyboard.IsKeyPressed(key))
+					DispatchKeyDownChain(chain, InputMapping.MapKey(key), mods, false);
+			}
+		}
+
+		// Alt+letter for menu accelerators.
+		if (mods.HasFlag(.Alt))
+		{
+			for (let key in sLetterKeys)
+			{
+				if (keyboard.IsKeyPressed(key))
+					DispatchKeyDownChain(chain, InputMapping.MapKey(key), mods, false);
+			}
+		}
+
+		// Text input for printable keys (emulated via KeyToChar).
+		if (!mods.HasFlag(.Ctrl) && !mods.HasFlag(.Alt))
+		{
+			for (let key in sPrintableKeys)
+			{
+				if (keyboard.IsKeyPressed(key))
+				{
+					let c = InputMapping.KeyToChar(key, mods.HasFlag(.Shift));
+					if (c != '\0')
+						DispatchTextInputChain(chain, c);
+				}
+			}
+		}
+
+		HandleKeyRepeatChain(keyboard, chain, mods, deltaTime);
+	}
+
+	private void DispatchKeyDownChain(Span<UIContext> chain, Sedulous.UI.KeyCode key, Sedulous.UI.KeyModifiers mods, bool isRepeat)
+	{
+		for (let ctx in chain)
+		{
+			if (ctx.InputManager.ProcessKeyDown(key, mods, isRepeat))
+				return;
+		}
+	}
+
+	private void DispatchTextInputChain(Span<UIContext> chain, char32 c)
+	{
+		for (let ctx in chain)
+		{
+			if (ctx.InputManager.ProcessTextInput(c))
+				return;
+		}
+	}
+
+	private void HandleKeyRepeatChain(IKeyboard keyboard, Span<UIContext> chain,
+		Sedulous.UI.KeyModifiers mods, float deltaTime)
+	{
+		// Detect newly pressed repeatable key.
+		for (let key in sRepeatableKeys)
+		{
+			if (keyboard.IsKeyPressed(key))
+			{
+				mHeldKey = key;
+				mKeyHoldTime = 0;
+				mLastRepeatTime = 0;
+				return;
+			}
+		}
+
+		if (mHeldKey == .Unknown) return;
+
+		if (!keyboard.IsKeyDown(mHeldKey))
+		{
+			mHeldKey = .Unknown;
+			mKeyHoldTime = 0;
+			mLastRepeatTime = 0;
+			return;
+		}
+
+		mKeyHoldTime += deltaTime;
+		if (mKeyHoldTime < KeyRepeatDelay) return;
+
+		mLastRepeatTime += deltaTime;
+		while (mLastRepeatTime >= KeyRepeatRate)
+		{
+			mLastRepeatTime -= KeyRepeatRate;
+
+			if (mHeldKey == .Backspace || mHeldKey == .Delete ||
+				mHeldKey == .Left || mHeldKey == .Right ||
+				mHeldKey == .Up || mHeldKey == .Down ||
+				mHeldKey == .Home || mHeldKey == .End)
+			{
+				DispatchKeyDownChain(chain, InputMapping.MapKey(mHeldKey), mods, true);
+			}
+			else if (!mods.HasFlag(.Ctrl) && !mods.HasFlag(.Alt))
+			{
+				let c = InputMapping.KeyToChar(mHeldKey, mods.HasFlag(.Shift));
+				if (c != '\0')
+					DispatchTextInputChain(chain, c);
+			}
+		}
+	}
+
+	/// Gamepad routes to a single chosen context per frame: first context
+	/// with a focused view wins; otherwise the highest-priority context
+	/// (so D-pad / stick can initialize focus when no view is focused yet).
+	private void ProcessGamepadInputChain(IInputManager shellInput, Span<UIContext> chain, float deltaTime)
+	{
+		UIContext target = null;
+		for (let ctx in chain)
+		{
+			if (ctx.FocusManager.FocusedView != null) { target = ctx; break; }
+		}
+		if (target == null) target = chain[0];
+
+		ProcessGamepadInput(shellInput, target, deltaTime);
 	}
 }

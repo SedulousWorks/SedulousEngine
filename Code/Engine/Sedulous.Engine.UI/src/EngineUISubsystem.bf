@@ -53,17 +53,38 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 	public UIContext UIContext => mUIContext;
 	public ScreenUIView ScreenView => mScreenView;
 
-	/// Returns true if the mouse is over a UI element (screen or world).
-	/// Use to block scene input when UI is handling the mouse.
+	/// Returns true if the mouse is over a UI element (window-level screen
+	/// UI, any scene's `UISceneModule` UI, or a world `UIComponent`).
+	/// Use to block scene/camera input when UI is handling the mouse.
 	public bool IsMouseOverUI
 	{
 		get
 		{
 			if (mHoveredWorldComp != null) return true;
-			if (mUIContext == null || mScreenView?.Root == null) return false;
-			let mousePos = Vector2(mUIContext.InputManager.MouseX, mUIContext.InputManager.MouseY);
-			let hit = mScreenView.Root.HitTest(mousePos);
-			return hit != null && hit !== mScreenView.Root;
+
+			// Window-level UI.
+			if (mUIContext != null && mScreenView?.Root != null)
+			{
+				let mousePos = Vector2(mUIContext.InputManager.MouseX, mUIContext.InputManager.MouseY);
+				let hit = mScreenView.Root.HitTest(mousePos);
+				if (hit != null && hit !== mScreenView.Root) return true;
+			}
+
+			// Scene-level UI from any active scene's UISceneModule.
+			let sceneSub = Context?.GetSubsystem<Sedulous.Engine.SceneSubsystem>();
+			if (sceneSub != null)
+			{
+				for (let scene in sceneSub.ActiveScenes)
+				{
+					let uiSceneModule = scene.GetModule<UISceneModule>();
+					if (uiSceneModule?.UIContext == null || uiSceneModule.Root == null) continue;
+					let mousePos = Vector2(uiSceneModule.UIContext.InputManager.MouseX, uiSceneModule.UIContext.InputManager.MouseY);
+					let hit = uiSceneModule.Root.HitTest(mousePos);
+					if (hit != null && hit !== uiSceneModule.Root) return true;
+				}
+			}
+
+			return false;
 		}
 	}
 
@@ -129,12 +150,29 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 		if (Window != null && mScreenView != null)
 			mScreenView.Root.DpiScale = Window.ContentScale;
 
-		// Route screen UI input.
-		if (mInputHelper != null && Shell?.InputManager != null)
-			mInputHelper.Update(Shell.InputManager, mUIContext, deltaTime);
+		// Build the input priority chain: window UI first, then each active
+		// scene's UISceneModule UIContext. Input flows window -> scene -> world.
+		let chain = scope System.Collections.List<UIContext>();
+		chain.Add(mUIContext);
 
-		// Route world UI input (only if screen UI didn't consume it).
-		if (Shell?.InputManager != null && !IsMouseOverScreenUI)
+		let sceneSub = Context?.GetSubsystem<SceneSubsystem>();
+		if (sceneSub != null)
+		{
+			for (let scene in sceneSub.ActiveScenes)
+			{
+				let uiSceneModule = scene.GetModule<UISceneModule>();
+				if (uiSceneModule?.UIContext != null)
+					chain.Add(uiSceneModule.UIContext);
+			}
+		}
+
+		// Route UI input through the chain.
+		if (mInputHelper != null && Shell?.InputManager != null)
+			mInputHelper.Update(Shell.InputManager, chain, deltaTime);
+
+		// World UI fallback - only if no UI context in the chain is hovering
+		// over interactive content.
+		if (Shell?.InputManager != null && !IsMouseOverAnyChainUI(chain))
 			RouteWorldUIInput(deltaTime);
 
 		// Drain mutations, tick animations/tooltips.
@@ -143,21 +181,50 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 		// Tick per-component UIContexts.
 		TickWorldUIContexts(deltaTime);
 
+		// Tick per-scene UISceneModule UIContexts (UpdateRootView happens
+		// per-pipeline in the module's Render to use the active view size).
+		TickSceneUIContexts(deltaTime);
+
 		// Layout screen view.
 		if (mScreenView != null)
 			mUIContext.UpdateRootView(mScreenView.Root);
 	}
 
-	/// Whether the mouse is over a screen-space UI element (not root/layout).
-	private bool IsMouseOverScreenUI
+	/// Drain mutations and tick animations on each active scene's
+	/// UISceneModule UIContext. Layout itself runs in the module's
+	/// IPipelineOverlay.Render call so it can use the pipeline's view
+	/// dimensions.
+	private void TickSceneUIContexts(float deltaTime)
 	{
-		get
+		let sceneSub = Context?.GetSubsystem<Sedulous.Engine.SceneSubsystem>();
+		if (sceneSub == null) return;
+
+		for (let scene in sceneSub.ActiveScenes)
 		{
-			if (mUIContext == null || mScreenView?.Root == null) return false;
-			let mousePos = Vector2(mUIContext.InputManager.MouseX, mUIContext.InputManager.MouseY);
-			let hit = mScreenView.Root.HitTest(mousePos);
-			return hit != null && hit !== mScreenView.Root;
+			let uiSceneModule = scene.GetModule<UISceneModule>();
+			if (uiSceneModule?.UIContext != null)
+				uiSceneModule.UIContext.BeginFrame(deltaTime);
 		}
+	}
+
+	/// Whether the mouse is over any interactive UI element across the
+	/// input chain (window UI or any scene's UISceneModule UI). Used to
+	/// gate the world UI fallback so the world doesn't receive input that
+	/// a higher-priority UI tier is already hovering.
+	private bool IsMouseOverAnyChainUI(System.Collections.List<UIContext> chain)
+	{
+		for (let ctx in chain)
+		{
+			let mousePos = Vector2(ctx.InputManager.MouseX, ctx.InputManager.MouseY);
+			for (int i = 0; i < ctx.RootViewCount; i++)
+			{
+				let root = ctx.GetRootView(i);
+				let hit = root.HitTest(mousePos);
+				if (hit != null && hit !== root)
+					return true;
+			}
+		}
+		return false;
 	}
 
 	// === World UI Input Raycasting ===
@@ -402,28 +469,51 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 		uiMgr.RenderPass = mWorldUIPass;
 		uiMgr.RenderContext = sceneRenderer?.RenderContext;
 		scene.AddModule(uiMgr);
+
+		// Scene HUD module - VG resources are initialized in OnSceneReady
+		// once the scene's pipeline (and its OutputFormat) is available.
+		scene.AddModule(new UISceneModule());
 	}
 
 	public void OnSceneReady(Scene scene)
 	{
+		let sceneRenderer = Context.GetSubsystemByInterface<ISceneRenderer>();
+		if (sceneRenderer == null) return;
+
+		let pipeline = sceneRenderer.GetPipeline(scene);
+		if (pipeline == null) return;
+
 		// Register WorldUIPass with the scene's pipeline (created by RenderSubsystem.OnSceneCreated).
 		if (mWorldUIPass != null && !mWorldUIPassRegistered)
 		{
-			let sceneRenderer = Context.GetSubsystemByInterface<ISceneRenderer>();
-			if (sceneRenderer != null)
+			pipeline.AddPass(mWorldUIPass);
+			mWorldUIPassRegistered = true;
+		}
+
+		// Initialize the scene's UISceneModule with the pipeline's output
+		// format, then register it as an IPipelineOverlay so OverlayPass
+		// invokes it each frame.
+		let uiSceneModule = scene.GetModule<UISceneModule>();
+		if (uiSceneModule != null && Device != null && FontService != null && ShaderSystem != null)
+		{
+			if (uiSceneModule.Initialize(Device, pipeline.OutputFormat, FrameCount,
+				FontService, ShaderSystem, mUIContext?.StyleSheet) case .Ok)
 			{
-				let pipeline = sceneRenderer.GetPipeline(scene);
-				if (pipeline != null)
-				{
-					pipeline.AddPass(mWorldUIPass);
-					mWorldUIPassRegistered = true;
-				}
+				pipeline.RegisterOverlay(uiSceneModule);
 			}
 		}
 	}
 
 	public void OnSceneDestroyed(Scene scene)
 	{
+		let sceneRenderer = Context.GetSubsystemByInterface<ISceneRenderer>();
+		let pipeline = sceneRenderer?.GetPipeline(scene);
+		let uiSceneModule = scene.GetModule<UISceneModule>();
+		if (pipeline != null && uiSceneModule != null)
+			pipeline.UnregisterOverlay(uiSceneModule);
+
+		// Module's own Dispose handles VG / UIContext / RootView cleanup
+		// once Scene removes it from its module list.
 	}
 
 	// === Shutdown ===
