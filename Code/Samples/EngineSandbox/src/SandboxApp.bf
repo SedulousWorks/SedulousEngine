@@ -58,6 +58,10 @@ class SandboxApp : EngineApplication
 	private float mPitch = -0.464f;              // slight downward tilt
 	private bool mMouseCaptured = false;
 
+	// Entities that get a billboard nameplate via Track 1.
+	private List<EntityHandle> mNameplateEntities = new .() ~ delete _;
+	private bool mBillboardsAdded;
+
 	Material mPbrMaterial ~ delete _;
 	ResourceRef mSkyRef = .(.Empty, "builtin://skies/realistic_sky.texture") ~ _.Dispose();
 
@@ -237,18 +241,21 @@ class SandboxApp : EngineApplication
 		scene.SetLocalTransform(cubeEntity, .() { Position = .(-1.5f, 5, 0), Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, cubeEntity, cubeRef, mRedMaterial);
 		SetupRigidBody(scene, physicsMgr, cubeEntity, .Box(0.5f), .Dynamic);
+		mNameplateEntities.Add(cubeEntity);
 
 		// Sphere - dynamic, falls from height
 		let sphereEntity = scene.CreateEntity("Sphere");
 		scene.SetLocalTransform(sphereEntity, .() { Position = .(1.5f, 6, 0), Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, sphereEntity, sphereRef, mBlueMaterial);
 		SetupRigidBody(scene, physicsMgr, sphereEntity, .Sphere(0.5f), .Dynamic);
+		mNameplateEntities.Add(sphereEntity);
 
 		// Green cube (back left) - dynamic
 		let cube2Entity = scene.CreateEntity("GreenCube");
 		scene.SetLocalTransform(cube2Entity, .() { Position = .(-3.0f, 7, -2.0f), Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, cube2Entity, cubeRef, mGreenMaterial);
 		SetupRigidBody(scene, physicsMgr, cube2Entity, .Box(0.5f), .Dynamic);
+		mNameplateEntities.Add(cube2Entity);
 
 		// Yellow cube (back right) - dynamic
 		let cube3Entity = scene.CreateEntity("YellowCube");
@@ -260,6 +267,7 @@ class SandboxApp : EngineApplication
 		let sphere2Entity = scene.CreateEntity("MetalSphere");
 		scene.SetLocalTransform(sphere2Entity, .() { Position = .(0, 1.5f, 4.0f), Rotation = .Identity, Scale = .(1.5f, 1.5f, 1.5f) });
 		SetupMeshComponent(scene, sphere2Entity, sphereRef, mWhiteMaterial);
+		mNameplateEntities.Add(sphere2Entity);
 
 		// Small green sphere (front left) - dynamic
 		let sphere3Entity = scene.CreateEntity("GreenSphere");
@@ -1180,6 +1188,9 @@ class SandboxApp : EngineApplication
 		// Add scene HUD content once UISceneModule is initialized.
 		TryAddSceneHUDContent();
 
+		// Add nameplate billboards once BillboardUIComponentManager is initialized.
+		TryAddBillboards();
+
 		// ==================== UI Debug ====================
 		let uiSub = Context.GetSubsystem<EngineUISubsystem>();
 
@@ -1677,6 +1688,47 @@ class SandboxApp : EngineApplication
 		});
 
 		mSceneHUDAdded = true;
+	}
+
+	/// Add a billboard nameplate to each tracked entity once the
+	/// BillboardUIComponentManager is initialized.
+	private void TryAddBillboards()
+	{
+		if (mBillboardsAdded || mScene == null) return;
+
+		let mgr = mScene.GetModule<BillboardUIComponentManager>();
+		if (mgr?.Root == null) return; // Manager not yet initialized.
+
+		for (let entity in mNameplateEntities)
+		{
+			let name = mScene.GetEntityName(entity);
+
+			let handle = mgr.CreateComponent(entity);
+			if (let billboard = mgr.Get(handle))
+			{
+				billboard.Offset = .(0, 1.4f, 0);
+				billboard.Orientation = .Cylindrical;
+				billboard.ScaleMode = .Distance;
+				billboard.ReferenceDistance = 8.0f;
+				billboard.MinScale = 0.35f;
+				billboard.MaxScale = 1.4f;
+
+				// Translucent background panel + name label.
+				let panel = new Panel();
+				panel.Background = new ColorDrawable(.(10, 15, 25, 200));
+				panel.Padding = .(8, 4, 8, 4);
+
+				let label = new Label("");
+				label.SetText(name);
+				label.FontSize.Value = 14;
+				label.TextColor.Value = .White;
+				panel.AddView(label, new LayoutParams() { Width = .Wrap, Height = .Wrap });
+
+				billboard.Content = panel;
+			}
+		}
+
+		mBillboardsAdded = true;
 	}
 
 	private void TryAddWorldUIContent()

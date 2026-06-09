@@ -70,17 +70,27 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 				if (hit != null && hit !== mScreenView.Root) return true;
 			}
 
-			// Scene-level UI from any active scene's UISceneModule.
+			// Scene-level UI from any active scene's UISceneModule + billboards.
 			let sceneSub = Context?.GetSubsystem<Sedulous.Engine.SceneSubsystem>();
 			if (sceneSub != null)
 			{
 				for (let scene in sceneSub.ActiveScenes)
 				{
 					let uiSceneModule = scene.GetModule<UISceneModule>();
-					if (uiSceneModule?.UIContext == null || uiSceneModule.Root == null) continue;
-					let mousePos = Vector2(uiSceneModule.UIContext.InputManager.MouseX, uiSceneModule.UIContext.InputManager.MouseY);
-					let hit = uiSceneModule.Root.HitTest(mousePos);
-					if (hit != null && hit !== uiSceneModule.Root) return true;
+					if (uiSceneModule?.UIContext != null && uiSceneModule.Root != null)
+					{
+						let mousePos = Vector2(uiSceneModule.UIContext.InputManager.MouseX, uiSceneModule.UIContext.InputManager.MouseY);
+						let hit = uiSceneModule.Root.HitTest(mousePos);
+						if (hit != null && hit !== uiSceneModule.Root) return true;
+					}
+
+					let billboardMgr = scene.GetModule<BillboardUIComponentManager>();
+					if (billboardMgr?.UIContext != null && billboardMgr.Root != null)
+					{
+						let mousePos = Vector2(billboardMgr.UIContext.InputManager.MouseX, billboardMgr.UIContext.InputManager.MouseY);
+						let hit = billboardMgr.Root.HitTest(mousePos);
+						if (hit != null && hit !== billboardMgr.Root) return true;
+					}
 				}
 			}
 
@@ -151,7 +161,9 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 			mScreenView.Root.DpiScale = Window.ContentScale;
 
 		// Build the input priority chain: window UI first, then each active
-		// scene's UISceneModule UIContext. Input flows window -> scene -> world.
+		// scene's UISceneModule UIContext, then each scene's billboard
+		// manager UIContext. Input flows window -> scene HUD -> billboards
+		// -> world.
 		let chain = scope System.Collections.List<UIContext>();
 		chain.Add(mUIContext);
 
@@ -163,6 +175,10 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 				let uiSceneModule = scene.GetModule<UISceneModule>();
 				if (uiSceneModule?.UIContext != null)
 					chain.Add(uiSceneModule.UIContext);
+
+				let billboardMgr = scene.GetModule<BillboardUIComponentManager>();
+				if (billboardMgr?.UIContext != null)
+					chain.Add(billboardMgr.UIContext);
 			}
 		}
 
@@ -204,6 +220,10 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 			let uiSceneModule = scene.GetModule<UISceneModule>();
 			if (uiSceneModule?.UIContext != null)
 				uiSceneModule.UIContext.BeginFrame(deltaTime);
+
+			let billboardMgr = scene.GetModule<BillboardUIComponentManager>();
+			if (billboardMgr?.UIContext != null)
+				billboardMgr.UIContext.BeginFrame(deltaTime);
 		}
 	}
 
@@ -473,6 +493,9 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 		// Scene HUD module - VG resources are initialized in OnSceneReady
 		// once the scene's pipeline (and its OutputFormat) is available.
 		scene.AddModule(new UISceneModule());
+
+		// Billboard UI manager - same deferred-init pattern as UISceneModule.
+		scene.AddModule(new BillboardUIComponentManager());
 	}
 
 	public void OnSceneReady(Scene scene)
@@ -502,18 +525,35 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 				pipeline.RegisterOverlay(uiSceneModule);
 			}
 		}
+
+		// Same pattern for the billboard manager (Order = 50 - draws under
+		// the scene HUD, gets input chain after it).
+		let billboardMgr = scene.GetModule<BillboardUIComponentManager>();
+		if (billboardMgr != null && Device != null && FontService != null && ShaderSystem != null)
+		{
+			if (billboardMgr.Initialize(Device, pipeline.OutputFormat, FrameCount,
+				FontService, ShaderSystem, mUIContext?.StyleSheet) case .Ok)
+			{
+				pipeline.RegisterOverlay(billboardMgr);
+			}
+		}
 	}
 
 	public void OnSceneDestroyed(Scene scene)
 	{
 		let sceneRenderer = Context.GetSubsystemByInterface<ISceneRenderer>();
 		let pipeline = sceneRenderer?.GetPipeline(scene);
+
 		let uiSceneModule = scene.GetModule<UISceneModule>();
 		if (pipeline != null && uiSceneModule != null)
 			pipeline.UnregisterOverlay(uiSceneModule);
 
-		// Module's own Dispose handles VG / UIContext / RootView cleanup
-		// once Scene removes it from its module list.
+		let billboardMgr = scene.GetModule<BillboardUIComponentManager>();
+		if (pipeline != null && billboardMgr != null)
+			pipeline.UnregisterOverlay(billboardMgr);
+
+		// Modules' own Dispose handles VG / UIContext / RootView cleanup
+		// once Scene removes them from its module list.
 	}
 
 	// === Shutdown ===
