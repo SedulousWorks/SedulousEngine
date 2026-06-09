@@ -37,7 +37,7 @@ public struct Debug3DTextCommand
 ///
 /// Owned by RenderContext (see RenderContext.DebugDraw). Game code accumulates
 /// lines, triangles, wireframes, and text over the course of a frame via the Draw*
-/// methods, and DebugPass / OverlayPass flush the accumulated commands each frame.
+/// methods, and DebugGeometryPass / DebugScreenPass flush the accumulated commands each frame.
 ///
 /// All 3D shape methods accept an `overlay` parameter:
 ///   false (default) = depth-tested, integrates with scene geometry

@@ -375,8 +375,8 @@ Pipeline.Render(encoder, view, outputTexture, outputTextureView, frameIndex):
 | SkyPass | Render | SceneDepth | PipelineOutput | HDR sky, fills where depth == far |
 | ForwardTransparentPass | Render | SceneDepth | PipelineOutput | Transparent + sprites, alpha blend |
 | ParticlePass | Render | SceneDepth (ReadDepth + ReadTexture) | PipelineOutput | Particles with depth test + soft fade |
-| DebugPass | Render | SceneDepth | PipelineOutput | 3D debug lines with depth test |
-| OverlayPass | Render | - | PipelineOutput | 2D text + rectangles, no depth |
+| DebugGeometryPass | Render | SceneDepth | PipelineOutput | 3D debug lines with depth test |
+| DebugScreenPass | Render | - | PipelineOutput | 2D text + rectangles, no depth |
 
 ### Post-Processing
 
@@ -545,7 +545,7 @@ GPU resources cleaned up in destructor when last ref released.
 | sprite | GPU-instanced billboards (SV_VertexID) |
 | decal | Projected decals via depth reconstruction |
 | debug_line | Unlit colored lines |
-| debug_overlay | 2D screen-space text + rectangles |
+| debug_screen | 2D screen-space text + rectangles |
 | skinning | Compute vertex skinning |
 | unlit | Unlit/emissive rendering |
 

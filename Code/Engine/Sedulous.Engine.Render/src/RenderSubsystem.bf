@@ -1397,8 +1397,8 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 		pipeline.AddPass(new SkyPass());
 		pipeline.AddPass(new ForwardTransparentPass());
 		pipeline.AddPass(new ParticlePass());
-		pipeline.AddPass(new DebugPass());
-		pipeline.AddPass(new OverlayPass());
+		pipeline.AddPass(new DebugGeometryPass());
+		pipeline.AddPass(new DebugScreenPass());
 
 		// Post-processing stack
 		// Order: SSAO (aux) -> Bloom (aux) -> TAA (HDR resolve) -> Tonemap (reads AO+bloom) -> FXAA (LDR)

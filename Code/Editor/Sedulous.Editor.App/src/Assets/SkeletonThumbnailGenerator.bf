@@ -17,7 +17,7 @@ using Sedulous.Resources;
 /// Mirrors the rendering used by SkeletonEditorPage so the thumbnail
 /// matches what you see when you open the asset.
 ///
-/// No entities are spawned in the thumbnail scene - the DebugPass
+/// No entities are spawned in the thumbnail scene - the DebugGeometryPass
 /// reads queued lines directly from the pipeline's DebugDraw, and the
 /// renderer clears them at frame start. That makes cleanup trivial:
 /// the ready closure has nothing to undo on the scene side.

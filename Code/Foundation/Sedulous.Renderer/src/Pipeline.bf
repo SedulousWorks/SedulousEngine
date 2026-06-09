@@ -53,7 +53,7 @@ public class Pipeline : IRenderingPipeline, IDisposable
 	// then the indices advance at end of Render. Resource allocation, resize,
 	// clear, and disposal are pipeline concerns - DepthPrepass and downstream
 	// consumers (ParticlePass, DecalPass, ForwardTransparentPass, SkyPass,
-	// DebugPass) only see the imported names.
+	// DebugGeometryPass) only see the imported names.
 	private ITexture[SceneDepthHistoryCount] mSceneDepthTextures;
 	private ITextureView[SceneDepthHistoryCount] mSceneDepthViews;
 	/// Depth-only sub-views used for shader sampling (soft particles, decals,
@@ -409,7 +409,7 @@ public class Pipeline : IRenderingPipeline, IDisposable
 
 		// Import the pipeline-owned SceneDepth and clear it once. Every depth
 		// consumer (DepthPrepass, ParticlePass, DecalPass, ForwardTransparentPass,
-		// SkyPass, DebugPass, post-process effects) reads SceneDepth, so the
+		// SkyPass, DebugGeometryPass, post-process effects) reads SceneDepth, so the
 		// resource exists regardless of whether DepthPrepass has any opaque
 		// geometry to draw. DepthPrepass becomes a pure early-Z optimizer that
 		// uses LoadOp.Load on this same target when there is opaque to draw.

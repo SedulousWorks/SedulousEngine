@@ -13,7 +13,7 @@ using Sedulous.Materials;
 /// RenderContext.DebugDraw. Supports depth-tested and overlay modes for both
 /// lines and filled triangles. Runs after main forward passes and before
 /// post-processing so the primitives compose into the HDR scene color.
-class DebugPass : PipelinePass
+class DebugGeometryPass : PipelinePass
 {
 	public override StringView Name => "DebugLines";
 

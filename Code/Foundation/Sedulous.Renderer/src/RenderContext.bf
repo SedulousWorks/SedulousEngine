@@ -123,7 +123,7 @@ public class RenderContext : IDisposable
 	public DebugDrawSystem DebugDrawSystem => mDebugDrawSystem;
 
 	/// Immediate-mode debug draw API. Call Draw* methods from game code to
-	/// queue lines, wire shapes, and text to be rendered by DebugPass + OverlayPass.
+	/// queue lines, wire shapes, and text to be rendered by DebugGeometryPass + DebugScreenPass.
 	/// Cleared at the end of each frame by the renderer.
 	public DebugDraw DebugDraw => mDebugDraw;
 

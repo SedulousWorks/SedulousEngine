@@ -78,7 +78,7 @@ Per-scene resources on Pipeline (not shared on RenderContext):
 - **LightBuffer** - each scene uploads its own lights; forward pass binds the
   pipeline's buffer. Prevents lighting bleed between scenes.
 - **Line vertex buffers** - each pipeline has its own per-frame debug line VBs.
-  DebugPass uploads merged local+global vertices into the pipeline's buffer.
+  DebugGeometryPass uploads merged local+global vertices into the pipeline's buffer.
   Prevents gizmo/debug draw bleed between scenes.
 - **PrevViewProjectionMatrix** - each pipeline tracks its own camera history
   for correct per-scene motion vectors.
@@ -473,15 +473,15 @@ Immediate-mode debug drawing for development: lines, wireframes, bounding boxes,
 - `DrawText3D(position, text, color)` - screen-projected text at world position
 - Accumulates vertices per frame into a transient buffer, flushed during render
 
-### 12.2 - Debug Pass
-- New `DebugPass` - runs after forward opaque (and after transparent once that exists)
+### 12.2 - Debug Geometry Pass
+- New `DebugGeometryPass` - runs after forward opaque (and after transparent once that exists)
 - Renders lines with depth test (occluded lines dimmed or hidden)
 - Unlit shader (position + color vertex format, already in `DebugVertex.bf`)
 - Line list topology, no face culling
 - Optional: depth-tested vs always-on-top modes
 
-### 12.3 - Overlay Pass
-- New `OverlayPass` - runs last, no depth test
+### 12.3 - Debug Screen Pass
+- New `DebugScreenPass` - runs last, no depth test
 - 2D screen-space drawing: text, rectangles, debug stats
 - Uses `Sedulous.DebugFont` for text rendering (project already exists)
 - Screen-space coordinate system (0,0 top-left)
@@ -523,7 +523,7 @@ own specialised billboard path) but shares the underlying quad rendering.
 
 ### 13.4 - 2D/Screen-space sprites
 - Screen-space mode for HUD: quad positioned in pixels, bypasses view-proj
-- Bound in `OverlayPass` (Phase 12) or a dedicated `UIPass`
+- Bound in `DebugScreenPass` (Phase 12) or a dedicated `UIPass`
 
 **Dependencies:** Transparency pass (Phase 6, done), Debug/Overlay (Phase 12)
 for the 2D screen-space path. Quad rendering infrastructure is also useful for

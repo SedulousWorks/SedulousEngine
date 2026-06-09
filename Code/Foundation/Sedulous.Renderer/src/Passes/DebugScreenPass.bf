@@ -16,7 +16,7 @@ using Sedulous.Materials;
 ///
 /// No depth test. Runs last before the final post-process / blit so the overlay
 /// sits on top of everything.
-class OverlayPass : PipelinePass
+class DebugScreenPass : PipelinePass
 {
 	// CPU-side scratch buffer for building the quad geometry each frame.
 	// Sized to match DebugDrawSystem.MaxOverlayVertices.
@@ -28,7 +28,7 @@ class OverlayPass : PipelinePass
 	{
 		// Overlay commands come from both per-pipeline (scene-local in the editor's
 		// multi-viewport case) and the global render-context stream. Mirrors the
-		// DebugPass local+global merge so viewport-scoped overlays don't bleed into
+		// DebugGeometryPass local+global merge so viewport-scoped overlays don't bleed into
 		// other pipelines.
 		let globalDraw = pipeline.RenderContext.DebugDraw;
 		let localDraw = pipeline.DebugDraw;
@@ -63,7 +63,7 @@ class OverlayPass : PipelinePass
 		if (cache == null || debugSystem == null) return;
 
 		// Build CPU scratch vertex list. Local (scene-scoped) first, global last so
-		// global overlays draw on top of local ones - matches DebugPass ordering.
+		// global overlays draw on top of local ones - matches DebugGeometryPass ordering.
 		mScratch.Clear();
 		if (localDraw != null) BuildQuads(localDraw, view);
 		if (globalDraw != null) BuildQuads(globalDraw, view);
@@ -81,7 +81,7 @@ class OverlayPass : PipelinePass
 
 		// Pipeline state - textured quads, alpha blend, no depth, no cull.
 		var config = PipelineConfig();
-		config.ShaderName = "debug_overlay";
+		config.ShaderName = "debug_screen";
 		config.BlendMode = .AlphaBlend;
 		config.CullMode = .None;
 		config.ColorTargetCount = 1;
