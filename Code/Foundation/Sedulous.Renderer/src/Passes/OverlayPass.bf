@@ -26,10 +26,15 @@ class OverlayPass : PipelinePass
 
 	public override void AddPasses(Sedulous.RenderGraph.RenderGraph graph, RenderView view, Pipeline pipeline)
 	{
-		let debugDraw = pipeline.RenderContext.DebugDraw;
-		if (debugDraw == null)
-			return;
-		if (debugDraw.Commands2D.Length == 0 && debugDraw.TextCommands3D.Length == 0)
+		// Overlay commands come from both per-pipeline (scene-local in the editor's
+		// multi-viewport case) and the global render-context stream. Mirrors the
+		// DebugPass local+global merge so viewport-scoped overlays don't bleed into
+		// other pipelines.
+		let globalDraw = pipeline.RenderContext.DebugDraw;
+		let localDraw = pipeline.DebugDraw;
+		let globalEmpty = (globalDraw == null) || (globalDraw.Commands2D.Length == 0 && globalDraw.TextCommands3D.Length == 0);
+		let localEmpty = (localDraw == null) || (localDraw.Commands2D.Length == 0 && localDraw.TextCommands3D.Length == 0);
+		if (globalEmpty && localEmpty)
 			return;
 
 		let outputHandle = graph.GetResource("PipelineOutput");
@@ -51,14 +56,17 @@ class OverlayPass : PipelinePass
 		using (Profiler.Begin("Overlay"))
 		{
 		let renderContext = pipeline.RenderContext;
-		let debugDraw = renderContext.DebugDraw;
+		let globalDraw = renderContext.DebugDraw;
+		let localDraw = pipeline.DebugDraw;
 		let debugSystem = renderContext.DebugDrawSystem;
 		let cache = renderContext.PipelineStateCache;
 		if (cache == null || debugSystem == null) return;
 
-		// Build CPU scratch vertex list.
+		// Build CPU scratch vertex list. Local (scene-scoped) first, global last so
+		// global overlays draw on top of local ones - matches DebugPass ordering.
 		mScratch.Clear();
-		BuildQuads(debugDraw, view);
+		if (localDraw != null) BuildQuads(localDraw, view);
+		if (globalDraw != null) BuildQuads(globalDraw, view);
 		if (mScratch.Count == 0) return;
 
 		let vertCount = Math.Min((uint32)mScratch.Count, DebugDrawSystem.MaxOverlayVertices);
