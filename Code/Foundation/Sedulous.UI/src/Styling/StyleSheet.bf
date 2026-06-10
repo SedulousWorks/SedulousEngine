@@ -129,10 +129,15 @@ public class StyleSheet : RefCounted
 
 	// === Resource ownership ===
 
-	/// Take ownership of a drawable (deleted when StyleSheet is released).
-	/// Use for drawables created outside of rules (e.g., shared atlas drawables).
-	public void OwnDrawable(Drawable drawable)
+	/// Register a drawable for sheet-lifetime ownership. By default the
+	/// sheet consumes the caller's ref. Pass `consumeRef: false` to
+	/// AddRef instead - useful when the caller wants to hold its own
+	/// ref alongside the sheet's. Released on sheet destruction.
+	public void OwnDrawable(Drawable drawable, bool consumeRef = true)
 	{
+		if (drawable == null) return;
+		if (!consumeRef)
+			drawable.AddRef();
 		mOwnedDrawables.Add(drawable);
 	}
 
@@ -142,8 +147,11 @@ public class StyleSheet : RefCounted
 		mOwnedResources.Add(resource);
 	}
 
-	/// Create a ColorDrawable, take ownership, and return it.
-	/// Convenience for flat themes that need many color drawables.
+	/// Create a ColorDrawable, take ownership for the sheet's
+	/// lifetime, and return it. The returned drawable is sheet-owned
+	/// (one ref, held by `mOwnedDrawables`); pass it to consumers
+	/// that AddRef on capture (`StyleRule.Set` default, `View.SetStyle`
+	/// with `consumeRef: false`) or release explicitly when done.
 	public ColorDrawable OwnColor(Color color)
 	{
 		let d = new ColorDrawable(color);
