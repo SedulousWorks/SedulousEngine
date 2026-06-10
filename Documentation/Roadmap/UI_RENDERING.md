@@ -11,8 +11,8 @@ Related (already settled, mentioned for context):
 - [UI_EVOLUTION.md](UI_EVOLUTION.md) - the framework evolution work
   shipped 2026-06-08 (`.sss`, `.sml`, focus + gamepad, pseudo-elements,
   property normalization, capture-phase events).
-- [UI_STYLE_TODO.md](UI_STYLE_TODO.md) - per-view style overrides
-  (inline + local stylesheets), planned (not started).
+- [UI_STYLE_DONE.md](UI_STYLE_DONE.md) - per-view style overrides
+  (inline + local stylesheets), shipped 2026-06-10.
 
 The five tracks below all shipped 2026-06-10. Linked docs are the
 historical design + sub-phase plans; deferred items from each are

@@ -98,27 +98,27 @@ class UISandboxApp : Application, IDockableWindowHost
 		}
 
 		// Load fonts. Locator is relative to BuiltinMount.
+		// TrueTypeFontService.GetFont already does closest-size match
+		// when the exact size isn't loaded, so missing sizes degrade
+		// gracefully - but glyphs end up rasterized at the nearest
+		// atlas's native size, which looks slightly off. Loading a
+		// dense ladder of sizes keeps that gap small.
 		let fontLocator = "fonts/roboto/Roboto-Regular.ttf";
-		mUI.LoadFont("Roboto", fontLocator, .()
-			{
-				PixelHeight = 16, FirstCodepoint = 32,
-				LastCodepoint = 255,
-				AtlasWidth = 1024,
-				AtlasHeight = 1024,
-				OversampleX = 2,
-				OversampleY = 2,
-				Padding = 2
-			});
-		mUI.LoadFont("Roboto", fontLocator, .()
-			{
-				PixelHeight = 24, FirstCodepoint = 32,
-				LastCodepoint = 255,
-				AtlasWidth = 1024,
-				AtlasHeight = 1024,
-				OversampleX = 2,
-				OversampleY = 2,
-				Padding = 2
-			});
+		let sizes = float[?](11, 12, 14, 16, 18, 20, 24, 28, 32);
+		for (let size in sizes)
+		{
+			mUI.LoadFont("Roboto", fontLocator, .()
+				{
+					PixelHeight = size,
+					FirstCodepoint = 32,
+					LastCodepoint = 255,
+					AtlasWidth = 1024,
+					AtlasHeight = 1024,
+					OversampleX = 2,
+					OversampleY = 2,
+					Padding = 2
+				});
+		}
 
 		// Generate a test image for ImageView demo
 		mTestImage = GenerateCheckerboard(64, 64, 8, .(100, 140, 200, 255), .(40, 50, 70, 255));
@@ -1101,10 +1101,14 @@ class UISandboxApp : Application, IDockableWindowHost
 				if (let resumeBtn = pauseRoot.FindByName<Button>("resume-btn"))
 				{
 					resumeBtn.OnClick.Add(new (b) => { Console.WriteLine("Resume clicked!"); });
-					// Inline style demo: override the theme rule for this
-					// specific button. SetStyle's Drawable overload
-					// consumes the ColorDrawable ref.
-					resumeBtn.SetStyle(.Background, new ColorDrawable(.(40, 120, 60, 255)));
+					// Inline state-list override: green base with
+					// hover/pressed/disabled variants derived from
+					// Palette. Reactivity is free because
+					// ButtonBase.DrawButtonBackground passes its
+					// ControlState into the drawable's state-aware
+					// Draw.
+					resumeBtn.SetStyle(.Background,
+						Palette.CreateStateRounded(.(45, 130, 70, 255), .(6)));
 				}
 				if (let settingsBtn = pauseRoot.FindByName<Button>("settings-btn"))
 					settingsBtn.OnClick.Add(new (b) => { Console.WriteLine("Settings clicked!"); });
@@ -1115,7 +1119,8 @@ class UISandboxApp : Application, IDockableWindowHost
 				if (let quitBtn = pauseRoot.FindByName<Button>("quit-btn"))
 				{
 					quitBtn.OnClick.Add(new (b) => { Console.WriteLine("Quit clicked!"); });
-					quitBtn.SetStyle(.Background, new ColorDrawable(.(150, 50, 50, 255)));
+					quitBtn.SetStyle(.Background,
+						Palette.CreateStateRounded(.(150, 60, 60, 255), .(6)));
 				}
 				// Inline style demo on a Label: override TextColor and
 				// FontSize without touching the theme or subclassing.
@@ -1124,6 +1129,31 @@ class UISandboxApp : Application, IDockableWindowHost
 					title.SetStyle(.TextColor, Color(255, 220, 100, 255));
 					title.SetStyle(.FontSize, 32f);
 				}
+
+				// LocalStyleSheet demo: scope a theming change to the
+				// pause subtree without touching the global theme.
+				//
+				//   - Every Label inside this Flex gets size + a soft
+				//     text color.
+				//   - Every Button gets padding + a default rounded
+				//     gray-blue state-list background that reacts to
+				//     hover / pressed / disabled.
+				//
+				// Inline overrides above still win - the title's
+				// inline FontSize=32 beats the local sheet's 14, and
+				// resume/quit's inline state-lists beat the gray-blue
+				// default (settings/save/load take the default).
+				let pauseLocal = new StyleSheet();
+				pauseLocal.ForType(typeof(Label))
+					.Set(.FontSize, 14f)
+					.Set(.TextColor, Color(210, 215, 225, 255));
+				pauseLocal.ForType(typeof(Button))
+					.Set(.Padding, Thickness(14, 8))
+					.Set(.Background,
+						Palette.CreateStateRounded(.(60, 65, 80, 255), .(6)),
+						consumeRef: true);
+				pauseRoot.LocalStyleSheet = pauseLocal;
+				pauseLocal.ReleaseRef(); // pauseRoot owns its ref now
 			}
 		}
 

@@ -1,9 +1,10 @@
 # Sedulous.UI - Per-View Style Overrides
 
-**Status:** Partial. Tier 1 (inline styles) shipped 2026-06-10,
-including a `Drawable : RefCounted` refactor that the original plan
-didn't anticipate. Tier 2 (local stylesheets) + the cross-cutting
-resolution algorithm + sandbox demo (sub-phases E-H) remain pending.
+**Status:** Shipped 2026-06-10. Tier 1 (inline styles) + Tier 2
+(local stylesheets) + the orchestrator-style resolution algorithm
+all live. The plan also wound up driving a `Drawable : RefCounted`
+refactor (sub-phases D.1-D.5) that the original design didn't
+anticipate.
 
 Adds two escape hatches to the styling system that v2 didn't ship:
 
@@ -205,10 +206,10 @@ handles the refcount internally.
 | &nbsp;&nbsp;D.3 | `View.SetStyle` overloads + inline-style storage migrated to internal `StyleSheet` | ✅ shipped | Dictionary replaced with `mInlineSheet`. All refcount mgmt reuses `StyleRule.Set` / `Remove`. |
 | &nbsp;&nbsp;D.4 | Drop typed `Background` / `CheckedBackground` fields; migrate ~50 call sites | ✅ shipped | Workspace clean. |
 | &nbsp;&nbsp;D.5 | Doc updates + build/test sanity | ✅ shipped | This file. Interactive sandbox/editor visual verification deferred to the user. |
-| E | `LocalStyleSheet` on `View` - ref-counted property, lifecycle | ⏳ pending | Set/clear AddRef/Release tested. |
-| F | Resolution algorithm: ancestor-chain walk + context fallback + inheritable recursion | ⏳ pending | Unit tests covering fall-through, scoped overrides, inheritance through a local sheet. |
-| G | Pseudo-element variant: `ResolvePartStyle` consults local sheets in the chain | ⏳ pending | Tests for `Slider::thumb` overridden via a `LocalStyleSheet` on an ancestor. |
-| H | Sandbox demo - one screen using each feature | ⏳ pending | Visual confirmation; doc snippet. |
+| E | `LocalStyleSheet` on `View` - ref-counted property, lifecycle | ✅ shipped | Mirrors `UIContext.StyleSheet`: no-op identical assign, AddRef new + Release old, destructor releases. |
+| F | Resolution algorithm: ancestor-chain walk + context fallback + inheritable recursion | ✅ shipped | `View.ResolveStyle` is the orchestrator; `StyleSheet.Resolve` shrank to per-sheet primitive. |
+| G | Pseudo-element variant: `ResolvePartStyle` consults local sheets in the chain | ✅ shipped | Same orchestrator pattern; no inheritance recursion for pseudo-elements. |
+| H | Sandbox demo - one screen using each feature | ✅ shipped | UISandbox "Pause (.sml)" tab: inline styles on title + resume/quit buttons, plus a `LocalStyleSheet` on the pause root that scopes Label/Button defaults to the subtree. |
 
 ## Files to add / modify
 
