@@ -206,4 +206,165 @@ class InlineStyleTests
 		view.SetInlinePartStyle("thumb", .CornerRadius, .FloatVal(4));
 		delete view;
 	}
+
+	// === Resolution priority (sub-phase B) ===
+
+	static StyleSheet SetupSheet(UIContext ctx)
+	{
+		let sheet = new StyleSheet();
+		ctx.StyleSheet = sheet;  // AddRef -> 2
+		sheet.ReleaseRef();      // -> 1 (ctx owns)
+		return sheet;
+	}
+
+	[Test]
+	public static void Resolution_InlineBeatsTypeRule()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let sheet = SetupSheet(ctx);
+		sheet.ForType(typeof(TestView))
+			.Set(.TextColor, Color(255, 0, 0, 255));
+
+		let view = new TestView();
+		root.AddView(view);
+		view.SetInlineStyle(.TextColor, .ColorVal(.(0, 255, 0, 255)));
+
+		// Inline (green) wins over the rule (red).
+		let c = view.ResolveStyleColor(.TextColor);
+		Test.Assert(c.R == 0 && c.G == 255);
+	}
+
+	[Test]
+	public static void Resolution_InlineBeatsClassPlusStateRule()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let sheet = SetupSheet(ctx);
+		// Class + state rule (specificity 11) on a disabled view -
+		// would win without an inline override.
+		sheet.ForTypeClassState(typeof(TestView), "btn", .Disabled)
+			.Set(.FontSize, 12.0f);
+
+		let view = new TestView();
+		view.AddClass("btn");
+		view.IsEnabled = false;
+		root.AddView(view);
+
+		view.SetInlineStyle(.FontSize, .FloatVal(99));
+
+		Test.Assert(view.ResolveStyleFloat(.FontSize) == 99);
+	}
+
+	[Test]
+	public static void Resolution_InlineIgnoresControlState()
+	{
+		// Inline values apply across every ControlState - changing the
+		// view's state doesn't make a state-scoped rule reappear.
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let sheet = SetupSheet(ctx);
+		sheet.ForTypeState(typeof(TestView), .Hover)
+			.Set(.TextColor, .Red);
+		sheet.ForType(typeof(TestView))
+			.Set(.TextColor, .Blue);
+
+		let view = new TestView();
+		root.AddView(view);
+		view.SetInlineStyle(.TextColor, .ColorVal(.(10, 20, 30, 255)));
+
+		// Even with no hover, inline wins; with hover, still wins.
+		Test.Assert(view.ResolveStyleColor(.TextColor).R == 10);
+	}
+
+	[Test]
+	public static void Resolution_InlineBeatsPseudoElementRule()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let sheet = SetupSheet(ctx);
+		sheet.ForTypePseudo(typeof(TestView), "thumb")
+			.Set(.CornerRadius, 4.0f);
+
+		let view = new TestView();
+		root.AddView(view);
+		view.SetInlinePartStyle("thumb", .CornerRadius, .FloatVal(16));
+
+		Test.Assert(view.ResolvePartFloat("thumb", .CornerRadius, .Normal) == 16);
+	}
+
+	[Test]
+	public static void Resolution_InlinePartScopedToItsPart()
+	{
+		// Inline override on "thumb" doesn't affect "track" resolution.
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let sheet = SetupSheet(ctx);
+		sheet.ForTypePseudo(typeof(TestView), "track")
+			.Set(.CornerRadius, 4.0f);
+
+		let view = new TestView();
+		root.AddView(view);
+		view.SetInlinePartStyle("thumb", .CornerRadius, .FloatVal(16));
+
+		// "track" still resolves to its rule (4); the thumb override
+		// doesn't bleed.
+		Test.Assert(view.ResolvePartFloat("track", .CornerRadius, .Normal) == 4);
+	}
+
+	[Test]
+	public static void Resolution_InlineOnParent_InheritsToChild()
+	{
+		// Inheritable property set inline on a parent reaches the
+		// child via the normal inheritance walk.
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		// Empty StyleSheet on the context, so no rules can satisfy this -
+		// only the parent's inline value can.
+		SetupSheet(ctx);
+
+		let group = new TestGroup();
+		let child = new TestView();
+		root.AddView(group);
+		group.AddView(child);
+
+		group.SetInlineStyle(.TextColor, .ColorVal(.(40, 50, 60, 255)));
+
+		let c = child.ResolveStyleColor(.TextColor);
+		Test.Assert(c.R == 40 && c.G == 50 && c.B == 60);
+	}
+
+	[Test]
+	public static void Resolution_InlineOnChild_BeatsRuleOnParent()
+	{
+		// Child's inline value wins over a rule on the parent type.
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let sheet = SetupSheet(ctx);
+		sheet.ForType(typeof(TestGroup))
+			.Set(.TextColor, .Red);
+
+		let group = new TestGroup();
+		let child = new TestView();
+		root.AddView(group);
+		group.AddView(child);
+
+		child.SetInlineStyle(.TextColor, .ColorVal(.(0, 255, 0, 255)));
+
+		Test.Assert(child.ResolveStyleColor(.TextColor).G == 255);
+	}
 }

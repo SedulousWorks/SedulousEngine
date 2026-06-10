@@ -158,6 +158,12 @@ public class StyleSheet : RefCounted
 	/// chain if no match on the view itself.
 	public StyleValue Resolve(View view, StyleProperty prop)
 	{
+		// Inline overrides beat every rule-based match - the CSS
+		// `style="..."` analogue, specificity infinity.
+		let @inline = view.GetInlineStyle(prop);
+		if (!(@inline case .None))
+			return @inline;
+
 		let state = view.GetControlState();
 
 		// Find the best matching rule with this property.
@@ -183,7 +189,9 @@ public class StyleSheet : RefCounted
 
 		if (bestValue case .None)
 		{
-			// For inheritable properties, try parent chain.
+			// For inheritable properties, try parent chain. The recursion
+			// re-enters this method, so the parent's inline overrides are
+			// consulted before its rules.
 			if (StyleInheritance.IsInheritable(prop) && view.Parent != null)
 				return Resolve(view.Parent, prop);
 		}
@@ -236,6 +244,11 @@ public class StyleSheet : RefCounted
 	/// The partState is the part's interaction state (e.g., thumb hovered).
 	public StyleValue ResolvePart(View view, StringView pseudoElement, StyleProperty prop, ControlState partState)
 	{
+		// Inline pseudo-element overrides win over any rule.
+		let @inline = view.GetInlinePartStyle(pseudoElement, prop);
+		if (!(@inline case .None))
+			return @inline;
+
 		StyleValue bestValue = .None;
 		int32 bestSpecificity = -1;
 
