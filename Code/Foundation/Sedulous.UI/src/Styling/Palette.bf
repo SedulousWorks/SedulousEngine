@@ -65,7 +65,7 @@ public static class Palette
 	/// hover/pressed/disabled/focused variants.
 	public static StateListDrawable CreateStateColors(Color baseColor)
 	{
-		let sl = new StateListDrawable(true);
+		let sl = new StateListDrawable();
 		sl.Set(.Normal, new ColorDrawable(baseColor));
 		sl.Set(.Hover, new ColorDrawable(ComputeHover(baseColor)));
 		sl.Set(.Pressed, new ColorDrawable(ComputePressed(baseColor)));
@@ -77,7 +77,7 @@ public static class Palette
 	/// Create a StateListDrawable with RoundedRectDrawable per state and per-corner radii.
 	public static StateListDrawable CreateStateRounded(Color baseColor, Sedulous.VG.CornerRadii radii)
 	{
-		let sl = new StateListDrawable(true);
+		let sl = new StateListDrawable();
 		sl.Set(.Normal, new RoundedRectDrawable(baseColor, radii));
 		sl.Set(.Hover, new RoundedRectDrawable(ComputeHover(baseColor), radii));
 		sl.Set(.Pressed, new RoundedRectDrawable(ComputePressed(baseColor), radii));

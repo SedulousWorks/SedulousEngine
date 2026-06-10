@@ -102,7 +102,7 @@ public static class DrawableFactoryRegistry
 
 		// state-list(normal=d, hover=d, pressed=d, ...) -> StateListDrawable
 		Register("state-list", new (parser, sheet) => {
-			let sl = new StateListDrawable(false); // sheet owns children via OwnDrawable
+			let sl = new StateListDrawable();
 			sheet.OwnDrawable(sl);
 
 			while (!parser.IsAtRParen())
@@ -114,7 +114,12 @@ public static class DrawableFactoryRegistry
 					let state = ParseStateName(stateName);
 					let drawable = parser.ParseDrawableValue(sheet);
 					if (drawable != null)
+					{
+						// Sheet already holds a ref via OwnDrawable; the
+						// StateList consumes a separate ref, so AddRef.
+						drawable.AddRef();
 						sl.Set(state, drawable);
+					}
 				}
 				if (!parser.MatchComma()) break;
 			}
@@ -149,14 +154,18 @@ public static class DrawableFactoryRegistry
 
 		// layer(d1, d2, ...) -> LayerDrawable
 		Register("layer", new (parser, sheet) => {
-			let ld = new LayerDrawable(false); // sheet owns children
+			let ld = new LayerDrawable();
 			sheet.OwnDrawable(ld);
 
 			while (!parser.IsAtRParen())
 			{
 				let drawable = parser.ParseDrawableValue(sheet);
 				if (drawable != null)
+				{
+					// Sheet already holds a ref; layer consumes a separate one.
+					drawable.AddRef();
 					ld.AddLayer(drawable);
+				}
 				if (!parser.MatchComma()) break;
 			}
 
@@ -172,7 +181,10 @@ public static class DrawableFactoryRegistry
 			if (parser.MatchComma()) b = parser.ParseFloatValue();
 			if (parser.MatchComma()) l = parser.ParseFloatValue();
 
-			let d = new InsetDrawable(inner, .(l, t, r, b), ownsInner: false); // sheet owns inner
+			// Sheet already holds a ref on `inner`; InsetDrawable consumes
+			// a separate one.
+			if (inner != null) inner.AddRef();
+			let d = new InsetDrawable(inner, .(l, t, r, b));
 			sheet.OwnDrawable(d);
 			return d;
 		});

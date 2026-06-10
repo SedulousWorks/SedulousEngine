@@ -732,7 +732,7 @@ public abstract class View : IPropertyOwner
 		if (mOwnedInlineDrawables != null)
 		{
 			for (let d in mOwnedInlineDrawables)
-				delete d;
+				d.ReleaseRef();
 			delete mOwnedInlineDrawables;
 		}
 	}

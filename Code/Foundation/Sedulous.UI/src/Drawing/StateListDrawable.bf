@@ -11,23 +11,27 @@ using System.Collections;
 public class StateListDrawable : Drawable
 {
 	private Dictionary<int, Drawable> mDrawables = new .() ~ delete _;
-	private bool mOwnsDrawables;
 
-	/// If ownsDrawables is true, the StateListDrawable deletes the
-	/// individual drawables on destruction.
-	public this(bool ownsDrawables = true) { mOwnsDrawables = ownsDrawables; }
+	public this() {}
 
 	public ~this()
 	{
-		if (mOwnsDrawables)
-			for (var kv in ref mDrawables)
-				if (kv.valueRef != null) { delete *kv.valueRef; kv.valueRef = null; }
+		for (var kv in ref mDrawables)
+			if (kv.valueRef != null) { (*kv.valueRef).ReleaseRef(); kv.valueRef = null; }
 	}
 
 	/// Set the drawable for a specific state (or flag combination).
+	/// Consumes the caller's ref - no AddRef. If a drawable was
+	/// already set for this state, the previous one is released.
 	public void Set(ControlState state, Drawable drawable)
 	{
-		mDrawables[(int)state] = drawable;
+		let key = (int)state;
+		if (mDrawables.TryGetValue(key, let prev))
+		{
+			if (prev != null && prev !== drawable)
+				prev.ReleaseRef();
+		}
+		mDrawables[key] = drawable;
 	}
 
 	/// Get the drawable for a state. Tries exact match first, then

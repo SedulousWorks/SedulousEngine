@@ -62,29 +62,29 @@ static class EditorIcons
 
 	public static void Shutdown()
 	{
-		delete TranslateIcon; TranslateIcon = null;
-		delete RotateIcon; RotateIcon = null;
-		delete ScaleIcon; ScaleIcon = null;
-		delete WorldSpaceIcon; WorldSpaceIcon = null;
-		delete LocalSpaceIcon; LocalSpaceIcon = null;
-		delete GridIcon; GridIcon = null;
+		TranslateIcon.ReleaseRef(); TranslateIcon = null;
+		RotateIcon.ReleaseRef(); RotateIcon = null;
+		ScaleIcon.ReleaseRef(); ScaleIcon = null;
+		WorldSpaceIcon.ReleaseRef(); WorldSpaceIcon = null;
+		LocalSpaceIcon.ReleaseRef(); LocalSpaceIcon = null;
+		GridIcon.ReleaseRef(); GridIcon = null;
 
-		delete SceneIcon; SceneIcon = null;
-		delete PrefabIcon; PrefabIcon = null;
-		delete MeshIcon; MeshIcon = null;
-		delete SkinnedMeshIcon; SkinnedMeshIcon = null;
-		delete MaterialIcon; MaterialIcon = null;
-		delete TextureIcon; TextureIcon = null;
-		delete ParticleFxIcon; ParticleFxIcon = null;
-		delete AudioClipIcon; AudioClipIcon = null;
-		delete SoundCueIcon; SoundCueIcon = null;
-		delete AnimationIcon; AnimationIcon = null;
-		delete AnimGraphIcon; AnimGraphIcon = null;
-		delete SkeletonIcon; SkeletonIcon = null;
-		delete PropAnimIcon; PropAnimIcon = null;
-		delete FontIcon; FontIcon = null;
-		delete FolderIcon; FolderIcon = null;
-		delete UnknownIcon; UnknownIcon = null;
+		SceneIcon.ReleaseRef(); SceneIcon = null;
+		PrefabIcon.ReleaseRef(); PrefabIcon = null;
+		MeshIcon.ReleaseRef(); MeshIcon = null;
+		SkinnedMeshIcon.ReleaseRef(); SkinnedMeshIcon = null;
+		MaterialIcon.ReleaseRef(); MaterialIcon = null;
+		TextureIcon.ReleaseRef(); TextureIcon = null;
+		ParticleFxIcon.ReleaseRef(); ParticleFxIcon = null;
+		AudioClipIcon.ReleaseRef(); AudioClipIcon = null;
+		SoundCueIcon.ReleaseRef(); SoundCueIcon = null;
+		AnimationIcon.ReleaseRef(); AnimationIcon = null;
+		AnimGraphIcon.ReleaseRef(); AnimGraphIcon = null;
+		SkeletonIcon.ReleaseRef(); SkeletonIcon = null;
+		PropAnimIcon.ReleaseRef(); PropAnimIcon = null;
+		FontIcon.ReleaseRef(); FontIcon = null;
+		FolderIcon.ReleaseRef(); FolderIcon = null;
+		UnknownIcon.ReleaseRef(); UnknownIcon = null;
 	}
 
 	/// Returns the icon associated with a resource extension (or the folder

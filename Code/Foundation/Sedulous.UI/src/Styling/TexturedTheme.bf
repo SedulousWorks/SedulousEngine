@@ -218,7 +218,7 @@ public static class TexturedTheme
 		{
 			let drawableKey = kv.key;
 			let states = kv.value;
-			let stateList = new StateListDrawable(true);
+			let stateList = new StateListDrawable();
 
 			for (let (state, internalKey) in states)
 			{

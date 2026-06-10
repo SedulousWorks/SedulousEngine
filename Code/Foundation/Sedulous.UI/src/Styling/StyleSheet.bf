@@ -298,7 +298,7 @@ public class StyleSheet : RefCounted
 		delete mRules;
 
 		for (let d in mOwnedDrawables)
-			delete d;
+			d.ReleaseRef();
 		delete mOwnedDrawables;
 
 		for (let r in mOwnedResources)

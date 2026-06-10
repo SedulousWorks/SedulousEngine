@@ -28,7 +28,7 @@ class FontEditorPage : IEditorPage
 	/// custom view consumers take a non-owning reference). Destructed
 	/// before mAtlasImage, but ImageDrawable doesn't touch its IImageData
 	/// at destruction so the order is incidental.
-	private ImageDrawable mAtlasDrawable ~ if (_ != null) delete _;
+	private ImageDrawable mAtlasDrawable ~ if (_ != null) _.ReleaseRef();
 
 	public this(StringView filePath, FontResource fontResource)
 	{

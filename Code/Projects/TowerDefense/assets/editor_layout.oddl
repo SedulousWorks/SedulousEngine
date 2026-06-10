@@ -24,7 +24,7 @@ Obj_ %first {
 			string %id {"page:project://Fox/fox_material.material"}
 		}
 	}
-	int32 %activeTab {5}
+	int32 %activeTab {0}
 }
 Obj_ %second {
 	int32 %type {0}

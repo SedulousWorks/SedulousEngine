@@ -108,7 +108,8 @@ class InlineStyleTests
 	public static void Inline_AcceptsEveryValueKind()
 	{
 		let view = scope TestView();
-		let drawable = scope ColorDrawable(.Red);
+		let drawable = new ColorDrawable(.Red);
+		defer drawable.ReleaseRef();
 
 		view.SetInlineStyle(.TextColor,  .ColorVal(.(10, 20, 30, 255)));
 		view.SetInlineStyle(.FontSize,   .FloatVal(16));
@@ -405,7 +406,7 @@ class InlineStyleTests
 		let before = TrackingDrawable.LiveCount;
 
 		let d = new TrackingDrawable();
-		defer delete d;
+		defer d.ReleaseRef();
 
 		let view = new TestView();
 		// Inline reference without OwnInlineDrawable - caller keeps lifetime.

@@ -55,7 +55,7 @@ public class DrawableView : View
 
 	public ~this()
 	{
-		if (OwnsDrawable && Drawable != null)
-			delete Drawable;
+		if (OwnsDrawable)
+			Drawable?.ReleaseRef();
 	}
 }

@@ -32,7 +32,7 @@ class ThemeAtlasTests
 		Test.Assert(atlas.Build());
 
 		let drawable = atlas.CreateImageDrawable("button");
-		defer delete drawable;
+		defer drawable.ReleaseRef();
 		Test.Assert(drawable != null);
 		Test.Assert(drawable.AtlasImage != null);
 	}
@@ -49,7 +49,7 @@ class ThemeAtlasTests
 
 		let slices = NineSlice(4, 4, 4, 4);
 		let drawable = atlas.CreateNineSliceDrawable("panel", slices);
-		defer delete drawable;
+		defer drawable.ReleaseRef();
 		Test.Assert(drawable != null);
 		Test.Assert(drawable.Slices.Left == 4);
 	}
@@ -76,7 +76,7 @@ class ThemeAtlasTests
 
 		(ControlState, StringView)[2] states = .((.Normal, "btn_normal"), (.Hover, "btn_hover"));
 		let stateDrawable = atlas.CreateStateDrawable(states);
-		defer delete stateDrawable;
+		defer stateDrawable.ReleaseRef();
 		Test.Assert(stateDrawable != null);
 	}
 
@@ -97,7 +97,7 @@ class ThemeAtlasTests
 		let d1 = atlas.CreateImageDrawable("red");
 		let d2 = atlas.CreateImageDrawable("green");
 		let d3 = atlas.CreateImageDrawable("blue");
-		defer { delete d1; delete d2; delete d3; }
+		defer { d1.ReleaseRef(); d2.ReleaseRef(); d3.ReleaseRef(); }
 
 		Test.Assert(d1 != null);
 		Test.Assert(d2 != null);

@@ -63,7 +63,7 @@ public class ThemeAtlas
 	public StateListDrawable CreateStateDrawable(Span<(ControlState, StringView)> stateImages,
 		NineSlice slices = default, Color tint = .White, Thickness expand = default)
 	{
-		let stateList = new StateListDrawable(true);
+		let stateList = new StateListDrawable();
 
 		for (let (state, name) in stateImages)
 		{

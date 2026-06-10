@@ -11,7 +11,7 @@ public abstract class ButtonBase : View
 	private bool mIsPressed;
 
 	/// Per-instance background override (owned by this view).
-	public Drawable Background ~ delete _;
+	public Drawable Background ~ _?.ReleaseRef();
 
 	/// Optional command binding. Executed on click if CanExecute() is true.
 	public ICommand Command;

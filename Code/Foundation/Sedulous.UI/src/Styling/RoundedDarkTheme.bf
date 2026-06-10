@@ -24,7 +24,7 @@ public static class RoundedDarkTheme
 			.Set(.FontSize, 16.0f);
 
 		// === Button - rounded state drawables ===
-		let btnBg = new StateListDrawable(true);
+		let btnBg = new StateListDrawable();
 		btnBg.Set(.Normal, new RoundedRectDrawable(p.SurfaceBright, R));
 		btnBg.Set(.Hover, new RoundedRectDrawable(Palette.ComputeHover(p.SurfaceBright), R));
 		btnBg.Set(.Pressed, new RoundedRectDrawable(Palette.ComputePressed(p.SurfaceBright), R));
@@ -32,7 +32,7 @@ public static class RoundedDarkTheme
 		btnBg.Set(.Focused, new RoundedRectDrawable(Palette.ComputeFocused(p.SurfaceBright), R));
 		sheet.OwnDrawable(btnBg);
 
-		let btnChecked = new StateListDrawable(true);
+		let btnChecked = new StateListDrawable();
 		btnChecked.Set(.Normal, new RoundedRectDrawable(p.PrimaryAccent, R));
 		btnChecked.Set(.Hover, new RoundedRectDrawable(Palette.ComputeHover(p.PrimaryAccent), R));
 		btnChecked.Set(.Pressed, new RoundedRectDrawable(Palette.ComputePressed(p.PrimaryAccent), R));

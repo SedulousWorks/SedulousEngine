@@ -8,7 +8,7 @@ using Sedulous.Core.Mathematics;
 public class Panel : ViewGroup
 {
 	/// Per-instance background override. Owned by this view.
-	public Drawable Background ~ delete _;
+	public Drawable Background ~ _?.ReleaseRef();
 
 	protected override void OnMeasure(BoxConstraints constraints)
 	{

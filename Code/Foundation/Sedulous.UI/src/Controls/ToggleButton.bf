@@ -11,7 +11,7 @@ public class ToggleButton : ButtonBase
 	public Property<bool> IsChecked = new .(false) ~ delete _;
 
 	/// Per-instance background for checked state (owned).
-	public Drawable CheckedBackground ~ delete _;
+	public Drawable CheckedBackground ~ _?.ReleaseRef();
 
 	/// The content view (owned by this button).
 	private View mContent ~ delete _;

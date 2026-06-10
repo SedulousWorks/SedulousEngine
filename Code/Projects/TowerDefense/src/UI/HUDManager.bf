@@ -296,13 +296,14 @@ class HUDManager
 
 	private void UpdateSpeedButtons()
 	{
-		// Highlight active speed button, reset others
+		// Highlight active speed button, reset others. Field assignment
+		// to a RefCounted Drawable consumes the ref; releasing the
+		// previous one keeps the field from leaking on overwrite.
 		let activeColor = new ColorDrawable(.(80, 140, 200, 255));
-		if (mSpeed1Btn != null) { delete mSpeed1Btn.Background; mSpeed1Btn.Background = (mCurrentSpeed == 1.0f) ? activeColor : null; }
-		if (mSpeed2Btn != null) { delete mSpeed2Btn.Background; mSpeed2Btn.Background = (mCurrentSpeed == 2.0f) ? new ColorDrawable(.(80, 140, 200, 255)) : null; }
-		if (mSpeed3Btn != null) { delete mSpeed3Btn.Background; mSpeed3Btn.Background = (mCurrentSpeed == 3.0f) ? new ColorDrawable(.(80, 140, 200, 255)) : null; }
-		// If none matched 1x, we used activeColor above; otherwise delete it
-		if (mCurrentSpeed != 1.0f) delete activeColor;
+		if (mSpeed1Btn != null) { mSpeed1Btn.Background?.ReleaseRef(); mSpeed1Btn.Background = (mCurrentSpeed == 1.0f) ? activeColor : null; }
+		if (mSpeed2Btn != null) { mSpeed2Btn.Background?.ReleaseRef(); mSpeed2Btn.Background = (mCurrentSpeed == 2.0f) ? new ColorDrawable(.(80, 140, 200, 255)) : null; }
+		if (mSpeed3Btn != null) { mSpeed3Btn.Background?.ReleaseRef(); mSpeed3Btn.Background = (mCurrentSpeed == 3.0f) ? new ColorDrawable(.(80, 140, 200, 255)) : null; }
+		if (mCurrentSpeed != 1.0f) activeColor.ReleaseRef();
 	}
 
 	private void UpdateLabels(GameSubsystem gs) { UpdateGold(gs); UpdateLives(gs); UpdateWave(gs); }

@@ -22,4 +22,4 @@ Arr_ %OpenPages {
 		string %uri {"project://Fox/fox_material.material"}
 	}
 }
-int32 %ActivePageIndex {5}
+int32 %ActivePageIndex {0}

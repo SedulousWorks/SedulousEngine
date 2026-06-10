@@ -543,7 +543,7 @@ class StyleSheetTests
 	public static void Palette_CreateStateColors_AllStatesSet()
 	{
 		let sl = Palette.CreateStateColors(.(80, 80, 80, 255));
-		defer delete sl;
+		defer sl.ReleaseRef();
 
 		Test.Assert(sl.Get(.Normal) != null);
 		Test.Assert(sl.Get(.Hover) != null);

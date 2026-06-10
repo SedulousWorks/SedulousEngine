@@ -9,21 +9,18 @@ public class InsetDrawable : Drawable
 {
 	public Drawable Inner { get; private set; }
 	public Thickness Inset;
-	private bool mOwnsInner;
 
-	/// If ownsInner is true (default), the InsetDrawable deletes the
-	/// inner drawable on destruction.
-	public this(Drawable inner, Thickness inset, bool ownsInner = true)
+	/// Consumes the caller's ref on `inner` - no AddRef. The inner
+	/// drawable is released when this InsetDrawable is freed.
+	public this(Drawable inner, Thickness inset)
 	{
 		Inner = inner;
 		Inset = inset;
-		mOwnsInner = ownsInner;
 	}
 
 	public ~this()
 	{
-		if (mOwnsInner && Inner != null)
-			delete Inner;
+		Inner?.ReleaseRef();
 	}
 
 	public override void Draw(UIDrawContext ctx, RectangleF bounds)

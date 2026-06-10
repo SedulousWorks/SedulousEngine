@@ -14,17 +14,17 @@ public class LayerDrawable : Drawable
 	}
 
 	private List<Layer> mLayers = new .() ~ delete _;
-	private bool mOwnsDrawables;
 
-	public this(bool ownsDrawables = true) { mOwnsDrawables = ownsDrawables; }
+	public this() {}
 
 	public ~this()
 	{
-		if (mOwnsDrawables)
-			for (let layer in mLayers)
-				if (layer.Drawable != null) delete layer.Drawable;
+		for (let layer in mLayers)
+			layer.Drawable?.ReleaseRef();
 	}
 
+	/// Consumes the caller's ref on `drawable` - no AddRef. The layer
+	/// is released when this LayerDrawable is freed.
 	public void AddLayer(Drawable drawable, Thickness inset = .())
 	{
 		mLayers.Add(.() { Drawable = drawable, Inset = inset });
