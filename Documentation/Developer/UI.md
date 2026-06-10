@@ -314,13 +314,121 @@ btn.AddClass("danger");  // matches .danger { ... } rules
 
 ### Per-Instance Overrides
 
-Some properties can be set directly on a view, bypassing the stylesheet:
+Two paths for overriding the stylesheet on a single view: typed
+properties on the control, and inline styles via `SetStyle`.
+
+**Typed properties** — `Property<T>` fields on the control. `null`
+means "defer to the cascade":
 
 ```beef
-label.FontSize.Value = 24;               // overrides stylesheet FontSize
-label.TextColor.Value = .(255, 0, 0, 255); // overrides stylesheet TextColor
-button.Background = myCustomDrawable;     // overrides stylesheet Background
+label.FontSize.Value = 24;
+label.TextColor.Value = .(255, 0, 0, 255);
+label.FontFamily.Value = new String("Roboto");
 ```
+
+These exist on `Label`, `Button`, `CheckBox`, `EditableLabel`,
+and `RadioButton`. The Property setters mark the visual dirty so
+re-layout happens automatically.
+
+**Inline styles** — `SetStyle(prop, value)` writes to the view's
+internal inline `StyleSheet`. Any property goes through this path,
+not just the ones with a typed field:
+
+```beef
+panel.SetStyle(.Background, new ColorDrawable(.Red));    // consumes ref
+panel.SetStyle(.Padding, Thickness(14, 8));
+label.SetStyle(.FontSize, 22f);
+label.SetStyle(.FontFamily, "JungleAdventurer");
+slider.SetPartStyle("thumb", .Background, drawable);     // pseudo-element
+
+label.GetInlineStyle(.FontSize);    // round-trip
+label.HasInlineStyle(.FontSize);
+label.ClearInlineStyle(.FontSize);
+label.ClearInlineStyles();           // wipe every inline override
+```
+
+The Drawable overload consumes the caller's ref by default
+(`consumeRef: true`); pass `consumeRef: false` to AddRef instead
+when the drawable is shared.
+
+Inline values beat every rule match — they're effectively
+"specificity infinity" in the cascade.
+
+### LocalStyleSheet
+
+Any view can hold a `LocalStyleSheet` (a `RefCounted` `StyleSheet`)
+that applies to the view and its descendants. The resolution cascade
+walks the ancestor chain consulting each `LocalStyleSheet` before
+falling through to the context sheet. Use this to scope a theming
+change to a Dialog, a pause menu, or any subtree without mutating
+the global theme.
+
+```beef
+let scoped = new StyleSheet();
+scoped.ForType(typeof(Label))
+    .Set(.FontSize, 14f)
+    .Set(.TextColor, Color(210, 215, 225, 255));
+scoped.ForAll().Set(.FontFamily, "JungleAdventurer");  // every view inherits
+
+pauseRoot.LocalStyleSheet = scoped;
+scoped.ReleaseRef();   // setter AddRef'd; release the creator's ref
+```
+
+The setter mirrors `UIContext.StyleSheet` exactly — AddRefs the new
+value, Releases the previous, no-ops on an identical assignment.
+Multiple views can safely share one `LocalStyleSheet`.
+
+### Inline styles in markup
+
+`.sml` accepts a generic `style="..."` attribute on any view tag.
+The body parses with the same lexer / parser as `.sss` declarations:
+
+```xml
+<Label text="Big" style="font-size: 22; text-color: #ffdc64; font-family: Roboto;"/>
+<Button text="Buy" style="background: state-rounded(rgb(40, 120, 60), radius=6);"/>
+<Panel style="background: rounded-rect(rgb(35, 38, 48), radius=12, border-width=2, border=rgb(80, 90, 110));"/>
+```
+
+Drawable values are owned by the view's inline sheet, so they're
+released when the view dies. Theme variables (`$name`) and `@`-rules
+are not supported inline.
+
+The five controls with typed Properties also accept dedicated
+markup attributes for ergonomics:
+
+```xml
+<Label font-size="22" font-family="Roboto" text="Hello"/>
+<Button font-size="14" font-family="JungleAdventurer" text="Play"/>
+```
+
+### Cascade resolution
+
+`view.ResolveStyle(prop)` walks four sources in order:
+
+1. Inline sheet on this view (specificity infinity).
+2. Ancestor chain (self → root) consulting each `LocalStyleSheet`.
+   "Not found" falls through to the next ancestor.
+3. Context `StyleSheet`.
+4. For inheritable properties (`TextColor`, `FontSize`,
+   `FontFamily`), recurse the whole algorithm at `Parent`.
+
+The same orchestrator handles pseudo-element queries via
+`ResolvePartStyle(part, prop, state)`.
+
+### ForAll() rule
+
+A `ForAll()` rule has an empty selector (specificity 0) and matches
+every view. Useful on a `LocalStyleSheet` to set one property for an
+entire subtree regardless of type:
+
+```beef
+local.ForAll().Set(.FontFamily, "Roboto");  // every descendant inherits
+```
+
+Compare with `sheet.ForType(typeof(View))` — same effect on the
+match side, but specificity 1, so it loses to any other typed rule
+on the same sheet. Use `ForAll()` when you want the lowest-priority
+"default for everything."
 
 ### .sss Reference
 
@@ -367,7 +475,7 @@ inset(drawable, 4 4 4 4)                       /* inset wrapper */
 background: ...;
 checked-background: ...;
 
-/* Colors (text-color and font-size inherit through parent chain) */
+/* Colors (text-color, font-size, font-family inherit through parent chain) */
 text-color: #fff;
 placeholder-color: #888;
 border-color: #444;
@@ -387,6 +495,10 @@ height: 4;       /* for pseudo-elements */
 /* Spacing */
 padding: 8 12;   /* top/bottom 8, left/right 12 */
 margin: 4;
+
+/* Strings (font-family accepts bare ident or quoted string) */
+font-family: Roboto;
+font-family: "Attack Of Monster";
 
 /* Text */
 word-wrap: true;
