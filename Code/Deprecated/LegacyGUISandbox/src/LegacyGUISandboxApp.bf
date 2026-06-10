@@ -36,6 +36,7 @@ class LegacyGUISandboxApp : Application
 
 	// Drawing renderer
 	private DrawingRenderer mDrawingRenderer;
+	private DrawingRenderSlice mDrawingSlice;
 
 	// Shader system
 	private ShaderSystem mShaderSystem;
@@ -207,8 +208,12 @@ class LegacyGUISandboxApp : Application
 		BuildDrawCommands();
 
 		// Update renderer
-		mDrawingRenderer.UpdateProjection(SwapChain.Width, SwapChain.Height, frame.FrameIndex);
-		mDrawingRenderer.Prepare(mDrawContext.GetBatch(), frame.FrameIndex);
+		mDrawingRenderer.BeginFrame(frame.FrameIndex);
+		let batch = mDrawContext.GetBatch();
+		if (batch != null)
+			mDrawingSlice = mDrawingRenderer.Prepare(batch, frame.FrameIndex, SwapChain.Width, SwapChain.Height);
+		else
+			mDrawingSlice = .Invalid;
 	}
 
 	private void BuildDrawCommands()
@@ -230,7 +235,7 @@ class LegacyGUISandboxApp : Application
 
 	protected override void OnRender(IRenderPassEncoder renderPass, FrameContext frame)
 	{
-		mDrawingRenderer.Render(renderPass, SwapChain.Width, SwapChain.Height, frame.FrameIndex, useMsaa: false);
+		mDrawingRenderer.Render(renderPass, SwapChain.Width, SwapChain.Height, frame.FrameIndex, mDrawingSlice, useMsaa: false);
 	}
 
 	protected override void OnResize(int32 width, int32 height)

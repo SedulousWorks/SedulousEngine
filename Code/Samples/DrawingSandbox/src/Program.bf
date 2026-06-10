@@ -23,6 +23,7 @@ class DrawingSandboxApp : Application
 
 	// GPU renderer
 	private DrawingRenderer mDrawingRenderer;
+	private DrawingRenderSlice mDrawingSlice;
 
 	// Shader system
 	private ShaderSystem mShaderSystem;
@@ -117,11 +118,12 @@ class DrawingSandboxApp : Application
 		BuildDrawCommands();
 
 		// Prepare batch data for GPU
+		mDrawingRenderer.BeginFrame(frame.FrameIndex);
 		let batch = mDrawContext.GetBatch();
-		mDrawingRenderer.Prepare(batch, frame.FrameIndex);
-
-		// Update projection matrix
-		mDrawingRenderer.UpdateProjection(SwapChain.Width, SwapChain.Height, frame.FrameIndex);
+		if (batch != null)
+			mDrawingSlice = mDrawingRenderer.Prepare(batch, frame.FrameIndex, SwapChain.Width, SwapChain.Height);
+		else
+			mDrawingSlice = .Invalid;
 	}
 
 	private void BuildDrawCommands()
@@ -320,7 +322,7 @@ class DrawingSandboxApp : Application
 		let renderPass = render.Encoder.BeginRenderPass(passDesc);
 		if (renderPass != null)
 		{
-			mDrawingRenderer.Render(renderPass, render.SwapChain.Width, render.SwapChain.Height, render.Frame.FrameIndex);
+			mDrawingRenderer.Render(renderPass, render.SwapChain.Width, render.SwapChain.Height, render.Frame.FrameIndex, mDrawingSlice);
 			renderPass.End();
 			//delete renderPass;
 		}

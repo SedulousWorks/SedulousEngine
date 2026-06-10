@@ -17,6 +17,34 @@ struct DrawingUniforms
 	public Matrix Projection;
 }
 
+/// Handle to a single batch's data inside the shared per-frame buffers
+/// for the standard (per-vertex) path. Returned by `DrawingRenderer.Prepare`;
+/// passed to `DrawingRenderer.Render` to dispatch only that slice. Multiple
+/// slices in a frame share one vertex/index/uniform buffer via byte offsets.
+public struct DrawingRenderSlice
+{
+	public uint32 VertexByteOffset;
+	public uint32 IndexByteOffset;
+	public uint32 UniformByteOffset;
+	public int32 DrawCommandStart;
+	public int32 DrawCommandCount;
+	public bool IsValid;
+
+	public static DrawingRenderSlice Invalid => .() { IsValid = false };
+}
+
+/// Handle to a single batch's data for the instanced sprite path.
+/// Returned by `PrepareInstanced`; passed to `RenderInstanced`.
+public struct DrawingInstancedSlice
+{
+	public uint32 InstanceByteOffset;
+	public uint32 InstanceCount;
+	public uint32 UniformByteOffset;
+	public bool IsValid;
+
+	public static DrawingInstancedSlice Invalid => .() { IsValid = false };
+}
+
 /// Per-instance data for instanced sprite rendering.
 /// Must match the shader's InstanceInput struct layout.
 [CRepr]
@@ -121,18 +149,34 @@ public class DrawingRenderer : IDisposable
 		}
 	}
 
-	// Batch data converted for GPU (standard mode)
+	// Batch data converted for GPU (standard mode). Accumulates across
+	// every Prepare call in a frame; reset by BeginFrame.
 	private List<DrawingRenderVertex> mVertices = new .() ~ delete _;
 	private List<uint16> mIndices = new .() ~ delete _;
 	private List<DrawCommand> mDrawCommands = new .() ~ delete _;
 
-	// Instance data for instanced sprite rendering
+	// Instance data for instanced sprite rendering (also accumulates per
+	// frame, reset by BeginFrame).
 	private List<DrawingSpriteInstance> mSpriteInstances = new .() ~ delete _;
+
+	// Per-frame ring offsets - reset by BeginFrame, advanced by each
+	// Prepare / PrepareInstanced call. Bytes.
+	private uint32[] mFrameVertexOffsets;
+	private uint32[] mFrameIndexOffsets;
+	private uint32[] mFrameInstanceOffsets;
+	private uint32[] mFrameUniformSlotCount;
 
 	// Buffer sizes
 	private const int32 MAX_VERTICES = 65536;
 	private const int32 MAX_INDICES = 65536 * 3;
 	private const int32 MAX_SPRITE_INSTANCES = 16384;
+	/// Maximum slices per frame across both standard + instanced paths.
+	/// Each uniform slot holds one `DrawingUniforms` padded to UNIFORM_SLOT_SIZE
+	/// for dynamic-offset alignment. 64 slots × 256 B = 16 KB.
+	private const int32 MAX_UNIFORM_SLOTS = 64;
+	/// Conservative dynamic-offset alignment (Vulkan minUniformBufferOffsetAlignment
+	/// and D3D12 are both typically 256). `sizeof(DrawingUniforms)` is 64.
+	private const int32 UNIFORM_SLOT_SIZE = 256;
 
 	public bool IsInitialized { get; private set; }
 
@@ -171,6 +215,12 @@ public class DrawingRenderer : IDisposable
 			// Create per-frame resources
 			if (CreatePerFrameResources() case .Err)
 				return .Err;
+
+			// Per-frame ring-offset state.
+			mFrameVertexOffsets = new uint32[mFrameCount];
+			mFrameIndexOffsets = new uint32[mFrameCount];
+			mFrameInstanceOffsets = new uint32[mFrameCount];
+			mFrameUniformSlotCount = new uint32[mFrameCount];
 
 			IsInitialized = true;
 			return .Ok;
@@ -394,122 +444,221 @@ public class DrawingRenderer : IDisposable
 			mExternalCache.MarkReady(imageRef);
 	}
 
-	/// Prepare batch data for standard (per-vertex) rendering.
-	/// Call this after drawing to DrawContext and before the render pass.
-	public void Prepare(DrawBatch batch, int32 frameIndex)
+	/// Reset per-frame ring-offset state for the given frame index.
+	/// Call once per frame before the first Prepare / PrepareInstanced for
+	/// that frame. Clears CPU scratch (GPU has already consumed last frame's
+	/// data).
+	public void BeginFrame(int32 frameIndex)
+	{
+		mFrameVertexOffsets[frameIndex] = 0;
+		mFrameIndexOffsets[frameIndex] = 0;
+		mFrameInstanceOffsets[frameIndex] = 0;
+		mFrameUniformSlotCount[frameIndex] = 0;
+		mVertices.Clear();
+		mIndices.Clear();
+		mDrawCommands.Clear();
+		mSpriteInstances.Clear();
+		mBatchTextures.Clear();
+	}
+
+	/// Upload one batch's vertices, indices, projection uniform, and draw
+	/// commands into the shared frame buffers (standard per-vertex path).
+	/// Returns a slice token that `Render` consumes to dispatch just this
+	/// batch's draws out of the shared state.
+	public DrawingRenderSlice Prepare(DrawBatch batch, int32 frameIndex, uint32 width, uint32 height)
 	{
 		using (SProfiler.Begin("DrawingRenderer.Prepare"))
 		{
+			let vertCountIn = (uint32)batch.Vertices.Count;
+			let idxCountIn = (uint32)batch.Indices.Count;
+			if (vertCountIn == 0 || idxCountIn == 0)
+				return .Invalid;
+
+			let vertByteSize = vertCountIn * (uint32)sizeof(DrawingRenderVertex);
+			let idxByteSize = idxCountIn * (uint32)sizeof(uint16);
+			let sliceVertOffset = mFrameVertexOffsets[frameIndex];
+			let sliceIdxOffset = mFrameIndexOffsets[frameIndex];
+			let sliceUniformSlot = mFrameUniformSlotCount[frameIndex];
+
+			let maxVertBytes = (uint32)(MAX_VERTICES * sizeof(DrawingRenderVertex));
+			let maxIdxBytes = (uint32)(MAX_INDICES * sizeof(uint16));
+			let endVertOffset = sliceVertOffset + vertByteSize;
+			let endIdxOffset = sliceIdxOffset + idxByteSize;
+			let vertOverflow = endVertOffset > maxVertBytes;
+			let idxOverflow = endIdxOffset > maxIdxBytes;
+			let uniformOverflow = sliceUniformSlot >= (uint32)MAX_UNIFORM_SLOTS;
+			if (vertOverflow || idxOverflow || uniformOverflow)
+			{
+				Console.WriteLine("DrawingRenderer: frame capacity exceeded, slice dropped");
+				return .Invalid;
+			}
+
+			let sliceUniformOffset = sliceUniformSlot * (uint32)UNIFORM_SLOT_SIZE;
+			let sliceCmdStart = (int32)mDrawCommands.Count;
+			let textureBase = (int32)mBatchTextures.Count;
+
 			// Convert vertices
-			mVertices.Clear();
 			for (let v in batch.Vertices)
 				mVertices.Add(.(v));
 
 			// Copy indices
-			mIndices.Clear();
 			for (let i in batch.Indices)
 				mIndices.Add(i);
 
-			// Copy draw commands
-			mDrawCommands.Clear();
-			for (let cmd in batch.Commands)
-				mDrawCommands.Add(cmd);
-
-			// Store batch textures for multi-texture rendering
-			mBatchTextures.Clear();
+			// Store batch textures for multi-texture rendering. Cmd
+			// TextureIndex is offset so it indexes into the shared
+			// mBatchTextures rather than the per-batch list.
 			for (let tex in batch.Textures)
 				mBatchTextures.Add(tex);
 
-			// Upload to GPU buffers
-			if (mVertices.Count > 0)
+			// Copy draw commands (with TextureIndex remapped).
+			for (let cmd in batch.Commands)
 			{
-				let vertexData = Span<uint8>((uint8*)mVertices.Ptr, mVertices.Count * sizeof(DrawingRenderVertex));
-				TransferHelper.WriteMappedBuffer(mVertexBuffers[frameIndex], 0, vertexData);
-
-				let indexData = Span<uint8>((uint8*)mIndices.Ptr, mIndices.Count * sizeof(uint16));
-				TransferHelper.WriteMappedBuffer(mIndexBuffers[frameIndex], 0, indexData);
+				var adjustedCmd = cmd;
+				if (cmd.TextureIndex >= 0)
+					adjustedCmd.TextureIndex = cmd.TextureIndex + textureBase;
+				mDrawCommands.Add(adjustedCmd);
 			}
 
+			// Upload to GPU buffers - each slice writes to its own byte
+			// offset so multiple slices in a frame don't overwrite each
+			// other.
+			let vertSliceData = Span<uint8>((uint8*)(&mVertices[(int)(sliceVertOffset / (uint32)sizeof(DrawingRenderVertex))]), (int)vertByteSize);
+			TransferHelper.WriteMappedBuffer(mVertexBuffers[frameIndex], (uint64)sliceVertOffset, vertSliceData);
+
+			let idxSliceData = Span<uint8>((uint8*)(&mIndices[(int)(sliceIdxOffset / (uint32)sizeof(uint16))]), (int)idxByteSize);
+			TransferHelper.WriteMappedBuffer(mIndexBuffers[frameIndex], (uint64)sliceIdxOffset, idxSliceData);
+
+			// Write this slice's projection into its uniform slot. The
+			// uniform binding's dynamic offset (set at Render time) picks
+			// the right slot.
+			Matrix projection = Matrix.CreateOrthographicOffCenter(0, (float)width, (float)height, 0, -1, 1);
+			DrawingUniforms uniforms = .() { Projection = projection };
+			let uniformData = Span<uint8>((uint8*)&uniforms, sizeof(DrawingUniforms));
+			TransferHelper.WriteMappedBuffer(mUniformBuffers[frameIndex], (uint64)sliceUniformOffset, uniformData);
+
 			// Ensure GPU textures are created and bind groups are ready
-			for (int32 texIdx = 0; texIdx < mBatchTextures.Count; texIdx++)
+			// for any newly-added batch textures.
+			for (int32 texIdx = textureBase; texIdx < mBatchTextures.Count; texIdx++)
 				UpdateTextureBindGroup(texIdx, frameIndex);
+
+			// Advance ring offsets.
+			mFrameVertexOffsets[frameIndex] = endVertOffset;
+			mFrameIndexOffsets[frameIndex] = endIdxOffset;
+			mFrameUniformSlotCount[frameIndex] = sliceUniformSlot + 1;
+
+			return .()
+			{
+				VertexByteOffset = sliceVertOffset,
+				IndexByteOffset = sliceIdxOffset,
+				UniformByteOffset = sliceUniformOffset,
+				DrawCommandStart = sliceCmdStart,
+				DrawCommandCount = (int32)mDrawCommands.Count - sliceCmdStart,
+				IsValid = true,
+			};
 		}
 	}
 
-	/// Prepare sprite instances for instanced rendering.
-	/// Call this with sprite instance data before rendering.
-	public void PrepareInstanced(Span<DrawingSpriteInstance> instances, int32 frameIndex)
+	/// Upload one batch of sprite instances + projection into the shared
+	/// frame buffers and return a slice for `RenderInstanced`.
+	public DrawingInstancedSlice PrepareInstanced(Span<DrawingSpriteInstance> instances, int32 frameIndex, uint32 width, uint32 height)
 	{
 		using (SProfiler.Begin("DrawingRenderer.PrepareInstanced"))
 		{
-			mSpriteInstances.Clear();
+			let countIn = (uint32)instances.Length;
+			if (countIn == 0 || mInstanceBuffers == null)
+				return .Invalid;
+
+			let instByteSize = countIn * (uint32)sizeof(DrawingSpriteInstance);
+			let sliceInstOffset = mFrameInstanceOffsets[frameIndex];
+			let sliceUniformSlot = mFrameUniformSlotCount[frameIndex];
+
+			let maxInstBytes = (uint32)(MAX_SPRITE_INSTANCES * sizeof(DrawingSpriteInstance));
+			let endInstOffset = sliceInstOffset + instByteSize;
+			let instOverflow = endInstOffset > maxInstBytes;
+			let uniformOverflow = sliceUniformSlot >= (uint32)MAX_UNIFORM_SLOTS;
+			if (instOverflow || uniformOverflow)
+			{
+				Console.WriteLine("DrawingRenderer: instanced frame capacity exceeded, slice dropped");
+				return .Invalid;
+			}
+
+			let sliceUniformOffset = sliceUniformSlot * (uint32)UNIFORM_SLOT_SIZE;
+			let cpuStart = (int)mSpriteInstances.Count;
+
 			for (let inst in instances)
 				mSpriteInstances.Add(inst);
 
-			// Upload to GPU instance buffer
-			if (mSpriteInstances.Count > 0 && mInstanceBuffers != null)
-			{
-				let instanceData = Span<uint8>((uint8*)mSpriteInstances.Ptr, mSpriteInstances.Count * sizeof(DrawingSpriteInstance));
-				TransferHelper.WriteMappedBuffer(mInstanceBuffers[frameIndex], 0, instanceData);
-			}
+			let instSliceData = Span<uint8>((uint8*)(&mSpriteInstances[cpuStart]), (int)instByteSize);
+			TransferHelper.WriteMappedBuffer(mInstanceBuffers[frameIndex], (uint64)sliceInstOffset, instSliceData);
 
-			// Update instanced bind group
-			UpdateInstancedBindGroup(frameIndex);
-		}
-	}
-
-	/// Update the projection matrix for the given viewport size.
-	public void UpdateProjection(uint32 width, uint32 height, int32 frameIndex)
-	{
-		using (SProfiler.Begin("DrawingRenderer.UpdateProjection"))
-		{
 			Matrix projection = Matrix.CreateOrthographicOffCenter(0, (float)width, (float)height, 0, -1, 1);
-
 			DrawingUniforms uniforms = .() { Projection = projection };
 			let uniformData = Span<uint8>((uint8*)&uniforms, sizeof(DrawingUniforms));
-			TransferHelper.WriteMappedBuffer(mUniformBuffers[frameIndex], 0, uniformData);
+			TransferHelper.WriteMappedBuffer(mUniformBuffers[frameIndex], (uint64)sliceUniformOffset, uniformData);
+
+			// Update instanced bind group (only needs to happen once per frame
+			// if it doesn't exist yet; bind group references the uniform buffer
+			// with dynamic offset).
+			UpdateInstancedBindGroup(frameIndex);
+
+			mFrameInstanceOffsets[frameIndex] = endInstOffset;
+			mFrameUniformSlotCount[frameIndex] = sliceUniformSlot + 1;
+
+			return .()
+			{
+				InstanceByteOffset = sliceInstOffset,
+				InstanceCount = countIn,
+				UniformByteOffset = sliceUniformOffset,
+				IsValid = true,
+			};
 		}
 	}
 
-	/// Render standard (per-vertex) content to the current render pass.
-	/// The render pass should already be begun.
-	public void Render(IRenderPassEncoder renderPass, uint32 width, uint32 height, int32 frameIndex, bool useMsaa = false)
+	/// Render standard (per-vertex) content. Vertex / index offsets come
+	/// from the slice; the uniform binding's dynamic offset selects the
+	/// slice's projection slot.
+	public void Render(IRenderPassEncoder renderPass, uint32 width, uint32 height, int32 frameIndex, DrawingRenderSlice slice, bool useMsaa = false)
 	{
 		using (SProfiler.Begin("DrawingRenderer.Render"))
 		{
-			if (mIndices.Count == 0 || mDrawCommands.Count == 0)
+			if (!slice.IsValid || slice.DrawCommandCount == 0)
 				return;
 
 			renderPass.SetViewport(0, 0, width, height, 0, 1);
 			renderPass.SetPipeline(useMsaa ? mMsaaPipeline : mPipeline);
-			renderPass.SetVertexBuffer(0, mVertexBuffers[frameIndex], 0);
-			renderPass.SetIndexBuffer(mIndexBuffers[frameIndex], .UInt16, 0);
+			renderPass.SetVertexBuffer(0, mVertexBuffers[frameIndex], (uint64)slice.VertexByteOffset);
+			renderPass.SetIndexBuffer(mIndexBuffers[frameIndex], .UInt16, (uint64)slice.IndexByteOffset);
 
-			// Track current texture to minimize bind group switches
-			// Use -2 as sentinel to force first bind group set
+			uint32[1] dynOffsets = .(slice.UniformByteOffset);
+
+			// Track current texture to minimize bind group switches.
+			// Use -2 as sentinel to force first bind group set.
 			int32 currentTextureIndex = -2;
 
-			// Process each draw command with its own scissor rect
-			for (let cmd in mDrawCommands)
+			// Process each draw command with its own scissor rect.
+			let cmdEnd = slice.DrawCommandStart + slice.DrawCommandCount;
+			for (int32 i = slice.DrawCommandStart; i < cmdEnd; i++)
 			{
+				let cmd = mDrawCommands[i];
 				if (cmd.IndexCount == 0)
 					continue;
 
-				// Switch bind group if texture changed
-				// Note: texIdx of -1 (solid color) maps to texture 0 in GetBindGroupForTexture
+				// Switch bind group if texture changed.
+				// Note: texIdx of -1 (solid color) maps to texture 0 in GetBindGroupForTexture.
 				let texIdx = cmd.TextureIndex;
 				if (texIdx != currentTextureIndex)
 				{
 					let bindGroup = GetBindGroupForTexture(texIdx, frameIndex);
 					if (bindGroup != null)
-						renderPass.SetBindGroup(0, bindGroup);
+						renderPass.SetBindGroup(0, bindGroup, dynOffsets);
 					currentTextureIndex = texIdx;
 				}
 
-				// Set scissor rect based on clip mode
+				// Set scissor rect based on clip mode.
 				if (cmd.ClipMode == .Scissor && cmd.ClipRect.Width > 0 && cmd.ClipRect.Height > 0)
 				{
-					// Conservative scissor rect calculation
+					// Conservative scissor rect calculation.
 					let startX = (int32)Math.Ceiling(Math.Max(0f, cmd.ClipRect.X));
 					let startY = (int32)Math.Ceiling(Math.Max(0f, cmd.ClipRect.Y));
 					let endX = (int32)Math.Floor(Math.Min(cmd.ClipRect.X + cmd.ClipRect.Width, (float)width));
@@ -520,12 +669,12 @@ public class DrawingRenderer : IDisposable
 				}
 				else if (cmd.ClipMode == .Scissor)
 				{
-					// Empty/invalid clip rect - hide everything (match OpenGL glScissor(0,0,0,0))
+					// Empty/invalid clip rect - hide everything (match OpenGL glScissor(0,0,0,0)).
 					renderPass.SetScissor(0, 0, 0, 0);
 				}
 				else
 				{
-					// No clipping - full viewport
+					// No clipping - full viewport.
 					renderPass.SetScissor(0, 0, width, height);
 				}
 
@@ -534,23 +683,25 @@ public class DrawingRenderer : IDisposable
 		}
 	}
 
-	/// Render instanced sprites to the current render pass.
-	/// Call PrepareInstanced() before this.
-	public void RenderInstanced(IRenderPassEncoder renderPass, uint32 width, uint32 height, int32 frameIndex, bool useMsaa = false)
+	/// Render instanced sprites. Reads instance data at the slice's byte
+	/// offset; uniform dynamic offset selects the slice's projection.
+	public void RenderInstanced(IRenderPassEncoder renderPass, uint32 width, uint32 height, int32 frameIndex, DrawingInstancedSlice slice, bool useMsaa = false)
 	{
 		using (SProfiler.Begin("DrawingRenderer.RenderInstanced"))
 		{
-			if (mSpriteInstances.Count == 0 || mInstancedPipeline == null)
+			if (!slice.IsValid || slice.InstanceCount == 0 || mInstancedPipeline == null)
 				return;
 
 			renderPass.SetViewport(0, 0, width, height, 0, 1);
 			renderPass.SetScissor(0, 0, width, height);
 			renderPass.SetPipeline(useMsaa ? mInstancedMsaaPipeline : mInstancedPipeline);
-			renderPass.SetBindGroup(0, mInstancedBindGroups[frameIndex]);
-			renderPass.SetVertexBuffer(0, mInstanceBuffers[frameIndex], 0);
 
-			// Draw 6 vertices per sprite (2 triangles), N instances
-			renderPass.Draw(6, (uint32)mSpriteInstances.Count, 0, 0);
+			uint32[1] dynOffsets = .(slice.UniformByteOffset);
+			renderPass.SetBindGroup(0, mInstancedBindGroups[frameIndex], dynOffsets);
+			renderPass.SetVertexBuffer(0, mInstanceBuffers[frameIndex], (uint64)slice.InstanceByteOffset);
+
+			// Draw 6 vertices per sprite (2 triangles), N instances.
+			renderPass.Draw(6, slice.InstanceCount, 0, 0);
 		}
 	}
 
@@ -603,9 +754,11 @@ public class DrawingRenderer : IDisposable
 
 	private Result<void> CreateLayouts()
 	{
-		// Bind group layout: uniform buffer (b0), texture (t0), sampler (s0)
+		// Bind group layout: uniform buffer (b0, dynamic offset), texture (t0), sampler (s0).
+		// Dynamic offset lets multiple slices in a frame share one uniform buffer with
+		// each slice's projection at a different offset.
 		BindGroupLayoutEntry[3] layoutEntries = .(
-			BindGroupLayoutEntry.UniformBuffer(0, .Vertex),
+			BindGroupLayoutEntry.UniformBuffer(0, .Vertex, true),
 			BindGroupLayoutEntry.SampledTexture(0, .Fragment),
 			BindGroupLayoutEntry.Sampler(0, .Fragment)
 		);
@@ -800,7 +953,7 @@ public class DrawingRenderer : IDisposable
 			// Uniform buffer (host-visible for fast CPU writes)
 			BufferDesc uniformDesc = .()
 			{
-				Size = (uint64)sizeof(DrawingUniforms),
+				Size = (uint64)(MAX_UNIFORM_SLOTS * UNIFORM_SLOT_SIZE),
 				Usage = .Uniform,
 				Memory = .CpuToGpu
 			};
@@ -905,6 +1058,11 @@ public class DrawingRenderer : IDisposable
 	{
 		// Texture cache (includes bind groups)
 		ClearTextureCache();
+
+		if (mFrameVertexOffsets != null) { delete mFrameVertexOffsets; mFrameVertexOffsets = null; }
+		if (mFrameIndexOffsets != null) { delete mFrameIndexOffsets; mFrameIndexOffsets = null; }
+		if (mFrameInstanceOffsets != null) { delete mFrameInstanceOffsets; mFrameInstanceOffsets = null; }
+		if (mFrameUniformSlotCount != null) { delete mFrameUniformSlotCount; mFrameUniformSlotCount = null; }
 
 		// Per-frame resources
 		if (mInstancedBindGroups != null)

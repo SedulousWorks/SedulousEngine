@@ -208,8 +208,8 @@ public class GUISubsystem : Subsystem
 				return;
 
 			// Upload to GPU
-			mDrawingRenderer.UpdateProjection(width, height, frameIndex);
-			mDrawingRenderer.Prepare(batch, frameIndex);
+			mDrawingRenderer.BeginFrame(frameIndex);
+			let slice = mDrawingRenderer.Prepare(batch, frameIndex, width, height);
 
 			// Create overlay render pass (Load = preserve 3D scene)
 			ColorAttachment[1] colorAttachments = .(.()
@@ -225,7 +225,7 @@ public class GUISubsystem : Subsystem
 			let renderPass = encoder.BeginRenderPass(passDesc);
 			if (renderPass != null)
 			{
-				mDrawingRenderer.Render(renderPass, width, height, frameIndex);
+				mDrawingRenderer.Render(renderPass, width, height, frameIndex, slice);
 				renderPass.End();
 			}
 		}
