@@ -134,6 +134,16 @@ public static class MarkupLoader
 				continue;
 			}
 
+			if (name == "style")
+			{
+				// CSS-`style="..."` analogue. Body parsed by the SSS
+				// declaration parser and applied to the view's inline
+				// StyleSheet. Drawable values get owned by the inline
+				// sheet so they're released when the view dies.
+				SSSParser.ApplyInlineStyle(view, value);
+				continue;
+			}
+
 			// === Common View properties ===
 
 			if (name == "visibility")

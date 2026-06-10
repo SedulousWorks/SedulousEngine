@@ -46,6 +46,56 @@ public class SSSParser
 		return mSheet;
 	}
 
+	/// Loop-parse property declarations into `targetRule` until end of
+	/// input. `ownerSheet` is set as the parser's sheet so any drawable
+	/// values produced by the drawable factories register their
+	/// ownership there. Used by the inline-style markup parser, which
+	/// passes the styled view's inline `StyleSheet` so any drawables
+	/// inherit the view's lifetime.
+	public void ParseDeclarations(StyleSheet ownerSheet, StyleRule targetRule)
+	{
+		mSheet = ownerSheet;
+		mPos = 0;
+
+		while (!IsAtEnd())
+			ParseProperty(targetRule);
+	}
+
+	/// Parse a `style="..."` markup attribute and apply the declared
+	/// properties to `view`'s inline `StyleSheet`. Drawable values are
+	/// owned by the inline sheet, so they're released when the view
+	/// is destroyed. Theme variables (`$name`) and `@`-rules are not
+	/// supported - inline-style values must be literal.
+	public static void ApplyInlineStyle(View view, StringView body)
+	{
+		// Tokenize the body. SSSParser's constructor takes ownership of
+		// the tokens list (it has a `~ delete _;` field) so it must be
+		// heap-allocated.
+		let tokens = new List<Token>();
+		let tokenizer = scope Tokenizer(body);
+		tokenizer.TokenizeAll(tokens);
+
+		// Empty palette + asset registries. Inline-style parsing v1
+		// doesn't resolve $vars / @icon / @image references.
+		let palette = scope Dictionary<String, Color>();
+		let svg = scope Dictionary<String, String>();
+		let img = scope Dictionary<String, IImageData>();
+		let basePath = scope String();
+
+		// SSSParser holds non-owning refs to palette/svg/img - same
+		// scope here means they outlive the parser.
+		let parser = scope SSSParser(tokens, palette, svg, img, null, basePath);
+
+		// Direct the parser at the view's inline sheet so any drawable
+		// values produced by the parser's drawable factories live on
+		// the view (inline sheet owns them via OwnDrawable).
+		let inlineSheet = view.GetOrCreateInlineSheet();
+		let rule = inlineSheet.GetOrCreateInlineElementRule();
+		parser.ParseDeclarations(inlineSheet, rule);
+
+		view.Invalidate();
+	}
+
 	// === Directives ===
 
 	private void ParseDirective()

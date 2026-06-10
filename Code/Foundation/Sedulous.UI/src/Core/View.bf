@@ -340,6 +340,12 @@ public abstract class View : IPropertyOwner
 		return mInlineSheet;
 	}
 
+	/// Return the view's inline `StyleSheet`, creating it if necessary.
+	/// Public counterpart to `EnsureInlineSheet` for callers that need
+	/// to register drawables or rules with the inline sheet directly
+	/// (notably the inline-style markup parser).
+	public StyleSheet GetOrCreateInlineSheet() => EnsureInlineSheet();
+
 	/// Sets an inline override for `prop`. Overwrites any existing
 	/// inline value for the same property, releasing the previous
 	/// drawable if one was stored. The view consumes the caller's

@@ -440,6 +440,118 @@ class MarkupLoaderTests
 		delete view;
 	}
 
+	// === style="..." inline-style attribute ===
+
+	[Test]
+	public static void Style_SinglePrimitive()
+	{
+		let view = MarkupLoader.LoadFromString(
+			"""
+			<Label text="hi" style="font-size: 22;"/>
+			""");
+
+		let label = view as Label;
+		Test.Assert(label.GetInlineStyle(.FontSize).AsFloat == 22f);
+
+		delete view;
+	}
+
+	[Test]
+	public static void Style_MultipleDeclarations()
+	{
+		let view = MarkupLoader.LoadFromString(
+			"""
+			<Label text="hi" style="font-size: 18; text-color: #ff0000; padding: 4 8;"/>
+			""");
+
+		let label = view as Label;
+		Test.Assert(label.GetInlineStyle(.FontSize).AsFloat == 18f);
+		let c = label.GetInlineStyle(.TextColor).AsColor;
+		Test.Assert(c.HasValue && c.Value.R == 255 && c.Value.G == 0);
+		let pad = label.GetInlineStyle(.Padding).AsThickness;
+		Test.Assert(pad.HasValue && pad.Value.Top == 4 && pad.Value.Left == 8);
+
+		delete view;
+	}
+
+	[Test]
+	public static void Style_StringProperty()
+	{
+		let view = MarkupLoader.LoadFromString(
+			"""
+			<Label text="hi" style="font-family: JungleAdventurer;"/>
+			""");
+
+		let label = view as Label;
+		Test.Assert(label.GetInlineStyle(.FontFamily).AsString.Value == "JungleAdventurer");
+
+		delete view;
+	}
+
+	[Test]
+	public static void Style_BeatsContextSheetRule()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let sheet = new StyleSheet();
+		ctx.StyleSheet = sheet;
+		sheet.ReleaseRef();
+		sheet.ForType(typeof(Label)).Set(.TextColor, Color(0, 0, 255, 255));
+
+		let view = MarkupLoader.LoadFromString(
+			"""
+			<Label text="hi" style="text-color: #00ff00;"/>
+			""", ctx);
+		root.AddView(view);
+
+		let label = view as Label;
+		// Inline (green) wins over context-sheet (blue).
+		let c = label.ResolveStyleColor(.TextColor);
+		Test.Assert(c.G == 255 && c.B == 0);
+	}
+
+	[Test]
+	public static void Style_DrawableValue_OwnedByView()
+	{
+		// rgb() produces a ColorDrawable via the SSS factory; the
+		// drawable is owned by the view's inline sheet so deleting
+		// the view doesn't leak.
+		let view = MarkupLoader.LoadFromString(
+			"""
+			<Panel style="background: rgb(40, 120, 60);"/>
+			""");
+
+		let panel = view as Panel;
+		Test.Assert(panel.GetInlineStyle(.Background).AsDrawable != null);
+		Test.Assert(panel.GetInlineStyle(.Background).AsDrawable is ColorDrawable);
+
+		delete view;
+	}
+
+	[Test]
+	public static void Style_OnVariousTags()
+	{
+		// "style" is a generic attribute - works on every view, not
+		// only the tags with per-attribute registrations.
+		let view = MarkupLoader.LoadFromString(
+			"""
+			<Flex>
+			  <Button text="A" style="font-size: 14;"/>
+			  <CheckBox text="B" style="font-size: 16;"/>
+			</Flex>
+			""");
+
+		let flex = view as FlexLayout;
+		let btn = flex.GetChildAt(0) as Button;
+		let cb = flex.GetChildAt(1) as CheckBox;
+		Test.Assert(btn.GetInlineStyle(.FontSize).AsFloat == 14f);
+		Test.Assert(cb.GetInlineStyle(.FontSize).AsFloat == 16f);
+
+		delete view;
+	}
+
 	// === Aliases ===
 
 	[Test]

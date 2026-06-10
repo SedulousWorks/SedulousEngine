@@ -1,26 +1,35 @@
 <Flex direction="vertical" justify="center" align="center" padding="32">
 
-  <Label id="title" text="Game Paused" font-size="28" class="label"/>
+  <Panel padding="32"
+         style="background: rounded-rect(rgb(35, 38, 48), radius=12, border-width=2, border=rgb(80, 90, 110));">
 
-  <Spacer spacer-height="24"/>
+    <Flex direction="vertical" align="center">
 
-  <Flex direction="vertical" spacing="8" width="260">
-    <Button id="resume-btn" text="Resume Game" height="40" class="primary"/>
-    <Button id="settings-btn" text="Settings" height="40"/>
-    <Button id="save-btn" text="Save Game" height="40"/>
-    <Button id="load-btn" text="Load Game" height="40"/>
+      <Label id="title" text="Game Paused" font-size="28" class="label"/>
 
-    <Spacer spacer-height="12"/>
+      <Spacer spacer-height="24"/>
 
-    <Separator/>
+      <Flex direction="vertical" spacing="8" width="260">
+        <Button id="resume-btn" text="Resume Game" height="40" class="primary"/>
+        <Button id="settings-btn" text="Settings" height="40"/>
+        <Button id="save-btn" text="Save Game" height="40"/>
+        <Button id="load-btn" text="Load Game" height="40"/>
 
-    <Spacer spacer-height="12"/>
+        <Spacer spacer-height="12"/>
 
-    <Button id="quit-btn" text="Quit to Menu" height="40"/>
-  </Flex>
+        <Separator/>
 
-  <Spacer spacer-height="32"/>
+        <Spacer spacer-height="12"/>
 
-  <Label text="Press ESC to resume" class="label-dim" font-size="11"/>
+        <Button id="quit-btn" text="Quit to Menu" height="40"/>
+      </Flex>
+
+      <Spacer spacer-height="32"/>
+
+      <Label text="Press ESC to resume" class="label-dim" font-size="11"/>
+
+    </Flex>
+
+  </Panel>
 
 </Flex>
