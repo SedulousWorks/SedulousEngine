@@ -15,7 +15,7 @@ class CachedThumbnail
 {
 	public Guid Id;
 	public OwnedImageData Data ~ delete _;
-	public ImageDrawable Drawable ~ delete _;
+	public ImageDrawable Drawable ~ _.ReleaseRef();
 	public int64 SourceMtime;
 	public int32 Width;
 	public int32 Height;
