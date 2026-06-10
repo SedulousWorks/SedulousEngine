@@ -1099,7 +1099,13 @@ class UISandboxApp : Application, IDockableWindowHost
 			if (pauseRoot != null)
 			{
 				if (let resumeBtn = pauseRoot.FindByName<Button>("resume-btn"))
+				{
 					resumeBtn.OnClick.Add(new (b) => { Console.WriteLine("Resume clicked!"); });
+					// Inline style demo: override the theme rule for this
+					// specific button. SetStyle's Drawable overload
+					// consumes the ColorDrawable ref.
+					resumeBtn.SetStyle(.Background, new ColorDrawable(.(40, 120, 60, 255)));
+				}
 				if (let settingsBtn = pauseRoot.FindByName<Button>("settings-btn"))
 					settingsBtn.OnClick.Add(new (b) => { Console.WriteLine("Settings clicked!"); });
 				if (let saveBtn = pauseRoot.FindByName<Button>("save-btn"))
@@ -1107,7 +1113,17 @@ class UISandboxApp : Application, IDockableWindowHost
 				if (let loadBtn = pauseRoot.FindByName<Button>("load-btn"))
 					loadBtn.OnClick.Add(new (b) => { Console.WriteLine("Load clicked!"); });
 				if (let quitBtn = pauseRoot.FindByName<Button>("quit-btn"))
+				{
 					quitBtn.OnClick.Add(new (b) => { Console.WriteLine("Quit clicked!"); });
+					quitBtn.SetStyle(.Background, new ColorDrawable(.(150, 50, 50, 255)));
+				}
+				// Inline style demo on a Label: override TextColor and
+				// FontSize without touching the theme or subclassing.
+				if (let title = pauseRoot.FindByName<Label>("title"))
+				{
+					title.SetStyle(.TextColor, Color(255, 220, 100, 255));
+					title.SetStyle(.FontSize, 32f);
+				}
 			}
 		}
 
