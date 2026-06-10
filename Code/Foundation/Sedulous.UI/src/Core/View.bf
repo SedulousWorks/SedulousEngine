@@ -287,6 +287,144 @@ public abstract class View : IPropertyOwner
 		return state;
 	}
 
+	// === Inline styles ===
+	//
+	// Per-property overrides set directly on this view, the CSS
+	// `style="..."` analogue. An inline value wins over every
+	// rule-based match (inline is specificity infinity).
+	//
+	// Storage is lazily allocated: a view with no inline overrides pays
+	// only one pointer of overhead. The pseudo-element map is separate
+	// and likewise lazy.
+	//
+	// Resolution wiring lands in sub-phase B; this phase just exposes
+	// the data + API so callers and tests can be written against it.
+
+	private Dictionary<StyleProperty, StyleValue> mInlineStyles;
+	private List<(String Part, StyleProperty Prop, StyleValue Value)> mInlinePartStyles;
+
+	/// True if any inline overrides are set on this view.
+	public bool HasAnyInlineStyles =>
+		(mInlineStyles != null && mInlineStyles.Count > 0) ||
+		(mInlinePartStyles != null && mInlinePartStyles.Count > 0);
+
+	/// Sets an inline override for `prop`. Overwrites any existing
+	/// inline value for the same property.
+	public void SetInlineStyle(StyleProperty prop, StyleValue value)
+	{
+		if (mInlineStyles == null)
+			mInlineStyles = new .();
+		mInlineStyles[prop] = value;
+		Invalidate();
+	}
+
+	/// Returns the inline override for `prop`, or `.None` if not set.
+	public StyleValue GetInlineStyle(StyleProperty prop)
+	{
+		if (mInlineStyles == null) return .None;
+		if (mInlineStyles.TryGetValue(prop, let value)) return value;
+		return .None;
+	}
+
+	/// True if an inline override exists for `prop`.
+	public bool HasInlineStyle(StyleProperty prop)
+	{
+		if (mInlineStyles == null) return false;
+		return mInlineStyles.ContainsKey(prop);
+	}
+
+	/// Removes a single inline override. No-op if not set.
+	public void ClearInlineStyle(StyleProperty prop)
+	{
+		if (mInlineStyles == null) return;
+		if (mInlineStyles.Remove(prop))
+			Invalidate();
+	}
+
+	/// Removes every inline override on this view (element + pseudo-element).
+	public void ClearInlineStyles()
+	{
+		bool changed = false;
+		if (mInlineStyles != null && mInlineStyles.Count > 0)
+		{
+			mInlineStyles.Clear();
+			changed = true;
+		}
+		if (mInlinePartStyles != null && mInlinePartStyles.Count > 0)
+		{
+			for (let entry in mInlinePartStyles)
+				delete entry.Part;
+			mInlinePartStyles.Clear();
+			changed = true;
+		}
+		if (changed) Invalidate();
+	}
+
+	/// Sets an inline override for a pseudo-element (e.g., "thumb") on
+	/// this view. Composite controls use this to override sub-part
+	/// styles without going through a StyleSheet rule.
+	public void SetInlinePartStyle(StringView part, StyleProperty prop, StyleValue value)
+	{
+		if (mInlinePartStyles == null)
+			mInlinePartStyles = new .();
+
+		// Update in place if the (part, prop) pair already has an entry.
+		for (int i = 0; i < mInlinePartStyles.Count; i++)
+		{
+			let entry = mInlinePartStyles[i];
+			if (entry.Prop == prop && StringView(entry.Part) == part)
+			{
+				mInlinePartStyles[i] = (entry.Part, prop, value);
+				Invalidate();
+				return;
+			}
+		}
+
+		mInlinePartStyles.Add((new String(part), prop, value));
+		Invalidate();
+	}
+
+	/// Returns the inline pseudo-element override, or `.None`.
+	public StyleValue GetInlinePartStyle(StringView part, StyleProperty prop)
+	{
+		if (mInlinePartStyles == null) return .None;
+		for (let entry in mInlinePartStyles)
+		{
+			if (entry.Prop == prop && StringView(entry.Part) == part)
+				return entry.Value;
+		}
+		return .None;
+	}
+
+	/// True if an inline pseudo-element override exists.
+	public bool HasInlinePartStyle(StringView part, StyleProperty prop)
+	{
+		if (mInlinePartStyles == null) return false;
+		for (let entry in mInlinePartStyles)
+		{
+			if (entry.Prop == prop && StringView(entry.Part) == part)
+				return true;
+		}
+		return false;
+	}
+
+	/// Removes one inline pseudo-element override. No-op if not set.
+	public void ClearInlinePartStyle(StringView part, StyleProperty prop)
+	{
+		if (mInlinePartStyles == null) return;
+		for (int i = 0; i < mInlinePartStyles.Count; i++)
+		{
+			let entry = mInlinePartStyles[i];
+			if (entry.Prop == prop && StringView(entry.Part) == part)
+			{
+				delete entry.Part;
+				mInlinePartStyles.RemoveAt(i);
+				Invalidate();
+				return;
+			}
+		}
+	}
+
 	// === Style resolution helpers ===
 
 	/// Resolve a style property from the active StyleSheet.
@@ -567,6 +705,14 @@ public abstract class View : IPropertyOwner
 			for (let kv in mUserData)
 				delete kv.key;
 			delete mUserData;
+		}
+
+		delete mInlineStyles;
+		if (mInlinePartStyles != null)
+		{
+			for (let entry in mInlinePartStyles)
+				delete entry.Part;
+			delete mInlinePartStyles;
 		}
 	}
 }
