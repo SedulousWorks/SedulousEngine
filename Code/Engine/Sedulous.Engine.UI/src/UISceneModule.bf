@@ -80,9 +80,9 @@ public class UISceneModule : SceneModule, IPipelineOverlay
 			return;
 
 		// Upload and emit draw commands into the active overlay encoder.
-		mVGRenderer.UpdateProjection(width, height, frameIndex);
-		mVGRenderer.Prepare(batch, frameIndex);
-		mVGRenderer.Render(encoder, width, height, frameIndex);
+		mVGRenderer.BeginFrame(frameIndex);
+		let slice = mVGRenderer.Prepare(batch, frameIndex, width, height);
+		mVGRenderer.Render(encoder, width, height, frameIndex, slice);
 	}
 
 	// === Initialization / teardown ===

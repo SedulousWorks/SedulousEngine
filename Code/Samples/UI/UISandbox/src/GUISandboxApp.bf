@@ -1673,9 +1673,9 @@ class UISandboxApp : Application, IDockableWindowHost
 			if (batch == null || batch.Commands.Count == 0)
 				return;
 
-			renderer.UpdateProjection(w, h, frame.FrameIndex);
-			renderer.Prepare(batch, frame.FrameIndex);
-			renderer.Render(renderPass, w, h, frame.FrameIndex);
+			renderer.BeginFrame(frame.FrameIndex);
+			let slice = renderer.Prepare(batch, frame.FrameIndex, w, h);
+			renderer.Render(renderPass, w, h, frame.FrameIndex, slice);
 		}
 	}
 

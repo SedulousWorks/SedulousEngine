@@ -75,6 +75,8 @@ class EditorApplication : Application, IDockableWindowHost
 	private TrueTypeFontService mFontService ~ delete _;
 	private VGContext mVGContext ~ delete _;
 	private VGRenderer mVGRenderer;
+	// Slice token threaded from per-frame Prepare to per-frame Render.
+	private VGRenderSlice mVGSlice;
 
 	// GPU thumbnail renderer for mesh/material/scene/prefab/etc. Created
 	// after the RuntimeContext starts (so SceneSubsystem + ISceneRenderer
@@ -1368,11 +1370,13 @@ class EditorApplication : Application, IDockableWindowHost
 		mVGContext.Clear();
 		mUIContext.DrawRootView(mMainRoot, mVGContext);
 
-		// Upload to GPU
-		mVGRenderer.UpdateProjection(SwapChain.Width, SwapChain.Height, frame.FrameIndex);
+		// Upload to GPU. Slice token captured for Render later this frame.
+		mVGRenderer.BeginFrame(frame.FrameIndex);
 		let batch = mVGContext.GetBatch();
 		if (batch != null)
-			mVGRenderer.Prepare(batch, frame.FrameIndex);
+			mVGSlice = mVGRenderer.Prepare(batch, frame.FrameIndex, SwapChain.Width, SwapChain.Height);
+		else
+			mVGSlice = .Invalid;
 	}
 
 	protected override bool OnRenderFrame(RenderContext render)
@@ -1411,7 +1415,7 @@ class EditorApplication : Application, IDockableWindowHost
 		let renderPass = encoder.BeginRenderPass(passDesc);
 		if (renderPass != null)
 		{
-			mVGRenderer.Render(renderPass, SwapChain.Width, SwapChain.Height, frame.FrameIndex);
+			mVGRenderer.Render(renderPass, SwapChain.Width, SwapChain.Height, frame.FrameIndex, mVGSlice);
 			renderPass.End();
 		}
 
@@ -1532,9 +1536,9 @@ class EditorApplication : Application, IDockableWindowHost
 			if (batch == null || batch.Commands.Count == 0)
 				return;
 
-			renderer.UpdateProjection(w, h, frame.FrameIndex);
-			renderer.Prepare(batch, frame.FrameIndex);
-			renderer.Render(renderPass, w, h, frame.FrameIndex);
+			renderer.BeginFrame(frame.FrameIndex);
+			let slice = renderer.Prepare(batch, frame.FrameIndex, w, h);
+			renderer.Render(renderPass, w, h, frame.FrameIndex, slice);
 		}
 	}
 

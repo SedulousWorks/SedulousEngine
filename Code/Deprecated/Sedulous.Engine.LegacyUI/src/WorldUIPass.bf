@@ -79,11 +79,11 @@ class WorldUIPass : PipelinePass
 			return;
 
 		// Upload + render.
-		comp.Renderer.UpdateProjection(w, h, 0);
-		comp.Renderer.Prepare(batch, 0);
+		comp.Renderer.BeginFrame(0);
+		let slice = comp.Renderer.Prepare(batch, 0, w, h);
 
 		encoder.SetViewport(0, 0, (float)w, (float)h, 0, 1);
 		encoder.SetScissor(0, 0, w, h);
-		comp.Renderer.Render(encoder, w, h, 0);
+		comp.Renderer.Render(encoder, w, h, 0, slice);
 	}
 }

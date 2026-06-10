@@ -49,10 +49,6 @@ class UIComponent : Component, ISerializableComponent
 	public UIContext UIContext;
 	/// The RootView in the per-component UIContext. Add UI content here.
 	public RootView Root;
-	/// Per-view VG context for building geometry.
-	public VGContext VG;
-	/// Per-view VG renderer for GPU upload + render.
-	public VGRenderer Renderer;
 	/// Render target texture.
 	public ITexture Texture;
 	/// Render target view.

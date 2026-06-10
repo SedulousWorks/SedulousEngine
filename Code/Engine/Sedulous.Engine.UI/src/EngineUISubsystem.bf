@@ -487,6 +487,8 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 		uiMgr.FontService = FontService;
 		uiMgr.ShaderSystem = ShaderSystem;
 		uiMgr.RenderPass = mWorldUIPass;
+		// WorldUIPass uses the manager's shared VG resources (Track 3).
+		if (mWorldUIPass != null) mWorldUIPass.Manager = uiMgr;
 		uiMgr.RenderContext = sceneRenderer?.RenderContext;
 		scene.AddModule(uiMgr);
 

@@ -17,6 +17,7 @@ class VGSandboxApp : Application
 {
 	private VGContext mVG;
 	private VGRenderer mVGRenderer;
+	private VGRenderSlice mVGSlice;
 	private ShaderSystem mShaderSystem;
 
 	// Checkerboard image used to demonstrate DrawImage.
@@ -133,8 +134,8 @@ class VGSandboxApp : Application
 		DrawSVGDemo(mVG, 150, 470);
 
 		let batch = mVG.GetBatch();
-		mVGRenderer.Prepare(batch, frame.FrameIndex);
-		mVGRenderer.UpdateProjection(SwapChain.Width, SwapChain.Height, frame.FrameIndex);
+		mVGRenderer.BeginFrame(frame.FrameIndex);
+		mVGSlice = mVGRenderer.Prepare(batch, frame.FrameIndex, SwapChain.Width, SwapChain.Height);
 	}
 
 	/// Load a font at a specific pixel size into the shared service.
@@ -769,7 +770,7 @@ class VGSandboxApp : Application
 		let renderPass = render.Encoder.BeginRenderPass(passDesc);
 		if (renderPass != null)
 		{
-			mVGRenderer.Render(renderPass, render.SwapChain.Width, render.SwapChain.Height, render.Frame.FrameIndex);
+			mVGRenderer.Render(renderPass, render.SwapChain.Width, render.SwapChain.Height, render.Frame.FrameIndex, mVGSlice);
 			renderPass.End();
 		}
 

@@ -16,6 +16,30 @@ struct VGUniforms
 	public Matrix Projection;
 }
 
+/// A handle to a single batch's data inside a shared frame buffer.
+/// Returned by `VGRenderer.Prepare`; passed to `VGRenderer.Render` to
+/// dispatch just that slice. Multiple slices in a frame share one
+/// `VGRenderer`'s vertex/index/uniform buffers via byte-offset
+/// sub-allocation.
+public struct VGRenderSlice
+{
+	/// Byte offset into the frame's vertex buffer.
+	public uint32 VertexByteOffset;
+	/// Byte offset into the frame's index buffer.
+	public uint32 IndexByteOffset;
+	/// Byte offset into the frame's uniform buffer (dynamic offset for
+	/// the bind group's uniform binding).
+	public uint32 UniformByteOffset;
+	/// Range into the renderer's draw command list owned by this slice.
+	public int32 DrawCommandStart;
+	public int32 DrawCommandCount;
+	/// False if the slice couldn't be allocated (capacity exceeded);
+	/// `Render` treats invalid slices as no-ops.
+	public bool IsValid;
+
+	public static VGRenderSlice Invalid => .() { IsValid = false };
+}
+
 /// Renders VGContext/VGBatch content using RHI.
 /// Creates GPU vertex/index buffers, uploads per-frame, and renders with alpha blending.
 /// Creates GPU textures on demand from IImageData provided by the VGBatch.
@@ -79,14 +103,29 @@ public class VGRenderer : IDisposable
 		}
 	}
 
-	// Batch data converted for GPU
+	// Batch data converted for GPU. Accumulates across all Prepare calls
+	// within a frame (between BeginFrame and the next BeginFrame); each
+	// slice's draw commands occupy a contiguous range.
 	private List<VGRenderVertex> mVertices = new .() ~ delete _;
 	private List<uint32> mIndices = new .() ~ delete _;
 	private List<VGCommand> mDrawCommands = new .() ~ delete _;
 
+	// Per-frame ring offsets (one entry per frame index). Reset by
+	// BeginFrame; advanced by each Prepare call. Bytes.
+	private uint32[] mFrameVertexOffsets;
+	private uint32[] mFrameIndexOffsets;
+	private uint32[] mFrameUniformSlotCount;
+
 	// Buffer sizes
 	private const int32 MAX_VERTICES = 131072;
 	private const int32 MAX_INDICES = 131072 * 3;
+	/// Per-frame maximum number of slices supported. Each uniform slot
+	/// holds one `VGUniforms` padded to `UNIFORM_SLOT_SIZE` for dynamic-
+	/// offset alignment. 64 slots × 256 B = 16 KB per uniform buffer.
+	private const int32 MAX_UNIFORM_SLOTS = 64;
+	/// Conservative dynamic-offset alignment. Vulkan minUniformBufferOffsetAlignment
+	/// is typically 256; D3D12 is 256. `sizeof(VGUniforms)` is 64.
+	private const int32 UNIFORM_SLOT_SIZE = 256;
 
 	public bool IsInitialized { get; private set; }
 
@@ -117,6 +156,11 @@ public class VGRenderer : IDisposable
 
 		if (CreatePerFrameResources() case .Err)
 			return .Err;
+
+		// Per-frame ring-offset state.
+		mFrameVertexOffsets = new uint32[mFrameCount];
+		mFrameIndexOffsets = new uint32[mFrameCount];
+		mFrameUniformSlotCount = new uint32[mFrameCount];
 
 		IsInitialized = true;
 		return .Ok;
@@ -337,72 +381,135 @@ public class VGRenderer : IDisposable
 			mExternalCache.MarkReady(imageRef);
 	}
 
-	/// Prepare batch data for rendering.
-	/// Call this after drawing to VGContext and before the render pass.
-	public void Prepare(VGBatch batch, int32 frameIndex)
+	/// Reset per-frame ring-offset state for the given frame index.
+	/// Call once per frame before the first `Prepare` for that frame.
+	/// Frees prior frames' CPU-side draw commands + batch-texture refs;
+	/// the GPU has already consumed the previous frame's data.
+	public void BeginFrame(int32 frameIndex)
 	{
-		// Convert vertices
+		mFrameVertexOffsets[frameIndex] = 0;
+		mFrameIndexOffsets[frameIndex] = 0;
+		mFrameUniformSlotCount[frameIndex] = 0;
 		mVertices.Clear();
-		for (let v in batch.Vertices)
-			mVertices.Add(.(v));
-
-		// Copy indices
 		mIndices.Clear();
-		for (let i in batch.Indices)
-			mIndices.Add(i);
-
-		// Copy draw commands
 		mDrawCommands.Clear();
-		for (let cmd in batch.Commands)
-			mDrawCommands.Add(cmd);
-
-		// Store batch textures for multi-texture rendering
 		mBatchTextures.Clear();
-		for (let tex in batch.Textures)
-			mBatchTextures.Add(tex);
+	}
 
-		// Upload to GPU buffers
-		if (mVertices.Count > 0)
+	/// Upload one batch's vertices, indices, projection uniform, and
+	/// draw commands into the shared frame buffers. Returns a slice
+	/// token that `Render` consumes to dispatch just this batch's draws
+	/// out of the shared state.
+	///
+	/// Multiple `Prepare` calls in a frame share one renderer; each gets
+	/// its own non-overlapping byte ranges. Returns `VGRenderSlice.Invalid`
+	/// when capacity (`MAX_VERTICES` / `MAX_INDICES` / `MAX_UNIFORM_SLOTS`)
+	/// is exceeded - `Render` is a no-op for invalid slices.
+	public VGRenderSlice Prepare(VGBatch batch, int32 frameIndex, uint32 width, uint32 height)
+	{
+		let vertCountIn = (uint32)batch.Vertices.Count;
+		let idxCountIn = (uint32)batch.Indices.Count;
+		if (vertCountIn == 0 || idxCountIn == 0)
+			return .Invalid;
+
+		// Capacity check.
+		let vertByteSize = vertCountIn * (uint32)sizeof(VGRenderVertex);
+		let idxByteSize = idxCountIn * (uint32)sizeof(uint32);
+		let sliceVertOffset = mFrameVertexOffsets[frameIndex];
+		let sliceIdxOffset = mFrameIndexOffsets[frameIndex];
+		let sliceUniformSlot = mFrameUniformSlotCount[frameIndex];
+
+		let maxVertBytes = (uint32)(MAX_VERTICES * sizeof(VGRenderVertex));
+		let maxIdxBytes = (uint32)(MAX_INDICES * sizeof(uint32));
+		let endVertOffset = sliceVertOffset + vertByteSize;
+		let endIdxOffset = sliceIdxOffset + idxByteSize;
+		let vertOverflow = endVertOffset > maxVertBytes;
+		let idxOverflow = endIdxOffset > maxIdxBytes;
+		let uniformOverflow = sliceUniformSlot >= (uint32)MAX_UNIFORM_SLOTS;
+		if (vertOverflow || idxOverflow || uniformOverflow)
 		{
-			let vertexData = Span<uint8>((uint8*)mVertices.Ptr, mVertices.Count * sizeof(VGRenderVertex));
-			TransferHelper.WriteMappedBuffer(mVertexBuffers[frameIndex], 0, vertexData);
-
-			let indexData = Span<uint8>((uint8*)mIndices.Ptr, mIndices.Count * sizeof(uint32));
-			TransferHelper.WriteMappedBuffer(mIndexBuffers[frameIndex], 0, indexData);
+			Console.WriteLine("VGRenderer: frame capacity exceeded, slice dropped");
+			return .Invalid;
 		}
 
-		// Ensure GPU textures and bind groups exist for each batch texture
-		for (int32 texIdx = 0; texIdx < mBatchTextures.Count; texIdx++)
-			UpdateTextureBindGroup(texIdx, frameIndex);
-	}
+		let sliceUniformOffset = sliceUniformSlot * (uint32)UNIFORM_SLOT_SIZE;
+		let sliceCmdStart = (int32)mDrawCommands.Count;
+		let textureBase = (int32)mBatchTextures.Count;
 
-	/// Update the projection matrix for the given viewport size.
-	public void UpdateProjection(uint32 width, uint32 height, int32 frameIndex)
-	{
+		// Append vertices / indices / textures / commands to CPU scratch.
+		// Commands' TextureIndex is offset so it indexes into the shared
+		// mBatchTextures rather than the per-batch list.
+		for (let v in batch.Vertices)
+			mVertices.Add(.(v));
+		for (let i in batch.Indices)
+			mIndices.Add(i);
+		for (let tex in batch.Textures)
+			mBatchTextures.Add(tex);
+		for (let cmd in batch.Commands)
+		{
+			var adjustedCmd = cmd;
+			if (cmd.TextureIndex >= 0)
+				adjustedCmd.TextureIndex = cmd.TextureIndex + textureBase;
+			mDrawCommands.Add(adjustedCmd);
+		}
+
+		// Upload this slice's vertex / index data at its byte offset.
+		// Index data is taken from the freshly-appended tail of mIndices.
+		let vertSliceData = Span<uint8>((uint8*)(&mVertices[(int)(sliceVertOffset / (uint32)sizeof(VGRenderVertex))]), (int)vertByteSize);
+		TransferHelper.WriteMappedBuffer(mVertexBuffers[frameIndex], (uint64)sliceVertOffset, vertSliceData);
+
+		let idxSliceData = Span<uint8>((uint8*)(&mIndices[(int)(sliceIdxOffset / (uint32)sizeof(uint32))]), (int)idxByteSize);
+		TransferHelper.WriteMappedBuffer(mIndexBuffers[frameIndex], (uint64)sliceIdxOffset, idxSliceData);
+
+		// Write this slice's projection into its uniform slot.
 		Matrix projection = Matrix.CreateOrthographicOffCenter(0, (float)width, (float)height, 0, -1, 1);
-
 		VGUniforms uniforms = .() { Projection = projection };
 		let uniformData = Span<uint8>((uint8*)&uniforms, sizeof(VGUniforms));
-		TransferHelper.WriteMappedBuffer(mUniformBuffers[frameIndex], 0, uniformData);
+		TransferHelper.WriteMappedBuffer(mUniformBuffers[frameIndex], (uint64)sliceUniformOffset, uniformData);
+
+		// Bind groups for any newly-added batch textures.
+		for (int32 texIdx = textureBase; texIdx < mBatchTextures.Count; texIdx++)
+			UpdateTextureBindGroup(texIdx, frameIndex);
+
+		// Advance ring offsets.
+		mFrameVertexOffsets[frameIndex] = sliceVertOffset + vertByteSize;
+		mFrameIndexOffsets[frameIndex] = sliceIdxOffset + idxByteSize;
+		mFrameUniformSlotCount[frameIndex] = sliceUniformSlot + 1;
+
+		return .()
+		{
+			VertexByteOffset = sliceVertOffset,
+			IndexByteOffset = sliceIdxOffset,
+			UniformByteOffset = sliceUniformOffset,
+			DrawCommandStart = sliceCmdStart,
+			DrawCommandCount = (int32)mDrawCommands.Count - sliceCmdStart,
+			IsValid = true,
+		};
 	}
 
-	/// Render VG content to the current render pass.
-	public void Render(IRenderPassEncoder renderPass, uint32 width, uint32 height, int32 frameIndex)
+	/// Dispatch a slice's draws into the active render pass. Vertex /
+	/// index buffer offsets come from the slice; the uniform binding's
+	/// dynamic offset selects this slice's projection slot.
+	public void Render(IRenderPassEncoder renderPass, uint32 width, uint32 height, int32 frameIndex, VGRenderSlice slice)
 	{
-		if (mIndices.Count == 0 || mDrawCommands.Count == 0)
+		if (!slice.IsValid || slice.DrawCommandCount == 0)
 			return;
 
 		renderPass.SetViewport(0, 0, width, height, 0, 1);
 		renderPass.SetPipeline(mPipeline);
-		renderPass.SetVertexBuffer(0, mVertexBuffers[frameIndex], 0);
-		renderPass.SetIndexBuffer(mIndexBuffers[frameIndex], .UInt32, 0);
+		renderPass.SetVertexBuffer(0, mVertexBuffers[frameIndex], (uint64)slice.VertexByteOffset);
+		renderPass.SetIndexBuffer(mIndexBuffers[frameIndex], .UInt32, (uint64)slice.IndexByteOffset);
+
+		uint32[1] dynOffsets = .(slice.UniformByteOffset);
 
 		// Track current texture to minimize bind group switches.
-		// Use -2 as sentinel to force first bind group set.
+		// -2 sentinel forces first SetBindGroup so dynamic offset is set.
 		int32 currentTextureIndex = -2;
 
-		for (let cmd in mDrawCommands)
+		let cmdEnd = slice.DrawCommandStart + slice.DrawCommandCount;
+		for (int32 i = slice.DrawCommandStart; i < cmdEnd; i++)
 		{
+			let cmd = mDrawCommands[i];
 			if (cmd.IndexCount == 0)
 				continue;
 
@@ -411,7 +518,7 @@ public class VGRenderer : IDisposable
 			{
 				let bindGroup = GetBindGroupForTexture(texIdx, frameIndex);
 				if (bindGroup != null)
-					renderPass.SetBindGroup(0, bindGroup);
+					renderPass.SetBindGroup(0, bindGroup, dynOffsets);
 				currentTextureIndex = texIdx;
 			}
 
@@ -472,9 +579,11 @@ public class VGRenderer : IDisposable
 
 	private Result<void> CreateLayouts()
 	{
-		// Bind group layout: uniform buffer (b0), texture (t0), sampler (s0)
+		// Bind group layout: uniform buffer (b0, dynamic offset), texture (t0), sampler (s0).
+		// Dynamic offset lets multiple slices in a frame share one uniform buffer with each
+		// slice's projection at a different offset.
 		BindGroupLayoutEntry[3] layoutEntries = .(
-			BindGroupLayoutEntry.UniformBuffer(0, .Vertex),
+			BindGroupLayoutEntry.UniformBuffer(0, .Vertex, true),
 			BindGroupLayoutEntry.SampledTexture(0, .Fragment),
 			BindGroupLayoutEntry.Sampler(0, .Fragment)
 		);
@@ -577,10 +686,10 @@ public class VGRenderer : IDisposable
 			else
 				return .Err;
 
-			// Uniform buffer
+			// Uniform buffer - sized to hold MAX_UNIFORM_SLOTS slices.
 			BufferDesc uniformDesc = .()
 			{
-				Size = (uint64)sizeof(VGUniforms),
+				Size = (uint64)(MAX_UNIFORM_SLOTS * UNIFORM_SLOT_SIZE),
 				Usage = .Uniform,
 				Memory = .CpuToGpu
 			};
@@ -646,6 +755,10 @@ public class VGRenderer : IDisposable
 	{
 		// Texture cache (includes bind groups)
 		ClearTextureCache();
+
+		if (mFrameVertexOffsets != null) { delete mFrameVertexOffsets; mFrameVertexOffsets = null; }
+		if (mFrameIndexOffsets != null) { delete mFrameIndexOffsets; mFrameIndexOffsets = null; }
+		if (mFrameUniformSlotCount != null) { delete mFrameUniformSlotCount; mFrameUniformSlotCount = null; }
 
 		if (mUniformBuffers != null)
 		{

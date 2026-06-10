@@ -167,9 +167,9 @@ class BillboardUIComponentManager : ComponentManager<BillboardUIComponent>, IPip
 			return;
 
 		// One draw call per frame for all billboards.
-		mVGRenderer.UpdateProjection(width, height, frameIndex);
-		mVGRenderer.Prepare(batch, frameIndex);
-		mVGRenderer.Render(encoder, width, height, frameIndex);
+		mVGRenderer.BeginFrame(frameIndex);
+		let slice = mVGRenderer.Prepare(batch, frameIndex, width, height);
+		mVGRenderer.Render(encoder, width, height, frameIndex, slice);
 	}
 
 	// === Component lifecycle ===

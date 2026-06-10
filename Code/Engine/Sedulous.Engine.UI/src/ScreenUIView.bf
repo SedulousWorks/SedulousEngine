@@ -63,8 +63,8 @@ public class ScreenUIView
 			return;
 
 		// Upload to GPU.
-		mVGRenderer.UpdateProjection(width, height, frameIndex);
-		mVGRenderer.Prepare(batch, frameIndex);
+		mVGRenderer.BeginFrame(frameIndex);
+		let slice = mVGRenderer.Prepare(batch, frameIndex, width, height);
 
 		// Create overlay render pass (Load preserves blitted 3D scene).
 		ColorAttachment[1] colorAttachments = .(.()
@@ -80,7 +80,7 @@ public class ScreenUIView
 		let renderPass = encoder.BeginRenderPass(passDesc);
 		if (renderPass != null)
 		{
-			mVGRenderer.Render(renderPass, width, height, frameIndex);
+			mVGRenderer.Render(renderPass, width, height, frameIndex, slice);
 			renderPass.End();
 		}
 	}

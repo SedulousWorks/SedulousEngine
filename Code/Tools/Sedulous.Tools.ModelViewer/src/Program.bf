@@ -54,6 +54,7 @@ class ModelViewerApp : Application
 	private TrueTypeFontService mFontService ~ delete _;
 	private VGContext mVGContext ~ delete _;
 	private VGRenderer mVGRenderer;
+	private VGRenderSlice mVGSlice;
 	private UIContext mUIContext;
 	private RootView mMainRoot;
 	private UIInputHelper mInputHelper ~ delete _;
@@ -1193,10 +1194,12 @@ class ModelViewerApp : Application
 		mVGContext.Clear();
 		mUIContext.DrawRootView(mMainRoot, mVGContext);
 
-		mVGRenderer.UpdateProjection(SwapChain.Width, SwapChain.Height, frame.FrameIndex);
+		mVGRenderer.BeginFrame(frame.FrameIndex);
 		let batch = mVGContext.GetBatch();
 		if (batch != null)
-			mVGRenderer.Prepare(batch, frame.FrameIndex);
+			mVGSlice = mVGRenderer.Prepare(batch, frame.FrameIndex, SwapChain.Width, SwapChain.Height);
+		else
+			mVGSlice = .Invalid;
 	}
 
 	protected override bool OnRenderFrame(Sedulous.Runtime.Client.RenderContext render)
@@ -1223,7 +1226,7 @@ class ModelViewerApp : Application
 		let renderPass = encoder.BeginRenderPass(passDesc);
 		if (renderPass != null)
 		{
-			mVGRenderer.Render(renderPass, SwapChain.Width, SwapChain.Height, frame.FrameIndex);
+			mVGRenderer.Render(renderPass, SwapChain.Width, SwapChain.Height, frame.FrameIndex, mVGSlice);
 			renderPass.End();
 		}
 

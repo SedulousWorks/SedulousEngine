@@ -167,8 +167,8 @@ public class LegacyUISubsystem : Subsystem
 				return;
 
 			// Upload to GPU
-			mVGRenderer.UpdateProjection(width, height, frameIndex);
-			mVGRenderer.Prepare(batch, frameIndex);
+			mVGRenderer.BeginFrame(frameIndex);
+			let slice = mVGRenderer.Prepare(batch, frameIndex, width, height);
 
 			// Create overlay render pass (Load = preserve 3D scene)
 			ColorAttachment[1] colorAttachments = .(.()
@@ -184,7 +184,7 @@ public class LegacyUISubsystem : Subsystem
 			let renderPass = encoder.BeginRenderPass(passDesc);
 			if (renderPass != null)
 			{
-				mVGRenderer.Render(renderPass, width, height, frameIndex);
+				mVGRenderer.Render(renderPass, width, height, frameIndex, slice);
 				renderPass.End();
 			}
 		}
