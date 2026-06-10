@@ -108,8 +108,10 @@ class InlineStyleTests
 	public static void Inline_AcceptsEveryValueKind()
 	{
 		let view = scope TestView();
+		// SetInlineStyle's DrawableRef path consumes the caller's ref -
+		// the view's destructor releases on scope exit. No `defer
+		// ReleaseRef` needed.
 		let drawable = new ColorDrawable(.Red);
-		defer drawable.ReleaseRef();
 
 		view.SetInlineStyle(.TextColor,  .ColorVal(.(10, 20, 30, 255)));
 		view.SetInlineStyle(.FontSize,   .FloatVal(16));
@@ -381,17 +383,20 @@ class InlineStyleTests
 		Test.Assert(child.ResolveStyleColor(.TextColor).G == 255);
 	}
 
-	// === OwnInlineDrawable (sub-phase C) ===
+	// === Drawable ownership via SetStyle ===
+	//
+	// SetStyle's Drawable overload defaults to `consumeRef: true` -
+	// the inline-style sheet takes the caller's ref and Releases it
+	// when the view is destroyed or the value is overwritten. Pass
+	// `consumeRef: false` when the caller needs to keep its own ref.
 
 	[Test]
-	public static void Own_OwnedDrawable_FreedOnViewDestruction()
+	public static void SetStyle_Drawable_ConsumesByDefault()
 	{
 		let before = TrackingDrawable.LiveCount;
 
 		let view = new TestView();
-		let d = new TrackingDrawable();
-		view.SetInlineStyle(.Background, .DrawableRef(d));
-		view.OwnInlineDrawable(d);
+		view.SetStyle(.Background, new TrackingDrawable());
 
 		Test.Assert(TrackingDrawable.LiveCount == before + 1);
 
@@ -401,7 +406,7 @@ class InlineStyleTests
 	}
 
 	[Test]
-	public static void Own_NonOwnedDrawable_NotFreed()
+	public static void SetStyle_Drawable_OptOutPreservesCallerRef()
 	{
 		let before = TrackingDrawable.LiveCount;
 
@@ -409,29 +414,25 @@ class InlineStyleTests
 		defer d.ReleaseRef();
 
 		let view = new TestView();
-		// Inline reference without OwnInlineDrawable - caller keeps lifetime.
-		view.SetInlineStyle(.Background, .DrawableRef(d));
+		view.SetStyle(.Background, d, consumeRef: false);
 
 		Test.Assert(TrackingDrawable.LiveCount == before + 1);
 
 		delete view;
 
-		// Drawable still alive because view didn't own it.
+		// Drawable still alive because consumeRef: false left the
+		// caller's ref in place; defer drops it after the test body.
 		Test.Assert(TrackingDrawable.LiveCount == before + 1);
 	}
 
 	[Test]
-	public static void Own_MultipleOwnedDrawables_AllFreed()
+	public static void SetStyle_Drawable_MultipleConsumed_AllReleased()
 	{
 		let before = TrackingDrawable.LiveCount;
 
 		let view = new TestView();
-		let d1 = new TrackingDrawable();
-		let d2 = new TrackingDrawable();
-		view.SetInlineStyle(.Background, .DrawableRef(d1));
-		view.SetInlinePartStyle("thumb", .Background, .DrawableRef(d2));
-		view.OwnInlineDrawable(d1);
-		view.OwnInlineDrawable(d2);
+		view.SetStyle(.Background, new TrackingDrawable());
+		view.SetPartStyle("thumb", .Background, new TrackingDrawable());
 
 		Test.Assert(TrackingDrawable.LiveCount == before + 2);
 
@@ -441,9 +442,39 @@ class InlineStyleTests
 	}
 
 	[Test]
-	public static void Own_NullDrawable_NoOp()
+	public static void SetStyle_Drawable_OverwriteReleasesPrevious()
 	{
-		let view = scope TestView();
-		view.OwnInlineDrawable(null); // must not crash
+		let before = TrackingDrawable.LiveCount;
+
+		let view = new TestView();
+		view.SetStyle(.Background, new TrackingDrawable());
+
+		Test.Assert(TrackingDrawable.LiveCount == before + 1);
+
+		// Overwrite with a second drawable - the first should be freed.
+		view.SetStyle(.Background, new TrackingDrawable());
+
+		Test.Assert(TrackingDrawable.LiveCount == before + 1);
+
+		delete view;
+
+		Test.Assert(TrackingDrawable.LiveCount == before);
+	}
+
+	[Test]
+	public static void SetStyle_Drawable_NullClearsAndReleases()
+	{
+		let before = TrackingDrawable.LiveCount;
+
+		let view = new TestView();
+		view.SetStyle(.Background, new TrackingDrawable());
+
+		Test.Assert(TrackingDrawable.LiveCount == before + 1);
+
+		view.SetStyle(.Background, (Drawable)null);
+
+		Test.Assert(TrackingDrawable.LiveCount == before);
+
+		delete view;
 	}
 }

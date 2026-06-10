@@ -293,151 +293,212 @@ public abstract class View : IPropertyOwner
 	// `style="..."` analogue. An inline value wins over every
 	// rule-based match (inline is specificity infinity).
 	//
-	// Storage is lazily allocated: a view with no inline overrides pays
-	// only one pointer of overhead. The pseudo-element map is separate
-	// and likewise lazy.
-	//
-	// Resolution wiring lands in sub-phase B; this phase just exposes
-	// the data + API so callers and tests can be written against it.
+	// Storage is an internal `StyleSheet` (lazy, RefCounted). All
+	// refcount mgmt for `DrawableRef` values reuses `StyleRule.Set` /
+	// `StyleRule.Remove` from the styling subsystem - the View
+	// doesn't duplicate it. The inline sheet's rules use empty
+	// selectors (element-level) or pseudo-element-only selectors
+	// (part-level); `StyleSheet.Resolve` short-circuits on any match
+	// from the inline sheet, treating it as specificity infinity.
 
-	private Dictionary<StyleProperty, StyleValue> mInlineStyles;
-	private List<(String Part, StyleProperty Prop, StyleValue Value)> mInlinePartStyles;
-	private List<Drawable> mOwnedInlineDrawables;
+	private StyleSheet mInlineSheet;
+
+	/// Internal access to the inline sheet. Returned non-owning -
+	/// don't Release.
+	public StyleSheet InlineSheet => mInlineSheet;
 
 	/// True if any inline overrides are set on this view.
-	public bool HasAnyInlineStyles =>
-		(mInlineStyles != null && mInlineStyles.Count > 0) ||
-		(mInlinePartStyles != null && mInlinePartStyles.Count > 0);
+	public bool HasAnyInlineStyles => mInlineSheet != null && !mInlineSheet.IsEmpty;
+
+	private StyleSheet EnsureInlineSheet()
+	{
+		if (mInlineSheet == null)
+			mInlineSheet = new StyleSheet();
+		return mInlineSheet;
+	}
 
 	/// Sets an inline override for `prop`. Overwrites any existing
-	/// inline value for the same property.
+	/// inline value for the same property, releasing the previous
+	/// drawable if one was stored. The view consumes the caller's
+	/// drawable ref when `value` is a `DrawableRef` - for AddRef
+	/// semantics use the `SetStyle(prop, drawable, consumeRef: false)`
+	/// overload.
 	public void SetInlineStyle(StyleProperty prop, StyleValue value)
 	{
-		if (mInlineStyles == null)
-			mInlineStyles = new .();
-		mInlineStyles[prop] = value;
+		let rule = EnsureInlineSheet().GetOrCreateInlineElementRule();
+		switch (value)
+		{
+		case .ColorVal(let c):     rule.Set(prop, c);
+		case .FloatVal(let f):     rule.Set(prop, f);
+		case .ThicknessVal(let t): rule.Set(prop, t);
+		case .BoolVal(let b):      rule.Set(prop, b);
+		case .DrawableRef(let d):  rule.Set(prop, d, consumeRef: true);
+		case .None:                rule.Remove(prop);
+		}
 		Invalidate();
 	}
 
 	/// Returns the inline override for `prop`, or `.None` if not set.
+	/// Drawable values are borrowed - do not Release.
 	public StyleValue GetInlineStyle(StyleProperty prop)
 	{
-		if (mInlineStyles == null) return .None;
-		if (mInlineStyles.TryGetValue(prop, let value)) return value;
-		return .None;
+		if (mInlineSheet == null) return .None;
+		let rule = mInlineSheet.FindInlineElementRule();
+		if (rule == null) return .None;
+		return rule.GetValue(prop) ?? .None;
 	}
 
 	/// True if an inline override exists for `prop`.
 	public bool HasInlineStyle(StyleProperty prop)
 	{
-		if (mInlineStyles == null) return false;
-		return mInlineStyles.ContainsKey(prop);
+		if (mInlineSheet == null) return false;
+		let rule = mInlineSheet.FindInlineElementRule();
+		if (rule == null) return false;
+		return rule.GetValue(prop) != null;
 	}
 
-	/// Removes a single inline override. No-op if not set.
+	/// Removes a single inline override. Releases the drawable if the
+	/// value was a `DrawableRef`. No-op if not set.
 	public void ClearInlineStyle(StyleProperty prop)
 	{
-		if (mInlineStyles == null) return;
-		if (mInlineStyles.Remove(prop))
+		if (mInlineSheet == null) return;
+		let rule = mInlineSheet.FindInlineElementRule();
+		if (rule == null) return;
+		if (rule.Remove(prop))
 			Invalidate();
 	}
 
 	/// Removes every inline override on this view (element + pseudo-element).
+	/// Releases every owned drawable.
 	public void ClearInlineStyles()
 	{
-		bool changed = false;
-		if (mInlineStyles != null && mInlineStyles.Count > 0)
-		{
-			mInlineStyles.Clear();
-			changed = true;
-		}
-		if (mInlinePartStyles != null && mInlinePartStyles.Count > 0)
-		{
-			for (let entry in mInlinePartStyles)
-				delete entry.Part;
-			mInlinePartStyles.Clear();
-			changed = true;
-		}
-		if (changed) Invalidate();
+		if (mInlineSheet == null || mInlineSheet.IsEmpty) return;
+		// Releasing the whole sheet is the simplest way to drop every
+		// rule (and every drawable AddRef'd by those rules). A fresh
+		// sheet is reallocated on the next set.
+		mInlineSheet.ReleaseRef();
+		mInlineSheet = null;
+		Invalidate();
 	}
 
 	/// Sets an inline override for a pseudo-element (e.g., "thumb") on
 	/// this view. Composite controls use this to override sub-part
-	/// styles without going through a StyleSheet rule.
+	/// styles without going through a context StyleSheet rule. Consumes
+	/// the caller's drawable ref on `DrawableRef` values; overwriting
+	/// an existing entry releases the previous drawable.
 	public void SetInlinePartStyle(StringView part, StyleProperty prop, StyleValue value)
 	{
-		if (mInlinePartStyles == null)
-			mInlinePartStyles = new .();
-
-		// Update in place if the (part, prop) pair already has an entry.
-		for (int i = 0; i < mInlinePartStyles.Count; i++)
+		let rule = EnsureInlineSheet().GetOrCreateInlinePartRule(part);
+		switch (value)
 		{
-			let entry = mInlinePartStyles[i];
-			if (entry.Prop == prop && StringView(entry.Part) == part)
-			{
-				mInlinePartStyles[i] = (entry.Part, prop, value);
-				Invalidate();
-				return;
-			}
+		case .ColorVal(let c):     rule.Set(prop, c);
+		case .FloatVal(let f):     rule.Set(prop, f);
+		case .ThicknessVal(let t): rule.Set(prop, t);
+		case .BoolVal(let b):      rule.Set(prop, b);
+		case .DrawableRef(let d):  rule.Set(prop, d, consumeRef: true);
+		case .None:                rule.Remove(prop);
 		}
-
-		mInlinePartStyles.Add((new String(part), prop, value));
 		Invalidate();
 	}
 
 	/// Returns the inline pseudo-element override, or `.None`.
+	/// Drawable values are borrowed - do not Release.
 	public StyleValue GetInlinePartStyle(StringView part, StyleProperty prop)
 	{
-		if (mInlinePartStyles == null) return .None;
-		for (let entry in mInlinePartStyles)
-		{
-			if (entry.Prop == prop && StringView(entry.Part) == part)
-				return entry.Value;
-		}
-		return .None;
+		if (mInlineSheet == null) return .None;
+		let rule = mInlineSheet.FindInlinePartRule(part);
+		if (rule == null) return .None;
+		return rule.GetValue(prop) ?? .None;
 	}
 
 	/// True if an inline pseudo-element override exists.
 	public bool HasInlinePartStyle(StringView part, StyleProperty prop)
 	{
-		if (mInlinePartStyles == null) return false;
-		for (let entry in mInlinePartStyles)
-		{
-			if (entry.Prop == prop && StringView(entry.Part) == part)
-				return true;
-		}
-		return false;
+		if (mInlineSheet == null) return false;
+		let rule = mInlineSheet.FindInlinePartRule(part);
+		if (rule == null) return false;
+		return rule.GetValue(prop) != null;
 	}
 
-	/// Removes one inline pseudo-element override. No-op if not set.
+	/// Removes one inline pseudo-element override. Releases the
+	/// drawable if the value was a `DrawableRef`. No-op if not set.
 	public void ClearInlinePartStyle(StringView part, StyleProperty prop)
 	{
-		if (mInlinePartStyles == null) return;
-		for (int i = 0; i < mInlinePartStyles.Count; i++)
-		{
-			let entry = mInlinePartStyles[i];
-			if (entry.Prop == prop && StringView(entry.Part) == part)
-			{
-				delete entry.Part;
-				mInlinePartStyles.RemoveAt(i);
-				Invalidate();
-				return;
-			}
-		}
+		if (mInlineSheet == null) return;
+		let rule = mInlineSheet.FindInlinePartRule(part);
+		if (rule == null) return;
+		if (rule.Remove(prop))
+			Invalidate();
 	}
 
-	/// Take ownership of a drawable assigned as an inline style value.
-	/// The view deletes the drawable on destruction. Mirrors
-	/// `StyleSheet.OwnDrawable`. Use when the drawable was constructed
-	/// inline by the caller (e.g., `new ColorDrawable(.Red)`); skip when
-	/// the drawable is already owned elsewhere (e.g., by a StyleSheet
-	/// via `OwnColor` / `OwnDrawable`).
-	public void OwnInlineDrawable(Drawable drawable)
+	// === SetStyle convenience overloads ===
+	//
+	// Public write API for inline overrides. Mirrors `StyleRule.Set`
+	// in shape (one overload per StyleValue kind). The Drawable
+	// overload exposes the same `consumeRef` flag as
+	// `StyleRule.Set` / `StyleSheet.OwnDrawable`; the default here is
+	// `consumeRef: true` because the typical view-side pattern is
+	// `panel.SetStyle(.Background, new ColorDrawable(...))` - a
+	// one-liner that hands the new drawable's ref to the view.
+
+	public void SetStyle(StyleProperty prop, Color color)
 	{
-		if (drawable == null) return;
-		if (mOwnedInlineDrawables == null)
-			mOwnedInlineDrawables = new .();
-		mOwnedInlineDrawables.Add(drawable);
+		EnsureInlineSheet().GetOrCreateInlineElementRule().Set(prop, color);
+		Invalidate();
+	}
+
+	public void SetStyle(StyleProperty prop, float value)
+	{
+		EnsureInlineSheet().GetOrCreateInlineElementRule().Set(prop, value);
+		Invalidate();
+	}
+
+	public void SetStyle(StyleProperty prop, Thickness value)
+	{
+		EnsureInlineSheet().GetOrCreateInlineElementRule().Set(prop, value);
+		Invalidate();
+	}
+
+	public void SetStyle(StyleProperty prop, bool value)
+	{
+		EnsureInlineSheet().GetOrCreateInlineElementRule().Set(prop, value);
+		Invalidate();
+	}
+
+	public void SetStyle(StyleProperty prop, Drawable drawable, bool consumeRef = true)
+	{
+		EnsureInlineSheet().GetOrCreateInlineElementRule().Set(prop, drawable, consumeRef: consumeRef);
+		Invalidate();
+	}
+
+	public void SetPartStyle(StringView part, StyleProperty prop, Color color)
+	{
+		EnsureInlineSheet().GetOrCreateInlinePartRule(part).Set(prop, color);
+		Invalidate();
+	}
+
+	public void SetPartStyle(StringView part, StyleProperty prop, float value)
+	{
+		EnsureInlineSheet().GetOrCreateInlinePartRule(part).Set(prop, value);
+		Invalidate();
+	}
+
+	public void SetPartStyle(StringView part, StyleProperty prop, Thickness value)
+	{
+		EnsureInlineSheet().GetOrCreateInlinePartRule(part).Set(prop, value);
+		Invalidate();
+	}
+
+	public void SetPartStyle(StringView part, StyleProperty prop, bool value)
+	{
+		EnsureInlineSheet().GetOrCreateInlinePartRule(part).Set(prop, value);
+		Invalidate();
+	}
+
+	public void SetPartStyle(StringView part, StyleProperty prop, Drawable drawable, bool consumeRef = true)
+	{
+		EnsureInlineSheet().GetOrCreateInlinePartRule(part).Set(prop, drawable, consumeRef: consumeRef);
+		Invalidate();
 	}
 
 	// === Style resolution helpers ===
@@ -722,18 +783,6 @@ public abstract class View : IPropertyOwner
 			delete mUserData;
 		}
 
-		delete mInlineStyles;
-		if (mInlinePartStyles != null)
-		{
-			for (let entry in mInlinePartStyles)
-				delete entry.Part;
-			delete mInlinePartStyles;
-		}
-		if (mOwnedInlineDrawables != null)
-		{
-			for (let d in mOwnedInlineDrawables)
-				d.ReleaseRef();
-			delete mOwnedInlineDrawables;
-		}
+		mInlineSheet?.ReleaseRef();
 	}
 }

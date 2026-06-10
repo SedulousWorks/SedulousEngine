@@ -92,4 +92,23 @@ public class StyleSelector
 		delete PseudoElement;
 		PseudoElement = new String(name);
 	}
+
+	/// True if this selector has no constraints - i.e., matches every
+	/// view in every state, with no pseudo-element. Used to identify
+	/// the "element" rule on inline sheets.
+	public bool IsEmpty =>
+		ViewType == null &&
+		StyleClasses.Count == 0 &&
+		!State.HasValue &&
+		PseudoElement == null;
+
+	/// True if this selector targets only a specific pseudo-element
+	/// with no other constraints. Used to identify per-part inline
+	/// rules on inline sheets.
+	public bool IsPseudoElementOnly(StringView part) =>
+		ViewType == null &&
+		StyleClasses.Count == 0 &&
+		!State.HasValue &&
+		PseudoElement != null &&
+		StringView(PseudoElement) == part;
 }

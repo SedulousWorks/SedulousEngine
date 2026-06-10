@@ -53,6 +53,70 @@ public class StyleSheet : RefCounted
 	/// Number of rules.
 	public int RuleCount => mRules.Count;
 
+	// === Inline-sheet rule helpers ===
+	//
+	// Inline sheets (held by `View.mInlineSheet`) host a single
+	// "element" rule with an empty selector that matches the owning
+	// view unconditionally, plus per-pseudo-element rules. These
+	// helpers find or create those rules. Specificity in the inline
+	// sheet doesn't matter - `StyleSheet.Resolve` short-circuits on
+	// any non-`.None` value from the inline sheet, treating the inline
+	// path as specificity infinity.
+
+	/// Find or create the element-level inline rule (empty selector).
+	public StyleRule GetOrCreateInlineElementRule()
+	{
+		for (let rule in mRules)
+		{
+			if (rule.Selector.IsEmpty)
+				return rule;
+		}
+		let rule = new StyleRule();
+		mRules.Add(rule);
+		return rule;
+	}
+
+	/// Find the element-level inline rule, or null if none has been
+	/// created yet.
+	public StyleRule FindInlineElementRule()
+	{
+		for (let rule in mRules)
+		{
+			if (rule.Selector.IsEmpty)
+				return rule;
+		}
+		return null;
+	}
+
+	/// Find or create the inline rule for a specific pseudo-element.
+	public StyleRule GetOrCreateInlinePartRule(StringView part)
+	{
+		for (let rule in mRules)
+		{
+			if (rule.Selector.IsPseudoElementOnly(part))
+				return rule;
+		}
+		let rule = new StyleRule();
+		rule.Selector.SetPseudoElement(part);
+		mRules.Add(rule);
+		return rule;
+	}
+
+	/// Find an existing inline rule for a specific pseudo-element,
+	/// or null if none exists.
+	public StyleRule FindInlinePartRule(StringView part)
+	{
+		for (let rule in mRules)
+		{
+			if (rule.Selector.IsPseudoElementOnly(part))
+				return rule;
+		}
+		return null;
+	}
+
+	/// True if this sheet has no rules.
+	public bool IsEmpty => mRules.Count == 0;
+
 	// === Convenience rule builders ===
 
 	/// Create a rule matching a view type.
@@ -164,13 +228,22 @@ public class StyleSheet : RefCounted
 	/// Resolve a style property for a view. Walks rules in specificity order,
 	/// returns the first match. For inheritable properties, walks the parent
 	/// chain if no match on the view itself.
-	public StyleValue Resolve(View view, StyleProperty prop)
+	///
+	/// `walkInheritance` defaults to true (matches today's context-sheet
+	/// behavior). The inline-sheet path passes `false` so a view's inline
+	/// values do not leak across ancestor boundaries.
+	public StyleValue Resolve(View view, StyleProperty prop, bool walkInheritance = true)
 	{
-		// Inline overrides beat every rule-based match - the CSS
-		// `style="..."` analogue, specificity infinity.
-		let @inline = view.GetInlineStyle(prop);
-		if (!(@inline case .None))
-			return @inline;
+		// Inline overrides on this view beat every rule-based match -
+		// the CSS `style="..."` analogue, specificity infinity. Guard
+		// against re-entry from the inline-sheet path itself.
+		let inlineSheet = view.InlineSheet;
+		if (inlineSheet != null && inlineSheet !== this)
+		{
+			let @inline = inlineSheet.Resolve(view, prop, false);
+			if (!(@inline case .None))
+				return @inline;
+		}
 
 		let state = view.GetControlState();
 
@@ -195,13 +268,13 @@ public class StyleSheet : RefCounted
 			}
 		}
 
-		if (bestValue case .None)
+		if (bestValue case .None && walkInheritance)
 		{
 			// For inheritable properties, try parent chain. The recursion
 			// re-enters this method, so the parent's inline overrides are
 			// consulted before its rules.
 			if (StyleInheritance.IsInheritable(prop) && view.Parent != null)
-				return Resolve(view.Parent, prop);
+				return Resolve(view.Parent, prop, walkInheritance);
 		}
 
 		return bestValue;
@@ -252,10 +325,14 @@ public class StyleSheet : RefCounted
 	/// The partState is the part's interaction state (e.g., thumb hovered).
 	public StyleValue ResolvePart(View view, StringView pseudoElement, StyleProperty prop, ControlState partState)
 	{
-		// Inline pseudo-element overrides win over any rule.
-		let @inline = view.GetInlinePartStyle(pseudoElement, prop);
-		if (!(@inline case .None))
-			return @inline;
+		// Inline pseudo-element overrides on this view win over any rule.
+		let inlineSheet = view.InlineSheet;
+		if (inlineSheet != null && inlineSheet !== this)
+		{
+			let @inline = inlineSheet.ResolvePart(view, pseudoElement, prop, partState);
+			if (!(@inline case .None))
+				return @inline;
+		}
 
 		StyleValue bestValue = .None;
 		int32 bestSpecificity = -1;
