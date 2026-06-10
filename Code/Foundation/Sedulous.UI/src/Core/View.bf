@@ -302,10 +302,33 @@ public abstract class View : IPropertyOwner
 	// from the inline sheet, treating it as specificity infinity.
 
 	private StyleSheet mInlineSheet;
+	private StyleSheet mLocalStyleSheet;
 
 	/// Internal access to the inline sheet. Returned non-owning -
 	/// don't Release.
 	public StyleSheet InlineSheet => mInlineSheet;
+
+	/// Optional scoped `StyleSheet` that applies to this view and its
+	/// descendants. Ref-counted (mirrors `UIContext.StyleSheet`) - the
+	/// setter AddRefs the new value and Releases the previous one;
+	/// destruction releases the held ref. Multiple views can safely
+	/// share the same `LocalStyleSheet` instance.
+	///
+	/// Resolution wiring (ancestor-chain walk before the context sheet)
+	/// lands in sub-phase F. This phase just exposes the property and
+	/// its lifecycle.
+	public StyleSheet LocalStyleSheet
+	{
+		get => mLocalStyleSheet;
+		set
+		{
+			if (mLocalStyleSheet === value) return;
+			value?.AddRef();
+			mLocalStyleSheet?.ReleaseRef();
+			mLocalStyleSheet = value;
+			Invalidate();
+		}
+	}
 
 	/// True if any inline overrides are set on this view.
 	public bool HasAnyInlineStyles => mInlineSheet != null && !mInlineSheet.IsEmpty;
@@ -502,78 +525,142 @@ public abstract class View : IPropertyOwner
 	}
 
 	// === Style resolution helpers ===
+	//
+	// `ResolveStyle` is the public orchestrator for style resolution.
+	// The walk:
+	//   1. Inline sheet on THIS view (specificity infinity).
+	//   2. Ancestor chain (self -> root) - consult each `LocalStyleSheet`.
+	//      "Not found" on an ancestor's local sheet falls through to
+	//      the next ancestor; each sheet contributes only what it
+	//      defines.
+	//   3. Context sheet on the active UIContext.
+	//   4. For inheritable properties (TextColor, FontSize): recurse
+	//      the whole algorithm from Parent.
+	//
+	// Each StyleSheet's `Resolve` is a per-sheet primitive (just walks
+	// its rules); the orchestrator threads them together. Pseudo-
+	// element resolution still goes through `ResolvePartStyle`, which
+	// currently consults only the context sheet (sub-phase G adds the
+	// ancestor walk for pseudo-elements).
 
-	/// Resolve a style property from the active StyleSheet.
-	/// Returns .None if no StyleSheet is set or no match found.
+	/// Resolve a style property. Returns `.None` if no inline, local,
+	/// or context rule matches and the property isn't inheritable.
 	public StyleValue ResolveStyle(StyleProperty prop)
 	{
-		let sheet = Context?.StyleSheet;
-		if (sheet == null) return .None;
-		return sheet.Resolve(this, prop);
+		// 1. Inline sheet on this view.
+		if (mInlineSheet != null)
+		{
+			let r = mInlineSheet.Resolve(this, prop);
+			if (!(r case .None)) return r;
+		}
+
+		// 2. Walk ancestor chain (self -> root) consulting LocalStyleSheets.
+		var anc = this;
+		while (anc != null)
+		{
+			if (anc.mLocalStyleSheet != null)
+			{
+				let r = anc.mLocalStyleSheet.Resolve(this, prop);
+				if (!(r case .None)) return r;
+			}
+			anc = anc.Parent;
+		}
+
+		// 3. Context sheet.
+		let ctxSheet = Context?.StyleSheet;
+		if (ctxSheet != null)
+		{
+			let r = ctxSheet.Resolve(this, prop);
+			if (!(r case .None)) return r;
+		}
+
+		// 4. Inheritable property: recurse from parent through the whole
+		// algorithm (so the parent's inline + locals + context are all
+		// consulted).
+		if (StyleInheritance.IsInheritable(prop) && Parent != null)
+			return Parent.ResolveStyle(prop);
+
+		return .None;
 	}
 
 	/// Resolve a Color style property with fallback default.
 	public Color ResolveStyleColor(StyleProperty prop, Color defaultVal = .White)
 	{
-		let sheet = Context?.StyleSheet;
-		if (sheet == null) return defaultVal;
-		return sheet.ResolveColor(this, prop, defaultVal);
+		if (let c = ResolveStyle(prop).AsColor) return c;
+		return defaultVal;
 	}
 
 	/// Resolve a float style property with fallback default.
 	public float ResolveStyleFloat(StyleProperty prop, float defaultVal = 0)
 	{
-		let sheet = Context?.StyleSheet;
-		if (sheet == null) return defaultVal;
-		return sheet.ResolveFloat(this, prop, defaultVal);
+		if (let f = ResolveStyle(prop).AsFloat) return f;
+		return defaultVal;
 	}
 
 	/// Resolve a Thickness style property with fallback default.
 	public Thickness ResolveStyleThickness(StyleProperty prop, Thickness defaultVal = .())
 	{
-		let sheet = Context?.StyleSheet;
-		if (sheet == null) return defaultVal;
-		return sheet.ResolveThickness(this, prop, defaultVal);
+		if (let t = ResolveStyle(prop).AsThickness) return t;
+		return defaultVal;
 	}
 
 	/// Resolve a Drawable style property. Returns null if not found.
 	public Drawable ResolveStyleDrawable(StyleProperty prop)
-	{
-		let sheet = Context?.StyleSheet;
-		if (sheet == null) return null;
-		return sheet.ResolveDrawable(this, prop);
-	}
+		=> ResolveStyle(prop).AsDrawable;
 
 	// === Pseudo-element (part) style resolution ===
+	//
+	// Mirror of `ResolveStyle` for pseudo-elements: inline (this view)
+	// -> ancestor `LocalStyleSheet`s -> context. No inheritance recursion
+	// - pseudo-element rules don't inherit through the view tree.
 
 	/// Resolve a style property for a named sub-part of this control.
-	/// partState is the part's interaction state (e.g., thumb hovered).
+	/// `partState` is the part's interaction state (e.g. thumb hovered).
 	public StyleValue ResolvePartStyle(StringView part, StyleProperty prop, ControlState partState)
 	{
-		let sheet = Context?.StyleSheet;
-		if (sheet == null) return .None;
-		return sheet.ResolvePart(this, part, prop, partState);
+		// 1. Inline sheet on this view.
+		if (mInlineSheet != null)
+		{
+			let r = mInlineSheet.ResolvePart(this, part, prop, partState);
+			if (!(r case .None)) return r;
+		}
+
+		// 2. Walk ancestor chain (self -> root) consulting LocalStyleSheets.
+		var anc = this;
+		while (anc != null)
+		{
+			if (anc.mLocalStyleSheet != null)
+			{
+				let r = anc.mLocalStyleSheet.ResolvePart(this, part, prop, partState);
+				if (!(r case .None)) return r;
+			}
+			anc = anc.Parent;
+		}
+
+		// 3. Context sheet.
+		let ctxSheet = Context?.StyleSheet;
+		if (ctxSheet != null)
+		{
+			let r = ctxSheet.ResolvePart(this, part, prop, partState);
+			if (!(r case .None)) return r;
+		}
+
+		return .None;
 	}
 
 	public Drawable ResolvePartDrawable(StringView part, StyleProperty prop, ControlState partState)
-	{
-		let sheet = Context?.StyleSheet;
-		if (sheet == null) return null;
-		return sheet.ResolvePartDrawable(this, part, prop, partState);
-	}
+		=> ResolvePartStyle(part, prop, partState).AsDrawable;
 
 	public Color ResolvePartColor(StringView part, StyleProperty prop, ControlState partState, Color defaultVal = .White)
 	{
-		let sheet = Context?.StyleSheet;
-		if (sheet == null) return defaultVal;
-		return sheet.ResolvePartColor(this, part, prop, partState, defaultVal);
+		if (let c = ResolvePartStyle(part, prop, partState).AsColor) return c;
+		return defaultVal;
 	}
 
 	public float ResolvePartFloat(StringView part, StyleProperty prop, ControlState partState, float defaultVal = 0)
 	{
-		let sheet = Context?.StyleSheet;
-		if (sheet == null) return defaultVal;
-		return sheet.ResolvePartFloat(this, part, prop, partState, defaultVal);
+		if (let f = ResolvePartStyle(part, prop, partState).AsFloat) return f;
+		return defaultVal;
 	}
 
 	// === Hit testing ===
@@ -784,5 +871,6 @@ public abstract class View : IPropertyOwner
 		}
 
 		mInlineSheet?.ReleaseRef();
+		mLocalStyleSheet?.ReleaseRef();
 	}
 }

@@ -225,29 +225,15 @@ public class StyleSheet : RefCounted
 
 	// === Resolution ===
 
-	/// Resolve a style property for a view. Walks rules in specificity order,
-	/// returns the first match. For inheritable properties, walks the parent
-	/// chain if no match on the view itself.
-	///
-	/// `walkInheritance` defaults to true (matches today's context-sheet
-	/// behavior). The inline-sheet path passes `false` so a view's inline
-	/// values do not leak across ancestor boundaries.
-	public StyleValue Resolve(View view, StyleProperty prop, bool walkInheritance = true)
+	/// Resolve a style property by walking rules on THIS sheet in
+	/// specificity order. Returns the best match (`.None` if no rule
+	/// matches). Inline-style and inheritance handling live on the
+	/// orchestrator (`View.ResolveStyle`); this method is a pure
+	/// per-sheet primitive.
+	public StyleValue Resolve(View view, StyleProperty prop)
 	{
-		// Inline overrides on this view beat every rule-based match -
-		// the CSS `style="..."` analogue, specificity infinity. Guard
-		// against re-entry from the inline-sheet path itself.
-		let inlineSheet = view.InlineSheet;
-		if (inlineSheet != null && inlineSheet !== this)
-		{
-			let @inline = inlineSheet.Resolve(view, prop, false);
-			if (!(@inline case .None))
-				return @inline;
-		}
-
 		let state = view.GetControlState();
 
-		// Find the best matching rule with this property.
 		StyleValue bestValue = .None;
 		int32 bestSpecificity = -1;
 
@@ -266,15 +252,6 @@ public class StyleSheet : RefCounted
 				bestSpecificity = specificity;
 				bestValue = val.Value;
 			}
-		}
-
-		if (bestValue case .None && walkInheritance)
-		{
-			// For inheritable properties, try parent chain. The recursion
-			// re-enters this method, so the parent's inline overrides are
-			// consulted before its rules.
-			if (StyleInheritance.IsInheritable(prop) && view.Parent != null)
-				return Resolve(view.Parent, prop, walkInheritance);
 		}
 
 		return bestValue;
@@ -321,19 +298,12 @@ public class StyleSheet : RefCounted
 
 	// === Pseudo-element (part) resolution ===
 
-	/// Resolve a style property for a pseudo-element on a view.
-	/// The partState is the part's interaction state (e.g., thumb hovered).
+	/// Resolve a style property for a pseudo-element by walking the
+	/// rules on THIS sheet. Per-sheet primitive paired with
+	/// `View.ResolvePartStyle`, which orchestrates inline +
+	/// ancestor-LocalStyleSheets + context across multiple sheets.
 	public StyleValue ResolvePart(View view, StringView pseudoElement, StyleProperty prop, ControlState partState)
 	{
-		// Inline pseudo-element overrides on this view win over any rule.
-		let inlineSheet = view.InlineSheet;
-		if (inlineSheet != null && inlineSheet !== this)
-		{
-			let @inline = inlineSheet.ResolvePart(view, pseudoElement, prop, partState);
-			if (!(@inline case .None))
-				return @inline;
-		}
-
 		StyleValue bestValue = .None;
 		int32 bestSpecificity = -1;
 

@@ -383,6 +383,61 @@ class InlineStyleTests
 		Test.Assert(child.ResolveStyleColor(.TextColor).G == 255);
 	}
 
+	[Test]
+	public static void Resolution_InlineBeatsLocalOnThisView()
+	{
+		// View has both a LocalStyleSheet AND an inline override on
+		// the same property. Inline wins (specificity infinity).
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		SetupSheet(ctx);
+
+		let view = new TestView();
+		root.AddView(view);
+
+		// Local sheet on this view defines TextColor.
+		let local = new StyleSheet();
+		view.LocalStyleSheet = local;
+		local.ReleaseRef();
+		local.ForType(typeof(TestView))
+			.Set(.TextColor, .Red);
+
+		// Inline override - should win.
+		view.SetInlineStyle(.TextColor, .ColorVal(.(0, 255, 0, 255)));
+
+		Test.Assert(view.ResolveStyleColor(.TextColor).G == 255);
+	}
+
+	[Test]
+	public static void Resolution_InlineBeatsLocalOnAncestor()
+	{
+		// LocalStyleSheet sits on a parent; child has the inline
+		// override. Inline (on the styled view) wins over any sheet
+		// regardless of where in the chain it lives.
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		SetupSheet(ctx);
+
+		let group = new TestGroup();
+		let child = new TestView();
+		root.AddView(group);
+		group.AddView(child);
+
+		let parentLocal = new StyleSheet();
+		group.LocalStyleSheet = parentLocal;
+		parentLocal.ReleaseRef();
+		parentLocal.ForType(typeof(TestView))
+			.Set(.TextColor, .Red);
+
+		child.SetInlineStyle(.TextColor, .ColorVal(.(0, 0, 255, 255)));
+
+		Test.Assert(child.ResolveStyleColor(.TextColor).B == 255);
+	}
+
 	// === Drawable ownership via SetStyle ===
 	//
 	// SetStyle's Drawable overload defaults to `consumeRef: true` -
