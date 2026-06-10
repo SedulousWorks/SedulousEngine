@@ -1,6 +1,9 @@
 # Sedulous.UI - Per-View Style Overrides
 
-**Status:** Not started. Design only.
+**Status:** Partial. Tier 1 (inline styles) shipped 2026-06-10,
+including a `Drawable : RefCounted` refactor that the original plan
+didn't anticipate. Tier 2 (local stylesheets) + the cross-cutting
+resolution algorithm + sandbox demo (sub-phases E-H) remain pending.
 
 Adds two escape hatches to the styling system that v2 didn't ship:
 
@@ -30,61 +33,76 @@ model.
 
 ## Design
 
-### Tier 1 - Inline styles
+### Tier 1 - Inline styles *(shipped)*
 
-A view carries an optional sparse map of `StyleProperty -> StyleValue`
-overrides. Any value present beats every rule-based match (inline is
+A view carries an optional internal `StyleSheet`. Any value set on it
+beats every rule-based match from the context sheet (inline is
 specificity infinity, the same way CSS `style="..."` beats any
 selector).
 
-**API:**
+**Public API:**
 
 ```beef
-view.SetInlineStyle(.TextColor, .Red);
-view.SetInlineStyle(.FontSize, 24f);
-view.SetInlineStyle(.Background, roundedDrawable);
+panel.SetStyle(.Background, new ColorDrawable(.Red));  // consumes ref
+panel.SetStyle(.TextColor, .Red);
+panel.SetStyle(.FontSize, 24f);
 
-view.GetInlineStyle(.TextColor);    // returns StyleValue (.None if unset)
-view.HasInlineStyle(.TextColor);    // bool
-
+view.GetInlineStyle(.TextColor);  // returns StyleValue (.None if unset)
+view.HasInlineStyle(.TextColor);  // bool
 view.ClearInlineStyle(.FontSize);
 view.ClearInlineStyles();
 ```
 
+Typed `SetStyle` overloads mirror `StyleRule.Set` (Color / float /
+Thickness / bool / Drawable). The Drawable overload exposes a
+`consumeRef: bool = true` flag - default consumes the caller's
+ref (the typical one-liner pattern); pass `consumeRef: false` when
+the caller wants to keep its own ref on a shared drawable.
+
 Pseudo-element equivalents for composite controls:
 
 ```beef
-view.SetInlinePartStyle("thumb", .Background, drawable);
+slider.SetPartStyle("thumb", .Background, new ColorDrawable(.Blue));
+view.GetInlinePartStyle("thumb", .Background);
 view.ClearInlinePartStyle("thumb", .Background);
 ```
 
-**Storage:** `View.InlineStyles: Dictionary<StyleProperty, StyleValue>`,
-lazily allocated. `null` when no overrides set (the common case - one
-pointer of overhead per view). Pseudo-element overrides live in a
-secondary structure keyed by `(part, property)`, only allocated if
-used.
+**Storage:** `View.mInlineSheet : StyleSheet` (lazy, RefCounted). A view
+with no inline overrides pays one pointer of overhead. The inline
+sheet hosts:
 
-**Ownership:** drawables stored as inline values need explicit
-ownership semantics so they're not leaked. Mirror the `StyleSheet`
-pattern:
+- One rule with an empty `StyleSelector` for element-level overrides
+  (matches the owning view unconditionally).
+- One rule per pseudo-element name, with `Selector.SetPseudoElement(part)`.
 
-```beef
-view.OwnInlineDrawable(drawable);  // view deletes on destruction
-```
+All refcount management for `DrawableRef` values reuses `StyleRule.Set`
+/ `StyleRule.Remove` from the styling subsystem - the View doesn't
+duplicate it. Overwriting a rule's `DrawableRef` releases the previous
+drawable; clearing the rule does the same; the sheet's destruction
+releases everything it owns. View destructor is one line:
+`mInlineSheet?.ReleaseRef()`.
 
-Setting a non-owned drawable as an inline value is fine - the view
-just holds the reference and doesn't delete. Callers manage the
-drawable's lifetime themselves in that case (same contract as
-`StyleSheet.AddRule(...).Set(prop, drawable)` without
-`OwnDrawable(...)`).
+**Drawable : RefCounted:** the inline-style work required uniform
+ownership across rule/sheet/view boundaries. Sub-phase D.1 made
+`Drawable` inherit `RefCounted`. Child-holding subclasses
+(`InsetDrawable`, `LayerDrawable`, `StateListDrawable`) consume the
+caller's ref in their constructors / `Add` / `Set` methods and Release
+on destruction. `StyleSheet.OwnDrawable(d, consumeRef = true)` and
+`StyleRule.Set(prop, d, consumeRef = false)` both expose the
+`consumeRef` flag - defaults match each method's typical call pattern
+(rule call sites overwhelmingly do `Set(prop, sheet.OwnColor(...))`;
+view call sites overwhelmingly do `SetStyle(prop, new ...)`).
 
-**Resolution priority:** highest. Inline values are checked first and
-returned if present. This means inline styles ignore selector
-specificity entirely - they're the "I really mean this" hatch.
+**Resolution priority:** highest. `StyleSheet.Resolve` and `ResolvePart`
+both consult `view.InlineSheet` first (with `walkInheritance: false`
+to keep inline values from leaking across ancestor boundaries) before
+walking their own rules. Re-entry guard via `inlineSheet !== this`
+prevents infinite recursion when called on the inline sheet itself.
 
 **State interaction:** inline values apply across all `ControlState`
-values. If you want per-state overrides on one view, that's the
-local-stylesheet path (Tier 2), not inline.
+values - the inline sheet's element rule has an empty selector with
+no state constraint. If you want per-state overrides on one view,
+that's the local-stylesheet path (Tier 2), not inline.
 
 ### Tier 2 - Local stylesheets
 
@@ -158,46 +176,39 @@ unchanged; each sheet's `ResolvePart` is called instead of `Resolve`.
 on assignment, `Release`s on reassignment and on destruction.
 Multiple views can share the same `LocalStyleSheet` instance safely.
 
-### Migration of existing typed override fields
+### Migration of existing typed override fields *(shipped)*
 
-A small set of controls today carry a typed field for one property
-(e.g. `ButtonBase.Background`, `Panel.Background`). These become thin
-wrappers over `InlineStyles`:
+`ButtonBase.Background`, `Panel.Background`, and
+`ToggleButton.CheckedBackground` were removed entirely. Drawing code
+collapsed: `Panel.OnDraw` and `ButtonBase.DrawButtonBackground` now
+read via `ResolveStyleDrawable(.Background)` only (inline overrides +
+theme rules both flow through the same resolver). `ToggleButton.OnDraw`
+restructured similarly with `.CheckedBackground` checked first.
 
-```beef
-public Drawable Background
-{
-    get => GetInlineStyle(.Background).AsDrawable;
-    set => SetInlineStyle(.Background, .DrawableRef(value));
-}
-```
-
-Existing call sites (`btn.Background = mySheet.OwnColor(.Red)`)
-continue to work unchanged. The old per-control fields are unified
-under the inline-style mechanism, and any other property can now be
-overridden the same way.
-
-Ownership transitions: `OwnInlineDrawable` becomes the new home for
-"this view owns this drawable I just assigned." Callers that
-previously assigned a stylesheet-owned drawable (`btn.Background =
-sheet.OwnColor(...)`) stay correct - the sheet still owns it, the
-view's `Background` is just a non-owned reference. Callers that
-constructed a drawable inline (`new ColorDrawable(.Red)` without
-sheet ownership) should call `view.OwnInlineDrawable(d)` after the
-assignment.
+~50 call sites across editor pages, sandbox, and TowerDefense were
+migrated from `panel.Background = new ColorDrawable(...)` to
+`panel.SetStyle(.Background, new ColorDrawable(...))` via bulk sed.
+`HUDManager.UpdateSpeedButtons` dropped its manual
+`?.ReleaseRef()`-then-reassign dance - `SetStyle`'s overwrite-release
+handles the refcount internally.
 
 ## Sub-phases
 
-| # | Sub-phase | Verifiable result |
-|---|---|---|
-| A | Inline styles (Tier 1) - data + API on `View`, no resolution wiring yet | Build clean. Unit tests for set/get/clear/has. |
-| B | Inline-style resolution priority in `StyleSheet.Resolve` and pseudo-element resolvers | Inline overrides beat rule-based matches in tests. |
-| C | `OwnInlineDrawable` + destruction cleanup | Tests: drawable freed when view destroyed; non-owned not freed. |
-| D | Migrate typed `Background` fields on ButtonBase, Panel, etc. to wrap `InlineStyles` | Existing tests pass; no regressions in sandbox. |
-| E | `LocalStyleSheet` on `View` - ref-counted property, lifecycle | Set/clear AddRef/Release tested. |
-| F | Resolution algorithm: ancestor-chain walk + context fallback + inheritable recursion | Unit tests for the cases in the algorithm; tests cover (a) fall-through "not found", scoped overrides, inheritance through a local sheet. |
-| G | Pseudo-element variant: `ResolvePartStyle` consults local sheets in the chain | Tests for `Slider::thumb` overridden via a `LocalStyleSheet` on an ancestor. |
-| H | Sandbox demo - one screen using each feature | Visual confirmation; doc snippet. |
+| # | Sub-phase | Status | Result |
+|---|---|---|---|
+| A | Inline-style data + API on `View` (no resolution wiring) | ✅ shipped | Lazy Dictionary + List storage with set/get/clear/has. Replaced in D.3 - kept the public API. |
+| B | Inline-style resolution priority in `StyleSheet.Resolve` / `ResolvePart` | ✅ shipped | Inline overrides beat every rule match. |
+| C | `OwnInlineDrawable` + view-owned drawable cleanup | ✅ shipped, then removed | Initially added to manage drawable lifetimes; subsumed by D.1 refcount and removed in D.3. |
+| D | Migrate typed `Background` / `CheckedBackground` fields to the inline-style API | ✅ shipped (expanded to D.1-D.5) | Required a `Drawable : RefCounted` refactor that wasn't in the original plan. |
+| &nbsp;&nbsp;D.1 | `Drawable : RefCounted` + child-owning subclasses + test scope-site migration | ✅ shipped | 717/717 UI tests green. |
+| &nbsp;&nbsp;D.2 | `StyleRule` + `StyleSheet` refcount wiring; `consumeRef` flag on both | ✅ shipped | `Set` AddRefs by default; `OwnDrawable` consumes by default. |
+| &nbsp;&nbsp;D.3 | `View.SetStyle` overloads + inline-style storage migrated to internal `StyleSheet` | ✅ shipped | Dictionary replaced with `mInlineSheet`. All refcount mgmt reuses `StyleRule.Set` / `Remove`. |
+| &nbsp;&nbsp;D.4 | Drop typed `Background` / `CheckedBackground` fields; migrate ~50 call sites | ✅ shipped | Workspace clean. |
+| &nbsp;&nbsp;D.5 | Doc updates + build/test sanity | ✅ shipped | This file. Interactive sandbox/editor visual verification deferred to the user. |
+| E | `LocalStyleSheet` on `View` - ref-counted property, lifecycle | ⏳ pending | Set/clear AddRef/Release tested. |
+| F | Resolution algorithm: ancestor-chain walk + context fallback + inheritable recursion | ⏳ pending | Unit tests covering fall-through, scoped overrides, inheritance through a local sheet. |
+| G | Pseudo-element variant: `ResolvePartStyle` consults local sheets in the chain | ⏳ pending | Tests for `Slider::thumb` overridden via a `LocalStyleSheet` on an ancestor. |
+| H | Sandbox demo - one screen using each feature | ⏳ pending | Visual confirmation; doc snippet. |
 
 ## Files to add / modify
 
