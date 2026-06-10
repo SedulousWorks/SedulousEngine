@@ -9,7 +9,6 @@ using Sedulous.Editor.Core;
 using Sedulous.Engine.Core;
 using Sedulous.Engine.Core.Resources;
 using Sedulous.Engine.Render;
-using Sedulous.Engine.Renderer;
 using Sedulous.Geometry.Resources;
 using Sedulous.Images;
 using Sedulous.Resources;

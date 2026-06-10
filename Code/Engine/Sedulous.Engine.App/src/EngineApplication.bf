@@ -27,7 +27,6 @@ using Sedulous.Fonts;
 using Sedulous.Fonts.TTF;
 using Sedulous.Engine.Render;
 using Sedulous.Renderer;
-using Sedulous.Engine.Renderer;
 using Sedulous.Images;
 
 /// Full engine application base class.
@@ -71,7 +70,7 @@ abstract class EngineApplication : IDisposable
 
 	// Cached renderer interfaces
 	private ISceneRenderer mSceneRenderer;
-	private List<IOverlayRenderer> mOverlayRenderers = new .() ~ delete _;
+	private IScreenRenderer mScreenRenderer;
 
 	// Assets
 	private String mAssetDirectory = new .() ~ delete _;
@@ -208,8 +207,7 @@ abstract class EngineApplication : IDisposable
 
 		// Cache renderer interfaces from registered subsystems
 		mSceneRenderer = mContext.GetSubsystemByInterface<ISceneRenderer>();
-		mContext.GetSubsystemsByInterface<IOverlayRenderer>(mOverlayRenderers);
-		mOverlayRenderers.Sort(scope (a, b) => a.OverlayOrder <=> b.OverlayOrder);
+		mScreenRenderer = mContext.GetSubsystemByInterface<IScreenRenderer>();
 
 		OnStartup();
 
@@ -537,15 +535,14 @@ abstract class EngineApplication : IDisposable
 		using (SProfiler.Begin("Blit"))
 			BlitToSwapchain(encoder);
 
-		// Overlays (IOverlayRenderer - ScreenUIView, debug HUD, etc.)
-		if (mOverlayRenderers.Count > 0)
+		// Window-space overlays (ScreenUI, debug HUD, etc.) - the screen
+		// renderer opens a single shared render pass and walks every
+		// registered IScreenOverlay in OverlayOrder.
+		if (mScreenRenderer != null)
 		{
 			using (SProfiler.Begin("Overlays"))
-			{
-				for (let overlay in mOverlayRenderers)
-					overlay.RenderOverlay(encoder, mSwapChain.CurrentTextureView,
-						mSwapChain.Width, mSwapChain.Height, mFrameIndex);
-			}
+				mScreenRenderer.RenderOverlays(encoder, mSwapChain.CurrentTextureView,
+					mSwapChain.Width, mSwapChain.Height, mFrameIndex);
 		}
 
 		// Screenshot capture: copy swapchain to readback buffer before present

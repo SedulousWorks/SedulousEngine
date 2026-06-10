@@ -14,12 +14,14 @@ using Sedulous.Fonts;
 using Sedulous.Shaders;
 using Sedulous.Core.Mathematics;
 using Sedulous.Engine.Render;
-using Sedulous.Engine.Renderer;
 
 /// Unified engine UI subsystem handling screen-space and world-space UI.
-/// Screen-space: ScreenUIView renders as IRenderOverlay after 3D scene blit.
+/// Screen-space: ScreenUIView is an `IScreenOverlay` source registered
+/// with the engine's `IScreenRenderer` (RenderSubsystem) - it gets
+/// invoked from a single shared overlay render pass after the 3D
+/// scene blit.
 /// World-space: UIComponentManager per scene, renders to textures displayed as sprites.
-class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
+class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IScreenOverlay
 {
 	public override int32 UpdateOrder => 400;
 
@@ -98,14 +100,13 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 		}
 	}
 
-	// === IOverlayRenderer ===
+	// === IScreenOverlay ===
 
 	public int32 OverlayOrder => 0;
 
-	public void RenderOverlay(ICommandEncoder encoder, ITextureView target,
-		uint32 w, uint32 h, int32 frameIndex)
+	public void Render(IRenderPassEncoder encoder, uint32 w, uint32 h, int32 frameIndex)
 	{
-		mScreenView?.RenderOverlay(encoder, target, w, h, frameIndex);
+		mScreenView?.Render(encoder, w, h, frameIndex);
 	}
 
 	// === Lifecycle ===
@@ -139,7 +140,7 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 				FrameCount, FontService, ShaderSystem);
 
 			// Set initial viewport size from window so dialogs shown before
-			// the first RenderOverlay call can center correctly.
+			// the first Render call can center correctly.
 			if (Window != null)
 				mScreenView.Root.ViewportSize = .((float)Window.Width, (float)Window.Height);
 
@@ -150,6 +151,12 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 
 	protected override void OnReady()
 	{
+		// Register this subsystem as the engine's screen UI source. The
+		// IScreenRenderer (RenderSubsystem) drives RenderOverlays from
+		// EngineApplication's per-frame render path.
+		let screenRenderer = Context?.GetSubsystemByInterface<IScreenRenderer>();
+		if (screenRenderer != null)
+			screenRenderer.RegisterOverlay(this);
 	}
 
 	public override void Update(float deltaTime)
@@ -472,8 +479,8 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 
 	public void OnWindowResized(IWindow window, int32 width, int32 height)
 	{
-		// ScreenUIView gets its viewport from RenderOverlay parameters,
-		// so no explicit handling needed here.
+		// ScreenUIView gets its viewport from each Render call's
+		// width/height parameters, so no explicit handling needed here.
 	}
 
 	// === ISceneAware ===
@@ -578,6 +585,12 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IOverlayRenderer
 
 	protected override void OnShutdown()
 	{
+		// Unregister before deletion so the screen renderer's registry
+		// doesn't hold a dangling pointer.
+		let screenRenderer = Context?.GetSubsystemByInterface<IScreenRenderer>();
+		if (screenRenderer != null)
+			screenRenderer.UnregisterOverlay(this);
+
 		if (mInputHelper != null)
 		{
 			delete mInputHelper;

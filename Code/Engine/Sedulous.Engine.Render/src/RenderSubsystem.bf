@@ -32,7 +32,7 @@ using Sedulous.Renderer.IBL;
 ///
 /// Does NOT own swapchain, frame pacing, or presentation. The application owns those and
 /// calls RenderScene() with an encoder and output targets, then handles blit + overlays + present.
-class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
+class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer, IScreenRenderer
 {
 	// Set by EngineApplication before context startup
 	private IDevice mDevice;
@@ -1433,5 +1433,59 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer
 
 		for (let kv in mScenePipelines)
 			kv.value.OnResize((uint32)width, (uint32)height);
+	}
+
+	// ==================== IScreenRenderer ====================
+
+	// Registered screen-overlay sources. Kept sorted by OverlayOrder so
+	// iteration in RenderOverlays is a forward walk.
+	private List<IScreenOverlay> mScreenOverlays = new .() ~ delete _;
+
+	public void RegisterOverlay(IScreenOverlay overlay)
+	{
+		if (overlay == null) return;
+		if (mScreenOverlays.Contains(overlay)) return;
+
+		// Insertion-sorted by OverlayOrder so iteration in RenderOverlays
+		// is a forward walk. Same pattern as Pipeline.RegisterOverlay
+		// (Track 0).
+		int idx = 0;
+		while (idx < mScreenOverlays.Count && mScreenOverlays[idx].OverlayOrder <= overlay.OverlayOrder)
+			idx++;
+		mScreenOverlays.Insert(idx, overlay);
+	}
+
+	public void UnregisterOverlay(IScreenOverlay overlay)
+	{
+		if (overlay == null) return;
+		mScreenOverlays.Remove(overlay);
+	}
+
+	public void RenderOverlays(ICommandEncoder encoder, ITextureView target,
+		uint32 width, uint32 height, int32 frameIndex)
+	{
+		if (encoder == null || target == null) return;
+		if (mScreenOverlays.IsEmpty) return;
+
+		// One shared render pass for every overlay. LoadOp.Load preserves
+		// whatever was blitted to the target (typically the post-processed
+		// 3D scene); overlays just record draws into the active encoder.
+		ColorAttachment[1] colorAttachments = .(.()
+		{
+			View = target,
+			ResolveTarget = null,
+			LoadOp = .Load,
+			StoreOp = .Store,
+			ClearValue = .(0, 0, 0, 1)
+		});
+		RenderPassDesc passDesc = .() { ColorAttachments = .(colorAttachments) };
+
+		let renderPass = encoder.BeginRenderPass(passDesc);
+		if (renderPass == null) return;
+
+		for (let overlay in mScreenOverlays)
+			overlay.Render(renderPass, width, height, frameIndex);
+
+		renderPass.End();
 	}
 }

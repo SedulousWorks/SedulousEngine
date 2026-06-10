@@ -6,7 +6,6 @@ using Sedulous.Core.Mathematics;
 using Sedulous.Editor.Core;
 using Sedulous.Engine.Core;
 using Sedulous.Engine.Render;
-using Sedulous.Engine.Renderer;
 using Sedulous.Images;
 using Sedulous.Materials.Resources;
 using Sedulous.Resources;

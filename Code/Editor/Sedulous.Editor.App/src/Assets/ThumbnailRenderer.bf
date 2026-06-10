@@ -7,7 +7,6 @@ using Sedulous.Runtime;
 using Sedulous.Engine;
 using Sedulous.Engine.Core;
 using Sedulous.Engine.Render;
-using Sedulous.Engine.Renderer;
 using Sedulous.Renderer;
 using Sedulous.Resources;
 using Sedulous.Geometry.Resources;

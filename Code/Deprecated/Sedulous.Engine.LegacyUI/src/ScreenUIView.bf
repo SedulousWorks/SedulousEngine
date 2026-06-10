@@ -8,8 +8,11 @@ using Sedulous.Fonts;
 using Sedulous.Shaders;
 using Sedulous.Core.Mathematics;
 
-/// Screen-space UI view. Single instance owned by EngineUISubsystem.
-/// Called by EngineUISubsystem.RenderOverlay to composite UI onto the swapchain.
+/// Screen-space UI view. Single instance owned by EngineLegacyUISubsystem.
+/// Called by EngineLegacyUISubsystem.Render (forwarded from
+/// IScreenRenderer's shared overlay render pass) to composite UI onto
+/// the swapchain. The render pass is bound by the screen renderer; this
+/// view only records draw commands.
 public class ScreenUIView
 {
 	public RootView Root { get; private set; }
@@ -47,9 +50,10 @@ public class ScreenUIView
 		delete Root;
 	}
 
-	/// IRenderOverlay - called by RenderSubsystem after blit, before present.
-	public void RenderOverlay(ICommandEncoder encoder, ITextureView targetView,
-		uint32 width, uint32 height, int32 frameIndex)
+	/// Record screen-space UI draws into the active screen-overlay
+	/// render pass. The pass and color target are bound by
+	/// `IScreenRenderer.RenderOverlays` before this is called.
+	public void Render(IRenderPassEncoder encoder, uint32 width, uint32 height, int32 frameIndex)
 	{
 		if (Root == null || mUIContext == null) return;
 
@@ -62,26 +66,9 @@ public class ScreenUIView
 		if (batch == null || batch.Commands.Count == 0)
 			return;
 
-		// Upload to GPU.
+		// Upload to GPU and emit draws into the already-active render pass.
 		mVGRenderer.BeginFrame(frameIndex);
 		let slice = mVGRenderer.Prepare(batch, frameIndex, width, height);
-
-		// Create overlay render pass (Load preserves blitted 3D scene).
-		ColorAttachment[1] colorAttachments = .(.()
-		{
-			View = targetView,
-			ResolveTarget = null,
-			LoadOp = .Load,
-			StoreOp = .Store,
-			ClearValue = .(0, 0, 0, 1)
-		});
-		RenderPassDesc passDesc = .() { ColorAttachments = .(colorAttachments) };
-
-		let renderPass = encoder.BeginRenderPass(passDesc);
-		if (renderPass != null)
-		{
-			mVGRenderer.Render(renderPass, width, height, frameIndex, slice);
-			renderPass.End();
-		}
+		mVGRenderer.Render(encoder, width, height, frameIndex, slice);
 	}
 }
