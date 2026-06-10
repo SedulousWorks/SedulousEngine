@@ -4,6 +4,18 @@ using System;
 using Sedulous.UI;
 using Sedulous.Core.Mathematics;
 
+/// A Drawable that tracks its live count via a static counter, so
+/// tests can assert ownership transfer / cleanup. Draw is a no-op.
+class TrackingDrawable : Drawable
+{
+	public static int LiveCount;
+
+	public this()  { LiveCount++; }
+	public ~this() { LiveCount--; }
+
+	public override void Draw(UIDrawContext ctx, RectangleF bounds) {}
+}
+
 class InlineStyleTests
 {
 	// === Element-level inline styles ===
@@ -366,5 +378,71 @@ class InlineStyleTests
 		child.SetInlineStyle(.TextColor, .ColorVal(.(0, 255, 0, 255)));
 
 		Test.Assert(child.ResolveStyleColor(.TextColor).G == 255);
+	}
+
+	// === OwnInlineDrawable (sub-phase C) ===
+
+	[Test]
+	public static void Own_OwnedDrawable_FreedOnViewDestruction()
+	{
+		let before = TrackingDrawable.LiveCount;
+
+		let view = new TestView();
+		let d = new TrackingDrawable();
+		view.SetInlineStyle(.Background, .DrawableRef(d));
+		view.OwnInlineDrawable(d);
+
+		Test.Assert(TrackingDrawable.LiveCount == before + 1);
+
+		delete view;
+
+		Test.Assert(TrackingDrawable.LiveCount == before);
+	}
+
+	[Test]
+	public static void Own_NonOwnedDrawable_NotFreed()
+	{
+		let before = TrackingDrawable.LiveCount;
+
+		let d = new TrackingDrawable();
+		defer delete d;
+
+		let view = new TestView();
+		// Inline reference without OwnInlineDrawable - caller keeps lifetime.
+		view.SetInlineStyle(.Background, .DrawableRef(d));
+
+		Test.Assert(TrackingDrawable.LiveCount == before + 1);
+
+		delete view;
+
+		// Drawable still alive because view didn't own it.
+		Test.Assert(TrackingDrawable.LiveCount == before + 1);
+	}
+
+	[Test]
+	public static void Own_MultipleOwnedDrawables_AllFreed()
+	{
+		let before = TrackingDrawable.LiveCount;
+
+		let view = new TestView();
+		let d1 = new TrackingDrawable();
+		let d2 = new TrackingDrawable();
+		view.SetInlineStyle(.Background, .DrawableRef(d1));
+		view.SetInlinePartStyle("thumb", .Background, .DrawableRef(d2));
+		view.OwnInlineDrawable(d1);
+		view.OwnInlineDrawable(d2);
+
+		Test.Assert(TrackingDrawable.LiveCount == before + 2);
+
+		delete view;
+
+		Test.Assert(TrackingDrawable.LiveCount == before);
+	}
+
+	[Test]
+	public static void Own_NullDrawable_NoOp()
+	{
+		let view = scope TestView();
+		view.OwnInlineDrawable(null); // must not crash
 	}
 }

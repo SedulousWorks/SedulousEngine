@@ -302,6 +302,7 @@ public abstract class View : IPropertyOwner
 
 	private Dictionary<StyleProperty, StyleValue> mInlineStyles;
 	private List<(String Part, StyleProperty Prop, StyleValue Value)> mInlinePartStyles;
+	private List<Drawable> mOwnedInlineDrawables;
 
 	/// True if any inline overrides are set on this view.
 	public bool HasAnyInlineStyles =>
@@ -423,6 +424,20 @@ public abstract class View : IPropertyOwner
 				return;
 			}
 		}
+	}
+
+	/// Take ownership of a drawable assigned as an inline style value.
+	/// The view deletes the drawable on destruction. Mirrors
+	/// `StyleSheet.OwnDrawable`. Use when the drawable was constructed
+	/// inline by the caller (e.g., `new ColorDrawable(.Red)`); skip when
+	/// the drawable is already owned elsewhere (e.g., by a StyleSheet
+	/// via `OwnColor` / `OwnDrawable`).
+	public void OwnInlineDrawable(Drawable drawable)
+	{
+		if (drawable == null) return;
+		if (mOwnedInlineDrawables == null)
+			mOwnedInlineDrawables = new .();
+		mOwnedInlineDrawables.Add(drawable);
 	}
 
 	// === Style resolution helpers ===
@@ -713,6 +728,12 @@ public abstract class View : IPropertyOwner
 			for (let entry in mInlinePartStyles)
 				delete entry.Part;
 			delete mInlinePartStyles;
+		}
+		if (mOwnedInlineDrawables != null)
+		{
+			for (let d in mOwnedInlineDrawables)
+				delete d;
+			delete mOwnedInlineDrawables;
 		}
 	}
 }
