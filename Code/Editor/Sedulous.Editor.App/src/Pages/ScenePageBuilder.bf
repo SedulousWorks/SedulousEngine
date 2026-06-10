@@ -78,7 +78,7 @@ static class ScenePageBuilder
 
 		// Separator
 		let sep = new Panel();
-		sep.Background = new ColorDrawable(.(60, 65, 80, 255));
+		sep.SetStyle(.Background, new ColorDrawable(.(60, 65, 80, 255)));
 		container.AddView(sep, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Fixed(.Px(1))
 		});
@@ -506,7 +506,7 @@ static class ScenePageBuilder
 		});
 
 		let sep = new Panel();
-		sep.Background = new ColorDrawable(.(60, 65, 80, 255));
+		sep.SetStyle(.Background, new ColorDrawable(.(60, 65, 80, 255)));
 		container.AddView(sep, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Fixed(.Px(1))
 		});

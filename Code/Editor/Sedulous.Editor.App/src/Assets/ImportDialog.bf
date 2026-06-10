@@ -129,7 +129,7 @@ class ImportDialog : Dialog
 
 		// Separator
 		let sep = new Panel();
-		sep.Background = new ColorDrawable(.(60, 65, 80, 255));
+		sep.SetStyle(.Background, new ColorDrawable(.(60, 65, 80, 255)));
 		content.AddView(sep, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(1)) });
 
 		// Import options (importer-specific)
@@ -349,7 +349,7 @@ class ImportDialog : Dialog
 
 			// Separator after options
 			let optSep = new Panel();
-			optSep.Background = new ColorDrawable(.(60, 65, 80, 255));
+			optSep.SetStyle(.Background, new ColorDrawable(.(60, 65, 80, 255)));
 			content.AddView(optSep, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(1)) });
 		}
 
@@ -403,7 +403,7 @@ class ImportDialog : Dialog
 
 			// Separator after model options
 			let modelSep = new Panel();
-			modelSep.Background = new ColorDrawable(.(60, 65, 80, 255));
+			modelSep.SetStyle(.Background, new ColorDrawable(.(60, 65, 80, 255)));
 			content.AddView(modelSep, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(1)) });
 		}
 	}

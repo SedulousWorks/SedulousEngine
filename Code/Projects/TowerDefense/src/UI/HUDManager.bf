@@ -74,7 +74,7 @@ class HUDManager
 
 		// === Top bar ===
 		let topBar = new Panel();
-		topBar.Background = new ColorDrawable(.(0, 0, 0, 180));
+		topBar.SetStyle(.Background, new ColorDrawable(.(0, 0, 0, 180)));
 		topBar.Padding = .(16, 6, 16, 6);
 
 		let topLayout = new FlexLayout();
@@ -122,7 +122,7 @@ class HUDManager
 		// Start Wave button
 		mStartWaveBtn = new Button("Start Wave");
 		mStartWaveBtn.FontSize.Value = 12;
-		mStartWaveBtn.Background = new ColorDrawable(.(40, 120, 60, 255));
+		mStartWaveBtn.SetStyle(.Background, new ColorDrawable(.(40, 120, 60, 255)));
 		mStartWaveBtn.OnClick.Add(new (btn) => { if (StartWaveCallback != null) StartWaveCallback(); });
 		topLayout.AddView(mStartWaveBtn);
 
@@ -130,7 +130,7 @@ class HUDManager
 		let speedGroup = new FlexLayout() { Direction = .Horizontal, Spacing = 2, AlignItems = .Center };
 		mSpeed1Btn = new Button("1x");
 		mSpeed1Btn.FontSize.Value = 11;
-		mSpeed1Btn.Background = new ColorDrawable(.(80, 140, 200, 255)); // active by default
+		mSpeed1Btn.SetStyle(.Background, new ColorDrawable(.(80, 140, 200, 255))); // active by default
 		mSpeed1Btn.OnClick.Add(new (btn) => SetSpeed(1.0f));
 		speedGroup.AddView(mSpeed1Btn);
 
@@ -150,7 +150,7 @@ class HUDManager
 
 		// === Bottom bar ===
 		let bottomBar = new Panel();
-		bottomBar.Background = new ColorDrawable(.(0, 0, 0, 180));
+		bottomBar.SetStyle(.Background, new ColorDrawable(.(0, 0, 0, 180)));
 		bottomBar.Padding = .(16, 4, 16, 4);
 
 		let bottomLayout = new FlexLayout();
@@ -296,14 +296,16 @@ class HUDManager
 
 	private void UpdateSpeedButtons()
 	{
-		// Highlight active speed button, reset others. Field assignment
-		// to a RefCounted Drawable consumes the ref; releasing the
-		// previous one keeps the field from leaking on overwrite.
-		let activeColor = new ColorDrawable(.(80, 140, 200, 255));
-		if (mSpeed1Btn != null) { mSpeed1Btn.Background?.ReleaseRef(); mSpeed1Btn.Background = (mCurrentSpeed == 1.0f) ? activeColor : null; }
-		if (mSpeed2Btn != null) { mSpeed2Btn.Background?.ReleaseRef(); mSpeed2Btn.Background = (mCurrentSpeed == 2.0f) ? new ColorDrawable(.(80, 140, 200, 255)) : null; }
-		if (mSpeed3Btn != null) { mSpeed3Btn.Background?.ReleaseRef(); mSpeed3Btn.Background = (mCurrentSpeed == 3.0f) ? new ColorDrawable(.(80, 140, 200, 255)) : null; }
-		if (mCurrentSpeed != 1.0f) activeColor.ReleaseRef();
+		// Highlight active speed button, reset others. SetStyle handles
+		// overwrite-release internally - no manual ref bookkeeping.
+		void Apply(Button btn, bool active)
+		{
+			if (btn == null) return;
+			btn.SetStyle(.Background, active ? new ColorDrawable(.(80, 140, 200, 255)) : null);
+		}
+		Apply(mSpeed1Btn, mCurrentSpeed == 1.0f);
+		Apply(mSpeed2Btn, mCurrentSpeed == 2.0f);
+		Apply(mSpeed3Btn, mCurrentSpeed == 3.0f);
 	}
 
 	private void UpdateLabels(GameSubsystem gs) { UpdateGold(gs); UpdateLives(gs); UpdateWave(gs); }

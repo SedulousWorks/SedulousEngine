@@ -97,7 +97,7 @@ class ParticleEditorPageFactory : IEditorPageFactory
 		ParticleEditorPage page)
 	{
 		let panel = new Panel();
-		panel.Background = new ColorDrawable(.(28, 28, 33, 255));
+		panel.SetStyle(.Background, new ColorDrawable(.(28, 28, 33, 255)));
 
 		let column = new FlexLayout();
 		column.Direction = .Vertical;
@@ -105,7 +105,7 @@ class ParticleEditorPageFactory : IEditorPageFactory
 
 		// Header strip with a padded label.
 		let headerPanel = new Panel();
-		headerPanel.Background = new ColorDrawable(.(33, 33, 39, 255));
+		headerPanel.SetStyle(.Background, new ColorDrawable(.(33, 33, 39, 255)));
 		let header = new Label();
 		header.SetText("Effect");
 		header.FontSize.Value = 12;
@@ -169,7 +169,7 @@ class ParticleEditorPageFactory : IEditorPageFactory
 		ParticleEditorPage page, EditorContext context)
 	{
 		let panel = new Panel();
-		panel.Background = new ColorDrawable(.(35, 35, 41, 255));
+		panel.SetStyle(.Background, new ColorDrawable(.(35, 35, 41, 255)));
 
 		let column = new FlexLayout();
 		column.Direction = .Vertical;
@@ -243,13 +243,13 @@ class ParticleEditorPageFactory : IEditorPageFactory
 		// Viewport fills; transport toolbar sits below it (matches the
 		// animation page - scrubber/transport at the bottom of the viewport).
 		let viewportPanel = new Panel();
-		viewportPanel.Background = new ColorDrawable(.(25, 25, 30, 255));
+		viewportPanel.SetStyle(.Background, new ColorDrawable(.(25, 25, 30, 255)));
 		viewportPanel.AddView(host.Viewport);
 		root.AddView(viewportPanel, new FlexLayout.LayoutParams() { Width = .Match, Grow = 1 });
 
 		// Toolbar: Play / Stop / Restart.
 		let toolbarPanel = new Panel();
-		toolbarPanel.Background = new ColorDrawable(.(28, 28, 33, 255));
+		toolbarPanel.SetStyle(.Background, new ColorDrawable(.(28, 28, 33, 255)));
 		let toolbar = new FlexLayout();
 		toolbar.Direction = .Horizontal;
 		toolbar.Padding = .(6, 4, 6, 4);

@@ -110,7 +110,7 @@ class AssetPickerDialog : Dialog
 
 		// Separator
 		let sep = new Panel();
-		sep.Background = new ColorDrawable(.(50, 55, 65, 255));
+		sep.SetStyle(.Background, new ColorDrawable(.(50, 55, 65, 255)));
 		rightPane.AddView(sep, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Fixed(.Px(1))
 		});

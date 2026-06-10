@@ -44,7 +44,7 @@ class TextureEditorPageFactory : IEditorPageFactory
 
 		// Left: image preview with dark background
 		let previewPanel = new Panel();
-		previewPanel.Background = new ColorDrawable(.(30, 30, 35, 255));
+		previewPanel.SetStyle(.Background, new ColorDrawable(.(30, 30, 35, 255)));
 
 		let imageView = new ImageView();
 		imageView.ScaleType.Value = .FitCenter;

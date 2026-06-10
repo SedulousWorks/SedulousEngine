@@ -67,7 +67,7 @@ class SkeletonEditorPageFactory : IEditorPageFactory
 		let root = new SplitView(.Horizontal);
 
 		let viewportPanel = new Panel();
-		viewportPanel.Background = new ColorDrawable(.(25, 25, 30, 255));
+		viewportPanel.SetStyle(.Background, new ColorDrawable(.(25, 25, 30, 255)));
 		viewportPanel.AddView(host.Viewport);
 
 		let infoPanel = new FlexLayout();

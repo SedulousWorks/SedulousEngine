@@ -18,7 +18,7 @@ class MainMenuUI
 
 		// Full-screen dark overlay
 		mRoot = new Panel();
-		mRoot.Background = new ColorDrawable(.(15, 20, 25, 255));
+		mRoot.SetStyle(.Background, new ColorDrawable(.(15, 20, 25, 255)));
 		mRoot.IsHitTestVisible = true;
 		mRoot.Visibility = .Gone;
 
@@ -50,7 +50,7 @@ class MainMenuUI
 		// Start button
 		let startBtn = new Button("Start Game");
 		startBtn.FontSize.Value = 18;
-		startBtn.Background = new ColorDrawable(.(40, 120, 60, 255));
+		startBtn.SetStyle(.Background, new ColorDrawable(.(40, 120, 60, 255)));
 		startBtn.OnClick.Add(new (btn) =>
 			{
 				if (OnStartGame != null)

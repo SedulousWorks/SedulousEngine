@@ -61,7 +61,7 @@ static class AssetBrowserBuilder
 
 		// Separator below toolbar
 		let toolbarSep = new Panel();
-		toolbarSep.Background = new ColorDrawable(.(50, 55, 65, 255));
+		toolbarSep.SetStyle(.Background, new ColorDrawable(.(50, 55, 65, 255)));
 		leftPane.AddView(toolbarSep, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Fixed(.Px(1))
 		});
@@ -108,7 +108,7 @@ static class AssetBrowserBuilder
 
 		// Separator
 		let sep = new Panel();
-		sep.Background = new ColorDrawable(.(50, 55, 65, 255));
+		sep.SetStyle(.Background, new ColorDrawable(.(50, 55, 65, 255)));
 		rightPane.AddView(sep, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Fixed(.Px(1))
 		});
@@ -1102,7 +1102,6 @@ class EditorBreadcrumbBar : FlexLayout
 			let segIndex = i;
 			let btn = new Button(mSegments[i]);
 			btn.FontSize.Value = 11;
-			btn.Background = null;
 			btn.OnClick.Add(new (b) => {
 				OnSegmentClicked(segIndex);
 			});

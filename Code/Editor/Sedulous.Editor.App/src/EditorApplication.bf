@@ -355,7 +355,7 @@ class EditorApplication : Application, IDockableWindowHost
 	private void BuildProjectPicker()
 	{
 		let picker = new Panel();
-		picker.Background = new ColorDrawable(.(30, 32, 40, 255));
+		picker.SetStyle(.Background, new ColorDrawable(.(30, 32, 40, 255)));
 		picker.Padding = .(40);
 
 		let center = new FlexLayout();

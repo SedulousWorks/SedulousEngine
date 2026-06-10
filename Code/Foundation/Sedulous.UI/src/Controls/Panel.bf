@@ -5,11 +5,13 @@ using Sedulous.Core.Mathematics;
 
 /// Container with optional background drawable.
 /// Children are laid out filling the panel minus padding.
+///
+/// Background is set via the inline-style API:
+/// `panel.SetStyle(.Background, new ColorDrawable(...))`. Theme rules
+/// on the context StyleSheet contribute when no inline override is
+/// set. Both paths flow through `ResolveStyleDrawable(.Background)`.
 public class Panel : ViewGroup
 {
-	/// Per-instance background override. Owned by this view.
-	public Drawable Background ~ _?.ReleaseRef();
-
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
 		let effectivePad = EffectivePadding;
@@ -55,27 +57,21 @@ public class Panel : ViewGroup
 	public override void OnDraw(UIDrawContext ctx)
 	{
 		let bounds = RectangleF(0, 0, Width, Height);
+		let bg = ResolveStyleDrawable(.Background);
+		if (bg != null)
+			bg.Draw(ctx, bounds, GetControlState());
 
-		// Draw background: per-instance -> theme drawable -> fallback
-		if (Background != null)
-			Background.Draw(ctx, bounds, GetControlState());
-		else
-		{
-			let themeBg = ResolveStyleDrawable(.Background);
-			if (themeBg != null)
-				themeBg.Draw(ctx, bounds, GetControlState());
-		}
-
-		// Draw children
 		DrawChildren(ctx);
 	}
 
-	/// Effective padding: max of explicit padding and drawable padding.
+	/// Effective padding: max of explicit padding and the resolved
+	/// background drawable's padding.
 	private Thickness EffectivePadding
 	{
 		get
 		{
-			let dp = (Background != null) ? Background.DrawablePadding : Thickness();
+			let bg = ResolveStyleDrawable(.Background);
+			let dp = bg?.DrawablePadding ?? Thickness();
 			return .(
 				Math.Max(Padding.Left, dp.Left),
 				Math.Max(Padding.Top, dp.Top),

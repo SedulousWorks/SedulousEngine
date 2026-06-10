@@ -1648,7 +1648,7 @@ class SandboxApp : EngineApplication
 
 		// Anchor the HUD to the bottom-left of the scene viewport.
 		let panel = new Panel();
-		panel.Background = new ColorDrawable(.(20, 25, 40, 220));
+		panel.SetStyle(.Background, new ColorDrawable(.(20, 25, 40, 220)));
 		panel.Padding = .(10, 8, 10, 8);
 		container.AddView(panel, new FrameLayout.LayoutParams() {
 			Width = .Fixed(.Px(220)),
@@ -1715,7 +1715,7 @@ class SandboxApp : EngineApplication
 
 				// Translucent background panel + name label.
 				let panel = new Panel();
-				panel.Background = new ColorDrawable(.(10, 15, 25, 200));
+				panel.SetStyle(.Background, new ColorDrawable(.(10, 15, 25, 200)));
 				panel.Padding = .(8, 4, 8, 4);
 
 				let label = new Label("");
@@ -1755,7 +1755,7 @@ class SandboxApp : EngineApplication
 	private void AddWorldPanelContent(UIComponent comp)
 	{
 		let panel = new Panel();
-		panel.Background = new ColorDrawable(.(30, 35, 50, 220));
+		panel.SetStyle(.Background, new ColorDrawable(.(30, 35, 50, 220)));
 		panel.Padding = .(8, 8, 8, 8);
 		panel.ClipsContent = true;
 		comp.Root.AddView(panel, new LayoutParams() {
@@ -1807,7 +1807,7 @@ class SandboxApp : EngineApplication
 	private void AddBillboardContent(UIComponent comp)
 	{
 		let panel = new Panel();
-		panel.Background = new ColorDrawable(.(20, 20, 20, 180));
+		panel.SetStyle(.Background, new ColorDrawable(.(20, 20, 20, 180)));
 		panel.Padding = .(6, 4, 6, 4);
 		comp.Root.AddView(panel, new LayoutParams() {
 			Width = .Match,
@@ -1841,7 +1841,7 @@ class SandboxApp : EngineApplication
 
 		// Translucent background panel for the HUD info.
 		let hudPanel = new Panel();
-		hudPanel.Background = new ColorDrawable(.(0, 0, 0, 140));
+		hudPanel.SetStyle(.Background, new ColorDrawable(.(0, 0, 0, 140)));
 		hudPanel.Padding = .(8, 6, 8, 6);
 		hud.AddView(hudPanel, new AbsoluteLayout.LayoutParams() { X = 4, Y = 4, Width = .Fixed(.Px(420)), Height = .Fixed(.Px(460)) });
 

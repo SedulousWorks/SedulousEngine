@@ -107,7 +107,7 @@ class FontEditorPageFactory : IEditorPageFactory
 		if (page.AtlasDrawable != null && page.AtlasImage != null)
 		{
 			let preview = new Panel();
-			preview.Background = new ColorDrawable(.(30, 32, 38, 255));
+			preview.SetStyle(.Background, new ColorDrawable(.(30, 32, 38, 255)));
 
 			let atlasView = new AtlasPreviewView();
 			atlasView.Drawable = page.AtlasDrawable;
@@ -131,7 +131,7 @@ class FontEditorPageFactory : IEditorPageFactory
 	private static void AddSeparator(FlexLayout container)
 	{
 		let sep = new Panel();
-		sep.Background = new ColorDrawable(.(60, 65, 80, 255));
+		sep.SetStyle(.Background, new ColorDrawable(.(60, 65, 80, 255)));
 		container.AddView(sep, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(1)) });
 	}
 

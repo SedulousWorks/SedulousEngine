@@ -48,7 +48,7 @@ class CameraPreviewPanel : Panel
 		mSceneRenderer = sceneRenderer;
 		mScene = scene;
 
-		Background = new ColorDrawable(.(20, 22, 28, 235));
+		SetStyle(.Background, new ColorDrawable(.(20, 22, 28, 235)));
 
 		// Bring up a dedicated Pipeline for this preview so the per-scene
 		// SceneDepth and per-pipeline pass state stay independent of the
@@ -75,7 +75,7 @@ class CameraPreviewPanel : Panel
 		// Header strip - dark Panel background with an inner FlexLayout for
 		// title + Pin toggle + Close button.
 		let headerBg = new Panel();
-		headerBg.Background = new ColorDrawable(.(35, 38, 48, 255));
+		headerBg.SetStyle(.Background, new ColorDrawable(.(35, 38, 48, 255)));
 		root.AddView(headerBg, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Fixed(.Px(24))
 		});

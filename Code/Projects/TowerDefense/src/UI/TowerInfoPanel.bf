@@ -33,7 +33,7 @@ class TowerInfoPanel
 
 		// Right-side panel with dark background
 		mRoot = new Panel();
-		mRoot.Background = new ColorDrawable(.(0, 0, 0, 200));
+		mRoot.SetStyle(.Background, new ColorDrawable(.(0, 0, 0, 200)));
 		mRoot.Padding = .(12, 10, 12, 10);
 		mRoot.Visibility = .Gone; // hidden by default
 
@@ -72,7 +72,7 @@ class TowerInfoPanel
 		// Upgrade button
 		mUpgradeBtn = new Button("Upgrade");
 		mUpgradeBtn.FontSize.Value = 13;
-		mUpgradeBtn.Background = new ColorDrawable(.(40, 120, 60, 255));
+		mUpgradeBtn.SetStyle(.Background, new ColorDrawable(.(40, 120, 60, 255)));
 		mUpgradeBtn.OnClick.Add(new (btn) =>
 			{
 				if (mPlacement.UpgradeTower(mGameSub, mGameSub.TowerMgr))
@@ -83,7 +83,7 @@ class TowerInfoPanel
 		// Sell button
 		mSellBtn = new Button("Sell");
 		mSellBtn.FontSize.Value = 13;
-		mSellBtn.Background = new ColorDrawable(.(150, 50, 50, 255));
+		mSellBtn.SetStyle(.Background, new ColorDrawable(.(150, 50, 50, 255)));
 		mSellBtn.OnClick.Add(new (btn) =>
 			{
 				mPlacement.SellTower(mGameSub, mGameSub.TowerMgr, mGameSub.Context.GetSubsystem<Sedulous.Engine.SceneSubsystem>().ActiveScenes[0]);

@@ -547,7 +547,7 @@ static class PropAnimPageBuilder
 		// Wrap in a panel so the viewport gets a visible background even
 		// when nothing has been loaded.
 		let panel = new Panel();
-		panel.Background = new ColorDrawable(.(25, 25, 30, 255));
+		panel.SetStyle(.Background, new ColorDrawable(.(25, 25, 30, 255)));
 		panel.AddView(page.Host.Viewport);
 		return panel;
 	}

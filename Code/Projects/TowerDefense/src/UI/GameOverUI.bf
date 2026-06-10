@@ -26,7 +26,7 @@ class GameOverUI
 
 		// Full-screen dark overlay
 		mRoot = new Panel();
-		mRoot.Background = new ColorDrawable(.(0, 0, 0, 180));
+		mRoot.SetStyle(.Background, new ColorDrawable(.(0, 0, 0, 180)));
 		mRoot.IsHitTestVisible = true;
 		mRoot.Visibility = .Gone;
 
@@ -64,7 +64,7 @@ class GameOverUI
 
 		let restartBtn = new Button("Restart");
 		restartBtn.FontSize.Value = 16;
-		restartBtn.Background = new ColorDrawable(.(40, 120, 60, 255));
+		restartBtn.SetStyle(.Background, new ColorDrawable(.(40, 120, 60, 255)));
 		restartBtn.OnClick.Add(new (btn) =>
 			{
 				Hide();
@@ -74,7 +74,7 @@ class GameOverUI
 
 		let menuBtn = new Button("Main Menu");
 		menuBtn.FontSize.Value = 16;
-		menuBtn.Background = new ColorDrawable(.(120, 50, 50, 255));
+		menuBtn.SetStyle(.Background, new ColorDrawable(.(120, 50, 50, 255)));
 		menuBtn.OnClick.Add(new (btn) =>
 			{
 				Hide();

@@ -76,12 +76,12 @@ class AnimationEditorPageFactory : IEditorPageFactory
 		left.Direction = .Vertical;
 
 		let viewportPanel = new Panel();
-		viewportPanel.Background = new ColorDrawable(.(25, 25, 30, 255));
+		viewportPanel.SetStyle(.Background, new ColorDrawable(.(25, 25, 30, 255)));
 		viewportPanel.AddView(host.Viewport);
 		left.AddView(viewportPanel, new FlexLayout.LayoutParams() { Width = .Match, Grow = 1 });
 
 		let transportPanel = new Panel();
-		transportPanel.Background = new ColorDrawable(.(20, 20, 25, 255));
+		transportPanel.SetStyle(.Background, new ColorDrawable(.(20, 20, 25, 255)));
 		let controls = new FlexLayout();
 		controls.Direction = .Horizontal;
 		controls.Spacing = 6;

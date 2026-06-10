@@ -6,12 +6,14 @@ using Sedulous.Core.Mathematics;
 /// Abstract base for all button types. Provides click event, pressed state,
 /// ICommand binding, focus/keyboard handling, and button chrome drawing.
 /// Subclasses define how content is stored and drawn.
+///
+/// Background is set via the inline-style API:
+/// `btn.SetStyle(.Background, new ColorDrawable(...))`. Theme rules
+/// on the context StyleSheet contribute when no inline override is
+/// set. Both paths flow through `ResolveStyleDrawable(.Background)`.
 public abstract class ButtonBase : View
 {
 	private bool mIsPressed;
-
-	/// Per-instance background override (owned by this view).
-	public Drawable Background ~ _?.ReleaseRef();
 
 	/// Optional command binding. Executed on click if CanExecute() is true.
 	public ICommand Command;
@@ -53,19 +55,15 @@ public abstract class ButtonBase : View
 
 	protected void DrawButtonBackground(UIDrawContext ctx, RectangleF bounds, ControlState state)
 	{
-		let radius = ResolveStyleFloat(.CornerRadius, 4);
-
-		if (Background != null)
+		let bg = ResolveStyleDrawable(.Background);
+		if (bg != null)
 		{
-			Background.Draw(ctx, bounds, state);
+			bg.Draw(ctx, bounds, state);
 		}
 		else
 		{
-			let themeBg = ResolveStyleDrawable(.Background);
-			if (themeBg != null)
-				themeBg.Draw(ctx, bounds, state);
-			else
-				DrawDefaultBackground(ctx, bounds, state, radius);
+			let radius = ResolveStyleFloat(.CornerRadius, 4);
+			DrawDefaultBackground(ctx, bounds, state, radius);
 		}
 	}
 

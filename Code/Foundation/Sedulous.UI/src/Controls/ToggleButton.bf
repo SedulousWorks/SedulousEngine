@@ -10,8 +10,9 @@ public class ToggleButton : ButtonBase
 	/// Whether the toggle is checked.
 	public Property<bool> IsChecked = new .(false) ~ delete _;
 
-	/// Per-instance background for checked state (owned).
-	public Drawable CheckedBackground ~ _?.ReleaseRef();
+	// CheckedBackground is set via the inline-style API:
+	// `tb.SetStyle(.CheckedBackground, new ColorDrawable(...))`.
+	// Theme rules contribute when no inline override is set.
 
 	/// The content view (owned by this button).
 	private View mContent ~ delete _;
@@ -96,27 +97,35 @@ public class ToggleButton : ButtonBase
 	{
 		let bounds = RectangleF(0, 0, Width, Height);
 		let state = GetControlState();
-		let radius = ResolveStyleFloat(.CornerRadius, 4);
 
-		// Background based on checked state
-		let bg = IsChecked.Value ? (CheckedBackground ?? Background) : Background;
-		if (bg != null)
+		// Checked state: CheckedBackground (inline or theme) wins.
+		// Otherwise fall back to the normal Background path via
+		// DrawButtonBackground. If checked but no CheckedBackground,
+		// also fall back to Background; if that's missing too, use the
+		// accent color default.
+		if (IsChecked.Value)
 		{
-			bg.Draw(ctx, bounds, state);
-		}
-		else if (IsChecked.Value)
-		{
-			// Checked: try CheckedBackground from theme, fall back to accent color
 			let checkedBg = ResolveStyleDrawable(.CheckedBackground);
 			if (checkedBg != null)
+			{
 				checkedBg.Draw(ctx, bounds, state);
+			}
 			else
 			{
-				var color = ResolveStyleColor(.AccentColor, .(80, 150, 240, 255));
-				if (state.HasFlag(.Disabled)) color = Palette.ComputeDisabled(color);
-				else if (state.HasFlag(.Pressed)) color = Palette.ComputePressed(color);
-				else if (state.HasFlag(.Hover)) color = Palette.ComputeHover(color);
-				ctx.VG.FillRoundedRect(bounds, radius, color);
+				let normalBg = ResolveStyleDrawable(.Background);
+				if (normalBg != null)
+				{
+					normalBg.Draw(ctx, bounds, state);
+				}
+				else
+				{
+					let radius = ResolveStyleFloat(.CornerRadius, 4);
+					var color = ResolveStyleColor(.AccentColor, .(80, 150, 240, 255));
+					if (state.HasFlag(.Disabled)) color = Palette.ComputeDisabled(color);
+					else if (state.HasFlag(.Pressed)) color = Palette.ComputePressed(color);
+					else if (state.HasFlag(.Hover)) color = Palette.ComputeHover(color);
+					ctx.VG.FillRoundedRect(bounds, radius, color);
+				}
 			}
 		}
 		else

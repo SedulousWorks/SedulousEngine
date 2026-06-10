@@ -58,7 +58,7 @@ class AudioClipEditorPageFactory : IEditorPageFactory
 
 		// Separator
 		let sep = new Panel();
-		sep.Background = new ColorDrawable(.(60, 65, 80, 255));
+		sep.SetStyle(.Background, new ColorDrawable(.(60, 65, 80, 255)));
 		root.AddView(sep, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(1)) });
 
 		// Metadata
@@ -88,7 +88,7 @@ class AudioClipEditorPageFactory : IEditorPageFactory
 
 		// Separator
 		let sep2 = new Panel();
-		sep2.Background = new ColorDrawable(.(60, 65, 80, 255));
+		sep2.SetStyle(.Background, new ColorDrawable(.(60, 65, 80, 255)));
 		root.AddView(sep2, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(1)) });
 
 		// Playback controls

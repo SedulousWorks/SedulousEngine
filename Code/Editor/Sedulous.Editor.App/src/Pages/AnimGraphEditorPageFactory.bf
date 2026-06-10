@@ -155,7 +155,7 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 		panel.AddView(headerLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(24)) });
 
 		let sep = new Panel();
-		sep.Background = new ColorDrawable(.(60, 65, 80, 255));
+		sep.SetStyle(.Background, new ColorDrawable(.(60, 65, 80, 255)));
 		panel.AddView(sep, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(1)) });
 
 		// Layer selector
@@ -230,7 +230,7 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 		});
 
 		let sepLayer = new Panel();
-		sepLayer.Background = new ColorDrawable(.(60, 65, 80, 255));
+		sepLayer.SetStyle(.Background, new ColorDrawable(.(60, 65, 80, 255)));
 		panel.AddView(sepLayer, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(1)) });
 
 		// Preview asset assignment section
@@ -266,7 +266,7 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 			editorContext: context, extensionFilter: ".skinnedmesh"));
 
 		let sep1b = new Panel();
-		sep1b.Background = new ColorDrawable(.(60, 65, 80, 255));
+		sep1b.SetStyle(.Background, new ColorDrawable(.(60, 65, 80, 255)));
 		panel.AddView(sep1b, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(1)) });
 
 		// Parameters section
@@ -291,7 +291,7 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 		RebuildParameterGrid(paramGrid, page);
 
 		let sep2 = new Panel();
-		sep2.Background = new ColorDrawable(.(60, 65, 80, 255));
+		sep2.SetStyle(.Background, new ColorDrawable(.(60, 65, 80, 255)));
 		panel.AddView(sep2, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(1)) });
 
 		// Selection property grid
@@ -395,13 +395,13 @@ class AnimGraphEditorPageFactory : IEditorPageFactory
 
 		// Viewport fills
 		let viewportPanel = new Panel();
-		viewportPanel.Background = new ColorDrawable(.(25, 25, 30, 255));
+		viewportPanel.SetStyle(.Background, new ColorDrawable(.(25, 25, 30, 255)));
 		viewportPanel.AddView(host.Viewport);
 		root.AddView(viewportPanel, new FlexLayout.LayoutParams() { Width = .Match, Grow = 1 });
 
 		// Toolbar: Play / Pause / Reset
 		let toolbarPanel = new Panel();
-		toolbarPanel.Background = new ColorDrawable(.(28, 28, 33, 255));
+		toolbarPanel.SetStyle(.Background, new ColorDrawable(.(28, 28, 33, 255)));
 		let toolbar = new FlexLayout();
 		toolbar.Direction = .Horizontal;
 		toolbar.Padding = .(6, 4, 6, 4);

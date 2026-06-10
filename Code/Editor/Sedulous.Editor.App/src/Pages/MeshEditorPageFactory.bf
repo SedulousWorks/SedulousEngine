@@ -77,7 +77,7 @@ class MeshEditorPageFactory : IEditorPageFactory
 
 		// Viewport pane (left).
 		let viewportPanel = new Panel();
-		viewportPanel.Background = new ColorDrawable(.(25, 25, 30, 255));
+		viewportPanel.SetStyle(.Background, new ColorDrawable(.(25, 25, 30, 255)));
 		viewportPanel.AddView(host.Viewport);
 
 		// Info pane (right).
@@ -222,7 +222,7 @@ class MeshEditorPageFactory : IEditorPageFactory
 	public static void AddSeparator(FlexLayout container)
 	{
 		let sep = new Panel();
-		sep.Background = new ColorDrawable(.(60, 65, 80, 255));
+		sep.SetStyle(.Background, new ColorDrawable(.(60, 65, 80, 255)));
 		container.AddView(sep, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(1)) });
 	}
 }

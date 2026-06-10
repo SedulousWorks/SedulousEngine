@@ -157,7 +157,7 @@ class SoundCueEditorPageFactory : IEditorPageFactory
 				int idx = i;
 
 				let rowPanel = new Panel();
-				rowPanel.Background = new ColorDrawable(.(30, 32, 38, 255));
+				rowPanel.SetStyle(.Background, new ColorDrawable(.(30, 32, 38, 255)));
 				let rowCol = new FlexLayout();
 				rowCol.Direction = .Vertical;
 				rowCol.Padding = .(8);
@@ -284,7 +284,7 @@ class SoundCueEditorPageFactory : IEditorPageFactory
 	private static void AddSeparator(FlexLayout container)
 	{
 		let sep = new Panel();
-		sep.Background = new ColorDrawable(.(60, 65, 80, 255));
+		sep.SetStyle(.Background, new ColorDrawable(.(60, 65, 80, 255)));
 		container.AddView(sep, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(1)) });
 	}
 }
