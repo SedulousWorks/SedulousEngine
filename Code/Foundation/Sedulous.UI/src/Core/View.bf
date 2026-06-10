@@ -356,6 +356,7 @@ public abstract class View : IPropertyOwner
 		case .ThicknessVal(let t): rule.Set(prop, t);
 		case .BoolVal(let b):      rule.Set(prop, b);
 		case .DrawableRef(let d):  rule.Set(prop, d, consumeRef: true);
+		case .StringRef(let s):    rule.Set(prop, StringView(s));
 		case .None:                rule.Remove(prop);
 		}
 		Invalidate();
@@ -419,6 +420,7 @@ public abstract class View : IPropertyOwner
 		case .ThicknessVal(let t): rule.Set(prop, t);
 		case .BoolVal(let b):      rule.Set(prop, b);
 		case .DrawableRef(let d):  rule.Set(prop, d, consumeRef: true);
+		case .StringRef(let s):    rule.Set(prop, StringView(s));
 		case .None:                rule.Remove(prop);
 		}
 		Invalidate();
@@ -494,6 +496,12 @@ public abstract class View : IPropertyOwner
 		Invalidate();
 	}
 
+	public void SetStyle(StyleProperty prop, StringView value)
+	{
+		EnsureInlineSheet().GetOrCreateInlineElementRule().Set(prop, value);
+		Invalidate();
+	}
+
 	public void SetPartStyle(StringView part, StyleProperty prop, Color color)
 	{
 		EnsureInlineSheet().GetOrCreateInlinePartRule(part).Set(prop, color);
@@ -521,6 +529,12 @@ public abstract class View : IPropertyOwner
 	public void SetPartStyle(StringView part, StyleProperty prop, Drawable drawable, bool consumeRef = true)
 	{
 		EnsureInlineSheet().GetOrCreateInlinePartRule(part).Set(prop, drawable, consumeRef: consumeRef);
+		Invalidate();
+	}
+
+	public void SetPartStyle(StringView part, StyleProperty prop, StringView value)
+	{
+		EnsureInlineSheet().GetOrCreateInlinePartRule(part).Set(prop, value);
 		Invalidate();
 	}
 
@@ -607,6 +621,34 @@ public abstract class View : IPropertyOwner
 	/// Resolve a Drawable style property. Returns null if not found.
 	public Drawable ResolveStyleDrawable(StyleProperty prop)
 		=> ResolveStyle(prop).AsDrawable;
+
+	/// Resolve a string style property. Returns `defaultVal` (as a
+	/// `StringView`) if not found.
+	public StringView ResolveStyleString(StyleProperty prop, StringView defaultVal = default)
+	{
+		if (let s = ResolveStyle(prop).AsString) return s;
+		return defaultVal;
+	}
+
+	/// Resolve the effective font family for this view. Walks the
+	/// cascade for `.FontFamily` and falls back to the active
+	/// IFontService's default family when nothing is set. Returned
+	/// view is borrowed - do not delete.
+	public StringView ResolveStyleFontFamily()
+	{
+		if (let s = ResolveStyle(.FontFamily).AsString) return s;
+		return Context?.FontService?.DefaultFontFamily ?? default(StringView);
+	}
+
+	/// Resolve the effective font family, preferring an explicit
+	/// per-instance override when set and non-empty. Controls that
+	/// expose a typed `FontFamily` property feed it in here.
+	public StringView ResolveStyleFontFamily(String instanceOverride)
+	{
+		if (instanceOverride != null && instanceOverride.Length > 0)
+			return instanceOverride;
+		return ResolveStyleFontFamily();
+	}
 
 	// === Pseudo-element (part) style resolution ===
 	//

@@ -12,7 +12,7 @@ public static class StyleInheritance
 	{
 		switch (prop)
 		{
-		case .TextColor, .FontSize:
+		case .TextColor, .FontSize, .FontFamily:
 			return true;
 		default:
 			return false;
@@ -118,6 +118,17 @@ public class StyleSheet : RefCounted
 	public bool IsEmpty => mRules.Count == 0;
 
 	// === Convenience rule builders ===
+
+	/// Create a rule whose selector matches every view (empty
+	/// selector, specificity 0). Useful for "set this for the whole
+	/// subtree" patterns on a LocalStyleSheet - e.g. a single
+	/// FontFamily that every descendant inherits, regardless of type.
+	public StyleRule ForAll()
+	{
+		let rule = new StyleRule();
+		mRules.Add(rule);
+		return rule;
+	}
 
 	/// Create a rule matching a view type.
 	public StyleRule ForType(Type viewType)

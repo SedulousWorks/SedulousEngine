@@ -1297,6 +1297,50 @@ class SSSParserTests
 		let id = bg as ImageDrawable;
 		Test.Assert(id.Tint.R == 255 && id.Tint.G == 0);
 	}
+
+	// === font-family declarations ===
+
+	[Test]
+	public static void FontFamily_BareIdentifier()
+	{
+		let sheet = LoadSSS(
+			"""
+			View {
+				font-family: JungleAdventurer;
+			}
+			""");
+
+		let (ctx, root) = SetupContext(sheet);
+		defer { ctx.RemoveRootView(root); delete root; delete ctx; }
+
+		let view = new TestView();
+		root.AddView(view);
+
+		let v = view.ResolveStyle(.FontFamily);
+		Test.Assert(v.AsString.HasValue);
+		Test.Assert(v.AsString.Value == "JungleAdventurer");
+	}
+
+	[Test]
+	public static void FontFamily_QuotedString()
+	{
+		let sheet = LoadSSS(
+			"""
+			View {
+				font-family: "Attack Of Monster";
+			}
+			""");
+
+		let (ctx, root) = SetupContext(sheet);
+		defer { ctx.RemoveRootView(root); delete root; delete ctx; }
+
+		let view = new TestView();
+		root.AddView(view);
+
+		let v = view.ResolveStyle(.FontFamily);
+		Test.Assert(v.AsString.HasValue);
+		Test.Assert(v.AsString.Value == "Attack Of Monster");
+	}
 }
 
 /// Mock IResourceProvider for testing @import, @icon, @image.

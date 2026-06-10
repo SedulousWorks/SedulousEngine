@@ -84,7 +84,7 @@ public class ComboBox : View, IPopupOwner
 
 		if (Context?.FontService != null)
 		{
-			let font = Context.FontService.GetFont(fontSize);
+			let font = Context.FontService.GetFont(ResolveStyleFontFamily(), fontSize);
 			if (font != null)
 			{
 				textH = font.Font.Metrics.LineHeight;
@@ -145,7 +145,7 @@ public class ComboBox : View, IPopupOwner
 		let fontSize = ResolveStyleFloat(.FontSize, 14);
 		if (mSelectedIndex >= 0 && mSelectedIndex < mItems.Count && ctx.FontService != null)
 		{
-			let font = ctx.FontService.GetFont(fontSize);
+			let font = ctx.FontService.GetFont(ResolveStyleFontFamily(), fontSize);
 			if (font != null)
 			{
 				let textColor = ResolveStyleColor(.TextColor, .(220, 225, 235, 255));
@@ -306,7 +306,7 @@ class ComboBoxDropdown : View
 		let selectedColor = Color(60, 120, 200, 50);
 		let hoverDrawable = ResolveStyleDrawable(.MenuItemHoverDrawable);
 		let fontSize = mOwner.ResolveStyleFloat(.FontSize, 14);
-		let font = ctx.FontService?.GetFont(fontSize);
+		let font = ctx.FontService?.GetFont(ResolveStyleFontFamily(), fontSize);
 
 		float y = 4;
 		for (int32 i = 0; i < mOwner.ItemCount; i++)

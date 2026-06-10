@@ -532,4 +532,145 @@ class InlineStyleTests
 
 		delete view;
 	}
+
+	// === FontFamily / StringRef inline-style coverage ===
+
+	/// Minimal stub that returns a known default family name. Used to
+	/// confirm `ResolveStyleFontFamily()` floor-falls-back through the
+	/// active IFontService rather than returning empty.
+	class StubFontService : Sedulous.Fonts.IFontService
+	{
+		public Sedulous.Fonts.CachedFont GetFont(float pixelHeight) => null;
+		public Sedulous.Fonts.CachedFont GetFont(StringView familyName, float pixelHeight) => null;
+		public Sedulous.Images.IImageData GetAtlasTexture(Sedulous.Fonts.CachedFont font) => null;
+		public Sedulous.Images.IImageData GetAtlasTexture(StringView familyName, float pixelHeight) => null;
+		public void ReleaseFont(Sedulous.Fonts.CachedFont font) { }
+		public StringView DefaultFontFamily => "StubDefault";
+	}
+
+	[Test]
+	public static void SetStyle_String_RoundTrip()
+	{
+		let view = scope TestView();
+		view.SetStyle(.FontFamily, "Roboto");
+
+		Test.Assert(view.HasInlineStyle(.FontFamily));
+		let v = view.GetInlineStyle(.FontFamily).AsString;
+		Test.Assert(v.HasValue);
+		Test.Assert(v.Value == "Roboto");
+	}
+
+	[Test]
+	public static void SetStyle_String_OverwriteFreesPrevious()
+	{
+		// Multiple overwrites; destructor must free everything.
+		let view = scope TestView();
+		view.SetStyle(.FontFamily, "Roboto");
+		view.SetStyle(.FontFamily, "JungleAdventurer");
+		view.SetStyle(.FontFamily, "AttackOfMonster");
+
+		Test.Assert(view.GetInlineStyle(.FontFamily).AsString.Value == "AttackOfMonster");
+	}
+
+	[Test]
+	public static void Resolution_InlineFontFamilyBeatsContextSheet()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let sheet = SetupSheet(ctx);
+		sheet.ForType(typeof(TestView)).Set(.FontFamily, "Roboto");
+
+		let view = new TestView();
+		root.AddView(view);
+		view.SetStyle(.FontFamily, "JungleAdventurer");
+
+		Test.Assert(view.ResolveStyle(.FontFamily).AsString.Value == "JungleAdventurer");
+	}
+
+	[Test]
+	public static void ResolveStyleFontFamily_Fallback_UsesFontServiceDefault()
+	{
+		// No cascade rule + no inline override -> falls all the way
+		// through to the active IFontService's DefaultFontFamily.
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+		ctx.FontService = scope StubFontService();
+
+		SetupSheet(ctx);
+
+		let view = new TestView();
+		root.AddView(view);
+
+		Test.Assert(view.ResolveStyleFontFamily() == "StubDefault");
+	}
+
+	[Test]
+	public static void ResolveStyleFontFamily_CascadeWinsOverFontServiceDefault()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+		ctx.FontService = scope StubFontService();
+
+		let sheet = SetupSheet(ctx);
+		sheet.ForType(typeof(TestView)).Set(.FontFamily, "Roboto");
+
+		let view = new TestView();
+		root.AddView(view);
+
+		Test.Assert(view.ResolveStyleFontFamily() == "Roboto");
+	}
+
+	[Test]
+	public static void ResolveStyleFontFamily_InstanceOverride_Wins()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let sheet = SetupSheet(ctx);
+		sheet.ForType(typeof(TestView)).Set(.FontFamily, "Roboto");
+
+		let view = new TestView();
+		root.AddView(view);
+
+		let @override = scope String("CustomFamily");
+		Test.Assert(view.ResolveStyleFontFamily(@override) == "CustomFamily");
+	}
+
+	[Test]
+	public static void ResolveStyleFontFamily_NullOverride_DefersToCascade()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let sheet = SetupSheet(ctx);
+		sheet.ForType(typeof(TestView)).Set(.FontFamily, "Roboto");
+
+		let view = new TestView();
+		root.AddView(view);
+
+		Test.Assert(view.ResolveStyleFontFamily(null) == "Roboto");
+	}
+
+	[Test]
+	public static void ResolveStyleFontFamily_EmptyOverride_DefersToCascade()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let sheet = SetupSheet(ctx);
+		sheet.ForType(typeof(TestView)).Set(.FontFamily, "Roboto");
+
+		let view = new TestView();
+		root.AddView(view);
+
+		let @override = scope String("");
+		Test.Assert(view.ResolveStyleFontFamily(@override) == "Roboto");
+	}
 }

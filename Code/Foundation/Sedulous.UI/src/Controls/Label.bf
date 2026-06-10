@@ -26,6 +26,10 @@ public class Label : View
 	/// Per-instance font size override. When set, overrides the style-resolved FontSize.
 	public Property<float?> FontSize = new .(null, .Visual) ~ delete _;
 
+	/// Per-instance font family override. When set (and non-empty),
+	/// overrides the style-resolved FontFamily. Owned by this view.
+	public Property<String> FontFamily = new .(null, .Visual) ~ { if (_.Value != null) delete _.Value; delete _; };
+
 	/// Per-instance text color override. When set, overrides the style-resolved TextColor.
 	public Property<Color?> TextColor = new .(null, .Visual) ~ delete _;
 
@@ -37,6 +41,7 @@ public class Label : View
 		WordWrap.SetOwner(this);
 		Ellipsis.SetOwner(this, .Visual);
 		FontSize.SetOwner(this);
+		FontFamily.SetOwner(this, .Visual);
 		TextColor.SetOwner(this, .Visual);
 	}
 
@@ -65,7 +70,7 @@ public class Label : View
 
 		if (Text.Value != null && Text.Value.Length > 0 && Context?.FontService != null)
 		{
-			let font = Context.FontService.GetFont(fontSize);
+			let font = Context.FontService.GetFont(ResolveStyleFontFamily(FontFamily.Value), fontSize);
 			if (font != null)
 			{
 				if (WordWrap.Value && font.Shaper != null)
@@ -107,7 +112,7 @@ public class Label : View
 	{
 		if (Context?.FontService != null)
 		{
-			let font = Context.FontService.GetFont((FontSize.Value ?? ResolveStyleFloat(.FontSize, 16)));
+			let font = Context.FontService.GetFont(ResolveStyleFontFamily(FontFamily.Value), FontSize.Value ?? ResolveStyleFloat(.FontSize, 16));
 			if (font != null)
 				return font.Font.Metrics.Ascent;
 		}
@@ -120,7 +125,7 @@ public class Label : View
 		if (ctx.FontService == null) return;
 
 		let fontSize = (FontSize.Value ?? ResolveStyleFloat(.FontSize, 16));
-		let font = ctx.FontService.GetFont(fontSize);
+		let font = ctx.FontService.GetFont(ResolveStyleFontFamily(FontFamily.Value), fontSize);
 		if (font == null) return;
 
 		var textColor = TextColor.Value ?? ResolveStyleColor(.TextColor, .(220, 225, 235, 255));

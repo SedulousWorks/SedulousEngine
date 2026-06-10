@@ -425,6 +425,9 @@ public static class MarkupRegistry
 		RegisterProperty("Label", "font-size", new (v, val) => {
 			if (let c = v as Label) if (float.Parse(val) case .Ok(let f)) c.FontSize.Value = f;
 		});
+		RegisterProperty("Label", "font-family", new (v, val) => {
+			if (let c = v as Label) c.FontFamily.Value = new String(val);
+		});
 		RegisterProperty("Label", "word-wrap", new (v, val) => {
 			if (let c = v as Label) c.WordWrap.Value = (val == "true");
 		});
@@ -438,6 +441,9 @@ public static class MarkupRegistry
 		});
 		RegisterProperty("Button", "font-size", new (v, val) => {
 			if (let c = v as Button) if (float.Parse(val) case .Ok(let f)) c.FontSize.Value = f;
+		});
+		RegisterProperty("Button", "font-family", new (v, val) => {
+			if (let c = v as Button) c.FontFamily.Value = new String(val);
 		});
 
 		RegisterView("CheckBox", new () => new CheckBox());

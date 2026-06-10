@@ -290,6 +290,19 @@ public class SSSParser
 			return;
 		}
 
+		// String-valued properties (font-family, etc) skip the
+		// StyleValue wrapper: ParseStyleValue would have to allocate a
+		// String just for the dispatch to copy it again. rule.Set's
+		// StringView overload owns its own copy.
+		if (IsStringProperty(prop.Value))
+		{
+			let s = ParseStringOrIdent();
+			if (s.Length > 0)
+				rule.Set(prop.Value, s);
+			MatchSemicolon();
+			return;
+		}
+
 		let value = ParseStyleValue(prop.Value);
 		if (!(value case .None))
 		{
@@ -539,6 +552,9 @@ public class SSSParser
 		// Float properties
 		if (name == "font-size") return .FontSize;
 		if (name == "corner-radius") return .CornerRadius;
+
+		// String properties
+		if (name == "font-family") return .FontFamily;
 		if (name == "border-width") return .BorderWidth;
 		if (name == "spacing") return .Spacing;
 		if (name == "opacity") return .Opacity;
@@ -585,6 +601,21 @@ public class SSSParser
 	private static bool IsBoolProperty(StyleProperty prop)
 	{
 		return prop == .WordWrap;
+	}
+
+	private static bool IsStringProperty(StyleProperty prop)
+	{
+		return prop == .FontFamily;
+	}
+
+	/// Read a quoted string literal or a bare identifier (e.g.
+	/// `font-family: "Jungle Adventurer"` or
+	/// `font-family: JungleAdventurer`).
+	private StringView ParseStringOrIdent()
+	{
+		if (Peek().Kind == .StringLit) return Consume().Text;
+		if (Peek().Kind == .Ident) return Consume().Text;
+		return "";
 	}
 
 	// === Variable resolution ===

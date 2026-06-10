@@ -472,4 +472,98 @@ class LocalStyleSheetTests
 
 		Test.Assert(child.ResolvePartFloat("thumb", .CornerRadius, .Normal) == 7f);
 	}
+
+	// === FontFamily inheritance via ForAll() ===
+	//
+	// FontFamily is inheritable, so even non-inheritance setups should
+	// reach descendants through the cascade walk. ForAll() on an
+	// ancestor's LocalStyleSheet sets the family for the whole subtree
+	// regardless of view type.
+
+	[Test]
+	public static void Pseudo_FontFamily_ForAllOnAncestorLocal_ReachesAllDescendantTypes()
+	{
+		// This is the exact pause-menu scenario: one rule on the root's
+		// local sheet, every descendant of every type picks it up.
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		SetupCtxSheet(ctx);
+
+		let pauseRoot = new TestGroup();
+		let inner = new TestGroup();
+		let view = new TestView();
+		root.AddView(pauseRoot);
+		pauseRoot.AddView(inner);
+		inner.AddView(view);
+
+		let pauseLocal = SetupLocalSheet(pauseRoot);
+		pauseLocal.ForAll().Set(.FontFamily, "JungleAdventurer");
+
+		// pauseRoot itself matches the rule on itself.
+		Test.Assert(pauseRoot.ResolveStyle(.FontFamily).AsString.Value == "JungleAdventurer");
+		// Both descendant types resolve via the ancestor walk.
+		Test.Assert(inner.ResolveStyle(.FontFamily).AsString.Value == "JungleAdventurer");
+		Test.Assert(view.ResolveStyle(.FontFamily).AsString.Value == "JungleAdventurer");
+	}
+
+	[Test]
+	public static void FontFamily_TypeScopedRule_NoMatchInChain_ReturnsNone()
+	{
+		// Negative case reproducing the pause-menu bug: a type-scoped
+		// rule whose type doesn't match ANY view in the styled view's
+		// cascade (target view + every ancestor) returns None even for
+		// inheritable properties.
+		//
+		// Here the rule is ForType(typeof(TestGroup)) but neither
+		// `outer` nor `inner` is a TestGroup, so the inheritance walk
+		// never has a matching cascade level to fire from.
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		SetupCtxSheet(ctx);
+
+		// outer needs to be a ViewGroup to hold a child; pick a rule
+		// type that matches neither outer (TestGroup) nor inner
+		// (TestView). Label is unrelated to both.
+		let outer = new TestGroup();
+		let inner = new TestView();
+		root.AddView(outer);
+		outer.AddView(inner);
+
+		let local = SetupLocalSheet(outer);
+		local.ForType(typeof(Label)).Set(.FontFamily, "JungleAdventurer");
+
+		Test.Assert(inner.ResolveStyle(.FontFamily) case .None);
+	}
+
+	[Test]
+	public static void FontFamily_TypeScopedRule_AncestorMatchesType_InheritsDown()
+	{
+		// Positive companion to the above: when SOME ancestor in the
+		// chain matches the rule's type, the rule fires for that
+		// ancestor's own resolve, and the inheritable value propagates
+		// down to the original styled view.
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		SetupCtxSheet(ctx);
+
+		// outer IS a TestGroup, so the rule matches when inheritance
+		// recursion reaches it.
+		let outer = new TestGroup();
+		let inner = new TestView();
+		root.AddView(outer);
+		outer.AddView(inner);
+
+		let local = SetupLocalSheet(outer);
+		local.ForType(typeof(TestGroup)).Set(.FontFamily, "JungleAdventurer");
+
+		// Inheritance recursion at outer matches the TestGroup rule,
+		// and the value cascades back down to inner.
+		Test.Assert(inner.ResolveStyle(.FontFamily).AsString.Value == "JungleAdventurer");
+	}
 }

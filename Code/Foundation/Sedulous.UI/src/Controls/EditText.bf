@@ -183,7 +183,7 @@ public class EditText : View, ITextEditHost
 
 		if (Context?.FontService == null) return 0;
 		let fontSize = ResolveStyleFloat(.FontSize, 14);
-		let font = Context.FontService.GetFont(fontSize);
+		let font = Context.FontService.GetFont(ResolveStyleFontFamily(), fontSize);
 		if (font == null || font.Shaper == null)
 			return FallbackHitTest(localX);
 
@@ -207,7 +207,7 @@ public class EditText : View, ITextEditHost
 
 		if (Context?.FontService == null) return 0;
 		let fontSize = ResolveStyleFloat(.FontSize, 14);
-		let font = Context.FontService.GetFont(fontSize);
+		let font = Context.FontService.GetFont(ResolveStyleFontFamily(), fontSize);
 		if (font == null || font.Shaper == null) return 0;
 
 		if (Multiline.Value)
@@ -283,7 +283,7 @@ public class EditText : View, ITextEditHost
 
 		if (Context?.FontService == null) return 0;
 		let fontSize = ResolveStyleFloat(.FontSize, 14);
-		let font = Context.FontService.GetFont(fontSize);
+		let font = Context.FontService.GetFont(ResolveStyleFontFamily(), fontSize);
 		if (font == null || font.Shaper == null) return 0;
 
 		if (!Multiline.Value)
@@ -298,7 +298,7 @@ public class EditText : View, ITextEditHost
 
 		if (Context?.FontService == null) return 0;
 		let fontSize = ResolveStyleFloat(.FontSize, 14);
-		let font = Context.FontService.GetFont(fontSize);
+		let font = Context.FontService.GetFont(ResolveStyleFontFamily(), fontSize);
 		if (font == null) return 0;
 
 		return GetCursorYFromCharIndex(charIndex, font.Font.Metrics.LineHeight);
@@ -310,7 +310,7 @@ public class EditText : View, ITextEditHost
 		{
 			if (Context?.FontService == null) return ResolveStyleFloat(.FontSize, 14);
 			let fontSize = ResolveStyleFloat(.FontSize, 14);
-			let font = Context.FontService.GetFont(fontSize);
+			let font = Context.FontService.GetFont(ResolveStyleFontFamily(), fontSize);
 			if (font == null) return fontSize;
 			return font.Font.Metrics.LineHeight;
 		}
@@ -337,7 +337,7 @@ public class EditText : View, ITextEditHost
 
 		if (Context?.FontService != null)
 		{
-			let font = Context.FontService.GetFont(fontSize);
+			let font = Context.FontService.GetFont(ResolveStyleFontFamily(), fontSize);
 			if (font != null)
 			{
 				textH = font.Font.Metrics.LineHeight;
@@ -424,7 +424,7 @@ public class EditText : View, ITextEditHost
 	{
 		if (ctx.FontService == null) return;
 
-		let font = ctx.FontService.GetFont(fontSize);
+		let font = ctx.FontService.GetFont(ResolveStyleFontFamily(), fontSize);
 		if (font == null) return;
 
 		let lineH = font.Font.Metrics.LineHeight;
@@ -619,7 +619,7 @@ public class EditText : View, ITextEditHost
 		if (Context?.FontService == null) return;
 
 		let fontSize = ResolveStyleFloat(.FontSize, 14);
-		let font = Context.FontService.GetFont(fontSize);
+		let font = Context.FontService.GetFont(ResolveStyleFontFamily(), fontSize);
 		if (font == null) return;
 
 		mCachedDisplayText.Clear();
@@ -712,7 +712,7 @@ public class EditText : View, ITextEditHost
 		{
 			if (Context?.FontService != null)
 			{
-				let font = Context.FontService.GetFont(fontSize);
+				let font = Context.FontService.GetFont(ResolveStyleFontFamily(), fontSize);
 				if (font != null)
 					return font.Font.MeasureString(mPrefixText) + 4; // 4px spacing after prefix
 			}
@@ -732,7 +732,7 @@ public class EditText : View, ITextEditHost
 		{
 			if (Context?.FontService != null)
 			{
-				let font = Context.FontService.GetFont(fontSize);
+				let font = Context.FontService.GetFont(ResolveStyleFontFamily(), fontSize);
 				if (font != null)
 					return font.Font.MeasureString(mSuffixText) + 4; // 4px spacing before suffix
 			}
@@ -750,7 +750,7 @@ public class EditText : View, ITextEditHost
 	{
 		if (mPrefixText != null && !mPrefixText.IsEmpty)
 		{
-			let font = ctx.FontService?.GetFont(fontSize);
+			let font = ctx.FontService?.GetFont(ResolveStyleFontFamily(), fontSize);
 			if (font != null)
 			{
 				let textColor = ResolveStyleColor(.TextDimColor, ResolveStyleColor(.PlaceholderColor, .(140, 150, 170, 255)));
@@ -775,7 +775,7 @@ public class EditText : View, ITextEditHost
 	{
 		if (mSuffixText != null && !mSuffixText.IsEmpty)
 		{
-			let font = ctx.FontService?.GetFont(fontSize);
+			let font = ctx.FontService?.GetFont(ResolveStyleFontFamily(), fontSize);
 			if (font != null)
 			{
 				let textColor = ResolveStyleColor(.TextDimColor, ResolveStyleColor(.PlaceholderColor, .(140, 150, 170, 255)));

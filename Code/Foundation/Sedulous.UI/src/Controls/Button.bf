@@ -14,11 +14,15 @@ public class Button : ButtonBase
 	/// Per-instance font size override. When set, overrides the style-resolved FontSize.
 	public Property<float?> FontSize = new .(null) ~ delete _;
 
+	/// Per-instance font family override. When set (and non-empty), overrides the style-resolved FontFamily.
+	public Property<String> FontFamily = new .(null, .Visual) ~ { if (_.Value != null) delete _.Value; delete _; };
+
 	/// Text button constructor.
 	public this(StringView text) : base()
 	{
 		Text.SetOwner(this);
 		FontSize.SetOwner(this);
+		FontFamily.SetOwner(this, .Visual);
 
 		Text.SetSilent(new String(text));
 	}
@@ -43,7 +47,7 @@ public class Button : ButtonBase
 
 		if (Text.Value != null && Text.Value.Length > 0 && Context?.FontService != null)
 		{
-			let font = Context.FontService.GetFont(fontSize);
+			let font = Context.FontService.GetFont(ResolveStyleFontFamily(FontFamily.Value), fontSize);
 			if (font != null)
 			{
 				textW = font.Font.MeasureString(Text.Value);
@@ -69,7 +73,7 @@ public class Button : ButtonBase
 		if (Text.Value != null && Text.Value.Length > 0 && ctx.FontService != null)
 		{
 			let fontSize = FontSize.Value ?? ResolveStyleFloat(.FontSize, 16);
-			let font = ctx.FontService.GetFont(fontSize);
+			let font = ctx.FontService.GetFont(ResolveStyleFontFamily(FontFamily.Value), fontSize);
 			if (font != null)
 			{
 				let pad = ResolveStyleThickness(.Padding, .(12, 8));

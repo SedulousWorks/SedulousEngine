@@ -145,7 +145,7 @@ public class Expander : ViewGroup
 		// Header text
 		if (mHeaderText != null && !mHeaderText.IsEmpty)
 		{
-			let font = ctx.FontService?.GetFont(fontSize);
+			let font = ctx.FontService?.GetFont(ResolveStyleFontFamily(), fontSize);
 			if (font != null)
 			{
 				let textColor = ResolveStyleColor(.TextColor, .(220, 225, 235, 255));

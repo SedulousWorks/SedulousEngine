@@ -1,5 +1,6 @@
 namespace Sedulous.UI;
 
+using System;
 using Sedulous.Core.Mathematics;
 
 /// A tagged value stored in a StyleRule. Discriminated union of all
@@ -9,8 +10,9 @@ public enum StyleValue
 	case ColorVal(Color);
 	case FloatVal(float);
 	case ThicknessVal(Thickness);
-	case DrawableRef(Drawable);   // StyleSheet owns the Drawable
+	case DrawableRef(Drawable);   // Container holds the ref
 	case BoolVal(bool);
+	case StringRef(String);       // Container owns the String
 	case None;
 
 	/// Try to get as Color.
@@ -59,6 +61,18 @@ public enum StyleValue
 		get
 		{
 			if (this case .BoolVal(let b)) return b;
+			return null;
+		}
+	}
+
+	/// Try to get as a borrowed StringView. The backing String is
+	/// owned by the container that stored the value (typically a
+	/// StyleRule) - do not delete.
+	public StringView? AsString
+	{
+		get
+		{
+			if (this case .StringRef(let s) && s != null) return StringView(s);
 			return null;
 		}
 	}

@@ -18,12 +18,15 @@ public class StyleRule
 
 	public ~this()
 	{
-		// Drawable values held by the rule were AddRef'd on Set. Release
-		// them here so the rule's ref doesn't outlive its declaration.
+		// Drawable values held by the rule were AddRef'd on Set; string
+		// values had a copy allocated on Set. Release / free here so
+		// the rule's owned references don't outlive its declaration.
 		for (let entry in mProperties)
 		{
 			if (entry.Value case .DrawableRef(let d))
 				d?.ReleaseRef();
+			else if (entry.Value case .StringRef(let s))
+				delete s;
 		}
 	}
 
@@ -100,31 +103,58 @@ public class StyleRule
 		return this;
 	}
 
-	/// Remove a property from this rule. Releases the drawable if the
-	/// value was a `DrawableRef`. No-op if the property is not set.
+	/// Set a string property (e.g. `FontFamily`). The rule owns a copy
+	/// of the string view's contents; overwriting frees the previous.
+	public StyleRule Set(StyleProperty prop, StringView value)
+	{
+		let copy = new String(value);
+		for (int i = 0; i < mProperties.Count; i++)
+		{
+			if (mProperties[i].Prop != prop) continue;
+			let prev = mProperties[i].Value;
+			if (prev case .StringRef(let oldS))
+				delete oldS;
+			else if (prev case .DrawableRef(let oldD))
+				oldD?.ReleaseRef();
+			mProperties[i] = (prop, .StringRef(copy));
+			return this;
+		}
+		mProperties.Add((prop, .StringRef(copy)));
+		return this;
+	}
+
+	/// Remove a property from this rule. Releases / frees any owned
+	/// resources stored at the value. No-op if not set.
 	public bool Remove(StyleProperty prop)
 	{
 		for (int i = 0; i < mProperties.Count; i++)
 		{
 			if (mProperties[i].Prop != prop) continue;
-			if (mProperties[i].Value case .DrawableRef(let d))
+			let v = mProperties[i].Value;
+			if (v case .DrawableRef(let d))
 				d?.ReleaseRef();
+			else if (v case .StringRef(let s))
+				delete s;
 			mProperties.RemoveAt(i);
 			return true;
 		}
 		return false;
 	}
 
-	/// Internal overwrite helper for non-Drawable values. Drawable
-	/// values go through the typed `Set(prop, Drawable, ...)` overload
-	/// so the AddRef/Release lifecycle is explicit.
+	/// Internal overwrite helper for primitive values. Drawable and
+	/// string values go through their own typed overloads so the
+	/// AddRef/Release and copy lifecycle stays explicit. Cleans up the
+	/// previous owned resource if overwriting a DrawableRef / StringRef.
 	private void SetValueOverwrite(StyleProperty prop, StyleValue value)
 	{
 		for (int i = 0; i < mProperties.Count; i++)
 		{
 			if (mProperties[i].Prop != prop) continue;
-			if (mProperties[i].Value case .DrawableRef(let d))
+			let prev = mProperties[i].Value;
+			if (prev case .DrawableRef(let d))
 				d?.ReleaseRef();
+			else if (prev case .StringRef(let s))
+				delete s;
 			mProperties[i] = (prop, value);
 			return;
 		}

@@ -408,6 +408,38 @@ class MarkupLoaderTests
 		delete view;
 	}
 
+	[Test]
+	public static void Label_FontFamily()
+	{
+		let view = MarkupLoader.LoadFromString(
+			"""
+			<Label text="Decorative" font-family="JungleAdventurer"/>
+			""");
+
+		let label = view as Label;
+		Test.Assert(label != null);
+		Test.Assert(label.FontFamily.Value != null);
+		Test.Assert(StringView(label.FontFamily.Value) == "JungleAdventurer");
+
+		delete view;
+	}
+
+	[Test]
+	public static void Button_FontFamily()
+	{
+		let view = MarkupLoader.LoadFromString(
+			"""
+			<Button text="Go" font-family="AttackOfMonster"/>
+			""");
+
+		let btn = view as Button;
+		Test.Assert(btn != null);
+		Test.Assert(btn.FontFamily.Value != null);
+		Test.Assert(StringView(btn.FontFamily.Value) == "AttackOfMonster");
+
+		delete view;
+	}
+
 	// === Aliases ===
 
 	[Test]

@@ -40,7 +40,7 @@ public class ToggleSwitch : View
 
 		if (Text.Value != null && !Text.Value.IsEmpty)
 		{
-			let font = Context?.FontService?.GetFont(fontSize);
+			let font = Context?.FontService?.GetFont(ResolveStyleFontFamily(), fontSize);
 			if (font != null)
 			{
 				textW = font.Font.MeasureString(Text.Value);
@@ -88,7 +88,7 @@ public class ToggleSwitch : View
 		// Text
 		if (Text.Value != null && !Text.Value.IsEmpty)
 		{
-			let font = ctx.FontService?.GetFont(fontSize);
+			let font = ctx.FontService?.GetFont(ResolveStyleFontFamily(), fontSize);
 			if (font != null)
 			{
 				var textColor = ResolveStyleColor(.TextColor, .(220, 225, 235, 255));

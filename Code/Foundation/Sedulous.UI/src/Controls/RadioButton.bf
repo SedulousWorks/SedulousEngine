@@ -19,6 +19,9 @@ public class RadioButton : View
 	/// Override font size for the label text.
 	public Property<float?> FontSize = new .(null) ~ delete _;
 
+	/// Per-instance font family override. When set (and non-empty), overrides the style-resolved FontFamily.
+	public Property<String> FontFamily = new .(null, .Visual) ~ { if (_.Value != null) delete _.Value; delete _; };
+
 	/// Override text color for the label text.
 	public Property<Color?> TextColor = new .(null, .Visual) ~ delete _;
 
@@ -29,6 +32,7 @@ public class RadioButton : View
 		IsChecked.SetOwner(this, .Visual);
 		Text.SetOwner(this);
 		FontSize.SetOwner(this);
+		FontFamily.SetOwner(this, .Visual);
 		TextColor.SetOwner(this, .Visual);
 
 		IsChecked.Changed.Add(new (val) => { OnCheckedChanged(this, val); });
@@ -44,7 +48,7 @@ public class RadioButton : View
 
 		if (Text.Value != null && !Text.Value.IsEmpty)
 		{
-			let font = Context?.FontService?.GetFont(fontSize);
+			let font = Context?.FontService?.GetFont(ResolveStyleFontFamily(FontFamily.Value), fontSize);
 			if (font != null)
 			{
 				textW = font.Font.MeasureString(Text.Value);
@@ -88,7 +92,7 @@ public class RadioButton : View
 		// Text
 		if (Text.Value != null && !Text.Value.IsEmpty)
 		{
-			let font = ctx.FontService?.GetFont(fontSize);
+			let font = ctx.FontService?.GetFont(ResolveStyleFontFamily(FontFamily.Value), fontSize);
 			if (font != null)
 			{
 				var textColor = TextColor.Value ?? ResolveStyleColor(.TextColor, .(220, 225, 235, 255));

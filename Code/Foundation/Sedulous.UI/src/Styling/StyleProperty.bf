@@ -45,6 +45,10 @@ public enum StyleProperty
 
 	/// Font size (inheritable)
 	FontSize,
+	/// Font family name (inheritable). String value resolved via the
+	/// active IFontService - an unknown family falls back to the
+	/// service's default font.
+	FontFamily,
 	/// Corner radius for rounded elements
 	CornerRadius,
 	/// Border stroke width

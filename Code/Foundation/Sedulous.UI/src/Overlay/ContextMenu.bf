@@ -135,7 +135,7 @@ public class ContextMenu : View, IPopupOwner
 
 			if (item.Label != null && Context?.FontService != null)
 			{
-				let font = Context.FontService.GetFont(14);
+				let font = Context.FontService.GetFont(ResolveStyleFontFamily(), 14);
 				if (font != null)
 				{
 					let textW = font.Font.MeasureString(item.Label) + 40;
@@ -171,7 +171,7 @@ public class ContextMenu : View, IPopupOwner
 		let separatorColor = ResolveStyleColor(.BorderColor, .(70, 75, 90, 255));
 		let hoverColor = ResolveStyleColor(.AccentColor, .(60, 120, 200, 100));
 
-		let font = ctx.FontService?.GetFont(14);
+		let font = ctx.FontService?.GetFont(ResolveStyleFontFamily(), 14);
 
 		float y = 4;
 		for (int32 i = 0; i < mItems.Count; i++)

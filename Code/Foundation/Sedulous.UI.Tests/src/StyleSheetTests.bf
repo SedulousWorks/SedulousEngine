@@ -638,4 +638,110 @@ class StyleSheetTests
 		Test.Assert(rule.GetValue(.Padding) != null);
 		Test.Assert(rule.GetValue(.Background) == null);
 	}
+
+	// === StyleRule string-property lifecycle ===
+	//
+	// Set(prop, StringView) allocates a copy on capture, the destructor
+	// frees it, overwriting frees the old one, and Remove frees on removal.
+
+	[Test]
+	public static void StringValue_RoundTrip()
+	{
+		let rule = scope StyleRule();
+		rule.Set(.FontFamily, "Roboto");
+
+		let v = rule.GetValue(.FontFamily);
+		Test.Assert(v != null);
+		Test.Assert(v.Value.AsString.HasValue);
+		Test.Assert(v.Value.AsString.Value == "Roboto");
+	}
+
+	[Test]
+	public static void StringValue_OverwriteFreesPrevious()
+	{
+		// Just exercise the overwrite path multiple times; the
+		// destructor assertions are the leak guard.
+		let rule = scope StyleRule();
+		rule.Set(.FontFamily, "Roboto");
+		rule.Set(.FontFamily, "JungleAdventurer");
+		rule.Set(.FontFamily, "AttackOfMonster");
+
+		Test.Assert(rule.GetValue(.FontFamily).Value.AsString.Value == "AttackOfMonster");
+		// Each previous String would leak if overwrite didn't free.
+	}
+
+	[Test]
+	public static void StringValue_RemoveFreesString()
+	{
+		let rule = scope StyleRule();
+		rule.Set(.FontFamily, "Roboto");
+		Test.Assert(rule.Remove(.FontFamily));
+		Test.Assert(rule.GetValue(.FontFamily) == null);
+	}
+
+	[Test]
+	public static void StringValue_DestructorFrees()
+	{
+		// Allocate many rules holding strings, drop them, the destructor
+		// must free each. Beef leak detection (debug) catches misses.
+		for (int i = 0; i < 16; i++)
+		{
+			let rule = new StyleRule();
+			rule.Set(.FontFamily, "Roboto");
+			rule.Set(.FontFamily, "JungleAdventurer");
+			delete rule;
+		}
+	}
+
+	// === ForAll() rule (empty selector) ===
+
+	[Test]
+	public static void ForAll_HasEmptySelector_SpecificityZero()
+	{
+		let sheet = new StyleSheet();
+		defer sheet.ReleaseRef();
+		let rule = sheet.ForAll();
+
+		Test.Assert(rule.Selector.IsEmpty);
+		Test.Assert(rule.Selector.Specificity == 0);
+	}
+
+	[Test]
+	public static void ForAll_RuleMatchesEveryView()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let sheet = SetupSheet(ctx);
+		sheet.ForAll().Set(.FontFamily, "JungleAdventurer");
+
+		// Different view types - both match.
+		let testView = new TestView();
+		let testGroup = new TestGroup();
+		root.AddView(testGroup);
+		testGroup.AddView(testView);
+
+		Test.Assert(testView.ResolveStyle(.FontFamily).AsString.Value == "JungleAdventurer");
+		Test.Assert(testGroup.ResolveStyle(.FontFamily).AsString.Value == "JungleAdventurer");
+	}
+
+	[Test]
+	public static void ForAll_LosesSpecificityToTypedRule()
+	{
+		// A typed rule (specificity 1) beats ForAll (specificity 0)
+		// when both define the same property on the same sheet.
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		TestSetup.Init(ctx, root);
+
+		let sheet = SetupSheet(ctx);
+		sheet.ForAll().Set(.FontFamily, "ForAllFamily");
+		sheet.ForType(typeof(TestView)).Set(.FontFamily, "TestViewFamily");
+
+		let view = new TestView();
+		root.AddView(view);
+
+		Test.Assert(view.ResolveStyle(.FontFamily).AsString.Value == "TestViewFamily");
+	}
 }

@@ -103,11 +103,42 @@ class UISandboxApp : Application, IDockableWindowHost
 		// gracefully - but glyphs end up rasterized at the nearest
 		// atlas's native size, which looks slightly off. Loading a
 		// dense ladder of sizes keeps that gap small.
-		let fontLocator = "fonts/roboto/Roboto-Regular.ttf";
-		let sizes = float[?](11, 12, 14, 16, 18, 20, 24, 28, 32);
-		for (let size in sizes)
+		let robotoSizes = float[?](11, 12, 14, 16, 18, 20, 24, 28, 32);
+		for (let size in robotoSizes)
 		{
-			mUI.LoadFont("Roboto", fontLocator, .()
+			mUI.LoadFont("Roboto", "fonts/roboto/Roboto-Regular.ttf", .()
+				{
+					PixelHeight = size,
+					FirstCodepoint = 32,
+					LastCodepoint = 255,
+					AtlasWidth = 1024,
+					AtlasHeight = 1024,
+					OversampleX = 2,
+					OversampleY = 2,
+					Padding = 2
+				});
+		}
+
+		// Decorative families for the FontFamily demo on the pause menu.
+		// AttackOfMonster -> used by the title's inline override.
+		// JungleAdventurer -> applied to every Label via the pause
+		// LocalStyleSheet (and inherited by Buttons since FontFamily
+		// is an inheritable property).
+		let decorativeSizes = float[?](14, 18, 24, 32);
+		for (let size in decorativeSizes)
+		{
+			mUI.LoadFont("AttackOfMonster", "fonts/attack-of-monster/Attack Of Monster.ttf", .()
+				{
+					PixelHeight = size,
+					FirstCodepoint = 32,
+					LastCodepoint = 255,
+					AtlasWidth = 1024,
+					AtlasHeight = 1024,
+					OversampleX = 2,
+					OversampleY = 2,
+					Padding = 2
+				});
+			mUI.LoadFont("JungleAdventurer", "fonts/jungle-adventurer/JungleAdventurer.ttf", .()
 				{
 					PixelHeight = size,
 					FirstCodepoint = 32,
@@ -1122,12 +1153,16 @@ class UISandboxApp : Application, IDockableWindowHost
 					quitBtn.SetStyle(.Background,
 						Palette.CreateStateRounded(.(150, 60, 60, 255), .(6)));
 				}
-				// Inline style demo on a Label: override TextColor and
-				// FontSize without touching the theme or subclassing.
+				// Inline style demo on a Label: override TextColor,
+				// FontSize, AND FontFamily without touching the theme
+				// or subclassing. The title's inline FontFamily
+				// "AttackOfMonster" wins over the pause sheet's
+				// inheritable "JungleAdventurer" - inline beats local.
 				if (let title = pauseRoot.FindByName<Label>("title"))
 				{
 					title.SetStyle(.TextColor, Color(255, 220, 100, 255));
 					title.SetStyle(.FontSize, 32f);
+					title.SetStyle(.FontFamily, "AttackOfMonster");
 				}
 
 				// LocalStyleSheet demo: scope a theming change to the
@@ -1144,6 +1179,10 @@ class UISandboxApp : Application, IDockableWindowHost
 				// resume/quit's inline state-lists beat the gray-blue
 				// default (settings/save/load take the default).
 				let pauseLocal = new StyleSheet();
+				// FontFamily for the whole pause subtree: empty
+				// selector, every view inherits this. (Labels and
+				// Buttons alike.)
+				pauseLocal.ForAll().Set(.FontFamily, "JungleAdventurer");
 				pauseLocal.ForType(typeof(Label))
 					.Set(.FontSize, 14f)
 					.Set(.TextColor, Color(210, 215, 225, 255));

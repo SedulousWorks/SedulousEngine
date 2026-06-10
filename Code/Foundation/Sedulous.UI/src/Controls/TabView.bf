@@ -171,7 +171,7 @@ public class TabView : ViewGroup
 		RebuildTabRects();
 
 		let fontSize = ResolveStyleFloat(.FontSize, 14);
-		let font = ctx.FontService?.GetFont(fontSize);
+		let font = ctx.FontService?.GetFont(ResolveStyleFontFamily(), fontSize);
 
 		let controlState = GetControlState();
 
@@ -369,7 +369,7 @@ public class TabView : ViewGroup
 		mTabRects.Clear();
 
 		let fontSize = ResolveStyleFloat(.FontSize, 14);
-		let font = Context?.FontService?.GetFont(fontSize);
+		let font = Context?.FontService?.GetFont(ResolveStyleFontFamily(), fontSize);
 
 		if (Placement.Value == .Top || Placement.Value == .Bottom)
 		{
@@ -405,7 +405,7 @@ public class TabView : ViewGroup
 		if (Placement.Value == .Top || Placement.Value == .Bottom) return 0;
 
 		let fontSize = ResolveStyleFloat(.FontSize, 14);
-		let font = Context?.FontService?.GetFont(fontSize);
+		let font = Context?.FontService?.GetFont(ResolveStyleFontFamily(), fontSize);
 		if (font == null) return 100;
 
 		float maxW = 0;

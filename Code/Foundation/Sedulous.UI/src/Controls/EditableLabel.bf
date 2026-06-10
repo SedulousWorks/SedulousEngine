@@ -40,6 +40,9 @@ public class EditableLabel : EditText
 	/// Override font size. When set, takes precedence over style resolution.
 	public Property<float?> FontSize = new .(null) ~ delete _;
 
+	/// Per-instance font family override. When set (and non-empty), overrides the style-resolved FontFamily.
+	public Property<String> FontFamily = new .(null, .Visual) ~ { if (_.Value != null) delete _.Value; delete _; };
+
 	/// Override text color. When set, takes precedence over style resolution.
 	public Property<Color?> TextColor = new .(null) ~ delete _;
 
@@ -63,6 +66,7 @@ public class EditableLabel : EditText
 		HAlign.SetOwner(this, .Visual);
 		Ellipsis.SetOwner(this, .Visual);
 		FontSize.SetOwner(this);
+		FontFamily.SetOwner(this, .Visual);
 		TextColor.SetOwner(this, .Visual);
 		DoubleClickToEdit.SetOwner(this);
 		SlowClickToEdit.SetOwner(this);
@@ -236,7 +240,7 @@ public class EditableLabel : EditText
 			let fontSize = FontSize.Value ?? ResolveStyleFloat(.FontSize, 14);
 			if (Text.Length > 0 && ctx.FontService != null)
 			{
-				let font = ctx.FontService.GetFont(fontSize);
+				let font = ctx.FontService.GetFont(ResolveStyleFontFamily(FontFamily.Value), fontSize);
 				if (font != null)
 				{
 					let textColor = TextColor.Value ?? ResolveStyleColor(.TextColor, .(220, 225, 235, 255));
