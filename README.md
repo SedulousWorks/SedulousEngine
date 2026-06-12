@@ -52,6 +52,8 @@ The first run compiles all shaders on startup, which takes a while. To cache the
 
 **UISandbox** shows every UI control, layout, and styling feature -- buttons, sliders, checkboxes, lists, trees, tabs, drag-and-drop, docking, context menus, and .sml markup loading.
 
+![UISandbox](Documentation/Developer/UI.png)
+
 ## Architecture
 
 Sedulous is built in layers. Each layer depends only on the layers below it.
