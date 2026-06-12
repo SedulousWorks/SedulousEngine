@@ -20,8 +20,6 @@ A game engine written in [Beeflang](https://www.beeflang.org/) with Vulkan and D
 
 **Editor Toolkit** -- Dockable panels, property grids, menu bars, split views, color pickers, node graph canvas, and draggable tree views for building editor tools.
 
-![EngineSandbox](Code/Samples/EngineSandbox/EngineSandbox.png)
-
 > Sedulous is under active development. Previous iterations have shipped games;
 > this version is a significant evolution with a game currently in progress.
 
