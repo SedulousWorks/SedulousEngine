@@ -427,30 +427,128 @@ class UISandboxApp : Application, IDockableWindowHost
 		hScrollCol.AddView(scrollH, new FlexLayout.LayoutParams() { Grow = 1 });
 		scrollDemo.AddView(hScrollCol, new FlexLayout.LayoutParams() { Grow = 1 });
 
-		// === Tab 3: Layouts demo (closable) ===
-		let layoutDemo = new FlexLayout() { Direction = .Vertical, Spacing = 4 };
-		layoutDemo.Padding = .(8);
-		tabView.AddTab("Layouts", layoutDemo, true);
-
-		let gridDemo = new GridLayout();
-		gridDemo.Columns.Add(.Flex(1));
-		gridDemo.Columns.Add(.Flex(1));
-		gridDemo.Columns.Add(.Flex(1));
-		gridDemo.Rows.Add(.Flex(1));
-		gridDemo.Rows.Add(.Flex(1));
-		gridDemo.ColumnSpacing = 4;
-		gridDemo.RowSpacing = 4;
-
-		Color[?] gridColors = .(
-			.(80, 60, 60, 255), .(60, 80, 60, 255), .(60, 60, 80, 255),
-			.(70, 50, 50, 255), .(50, 70, 50, 255), .(50, 50, 70, 255)
-			);
-		for (int i = 0; i < 6; i++)
+		// === Tab 3: Layouts demo ===
 		{
-			let cell = new ColorView(gridColors[i], 0, 0);
-			gridDemo.AddView(cell, new GridLayout.LayoutParams() { Row = (int32)(i / 3), Column = (int32)(i % 3) });
+			let layoutScroll = new ScrollView();
+			layoutScroll.HScrollBarPolicy.Value = .Never;
+			tabView.AddTab("Layouts", layoutScroll);
+
+			let layoutDemo = new FlexLayout() { Direction = .Vertical, Spacing = 16 };
+			layoutDemo.Padding = .(12);
+			layoutScroll.AddView(layoutDemo, new LayoutParams() { Width = .Match });
+
+			// --- FlexLayout ---
+			let flexLabel = new Label("FlexLayout — rows and columns with grow/shrink");
+			flexLabel.AddClass("label-dim");
+			flexLabel.FontSize.Value = 12;
+			layoutDemo.AddView(flexLabel);
+
+			let flexH = new FlexLayout() { Direction = .Horizontal, Spacing = 4 };
+			flexH.AddView(MakeBox(.(100, 60, 60, 255), "Fixed\n80px"), new FlexLayout.LayoutParams() { Width = .Fixed(.Px(80)), Height = .Fixed(.Px(50)) });
+			flexH.AddView(MakeBox(.(60, 100, 60, 255), "Grow 1"), new FlexLayout.LayoutParams() { Grow = 1, Height = .Fixed(.Px(50)) });
+			flexH.AddView(MakeBox(.(60, 60, 100, 255), "Grow 2"), new FlexLayout.LayoutParams() { Grow = 2, Height = .Fixed(.Px(50)) });
+			layoutDemo.AddView(flexH, new FlexLayout.LayoutParams() { Width = .Match });
+
+			let flexV = new FlexLayout() { Direction = .Vertical, Spacing = 4 };
+			flexV.AddView(MakeBox(.(90, 50, 50, 255), "Top"), new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(30)) });
+			flexV.AddView(MakeBox(.(50, 90, 50, 255), "Middle (grow)"), new FlexLayout.LayoutParams() { Width = .Match, Grow = 1 });
+			flexV.AddView(MakeBox(.(50, 50, 90, 255), "Bottom"), new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(30)) });
+			layoutDemo.AddView(flexV, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(120)) });
+
+			layoutDemo.AddView(new Separator());
+
+			// --- DockLayout ---
+			let dockLabel = new Label("DockLayout — dock children to edges, last fills remaining");
+			dockLabel.AddClass("label-dim");
+			dockLabel.FontSize.Value = 12;
+			layoutDemo.AddView(dockLabel);
+
+			let dock = new DockLayout();
+			dock.LastChildFill = true;
+			dock.AddView(MakeBox(.(100, 60, 60, 255), "Top"), new DockLayout.LayoutParams(.Top) { Height = .Fixed(.Px(30)) });
+			dock.AddView(MakeBox(.(60, 60, 100, 255), "Bottom"), new DockLayout.LayoutParams(.Bottom) { Height = .Fixed(.Px(30)) });
+			dock.AddView(MakeBox(.(60, 100, 60, 255), "Left"), new DockLayout.LayoutParams(.Left) { Width = .Fixed(.Px(60)) });
+			dock.AddView(MakeBox(.(100, 100, 60, 255), "Right"), new DockLayout.LayoutParams(.Right) { Width = .Fixed(.Px(60)) });
+			dock.AddView(MakeBox(.(70, 70, 70, 255), "Fill"));
+			layoutDemo.AddView(dock, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(150)) });
+
+			layoutDemo.AddView(new Separator());
+
+			// --- GridLayout ---
+			let gridLabel = new Label("GridLayout — rows and columns with flex/fixed sizing");
+			gridLabel.AddClass("label-dim");
+			gridLabel.FontSize.Value = 12;
+			layoutDemo.AddView(gridLabel);
+
+			let grid = new GridLayout();
+			grid.Columns.Add(.Fixed(80));
+			grid.Columns.Add(.Flex(1));
+			grid.Columns.Add(.Flex(2));
+			grid.Rows.Add(.Fixed(35));
+			grid.Rows.Add(.Fixed(35));
+			grid.Rows.Add(.Fixed(35));
+			grid.ColumnSpacing = 4;
+			grid.RowSpacing = 4;
+			grid.AddView(MakeBox(.(80, 50, 50, 255), "0,0"), new GridLayout.LayoutParams() { Row = 0, Column = 0 });
+			grid.AddView(MakeBox(.(50, 80, 50, 255), "0,1"), new GridLayout.LayoutParams() { Row = 0, Column = 1 });
+			grid.AddView(MakeBox(.(50, 50, 80, 255), "0,2"), new GridLayout.LayoutParams() { Row = 0, Column = 2 });
+			grid.AddView(MakeBox(.(70, 40, 40, 255), "1,0"), new GridLayout.LayoutParams() { Row = 1, Column = 0 });
+			grid.AddView(MakeBox(.(40, 70, 40, 255), "Span 2 cols"), new GridLayout.LayoutParams() { Row = 1, Column = 1, ColumnSpan = 2 });
+			grid.AddView(MakeBox(.(60, 30, 30, 255), "Span 3 cols"), new GridLayout.LayoutParams() { Row = 2, Column = 0, ColumnSpan = 3 });
+			layoutDemo.AddView(grid, new FlexLayout.LayoutParams() { Width = .Match });
+
+			layoutDemo.AddView(new Separator());
+
+			// --- FrameLayout ---
+			let frameLabel = new Label("FrameLayout — overlapping children with gravity positioning");
+			frameLabel.AddClass("label-dim");
+			frameLabel.FontSize.Value = 12;
+			layoutDemo.AddView(frameLabel);
+
+			let frame = new FrameLayout();
+			frame.AddView(MakeBox(.(40, 40, 40, 255), "Background (Fill)"), new FrameLayout.LayoutParams() { Gravity = .Fill });
+			frame.AddView(MakeBox(.(100, 50, 50, 255), "TopLeft"), new FrameLayout.LayoutParams() { Gravity = .TopLeft });
+			frame.AddView(MakeBox(.(50, 100, 50, 255), "TopRight"), new FrameLayout.LayoutParams() { Gravity = .TopRight });
+			frame.AddView(MakeBox(.(50, 50, 100, 255), "Center"), new FrameLayout.LayoutParams() { Gravity = .Center });
+			frame.AddView(MakeBox(.(100, 100, 50, 255), "BottomLeft"), new FrameLayout.LayoutParams() { Gravity = .BottomLeft });
+			frame.AddView(MakeBox(.(100, 50, 100, 255), "BottomRight"), new FrameLayout.LayoutParams() { Gravity = .BottomRight });
+			layoutDemo.AddView(frame, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(140)) });
+
+			layoutDemo.AddView(new Separator());
+
+			// --- FlowLayout ---
+			let flowLabel = new Label("FlowLayout — wraps children to next line when space runs out");
+			flowLabel.AddClass("label-dim");
+			flowLabel.FontSize.Value = 12;
+			layoutDemo.AddView(flowLabel);
+
+			let flow = new FlowLayout() { Orientation = .Horizontal, HSpacing = 4, VSpacing = 4 };
+			StringView[?] tags = .("Fire", "Water", "Earth", "Wind", "Electric", "Dark", "Light", "Neutral",
+				"Poison", "Burn", "Stun", "Freeze", "Shield", "Heal", "Speed Up");
+			Color[?] tagColors = .(
+				.(140, 50, 50, 255), .(50, 80, 140, 255), .(60, 100, 40, 255), .(70, 130, 130, 255),
+				.(130, 120, 40, 255), .(80, 50, 100, 255), .(130, 120, 80, 255), .(80, 80, 80, 255),
+				.(100, 60, 120, 255), .(140, 70, 30, 255), .(120, 100, 30, 255), .(40, 100, 130, 255),
+				.(50, 100, 100, 255), .(50, 120, 50, 255), .(30, 100, 130, 255));
+			for (int i = 0; i < tags.Count; i++)
+				flow.AddView(MakeBox(tagColors[i], tags[i]));
+			layoutDemo.AddView(flow, new FlexLayout.LayoutParams() { Width = .Match });
+
+			layoutDemo.AddView(new Separator());
+
+			// --- AbsoluteLayout ---
+			let absLabel = new Label("AbsoluteLayout — explicit pixel positioning");
+			absLabel.AddClass("label-dim");
+			absLabel.FontSize.Value = 12;
+			layoutDemo.AddView(absLabel);
+
+			let abs = new AbsoluteLayout();
+			abs.AddView(MakeBox(.(60, 60, 60, 255), "x:0 y:0"), new AbsoluteLayout.LayoutParams() { X = 0, Y = 0 });
+			abs.AddView(MakeBox(.(100, 50, 50, 255), "x:100 y:10"), new AbsoluteLayout.LayoutParams() { X = 100, Y = 10 });
+			abs.AddView(MakeBox(.(50, 100, 50, 255), "x:50 y:60"), new AbsoluteLayout.LayoutParams() { X = 50, Y = 60 });
+			abs.AddView(MakeBox(.(50, 50, 100, 255), "x:200 y:40"), new AbsoluteLayout.LayoutParams() { X = 200, Y = 40 });
+			layoutDemo.AddView(abs, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(110)) });
 		}
-		layoutDemo.AddView(gridDemo, new FlexLayout.LayoutParams() { Grow = 1 });
 
 		// === Tab 4: Tab Placement demo (closable) ===
 		let tabPlacementDemo = new GridLayout();
@@ -1305,6 +1403,20 @@ class UISandboxApp : Application, IDockableWindowHost
 			mThemeIndex = (mThemeIndex + 1) % 5;
 			ApplyTheme();
 		}
+	}
+
+	/// Creates a labeled colored box for layout demos.
+	private Panel MakeBox(Color color, StringView text)
+	{
+		let panel = new Panel();
+		panel.SetStyle(.Background, new ColorDrawable(color));
+		panel.Padding = .(8, 4, 8, 4);
+		let label = new Label(text);
+		label.FontSize.Value = 11;
+		label.HAlign.Value = .Center;
+		label.VAlign.Value = .Middle;
+		panel.AddView(label);
+		return panel;
 	}
 
 	private void ApplyTheme()
