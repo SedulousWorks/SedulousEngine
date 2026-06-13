@@ -359,13 +359,15 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 		for (uint32 i = 1; i < desc.MipLevelCount; i++)
 		{
-			// Transition mip i-1 to TRANSFER_SRC
+			// Transition mip i-1 to TRANSFER_SRC for blit source.
+			// For mip 0 (i==1), use UNDEFINED as old layout because the caller's
+			// actual layout is unknown (TransferBatch leaves SHADER_READ_ONLY, etc.).
 			VkImageMemoryBarrier2 srcBarrier = .();
 			srcBarrier.srcStageMask = (uint64)VkPipelineStageFlags2.VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
 			srcBarrier.srcAccessMask = (uint64)VkAccessFlags2.VK_ACCESS_2_TRANSFER_WRITE_BIT;
 			srcBarrier.dstStageMask = (uint64)VkPipelineStageFlags2.VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
 			srcBarrier.dstAccessMask = (uint64)VkAccessFlags2.VK_ACCESS_2_TRANSFER_READ_BIT;
-			srcBarrier.oldLayout = .VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			srcBarrier.oldLayout = (i == 1) ? .VK_IMAGE_LAYOUT_UNDEFINED : .VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 			srcBarrier.newLayout = .VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 			srcBarrier.image = vkTex.Handle;
 			srcBarrier.subresourceRange.aspectMask = aspect;
@@ -374,13 +376,25 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 			srcBarrier.subresourceRange.baseArrayLayer = 0;
 			srcBarrier.subresourceRange.layerCount = layerCount;
 
-			// For the first mip, the caller should have transitioned mip 0 to TRANSFER_DST already
-			if (i == 1)
-				srcBarrier.oldLayout = .VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			// Transition mip i to TRANSFER_DST for blit destination.
+			VkImageMemoryBarrier2 dstBarrier = .();
+			dstBarrier.srcStageMask = (uint64)VkPipelineStageFlags2.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+			dstBarrier.srcAccessMask = 0;
+			dstBarrier.dstStageMask = (uint64)VkPipelineStageFlags2.VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
+			dstBarrier.dstAccessMask = (uint64)VkAccessFlags2.VK_ACCESS_2_TRANSFER_WRITE_BIT;
+			dstBarrier.oldLayout = .VK_IMAGE_LAYOUT_UNDEFINED;
+			dstBarrier.newLayout = .VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			dstBarrier.image = vkTex.Handle;
+			dstBarrier.subresourceRange.aspectMask = aspect;
+			dstBarrier.subresourceRange.baseMipLevel = i;
+			dstBarrier.subresourceRange.levelCount = 1;
+			dstBarrier.subresourceRange.baseArrayLayer = 0;
+			dstBarrier.subresourceRange.layerCount = layerCount;
 
+			VkImageMemoryBarrier2[2] barriers = .(srcBarrier, dstBarrier);
 			VkDependencyInfo dep = .();
-			dep.imageMemoryBarrierCount = 1;
-			dep.pImageMemoryBarriers = &srcBarrier;
+			dep.imageMemoryBarrierCount = 2;
+			dep.pImageMemoryBarriers = &barriers;
 			VulkanNative.vkCmdPipelineBarrier2(mCmdBuf, &dep);
 
 			// Blit from mip i-1 to mip i
