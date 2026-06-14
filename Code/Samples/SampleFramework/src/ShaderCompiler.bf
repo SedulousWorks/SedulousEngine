@@ -101,6 +101,7 @@ class ShaderCompiler
 			args.Add("-fspv-target-env=vulkan1.3");
 			args.Add("-fspv-extension=SPV_EXT_mesh_shader");
 			args.Add("-fspv-extension=SPV_KHR_ray_tracing");
+			args.Add("-fspv-extension=SPV_EXT_descriptor_indexing");
 
 			for (int32 setIdx = 0; setIdx < 4; setIdx++)
 			{
