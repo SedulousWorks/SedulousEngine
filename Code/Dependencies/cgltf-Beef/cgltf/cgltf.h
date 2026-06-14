@@ -6834,10 +6834,9 @@ static int cgltf_fixup_pointers(cgltf_data* data)
 		{
 			CGLTF_PTRFIXUP_REQ(data->scenes[i].nodes[j], data->nodes, data->nodes_count);
 
-			if (data->scenes[i].nodes[j]->parent)
-			{
-				return CGLTF_ERROR_JSON;
-			}
+			/* Relaxed: some exporters (UniGLTF) reference child nodes in scenes.
+			   Strict spec says scene root nodes must not have parents, but
+			   many real-world assets violate this. */
 		}
 	}
 
