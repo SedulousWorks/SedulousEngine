@@ -53,9 +53,10 @@ class UIComponent : Component, ISerializableComponent
 	public ITexture Texture;
 	/// Render target view.
 	public ITextureView TextureView;
-	/// Tracked resource state of the texture. Starts as RenderTarget (creation state),
+	/// Tracked resource state of the texture. Starts as Undefined (Vulkan initial layout),
 	/// transitions to ShaderRead after RequireReadableAfterWrite in the render pass.
-	public ResourceState TextureState = .RenderTarget;
+	/// On DX12, the barrier code resolves the actual state from the texture object.
+	public ResourceState TextureState = .Undefined;
 	/// Whether the view needs re-rendering.
 	public bool IsDirty = true;
 
