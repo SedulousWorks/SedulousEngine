@@ -304,6 +304,7 @@ class UniformBufferSample : SampleApp
 			NewState = .RenderTarget
 		};
 		encoder.Barrier(BarrierGroup() { TextureBarriers = Span<TextureBarrier>(texBarriers) });
+		encoder.TransitionTexture(mDepthTexture, .Undefined, .DepthStencilWrite);
 
 		// Render pass
 		let colorAttachments = scope ColorAttachment[1];

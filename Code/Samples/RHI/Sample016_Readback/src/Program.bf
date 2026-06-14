@@ -55,8 +55,6 @@ class ReadbackSample : SampleApp
 	private bool mHasReadback;
 	private float mLastReportTime;
 
-	public this() : base(.DX12)  { }
-
 	protected override StringView Title => "Sample016 - GPU Readback";
 
 	protected override Result<void> OnInit()

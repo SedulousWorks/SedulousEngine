@@ -423,6 +423,7 @@ class ReflectedPBRSample : SampleApp
 		// Barrier: present -> render target
 		TextureBarrier[1] texBarriers = .(.() { Texture = mSwapChain.CurrentTexture, OldState = .Present, NewState = .RenderTarget });
 		encoder.Barrier(.() { TextureBarriers = .(&texBarriers[0], 1) });
+		encoder.TransitionTexture(mDepthTexture, .Undefined, .DepthStencilWrite);
 
 		// Render pass
 		ColorAttachment[1] colorAttachments = .(.()

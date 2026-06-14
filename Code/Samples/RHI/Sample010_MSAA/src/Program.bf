@@ -196,6 +196,7 @@ class MSAASample : SampleApp
 		let texBarriers = scope TextureBarrier[1];
 		texBarriers[0] = TextureBarrier() { Texture = mSwapChain.CurrentTexture, OldState = .Present, NewState = .RenderTarget };
 		encoder.Barrier(BarrierGroup() { TextureBarriers = Span<TextureBarrier>(texBarriers) });
+		encoder.TransitionTexture(mMsaaTexture, .Undefined, .RenderTarget);
 
 		// Render to MSAA texture, resolve to swapchain
 		let ca = scope ColorAttachment[1];

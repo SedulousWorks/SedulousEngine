@@ -495,6 +495,7 @@ class CubeMapSample : SampleApp
 		float aspect = (float)mWidth / (float)mHeight;
 
 		// Render a depth value into the shadow depth texture
+		encoder.TransitionTexture(mDepthTexture, .Undefined, .DepthStencilWrite);
 		{
 			let dsAttach = DepthStencilAttachment()
 			{

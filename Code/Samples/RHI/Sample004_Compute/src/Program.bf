@@ -396,6 +396,7 @@ class ComputeSample : SampleApp
 			NewState = .RenderTarget
 		};
 		encoder.Barrier(BarrierGroup() { TextureBarriers = Span<TextureBarrier>(texBarriers) });
+		encoder.TransitionTexture(mDepthTexture, .Undefined, .DepthStencilWrite);
 
 		let colorAttachments = scope ColorAttachment[1];
 		colorAttachments[0] = ColorAttachment()

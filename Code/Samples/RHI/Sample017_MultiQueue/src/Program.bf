@@ -360,6 +360,7 @@ class MultiQueueSample : SampleApp
 		let texBarriers = scope TextureBarrier[1];
 		texBarriers[0] = TextureBarrier() { Texture = mSwapChain.CurrentTexture, OldState = .Present, NewState = .RenderTarget };
 		gfxEncoder.Barrier(BarrierGroup() { TextureBarriers = Span<TextureBarrier>(texBarriers) });
+		gfxEncoder.TransitionTexture(mDepthTexture, .Undefined, .DepthStencilWrite);
 
 		let colorAttachments = scope ColorAttachment[1];
 		colorAttachments[0] = ColorAttachment()

@@ -92,12 +92,12 @@ class MipmapSample : SampleApp
 		if (psR case .Err) return .Err;
 		mPixelShader = psR.Value;
 
-		// Large floor quad (pos + uv)
+		// Receding floor quad (pos + uv) — stretches into the distance to show mip transitions.
 		float[20] quadVerts = .(
-			-5.0f, 0.0f, -5.0f,   0.0f, 0.0f,
-			 5.0f, 0.0f, -5.0f,   8.0f, 0.0f,
-			 5.0f, 0.0f,  5.0f,   8.0f, 8.0f,
-			-5.0f, 0.0f,  5.0f,   0.0f, 8.0f
+			-4.0f, 0.0f,   0.0f,   0.0f, 0.0f,
+			 4.0f, 0.0f,   0.0f,   8.0f, 0.0f,
+			 4.0f, 0.0f, -20.0f,   8.0f, 10.0f,
+			-4.0f, 0.0f, -20.0f,   0.0f, 10.0f
 		);
 		uint16[6] quadIdx = .(0, 1, 2, 0, 2, 3);
 
@@ -114,63 +114,58 @@ class MipmapSample : SampleApp
 		mUniformBuffer = ubR.Value;
 		mUniformMapped = mUniformBuffer.Map();
 
-		// Create mipmapped texture (64x64, 7 mip levels, each a different solid color)
-		uint32 mipCount = 7; // 64, 32, 16, 8, 4, 2, 1
+		// Create checkerboard texture (256x256, 9 mip levels)
+		// Only upload base mip, then call GenerateMipmaps to fill the rest.
+		uint32 mipCount = 9; // 256 -> 1
 		let texR = mDevice.CreateTexture(TextureDesc()
 		{
-			Dimension = .Texture2D, Format = .RGBA8Unorm,
-			Width = 64, Height = 64, ArrayLayerCount = 1,
-			MipLevelCount = mipCount, SampleCount = 1,
-			Usage = .Sampled | .CopyDst, Label = "MipTex"
+		    Dimension = .Texture2D, Format = .RGBA8Unorm,
+		    Width = 256, Height = 256, ArrayLayerCount = 1,
+		    MipLevelCount = mipCount, SampleCount = 1,
+		    // Need CopySrc for blit source during mipmap generation
+		    Usage = .Sampled | .CopyDst | .CopySrc | .RenderTarget,
+		    Label = "MipTex"
 		});
 		if (texR case .Err) return .Err;
 		mMipTexture = texR.Value;
 
-		// Upload geometry and mip data
+		// Generate checkerboard base mip
+		uint8[256 * 256 * 4] texPixels = default;
+		for (int y = 0; y < 256; y++)
+		    for (int x = 0; x < 256; x++)
+		    {
+		        let checker = ((x / 16) + (y / 16)) % 2 == 0;
+		        let idx = (y * 256 + x) * 4;
+		        texPixels[idx + 0] = checker ? 255 : 30;
+		        texPixels[idx + 1] = checker ? 255 : 30;
+		        texPixels[idx + 2] = checker ? 255 : 200;
+		        texPixels[idx + 3] = 255;
+		    }
+
+		// Upload base mip only
 		let batchR = mGraphicsQueue.CreateTransferBatch();
 		if (batchR case .Err) return .Err;
 		var transfer = batchR.Value;
 
 		transfer.WriteBuffer(mVertexBuffer, 0, Span<uint8>((uint8*)&quadVerts[0], 80));
 		transfer.WriteBuffer(mIndexBuffer, 0, Span<uint8>((uint8*)&quadIdx[0], 12));
-
-		// Mip level colors (RGBA): red, green, blue, yellow, magenta, cyan, white
-		// Flat array: 7 mips * 4 components
-		uint8[28] mipColors = .(
-			255, 50, 50, 255,    // Mip 0: Red (64x64)
-			50, 255, 50, 255,    // Mip 1: Green (32x32)
-			50, 50, 255, 255,    // Mip 2: Blue (16x16)
-			255, 255, 50, 255,   // Mip 3: Yellow (8x8)
-			255, 50, 255, 255,   // Mip 4: Magenta (4x4)
-			50, 255, 255, 255,   // Mip 5: Cyan (2x2)
-			255, 255, 255, 255   // Mip 6: White (1x1)
-		);
-
-		for (uint32 mip = 0; mip < mipCount; mip++)
-		{
-			uint32 mipW = 64 >> mip;
-			uint32 mipH = 64 >> mip;
-			uint32 pixelCount = mipW * mipH;
-			uint32 dataSize = pixelCount * 4;
-			uint32 ci = mip * 4;
-
-			uint8[] mipData = scope uint8[dataSize];
-			for (uint32 p = 0; p < pixelCount; p++)
-			{
-				mipData[p * 4 + 0] = mipColors[ci + 0];
-				mipData[p * 4 + 1] = mipColors[ci + 1];
-				mipData[p * 4 + 2] = mipColors[ci + 2];
-				mipData[p * 4 + 3] = mipColors[ci + 3];
-			}
-
-			transfer.WriteTexture(mMipTexture, Span<uint8>(mipData.CArray(), (int)dataSize),
-				TextureDataLayout() { Offset = 0, BytesPerRow = mipW * 4, RowsPerImage = mipH },
-				Extent3D() { Width = mipW, Height = mipH, Depth = 1 },
-				mip);
-		}
-
+		transfer.WriteTexture(mMipTexture, Span<uint8>(&texPixels[0], 256 * 256 * 4),
+		    TextureDataLayout() { Offset = 0, BytesPerRow = 256 * 4, RowsPerImage = 256 },
+		    Extent3D() { Width = 256, Height = 256, Depth = 1 });
 		transfer.Submit();
 		mGraphicsQueue.DestroyTransferBatch(ref transfer);
+
+		// Generate mipmaps via encoder
+		var tmpPool = mDevice.CreateCommandPool(.Graphics).Value;
+		var enc = tmpPool.CreateEncoder().Value;
+		enc.GenerateMipmaps(mMipTexture);
+		// Transition to shader-read
+		enc.TransitionTexture(mMipTexture, .CopySrc, .ShaderRead);
+		var cb = enc.Finish();
+		mGraphicsQueue.Submit(Span<ICommandBuffer>(&cb, 1));
+		mGraphicsQueue.WaitIdle();
+		tmpPool.DestroyEncoder(ref enc);
+		mDevice.DestroyCommandPool(ref tmpPool);
 
 		// Texture view
 		let tvR = mDevice.CreateTextureView(mMipTexture, TextureViewDesc()
@@ -297,6 +292,7 @@ class MipmapSample : SampleApp
 		let texBarriers = scope TextureBarrier[1];
 		texBarriers[0] = TextureBarrier() { Texture = mSwapChain.CurrentTexture, OldState = .Present, NewState = .RenderTarget };
 		encoder.Barrier(BarrierGroup() { TextureBarriers = Span<TextureBarrier>(texBarriers) });
+		encoder.TransitionTexture(mDepthTexture, .Undefined, .DepthStencilWrite);
 
 		let ca = scope ColorAttachment[1];
 		ca[0] = ColorAttachment() { View = mSwapChain.CurrentTextureView, LoadOp = .Clear, StoreOp = .Store, ClearValue = ClearColor(0.4f, 0.6f, 0.8f, 1.0f) };
@@ -332,11 +328,9 @@ class MipmapSample : SampleApp
 	{
 		float aspect = (float)mWidth / (float)mHeight;
 
-		// Camera looking down at the floor from an angle
-		float camY = 3.0f;
-		float camZ = -1.0f;
+		// Camera looking down the receding floor
 		float[16] view = default;
-		MakeLookAt(ref view, 0.0f, camY, camZ, 0.0f, 0.0f, 2.0f);
+		MakeLookAt(ref view, 0.0f, 2.0f, 2.0f, 0.0f, 0.0f, -5.0f);
 
 		float[16] proj = default;
 		MakePerspective(ref proj, 60.0f * (Math.PI_f / 180.0f), aspect, 0.1f, 100.0f);

@@ -198,6 +198,7 @@ class DepthBufferSample : SampleApp
 		let texBarriers = scope TextureBarrier[1];
 		texBarriers[0] = TextureBarrier() { Texture = mSwapChain.CurrentTexture, OldState = .Present, NewState = .RenderTarget };
 		encoder.Barrier(BarrierGroup() { TextureBarriers = Span<TextureBarrier>(texBarriers) });
+		encoder.TransitionTexture(mDepthTexture, .Undefined, .DepthStencilWrite);
 
 		let ca = scope ColorAttachment[1];
 		ca[0] = ColorAttachment() { View = mSwapChain.CurrentTextureView, LoadOp = .Clear, StoreOp = .Store, ClearValue = ClearColor(0.1f, 0.1f, 0.15f, 1.0f) };
