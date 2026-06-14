@@ -506,6 +506,9 @@ abstract class Application
 			let pool = mCommandPools[mainFrame.FrameIndex];
 			var encoder = pool.CreateEncoder().Value;
 
+			// Transition secondary swapchain from Present to RenderTarget
+			encoder.TransitionTexture(ctx.SwapChain.CurrentTexture, .Present, .RenderTarget);
+
 			ColorAttachment[1] colorAttachments = .(.()
 			{
 				View = ctx.SwapChain.CurrentTextureView,
@@ -755,6 +758,9 @@ abstract class Application
 			Frame = frameContext,
 			ClearColor = mSettings.ClearColor
 		};
+
+		// Transition swapchain from Present (or Undefined on first frame) to RenderTarget
+		encoder.TransitionTexture(mSwapChain.CurrentTexture, .Present, .RenderTarget);
 
 		// Let app render
 		if (!OnRenderFrame(renderContext))
