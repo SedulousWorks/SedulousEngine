@@ -323,6 +323,25 @@ class VulkanDevice : IDevice
 		return (queues != null) ? (uint32)queues.Count : 0;
 	}
 
+	public FormatSupport GetFormatSupport(TextureFormat format)
+	{
+		VkFormatProperties fp = default;
+		VulkanNative.vkGetPhysicalDeviceFormatProperties(mAdapter.PhysicalDevice, VulkanConversions.ToVkFormat(format), &fp);
+		let opt = fp.optimalTilingFeatures;
+		let buf = fp.bufferFeatures;
+		FormatSupport s = .Unsupported;
+		if (opt.HasFlag(.VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))              s |= .Texture;
+		if (opt.HasFlag(.VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))              s |= .StorageTexture;
+		if (opt.HasFlag(.VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT))           s |= .ColorAttachment;
+		if (opt.HasFlag(.VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT))   s |= .DepthStencil;
+		if (opt.HasFlag(.VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT))     s |= .BlendableColor;
+		if (opt.HasFlag(.VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))s |= .LinearFilter;
+		if (buf.HasFlag(.VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT))       s |= .Buffer;
+		if (buf.HasFlag(.VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT))       s |= .StorageBuffer;
+		if (buf.HasFlag(.VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT))              s |= .VertexBuffer;
+		return s;
+	}
+
 	public Result<IBuffer> CreateBuffer(BufferDesc desc)
 	{
 		let buffer = new VulkanBuffer();

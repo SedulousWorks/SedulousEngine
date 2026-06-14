@@ -74,6 +74,12 @@ class ValidatedDevice : IDevice
 		return mInner.GetQueueCount(type);
 	}
 
+	public FormatSupport GetFormatSupport(TextureFormat format)
+	{
+		if (!CheckNotDestroyed("GetFormatSupport")) return .Unsupported;
+		return mInner.GetFormatSupport(format);
+	}
+
 	// ===== Resource Creation =====
 
 	public Result<IBuffer> CreateBuffer(BufferDesc desc)

@@ -223,6 +223,13 @@ class DX12Device : IDevice
 		}
 	}
 
+	public FormatSupport GetFormatSupport(TextureFormat format)
+	{
+		// DX12: D3D12_FEATURE_DATA_FORMAT_SUPPORT could be queried here.
+		// For now, report all formats as supported — DX12 supports D24_S8 on all hardware.
+		return .Texture | .ColorAttachment | .DepthStencil | .Buffer | .VertexBuffer | .BlendableColor | .LinearFilter;
+	}
+
 	// ===== IDevice: Resource Creation =====
 
 	public Result<IBuffer> CreateBuffer(BufferDesc desc)

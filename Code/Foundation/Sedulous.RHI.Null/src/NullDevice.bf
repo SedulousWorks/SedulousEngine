@@ -35,6 +35,8 @@ class NullDevice : IDevice
 
 	public uint32 GetQueueCount(QueueType type) => 1;
 
+	public FormatSupport GetFormatSupport(TextureFormat format) => .Texture | .ColorAttachment | .DepthStencil;
+
 	// ===== Resource Creation =====
 
 	public Result<IBuffer> CreateBuffer(BufferDesc desc)

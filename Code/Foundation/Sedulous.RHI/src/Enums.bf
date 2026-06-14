@@ -398,6 +398,22 @@ enum ColorWriteMask : uint8
 	All   = Red | Green | Blue | Alpha,
 }
 
+/// Hardware format support flags returned by IDevice.GetFormatSupport().
+[AllowDuplicates]
+enum FormatSupport : uint32
+{
+	Unsupported        = 0,
+	Texture            = 1 << 0,
+	StorageTexture     = 1 << 1,
+	ColorAttachment    = 1 << 2,
+	DepthStencil       = 1 << 3,
+	Buffer             = 1 << 4,
+	StorageBuffer      = 1 << 5,
+	VertexBuffer       = 1 << 6,
+	BlendableColor     = 1 << 7,
+	LinearFilter       = 1 << 8,
+}
+
 /// Swap chain presentation mode.
 enum PresentMode
 {

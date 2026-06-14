@@ -28,6 +28,9 @@ interface IDevice
 	/// Returns how many queues of the given type are available.
 	uint32 GetQueueCount(QueueType type);
 
+	/// Query hardware format support for a given texture format.
+	FormatSupport GetFormatSupport(TextureFormat format);
+
 	// ===== Resource Creation =====
 
 	/// Creates a GPU buffer.
