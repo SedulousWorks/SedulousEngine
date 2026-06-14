@@ -484,6 +484,10 @@ abstract class EngineApplication : IDisposable
 		let pool = mCommandPools[mFrameIndex];
 		var encoder = pool.CreateEncoder().Value;
 
+		// Transition output target from ShaderRead (post-process left it there)
+		// to RenderTarget before clearing.
+		encoder.TransitionTexture(mColorTarget, .ShaderRead, .RenderTarget);
+
 		// Clear output target via render pass with LoadOp.Clear
 		{
 			ColorAttachment[1] clearAttachments = .(.()
