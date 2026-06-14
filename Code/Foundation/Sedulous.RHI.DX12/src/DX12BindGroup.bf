@@ -19,6 +19,8 @@ class DX12BindGroup : IBindGroup
 	// GPU heap allocation offsets (-1 = not allocated)
 	private int32 mCbvSrvUavOffset = -1;
 	private int32 mSamplerOffset = -1;
+	private uint32 mCbvSrvUavCount = 0;
+	private uint32 mSamplerCount = 0;
 
 	/// GPU virtual addresses for dynamic offset bindings (indexed by dynamic binding order).
 	private List<uint64> mDynamicGpuAddresses = new .() ~ delete _;
@@ -37,10 +39,14 @@ class DX12BindGroup : IBindGroup
 			return .Err;
 		}
 
+		// Cache counts so Cleanup doesn't need to access mLayout (which may be destroyed first)
+		mCbvSrvUavCount = mLayout.CbvSrvUavCount;
+		mSamplerCount = mLayout.SamplerCount;
+
 		// Allocate CPU-visible heap blocks (non-shader-visible, readable for staging copy)
-		if (mLayout.CbvSrvUavCount > 0)
+		if (mCbvSrvUavCount > 0)
 		{
-			mCbvSrvUavOffset = device.CpuSrvHeap.Allocate(mLayout.CbvSrvUavCount);
+			mCbvSrvUavOffset = device.CpuSrvHeap.Allocate(mCbvSrvUavCount);
 			if (mCbvSrvUavOffset < 0)
 			{
 				System.Diagnostics.Debug.WriteLine("DX12BindGroup: CPU CBV/SRV/UAV heap allocation failed");
@@ -48,9 +54,9 @@ class DX12BindGroup : IBindGroup
 			}
 		}
 
-		if (mLayout.SamplerCount > 0)
+		if (mSamplerCount > 0)
 		{
-			mSamplerOffset = device.CpuSamplerHeap.Allocate(mLayout.SamplerCount);
+			mSamplerOffset = device.CpuSamplerHeap.Allocate(mSamplerCount);
 			if (mSamplerOffset < 0)
 			{
 				System.Diagnostics.Debug.WriteLine("DX12BindGroup: CPU sampler heap allocation failed");
@@ -245,14 +251,14 @@ class DX12BindGroup : IBindGroup
 
 	public void Cleanup(DX12Device device)
 	{
-		if (mCbvSrvUavOffset >= 0 && mLayout != null)
+		if (mCbvSrvUavOffset >= 0 && mCbvSrvUavCount > 0)
 		{
-			device.CpuSrvHeap.Free((uint32)mCbvSrvUavOffset, mLayout.CbvSrvUavCount);
+			device.CpuSrvHeap.Free((uint32)mCbvSrvUavOffset, mCbvSrvUavCount);
 			mCbvSrvUavOffset = -1;
 		}
-		if (mSamplerOffset >= 0 && mLayout != null)
+		if (mSamplerOffset >= 0 && mSamplerCount > 0)
 		{
-			device.CpuSamplerHeap.Free((uint32)mSamplerOffset, mLayout.SamplerCount);
+			device.CpuSamplerHeap.Free((uint32)mSamplerOffset, mSamplerCount);
 			mSamplerOffset = -1;
 		}
 	}
