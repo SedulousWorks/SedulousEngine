@@ -6,6 +6,7 @@ using Win32.Foundation;
 using Win32.Graphics.Direct3D12;
 using Win32.Graphics.Dxgi.Common;
 using Sedulous.RHI;
+using static Sedulous.RHI.TextureFormatExt;
 using System.Collections;
 
 /// DX12 implementation of ICommandEncoder and IRayTracingEncoderExt.
@@ -167,7 +168,7 @@ class DX12CommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 			{
 				if (let dxTex = tb.Texture as DX12Texture)
 				{
-					let newState = ToResourceStates(tb.NewState);
+					let newState = ToResourceStates(tb.NewState, dxTex.Desc.Format);
 					let isWholeResource = tb.MipLevelCount == uint32.MaxValue && tb.ArrayLayerCount == uint32.MaxValue;
 
 					if (isWholeResource)
@@ -904,6 +905,13 @@ class DX12CommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 	/// Converts RHI ResourceState to D3D12_RESOURCE_STATES.
 	public static D3D12_RESOURCE_STATES ToResourceStates(ResourceState state)
 	{
+		return ToResourceStates(state, .Undefined);
+	}
+
+	/// Converts RHI ResourceState to D3D12_RESOURCE_STATES, considering the texture format.
+	/// For depth formats, ShaderRead maps to DEPTH_READ instead of PIXEL_SHADER_RESOURCE.
+	public static D3D12_RESOURCE_STATES ToResourceStates(ResourceState state, TextureFormat format)
+	{
 		if (state == .Undefined)
 			return .D3D12_RESOURCE_STATE_COMMON;
 
@@ -912,7 +920,14 @@ class DX12CommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		if (state.HasFlag(.VertexBuffer))      result |= .D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
 		if (state.HasFlag(.IndexBuffer))        result |= .D3D12_RESOURCE_STATE_INDEX_BUFFER;
 		if (state.HasFlag(.UniformBuffer))      result |= .D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
-		if (state.HasFlag(.ShaderRead))         result |= .D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | .D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+		if (state.HasFlag(.ShaderRead))
+		{
+			// Depth textures use DEPTH_READ when sampled, not PIXEL_SHADER_RESOURCE
+			if (format.IsDepthFormat())
+				result |= .D3D12_RESOURCE_STATE_DEPTH_READ;
+			else
+				result |= .D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | .D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+		}
 		if (state.HasFlag(.ShaderWrite))        result |= .D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 		if (state.HasFlag(.RenderTarget))       result |= .D3D12_RESOURCE_STATE_RENDER_TARGET;
 		if (state.HasFlag(.DepthStencilWrite))  result |= .D3D12_RESOURCE_STATE_DEPTH_WRITE;
