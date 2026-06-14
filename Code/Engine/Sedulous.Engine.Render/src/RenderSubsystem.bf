@@ -703,6 +703,12 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer, IS
 				faceCount = 1;
 			}
 
+			// Transition captured cubemap to RenderTarget before blit writes
+			if (!res.IsCaptured)
+				encoder.TransitionTexture(res.CapturedCubemap, .Undefined, .RenderTarget);
+			else
+				encoder.TransitionTexture(res.CapturedCubemap, .ShaderRead, .RenderTarget);
+
 			for (int32 i = 0; i < faceCount; i++)
 			{
 				let faceIdx = (startFace + i) % 6;
@@ -787,6 +793,17 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer, IS
 
 		let device = mRenderContext.Device;
 
+		// Transition irradiance cubemap for rendering
+		if (!res.IrradianceInitialized)
+		{
+			encoder.TransitionTexture(res.IrradianceCubemap, .Undefined, .RenderTarget);
+			res.IrradianceInitialized = true;
+		}
+		else
+		{
+			encoder.TransitionTexture(res.IrradianceCubemap, .ShaderRead, .RenderTarget);
+		}
+
 		// Irradiance: cosine-weighted convolution (6 passes) from captured cubemap.
 		// This is cheap (32x32 output) and the quality difference matters for diffuse.
 		for (int i = 0; i < 6; i++)
@@ -839,6 +856,28 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer, IS
 			return;
 
 		let device = mRenderContext.Device;
+
+		// Transition irradiance and prefilter cubemaps from Undefined to RenderTarget
+		// on first use (they start in Undefined layout after creation).
+		if (!res.IrradianceInitialized)
+		{
+			encoder.TransitionTexture(res.IrradianceCubemap, .Undefined, .RenderTarget);
+			res.IrradianceInitialized = true;
+		}
+		else
+		{
+			encoder.TransitionTexture(res.IrradianceCubemap, .ShaderRead, .RenderTarget);
+		}
+
+		if (!res.PrefilterInitialized)
+		{
+			encoder.TransitionTexture(res.PrefilterCubemap, .Undefined, .RenderTarget);
+			res.PrefilterInitialized = true;
+		}
+		else
+		{
+			encoder.TransitionTexture(res.PrefilterCubemap, .ShaderRead, .RenderTarget);
+		}
 
 		// --- Irradiance convolution (6 face passes) ---
 		for (int i = 0; i < 6; i++)

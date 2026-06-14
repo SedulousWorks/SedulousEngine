@@ -36,6 +36,8 @@ class ProbeResources
 	public bool NeedsCapture = true;   // True when capture is pending
 	public int32 NextFace = 0;         // Round-robin face index (0-5) for EveryFrame probes
 	public int32 FacesCaptured = 0;    // Number of faces captured in current cycle (0-6)
+	public bool IrradianceInitialized = false;  // True after first transition from Undefined
+	public bool PrefilterInitialized = false;   // True after first transition from Undefined
 
 	/// Create all GPU resources for this probe.
 	public Result<void> Create(IDevice device, uint32 faceSize)

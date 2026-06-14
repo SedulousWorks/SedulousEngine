@@ -41,6 +41,7 @@ public class IBLSystem
 	// Active environment cubemap views (point to default, sky, or probe-overridden)
 	private ITextureView mActiveIrradianceView;
 	private ITextureView mActivePrefilterView;
+	private bool mIBLInitialized = false;
 
 	// Sky-only IBL views — set when sky IBL is generated, never overwritten by
 	// probe IBL. ProbePipeline binds these to prevent feedback loops.
@@ -291,23 +292,40 @@ public class IBLSystem
 		if (mPrefilterCubemap == null)
 			if (CreatePrefilterCubemap() case .Err) return;
 
+		// Transition cubemaps to RenderTarget before rendering into them.
+		// First use: from UNDEFINED. Subsequent uses: from ShaderRead.
+		let envOldState = mIBLInitialized ? ResourceState.ShaderRead : ResourceState.Undefined;
+		encoder.TransitionTexture(mEnvCubemap, envOldState, .RenderTarget);
+
 		// Convert equirect -> cubemap (6 render passes, one per face)
 		RenderEquirectToCube(encoder, equirectView);
 
 		// Env cubemap is now in RenderTarget state; transition to ShaderRead for sampling
 		encoder.TransitionTexture(mEnvCubemap, .RenderTarget, .ShaderRead);
 
+		let irradOldState = mIBLInitialized ? ResourceState.ShaderRead : ResourceState.Undefined;
+		encoder.TransitionTexture(mIrradianceCubemap, irradOldState, .RenderTarget);
+
 		// Convolve cubemap -> irradiance (6 render passes, one per face)
 		RenderIrradianceConvolution(encoder, mEnvCubemapView);
 
 		// Generate prefilter mip chain (6 faces x PrefilterMipCount mips)
 		if (mPrefilterPipeline != null)
+		{
+			if (mPrefilterCubemap != null)
+			{
+				let prefiltOldState = mIBLInitialized ? ResourceState.ShaderRead : ResourceState.Undefined;
+				encoder.TransitionTexture(mPrefilterCubemap, prefiltOldState, .RenderTarget);
+			}
 			RenderPrefilterConvolution(encoder, mEnvCubemapView);
+		}
 
 		// Transition irradiance and prefilter cubemaps to ShaderRead for forward pass
 		encoder.TransitionTexture(mIrradianceCubemap, .RenderTarget, .ShaderRead);
 		if (mPrefilterCubemap != null)
 			encoder.TransitionTexture(mPrefilterCubemap, .RenderTarget, .ShaderRead);
+
+		mIBLInitialized = true;
 
 		// Update active views
 		mActiveIrradianceView = mIrradianceCubemapView;
@@ -331,15 +349,27 @@ public class IBLSystem
 		if (mPrefilterCubemap == null)
 			if (CreatePrefilterCubemap() case .Err) return;
 
+		let irradOldState = mIBLInitialized ? ResourceState.ShaderRead : ResourceState.Undefined;
+		encoder.TransitionTexture(mIrradianceCubemap, irradOldState, .RenderTarget);
+
 		RenderIrradianceConvolution(encoder, cubemapView);
 
 		if (mPrefilterPipeline != null)
+		{
+			if (mPrefilterCubemap != null)
+			{
+				let prefiltOldState = mIBLInitialized ? ResourceState.ShaderRead : ResourceState.Undefined;
+				encoder.TransitionTexture(mPrefilterCubemap, prefiltOldState, .RenderTarget);
+			}
 			RenderPrefilterConvolution(encoder, cubemapView);
+		}
 
 		// Transition irradiance and prefilter cubemaps to ShaderRead for forward pass
 		encoder.TransitionTexture(mIrradianceCubemap, .RenderTarget, .ShaderRead);
 		if (mPrefilterCubemap != null)
 			encoder.TransitionTexture(mPrefilterCubemap, .RenderTarget, .ShaderRead);
+
+		mIBLInitialized = true;
 
 		mActiveIrradianceView = mIrradianceCubemapView;
 		mActivePrefilterView = (mPrefilterCubemapView != null) ? mPrefilterCubemapView : cubemapView;

@@ -547,6 +547,9 @@ class MaterialSystem : IDisposable
 		if (encResult case .Err) { mDevice.DestroyCommandPool(ref cmdPool); return; }
 		var encoder = encResult.Value;
 
+		// Transition from UNDEFINED to DepthStencilWrite before first use
+		encoder.TransitionTexture(mDepthTexture, .Undefined, .DepthStencilWrite);
+
 		// Render pass that clears depth
 		var rpDesc = RenderPassDesc();
 		rpDesc.DepthStencilAttachment = DepthStencilAttachment()
@@ -563,13 +566,7 @@ class MaterialSystem : IDisposable
 		rp.End();
 
 		// Transition to ShaderRead for sampling
-		var barrier = TextureBarrier()
-		{
-			Texture = mDepthTexture,
-			OldState = .DepthStencilWrite,
-			NewState = .ShaderRead
-		};
-		encoder.Barrier(BarrierGroup() { TextureBarriers = Span<TextureBarrier>(&barrier, 1) });
+		encoder.TransitionTexture(mDepthTexture, .DepthStencilWrite, .ShaderRead);
 
 		let cmdBuf = encoder.Finish();
 		ICommandBuffer[1] cmdBufs = .(cmdBuf);

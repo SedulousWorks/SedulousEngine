@@ -524,7 +524,7 @@ public class Pipeline : IRenderingPipeline, IDisposable
 			//           .NeverCull()
 			//           .SetExecute(new (encoder) => {});
 			//   });
-			let finalHandle = mRenderGraph.ImportTarget("FinalOutput", outputTexture, outputTextureView);
+			let finalHandle = mRenderGraph.ImportTarget("FinalOutput", outputTexture, outputTextureView, currentState: .RenderTarget);
 			let hdrDesc = RGTextureDesc(mOutputFormat) { Usage = .RenderTarget | .Sampled };
 			let sceneHdrHandle = mRenderGraph.CreateTransient("PipelineOutput", hdrDesc);
 
