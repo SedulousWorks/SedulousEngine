@@ -111,8 +111,17 @@ public class ProbePipeline : IRenderingPipeline, IDisposable
 		let frame = mFrameResources[frameIndex % MaxFramesInFlight];
 		if (frame == null) return;
 
-		// Flush stale blit bind groups (2+ frames old)
 		let device = mRenderContext.Device;
+
+		// Flush deferred frame bind group destructions
+		if (frame.StaleFrameBindGroups.Count > 0)
+		{
+			for (var bg in frame.StaleFrameBindGroups)
+				device.DestroyBindGroup(ref bg);
+			frame.StaleFrameBindGroups.Clear();
+		}
+
+		// Flush stale blit bind groups (2+ frames old)
 		for (var bg in mStaleBlitBindGroups[0])
 			device.DestroyBindGroup(ref bg);
 		mStaleBlitBindGroups[0].Clear();

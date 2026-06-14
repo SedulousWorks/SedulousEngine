@@ -74,6 +74,16 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 	{
 		let frame = mFrameResources[frameIndex % MaxFramesInFlight];
 		if (frame == null) return;
+
+		// Flush deferred frame bind group destructions
+		if (frame.StaleFrameBindGroups.Count > 0)
+		{
+			let device = mRenderContext.Device;
+			for (var bg in frame.StaleFrameBindGroups)
+				device.DestroyBindGroup(ref bg);
+			frame.StaleFrameBindGroups.Clear();
+		}
+
 		frame.SceneBufferOffset = 0;
 		frame.ObjectBufferOffset = 0;
 		frame.InstanceOffset = 0;
@@ -434,7 +444,10 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 		let device = mRenderContext.Device;
 
 		if (frame.FrameBindGroup != null)
-			device.DestroyBindGroup(ref frame.FrameBindGroup);
+		{
+			frame.StaleFrameBindGroups.Add(frame.FrameBindGroup);
+			frame.FrameBindGroup = null;
+		}
 
 		let lightBuf = lightBuffer.GetLightBuffer(frameIndex);
 		let lightParamsBuf = lightBuffer.GetLightParamsBuffer(frameIndex);
