@@ -2,6 +2,7 @@ namespace Sedulous.RHI.Vulkan;
 
 using Bulkan;
 using Sedulous.RHI;
+using static Sedulous.RHI.TextureFormatExt;
 
 /// Converts ResourceState to Vulkan synchronization2 stage/access/layout.
 static class VulkanBarrierHelper
@@ -114,12 +115,26 @@ static class VulkanBarrierHelper
 	/// Gets the image layout for a new (destination) state.
 	public static VkImageLayout GetImageLayout(ResourceState state)
 	{
-		// Determine layout from the most specific state
+		return GetImageLayout(state, .Undefined);
+	}
+
+	/// Gets the image layout for a new (destination) state, considering the texture format.
+	/// For depth/stencil formats, ShaderRead uses DEPTH_STENCIL_READ_ONLY_OPTIMAL
+	/// (valid for both sampling and read-only depth attachment).
+	public static VkImageLayout GetImageLayout(ResourceState state, TextureFormat format)
+	{
 		if (state.HasFlag(.Present))          return .VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 		if (state.HasFlag(.RenderTarget))      return .VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		if (state.HasFlag(.DepthStencilWrite)) return .VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 		if (state.HasFlag(.DepthStencilRead))  return .VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-		if (state.HasFlag(.ShaderRead))         return .VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		if (state.HasFlag(.ShaderRead))
+		{
+			// Depth/stencil textures must use DEPTH_STENCIL_READ_ONLY when sampled,
+			// not SHADER_READ_ONLY — the latter is only for color textures.
+			if (format.IsDepthFormat())
+				return .VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+			return .VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		}
 		if (state.HasFlag(.ShaderWrite))        return .VK_IMAGE_LAYOUT_GENERAL;
 		if (state.HasFlag(.CopySrc))            return .VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 		if (state.HasFlag(.CopyDst))            return .VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;

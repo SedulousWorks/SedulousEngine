@@ -41,7 +41,13 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 			let att = desc.ColorAttachments[i];
 			colorAttachments[i] = .();
 			if (let vkView = att.View as VulkanTextureView)
+			{
 				colorAttachments[i].imageView = vkView.Handle;
+				// Update texture layout tracking — dynamic rendering implicitly
+				// transitions attachments to the specified layout.
+				if (let vkTex = vkView.Texture as VulkanTexture)
+					vkTex.SetSubresourceLayout(vkView.Desc.BaseMipLevel, 1, vkView.Desc.BaseArrayLayer, 1, .VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+			}
 			colorAttachments[i].imageLayout = .VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 			colorAttachments[i].loadOp = VulkanConversions.ToVkLoadOp(att.LoadOp);
 			colorAttachments[i].storeOp = VulkanConversions.ToVkStoreOp(att.StoreOp);
@@ -92,6 +98,9 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 				depthAttachment.imageLayout = ds.DepthReadOnly
 					? .VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
 					: .VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+				// Update texture layout tracking
+				if (let vkTex = vkView.Texture as VulkanTexture)
+					vkTex.SetSubresourceLayout(vkView.Desc.BaseMipLevel, 1, vkView.Desc.BaseArrayLayer, 1, depthAttachment.imageLayout);
 				depthAttachment.loadOp = VulkanConversions.ToVkLoadOp(ds.DepthLoadOp);
 				depthAttachment.storeOp = VulkanConversions.ToVkStoreOp(ds.DepthStoreOp);
 				depthAttachment.clearValue.depthStencil = VkClearDepthStencilValue() { depth = ds.DepthClearValue, stencil = ds.StencilClearValue };
@@ -166,9 +175,14 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 			if (vkTex != null)
 				format = vkTex.Desc.Format;
 
-			let newLayout = VulkanBarrierHelper.GetImageLayout(tb.NewState);
+			let newLayout = VulkanBarrierHelper.GetImageLayout(tb.NewState, format);
 
-			// Resolve old layout from per-subresource tracking when available
+			// Resolve old layout from per-subresource tracking.
+			// Tracking is kept in sync via BeginRenderPass layout updates.
+			// When the texture is genuinely in UNDEFINED (first use), the tracked
+			// layout will be VK_IMAGE_LAYOUT_UNDEFINED and the barrier is valid.
+			// When reused from a pool, the tracked layout reflects the prior frame's
+			// final state, producing a correct transition.
 			VkImageLayout resolvedOldLayout;
 			if (vkTex != null)
 			{
@@ -180,7 +194,7 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 			}
 			else
 			{
-				resolvedOldLayout = VulkanBarrierHelper.GetImageLayout(tb.OldState);
+				resolvedOldLayout = VulkanBarrierHelper.GetImageLayout(tb.OldState, format);
 			}
 
 			VkImageMemoryBarrier2 vkBarrier = .();

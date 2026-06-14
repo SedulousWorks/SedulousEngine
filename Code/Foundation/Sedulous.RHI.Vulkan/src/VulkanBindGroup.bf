@@ -111,13 +111,13 @@ class VulkanBindGroup : IBindGroup
 					imgInfo.imageView = vkView.Handle;
 					if (layoutEntry.Type == .SampledTexture)
 					{
-						// Use the texture's tracked layout - depth textures in DepthStencilReadOnly
-						// can be sampled with that layout (concurrent depth test + shader read).
+						// Depth/stencil textures are always sampled in DEPTH_STENCIL_READ_ONLY layout.
+						// Color textures use SHADER_READ_ONLY.
 						let vkTex = vkView.Texture as VulkanTexture;
-						VkImageLayout currentLayout = (vkTex != null) ? vkTex.CurrentLayout : .VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-						imgInfo.imageLayout = (currentLayout == .VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
-							? .VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
-							: .VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+						if (vkTex != null && vkTex.Desc.Format.IsDepthFormat())
+							imgInfo.imageLayout = .VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+						else
+							imgInfo.imageLayout = .VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 					}
 					else
 						imgInfo.imageLayout = .VK_IMAGE_LAYOUT_GENERAL;
