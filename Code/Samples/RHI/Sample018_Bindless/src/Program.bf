@@ -85,8 +85,6 @@ class BindlessSample : SampleApp
 	private IFence mFrameFence;
 	private uint64 mFrameFenceValue;
 
-	public this()  { }
-
 	protected override StringView Title => "Sample018 - Bindless Textures";
 
 	protected override DeviceFeatures RequiredFeatures => .() { BindlessDescriptors = true };

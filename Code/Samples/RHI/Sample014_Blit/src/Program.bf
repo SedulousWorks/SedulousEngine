@@ -51,8 +51,6 @@ class BlitSample : SampleApp
 	private IFence mFrameFence;
 	private uint64 mFrameFenceValue;
 
-	public this() :base(.DX12)  { }
-
 	protected override StringView Title => "Sample014 - Blit (Scaled Copy)";
 
 	protected override Result<void> OnInit()

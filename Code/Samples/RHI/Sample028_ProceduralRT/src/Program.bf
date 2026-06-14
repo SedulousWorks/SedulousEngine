@@ -141,8 +141,6 @@ class ProceduralRTSample : SampleApp
 	private IFence mFrameFence;
 	private uint64 mFrameFenceValue;
 
-	public this() : base(.DX12) { }
-
 	protected override StringView Title => "Sample028 - Procedural RT (AABB Spheres)";
 	protected override DeviceFeatures RequiredFeatures => .() { RayTracing = true };
 
