@@ -53,9 +53,9 @@ class SandboxApp : EngineApplication
 	// Camera fly-through state.
 	private Scene mScene;
 	private EntityHandle mCameraEntity;
-	private Vector3 mCameraPosition = .(0, 4, 8);
+	private Vector3 mCameraPosition = .(0, 5, 14);
 	private float mYaw = Math.PI_f;             // facing -Z initially (toward origin)
-	private float mPitch = -0.464f;              // slight downward tilt
+	private float mPitch = -0.25f;               // gentle downward tilt
 	private bool mMouseCaptured = false;
 
 	// Entities that get a billboard nameplate via Track 1.
@@ -63,7 +63,7 @@ class SandboxApp : EngineApplication
 	private bool mBillboardsAdded;
 
 	Material mPbrMaterial ~ delete _;
-	ResourceRef mSkyRef = .(.Empty, "builtin://skies/realistic_sky.texture") ~ _.Dispose();
+	ResourceRef mSkyRef = .(.Empty, "builtin://skies/stylized_sky.texture") ~ _.Dispose();
 
 	// Mesh resources (we hold one ref, resource system holds another)
 	StaticMeshResource mPlaneRes;
@@ -135,14 +135,18 @@ class SandboxApp : EngineApplication
 	ParticleEffect mTrailEffect ~ delete _;
 	ParticleEffect mFireworksEffect ~ delete _;
 
+	// Environment (nature kit models)
+	EnvironmentBuilder mEnvironment ~ delete _;
+
 	protected override void OnStartup()
 	{
 		Console.WriteLine("=== EngineSandbox OnStartup ===");
 
-		// Initialize image loaders and writers
+		// Initialize image loaders, writers, and model loaders
 		SDLImageLoader.Initialize();
 		STBImageLoader.Initialize();
 		SDLImageWriter.Initialize();
+		GltfModels.Initialize();
 
 		// Set up screen UI overlay.
 		SetupScreenUI();
@@ -230,72 +234,73 @@ class SandboxApp : EngineApplication
 
 		let physicsMgr = scene.GetModule<PhysicsComponentManager>();
 
-		// Ground plane - static physics body at Y=0 (plane shape passes through body origin)
-		let planeEntity = scene.CreateEntity("Ground");
+		// Invisible physics ground plane (nature kit tiles provide the visuals)
+		let planeEntity = scene.CreateEntity("PhysicsGround");
 		scene.SetLocalTransform(planeEntity, .() { Position = .Zero, Rotation = .Identity, Scale = .One });
-		SetupMeshComponent(scene, planeEntity, planeRef, mGrayMaterial);
 		SetupRigidBody(scene, physicsMgr, planeEntity, .Plane(), .Static, 0);
 
+		// Build the environment with nature kit models
+		let natureKitPath = scope String();
+		GetAssetPath("samples/kenney_nature-kit/Models/GLTF format", natureKitPath);
+		mEnvironment = new EnvironmentBuilder(scene, resources);
+		mEnvironment.Build(natureKitPath);
+
+		// ---- Central Plaza: metallic sphere showcase ----
+		let sphere2Entity = scene.CreateEntity("MetalSphere");
+		scene.SetLocalTransform(sphere2Entity, .() { Position = .(0, 1.0f, 0), Rotation = .Identity, Scale = .(1.5f, 1.5f, 1.5f) });
+		SetupMeshComponent(scene, sphere2Entity, sphereRef, mWhiteMaterial);
+		mNameplateEntities.Add(sphere2Entity);
+
+		// ---- Physics Yard (left/front area) ----
 		// Cube - dynamic, falls from height
 		let cubeEntity = scene.CreateEntity("Cube");
-		scene.SetLocalTransform(cubeEntity, .() { Position = .(-1.5f, 5, 0), Rotation = .Identity, Scale = .One });
+		scene.SetLocalTransform(cubeEntity, .() { Position = .(-9, 5, 6), Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, cubeEntity, cubeRef, mRedMaterial);
 		SetupRigidBody(scene, physicsMgr, cubeEntity, .Box(0.5f), .Dynamic);
 		mNameplateEntities.Add(cubeEntity);
 
-		// Sphere - dynamic, falls from height
 		let sphereEntity = scene.CreateEntity("Sphere");
-		scene.SetLocalTransform(sphereEntity, .() { Position = .(1.5f, 6, 0), Rotation = .Identity, Scale = .One });
+		scene.SetLocalTransform(sphereEntity, .() { Position = .(-7, 6, 7), Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, sphereEntity, sphereRef, mBlueMaterial);
 		SetupRigidBody(scene, physicsMgr, sphereEntity, .Sphere(0.5f), .Dynamic);
 		mNameplateEntities.Add(sphereEntity);
 
-		// Green cube (back left) - dynamic
 		let cube2Entity = scene.CreateEntity("GreenCube");
-		scene.SetLocalTransform(cube2Entity, .() { Position = .(-3.0f, 7, -2.0f), Rotation = .Identity, Scale = .One });
+		scene.SetLocalTransform(cube2Entity, .() { Position = .(-8, 7, 5), Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, cube2Entity, cubeRef, mGreenMaterial);
 		SetupRigidBody(scene, physicsMgr, cube2Entity, .Box(0.5f), .Dynamic);
 		mNameplateEntities.Add(cube2Entity);
 
-		// Yellow cube (back right) - dynamic
 		let cube3Entity = scene.CreateEntity("YellowCube");
-		scene.SetLocalTransform(cube3Entity, .() { Position = .(3.0f, 4.5f, -2.0f), Rotation = .Identity, Scale = .One });
+		scene.SetLocalTransform(cube3Entity, .() { Position = .(-10, 4.5f, 8), Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, cube3Entity, cubeRef, mYellowMaterial);
 		SetupRigidBody(scene, physicsMgr, cube3Entity, .Box(0.5f), .Dynamic);
 
-		// White metallic sphere (front center, placed directly) - static showcase for IBL
-		let sphere2Entity = scene.CreateEntity("MetalSphere");
-		scene.SetLocalTransform(sphere2Entity, .() { Position = .(0, 1.5f, 4.0f), Rotation = .Identity, Scale = .(1.5f, 1.5f, 1.5f) });
-		SetupMeshComponent(scene, sphere2Entity, sphereRef, mWhiteMaterial);
-		mNameplateEntities.Add(sphere2Entity);
-
-		// Small green sphere (front left) - dynamic
 		let sphere3Entity = scene.CreateEntity("GreenSphere");
-		scene.SetLocalTransform(sphere3Entity, .() { Position = .(-0.5f, 6.5f, 1.5f), Rotation = .Identity, Scale = .(0.6f, 0.6f, 0.6f) });
+		scene.SetLocalTransform(sphere3Entity, .() { Position = .(-7.5f, 6.5f, 8), Rotation = .Identity, Scale = .(0.6f, 0.6f, 0.6f) });
 		SetupMeshComponent(scene, sphere3Entity, sphereRef, mGreenMaterial);
 		SetupRigidBody(scene, physicsMgr, sphere3Entity, .Sphere(0.3f), .Dynamic);
 
-		// Small yellow sphere (front right) - dynamic
 		let sphere4Entity = scene.CreateEntity("YellowSphere");
-		scene.SetLocalTransform(sphere4Entity, .() { Position = .(0.5f, 5.5f, 1.5f), Rotation = .Identity, Scale = .(0.6f, 0.6f, 0.6f) });
+		scene.SetLocalTransform(sphere4Entity, .() { Position = .(-9.5f, 5.5f, 7), Rotation = .Identity, Scale = .(0.6f, 0.6f, 0.6f) });
 		SetupMeshComponent(scene, sphere4Entity, sphereRef, mYellowMaterial);
 		SetupRigidBody(scene, physicsMgr, sphere4Entity, .Sphere(0.3f), .Dynamic);
 
-		// Transparent sphere - dynamic
+		// Transparent sphere
 		let transparentEntity = scene.CreateEntity("TransparentSphere");
-		scene.SetLocalTransform(transparentEntity, .() { Position = .(-1.0f, 9, 0.8f), Rotation = .Identity, Scale = .(1.2f, 1.2f, 1.2f) });
+		scene.SetLocalTransform(transparentEntity, .() { Position = .(-8, 9, 6.5f), Rotation = .Identity, Scale = .(1.2f, 1.2f, 1.2f) });
 		SetupMeshComponent(scene, transparentEntity, sphereRef, mTransparentMaterial);
 		SetupRigidBody(scene, physicsMgr, transparentEntity, .Sphere(0.6f), .Dynamic);
 
-		// Masked cube - dynamic
+		// Masked cube
 		let maskedEntity = scene.CreateEntity("MaskedCube");
-		scene.SetLocalTransform(maskedEntity, .() { Position = .(3.0f, 4, 1.0f), Rotation = .Identity, Scale = .One });
+		scene.SetLocalTransform(maskedEntity, .() { Position = .(-10, 4, 5.5f), Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, maskedEntity, cubeRef, mMaskedMaterial);
 		SetupRigidBody(scene, physicsMgr, maskedEntity, .Box(0.5f), .Dynamic);
 
-		// Unlit sphere - dynamic, bright magenta, no lighting
+		// Unlit sphere
 		let unlitEntity = scene.CreateEntity("UnlitSphere");
-		scene.SetLocalTransform(unlitEntity, .() { Position = .(0, 10, 2.0f), Rotation = .Identity, Scale = .One });
+		scene.SetLocalTransform(unlitEntity, .() { Position = .(-8, 10, 7), Rotation = .Identity, Scale = .One });
 		SetupMeshComponent(scene, unlitEntity, sphereRef, mUnlitInstance);
 		SetupRigidBody(scene, physicsMgr, unlitEntity, .Sphere(0.5f), .Dynamic);
 
@@ -317,19 +322,20 @@ class SandboxApp : EngineApplication
 		// ==================== Sprites ====================
 		// Load a few animal icons from the Kenney pack and spawn sprites exercising
 		// all three billboard orientation modes.
+		// Sprites placed in the animation meadow (right side)
 		{
 			CreateSprite(scene, resources, "textures/kenney_animal-pack-remastered/PNG/Round/rabbit.png",
-				.(-4.0f, 1.2f, 2.0f), .(1.2f, 1.2f), .CameraFacing);
+				.(8, 1.2f, -4), .(1.2f, 1.2f), .CameraFacing);
 			CreateSprite(scene, resources, "textures/kenney_animal-pack-remastered/PNG/Round/bear.png",
-				.( 0.0f, 2.6f, 2.0f), .(1.2f, 1.2f), .CameraFacingY);
+				.(10, 2.6f, -2), .(1.2f, 1.2f), .CameraFacingY);
 			CreateSprite(scene, resources, "textures/kenney_animal-pack-remastered/PNG/Round/chicken.png",
-				.( 4.0f, 1.2f, 2.0f), .(1.2f, 1.2f), .WorldAligned);
+				.(12, 1.2f, -5), .(1.2f, 1.2f), .WorldAligned);
 		}
 
 		// ==================== Decal ====================
-		// Projects a Kenney animal icon downward onto the ground plane.
+		// Decorative decal on the ground near the central plaza.
 		CreateDecal(scene, resources, "textures/kenney_animal-pack-remastered/PNG/Round/panda.png",
-			.(-3.0f, 0.5f, 0.0f), .(3.0f, 3.0f, 3.0f));
+			.(0, 0.5f, 3), .(3.0f, 3.0f, 3.0f));
 
 		// ==================== Particles ====================
 		// Four effects spaced across the scene to showcase different particle types.
@@ -356,7 +362,7 @@ class SandboxApp : EngineApplication
 			}
 			CreateParticleEntity(scene, resources, particleMgr, mSparksEffect,
 				"textures/kenney_particle-pack/PNG (Transparent)/circle_05.png",
-				"Sparks", .(6, 0, -6));
+				"Sparks", .(-7, 0, -7));
 
 			// --- Smoke (alpha blended, rising plume) ---
 			mSmokeEffect = new ParticleEffect("Smoke");
@@ -381,7 +387,7 @@ class SandboxApp : EngineApplication
 			}
 			CreateParticleEntity(scene, resources, particleMgr, mSmokeEffect,
 				"textures/kenney_particle-pack/PNG (Transparent)/smoke_07.png",
-				"Smoke", .(-6, 0, -6));
+				"Smoke", .(-8, 0, -8));
 
 			// --- Magic sparkles (additive, orbiting vortex) ---
 			mMagicEffect = new ParticleEffect("Magic");
@@ -402,7 +408,7 @@ class SandboxApp : EngineApplication
 			}
 			CreateParticleEntity(scene, resources, particleMgr, mMagicEffect,
 				"textures/kenney_particle-pack/PNG (Transparent)/star_04.png",
-				"Magic", .(0, 0, -8));
+				"Magic", .(-10, 0, -10));
 
 			// --- Fire (additive, upward flames) ---
 			mFireEffect = new ParticleEffect("Fire");
@@ -440,7 +446,7 @@ class SandboxApp : EngineApplication
 			}
 			CreateParticleEntity(scene, resources, particleMgr, mFireEffect,
 				"textures/kenney_particle-pack/PNG (Transparent)/flame_06.png",
-				"Fire", .(-6, 0, -12));
+				"Fire", .(-8, 0.1f, -8));
 
 			// --- Comet trail (trail render mode demo) ---
 			mTrailEffect = new ParticleEffect("Comet");
@@ -478,7 +484,7 @@ class SandboxApp : EngineApplication
 			}
 			CreateParticleEntity(scene, resources, particleMgr, mTrailEffect,
 				"textures/kenney_particle-pack/PNG (Transparent)/trace_05.png",
-				"Comet", .(0, 1, -14));
+				"Comet", .(-8, 2, -10));
 
 			// --- Fireworks (sub-emitter demo: rocket -> burst on death) ---
 			mFireworksEffect = new ParticleEffect("Fireworks");
@@ -541,7 +547,7 @@ class SandboxApp : EngineApplication
 			}
 			CreateParticleEntity(scene, resources, particleMgr, mFireworksEffect,
 				"textures/kenney_particle-pack/PNG (Transparent)/spark_07.png",
-				"Fireworks", .(8, 0, -8));
+				"Fireworks", .(-6, 0, -12));
 		}
 
 		// ==================== Animated Fox ====================
@@ -610,7 +616,7 @@ class SandboxApp : EngineApplication
 				let foxEntity = scene.CreateEntity("Fox");
 				scene.SetLocalTransform(foxEntity, .()
 				{
-					Position = .(-3, 0, 2),
+					Position = .(8, 0, -2),
 					Rotation = .Identity,
 					Scale = .(0.02f, 0.02f, 0.02f)
 				});
@@ -666,21 +672,23 @@ class SandboxApp : EngineApplication
 		{
 			let propAnimClip = new PropertyAnimationClip("OrbitPath", 12.0f, true);
 
-			// Trace a rectangular path around the plane at Y=1.5
+			// Trace a circular path around the animation meadow
 			let posTrack = propAnimClip.AddVector3Track("Transform.Position");
-			let edge = 12.0f; // near edge of 30x30 plane (half = 15)
+			let cx = 9.0f; // center of meadow
+			let cz = -2.0f;
+			let radius = 4.0f;
 			let height = 1.5f;
-			posTrack.AddKeyframe(0.0f, .( edge, height, edge));      // front-right
-			posTrack.AddKeyframe(3.0f, .(-edge, height, edge));      // front-left
-			posTrack.AddKeyframe(6.0f, .(-edge, height, -edge));     // back-left
-			posTrack.AddKeyframe(9.0f, .( edge, height, -edge));     // back-right
-			posTrack.AddKeyframe(12.0f, .( edge, height, edge));     // back to start
+			posTrack.AddKeyframe(0.0f,  .(cx + radius, height, cz));
+			posTrack.AddKeyframe(3.0f,  .(cx, height, cz + radius));
+			posTrack.AddKeyframe(6.0f,  .(cx - radius, height, cz));
+			posTrack.AddKeyframe(9.0f,  .(cx, height, cz - radius));
+			posTrack.AddKeyframe(12.0f, .(cx + radius, height, cz));
 
 			mOrbitAnimRes = new PropertyAnimationClipResource(propAnimClip, true);
 			resources.AddResource<PropertyAnimationClipResource>(mOrbitAnimRes);
 
 			let orbitEntity = scene.CreateEntity("OrbitSphere");
-			scene.SetLocalTransform(orbitEntity, .() { Position = .(edge, height, edge), Rotation = .Identity, Scale = .(0.8f, 0.8f, 0.8f) });
+			scene.SetLocalTransform(orbitEntity, .() { Position = .(cx + radius, height, cz), Rotation = .Identity, Scale = .(0.8f, 0.8f, 0.8f) });
 			SetupMeshComponent(scene, orbitEntity, sphereRef, mYellowMaterial);
 
 			let propAnimMgr = scene.GetModule<PropertyAnimationComponentManager>();
@@ -798,7 +806,7 @@ class SandboxApp : EngineApplication
 						let charEntity = scene.CreateEntity("KenneyCharacter");
 						scene.SetLocalTransform(charEntity, .()
 						{
-							Position = .(5, 0, 4),
+							Position = .(10, 0, 0),
 							Rotation = .Identity,
 							Scale = .One
 						});
@@ -885,7 +893,7 @@ class SandboxApp : EngineApplication
 					let navMgr = scene.GetModule<NavigationComponentManager>();
 					if (navMgr != null)
 					{
-						Vector3[3] startPositions = .(.(-5, 0, -5), .(5, 0, 5), .(0, 0, -8));
+						Vector3[3] startPositions = .(.(6, 0, 6), .(10, 0, 8), .(8, 0, 4));
 						for (int32 i = 0; i < 3; i++)
 							SpawnNavAgent(scene, navMgr, startPositions[i], sphereRef);
 					}
@@ -903,23 +911,23 @@ class SandboxApp : EngineApplication
 
 		let lightMgr = scene.GetModule<LightComponentManager>();
 
-		// Directional shadow-casting light (4 cascades)
+		// Directional shadow-casting light — golden hour angle for long shadows
 		let dirLightEntity = scene.CreateEntity("DirectionalLight");
-		scene.SetLocalTransform(dirLightEntity, Transform.CreateLookAt(.(-3, 5, 2), .Zero));
+		scene.SetLocalTransform(dirLightEntity, Transform.CreateLookAt(.(10, 12, 6), .Zero));
 		let dirLightHandle = lightMgr.CreateComponent(dirLightEntity);
 		if (let light = lightMgr.Get(dirLightHandle))
 		{
 			light.Type = .Directional;
-			light.Color = .(1.0f, 0.95f, 0.9f);
-			light.Intensity = 1.5f;
+			light.Color = .(1.0f, 0.92f, 0.8f);
+			light.Intensity = 1.8f;
 			light.CastsShadows = true;
-			light.ShadowBias = 0.0005f;       // shader-side depth bias (hardware slope bias handles acne)
-			light.ShadowNormalBias = 3.0f;    // normal-offset bias IN TEXELS (scaled by world texel size in shader)
+			light.ShadowBias = 0.0005f;
+			light.ShadowNormalBias = 3.0f;
 		}
 
-		// Shadow-casting spot light - high above and angled toward the scene.
+		// Shadow-casting spot light — focused on the metallic sphere in the central plaza.
 		let spotLightEntity = scene.CreateEntity("ShadowSpot");
-		scene.SetLocalTransform(spotLightEntity, Transform.CreateLookAt(.(2, 8, 2), .(0, -1, 0)));
+		scene.SetLocalTransform(spotLightEntity, Transform.CreateLookAt(.(3, 8, 3), .(0, 0, 0)));
 		let spotLightHandle = lightMgr.CreateComponent(spotLightEntity);
 		if (let light = lightMgr.Get(spotLightHandle))
 		{
@@ -934,12 +942,11 @@ class SandboxApp : EngineApplication
 			light.ShadowNormalBias = 0.05f;
 		}
 
-		// Shadow-casting point light - sits near the scene, casts shadows in every
-		// direction (6 cube-map faces). Good test for the point shadow code path.
-		let pointLightEntity = scene.CreateEntity("ShadowPoint");
+		// Shadow-casting point light — near the campfire (particles area)
+		let pointLightEntity = scene.CreateEntity("CampfireLight");
 		scene.SetLocalTransform(pointLightEntity, .()
 		{
-			Position = .(-2.0f, 2.0f, 0.0f),
+			Position = .(-8.0f, 1.5f, -8.0f),
 			Rotation = .Identity,
 			Scale = .One
 		});
@@ -947,9 +954,9 @@ class SandboxApp : EngineApplication
 		if (let light = lightMgr.Get(pointLightHandle))
 		{
 			light.Type = .Point;
-			light.Color = .(1.0f, 0.7f, 0.4f); // warm orange
-			light.Intensity = 15.0f;
-			light.Range = 12.0f;
+			light.Color = .(1.0f, 0.6f, 0.3f); // warm campfire orange
+			light.Intensity = 12.0f;
+			light.Range = 10.0f;
 			light.CastsShadows = true;
 			light.ShadowBias = 0.0005f;
 			light.ShadowNormalBias = 2.0f;
@@ -1082,7 +1089,7 @@ class SandboxApp : EngineApplication
 		{
 			renderSettings.SetSkyTextureRef(mSkyRef);
 			renderSettings.SkyIntensity = 1.0f;
-			renderSettings.AmbientColor = .(0.1f, 0.1f, 0.15f);
+			renderSettings.AmbientColor = .(0.15f, 0.13f, 0.12f);
 			renderSettings.Exposure = 1.0f;
 		}
 
@@ -1622,11 +1629,11 @@ class SandboxApp : EngineApplication
 		let uiMgr = mScene.GetModule<UIComponentManager>();
 		if (uiMgr == null) return;
 
-		// Create an entity with a world-space UI panel.
+		// Create an entity with a world-space UI panel (near the central plaza).
 		let entity = mScene.CreateEntity("WorldUI");
 		mScene.SetLocalTransform(entity, .() {
-			Position = .(2, 2.5f, 0),
-			Rotation = .Identity,
+			Position = .(3, 2.5f, 3),
+			Rotation = Quaternion.CreateFromYawPitchRoll(-0.5f, 0, 0),
 			Scale = .One
 		});
 
@@ -1643,7 +1650,7 @@ class SandboxApp : EngineApplication
 		// Second world UI - camera-facing billboard (like a nameplate).
 		let billboard = mScene.CreateEntity("WorldUI_Billboard");
 		mScene.SetLocalTransform(billboard, .() {
-			Position = .(-2, 3, 0),
+			Position = .(1, 3, 4),
 			Rotation = .Identity,
 			Scale = .One
 		});
@@ -1878,33 +1885,43 @@ class SandboxApp : EngineApplication
 
 		let root = uiSub.ScreenView.Root;
 
-		// Absolute layout for HUD overlay - doesn't interfere with 3D.
-		let hud = new AbsoluteLayout();
-		hud.IsHitTestVisible = false; // Layout is not a hit target - children (panel, button) are.
+		// Frame layout for HUD overlay - doesn't interfere with 3D.
+		let hud = new FrameLayout();
+		hud.IsHitTestVisible = false;
 		root.AddView(hud, new LayoutParams() { Width = .Match, Height = .Match });
 
-		// Translucent background panel for the HUD info.
-		let hudPanel = new Panel();
-		hudPanel.SetStyle(.Background, new ColorDrawable(.(0, 0, 0, 140)));
-		hudPanel.Padding = .(8, 6, 8, 6);
-		hud.AddView(hudPanel, new AbsoluteLayout.LayoutParams() { X = 4, Y = 4, Width = .Fixed(.Px(420)), Height = .Fixed(.Px(460)) });
+		// --- Top-right: FPS + controls hint ---
+		let infoPanel = new Panel();
+		infoPanel.SetStyle(.Background, new ColorDrawable(.(0, 0, 0, 120)));
+		infoPanel.Padding = .(10, 6, 10, 6);
 
-		let hudLayout = new FlexLayout();
-		hudLayout.Direction = .Vertical;
-		hudLayout.Spacing = 2;
-		hudPanel.AddView(hudLayout, new LayoutParams() { Width = .Match, Height = .Match });
+		let infoLayout = new FlexLayout() { Direction = .Vertical, Spacing = 2 };
+		infoPanel.AddView(infoLayout, new LayoutParams() { Width = .Match, Height = .Match });
 
-		// FPS label.
 		mFpsLabel = new Label("FPS --");
-		mFpsLabel.FontSize.Value = 14;
-		hudLayout.AddView(mFpsLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(18)) });
+		mFpsLabel.FontSize.Value = 13;
+		infoLayout.AddView(mFpsLabel);
 
-		// Controls hint.
-		mControlsLabel = new Label("WASD=Move QE=Up/Down RMB=Look Tab=Capture Shift=Fast M=SFX");
-		mControlsLabel.FontSize.Value = 11;
-		hudLayout.AddView(mControlsLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(14)) });
+		mControlsLabel = new Label("WASD Move | QE Up/Down | RMB Look | Tab Capture | Shift Fast | M SFX");
+		mControlsLabel.FontSize.Value = 10;
+		mControlsLabel.AddClass("label-dim");
+		infoLayout.AddView(mControlsLabel);
 
-		// Post-processing toggles
+		hud.AddView(infoPanel, new FrameLayout.LayoutParams() {
+			Gravity = .TopRight, Margin = .(0, 6, 6, 0)
+		});
+
+		// --- Top-left: Collapsible post-processing controls ---
+		let ppPanel = new Panel();
+		ppPanel.SetStyle(.Background, new ColorDrawable(.(0, 0, 0, 140)));
+		ppPanel.Padding = .(8, 6, 8, 6);
+
+		let ppExpander = new Expander("Post-Processing");
+		ppExpander.IsExpanded = false;
+
+		let ppContent = new FlexLayout() { Direction = .Vertical, Spacing = 4 };
+
+		// SSAO
 		let ssaoToggle = new CheckBox("SSAO");
 		ssaoToggle.IsChecked.Value = false;
 		ssaoToggle.OnCheckedChanged.Add(new (cb, isChecked) =>
@@ -1917,69 +1934,59 @@ class SandboxApp : EngineApplication
 				if (ssao != null) ssao.Enabled = isChecked;
 			}
 		});
-		hudLayout.AddView(ssaoToggle, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });
+		ppContent.AddView(ssaoToggle);
 
-		// SSAO parameter sliders
-		let radiusLabel = new Label("SSAO Radius: 0.50");
-		radiusLabel.FontSize.Value = 11;
-		hudLayout.AddView(radiusLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(14)) });
-
+		let radiusLabel = new Label("Radius: 0.50");
+		radiusLabel.FontSize.Value = 10;
+		ppContent.AddView(radiusLabel);
 		let radiusSlider = new Slider(0.1f, 3.0f, 0.5f);
 		radiusSlider.OnValueChanged.Add(new (s, val) =>
 		{
 			let rs = Context.GetSubsystem<RenderSubsystem>();
-			let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null;
-			if (pipeline?.PostProcessStack != null)
-			{
-				let ssao = pipeline.PostProcessStack.GetEffect<SSAOEffect>();
-				if (ssao != null) ssao.Radius = val;
-			}
-			radiusLabel.SetText(scope $"SSAO Radius: {val:F2}");
+			if (let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null)
+				if (pipeline.PostProcessStack != null)
+					if (let ssao = pipeline.PostProcessStack.GetEffect<SSAOEffect>())
+						ssao.Radius = val;
+			radiusLabel.SetText(scope $"Radius: {val:F2}");
 		});
-		hudLayout.AddView(radiusSlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(400)), Height = .Fixed(.Px(24)) });
+		ppContent.AddView(radiusSlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(200)) });
 
-		let intensityLabel = new Label("SSAO Intensity: 1.50");
-		intensityLabel.FontSize.Value = 11;
-		hudLayout.AddView(intensityLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(14)) });
-
+		let intensityLabel = new Label("Intensity: 1.50");
+		intensityLabel.FontSize.Value = 10;
+		ppContent.AddView(intensityLabel);
 		let intensitySlider = new Slider(0.5f, 5.0f, 1.5f);
 		intensitySlider.OnValueChanged.Add(new (s, val) =>
 		{
 			let rs = Context.GetSubsystem<RenderSubsystem>();
-			let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null;
-			if (pipeline?.PostProcessStack != null)
-			{
-				let ssao = pipeline.PostProcessStack.GetEffect<SSAOEffect>();
-				if (ssao != null) ssao.Intensity = val;
-			}
-			intensityLabel.SetText(scope $"SSAO Intensity: {val:F2}");
+			if (let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null)
+				if (pipeline.PostProcessStack != null)
+					if (let ssao = pipeline.PostProcessStack.GetEffect<SSAOEffect>())
+						ssao.Intensity = val;
+			intensityLabel.SetText(scope $"Intensity: {val:F2}");
 		});
-		hudLayout.AddView(intensitySlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(400)), Height = .Fixed(.Px(24)) });
+		ppContent.AddView(intensitySlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(200)) });
 
-		let biasLabel = new Label("SSAO Bias: 0.025");
-		biasLabel.FontSize.Value = 11;
-		hudLayout.AddView(biasLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(14)) });
-
+		let biasLabel = new Label("Bias: 0.025");
+		biasLabel.FontSize.Value = 10;
+		ppContent.AddView(biasLabel);
 		let biasSlider = new Slider(0.0f, 0.2f, 0.025f);
 		biasSlider.OnValueChanged.Add(new (s, val) =>
 		{
 			let rs = Context.GetSubsystem<RenderSubsystem>();
-			let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null;
-			if (pipeline?.PostProcessStack != null)
-			{
-				let ssao = pipeline.PostProcessStack.GetEffect<SSAOEffect>();
-				if (ssao != null) ssao.Bias = val;
-			}
-			biasLabel.SetText(scope $"SSAO Bias: {val:F3}");
+			if (let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null)
+				if (pipeline.PostProcessStack != null)
+					if (let ssao = pipeline.PostProcessStack.GetEffect<SSAOEffect>())
+						ssao.Bias = val;
+			biasLabel.SetText(scope $"Bias: {val:F3}");
 		});
-		hudLayout.AddView(biasSlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(400)), Height = .Fixed(.Px(24)) });
+		ppContent.AddView(biasSlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(200)) });
 
-		// AA toggles - FXAA and TAA are mutually exclusive
+		// AA toggles
 		let fxaaToggle = new CheckBox("FXAA", true);
-		hudLayout.AddView(fxaaToggle, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });
+		ppContent.AddView(fxaaToggle);
 
 		let taaToggle = new CheckBox("TAA");
-		hudLayout.AddView(taaToggle, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });
+		ppContent.AddView(taaToggle);
 
 		fxaaToggle.OnCheckedChanged.Add(new (cb, isChecked) =>
 		{
@@ -1994,39 +2001,33 @@ class SandboxApp : EngineApplication
 			}
 		});
 
-		// TAA parameter sliders
 		let blendLabel = new Label("TAA Blend: 0.95");
-		blendLabel.FontSize.Value = 11;
-		hudLayout.AddView(blendLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(14)) });
-
+		blendLabel.FontSize.Value = 10;
+		ppContent.AddView(blendLabel);
 		let blendSlider = new Slider(0.5f, 0.99f, 0.95f);
 		blendSlider.OnValueChanged.Add(new (s, val) =>
 		{
 			let rs = Context.GetSubsystem<RenderSubsystem>();
-			let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null;
-			if (pipeline?.PostProcessStack != null)
-			{
-				let taa = pipeline.PostProcessStack.GetEffect<TAAEffect>();
-				if (taa != null) taa.BlendFactor = val;
-			}
+			if (let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null)
+				if (pipeline.PostProcessStack != null)
+					if (let taa = pipeline.PostProcessStack.GetEffect<TAAEffect>())
+						taa.BlendFactor = val;
 			blendLabel.SetText(scope $"TAA Blend: {val:F2}");
 		});
-		hudLayout.AddView(blendSlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(400)), Height = .Fixed(.Px(24)) });
+		ppContent.AddView(blendSlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(200)) });
 
 		let jitterLabel = new Label("Jitter Scale: 1.00");
-		jitterLabel.FontSize.Value = 11;
-		hudLayout.AddView(jitterLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(14)) });
-
+		jitterLabel.FontSize.Value = 10;
+		ppContent.AddView(jitterLabel);
 		let jitterSlider = new Slider(0.0f, 2.0f, 1.0f);
 		jitterSlider.OnValueChanged.Add(new (s, val) =>
 		{
 			let rs = Context.GetSubsystem<RenderSubsystem>();
-			let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null;
-			if (pipeline != null)
+			if (let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null)
 				pipeline.JitterScale = val;
 			jitterLabel.SetText(scope $"Jitter Scale: {val:F2}");
 		});
-		hudLayout.AddView(jitterSlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(400)), Height = .Fixed(.Px(24)) });
+		ppContent.AddView(jitterSlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(200)) });
 
 		taaToggle.OnCheckedChanged.Add(new (cb, isChecked) =>
 		{
@@ -2043,6 +2044,13 @@ class SandboxApp : EngineApplication
 						fxaaToggle.IsChecked.Value = false;
 				}
 			}
+		});
+
+		ppExpander.SetContent(ppContent);
+		ppPanel.AddView(ppExpander, new LayoutParams() { Width = .Match });
+
+		hud.AddView(ppPanel, new FrameLayout.LayoutParams() {
+			Gravity = .TopLeft, Margin = .(6, 6, 0, 0), Width = .Fixed(.Px(240))
 		});
 	}
 
@@ -2080,6 +2088,9 @@ class SandboxApp : EngineApplication
 			charTex?.ReleaseRef();
 		for (let charMat in mCharMaterialResources)
 			charMat?.ReleaseRef();
+
+		// Environment model cleanup
+		mEnvironment?.Shutdown();
 
 		Console.WriteLine("=== EngineSandbox OnShutdown ===");
 	}
