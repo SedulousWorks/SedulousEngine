@@ -2,7 +2,7 @@ FileVersion = 1
 Locked = ["Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "dr_libs-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
 
 [Workspace]
-StartupProject = "EngineSandbox"
+StartupProject = "RenderGraphSandbox"
 
 [Projects]
 "Sedulous.RHI" = {Path = "Foundation/Sedulous.RHI"}
@@ -125,6 +125,7 @@ SampleVG001_Shapes = {Path = "Samples/VG/SampleVG001_Shapes"}
 "Sedulous.Editor.Core" = {Path = "Editor/Sedulous.Editor.Core"}
 "Sedulous.Editor.App" = {Path = "Editor/Sedulous.Editor.App"}
 EngineSandbox = {Path = "Samples/EngineSandbox"}
+RenderGraphSandbox = {Path = "Samples/RenderGraphSandbox"}
 "Sedulous.Jobs" = {Path = "Foundation/Sedulous.Jobs"}
 "Sedulous.Jobs.Tests" = {Path = "Foundation/Sedulous.Jobs.Tests"}
 "Sedulous.Resources" = {Path = "Foundation/Sedulous.Resources"}
@@ -213,7 +214,7 @@ UISandbox = {Path = "Samples/UI/UISandbox"}
 
 [WorkspaceFolders]
 Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
-Samples = ["SampleFramework", "SampleVG001_Shapes", "DrawingSandbox", "VGSandbox", "FontRendering", "ImGuiSample", "NuklearSample", "NetEcho", "NetHttpClient", "NetWebSocket", "AudioSandbox", "EngineSandbox", "EngineRenderStressTest", "Showcase", "UISandbox"]
+Samples = ["SampleFramework", "SampleVG001_Shapes", "DrawingSandbox", "VGSandbox", "FontRendering", "ImGuiSample", "NuklearSample", "NetEcho", "NetHttpClient", "NetWebSocket", "AudioSandbox", "EngineSandbox", "EngineRenderStressTest", "Showcase", "UISandbox", "RenderGraphSandbox"]
 "Samples/RHISamples" = ["Sample002_Textures", "Sample003_UniformBuffers", "Sample004_Compute", "Sample005_BindGroups", "Sample006_Blending", "Sample007_Instancing", "Sample008_DepthBuffer", "Sample009_Mipmaps", "Sample010_MSAA", "Sample011_MRT", "Sample012_Wireframe", "Sample013_BorderSampler", "Sample014_Blit", "Sample015_Queries", "Sample016_Readback", "Sample017_MultiQueue", "Sample018_Bindless", "Sample019_BatchUpload", "Sample020_MeshShaders", "Sample021_RayTracing", "Sample022_StencilOutline", "Sample023_CubeMap", "Sample024_OcclusionQuery", "Sample025_MultiDrawIndirect", "Sample026_DynamicOffsets", "Sample027_3DTexture", "Sample028_ProceduralRT", "Sample029_ResolveTexture", "Sample001_Triangle"]
 "Samples/ShaderReflection" = ["SR001_ReflectedPBR"]
 Foundation = []
