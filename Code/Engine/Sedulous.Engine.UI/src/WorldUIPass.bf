@@ -81,12 +81,16 @@ class WorldUIPass : PipelinePass
 			if (!slice.IsValid) continue;
 
 			// Import the component's texture into the render graph.
+			// Pass the tracked state so the barrier solver knows the actual
+			// GPU state (ShaderRead after RequireReadableAfterWrite, or
+			// RenderTarget on first render).
 			let name = scope String();
 			name.AppendF("WorldUI_{}", (int)Internal.UnsafeCastToPtr(comp));
-			let handle = graph.ImportTarget(name, comp.Texture, comp.TextureView);
+			let handle = graph.ImportTarget(name, comp.Texture, comp.TextureView, currentState: comp.TextureState);
 
 			// Transition to ShaderRead after rendering so sprites can sample it.
 			graph.RequireReadableAfterWrite(handle);
+			comp.TextureState = .ShaderRead;
 
 			// Capture per-pass state for the GPU-phase closure.
 			let capturedRenderer = sharedRenderer;

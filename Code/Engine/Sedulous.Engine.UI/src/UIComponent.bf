@@ -53,6 +53,9 @@ class UIComponent : Component, ISerializableComponent
 	public ITexture Texture;
 	/// Render target view.
 	public ITextureView TextureView;
+	/// Tracked resource state of the texture. Starts as RenderTarget (creation state),
+	/// transitions to ShaderRead after RequireReadableAfterWrite in the render pass.
+	public ResourceState TextureState = .RenderTarget;
 	/// Whether the view needs re-rendering.
 	public bool IsDirty = true;
 

@@ -222,6 +222,10 @@ public class ProbePipeline : IRenderingPipeline, IDisposable
 		mRenderGraph.Execute(encoder);
 		mRenderGraph.EndFrame();
 
+		// The sky pass leaves the depth texture in DepthStencilRead.
+		// Transition back to DepthStencilWrite so the next face capture can clear/write it.
+		encoder.TransitionTexture(mFaceDepth, .DepthStencilRead, .DepthStencilWrite);
+
 		// --- Blit face to cubemap layer with horizontal flip ---
 		encoder.TransitionTexture(mFaceColor, .RenderTarget, .ShaderRead);
 		BlitFaceToLayer(encoder, mFaceColorView, outputFaceView, faceSize);
