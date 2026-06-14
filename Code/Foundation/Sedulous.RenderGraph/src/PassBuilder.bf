@@ -76,6 +76,12 @@ public struct PassBuilder
 			DepthStoreOp = storeOp,
 			DepthClearValue = clearDepth,
 			ReadOnly = false,
+			// Stencil is DontCare by default — the engine doesn't use stencil
+			// in any depth pass. This avoids ClearDepthStencilView including the
+			// stencil flag, which would require the stencil plane to be in
+			// DEPTH_WRITE state on D3D12.
+			StencilLoadOp = .DontCare,
+			StencilStoreOp = .DontCare,
 			Subresource = subresource
 		};
 

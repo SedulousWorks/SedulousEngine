@@ -128,9 +128,9 @@ public struct RGDepthTarget
 	/// Whether depth is read-only
 	public bool ReadOnly;
 	/// Stencil load operation
-	public LoadOp StencilLoadOp = .Clear;
+	public LoadOp StencilLoadOp = .DontCare;
 	/// Stencil store operation
-	public StoreOp StencilStoreOp = .Store;
+	public StoreOp StencilStoreOp = .DontCare;
 	/// Stencil clear value
 	public uint32 StencilClearValue = 0;
 	/// Subresource range
