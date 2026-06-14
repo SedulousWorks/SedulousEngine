@@ -592,4 +592,101 @@ class BarrierTests
 		Test.Assert(persistent.SubresourceStates != null);
 		Test.Assert(persistent.SubresourceStates.Count == 2);
 	}
+
+	/// Transient texture: first access as color target should emit
+	/// Undefined -> RenderTarget barrier.
+	[Test]
+	public static void Transient_FirstAccess_EmitsUndefinedToRenderTarget()
+	{
+		let solver = scope BarrierSolver();
+		let encoder = scope MockEncoder();
+
+		let tex = scope MockTexture(.Undefined);
+		let view = scope MockTextureView(tex);
+
+		let resources = scope List<RenderGraphResource>();
+		let res = new RenderGraphResource("PipelineOutput", .Texture, .Transient);
+		res.Texture = tex;
+		res.TextureView = view;
+		resources.Add(res);
+		defer delete res;
+
+		solver.Reset(resources);
+
+		// First pass writes as color target
+		let writePass = scope RenderGraphPass("ForwardOpaque", .Render);
+		writePass.Accesses.Add(.(RGHandle(0, 0), .WriteColorTarget));
+
+		solver.EmitBarriers(writePass, resources, encoder);
+
+		// Should emit Undefined -> RenderTarget
+		Test.Assert(encoder.RecordedTextureBarriers.Count == 1);
+		Test.Assert(encoder.RecordedTextureBarriers[0].OldState == .Undefined);
+		Test.Assert(encoder.RecordedTextureBarriers[0].NewState == .RenderTarget);
+	}
+
+	/// Transient texture reuse across frames: after Reset with same texture,
+	/// the barrier solver should still emit Undefined -> RenderTarget even though
+	/// the texture was previously in ShaderRead state from the prior frame.
+	[Test]
+	public static void Transient_ReusedAcrossFrames_EmitsUndefinedBarrier()
+	{
+		let solver = scope BarrierSolver();
+		let encoder = scope MockEncoder();
+
+		let tex = scope MockTexture(.Undefined);
+		let view = scope MockTextureView(tex);
+
+		// --- Frame 1 ---
+		{
+			let resources = scope List<RenderGraphResource>();
+			let res = new RenderGraphResource("PipelineOutput", .Texture, .Transient);
+			res.Texture = tex;
+			res.TextureView = view;
+			resources.Add(res);
+			defer delete res;
+
+			solver.Reset(resources);
+
+			// Write as color target
+			let writePass = scope RenderGraphPass("ForwardOpaque", .Render);
+			writePass.Accesses.Add(.(RGHandle(0, 0), .WriteColorTarget));
+			solver.EmitBarriers(writePass, resources, encoder);
+			encoder.RecordedTextureBarriers.Clear();
+
+			// Read as texture (post-processing)
+			let readPass = scope RenderGraphPass("PostProcess", .Render);
+			readPass.Accesses.Add(.(RGHandle(0, 0), .ReadTexture));
+			solver.EmitBarriers(readPass, resources, encoder);
+
+			// Verify RenderTarget -> ShaderRead
+			Test.Assert(encoder.RecordedTextureBarriers.Count == 1);
+			Test.Assert(encoder.RecordedTextureBarriers[0].OldState == .RenderTarget);
+			Test.Assert(encoder.RecordedTextureBarriers[0].NewState == .ShaderRead);
+			encoder.RecordedTextureBarriers.Clear();
+		}
+
+		// --- Frame 2 (same pooled texture, new resource object) ---
+		{
+			let resources = scope List<RenderGraphResource>();
+			let res = new RenderGraphResource("PipelineOutput", .Texture, .Transient);
+			res.Texture = tex; // Same pooled texture from frame 1
+			res.TextureView = view;
+			resources.Add(res);
+			defer delete res;
+
+			solver.Reset(resources);
+
+			// First pass writes as color target again
+			let writePass = scope RenderGraphPass("ForwardOpaque", .Render);
+			writePass.Accesses.Add(.(RGHandle(0, 0), .WriteColorTarget));
+			solver.EmitBarriers(writePass, resources, encoder);
+
+			// MUST emit Undefined -> RenderTarget (not ShaderRead -> RenderTarget)
+			// because transients always start from Undefined regardless of prior state
+			Test.Assert(encoder.RecordedTextureBarriers.Count == 1);
+			Test.Assert(encoder.RecordedTextureBarriers[0].OldState == .Undefined);
+			Test.Assert(encoder.RecordedTextureBarriers[0].NewState == .RenderTarget);
+		}
+	}
 }
