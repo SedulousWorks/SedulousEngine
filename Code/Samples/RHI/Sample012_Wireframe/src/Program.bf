@@ -3,6 +3,7 @@ namespace Sample012_Wireframe;
 using System;
 using System.Collections;
 using Sedulous.RHI;
+using Sedulous.Core.Mathematics;
 using SampleFramework;
 
 /// Demonstrates wireframe rendering using FillMode.Wireframe.
@@ -30,7 +31,7 @@ class WireframeSample : SampleApp
 		PSInput VSMain(VSInput input)
 		{
 		    PSInput output;
-		    output.Position = mul(MVP, float4(input.Position, 1.0));
+		    output.Position = mul(float4(input.Position, 1.0), MVP);
 		    output.Color = input.Color;
 		    return output;
 		}
@@ -292,51 +293,13 @@ class WireframeSample : SampleApp
 		float aspect = (float)mWidth / (float)mHeight;
 		float angle = mTotalTime * 0.8f;
 
-		// Rotate around Y axis
-		float cosA = Math.Cos(angle), sinA = Math.Sin(angle);
-		float[16] model = .(
-			cosA, 0, sinA, 0,
-			0, 1, 0, 0,
-			-sinA, 0, cosA, 0,
-			0, 0, 0, 1
-		);
+		Matrix model = Matrix.CreateRotationY(angle);
+		// Camera 3 units back along Z
+		Matrix view = Matrix.CreateLookAt(Vector3(0.0f, 0.0f, 3.0f), Vector3(0.0f, 0.0f, 0.0f), Vector3(0.0f, 1.0f, 0.0f));
+		Matrix proj = Matrix.CreatePerspectiveFieldOfView(45.0f * (Math.PI_f / 180.0f), aspect, 0.1f, 100.0f);
+		Matrix mvp = model * view * proj;
 
-		// Simple view: pull back on Z (positive Z is into the screen for this projection)
-		float[16] view = .(
-			1, 0, 0, 0,
-			0, 1, 0, 0,
-			0, 0, 1, 3.0f,
-			0, 0, 0, 1
-		);
-
-		float[16] proj = default;
-		MakePerspective(ref proj, 45.0f * (Math.PI_f / 180.0f), aspect, 0.1f, 100.0f);
-
-		float[16] mv = default;
-		MatMul4x4(ref mv, ref view, ref model);
-		float[16] mvp = default;
-		MatMul4x4(ref mvp, ref proj, ref mv);
-
-		Internal.MemCpy(mUniformMapped, &mvp[0], 64);
-	}
-
-	private static void MakePerspective(ref float[16] m, float fovY, float aspect, float nearZ, float farZ)
-	{
-		float h = 1.0f / Math.Tan(fovY * 0.5f), w = h / aspect, range = farZ / (farZ - nearZ);
-		m[0]=w; m[1]=0; m[2]=0; m[3]=0;
-		m[4]=0; m[5]=h; m[6]=0; m[7]=0;
-		m[8]=0; m[9]=0; m[10]=range; m[11]=-nearZ*range;
-		m[12]=0; m[13]=0; m[14]=1; m[15]=0;
-	}
-
-	private static void MatMul4x4(ref float[16] r, ref float[16] a, ref float[16] b)
-	{
-		for (int row < 4) for (int col < 4)
-		{
-			float s = 0;
-			for (int k < 4) s += a[row*4+k] * b[k*4+col];
-			r[row*4+col] = s;
-		}
+		Internal.MemCpy(mUniformMapped, &mvp, 64);
 	}
 
 	protected override void OnShutdown()

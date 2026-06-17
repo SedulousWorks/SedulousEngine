@@ -3,6 +3,7 @@ namespace Sample003_UniformBuffers;
 using System;
 using System.Collections;
 using Sedulous.RHI;
+using Sedulous.Core.Mathematics;
 using SampleFramework;
 
 /// Vertex structure with position and color for 3D cube
@@ -53,7 +54,7 @@ class UniformBufferSample : SampleApp
 		PSInput VSMain(VSInput input)
 		{
 		    PSInput output;
-		    output.Position = mul(MVP, float4(input.Position, 1.0));
+		    output.Position = mul(float4(input.Position, 1.0), MVP);
 		    output.Color = input.Color;
 		    return output;
 		}
@@ -406,93 +407,19 @@ class UniformBufferSample : SampleApp
 		float angle = mTotalTime * 1.2f; // radians per second
 
 		// Model: rotate around Y and X axes
-		float[16] model = default;
-		MakeRotationYX(ref model, angle, angle * 0.7f);
+		Matrix model = Matrix.CreateRotationY(angle) * Matrix.CreateRotationX(angle * 0.7f);
 
 		// View: camera at (0, 1.5, -3) looking at origin
-		float[16] view = default;
-		MakeLookAt(ref view, 0.0f, 1.5f, -3.0f, 0.0f, 0.0f, 0.0f);
+		Matrix view = Matrix.CreateLookAt(Vector3(0.0f, 1.5f, -3.0f), Vector3(0.0f, 0.0f, 0.0f), Vector3(0.0f, 1.0f, 0.0f));
 
 		// Projection: perspective
-		float[16] proj = default;
-		MakePerspective(ref proj, 45.0f * (Math.PI_f / 180.0f), aspect, 0.1f, 100.0f);
+		Matrix proj = Matrix.CreatePerspectiveFieldOfView(45.0f * (Math.PI_f / 180.0f), aspect, 0.1f, 100.0f);
 
-		// MVP = proj * view * model
-		float[16] viewModel = default;
-		MatMul4x4(ref viewModel, ref view, ref model);
-		float[16] mvp = default;
-		MatMul4x4(ref mvp, ref proj, ref viewModel);
+		// MVP = model * view * proj (row-vector convention)
+		Matrix mvp = model * view * proj;
 
-		// Write to mapped UBO (row-major, HLSL expects row-major by default with float4x4)
-		Internal.MemCpy(mUniformMapped, &mvp[0], 64);
-	}
-
-	// --- Simple math helpers (row-major 4x4) ---
-
-	private static void MakeRotationYX(ref float[16] m, float yAngle, float xAngle)
-	{
-		float cy = Math.Cos(yAngle), sy = Math.Sin(yAngle);
-		float cx = Math.Cos(xAngle), sx = Math.Sin(xAngle);
-
-		// Ry * Rx (row-major)
-		m[0]  = cy;           m[1]  = sy * sx;      m[2]  = sy * cx;      m[3]  = 0;
-		m[4]  = 0;            m[5]  = cx;            m[6]  = -sx;          m[7]  = 0;
-		m[8]  = -sy;          m[9]  = cy * sx;       m[10] = cy * cx;      m[11] = 0;
-		m[12] = 0;            m[13] = 0;             m[14] = 0;            m[15] = 1;
-	}
-
-	private static void MakeLookAt(ref float[16] m, float eyeX, float eyeY, float eyeZ,
-		float targetX, float targetY, float targetZ)
-	{
-		// Forward (eye to target, normalized)
-		float fx = targetX - eyeX, fy = targetY - eyeY, fz = targetZ - eyeZ;
-		float fLen = Math.Sqrt(fx * fx + fy * fy + fz * fz);
-		fx /= fLen; fy /= fLen; fz /= fLen;
-
-		// Right = forward × up(0,1,0)
-		float rx = fz, ry = 0.0f, rz = -fx;
-		float rLen = Math.Sqrt(rx * rx + rz * rz);
-		rx /= rLen; rz /= rLen;
-
-		// True up = forward × right (left-handed: f × r gives up)
-		float ux = fy * rz - fz * ry;
-		float uy = fz * rx - fx * rz;
-		float uz = fx * ry - fy * rx;
-
-		// Row-major LH view matrix for mul(M, v)
-		// Row0 = right, Row1 = up, Row2 = forward (not negated - LH, depth [0,1])
-		m[0]  = rx;  m[1]  = ry;  m[2]  = rz;  m[3]  = -(rx * eyeX + ry * eyeY + rz * eyeZ);
-		m[4]  = ux;  m[5]  = uy;  m[6]  = uz;  m[7]  = -(ux * eyeX + uy * eyeY + uz * eyeZ);
-		m[8]  = fx;  m[9]  = fy;  m[10] = fz;  m[11] = -(fx * eyeX + fy * eyeY + fz * eyeZ);
-		m[12] = 0;   m[13] = 0;   m[14] = 0;   m[15] = 1;
-	}
-
-	private static void MakePerspective(ref float[16] m, float fovY, float aspect, float nearZ, float farZ)
-	{
-		float h = 1.0f / Math.Tan(fovY * 0.5f);
-		float w = h / aspect;
-		float range = farZ / (farZ - nearZ);
-
-		// Row-major perspective for mul(M, v), DX depth [0,1]
-		// w_clip = z (from row 3, col 2 = 1), z_clip = range*z - near*range (row 2)
-		m[0]  = w;    m[1]  = 0;    m[2]  = 0;               m[3]  = 0;
-		m[4]  = 0;    m[5]  = h;    m[6]  = 0;               m[7]  = 0;
-		m[8]  = 0;    m[9]  = 0;    m[10] = range;            m[11] = -nearZ * range;
-		m[12] = 0;    m[13] = 0;    m[14] = 1;               m[15] = 0;
-	}
-
-	private static void MatMul4x4(ref float[16] result, ref float[16] a, ref float[16] b)
-	{
-		for (int row = 0; row < 4; row++)
-		{
-			for (int col = 0; col < 4; col++)
-			{
-				float sum = 0;
-				for (int k = 0; k < 4; k++)
-					sum += a[row * 4 + k] * b[k * 4 + col];
-				result[row * 4 + col] = sum;
-			}
-		}
+		// Write to mapped UBO
+		Internal.MemCpy(mUniformMapped, &mvp, 64);
 	}
 
 	protected override void OnShutdown()

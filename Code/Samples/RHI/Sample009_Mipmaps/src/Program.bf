@@ -3,6 +3,7 @@ namespace Sample009_Mipmaps;
 using System;
 using System.Collections;
 using Sedulous.RHI;
+using Sedulous.Core.Mathematics;
 using SampleFramework;
 
 /// Demonstrates manual mip level generation with distinct colors per level.
@@ -32,7 +33,7 @@ class MipmapSample : SampleApp
 		PSInput VSMain(VSInput input)
 		{
 		    PSInput output;
-		    output.Position = mul(MVP, float4(input.Position, 1.0));
+		    output.Position = mul(float4(input.Position, 1.0), MVP);
 		    output.TexCoord = input.TexCoord;
 		    return output;
 		}
@@ -329,49 +330,10 @@ class MipmapSample : SampleApp
 		float aspect = (float)mWidth / (float)mHeight;
 
 		// Camera looking down the receding floor
-		float[16] view = default;
-		MakeLookAt(ref view, 0.0f, 2.0f, 2.0f, 0.0f, 0.0f, -5.0f);
-
-		float[16] proj = default;
-		MakePerspective(ref proj, 60.0f * (Math.PI_f / 180.0f), aspect, 0.1f, 100.0f);
-
-		float[16] mvp = default;
-		MatMul4x4(ref mvp, ref proj, ref view);
-		Internal.MemCpy(mUniformMapped, &mvp[0], 64);
-	}
-
-	private static void MakeLookAt(ref float[16] m, float eyeX, float eyeY, float eyeZ, float tx, float ty, float tz)
-	{
-		float fx = tx - eyeX, fy = ty - eyeY, fz = tz - eyeZ;
-		float fLen = Math.Sqrt(fx*fx + fy*fy + fz*fz);
-		fx /= fLen; fy /= fLen; fz /= fLen;
-		float rx = fz, ry = 0.0f, rz = -fx;
-		float rLen = Math.Sqrt(rx*rx + rz*rz);
-		if (rLen > 0.0001f) { rx /= rLen; rz /= rLen; }
-		float ux = fy*rz - fz*ry, uy = fz*rx - fx*rz, uz = fx*ry - fy*rx;
-		m[0]=rx; m[1]=ry; m[2]=rz; m[3]=-(rx*eyeX+ry*eyeY+rz*eyeZ);
-		m[4]=ux; m[5]=uy; m[6]=uz; m[7]=-(ux*eyeX+uy*eyeY+uz*eyeZ);
-		m[8]=fx; m[9]=fy; m[10]=fz; m[11]=-(fx*eyeX+fy*eyeY+fz*eyeZ);
-		m[12]=0; m[13]=0; m[14]=0; m[15]=1;
-	}
-
-	private static void MakePerspective(ref float[16] m, float fovY, float aspect, float nearZ, float farZ)
-	{
-		float h = 1.0f / Math.Tan(fovY * 0.5f), w = h / aspect, range = farZ / (farZ - nearZ);
-		m[0]=w; m[1]=0; m[2]=0; m[3]=0;
-		m[4]=0; m[5]=h; m[6]=0; m[7]=0;
-		m[8]=0; m[9]=0; m[10]=range; m[11]=-nearZ*range;
-		m[12]=0; m[13]=0; m[14]=1; m[15]=0;
-	}
-
-	private static void MatMul4x4(ref float[16] r, ref float[16] a, ref float[16] b)
-	{
-		for (int row < 4) for (int col < 4)
-		{
-			float s = 0;
-			for (int k < 4) s += a[row*4+k] * b[k*4+col];
-			r[row*4+col] = s;
-		}
+		Matrix view = Matrix.CreateLookAt(Vector3(0.0f, 2.0f, 2.0f), Vector3(0.0f, 0.0f, -5.0f), Vector3(0.0f, 1.0f, 0.0f));
+		Matrix proj = Matrix.CreatePerspectiveFieldOfView(60.0f * (Math.PI_f / 180.0f), aspect, 0.1f, 100.0f);
+		Matrix mvp = view * proj;
+		Internal.MemCpy(mUniformMapped, &mvp, 64);
 	}
 
 	protected override void OnShutdown()
