@@ -1019,16 +1019,11 @@ class ModelViewerApp : Application
 		if (tab == null) return;
 		tab.Exposure = value;
 
-		let renderSub = mRuntimeContext.GetSubsystem<RenderSubsystem>();
-		if (renderSub != null && tab.Scene != null)
+		// Set on the scene module so ApplyRenderSettings picks it up each frame
+		if (tab.Scene != null)
 		{
-			let pipeline = renderSub.GetPipeline(tab.Scene);
-			if (pipeline?.PostProcessStack != null)
-			{
-				let tonemap = pipeline.PostProcessStack.GetEffect<TonemapEffect>();
-				if (tonemap != null)
-					tonemap.Exposure = value;
-			}
+			if (let settings = tab.Scene.GetModule<RenderSceneModule>())
+				settings.Exposure = value;
 		}
 	}
 
@@ -1038,12 +1033,11 @@ class ModelViewerApp : Application
 		if (tab == null) return;
 		tab.AmbientIntensity = value;
 
-		let renderSub = mRuntimeContext.GetSubsystem<RenderSubsystem>();
-		if (renderSub != null && tab.Scene != null)
+		// Set on the scene module so ApplyRenderSettings picks it up each frame
+		if (tab.Scene != null)
 		{
-			let pipeline = renderSub.GetPipeline(tab.Scene);
-			if (pipeline?.LightBuffer != null)
-				pipeline.LightBuffer.AmbientColor = .(value, value, value);
+			if (let settings = tab.Scene.GetModule<RenderSceneModule>())
+				settings.AmbientColor = .(value, value, value);
 		}
 	}
 
