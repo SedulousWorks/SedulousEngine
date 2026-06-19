@@ -955,6 +955,50 @@ class SandboxApp : EngineApplication
 			light.ShadowNormalBias = 2.0f;
 		}
 
+		// ==================== Cluster Lighting Test Lights ====================
+		// Grid of colored point lights to verify clustered forward lighting.
+		// 25 lights in a 5x5 grid, each with a small range so they only
+		// affect nearby fragments — validates that the cluster assignment
+		// compute shader is correctly binning lights.
+		{
+			Vector3[5] testColors = .(
+				.(1, 0.2f, 0.2f),  // red
+				.(0.2f, 1, 0.2f),  // green
+				.(0.2f, 0.4f, 1),  // blue
+				.(1, 1, 0.2f),     // yellow
+				.(1, 0.2f, 1)      // magenta
+			);
+
+			for (int32 ix = 0; ix < 5; ix++)
+			{
+				for (int32 iz = 0; iz < 5; iz++)
+				{
+					let name = scope String();
+					name.AppendF("TestLight_{}_{}",ix, iz);
+					let entity = scene.CreateEntity(name);
+					let x = (float)(ix - 2) * 4.0f;
+					let z = (float)(iz - 2) * 4.0f;
+					scene.SetLocalTransform(entity, .()
+					{
+						Position = .(x, 1.5f, z),
+						Rotation = .Identity,
+						Scale = .One
+					});
+
+					let handle = lightMgr.CreateComponent(entity);
+					if (let light = lightMgr.Get(handle))
+					{
+						light.Type = .Point;
+						light.Color = testColors[(ix + iz) % 5];
+						light.Intensity = 5.0f;
+						light.Range = 5.0f;
+						light.CastsShadows = false;
+					}
+				}
+			}
+			Console.WriteLine("Cluster test: 25 point lights added (5x5 grid)");
+		}
+
 		// ==================== Camera ====================
 
 		let cameraEntity = scene.CreateEntity("Camera");

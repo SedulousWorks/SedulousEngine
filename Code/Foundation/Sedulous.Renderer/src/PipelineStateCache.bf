@@ -213,7 +213,7 @@ class PipelineStateCache : IDisposable
 			: mRenderContext.DrawCallBindGroupLayout;
 
 		// Full 5-set layout: frame (0) + pass (1, placeholder) + material (2) + draw/instance (3) + shadow (4)
-		// Set 1 (pass) reuses frame layout as placeholder for now.
+		// Set 1 (pass) reuses frame layout as placeholder — cluster data is in set 0.
 		// Set 4 (shadow) reuses frame layout as placeholder when ShadowSystem is missing.
 		let s4 = shadowLayout != null ? shadowLayout : frameLayout;
 		IBindGroupLayout[5] layouts = .(frameLayout, frameLayout, effectiveMatLayout, set3Layout, s4);

@@ -42,6 +42,8 @@ public class RenderContext : IDisposable
 
 	// IBL system (BRDF LUT, environment cubemaps, sampler)
 	private IBLSystem mIBLSystem ~ delete _;
+	// Clustered lighting (assigns lights to screen-space clusters for efficient forward shading)
+	private ClusterSystem mClusterSystem ~ { _?.Dispose(); delete _; };
 
 	// Debug draw system (font texture + per-frame vertex buffers) + immediate-mode API
 	private DebugDrawSystem mDebugDrawSystem ~ { _?.Dispose(); delete _; };
@@ -119,6 +121,9 @@ public class RenderContext : IDisposable
 	/// IBL system (BRDF LUT, environment cubemaps, sampler). Created in Initialize.
 	public IBLSystem IBLSystem => mIBLSystem;
 
+	/// Clustered lighting system.
+	public ClusterSystem ClusterSystem => mClusterSystem;
+
 	/// Debug draw system (GPU resources backing DebugDraw).
 	public DebugDrawSystem DebugDrawSystem => mDebugDrawSystem;
 
@@ -192,6 +197,13 @@ public class RenderContext : IDisposable
 			{
 				mSkinningSystem = new SkinningSystem();
 				mSkinningSystem.Initialize(mDevice, value);
+			}
+
+			// Initialize cluster system with shader system
+			if (value != null && mClusterSystem == null)
+			{
+				mClusterSystem = new ClusterSystem();
+				mClusterSystem.Initialize(mDevice, value);
 			}
 
 			// Initialize IBL render pipelines with shader system
@@ -372,18 +384,24 @@ public class RenderContext : IDisposable
 		// Frame bind group layout (set 0):
 		//   b0: SceneUniforms (dynamic offset - per-view ring buffer)
 		//   b1: LightParams (light count, ambient, IBL params)
+		//   b2: ClusterParams (cluster grid dimensions for fragment lookup)
 		//   t0: Light buffer (StructuredBuffer<GPULight>)
 		//   t1: IrradianceMap (TextureCube - diffuse IBL)
 		//   t2: PrefilterMap (TextureCube - specular IBL)
 		//   t3: BRDFLookup (Texture2D - BRDF integration LUT)
+		//   t4: ClusterOffsets (StructuredBuffer<uint2> - per-cluster offset/count)
+		//   t5: ClusterLightIndices (StructuredBuffer<uint> - global light index list)
 		//   s0: EnvironmentSampler (linear-clamp for IBL cubemap sampling)
-		BindGroupLayoutEntry[7] frameEntries = .(
+		BindGroupLayoutEntry[10] frameEntries = .(
 			.() { Binding = 0, Visibility = .Vertex | .Fragment | .Compute, Type = .UniformBuffer, HasDynamicOffset = true }, // b0: SceneUniforms
 			.UniformBuffer(1, .Fragment),                                           // b1: LightParams
+			.UniformBuffer(2, .Fragment),                                           // b2: ClusterParams
 			.() { Binding = 0, Visibility = .Fragment, Type = .StorageBufferReadOnly, StorageBufferStride = (uint32)GPULight.Size }, // t0: Lights
 			.SampledTexture(1, .Fragment, .TextureCube),                            // t1: IrradianceMap
 			.SampledTexture(2, .Fragment, .TextureCube),                            // t2: PrefilterMap
 			.SampledTexture(3, .Fragment, .Texture2D),                              // t3: BRDFLookup
+			.() { Binding = 4, Visibility = .Fragment, Type = .StorageBufferReadOnly, StorageBufferStride = 8 },  // t4: ClusterOffsets
+			.() { Binding = 5, Visibility = .Fragment, Type = .StorageBufferReadOnly, StorageBufferStride = 4 },  // t5: ClusterLightIndices
 			.Sampler(0, .Fragment)                                                  // s0: EnvironmentSampler
 		);
 

@@ -466,13 +466,25 @@ public class ProbePipeline : IRenderingPipeline, IDisposable
 			iblSystem.EnvironmentSampler == null)
 			return;
 
-		BindGroupEntry[7] bgEntries = .(
+		// Cluster system buffers
+		let clusterSystem = mRenderContext.ClusterSystem;
+		if (clusterSystem == null) return;
+
+		let clusterParamsBuf = clusterSystem.GetFragParamsBuffer(frameIndex);
+		let clusterOffsetsBuf = clusterSystem.GetClusterOffsetsBuffer(frameIndex);
+		let clusterIndicesBuf = clusterSystem.GetClusterLightIndicesBuffer(frameIndex);
+		if (clusterParamsBuf == null || clusterOffsetsBuf == null || clusterIndicesBuf == null) return;
+
+		BindGroupEntry[10] bgEntries = .(
 			BindGroupEntry.Buffer(frame.SceneUniformBuffer, 0, SceneUniforms.Size),
 			BindGroupEntry.Buffer(lightParamsBuf, 0, (uint64)LightParams.Size),
+			BindGroupEntry.Buffer(clusterParamsBuf, 0, (uint64)ClusterFragParams.Size),
 			BindGroupEntry.Buffer(lightBuf, 0, lightBufferSize),
 			BindGroupEntry.Texture(iblSystem.SkyIrradianceView),   // SKY, not active
 			BindGroupEntry.Texture(iblSystem.SkyPrefilterView),    // SKY, not active
 			BindGroupEntry.Texture(iblSystem.BRDFLutView),
+			BindGroupEntry.Buffer(clusterOffsetsBuf, 0, clusterOffsetsBuf.Size),
+			BindGroupEntry.Buffer(clusterIndicesBuf, 0, clusterIndicesBuf.Size),
 			BindGroupEntry.Sampler(iblSystem.EnvironmentSampler)
 		);
 

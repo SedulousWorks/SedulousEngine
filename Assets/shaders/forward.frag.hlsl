@@ -60,6 +60,9 @@ TextureCube PrefilterMap  : register(t2, space0);
 Texture2D   BRDFLookup    : register(t3, space0);
 SamplerState EnvSampler   : register(s0, space0);
 
+// Cluster lighting data (in space0, alongside other frame data)
+#include "cluster_common.hlsl"
+
 // Set 4: Shadow data
 // float4 rows instead of float4x4 - see CONVENTIONS.md (StructuredBuffer matrix layout).
 struct GPUShadowData
@@ -441,9 +444,14 @@ FragmentOutput main(FragmentInput input)
     float3 F0 = lerp(0.04, albedo, metallic);
 
     float3 Lo = 0.0;
-    for (uint i = 0; i < LightCount; i++)
+
+    // Clustered lighting: look up which lights affect this fragment's cluster
+    uint clusterIdx = GetClusterIndex(input.Position.xy, viewDepth);
+    uint2 clusterOffsetCount = ClusterOffsets[clusterIdx];
+    for (uint ci = 0; ci < clusterOffsetCount.y; ci++)
     {
-        Lo += EvaluateLight(Lights[i], input.WorldPos, geomNormal, viewDepth, N, V, albedo, roughness, metallic, F0);
+        uint lightIdx = ClusterLightIndices[clusterOffsetCount.x + ci];
+        Lo += EvaluateLight(Lights[lightIdx], input.WorldPos, geomNormal, viewDepth, N, V, albedo, roughness, metallic, F0);
     }
 
     // ==================== IBL (Image-Based Lighting) ====================

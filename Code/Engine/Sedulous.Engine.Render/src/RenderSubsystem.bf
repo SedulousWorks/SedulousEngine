@@ -418,6 +418,11 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer, IS
 		// Reset per-pipeline ring buffer offsets.
 		pipeline.BeginFrame(frameIndex);
 
+		// Ensure cluster buffers are allocated at the correct screen size before
+		// any bind group is created (probes and main pipeline both reference them).
+		if (let clusterSystem = mRenderContext.ClusterSystem)
+			clusterSystem.EnsureBuffers(w, h);
+
 		// Render only this scene's shadow views (not other scenes' accumulated jobs).
 		using (Profiler.Begin("ShadowRender"))
 			RenderShadowRange(encoder, frameIndex, pipeline, shadowStart, mShadowDraws.Count);

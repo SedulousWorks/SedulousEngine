@@ -423,7 +423,19 @@ public class Pipeline : IRenderingPipeline, IDisposable
 			if (mRenderContext.IBLSystem != null)
 				mRenderContext.IBLSystem.ProcessPending(encoder, frameIndex);
 
-			// Rebuild frame bind group (includes this pipeline's light buffer + IBL views)
+			// Assign lights to clusters (compute dispatch). Must run before
+			// RebuildFrameBindGroup so the bind group captures the correct
+			// (possibly reallocated) cluster buffers.
+			if (let clusterSystem = mRenderContext.ClusterSystem)
+			{
+				Matrix invProj = .Identity;
+				Matrix.Invert(view.ProjectionMatrix, out invProj);
+				clusterSystem.AssignLights(encoder, mLightBuffer, frameIndex,
+					mOutputWidth, mOutputHeight, view.NearPlane, view.FarPlane,
+					view.ViewMatrix, invProj);
+			}
+
+			// Rebuild frame bind group (includes light buffer + IBL + cluster buffers)
 			RebuildFrameBindGroup(frame, frameIndex);
 		}
 
@@ -728,6 +740,7 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		encoder.SetBindGroup(BindGroupFrequency.Frame, frame.FrameBindGroup, sceneOffsets);
 	}
 
+
 /// Computes a Halton(2,3) jitter offset in clip space for TAA.
 	/// Returns a sub-pixel offset centered around 0, scaled to clip space.
 	private static Vector2 HaltonJitter(int32 index, uint32 width, uint32 height)
@@ -961,15 +974,27 @@ public class Pipeline : IRenderingPipeline, IDisposable
 			return;
 		}
 
+		// Cluster system buffers
+		let clusterSystem = mRenderContext.ClusterSystem;
+		if (clusterSystem == null) return;
+
+		let clusterParamsBuf = clusterSystem.GetFragParamsBuffer(frameIndex);
+		let clusterOffsetsBuf = clusterSystem.GetClusterOffsetsBuffer(frameIndex);
+		let clusterIndicesBuf = clusterSystem.GetClusterLightIndicesBuffer(frameIndex);
+		if (clusterParamsBuf == null || clusterOffsetsBuf == null || clusterIndicesBuf == null) return;
+
 		// Scene UBO is bound at offset 0 with size = one slot - the dynamic offset
 		// at SetBindGroup time selects which slot in the ring buffer to read.
-		BindGroupEntry[7] bgEntries = .(
+		BindGroupEntry[10] bgEntries = .(
 			BindGroupEntry.Buffer(frame.SceneUniformBuffer, 0, SceneUniforms.Size),
 			BindGroupEntry.Buffer(lightParamsBuf, 0, (uint64)LightParams.Size),
+			BindGroupEntry.Buffer(clusterParamsBuf, 0, (uint64)ClusterFragParams.Size),
 			BindGroupEntry.Buffer(lightBuf, 0, lightBufferSize),
 			BindGroupEntry.Texture(iblSystem.IrradianceMapView),
 			BindGroupEntry.Texture(iblSystem.PrefilterMapView),
 			BindGroupEntry.Texture(iblSystem.BRDFLutView),
+			BindGroupEntry.Buffer(clusterOffsetsBuf, 0, clusterOffsetsBuf.Size),
+			BindGroupEntry.Buffer(clusterIndicesBuf, 0, clusterIndicesBuf.Size),
 			BindGroupEntry.Sampler(iblSystem.EnvironmentSampler)
 		);
 
