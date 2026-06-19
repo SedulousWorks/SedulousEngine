@@ -481,6 +481,18 @@ public class GltfLoader : IModelLoader
 			}
 			if (prim.indices != null)
 				totalIndexCount += (int32)prim.indices.count;
+			else
+			{
+				// Non-indexed primitive: will generate sequential indices
+				for (int a = 0; a < (int)prim.attributes_count; a++)
+				{
+					if (prim.attributes[a].type == .cgltf_attribute_type_position)
+					{
+						totalIndexCount += (int32)prim.attributes[a].data.count;
+						break;
+					}
+				}
+			}
 		}
 
 		if (totalVertexCount == 0)
@@ -624,6 +636,23 @@ public class GltfLoader : IModelLoader
 					uint16* indices = (uint16*)(indexData + indexOffset * 2);
 					for (int32 idx = 0; idx < primIndexCount; idx++)
 						indices[idx] = (uint16)((uint32)cgltf_accessor_read_index(prim.indices, (.)idx) + (uint32)vertexOffset);
+				}
+			}
+			else
+			{
+				// Non-indexed primitive: generate sequential indices (0, 1, 2, ...)
+				primIndexCount = primVertexCount;
+				if (use32Bit)
+				{
+					uint32* indices = (uint32*)(indexData + indexOffset * 4);
+					for (int32 idx = 0; idx < primIndexCount; idx++)
+						indices[idx] = (uint32)(vertexOffset + idx);
+				}
+				else
+				{
+					uint16* indices = (uint16*)(indexData + indexOffset * 2);
+					for (int32 idx = 0; idx < primIndexCount; idx++)
+						indices[idx] = (uint16)(vertexOffset + idx);
 				}
 			}
 

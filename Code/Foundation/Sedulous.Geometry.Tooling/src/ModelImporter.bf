@@ -370,9 +370,16 @@ class ModelImporter
 		let convertedMeshes = scope List<StaticMesh>();
 		String firstName = scope .();
 
-		for (int meshIdx = 0; meshIdx < model.Meshes.Count; meshIdx++)
+		// Iterate nodes (bones) rather than unique meshes so that instanced
+		// nodes — multiple nodes referencing the same mesh with different
+		// transforms — each produce a separate copy with their own baked
+		// world transform. GLTF commonly reuses meshes across nodes.
+		for (let bone in model.Bones)
 		{
-			let modelMesh = model.Meshes[meshIdx];
+			if (bone.MeshIndex < 0) continue;
+			if (bone.SkinIndex >= 0) continue; // skinned meshes handled separately
+
+			let modelMesh = model.Meshes[bone.MeshIndex];
 
 			let mesh = ModelMeshConverter.ConvertToStaticMesh(modelMesh, mOptions.GenerateNormals, mOptions.GenerateTangents);
 			if (mesh == null)
@@ -381,8 +388,8 @@ class ModelImporter
 				continue;
 			}
 
-			// Bake the mesh node's world transform into vertices
-			let nodeTransform = ComputeMeshNodeWorldTransform(model, (int32)meshIdx);
+			// Bake this node's world transform into vertices
+			let nodeTransform = ComputeNodeWorldTransform(model, bone.Index);
 			ApplyTransform(mesh, nodeTransform);
 
 			if (mOptions.Scale != 1.0f)
@@ -775,7 +782,15 @@ class ModelImporter
 		if (nodeIndex < 0)
 			return Matrix.Identity;
 
-		// Walk up the parent chain, accumulating transforms
+		return ComputeNodeWorldTransform(model, nodeIndex);
+	}
+
+	/// Walks the parent chain from a specific node to accumulate its world transform.
+	private Matrix ComputeNodeWorldTransform(Model model, int32 nodeIndex)
+	{
+		if (nodeIndex < 0)
+			return Matrix.Identity;
+
 		Matrix worldTransform = Matrix.Identity;
 		int32 current = nodeIndex;
 		while (current >= 0 && current < model.Bones.Count)
