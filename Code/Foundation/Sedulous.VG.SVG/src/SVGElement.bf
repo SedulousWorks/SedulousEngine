@@ -23,9 +23,9 @@ public class SVGElement
 	/// Transform matrix
 	public Matrix Transform = Matrix.Identity;
 	/// Fill color (null = inherit or none)
-	public Color32? FillColor;
+	public Color? FillColor;
 	/// Stroke color (null = inherit or none)
-	public Color32? StrokeColor;
+	public Color? StrokeColor;
 	/// Stroke width
 	public float StrokeWidth = 1.0f;
 	/// Opacity

@@ -21,12 +21,12 @@ public class VGLinearGradientFill : IVGFill
 	}
 
 	/// Add a color stop
-	public void AddStop(float offset, Color32 color)
+	public void AddStop(float offset, Color color)
 	{
 		Stops.Add(.(offset, color));
 	}
 
-	public Color32 GetColorAt(Vector2 position, RectangleF bounds)
+	public Color GetColorAt(Vector2 position, RectangleF bounds)
 	{
 		let gradientDir = EndPoint - StartPoint;
 		let gradientLenSq = gradientDir.X * gradientDir.X + gradientDir.Y * gradientDir.Y;
@@ -40,13 +40,13 @@ public class VGLinearGradientFill : IVGFill
 		return ColorUtils.InterpolateStops(Stops, t);
 	}
 
-	public Color32 BaseColor
+	public Color BaseColor
 	{
 		get
 		{
 			if (Stops.Count > 0)
 				return Stops[0].Color;
-			return Color32.White;
+			return Color.White;
 		}
 	}
 

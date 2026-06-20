@@ -8,7 +8,7 @@ namespace Sedulous.VG;
 public static class FillTessellator
 {
 	/// Tessellate a filled path into vertices and indices
-	public static void Tessellate(Path path, FillRule fillRule, Color32 color, bool antiAlias, List<VGVertex> vertices, List<uint32> indices, float tolerance = 0.25f)
+	public static void Tessellate(Path path, FillRule fillRule, Color color, bool antiAlias, List<VGVertex> vertices, List<uint32> indices, float tolerance = 0.25f)
 	{
 		// Flatten path to polylines
 		let subPaths = scope List<FlattenedSubPath>();
@@ -94,7 +94,7 @@ public static class FillTessellator
 	}
 
 	/// Tessellate with connected AA fringe ring
-	private static void TessellateWithAA(Span<Vector2> points, FillRule fillRule, Color32 color, List<VGVertex> vertices, List<uint32> indices)
+	private static void TessellateWithAA(Span<Vector2> points, FillRule fillRule, Color color, List<VGVertex> vertices, List<uint32> indices)
 	{
 		let n = points.Length;
 		let fringeWidth = 0.75f;
@@ -162,7 +162,7 @@ public static class FillTessellator
 
 		// Outer ring vertices (zero opacity, coverage = 0)
 		let outerBaseIdx = (uint32)vertices.Count;
-		let transColor = Color32(color.R, color.G, color.B, 0);
+		let transColor = Color(color.R, color.G, color.B, 0);
 		for (int i = 0; i < n; i++)
 		{
 			let outerPt = points[i] + normals[i] * (fringeWidth * 0.5f);
@@ -246,7 +246,7 @@ public static class FillTessellator
 		{
 			let outerPt = points[i] + normals[i] * (fringeWidth * 0.5f);
 			let fillColor = fill.GetColorAt(points[i], bounds);
-			vertices.Add(.Solid(outerPt, Color32(fillColor.R, fillColor.G, fillColor.B, 0), 0.0f));
+			vertices.Add(.Solid(outerPt, Color(fillColor.R, fillColor.G, fillColor.B, 0), 0.0f));
 		}
 
 		for (int i = 0; i < n; i++)

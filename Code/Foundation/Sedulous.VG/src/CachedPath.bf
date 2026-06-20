@@ -11,7 +11,7 @@ public class CachedPath
 	private List<VGVertex> mFillVertices ~ delete _;
 	private List<uint32> mFillIndices ~ delete _;
 	private bool mFillValid;
-	private Color32 mFillColor;
+	private Color mFillColor;
 	private FillRule mFillRule;
 	private bool mFillAA;
 
@@ -20,7 +20,7 @@ public class CachedPath
 	private List<uint32> mStrokeIndices ~ delete _;
 	private bool mStrokeValid;
 	private StrokeStyle mStrokeStyle;
-	private Color32 mStrokeColor;
+	private Color mStrokeColor;
 	private bool mStrokeAA;
 
 	/// Access count for LRU eviction
@@ -37,13 +37,13 @@ public class CachedPath
 	public bool IsStrokeValid => mStrokeValid;
 
 	/// Check if the cached fill matches the requested style
-	public bool FillMatches(Color32 color, FillRule fillRule, bool antiAlias)
+	public bool FillMatches(Color color, FillRule fillRule, bool antiAlias)
 	{
 		return mFillValid && mFillColor == color && mFillRule == fillRule && mFillAA == antiAlias;
 	}
 
 	/// Check if the cached stroke matches the requested style
-	public bool StrokeMatches(Color32 color, StrokeStyle style, bool antiAlias)
+	public bool StrokeMatches(Color color, StrokeStyle style, bool antiAlias)
 	{
 		return mStrokeValid && mStrokeColor == color &&
 			   mStrokeStyle.Width == style.Width &&
@@ -83,7 +83,7 @@ public class CachedPath
 	}
 
 	/// Store fill tessellation data
-	public void SetFillData(List<VGVertex> vertices, List<uint32> fillIndices, Color32 color, FillRule fillRule, bool antiAlias)
+	public void SetFillData(List<VGVertex> vertices, List<uint32> fillIndices, Color color, FillRule fillRule, bool antiAlias)
 	{
 		if (mFillVertices == null)
 		{
@@ -102,7 +102,7 @@ public class CachedPath
 	}
 
 	/// Store stroke tessellation data
-	public void SetStrokeData(List<VGVertex> vertices, List<uint32> strokeIndices, Color32 color, StrokeStyle style, bool antiAlias)
+	public void SetStrokeData(List<VGVertex> vertices, List<uint32> strokeIndices, Color color, StrokeStyle style, bool antiAlias)
 	{
 		if (mStrokeVertices == null)
 		{

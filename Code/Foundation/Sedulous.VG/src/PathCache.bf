@@ -21,7 +21,7 @@ public class PathCache
 	}
 
 	/// Get or tessellate a filled path
-	public void GetOrTessellateFill(Path path, Color32 color, FillRule fillRule, bool antiAlias,
+	public void GetOrTessellateFill(Path path, Color color, FillRule fillRule, bool antiAlias,
 		List<VGVertex> outVertices, List<uint32> outIndices, float tolerance = 0.25f)
 	{
 		var cached = GetOrCreate(path);
@@ -56,7 +56,7 @@ public class PathCache
 	}
 
 	/// Get or tessellate a stroked path
-	public void GetOrTessellateStroke(Path path, Color32 color, StrokeStyle style,
+	public void GetOrTessellateStroke(Path path, Color color, StrokeStyle style,
 		Span<float> dashPattern, bool antiAlias,
 		List<VGVertex> outVertices, List<uint32> outIndices, float tolerance = 0.25f)
 	{

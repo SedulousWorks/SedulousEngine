@@ -172,8 +172,8 @@ class VGSandboxApp : Application
 				defer delete path;
 
 				let fill = scope VGRadialGradientFill(.(cx, cy), Math.Max(ex, ey));
-				fill.AddStop(0.0f, Color32(0, 0, 0, 40));
-				fill.AddStop(1.0f, Color32(0, 0, 0, 0));
+				fill.AddStop(0.0f, Color(0, 0, 0, 40));
+				fill.AddStop(1.0f, Color(0, 0, 0, 0));
 				vg.FillPath(path, fill);
 			}
 
@@ -185,8 +185,8 @@ class VGSandboxApp : Application
 				defer delete path;
 
 				let fill = scope VGLinearGradientFill(.(cx, cy - ey * 0.5f), .(cx, cy + ey * 0.5f));
-				fill.AddStop(0.0f, Color32(255, 255, 255, 255));
-				fill.AddStop(1.0f, Color32(220, 220, 220, 255));
+				fill.AddStop(0.0f, Color(255, 255, 255, 255));
+				fill.AddStop(1.0f, Color(220, 220, 220, 255));
 				vg.FillPath(path, fill);
 			}
 
@@ -211,17 +211,17 @@ class VGSandboxApp : Application
 					defer delete path;
 
 					let fill = scope VGRadialGradientFill(.(irisX, irisY), br);
-					fill.AddStop(0.0f, Color32(60, 90, 160, 255));
-					fill.AddStop(0.7f, Color32(30, 50, 90, 255));
-					fill.AddStop(1.0f, Color32(20, 30, 60, 255));
+					fill.AddStop(0.0f, Color(60, 90, 160, 255));
+					fill.AddStop(0.7f, Color(30, 50, 90, 255));
+					fill.AddStop(1.0f, Color(20, 30, 60, 255));
 					vg.FillPath(path, fill);
 				}
 
 				// Pupil
-				vg.FillCircle(.(irisX, irisY), br * 0.45f, Color32(20, 20, 20, 255));
+				vg.FillCircle(.(irisX, irisY), br * 0.45f, Color(20, 20, 20, 255));
 
 				// Glint
-				vg.FillCircle(.(irisX - br * 0.25f, irisY - br * 0.2f), br * 0.15f, Color32(255, 255, 255, 200));
+				vg.FillCircle(.(irisX - br * 0.25f, irisY - br * 0.2f), br * 0.15f, Color(255, 255, 255, 200));
 			}
 		}
 	}
@@ -262,8 +262,8 @@ class VGSandboxApp : Application
 			defer delete path;
 
 			let fill = scope VGLinearGradientFill(.(x, y), .(x, y + h));
-			fill.AddStop(0.0f, Color32(0, 160, 192, 128));
-			fill.AddStop(1.0f, Color32(0, 160, 192, 16));
+			fill.AddStop(0.0f, Color(0, 160, 192, 128));
+			fill.AddStop(1.0f, Color(0, 160, 192, 16));
 			vg.FillPath(path, fill);
 		}
 
@@ -290,12 +290,12 @@ class VGSandboxApp : Application
 			let shadowStyle = StrokeStyle() { Width = 3.0f, Cap = .Round, Join = .Round };
 			vg.PushState();
 			vg.Translate(0, 2);
-			vg.StrokePath(path, Color32(0, 0, 0, 32), shadowStyle);
+			vg.StrokePath(path, Color(0, 0, 0, 32), shadowStyle);
 			vg.PopState();
 
 			// Main line
 			let lineStyle = StrokeStyle() { Width = 3.0f, Cap = .Round, Join = .Round };
-			vg.StrokePath(path, Color32(0, 160, 192, 255), lineStyle);
+			vg.StrokePath(path, Color(0, 160, 192, 255), lineStyle);
 		}
 
 		// Sample point dots
@@ -311,15 +311,15 @@ class VGSandboxApp : Application
 				let path = builder.ToPath();
 				defer delete path;
 				let fill = scope VGRadialGradientFill(.(sx, sy + 2), 6.0f);
-				fill.AddStop(0.0f, Color32(0, 0, 0, 32));
-				fill.AddStop(1.0f, Color32(0, 0, 0, 0));
+				fill.AddStop(0.0f, Color(0, 0, 0, 32));
+				fill.AddStop(1.0f, Color(0, 0, 0, 0));
 				vg.FillPath(path, fill);
 			}
 
 			// Outer dot
-			vg.FillCircle(.(sx, sy), 4.0f, Color32(0, 160, 192, 255));
+			vg.FillCircle(.(sx, sy), 4.0f, Color(0, 160, 192, 255));
 			// Inner highlight
-			vg.FillCircle(.(sx, sy), 2.0f, Color32(220, 240, 255, 255));
+			vg.FillCircle(.(sx, sy), 2.0f, Color(220, 240, 255, 255));
 		}
 	}
 
@@ -393,7 +393,7 @@ class VGSandboxApp : Application
 			builder.Close();
 			let path = builder.ToPath();
 			defer delete path;
-			vg.StrokePath(path, Color32(255, 255, 255, 192), style);
+			vg.StrokePath(path, Color(255, 255, 255, 192), style);
 
 			vg.PopState();
 		}
@@ -421,7 +421,7 @@ class VGSandboxApp : Application
 
 			// Base hue fill
 			let fill1 = scope VGLinearGradientFill(.(ax, ay), .(cxx, cyy));
-			fill1.AddStop(0.0f, Color32.White);
+			fill1.AddStop(0.0f, Color.White);
 			fill1.AddStop(1.0f, hueColor);
 			vg.FillPath(path, fill1);
 
@@ -430,18 +430,18 @@ class VGSandboxApp : Application
 				.((ax + bx) * 0.5f, (ay + by) * 0.5f),
 				.(cxx, cyy)
 			);
-			fill2.AddStop(0.0f, Color32(0, 0, 0, 128));
-			fill2.AddStop(1.0f, Color32(0, 0, 0, 0));
+			fill2.AddStop(0.0f, Color(0, 0, 0, 128));
+			fill2.AddStop(1.0f, Color(0, 0, 0, 0));
 			vg.FillPath(path, fill2);
 
 			// Triangle outline
 			let style = StrokeStyle() { Width = 2.0f };
-			vg.StrokePath(path, Color32(0, 0, 0, 64), style);
+			vg.StrokePath(path, Color(0, 0, 0, 64), style);
 
 			// Selection dot
 			let selX = ax + (cxx - ax) * 0.3f + (bx - ax) * 0.4f;
 			let selY = ay + (cyy - ay) * 0.3f + (by - ay) * 0.4f;
-			vg.StrokeCircle(.(selX, selY), 5.0f, Color32(255, 255, 255, 192), 2.0f);
+			vg.StrokeCircle(.(selX, selY), 5.0f, Color(255, 255, 255, 192), 2.0f);
 			vg.FillCircle(.(selX, selY), 3.5f, hueColor);
 		}
 	}
@@ -460,13 +460,13 @@ class VGSandboxApp : Application
 		vg.DrawImage(mCheckerboard,
 			.(x + 230, y, 80, 80),
 			.(0, 0, mCheckerboard.Width, mCheckerboard.Height),
-			Color32(255, 120, 120, 220));
+			Color(255, 120, 120, 220));
 
 		// 4. Sub-region (top-left 64x64 of the atlas) enlarged.
 		vg.DrawImage(mCheckerboard,
 			.(x + 320, y, 80, 80),
 			.(0, 0, 64, 64),
-			Color32.White);
+			Color.White);
 
 		// 5. Rotated draw via the transform stack, verifying per-vertex transform.
 		vg.PushState();
@@ -489,7 +489,7 @@ class VGSandboxApp : Application
 		vg.CubicTo(x + 120, y + 25 - Math.Sin(t * 1.5f + 1) * 15,
 		           x + 150, y + 25 + Math.Sin(t * 1.5f + 1) * 15,
 		           x + 180, y + 25);
-		vg.Stroke(Color32(120, 200, 255, 255), 3.0f);
+		vg.Stroke(Color(120, 200, 255, 255), 3.0f);
 
 		// Filled star built with straight LineTo segments, then closed.
 		let cx = x + 230;
@@ -508,7 +508,7 @@ class VGSandboxApp : Application
 			else vg.LineTo(px, py);
 		}
 		vg.ClosePath();
-		vg.Fill(Color32(255, 220, 120, 255));
+		vg.Fill(Color(255, 220, 120, 255));
 
 		// Teardrop shape using QuadTo - shows mixing move/line/quad/close freely.
 		vg.BeginPath();
@@ -516,14 +516,14 @@ class VGSandboxApp : Application
 		vg.QuadTo(x + 320, y + 25, x + 290, y + 45);
 		vg.QuadTo(x + 260, y + 25, x + 290, y + 5);
 		vg.ClosePath();
-		vg.Fill(Color32(220, 140, 255, 255));
-		vg.Stroke(Color32(255, 255, 255, 120), 1.0f);
+		vg.Fill(Color(220, 140, 255, 255));
+		vg.Stroke(Color(255, 255, 255, 120), 1.0f);
 	}
 
 	/// Demonstrates SVG rendering via SVGRenderer (standalone, no UI framework).
 	private void DrawSVGDemo(VGContext vg, float x, float y)
 	{
-		vg.DrawText("SVG Rendering", mFontMedium, .(x, y + 16), Color32(240, 240, 245, 255));
+		vg.DrawText("SVG Rendering", mFontMedium, .(x, y + 16), Color(240, 240, 245, 255));
 
 		if (mSVGBadge != null)
 		{
@@ -532,7 +532,7 @@ class VGSandboxApp : Application
 			// Smaller
 			SVGRenderer.Render(vg, mSVGBadge, .(x + 90, y + 34, 48, 48));
 			// Tinted
-			SVGRenderer.Render(vg, mSVGBadge, .(x + 148, y + 34, 48, 48), Color32(255, 120, 80, 255));
+			SVGRenderer.Render(vg, mSVGBadge, .(x + 148, y + 34, 48, 48), Color(255, 120, 80, 255));
 		}
 
 		if (mSVGIcon != null)
@@ -550,29 +550,29 @@ class VGSandboxApp : Application
 	private void DrawUIConvenience(VGContext vg, float x, float y)
 	{
 		// DrawLine - quick point-to-point. No PathBuilder ceremony.
-		vg.DrawLine(.(x, y + 5), .(x + 120, y + 5), Color32(200, 220, 255, 255), 1.0f);
-		vg.DrawLine(.(x, y + 15), .(x + 120, y + 15), Color32(200, 220, 255, 255), 2.5f);
-		vg.DrawLine(.(x, y + 30), .(x + 120, y + 30), Color32(200, 220, 255, 255), 5.0f);
+		vg.DrawLine(.(x, y + 5), .(x + 120, y + 5), Color(200, 220, 255, 255), 1.0f);
+		vg.DrawLine(.(x, y + 15), .(x + 120, y + 15), Color(200, 220, 255, 255), 2.5f);
+		vg.DrawLine(.(x, y + 30), .(x + 120, y + 30), Color(200, 220, 255, 255), 5.0f);
 
 		// StrokeEllipse - was missing from VG before this phase.
-		vg.StrokeEllipse(.(x + 180, y + 20), 40, 18, Color32(255, 200, 140, 255), 2.0f);
+		vg.StrokeEllipse(.(x + 180, y + 20), 40, 18, Color(255, 200, 140, 255), 2.0f);
 
 		// Border vs Stroke comparison - draw both around the same rect so the
 		// inset difference is visible. The outer edge of DrawBorderRect aligns
 		// exactly with the rect; StrokeRect's stroke straddles the edge.
 		let compareRect = RectangleF(x + 250, y, 60, 40);
-		vg.DrawBorderRect(compareRect, Color32(120, 255, 160, 255), 4.0f);
+		vg.DrawBorderRect(compareRect, Color(120, 255, 160, 255), 4.0f);
 		// Ghost outline showing where the rect actually is (1px inside the border).
-		vg.StrokeRect(compareRect, Color32(255, 255, 255, 60), 1.0f);
+		vg.StrokeRect(compareRect, Color(255, 255, 255, 60), 1.0f);
 
 		// Same for rounded: outer edge aligns with rect bounds.
 		let roundedRect = RectangleF(x + 330, y, 80, 40);
-		vg.DrawBorderRoundedRect(roundedRect, 10, Color32(180, 160, 255, 255), 3.0f);
+		vg.DrawBorderRoundedRect(roundedRect, 10, Color(180, 160, 255, 255), 3.0f);
 
 		// Per-corner rounded border (different radius each corner).
 		let customRect = RectangleF(x + 430, y, 80, 40);
 		vg.DrawBorderRoundedRect(customRect, CornerRadii(2, 12, 2, 12),
-			Color32(255, 180, 220, 255), 2.0f);
+			Color(255, 180, 220, 255), 2.0f);
 	}
 
 	/// Demonstrates Phase 3 text rendering: multiple sizes, alignments, tinting,
@@ -580,25 +580,25 @@ class VGSandboxApp : Application
 	private void DrawTextDemo(VGContext vg, float x, float y, float t)
 	{
 		// Plain text at a baseline position, multiple sizes.
-		vg.DrawText("Sedulous.VG text rendering", mFontLarge, .(x, y + 30), Color32(240, 240, 245, 255));
-		vg.DrawText("Medium size - the quick brown fox", mFontMedium, .(x, y + 60), Color32(180, 200, 255, 255));
-		vg.DrawText("small caption @ 14px", mFontSmall, .(x, y + 82), Color32(160, 170, 180, 255));
+		vg.DrawText("Sedulous.VG text rendering", mFontLarge, .(x, y + 30), Color(240, 240, 245, 255));
+		vg.DrawText("Medium size - the quick brown fox", mFontMedium, .(x, y + 60), Color(180, 200, 255, 255));
+		vg.DrawText("small caption @ 14px", mFontSmall, .(x, y + 82), Color(160, 170, 180, 255));
 
 		// Tinted + animated color - exercises ApplyOpacity and per-vertex color path.
-		let pulse = (uint8)(160 + Math.Sin(t * 2) * 60);
-		vg.DrawText("pulsing tint", mFontMedium, .(x, y + 108), Color32(255, pulse, 80, 255));
+		let pulse = (int32)(160 + Math.Sin(t * 2) * 60);
+		vg.DrawText("pulsing tint", mFontMedium, .(x, y + 108), Color(255, pulse, 80, 255));
 
 		// Alignment inside a bounds rect - draw an outline first so the box is visible.
 		let boxRect = RectangleF(x + 350, y + 50, 200, 60);
-		vg.StrokeRect(boxRect, Color32(80, 100, 120, 255), 1.0f);
+		vg.StrokeRect(boxRect, Color(80, 100, 120, 255), 1.0f);
 		vg.DrawText("centered", mFontMedium.Font, mFontMedium.Atlas, mFontService.GetAtlasTexture(mFontMedium),
-			boxRect, .Center, .Middle, Color32(220, 220, 220, 255));
+			boxRect, .Center, .Middle, Color(220, 220, 220, 255));
 
 		// Rotated text via transform stack - confirms glyph quads go through TransformVertices.
 		vg.PushState();
 		vg.Translate(x + 280, y + 130);
 		vg.Rotate(Math.Sin(t * 0.7f) * 0.3f);
-		vg.DrawText("rotated!", mFontLarge, .(-60, 10), Color32(120, 255, 160, 255));
+		vg.DrawText("rotated!", mFontLarge, .(-60, 10), Color(120, 255, 160, 255));
 		vg.PopState();
 	}
 
@@ -614,7 +614,7 @@ class VGSandboxApp : Application
 			builder.LineTo(x + 100, y + (float)i * 10);
 			let path = builder.ToPath();
 			defer delete path;
-			vg.StrokePath(path, Color32(255, 255, 255, 255), style);
+			vg.StrokePath(path, Color(255, 255, 255, 255), style);
 		}
 	}
 
@@ -633,7 +633,7 @@ class VGSandboxApp : Application
 			builder.LineTo(x + 80, ly);
 			let path = builder.ToPath();
 			defer delete path;
-			vg.StrokePath(path, Color32(255, 255, 255, 160), style);
+			vg.StrokePath(path, Color(255, 255, 255, 160), style);
 
 			// Thin reference line showing actual endpoints
 			let refStyle = StrokeStyle() { Width = 1.0f };
@@ -642,7 +642,7 @@ class VGSandboxApp : Application
 			refBuilder.LineTo(x + 80, ly);
 			let refPath = refBuilder.ToPath();
 			defer delete refPath;
-			vg.StrokePath(refPath, Color32(0, 192, 255, 255), refStyle);
+			vg.StrokePath(refPath, Color(0, 192, 255, 255), refStyle);
 		}
 	}
 
@@ -681,11 +681,11 @@ class VGSandboxApp : Application
 
 				// Thick stroke showing join
 				let thickStyle = StrokeStyle() { Width = s * 0.3f, Cap = caps[j], Join = joins[i] };
-				vg.StrokePath(path, Color32(0, 0, 0, 160), thickStyle);
+				vg.StrokePath(path, Color(0, 0, 0, 160), thickStyle);
 
 				// Thin overlay
 				let thinStyle = StrokeStyle() { Width = 1.0f, Cap = .Butt, Join = .Miter };
-				vg.StrokePath(path, Color32(0, 192, 255, 255), thinStyle);
+				vg.StrokePath(path, Color(0, 192, 255, 255), thinStyle);
 			}
 		}
 	}
@@ -697,7 +697,7 @@ class VGSandboxApp : Application
 		vg.PushState();
 		vg.Translate(x, y);
 		vg.Rotate(5.0f * Math.PI_f / 180.0f);
-		vg.FillRect(.(-20, -20, 60, 40), Color32(255, 0, 0, 255));
+		vg.FillRect(.(-20, -20, 60, 40), Color(255, 0, 0, 255));
 
 		// Set clip to first rect
 		vg.PushClipRect(.(-20, -20, 60, 40));
@@ -708,18 +708,18 @@ class VGSandboxApp : Application
 
 		// Unclipped preview (semi-transparent)
 		vg.PopClip();
-		vg.FillRect(.(-20, -10, 60, 30), Color32(255, 128, 0, 64));
+		vg.FillRect(.(-20, -10, 60, 30), Color(255, 128, 0, 64));
 
 		// Clipped version
 		vg.PushClipRect(.(-60, -30, 60, 40));
-		vg.FillRect(.(-20, -10, 60, 30), Color32(255, 128, 0, 255));
+		vg.FillRect(.(-20, -10, 60, 30), Color(255, 128, 0, 255));
 		vg.PopClip();
 
 		vg.PopState();
 	}
 
 	/// Convert HSL to Color
-	private static Color32 HSLToColor(float h, float s, float l)
+	private static Color HSLToColor(float h, float s, float l)
 	{
 		var h;
 		h = h % 1.0f;
@@ -739,7 +739,7 @@ class VGSandboxApp : Application
 			b = HueToRGB(p, q, h - 1.0f / 3.0f);
 		}
 
-		return Color32((uint8)(r * 255), (uint8)(g * 255), (uint8)(b * 255), 255);
+		return Color(r, g, b, 1.0f);
 	}
 
 	private static float HueToRGB(float p, float q, float t)

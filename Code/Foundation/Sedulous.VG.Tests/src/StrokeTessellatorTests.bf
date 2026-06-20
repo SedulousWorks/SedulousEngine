@@ -14,7 +14,7 @@ class StrokeTessellatorTests
 		let vertices = scope List<VGVertex>();
 		let indices = scope List<uint32>();
 
-		StrokeTessellator.Tessellate(Span<Vector2>(&points, 2), false, .(2.0f), default, false, Color32.White, vertices, indices);
+		StrokeTessellator.Tessellate(Span<Vector2>(&points, 2), false, .(2.0f), default, false, Color.White, vertices, indices);
 
 		// Simple line should produce at least 4 vertices (quad strip)
 		Test.Assert(vertices.Count >= 4);
@@ -29,12 +29,12 @@ class StrokeTessellatorTests
 		let verticesClosed = scope List<VGVertex>();
 		let indicesClosed = scope List<uint32>();
 
-		StrokeTessellator.Tessellate(Span<Vector2>(&points, 3), true, .(2.0f), default, false, Color32.White, verticesClosed, indicesClosed);
+		StrokeTessellator.Tessellate(Span<Vector2>(&points, 3), true, .(2.0f), default, false, Color.White, verticesClosed, indicesClosed);
 
 		// Open path with square caps
 		let verticesOpen = scope List<VGVertex>();
 		let indicesOpen = scope List<uint32>();
-		StrokeTessellator.Tessellate(Span<Vector2>(&points, 3), false, .(2.0f, .Square, .Miter), default, false, Color32.White, verticesOpen, indicesOpen);
+		StrokeTessellator.Tessellate(Span<Vector2>(&points, 3), false, .(2.0f, .Square, .Miter), default, false, Color.White, verticesOpen, indicesOpen);
 
 		// Closed path should not have caps, open path with Square caps should have more vertices
 		Test.Assert(verticesOpen.Count > verticesClosed.Count || indicesOpen.Count > indicesClosed.Count);
@@ -47,11 +47,11 @@ class StrokeTessellatorTests
 
 		let vertsButt = scope List<VGVertex>();
 		let idxButt = scope List<uint32>();
-		StrokeTessellator.Tessellate(Span<Vector2>(&points, 2), false, .(4.0f, .Butt, .Miter), default, false, Color32.White, vertsButt, idxButt);
+		StrokeTessellator.Tessellate(Span<Vector2>(&points, 2), false, .(4.0f, .Butt, .Miter), default, false, Color.White, vertsButt, idxButt);
 
 		let vertsRound = scope List<VGVertex>();
 		let idxRound = scope List<uint32>();
-		StrokeTessellator.Tessellate(Span<Vector2>(&points, 2), false, .(4.0f, .Round, .Miter), default, false, Color32.White, vertsRound, idxRound);
+		StrokeTessellator.Tessellate(Span<Vector2>(&points, 2), false, .(4.0f, .Round, .Miter), default, false, Color.White, vertsRound, idxRound);
 
 		// Round caps should add more vertices
 		Test.Assert(vertsRound.Count > vertsButt.Count);
@@ -64,7 +64,7 @@ class StrokeTessellatorTests
 		let vertices = scope List<VGVertex>();
 		let indices = scope List<uint32>();
 
-		StrokeTessellator.Tessellate(Span<Vector2>(&points, 4), false, .(2.0f), default, false, Color32.White, vertices, indices);
+		StrokeTessellator.Tessellate(Span<Vector2>(&points, 4), false, .(2.0f), default, false, Color.White, vertices, indices);
 
 		// 4 points = 3 segments, each needs a quad = at least 8 vertices
 		Test.Assert(vertices.Count >= 8);

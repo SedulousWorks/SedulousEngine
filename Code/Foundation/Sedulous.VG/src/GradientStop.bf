@@ -8,9 +8,9 @@ public struct GradientStop
 	/// Position along the gradient (0.0 = start, 1.0 = end)
 	public float Offset;
 	/// Color at this stop
-	public Color32 Color;
+	public Color Color;
 
-	public this(float offset, Color32 color)
+	public this(float offset, Color color)
 	{
 		Offset = offset;
 		Color = color;

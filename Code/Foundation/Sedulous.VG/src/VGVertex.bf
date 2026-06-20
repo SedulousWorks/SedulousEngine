@@ -22,30 +22,30 @@ public struct VGVertex
 	/// Fixed UV for solid color drawing
 	public const float SolidUV = 0.5f;
 
-	public this(Vector2 position, Vector2 texCoord, Color32 color, float coverage = 1.0f)
+	public this(Vector2 position, Vector2 texCoord, Color color, float coverage = 1.0f)
 	{
 		Position = position;
 		TexCoord = texCoord;
-		Color = color;
+		Color = color.ToColor32();
 		Coverage = coverage;
 	}
 
-	public this(float x, float y, float u, float v, Color32 color, float coverage = 1.0f)
+	public this(float x, float y, float u, float v, Color color, float coverage = 1.0f)
 	{
 		Position = .(x, y);
 		TexCoord = .(u, v);
-		Color = color;
+		Color = color.ToColor32();
 		Coverage = coverage;
 	}
 
 	/// Create a solid-color vertex (no texture)
-	public static VGVertex Solid(Vector2 position, Color32 color, float coverage = 1.0f)
+	public static VGVertex Solid(Vector2 position, Color color, float coverage = 1.0f)
 	{
 		return .(position, .(SolidUV, SolidUV), color, coverage);
 	}
 
 	/// Create a solid-color vertex (no texture)
-	public static VGVertex Solid(float x, float y, Color32 color, float coverage = 1.0f)
+	public static VGVertex Solid(float x, float y, Color color, float coverage = 1.0f)
 	{
 		return .(x, y, SolidUV, SolidUV, color, coverage);
 	}

@@ -21,12 +21,12 @@ public class VGConicGradientFill : IVGFill
 	}
 
 	/// Add a color stop
-	public void AddStop(float offset, Color32 color)
+	public void AddStop(float offset, Color color)
 	{
 		Stops.Add(.(offset, color));
 	}
 
-	public Color32 GetColorAt(Vector2 position, RectangleF bounds)
+	public Color GetColorAt(Vector2 position, RectangleF bounds)
 	{
 		let dx = position.X - Center.X;
 		let dy = position.Y - Center.Y;
@@ -43,13 +43,13 @@ public class VGConicGradientFill : IVGFill
 		return ColorUtils.InterpolateStops(Stops, t);
 	}
 
-	public Color32 BaseColor
+	public Color BaseColor
 	{
 		get
 		{
 			if (Stops.Count > 0)
 				return Stops[0].Color;
-			return Color32.White;
+			return Color.White;
 		}
 	}
 
