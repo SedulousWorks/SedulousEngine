@@ -419,11 +419,11 @@ public class TabControl : Control
 		}
 
 		let palette = Context?.Theme?.Palette ?? Palette();
-		let contentBg = Background.A > 0 ? Background : (palette.Surface.A > 0 ? palette.Surface : Color(45, 45, 45, 255));
+		let contentBg = Background.A > 0 ? Background : (palette.Surface.A > 0 ? palette.Surface : Color32(45, 45, 45, 255));
 		ctx.FillRect(contentAreaBounds, contentBg);
 
 		// Draw tab strip background
-		let stripBg = palette.Background.A > 0 ? palette.Background : Color(35, 35, 35, 255);
+		let stripBg = palette.Background.A > 0 ? palette.Background : Color32(35, 35, 35, 255);
 		RectangleF tabStripBounds;
 		switch (mTabStripPlacement)
 		{
@@ -448,7 +448,7 @@ public class TabControl : Control
 		}
 
 		// Draw border between tab strip and content
-		let borderColor = palette.Border.A > 0 ? palette.Border : Color(80, 80, 80, 255);
+		let borderColor = palette.Border.A > 0 ? palette.Border : Color32(80, 80, 80, 255);
 		switch (mTabStripPlacement)
 		{
 		case .Top:

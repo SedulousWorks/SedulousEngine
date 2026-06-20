@@ -88,7 +88,7 @@ class AnimationDemo
 		mFadePanel = new Panel();
 		mFadePanel.Width = 100;
 		mFadePanel.Height = 60;
-		mFadePanel.Background = Color(100, 150, 220, 255);
+		mFadePanel.Background = Color32(100, 150, 220, 255);
 		mFadePanel.Margin = .(10, 5, 10, 5);
 		section.AddChild(mFadePanel);
 
@@ -135,7 +135,7 @@ class AnimationDemo
 		mSlidePanel = new Panel();
 		mSlidePanel.Width = 60;
 		mSlidePanel.Height = 60;
-		mSlidePanel.Background = Color(220, 150, 100, 255);
+		mSlidePanel.Background = Color32(220, 150, 100, 255);
 		mSlidePanel.Margin = .(10, 10, 10, 10);
 		container.Child = mSlidePanel;
 
@@ -191,7 +191,7 @@ class AnimationDemo
 		mColorPanel = new Panel();
 		mColorPanel.Width = 120;
 		mColorPanel.Height = 60;
-		mColorPanel.Background = Color(100, 100, 100, 255);
+		mColorPanel.Background = Color32(100, 100, 100, 255);
 		mColorPanel.Margin = .(10, 5, 10, 5);
 		section.AddChild(mColorPanel);
 
@@ -205,7 +205,7 @@ class AnimationDemo
 		toRedBtn.Width = 60;
 		toRedBtn.Margin = .(0, 0, 5, 0);
 		toRedBtn.Click.Subscribe(new (btn) => {
-			AnimateColor(Color(220, 80, 80, 255));
+			AnimateColor(Color32(220, 80, 80, 255));
 			UpdateStatus("Animating to red");
 		});
 		buttonRow.AddChild(toRedBtn);
@@ -214,7 +214,7 @@ class AnimationDemo
 		toGreenBtn.Width = 60;
 		toGreenBtn.Margin = .(0, 0, 5, 0);
 		toGreenBtn.Click.Subscribe(new (btn) => {
-			AnimateColor(Color(80, 200, 100, 255));
+			AnimateColor(Color32(80, 200, 100, 255));
 			UpdateStatus("Animating to green");
 		});
 		buttonRow.AddChild(toGreenBtn);
@@ -222,7 +222,7 @@ class AnimationDemo
 		let toBlueBtn = new Button("Blue");
 		toBlueBtn.Width = 60;
 		toBlueBtn.Click.Subscribe(new (btn) => {
-			AnimateColor(Color(80, 120, 220, 255));
+			AnimateColor(Color32(80, 120, 220, 255));
 			UpdateStatus("Animating to blue");
 		});
 		buttonRow.AddChild(toBlueBtn);
@@ -230,7 +230,7 @@ class AnimationDemo
 		return section;
 	}
 
-	private void AnimateColor(Color targetColor)
+	private void AnimateColor(Color32 targetColor)
 	{
 		let context = mColorPanel.Context;
 		if (context == null)
@@ -261,7 +261,7 @@ class AnimationDemo
 		mEasingPanel = new Panel();
 		mEasingPanel.Width = 40;
 		mEasingPanel.Height = 40;
-		mEasingPanel.Background = Color(200, 180, 100, 255);
+		mEasingPanel.Background = Color32(200, 180, 100, 255);
 		mEasingPanel.Margin = .(10, 10, 10, 10);
 		container.Child = mEasingPanel;
 
@@ -338,7 +338,7 @@ class AnimationDemo
 		mStoryboardPanel = new Panel();
 		mStoryboardPanel.Width = 80;
 		mStoryboardPanel.Height = 50;
-		mStoryboardPanel.Background = Color(150, 100, 200, 255);
+		mStoryboardPanel.Background = Color32(150, 100, 200, 255);
 		mStoryboardPanel.Margin = .(10, 10, 10, 10);
 		mStoryboardPanel.Opacity = 1;
 		section.AddChild(mStoryboardPanel);
@@ -362,7 +362,7 @@ class AnimationDemo
 		resetBtn.Click.Subscribe(new (btn) => {
 			mStoryboardPanel.Opacity = 1;
 			mStoryboardPanel.Margin = .(10, 10, 10, 10);
-			mStoryboardPanel.Background = Color(150, 100, 200, 255);
+			mStoryboardPanel.Background = Color32(150, 100, 200, 255);
 			UpdateStatus("Reset storyboard panel");
 		});
 		buttonRow.AddChild(resetBtn);
@@ -387,7 +387,7 @@ class AnimationDemo
 			// Reset state first
 			mStoryboardPanel.Opacity = 0;
 			mStoryboardPanel.Margin = .(10, 10, 10, 10);
-			mStoryboardPanel.Background = Color(150, 100, 200, 255);
+			mStoryboardPanel.Background = Color32(150, 100, 200, 255);
 
 			// Create storyboard
 			let sb = new Storyboard();
@@ -405,7 +405,7 @@ class AnimationDemo
 			sb.Add(slide, 0.3f);
 
 			// 3. Color change (0.6s - 0.9s)
-			let colorAnim = ColorAnimation.Background(Color(150, 100, 200, 255), Color(100, 200, 150, 255));
+			let colorAnim = ColorAnimation.Background(Color32(150, 100, 200, 255), Color32(100, 200, 150, 255));
 			colorAnim.Duration = 0.3f;
 			sb.Add(colorAnim, 0.6f);
 
@@ -423,7 +423,7 @@ class AnimationDemo
 		mLoopingPanel = new Panel();
 		mLoopingPanel.Width = 60;
 		mLoopingPanel.Height = 60;
-		mLoopingPanel.Background = Color(100, 180, 180, 255);
+		mLoopingPanel.Background = Color32(100, 180, 180, 255);
 		mLoopingPanel.Margin = .(10, 10, 10, 10);
 		section.AddChild(mLoopingPanel);
 

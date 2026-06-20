@@ -18,13 +18,13 @@ public interface ITheme
 	ControlStyle GetControlStyle(StringView controlType);
 
 	/// Gets the focus indicator color.
-	Color FocusIndicatorColor { get; }
+	Color32 FocusIndicatorColor { get; }
 
 	/// Gets the focus indicator thickness.
 	float FocusIndicatorThickness { get; }
 
 	/// Gets the selection highlight color.
-	Color SelectionColor { get; }
+	Color32 SelectionColor { get; }
 
 	/// Gets the default font size.
 	float DefaultFontSize { get; }

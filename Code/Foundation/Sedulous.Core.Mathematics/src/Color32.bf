@@ -6,7 +6,8 @@ namespace Sedulous.Core.Mathematics;
 /// <summary>
 /// Represents an RGBA color.
 /// </summary>
-struct Color : IEquatable<Color>, IInterpolatable<Color>, IEquatable, IHashable
+[Packed, CRepr]
+struct Color32 : IEquatable<Color32>, IInterpolatable<Color32>, IEquatable, IHashable
 {
     /// <summary>
     /// Initializes the <see cref="Color"/> type.
@@ -167,7 +168,7 @@ struct Color : IEquatable<Color>, IInterpolatable<Color>, IEquatable, IHashable
     /// <param name="color">The <see cref="Color"/> to multiply.</param>
     /// <param name="alpha">The scaling factor by which to multiply the color.</param>
     /// <returns>The scaled <see cref="Color"/>.</returns>
-    public static Color operator *(Color color, float alpha)
+    public static Color32 operator *(Color32 color, float alpha)
     {
 		var alpha;
 
@@ -182,7 +183,7 @@ struct Color : IEquatable<Color>, IInterpolatable<Color>, IEquatable, IHashable
         var b = (uint8)(color.B * alpha);
         var a = (uint8)(color.A * alpha);
 
-        return Color(r, g, b, a);
+        return Color32(r, g, b, a);
     }
     
     /// <summary>
@@ -190,14 +191,14 @@ struct Color : IEquatable<Color>, IInterpolatable<Color>, IEquatable, IHashable
     /// </summary>
     /// <param name="value">The integer from which to create a color.</param>
     /// <returns>The <see cref="Color"/> that corresponds to the specified integer value.</returns>
-    public static Color FromArgb(uint32 value)
+    public static Color32 FromArgb(uint32 value)
     {
         var a = (uint8)(value >> 24);
         var r = (uint8)(value >> 16);
         var g = (uint8)(value >> 8);
         var b = (uint8)(value);
 
-        return Color((uint32)((uint32)(r) | ((uint32)g << 8) | ((uint32)b << 16) | ((uint32)a << 24)));
+        return Color32((uint32)((uint32)(r) | ((uint32)g << 8) | ((uint32)b << 16) | ((uint32)a << 24)));
     }
 
     /// <summary>
@@ -205,14 +206,14 @@ struct Color : IEquatable<Color>, IInterpolatable<Color>, IEquatable, IHashable
     /// </summary>
     /// <param name="value">The integer from which to create a color.</param>
     /// <returns>The <see cref="Color"/> that corresponds to the specified integer value.</returns>
-    public static Color FromRgba(uint32 value)
+    public static Color32 FromRgba(uint32 value)
     {
         var r = (uint8)(value >> 24);
         var g = (uint8)(value >> 16);
         var b = (uint8)(value >> 8);
         var a = (uint8)(value);
 
-        return Color((uint32)((uint32)(r) | ((uint32)g << 8) | ((uint32)b << 16) | ((uint32)a << 24)));
+        return Color32((uint32)((uint32)(r) | ((uint32)g << 8) | ((uint32)b << 16) | ((uint32)a << 24)));
     }
 
     /// <summary>
@@ -220,14 +221,14 @@ struct Color : IEquatable<Color>, IInterpolatable<Color>, IEquatable, IHashable
     /// </summary>
     /// <param name="value">The integer from which to create a color.</param>
     /// <returns>The <see cref="Color"/> that corresponds to the specified integer value.</returns>
-    public static Color FromBgra(uint32 value)
+    public static Color32 FromBgra(uint32 value)
     {
         var b = (uint8)(value >> 24);
         var g = (uint8)(value >> 16);
         var r = (uint8)(value >> 8);
         var a = (uint8)(value);
 
-        return Color((uint32)(((uint32)r) | ((uint32)g << 8) | ((uint32)b << 16) | ((uint32)a << 24)));
+        return Color32((uint32)(((uint32)r) | ((uint32)g << 8) | ((uint32)b << 16) | ((uint32)a << 24)));
     }
 
     /// <summary>
@@ -278,26 +279,26 @@ struct Color : IEquatable<Color>, IInterpolatable<Color>, IEquatable, IHashable
     /// Converts an sRGB color value to a linear color value.
     /// </summary>
     [Inline]
-    public static Color ConvertSrgbColorToLinear(Color c)
+    public static Color32 ConvertSrgbColorToLinear(Color32 c)
     {
         var r = ConvertSrgbColorChannelToLinear(c.R / 255.0f);
         var g = ConvertSrgbColorChannelToLinear(c.G / 255.0f);
         var b = ConvertSrgbColorChannelToLinear(c.B / 255.0f);
         var a = c.A / 255.0f;
-        return Color(r, g, b, a);
+        return Color32(r, g, b, a);
     }
 
     /// <summary>
     /// Converts a linear color value to an sRGB color value.
     /// </summary>
     [Inline]
-    public static Color ConvertLinearColorToSrgb(Color c)
+    public static Color32 ConvertLinearColorToSrgb(Color32 c)
     {
         var r = ConvertLinearColorChannelToSrgb(c.R / 255.0f);
         var g = ConvertLinearColorChannelToSrgb(c.G / 255.0f);
         var b = ConvertLinearColorChannelToSrgb(c.B / 255.0f);
         var a = c.A / 255.0f;
-        return Color(r, g, b, a);
+        return Color32(r, g, b, a);
     }
 
     /// <inheritdoc/>
@@ -361,13 +362,13 @@ struct Color : IEquatable<Color>, IInterpolatable<Color>, IEquatable, IHashable
     /// <param name="target">The target value.</param>
     /// <param name="t">A value between 0.0 and 1.0 representing the interpolation factor.</param>
     /// <returns>The interpolated value.</returns>
-    public Color Interpolate(Color target, float t)
+    public Color32 Interpolate(Color32 target, float t)
     {
         var a = Tweening.Lerp(this.A, target.A, t);
         var r = Tweening.Lerp(this.R, target.R, t);
         var g = Tweening.Lerp(this.G, target.G, t);
         var b = Tweening.Lerp(this.B, target.B, t);
-        return Color(r, g, b, a);
+        return Color32(r, g, b, a);
     }
 
     /// <summary>

@@ -21,5 +21,5 @@ struct RenderContext
 	public FrameContext Frame;
 
 	/// Clear color for default render pass.
-	public Color ClearColor;
+	public Color32 ClearColor;
 }

@@ -21,9 +21,9 @@ public struct NodeGraphPortType
 	public int32 TypeId;
 
 	/// Display color for the port circle and compatible connections.
-	public Color Color;
+	public Color32 Color;
 
-	public this(int32 typeId, Color color)
+	public this(int32 typeId, Color32 color)
 	{
 		TypeId = typeId;
 		Color = color;
@@ -66,7 +66,7 @@ public class NodeGraphNode
 	public Vector2 Size = .(160, 80);
 
 	/// Header bar color.
-	public Color HeaderColor = .(70, 130, 200, 255);
+	public Color32 HeaderColor = .(70, 130, 200, 255);
 
 	/// Whether this node is selected.
 	public bool IsSelected;

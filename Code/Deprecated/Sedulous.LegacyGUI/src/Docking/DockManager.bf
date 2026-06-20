@@ -743,7 +743,7 @@ public class DockManager : Control, IDropTarget
 	protected override void RenderOverride(DrawContext ctx)
 	{
 		// Background
-		let bgColor = Background.A > 0 ? Background : Color(30, 30, 30, 255);
+		let bgColor = Background.A > 0 ? Background : Color32(30, 30, 30, 255);
 		ctx.FillRect(ArrangedBounds, bgColor);
 
 		// Render layout tree

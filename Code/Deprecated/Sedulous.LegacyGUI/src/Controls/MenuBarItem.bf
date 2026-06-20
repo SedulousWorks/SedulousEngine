@@ -250,9 +250,9 @@ public class MenuBarItem : Control, IPopupOwner
 
 		// Get theme colors
 		let palette = Context?.Theme?.Palette ?? Palette();
-		let surfaceColor = palette.Surface.A > 0 ? palette.Surface : Color(45, 45, 45, 255);
-		let accentColor = palette.Accent.A > 0 ? palette.Accent : Color(60, 120, 200, 255);
-		let textColor = palette.Text.A > 0 ? palette.Text : Color(255, 255, 255, 255);
+		let surfaceColor = palette.Surface.A > 0 ? palette.Surface : Color32(45, 45, 45, 255);
+		let accentColor = palette.Accent.A > 0 ? palette.Accent : Color32(60, 120, 200, 255);
+		let textColor = palette.Text.A > 0 ? palette.Text : Color32(255, 255, 255, 255);
 
 		// Background on hover or when dropdown open
 		if (mIsSelected || IsHovered || mIsDropdownOpen)
@@ -280,7 +280,7 @@ public class MenuBarItem : Control, IPopupOwner
 		}
 	}
 
-	private void RenderAcceleratorUnderline(DrawContext ctx, Color textColor)
+	private void RenderAcceleratorUnderline(DrawContext ctx, Color32 textColor)
 	{
 		// Get the position of the accelerator character and draw underline
 		let textBounds = mTextBlock.ArrangedBounds;

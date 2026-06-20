@@ -9,12 +9,12 @@ using Sedulous.Fonts;
 /// for the given view. Called after the normal draw pass.
 public static class UIDebugOverlay
 {
-	private static readonly Color sBoundsColor         = .(255, 60, 60, 180);
-	private static readonly Color sPaddingColor        = .(60, 200, 60, 60);
-	private static readonly Color sMarginColor         = .(255, 160, 40, 60);
-	private static readonly Color sDrawablePaddingColor = .(60, 120, 255, 60);
-	private static readonly Color sHitTargetColor      = .(255, 255, 0, 100);
-	private static readonly Color sFocusColor          = .(80, 160, 255, 200);
+	private static readonly Color32 sBoundsColor         = .(255, 60, 60, 180);
+	private static readonly Color32 sPaddingColor        = .(60, 200, 60, 60);
+	private static readonly Color32 sMarginColor         = .(255, 160, 40, 60);
+	private static readonly Color32 sDrawablePaddingColor = .(60, 120, 255, 60);
+	private static readonly Color32 sHitTargetColor      = .(255, 255, 0, 100);
+	private static readonly Color32 sFocusColor          = .(80, 160, 255, 200);
 
 	/// Draw debug overlays for a single view. Called in the view's
 	/// local coordinate space (0,0 = top-left of view).

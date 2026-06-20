@@ -23,13 +23,13 @@ class PathCacheTests
 
 		let verts1 = scope List<VGVertex>();
 		let idx1 = scope List<uint32>();
-		cache.GetOrTessellateFill(path, Color.Red, .EvenOdd, false, verts1, idx1);
+		cache.GetOrTessellateFill(path, Color32.Red, .EvenOdd, false, verts1, idx1);
 
 		let count1 = verts1.Count;
 
 		let verts2 = scope List<VGVertex>();
 		let idx2 = scope List<uint32>();
-		cache.GetOrTessellateFill(path, Color.Red, .EvenOdd, false, verts2, idx2);
+		cache.GetOrTessellateFill(path, Color32.Red, .EvenOdd, false, verts2, idx2);
 
 		// Same results
 		Test.Assert(verts2.Count == count1);
@@ -52,11 +52,11 @@ class PathCacheTests
 
 		let verts1 = scope List<VGVertex>();
 		let idx1 = scope List<uint32>();
-		cache.GetOrTessellateFill(path, Color.Red, .EvenOdd, false, verts1, idx1);
+		cache.GetOrTessellateFill(path, Color32.Red, .EvenOdd, false, verts1, idx1);
 
 		let verts2 = scope List<VGVertex>();
 		let idx2 = scope List<uint32>();
-		cache.GetOrTessellateFill(path, Color.Blue, .EvenOdd, false, verts2, idx2);
+		cache.GetOrTessellateFill(path, Color32.Blue, .EvenOdd, false, verts2, idx2);
 
 		// Should have same geometry count but different colors
 		Test.Assert(verts2.Count == verts1.Count);
@@ -78,14 +78,14 @@ class PathCacheTests
 
 		let verts1 = scope List<VGVertex>();
 		let idx1 = scope List<uint32>();
-		cache.GetOrTessellateFill(path, Color.Red, .EvenOdd, false, verts1, idx1);
+		cache.GetOrTessellateFill(path, Color32.Red, .EvenOdd, false, verts1, idx1);
 
 		cache.Invalidate(path);
 
 		// After invalidation, getting again should still work (retessellate)
 		let verts2 = scope List<VGVertex>();
 		let idx2 = scope List<uint32>();
-		cache.GetOrTessellateFill(path, Color.Red, .EvenOdd, false, verts2, idx2);
+		cache.GetOrTessellateFill(path, Color32.Red, .EvenOdd, false, verts2, idx2);
 
 		Test.Assert(verts2.Count > 0);
 	}
@@ -106,14 +106,14 @@ class PathCacheTests
 
 		let verts = scope List<VGVertex>();
 		let idx = scope List<uint32>();
-		cache.GetOrTessellateFill(path, Color.Red, .EvenOdd, false, verts, idx);
+		cache.GetOrTessellateFill(path, Color32.Red, .EvenOdd, false, verts, idx);
 
 		cache.Clear();
 
 		// After clear, should be able to add again
 		let verts2 = scope List<VGVertex>();
 		let idx2 = scope List<uint32>();
-		cache.GetOrTessellateFill(path, Color.Red, .EvenOdd, false, verts2, idx2);
+		cache.GetOrTessellateFill(path, Color32.Red, .EvenOdd, false, verts2, idx2);
 		Test.Assert(verts2.Count > 0);
 	}
 }

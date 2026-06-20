@@ -167,7 +167,7 @@ class ToolkitTests
 	public static void ColorPicker_SetColor()
 	{
 		let picker = scope ColorPicker();
-		picker.CurrentColor = Color(128, 64, 32, 255);
+		picker.CurrentColor = Color32(128, 64, 32, 255);
 		let c = picker.CurrentColor;
 		// Should round-trip approximately (HSV conversion may lose precision).
 		Test.Assert(Math.Abs((int)c.R - 128) <= 2);
@@ -194,7 +194,7 @@ class ToolkitTests
 
 		// Programmatic SetColor does NOT fire OnColorChanged (avoids feedback loops).
 		// Event only fires from interactive changes (drag, field input).
-		picker.CurrentColor = Color(0, 255, 0, 255);
+		picker.CurrentColor = Color32(0, 255, 0, 255);
 		Test.Assert(!fired);
 	}
 

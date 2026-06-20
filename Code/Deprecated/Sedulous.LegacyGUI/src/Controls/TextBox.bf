@@ -214,7 +214,7 @@ public class TextBox : Control
 		// Draw selection highlight
 		if (mEditor.HasSelection)
 		{
-			let selectionColor = Context?.Theme?.SelectionColor ?? Color(100, 149, 237, 100);
+			let selectionColor = Context?.Theme?.SelectionColor ?? Color32(100, 149, 237, 100);
 			let selection = mEditor.Selection;
 
 			// Get selection rectangles
@@ -250,8 +250,8 @@ public class TextBox : Control
 			// Draw placeholder in secondary text color
 			let palette = Context?.Theme?.Palette ?? Palette();
 			let placeholderColor = palette.TextSecondary.A > 0
-				? Color(palette.TextSecondary.R, palette.TextSecondary.G, palette.TextSecondary.B, 180)
-				: Color(GetStateForeground().R / 2, GetStateForeground().G / 2, GetStateForeground().B / 2, 128);
+				? Color32(palette.TextSecondary.R, palette.TextSecondary.G, palette.TextSecondary.B, 180)
+				: Color32(GetStateForeground().R / 2, GetStateForeground().G / 2, GetStateForeground().B / 2, 128);
 			let drawBounds = RectangleF(textX, textY, bounds.Width + mScrollOffset, lineHeight);
 			ctx.DrawText(mPlaceholder, font, atlas, atlasTexture, drawBounds, .Left, .Top, placeholderColor);
 		}

@@ -22,7 +22,7 @@ class FillTessellatorTests
 		let vertices = scope List<VGVertex>();
 		let indices = scope List<uint32>();
 
-		FillTessellator.Tessellate(path, .EvenOdd, Color.White, false, vertices, indices);
+		FillTessellator.Tessellate(path, .EvenOdd, Color32.White, false, vertices, indices);
 
 		Test.Assert(vertices.Count == 4);
 		Test.Assert(indices.Count == 6); // 2 triangles * 3 indices
@@ -39,7 +39,7 @@ class FillTessellatorTests
 		let vertices = scope List<VGVertex>();
 		let indices = scope List<uint32>();
 
-		FillTessellator.Tessellate(path, .EvenOdd, Color.Red, false, vertices, indices);
+		FillTessellator.Tessellate(path, .EvenOdd, Color32.Red, false, vertices, indices);
 
 		// Circle should produce a reasonable number of vertices
 		Test.Assert(vertices.Count > 8);
@@ -63,11 +63,11 @@ class FillTessellatorTests
 
 		let vertsNoAA = scope List<VGVertex>();
 		let indicesNoAA = scope List<uint32>();
-		FillTessellator.Tessellate(path, .EvenOdd, Color.White, false, vertsNoAA, indicesNoAA);
+		FillTessellator.Tessellate(path, .EvenOdd, Color32.White, false, vertsNoAA, indicesNoAA);
 
 		let vertsAA = scope List<VGVertex>();
 		let indicesAA = scope List<uint32>();
-		FillTessellator.Tessellate(path, .EvenOdd, Color.White, true, vertsAA, indicesAA);
+		FillTessellator.Tessellate(path, .EvenOdd, Color32.White, true, vertsAA, indicesAA);
 
 		// AA version should have more vertices (fringe quads)
 		Test.Assert(vertsAA.Count > vertsNoAA.Count);
@@ -89,7 +89,7 @@ class FillTessellatorTests
 		let vertices = scope List<VGVertex>();
 		let indices = scope List<uint32>();
 
-		FillTessellator.Tessellate(path, .EvenOdd, Color.White, false, vertices, indices);
+		FillTessellator.Tessellate(path, .EvenOdd, Color32.White, false, vertices, indices);
 
 		// All non-AA vertices should have coverage = 1.0
 		for (let v in vertices)

@@ -362,7 +362,7 @@ public class NumericField : View, ITextEditHost
 			upDrawable.Draw(ctx, .(btnX, 0, ButtonWidth.Value, halfH), upState);
 		else
 		{
-			var upBg = Color(50, 55, 68, 255);
+			var upBg = Color32(50, 55, 68, 255);
 			if (mPressedButton == 1) upBg = Palette.ComputePressed(upBg);
 			else if (mHoveredButton == 1) upBg = Palette.ComputeHover(upBg);
 			ctx.VG.FillRect(.(btnX, 0, ButtonWidth.Value, halfH), upBg);
@@ -375,14 +375,14 @@ public class NumericField : View, ITextEditHost
 			downDrawable.Draw(ctx, .(btnX, halfH, ButtonWidth.Value, halfH), downState);
 		else
 		{
-			var downBg = Color(50, 55, 68, 255);
+			var downBg = Color32(50, 55, 68, 255);
 			if (mPressedButton == -1) downBg = Palette.ComputePressed(downBg);
 			else if (mHoveredButton == -1) downBg = Palette.ComputeHover(downBg);
 			ctx.VG.FillRect(.(btnX, halfH, ButtonWidth.Value, halfH), downBg);
 		}
 
 		// Divider lines - use the background drawable's border color for consistency.
-		Color sepColor = btnBorder;
+		Color32 sepColor = btnBorder;
 		let bgDrawable = ResolveStyleDrawable(.Background);
 		if (let rrd = bgDrawable as RoundedRectDrawable)
 			sepColor = rrd.BorderColor;

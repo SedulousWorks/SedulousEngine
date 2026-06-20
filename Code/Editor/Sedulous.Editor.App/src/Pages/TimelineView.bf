@@ -418,8 +418,8 @@ public class TimelineView : View
 		let font = ctx.FontService?.GetFont(11);
 		if (font == null) return;
 
-		let labelTextColor = Color(200, 200, 210, 255);
-		let selectedFill = Color(60, 80, 110, 255);
+		let labelTextColor = Color32(200, 200, 210, 255);
+		let selectedFill = Color32(60, 80, 110, 255);
 
 		for (int i = 0; i < mFlatTracks.Count; i++)
 		{
@@ -450,8 +450,8 @@ public class TimelineView : View
 		let font = ctx.FontService?.GetFont(10);
 		if (font == null) return;
 
-		let tickColor = Color(80, 80, 90, 255);
-		let textColor = Color(170, 170, 180, 255);
+		let tickColor = Color32(80, 80, 90, 255);
+		let textColor = Color32(170, 170, 180, 255);
 		let dur = (mClip != null) ? Math.Max(mClip.Duration, 1.0f) : 1.0f;
 
 		// Tick every 0.5s, label every 1s.
@@ -485,9 +485,9 @@ public class TimelineView : View
 		let gridRight = Width;
 		let gridBottom = Height;
 
-		let rowAlt = Color(22, 23, 30, 255);
-		let rowSel = Color(36, 48, 66, 255);
-		let gridLine = Color(30, 31, 38, 255);
+		let rowAlt = Color32(22, 23, 30, 255);
+		let rowSel = Color32(36, 48, 66, 255);
+		let gridLine = Color32(30, 31, 38, 255);
 
 		// Row backgrounds + horizontal separators.
 		for (int i = 0; i < mFlatTracks.Count; i++)
@@ -506,9 +506,9 @@ public class TimelineView : View
 		}
 
 		// Keyframes.
-		let kfFill = Color(220, 200, 120, 255);
-		let kfSelectedFill = Color(255, 230, 90, 255);
-		let kfStroke = Color(80, 70, 30, 255);
+		let kfFill = Color32(220, 200, 120, 255);
+		let kfSelectedFill = Color32(255, 230, 90, 255);
+		let kfStroke = Color32(80, 70, 30, 255);
 
 		for (int i = 0; i < mFlatTracks.Count; i++)
 		{
@@ -554,7 +554,7 @@ public class TimelineView : View
 		ctx.VG.FillPolygon(tri, .(240, 80, 80, 255));
 	}
 
-	private void DrawDiamond(UIDrawContext ctx, Vector2 center, float size, Color fill, Color stroke)
+	private void DrawDiamond(UIDrawContext ctx, Vector2 center, float size, Color32 fill, Color32 stroke)
 	{
 		// Immediate-mode path so we get fill + stroke off the same shape
 		// without rebuilding it.

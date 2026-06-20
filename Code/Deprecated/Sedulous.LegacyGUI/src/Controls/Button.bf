@@ -256,7 +256,7 @@ public class Button : ContentControl
 	}
 
 	/// Gets the border color for the current state.
-	protected override Color GetStateBorderColor()
+	protected override Color32 GetStateBorderColor()
 	{
 		let baseColor = BorderColor;
 		switch (CurrentState)

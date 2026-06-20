@@ -112,7 +112,7 @@ class DraggableItem : Control, IDragSource
 		mText = new String(text);
 		mTextBlock = new TextBlock(text);
 
-		Background = Color(60, 80, 100, 255);  // Keep distinct color for draggable items
+		Background = Color32(60, 80, 100, 255);  // Keep distinct color for draggable items
 		Padding = .(12, 8, 12, 8);
 	}
 
@@ -194,7 +194,7 @@ class DraggableItem : Control, IDragSource
 	protected override void RenderOverride(DrawContext ctx)
 	{
 		let bounds = ArrangedBounds;
-		let bgColor = mIsDragging ? Color(80, 100, 120, 128) : Background;
+		let bgColor = mIsDragging ? Color32(80, 100, 120, 128) : Background;
 		ctx.FillRoundedRect(bounds, 4, bgColor);
 		mTextBlock.Render(ctx);
 	}
@@ -225,7 +225,7 @@ class DropTargetPanel : Panel, IDropTarget
 
 	public this()
 	{
-		Background = Color(40, 70, 40, 255);  // Keep distinct color for drop target
+		Background = Color32(40, 70, 40, 255);  // Keep distinct color for drop target
 		Padding = .(15, 15, 15, 15);
 
 		let header = new TextBlock("Drop Here");
@@ -292,13 +292,13 @@ class DropTargetPanel : Panel, IDropTarget
 		if (mIsDropHighlighted)
 		{
 			let highlightColor = mCurrentEffect == .Move ?
-				Color(100, 200, 100, 100) : Color(100, 100, 200, 100);
+				Color32(100, 200, 100, 100) : Color32(100, 100, 200, 100);
 			ctx.FillRoundedRect(bounds, 6, highlightColor);
-			ctx.DrawRoundedRect(bounds, 6, Color(100, 200, 100, 255), 2);
+			ctx.DrawRoundedRect(bounds, 6, Color32(100, 200, 100, 255), 2);
 		}
 		else
 		{
-			ctx.DrawRoundedRect(bounds, 6, Color(60, 80, 60, 255), 1);
+			ctx.DrawRoundedRect(bounds, 6, Color32(60, 80, 60, 255), 1);
 		}
 
 		// Render children
@@ -316,7 +316,7 @@ class TrashDropZone : Control, IDropTarget
 
 	public this()
 	{
-		Background = Color(80, 40, 40, 255);  // Keep distinct color for trash zone
+		Background = Color32(80, 40, 40, 255);  // Keep distinct color for trash zone
 		Padding = .(15, 15, 15, 15);
 
 		mLabel = new TextBlock("Trash");
@@ -389,12 +389,12 @@ class TrashDropZone : Control, IDropTarget
 		// Drop highlight
 		if (mIsDropHighlighted)
 		{
-			ctx.FillRoundedRect(bounds, 6, Color(200, 100, 100, 100));
-			ctx.DrawRoundedRect(bounds, 6, Color(200, 100, 100, 255), 2);
+			ctx.FillRoundedRect(bounds, 6, Color32(200, 100, 100, 100));
+			ctx.DrawRoundedRect(bounds, 6, Color32(200, 100, 100, 255), 2);
 		}
 		else
 		{
-			ctx.DrawRoundedRect(bounds, 6, Color(80, 60, 60, 255), 1);
+			ctx.DrawRoundedRect(bounds, 6, Color32(80, 60, 60, 255), 1);
 		}
 
 		// Label

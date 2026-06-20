@@ -241,7 +241,7 @@ class InlineStyleTests
 
 		let sheet = SetupSheet(ctx);
 		sheet.ForType(typeof(TestView))
-			.Set(.TextColor, Color(255, 0, 0, 255));
+			.Set(.TextColor, Color32(255, 0, 0, 255));
 
 		let view = new TestView();
 		root.AddView(view);

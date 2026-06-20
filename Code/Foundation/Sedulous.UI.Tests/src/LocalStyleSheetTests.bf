@@ -149,13 +149,13 @@ class LocalStyleSheetTests
 
 		let ctxSheet = SetupCtxSheet(ctx);
 		ctxSheet.ForType(typeof(TestView))
-			.Set(.TextColor, Color(255, 0, 0, 255));
+			.Set(.TextColor, Color32(255, 0, 0, 255));
 
 		let view = new TestView();
 		root.AddView(view);
 		let local = SetupLocalSheet(view);
 		local.ForType(typeof(TestView))
-			.Set(.TextColor, Color(0, 255, 0, 255));
+			.Set(.TextColor, Color32(0, 255, 0, 255));
 
 		// View's own local sheet wins over context.
 		let c = view.ResolveStyleColor(.TextColor);
@@ -181,7 +181,7 @@ class LocalStyleSheetTests
 		// LocalStyleSheet on the parent group applies to descendants.
 		let parentLocal = SetupLocalSheet(group);
 		parentLocal.ForType(typeof(TestView))
-			.Set(.TextColor, Color(50, 200, 50, 255));
+			.Set(.TextColor, Color32(50, 200, 50, 255));
 
 		Test.Assert(child.ResolveStyleColor(.TextColor).G == 200);
 	}
@@ -206,7 +206,7 @@ class LocalStyleSheetTests
 		outerLocal.ForType(typeof(TestView)).Set(.TextColor, .Red);
 
 		let innerLocal = SetupLocalSheet(inner);
-		innerLocal.ForType(typeof(TestView)).Set(.TextColor, Color(0, 0, 255, 255));
+		innerLocal.ForType(typeof(TestView)).Set(.TextColor, Color32(0, 0, 255, 255));
 
 		// Inner (closer) wins.
 		Test.Assert(child.ResolveStyleColor(.TextColor).B == 255);
@@ -233,7 +233,7 @@ class LocalStyleSheetTests
 
 		// Outer defines TextColor; inner defines a different property.
 		let outerLocal = SetupLocalSheet(outer);
-		outerLocal.ForType(typeof(TestView)).Set(.TextColor, Color(0, 200, 0, 255));
+		outerLocal.ForType(typeof(TestView)).Set(.TextColor, Color32(0, 200, 0, 255));
 
 		let innerLocal = SetupLocalSheet(inner);
 		innerLocal.ForType(typeof(TestView)).Set(.FontSize, 24f);
@@ -253,7 +253,7 @@ class LocalStyleSheetTests
 		TestSetup.Init(ctx, root);
 
 		let ctxSheet = SetupCtxSheet(ctx);
-		ctxSheet.ForType(typeof(TestView)).Set(.TextColor, Color(100, 100, 100, 255));
+		ctxSheet.ForType(typeof(TestView)).Set(.TextColor, Color32(100, 100, 100, 255));
 
 		let group = new TestGroup();
 		let child = new TestView();
@@ -291,7 +291,7 @@ class LocalStyleSheetTests
 		// child TestView.
 		let dialogLocal = SetupLocalSheet(dialog);
 		dialogLocal.ForType(typeof(TestGroup))
-			.Set(.TextColor, Color(50, 150, 250, 255));
+			.Set(.TextColor, Color32(50, 150, 250, 255));
 
 		// child's ResolveStyle:
 		//  1. child's inline / locals - nothing

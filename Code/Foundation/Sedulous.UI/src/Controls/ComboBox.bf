@@ -115,7 +115,7 @@ public class ComboBox : View, IPopupOwner
 			bg.Draw(ctx, bounds, state);
 		else
 		{
-			var bgColor = Color(40, 42, 52, 255);
+			var bgColor = Color32(40, 42, 52, 255);
 			if (IsHovered) bgColor = Palette.ComputeHover(bgColor);
 			ctx.VG.FillRect(bounds, bgColor);
 		}
@@ -303,7 +303,7 @@ class ComboBoxDropdown : View
 
 		let textColor = ResolveStyleColor(.TextColor, .(220, 225, 235, 255));
 		let hoverColor = ResolveStyleColor(.AccentColor, .(60, 120, 200, 100));
-		let selectedColor = Color(60, 120, 200, 50);
+		let selectedColor = Color32(60, 120, 200, 50);
 		let hoverDrawable = ResolveStyleDrawable(.MenuItemHoverDrawable);
 		let fontSize = mOwner.ResolveStyleFloat(.FontSize, 14);
 		let font = ctx.FontService?.GetFont(ResolveStyleFontFamily(), fontSize);

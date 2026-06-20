@@ -9,16 +9,16 @@ public struct DebugText2DVertex
 {
 	public Vector2 Position;  // Screen-space position in pixels
 	public Vector2 TexCoord;
-	public Color Color;
+	public Color32 Color;
 
-	public this(Vector2 position, Vector2 texCoord, Color color)
+	public this(Vector2 position, Vector2 texCoord, Color32 color)
 	{
 		Position = position;
 		TexCoord = texCoord;
 		Color = color;
 	}
 
-	public this(float x, float y, float u, float v, Color color)
+	public this(float x, float y, float u, float v, Color32 color)
 	{
 		Position = .(x, y);
 		TexCoord = .(u, v);

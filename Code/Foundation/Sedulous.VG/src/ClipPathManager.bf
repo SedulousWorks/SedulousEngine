@@ -24,7 +24,7 @@ public class ClipPathManager
 		// Emit a stencil-write command: tessellate the clip path
 		// The renderer should draw this geometry to increment the stencil buffer
 		let startIndex = (int32)batch.Indices.Count;
-		FillTessellator.Tessellate(path, fillRule, Color.White, false, batch.Vertices, batch.Indices, tolerance);
+		FillTessellator.Tessellate(path, fillRule, Color32.White, false, batch.Vertices, batch.Indices, tolerance);
 		let indexCount = (int32)batch.Indices.Count - startIndex;
 
 		if (indexCount > 0)

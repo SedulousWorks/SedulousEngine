@@ -22,7 +22,7 @@ public class StyleSheetLoader
 
 	/// Base palette variables. Set before Load() to provide default palette values
 	/// that .sss @palette blocks can extend.
-	private Dictionary<String, Color> mBasePalette = new .() ~ DeleteDictionaryAndKeys!(_);
+	private Dictionary<String, Color32> mBasePalette = new .() ~ DeleteDictionaryAndKeys!(_);
 
 	/// Resource provider for @import, @icon file loading, image() factory.
 	public IResourceProvider ResourceProvider;
@@ -58,7 +58,7 @@ public class StyleSheetLoader
 	}
 
 	/// Set a base palette variable. .sss @palette blocks can override these.
-	public void SetPaletteVariable(StringView name, Color color)
+	public void SetPaletteVariable(StringView name, Color32 color)
 	{
 		for (let kv in mBasePalette)
 		{
@@ -91,7 +91,7 @@ public class StyleSheetLoader
 	public StyleSheet Load(StringView source, StringView basePath = "")
 	{
 		// Copy palette so the parser can mutate it without affecting the loader.
-		let palette = new Dictionary<String, Color>();
+		let palette = new Dictionary<String, Color32>();
 		for (let kv in mBasePalette)
 			palette[new String(kv.key)] = kv.value;
 		defer { DeleteDictionaryAndKeys!(palette); }

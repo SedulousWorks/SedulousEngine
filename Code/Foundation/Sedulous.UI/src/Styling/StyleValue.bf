@@ -7,7 +7,7 @@ using Sedulous.Core.Mathematics;
 /// supported style value types.
 public enum StyleValue
 {
-	case ColorVal(Color);
+	case ColorVal(Color32);
 	case FloatVal(float);
 	case ThicknessVal(Thickness);
 	case DrawableRef(Drawable);   // Container holds the ref
@@ -16,7 +16,7 @@ public enum StyleValue
 	case None;
 
 	/// Try to get as Color.
-	public Color? AsColor
+	public Color32? AsColor
 	{
 		get
 		{

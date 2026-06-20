@@ -21,7 +21,7 @@ class DragDropPage : DemoPage
 		container.Spacing = 4;
 		row.AddView(container, new LinearLayout.LayoutParams() { Height =  Sedulous.LegacyUI.LayoutParams.MatchParent });
 
-		Color[?] chipColors = .(
+		Color32[?] chipColors = .(
 			.(220, 60, 60, 255), .(60, 180, 60, 255), .(60, 100, 220, 255),
 			.(220, 180, 40, 255), .(180, 60, 220, 255));
 

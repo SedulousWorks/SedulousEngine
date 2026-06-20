@@ -48,7 +48,7 @@ public static class MessageBox
 		let icon = new TextBlock("!");
 		let theme = context.Theme;
 		icon.FontSize = theme?.MessageBoxIconSize ?? 24;
-		icon.Foreground = theme?.Palette.Warning ?? Color(255, 200, 0, 255);
+		icon.Foreground = theme?.Palette.Warning ?? Color32(255, 200, 0, 255);
 		icon.VerticalAlignment = .Center;
 		content.AddChild(icon);
 
@@ -82,7 +82,7 @@ public static class MessageBox
 		let icon = new TextBlock("X");
 		let theme = context.Theme;
 		icon.FontSize = theme?.MessageBoxIconSize ?? 24;
-		icon.Foreground = theme?.Palette.Error ?? Color(220, 50, 50, 255);
+		icon.Foreground = theme?.Palette.Error ?? Color32(220, 50, 50, 255);
 		icon.VerticalAlignment = .Center;
 		content.AddChild(icon);
 
@@ -117,7 +117,7 @@ public static class MessageBox
 		let icon = new TextBlock("?");
 		let theme = context.Theme;
 		icon.FontSize = theme?.MessageBoxIconSize ?? 24;
-		icon.Foreground = theme?.Palette.Primary ?? Color(100, 150, 255, 255);
+		icon.Foreground = theme?.Palette.Primary ?? Color32(100, 150, 255, 255);
 		icon.VerticalAlignment = .Center;
 		content.AddChild(icon);
 

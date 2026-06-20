@@ -104,8 +104,8 @@ class SkeletonThumbnailGenerator : IAssetThumbnailGenerator, IAsyncAssetThumbnai
 				return;
 			}
 
-			let boneColor   = Color(220, 220, 100, 255);
-			let jointColor  = Color(255, 180, 80, 255);
+			let boneColor   = Color32(220, 220, 100, 255);
+			let jointColor  = Color32(255, 180, 80, 255);
 
 			for (int i = 0; i < skeleton.Bones.Count; i++)
 			{

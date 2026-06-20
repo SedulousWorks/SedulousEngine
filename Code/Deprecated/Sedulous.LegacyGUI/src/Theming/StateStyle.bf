@@ -8,9 +8,9 @@ namespace Sedulous.LegacyGUI;
 /// Null values inherit from the base ControlStyle.
 public struct StateStyle
 {
-	public Color? Background;
-	public Color? Foreground;
-	public Color? BorderColor;
+	public Color32? Background;
+	public Color32? Foreground;
+	public Color32? BorderColor;
 	public float? BorderThickness;
 	public float? CornerRadius;
 	public Thickness? Padding;
@@ -20,10 +20,10 @@ public struct StateStyle
 	public static StateStyle Empty => .();
 
 	/// Creates a state style with just a background override.
-	public static StateStyle WithBackground(Color bg) => .() { Background = bg };
+	public static StateStyle WithBackground(Color32 bg) => .() { Background = bg };
 
 	/// Creates a state style with background and foreground overrides.
-	public static StateStyle WithColors(Color bg, Color fg) => .() { Background = bg, Foreground = fg };
+	public static StateStyle WithColors(Color32 bg, Color32 fg) => .() { Background = bg, Foreground = fg };
 }
 
 /// Style definition for a control type.
@@ -31,9 +31,9 @@ public struct StateStyle
 public struct ControlStyle
 {
 	// Base style (used for Normal state)
-	public Color Background;
-	public Color Foreground;
-	public Color BorderColor;
+	public Color32 Background;
+	public Color32 Foreground;
+	public Color32 BorderColor;
 	public float BorderThickness;
 	public float CornerRadius;
 	public Thickness Padding;
@@ -46,7 +46,7 @@ public struct ControlStyle
 	public StateStyle Focused;
 
 	/// Gets the effective background color for the given state.
-	public Color GetBackground(ControlState state)
+	public Color32 GetBackground(ControlState state)
 	{
 		switch (state)
 		{
@@ -64,7 +64,7 @@ public struct ControlStyle
 	}
 
 	/// Gets the effective foreground color for the given state.
-	public Color GetForeground(ControlState state)
+	public Color32 GetForeground(ControlState state)
 	{
 		switch (state)
 		{
@@ -82,7 +82,7 @@ public struct ControlStyle
 	}
 
 	/// Gets the effective border color for the given state.
-	public Color GetBorderColor(ControlState state)
+	public Color32 GetBorderColor(ControlState state)
 	{
 		switch (state)
 		{
@@ -167,7 +167,7 @@ public struct ControlStyle
 	}
 
 	/// Applies automatic tint modulation based on control state.
-	public static Color ModulateTint(Color tint, ControlState state)
+	public static Color32 ModulateTint(Color32 tint, ControlState state)
 	{
 		switch (state)
 		{
@@ -177,7 +177,7 @@ public struct ControlStyle
 			return Palette.Darken(tint, 0.15f);
 		case .Disabled:
 			let desaturated = Palette.Desaturate(tint, 0.5f);
-			return Color(desaturated.R, desaturated.G, desaturated.B, (uint8)(tint.A * 0.5f));
+			return Color32(desaturated.R, desaturated.G, desaturated.B, (uint8)(tint.A * 0.5f));
 		default:
 			return tint;
 		}

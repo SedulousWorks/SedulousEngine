@@ -31,7 +31,7 @@ public class Label : View
 	public Property<String> FontFamily = new .(null, .Visual) ~ { if (_.Value != null) delete _.Value; delete _; };
 
 	/// Per-instance text color override. When set, overrides the style-resolved TextColor.
-	public Property<Color?> TextColor = new .(null, .Visual) ~ delete _;
+	public Property<Color32?> TextColor = new .(null, .Visual) ~ delete _;
 
 	public this()
 	{

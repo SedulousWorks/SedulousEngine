@@ -5,7 +5,7 @@ using Sedulous.Core.Mathematics;
 /// Solid color swatch view.
 public class ColorView : View
 {
-	public Property<Color> Color = new .(.White) ~ delete _;
+	public Property<Color32> Color = new .(.White) ~ delete _;
 	public Property<float> PreferredWidth = new .(0) ~ delete _;
 	public Property<float> PreferredHeight = new .(0) ~ delete _;
 
@@ -16,12 +16,12 @@ public class ColorView : View
 		PreferredHeight.SetOwner(this);
 	}
 
-	public this(Color color) : this()
+	public this(Color32 color) : this()
 	{
 		Color.SetSilent(color);
 	}
 
-	public this(Color color, float w, float h) : this()
+	public this(Color32 color, float w, float h) : this()
 	{
 		Color.SetSilent(color);
 		PreferredWidth.SetSilent(w);

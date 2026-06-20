@@ -44,8 +44,8 @@ class ImageTests
 	{
 		let original = new Image(4, 4, .RGBA8);
 		defer delete original;
-		original.SetPixel(0, 0, Color.Red);
-		original.SetPixel(1, 1, Color.Lime);
+		original.SetPixel(0, 0, Color32.Red);
+		original.SetPixel(1, 1, Color32.Lime);
 
 		let copy = new Image(original);
 		defer delete copy;
@@ -68,12 +68,12 @@ class ImageTests
 		defer delete image;
 
 		// Test setting and getting various colors
-		image.SetPixel(0, 0, Color.Red);
-		image.SetPixel(1, 0, Color.Lime);
-		image.SetPixel(2, 0, Color.Blue);
-		image.SetPixel(3, 0, Color.White);
-		image.SetPixel(4, 0, Color.Black);
-		image.SetPixel(5, 0, Color(128, 64, 32, 200));
+		image.SetPixel(0, 0, Color32.Red);
+		image.SetPixel(1, 0, Color32.Lime);
+		image.SetPixel(2, 0, Color32.Blue);
+		image.SetPixel(3, 0, Color32.White);
+		image.SetPixel(4, 0, Color32.Black);
+		image.SetPixel(5, 0, Color32(128, 64, 32, 200));
 
 		let red = image.GetPixel(0, 0);
 		Test.Assert(red.R == 255 && red.G == 0 && red.B == 0 && red.A == 255);
@@ -102,7 +102,7 @@ class ImageTests
 
 		// Out of bounds should return black
 		let outOfBounds = image.GetPixel(10, 10);
-		Test.Assert(outOfBounds == Color.Black);
+		Test.Assert(outOfBounds == Color32.Black);
 	}
 
 	[Test]
@@ -112,10 +112,10 @@ class ImageTests
 		defer delete image;
 
 		// Should not crash when setting out of bounds
-		image.SetPixel(100, 100, Color.Red);
+		image.SetPixel(100, 100, Color32.Red);
 
 		// Verify no corruption of valid pixels
-		image.SetPixel(0, 0, Color.Lime);
+		image.SetPixel(0, 0, Color32.Lime);
 		let pixel = image.GetPixel(0, 0);
 		Test.Assert(pixel.R == 0 && pixel.G == 255 && pixel.B == 0);
 	}
@@ -127,11 +127,11 @@ class ImageTests
 		defer delete image;
 
 		// Set some pixels first
-		image.SetPixel(0, 0, Color.Red);
-		image.SetPixel(1, 1, Color.Green);
+		image.SetPixel(0, 0, Color32.Red);
+		image.SetPixel(1, 1, Color32.Green);
 
 		// Clear with blue
-		image.Clear(Color.Blue);
+		image.Clear(Color32.Blue);
 
 		// All pixels should be blue now
 		for (uint32 y = 0; y < 4; y++)
@@ -150,7 +150,7 @@ class ImageTests
 		let image = new Image(4, 4, .RGBA8);
 		defer delete image;
 
-		let testColor = Color(100, 150, 200, 250);
+		let testColor = Color32(100, 150, 200, 250);
 		image.FillColor(testColor);
 
 		for (uint32 y = 0; y < 4; y++)
@@ -170,10 +170,10 @@ class ImageTests
 		defer delete image;
 
 		// Set top row red, bottom row blue
-		image.SetPixel(0, 0, Color.Red);
-		image.SetPixel(1, 0, Color.Red);
-		image.SetPixel(0, 3, Color.Blue);
-		image.SetPixel(1, 3, Color.Blue);
+		image.SetPixel(0, 0, Color32.Red);
+		image.SetPixel(1, 0, Color32.Red);
+		image.SetPixel(0, 3, Color32.Blue);
+		image.SetPixel(1, 3, Color32.Blue);
 
 		image.FlipVertical();
 
@@ -192,10 +192,10 @@ class ImageTests
 		defer delete image;
 
 		// Set left column red, right column blue
-		image.SetPixel(0, 0, Color.Red);
-		image.SetPixel(0, 1, Color.Red);
-		image.SetPixel(3, 0, Color.Blue);
-		image.SetPixel(3, 1, Color.Blue);
+		image.SetPixel(0, 0, Color32.Red);
+		image.SetPixel(0, 1, Color32.Red);
+		image.SetPixel(3, 0, Color32.Blue);
+		image.SetPixel(3, 1, Color32.Blue);
 
 		image.FlipHorizontal();
 
@@ -213,10 +213,10 @@ class ImageTests
 		let rgba = new Image(4, 4, .RGBA8);
 		defer delete rgba;
 
-		rgba.SetPixel(0, 0, Color.Red);
-		rgba.SetPixel(1, 0, Color.Green);
-		rgba.SetPixel(2, 0, Color.Blue);
-		rgba.SetPixel(3, 0, Color(100, 150, 200, 255));
+		rgba.SetPixel(0, 0, Color32.Red);
+		rgba.SetPixel(1, 0, Color32.Green);
+		rgba.SetPixel(2, 0, Color32.Blue);
+		rgba.SetPixel(3, 0, Color32(100, 150, 200, 255));
 
 		// Convert to RGB8
 		let rgb = rgba.ConvertFormat(.RGB8).Value;
@@ -237,7 +237,7 @@ class ImageTests
 	{
 		let original = new Image(4, 4, .RGBA8);
 		defer delete original;
-		original.SetPixel(0, 0, Color.Red);
+		original.SetPixel(0, 0, Color32.Red);
 
 		let converted = original.ConvertFormat(.RGBA8).Value;
 		defer delete converted;
@@ -306,7 +306,7 @@ class ImageTests
 		let image = new Image(4, 4, .RGB8);
 		defer delete image;
 
-		image.SetPixel(0, 0, Color(100, 150, 200, 255));
+		image.SetPixel(0, 0, Color32(100, 150, 200, 255));
 		let pixel = image.GetPixel(0, 0);
 
 		// RGB8 should preserve RGB, alpha should be 255
@@ -319,7 +319,7 @@ class ImageTests
 		let image = new Image(4, 4, .BGR8);
 		defer delete image;
 
-		image.SetPixel(0, 0, Color(100, 150, 200, 255));
+		image.SetPixel(0, 0, Color32(100, 150, 200, 255));
 		let pixel = image.GetPixel(0, 0);
 
 		// BGR8 should correctly swap channels
@@ -332,7 +332,7 @@ class ImageTests
 		let image = new Image(4, 4, .BGRA8);
 		defer delete image;
 
-		image.SetPixel(0, 0, Color(100, 150, 200, 128));
+		image.SetPixel(0, 0, Color32(100, 150, 200, 128));
 		let pixel = image.GetPixel(0, 0);
 
 		Test.Assert(pixel.R == 100 && pixel.G == 150 && pixel.B == 200 && pixel.A == 128);
@@ -345,7 +345,7 @@ class ImageTests
 		defer delete image;
 
 		// Set a color - should be averaged to grayscale
-		image.SetPixel(0, 0, Color(90, 120, 150, 255)); // Average = 120
+		image.SetPixel(0, 0, Color32(90, 120, 150, 255)); // Average = 120
 		let pixel = image.GetPixel(0, 0);
 
 		// R8 stores grayscale, returns it in all RGB channels

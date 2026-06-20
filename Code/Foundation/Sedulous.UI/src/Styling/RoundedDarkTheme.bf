@@ -43,7 +43,7 @@ public static class RoundedDarkTheme
 		sheet.ForType(typeof(ButtonBase))
 			.Set(.Background, btnBg)
 			.Set(.CheckedBackground, btnChecked)
-			.Set(.TextColor, Color(240, 240, 245, 255))
+			.Set(.TextColor, Color32(240, 240, 245, 255))
 			.Set(.Padding, Thickness(12, 8));
 
 		// === Panel ===
@@ -68,11 +68,11 @@ public static class RoundedDarkTheme
 			.Set(.FontSize, 14.0f)
 			.Set(.Padding, Thickness(6, 4))
 			.Set(.CursorColor, p.PrimaryAccent)
-			.Set(.SelectionColor, Color(60, 120, 200, 80));
+			.Set(.SelectionColor, Color32(60, 120, 200, 80));
 
 		// === NumericField (shares EditText styling + rounded spin buttons) ===
 		{
-			let spinColor = Color(50, 55, 68, 255);
+			let spinColor = Color32(50, 55, 68, 255);
 			let spinUp = Palette.CreateStateRounded(spinColor, .(0, R, 0, 0));
 			let spinDown = Palette.CreateStateRounded(spinColor, .(0, 0, R, 0));
 			sheet.OwnDrawable(spinUp);
@@ -84,7 +84,7 @@ public static class RoundedDarkTheme
 				.Set(.FontSize, 14.0f)
 				.Set(.Padding, Thickness(6, 4))
 				.Set(.CursorColor, p.PrimaryAccent)
-				.Set(.SelectionColor, Color(60, 120, 200, 80));
+				.Set(.SelectionColor, Color32(60, 120, 200, 80));
 			sheet.ForTypePseudo(typeof(NumericField), "spin-up")
 				.Set(.Background, spinUp);
 			sheet.ForTypePseudo(typeof(NumericField), "spin-down")
@@ -92,7 +92,7 @@ public static class RoundedDarkTheme
 		}
 
 		// === CheckBox - rounded ===
-		let cbBorder = Color(100, 105, 120, 255);
+		let cbBorder = Color32(100, 105, 120, 255);
 		let cbUnchecked = new RoundedRectDrawable(.(30, 32, 42, 255), 3, cbBorder, 1);
 		let cbChecked = new RoundedRectDrawable(p.PrimaryAccent, 3, cbBorder, 1);
 		sheet.OwnDrawable(cbUnchecked);
@@ -106,7 +106,7 @@ public static class RoundedDarkTheme
 			.Set(.Spacing, 6.0f);
 
 		// === RadioButton - circular ===
-		let rbBorder = Color(100, 105, 120, 255);
+		let rbBorder = Color32(100, 105, 120, 255);
 		let rbUnchecked = new RoundedRectDrawable(.(30, 32, 42, 255), 9, rbBorder, 1);
 		let rbChecked = new RoundedRectDrawable(p.PrimaryAccent, 9, rbBorder, 1);
 		sheet.OwnDrawable(rbUnchecked);
@@ -164,7 +164,7 @@ public static class RoundedDarkTheme
 		sheet.ForType(typeof(ComboBox))
 			.Set(.Background, comboBg);
 		sheet.ForTypePseudo(typeof(ComboBox), "arrow")
-			.Set(.TextColor, Color(180, 185, 200, 255));
+			.Set(.TextColor, Color32(180, 185, 200, 255));
 
 		// === ScrollBar - rounded ===
 		let scrollTrack = new RoundedRectDrawable(.(40, 42, 50, 150), 5);
@@ -190,7 +190,7 @@ public static class RoundedDarkTheme
 		sheet.ForTypePseudoState(typeof(Expander), "header", .Hover)
 			.Set(.Background, expanderHover);
 		sheet.ForTypePseudo(typeof(Expander), "chevron")
-			.Set(.TextColor, Color(180, 185, 200, 255));
+			.Set(.TextColor, Color32(180, 185, 200, 255));
 
 		// === TabView - rounded tab backgrounds ===
 		{
@@ -234,8 +234,8 @@ public static class RoundedDarkTheme
 			.Set(.Background, menuBg)
 			.Set(.MenuItemHoverDrawable, menuHover)
 			.Set(.TextColor, p.Text)
-			.Set(.BorderColor, Color(70, 75, 90, 255))
-			.Set(.AccentColor, Color(60, 120, 200, 100));
+			.Set(.BorderColor, Color32(70, 75, 90, 255))
+			.Set(.AccentColor, Color32(60, 120, 200, 100));
 
 		// === Dialog ===
 		let dialogBg = new RoundedRectDrawable(.(50, 52, 62, 255), R, .(80, 85, 100, 255), 1);
@@ -253,7 +253,7 @@ public static class RoundedDarkTheme
 		// === ListView ===
 		sheet.ForType(typeof(ListView))
 			.Set(.Background, sheet.OwnColor(p.Background))
-			.Set(.SelectionColor, Color(60, 120, 200, 80));
+			.Set(.SelectionColor, Color32(60, 120, 200, 80));
 
 		// === TreeView ===
 		sheet.ForType(typeof(TreeView))
@@ -262,7 +262,7 @@ public static class RoundedDarkTheme
 		// === GridView ===
 		sheet.ForType(typeof(GridView))
 			.Set(.Background, sheet.OwnColor(p.Background))
-			.Set(.SelectionColor, Color(60, 120, 200, 80));
+			.Set(.SelectionColor, Color32(60, 120, 200, 80));
 
 		// === Icons ===
 		RegisterIcons(sheet);

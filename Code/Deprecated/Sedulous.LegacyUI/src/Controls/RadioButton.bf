@@ -10,7 +10,7 @@ public class RadioButton : View
 	private String mText ~ delete _;
 	private bool mIsChecked;
 
-	private Color? mTextColor;
+	private Color32? mTextColor;
 	private float? mFontSize;
 
 	private const float CircleSize = 16;
@@ -32,7 +32,7 @@ public class RadioButton : View
 		}
 	}
 
-	public Color TextColor
+	public Color32 TextColor
 	{
 		get => mTextColor ?? Context?.Theme?.GetColor("RadioButton.Text") ?? .(220, 225, 235, 255);
 		set => mTextColor = value;

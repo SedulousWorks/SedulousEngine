@@ -124,19 +124,19 @@ public class TileViewItem : ContentControl, ISelectable
 			let selectionColor = theme?.SelectionColor ?? palette.Accent;
 
 			// Get colors for selection/hover state
-			Color bgColor = Color.Transparent;
-			Color borderColor = Color.Transparent;
+			Color32 bgColor = Color32.Transparent;
+			Color32 borderColor = Color32.Transparent;
 
 			if (mIsSelected)
 			{
-				bgColor = selectionColor.A > 0 ? selectionColor : Color(0, 120, 215, 255);
+				bgColor = selectionColor.A > 0 ? selectionColor : Color32(0, 120, 215, 255);
 				borderColor = bgColor;
 			}
 			else if (mIsHovered)
 			{
-				let baseColor = palette.Surface.A > 0 ? palette.Surface : Color(45, 45, 45, 255);
+				let baseColor = palette.Surface.A > 0 ? palette.Surface : Color32(45, 45, 45, 255);
 				bgColor = Palette.ComputeHover(baseColor);
-				borderColor = palette.Border.A > 0 ? palette.Border : Color(80, 80, 80, 255);
+				borderColor = palette.Border.A > 0 ? palette.Border : Color32(80, 80, 80, 255);
 			}
 
 			// Draw background

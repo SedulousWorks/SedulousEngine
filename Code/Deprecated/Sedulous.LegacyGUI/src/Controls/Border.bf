@@ -10,7 +10,7 @@ namespace Sedulous.LegacyGUI;
 public class Border : Decorator
 {
 	private Thickness mBorderThickness;
-	private Color? mBorderBrush;
+	private Color32? mBorderBrush;
 
 	/// Creates a new Border.
 	public this()
@@ -38,7 +38,7 @@ public class Border : Decorator
 	}
 
 	/// The color of the border. If not set, uses theme border color.
-	public Color BorderBrush
+	public Color32 BorderBrush
 	{
 		get => mBorderBrush ?? GetThemeStyle().BorderColor;
 		set => mBorderBrush = value;
@@ -142,7 +142,7 @@ public class Border : Decorator
 	}
 
 	/// Draws a border with different thicknesses on each side.
-	private void DrawNonUniformBorder(DrawContext ctx, RectangleF bounds, Color color)
+	private void DrawNonUniformBorder(DrawContext ctx, RectangleF bounds, Color32 color)
 	{
 		// Top border
 		if (mBorderThickness.Top > 0)

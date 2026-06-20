@@ -110,7 +110,7 @@ public static class UIRegistry
 	// === Color parsing helper ===
 
 	/// Parse a color from "R,G,B" or "R,G,B,A" (0-255 per channel).
-	public static bool ParseColor(StringView val, out Color result)
+	public static bool ParseColor(StringView val, out Color32 result)
 	{
 		result = .White;
 		uint8[4] c = .(255, 255, 255, 255);
@@ -125,7 +125,7 @@ public static class UIRegistry
 				c[i] = v;
 			i++;
 		}
-		if (i >= 3) { result = Color(c[0], c[1], c[2], c[3]); return true; }
+		if (i >= 3) { result = Color32(c[0], c[1], c[2], c[3]); return true; }
 		return false;
 	}
 

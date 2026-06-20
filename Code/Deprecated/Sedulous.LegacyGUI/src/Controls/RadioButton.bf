@@ -238,11 +238,11 @@ public class RadioButton : ToggleButton
 	}
 
 	/// Gets the background color for the radio circle.
-	protected override Color GetStateBackground()
+	protected override Color32 GetStateBackground()
 	{
 		// Use surface color for background
 		if (let theme = Context?.Theme)
 			return theme.Palette.Surface;
-		return Color(255, 255, 255, 255); // Fallback white
+		return Color32(255, 255, 255, 255); // Fallback white
 	}
 }

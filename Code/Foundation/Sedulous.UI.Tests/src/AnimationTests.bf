@@ -64,7 +64,7 @@ class AnimationTests
 	[Test]
 	public static void Color_Interpolates()
 	{
-		Color result = .Black;
+		Color32 result = .Black;
 		let anim = scope ColorAnimation(.(0, 0, 0, 255), .(255, 255, 255, 255), 1.0f,
 			new [&result] (v) => { result = v; });
 		anim.Start();

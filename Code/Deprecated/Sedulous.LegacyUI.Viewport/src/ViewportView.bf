@@ -38,7 +38,7 @@ public class ViewportView : View
 	public Event<ViewportRenderDelegate> OnRender ~ _.Dispose();
 
 	/// Clear color for the viewport background.
-	public Color ClearColor = .(25, 25, 30, 255);
+	public Color32 ClearColor = .(25, 25, 30, 255);
 
 	/// The color render target view. Use in your render pass.
 	public ITextureView ColorTargetView => mColorTextureView;

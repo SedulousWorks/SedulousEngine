@@ -12,7 +12,7 @@ public struct VGVertex
 	/// Texture coordinates (UV)
 	public Vector2 TexCoord;
 	/// Vertex color (RGBA)
-	public Color Color;
+	public Color32 Color;
 	/// Coverage for analytical anti-aliasing (0.0 = fully transparent fringe, 1.0 = fully opaque)
 	public float Coverage;
 
@@ -22,7 +22,7 @@ public struct VGVertex
 	/// Fixed UV for solid color drawing
 	public const float SolidUV = 0.5f;
 
-	public this(Vector2 position, Vector2 texCoord, Color color, float coverage = 1.0f)
+	public this(Vector2 position, Vector2 texCoord, Color32 color, float coverage = 1.0f)
 	{
 		Position = position;
 		TexCoord = texCoord;
@@ -30,7 +30,7 @@ public struct VGVertex
 		Coverage = coverage;
 	}
 
-	public this(float x, float y, float u, float v, Color color, float coverage = 1.0f)
+	public this(float x, float y, float u, float v, Color32 color, float coverage = 1.0f)
 	{
 		Position = .(x, y);
 		TexCoord = .(u, v);
@@ -39,13 +39,13 @@ public struct VGVertex
 	}
 
 	/// Create a solid-color vertex (no texture)
-	public static VGVertex Solid(Vector2 position, Color color, float coverage = 1.0f)
+	public static VGVertex Solid(Vector2 position, Color32 color, float coverage = 1.0f)
 	{
 		return .(position, .(SolidUV, SolidUV), color, coverage);
 	}
 
 	/// Create a solid-color vertex (no texture)
-	public static VGVertex Solid(float x, float y, Color color, float coverage = 1.0f)
+	public static VGVertex Solid(float x, float y, Color32 color, float coverage = 1.0f)
 	{
 		return .(x, y, SolidUV, SolidUV, color, coverage);
 	}

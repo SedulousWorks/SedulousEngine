@@ -1079,7 +1079,7 @@ class ModelViewerApp : Application
 
 		let maxExtent = Math.Max(extents.X, Math.Max(extents.Y, extents.Z));
 		let gridSize = Math.Max(2.0f, Math.Ceiling(maxExtent * 1.5f));
-		let gridColor = Color(80, 80, 80);
+		let gridColor = Color32(80, 80, 80);
 		let gridStep = Math.Max(0.5f, Math.Floor(gridSize / 10.0f));
 
 		var x = -gridSize;
@@ -1110,8 +1110,8 @@ class ModelViewerApp : Application
 		skeleton.ComputeWorldPoses(localPoses, worldPoses);
 
 		let s = tab.ModelScale;
-		let boneColor = Color(255, 200, 100);
-		let jointColor = Color(255, 100, 100);
+		let boneColor = Color32(255, 200, 100);
+		let jointColor = Color32(255, 100, 100);
 		let jointSize = Math.Max(0.5f, s * 1.0f);
 
 		for (int32 i = 0; i < boneCount; i++)

@@ -20,7 +20,7 @@ class ThemeDetailTests
 	[Test]
 	public static void Palette_Lighten()
 	{
-		let c = Color(100, 100, 100, 255);
+		let c = Color32(100, 100, 100, 255);
 		let lighter = Palette.Lighten(c, 0.5f);
 		Test.Assert(lighter.R > c.R);
 		Test.Assert(lighter.G > c.G);
@@ -31,7 +31,7 @@ class ThemeDetailTests
 	[Test]
 	public static void Palette_Darken()
 	{
-		let c = Color(200, 200, 200, 255);
+		let c = Color32(200, 200, 200, 255);
 		let darker = Palette.Darken(c, 0.5f);
 		Test.Assert(darker.R < c.R);
 		Test.Assert(darker.G < c.G);
@@ -42,7 +42,7 @@ class ThemeDetailTests
 	[Test]
 	public static void Palette_ComputeHover()
 	{
-		let c = Color(100, 100, 100, 255);
+		let c = Color32(100, 100, 100, 255);
 		let hover = Palette.ComputeHover(c);
 		Test.Assert(hover.R != c.R || hover.G != c.G || hover.B != c.B);
 	}
@@ -50,7 +50,7 @@ class ThemeDetailTests
 	[Test]
 	public static void Palette_ComputePressed()
 	{
-		let c = Color(100, 100, 100, 255);
+		let c = Color32(100, 100, 100, 255);
 		let pressed = Palette.ComputePressed(c);
 		Test.Assert(pressed.R != c.R || pressed.G != c.G || pressed.B != c.B);
 	}
@@ -58,7 +58,7 @@ class ThemeDetailTests
 	[Test]
 	public static void Palette_ComputeDisabled()
 	{
-		let c = Color(100, 100, 100, 255);
+		let c = Color32(100, 100, 100, 255);
 		let disabled = Palette.ComputeDisabled(c);
 		Test.Assert(disabled.A < c.A || disabled.R != c.R);
 	}

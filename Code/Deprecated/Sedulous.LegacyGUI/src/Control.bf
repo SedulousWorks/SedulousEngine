@@ -31,9 +31,9 @@ public abstract class Control : UIElement
 	private ControlState mCurrentState = .Normal;
 
 	// Theming - null means use theme, explicit value overrides theme
-	private Color? mBackground;
-	private Color? mForeground;
-	private Color? mBorderColor;
+	private Color32? mBackground;
+	private Color32? mForeground;
+	private Color32? mBorderColor;
 	private float? mBorderThickness;
 	private float mCornerRadius = -1; // -1 means "use control-specific default" (Button uses 4, others use 0)
 	private Thickness? mControlPadding;
@@ -42,7 +42,7 @@ public abstract class Control : UIElement
 	private ImageBrush? mBackgroundImage;
 
 	// Focus visual - null means use theme
-	private Color? mFocusBorderColor;
+	private Color32? mFocusBorderColor;
 	private float? mFocusBorderThickness;
 
 	// Tooltip text
@@ -134,21 +134,21 @@ public abstract class Control : UIElement
 	}
 
 	/// Background color. Set to override theme.
-	public Color Background
+	public Color32 Background
 	{
 		get => mBackground ?? GetThemeStyle().Background;
 		set => mBackground = value;
 	}
 
 	/// Foreground (text) color. Set to override theme.
-	public Color Foreground
+	public Color32 Foreground
 	{
 		get => mForeground ?? GetThemeStyle().Foreground;
 		set => mForeground = value;
 	}
 
 	/// Border color. Set to override theme.
-	public Color BorderColor
+	public Color32 BorderColor
 	{
 		get => mBorderColor ?? GetThemeStyle().BorderColor;
 		set => mBorderColor = value;
@@ -205,9 +205,9 @@ public abstract class Control : UIElement
 	}
 
 	/// Focus indicator border color. Set to override theme.
-	public Color FocusBorderColor
+	public Color32 FocusBorderColor
 	{
-		get => mFocusBorderColor ?? Context?.Theme?.FocusIndicatorColor ?? Color(100, 149, 237, 255);
+		get => mFocusBorderColor ?? Context?.Theme?.FocusIndicatorColor ?? Color32(100, 149, 237, 255);
 		set => mFocusBorderColor = value;
 	}
 
@@ -263,7 +263,7 @@ public abstract class Control : UIElement
 	}
 
 	/// Gets the background color for the current state.
-	protected virtual Color GetStateBackground()
+	protected virtual Color32 GetStateBackground()
 	{
 		let baseColor = Background;
 		switch (mCurrentState)
@@ -283,7 +283,7 @@ public abstract class Control : UIElement
 	}
 
 	/// Gets the foreground color for the current state.
-	protected virtual Color GetStateForeground()
+	protected virtual Color32 GetStateForeground()
 	{
 		let baseColor = Foreground;
 		switch (mCurrentState)
@@ -296,7 +296,7 @@ public abstract class Control : UIElement
 	}
 
 	/// Gets the border color for the current state.
-	protected virtual Color GetStateBorderColor()
+	protected virtual Color32 GetStateBorderColor()
 	{
 		if (IsFocused)
 			return FocusBorderColor;

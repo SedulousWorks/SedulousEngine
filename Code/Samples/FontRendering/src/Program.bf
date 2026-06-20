@@ -20,7 +20,7 @@ struct TextVertex
 	public float[2] TexCoord;
 	public float[4] Color;
 
-	public this(float x, float y, float u, float v, Color color)
+	public this(float x, float y, float u, float v, Color32 color)
 	{
 		Position = .(x, y);
 		TexCoord = .(u, v);
@@ -435,126 +435,126 @@ class FontRenderingSample : Application
 		// ============ LEFT COLUMN ============
 
 		// Title and subtitle
-		DrawText("Font Rendering Sample", margin, 0, Color.White);
-		DrawText("Sedulous.Fonts + stb_truetype", margin, lineHeight, Color(0.6f, 0.6f, 0.6f, 1.0f));
+		DrawText("Font Rendering Sample", margin, 0, Color32.White);
+		DrawText("Sedulous.Fonts + stb_truetype", margin, lineHeight, Color32(0.6f, 0.6f, 0.6f, 1.0f));
 
 		// --- Text Alignment Section ---
 		float alignY = lineHeight * 2.5f;
-		DrawText("Text Alignment:", margin, alignY, Color(0.9f, 0.9f, 0.5f, 1.0f));
+		DrawText("Text Alignment:", margin, alignY, Color32(0.9f, 0.9f, 0.5f, 1.0f));
 
 		alignY += lineHeight;
-		DrawText("Left aligned text", margin, alignY, Color(0.8f, 0.8f, 0.9f, 1.0f));
+		DrawText("Left aligned text", margin, alignY, Color32(0.8f, 0.8f, 0.9f, 1.0f));
 
 		alignY += lineHeight;
-		DrawTextAligned("Center aligned text", margin, alignY, columnWidth, .Center, Color(0.8f, 0.9f, 0.8f, 1.0f));
+		DrawTextAligned("Center aligned text", margin, alignY, columnWidth, .Center, Color32(0.8f, 0.9f, 0.8f, 1.0f));
 
 		alignY += lineHeight;
-		DrawTextAligned("Right aligned text", margin, alignY, columnWidth, .Right, Color(0.9f, 0.8f, 0.8f, 1.0f));
+		DrawTextAligned("Right aligned text", margin, alignY, columnWidth, .Right, Color32(0.9f, 0.8f, 0.8f, 1.0f));
 
 		// --- Colors Section ---
 		float colorY = alignY + lineHeight * 1.5f;
-		DrawText("Colors:", margin, colorY, Color(0.9f, 0.9f, 0.5f, 1.0f));
+		DrawText("Colors:", margin, colorY, Color32(0.9f, 0.9f, 0.5f, 1.0f));
 
 		colorY += lineHeight;
 		float colorX = margin;
-		DrawText("Red", colorX, colorY, Color.Red);
+		DrawText("Red", colorX, colorY, Color32.Red);
 		colorX += mFont.MeasureString("Red") + 20;
-		DrawText("Green", colorX, colorY, Color.Green);
+		DrawText("Green", colorX, colorY, Color32.Green);
 		colorX += mFont.MeasureString("Green") + 20;
-		DrawText("Blue", colorX, colorY, Color.Blue);
+		DrawText("Blue", colorX, colorY, Color32.Blue);
 		colorX += mFont.MeasureString("Blue") + 20;
-		DrawText("Yellow", colorX, colorY, Color.Yellow);
+		DrawText("Yellow", colorX, colorY, Color32.Yellow);
 
 		colorY += lineHeight;
 		colorX = margin;
-		DrawText("Cyan", colorX, colorY, Color.Cyan);
+		DrawText("Cyan", colorX, colorY, Color32.Cyan);
 		colorX += mFont.MeasureString("Cyan") + 20;
-		DrawText("Magenta", colorX, colorY, Color.Magenta);
+		DrawText("Magenta", colorX, colorY, Color32.Magenta);
 		colorX += mFont.MeasureString("Magenta") + 20;
-		DrawText("Orange", colorX, colorY, Color(1.0f, 0.5f, 0.0f, 1.0f));
+		DrawText("Orange", colorX, colorY, Color32(1.0f, 0.5f, 0.0f, 1.0f));
 
 		// --- Rainbow Text (animated) ---
 		float rainbowY = colorY + lineHeight * 1.5f;
-		DrawText("Animation:", margin, rainbowY, Color(0.9f, 0.9f, 0.5f, 1.0f));
+		DrawText("Animation:", margin, rainbowY, Color32(0.9f, 0.9f, 0.5f, 1.0f));
 		rainbowY += lineHeight;
 		DrawTextRainbow("Rainbow animated text!", margin, rainbowY, mAnimationTime);
 
 		// --- Text Decorations Section ---
 		float decorY = rainbowY + lineHeight * 1.5f;
-		DrawText("Text Decorations:", margin, decorY, Color(0.9f, 0.9f, 0.5f, 1.0f));
+		DrawText("Text Decorations:", margin, decorY, Color32(0.9f, 0.9f, 0.5f, 1.0f));
 
 		decorY += lineHeight;
-		DrawTextWithUnderline("Underlined text", margin, decorY, Color(0.8f, 0.9f, 0.8f, 1.0f));
+		DrawTextWithUnderline("Underlined text", margin, decorY, Color32(0.8f, 0.9f, 0.8f, 1.0f));
 
 		decorY += lineHeight;
-		DrawTextWithStrikethrough("Strikethrough text", margin, decorY, Color(0.9f, 0.8f, 0.8f, 1.0f));
+		DrawTextWithStrikethrough("Strikethrough text", margin, decorY, Color32(0.9f, 0.8f, 0.8f, 1.0f));
 
 		decorY += lineHeight;
-		DrawTextWithBothDecorations("Both decorations", margin, decorY, Color(0.8f, 0.8f, 0.9f, 1.0f));
+		DrawTextWithBothDecorations("Both decorations", margin, decorY, Color32(0.8f, 0.8f, 0.9f, 1.0f));
 
 		// --- Kerning Demo ---
 		float kernY = decorY + lineHeight * 1.5f;
-		DrawText("Kerning Pairs:", margin, kernY, Color(0.9f, 0.9f, 0.5f, 1.0f));
+		DrawText("Kerning Pairs:", margin, kernY, Color32(0.9f, 0.9f, 0.5f, 1.0f));
 		kernY += lineHeight;
-		DrawText("AV  To  WA  Ty  VA", margin, kernY, Color(0.8f, 0.8f, 0.9f, 1.0f));
+		DrawText("AV  To  WA  Ty  VA", margin, kernY, Color32(0.8f, 0.8f, 0.9f, 1.0f));
 
 		// ============ RIGHT COLUMN ============
 		float rightX = screenWidth / 2 + margin;
 
 		// --- Word Wrapping Section ---
 		float wrapY = lineHeight * 2.5f;
-		DrawText("Word Wrapping:", rightX, wrapY, Color(0.9f, 0.9f, 0.5f, 1.0f));
+		DrawText("Word Wrapping:", rightX, wrapY, Color32(0.9f, 0.9f, 0.5f, 1.0f));
 
 		wrapY += lineHeight;
 		StringView wrappedText = "The text shaper handles word wrapping automatically. Long sentences will be broken at word boundaries to fit within the specified maximum width.";
-		DrawTextWrapped(wrappedText, rightX, wrapY, columnWidth, Color(0.8f, 0.8f, 0.9f, 1.0f));
+		DrawTextWrapped(wrappedText, rightX, wrapY, columnWidth, Color32(0.8f, 0.8f, 0.9f, 1.0f));
 
 		// --- Font Metrics Section ---
 		float metricsY = wrapY + lineHeight * 5;
-		DrawText("Font Metrics:", rightX, metricsY, Color(0.9f, 0.9f, 0.5f, 1.0f));
+		DrawText("Font Metrics:", rightX, metricsY, Color32(0.9f, 0.9f, 0.5f, 1.0f));
 
 		metricsY += lineHeight;
 		String metricsText = scope $"Pixel Height: {mFont.PixelHeight:0.0}";
-		DrawText(metricsText, rightX, metricsY, Color(0.7f, 0.7f, 0.8f, 1.0f));
+		DrawText(metricsText, rightX, metricsY, Color32(0.7f, 0.7f, 0.8f, 1.0f));
 
 		metricsY += lineHeight;
 		metricsText.Set(scope $"Ascent: {mFont.Metrics.Ascent:0.0}");
-		DrawText(metricsText, rightX, metricsY, Color(0.7f, 0.7f, 0.8f, 1.0f));
+		DrawText(metricsText, rightX, metricsY, Color32(0.7f, 0.7f, 0.8f, 1.0f));
 
 		metricsY += lineHeight;
 		metricsText.Set(scope $"Descent: {mFont.Metrics.Descent:0.0}");
-		DrawText(metricsText, rightX, metricsY, Color(0.7f, 0.7f, 0.8f, 1.0f));
+		DrawText(metricsText, rightX, metricsY, Color32(0.7f, 0.7f, 0.8f, 1.0f));
 
 		metricsY += lineHeight;
 		metricsText.Set(scope $"Line Height: {mFont.Metrics.LineHeight:0.0}");
-		DrawText(metricsText, rightX, metricsY, Color(0.7f, 0.7f, 0.8f, 1.0f));
+		DrawText(metricsText, rightX, metricsY, Color32(0.7f, 0.7f, 0.8f, 1.0f));
 
 		// --- String Measurement ---
 		float measureY = metricsY + lineHeight * 1.5f;
-		DrawText("MeasureString:", rightX, measureY, Color(0.9f, 0.9f, 0.5f, 1.0f));
+		DrawText("MeasureString:", rightX, measureY, Color32(0.9f, 0.9f, 0.5f, 1.0f));
 
 		measureY += lineHeight;
 		StringView sampleText = "Sample Text";
 		float measuredWidth = mFont.MeasureString(sampleText);
 		String measureInfo = scope $"\"{sampleText}\" = {measuredWidth:0.0}px";
-		DrawText(measureInfo, rightX, measureY, Color(0.7f, 0.7f, 0.8f, 1.0f));
+		DrawText(measureInfo, rightX, measureY, Color32(0.7f, 0.7f, 0.8f, 1.0f));
 
 		// ============ BOTTOM SECTION ============
 
 		// Character sets
 		float charY = screenHeight - lineHeight * 4;
-		DrawTextAligned("ABCDEFGHIJKLMNOPQRSTUVWXYZ", margin, charY, screenWidth - margin * 2, .Center, Color(0.5f, 0.5f, 0.7f, 1.0f));
+		DrawTextAligned("ABCDEFGHIJKLMNOPQRSTUVWXYZ", margin, charY, screenWidth - margin * 2, .Center, Color32(0.5f, 0.5f, 0.7f, 1.0f));
 		charY += lineHeight;
-		DrawTextAligned("abcdefghijklmnopqrstuvwxyz  0123456789", margin, charY, screenWidth - margin * 2, .Center, Color(0.5f, 0.5f, 0.7f, 1.0f));
+		DrawTextAligned("abcdefghijklmnopqrstuvwxyz  0123456789", margin, charY, screenWidth - margin * 2, .Center, Color32(0.5f, 0.5f, 0.7f, 1.0f));
 		charY += lineHeight;
-		DrawTextAligned("!@#$%^&*()_+-=[]{}|;':\",./<>?", margin, charY, screenWidth - margin * 2, .Center, Color(0.5f, 0.5f, 0.7f, 1.0f));
+		DrawTextAligned("!@#$%^&*()_+-=[]{}|;':\",./<>?", margin, charY, screenWidth - margin * 2, .Center, Color32(0.5f, 0.5f, 0.7f, 1.0f));
 
 		// FPS counter (top right)
 		String fpsText = scope $"FPS: {mCurrentFps}";
-		DrawTextAligned(fpsText, 0, 0, screenWidth - margin, .Right, Color(0.0f, 1.0f, 0.0f, 1.0f));
+		DrawTextAligned(fpsText, 0, 0, screenWidth - margin, .Right, Color32(0.0f, 1.0f, 0.0f, 1.0f));
 
 		// Instructions at bottom
-		DrawTextAligned("Press Escape to exit", margin, screenHeight - lineHeight, screenWidth - margin * 2, .Center, Color(0.4f, 0.4f, 0.4f, 1.0f));
+		DrawTextAligned("Press Escape to exit", margin, screenHeight - lineHeight, screenWidth - margin * 2, .Center, Color32(0.4f, 0.4f, 0.4f, 1.0f));
 
 		// Upload vertex data
 		if (mVertices.Count > 0)
@@ -567,7 +567,7 @@ class FontRenderingSample : Application
 		}
 	}
 
-	private void DrawText(StringView text, float x, float y, Color color)
+	private void DrawText(StringView text, float x, float y, Color32 color)
 	{
 		float cursorX = x;
 		// Offset Y by ascent so that y=0 means top of text, not baseline
@@ -591,7 +591,7 @@ class FontRenderingSample : Application
 	}
 
 	/// Draw text with horizontal alignment within a given width
-	private void DrawTextAligned(StringView text, float x, float y, float width, TextAlignment alignment, Color color)
+	private void DrawTextAligned(StringView text, float x, float y, float width, TextAlignment alignment, Color32 color)
 	{
 		float textWidth = mFont.MeasureString(text);
 
@@ -625,7 +625,7 @@ class FontRenderingSample : Application
 
 			// Calculate rainbow color based on character position and time
 			float hue = ((float)charIndex * 0.1f + time * 0.5f) % 1.0f;
-			Color color = HsvToRgb(hue, 0.8f, 1.0f);
+			Color32 color = HsvToRgb(hue, 0.8f, 1.0f);
 
 			GlyphQuad quad = .();
 			if (mFontAtlas.GetGlyphQuad(codepoint, ref cursorX, cursorY, out quad))
@@ -638,7 +638,7 @@ class FontRenderingSample : Application
 	}
 
 	/// Draw text using the text shaper with word wrapping
-	private void DrawTextWrapped(StringView text, float x, float y, float maxWidth, Color color)
+	private void DrawTextWrapped(StringView text, float x, float y, float maxWidth, Color32 color)
 	{
 		float totalHeight;
 		if (mTextShaper.ShapeTextWrapped(mFont, text, maxWidth, mShapedPositions, out totalHeight) case .Err)
@@ -667,7 +667,7 @@ class FontRenderingSample : Application
 	}
 
 	/// Draw text with underline decoration
-	private void DrawTextWithUnderline(StringView text, float x, float y, Color color)
+	private void DrawTextWithUnderline(StringView text, float x, float y, Color32 color)
 	{
 		DrawText(text, x, y, color);
 
@@ -681,7 +681,7 @@ class FontRenderingSample : Application
 	}
 
 	/// Draw text with strikethrough decoration
-	private void DrawTextWithStrikethrough(StringView text, float x, float y, Color color)
+	private void DrawTextWithStrikethrough(StringView text, float x, float y, Color32 color)
 	{
 		DrawText(text, x, y, color);
 
@@ -695,7 +695,7 @@ class FontRenderingSample : Application
 	}
 
 	/// Draw text with both underline and strikethrough decorations
-	private void DrawTextWithBothDecorations(StringView text, float x, float y, Color color)
+	private void DrawTextWithBothDecorations(StringView text, float x, float y, Color32 color)
 	{
 		DrawText(text, x, y, color);
 
@@ -713,7 +713,7 @@ class FontRenderingSample : Application
 	}
 
 	/// Draw a horizontal line (used for underline/strikethrough)
-	private void DrawHorizontalLine(float x, float y, float width, float thickness, Color color)
+	private void DrawHorizontalLine(float x, float y, float width, float thickness, Color32 color)
 	{
 		uint16 baseIndex = (uint16)mVertices.Count;
 
@@ -738,7 +738,7 @@ class FontRenderingSample : Application
 	}
 
 	/// Draw text using shaped positions (for custom shaping)
-	private void DrawTextShaped(float baseX, float baseY, Color color)
+	private void DrawTextShaped(float baseX, float baseY, Color32 color)
 	{
 		// Offset Y by ascent so that y=0 means top of text, not baseline
 		float yOffset = baseY + mFont.Metrics.Ascent;
@@ -760,7 +760,7 @@ class FontRenderingSample : Application
 		}
 	}
 
-	private void AddQuad(GlyphQuad quad, Color color)
+	private void AddQuad(GlyphQuad quad, Color32 color)
 	{
 		uint16 baseIndex = (uint16)mVertices.Count;
 
@@ -779,10 +779,10 @@ class FontRenderingSample : Application
 		mIndices.Add(baseIndex + 3);
 	}
 
-	private Color HsvToRgb(float h, float s, float v)
+	private Color32 HsvToRgb(float h, float s, float v)
 	{
 		if (s <= 0)
-			return Color(v, v, v, 1.0f);
+			return Color32(v, v, v, 1.0f);
 
 		float hue = h * 6.0f;
 		int i = (int)hue;
@@ -793,13 +793,13 @@ class FontRenderingSample : Application
 
 		switch (i % 6)
 		{
-		case 0: return Color(v, t, p, 1.0f);
-		case 1: return Color(q, v, p, 1.0f);
-		case 2: return Color(p, v, t, 1.0f);
-		case 3: return Color(p, q, v, 1.0f);
-		case 4: return Color(t, p, v, 1.0f);
-		case 5: return Color(v, p, q, 1.0f);
-		default: return Color(v, v, v, 1.0f);
+		case 0: return Color32(v, t, p, 1.0f);
+		case 1: return Color32(q, v, p, 1.0f);
+		case 2: return Color32(p, v, t, 1.0f);
+		case 3: return Color32(p, q, v, 1.0f);
+		case 4: return Color32(t, p, v, 1.0f);
+		case 5: return Color32(v, p, q, 1.0f);
+		default: return Color32(v, v, v, 1.0f);
 		}
 	}
 

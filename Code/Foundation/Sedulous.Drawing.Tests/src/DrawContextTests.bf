@@ -28,7 +28,7 @@ class DrawContextTests
 	public static void Clear_ResetsBatch()
 	{
 		let ctx = TestContext!();
-		ctx.FillRect(.(0, 0, 100, 100), Color.Red);
+		ctx.FillRect(.(0, 0, 100, 100), Color32.Red);
 		ctx.Clear();
 		let batch = ctx.GetBatch();
 
@@ -125,7 +125,7 @@ class DrawContextTests
 	public static void FillRect_AddsGeometry()
 	{
 		let ctx = TestContext!();
-		ctx.FillRect(.(0, 0, 100, 50), Color.Red);
+		ctx.FillRect(.(0, 0, 100, 50), Color32.Red);
 
 		let batch = ctx.GetBatch();
 		Test.Assert(batch.VertexCount == 4);
@@ -136,7 +136,7 @@ class DrawContextTests
 	public static void FillRect_WithBrush_AddsGeometry()
 	{
 		let ctx = TestContext!();
-		let brush = scope SolidBrush(Color.Blue);
+		let brush = scope SolidBrush(Color32.Blue);
 		ctx.FillRect(.(0, 0, 100, 50), brush);
 
 		let batch = ctx.GetBatch();
@@ -147,7 +147,7 @@ class DrawContextTests
 	public static void FillCircle_AddsGeometry()
 	{
 		let ctx = TestContext!();
-		ctx.FillCircle(.(50, 50), 30, Color.Green);
+		ctx.FillCircle(.(50, 50), 30, Color32.Green);
 
 		let batch = ctx.GetBatch();
 		Test.Assert(batch.VertexCount > 0);
@@ -158,7 +158,7 @@ class DrawContextTests
 	public static void FillEllipse_AddsGeometry()
 	{
 		let ctx = TestContext!();
-		ctx.FillEllipse(.(50, 50), 40, 20, Color.Yellow);
+		ctx.FillEllipse(.(50, 50), 40, 20, Color32.Yellow);
 
 		let batch = ctx.GetBatch();
 		Test.Assert(batch.VertexCount > 0);
@@ -168,7 +168,7 @@ class DrawContextTests
 	public static void FillRoundedRect_AddsGeometry()
 	{
 		let ctx = TestContext!();
-		ctx.FillRoundedRect(.(0, 0, 100, 50), 10, Color.Purple);
+		ctx.FillRoundedRect(.(0, 0, 100, 50), 10, Color32.Purple);
 
 		let batch = ctx.GetBatch();
 		Test.Assert(batch.VertexCount > 0);
@@ -178,7 +178,7 @@ class DrawContextTests
 	public static void FillArc_AddsGeometry()
 	{
 		let ctx = TestContext!();
-		ctx.FillArc(.(50, 50), 30, 0, Math.PI_f / 2, Color.Orange);
+		ctx.FillArc(.(50, 50), 30, 0, Math.PI_f / 2, Color32.Orange);
 
 		let batch = ctx.GetBatch();
 		Test.Assert(batch.VertexCount > 0);
@@ -189,7 +189,7 @@ class DrawContextTests
 	{
 		let ctx = TestContext!();
 		Vector2[] points = scope .(.(0, 0), .(100, 0), .(50, 100));
-		ctx.FillPolygon(points, Color.Red);
+		ctx.FillPolygon(points, Color32.Red);
 
 		let batch = ctx.GetBatch();
 		Test.Assert(batch.VertexCount == 3);
@@ -201,7 +201,7 @@ class DrawContextTests
 	public static void DrawLine_AddsGeometry()
 	{
 		let ctx = TestContext!();
-		ctx.DrawLine(.(0, 0), .(100, 100), Color.Black, 2.0f);
+		ctx.DrawLine(.(0, 0), .(100, 100), Color32.Black, 2.0f);
 
 		let batch = ctx.GetBatch();
 		Test.Assert(batch.VertexCount >= 4);
@@ -211,7 +211,7 @@ class DrawContextTests
 	public static void DrawLine_WithPen_AddsGeometry()
 	{
 		let ctx = TestContext!();
-		let pen = scope Pen(Color.Red, 3.0f);
+		let pen = scope Pen(Color32.Red, 3.0f);
 		ctx.DrawLine(.(0, 0), .(100, 100), pen);
 
 		let batch = ctx.GetBatch();
@@ -222,7 +222,7 @@ class DrawContextTests
 	public static void DrawRect_AddsGeometry()
 	{
 		let ctx = TestContext!();
-		ctx.DrawRect(.(0, 0, 100, 50), Color.Black, 1.0f);
+		ctx.DrawRect(.(0, 0, 100, 50), Color32.Black, 1.0f);
 
 		let batch = ctx.GetBatch();
 		Test.Assert(batch.VertexCount > 0);
@@ -232,7 +232,7 @@ class DrawContextTests
 	public static void DrawCircle_AddsGeometry()
 	{
 		let ctx = TestContext!();
-		ctx.DrawCircle(.(50, 50), 30, Color.Black, 2.0f);
+		ctx.DrawCircle(.(50, 50), 30, Color32.Black, 2.0f);
 
 		let batch = ctx.GetBatch();
 		Test.Assert(batch.VertexCount > 0);
@@ -243,7 +243,7 @@ class DrawContextTests
 	{
 		let ctx = TestContext!();
 		Vector2[] points = scope .(.(0, 0), .(100, 0), .(100, 100), .(0, 100));
-		ctx.DrawPolygon(points, Color.Black, 1.0f);
+		ctx.DrawPolygon(points, Color32.Black, 1.0f);
 
 		let batch = ctx.GetBatch();
 		Test.Assert(batch.VertexCount > 0);
@@ -254,7 +254,7 @@ class DrawContextTests
 	{
 		let ctx = TestContext!();
 		Vector2[] points = scope .(.(0, 0), .(50, 50), .(100, 0));
-		ctx.DrawPolyline(points, Color.Black, 1.0f);
+		ctx.DrawPolyline(points, Color32.Black, 1.0f);
 
 		let batch = ctx.GetBatch();
 		Test.Assert(batch.VertexCount > 0);
@@ -266,9 +266,9 @@ class DrawContextTests
 	public static void SetBlendMode_CreatesNewCommand()
 	{
 		let ctx = TestContext!();
-		ctx.FillRect(.(0, 0, 50, 50), Color.Red);
+		ctx.FillRect(.(0, 0, 50, 50), Color32.Red);
 		ctx.SetBlendMode(.Additive);
-		ctx.FillRect(.(50, 0, 50, 50), Color.Blue);
+		ctx.FillRect(.(50, 0, 50, 50), Color32.Blue);
 
 		let batch = ctx.GetBatch();
 		Test.Assert(batch.CommandCount == 2);
@@ -283,7 +283,7 @@ class DrawContextTests
 	{
 		let ctx = TestContext!();
 		ctx.PushClipRect(.(10, 10, 80, 80));
-		ctx.FillRect(.(0, 0, 100, 100), Color.Red);
+		ctx.FillRect(.(0, 0, 100, 100), Color32.Red);
 
 		let batch = ctx.GetBatch();
 		let cmd = batch.GetCommand(0);
@@ -297,7 +297,7 @@ class DrawContextTests
 	public static void FillRect_UsesSolidUV()
 	{
 		let ctx = scope DrawContext();
-		ctx.FillRect(.(0, 0, 10, 10), Color.White);
+		ctx.FillRect(.(0, 0, 10, 10), Color32.White);
 
 		let batch = ctx.GetBatch();
 		// Solid color drawing uses fixed UV (0.5, 0.5) with internal white texture
@@ -314,7 +314,7 @@ class DrawContextTests
 	public static void FillRect_WithLinearGradient_InterpolatesColors()
 	{
 		let ctx = TestContext!();
-		let brush = scope LinearGradientBrush(.(0, 0), .(100, 0), Color.Red, Color.Blue);
+		let brush = scope LinearGradientBrush(.(0, 0), .(100, 0), Color32.Red, Color32.Blue);
 		ctx.FillRect(.(0, 0, 100, 50), brush);
 
 		let batch = ctx.GetBatch();
@@ -326,7 +326,7 @@ class DrawContextTests
 	public static void FillCircle_WithRadialGradient_InterpolatesColors()
 	{
 		let ctx = TestContext!();
-		let brush = scope RadialGradientBrush(.(50, 50), 50, Color.White, Color.Black);
+		let brush = scope RadialGradientBrush(.(50, 50), 50, Color32.White, Color32.Black);
 		ctx.FillCircle(.(50, 50), 50, brush);
 
 		let batch = ctx.GetBatch();

@@ -62,7 +62,7 @@ public class Hyperlink : Button
 	}
 
 	/// Gets the foreground color for hyperlink states.
-	protected override Color GetStateForeground()
+	protected override Color32 GetStateForeground()
 	{
 		let baseColor = GetHyperlinkColor();
 		switch (CurrentState)
@@ -72,26 +72,26 @@ public class Hyperlink : Button
 		case .Pressed:
 			return GetVisitedColor();
 		case .Hover:
-			return baseColor.Interpolate(Color.White, 0.2f);
+			return baseColor.Interpolate(Color32.White, 0.2f);
 		default:
 			return baseColor;
 		}
 	}
 
 	/// Gets the hyperlink color (blue by default).
-	protected Color GetHyperlinkColor()
+	protected Color32 GetHyperlinkColor()
 	{
 		let palette = Context?.Theme?.Palette ?? Palette();
 		// Prefer Link color if set, otherwise Accent, otherwise fallback
 		return palette.Link.A > 0 ? palette.Link :
-			(palette.Accent.A > 0 ? palette.Accent : Color(0, 102, 204, 255));
+			(palette.Accent.A > 0 ? palette.Accent : Color32(0, 102, 204, 255));
 	}
 
 	/// Gets the visited color (purple by default).
-	protected Color GetVisitedColor()
+	protected Color32 GetVisitedColor()
 	{
 		let palette = Context?.Theme?.Palette ?? Palette();
-		return palette.LinkVisited.A > 0 ? palette.LinkVisited : Color(128, 0, 128, 255);
+		return palette.LinkVisited.A > 0 ? palette.LinkVisited : Color32(128, 0, 128, 255);
 	}
 
 	/// Renders the hyperlink.
@@ -134,8 +134,8 @@ public class Hyperlink : Button
 	}
 
 	/// Gets the background color - transparent for hyperlinks.
-	protected override Color GetStateBackground()
+	protected override Color32 GetStateBackground()
 	{
-		return Color.Transparent;
+		return Color32.Transparent;
 	}
 }

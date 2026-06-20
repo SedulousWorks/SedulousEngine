@@ -208,7 +208,7 @@ public class VGContext
 	// === Path Drawing ===
 
 	/// Fill a path with a solid color
-	public void FillPath(Path path, Color color, FillRule fillRule = .EvenOdd, bool antiAlias = true)
+	public void FillPath(Path path, Color32 color, FillRule fillRule = .EvenOdd, bool antiAlias = true)
 	{
 		SetupForSolidDraw();
 		let startVertex = mBatch.Vertices.Count;
@@ -229,7 +229,7 @@ public class VGContext
 	}
 
 	/// Stroke a path with a solid color
-	public void StrokePath(Path path, Color color, StrokeStyle style, Span<float> dashPattern = default, bool antiAlias = true)
+	public void StrokePath(Path path, Color32 color, StrokeStyle style, Span<float> dashPattern = default, bool antiAlias = true)
 	{
 		SetupForSolidDraw();
 		// Flatten path to polylines
@@ -254,7 +254,7 @@ public class VGContext
 	// === Convenience: Filled Shapes ===
 
 	/// Fill a rectangle
-	public void FillRect(RectangleF rect, Color color)
+	public void FillRect(RectangleF rect, Color32 color)
 	{
 		let pb = scope PathBuilder();
 		pb.MoveTo(rect.X, rect.Y);
@@ -269,13 +269,13 @@ public class VGContext
 	}
 
 	/// Fill a rounded rectangle with uniform radius
-	public void FillRoundedRect(RectangleF rect, float radius, Color color)
+	public void FillRoundedRect(RectangleF rect, float radius, Color32 color)
 	{
 		FillRoundedRect(rect, CornerRadii(radius), color);
 	}
 
 	/// Fill a rounded rectangle with per-corner radii
-	public void FillRoundedRect(RectangleF rect, CornerRadii radii, Color color)
+	public void FillRoundedRect(RectangleF rect, CornerRadii radii, Color32 color)
 	{
 		if (radii.IsZero)
 		{
@@ -291,7 +291,7 @@ public class VGContext
 	}
 
 	/// Fill a circle
-	public void FillCircle(Vector2 center, float radius, Color color)
+	public void FillCircle(Vector2 center, float radius, Color32 color)
 	{
 		let pb = scope PathBuilder();
 		ShapeBuilder.BuildCircle(center, radius, pb);
@@ -301,7 +301,7 @@ public class VGContext
 	}
 
 	/// Fill an ellipse
-	public void FillEllipse(Vector2 center, float rx, float ry, Color color)
+	public void FillEllipse(Vector2 center, float rx, float ry, Color32 color)
 	{
 		let pb = scope PathBuilder();
 		ShapeBuilder.BuildEllipse(center, rx, ry, pb);
@@ -311,7 +311,7 @@ public class VGContext
 	}
 
 	/// Fill a regular polygon
-	public void FillRegularPolygon(Vector2 center, float radius, int sides, Color color)
+	public void FillRegularPolygon(Vector2 center, float radius, int sides, Color32 color)
 	{
 		let pb = scope PathBuilder();
 		ShapeBuilder.BuildRegularPolygon(center, radius, sides, pb);
@@ -321,7 +321,7 @@ public class VGContext
 	}
 
 	/// Fill a star shape
-	public void FillStar(Vector2 center, float outerRadius, float innerRadius, int points, Color color)
+	public void FillStar(Vector2 center, float outerRadius, float innerRadius, int points, Color32 color)
 	{
 		let pb = scope PathBuilder();
 		ShapeBuilder.BuildStar(center, outerRadius, innerRadius, points, pb);
@@ -333,7 +333,7 @@ public class VGContext
 	// === Convenience: Stroked Shapes ===
 
 	/// Stroke a rectangle
-	public void StrokeRect(RectangleF rect, Color color, float width = 1.0f)
+	public void StrokeRect(RectangleF rect, Color32 color, float width = 1.0f)
 	{
 		let pb = scope PathBuilder();
 		pb.MoveTo(rect.X, rect.Y);
@@ -348,13 +348,13 @@ public class VGContext
 	}
 
 	/// Stroke a rounded rectangle with uniform radius
-	public void StrokeRoundedRect(RectangleF rect, float radius, Color color, float width = 1.0f)
+	public void StrokeRoundedRect(RectangleF rect, float radius, Color32 color, float width = 1.0f)
 	{
 		StrokeRoundedRect(rect, CornerRadii(radius), color, width);
 	}
 
 	/// Stroke a rounded rectangle with per-corner radii
-	public void StrokeRoundedRect(RectangleF rect, CornerRadii radii, Color color, float width = 1.0f)
+	public void StrokeRoundedRect(RectangleF rect, CornerRadii radii, Color32 color, float width = 1.0f)
 	{
 		let pb = scope PathBuilder();
 		ShapeBuilder.BuildRoundedRect(rect, radii, pb);
@@ -364,7 +364,7 @@ public class VGContext
 	}
 
 	/// Stroke a circle
-	public void StrokeCircle(Vector2 center, float radius, Color color, float width = 1.0f)
+	public void StrokeCircle(Vector2 center, float radius, Color32 color, float width = 1.0f)
 	{
 		let pb = scope PathBuilder();
 		ShapeBuilder.BuildCircle(center, radius, pb);
@@ -374,7 +374,7 @@ public class VGContext
 	}
 
 	/// Stroke an ellipse
-	public void StrokeEllipse(Vector2 center, float rx, float ry, Color color, float width = 1.0f)
+	public void StrokeEllipse(Vector2 center, float rx, float ry, Color32 color, float width = 1.0f)
 	{
 		let pb = scope PathBuilder();
 		ShapeBuilder.BuildEllipse(center, rx, ry, pb);
@@ -387,7 +387,7 @@ public class VGContext
 
 	/// Draw a straight line between two points. Convenience for the common
 	/// case where callers would otherwise build a 2-point PathBuilder.
-	public void DrawLine(Vector2 a, Vector2 b, Color color, float thickness = 1.0f)
+	public void DrawLine(Vector2 a, Vector2 b, Color32 color, float thickness = 1.0f)
 	{
 		let pb = scope PathBuilder();
 		pb.MoveTo(a.X, a.Y);
@@ -402,7 +402,7 @@ public class VGContext
 	/// half outside), DrawBorderRect insets by half-thickness so the outer
 	/// stroke edge aligns exactly with the rect. Use this for UI borders
 	/// where content lives at rect + thickness.
-	public void DrawBorderRect(RectangleF rect, Color color, float thickness = 1.0f)
+	public void DrawBorderRect(RectangleF rect, Color32 color, float thickness = 1.0f)
 	{
 		let halfThick = thickness * 0.5f;
 		let insetRect = RectangleF(
@@ -415,7 +415,7 @@ public class VGContext
 
 	/// Draw a rounded border rectangle with the stroke fully inside the rect.
 	/// See DrawBorderRect - same inset behavior with a uniform corner radius.
-	public void DrawBorderRoundedRect(RectangleF rect, float radius, Color color, float thickness = 1.0f)
+	public void DrawBorderRoundedRect(RectangleF rect, float radius, Color32 color, float thickness = 1.0f)
 	{
 		DrawBorderRoundedRect(rect, CornerRadii(radius), color, thickness);
 	}
@@ -423,7 +423,7 @@ public class VGContext
 	/// Draw a rounded border rectangle with the stroke fully inside the rect,
 	/// using per-corner radii. The radii are also shrunk by half-thickness so
 	/// the inset corners stay visually consistent with the original shape.
-	public void DrawBorderRoundedRect(RectangleF rect, CornerRadii radii, Color color, float thickness = 1.0f)
+	public void DrawBorderRoundedRect(RectangleF rect, CornerRadii radii, Color32 color, float thickness = 1.0f)
 	{
 		let halfThick = thickness * 0.5f;
 		let insetRect = RectangleF(
@@ -485,7 +485,7 @@ public class VGContext
 	public Vector2 CurrentPoint => mCurrentPath.CurrentPoint;
 
 	/// Fill the current immediate-mode path with a solid color.
-	public void Fill(Color color, FillRule fillRule = .EvenOdd, bool antiAlias = true)
+	public void Fill(Color32 color, FillRule fillRule = .EvenOdd, bool antiAlias = true)
 	{
 		if (mCurrentPath.CommandCount == 0) return;
 		let path = mCurrentPath.ToPath();
@@ -503,7 +503,7 @@ public class VGContext
 	}
 
 	/// Stroke the current immediate-mode path with a stroke style.
-	public void Stroke(Color color, StrokeStyle style, Span<float> dashPattern = default, bool antiAlias = true)
+	public void Stroke(Color32 color, StrokeStyle style, Span<float> dashPattern = default, bool antiAlias = true)
 	{
 		if (mCurrentPath.CommandCount == 0) return;
 		let path = mCurrentPath.ToPath();
@@ -512,7 +512,7 @@ public class VGContext
 	}
 
 	/// Stroke the current immediate-mode path with just a thickness.
-	public void Stroke(Color color, float thickness = 1.0f)
+	public void Stroke(Color32 color, float thickness = 1.0f)
 	{
 		if (mCurrentPath.CommandCount == 0) return;
 		let path = mCurrentPath.ToPath();
@@ -529,11 +529,11 @@ public class VGContext
 		DrawImage(texture,
 			.(position.X, position.Y, texture.Width, texture.Height),
 			.(0, 0, texture.Width, texture.Height),
-			Color.White);
+			Color32.White);
 	}
 
 	/// Draw an image at its native size with a tint.
-	public void DrawImage(IImageData texture, Vector2 position, Color tint)
+	public void DrawImage(IImageData texture, Vector2 position, Color32 tint)
 	{
 		if (texture == null) return;
 		DrawImage(texture,
@@ -546,11 +546,11 @@ public class VGContext
 	public void DrawImage(IImageData texture, RectangleF destRect)
 	{
 		if (texture == null) return;
-		DrawImage(texture, destRect, .(0, 0, texture.Width, texture.Height), Color.White);
+		DrawImage(texture, destRect, .(0, 0, texture.Width, texture.Height), Color32.White);
 	}
 
 	/// Draw a sub-region of an image stretched to fit a destination rectangle, with tint.
-	public void DrawImage(IImageData texture, RectangleF destRect, RectangleF srcRect, Color tint)
+	public void DrawImage(IImageData texture, RectangleF destRect, RectangleF srcRect, Color32 tint)
 	{
 		if (texture == null) return;
 
@@ -564,7 +564,7 @@ public class VGContext
 
 	/// Draw a 9-slice image scaled to fit a destination rectangle.
 	/// Corners stay at their native size; edges stretch along one axis; center stretches along both.
-	public void DrawNineSlice(IImageData texture, RectangleF destRect, RectangleF srcRect, NineSlice slices, Color tint)
+	public void DrawNineSlice(IImageData texture, RectangleF destRect, RectangleF srcRect, NineSlice slices, Color32 tint)
 	{
 		if (texture == null) return;
 
@@ -620,7 +620,7 @@ public class VGContext
 	/// Draw text at a baseline position using a pre-rendered font atlas.
 	/// Low-level entry point - takes atlas and atlas texture directly.
 	/// The position is the origin of the first glyph's baseline.
-	public void DrawText(StringView text, IFontAtlas atlas, IImageData atlasTexture, Vector2 position, Color color)
+	public void DrawText(StringView text, IFontAtlas atlas, IImageData atlasTexture, Vector2 position, Color32 color)
 	{
 		if (text.IsEmpty || atlas == null || atlasTexture == null) return;
 
@@ -645,7 +645,7 @@ public class VGContext
 	/// Draw text with horizontal alignment within bounds.
 	/// Vertical position is centered on the line height (standard UI label behavior).
 	public void DrawText(StringView text, IFont font, IFontAtlas atlas, IImageData atlasTexture,
-		RectangleF bounds, TextAlignment align, Color color)
+		RectangleF bounds, TextAlignment align, Color32 color)
 	{
 		if (text.IsEmpty || font == null) return;
 
@@ -664,7 +664,7 @@ public class VGContext
 
 	/// Draw text with horizontal and vertical alignment within bounds.
 	public void DrawText(StringView text, IFont font, IFontAtlas atlas, IImageData atlasTexture,
-		RectangleF bounds, TextAlignment hAlign, VerticalAlignment vAlign, Color color)
+		RectangleF bounds, TextAlignment hAlign, VerticalAlignment vAlign, Color32 color)
 	{
 		if (text.IsEmpty || font == null) return;
 
@@ -691,7 +691,7 @@ public class VGContext
 	}
 
 	/// Convenience: draw text using a CachedFont. Requires a FontService (set via constructor).
-	public void DrawText(StringView text, CachedFont font, Vector2 position, Color color)
+	public void DrawText(StringView text, CachedFont font, Vector2 position, Color32 color)
 	{
 		if (font == null || mFontService == null) return;
 		let atlasTex = mFontService.GetAtlasTexture(font);
@@ -701,7 +701,7 @@ public class VGContext
 
 	/// Convenience: draw text using a CachedFont with alignment.
 	public void DrawText(StringView text, CachedFont font, RectangleF bounds,
-		TextAlignment hAlign, VerticalAlignment vAlign, Color color)
+		TextAlignment hAlign, VerticalAlignment vAlign, Color32 color)
 	{
 		if (font == null || mFontService == null) return;
 		let atlasTex = mFontService.GetAtlasTexture(font);
@@ -712,7 +712,7 @@ public class VGContext
 	/// Draw pre-shaped glyphs at an offset. Used by EditText for scroll-offset
 	/// text rendering with shaper-produced glyph positions.
 	public void DrawPositionedGlyphs(System.Collections.List<GlyphPosition> positions,
-		CachedFont font, float offsetX, float offsetY, Color color)
+		CachedFont font, float offsetX, float offsetY, Color32 color)
 	{
 		if (positions == null || positions.Count == 0 || font == null || mFontService == null) return;
 		let atlasTex = mFontService.GetAtlasTexture(font);
@@ -737,7 +737,7 @@ public class VGContext
 
 	/// Draw text with word wrapping. Position is the top-left of the text block.
 	/// Requires the CachedFont to have a Shaper set.
-	public void DrawTextWrapped(StringView text, CachedFont font, Vector2 position, float maxWidth, Color color,
+	public void DrawTextWrapped(StringView text, CachedFont font, Vector2 position, float maxWidth, Color32 color,
 		TextAlignment hAlign = .Left)
 	{
 		if (text.IsEmpty || font == null || font.Shaper == null || mFontService == null) return;
@@ -756,7 +756,7 @@ public class VGContext
 	}
 
 	/// Draw text with word wrapping within bounds.
-	public void DrawTextWrapped(StringView text, CachedFont font, RectangleF bounds, Color color,
+	public void DrawTextWrapped(StringView text, CachedFont font, RectangleF bounds, Color32 color,
 		TextAlignment hAlign = .Left)
 	{
 		DrawTextWrapped(text, font, .(bounds.X, bounds.Y), bounds.Width, color, hAlign);
@@ -822,7 +822,7 @@ public class VGContext
 
 	/// Draw text using the default font at the given pixel size.
 	/// Position is the top-left. Requires a FontService.
-	public void DrawText(StringView text, float fontSize, Vector2 position, Color color)
+	public void DrawText(StringView text, float fontSize, Vector2 position, Color32 color)
 	{
 		if (text.IsEmpty || mFontService == null) return;
 		let font = mFontService.GetFont(fontSize);
@@ -832,7 +832,7 @@ public class VGContext
 
 	/// Fill a polygon defined by a span of points.
 	/// Uses the immediate-mode path API internally.
-	public void FillPolygon(Span<Vector2> points, Color color)
+	public void FillPolygon(Span<Vector2> points, Color32 color)
 	{
 		if (points.Length < 3) return;
 
@@ -860,7 +860,7 @@ public class VGContext
 
 	/// Emit a glyph quad into the batch in untransformed coordinates.
 	/// Caller is responsible for calling TransformVertices on the added range.
-	private void EmitGlyphQuad(GlyphQuad quad, Color color)
+	private void EmitGlyphQuad(GlyphQuad quad, Color32 color)
 	{
 		let baseIndex = (uint32)mBatch.Vertices.Count;
 
@@ -880,7 +880,7 @@ public class VGContext
 	/// Emit a textured quad into the batch in untransformed coordinates.
 	/// Caller is responsible for calling TransformVertices on the added range.
 	/// Coverage = 1.0 (no analytical AA for images).
-	private void EmitTexturedQuad(RectangleF destRect, RectangleF srcRect, uint32 texWidth, uint32 texHeight, Color color)
+	private void EmitTexturedQuad(RectangleF destRect, RectangleF srcRect, uint32 texWidth, uint32 texHeight, Color32 color)
 	{
 		// Skip degenerate quads (nine-slice center can be zero-sized when destRect is small).
 		if (destRect.Width <= 0 || destRect.Height <= 0)
@@ -1002,11 +1002,11 @@ public class VGContext
 		}
 	}
 
-	private Color ApplyOpacity(Color color)
+	private Color32 ApplyOpacity(Color32 color)
 	{
 		if (mCurrentState.Opacity >= 1.0f)
 			return color;
-		return Color(color.R, color.G, color.B, (uint8)(color.A * mCurrentState.Opacity));
+		return Color32(color.R, color.G, color.B, (uint8)(color.A * mCurrentState.Opacity));
 	}
 
 	private void ApplyOpacityToVertices(int startVertex)

@@ -62,7 +62,7 @@ public static class DrawableFactoryRegistry
 		Register("rounded-rect", new (parser, sheet) => {
 			let fillColor = parser.ParseColorArg();
 			float radius = 0;
-			Color borderColor = .Transparent;
+			Color32 borderColor = .Transparent;
 			float borderWidth = 0;
 
 			while (parser.MatchComma())
@@ -192,7 +192,7 @@ public static class DrawableFactoryRegistry
 		// svg(name, tint=$color) -> SVGDrawable
 		Register("svg", new (parser, sheet) => {
 			let name = parser.ConsumeIdent();
-			Color? tint = null;
+			Color32? tint = null;
 			if (parser.MatchComma())
 			{
 				let kw = parser.PeekKeywordArg();
@@ -225,7 +225,7 @@ public static class DrawableFactoryRegistry
 		// image(name, tint=$color) -> ImageDrawable
 		Register("image", new (parser, sheet) => {
 			let name = parser.ConsumeIdent();
-			Color tint = .White;
+			Color32 tint = .White;
 			if (parser.MatchComma())
 			{
 				let kw = parser.PeekKeywordArg();
@@ -263,7 +263,7 @@ public static class DrawableFactoryRegistry
 			else if (sliceCount == 4)
 				slices = .((int32)sliceVals[0], (int32)sliceVals[1], (int32)sliceVals[2], (int32)sliceVals[3]);
 
-			Color tint = .White;
+			Color32 tint = .White;
 			if (parser.MatchComma())
 			{
 				let kw = parser.PeekKeywordArg();

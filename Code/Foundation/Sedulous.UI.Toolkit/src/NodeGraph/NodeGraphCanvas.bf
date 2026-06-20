@@ -316,8 +316,8 @@ public class NodeGraphCanvas : View
 			let rect = RectangleF(
 				Math.Min(s1.X, s2.X), Math.Min(s1.Y, s2.Y),
 				Math.Abs(s2.X - s1.X), Math.Abs(s2.Y - s1.Y));
-			ctx.VG.FillRect(rect, Color(accentColor.R, accentColor.G, accentColor.B, 40));
-			ctx.VG.StrokeRect(rect, Color(accentColor.R, accentColor.G, accentColor.B, 150), 1);
+			ctx.VG.FillRect(rect, Color32(accentColor.R, accentColor.G, accentColor.B, 40));
+			ctx.VG.StrokeRect(rect, Color32(accentColor.R, accentColor.G, accentColor.B, 150), 1);
 		}
 
 		// Nodes (in draw order)
@@ -350,7 +350,7 @@ public class NodeGraphCanvas : View
 		if (gridStep < 4) return; // Too zoomed out
 
 		let borderColor = ResolveStyleColor(.BorderColor, .(55, 55, 60, 255));
-		let gridColor = Color((uint8)(borderColor.R * 0.7f), (uint8)(borderColor.G * 0.7f), (uint8)(borderColor.B * 0.7f), borderColor.A);
+		let gridColor = Color32((uint8)(borderColor.R * 0.7f), (uint8)(borderColor.G * 0.7f), (uint8)(borderColor.B * 0.7f), borderColor.A);
 		let startX = mPanOffset.X % gridStep;
 		let startY = mPanOffset.Y % gridStep;
 
@@ -475,12 +475,12 @@ public class NodeGraphCanvas : View
 		if (conn.IsSelected)
 			color = ResolveStyleColor(.AccentColor, .(100, 180, 255, 230));
 		else if (hovered)
-			color = Color(Math.Min((uint8)255, color.R + 40), Math.Min((uint8)255, color.G + 40), Math.Min((uint8)255, color.B + 40), 230);
+			color = Color32(Math.Min((uint8)255, color.R + 40), Math.Min((uint8)255, color.G + 40), Math.Min((uint8)255, color.B + 40), 230);
 
 		DrawBezier(ctx, startPos, endPos, color);
 	}
 
-	private void DrawBezier(UIDrawContext ctx, Vector2 start, Vector2 end, Color color)
+	private void DrawBezier(UIDrawContext ctx, Vector2 start, Vector2 end, Color32 color)
 	{
 		let dx = Math.Abs(end.X - start.X);
 		let ctrlDist = Math.Max(dx * 0.5f, 50 * mZoom);

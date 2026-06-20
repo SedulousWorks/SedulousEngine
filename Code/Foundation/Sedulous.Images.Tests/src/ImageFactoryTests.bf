@@ -8,7 +8,7 @@ class ImageFactoryTests
 	[Test]
 	static void TestCreateSolidColor()
 	{
-		let image = Image.CreateSolidColor(32, 32, Color.Red);
+		let image = Image.CreateSolidColor(32, 32, Color32.Red);
 		defer delete image;
 
 		Test.Assert(image.Width == 32);
@@ -29,7 +29,7 @@ class ImageFactoryTests
 	[Test]
 	static void TestCreateSolidColorWithFormat()
 	{
-		let image = Image.CreateSolidColor(16, 16, Color.Lime, .RGB8);
+		let image = Image.CreateSolidColor(16, 16, Color32.Lime, .RGB8);
 		defer delete image;
 
 		Test.Assert(image.Format == .RGB8);
@@ -41,7 +41,7 @@ class ImageFactoryTests
 	[Test]
 	static void TestCreateSolidColorCustom()
 	{
-		let customColor = Color(100, 150, 200, 250);
+		let customColor = Color32(100, 150, 200, 250);
 		let image = Image.CreateSolidColor(8, 8, customColor);
 		defer delete image;
 
@@ -52,7 +52,7 @@ class ImageFactoryTests
 	[Test]
 	static void TestCreateCheckerboard()
 	{
-		let image = Image.CreateCheckerboard(64, Color.White, Color.Black, 32);
+		let image = Image.CreateCheckerboard(64, Color32.White, Color32.Black, 32);
 		defer delete image;
 
 		Test.Assert(image.Width == 64);
@@ -78,7 +78,7 @@ class ImageFactoryTests
 	[Test]
 	static void TestCreateCheckerboardSmallChecks()
 	{
-		let image = Image.CreateCheckerboard(16, Color.Red, Color.Blue, 4);
+		let image = Image.CreateCheckerboard(16, Color32.Red, Color32.Blue, 4);
 		defer delete image;
 
 		// First check is red
@@ -97,7 +97,7 @@ class ImageFactoryTests
 	[Test]
 	static void TestCreateGradient()
 	{
-		let image = Image.CreateGradient(32, 64, Color.White, Color.Black);
+		let image = Image.CreateGradient(32, 64, Color32.White, Color32.Black);
 		defer delete image;
 
 		Test.Assert(image.Width == 32);
@@ -119,7 +119,7 @@ class ImageFactoryTests
 	[Test]
 	static void TestCreateGradientColorful()
 	{
-		let image = Image.CreateGradient(16, 16, Color.Red, Color.Blue);
+		let image = Image.CreateGradient(16, 16, Color32.Red, Color32.Blue);
 		defer delete image;
 
 		// Top should be red
@@ -134,7 +134,7 @@ class ImageFactoryTests
 	[Test]
 	static void TestCreateGradientHorizontalUniformity()
 	{
-		let image = Image.CreateGradient(32, 8, Color.Black, Color.White);
+		let image = Image.CreateGradient(32, 8, Color32.Black, Color32.White);
 		defer delete image;
 
 		// All pixels in a row should be the same color (horizontal uniformity)

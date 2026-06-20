@@ -9,10 +9,10 @@ namespace Sedulous.LegacyGUI;
 /// This is the base class for StackPanel, Grid, Canvas, etc.
 public class Panel : Container
 {
-	private Color mBackground = Color.Transparent;
+	private Color32 mBackground = Color32.Transparent;
 
 	/// Background color of the panel.
-	public Color Background
+	public Color32 Background
 	{
 		get => mBackground;
 		set => mBackground = value;

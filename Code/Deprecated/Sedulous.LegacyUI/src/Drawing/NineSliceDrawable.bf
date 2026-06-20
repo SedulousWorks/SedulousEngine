@@ -11,9 +11,9 @@ public class NineSliceDrawable : Drawable
 	public IImageData Image;
 	public NineSlice Slices;
 	public Thickness Expand;  // extends drawing beyond bounds (shadow/glow)
-	public Color Tint = .White;
+	public Color32 Tint = .White;
 
-	public this(IImageData image, NineSlice slices, Color tint = .White)
+	public this(IImageData image, NineSlice slices, Color32 tint = .White)
 	{
 		Image = image;
 		Slices = slices;

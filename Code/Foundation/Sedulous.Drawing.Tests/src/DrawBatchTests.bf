@@ -21,7 +21,7 @@ class DrawBatchTests
 	public static void AddVertex_IncreasesCount()
 	{
 		let batch = scope DrawBatch();
-		batch.Vertices.Add(.(0, 0, 0, 0, Color.White));
+		batch.Vertices.Add(.(0, 0, 0, 0, Color32.White));
 
 		Test.Assert(batch.VertexCount == 1);
 	}
@@ -50,7 +50,7 @@ class DrawBatchTests
 	public static void Clear_ResetsAllCounts()
 	{
 		let batch = scope DrawBatch();
-		batch.Vertices.Add(.(0, 0, 0, 0, Color.White));
+		batch.Vertices.Add(.(0, 0, 0, 0, Color32.White));
 		batch.Indices.Add(0);
 		batch.Commands.Add(.());
 
@@ -66,8 +66,8 @@ class DrawBatchTests
 	public static void GetVertexData_ReturnsSpan()
 	{
 		let batch = scope DrawBatch();
-		batch.Vertices.Add(.(10, 20, 0, 0, Color.Red));
-		batch.Vertices.Add(.(30, 40, 0, 0, Color.Blue));
+		batch.Vertices.Add(.(10, 20, 0, 0, Color32.Red));
+		batch.Vertices.Add(.(30, 40, 0, 0, Color32.Blue));
 
 		let span = batch.GetVertexData();
 

@@ -16,19 +16,19 @@ public class GameTheme : ITheme
 		// Initialize palette with game-oriented colors
 		mPalette = .()
 		{
-			Primary = Color(180, 140, 60, 255),      // Gold
-			Secondary = Color(60, 140, 180, 255),   // Steel blue
-			Accent = Color(255, 200, 80, 255),      // Bright gold/yellow
-			Background = Color(20, 22, 28, 255),    // Deep blue-black
-			Surface = Color(35, 40, 50, 255),       // Dark slate blue
-			Error = Color(220, 60, 60, 255),        // Vibrant red (damage)
-			Warning = Color(255, 180, 40, 255),     // Orange-gold
-			Success = Color(60, 200, 80, 255),      // Vibrant green (health)
-			Text = Color(240, 235, 220, 255),       // Warm white/parchment
-			TextSecondary = Color(160, 155, 145, 255), // Muted tan
-			Border = Color(80, 85, 95, 255),        // Steel gray
-			Link = Color(120, 180, 255, 255),       // Sky blue
-			LinkVisited = Color(180, 140, 200, 255) // Mystic purple
+			Primary = Color32(180, 140, 60, 255),      // Gold
+			Secondary = Color32(60, 140, 180, 255),   // Steel blue
+			Accent = Color32(255, 200, 80, 255),      // Bright gold/yellow
+			Background = Color32(20, 22, 28, 255),    // Deep blue-black
+			Surface = Color32(35, 40, 50, 255),       // Dark slate blue
+			Error = Color32(220, 60, 60, 255),        // Vibrant red (damage)
+			Warning = Color32(255, 180, 40, 255),     // Orange-gold
+			Success = Color32(60, 200, 80, 255),      // Vibrant green (health)
+			Text = Color32(240, 235, 220, 255),       // Warm white/parchment
+			TextSecondary = Color32(160, 155, 145, 255), // Muted tan
+			Border = Color32(80, 85, 95, 255),        // Steel gray
+			Link = Color32(120, 180, 255, 255),       // Sky blue
+			LinkVisited = Color32(180, 140, 200, 255) // Mystic purple
 		};
 
 		// Define control styles
@@ -38,26 +38,26 @@ public class GameTheme : ITheme
 	private void InitializeStyles()
 	{
 		// Precompute derived colors
-		let buttonBase = Color(50, 55, 65, 255);
+		let buttonBase = Color32(50, 55, 65, 255);
 		let buttonHover = Sedulous.LegacyGUI.Palette.ComputeHover(buttonBase);
 		let buttonPressed = Sedulous.LegacyGUI.Palette.ComputePressed(buttonBase);
-		let inputBase = Color(25, 28, 35, 255);
+		let inputBase = Color32(25, 28, 35, 255);
 		let hoverBorder = mPalette.Accent;  // Gold border on hover
 		let separatorBorder = Sedulous.LegacyGUI.Palette.Darken(mPalette.Border, 0.1f);
 		let checkHoverBorder = mPalette.Accent;
-		let toggleBase = Color(55, 60, 70, 255);
+		let toggleBase = Color32(55, 60, 70, 255);
 		let toggleBorder = Sedulous.LegacyGUI.Palette.ComputeHover(toggleBase);
 		let toggleHoverBorder = mPalette.Accent;
 		let hyperlinkHover = Sedulous.LegacyGUI.Palette.ComputeHover(mPalette.Link);
-		let scrollThumb = Color(70, 75, 85, 255);
+		let scrollThumb = Color32(70, 75, 85, 255);
 		let scrollThumbHover = Sedulous.LegacyGUI.Palette.ComputeHover(scrollThumb);
-		let splitterBase = Color(40, 45, 55, 255);
+		let splitterBase = Color32(40, 45, 55, 255);
 		let splitterHover = Sedulous.LegacyGUI.Palette.ComputeHover(splitterBase);
 		let splitterGrip = mPalette.Border;
-		let itemHover = Color(50, 55, 70, 255);
-		let tabItemBase = Color(45, 50, 60, 255);
+		let itemHover = Color32(50, 55, 70, 255);
+		let tabItemBase = Color32(45, 50, 60, 255);
 		let tabItemHover = Sedulous.LegacyGUI.Palette.ComputeHover(tabItemBase);
-		let expanderBase = Color(38, 42, 52, 255);
+		let expanderBase = Color32(38, 42, 52, 255);
 		let expanderHover = Sedulous.LegacyGUI.Palette.ComputeHover(expanderBase);
 
 		// Default control style
@@ -76,7 +76,7 @@ public class GameTheme : ITheme
 		{
 			Background = buttonBase,
 			Foreground = mPalette.Text,
-			BorderColor = Color(90, 95, 105, 255),
+			BorderColor = Color32(90, 95, 105, 255),
 			BorderThickness = 2,
 			CornerRadius = 8,
 			Padding = .(14, 6, 14, 6),
@@ -88,9 +88,9 @@ public class GameTheme : ITheme
 		// Panel style
 		mStyles[new String("Panel")] = .()
 		{
-			Background = Color.Transparent,
+			Background = Color32.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color.Transparent,
+			BorderColor = Color32.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0
 		};
@@ -98,9 +98,9 @@ public class GameTheme : ITheme
 		// StackPanel style (layout container - transparent)
 		mStyles[new String("StackPanel")] = .()
 		{
-			Background = Color.Transparent,
+			Background = Color32.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color.Transparent,
+			BorderColor = Color32.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0
 		};
@@ -108,9 +108,9 @@ public class GameTheme : ITheme
 		// DockPanel style (layout container - transparent)
 		mStyles[new String("DockPanel")] = .()
 		{
-			Background = Color.Transparent,
+			Background = Color32.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color.Transparent,
+			BorderColor = Color32.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0
 		};
@@ -118,9 +118,9 @@ public class GameTheme : ITheme
 		// Canvas style (layout container - transparent)
 		mStyles[new String("Canvas")] = .()
 		{
-			Background = Color.Transparent,
+			Background = Color32.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color.Transparent,
+			BorderColor = Color32.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0
 		};
@@ -128,9 +128,9 @@ public class GameTheme : ITheme
 		// WrapPanel style (layout container - transparent)
 		mStyles[new String("WrapPanel")] = .()
 		{
-			Background = Color.Transparent,
+			Background = Color32.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color.Transparent,
+			BorderColor = Color32.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0
 		};
@@ -138,9 +138,9 @@ public class GameTheme : ITheme
 		// Grid style (layout container - transparent)
 		mStyles[new String("Grid")] = .()
 		{
-			Background = Color.Transparent,
+			Background = Color32.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color.Transparent,
+			BorderColor = Color32.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0
 		};
@@ -187,9 +187,9 @@ public class GameTheme : ITheme
 		// Label style
 		mStyles[new String("Label")] = .()
 		{
-			Background = Color.Transparent,
+			Background = Color32.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color.Transparent,
+			BorderColor = Color32.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0
 		};
@@ -197,9 +197,9 @@ public class GameTheme : ITheme
 		// TextBlock style
 		mStyles[new String("TextBlock")] = .()
 		{
-			Background = Color.Transparent,
+			Background = Color32.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color.Transparent,
+			BorderColor = Color32.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0
 		};
@@ -207,7 +207,7 @@ public class GameTheme : ITheme
 		// Border style
 		mStyles[new String("Border")] = .()
 		{
-			Background = Color.Transparent,
+			Background = Color32.Transparent,
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 2,
@@ -217,7 +217,7 @@ public class GameTheme : ITheme
 		// Separator style
 		mStyles[new String("Separator")] = .()
 		{
-			Background = Color.Transparent,
+			Background = Color32.Transparent,
 			Foreground = mPalette.Text,
 			BorderColor = separatorBorder,
 			BorderThickness = 1,
@@ -227,7 +227,7 @@ public class GameTheme : ITheme
 		// ProgressBar style - health bar aesthetic
 		mStyles[new String("ProgressBar")] = .()
 		{
-			Background = Color(30, 35, 45, 255),  // Dark track
+			Background = Color32(30, 35, 45, 255),  // Dark track
 			Foreground = mPalette.Success,        // Green fill (health bar)
 			BorderColor = mPalette.Border,
 			BorderThickness = 2,
@@ -239,7 +239,7 @@ public class GameTheme : ITheme
 		{
 			Background = buttonBase,
 			Foreground = mPalette.Text,
-			BorderColor = Color(90, 95, 105, 255),
+			BorderColor = Color32(90, 95, 105, 255),
 			BorderThickness = 2,
 			CornerRadius = 8,
 			Padding = .(14, 6, 14, 6),
@@ -253,7 +253,7 @@ public class GameTheme : ITheme
 		{
 			Background = buttonBase,
 			Foreground = mPalette.Text,
-			BorderColor = Color(90, 95, 105, 255),
+			BorderColor = Color32(90, 95, 105, 255),
 			BorderThickness = 2,
 			CornerRadius = 8,
 			Padding = .(14, 6, 14, 6),
@@ -301,9 +301,9 @@ public class GameTheme : ITheme
 		// Hyperlink style
 		mStyles[new String("Hyperlink")] = .()
 		{
-			Background = Color.Transparent,
+			Background = Color32.Transparent,
 			Foreground = mPalette.Link,
-			BorderColor = Color.Transparent,
+			BorderColor = Color32.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
 			Padding = .(2, 2, 2, 2),
@@ -313,9 +313,9 @@ public class GameTheme : ITheme
 		// Slider style
 		mStyles[new String("Slider")] = .()
 		{
-			Background = Color(40, 45, 55, 255),  // Track
+			Background = Color32(40, 45, 55, 255),  // Track
 			Foreground = mPalette.Accent,         // Thumb (gold)
-			BorderColor = Color.Transparent,
+			BorderColor = Color32.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0
 		};
@@ -323,9 +323,9 @@ public class GameTheme : ITheme
 		// ScrollBar style
 		mStyles[new String("ScrollBar")] = .()
 		{
-			Background = Color(30, 35, 45, 255),
+			Background = Color32(30, 35, 45, 255),
 			Foreground = scrollThumb,
-			BorderColor = Color.Transparent,
+			BorderColor = Color32.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
 			Hover = .() { Foreground = scrollThumbHover }
@@ -346,7 +346,7 @@ public class GameTheme : ITheme
 		{
 			Background = splitterBase,
 			Foreground = splitterGrip,
-			BorderColor = Color.Transparent,
+			BorderColor = Color32.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
 			Hover = .() { Background = splitterHover }
@@ -365,7 +365,7 @@ public class GameTheme : ITheme
 		// ListBox style
 		mStyles[new String("ListBox")] = .()
 		{
-			Background = Color(25, 28, 35, 255),
+			Background = Color32(25, 28, 35, 255),
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 2,
@@ -376,9 +376,9 @@ public class GameTheme : ITheme
 		// ListBoxItem style
 		mStyles[new String("ListBoxItem")] = .()
 		{
-			Background = Color.Transparent,
+			Background = Color32.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color.Transparent,
+			BorderColor = Color32.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 4,
 			Padding = .(10, 5, 10, 5),
@@ -401,7 +401,7 @@ public class GameTheme : ITheme
 		// TabControl style
 		mStyles[new String("TabControl")] = .()
 		{
-			Background = Color(40, 45, 55, 255),
+			Background = Color32(40, 45, 55, 255),
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 2,
@@ -414,7 +414,7 @@ public class GameTheme : ITheme
 		{
 			Background = tabItemBase,
 			Foreground = mPalette.Text,
-			BorderColor = Color.Transparent,
+			BorderColor = Color32.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 6,
 			Padding = .(14, 8, 14, 8),
@@ -436,7 +436,7 @@ public class GameTheme : ITheme
 		// GroupBox style
 		mStyles[new String("GroupBox")] = .()
 		{
-			Background = Color.Transparent,
+			Background = Color32.Transparent,
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 2,
@@ -447,9 +447,9 @@ public class GameTheme : ITheme
 		// Breadcrumb style
 		mStyles[new String("Breadcrumb")] = .()
 		{
-			Background = Color.Transparent,
+			Background = Color32.Transparent,
 			Foreground = mPalette.TextSecondary,
-			BorderColor = Color.Transparent,
+			BorderColor = Color32.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
 			Focused = .() { BorderColor = mPalette.Accent }
@@ -458,9 +458,9 @@ public class GameTheme : ITheme
 		// BreadcrumbItem style
 		mStyles[new String("BreadcrumbItem")] = .()
 		{
-			Background = Color.Transparent,
+			Background = Color32.Transparent,
 			Foreground = mPalette.Link,
-			BorderColor = Color.Transparent,
+			BorderColor = Color32.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 4,
 			Padding = .(6, 3, 6, 3),
@@ -470,7 +470,7 @@ public class GameTheme : ITheme
 		// TreeView style
 		mStyles[new String("TreeView")] = .()
 		{
-			Background = Color(25, 28, 35, 255),
+			Background = Color32(25, 28, 35, 255),
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 2,
@@ -481,9 +481,9 @@ public class GameTheme : ITheme
 		// TreeViewItem style
 		mStyles[new String("TreeViewItem")] = .()
 		{
-			Background = Color.Transparent,
+			Background = Color32.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color.Transparent,
+			BorderColor = Color32.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 4,
 			Padding = .(6, 3, 6, 3),
@@ -493,7 +493,7 @@ public class GameTheme : ITheme
 		// TileView style
 		mStyles[new String("TileView")] = .()
 		{
-			Background = Color(25, 28, 35, 255),
+			Background = Color32(25, 28, 35, 255),
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 2,
@@ -504,9 +504,9 @@ public class GameTheme : ITheme
 		// TileViewItem style
 		mStyles[new String("TileViewItem")] = .()
 		{
-			Background = Color.Transparent,
+			Background = Color32.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color.Transparent,
+			BorderColor = Color32.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 6,
 			Padding = .(6, 6, 6, 6),
@@ -516,7 +516,7 @@ public class GameTheme : ITheme
 		// DockablePanel style
 		mStyles[new String("DockablePanel")] = .()
 		{
-			Background = Color(38, 42, 52, 255),  // Content background
+			Background = Color32(38, 42, 52, 255),  // Content background
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 0,
@@ -526,7 +526,7 @@ public class GameTheme : ITheme
 		// DockablePanelHeader style (title bar)
 		mStyles[new String("DockablePanelHeader")] = .()
 		{
-			Background = Color(45, 50, 60, 255),  // Title bar background
+			Background = Color32(45, 50, 60, 255),  // Title bar background
 			Foreground = mPalette.Text,  // Warm white/parchment
 			BorderColor = mPalette.Border,  // Steel gray
 			BorderThickness = 1,
@@ -536,7 +536,7 @@ public class GameTheme : ITheme
 		// DockTabGroup style
 		mStyles[new String("DockTabGroup")] = .()
 		{
-			Background = Color(30, 34, 42, 255),  // Tab strip background
+			Background = Color32(30, 34, 42, 255),  // Tab strip background
 			Foreground = mPalette.TextSecondary,  // Empty text
 			BorderColor = mPalette.Border,  // Tab strip bottom border
 			BorderThickness = 1,
@@ -546,19 +546,19 @@ public class GameTheme : ITheme
 		// DockTab style
 		mStyles[new String("DockTab")] = .()
 		{
-			Background = Color(35, 40, 48, 255),  // Normal tab
+			Background = Color32(35, 40, 48, 255),  // Normal tab
 			Foreground = mPalette.TextSecondary,  // Normal text
 			BorderColor = mPalette.Accent,  // Gold selected tab top border
 			BorderThickness = 2,
 			CornerRadius = 0,
-			Hover = .() { Background = Color(42, 47, 55, 255) },
-			Pressed = .() { Background = Color(50, 55, 65, 255), Foreground = mPalette.Text }  // Selected state
+			Hover = .() { Background = Color32(42, 47, 55, 255) },
+			Pressed = .() { Background = Color32(50, 55, 65, 255), Foreground = mPalette.Text }  // Selected state
 		};
 
 		// DataGrid style
 		mStyles[new String("DataGrid")] = .()
 		{
-			Background = Color(25, 28, 35, 255),  // Dark slate background
+			Background = Color32(25, 28, 35, 255),  // Dark slate background
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 2,
@@ -568,30 +568,30 @@ public class GameTheme : ITheme
 		// DataGridHeader style
 		mStyles[new String("DataGridHeader")] = .()
 		{
-			Background = Color(38, 42, 52, 255),  // Slate header background
+			Background = Color32(38, 42, 52, 255),  // Slate header background
 			Foreground = mPalette.Text,
-			BorderColor = Color(55, 60, 70, 255),
+			BorderColor = Color32(55, 60, 70, 255),
 			BorderThickness = 1,
 			CornerRadius = 0,
-			Hover = .() { Background = Color(48, 53, 65, 255) }
+			Hover = .() { Background = Color32(48, 53, 65, 255) }
 		};
 
 		// DataGridCell style (for rows)
 		mStyles[new String("DataGridCell")] = .()
 		{
-			Background = Color(25, 28, 35, 255),  // Row background
+			Background = Color32(25, 28, 35, 255),  // Row background
 			Foreground = mPalette.Text,
-			BorderColor = Color(40, 44, 54, 255),  // Cell border
+			BorderColor = Color32(40, 44, 54, 255),  // Cell border
 			BorderThickness = 1,
 			CornerRadius = 0,
-			Hover = .() { Background = Color(38, 42, 52, 255) },
-			Pressed = .() { Background = Color(80, 65, 40, 255) }  // Gold-tinted selection
+			Hover = .() { Background = Color32(38, 42, 52, 255) },
+			Pressed = .() { Background = Color32(80, 65, 40, 255) }  // Gold-tinted selection
 		};
 
 		// PropertyGrid style
 		mStyles[new String("PropertyGrid")] = .()
 		{
-			Background = Color(25, 28, 35, 255),
+			Background = Color32(25, 28, 35, 255),
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 2,
@@ -601,23 +601,23 @@ public class GameTheme : ITheme
 		// PropertyGridCategory style
 		mStyles[new String("PropertyGridCategory")] = .()
 		{
-			Background = Color(38, 42, 52, 255),  // Category header background
+			Background = Color32(38, 42, 52, 255),  // Category header background
 			Foreground = mPalette.Text,
-			BorderColor = Color(50, 55, 65, 255),
+			BorderColor = Color32(50, 55, 65, 255),
 			BorderThickness = 1,
 			CornerRadius = 0,
-			Hover = .() { Background = Color(48, 53, 65, 255) }
+			Hover = .() { Background = Color32(48, 53, 65, 255) }
 		};
 
 		// PropertyGridProperty style
 		mStyles[new String("PropertyGridProperty")] = .()
 		{
-			Background = Color(28, 32, 40, 255),  // Property row background
+			Background = Color32(28, 32, 40, 255),  // Property row background
 			Foreground = mPalette.Text,
-			BorderColor = Color(35, 40, 48, 255),
+			BorderColor = Color32(35, 40, 48, 255),
 			BorderThickness = 1,
 			CornerRadius = 0,
-			Hover = .() { Background = Color(38, 42, 52, 255) }
+			Hover = .() { Background = Color32(38, 42, 52, 255) }
 		};
 	}
 
@@ -649,9 +649,9 @@ public class GameTheme : ITheme
 		};
 	}
 
-	public Color FocusIndicatorColor => mPalette.Accent;
+	public Color32 FocusIndicatorColor => mPalette.Accent;
 	public float FocusIndicatorThickness => 3;
-	public Color SelectionColor => Color(255, 200, 80, 120);  // Gold selection
+	public Color32 SelectionColor => Color32(255, 200, 80, 120);  // Gold selection
 	public float DefaultFontSize => 16;  // Slightly larger for games
 
 	// Control dimensions - slightly larger for game UI

@@ -328,47 +328,47 @@ class VGShapesSample : SampleApp
 		// --- Row 1: Basic filled shapes ---
 
 		// Solid rectangle
-		mVGContext.FillRect(.(20, 20, 120, 80), Color.CornflowerBlue);
+		mVGContext.FillRect(.(20, 20, 120, 80), Color32.CornflowerBlue);
 
 		// Rounded rectangle with uniform radius
-		mVGContext.FillRoundedRect(.(160, 20, 120, 80), 12, Color.Coral);
+		mVGContext.FillRoundedRect(.(160, 20, 120, 80), 12, Color32.Coral);
 
 		// Rounded rectangle with per-corner radii
-		mVGContext.FillRoundedRect(.(300, 20, 120, 80), .(0, 20, 0, 20), Color.MediumSeaGreen);
+		mVGContext.FillRoundedRect(.(300, 20, 120, 80), .(0, 20, 0, 20), Color32.MediumSeaGreen);
 
 		// Filled circle
-		mVGContext.FillCircle(.(500, 60), 40, Color.Gold);
+		mVGContext.FillCircle(.(500, 60), 40, Color32.Gold);
 
 		// Filled ellipse
-		mVGContext.FillEllipse(.(620, 60), 50, 35, Color.MediumPurple);
+		mVGContext.FillEllipse(.(620, 60), 50, 35, Color32.MediumPurple);
 
 		// --- Row 2: Stroked shapes ---
 
 		// Stroked rectangle
-		mVGContext.StrokeRect(.(20, 130, 120, 80), Color.White, 2.0f);
+		mVGContext.StrokeRect(.(20, 130, 120, 80), Color32.White, 2.0f);
 
 		// Stroked rounded rect
-		mVGContext.StrokeRoundedRect(.(160, 130, 120, 80), 12, Color.LightCoral, 2.0f);
+		mVGContext.StrokeRoundedRect(.(160, 130, 120, 80), 12, Color32.LightCoral, 2.0f);
 
 		// Stroked circle
-		mVGContext.StrokeCircle(.(360, 170), 40, Color.LightSkyBlue, 2.5f);
+		mVGContext.StrokeCircle(.(360, 170), 40, Color32.LightSkyBlue, 2.5f);
 
 		// --- Row 3: Polygons and stars ---
 
 		// Pentagon
-		mVGContext.FillRegularPolygon(.(80, 290), 40, 5, Color.Tomato);
+		mVGContext.FillRegularPolygon(.(80, 290), 40, 5, Color32.Tomato);
 
 		// Hexagon
-		mVGContext.FillRegularPolygon(.(200, 290), 40, 6, Color.DodgerBlue);
+		mVGContext.FillRegularPolygon(.(200, 290), 40, 6, Color32.DodgerBlue);
 
 		// Octagon
-		mVGContext.FillRegularPolygon(.(320, 290), 40, 8, Color.MediumOrchid);
+		mVGContext.FillRegularPolygon(.(320, 290), 40, 8, Color32.MediumOrchid);
 
 		// 5-point star
-		mVGContext.FillStar(.(460, 290), 45, 20, 5, Color.Gold);
+		mVGContext.FillStar(.(460, 290), 45, 20, 5, Color32.Gold);
 
 		// 6-point star
-		mVGContext.FillStar(.(600, 290), 45, 25, 6, Color.OrangeRed);
+		mVGContext.FillStar(.(600, 290), 45, 25, 6, Color32.OrangeRed);
 
 		// --- Row 4: Path drawing with curves ---
 
@@ -381,7 +381,7 @@ class VGShapesSample : SampleApp
 			let path = pb.ToPath();
 			defer delete path;
 
-			mVGContext.StrokePath(path, Color.LimeGreen, .(3.0f, .Round, .Round));
+			mVGContext.StrokePath(path, Color32.LimeGreen, .(3.0f, .Round, .Round));
 		}
 
 		// Quadratic Bezier wave
@@ -394,7 +394,7 @@ class VGShapesSample : SampleApp
 			let path = pb.ToPath();
 			defer delete path;
 
-			mVGContext.StrokePath(path, Color.HotPink, .(2.5f, .Butt, .Miter));
+			mVGContext.StrokePath(path, Color32.HotPink, .(2.5f, .Butt, .Miter));
 		}
 
 		// --- Row 5: Gradient fills ---
@@ -402,9 +402,9 @@ class VGShapesSample : SampleApp
 		// Linear gradient rectangle
 		{
 			let fill = scope VGLinearGradientFill(.(20, 440), .(240, 440));
-			fill.AddStop(0, Color.Red);
-			fill.AddStop(0.5f, Color.Yellow);
-			fill.AddStop(1, Color.Blue);
+			fill.AddStop(0, Color32.Red);
+			fill.AddStop(0.5f, Color32.Yellow);
+			fill.AddStop(1, Color32.Blue);
 
 			let pb = scope PathBuilder();
 			pb.MoveTo(20, 440);
@@ -421,9 +421,9 @@ class VGShapesSample : SampleApp
 		// Radial gradient circle
 		{
 			let fill = scope VGRadialGradientFill(.(340, 480), 50);
-			fill.AddStop(0, Color.White);
-			fill.AddStop(0.6f, Color.CornflowerBlue);
-			fill.AddStop(1, Color(0, 0, 80));
+			fill.AddStop(0, Color32.White);
+			fill.AddStop(0.6f, Color32.CornflowerBlue);
+			fill.AddStop(1, Color32(0, 0, 80));
 
 			let pb = scope PathBuilder();
 			ShapeBuilder.BuildCircle(.(340, 480), 50, pb);
@@ -449,7 +449,7 @@ class VGShapesSample : SampleApp
 				mVGContext.Translate(460, 440);
 				mVGContext.Scale(5, 5);
 				mVGContext.Translate(-12, -12);
-				mVGContext.FillPath(path, Color.Crimson);
+				mVGContext.FillPath(path, Color32.Crimson);
 				mVGContext.PopState();
 			}
 		}
@@ -467,7 +467,7 @@ class VGShapesSample : SampleApp
 
 				mVGContext.PushState();
 				mVGContext.Rotate(angle);
-				mVGContext.FillRoundedRect(.(-30, -30, 60, 60), 6, Color(100, 180, 255, alpha));
+				mVGContext.FillRoundedRect(.(-30, -30, 60, 60), 6, Color32(100, 180, 255, alpha));
 				mVGContext.PopState();
 			}
 
@@ -476,7 +476,7 @@ class VGShapesSample : SampleApp
 
 		// --- Labels (column headers as stroked rectangles with fills) ---
 		// Top-left: title area
-		mVGContext.StrokeRect(.(0, 0, w, h), Color(60, 60, 60), 1.0f);
+		mVGContext.StrokeRect(.(0, 0, w, h), Color32(60, 60, 60), 1.0f);
 	}
 
 	private void UpdateProjection()

@@ -28,7 +28,7 @@ class ReflectionProbeGizmoRenderer : IGizmoRenderer
 		let position = worldMatrix.Translation;
 
 		// Influence sphere
-		let color = Color(100, 200, 255);
+		let color = Color32(100, 200, 255);
 		dbg.DrawWireSphere(position, probe.InfluenceRadius, color, 32);
 
 		// Small diamond at center for visibility when sphere is large

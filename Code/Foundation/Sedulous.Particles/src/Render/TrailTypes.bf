@@ -14,7 +14,7 @@ public struct TrailPoint
 	public float Width;
 
 	/// Color at this point.
-	public Color Color;
+	public Color32 Color;
 
 	/// Time this point was recorded (elapsed emitter time).
 	public float RecordTime;
@@ -35,7 +35,7 @@ public struct TrailVertex
 	public Vector2 TexCoord;
 
 	/// Vertex color.
-	public Color Color;
+	public Color32 Color;
 
 	/// Size in bytes.
 	public static int SizeInBytes => 24;

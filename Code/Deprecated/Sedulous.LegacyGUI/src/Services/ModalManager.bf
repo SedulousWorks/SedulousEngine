@@ -34,7 +34,7 @@ public class ModalManager
 	};
 
 	// Appearance
-	private Color mBackdropColor = Color(0, 0, 0, 128);
+	private Color32 mBackdropColor = Color32(0, 0, 0, 128);
 
 	// Owning context
 	private LegacyGUIContext mContext;
@@ -53,7 +53,7 @@ public class ModalManager
 	public int ModalCount => mModalStack.Count;
 
 	/// The backdrop color (default: semi-transparent black).
-	public Color BackdropColor
+	public Color32 BackdropColor
 	{
 		get => mBackdropColor;
 		set => mBackdropColor = value;
@@ -66,7 +66,7 @@ public class ModalManager
 		set
 		{
 			let alpha = (uint8)(Math.Clamp(value, 0, 1) * 255);
-			mBackdropColor = Color(mBackdropColor.R, mBackdropColor.G, mBackdropColor.B, alpha);
+			mBackdropColor = Color32(mBackdropColor.R, mBackdropColor.G, mBackdropColor.B, alpha);
 		}
 	}
 

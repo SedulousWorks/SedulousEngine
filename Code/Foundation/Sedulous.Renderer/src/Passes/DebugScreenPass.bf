@@ -198,7 +198,7 @@ class DebugScreenPass : PipelinePass
 		}
 	}
 
-	private void EmitQuad(float x, float y, float w, float h, float u0, float v0, float u1, float v1, Color color)
+	private void EmitQuad(float x, float y, float w, float h, float u0, float v0, float u1, float v1, Color32 color)
 	{
 		// Triangle list, clockwise winding for DX convention.
 		let p00 = Vector3(x,     y,     0);

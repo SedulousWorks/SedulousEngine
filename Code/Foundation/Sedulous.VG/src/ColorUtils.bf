@@ -7,10 +7,10 @@ namespace Sedulous.VG;
 public static class ColorUtils
 {
 	/// Linearly interpolate between two colors
-	public static Color LerpColor(Color a, Color b, float t)
+	public static Color32 LerpColor(Color32 a, Color32 b, float t)
 	{
 		let ct = Math.Clamp(t, 0.0f, 1.0f);
-		return Color(
+		return Color32(
 			(uint8)((float)a.R + ((float)b.R - (float)a.R) * ct),
 			(uint8)((float)a.G + ((float)b.G - (float)a.G) * ct),
 			(uint8)((float)a.B + ((float)b.B - (float)a.B) * ct),
@@ -19,10 +19,10 @@ public static class ColorUtils
 	}
 
 	/// Interpolate through gradient stops at parameter t (0-1)
-	public static Color InterpolateStops(Span<GradientStop> stops, float t)
+	public static Color32 InterpolateStops(Span<GradientStop> stops, float t)
 	{
 		if (stops.Length == 0)
-			return Color.White;
+			return Color32.White;
 
 		if (stops.Length == 1)
 			return stops[0].Color;

@@ -176,7 +176,7 @@ class SSSParserTests
 	public static void PaletteExtends()
 	{
 		let loader = scope StyleSheetLoader();
-		loader.SetPaletteVariable("base-color", Color(100, 100, 100, 255));
+		loader.SetPaletteVariable("base-color", Color32(100, 100, 100, 255));
 
 		let sheet = loader.Load(
 			"""
@@ -759,10 +759,10 @@ class SSSParserTests
 	[Test]
 	public static void Palette_Derivation()
 	{
-		let dark = Palette.Darken(Color(200, 200, 200, 255), 0.5f);
+		let dark = Palette.Darken(Color32(200, 200, 200, 255), 0.5f);
 		Test.Assert(dark.R == 100);
 
-		let light = Palette.Lighten(Color(0, 0, 0, 255), 0.5f);
+		let light = Palette.Lighten(Color32(0, 0, 0, 255), 0.5f);
 		Test.Assert(light.R > 100);
 	}
 
@@ -1204,8 +1204,8 @@ class SSSParserTests
 	public static void PaletteExtends_InheritsLoaderValues()
 	{
 		let loader = scope StyleSheetLoader();
-		loader.SetPaletteVariable("base-bg", Color(40, 40, 50, 255));
-		loader.SetPaletteVariable("base-text", Color(220, 220, 230, 255));
+		loader.SetPaletteVariable("base-bg", Color32(40, 40, 50, 255));
+		loader.SetPaletteVariable("base-text", Color32(220, 220, 230, 255));
 
 		let sheet = loader.Load(
 			"""

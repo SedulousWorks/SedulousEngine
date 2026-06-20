@@ -13,11 +13,11 @@ public class Button : View
 	public Drawable Background ~ delete _;
 
 	// Nullable per-instance overrides - null = use theme.
-	private Color? mTextColor;
+	private Color32? mTextColor;
 	private float? mFontSize;
 	private Thickness? mPadding;
 
-	public Color TextColor
+	public Color32 TextColor
 	{
 		get => mTextColor ?? Context?.Theme?.GetColor("Button.Foreground") ?? .(240, 240, 245, 255);
 		set => mTextColor = value;

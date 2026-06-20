@@ -87,9 +87,9 @@ public class Vector3Editor : PropertyEditor
 	private class AxisLabel : View
 	{
 		private String mText ~ delete _;
-		private Color mColor;
+		private Color32 mColor;
 
-		public this(StringView text, Color color)
+		public this(StringView text, Color32 color)
 		{
 			mText = new String(text);
 			mColor = color;

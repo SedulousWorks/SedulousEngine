@@ -8,15 +8,15 @@ using Sedulous.Core.Mathematics;
 public struct DebugVertex
 {
 	public Vector3 Position;
-	public Color Color;
+	public Color32 Color;
 
-	public this(Vector3 position, Color color)
+	public this(Vector3 position, Color32 color)
 	{
 		Position = position;
 		Color = color;
 	}
 
-	public this(float x, float y, float z, Color color)
+	public this(float x, float y, float z, Color32 color)
 	{
 		Position = .(x, y, z);
 		Color = color;

@@ -52,13 +52,13 @@ public class ListBoxItem : ContentControl, ISelectable
 	}
 
 	/// Gets the selection background color from theme.
-	protected Color SelectionBackground
+	protected Color32 SelectionBackground
 	{
 		get
 		{
 			if (Context?.Theme != null)
 				return Context.Theme.SelectionColor;
-			return Color(51, 153, 255, 255);  // Default selection blue
+			return Color32(51, 153, 255, 255);  // Default selection blue
 		}
 	}
 
@@ -102,7 +102,7 @@ public class ListBoxItem : ContentControl, ISelectable
 	}
 
 	/// Gets the background color based on selection and hover state.
-	protected override Color GetStateBackground()
+	protected override Color32 GetStateBackground()
 	{
 		if (mIsSelected)
 			return SelectionBackground;

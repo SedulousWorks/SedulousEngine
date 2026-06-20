@@ -44,7 +44,7 @@ public class EditableLabel : EditText
 	public Property<String> FontFamily = new .(null, .Visual) ~ { if (_.Value != null) delete _.Value; delete _; };
 
 	/// Override text color. When set, takes precedence over style resolution.
-	public Property<Color?> TextColor = new .(null) ~ delete _;
+	public Property<Color32?> TextColor = new .(null) ~ delete _;
 
 	/// Whether double-click enters edit mode.
 	public Property<bool> DoubleClickToEdit = new .(true) ~ delete _;

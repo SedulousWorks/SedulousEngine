@@ -53,13 +53,13 @@ public struct DrawingSpriteInstance
 	public Vector2 Position;    // Screen position (top-left)
 	public Vector2 Size;        // Width, height in pixels
 	public Vector4 UVRect;      // minU, minV, maxU, maxV
-	public Color Color;         // RGBA color
+	public Color32 Color;         // RGBA color
 	public float Rotation;      // Rotation in radians
 	public float _Pad0;         // Padding to 48 bytes
 	public float _Pad1;
 	public float _Pad2;
 
-	public this(Vector2 position, Vector2 size, Vector4 uvRect, Color color, float rotation = 0)
+	public this(Vector2 position, Vector2 size, Vector4 uvRect, Color32 color, float rotation = 0)
 	{
 		Position = position;
 		Size = size;

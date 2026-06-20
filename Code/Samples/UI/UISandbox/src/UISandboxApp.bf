@@ -325,7 +325,7 @@ class UISandboxApp : Application, IDockableWindowHost
 		let swatchFlow = new FlowLayout() { Orientation = .Horizontal, HSpacing = 4, VSpacing = 4 };
 		rightPanel.AddView(swatchFlow);
 
-		Color[?] swatchColors = .(
+		Color32[?] swatchColors = .(
 			.(220, 60, 60, 255), .(60, 180, 60, 255), .(60, 60, 220, 255),
 			.(220, 180, 40, 255), .(180, 60, 180, 255), .(60, 180, 180, 255),
 			.(220, 120, 60, 255), .(120, 60, 220, 255)
@@ -420,7 +420,7 @@ class UISandboxApp : Application, IDockableWindowHost
 		let hContent = new FlexLayout() { Direction = .Horizontal, Spacing = 4 };
 		for (int i = 0; i < 20; i++)
 		{
-			let @box = new ColorView(Color((uint8)(60 + i * 9), (uint8)(100 + i * 5), (uint8)(180 - i * 6), 255), 60, 60);
+			let @box = new ColorView(Color32((uint8)(60 + i * 9), (uint8)(100 + i * 5), (uint8)(180 - i * 6), 255), 60, 60);
 			hContent.AddView(@box);
 		}
 		scrollH.AddView(hContent);
@@ -525,7 +525,7 @@ class UISandboxApp : Application, IDockableWindowHost
 			let flow = new FlowLayout() { Orientation = .Horizontal, HSpacing = 4, VSpacing = 4 };
 			StringView[?] tags = .("Fire", "Water", "Earth", "Wind", "Electric", "Dark", "Light", "Neutral",
 				"Poison", "Burn", "Stun", "Freeze", "Shield", "Heal", "Speed Up");
-			Color[?] tagColors = .(
+			Color32[?] tagColors = .(
 				.(140, 50, 50, 255), .(50, 80, 140, 255), .(60, 100, 40, 255), .(70, 130, 130, 255),
 				.(130, 120, 40, 255), .(80, 50, 100, 255), .(130, 120, 80, 255), .(80, 80, 80, 255),
 				.(100, 60, 120, 255), .(140, 70, 30, 255), .(120, 100, 30, 255), .(40, 100, 130, 255),
@@ -698,7 +698,7 @@ class UISandboxApp : Application, IDockableWindowHost
 		textInputDemo.AddView(new Label("Vector3 Editor"));
 		let vecRow = new FlexLayout() { Direction = .Horizontal, Spacing = 4 };
 
-		void AddAxisField(FlexLayout row, StringView axis, Color axisColor, double val)
+		void AddAxisField(FlexLayout row, StringView axis, Color32 axisColor, double val)
 		{
 			let nf = new NumericField();
 			nf.Min = -999;
@@ -838,7 +838,7 @@ class UISandboxApp : Application, IDockableWindowHost
 		chipContainer.Direction = .Horizontal;
 		chipContainer.Spacing = 4;
 
-		Color[?] chipColors = .(
+		Color32[?] chipColors = .(
 			.(220, 60, 60, 255), .(60, 180, 60, 255), .(60, 100, 220, 255),
 			.(220, 180, 40, 255), .(180, 60, 220, 255));
 		for (int i = 0; i < chipColors.Count; i++)
@@ -1258,7 +1258,7 @@ class UISandboxApp : Application, IDockableWindowHost
 				// inheritable "JungleAdventurer" - inline beats local.
 				if (let title = pauseRoot.FindByName<Label>("title"))
 				{
-					title.SetStyle(.TextColor, Color(255, 220, 100, 255));
+					title.SetStyle(.TextColor, Color32(255, 220, 100, 255));
 					title.SetStyle(.FontSize, 32f);
 					title.SetStyle(.FontFamily, "AttackOfMonster");
 				}
@@ -1283,7 +1283,7 @@ class UISandboxApp : Application, IDockableWindowHost
 				pauseLocal.ForAll().Set(.FontFamily, "JungleAdventurer");
 				pauseLocal.ForType(typeof(Label))
 					.Set(.FontSize, 14f)
-					.Set(.TextColor, Color(210, 215, 225, 255));
+					.Set(.TextColor, Color32(210, 215, 225, 255));
 				pauseLocal.ForType(typeof(Button))
 					.Set(.Padding, Thickness(14, 8))
 					.Set(.Background,
@@ -1406,7 +1406,7 @@ class UISandboxApp : Application, IDockableWindowHost
 	}
 
 	/// Creates a labeled colored box for layout demos.
-	private Panel MakeBox(Color color, StringView text)
+	private Panel MakeBox(Color32 color, StringView text)
 	{
 		let panel = new Panel();
 		panel.SetStyle(.Background, new ColorDrawable(color));
@@ -1606,7 +1606,7 @@ class UISandboxApp : Application, IDockableWindowHost
 
 	/// Generate a rounded rectangle image with per-corner radii.
 	private static OwnedImageData MakeRoundedRectImage(uint32 w, uint32 h,
-		Color fill, Color border, int radiusTL, int radiusTR, int radiusBR, int radiusBL)
+		Color32 fill, Color32 border, int radiusTL, int radiusTR, int radiusBR, int radiusBL)
 	{
 		let data = new uint8[w * h * 4];
 
@@ -1639,7 +1639,7 @@ class UISandboxApp : Application, IDockableWindowHost
 						isBorder = true;
 				}
 
-				let c = inside ? (isBorder ? border : fill) : Color(0, 0, 0, 0);
+				let c = inside ? (isBorder ? border : fill) : Color32(0, 0, 0, 0);
 				let offset = (int)(y * w + x) * 4;
 				data[offset] = c.R;
 				data[offset + 1] = c.G;
@@ -1653,7 +1653,7 @@ class UISandboxApp : Application, IDockableWindowHost
 
 	/// Generate a rounded rectangle image with fill and border colors.
 	private static OwnedImageData MakeRoundedRectImage(uint32 w, uint32 h,
-		Color fill, Color border, int radius)
+		Color32 fill, Color32 border, int radius)
 	{
 		let data = new uint8[w * h * 4];
 
@@ -1685,7 +1685,7 @@ class UISandboxApp : Application, IDockableWindowHost
 						isBorder = true;
 				}
 
-				let c = inside ? (isBorder ? border : fill) : Color(0, 0, 0, 0);
+				let c = inside ? (isBorder ? border : fill) : Color32(0, 0, 0, 0);
 				let offset = (int)(y * w + x) * 4;
 				data[offset] = c.R;
 				data[offset + 1] = c.G;
@@ -1877,7 +1877,7 @@ class UISandboxApp : Application, IDockableWindowHost
 	}
 
 	/// Generate a checkerboard image for ImageView demo.
-	private static OwnedImageData GenerateCheckerboard(int w, int h, int cellSize, Color c1, Color c2)
+	private static OwnedImageData GenerateCheckerboard(int w, int h, int cellSize, Color32 c1, Color32 c2)
 	{
 		let data = new uint8[w * h * 4];
 		for (int y = 0; y < h; y++)
@@ -1901,9 +1901,9 @@ class UISandboxApp : Application, IDockableWindowHost
 class ColoredLabel : View
 {
 	private String mText ~ delete _;
-	private Color mColor;
+	private Color32 mColor;
 
-	public this(StringView text, Color color)
+	public this(StringView text, Color32 color)
 	{
 		mText = new String(text);
 		mColor = color;
@@ -1937,11 +1937,11 @@ class ColoredLabel : View
 /// Simple colored rectangle view for layout demos.
 class ColorBox : View
 {
-	public Color Color;
+	public Color32 Color;
 	private float mDesiredW;
 	private float mDesiredH;
 
-	public this(Color color, float desiredW = 0, float desiredH = 0)
+	public this(Color32 color, float desiredW = 0, float desiredH = 0)
 	{
 		Color = color;
 		mDesiredW = desiredW;
@@ -2064,7 +2064,7 @@ class ChipDragData : DragData
 /// Draggable colored chip implementing IDragSource.
 class DragChip : ColorView, IDragSource
 {
-	public this(Color color) : base(color, 30, 30) { }
+	public this(Color32 color) : base(color, 30, 30) { }
 
 	public DragData CreateDragData()
 	{
@@ -2127,7 +2127,7 @@ class ChipReorderContainer : FlexLayout, IDropTarget
 class ColorDropBox : View, IDropTarget
 {
 	private String mText = new .("Drop here") ~ delete _;
-	private Color mBgColor = .(50, 55, 65, 255);
+	private Color32 mBgColor = .(50, 55, 65, 255);
 
 	protected override void OnMeasure(BoxConstraints constraints)
 	{

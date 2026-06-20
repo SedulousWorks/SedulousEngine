@@ -14,7 +14,7 @@ public class SVGDrawable : Drawable
 
 	/// Optional tint color. When set, overrides all stroke and fill colors
 	/// in the SVG with this color. When null, uses the SVG's original colors.
-	public Color? TintColor;
+	public Color32? TintColor;
 
 	public this(SVGDocument document)
 	{
@@ -30,7 +30,7 @@ public class SVGDrawable : Drawable
 	}
 
 	/// Create from SVG string with a tint color applied.
-	public static SVGDrawable FromString(StringView svgContent, Color tint)
+	public static SVGDrawable FromString(StringView svgContent, Color32 tint)
 	{
 		if (SVGLoader.Load(svgContent) case .Ok(let doc))
 		{

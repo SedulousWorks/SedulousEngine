@@ -6,7 +6,7 @@ using Sedulous.Core.Mathematics;
 /// Phase 1 "Hello World" widget. Drawable system replaces this in Phase 2.
 public class ColorView : View
 {
-	public Color Color = .White;
+	public Color32 Color = .White;
 
 	/// Optional fixed size. If > 0, measure returns this instead of
 	/// filling parent.

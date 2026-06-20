@@ -8,14 +8,14 @@ public class RadialGradientBrush : IBrush
 {
 	private Vector2 mCenter;
 	private float mRadius;
-	private Color mCenterColor;
-	private Color mEdgeColor;
+	private Color32 mCenterColor;
+	private Color32 mEdgeColor;
 
-	public Color BaseColor => mCenterColor;
+	public Color32 BaseColor => mCenterColor;
 	public bool RequiresInterpolation => true;
 	public Object Texture => null;
 
-	public this(Vector2 center, float radius, Color centerColor, Color edgeColor)
+	public this(Vector2 center, float radius, Color32 centerColor, Color32 edgeColor)
 	{
 		mCenter = center;
 		mRadius = radius;
@@ -23,7 +23,7 @@ public class RadialGradientBrush : IBrush
 		mEdgeColor = edgeColor;
 	}
 
-	public Color GetColorAt(Vector2 position, RectangleF bounds)
+	public Color32 GetColorAt(Vector2 position, RectangleF bounds)
 	{
 		if (mRadius < 0.0001f)
 			return mCenterColor;
@@ -48,7 +48,7 @@ public class RadialGradientBrush : IBrush
 	}
 
 	/// Set gradient colors
-	public void SetColors(Color centerColor, Color edgeColor)
+	public void SetColors(Color32 centerColor, Color32 edgeColor)
 	{
 		mCenterColor = centerColor;
 		mEdgeColor = edgeColor;
@@ -61,12 +61,12 @@ public class RadialGradientBrush : IBrush
 	public float Radius => mRadius;
 
 	/// Get the center color
-	public Color CenterColor => mCenterColor;
+	public Color32 CenterColor => mCenterColor;
 
 	/// Get the edge color
-	public Color EdgeColor => mEdgeColor;
+	public Color32 EdgeColor => mEdgeColor;
 
-	private static Color LerpColor(Color a, Color b, float t)
+	private static Color32 LerpColor(Color32 a, Color32 b, float t)
 	{
 		// Cast to float to handle negative differences properly
 		let r = (float)a.R + ((float)b.R - (float)a.R) * t;
@@ -74,7 +74,7 @@ public class RadialGradientBrush : IBrush
 		let bl = (float)a.B + ((float)b.B - (float)a.B) * t;
 		let al = (float)a.A + ((float)b.A - (float)a.A) * t;
 
-		return Color(
+		return Color32(
 			(uint8)Math.Clamp(r, 0, 255),
 			(uint8)Math.Clamp(g, 0, 255),
 			(uint8)Math.Clamp(bl, 0, 255),

@@ -498,7 +498,7 @@ class MarkupLoaderTests
 		let sheet = new StyleSheet();
 		ctx.StyleSheet = sheet;
 		sheet.ReleaseRef();
-		sheet.ForType(typeof(Label)).Set(.TextColor, Color(0, 0, 255, 255));
+		sheet.ForType(typeof(Label)).Set(.TextColor, Color32(0, 0, 255, 255));
 
 		let view = MarkupLoader.LoadFromString(
 			"""

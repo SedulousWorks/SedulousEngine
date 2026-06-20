@@ -51,7 +51,7 @@ public class MenuItem : Control
 	{
 		IsFocusable = false;  // Menu navigation handles focus
 		IsTabStop = false;
-		Background = Color.Transparent;  // Transparent by default
+		Background = Color32.Transparent;  // Transparent by default
 		mSubItems = new .();
 
 		// Create text block for main text
@@ -132,7 +132,7 @@ public class MenuItem : Control
 				mShortcutBlock = new TextBlock(value);
 				// Use theme TextSecondary if available
 				let palette = Context?.Theme?.Palette ?? Palette();
-				mShortcutBlock.Foreground = palette.TextSecondary.A > 0 ? palette.TextSecondary : Color(150, 150, 150, 255);
+				mShortcutBlock.Foreground = palette.TextSecondary.A > 0 ? palette.TextSecondary : Color32(150, 150, 150, 255);
 			}
 			else
 			{
@@ -318,9 +318,9 @@ public class MenuItem : Control
 			else
 			{
 				let theme = Context?.Theme;
-				var highlightColor = theme?.SelectionColor ?? Color(60, 120, 200, 255);
+				var highlightColor = theme?.SelectionColor ?? Color32(60, 120, 200, 255);
 				if (highlightColor.A < 200)
-					highlightColor = Color(highlightColor.R, highlightColor.G, highlightColor.B, 255);
+					highlightColor = Color32(highlightColor.R, highlightColor.G, highlightColor.B, 255);
 				ctx.FillRect(bounds, highlightColor);
 			}
 		}

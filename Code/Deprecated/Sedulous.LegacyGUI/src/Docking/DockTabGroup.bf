@@ -350,7 +350,7 @@ public class DockTabGroup : Control, IDragSource, IDropTarget
 	{
 		// Get theme styles
 		let groupStyle = GetThemeStyle();
-		let accentColor = Context?.Theme?.Palette.Accent ?? Color(60, 120, 200, 255);
+		let accentColor = Context?.Theme?.Palette.Accent ?? Color32(60, 120, 200, 255);
 
 		if (mPanels.Count == 0)
 		{
@@ -417,8 +417,8 @@ public class DockTabGroup : Control, IDragSource, IDropTarget
 		if (mDropZone != null && mDropZone != .Center)
 		{
 			let edgeBounds = CalculateEdgeZoneBounds(mDropZone.Value);
-			ctx.FillRect(edgeBounds, Color(accentColor.R, accentColor.G, accentColor.B, 80));
-			ctx.DrawRect(edgeBounds, Color(accentColor.R, accentColor.G, accentColor.B, 180), 2);
+			ctx.FillRect(edgeBounds, Color32(accentColor.R, accentColor.G, accentColor.B, 80));
+			ctx.DrawRect(edgeBounds, Color32(accentColor.R, accentColor.G, accentColor.B, 180), 2);
 		}
 	}
 
@@ -439,7 +439,7 @@ public class DockTabGroup : Control, IDragSource, IDropTarget
 		else
 		{
 			// Tab background
-			Color bgColor;
+			Color32 bgColor;
 			if (isSelected)
 				bgColor = tabStyle.Pressed.Background ?? tabStyle.Background;
 			else if (isHovered)
@@ -470,7 +470,7 @@ public class DockTabGroup : Control, IDragSource, IDropTarget
 			let closeSize = 12.0f;
 			let closeX = bounds.Right - closeSize - 4;
 			let closeY = bounds.Y + (mTabHeight - closeSize) / 2;
-			let closeColor = Color(tabStyle.Foreground.R, tabStyle.Foreground.G, tabStyle.Foreground.B, 150);
+			let closeColor = Color32(tabStyle.Foreground.R, tabStyle.Foreground.G, tabStyle.Foreground.B, 150);
 			let closePadding = 2.0f;
 			ctx.DrawLine(.(closeX + closePadding, closeY + closePadding), .(closeX + closeSize - closePadding, closeY + closeSize - closePadding), closeColor, 1);
 			ctx.DrawLine(.(closeX + closeSize - closePadding, closeY + closePadding), .(closeX + closePadding, closeY + closeSize - closePadding), closeColor, 1);

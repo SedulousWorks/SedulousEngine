@@ -33,7 +33,7 @@ public class ThemeAtlas
 	}
 
 	/// Create an AtlasImageDrawable for a named region.
-	public AtlasImageDrawable CreateImageDrawable(StringView name, Color tint = .White)
+	public AtlasImageDrawable CreateImageDrawable(StringView name, Color32 tint = .White)
 	{
 		if (!mBuilt || mBuilder.Atlas == null) return null;
 		let region = mBuilder.GetRegion(name);
@@ -46,7 +46,7 @@ public class ThemeAtlas
 
 	/// Create an AtlasNineSliceDrawable for a named region.
 	public AtlasNineSliceDrawable CreateNineSliceDrawable(StringView name,
-		NineSlice slices, Color tint = .White, Thickness expand = default)
+		NineSlice slices, Color32 tint = .White, Thickness expand = default)
 	{
 		if (!mBuilt || mBuilder.Atlas == null) return null;
 		let region = mBuilder.GetRegion(name);
@@ -61,7 +61,7 @@ public class ThemeAtlas
 	/// Create a StateListDrawable with atlas-backed entries for multiple states.
 	/// stateImages is an array of (ControlState, imageName) pairs.
 	public StateListDrawable CreateStateDrawable(Span<(ControlState, StringView)> stateImages,
-		NineSlice slices = default, Color tint = .White, Thickness expand = default)
+		NineSlice slices = default, Color32 tint = .White, Thickness expand = default)
 	{
 		let stateList = new StateListDrawable();
 

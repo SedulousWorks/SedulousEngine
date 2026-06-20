@@ -9,7 +9,7 @@ public class ToggleSwitch : View
 	private String mText ~ delete _;
 	private bool mIsChecked;
 
-	private Color? mTextColor;
+	private Color32? mTextColor;
 	private float? mFontSize;
 
 	public float TrackWidth = 44;
@@ -34,7 +34,7 @@ public class ToggleSwitch : View
 		}
 	}
 
-	public Color TextColor
+	public Color32 TextColor
 	{
 		get => mTextColor ?? Context?.Theme?.GetColor("ToggleSwitch.Text") ?? .(220, 225, 235, 255);
 		set => mTextColor = value;

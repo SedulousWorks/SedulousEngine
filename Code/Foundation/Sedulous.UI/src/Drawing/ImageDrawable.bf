@@ -7,9 +7,9 @@ using Sedulous.Images;
 public class ImageDrawable : Drawable
 {
 	public IImageData Image;
-	public Color Tint = .White;
+	public Color32 Tint = .White;
 
-	public this(IImageData image, Color tint = .White)
+	public this(IImageData image, Color32 tint = .White)
 	{
 		Image = image;
 		Tint = tint;

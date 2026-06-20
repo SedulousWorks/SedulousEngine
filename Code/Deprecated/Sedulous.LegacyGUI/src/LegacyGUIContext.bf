@@ -452,7 +452,7 @@ public class LegacyGUIContext
 		// Layout bounds (blue)
 		if (mDebugSettings.ShowLayoutBounds)
 		{
-			ctx.DrawRect(bounds, Color(0, 120, 215, 255), 2.0f);
+			ctx.DrawRect(bounds, Color32(0, 120, 215, 255), 2.0f);
 		}
 
 		// Margins (orange)
@@ -461,16 +461,16 @@ public class LegacyGUIContext
 			let margin = element.Margin;
 			// Top margin
 			if (margin.Top > 0)
-				ctx.FillRect(.(bounds.X, bounds.Y - margin.Top, bounds.Width, margin.Top), Color(255, 165, 0, 80));
+				ctx.FillRect(.(bounds.X, bounds.Y - margin.Top, bounds.Width, margin.Top), Color32(255, 165, 0, 80));
 			// Bottom margin
 			if (margin.Bottom > 0)
-				ctx.FillRect(.(bounds.X, bounds.Y + bounds.Height, bounds.Width, margin.Bottom), Color(255, 165, 0, 80));
+				ctx.FillRect(.(bounds.X, bounds.Y + bounds.Height, bounds.Width, margin.Bottom), Color32(255, 165, 0, 80));
 			// Left margin
 			if (margin.Left > 0)
-				ctx.FillRect(.(bounds.X - margin.Left, bounds.Y, margin.Left, bounds.Height), Color(255, 165, 0, 80));
+				ctx.FillRect(.(bounds.X - margin.Left, bounds.Y, margin.Left, bounds.Height), Color32(255, 165, 0, 80));
 			// Right margin
 			if (margin.Right > 0)
-				ctx.FillRect(.(bounds.X + bounds.Width, bounds.Y, margin.Right, bounds.Height), Color(255, 165, 0, 80));
+				ctx.FillRect(.(bounds.X + bounds.Width, bounds.Y, margin.Right, bounds.Height), Color32(255, 165, 0, 80));
 		}
 
 		// Padding (green)
@@ -485,34 +485,34 @@ public class LegacyGUIContext
 			);
 			// Top padding
 			if (padding.Top > 0)
-				ctx.FillRect(.(bounds.X, bounds.Y, bounds.Width, padding.Top), Color(0, 200, 0, 80));
+				ctx.FillRect(.(bounds.X, bounds.Y, bounds.Width, padding.Top), Color32(0, 200, 0, 80));
 			// Bottom padding
 			if (padding.Bottom > 0)
-				ctx.FillRect(.(bounds.X, inner.Y + inner.Height, bounds.Width, padding.Bottom), Color(0, 200, 0, 80));
+				ctx.FillRect(.(bounds.X, inner.Y + inner.Height, bounds.Width, padding.Bottom), Color32(0, 200, 0, 80));
 			// Left padding
 			if (padding.Left > 0)
-				ctx.FillRect(.(bounds.X, inner.Y, padding.Left, inner.Height), Color(0, 200, 0, 80));
+				ctx.FillRect(.(bounds.X, inner.Y, padding.Left, inner.Height), Color32(0, 200, 0, 80));
 			// Right padding
 			if (padding.Right > 0)
-				ctx.FillRect(.(inner.X + inner.Width, inner.Y, padding.Right, inner.Height), Color(0, 200, 0, 80));
+				ctx.FillRect(.(inner.X + inner.Width, inner.Y, padding.Right, inner.Height), Color32(0, 200, 0, 80));
 		}
 
 		// Focused highlight (yellow)
 		if (mDebugSettings.ShowFocused && element == mFocusManager?.FocusedElement)
 		{
-			ctx.DrawRect(bounds, Color(255, 255, 0, 255), 2.0f);
+			ctx.DrawRect(bounds, Color32(255, 255, 0, 255), 2.0f);
 		}
 
 		// Hovered highlight (cyan)
 		if (mDebugSettings.ShowHovered && element == mInputManager?.HoveredElement)
 		{
-			ctx.DrawRect(bounds, Color(0, 255, 255, 200), 2.0f);
+			ctx.DrawRect(bounds, Color32(0, 255, 255, 200), 2.0f);
 		}
 
 		// Hit test bounds (magenta)
 		if (mDebugSettings.ShowHitTestBounds)
 		{
-			ctx.DrawRect(bounds, Color(255, 0, 255, 150), 1.0f);
+			ctx.DrawRect(bounds, Color32(255, 0, 255, 150), 1.0f);
 		}
 
 		// Recurse to children

@@ -22,10 +22,10 @@ public class Label : View
 	public bool Ellipsis = false;
 
 	// Nullable per-instance overrides - null = use theme.
-	private Color? mTextColor;
+	private Color32? mTextColor;
 	private float? mFontSize;
 
-	public Color TextColor
+	public Color32 TextColor
 	{
 		get
 		{

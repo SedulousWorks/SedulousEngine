@@ -48,7 +48,7 @@ public struct ChannelDescriptor
 	public String Name;
 
 	/// Stroke color used for the polyline and key markers.
-	public Color StrokeColor;
+	public Color32 StrokeColor;
 
 	/// Value used when a key is added to this channel implicitly - e.g.
 	/// LinkedTime mode adds a key to every channel; the channel the user
@@ -890,8 +890,8 @@ public class CurveCanvas : View
 		// make the auto-fit vertical scale legible - without them a range
 		// re-fit after a drag looks like the curve jumped for no reason.
 		const int32 DIVS = 4;
-		let gridColor = Color(50, 50, 58, 255);
-		let labelColor = Color(120, 122, 132, 255);
+		let gridColor = Color32(50, 50, 58, 255);
+		let labelColor = Color32(120, 122, 132, 255);
 		let font = ctx.FontService?.GetFont(9);
 
 		for (int32 i = 0; i <= DIVS; i++)
@@ -992,7 +992,7 @@ public class CurveCanvas : View
 				let kx = TimeToX(k.Time);
 				let ky = ValueToY(k.Value);
 
-				Color colIn, colOut;
+				Color32 colIn, colOut;
 				switch (k.Mode)
 				{
 				case .Mirrored:

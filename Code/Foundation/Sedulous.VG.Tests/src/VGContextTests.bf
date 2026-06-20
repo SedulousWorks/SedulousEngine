@@ -11,7 +11,7 @@ class VGContextTests
 	public static void FillRect_ProducesVerticesAndIndices()
 	{
 		let ctx = scope VGContext();
-		ctx.FillRect(.(10, 10, 100, 50), Color.Red);
+		ctx.FillRect(.(10, 10, 100, 50), Color32.Red);
 
 		let batch = ctx.GetBatch();
 		Test.Assert(batch.VertexCount > 0);
@@ -23,7 +23,7 @@ class VGContextTests
 	public static void StrokeRect_ProducesOutput()
 	{
 		let ctx = scope VGContext();
-		ctx.StrokeRect(.(10, 10, 100, 50), Color.Blue, 2.0f);
+		ctx.StrokeRect(.(10, 10, 100, 50), Color32.Blue, 2.0f);
 
 		let batch = ctx.GetBatch();
 		Test.Assert(batch.VertexCount > 0);
@@ -52,9 +52,9 @@ class VGContextTests
 	{
 		let ctx = scope VGContext();
 
-		ctx.FillRect(.(0, 0, 10, 10), Color.Red);
+		ctx.FillRect(.(0, 0, 10, 10), Color32.Red);
 		ctx.PushClipRect(.(0, 0, 50, 50));
-		ctx.FillRect(.(5, 5, 10, 10), Color.Blue);
+		ctx.FillRect(.(5, 5, 10, 10), Color32.Blue);
 		ctx.PopClip();
 
 		let batch = ctx.GetBatch();
@@ -67,7 +67,7 @@ class VGContextTests
 	{
 		let ctx = scope VGContext();
 		ctx.PushOpacity(0.5f);
-		ctx.FillRect(.(0, 0, 10, 10), Color.White);
+		ctx.FillRect(.(0, 0, 10, 10), Color32.White);
 
 		let batch = ctx.GetBatch();
 		Test.Assert(batch.VertexCount > 0);
@@ -84,7 +84,7 @@ class VGContextTests
 	public static void FillCircle_ProducesOutput()
 	{
 		let ctx = scope VGContext();
-		ctx.FillCircle(.(50, 50), 25, Color.Green);
+		ctx.FillCircle(.(50, 50), 25, Color32.Green);
 
 		let batch = ctx.GetBatch();
 		Test.Assert(batch.VertexCount > 8);
@@ -95,7 +95,7 @@ class VGContextTests
 	public static void RoundedRect_PerCornerRadii()
 	{
 		let ctx = scope VGContext();
-		ctx.FillRoundedRect(.(0, 0, 100, 100), .(10, 20, 30, 40), Color.White);
+		ctx.FillRoundedRect(.(0, 0, 100, 100), .(10, 20, 30, 40), Color32.White);
 
 		let batch = ctx.GetBatch();
 		Test.Assert(batch.VertexCount > 4); // More than a simple rect
@@ -106,7 +106,7 @@ class VGContextTests
 	public static void Clear_ResetsEverything()
 	{
 		let ctx = scope VGContext();
-		ctx.FillRect(.(0, 0, 10, 10), Color.Red);
+		ctx.FillRect(.(0, 0, 10, 10), Color32.Red);
 
 		let batch1 = ctx.GetBatch();
 		Test.Assert(batch1.VertexCount > 0);
@@ -120,7 +120,7 @@ class VGContextTests
 	public static void FillStar_ProducesOutput()
 	{
 		let ctx = scope VGContext();
-		ctx.FillStar(.(50, 50), 30, 15, 5, Color.Yellow);
+		ctx.FillStar(.(50, 50), 30, 15, 5, Color32.Yellow);
 
 		let batch = ctx.GetBatch();
 		Test.Assert(batch.VertexCount > 0);

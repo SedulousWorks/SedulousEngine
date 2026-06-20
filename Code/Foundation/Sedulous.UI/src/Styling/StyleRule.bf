@@ -32,7 +32,7 @@ public class StyleRule
 
 	/// Set a color property. If the property already has a value on
 	/// this rule, the existing entry is overwritten.
-	public StyleRule Set(StyleProperty prop, Color color)
+	public StyleRule Set(StyleProperty prop, Color32 color)
 	{
 		SetValueOverwrite(prop, .ColorVal(color));
 		return this;

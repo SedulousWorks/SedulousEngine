@@ -69,7 +69,7 @@ public abstract class ButtonBase : View
 
 	private void DrawDefaultBackground(UIDrawContext ctx, RectangleF bounds, ControlState state, float radius)
 	{
-		Color bg = .(55, 58, 70, 255);
+		Color32 bg = .(55, 58, 70, 255);
 		if (state.HasFlag(.Disabled))       bg = Palette.ComputeDisabled(bg);
 		else if (state.HasFlag(.Pressed))   bg = Palette.ComputePressed(bg);
 		else if (state.HasFlag(.Focused))   bg = Palette.ComputeFocused(bg);

@@ -604,16 +604,16 @@ public class ParticleSystem
 			let width = Trail.WidthStart * (1.0f - lifeRatio) + Trail.WidthEnd * lifeRatio;
 
 			// Get particle color
-			Color pointColor;
+			Color32 pointColor;
 			if (Trail.UseParticleColor && colors != null)
 			{
 				let c = colors[i];
-				pointColor = Color(c.X, c.Y, c.Z, c.W);
+				pointColor = Color32(c.X, c.Y, c.Z, c.W);
 			}
 			else
 			{
 				let c = Trail.TrailColor;
-				pointColor = Color(c.X, c.Y, c.Z, c.W);
+				pointColor = Color32(c.X, c.Y, c.Z, c.W);
 			}
 
 			// Record point in ring buffer

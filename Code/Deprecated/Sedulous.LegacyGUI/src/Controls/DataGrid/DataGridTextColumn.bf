@@ -35,8 +35,8 @@ public class DataGridTextColumn : DataGridColumn
 		// Get theme colors from grid's context
 		let palette = grid?.Context?.Theme?.Palette ?? Palette();
 		let textColor = isSelected
-			? (palette.Text.A > 0 ? palette.Text : Color(255, 255, 255, 255))
-			: (palette.Text.A > 0 ? palette.Text : Color(220, 220, 220, 255));
+			? (palette.Text.A > 0 ? palette.Text : Color32(255, 255, 255, 255))
+			: (palette.Text.A > 0 ? palette.Text : Color32(220, 220, 220, 255));
 
 		let text = cellValue?.ToString(.. scope String()) ?? "";
 		let fontSize = 12.0f;

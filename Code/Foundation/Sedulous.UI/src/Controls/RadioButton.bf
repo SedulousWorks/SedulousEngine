@@ -23,7 +23,7 @@ public class RadioButton : View
 	public Property<String> FontFamily = new .(null, .Visual) ~ { if (_.Value != null) delete _.Value; delete _; };
 
 	/// Override text color for the label text.
-	public Property<Color?> TextColor = new .(null, .Visual) ~ delete _;
+	public Property<Color32?> TextColor = new .(null, .Visual) ~ delete _;
 
 	public Event<delegate void(RadioButton, bool)> OnCheckedChanged ~ _.Dispose();
 

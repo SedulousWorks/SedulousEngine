@@ -10,7 +10,7 @@ public class Separator : Control
 {
 	private Orientation mOrientation = .Horizontal;
 	private float mThickness = 1;
-	private Color? mLineColor;
+	private Color32? mLineColor;
 	private ImageBrush? mLineImage;
 
 	/// Creates a new Separator.
@@ -72,7 +72,7 @@ public class Separator : Control
 	}
 
 	/// The color of the separator line. If not set, uses theme border color.
-	public Color LineColor
+	public Color32 LineColor
 	{
 		get => mLineColor ?? GetThemeStyle().BorderColor;
 		set => mLineColor = value;

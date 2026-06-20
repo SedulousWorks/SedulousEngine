@@ -41,12 +41,12 @@ class DockDragPreview : View
 		let headerH = 24.0f;
 
 		// Border + background
-		let borderColor = Color(65, 70, 85, 255);
-		let contentBg = Color(42, 44, 54, 255);
+		let borderColor = Color32(65, 70, 85, 255);
+		let contentBg = Color32(42, 44, 54, 255);
 		ctx.VG.FillRoundedRect(.(0, 0, Width, Height), 4, contentBg);
 
 		// Header
-		let headerBg = Color(40, 44, 55, 255);
+		let headerBg = Color32(40, 44, 55, 255);
 		ctx.VG.FillRoundedRect(.(0, 0, Width, headerH), 4, headerBg);
 		// Square off header bottom corners
 		ctx.VG.FillRect(.(0, headerH - 4, Width, 4), headerBg);
@@ -57,7 +57,7 @@ class DockDragPreview : View
 			let font = ctx.FontService.GetFont(11);
 			if (font != null)
 			{
-				let textColor = Color(220, 225, 235, 255);
+				let textColor = Color32(220, 225, 235, 255);
 				ctx.VG.DrawText(mTitle, font, .(8, 0, Width - 16, headerH), .Left, .Middle, textColor);
 			}
 		}

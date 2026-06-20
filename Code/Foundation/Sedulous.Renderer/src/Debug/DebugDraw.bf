@@ -18,7 +18,7 @@ public struct Debug2DCommand
 	public Debug2DCommandKind Kind;
 	public Vector2 Position;   // pixels (top-left origin)
 	public Vector2 Size;       // pixels (for rects; text uses char metrics)
-	public Color Color;
+	public Color32 Color;
 	public int32 TextStart;    // index into mTextChars, for Text kind
 	public int32 TextLength;
 	public float Scale;        // text scale (1.0 = default)
@@ -28,7 +28,7 @@ public struct Debug2DCommand
 public struct Debug3DTextCommand
 {
 	public Vector3 WorldPos;
-	public Color Color;
+	public Color32 Color;
 	public int32 TextStart;
 	public int32 TextLength;
 }
@@ -96,7 +96,7 @@ public class DebugDraw
 	// ==================== Lines ====================
 
 	/// Draws a single line segment.
-	public void DrawLine(Vector3 from, Vector3 to, Color color, bool overlay = false)
+	public void DrawLine(Vector3 from, Vector3 to, Color32 color, bool overlay = false)
 	{
 		let list = overlay ? mOverlayLineVerts : mLineVerts;
 		list.Add(.(from, color));
@@ -104,14 +104,14 @@ public class DebugDraw
 	}
 
 	/// Draws a line segment without depth testing (rendered on top of all geometry).
-	public void DrawLineOverlay(Vector3 from, Vector3 to, Color color)
+	public void DrawLineOverlay(Vector3 from, Vector3 to, Color32 color)
 	{
 		mOverlayLineVerts.Add(.(from, color));
 		mOverlayLineVerts.Add(.(to, color));
 	}
 
 	/// Draws a ray from origin along direction.
-	public void DrawRay(Vector3 origin, Vector3 direction, Color color, bool overlay = false)
+	public void DrawRay(Vector3 origin, Vector3 direction, Color32 color, bool overlay = false)
 	{
 		DrawLine(origin, origin + direction, color, overlay);
 	}
@@ -119,7 +119,7 @@ public class DebugDraw
 	// ==================== Filled Primitives ====================
 
 	/// Draws a single filled triangle.
-	public void DrawTriangle(Vector3 v0, Vector3 v1, Vector3 v2, Color color, bool overlay = false)
+	public void DrawTriangle(Vector3 v0, Vector3 v1, Vector3 v2, Color32 color, bool overlay = false)
 	{
 		let list = overlay ? mOverlayTriVerts : mTriVerts;
 		list.Add(.(v0, color));
@@ -128,14 +128,14 @@ public class DebugDraw
 	}
 
 	/// Draws a filled quad (two triangles).
-	public void DrawQuad(Vector3 v0, Vector3 v1, Vector3 v2, Vector3 v3, Color color, bool overlay = false)
+	public void DrawQuad(Vector3 v0, Vector3 v1, Vector3 v2, Vector3 v3, Color32 color, bool overlay = false)
 	{
 		DrawTriangle(v0, v1, v2, color, overlay);
 		DrawTriangle(v0, v2, v3, color, overlay);
 	}
 
 	/// Draws a filled axis-aligned box.
-	public void DrawFilledBox(BoundingBox bounds, Color color, bool overlay = false)
+	public void DrawFilledBox(BoundingBox bounds, Color32 color, bool overlay = false)
 	{
 		let mn = bounds.Min;
 		let mx = bounds.Max;
@@ -164,7 +164,7 @@ public class DebugDraw
 	}
 
 	/// Draws a filled box from center and half-extents.
-	public void DrawFilledBox(Vector3 center, Vector3 halfExtents, Color color, bool overlay = false)
+	public void DrawFilledBox(Vector3 center, Vector3 halfExtents, Color32 color, bool overlay = false)
 	{
 		DrawFilledBox(BoundingBox(center - halfExtents, center + halfExtents), color, overlay);
 	}
@@ -172,7 +172,7 @@ public class DebugDraw
 	// ==================== Wireframe Shapes ====================
 
 	/// Draws an axis-aligned wire bounding box.
-	public void DrawWireBox(BoundingBox bounds, Color color, bool overlay = false)
+	public void DrawWireBox(BoundingBox bounds, Color32 color, bool overlay = false)
 	{
 		let mn = bounds.Min;
 		let mx = bounds.Max;
@@ -200,7 +200,7 @@ public class DebugDraw
 	}
 
 	/// Draws a wireframe oriented bounding box (local AABB transformed by world matrix).
-	public void DrawTransformedBox(BoundingBox localBounds, Matrix worldMatrix, Color color, bool overlay = false)
+	public void DrawTransformedBox(BoundingBox localBounds, Matrix worldMatrix, Color32 color, bool overlay = false)
 	{
 		let mn = localBounds.Min;
 		let mx = localBounds.Max;
@@ -227,7 +227,7 @@ public class DebugDraw
 	}
 
 	/// Draws a wire sphere made of three orthogonal circles.
-	public void DrawWireSphere(Vector3 center, float radius, Color color, int32 segments = 24, bool overlay = false)
+	public void DrawWireSphere(Vector3 center, float radius, Color32 color, int32 segments = 24, bool overlay = false)
 	{
 		DrawCircle(center, .(1, 0, 0), .(0, 1, 0), radius, color, segments, overlay);
 		DrawCircle(center, .(0, 1, 0), .(0, 0, 1), radius, color, segments, overlay);
@@ -235,13 +235,13 @@ public class DebugDraw
 	}
 
 	/// Draws a wire sphere without depth testing.
-	public void DrawWireSphereOverlay(Vector3 center, float radius, Color color, int32 segments = 24)
+	public void DrawWireSphereOverlay(Vector3 center, float radius, Color32 color, int32 segments = 24)
 	{
 		DrawWireSphere(center, radius, color, segments, true);
 	}
 
 	/// Draws a wire circle in the plane spanned by u and v.
-	public void DrawCircle(Vector3 center, Vector3 u, Vector3 v, float radius, Color color, int32 segments = 32, bool overlay = false)
+	public void DrawCircle(Vector3 center, Vector3 u, Vector3 v, float radius, Color32 color, int32 segments = 32, bool overlay = false)
 	{
 		let uN = Vector3.Normalize(u);
 		let vN = Vector3.Normalize(v);
@@ -256,13 +256,13 @@ public class DebugDraw
 	}
 
 	/// Draws a circle in the plane spanned by u and v, without depth testing.
-	public void DrawCircleOverlay(Vector3 center, Vector3 u, Vector3 v, float radius, Color color, int32 segments = 32)
+	public void DrawCircleOverlay(Vector3 center, Vector3 u, Vector3 v, float radius, Color32 color, int32 segments = 32)
 	{
 		DrawCircle(center, u, v, radius, color, segments, true);
 	}
 
 	/// Draws a circle on the specified plane (by normal).
-	public void DrawCircle(Vector3 center, float radius, Vector3 normal, Color color, int32 segments = 32, bool overlay = false)
+	public void DrawCircle(Vector3 center, float radius, Vector3 normal, Color32 color, int32 segments = 32, bool overlay = false)
 	{
 		Vector3 up = Math.Abs(normal.Y) < 0.99f ? Vector3.UnitY : Vector3.UnitX;
 		Vector3 right = Vector3.Normalize(Vector3.Cross(up, normal));
@@ -277,13 +277,13 @@ public class DebugDraw
 		let x = Vector3(transform.M11, transform.M12, transform.M13);
 		let y = Vector3(transform.M21, transform.M22, transform.M23);
 		let z = Vector3(transform.M31, transform.M32, transform.M33);
-		DrawLine(o, o + x * size, Color.Red, overlay);
-		DrawLine(o, o + y * size, Color.Green, overlay);
-		DrawLine(o, o + z * size, Color.Blue, overlay);
+		DrawLine(o, o + x * size, Color32.Red, overlay);
+		DrawLine(o, o + y * size, Color32.Green, overlay);
+		DrawLine(o, o + z * size, Color32.Blue, overlay);
 	}
 
 	/// Draws a 3D cross at a position.
-	public void DrawCross(Vector3 center, float size, Color color, bool overlay = false)
+	public void DrawCross(Vector3 center, float size, Color32 color, bool overlay = false)
 	{
 		let h = size * 0.5f;
 		DrawLine(center - .(h, 0, 0), center + .(h, 0, 0), color, overlay);
@@ -292,7 +292,7 @@ public class DebugDraw
 	}
 
 	/// Draws an arrow from start to end with a small arrowhead.
-	public void DrawArrow(Vector3 start, Vector3 end, Color color, float headSize = 0.1f, bool overlay = false)
+	public void DrawArrow(Vector3 start, Vector3 end, Color32 color, float headSize = 0.1f, bool overlay = false)
 	{
 		DrawLine(start, end, color, overlay);
 
@@ -314,7 +314,7 @@ public class DebugDraw
 	}
 
 	/// Draws a grid on the XZ plane.
-	public void DrawGrid(Vector3 center, float size, int divisions, Color color, bool overlay = false)
+	public void DrawGrid(Vector3 center, float size, int divisions, Color32 color, bool overlay = false)
 	{
 		let halfSize = size * 0.5f;
 		let step = size / (float)divisions;
@@ -328,7 +328,7 @@ public class DebugDraw
 	}
 
 	/// Draws a wireframe capsule (cylinder with hemisphere caps).
-	public void DrawCapsule(Vector3 center, float radius, float height, Color color, int32 segments = 16, bool overlay = false)
+	public void DrawCapsule(Vector3 center, float radius, float height, Color32 color, int32 segments = 16, bool overlay = false)
 	{
 		let halfHeight = height * 0.5f - radius;
 		let top = center + .(0, halfHeight, 0);
@@ -372,7 +372,7 @@ public class DebugDraw
 	}
 
 	/// Draws a wireframe cylinder.
-	public void DrawCylinder(Vector3 center, float radius, float height, Color color, int32 segments = 16, bool overlay = false)
+	public void DrawCylinder(Vector3 center, float radius, float height, Color32 color, int32 segments = 16, bool overlay = false)
 	{
 		let halfHeight = height * 0.5f;
 		let top = center + .(0, halfHeight, 0);
@@ -394,7 +394,7 @@ public class DebugDraw
 	}
 
 	/// Draws a wireframe cone.
-	public void DrawCone(Vector3 apex, Vector3 direction, float length, float angle, Color color, int32 segments = 16, bool overlay = false)
+	public void DrawCone(Vector3 apex, Vector3 direction, float length, float angle, Color32 color, int32 segments = 16, bool overlay = false)
 	{
 		let dirNorm = Vector3.Normalize(direction);
 		let baseCenter = apex + dirNorm * length;
@@ -419,7 +419,7 @@ public class DebugDraw
 	}
 
 	/// Draws the edges of a camera frustum from an inverse-view-projection matrix.
-	public void DrawFrustum(Matrix invViewProj, Color color, bool overlay = false)
+	public void DrawFrustum(Matrix invViewProj, Color32 color, bool overlay = false)
 	{
 		Vector3[8] corners = ?;
 		int idx = 0;
@@ -449,7 +449,7 @@ public class DebugDraw
 	}
 
 	/// Draws a wireframe sphere from BoundingSphere.
-	public void DrawWireSphere(BoundingSphere sphere, Color color, int32 segments = 24, bool overlay = false)
+	public void DrawWireSphere(BoundingSphere sphere, Color32 color, int32 segments = 24, bool overlay = false)
 	{
 		DrawWireSphere(sphere.Center, sphere.Radius, color, segments, overlay);
 	}
@@ -457,7 +457,7 @@ public class DebugDraw
 	// ==================== Text + 2D ====================
 
 	/// Appends 3D-anchored text (projected to screen for rendering).
-	public void DrawText3D(Vector3 worldPos, StringView text, Color color)
+	public void DrawText3D(Vector3 worldPos, StringView text, Color32 color)
 	{
 		if (text.IsEmpty) return;
 		let start = (int32)mTextChars.Count;
@@ -473,7 +473,7 @@ public class DebugDraw
 	}
 
 	/// Appends pixel-space text.
-	public void DrawScreenText(float x, float y, StringView text, Color color, float scale = 1.0f)
+	public void DrawScreenText(float x, float y, StringView text, Color32 color, float scale = 1.0f)
 	{
 		if (text.IsEmpty) return;
 		let start = (int32)mTextChars.Count;
@@ -492,7 +492,7 @@ public class DebugDraw
 	}
 
 	/// Appends pixel-space text right-aligned from the right edge.
-	public void DrawScreenTextRight(float rightMargin, float y, StringView text, Color color, float scale = 1.0f)
+	public void DrawScreenTextRight(float rightMargin, float y, StringView text, Color32 color, float scale = 1.0f)
 	{
 		if (text.IsEmpty) return;
 		let start = (int32)mTextChars.Count;
@@ -511,7 +511,7 @@ public class DebugDraw
 	}
 
 	/// Appends a filled pixel-space rectangle.
-	public void DrawScreenRect(float x, float y, float width, float height, Color color)
+	public void DrawScreenRect(float x, float y, float width, float height, Color32 color)
 	{
 		m2DCommands.Add(.()
 		{

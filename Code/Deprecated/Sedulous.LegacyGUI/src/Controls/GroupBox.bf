@@ -220,7 +220,7 @@ public class GroupBox : ContentControl
 				ctx.FillRect(borderBounds, Background);
 
 			// Draw border with gap for header
-			let borderColor = BorderColor.A > 0 ? BorderColor : Color(80, 80, 80, 255);
+			let borderColor = BorderColor.A > 0 ? BorderColor : Color32(80, 80, 80, 255);
 			let thickness = BorderThickness > 0 ? BorderThickness : 1;
 
 			let gapPadding = 4.0f;

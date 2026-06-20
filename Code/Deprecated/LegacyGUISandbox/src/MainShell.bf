@@ -194,7 +194,7 @@ class MainShell
 
 		mFpsDisplay = new TextBlock("FPS: --");
 		// Keep green for FPS - it's an intentional highlight color
-		mFpsDisplay.Foreground = Color(50, 180, 50, 255);
+		mFpsDisplay.Foreground = Color32(50, 180, 50, 255);
 		mFpsDisplay.VerticalAlignment = .Center;
 		mFpsDisplay.Margin = .(0, 0, 10, 0);
 		layout.AddChild(mFpsDisplay);

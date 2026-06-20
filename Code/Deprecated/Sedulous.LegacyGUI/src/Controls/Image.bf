@@ -35,7 +35,7 @@ public class Image : UIElement
 	private IImageData mSource;
 	private Stretch mStretch = .Uniform;
 	private StretchDirection mStretchDirection = .Both;
-	private Color mTint = .White;
+	private Color32 mTint = .White;
 
 	/// Creates a new Image.
 	public this()
@@ -91,7 +91,7 @@ public class Image : UIElement
 	}
 
 	/// Tint color applied to the image.
-	public Color Tint
+	public Color32 Tint
 	{
 		get => mTint;
 		set => mTint = value;

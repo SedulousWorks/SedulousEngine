@@ -9,9 +9,9 @@ public class AtlasImageDrawable : Drawable
 {
 	public IImageData AtlasImage;
 	public RectangleF SourceRect; // pixel-space region in atlas
-	public Color Tint = .White;
+	public Color32 Tint = .White;
 
-	public this(IImageData atlas, RectangleF sourceRect, Color tint = .White)
+	public this(IImageData atlas, RectangleF sourceRect, Color32 tint = .White)
 	{
 		AtlasImage = atlas;
 		SourceRect = sourceRect;

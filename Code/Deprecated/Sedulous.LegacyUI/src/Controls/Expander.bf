@@ -11,7 +11,7 @@ public class Expander : ViewGroup
 	private View mContent; // not owned separately - in mChildren via AddView
 	private bool mIsExpanded = true;
 
-	private Color? mHeaderColor;
+	private Color32? mHeaderColor;
 	private float? mFontSize;
 
 	public float HeaderHeight = 28;
@@ -34,7 +34,7 @@ public class Expander : ViewGroup
 		}
 	}
 
-	public Color HeaderColor
+	public Color32 HeaderColor
 	{
 		get => mHeaderColor ?? Context?.Theme?.GetColor("Expander.Header") ?? .(60, 65, 80, 255);
 		set => mHeaderColor = value;

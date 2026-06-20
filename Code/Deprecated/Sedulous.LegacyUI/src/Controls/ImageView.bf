@@ -23,7 +23,7 @@ public class ImageView : View
 {
 	private IImageData mImage;
 	private ScaleType mScaleType = .FillBounds;
-	private Color? mTint;
+	private Color32? mTint;
 
 	public IImageData Image
 	{
@@ -37,7 +37,7 @@ public class ImageView : View
 		set { mScaleType = value; InvalidateVisual(); }
 	}
 
-	public Color Tint
+	public Color32 Tint
 	{
 		get => mTint ?? .White;
 		set => mTint = value;

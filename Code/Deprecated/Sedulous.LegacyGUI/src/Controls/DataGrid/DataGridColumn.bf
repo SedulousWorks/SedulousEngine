@@ -115,7 +115,7 @@ public abstract class DataGridColumn
 		let palette = theme?.Palette ?? Palette();
 
 		// Use style foreground if available, else fallback to palette text
-		let defaultTextColor = Color(220, 220, 220, 255);
+		let defaultTextColor = Color32(220, 220, 220, 255);
 		let textColor = cellStyle.Foreground.A > 0 ? cellStyle.Foreground : (palette.Text.A > 0 ? palette.Text : defaultTextColor);
 
 		// Default: render as text
@@ -135,10 +135,10 @@ public abstract class DataGridColumn
 		let palette = theme?.Palette ?? Palette();
 
 		// Fallback colors
-		let defaultBgColor = Color(45, 45, 45, 255);
-		let defaultTextColor = Color(220, 220, 220, 255);
-		let defaultBorderColor = Color(60, 60, 60, 255);
-		let defaultAccentColor = Color(150, 180, 220, 255);
+		let defaultBgColor = Color32(45, 45, 45, 255);
+		let defaultTextColor = Color32(220, 220, 220, 255);
+		let defaultBorderColor = Color32(60, 60, 60, 255);
+		let defaultAccentColor = Color32(150, 180, 220, 255);
 
 		// Get colors from theme style with fallbacks
 		let baseBgColor = headerStyle.Background.A > 0 ? headerStyle.Background : defaultBgColor;

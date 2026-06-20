@@ -73,7 +73,7 @@ public static class ParticleRenderExtractor
 			if (colors != null)
 			{
 				let c = colors[srcIdx];
-				v.Color = Color(c.X, c.Y, c.Z, c.W);
+				v.Color = Color32(c.X, c.Y, c.Z, c.W);
 			}
 			else
 			{
@@ -190,13 +190,13 @@ public static class ParticleRenderExtractor
 				let vNext = (float)(seg + 1) / (float)(state.Count - 1);
 
 				// Colors with fade applied to alpha
-				let currColor = Color(
+				let currColor = Color32(
 					(float)currPoint.Color.R / 255.0f,
 					(float)currPoint.Color.G / 255.0f,
 					(float)currPoint.Color.B / 255.0f,
 					(float)currPoint.Color.A / 255.0f * currFade
 				);
-				let nextColor = Color(
+				let nextColor = Color32(
 					(float)nextPoint.Color.R / 255.0f,
 					(float)nextPoint.Color.G / 255.0f,
 					(float)nextPoint.Color.B / 255.0f,

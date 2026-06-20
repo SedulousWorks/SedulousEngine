@@ -4,17 +4,17 @@ using Sedulous.Core.Mathematics;
 namespace Sedulous.LegacyGUI;
 
 /// Delegate for getting a Color property value from a UIElement.
-public delegate Color ColorGetter(UIElement element);
+public delegate Color32 ColorGetter(UIElement element);
 
 /// Delegate for setting a Color property value on a UIElement.
-public delegate void ColorSetter(UIElement element, Color value);
+public delegate void ColorSetter(UIElement element, Color32 value);
 
 /// Animates a Color property on a UIElement (Control or Panel).
 public class ColorAnimation : Animation
 {
-	private Color mFrom;
-	private Color mTo;
-	private Color mOriginalValue;
+	private Color32 mFrom;
+	private Color32 mTo;
+	private Color32 mOriginalValue;
 	private bool mFromSet = false;
 
 	// Property accessors
@@ -34,7 +34,7 @@ public class ColorAnimation : Animation
 	}
 
 	/// The starting value. If not set, uses current property value.
-	public Color From
+	public Color32 From
 	{
 		get => mFrom;
 		set
@@ -45,7 +45,7 @@ public class ColorAnimation : Animation
 	}
 
 	/// The ending value.
-	public Color To
+	public Color32 To
 	{
 		get => mTo;
 		set => mTo = value;
@@ -97,17 +97,17 @@ public class ColorAnimation : Animation
 	// === Factory methods ===
 
 	/// Gets the background color from either a Control or Panel.
-	private static Color GetBackground(UIElement e)
+	private static Color32 GetBackground(UIElement e)
 	{
 		if (let ctrl = e as Control)
 			return ctrl.Background;
 		if (let panel = e as Panel)
 			return panel.Background;
-		return Color.Transparent;
+		return Color32.Transparent;
 	}
 
 	/// Sets the background color on either a Control or Panel.
-	private static void SetBackground(UIElement e, Color v)
+	private static void SetBackground(UIElement e, Color32 v)
 	{
 		if (let ctrl = e as Control)
 			ctrl.Background = v;
@@ -117,7 +117,7 @@ public class ColorAnimation : Animation
 
 	/// Creates a background color animation to a target color.
 	/// Works with both Control and Panel elements.
-	public static ColorAnimation Background(Color to)
+	public static ColorAnimation Background(Color32 to)
 	{
 		let anim = new ColorAnimation(
 			new => GetBackground,
@@ -129,7 +129,7 @@ public class ColorAnimation : Animation
 
 	/// Creates a background color animation from one color to another.
 	/// Works with both Control and Panel elements.
-	public static ColorAnimation Background(Color from, Color to)
+	public static ColorAnimation Background(Color32 from, Color32 to)
 	{
 		let anim = new ColorAnimation(
 			new => GetBackground,
@@ -142,10 +142,10 @@ public class ColorAnimation : Animation
 
 	/// Creates a foreground color animation to a target color.
 	/// Works with Control elements only.
-	public static ColorAnimation Foreground(Color to)
+	public static ColorAnimation Foreground(Color32 to)
 	{
 		let anim = new ColorAnimation(
-			new (e) => { if (let c = e as Control) return c.Foreground; return Color.Transparent; },
+			new (e) => { if (let c = e as Control) return c.Foreground; return Color32.Transparent; },
 			new (e, v) => { if (let c = e as Control) c.Foreground = v; }
 		);
 		anim.To = to;
@@ -154,10 +154,10 @@ public class ColorAnimation : Animation
 
 	/// Creates a foreground color animation from one color to another.
 	/// Works with Control elements only.
-	public static ColorAnimation Foreground(Color from, Color to)
+	public static ColorAnimation Foreground(Color32 from, Color32 to)
 	{
 		let anim = new ColorAnimation(
-			new (e) => { if (let c = e as Control) return c.Foreground; return Color.Transparent; },
+			new (e) => { if (let c = e as Control) return c.Foreground; return Color32.Transparent; },
 			new (e, v) => { if (let c = e as Control) c.Foreground = v; }
 		);
 		anim.From = from;
@@ -167,10 +167,10 @@ public class ColorAnimation : Animation
 
 	/// Creates a border color animation to a target color.
 	/// Works with Control elements only.
-	public static ColorAnimation BorderColor(Color to)
+	public static ColorAnimation BorderColor(Color32 to)
 	{
 		let anim = new ColorAnimation(
-			new (e) => { if (let c = e as Control) return c.BorderColor; return Color.Transparent; },
+			new (e) => { if (let c = e as Control) return c.BorderColor; return Color32.Transparent; },
 			new (e, v) => { if (let c = e as Control) c.BorderColor = v; }
 		);
 		anim.To = to;
@@ -179,10 +179,10 @@ public class ColorAnimation : Animation
 
 	/// Creates a border color animation from one color to another.
 	/// Works with Control elements only.
-	public static ColorAnimation BorderColor(Color from, Color to)
+	public static ColorAnimation BorderColor(Color32 from, Color32 to)
 	{
 		let anim = new ColorAnimation(
-			new (e) => { if (let c = e as Control) return c.BorderColor; return Color.Transparent; },
+			new (e) => { if (let c = e as Control) return c.BorderColor; return Color32.Transparent; },
 			new (e, v) => { if (let c = e as Control) c.BorderColor = v; }
 		);
 		anim.From = from;

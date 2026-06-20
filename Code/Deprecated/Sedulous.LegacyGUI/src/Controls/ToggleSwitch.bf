@@ -175,7 +175,7 @@ public class ToggleSwitch : ToggleButton
 		else
 		{
 			// Draw knob shadow
-			let shadowColor = Color(0, 0, 0, 40);
+			let shadowColor = Color32(0, 0, 0, 40);
 			ctx.FillCircle(.(knobX + knobRadius + 1, knobY + knobRadius + 1), knobRadius, shadowColor);
 
 			// Draw knob
@@ -202,18 +202,18 @@ public class ToggleSwitch : ToggleButton
 	}
 
 	/// Gets the track color when off.
-	private Color GetTrackOffColor()
+	private Color32 GetTrackOffColor()
 	{
 		if (let theme = Context?.Theme)
 			return theme.Palette.Surface;
-		return Color(200, 200, 200, 255);
+		return Color32(200, 200, 200, 255);
 	}
 
 	/// Gets the knob color.
-	private Color GetKnobColor()
+	private Color32 GetKnobColor()
 	{
 		let palette = Context?.Theme?.Palette ?? Palette();
-		let baseColor = palette.Surface.A > 0 ? palette.Surface : Color(255, 255, 255, 255);
+		let baseColor = palette.Surface.A > 0 ? palette.Surface : Color32(255, 255, 255, 255);
 		switch (CurrentState)
 		{
 		case .Disabled:

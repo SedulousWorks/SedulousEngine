@@ -449,7 +449,7 @@ class ImGuiSampleApp : Application
 		BuildUI();
 
 		// Update background clear color from UI
-		mSettings.ClearColor = Color(mBackgroundColor[0], mBackgroundColor[1], mBackgroundColor[2], 1.0f);
+		mSettings.ClearColor = Color32(mBackgroundColor[0], mBackgroundColor[1], mBackgroundColor[2], 1.0f);
 	}
 
 	private void BuildUI()

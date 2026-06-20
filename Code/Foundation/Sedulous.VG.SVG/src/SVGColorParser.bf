@@ -7,7 +7,7 @@ namespace Sedulous.VG.SVG;
 public static class SVGColorParser
 {
 	/// Parse an SVG color string (hex, named, or rgb())
-	public static Result<Color> Parse(StringView colorStr)
+	public static Result<Color32> Parse(StringView colorStr)
 	{
 		var s = colorStr;
 		// Trim whitespace
@@ -27,14 +27,14 @@ public static class SVGColorParser
 				let r = Try!(ParseHexByte(s, 1));
 				let g = Try!(ParseHexByte(s, 3));
 				let b = Try!(ParseHexByte(s, 5));
-				return .Ok(Color((int32)r, (int32)g, (int32)b));
+				return .Ok(Color32((int32)r, (int32)g, (int32)b));
 			}
 			else if (s.Length == 4) // #rgb
 			{
 				let r = Try!(ParseHexNibble(s, 1));
 				let g = Try!(ParseHexNibble(s, 2));
 				let b = Try!(ParseHexNibble(s, 3));
-				return .Ok(Color((int32)(r | (r << 4)), (int32)(g | (g << 4)), (int32)(b | (b << 4))));
+				return .Ok(Color32((int32)(r | (r << 4)), (int32)(g | (g << 4)), (int32)(b | (b << 4))));
 			}
 			else if (s.Length == 9) // #rrggbbaa
 			{
@@ -42,7 +42,7 @@ public static class SVGColorParser
 				let g = Try!(ParseHexByte(s, 3));
 				let b = Try!(ParseHexByte(s, 5));
 				let a = Try!(ParseHexByte(s, 7));
-				return .Ok(Color((int32)r, (int32)g, (int32)b, (int32)a));
+				return .Ok(Color32((int32)r, (int32)g, (int32)b, (int32)a));
 			}
 			return .Err;
 		}
@@ -56,14 +56,14 @@ public static class SVGColorParser
 			let g = Try!(ParseInt(s, ref pos));
 			SkipComma(s, ref pos);
 			let b = Try!(ParseInt(s, ref pos));
-			return .Ok(Color(r, g, b));
+			return .Ok(Color32(r, g, b));
 		}
 
 		// Named colors (basic SVG set)
 		return ParseNamedColor(s);
 	}
 
-	private static Result<Color> ParseNamedColor(StringView name)
+	private static Result<Color32> ParseNamedColor(StringView name)
 	{
 		// Compare case-insensitively
 		let lower = scope String(name);
@@ -71,32 +71,32 @@ public static class SVGColorParser
 
 		switch (lower)
 		{
-		case "black": return .Ok(Color(0, 0, 0));
-		case "white": return .Ok(Color(255, 255, 255));
-		case "red": return .Ok(Color(255, 0, 0));
-		case "green": return .Ok(Color(0, 128, 0));
-		case "blue": return .Ok(Color(0, 0, 255));
-		case "yellow": return .Ok(Color(255, 255, 0));
-		case "cyan", "aqua": return .Ok(Color(0, 255, 255));
-		case "magenta", "fuchsia": return .Ok(Color(255, 0, 255));
-		case "gray", "grey": return .Ok(Color(128, 128, 128));
-		case "silver": return .Ok(Color(192, 192, 192));
-		case "maroon": return .Ok(Color(128, 0, 0));
-		case "olive": return .Ok(Color(128, 128, 0));
-		case "lime": return .Ok(Color(0, 255, 0));
-		case "teal": return .Ok(Color(0, 128, 128));
-		case "navy": return .Ok(Color(0, 0, 128));
-		case "purple": return .Ok(Color(128, 0, 128));
-		case "orange": return .Ok(Color(255, 165, 0));
-		case "pink": return .Ok(Color(255, 192, 203));
-		case "brown": return .Ok(Color(165, 42, 42));
-		case "coral": return .Ok(Color(255, 127, 80));
-		case "gold": return .Ok(Color(255, 215, 0));
-		case "indigo": return .Ok(Color(75, 0, 130));
-		case "ivory": return .Ok(Color(255, 255, 240));
-		case "khaki": return .Ok(Color(240, 230, 140));
-		case "lavender": return .Ok(Color(230, 230, 250));
-		case "none", "transparent": return .Ok(Color(0, 0, 0, 0));
+		case "black": return .Ok(Color32(0, 0, 0));
+		case "white": return .Ok(Color32(255, 255, 255));
+		case "red": return .Ok(Color32(255, 0, 0));
+		case "green": return .Ok(Color32(0, 128, 0));
+		case "blue": return .Ok(Color32(0, 0, 255));
+		case "yellow": return .Ok(Color32(255, 255, 0));
+		case "cyan", "aqua": return .Ok(Color32(0, 255, 255));
+		case "magenta", "fuchsia": return .Ok(Color32(255, 0, 255));
+		case "gray", "grey": return .Ok(Color32(128, 128, 128));
+		case "silver": return .Ok(Color32(192, 192, 192));
+		case "maroon": return .Ok(Color32(128, 0, 0));
+		case "olive": return .Ok(Color32(128, 128, 0));
+		case "lime": return .Ok(Color32(0, 255, 0));
+		case "teal": return .Ok(Color32(0, 128, 128));
+		case "navy": return .Ok(Color32(0, 0, 128));
+		case "purple": return .Ok(Color32(128, 0, 128));
+		case "orange": return .Ok(Color32(255, 165, 0));
+		case "pink": return .Ok(Color32(255, 192, 203));
+		case "brown": return .Ok(Color32(165, 42, 42));
+		case "coral": return .Ok(Color32(255, 127, 80));
+		case "gold": return .Ok(Color32(255, 215, 0));
+		case "indigo": return .Ok(Color32(75, 0, 130));
+		case "ivory": return .Ok(Color32(255, 255, 240));
+		case "khaki": return .Ok(Color32(240, 230, 140));
+		case "lavender": return .Ok(Color32(230, 230, 250));
+		case "none", "transparent": return .Ok(Color32(0, 0, 0, 0));
 		}
 
 		return .Err;

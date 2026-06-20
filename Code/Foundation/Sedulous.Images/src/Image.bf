@@ -100,7 +100,7 @@ public class Image
 	}
 
     // Clear image to default values
-	public void Clear(Color? color = null)
+	public void Clear(Color32? color = null)
 	{
 		if (color == null)
 		{
@@ -122,7 +122,7 @@ public class Image
 	}
 
     // Fill entire image with a color
-	public void FillColor(Color color)
+	public void FillColor(Color32 color)
 	{
 		switch (mFormat)
 		{
@@ -200,7 +200,7 @@ public class Image
 	}
 
     // Get pixel color at coordinates
-	public Color GetPixel(uint32 x, uint32 y)
+	public Color32 GetPixel(uint32 x, uint32 y)
 	{
 		if (x >= mWidth || y >= mHeight)
 			return .Black;
@@ -231,7 +231,7 @@ public class Image
 		}
 	}
 
-	private Color GetPixelFloat(uint32 x, uint32 y)
+	private Color32 GetPixelFloat(uint32 x, uint32 y)
 	{
 		var offset = GetPixelOffset(x, y);
 
@@ -257,7 +257,7 @@ public class Image
 	}
 
     // Set pixel color at coordinates
-	public void SetPixel(uint32 x, uint32 y, Color color)
+	public void SetPixel(uint32 x, uint32 y, Color32 color)
 	{
 		if (x >= mWidth || y >= mHeight)
 			return;
@@ -375,7 +375,7 @@ public class Image
 	}
 
     // Factory method: Create solid color image
-	public static Image CreateSolidColor(uint32 width, uint32 height, Color color, PixelFormat format = .RGBA8)
+	public static Image CreateSolidColor(uint32 width, uint32 height, Color32 color, PixelFormat format = .RGBA8)
 	{
 		var image = new Image(width, height, format);
 		image.FillColor(color);
@@ -383,7 +383,7 @@ public class Image
 	}
 
     // Factory method: Create checkerboard pattern
-	public static Image CreateCheckerboard(uint32 size = 256, Color color1 = .White, Color color2 = .Black,
+	public static Image CreateCheckerboard(uint32 size = 256, Color32 color1 = .White, Color32 color2 = .Black,
 		uint32 checkSize = 32, PixelFormat format = .RGBA8)
 	{
 		var image = new Image(size, size, format);
@@ -401,7 +401,7 @@ public class Image
 	}
 
     // Factory method: Create gradient
-	public static Image CreateGradient(uint32 width, uint32 height, Color topColor, Color bottomColor,
+	public static Image CreateGradient(uint32 width, uint32 height, Color32 topColor, Color32 bottomColor,
 		PixelFormat format = .RGBA8)
 	{
 		var image = new Image(width, height, format);
@@ -410,7 +410,7 @@ public class Image
 		{
 			float t = (float)y / (float)(height - 1);
 
-			Color color = .(
+			Color32 color = .(
 				(uint8)Math.Lerp(topColor.R, bottomColor.R, t),
 				(uint8)Math.Lerp(topColor.G, bottomColor.G, t),
 				(uint8)Math.Lerp(topColor.B, bottomColor.B, t),
@@ -434,7 +434,7 @@ public class Image
 		var image = new Image(width, height, format);
 
 		// Normal pointing straight up: (0, 0, 1) -> (128, 128, 255) in texture space
-		Color normalUp = Color(128, 128, 255, 255);
+		Color32 normalUp = Color32(128, 128, 255, 255);
 		image.FillColor(normalUp);
 
 		return image;
@@ -476,7 +476,7 @@ public class Image
 				uint8 g = (uint8)((normal.Y * 0.5f + 0.5f) * 255);
 				uint8 b = (uint8)((normal.Z * 0.5f + 0.5f) * 255);
 
-				image.SetPixel(x, y, Color(r, g, b, 255));
+				image.SetPixel(x, y, Color32(r, g, b, 255));
 			}
 		}
 
@@ -535,7 +535,7 @@ public class Image
 				uint8 g = (uint8)((normal.Y * 0.5f + 0.5f) * 255);
 				uint8 b = (uint8)((normal.Z * 0.5f + 0.5f) * 255);
 
-				image.SetPixel(x, y, Color(r, g, b, 255));
+				image.SetPixel(x, y, Color32(r, g, b, 255));
 			}
 		}
 
@@ -588,7 +588,7 @@ public class Image
 				uint8 g = (uint8)((normal.Y * 0.5f + 0.5f) * 255);
 				uint8 b = (uint8)((normal.Z * 0.5f + 0.5f) * 255);
 
-				image.SetPixel(x, y, Color(r, g, b, 255));
+				image.SetPixel(x, y, Color32(r, g, b, 255));
 			}
 		}
 
@@ -672,7 +672,7 @@ public class Image
 				uint8 g = (uint8)((normal.Y * 0.5f + 0.5f) * 255);
 				uint8 b = (uint8)((normal.Z * 0.5f + 0.5f) * 255);
 
-				image.SetPixel(x, y, Color(r, g, b, 255));
+				image.SetPixel(x, y, Color32(r, g, b, 255));
 			}
 		}
 
@@ -754,7 +754,7 @@ public class Image
 				uint8 g = (uint8)((normal.Y * 0.5f + 0.5f) * 255);
 				uint8 b = (uint8)((normal.Z * 0.5f + 0.5f) * 255);
 
-				image.SetPixel(x, y, Color(r, g, b, 255));
+				image.SetPixel(x, y, Color32(r, g, b, 255));
 			}
 		}
 

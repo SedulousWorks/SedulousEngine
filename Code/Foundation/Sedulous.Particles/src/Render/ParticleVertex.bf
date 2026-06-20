@@ -16,7 +16,7 @@ public struct ParticleVertex
 	public Vector2 Size;
 
 	/// Packed RGBA color.
-	public Color Color;
+	public Color32 Color;
 
 	/// Rotation angle in radians.
 	public float Rotation;

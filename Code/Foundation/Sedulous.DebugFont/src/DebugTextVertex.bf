@@ -9,16 +9,16 @@ public struct DebugTextVertex
 {
 	public Vector3 Position;
 	public Vector2 TexCoord;
-	public Color Color;
+	public Color32 Color;
 
-	public this(Vector3 position, Vector2 texCoord, Color color)
+	public this(Vector3 position, Vector2 texCoord, Color32 color)
 	{
 		Position = position;
 		TexCoord = texCoord;
 		Color = color;
 	}
 
-	public this(float x, float y, float z, float u, float v, Color color)
+	public this(float x, float y, float z, float u, float v, Color32 color)
 	{
 		Position = .(x, y, z);
 		TexCoord = .(u, v);

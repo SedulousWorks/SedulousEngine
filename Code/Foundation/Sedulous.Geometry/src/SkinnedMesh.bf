@@ -359,7 +359,7 @@ public class SkinnedMesh
 	}
 
 	/// Pack a color from Color to uint32
-	public static uint32 PackColor(Color color)
+	public static uint32 PackColor(Color32 color)
 	{
 		return PackColor(color.ToVector4());
 	}

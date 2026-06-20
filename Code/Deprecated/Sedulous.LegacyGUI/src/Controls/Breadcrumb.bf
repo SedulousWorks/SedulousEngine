@@ -261,7 +261,7 @@ public class Breadcrumb : Control
 				let sepX = itemBounds.Right + 4;
 				let sepY = bounds.Y + (bounds.Height - 16) / 2;
 
-				let foreground = Foreground.A > 0 ? Foreground : Color(150, 150, 150, 255);
+				let foreground = Foreground.A > 0 ? Foreground : Color32(150, 150, 150, 255);
 				ctx.DrawText(mSeparator, 14, .(sepX, sepY), foreground);
 			}
 		}

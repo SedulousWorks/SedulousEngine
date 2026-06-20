@@ -58,7 +58,7 @@ class RangeColorEditor : PropertyEditor
 		if (mMaxSwatch != null) mMaxSwatch.Color.Value = ClampToLDR(mPtr.Max);
 	}
 
-	private static Color ClampToLDR(Vector4 c)
+	private static Color32 ClampToLDR(Vector4 c)
 	{
 		let r = (uint8)Math.Clamp((int32)(c.X * 255), 0, 255);
 		let g = (uint8)Math.Clamp((int32)(c.Y * 255), 0, 255);

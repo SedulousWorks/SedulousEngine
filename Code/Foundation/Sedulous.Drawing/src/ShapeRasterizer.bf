@@ -15,7 +15,7 @@ public class ShapeRasterizer
 	// === Filled Shapes ===
 
 	/// Rasterize a filled rectangle
-	public void RasterizeRect(RectangleF rect, List<DrawVertex> vertices, List<uint16> indices, Color color)
+	public void RasterizeRect(RectangleF rect, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
 	{
 		let baseIndex = (uint16)vertices.Count;
 
@@ -35,7 +35,7 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a quad from 4 pre-transformed corner points (for rotation support)
-	public void RasterizeQuad(Vector2 topLeft, Vector2 topRight, Vector2 bottomRight, Vector2 bottomLeft, List<DrawVertex> vertices, List<uint16> indices, Color color)
+	public void RasterizeQuad(Vector2 topLeft, Vector2 topRight, Vector2 bottomRight, Vector2 bottomLeft, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
 	{
 		let baseIndex = (uint16)vertices.Count;
 
@@ -54,13 +54,13 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a filled circle using triangle fan
-	public void RasterizeCircle(Vector2 center, float radius, List<DrawVertex> vertices, List<uint16> indices, Color color)
+	public void RasterizeCircle(Vector2 center, float radius, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
 	{
 		RasterizeEllipse(center, radius, radius, vertices, indices, color);
 	}
 
 	/// Rasterize a filled ellipse using triangle fan
-	public void RasterizeEllipse(Vector2 center, float rx, float ry, List<DrawVertex> vertices, List<uint16> indices, Color color)
+	public void RasterizeEllipse(Vector2 center, float rx, float ry, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
 	{
 		let segments = CalculateCircleSegments(Math.Max(rx, ry));
 		let baseIndex = (uint16)vertices.Count;
@@ -88,7 +88,7 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a filled rounded rectangle
-	public void RasterizeRoundedRect(RectangleF rect, float radius, List<DrawVertex> vertices, List<uint16> indices, Color color)
+	public void RasterizeRoundedRect(RectangleF rect, float radius, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
 	{
 		// Clamp radius to half the smallest dimension
 		let maxRadius = Math.Min(rect.Width, rect.Height) * 0.5f;
@@ -159,7 +159,7 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a filled arc (pie slice)
-	public void RasterizeArc(Vector2 center, float radius, float startAngle, float sweepAngle, List<DrawVertex> vertices, List<uint16> indices, Color color)
+	public void RasterizeArc(Vector2 center, float radius, float startAngle, float sweepAngle, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
 	{
 		let segments = CalculateArcSegments(radius, Math.Abs(sweepAngle));
 		let baseIndex = (uint16)vertices.Count;
@@ -189,7 +189,7 @@ public class ShapeRasterizer
 	// === Stroked Shapes ===
 
 	/// Rasterize a line with thickness
-	public void RasterizeLine(Vector2 start, Vector2 end, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color color, LineCap cap)
+	public void RasterizeLine(Vector2 start, Vector2 end, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color32 color, LineCap cap)
 	{
 		let direction = end - start;
 		let length = direction.Length();
@@ -244,7 +244,7 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a stroked rectangle (stroke centered on rect edges)
-	public void RasterizeStrokeRect(RectangleF rect, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color color)
+	public void RasterizeStrokeRect(RectangleF rect, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
 	{
 		let halfThick = thickness * 0.5f;
 
@@ -281,13 +281,13 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a stroked circle
-	public void RasterizeStrokeCircle(Vector2 center, float radius, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color color)
+	public void RasterizeStrokeCircle(Vector2 center, float radius, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
 	{
 		RasterizeStrokeEllipse(center, radius, radius, thickness, vertices, indices, color);
 	}
 
 	/// Rasterize a stroked ellipse
-	public void RasterizeStrokeEllipse(Vector2 center, float rx, float ry, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color color)
+	public void RasterizeStrokeEllipse(Vector2 center, float rx, float ry, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
 	{
 		let segments = CalculateCircleSegments(Math.Max(rx, ry));
 		let halfThick = thickness * 0.5f;
@@ -338,7 +338,7 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a stroked rounded rectangle
-	public void RasterizeStrokeRoundedRect(RectangleF rect, float radius, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color color)
+	public void RasterizeStrokeRoundedRect(RectangleF rect, float radius, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
 	{
 		// Clamp radius to half the smallest dimension
 		let maxRadius = Math.Min(rect.Width, rect.Height) * 0.5f;
@@ -433,7 +433,7 @@ public class ShapeRasterizer
 	// === Textured Shapes ===
 
 	/// Rasterize a textured quad
-	public void RasterizeTexturedQuad(RectangleF destRect, RectangleF srcRect, uint32 texWidth, uint32 texHeight, List<DrawVertex> vertices, List<uint16> indices, Color color)
+	public void RasterizeTexturedQuad(RectangleF destRect, RectangleF srcRect, uint32 texWidth, uint32 texHeight, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
 	{
 		let baseIndex = (uint16)vertices.Count;
 
@@ -457,7 +457,7 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a 9-slice image
-	public void RasterizeNineSlice(RectangleF destRect, RectangleF srcRect, NineSlice slices, uint32 texWidth, uint32 texHeight, List<DrawVertex> vertices, List<uint16> indices, Color color)
+	public void RasterizeNineSlice(RectangleF destRect, RectangleF srcRect, NineSlice slices, uint32 texWidth, uint32 texHeight, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
 	{
 		// Source coordinates (X0/Y0 = start, X1/Y1 = after left/top border, X2/Y2 = before right/bottom border)
 		let srcX0 = srcRect.X;
@@ -497,7 +497,7 @@ public class ShapeRasterizer
 	// === Polygons and Polylines ===
 
 	/// Rasterize a filled polygon using ear clipping triangulation
-	public void RasterizePolygon(Span<Vector2> points, List<DrawVertex> vertices, List<uint16> indices, Color color)
+	public void RasterizePolygon(Span<Vector2> points, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
 	{
 		if (points.Length < 3)
 			return;
@@ -515,7 +515,7 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a polyline (open path) with line segments
-	public void RasterizePolyline(Span<Vector2> points, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color color, LineCap cap, LineJoin join)
+	public void RasterizePolyline(Span<Vector2> points, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color32 color, LineCap cap, LineJoin join)
 	{
 		if (points.Length < 2)
 			return;
@@ -592,7 +592,7 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a stroked polygon (closed path)
-	public void RasterizeStrokePolygon(Span<Vector2> points, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color color, LineJoin join)
+	public void RasterizeStrokePolygon(Span<Vector2> points, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color32 color, LineJoin join)
 	{
 		if (points.Length < 3)
 			return;
@@ -671,7 +671,7 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a round line cap
-	private void RasterizeCapRound(Vector2 center, Vector2 direction, Vector2 normal, float halfThickness, List<DrawVertex> vertices, List<uint16> indices, Color color)
+	private void RasterizeCapRound(Vector2 center, Vector2 direction, Vector2 normal, float halfThickness, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
 	{
 		let segments = Math.Max(4, (int32)(halfThickness * 0.5f));
 		let baseIndex = (uint16)vertices.Count;
@@ -701,7 +701,7 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a square line cap
-	private void RasterizeCapSquare(Vector2 center, Vector2 direction, Vector2 normal, float halfThickness, List<DrawVertex> vertices, List<uint16> indices, Color color)
+	private void RasterizeCapSquare(Vector2 center, Vector2 direction, Vector2 normal, float halfThickness, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
 	{
 		let baseIndex = (uint16)vertices.Count;
 
@@ -728,7 +728,7 @@ public class ShapeRasterizer
 
 	/// Rasterize a glyph quad (for text rendering)
 	/// GlyphQuad contains screen-space coordinates and UVs from the font atlas
-	public void RasterizeGlyphQuad(GlyphQuad quad, List<DrawVertex> vertices, List<uint16> indices, Color color)
+	public void RasterizeGlyphQuad(GlyphQuad quad, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
 	{
 		let baseIndex = (uint16)vertices.Count;
 

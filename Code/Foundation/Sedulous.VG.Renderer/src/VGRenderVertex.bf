@@ -25,9 +25,9 @@ public struct VGRenderVertex
 		Position = .(v.Position.X, v.Position.Y);
 		TexCoord = .(v.TexCoord.X, v.TexCoord.Y);
 		Color = .(
-			Sedulous.Core.Mathematics.Color.ConvertSrgbColorChannelToLinear(v.Color.R / 255.0f),
-			Sedulous.Core.Mathematics.Color.ConvertSrgbColorChannelToLinear(v.Color.G / 255.0f),
-			Sedulous.Core.Mathematics.Color.ConvertSrgbColorChannelToLinear(v.Color.B / 255.0f),
+			Sedulous.Core.Mathematics.Color32.ConvertSrgbColorChannelToLinear(v.Color.R / 255.0f),
+			Sedulous.Core.Mathematics.Color32.ConvertSrgbColorChannelToLinear(v.Color.G / 255.0f),
+			Sedulous.Core.Mathematics.Color32.ConvertSrgbColorChannelToLinear(v.Color.B / 255.0f),
 			v.Color.A / 255.0f
 		);
 		Coverage = v.Coverage;

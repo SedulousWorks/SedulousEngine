@@ -11,7 +11,7 @@ public class StatusBar : Control
 {
 	private List<StatusBarItem> mItems = new .() ~ DeleteContainerAndItems!(_);
 	private bool mShowSeparators = true;
-	private Color mSeparatorColor;
+	private Color32 mSeparatorColor;
 	private float mSeparatorWidth = 1;
 
 	/// Creates a new StatusBar.
@@ -19,7 +19,7 @@ public class StatusBar : Control
 	{
 		IsFocusable = false;
 		IsTabStop = false;
-		mSeparatorColor = Color(80, 80, 80, 255);  // Default, will be updated by theme
+		mSeparatorColor = Color32(80, 80, 80, 255);  // Default, will be updated by theme
 	}
 
 	public override void OnAttachedToContext(LegacyGUIContext context)
@@ -34,7 +34,7 @@ public class StatusBar : Control
 	private void ApplyThemeDefaults()
 	{
 		let palette = Context?.Theme?.Palette ?? Palette();
-		mSeparatorColor = palette.Border.A > 0 ? palette.Border : Color(80, 80, 80, 255);
+		mSeparatorColor = palette.Border.A > 0 ? palette.Border : Color32(80, 80, 80, 255);
 	}
 
 	/// The control type name for theming.
@@ -48,7 +48,7 @@ public class StatusBar : Control
 	}
 
 	/// The color of separator lines.
-	public Color SeparatorColor
+	public Color32 SeparatorColor
 	{
 		get => mSeparatorColor;
 		set => mSeparatorColor = value;

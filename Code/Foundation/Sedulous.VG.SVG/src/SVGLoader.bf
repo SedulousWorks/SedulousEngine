@@ -307,7 +307,7 @@ public static class SVGLoader
 			}
 			else
 			{
-				element.FillColor = Color.Black; // SVG default fill is black
+				element.FillColor = Color32.Black; // SVG default fill is black
 			}
 
 			if (attrs.TryGetValue("stroke", let strokeStr))

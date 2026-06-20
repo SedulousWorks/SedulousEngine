@@ -191,7 +191,7 @@ public class Label : ContentControl
 			let fontSize = FontSize;
 			let textWidth = mContentText.Length * fontSize * FallbackCharWidthRatio;
 			let textHeight = fontSize * FallbackLineHeightRatio;
-			ctx.FillRect(.(bounds.X, bounds.Y, textWidth, textHeight), Color(foreground.R, foreground.G, foreground.B, 40));
+			ctx.FillRect(.(bounds.X, bounds.Y, textWidth, textHeight), Color32(foreground.R, foreground.G, foreground.B, 40));
 		}
 		#endif
 	}

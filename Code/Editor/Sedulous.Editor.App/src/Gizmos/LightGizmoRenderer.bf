@@ -32,7 +32,7 @@ class LightGizmoRenderer : IGizmoRenderer
 		if (dbg == null) return;
 
 		// Build a visible color from the light's RGB (clamped to [0, 1])
-		let lineColor = Color(
+		let lineColor = Color32(
 			Math.Clamp(light.Color.X, 0.0f, 1.0f),
 			Math.Clamp(light.Color.Y, 0.0f, 1.0f),
 			Math.Clamp(light.Color.Z, 0.0f, 1.0f));
@@ -53,7 +53,7 @@ class LightGizmoRenderer : IGizmoRenderer
 
 	// ==================== Drawing Helpers ====================
 
-	private static void DrawDirectionalGizmo(DebugDraw dbg, Vector3 position, Vector3 forward, Color color)
+	private static void DrawDirectionalGizmo(DebugDraw dbg, Vector3 position, Vector3 forward, Color32 color)
 	{
 		// Compact "sun" icon: short axis cross + direction arrow.
 		let r = 0.3f;
@@ -66,7 +66,7 @@ class LightGizmoRenderer : IGizmoRenderer
 		DrawArrowHead(dbg, tip, forward, 0.2f, color);
 	}
 
-	private static void DrawPointGizmo(DebugDraw dbg, Vector3 position, float range, Color color)
+	private static void DrawPointGizmo(DebugDraw dbg, Vector3 position, float range, Color32 color)
 	{
 		// Wire sphere showing the light's range.
 		dbg.DrawWireSphere(position, range, color, 24);
@@ -77,7 +77,7 @@ class LightGizmoRenderer : IGizmoRenderer
 		dbg.DrawLine(position - Vector3(0, 0, r), position + Vector3(0, 0, r), color);
 	}
 
-	private static void DrawSpotGizmo(DebugDraw dbg, Vector3 position, Vector3 forward, float range, float outerCone, Color color)
+	private static void DrawSpotGizmo(DebugDraw dbg, Vector3 position, Vector3 forward, float range, float outerCone, Color32 color)
 	{
 		// Cone: circle at the far end + 4 lines from origin to circle.
 		let tipDist = Math.Max(range, 0.1f);
@@ -100,7 +100,7 @@ class LightGizmoRenderer : IGizmoRenderer
 	}
 
 	/// Draws a simple 4-line pyramid arrowhead at the tip of a direction vector.
-	private static void DrawArrowHead(DebugDraw dbg, Vector3 tip, Vector3 forward, float size, Color color)
+	private static void DrawArrowHead(DebugDraw dbg, Vector3 tip, Vector3 forward, float size, Color32 color)
 	{
 		let up = (Math.Abs(forward.Y) < 0.99f) ? Vector3.Up : Vector3.Forward;
 		let right = Vector3.Normalize(Vector3.Cross(forward, up));

@@ -472,7 +472,7 @@ public abstract class View : IPropertyOwner
 	// `panel.SetStyle(.Background, new ColorDrawable(...))` - a
 	// one-liner that hands the new drawable's ref to the view.
 
-	public void SetStyle(StyleProperty prop, Color color)
+	public void SetStyle(StyleProperty prop, Color32 color)
 	{
 		EnsureInlineSheet().GetOrCreateInlineElementRule().Set(prop, color);
 		Invalidate();
@@ -508,7 +508,7 @@ public abstract class View : IPropertyOwner
 		Invalidate();
 	}
 
-	public void SetPartStyle(StringView part, StyleProperty prop, Color color)
+	public void SetPartStyle(StringView part, StyleProperty prop, Color32 color)
 	{
 		EnsureInlineSheet().GetOrCreateInlinePartRule(part).Set(prop, color);
 		Invalidate();
@@ -604,7 +604,7 @@ public abstract class View : IPropertyOwner
 	}
 
 	/// Resolve a Color style property with fallback default.
-	public Color ResolveStyleColor(StyleProperty prop, Color defaultVal = .White)
+	public Color32 ResolveStyleColor(StyleProperty prop, Color32 defaultVal = .White)
 	{
 		if (let c = ResolveStyle(prop).AsColor) return c;
 		return defaultVal;
@@ -699,7 +699,7 @@ public abstract class View : IPropertyOwner
 	public Drawable ResolvePartDrawable(StringView part, StyleProperty prop, ControlState partState)
 		=> ResolvePartStyle(part, prop, partState).AsDrawable;
 
-	public Color ResolvePartColor(StringView part, StyleProperty prop, ControlState partState, Color defaultVal = .White)
+	public Color32 ResolvePartColor(StringView part, StyleProperty prop, ControlState partState, Color32 defaultVal = .White)
 	{
 		if (let c = ResolvePartStyle(part, prop, partState).AsColor) return c;
 		return defaultVal;

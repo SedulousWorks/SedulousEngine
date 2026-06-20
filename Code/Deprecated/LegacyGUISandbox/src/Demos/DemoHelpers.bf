@@ -8,7 +8,7 @@ using Sedulous.LegacyGUI;
 /// A focusable colored rectangle control for testing input and focus.
 class FocusableRect : Control
 {
-	public Color RectColor = Color(100, 150, 200, 255);
+	public Color32 RectColor = Color32(100, 150, 200, 255);
 
 	public this()
 	{
@@ -34,26 +34,26 @@ class FocusableRect : Control
 		}
 	}
 
-	protected override Color GetStateBackground()
+	protected override Color32 GetStateBackground()
 	{
 		switch (CurrentState)
 		{
 		case .Disabled:
-			return Color((uint8)(RectColor.R / 2), (uint8)(RectColor.G / 2), (uint8)(RectColor.B / 2), RectColor.A);
+			return Color32((uint8)(RectColor.R / 2), (uint8)(RectColor.G / 2), (uint8)(RectColor.B / 2), RectColor.A);
 		case .Pressed:
-			return Color(
+			return Color32(
 				(uint8)Math.Min(255, (int)(RectColor.R * 0.7f)),
 				(uint8)Math.Min(255, (int)(RectColor.G * 0.7f)),
 				(uint8)Math.Min(255, (int)(RectColor.B * 0.7f)),
 				RectColor.A);
 		case .Hover:
-			return Color(
+			return Color32(
 				(uint8)Math.Min(255, RectColor.R + 30),
 				(uint8)Math.Min(255, RectColor.G + 30),
 				(uint8)Math.Min(255, RectColor.B + 30),
 				RectColor.A);
 		case .Focused:
-			return Color(
+			return Color32(
 				(uint8)Math.Min(255, RectColor.R + 15),
 				(uint8)Math.Min(255, RectColor.G + 15),
 				(uint8)Math.Min(255, RectColor.B + 15),
@@ -117,10 +117,10 @@ class DemoPanel : Panel
 /// A simple colored box control for layout demos.
 class ColorBox : Control
 {
-	public Color BoxColor = Color(100, 150, 200, 255);
+	public Color32 BoxColor = Color32(100, 150, 200, 255);
 	public String Label ~ delete _;
 
-	public this(Color color, StringView label = "")
+	public this(Color32 color, StringView label = "")
 	{
 		BoxColor = color;
 		if (!label.IsEmpty)
@@ -135,7 +135,7 @@ class ColorBox : Control
 	protected override void RenderOverride(DrawContext ctx)
 	{
 		ctx.FillRect(ArrangedBounds, BoxColor);
-		ctx.DrawRect(ArrangedBounds, Color(40, 40, 40, 255), 1);
+		ctx.DrawRect(ArrangedBounds, Color32(40, 40, 40, 255), 1);
 	}
 }
 

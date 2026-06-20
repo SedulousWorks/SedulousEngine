@@ -437,7 +437,7 @@ class NuklearSampleApp : Application
 		BuildUI();
 
 		// Update background clear color based on UI
-		mSettings.ClearColor = Color(mBackgroundColor.r, mBackgroundColor.g, mBackgroundColor.b, 1.0f);
+		mSettings.ClearColor = Color32(mBackgroundColor.r, mBackgroundColor.g, mBackgroundColor.b, 1.0f);
 	}
 
 	private void BuildUI()

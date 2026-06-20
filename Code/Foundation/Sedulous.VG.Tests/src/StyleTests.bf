@@ -10,12 +10,12 @@ class StyleTests
 	[Test]
 	public static void SolidFill_ReturnsSameColor()
 	{
-		let fill = VGSolidFill(Color.Red);
+		let fill = VGSolidFill(Color32.Red);
 		let c1 = fill.GetColorAt(.(0, 0), .(0, 0, 100, 100));
 		let c2 = fill.GetColorAt(.(50, 50), .(0, 0, 100, 100));
 
-		Test.Assert(c1 == Color.Red);
-		Test.Assert(c2 == Color.Red);
+		Test.Assert(c1 == Color32.Red);
+		Test.Assert(c2 == Color32.Red);
 		Test.Assert(!fill.RequiresInterpolation);
 	}
 
@@ -23,8 +23,8 @@ class StyleTests
 	public static void LinearGradient_TwoStop_Interpolates()
 	{
 		let fill = scope VGLinearGradientFill(.(0, 0), .(100, 0));
-		fill.AddStop(0, Color.Black);
-		fill.AddStop(1, Color.White);
+		fill.AddStop(0, Color32.Black);
+		fill.AddStop(1, Color32.White);
 
 		let atStart = fill.GetColorAt(.(0, 0), .(0, 0, 100, 100));
 		let atEnd = fill.GetColorAt(.(100, 0), .(0, 0, 100, 100));
@@ -40,9 +40,9 @@ class StyleTests
 	public static void LinearGradient_MultiStop()
 	{
 		let fill = scope VGLinearGradientFill(.(0, 0), .(100, 0));
-		fill.AddStop(0, Color.Red);
-		fill.AddStop(0.5f, Color.Green);
-		fill.AddStop(1, Color.Blue);
+		fill.AddStop(0, Color32.Red);
+		fill.AddStop(0.5f, Color32.Green);
+		fill.AddStop(1, Color32.Blue);
 
 		let atStart = fill.GetColorAt(.(0, 0), default);
 		let atMid = fill.GetColorAt(.(50, 0), default);
@@ -57,8 +57,8 @@ class StyleTests
 	public static void RadialGradient_CenterAndEdge()
 	{
 		let fill = scope VGRadialGradientFill(.(50, 50), 50);
-		fill.AddStop(0, Color.White);
-		fill.AddStop(1, Color.Black);
+		fill.AddStop(0, Color32.White);
+		fill.AddStop(1, Color32.Black);
 
 		let atCenter = fill.GetColorAt(.(50, 50), default);
 		let atEdge = fill.GetColorAt(.(100, 50), default);
@@ -71,8 +71,8 @@ class StyleTests
 	public static void ConicGradient_AtAngles()
 	{
 		let fill = scope VGConicGradientFill(.(50, 50), 0);
-		fill.AddStop(0, Color.Red);
-		fill.AddStop(1, Color.Blue);
+		fill.AddStop(0, Color32.Red);
+		fill.AddStop(1, Color32.Blue);
 
 		// At angle 0 (right) should be red
 		let atRight = fill.GetColorAt(.(100, 50), default);
@@ -87,7 +87,7 @@ class StyleTests
 	[Test]
 	public static void ColorUtils_LerpColor()
 	{
-		let result = ColorUtils.LerpColor(Color.Black, Color.White, 0.5f);
+		let result = ColorUtils.LerpColor(Color32.Black, Color32.White, 0.5f);
 		Test.Assert(result.R > 120 && result.R < 135);
 		Test.Assert(result.G > 120 && result.G < 135);
 		Test.Assert(result.B > 120 && result.B < 135);
@@ -96,11 +96,11 @@ class StyleTests
 	[Test]
 	public static void ColorUtils_InterpolateStops_BoundaryClamp()
 	{
-		GradientStop[2] stops = .(.(0.2f, Color.Red), .(0.8f, Color.Blue));
+		GradientStop[2] stops = .(.(0.2f, Color32.Red), .(0.8f, Color32.Blue));
 		let before = ColorUtils.InterpolateStops(Span<GradientStop>(&stops, 2), 0.0f);
 		let after = ColorUtils.InterpolateStops(Span<GradientStop>(&stops, 2), 1.0f);
 
-		Test.Assert(before == Color.Red);
-		Test.Assert(after == Color.Blue);
+		Test.Assert(before == Color32.Red);
+		Test.Assert(after == Color32.Blue);
 	}
 }

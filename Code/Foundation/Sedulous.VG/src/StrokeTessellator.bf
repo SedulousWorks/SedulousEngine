@@ -9,7 +9,7 @@ public static class StrokeTessellator
 {
 	/// Tessellate a stroked polyline
 	public static void Tessellate(Span<Vector2> points, bool closed, StrokeStyle style, Span<float> dashPattern,
-		bool antiAlias, Color color, List<VGVertex> vertices, List<uint32> indices)
+		bool antiAlias, Color32 color, List<VGVertex> vertices, List<uint32> indices)
 	{
 		if (points.Length < 2)
 			return;
@@ -37,7 +37,7 @@ public static class StrokeTessellator
 	}
 
 	private static void TessellateSegment(List<Vector2> points, bool closed, StrokeStyle style,
-		bool antiAlias, Color color, List<VGVertex> vertices, List<uint32> indices)
+		bool antiAlias, Color32 color, List<VGVertex> vertices, List<uint32> indices)
 	{
 		let n = points.Count;
 		if (n < 2)
@@ -126,7 +126,7 @@ public static class StrokeTessellator
 		{
 			// With AA: create 4 vertex rings
 			// Fringe uses unitNormals (fixed pixel width), body uses vertNormals (miter-scaled)
-			let transColor = Color(color.R, color.G, color.B, 0);
+			let transColor = Color32(color.R, color.G, color.B, 0);
 
 			// Ring 0: outer fringe (left side, coverage=0)
 			let outerLeftBase = (uint32)vertices.Count;
@@ -299,7 +299,7 @@ public static class StrokeTessellator
 	}
 
 	private static void AddJoin(Vector2 point, Vector2 prevNormal, Vector2 nextNormal, float halfWidth,
-		VGLineJoin joinType, Color color, List<VGVertex> vertices, List<uint32> indices)
+		VGLineJoin joinType, Color32 color, List<VGVertex> vertices, List<uint32> indices)
 	{
 		let cross = prevNormal.X * nextNormal.Y - prevNormal.Y * nextNormal.X;
 		if (Math.Abs(cross) < 0.001f)
@@ -363,7 +363,7 @@ public static class StrokeTessellator
 	}
 
 	private static void AddCap(Vector2 point, Vector2 direction, Vector2 normal, float halfWidth,
-		VGLineCap capType, Color color, List<VGVertex> vertices, List<uint32> indices)
+		VGLineCap capType, Color32 color, List<VGVertex> vertices, List<uint32> indices)
 	{
 		if (capType == .Square)
 		{

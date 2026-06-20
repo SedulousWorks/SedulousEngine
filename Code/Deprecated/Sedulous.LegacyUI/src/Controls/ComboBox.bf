@@ -12,7 +12,7 @@ public class ComboBox : View, IPopupOwner
 	private int mSelectedIndex = -1;
 	private bool mIsOpen;
 
-	private Color? mTextColor;
+	private Color32? mTextColor;
 	private float? mFontSize;
 	private float mArrowAreaWidth = 24;
 
@@ -39,7 +39,7 @@ public class ComboBox : View, IPopupOwner
 	public int ItemCount => mItems.Count;
 	public bool IsOpen => mIsOpen;
 
-	public Color TextColor
+	public Color32 TextColor
 	{
 		get => mTextColor ?? Context?.Theme?.GetColor("ComboBox.Text") ?? .(220, 225, 235, 255);
 		set => mTextColor = value;

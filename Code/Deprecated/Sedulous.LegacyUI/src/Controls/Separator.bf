@@ -9,9 +9,9 @@ public class Separator : View
 	public Orientation Orientation = .Horizontal;
 	public float SeparatorThickness = 1;
 
-	private Color? mColor;
+	private Color32? mColor;
 
-	public Color Color
+	public Color32 Color
 	{
 		get => mColor ?? Context?.Theme?.GetColor("Separator.Color") ?? .(80, 80, 90, 255);
 		set => mColor = value;

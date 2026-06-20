@@ -19,7 +19,7 @@ struct ApplicationSettings
 	public bool Resizable = true;
 	public TextureFormat SwapChainFormat = .BGRA8UnormSrgb;
 	public PresentMode PresentMode = .Mailbox;
-	public Color ClearColor = .(0.1f, 0.1f, 0.1f, 1.0f);
+	public Color32 ClearColor = .(0.1f, 0.1f, 0.1f, 1.0f);
 	public bool EnableDepth = false;
 	public TextureFormat DepthFormat = .Depth24PlusStencil8;
 	public BackendType Backend = .Vulkan;

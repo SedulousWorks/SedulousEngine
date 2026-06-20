@@ -9,7 +9,7 @@ public static class SVGRenderer
 {
 	/// Render an SVG document scaled to fit within the given bounds.
 	/// tintColor: when set, overrides all fill/stroke colors.
-	public static void Render(VGContext vg, SVGDocument document, RectangleF bounds, Color? tintColor = null)
+	public static void Render(VGContext vg, SVGDocument document, RectangleF bounds, Color32? tintColor = null)
 	{
 		if (document == null || document.Elements.Count == 0) return;
 
@@ -27,7 +27,7 @@ public static class SVGRenderer
 	}
 
 	/// Render a single SVG element and its children.
-	public static void RenderElement(VGContext vg, SVGElement element, Color? tintColor = null)
+	public static void RenderElement(VGContext vg, SVGElement element, Color32? tintColor = null)
 	{
 		if (element.Opacity <= 0) return;
 
@@ -66,7 +66,7 @@ public static class SVGRenderer
 		vg.PopState();
 	}
 
-	private static void RenderText(VGContext vg, SVGElement element, Color? tintColor)
+	private static void RenderText(VGContext vg, SVGElement element, Color32? tintColor)
 	{
 		if (element.TextContent == null || element.TextContent.Length == 0 || vg.FontService == null)
 			return;
@@ -83,7 +83,7 @@ public static class SVGRenderer
 		let font = vg.FontService.GetFont(effectiveFontSize);
 		if (font == null) return;
 
-		let color = tintColor ?? element.FillColor ?? Color.Black;
+		let color = tintColor ?? element.FillColor ?? Color32.Black;
 
 		// Convert SVG position to screen pixels via the current transform.
 		let screenX = transform.M11 * element.TextX + transform.M21 * element.TextY + transform.M41;

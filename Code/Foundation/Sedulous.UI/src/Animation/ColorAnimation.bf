@@ -5,13 +5,13 @@ using Sedulous.Core.Mathematics;
 /// Animates a Color value from a start to end color using a delegate setter.
 public class ColorAnimation : Animation
 {
-	private Color mFrom;
-	private Color mTo;
-	private delegate void(Color) mSetter ~ delete _;
+	private Color32 mFrom;
+	private Color32 mTo;
+	private delegate void(Color32) mSetter ~ delete _;
 
 	/// Create a color animation.
 	/// The setter delegate is owned by this animation and will be deleted.
-	public this(Color from, Color to, float duration, delegate void(Color) setter, EasingFunction easing = null)
+	public this(Color32 from, Color32 to, float duration, delegate void(Color32) setter, EasingFunction easing = null)
 		: base(duration, easing)
 	{
 		mFrom = from;
@@ -19,8 +19,8 @@ public class ColorAnimation : Animation
 		mSetter = setter;
 	}
 
-	public Color From => mFrom;
-	public Color To => mTo;
+	public Color32 From => mFrom;
+	public Color32 To => mTo;
 
 	protected override void Apply(float t)
 	{

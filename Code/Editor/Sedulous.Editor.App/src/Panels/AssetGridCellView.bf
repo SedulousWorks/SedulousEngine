@@ -155,7 +155,7 @@ class AssetGridCellView : ViewGroup
 		// Registry badge (small dot in top-right corner)
 		if (mIsRegistered)
 		{
-			let badgeColor = Color(80, 180, 80, 255);
+			let badgeColor = Color32(80, 180, 80, 255);
 			ctx.VG.FillCircle(.(Width - 8, 8), 3, badgeColor);
 		}
 

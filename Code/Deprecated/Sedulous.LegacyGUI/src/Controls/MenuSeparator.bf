@@ -9,7 +9,7 @@ public class MenuSeparator : Control
 {
 	private float mHeight = 9;
 	private float mLineThickness = 1;
-	private Color mLineColor = Color(80, 80, 80, 255);
+	private Color32 mLineColor = Color32(80, 80, 80, 255);
 	private float mMarginLeft = 8;
 	private float mMarginRight = 8;
 	private ImageBrush? mDividerImage;
@@ -19,7 +19,7 @@ public class MenuSeparator : Control
 	{
 		IsFocusable = false;
 		IsTabStop = false;
-		Background = Color.Transparent;
+		Background = Color32.Transparent;
 	}
 
 	public override void OnAttachedToContext(LegacyGUIContext context)
@@ -34,14 +34,14 @@ public class MenuSeparator : Control
 		let theme = Context?.Theme;
 		let palette = theme?.Palette ?? Palette();
 		mLineThickness = theme?.SeparatorThickness ?? 1;
-		mLineColor = palette.Border.A > 0 ? palette.Border : Color(80, 80, 80, 255);
+		mLineColor = palette.Border.A > 0 ? palette.Border : Color32(80, 80, 80, 255);
 	}
 
 	/// The control type name for theming.
 	protected override StringView ControlTypeName => "MenuSeparator";
 
 	/// The color of the separator line.
-	public Color LineColor
+	public Color32 LineColor
 	{
 		get => mLineColor;
 		set => mLineColor = value;

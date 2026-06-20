@@ -8,14 +8,14 @@ public class LinearGradientBrush : IBrush
 {
 	private Vector2 mStartPoint;
 	private Vector2 mEndPoint;
-	private Color mStartColor;
-	private Color mEndColor;
+	private Color32 mStartColor;
+	private Color32 mEndColor;
 
-	public Color BaseColor => mStartColor;
+	public Color32 BaseColor => mStartColor;
 	public bool RequiresInterpolation => true;
 	public Object Texture => null;
 
-	public this(Vector2 startPoint, Vector2 endPoint, Color startColor, Color endColor)
+	public this(Vector2 startPoint, Vector2 endPoint, Color32 startColor, Color32 endColor)
 	{
 		mStartPoint = startPoint;
 		mEndPoint = endPoint;
@@ -23,7 +23,7 @@ public class LinearGradientBrush : IBrush
 		mEndColor = endColor;
 	}
 
-	public Color GetColorAt(Vector2 position, RectangleF bounds)
+	public Color32 GetColorAt(Vector2 position, RectangleF bounds)
 	{
 		// Project position onto the gradient line
 		let gradientDir = mEndPoint - mStartPoint;
@@ -52,7 +52,7 @@ public class LinearGradientBrush : IBrush
 	}
 
 	/// Set gradient colors
-	public void SetColors(Color startColor, Color endColor)
+	public void SetColors(Color32 startColor, Color32 endColor)
 	{
 		mStartColor = startColor;
 		mEndColor = endColor;
@@ -65,12 +65,12 @@ public class LinearGradientBrush : IBrush
 	public Vector2 EndPoint => mEndPoint;
 
 	/// Get the start color
-	public Color StartColor => mStartColor;
+	public Color32 StartColor => mStartColor;
 
 	/// Get the end color
-	public Color EndColor => mEndColor;
+	public Color32 EndColor => mEndColor;
 
-	private static Color LerpColor(Color a, Color b, float t)
+	private static Color32 LerpColor(Color32 a, Color32 b, float t)
 	{
 		// Cast to float to handle negative differences properly
 		let r = (float)a.R + ((float)b.R - (float)a.R) * t;
@@ -78,7 +78,7 @@ public class LinearGradientBrush : IBrush
 		let bl = (float)a.B + ((float)b.B - (float)a.B) * t;
 		let al = (float)a.A + ((float)b.A - (float)a.A) * t;
 
-		return Color(
+		return Color32(
 			(uint8)Math.Clamp(r, 0, 255),
 			(uint8)Math.Clamp(g, 0, 255),
 			(uint8)Math.Clamp(bl, 0, 255),

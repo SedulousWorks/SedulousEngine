@@ -8,11 +8,11 @@ public enum GradientDirection { TopToBottom, LeftToRight, TopLeftToBottomRight, 
 /// Linear gradient fill with two colors and a direction.
 public class GradientDrawable : Drawable
 {
-	public Color StartColor;
-	public Color EndColor;
+	public Color32 StartColor;
+	public Color32 EndColor;
 	public GradientDirection Direction;
 
-	public this(Color start, Color end, GradientDirection dir = .TopToBottom)
+	public this(Color32 start, Color32 end, GradientDirection dir = .TopToBottom)
 	{
 		StartColor = start;
 		EndColor = end;

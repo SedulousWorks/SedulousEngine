@@ -2,7 +2,7 @@ using System;
 
 namespace Sedulous.Core.Mathematics;
 
-extension Color
+extension Color32
 {
     /// <inheritdoc/>
     public int GetHashCode()
@@ -21,7 +21,7 @@ extension Color
     /// <param name="v1">The first value to compare.</param>
     /// <param name="v2">The second value to compare.</param>
     /// <returns><see langword="true"/> if the two values are equal; otherwise, <see langword="false"/>.</returns>
-    public static bool operator ==(Color v1, Color v2)
+    public static bool operator ==(Color32 v1, Color32 v2)
     {
         return v1.Equals(v2);
     }
@@ -32,7 +32,7 @@ extension Color
     /// <param name="v1">The first value to compare.</param>
     /// <param name="v2">The second value to compare.</param>
     /// <returns><see langword="true"/> if the two values are unequal; otherwise, <see langword="false"/>.</returns>
-    public static bool operator !=(Color v1, Color v2)
+    public static bool operator !=(Color32 v1, Color32 v2)
     {
         return !v1.Equals(v2);
     }
@@ -46,7 +46,7 @@ extension Color
     }
     
     /// <inheritdoc/>
-    public bool Equals(Color other)
+    public bool Equals(Color32 other)
     {
         return
             this.packedValue == other.packedValue;

@@ -24,22 +24,22 @@ public class DragAdorner
 	public delegate void(DrawContext ctx, Vector2 pos, DragDropEffects effect) CustomRender ~ delete _;
 
 	/// Background color of the drag preview.
-	public Color BackgroundColor = Color(50, 50, 50, 220);
+	public Color32 BackgroundColor = Color32(50, 50, 50, 220);
 
 	/// Border color of the drag preview.
-	public Color BorderColor = Color(100, 100, 100, 255);
+	public Color32 BorderColor = Color32(100, 100, 100, 255);
 
 	/// Text/icon color.
-	public Color ForegroundColor = Color(220, 220, 220, 255);
+	public Color32 ForegroundColor = Color32(220, 220, 220, 255);
 
 	/// Error/no-drop icon color.
-	public Color ErrorColor = Color(200, 60, 60, 255);
+	public Color32 ErrorColor = Color32(200, 60, 60, 255);
 
 	/// Copy icon color (success).
-	public Color CopyColor = Color(60, 180, 60, 255);
+	public Color32 CopyColor = Color32(60, 180, 60, 255);
 
 	/// Link icon color.
-	public Color LinkColor = Color(60, 120, 200, 255);
+	public Color32 LinkColor = Color32(60, 120, 200, 255);
 
 	/// Optional text label to display.
 	public String Label ~ delete _;
@@ -55,7 +55,7 @@ public class DragAdorner
 	/// Applies theme colors from a palette.
 	public void ApplyTheme(Palette palette)
 	{
-		BackgroundColor = Color(palette.Surface.R, palette.Surface.G, palette.Surface.B, 220);
+		BackgroundColor = Color32(palette.Surface.R, palette.Surface.G, palette.Surface.B, 220);
 		BorderColor = palette.Border;
 		ForegroundColor = palette.Text;
 		ErrorColor = palette.Error;
@@ -170,12 +170,12 @@ public class DragAdorner
 		Size = .(64, 32);
 		Offset = .(8, 8);
 		// Reset colors to defaults
-		BackgroundColor = Color(50, 50, 50, 220);
-		BorderColor = Color(100, 100, 100, 255);
-		ForegroundColor = Color(220, 220, 220, 255);
-		ErrorColor = Color(200, 60, 60, 255);
-		CopyColor = Color(60, 180, 60, 255);
-		LinkColor = Color(60, 120, 200, 255);
+		BackgroundColor = Color32(50, 50, 50, 220);
+		BorderColor = Color32(100, 100, 100, 255);
+		ForegroundColor = Color32(220, 220, 220, 255);
+		ErrorColor = Color32(200, 60, 60, 255);
+		CopyColor = Color32(60, 180, 60, 255);
+		LinkColor = Color32(60, 120, 200, 255);
 	}
 
 	/// Sets a text label for the adorner.
