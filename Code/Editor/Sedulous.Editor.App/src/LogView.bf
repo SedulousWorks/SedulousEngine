@@ -98,7 +98,7 @@ class LogView : ViewGroup
 		return .() { Message = null, Level = .Info };
 	}
 
-	public Color32 GetLevelColor(LogLevel level)
+	public Color GetLevelColor(LogLevel level)
 	{
 		switch (level)
 		{
@@ -167,7 +167,7 @@ class LogView : ViewGroup
 	/// Simple colored rectangle view for the log level indicator strip.
 	private class ColorStrip : View
 	{
-		public Color32 StripColor;
+		public Color StripColor;
 
 		public override void OnDraw(UIDrawContext ctx)
 		{

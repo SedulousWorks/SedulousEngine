@@ -113,7 +113,7 @@ class SceneHierarchyView : ViewGroup, IDragSource, IDropTarget
 			ctx.VG.FillRect(.(indent, itemY + itemH - 1, Width - indent, 2), accentColor);
 		case .Inside:
 			// Highlight the entire row
-			let highlightColor = Color32(accentColor.R, accentColor.G, accentColor.B, 40);
+			let highlightColor = Color(accentColor.R, accentColor.G, accentColor.B, 40 / 255.0f);
 			ctx.VG.FillRect(.(indent, itemY, Width - indent, itemH), highlightColor);
 			ctx.VG.StrokeRect(.(indent, itemY, Width - indent, itemH), accentColor, 1);
 		case .None:

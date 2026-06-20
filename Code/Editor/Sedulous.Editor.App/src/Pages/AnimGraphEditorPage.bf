@@ -493,7 +493,7 @@ class AnimGraphEditorPage : IEditorPage, IResourceChangeListener
 		return Graph.Layers[mActiveLayerIndex];
 	}
 
-	private Color32 GetStateColor(AnimationGraphState state)
+	private Color GetStateColor(AnimationGraphState state)
 	{
 		if (state.Node is BlendTree1D)
 			return .(180, 120, 60, 255);

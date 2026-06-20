@@ -58,13 +58,9 @@ class RangeColorEditor : PropertyEditor
 		if (mMaxSwatch != null) mMaxSwatch.Color.Value = ClampToLDR(mPtr.Max);
 	}
 
-	private static Color32 ClampToLDR(Vector4 c)
+	private static Color ClampToLDR(Vector4 c)
 	{
-		let r = (uint8)Math.Clamp((int32)(c.X * 255), 0, 255);
-		let g = (uint8)Math.Clamp((int32)(c.Y * 255), 0, 255);
-		let b = (uint8)Math.Clamp((int32)(c.Z * 255), 0, 255);
-		let a = (uint8)Math.Clamp((int32)(c.W * 255), 0, 255);
-		return .(r, g, b, a);
+		return .(Math.Clamp(c.X, 0, 1), Math.Clamp(c.Y, 0, 1), Math.Clamp(c.Z, 0, 1), Math.Clamp(c.W, 0, 1));
 	}
 
 	/// Open an HDRColorPicker for one endpoint. Live picker updates write

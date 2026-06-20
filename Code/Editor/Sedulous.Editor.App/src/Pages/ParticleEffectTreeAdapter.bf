@@ -322,7 +322,7 @@ class ParticleTreeItemView : View
 	private int32 mDepth;
 	private float mIndentWidth = 20;
 
-	public Color32 TextColor = .(180, 185, 200, 255);
+	public Color TextColor = .(180, 185, 200, 255);
 
 	public void Set(StringView text, int32 depth)
 	{
