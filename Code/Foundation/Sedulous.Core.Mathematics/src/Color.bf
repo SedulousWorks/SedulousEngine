@@ -144,7 +144,7 @@ struct Color : IEquatable<Color>, IHashable
 		return !(a == b);
 	}
 
-	/// Implicit conversion from Color32 to Color.
+	/*/// Implicit conversion from Color32 to Color.
 	public static implicit operator Color(Color32 c)
 	{
 		return Color(c);
@@ -154,7 +154,7 @@ struct Color : IEquatable<Color>, IHashable
 	public static explicit operator Color32(Color c)
 	{
 		return c.ToColor32();
-	}
+	}*/
 
 	public bool Equals(Color other)
 	{
