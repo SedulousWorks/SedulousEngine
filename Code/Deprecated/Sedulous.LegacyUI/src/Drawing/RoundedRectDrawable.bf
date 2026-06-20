@@ -5,12 +5,12 @@ using Sedulous.Core.Mathematics;
 /// Filled rounded rectangle with optional border.
 public class RoundedRectDrawable : Drawable
 {
-	public Color32 FillColor;
-	public Color32 BorderColor;
+	public Color FillColor;
+	public Color BorderColor;
 	public float BorderWidth;
 	public float CornerRadius;
 
-	public this(Color32 fill, float cornerRadius = 0, Color32 borderColor = .Transparent, float borderWidth = 0)
+	public this(Color fill, float cornerRadius = 0, Color borderColor = .Transparent, float borderWidth = 0)
 	{
 		FillColor = fill;
 		CornerRadius = cornerRadius;

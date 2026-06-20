@@ -29,7 +29,7 @@ public class Theme
 	}
 
 	// === Typed dictionaries ===
-	private Dictionary<String, Color32> mColors = new .() ~ DeleteDictKeys(_);
+	private Dictionary<String, Color> mColors = new .() ~ DeleteDictKeys(_);
 	private Dictionary<String, float> mDimensions = new .() ~ DeleteDictKeys(_);
 	private Dictionary<String, Thickness> mPaddings = new .() ~ DeleteDictKeys(_);
 	private Dictionary<String, Drawable> mDrawables = new .() ~ {
@@ -77,7 +77,7 @@ public class Theme
 			dict[new String(key)] = value;
 	}
 
-	public void SetColor(StringView key, Color32 value) => SetDict(mColors, key, value);
+	public void SetColor(StringView key, Color value) => SetDict(mColors, key, value);
 	public void SetDimension(StringView key, float value) => SetDict(mDimensions, key, value);
 	public void SetPadding(StringView key, Thickness value) => SetDict(mPaddings, key, value);
 	public void SetFontSize(StringView key, float value) => SetDict(mFontSizes, key, value);
@@ -107,7 +107,7 @@ public class Theme
 
 	// === Getters (return default if key missing) ===
 
-	public Color32 GetColor(StringView key, Color32 defaultValue = .White)
+	public Color GetColor(StringView key, Color defaultValue = .White)
 	{
 		let k = scope String(key);
 		if (mColors.TryGetValue(k, let value))
@@ -117,7 +117,7 @@ public class Theme
 
 	/// Nullable color lookup - returns null if the key is not set.
 	/// Use when you need a fallback chain: theme key -> palette -> hardcoded.
-	public Color32? TryGetColor(StringView key)
+	public Color? TryGetColor(StringView key)
 	{
 		let k = scope String(key);
 		if (mColors.TryGetValue(k, let value))

@@ -579,7 +579,7 @@ public class TreeView : Control
 		let bounds = ArrangedBounds;
 
 		// Draw background
-		let bgColor = Background.A > 0 ? Background : Color32(30, 30, 30, 255);
+		let bgColor = Background.A > 0 ? Background : Color(30, 30, 30, 255);
 		ctx.FillRect(bounds, bgColor);
 
 		// Update hover state on visible items
@@ -599,7 +599,7 @@ public class TreeView : Control
 		}
 
 		// Draw border
-		let borderColor = BorderColor.A > 0 ? BorderColor : Color32(80, 80, 80, 255);
+		let borderColor = BorderColor.A > 0 ? BorderColor : Color(80, 80, 80, 255);
 		ctx.DrawRect(bounds, borderColor, 1);
 	}
 

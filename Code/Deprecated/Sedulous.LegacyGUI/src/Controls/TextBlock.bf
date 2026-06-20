@@ -264,7 +264,7 @@ public class TextBlock : Control
 				x = bounds.X + (bounds.Width - textWidth) / 2;
 			else if (mTextAlignment == .Right)
 				x = bounds.Right - textWidth;
-			ctx.FillRect(.(x, bounds.Y, textWidth, textHeight), Color32(foreground.R, foreground.G, foreground.B, 40));
+			ctx.FillRect(.(x, bounds.Y, textWidth, textHeight), Color(foreground.R, foreground.G, foreground.B, 40));
 		}
 		#endif
 	}

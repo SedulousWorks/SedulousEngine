@@ -7,8 +7,8 @@ using Sedulous.Core.Mathematics;
 public class ProgressBar : View
 {
 	private float mProgress;
-	private Color32? mTrackColor;
-	private Color32? mFillColor;
+	private Color? mTrackColor;
+	private Color? mFillColor;
 
 	public float Progress
 	{
@@ -24,13 +24,13 @@ public class ProgressBar : View
 		}
 	}
 
-	public Color32 TrackColor
+	public Color TrackColor
 	{
 		get => mTrackColor ?? Context?.Theme?.GetColor("ProgressBar.Track", .(50, 52, 62, 255)) ?? .(50, 52, 62, 255);
 		set => mTrackColor = value;
 	}
 
-	public Color32 FillColor
+	public Color FillColor
 	{
 		get => mFillColor ?? Context?.Theme?.GetColor("ProgressBar.Fill") ?? Context?.Theme?.Palette.PrimaryAccent ?? .(80, 130, 230, 255);
 		set => mFillColor = value;

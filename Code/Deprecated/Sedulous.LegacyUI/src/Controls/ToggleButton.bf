@@ -9,7 +9,7 @@ public class ToggleButton : View
 	private String mText ~ delete _;
 	private bool mIsChecked;
 
-	private Color32? mTextColor;
+	private Color? mTextColor;
 	private float? mFontSize;
 	private Thickness? mPadding;
 
@@ -29,7 +29,7 @@ public class ToggleButton : View
 		}
 	}
 
-	public Color32 TextColor
+	public Color TextColor
 	{
 		get => mTextColor ?? Context?.Theme?.GetColor("ToggleButton.Text") ?? .(240, 240, 245, 255);
 		set => mTextColor = value;
@@ -101,7 +101,7 @@ public class ToggleButton : View
 		let state = GetControlState();
 		if (!ctx.TryDrawDrawable(drawableKey, bounds, state))
 		{
-			Color32 bgColor;
+			Color bgColor;
 			if (mIsChecked)
 				bgColor = ctx.Theme?.TryGetColor("ToggleButton.CheckedBackground") ?? ctx.Theme?.Palette.PrimaryAccent ?? .(80, 160, 255, 255);
 			else

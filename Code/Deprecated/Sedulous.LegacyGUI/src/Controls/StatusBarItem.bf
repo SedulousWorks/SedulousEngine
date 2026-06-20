@@ -139,9 +139,9 @@ public class StatusBarItem : Control
 		{
 			// Hover highlight for clickable items
 			let palette = Context?.Theme?.Palette ?? Palette();
-			let surfaceColor = palette.Surface.A > 0 ? palette.Surface : Color32(45, 45, 45, 255);
+			let surfaceColor = palette.Surface.A > 0 ? palette.Surface : Color(45, 45, 45, 255);
 			let hoverColor = Palette.ComputeHover(surfaceColor);
-			ctx.FillRect(ArrangedBounds, Color32(hoverColor.R, hoverColor.G, hoverColor.B, 128));
+			ctx.FillRect(ArrangedBounds, Color(hoverColor.R, hoverColor.G, hoverColor.B, 128));
 		}
 
 		// Text

@@ -141,24 +141,24 @@ public class PropertyGrid : Control
 	private ImageBrush? mPropertyHoverImage;
 
 	// Theme colors (computed from palette)
-	private Color32 mBackgroundColor;
-	private Color32 mBorderColor;
-	private Color32 mSplitterColor;
-	private Color32 mCategoryBackgroundColor;
-	private Color32 mCategoryHoverColor;
-	private Color32 mCategoryTextColor;
-	private Color32 mCategoryIndicatorColor;
-	private Color32 mCategoryBorderColor;
-	private Color32 mPropertyBackgroundColor;
-	private Color32 mPropertyHoverColor;
-	private Color32 mPropertyNameColor;
-	private Color32 mPropertyValueColor;
-	private Color32 mPropertyBorderColor;
-	private Color32 mCursorColor;
-	private Color32 mCheckboxBackgroundColor;
-	private Color32 mCheckboxBorderColor;
-	private Color32 mCheckmarkColor;
-	private Color32 mDropdownArrowColor;
+	private Color mBackgroundColor;
+	private Color mBorderColor;
+	private Color mSplitterColor;
+	private Color mCategoryBackgroundColor;
+	private Color mCategoryHoverColor;
+	private Color mCategoryTextColor;
+	private Color mCategoryIndicatorColor;
+	private Color mCategoryBorderColor;
+	private Color mPropertyBackgroundColor;
+	private Color mPropertyHoverColor;
+	private Color mPropertyNameColor;
+	private Color mPropertyValueColor;
+	private Color mPropertyBorderColor;
+	private Color mCursorColor;
+	private Color mCheckboxBackgroundColor;
+	private Color mCheckboxBorderColor;
+	private Color mCheckmarkColor;
+	private Color mDropdownArrowColor;
 
 	// Events
 	private EventAccessor<delegate void(PropertyGrid, PropertyItem)> mPropertyChanged = new .() ~ delete _;
@@ -408,13 +408,13 @@ public class PropertyGrid : Control
 
 	/// Gets current theme colors for rendering (called each frame to support theme changes).
 	private void GetThemeColors(
-		out Color32 backgroundColor, out Color32 borderColor, out Color32 splitterColor,
-		out Color32 categoryBgColor, out Color32 categoryHoverColor, out Color32 categoryTextColor,
-		out Color32 categoryIndicatorColor, out Color32 categoryBorderColor,
-		out Color32 propertyBgColor, out Color32 propertyHoverColor, out Color32 propertyNameColor,
-		out Color32 propertyValueColor, out Color32 propertyBorderColor, out Color32 cursorColor,
-		out Color32 checkboxBgColor, out Color32 checkboxBorderColor, out Color32 checkmarkColor,
-		out Color32 dropdownArrowColor)
+		out Color backgroundColor, out Color borderColor, out Color splitterColor,
+		out Color categoryBgColor, out Color categoryHoverColor, out Color categoryTextColor,
+		out Color categoryIndicatorColor, out Color categoryBorderColor,
+		out Color propertyBgColor, out Color propertyHoverColor, out Color propertyNameColor,
+		out Color propertyValueColor, out Color propertyBorderColor, out Color cursorColor,
+		out Color checkboxBgColor, out Color checkboxBorderColor, out Color checkmarkColor,
+		out Color dropdownArrowColor)
 	{
 		let theme = Context?.Theme;
 		let palette = theme?.Palette ?? Palette();
@@ -425,10 +425,10 @@ public class PropertyGrid : Control
 		let propertyStyle = theme?.GetControlStyle("PropertyGridProperty") ?? ControlStyle();
 
 		// Fallback colors
-		let defaultBgColor = Color32(35, 35, 35, 255);
-		let defaultTextColor = Color32(220, 220, 220, 255);
-		let defaultBorderColor = Color32(60, 60, 60, 255);
-		let defaultSuccessColor = Color32(100, 180, 100, 255);
+		let defaultBgColor = Color(35, 35, 35, 255);
+		let defaultTextColor = Color(220, 220, 220, 255);
+		let defaultBorderColor = Color(60, 60, 60, 255);
+		let defaultSuccessColor = Color(100, 180, 100, 255);
 
 		// Main background and border from theme style
 		backgroundColor = gridStyle.Background.A > 0 ? gridStyle.Background : defaultBgColor;

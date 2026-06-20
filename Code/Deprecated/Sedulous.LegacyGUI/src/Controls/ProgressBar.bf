@@ -14,8 +14,8 @@ public class ProgressBar : Control
 	private float mMaximum = 100;
 	private bool mIsIndeterminate = false;
 	private Orientation mOrientation = .Horizontal;
-	private Color32? mTrackColor;
-	private Color32? mFillColor;
+	private Color? mTrackColor;
+	private Color? mFillColor;
 	private ImageBrush? mTrackImage;
 	private ImageBrush? mFillImage;
 
@@ -101,7 +101,7 @@ public class ProgressBar : Control
 	}
 
 	/// The track (background) color. If not set, uses a darker version of the fill.
-	public Color32 TrackColor
+	public Color TrackColor
 	{
 		get
 		{
@@ -115,7 +115,7 @@ public class ProgressBar : Control
 	}
 
 	/// The fill (progress) color. If not set, uses theme accent color.
-	public Color32 FillColor
+	public Color FillColor
 	{
 		get
 		{
@@ -123,7 +123,7 @@ public class ProgressBar : Control
 				return mFillColor.Value;
 			// Default: use accent color from theme palette
 			let palette = Context?.Theme?.Palette ?? Palette();
-			return palette.Accent.A > 0 ? palette.Accent : Color32(0, 120, 215, 255);
+			return palette.Accent.A > 0 ? palette.Accent : Color(0, 120, 215, 255);
 		}
 		set => mFillColor = value;
 	}
@@ -207,7 +207,7 @@ public class ProgressBar : Control
 	}
 
 	/// Renders determinate progress.
-	private void RenderDeterminate(DrawContext ctx, RectangleF bounds, Color32 fillColor)
+	private void RenderDeterminate(DrawContext ctx, RectangleF bounds, Color fillColor)
 	{
 		let progress = Progress;
 		if (progress <= 0)
@@ -240,7 +240,7 @@ public class ProgressBar : Control
 	}
 
 	/// Renders indeterminate (animated) progress.
-	private void RenderIndeterminate(DrawContext ctx, RectangleF bounds, Color32 fillColor)
+	private void RenderIndeterminate(DrawContext ctx, RectangleF bounds, Color fillColor)
 	{
 		// Get animation time from context
 		let time = Context?.TotalTime ?? 0;

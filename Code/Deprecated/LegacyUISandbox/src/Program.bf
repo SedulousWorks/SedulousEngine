@@ -57,16 +57,16 @@ class RichTooltipImageView : ImageView, ITooltipProvider
 class StatusBadge : View
 {
 	public String Text ~ delete _;
-	private Color32? mBadgeColor;
-	private Color32? mTextColor;
+	private Color? mBadgeColor;
+	private Color? mTextColor;
 
-	public Color32 BadgeColor
+	public Color BadgeColor
 	{
 		get => mBadgeColor ?? Context?.Theme?.GetColor("StatusBadge.Background") ?? .(100, 100, 100, 255);
 		set => mBadgeColor = value;
 	}
 
-	public Color32 TextColor
+	public Color TextColor
 	{
 		get => mTextColor ?? Context?.Theme?.GetColor("StatusBadge.Foreground") ?? .White;
 		set => mTextColor = value;
@@ -173,7 +173,7 @@ class TreeItemView : View
 		if (Text != null && Text.Length > 0 && ctx.FontService != null)
 		{
 			let textX = (Depth + 1) * mIndent;
-			let textColor = ctx.Theme?.GetColor("Label.Foreground") ?? Color32(220, 220, 230, 255);
+			let textColor = ctx.Theme?.GetColor("Label.Foreground") ?? Color(220, 220, 230, 255);
 			let font = ctx.FontService.GetFont(14);
 			if (font != null)
 				ctx.VG.DrawText(Text, font, .(textX, 0, Width - textX, Height), .Left, .Middle, textColor);
@@ -612,7 +612,7 @@ class UISandboxApp : Application, Sedulous.LegacyUI.Toolkit.IDockableWindowHost
 	/// Generate a rounded-rect image with fill and border colors.
 	/// Used for placeholder theme images.
 	private static OwnedImageData MakeRoundedRectImage(uint32 w, uint32 h,
-		Color32 fill, Color32 border, int radius)
+		Color fill, Color border, int radius)
 	{
 		let data = new uint8[w * h * 4];
 
@@ -647,12 +647,13 @@ class UISandboxApp : Application, Sedulous.LegacyUI.Toolkit.IDockableWindowHost
 						isBorder = true;
 				}
 
-				let c = inside ? (isBorder ? border : fill) : Color32(0, 0, 0, 0);
+				let c = inside ? (isBorder ? border : fill) : Color(0, 0, 0, 0);
+				let c32 = c.ToColor32();
 				let offset = (int)(y * w + x) * 4;
-				data[offset] = c.R;
-				data[offset + 1] = c.G;
-				data[offset + 2] = c.B;
-				data[offset + 3] = c.A;
+				data[offset] = c32.R;
+				data[offset + 1] = c32.G;
+				data[offset + 2] = c32.B;
+				data[offset + 3] = c32.A;
 			}
 		}
 
@@ -1941,7 +1942,7 @@ class UISandboxApp : Application, Sedulous.LegacyUI.Toolkit.IDockableWindowHost
 			return false;
 
 		// Use theme background for clear color.
-		let bg = mUI.UIContext.Theme?.Palette.Background ?? Color32(30, 30, 35, 255);
+		let bg = mUI.UIContext.Theme?.Palette.Background ?? Color(30, 30, 35, 255);
 		ColorAttachment[1] clearAttachments = .(.()
 		{
 			View = render.CurrentTextureView,

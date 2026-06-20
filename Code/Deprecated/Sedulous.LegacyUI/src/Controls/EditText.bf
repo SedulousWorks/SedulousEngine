@@ -39,7 +39,7 @@ public class EditText : View, ITextEditHost
 	protected TextEditingBehavior mBehavior ~ delete _;
 
 	// === Theme overrides ===
-	private Color32? mTextColor;
+	private Color? mTextColor;
 	private float? mFontSize;
 	private Thickness? mPadding;
 
@@ -97,7 +97,7 @@ public class EditText : View, ITextEditHost
 		set => mBehavior.Filter = value;
 	}
 
-	public Color32 TextColor
+	public Color TextColor
 	{
 		get => mTextColor ?? Context?.Theme?.GetColor("EditText.Foreground") ?? .(220, 225, 235, 255);
 		set => mTextColor = value;

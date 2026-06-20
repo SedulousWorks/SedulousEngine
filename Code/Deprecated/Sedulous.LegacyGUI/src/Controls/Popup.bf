@@ -293,7 +293,7 @@ public class Popup : ContentControl, IPopupOwner
 		// Shadow (drawn regardless of image mode)
 		let shadowOffset = 4.0f;
 		ctx.FillRect(.(bounds.X + shadowOffset, bounds.Y + shadowOffset, bounds.Width, bounds.Height),
-			Color32(0, 0, 0, 60));
+			Color(0, 0, 0, 60));
 
 		// Try image-based background first (replaces background + border)
 		let bgImage = GetStateBackgroundImage();
@@ -304,11 +304,11 @@ public class Popup : ContentControl, IPopupOwner
 		else
 		{
 			// Background
-			let bgColor = Background.A > 0 ? Background : Color32(50, 50, 55, 255);
+			let bgColor = Background.A > 0 ? Background : Color(50, 50, 55, 255);
 			ctx.FillRect(bounds, bgColor);
 
 			// Border
-			let borderColor = BorderColor.A > 0 ? BorderColor : Color32(80, 80, 90, 255);
+			let borderColor = BorderColor.A > 0 ? BorderColor : Color(80, 80, 90, 255);
 			ctx.DrawRect(bounds, borderColor, BorderThickness > 0 ? BorderThickness : 1);
 		}
 

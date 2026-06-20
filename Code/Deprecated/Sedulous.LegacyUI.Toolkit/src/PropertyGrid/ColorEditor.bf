@@ -6,18 +6,18 @@ namespace Sedulous.LegacyUI.Toolkit;
 /// BeginEdit when picker opens, EndEdit on OK, CancelEdit on Cancel.
 public class ColorEditor : PropertyEditor
 {
-	private Color32 mValue;
+	private Color mValue;
 	private ColorView mSwatch;
 
-	public Color32 Value
+	public Color Value
 	{
 		get => mValue;
 		set { mValue = value; if (mSwatch != null) mSwatch.Color = value; }
 	}
 
-	public delegate void(Color32) Setter ~ delete _;
+	public delegate void(Color) Setter ~ delete _;
 
-	public this(StringView name, Color32 initialValue, delegate void(Color32) setter = null,
+	public this(StringView name, Color initialValue, delegate void(Color) setter = null,
 		StringView category = default) : base(name, category)
 	{
 		mValue = initialValue;

@@ -91,7 +91,7 @@ public class Slider : View
 			DrawVertical(ctx, ratio, trackBg, fillColor, thumbColor, thumbHover);
 	}
 
-	private void DrawHorizontal(UIDrawContext ctx, float ratio, Color32 trackBg, Color32 fillColor, Color32 thumbNormal, Color32 thumbHover)
+	private void DrawHorizontal(UIDrawContext ctx, float ratio, Color trackBg, Color fillColor, Color thumbNormal, Color thumbHover)
 	{
 		let thumbHalf = ThumbSize * 0.5f;
 		let trackStart = thumbHalf;
@@ -130,7 +130,7 @@ public class Slider : View
 				ctx.Theme?.GetColor("Focus.Ring", .(100, 160, 255, 180)) ?? .(100, 160, 255, 180), 2);
 	}
 
-	private void DrawVertical(UIDrawContext ctx, float ratio, Color32 trackBg, Color32 fillColor, Color32 thumbNormal, Color32 thumbHover)
+	private void DrawVertical(UIDrawContext ctx, float ratio, Color trackBg, Color fillColor, Color thumbNormal, Color thumbHover)
 	{
 		let thumbHalf = ThumbSize * 0.5f;
 		let trackStart = thumbHalf;

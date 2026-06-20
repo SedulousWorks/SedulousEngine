@@ -239,7 +239,7 @@ class TextInputDemo
 		statusSection.AddChild(statusLabel);
 
 		mStatusTextBlock = new TextBlock("(none)");
-		mStatusTextBlock.Foreground = Color32(100, 200, 100, 255);
+		mStatusTextBlock.Foreground = Color(100, 200, 100, 255);
 		statusSection.AddChild(mStatusTextBlock);
 
 		container.AddChild(statusSection);

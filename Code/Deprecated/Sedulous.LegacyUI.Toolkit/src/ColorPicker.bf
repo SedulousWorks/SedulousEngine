@@ -12,7 +12,7 @@ public class ColorPicker : ViewGroup
 	private float mSaturation = 1; // 0-1
 	private float mValue = 1;     // 0-1
 	private float mAlpha = 1;     // 0-1
-	private Color32 mOriginalColor = .White;
+	private Color mOriginalColor = .White;
 	private bool mSyncing;
 
 	// Inner views.
@@ -31,10 +31,10 @@ public class ColorPicker : ViewGroup
 	private float mStripWidth = 20;
 	private float mGap = 8;
 
-	public Event<delegate void(ColorPicker, Color32)> OnColorChanged ~ _.Dispose();
+	public Event<delegate void(ColorPicker, Color)> OnColorChanged ~ _.Dispose();
 
 	/// Get or set the current color.
-	public Color32 CurrentColor
+	public Color CurrentColor
 	{
 		get => HSVToRGB(mHue, mSaturation, mValue, mAlpha);
 		set => SetColor(value);
@@ -91,7 +91,7 @@ public class ColorPicker : ViewGroup
 	}
 
 	/// Set the current color and update all sub-views.
-	public void SetColor(Color32 color)
+	public void SetColor(Color color)
 	{
 		if (mSyncing) return;
 		mSyncing = true;
@@ -107,7 +107,7 @@ public class ColorPicker : ViewGroup
 	}
 
 	/// Set the original color (shown in the "original" preview swatch).
-	public void SetOriginalColor(Color32 color)
+	public void SetOriginalColor(Color color)
 	{
 		mOriginalColor = color;
 		mPreviewOriginal.Color = color;
@@ -257,7 +257,7 @@ public class ColorPicker : ViewGroup
 
 	// === HSV Helpers ===
 
-	public static Color32 HSVToRGB(float h, float s, float v, float a = 1.0f)
+	public static Color HSVToRGB(float h, float s, float v, float a = 1.0f)
 	{
 		float c = v * s;
 		float hPrime = h / 60.0f;
@@ -326,7 +326,7 @@ public class ColorPicker : ViewGroup
 			// Circle indicator.
 			float cx = mPicker.mSaturation * Width;
 			float cy = (1.0f - mPicker.mValue) * Height;
-			let indicatorColor = (mPicker.mValue > 0.5f) ? Color32(0, 0, 0, 255) : Color32(255, 255, 255, 255);
+			let indicatorColor = (mPicker.mValue > 0.5f) ? Color(0, 0, 0, 255) : Color(255, 255, 255, 255);
 			ctx.VG.StrokeCircle(.(cx, cy), 5, indicatorColor, 2);
 
 			// Border.
@@ -439,8 +439,8 @@ public class ColorPicker : ViewGroup
 		{
 			// Checkerboard background.
 			float checkSize = 5;
-			let light = Color32(200, 200, 200, 255);
-			let dark = Color32(128, 128, 128, 255);
+			let light = Color(200, 200, 200, 255);
+			let dark = Color(128, 128, 128, 255);
 
 			int cols = (int)Math.Ceiling(Width / checkSize);
 			int rows = (int)Math.Ceiling(Height / checkSize);
@@ -462,7 +462,7 @@ public class ColorPicker : ViewGroup
 			for (int i = 0; i < steps; i++)
 			{
 				float alpha = 1.0f - (float)i / (steps - 1);
-				let c = Color32(baseColor.R, baseColor.G, baseColor.B, (uint8)(alpha * 255));
+				let c = Color(baseColor.R, baseColor.G, baseColor.B, (uint8)(alpha * 255));
 				ctx.VG.FillRect(.(0, i * cellH, Width, cellH + 1), c);
 			}
 

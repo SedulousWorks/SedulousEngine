@@ -96,7 +96,7 @@ public class SplitPanel : Panel
 
 	/// Color of the splitter bar.
 	/// Hover and drag colors are calculated automatically by lightening this color.
-	public Color32 SplitterColor
+	public Color SplitterColor
 	{
 		get => mSplitter.Background;
 		set => mSplitter.Background = value;

@@ -8,7 +8,7 @@ class UIElementTests
 	/// Simple concrete UIElement for testing.
 	class TestElement : UIElement
 	{
-		public Color32 Background;
+		public Color Background;
 
 		public this()
 		{

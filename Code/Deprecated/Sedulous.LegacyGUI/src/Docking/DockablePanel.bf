@@ -358,8 +358,8 @@ public class DockablePanel : Control, IDragSource, IDropTarget
 			// Close button - use error color for hover
 			if (mIsCloseable)
 			{
-				let errorColor = Context?.Theme?.Palette.Error ?? Color32(200, 60, 60, 255);
-				let normalColor = Color32(headerStyle.Foreground.R, headerStyle.Foreground.G, headerStyle.Foreground.B, 120);
+				let errorColor = Context?.Theme?.Palette.Error ?? Color(200, 60, 60, 255);
+				let normalColor = Color(headerStyle.Foreground.R, headerStyle.Foreground.G, headerStyle.Foreground.B, 120);
 				let closeColor = mIsCloseHovered ? errorColor : normalColor;
 				RenderCloseButton(ctx, mCloseBounds, closeColor);
 			}
@@ -367,8 +367,8 @@ public class DockablePanel : Control, IDragSource, IDropTarget
 			// Pin button - use accent color for hover
 			if (mIsPinnable)
 			{
-				let accentColor = Context?.Theme?.Palette.Accent ?? Color32(100, 150, 255, 255);
-				let normalColor = Color32(headerStyle.Foreground.R, headerStyle.Foreground.G, headerStyle.Foreground.B, 120);
+				let accentColor = Context?.Theme?.Palette.Accent ?? Color(100, 150, 255, 255);
+				let normalColor = Color(headerStyle.Foreground.R, headerStyle.Foreground.G, headerStyle.Foreground.B, 120);
 				let pinColor = mIsPinHovered ? accentColor : normalColor;
 				RenderPinButton(ctx, mPinBounds, pinColor, mIsPinned);
 			}
@@ -381,7 +381,7 @@ public class DockablePanel : Control, IDragSource, IDropTarget
 		}
 	}
 
-	private void RenderCloseButton(DrawContext ctx, RectangleF bounds, Color32 color)
+	private void RenderCloseButton(DrawContext ctx, RectangleF bounds, Color color)
 	{
 		// Draw X
 		let padding = 5.0f;
@@ -393,7 +393,7 @@ public class DockablePanel : Control, IDragSource, IDropTarget
 		ctx.DrawLine(.(x2, y1), .(x1, y2), color, 1.5f);
 	}
 
-	private void RenderPinButton(DrawContext ctx, RectangleF bounds, Color32 color, bool isPinned)
+	private void RenderPinButton(DrawContext ctx, RectangleF bounds, Color color, bool isPinned)
 	{
 		// todo?
 		// Draw pin icon (simplified)

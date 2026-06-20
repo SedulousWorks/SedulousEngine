@@ -77,7 +77,7 @@ public class ToggleButton : Button
 	}
 
 	/// Gets the background color for the current state.
-	protected override Color32 GetStateBackground()
+	protected override Color GetStateBackground()
 	{
 		let baseColor = mIsChecked ? GetCheckedBackground() : Background;
 		switch (CurrentState)
@@ -96,12 +96,12 @@ public class ToggleButton : Button
 	}
 
 	/// Gets the background color when checked.
-	protected virtual Color32 GetCheckedBackground()
+	protected virtual Color GetCheckedBackground()
 	{
 		// Use accent color for checked state
 		if (let theme = Context?.Theme)
 			return theme.Palette.Accent;
-		return Color32(100, 149, 237, 255); // Fallback: cornflower blue
+		return Color(100, 149, 237, 255); // Fallback: cornflower blue
 	}
 
 	/// Renders the button with checked state indication.

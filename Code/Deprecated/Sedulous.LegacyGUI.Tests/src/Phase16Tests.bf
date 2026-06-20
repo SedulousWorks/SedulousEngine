@@ -298,8 +298,8 @@ class ColorAnimationTests
 	public static void ColorAnimationSetFromTo()
 	{
 		let anim = scope ColorAnimation();
-		anim.From = Color32.Red;
-		anim.To = Color32.Blue;
+		anim.From = Color.Red;
+		anim.To = Color.Blue;
 		Test.Assert(anim.From.R == 255);
 		Test.Assert(anim.From.G == 0);
 		Test.Assert(anim.To.B == 255);
@@ -308,7 +308,7 @@ class ColorAnimationTests
 	[Test]
 	public static void ColorAnimationBackgroundFactory()
 	{
-		let anim = ColorAnimation.Background(Color32.Green);
+		let anim = ColorAnimation.Background(Color.Green);
 		defer delete anim;
 		Test.Assert(anim.To.G == 128);
 	}
@@ -316,7 +316,7 @@ class ColorAnimationTests
 	[Test]
 	public static void ColorAnimationForegroundFactory()
 	{
-		let anim = ColorAnimation.Foreground(Color32.Yellow);
+		let anim = ColorAnimation.Foreground(Color.Yellow);
 		defer delete anim;
 		Test.Assert(anim.To.R == 255);
 		Test.Assert(anim.To.G == 255);

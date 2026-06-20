@@ -11,8 +11,8 @@ public class DockTarget : Control
 	private DockPosition mPosition = .Center;
 	private RectangleF mTargetBounds;
 	private bool mIsVisible = false;
-	private Color32 mHighlightColor = Color32(60, 120, 200, 100);
-	private Color32 mBorderColor = Color32(60, 120, 200, 200);
+	private Color mHighlightColor = Color(60, 120, 200, 100);
+	private Color mBorderColor = Color(60, 120, 200, 200);
 	private ImageBrush? mOverlayImage;
 
 	/// Creates a new DockTarget.
@@ -48,14 +48,14 @@ public class DockTarget : Control
 	}
 
 	/// The highlight fill color.
-	public Color32 HighlightColor
+	public Color HighlightColor
 	{
 		get => mHighlightColor;
 		set => mHighlightColor = value;
 	}
 
 	/// The border color for the dock target indicator.
-	public new Color32 BorderColor
+	public new Color BorderColor
 	{
 		get => mBorderColor;
 		set => mBorderColor = value;
@@ -142,10 +142,10 @@ public class DockZoneIndicator : Control
 	private bool mIsVisible = false;
 	private Vector2 mCenter;
 
-	private Color32 mButtonColor = Color32(60, 60, 60, 220);
-	private Color32 mButtonHoverColor = Color32(60, 120, 200, 220);
-	private Color32 mButtonBorderColor = Color32(100, 100, 100, 255);
-	private Color32 mArrowColor = Color32(200, 200, 200, 255);
+	private Color mButtonColor = Color(60, 60, 60, 220);
+	private Color mButtonHoverColor = Color(60, 120, 200, 220);
+	private Color mButtonBorderColor = Color(100, 100, 100, 255);
+	private Color mArrowColor = Color(200, 200, 200, 255);
 	private ImageBrush? mButtonImage;
 	private ImageBrush? mButtonHoverImage;
 

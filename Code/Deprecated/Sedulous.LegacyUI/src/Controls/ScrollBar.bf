@@ -24,16 +24,16 @@ public class ScrollBar : View
 	// Callback when the user drags the thumb - ScrollView subscribes.
 	public delegate void(float newValue) OnValueChanged ~ delete _;
 
-	private Color32? mTrackColor;
-	private Color32? mThumbColor;
+	private Color? mTrackColor;
+	private Color? mThumbColor;
 
-	public Color32 TrackColor
+	public Color TrackColor
 	{
 		get => mTrackColor ?? Context?.Theme?.GetColor("ScrollBar.Track") ?? .(80, 80, 80, 100);
 		set => mTrackColor = value;
 	}
 
-	public Color32 ThumbColor
+	public Color ThumbColor
 	{
 		get => mThumbColor ?? Context?.Theme?.GetColor("ScrollBar.Thumb") ?? .(180, 180, 180, 200);
 		set => mThumbColor = value;

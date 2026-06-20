@@ -121,7 +121,7 @@ class Phase3Tests
 		let control = new TestControl();
 		ctx.RootElement = control;
 
-		let customColor = Color32(255, 0, 0, 255);
+		let customColor = Color(255, 0, 0, 255);
 		control.Background = customColor;
 
 		Test.Assert(control.Background == customColor);
@@ -186,7 +186,7 @@ class Phase3Tests
 	[Test]
 	public static void Palette_ComputeHover_LightensColor()
 	{
-		let baseColor = Color32(100, 100, 100, 255);
+		let baseColor = Color(100, 100, 100, 255);
 		let hoverColor = Palette.ComputeHover(baseColor);
 
 		// Hover should be lighter
@@ -199,7 +199,7 @@ class Phase3Tests
 	[Test]
 	public static void Palette_ComputePressed_DarkensColor()
 	{
-		let baseColor = Color32(100, 100, 100, 255);
+		let baseColor = Color(100, 100, 100, 255);
 		let pressedColor = Palette.ComputePressed(baseColor);
 
 		// Pressed should be darker
@@ -212,7 +212,7 @@ class Phase3Tests
 	[Test]
 	public static void Palette_ComputeDisabled_ReducesAlpha()
 	{
-		let baseColor = Color32(100, 100, 100, 255);
+		let baseColor = Color(100, 100, 100, 255);
 		let disabledColor = Palette.ComputeDisabled(baseColor);
 
 		// Disabled should have reduced alpha
@@ -222,7 +222,7 @@ class Phase3Tests
 	[Test]
 	public static void Palette_Lighten_IncreasesRGB()
 	{
-		let color = Color32(100, 100, 100, 255);
+		let color = Color(100, 100, 100, 255);
 		let lightened = Palette.Lighten(color, 0.5f);
 
 		Test.Assert(lightened.R > color.R);
@@ -233,7 +233,7 @@ class Phase3Tests
 	[Test]
 	public static void Palette_Darken_DecreasesRGB()
 	{
-		let color = Color32(100, 100, 100, 255);
+		let color = Color(100, 100, 100, 255);
 		let darkened = Palette.Darken(color, 0.5f);
 
 		Test.Assert(darkened.R < color.R);
@@ -244,8 +244,8 @@ class Phase3Tests
 	[Test]
 	public static void Palette_Lerp_InterpolatesColors()
 	{
-		let a = Color32(0, 0, 0, 255);
-		let b = Color32(100, 100, 100, 255);
+		let a = Color(0, 0, 0, 255);
+		let b = Color(100, 100, 100, 255);
 		let mid = Palette.Lerp(a, b, 0.5f);
 
 		Test.Assert(mid.R == 50);
@@ -287,7 +287,7 @@ class Phase3Tests
 		let control = new TestControl();
 		ctx.RootElement = control;
 
-		let customColor = Color32(255, 128, 64, 255);
+		let customColor = Color(255, 128, 64, 255);
 		control.Background = customColor;
 
 		// Switch theme
@@ -344,7 +344,7 @@ class Phase3Tests
 		let control = new TestControl();
 		ctx.RootElement = control;
 
-		let customFocusColor = Color32(255, 255, 0, 255);
+		let customFocusColor = Color(255, 255, 0, 255);
 		control.FocusBorderColor = customFocusColor;
 		control.FocusBorderThickness = 5;
 

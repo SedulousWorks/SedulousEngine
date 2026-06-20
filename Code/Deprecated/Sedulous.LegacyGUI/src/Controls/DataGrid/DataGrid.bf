@@ -55,17 +55,17 @@ public class DataGrid : Control
 	private ImageBrush? mRowHoverImage;
 
 	// Theme colors (computed from palette)
-	private Color32 mBackgroundColor;
-	private Color32 mBorderColor;
-	private Color32 mHeaderBackgroundColor;
-	private Color32 mHeaderBorderColor;
-	private Color32 mRowBackgroundColor;
-	private Color32 mRowAlternateColor;
-	private Color32 mRowHoverColor;
-	private Color32 mSelectionColor;
-	private Color32 mSelectionBorderColor;
-	private Color32 mCellBorderColor;
-	private Color32 mRowBorderColor;
+	private Color mBackgroundColor;
+	private Color mBorderColor;
+	private Color mHeaderBackgroundColor;
+	private Color mHeaderBorderColor;
+	private Color mRowBackgroundColor;
+	private Color mRowAlternateColor;
+	private Color mRowHoverColor;
+	private Color mSelectionColor;
+	private Color mSelectionBorderColor;
+	private Color mCellBorderColor;
+	private Color mRowBorderColor;
 
 	/// Creates a new DataGrid.
 	public this()
@@ -74,17 +74,17 @@ public class DataGrid : Control
 		IsTabStop = true;
 
 		// Initialize default colors (will be updated by ApplyThemeDefaults)
-		mBackgroundColor = Color32(30, 30, 30, 255);
-		mBorderColor = Color32(60, 60, 60, 255);
-		mHeaderBackgroundColor = Color32(40, 40, 40, 255);
-		mHeaderBorderColor = Color32(60, 60, 60, 255);
-		mRowBackgroundColor = Color32(30, 30, 30, 255);
-		mRowAlternateColor = Color32(35, 35, 35, 255);
-		mRowHoverColor = Color32(45, 45, 45, 255);
-		mSelectionColor = Color32(50, 80, 120, 255);
-		mSelectionBorderColor = Color32(80, 120, 180, 200);
-		mCellBorderColor = Color32(50, 50, 50, 255);
-		mRowBorderColor = Color32(45, 45, 45, 255);
+		mBackgroundColor = Color(30, 30, 30, 255);
+		mBorderColor = Color(60, 60, 60, 255);
+		mHeaderBackgroundColor = Color(40, 40, 40, 255);
+		mHeaderBorderColor = Color(60, 60, 60, 255);
+		mRowBackgroundColor = Color(30, 30, 30, 255);
+		mRowAlternateColor = Color(35, 35, 35, 255);
+		mRowHoverColor = Color(45, 45, 45, 255);
+		mSelectionColor = Color(50, 80, 120, 255);
+		mSelectionBorderColor = Color(80, 120, 180, 200);
+		mCellBorderColor = Color(50, 50, 50, 255);
+		mRowBorderColor = Color(45, 45, 45, 255);
 
 		mVerticalScrollBar = new ScrollBar(.Vertical);
 		mVerticalScrollBar.Thickness = mScrollBarThickness;
@@ -365,8 +365,8 @@ public class DataGrid : Control
 		let cellStyle = theme?.GetControlStyle("DataGridCell") ?? ControlStyle();
 
 		// Fallback colors
-		let defaultBgColor = Color32(30, 30, 30, 255);
-		let defaultBorderColor = Color32(60, 60, 60, 255);
+		let defaultBgColor = Color(30, 30, 30, 255);
+		let defaultBorderColor = Color(60, 60, 60, 255);
 
 		// Main grid colors from theme style
 		mBackgroundColor = gridStyle.Background.A > 0 ? gridStyle.Background : defaultBgColor;
@@ -597,7 +597,7 @@ public class DataGrid : Control
 
 		if (!drewImage)
 		{
-			Color32 bgColor;
+			Color bgColor;
 			if (isSelected)
 				bgColor = mSelectionColor;
 			else if (isHovered)

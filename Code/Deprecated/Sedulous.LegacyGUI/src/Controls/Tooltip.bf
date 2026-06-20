@@ -33,7 +33,7 @@ public class Tooltip : ContentControl
 		let palette = theme?.Palette ?? Palette();
 
 		// Apply style properties, with sensible fallbacks for tooltip appearance
-		Background = style.Background.A > 0 ? style.Background : Color32(palette.Surface.R, palette.Surface.G, palette.Surface.B, 240);
+		Background = style.Background.A > 0 ? style.Background : Color(palette.Surface.R, palette.Surface.G, palette.Surface.B, 240);
 		Foreground = style.Foreground.A > 0 ? style.Foreground : palette.Text;
 		Padding = style.Padding.Left > 0 || style.Padding.Top > 0 ? style.Padding : .(8, 4, 8, 4);
 		CornerRadius = style.CornerRadius > 0 ? style.CornerRadius : (theme?.DefaultCornerRadius ?? 4);

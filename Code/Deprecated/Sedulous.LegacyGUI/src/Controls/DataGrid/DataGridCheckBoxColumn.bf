@@ -38,10 +38,10 @@ public class DataGridCheckBoxColumn : DataGridColumn
 	{
 		// Get theme colors from grid's context
 		let palette = grid?.Context?.Theme?.Palette ?? Palette();
-		let surfaceColor = palette.Surface.A > 0 ? palette.Surface : Color32(50, 50, 50, 255);
-		let accentColor = palette.Accent.A > 0 ? palette.Accent : Color32(100, 150, 220, 255);
-		let borderColor = palette.Border.A > 0 ? palette.Border : Color32(80, 80, 80, 255);
-		let successColor = palette.Success.A > 0 ? palette.Success : Color32(100, 180, 100, 255);
+		let surfaceColor = palette.Surface.A > 0 ? palette.Surface : Color(50, 50, 50, 255);
+		let accentColor = palette.Accent.A > 0 ? palette.Accent : Color(100, 150, 220, 255);
+		let borderColor = palette.Border.A > 0 ? palette.Border : Color(80, 80, 80, 255);
+		let successColor = palette.Success.A > 0 ? palette.Success : Color(100, 180, 100, 255);
 
 		let isChecked = GetBoolValue(cellValue);
 

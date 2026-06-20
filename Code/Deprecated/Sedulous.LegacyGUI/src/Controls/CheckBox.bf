@@ -181,7 +181,7 @@ public class CheckBox : ToggleButton
 	}
 
 	/// Draws a checkmark inside the given rectangle.
-	private void DrawCheckmark(DrawContext ctx, RectangleF boxRect, Color32 color)
+	private void DrawCheckmark(DrawContext ctx, RectangleF boxRect, Color color)
 	{
 		// Checkmark as three lines forming a check
 		let padding = mBoxSize * 0.2f;
@@ -201,14 +201,14 @@ public class CheckBox : ToggleButton
 	}
 
 	/// Gets the background color for the checkbox box.
-	protected override Color32 GetStateBackground()
+	protected override Color GetStateBackground()
 	{
 		// Use surface color for unchecked background
 		if (!IsChecked)
 		{
 			if (let theme = Context?.Theme)
 				return theme.Palette.Surface;
-			return Color32(255, 255, 255, 255); // Fallback white
+			return Color(255, 255, 255, 255); // Fallback white
 		}
 		return base.GetStateBackground();
 	}

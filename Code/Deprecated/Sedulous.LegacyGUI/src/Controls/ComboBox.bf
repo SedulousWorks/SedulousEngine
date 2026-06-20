@@ -48,9 +48,9 @@ public class ComboBox : Control, IPopupOwner
 		// Setup dropdown container (border around list)
 		mDropDownContainer = new Border();
 		mDropDownContainer.Child = mDropDownList;
-		mDropDownContainer.BorderBrush = Color32(100, 100, 100, 255);
+		mDropDownContainer.BorderBrush = Color(100, 100, 100, 255);
 		mDropDownContainer.SetBorderThickness(1);
-		mDropDownContainer.Background = Color32(45, 45, 45, 255);
+		mDropDownContainer.Background = Color(45, 45, 45, 255);
 
 		// Subscribe to list selection
 		mListSelectionHandler = new => OnListSelectionChanged;

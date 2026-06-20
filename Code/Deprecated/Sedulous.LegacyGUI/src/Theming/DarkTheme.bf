@@ -15,19 +15,19 @@ public class DarkTheme : ITheme
 		// Initialize palette
 		mPalette = .()
 		{
-			Primary = Color32(98, 0, 238, 255),      // Purple
-			Secondary = Color32(3, 218, 198, 255),   // Teal
-			Accent = Color32(100, 149, 237, 255),    // Cornflower blue
-			Background = Color32(18, 18, 18, 255),   // Near black
-			Surface = Color32(30, 30, 30, 255),      // Dark gray
-			Error = Color32(207, 102, 121, 255),     // Soft red
-			Warning = Color32(255, 200, 0, 255),     // Yellow
-			Success = Color32(76, 175, 80, 255),     // Green
-			Text = Color32(255, 255, 255, 255),      // White
-			TextSecondary = Color32(180, 180, 180, 255), // Light gray
-			Border = Color32(60, 60, 60, 255),       // Medium gray
-			Link = Color32(100, 149, 237, 255),      // Cornflower blue (same as Accent)
-			LinkVisited = Color32(149, 117, 205, 255) // Light purple
+			Primary = Color(98, 0, 238, 255),      // Purple
+			Secondary = Color(3, 218, 198, 255),   // Teal
+			Accent = Color(100, 149, 237, 255),    // Cornflower blue
+			Background = Color(18, 18, 18, 255),   // Near black
+			Surface = Color(30, 30, 30, 255),      // Dark gray
+			Error = Color(207, 102, 121, 255),     // Soft red
+			Warning = Color(255, 200, 0, 255),     // Yellow
+			Success = Color(76, 175, 80, 255),     // Green
+			Text = Color(255, 255, 255, 255),      // White
+			TextSecondary = Color(180, 180, 180, 255), // Light gray
+			Border = Color(60, 60, 60, 255),       // Medium gray
+			Link = Color(100, 149, 237, 255),      // Cornflower blue (same as Accent)
+			LinkVisited = Color(149, 117, 205, 255) // Light purple
 		};
 
 		// Define control styles
@@ -37,26 +37,26 @@ public class DarkTheme : ITheme
 	private void InitializeStyles()
 	{
 		// Precompute derived colors (using type alias to avoid conflict with property)
-		let buttonBase = Color32(55, 55, 55, 255);
+		let buttonBase = Color(55, 55, 55, 255);
 		let buttonHover = Sedulous.LegacyGUI.Palette.ComputeHover(buttonBase);
 		let buttonPressed = Sedulous.LegacyGUI.Palette.ComputePressed(buttonBase);
-		let inputBase = Color32(25, 25, 25, 255);
+		let inputBase = Color(25, 25, 25, 255);
 		let hoverBorder = Sedulous.LegacyGUI.Palette.ComputeHover(mPalette.Border);
 		let separatorBorder = Sedulous.LegacyGUI.Palette.Darken(mPalette.Border, 0.15f);
 		let checkHoverBorder = Sedulous.LegacyGUI.Palette.ComputeHover(mPalette.Border);
-		let toggleBase = Color32(60, 60, 60, 255);
+		let toggleBase = Color(60, 60, 60, 255);
 		let toggleBorder = Sedulous.LegacyGUI.Palette.ComputeHover(toggleBase);
 		let toggleHoverBorder = Sedulous.LegacyGUI.Palette.ComputeHover(toggleBorder);
 		let hyperlinkHover = Sedulous.LegacyGUI.Palette.ComputeHover(mPalette.Accent);
-		let scrollThumb = Color32(80, 80, 80, 255);
+		let scrollThumb = Color(80, 80, 80, 255);
 		let scrollThumbHover = Sedulous.LegacyGUI.Palette.ComputeHover(scrollThumb);
-		let splitterBase = Color32(45, 45, 45, 255);
+		let splitterBase = Color(45, 45, 45, 255);
 		let splitterHover = Sedulous.LegacyGUI.Palette.ComputeHover(splitterBase);
 		let splitterGrip = Sedulous.LegacyGUI.Palette.ComputeHover(mPalette.Border);
 		let itemHover = Sedulous.LegacyGUI.Palette.ComputeHover(mPalette.Surface);
-		let tabItemBase = Color32(60, 60, 60, 255);
+		let tabItemBase = Color(60, 60, 60, 255);
 		let tabItemHover = Sedulous.LegacyGUI.Palette.ComputeHover(tabItemBase);
-		let expanderBase = Color32(40, 40, 40, 255);
+		let expanderBase = Color(40, 40, 40, 255);
 		let expanderHover = Sedulous.LegacyGUI.Palette.ComputeHover(expanderBase);
 
 		// Default control style
@@ -87,9 +87,9 @@ public class DarkTheme : ITheme
 		// Panel style
 		mStyles[new String("Panel")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0
 		};
@@ -97,9 +97,9 @@ public class DarkTheme : ITheme
 		// StackPanel style (layout container - transparent)
 		mStyles[new String("StackPanel")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0
 		};
@@ -107,9 +107,9 @@ public class DarkTheme : ITheme
 		// DockPanel style (layout container - transparent)
 		mStyles[new String("DockPanel")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0
 		};
@@ -117,9 +117,9 @@ public class DarkTheme : ITheme
 		// Canvas style (layout container - transparent)
 		mStyles[new String("Canvas")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0
 		};
@@ -127,9 +127,9 @@ public class DarkTheme : ITheme
 		// WrapPanel style (layout container - transparent)
 		mStyles[new String("WrapPanel")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0
 		};
@@ -137,9 +137,9 @@ public class DarkTheme : ITheme
 		// Grid style (layout container - transparent)
 		mStyles[new String("Grid")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0
 		};
@@ -186,9 +186,9 @@ public class DarkTheme : ITheme
 		// Label style
 		mStyles[new String("Label")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0
 		};
@@ -196,9 +196,9 @@ public class DarkTheme : ITheme
 		// TextBlock style
 		mStyles[new String("TextBlock")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0
 		};
@@ -206,7 +206,7 @@ public class DarkTheme : ITheme
 		// Border style
 		mStyles[new String("Border")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 1,
@@ -216,7 +216,7 @@ public class DarkTheme : ITheme
 		// Separator style
 		mStyles[new String("Separator")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
 			BorderColor = separatorBorder,  // Subtle line color
 			BorderThickness = 1,
@@ -226,9 +226,9 @@ public class DarkTheme : ITheme
 		// ProgressBar style
 		mStyles[new String("ProgressBar")] = .()
 		{
-			Background = Color32(40, 40, 40, 255),  // Track color
+			Background = Color(40, 40, 40, 255),  // Track color
 			Foreground = mPalette.Accent,         // Fill color
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 4
 		};
@@ -300,9 +300,9 @@ public class DarkTheme : ITheme
 		// Hyperlink style
 		mStyles[new String("Hyperlink")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Accent,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
 			Padding = .(2, 2, 2, 2),  // Minimal padding for hyperlinks
@@ -312,9 +312,9 @@ public class DarkTheme : ITheme
 		// Slider style
 		mStyles[new String("Slider")] = .()
 		{
-			Background = Color32(50, 50, 50, 255),  // Track color
+			Background = Color(50, 50, 50, 255),  // Track color
 			Foreground = mPalette.Accent,         // Thumb color
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0
 		};
@@ -324,7 +324,7 @@ public class DarkTheme : ITheme
 		{
 			Background = mPalette.Surface,  // Track color
 			Foreground = scrollThumb,  // Thumb color
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
 			Hover = .() { Foreground = scrollThumbHover }
@@ -345,7 +345,7 @@ public class DarkTheme : ITheme
 		{
 			Background = splitterBase,
 			Foreground = splitterGrip,  // Grip color
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
 			Hover = .() { Background = splitterHover }
@@ -364,7 +364,7 @@ public class DarkTheme : ITheme
 		// ListBox style
 		mStyles[new String("ListBox")] = .()
 		{
-			Background = Color32(25, 25, 25, 255),
+			Background = Color(25, 25, 25, 255),
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 1,
@@ -375,9 +375,9 @@ public class DarkTheme : ITheme
 		// ListBoxItem style
 		mStyles[new String("ListBoxItem")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
 			Padding = .(8, 4, 8, 4),
@@ -400,7 +400,7 @@ public class DarkTheme : ITheme
 		// TabControl style
 		mStyles[new String("TabControl")] = .()
 		{
-			Background = Color32(45, 45, 45, 255),
+			Background = Color(45, 45, 45, 255),
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 1,
@@ -413,7 +413,7 @@ public class DarkTheme : ITheme
 		{
 			Background = tabItemBase,
 			Foreground = mPalette.Text,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
 			Padding = .(12, 6, 12, 6),
@@ -435,7 +435,7 @@ public class DarkTheme : ITheme
 		// GroupBox style
 		mStyles[new String("GroupBox")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 1,
@@ -446,9 +446,9 @@ public class DarkTheme : ITheme
 		// Breadcrumb style
 		mStyles[new String("Breadcrumb")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.TextSecondary,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
 			Focused = .() { BorderColor = mPalette.Accent }
@@ -457,9 +457,9 @@ public class DarkTheme : ITheme
 		// BreadcrumbItem style
 		mStyles[new String("BreadcrumbItem")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Accent,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 2,
 			Padding = .(4, 2, 4, 2),
@@ -469,7 +469,7 @@ public class DarkTheme : ITheme
 		// TreeView style
 		mStyles[new String("TreeView")] = .()
 		{
-			Background = Color32(25, 25, 25, 255),
+			Background = Color(25, 25, 25, 255),
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 1,
@@ -480,9 +480,9 @@ public class DarkTheme : ITheme
 		// TreeViewItem style
 		mStyles[new String("TreeViewItem")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
 			Padding = .(4, 2, 4, 2),
@@ -492,7 +492,7 @@ public class DarkTheme : ITheme
 		// TileView style
 		mStyles[new String("TileView")] = .()
 		{
-			Background = Color32(25, 25, 25, 255),
+			Background = Color(25, 25, 25, 255),
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 1,
@@ -503,9 +503,9 @@ public class DarkTheme : ITheme
 		// TileViewItem style
 		mStyles[new String("TileViewItem")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 4,
 			Padding = .(4, 4, 4, 4),
@@ -515,7 +515,7 @@ public class DarkTheme : ITheme
 		// DockablePanel style
 		mStyles[new String("DockablePanel")] = .()
 		{
-			Background = Color32(40, 40, 40, 255),  // Content background
+			Background = Color(40, 40, 40, 255),  // Content background
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 0,
@@ -525,9 +525,9 @@ public class DarkTheme : ITheme
 		// DockablePanelHeader style (title bar)
 		mStyles[new String("DockablePanelHeader")] = .()
 		{
-			Background = Color32(50, 50, 50, 255),  // Title bar background
-			Foreground = Color32(220, 220, 220, 255),  // Title text
-			BorderColor = Color32(80, 80, 80, 255),  // Bottom border
+			Background = Color(50, 50, 50, 255),  // Title bar background
+			Foreground = Color(220, 220, 220, 255),  // Title text
+			BorderColor = Color(80, 80, 80, 255),  // Bottom border
 			BorderThickness = 1,
 			CornerRadius = 0
 		};
@@ -535,9 +535,9 @@ public class DarkTheme : ITheme
 		// DockTabGroup style
 		mStyles[new String("DockTabGroup")] = .()
 		{
-			Background = Color32(35, 35, 35, 255),  // Tab strip background
+			Background = Color(35, 35, 35, 255),  // Tab strip background
 			Foreground = mPalette.TextSecondary,  // Empty text
-			BorderColor = Color32(80, 80, 80, 255),  // Tab strip bottom border
+			BorderColor = Color(80, 80, 80, 255),  // Tab strip bottom border
 			BorderThickness = 1,
 			CornerRadius = 0
 		};
@@ -545,19 +545,19 @@ public class DarkTheme : ITheme
 		// DockTab style
 		mStyles[new String("DockTab")] = .()
 		{
-			Background = Color32(38, 38, 38, 255),  // Normal tab
-			Foreground = Color32(180, 180, 180, 255),  // Normal text
+			Background = Color(38, 38, 38, 255),  // Normal tab
+			Foreground = Color(180, 180, 180, 255),  // Normal text
 			BorderColor = mPalette.Accent,  // Selected tab top border
 			BorderThickness = 2,
 			CornerRadius = 0,
-			Hover = .() { Background = Color32(45, 45, 45, 255) },
-			Pressed = .() { Background = Color32(50, 50, 50, 255), Foreground = Color32(255, 255, 255, 255) }  // Selected state
+			Hover = .() { Background = Color(45, 45, 45, 255) },
+			Pressed = .() { Background = Color(50, 50, 50, 255), Foreground = Color(255, 255, 255, 255) }  // Selected state
 		};
 
 		// DataGrid style
 		mStyles[new String("DataGrid")] = .()
 		{
-			Background = Color32(22, 22, 22, 255),  // Slightly lighter than Background for contrast
+			Background = Color(22, 22, 22, 255),  // Slightly lighter than Background for contrast
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 1,
@@ -567,30 +567,30 @@ public class DarkTheme : ITheme
 		// DataGridHeader style
 		mStyles[new String("DataGridHeader")] = .()
 		{
-			Background = Color32(35, 35, 35, 255),  // Header background
+			Background = Color(35, 35, 35, 255),  // Header background
 			Foreground = mPalette.Text,
-			BorderColor = Color32(50, 50, 50, 255),
+			BorderColor = Color(50, 50, 50, 255),
 			BorderThickness = 1,
 			CornerRadius = 0,
-			Hover = .() { Background = Color32(45, 45, 45, 255) }
+			Hover = .() { Background = Color(45, 45, 45, 255) }
 		};
 
 		// DataGridCell style (for rows)
 		mStyles[new String("DataGridCell")] = .()
 		{
-			Background = Color32(22, 22, 22, 255),  // Row background
+			Background = Color(22, 22, 22, 255),  // Row background
 			Foreground = mPalette.Text,
-			BorderColor = Color32(35, 35, 35, 255),  // Cell border
+			BorderColor = Color(35, 35, 35, 255),  // Cell border
 			BorderThickness = 1,
 			CornerRadius = 0,
-			Hover = .() { Background = Color32(35, 35, 35, 255) },
-			Pressed = .() { Background = Color32(50, 80, 120, 255) }  // Selection color
+			Hover = .() { Background = Color(35, 35, 35, 255) },
+			Pressed = .() { Background = Color(50, 80, 120, 255) }  // Selection color
 		};
 
 		// PropertyGrid style
 		mStyles[new String("PropertyGrid")] = .()
 		{
-			Background = Color32(22, 22, 22, 255),
+			Background = Color(22, 22, 22, 255),
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 1,
@@ -600,23 +600,23 @@ public class DarkTheme : ITheme
 		// PropertyGridCategory style
 		mStyles[new String("PropertyGridCategory")] = .()
 		{
-			Background = Color32(35, 35, 35, 255),  // Category header background
+			Background = Color(35, 35, 35, 255),  // Category header background
 			Foreground = mPalette.Text,
-			BorderColor = Color32(45, 45, 45, 255),
+			BorderColor = Color(45, 45, 45, 255),
 			BorderThickness = 1,
 			CornerRadius = 0,
-			Hover = .() { Background = Color32(45, 45, 45, 255) }
+			Hover = .() { Background = Color(45, 45, 45, 255) }
 		};
 
 		// PropertyGridProperty style
 		mStyles[new String("PropertyGridProperty")] = .()
 		{
-			Background = Color32(25, 25, 25, 255),  // Property row background
+			Background = Color(25, 25, 25, 255),  // Property row background
 			Foreground = mPalette.Text,
-			BorderColor = Color32(32, 32, 32, 255),
+			BorderColor = Color(32, 32, 32, 255),
 			BorderThickness = 1,
 			CornerRadius = 0,
-			Hover = .() { Background = Color32(35, 35, 35, 255) }
+			Hover = .() { Background = Color(35, 35, 35, 255) }
 		};
 	}
 
@@ -648,9 +648,9 @@ public class DarkTheme : ITheme
 		};
 	}
 
-	public Color32 FocusIndicatorColor => mPalette.Accent;
+	public Color FocusIndicatorColor => mPalette.Accent;
 	public float FocusIndicatorThickness => 2;
-	public Color32 SelectionColor => Color32(100, 149, 237, 100);
+	public Color SelectionColor => Color(100, 149, 237, 100);
 	public float DefaultFontSize => 14;
 
 	// Control dimensions

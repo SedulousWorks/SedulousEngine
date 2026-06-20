@@ -145,7 +145,7 @@ public class DockableWindow : Control
 		// Window shadow (always drawn)
 		let shadowOffset = 4.0f;
 		ctx.FillRect(.(bounds.X + shadowOffset, bounds.Y + shadowOffset, bounds.Width, bounds.Height),
-			Color32(0, 0, 0, 60));
+			Color(0, 0, 0, 60));
 
 		// Window frame
 		if (mFrameImage.HasValue && mFrameImage.Value.IsValid)
@@ -155,10 +155,10 @@ public class DockableWindow : Control
 		else
 		{
 			// Window background
-			ctx.FillRect(bounds, Color32(45, 45, 45, 255));
+			ctx.FillRect(bounds, Color(45, 45, 45, 255));
 
 			// Window border
-			ctx.DrawRect(bounds, Color32(80, 80, 80, 255), 1);
+			ctx.DrawRect(bounds, Color(80, 80, 80, 255), 1);
 		}
 
 		// Render panel content
@@ -171,7 +171,7 @@ public class DockableWindow : Control
 		if (mIsResizing || IsMouseOverResizeEdge(mLastMousePos))
 		{
 			let handleSize = 8.0f;
-			let handleColor = Color32(100, 150, 200, 150);
+			let handleColor = Color(100, 150, 200, 150);
 
 			// Bottom-right corner handle
 			ctx.FillRect(.(bounds.Right - handleSize, bounds.Bottom - handleSize, handleSize, handleSize), handleColor);

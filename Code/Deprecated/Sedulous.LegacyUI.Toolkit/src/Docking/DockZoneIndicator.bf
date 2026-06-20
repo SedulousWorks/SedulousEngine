@@ -68,7 +68,7 @@ public class DockZoneIndicator : View
 	{
 		let zoneColor = ctx.Theme?.GetColor("DockZone.Indicator", .(80, 150, 240, 80)) ?? .(80, 150, 240, 80);
 		let zoneBorder = ctx.Theme?.GetColor("DockZone.Border", .(80, 150, 240, 200)) ?? .(80, 150, 240, 200);
-		let hoverColor = Color32(zoneColor.R, zoneColor.G, zoneColor.B, (uint8)Math.Min(255, zoneColor.A + 60));
+		let hoverColor = Color(zoneColor.R, zoneColor.G, zoneColor.B, (uint8)Math.Min(255, zoneColor.A + 60));
 
 		for (int i = 0; i < mTargets.Count; i++)
 		{
@@ -82,7 +82,7 @@ public class DockZoneIndicator : View
 			// Draw directional arrow.
 			let cx = target.Rect.X + target.Rect.Width * 0.5f;
 			let cy = target.Rect.Y + target.Rect.Height * 0.5f;
-			let arrowColor = Color32(255, 255, 255, isHovered ? 220 : 150);
+			let arrowColor = Color(255, 255, 255, isHovered ? 220 : 150);
 			let sz = 6.0f;
 
 			ctx.VG.BeginPath();

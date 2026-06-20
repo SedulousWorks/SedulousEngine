@@ -19,9 +19,9 @@ public class Slider : Control
 	private Orientation mOrientation = .Horizontal;
 	private float mTrackThickness = 4;
 	private float mThumbSize = 16;
-	private Color32? mTrackColor;
-	private Color32? mThumbColor;
-	private Color32? mFillColor;
+	private Color? mTrackColor;
+	private Color? mThumbColor;
+	private Color? mFillColor;
 	private ImageBrush? mTrackImage;
 	private ImageBrush? mThumbImage;
 
@@ -166,7 +166,7 @@ public class Slider : Control
 	}
 
 	/// The track color.
-	public Color32 TrackColor
+	public Color TrackColor
 	{
 		get
 		{
@@ -176,33 +176,33 @@ public class Slider : Control
 			if (style.Background.A > 0)
 				return style.Background;
 			let palette = Context?.Theme?.Palette ?? Palette();
-			return palette.Surface.A > 0 ? palette.Surface : Color32(60, 60, 60, 255);
+			return palette.Surface.A > 0 ? palette.Surface : Color(60, 60, 60, 255);
 		}
 		set => mTrackColor = value;
 	}
 
 	/// The thumb color.
-	public Color32 ThumbColor
+	public Color ThumbColor
 	{
 		get
 		{
 			if (mThumbColor.HasValue)
 				return mThumbColor.Value;
 			let palette = Context?.Theme?.Palette ?? Palette();
-			return palette.Accent.A > 0 ? palette.Accent : Color32(0, 120, 215, 255);
+			return palette.Accent.A > 0 ? palette.Accent : Color(0, 120, 215, 255);
 		}
 		set => mThumbColor = value;
 	}
 
 	/// The fill color (track portion before thumb).
-	public Color32 FillColor
+	public Color FillColor
 	{
 		get
 		{
 			if (mFillColor.HasValue)
 				return mFillColor.Value;
 			// Default: same as thumb but slightly dimmer
-			return ThumbColor.Interpolate(Color32.Black, 0.2f);
+			return Color.Lerp(ThumbColor, Color.Black, 0.2f);
 		}
 		set => mFillColor = value;
 	}
@@ -394,9 +394,9 @@ public class Slider : Control
 
 			// Adjust color based on state
 			if (mIsDragging)
-				thumbColor = thumbColor.Interpolate(Color32.Black, 0.2f);
+				thumbColor = Color.Lerp(thumbColor, Color.Black, 0.2f);
 			else if (IsHovered)
-				thumbColor = thumbColor.Interpolate(Color32.White, 0.1f);
+				thumbColor = Color.Lerp(thumbColor, Color.White, 0.1f);
 
 			ctx.FillRoundedRect(thumbRect, mThumbSize / 2, thumbColor);
 		}
@@ -408,7 +408,7 @@ public class Slider : Control
 		if (range <= 0 || mTickFrequency <= 0)
 			return;
 
-		let tickColor = TrackColor.Interpolate(Color32.White, 0.3f);
+		let tickColor = Color.Lerp(TrackColor, Color.White, 0.3f);
 		let thumbRadius = mThumbSize / 2;
 
 		for (float v = mMinimum; v <= mMaximum; v += mTickFrequency)

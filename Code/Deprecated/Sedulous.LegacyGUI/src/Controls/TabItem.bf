@@ -136,13 +136,13 @@ public class TabItem : ContentControl, ISelectable
 	}
 
 	/// Gets the selection background color from theme.
-	protected Color32 SelectionBackground
+	protected Color SelectionBackground
 	{
 		get
 		{
 			if (Context?.Theme != null)
 				return Context.Theme.SelectionColor;
-			return Color32(51, 153, 255, 255);
+			return Color(51, 153, 255, 255);
 		}
 	}
 
@@ -233,8 +233,8 @@ public class TabItem : ContentControl, ISelectable
 	{
 		// Get theme colors for fallbacks
 		let palette = Context?.Theme?.Palette ?? Palette();
-		let surfaceColor = palette.Surface.A > 0 ? palette.Surface : Color32(45, 45, 45, 255);
-		let textColor = palette.Text.A > 0 ? palette.Text : Color32(200, 200, 200, 255);
+		let surfaceColor = palette.Surface.A > 0 ? palette.Surface : Color(45, 45, 45, 255);
+		let textColor = palette.Text.A > 0 ? palette.Text : Color(200, 200, 200, 255);
 
 		// Try image-based tab header first
 		ImageBrush? tabImage = mIsSelected ? mActiveTabImage : mInactiveTabImage;
@@ -248,7 +248,7 @@ public class TabItem : ContentControl, ISelectable
 		else
 		{
 			// Draw background based on state
-			Color32 bgColor;
+			Color bgColor;
 			if (mIsSelected)
 			{
 				bgColor = SelectionBackground;

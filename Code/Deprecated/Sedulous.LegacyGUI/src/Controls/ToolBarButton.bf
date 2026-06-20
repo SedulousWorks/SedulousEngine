@@ -110,9 +110,9 @@ public class ToolBarButton : Button
 		{
 			// Get theme colors
 			let palette = Context?.Theme?.Palette ?? Palette();
-			let surfaceColor = palette.Surface.A > 0 ? palette.Surface : Color32(45, 45, 45, 255);
-			let accentColor = palette.Accent.A > 0 ? palette.Accent : Color32(60, 120, 200, 255);
-			let borderColor = palette.Border.A > 0 ? palette.Border : Color32(100, 100, 100, 255);
+			let surfaceColor = palette.Surface.A > 0 ? palette.Surface : Color(45, 45, 45, 255);
+			let accentColor = palette.Accent.A > 0 ? palette.Accent : Color(60, 120, 200, 255);
+			let borderColor = palette.Border.A > 0 ? palette.Border : Color(100, 100, 100, 255);
 
 			// Only show background on hover/pressed
 			if (IsHovered || IsPressed)

@@ -11,7 +11,7 @@ public class ToolBarSeparator : Control
 	private Orientation mOrientation = .Vertical;
 	private float mThickness = 1;
 	private float mMargin = 4;
-	private Color32 mLineColor = Color32(80, 80, 80, 255);
+	private Color mLineColor = Color(80, 80, 80, 255);
 	private ImageBrush? mDividerImage;
 
 	/// Creates a new ToolBarSeparator.
@@ -33,7 +33,7 @@ public class ToolBarSeparator : Control
 		let theme = Context?.Theme;
 		let palette = theme?.Palette ?? Palette();
 		mThickness = theme?.SeparatorThickness ?? 1;
-		mLineColor = palette.Border.A > 0 ? palette.Border : Color32(80, 80, 80, 255);
+		mLineColor = palette.Border.A > 0 ? palette.Border : Color(80, 80, 80, 255);
 	}
 
 	/// The control type name for theming.
@@ -83,7 +83,7 @@ public class ToolBarSeparator : Control
 	}
 
 	/// The color of the separator line.
-	public Color32 LineColor
+	public Color LineColor
 	{
 		get => mLineColor;
 		set => mLineColor = value;

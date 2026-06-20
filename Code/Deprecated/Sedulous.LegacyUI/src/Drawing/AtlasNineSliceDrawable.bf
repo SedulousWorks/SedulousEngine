@@ -12,10 +12,10 @@ public class AtlasNineSliceDrawable : Drawable
 	public RectangleF SourceRect; // pixel-space region in atlas
 	public NineSlice Slices;
 	public Thickness Expand;
-	public Color32 Tint = .White;
+	public Color Tint = .White;
 
 	public this(IImageData atlas, RectangleF sourceRect, NineSlice slices,
-		Color32 tint = .White, Thickness expand = .())
+		Color tint = .White, Thickness expand = .())
 	{
 		AtlasImage = atlas;
 		SourceRect = sourceRect;

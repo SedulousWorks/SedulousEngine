@@ -239,7 +239,7 @@ class WidgetsPage : DemoPage
 		}
 	}
 
-	private void AddButton(LinearLayout row, StringView text, Color32 bgColor, StringView tooltip, TooltipPlacement placement)
+	private void AddButton(LinearLayout row, StringView text, Color bgColor, StringView tooltip, TooltipPlacement placement)
 	{
 		let btn = new Button();
 		btn.SetText(text);
@@ -267,7 +267,7 @@ class WidgetsPage : DemoPage
 		row.AddView(btn, new LinearLayout.LayoutParams() { Height = Sedulous.LegacyUI.LayoutParams.MatchParent });
 	}
 
-	private static Color32 HSLToColor(float h, float s, float l)
+	private static Color HSLToColor(float h, float s, float l)
 	{
 		float c = (1 - Math.Abs(2 * l - 1)) * s;
 		float x = c * (1 - Math.Abs((h * 6) % 2 - 1));

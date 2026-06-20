@@ -28,7 +28,7 @@ public class Flyout : ContentControl, IPopupOwner
 	private FlyoutPlacement mPlacement = .Bottom;
 
 	// Appearance
-	private Color32 mFlyoutBorderColor = Color32(80, 80, 80, 255);
+	private Color mFlyoutBorderColor = Color(80, 80, 80, 255);
 	private float mFlyoutBorderThickness = 1;
 
 	// State
@@ -42,8 +42,8 @@ public class Flyout : ContentControl, IPopupOwner
 	{
 		IsFocusable = true;
 		IsTabStop = false;
-		Background = Color32(50, 50, 50, 255);
-		Foreground = Color32(220, 220, 220, 255);
+		Background = Color(50, 50, 50, 255);
+		Foreground = Color(220, 220, 220, 255);
 		Padding = .(12, 8, 12, 8);
 		CornerRadius = 4;  // Use inherited property with flyout-specific default
 		// Don't stretch to fill container - size to content
@@ -71,7 +71,7 @@ public class Flyout : ContentControl, IPopupOwner
 			Foreground = palette.Text;
 
 		// Border from theme
-		mFlyoutBorderColor = palette.Border.A > 0 ? palette.Border : Color32(80, 80, 80, 255);
+		mFlyoutBorderColor = palette.Border.A > 0 ? palette.Border : Color(80, 80, 80, 255);
 		mFlyoutBorderThickness = style.BorderThickness > 0 ? style.BorderThickness : 1;
 
 		// Corner radius from theme

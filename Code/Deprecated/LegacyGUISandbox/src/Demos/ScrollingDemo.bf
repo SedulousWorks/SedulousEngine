@@ -164,7 +164,7 @@ class ScrollingDemo
 		let content = new Canvas();
 		content.Width = 800;
 		content.Height = 400;
-		content.Background = Color32(25, 25, 25, 255);
+		content.Background = Color(25, 25, 25, 255);
 
 		// Add some colored boxes at various positions
 		for (int row = 0; row < 4; row++)
@@ -174,7 +174,7 @@ class ScrollingDemo
 				let colorBox = new Panel();
 				colorBox.Width = 80;
 				colorBox.Height = 80;
-				colorBox.Background = Color32(
+				colorBox.Background = Color(
 					(uint8)(50 + col * 25),
 					(uint8)(50 + row * 50),
 					(uint8)(150 - col * 10),
@@ -233,7 +233,7 @@ class ScrollingDemo
 
 		// Left panel
 		mLeftPanel = new Panel();
-		mLeftPanel.Background = Color32(60, 80, 100, 255);
+		mLeftPanel.Background = Color(60, 80, 100, 255);
 		mLeftPanel.ClipToBounds = true;
 		let leftLabel = new TextBlock("Left Panel");
 		leftLabel.Margin = .(10, 10, 10, 10);
@@ -252,7 +252,7 @@ class ScrollingDemo
 
 		// Right panel
 		mRightPanel = new Panel();
-		mRightPanel.Background = Color32(100, 60, 80, 255);
+		mRightPanel.Background = Color(100, 60, 80, 255);
 		mRightPanel.ClipToBounds = true;
 		let rightLabel = new TextBlock("Right Panel");
 		rightLabel.Margin = .(10, 10, 10, 10);

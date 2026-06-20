@@ -20,8 +20,8 @@ public class ScrollBar : Control
 	// Appearance
 	private Orientation mOrientation = .Vertical;
 	private float mThickness = 16;
-	private Color32? mTrackColor;
-	private Color32? mThumbColor;
+	private Color? mTrackColor;
+	private Color? mThumbColor;
 	private ImageBrush? mTrackImage;
 	private ImageBrush? mThumbImage;
 
@@ -166,7 +166,7 @@ public class ScrollBar : Control
 	}
 
 	/// The track color.
-	public Color32 TrackColor
+	public Color TrackColor
 	{
 		get
 		{
@@ -176,13 +176,13 @@ public class ScrollBar : Control
 			if (style.Background.A > 0)
 				return style.Background;
 			let palette = Context?.Theme?.Palette ?? Palette();
-			return palette.Background.A > 0 ? palette.Background : Color32(40, 40, 40, 255);
+			return palette.Background.A > 0 ? palette.Background : Color(40, 40, 40, 255);
 		}
 		set => mTrackColor = value;
 	}
 
 	/// The thumb color.
-	public Color32 ThumbColor
+	public Color ThumbColor
 	{
 		get
 		{
@@ -192,7 +192,7 @@ public class ScrollBar : Control
 			if (style.Foreground.A > 0)
 				return style.Foreground;
 			let palette = Context?.Theme?.Palette ?? Palette();
-			return palette.Surface.A > 0 ? palette.Surface : Color32(100, 100, 100, 255);
+			return palette.Surface.A > 0 ? palette.Surface : Color(100, 100, 100, 255);
 		}
 		set => mThumbColor = value;
 	}
@@ -273,9 +273,9 @@ public class ScrollBar : Control
 
 				// Adjust color based on state
 				if (mIsDragging)
-					thumbColor = thumbColor.Interpolate(Color32.White, 0.2f);
+					thumbColor = Color.Lerp(thumbColor, Color.White, 0.2f);
 				else if (IsHovered && IsMouseOverThumb(thumbRect))
-					thumbColor = thumbColor.Interpolate(Color32.White, 0.1f);
+					thumbColor = Color.Lerp(thumbColor, Color.White, 0.1f);
 
 				let cornerRadius = Math.Min(thumbRect.Width, thumbRect.Height) / 2;
 				ctx.FillRoundedRect(thumbRect, cornerRadius, thumbColor);

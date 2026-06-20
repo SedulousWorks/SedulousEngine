@@ -107,7 +107,7 @@ public class UIDrawContext
 	/// "{prefix}.Background", "{prefix}.Border", "{prefix}.CornerRadius", "{prefix}.BorderWidth".
 	/// Reduces boilerplate in Panel, Button, Dialog, etc.
 	public void FillThemedBox(RectangleF bounds, StringView prefix,
-		Color32 defaultBg = .Transparent, Color32 defaultBorder = .Transparent,
+		Color defaultBg = .Transparent, Color defaultBorder = .Transparent,
 		float defaultRadius = 0, float defaultBorderWidth = 0)
 	{
 		if (mTheme == null) return;

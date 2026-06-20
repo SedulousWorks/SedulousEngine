@@ -282,7 +282,7 @@ class MenuToolbarDemo
 
 		let featuresTitle = new TextBlock("Controls demonstrated:");
 		featuresTitle.FontSize = 14;
-		featuresTitle.Foreground = Color32(100, 160, 220, 255);  // Keep accent color for title
+		featuresTitle.Foreground = Color(100, 160, 220, 255);  // Keep accent color for title
 		features.AddChild(featuresTitle);
 
 		AddFeature(features, "Menu - Horizontal menu bar with Alt-key accelerators");

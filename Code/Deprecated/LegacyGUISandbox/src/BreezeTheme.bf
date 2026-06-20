@@ -48,19 +48,19 @@ class BreezeTheme : ITheme
 		// Initialize Breeze dark palette (from breeze.css)
 		mPalette = .()
 		{
-			Primary = Color32(61, 174, 233),       // #3daee9
-			Secondary = Color32(39, 174, 96),      // #27ae60
-			Accent = Color32(61, 174, 233),        // #3daee9
-			Background = Color32(49, 54, 59),      // #31363b
-			Surface = Color32(35, 38, 41),         // #232629
-			Error = Color32(218, 68, 83),          // #da4453
-			Warning = Color32(246, 116, 0),        // #f67400
-			Success = Color32(39, 174, 96),        // #27ae60
-			Text = Color32(239, 240, 241),         // #eff0f1
-			TextSecondary = Color32(189, 195, 199),// #bdc3c7
-			Border = Color32(118, 121, 124),       // #76797c
-			Link = Color32(61, 174, 233),          // #3daee9
-			LinkVisited = Color32(149, 117, 205)   // #9575cd
+			Primary = Color(61, 174, 233),       // #3daee9
+			Secondary = Color(39, 174, 96),      // #27ae60
+			Accent = Color(61, 174, 233),        // #3daee9
+			Background = Color(49, 54, 59),      // #31363b
+			Surface = Color(35, 38, 41),         // #232629
+			Error = Color(218, 68, 83),          // #da4453
+			Warning = Color(246, 116, 0),        // #f67400
+			Success = Color(39, 174, 96),        // #27ae60
+			Text = Color(239, 240, 241),         // #eff0f1
+			TextSecondary = Color(189, 195, 199),// #bdc3c7
+			Border = Color(118, 121, 124),       // #76797c
+			Link = Color(61, 174, 233),          // #3daee9
+			LinkVisited = Color(149, 117, 205)   // #9575cd
 		};
 
 		// Load images and build styles
@@ -87,7 +87,7 @@ class BreezeTheme : ITheme
 		mImages.Add(imageData);
 
 		let slices = ParseNineSlice(filename);
-		return ImageBrush(imageData, slices, Color32.White);
+		return ImageBrush(imageData, slices, Color.White);
 	}
 
 	/// Parse 9-slice values from eepp filename: "name.L_T_R_B.9.png"
@@ -230,7 +230,7 @@ class BreezeTheme : ITheme
 		// Button
 		mStyles[new String("Button")] = .()
 		{
-			Background = Color32(49, 54, 59),
+			Background = Color(49, 54, 59),
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 0,
@@ -245,7 +245,7 @@ class BreezeTheme : ITheme
 		// RepeatButton (same as Button)
 		mStyles[new String("RepeatButton")] = .()
 		{
-			Background = Color32(49, 54, 59),
+			Background = Color(49, 54, 59),
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 0,
@@ -259,7 +259,7 @@ class BreezeTheme : ITheme
 		// ToggleButton
 		mStyles[new String("ToggleButton")] = .()
 		{
-			Background = Color32(49, 54, 59),
+			Background = Color(49, 54, 59),
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 0,
@@ -275,9 +275,9 @@ class BreezeTheme : ITheme
 		{
 			mStyles[new String(name)] = .()
 			{
-				Background = Color32.Transparent,
+				Background = Color.Transparent,
 				Foreground = mPalette.Text,
-				BorderColor = Color32.Transparent,
+				BorderColor = Color.Transparent,
 				BorderThickness = 0,
 				CornerRadius = 0
 			};
@@ -325,9 +325,9 @@ class BreezeTheme : ITheme
 		// Label
 		mStyles[new String("Label")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0
 		};
@@ -335,9 +335,9 @@ class BreezeTheme : ITheme
 		// TextBlock
 		mStyles[new String("TextBlock")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0
 		};
@@ -345,7 +345,7 @@ class BreezeTheme : ITheme
 		// Border
 		mStyles[new String("Border")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 1,
@@ -355,7 +355,7 @@ class BreezeTheme : ITheme
 		// Separator
 		mStyles[new String("Separator")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 1,
@@ -368,7 +368,7 @@ class BreezeTheme : ITheme
 		{
 			Background = mPalette.Surface,
 			Foreground = mPalette.Accent,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
 			BackgroundImage = progressNormal
@@ -401,7 +401,7 @@ class BreezeTheme : ITheme
 		// ToggleSwitch
 		mStyles[new String("ToggleSwitch")] = .()
 		{
-			Background = Color32(60, 60, 60),
+			Background = Color(60, 60, 60),
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 1,
@@ -413,9 +413,9 @@ class BreezeTheme : ITheme
 		// Hyperlink
 		mStyles[new String("Hyperlink")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Accent,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
 			Padding = .(2, 2, 2, 2),
@@ -427,7 +427,7 @@ class BreezeTheme : ITheme
 		{
 			Background = mPalette.Surface,
 			Foreground = mPalette.Accent,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
 			BackgroundImage = hSliderBg
@@ -437,8 +437,8 @@ class BreezeTheme : ITheme
 		mStyles[new String("ScrollBar")] = .()
 		{
 			Background = mPalette.Surface,
-			Foreground = Color32(80, 80, 80),
-			BorderColor = Color32.Transparent,
+			Foreground = Color(80, 80, 80),
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
 			BackgroundImage = vScrollBg
@@ -457,12 +457,12 @@ class BreezeTheme : ITheme
 		// Splitter
 		mStyles[new String("Splitter")] = .()
 		{
-			Background = Color32(45, 50, 55),
+			Background = Color(45, 50, 55),
 			Foreground = mPalette.Border,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
-			Hover = .() { Background = Sedulous.LegacyGUI.Palette.ComputeHover(Color32(45, 50, 55)) }
+			Hover = .() { Background = Sedulous.LegacyGUI.Palette.ComputeHover(Color(45, 50, 55)) }
 		};
 
 		// ItemsControl
@@ -491,13 +491,13 @@ class BreezeTheme : ITheme
 		// ListBoxItem
 		mStyles[new String("ListBoxItem")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
 			Padding = .(8, 4, 8, 4),
-			Hover = .() { Background = Color32(61, 174, 233, 40) }
+			Hover = .() { Background = Color(61, 174, 233, 40) }
 		};
 
 		// ComboBox
@@ -517,7 +517,7 @@ class BreezeTheme : ITheme
 		// TabControl
 		mStyles[new String("TabControl")] = .()
 		{
-			Background = Color32(45, 50, 55),
+			Background = Color(45, 50, 55),
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 0,
@@ -529,9 +529,9 @@ class BreezeTheme : ITheme
 		// TabItem
 		mStyles[new String("TabItem")] = .()
 		{
-			Background = Color32(60, 65, 70),
+			Background = Color(60, 65, 70),
 			Foreground = mPalette.Text,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
 			Padding = .(12, 6, 12, 6),
@@ -543,19 +543,19 @@ class BreezeTheme : ITheme
 		// Expander
 		mStyles[new String("Expander")] = .()
 		{
-			Background = Color32(40, 44, 48),
+			Background = Color(40, 44, 48),
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 1,
 			CornerRadius = 0,
-			Hover = .() { Background = Sedulous.LegacyGUI.Palette.ComputeHover(Color32(40, 44, 48)) },
+			Hover = .() { Background = Sedulous.LegacyGUI.Palette.ComputeHover(Color(40, 44, 48)) },
 			Focused = .() { BorderColor = mPalette.Accent }
 		};
 
 		// GroupBox
 		mStyles[new String("GroupBox")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 1,
@@ -566,21 +566,21 @@ class BreezeTheme : ITheme
 		// Breadcrumb
 		mStyles[new String("Breadcrumb")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.TextSecondary,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0
 		};
 
 		mStyles[new String("BreadcrumbItem")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Accent,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 2,
 			Padding = .(4, 2, 4, 2),
-			Hover = .() { Background = Color32(61, 174, 233, 40) }
+			Hover = .() { Background = Color(61, 174, 233, 40) }
 		};
 
 		// TreeView
@@ -598,13 +598,13 @@ class BreezeTheme : ITheme
 		// TreeViewItem
 		mStyles[new String("TreeViewItem")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
 			Padding = .(4, 2, 4, 2),
-			Hover = .() { Background = Color32(61, 174, 233, 40) }
+			Hover = .() { Background = Color(61, 174, 233, 40) }
 		};
 
 		// TileView
@@ -621,13 +621,13 @@ class BreezeTheme : ITheme
 
 		mStyles[new String("TileViewItem")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
 			Padding = .(4, 4, 4, 4),
-			Hover = .() { Background = Color32(61, 174, 233, 40) }
+			Hover = .() { Background = Color(61, 174, 233, 40) }
 		};
 
 		// Menu
@@ -635,7 +635,7 @@ class BreezeTheme : ITheme
 		{
 			Background = mPalette.Surface,
 			Foreground = mPalette.Text,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
 			BackgroundImage = menuBarNormal
@@ -643,9 +643,9 @@ class BreezeTheme : ITheme
 
 		mStyles[new String("MenuItem")] = .()
 		{
-			Background = Color32.Transparent,
+			Background = Color.Transparent,
 			Foreground = mPalette.Text,
-			BorderColor = Color32.Transparent,
+			BorderColor = Color.Transparent,
 			BorderThickness = 0,
 			CornerRadius = 0,
 			BackgroundImage = menuItemNormal,
@@ -655,7 +655,7 @@ class BreezeTheme : ITheme
 		// Tooltip
 		mStyles[new String("Tooltip")] = .()
 		{
-			Background = Color32(49, 54, 59),
+			Background = Color(49, 54, 59),
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 0,
@@ -666,7 +666,7 @@ class BreezeTheme : ITheme
 		// Docking system
 		mStyles[new String("DockablePanel")] = .()
 		{
-			Background = Color32(40, 44, 48),
+			Background = Color(40, 44, 48),
 			Foreground = mPalette.Text,
 			BorderColor = mPalette.Border,
 			BorderThickness = 0,
@@ -676,9 +676,9 @@ class BreezeTheme : ITheme
 
 		mStyles[new String("DockablePanelHeader")] = .()
 		{
-			Background = Color32(50, 55, 60),
-			Foreground = Color32(220, 220, 220),
-			BorderColor = Color32(80, 85, 90),
+			Background = Color(50, 55, 60),
+			Foreground = Color(220, 220, 220),
+			BorderColor = Color(80, 85, 90),
 			BorderThickness = 1,
 			CornerRadius = 0,
 			BackgroundImage = winDeco
@@ -686,22 +686,22 @@ class BreezeTheme : ITheme
 
 		mStyles[new String("DockTabGroup")] = .()
 		{
-			Background = Color32(35, 38, 41),
+			Background = Color(35, 38, 41),
 			Foreground = mPalette.TextSecondary,
-			BorderColor = Color32(80, 85, 90),
+			BorderColor = Color(80, 85, 90),
 			BorderThickness = 1,
 			CornerRadius = 0
 		};
 
 		mStyles[new String("DockTab")] = .()
 		{
-			Background = Color32(38, 42, 46),
-			Foreground = Color32(180, 180, 180),
+			Background = Color(38, 42, 46),
+			Foreground = Color(180, 180, 180),
 			BorderColor = mPalette.Accent,
 			BorderThickness = 2,
 			CornerRadius = 0,
-			Hover = .() { Background = Color32(45, 50, 55) },
-			Pressed = .() { Background = Color32(50, 55, 60), Foreground = Color32(255, 255, 255) }
+			Hover = .() { Background = Color(45, 50, 55) },
+			Pressed = .() { Background = Color(50, 55, 60), Foreground = Color(255, 255, 255) }
 		};
 
 		// DataGrid
@@ -717,23 +717,23 @@ class BreezeTheme : ITheme
 
 		mStyles[new String("DataGridHeader")] = .()
 		{
-			Background = Color32(35, 38, 41),
+			Background = Color(35, 38, 41),
 			Foreground = mPalette.Text,
-			BorderColor = Color32(50, 55, 60),
+			BorderColor = Color(50, 55, 60),
 			BorderThickness = 1,
 			CornerRadius = 0,
-			Hover = .() { Background = Color32(45, 50, 55) }
+			Hover = .() { Background = Color(45, 50, 55) }
 		};
 
 		mStyles[new String("DataGridCell")] = .()
 		{
 			Background = mPalette.Surface,
 			Foreground = mPalette.Text,
-			BorderColor = Color32(35, 38, 41),
+			BorderColor = Color(35, 38, 41),
 			BorderThickness = 1,
 			CornerRadius = 0,
-			Hover = .() { Background = Color32(35, 40, 45) },
-			Pressed = .() { Background = Color32(50, 80, 120) }
+			Hover = .() { Background = Color(35, 40, 45) },
+			Pressed = .() { Background = Color(50, 80, 120) }
 		};
 
 		// PropertyGrid
@@ -748,22 +748,22 @@ class BreezeTheme : ITheme
 
 		mStyles[new String("PropertyGridCategory")] = .()
 		{
-			Background = Color32(35, 38, 41),
+			Background = Color(35, 38, 41),
 			Foreground = mPalette.Text,
-			BorderColor = Color32(45, 50, 55),
+			BorderColor = Color(45, 50, 55),
 			BorderThickness = 1,
 			CornerRadius = 0,
-			Hover = .() { Background = Color32(45, 50, 55) }
+			Hover = .() { Background = Color(45, 50, 55) }
 		};
 
 		mStyles[new String("PropertyGridProperty")] = .()
 		{
-			Background = Color32(25, 28, 31),
+			Background = Color(25, 28, 31),
 			Foreground = mPalette.Text,
-			BorderColor = Color32(32, 35, 38),
+			BorderColor = Color(32, 35, 38),
 			BorderThickness = 1,
 			CornerRadius = 0,
-			Hover = .() { Background = Color32(35, 40, 45) }
+			Hover = .() { Background = Color(35, 40, 45) }
 		};
 	}
 
@@ -859,9 +859,9 @@ class BreezeTheme : ITheme
 		};
 	}
 
-	public Color32 FocusIndicatorColor => mPalette.Accent;
+	public Color FocusIndicatorColor => mPalette.Accent;
 	public float FocusIndicatorThickness => 2;
-	public Color32 SelectionColor => Color32(61, 174, 233, 100);
+	public Color SelectionColor => Color(61, 174, 233, 100);
 	public float DefaultFontSize => 14;
 
 	// Control dimensions

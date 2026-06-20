@@ -36,21 +36,21 @@ static class DisplayControlsDemo
 		let textCenter = new TextBlock("Center-aligned text");
 		textCenter.TextAlignment = .Center;
 		textCenter.Width = 300;
-		textCenter.Background = Color32(40, 40, 50, 128);
+		textCenter.Background = Color(40, 40, 50, 128);
 		textSection.AddChild(textCenter);
 
 		// Right-aligned text
 		let textRight = new TextBlock("Right-aligned text");
 		textRight.TextAlignment = .Right;
 		textRight.Width = 300;
-		textRight.Background = Color32(40, 40, 50, 128);
+		textRight.Background = Color(40, 40, 50, 128);
 		textSection.AddChild(textRight);
 
 		// Wrapped text - uses ShapeTextWrapped for proper word-aware wrapping
 		let textWrapped = new TextBlock("This is a longer text that wraps at word boundaries. The TextWrapping property enables word-aware line breaking using the text shaper.");
 		textWrapped.TextWrapping = .Wrap;
 		textWrapped.Width = 280;
-		textWrapped.Background = Color32(50, 40, 40, 128);
+		textWrapped.Background = Color(50, 40, 40, 128);
 		textSection.AddChild(textWrapped);
 
 		container.AddChild(textSection);
@@ -69,7 +69,7 @@ static class DisplayControlsDemo
 		let targetControl = new FocusableRect();
 		targetControl.Width = 100;
 		targetControl.Height = 60;
-		targetControl.RectColor = Color32(80, 120, 180, 255);
+		targetControl.RectColor = Color(80, 120, 180, 255);
 
 		let label = new Label("Click me to focus target:");
 		label.Target = targetControl;
@@ -91,7 +91,7 @@ static class DisplayControlsDemo
 		// Simple border
 		let border1 = new Border();
 		border1.BorderThickness = .(2);
-		border1.BorderBrush = Color32(100, 150, 200, 255);
+		border1.BorderBrush = Color(100, 150, 200, 255);
 		border1.CornerRadius = 0;
 		let borderContent1 = new TextBlock("Simple Border");
 		border1.Child = borderContent1;
@@ -100,8 +100,8 @@ static class DisplayControlsDemo
 		// Rounded border with background (both background and stroke are rounded)
 		let border2 = new Border();
 		border2.BorderThickness = .(3);
-		border2.BorderBrush = Color32(200, 100, 100, 255);
-		border2.Background = Color32(60, 40, 40, 255);
+		border2.BorderBrush = Color(200, 100, 100, 255);
+		border2.Background = Color(60, 40, 40, 255);
 		border2.CornerRadius = 10;
 		border2.Padding = .(10);
 		let borderContent2 = new TextBlock("Rounded Border");
@@ -111,7 +111,7 @@ static class DisplayControlsDemo
 		// Non-uniform border (thick top/bottom, thin left/right)
 		let border3 = new Border();
 		border3.BorderThickness = .(2, 10, 2, 10); // Left, Top, Right, Bottom
-		border3.BorderBrush = Color32(100, 200, 100, 255);
+		border3.BorderBrush = Color(100, 200, 100, 255);
 		border3.Padding = .(8);
 		let borderContent3 = new TextBlock("Thick T/B");
 		border3.Child = borderContent3;
@@ -146,7 +146,7 @@ static class DisplayControlsDemo
 		progress2.Width = 300;
 		progress2.Height = 16;
 		progress2.Value = 75;
-		progress2.FillColor = Color32(100, 200, 100, 255);
+		progress2.FillColor = Color(100, 200, 100, 255);
 		progress2.CornerRadius = 4;
 		progressSection.AddChild(progress2);
 
@@ -155,7 +155,7 @@ static class DisplayControlsDemo
 		progressIndeterminate.Width = 300;
 		progressIndeterminate.Height = 16;
 		progressIndeterminate.IsIndeterminate = true;
-		progressIndeterminate.FillColor = Color32(200, 150, 50, 255);
+		progressIndeterminate.FillColor = Color(200, 150, 50, 255);
 		progressIndeterminate.CornerRadius = 4;
 		progressSection.AddChild(progressIndeterminate);
 
@@ -200,7 +200,7 @@ static class DisplayControlsDemo
 		// Image with Uniform stretch (default) - shown in 100x100 box
 		let imageBorder1 = new Border();
 		imageBorder1.BorderThickness = .(1);
-		imageBorder1.BorderBrush = Color32(100, 100, 100, 255);
+		imageBorder1.BorderBrush = Color(100, 100, 100, 255);
 		imageBorder1.Width = 100;
 		imageBorder1.Height = 100;
 		let image1 = new Sedulous.LegacyGUI.Image(checkerboard);
@@ -211,7 +211,7 @@ static class DisplayControlsDemo
 		// Image with Fill stretch - stretches to fill
 		let imageBorder2 = new Border();
 		imageBorder2.BorderThickness = .(1);
-		imageBorder2.BorderBrush = Color32(100, 100, 100, 255);
+		imageBorder2.BorderBrush = Color(100, 100, 100, 255);
 		imageBorder2.Width = 100;
 		imageBorder2.Height = 100;
 		let image2 = new Sedulous.LegacyGUI.Image(gradient);
@@ -222,7 +222,7 @@ static class DisplayControlsDemo
 		// Image with None stretch - original size, centered
 		let imageBorder3 = new Border();
 		imageBorder3.BorderThickness = .(1);
-		imageBorder3.BorderBrush = Color32(100, 100, 100, 255);
+		imageBorder3.BorderBrush = Color(100, 100, 100, 255);
 		imageBorder3.Width = 100;
 		imageBorder3.Height = 100;
 		let image3 = new Sedulous.LegacyGUI.Image(checkerboard);
@@ -233,7 +233,7 @@ static class DisplayControlsDemo
 		// Image with UniformToFill stretch - fills while preserving aspect
 		let imageBorder4 = new Border();
 		imageBorder4.BorderThickness = .(1);
-		imageBorder4.BorderBrush = Color32(100, 100, 100, 255);
+		imageBorder4.BorderBrush = Color(100, 100, 100, 255);
 		imageBorder4.Width = 100;
 		imageBorder4.Height = 100;
 		let image4 = new Sedulous.LegacyGUI.Image(gradient);

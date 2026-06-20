@@ -9,7 +9,7 @@ class ThemeTests
 	[Test]
 	public static void Palette_ComputeHover_Lightens()
 	{
-		let baseColor = Color32(100, 100, 100, 255);
+		let baseColor = Color(100, 100, 100, 255);
 		let hover = Palette.ComputeHover(baseColor);
 		// Should be lighter.
 		Test.Assert(hover.R > baseColor.R);
@@ -20,7 +20,7 @@ class ThemeTests
 	[Test]
 	public static void Palette_ComputePressed_Darkens()
 	{
-		let baseColor = Color32(100, 100, 100, 255);
+		let baseColor = Color(100, 100, 100, 255);
 		let pressed = Palette.ComputePressed(baseColor);
 		Test.Assert(pressed.R < baseColor.R);
 		Test.Assert(pressed.G < baseColor.G);
@@ -30,7 +30,7 @@ class ThemeTests
 	[Test]
 	public static void Palette_ComputeDisabled_Desaturates()
 	{
-		let baseColor = Color32(200, 50, 50, 255);
+		let baseColor = Color(200, 50, 50, 255);
 		let disabled = Palette.ComputeDisabled(baseColor);
 		// Should be closer to gray (R, G, B more similar).
 		let rangeOrig = (int)baseColor.R - (int)baseColor.G;

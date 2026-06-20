@@ -87,7 +87,7 @@ public class BreadcrumbItem : ContentControl
 			}
 			else
 			{
-				let hoverBg = Palette.ComputeHover(Background.A > 0 ? Background : Color32(45, 45, 45, 255));
+				let hoverBg = Palette.ComputeHover(Background.A > 0 ? Background : Color(45, 45, 45, 255));
 				ctx.FillRect(bounds, hoverBg);
 			}
 		}

@@ -223,7 +223,7 @@ public class PasswordBox : Control
 		// Draw selection highlight
 		if (mEditor.HasSelection)
 		{
-			let selectionColor = Context?.Theme?.SelectionColor ?? Color32(100, 149, 237, 100);
+			let selectionColor = Context?.Theme?.SelectionColor ?? Color(100, 149, 237, 100);
 			let selection = mEditor.Selection;
 
 			// Get selection rectangles based on masked text positions

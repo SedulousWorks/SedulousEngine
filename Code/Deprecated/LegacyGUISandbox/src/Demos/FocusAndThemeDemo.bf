@@ -17,33 +17,33 @@ static class FocusAndThemeDemo
 		let rect1 = new FocusableRect();
 		rect1.Width = 120;
 		rect1.Height = 100;
-		rect1.RectColor = Color32(200, 80, 80, 255);  // Red
+		rect1.RectColor = Color(200, 80, 80, 255);  // Red
 		rect1.TabIndex = 0;
 		rect1.BorderThickness = 2;
-		rect1.BorderColor = Color32(150, 60, 60, 255);
-		rect1.FocusBorderColor = Color32(255, 200, 100, 255);
+		rect1.BorderColor = Color(150, 60, 60, 255);
+		rect1.FocusBorderColor = Color(255, 200, 100, 255);
 		rect1.FocusBorderThickness = 4;
 		rootPanel.AddChild(rect1);
 
 		let rect2 = new FocusableRect();
 		rect2.Width = 120;
 		rect2.Height = 100;
-		rect2.RectColor = Color32(80, 180, 80, 255);  // Green
+		rect2.RectColor = Color(80, 180, 80, 255);  // Green
 		rect2.TabIndex = 1;
 		rect2.BorderThickness = 2;
-		rect2.BorderColor = Color32(60, 140, 60, 255);
-		rect2.FocusBorderColor = Color32(255, 200, 100, 255);
+		rect2.BorderColor = Color(60, 140, 60, 255);
+		rect2.FocusBorderColor = Color(255, 200, 100, 255);
 		rect2.FocusBorderThickness = 4;
 		rootPanel.AddChild(rect2);
 
 		let rect3 = new FocusableRect();
 		rect3.Width = 120;
 		rect3.Height = 100;
-		rect3.RectColor = Color32(80, 120, 200, 255);  // Blue
+		rect3.RectColor = Color(80, 120, 200, 255);  // Blue
 		rect3.TabIndex = 2;
 		rect3.BorderThickness = 2;
-		rect3.BorderColor = Color32(60, 90, 160, 255);
-		rect3.FocusBorderColor = Color32(255, 200, 100, 255);
+		rect3.BorderColor = Color(60, 90, 160, 255);
+		rect3.FocusBorderColor = Color(255, 200, 100, 255);
 		rect3.FocusBorderThickness = 4;
 		rootPanel.AddChild(rect3);
 
@@ -58,11 +58,11 @@ static class FocusAndThemeDemo
 		let rect5 = new FocusableRect();
 		rect5.Width = 120;
 		rect5.Height = 100;
-		rect5.RectColor = Color32(180, 80, 180, 255);  // Purple
+		rect5.RectColor = Color(180, 80, 180, 255);  // Purple
 		rect5.TabIndex = 4;
 		rect5.BorderThickness = 2;
-		rect5.BorderColor = Color32(140, 60, 140, 255);
-		rect5.FocusBorderColor = Color32(255, 200, 100, 255);
+		rect5.BorderColor = Color(140, 60, 140, 255);
+		rect5.FocusBorderColor = Color(255, 200, 100, 255);
 		rect5.FocusBorderThickness = 4;
 		// Apply a 15 degree rotation transform (15 degrees in radians)
 		rect5.RenderTransform = Matrix.CreateRotationZ(15.0f * (System.Math.PI_f / 180.0f));

@@ -191,7 +191,7 @@ class DockingDemo
 		let item = new TextBlock(text);
 		// Root items use accent color, children use default text color
 		if (level == 0)
-			item.Foreground = Color32(100, 160, 220, 255);  // Keep accent color for hierarchy
+			item.Foreground = Color(100, 160, 220, 255);  // Keep accent color for hierarchy
 		parent.AddChild(item);
 	}
 
@@ -201,24 +201,24 @@ class DockingDemo
 		panel.Orientation = .Vertical;
 		panel.Spacing = 4;
 		panel.Padding = .(8, 8, 8, 8);
-		panel.Background = Color32(30, 30, 30, 255);
+		panel.Background = Color(30, 30, 30, 255);
 
 		// Simulated code editor content
-		AddCodeLine(panel, "using System;", Color32(86, 156, 214, 255));
-		AddCodeLine(panel, "using Sedulous.LegacyGUI;", Color32(86, 156, 214, 255));
-		AddCodeLine(panel, "", Color32.White);
-		AddCodeLine(panel, "class MyApp", Color32(78, 201, 176, 255));
-		AddCodeLine(panel, "{", Color32.White);
-		AddCodeLine(panel, "    public this()", Color32(220, 220, 220, 255));
-		AddCodeLine(panel, "    {", Color32.White);
-		AddCodeLine(panel, "        // Initialize", Color32(87, 166, 74, 255));
-		AddCodeLine(panel, "    }", Color32.White);
-		AddCodeLine(panel, "}", Color32.White);
+		AddCodeLine(panel, "using System;", Color(86, 156, 214, 255));
+		AddCodeLine(panel, "using Sedulous.LegacyGUI;", Color(86, 156, 214, 255));
+		AddCodeLine(panel, "", Color.White);
+		AddCodeLine(panel, "class MyApp", Color(78, 201, 176, 255));
+		AddCodeLine(panel, "{", Color.White);
+		AddCodeLine(panel, "    public this()", Color(220, 220, 220, 255));
+		AddCodeLine(panel, "    {", Color.White);
+		AddCodeLine(panel, "        // Initialize", Color(87, 166, 74, 255));
+		AddCodeLine(panel, "    }", Color.White);
+		AddCodeLine(panel, "}", Color.White);
 
 		return panel;
 	}
 
-	private void AddCodeLine(StackPanel parent, StringView text, Color32 color)
+	private void AddCodeLine(StackPanel parent, StringView text, Color color)
 	{
 		let line = new TextBlock(text);
 		line.Foreground = color;
@@ -232,19 +232,19 @@ class DockingDemo
 		panel.Orientation = .Vertical;
 		panel.Spacing = 2;
 		panel.Padding = .(8, 8, 8, 8);
-		panel.Background = Color32(25, 25, 25, 255);
+		panel.Background = Color(25, 25, 25, 255);
 
-		AddOutputLine(panel, "[12:34:56] Build started...", Color32(150, 150, 150, 255));
-		AddOutputLine(panel, "[12:34:57] Compiling main.bf", Color32(180, 180, 180, 255));
-		AddOutputLine(panel, "[12:34:57] Compiling app.bf", Color32(180, 180, 180, 255));
-		AddOutputLine(panel, "[12:34:58] Compiling utils.bf", Color32(180, 180, 180, 255));
-		AddOutputLine(panel, "[12:34:58] Linking...", Color32(180, 180, 180, 255));
-		AddOutputLine(panel, "[12:34:59] Build succeeded", Color32(100, 200, 100, 255));
+		AddOutputLine(panel, "[12:34:56] Build started...", Color(150, 150, 150, 255));
+		AddOutputLine(panel, "[12:34:57] Compiling main.bf", Color(180, 180, 180, 255));
+		AddOutputLine(panel, "[12:34:57] Compiling app.bf", Color(180, 180, 180, 255));
+		AddOutputLine(panel, "[12:34:58] Compiling utils.bf", Color(180, 180, 180, 255));
+		AddOutputLine(panel, "[12:34:58] Linking...", Color(180, 180, 180, 255));
+		AddOutputLine(panel, "[12:34:59] Build succeeded", Color(100, 200, 100, 255));
 
 		return panel;
 	}
 
-	private void AddOutputLine(StackPanel parent, StringView text, Color32 color)
+	private void AddOutputLine(StackPanel parent, StringView text, Color color)
 	{
 		let line = new TextBlock(text);
 		line.Foreground = color;

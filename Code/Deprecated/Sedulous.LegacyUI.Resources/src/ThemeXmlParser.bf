@@ -107,7 +107,7 @@ public static class ThemeXmlParser
 
 	private static void ParsePalette(XmlElement elem, ref Palette palette)
 	{
-		void TrySetColor(StringView attrName, ref Color32 target)
+		void TrySetColor(StringView attrName, ref Color target)
 		{
 			let val = elem.GetAttribute(attrName);
 			if (val.Length > 0)
@@ -150,8 +150,8 @@ public static class ThemeXmlParser
 		}
 		else if (type == "RoundedRect")
 		{
-			Color32 fill = .Transparent;
-			Color32 border = .Transparent;
+			Color fill = .Transparent;
+			Color border = .Transparent;
 			float radius = 0;
 			float borderWidth = 0;
 
@@ -178,7 +178,7 @@ public static class ThemeXmlParser
 				if (img != null)
 				{
 					theme.OwnResource(img);
-					Color32 tint = .White;
+					Color tint = .White;
 					let tintStr = elem.GetAttribute("tint");
 					if (tintStr.Length > 0) UIRegistry.ParseColor(tintStr, out tint);
 					return new ImageDrawable(img, tint);
@@ -195,7 +195,7 @@ public static class ThemeXmlParser
 				{
 					theme.OwnResource(img);
 					let slices = ParseNineSlice(elem.GetAttribute("slices"));
-					Color32 tint = .White;
+					Color tint = .White;
 					let tintStr = elem.GetAttribute("tint");
 					if (tintStr.Length > 0) UIRegistry.ParseColor(tintStr, out tint);
 					return new NineSliceDrawable(img, slices, tint);

@@ -14,7 +14,7 @@ public class Splitter : Control
 
 	// Appearance
 	private float mThickness = 6;
-	private Color32? mGripColor;
+	private Color? mGripColor;
 	private bool mShowGrip = true;
 	private int mGripLines = 3;
 	private ImageBrush? mGripImage;
@@ -80,14 +80,14 @@ public class Splitter : Control
 	}
 
 	/// The grip color (dots/lines visual).
-	public Color32 GripColor
+	public Color GripColor
 	{
 		get
 		{
 			if (mGripColor.HasValue)
 				return mGripColor.Value;
 			let palette = Context?.Theme?.Palette ?? Palette();
-			return palette.Border.A > 0 ? palette.Border : Color32(100, 100, 100, 255);
+			return palette.Border.A > 0 ? palette.Border : Color(100, 100, 100, 255);
 		}
 		set => mGripColor = value;
 	}
@@ -195,13 +195,13 @@ public class Splitter : Control
 			if (bgColor.A == 0)
 			{
 				let palette = Context?.Theme?.Palette ?? Palette();
-				bgColor = palette.Surface.A > 0 ? palette.Surface : Color32(50, 50, 50, 255);
+				bgColor = palette.Surface.A > 0 ? palette.Surface : Color(50, 50, 50, 255);
 			}
 
 			if (mIsDragging)
-				bgColor = bgColor.Interpolate(Color32.White, 0.15f);
+				bgColor = Color.Lerp(bgColor, Color.White, 0.15f);
 			else if (IsHovered)
-				bgColor = bgColor.Interpolate(Color32.White, 0.08f);
+				bgColor = Color.Lerp(bgColor, Color.White, 0.08f);
 
 			ctx.FillRect(bounds, bgColor);
 

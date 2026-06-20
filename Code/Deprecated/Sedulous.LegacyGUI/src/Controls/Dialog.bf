@@ -32,9 +32,9 @@ public class Dialog : Control
 	private float mMinWidth = 300;
 	private float mMinHeight = 120;
 	private float mCornerRadius = 6;
-	private Color32 mTitleBackground;
-	private Color32 mTitleForeground;
-	private Color32 mBorderColor;
+	private Color mTitleBackground;
+	private Color mTitleForeground;
+	private Color mBorderColor;
 
 	/// Creates a new Dialog.
 	public this()
@@ -43,11 +43,11 @@ public class Dialog : Control
 		IsTabStop = false;
 
 		// Set default colors (will be updated by ApplyThemeDefaults)
-		Background = Color32(50, 50, 50, 255);
-		Foreground = Color32(220, 220, 220, 255);
-		mTitleBackground = Color32(35, 35, 35, 255);
-		mTitleForeground = Color32(220, 220, 220, 255);
-		mBorderColor = Color32(80, 80, 80, 255);
+		Background = Color(50, 50, 50, 255);
+		Foreground = Color(220, 220, 220, 255);
+		mTitleBackground = Color(35, 35, 35, 255);
+		mTitleForeground = Color(220, 220, 220, 255);
+		mBorderColor = Color(80, 80, 80, 255);
 
 		// Create title block
 		mTitleBlock = new TextBlock("");
@@ -405,7 +405,7 @@ public class Dialog : Control
 			? palette.Background
 			: Sedulous.LegacyGUI.Palette.Darken(Background, 0.2f);
 		mTitleForeground = Foreground;
-		mBorderColor = palette.Border.A > 0 ? palette.Border : Color32(80, 80, 80, 255);
+		mBorderColor = palette.Border.A > 0 ? palette.Border : Color(80, 80, 80, 255);
 
 		// Corner radius from theme
 		mCornerRadius = theme?.DefaultCornerRadius ?? 6;

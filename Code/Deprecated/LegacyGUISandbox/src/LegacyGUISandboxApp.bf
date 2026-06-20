@@ -119,7 +119,7 @@ class LegacyGUISandboxApp : Application
 	private void CreateDemoImages()
 	{
 		// Create a checkerboard pattern image (64x64)
-		let checkerboard = Sedulous.Images.Image.CreateSolidColor(64, 64, Color32.Red);
+		let checkerboard = Sedulous.Images.Image.CreateSolidColor(64, 64, Color.Red.ToColor32());
 		mDemoCheckerboard = new OwnedImageData(checkerboard.Width, checkerboard.Height, .RGBA8, checkerboard.Data);
 		delete checkerboard;
 
@@ -229,7 +229,7 @@ class LegacyGUISandboxApp : Application
 			let cachedFont = mFontService.GetFont(16);
 			let atlasTexture = mFontService.GetAtlasTexture(cachedFont);
 			float screenWidth = (float)SwapChain.Width;
-			mDrawContext.DrawText("[DEBUG]", cachedFont.Atlas, atlasTexture, .(screenWidth - 70, 60 + cachedFont.Font.Metrics.Ascent), Color32.Yellow);
+			mDrawContext.DrawText("[DEBUG]", cachedFont.Atlas, atlasTexture, .(screenWidth - 70, 60 + cachedFont.Font.Metrics.Ascent), Color.Yellow);
 		}
 	}
 

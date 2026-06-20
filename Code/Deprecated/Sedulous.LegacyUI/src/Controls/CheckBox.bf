@@ -9,7 +9,7 @@ public class CheckBox : View
 	private String mText ~ delete _;
 	private bool mIsChecked;
 
-	private Color32? mTextColor;
+	private Color? mTextColor;
 	private float? mFontSize;
 
 	private const float BoxSize = 16;
@@ -31,7 +31,7 @@ public class CheckBox : View
 		}
 	}
 
-	public Color32 TextColor
+	public Color TextColor
 	{
 		get => mTextColor ?? Context?.Theme?.GetColor("CheckBox.Text") ?? .(220, 225, 235, 255);
 		set => mTextColor = value;

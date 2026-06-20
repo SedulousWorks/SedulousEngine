@@ -309,7 +309,7 @@ public class TreeViewItem : Control, ISelectable
 
 		// Get colors from theme
 		let palette = Context?.Theme?.Palette ?? Palette();
-		let foreground = Foreground.A > 0 ? Foreground : (palette.Text.A > 0 ? palette.Text : Color32(200, 200, 200, 255));
+		let foreground = Foreground.A > 0 ? Foreground : (palette.Text.A > 0 ? palette.Text : Color(200, 200, 200, 255));
 
 		// Draw background (image or color)
 		if (mIsSelected && mSelectionImage.HasValue && mSelectionImage.Value.IsValid)
@@ -322,14 +322,14 @@ public class TreeViewItem : Control, ISelectable
 		}
 		else
 		{
-			Color32 bgColor = Color32.Transparent;
+			Color bgColor = Color.Transparent;
 			if (mIsSelected)
 			{
-				let selectionColor = Context?.Theme?.SelectionColor ?? Color32(100, 149, 237, 100);
-				bgColor = selectionColor.A < 200 ? Color32(selectionColor.R, selectionColor.G, selectionColor.B, 255) : selectionColor;
+				let selectionColor = Context?.Theme?.SelectionColor ?? Color(100, 149, 237, 100);
+				bgColor = selectionColor.A < 200 ? Color(selectionColor.R, selectionColor.G, selectionColor.B, 255) : selectionColor;
 			}
 			else if (mIsHovered)
-				bgColor = Palette.ComputeHover(palette.Surface.A > 0 ? palette.Surface : Color32(45, 45, 45, 255));
+				bgColor = Palette.ComputeHover(palette.Surface.A > 0 ? palette.Surface : Color(45, 45, 45, 255));
 
 			if (bgColor.A > 0)
 				ctx.FillRect(bounds, bgColor);

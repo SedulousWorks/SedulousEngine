@@ -20,7 +20,7 @@ class TooltipsDemo
 		root.AddChild(title);
 
 		let description = new TextBlock("Hover over the controls below to see their tooltips.");
-		description.Foreground = Color32(180, 180, 180, 255);
+		description.Foreground = Color(180, 180, 180, 255);
 		description.Margin = .(0, 0, 0, 20);
 		root.AddChild(description);
 
@@ -146,32 +146,32 @@ class TooltipsDemo
 		iconSection.AddChild(iconLabel);
 
 		// Create colored boxes as icon placeholders
-		let iconSave = CreateIconBox(Color32(80, 160, 80, 255), "Save");
+		let iconSave = CreateIconBox(Color(80, 160, 80, 255), "Save");
 		iconSave.TooltipText = "Save the current document (Ctrl+S)";
 		iconSection.AddChild(iconSave);
 
-		let iconOpen = CreateIconBox(Color32(80, 120, 200, 255), "Open");
+		let iconOpen = CreateIconBox(Color(80, 120, 200, 255), "Open");
 		iconOpen.TooltipText = "Open an existing file (Ctrl+O)";
 		iconSection.AddChild(iconOpen);
 
-		let iconNew = CreateIconBox(Color32(200, 160, 80, 255), "New");
+		let iconNew = CreateIconBox(Color(200, 160, 80, 255), "New");
 		iconNew.TooltipText = "Create a new document (Ctrl+N)";
 		iconSection.AddChild(iconNew);
 
-		let iconDelete = CreateIconBox(Color32(200, 80, 80, 255), "Del");
+		let iconDelete = CreateIconBox(Color(200, 80, 80, 255), "Del");
 		iconDelete.TooltipText = "Delete the selected item\n(This action cannot be undone)";
 		iconSection.AddChild(iconDelete);
 
 		// Help text
 		let helpText = new TextBlock("Tooltips appear after hovering for a short delay.\nThey automatically hide when you move away or click.");
-		helpText.Foreground = Color32(140, 140, 140, 255);
+		helpText.Foreground = Color(140, 140, 140, 255);
 		helpText.Margin = .(0, 20, 0, 0);
 		root.AddChild(helpText);
 
 		return root;
 	}
 
-	private ContentControl CreateIconBox(Color32 color, StringView text)
+	private ContentControl CreateIconBox(Color color, StringView text)
 	{
 		let iconBox = new ContentControl();
 		iconBox.Width = 40;
@@ -180,7 +180,7 @@ class TooltipsDemo
 		iconBox.Margin = .(0, 0, 10, 0);
 
 		let label = new TextBlock(text);
-		label.Foreground = Color32.White;
+		label.Foreground = Color.White;
 		label.HorizontalAlignment = .Center;
 		label.VerticalAlignment = .Center;
 		label.FontSize = 10;

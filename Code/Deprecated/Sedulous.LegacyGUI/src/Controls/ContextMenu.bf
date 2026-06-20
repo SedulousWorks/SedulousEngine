@@ -32,7 +32,7 @@ public class ContextMenu : Control, IPopupOwner
 	// Appearance
 	private float mMenuMinWidth = 150;
 	private float mCornerRadius = 4;
-	private Color32 mMenuBorderColor = Color32(80, 80, 80, 255);
+	private Color mMenuBorderColor = Color(80, 80, 80, 255);
 	private float mMenuBorderThickness = 1;
 
 	/// Creates a new ContextMenu.
@@ -40,7 +40,7 @@ public class ContextMenu : Control, IPopupOwner
 	{
 		IsFocusable = true;
 		IsTabStop = false;
-		Background = Color32(45, 45, 45, 255);
+		Background = Color(45, 45, 45, 255);
 		Padding = .(4, 4, 4, 4);
 		// Don't stretch to fill container - size to content
 		HorizontalAlignment = .Left;
