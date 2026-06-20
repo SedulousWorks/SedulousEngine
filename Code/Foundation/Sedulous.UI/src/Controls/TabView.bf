@@ -266,7 +266,7 @@ public class TabView : ViewGroup
 				let closeIcon = ResolvePartDrawable("close-button", .Background, cbState);
 				if (closeIcon != null)
 				{
-					ctx.VG.PushOpacity(cbColor.A / 255.0f);
+					ctx.VG.PushOpacity(cbColor.A);
 					closeIcon.Draw(ctx, .(cbX, cbY, cbSize, cbSize));
 					ctx.VG.PopOpacity();
 				}

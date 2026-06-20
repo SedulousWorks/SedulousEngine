@@ -285,7 +285,7 @@ public class DockTabGroup : ViewGroup, IDragSource
 					let closeIcon = ResolvePartDrawable("close-button", .Background, .Normal);
 					if (closeIcon != null)
 					{
-						ctx.VG.PushOpacity(closeColor.A / 255.0f);
+						ctx.VG.PushOpacity(closeColor.A);
 						closeIcon.Draw(ctx, .(cbX, cbY, CloseButtonSize, CloseButtonSize));
 						ctx.VG.PopOpacity();
 					}

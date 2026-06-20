@@ -96,10 +96,10 @@ public class ColorPicker : ViewGroup
 		if (mSyncing) return;
 		mSyncing = true;
 
-		float r = color.R / 255.0f;
-		float g = color.G / 255.0f;
-		float b = color.B / 255.0f;
-		mAlpha = color.A / 255.0f;
+		float r = color.R;
+		float g = color.G;
+		float b = color.B;
+		mAlpha = color.A;
 
 		RGBToHSV(r, g, b, ref mHue, ref mSaturation, ref mValue);
 		SyncViewsFromHSV();

@@ -62,7 +62,7 @@ public class ModalManager
 	/// The backdrop opacity (modifies alpha of BackdropColor).
 	public float BackdropOpacity
 	{
-		get => mBackdropColor.A / 255.0f;
+		get => mBackdropColor.A;
 		set
 		{
 			let alpha = (uint8)(Math.Clamp(value, 0, 1) * 255);

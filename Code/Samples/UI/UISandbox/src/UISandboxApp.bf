@@ -1711,7 +1711,7 @@ class UISandboxApp : Application, IDockableWindowHost
 				View = render.CurrentTextureView,
 				LoadOp = .Clear,
 				StoreOp = .Store,
-				ClearValue = ClearColor(bg.R / 255.0f, bg.G / 255.0f, bg.B / 255.0f, 1.0f)
+				ClearValue = ClearColor(bg.R, bg.G, bg.B, 1.0f)
 			});
 		RenderPassDesc clearDesc = .() { ColorAttachments = .(clearAttachments) };
 		let clearPass = render.Encoder.BeginRenderPass(clearDesc);

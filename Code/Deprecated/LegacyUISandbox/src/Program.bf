@@ -1948,7 +1948,7 @@ class UISandboxApp : Application, Sedulous.LegacyUI.Toolkit.IDockableWindowHost
 			View = render.CurrentTextureView,
 			LoadOp = .Clear,
 			StoreOp = .Store,
-			ClearValue = ClearColor(bg.R / 255.0f, bg.G / 255.0f, bg.B / 255.0f, 1.0f)
+			ClearValue = ClearColor(bg.R, bg.G, bg.B, 1.0f)
 		});
 		RenderPassDesc clearPass = .() { ColorAttachments = .(clearAttachments) };
 		let rp = render.Encoder.BeginRenderPass(clearPass);
