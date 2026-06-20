@@ -312,6 +312,12 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer, IS
 		mShadowDraws.Clear();
 		mShadowPipeline.BeginFrame(frameIndex);
 
+		// Ensure cluster buffers are allocated for the window size before any
+		// RenderScene calls. This prevents mid-frame reallocation when multiple
+		// renders (thumbnails + main scene) use different resolutions.
+		if (let clusterSystem = mRenderContext.ClusterSystem)
+			clusterSystem.EnsureBuffers((uint32)mWindow.Width, (uint32)mWindow.Height);
+
 		// Clear the shadow atlas once at frame start. Individual RenderScene calls
 		// then use Load for their shadow jobs. If no scenes render shadows this
 		// frame, the atlas stays cleared (depth=1.0 = fully lit) and the forward
@@ -417,11 +423,6 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer, IS
 
 		// Reset per-pipeline ring buffer offsets.
 		pipeline.BeginFrame(frameIndex);
-
-		// Ensure cluster buffers are allocated at the correct screen size before
-		// any bind group is created (probes and main pipeline both reference them).
-		if (let clusterSystem = mRenderContext.ClusterSystem)
-			clusterSystem.EnsureBuffers(w, h);
 
 		// Render only this scene's shadow views (not other scenes' accumulated jobs).
 		using (Profiler.Begin("ShadowRender"))

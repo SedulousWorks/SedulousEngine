@@ -79,10 +79,13 @@ public class ClusterSystem : IDisposable
 	// Deferred bind group destruction
 	private List<IBindGroup>[2] mStaleBindGroups = .(new .(), new .()) ~ { delete _[0]; delete _[1]; };
 
-	// Current grid dimensions
+	// Current grid dimensions (set per-render in AssignLights)
 	private uint32 mGridX;
 	private uint32 mGridY;
 	private uint32 mTotalClusters;
+	// Allocated grid dimensions (only grows, never shrinks)
+	private uint32 mAllocatedGridX;
+	private uint32 mAllocatedGridY;
 	private bool mInitialized;
 
 	/// Gets the cluster offsets buffer for the given frame.
@@ -162,6 +165,8 @@ public class ClusterSystem : IDisposable
 		// group is rebuilt every frame with these buffers.
 		mGridX = 1;
 		mGridY = 1;
+		mAllocatedGridX = 1;
+		mAllocatedGridY = 1;
 		mTotalClusters = 1 * 1 * DepthSlices;
 		ReallocateClusterBuffers(1, 1, 0);
 
@@ -169,9 +174,11 @@ public class ClusterSystem : IDisposable
 		return .Ok;
 	}
 
-	/// Ensures cluster buffers are allocated for the given screen size.
+	/// Ensures cluster buffers are large enough for the given screen size.
 	/// Call BEFORE any RebuildFrameBindGroup so bind groups get valid buffers.
-	/// Safe to call every frame — only reallocates when dimensions change.
+	/// Only grows, never shrinks, so multiple renders at different resolutions
+	/// within the same frame (e.g. thumbnails + main scene) share the same
+	/// buffers without invalidating in-flight command buffers.
 	public void EnsureBuffers(uint32 screenWidth, uint32 screenHeight)
 	{
 		if (!mInitialized) return;
@@ -179,14 +186,16 @@ public class ClusterSystem : IDisposable
 
 		uint32 gridX = (screenWidth + TileSize - 1) / TileSize;
 		uint32 gridY = (screenHeight + TileSize - 1) / TileSize;
-		if (gridX != mGridX || gridY != mGridY)
+		if (gridX > mAllocatedGridX || gridY > mAllocatedGridY)
 		{
-			// Wait for GPU before reallocating — in-flight bind groups reference these
+			// Grow to accommodate the larger grid. WaitIdle before freeing
+			// because existing bind groups reference the old buffers.
 			mDevice.WaitIdle();
-			ReallocateClusterBuffers(gridX, gridY, 0);
-			mGridX = gridX;
-			mGridY = gridY;
-			mTotalClusters = gridX * gridY * DepthSlices;
+			let newGridX = Math.Max(gridX, mAllocatedGridX);
+			let newGridY = Math.Max(gridY, mAllocatedGridY);
+			ReallocateClusterBuffers(newGridX, newGridY, 0);
+			mAllocatedGridX = newGridX;
+			mAllocatedGridY = newGridY;
 		}
 	}
 
@@ -204,6 +213,9 @@ public class ClusterSystem : IDisposable
 		if (mClusterOffsets[slot] == null || mClusterLightIndices[slot] == null)
 			return;
 
+		// Set the actual grid for this render (may be smaller than allocated)
+		mGridX = (screenWidth + TileSize - 1) / TileSize;
+		mGridY = (screenHeight + TileSize - 1) / TileSize;
 		uint32 totalClusters = mGridX * mGridY * DepthSlices;
 
 		// Compute logarithmic depth slice parameters.
