@@ -232,9 +232,14 @@ class VGSandboxApp : Application
 		float[6] samples = .();
 		for (int i = 0; i < 6; i++)
 		{
-			samples[i] = (1.0f + Math.Sin(t * 1.2345f + (float)i * 0.33457f + (float)i * (float)i * 0.12f)
+			let raw = (1.0f + Math.Sin(t * 1.2345f + (float)i * 0.33457f + (float)i * (float)i * 0.12f)
 				+ Math.Sin(t * 0.68363f + (float)i * 1.3f)
 				+ Math.Sin(t * 1.1642f + (float)i * (float)i * 0.54f)) * 0.25f;
+			// Clamp >= 0. raw ranges [-0.5, 1.0]; a negative sample pushes the curve
+			// point below the baseline (y+h), so the area-fill ribbon self-intersects
+			// and the ear-clipping triangulator emits sliver triangles -> the stray
+			// line artifacts in the graph. An area chart shouldn't dip below baseline.
+			samples[i] = Math.Max(0.0f, raw);
 		}
 
 		let dx = w / 5.0f;
