@@ -130,7 +130,7 @@ public class BreadcrumbBar : ViewGroup
 			// Hover highlight - derived from background.
 			if (isHovered && !isLast)
 			{
-				var bgColor = Color32(40, 42, 52, 255);
+				var bgColor = Color(40, 42, 52, 255);
 				if (let rrd = bgDrawable as RoundedRectDrawable)
 					bgColor = rrd.FillColor;
 				else if (let cd = bgDrawable as ColorDrawable)

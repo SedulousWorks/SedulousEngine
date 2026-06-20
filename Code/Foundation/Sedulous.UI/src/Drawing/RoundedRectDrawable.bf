@@ -7,13 +7,13 @@ using Sedulous.VG;
 /// Supports per-corner radii via CornerRadii.
 public class RoundedRectDrawable : Drawable
 {
-	public Color32 FillColor;
-	public Color32 BorderColor;
+	public Color FillColor;
+	public Color BorderColor;
 	public float BorderWidth;
 	public CornerRadii Radii;
 
 	/// Uniform corner radius.
-	public this(Color32 fill, float cornerRadius = 0, Color32 borderColor = .Transparent, float borderWidth = 0)
+	public this(Color fill, float cornerRadius = 0, Color borderColor = .Transparent, float borderWidth = 0)
 	{
 		FillColor = fill;
 		Radii = .(cornerRadius);
@@ -22,7 +22,7 @@ public class RoundedRectDrawable : Drawable
 	}
 
 	/// Per-corner radii.
-	public this(Color32 fill, CornerRadii radii, Color32 borderColor = .Transparent, float borderWidth = 0)
+	public this(Color fill, CornerRadii radii, Color borderColor = .Transparent, float borderWidth = 0)
 	{
 		FillColor = fill;
 		Radii = radii;

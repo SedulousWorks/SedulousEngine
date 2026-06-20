@@ -349,7 +349,7 @@ class PseudoElementTests
 	public static void SSS_PseudoElement_WithPaletteVariable()
 	{
 		let loader = scope StyleSheetLoader();
-		loader.SetPaletteVariable("accent", Color32(61, 174, 233, 255));
+		loader.SetPaletteVariable("accent", Color(61, 174, 233, 255));
 
 		let sheet = loader.Load(
 			"""
@@ -371,7 +371,7 @@ class PseudoElementTests
 		let bg = view.ResolvePartDrawable("fill", .Background, .Normal);
 		Test.Assert(bg != null);
 		Test.Assert(bg is ColorDrawable);
-		Test.Assert((bg as ColorDrawable).Color.R == 61);
+		Test.Assert((bg as ColorDrawable).Color.R == 61 / 255.0f);
 	}
 
 	// === Element-level rules don't match pseudo-element queries ===

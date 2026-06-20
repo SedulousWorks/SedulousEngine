@@ -7,7 +7,7 @@ using Sedulous.Core.Mathematics;
 public class ModalBackdrop : View
 {
 	/// Backdrop color (default: semi-transparent black).
-	public Color32 Color = .(0, 0, 0, 120);
+	public Color Color = .(0, 0, 0, 120);
 
 	public override void OnDraw(UIDrawContext ctx)
 	{

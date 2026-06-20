@@ -8,7 +8,7 @@ using Sedulous.Core.Mathematics;
 public static class StyleValueParser
 {
 	/// Parse a hex color string: #rrggbb or #rrggbbaa (with leading #).
-	public static Result<Color32> ParseHexColor(StringView text)
+	public static Result<Color> ParseHexColor(StringView text)
 	{
 		if (text.Length < 2 || text[0] != '#')
 			return .Err;
@@ -19,7 +19,7 @@ public static class StyleValueParser
 			if (ParseHexByte(hex, 0) case .Ok(let r))
 			if (ParseHexByte(hex, 2) case .Ok(let g))
 			if (ParseHexByte(hex, 4) case .Ok(let b))
-				return .Ok(Color32(r, g, b, 255));
+				return .Ok(Color((int32)r, (int32)g, (int32)b, 255));
 		}
 		else if (hex.Length == 8)
 		{
@@ -27,25 +27,25 @@ public static class StyleValueParser
 			if (ParseHexByte(hex, 2) case .Ok(let g))
 			if (ParseHexByte(hex, 4) case .Ok(let b))
 			if (ParseHexByte(hex, 6) case .Ok(let a))
-				return .Ok(Color32(r, g, b, a));
+				return .Ok(Color((int32)r, (int32)g, (int32)b, (int32)a));
 		}
 		return .Err;
 	}
 
 	/// Parse a named color.
-	public static Result<Color32> ParseNamedColor(StringView name)
+	public static Result<Color> ParseNamedColor(StringView name)
 	{
-		if (name == "white")       return .Ok(Color32(255, 255, 255, 255));
-		if (name == "black")       return .Ok(Color32(0, 0, 0, 255));
-		if (name == "transparent") return .Ok(Color32(0, 0, 0, 0));
-		if (name == "red")         return .Ok(Color32(255, 0, 0, 255));
-		if (name == "green")       return .Ok(Color32(0, 128, 0, 255));
-		if (name == "blue")        return .Ok(Color32(0, 0, 255, 255));
-		if (name == "yellow")      return .Ok(Color32(255, 255, 0, 255));
-		if (name == "cyan")        return .Ok(Color32(0, 255, 255, 255));
-		if (name == "magenta")     return .Ok(Color32(255, 0, 255, 255));
-		if (name == "gray")        return .Ok(Color32(128, 128, 128, 255));
-		if (name == "grey")        return .Ok(Color32(128, 128, 128, 255));
+		if (name == "white")       return .Ok(Color.White);
+		if (name == "black")       return .Ok(Color.Black);
+		if (name == "transparent") return .Ok(Color.Transparent);
+		if (name == "red")         return .Ok(Color.Red);
+		if (name == "green")       return .Ok(Color(0, 128, 0, 255));
+		if (name == "blue")        return .Ok(Color.Blue);
+		if (name == "yellow")      return .Ok(Color.Yellow);
+		if (name == "cyan")        return .Ok(Color.Cyan);
+		if (name == "magenta")     return .Ok(Color.Magenta);
+		if (name == "gray")        return .Ok(Color.Gray);
+		if (name == "grey")        return .Ok(Color.Gray);
 		return .Err;
 	}
 

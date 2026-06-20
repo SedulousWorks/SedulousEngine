@@ -401,7 +401,7 @@ class ControlTests
 	public static void ColorView_StoresColor()
 	{
 		let cv = scope ColorView(.(255, 0, 0, 255));
-		Test.Assert(cv.Color.Value.R == 255 && cv.Color.Value.G == 0);
+		Test.Assert(cv.Color.Value.R == 1.0f && cv.Color.Value.G == 0);
 	}
 
 	// === Separator ===

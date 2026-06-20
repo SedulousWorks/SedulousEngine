@@ -29,9 +29,9 @@ using Sedulous.Fonts;
 public class AxisLabel : View
 {
 	private String mText ~ delete _;
-	private Color32 mColor;
+	private Color mColor;
 
-	public this(StringView text, Color32 color)
+	public this(StringView text, Color color)
 	{
 		mText = new String(text);
 		mColor = color;
@@ -64,10 +64,10 @@ public class AxisLabel : View
 /// property-grid Vector3Editor scheme.
 static class AxisColors
 {
-	public const Color32 X = .(220,  80,  80, 255);
-	public const Color32 Y = .( 80, 200,  80, 255);
-	public const Color32 Z = .( 80, 120, 220, 255);
-	public const Color32 W = .(200, 180, 120, 255);
+	public const Color X = .(220,  80,  80, 255);
+	public const Color Y = .( 80, 200,  80, 255);
+	public const Color Z = .( 80, 120, 220, 255);
+	public const Color W = .(200, 180, 120, 255);
 }
 
 /// Shared aggregation: counts child-field edit transactions and fires
@@ -165,7 +165,7 @@ public class Vector2Field : AggregatingVectorField
 		mSyncing = false;
 	}
 
-	private static NumericField MakeField(StringView axisText, Color32 axisColor)
+	private static NumericField MakeField(StringView axisText, Color axisColor)
 	{
 		let f = new NumericField();
 		f.ShowSpinButtons.Value = false;
@@ -229,7 +229,7 @@ public class Vector3Field : AggregatingVectorField
 		mSyncing = false;
 	}
 
-	private static NumericField MakeField(StringView axisText, Color32 axisColor)
+	private static NumericField MakeField(StringView axisText, Color axisColor)
 	{
 		let f = new NumericField();
 		f.ShowSpinButtons.Value = false;
@@ -298,7 +298,7 @@ public class Vector4Field : AggregatingVectorField
 		mSyncing = false;
 	}
 
-	private static NumericField MakeField(StringView axisText, Color32 axisColor)
+	private static NumericField MakeField(StringView axisText, Color axisColor)
 	{
 		let f = new NumericField();
 		f.ShowSpinButtons.Value = false;
@@ -388,7 +388,7 @@ public class QuaternionField : AggregatingVectorField
 		mSyncing = false;
 	}
 
-	private static NumericField MakeField(StringView axisText, Color32 axisColor)
+	private static NumericField MakeField(StringView axisText, Color axisColor)
 	{
 		let f = new NumericField();
 		f.ShowSpinButtons.Value = false;

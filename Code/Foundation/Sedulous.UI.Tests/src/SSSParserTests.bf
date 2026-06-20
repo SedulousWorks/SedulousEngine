@@ -61,7 +61,7 @@ class SSSParserTests
 		root.AddView(view);
 
 		let color = view.ResolveStyleColor(.TextColor);
-		Test.Assert(color.R == 255 && color.G == 0 && color.B == 0);
+		Test.Assert(color.R == 1.0f && color.G == 0 && color.B == 0);
 
 		let fontSize = view.ResolveStyleFloat(.FontSize);
 		Test.Assert(Math.Abs(fontSize - 16) < 0.01f);
@@ -169,14 +169,14 @@ class SSSParserTests
 		root.AddView(view);
 
 		let color = view.ResolveStyleColor(.TextColor);
-		Test.Assert(color.R == 0xe0);
+		Test.Assert(color.R == 0xe0 / 255.0f);
 	}
 
 	[Test]
 	public static void PaletteExtends()
 	{
 		let loader = scope StyleSheetLoader();
-		loader.SetPaletteVariable("base-color", Color32(100, 100, 100, 255));
+		loader.SetPaletteVariable("base-color", Color(100, 100, 100, 255));
 
 		let sheet = loader.Load(
 			"""
@@ -197,11 +197,11 @@ class SSSParserTests
 
 		// base-color came from loader pre-set
 		let textColor = view.ResolveStyleColor(.TextColor);
-		Test.Assert(textColor.R == 100);
+		Test.Assert(textColor.R == 100 / 255.0f);
 
 		// accent came from @palette block
 		let accent = view.ResolveStyleColor(.AccentColor);
-		Test.Assert(accent.R == 255 && accent.G == 0);
+		Test.Assert(accent.R == 1.0f && accent.G == 0);
 	}
 
 	[Test]
@@ -223,7 +223,7 @@ class SSSParserTests
 
 		let color = view.ResolveStyleColor(.TextColor);
 		// Dark palette text is (220, 225, 235, 255)
-		Test.Assert(color.R == 220);
+		Test.Assert(color.R == 220 / 255.0f);
 	}
 
 	// === Color functions ===
@@ -244,7 +244,7 @@ class SSSParserTests
 
 		let color = view.ResolveStyleColor(.TextColor);
 		// lighten black by 50% -> ~(128, 128, 128)
-		Test.Assert(color.R > 100);
+		Test.Assert(color.R > 100 / 255.0f);
 	}
 
 	[Test]
@@ -263,7 +263,7 @@ class SSSParserTests
 
 		let color = view.ResolveStyleColor(.TextColor);
 		// darken white by 50% -> ~(128, 128, 128)
-		Test.Assert(color.R < 200 && color.R > 100);
+		Test.Assert(color.R < 200 / 255.0f && color.R > 100 / 255.0f);
 	}
 
 	[Test]
@@ -281,8 +281,8 @@ class SSSParserTests
 		root.AddView(view);
 
 		let color = view.ResolveStyleColor(.TextColor);
-		Test.Assert(color.R == 255);
-		Test.Assert(color.A == 127 || color.A == 128); // 0.5 * 255
+		Test.Assert(color.R == 1.0f);
+		Test.Assert(color.A == 0.5f); // 0.5 * 255 / 255
 	}
 
 	[Test]
@@ -301,7 +301,7 @@ class SSSParserTests
 
 		let color = view.ResolveStyleColor(.TextColor);
 		// mix black and white at 50% -> ~(128, 128, 128)
-		Test.Assert(color.R > 100 && color.R < 160);
+		Test.Assert(color.R > 100 / 255.0f && color.R < 160 / 255.0f);
 	}
 
 	[Test]
@@ -319,7 +319,7 @@ class SSSParserTests
 		root.AddView(view);
 
 		let color = view.ResolveStyleColor(.TextColor);
-		Test.Assert(color.R == 255 && color.G == 255 && color.B == 255);
+		Test.Assert(color.R == 1.0f && color.G == 1.0f && color.B == 1.0f);
 	}
 
 	[Test]
@@ -337,7 +337,7 @@ class SSSParserTests
 		root.AddView(view);
 
 		let color = view.ResolveStyleColor(.TextColor);
-		Test.Assert(color.R == 100 && color.G == 150 && color.B == 200);
+		Test.Assert(color.R == 100 / 255.0f && color.G == 150 / 255.0f && color.B == 200 / 255.0f);
 	}
 
 	// === Drawable factories ===
@@ -379,7 +379,7 @@ class SSSParserTests
 		Test.Assert(bg != null);
 		Test.Assert(bg is RoundedRectDrawable);
 		let rrd = bg as RoundedRectDrawable;
-		Test.Assert(rrd.FillColor.R == 0x33);
+		Test.Assert(rrd.FillColor.R == 0x33 / 255.0f);
 		Test.Assert(rrd.BorderWidth == 1.0f);
 	}
 
@@ -518,7 +518,7 @@ class SSSParserTests
 		Test.Assert(icon != null);
 		Test.Assert(icon is SVGDrawable);
 		let svgd = icon as SVGDrawable;
-		Test.Assert(svgd.TintColor.HasValue && svgd.TintColor.Value.R == 255);
+		Test.Assert(svgd.TintColor.HasValue && svgd.TintColor.Value.R == 1.0f);
 	}
 
 	// === Property types ===
@@ -697,7 +697,7 @@ class SSSParserTests
 		let bg = view.ResolveStyleDrawable(.Background);
 		Test.Assert(bg != null);
 		Test.Assert(bg is ColorDrawable);
-		Test.Assert((bg as ColorDrawable).Color.R == 0x33);
+		Test.Assert((bg as ColorDrawable).Color.R == 0x33 / 255.0f);
 	}
 
 	// === Variable in drawable ===
@@ -726,8 +726,8 @@ class SSSParserTests
 		Test.Assert(bg != null);
 		Test.Assert(bg is RoundedRectDrawable);
 		let rrd = bg as RoundedRectDrawable;
-		Test.Assert(rrd.FillColor.R == 0x24);
-		Test.Assert(rrd.BorderColor.R == 0x3a);
+		Test.Assert(rrd.FillColor.R == 0x24 / 255.0f);
+		Test.Assert(rrd.BorderColor.R == 0x3a / 255.0f);
 	}
 
 	// === Hex color parsing ===
@@ -737,7 +737,7 @@ class SSSParserTests
 	{
 		if (StyleValueParser.ParseHexColor("#4a8eff") case .Ok(let c))
 		{
-			Test.Assert(c.R == 0x4a && c.G == 0x8e && c.B == 0xff && c.A == 255);
+			Test.Assert(c.R == 0x4a / 255.0f && c.G == 0x8e / 255.0f && c.B == 1.0f && c.A == 1.0f);
 		}
 		else
 			Test.Assert(false);
@@ -748,7 +748,7 @@ class SSSParserTests
 	{
 		if (StyleValueParser.ParseHexColor("#4a8effcc") case .Ok(let c))
 		{
-			Test.Assert(c.R == 0x4a && c.A == 0xcc);
+			Test.Assert(c.R == 0x4a / 255.0f && c.A == 0xcc / 255.0f);
 		}
 		else
 			Test.Assert(false);
@@ -759,11 +759,11 @@ class SSSParserTests
 	[Test]
 	public static void Palette_Derivation()
 	{
-		let dark = Palette.Darken(Color32(200, 200, 200, 255), 0.5f);
-		Test.Assert(dark.R == 100);
+		let dark = Palette.Darken(Color(200, 200, 200, 255), 0.5f);
+		Test.Assert(dark.R == 100 / 255.0f);
 
-		let light = Palette.Lighten(Color32(0, 0, 0, 255), 0.5f);
-		Test.Assert(light.R > 100);
+		let light = Palette.Lighten(Color(0, 0, 0, 255), 0.5f);
+		Test.Assert(light.R > 100 / 255.0f);
 	}
 
 	// === Cascade with .sss ===
@@ -804,7 +804,7 @@ class SSSParserTests
 		root.AddView(view);
 
 		let color = view.ResolveStyleColor(.TextColor);
-		Test.Assert(color.R == 0x33);
+		Test.Assert(color.R == 0x33 / 255.0f);
 	}
 
 	// === Style inheritance ===
@@ -827,7 +827,7 @@ class SSSParserTests
 
 		// Child inherits text-color from parent via View rule + inheritance
 		let color = child.ResolveStyleColor(.TextColor);
-		Test.Assert(color.R == 0xaa);
+		Test.Assert(color.R == 0xaa / 255.0f);
 	}
 
 	// === Multiple rules for same type ===
@@ -851,7 +851,7 @@ class SSSParserTests
 
 		// Both rules apply (different properties)
 		Test.Assert(view.ResolveStyleFloat(.FontSize) == 12.0f);
-		Test.Assert(view.ResolveStyleColor(.TextColor).R == 255);
+		Test.Assert(view.ResolveStyleColor(.TextColor).R == 1.0f);
 	}
 
 	// === IResourceProvider tests ===
@@ -1152,8 +1152,8 @@ class SSSParserTests
 		root.AddView(view);
 
 		let color = view.ResolveStyleColor(.TextColor);
-		Test.Assert(color.R == 100 && color.G == 150 && color.B == 200);
-		Test.Assert(color.A == 127 || color.A == 128);
+		Test.Assert(color.R == 100 / 255.0f && color.G == 150 / 255.0f && color.B == 200 / 255.0f);
+		Test.Assert(color.A == 0.5f);
 	}
 
 	// === Subtype matching ===
@@ -1204,8 +1204,8 @@ class SSSParserTests
 	public static void PaletteExtends_InheritsLoaderValues()
 	{
 		let loader = scope StyleSheetLoader();
-		loader.SetPaletteVariable("base-bg", Color32(40, 40, 50, 255));
-		loader.SetPaletteVariable("base-text", Color32(220, 220, 230, 255));
+		loader.SetPaletteVariable("base-bg", Color(40, 40, 50, 255));
+		loader.SetPaletteVariable("base-text", Color(220, 220, 230, 255));
 
 		let sheet = loader.Load(
 			"""
@@ -1227,17 +1227,17 @@ class SSSParserTests
 
 		// base-text came from loader
 		let textColor = view.ResolveStyleColor(.TextColor);
-		Test.Assert(textColor.R == 220);
+		Test.Assert(textColor.R == 220 / 255.0f);
 
 		// accent came from @palette block
 		let accent = view.ResolveStyleColor(.AccentColor);
-		Test.Assert(accent.R == 255 && accent.G == 0x88);
+		Test.Assert(accent.R == 1.0f && accent.G == 0x88 / 255.0f);
 
 		// base-bg came from loader, used in drawable
 		let bg = view.ResolveStyleDrawable(.Background);
 		Test.Assert(bg != null);
 		Test.Assert(bg is ColorDrawable);
-		Test.Assert((bg as ColorDrawable).Color.R == 40);
+		Test.Assert((bg as ColorDrawable).Color.R == 40 / 255.0f);
 	}
 
 	// === NineSlice with single value ===
@@ -1295,7 +1295,7 @@ class SSSParserTests
 		Test.Assert(bg != null);
 		Test.Assert(bg is ImageDrawable);
 		let id = bg as ImageDrawable;
-		Test.Assert(id.Tint.R == 255 && id.Tint.G == 0);
+		Test.Assert(id.Tint.R == 1.0f && id.Tint.G == 0);
 	}
 
 	// === font-family declarations ===

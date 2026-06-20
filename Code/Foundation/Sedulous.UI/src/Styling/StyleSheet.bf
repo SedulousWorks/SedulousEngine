@@ -227,7 +227,7 @@ public class StyleSheet : RefCounted
 	/// (one ref, held by `mOwnedDrawables`); pass it to consumers
 	/// that AddRef on capture (`StyleRule.Set` default, `View.SetStyle`
 	/// with `consumeRef: false`) or release explicitly when done.
-	public ColorDrawable OwnColor(Color32 color)
+	public ColorDrawable OwnColor(Color color)
 	{
 		let d = new ColorDrawable(color);
 		mOwnedDrawables.Add(d);
@@ -269,7 +269,7 @@ public class StyleSheet : RefCounted
 	}
 
 	/// Resolve a Color property. Returns defaultVal if not found.
-	public Color32 ResolveColor(View view, StyleProperty prop, Color32 defaultVal = .White)
+	public Color ResolveColor(View view, StyleProperty prop, Color defaultVal = .White)
 	{
 		let val = Resolve(view, prop);
 		if (let c = val.AsColor) return c;
@@ -343,7 +343,7 @@ public class StyleSheet : RefCounted
 		return ResolvePart(view, part, prop, partState).AsDrawable;
 	}
 
-	public Color32 ResolvePartColor(View view, StringView part, StyleProperty prop, ControlState partState, Color32 defaultVal = .White)
+	public Color ResolvePartColor(View view, StringView part, StyleProperty prop, ControlState partState, Color defaultVal = .White)
 	{
 		if (let c = ResolvePart(view, part, prop, partState).AsColor) return c;
 		return defaultVal;

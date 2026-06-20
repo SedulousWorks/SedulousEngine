@@ -12,32 +12,32 @@ class ThemeTests
 	public static void DarkPalette_HasDarkBackground()
 	{
 		let p = ThemePalette.Dark;
-		Test.Assert(p.Background.R < 50);
-		Test.Assert(p.Background.G < 50);
-		Test.Assert(p.Background.B < 50);
+		Test.Assert(p.Background.R < 50 / 255.0f);
+		Test.Assert(p.Background.G < 50 / 255.0f);
+		Test.Assert(p.Background.B < 50 / 255.0f);
 	}
 
 	[Test]
 	public static void LightPalette_HasLightBackground()
 	{
 		let p = ThemePalette.Light;
-		Test.Assert(p.Background.R > 200);
-		Test.Assert(p.Background.G > 200);
-		Test.Assert(p.Background.B > 200);
+		Test.Assert(p.Background.R > 200 / 255.0f);
+		Test.Assert(p.Background.G > 200 / 255.0f);
+		Test.Assert(p.Background.B > 200 / 255.0f);
 	}
 
 	[Test]
 	public static void DarkPalette_TextIsLight()
 	{
 		let p = ThemePalette.Dark;
-		Test.Assert(p.Text.R > 200);
+		Test.Assert(p.Text.R > 200 / 255.0f);
 	}
 
 	[Test]
 	public static void LightPalette_TextIsDark()
 	{
 		let p = ThemePalette.Light;
-		Test.Assert(p.Text.R < 50);
+		Test.Assert(p.Text.R < 50 / 255.0f);
 	}
 
 	// === DarkTheme ===
@@ -67,7 +67,7 @@ class ThemeTests
 
 		let color = view.ResolveStyleColor(.TextColor);
 		// Dark theme text should be light
-		Test.Assert(color.R > 200);
+		Test.Assert(color.R > 200 / 255.0f);
 	}
 
 	[Test]
@@ -142,7 +142,7 @@ class ThemeTests
 
 		let color = view.ResolveStyleColor(.TextColor);
 		// Light theme text should be dark
-		Test.Assert(color.R < 50);
+		Test.Assert(color.R < 50 / 255.0f);
 	}
 
 	// === Theme switching ===
@@ -172,8 +172,8 @@ class ThemeTests
 		// Colors should be different
 		Test.Assert(darkText.R != lightText.R);
 		// Dark text is light, light text is dark
-		Test.Assert(darkText.R > 200);
-		Test.Assert(lightText.R < 50);
+		Test.Assert(darkText.R > 200 / 255.0f);
+		Test.Assert(lightText.R < 50 / 255.0f);
 	}
 
 	// === Custom palette ===
@@ -196,7 +196,7 @@ class ThemeTests
 		root.AddView(view);
 
 		let color = view.ResolveStyleColor(.TextColor);
-		Test.Assert(color.R == 255 && color.G == 0 && color.B == 0);
+		Test.Assert(color.R == 1.0f && color.G == 0 && color.B == 0);
 	}
 
 	// === ThemeRegistry ===

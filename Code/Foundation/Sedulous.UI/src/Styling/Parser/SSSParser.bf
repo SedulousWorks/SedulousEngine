@@ -11,14 +11,14 @@ public class SSSParser
 {
 	private List<Token> mTokens ~ delete _;
 	private int mPos;
-	private Dictionary<String, Color32> mPalette;
+	private Dictionary<String, Color> mPalette;
 	private Dictionary<String, String> mSvgRegistry;
 	private Dictionary<String, IImageData> mImageRegistry;
 	private IResourceProvider mResourceProvider;
 	private StyleSheet mSheet;
 	private String mBasePath;
 
-	public this(List<Token> tokens, Dictionary<String, Color32> palette,
+	public this(List<Token> tokens, Dictionary<String, Color> palette,
 		Dictionary<String, String> svgRegistry, Dictionary<String, IImageData> imageRegistry,
 		IResourceProvider resourceProvider, String basePath)
 	{
@@ -77,7 +77,7 @@ public class SSSParser
 
 		// Empty palette + asset registries. Inline-style parsing v1
 		// doesn't resolve $vars / @icon / @image references.
-		let palette = scope Dictionary<String, Color32>();
+		let palette = scope Dictionary<String, Color>();
 		let svg = scope Dictionary<String, String>();
 		let img = scope Dictionary<String, IImageData>();
 		let basePath = scope String();
@@ -373,7 +373,7 @@ public class SSSParser
 	// === Value parsing (public for DrawableFactoryRegistry) ===
 
 	/// Parse a color value: hex, named, rgb(), rgba(), $variable, or color function.
-	public Color32 ParseColorValue()
+	public Color ParseColorValue()
 	{
 		if (Peek().Kind == .HexColor)
 		{
@@ -404,7 +404,7 @@ public class SSSParser
 	}
 
 	/// Parse a color argument inside a function call (for drawable factories).
-	public Color32 ParseColorArg() => ParseColorValue();
+	public Color ParseColorArg() => ParseColorValue();
 
 	/// Parse a float value (number, possibly followed by %).
 	public float ParseFloatValue()
@@ -527,24 +527,24 @@ public class SSSParser
 		return .FloatVal(ParseFloatValue());
 	}
 
-	private Color32 ParseRgbFunction()
+	private Color ParseRgbFunction()
 	{
 		Consume(); // rgb/rgba
 		Expect(.LParen);
-		let r = (uint8)ParseFloatValue(); MatchComma();
-		let g = (uint8)ParseFloatValue(); MatchComma();
-		let b = (uint8)ParseFloatValue();
-		uint8 a = 255;
-		if (MatchComma()) a = (uint8)(ParseFloatValue() * 255);
+		let r = (int32)ParseFloatValue(); MatchComma();
+		let g = (int32)ParseFloatValue(); MatchComma();
+		let b = (int32)ParseFloatValue();
+		int32 a = 255;
+		if (MatchComma()) a = (int32)(ParseFloatValue() * 255);
 		Expect(.RParen);
 		return .(r, g, b, a);
 	}
 
-	private Color32 ParseColorFunction()
+	private Color ParseColorFunction()
 	{
 		let name = ConsumeIdent();
 		Expect(.LParen);
-		Color32 result = .White;
+		Color result = .White;
 
 		if (name == "lighten")
 		{
@@ -670,7 +670,7 @@ public class SSSParser
 
 	// === Variable resolution ===
 
-	private Color32 ResolveVariable(StringView varText)
+	private Color ResolveVariable(StringView varText)
 	{
 		let name = (varText.Length > 0 && varText[0] == '$') ? varText.Substring(1) : varText;
 		for (let kv in mPalette)

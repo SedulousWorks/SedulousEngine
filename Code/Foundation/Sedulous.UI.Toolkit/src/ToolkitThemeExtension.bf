@@ -29,7 +29,7 @@ public class ToolkitThemeExtension : IThemeExtension
 			sheet.ForTypePseudo(typeof(DockablePanel), "content")
 				.Set(.Background, sheet.OwnColor(p.Surface));
 			sheet.ForTypePseudo(typeof(DockablePanel), "close-button")
-				.Set(.TextColor, Color32(p.Text.R, p.Text.G, p.Text.B, 150));
+				.Set(.TextColor, Color(p.Text.R, p.Text.G, p.Text.B, 150));
 			sheet.ForTypePseudoState(typeof(DockablePanel), "close-button", .Hover)
 				.Set(.TextColor, p.Error);
 		}
@@ -39,7 +39,7 @@ public class ToolkitThemeExtension : IThemeExtension
 			let tabBg = isDark ? Palette.Darken(p.Surface, 0.15f) : Palette.Darken(p.Surface, 0.08f);
 			let activeTab = isDark ? p.Surface : Palette.Lighten(p.Surface, 0.03f);
 			let hoverTab = isDark ? Palette.Lighten(tabBg, 0.05f) : Palette.Darken(p.Surface, 0.04f);
-			let inactiveText = Color32(p.Text.R, p.Text.G, p.Text.B, 153);
+			let inactiveText = Color(p.Text.R, p.Text.G, p.Text.B, 153);
 
 			sheet.ForType(typeof(DockTabGroup))
 				.Set(.BorderColor, p.Border)
@@ -104,7 +104,7 @@ public class ToolkitThemeExtension : IThemeExtension
 			sheet.ForType(typeof(StatusBar))
 				.Set(.Background, sheet.OwnColor(statusBg))
 				.Set(.BorderColor, p.Border)
-				.Set(.TextColor, isDark ? Color32(p.Text.R, p.Text.G, p.Text.B, 200) : p.Text);
+				.Set(.TextColor, isDark ? Color(p.Text.R, p.Text.G, p.Text.B, 200) : p.Text);
 		}
 
 		// === SplitView ===
@@ -114,7 +114,7 @@ public class ToolkitThemeExtension : IThemeExtension
 			sheet.ForType(typeof(SplitView))
 				.Set(.BorderColor, divColor)
 				.Set(.AccentColor, divHover)
-				.Set(.TextDimColor, isDark ? Color32(100, 105, 120, 180) : Color32(160, 165, 180, 180));
+				.Set(.TextDimColor, isDark ? Color(100, 105, 120, 180) : Color(160, 165, 180, 180));
 		}
 
 		// === BreadcrumbBar ===

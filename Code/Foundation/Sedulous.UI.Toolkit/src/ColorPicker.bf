@@ -12,7 +12,7 @@ public class ColorPicker : ViewGroup
 	private float mSaturation = 1; // 0-1
 	private float mValue = 1;     // 0-1
 	private float mAlpha = 1;     // 0-1
-	private Color32 mOriginalColor = .White;
+	private Color mOriginalColor = .White;
 	private bool mSyncing;
 
 	// Inner views.
@@ -31,10 +31,10 @@ public class ColorPicker : ViewGroup
 	private float mStripWidth = 20;
 	private float mGap = 8;
 
-	public Event<delegate void(ColorPicker, Color32)> OnColorChanged ~ _.Dispose();
+	public Event<delegate void(ColorPicker, Color)> OnColorChanged ~ _.Dispose();
 
 	/// Get or set the current color.
-	public Color32 CurrentColor
+	public Color CurrentColor
 	{
 		get => HSVToRGB(mHue, mSaturation, mValue, mAlpha);
 		set => SetColor(value);
@@ -91,23 +91,20 @@ public class ColorPicker : ViewGroup
 	}
 
 	/// Set the current color and update all sub-views.
-	public void SetColor(Color32 color)
+	public void SetColor(Color color)
 	{
 		if (mSyncing) return;
 		mSyncing = true;
 
-		float r = color.R / 255.0f;
-		float g = color.G / 255.0f;
-		float b = color.B / 255.0f;
-		mAlpha = color.A / 255.0f;
+		mAlpha = color.A;
 
-		RGBToHSV(r, g, b, ref mHue, ref mSaturation, ref mValue);
+		RGBToHSV(color.R, color.G, color.B, ref mHue, ref mSaturation, ref mValue);
 		SyncViewsFromHSV();
 		mSyncing = false;
 	}
 
 	/// Set the original color (shown in the "original" preview swatch).
-	public void SetOriginalColor(Color32 color)
+	public void SetOriginalColor(Color color)
 	{
 		mOriginalColor = color;
 		mPreviewOriginal.Color.Value = color;
@@ -128,12 +125,12 @@ public class ColorPicker : ViewGroup
 	{
 		let color = HSVToRGB(mHue, mSaturation, mValue, mAlpha);
 
-		mRField.Value = color.R;
-		mGField.Value = color.G;
-		mBField.Value = color.B;
+		mRField.Value = Math.Round(color.R * 255);
+		mGField.Value = Math.Round(color.G * 255);
+		mBField.Value = Math.Round(color.B * 255);
 
 		let hex = scope String();
-		hex.AppendF("#{0:X2}{1:X2}{2:X2}", (int)color.R, (int)color.G, (int)color.B);
+		hex.AppendF("#{0:X2}{1:X2}{2:X2}", (int)Math.Round(color.R * 255), (int)Math.Round(color.G * 255), (int)Math.Round(color.B * 255));
 		mHexInput.SetText(hex);
 
 		mPreviewCurrent.Color.Value = color;
@@ -251,7 +248,7 @@ public class ColorPicker : ViewGroup
 			bgDrawable.Draw(ctx, .(0, 0, Width, Height));
 		else
 		{
-			let bgColor = Color32(42, 44, 54, 255);
+			let bgColor = Color(42, 44, 54, 255);
 			ctx.VG.FillRect(.(0, 0, Width, Height), bgColor);
 		}
 
@@ -260,7 +257,7 @@ public class ColorPicker : ViewGroup
 
 	// === HSV Helpers ===
 
-	public static Color32 HSVToRGB(float h, float s, float v, float a = 1.0f)
+	public static Color HSVToRGB(float h, float s, float v, float a = 1.0f)
 	{
 		float c = v * s;
 		float hPrime = h / 60.0f;
@@ -275,7 +272,7 @@ public class ColorPicker : ViewGroup
 		else if (hPrime < 5) { r1 = x; b1 = c; }
 		else { r1 = c; b1 = x; }
 
-		return .((uint8)((r1 + m) * 255), (uint8)((g1 + m) * 255), (uint8)((b1 + m) * 255), (uint8)(a * 255));
+		return .(r1 + m, g1 + m, b1 + m, a);
 	}
 
 	public static void RGBToHSV(float r, float g, float b, ref float h, ref float s, ref float v)
@@ -329,7 +326,7 @@ public class ColorPicker : ViewGroup
 			// Circle indicator.
 			float cx = mPicker.mSaturation * Width;
 			float cy = (1.0f - mPicker.mValue) * Height;
-			let indicatorColor = (mPicker.mValue > 0.5f) ? Color32(0, 0, 0, 255) : Color32(255, 255, 255, 255);
+			let indicatorColor = (mPicker.mValue > 0.5f) ? Color(0, 0, 0, 255) : Color(255, 255, 255, 255);
 			ctx.VG.StrokeCircle(.(cx, cy), 5, indicatorColor, 2);
 
 			// Border.
@@ -442,8 +439,8 @@ public class ColorPicker : ViewGroup
 		{
 			// Checkerboard background.
 			float checkSize = 5;
-			let light = Color32(200, 200, 200, 255);
-			let dark = Color32(128, 128, 128, 255);
+			let light = Color(200, 200, 200, 255);
+			let dark = Color(128, 128, 128, 255);
 
 			int cols = (int)Math.Ceiling(Width / checkSize);
 			int rows = (int)Math.Ceiling(Height / checkSize);
@@ -465,7 +462,7 @@ public class ColorPicker : ViewGroup
 			for (int i = 0; i < steps; i++)
 			{
 				float alpha = 1.0f - (float)i / (steps - 1);
-				let c = Color32(baseColor.R, baseColor.G, baseColor.B, (uint8)(alpha * 255));
+				let c = Color(baseColor.R, baseColor.G, baseColor.B, alpha);
 				ctx.VG.FillRect(.(0, i * cellH, Width, cellH + 1), c);
 			}
 

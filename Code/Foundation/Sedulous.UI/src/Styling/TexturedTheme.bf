@@ -120,7 +120,7 @@ public static class TexturedTheme
 
 		// Per-control non-drawable properties (colors, padding, sizes).
 		sheet.ForType(typeof(ButtonBase))
-			.Set(.TextColor, Color32(30, 30, 40, 255))
+			.Set(.TextColor, Color(30, 30, 40, 255))
 			.Set(.Padding, Thickness(12, 8));
 
 		sheet.ForClass("label")
@@ -134,7 +134,7 @@ public static class TexturedTheme
 			.Set(.FontSize, 14.0f)
 			.Set(.Padding, Thickness(6, 4))
 			.Set(.CursorColor, p.PrimaryAccent)
-			.Set(.SelectionColor, Color32(60, 120, 200, 80))
+			.Set(.SelectionColor, Color(60, 120, 200, 80))
 			.Set(.CornerRadius, 4.0f);
 
 		sheet.ForType(typeof(NumericField))
@@ -143,7 +143,7 @@ public static class TexturedTheme
 			.Set(.FontSize, 14.0f)
 			.Set(.Padding, Thickness(6, 4))
 			.Set(.CursorColor, p.PrimaryAccent)
-			.Set(.SelectionColor, Color32(60, 120, 200, 80))
+			.Set(.SelectionColor, Color(60, 120, 200, 80))
 			.Set(.CornerRadius, 4.0f);
 
 		sheet.ForTypePseudo(typeof(CheckBox), "box")
@@ -177,24 +177,24 @@ public static class TexturedTheme
 		sheet.ForClass("contextmenu")
 			.Set(.TextColor, p.Text)
 			.Set(.BorderColor, p.Border)
-			.Set(.AccentColor, Color32(60, 120, 200, 80));
+			.Set(.AccentColor, Color(60, 120, 200, 80));
 
 		sheet.ForTypePseudo(typeof(Expander), "chevron")
-			.Set(.TextColor, Color32(80, 85, 100, 255));
+			.Set(.TextColor, Color(80, 85, 100, 255));
 
 		sheet.ForType(typeof(ComboBox))
 			.Set(.CornerRadius, 4.0f);
 		sheet.ForTypePseudo(typeof(ComboBox), "arrow")
-			.Set(.TextColor, Color32(80, 85, 100, 255));
+			.Set(.TextColor, Color(80, 85, 100, 255));
 
 		sheet.ForType(typeof(TooltipView))
 			.Set(.TextColor, p.Text);
 
 		sheet.ForType(typeof(ListView))
-			.Set(.SelectionColor, Color32(60, 120, 200, 80));
+			.Set(.SelectionColor, Color(60, 120, 200, 80));
 
 		sheet.ForType(typeof(GridView))
-			.Set(.SelectionColor, Color32(60, 120, 200, 80));
+			.Set(.SelectionColor, Color(60, 120, 200, 80));
 
 		// Register icons with appropriate tint for the palette.
 		RegisterIcons(sheet, p);
@@ -382,9 +382,9 @@ public static class TexturedTheme
 	private static void RegisterIcons(StyleSheet sheet, ThemePalette p)
 	{
 		// Use dark tint for light palettes, no tint for dark.
-		let isLight = p.Background.R > 128;
-		Color32? tint = null;
-		if (isLight) tint =  Color32(60, 60, 70, 255);
+		let isLight = p.Background.R > 0.5f;
+		Color? tint = null;
+		if (isLight) tint = Color(60, 60, 70, 255);
 
 		SVGDrawable MakeSVG(StringView svg)
 		{

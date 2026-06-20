@@ -261,7 +261,7 @@ public class HDRColorPicker : ViewGroup
 			bgDrawable.Draw(ctx, .(0, 0, Width, Height));
 		else
 		{
-			let bgColor = Color32(42, 44, 54, 255);
+			let bgColor = Color(42, 44, 54, 255);
 			ctx.VG.FillRect(.(0, 0, Width, Height), bgColor);
 		}
 		DrawChildren(ctx);
@@ -346,13 +346,9 @@ public class HDRColorPicker : ViewGroup
 
 	/// Clamp + quantize an HDR Vector4 to a uint8 Color for preview display
 	/// (monitors are LDR anyway; HDR portions saturate visually).
-	private static Color32 ClampToLDRColor(Vector4 c)
+	private static Color ClampToLDRColor(Vector4 c)
 	{
-		let r = (uint8)Math.Clamp((int32)(c.X * 255), 0, 255);
-		let g = (uint8)Math.Clamp((int32)(c.Y * 255), 0, 255);
-		let b = (uint8)Math.Clamp((int32)(c.Z * 255), 0, 255);
-		let a = (uint8)Math.Clamp((int32)(c.W * 255), 0, 255);
-		return .(r, g, b, a);
+		return .(Math.Clamp(c.X, 0, 1), Math.Clamp(c.Y, 0, 1), Math.Clamp(c.Z, 0, 1), Math.Clamp(c.W, 0, 1));
 	}
 
 	// === Inner views (mirror ColorPicker's SVSquare / HueStripView /
@@ -380,14 +376,14 @@ public class HDRColorPicker : ViewGroup
 					float s = (float)ix / (steps - 1);
 					float r, g, b;
 					HSVToRGB(mPicker.mHue, s, v, out r, out g, out b);
-					let color = Color32((uint8)(r * 255), (uint8)(g * 255), (uint8)(b * 255), 255);
+					let color = Color(r, g, b, 1.0f);
 					ctx.VG.FillRect(.(ix * cellW, iy * cellH, cellW + 1, cellH + 1), color);
 				}
 			}
 
 			float cx = mPicker.mSaturation * Width;
 			float cy = (1.0f - mPicker.mValue) * Height;
-			let indicatorColor = (mPicker.mValue > 0.5f) ? Color32(0, 0, 0, 255) : Color32(255, 255, 255, 255);
+			let indicatorColor = (mPicker.mValue > 0.5f) ? Color(0, 0, 0, 255) : Color(255, 255, 255, 255);
 			ctx.VG.StrokeCircle(.(cx, cy), 5, indicatorColor, 2);
 
 			let border = ResolveStyleColor(.BorderColor, .(80, 85, 100, 255));
@@ -443,7 +439,7 @@ public class HDRColorPicker : ViewGroup
 				float hue = (float)i / (steps - 1) * 360.0f;
 				float r, g, b;
 				HSVToRGB(hue, 1, 1, out r, out g, out b);
-				let color = Color32((uint8)(r * 255), (uint8)(g * 255), (uint8)(b * 255), 255);
+				let color = Color(r, g, b, 1.0f);
 				ctx.VG.FillRect(.(0, i * cellH, Width, cellH + 1), color);
 			}
 
@@ -497,8 +493,8 @@ public class HDRColorPicker : ViewGroup
 		{
 			// Checkerboard background so the alpha gradient is readable.
 			float checkSize = 5;
-			let light = Color32(200, 200, 200, 255);
-			let dark = Color32(128, 128, 128, 255);
+			let light = Color(200, 200, 200, 255);
+			let dark = Color(128, 128, 128, 255);
 
 			int cols = (int)Math.Ceiling(Width / checkSize);
 			int rows = (int)Math.Ceiling(Height / checkSize);
@@ -522,7 +518,7 @@ public class HDRColorPicker : ViewGroup
 			for (int i = 0; i < steps; i++)
 			{
 				float alpha = 1.0f - (float)i / (steps - 1);
-				let c = Color32((uint8)(r * 255), (uint8)(g * 255), (uint8)(b * 255), (uint8)(alpha * 255));
+				let c = Color(r, g, b, alpha);
 				ctx.VG.FillRect(.(0, i * cellH, Width, cellH + 1), c);
 			}
 

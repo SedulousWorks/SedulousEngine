@@ -35,7 +35,7 @@ public static class LightTheme
 		sheet.ForType(typeof(ButtonBase))
 			.Set(.Background, btnBg)
 			.Set(.CheckedBackground, btnChecked)
-			.Set(.TextColor, Color32(30, 30, 40, 255))
+			.Set(.TextColor, Color(30, 30, 40, 255))
 			.Set(.Padding, Thickness(12, 8))
 			.Set(.CornerRadius, 0.0f);
 
@@ -62,7 +62,7 @@ public static class LightTheme
 			.Set(.FontSize, 14.0f)
 			.Set(.Padding, Thickness(6, 4))
 			.Set(.CursorColor, p.PrimaryAccent)
-			.Set(.SelectionColor, Color32(60, 120, 200, 60));
+			.Set(.SelectionColor, Color(60, 120, 200, 60));
 
 		// === NumericField (shares EditText styling + spin buttons) ===
 		let spinBg = Palette.CreateStateColors(Palette.Darken(p.Surface, 0.08f));
@@ -74,7 +74,7 @@ public static class LightTheme
 			.Set(.FontSize, 14.0f)
 			.Set(.Padding, Thickness(6, 4))
 			.Set(.CursorColor, p.PrimaryAccent)
-			.Set(.SelectionColor, Color32(60, 120, 200, 60));
+			.Set(.SelectionColor, Color(60, 120, 200, 60));
 		sheet.ForTypePseudo(typeof(NumericField), "spin-up")
 			.Set(.Background, spinBg);
 		sheet.ForTypePseudo(typeof(NumericField), "spin-down")
@@ -143,7 +143,7 @@ public static class LightTheme
 		sheet.ForType(typeof(ComboBox))
 			.Set(.Background, comboBg);
 		sheet.ForTypePseudo(typeof(ComboBox), "arrow")
-			.Set(.TextColor, Color32(80, 85, 100, 255));
+			.Set(.TextColor, Color(80, 85, 100, 255));
 
 		// === ScrollBar ===
 		sheet.ForTypePseudo(typeof(ScrollBar), "track")
@@ -161,7 +161,7 @@ public static class LightTheme
 		sheet.ForTypePseudoState(typeof(Expander), "header", .Hover)
 			.Set(.Background, sheet.OwnColor(Palette.Darken(.(235, 238, 245, 255), 0.05f)));
 		sheet.ForTypePseudo(typeof(Expander), "chevron")
-			.Set(.TextColor, Color32(80, 85, 100, 255));
+			.Set(.TextColor, Color(80, 85, 100, 255));
 
 		// === TabView ===
 		sheet.ForTypePseudo(typeof(TabView), "strip")
@@ -195,7 +195,7 @@ public static class LightTheme
 			.Set(.MenuItemHoverDrawable, menuHover)
 			.Set(.TextColor, p.Text)
 			.Set(.BorderColor, p.Border)
-			.Set(.AccentColor, Color32(60, 120, 200, 60));
+			.Set(.AccentColor, Color(60, 120, 200, 60));
 
 		// === Dialog ===
 		let dialogBg = new RoundedRectDrawable(p.Surface, 0, p.Border, 1);
@@ -213,7 +213,7 @@ public static class LightTheme
 		// === ListView ===
 		sheet.ForType(typeof(ListView))
 			.Set(.Background, sheet.OwnColor(p.Background))
-			.Set(.SelectionColor, Color32(60, 120, 200, 60));
+			.Set(.SelectionColor, Color(60, 120, 200, 60));
 
 		// === TreeView ===
 		sheet.ForType(typeof(TreeView))
@@ -222,7 +222,7 @@ public static class LightTheme
 		// === GridView ===
 		sheet.ForType(typeof(GridView))
 			.Set(.Background, sheet.OwnColor(p.Background))
-			.Set(.SelectionColor, Color32(60, 120, 200, 60));
+			.Set(.SelectionColor, Color(60, 120, 200, 60));
 
 		// === Icons ===
 		RegisterIcons(sheet);
@@ -235,7 +235,7 @@ public static class LightTheme
 
 	private static void RegisterIcons(StyleSheet sheet)
 	{
-		let tint = Color32(60, 60, 70, 255); // dark tint for light theme
+		let tint = Color(60, 60, 70, 255); // dark tint for light theme
 
 		// CheckBox checkmark and RadioButton mark use pseudo-elements
 		{

@@ -66,9 +66,9 @@ public class DockZoneIndicator : View
 
 	public override void OnDraw(UIDrawContext ctx)
 	{
-		let zoneColor = Color32(80, 150, 240, 80);
-		let zoneBorder = Color32(80, 150, 240, 200);
-		let hoverColor = Color32(zoneColor.R, zoneColor.G, zoneColor.B, (uint8)Math.Min(255, zoneColor.A + 60));
+		let zoneColor = Color(80, 150, 240, 80);
+		let zoneBorder = Color(80, 150, 240, 200);
+		let hoverColor = Color(zoneColor.R, zoneColor.G, zoneColor.B, Math.Min(1.0f, zoneColor.A + 60 / 255.0f));
 
 		for (int i = 0; i < mTargets.Count; i++)
 		{
@@ -82,7 +82,7 @@ public class DockZoneIndicator : View
 			// Draw directional arrow.
 			let cx = target.Rect.X + target.Rect.Width * 0.5f;
 			let cy = target.Rect.Y + target.Rect.Height * 0.5f;
-			let arrowColor = Color32(255, 255, 255, isHovered ? 220 : 150);
+			let arrowColor = Color(255, 255, 255, isHovered ? 220 : 150);
 			let sz = 6.0f;
 
 			ctx.VG.BeginPath();

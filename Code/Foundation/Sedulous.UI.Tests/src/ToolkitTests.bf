@@ -160,20 +160,20 @@ class ToolkitTests
 		let color = picker.CurrentColor;
 		// Default is white (H=0, S=1, V=1, A=1 -> RGB white... actually S=1,V=1 is red-ish)
 		// HSVToRGB(0, 1, 1) = red. Let's just check it's valid.
-		Test.Assert(color.A == 255);
+		Test.Assert(color.A == 1.0f);
 	}
 
 	[Test]
 	public static void ColorPicker_SetColor()
 	{
 		let picker = scope ColorPicker();
-		picker.CurrentColor = Color32(128, 64, 32, 255);
+		picker.CurrentColor = Color(128, 64, 32, 255);
 		let c = picker.CurrentColor;
 		// Should round-trip approximately (HSV conversion may lose precision).
-		Test.Assert(Math.Abs((int)c.R - 128) <= 2);
-		Test.Assert(Math.Abs((int)c.G - 64) <= 2);
-		Test.Assert(Math.Abs((int)c.B - 32) <= 2);
-		Test.Assert(c.A == 255);
+		Test.Assert(Math.Abs(c.R - 128 / 255.0f) <= 2 / 255.0f);
+		Test.Assert(Math.Abs(c.G - 64 / 255.0f) <= 2 / 255.0f);
+		Test.Assert(Math.Abs(c.B - 32 / 255.0f) <= 2 / 255.0f);
+		Test.Assert(c.A == 1.0f);
 	}
 
 	[Test]
@@ -194,7 +194,7 @@ class ToolkitTests
 
 		// Programmatic SetColor does NOT fire OnColorChanged (avoids feedback loops).
 		// Event only fires from interactive changes (drag, field input).
-		picker.CurrentColor = Color32(0, 255, 0, 255);
+		picker.CurrentColor = Color(0, 255, 0, 255);
 		Test.Assert(!fired);
 	}
 
@@ -202,7 +202,7 @@ class ToolkitTests
 	public static void ColorPicker_HSVToRGB_Red()
 	{
 		let c = ColorPicker.HSVToRGB(0, 1, 1);
-		Test.Assert(c.R == 255);
+		Test.Assert(c.R == 1.0f);
 		Test.Assert(c.G == 0);
 		Test.Assert(c.B == 0);
 	}
@@ -212,7 +212,7 @@ class ToolkitTests
 	{
 		let c = ColorPicker.HSVToRGB(120, 1, 1);
 		Test.Assert(c.R == 0);
-		Test.Assert(c.G == 255);
+		Test.Assert(c.G == 1.0f);
 		Test.Assert(c.B == 0);
 	}
 
@@ -222,16 +222,16 @@ class ToolkitTests
 		let c = ColorPicker.HSVToRGB(240, 1, 1);
 		Test.Assert(c.R == 0);
 		Test.Assert(c.G == 0);
-		Test.Assert(c.B == 255);
+		Test.Assert(c.B == 1.0f);
 	}
 
 	[Test]
 	public static void ColorPicker_HSVToRGB_White()
 	{
 		let c = ColorPicker.HSVToRGB(0, 0, 1);
-		Test.Assert(c.R == 255);
-		Test.Assert(c.G == 255);
-		Test.Assert(c.B == 255);
+		Test.Assert(c.R == 1.0f);
+		Test.Assert(c.G == 1.0f);
+		Test.Assert(c.B == 1.0f);
 	}
 
 	[Test]
@@ -361,10 +361,10 @@ class ToolkitTests
 	public static void ColorEditor_Value()
 	{
 		let editor = scope ColorEditor("Tint", .(255, 0, 0, 255));
-		Test.Assert(editor.Value.R == 255);
+		Test.Assert(editor.Value.R == 1.0f);
 		Test.Assert(editor.Value.G == 0);
 		editor.Value = .(0, 255, 0, 255);
-		Test.Assert(editor.Value.G == 255);
+		Test.Assert(editor.Value.G == 1.0f);
 	}
 
 	[Test]

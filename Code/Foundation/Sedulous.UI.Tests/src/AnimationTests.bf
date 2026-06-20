@@ -64,12 +64,12 @@ class AnimationTests
 	[Test]
 	public static void Color_Interpolates()
 	{
-		Color32 result = .Black;
+		Color result = .Black;
 		let anim = scope ColorAnimation(.(0, 0, 0, 255), .(255, 255, 255, 255), 1.0f,
 			new [&result] (v) => { result = v; });
 		anim.Start();
 		anim.Update(0.5f);
-		Test.Assert(result.R > 100 && result.R < 200);
+		Test.Assert(result.R > 0.3f && result.R < 0.8f);
 	}
 
 	// === Vector2Animation ===

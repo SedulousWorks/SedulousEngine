@@ -7,11 +7,11 @@ using Sedulous.Core.Mathematics;
 /// for a given view. Called after the normal draw pass in ViewGroup.OnDraw.
 public static class UIDebugOverlay
 {
-	private static readonly Color32 sBoundsColor    = .(255, 60, 60, 180);
-	private static readonly Color32 sPaddingColor   = .(60, 200, 60, 60);
-	private static readonly Color32 sMarginColor    = .(255, 160, 40, 60);
-	private static readonly Color32 sHitTargetColor = .(255, 255, 0, 100);
-	private static readonly Color32 sFocusColor     = .(80, 160, 255, 200);
+	private static readonly Color sBoundsColor    = .(255, 60, 60, 180);
+	private static readonly Color sPaddingColor   = .(60, 200, 60, 60);
+	private static readonly Color sMarginColor    = .(255, 160, 40, 60);
+	private static readonly Color sHitTargetColor = .(255, 255, 0, 100);
+	private static readonly Color sFocusColor     = .(80, 160, 255, 200);
 
 	/// Draw debug overlays for a single view. Called in the view's
 	/// local coordinate space (0,0 = top-left of view).
@@ -70,7 +70,7 @@ public static class UIDebugOverlay
 			if (view.IsFocused)
 				ctx.VG.StrokeRect(.(-2, -2, w + 4, h + 4), sFocusColor, 2.0f);
 			else if (view.IsFocusWithin)
-				ctx.VG.StrokeRect(.(-1, -1, w + 2, h + 2), .(sFocusColor.R, sFocusColor.G, sFocusColor.B, 80), 1.0f);
+				ctx.VG.StrokeRect(.(-1, -1, w + 2, h + 2), .(sFocusColor.R, sFocusColor.G, sFocusColor.B, 80 / 255.0f), 1.0f);
 		}
 	}
 }

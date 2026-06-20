@@ -8,31 +8,31 @@ using Sedulous.Core.Mathematics;
 public static class ColorFunctions
 {
 	/// Lighten a color by amount (0-1, specified as percentage in .sss).
-	public static Color32 Lighten(Color32 color, float amount)
+	public static Color Lighten(Color color, float amount)
 	{
 		return Palette.Lighten(color, amount);
 	}
 
 	/// Darken a color by amount (0-1).
-	public static Color32 Darken(Color32 color, float amount)
+	public static Color Darken(Color color, float amount)
 	{
 		return Palette.Darken(color, amount);
 	}
 
 	/// Set the alpha channel of a color.
-	public static Color32 Alpha(Color32 color, float alpha)
+	public static Color Alpha(Color color, float alpha)
 	{
-		return .(color.R, color.G, color.B, (uint8)(Math.Clamp(alpha, 0, 1) * 255));
+		return .(color.R, color.G, color.B, Math.Clamp(alpha, 0, 1));
 	}
 
 	/// Linear blend between two colors. t=0 returns a, t=1 returns b.
-	public static Color32 Mix(Color32 a, Color32 b, float t)
+	public static Color Mix(Color a, Color b, float t)
 	{
 		let f = Math.Clamp(t, 0, 1);
 		return .(
-			(uint8)((float)a.R + ((float)b.R - (float)a.R) * f),
-			(uint8)((float)a.G + ((float)b.G - (float)a.G) * f),
-			(uint8)((float)a.B + ((float)b.B - (float)a.B) * f),
-			(uint8)((float)a.A + ((float)b.A - (float)a.A) * f));
+			a.R + (b.R - a.R) * f,
+			a.G + (b.G - a.G) * f,
+			a.B + (b.B - a.B) * f,
+			a.A + (b.A - a.A) * f);
 	}
 }

@@ -43,13 +43,13 @@ class StyleSheetTests
 
 		let sheet = SetupSheet(ctx);
 		sheet.ForType(typeof(TestView))
-			.Set(.TextColor, Color32(255, 0, 0, 255));
+			.Set(.TextColor, Color(255, 0, 0, 255));
 
 		let view = new TestView();
 		root.AddView(view);
 
 		let color = view.ResolveStyleColor(.TextColor, .White);
-		Test.Assert(color.R == 255 && color.G == 0 && color.B == 0);
+		Test.Assert(color.R == 1.0f && color.G == 0 && color.B == 0);
 	}
 
 	[Test]
@@ -61,7 +61,7 @@ class StyleSheetTests
 
 		let sheet = SetupSheet(ctx);
 		sheet.ForType(typeof(TestGroup))
-			.Set(.TextColor, Color32(255, 0, 0, 255));
+			.Set(.TextColor, Color(255, 0, 0, 255));
 
 		let view = new TestView();
 		root.AddView(view);
@@ -155,16 +155,16 @@ class StyleSheetTests
 
 		let sheet = SetupSheet(ctx);
 		sheet.ForType(typeof(TestView))
-			.Set(.TextColor, Color32(100, 100, 100, 255));
+			.Set(.TextColor, Color(100, 100, 100, 255));
 		sheet.ForTypeState(typeof(TestView), .Disabled)
-			.Set(.TextColor, Color32(50, 50, 50, 255));
+			.Set(.TextColor, Color(50, 50, 50, 255));
 
 		let view = new TestView();
 		view.IsEnabled = false;
 		root.AddView(view);
 
 		let color = view.ResolveStyleColor(.TextColor);
-		Test.Assert(color.R == 50);
+		Test.Assert(color.R == 50 / 255.0f);
 	}
 
 	[Test]
@@ -197,15 +197,15 @@ class StyleSheetTests
 
 		let sheet = SetupSheet(ctx);
 		sheet.ForTypeState(typeof(TestView), .Hover)
-			.Set(.TextColor, Color32(0, 255, 0, 255));
+			.Set(.TextColor, Color(0, 255, 0, 255));
 		sheet.ForType(typeof(TestView))
-			.Set(.TextColor, Color32(200, 200, 200, 255));
+			.Set(.TextColor, Color(200, 200, 200, 255));
 
 		let view = new TestView();
 		root.AddView(view);
 
 		let color = view.ResolveStyleColor(.TextColor);
-		Test.Assert(color.R == 200);
+		Test.Assert(color.R == 200 / 255.0f);
 	}
 
 	// === Drawable resolution ===
@@ -298,7 +298,7 @@ class StyleSheetTests
 
 		let sheet = SetupSheet(ctx);
 		sheet.ForType(typeof(TestGroup))
-			.Set(.TextColor, Color32(255, 100, 0, 255));
+			.Set(.TextColor, Color(255, 100, 0, 255));
 
 		let group = new TestGroup();
 		let child = new TestView();
@@ -306,7 +306,7 @@ class StyleSheetTests
 		group.AddView(child);
 
 		let color = child.ResolveStyleColor(.TextColor, .White);
-		Test.Assert(color.R == 255 && color.G == 100 && color.B == 0);
+		Test.Assert(color.R == 1.0f && color.G == 100 / 255.0f && color.B == 0);
 	}
 
 	[Test]
@@ -337,9 +337,9 @@ class StyleSheetTests
 
 		let sheet = SetupSheet(ctx);
 		sheet.ForType(typeof(TestGroup))
-			.Set(.TextColor, Color32(255, 0, 0, 255));
+			.Set(.TextColor, Color(255, 0, 0, 255));
 		sheet.ForType(typeof(TestView))
-			.Set(.TextColor, Color32(0, 0, 255, 255));
+			.Set(.TextColor, Color(0, 0, 255, 255));
 
 		let group = new TestGroup();
 		let child = new TestView();
@@ -347,7 +347,7 @@ class StyleSheetTests
 		group.AddView(child);
 
 		let color = child.ResolveStyleColor(.TextColor);
-		Test.Assert(color.B == 255 && color.R == 0);
+		Test.Assert(color.B == 1.0f && color.R == 0);
 	}
 
 	[Test]
@@ -402,13 +402,13 @@ class StyleSheetTests
 
 		let sheet = SetupSheet(ctx);
 		sheet.ForType(typeof(View))
-			.Set(.TextColor, Color32(128, 128, 128, 255));
+			.Set(.TextColor, Color(128, 128, 128, 255));
 
 		let view = new TestView();
 		root.AddView(view);
 
 		let color = view.ResolveStyleColor(.TextColor);
-		Test.Assert(color.R == 128);
+		Test.Assert(color.R == 128 / 255.0f);
 	}
 
 	// === Multiple properties per rule ===
@@ -422,14 +422,14 @@ class StyleSheetTests
 
 		let sheet = SetupSheet(ctx);
 		sheet.ForType(typeof(TestView))
-			.Set(.TextColor, Color32(200, 200, 200, 255))
+			.Set(.TextColor, Color(200, 200, 200, 255))
 			.Set(.FontSize, 16.0f)
 			.Set(.Padding, Thickness(8));
 
 		let view = new TestView();
 		root.AddView(view);
 
-		Test.Assert(view.ResolveStyleColor(.TextColor).R == 200);
+		Test.Assert(view.ResolveStyleColor(.TextColor).R == 200 / 255.0f);
 		Test.Assert(view.ResolveStyleFloat(.FontSize) == 16.0f);
 		Test.Assert(view.ResolveStyleThickness(.Padding).Left == 8);
 	}
@@ -503,22 +503,22 @@ class StyleSheetTests
 	public static void Palette_Lighten()
 	{
 		let c = Palette.Lighten(.(100, 100, 100, 255), 0.5f);
-		Test.Assert(c.R > 100 && c.R < 255);
-		Test.Assert(c.A == 255);
+		Test.Assert(c.R > 100 / 255.0f && c.R < 1.0f);
+		Test.Assert(c.A == 1.0f);
 	}
 
 	[Test]
 	public static void Palette_Darken()
 	{
 		let c = Palette.Darken(.(200, 200, 200, 255), 0.5f);
-		Test.Assert(c.R < 200 && c.R > 0);
-		Test.Assert(c.A == 255);
+		Test.Assert(c.R < 200 / 255.0f && c.R > 0);
+		Test.Assert(c.A == 1.0f);
 	}
 
 	[Test]
 	public static void Palette_ComputeHover_Lighter()
 	{
-		let baseColor = Color32(60, 60, 60, 255);
+		let baseColor = Color(60, 60, 60, 255);
 		let hover = Palette.ComputeHover(baseColor);
 		Test.Assert(hover.R > baseColor.R);
 	}
@@ -526,7 +526,7 @@ class StyleSheetTests
 	[Test]
 	public static void Palette_ComputePressed_Darker()
 	{
-		let baseColor = Color32(60, 60, 60, 255);
+		let baseColor = Color(60, 60, 60, 255);
 		let pressed = Palette.ComputePressed(baseColor);
 		Test.Assert(pressed.R < baseColor.R);
 	}
@@ -534,9 +534,9 @@ class StyleSheetTests
 	[Test]
 	public static void Palette_ComputeDisabled_Faded()
 	{
-		let baseColor = Color32(60, 120, 200, 255);
+		let baseColor = Color(60, 120, 200, 255);
 		let disabled = Palette.ComputeDisabled(baseColor);
-		Test.Assert(disabled.A < 255);
+		Test.Assert(disabled.A < 1.0f);
 	}
 
 	[Test]
@@ -628,7 +628,7 @@ class StyleSheetTests
 	public static void StyleRule_FluentSet()
 	{
 		let rule = scope StyleRule();
-		rule.Set(.TextColor, Color32.Red)
+		rule.Set(.TextColor, Color.Red)
 			.Set(.FontSize, 16.0f)
 			.Set(.Padding, Thickness(4));
 

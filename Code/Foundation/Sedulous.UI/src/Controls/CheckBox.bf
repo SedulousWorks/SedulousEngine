@@ -19,7 +19,7 @@ public class CheckBox : View
 	public Property<String> FontFamily = new .(null, .Visual) ~ { if (_.Value != null) delete _.Value; delete _; };
 
 	/// Override text color for the label text.
-	public Property<Color32?> TextColor = new .(null, .Visual) ~ delete _;
+	public Property<Color?> TextColor = new .(null, .Visual) ~ delete _;
 
 	/// Fired when checked state changes.
 	public Event<delegate void(CheckBox, bool)> OnCheckedChanged ~ _.Dispose();

@@ -9,9 +9,9 @@ public class AtlasImageDrawable : Drawable
 {
 	public IImageData AtlasImage;
 	public RectangleF SourceRect;
-	public Color32 Tint = .White;
+	public Color Tint = .White;
 
-	public this(IImageData atlas, RectangleF sourceRect, Color32 tint = .White)
+	public this(IImageData atlas, RectangleF sourceRect, Color tint = .White)
 	{
 		AtlasImage = atlas;
 		SourceRect = sourceRect;

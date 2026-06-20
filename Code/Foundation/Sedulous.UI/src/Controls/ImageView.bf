@@ -37,7 +37,7 @@ public class ImageView : View
 	public Property<ScaleType> ScaleType = new .(.FitCenter) ~ delete _;
 
 	/// Tint color applied to the image.
-	public Property<Color32> Tint = new .(.White) ~ delete _;
+	public Property<Color> Tint = new .(.White) ~ delete _;
 
 	public this()
 	{

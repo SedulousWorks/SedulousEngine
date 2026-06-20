@@ -88,7 +88,7 @@ public class ToolbarButton : ToolbarItem
 		// Hover/pressed background - derive from parent toolbar's background.
 		if (IsHovered)
 		{
-			var bgColor = Color32(50, 52, 62, 255);
+			var bgColor = Color(50, 52, 62, 255);
 			float cornerR = 0;
 			if (let toolbar = Parent as Toolbar)
 			{
@@ -180,7 +180,7 @@ public class ToolbarToggle : ToolbarButton
 		if (mIsChecked)
 		{
 			float cornerR = 0;
-			var onColor = Color32(40, 80, 160, 255);
+			var onColor = Color(40, 80, 160, 255);
 			if (let toolbar = Parent as Toolbar)
 			{
 				let bg = toolbar.ResolveStyleDrawable(.Background);

@@ -39,7 +39,7 @@ class InlineStyleTests
 		Test.Assert(view.HasAnyInlineStyles);
 
 		let c = view.GetInlineStyle(.TextColor).AsColor;
-		Test.Assert(c != null && c.Value.R == 255);
+		Test.Assert(c != null && c.Value.R == 1.0f);
 	}
 
 	[Test]
@@ -119,7 +119,7 @@ class InlineStyleTests
 		view.SetInlineStyle(.WordWrap,   .BoolVal(true));
 		view.SetInlineStyle(.Background, .DrawableRef(drawable));
 
-		Test.Assert(view.GetInlineStyle(.TextColor).AsColor.Value.R == 10);
+		Test.Assert(view.GetInlineStyle(.TextColor).AsColor.Value.R == 10 / 255.0f);
 		Test.Assert(view.GetInlineStyle(.FontSize).AsFloat == 16);
 		Test.Assert(view.GetInlineStyle(.Padding).AsThickness.Value.Left == 2);
 		Test.Assert(view.GetInlineStyle(.WordWrap).AsBool == true);
@@ -147,7 +147,7 @@ class InlineStyleTests
 		Test.Assert(view.HasAnyInlineStyles);
 
 		let c = view.GetInlinePartStyle("thumb", .Background).AsColor;
-		Test.Assert(c != null && c.Value.R == 255);
+		Test.Assert(c != null && c.Value.R == 1.0f);
 	}
 
 	[Test]
@@ -157,7 +157,7 @@ class InlineStyleTests
 		view.SetInlinePartStyle("thumb", .Background, .ColorVal(.Red));
 		view.SetInlinePartStyle("thumb", .Background, .ColorVal(.Blue));
 
-		Test.Assert(view.GetInlinePartStyle("thumb", .Background).AsColor.Value.B == 255);
+		Test.Assert(view.GetInlinePartStyle("thumb", .Background).AsColor.Value.B == 1.0f);
 		// A second set on the same key should not add a stale entry -
 		// the older value is gone, not just shadowed.
 		view.ClearInlinePartStyle("thumb", .Background);
@@ -171,8 +171,8 @@ class InlineStyleTests
 		view.SetInlinePartStyle("thumb", .Background, .ColorVal(.Red));
 		view.SetInlinePartStyle("track", .Background, .ColorVal(.Blue));
 
-		Test.Assert(view.GetInlinePartStyle("thumb", .Background).AsColor.Value.R == 255);
-		Test.Assert(view.GetInlinePartStyle("track", .Background).AsColor.Value.B == 255);
+		Test.Assert(view.GetInlinePartStyle("thumb", .Background).AsColor.Value.R == 1.0f);
+		Test.Assert(view.GetInlinePartStyle("track", .Background).AsColor.Value.B == 1.0f);
 	}
 
 	[Test]
@@ -241,7 +241,7 @@ class InlineStyleTests
 
 		let sheet = SetupSheet(ctx);
 		sheet.ForType(typeof(TestView))
-			.Set(.TextColor, Color32(255, 0, 0, 255));
+			.Set(.TextColor, Color(255, 0, 0, 255));
 
 		let view = new TestView();
 		root.AddView(view);
@@ -249,7 +249,7 @@ class InlineStyleTests
 
 		// Inline (green) wins over the rule (red).
 		let c = view.ResolveStyleColor(.TextColor);
-		Test.Assert(c.R == 0 && c.G == 255);
+		Test.Assert(c.R == 0 && c.G == 1.0f);
 	}
 
 	[Test]
@@ -295,7 +295,7 @@ class InlineStyleTests
 		view.SetInlineStyle(.TextColor, .ColorVal(.(10, 20, 30, 255)));
 
 		// Even with no hover, inline wins; with hover, still wins.
-		Test.Assert(view.ResolveStyleColor(.TextColor).R == 10);
+		Test.Assert(view.ResolveStyleColor(.TextColor).R == 10 / 255.0f);
 	}
 
 	[Test]
@@ -358,7 +358,7 @@ class InlineStyleTests
 		group.SetInlineStyle(.TextColor, .ColorVal(.(40, 50, 60, 255)));
 
 		let c = child.ResolveStyleColor(.TextColor);
-		Test.Assert(c.R == 40 && c.G == 50 && c.B == 60);
+		Test.Assert(c.R == 40 / 255.0f && c.G == 50 / 255.0f && c.B == 60 / 255.0f);
 	}
 
 	[Test]
@@ -380,7 +380,7 @@ class InlineStyleTests
 
 		child.SetInlineStyle(.TextColor, .ColorVal(.(0, 255, 0, 255)));
 
-		Test.Assert(child.ResolveStyleColor(.TextColor).G == 255);
+		Test.Assert(child.ResolveStyleColor(.TextColor).G == 1.0f);
 	}
 
 	[Test]
@@ -407,7 +407,7 @@ class InlineStyleTests
 		// Inline override - should win.
 		view.SetInlineStyle(.TextColor, .ColorVal(.(0, 255, 0, 255)));
 
-		Test.Assert(view.ResolveStyleColor(.TextColor).G == 255);
+		Test.Assert(view.ResolveStyleColor(.TextColor).G == 1.0f);
 	}
 
 	[Test]
@@ -435,7 +435,7 @@ class InlineStyleTests
 
 		child.SetInlineStyle(.TextColor, .ColorVal(.(0, 0, 255, 255)));
 
-		Test.Assert(child.ResolveStyleColor(.TextColor).B == 255);
+		Test.Assert(child.ResolveStyleColor(.TextColor).B == 1.0f);
 	}
 
 	// === Drawable ownership via SetStyle ===

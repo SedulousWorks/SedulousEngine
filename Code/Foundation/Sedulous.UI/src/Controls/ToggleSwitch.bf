@@ -69,7 +69,7 @@ public class ToggleSwitch : View
 		else
 		{
 			// Fallback: fill + border
-			ctx.VG.FillRect(trackRect, IsChecked.Value ? Color32(80, 150, 240, 255) : Color32(42, 44, 54, 255));
+			ctx.VG.FillRect(trackRect, IsChecked.Value ? Color(80, 150, 240, 255) : Color(42, 44, 54, 255));
 			let borderColor = ResolveStyleColor(.BorderColor, .(65, 70, 85, 255));
 			ctx.VG.StrokeRect(trackRect, borderColor, 1);
 		}

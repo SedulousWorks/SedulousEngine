@@ -467,7 +467,7 @@ class MarkupLoaderTests
 		let label = view as Label;
 		Test.Assert(label.GetInlineStyle(.FontSize).AsFloat == 18f);
 		let c = label.GetInlineStyle(.TextColor).AsColor;
-		Test.Assert(c.HasValue && c.Value.R == 255 && c.Value.G == 0);
+		Test.Assert(c.HasValue && c.Value.R == 1.0f && c.Value.G == 0);
 		let pad = label.GetInlineStyle(.Padding).AsThickness;
 		Test.Assert(pad.HasValue && pad.Value.Top == 4 && pad.Value.Left == 8);
 
@@ -498,7 +498,7 @@ class MarkupLoaderTests
 		let sheet = new StyleSheet();
 		ctx.StyleSheet = sheet;
 		sheet.ReleaseRef();
-		sheet.ForType(typeof(Label)).Set(.TextColor, Color32(0, 0, 255, 255));
+		sheet.ForType(typeof(Label)).Set(.TextColor, Color(0, 0, 255, 255));
 
 		let view = MarkupLoader.LoadFromString(
 			"""
@@ -509,7 +509,7 @@ class MarkupLoaderTests
 		let label = view as Label;
 		// Inline (green) wins over context-sheet (blue).
 		let c = label.ResolveStyleColor(.TextColor);
-		Test.Assert(c.G == 255 && c.B == 0);
+		Test.Assert(c.G == 1.0f && c.B == 0);
 	}
 
 	[Test]

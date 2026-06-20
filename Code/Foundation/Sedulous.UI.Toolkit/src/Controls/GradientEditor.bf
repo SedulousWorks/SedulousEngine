@@ -52,7 +52,7 @@ public class GradientEditor : View
 	public int32 MaxStops = 8;
 
 	/// Color used to fill the gradient strip when there are no stops.
-	public Color32 EmptyFill = .(40, 40, 46, 255);
+	public Color EmptyFill = .(40, 40, 46, 255);
 
 	/// Fired when an edit gesture starts.
 	public Event<delegate void()> OnEditBegin ~ _.Dispose();
@@ -269,14 +269,9 @@ public class GradientEditor : View
 
 	// === Drawing ===
 
-	private static Color32 Vector4ToColor(Vector4 c)
+	private static Color Vector4ToColor(Vector4 c)
 	{
-		// Clamp + quantize for the rendering color path.
-		let r = (uint8)Math.Clamp((int32)(c.X * 255), 0, 255);
-		let g = (uint8)Math.Clamp((int32)(c.Y * 255), 0, 255);
-		let b = (uint8)Math.Clamp((int32)(c.Z * 255), 0, 255);
-		let a = (uint8)Math.Clamp((int32)(c.W * 255), 0, 255);
-		return .(r, g, b, a);
+		return .(Math.Clamp(c.X, 0, 1), Math.Clamp(c.Y, 0, 1), Math.Clamp(c.Z, 0, 1), Math.Clamp(c.W, 0, 1));
 	}
 
 	public override void OnDraw(UIDrawContext ctx)
@@ -315,7 +310,7 @@ public class GradientEditor : View
 			let mx = TimeToX(mStops[i].Time);
 			let isSel = (i == mSelectedIdx);
 			let body = Vector4ToColor(mStops[i].Color);
-			let stroke = isSel ? Color32(255, 220, 100, 255) : Color32(200, 200, 210, 255);
+			let stroke = isSel ? Color(255, 220, 100, 255) : Color(200, 200, 210, 255);
 
 			// Filled triangle.
 			ctx.VG.BeginPath();
