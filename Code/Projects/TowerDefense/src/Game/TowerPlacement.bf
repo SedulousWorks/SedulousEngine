@@ -294,7 +294,7 @@ class TowerPlacement
 	}
 
 	/// Draws a flat rectangle as overlay lines at a given Y height.
-	private static void DrawFlatRectOverlay(DebugDraw dbg, Vector3 center, float half, float y, Color32 color)
+	private static void DrawFlatRectOverlay(DebugDraw dbg, Vector3 center, float half, float y, Color color)
 	{
 		let c0 = center + .(-half, y, -half);
 		let c1 = center + .( half, y, -half);
@@ -318,8 +318,8 @@ class TowerPlacement
 		// Draw tower slot markers when in placement mode
 		if (SelectedType != null)
 		{
-			let slotColor = Color32(50, 200, 50, 255);
-			let occupiedColor = Color32(150, 150, 150, 255);
+			let slotColor = Color(50, 200, 50, 255);
+			let occupiedColor = Color(150, 150, 150, 255);
 
 			for (int32 z = 0; z < map.Height; z++)
 			{
@@ -338,7 +338,7 @@ class TowerPlacement
 
 			// Hover highlight
 			let hoverPos = map.GridToWorld(HoverX, HoverZ);
-			let hoverColor = HoverValid ? Color32(50, 255, 50, 255) : Color32(255, 50, 50, 255);
+			let hoverColor = HoverValid ? Color(50, 255, 50, 255) : Color(255, 50, 50, 255);
 			DrawFlatRectOverlay(dbg, hoverPos, MapData.TileSize * 0.48f, y, hoverColor);
 
 			// Range circle for placement preview
@@ -346,7 +346,7 @@ class TowerPlacement
 			{
 				let stats = TowerStats.Get(SelectedType.Value);
 				let range = stats.Levels[0].Range;
-				DrawRangeCircle(dbg, hoverPos, range, y, Color32(255, 255, 100, 200));
+				DrawRangeCircle(dbg, hoverPos, range, y, Color(255, 255, 100, 200));
 			}
 		}
 
@@ -360,15 +360,15 @@ class TowerPlacement
 				if (comp != null)
 				{
 					let pos = map.GridToWorld(comp.GridX, comp.GridZ);
-					DrawRangeCircle(dbg, pos, comp.Range, y, Color32(100, 200, 255, 200));
+					DrawRangeCircle(dbg, pos, comp.Range, y, Color(100, 200, 255, 200));
 					// Highlight ring around selected tower
-					DrawFlatRectOverlay(dbg, pos, MapData.TileSize * 0.48f, y, Color32(100, 200, 255, 255));
+					DrawFlatRectOverlay(dbg, pos, MapData.TileSize * 0.48f, y, Color(100, 200, 255, 255));
 				}
 			}
 		}
 	}
 
-	private static void DrawRangeCircle(DebugDraw dbg, Vector3 center, float range, float y, Color32 color)
+	private static void DrawRangeCircle(DebugDraw dbg, Vector3 center, float range, float y, Color color)
 	{
 		let segments = 48;
 		for (int i = 0; i < segments; i++)

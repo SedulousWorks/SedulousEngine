@@ -805,9 +805,9 @@ static class ScenePageBuilder
 	{
 		const float gridSize = 50.0f; // half-extent in metres
 		const float gridStep = 1.0f;
-		let gridColor = Color32(80, 80, 80);
-		let xAxisColor = Color32(180, 60, 60);  // Z=0 line - runs along X
-		let zAxisColor = Color32(60, 80, 180);  // X=0 line - runs along Z
+		let gridColor = Color(80, 80, 80);
+		let xAxisColor = Color(180, 60, 60);  // Z=0 line - runs along X
+		let zAxisColor = Color(60, 80, 180);  // X=0 line - runs along Z
 
 		var x = -gridSize;
 		while (x <= gridSize)

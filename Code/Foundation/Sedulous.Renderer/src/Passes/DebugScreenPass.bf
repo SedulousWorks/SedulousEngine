@@ -198,7 +198,7 @@ class DebugScreenPass : PipelinePass
 		}
 	}
 
-	private void EmitQuad(float x, float y, float w, float h, float u0, float v0, float u1, float v1, Color32 color)
+	private void EmitQuad(float x, float y, float w, float h, float u0, float v0, float u1, float v1, Color color)
 	{
 		// Triangle list, clockwise winding for DX convention.
 		let p00 = Vector3(x,     y,     0);
@@ -210,13 +210,14 @@ class DebugScreenPass : PipelinePass
 		let uv01 = Vector2(u0, v1);
 		let uv11 = Vector2(u1, v1);
 
+		let c32 = color.ToColor32();
 		// Tri 1: 00, 10, 01
-		mScratch.Add(.(p00, uv00, color));
-		mScratch.Add(.(p10, uv10, color));
-		mScratch.Add(.(p01, uv01, color));
+		mScratch.Add(.(p00, uv00, c32));
+		mScratch.Add(.(p10, uv10, c32));
+		mScratch.Add(.(p01, uv01, c32));
 		// Tri 2: 10, 11, 01
-		mScratch.Add(.(p10, uv10, color));
-		mScratch.Add(.(p11, uv11, color));
-		mScratch.Add(.(p01, uv01, color));
+		mScratch.Add(.(p10, uv10, c32));
+		mScratch.Add(.(p11, uv11, c32));
+		mScratch.Add(.(p01, uv01, c32));
 	}
 }

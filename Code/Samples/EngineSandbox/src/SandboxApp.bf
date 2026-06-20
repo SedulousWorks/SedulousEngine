@@ -92,15 +92,15 @@ class SandboxApp : EngineApplication
 	List<float> mNavPathWaypoints = new .() ~ delete _;
 
 	// Agent colors for nav mesh agents
-	static Color32[8] sNavAgentColors = .(
-		Color32(50, 200, 50, 255),
-		Color32(50, 100, 255, 255),
-		Color32(255, 200, 50, 255),
-		Color32(200, 50, 200, 255),
-		Color32(255, 100, 50, 255),
-		Color32(50, 200, 200, 255),
-		Color32(200, 50, 50, 255),
-		Color32(200, 200, 200, 255)
+	static Color[8] sNavAgentColors = .(
+		Color(50, 200, 50),
+		Color(50, 100, 255),
+		Color(255, 200, 50),
+		Color(200, 50, 200),
+		Color(255, 100, 50),
+		Color(50, 200, 200),
+		Color(200, 50, 50),
+		Color(200, 200, 200)
 	);
 	List<TextureResource> mFoxTextures = new .() ~ delete _;
 
@@ -1381,7 +1381,7 @@ class SandboxApp : EngineApplication
 				// Draw target marker (cross + circle on ground)
 				if (mHasNavTarget)
 				{
-					let targetColor = Color32(255, 255, 255, 200);
+					let targetColor = Color(255, 255, 255, 200);
 					let p = mNavTarget + .(0, 0.05f, 0);
 					// Cross
 					dbg.DrawLine(p + .(-0.3f, 0, 0), p + .(0.3f, 0, 0), targetColor);
@@ -1392,7 +1392,7 @@ class SandboxApp : EngineApplication
 				// Draw path on the ground
 				if (mNavPathWaypoints.Count >= 6)
 				{
-					let pathColor = Color32(0, 255, 100, 200);
+					let pathColor = Color(0, 255, 100, 200);
 					for (int32 i = 0; i + 5 < (int32)mNavPathWaypoints.Count; i += 3)
 					{
 						let from = Vector3(mNavPathWaypoints[i], mNavPathWaypoints[i + 1] + 0.1f, mNavPathWaypoints[i + 2]);
@@ -1430,7 +1430,7 @@ class SandboxApp : EngineApplication
 						{
 							let arrowStart = agentPos + .(0, halfH, 0);
 							let arrowEnd = arrowStart + Vector3(vel[0], 0, vel[2]) * 0.4f;
-							dbg.DrawLine(arrowStart, arrowEnd, Color32(255, 255, 0, 255));
+							dbg.DrawLine(arrowStart, arrowEnd, Color(255, 255, 0, 255));
 						}
 					}
 				}
@@ -1475,7 +1475,7 @@ class SandboxApp : EngineApplication
 		if (physicsMgr == null || physicsMgr.PhysicsWorld == null) return;
 
 		let world = physicsMgr.PhysicsWorld;
-		let debugColor = Color32(0, 255, 0, 180);
+		let debugColor = Color(0, 255, 0, 180);
 
 		for (let comp in physicsMgr.ActiveComponents)
 		{
@@ -1501,7 +1501,7 @@ class SandboxApp : EngineApplication
 	}
 
 	/// Draws a wireframe box with position and rotation applied.
-	private void DrawWireBoxOriented(DebugDraw dbg, Vector3 center, Quaternion rotation, Vector3 halfExtents, Color32 color)
+	private void DrawWireBoxOriented(DebugDraw dbg, Vector3 center, Quaternion rotation, Vector3 halfExtents, Color color)
 	{
 		// 8 local-space corners of the box
 		Vector3[8] locals = .(
@@ -1538,7 +1538,7 @@ class SandboxApp : EngineApplication
 		dbg.DrawLine(corners[3], corners[7], color);
 	}
 
-	private void DrawParticleBounds(DebugDraw dbg, ParticleEffect effect, Color32 color)
+	private void DrawParticleBounds(DebugDraw dbg, ParticleEffect effect, Color color)
 	{
 		if (effect == null) return;
 		for (let system in effect.Systems)

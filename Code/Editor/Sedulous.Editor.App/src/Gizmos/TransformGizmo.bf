@@ -38,13 +38,13 @@ class TransformGizmo
 	private Vector3 mDragRotationV;
 
 	// Colors
-	private static readonly Color32 sColorX = .(220, 50, 50, 255);
-	private static readonly Color32 sColorY = .(50, 220, 50, 255);
-	private static readonly Color32 sColorZ = .(50, 100, 220, 255);
-	private static readonly Color32 sColorXHover = .(255, 150, 150, 255);
-	private static readonly Color32 sColorYHover = .(150, 255, 150, 255);
-	private static readonly Color32 sColorZHover = .(150, 180, 255, 255);
-	private static readonly Color32 sColorSelected = .(255, 255, 100, 255);
+	private static readonly Color sColorX = .(220, 50, 50, 255);
+	private static readonly Color sColorY = .(50, 220, 50, 255);
+	private static readonly Color sColorZ = .(50, 100, 220, 255);
+	private static readonly Color sColorXHover = .(255, 150, 150, 255);
+	private static readonly Color sColorYHover = .(150, 255, 150, 255);
+	private static readonly Color sColorZHover = .(150, 180, 255, 255);
+	private static readonly Color sColorSelected = .(255, 255, 100, 255);
 
 	/// Creates a pick ray from screen coordinates through the camera.
 	public static Ray CreatePickRay(float screenX, float screenY, uint32 width, uint32 height,
@@ -352,7 +352,7 @@ class TransformGizmo
 	/// with view), so the ribbon always faces the camera. Uses overlay
 	/// triangles so the gizmo remains visible through geometry.
 	private static void DrawThickLineOverlay(DebugDraw debugDraw, Vector3 from, Vector3 to,
-		Vector3 cameraPos, Color32 color, float thickness)
+		Vector3 cameraPos, Color color, float thickness)
 	{
 		let lineDir = to - from;
 		if (lineDir.LengthSquared() < 0.0001f) return;
@@ -376,7 +376,7 @@ class TransformGizmo
 
 	/// Draws a circle in the plane spanned by u and v using thick segments.
 	private static void DrawThickCircleOverlay(DebugDraw debugDraw, Vector3 center, Vector3 u, Vector3 v,
-		float radius, Vector3 cameraPos, Color32 color, float thickness, int32 segments)
+		float radius, Vector3 cameraPos, Color color, float thickness, int32 segments)
 	{
 		let uN = Vector3.Normalize(u);
 		let vN = Vector3.Normalize(v);
@@ -392,7 +392,7 @@ class TransformGizmo
 
 	// ==================== Helpers ====================
 
-	private Color32 GetAxisColor(GizmoAxis axis)
+	private Color GetAxisColor(GizmoAxis axis)
 	{
 		if (SelectedAxis == axis) return sColorSelected;
 		if (HoveredAxis == axis)
@@ -414,7 +414,7 @@ class TransformGizmo
 		}
 	}
 
-	private void DrawBoxOverlay(DebugDraw debugDraw, Vector3 center, float halfSize, Color32 color)
+	private void DrawBoxOverlay(DebugDraw debugDraw, Vector3 center, float halfSize, Color color)
 	{
 		let min = center - .(halfSize, halfSize, halfSize);
 		let max = center + .(halfSize, halfSize, halfSize);
