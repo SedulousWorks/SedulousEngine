@@ -238,7 +238,7 @@ public class DrawContext
 	}
 
 	/// Fill a rectangle with a solid color
-	public void FillRect(RectangleF rect, Color32 color)
+	public void FillRect(RectangleF rect, Color color)
 	{
 		SetupForSolidDraw();
 
@@ -266,7 +266,7 @@ public class DrawContext
 	}
 
 	/// Fill a rounded rectangle with a solid color
-	public void FillRoundedRect(RectangleF rect, float radius, Color32 color)
+	public void FillRoundedRect(RectangleF rect, float radius, Color color)
 	{
 		SetupForSolidDraw();
 		let startVertex = mBatch.Vertices.Count;
@@ -291,7 +291,7 @@ public class DrawContext
 
 	/// Draw a rounded rectangle outline with a solid color.
 	/// Stroke is centered on the rect edges (standard 2D graphics behavior).
-	public void DrawRoundedRect(RectangleF rect, float radius, Color32 color, float thickness = 1.0f)
+	public void DrawRoundedRect(RectangleF rect, float radius, Color color, float thickness = 1.0f)
 	{
 		SetupForSolidDraw();
 		let startVertex = mBatch.Vertices.Count;
@@ -303,7 +303,7 @@ public class DrawContext
 	/// Draw a UI border rounded rectangle with stroke fully inside the rect bounds.
 	/// The outer edge of the stroke aligns exactly with the rect edges.
 	/// Use this for UI borders where content is positioned at rect + thickness.
-	public void DrawBorderRoundedRect(RectangleF rect, float radius, Color32 color, float thickness = 1.0f)
+	public void DrawBorderRoundedRect(RectangleF rect, float radius, Color color, float thickness = 1.0f)
 	{
 		// Inset the rect by half thickness so the centered stroke lands inside
 		let halfThick = thickness * 0.5f;
@@ -329,7 +329,7 @@ public class DrawContext
 	}
 
 	/// Fill a circle with a solid color
-	public void FillCircle(Vector2 center, float radius, Color32 color)
+	public void FillCircle(Vector2 center, float radius, Color color)
 	{
 		SetupForSolidDraw();
 		let startVertex = mBatch.Vertices.Count;
@@ -355,7 +355,7 @@ public class DrawContext
 	}
 
 	/// Fill an ellipse with a solid color
-	public void FillEllipse(Vector2 center, float rx, float ry, Color32 color)
+	public void FillEllipse(Vector2 center, float rx, float ry, Color color)
 	{
 		SetupForSolidDraw();
 		let startVertex = mBatch.Vertices.Count;
@@ -381,7 +381,7 @@ public class DrawContext
 	}
 
 	/// Fill an arc with a solid color
-	public void FillArc(Vector2 center, float radius, float startAngle, float sweepAngle, Color32 color)
+	public void FillArc(Vector2 center, float radius, float startAngle, float sweepAngle, Color color)
 	{
 		SetupForSolidDraw();
 		let startVertex = mBatch.Vertices.Count;
@@ -405,7 +405,7 @@ public class DrawContext
 	}
 
 	/// Draw a line with color and thickness
-	public void DrawLine(Vector2 start, Vector2 end, Color32 color, float thickness = 1.0f)
+	public void DrawLine(Vector2 start, Vector2 end, Color color, float thickness = 1.0f)
 	{
 		SetupForSolidDraw();
 		let startVertex = mBatch.Vertices.Count;
@@ -428,7 +428,7 @@ public class DrawContext
 
 	/// Draw a rectangle outline with color and thickness.
 	/// Stroke is centered on the rect edges (standard 2D graphics behavior).
-	public void DrawRect(RectangleF rect, Color32 color, float thickness = 1.0f)
+	public void DrawRect(RectangleF rect, Color color, float thickness = 1.0f)
 	{
 		SetupForSolidDraw();
 		let startVertex = mBatch.Vertices.Count;
@@ -441,7 +441,7 @@ public class DrawContext
 	/// Draw a UI border rectangle with stroke fully inside the rect bounds.
 	/// The outer edge of the stroke aligns exactly with the rect edges.
 	/// Use this for UI borders where content is positioned at rect + thickness.
-	public void DrawBorderRect(RectangleF rect, Color32 color, float thickness = 1.0f)
+	public void DrawBorderRect(RectangleF rect, Color color, float thickness = 1.0f)
 	{
 		// Inset the rect by half thickness so the centered stroke lands inside
 		let halfThick = thickness * 0.5f;
@@ -461,7 +461,7 @@ public class DrawContext
 	}
 
 	/// Draw a circle outline with color and thickness
-	public void DrawCircle(Vector2 center, float radius, Color32 color, float thickness = 1.0f)
+	public void DrawCircle(Vector2 center, float radius, Color color, float thickness = 1.0f)
 	{
 		SetupForSolidDraw();
 		let startVertex = mBatch.Vertices.Count;
@@ -483,7 +483,7 @@ public class DrawContext
 	}
 
 	/// Draw an ellipse outline with color and thickness
-	public void DrawEllipse(Vector2 center, float rx, float ry, Color32 color, float thickness = 1.0f)
+	public void DrawEllipse(Vector2 center, float rx, float ry, Color color, float thickness = 1.0f)
 	{
 		SetupForSolidDraw();
 		let startVertex = mBatch.Vertices.Count;
@@ -532,7 +532,7 @@ public class DrawContext
 	}
 
 	/// Fill a polygon with a solid color
-	public void FillPolygon(Span<Vector2> points, Color32 color)
+	public void FillPolygon(Span<Vector2> points, Color color)
 	{
 		if (points.Length < 3)
 			return;
@@ -564,7 +564,7 @@ public class DrawContext
 	}
 
 	/// Draw a polyline with color and thickness
-	public void DrawPolyline(Span<Vector2> points, Color32 color, float thickness = 1.0f)
+	public void DrawPolyline(Span<Vector2> points, Color color, float thickness = 1.0f)
 	{
 		if (points.Length < 2)
 			return;
@@ -592,7 +592,7 @@ public class DrawContext
 	}
 
 	/// Draw a polygon outline with color and thickness
-	public void DrawPolygon(Span<Vector2> points, Color32 color, float thickness = 1.0f)
+	public void DrawPolygon(Span<Vector2> points, Color color, float thickness = 1.0f)
 	{
 		if (points.Length < 3)
 			return;
@@ -610,11 +610,11 @@ public class DrawContext
 	/// Draw an image at a position
 	public void DrawImage(IImageData texture, Vector2 position)
 	{
-		DrawImage(texture, .(position.X, position.Y, texture.Width, texture.Height), .(0, 0, texture.Width, texture.Height), Color32.White);
+		DrawImage(texture, .(position.X, position.Y, texture.Width, texture.Height), .(0, 0, texture.Width, texture.Height), Color.White);
 	}
 
 	/// Draw an image at a position with tint
-	public void DrawImage(IImageData texture, Vector2 position, Color32 tint)
+	public void DrawImage(IImageData texture, Vector2 position, Color tint)
 	{
 		DrawImage(texture, .(position.X, position.Y, texture.Width, texture.Height), .(0, 0, texture.Width, texture.Height), tint);
 	}
@@ -622,11 +622,11 @@ public class DrawContext
 	/// Draw an image stretched to a destination rectangle
 	public void DrawImage(IImageData texture, RectangleF destRect)
 	{
-		DrawImage(texture, destRect, .(0, 0, texture.Width, texture.Height), Color32.White);
+		DrawImage(texture, destRect, .(0, 0, texture.Width, texture.Height), Color.White);
 	}
 
 	/// Draw an image stretched to a destination rectangle with source rect and tint
-	public void DrawImage(IImageData texture, RectangleF destRect, RectangleF srcRect, Color32 tint)
+	public void DrawImage(IImageData texture, RectangleF destRect, RectangleF srcRect, Color tint)
 	{
 		let textureIndex = GetOrAddTexture(texture);
 		SetupForTextureDraw(textureIndex);
@@ -636,7 +636,7 @@ public class DrawContext
 	}
 
 	/// Draw a 9-slice image
-	public void DrawNineSlice(IImageData texture, RectangleF destRect, RectangleF srcRect, NineSlice slices, Color32 tint)
+	public void DrawNineSlice(IImageData texture, RectangleF destRect, RectangleF srcRect, NineSlice slices, Color tint)
 	{
 		let textureIndex = GetOrAddTexture(texture);
 		SetupForTextureDraw(textureIndex);
@@ -664,23 +664,23 @@ public class DrawContext
 	/// Draw a sprite at a position
 	public void DrawSprite(Sprite sprite, Vector2 position)
 	{
-		DrawSprite(sprite, position, 0, .(1, 1), .None, Color32.White);
+		DrawSprite(sprite, position, 0, .(1, 1), .None, Color.White);
 	}
 
 	/// Draw a sprite with tint
-	public void DrawSprite(Sprite sprite, Vector2 position, Color32 tint)
+	public void DrawSprite(Sprite sprite, Vector2 position, Color tint)
 	{
 		DrawSprite(sprite, position, 0, .(1, 1), .None, tint);
 	}
 
 	/// Draw a sprite with rotation and scale
-	public void DrawSprite(Sprite sprite, Vector2 position, float rotation, Vector2 scale, Color32 tint)
+	public void DrawSprite(Sprite sprite, Vector2 position, float rotation, Vector2 scale, Color tint)
 	{
 		DrawSprite(sprite, position, rotation, scale, .None, tint);
 	}
 
 	/// Draw a sprite with full transform options
-	public void DrawSprite(Sprite sprite, Vector2 position, float rotation, Vector2 scale, SpriteFlip flip, Color32 tint)
+	public void DrawSprite(Sprite sprite, Vector2 position, float rotation, Vector2 scale, SpriteFlip flip, Color tint)
 	{
 		if (sprite.Texture == null)
 			return;
@@ -733,7 +733,7 @@ public class DrawContext
 	}
 
 	/// Draw a sprite from an animation player with transform
-	public void DrawSprite(SpriteAnimation animation, AnimationPlayer player, Vector2 position, float rotation, Vector2 scale, SpriteFlip flip, Color32 tint)
+	public void DrawSprite(SpriteAnimation animation, AnimationPlayer player, Vector2 position, float rotation, Vector2 scale, SpriteFlip flip, Color tint)
 	{
 		DrawSprite(player.GetCurrentSprite(animation), position, rotation, scale, flip, tint);
 	}
@@ -742,7 +742,7 @@ public class DrawContext
 
 	/// Draw text at a position using a font atlas
 	/// Position is at the top-left of the text bounds
-	public void DrawText(StringView text, IFontAtlas atlas, IImageData atlasTexture, Vector2 position, Color32 color)
+	public void DrawText(StringView text, IFontAtlas atlas, IImageData atlasTexture, Vector2 position, Color color)
 	{
 		if (text.IsEmpty)
 			return;
@@ -803,7 +803,7 @@ public class DrawContext
 	}
 
 	/// Draw text with horizontal alignment within bounds
-	public void DrawText(StringView text, IFont font, IFontAtlas atlas, IImageData atlasTexture, RectangleF bounds, TextAlignment align, Color32 color)
+	public void DrawText(StringView text, IFont font, IFontAtlas atlas, IImageData atlasTexture, RectangleF bounds, TextAlignment align, Color color)
 	{
 		if (text.IsEmpty)
 			return;
@@ -828,7 +828,7 @@ public class DrawContext
 	}
 
 	/// Draw text with horizontal and vertical alignment within bounds
-	public void DrawText(StringView text, IFont font, IFontAtlas atlas, IImageData atlasTexture, RectangleF bounds, TextAlignment hAlign, VerticalAlignment vAlign, Color32 color)
+	public void DrawText(StringView text, IFont font, IFontAtlas atlas, IImageData atlasTexture, RectangleF bounds, TextAlignment hAlign, VerticalAlignment vAlign, Color color)
 	{
 		if (text.IsEmpty)
 			return;
@@ -867,7 +867,7 @@ public class DrawContext
 
 	/// Draw text using a cached font. Position is at the top-left of the text.
 	/// Requires a FontService to be set on this DrawContext.
-	public void DrawText(StringView text, CachedFont font, Vector2 position, Color32 color)
+	public void DrawText(StringView text, CachedFont font, Vector2 position, Color color)
 	{
 		if (text.IsEmpty || font == null || mFontService == null)
 			return;
@@ -883,7 +883,7 @@ public class DrawContext
 
 	/// Draw text using the default font at the given pixel size. Position is at the top-left.
 	/// Requires a FontService to be set on this DrawContext.
-	public void DrawText(StringView text, float fontSize, Vector2 position, Color32 color)
+	public void DrawText(StringView text, float fontSize, Vector2 position, Color color)
 	{
 		if (text.IsEmpty || mFontService == null)
 			return;
@@ -897,7 +897,7 @@ public class DrawContext
 
 	/// Draw text with word wrapping using the text shaper.
 	/// Requires the CachedFont to have a Shaper set.
-	public void DrawTextWrapped(StringView text, CachedFont font, IImageData atlasTexture, RectangleF bounds, float maxWidth, Color32 color,
+	public void DrawTextWrapped(StringView text, CachedFont font, IImageData atlasTexture, RectangleF bounds, float maxWidth, Color color,
 		TextAlignment hAlign = .Left)
 	{
 		if (text.IsEmpty || font == null || font.Shaper == null || atlasTexture == null)
@@ -918,7 +918,7 @@ public class DrawContext
 
 	/// Draw text with word wrapping using the text shaper.
 	/// Returns the total height of the wrapped text.
-	public float DrawTextWrapped(StringView text, CachedFont font, IImageData atlasTexture, Vector2 position, float maxWidth, Color32 color,
+	public float DrawTextWrapped(StringView text, CachedFont font, IImageData atlasTexture, Vector2 position, float maxWidth, Color color,
 		TextAlignment hAlign = .Left)
 	{
 		if (text.IsEmpty || font == null || font.Shaper == null || atlasTexture == null)
@@ -998,7 +998,7 @@ public class DrawContext
 
 	/// Draw pre-positioned glyphs (from text shaping).
 	/// offsetX/offsetY are added to all glyph positions.
-	public void DrawPositionedGlyphs(List<GlyphPosition> positions, IFontAtlas atlas, IImageData atlasTexture, float offsetX, float offsetY, Color32 color)
+	public void DrawPositionedGlyphs(List<GlyphPosition> positions, IFontAtlas atlas, IImageData atlasTexture, float offsetX, float offsetY, Color color)
 	{
 		if (positions.Count == 0)
 			return;
@@ -1100,11 +1100,11 @@ public class DrawContext
 	}
 
 	/// Apply current opacity to a color
-	private Color32 ApplyOpacity(Color32 color)
+	private Color ApplyOpacity(Color color)
 	{
 		if (mCurrentState.Opacity >= 1.0f)
 			return color;
-		return Color32(color.R, color.G, color.B, (uint8)(color.A * mCurrentState.Opacity));
+		return Color(color.R, color.G, color.B, color.A * mCurrentState.Opacity);
 	}
 
 	/// Apply brush colors to vertices that were just added
@@ -1118,7 +1118,7 @@ public class DrawContext
 			// for identity transforms (the common case). Gradient brushes with rotation/scale
 			// transforms may have slightly incorrect color mapping - acceptable for UI use.
 			let color = brush.GetColorAt(.(vertex.Position.X, vertex.Position.Y), bounds);
-			vertex.Color = ApplyOpacity(color);
+			vertex.Color = ApplyOpacity(color).ToColor32();
 		}
 	}
 

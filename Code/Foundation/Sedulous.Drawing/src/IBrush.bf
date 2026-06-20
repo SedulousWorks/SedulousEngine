@@ -8,10 +8,10 @@ public interface IBrush
 {
 	/// Get the color at a specific point (for gradient interpolation)
 	/// For solid brushes, this returns the same color regardless of position
-	Color32 GetColorAt(Vector2 position, RectangleF bounds);
+	Color GetColorAt(Vector2 position, RectangleF bounds);
 
 	/// Get the base/primary color of the brush
-	Color32 BaseColor { get; }
+	Color BaseColor { get; }
 
 	/// Whether this brush requires per-vertex color interpolation
 	bool RequiresInterpolation { get; }

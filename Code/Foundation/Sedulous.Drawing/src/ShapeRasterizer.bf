@@ -15,15 +15,16 @@ public class ShapeRasterizer
 	// === Filled Shapes ===
 
 	/// Rasterize a filled rectangle
-	public void RasterizeRect(RectangleF rect, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
+	public void RasterizeRect(RectangleF rect, List<DrawVertex> vertices, List<uint16> indices, Color color)
 	{
 		let baseIndex = (uint16)vertices.Count;
+		let c = color.ToColor32();
 
 		// 4 corners
-		vertices.Add(.(rect.X, rect.Y, SolidUV, SolidUV, color));                              // Top-left
-		vertices.Add(.(rect.X + rect.Width, rect.Y, SolidUV, SolidUV, color));                 // Top-right
-		vertices.Add(.(rect.X + rect.Width, rect.Y + rect.Height, SolidUV, SolidUV, color));   // Bottom-right
-		vertices.Add(.(rect.X, rect.Y + rect.Height, SolidUV, SolidUV, color));                // Bottom-left
+		vertices.Add(.(rect.X, rect.Y, SolidUV, SolidUV, c));                              // Top-left
+		vertices.Add(.(rect.X + rect.Width, rect.Y, SolidUV, SolidUV, c));                 // Top-right
+		vertices.Add(.(rect.X + rect.Width, rect.Y + rect.Height, SolidUV, SolidUV, c));   // Bottom-right
+		vertices.Add(.(rect.X, rect.Y + rect.Height, SolidUV, SolidUV, c));                // Bottom-left
 
 		// 2 triangles
 		indices.Add(baseIndex + 0);
@@ -35,14 +36,15 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a quad from 4 pre-transformed corner points (for rotation support)
-	public void RasterizeQuad(Vector2 topLeft, Vector2 topRight, Vector2 bottomRight, Vector2 bottomLeft, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
+	public void RasterizeQuad(Vector2 topLeft, Vector2 topRight, Vector2 bottomRight, Vector2 bottomLeft, List<DrawVertex> vertices, List<uint16> indices, Color color)
 	{
 		let baseIndex = (uint16)vertices.Count;
+		let c = color.ToColor32();
 
-		vertices.Add(.(topLeft.X, topLeft.Y, SolidUV, SolidUV, color));
-		vertices.Add(.(topRight.X, topRight.Y, SolidUV, SolidUV, color));
-		vertices.Add(.(bottomRight.X, bottomRight.Y, SolidUV, SolidUV, color));
-		vertices.Add(.(bottomLeft.X, bottomLeft.Y, SolidUV, SolidUV, color));
+		vertices.Add(.(topLeft.X, topLeft.Y, SolidUV, SolidUV, c));
+		vertices.Add(.(topRight.X, topRight.Y, SolidUV, SolidUV, c));
+		vertices.Add(.(bottomRight.X, bottomRight.Y, SolidUV, SolidUV, c));
+		vertices.Add(.(bottomLeft.X, bottomLeft.Y, SolidUV, SolidUV, c));
 
 		// 2 triangles
 		indices.Add(baseIndex + 0);
@@ -54,19 +56,20 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a filled circle using triangle fan
-	public void RasterizeCircle(Vector2 center, float radius, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
+	public void RasterizeCircle(Vector2 center, float radius, List<DrawVertex> vertices, List<uint16> indices, Color color)
 	{
 		RasterizeEllipse(center, radius, radius, vertices, indices, color);
 	}
 
 	/// Rasterize a filled ellipse using triangle fan
-	public void RasterizeEllipse(Vector2 center, float rx, float ry, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
+	public void RasterizeEllipse(Vector2 center, float rx, float ry, List<DrawVertex> vertices, List<uint16> indices, Color color)
 	{
 		let segments = CalculateCircleSegments(Math.Max(rx, ry));
 		let baseIndex = (uint16)vertices.Count;
+		let c = color.ToColor32();
 
 		// Center vertex
-		vertices.Add(.(center.X, center.Y, SolidUV, SolidUV, color));
+		vertices.Add(.(center.X, center.Y, SolidUV, SolidUV, c));
 
 		// Perimeter vertices
 		let angleStep = Math.PI_f * 2.0f / segments;
@@ -75,7 +78,7 @@ public class ShapeRasterizer
 			let angle = i * angleStep;
 			let x = center.X + Math.Cos(angle) * rx;
 			let y = center.Y + Math.Sin(angle) * ry;
-			vertices.Add(.(x, y, SolidUV, SolidUV, color));
+			vertices.Add(.(x, y, SolidUV, SolidUV, c));
 		}
 
 		// Triangle fan indices
@@ -88,7 +91,7 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a filled rounded rectangle
-	public void RasterizeRoundedRect(RectangleF rect, float radius, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
+	public void RasterizeRoundedRect(RectangleF rect, float radius, List<DrawVertex> vertices, List<uint16> indices, Color color)
 	{
 		// Clamp radius to half the smallest dimension
 		let maxRadius = Math.Min(rect.Width, rect.Height) * 0.5f;
@@ -102,11 +105,12 @@ public class ShapeRasterizer
 
 		let segments = CalculateCornerSegments(r);
 		let baseIndex = (uint16)vertices.Count;
+		let c = color.ToColor32();
 
 		// Center vertex for fan
 		let centerX = rect.X + rect.Width * 0.5f;
 		let centerY = rect.Y + rect.Height * 0.5f;
-		vertices.Add(.(centerX, centerY, SolidUV, SolidUV, color));
+		vertices.Add(.(centerX, centerY, SolidUV, SolidUV, c));
 
 		// Generate vertices around the rounded rectangle
 		// Starting from top-left corner, going clockwise
@@ -118,7 +122,7 @@ public class ShapeRasterizer
 			let angle = Math.PI_f + i * angleStep;
 			let x = rect.X + r + Math.Cos(angle) * r;
 			let y = rect.Y + r + Math.Sin(angle) * r;
-			vertices.Add(.(x, y, SolidUV, SolidUV, color));
+			vertices.Add(.(x, y, SolidUV, SolidUV, c));
 		}
 
 		// Top-right corner
@@ -127,7 +131,7 @@ public class ShapeRasterizer
 			let angle = Math.PI_f * 1.5f + i * angleStep;
 			let x = rect.X + rect.Width - r + Math.Cos(angle) * r;
 			let y = rect.Y + r + Math.Sin(angle) * r;
-			vertices.Add(.(x, y, SolidUV, SolidUV, color));
+			vertices.Add(.(x, y, SolidUV, SolidUV, c));
 		}
 
 		// Bottom-right corner
@@ -136,7 +140,7 @@ public class ShapeRasterizer
 			let angle = i * angleStep;
 			let x = rect.X + rect.Width - r + Math.Cos(angle) * r;
 			let y = rect.Y + rect.Height - r + Math.Sin(angle) * r;
-			vertices.Add(.(x, y, SolidUV, SolidUV, color));
+			vertices.Add(.(x, y, SolidUV, SolidUV, c));
 		}
 
 		// Bottom-left corner
@@ -145,7 +149,7 @@ public class ShapeRasterizer
 			let angle = Math.PI_f * 0.5f + i * angleStep;
 			let x = rect.X + r + Math.Cos(angle) * r;
 			let y = rect.Y + rect.Height - r + Math.Sin(angle) * r;
-			vertices.Add(.(x, y, SolidUV, SolidUV, color));
+			vertices.Add(.(x, y, SolidUV, SolidUV, c));
 		}
 
 		// Generate triangle fan indices
@@ -159,13 +163,14 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a filled arc (pie slice)
-	public void RasterizeArc(Vector2 center, float radius, float startAngle, float sweepAngle, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
+	public void RasterizeArc(Vector2 center, float radius, float startAngle, float sweepAngle, List<DrawVertex> vertices, List<uint16> indices, Color color)
 	{
 		let segments = CalculateArcSegments(radius, Math.Abs(sweepAngle));
 		let baseIndex = (uint16)vertices.Count;
+		let c = color.ToColor32();
 
 		// Center vertex
-		vertices.Add(.(center.X, center.Y, SolidUV, SolidUV, color));
+		vertices.Add(.(center.X, center.Y, SolidUV, SolidUV, c));
 
 		// Arc vertices
 		let angleStep = sweepAngle / segments;
@@ -174,7 +179,7 @@ public class ShapeRasterizer
 			let angle = startAngle + i * angleStep;
 			let x = center.X + Math.Cos(angle) * radius;
 			let y = center.Y + Math.Sin(angle) * radius;
-			vertices.Add(.(x, y, SolidUV, SolidUV, color));
+			vertices.Add(.(x, y, SolidUV, SolidUV, c));
 		}
 
 		// Triangle fan indices
@@ -189,7 +194,7 @@ public class ShapeRasterizer
 	// === Stroked Shapes ===
 
 	/// Rasterize a line with thickness
-	public void RasterizeLine(Vector2 start, Vector2 end, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color32 color, LineCap cap)
+	public void RasterizeLine(Vector2 start, Vector2 end, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color color, LineCap cap)
 	{
 		let direction = end - start;
 		let length = direction.Length();
@@ -202,6 +207,7 @@ public class ShapeRasterizer
 		let halfThick = thickness * 0.5f;
 
 		let baseIndex = (uint16)vertices.Count;
+		let c = color.ToColor32();
 
 		// Main line quad
 		let p0 = start - normal * halfThick;
@@ -209,10 +215,10 @@ public class ShapeRasterizer
 		let p2 = end + normal * halfThick;
 		let p3 = end - normal * halfThick;
 
-		vertices.Add(.(p0.X, p0.Y, SolidUV, SolidUV, color));
-		vertices.Add(.(p1.X, p1.Y, SolidUV, SolidUV, color));
-		vertices.Add(.(p2.X, p2.Y, SolidUV, SolidUV, color));
-		vertices.Add(.(p3.X, p3.Y, SolidUV, SolidUV, color));
+		vertices.Add(.(p0.X, p0.Y, SolidUV, SolidUV, c));
+		vertices.Add(.(p1.X, p1.Y, SolidUV, SolidUV, c));
+		vertices.Add(.(p2.X, p2.Y, SolidUV, SolidUV, c));
+		vertices.Add(.(p3.X, p3.Y, SolidUV, SolidUV, c));
 
 		indices.Add(baseIndex + 0);
 		indices.Add(baseIndex + 1);
@@ -244,7 +250,7 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a stroked rectangle (stroke centered on rect edges)
-	public void RasterizeStrokeRect(RectangleF rect, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
+	public void RasterizeStrokeRect(RectangleF rect, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color color)
 	{
 		let halfThick = thickness * 0.5f;
 
@@ -253,18 +259,19 @@ public class ShapeRasterizer
 		let inner = RectangleF(rect.X + halfThick, rect.Y + halfThick, rect.Width - thickness, rect.Height - thickness);
 
 		let baseIndex = (uint16)vertices.Count;
+		let c = color.ToColor32();
 
 		// Outer vertices (clockwise)
-		vertices.Add(.(outer.X, outer.Y, SolidUV, SolidUV, color));
-		vertices.Add(.(outer.X + outer.Width, outer.Y, SolidUV, SolidUV, color));
-		vertices.Add(.(outer.X + outer.Width, outer.Y + outer.Height, SolidUV, SolidUV, color));
-		vertices.Add(.(outer.X, outer.Y + outer.Height, SolidUV, SolidUV, color));
+		vertices.Add(.(outer.X, outer.Y, SolidUV, SolidUV, c));
+		vertices.Add(.(outer.X + outer.Width, outer.Y, SolidUV, SolidUV, c));
+		vertices.Add(.(outer.X + outer.Width, outer.Y + outer.Height, SolidUV, SolidUV, c));
+		vertices.Add(.(outer.X, outer.Y + outer.Height, SolidUV, SolidUV, c));
 
 		// Inner vertices (clockwise)
-		vertices.Add(.(inner.X, inner.Y, SolidUV, SolidUV, color));
-		vertices.Add(.(inner.X + inner.Width, inner.Y, SolidUV, SolidUV, color));
-		vertices.Add(.(inner.X + inner.Width, inner.Y + inner.Height, SolidUV, SolidUV, color));
-		vertices.Add(.(inner.X, inner.Y + inner.Height, SolidUV, SolidUV, color));
+		vertices.Add(.(inner.X, inner.Y, SolidUV, SolidUV, c));
+		vertices.Add(.(inner.X + inner.Width, inner.Y, SolidUV, SolidUV, c));
+		vertices.Add(.(inner.X + inner.Width, inner.Y + inner.Height, SolidUV, SolidUV, c));
+		vertices.Add(.(inner.X, inner.Y + inner.Height, SolidUV, SolidUV, c));
 
 		// Top edge
 		indices.Add(baseIndex + 0); indices.Add(baseIndex + 1); indices.Add(baseIndex + 5);
@@ -281,17 +288,18 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a stroked circle
-	public void RasterizeStrokeCircle(Vector2 center, float radius, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
+	public void RasterizeStrokeCircle(Vector2 center, float radius, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color color)
 	{
 		RasterizeStrokeEllipse(center, radius, radius, thickness, vertices, indices, color);
 	}
 
 	/// Rasterize a stroked ellipse
-	public void RasterizeStrokeEllipse(Vector2 center, float rx, float ry, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
+	public void RasterizeStrokeEllipse(Vector2 center, float rx, float ry, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color color)
 	{
 		let segments = CalculateCircleSegments(Math.Max(rx, ry));
 		let halfThick = thickness * 0.5f;
 		let baseIndex = (uint16)vertices.Count;
+		let c = color.ToColor32();
 
 		let angleStep = Math.PI_f * 2.0f / segments;
 
@@ -316,12 +324,12 @@ public class ShapeRasterizer
 			// Outer vertex - offset outward along normal
 			let outerX = center.X + px + normalX * halfThick;
 			let outerY = center.Y + py + normalY * halfThick;
-			vertices.Add(.(outerX, outerY, SolidUV, SolidUV, color));
+			vertices.Add(.(outerX, outerY, SolidUV, SolidUV, c));
 
 			// Inner vertex - offset inward along normal
 			let innerX = center.X + px - normalX * halfThick;
 			let innerY = center.Y + py - normalY * halfThick;
-			vertices.Add(.(innerX, innerY, SolidUV, SolidUV, color));
+			vertices.Add(.(innerX, innerY, SolidUV, SolidUV, c));
 		}
 
 		// Generate quad strip indices
@@ -338,7 +346,7 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a stroked rounded rectangle
-	public void RasterizeStrokeRoundedRect(RectangleF rect, float radius, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
+	public void RasterizeStrokeRoundedRect(RectangleF rect, float radius, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color color)
 	{
 		// Clamp radius to half the smallest dimension
 		let maxRadius = Math.Min(rect.Width, rect.Height) * 0.5f;
@@ -354,6 +362,7 @@ public class ShapeRasterizer
 		let halfThick = thickness * 0.5f;
 		let baseIndex = (uint16)vertices.Count;
 		let angleStep = (Math.PI_f * 0.5f) / segments;
+		let c = color.ToColor32();
 
 		// Generate outer and inner vertices around the rounded rectangle perimeter
 		// Going clockwise: top-left corner, top-right corner, bottom-right corner, bottom-left corner
@@ -368,9 +377,9 @@ public class ShapeRasterizer
 			let cy = rect.Y + r;
 
 			// Outer vertex
-			vertices.Add(.(cx + cos * (r + halfThick), cy + sin * (r + halfThick), SolidUV, SolidUV, color));
+			vertices.Add(.(cx + cos * (r + halfThick), cy + sin * (r + halfThick), SolidUV, SolidUV, c));
 			// Inner vertex
-			vertices.Add(.(cx + cos * (r - halfThick), cy + sin * (r - halfThick), SolidUV, SolidUV, color));
+			vertices.Add(.(cx + cos * (r - halfThick), cy + sin * (r - halfThick), SolidUV, SolidUV, c));
 		}
 
 		// Top-right corner (center at rect.Right - r, rect.Y + r)
@@ -382,8 +391,8 @@ public class ShapeRasterizer
 			let cx = rect.X + rect.Width - r;
 			let cy = rect.Y + r;
 
-			vertices.Add(.(cx + cos * (r + halfThick), cy + sin * (r + halfThick), SolidUV, SolidUV, color));
-			vertices.Add(.(cx + cos * (r - halfThick), cy + sin * (r - halfThick), SolidUV, SolidUV, color));
+			vertices.Add(.(cx + cos * (r + halfThick), cy + sin * (r + halfThick), SolidUV, SolidUV, c));
+			vertices.Add(.(cx + cos * (r - halfThick), cy + sin * (r - halfThick), SolidUV, SolidUV, c));
 		}
 
 		// Bottom-right corner (center at rect.Right - r, rect.Bottom - r)
@@ -395,8 +404,8 @@ public class ShapeRasterizer
 			let cx = rect.X + rect.Width - r;
 			let cy = rect.Y + rect.Height - r;
 
-			vertices.Add(.(cx + cos * (r + halfThick), cy + sin * (r + halfThick), SolidUV, SolidUV, color));
-			vertices.Add(.(cx + cos * (r - halfThick), cy + sin * (r - halfThick), SolidUV, SolidUV, color));
+			vertices.Add(.(cx + cos * (r + halfThick), cy + sin * (r + halfThick), SolidUV, SolidUV, c));
+			vertices.Add(.(cx + cos * (r - halfThick), cy + sin * (r - halfThick), SolidUV, SolidUV, c));
 		}
 
 		// Bottom-left corner (center at rect.X + r, rect.Bottom - r)
@@ -408,8 +417,8 @@ public class ShapeRasterizer
 			let cx = rect.X + r;
 			let cy = rect.Y + rect.Height - r;
 
-			vertices.Add(.(cx + cos * (r + halfThick), cy + sin * (r + halfThick), SolidUV, SolidUV, color));
-			vertices.Add(.(cx + cos * (r - halfThick), cy + sin * (r - halfThick), SolidUV, SolidUV, color));
+			vertices.Add(.(cx + cos * (r + halfThick), cy + sin * (r + halfThick), SolidUV, SolidUV, c));
+			vertices.Add(.(cx + cos * (r - halfThick), cy + sin * (r - halfThick), SolidUV, SolidUV, c));
 		}
 
 		// Generate quad strip indices connecting the outline
@@ -433,9 +442,10 @@ public class ShapeRasterizer
 	// === Textured Shapes ===
 
 	/// Rasterize a textured quad
-	public void RasterizeTexturedQuad(RectangleF destRect, RectangleF srcRect, uint32 texWidth, uint32 texHeight, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
+	public void RasterizeTexturedQuad(RectangleF destRect, RectangleF srcRect, uint32 texWidth, uint32 texHeight, List<DrawVertex> vertices, List<uint16> indices, Color color)
 	{
 		let baseIndex = (uint16)vertices.Count;
+		let c = color.ToColor32();
 
 		// Calculate UVs from source rect
 		let u0 = srcRect.X / texWidth;
@@ -443,10 +453,10 @@ public class ShapeRasterizer
 		let u1 = (srcRect.X + srcRect.Width) / texWidth;
 		let v1 = (srcRect.Y + srcRect.Height) / texHeight;
 
-		vertices.Add(.(destRect.X, destRect.Y, u0, v0, color));
-		vertices.Add(.(destRect.X + destRect.Width, destRect.Y, u1, v0, color));
-		vertices.Add(.(destRect.X + destRect.Width, destRect.Y + destRect.Height, u1, v1, color));
-		vertices.Add(.(destRect.X, destRect.Y + destRect.Height, u0, v1, color));
+		vertices.Add(.(destRect.X, destRect.Y, u0, v0, c));
+		vertices.Add(.(destRect.X + destRect.Width, destRect.Y, u1, v0, c));
+		vertices.Add(.(destRect.X + destRect.Width, destRect.Y + destRect.Height, u1, v1, c));
+		vertices.Add(.(destRect.X, destRect.Y + destRect.Height, u0, v1, c));
 
 		indices.Add(baseIndex + 0);
 		indices.Add(baseIndex + 1);
@@ -457,7 +467,7 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a 9-slice image
-	public void RasterizeNineSlice(RectangleF destRect, RectangleF srcRect, NineSlice slices, uint32 texWidth, uint32 texHeight, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
+	public void RasterizeNineSlice(RectangleF destRect, RectangleF srcRect, NineSlice slices, uint32 texWidth, uint32 texHeight, List<DrawVertex> vertices, List<uint16> indices, Color color)
 	{
 		// Source coordinates (X0/Y0 = start, X1/Y1 = after left/top border, X2/Y2 = before right/bottom border)
 		let srcX0 = srcRect.X;
@@ -497,17 +507,18 @@ public class ShapeRasterizer
 	// === Polygons and Polylines ===
 
 	/// Rasterize a filled polygon using ear clipping triangulation
-	public void RasterizePolygon(Span<Vector2> points, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
+	public void RasterizePolygon(Span<Vector2> points, List<DrawVertex> vertices, List<uint16> indices, Color color)
 	{
 		if (points.Length < 3)
 			return;
 
 		let baseIndex = (uint16)vertices.Count;
+		let c = color.ToColor32();
 
 		// Add all vertices
 		for (let point in points)
 		{
-			vertices.Add(.(point.X, point.Y, SolidUV, SolidUV, color));
+			vertices.Add(.(point.X, point.Y, SolidUV, SolidUV, c));
 		}
 
 		// Simple ear clipping for convex or simple polygons
@@ -515,12 +526,13 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a polyline (open path) with line segments
-	public void RasterizePolyline(Span<Vector2> points, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color32 color, LineCap cap, LineJoin join)
+	public void RasterizePolyline(Span<Vector2> points, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color color, LineCap cap, LineJoin join)
 	{
 		if (points.Length < 2)
 			return;
 
 		let halfThickness = thickness * 0.5f;
+		let c = color.ToColor32();
 
 		// Draw each segment
 		for (int32 i = 0; i < points.Length - 1; i++)
@@ -538,10 +550,10 @@ public class ShapeRasterizer
 
 			// Line body as quad
 			let baseIndex = (uint16)vertices.Count;
-			vertices.Add(.(p0.X - normal.X * halfThickness, p0.Y - normal.Y * halfThickness, SolidUV, SolidUV, color));
-			vertices.Add(.(p0.X + normal.X * halfThickness, p0.Y + normal.Y * halfThickness, SolidUV, SolidUV, color));
-			vertices.Add(.(p1.X + normal.X * halfThickness, p1.Y + normal.Y * halfThickness, SolidUV, SolidUV, color));
-			vertices.Add(.(p1.X - normal.X * halfThickness, p1.Y - normal.Y * halfThickness, SolidUV, SolidUV, color));
+			vertices.Add(.(p0.X - normal.X * halfThickness, p0.Y - normal.Y * halfThickness, SolidUV, SolidUV, c));
+			vertices.Add(.(p0.X + normal.X * halfThickness, p0.Y + normal.Y * halfThickness, SolidUV, SolidUV, c));
+			vertices.Add(.(p1.X + normal.X * halfThickness, p1.Y + normal.Y * halfThickness, SolidUV, SolidUV, c));
+			vertices.Add(.(p1.X - normal.X * halfThickness, p1.Y - normal.Y * halfThickness, SolidUV, SolidUV, c));
 
 			indices.Add(baseIndex + 0);
 			indices.Add(baseIndex + 1);
@@ -592,12 +604,13 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a stroked polygon (closed path)
-	public void RasterizeStrokePolygon(Span<Vector2> points, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color32 color, LineJoin join)
+	public void RasterizeStrokePolygon(Span<Vector2> points, float thickness, List<DrawVertex> vertices, List<uint16> indices, Color color, LineJoin join)
 	{
 		if (points.Length < 3)
 			return;
 
 		let halfThickness = thickness * 0.5f;
+		let c = color.ToColor32();
 
 		// Draw each edge
 		for (int32 i = 0; i < points.Length; i++)
@@ -615,10 +628,10 @@ public class ShapeRasterizer
 
 			// Edge as quad
 			let baseIndex = (uint16)vertices.Count;
-			vertices.Add(.(p0.X - normal.X * halfThickness, p0.Y - normal.Y * halfThickness, SolidUV, SolidUV, color));
-			vertices.Add(.(p0.X + normal.X * halfThickness, p0.Y + normal.Y * halfThickness, SolidUV, SolidUV, color));
-			vertices.Add(.(p1.X + normal.X * halfThickness, p1.Y + normal.Y * halfThickness, SolidUV, SolidUV, color));
-			vertices.Add(.(p1.X - normal.X * halfThickness, p1.Y - normal.Y * halfThickness, SolidUV, SolidUV, color));
+			vertices.Add(.(p0.X - normal.X * halfThickness, p0.Y - normal.Y * halfThickness, SolidUV, SolidUV, c));
+			vertices.Add(.(p0.X + normal.X * halfThickness, p0.Y + normal.Y * halfThickness, SolidUV, SolidUV, c));
+			vertices.Add(.(p1.X + normal.X * halfThickness, p1.Y + normal.Y * halfThickness, SolidUV, SolidUV, c));
+			vertices.Add(.(p1.X - normal.X * halfThickness, p1.Y - normal.Y * halfThickness, SolidUV, SolidUV, c));
 
 			indices.Add(baseIndex + 0);
 			indices.Add(baseIndex + 1);
@@ -671,13 +684,14 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a round line cap
-	private void RasterizeCapRound(Vector2 center, Vector2 direction, Vector2 normal, float halfThickness, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
+	private void RasterizeCapRound(Vector2 center, Vector2 direction, Vector2 normal, float halfThickness, List<DrawVertex> vertices, List<uint16> indices, Color color)
 	{
 		let segments = Math.Max(4, (int32)(halfThickness * 0.5f));
 		let baseIndex = (uint16)vertices.Count;
+		let c = color.ToColor32();
 
 		// Center vertex
-		vertices.Add(.(center.X, center.Y, SolidUV, SolidUV, color));
+		vertices.Add(.(center.X, center.Y, SolidUV, SolidUV, c));
 
 		// Arc from -normal to +normal in the direction of the cap
 		let startAngle = Math.Atan2(normal.Y, normal.X);
@@ -688,7 +702,7 @@ public class ShapeRasterizer
 			let angle = startAngle + i * angleStep;
 			let x = center.X + Math.Cos(angle) * halfThickness;
 			let y = center.Y + Math.Sin(angle) * halfThickness;
-			vertices.Add(.(x, y, SolidUV, SolidUV, color));
+			vertices.Add(.(x, y, SolidUV, SolidUV, c));
 		}
 
 		// Triangle fan
@@ -701,9 +715,10 @@ public class ShapeRasterizer
 	}
 
 	/// Rasterize a square line cap
-	private void RasterizeCapSquare(Vector2 center, Vector2 direction, Vector2 normal, float halfThickness, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
+	private void RasterizeCapSquare(Vector2 center, Vector2 direction, Vector2 normal, float halfThickness, List<DrawVertex> vertices, List<uint16> indices, Color color)
 	{
 		let baseIndex = (uint16)vertices.Count;
+		let c = color.ToColor32();
 
 		// Square cap extends by halfThickness in the direction
 		let p0 = center - normal * halfThickness;
@@ -711,10 +726,10 @@ public class ShapeRasterizer
 		let p2 = center + direction * halfThickness + normal * halfThickness;
 		let p3 = center + direction * halfThickness - normal * halfThickness;
 
-		vertices.Add(.(p0.X, p0.Y, SolidUV, SolidUV, color));
-		vertices.Add(.(p1.X, p1.Y, SolidUV, SolidUV, color));
-		vertices.Add(.(p2.X, p2.Y, SolidUV, SolidUV, color));
-		vertices.Add(.(p3.X, p3.Y, SolidUV, SolidUV, color));
+		vertices.Add(.(p0.X, p0.Y, SolidUV, SolidUV, c));
+		vertices.Add(.(p1.X, p1.Y, SolidUV, SolidUV, c));
+		vertices.Add(.(p2.X, p2.Y, SolidUV, SolidUV, c));
+		vertices.Add(.(p3.X, p3.Y, SolidUV, SolidUV, c));
 
 		indices.Add(baseIndex + 0);
 		indices.Add(baseIndex + 1);
@@ -728,15 +743,16 @@ public class ShapeRasterizer
 
 	/// Rasterize a glyph quad (for text rendering)
 	/// GlyphQuad contains screen-space coordinates and UVs from the font atlas
-	public void RasterizeGlyphQuad(GlyphQuad quad, List<DrawVertex> vertices, List<uint16> indices, Color32 color)
+	public void RasterizeGlyphQuad(GlyphQuad quad, List<DrawVertex> vertices, List<uint16> indices, Color color)
 	{
 		let baseIndex = (uint16)vertices.Count;
+		let c = color.ToColor32();
 
 		// Add 4 vertices using the quad's screen coords and UVs
-		vertices.Add(.(quad.X0, quad.Y0, quad.U0, quad.V0, color));  // Top-left
-		vertices.Add(.(quad.X1, quad.Y0, quad.U1, quad.V0, color));  // Top-right
-		vertices.Add(.(quad.X1, quad.Y1, quad.U1, quad.V1, color));  // Bottom-right
-		vertices.Add(.(quad.X0, quad.Y1, quad.U0, quad.V1, color));  // Bottom-left
+		vertices.Add(.(quad.X0, quad.Y0, quad.U0, quad.V0, c));  // Top-left
+		vertices.Add(.(quad.X1, quad.Y0, quad.U1, quad.V0, c));  // Top-right
+		vertices.Add(.(quad.X1, quad.Y1, quad.U1, quad.V1, c));  // Bottom-right
+		vertices.Add(.(quad.X0, quad.Y1, quad.U0, quad.V1, c));  // Bottom-left
 
 		// 2 triangles
 		indices.Add(baseIndex + 0);

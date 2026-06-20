@@ -14,7 +14,7 @@ class ShapeRasterizerTests
 		let vertices = scope List<DrawVertex>();
 		let indices = scope List<uint16>();
 
-		rasterizer.RasterizeRect(.(0, 0, 100, 50), vertices, indices, Color32.Red);
+		rasterizer.RasterizeRect(.(0, 0, 100, 50), vertices, indices, Color.Red);
 
 		Test.Assert(vertices.Count == 4);
 		Test.Assert(indices.Count == 6);
@@ -27,7 +27,7 @@ class ShapeRasterizerTests
 		let vertices = scope List<DrawVertex>();
 		let indices = scope List<uint16>();
 
-		rasterizer.RasterizeRect(.(10, 20, 100, 50), vertices, indices, Color32.Red);
+		rasterizer.RasterizeRect(.(10, 20, 100, 50), vertices, indices, Color.Red);
 
 		// Check corners
 		Test.Assert(vertices[0].Position.X == 10 && vertices[0].Position.Y == 20);  // Top-left
@@ -43,7 +43,7 @@ class ShapeRasterizerTests
 		let vertices = scope List<DrawVertex>();
 		let indices = scope List<uint16>();
 
-		rasterizer.RasterizeRect(.(0, 0, 100, 50), vertices, indices, Color32.Red);
+		rasterizer.RasterizeRect(.(0, 0, 100, 50), vertices, indices, Color.Red);
 
 		// First triangle: 0, 1, 2
 		Test.Assert(indices[0] == 0);
@@ -62,7 +62,7 @@ class ShapeRasterizerTests
 		let vertices = scope List<DrawVertex>();
 		let indices = scope List<uint16>();
 
-		rasterizer.RasterizeCircle(.(50, 50), 25, vertices, indices, Color32.Blue);
+		rasterizer.RasterizeCircle(.(50, 50), 25, vertices, indices, Color.Blue);
 
 		// Should have center + perimeter vertices (segments + 1 perimeter points for closed loop)
 		let segments = rasterizer.CalculateCircleSegments(25);
@@ -76,7 +76,7 @@ class ShapeRasterizerTests
 		let vertices = scope List<DrawVertex>();
 		let indices = scope List<uint16>();
 
-		rasterizer.RasterizeCircle(.(100, 200), 30, vertices, indices, Color32.Green);
+		rasterizer.RasterizeCircle(.(100, 200), 30, vertices, indices, Color.Green);
 
 		// First vertex should be center (use approximate comparison for floats)
 		Test.Assert(Math.Abs(vertices[0].Position.X - 100) < 0.001f);
@@ -90,7 +90,7 @@ class ShapeRasterizerTests
 		let vertices = scope List<DrawVertex>();
 		let indices = scope List<uint16>();
 
-		rasterizer.RasterizeLine(.(0, 0), .(100, 0), 4.0f, vertices, indices, Color32.Black, .Butt);
+		rasterizer.RasterizeLine(.(0, 0), .(100, 0), 4.0f, vertices, indices, Color.Black, .Butt);
 
 		// Line body creates 4 vertices (quad)
 		Test.Assert(vertices.Count == 4);
@@ -104,7 +104,7 @@ class ShapeRasterizerTests
 		let vertices = scope List<DrawVertex>();
 		let indices = scope List<uint16>();
 
-		rasterizer.RasterizeLine(.(0, 0), .(100, 0), 10.0f, vertices, indices, Color32.Black, .Round);
+		rasterizer.RasterizeLine(.(0, 0), .(100, 0), 10.0f, vertices, indices, Color.Black, .Round);
 
 		// Line body (4) + round cap vertices at each end
 		Test.Assert(vertices.Count > 4);
@@ -117,7 +117,7 @@ class ShapeRasterizerTests
 		let vertices = scope List<DrawVertex>();
 		let indices = scope List<uint16>();
 
-		rasterizer.RasterizeEllipse(.(50, 50), 40, 20, vertices, indices, Color32.Purple);
+		rasterizer.RasterizeEllipse(.(50, 50), 40, 20, vertices, indices, Color.Purple);
 
 		// Should have center + perimeter
 		Test.Assert(vertices.Count > 1);
@@ -131,7 +131,7 @@ class ShapeRasterizerTests
 		let vertices = scope List<DrawVertex>();
 		let indices = scope List<uint16>();
 
-		rasterizer.RasterizeRoundedRect(.(0, 0, 100, 50), 10.0f, vertices, indices, Color32.Orange);
+		rasterizer.RasterizeRoundedRect(.(0, 0, 100, 50), 10.0f, vertices, indices, Color.Orange);
 
 		Test.Assert(vertices.Count > 0);
 		Test.Assert(indices.Count > 0);
@@ -145,7 +145,7 @@ class ShapeRasterizerTests
 		let indices = scope List<uint16>();
 
 		// Use a larger sweep angle to ensure segments are created
-		rasterizer.RasterizeArc(.(50, 50), 50, 0, 1.57f, vertices, indices, Color32.Cyan);
+		rasterizer.RasterizeArc(.(50, 50), 50, 0, 1.57f, vertices, indices, Color.Cyan);
 
 		// Arc should create at minimum 1 center + 2 edge vertices
 		Test.Assert(vertices.Count >= 3);
@@ -160,7 +160,7 @@ class ShapeRasterizerTests
 		let vertices = scope List<DrawVertex>();
 		let indices = scope List<uint16>();
 
-		rasterizer.RasterizeStrokeRect(.(0, 0, 100, 50), 2.0f, vertices, indices, Color32.Black);
+		rasterizer.RasterizeStrokeRect(.(0, 0, 100, 50), 2.0f, vertices, indices, Color.Black);
 
 		// Creates 8 vertices (4 outer + 4 inner) and 24 indices (4 edges * 6)
 		Test.Assert(vertices.Count == 8);
@@ -174,7 +174,7 @@ class ShapeRasterizerTests
 		let vertices = scope List<DrawVertex>();
 		let indices = scope List<uint16>();
 
-		rasterizer.RasterizeStrokeCircle(.(50, 50), 30, 2.0f, vertices, indices, Color32.Black);
+		rasterizer.RasterizeStrokeCircle(.(50, 50), 30, 2.0f, vertices, indices, Color.Black);
 
 		Test.Assert(vertices.Count > 0);
 		Test.Assert(indices.Count > 0);
@@ -188,7 +188,7 @@ class ShapeRasterizerTests
 		let indices = scope List<uint16>();
 		Vector2[] points = scope .(.(0, 0), .(100, 0), .(50, 100));
 
-		rasterizer.RasterizePolygon(points, vertices, indices, Color32.Red);
+		rasterizer.RasterizePolygon(points, vertices, indices, Color.Red);
 
 		Test.Assert(vertices.Count == 3);
 		Test.Assert(indices.Count == 3);
@@ -202,7 +202,7 @@ class ShapeRasterizerTests
 		let indices = scope List<uint16>();
 		Vector2[] points = scope .(.(50, 0), .(100, 35), .(80, 100), .(20, 100), .(0, 35));
 
-		rasterizer.RasterizePolygon(points, vertices, indices, Color32.Blue);
+		rasterizer.RasterizePolygon(points, vertices, indices, Color.Blue);
 
 		Test.Assert(vertices.Count == 5);
 		// Fan triangulation: n-2 triangles = 3 triangles = 9 indices
@@ -217,7 +217,7 @@ class ShapeRasterizerTests
 		let indices = scope List<uint16>();
 		Vector2[] points = scope .(.(0, 0), .(100, 0), .(100, 100));
 
-		rasterizer.RasterizePolyline(points, 2.0f, vertices, indices, Color32.Black, .Butt, .Miter);
+		rasterizer.RasterizePolyline(points, 2.0f, vertices, indices, Color.Black, .Butt, .Miter);
 
 		// 2 segments * 4 vertices = 8 vertices (without caps)
 		Test.Assert(vertices.Count == 8);
@@ -230,7 +230,7 @@ class ShapeRasterizerTests
 		let vertices = scope List<DrawVertex>();
 		let indices = scope List<uint16>();
 
-		rasterizer.RasterizeTexturedQuad(.(0, 0, 100, 50), .(0, 0, 256, 128), 256, 128, vertices, indices, Color32.White);
+		rasterizer.RasterizeTexturedQuad(.(0, 0, 100, 50), .(0, 0, 256, 128), 256, 128, vertices, indices, Color.White);
 
 		Test.Assert(vertices.Count == 4);
 		Test.Assert(indices.Count == 6);
@@ -263,7 +263,7 @@ class ShapeRasterizerTests
 
 		let vertices = scope List<DrawVertex>();
 		let indices = scope List<uint16>();
-		rasterizer.RasterizeRect(.(0, 0, 10, 10), vertices, indices, Color32.White);
+		rasterizer.RasterizeRect(.(0, 0, 10, 10), vertices, indices, Color.White);
 
 		// Solid shapes use fixed UV (0.5, 0.5) for 1x1 white texture sampling
 		Test.Assert(vertices[0].TexCoord.X == 0.5f);

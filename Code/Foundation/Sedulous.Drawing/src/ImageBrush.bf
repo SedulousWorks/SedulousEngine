@@ -15,10 +15,10 @@ public struct ImageBrush
 	public NineSlice Slices;
 
 	/// Color modulation applied when drawing. White = no tint.
-	public Color32 Tint;
+	public Color Tint;
 
 	/// Creates an ImageBrush with 9-slice borders.
-	public this(IImageData texture, NineSlice slices, Color32 tint = .White)
+	public this(IImageData texture, NineSlice slices, Color tint = .White)
 	{
 		Texture = texture;
 		Slices = slices;
@@ -26,7 +26,7 @@ public struct ImageBrush
 	}
 
 	/// Creates an ImageBrush that stretches the full image (no 9-slice).
-	public this(IImageData texture, Color32 tint = .White)
+	public this(IImageData texture, Color tint = .White)
 	{
 		Texture = texture;
 		Slices = default;

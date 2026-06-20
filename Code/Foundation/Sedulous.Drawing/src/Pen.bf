@@ -6,7 +6,7 @@ namespace Sedulous.Drawing;
 public class Pen
 {
 	/// Stroke color
-	public Color32 Color;
+	public Color Color;
 	/// Stroke thickness in pixels
 	public float Thickness;
 	/// Style for line end caps
@@ -16,7 +16,7 @@ public class Pen
 	/// Miter limit for sharp corners (ratio of miter length to thickness)
 	public float MiterLimit;
 
-	public this(Color32 color, float thickness = 1.0f)
+	public this(Color color, float thickness = 1.0f)
 	{
 		Color = color;
 		Thickness = thickness;
@@ -25,7 +25,7 @@ public class Pen
 		MiterLimit = 10.0f;
 	}
 
-	public this(Color32 color, float thickness, LineCap cap, LineJoin join)
+	public this(Color color, float thickness, LineCap cap, LineJoin join)
 	{
 		Color = color;
 		Thickness = thickness;
@@ -43,9 +43,9 @@ public class Pen
 	}
 
 	// Common predefined pens - use fully qualified type to avoid conflict with Color field
-	public static Pen Black(float thickness = 1.0f) => new .(Sedulous.Core.Mathematics.Color32.Black, thickness);
-	public static Pen White(float thickness = 1.0f) => new .(Sedulous.Core.Mathematics.Color32.White, thickness);
-	public static Pen Red(float thickness = 1.0f) => new .(Sedulous.Core.Mathematics.Color32.Red, thickness);
-	public static Pen Green(float thickness = 1.0f) => new .(Sedulous.Core.Mathematics.Color32.Green, thickness);
-	public static Pen Blue(float thickness = 1.0f) => new .(Sedulous.Core.Mathematics.Color32.Blue, thickness);
+	public static Pen Black(float thickness = 1.0f) => new .(Sedulous.Core.Mathematics.Color.Black, thickness);
+	public static Pen White(float thickness = 1.0f) => new .(Sedulous.Core.Mathematics.Color.White, thickness);
+	public static Pen Red(float thickness = 1.0f) => new .(Sedulous.Core.Mathematics.Color.Red, thickness);
+	public static Pen Green(float thickness = 1.0f) => new .(Sedulous.Core.Mathematics.Color.Green, thickness);
+	public static Pen Blue(float thickness = 1.0f) => new .(Sedulous.Core.Mathematics.Color.Blue, thickness);
 }

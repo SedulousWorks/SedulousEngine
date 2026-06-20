@@ -139,59 +139,59 @@ class DrawingSandboxApp : Application
 		float col1X = margin;
 		float y = margin;
 
-		DrawLabel("BASIC SHAPES", col1X, y, Color32.Yellow);
+		DrawLabel("BASIC SHAPES", col1X, y, Color.Yellow);
 		y += 30;
 
-		DrawLabel("Rectangle", col1X, y, Color32.White);
+		DrawLabel("Rectangle", col1X, y, Color.White);
 		y += 20;
-		mDrawContext.FillRect(.(col1X, y, 100, 60), Color32.Red);
+		mDrawContext.FillRect(.(col1X, y, 100, 60), Color.Red);
 		y += 80;
 
-		DrawLabel("Rounded Rect", col1X, y, Color32.White);
+		DrawLabel("Rounded Rect", col1X, y, Color.White);
 		y += 20;
-		mDrawContext.FillRoundedRect(.(col1X, y, 100, 60), 15, Color32.Green);
+		mDrawContext.FillRoundedRect(.(col1X, y, 100, 60), 15, Color.Green);
 		y += 80;
 
-		DrawLabel("Circle", col1X, y, Color32.White);
+		DrawLabel("Circle", col1X, y, Color.White);
 		y += 20;
-		mDrawContext.FillCircle(.(col1X + 50, y + 40), 40, Color32.Blue);
+		mDrawContext.FillCircle(.(col1X + 50, y + 40), 40, Color.Blue);
 		y += 100;
 
-		DrawLabel("Ellipse", col1X, y, Color32.White);
+		DrawLabel("Ellipse", col1X, y, Color.White);
 		y += 20;
-		mDrawContext.FillEllipse(.(col1X + 60, y + 30), 60, 30, Color32.Purple);
+		mDrawContext.FillEllipse(.(col1X + 60, y + 30), 60, 30, Color.Purple);
 		y += 80;
 
-		DrawLabel("Arc (animated)", col1X, y, Color32.White);
+		DrawLabel("Arc (animated)", col1X, y, Color.White);
 		y += 20;
 		float arcSweep = (Math.Sin(mAnimationTime * 2) * 0.5f + 0.5f) * Math.PI_f * 1.8f + 0.2f;
-		mDrawContext.FillArc(.(col1X + 50, y + 50), 45, -Math.PI_f / 2, arcSweep, Color32.Orange);
+		mDrawContext.FillArc(.(col1X + 50, y + 50), 45, -Math.PI_f / 2, arcSweep, Color.Orange);
 		y += 120;
 
 		// === COLUMN 2: Strokes & Lines ===
 		float col2X = margin * 2 + columnWidth;
 		y = margin;
 
-		DrawLabel("STROKES & LINES", col2X, y, Color32.Yellow);
+		DrawLabel("STROKES & LINES", col2X, y, Color.Yellow);
 		y += 30;
 
-		DrawLabel("Stroked Rect", col2X, y, Color32.White);
+		DrawLabel("Stroked Rect", col2X, y, Color.White);
 		y += 20;
-		mDrawContext.DrawRect(.(col2X, y, 100, 60), Color32.Cyan, 3.0f);
+		mDrawContext.DrawRect(.(col2X, y, 100, 60), Color.Cyan, 3.0f);
 		y += 80;
 
-		DrawLabel("Stroked Circle", col2X, y, Color32.White);
+		DrawLabel("Stroked Circle", col2X, y, Color.White);
 		y += 20;
-		mDrawContext.DrawCircle(.(col2X + 50, y + 40), 40, Color32.Magenta, 3.0f);
+		mDrawContext.DrawCircle(.(col2X + 50, y + 40), 40, Color.Magenta, 3.0f);
 		y += 100;
 
-		DrawLabel("Lines", col2X, y, Color32.White);
+		DrawLabel("Lines", col2X, y, Color.White);
 		y += 20;
-		mDrawContext.DrawLine(.(col2X, y), .(col2X + 100, y + 50), Color32.Red, 2.0f);
-		mDrawContext.DrawLine(.(col2X + 100, y), .(col2X, y + 50), Color32.Green, 2.0f);
+		mDrawContext.DrawLine(.(col2X, y), .(col2X + 100, y + 50), Color.Red, 2.0f);
+		mDrawContext.DrawLine(.(col2X + 100, y), .(col2X, y + 50), Color.Green, 2.0f);
 		y += 70;
 
-		DrawLabel("Polyline", col2X, y, Color32.White);
+		DrawLabel("Polyline", col2X, y, Color.White);
 		y += 20;
 		Vector2[] polylinePoints = scope .(
 			.(col2X, y + 40),
@@ -200,10 +200,10 @@ class DrawingSandboxApp : Application
 			.(col2X + 90, y),
 			.(col2X + 120, y + 40)
 		);
-		mDrawContext.DrawPolyline(polylinePoints, Color32.Yellow, 3.0f);
+		mDrawContext.DrawPolyline(polylinePoints, Color.Yellow, 3.0f);
 		y += 60;
 
-		DrawLabel("Polygon Outline", col2X, y, Color32.White);
+		DrawLabel("Polygon Outline", col2X, y, Color.White);
 		y += 20;
 		Vector2[] pentagonPoints = scope .(
 			.(col2X + 50, y),
@@ -212,39 +212,39 @@ class DrawingSandboxApp : Application
 			.(col2X + 20, y + 90),
 			.(col2X, y + 35)
 		);
-		mDrawContext.DrawPolygon(pentagonPoints, Color32.Lime, 2.0f);
+		mDrawContext.DrawPolygon(pentagonPoints, Color.Lime, 2.0f);
 		y += 110;
 
 		// === COLUMN 3: Advanced Features ===
 		float col3X = margin * 3 + columnWidth * 2;
 		y = margin;
 
-		DrawLabel("ADVANCED FEATURES", col3X, y, Color32.Yellow);
+		DrawLabel("ADVANCED FEATURES", col3X, y, Color.Yellow);
 		y += 30;
 
-		DrawLabel("Filled Polygon", col3X, y, Color32.White);
+		DrawLabel("Filled Polygon", col3X, y, Color.White);
 		y += 20;
 		Vector2[] trianglePoints = scope .(
 			.(col3X + 50, y),
 			.(col3X + 100, y + 70),
 			.(col3X, y + 70)
 		);
-		mDrawContext.FillPolygon(trianglePoints, Color32.Coral);
+		mDrawContext.FillPolygon(trianglePoints, Color.Coral);
 		y += 90;
 
-		DrawLabel("Linear Gradient", col3X, y, Color32.White);
+		DrawLabel("Linear Gradient", col3X, y, Color.White);
 		y += 20;
-		let linearBrush = scope LinearGradientBrush(.(col3X, y), .(col3X + 120, y + 60), Color32.Red, Color32.Blue);
+		let linearBrush = scope LinearGradientBrush(.(col3X, y), .(col3X + 120, y + 60), Color.Red, Color.Blue);
 		mDrawContext.FillRect(.(col3X, y, 120, 60), linearBrush);
 		y += 80;
 
-		DrawLabel("Radial Gradient", col3X, y, Color32.White);
+		DrawLabel("Radial Gradient", col3X, y, Color.White);
 		y += 25;
-		let radialBrush = scope RadialGradientBrush(.(col3X + 50, y + 50), 50, Color32.White, Color32.DarkBlue);
+		let radialBrush = scope RadialGradientBrush(.(col3X + 50, y + 50), 50, Color.White, Color.DarkBlue);
 		mDrawContext.FillCircle(.(col3X + 50, y + 50), 50, radialBrush);
 		y += 115;
 
-		DrawLabel("Transforms (rotating)", col3X, y, Color32.White);
+		DrawLabel("Transforms (rotating)", col3X, y, Color.White);
 		y += 20;
 		float centerX = col3X + 60;
 		float centerY = y + 60;
@@ -252,54 +252,54 @@ class DrawingSandboxApp : Application
 		mDrawContext.PushState();
 		mDrawContext.Translate(centerX, centerY);
 		mDrawContext.Rotate(mAnimationTime);
-		mDrawContext.FillRect(.(-30, -30, 60, 60), Color32(255, 100, 100, 200));
+		mDrawContext.FillRect(.(-30, -30, 60, 60), Color(255, 100, 100, 200));
 		mDrawContext.PopState();
 
 		mDrawContext.PushState();
 		mDrawContext.Translate(centerX, centerY);
 		mDrawContext.Rotate(-mAnimationTime * 0.7f);
-		mDrawContext.FillRect(.(-25, -25, 50, 50), Color32(100, 255, 100, 200));
+		mDrawContext.FillRect(.(-25, -25, 50, 50), Color(100, 255, 100, 200));
 		mDrawContext.PopState();
 
 		mDrawContext.PushState();
 		mDrawContext.Translate(centerX, centerY);
 		mDrawContext.Rotate(mAnimationTime * 1.3f);
-		mDrawContext.FillRect(.(-20, -20, 40, 40), Color32(100, 100, 255, 200));
+		mDrawContext.FillRect(.(-20, -20, 40, 40), Color(100, 100, 255, 200));
 		mDrawContext.PopState();
 		y += 140;
 
-		DrawLabel("Scale Animation", col3X, y, Color32.White);
+		DrawLabel("Scale Animation", col3X, y, Color.White);
 		y += 20;
 		float scale = 0.5f + Math.Sin(mAnimationTime * 3) * 0.3f;
 		mDrawContext.PushState();
 		mDrawContext.Translate(col3X + 50, y + 30);
 		mDrawContext.Scale(scale, scale);
-		mDrawContext.FillCircle(.(0, 0), 30, Color32.Gold);
+		mDrawContext.FillCircle(.(0, 0), 30, Color.Gold);
 		mDrawContext.PopState();
 		y += 80;
 
-		DrawLabel("Transformed Text", col3X, y, Color32.White);
+		DrawLabel("Transformed Text", col3X, y, Color.White);
 		y += 25;
 
 		mDrawContext.PushState();
 		mDrawContext.Translate(col3X + 60, y + 20);
 		mDrawContext.Rotate(mAnimationTime * 0.5f);
-		DrawLabel("Spinning!", -30, -10, Color32.Cyan);
+		DrawLabel("Spinning!", -30, -10, Color.Cyan);
 		mDrawContext.PopState();
 
 		mDrawContext.PushState();
 		mDrawContext.Translate(col3X + 160, y + 20);
 		let textScale = 0.8f + Math.Sin(mAnimationTime * 2) * 0.4f;
 		mDrawContext.Scale(textScale, textScale);
-		DrawLabel("Pulsing", -25, -10, Color32.Magenta);
+		DrawLabel("Pulsing", -25, -10, Color.Magenta);
 		mDrawContext.PopState();
 
-		DrawLabel("Ålign Ôrigin", 0, 0, Color32.Red);
-		DrawLabel(scope $"FPS: {mCurrentFps}", screenWidth - 100, 30, Color32.Lime);
-		DrawLabel("Press Escape to exit", screenWidth / 2 - 80, screenHeight - 30, Color32.Gray);
+		DrawLabel("Ålign Ôrigin", 0, 0, Color.Red);
+		DrawLabel(scope $"FPS: {mCurrentFps}", screenWidth - 100, 30, Color.Lime);
+		DrawLabel("Press Escape to exit", screenWidth / 2 - 80, screenHeight - 30, Color.Gray);
 	}
 
-	private void DrawLabel(StringView text, float x, float y, Color32 color)
+	private void DrawLabel(StringView text, float x, float y, Color color)
 	{
 		mDrawContext.DrawText(text, FONT_SIZE, .(x, y), color);
 	}
