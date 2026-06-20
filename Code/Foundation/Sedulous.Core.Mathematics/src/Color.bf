@@ -13,25 +13,41 @@ struct Color : IEquatable<Color>, IHashable
 	public float A;
 
 	/// Black (0, 0, 0, 1).
-	public static Color Black => .(0, 0, 0, 1);
+	public static Color Black => .(0f, 0f, 0f, 1f);
 	/// White (1, 1, 1, 1).
-	public static Color White => .(1, 1, 1, 1);
+	public static Color White => .(1f, 1f, 1f, 1f);
 	/// Fully transparent (0, 0, 0, 0).
-	public static Color Transparent => .(0, 0, 0, 0);
+	public static Color Transparent => .(0f, 0f, 0f, 0f);
 	/// Red (1, 0, 0, 1).
-	public static Color Red => .(1, 0, 0, 1);
+	public static Color Red => .(1f, 0f, 0f, 1f);
 	/// Green (0, 1, 0, 1).
-	public static Color Green => .(0, 1, 0, 1);
+	public static Color Green => .(0f, 1f, 0f, 1f);
 	/// Blue (0, 0, 1, 1).
-	public static Color Blue => .(0, 0, 1, 1);
+	public static Color Blue => .(0f, 0f, 1f, 1f);
 	/// Yellow (1, 1, 0, 1).
-	public static Color Yellow => .(1, 1, 0, 1);
+	public static Color Yellow => .(1f, 1f, 0f, 1f);
 	/// Cyan (0, 1, 1, 1).
-	public static Color Cyan => .(0, 1, 1, 1);
+	public static Color Cyan => .(0f, 1f, 1f, 1f);
 	/// Magenta (1, 0, 1, 1).
-	public static Color Magenta => .(1, 0, 1, 1);
+	public static Color Magenta => .(1f, 0f, 1f, 1f);
 	/// 50% gray (0.5, 0.5, 0.5, 1).
 	public static Color Gray => .(0.5f, 0.5f, 0.5f, 1);
+	/// Light gray (0.75, 0.75, 0.75, 1).
+	public static Color LightGray => .(0.75f, 0.75f, 0.75f, 1);
+	/// Dark gray (0.25, 0.25, 0.25, 1).
+	public static Color DarkGray => .(0.25f, 0.25f, 0.25f, 1);
+	/// Orange (1, 0.5, 0, 1).
+	public static Color Orange => .(1.0f, 0.5f, 0.0f, 1);
+	/// Purple (0.5, 0, 0.5, 1).
+	public static Color Purple => .(0.5f, 0.0f, 0.5f, 1);
+	/// Lime (0, 1, 0, 1) — same as CSS lime / #00FF00.
+	public static Color Lime => .(0.0f, 1.0f, 0.0f, 1);
+	/// Coral (1, 0.498, 0.314, 1) — #FF7F50.
+	public static Color Coral => .(1.0f, 0.498f, 0.314f, 1);
+	/// Gold (1, 0.843, 0, 1) — #FFD700.
+	public static Color Gold => .(1.0f, 0.843f, 0.0f, 1);
+	/// Dark blue (0, 0, 0.545, 1) — #00008B.
+	public static Color DarkBlue => .(0.0f, 0.0f, 0.545f, 1);
 
 	public this(float r, float g, float b)
 	{
@@ -47,6 +63,26 @@ struct Color : IEquatable<Color>, IHashable
 		G = g;
 		B = b;
 		A = a;
+	}
+
+	/// Creates a Color from integer components (0-255), normalized to [0,1].
+	public this(int32 r, int32 g, int32 b, int32 a = 255)
+	{
+		R = r / 255.0f;
+		G = g / 255.0f;
+		B = b / 255.0f;
+		A = a / 255.0f;
+	}
+
+	/// Creates a Color from int (int64) components (0-255), normalized to [0,1].
+	/// Prevents accidental matching of the float constructor when using
+	/// loop counters or arithmetic expressions that produce int.
+	public this(int r, int g, int b, int a = 255)
+	{
+		R = (float)r / 255.0f;
+		G = (float)g / 255.0f;
+		B = (float)b / 255.0f;
+		A = (float)a / 255.0f;
 	}
 
 	public this(Vector3 v)
