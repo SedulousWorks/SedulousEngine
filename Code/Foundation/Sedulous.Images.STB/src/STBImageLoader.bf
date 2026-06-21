@@ -18,7 +18,7 @@ class STBImageLoader: ImageLoader
 		}
 	}
 
-	private static List<StringView> sSupportedExtensions = new .() { ".hdr", ".jpg", ".jpeg", ".png", ".tga", ".bmp", ".psd", "" } ~ delete _;
+	private static List<StringView> sSupportedExtensions = new .() { ".hdr", ".jpg", ".jpeg", ".png", ".tga", ".bmp", ".psd", ".dds" } ~ delete _;
 
 	private static PixelFormat ToPixelFormat(int32 componentCount, bool isHDR)
 	{

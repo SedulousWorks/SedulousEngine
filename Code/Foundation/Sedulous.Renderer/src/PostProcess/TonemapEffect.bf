@@ -52,12 +52,13 @@ class TonemapEffect : PostProcessEffect
 			return .Err;
 		let fragModule = fragResult.Value;
 
-		// Bind group layout: b0 = params, t0 = HDR, t1 = bloom, t2 = AO, s0 = sampler
-		BindGroupLayoutEntry[5] entries = .(
+		// Bind group layout: b0 = params, t0 = HDR, t1 = bloom, t2 = AO, t3 = SSR, s0 = sampler
+		BindGroupLayoutEntry[6] entries = .(
 			.UniformBuffer(0, .Fragment),
 			.SampledTexture(0, .Fragment),
 			.SampledTexture(1, .Fragment),
 			.SampledTexture(2, .Fragment),
+			.SampledTexture(3, .Fragment),
 			.Sampler(0, .Fragment)
 		);
 
@@ -138,6 +139,7 @@ class TonemapEffect : PostProcessEffect
 		let output = ctx.Output;
 		let bloomHandle = ctx.GetAux("BloomTexture");
 		let aoHandle = ctx.GetAux("AOTexture");
+		let ssrHandle = ctx.GetAux("SSRTexture");
 
 		graph.AddRenderPass("Tonemap", scope (builder) => {
 			builder
@@ -147,12 +149,14 @@ class TonemapEffect : PostProcessEffect
 				builder.ReadTexture(bloomHandle);
 			if (aoHandle.IsValid)
 				builder.ReadTexture(aoHandle);
+			if (ssrHandle.IsValid)
+				builder.ReadTexture(ssrHandle);
 
 			builder
 				.SetColorTarget(0, output, .DontCare, .Store)
 				.NeverCull()
 				.SetExecute(new [=] (encoder) => {
-					ExecuteTonemap(encoder, view, graph, input, bloomHandle, aoHandle);
+					ExecuteTonemap(encoder, view, graph, input, bloomHandle, aoHandle, ssrHandle);
 				});
 		});
 
@@ -162,38 +166,46 @@ class TonemapEffect : PostProcessEffect
 	private RenderContext mRenderContext;
 
 	private void ExecuteTonemap(IRenderPassEncoder encoder, RenderView view, RenderGraph graph,
-		RGHandle inputHandle, RGHandle bloomHandle, RGHandle aoHandle)
+		RGHandle inputHandle, RGHandle bloomHandle, RGHandle aoHandle, RGHandle ssrHandle)
 	{
 		let inputView = graph.GetTextureView(inputHandle);
 		if (inputView == null)
 			return;
 
-		// Get bloom view. Fallback to 1×1 black texture (adds zero).
+		// Get bloom view. Fallback to 1x1 black texture (adds zero).
 		ITextureView bloomView = null;
 		if (bloomHandle.IsValid)
 			bloomView = graph.GetTextureView(bloomHandle);
 		if (bloomView == null)
 			bloomView = mRenderContext?.MaterialSystem?.BlackTexture;
 
-		// Get AO view. Fallback to 1×1 white texture (no darkening).
+		// Get AO view. Fallback to 1x1 white texture (no darkening).
 		ITextureView aoView = null;
 		if (aoHandle.IsValid)
 			aoView = graph.GetTextureView(aoHandle);
 		if (aoView == null)
 			aoView = mRenderContext?.MaterialSystem?.WhiteTexture;
 
+		// Get SSR view. Fallback to 1x1 black texture (no reflections).
+		ITextureView ssrView = null;
+		if (ssrHandle.IsValid)
+			ssrView = graph.GetTextureView(ssrHandle);
+		if (ssrView == null)
+			ssrView = mRenderContext?.MaterialSystem?.BlackTexture;
+
 		let frameSlot = view.FrameIndex % MaxFrames;
 
 		if (mBindGroups[frameSlot] != null)
 			mDevice.DestroyBindGroup(ref mBindGroups[frameSlot]);
 
-		if (bloomView != null && aoView != null)
+		if (bloomView != null && aoView != null && ssrView != null)
 		{
-			BindGroupEntry[5] bgEntries = .(
+			BindGroupEntry[6] bgEntries = .(
 				BindGroupEntry.Buffer(mParamsBuffer, 0, TonemapParams.Size),
 				BindGroupEntry.Texture(inputView),
 				BindGroupEntry.Texture(bloomView),
 				BindGroupEntry.Texture(aoView),
+				BindGroupEntry.Texture(ssrView),
 				BindGroupEntry.Sampler(mSampler)
 			);
 

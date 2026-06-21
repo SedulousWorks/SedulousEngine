@@ -34,7 +34,7 @@ class ForwardOpaquePass : PipelinePass
 
 		// Mini G-buffer targets - always created so post-processing effects
 		// (SSAO, TAA, motion blur, SSR) can consume them without opt-in logic.
-		let normalsDesc = RGTextureDesc(.RG16Float) { Usage = .RenderTarget | .Sampled };
+		let normalsDesc = RGTextureDesc(.RGBA16Float) { Usage = .RenderTarget | .Sampled };
 		let normalsHandle = graph.CreateTransient("SceneNormals", normalsDesc);
 
 		let velocityDesc = RGTextureDesc(.RG16Float) { Usage = .RenderTarget | .Sampled };
@@ -79,7 +79,7 @@ class ForwardOpaquePass : PipelinePass
 		config.BlendMode = .Opaque;
 		config.CullMode = .Back;
 		config.ColorTargetCount = 3;
-		config.ColorFormats[1] = .RG16Float;  // SceneNormals (view-space XY)
+		config.ColorFormats[1] = .RGBA16Float;  // SceneNormals (view-space XY) + roughness (B) + metallic (A)
 		config.ColorFormats[2] = .RG16Float;  // MotionVectors (screen-space delta)
 
 		if (hasDepth)

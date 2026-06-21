@@ -244,11 +244,11 @@ struct FragmentInput
     bool IsFrontFace : SV_IsFrontFace;
 };
 
-/// MRT output: scene color + mini G-buffer (normals + velocity).
+/// MRT output: scene color + mini G-buffer (normals + roughness/metallic + velocity).
 struct FragmentOutput
 {
     float4 Color     : SV_Target0;  // HDR scene color
-    float2 Normal    : SV_Target1;  // view-space normal XY (reconstruct Z)
+    float4 Normal    : SV_Target1;  // view-space normal XY + roughness (B) + metallic (A)
     float2 Velocity  : SV_Target2;  // screen-space motion vector (UV delta)
 };
 
@@ -478,11 +478,10 @@ FragmentOutput main(FragmentInput input)
     // ==================== MRT Output ====================
     FragmentOutput output;
 
-    // Target 1: view-space normal XY. Post-FX reconstruct Z via
-    // sqrt(1 - x² - y²). Using the shading normal (N) which includes
-    // normal mapping, not the geometric interpolant.
+    // Target 1: view-space normal XY + roughness + metallic.
+    // Post-FX reconstruct normal Z via sqrt(1 - x² - y²).
     float3 viewNormal = normalize(mul(float4(N, 0.0), ViewMatrix).xyz);
-    output.Normal = viewNormal.xy;
+    output.Normal = float4(viewNormal.xy, roughness, metallic);
 
     // Target 0: HDR scene color.
     output.Color = float4(color, alpha);

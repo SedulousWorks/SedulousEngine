@@ -186,9 +186,11 @@ class SandboxApp : EngineApplication
 		mYellowMaterial = new MaterialInstance(mPbrMaterial);
 		mYellowMaterial.SetColor("BaseColor", .(1.0f, 0.85f, 0.1f, 1));
 
-		// Gray plane material
+		// Gray metallic floor material (smooth for SSR testing)
 		mGrayMaterial = new MaterialInstance(mPbrMaterial);
 		mGrayMaterial.SetColor("BaseColor", .(0.5f, 0.5f, 0.5f, 1));
+		mGrayMaterial.SetFloat("Metallic", 1.0f);
+		mGrayMaterial.SetFloat("Roughness", 0.05f);
 
 		// Transparent material (semi-transparent blue)
 		mTransparentMaterial = new MaterialInstance(mPbrMaterial);
@@ -1973,6 +1975,64 @@ class SandboxApp : EngineApplication
 			biasLabel.SetText(scope $"SSAO Bias: {val:F3}");
 		});
 		hudLayout.AddView(biasSlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(400)), Height = .Fixed(.Px(24)) });
+
+		// SSR toggle + parameter sliders
+		let ssrToggle = new CheckBox("SSR");
+		ssrToggle.IsChecked.Value = false;
+		ssrToggle.OnCheckedChanged.Add(new (cb, isChecked) =>
+		{
+			if (let settings = mScene.GetModule<RenderSceneModule>())
+				settings.SSREnabled = isChecked;
+		});
+		hudLayout.AddView(ssrToggle, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });
+
+		let ssrStepsLabel = new Label("SSR Steps: 32");
+		hudLayout.AddView(ssrStepsLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(16)) });
+		let ssrStepsSlider = new Slider(4, 128, 32);
+		ssrStepsSlider.OnValueChanged.Add(new (slider, val) =>
+		{
+			let rs = Context.GetSubsystem<RenderSubsystem>();
+			let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null;
+			if (pipeline?.PostProcessStack != null)
+			{
+				let ssr = pipeline.PostProcessStack.GetEffect<SSREffect>();
+				if (ssr != null) ssr.MaxSteps = (int32)val;
+			}
+			ssrStepsLabel.SetText(scope $"SSR Steps: {(int)val}");
+		});
+		hudLayout.AddView(ssrStepsSlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(400)), Height = .Fixed(.Px(24)) });
+
+		let ssrDistLabel = new Label("SSR Distance: 10.0");
+		hudLayout.AddView(ssrDistLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(16)) });
+		let ssrDistSlider = new Slider(1, 100, 10);
+		ssrDistSlider.OnValueChanged.Add(new (slider, val) =>
+		{
+			let rs = Context.GetSubsystem<RenderSubsystem>();
+			let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null;
+			if (pipeline?.PostProcessStack != null)
+			{
+				let ssr = pipeline.PostProcessStack.GetEffect<SSREffect>();
+				if (ssr != null) ssr.MaxDistance = val;
+			}
+			ssrDistLabel.SetText(scope $"SSR Distance: {val:F1}");
+		});
+		hudLayout.AddView(ssrDistSlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(400)), Height = .Fixed(.Px(24)) });
+
+		let ssrThickLabel = new Label("SSR Thickness: 0.10");
+		hudLayout.AddView(ssrThickLabel, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(16)) });
+		let ssrThickSlider = new Slider(0.01f, 2.0f, 0.1f);
+		ssrThickSlider.OnValueChanged.Add(new (slider, val) =>
+		{
+			let rs = Context.GetSubsystem<RenderSubsystem>();
+			let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null;
+			if (pipeline?.PostProcessStack != null)
+			{
+				let ssr = pipeline.PostProcessStack.GetEffect<SSREffect>();
+				if (ssr != null) ssr.Thickness = val;
+			}
+			ssrThickLabel.SetText(scope $"SSR Thickness: {val:F2}");
+		});
+		hudLayout.AddView(ssrThickSlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(400)), Height = .Fixed(.Px(24)) });
 
 		// AA toggles - FXAA and TAA are mutually exclusive
 		let fxaaToggle = new CheckBox("FXAA", true);

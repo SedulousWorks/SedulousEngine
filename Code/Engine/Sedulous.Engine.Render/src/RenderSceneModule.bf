@@ -113,6 +113,13 @@ class RenderSceneModule : SceneModule, IModuleSerializer
 	[Category("SSAO"), Range(0, 0.5f)]
 	public float SSAOBias = 0.025f;
 
+	// ==================== SSR ====================
+
+	/// Enable screen-space reflections.
+	[Property(.Default, "SSR Enabled", "SSREnabled")]
+	[Category("SSR")]
+	public bool SSREnabled = false;
+
 	// ==================== Anti-Aliasing ====================
 
 	/// Which anti-aliasing pass runs after tonemap. Single enum makes
@@ -179,6 +186,9 @@ class RenderSceneModule : SceneModule, IModuleSerializer
 		s.Float("SSAORadius", ref SSAORadius);
 		s.Float("SSAOIntensity", ref SSAOIntensity);
 		s.Float("SSAOBias", ref SSAOBias);
+
+		// SSR
+		s.Bool("SSREnabled", ref SSREnabled);
 
 		// Anti-aliasing
 		var aaMode = (uint8)AntiAliasing;

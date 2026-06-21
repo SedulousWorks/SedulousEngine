@@ -13,6 +13,7 @@ cbuffer TonemapParams : register(b0)
 Texture2D SceneColor : register(t0);
 Texture2D BloomTexture : register(t1);
 Texture2D AOTexture : register(t2);
+Texture2D SSRTexture : register(t3);
 SamplerState LinearSampler : register(s0);
 
 struct FragmentInput
@@ -44,6 +45,17 @@ float4 main(FragmentInput input) : SV_Target
     // When SSAO is disabled, the fallback is a white (1.0) texture - no darkening.
     float ao = AOTexture.Sample(LinearSampler, uv).r;
     hdr *= ao;
+
+    // Apply SSR: blend in screen-space reflections.
+    // SSRTexture is RGBA16F where rgb = reflection color, a = confidence mask.
+    // When SSR is disabled, the fallback black texture (rgb=0) adds nothing.
+    float4 ssr = SSRTexture.Sample(LinearSampler, uv);
+    hdr += ssr.rgb * ssr.a;
+
+    // DEBUG: uncomment to visualize SSR confidence as red overlay
+    //return float4(ssr.a, ssr.a, ssr.a, 1.0);
+    // DEBUG: uncomment to visualize raw SSR output
+    //return float4(ssr.rgb, 1.0);
 
     // Add bloom contribution.
     float3 bloom = BloomTexture.Sample(LinearSampler, uv).rgb;

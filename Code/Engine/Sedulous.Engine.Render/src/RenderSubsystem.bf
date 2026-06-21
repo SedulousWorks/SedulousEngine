@@ -522,6 +522,10 @@ class RenderSubsystem : Subsystem, ISceneAware, ISceneRenderer, IScreenRenderer
 			ssao.Bias = settings.SSAOBias;
 		}
 
+		// --- SSR ---
+		if (let ssr = pipeline.PostProcessStack?.GetEffect<SSREffect>())
+			ssr.Enabled = settings.SSREnabled;
+
 		// --- Anti-aliasing (TAA and FXAA are mutually exclusive by enum) ---
 		if (let taa = pipeline.PostProcessStack?.GetEffect<TAAEffect>())
 		{
@@ -1090,9 +1094,9 @@ class RenderSubsystem : Subsystem, ISceneAware, ISceneRenderer, IScreenRenderer
 		pipeline.AddPass(new DebugScreenPass());
 
 		// Post-processing stack
-		// Order: SSAO (aux) -> Bloom (aux) -> TAA (HDR resolve) -> Tonemap (reads AO+bloom) -> FXAA (LDR)
+		// Order: SSAO (aux) -> Bloom (aux) -> SSR (aux) -> TAA (HDR resolve) -> Tonemap (reads AO+bloom+SSR) -> FXAA (LDR)
 		// TAA and FXAA are mutually exclusive - only one should be enabled at a time.
-		// SSAO is independently togglable.
+		// SSAO and SSR are independently togglable.
 		let postStack = new PostProcessStack();
 		postStack.Initialize(mRenderContext);
 		let ssaoEffect = new SSAOEffect();
@@ -1102,6 +1106,9 @@ class RenderSubsystem : Subsystem, ISceneAware, ISceneRenderer, IScreenRenderer
 		bloomEffect.Threshold = 1.5f;
 		bloomEffect.Intensity = 0.5f;
 		postStack.AddEffect(bloomEffect);
+		let ssrEffect = new SSREffect();
+		ssrEffect.Enabled = false; // Off by default
+		postStack.AddEffect(ssrEffect);
 		let taaEffect = new TAAEffect();
 		taaEffect.Enabled = false;
 		postStack.AddEffect(taaEffect);
