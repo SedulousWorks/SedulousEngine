@@ -1,6 +1,0 @@
-FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.RHI" = "*", "Sedulous.Shaders" = "*", "Sedulous.VG" = "*", "Sedulous.VG.Renderer" = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Runtime.Client" = "*", "Sedulous.Images" = "*", "Sedulous.Images.IO" = "*", "Sedulous.Images.STB" = "*", "Sedulous.Fonts" = "*", "Sedulous.Fonts.TTF" = "*", "Sedulous.LegacyUI" = "*", "Sedulous.LegacyUI.Runtime" = "*", "Sedulous.LegacyUI.Toolkit" = "*", "Sedulous.LegacyUI.Resources" = "*", "Sedulous.Resources" = "*", "Sedulous.Shell" = "*", "Sedulous.Runtime" = "*", "Sedulous.Profiler" = "*"}
-
-[Project]
-Name = "LegacyUISandbox"
-StartupObject = "LegacyUISandbox.Program"

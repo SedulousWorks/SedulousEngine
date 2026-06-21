@@ -1,6 +1,0 @@
-FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Core" = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Resources" = "*", "Sedulous.Serialization" = "*", "Sedulous.LegacyUI" = "*", "Sedulous.Images" = "*", "Sedulous.Xml" = "*"}
-
-[Project]
-Name = "Sedulous.LegacyUI.Resources"
-TargetType = "BeefLib"

@@ -1,6 +1,0 @@
-FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.LegacyUI" = "*", "Sedulous.LegacyUI.Toolkit" = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.VG" = "*", "Sedulous.Xml" = "*", "Sedulous.LegacyUI.Resources" = "*", "Sedulous.Resources" = "*"}
-
-[Project]
-Name = "Sedulous.LegacyUI.Tests"
-TargetType = "BeefTest"

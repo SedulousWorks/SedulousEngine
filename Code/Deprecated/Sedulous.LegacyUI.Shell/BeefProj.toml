@@ -1,6 +1,0 @@
-FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.LegacyUI" = "*", "Sedulous.Shell" = "*"}
-
-[Project]
-Name = "Sedulous.LegacyUI.Shell"
-TargetType = "BeefLib"

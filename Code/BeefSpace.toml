@@ -120,7 +120,6 @@ SampleVG001_Shapes = {Path = "Samples/VG/SampleVG001_Shapes"}
 "Sedulous.Engine.Audio" = {Path = "Engine/Sedulous.Engine.Audio"}
 "Sedulous.Engine.Animation" = {Path = "Engine/Sedulous.Engine.Animation"}
 "Sedulous.Engine.Navigation" = {Path = "Engine/Sedulous.Engine.Navigation"}
-"Sedulous.Engine.LegacyUI" = {Path = "Deprecated/Sedulous.Engine.LegacyUI"}
 "Sedulous.Engine.Render" = {Path = "Engine/Sedulous.Engine.Render"}
 "Sedulous.Editor.Core" = {Path = "Editor/Sedulous.Editor.Core"}
 "Sedulous.Editor.App" = {Path = "Editor/Sedulous.Editor.App"}
@@ -138,10 +137,6 @@ RenderGraphSandbox = {Path = "Samples/RenderGraphSandbox"}
 "Sedulous.OpenDDL.Tests" = {Path = "Foundation/Sedulous.OpenDDL/Sedulous.OpenDDL.Tests"}
 "Sedulous.Xml" = {Path = "Foundation/Sedulous.Xml"}
 "Sedulous.Xml.Tests" = {Path = "Foundation/Sedulous.Xml/Sedulous.Xml.Tests"}
-"Sedulous.LegacyGUI" = {Path = "Deprecated/Sedulous.LegacyGUI"}
-"Sedulous.LegacyGUI.Shell" = {Path = "Deprecated/Sedulous.LegacyGUI.Shell"}
-"Sedulous.LegacyGUI.Tests" = {Path = "Deprecated/Sedulous.LegacyGUI.Tests"}
-"Sedulous.LegacyGUI.Runtime" = {Path = "Deprecated/Sedulous.LegacyGUI.Runtime"}
 "Sedulous.Drawing.Renderer" = {Path = "Foundation/Sedulous.Drawing.Renderer"}
 "Sedulous.Audio.Resources" = {Path = "Foundation/Sedulous.Audio.Resources"}
 "Sedulous.Audio.Importer" = {Path = "Foundation/Sedulous.Audio.Importer"}
@@ -171,7 +166,6 @@ VGSandbox = {Path = "Samples/VG/VGSandbox"}
 "Sedulous.VFS.Pak.Tool" = {Path = "Foundation/Sedulous.VFS.Pak.Tool"}
 "Sedulous.VFS.Tests" = {Path = "Foundation/Sedulous.VFS.Tests"}
 FontRendering = {Path = "Samples/FontRendering"}
-LegacyGUISandbox = {Path = "Deprecated/LegacyGUISandbox"}
 ImGuiSample = {Path = "Samples/ImGuiSample"}
 NuklearSample = {Path = "Samples/NuklearSample"}
 SlugSample = {Path = "Experimental/SlugSample"}
@@ -182,16 +176,8 @@ AudioSandbox = {Path = "Samples/AudioSandbox"}
 recastnavigation-Beef = {Path = "Dependencies/recastnavigation-Beef"}
 "Sedulous.Particles" = {Path = "Foundation/Sedulous.Particles"}
 EngineRenderStressTest = {Path = "Samples/EngineRenderStressTest"}
-"Sedulous.LegacyUI" = {Path = "Deprecated/Sedulous.LegacyUI"}
-"Sedulous.LegacyUI.Runtime" = {Path = "Deprecated/Sedulous.LegacyUI.Runtime"}
-"Sedulous.LegacyUI.Shell" = {Path = "Deprecated/Sedulous.LegacyUI.Shell"}
-LegacyUISandbox = {Path = "Deprecated/LegacyUISandbox"}
-"Sedulous.LegacyUI.Tests" = {Path = "Deprecated/Sedulous.LegacyUI.Tests"}
-"Sedulous.LegacyUI.Resources" = {Path = "Deprecated/Sedulous.LegacyUI.Resources"}
-"Sedulous.LegacyUI.Toolkit" = {Path = "Deprecated/Sedulous.LegacyUI.Toolkit"}
 "Sedulous.Engine.Core.Tests" = {Path = "Engine/Sedulous.Engine.Core.Tests"}
 Showcase = {Path = "Samples/Showcase"}
-"Sedulous.LegacyUI.Viewport" = {Path = "Deprecated/Sedulous.LegacyUI.Viewport"}
 ModelViewer = {Path = "Tools/Sedulous.Tools.ModelViewer"}
 "Sedulous.Messaging" = {Path = "Foundation/Sedulous.Messaging"}
 "Sedulous.Messaging.Runtime" = {Path = "Foundation/Sedulous.Messaging.Runtime"}
@@ -235,8 +221,6 @@ Foundation = []
 "Foundation/Jobs" = ["Sedulous.Jobs", "Sedulous.Jobs.Tests"]
 "Foundation/Resources" = ["Sedulous.Resources", "Sedulous.Resources.Tests"]
 "Foundation/Serialization" = ["Sedulous.Serialization", "Sedulous.Serialization.Tests", "Sedulous.Serialization.OpenDDL", "Sedulous.Serialization.Xml", "Sedulous.OpenDDL", "Sedulous.OpenDDL.Tests", "Sedulous.Xml", "Sedulous.Xml.Tests"]
-Deprecated = []
-"Deprecated/LegacyGUI" = ["Sedulous.LegacyGUI", "Sedulous.LegacyGUI.Shell", "Sedulous.LegacyGUI.Tests", "Sedulous.LegacyGUI.Runtime", "LegacyGUISandbox"]
 "Foundation/Physics" = ["Sedulous.Physics", "Sedulous.Physics.Jolt", "Sedulous.Physics.Tests"]
 Engine = ["Sedulous.Engine.Core", "Sedulous.Engine.App", "Sedulous.Engine.Input", "Sedulous.Engine.Physics", "Sedulous.Engine.Audio", "Sedulous.Engine.Animation", "Sedulous.Engine.Navigation", "Sedulous.Engine.Render", "Sedulous.Engine.Core.Tests", "Sedulous.Engine.UI"]
 "Foundation/RHI" = ["Sedulous.RHI", "Sedulous.RHI.DX12", "Sedulous.RHI.Null", "Sedulous.RHI.Validation", "Sedulous.RHI.Vulkan", "Sedulous.ShaderReflection", "Sedulous.ShaderReflection.DXIL", "Sedulous.ShaderReflection.SPIRV", "Sedulous.ShaderReflection.Tests"]
@@ -247,6 +231,5 @@ Experimental = []
 "Foundation/VFS" = ["Sedulous.VFS", "Sedulous.VFS.Disk", "Sedulous.VFS.Pak", "Sedulous.VFS.Pak.Tool", "Sedulous.VFS.Tests"]
 "Foundation/Messaging" = ["Sedulous.Messaging", "Sedulous.Messaging.Runtime", "Sedulous.Messaging.Tests"]
 Projects = ["TowerDefense"]
-"Deprecated/LegacyUI" = ["LegacyUISandbox", "Sedulous.LegacyUI", "Sedulous.LegacyUI.Resources", "Sedulous.LegacyUI.Runtime", "Sedulous.LegacyUI.Shell", "Sedulous.LegacyUI.Tests", "Sedulous.LegacyUI.Toolkit", "Sedulous.LegacyUI.Viewport", "Sedulous.Engine.LegacyUI"]
 "Foundation/CodeGen" = ["Sedulous.Inspection"]
 "Foundation/UI" = ["Sedulous.UI", "Sedulous.UI.Runtime", "Sedulous.UI.Shell", "Sedulous.UI.Tests", "Sedulous.UI.IO", "Sedulous.UI.Toolkit", "Sedulous.UI.Viewport"]
