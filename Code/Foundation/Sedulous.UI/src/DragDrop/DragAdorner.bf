@@ -1,6 +1,7 @@
 namespace Sedulous.UI;
 
 using Sedulous.Core.Mathematics;
+using System;
 
 /// Visual overlay shown during a drag operation.
 /// Wraps a user-provided visual or shows a default indicator.
@@ -36,6 +37,17 @@ public class DragAdorner : ViewGroup
 		{
 			// Default size when no visual provided.
 			MeasuredSize = .(constraints.ConstrainWidth(32), constraints.ConstrainHeight(32));
+		}
+	}
+
+	protected override void OnLayout(float left, float top, float width, float height)
+	{
+		// Layout children to fill the adorner bounds.
+		for (int i = 0; i < ChildCount; i++)
+		{
+			let child = GetChildAt(i);
+			if (child != null)
+				child.Layout(0, 0, width, height);
 		}
 	}
 
