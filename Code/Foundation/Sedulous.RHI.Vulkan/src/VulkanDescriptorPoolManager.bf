@@ -109,7 +109,11 @@ class VulkanDescriptorPoolManager
 			.() { type = .VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, descriptorCount = mMaxSetsPerPool * 4 * bindlessMultiplier },
 			.() { type = .VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, descriptorCount = mMaxSetsPerPool * bindlessMultiplier },
 			.() { type = .VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, descriptorCount = mMaxSetsPerPool * 2 },
-			.() { type = .VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, descriptorCount = mMaxSetsPerPool * 2 * bindlessMultiplier },
+			// Storage buffers are heavily used by skinning (3 SBs per skinned mesh
+			// bind group: bones + source verts + output verts), particles, and
+			// compute passes. Use a larger multiplier so a herd of skinned
+			// characters doesn't starve the pool of SB descriptors before maxSets.
+			.() { type = .VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, descriptorCount = mMaxSetsPerPool * 8 * bindlessMultiplier },
 			.() { type = .VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, descriptorCount = mMaxSetsPerPool },
 			.() { type = .VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, descriptorCount = mMaxSetsPerPool },
 			.() { type = .VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, descriptorCount = mMaxSetsPerPool * 4 * bindlessMultiplier },
