@@ -94,20 +94,26 @@ public class GPUTexture
 }
 
 /// GPU-side bone buffer for skinned mesh animation.
+/// Backing storage is a sub-range of GPUResourceManager's shared BoneMatrixPool;
+/// (Offset, Size) locate the per-skeleton matrices in pool.Buffer.
 public class GPUBoneBuffer
 {
-	public IBuffer Buffer;
-	public uint16 BoneCount;
+	public uint64 Offset;
 	public uint64 Size;
+	public uint16 BoneCount;
 	public int32 RefCount;
 	public uint32 Generation;
 	public bool IsActive;
 
-	/// Frees GPU resources.
-	public void Release(IDevice device)
+	/// Returns the sub-range to the pool. Caller passes the pool that
+	/// originally allocated it.
+	public void Release(BoneMatrixPool pool)
 	{
-		if (device != null)
-			device.DestroyBuffer(ref Buffer);
+		if (pool != null && Size > 0)
+		{
+			pool.Free(Offset, Size);
+			Size = 0;
+		}
 		IsActive = false;
 	}
 }

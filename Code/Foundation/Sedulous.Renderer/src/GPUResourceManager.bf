@@ -98,9 +98,16 @@ public class GPUResourceManager : IDisposable
 	private List<GPUTexture> mTextures = new .() ~ DeleteContainerAndItems!(_);
 	private List<int32> mFreeTextureSlots = new .() ~ delete _;
 
-	// Bone buffer storage
+	// Bone buffer storage. All per-skeleton bone matrices live as sub-ranges
+	// of mBonePool; each GPUBoneBuffer slot just carries (offset, size).
 	private List<GPUBoneBuffer> mBoneBuffers = new .() ~ DeleteContainerAndItems!(_);
 	private List<int32> mFreeBoneBufferSlots = new .() ~ delete _;
+	private BoneMatrixPool mBonePool = new .() ~ delete _;
+
+	/// Initial bone-pool size. 64 MB covers ~16k skeletons at ~30 bones
+	/// each (current+prev matrices: 30 * 64B * 2 = ~4 KB/character). Well
+	/// above the herd stress-test target. Growth is deferred.
+	private const uint64 BonePoolInitialSize = 64 * 1024 * 1024;
 
 	// Deferred deletion
 	private List<PendingDeletion> mPendingDeletions = new .() ~ delete _;
@@ -113,8 +120,21 @@ public class GPUResourceManager : IDisposable
 	{
 		mDevice = device;
 		mQueue = graphicsQueue;
+
+		if (mBonePool.Initialize(device, BonePoolInitialSize) case .Err)
+		{
+			Console.WriteLine("[GPUResourceManager] Failed to allocate bone matrix pool ({0} MB).",
+				BonePoolInitialSize / (1024 * 1024));
+			return .Err;
+		}
+
 		return .Ok;
 	}
+
+	/// Backing buffer of the shared bone matrix pool. Animation writers
+	/// pass this to TransferHelper.WriteMappedBuffer; the skinning compute
+	/// pass uses it as the bone-matrix descriptor entry's buffer.
+	public IBuffer BonePoolBuffer => mBonePool.Buffer;
 
 	// ==================== Mesh API ====================
 
@@ -407,32 +427,24 @@ public class GPUResourceManager : IDisposable
 		if (boneCount == 0)
 			return .Err;
 
-		let (boneBuffer, index, generation) = AllocBoneBufferSlot();
-
 		// Current + previous frame matrices
 		let bufferSize = (uint64)(sizeof(Matrix) * boneCount * 2);
 
-		var bufDesc = BufferDesc()
-		{
-			Label = "Bone Transforms",
-			Size = bufferSize,
-			Usage = .StorageRead,
-			Memory = .CpuToGpu
-		};
+		uint64 poolOffset;
+		uint64 alignedSize;
+		if (!mBonePool.Allocate(bufferSize, out poolOffset, out alignedSize))
+			return .Err;
 
-		if (mDevice.CreateBuffer(bufDesc) case .Ok(let buffer))
-		{
-			boneBuffer.Buffer = buffer;
-			boneBuffer.BoneCount = boneCount;
-			boneBuffer.Size = bufferSize;
-			boneBuffer.RefCount = 1;
-			boneBuffer.Generation = generation;
-			boneBuffer.IsActive = true;
+		let (boneBuffer, index, generation) = AllocBoneBufferSlot();
 
-			return .Ok(.() { Index = index, Generation = generation });
-		}
+		boneBuffer.Offset = poolOffset;
+		boneBuffer.Size = alignedSize;
+		boneBuffer.BoneCount = boneCount;
+		boneBuffer.RefCount = 1;
+		boneBuffer.Generation = generation;
+		boneBuffer.IsActive = true;
 
-		return .Err;
+		return .Ok(.() { Index = index, Generation = generation });
 	}
 
 	/// Gets a bone buffer by handle.
@@ -488,7 +500,7 @@ public class GPUResourceManager : IDisposable
 					mFreeTextureSlots.Add((int32)pending.Index);
 				case .BoneBuffer:
 					let buffer = mBoneBuffers[(int)pending.Index];
-					buffer.Release(mDevice);
+					buffer.Release(mBonePool);
 					mFreeBoneBufferSlots.Add((int32)pending.Index);
 				}
 
@@ -509,7 +521,8 @@ public class GPUResourceManager : IDisposable
 		for (let tex in mTextures)
 			tex.Release(mDevice);
 		for (let buffer in mBoneBuffers)
-			buffer.Release(mDevice);
+			buffer.Release(mBonePool);
+		mBonePool.Dispose();
 		mPendingDeletions.Clear();
 	}
 

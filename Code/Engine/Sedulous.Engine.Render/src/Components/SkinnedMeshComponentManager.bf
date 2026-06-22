@@ -183,41 +183,44 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 
 				if (currentMatrices.Length > 0)
 				{
+					let poolBuf = GPUResources.BonePoolBuffer;
 					let boneBuffer = GPUResources.GetBoneBuffer(comp.BoneBufferHandle);
-					if (boneBuffer != null && boneBuffer.Buffer != null)
+					if (boneBuffer != null && poolBuf != null)
 					{
 						// If the bone count changed (e.g., skeleton assigned in editor),
-						// the existing buffer is too small. Recreate it.
+						// the existing pool slot is too small. Reallocate.
 						if (currentMatrices.Length > boneBuffer.BoneCount)
 						{
 							GPUResources.ReleaseBoneBuffer(comp.BoneBufferHandle, mFrameCounter);
 							if (GPUResources.CreateBoneBuffer((uint16)currentMatrices.Length) case .Ok(let newHandle))
 							{
 								comp.BoneBufferHandle = newHandle;
-								// Invalidate the skinning instance so it picks up the new bone buffer
+								// Invalidate the skinning instance so it picks up the new bone offset
 								comp.ResolveDirty = true;
 							}
 							else
 								continue;
 
 							let newBoneBuffer = GPUResources.GetBoneBuffer(comp.BoneBufferHandle);
-							if (newBoneBuffer == null || newBoneBuffer.Buffer == null)
+							if (newBoneBuffer == null)
 								continue;
 
 							let matrixSize = (uint64)(currentMatrices.Length * sizeof(Matrix));
-							TransferHelper.WriteMappedBuffer(newBoneBuffer.Buffer, 0,
+							let baseOff = newBoneBuffer.Offset;
+							TransferHelper.WriteMappedBuffer(poolBuf, baseOff,
 								Span<uint8>((uint8*)currentMatrices.Ptr, (int)matrixSize));
 							if (prevMatrices.Length > 0)
-								TransferHelper.WriteMappedBuffer(newBoneBuffer.Buffer, matrixSize,
+								TransferHelper.WriteMappedBuffer(poolBuf, baseOff + matrixSize,
 									Span<uint8>((uint8*)prevMatrices.Ptr, (int)matrixSize));
 						}
 						else
 						{
 							let matrixSize = (uint64)(currentMatrices.Length * sizeof(Matrix));
-							TransferHelper.WriteMappedBuffer(boneBuffer.Buffer, 0,
+							let baseOff = boneBuffer.Offset;
+							TransferHelper.WriteMappedBuffer(poolBuf, baseOff,
 								Span<uint8>((uint8*)currentMatrices.Ptr, (int)matrixSize));
 							if (prevMatrices.Length > 0)
-								TransferHelper.WriteMappedBuffer(boneBuffer.Buffer, matrixSize,
+								TransferHelper.WriteMappedBuffer(poolBuf, baseOff + matrixSize,
 									Span<uint8>((uint8*)prevMatrices.Ptr, (int)matrixSize));
 						}
 					}
@@ -297,18 +300,20 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 
 						// Upload identity matrices so the mesh renders in bind pose
 						// (T-pose) until animation overwrites them.
+						let poolBuf = GPUResources.BonePoolBuffer;
 						let boneBuffer = GPUResources.GetBoneBuffer(boneHandle);
-						if (boneBuffer != null && boneBuffer.Buffer != null)
+						if (boneBuffer != null && poolBuf != null)
 						{
 							let bindPose = scope Matrix[boneCount];
 							for (int i = 0; i < boneCount; i++)
 								bindPose[i] = .Identity;
 
 							let matrixSize = (uint64)(boneCount * sizeof(Matrix));
-							TransferHelper.WriteMappedBuffer(boneBuffer.Buffer, 0,
+							let baseOff = boneBuffer.Offset;
+							TransferHelper.WriteMappedBuffer(poolBuf, baseOff,
 								Span<uint8>((uint8*)&bindPose[0], (int)matrixSize));
 							// Previous frame = same bind pose
-							TransferHelper.WriteMappedBuffer(boneBuffer.Buffer, matrixSize,
+							TransferHelper.WriteMappedBuffer(poolBuf, baseOff + matrixSize,
 								Span<uint8>((uint8*)&bindPose[0], (int)matrixSize));
 						}
 					}

@@ -197,8 +197,11 @@ class SkinningSystem : IDisposable
 	}
 
 	/// Dispatches compute skinning for an instance.
-	/// Called per-instance from DispatchAllForView.
-	public void DispatchSkinning(IComputePassEncoder encoder, SkinningInstance instance, IBuffer boneBuffer)
+	/// Called per-instance from DispatchAllForView. `bonePoolBuffer` is the
+	/// shared bone megabuffer; `boneOffset` locates this instance's matrices
+	/// within it.
+	public void DispatchSkinning(IComputePassEncoder encoder, SkinningInstance instance,
+		IBuffer bonePoolBuffer, uint64 boneOffset)
 	{
 		if (mPipeline == null || instance == null)
 			return;
@@ -233,7 +236,7 @@ class SkinningSystem : IDisposable
 			// to the bind group offset.
 			BindGroupEntry[4] bgEntries = .(
 				BindGroupEntry.Buffer(instance.ParamsBuffer, 0, SkinningParams.Size),
-				BindGroupEntry.Buffer(boneBuffer, 0, boneBufferSize),
+				BindGroupEntry.Buffer(bonePoolBuffer, boneOffset, boneBufferSize),
 				BindGroupEntry.Buffer(instance.SourceVertexBuffer, 0, sourceSize),
 				BindGroupEntry.Buffer(mOutputPool.Buffer, instance.OutputOffset, outputVertexBytes)
 			);
@@ -330,6 +333,11 @@ class SkinningSystem : IDisposable
 		let batch = data.GetBatch(category);
 		if (batch == null) return;
 
+		// Bone matrices all live in the shared bone pool; the per-instance
+		// descriptor entry just varies its offset.
+		let bonePoolBuffer = gpuResources.BonePoolBuffer;
+		if (bonePoolBuffer == null) return;
+
 		for (let entry in batch)
 		{
 			let mesh = entry as MeshRenderData;
@@ -352,7 +360,7 @@ class SkinningSystem : IDisposable
 				(int32)gpuMesh.VertexCount, boneBuffer.BoneCount);
 			mTLookupTicks += Stopwatch.GetTimestamp() - lookupStart;
 
-			DispatchSkinning(encoder, instance, boneBuffer.Buffer);
+			DispatchSkinning(encoder, instance, bonePoolBuffer, boneBuffer.Offset);
 		}
 	}
 
