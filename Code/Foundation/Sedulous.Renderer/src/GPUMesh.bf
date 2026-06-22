@@ -33,6 +33,9 @@ public struct GPUMeshLOD
 /// GPU-side mesh data. Managed by GPUResourceManager.
 public class GPUMesh
 {
+	/// For non-skinned meshes: dedicated VkBuffer this mesh owns.
+	/// For skinned meshes: handle to the shared SkinnedSourceVertexPool's buffer
+	/// (not owned). The per-mesh sub-range is (VertexOffset, VertexSize).
 	public IBuffer VertexBuffer;
 	public IBuffer IndexBuffer;
 	public uint32 VertexCount;
@@ -48,16 +51,37 @@ public class GPUMesh
 	public bool IsActive;
 	public bool IsSkinned;
 
+	/// Byte offset of this mesh's source vertices within VertexBuffer.
+	/// Always 0 for non-skinned meshes (their VertexBuffer is dedicated);
+	/// for skinned meshes, locates the per-mesh range in the shared pool.
+	public uint64 VertexOffset;
+	/// Aligned allocation size in the source pool. 0 for non-skinned.
+	public uint64 VertexSize;
+
 	/// Number of bones required by this skinned mesh (max joint index + 1).
 	/// Only valid when IsSkinned is true. Determined from vertex joint indices at upload.
 	public uint16 RequiredBoneCount;
 
-	/// Frees GPU resources.
-	public void Release(IDevice device)
+	/// Frees GPU resources. For skinned meshes the vertex buffer is owned
+	/// by `sourcePool`, so we just return our sub-range instead of destroying
+	/// the buffer; the IndexBuffer stays per-mesh either way.
+	public void Release(IDevice device, SkinnedSourceVertexPool sourcePool)
 	{
 		if (device != null)
 		{
-			device.DestroyBuffer(ref VertexBuffer);
+			if (IsSkinned)
+			{
+				if (sourcePool != null && VertexSize > 0)
+				{
+					sourcePool.Free(VertexOffset, VertexSize);
+					VertexSize = 0;
+				}
+				VertexBuffer = null; // borrowed reference, do NOT destroy
+			}
+			else
+			{
+				device.DestroyBuffer(ref VertexBuffer);
+			}
 			device.DestroyBuffer(ref IndexBuffer);
 		}
 		DeleteAndNullify!(SubMeshes);

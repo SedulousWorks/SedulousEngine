@@ -128,7 +128,7 @@ class SkinningSystem : IDisposable
 	/// Gets or creates a skinning instance for a mesh.
 	/// Call during extraction/setup phase - not during render graph execution.
 	public SkinningInstance GetOrCreateInstance(SkinningKey key, IBuffer sourceVertexBuffer,
-		GPUBoneBufferHandle boneBufferHandle, int32 vertexCount, int32 boneCount)
+		uint64 sourceVertexOffset, GPUBoneBufferHandle boneBufferHandle, int32 vertexCount, int32 boneCount)
 	{
 		if (mInstances.TryGetValue(key, let existing))
 		{
@@ -155,6 +155,7 @@ class SkinningSystem : IDisposable
 
 		let instance = new SkinningInstance();
 		instance.SourceVertexBuffer = sourceVertexBuffer;
+		instance.SourceVertexOffset = sourceVertexOffset;
 		instance.BoneBufferHandle = boneBufferHandle;
 		instance.VertexCount = vertexCount;
 		instance.BoneCount = boneCount;
@@ -237,7 +238,7 @@ class SkinningSystem : IDisposable
 			BindGroupEntry[4] bgEntries = .(
 				BindGroupEntry.Buffer(instance.ParamsBuffer, 0, SkinningParams.Size),
 				BindGroupEntry.Buffer(bonePoolBuffer, boneOffset, boneBufferSize),
-				BindGroupEntry.Buffer(instance.SourceVertexBuffer, 0, sourceSize),
+				BindGroupEntry.Buffer(instance.SourceVertexBuffer, instance.SourceVertexOffset, sourceSize),
 				BindGroupEntry.Buffer(mOutputPool.Buffer, instance.OutputOffset, outputVertexBytes)
 			);
 
@@ -356,8 +357,8 @@ class SkinningSystem : IDisposable
 			if (gpuMesh == null) { mTLookupTicks += Stopwatch.GetTimestamp() - lookupStart; continue; }
 
 			let key = SkinningKey() { MeshHandle = mesh.MeshHandle, EntityId = mesh.EntityIndex };
-			let instance = GetOrCreateInstance(key, gpuMesh.VertexBuffer, mesh.BoneBufferHandle,
-				(int32)gpuMesh.VertexCount, boneBuffer.BoneCount);
+			let instance = GetOrCreateInstance(key, gpuMesh.VertexBuffer, gpuMesh.VertexOffset,
+				mesh.BoneBufferHandle, (int32)gpuMesh.VertexCount, boneBuffer.BoneCount);
 			mTLookupTicks += Stopwatch.GetTimestamp() - lookupStart;
 
 			DispatchSkinning(encoder, instance, bonePoolBuffer, boneBuffer.Offset);

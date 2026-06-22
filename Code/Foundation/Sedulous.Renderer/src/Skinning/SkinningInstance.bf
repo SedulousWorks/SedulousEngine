@@ -18,8 +18,12 @@ class SkinningInstance
 	/// Bind group for compute dispatch.
 	public IBindGroup BindGroup;
 
-	/// Source vertex buffer reference (NOT owned - from GPUMesh).
+	/// Source vertex buffer reference (NOT owned - from GPUMesh; for skinned
+	/// meshes this is the shared SkinnedSourceVertexPool buffer).
 	public IBuffer SourceVertexBuffer;
+
+	/// Byte offset of this mesh's source vertices within SourceVertexBuffer.
+	public uint64 SourceVertexOffset;
 
 	/// Bone matrix buffer handle (NOT owned - from GPUResourceManager).
 	public GPUBoneBufferHandle BoneBufferHandle;

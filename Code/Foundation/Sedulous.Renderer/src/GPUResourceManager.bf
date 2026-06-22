@@ -109,6 +109,16 @@ public class GPUResourceManager : IDisposable
 	/// above the herd stress-test target. Growth is deferred.
 	private const uint64 BonePoolInitialSize = 64 * 1024 * 1024;
 
+	// Skinned source vertex pool. Each skinned GPUMesh's source verts live as
+	// a sub-range here; non-skinned meshes still get their own VkBuffer.
+	private SkinnedSourceVertexPool mSkinnedSourcePool = new .() ~ delete _;
+
+	/// Initial skinned-source-pool size. 64 MB covers ~900k skinned vertices
+	/// at 72 B each, enough for hundreds of unique skinned meshes. Herds
+	/// share meshes, so the pool's working set is bounded by unique meshes
+	/// (typically dozens) regardless of instance count.
+	private const uint64 SkinnedSourcePoolInitialSize = 64 * 1024 * 1024;
+
 	// Deferred deletion
 	private List<PendingDeletion> mPendingDeletions = new .() ~ delete _;
 	private const uint64 DeletionDelay = 4;
@@ -128,6 +138,13 @@ public class GPUResourceManager : IDisposable
 			return .Err;
 		}
 
+		if (mSkinnedSourcePool.Initialize(device, SkinnedSourcePoolInitialSize) case .Err)
+		{
+			Console.WriteLine("[GPUResourceManager] Failed to allocate skinned source vertex pool ({0} MB).",
+				SkinnedSourcePoolInitialSize / (1024 * 1024));
+			return .Err;
+		}
+
 		return .Ok;
 	}
 
@@ -135,6 +152,10 @@ public class GPUResourceManager : IDisposable
 	/// pass this to TransferHelper.WriteMappedBuffer; the skinning compute
 	/// pass uses it as the bone-matrix descriptor entry's buffer.
 	public IBuffer BonePoolBuffer => mBonePool.Buffer;
+
+	/// Backing buffer of the shared skinned-source pool. For skinned
+	/// GPUMesh entries this is the same buffer as GPUMesh.VertexBuffer.
+	public IBuffer SkinnedSourcePoolBuffer => mSkinnedSourcePool.Buffer;
 
 	// ==================== Mesh API ====================
 
@@ -147,29 +168,51 @@ public class GPUResourceManager : IDisposable
 		// Allocate slot
 		let (gpuMesh, index, generation) = AllocMeshSlot();
 
-		// Create vertex buffer
-		var vbUsage = BufferUsage.Vertex | .CopyDst | desc.ExtraVertexUsage;
 		if (desc.IsSkinned)
-			vbUsage |= .StorageRead;  // Compute skinning reads source vertices
-
-		var vbDesc = BufferDesc()
 		{
-			Label = desc.IsSkinned ? "Skinned Mesh VB" : "Mesh VB",
-			Size = desc.VertexDataSize,
-			Usage = vbUsage
-		};
+			// Skinned source verts live in the shared source pool. Same VkBuffer
+			// for every skinned mesh; the per-mesh range is (offset, alignedSize).
+			uint64 sourceOffset;
+			uint64 sourceAlignedSize;
+			if (!mSkinnedSourcePool.Allocate(desc.VertexDataSize, out sourceOffset, out sourceAlignedSize))
+				return .Err;
 
-		if (mDevice.CreateBuffer(vbDesc) case .Ok(let vb))
-		{
-			gpuMesh.VertexBuffer = vb;
+			gpuMesh.VertexBuffer = mSkinnedSourcePool.Buffer; // borrowed
+			gpuMesh.VertexOffset = sourceOffset;
+			gpuMesh.VertexSize = sourceAlignedSize;
+
 			let vbData = Span<uint8>(desc.VertexData, (int)desc.VertexDataSize);
 			if (TransferBatch != null)
-				TransferBatch.WriteBuffer(vb, 0, vbData);
+				TransferBatch.WriteBuffer(gpuMesh.VertexBuffer, sourceOffset, vbData);
 			else
-				TransferHelper.WriteStagedBufferSync(mQueue, mDevice, vb, 0, vbData);
+				TransferHelper.WriteStagedBufferSync(mQueue, mDevice, gpuMesh.VertexBuffer, sourceOffset, vbData);
 		}
 		else
-			return .Err;
+		{
+			// Non-skinned meshes keep their dedicated VkBuffer so the user's
+			// ExtraVertexUsage flags (e.g. .StorageRead for non-skinning compute
+			// passes, .Indirect for indirect-draw setups) are honored per mesh.
+			var vbUsage = BufferUsage.Vertex | .CopyDst | desc.ExtraVertexUsage;
+
+			var vbDesc = BufferDesc()
+			{
+				Label = "Mesh VB",
+				Size = desc.VertexDataSize,
+				Usage = vbUsage
+			};
+
+			if (mDevice.CreateBuffer(vbDesc) case .Ok(let vb))
+			{
+				gpuMesh.VertexBuffer = vb;
+				let vbData = Span<uint8>(desc.VertexData, (int)desc.VertexDataSize);
+				if (TransferBatch != null)
+					TransferBatch.WriteBuffer(vb, 0, vbData);
+				else
+					TransferHelper.WriteStagedBufferSync(mQueue, mDevice, vb, 0, vbData);
+			}
+			else
+				return .Err;
+		}
 
 		// Create index buffer
 		if (desc.IndexData != null && desc.IndexDataSize > 0)
@@ -192,7 +235,20 @@ public class GPUResourceManager : IDisposable
 			}
 			else
 			{
-				mDevice.DestroyBuffer(ref gpuMesh.VertexBuffer);
+				// Roll back the vertex allocation. For skinned meshes the
+				// buffer is owned by mSkinnedSourcePool - return the slot
+				// instead of destroying the shared buffer.
+				if (desc.IsSkinned)
+				{
+					mSkinnedSourcePool.Free(gpuMesh.VertexOffset, gpuMesh.VertexSize);
+					gpuMesh.VertexOffset = 0;
+					gpuMesh.VertexSize = 0;
+					gpuMesh.VertexBuffer = null;
+				}
+				else
+				{
+					mDevice.DestroyBuffer(ref gpuMesh.VertexBuffer);
+				}
 				return .Err;
 			}
 		}
@@ -492,7 +548,7 @@ public class GPUResourceManager : IDisposable
 				{
 				case .Mesh:
 					let mesh = mMeshes[(int)pending.Index];
-					mesh.Release(mDevice);
+					mesh.Release(mDevice, mSkinnedSourcePool);
 					mFreeMeshSlots.Add((int32)pending.Index);
 				case .Texture:
 					let tex = mTextures[(int)pending.Index];
@@ -517,12 +573,13 @@ public class GPUResourceManager : IDisposable
 	public void Dispose()
 	{
 		for (let mesh in mMeshes)
-			mesh.Release(mDevice);
+			mesh.Release(mDevice, mSkinnedSourcePool);
 		for (let tex in mTextures)
 			tex.Release(mDevice);
 		for (let buffer in mBoneBuffers)
 			buffer.Release(mBonePool);
 		mBonePool.Dispose();
+		mSkinnedSourcePool.Dispose();
 		mPendingDeletions.Clear();
 	}
 
