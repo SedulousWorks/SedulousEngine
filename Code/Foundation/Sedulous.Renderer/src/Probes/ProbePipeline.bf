@@ -661,8 +661,8 @@ public class ProbePipeline : IRenderingPipeline, IDisposable
 				return .Err;
 			}
 
-			// Object uniform ring buffer
-			let objectBufferSize = (uint64)(256 * 4096);
+			// Object uniform ring buffer (must match PerFrameResources caps).
+			let objectBufferSize = (uint64)(PerFrameResources.ObjectAlignment * PerFrameResources.MaxObjects);
 			BufferDesc objectUBDesc = .()
 			{
 				Label = "Probe Object Uniforms",

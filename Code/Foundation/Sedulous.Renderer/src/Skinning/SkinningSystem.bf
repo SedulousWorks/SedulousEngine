@@ -2,6 +2,8 @@ namespace Sedulous.Renderer;
 
 using System;
 using System.Collections;
+using System.Diagnostics;
+using Sedulous.Profiler;
 using Sedulous.RHI;
 using Sedulous.Shaders;
 using Sedulous.Core.Mathematics;
@@ -34,6 +36,18 @@ class SkinningSystem : IDisposable
 
 	/// Compute workgroup size (must match shader).
 	private const uint32 WorkgroupSize = 64;
+
+	// Manual stage timing - accumulated each frame, printed every N frames.
+	// Profiler scopes are too coarse (per-call overhead drowns the signal at
+	// herd scales). Raw Stopwatch ticks have <100ns overhead per pair.
+	private int64 mTLookupTicks;
+	private int64 mTWriteParamsTicks;
+	private int64 mTSetBindGroupTicks;
+	private int64 mTDispatchTicks;
+	private int64 mTBindGroupCreateTicks;
+	private uint32 mDispatchCount;
+	private uint32 mFrameCounter;
+	private const uint32 PrintEveryNFrames = 120;
 
 	// ==================== Lifecycle ====================
 
@@ -158,6 +172,7 @@ class SkinningSystem : IDisposable
 			return;
 
 		// Upload params
+		let writeStart = Stopwatch.GetTimestamp();
 		SkinningParams @params = .()
 		{
 			VertexCount = (uint32)instance.VertexCount,
@@ -165,10 +180,12 @@ class SkinningSystem : IDisposable
 		};
 		TransferHelper.WriteMappedBuffer(instance.ParamsBuffer, 0,
 			Span<uint8>((uint8*)&@params, SkinningParams.Size));
+		mTWriteParamsTicks += Stopwatch.GetTimestamp() - writeStart;
 
 		// Build bind group if needed
 		if (instance.BindGroupDirty || instance.BindGroup == null)
 		{
+			let bgcStart = Stopwatch.GetTimestamp();
 			if (instance.BindGroup != null)
 			{
 				mStaleBindGroups[1].Add(instance.BindGroup);
@@ -191,16 +208,24 @@ class SkinningSystem : IDisposable
 				instance.BindGroup = bg;
 
 			instance.BindGroupDirty = false;
+			mTBindGroupCreateTicks += Stopwatch.GetTimestamp() - bgcStart;
 		}
 
 		if (instance.BindGroup == null)
 			return;
 
-		encoder.SetPipeline(mPipeline);
+		// Pipeline is hoisted to DispatchAllForView - we only rebind the bind
+		// group + dispatch here. Saves N redundant SetPipeline calls on herds
+		// of skinned characters (the bottleneck in release builds).
+		let setBGStart = Stopwatch.GetTimestamp();
 		encoder.SetBindGroup(0, instance.BindGroup, default);
+		mTSetBindGroupTicks += Stopwatch.GetTimestamp() - setBGStart;
 
+		let dispStart = Stopwatch.GetTimestamp();
 		uint32 vertCount = (uint32)instance.VertexCount;
 		encoder.Dispatch((vertCount + WorkgroupSize - 1) / WorkgroupSize, 1, 1);
+		mTDispatchTicks += Stopwatch.GetTimestamp() - dispStart;
+		mDispatchCount++;
 	}
 
 	/// Iterates every skinned mesh in the given view's render data and dispatches
@@ -219,9 +244,49 @@ class SkinningSystem : IDisposable
 		GPUResourceManager gpuResources)
 	{
 		if (data == null || gpuResources == null) return;
+		if (mPipeline == null) return;
+
+		// Reset per-frame timing counters.
+		mTLookupTicks = 0;
+		mTWriteParamsTicks = 0;
+		mTSetBindGroupTicks = 0;
+		mTDispatchTicks = 0;
+		mTBindGroupCreateTicks = 0;
+		mDispatchCount = 0;
+
+		// Bind the skinning compute pipeline once for the whole frame's
+		// dispatches. Each per-character DispatchSkinning then only rebinds
+		// the bind group + dispatches, which the driver short-circuits much
+		// faster than redundant SetPipeline calls.
+		encoder.SetPipeline(mPipeline);
+
 		DispatchCategory(encoder, data, RenderCategories.Opaque, gpuResources);
 		DispatchCategory(encoder, data, RenderCategories.Masked, gpuResources);
 		DispatchCategory(encoder, data, RenderCategories.Transparent, gpuResources);
+
+		// Periodic breakdown print. Reading raw Stopwatch ticks adds <100ns
+		// per pair so the inner-loop overhead is negligible vs the operations
+		// being measured.
+		mFrameCounter++;
+		if (mFrameCounter >= PrintEveryNFrames && mDispatchCount > 0)
+		{
+			// Stopwatch.GetTimestamp() returns microseconds on Beef.
+			let lookupMs = (double)mTLookupTicks / 1000.0;
+			let writeMs = (double)mTWriteParamsTicks / 1000.0;
+			let setBGMs = (double)mTSetBindGroupTicks / 1000.0;
+			let dispMs = (double)mTDispatchTicks / 1000.0;
+			let bgCreateMs = (double)mTBindGroupCreateTicks / 1000.0;
+			let totalMs = lookupMs + writeMs + setBGMs + dispMs + bgCreateMs;
+			Console.WriteLine(
+				"[Skinning] {0} chars | total {1:F2}ms | lookup {2:F2} ({3:F1}%)  write {4:F2} ({5:F1}%)  setBG {6:F2} ({7:F1}%)  dispatch {8:F2} ({9:F1}%)  bgCreate {10:F2}",
+				mDispatchCount, totalMs,
+				lookupMs, lookupMs / totalMs * 100.0,
+				writeMs, writeMs / totalMs * 100.0,
+				setBGMs, setBGMs / totalMs * 100.0,
+				dispMs, dispMs / totalMs * 100.0,
+				bgCreateMs);
+			mFrameCounter = 0;
+		}
 	}
 
 	private void DispatchCategory(IComputePassEncoder encoder, ExtractedRenderData data,
@@ -235,15 +300,22 @@ class SkinningSystem : IDisposable
 			let mesh = entry as MeshRenderData;
 			if (mesh == null || !mesh.IsSkinned) continue;
 
+			// IMPORTANT: key on EntityIndex, not MaterialKey. MaterialKey is the
+			// shared MaterialInstance pointer, so every instance of a herd-spawned
+			// character (same mesh + same material) used to collide on one
+			// SkinningInstance, churning bind groups + overwriting the output
+			// vertex buffer 64+ times per frame.
+			let lookupStart = Stopwatch.GetTimestamp();
 			let boneBuffer = gpuResources.GetBoneBuffer(mesh.BoneBufferHandle);
-			if (boneBuffer == null) continue;
+			if (boneBuffer == null) { mTLookupTicks += Stopwatch.GetTimestamp() - lookupStart; continue; }
 
 			let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
-			if (gpuMesh == null) continue;
+			if (gpuMesh == null) { mTLookupTicks += Stopwatch.GetTimestamp() - lookupStart; continue; }
 
-			let key = SkinningKey() { MeshHandle = mesh.MeshHandle, EntityId = mesh.MaterialKey };
+			let key = SkinningKey() { MeshHandle = mesh.MeshHandle, EntityId = mesh.EntityIndex };
 			let instance = GetOrCreateInstance(key, gpuMesh.VertexBuffer, mesh.BoneBufferHandle,
 				(int32)gpuMesh.VertexCount, boneBuffer.BoneCount);
+			mTLookupTicks += Stopwatch.GetTimestamp() - lookupStart;
 
 			DispatchSkinning(encoder, instance, boneBuffer.Buffer);
 		}

@@ -470,10 +470,15 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer, IS
 			|| HasSkinned(data, RenderCategories.Transparent);
 		if (!hasAny) return;
 
-		let computeEnc = encoder.BeginComputePass("Skinning");
+		IComputePassEncoder computeEnc;
+		using (Profiler.Begin("Skinning.BeginPass"))
+			computeEnc = encoder.BeginComputePass("Skinning");
 		if (computeEnc == null) return;
+
 		skinningSystem.DispatchAllForView(computeEnc, data, mRenderContext.GPUResources);
-		computeEnc.End();
+
+		using (Profiler.Begin("Skinning.EndPass"))
+			computeEnc.End();
 
 		// Compute write -> vertex fetch barrier. The skinned vertex buffers were
 		// created with Storage|Vertex usage; without an explicit transition the
@@ -483,9 +488,12 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer, IS
 		// render at the wrong pose in probe captures. Global memory barrier is
 		// enough because every skinned-vertex consumer reads as a vertex
 		// attribute, all matching the same NewState.
-		MemoryBarrier[1] memBarriers = .(.() { OldState = .ShaderWrite, NewState = .VertexBuffer });
-		BarrierGroup barriers = .() { MemoryBarriers = .(&memBarriers[0], 1) };
-		encoder.Barrier(barriers);
+		using (Profiler.Begin("Skinning.Barrier"))
+		{
+			MemoryBarrier[1] memBarriers = .(.() { OldState = .ShaderWrite, NewState = .VertexBuffer });
+			BarrierGroup barriers = .() { MemoryBarriers = .(&memBarriers[0], 1) };
+			encoder.Barrier(barriers);
+		}
 	}
 
 	private static bool HasSkinned(ExtractedRenderData data, RenderDataCategory category)

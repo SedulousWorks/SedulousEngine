@@ -847,9 +847,10 @@ public class Pipeline : IRenderingPipeline, IDisposable
 				return .Err;
 			}
 
-			// Object uniform buffer (set 3, dynamic offsets)
-			// 256-byte aligned, supports up to 4096 objects
-			let objectBufferSize = (uint64)(256 * 4096);
+			// Object uniform buffer (set 3, dynamic offsets).
+			// Sized from PerFrameResources.MaxObjects × ObjectAlignment so the
+			// buffer matches the cap that WriteObjectUniforms checks against.
+			let objectBufferSize = (uint64)(PerFrameResources.ObjectAlignment * PerFrameResources.MaxObjects);
 			BufferDesc objectUBDesc = .()
 			{
 				Label = "Object Uniforms",

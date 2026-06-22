@@ -366,7 +366,7 @@ class PickPass : PipelinePass
 				IBuffer vertexBuffer = gpuMesh.VertexBuffer;
 				if (mesh.IsSkinned && skinningSystem != null)
 				{
-					let key = SkinningKey() { MeshHandle = mesh.MeshHandle, EntityId = mesh.MaterialKey };
+					let key = SkinningKey() { MeshHandle = mesh.MeshHandle, EntityId = mesh.EntityIndex };
 					let skinnedVB = skinningSystem.GetSkinnedVertexBuffer(key);
 					if (skinnedVB != null)
 						vertexBuffer = skinnedVB;
