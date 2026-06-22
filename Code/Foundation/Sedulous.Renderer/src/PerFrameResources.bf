@@ -95,8 +95,12 @@ class PerFrameResources
 	/// Alignment for object uniform entries (256 bytes - Vulkan minUniformBufferOffsetAlignment).
 	public const uint32 ObjectAlignment = 256;
 
-	/// Maximum number of objects per frame.
-	public const uint32 MaxObjects = 4096;
+	/// Maximum number of objects per frame. Each draw consumes one slot.
+	/// A skinned character with N submeshes drawn through depth + forward + 4
+	/// shadow cascades uses N×6 slots, so a herd of 256 with 3-submesh
+	/// characters exceeds the old 4096 cap and silently drops draws past the
+	/// limit (rendering as black/zero-position meshes).
+	public const uint32 MaxObjects = 65536;
 
 	/// Maximum instances for batched instanced draws.
 	public const int32 MaxInstances = 200000;
