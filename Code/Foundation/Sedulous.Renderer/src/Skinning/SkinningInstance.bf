@@ -9,8 +9,11 @@ class SkinningInstance
 	/// Uniform buffer with vertex count and bone count.
 	public IBuffer ParamsBuffer;
 
-	/// Output buffer: skinned vertices (48 bytes/vertex, Mesh layout).
-	public IBuffer SkinnedVertexBuffer;
+	/// Sub-range of SkinningSystem.OutputPool where this instance's
+	/// skinned vertices live. The pool owns the actual VkBuffer; this
+	/// instance just holds the offset+size.
+	public uint64 OutputOffset;
+	public uint64 OutputSize;
 
 	/// Bind group for compute dispatch.
 	public IBindGroup BindGroup;
@@ -33,16 +36,20 @@ class SkinningInstance
 	/// Whether this instance is active this frame.
 	public bool Active;
 
-	/// Frees owned GPU resources.
-	public void Release(IDevice device)
+	/// Releases owned GPU resources and returns the output sub-range to the
+	/// pool. Caller must pass the pool that originally allocated the range.
+	public void Release(IDevice device, SkinnedVertexPool outputPool)
 	{
 		if (device == null) return;
 
 		if (BindGroup != null)
 			device.DestroyBindGroup(ref BindGroup);
-		if (SkinnedVertexBuffer != null)
-			device.DestroyBuffer(ref SkinnedVertexBuffer);
 		if (ParamsBuffer != null)
 			device.DestroyBuffer(ref ParamsBuffer);
+		if (outputPool != null && OutputSize > 0)
+		{
+			outputPool.Free(OutputOffset, OutputSize);
+			OutputSize = 0;
+		}
 	}
 }

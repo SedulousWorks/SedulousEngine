@@ -606,18 +606,18 @@ public class MeshRenderer : Renderer
 
 			// Use compute-skinned vertex buffer if available, otherwise skip
 			// skinned meshes that haven't been processed yet (wrong vertex format).
+			// Skinned instances share a single output pool buffer; the per-instance
+			// data lives at TryGetSkinnedBinding's returned offset.
 			IBuffer vertexBuffer = gpuMesh.VertexBuffer;
+			uint64 vertexOffset = 0;
 			if (mesh.IsSkinned && skinningSystem != null)
 			{
 				let key = SkinningKey() { MeshHandle = mesh.MeshHandle, EntityId = mesh.EntityIndex };
-				let skinnedVB = skinningSystem.GetSkinnedVertexBuffer(key);
-				if (skinnedVB != null)
-					vertexBuffer = skinnedVB;
-				else
+				if (!skinningSystem.TryGetSkinnedBinding(key, out vertexBuffer, out vertexOffset))
 					continue;
 			}
 
-			encoder.SetVertexBuffer(0, vertexBuffer, 0);
+			encoder.SetVertexBuffer(0, vertexBuffer, vertexOffset);
 
 			if (gpuMesh.IndexBuffer != null)
 			{

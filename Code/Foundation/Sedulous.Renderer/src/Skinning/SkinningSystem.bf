@@ -15,7 +15,8 @@ using Sedulous.Core.Mathematics;
 /// RenderSubsystem.DispatchSkinning() invokes DispatchAllForView() once per
 /// frame BEFORE probe captures and the main pipeline render, so both
 /// consumers see the same skinned vertex buffers. Forward/depth passes call
-/// GetSkinnedVertexBuffer() to bind the pre-skinned output.
+/// TryGetSkinnedBinding() to bind the pre-skinned output (shared pool buffer
+/// + per-instance offset).
 class SkinningSystem : IDisposable
 {
 	private IDevice mDevice;
@@ -30,6 +31,20 @@ class SkinningSystem : IDisposable
 
 	/// Deferred bind group destruction (double-buffered for MaxFramesInFlight).
 	private List<IBindGroup>[2] mStaleBindGroups = .(new .(), new .()) ~ { delete _[0]; delete _[1]; };
+
+	/// One shared output buffer for every skinned-mesh instance. Each
+	/// SkinningInstance gets a sub-range, exposed to consumers via
+	/// TryGetSkinnedBinding so the forward / depth / shadow / pick passes
+	/// can SetVertexBuffer(pool, offset) instead of binding a per-instance
+	/// VkBuffer.
+	private SkinnedVertexPool mOutputPool = new .() ~ delete _;
+
+	/// Initial output pool size. 256 MB covers ~5.4M vertices @ 48B,
+	/// which is well past the EngineAnimationSandbox stress-test target
+	/// (5-10k skinned instance dispatches). Growth is deferred; an
+	/// overflow logs once and skinning skips further instances until
+	/// slots free.
+	private const uint64 OutputPoolInitialSize = 256 * 1024 * 1024;
 
 	/// Output vertex stride (standard Mesh layout: 48 bytes).
 	private const uint32 OutputVertexStride = 48;
@@ -54,6 +69,13 @@ class SkinningSystem : IDisposable
 	public Result<void> Initialize(IDevice device, ShaderSystem shaderSystem)
 	{
 		mDevice = device;
+
+		if (mOutputPool.Initialize(device, OutputPoolInitialSize) case .Err)
+		{
+			Console.WriteLine("[SkinningSystem] Failed to allocate output pool ({0} MB).",
+				OutputPoolInitialSize / (1024 * 1024));
+			return .Err;
+		}
 
 		if (shaderSystem == null)
 			return .Ok; // Deferred init
@@ -121,6 +143,16 @@ class SkinningSystem : IDisposable
 			return existing;
 		}
 
+		// Reserve a sub-range of the shared output pool BEFORE creating the
+		// instance - if we're out of pool space we just decline to skin
+		// this mesh this frame (caller skips it, same as the old path did
+		// when CreateBuffer returned Err).
+		let requestedSize = (uint64)(vertexCount * OutputVertexStride);
+		uint64 outputOffset;
+		uint64 alignedSize;
+		if (!mOutputPool.Allocate(requestedSize, out outputOffset, out alignedSize))
+			return null;
+
 		let instance = new SkinningInstance();
 		instance.SourceVertexBuffer = sourceVertexBuffer;
 		instance.BoneBufferHandle = boneBufferHandle;
@@ -128,6 +160,8 @@ class SkinningSystem : IDisposable
 		instance.BoneCount = boneCount;
 		instance.Active = true;
 		instance.BindGroupDirty = true;
+		instance.OutputOffset = outputOffset;
+		instance.OutputSize = alignedSize;
 
 		// Create params buffer
 		BufferDesc paramsBufDesc = .()
@@ -140,28 +174,26 @@ class SkinningSystem : IDisposable
 		if (mDevice.CreateBuffer(paramsBufDesc) case .Ok(let buf))
 			instance.ParamsBuffer = buf;
 
-		// Create output vertex buffer (48 bytes per vertex, Storage + Vertex)
-		let outputSize = (uint64)(vertexCount * OutputVertexStride);
-		BufferDesc outputBufDesc = .()
-		{
-			Label = "Skinned Vertices",
-			Size = outputSize,
-			Usage = .Storage | .Vertex,
-			Memory = .GpuOnly
-		};
-		if (mDevice.CreateBuffer(outputBufDesc) case .Ok(let outBuf))
-			instance.SkinnedVertexBuffer = outBuf;
-
 		mInstances[key] = instance;
 		return instance;
 	}
 
-	/// Gets the skinned vertex buffer for a mesh. Returns null if not skinned.
-	public IBuffer GetSkinnedVertexBuffer(SkinningKey key)
+	/// Returns the shared output pool buffer and the byte offset of `key`'s
+	/// sub-range. Pass both to SetVertexBuffer when drawing the skinned mesh.
+	/// Returns false if the instance hasn't been created yet (e.g. the
+	/// skinning compute hasn't been dispatched this frame because the bone
+	/// or source buffer wasn't ready).
+	public bool TryGetSkinnedBinding(SkinningKey key, out IBuffer buffer, out uint64 offset)
 	{
 		if (mInstances.TryGetValue(key, let instance))
-			return instance.SkinnedVertexBuffer;
-		return null;
+		{
+			buffer = mOutputPool.Buffer;
+			offset = instance.OutputOffset;
+			return buffer != null;
+		}
+		buffer = null;
+		offset = 0;
+		return false;
 	}
 
 	/// Dispatches compute skinning for an instance.
@@ -194,13 +226,16 @@ class SkinningSystem : IDisposable
 
 			let boneBufferSize = (uint64)instance.BoneCount * (uint64)sizeof(Matrix) * 2; // current + prev
 			let sourceSize = (uint64)(instance.VertexCount * 72); // SkinnedVertex stride
-			let outputSize = (uint64)(instance.VertexCount * OutputVertexStride);
+			let outputVertexBytes = (uint64)(instance.VertexCount * OutputVertexStride);
 
+			// Output points at the shared pool's range for this instance.
+			// Shader still sees the same 0-based RWByteAddressBuffer thanks
+			// to the bind group offset.
 			BindGroupEntry[4] bgEntries = .(
 				BindGroupEntry.Buffer(instance.ParamsBuffer, 0, SkinningParams.Size),
 				BindGroupEntry.Buffer(boneBuffer, 0, boneBufferSize),
 				BindGroupEntry.Buffer(instance.SourceVertexBuffer, 0, sourceSize),
-				BindGroupEntry.Buffer(instance.SkinnedVertexBuffer, 0, outputSize)
+				BindGroupEntry.Buffer(mOutputPool.Buffer, instance.OutputOffset, outputVertexBytes)
 			);
 
 			BindGroupDesc bgDesc = .() { Label = "Skinning BindGroup", Layout = mBindGroupLayout, Entries = bgEntries };
@@ -231,8 +266,8 @@ class SkinningSystem : IDisposable
 	/// Iterates every skinned mesh in the given view's render data and dispatches
 	/// the skinning compute for each. Skips meshes whose source or bone buffer
 	/// hasn't resolved yet. Callable from any compute-pass encoder - the result
-	/// (per-instance skinned vertex buffers, keyed on SkinningKey) is shared by
-	/// every subsequent consumer that calls GetSkinnedVertexBuffer.
+	/// (per-instance sub-ranges of the shared output pool, keyed on SkinningKey)
+	/// is shared by every subsequent consumer that calls TryGetSkinnedBinding.
 	///
 	/// Centralising the dispatch here lets the engine run skinning once per
 	/// frame from RenderSubsystem - before probe captures, shadows, and the
@@ -349,10 +384,12 @@ class SkinningSystem : IDisposable
 
 		for (let kv in mInstances)
 		{
-			kv.value.Release(mDevice);
+			kv.value.Release(mDevice, mOutputPool);
 			delete kv.value;
 		}
 		mInstances.Clear();
+
+		mOutputPool.Dispose();
 
 		if (mPipeline != null) mDevice.DestroyComputePipeline(ref mPipeline);
 		if (mPipelineLayout != null) mDevice.DestroyPipelineLayout(ref mPipelineLayout);
