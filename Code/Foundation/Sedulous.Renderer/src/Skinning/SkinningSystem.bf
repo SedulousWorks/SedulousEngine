@@ -2,8 +2,6 @@ namespace Sedulous.Renderer;
 
 using System;
 using System.Collections;
-using System.Diagnostics;
-using Sedulous.Profiler;
 using Sedulous.RHI;
 using Sedulous.Shaders;
 using Sedulous.Core.Mathematics;
@@ -73,18 +71,6 @@ class SkinningSystem : IDisposable
 	private IBindGroup mFrameBindGroup;
 	private IBuffer mLastBonePool;
 	private IBuffer mLastSourcePool;
-
-	// Manual stage timing - accumulated each frame, printed every N frames.
-	// Profiler scopes are too coarse (per-call overhead drowns the signal at
-	// herd scales). Raw Stopwatch ticks have <100ns overhead per pair.
-	private int64 mTBuildRecordsTicks;
-	private int64 mTWriteRecordsTicks;
-	private int64 mTSetBindGroupTicks;
-	private int64 mTPushConstantsTicks;
-	private int64 mTDispatchTicks;
-	private uint32 mDispatchCount;
-	private uint32 mFrameCounter;
-	private const uint32 PrintEveryNFrames = 120;
 
 	// ==================== Lifecycle ====================
 
@@ -244,21 +230,11 @@ class SkinningSystem : IDisposable
 		let sourcePoolBuffer = gpuResources.SkinnedSourcePoolBuffer;
 		if (bonePoolBuffer == null || sourcePoolBuffer == null) return;
 
-		// Reset per-frame timing counters.
-		mTBuildRecordsTicks = 0;
-		mTWriteRecordsTicks = 0;
-		mTSetBindGroupTicks = 0;
-		mTPushConstantsTicks = 0;
-		mTDispatchTicks = 0;
-		mDispatchCount = 0;
-
 		// Build records from this frame's skinned-mesh batch.
-		let buildStart = Stopwatch.GetTimestamp();
 		mFrameRecords.Clear();
 		CollectRecords(data, RenderCategories.Opaque, gpuResources);
 		CollectRecords(data, RenderCategories.Masked, gpuResources);
 		CollectRecords(data, RenderCategories.Transparent, gpuResources);
-		mTBuildRecordsTicks = Stopwatch.GetTimestamp() - buildStart;
 
 		if (mFrameRecords.Count == 0) return;
 
@@ -272,10 +248,8 @@ class SkinningSystem : IDisposable
 		}
 
 		// Upload records.
-		let writeStart = Stopwatch.GetTimestamp();
 		TransferHelper.WriteMappedBuffer(mRecordsBuffer, 0,
 			Span<uint8>((uint8*)mFrameRecords.Ptr, mFrameRecords.Count * SkinningRecord.Stride));
-		mTWriteRecordsTicks = Stopwatch.GetTimestamp() - writeStart;
 
 		// (Re)build the frame bind group if the pool buffers changed (rare;
 		// only on pool growth, which is deferred).
@@ -306,50 +280,17 @@ class SkinningSystem : IDisposable
 
 		// Bind once for the whole frame's dispatches.
 		encoder.SetPipeline(mPipeline);
-		let setBGStart = Stopwatch.GetTimestamp();
 		encoder.SetBindGroup(0, mFrameBindGroup, default);
-		mTSetBindGroupTicks = Stopwatch.GetTimestamp() - setBGStart;
 
 		// Emit one (PushConstants + Dispatch) per record. PushConstants is ~100ns
 		// vs ~2µs for SetBindGroup, so the per-character overhead collapses.
 		for (uint32 i = 0; i < mFrameRecords.Count; i++)
 		{
 			let record = mFrameRecords[(int)i];
-
-			let pcStart = Stopwatch.GetTimestamp();
 			uint32 recordIndex = i;
 			encoder.SetPushConstants(.Compute, 0, 4, &recordIndex);
-			mTPushConstantsTicks += Stopwatch.GetTimestamp() - pcStart;
-
-			let dispStart = Stopwatch.GetTimestamp();
 			let workgroups = (uint32)((record.VertexCount + WorkgroupSize - 1) / WorkgroupSize);
 			encoder.Dispatch(workgroups, 1, 1);
-			mTDispatchTicks += Stopwatch.GetTimestamp() - dispStart;
-			mDispatchCount++;
-		}
-
-		// Periodic breakdown print. Reading raw Stopwatch ticks adds <100ns
-		// per pair so the inner-loop overhead is negligible vs the operations
-		// being measured.
-		mFrameCounter++;
-		if (mFrameCounter >= PrintEveryNFrames && mDispatchCount > 0)
-		{
-			// Stopwatch.GetTimestamp() returns microseconds on Beef.
-			let buildMs   = (double)mTBuildRecordsTicks / 1000.0;
-			let writeMs   = (double)mTWriteRecordsTicks / 1000.0;
-			let setBGMs   = (double)mTSetBindGroupTicks / 1000.0;
-			let pcMs      = (double)mTPushConstantsTicks / 1000.0;
-			let dispMs    = (double)mTDispatchTicks / 1000.0;
-			let totalMs   = buildMs + writeMs + setBGMs + pcMs + dispMs;
-			Console.WriteLine(
-				"[Skinning] {0} chars | total {1:F2}ms | build {2:F2} ({3:F1}%)  write {4:F2} ({5:F1}%)  setBG {6:F2} ({7:F1}%)  push {8:F2} ({9:F1}%)  dispatch {10:F2} ({11:F1}%)",
-				mDispatchCount, totalMs,
-				buildMs,   buildMs   / totalMs * 100.0,
-				writeMs,   writeMs   / totalMs * 100.0,
-				setBGMs,   setBGMs   / totalMs * 100.0,
-				pcMs,      pcMs      / totalMs * 100.0,
-				dispMs,    dispMs    / totalMs * 100.0);
-			mFrameCounter = 0;
 		}
 	}
 
