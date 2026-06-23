@@ -42,8 +42,9 @@ public class RenderContext : IDisposable
 
 	// IBL system (BRDF LUT, environment cubemaps, sampler)
 	private IBLSystem mIBLSystem ~ delete _;
-	// Clustered lighting (assigns lights to screen-space clusters for efficient forward shading)
-	private ClusterSystem mClusterSystem ~ { _?.Dispose(); delete _; };
+	// Clustered lighting moved to per-Pipeline ownership - shared singleton broke
+	// multi-scene rendering because two Pipelines using the same `frameIndex % 2`
+	// slot stomp each other's per-frame buffers. Access via `pipeline.ClusterSystem`.
 
 	// Debug draw system (font texture + per-frame vertex buffers) + immediate-mode API
 	private DebugDrawSystem mDebugDrawSystem ~ { _?.Dispose(); delete _; };
@@ -121,9 +122,6 @@ public class RenderContext : IDisposable
 	/// IBL system (BRDF LUT, environment cubemaps, sampler). Created in Initialize.
 	public IBLSystem IBLSystem => mIBLSystem;
 
-	/// Clustered lighting system.
-	public ClusterSystem ClusterSystem => mClusterSystem;
-
 	/// Debug draw system (GPU resources backing DebugDraw).
 	public DebugDrawSystem DebugDrawSystem => mDebugDrawSystem;
 
@@ -197,13 +195,6 @@ public class RenderContext : IDisposable
 			{
 				mSkinningSystem = new SkinningSystem();
 				mSkinningSystem.Initialize(mDevice, value);
-			}
-
-			// Initialize cluster system with shader system
-			if (value != null && mClusterSystem == null)
-			{
-				mClusterSystem = new ClusterSystem();
-				mClusterSystem.Initialize(mDevice, value);
 			}
 
 			// Initialize IBL render pipelines with shader system

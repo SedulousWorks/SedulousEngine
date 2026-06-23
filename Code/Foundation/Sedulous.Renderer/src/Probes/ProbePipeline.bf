@@ -148,6 +148,7 @@ public class ProbePipeline : IRenderingPipeline, IDisposable
 		ITextureView outputFaceView,
 		int32 frameIndex,
 		LightBuffer lightBuffer,
+		ClusterSystem clusterSystem,
 		RenderView mainView,
 		SkyPass skyPass)
 	{
@@ -164,7 +165,7 @@ public class ProbePipeline : IRenderingPipeline, IDisposable
 		let projMatrix = Matrix.CreatePerspectiveFieldOfView(Math.PI_f * 0.5f, 1.0f, nearClip, farClip);
 
 		// Build frame bind group with sky IBL (not probe IBL — prevents feedback)
-		RebuildFrameBindGroup(frame, frameIndex, lightBuffer);
+		RebuildFrameBindGroup(frame, frameIndex, lightBuffer, clusterSystem);
 
 		// Save main view camera state (restored after rendering)
 		let savedViewMatrix = mainView.ViewMatrix;
@@ -436,7 +437,8 @@ public class ProbePipeline : IRenderingPipeline, IDisposable
 
 	// ==================== Resource Creation ====================
 
-	private void RebuildFrameBindGroup(PerFrameResources frame, int32 frameIndex, LightBuffer lightBuffer)
+	private void RebuildFrameBindGroup(PerFrameResources frame, int32 frameIndex, LightBuffer lightBuffer,
+		ClusterSystem clusterSystem)
 	{
 		let frameLayout = mRenderContext.FrameBindGroupLayout;
 		if (frameLayout == null || frame.SceneUniformBuffer == null)
@@ -466,8 +468,8 @@ public class ProbePipeline : IRenderingPipeline, IDisposable
 			iblSystem.EnvironmentSampler == null)
 			return;
 
-		// Cluster system buffers
-		let clusterSystem = mRenderContext.ClusterSystem;
+		// Cluster system buffers (passed in by caller — owned by the Pipeline
+		// whose probe we're capturing for)
 		if (clusterSystem == null) return;
 
 		let clusterParamsBuf = clusterSystem.GetFragParamsBuffer(frameIndex);

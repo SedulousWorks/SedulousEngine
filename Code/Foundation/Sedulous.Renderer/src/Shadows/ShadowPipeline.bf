@@ -102,7 +102,8 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 	/// be pre-cleared by BeginRendering; all jobs use Load. The atlas is left
 	/// in ShaderRead via the imported finalState so the forward pass can sample it.
 	public void RenderAll(ICommandEncoder encoder, Span<ShadowJob> jobs,
-		ITexture atlas, ITextureView atlasView, int32 frameIndex, LightBuffer lightBuffer)
+		ITexture atlas, ITextureView atlasView, int32 frameIndex, LightBuffer lightBuffer,
+		ClusterSystem clusterSystem)
 	{
 		if (jobs.Length == 0) return;
 
@@ -111,7 +112,7 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 		let frameSlot = frameIndex % MaxFramesInFlight;
 		let frame = mFrameResources[frameSlot];
 
-		RebuildFrameBindGroup(frame, frameIndex, lightBuffer);
+		RebuildFrameBindGroup(frame, frameIndex, lightBuffer, clusterSystem);
 
 		// Pre-write all scene uniforms so each pass callback has a valid offset.
 		const int MaxJobs = (int)PerFrameResources.MaxScenes;
@@ -436,7 +437,8 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 		return .Ok;
 	}
 
-	private void RebuildFrameBindGroup(PerFrameResources frame, int32 frameIndex, LightBuffer lightBuffer)
+	private void RebuildFrameBindGroup(PerFrameResources frame, int32 frameIndex, LightBuffer lightBuffer,
+		ClusterSystem clusterSystem)
 	{
 		let frameLayout = mRenderContext.FrameBindGroupLayout;
 		if (frameLayout == null || frame.SceneUniformBuffer == null)
@@ -465,8 +467,8 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 			iblSystem.EnvironmentSampler == null)
 			return;
 
-		// Cluster system buffers
-		let clusterSystem = mRenderContext.ClusterSystem;
+		// Cluster system buffers (passed in by caller — owned by the Pipeline
+		// whose shadows we're rendering)
 		if (clusterSystem == null) return;
 
 		let clusterParamsBuf = clusterSystem.GetFragParamsBuffer(frameIndex);

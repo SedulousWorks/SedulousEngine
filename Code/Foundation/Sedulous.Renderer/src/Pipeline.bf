@@ -96,6 +96,13 @@ public class Pipeline : IRenderingPipeline, IDisposable
 	// pass reads this pipeline's buffer, not a shared one.
 	private LightBuffer mLightBuffer ~ delete _;
 
+	// Per-pipeline clustered-lighting system. Was on RenderContext (singleton)
+	// before - that broke multi-scene rendering because two scenes sharing the
+	// system would stomp each other's per-frame buffers (BuildParams, FragParams,
+	// ClusterOffsets, ClusterLightIndices, BG) using the same `frameIndex % 2`
+	// slot. Per-Pipeline ownership gives each scene its own state.
+	private ClusterSystem mClusterSystem ~ { _?.Dispose(); delete _; };
+
 	// Per-pipeline line vertex buffers for debug drawing. Each pipeline uploads
 	// its own merged debug vertices so scenes don't overwrite each other.
 	private IBuffer[MaxFramesInFlight] mLineVertexBuffers;
@@ -146,6 +153,11 @@ public class Pipeline : IRenderingPipeline, IDisposable
 
 	/// Per-pipeline light buffer. Each scene uploads its own lights here.
 	public LightBuffer LightBuffer => mLightBuffer;
+
+	/// Per-pipeline clustered-lighting system. Owned by this Pipeline since
+	/// the per-frame buffers and BG are view-dependent (view matrix, grid,
+	/// light list) and would race between scenes if shared.
+	public ClusterSystem ClusterSystem => mClusterSystem;
 
 	/// Gets the per-pipeline line vertex buffer for the given frame.
 	public IBuffer GetLineVertexBuffer(int32 frameIndex) => mLineVertexBuffers[frameIndex % MaxFramesInFlight];
@@ -219,6 +231,15 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		mLightBuffer = new LightBuffer();
 		if (mLightBuffer.Initialize(renderContext.Device) case .Err)
 			return .Err;
+
+		// Per-pipeline cluster system. Requires the ShaderSystem to be already
+		// set on RenderContext - which it is, because the engine sets the shader
+		// system before creating any Pipeline.
+		mClusterSystem = new ClusterSystem();
+		if (renderContext.ShaderSystem != null &&
+			mClusterSystem.Initialize(renderContext.Device, renderContext.ShaderSystem) case .Err)
+			return .Err;
+		mClusterSystem.EnsureBuffers(width, height);
 
 		// Per-pipeline line vertex buffers for debug drawing
 		let device = renderContext.Device;
@@ -347,6 +368,14 @@ public class Pipeline : IRenderingPipeline, IDisposable
 			}
 		}
 
+		// Dispose per-pipeline cluster system (waits for GPU done via Shutdown's WaitIdle above).
+		if (mClusterSystem != null)
+		{
+			mClusterSystem.Dispose();
+			delete mClusterSystem;
+			mClusterSystem = null;
+		}
+
 		// Release per-pipeline line vertex buffers
 		if (device != null)
 		{
@@ -426,11 +455,11 @@ public class Pipeline : IRenderingPipeline, IDisposable
 			// Assign lights to clusters (compute dispatch). Must run before
 			// RebuildFrameBindGroup so the bind group captures the correct
 			// (possibly reallocated) cluster buffers.
-			if (let clusterSystem = mRenderContext.ClusterSystem)
+			if (mClusterSystem != null)
 			{
 				Matrix invProj = .Identity;
 				Matrix.Invert(view.ProjectionMatrix, out invProj);
-				clusterSystem.AssignLights(encoder, mLightBuffer, frameIndex,
+				mClusterSystem.AssignLights(encoder, mLightBuffer, frameIndex,
 					mOutputWidth, mOutputHeight, view.NearPlane, view.FarPlane,
 					view.ViewMatrix, invProj);
 			}
@@ -602,6 +631,9 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		mOutputHeight = height;
 
 		RecreateSceneDepth(width, height);
+
+		if (mClusterSystem != null)
+			mClusterSystem.EnsureBuffers(width, height);
 
 		for (let pass in mPasses)
 			pass.OnResize(width, height);
@@ -976,7 +1008,7 @@ public class Pipeline : IRenderingPipeline, IDisposable
 		}
 
 		// Cluster system buffers
-		let clusterSystem = mRenderContext.ClusterSystem;
+		let clusterSystem = mClusterSystem;
 		if (clusterSystem == null) return;
 
 		let clusterParamsBuf = clusterSystem.GetFragParamsBuffer(frameIndex);
