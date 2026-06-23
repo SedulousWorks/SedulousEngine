@@ -29,14 +29,9 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 	// shadow rendering doesn't fight over the same scene/object UBO ring buffers).
 	private PerFrameResources[MaxFramesInFlight] mFrameResources;
 
-	// Set per-RenderAll by the host Pipeline so renderers reached during
-	// our render graph see the host's per-Pipeline skinning state.
-	private SkinningSystem mActiveSkinningSystem;
-
 	public RenderContext RenderContext => mRenderContext;
 	public RenderGraph RenderGraph => mRenderGraph;
 	public TextureFormat OutputFormat => .Undefined;
-	public SkinningSystem SkinningSystem => mActiveSkinningSystem;
 
 	public PerFrameResources GetFrameResources(int32 frameIndex)
 	{
@@ -108,17 +103,12 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 	/// in ShaderRead via the imported finalState so the forward pass can sample it.
 	public void RenderAll(ICommandEncoder encoder, Span<ShadowJob> jobs,
 		ITexture atlas, ITextureView atlasView, int32 frameIndex, LightBuffer lightBuffer,
-		ClusterSystem clusterSystem, SkinningSystem skinningSystem)
+		ClusterSystem clusterSystem)
 	{
 		if (jobs.Length == 0) return;
 
 		using (Profiler.Begin("ShadowPipeline.RenderAll"))
 		{
-		// Make the host Pipeline's skinning system visible to renderers reached
-		// during this render (MeshRenderer reads pipeline.SkinningSystem).
-		mActiveSkinningSystem = skinningSystem;
-		defer { mActiveSkinningSystem = null; }
-
 		let frameSlot = frameIndex % MaxFramesInFlight;
 		let frame = mFrameResources[frameSlot];
 

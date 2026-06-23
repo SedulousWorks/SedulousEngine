@@ -103,15 +103,6 @@ public class Pipeline : IRenderingPipeline, IDisposable
 	// slot. Per-Pipeline ownership gives each scene its own state.
 	private ClusterSystem mClusterSystem ~ { _?.Dispose(); delete _; };
 
-	// Per-pipeline compute-skinning system. Was on RenderContext (singleton)
-	// before - that broke multi-scene rendering on two fronts: the
-	// SkinningInstance dictionary keyed only on (Mesh, EntityIndex) so the
-	// same index across two scenes collided on one output sub-range; AND the
-	// frame-scoped records buffer / bind group were overwritten by whichever
-	// scene rendered second, so the first scene's GPU dispatch read the wrong
-	// records. Per-Pipeline ownership scopes both.
-	private SkinningSystem mSkinningSystem ~ { _?.Dispose(); delete _; };
-
 	// Per-pipeline line vertex buffers for debug drawing. Each pipeline uploads
 	// its own merged debug vertices so scenes don't overwrite each other.
 	private IBuffer[MaxFramesInFlight] mLineVertexBuffers;
@@ -167,11 +158,6 @@ public class Pipeline : IRenderingPipeline, IDisposable
 	/// the per-frame buffers and BG are view-dependent (view matrix, grid,
 	/// light list) and would race between scenes if shared.
 	public ClusterSystem ClusterSystem => mClusterSystem;
-
-	/// Per-pipeline compute-skinning system. Output (skinned vertex
-	/// sub-ranges) is consumed by every pass in this Pipeline's render -
-	/// shadow casters, probe captures, depth prepass, forward, pick.
-	public SkinningSystem SkinningSystem => mSkinningSystem;
 
 	/// Gets the per-pipeline line vertex buffer for the given frame.
 	public IBuffer GetLineVertexBuffer(int32 frameIndex) => mLineVertexBuffers[frameIndex % MaxFramesInFlight];
@@ -254,14 +240,6 @@ public class Pipeline : IRenderingPipeline, IDisposable
 			mClusterSystem.Initialize(renderContext.Device, renderContext.ShaderSystem) case .Err)
 			return .Err;
 		mClusterSystem.EnsureBuffers(width, height);
-
-		// Per-pipeline skinning system. Same lifecycle as ClusterSystem -
-		// owns its own SkinningInstance dict / records buffer / output pool
-		// so multi-scene rendering doesn't collide.
-		mSkinningSystem = new SkinningSystem();
-		if (renderContext.ShaderSystem != null &&
-			mSkinningSystem.Initialize(renderContext.Device, renderContext.ShaderSystem) case .Err)
-			return .Err;
 
 		// Per-pipeline line vertex buffers for debug drawing
 		let device = renderContext.Device;
@@ -390,19 +368,13 @@ public class Pipeline : IRenderingPipeline, IDisposable
 			}
 		}
 
-		// Dispose per-pipeline cluster + skinning systems (WaitIdle above already
+		// Dispose per-pipeline cluster system (WaitIdle above already
 		// flushed in-flight references).
 		if (mClusterSystem != null)
 		{
 			mClusterSystem.Dispose();
 			delete mClusterSystem;
 			mClusterSystem = null;
-		}
-		if (mSkinningSystem != null)
-		{
-			mSkinningSystem.Dispose();
-			delete mSkinningSystem;
-			mSkinningSystem = null;
 		}
 
 		// Release per-pipeline line vertex buffers

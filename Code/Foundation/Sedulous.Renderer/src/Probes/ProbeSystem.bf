@@ -150,7 +150,7 @@ public class ProbeSystem
 					encoder, probe.ProbePosition, probe.NearClip, probe.FarClip,
 					(uint32)probe.CaptureResolution, (int32)faceIdx, res.CapturedFaceViews[faceIdx],
 					frameIndex, pipeline.LightBuffer, pipeline.ClusterSystem,
-					pipeline.SkinningSystem, mainView, skyPass);
+					mainView, skyPass);
 			}
 
 			// Advance round-robin counter

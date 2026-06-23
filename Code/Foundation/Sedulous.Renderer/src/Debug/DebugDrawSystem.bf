@@ -8,7 +8,7 @@ using Sedulous.DebugFont;
 /// a bind group exposing both, and per-frame-in-flight vertex buffers for line and
 /// overlay geometry.
 ///
-/// Owned by RenderContext alongside LightBuffer / ShadowSystem / SkinningSystem.
+/// Owned by RenderContext alongside LightBuffer / ShadowSystem.
 public class DebugDrawSystem : IDisposable
 {
 	public const int32 MaxFramesInFlight = 2;

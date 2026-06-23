@@ -970,7 +970,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer, IS
 		let count = endIndex - startIndex;
 		Span<ShadowPipeline.ShadowJob> jobs = .(&mShadowDraws[startIndex], count);
 		mShadowPipeline.RenderAll(encoder, jobs, atlas, atlasView, frameIndex,
-			pipeline.LightBuffer, pipeline.ClusterSystem, pipeline.SkinningSystem);
+			pipeline.LightBuffer, pipeline.ClusterSystem);
 	}
 
 	// ==================== Scene Injection ====================
