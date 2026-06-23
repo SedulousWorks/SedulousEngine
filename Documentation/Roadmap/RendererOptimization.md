@@ -134,6 +134,62 @@ With shadows (Debug, 48k):
 
 ---
 
+## Phase 7: Compute Skinning Mega-Dispatch - **A.1-A.4 done, A.5 deferred**
+
+**Target:** EngineAnimationSandbox herd-scale skinning (5632 dispatches per frame)
+
+**Problem:** Compute skinning bound a fresh descriptor set + dispatched
+once per character. At 5632 dispatches, `vkCmdBindDescriptorSets` cost
+~2.3 µs each = **~13ms/frame** of pure CPU-side Vulkan validation.
+
+**Landed (A.1-A.4):**
+- **A.1** — One shared `SkinnedVertexPool` (Storage|Vertex, 256MB) with
+  sub-alloc + per-size free list. Every skinned instance gets a
+  sub-range; consumers (forward / depth / shadow / pick) bind the pool
+  buffer with the per-instance offset.
+- **A.2** — One shared `BoneMatrixPool` (StorageRead|CpuToGpu, 64MB)
+  for all per-skeleton bone matrices. `GPUResources.BonePoolBuffer` is
+  the single descriptor target; animation writes hit `(pool, offset +
+  localOff)`.
+- **A.3** — Skinned-mesh source verts live in
+  `SkinnedSourceVertexPool` (StorageRead|CopyDst, 64MB). Non-skinned
+  meshes still get dedicated buffers (per-mesh `ExtraVertexUsage` flags
+  are honored). `GPUMesh.VertexOffset` carries the sub-range location.
+- **A.4** — Per-instance bind groups collapsed into ONE frame-scoped
+  mega bind group: `t0 bones, t1 sources, t2 SkinningRecords, u0
+  outputs` all bound at offset 0 of the pool buffers. Per-character
+  state lives in a `StructuredBuffer<SkinningRecord>` written once per
+  frame. Per dispatch: 4-byte push constant (`RecordIndex`) +
+  `Dispatch`. Shader reads its record and uses absolute offsets into
+  each pool. Push-constant declaration mirrors RHI Sample003 /
+  Sample018 convention (`ConstantBuffer<PushData>` +
+  `[[vk::push_constant]]`).
+
+**Measured (5632 herd):** total skinning **~15ms → ~3ms** (**-12ms**).
+`setBindGroup` line: 13ms → 0.01ms. `vkCmdDispatch` is now the
+bottleneck at ~2.5ms (~450ns per call).
+
+**Deferred (A.5): single mega-dispatch via record table**
+
+Collapse the remaining 5632 `vkCmdDispatch` calls into **one** by
+building a workgroup→record lookup table on the CPU each frame and
+issuing a single `Dispatch(totalWorkgroupCount, 1, 1)`. Each workgroup
+reads `RecordTable[SV_GroupID.x]` to find which character it belongs
+to, computes its local vertex index from a cumulative workgroup-start
+field on the record, then transforms as before.
+
+- Expected savings: dispatch line 2.5ms → ~50µs. Total skinning ~3ms →
+  ~0.5ms.
+- Cost: shader rewrite to consume `SV_GroupID.x` + cumulative
+  workgroup offsets; per-frame `RecordTable` build (cheap, ~80k uint32
+  entries for the herd).
+- Skipped for now because A.1-A.4 already brought skinning under the
+  frame budget; the additional ~2ms isn't load-bearing for the current
+  stress test. Revisit if a workload appears where per-frame skinning
+  dispatch overhead is the next bottleneck.
+
+---
+
 ## Summary
 
 | Phase | Target | Savings | Complexity |
@@ -144,3 +200,5 @@ With shadows (Debug, 48k):
 | 4. Shadow cascade cull | Shadow GPU cost | 60-80% shadow GPU | Medium |
 | 5. Main view frustum cull | GPU (off-screen) | Scene-dependent | Medium |
 | 6. GPU-driven rendering | CPU + GPU at scale | Best scaling | High |
+| 7. Compute skinning A.1-A.4 **(done)** | Skinning 15ms -> 3ms | ~12ms | Medium |
+| 7. Compute skinning A.5 (deferred) | Skinning 3ms -> 0.5ms | ~2ms | Medium |
