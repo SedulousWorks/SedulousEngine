@@ -35,10 +35,10 @@ class AnimationSandboxApp : EngineApplication
 {
 	// Tweak this single constant to change how many instances each click of
 	// +/- adds or removes (and the initial spawn count).
-	const int32 BatchSize = 512;
+	const int32 BatchSize = 128;
 
 	// Initial spacing between characters in the grid (world units).
-	const float CharacterSpacing = 2.5f;
+	const float CharacterSpacing = 3f;
 
 	// Smoothed frame-time stats for the FPS readout.
 	float mFpsSmoothed = 0.0f;
