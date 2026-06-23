@@ -2075,7 +2075,8 @@ class DragChip : ColorView, IDragSource
 	{
 		let panel = new Panel();
 		panel.Padding = .(6, 2);
-		let label = new Label(scope String()..AppendF("#{0:X2}{1:X2}{2:X2}", Color.Value.R, Color.Value.G, Color.Value.B));
+		panel.SetStyle(.Background, new ColorDrawable(Color.Value));
+		let label = new Label(scope String()..AppendF("#{0:X2}{1:X2}{2:X2}", (int)(Color.Value.R * 255), (int)(Color.Value.G * 255), (int)(Color.Value.B * 255)));
 		panel.AddView(label);
 		return panel;
 	}
