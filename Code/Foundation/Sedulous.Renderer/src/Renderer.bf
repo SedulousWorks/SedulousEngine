@@ -17,6 +17,13 @@ public interface IRenderingPipeline
 	/// The shared rendering infrastructure.
 	RenderContext RenderContext { get; }
 
+	/// Per-Pipeline skinning system. Each Pipeline owns its own so the
+	/// SkinningInstance dictionary, records buffer, and per-frame bind
+	/// group don't race across scenes rendered in the same engine frame.
+	/// Sub-pipelines (probe / shadow) forward the host Pipeline's instance
+	/// so they share its skinned-vertex output.
+	SkinningSystem SkinningSystem { get; }
+
 	/// Per-frame resources for the given frame in flight.
 	PerFrameResources GetFrameResources(int32 frameIndex);
 

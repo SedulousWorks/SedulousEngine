@@ -34,8 +34,10 @@ public class RenderContext : IDisposable
 	// Pipeline state cache
 	private PipelineStateCache mPipelineStateCache ~ delete _;
 
-	// Compute skinning
-	private SkinningSystem mSkinningSystem ~ { _?.Dispose(); delete _; };
+	// Compute skinning moved to per-Pipeline ownership - shared singleton broke
+	// multi-scene rendering: SkinningKey collided on EntityIndex across scenes,
+	// and the records buffer / frame BG raced when two scenes called
+	// DispatchAllForView in the same engine frame. Access via `pipeline.SkinningSystem`.
 
 	// Shadow system (atlas + data buffer + bind group)
 	private ShadowSystem mShadowSystem ~ { _?.Dispose(); delete _; };
@@ -113,9 +115,6 @@ public class RenderContext : IDisposable
 	/// Pipeline state cache (creates GPU pipelines on demand from material config).
 	public PipelineStateCache PipelineStateCache => mPipelineStateCache;
 
-	/// Compute skinning system.
-	public SkinningSystem SkinningSystem => mSkinningSystem;
-
 	/// Shadow system (atlas + data buffer + bind group). Created in Initialize.
 	public ShadowSystem ShadowSystem => mShadowSystem;
 
@@ -189,13 +188,6 @@ public class RenderContext : IDisposable
 			delete mPipelineStateCache;
 			if (value != null)
 				mPipelineStateCache = new PipelineStateCache(mDevice, value, this);
-
-			// Initialize skinning system with shader system
-			if (value != null && mSkinningSystem == null)
-			{
-				mSkinningSystem = new SkinningSystem();
-				mSkinningSystem.Initialize(mDevice, value);
-			}
 
 			// Initialize IBL render pipelines with shader system
 			if (value != null && mIBLSystem != null)

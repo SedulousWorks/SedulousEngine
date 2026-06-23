@@ -44,10 +44,15 @@ public class ProbePipeline : IRenderingPipeline, IDisposable
 	// Stale blit bind groups (double-buffered deferred destruction)
 	private List<IBindGroup>[2] mStaleBlitBindGroups = .(new .(), new .()) ~ { delete _[0]; delete _[1]; };
 
+	// Set per-CaptureFace by the host Pipeline so renderers reached during
+	// our render graph see the host's per-Pipeline skinning state.
+	private SkinningSystem mActiveSkinningSystem;
+
 
 	public RenderContext RenderContext => mRenderContext;
 	public RenderGraph RenderGraph => mRenderGraph;
 	public TextureFormat OutputFormat => .RGBA16Float;
+	public SkinningSystem SkinningSystem => mActiveSkinningSystem;
 
 	public PerFrameResources GetFrameResources(int32 frameIndex)
 	{
@@ -149,11 +154,17 @@ public class ProbePipeline : IRenderingPipeline, IDisposable
 		int32 frameIndex,
 		LightBuffer lightBuffer,
 		ClusterSystem clusterSystem,
+		SkinningSystem skinningSystem,
 		RenderView mainView,
 		SkyPass skyPass)
 	{
 		EnsureFaceTextures(faceSize);
 		if (mFaceColor == null || mFaceDepth == null) return;
+
+		// Make the host Pipeline's skinning system visible to renderers reached
+		// during this capture (MeshRenderer reads pipeline.SkinningSystem).
+		mActiveSkinningSystem = skinningSystem;
+		defer { mActiveSkinningSystem = null; }
 
 		let frameSlot = frameIndex % MaxFramesInFlight;
 		let frame = mFrameResources[frameSlot];

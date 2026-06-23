@@ -530,7 +530,9 @@ public class MeshRenderer : Renderer
 		PipelineConfig passConfig)
 	{
 		let gpuResources = renderContext.GPUResources;
-		let skinningSystem = renderContext.SkinningSystem;
+		// Per-Pipeline now — the host pipeline (main / probe-host / shadow-host)
+		// provides this. Sub-pipelines forward the host's via mActiveSkinningSystem.
+		let skinningSystem = pipeline.SkinningSystem;
 		let cache = renderContext.PipelineStateCache;
 		let bindMaterial = flags.HasFlag(.BindMaterial);
 

@@ -409,14 +409,15 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer, IS
 		// Push scene-level render settings to renderer objects.
 		ApplyRenderSettings(scene, pipeline);
 
-		// Dispatch compute skinning ONCE per frame BEFORE probe captures so
-		// the skinned vertex buffers exist by the time ProbePipeline's
-		// MeshRenderer iterates skinned entries (otherwise GetSkinnedVertexBuffer
-		// returns null and animated meshes silently drop out of probe captures).
-		// The result is keyed per (mesh, entity) in SkinningSystem and shared by
-		// the main pipeline + every probe capture for this frame.
+		// Dispatch compute skinning ONCE per Pipeline.Render BEFORE probe
+		// captures so the skinned vertex buffers exist by the time
+		// ProbePipeline's MeshRenderer iterates skinned entries (otherwise
+		// TryGetSkinnedBinding returns false and animated meshes silently drop
+		// out of probe captures). SkinningSystem is per-Pipeline so two
+		// scenes rendered in the same engine frame don't overwrite each
+		// other's records buffer or collide on SkinningKey.
 		using (Profiler.Begin("Skinning"))
-			DispatchSkinning(encoder, mainView);
+			DispatchSkinning(encoder, pipeline, mainView);
 
 		// Reset per-pipeline ring buffer offsets.
 		pipeline.BeginFrame(frameIndex);
@@ -455,9 +456,9 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer, IS
 	/// the main pipeline's render graph - means probe captures (which run
 	/// BEFORE the main pipeline.Render) see this frame's skinned buffers and
 	/// can include animated meshes in their cubemap.
-	private void DispatchSkinning(ICommandEncoder encoder, RenderView view)
+	private void DispatchSkinning(ICommandEncoder encoder, Pipeline pipeline, RenderView view)
 	{
-		let skinningSystem = mRenderContext?.SkinningSystem;
+		let skinningSystem = pipeline?.SkinningSystem;
 		let data = view?.RenderData;
 		if (skinningSystem == null || data == null) return;
 
@@ -991,7 +992,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer, IS
 		let count = endIndex - startIndex;
 		Span<ShadowPipeline.ShadowJob> jobs = .(&mShadowDraws[startIndex], count);
 		mShadowPipeline.RenderAll(encoder, jobs, atlas, atlasView, frameIndex,
-			pipeline.LightBuffer, pipeline.ClusterSystem);
+			pipeline.LightBuffer, pipeline.ClusterSystem, pipeline.SkinningSystem);
 	}
 
 	// ==================== Scene Injection ====================

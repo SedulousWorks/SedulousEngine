@@ -298,7 +298,7 @@ class PickPass : PipelinePass
 		let renderContext = pipeline.RenderContext;
 		let cache = renderContext.PipelineStateCache;
 		let gpuResources = renderContext.GPUResources;
-		let skinningSystem = renderContext.SkinningSystem;
+		let skinningSystem = pipeline.SkinningSystem;
 		if (cache == null || gpuResources == null)
 			return;
 
