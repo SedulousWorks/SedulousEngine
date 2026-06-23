@@ -9,14 +9,21 @@ using Sedulous.Shaders;
 using Sedulous.Core.Mathematics;
 
 /// Manages compute skinning for animated meshes.
-/// Owned by Renderer (shared infrastructure). Creates output vertex buffers
-/// and dispatches compute shaders to transform skinned vertices.
+/// Owned by Renderer (shared infrastructure). Maintains sub-allocations of
+/// the shared output pool and dispatches compute shaders to transform
+/// skinned vertices.
 ///
 /// RenderSubsystem.DispatchSkinning() invokes DispatchAllForView() once per
 /// frame BEFORE probe captures and the main pipeline render, so both
 /// consumers see the same skinned vertex buffers. Forward/depth passes call
 /// TryGetSkinnedBinding() to bind the pre-skinned output (shared pool buffer
 /// + per-instance offset).
+///
+/// A.4 collapsed the per-character bind group into a frame-scoped mega
+/// bind group: bones, source verts, output verts, and a SkinningRecords
+/// StructuredBuffer all bound once. Per dispatch we only push the record
+/// index (4 bytes) and call Dispatch. The shader reads its record at that
+/// index and computes absolute offsets into each pool.
 class SkinningSystem : IDisposable
 {
 	private IDevice mDevice;
@@ -28,9 +35,6 @@ class SkinningSystem : IDisposable
 	/// Multiple entities sharing the same mesh get separate instances
 	/// (different bone transforms -> different output).
 	private Dictionary<SkinningKey, SkinningInstance> mInstances = new .() ~ delete _;
-
-	/// Deferred bind group destruction (double-buffered for MaxFramesInFlight).
-	private List<IBindGroup>[2] mStaleBindGroups = .(new .(), new .()) ~ { delete _[0]; delete _[1]; };
 
 	/// One shared output buffer for every skinned-mesh instance. Each
 	/// SkinningInstance gets a sub-range, exposed to consumers via
@@ -52,14 +56,32 @@ class SkinningSystem : IDisposable
 	/// Compute workgroup size (must match shader).
 	private const uint32 WorkgroupSize = 64;
 
+	/// Bone matrix stride (matches StructuredBuffer<BoneMatrix> layout).
+	private const uint32 BoneMatrixSize = 64;
+
+	// ==================== Frame-scoped bind group + records buffer ====================
+
+	/// Per-frame record list (rebuilt every frame, written to mRecordsBuffer).
+	private List<SkinningRecord> mFrameRecords = new .() ~ delete _;
+
+	/// CpuToGpu StructuredBuffer<SkinningRecord> holding this frame's records.
+	private IBuffer mRecordsBuffer;
+	private const uint64 RecordsBufferSize = 4 * 1024 * 1024; // 4 MB = 256k records
+
+	/// Frame bind group. Created lazily; reused as long as pool buffers
+	/// and the records buffer are stable (pool growth would invalidate it).
+	private IBindGroup mFrameBindGroup;
+	private IBuffer mLastBonePool;
+	private IBuffer mLastSourcePool;
+
 	// Manual stage timing - accumulated each frame, printed every N frames.
 	// Profiler scopes are too coarse (per-call overhead drowns the signal at
 	// herd scales). Raw Stopwatch ticks have <100ns overhead per pair.
-	private int64 mTLookupTicks;
-	private int64 mTWriteParamsTicks;
+	private int64 mTBuildRecordsTicks;
+	private int64 mTWriteRecordsTicks;
 	private int64 mTSetBindGroupTicks;
+	private int64 mTPushConstantsTicks;
 	private int64 mTDispatchTicks;
-	private int64 mTBindGroupCreateTicks;
 	private uint32 mDispatchCount;
 	private uint32 mFrameCounter;
 	private const uint32 PrintEveryNFrames = 120;
@@ -77,6 +99,23 @@ class SkinningSystem : IDisposable
 			return .Err;
 		}
 
+		// Per-frame records buffer. Mapped CpuToGpu so we can rewrite it each
+		// frame without ping-ponging staging buffers.
+		BufferDesc recordsDesc = .()
+		{
+			Label = "Skinning Records",
+			Size = RecordsBufferSize,
+			Usage = .StorageRead,
+			Memory = .CpuToGpu
+		};
+		if (device.CreateBuffer(recordsDesc) case .Ok(let buf))
+			mRecordsBuffer = buf;
+		else
+		{
+			Console.WriteLine("[SkinningSystem] Failed to allocate records buffer.");
+			return .Err;
+		}
+
 		if (shaderSystem == null)
 			return .Ok; // Deferred init
 
@@ -86,16 +125,16 @@ class SkinningSystem : IDisposable
 
 		let computeModule = shaderResult.Value;
 
-		// Bind group layout:
-		//   b0: SkinningParams (uniform)
-		//   t0: BoneMatrices (storage, read-only)
-		//   t1: SourceVertices (storage, read-only)
-		//   u0: OutputVertices (storage, read-write)
+		// Bind group layout - ONE frame-scoped set covering every dispatch:
+		//   t0: BoneMatrices       (StructuredBuffer<BoneMatrix>, stride 64)
+		//   t1: SourceVertices     (ByteAddressBuffer)
+		//   t2: SkinningRecords    (StructuredBuffer<SkinningRecord>, stride 16)
+		//   u0: OutputVertices     (RWByteAddressBuffer)
 		BindGroupLayoutEntry[4] entries = .(
-			.UniformBuffer(0, .Compute),
-			.() { Binding = 0, Visibility = .Compute, Type = .StorageBufferReadOnly, StorageBufferStride = 64 }, // BoneMatrices (4 × float4 = 64 bytes per matrix)
-			.() { Binding = 1, Visibility = .Compute, Type = .StorageBufferReadOnly },  // SourceVertices (ByteAddressBuffer, stride=0)
-			.() { Binding = 0, Visibility = .Compute, Type = .StorageBufferReadWrite }   // OutputVertices (RWByteAddressBuffer, stride=0)
+			.() { Binding = 0, Visibility = .Compute, Type = .StorageBufferReadOnly, StorageBufferStride = BoneMatrixSize }, // BoneMatrices
+			.() { Binding = 1, Visibility = .Compute, Type = .StorageBufferReadOnly },                                       // SourceVertices
+			.() { Binding = 2, Visibility = .Compute, Type = .StorageBufferReadOnly, StorageBufferStride = SkinningRecord.Stride }, // SkinningRecords
+			.() { Binding = 0, Visibility = .Compute, Type = .StorageBufferReadWrite }                                       // OutputVertices
 		);
 
 		BindGroupLayoutDesc layoutDesc = .() { Label = "Skinning BindGroup Layout", Entries = entries };
@@ -104,8 +143,18 @@ class SkinningSystem : IDisposable
 		else
 			return .Err;
 
+		// Push constant range: one uint (RecordIndex) at offset 0 in compute stage.
 		IBindGroupLayout[1] layouts = .(mBindGroupLayout);
-		if (device.CreatePipelineLayout(.(layouts)) case .Ok(let plLayout))
+		PushConstantRange[1] pushRanges = .(
+			.() { Stages = .Compute, Offset = 0, Size = 4 }
+		);
+		PipelineLayoutDesc plDesc = .()
+		{
+			Label = "Skinning Pipeline Layout",
+			BindGroupLayouts = Span<IBindGroupLayout>(&layouts[0], 1),
+			PushConstantRanges = Span<PushConstantRange>(&pushRanges[0], 1)
+		};
+		if (device.CreatePipelineLayout(plDesc) case .Ok(let plLayout))
 			mPipelineLayout = plLayout;
 		else
 			return .Err;
@@ -133,20 +182,17 @@ class SkinningSystem : IDisposable
 		if (mInstances.TryGetValue(key, let existing))
 		{
 			existing.Active = true;
-			// Update bone buffer or bone count if changed
 			if (existing.BoneBufferHandle != boneBufferHandle || existing.BoneCount != boneCount)
 			{
 				existing.BoneBufferHandle = boneBufferHandle;
 				existing.BoneCount = boneCount;
-				existing.BindGroupDirty = true;
 			}
 			return existing;
 		}
 
-		// Reserve a sub-range of the shared output pool BEFORE creating the
-		// instance - if we're out of pool space we just decline to skin
-		// this mesh this frame (caller skips it, same as the old path did
-		// when CreateBuffer returned Err).
+		// Reserve a sub-range of the shared output pool. If exhausted, decline
+		// to skin this mesh - caller skips it, same as the old path did when
+		// CreateBuffer returned Err.
 		let requestedSize = (uint64)(vertexCount * OutputVertexStride);
 		uint64 outputOffset;
 		uint64 alignedSize;
@@ -160,20 +206,8 @@ class SkinningSystem : IDisposable
 		instance.VertexCount = vertexCount;
 		instance.BoneCount = boneCount;
 		instance.Active = true;
-		instance.BindGroupDirty = true;
 		instance.OutputOffset = outputOffset;
 		instance.OutputSize = alignedSize;
-
-		// Create params buffer
-		BufferDesc paramsBufDesc = .()
-		{
-			Label = "Skinning Params",
-			Size = SkinningParams.Size,
-			Usage = .Uniform,
-			Memory = .CpuToGpu
-		};
-		if (mDevice.CreateBuffer(paramsBufDesc) case .Ok(let buf))
-			instance.ParamsBuffer = buf;
 
 		mInstances[key] = instance;
 		return instance;
@@ -197,111 +231,102 @@ class SkinningSystem : IDisposable
 		return false;
 	}
 
-	/// Dispatches compute skinning for an instance.
-	/// Called per-instance from DispatchAllForView. `bonePoolBuffer` is the
-	/// shared bone megabuffer; `boneOffset` locates this instance's matrices
-	/// within it.
-	public void DispatchSkinning(IComputePassEncoder encoder, SkinningInstance instance,
-		IBuffer bonePoolBuffer, uint64 boneOffset)
-	{
-		if (mPipeline == null || instance == null)
-			return;
-
-		// Upload params
-		let writeStart = Stopwatch.GetTimestamp();
-		SkinningParams @params = .()
-		{
-			VertexCount = (uint32)instance.VertexCount,
-			BoneCount = (uint32)instance.BoneCount
-		};
-		TransferHelper.WriteMappedBuffer(instance.ParamsBuffer, 0,
-			Span<uint8>((uint8*)&@params, SkinningParams.Size));
-		mTWriteParamsTicks += Stopwatch.GetTimestamp() - writeStart;
-
-		// Build bind group if needed
-		if (instance.BindGroupDirty || instance.BindGroup == null)
-		{
-			let bgcStart = Stopwatch.GetTimestamp();
-			if (instance.BindGroup != null)
-			{
-				mStaleBindGroups[1].Add(instance.BindGroup);
-				instance.BindGroup = null;
-			}
-
-			let boneBufferSize = (uint64)instance.BoneCount * (uint64)sizeof(Matrix) * 2; // current + prev
-			let sourceSize = (uint64)(instance.VertexCount * 72); // SkinnedVertex stride
-			let outputVertexBytes = (uint64)(instance.VertexCount * OutputVertexStride);
-
-			// Output points at the shared pool's range for this instance.
-			// Shader still sees the same 0-based RWByteAddressBuffer thanks
-			// to the bind group offset.
-			BindGroupEntry[4] bgEntries = .(
-				BindGroupEntry.Buffer(instance.ParamsBuffer, 0, SkinningParams.Size),
-				BindGroupEntry.Buffer(bonePoolBuffer, boneOffset, boneBufferSize),
-				BindGroupEntry.Buffer(instance.SourceVertexBuffer, instance.SourceVertexOffset, sourceSize),
-				BindGroupEntry.Buffer(mOutputPool.Buffer, instance.OutputOffset, outputVertexBytes)
-			);
-
-			BindGroupDesc bgDesc = .() { Label = "Skinning BindGroup", Layout = mBindGroupLayout, Entries = bgEntries };
-			if (mDevice.CreateBindGroup(bgDesc) case .Ok(let bg))
-				instance.BindGroup = bg;
-
-			instance.BindGroupDirty = false;
-			mTBindGroupCreateTicks += Stopwatch.GetTimestamp() - bgcStart;
-		}
-
-		if (instance.BindGroup == null)
-			return;
-
-		// Pipeline is hoisted to DispatchAllForView - we only rebind the bind
-		// group + dispatch here. Saves N redundant SetPipeline calls on herds
-		// of skinned characters (the bottleneck in release builds).
-		let setBGStart = Stopwatch.GetTimestamp();
-		encoder.SetBindGroup(0, instance.BindGroup, default);
-		mTSetBindGroupTicks += Stopwatch.GetTimestamp() - setBGStart;
-
-		let dispStart = Stopwatch.GetTimestamp();
-		uint32 vertCount = (uint32)instance.VertexCount;
-		encoder.Dispatch((vertCount + WorkgroupSize - 1) / WorkgroupSize, 1, 1);
-		mTDispatchTicks += Stopwatch.GetTimestamp() - dispStart;
-		mDispatchCount++;
-	}
-
-	/// Iterates every skinned mesh in the given view's render data and dispatches
-	/// the skinning compute for each. Skips meshes whose source or bone buffer
-	/// hasn't resolved yet. Callable from any compute-pass encoder - the result
-	/// (per-instance sub-ranges of the shared output pool, keyed on SkinningKey)
-	/// is shared by every subsequent consumer that calls TryGetSkinnedBinding.
-	///
-	/// Centralising the dispatch here lets the engine run skinning once per
-	/// frame from RenderSubsystem - before probe captures, shadows, and the
-	/// main pipeline render - rather than relying on each pipeline's render
-	/// graph to dispatch its own. Probe captures previously couldn't reflect
-	/// animated meshes because their `Capture` runs before the main pipeline's
-	/// in-graph SkinningPass writes the skinned buffers.
+	/// Iterates every skinned mesh in the given view's render data, builds
+	/// a per-frame SkinningRecord array, binds one frame-scoped descriptor
+	/// set, and emits Dispatch+PushConstants per record.
 	public void DispatchAllForView(IComputePassEncoder encoder, ExtractedRenderData data,
 		GPUResourceManager gpuResources)
 	{
 		if (data == null || gpuResources == null) return;
 		if (mPipeline == null) return;
 
+		let bonePoolBuffer = gpuResources.BonePoolBuffer;
+		let sourcePoolBuffer = gpuResources.SkinnedSourcePoolBuffer;
+		if (bonePoolBuffer == null || sourcePoolBuffer == null) return;
+
 		// Reset per-frame timing counters.
-		mTLookupTicks = 0;
-		mTWriteParamsTicks = 0;
+		mTBuildRecordsTicks = 0;
+		mTWriteRecordsTicks = 0;
 		mTSetBindGroupTicks = 0;
+		mTPushConstantsTicks = 0;
 		mTDispatchTicks = 0;
-		mTBindGroupCreateTicks = 0;
 		mDispatchCount = 0;
 
-		// Bind the skinning compute pipeline once for the whole frame's
-		// dispatches. Each per-character DispatchSkinning then only rebinds
-		// the bind group + dispatches, which the driver short-circuits much
-		// faster than redundant SetPipeline calls.
-		encoder.SetPipeline(mPipeline);
+		// Build records from this frame's skinned-mesh batch.
+		let buildStart = Stopwatch.GetTimestamp();
+		mFrameRecords.Clear();
+		CollectRecords(data, RenderCategories.Opaque, gpuResources);
+		CollectRecords(data, RenderCategories.Masked, gpuResources);
+		CollectRecords(data, RenderCategories.Transparent, gpuResources);
+		mTBuildRecordsTicks = Stopwatch.GetTimestamp() - buildStart;
 
-		DispatchCategory(encoder, data, RenderCategories.Opaque, gpuResources);
-		DispatchCategory(encoder, data, RenderCategories.Masked, gpuResources);
-		DispatchCategory(encoder, data, RenderCategories.Transparent, gpuResources);
+		if (mFrameRecords.Count == 0) return;
+
+		// Cap at the records buffer's capacity.
+		let maxRecords = (int)(RecordsBufferSize / SkinningRecord.Stride);
+		if (mFrameRecords.Count > maxRecords)
+		{
+			Console.WriteLine("[SkinningSystem] Frame records ({0}) exceed buffer capacity ({1}); dropping overflow.",
+				mFrameRecords.Count, maxRecords);
+			mFrameRecords.Count = maxRecords;
+		}
+
+		// Upload records.
+		let writeStart = Stopwatch.GetTimestamp();
+		TransferHelper.WriteMappedBuffer(mRecordsBuffer, 0,
+			Span<uint8>((uint8*)mFrameRecords.Ptr, mFrameRecords.Count * SkinningRecord.Stride));
+		mTWriteRecordsTicks = Stopwatch.GetTimestamp() - writeStart;
+
+		// (Re)build the frame bind group if the pool buffers changed (rare;
+		// only on pool growth, which is deferred).
+		if (mFrameBindGroup == null || bonePoolBuffer != mLastBonePool || sourcePoolBuffer != mLastSourcePool)
+		{
+			if (mFrameBindGroup != null)
+			{
+				mDevice.DestroyBindGroup(ref mFrameBindGroup);
+				mFrameBindGroup = null;
+			}
+
+			BindGroupEntry[4] bgEntries = .(
+				BindGroupEntry.Buffer(bonePoolBuffer, 0, 0),
+				BindGroupEntry.Buffer(sourcePoolBuffer, 0, 0),
+				BindGroupEntry.Buffer(mRecordsBuffer, 0, 0),
+				BindGroupEntry.Buffer(mOutputPool.Buffer, 0, 0)
+			);
+
+			BindGroupDesc bgDesc = .() { Label = "Skinning Frame BindGroup", Layout = mBindGroupLayout, Entries = bgEntries };
+			if (mDevice.CreateBindGroup(bgDesc) case .Ok(let bg))
+				mFrameBindGroup = bg;
+			else
+				return;
+
+			mLastBonePool = bonePoolBuffer;
+			mLastSourcePool = sourcePoolBuffer;
+		}
+
+		// Bind once for the whole frame's dispatches.
+		encoder.SetPipeline(mPipeline);
+		let setBGStart = Stopwatch.GetTimestamp();
+		encoder.SetBindGroup(0, mFrameBindGroup, default);
+		mTSetBindGroupTicks = Stopwatch.GetTimestamp() - setBGStart;
+
+		// Emit one (PushConstants + Dispatch) per record. PushConstants is ~100ns
+		// vs ~2µs for SetBindGroup, so the per-character overhead collapses.
+		for (uint32 i = 0; i < mFrameRecords.Count; i++)
+		{
+			let record = mFrameRecords[(int)i];
+
+			let pcStart = Stopwatch.GetTimestamp();
+			uint32 recordIndex = i;
+			encoder.SetPushConstants(.Compute, 0, 4, &recordIndex);
+			mTPushConstantsTicks += Stopwatch.GetTimestamp() - pcStart;
+
+			let dispStart = Stopwatch.GetTimestamp();
+			let workgroups = (uint32)((record.VertexCount + WorkgroupSize - 1) / WorkgroupSize);
+			encoder.Dispatch(workgroups, 1, 1);
+			mTDispatchTicks += Stopwatch.GetTimestamp() - dispStart;
+			mDispatchCount++;
+		}
 
 		// Periodic breakdown print. Reading raw Stopwatch ticks adds <100ns
 		// per pair so the inner-loop overhead is negligible vs the operations
@@ -310,58 +335,60 @@ class SkinningSystem : IDisposable
 		if (mFrameCounter >= PrintEveryNFrames && mDispatchCount > 0)
 		{
 			// Stopwatch.GetTimestamp() returns microseconds on Beef.
-			let lookupMs = (double)mTLookupTicks / 1000.0;
-			let writeMs = (double)mTWriteParamsTicks / 1000.0;
-			let setBGMs = (double)mTSetBindGroupTicks / 1000.0;
-			let dispMs = (double)mTDispatchTicks / 1000.0;
-			let bgCreateMs = (double)mTBindGroupCreateTicks / 1000.0;
-			let totalMs = lookupMs + writeMs + setBGMs + dispMs + bgCreateMs;
+			let buildMs   = (double)mTBuildRecordsTicks / 1000.0;
+			let writeMs   = (double)mTWriteRecordsTicks / 1000.0;
+			let setBGMs   = (double)mTSetBindGroupTicks / 1000.0;
+			let pcMs      = (double)mTPushConstantsTicks / 1000.0;
+			let dispMs    = (double)mTDispatchTicks / 1000.0;
+			let totalMs   = buildMs + writeMs + setBGMs + pcMs + dispMs;
 			Console.WriteLine(
-				"[Skinning] {0} chars | total {1:F2}ms | lookup {2:F2} ({3:F1}%)  write {4:F2} ({5:F1}%)  setBG {6:F2} ({7:F1}%)  dispatch {8:F2} ({9:F1}%)  bgCreate {10:F2}",
+				"[Skinning] {0} chars | total {1:F2}ms | build {2:F2} ({3:F1}%)  write {4:F2} ({5:F1}%)  setBG {6:F2} ({7:F1}%)  push {8:F2} ({9:F1}%)  dispatch {10:F2} ({11:F1}%)",
 				mDispatchCount, totalMs,
-				lookupMs, lookupMs / totalMs * 100.0,
-				writeMs, writeMs / totalMs * 100.0,
-				setBGMs, setBGMs / totalMs * 100.0,
-				dispMs, dispMs / totalMs * 100.0,
-				bgCreateMs);
+				buildMs,   buildMs   / totalMs * 100.0,
+				writeMs,   writeMs   / totalMs * 100.0,
+				setBGMs,   setBGMs   / totalMs * 100.0,
+				pcMs,      pcMs      / totalMs * 100.0,
+				dispMs,    dispMs    / totalMs * 100.0);
 			mFrameCounter = 0;
 		}
 	}
 
-	private void DispatchCategory(IComputePassEncoder encoder, ExtractedRenderData data,
-		RenderDataCategory category, GPUResourceManager gpuResources)
+	private void CollectRecords(ExtractedRenderData data, RenderDataCategory category,
+		GPUResourceManager gpuResources)
 	{
 		let batch = data.GetBatch(category);
 		if (batch == null) return;
-
-		// Bone matrices all live in the shared bone pool; the per-instance
-		// descriptor entry just varies its offset.
-		let bonePoolBuffer = gpuResources.BonePoolBuffer;
-		if (bonePoolBuffer == null) return;
 
 		for (let entry in batch)
 		{
 			let mesh = entry as MeshRenderData;
 			if (mesh == null || !mesh.IsSkinned) continue;
 
-			// IMPORTANT: key on EntityIndex, not MaterialKey. MaterialKey is the
-			// shared MaterialInstance pointer, so every instance of a herd-spawned
-			// character (same mesh + same material) used to collide on one
-			// SkinningInstance, churning bind groups + overwriting the output
-			// vertex buffer 64+ times per frame.
-			let lookupStart = Stopwatch.GetTimestamp();
 			let boneBuffer = gpuResources.GetBoneBuffer(mesh.BoneBufferHandle);
-			if (boneBuffer == null) { mTLookupTicks += Stopwatch.GetTimestamp() - lookupStart; continue; }
+			if (boneBuffer == null) continue;
 
 			let gpuMesh = gpuResources.GetMesh(mesh.MeshHandle);
-			if (gpuMesh == null) { mTLookupTicks += Stopwatch.GetTimestamp() - lookupStart; continue; }
+			if (gpuMesh == null) continue;
 
+			// Keyed on EntityIndex so each herd character gets its own
+			// SkinningInstance + output sub-range. See A.1 commit for the
+			// MaterialKey-collision bug this avoids.
 			let key = SkinningKey() { MeshHandle = mesh.MeshHandle, EntityId = mesh.EntityIndex };
 			let instance = GetOrCreateInstance(key, gpuMesh.VertexBuffer, gpuMesh.VertexOffset,
 				mesh.BoneBufferHandle, (int32)gpuMesh.VertexCount, boneBuffer.BoneCount);
-			mTLookupTicks += Stopwatch.GetTimestamp() - lookupStart;
+			if (instance == null) continue;
 
-			DispatchSkinning(encoder, instance, bonePoolBuffer, boneBuffer.Offset);
+			// Bone offset is in bytes; the shader indexes by matrix - divide
+			// once here so the shader can do `BoneMatrices[start + jointIdx]`
+			// with a single add.
+			let record = SkinningRecord()
+			{
+				SrcVertexOffset = (uint32)instance.SourceVertexOffset,
+				OutVertexOffset = (uint32)instance.OutputOffset,
+				BoneMatrixStart = (uint32)(boneBuffer.Offset / BoneMatrixSize),
+				VertexCount = (uint32)instance.VertexCount
+			};
+			mFrameRecords.Add(record);
 		}
 	}
 
@@ -369,28 +396,12 @@ class SkinningSystem : IDisposable
 	/// Inactive instances can be cleaned up after N frames.
 	public void BeginFrame()
 	{
-		// Flush stale bind groups (2+ frames old, safe to destroy)
-		for (var bg in mStaleBindGroups[0])
-			mDevice.DestroyBindGroup(ref bg);
-		mStaleBindGroups[0].Clear();
-		let temp = mStaleBindGroups[0];
-		mStaleBindGroups[0] = mStaleBindGroups[1];
-		mStaleBindGroups[1] = temp;
-
 		for (let kv in mInstances)
 			kv.value.Active = false;
 	}
 
 	public void Dispose()
 	{
-		// Flush all deferred bind groups
-		for (int s = 0; s < 2; s++)
-		{
-			for (var bg in mStaleBindGroups[s])
-				mDevice.DestroyBindGroup(ref bg);
-			mStaleBindGroups[s].Clear();
-		}
-
 		for (let kv in mInstances)
 		{
 			kv.value.Release(mDevice, mOutputPool);
@@ -400,19 +411,21 @@ class SkinningSystem : IDisposable
 
 		mOutputPool.Dispose();
 
+		if (mFrameBindGroup != null) mDevice.DestroyBindGroup(ref mFrameBindGroup);
+		if (mRecordsBuffer != null) mDevice.DestroyBuffer(ref mRecordsBuffer);
 		if (mPipeline != null) mDevice.DestroyComputePipeline(ref mPipeline);
 		if (mPipelineLayout != null) mDevice.DestroyPipelineLayout(ref mPipelineLayout);
 		if (mBindGroupLayout != null) mDevice.DestroyBindGroupLayout(ref mBindGroupLayout);
 	}
 
 	[CRepr]
-	private struct SkinningParams
+	private struct SkinningRecord
 	{
+		public uint32 SrcVertexOffset;
+		public uint32 OutVertexOffset;
+		public uint32 BoneMatrixStart;
 		public uint32 VertexCount;
-		public uint32 BoneCount;
-		public uint32 _Pad0;
-		public uint32 _Pad1;
-		public const uint64 Size = 16;
+		public const int Stride = 16;
 	}
 }
 
