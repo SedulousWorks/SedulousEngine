@@ -1305,8 +1305,12 @@ class EditorApplication : Application, IDockableWindowHost
 		// Update plugins
 		mEditorContext.PluginRegistry.UpdateAll(frame.DeltaTime);
 
-		// Update active page
-		mEditorContext.PageManager.ActivePage?.Update(frame.DeltaTime);
+		// Update every open page, not just the active one. Pages (e.g.
+		// AnimationEditorPage) own their own playback timeline that has to
+		// advance per frame independent of focus; with side-by-side panels
+		// the user sees both pages rendering and expects both to play.
+		for (let page in mEditorContext.PageManager.OpenPages)
+			page?.Update(frame.DeltaTime);
 
 		// UI frame
 		mMainRoot.DpiScale = Window.ContentScale;
