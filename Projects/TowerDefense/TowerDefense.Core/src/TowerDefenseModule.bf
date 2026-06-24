@@ -95,7 +95,18 @@ class TowerDefenseModule : IApplicationModule
 
 	public void OnStartup(IApplicationHost host)
 	{
-		Console.WriteLine("=== Tower Defense OnStartup ===");
+		// Tower Defense doesn't have host-persistent state that needs
+		// non-runtime initialisation - all per-game-launch work lives in
+		// OnLaunch. The editor invokes Configure / OnStartup at edit time
+		// to register subsystems + component types, but never fires
+		// OnLaunch at edit time.
+	}
+
+	// ==================== Launch (standalone or editor Play) ====================
+
+	public void OnLaunch(IApplicationHost host)
+	{
+		Console.WriteLine("=== Tower Defense OnLaunch ===");
 
 		let context = host.Context;
 		let resourceSystem = host.ResourceSystem;
@@ -558,9 +569,9 @@ class TowerDefenseModule : IApplicationModule
 			outName.Set(fileName);
 	}
 
-	// ==================== Shutdown ====================
+	// ==================== Exit (mirror of OnLaunch) ====================
 
-	public void OnShutdown(IApplicationHost host)
+	public void OnExit(IApplicationHost host)
 	{
 		// Clean up effects and audio
 		mParticleEffects.Shutdown();
@@ -573,6 +584,14 @@ class TowerDefenseModule : IApplicationModule
 		mGameOverUI.Shutdown(bus);
 
 		mModels.Shutdown();
+	}
+
+	// ==================== Shutdown ====================
+
+	public void OnShutdown(IApplicationHost host)
+	{
+		// No host-persistent teardown - everything Tower Defense owns is
+		// allocated lazily in OnLaunch and released in OnExit.
 	}
 
 	// ==================== UI Setup ====================

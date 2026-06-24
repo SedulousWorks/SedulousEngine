@@ -234,6 +234,10 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 
 		OnStartup();
 
+		// Standalone hosts always enter runtime mode immediately before the
+		// main loop. Editor hosts gate this on a Play button instead.
+		mModule?.OnLaunch(this);
+
 		initTimer.Stop();
 		mInitTimeMs = (float)initTimer.Elapsed.TotalMilliseconds;
 
@@ -870,6 +874,10 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 	{
 		if (mDevice != null)
 			mDevice.WaitIdle();
+
+		// Standalone hosts leave runtime mode at exit. Editor hosts call
+		// OnExit when the user stops a play session.
+		mModule?.OnExit(this);
 
 		mModule?.OnShutdown(this);
 

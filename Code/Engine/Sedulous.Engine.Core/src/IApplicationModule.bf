@@ -76,13 +76,30 @@ public interface IApplicationModule
 	/// wide configuration, or hook ResourceSystem extensions here.
 	void Configure(IApplicationHost host);
 
-	/// One-time startup hook fired after Context.Startup() completes.
-	/// All subsystems are initialized at this point. Typical work: load the
-	/// initial scene, hook a message bus, register editor metadata.
+	/// One-time setup hook fired after Context.Startup() completes. Always
+	/// runs - in standalone hosts before the main loop, in embedded hosts
+	/// (like the editor) at host startup. Subsystems are initialized at this
+	/// point; use this for module-persistent state such as registering
+	/// message handlers or resolving subsystem references that the module
+	/// retains for its lifetime.
 	void OnStartup(IApplicationHost host);
 
-	/// Symmetric teardown hook fired before Context.Shutdown().
-	/// Subsystems are still alive at this point so the module can publish
-	/// final state or release references it owns.
+	/// Host is entering its runtime / play mode. For standalone hosts fires
+	/// once after OnStartup, before the main loop begins. For embedded hosts
+	/// (editor) fires when the user explicitly launches a play session - at
+	/// edit time it does NOT fire. Use for work that only makes sense when
+	/// the runtime is actually about to run: loading the initial scene,
+	/// spawning the player, hooking input, initialising gameplay UI.
+	void OnLaunch(IApplicationHost host);
+
+	/// Mirrors OnLaunch - host is leaving its runtime / play mode. In
+	/// standalone hosts fires after the main loop and before OnShutdown.
+	/// In embedded hosts fires when the user stops a play session. Use for
+	/// tearing down anything OnLaunch set up.
+	void OnExit(IApplicationHost host);
+
+	/// Symmetric teardown hook fired before Context.Shutdown(). Always
+	/// runs - mirror of OnStartup. Subsystems are still alive at this point
+	/// so the module can publish final state or release references it owns.
 	void OnShutdown(IApplicationHost host);
 }
