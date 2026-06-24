@@ -93,6 +93,27 @@ public interface IApplicationModule
 	/// spawning the player, hooking input, initialising gameplay UI.
 	void OnLaunch(IApplicationHost host);
 
+	/// Per-frame tick fired between OnLaunch and OnExit. Hosts call this
+	/// after Context.Update and OnPostUpdate so subsystems have already
+	/// run their phase. Use for module-glue logic that doesn't naturally
+	/// fit in a Subsystem - polling shell input that drives gameplay
+	/// (camera, tower placement), debug-draw passes that need access to
+	/// the module's owned objects, particle-effect lifetime sweeps, etc.
+	///
+	/// Default implementation is a no-op so modules that don't need
+	/// per-frame work don't have to override.
+	void OnUpdate(IApplicationHost host, float deltaTime) { }
+
+	/// Fixed-timestep tick fired between OnLaunch and OnExit alongside
+	/// Context.FixedUpdate (once per accumulator step). Use for
+	/// deterministic gameplay logic that needs a fixed dt: rollback,
+	/// network-style state advancement, or anything that pairs with
+	/// physics-rate subsystems. Skip this when per-frame timing is fine -
+	/// OnUpdate is cheaper.
+	///
+	/// Default implementation is a no-op.
+	void OnFixedUpdate(IApplicationHost host, float fixedDeltaTime) { }
+
 	/// Mirrors OnLaunch - host is leaving its runtime / play mode. In
 	/// standalone hosts fires after the main loop and before OnShutdown.
 	/// In embedded hosts fires when the user stops a play session. Use for

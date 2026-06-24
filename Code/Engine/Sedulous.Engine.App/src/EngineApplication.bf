@@ -270,6 +270,7 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 			while (mFixedUpdateAccumulator >= mFixedTimeStep && fixedSteps < mMaxFixedStepsPerFrame)
 			{
 				mContext.FixedUpdate(mFixedTimeStep);
+				mModule?.OnFixedUpdate(this, mFixedTimeStep);
 				mFixedUpdateAccumulator -= mFixedTimeStep;
 				fixedSteps++;
 			}
@@ -278,6 +279,7 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 
 			mContext.Update(deltaTime);
 			OnUpdate(deltaTime);
+			mModule?.OnUpdate(this, deltaTime);
 			mContext.PostUpdate(deltaTime);
 			mContext.EndFrame();
 
