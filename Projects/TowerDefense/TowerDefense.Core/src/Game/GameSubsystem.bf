@@ -29,6 +29,13 @@ class GameSubsystem : Subsystem, ISceneAware
 	// Injected references (set by TowerDefenseApp before startup)
 	public ModelManifest Manifest;
 
+	// The scene this subsystem owns at launch (set via SetScene from the
+	// module's OnLaunch). Update is a no-op while this is null - guarantees
+	// the subsystem does nothing at edit time even though it's registered
+	// during Configure so the editor can enumerate Tower Defense component
+	// types in its Add Component menu.
+	private Scene mScene;
+
 	// Component managers (injected into scene, held for cross-system access)
 	private EnemyComponentManager mEnemyMgr;
 	private TowerComponentManager mTowerMgr;
@@ -37,6 +44,18 @@ class GameSubsystem : Subsystem, ISceneAware
 	public TowerComponentManager TowerMgr => mTowerMgr;
 	public EnemyComponentManager EnemyMgr => mEnemyMgr;
 	public ProjectileComponentManager ProjectileMgr => mProjectileMgr;
+
+	/// The gameplay scene, set by the module after OnLaunch. Null at edit time.
+	public Scene Scene => mScene;
+
+	/// Called by TowerDefenseModule once the game scene is created in OnLaunch,
+	/// and again with null in OnExit. Untilthis is set the subsystem's Update
+	/// is a no-op - critical so it doesn't stomp on editor-owned scenes'
+	/// SimulationEnabled flag while the module is sitting idle at edit time.
+	public void SetScene(Scene scene)
+	{
+		mScene = scene;
+	}
 
 	// Message bus (resolved in OnReady)
 	private MessageBus mBus;
@@ -193,15 +212,18 @@ class GameSubsystem : Subsystem, ISceneAware
 
 	public override void Update(float deltaTime)
 	{
-		// Toggle scene simulation based on game phase.
-		// SimulationOnly update functions (enemy movement, tower firing, projectile tracking)
-		// are automatically skipped when SimulationEnabled is false.
-		let sceneSub = Context?.GetSubsystem<SceneSubsystem>();
-		if (sceneSub != null)
-		{
-			for (let scene in sceneSub.ActiveScenes)
-				scene.SimulationEnabled = IsGameplayPhase;
-		}
+		// No game scene yet -> we're still at edit time (Configure ran, but
+		// OnLaunch hasn't). Everything below would either stomp on editor
+		// scenes (SimulationEnabled toggle) or run dormant game systems
+		// (wave spawning) against nothing.
+		if (mScene == null)
+			return;
+
+		// Toggle simulation on our scene only - never touch other scenes the
+		// runtime context might be hosting (e.g. an editor scene tab). The
+		// SimulationOnly update functions on our component managers are
+		// skipped when SimulationEnabled is false.
+		mScene.SimulationEnabled = IsGameplayPhase;
 
 		// Propagate game speed to component managers
 		if (mEnemyMgr != null) mEnemyMgr.GameSpeed = mGameSpeed;

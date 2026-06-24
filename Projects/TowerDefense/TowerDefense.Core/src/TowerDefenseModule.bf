@@ -157,6 +157,11 @@ class TowerDefenseModule : IApplicationModule
 		host.GetAssetPath("", assetDir);
 		mParticleEffects.Initialize(mScene, messaging?.Bus, resourceSystem, assetDir);
 
+		// Hand the gameplay scene to GameSubsystem so its Update starts running.
+		// Until this point GameSubsystem.Update has been a no-op (mScene null),
+		// which is what keeps it from clobbering editor scenes' SimulationEnabled.
+		mGameSub.SetScene(mScene);
+
 		Console.WriteLine("=== Tower Defense Ready ===");
 	}
 
@@ -573,6 +578,11 @@ class TowerDefenseModule : IApplicationModule
 
 	public void OnExit(IApplicationHost host)
 	{
+		// Drop the scene reference before tear-down so GameSubsystem.Update
+		// returns to its dormant no-op state if anything keeps ticking
+		// during shutdown.
+		mGameSub.SetScene(null);
+
 		// Clean up effects and audio
 		mParticleEffects.Shutdown();
 		mGameAudio.Shutdown();
