@@ -315,8 +315,26 @@ class EditorApplication : Application, IDockableWindowHost
 		GetAssetPath("cache/recent_projects.oddl", recentPath);
 		mRecentProjects.Initialize(recentPath, ResourceSystem.SerializerProvider);
 
-		// Start with project picker
-		BuildProjectPicker();
+		// If a project module is loaded (e.g., TowerDefense.Editor exe), skip
+		// the project picker and auto-open the module's project directory at
+		// RuntimeDirectory/../assets. Creates the directory if it doesn't
+		// exist yet. Otherwise show the picker so the user can choose.
+		if (mModule != null)
+		{
+			let projectDir = scope String();
+			let runtimeParent = System.IO.Path.GetDirectoryPath(mRuntimeDirectory, .. scope .());
+			System.IO.Path.InternalCombine(projectDir, runtimeParent, "assets");
+
+			if (!Directory.Exists(projectDir))
+				Directory.CreateDirectory(projectDir);
+
+			OpenProject(projectDir);
+			BuildEditorShell();
+		}
+		else
+		{
+			BuildProjectPicker();
+		}
 
 		mEditorLogger.Log(.Information, "Sedulous Editor initialized.");
 	}

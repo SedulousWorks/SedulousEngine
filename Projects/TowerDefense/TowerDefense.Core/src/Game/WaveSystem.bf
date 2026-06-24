@@ -35,6 +35,14 @@ class WaveSystem
 	{
 		mBus = bus;
 		mEnemyMgr = enemyMgr;
+		// Editor flow can fire GameSubsystem.OnSceneCreated multiple times
+		// (one per scene tab). Free the previous wave set before rebuilding
+		// so we don't leak the prior allocation each time.
+		if (mWaves != null)
+		{
+			DeleteContainerAndItems!(mWaves);
+			mWaves = null;
+		}
 		mWaves = WaveDefinition.CreateDefaultWaves();
 
 		// Subscribe to enemy death/arrival to track alive count
