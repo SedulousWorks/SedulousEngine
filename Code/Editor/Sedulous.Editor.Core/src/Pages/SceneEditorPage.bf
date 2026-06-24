@@ -65,6 +65,11 @@ class SceneEditorPage : IEditorPage, IResourceChangeListener
 	private bool mIsPaused;
 	private SceneSnapshot mSnapshot ~ delete _;
 
+	// Persistent IDs of selected entities at Start, re-resolved after Restore
+	// so the user lands back on the same entity they had selected pre-Play.
+	// Entity handles can't survive Restore (slot/generation change) but Guids do.
+	private List<Guid> mSelectionGuidSnapshot = new .() ~ delete _;
+
 	public Event<delegate void(SceneEditorPage)> OnSimulationStateChanged ~ _.Dispose();
 
 	public bool IsSimulating => mIsSimulating;
@@ -260,6 +265,13 @@ class SceneEditorPage : IEditorPage, IResourceChangeListener
 			return;
 		}
 
+		mSelectionGuidSnapshot.Clear();
+		for (let e in mSelectedEntities)
+		{
+			if (mScene.IsValid(e))
+				mSelectionGuidSnapshot.Add(mScene.GetEntityId(e));
+		}
+
 		mScene.Start();
 		mIsSimulating = true;
 		mIsPaused = false;
@@ -289,6 +301,22 @@ class SceneEditorPage : IEditorPage, IResourceChangeListener
 				mEditorContext?.Logger?.LogError("StopSimulation: snapshot restore failed");
 			delete mSnapshot;
 			mSnapshot = null;
+		}
+
+		// Re-resolve the pre-Play selection by Guid. Anything the user deleted
+		// at runtime (and thus isn't in the restored scene) is silently dropped.
+		if (mSelectionGuidSnapshot.Count > 0)
+		{
+			let restored = scope List<EntityHandle>();
+			for (let id in mSelectionGuidSnapshot)
+			{
+				let handle = mScene.FindEntity(id);
+				if (handle.IsAssigned)
+					restored.Add(handle);
+			}
+			mSelectionGuidSnapshot.Clear();
+			if (restored.Count > 0)
+				SelectEntities(.(restored.Ptr, restored.Count));
 		}
 
 		mIsSimulating = false;
