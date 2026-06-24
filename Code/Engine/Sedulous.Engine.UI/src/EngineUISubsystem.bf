@@ -40,6 +40,19 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IScreenOverlay
 	public TextureFormat OutputFormat = .BGRA8UnormSrgb;
 	public int32 FrameCount = 2;
 
+	/// When true (the default), Update polls Shell.InputManager and routes
+	/// mouse/keyboard/gamepad through the priority chain plus the world-UI
+	/// raycast fallback. Standalone applications leave it true so input
+	/// "just works".
+	///
+	/// Set false when a host drives input externally - the editor's
+	/// GameEditorPage routes mouse events into the runtime UIContext via
+	/// the Dispatch* methods below, so polling shell here would
+	/// double-dispatch (raw window coords on top of viewport-local). DPI
+	/// sync, frame begin, layout and per-context ticks still run on
+	/// every Update regardless of this flag.
+	public bool PollShellInput = true;
+
 	/// IFontService used by the screen + world UI. Non-owning: the host
 	/// application creates the concrete service (TrueTypeFontService /
 	/// BakedFontService / etc.), pre-loads its fonts, and assigns it here
@@ -179,31 +192,22 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IScreenOverlay
 		// manager UIContext. Input flows window -> scene HUD -> billboards
 		// -> world.
 		let chain = scope System.Collections.List<UIContext>();
-		chain.Add(mUIContext);
+		BuildInputChain(chain);
 
-		let sceneSub = Context?.GetSubsystem<SceneSubsystem>();
-		if (sceneSub != null)
+		// Route UI input through the chain. When PollShellInput is false an
+		// external host (e.g. editor GameEditorPage) is driving input via
+		// the Dispatch* methods, so we skip shell polling here to avoid
+		// double-dispatch with mismatched coordinate spaces. World UI
+		// raycasting still polls shell today and is gated for the same
+		// reason; see comment on PollShellInput.
+		if (PollShellInput && Shell?.InputManager != null)
 		{
-			for (let scene in sceneSub.ActiveScenes)
-			{
-				let uiSceneModule = scene.GetModule<UISceneModule>();
-				if (uiSceneModule?.UIContext != null)
-					chain.Add(uiSceneModule.UIContext);
+			if (mInputHelper != null)
+				mInputHelper.Update(Shell.InputManager, chain, deltaTime);
 
-				let billboardMgr = scene.GetModule<BillboardUIComponentManager>();
-				if (billboardMgr?.UIContext != null)
-					chain.Add(billboardMgr.UIContext);
-			}
+			if (!IsMouseOverAnyChainUI(chain))
+				RouteWorldUIInput(deltaTime);
 		}
-
-		// Route UI input through the chain.
-		if (mInputHelper != null && Shell?.InputManager != null)
-			mInputHelper.Update(Shell.InputManager, chain, deltaTime);
-
-		// World UI fallback - only if no UI context in the chain is hovering
-		// over interactive content.
-		if (Shell?.InputManager != null && !IsMouseOverAnyChainUI(chain))
-			RouteWorldUIInput(deltaTime);
 
 		// Drain mutations, tick animations/tooltips.
 		mUIContext.BeginFrame(deltaTime);
@@ -218,6 +222,133 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IScreenOverlay
 		// Layout screen view.
 		if (mScreenView != null)
 			mUIContext.UpdateRootView(mScreenView.Root);
+	}
+
+	// =====================================================================
+	// External input injection
+	//
+	// Used when PollShellInput is false: a host (the editor's
+	// GameInputHandler) translates platform input it owns and routes it
+	// through the same chain Update uses, so screen-space UI, scene HUDs,
+	// and billboards all see the events. Each Dispatch* method walks the
+	// priority chain and stops on the first context that consumes (returns
+	// true) - identical semantics to UIInputHelper's chain dispatch.
+	//
+	// World-UI raycasting under managed input is a separate follow-up: it
+	// currently polls Shell.Mouse and runs a multi-frame hover state
+	// machine that needs to be refactored to consume the injected mouse
+	// stream instead. Until then world-UI input is only routed when
+	// PollShellInput is true (standalone).
+	// =====================================================================
+
+	private System.Collections.List<UIContext> mDispatchChain = new .() ~ delete _;
+
+	private void BuildInputChain(System.Collections.List<UIContext> chain)
+	{
+		chain.Clear();
+		if (mUIContext != null)
+			chain.Add(mUIContext);
+
+		let sceneSub = Context?.GetSubsystem<SceneSubsystem>();
+		if (sceneSub == null) return;
+
+		for (let scene in sceneSub.ActiveScenes)
+		{
+			let uiSceneModule = scene.GetModule<UISceneModule>();
+			if (uiSceneModule?.UIContext != null)
+				chain.Add(uiSceneModule.UIContext);
+
+			let billboardMgr = scene.GetModule<BillboardUIComponentManager>();
+			if (billboardMgr?.UIContext != null)
+				chain.Add(billboardMgr.UIContext);
+		}
+	}
+
+	// --- Mouse ---
+
+	public void DispatchMouseMove(float x, float y)
+	{
+		BuildInputChain(mDispatchChain);
+		for (let ctx in mDispatchChain)
+			if (ctx.InputManager.ProcessMouseMove(x, y)) return;
+	}
+
+	public void DispatchMouseDown(Sedulous.UI.MouseButton button, float x, float y, float timestamp)
+	{
+		BuildInputChain(mDispatchChain);
+		for (let ctx in mDispatchChain)
+			if (ctx.InputManager.ProcessMouseDown(button, x, y, timestamp)) return;
+	}
+
+	public void DispatchMouseUp(Sedulous.UI.MouseButton button, float x, float y)
+	{
+		BuildInputChain(mDispatchChain);
+		for (let ctx in mDispatchChain)
+			if (ctx.InputManager.ProcessMouseUp(button, x, y)) return;
+	}
+
+	public void DispatchMouseWheel(float x, float y, float dx, float dy, Sedulous.UI.KeyModifiers modifiers)
+	{
+		BuildInputChain(mDispatchChain);
+		for (let ctx in mDispatchChain)
+			if (ctx.InputManager.ProcessMouseWheel(x, y, dx, dy, modifiers)) return;
+	}
+
+	// --- Keyboard / text input ---
+
+	public void DispatchKeyDown(Sedulous.UI.KeyCode key, Sedulous.UI.KeyModifiers modifiers, bool isRepeat, float timestamp = 0)
+	{
+		BuildInputChain(mDispatchChain);
+		for (let ctx in mDispatchChain)
+			if (ctx.InputManager.ProcessKeyDown(key, modifiers, isRepeat, timestamp)) return;
+	}
+
+	public void DispatchKeyUp(Sedulous.UI.KeyCode key, Sedulous.UI.KeyModifiers modifiers, float timestamp = 0)
+	{
+		BuildInputChain(mDispatchChain);
+		for (let ctx in mDispatchChain)
+			if (ctx.InputManager.ProcessKeyUp(key, modifiers, timestamp)) return;
+	}
+
+	public void DispatchTextInput(char32 character)
+	{
+		BuildInputChain(mDispatchChain);
+		for (let ctx in mDispatchChain)
+			if (ctx.InputManager.ProcessTextInput(character)) return;
+	}
+
+	// --- Gamepad ---
+	//
+	// Gamepad input doesn't go through UIContext.InputManager - it drives
+	// the focus manager + view activate/cancel directly. Pick one target
+	// context the way UIInputHelper does: first chain context with a
+	// focused view, otherwise the head of the chain.
+
+	private UIContext PickGamepadTarget()
+	{
+		BuildInputChain(mDispatchChain);
+		if (mDispatchChain.IsEmpty) return null;
+		for (let ctx in mDispatchChain)
+			if (ctx.FocusManager.FocusedView != null) return ctx;
+		return mDispatchChain[0];
+	}
+
+	public void DispatchFocusMove(FocusDirection direction)
+	{
+		let target = PickGamepadTarget();
+		target?.FocusManager.MoveFocus(direction);
+	}
+
+	public void DispatchActivate()
+	{
+		let target = PickGamepadTarget();
+		target?.FocusManager.FocusedView?.OnActivate();
+	}
+
+	public void DispatchCancel()
+	{
+		let target = PickGamepadTarget();
+		target?.FocusManager.FocusedView?.OnCancel();
 	}
 
 	/// Drain mutations and tick animations on each active scene's
