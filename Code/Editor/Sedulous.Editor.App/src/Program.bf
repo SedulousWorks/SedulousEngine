@@ -1,6 +1,7 @@
 namespace Sedulous.Editor.App;
 
 using System;
+using Sedulous.Editor;
 
 class Program
 {
