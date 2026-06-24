@@ -26,6 +26,14 @@ class GameMouseAdapter : IMouse
 	private IMouse mShell;
 	private float mLocalX;
 	private float mLocalY;
+	// Scroll is sourced from GameInputHandler.OnMouseWheel rather than
+	// passed through from shell. Shell IMouse accumulates the wheel
+	// delta anywhere in the editor window, so passthrough would let the
+	// scene editor (or any docked panel) drive the game's camera zoom
+	// when the user scrolls in it. The page resets these to zero each
+	// frame in EndFrame after module.OnUpdate consumed them.
+	private float mLocalScrollX;
+	private float mLocalScrollY;
 
 	public this(IMouse shell)
 	{
@@ -42,14 +50,33 @@ class GameMouseAdapter : IMouse
 		mLocalY = y;
 	}
 
+	/// Called by GameInputHandler when the wheel scrolls over the page
+	/// viewport. Deltas accumulate within a frame (rare for the wheel,
+	/// but matches IMouse's "this frame's scroll" contract); EndFrame
+	/// zeroes them after the module's OnUpdate runs.
+	public void OnViewportPointerWheel(float deltaX, float deltaY)
+	{
+		mLocalScrollX += deltaX;
+		mLocalScrollY += deltaY;
+	}
+
+	/// Clear per-frame scroll. The page calls this after module.OnUpdate
+	/// so the next frame starts with zero scroll unless OnViewportPointerWheel
+	/// fires again. Position state stays at last-known.
+	public void EndFrame()
+	{
+		mLocalScrollX = 0;
+		mLocalScrollY = 0;
+	}
+
 	public float X => mLocalX;
 	public float Y => mLocalY;
 	public float GlobalX => mShell?.GlobalX ?? 0;
 	public float GlobalY => mShell?.GlobalY ?? 0;
 	public float DeltaX => mShell?.DeltaX ?? 0;
 	public float DeltaY => mShell?.DeltaY ?? 0;
-	public float ScrollX => mShell?.ScrollX ?? 0;
-	public float ScrollY => mShell?.ScrollY ?? 0;
+	public float ScrollX => mLocalScrollX;
+	public float ScrollY => mLocalScrollY;
 
 	public bool IsButtonDown(MouseButton button) =>
 		(mShell?.IsButtonDown(button)) ?? false;

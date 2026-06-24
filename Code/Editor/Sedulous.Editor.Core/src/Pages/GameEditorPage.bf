@@ -174,6 +174,11 @@ class GameEditorPage : IEditorPage
 		// page tab outlives a Stop).
 		if (mIsRunning && mModule != null && mHost != null)
 			mModule.OnUpdate(mHost, deltaTime);
+
+		// Drop per-frame mouse state (scroll deltas) so the next frame
+		// starts clean unless GameInputHandler refeeds the adapter from
+		// a viewport-local event.
+		mMouseAdapter?.EndFrame();
 	}
 
 	public void Dispose()

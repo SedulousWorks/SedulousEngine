@@ -63,7 +63,15 @@ class GameInputHandler : IViewportInputHandler
 
 	public void OnMouseWheel(MouseWheelEventArgs e, ViewportView viewport)
 	{
-		if (!mPage.IsRunning || mUISubsystem == null) return;
-		mUISubsystem.DispatchMouseWheel(e.X, e.Y, e.DeltaX, e.DeltaY, e.Modifiers);
+		if (!mPage.IsRunning) return;
+		// Feed the page's mouse adapter so the module's host.Mouse
+		// reads this wheel delta. Shell IMouse.ScrollY accumulates the
+		// wheel anywhere in the window, so passthrough would let
+		// scrolling inside the scene editor (or another docked panel)
+		// drive the game's camera - the bug we're avoiding here.
+		if (mPage.MouseAdapter != null)
+			mPage.MouseAdapter.OnViewportPointerWheel(e.DeltaX, e.DeltaY);
+		if (mUISubsystem != null)
+			mUISubsystem.DispatchMouseWheel(e.X, e.Y, e.DeltaX, e.DeltaY, e.Modifiers);
 	}
 }
