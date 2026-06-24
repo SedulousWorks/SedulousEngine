@@ -3,12 +3,14 @@ namespace Sedulous.Engine.Physics;
 using Sedulous.Engine.Core;
 using Sedulous.Physics;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// Component for a physics rigid body attached to an entity.
 ///
 /// Holds configuration data (body type, mass, shape, material properties)
 /// and runtime state (BodyHandle, ShapeHandle). The PhysicsComponentManager
 /// creates/destroys the actual physics bodies and syncs transforms.
+[Component]
 class RigidBodyComponent : Component, ISerializableComponent
 {
 	public int32 SerializationVersion => 1;
@@ -41,36 +43,49 @@ class RigidBodyComponent : Component, ISerializableComponent
 	// --- Configuration (set by app, serializable) ---
 
 	/// Body motion type.
+	[Property(.Default, "Body Type", "BodyType")]
 	public BodyType BodyType = .Dynamic;
 
-	/// Collision shape configuration.
+	/// Collision shape configuration. Edited via code today - a dedicated
+	/// editor for ShapeConfig (type + bounds selector) is a future addition;
+	/// the serialized sub-fields (ShapeType / ShapeHalfX..Z / ShapeRadius /
+	/// ShapeHalfHeight) still round-trip via Serialize().
 	public ShapeConfig Shape = .Box(0.5f);
 
 	/// Mass in kg. 0 = use shape volume default.
+	[Property(.Default, "Mass", "Mass")]
 	public float Mass = 0.0f;
 
 	/// Friction coefficient [0, 1].
+	[Property(.Slider, "Friction", "Friction"), Range(0.0f, 1.0f)]
 	public float Friction = 0.5f;
 
 	/// Restitution / bounciness [0, 1].
+	[Property(.Slider, "Restitution", "Restitution"), Range(0.0f, 1.0f)]
 	public float Restitution = 0.0f;
 
 	/// Linear damping (velocity decay).
+	[Property(.Default, "Linear Damping", "LinearDamping")]
 	public float LinearDamping = 0.05f;
 
 	/// Angular damping (rotation decay).
+	[Property(.Default, "Angular Damping", "AngularDamping")]
 	public float AngularDamping = 0.05f;
 
 	/// Gravity factor (0 = no gravity, 1 = normal).
+	[Property(.Slider, "Gravity Factor", "GravityFactor"), Range(0.0f, 2.0f)]
 	public float GravityFactor = 1.0f;
 
 	/// Whether this body is a sensor (trigger, detects but doesn't collide).
+	[Property(.Default, "Is Sensor", "IsSensor")]
 	public bool IsSensor = false;
 
 	/// Whether the body can sleep when inactive.
+	[Property(.Default, "Allow Sleep", "AllowSleep")]
 	public bool AllowSleep = true;
 
-	/// Collision layer (0 = static, 1+ = dynamic/kinematic).
+	/// Collision layer (0 = static, 1+ = dynamic/kinematic). Not serialized -
+	/// gameplay code sets this at component creation time.
 	public uint16 CollisionLayer = 1;
 
 	// --- Runtime state (managed by PhysicsComponentManager) ---

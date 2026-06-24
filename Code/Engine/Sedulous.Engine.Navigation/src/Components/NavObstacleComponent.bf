@@ -1,10 +1,12 @@
 namespace Sedulous.Engine.Navigation;
 
 using Sedulous.Engine.Core;
+using Sedulous.Inspection;
 
 /// Component for a dynamic navigation obstacle.
 /// The NavObstacleComponentManager creates obstacles in the TileCache,
 /// updates positions from entity transforms, and rebuilds affected tiles.
+[Component]
 class NavObstacleComponent : Component, ISerializableComponent
 {
 	public int32 SerializationVersion => 1;
@@ -18,9 +20,11 @@ class NavObstacleComponent : Component, ISerializableComponent
 	// --- Configuration ---
 
 	/// Obstacle radius (cylinder shape).
+	[Property(.Default, "Radius", "Radius")]
 	public float Radius = 1.0f;
 
 	/// Obstacle height.
+	[Property(.Default, "Height", "Height")]
 	public float Height = 2.0f;
 
 	// --- Runtime state (managed by NavObstacleComponentManager) ---

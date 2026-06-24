@@ -2,10 +2,12 @@ namespace Sedulous.Engine.Navigation;
 
 using Sedulous.Engine.Core;
 using Sedulous.Core.Mathematics;
+using Sedulous.Inspection;
 
 /// Component for a navigation agent on the crowd.
 /// The NavigationComponentManager creates crowd agents from these components,
 /// syncs positions to entity transforms, and processes move targets.
+[Component]
 class NavAgentComponent : Component, ISerializableComponent
 {
 	public int32 SerializationVersion => 1;
@@ -28,30 +30,39 @@ class NavAgentComponent : Component, ISerializableComponent
 	// --- Configuration ---
 
 	/// Whether to sync agent position back to entity transform.
+	[Property(.Default, "Sync To Transform", "SyncToTransform")]
 	public bool SyncToTransform = true;
 
 	/// Agent radius.
+	[Property(.Default, "Radius", "Radius")]
 	public float Radius = 0.6f;
 
 	/// Agent height.
+	[Property(.Default, "Height", "Height")]
 	public float Height = 2.0f;
 
 	/// Maximum acceleration.
+	[Property(.Default, "Max Acceleration", "MaxAcceleration")]
 	public float MaxAcceleration = 8.0f;
 
 	/// Maximum speed.
+	[Property(.Default, "Max Speed", "MaxSpeed")]
 	public float MaxSpeed = 3.5f;
 
 	/// Collision query range.
+	[Property(.Default, "Collision Query Range", "CollisionQueryRange")]
 	public float CollisionQueryRange = 12.0f;
 
 	/// Path optimization range.
+	[Property(.Default, "Path Optimization Range", "PathOptimizationRange")]
 	public float PathOptimizationRange = 30.0f;
 
 	/// Separation weight between agents.
+	[Property(.Default, "Separation Weight", "SeparationWeight")]
 	public float SeparationWeight = 2.0f;
 
 	/// Obstacle avoidance quality level (0-3).
+	[Property(.Slider, "Obstacle Avoidance Type", "ObstacleAvoidanceType"), Range(0.0f, 3.0f)]
 	public uint8 ObstacleAvoidanceType = 3;
 
 	// --- Runtime state (managed by NavigationComponentManager) ---

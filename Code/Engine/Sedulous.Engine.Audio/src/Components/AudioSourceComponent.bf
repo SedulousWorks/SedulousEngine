@@ -10,6 +10,7 @@ using Sedulous.Inspection;
 /// The AudioSourceComponentManager resolves the clip resource, creates the
 /// IAudioSource, syncs 3D position from the entity transform, and manages
 /// playback lifecycle.
+[Component]
 class AudioSourceComponent : Component, ISerializableComponent
 {
 	public int32 SerializationVersion => 2;
@@ -57,33 +58,45 @@ class AudioSourceComponent : Component, ISerializableComponent
 	// --- Configuration ---
 
 	/// Volume level (0.0 to 1.0).
+	[Property(.Slider, "Volume", "Volume"), Range(0.0f, 1.0f)]
 	public float Volume = 1.0f;
 
 	/// Pitch multiplier (1.0 = normal speed).
+	[Property(.Slider, "Pitch", "Pitch"), Range(0.25f, 4.0f)]
 	public float Pitch = 1.0f;
 
 	/// Whether the source loops.
+	[Property(.Default, "Loop", "Loop")]
 	public bool Loop = false;
 
 	/// Whether this source uses 3D spatialization.
+	[Property(.Default, "Spatial", "Spatial")]
 	public bool Spatial = true;
 
 	/// Whether to start playing automatically on initialization.
+	[Property(.Default, "Auto Play", "AutoPlay")]
 	public bool AutoPlay = false;
 
 	/// Minimum distance where attenuation begins.
+	[Property(.Default, "Min Distance", "MinDistance")]
 	public float MinDistance = 1.0f;
 
 	/// Maximum distance for sound attenuation.
+	[Property(.Default, "Max Distance", "MaxDistance")]
 	public float MaxDistance = 50.0f;
 
 	/// Name of the audio bus this source routes to (e.g., "SFX", "Music", "UI").
+	[Property(.Default, "Bus Name", "BusName")]
 	public String BusName = new .("SFX") ~ delete _;
 
 	/// Whether to use a custom attenuator (instead of default linear).
+	[Property(.Default, "Use Attenuator", "UseAttenuator")]
 	public bool UseAttenuator = false;
 
 	/// Custom attenuator configuration. Only used when UseAttenuator is true.
+	/// Sub-fields (curve / min / max / cone angles / Doppler) serialise but
+	/// don't have an inspector editor today - a dedicated SoundAttenuator
+	/// editor is a future addition.
 	public SoundAttenuator AttenuatorConfig = .();
 
 	// --- Runtime state (managed by AudioSourceComponentManager) ---
