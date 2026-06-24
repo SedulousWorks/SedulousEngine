@@ -135,6 +135,29 @@ class PhysicsComponentManager : ComponentManager<RigidBodyComponent>, IContactLi
 		}
 	}
 
+	/// Snap every existing body to its entity's current world matrix when
+	/// the scene transitions into simulation. Bodies created during edit
+	/// mode reflect the world matrix at the moment of creation - any
+	/// subsequent transform edits in the editor would otherwise be ignored
+	/// at Play time, causing the entity to visibly teleport back to where
+	/// the body was last created.
+	public override void OnSceneStarted()
+	{
+		if (mPhysicsWorld == null) return;
+		let scene = Scene;
+		if (scene == null) return;
+
+		for (let comp in ActiveComponents)
+		{
+			if (!comp.IsActive || !comp.PhysicsBody.IsValid) continue;
+
+			let worldMatrix = scene.GetWorldMatrix(comp.Owner);
+			let position = worldMatrix.Translation;
+			let rotation = Quaternion.CreateFromRotationMatrix(worldMatrix);
+			mPhysicsWorld.SetBodyTransform(comp.PhysicsBody, position, rotation, true);
+		}
+	}
+
 	protected override void OnComponentDestroyed(RigidBodyComponent comp)
 	{
 		// PhysicsWorld may already be destroyed during scene teardown -
