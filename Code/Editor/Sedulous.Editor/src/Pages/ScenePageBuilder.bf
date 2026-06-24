@@ -273,6 +273,36 @@ static class ScenePageBuilder
 		gridBtn.IsChecked = page.ShowGrid;
 		gridBtn.OnCheckedChanged.Add(new (btn, val) => { page.ShowGrid = val; });
 
+		toolbar.AddSeparator();
+
+		// === Simulation buttons (Play / Pause / Stop) ===
+		// Per-page state: each scene tab simulates independently. The button
+		// labels swap with state so the toolbar always reads as the next
+		// available action.
+		let playBtn = toolbar.AddButton("Play");
+		let pauseBtn = toolbar.AddToggle("Pause");
+		let stopBtn = toolbar.AddButton("Stop");
+
+		void RefreshSimToolbar()
+		{
+			playBtn.SetText(page.IsSimulating ? "Playing" : "Play");
+			pauseBtn.IsChecked = page.IsPaused;
+		}
+		RefreshSimToolbar();
+
+		playBtn.OnClick.Add(new (btn) => {
+			if (!page.IsSimulating)
+				page.StartSimulation();
+		});
+		pauseBtn.OnCheckedChanged.Add(new (btn, val) => {
+			page.SetPaused(val);
+		});
+		stopBtn.OnClick.Add(new (btn) => {
+			if (page.IsSimulating)
+				page.StopSimulation();
+		});
+		page.OnSimulationStateChanged.Add(new (p) => RefreshSimToolbar());
+
 		container.AddView(toolbar, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Wrap
 		});

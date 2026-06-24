@@ -57,6 +57,19 @@ class SceneEditorPage : IEditorPage, IResourceChangeListener
 	private List<EntityHandle> mSelectedEntities = new .() ~ delete _;
 	public Event<delegate void(SceneEditorPage)> OnSelectionChanged ~ _.Dispose();
 
+	// === Simulation state ===
+	// Toggle owned by this page: each scene tab has its own play/pause/stop.
+	// The captured snapshot is the scene's state at Simulate-start; on Stop
+	// the scene is rolled back to it (entities drained + deserialised back).
+	private bool mIsSimulating;
+	private bool mIsPaused;
+	private SceneSnapshot mSnapshot ~ delete _;
+
+	public Event<delegate void(SceneEditorPage)> OnSimulationStateChanged ~ _.Dispose();
+
+	public bool IsSimulating => mIsSimulating;
+	public bool IsPaused => mIsPaused;
+
 	// Owned objects (adapters, controllers, etc.) - deleted on page dispose.
 	private List<Object> mOwnedObjects = new .() ~ { for (let obj in _) delete obj; delete _; };
 
@@ -219,6 +232,79 @@ class SceneEditorPage : IEditorPage, IResourceChangeListener
 	public bool IsSelected(EntityHandle entity) =>
 		mSelectedEntities.Contains(entity);
 
+	// === Simulation lifecycle ===
+
+	/// Captures the current scene state and flips it into simulation mode.
+	/// Subsystems begin ticking simulation-only updates against this scene
+	/// (physics, animation, etc. - the editor's per-frame FixedUpdate loop
+	/// runs unconditionally; Scene.SimulationEnabled gates whether work
+	/// actually happens). No-op if already simulating.
+	public void StartSimulation()
+	{
+		if (mIsSimulating || mScene == null || mEditorContext == null)
+			return;
+
+		let resSys = mEditorContext.ResourceSystem;
+		let provider = resSys?.SerializerProvider;
+		let sceneSub = mEditorContext.RuntimeContext?.GetSubsystem<SceneSubsystem>();
+		if (resSys == null || provider == null || sceneSub == null)
+		{
+			mEditorContext.Logger?.LogError("StartSimulation: missing runtime context dependencies");
+			return;
+		}
+
+		mSnapshot = SceneSnapshot.Capture(mScene, sceneSub.TypeRegistry, provider, resSys);
+		if (mSnapshot == null)
+		{
+			mEditorContext.Logger?.LogError("StartSimulation: failed to capture scene snapshot");
+			return;
+		}
+
+		mScene.Start();
+		mIsSimulating = true;
+		mIsPaused = false;
+		OnSimulationStateChanged(this);
+	}
+
+	/// Restores the scene to its pre-simulation state. Calls Scene.Stop()
+	/// (which fires OnSceneStopped on every SceneModule), then deserialises
+	/// the captured snapshot back into the same Scene instance so the
+	/// editor's held references stay valid. No-op if not simulating.
+	public void StopSimulation()
+	{
+		if (!mIsSimulating || mScene == null)
+			return;
+
+		mScene.Stop();
+
+		if (mSnapshot != null)
+		{
+			if (mSnapshot.Restore(mScene) case .Err)
+				mEditorContext?.Logger?.LogError("StopSimulation: snapshot restore failed");
+			delete mSnapshot;
+			mSnapshot = null;
+		}
+
+		mIsSimulating = false;
+		mIsPaused = false;
+		OnSimulationStateChanged(this);
+	}
+
+	/// Pauses / resumes the running simulation by toggling
+	/// Scene.SimulationEnabled directly. Skips the OnSceneStarted /
+	/// OnSceneStopped module callbacks - those are for the big Start/Stop
+	/// transitions, not for the per-frame "frozen" pause state. No-op if
+	/// not currently simulating.
+	public void SetPaused(bool paused)
+	{
+		if (!mIsSimulating || mScene == null || mIsPaused == paused)
+			return;
+
+		mIsPaused = paused;
+		mScene.SimulationEnabled = !paused;
+		OnSimulationStateChanged(this);
+	}
+
 	// === Owned Objects ===
 
 	/// Register an object for cleanup when this page is disposed.
@@ -275,6 +361,13 @@ class SceneEditorPage : IEditorPage, IResourceChangeListener
 
 	public void Dispose()
 	{
+		// If the user closes a scene tab while it's still simulating, roll
+		// the scene back so anything else holding a reference (the runtime
+		// context's SceneSubsystem, the render pipeline) sees the pre-sim
+		// state rather than mid-flight gameplay state.
+		if (mIsSimulating)
+			StopSimulation();
+
 		delete mContentView;
 		mContentView = null;
 	}

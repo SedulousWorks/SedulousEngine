@@ -70,6 +70,15 @@ class EditorApplication : Application, IDockableWindowHost
 	// one level up to find shared assets.
 	private String mRuntimeDirectory = new .() ~ delete _;
 
+	// FixedUpdate accumulator for runtime context ticking. Runs every
+	// frame; each scene's Scene.SimulationEnabled gates whether its
+	// FixedUpdate functions actually do work, so edit-mode scenes pay
+	// only the empty-loop cost. Simulation-mode scenes (Simulate button)
+	// get physics / animation ticks here.
+	private const float kFixedTimeStep = 1.0f / 60.0f;
+	private const int32 kMaxFixedStepsPerFrame = 8;
+	private float mFixedUpdateAccumulator = 0.0f;
+
 	/// The embedded runtime context where the engine's component managers
 	/// and the project module's subsystems live. Distinct from the base
 	/// Application.Context (which manages editor-app state).
@@ -1369,6 +1378,22 @@ class EditorApplication : Application, IDockableWindowHost
 
 		// Tick RuntimeContext (component init, scene updates for editor mode).
 		mRuntimeContext.BeginFrame(frame.DeltaTime);
+
+		// Fixed update loop. Runs unconditionally so simulating scene tabs
+		// can drive their physics; non-simulating scenes have
+		// SimulationEnabled=false and their FixedUpdate funcs no-op.
+		// Clamped to avoid spiral-of-death after a frame stall.
+		mFixedUpdateAccumulator += frame.DeltaTime;
+		int32 fixedSteps = 0;
+		while (mFixedUpdateAccumulator >= kFixedTimeStep && fixedSteps < kMaxFixedStepsPerFrame)
+		{
+			mRuntimeContext.FixedUpdate(kFixedTimeStep);
+			mFixedUpdateAccumulator -= kFixedTimeStep;
+			fixedSteps++;
+		}
+		if (mFixedUpdateAccumulator > kFixedTimeStep * 2)
+			mFixedUpdateAccumulator = kFixedTimeStep * 2;
+
 		mRuntimeContext.Update(frame.DeltaTime);
 		mRuntimeContext.PostUpdate(frame.DeltaTime);
 		mRuntimeContext.EndFrame();
