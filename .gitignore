@@ -14,7 +14,8 @@ EngineRewrite.md
 RHI.md
 ShaderReflection.md
 GameIdeas/
-/Projects/
+/Projects/*
+!/Projects/TowerDefense/
 Code/Foundation/Sedulous.UI/DESIGN.md
 Assets/skies/realistic_sky.texture.bin
 Documentation/Plans/ScriptingLanguagePlan.md

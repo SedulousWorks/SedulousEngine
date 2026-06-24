@@ -186,8 +186,6 @@ ModelViewer = {Path = "Tools/Sedulous.Tools.ModelViewer"}
 "Sedulous.Messaging.Tests" = {Path = "Foundation/Sedulous.Messaging.Tests"}
 "Sedulous.Audio.Effects" = {Path = "Foundation/Sedulous.Audio.Effects"}
 "Sedulous.Audio.Effects.Tests" = {Path = "Foundation/Sedulous.Audio.Effects.Tests"}
-TowerDefense = {Path = "Projects/TowerDefense"}
-"TowerDefense.App" = {Path = "Projects/TowerDefense.App"}
 "Sedulous.Engine.UI" = {Path = "Engine/Sedulous.Engine.UI"}
 "Sedulous.Inspection" = {Path = "Foundation/Sedulous.Inspection"}
 "Sedulous.Fonts.Resources" = {Path = "Foundation/Sedulous.Fonts.Resources"}
@@ -233,6 +231,5 @@ Experimental = []
 "Experimental/Slug" = ["Sedulous.Slug", "Sedulous.Slug.Renderer", "Sedulous.Slug.Tests", "Sedulous.Slug.TTF", "SlugSample"]
 "Foundation/VFS" = ["Sedulous.VFS", "Sedulous.VFS.Disk", "Sedulous.VFS.Pak", "Sedulous.VFS.Pak.Tool", "Sedulous.VFS.Tests"]
 "Foundation/Messaging" = ["Sedulous.Messaging", "Sedulous.Messaging.Runtime", "Sedulous.Messaging.Tests"]
-Projects = ["TowerDefense", "TowerDefense.App"]
 "Foundation/CodeGen" = ["Sedulous.Inspection"]
 "Foundation/UI" = ["Sedulous.UI", "Sedulous.UI.Runtime", "Sedulous.UI.Shell", "Sedulous.UI.Tests", "Sedulous.UI.IO", "Sedulous.UI.Toolkit", "Sedulous.UI.Viewport"]

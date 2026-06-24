@@ -6,4 +6,4 @@ StartupObject = "TowerDefense.Program"
 
 [Dependencies]
 corlib = "*"
-TowerDefense = "*"
+"TowerDefense.Core" = "*"
