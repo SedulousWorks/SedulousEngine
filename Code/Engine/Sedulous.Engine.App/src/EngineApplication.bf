@@ -104,6 +104,13 @@ abstract class EngineApplication : IDisposable
 	protected bool mIsRunning = false;
 	private bool mCleanedUp = false;
 
+	// Application module (optional). When set, the engine invokes its lifecycle
+	// hooks alongside the protected OnConfigure / OnStartup / OnShutdown
+	// virtuals - module first in each case. Migration target: new games
+	// implement IApplicationModule and a thin Program.bf wires it up, instead
+	// of subclassing EngineApplication.
+	private IApplicationModule mModule;
+
 	// Timing
 	private Stopwatch mStopwatch = new .() ~ delete _;
 	private float mLastFrameTime;
@@ -153,6 +160,15 @@ abstract class EngineApplication : IDisposable
 	/// The shared shader system.
 	public ShaderSystem ShaderSystem => mShaderSystem;
 
+	/// Optional application module. Hooks are invoked alongside the
+	/// OnConfigure / OnStartup / OnShutdown virtuals (module first). Must be
+	/// set before Run().
+	public IApplicationModule Module
+	{
+		get => mModule;
+		set => mModule = value;
+	}
+
 	/// Runs the application.
 	public int Run(EngineAppSettings settings)
 	{
@@ -196,6 +212,11 @@ abstract class EngineApplication : IDisposable
 		// Register standard subsystems
 		RegisterDefaultSubsystems();
 
+		// Application module Configure runs before the legacy OnConfigure
+		// virtual so subclasses can still override / patch what the module
+		// set up during the transition period.
+		mModule?.Configure(mContext, mResourceSystem);
+
 		// Let derived class add custom subsystems
 		OnConfigure(mContext);
 
@@ -208,6 +229,8 @@ abstract class EngineApplication : IDisposable
 		// Cache renderer interfaces from registered subsystems
 		mSceneRenderer = mContext.GetSubsystemByInterface<ISceneRenderer>();
 		mScreenRenderer = mContext.GetSubsystemByInterface<IScreenRenderer>();
+
+		mModule?.OnStartup(mContext, mResourceSystem);
 
 		OnStartup();
 
@@ -847,6 +870,8 @@ abstract class EngineApplication : IDisposable
 	{
 		if (mDevice != null)
 			mDevice.WaitIdle();
+
+		mModule?.OnShutdown(mContext, mResourceSystem);
 
 		OnShutdown();
 	}
