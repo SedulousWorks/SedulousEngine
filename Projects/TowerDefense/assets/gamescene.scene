@@ -75,7 +75,7 @@ Arr_ %Entities {
 						float %Y {0.949999988}
 						float %Z {0.850000024}
 					}
-					float %Intensity {1.20000005}
+					float %Intensity {1}
 					float %Range {10}
 					float %InnerConeAngle {30}
 					float %OuterConeAngle {45}
@@ -8873,13 +8873,13 @@ Arr_ %Modules {
 				string %_id {"705c0bd8-b8e3-451c-8a19-7cb033cb1e1c"}
 				string %path {"builtin://skies/stylized_sky.texture"}
 			}
-			float %SkyIntensity {1}
+			float %SkyIntensity {0.527423739}
 			Obj_ %AmbientColor {
 				float %X {0.100000001}
 				float %Y {0.100000001}
 				float %Z {0.150000006}
 			}
-			float %Exposure {1}
+			float %Exposure {0.5}
 		}
 	}
 }
