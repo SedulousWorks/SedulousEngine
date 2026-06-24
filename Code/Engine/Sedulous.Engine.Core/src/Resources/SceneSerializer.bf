@@ -33,11 +33,18 @@ class SceneSerializer
 		let tagMgr = scene.GetModule<PrefabInstanceTagManager>();
 		let localMods = scene.LocalModifications;
 
-		// Partition entities: normal vs prefab instance
+		// Partition entities: normal vs prefab instance. Walk hierarchically
+		// (FirstRoot + depth-first) so saved order matches the visible tree
+		// order, not slot-index order. The two diverge after a snapshot
+		// restore because slot reuse is LIFO - iterating by slot would flip
+		// the file on every alternate Play/Stop cycle.
 		let normalEntities = scope List<EntityHandle>();
 		let prefabRoots = scope List<EntityHandle>(); // Instance root entities
 
-		for (let entity in scene.Entities)
+		let hierarchical = scope List<EntityHandle>();
+		CollectHierarchical(scene, hierarchical);
+
+		for (let entity in hierarchical)
 		{
 			if (tagMgr != null)
 			{
@@ -72,6 +79,27 @@ class SceneSerializer
 		SaveModuleData(scene, serializer);
 
 		return .Ok;
+	}
+
+	private void CollectHierarchical(Scene scene, List<EntityHandle> output)
+	{
+		var cur = scene.FirstRoot;
+		while (cur.IsAssigned && scene.IsValid(cur))
+		{
+			CollectSubtree(scene, cur, output);
+			cur = scene.GetNextSibling(cur);
+		}
+	}
+
+	private void CollectSubtree(Scene scene, EntityHandle entity, List<EntityHandle> output)
+	{
+		output.Add(entity);
+		var child = scene.GetFirstChild(entity);
+		while (child.IsAssigned && scene.IsValid(child))
+		{
+			CollectSubtree(scene, child, output);
+			child = scene.GetNextSibling(child);
+		}
 	}
 
 	private void SaveNormalEntities(Scene scene, List<EntityHandle> entities,
