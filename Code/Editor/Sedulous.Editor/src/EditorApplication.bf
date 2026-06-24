@@ -53,6 +53,42 @@ class EditorApplication : Application, IDockableWindowHost
 	// Deleted explicitly in OnShutdown before Device is destroyed.
 	private Context mRuntimeContext;
 
+	// Optional project module (e.g., TowerDefenseModule). When set, the
+	// editor invokes its IApplicationModule lifecycle around the runtime
+	// context's startup/shutdown so the project's subsystems land alongside
+	// the engine ones at edit time. Set on the EditorApplication instance
+	// before Run() - the editor does not own / delete this.
+	private IApplicationModule mModule;
+
+	// Adapter that exposes EditorApplication state to project modules via
+	// IApplicationHost (in particular, routing Context to mRuntimeContext
+	// instead of the inherited Application.Context).
+	private EditorApplicationHost mHost ~ delete _;
+
+	// Captured working directory at startup. For TowerDefense.Editor this
+	// is Projects/TowerDefense/TowerDefense.Editor/; project modules walk
+	// one level up to find shared assets.
+	private String mRuntimeDirectory = new .() ~ delete _;
+
+	/// The embedded runtime context where the engine's component managers
+	/// and the project module's subsystems live. Distinct from the base
+	/// Application.Context (which manages editor-app state).
+	public Context RuntimeContext => mRuntimeContext;
+
+	/// Working directory at startup. Project modules use this to resolve
+	/// per-project content directories.
+	public StringView RuntimeDirectory => mRuntimeDirectory;
+
+	/// Optional project module. Configure / OnStartup / OnShutdown fire
+	/// around the runtime context's startup so the project's subsystems
+	/// are registered alongside the engine's at edit time. Must be set
+	/// before Run().
+	public IApplicationModule Module
+	{
+		get => mModule;
+		set => mModule = value;
+	}
+
 	// Scene serialization (owned)
 	private ComponentTypeRegistry mTypeRegistry ~ delete _;
 	private SceneResourceManager mSceneManager ~ delete _;
@@ -218,7 +254,21 @@ class EditorApplication : Application, IDockableWindowHost
 		uiSub.FontService = mFontService;
 		mRuntimeContext.RegisterSubsystem(uiSub);
 
+		// Capture cwd + create the IApplicationHost adapter so the project
+		// module sees a stable view of editor state during Configure.
+		Directory.GetCurrentDirectory(mRuntimeDirectory);
+		mHost = new EditorApplicationHost(this);
+
+		// Project module Configure runs against the runtime context BEFORE
+		// Startup so its RegisterSubsystem calls reach OnInit alongside
+		// the engine subsystems registered above.
+		mModule?.Configure(mHost);
+
 		mRuntimeContext.Startup();
+
+		// Project module OnStartup fires after the runtime context is up
+		// so the module can resolve subsystems via Context.GetSubsystem<>.
+		mModule?.OnStartup(mHost);
 
 		// Default primitive assets + registry
 		EnsureDefaultAssets();
@@ -1716,6 +1766,10 @@ class EditorApplication : Application, IDockableWindowHost
 		// context's SceneSubsystem is destroyed - the renderer's
 		// destructor can't safely touch SceneSubsystem after that point.
 		mThumbnailRenderer?.Shutdown();
+
+		// Project module OnShutdown fires before the runtime context tears
+		// down so the module can release subsystem-side refs.
+		mModule?.OnShutdown(mHost);
 
 		// Clean up runtime context (must be deleted before Device is destroyed
 		// since its subsystems share the Device).

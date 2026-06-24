@@ -133,13 +133,14 @@ Win32 = {Path = "../../Code/Dependencies/Win32-Beef"}
 "Sedulous.Engine.Render" = {Path = "../../Code/Engine/Sedulous.Engine.Render"}
 "Sedulous.Engine.UI" = {Path = "../../Code/Engine/Sedulous.Engine.UI"}
 
-# --- Editor (library only - TowerDefense.Editor exe lands in a later commit) ---
+# --- Editor ---
 "Sedulous.Editor.Core" = {Path = "../../Code/Editor/Sedulous.Editor.Core"}
 "Sedulous.Editor" = {Path = "../../Code/Editor/Sedulous.Editor"}
 
 # --- TowerDefense ---
 "TowerDefense.Core" = {Path = "TowerDefense.Core"}
 "TowerDefense.App" = {Path = "TowerDefense.App"}
+"TowerDefense.Editor" = {Path = "TowerDefense.Editor"}
 
 [WorkspaceFolders]
 Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
@@ -161,4 +162,4 @@ Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "Dxc-Beef", "dr_libs-Beef", "g
 "Foundation/Drawing" = ["Sedulous.Drawing", "Sedulous.Drawing.Renderer"]
 Engine = ["Sedulous.Engine.Core", "Sedulous.Engine.App", "Sedulous.Engine.Input", "Sedulous.Engine.Physics", "Sedulous.Engine.Audio", "Sedulous.Engine.Animation", "Sedulous.Engine.Navigation", "Sedulous.Engine.Render", "Sedulous.Engine.UI"]
 Editor = ["Sedulous.Editor.Core", "Sedulous.Editor"]
-Game = ["TowerDefense.Core", "TowerDefense.App"]
+Game = ["TowerDefense.Core", "TowerDefense.App", "TowerDefense.Editor"]

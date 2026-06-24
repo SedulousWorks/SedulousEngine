@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "TowerDefense.Editor"
+StartupObject = "TowerDefense.Editor.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Editor" = "*"
+"TowerDefense.Core" = "*"
