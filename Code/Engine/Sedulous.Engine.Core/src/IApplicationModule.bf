@@ -1,7 +1,56 @@
 namespace Sedulous.Engine;
 
+using System;
 using Sedulous.Runtime;
 using Sedulous.Resources;
+using Sedulous.Shell;
+
+/// Services the application host exposes to its IApplicationModule.
+///
+/// Both EngineApplication (standalone game exe) and the editor (when it
+/// loads a project module against its runtime context) implement this.
+/// Keeping the surface narrow to what's actually needed for module
+/// configuration / startup avoids dragging RHI or shader types into
+/// Engine.Core - subsystems registered by the module reach those through
+/// Context.GetSubsystem<>.
+public interface IApplicationHost
+{
+	/// The Context this module is being hosted in. Modules register their
+	/// subsystems here during Configure and resolve other subsystems via
+	/// Context.GetSubsystem<> during OnStartup.
+	Context Context { get; }
+
+	/// Shared resource system. Modules can register additional
+	/// IResourceManager / IResourceIndex during Configure or load initial
+	/// content during OnStartup.
+	ResourceSystem ResourceSystem { get; }
+
+	/// Platform shell - exposes InputManager, clipboard, etc. Needed by
+	/// project-level OnUpdate logic that hasn't been factored into a
+	/// Subsystem yet (transitional).
+	IShell Shell { get; }
+
+	/// Main application window (single-window for now). Modules that need
+	/// window dimensions or DPI for one-time setup read it here.
+	IWindow Window { get; }
+
+	/// Discovered Assets directory (the engine's Assets/, with the
+	/// .assets marker file). Absolute path; valid for the lifetime of the
+	/// host.
+	StringView AssetDirectory { get; }
+
+	/// Cache directory under Assets (e.g. compiled shader cache).
+	StringView AssetCacheDirectory { get; }
+
+	/// Process working directory at startup. For standalone games, the
+	/// project's runtime root. For the editor's hosted module, the
+	/// loaded project's root.
+	StringView RuntimeDirectory { get; }
+
+	/// Combines a relative path under AssetDirectory into outPath. Helper
+	/// for modules loading per-project assets.
+	void GetAssetPath(StringView relativePath, String outPath);
+}
 
 /// Composition contract for the payload an application hosts.
 ///
@@ -21,19 +70,19 @@ using Sedulous.Resources;
 ///     not have a Play lifecycle - simulation gating belongs to the scene.
 public interface IApplicationModule
 {
-	/// Register subsystems and component types with the context.
+	/// Register subsystems and component types with the host's context.
 	/// Called once after the host registers its default subsystems and before
 	/// Context.Startup() runs. The module may add Subsystems, set application-
 	/// wide configuration, or hook ResourceSystem extensions here.
-	void Configure(Context context, ResourceSystem resources);
+	void Configure(IApplicationHost host);
 
 	/// One-time startup hook fired after Context.Startup() completes.
 	/// All subsystems are initialized at this point. Typical work: load the
 	/// initial scene, hook a message bus, register editor metadata.
-	void OnStartup(Context context, ResourceSystem resources);
+	void OnStartup(IApplicationHost host);
 
 	/// Symmetric teardown hook fired before Context.Shutdown().
 	/// Subsystems are still alive at this point so the module can publish
 	/// final state or release references it owns.
-	void OnShutdown(Context context, ResourceSystem resources);
+	void OnShutdown(IApplicationHost host);
 }

@@ -36,7 +36,7 @@ using Sedulous.Images;
 /// The app creates the RHI device and window, then passes them to subsystems.
 /// The application owns swapchain, output textures, frame pacing, and presentation.
 /// RenderSubsystem implements ISceneRenderer and focuses purely on scene rendering.
-abstract class EngineApplication : IDisposable
+abstract class EngineApplication : IDisposable, IApplicationHost
 {
 	private const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -215,7 +215,7 @@ abstract class EngineApplication : IDisposable
 		// Application module Configure runs before the legacy OnConfigure
 		// virtual so subclasses can still override / patch what the module
 		// set up during the transition period.
-		mModule?.Configure(mContext, mResourceSystem);
+		mModule?.Configure(this);
 
 		// Let derived class add custom subsystems
 		OnConfigure(mContext);
@@ -230,7 +230,7 @@ abstract class EngineApplication : IDisposable
 		mSceneRenderer = mContext.GetSubsystemByInterface<ISceneRenderer>();
 		mScreenRenderer = mContext.GetSubsystemByInterface<IScreenRenderer>();
 
-		mModule?.OnStartup(mContext, mResourceSystem);
+		mModule?.OnStartup(this);
 
 		OnStartup();
 
@@ -871,7 +871,7 @@ abstract class EngineApplication : IDisposable
 		if (mDevice != null)
 			mDevice.WaitIdle();
 
-		mModule?.OnShutdown(mContext, mResourceSystem);
+		mModule?.OnShutdown(this);
 
 		OnShutdown();
 	}
