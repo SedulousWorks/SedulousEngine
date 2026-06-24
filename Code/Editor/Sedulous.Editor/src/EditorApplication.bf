@@ -261,6 +261,11 @@ class EditorApplication : Application, IDockableWindowHost
 		// which is RGBA16Float (HDR) - the screen-view pipelines must
 		// match that format, not the editor's swapchain.
 		uiSub.OutputFormat = .RGBA16Float;
+		// Input for the runtime UI flows through the GameEditorPage's
+		// IViewportInputHandler -> EngineUISubsystem.Dispatch* methods.
+		// Disable the subsystem's own shell polling so we don't
+		// double-dispatch (raw window coords on top of viewport-local).
+		uiSub.PollShellInput = false;
 		// Reuse the editor's font service for the embedded engine UI - the
 		// editor and the engine UI render through the same VFS-mounted
 		// Roboto. Non-owning: the editor still tears it down.

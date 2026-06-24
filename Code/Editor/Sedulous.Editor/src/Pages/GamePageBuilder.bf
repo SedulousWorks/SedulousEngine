@@ -9,6 +9,7 @@ using Sedulous.VG.Renderer;
 using Sedulous.Editor.Core;
 using Sedulous.Engine;
 using Sedulous.Engine.Render;
+using Sedulous.Engine.UI;
 
 /// Builds the internal layout for a GameEditorPage:
 ///   Toolbar (Play / Stop toggle, status text)
@@ -51,6 +52,20 @@ static class GamePageBuilder
 		container.AddView(viewportView, new FlexLayout.LayoutParams() {
 			Width = .Match, Grow = 1
 		});
+
+		// Route mouse events the editor dispatches into this viewport
+		// through EngineUISubsystem.Dispatch*. The subsystem walks the
+		// same priority chain (screen UI -> scene HUDs -> billboards) it
+		// uses in standalone, so anything the module attaches lights up.
+		// The handler self-gates on page.IsRunning, so idle pages don't
+		// pump stray clicks at a not-yet-launched game.
+		let runtimeUISub = editorContext?.RuntimeContext?.GetSubsystem<EngineUISubsystem>();
+		if (runtimeUISub != null)
+		{
+			let inputHandler = new GameInputHandler(page, runtimeUISub);
+			page.AddOwnedObject(inputHandler);
+			viewportView.AddInputHandler(inputHandler);
+		}
 
 		// Render the module's RuntimeScene each frame while the page is
 		// running. When idle (no Play pressed yet), the viewport stays as a

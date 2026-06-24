@@ -1,6 +1,7 @@
 namespace Sedulous.Editor.Core;
 
 using System;
+using System.Collections;
 using Sedulous.UI;
 using Sedulous.Engine;
 
@@ -31,6 +32,15 @@ class GameEditorPage : IEditorPage
 	private IApplicationModule mModule;
 	private IApplicationHost mHost;
 	private bool mIsRunning;
+
+	// Owned objects (input handlers, controllers, etc.) - deleted on page dispose.
+	private List<Object> mOwnedObjects = new .() ~ { for (let obj in _) delete obj; delete _; };
+
+	/// Register an object for cleanup when this page is disposed.
+	public void AddOwnedObject(Object obj)
+	{
+		mOwnedObjects.Add(obj);
+	}
 
 	public Event<delegate void(GameEditorPage)> OnGameStateChanged ~ _.Dispose();
 
