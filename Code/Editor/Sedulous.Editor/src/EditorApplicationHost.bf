@@ -6,6 +6,7 @@ using Sedulous.Resources;
 using Sedulous.Shell;
 using Sedulous.Shell.Input;
 using Sedulous.Engine;
+using Sedulous.Editor.Core;
 
 /// IApplicationHost adapter for the editor.
 ///
@@ -32,15 +33,39 @@ class EditorApplicationHost : IApplicationHost
 	public StringView AssetCacheDirectory => mEditor.AssetCacheDirectory;
 	public StringView RuntimeDirectory => mEditor.RuntimeDirectory;
 
-	// Sub-phase A passthrough. A later sub-phase will introduce a
-	// viewport-scoped adapter the running GameEditorPage provides (so
-	// cursor coords are in page-viewport space and keyboard / gamepad
-	// gate on viewport focus). Until then the module gets shell input
-	// directly, identical to today.
-	public IMouse Mouse => mEditor.Shell?.InputManager?.Mouse;
-	public IKeyboard Keyboard => mEditor.Shell?.InputManager?.Keyboard;
-	public IGamepad GetGamepad(int32 index) =>
-		mEditor.Shell?.InputManager?.GetGamepad(index);
+	// When a GameEditorPage is running, the module reads through that
+	// page's viewport-scoped adapters - cursor coords land in the page
+	// texture's local space and keyboard / gamepad gate on whether the
+	// Game tab is the active editor page. With no running game (idle
+	// editor, asset-only project), this falls back to direct shell
+	// devices so the editor's own input bindings still work.
+	public IMouse Mouse
+	{
+		get
+		{
+			let page = mEditor.RunningGamePage;
+			if (page?.MouseAdapter != null) return page.MouseAdapter;
+			return mEditor.Shell?.InputManager?.Mouse;
+		}
+	}
+
+	public IKeyboard Keyboard
+	{
+		get
+		{
+			let page = mEditor.RunningGamePage;
+			if (page?.KeyboardAdapter != null) return page.KeyboardAdapter;
+			return mEditor.Shell?.InputManager?.Keyboard;
+		}
+	}
+
+	public IGamepad GetGamepad(int32 index)
+	{
+		let page = mEditor.RunningGamePage;
+		let adapter = page?.GetGamepadAdapter(index);
+		if (adapter != null) return adapter;
+		return mEditor.Shell?.InputManager?.GetGamepad(index);
+	}
 
 	public void GetAssetPath(StringView relativePath, String outPath)
 	{

@@ -88,6 +88,23 @@ class EditorApplication : Application, IDockableWindowHost
 	/// per-project content directories.
 	public StringView RuntimeDirectory => mRuntimeDirectory;
 
+	/// Returns the first running GameEditorPage, or null if none is
+	/// playing. EditorApplicationHost uses this to route the module's
+	/// host.Mouse / Keyboard / GetGamepad to the page's viewport-scoped
+	/// adapters; with no running game, the host falls back to direct
+	/// shell devices (Sub-phase A behavior).
+	public GameEditorPage RunningGamePage
+	{
+		get
+		{
+			if (mEditorContext?.PageManager == null) return null;
+			for (let page in mEditorContext.PageManager.OpenPages)
+				if (let game = page as GameEditorPage)
+					if (game.IsRunning) return game;
+			return null;
+		}
+	}
+
 	/// Optional project module. Configure / OnStartup / OnShutdown fire
 	/// around the runtime context's startup so the project's subsystems
 	/// are registered alongside the engine's at edit time. Must be set

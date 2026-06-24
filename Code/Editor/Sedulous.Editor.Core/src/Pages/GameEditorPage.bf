@@ -3,6 +3,7 @@ namespace Sedulous.Editor.Core;
 using System;
 using System.Collections;
 using Sedulous.UI;
+using Sedulous.Shell.Input;
 using Sedulous.Engine;
 
 /// Hosts a running instance of the loaded IApplicationModule's game inside
@@ -36,6 +37,16 @@ class GameEditorPage : IEditorPage
 	// Owned objects (input handlers, controllers, etc.) - deleted on page dispose.
 	private List<Object> mOwnedObjects = new .() ~ { for (let obj in _) delete obj; delete _; };
 
+	// Viewport-scoped input adapters. The editor's IApplicationHost
+	// returns these when this page is running so the module's
+	// host.Mouse/Keyboard/GetGamepad calls see page-local coords and
+	// only fire while the Game tab is the active editor page.
+	// Created at construction (once we know the host's shell devices)
+	// and torn down with the page.
+	private GameMouseAdapter mMouseAdapter ~ delete _;
+	private GameKeyboardAdapter mKeyboardAdapter ~ delete _;
+	private Dictionary<int32, GameGamepadAdapter> mGamepadAdapters = new .() ~ DeleteDictionaryAndValues!(_);
+
 	/// Register an object for cleanup when this page is disposed.
 	public void AddOwnedObject(Object obj)
 	{
@@ -47,11 +58,52 @@ class GameEditorPage : IEditorPage
 	public bool IsRunning => mIsRunning;
 	public bool CanPlay => mModule != null && mHost != null && !mIsRunning;
 
+	/// Viewport-scoped mouse for the running module. The editor's
+	/// IApplicationHost returns this in place of `Shell.InputManager.Mouse`
+	/// while the page is running. GameInputHandler pumps viewport-local
+	/// coords into it on pointer move.
+	public GameMouseAdapter MouseAdapter => mMouseAdapter;
+
+	/// Viewport-scoped keyboard. Focus-gated on `mIsActive` so the
+	/// module only sees keys while the Game tab is the active page.
+	public GameKeyboardAdapter KeyboardAdapter => mKeyboardAdapter;
+
+	/// Returns a focus-gated adapter for the gamepad at `index`. Lazily
+	/// created; cached for the page's lifetime so repeat lookups don't
+	/// reallocate. Returns null if the host's input manager doesn't
+	/// expose a gamepad at this index.
+	public GameGamepadAdapter GetGamepadAdapter(int32 index)
+	{
+		if (mGamepadAdapters.TryGetValue(index, let existing))
+			return existing;
+
+		let shellGamepad = mHost?.Shell?.InputManager?.GetGamepad(index);
+		if (shellGamepad == null) return null;
+
+		let adapter = new GameGamepadAdapter(shellGamepad);
+		adapter.Focused = mIsActive;
+		mGamepadAdapters[index] = adapter;
+		return adapter;
+	}
+
+	private bool mIsActive;
+
 	public this(EditorContext editorContext)
 	{
 		mEditorContext = editorContext;
 		mModule = editorContext?.Module;
 		mHost = editorContext?.ApplicationHost;
+
+		// Build the mouse / keyboard adapters around the host's shell
+		// devices. Gamepad adapters are built lazily in GetGamepadAdapter
+		// because the editor doesn't know how many pads the game module
+		// will poll for and the shell's gamepad list is dynamic.
+		let im = mHost?.Shell?.InputManager;
+		if (im != null)
+		{
+			mMouseAdapter = new GameMouseAdapter(im.Mouse);
+			mKeyboardAdapter = new GameKeyboardAdapter(im.Keyboard);
+		}
 	}
 
 	/// Fires module.OnLaunch and flips the page into the running state.
@@ -96,8 +148,21 @@ class GameEditorPage : IEditorPage
 	public void Save() { }
 	public void SaveAs(StringView path) { }
 
-	public void OnActivated() { }
-	public void OnDeactivated() { }
+	public void OnActivated()
+	{
+		mIsActive = true;
+		if (mKeyboardAdapter != null) mKeyboardAdapter.Focused = true;
+		for (let kv in mGamepadAdapters)
+			kv.value.Focused = true;
+	}
+
+	public void OnDeactivated()
+	{
+		mIsActive = false;
+		if (mKeyboardAdapter != null) mKeyboardAdapter.Focused = false;
+		for (let kv in mGamepadAdapters)
+			kv.value.Focused = false;
+	}
 
 	public void Update(float deltaTime)
 	{

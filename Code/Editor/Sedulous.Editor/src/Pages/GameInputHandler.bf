@@ -48,8 +48,17 @@ class GameInputHandler : IViewportInputHandler
 
 	public void OnMouseMove(MouseEventArgs e, ViewportView viewport)
 	{
-		if (!mPage.IsRunning || mUISubsystem == null) return;
-		mUISubsystem.DispatchMouseMove(e.X, e.Y);
+		if (!mPage.IsRunning) return;
+		// Feed viewport-local coords into the page's mouse adapter so
+		// the module's host.Mouse.X/Y reads page-local pixels instead
+		// of window-relative (the texture is a sub-rect of the editor
+		// window). This is independent of UI dispatch - even if the
+		// engine UI subsystem isn't routed yet, the module's per-frame
+		// raycast / tower placement needs the right coords.
+		if (mPage.MouseAdapter != null)
+			mPage.MouseAdapter.OnViewportPointerMove(e.X, e.Y);
+		if (mUISubsystem != null)
+			mUISubsystem.DispatchMouseMove(e.X, e.Y);
 	}
 
 	public void OnMouseWheel(MouseWheelEventArgs e, ViewportView viewport)
