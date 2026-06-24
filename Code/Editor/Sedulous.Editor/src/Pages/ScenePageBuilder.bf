@@ -198,6 +198,16 @@ static class ScenePageBuilder
 			page.OnSelectionChanged(page);
 		});
 
+		// Stop-simulation runs SceneSnapshot.Restore, which drains every
+		// entity and re-creates them from the captured blob. The adapter's
+		// nodeId-to-EntityHandle map is full of stale handles after that;
+		// without a rebuild every row binds as "(invalid)" until the user
+		// clicks something and re-triggers OnSelectionChanged.
+		page.OnSimulationStateChanged.Add(new [=adapter] (p) =>
+		{
+			adapter.Rebuild();
+		});
+
 		// Asset drop handler (e.g., .prefab from asset browser)
 		hierarchyView.OnAssetDropped.Add(new [=page, =adapter] (assetData, parentEntity) =>
 		{
