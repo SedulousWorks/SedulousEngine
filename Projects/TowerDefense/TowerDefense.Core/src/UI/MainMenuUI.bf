@@ -79,4 +79,12 @@ class MainMenuUI
 	{
 		mRoot.Visibility = .Gone;
 	}
+
+	public void Shutdown()
+	{
+		// Release the per-launch callback closure so the next OnLaunch's
+		// Setup doesn't orphan it. View-tree ownership of mRoot handles
+		// itself when the root view is destroyed.
+		delete OnStartGame; OnStartGame = null;
+	}
 }

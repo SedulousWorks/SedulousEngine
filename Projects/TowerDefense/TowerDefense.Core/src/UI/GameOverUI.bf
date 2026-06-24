@@ -135,5 +135,11 @@ class GameOverUI
 	{
 		if (bus != null)
 			bus.Unsubscribe(mGameOverSub);
+
+		// Release per-launch callback closures. Setup re-assigns these
+		// fields on the next OnLaunch; without an explicit null the prior
+		// closures are orphaned (field destructor only catches the last set).
+		delete OnRestart;  OnRestart = null;
+		delete OnMainMenu; OnMainMenu = null;
 	}
 }

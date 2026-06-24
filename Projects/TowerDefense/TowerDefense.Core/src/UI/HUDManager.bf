@@ -230,6 +230,12 @@ class HUDManager
 			bus.Unsubscribe(mGameOverSub);
 			bus.Unsubscribe(mPhaseChangedSub);
 		}
+
+		// Release per-launch callback closures. The next Setup re-assigns
+		// these fields; without an explicit null they'd orphan the previous
+		// closure (the field destructor only catches the most recent set).
+		delete StartWaveCallback; StartWaveCallback = null;
+		delete SetSpeedCallback;  SetSpeedCallback = null;
 	}
 
 	private void AddTowerButton(FlexLayout layout, TowerType type, StringView name, TowerPlacement placement, StringView previewDir)

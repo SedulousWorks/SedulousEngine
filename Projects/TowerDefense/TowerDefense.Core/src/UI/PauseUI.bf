@@ -74,4 +74,13 @@ class PauseUI
 	{
 		mRoot.Visibility = .Gone;
 	}
+
+	public void Shutdown()
+	{
+		// Release per-launch callback closures so the next OnLaunch's
+		// Setup doesn't orphan them. View-tree ownership of mRoot handles
+		// itself when the root view is destroyed.
+		delete OnResume;  OnResume = null;
+		delete OnMainMenu; OnMainMenu = null;
+	}
 }

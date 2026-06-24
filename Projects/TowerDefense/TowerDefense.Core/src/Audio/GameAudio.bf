@@ -184,6 +184,27 @@ class GameAudio
 			mBus.Unsubscribe(mTowerPlacedSub);
 			mBus.Unsubscribe(mPhaseChangedSub);
 		}
+
+		// Release all procedurally-generated clips so the next Initialize
+		// can repopulate the fields without orphaning the previous batch.
+		// The field destructors (~delete _) would otherwise only catch the
+		// most recent set, leaking everything Initialize allocated on prior
+		// play/stop cycles. delete null is a no-op so this is also safe on
+		// process exit after Shutdown ran.
+		delete mCannonFire;     mCannonFire = null;
+		delete mBallistaFire;   mBallistaFire = null;
+		delete mCatapultFire;   mCatapultFire = null;
+		delete mTurretFire;     mTurretFire = null;
+		delete mEnemyDeath;     mEnemyDeath = null;
+		delete mEnemyExit;      mEnemyExit = null;
+		delete mWaveStart;      mWaveStart = null;
+		delete mWaveComplete;   mWaveComplete = null;
+		delete mVictory;        mVictory = null;
+		delete mGameOver;       mGameOver = null;
+		delete mTowerPlace;     mTowerPlace = null;
+		delete mNoMoney;        mNoMoney = null;
+		delete mUIClick;        mUIClick = null;
+		delete mMusicLoop;      mMusicLoop = null;
 	}
 
 	// ==================== Sound Selection ====================

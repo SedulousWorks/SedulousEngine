@@ -43,13 +43,21 @@ class ParticleEffects
 		mBus = bus;
 		mResources = resources;
 
-		// Load particle texture
-		let texPath = scope String();
-		texPath.AppendF("{}/textures/kenney_particle-pack/PNG (Transparent)/circle_05.png", assetDir);
-		if (ImageLoaderFactory.LoadImage(texPath) case .Ok(var image))
+		// Load the particle texture once and keep it across play/stop cycles.
+		// Re-loading per cycle adds a new TextureResource (under a fresh Guid)
+		// to the resource cache every time, and the cache holds a ref the
+		// caller can't easily reclaim - reload-per-cycle leaks one texture
+		// (+ Image + sample buffer) per cycle. The field destructor
+		// (~_?.ReleaseRef()) handles final cleanup at module destruction.
+		if (mParticleTexture == null)
 		{
-			mParticleTexture = new TextureResource(image, true);
-			resources.AddResource<TextureResource>(mParticleTexture);
+			let texPath = scope String();
+			texPath.AppendF("{}/textures/kenney_particle-pack/PNG (Transparent)/circle_05.png", assetDir);
+			if (ImageLoaderFactory.LoadImage(texPath) case .Ok(var image))
+			{
+				mParticleTexture = new TextureResource(image, true);
+				resources.AddResource<TextureResource>(mParticleTexture);
+			}
 		}
 
 		// Subscribe to game events
@@ -110,6 +118,11 @@ class ParticleEffects
 			mBus.Unsubscribe(mEnemyKilledSub);
 			mBus.Unsubscribe(mProjectileHitSub);
 		}
+
+		// mParticleTexture intentionally NOT released here - it's loaded
+		// once in Initialize and reused across all play/stop cycles. The
+		// field destructor (~_?.ReleaseRef()) releases it when the module
+		// itself is destroyed at editor shutdown.
 	}
 
 	// ==================== Effect Spawning ====================

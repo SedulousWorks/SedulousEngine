@@ -592,8 +592,41 @@ class TowerDefenseModule : IApplicationModule
 		let bus = messaging?.Bus;
 		mHUD.Shutdown(bus);
 		mGameOverUI.Shutdown(bus);
+		mPauseUI.Shutdown();
+		mMainMenu.Shutdown();
 
 		mModels.Shutdown();
+
+		// Tear down everything OnLaunch built so the next OnLaunch starts
+		// from a clean slate. Without this the editor leaks a FileSystemMount
+		// + index per play/stop/play cycle (and the second OnLaunch warns
+		// 'A mount is already registered for scheme project').
+		let context = host.Context;
+		let sceneSub = context.GetSubsystem<SceneSubsystem>();
+		if (mScene != null)
+		{
+			sceneSub?.DestroyScene(mScene);
+			mScene = null;
+		}
+
+		let resourceSystem = host.ResourceSystem;
+		if (mProjectIndex != null)
+		{
+			resourceSystem.RemoveIndex(mProjectIndex);
+			delete mProjectIndex;
+			mProjectIndex = null;
+		}
+		if (mProjectMount != null)
+		{
+			resourceSystem.Unmount("project");
+			delete mProjectMount;
+			mProjectMount = null;
+		}
+		if (mManifest != null)
+		{
+			delete mManifest;
+			mManifest = null;
+		}
 	}
 
 	// ==================== Shutdown ====================
