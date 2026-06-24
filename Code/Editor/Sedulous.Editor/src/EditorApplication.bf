@@ -766,6 +766,31 @@ class EditorApplication : Application, IDockableWindowHost
 		let viewMenu = menuBar.AddMenu("View");
 		viewMenu.AddItem("Console", new () => { /* TODO: toggle console panel */ });
 		viewMenu.AddItem("Asset Browser", new () => { /* TODO: toggle assets panel */ });
+
+		// Game menu - only meaningful when an application module is loaded.
+		// Phase 6A: opens the skeleton page. Phase 6B will gate on Module
+		// presence and fire OnLaunch / OnExit around it.
+		let gameMenu = menuBar.AddMenu("Game");
+		gameMenu.AddItem("Play Game", new () => OnPlayGame());
+	}
+
+	private void OnPlayGame()
+	{
+		// If a Game page is already open, activate it instead of double-opening.
+		for (let page in mEditorContext.PageManager.OpenPages)
+		{
+			if (page is GameEditorPage)
+			{
+				mEditorContext.PageManager.SetActive(page);
+				return;
+			}
+		}
+
+		let page = new GameEditorPage(mEditorContext);
+		let sceneRenderer = mRuntimeContext.GetSubsystemByInterface<ISceneRenderer>();
+		let content = GamePageBuilder.Build(page, mEditorContext, Device, mVGRenderer, sceneRenderer);
+		page.SetContentView(content);
+		mEditorContext.PageManager.AddPage(page);
 	}
 
 	private void OnOpenScene()
