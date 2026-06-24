@@ -594,10 +594,13 @@ class TowerDefenseModule : IApplicationModule
 		// Clean up expired particle effects
 		mParticleEffects.Update(deltaTime);
 
-		let shell = host.Shell;
-		if (shell == null) return;
-		let keyboard = shell.InputManager.Keyboard;
-		let mouse = shell.InputManager.Mouse;
+		// Pull devices from the host, not shell directly. Standalone hosts
+		// passthrough to shell.InputManager; the editor wraps these so
+		// the cursor coords land in the page-viewport's local space and
+		// keyboard / hotkeys gate on viewport focus.
+		let keyboard = host.Keyboard;
+		let mouse = host.Mouse;
+		if (keyboard == null || mouse == null) return;
 
 		// Camera controls (always available except menu)
 		if (mGameSub.Phase != .MainMenu)

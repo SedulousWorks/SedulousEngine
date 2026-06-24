@@ -4,6 +4,7 @@ using System;
 using Sedulous.Runtime;
 using Sedulous.Resources;
 using Sedulous.Shell;
+using Sedulous.Shell.Input;
 using Sedulous.Engine.Core;
 
 /// Services the application host exposes to its IApplicationModule.
@@ -30,6 +31,30 @@ public interface IApplicationHost
 	/// project-level OnUpdate logic that hasn't been factored into a
 	/// Subsystem yet (transitional).
 	IShell Shell { get; }
+
+	/// Mouse the module should consume during OnUpdate. Standalone hosts
+	/// passthrough to `Shell.InputManager.Mouse`. The editor's
+	/// `GameEditorPage` returns a viewport-scoped adapter so cursor
+	/// coords are in the page-viewport's local space and click events
+	/// match the rendered scene - the page texture is a sub-rect of the
+	/// editor window, so polling shell directly would put clicks in
+	/// the wrong coordinate space.
+	IMouse Mouse { get; }
+
+	/// Keyboard the module should consume during OnUpdate. Standalone
+	/// hosts passthrough to `Shell.InputManager.Keyboard`. The editor's
+	/// `GameEditorPage` returns a focus-gated adapter that reports
+	/// "nothing pressed" while the game viewport is not focused, so
+	/// gameplay hotkeys (P / Escape / Space / etc.) don't fire while
+	/// the user is typing in another panel.
+	IKeyboard Keyboard { get; }
+
+	/// Returns a gamepad the module can consume during OnUpdate.
+	/// Standalone passes through to `Shell.InputManager.GetGamepad`.
+	/// Editor returns a focus-gated adapter (passthrough when game
+	/// viewport focused, no-input otherwise) so controller input is
+	/// scoped to the game tab. Returns null if `index` is out of range.
+	IGamepad GetGamepad(int32 index);
 
 	/// Main application window (single-window for now). Modules that need
 	/// window dimensions or DPI for one-time setup read it here.

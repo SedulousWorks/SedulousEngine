@@ -4,6 +4,7 @@ using System;
 using Sedulous.Runtime;
 using Sedulous.Resources;
 using Sedulous.Shell;
+using Sedulous.Shell.Input;
 using Sedulous.Engine;
 
 /// IApplicationHost adapter for the editor.
@@ -30,6 +31,16 @@ class EditorApplicationHost : IApplicationHost
 	public StringView AssetDirectory => mEditor.AssetDirectory;
 	public StringView AssetCacheDirectory => mEditor.AssetCacheDirectory;
 	public StringView RuntimeDirectory => mEditor.RuntimeDirectory;
+
+	// Sub-phase A passthrough. A later sub-phase will introduce a
+	// viewport-scoped adapter the running GameEditorPage provides (so
+	// cursor coords are in page-viewport space and keyboard / gamepad
+	// gate on viewport focus). Until then the module gets shell input
+	// directly, identical to today.
+	public IMouse Mouse => mEditor.Shell?.InputManager?.Mouse;
+	public IKeyboard Keyboard => mEditor.Shell?.InputManager?.Keyboard;
+	public IGamepad GetGamepad(int32 index) =>
+		mEditor.Shell?.InputManager?.GetGamepad(index);
 
 	public void GetAssetPath(StringView relativePath, String outPath)
 	{

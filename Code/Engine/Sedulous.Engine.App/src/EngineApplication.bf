@@ -140,6 +140,15 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 	/// The shell.
 	public IShell Shell => mShell;
 
+	// IApplicationHost input passthrough. Standalone uses the shell devices
+	// directly; the editor's GameEditorPage wraps them in viewport-scoped
+	// adapters so coordinates / focus gating Just Work for module gameplay
+	// code that's portable between both hosts.
+	public Sedulous.Shell.Input.IMouse Mouse => mShell?.InputManager?.Mouse;
+	public Sedulous.Shell.Input.IKeyboard Keyboard => mShell?.InputManager?.Keyboard;
+	public Sedulous.Shell.Input.IGamepad GetGamepad(int32 index) =>
+		mShell?.InputManager?.GetGamepad(index);
+
 	/// The main window.
 	public IWindow Window => mWindow;
 
