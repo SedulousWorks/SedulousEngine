@@ -99,11 +99,12 @@ class TowerDefenseModule : IApplicationModule
 
 		let context = host.Context;
 		let resourceSystem = host.ResourceSystem;
-		let runtimeDirectory = host.RuntimeDirectory;
 
-		// Project assets directory (RuntimeDirectory/assets)
+		// Project assets directory at the TowerDefense project root, one
+		// level up from the running exe's directory. Shared by .App and
+		// the future .Editor exe so both see the same content.
 		let assetsDir = scope String();
-		Path.InternalCombine(assetsDir, runtimeDirectory, "assets");
+		GetProjectAssetsDir(host, assetsDir);
 		let registryPath = scope String();
 		Path.InternalCombine(registryPath, assetsDir, "project.registry");
 		let scenePath = scope String();
@@ -302,7 +303,7 @@ class TowerDefenseModule : IApplicationModule
 	private void ExportForEditor(IApplicationHost host)
 	{
 		let outputDir = scope String();
-		Path.InternalCombine(outputDir, host.RuntimeDirectory, "assets");
+		GetProjectAssetsDir(host, outputDir);
 
 		if (!Directory.Exists(outputDir))
 			Directory.CreateDirectory(outputDir);
@@ -416,7 +417,7 @@ class TowerDefenseModule : IApplicationModule
 	private void ExportTowerPrefabs(IApplicationHost host)
 	{
 		let outputDir = scope String();
-		Path.InternalCombine(outputDir, host.RuntimeDirectory, "assets");
+		GetProjectAssetsDir(host, outputDir);
 
 		let provider = scope OpenDDLSerializerProvider();
 		let typeReg = scope ComponentTypeRegistry();
@@ -525,6 +526,15 @@ class TowerDefenseModule : IApplicationModule
 			indexStream.Position = 0;
 			mount.Save("project.registry", indexStream);
 		}
+	}
+
+	/// Resolves the TowerDefense project's assets/ directory: walks one
+	/// level up from the running exe's directory (RuntimeDirectory points
+	/// at the exe project, assets/ sits at the parent TowerDefense root).
+	private static void GetProjectAssetsDir(IApplicationHost host, String outDir)
+	{
+		let projectRoot = Path.GetDirectoryPath(host.RuntimeDirectory, .. scope .());
+		Path.InternalCombine(outDir, projectRoot, "assets");
 	}
 
 	/// Extracts the base resource name from a registry protocol path.
