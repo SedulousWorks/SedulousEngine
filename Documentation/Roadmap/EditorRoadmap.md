@@ -1429,6 +1429,22 @@ sees it.
 - `EditorSceneManager` - serialize/restore scene around play
 - Play/Pause/Stop controls
 - Inspector read-only during play
+- **Per-host IMouse abstraction for module gameplay input** -- module
+  per-frame logic (`IApplicationModule.OnUpdate`, e.g. TD's
+  `TowerPlacement.Update`) polls `host.Shell.InputManager.Mouse`
+  directly for cursor position and click edges. Standalone gets
+  window-space coordinates from the OS that match what the game
+  renders. Inside `GameEditorPage`, the user clicks in viewport-local
+  space (the RGBA16Float page texture is a sub-rect of the editor
+  window), so `Shell.Mouse.X/Y` is off by the viewport's offset/scale
+  and clicks land on the wrong grid cell. Fix: introduce an
+  `IMouse`-shaped abstraction the host provides (e.g.
+  `IApplicationHost.GameMouse`). Standalone returns the shell mouse
+  directly; the editor returns a viewport-fed adapter driven by
+  `GameInputHandler`'s event stream. Module passes that abstraction
+  to `TowerPlacement.Update` etc. instead of polling shell. Same
+  pattern applies to gameplay code that wants raw keyboard scoped to
+  the page focus.
 
 ### Phase 7: Per-Module Plugins
 - Physics: ColliderInspector, ColliderGizmo, PhysicsDebugPanel
