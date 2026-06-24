@@ -45,6 +45,22 @@ class WaveSystem
 		}
 		mWaves = WaveDefinition.CreateDefaultWaves();
 
+		// Reset all per-game wave state - a second OnLaunch in the editor
+		// (or any reinitialize path) otherwise inherits whatever state the
+		// previous run finished in. mCurrentWave especially: if a prior
+		// run reached the last wave, StartNextWave bails on its
+		// `mCurrentWave >= mWaves.Count` guard and the Start Wave button
+		// stops responding.
+		mCurrentWave = 0;
+		mCurrentEntryIndex = 0;
+		mSpawnedInEntry = 0;
+		mSpawnTimer = 0;
+		mEntryDelayTimer = 0;
+		mWaveActive = false;
+		mEnemiesAlive = 0;
+		mTotalSpawnedThisWave = 0;
+		mAllSpawned = false;
+
 		// Subscribe to enemy death/arrival to track alive count
 		if (mBus != null)
 		{

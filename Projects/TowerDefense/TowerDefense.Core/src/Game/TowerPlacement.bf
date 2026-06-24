@@ -44,6 +44,20 @@ class TowerPlacement
 	private EntityHandle mPreviewWeapon = .Invalid;
 	private TowerType? mPreviewType;
 
+	/// Resets all per-game state to defaults. Called at OnLaunch so a
+	/// second play session doesn't inherit the prior run's selected
+	/// tower type / selected placed tower / preview handles (which now
+	/// point at entities the destroyed scene no longer has).
+	public void Reset()
+	{
+		SelectedType = null;
+		SelectedTower = .Invalid;
+		HoverValid = false;
+		mPreviewBase = .Invalid;
+		mPreviewWeapon = .Invalid;
+		mPreviewType = null;
+	}
+
 	/// Places a tower, selects a placed tower, or updates hover. Call each frame.
 	public void Update(
 		IMouse mouse, Scene scene, GameSubsystem gameSub,

@@ -158,6 +158,15 @@ class TowerDefenseModule : IApplicationModule
 		host.GetAssetPath("", assetDir);
 		mParticleEffects.Initialize(mScene, messaging?.Bus, resourceSystem, assetDir);
 
+		// Reset gameplay state at every launch so a second OnLaunch
+		// (editor play/stop cycle, or standalone restart) doesn't inherit
+		// the previous run's gold / lives / phase / game speed / tower
+		// selection. WaveSystem.Initialize handles its own per-game state
+		// reset on the OnSceneCreated side.
+		mGameSub.ResetGame();
+		mGameSub.SetPhase(.MainMenu);
+		mTowerPlacement.Reset();
+
 		// Hand the gameplay scene to GameSubsystem so its Update starts running.
 		// Until this point GameSubsystem.Update has been a no-op (mScene null),
 		// which is what keeps it from clobbering editor scenes' SimulationEnabled.
