@@ -283,7 +283,10 @@ static class ScenePageBuilder
 		gridBtn.IsChecked = page.ShowGrid;
 		gridBtn.OnCheckedChanged.Add(new (btn, val) => { page.ShowGrid = val; });
 
-		toolbar.AddSeparator();
+		// Flex spacer pushes the simulation buttons to the right edge of the
+		// toolbar so Play/Pause/Stop don't share space with the gizmo/view tools.
+		let spacer = new Panel();
+		toolbar.AddView(spacer, new FlexLayout.LayoutParams() { Grow = 1 });
 
 		// === Simulation buttons (Play / Pause / Stop) ===
 		// Per-page state: each scene tab simulates independently. The button
