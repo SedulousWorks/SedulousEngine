@@ -25,12 +25,19 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IScreenOverlay
 {
 	public override int32 UpdateOrder => 400;
 
-	// Set by EngineApplication before Startup.
+	// Set by the host before Startup.
 	public IDevice Device;
 	public IWindow Window;
 	public IShell Shell;
 	public ShaderSystem ShaderSystem;
-	public TextureFormat SwapChainFormat = .BGRA8UnormSrgb;
+
+	/// Color format the screen view's pipelines are built against.
+	/// Standalone (`EngineApplication`) sets this to the swapchain format;
+	/// the editor sets it to the format of the GameEditorPage viewport
+	/// (`RGBA16Float`) so the screen UI renders into that target without
+	/// pipeline-format mismatches. Default value matches the most common
+	/// standalone configuration.
+	public TextureFormat OutputFormat = .BGRA8UnormSrgb;
 	public int32 FrameCount = 2;
 
 	/// IFontService used by the screen + world UI. Non-owning: the host
@@ -136,7 +143,7 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IScreenOverlay
 		// Screen UI view - needs Device + SwapChain format.
 		if (Device != null)
 		{
-			mScreenView = new ScreenUIView(mUIContext, Device, SwapChainFormat,
+			mScreenView = new ScreenUIView(mUIContext, Device, OutputFormat,
 				FrameCount, FontService, ShaderSystem);
 
 			// Set initial viewport size from window so dialogs shown before

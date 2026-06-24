@@ -69,6 +69,7 @@ class TowerDefenseModule : IApplicationModule
 	// Backref so OnUpdate (still on TowerDefenseApp during transition)
 	// can reach the module's per-frame state via public properties.
 	public Scene Scene => mScene;
+	public Scene RuntimeScene => mScene;
 	public GameSubsystem GameSub => mGameSub;
 	public TDCameraController Camera => mCamera;
 	public TowerPlacement TowerPlacement => mTowerPlacement;

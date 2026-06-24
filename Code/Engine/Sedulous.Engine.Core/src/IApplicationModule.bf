@@ -4,6 +4,7 @@ using System;
 using Sedulous.Runtime;
 using Sedulous.Resources;
 using Sedulous.Shell;
+using Sedulous.Engine.Core;
 
 /// Services the application host exposes to its IApplicationModule.
 ///
@@ -102,4 +103,11 @@ public interface IApplicationModule
 	/// runs - mirror of OnStartup. Subsystems are still alive at this point
 	/// so the module can publish final state or release references it owns.
 	void OnShutdown(IApplicationHost host);
+
+	/// Scene the host should treat as the module's "active" runtime scene
+	/// while OnLaunch's lifecycle is in effect. Null when no scene exists
+	/// (between OnExit and the next OnLaunch, or for modules that don't
+	/// expose a single primary scene). The editor's GameEditorPage reads
+	/// this to know which scene to render into its viewport.
+	Scene RuntimeScene { get; }
 }

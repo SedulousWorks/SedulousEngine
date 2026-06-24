@@ -399,7 +399,7 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 		uiSub.Window = mWindow;
 		uiSub.Shell = mShell;
 		uiSub.ShaderSystem = mShaderSystem;
-		uiSub.SwapChainFormat = mSettings.SwapChainFormat;
+		uiSub.OutputFormat = mSettings.SwapChainFormat;
 		uiSub.FrameCount = MAX_FRAMES_IN_FLIGHT;
 		uiSub.FontService = mFontService;
 		mContext.RegisterSubsystem(uiSub);                      //  400

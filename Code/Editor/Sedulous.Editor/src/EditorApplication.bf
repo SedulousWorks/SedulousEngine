@@ -257,6 +257,10 @@ class EditorApplication : Application, IDockableWindowHost
 		uiSub.Window = Window;
 		uiSub.Shell = Shell;
 		uiSub.ShaderSystem = mShaderSystem;
+		// Game-mode screen UI renders into the GameEditorPage viewport,
+		// which is RGBA16Float (HDR) - the screen-view pipelines must
+		// match that format, not the editor's swapchain.
+		uiSub.OutputFormat = .RGBA16Float;
 		// Reuse the editor's font service for the embedded engine UI - the
 		// editor and the engine UI render through the same VFS-mounted
 		// Roboto. Non-owning: the editor still tears it down.
@@ -801,7 +805,9 @@ class EditorApplication : Application, IDockableWindowHost
 
 		let page = new GameEditorPage(mEditorContext);
 		let sceneRenderer = mRuntimeContext.GetSubsystemByInterface<ISceneRenderer>();
-		let content = GamePageBuilder.Build(page, mEditorContext, Device, mVGRenderer, sceneRenderer);
+		let screenRenderer = mRuntimeContext.GetSubsystemByInterface<IScreenRenderer>();
+		let content = GamePageBuilder.Build(page, mEditorContext, Device, mVGRenderer,
+			sceneRenderer, screenRenderer);
 		page.SetContentView(content);
 		mEditorContext.PageManager.AddPage(page);
 	}
