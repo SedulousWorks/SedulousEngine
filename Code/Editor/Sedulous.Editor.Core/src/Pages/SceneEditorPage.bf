@@ -275,6 +275,12 @@ class SceneEditorPage : IEditorPage, IResourceChangeListener
 		if (!mIsSimulating || mScene == null)
 			return;
 
+		// Drop selection before Restore - the snapshot drains and re-creates
+		// every entity, so any handle held past this point would dangle.
+		// Listeners that key off OnSelectionChanged (inspector, gizmos) get
+		// cleared while the old handles are still valid.
+		ClearSelection();
+
 		mScene.Stop();
 
 		if (mSnapshot != null)
