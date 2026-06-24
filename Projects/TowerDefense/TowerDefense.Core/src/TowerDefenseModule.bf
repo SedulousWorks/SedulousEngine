@@ -161,8 +161,7 @@ class TowerDefenseModule : IApplicationModule
 		// Reset gameplay state at every launch so a second OnLaunch
 		// (editor play/stop cycle, or standalone restart) doesn't inherit
 		// the previous run's gold / lives / phase / game speed / tower
-		// selection. WaveSystem.Initialize handles its own per-game state
-		// reset on the OnSceneCreated side.
+		// selection.
 		mGameSub.ResetGame();
 		mGameSub.SetPhase(.MainMenu);
 		mTowerPlacement.Reset();
@@ -171,6 +170,14 @@ class TowerDefenseModule : IApplicationModule
 		// Until this point GameSubsystem.Update has been a no-op (mScene null),
 		// which is what keeps it from clobbering editor scenes' SimulationEnabled.
 		mGameSub.SetScene(mScene);
+
+		// Initialize the wave system against the game scene's enemy
+		// manager. GameSubsystem.OnSceneCreated injects the three
+		// gameplay component managers into every scene (so the editor
+		// can author them at edit time), but the wave runner's per-game
+		// state and bus subscriptions are scoped to the play session
+		// only and live here. Mirrored in OnExit.
+		mGameSub.Waves.Initialize(messaging?.Bus, mGameSub.EnemyMgr);
 
 		Console.WriteLine("=== Tower Defense Ready ===");
 	}
@@ -676,6 +683,11 @@ class TowerDefenseModule : IApplicationModule
 		// returns to its dormant no-op state if anything keeps ticking
 		// during shutdown.
 		mGameSub.SetScene(null);
+
+		// Drop the wave runner's bus subscriptions before the message
+		// bus survives into edit-mode. Mirror of the Waves.Initialize
+		// at the end of OnLaunch.
+		mGameSub.Waves.Shutdown();
 
 		// Clean up effects and audio
 		mParticleEffects.Shutdown();

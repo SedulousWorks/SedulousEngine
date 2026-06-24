@@ -237,8 +237,11 @@ class GameSubsystem : Subsystem, ISceneAware
 
 	protected override void OnPrepareShutdown()
 	{
-		mWaveSystem.Shutdown();
-
+		// WaveSystem subs are scoped to the play session - the module's
+		// OnExit calls Waves.Shutdown. By the time we get here either no
+		// play session ran (subs were never added) or OnExit already
+		// fired (already cleared), so we just drop the lifetime subs we
+		// own here.
 		if (mBus != null)
 		{
 			mBus.Unsubscribe(mEnemyKilledSub);
@@ -251,6 +254,18 @@ class GameSubsystem : Subsystem, ISceneAware
 
 	public void OnSceneCreated(Scene scene)
 	{
+		// Injection runs for every scene the runtime context hosts -
+		// including editor scene tabs at edit time. That's intentional:
+		// the editor needs these managers in any scene the user might
+		// add EnemyComponent / TowerComponent / ProjectileComponent to,
+		// otherwise the Add Component menu can list the types but the
+		// scene can't actually store them.
+		//
+		// Pure runtime state (WaveSystem subscriptions + per-game
+		// counters) is NOT initialized here - the module drives that
+		// from OnLaunch / OnExit so it only exists during a play session
+		// and only against the actual game scene.
+
 		// Inject enemy component manager
 		mEnemyMgr = new EnemyComponentManager();
 		mEnemyMgr.Bus = mBus;
@@ -270,10 +285,6 @@ class GameSubsystem : Subsystem, ISceneAware
 		mTowerMgr.EnemyMgr = mEnemyMgr;
 		mTowerMgr.ProjectileMgr = mProjectileMgr;
 		scene.AddModule(mTowerMgr);
-
-		// Initialize wave system with enemy manager
-		if (mBus != null)
-			mWaveSystem.Initialize(mBus, mEnemyMgr);
 	}
 
 	public void OnSceneReady(Scene scene)

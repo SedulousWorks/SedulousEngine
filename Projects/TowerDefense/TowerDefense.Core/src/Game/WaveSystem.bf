@@ -33,6 +33,22 @@ class WaveSystem
 
 	public void Initialize(MessageBus bus, EnemyComponentManager enemyMgr)
 	{
+		// Drop any stale subscriptions from a previous Initialize before
+		// rewiring. In the editor, GameSubsystem.OnSceneCreated fires
+		// once per Scene the runtime context creates - including the
+		// editor's open SceneEditorPage scene - so this Initialize runs
+		// for the editor scene at edit-time AND again for the game
+		// scene at Play. Without this unsubscribe, both delegates fire
+		// per EnemyKilledMsg / EnemyReachedEndMsg, mEnemiesAlive
+		// decrements by 2 per kill, and a wave with N enemies ends
+		// after N-1 kills. Standalone has only one scene so the bug
+		// doesn't manifest there.
+		if (mBus != null)
+		{
+			mBus.Unsubscribe(mEnemyKilledSub);
+			mBus.Unsubscribe(mEnemyReachedEndSub);
+		}
+
 		mBus = bus;
 		mEnemyMgr = enemyMgr;
 		// Editor flow can fire GameSubsystem.OnSceneCreated multiple times
