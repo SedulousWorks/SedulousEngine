@@ -89,7 +89,17 @@ class GameEditorPage : IEditorPage
 	public void OnActivated() { }
 	public void OnDeactivated() { }
 
-	public void Update(float deltaTime) { }
+	public void Update(float deltaTime)
+	{
+		// Tick the module's per-frame body in lockstep with the editor's
+		// page update. Standalone EngineApplication calls module.OnUpdate
+		// from its main loop; in the editor the page is the parallel
+		// driver. Skipped while idle so OnLaunch's allocations don't get
+		// touched before they exist (and don't get torn down twice if the
+		// page tab outlives a Stop).
+		if (mIsRunning && mModule != null && mHost != null)
+			mModule.OnUpdate(mHost, deltaTime);
+	}
 
 	public void Dispose()
 	{

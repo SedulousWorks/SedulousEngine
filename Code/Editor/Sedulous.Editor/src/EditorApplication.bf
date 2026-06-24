@@ -1429,9 +1429,23 @@ class EditorApplication : Application, IDockableWindowHost
 		// Clamped to avoid spiral-of-death after a frame stall.
 		mFixedUpdateAccumulator += frame.DeltaTime;
 		int32 fixedSteps = 0;
+		// Check once per frame whether any Game page is currently running -
+		// module.OnFixedUpdate only fires when a GameEditorPage is in its
+		// IsRunning state, matching the OnLaunch/OnExit window. With only
+		// one Game page allowed at a time this collapses to "is one open?"
+		GameEditorPage runningGamePage = null;
+		for (let page in mEditorContext.PageManager.OpenPages)
+		{
+			if (let gp = page as GameEditorPage)
+			{
+				if (gp.IsRunning) { runningGamePage = gp; break; }
+			}
+		}
 		while (mFixedUpdateAccumulator >= kFixedTimeStep && fixedSteps < kMaxFixedStepsPerFrame)
 		{
 			mRuntimeContext.FixedUpdate(kFixedTimeStep);
+			if (runningGamePage != null)
+				mModule?.OnFixedUpdate(mHost, kFixedTimeStep);
 			mFixedUpdateAccumulator -= kFixedTimeStep;
 			fixedSteps++;
 		}
