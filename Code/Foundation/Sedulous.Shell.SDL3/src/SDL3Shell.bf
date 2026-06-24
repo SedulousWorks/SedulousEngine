@@ -28,6 +28,13 @@ class SDL3Shell : IShell
 		if (mInitialized)
 			return .Err;
 
+		// Default SDL eats the first click that activates a window so
+		// it isn't delivered to whatever was under the cursor. For an
+		// editor with dockable panels (and any in-window control UI)
+		// that means every refocus costs an extra click. Opt in to
+		// pass-through so the activating click reaches the UI.
+		SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
+
 		// Initialize SDL subsystems
 		if (!SDL_Init(.SDL_INIT_VIDEO | .SDL_INIT_AUDIO | .SDL_INIT_EVENTS | .SDL_INIT_GAMEPAD))
 		{
