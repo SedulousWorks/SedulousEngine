@@ -61,7 +61,24 @@ class PhysicsComponentManager : ComponentManager<RigidBodyComponent>, IContactLi
 
 	protected override void OnRegisterUpdateFunctions()
 	{
+		// Body creation runs in PostTransform (after UpdateTransforms has
+		// propagated world matrices) - NOT in OnComponentInitialized, which
+		// fires from BeginFrame before any transform pass. Reading world
+		// matrices any earlier returns Identity and lands every freshly
+		// initialised body at the origin.
+		RegisterUpdate(.PostTransform, new => CreatePendingBodies, 0, simulationOnly: false);
 		RegisterFixedUpdate(new => FixedUpdatePhysics);
+	}
+
+	private void CreatePendingBodies(float deltaTime)
+	{
+		if (mPhysicsWorld == null) return;
+		for (let comp in ActiveComponents)
+		{
+			if (!comp.IsActive) continue;
+			if (comp.NeedsBodyCreation)
+				CreatePhysicsBody(comp);
+		}
 	}
 
 	private void FixedUpdatePhysics(float deltaTime)
@@ -70,8 +87,9 @@ class PhysicsComponentManager : ComponentManager<RigidBodyComponent>, IContactLi
 		let scene = Scene;
 		if (scene == null) return;
 
-		// 1. Safety net: create bodies for any components that missed initialization
-		// (e.g., deserialization edge cases). Normal path uses OnComponentInitialized.
+		// 1. Safety net: catch any bodies whose components were added
+		// mid-FixedUpdate (between PostTransform passes). Normal path lands
+		// in CreatePendingBodies once per frame.
 		for (let comp in ActiveComponents)
 		{
 			if (!comp.IsActive) continue;
@@ -115,14 +133,6 @@ class PhysicsComponentManager : ComponentManager<RigidBodyComponent>, IContactLi
 				Scale = currentTransform.Scale
 			});
 		}
-	}
-
-	/// Called automatically after properties are set, before the first FixedUpdate.
-	/// Creates the physics body from the component's configured Shape + BodyType.
-	protected override void OnComponentInitialized(RigidBodyComponent comp)
-	{
-		if (comp.NeedsBodyCreation && mPhysicsWorld != null)
-			CreatePhysicsBody(comp);
 	}
 
 	protected override void OnComponentDestroyed(RigidBodyComponent comp)
