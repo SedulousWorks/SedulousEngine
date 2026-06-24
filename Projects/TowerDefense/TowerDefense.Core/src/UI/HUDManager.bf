@@ -217,7 +217,7 @@ class HUDManager
 		}
 	}
 
-	public void Shutdown(MessageBus bus)
+	public void Shutdown(MessageBus bus, RootView root = null)
 	{
 		mTowerInfo.Shutdown(bus);
 
@@ -236,6 +236,16 @@ class HUDManager
 		// closure (the field destructor only catches the most recent set).
 		delete StartWaveCallback; StartWaveCallback = null;
 		delete SetSpeedCallback;  SetSpeedCallback = null;
+
+		// Detach + delete our root from the screen view tree. The next
+		// Setup creates a fresh DockLayout; without removing the old
+		// one it stays attached, drawn underneath, and on each cycle
+		// another ghost layer stacks up.
+		if (root != null && mRoot != null)
+		{
+			root.RemoveView(mRoot, true);
+			mRoot = null;
+		}
 	}
 
 	private void AddTowerButton(FlexLayout layout, TowerType type, StringView name, TowerPlacement placement, StringView previewDir)

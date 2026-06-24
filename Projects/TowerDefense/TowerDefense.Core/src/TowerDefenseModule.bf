@@ -669,13 +669,18 @@ class TowerDefenseModule : IApplicationModule
 		mParticleEffects.Shutdown();
 		mGameAudio.Shutdown();
 
-		// Clean up UI message subscriptions
+		// Clean up UI subscriptions AND detach UI views from the screen
+		// view tree. Each UI's Setup re-creates its root panel; without
+		// removing the prior one from EngineUISubsystem.ScreenView.Root
+		// every play/stop cycle stacks another ghost overlay on top.
 		let messaging = host.Context.GetSubsystem<MessagingSubsystem>();
 		let bus = messaging?.Bus;
-		mHUD.Shutdown(bus);
-		mGameOverUI.Shutdown(bus);
-		mPauseUI.Shutdown();
-		mMainMenu.Shutdown();
+		let uiSub = host.Context.GetSubsystem<EngineUISubsystem>();
+		let screenRoot = uiSub?.ScreenView?.Root;
+		mHUD.Shutdown(bus, screenRoot);
+		mGameOverUI.Shutdown(bus, screenRoot);
+		mPauseUI.Shutdown(screenRoot);
+		mMainMenu.Shutdown(screenRoot);
 
 		mModels.Shutdown();
 

@@ -80,11 +80,18 @@ class MainMenuUI
 		mRoot.Visibility = .Gone;
 	}
 
-	public void Shutdown()
+	public void Shutdown(RootView root = null)
 	{
 		// Release the per-launch callback closure so the next OnLaunch's
-		// Setup doesn't orphan it. View-tree ownership of mRoot handles
-		// itself when the root view is destroyed.
+		// Setup doesn't orphan it.
 		delete OnStartGame; OnStartGame = null;
+
+		// Detach + delete our root from the screen view tree so the next
+		// Setup doesn't stack a fresh overlay on top of the old one.
+		if (root != null && mRoot != null)
+		{
+			root.RemoveView(mRoot, true);
+			mRoot = null;
+		}
 	}
 }

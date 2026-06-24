@@ -131,7 +131,7 @@ class GameOverUI
 		mRoot.Visibility = .Gone;
 	}
 
-	public void Shutdown(MessageBus bus)
+	public void Shutdown(MessageBus bus, RootView root = null)
 	{
 		if (bus != null)
 			bus.Unsubscribe(mGameOverSub);
@@ -141,5 +141,13 @@ class GameOverUI
 		// closures are orphaned (field destructor only catches the last set).
 		delete OnRestart;  OnRestart = null;
 		delete OnMainMenu; OnMainMenu = null;
+
+		// Detach + delete our root from the screen view tree so the next
+		// Setup doesn't stack a fresh overlay on top of the old one.
+		if (root != null && mRoot != null)
+		{
+			root.RemoveView(mRoot, true);
+			mRoot = null;
+		}
 	}
 }

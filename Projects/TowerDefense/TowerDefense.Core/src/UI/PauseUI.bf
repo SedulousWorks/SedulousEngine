@@ -75,12 +75,19 @@ class PauseUI
 		mRoot.Visibility = .Gone;
 	}
 
-	public void Shutdown()
+	public void Shutdown(RootView root = null)
 	{
 		// Release per-launch callback closures so the next OnLaunch's
-		// Setup doesn't orphan them. View-tree ownership of mRoot handles
-		// itself when the root view is destroyed.
+		// Setup doesn't orphan them.
 		delete OnResume;  OnResume = null;
 		delete OnMainMenu; OnMainMenu = null;
+
+		// Detach + delete our root from the screen view tree so the next
+		// Setup doesn't stack a fresh overlay on top of the old one.
+		if (root != null && mRoot != null)
+		{
+			root.RemoveView(mRoot, true);
+			mRoot = null;
+		}
 	}
 }
