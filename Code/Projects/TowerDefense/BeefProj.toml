@@ -2,7 +2,6 @@ FileVersion = 1
 
 [Project]
 Name = "TowerDefense"
-StartupObject = "TowerDefense.Program"
 
 [Dependencies]
 corlib = "*"

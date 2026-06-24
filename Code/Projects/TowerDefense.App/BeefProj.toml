@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "TowerDefense.App"
+StartupObject = "TowerDefense.Program"
+
+[Dependencies]
+corlib = "*"
+TowerDefense = "*"
