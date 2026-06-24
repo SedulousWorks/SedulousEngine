@@ -575,6 +575,87 @@ class TowerDefenseModule : IApplicationModule
 			outName.Set(fileName);
 	}
 
+	// ==================== Per-frame tick ====================
+
+	public void OnUpdate(IApplicationHost host, float deltaTime)
+	{
+		if (mScene == null)
+			return;
+
+		// Clean up expired particle effects
+		mParticleEffects.Update(deltaTime);
+
+		let shell = host.Shell;
+		if (shell == null) return;
+		let keyboard = shell.InputManager.Keyboard;
+		let mouse = shell.InputManager.Mouse;
+
+		// Camera controls (always available except menu)
+		if (mGameSub.Phase != .MainMenu)
+		{
+			mCamera.Update(deltaTime, keyboard, mouse);
+			mCamera.ApplyToScene(mScene);
+		}
+
+		// Pause toggle (P or Escape during gameplay)
+		if (keyboard.IsKeyPressed(.P) || keyboard.IsKeyPressed(.Escape))
+		{
+			if (mGameSub.IsGameplayPhase)
+			{
+				mGameSub.PauseGame();
+				let uiSub = host.Context.GetSubsystem<EngineUISubsystem>();
+				if (uiSub?.ScreenView != null)
+					mPauseUI.Show();
+			}
+			else if (mGameSub.Phase == .Paused)
+			{
+				mGameSub.ResumeGame();
+				mPauseUI.Hide();
+			}
+		}
+
+		// Gameplay input (active gameplay phases only)
+		if (mGameSub.IsGameplayPhase)
+		{
+			// Space to start next wave
+			if (keyboard.IsKeyPressed(.Space) && (mGameSub.Phase == .WaitingToStart || mGameSub.Phase == .WavePaused))
+				StartWave();
+
+			// Tower selection (1-4 keys, 0 to deselect)
+			if (keyboard.IsKeyPressed(.Num1)) { mTowerPlacement.SelectedType = .Ballista; }
+			if (keyboard.IsKeyPressed(.Num2)) { mTowerPlacement.SelectedType = .Cannon; }
+			if (keyboard.IsKeyPressed(.Num3)) { mTowerPlacement.SelectedType = .Catapult; }
+			if (keyboard.IsKeyPressed(.Num4)) { mTowerPlacement.SelectedType = .Turret; }
+			if (keyboard.IsKeyPressed(.Num0)) { mTowerPlacement.SelectedType = null; }
+
+			// Tower placement (mouse click on grid). Polls Shell.Mouse - in
+			// the editor that's window-space coordinates, so clicks won't
+			// align with the page viewport until we abstract IMouse per
+			// host. Tracked under Editor Roadmap Phase 6.
+			mTowerPlacement.Update(mouse, mScene, mGameSub, mGameSub.TowerMgr, mCamera.CameraEntity);
+
+			// Debug draws + health bars target the scene's pipeline-specific
+			// DebugDraw so they show up wherever the scene is being rendered
+			// (the standalone swapchain pipeline OR the editor's
+			// GameEditorPage pipeline).
+			let sceneRenderer = host.Context.GetSubsystemByInterface<ISceneRenderer>();
+			let pipeline = sceneRenderer?.GetPipeline(mScene);
+			if (pipeline?.DebugDraw != null)
+			{
+				mTowerPlacement.DrawDebug(pipeline.DebugDraw, mGameSub);
+
+				// Health bars - billboard using camera vectors
+				let offsetY = mCamera.Zoom * Math.Cos(mCamera.ViewAngle);
+				let offsetZ = mCamera.Zoom * Math.Sin(mCamera.ViewAngle);
+				let camPos = mCamera.LookTarget + Vector3(0, offsetY, offsetZ);
+				let camFwd = Vector3.Normalize(mCamera.LookTarget - camPos);
+				let camRight = Vector3.Normalize(Vector3.Cross(camFwd, .(0, 1, 0)));
+				let camUp = Vector3.Cross(camRight, camFwd);
+				mGameSub.EnemyMgr?.DrawHealthBars(pipeline.DebugDraw, camRight, camUp);
+			}
+		}
+	}
+
 	// ==================== Exit (mirror of OnLaunch) ====================
 
 	public void OnExit(IApplicationHost host)
