@@ -306,6 +306,8 @@ class EditorApplication : Application, IDockableWindowHost
 		mEditorContext.Thumbnails = new ThumbnailService(mEditorContext, mEditorLogger);
 		mEditorContext.Shell = Shell;
 		mEditorContext.ResourceSystem = mResourceSystem;
+		mEditorContext.Module = mModule;
+		mEditorContext.ApplicationHost = mHost;
 
 		// Surface the builtin mount entry to panels (asset browser, etc.).
 		// The mount itself is owned by the base Application class; we just
@@ -767,15 +769,26 @@ class EditorApplication : Application, IDockableWindowHost
 		viewMenu.AddItem("Console", new () => { /* TODO: toggle console panel */ });
 		viewMenu.AddItem("Asset Browser", new () => { /* TODO: toggle assets panel */ });
 
-		// Game menu - only meaningful when an application module is loaded.
-		// Phase 6A: opens the skeleton page. Phase 6B will gate on Module
-		// presence and fire OnLaunch / OnExit around it.
+		// Game menu - opens the Game page in idle state. The page's own
+		// toolbar Play/Stop buttons drive module.OnLaunch / OnExit. Keeping
+		// page presence separate from running state means editor-layout
+		// restore doesn't auto-launch gameplay.
 		let gameMenu = menuBar.AddMenu("Game");
-		gameMenu.AddItem("Play Game", new () => OnPlayGame());
+		gameMenu.AddItem("Open Game", new () => OnOpenGamePage());
 	}
 
-	private void OnPlayGame()
+	private void OnOpenGamePage()
 	{
+		// Asset-only editor sessions are fully supported - Open Game is a
+		// no-op when no module is loaded. The Game menu item stays visible
+		// so users see the feature exists; first cut just logs and bails.
+		if (mModule == null)
+		{
+			mEditorLogger.Log(.Information,
+				"Open Game: no application module loaded - editor is running in asset-only mode.");
+			return;
+		}
+
 		// If a Game page is already open, activate it instead of double-opening.
 		for (let page in mEditorContext.PageManager.OpenPages)
 		{

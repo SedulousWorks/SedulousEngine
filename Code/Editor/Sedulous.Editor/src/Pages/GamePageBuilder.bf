@@ -10,7 +10,7 @@ using Sedulous.Editor.Core;
 using Sedulous.Engine.Render;
 
 /// Builds the internal layout for a GameEditorPage:
-///   Toolbar (Stop)
+///   Toolbar (Play / Stop toggle, status text)
 ///   Viewport (whole-game viewport, populated in Phase 6C)
 ///
 /// Per page-layout convention each editor page lays out independently - this
@@ -25,23 +25,27 @@ static class GamePageBuilder
 
 		// === Toolbar ===
 		let toolbar = new Toolbar();
-		let stopBtn = toolbar.AddButton("Stop Game");
-		stopBtn.OnClick.Add(new [=page, =editorContext] (btn) => {
-			// Close deletes this button mid-dispatch. Defer through the
-			// UI context's mutation queue so InputManager.DispatchMouseDown
-			// doesn't dereference a freed view on unwind.
-			let ctx = btn.Context;
-			ctx?.MutationQueue.QueueAction(new [=] () => {
-				editorContext.PageManager.Close(page);
-			});
+		let playStopBtn = toolbar.AddButton(page.IsRunning ? "Stop" : "Play");
+		playStopBtn.OnClick.Add(new [=page] (btn) => {
+			if (page.IsRunning) page.StopGame();
+			else page.PlayGame();
 		});
+
+		// Keep the button label in sync with game state. Page fires this
+		// from PlayGame / StopGame after the lifecycle transition completes
+		// so the label always reflects the just-applied state.
+		page.OnGameStateChanged.Add(new [=playStopBtn] (p) => {
+			playStopBtn.SetText(p.IsRunning ? "Stop" : "Play");
+		});
+
 		container.AddView(toolbar, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Wrap
 		});
 
 		// === Viewport ===
-		// Phase 6A: empty viewport. Phase 6C wires the OnRender callback up to
-		// sceneRenderer.RenderScene with the module's RuntimeScene.
+		// Phase 6A/B: empty viewport. Phase 6C wires the OnRender callback
+		// up to sceneRenderer.RenderScene with the module's RuntimeScene
+		// (only renders when page.IsRunning).
 		let viewportView = new ViewportView();
 		viewportView.Initialize(device, vgRenderer);
 		container.AddView(viewportView, new FlexLayout.LayoutParams() {
