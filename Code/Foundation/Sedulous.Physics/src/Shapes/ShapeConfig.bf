@@ -1,4 +1,4 @@
-namespace Sedulous.Engine.Physics;
+namespace Sedulous.Physics;
 
 using Sedulous.Core.Mathematics;
 using System;
