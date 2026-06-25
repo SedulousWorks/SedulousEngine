@@ -8,6 +8,7 @@ using Sedulous.Engine.Core;
 using Sedulous.Engine.Core.Resources;
 using Sedulous.Engine.Render;
 using Sedulous.Geometry.Tooling.Resources;
+using Sedulous.Images.STB;
 using Sedulous.Materials.Resources;
 using Sedulous.Renderer;
 using Sedulous.Resources;
@@ -94,6 +95,18 @@ class BootstrapModule : IApplicationModule
 
 		let sceneSub = host.Context.GetSubsystem<SceneSubsystem>();
 		let resources = host.ResourceSystem;
+
+		// Register the STB-backed image loader so the FBX importer can
+		// decode PNG / JPG / TGA textures referenced from the FBX files.
+		// Without this, ImageLoaderFactory.LoadImage returns Err, every
+		// ImportedTexture's PixelData stays null, TextureResourceConverter
+		// returns null, and the material's texture refs collapse to the
+		// "texture_0" GUID-zero fallback (no texture written to disk and
+		// the material is dangling at runtime). EngineApplication doesn't
+		// register an image loader by default; the editor calls Initialize
+		// in its own startup, so the same omission used to bite first-run
+		// standalone TowerDefense too.
+		STBImageLoader.Initialize();
 
 		// Import all FBX models from the shared Kenney sample kit.
 		let assetPath = scope String();
