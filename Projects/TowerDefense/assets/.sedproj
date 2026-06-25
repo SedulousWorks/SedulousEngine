@@ -2,12 +2,9 @@ Arr_ %Settings {
 	int32 %_count {0}
 }
 Arr_ %OpenPages {
-	int32 %_count {2}
+	int32 %_count {1}
 	Obj_ {
 		string %uri {"project://gamescene.scene"}
 	}
-	Obj_ {
-		string %uri {"project://project_settings.oddl"}
-	}
 }
-int32 %ActivePageIndex {1}
+int32 %ActivePageIndex {0}

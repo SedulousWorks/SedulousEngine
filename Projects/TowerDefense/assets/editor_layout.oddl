@@ -4,15 +4,12 @@ int32 %direction {1}
 Obj_ %first {
 	int32 %type {1}
 	Arr_ %panels {
-		int32 %_count {2}
+		int32 %_count {1}
 		Obj_ {
 			string %id {"page:project://gamescene.scene"}
 		}
-		Obj_ {
-			string %id {"page:project://project_settings.oddl"}
-		}
 	}
-	int32 %activeTab {1}
+	int32 %activeTab {0}
 }
 Obj_ %second {
 	int32 %type {0}
