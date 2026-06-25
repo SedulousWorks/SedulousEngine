@@ -331,6 +331,76 @@ shader variants needed. Renderer does not reference the animation project.
 
 **Dependencies:** AnimationSubsystem needs to provide bone poses. Shader + component can be built independently.
 
+### 8.9 - Rework: VS-side skinning ("Flax-style"), compute path retired
+
+Shipped on `anim_opt2`. The compute pre-skin path (8.1-8.8) is gone;
+skinning now runs inside every vertex shader (forward, depth, shadow,
+probe capture, pick) instead of pre-writing a fully-skinned VBO. Bone
+matrices live in a single global `StructuredBuffer<BoneMatrix>` bound
+at frame set 0; per-draw bone-buffer offsets ride on the `DataOffsets`
+vertex attribute (location 5, `.y` = current, `.z` = previous-frame
+for motion vectors). Source vertices stay rest-pose; joints and
+weights sit at vertex locations 6 and 7. Compute shaders +
+`SkinningSystem` are deleted, not gated.
+
+**Why:** simpler memory model (no per-instance output VBOs +
+sub-allocator + RW barriers), per-bone motion-vector support comes for
+free (compute pre-skin could only do object-level motion vectors), and
+the renderer no longer has to manage a compute pass + its read/write
+sync against the regular draw stream.
+
+**Trade-off:** the VS skins per pass (forward + shadow + depth +
+probe + pick) instead of once per frame. Hidden on desktop; matters on
+tiled mobile GPUs.
+
+#### Portability watchpoints (audit 2026-06-25)
+
+Pre-merge audit of `anim_opt2` against future WebGPU / WASM / Android
+targets. No blockers found. Watchpoints worth tracking:
+
+- **VS storage-buffer reads.** `BoneMatrices` is a
+  `StructuredBuffer<BoneMatrix>` read from the vertex shader.
+  WebGPU 1.0 and recent Adreno/Mali handle this; some older mobile
+  drivers stall on VS storage-buffer access patterns. If a mobile
+  regression surfaces, the mitigation is a compute pre-skin prepass
+  behind a runtime / GPU-vendor flag - re-introduce
+  `SkinningSystem` (deleted but the design + shader are recoverable
+  from `anim_opt`) writing an intermediate skinned-VBO, then the
+  per-pass VS reads that instead of rest-pose + bones. Same shape as
+  the old 8.1-8.8 path but isolated as an optional optimization.
+
+- **Multi-pass VS cost.** Forward + shadow + depth prepass + probe
+  capture + pick each repeat the four-bone blend. On tiled mobile this
+  compounds. Same mitigation as above: optional compute pre-skin
+  prepass when the device benefits from it.
+
+- **PickPass DXC location-packing workaround.** The pick shader's
+  skinned variant places joints / weights at vertex locations 5 / 6
+  (not 6 / 7 like forward / depth) because pick isn't instanced and
+  has no `DataOffsets` attribute at location 5. DXC packs SPIR-V
+  locations by declaration order, not by the `TEXCOORDN` number, so
+  the pick path needs a custom vertex layout (`PickPass.bf` around
+  the skinned-pipeline creation). Works today; **re-verify when WGSL
+  shaders land for WebGPU** since WGSL's location-binding rules
+  differ. Pick-pass layout may need adjustment for that backend.
+
+- **Bone pool overflow.** Pool initialises at ~64 MB (fits ~16k
+  skeletons at ~30 bones × 2 frames). Overflow logs once and silently
+  drops skinning (T-pose). Asymmetric vs the old compute path: same
+  cap, but the old path had the same failure mode so it's not a
+  regression. If a real game exceeds this, implement deferred pool
+  growth (reallocate + rebind, ~500 LOC).
+
+**Confirmed non-issues:** bind group count (3 of 4 used), vertex
+attribute locations (8 of 16 used), descriptor indexing (not
+required), push constants (not used in skinning - per-draw offsets
+ride on a vertex attribute), shader intrinsics (standard HLSL only),
+joint-index packing (uint16 × 4 in uint32 × 2 - portable).
+
+**Branch hygiene:** `anim_opt` (the pre-rework branch) is kept around
+as the resurrection target for the compute pre-skin code if mobile
+profiling demands it. Don't delete it.
+
 ## Phase 9: Decals
 
 ### 9.1 - Decal Pass
