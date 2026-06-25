@@ -29,6 +29,12 @@ static class InspectorCodegen
 			categoryName.RemoveFromEnd(8);
 		body.AppendF($"\tdesc.BeginCategory(\"{categoryName}\");\n");
 
+		// Track the currently-open category so per-field [Category("Sub")]
+		// attributes can pop the type-level group and start their own
+		// expander. Fields without [Category] roll back into the default
+		// group so authors can keep simple components flat.
+		String currentCategory = scope .(categoryName);
+
 		for (let field in type.GetFields())
 		{
 			if (!field.IsInstanceField || field.DeclaringType != type)
@@ -38,6 +44,23 @@ static class InspectorCodegen
 				continue;
 
 			let ft = field.FieldType;
+
+			// Switch category groups if this field carries [Category("X")]
+			// and X differs from the currently-open group. Categories
+			// only group when fields with the same name are adjacent in
+			// source order - codegen does not re-sort.
+			String fieldCategory = scope .(categoryName);
+			if (field.HasCustomAttribute<CategoryAttribute>())
+			{
+				let catAttr = field.GetCustomAttribute<CategoryAttribute>().Value;
+				if (catAttr.Name != null) fieldCategory.Set(catAttr.Name);
+			}
+			if (fieldCategory != currentCategory)
+			{
+				body.Append("\tdesc.EndCategory();\n");
+				body.AppendF($"\tdesc.BeginCategory(\"{fieldCategory}\");\n");
+				currentCategory.Set(fieldCategory);
+			}
 
 			// Read [Property] editor hint (Default / Color / Resource / Slider).
 			let propAttr = field.GetCustomAttribute<PropertyAttribute>().Value;
