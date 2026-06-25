@@ -32,7 +32,7 @@ using Sedulous.Renderer.IBL;
 ///
 /// Does NOT own swapchain, frame pacing, or presentation. The application owns those and
 /// calls RenderScene() with an encoder and output targets, then handles blit + overlays + present.
-class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer, IScreenRenderer
+class RenderSubsystem : Subsystem, ISceneAware, ISceneRenderer, IScreenRenderer
 {
 	// Set by EngineApplication before context startup
 	private IDevice mDevice;
@@ -1106,24 +1106,6 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer, IS
 		return pipeline;
 	}
 
-	// ==================== IWindowAware ====================
-
-	public void OnWindowResized(IWindow window, int32 width, int32 height)
-	{
-		// DISABLED 2026-06-25 - pipeline size is driven by RenderScene's
-		// (w, h) args now (per-target-resolution decoupling in
-		// EngineApplication). The lazy resize inside RenderScene picks
-		// up size changes on the first frame after a swapchain resize, so
-		// the resize event no longer needs to push window dims into the
-		// pipeline. Verifying for regressions before deleting the IWindowAware
-		// interface impl entirely.
-		//
-		// if (width == 0 || height == 0 || mDevice == null)
-		// 	return;
-		//
-		// for (let kv in mScenePipelines)
-		// 	kv.value.OnResize((uint32)width, (uint32)height);
-	}
 
 	// ==================== IScreenRenderer ====================
 

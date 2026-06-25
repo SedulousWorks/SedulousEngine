@@ -1046,18 +1046,13 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 		case .CloseRequested:
 			Exit();
 		case .Resized:
-			// Resize swapchain and output targets
+			// Resize swapchain and output targets. Subsystems no longer get
+			// a window-resize notification: render pipelines are sized by
+			// each RenderScene call's (w, h) and the UI canvas is sized by
+			// host-pushed RenderSize / DpiScale - both pull current values
+			// from the host every frame, so an event-time dispatch would
+			// just be redundant.
 			ResizeSwapChain();
-
-			// Notify subsystems (pipeline resize, etc.)
-			if (mContext != null)
-			{
-				for (let subsystem in mContext.Subsystems)
-				{
-					if (let windowAware = subsystem as IWindowAware)
-						windowAware.OnWindowResized(window, window.Width, window.Height);
-				}
-			}
 		default:
 		}
 	}

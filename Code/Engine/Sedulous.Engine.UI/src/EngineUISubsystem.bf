@@ -21,7 +21,7 @@ using Sedulous.Engine.Render;
 /// invoked from a single shared overlay render pass after the 3D
 /// scene blit.
 /// World-space: UIComponentManager per scene, renders to textures displayed as sprites.
-class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IScreenOverlay
+class EngineUISubsystem : Subsystem, ISceneAware, IScreenOverlay
 {
 	public override int32 UpdateOrder => 400;
 
@@ -656,17 +656,6 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IScreenOverlay
 		let rayPos = Vector3(nearWorld.X, nearWorld.Y, nearWorld.Z);
 		let rayDir = Vector3.Normalize(.(farWorld.X - nearWorld.X, farWorld.Y - nearWorld.Y, farWorld.Z - nearWorld.Z));
 		return .(rayPos, rayDir);
-	}
-
-	// === IWindowAware ===
-
-	public void OnWindowResized(IWindow window, int32 width, int32 height)
-	{
-		// DISABLED 2026-06-25 - ScreenUIView already pulled its viewport from
-		// each Render call's width/height parameters; with RenderSize / DpiScale
-		// now host-pushed, there's no remaining reason for this subsystem to be
-		// IWindowAware. Verifying for regressions before deleting the
-		// interface impl entirely.
 	}
 
 	// === ISceneAware ===
