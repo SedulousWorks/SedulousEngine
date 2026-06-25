@@ -5,6 +5,7 @@ using System.Collections;
 using Sedulous.RHI;
 using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
+using Sedulous.Engine.App;
 using Sedulous.Shell;
 using Sedulous.Shell.Input;
 using Sedulous.Shaders;
@@ -88,6 +89,21 @@ class EditorApplication : Application, IDockableWindowHost
 	/// Working directory at startup. Project modules use this to resolve
 	/// per-project content directories.
 	public StringView RuntimeDirectory => mRuntimeDirectory;
+
+	/// Per-project assets directory for the currently-open project.
+	/// Editor convention is that the `.sedproj` file lives inside the
+	/// assets folder, so `EditorProject.ProjectDirectory` already IS the
+	/// assets dir - we return it as-is. Mirror of
+	/// EngineApplication.ProjectAssetDirectory so module code reads the
+	/// right path through IApplicationHost regardless of host.
+	public StringView ProjectAssetDirectory
+	{
+		get
+		{
+			if (mProject == null) return "";
+			return mProject.ProjectDirectory;
+		}
+	}
 
 	/// Returns the first running GameEditorPage, or null if none is
 	/// playing. EditorApplicationHost uses this to route the module's
@@ -590,6 +606,15 @@ class EditorApplication : Application, IDockableWindowHost
 		// Point the thumbnail disk cache at this project's .editor/thumbnails/.
 		mEditorContext.Thumbnails?.SetProjectDirectory(projectDir);
 
+		// Load project_settings.oddl from the project's assets dir, if
+		// present. Standalone reads the same file at boot via
+		// EngineApplication; the editor's "Project Target" preview mode
+		// reads this same data, so both stay in sync. Missing file is
+		// silent - ProjectSettings keeps its in-memory defaults.
+		mEditorContext.ProjectSettings = .();
+		ProjectSettingsIO.Load(ProjectAssetDirectory,
+			ResourceSystem.SerializerProvider, ref mEditorContext.ProjectSettings).IgnoreError();
+
 		if (mProjectIndex != null)
 		{
 			ResourceSystem.RemoveIndex(mProjectIndex);
@@ -710,9 +735,11 @@ class EditorApplication : Application, IDockableWindowHost
 		let consolePanel = dockManager.AddPanel("Console", mLogView);
 		consolePanel.SetPersistenceId("console");
 
-		// Status bar
+		// Status bar. Publish the section label onto EditorContext so
+		// pages (e.g. ProjectSettingsPage on save) can post transient
+		// status without reaching for the shell themselves.
 		let statusBar = new StatusBar();
-		statusBar.AddSection("Ready");
+		mEditorContext.StatusLabel = statusBar.AddSection("Ready");
 		shell.AddView(statusBar, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Wrap
 		});
@@ -808,6 +835,12 @@ class EditorApplication : Application, IDockableWindowHost
 		// restore doesn't auto-launch gameplay.
 		let gameMenu = menuBar.AddMenu("Game");
 		gameMenu.AddItem("Open Game", new () => OnOpenGamePage());
+
+		// Project menu - per-project authoring surfaces that aren't tied
+		// to a specific asset. Currently just the Project Settings panel
+		// (target resolution + fit mode); future additions can sit here too.
+		let projectMenu = menuBar.AddMenu("Project");
+		projectMenu.AddItem("Project Settings", new () => OnOpenProjectSettings());
 	}
 
 	private void OnOpenGamePage()
@@ -837,6 +870,36 @@ class EditorApplication : Application, IDockableWindowHost
 		let screenRenderer = mRuntimeContext.GetSubsystemByInterface<IScreenRenderer>();
 		let content = GamePageBuilder.Build(page, mEditorContext, Device, mVGRenderer,
 			sceneRenderer, screenRenderer);
+		page.SetContentView(content);
+		mEditorContext.PageManager.AddPage(page);
+	}
+
+	private void OnOpenProjectSettings()
+	{
+		// Project Settings authoring is meaningful only when a project is
+		// loaded - asset-only sessions without a project dir would have
+		// nowhere to write the .oddl. Log instead of silently doing
+		// nothing so users know why the menu seems to do nothing.
+		if (mProject == null || !mProject.IsLoaded)
+		{
+			mEditorLogger.Log(.Information,
+				"Project Settings: no project loaded - open a project before editing settings.");
+			return;
+		}
+
+		// Singleton page - activate the existing tab if it's already open
+		// rather than double-stacking.
+		for (let page in mEditorContext.PageManager.OpenPages)
+		{
+			if (page is ProjectSettingsPage)
+			{
+				mEditorContext.PageManager.SetActive(page);
+				return;
+			}
+		}
+
+		let page = new ProjectSettingsPage(mEditorContext);
+		let content = ProjectSettingsPageBuilder.Build(page);
 		page.SetContentView(content);
 		mEditorContext.PageManager.AddPage(page);
 	}
@@ -1450,14 +1513,37 @@ class EditorApplication : Application, IDockableWindowHost
 		mEditorContext.Thumbnails?.Update();
 
 		// Push live render-target dimensions + DPI into the runtime UI
-		// subsystem before its Update runs. Deferred: when a GameEditorPage
-		// is in its IsRunning state, route these to the page's viewport
-		// texture size instead of the chrome window so PIE UI tracks the
-		// play tab. Today this preserves the pre-decoupling visual.
+		// subsystem before its Update runs. When a GameEditorPage is in
+		// its IsRunning state, route to the page's *current* viewport
+		// texture size - covers both fixed-size and layout-tracked
+		// (MatchViewport) modes uniformly so the runtime UI canvas
+		// always matches what the scene renders into. Falls back to
+		// the editor window only when no game is running.
 		if (mRuntimeUISub != null && Window != null)
 		{
-			mRuntimeUISub.RenderSize = .((float)Window.Width, (float)Window.Height);
-			mRuntimeUISub.DpiScale = Window.ContentScale;
+			var canvasW = (float)Window.Width;
+			var canvasH = (float)Window.Height;
+			var dpiScale = Window.ContentScale;
+			let game = RunningGamePage;
+			if (game != null && game.ViewportRenderWidth > 0 && game.ViewportRenderHeight > 0)
+			{
+				canvasW = (float)game.ViewportRenderWidth;
+				canvasH = (float)game.ViewportRenderHeight;
+				// Fixed-resolution previews render at the texture's pixel
+				// grid, so the editor window's HiDPI factor shouldn't
+				// scale UI again. MatchViewport keeps the window scale
+				// because the texture really is at the window's pixel
+				// density. ProjectTarget with a 0/0 setting collapses
+				// to MatchViewport at the viewport layer, so check the
+				// effective size (not just the enum) before forcing
+				// 1.0 - otherwise HiDPI UI shrinks in that fallback.
+				uint32 effW, effH;
+				game.GetEffectivePreviewSize(out effW, out effH);
+				if (effW > 0 && effH > 0)
+					dpiScale = 1.0f;
+			}
+			mRuntimeUISub.RenderSize = .(canvasW, canvasH);
+			mRuntimeUISub.DpiScale = dpiScale;
 		}
 
 		// Tick RuntimeContext (component init, scene updates for editor mode).

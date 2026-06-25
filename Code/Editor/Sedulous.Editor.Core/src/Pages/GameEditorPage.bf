@@ -5,6 +5,7 @@ using System.Collections;
 using Sedulous.UI;
 using Sedulous.Shell.Input;
 using Sedulous.Engine;
+using Sedulous.Engine.App;
 
 /// Hosts a running instance of the loaded IApplicationModule's game inside
 /// the editor as a docked tab. Distinct from per-scene Simulate (the toolbar
@@ -58,6 +59,105 @@ class GameEditorPage : IEditorPage
 	public bool IsRunning => mIsRunning;
 	public bool CanPlay => mModule != null && mHost != null && !mIsRunning;
 
+	/// Preview-resolution selection drives the viewport texture size:
+	///   - MatchViewport: texture auto-tracks the viewport's layout (no fixed size)
+	///   - ProjectTarget: uses EditorContext.ProjectSettings's TargetWidth/Height
+	///   - Custom: uses mCustomPreviewWidth/Height
+	/// Session-only state - not persisted to .sedproj. Fires
+	/// `OnPreviewModeChanged` when the value changes so the page builder
+	/// can apply the new fixed size to its ViewportView.
+	public enum PreviewMode
+	{
+		MatchViewport,
+		ProjectTarget,
+		Custom
+	}
+	public Event<delegate void(GameEditorPage)> OnPreviewModeChanged ~ _.Dispose();
+
+	private PreviewMode mPreviewMode = .ProjectTarget;
+	private uint32 mCustomPreviewWidth = 1920;
+	private uint32 mCustomPreviewHeight = 1080;
+
+	public PreviewMode CurrentPreviewMode
+	{
+		get => mPreviewMode;
+		set
+		{
+			if (mPreviewMode == value) return;
+			mPreviewMode = value;
+			OnPreviewModeChanged(this);
+		}
+	}
+
+	public uint32 CustomPreviewWidth
+	{
+		get => mCustomPreviewWidth;
+		set
+		{
+			if (mCustomPreviewWidth == value) return;
+			mCustomPreviewWidth = value;
+			if (mPreviewMode == .Custom) OnPreviewModeChanged(this);
+		}
+	}
+
+	public uint32 CustomPreviewHeight
+	{
+		get => mCustomPreviewHeight;
+		set
+		{
+			if (mCustomPreviewHeight == value) return;
+			mCustomPreviewHeight = value;
+			if (mPreviewMode == .Custom) OnPreviewModeChanged(this);
+		}
+	}
+
+	/// Resolves the effective render size (width, height) for the
+	/// viewport given the current preview mode + project settings.
+	/// Returns (0, 0) for MatchViewport - caller should release the
+	/// fixed-size override and let auto-resize do its thing.
+	public void GetEffectivePreviewSize(out uint32 width, out uint32 height)
+	{
+		switch (mPreviewMode)
+		{
+		case .MatchViewport:
+			width = 0; height = 0;
+		case .ProjectTarget:
+			let ps = mEditorContext?.ProjectSettings;
+			width = (uint32)Math.Max(0, ps?.TargetWidth ?? 0);
+			height = (uint32)Math.Max(0, ps?.TargetHeight ?? 0);
+		case .Custom:
+			width = mCustomPreviewWidth;
+			height = mCustomPreviewHeight;
+		}
+	}
+
+	/// Live viewport texture dimensions. Updated by the page builder
+	/// from the ViewportView's OnRenderTargetResized event - covers
+	/// both fixed-size and layout-tracked modes uniformly so callers
+	/// (e.g. EditorApplication pushing canvas size to the runtime UI
+	/// subsystem) don't have to special-case MatchViewport.
+	public uint32 ViewportRenderWidth = 0;
+	public uint32 ViewportRenderHeight = 0;
+
+	/// How the page-tab presents the render texture. Letterbox by
+	/// default - preserves the target-resolution aspect with black
+	/// bars on aspect mismatch, the closest preview to what the
+	/// player sees on a real display. Page builder mirrors this onto
+	/// the ViewportView each time it changes.
+	private FitMode mPreviewFitMode = .Letterbox;
+	public Event<delegate void(GameEditorPage)> OnPreviewFitModeChanged ~ _.Dispose();
+
+	public FitMode PreviewFitMode
+	{
+		get => mPreviewFitMode;
+		set
+		{
+			if (mPreviewFitMode == value) return;
+			mPreviewFitMode = value;
+			OnPreviewFitModeChanged(this);
+		}
+	}
+
 	/// Viewport-scoped mouse for the running module. The editor's
 	/// IApplicationHost returns this in place of `Shell.InputManager.Mouse`
 	/// while the page is running. GameInputHandler pumps viewport-local
@@ -93,6 +193,13 @@ class GameEditorPage : IEditorPage
 		mEditorContext = editorContext;
 		mModule = editorContext?.Module;
 		mHost = editorContext?.ApplicationHost;
+
+		// Seed preview fit mode from the loaded project settings so the
+		// page tab matches the project's design intent on first open.
+		// Falls through to the field default (Letterbox) when no project
+		// is loaded or the .oddl file is missing.
+		if (editorContext != null)
+			mPreviewFitMode = editorContext.ProjectSettings.FitMode;
 
 		// Build the mouse / keyboard adapters around the host's shell
 		// devices. Gamepad adapters are built lazily in GetGamepadAdapter

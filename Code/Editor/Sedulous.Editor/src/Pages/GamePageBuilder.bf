@@ -42,6 +42,56 @@ static class GamePageBuilder
 			playStopBtn.SetText(p.IsRunning ? "Stop" : "Play");
 		});
 
+		toolbar.AddSeparator();
+
+		// Preview-resolution dropdown. Drives the viewport texture size
+		// so PIE simulates rendering at the chosen resolution. Sticking
+		// to common presets - Custom dialog is a follow-up.
+		let previewCombo = new ComboBox();
+		previewCombo.AddItem("Match Viewport");
+		previewCombo.AddItem("Project Target");
+		previewCombo.AddItem("1920 x 1080");
+		previewCombo.AddItem("1280 x 720");
+		previewCombo.AddItem("854 x 480");
+		previewCombo.SelectedIndex = (int32)page.CurrentPreviewMode == 0 ? 0 : 1;
+		previewCombo.OnSelectionChanged.Add(new [=page] (cb, idx) =>
+		{
+			switch (idx)
+			{
+			case 0:
+				page.CurrentPreviewMode = .MatchViewport;
+			case 1:
+				page.CurrentPreviewMode = .ProjectTarget;
+			case 2:
+				page.CustomPreviewWidth = 1920;
+				page.CustomPreviewHeight = 1080;
+				page.CurrentPreviewMode = .Custom;
+			case 3:
+				page.CustomPreviewWidth = 1280;
+				page.CustomPreviewHeight = 720;
+				page.CurrentPreviewMode = .Custom;
+			case 4:
+				page.CustomPreviewWidth = 854;
+				page.CustomPreviewHeight = 480;
+				page.CurrentPreviewMode = .Custom;
+			}
+		});
+		toolbar.AddItem(previewCombo);
+
+		// Fit mode dropdown - how the texture maps into the page tab
+		// when aspect ratios differ. Default Letterbox preserves the
+		// project's design aspect; Crop / Stretch are testing modes.
+		let fitCombo = new ComboBox();
+		fitCombo.AddItem("Stretch");
+		fitCombo.AddItem("Letterbox");
+		fitCombo.AddItem("Crop");
+		fitCombo.SelectedIndex = (int32)page.PreviewFitMode;
+		fitCombo.OnSelectionChanged.Add(new [=page] (cb, idx) =>
+		{
+			page.PreviewFitMode = (Sedulous.Engine.App.FitMode)idx;
+		});
+		toolbar.AddItem(fitCombo);
+
 		container.AddView(toolbar, new FlexLayout.LayoutParams() {
 			Width = .Match, Height = .Wrap
 		});
@@ -51,6 +101,42 @@ static class GamePageBuilder
 		viewportView.Initialize(device, vgRenderer);
 		container.AddView(viewportView, new FlexLayout.LayoutParams() {
 			Width = .Match, Grow = 1
+		});
+
+		// Apply the current preview-mode size and stay in sync with future
+		// selections from the dropdown. Page-level state is the source of
+		// truth; the viewport just mirrors it.
+		void applyPreview()
+		{
+			uint32 pw, ph;
+			page.GetEffectivePreviewSize(out pw, out ph);
+			viewportView.SetFixedRenderSize(pw, ph);
+		}
+		applyPreview();
+		page.OnPreviewModeChanged.Add(new [=viewportView, =page] (p) =>
+		{
+			uint32 pw, ph;
+			page.GetEffectivePreviewSize(out pw, out ph);
+			viewportView.SetFixedRenderSize(pw, ph);
+		});
+
+		// Mirror the viewport's live texture dims onto the page so the
+		// editor can push them into the runtime UI subsystem each frame.
+		// Covers both fixed-size and layout-tracked (MatchViewport) modes
+		// without the caller special-casing.
+		viewportView.OnRenderTargetResized.Add(new [=page] (w, h) =>
+		{
+			page.ViewportRenderWidth = w;
+			page.ViewportRenderHeight = h;
+		});
+
+		// Mirror page fit mode onto the viewport. The page-app FitMode
+		// enum and ViewportFitMode have matching ordinals so the cast
+		// works without a switch.
+		viewportView.FitMode = (ViewportFitMode)page.PreviewFitMode;
+		page.OnPreviewFitModeChanged.Add(new [=viewportView, =page] (p) =>
+		{
+			viewportView.FitMode = (ViewportFitMode)page.PreviewFitMode;
 		});
 
 		// Route mouse events the editor dispatches into this viewport

@@ -7,6 +7,7 @@ using Sedulous.Shell;
 using Sedulous.UI.Toolkit;
 using Sedulous.UI;
 using Sedulous.Engine;
+using Sedulous.Engine.App;
 using Sedulous.Engine.Core.Resources;
 using Sedulous.Resources;
 using Sedulous.Core.Logging.Abstractions;
@@ -29,6 +30,12 @@ class EditorContext : IDisposable
 	public EditorProject Project;
 	public EditorAssetCache AssetCache ~ delete _;
 
+	/// Per-project render settings loaded from
+	/// `<ProjectAssetDirectory>/project_settings.oddl` at project open.
+	/// Drives the GameEditorPage "Project Target" preview mode and the
+	/// editor Project Settings panel.
+	public ProjectSettings ProjectSettings;
+
 	// Scene serialization
 	public SceneResourceManager SceneManager;
 	public PrefabResourceManager PrefabManager;
@@ -36,6 +43,13 @@ class EditorContext : IDisposable
 	// UI (editor shell)
 	public DockManager DockManager;
 	public MenuBar MenuBar;
+
+	/// Bottom-of-shell status section the editor draws below the dock.
+	/// Pages call SetStatus to post transient messages ("Project Settings
+	/// saved", "Scene reloaded", etc.). Null in headless contexts and
+	/// before the editor shell has been built; SetStatus is a safe no-op
+	/// in that case so pages don't need to null-check.
+	public Label StatusLabel;
 
 	// Platform services
 	public IDialogService DialogService;
@@ -186,6 +200,13 @@ class EditorContext : IDisposable
 		}
 
 		targetMenu.AddItem(itemName, action);
+	}
+
+	/// Post a transient message to the editor shell's status bar. No-op
+	/// when the shell hasn't built one yet (early startup, headless).
+	public void SetStatus(StringView text)
+	{
+		StatusLabel?.SetText(text);
 	}
 
 	// === Queries ===

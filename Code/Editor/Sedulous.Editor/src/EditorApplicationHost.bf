@@ -31,6 +31,7 @@ class EditorApplicationHost : IApplicationHost
 	public IWindow Window => mEditor.Window;
 	public StringView AssetDirectory => mEditor.AssetDirectory;
 	public StringView AssetCacheDirectory => mEditor.AssetCacheDirectory;
+	public StringView ProjectAssetDirectory => mEditor.ProjectAssetDirectory;
 	public StringView RuntimeDirectory => mEditor.RuntimeDirectory;
 
 	// When a GameEditorPage is running, the module reads through that

@@ -12,11 +12,16 @@ using Sedulous.Editor.Core;
 /// so anything the game's module attached lights up - not just the
 /// screen view.
 ///
-/// Coordinates from the viewport input handler are already viewport-
-/// local pixels, which is what the screen view lays out against - no
-/// transform needed. Events are gated on `page.IsRunning`: when the
-/// game isn't running the runtime UI is empty / partially attached,
-/// and forwarding clicks would only fire stale handlers.
+/// IViewportInputHandler delivers coords in *layout pixels* of the
+/// page tab (e.g. the page is rendered into a 600x400 screen rect).
+/// When the page uses a preview resolution (e.g. 1280x720), the
+/// runtime UI is laid out at 1280x720 - so a click at layout (300, 200)
+/// needs to be scaled to texture (640, 360) before dispatch. The
+/// transform is the inverse of VG.DrawImage's stretch.
+///
+/// Events are gated on `page.IsRunning`: when the game isn't running
+/// the runtime UI is empty / partially attached, and forwarding clicks
+/// would only fire stale handlers.
 ///
 /// Keyboard / gamepad routing isn't wired here yet - `IViewportInputHandler`
 /// only declares mouse callbacks. The editor will need to either capture
@@ -37,28 +42,34 @@ class GameInputHandler : IViewportInputHandler
 	public void OnMouseDown(MouseEventArgs e, ViewportView viewport)
 	{
 		if (!mPage.IsRunning || mUISubsystem == null) return;
-		mUISubsystem.DispatchMouseDown(e.Button, e.X, e.Y, e.Timestamp);
+		float tx, ty;
+		if (!viewport.ScreenToTexture(e.X, e.Y, out tx, out ty)) return;
+		mUISubsystem.DispatchMouseDown(e.Button, tx, ty, e.Timestamp);
 	}
 
 	public void OnMouseUp(MouseEventArgs e, ViewportView viewport)
 	{
 		if (!mPage.IsRunning || mUISubsystem == null) return;
-		mUISubsystem.DispatchMouseUp(e.Button, e.X, e.Y);
+		float tx, ty;
+		if (!viewport.ScreenToTexture(e.X, e.Y, out tx, out ty)) return;
+		mUISubsystem.DispatchMouseUp(e.Button, tx, ty);
 	}
 
 	public void OnMouseMove(MouseEventArgs e, ViewportView viewport)
 	{
 		if (!mPage.IsRunning) return;
-		// Feed viewport-local coords into the page's mouse adapter so
-		// the module's host.Mouse.X/Y reads page-local pixels instead
-		// of window-relative (the texture is a sub-rect of the editor
-		// window). This is independent of UI dispatch - even if the
-		// engine UI subsystem isn't routed yet, the module's per-frame
-		// raycast / tower placement needs the right coords.
+		// Feed texture-space coords into the page's mouse adapter so
+		// the module's host.Mouse.X/Y reads where the cursor lands in
+		// the render target's pixel space (which the module's raycast
+		// / tower placement logic operates on). Independent of UI
+		// dispatch - even with the UI subsystem disconnected, gameplay
+		// code still needs the right coords.
+		float tx, ty;
+		if (!viewport.ScreenToTexture(e.X, e.Y, out tx, out ty)) return;
 		if (mPage.MouseAdapter != null)
-			mPage.MouseAdapter.OnViewportPointerMove(e.X, e.Y);
+			mPage.MouseAdapter.OnViewportPointerMove(tx, ty);
 		if (mUISubsystem != null)
-			mUISubsystem.DispatchMouseMove(e.X, e.Y);
+			mUISubsystem.DispatchMouseMove(tx, ty);
 	}
 
 	public void OnMouseWheel(MouseWheelEventArgs e, ViewportView viewport)
@@ -72,6 +83,10 @@ class GameInputHandler : IViewportInputHandler
 		if (mPage.MouseAdapter != null)
 			mPage.MouseAdapter.OnViewportPointerWheel(e.DeltaX, e.DeltaY);
 		if (mUISubsystem != null)
-			mUISubsystem.DispatchMouseWheel(e.X, e.Y, e.DeltaX, e.DeltaY, e.Modifiers);
+		{
+			float tx, ty;
+			if (viewport.ScreenToTexture(e.X, e.Y, out tx, out ty))
+				mUISubsystem.DispatchMouseWheel(tx, ty, e.DeltaX, e.DeltaY, e.Modifiers);
+		}
 	}
 }
