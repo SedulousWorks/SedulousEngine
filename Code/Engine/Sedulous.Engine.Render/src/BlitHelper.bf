@@ -117,7 +117,11 @@ class BlitHelper : IDisposable
 
 	/// Blits a source texture view to the current render pass.
 	/// The caller must have already begun a render pass targeting the destination.
-	public void Blit(IRenderPassEncoder encoder, ITextureView sourceView, uint32 width, uint32 height, int32 frameIndex)
+	/// `x` / `y` position the blit's content rectangle inside the destination -
+	/// pass non-zero offsets to letterbox / crop. `width` / `height` are the
+	/// content rectangle dimensions; the linear sampler stretches the source
+	/// texture across this rect.
+	public void Blit(IRenderPassEncoder encoder, ITextureView sourceView, int32 x, int32 y, uint32 width, uint32 height, int32 frameIndex)
 	{
 		if (mPipeline == null || sourceView == null)
 			return;
@@ -144,12 +148,18 @@ class BlitHelper : IDisposable
 		{
 			mBindGroups[slot] = bindGroup;
 
-			encoder.SetViewport(0, 0, (float)width, (float)height, 0, 1);
-			encoder.SetScissor(0, 0, width, height);
+			encoder.SetViewport((float)x, (float)y, (float)width, (float)height, 0, 1);
+			encoder.SetScissor(x, y, width, height);
 			encoder.SetPipeline(mPipeline);
 			encoder.SetBindGroup(0, bindGroup, default);
 			encoder.Draw(3, 1, 0, 0);
 		}
+	}
+
+	/// Convenience overload: blit covering the full destination from (0, 0).
+	public void Blit(IRenderPassEncoder encoder, ITextureView sourceView, uint32 width, uint32 height, int32 frameIndex)
+	{
+		Blit(encoder, sourceView, (int32)0, (int32)0, width, height, frameIndex);
 	}
 
 	public void Dispose()

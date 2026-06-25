@@ -637,8 +637,11 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IScreenOverlay
 
 	public void OnWindowResized(IWindow window, int32 width, int32 height)
 	{
-		// ScreenUIView gets its viewport from each Render call's
-		// width/height parameters, so no explicit handling needed here.
+		// DISABLED 2026-06-25 - ScreenUIView already pulled its viewport from
+		// each Render call's width/height parameters; with RenderSize / DpiScale
+		// now host-pushed, there's no remaining reason for this subsystem to be
+		// IWindowAware. Verifying for regressions before deleting the
+		// interface impl entirely.
 	}
 
 	// === ISceneAware ===

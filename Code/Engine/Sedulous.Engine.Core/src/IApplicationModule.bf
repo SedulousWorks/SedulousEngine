@@ -68,6 +68,14 @@ public interface IApplicationHost
 	/// Cache directory under Assets (e.g. compiled shader cache).
 	StringView AssetCacheDirectory { get; }
 
+	/// Per-project assets directory. For standalone, derived from
+	/// RuntimeDirectory via the standard "exe under project root with
+	/// sibling assets/ folder" convention. For the editor's hosted
+	/// module, the currently-open project's assets path. Distinct from
+	/// AssetDirectory (engine-shipped Assets root). May be empty if the
+	/// convention doesn't apply.
+	StringView ProjectAssetDirectory { get; }
+
 	/// Process working directory at startup. For standalone games, the
 	/// project's runtime root. For the editor's hosted module, the
 	/// loaded project's root.

@@ -63,9 +63,14 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 	private uint64[MAX_FRAMES_IN_FLIGHT] mFrameFenceValues;
 	private int32 mFrameIndex;
 
-	// Output targets (application-owned, Pipeline-sized)
+	// Output targets (application-owned, Pipeline-sized). The pipeline
+	// renders into mColorTarget at (mTargetWidth, mTargetHeight); the
+	// final blit stretches / letterboxes / crops onto the swapchain
+	// per mSettings.FitMode.
 	private ITexture mColorTarget;
 	private ITextureView mColorTargetView;
+	private uint32 mTargetWidth;
+	private uint32 mTargetHeight;
 	private BlitHelper mBlitHelper;
 
 	// Cached renderer interfaces
@@ -75,6 +80,13 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 	// Assets
 	private String mAssetDirectory = new .() ~ delete _;
 	private String mAssetCacheDirectory = new .() ~ delete _;
+	// Per-project assets dir, derived from RuntimeDirectory (cwd's parent + "/assets").
+	// Distinct from mAssetDirectory which is the engine's discovered Assets root
+	// (shaders / fonts shipped with the engine). Apps following the standard
+	// layout (exe project nested under project root with sibling "assets/"
+	// folder) get this for free; others can override via Settings or by
+	// reaching past this field. Empty when the convention doesn't apply.
+	private String mProjectAssetDirectory = new .() ~ delete _;
 
 	// Builtin asset mount + identity index (builtin:// scheme).
 	// The mount exposes raw bytes in mAssetDirectory; the index, if a
@@ -163,6 +175,12 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 	/// The discovered asset cache directory path.
 	public StringView AssetCacheDirectory => mAssetCacheDirectory;
 
+	/// Per-project assets directory. For apps following the convention
+	/// "exe project nested under project root with sibling assets/ folder"
+	/// this resolves to `<parent of RuntimeDirectory>/assets`. Empty
+	/// otherwise. Distinct from AssetDirectory (engine-shipped Assets).
+	public StringView ProjectAssetDirectory => mProjectAssetDirectory;
+
 	/// The runtime directory (working directory at startup).
 	/// When running from IDE, this is the project directory (e.g., Code/Projects/TowerDefense).
 	public StringView RuntimeDirectory => mRuntimeDirectory;
@@ -212,6 +230,28 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 		mResourceSystem.EnableHotReload();
 		mResourceSystem.SetSerializerProvider(new OpenDDLSerializerProvider());
 		mResourceSystem.Startup();
+
+		// Auto-load per-project render settings if the file is present in
+		// the project assets dir. Values override the in-code defaults so
+		// the editor's Project Settings panel writes a file standalone
+		// picks up on next boot. Missing file is silent - apps without a
+		// project assets dir (sandbox, samples) just see in-code defaults.
+		if (!mProjectAssetDirectory.IsEmpty)
+		{
+			var projectSettings = ProjectSettings()
+			{
+				TargetWidth = mSettings.TargetWidth,
+				TargetHeight = mSettings.TargetHeight,
+				FitMode = mSettings.FitMode
+			};
+			if (ProjectSettingsIO.Load(mProjectAssetDirectory,
+				mResourceSystem.SerializerProvider, ref projectSettings) case .Ok)
+			{
+				mSettings.TargetWidth = projectSettings.TargetWidth;
+				mSettings.TargetHeight = projectSettings.TargetHeight;
+				mSettings.FitMode = projectSettings.FitMode;
+			}
+		}
 
 		// Load builtin asset registry (primitives, materials, skies)
 		LoadBuiltinRegistry();
@@ -419,6 +459,11 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 		uiSub.Device = mDevice;
 		uiSub.Shell = mShell;
 		uiSub.ShaderSystem = mShaderSystem;
+		// UI overlays render onto the swapchain after the blit (no target-
+		// resolution integration yet - the UI lays out in window space and
+		// overlays on top of the letterbox, not inside it). Re-enabling
+		// target-resolution UI needs a coord-transform adapter for input
+		// to remain consistent; deferred.
 		uiSub.OutputFormat = mSettings.SwapChainFormat;
 		uiSub.FrameCount = MAX_FRAMES_IN_FLIGHT;
 		uiSub.FontService = mFontService;
@@ -470,8 +515,14 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 		if (mDevice.CreateFence(0) case .Ok(let fence))
 			mFrameFence = fence;
 
-		// Output target (HDR, same size as window)
-		CreateOutputTarget((uint32)mWindow.Width, (uint32)mWindow.Height);
+		// Output target (HDR). When TargetWidth/Height are zero (default),
+		// the target tracks the window 1:1 and ResizeSwapChain recreates
+		// it on resize. When non-zero, the target is fixed at that
+		// resolution and survives swapchain resizes - the blit handles
+		// the size mismatch via FitMode.
+		mTargetWidth = mSettings.TargetWidth > 0 ? (uint32)mSettings.TargetWidth : (uint32)mWindow.Width;
+		mTargetHeight = mSettings.TargetHeight > 0 ? (uint32)mSettings.TargetHeight : (uint32)mWindow.Height;
+		CreateOutputTarget(mTargetWidth, mTargetHeight);
 
 		// Blit helper (fullscreen triangle to tonemap HDR -> swapchain)
 		if (mShaderSystem != null)
@@ -566,7 +617,7 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 				for (let scene in sceneSub.ActiveScenes)
 				{
 					mSceneRenderer.RenderScene(scene, encoder, mColorTarget, mColorTargetView,
-						(uint32)mWindow.Width, (uint32)mWindow.Height, mFrameIndex);
+						mTargetWidth, mTargetHeight, mFrameIndex);
 					break; // Render only the first/active scene for now
 				}
 			}
@@ -719,19 +770,82 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 		if (mColorTargetView == null || mBlitHelper == null || !mBlitHelper.IsReady)
 			return;
 
-		// Color target is already transitioned to ShaderRead by RenderScene
-
+		// Color target is already transitioned to ShaderRead by RenderScene.
+		// Clear-load the swapchain so Letterbox produces black bars on
+		// whichever axis the content doesn't fill. Stretch and Crop fully
+		// cover the swapchain so the clear is harmless.
 		ColorAttachment[1] colorAttachments = .(.()
 		{
 			View = mSwapChain.CurrentTextureView,
-			LoadOp = .DontCare,
-			StoreOp = .Store
+			LoadOp = .Clear,
+			StoreOp = .Store,
+			ClearValue = .(0, 0, 0, 1)
 		});
 
 		RenderPassDesc passDesc = .() { ColorAttachments = .(colorAttachments) };
 		let renderPass = encoder.BeginRenderPass(passDesc);
-		mBlitHelper.Blit(renderPass, mColorTargetView, mSwapChain.Width, mSwapChain.Height, mFrameIndex);
+
+		int32 x, y;
+		uint32 w, h;
+		ComputeBlitRect(mTargetWidth, mTargetHeight,
+			mSwapChain.Width, mSwapChain.Height, mSettings.FitMode,
+			out x, out y, out w, out h);
+		mBlitHelper.Blit(renderPass, mColorTargetView, x, y, w, h, mFrameIndex);
+
 		renderPass.End();
+	}
+
+	/// Maps the pipeline output rect into the swapchain rect per FitMode.
+	/// Letterbox shrinks the content to fit while preserving aspect; Crop
+	/// grows the content to cover while preserving aspect (overflow gets
+	/// scissored); Stretch fills the swapchain ignoring aspect.
+	private static void ComputeBlitRect(uint32 srcW, uint32 srcH, uint32 dstW, uint32 dstH,
+		FitMode fitMode, out int32 x, out int32 y, out uint32 w, out uint32 h)
+	{
+		switch (fitMode)
+		{
+		case .Stretch:
+			x = 0; y = 0; w = dstW; h = dstH;
+		case .Letterbox:
+			let srcAspect = (float)srcW / (float)srcH;
+			let dstAspect = (float)dstW / (float)dstH;
+			if (srcAspect > dstAspect)
+			{
+				// Source wider than dest: fit width, bars on top/bottom.
+				w = dstW;
+				h = (uint32)((float)dstW / srcAspect);
+				x = 0;
+				y = (int32)((dstH - h) / 2);
+			}
+			else
+			{
+				// Source taller than dest: fit height, bars on sides.
+				h = dstH;
+				w = (uint32)((float)dstH * srcAspect);
+				y = 0;
+				x = (int32)((dstW - w) / 2);
+			}
+		case .Crop:
+			let srcAspect = (float)srcW / (float)srcH;
+			let dstAspect = (float)dstW / (float)dstH;
+			if (srcAspect > dstAspect)
+			{
+				// Source wider than dest: fit height, content overflows
+				// the left/right edges; scissor on the BlitHelper side
+				// clips to the visible rect.
+				h = dstH;
+				w = (uint32)((float)dstH * srcAspect);
+				y = 0;
+				x = (int32)dstW / 2 - (int32)w / 2;
+			}
+			else
+			{
+				w = dstW;
+				h = (uint32)((float)dstW / srcAspect);
+				x = 0;
+				y = (int32)dstH / 2 - (int32)h / 2;
+			}
+		}
 	}
 
 	private void ResizeSwapChain()
@@ -740,9 +854,17 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 		mDevice.WaitIdle();
 		mSwapChain.Resize((uint32)mWindow.Width, (uint32)mWindow.Height);
 
-		// Recreate output target at new size
-		DestroyOutputTarget();
-		CreateOutputTarget((uint32)mWindow.Width, (uint32)mWindow.Height);
+		// Recreate the output target only when it's tracking the window
+		// (no fixed target resolution configured). With a fixed target,
+		// the pipeline renders at the same resolution regardless of
+		// window size and the blit handles the visual fit.
+		if (mSettings.TargetWidth <= 0 && mSettings.TargetHeight <= 0)
+		{
+			mTargetWidth = (uint32)mWindow.Width;
+			mTargetHeight = (uint32)mWindow.Height;
+			DestroyOutputTarget();
+			CreateOutputTarget(mTargetWidth, mTargetHeight);
+		}
 	}
 
 	// ==================== Platform Init ====================
@@ -1025,6 +1147,22 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 	{
 		let currentDir = Directory.GetCurrentDirectory(.. scope .());
 		mRuntimeDirectory.Set(currentDir);
+
+		// Derive project assets dir from RuntimeDirectory by convention:
+		// `<parent of cwd>/assets`. Apps following the standard layout
+		// (exe project dir nested under project root with sibling
+		// `assets/`) get a non-empty path here. Apps with custom layouts
+		// see an empty ProjectAssetDirectory and are responsible for
+		// their own project asset discovery.
+		let parentOfCwd = Path.GetDirectoryPath(currentDir, .. scope .());
+		if (!parentOfCwd.IsEmpty)
+		{
+			let candidate = scope String();
+			Path.InternalCombine(candidate, parentOfCwd, "assets");
+			if (Directory.Exists(candidate))
+				mProjectAssetDirectory.Set(candidate);
+		}
+
 		String searchDir = scope .(currentDir);
 
 		while (true)
