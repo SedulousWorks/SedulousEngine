@@ -668,14 +668,13 @@ public class NumericField : View, ITextEditHost
 		}
 		else
 		{
-			text.AppendF("{0:F}", mValue);
-			let dotIndex = text.IndexOf('.');
-			if (dotIndex >= 0)
-			{
-				let desiredLen = dotIndex + 1 + mDecimalPlaces;
-				if (text.Length > desiredLen)
-					text.RemoveToEnd(desiredLen);
-			}
+			// Build the format spec dynamically so {0:F4} drives 4 places,
+			// {0:F2} drives 2, etc. The bare {0:F} default is 2 in Beef,
+			// which used to cap values like 0.0005 at "0.00" regardless of
+			// mDecimalPlaces - the trim path below could shorten but never
+			// lengthen the displayed precision.
+			let spec = scope $"{{0:F{mDecimalPlaces}}}";
+			text.AppendF(spec, mValue);
 		}
 		mText.Set(text);
 		mGlyphsDirty = true;
