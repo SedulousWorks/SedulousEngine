@@ -27,9 +27,21 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IScreenOverlay
 
 	// Set by the host before Startup.
 	public IDevice Device;
-	public IWindow Window;
 	public IShell Shell;
 	public ShaderSystem ShaderSystem;
+
+	/// Logical render-target size in pixels. Drives `ScreenView.Root.ViewportSize`,
+	/// so it controls how big the screen UI thinks the canvas is. Host pushes
+	/// this in each frame: standalone sets it to the main window's dimensions;
+	/// the editor's `GameEditorPage` will set it to the play viewport's
+	/// dimensions (deferred - currently still set to editor window for visual
+	/// parity with the pre-decoupling behavior).
+	public Vector2 RenderSize = .Zero;
+
+	/// DPI scale applied to the UI layout. Host pushes this in each frame.
+	/// Defaults to 1.0 so a host that forgets to set it gets a useful unscaled
+	/// layout instead of zero-sized text.
+	public float DpiScale = 1.0f;
 
 	/// Color format the screen view's pipelines are built against.
 	/// Standalone (`EngineApplication`) sets this to the swapchain format;
@@ -159,10 +171,11 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IScreenOverlay
 			mScreenView = new ScreenUIView(mUIContext, Device, OutputFormat,
 				FrameCount, FontService, ShaderSystem);
 
-			// Set initial viewport size from window so dialogs shown before
-			// the first Render call can center correctly.
-			if (Window != null)
-				mScreenView.Root.ViewportSize = .((float)Window.Width, (float)Window.Height);
+			// Seed the initial viewport size so dialogs shown before the first
+			// Update tick can center correctly. The host is expected to have
+			// populated RenderSize before Startup runs.
+			if (RenderSize.X > 0 && RenderSize.Y > 0)
+				mScreenView.Root.ViewportSize = RenderSize;
 
 			// Create world UI render pass (registered with pipeline in OnReady).
 			mWorldUIPass = new WorldUIPass();
@@ -183,9 +196,16 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IScreenOverlay
 	{
 		if (mUIContext == null) return;
 
-		// Sync DPI scale from window.
-		if (Window != null && mScreenView != null)
-			mScreenView.Root.DpiScale = Window.ContentScale;
+		// Sync render-target size + DPI scale from the host. The host pushes
+		// these in each frame; this subsystem no longer reaches into IWindow
+		// directly so the editor can route a viewport-sized canvas without
+		// the runtime UI knowing about the editor's chrome.
+		if (mScreenView != null)
+		{
+			if (RenderSize.X > 0 && RenderSize.Y > 0)
+				mScreenView.Root.ViewportSize = RenderSize;
+			mScreenView.Root.DpiScale = DpiScale;
+		}
 
 		// Build the input priority chain: window UI first, then each active
 		// scene's UISceneModule UIContext, then each scene's billboard

@@ -110,6 +110,7 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 	// implement IApplicationModule and a thin Program.bf wires it up, instead
 	// of subclassing EngineApplication.
 	private IApplicationModule mModule;
+	private EngineUISubsystem mUISub;
 
 	// Timing
 	private Stopwatch mStopwatch = new .() ~ delete _;
@@ -268,6 +269,15 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 			JobSystem.ProcessCompletions();
 			mResourceSystem.Update();
 
+			// Push live window dimensions + DPI scale into the UI subsystem
+			// so its per-frame Update reads current values. Standalone: UI
+			// canvas always tracks the window 1:1.
+			if (mUISub != null && mWindow != null)
+			{
+				mUISub.RenderSize = .((float)mWindow.Width, (float)mWindow.Height);
+				mUISub.DpiScale = mWindow.ContentScale;
+			}
+
 			// BeginFrame runs first - resets per-frame state, polls input,
 			// and initializes components created last frame.
 			mContext.BeginFrame(deltaTime);
@@ -407,12 +417,17 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 
 		let uiSub = new EngineUISubsystem();
 		uiSub.Device = mDevice;
-		uiSub.Window = mWindow;
 		uiSub.Shell = mShell;
 		uiSub.ShaderSystem = mShaderSystem;
 		uiSub.OutputFormat = mSettings.SwapChainFormat;
 		uiSub.FrameCount = MAX_FRAMES_IN_FLIGHT;
 		uiSub.FontService = mFontService;
+		// Standalone: UI canvas IS the window. Seed initial size + scale here
+		// so OnStartup's dialog-centering path picks them up; the per-frame
+		// sync below the main loop keeps them tracking window resizes.
+		uiSub.RenderSize = .((float)mWindow.Width, (float)mWindow.Height);
+		uiSub.DpiScale = mWindow.ContentScale;
+		mUISub = uiSub;
 		mContext.RegisterSubsystem(uiSub);                      //  400
 
 		let renderSub = new RenderSubsystem(mResourceSystem);

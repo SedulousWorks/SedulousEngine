@@ -59,6 +59,7 @@ class EditorApplication : Application, IDockableWindowHost
 	// the engine ones at edit time. Set on the EditorApplication instance
 	// before Run() - the editor does not own / delete this.
 	private IApplicationModule mModule;
+	private Sedulous.Engine.UI.EngineUISubsystem mRuntimeUISub;
 
 	// Adapter that exposes EditorApplication state to project modules via
 	// IApplicationHost (in particular, routing Context to mRuntimeContext
@@ -271,8 +272,14 @@ class EditorApplication : Application, IDockableWindowHost
 
 		let uiSub = new Sedulous.Engine.UI.EngineUISubsystem();
 		uiSub.Device = Device;
-		uiSub.Window = Window;
 		uiSub.Shell = Shell;
+		// Today: runtime UI canvas tracks the editor's main window for visual
+		// parity with pre-decoupling behavior. Deferred: route this to the
+		// running GameEditorPage's viewport dimensions so PIE UI shrinks/grows
+		// with the play tab instead of the chrome window.
+		uiSub.RenderSize = .((float)Window.Width, (float)Window.Height);
+		uiSub.DpiScale = Window.ContentScale;
+		mRuntimeUISub = uiSub;
 		uiSub.ShaderSystem = mShaderSystem;
 		// Game-mode screen UI renders into the GameEditorPage viewport,
 		// which is RGBA16Float (HDR) - the screen-view pipelines must
@@ -1441,6 +1448,17 @@ class EditorApplication : Application, IDockableWindowHost
 
 		// Process queued thumbnail requests (throttled per frame inside Update).
 		mEditorContext.Thumbnails?.Update();
+
+		// Push live render-target dimensions + DPI into the runtime UI
+		// subsystem before its Update runs. Deferred: when a GameEditorPage
+		// is in its IsRunning state, route these to the page's viewport
+		// texture size instead of the chrome window so PIE UI tracks the
+		// play tab. Today this preserves the pre-decoupling visual.
+		if (mRuntimeUISub != null && Window != null)
+		{
+			mRuntimeUISub.RenderSize = .((float)Window.Width, (float)Window.Height);
+			mRuntimeUISub.DpiScale = Window.ContentScale;
+		}
 
 		// Tick RuntimeContext (component init, scene updates for editor mode).
 		mRuntimeContext.BeginFrame(frame.DeltaTime);
