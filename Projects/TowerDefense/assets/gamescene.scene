@@ -53,10 +53,10 @@ Arr_ %Entities {
 			float %Z {10}
 		}
 		Obj_ %Rotation {
-			float %X {-0.366074175}
-			float %Y {0.351360321}
-			float %Z {0.15163289}
-			float %W {0.848258853}
+			float %X {-0.535356581}
+			float %Y {0.454931676}
+			float %Z {0.186461657}
+			float %W {0.686776936}
 		}
 		Obj_ %Scale {
 			float %X {1}
@@ -75,7 +75,7 @@ Arr_ %Entities {
 						float %Y {0.949999988}
 						float %Z {0.850000024}
 					}
-					float %Intensity {1}
+					float %Intensity {2}
 					float %Range {10}
 					float %InnerConeAngle {30}
 					float %OuterConeAngle {45}
@@ -8873,13 +8873,13 @@ Arr_ %Modules {
 				string %_id {"705c0bd8-b8e3-451c-8a19-7cb033cb1e1c"}
 				string %path {"builtin://skies/stylized_sky.texture"}
 			}
-			float %SkyIntensity {0.527423739}
+			float %SkyIntensity {0.723959148}
 			Obj_ %AmbientColor {
-				float %X {0.100000001}
-				float %Y {0.100000001}
-				float %Z {0.150000006}
+				float %X {0}
+				float %Y {0}
+				float %Z {0}
 			}
-			float %Exposure {0.5}
+			float %Exposure {0.150000006}
 		}
 	}
 }

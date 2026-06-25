@@ -101,7 +101,7 @@ Arr_ %Entities {
 				int32 %Version {1}
 				Obj_ %Data {
 					uint8 %BodyType {0}
-					uint8 %ShapeType {0}
+					uint8 %ShapeType {4}
 					float %ShapeHalfX {0.5}
 					float %ShapeHalfY {0.5}
 					float %ShapeHalfZ {0.5}
