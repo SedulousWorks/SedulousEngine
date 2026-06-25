@@ -65,6 +65,31 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IScreenOverlay
 	/// every Update regardless of this flag.
 	public bool PollShellInput = true;
 
+	/// Optional window-pixel -> UI-canvas-pixel transform applied to polled
+	/// mouse coords before they reach the UI input chain. Standalone
+	/// EngineApplication sets this when the scene renders at a target
+	/// resolution that differs from the window (fit-mode-aware inverse of
+	/// the swapchain blit) so UI hit-testing happens in the same pixel
+	/// grid the UI was laid out in. Null = identity; used by editor too
+	/// when PollShellInput is true. Returning a point outside the canvas
+	/// (e.g. for letterbox bar clicks) naturally produces no UI hit since
+	/// no view's rect covers it.
+	///
+	/// Owned: assigned via `new => MyTransformFn` (or similar); the
+	/// subsystem's destructor frees it. Reassigning at runtime is fine -
+	/// the SetScreenToCanvas helper handles the delete-then-reassign
+	/// dance.
+	public delegate Sedulous.Core.Mathematics.Vector2(Sedulous.Core.Mathematics.Vector2) ScreenToCanvas ~ delete _;
+
+	/// Replace the owned ScreenToCanvas delegate. Caller transfers
+	/// ownership of `value`; the subsystem frees the previous delegate
+	/// (if any) before reassigning. Pass null to clear.
+	public void SetScreenToCanvas(delegate Sedulous.Core.Mathematics.Vector2(Sedulous.Core.Mathematics.Vector2) value)
+	{
+		if (ScreenToCanvas != null) delete ScreenToCanvas;
+		ScreenToCanvas = value;
+	}
+
 	/// IFontService used by the screen + world UI. Non-owning: the host
 	/// application creates the concrete service (TrueTypeFontService /
 	/// BakedFontService / etc.), pre-loads its fonts, and assigns it here
@@ -223,7 +248,7 @@ class EngineUISubsystem : Subsystem, ISceneAware, IWindowAware, IScreenOverlay
 		if (PollShellInput && Shell?.InputManager != null)
 		{
 			if (mInputHelper != null)
-				mInputHelper.Update(Shell.InputManager, chain, deltaTime);
+				mInputHelper.Update(Shell.InputManager, chain, deltaTime, ScreenToCanvas);
 
 			if (!IsMouseOverAnyChainUI(chain))
 				RouteWorldUIInput(deltaTime);

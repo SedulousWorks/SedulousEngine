@@ -101,7 +101,14 @@ public class UIInputHelper
 	/// dispatch returns `true` (handled) wins and lower-priority contexts
 	/// don't see the event. This is the multi-tier path used by the engine
 	/// to route through window UI -> scene UI -> world UI.
-	public void Update(IInputManager shellInput, Span<UIContext> contextChain, float deltaTime)
+	///
+	/// `coordTransform` (optional) maps window-pixel mouse coords into the
+	/// UI canvas's pixel grid before dispatch. Standalone EngineApplication
+	/// passes a fit-mode-aware inverse of its swapchain blit so UI hit-
+	/// testing happens at the same resolution the UI was laid out at.
+	/// Null = identity (window pixels reach the chain directly).
+	public void Update(IInputManager shellInput, Span<UIContext> contextChain, float deltaTime,
+		delegate Sedulous.Core.Mathematics.Vector2(Sedulous.Core.Mathematics.Vector2) coordTransform = null)
 	{
 		if (contextChain.Length == 0) return;
 
@@ -116,7 +123,7 @@ public class UIInputHelper
 			mCurrentModifiers = .None;
 
 		if (mouse != null)
-			ProcessMouseInputChain(mouse, contextChain);
+			ProcessMouseInputChain(mouse, contextChain, coordTransform);
 
 		if (kb != null)
 			ProcessKeyboardInputChain(kb, contextChain, deltaTime);
@@ -385,10 +392,17 @@ public class UIInputHelper
 	// Chain-dispatch internals
 	// =================================================================
 
-	private void ProcessMouseInputChain(IMouse mouse, Span<UIContext> chain)
+	private void ProcessMouseInputChain(IMouse mouse, Span<UIContext> chain,
+		delegate Sedulous.Core.Mathematics.Vector2(Sedulous.Core.Mathematics.Vector2) coordTransform = null)
 	{
-		let mx = mouse.X;
-		let my = mouse.Y;
+		float mx = mouse.X;
+		float my = mouse.Y;
+		if (coordTransform != null)
+		{
+			let transformed = coordTransform(.(mx, my));
+			mx = transformed.X;
+			my = transformed.Y;
+		}
 
 		// Mouse move - chain stops on first context that consumes.
 		if (mouse.DeltaX != 0 || mouse.DeltaY != 0)
