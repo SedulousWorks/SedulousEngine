@@ -129,9 +129,9 @@ Arr_ %Entities {
 					bool %IsVisible {true}
 					int32 %LayerMask {-1}
 					Obj_ %Color {
-						float %X {0.0660719275}
+						float %X {0.946031868}
 						float %Y {0.946031868}
-						float %Z {0.267204762}
+						float %Z {0.946031868}
 						float %W {1}
 					}
 					Arr_ %MaterialRefs {
@@ -174,13 +174,13 @@ Arr_ %Entities {
 						float %Y {1}
 						float %Z {1}
 					}
-					float %Intensity {1}
+					float %Intensity {1.5}
 					float %Range {10}
 					float %InnerConeAngle {30}
 					float %OuterConeAngle {45}
-					bool %CastsShadows {false}
-					float %ShadowBias {0.00100000005}
-					float %ShadowNormalBias {0.0199999996}
+					bool %CastsShadows {true}
+					float %ShadowBias {0.000500000024}
+					float %ShadowNormalBias {3}
 					uint32 %LayerMask {4294967295}
 				}
 			}
@@ -230,7 +230,7 @@ Arr_ %Entities {
 		string %Parent {"00000000-0000-0000-0000-000000000000"}
 		Obj_ %Position {
 			float %X {-2.66305637}
-			float %Y {0.776017666}
+			float %Y {0}
 			float %Z {0}
 		}
 		Obj_ %Rotation {
@@ -338,16 +338,29 @@ Arr_ %Modules {
 		int32 %Version {1}
 		Obj_ %Data {
 			Obj_ %SkyTextureRef {
-				string %_id {"705c0bd8-b8e3-451c-8a19-7cb033cb1e1c"}
-				string %path {"builtin://skies/stylized_sky.texture"}
+				string %_id {"5653f8c1-87c0-4855-9498-504ac8e67832"}
+				string %path {"builtin://skies/realistic_sky.texture"}
 			}
-			float %SkyIntensity {0.676991582}
+			float %SkyIntensity {1}
 			Obj_ %AmbientColor {
 				float %X {0.100000001}
 				float %Y {0.100000001}
 				float %Z {0.150000006}
 			}
-			float %Exposure {0.800000012}
+			float %Exposure {1}
+			float %WhitePoint {19.7383976}
+			float %Gamma {1.7984786}
+			bool %BloomEnabled {true}
+			float %BloomThreshold {1.5}
+			float %BloomIntensity {0.5}
+			bool %SSAOEnabled {false}
+			float %SSAORadius {0.5}
+			float %SSAOIntensity {1.5}
+			float %SSAOBias {0.0250000004}
+			uint8 %AntiAliasing {2}
+			float %TAABlendFactor {0.949999988}
+			float %FXAASubpixelQuality {0.75}
+			float %FXAAEdgeThreshold {0.165999994}
 		}
 	}
 }

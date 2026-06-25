@@ -1,41 +1,50 @@
 int32 %type {0}
-float %ratio {0.792171478}
-int32 %direction {1}
+float %ratio {0.600965321}
+int32 %direction {0}
 Obj_ %first {
-	int32 %type {1}
-	Arr_ %panels {
-		int32 %_count {2}
-		Obj_ {
-			string %id {"page:project://gamescene.scene"}
-		}
-		Obj_ {
-			string %id {"page:project://testscene.scene"}
-		}
-	}
-	int32 %activeTab {1}
-}
-Obj_ %second {
 	int32 %type {0}
-	float %ratio {0.711061835}
-	int32 %direction {0}
+	float %ratio {0.731940091}
+	int32 %direction {1}
 	Obj_ %first {
 		int32 %type {1}
 		Arr_ %panels {
 			int32 %_count {1}
 			Obj_ {
-				string %id {"assets"}
+				string %id {"page:project://gamescene.scene"}
 			}
 		}
 		int32 %activeTab {0}
 	}
 	Obj_ %second {
-		int32 %type {1}
-		Arr_ %panels {
-			int32 %_count {1}
-			Obj_ {
-				string %id {"console"}
+		int32 %type {0}
+		float %ratio {0.5}
+		int32 %direction {0}
+		Obj_ %first {
+			int32 %type {1}
+			Arr_ %panels {
+				int32 %_count {1}
+				Obj_ {
+					string %id {"assets"}
+				}
 			}
+			int32 %activeTab {0}
 		}
-		int32 %activeTab {0}
+		Obj_ %second {
+			int32 %type {1}
+			Arr_ %panels {
+				int32 %_count {1}
+				Obj_ {
+					string %id {"console"}
+				}
+			}
+			int32 %activeTab {0}
+		}
 	}
+}
+Obj_ %second {
+	int32 %type {1}
+	Arr_ %panels {
+		int32 %_count {0}
+	}
+	int32 %activeTab {0}
 }

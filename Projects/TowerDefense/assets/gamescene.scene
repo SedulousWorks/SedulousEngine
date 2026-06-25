@@ -8873,13 +8873,26 @@ Arr_ %Modules {
 				string %_id {"705c0bd8-b8e3-451c-8a19-7cb033cb1e1c"}
 				string %path {"builtin://skies/stylized_sky.texture"}
 			}
-			float %SkyIntensity {0.723959148}
+			float %SkyIntensity {1}
 			Obj_ %AmbientColor {
-				float %X {0}
-				float %Y {0}
-				float %Z {0}
+				float %X {0.100000001}
+				float %Y {0.100000001}
+				float %Z {0.100000001}
 			}
-			float %Exposure {0.150000006}
+			float %Exposure {0.200000003}
+			float %WhitePoint {11.1999998}
+			float %Gamma {2.20000005}
+			bool %BloomEnabled {true}
+			float %BloomThreshold {1.5}
+			float %BloomIntensity {0.5}
+			bool %SSAOEnabled {false}
+			float %SSAORadius {0.5}
+			float %SSAOIntensity {1.5}
+			float %SSAOBias {0.0250000004}
+			uint8 %AntiAliasing {2}
+			float %TAABlendFactor {0.949999988}
+			float %FXAASubpixelQuality {0.75}
+			float %FXAAEdgeThreshold {0.165999994}
 		}
 	}
 }
