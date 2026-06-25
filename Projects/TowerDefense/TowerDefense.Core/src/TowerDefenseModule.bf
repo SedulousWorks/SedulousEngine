@@ -112,11 +112,10 @@ class TowerDefenseModule : IApplicationModule
 		let context = host.Context;
 		let resourceSystem = host.ResourceSystem;
 
-		// Project assets directory at the TowerDefense project root, one
-		// level up from the running exe's directory. Shared by .App and
-		// the future .Editor exe so both see the same content.
-		let assetsDir = scope String();
-		GetProjectAssetsDir(host, assetsDir);
+		// Project assets directory exposed by the host. EngineApplication
+		// derives it from RuntimeDirectory (cwd's parent + assets/); the
+		// editor returns the open project's <ProjectDirectory>/assets.
+		let assetsDir = host.ProjectAssetDirectory;
 		let registryPath = scope String();
 		Path.InternalCombine(registryPath, assetsDir, "project.registry");
 		let scenePath = scope String();
@@ -335,8 +334,7 @@ class TowerDefenseModule : IApplicationModule
 	/// to the project assets directory so they can be opened in the editor.
 	private void ExportForEditor(IApplicationHost host)
 	{
-		let outputDir = scope String();
-		GetProjectAssetsDir(host, outputDir);
+		let outputDir = host.ProjectAssetDirectory;
 
 		if (!Directory.Exists(outputDir))
 			Directory.CreateDirectory(outputDir);
@@ -449,8 +447,7 @@ class TowerDefenseModule : IApplicationModule
 	/// Each prefab has: base mesh, weapon child, projectile spawn point placeholder.
 	private void ExportTowerPrefabs(IApplicationHost host)
 	{
-		let outputDir = scope String();
-		GetProjectAssetsDir(host, outputDir);
+		let outputDir = host.ProjectAssetDirectory;
 
 		let provider = scope OpenDDLSerializerProvider();
 		let typeReg = scope ComponentTypeRegistry();
@@ -559,15 +556,6 @@ class TowerDefenseModule : IApplicationModule
 			indexStream.Position = 0;
 			mount.Save("project.registry", indexStream);
 		}
-	}
-
-	/// Resolves the TowerDefense project's assets/ directory: walks one
-	/// level up from the running exe's directory (RuntimeDirectory points
-	/// at the exe project, assets/ sits at the parent TowerDefense root).
-	private static void GetProjectAssetsDir(IApplicationHost host, String outDir)
-	{
-		let projectRoot = Path.GetDirectoryPath(host.RuntimeDirectory, .. scope .());
-		Path.InternalCombine(outDir, projectRoot, "assets");
 	}
 
 	/// Extracts the base resource name from a registry protocol path.

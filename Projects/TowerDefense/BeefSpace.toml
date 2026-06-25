@@ -2,30 +2,27 @@ FileVersion = 1
 Locked = ["Bulkan", "cgltf-Beef", "Dxc-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "dr_libs-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
 
 [Workspace]
-StartupProject = "TowerDefense.App"
+StartupProject = "TowerDefense.Editor"
 
 [[Workspace.DistinctOptions]]
 Filter = ""
 
 [Projects]
-# --- Dependencies (path is relative to this workspace file) ---
 Bulkan = {Path = "../../Code/Dependencies/Bulkan"}
 cgltf-Beef = {Path = "../../Code/Dependencies/cgltf-Beef"}
 Dxc-Beef = {Path = "../../Code/Dependencies/Dxc-Beef"}
 glslang-Beef = {Path = "../../Code/Dependencies/glslang-Beef"}
 SDL3 = {Path = "../../Code/Dependencies/SDL3-Beef"}
-"SPIRV-Cross" = {Path = "../../Code/Dependencies/SPIRV-Cross-Beef"}
-"stb_image-Beef" = {Path = "../../Code/Dependencies/stb_image-Beef"}
-"stb_truetype-Beef" = {Path = "../../Code/Dependencies/stb_truetype-Beef"}
-"stb_vorbis-Beef" = {Path = "../../Code/Dependencies/stb_vorbis-Beef"}
-"dr_libs-Beef" = {Path = "../../Code/Dependencies/dr_libs-Beef"}
-"ufbx-Beef" = {Path = "../../Code/Dependencies/ufbx-Beef"}
+SPIRV-Cross = {Path = "../../Code/Dependencies/SPIRV-Cross-Beef"}
+stb_image-Beef = {Path = "../../Code/Dependencies/stb_image-Beef"}
+stb_truetype-Beef = {Path = "../../Code/Dependencies/stb_truetype-Beef"}
+stb_vorbis-Beef = {Path = "../../Code/Dependencies/stb_vorbis-Beef"}
+dr_libs-Beef = {Path = "../../Code/Dependencies/dr_libs-Beef"}
+ufbx-Beef = {Path = "../../Code/Dependencies/ufbx-Beef"}
 Win32 = {Path = "../../Code/Dependencies/Win32-Beef"}
-"joltc-Beef" = {Path = "../../Code/Dependencies/joltc-Beef"}
-"SDL3_image" = {Path = "../../Code/Dependencies/SDL3_image-Beef"}
-"recastnavigation-Beef" = {Path = "../../Code/Dependencies/recastnavigation-Beef"}
-
-# --- Foundation: Core ---
+joltc-Beef = {Path = "../../Code/Dependencies/joltc-Beef"}
+SDL3_image = {Path = "../../Code/Dependencies/SDL3_image-Beef"}
+recastnavigation-Beef = {Path = "../../Code/Dependencies/recastnavigation-Beef"}
 "Sedulous.Core" = {Path = "../../Code/Foundation/Sedulous.Core"}
 "Sedulous.Core.Collections" = {Path = "../../Code/Foundation/Sedulous.Core.Collections"}
 "Sedulous.Core.Logging" = {Path = "../../Code/Foundation/Sedulous.Core.Logging"}
@@ -33,8 +30,6 @@ Win32 = {Path = "../../Code/Dependencies/Win32-Beef"}
 "Sedulous.Core.Mathematics.Serialization" = {Path = "../../Code/Foundation/Sedulous.Core.Mathematics.Serialization"}
 "Sedulous.Inspection" = {Path = "../../Code/Foundation/Sedulous.Inspection"}
 "Sedulous.Profiler" = {Path = "../../Code/Foundation/Sedulous.Profiler"}
-
-# --- Foundation: Platform + Runtime ---
 "Sedulous.Shell" = {Path = "../../Code/Foundation/Sedulous.Shell"}
 "Sedulous.Shell.SDL3" = {Path = "../../Code/Foundation/Sedulous.Shell.SDL3"}
 "Sedulous.Runtime" = {Path = "../../Code/Foundation/Sedulous.Runtime"}
@@ -43,19 +38,13 @@ Win32 = {Path = "../../Code/Dependencies/Win32-Beef"}
 "Sedulous.Resources" = {Path = "../../Code/Foundation/Sedulous.Resources"}
 "Sedulous.VFS" = {Path = "../../Code/Foundation/Sedulous.VFS"}
 "Sedulous.VFS.Disk" = {Path = "../../Code/Foundation/Sedulous.VFS.Disk"}
-
-# --- Foundation: Serialization ---
 "Sedulous.Serialization" = {Path = "../../Code/Foundation/Sedulous.Serialization"}
 "Sedulous.Serialization.OpenDDL" = {Path = "../../Code/Foundation/Sedulous.Serialization.OpenDDL"}
 "Sedulous.Serialization.Xml" = {Path = "../../Code/Foundation/Sedulous.Serialization.Xml"}
 "Sedulous.OpenDDL" = {Path = "../../Code/Foundation/Sedulous.OpenDDL"}
 "Sedulous.Xml" = {Path = "../../Code/Foundation/Sedulous.Xml"}
-
-# --- Foundation: Messaging ---
 "Sedulous.Messaging" = {Path = "../../Code/Foundation/Sedulous.Messaging"}
 "Sedulous.Messaging.Runtime" = {Path = "../../Code/Foundation/Sedulous.Messaging.Runtime"}
-
-# --- Foundation: RHI ---
 "Sedulous.RHI" = {Path = "../../Code/Foundation/Sedulous.RHI"}
 "Sedulous.RHI.Vulkan" = {Path = "../../Code/Foundation/Sedulous.RHI.Vulkan"}
 "Sedulous.RHI.DX12" = {Path = "../../Code/Foundation/Sedulous.RHI.DX12"}
@@ -64,8 +53,6 @@ Win32 = {Path = "../../Code/Dependencies/Win32-Beef"}
 "Sedulous.ShaderReflection" = {Path = "../../Code/Foundation/Sedulous.ShaderReflection"}
 "Sedulous.ShaderReflection.SPIRV" = {Path = "../../Code/Foundation/Sedulous.ShaderReflection.SPIRV"}
 "Sedulous.ShaderReflection.DXIL" = {Path = "../../Code/Foundation/Sedulous.ShaderReflection.DXIL"}
-
-# --- Foundation: Render ---
 "Sedulous.Shaders" = {Path = "../../Code/Foundation/Sedulous.Shaders"}
 "Sedulous.RenderGraph" = {Path = "../../Code/Foundation/Sedulous.RenderGraph"}
 "Sedulous.Materials" = {Path = "../../Code/Foundation/Sedulous.Materials"}
@@ -76,8 +63,6 @@ Win32 = {Path = "../../Code/Dependencies/Win32-Beef"}
 "Sedulous.Renderer" = {Path = "../../Code/Foundation/Sedulous.Renderer"}
 "Sedulous.Particles" = {Path = "../../Code/Foundation/Sedulous.Particles"}
 "Sedulous.DebugFont" = {Path = "../../Code/Foundation/Sedulous.DebugFont"}
-
-# --- Foundation: Geometry / Models / Images ---
 "Sedulous.Geometry" = {Path = "../../Code/Foundation/Sedulous.Geometry"}
 "Sedulous.Geometry.Resources" = {Path = "../../Code/Foundation/Sedulous.Geometry.Resources"}
 "Sedulous.Geometry.Tooling" = {Path = "../../Code/Foundation/Sedulous.Geometry.Tooling"}
@@ -90,8 +75,6 @@ Win32 = {Path = "../../Code/Dependencies/Win32-Beef"}
 "Sedulous.Images.IO" = {Path = "../../Code/Foundation/Sedulous.Images.IO"}
 "Sedulous.Images.SDL" = {Path = "../../Code/Foundation/Sedulous.Images.SDL"}
 "Sedulous.Images.STB" = {Path = "../../Code/Foundation/Sedulous.Images.STB"}
-
-# --- Foundation: Audio / Animation / Physics ---
 "Sedulous.Animation" = {Path = "../../Code/Foundation/Sedulous.Animation"}
 "Sedulous.Animation.Resources" = {Path = "../../Code/Foundation/Sedulous.Animation.Resources"}
 "Sedulous.Audio" = {Path = "../../Code/Foundation/Sedulous.Audio"}
@@ -102,8 +85,6 @@ Win32 = {Path = "../../Code/Dependencies/Win32-Beef"}
 "Sedulous.Audio.Effects" = {Path = "../../Code/Foundation/Sedulous.Audio.Effects"}
 "Sedulous.Physics" = {Path = "../../Code/Foundation/Sedulous.Physics"}
 "Sedulous.Physics.Jolt" = {Path = "../../Code/Foundation/Sedulous.Physics.Jolt"}
-
-# --- Foundation: Fonts / UI / VG / Drawing ---
 "Sedulous.Fonts" = {Path = "../../Code/Foundation/Sedulous.Fonts"}
 "Sedulous.Fonts.IO" = {Path = "../../Code/Foundation/Sedulous.Fonts.IO"}
 "Sedulous.Fonts.TTF" = {Path = "../../Code/Foundation/Sedulous.Fonts.TTF"}
@@ -121,8 +102,6 @@ Win32 = {Path = "../../Code/Dependencies/Win32-Beef"}
 "Sedulous.VG.Renderer" = {Path = "../../Code/Foundation/Sedulous.VG.Renderer"}
 "Sedulous.Drawing" = {Path = "../../Code/Foundation/Sedulous.Drawing"}
 "Sedulous.Drawing.Renderer" = {Path = "../../Code/Foundation/Sedulous.Drawing.Renderer"}
-
-# --- Engine ---
 "Sedulous.Engine.Core" = {Path = "../../Code/Engine/Sedulous.Engine.Core"}
 "Sedulous.Engine.App" = {Path = "../../Code/Engine/Sedulous.Engine.App"}
 "Sedulous.Engine.Input" = {Path = "../../Code/Engine/Sedulous.Engine.Input"}
@@ -132,18 +111,15 @@ Win32 = {Path = "../../Code/Dependencies/Win32-Beef"}
 "Sedulous.Engine.Navigation" = {Path = "../../Code/Engine/Sedulous.Engine.Navigation"}
 "Sedulous.Engine.Render" = {Path = "../../Code/Engine/Sedulous.Engine.Render"}
 "Sedulous.Engine.UI" = {Path = "../../Code/Engine/Sedulous.Engine.UI"}
-
-# --- Editor ---
 "Sedulous.Editor.Core" = {Path = "../../Code/Editor/Sedulous.Editor.Core"}
 "Sedulous.Editor" = {Path = "../../Code/Editor/Sedulous.Editor"}
-
-# --- TowerDefense ---
 "TowerDefense.Core" = {Path = "TowerDefense.Core"}
 "TowerDefense.App" = {Path = "TowerDefense.App"}
 "TowerDefense.Editor" = {Path = "TowerDefense.Editor"}
 
 [WorkspaceFolders]
 Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
+Foundation = []
 "Foundation/Core" = ["Sedulous.Core", "Sedulous.Core.Collections", "Sedulous.Core.Logging", "Sedulous.Core.Mathematics", "Sedulous.Core.Mathematics.Serialization", "Sedulous.Inspection", "Sedulous.Profiler"]
 "Foundation/Shell" = ["Sedulous.Shell", "Sedulous.Shell.SDL3"]
 "Foundation/Runtime" = ["Sedulous.Runtime", "Sedulous.Runtime.Client", "Sedulous.Jobs", "Sedulous.Resources", "Sedulous.VFS", "Sedulous.VFS.Disk"]

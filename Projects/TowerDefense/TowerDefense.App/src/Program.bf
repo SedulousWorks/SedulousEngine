@@ -11,8 +11,10 @@ class Program
 		return app.Run(.()
 		{
 			Title = "Tower Defense",
-			Width = 1280,
-			Height = 720,
+			Width = 1366,
+			Height = 768,
+			TargetWidth = 1280,
+			TargetHeight = 720,
 			EnableShaderCache = true
 		});
 	}
