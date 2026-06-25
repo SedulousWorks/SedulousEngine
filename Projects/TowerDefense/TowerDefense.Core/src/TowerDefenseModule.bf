@@ -16,9 +16,7 @@ using Sedulous.Materials;
 using Sedulous.Resources;
 using Sedulous.VFS;
 using Sedulous.VFS.Disk;
-using Sedulous.Geometry.Tooling.Resources;
 using Sedulous.Messaging.Runtime;
-using Sedulous.Serialization.OpenDDL;
 using Sedulous.UI;
 using Sedulous.Runtime;
 
@@ -36,10 +34,10 @@ class TowerDefenseModule : IApplicationModule
 	// Scene
 	private Scene mScene;
 
-	// Model loading (first run only)
-	private ModelRegistry mModels = new .() ~ delete _;
-
-	// Model manifest (built from ModelRegistry or loaded from cache)
+	// Model manifest cached from <ProjectAssetDirectory>/models.manifest.
+	// Bootstrap (TowerDefense.Bootstrap) writes this file from the FBX
+	// import; runtime only reads it for resolving model names -> resource
+	// refs when spawning towers / placing enemies.
 	private ModelManifest mManifest ~ delete _;
 
 	// Cached project mount + index (owned by module, registered with
@@ -123,10 +121,15 @@ class TowerDefenseModule : IApplicationModule
 		let manifestPath = scope String();
 		Path.InternalCombine(manifestPath, assetsDir, "models.manifest");
 
-		if (File.Exists(registryPath) && File.Exists(scenePath) && File.Exists(manifestPath))
-			LoadFromCache(host, assetsDir, manifestPath);
-		else
-			BuildFromScratch(host, assetsDir);
+		if (!File.Exists(registryPath) || !File.Exists(scenePath) || !File.Exists(manifestPath))
+		{
+			Console.WriteLine("ERROR: TowerDefense cooked assets missing under {}.", assetsDir);
+			Console.WriteLine("       Run TowerDefense.Bootstrap once to import the Kenney FBX kit");
+			Console.WriteLine("       and generate the gamescene + manifest + prefabs.");
+			return;
+		}
+
+		LoadFromCache(host, assetsDir, manifestPath);
 
 		// Wire manifest and resource infrastructure to tower placement
 		mTowerPlacement.Manifest = mManifest;
@@ -179,79 +182,6 @@ class TowerDefenseModule : IApplicationModule
 		mGameSub.Waves.Initialize(messaging?.Bus, mGameSub.EnemyMgr);
 
 		Console.WriteLine("=== Tower Defense Ready ===");
-	}
-
-	/// First run: import FBX models, build scene, save everything to cache.
-	private void BuildFromScratch(IApplicationHost host, StringView cacheDir)
-	{
-		Console.WriteLine("[Startup] Building from scratch (first run)...");
-
-		let sceneSub = host.Context.GetSubsystem<SceneSubsystem>();
-		let resources = host.ResourceSystem;
-
-		// Import all FBX models
-		let assetPath = scope String();
-		host.GetAssetPath("samples/models/kenney_tower-defense-kit/Models/FBX format", assetPath);
-		mModels.Initialize(assetPath);
-		mModels.RegistryName.Set("project");
-
-		mModels.PreloadModels(resources, StringView[](
-			// Tiles
-			"tile", "tile-straight", "tile-rock",
-			"tile-spawn-round", "tile-end-round",
-			"tile-corner-round", "selection-a",
-			// Enemies
-			"enemy-ufo-a", "enemy-ufo-b", "enemy-ufo-c", "enemy-ufo-d",
-			// Towers
-			"tower-round-base", "tower-square-bottom-a",
-			// Weapons
-			"weapon-ballista", "weapon-cannon", "weapon-catapult", "weapon-turret",
-			// Ammo
-			"weapon-ammo-arrow", "weapon-ammo-cannonball", "weapon-ammo-boulder", "weapon-ammo-bullet"
-		));
-
-		// Build manifest from loaded models and wire to game subsystem
-		mManifest = ModelManifest.BuildFromRegistry(mModels);
-		mGameSub.Manifest = mManifest;
-
-		// Create scene (triggers OnSceneCreated - component managers get manifest)
-		mScene = sceneSub.CreateScene("GameScene");
-
-		// Camera
-		mCamera.CameraEntity = mScene.CreateEntity("Camera");
-		let cameraMgr = mScene.GetModule<CameraComponentManager>();
-		if (cameraMgr != null)
-			cameraMgr.CreateComponent(mCamera.CameraEntity);
-
-		// Directional light
-		let lightEntity = mScene.CreateEntity("Sun");
-		mScene.SetLocalTransform(lightEntity, Transform.CreateLookAt(.(10, 15, 10), .Zero));
-		let lightMgr = mScene.GetModule<LightComponentManager>();
-		if (lightMgr != null)
-		{
-			let lightHandle = lightMgr.CreateComponent(lightEntity);
-			if (let light = lightMgr.Get(lightHandle))
-			{
-				light.Type = .Directional;
-				light.Color = .(1.0f, 0.95f, 0.85f);
-				light.Intensity = 1.2f;
-				light.CastsShadows = true;
-			}
-		}
-
-		// Build the map
-		mGameSub.Map.BuildMap(MapData.CreateMap1(), mScene, mManifest);
-		mGameSub.UpdateWaypoints();
-
-		// Save everything to project assets
-		ExportForEditor(host);
-		ExportTowerPrefabs(host);
-
-		// Also save manifest
-		let manifestPath = scope String();
-		Path.InternalCombine(manifestPath, cacheDir, "models.manifest");
-		mManifest.SaveToFile(manifestPath);
-		Console.WriteLine("[Startup] Saved manifest: {}", manifestPath);
 	}
 
 	/// Subsequent runs: load from cached files, no FBX import.
@@ -330,254 +260,6 @@ class TowerDefenseModule : IApplicationModule
 		Console.WriteLine("[Startup] Loaded from cache");
 	}
 
-	/// Saves all loaded resources (meshes, materials, textures) and the scene
-	/// to the project assets directory so they can be opened in the editor.
-	private void ExportForEditor(IApplicationHost host)
-	{
-		let outputDir = host.ProjectAssetDirectory;
-
-		if (!Directory.Exists(outputDir))
-			Directory.CreateDirectory(outputDir);
-
-		let provider = scope OpenDDLSerializerProvider();
-
-		// Writable mount over outputDir for all subsequent saves through the VFS.
-		let mount = scope FileSystemMount(outputDir);
-
-		// Load existing index and merge new entries (don't overwrite editor-created entries)
-		let index = scope InMemoryResourceIndex();
-		if (mount.Exists("project.registry"))
-		{
-			let regStream = mount.Open("project.registry");
-			if (regStream case .Ok(let s))
-			{
-				defer delete s;
-				index.DeserializeFrom(s);
-			}
-		}
-
-		// Save meshes - names already have registry protocol from ModelRegistry
-		for (let loaded in mModels.[Friend]mLoadedModels)
-		{
-			if (loaded.MeshResource != null)
-			{
-				let locator = scope String()..AppendF("resources/{}.mesh", loaded.Name);
-				if (SaveResourceText(loaded.MeshResource, mount, locator, provider) case .Ok)
-				{
-					index.Register(loaded.MeshResource.Id, scope $"project://{locator}");
-					Console.WriteLine("[Export] Saved mesh: {}", loaded.Name);
-				}
-			}
-		}
-
-		// Save deduped textures and materials
-		let dedupCtx = mModels.[Friend]mDedupContext;
-		for (let kv in dedupCtx.[Friend]mTextures)
-		{
-			let texRes = kv.value;
-			let baseName = scope String();
-			GetBaseResourceName(texRes.Name, baseName);
-			let locator = scope String()..AppendF("resources/{}.texture", baseName);
-			let sidecarName = scope String()..AppendF("{}.texture.bin", baseName);
-
-			if (SaveResourceText(texRes, mount, locator, provider) case .Ok)
-			{
-				let sidecarLocator = scope String()..AppendF("resources/{}", sidecarName);
-				let memStream = scope MemoryStream();
-				if (texRes.WritePixelsToStream(memStream) case .Ok)
-				{
-					memStream.Position = 0;
-					mount.Save(sidecarLocator, memStream);
-				}
-				index.Register(texRes.Id, scope $"project://{locator}");
-				Console.WriteLine("[Export] Saved texture: {}", baseName);
-			}
-		}
-
-		for (let kv in dedupCtx.[Friend]mMaterials)
-		{
-			let matRes = kv.value;
-			let baseName = scope String();
-			GetBaseResourceName(matRes.Name, baseName);
-			let locator = scope String()..AppendF("resources/{}.material", baseName);
-			if (SaveResourceText(matRes, mount, locator, provider) case .Ok)
-			{
-				index.Register(matRes.Id, scope $"project://{locator}");
-				Console.WriteLine("[Export] Saved material: {}", baseName);
-			}
-		}
-
-		// Save scene - component ResourceRefs already carry registry protocol paths
-		if (mScene != null)
-		{
-			let typeReg = scope ComponentTypeRegistry();
-			let sceneManager = scope SceneResourceManager(typeReg, provider);
-
-			if (sceneManager.SaveScene(mScene, mount, "gamescene.scene") case .Ok(let guid))
-			{
-				index.Register(guid, "project://gamescene.scene");
-				Console.WriteLine("[Export] Saved scene");
-			}
-		}
-
-		// Save index
-		let indexStream = scope MemoryStream();
-		if (index.SerializeTo(indexStream) case .Ok)
-		{
-			indexStream.Position = 0;
-			mount.Save("project.registry", indexStream);
-			Console.WriteLine("[Export] Saved registry");
-		}
-	}
-
-	/// Helper: serializes a Resource's text representation into memory and writes
-	/// it to `mount` at `locator`.
-	private static Result<void> SaveResourceText(Resource resource, IWritableMount mount, StringView locator, Sedulous.Serialization.ISerializerProvider provider)
-	{
-		let memStream = scope MemoryStream();
-		if (resource.WriteToStream(memStream, provider) case .Err)
-			return .Err;
-		memStream.Position = 0;
-		if (mount.Save(locator, memStream) case .Err)
-			return .Err;
-		return .Ok;
-	}
-
-	/// Exports tower prefabs to the project assets directory.
-	/// Each prefab has: base mesh, weapon child, projectile spawn point placeholder.
-	private void ExportTowerPrefabs(IApplicationHost host)
-	{
-		let outputDir = host.ProjectAssetDirectory;
-
-		let provider = scope OpenDDLSerializerProvider();
-		let typeReg = scope ComponentTypeRegistry();
-		let prefabMgr = scope PrefabResourceManager(typeReg, provider);
-
-		// Writable mount over outputDir; saves create intermediate directories.
-		let mount = scope FileSystemMount(outputDir);
-
-		// Load existing index to merge
-		let index = scope InMemoryResourceIndex();
-		if (mount.Exists("project.registry"))
-		{
-			let regStream = mount.Open("project.registry");
-			if (regStream case .Ok(let s))
-			{
-				defer delete s;
-				index.DeserializeFrom(s);
-			}
-		}
-
-		StringView[4] towerNames = .("ballista", "cannon", "catapult", "turret");
-		TowerType[4] types = .(.Ballista, .Cannon, .Catapult, .Turret);
-		for (int ti = 0; ti < 4; ti++)
-		{
-			let towerType = types[ti];
-			let towerName = towerNames[ti];
-			let stats = TowerStats.Get(towerType);
-
-			let prefabLocator = scope String()..AppendF("prefabs/tower_{}.prefab", towerName);
-
-			// Skip if already exported
-			if (mount.Exists(prefabLocator))
-				continue;
-
-			// Create a temporary scene for the prefab
-			let prefabScene = scope Scene();
-			let meshMgr = new MeshComponentManager();
-			prefabScene.AddModule(meshMgr);
-
-			// Root: tower base
-			let baseEntity = prefabScene.CreateEntity("TowerBase");
-			prefabScene.SetLocalTransform(baseEntity, .() { Position = .Zero, Rotation = .Identity, Scale = .One });
-
-			let baseEntry = mManifest.Get(stats.BaseModel);
-			if (baseEntry != null)
-			{
-				let meshHandle = meshMgr.CreateComponent(baseEntity);
-				if (let mesh = meshMgr.Get(meshHandle))
-				{
-					var meshRef = baseEntry.GetMeshRef();
-					defer meshRef.Dispose();
-					mesh.SetMeshRef(meshRef);
-					for (int32 slot = 0; slot < baseEntry.MaterialCount; slot++)
-					{
-						var matRef = baseEntry.GetMaterialRef(slot);
-						defer matRef.Dispose();
-						mesh.SetMaterialRef(slot, matRef);
-					}
-				}
-			}
-
-			// Child: weapon
-			let weaponEntity = prefabScene.CreateEntity("Weapon");
-			prefabScene.SetParent(weaponEntity, baseEntity);
-			prefabScene.SetLocalTransform(weaponEntity, .() {
-				Position = .(0, 0.5f, 0), Rotation = .Identity, Scale = .One
-			});
-
-			let weaponEntry = mManifest.Get(stats.WeaponModel);
-			if (weaponEntry != null)
-			{
-				let meshHandle = meshMgr.CreateComponent(weaponEntity);
-				if (let mesh = meshMgr.Get(meshHandle))
-				{
-					var meshRef = weaponEntry.GetMeshRef();
-					defer meshRef.Dispose();
-					mesh.SetMeshRef(meshRef);
-					for (int32 slot = 0; slot < weaponEntry.MaterialCount; slot++)
-					{
-						var matRef = weaponEntry.GetMaterialRef(slot);
-						defer matRef.Dispose();
-						mesh.SetMaterialRef(slot, matRef);
-					}
-				}
-			}
-
-			// Child of weapon: projectile spawn point (empty entity - position adjusted in editor)
-			let spawnPoint = prefabScene.CreateEntity("ProjectileSpawnPoint");
-			prefabScene.SetParent(spawnPoint, weaponEntity);
-			prefabScene.SetLocalTransform(spawnPoint, .() {
-				Position = .(0, 0.1f, 0.3f), Rotation = .Identity, Scale = .One
-			});
-
-			// Save prefab
-			if (prefabMgr.SavePrefab(prefabScene, mount, prefabLocator) case .Ok(let guid))
-			{
-				index.Register(guid, scope $"project://{prefabLocator}");
-				Console.WriteLine("[Export] Saved tower prefab: tower_{}", towerName);
-			}
-		}
-
-		// Save updated index
-		let indexStream = scope MemoryStream();
-		if (index.SerializeTo(indexStream) case .Ok)
-		{
-			indexStream.Position = 0;
-			mount.Save("project.registry", indexStream);
-		}
-	}
-
-	/// Extracts the base resource name from a registry protocol path.
-	/// "project://resources/colormap.material" -> "colormap"
-	/// "colormap" -> "colormap"
-	private static void GetBaseResourceName(StringView name, String outName)
-	{
-		// Strip protocol prefix
-		let protoIdx = name.IndexOf("://");
-		StringView path = (protoIdx >= 0) ? name[(protoIdx + 3)...] : name;
-
-		// Strip directory prefix
-		let slashIdx = path.LastIndexOf('/');
-		StringView fileName = (slashIdx >= 0) ? path[(slashIdx + 1)...] : path;
-
-		// Strip extension
-		let dotIdx = fileName.LastIndexOf('.');
-		if (dotIdx >= 0)
-			outName.Set(fileName[...(dotIdx - 1)]);
-		else
-			outName.Set(fileName);
-	}
 
 	// ==================== Per-frame tick ====================
 
@@ -693,8 +375,6 @@ class TowerDefenseModule : IApplicationModule
 		mGameOverUI.Shutdown(bus, screenRoot);
 		mPauseUI.Shutdown(screenRoot);
 		mMainMenu.Shutdown(screenRoot);
-
-		mModels.Shutdown();
 
 		// Tear down everything OnLaunch built so the next OnLaunch starts
 		// from a clean slate. Without this the editor leaks a FileSystemMount

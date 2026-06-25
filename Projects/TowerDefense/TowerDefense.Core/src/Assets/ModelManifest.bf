@@ -138,27 +138,4 @@ class ModelManifest
 		return .Ok;
 	}
 
-	/// Builds a manifest from a ModelRegistry (after models are loaded).
-	public static ModelManifest BuildFromRegistry(ModelRegistry registry)
-	{
-		let manifest = new ModelManifest();
-
-		for (let loaded in registry.[Friend]mLoadedModels)
-		{
-			let entry = new ModelManifestEntry();
-			entry.Name.Set(loaded.Name);
-			entry.MeshGuid = loaded.MeshResource.Id;
-			entry.MeshPath.Set(loaded.MeshRefPath);
-
-			for (let matRef in loaded.MaterialRefs)
-			{
-				entry.MaterialGuids.Add(matRef.Id);
-				entry.MaterialPaths.Add(new String(matRef.Path));
-			}
-
-			manifest.Add(entry);
-		}
-
-		return manifest;
-	}
 }

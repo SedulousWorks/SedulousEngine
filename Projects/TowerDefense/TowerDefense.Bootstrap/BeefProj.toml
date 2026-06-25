@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "TowerDefense.Bootstrap"
+StartupObject = "TowerDefense.Bootstrap.Program"
+
+[Dependencies]
+corlib = "*"
+"TowerDefense.Core" = "*"

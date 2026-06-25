@@ -1,4 +1,4 @@
-namespace TowerDefense;
+namespace TowerDefense.Bootstrap;
 
 using System;
 using System.Collections;
@@ -17,9 +17,12 @@ using Sedulous.RHI;
 using Sedulous.Images;
 using Sedulous.Images.STB;
 
-/// Loads and caches all Kenney Tower Defense Kit FBX models.
-/// Uses ImportDeduplicationContext so the shared colormap texture
-/// and material are loaded once and reused across all models.
+/// Loads and caches all Kenney Tower Defense Kit FBX models. Used at
+/// bootstrap time only - the runtime reads `ModelManifest` (a pruned
+/// summary of what this loader produced) and never re-imports FBX.
+///
+/// Uses ImportDeduplicationContext so the shared colormap texture and
+/// material are loaded once and reused across all models.
 class ModelRegistry
 {
 	private Dictionary<String, LoadedModel> mModelCache = new .() ~ delete _;
@@ -152,6 +155,32 @@ class ModelRegistry
 	{
 		for (let name in names)
 			LoadModel(name, resources);
+	}
+
+	/// Build a ModelManifest summarising every model loaded into the
+	/// registry. Used by the bootstrapper to emit the runtime-readable
+	/// manifest file alongside the cooked scene + mesh assets.
+	public ModelManifest BuildManifest()
+	{
+		let manifest = new ModelManifest();
+
+		for (let loaded in mLoadedModels)
+		{
+			let entry = new ModelManifestEntry();
+			entry.Name.Set(loaded.Name);
+			entry.MeshGuid = loaded.MeshResource.Id;
+			entry.MeshPath.Set(loaded.MeshRefPath);
+
+			for (let matRef in loaded.MaterialRefs)
+			{
+				entry.MaterialGuids.Add(matRef.Id);
+				entry.MaterialPaths.Add(new String(matRef.Path));
+			}
+
+			manifest.Add(entry);
+		}
+
+		return manifest;
 	}
 
 	public void Shutdown()
