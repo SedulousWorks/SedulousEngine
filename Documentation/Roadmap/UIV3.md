@@ -78,6 +78,24 @@ files updated. `.sss` supports `::pseudo` and `::pseudo:state` syntax.
 Safe reference indirection layer. Not needed — v2 already handles
 use-after-free via `ViewId` + `MutationQueue`.
 
+### Toast / alert primitive
+
+Transient overlay for "Project Settings saved", import errors, build
+failures, etc. Today's escape hatches are the editor status bar
+(`EditorContext.SetStatus`) and the LogView panel — neither pops in the
+user's eyeline, so first-time users miss feedback. Wanted shape:
+
+- Stacked overlay at a chosen screen anchor (e.g. bottom-right)
+- Severity-driven styling (info / warn / error / success)
+- Auto-dismiss timer with hover-to-hold
+- Click to dismiss; optional action button
+- Queue with a cap so a hot loop can't paper over the editor
+- Drives off the same `MutationQueue` so handlers can fire toasts
+  from within other UI handlers safely
+
+Lives at the UI toolkit level (not the editor) so games can use the
+same primitive for in-game notifications.
+
 ## Not in scope
 
 - CSS descendant/child combinators
