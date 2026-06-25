@@ -153,11 +153,21 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 	/// The shell.
 	public IShell Shell => mShell;
 
-	// IApplicationHost input passthrough. Standalone uses the shell devices
-	// directly; the editor's GameEditorPage wraps them in viewport-scoped
-	// adapters so coordinates / focus gating Just Work for module gameplay
-	// code that's portable between both hosts.
-	public Sedulous.Shell.Input.IMouse Mouse => mShell?.InputManager?.Mouse;
+	// IApplicationHost input passthrough. Standalone wraps the shell's
+	// mouse in an EngineCanvasMouseAdapter that remaps X / Y from window
+	// pixels to mColorTarget pixels via the fit-mode-aware inverse of the
+	// swapchain blit - so module raycasts / hit-tests / cursors operate
+	// in the same coordinate space the scene was rendered into. Keyboard
+	// and gamepads passthrough unchanged.
+	private EngineCanvasMouseAdapter mMouseAdapter ~ delete _;
+	public Sedulous.Shell.Input.IMouse Mouse
+	{
+		get
+		{
+			if (mMouseAdapter != null) return mMouseAdapter;
+			return mShell?.InputManager?.Mouse;
+		}
+	}
 	public Sedulous.Shell.Input.IKeyboard Keyboard => mShell?.InputManager?.Keyboard;
 	public Sedulous.Shell.Input.IGamepad GetGamepad(int32 index) =>
 		mShell?.InputManager?.GetGamepad(index);
@@ -309,13 +319,23 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 			JobSystem.ProcessCompletions();
 			mResourceSystem.Update();
 
-			// Push live window dimensions + DPI scale into the UI subsystem
-			// so its per-frame Update reads current values. Standalone: UI
-			// canvas always tracks the window 1:1.
+			// Push live render-target dimensions + DPI scale into the UI
+			// subsystem so its per-frame Update reads current values. The
+			// canvas tracks mColorTarget (the actual surface the UI is
+			// composited into) rather than the swapchain so a project
+			// target resolution of 1280x720 produces a 1280x720 UI canvas
+			// regardless of window dims. When no target resolution is
+			// pinned, mTargetWidth/Height shadow the window via the same
+			// derivation as the scene render, so this is window-tracking
+			// behavior in that case. DPI stays at 1.0 for fixed-target
+			// modes so HiDPI scaling doesn't double-apply against the
+			// swapchain blit; pure window-tracked modes use the window's
+			// ContentScale as before.
 			if (mUISub != null && mWindow != null)
 			{
-				mUISub.RenderSize = .((float)mWindow.Width, (float)mWindow.Height);
-				mUISub.DpiScale = mWindow.ContentScale;
+				mUISub.RenderSize = .((float)mTargetWidth, (float)mTargetHeight);
+				let fixedTarget = mSettings.TargetWidth > 0 && mSettings.TargetHeight > 0;
+				mUISub.DpiScale = fixedTarget ? 1.0f : mWindow.ContentScale;
 			}
 
 			// BeginFrame runs first - resets per-frame state, polls input,
@@ -459,19 +479,37 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 		uiSub.Device = mDevice;
 		uiSub.Shell = mShell;
 		uiSub.ShaderSystem = mShaderSystem;
-		// UI overlays render onto the swapchain after the blit (no target-
-		// resolution integration yet - the UI lays out in window space and
-		// overlays on top of the letterbox, not inside it). Re-enabling
-		// target-resolution UI needs a coord-transform adapter for input
-		// to remain consistent; deferred.
-		uiSub.OutputFormat = mSettings.SwapChainFormat;
+		// UI overlays composite onto mColorTarget at the project's target
+		// resolution alongside the scene; the swapchain blit then carries
+		// scene + UI together through the fit-mode transform. UI output
+		// format is the color target's format (RGBA16Float for the HDR
+		// pipeline), not the swapchain format - the blit handles the
+		// LDR conversion as part of its tonemap.
+		uiSub.OutputFormat = .RGBA16Float;
 		uiSub.FrameCount = MAX_FRAMES_IN_FLIGHT;
 		uiSub.FontService = mFontService;
-		// Standalone: UI canvas IS the window. Seed initial size + scale here
-		// so OnStartup's dialog-centering path picks them up; the per-frame
-		// sync below the main loop keeps them tracking window resizes.
-		uiSub.RenderSize = .((float)mWindow.Width, (float)mWindow.Height);
-		uiSub.DpiScale = mWindow.ContentScale;
+		// Seed initial size + scale here so OnStartup's dialog-centering
+		// path picks them up; the per-frame sync below the main loop
+		// keeps them tracking target / window resizes.
+		uiSub.RenderSize = .((float)mTargetWidth, (float)mTargetHeight);
+		uiSub.DpiScale = (mSettings.TargetWidth > 0 && mSettings.TargetHeight > 0)
+			? 1.0f : mWindow.ContentScale;
+		// Inverse of BlitToSwapchain's fit-mode mapping: take a window-pixel
+		// click and produce the canvas pixel it landed on. Letterbox bar
+		// clicks return coords outside the canvas - no UI element's rect
+		// covers them, so the hit-test naturally produces "no UI."
+		uiSub.SetScreenToCanvas(new => WindowPointToCanvas);
+
+		// Wrap the shell mouse so module raycasts / placements / cursor
+		// reads see target-canvas pixels instead of raw window pixels.
+		// Mirrors the editor's GameMouseAdapter contract so modules don't
+		// have to know which host (standalone vs editor) they're running
+		// under.
+		if (mShell?.InputManager?.Mouse != null)
+		{
+			mMouseAdapter = new EngineCanvasMouseAdapter(mShell.InputManager.Mouse);
+			mMouseAdapter.SetWindowToCanvas(new => WindowPointToCanvas);
+		}
 		mUISub = uiSub;
 		mContext.RegisterSubsystem(uiSub);                      //  400
 
@@ -625,6 +663,24 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 			mSceneRenderer.EndRendering();
 		}
 
+		// Screen-space overlays (ScreenUI, debug HUD, etc.) composite over
+		// mColorTarget at the project's target resolution so the UI shares
+		// the scene's pixel grid and gets letterboxed / cropped by the
+		// swapchain blit alongside the scene. RenderScene leaves the
+		// texture in ShaderRead so the blit can sample it; transition
+		// back to RenderTarget for the overlay pass, then back to
+		// ShaderRead before the blit.
+		if (mScreenRenderer != null && mColorTargetView != null)
+		{
+			using (SProfiler.Begin("Overlays"))
+			{
+				encoder.TransitionTexture(mColorTarget, .ShaderRead, .RenderTarget);
+				mScreenRenderer.RenderOverlays(encoder, mColorTargetView,
+					mTargetWidth, mTargetHeight, mFrameIndex);
+				encoder.TransitionTexture(mColorTarget, .RenderTarget, .ShaderRead);
+			}
+		}
+
 		// Acquire swapchain image
 		using (SProfiler.Begin("GPU.AcquireImage"))
 		{
@@ -639,19 +695,12 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 		// Transition swapchain from Present to RenderTarget before use
 		encoder.TransitionTexture(mSwapChain.CurrentTexture, .Present, .RenderTarget);
 
-		// Blit scene output -> swapchain
+		// Blit scene+UI composite -> swapchain at the swapchain's dims,
+		// fit-mode-aware. Letterbox bars naturally fall outside the
+		// composited rect because the overlay pass writes the UI inside
+		// mColorTarget at target resolution.
 		using (SProfiler.Begin("Blit"))
 			BlitToSwapchain(encoder);
-
-		// Window-space overlays (ScreenUI, debug HUD, etc.) - the screen
-		// renderer opens a single shared render pass and walks every
-		// registered IScreenOverlay in OverlayOrder.
-		if (mScreenRenderer != null)
-		{
-			using (SProfiler.Begin("Overlays"))
-				mScreenRenderer.RenderOverlays(encoder, mSwapChain.CurrentTextureView,
-					mSwapChain.Width, mSwapChain.Height, mFrameIndex);
-		}
 
 		// Screenshot capture: copy swapchain to readback buffer before present
 		let screenshotThisFrame = mScreenshotRequested;
@@ -793,6 +842,36 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 		mBlitHelper.Blit(renderPass, mColorTargetView, x, y, w, h, mFrameIndex);
 
 		renderPass.End();
+	}
+
+	/// Inverse of BlitToSwapchain's mapping: takes a window-pixel point
+	/// (typically the mouse cursor) and produces the canvas-pixel point
+	/// the user actually clicked on inside mColorTarget. Used as the
+	/// EngineUISubsystem.ScreenToCanvas hook so UI hit-testing happens
+	/// in the same coordinate space the UI was laid out at.
+	///
+	/// Letterbox: points outside the blit rect (the bars) return canvas
+	/// coords just outside the bounds (negative or > mTargetWidth/H), so
+	/// no view's layout rect catches the click and the UI sees "no hit."
+	/// Stretch / Crop: the blit covers the whole window, so the function
+	/// always produces an in-bounds canvas point.
+	private Sedulous.Core.Mathematics.Vector2 WindowPointToCanvas(Sedulous.Core.Mathematics.Vector2 windowPoint)
+	{
+		if (mWindow == null || mTargetWidth == 0 || mTargetHeight == 0)
+			return windowPoint;
+
+		int32 x, y;
+		uint32 w, h;
+		ComputeBlitRect(mTargetWidth, mTargetHeight,
+			(uint32)mWindow.Width, (uint32)mWindow.Height, mSettings.FitMode,
+			out x, out y, out w, out h);
+		if (w == 0 || h == 0) return windowPoint;
+
+		let rx = windowPoint.X - (float)x;
+		let ry = windowPoint.Y - (float)y;
+		let cx = rx * (float)mTargetWidth / (float)w;
+		let cy = ry * (float)mTargetHeight / (float)h;
+		return .(cx, cy);
 	}
 
 	/// Maps the pipeline output rect into the swapchain rect per FitMode.
