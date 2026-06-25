@@ -4,6 +4,9 @@ Locked = ["Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "gl
 [Workspace]
 StartupProject = "EngineAnimationSandbox"
 
+[[Workspace.DistinctOptions]]
+Filter = ""
+
 [Projects]
 "Sedulous.RHI" = {Path = "Foundation/Sedulous.RHI"}
 "Sedulous.RHI.Vulkan" = {Path = "Foundation/Sedulous.RHI.Vulkan"}

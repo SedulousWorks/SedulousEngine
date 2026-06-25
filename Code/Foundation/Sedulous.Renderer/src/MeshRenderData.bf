@@ -52,4 +52,18 @@ public class MeshRenderData : RenderData
 
 	/// Entity index for GPU picking (encoded as color in pick pass).
 	public uint32 EntityIndex;
+
+	/// Index (in matrix units, not bytes) into the global bone matrix pool
+	/// where this skinned instance's bone matrices begin. Populated during
+	/// extraction for skinned meshes; zero for static meshes. Flowed to the
+	/// vertex shader via DataOffsets.y so the skinned vertex variant can
+	/// fetch its own slab from BoneMatrices[boneStart + jointIndex].
+	public uint32 BoneStartIndex;
+
+	/// Previous frame's BoneStartIndex. Same pool, same matrix-units,
+	/// just the offset for the prev-frame bones (the bone pool stores
+	/// current then previous frames per skeleton). Used by the skinned
+	/// vertex variant to compute the prev clip-space position for motion
+	/// vectors / per-bone motion blur. Zero for static.
+	public uint32 PrevBoneStartIndex;
 }

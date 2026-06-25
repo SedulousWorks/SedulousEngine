@@ -1047,7 +1047,15 @@ public class Pipeline : IRenderingPipeline, IDisposable
 
 		// Scene UBO is bound at offset 0 with size = one slot - the dynamic offset
 		// at SetBindGroup time selects which slot in the ring buffer to read.
-		BindGroupEntry[10] bgEntries = .(
+		// Bind the device-local bone matrix mirror. The staging pool is host
+		// visible (animation writes); the device mirror is what vertex shaders
+		// read so the bone fetches don't stream over PCIe. RenderSubsystem.
+		// BeginRendering copies staging -> device once per engine frame before
+		// any pipeline renders.
+		let bonePoolBuf = mRenderContext.GPUResources.BoneDeviceBuffer;
+		if (bonePoolBuf == null) return;
+
+		BindGroupEntry[11] bgEntries = .(
 			BindGroupEntry.Buffer(frame.SceneUniformBuffer, 0, SceneUniforms.Size),
 			BindGroupEntry.Buffer(lightParamsBuf, 0, (uint64)LightParams.Size),
 			BindGroupEntry.Buffer(clusterParamsBuf, 0, (uint64)ClusterFragParams.Size),
@@ -1057,6 +1065,7 @@ public class Pipeline : IRenderingPipeline, IDisposable
 			BindGroupEntry.Texture(iblSystem.BRDFLutView),
 			BindGroupEntry.Buffer(clusterOffsetsBuf, 0, clusterOffsetsBuf.Size),
 			BindGroupEntry.Buffer(clusterIndicesBuf, 0, clusterIndicesBuf.Size),
+			BindGroupEntry.Buffer(bonePoolBuf, 0, 0),
 			BindGroupEntry.Sampler(iblSystem.EnvironmentSampler)
 		);
 

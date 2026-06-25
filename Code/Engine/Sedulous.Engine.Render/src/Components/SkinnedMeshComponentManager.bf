@@ -560,6 +560,17 @@ class SkinnedMeshComponentManager : ComponentManager<SkinnedMeshComponent>, IRen
 				data.BoneBufferHandle = comp.BoneBufferHandle;
 				data.IsSkinned = true;
 				data.EntityIndex = comp.Owner.Index;
+				// Per-instance bone offsets into the global bone matrix pool.
+				// Current frame at boneBuffer.Offset; prev frame is laid out
+				// contiguously after the current slab (boneCount matrices later).
+				// In matrix units so the vertex shader can do
+				// `BoneMatrices[boneStart + jointIndex]` with a single add.
+				if (let boneBuffer = GPUResources.GetBoneBuffer(comp.BoneBufferHandle))
+				{
+					let boneStart = (uint32)(boneBuffer.Offset / (uint64)sizeof(Matrix));
+					data.BoneStartIndex = boneStart;
+					data.PrevBoneStartIndex = boneStart + (uint32)boneBuffer.BoneCount;
+				}
 				context.RenderData.Add(category, data);
 			}
 		}

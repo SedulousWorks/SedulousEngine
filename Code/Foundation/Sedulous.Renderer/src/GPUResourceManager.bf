@@ -153,6 +153,16 @@ public class GPUResourceManager : IDisposable
 	/// pass uses it as the bone-matrix descriptor entry's buffer.
 	public IBuffer BonePoolBuffer => mBonePool.Buffer;
 
+	/// Device-local mirror of the bone matrix pool. RenderSubsystem
+	/// CopyBonesToDevice fills this from BonePoolBuffer each frame; frame
+	/// bind groups bind this (not the host-visible staging) so vertex
+	/// shaders read bones from VRAM.
+	public IBuffer BoneDeviceBuffer => mBonePool.DeviceBuffer;
+
+	/// Issues the staging -> device copy. Called once per engine frame
+	/// from RenderSubsystem.BeginRendering.
+	public void CopyBonesToDevice(ICommandEncoder encoder) => mBonePool.CopyToDevice(encoder);
+
 	/// Backing buffer of the shared skinned-source pool. For skinned
 	/// GPUMesh entries this is the same buffer as GPUMesh.VertexBuffer.
 	public IBuffer SkinnedSourcePoolBuffer => mSkinnedSourcePool.Buffer;

@@ -41,6 +41,31 @@ cbuffer ObjectUniforms : register(b0, space3)
 
 #endif
 
+#ifdef SKINNED
+// Mirror the frame-bind-group BoneMatrices binding from forward.vert.
+// Same register so depth + forward share the bind point on set 0.
+
+struct BoneMatrix
+{
+    float4 Row0, Row1, Row2, Row3;
+};
+StructuredBuffer<BoneMatrix> BoneMatrices : register(t6, space0);
+
+float4x4 BlendBoneMatrices(uint4 jointIndices, float4 weights, uint boneStart)
+{
+    BoneMatrix b0 = BoneMatrices[boneStart + jointIndices.x];
+    BoneMatrix b1 = BoneMatrices[boneStart + jointIndices.y];
+    BoneMatrix b2 = BoneMatrices[boneStart + jointIndices.z];
+    BoneMatrix b3 = BoneMatrices[boneStart + jointIndices.w];
+    return float4x4(
+        b0.Row0 * weights.x + b1.Row0 * weights.y + b2.Row0 * weights.z + b3.Row0 * weights.w,
+        b0.Row1 * weights.x + b1.Row1 * weights.y + b2.Row1 * weights.z + b3.Row1 * weights.w,
+        b0.Row2 * weights.x + b1.Row2 * weights.y + b2.Row2 * weights.z + b3.Row2 * weights.w,
+        b0.Row3 * weights.x + b1.Row3 * weights.y + b2.Row3 * weights.z + b3.Row3 * weights.w
+    );
+}
+#endif
+
 struct VertexInput
 {
     float3 Position : TEXCOORD0;
@@ -51,6 +76,10 @@ struct VertexInput
 #ifdef INSTANCED
     uint4 DataOffsets : TEXCOORD5;
 #endif
+#ifdef SKINNED
+    uint2 Joints : TEXCOORD6;
+    float4 Weights : TEXCOORD7;
+#endif
 };
 
 float4 main(VertexInput input) : SV_Position
@@ -60,6 +89,21 @@ float4 main(VertexInput input) : SV_Position
 #else
     float4x4 world = WorldMatrix;
 #endif
-    float4 worldPos = mul(float4(input.Position, 1.0), world);
+
+    float3 position = input.Position;
+
+#ifdef SKINNED
+    uint4 jointIndices = uint4(
+        input.Joints.x & 0xFFFF,
+        (input.Joints.x >> 16) & 0xFFFF,
+        input.Joints.y & 0xFFFF,
+        (input.Joints.y >> 16) & 0xFFFF
+    );
+    uint boneStart = input.DataOffsets.y;
+    float4x4 skinMatrix = BlendBoneMatrices(jointIndices, input.Weights, boneStart);
+    position = mul(float4(input.Position, 1.0), skinMatrix).xyz;
+#endif
+
+    float4 worldPos = mul(float4(position, 1.0), world);
     return mul(worldPos, ViewProjectionMatrix);
 }

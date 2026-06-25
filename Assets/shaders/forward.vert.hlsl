@@ -1,9 +1,14 @@
 // Forward PBR Vertex Shader
 // Transforms vertices and passes data to fragment shader.
-// Vertex format: Mesh (48 bytes) - position, normal, uv, color, tangent
+// Vertex format: Mesh (48 bytes) - position, normal, uv, color, tangent.
+// With SKINNED the input stride grows to 72 bytes - extra Joints
+// (uint2 packed as 4x uint16) and Weights (float4) attributes; the
+// vertex shader blends bone matrices from the global pool inline.
 //
 // When INSTANCED is defined, reads per-instance transforms from a
-// StructuredBuffer indexed by SV_InstanceID instead of the per-draw UBO.
+// StructuredBuffer indexed via the DataOffsets vertex attribute
+// (avoiding the SV_InstanceID / firstInstance trap between HLSL and
+// SPIR-V).
 
 #pragma pack_matrix(row_major)
 
@@ -58,6 +63,31 @@ cbuffer ObjectUniforms : register(b0, space3)
 
 #endif
 
+#ifdef SKINNED
+// Global bone matrix pool, shared by every skinned instance this frame.
+// Bound into the frame bind group (set 0). Each bone is 4 float4 rows
+// (64 bytes).
+struct BoneMatrix
+{
+    float4 Row0, Row1, Row2, Row3;
+};
+StructuredBuffer<BoneMatrix> BoneMatrices : register(t6, space0);
+
+float4x4 BlendBoneMatrices(uint4 jointIndices, float4 weights, uint boneStart)
+{
+    BoneMatrix b0 = BoneMatrices[boneStart + jointIndices.x];
+    BoneMatrix b1 = BoneMatrices[boneStart + jointIndices.y];
+    BoneMatrix b2 = BoneMatrices[boneStart + jointIndices.z];
+    BoneMatrix b3 = BoneMatrices[boneStart + jointIndices.w];
+    return float4x4(
+        b0.Row0 * weights.x + b1.Row0 * weights.y + b2.Row0 * weights.z + b3.Row0 * weights.w,
+        b0.Row1 * weights.x + b1.Row1 * weights.y + b2.Row1 * weights.z + b3.Row1 * weights.w,
+        b0.Row2 * weights.x + b1.Row2 * weights.y + b2.Row2 * weights.z + b3.Row2 * weights.w,
+        b0.Row3 * weights.x + b1.Row3 * weights.y + b2.Row3 * weights.z + b3.Row3 * weights.w
+    );
+}
+#endif
+
 struct VertexInput
 {
     float3 Position : TEXCOORD0;
@@ -67,8 +97,16 @@ struct VertexInput
     float3 Tangent : TEXCOORD4;
 #ifdef INSTANCED
     // Per-instance data offsets delivered via vertex buffer slot 1.
-    // .x = entity index into Instances[]; .y/.z/.w reserved.
+    // .x = entity index into Instances[].
+    // .y = bone matrix start (SKINNED only; 0 otherwise).
+    // .z = prev-frame bone matrix start (motion vectors). .w reserved.
     uint4 DataOffsets : TEXCOORD5;
+#endif
+#ifdef SKINNED
+    // Skinned input attributes (extra 24 bytes vs the static layout).
+    // Joints: 4 uint16 packed into 2 uint32.
+    uint2 Joints : TEXCOORD6;
+    float4 Weights : TEXCOORD7;
 #endif
 };
 
@@ -100,11 +138,42 @@ VertexOutput main(VertexInput input)
     float4 instanceColor = InstanceColor;
 #endif
 
-    float4 worldPos = mul(float4(input.Position, 1.0), world);
+    // Default to the raw vertex; skinned path overrides position / normal /
+    // tangent (and the prev-frame position for motion vectors) before the
+    // world transform.
+    float3 position = input.Position;
+    float3 normal = input.Normal;
+    float3 tangent = input.Tangent;
+    float3 prevPosition = input.Position;
+
+#ifdef SKINNED
+    // Unpack 4 uint16 joint indices from 2 packed uint32.
+    uint4 jointIndices = uint4(
+        input.Joints.x & 0xFFFF,
+        (input.Joints.x >> 16) & 0xFFFF,
+        input.Joints.y & 0xFFFF,
+        (input.Joints.y >> 16) & 0xFFFF
+    );
+
+    uint boneStart = input.DataOffsets.y;
+    uint prevBoneStart = input.DataOffsets.z;
+
+    float4x4 skinMatrix = BlendBoneMatrices(jointIndices, input.Weights, boneStart);
+    position = mul(float4(input.Position, 1.0), skinMatrix).xyz;
+    normal = mul(float4(input.Normal, 0.0), skinMatrix).xyz;
+    tangent = mul(float4(input.Tangent, 0.0), skinMatrix).xyz;
+
+    // Per-bone motion blur: skin against the previous frame's bones so the
+    // prev clip-space position reflects bone motion as well as object motion.
+    float4x4 prevSkinMatrix = BlendBoneMatrices(jointIndices, input.Weights, prevBoneStart);
+    prevPosition = mul(float4(input.Position, 1.0), prevSkinMatrix).xyz;
+#endif
+
+    float4 worldPos = mul(float4(position, 1.0), world);
     output.WorldPos = worldPos.xyz;
     output.Position = mul(worldPos, ViewProjectionMatrix);
-    output.WorldNormal = normalize(mul(input.Normal, (float3x3)world));
-    output.WorldTangent = normalize(mul(input.Tangent, (float3x3)world));
+    output.WorldNormal = normalize(mul(normal, (float3x3)world));
+    output.WorldTangent = normalize(mul(tangent, (float3x3)world));
     output.TexCoord = input.TexCoord;
     // Per-instance color tint flows through the existing vertex Color
     // channel; frag shader already multiplies it with albedo + material
@@ -113,7 +182,7 @@ VertexOutput main(VertexInput input)
 
     // Clip-space positions for motion vector output.
     output.CurClipPos = output.Position;
-    float4 prevWorldPos = mul(float4(input.Position, 1.0), prevWorld);
+    float4 prevWorldPos = mul(float4(prevPosition, 1.0), prevWorld);
     output.PrevClipPos = mul(prevWorldPos, PrevViewProjectionMatrix);
 
     return output;

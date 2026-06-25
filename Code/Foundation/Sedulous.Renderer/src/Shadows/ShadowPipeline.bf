@@ -486,7 +486,10 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 		let clusterIndicesBuf = clusterSystem.GetClusterLightIndicesBuffer(frameIndex);
 		if (clusterParamsBuf == null || clusterOffsetsBuf == null || clusterIndicesBuf == null) return;
 
-		BindGroupEntry[10] bgEntries = .(
+		let bonePoolBuf = mRenderContext.GPUResources.BoneDeviceBuffer;
+		if (bonePoolBuf == null) return;
+
+		BindGroupEntry[11] bgEntries = .(
 			BindGroupEntry.Buffer(frame.SceneUniformBuffer, 0, SceneUniforms.Size),
 			BindGroupEntry.Buffer(lightParamsBuf, 0, (uint64)LightParams.Size),
 			BindGroupEntry.Buffer(clusterParamsBuf, 0, (uint64)ClusterFragParams.Size),
@@ -496,6 +499,7 @@ public class ShadowPipeline : IRenderingPipeline, IDisposable
 			BindGroupEntry.Texture(iblSystem.BRDFLutView),
 			BindGroupEntry.Buffer(clusterOffsetsBuf, 0, clusterOffsetsBuf.Size),
 			BindGroupEntry.Buffer(clusterIndicesBuf, 0, clusterIndicesBuf.Size),
+			BindGroupEntry.Buffer(bonePoolBuf, 0, 0),
 			BindGroupEntry.Sampler(iblSystem.EnvironmentSampler)
 		);
 

@@ -34,11 +34,6 @@ public class RenderContext : IDisposable
 	// Pipeline state cache
 	private PipelineStateCache mPipelineStateCache ~ delete _;
 
-	// Compute skinning moved to per-Pipeline ownership - shared singleton broke
-	// multi-scene rendering: SkinningKey collided on EntityIndex across scenes,
-	// and the records buffer / frame BG raced when two scenes called
-	// DispatchAllForView in the same engine frame. Access via `pipeline.SkinningSystem`.
-
 	// Shadow system (atlas + data buffer + bind group)
 	private ShadowSystem mShadowSystem ~ { _?.Dispose(); delete _; };
 
@@ -374,8 +369,9 @@ public class RenderContext : IDisposable
 		//   t3: BRDFLookup (Texture2D - BRDF integration LUT)
 		//   t4: ClusterOffsets (StructuredBuffer<uint2> - per-cluster offset/count)
 		//   t5: ClusterLightIndices (StructuredBuffer<uint> - global light index list)
+		//   t6: BoneMatrices (global bone matrix pool for vertex skinning)
 		//   s0: EnvironmentSampler (linear-clamp for IBL cubemap sampling)
-		BindGroupLayoutEntry[10] frameEntries = .(
+		BindGroupLayoutEntry[11] frameEntries = .(
 			.() { Binding = 0, Visibility = .Vertex | .Fragment | .Compute, Type = .UniformBuffer, HasDynamicOffset = true }, // b0: SceneUniforms
 			.UniformBuffer(1, .Fragment),                                           // b1: LightParams
 			.UniformBuffer(2, .Fragment),                                           // b2: ClusterParams
@@ -385,6 +381,7 @@ public class RenderContext : IDisposable
 			.SampledTexture(3, .Fragment, .Texture2D),                              // t3: BRDFLookup
 			.() { Binding = 4, Visibility = .Fragment, Type = .StorageBufferReadOnly, StorageBufferStride = 8 },  // t4: ClusterOffsets
 			.() { Binding = 5, Visibility = .Fragment, Type = .StorageBufferReadOnly, StorageBufferStride = 4 },  // t5: ClusterLightIndices
+			.() { Binding = 6, Visibility = .Vertex, Type = .StorageBufferReadOnly, StorageBufferStride = 64 },   // t6: BoneMatrices (4 float4 rows = 64B)
 			.Sampler(0, .Fragment)                                                  // s0: EnvironmentSampler
 		);
 

@@ -6,17 +6,12 @@ using Sedulous.RHI;
 
 /// Shared source-vertex buffer for every skinned mesh. Each skinned GPUMesh
 /// uploads its source vertices into a sub-range of this single buffer
-/// instead of creating its own VkBuffer. The skinning compute pass reads
-/// from (pool.Buffer, mesh.VertexOffset, vertexCount * stride).
+/// instead of creating its own VkBuffer. The vertex shader binds the buffer
+/// as a vertex input and skins inline from (pool.Buffer, mesh.VertexOffset).
 ///
 /// Source vertices are written once (mesh upload) and never modified, so
-/// the pool is GpuOnly and just needs CopyDst for the staging upload plus
-/// StorageRead for the compute-shader bind.
-///
-/// Step A.3 of the mega-dispatch rework. Like A.1 and A.2, by itself this
-/// only changes the backing storage - the source-buffer descriptor entry
-/// still varies its offset per character. A.4 collapses all four per-instance
-/// bind groups into one shared bind group.
+/// the pool is GpuOnly with CopyDst for the staging upload and Vertex for
+/// the vertex-input binding.
 class SkinnedSourceVertexPool : IDisposable
 {
 	public const uint64 Alignment = 256;
@@ -42,7 +37,7 @@ class SkinnedSourceVertexPool : IDisposable
 		{
 			Label = "Skinned Source Vertex Pool",
 			Size = mBufferSize,
-			Usage = .StorageRead | .CopyDst,
+			Usage = .StorageRead | .CopyDst | .Vertex,
 			Memory = .GpuOnly
 		};
 		if (device.CreateBuffer(desc) case .Ok(let buf))

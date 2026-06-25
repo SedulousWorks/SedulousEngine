@@ -46,6 +46,7 @@ class PickPass : PipelinePass
 
 	// Result (decoded entity index, uint32.MaxValue = no entity / background)
 	private uint32 mPickResult;
+	private bool mLoggedSkinnedPickFail;
 
 	/// Per-draw data written to the object UBO for the pick shader.
 	/// Must match pick.vert.hlsl cbuffer ObjectUniforms layout.
@@ -55,6 +56,9 @@ class PickPass : PipelinePass
 		public Matrix WorldMatrix;
 		public Matrix PrevWorldMatrix;
 		public uint32 EntityIndex;
+		// Picked up by the SKINNED pick.vert variant to fetch this draw's
+		// bone matrices from the device-local pool. Zero for static meshes.
+		public uint32 BoneStartIndex;
 	}
 
 	public override StringView Name => "EntityPick";
@@ -298,7 +302,6 @@ class PickPass : PipelinePass
 		let renderContext = pipeline.RenderContext;
 		let cache = renderContext.PipelineStateCache;
 		let gpuResources = renderContext.GPUResources;
-		let skinningSystem = pipeline.SkinningSystem;
 		if (cache == null || gpuResources == null)
 			return;
 
@@ -306,21 +309,49 @@ class PickPass : PipelinePass
 		encoder.SetScissor(0, 0, mWidth, mHeight);
 
 		// Pick pipeline config: RGBA8 output, depth write, pick shader
-		var config = PipelineConfig();
-		config.ShaderName = "pick";
-		config.BlendMode = .Opaque;
-		config.CullMode = .Back;
-		config.DepthMode = .ReadWrite;
-		config.DepthCompare = .Less;
+		var staticConfig = PipelineConfig();
+		staticConfig.ShaderName = "pick";
+		staticConfig.BlendMode = .Opaque;
+		staticConfig.CullMode = .Back;
+		staticConfig.DepthMode = .ReadWrite;
+		staticConfig.DepthCompare = .Less;
 
-		let vertexLayout = VertexLayoutHelper.CreateBufferLayout(.Mesh);
-		VertexBufferLayout[1] vertexBuffers = .(vertexLayout);
+		let staticVertexLayout = VertexLayoutHelper.CreateBufferLayout(.Mesh);
+		VertexBufferLayout[1] staticVertexBuffers = .(staticVertexLayout);
 
-		let pipelineResult = cache.GetPipeline(config, vertexBuffers, null, .RGBA8Unorm, .Depth32Float);
-		if (pipelineResult case .Err)
+		let staticPipelineResult = cache.GetPipeline(staticConfig, staticVertexBuffers, null, .RGBA8Unorm, .Depth32Float);
+		if (staticPipelineResult case .Err)
 			return;
+		let staticPickPipeline = staticPipelineResult.Value;
 
-		encoder.SetPipeline(pipelineResult.Value);
+		// Skinned variant: custom vertex layout that puts Joints / Weights at
+		// SPIR-V locations 5 / 6 (not 6 / 7 like the shared SkinnedMesh
+		// layout). Pick isn't instanced - no DataOffsets to claim Location 5
+		// - and DXC packs locations by declaration order, so the layout
+		// has to match what the pick.vert SKINNED variant emits.
+		VertexAttribute[7] pickSkinnedAttrs = .(
+			.(VertexFormat.Float32x3, 0, 0),    // Position
+			.(VertexFormat.Float32x3, 12, 1),   // Normal
+			.(VertexFormat.Float32x2, 24, 2),   // UV
+			.(VertexFormat.Unorm8x4, 32, 3),    // Color
+			.(VertexFormat.Float32x3, 36, 4),   // Tangent
+			.(VertexFormat.Uint32x2, 48, 5),    // Joints  (was location 6 in SkinnedMesh)
+			.(VertexFormat.Float32x4, 56, 6)    // Weights (was location 7 in SkinnedMesh)
+		);
+		VertexBufferLayout[1] skinnedVertexBuffers = .(VertexBufferLayout(72, pickSkinnedAttrs));
+
+		var skinnedConfig = staticConfig;
+		skinnedConfig.ShaderFlags |= .Skinned;
+		let skinnedPipelineResult = cache.GetPipeline(skinnedConfig, skinnedVertexBuffers, null, .RGBA8Unorm, .Depth32Float);
+		IRenderPipeline skinnedPickPipeline = (skinnedPipelineResult case .Ok(let p)) ? p : null;
+		if (skinnedPickPipeline == null && !mLoggedSkinnedPickFail)
+		{
+			Console.WriteLine("[PickPass] SKINNED pick pipeline failed to compile - skinned meshes will not be pickable.");
+			mLoggedSkinnedPickFail = true;
+		}
+
+		encoder.SetPipeline(staticPickPipeline);
+		IRenderPipeline currentPipeline = staticPickPipeline;
 
 		let frame = pipeline.GetFrameResources(view.FrameIndex);
 		pipeline.BindFrameGroup(encoder, frame);
@@ -347,12 +378,25 @@ class PickPass : PipelinePass
 
 				let subMesh = gpuMesh.SubMeshes[mesh.SubMeshIndex];
 
-				// Write world matrix + entity index to per-draw UBO
+				// Switch to the skinned pick pipeline for skinned meshes; back to
+				// static otherwise. Each switch invalidates set 0 / 3 bindings,
+				// so rebind the frame group when it changes.
+				let targetPipeline = (mesh.IsSkinned && skinnedPickPipeline != null) ? skinnedPickPipeline : staticPickPipeline;
+				if (targetPipeline != currentPipeline)
+				{
+					encoder.SetPipeline(targetPipeline);
+					currentPipeline = targetPipeline;
+					pipeline.BindFrameGroup(encoder, frame);
+				}
+				if (mesh.IsSkinned && skinnedPickPipeline == null)
+					continue;
+
 				PickDrawData pickData = .()
 				{
 					WorldMatrix = mesh.WorldMatrix,
 					PrevWorldMatrix = mesh.PrevWorldMatrix,
-					EntityIndex = mesh.EntityIndex
+					EntityIndex = mesh.EntityIndex,
+					BoneStartIndex = mesh.IsSkinned ? mesh.BoneStartIndex : 0
 				};
 
 				let offset = pipeline.WriteDrawCallBytes(view.FrameIndex,
@@ -362,17 +406,10 @@ class PickPass : PipelinePass
 				uint32[1] dynamicOffsets = .(offset);
 				encoder.SetBindGroup(BindGroupFrequency.DrawCall, frame.DrawCallBindGroup, dynamicOffsets);
 
-				// Use compute-skinned vertex buffer if available. Skinned meshes
-				// share a pool buffer; the per-instance data starts at the offset
-				// returned by TryGetSkinnedBinding.
+				// Skinned: bind the shared source pool with this mesh's offset.
+				// Static: bind the dedicated VkBuffer at offset 0.
 				IBuffer vertexBuffer = gpuMesh.VertexBuffer;
-				uint64 vertexOffset = 0;
-				if (mesh.IsSkinned && skinningSystem != null)
-				{
-					let key = SkinningKey() { MeshHandle = mesh.MeshHandle, EntityId = mesh.EntityIndex };
-					if (!skinningSystem.TryGetSkinnedBinding(key, out vertexBuffer, out vertexOffset))
-						continue;
-				}
+				uint64 vertexOffset = mesh.IsSkinned ? gpuMesh.VertexOffset : 0;
 
 				encoder.SetVertexBuffer(0, vertexBuffer, vertexOffset);
 

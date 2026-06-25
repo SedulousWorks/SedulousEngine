@@ -320,6 +320,20 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer, IS
 		// frame, the atlas stays cleared (depth=1.0 = fully lit) and the forward
 		// shader can safely sample it.
 		ClearShadowAtlas(encoder);
+
+		// Copy the populated range of the host-visible bone matrix pool into
+		// its device-local mirror. Vertex shaders read bones from VRAM, so
+		// without this every bone fetch streams over PCIe. One copy per
+		// engine frame covers every Pipeline.Render that follows.
+		using (Profiler.Begin("BoneMatrixCopy"))
+		{
+			mRenderContext.GPUResources.CopyBonesToDevice(encoder);
+			// Transition device buffer from CopyDst -> ShaderRead so vertex
+			// shaders in the subsequent render passes observe the new bones.
+			MemoryBarrier[1] boneBarriers = .(.() { OldState = .CopyDst, NewState = .ShaderRead });
+			BarrierGroup boneBarrierGroup = .() { MemoryBarriers = .(&boneBarriers[0], 1) };
+			encoder.Barrier(boneBarrierGroup);
+		}
 	}
 
 	/// Clears the shadow atlas depth texture and transitions it to ShaderRead.
@@ -409,16 +423,6 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer, IS
 		// Push scene-level render settings to renderer objects.
 		ApplyRenderSettings(scene, pipeline);
 
-		// Dispatch compute skinning ONCE per Pipeline.Render BEFORE probe
-		// captures so the skinned vertex buffers exist by the time
-		// ProbePipeline's MeshRenderer iterates skinned entries (otherwise
-		// TryGetSkinnedBinding returns false and animated meshes silently drop
-		// out of probe captures). SkinningSystem is per-Pipeline so two
-		// scenes rendered in the same engine frame don't overwrite each
-		// other's records buffer or collide on SkinningKey.
-		using (Profiler.Begin("Skinning"))
-			DispatchSkinning(encoder, pipeline, mainView);
-
 		// Reset per-pipeline ring buffer offsets.
 		pipeline.BeginFrame(frameIndex);
 
@@ -442,66 +446,6 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer, IS
 
 		// Transition output to ShaderRead for the application to blit.
 		encoder.TransitionTexture(colorTexture, .RenderTarget, .ShaderRead);
-	}
-
-	// ==================== Compute Skinning ====================
-
-	/// Dispatches compute skinning for every skinned mesh in `view`'s render
-	/// data. Opens a top-level compute pass on `encoder` and calls into
-	/// SkinningSystem to process each instance. The output (skinned vertex
-	/// buffers, keyed per (mesh, entity) inside SkinningSystem) is consumed
-	/// by both ProbePipeline and the main Pipeline later in the same frame.
-	///
-	/// Centralising the dispatch here - instead of as a PipelinePass inside
-	/// the main pipeline's render graph - means probe captures (which run
-	/// BEFORE the main pipeline.Render) see this frame's skinned buffers and
-	/// can include animated meshes in their cubemap.
-	private void DispatchSkinning(ICommandEncoder encoder, Pipeline pipeline, RenderView view)
-	{
-		let skinningSystem = pipeline?.SkinningSystem;
-		let data = view?.RenderData;
-		if (skinningSystem == null || data == null) return;
-
-		// Skip the whole pass if there's nothing skinned this frame.
-		bool hasAny = HasSkinned(data, RenderCategories.Opaque)
-			|| HasSkinned(data, RenderCategories.Masked)
-			|| HasSkinned(data, RenderCategories.Transparent);
-		if (!hasAny) return;
-
-		IComputePassEncoder computeEnc;
-		using (Profiler.Begin("Skinning.BeginPass"))
-			computeEnc = encoder.BeginComputePass("Skinning");
-		if (computeEnc == null) return;
-
-		skinningSystem.DispatchAllForView(computeEnc, data, mRenderContext.GPUResources);
-
-		using (Profiler.Begin("Skinning.EndPass"))
-			computeEnc.End();
-
-		// Compute write -> vertex fetch barrier. The skinned vertex buffers were
-		// created with Storage|Vertex usage; without an explicit transition the
-		// probe pipeline's later vertex bind reads whatever was last in the
-		// buffer (potentially uninitialised memory on the first frame, stale
-		// pose on subsequent frames), so animated meshes either disappear or
-		// render at the wrong pose in probe captures. Global memory barrier is
-		// enough because every skinned-vertex consumer reads as a vertex
-		// attribute, all matching the same NewState.
-		using (Profiler.Begin("Skinning.Barrier"))
-		{
-			MemoryBarrier[1] memBarriers = .(.() { OldState = .ShaderWrite, NewState = .VertexBuffer });
-			BarrierGroup barriers = .() { MemoryBarriers = .(&memBarriers[0], 1) };
-			encoder.Barrier(barriers);
-		}
-	}
-
-	private static bool HasSkinned(ExtractedRenderData data, RenderDataCategory category)
-	{
-		let batch = data.GetBatch(category);
-		if (batch == null) return false;
-		for (let entry in batch)
-			if (let mesh = entry as MeshRenderData)
-				if (mesh.IsSkinned) return true;
-		return false;
 	}
 
 	// ==================== Scene Render Settings ====================
@@ -1129,9 +1073,6 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer, IS
 		//   5. Forward transparent (sprites/particles blend over sky + opaque)
 		//   6. Debug lines (depth-tested on top of everything)
 		//   7. 2D overlay (no depth)
-		// Compute skinning runs ONCE per frame from RenderSubsystem.DispatchSkinning
-		// (called BEFORE CaptureProbes + pipeline.Render) so both probe captures
-		// and the main pipeline consume the same per-frame skinned buffers.
 		pipeline.AddPass(new DepthPrepass());
 		pipeline.AddPass(new ForwardOpaquePass());
 		pipeline.AddPass(new DecalPass());

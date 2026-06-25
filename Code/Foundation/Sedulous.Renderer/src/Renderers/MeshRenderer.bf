@@ -138,30 +138,21 @@ public class MeshRenderer : Renderer
 		if (batch == null || batch.Count == 0)
 			return;
 
-		// Separate skinned meshes (individual draws) from static meshes (batched)
-		let skinnedEntries = scope List<MeshRenderData>();
+		// Skinned and static meshes both ride the instanced batching path. The
+		// vertex shader does the skinning inline from the global bone pool.
 		let staticEntries = scope List<MeshRenderData>();
 
 		for (let entry in batch)
 		{
 			let mesh = entry as MeshRenderData;
 			if (mesh == null) continue;
-
-			if (mesh.IsSkinned)
-				skinnedEntries.Add(mesh);
-			else
-				staticEntries.Add(mesh);
+			staticEntries.Add(mesh);
 		}
 
-		// Instanced static mesh rendering (works for any pipeline with instance buffer).
 		// Pass the original batch list pointer through so the renderer can key its
 		// per-category cache state on it (stable across frames per (view, category)).
 		if (staticEntries.Count > 0 && frame.InstanceBuffer != null)
 			RenderStaticInstanced(encoder, staticEntries, batch, renderContext, pipeline, frame, view, flags, passConfig);
-
-		// Individual skinned mesh rendering
-		if (skinnedEntries.Count > 0)
-			RenderSkinnedIndividual(encoder, skinnedEntries, renderContext, pipeline, frame, view, flags, passConfig);
 	}
 
 	/// Per-category two-level cache, keyed on the batch list pointer (stable
@@ -349,7 +340,15 @@ public class MeshRenderer : Renderer
 							let slot = group.InstanceStart + state.GroupFillCounters[groupIdx];
 							state.GroupFillCounters[groupIdx]++;
 
-							state.Offsets[slot] = .() { X = (uint32)i, Y = 0, Z = 0, W = 0 };
+							// .y = current-frame bone start (matrix index into global pool),
+							// .z = previous-frame bone start (for motion vectors). Both are
+							// 0 for static meshes so the static path is unchanged.
+							state.Offsets[slot] = .() {
+								X = (uint32)i,
+								Y = mesh.BoneStartIndex,
+								Z = mesh.PrevBoneStartIndex,
+								W = 0
+							};
 							state.InstanceData[i] = .()
 							{
 								WorldMatrix = mesh.WorldMatrix,
@@ -429,9 +428,13 @@ public class MeshRenderer : Renderer
 			}
 		}
 
-		let vertexLayout = VertexLayoutHelper.CreateBufferLayout(.Mesh);
+		let staticVertexLayout = VertexLayoutHelper.CreateBufferLayout(.Mesh);
 		let offsetsLayout = VertexLayoutHelper.CreateDataOffsetsBufferLayout();
-		VertexBufferLayout[2] vertexBuffers = .(vertexLayout, offsetsLayout);
+		VertexBufferLayout[2] staticVertexBuffers = .(staticVertexLayout, offsetsLayout);
+		// Parallel layout for skinned groups - 72-byte source verts with
+		// joints + weights at locations 6 / 7.
+		let skinnedVertexLayout = VertexLayoutHelper.CreateBufferLayout(.SkinnedMesh);
+		VertexBufferLayout[2] skinnedVertexBuffers = .(skinnedVertexLayout, offsetsLayout);
 
 		let colorFormat = pipeline.OutputFormat;
 		let depthFormat = passConfig.DepthFormat;
@@ -459,7 +462,14 @@ public class MeshRenderer : Renderer
 				if (!group.MaterialConfig.ShaderName.IsEmpty)
 					config.ShaderName = group.MaterialConfig.ShaderName;
 
-				let pipelineResult = pipelineCache.GetPipeline(config, vertexBuffers, group.MaterialBindGroupLayout, colorFormat, depthFormat);
+				// Pick the right vertex layout + shader permutation per group.
+				// Skinned groups need the 72-byte source layout + the Skinned
+				// shader flag so the vertex shader does the inline bone blend.
+				let groupVertexBuffers = gpuMesh.IsSkinned ? skinnedVertexBuffers : staticVertexBuffers;
+				if (gpuMesh.IsSkinned)
+					config.ShaderFlags |= .Skinned;
+
+				let pipelineResult = pipelineCache.GetPipeline(config, groupVertexBuffers, group.MaterialBindGroupLayout, colorFormat, depthFormat);
 				if (pipelineResult case .Err) continue;
 
 				let groupPipeline = pipelineResult.Value;
@@ -494,7 +504,10 @@ public class MeshRenderer : Renderer
 
 				// Per-instance offsets vertex buffer slice for this group.
 				let offsetsByteOff = (uint64)((startOffsets + group.InstanceStart) * PerFrameResources.DataOffsetsStride);
-				encoder.SetVertexBuffer(0, gpuMesh.VertexBuffer, 0);
+				// Skinned meshes live in a shared source pool at gpuMesh.VertexOffset;
+				// static meshes own their VkBuffer with no offset.
+				let srcVertexOffset = gpuMesh.IsSkinned ? gpuMesh.VertexOffset : 0;
+				encoder.SetVertexBuffer(0, gpuMesh.VertexBuffer, srcVertexOffset);
 				encoder.SetVertexBuffer(1, frame.InstanceOffsetsBuffer, offsetsByteOff);
 
 				if (gpuMesh.IndexBuffer != null)

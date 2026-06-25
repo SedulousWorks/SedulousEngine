@@ -39,14 +39,17 @@ public static class VertexLayoutHelper
 
 	/// SkinnedMesh: Mesh attributes + JointIndices (2x uint32 = 4x uint16 packed) + JointWeights (float4)
 	/// 72 bytes total. Bone indices packed as 4x uint16 in 2x uint32 for memory savings.
+	/// Joints / Weights live at locations 6 / 7 so the per-instance DataOffsets
+	/// attribute (location 5) on a second vertex buffer slot can coexist on the
+	/// skinned-instanced draw path.
 	public static VertexAttribute[7] SkinnedMeshAttributes = .(
 		.(VertexFormat.Float32x3, 0, 0),   // Position
 		.(VertexFormat.Float32x3, 12, 1),  // Normal
 		.(VertexFormat.Float32x2, 24, 2),  // UV
 		.(VertexFormat.Unorm8x4, 32, 3),   // Color
 		.(VertexFormat.Float32x3, 36, 4),  // Tangent
-		.(VertexFormat.Uint32x2, 48, 5),   // Joint Indices (4x uint16 packed in 2x uint32)
-		.(VertexFormat.Float32x4, 56, 6)   // Joint Weights
+		.(VertexFormat.Uint32x2, 48, 6),   // Joint Indices (4x uint16 packed in 2x uint32)
+		.(VertexFormat.Float32x4, 56, 7)   // Joint Weights
 	);
 
 	/// Per-instance DataOffsets attribute: uint4 of indices into per-frame data buffers.
