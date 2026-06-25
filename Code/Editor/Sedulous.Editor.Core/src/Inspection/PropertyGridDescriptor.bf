@@ -7,6 +7,7 @@ using Sedulous.Resources;
 using Sedulous.UI.Toolkit;
 using Sedulous.Inspection;
 using Sedulous.Particles;
+using Sedulous.Physics;
 
 /// Implements IPropertyDescriptor to build PropertyGrid entries from
 /// comptime-generated DescribeProperties calls.
@@ -271,6 +272,34 @@ class PropertyGridDescriptor : IPropertyDescriptor
 	public virtual void EmissionShape(StringView name, EmissionShape* ptr)
 	{
 		let summary = scope $"{ptr.Type}";
+		mGrid.AddProperty(new StringEditor(name, summary, category: mCurrentCategory));
+	}
+
+	// ===== Physics IPropertyDescriptor extension methods =====
+	// Same vtable-slot rationale as the particle block above - any
+	// PropertyGridDescriptor instance that lands in code linking
+	// Sedulous.Physics has to honor the extension's vtable.
+
+	public virtual void ShapeConfig(StringView name, ShapeConfig* ptr, delegate void() onChanged = null)
+	{
+		let summary = scope String();
+		switch (ptr.Type)
+		{
+		case .Box:
+			summary.AppendF("Box ({:F2}, {:F2}, {:F2})",
+				ptr.HalfExtents.X, ptr.HalfExtents.Y, ptr.HalfExtents.Z);
+		case .Sphere:
+			summary.AppendF("Sphere r={:F2}", ptr.Radius);
+		case .Capsule:
+			summary.AppendF("Capsule r={:F2} h={:F2}", ptr.Radius, ptr.HalfHeight);
+		case .Cylinder:
+			summary.AppendF("Cylinder r={:F2} h={:F2}", ptr.Radius, ptr.HalfHeight);
+		case .Plane:
+			summary.Append("Plane");
+		}
+		// v1 fallback is read-only; drop the unused callback so the
+		// codegen doesn't leak it when targeting a non-editor descriptor.
+		if (onChanged != null) delete onChanged;
 		mGrid.AddProperty(new StringEditor(name, summary, category: mCurrentCategory));
 	}
 

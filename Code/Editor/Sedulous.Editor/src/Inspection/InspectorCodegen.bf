@@ -134,6 +134,20 @@ static class InspectorCodegen
 			}
 			else if (ft == typeof(Sedulous.Particles.EmissionShape))
 				body.AppendF($"\tdesc.EmissionShape(\"{field.Name}\", &{field.Name});\n");
+			// Physics types
+			else if (ft == typeof(Sedulous.Physics.ShapeConfig))
+			{
+				// If the component has a `NeedsShapeUpdate: bool` field, pass
+				// a closure that sets it true on each edit so the physics
+				// manager rebuilds the shape on its next tick. Components
+				// without that field get no callback (read-only / one-shot
+				// inspectors don't need it).
+				bool hasNeedsUpdate = type.GetField("NeedsShapeUpdate") case .Ok;
+				if (hasNeedsUpdate)
+					body.AppendF($"\tdesc.ShapeConfig(\"{field.Name}\", &{field.Name}, new () => {{ NeedsShapeUpdate = true; }});\n");
+				else
+					body.AppendF($"\tdesc.ShapeConfig(\"{field.Name}\", &{field.Name});\n");
+			}
 		}
 
 		body.Append("\tdesc.EndCategory();\n");

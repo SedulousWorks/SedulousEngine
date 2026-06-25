@@ -46,10 +46,14 @@ class RigidBodyComponent : Component, ISerializableComponent
 	[Property(.Default, "Body Type", "BodyType")]
 	public BodyType BodyType = .Dynamic;
 
-	/// Collision shape configuration. Edited via code today - a dedicated
-	/// editor for ShapeConfig (type + bounds selector) is a future addition;
-	/// the serialized sub-fields (ShapeType / ShapeHalfX..Z / ShapeRadius /
-	/// ShapeHalfHeight) still round-trip via Serialize().
+	/// Collision shape configuration. Inspector shows the shape type as a
+	/// combo and only the sub-fields relevant to the selected type
+	/// (HalfExtents for Box, Radius for Sphere, Radius+HalfHeight for
+	/// Capsule/Cylinder); see `ShapeConfigEditor`. Edits flag
+	/// `NeedsShapeUpdate` so PhysicsComponentManager rebuilds the body's
+	/// shape on its next tick. Round-tripped via Serialize() as discrete
+	/// ShapeType / ShapeHalfX..Z / ShapeRadius / ShapeHalfHeight fields.
+	[Property(.Default, "Shape", "Shape")]
 	public ShapeConfig Shape = .Box(0.5f);
 
 	/// Mass in kg. 0 = use shape volume default.

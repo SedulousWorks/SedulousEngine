@@ -8,6 +8,7 @@ using Sedulous.Serialization;
 using Sedulous.Shell;
 using Sedulous.UI.Toolkit;
 using Sedulous.Particles;
+using Sedulous.Physics;
 using Sedulous.Core.Mathematics;
 
 /// Extends PropertyGridDescriptor with editor-specific controls.
@@ -71,6 +72,11 @@ class EditorPropertyGridDescriptor : PropertyGridDescriptor
 	public override void EmissionShape(StringView name, EmissionShape* ptr)
 	{
 		mGrid.AddProperty(new EmissionShapeEditor(name, ptr, category: CurrentCategory));
+	}
+
+	public override void ShapeConfig(StringView name, ShapeConfig* ptr, delegate void() onChanged = null)
+	{
+		mGrid.AddProperty(new ShapeConfigEditor(name, ptr, onChanged, category: CurrentCategory));
 	}
 
 	public override void CurveFloat(StringView name, ParticleCurveFloat* ptr, float displayMin = 0, float displayMax = 0)
