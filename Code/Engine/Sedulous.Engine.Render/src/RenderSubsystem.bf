@@ -507,7 +507,7 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer, IS
 	// ==================== Scene Render Settings ====================
 
 	/// Reads RenderSceneModule values and pushes them to SkyPass, LightBuffer,
-	/// and TonemapEffect on the pipeline for this scene.
+	/// and the post-process effect stack on the pipeline for this scene.
 	private void ApplyRenderSettings(Scene scene, Pipeline pipeline)
 	{
 		let settings = scene.GetModule<RenderSceneModule>();
@@ -547,9 +547,43 @@ class RenderSubsystem : Subsystem, ISceneAware, IWindowAware, ISceneRenderer, IS
 		// --- Ambient ---
 		pipeline.LightBuffer.AmbientColor = settings.AmbientColor;
 
-		// --- Exposure ---
+		// --- Tonemap ---
 		if (let tonemap = pipeline.PostProcessStack?.GetEffect<TonemapEffect>())
+		{
 			tonemap.Exposure = settings.Exposure;
+			tonemap.WhitePoint = settings.WhitePoint;
+			tonemap.Gamma = settings.Gamma;
+		}
+
+		// --- Bloom ---
+		if (let bloom = pipeline.PostProcessStack?.GetEffect<BloomEffect>())
+		{
+			bloom.Enabled = settings.BloomEnabled;
+			bloom.Threshold = settings.BloomThreshold;
+			bloom.Intensity = settings.BloomIntensity;
+		}
+
+		// --- SSAO ---
+		if (let ssao = pipeline.PostProcessStack?.GetEffect<SSAOEffect>())
+		{
+			ssao.Enabled = settings.SSAOEnabled;
+			ssao.Radius = settings.SSAORadius;
+			ssao.Intensity = settings.SSAOIntensity;
+			ssao.Bias = settings.SSAOBias;
+		}
+
+		// --- Anti-aliasing (TAA and FXAA are mutually exclusive by enum) ---
+		if (let taa = pipeline.PostProcessStack?.GetEffect<TAAEffect>())
+		{
+			taa.Enabled = settings.AntiAliasing == .TAA;
+			taa.BlendFactor = settings.TAABlendFactor;
+		}
+		if (let fxaa = pipeline.PostProcessStack?.GetEffect<FXAAEffect>())
+		{
+			fxaa.Enabled = settings.AntiAliasing == .FXAA;
+			fxaa.SubpixelQuality = settings.FXAASubpixelQuality;
+			fxaa.EdgeThreshold = settings.FXAAEdgeThreshold;
+		}
 	}
 
 	// ==================== Extraction ====================
