@@ -76,6 +76,18 @@ class PhysicsComponentManager : ComponentManager<RigidBodyComponent>, IContactLi
 		for (let comp in ActiveComponents)
 		{
 			if (!comp.IsActive) continue;
+
+			// Shape edits in the inspector flag NeedsShapeUpdate. Tear
+			// the body + shape down and route through the normal
+			// NeedsBodyCreation path so the same code that built it the
+			// first time builds the replacement with the new geometry.
+			if (comp.NeedsShapeUpdate && comp.PhysicsBody.IsValid)
+			{
+				DestroyPhysicsBody(comp);
+				comp.NeedsBodyCreation = true;
+			}
+			comp.NeedsShapeUpdate = false;
+
 			if (comp.NeedsBodyCreation)
 				CreatePhysicsBody(comp);
 		}
