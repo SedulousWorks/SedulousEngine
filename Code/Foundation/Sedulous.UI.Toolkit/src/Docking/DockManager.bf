@@ -173,6 +173,13 @@ public class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 	/// Uses OS windows if DockableWindowHost supports it, otherwise PopupLayer.
 	public void FloatPanel(DockablePanel panel, float x, float y)
 	{
+		// Inherit the panel's docked size before unparenting; a panel that
+		// was sitting at e.g. 600x400 in a split should pop out at 600x400,
+		// not the old hardcoded 300x250 (which was unusably small for any
+		// content panel).
+		let floatW = panel.Width > 0 ? panel.Width : 300;
+		let floatH = panel.Height > 0 ? panel.Height : 250;
+
 		RemoveFromTree(panel);
 
 		let dockable = new DockableWindow(panel);
@@ -187,7 +194,7 @@ public class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 		if (useOSWindow)
 		{
 			dockable.IsOSWindow = true;
-			DockableWindowHost.CreateDockableWindow(dockable, 300, 250, x, y,
+			DockableWindowHost.CreateDockableWindow(dockable, floatW, floatH, x, y,
 				new (view) => {
 					if (let fw = view as DockableWindow)
 						CloseDockableWindow(fw);
