@@ -446,11 +446,13 @@ class TowerDefenseModule : IApplicationModule
 		// Pause overlay
 		mPauseUI.Setup(root,
 			new () => { mGameSub.ResumeGame(); mPauseUI.Hide(); },
-			new () => { mPauseUI.Hide(); ReturnToMainMenu(host); }
+			new () => { mPauseUI.Hide(); ReturnToMainMenu(host); },
+			new () => { host.RequestExit(); }
 		);
 
 		// Main menu (full-screen overlay, shown on top of everything)
-		mMainMenu.Setup(root, new () => StartGame());
+		mMainMenu.Setup(root, new () => StartGame(),
+			new () => { host.RequestExit(); });
 		mMainMenu.Show();
 	}
 

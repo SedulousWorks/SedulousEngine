@@ -10,13 +10,15 @@ class PauseUI
 	private Panel mRoot; // Owned by view tree (parent deletes)
 	public delegate void() OnResume ~ delete _;
 	public delegate void() OnMainMenu ~ delete _;
+	public delegate void() OnQuit ~ delete _;
 
 	public Panel Root => mRoot;
 
-	public void Setup(RootView root, delegate void() onResume, delegate void() onMainMenu)
+	public void Setup(RootView root, delegate void() onResume, delegate void() onMainMenu, delegate void() onQuit)
 	{
 		OnResume = onResume;
 		OnMainMenu = onMainMenu;
+		OnQuit = onQuit;
 
 		// Full-screen dark overlay
 		mRoot = new Panel();
@@ -61,6 +63,16 @@ class PauseUI
 			});
 		content.AddView(menuBtn);
 
+		// Quit button
+		let quitBtn = new Button("Quit");
+		quitBtn.FontSize.Value = 16;
+		quitBtn.SetStyle(.Background, new ColorDrawable(.(80, 40, 40, 255)));
+		quitBtn.OnClick.Add(new (btn) =>
+			{
+				if (OnQuit != null) OnQuit();
+			});
+		content.AddView(quitBtn);
+
 		// Add to view tree immediately - view tree owns mRoot
 		root.AddView(mRoot, new LayoutParams() { Width = .Match, Height = .Match });
 	}
@@ -81,6 +93,7 @@ class PauseUI
 		// Setup doesn't orphan them.
 		delete OnResume;  OnResume = null;
 		delete OnMainMenu; OnMainMenu = null;
+		delete OnQuit; OnQuit = null;
 
 		// Detach + delete our root from the screen view tree so the next
 		// Setup doesn't stack a fresh overlay on top of the old one.

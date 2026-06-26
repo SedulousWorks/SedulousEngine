@@ -9,12 +9,14 @@ class MainMenuUI
 {
 	private Panel mRoot; // Owned by view tree (parent deletes)
 	public delegate void() OnStartGame ~ delete _;
+	public delegate void() OnQuit ~ delete _;
 
 	public Panel Root => mRoot;
 
-	public void Setup(RootView root, delegate void() onStartGame)
+	public void Setup(RootView root, delegate void() onStartGame, delegate void() onQuit)
 	{
 		OnStartGame = onStartGame;
+		OnQuit = onQuit;
 
 		// Full-screen dark overlay
 		mRoot = new Panel();
@@ -58,6 +60,16 @@ class MainMenuUI
 			});
 		content.AddView(startBtn);
 
+		// Quit button
+		let quitBtn = new Button("Quit");
+		quitBtn.FontSize.Value = 18;
+		quitBtn.SetStyle(.Background, new ColorDrawable(.(120, 50, 50, 255)));
+		quitBtn.OnClick.Add(new (btn) =>
+			{
+				if (OnQuit != null) OnQuit();
+			});
+		content.AddView(quitBtn);
+
 		// Controls hint
 		content.AddView(new Spacer(0, 20));
 		let controls = new Label("1-4: Select tower  |  Click: Place  |  Space: Start wave  |  P: Pause");
@@ -85,6 +97,7 @@ class MainMenuUI
 		// Release the per-launch callback closure so the next OnLaunch's
 		// Setup doesn't orphan it.
 		delete OnStartGame; OnStartGame = null;
+		delete OnQuit; OnQuit = null;
 
 		// Detach + delete our root from the screen view tree so the next
 		// Setup doesn't stack a fresh overlay on top of the old one.
