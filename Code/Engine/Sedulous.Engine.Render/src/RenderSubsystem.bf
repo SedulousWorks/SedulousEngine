@@ -20,6 +20,7 @@ using Sedulous.Geometry.Resources;
 using Sedulous.Textures;
 using Sedulous.Textures.Resources;
 using Sedulous.Materials.Resources;
+using Sedulous.Images.Resources;
 using Sedulous.Particles.Resources;
 using System.Collections;
 using Sedulous.Renderer.IBL;
@@ -95,6 +96,7 @@ class RenderSubsystem : Subsystem, ISceneAware, ISceneRenderer, IScreenRenderer
 	private TextureResourceManager mTextureManager ~ delete _;
 	private MaterialResourceManager mMaterialManager ~ delete _;
 	private ParticleEffectResourceManager mParticleEffectManager ~ delete _;
+	private ImageResourceManager mImageManager ~ delete _;
 
 	// Shared resource resolver
 	private RenderResourceResolver mResolver ~ delete _;
@@ -225,12 +227,14 @@ class RenderSubsystem : Subsystem, ISceneAware, ISceneRenderer, IScreenRenderer
 		mMaterialManager = new MaterialResourceManager();
 		mParticleEffectManager = new ParticleEffectResourceManager();
 		mParticleEffectManager.SerializerProvider = mResourceSystem.SerializerProvider;
+		mImageManager = new ImageResourceManager();
 
 		mResourceSystem.AddResourceManager(mStaticMeshManager);
 		mResourceSystem.AddResourceManager(mSkinnedMeshManager);
 		mResourceSystem.AddResourceManager(mTextureManager);
 		mResourceSystem.AddResourceManager(mMaterialManager);
 		mResourceSystem.AddResourceManager(mParticleEffectManager);
+		mResourceSystem.AddResourceManager(mImageManager);
 
 		// Shared resource resolver
 		mResolver = new RenderResourceResolver(mResourceSystem, mRenderContext.GPUResources, mRenderContext.MaterialSystem);
@@ -254,6 +258,8 @@ class RenderSubsystem : Subsystem, ISceneAware, ISceneRenderer, IScreenRenderer
 			mResourceSystem.RemoveResourceManager(mMaterialManager);
 		if (mParticleEffectManager != null)
 			mResourceSystem.RemoveResourceManager(mParticleEffectManager);
+		if (mImageManager != null)
+			mResourceSystem.RemoveResourceManager(mImageManager);
 
 		// Shutdown pipelines then renderer (pipelines first - they reference renderer)
 		for (let kv in mScenePipelines)
