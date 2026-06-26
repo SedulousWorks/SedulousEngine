@@ -124,26 +124,18 @@ public class InputManager
 
 		let hitView = mContext.GetViewById(mHoveredId);
 
-		// Popup click-outside detection.
+		// Popup click-outside detection. Hand the hit view to the layer
+		// so it can decide whether the click landed inside the topmost
+		// popup (no-op), inside a lower popup (close popups above), or
+		// completely outside (close every closeable popup).
 		let root = mContext.ActiveInputRoot;
 		if (root != null)
 		{
 			let popupLayer = root.PopupLayer;
 			if (popupLayer != null && popupLayer.PopupCount > 0)
 			{
-				bool hitIsPopup = false;
-				var v = hitView;
-				while (v != null)
-				{
-					if (v.Parent is PopupLayer) { hitIsPopup = true; break; }
-					v = v.Parent;
-				}
-
-				if (!hitIsPopup)
-				{
-					if (popupLayer.HandleClickOutside((int32)button))
-						return true; // LMB consumed by popup close
-				}
+				if (popupLayer.HandleClickOutside(hitView, (int32)button))
+					return true; // LMB consumed by popup close
 			}
 		}
 

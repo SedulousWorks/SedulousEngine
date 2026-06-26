@@ -178,7 +178,7 @@ class PopupLayerTests
 			closeOnClickOutside: true, ownsView: true);
 
 		Test.Assert(root.PopupLayer.PopupCount == 1);
-		root.PopupLayer.HandleClickOutside(0); // LMB
+		root.PopupLayer.HandleClickOutside(null, 0); // outside any popup, LMB
 		Test.Assert(root.PopupLayer.PopupCount == 0);
 	}
 
@@ -241,4 +241,8 @@ class TestPopupOwner : IPopupOwner
 		*mNotified = true;
 		*mClosedPopup = popup;
 	}
+
+	// Not a View - cascade-close logic treats null as "outside any popup",
+	// which is fine for these tests (they don't exercise that path).
+	public View OwnerView => null;
 }

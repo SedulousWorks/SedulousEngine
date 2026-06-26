@@ -192,23 +192,49 @@ public class PopupLayer : ViewGroup
 		}
 	}
 
-	/// Close all popups with CloseOnClickOutside (topmost first).
-	/// Called by InputManager when a click lands outside all popups.
+	/// Close popups stacked above the topmost popup containing `hitView`
+	/// (topmost first). When `hitView` is null or outside every popup
+	/// (modal redirect, backdrop, click that fell through), every
+	/// CloseOnClickOutside popup is closed.
+	/// Called by InputManager on every mousedown so that, e.g., clicking
+	/// the dialog under an open combobox dropdown closes the dropdown.
 	/// Returns true if any popup was closed (LMB consumed).
-	public bool HandleClickOutside(int32 button)
+	public bool HandleClickOutside(View hitView, int32 button)
 	{
+		// Find the topmost popup whose subtree contains hitView.
+		int hitPopupIndex = -1;
+		var v = hitView;
+		while (v != null)
+		{
+			if (v.Parent === this)
+			{
+				for (int i = 0; i < mEntries.Count; i++)
+				{
+					if (mEntries[i].Popup === v)
+					{
+						hitPopupIndex = i;
+						break;
+					}
+				}
+				break; // direct child of this layer - stop walking either way
+			}
+			v = v.Parent;
+		}
+
+		// Close every CloseOnClickOutside popup stacked above hitPopupIndex,
+		// topmost first. Restart after each close because the list mutates.
 		bool closed = false;
 		while (true)
 		{
 			bool found = false;
-			for (int i = mEntries.Count - 1; i >= 0; i--)
+			for (int i = mEntries.Count - 1; i > hitPopupIndex; i--)
 			{
 				if (mEntries[i].CloseOnClickOutside)
 				{
 					ClosePopup(mEntries[i].Popup);
 					closed = true;
 					found = true;
-					break; // restart - list changed
+					break;
 				}
 			}
 			if (!found) break;
