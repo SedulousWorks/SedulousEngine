@@ -1,0 +1,12 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Images.Importer"
+TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Images" = "*"
+"Sedulous.Images.IO" = "*"
+"Sedulous.Images.Resources" = "*"
+"Sedulous.Resources" = "*"

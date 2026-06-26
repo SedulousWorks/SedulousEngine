@@ -91,6 +91,7 @@ SR001_ReflectedPBR = {Path = "Samples/ShaderReflection/SR001_ReflectedPBR"}
 "Sedulous.Geometry.Tests" = {Path = "Foundation/Sedulous.Geometry.Tests"}
 "Sedulous.Images" = {Path = "Foundation/Sedulous.Images"}
 "Sedulous.Images.Resources" = {Path = "Foundation/Sedulous.Images.Resources"}
+"Sedulous.Images.Importer" = {Path = "Foundation/Sedulous.Images.Importer"}
 "Sedulous.Images.IO" = {Path = "Foundation/Sedulous.Images.IO"}
 "Sedulous.Images.SDL" = {Path = "Foundation/Sedulous.Images.SDL"}
 "Sedulous.Images.STB" = {Path = "Foundation/Sedulous.Images.STB"}
@@ -217,7 +218,7 @@ Foundation = []
 "Foundation/Fonts" = ["Sedulous.Fonts", "Sedulous.Fonts.IO", "Sedulous.Fonts.TTF", "Sedulous.Fonts.Baked", "Sedulous.Fonts.Importer", "Sedulous.Fonts.Tests", "Sedulous.Fonts.Resources"]
 "Foundation/Geometry" = ["Sedulous.Geometry", "Sedulous.Geometry.Tests", "Sedulous.Geometry.Tooling", "Sedulous.Geometry.Resources", "Sedulous.Geometry.Tooling.Resources"]
 "Foundation/VG" = ["Sedulous.VG", "Sedulous.VG.SVG", "Sedulous.VG.Tests", "Sedulous.VG.Renderer"]
-"Foundation/Imaging" = ["Sedulous.Images.IO", "Sedulous.Images.STB", "Sedulous.Images.Tests", "Sedulous.Images.Resources", "Sedulous.Images.SDL", "Sedulous.Images"]
+"Foundation/Imaging" = ["Sedulous.Images.IO", "Sedulous.Images.STB", "Sedulous.Images.Tests", "Sedulous.Images.Resources", "Sedulous.Images.Importer", "Sedulous.Images.SDL", "Sedulous.Images"]
 "Foundation/Models" = ["Sedulous.Models", "Sedulous.Models.FBX", "Sedulous.Models.GLTF", "Sedulous.Models.Tests"]
 "Foundation/Net" = ["Sedulous.Net", "Sedulous.Net.HTTP", "Sedulous.Net.HTTP.Tests", "Sedulous.Net.Tests"]
 "Foundation/Render" = ["Sedulous.Materials", "Sedulous.Shaders", "Sedulous.Textures", "Sedulous.Textures.Resources", "Sedulous.Textures.Importer", "Sedulous.Materials.Resources", "Sedulous.RenderGraph", "Sedulous.RenderGraph.Tests", "Sedulous.Renderer", "Sedulous.Particles"]
