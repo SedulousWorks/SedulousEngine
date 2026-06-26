@@ -249,9 +249,9 @@ class ToolkitTests
 		float h = 0, s = 0, v = 0;
 		ColorPicker.RGBToHSV(1.0f, 0.5f, 0.25f, ref h, ref s, ref v);
 		let c = ColorPicker.HSVToRGB(h, s, v);
-		Test.Assert(Math.Abs((int)c.R - 255) <= 1);
-		Test.Assert(Math.Abs((int)c.G - 128) <= 1);
-		Test.Assert(Math.Abs((int)c.B - 64) <= 1);
+		Test.Assert(Math.Abs(c.R - 1.0f) <= 1f / 255f);
+		Test.Assert(Math.Abs(c.G - 0.5f) <= 1f / 255f);
+		Test.Assert(Math.Abs(c.B - 0.25f) <= 1f / 255f);
 	}
 
 	// === PropertyGrid ===

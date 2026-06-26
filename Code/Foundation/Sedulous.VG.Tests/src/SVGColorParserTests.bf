@@ -11,7 +11,7 @@ class SVGColorParserTests
 	{
 		if (SVGColorParser.Parse("#ff0000") case .Ok(let c))
 		{
-			Test.Assert(c.R == 255);
+			Test.Assert(c.R == 1);
 			Test.Assert(c.G == 0);
 			Test.Assert(c.B == 0);
 		}
@@ -26,7 +26,7 @@ class SVGColorParserTests
 	{
 		if (SVGColorParser.Parse("#f00") case .Ok(let c))
 		{
-			Test.Assert(c.R == 255);
+			Test.Assert(c.R == 1);
 			Test.Assert(c.G == 0);
 			Test.Assert(c.B == 0);
 		}
@@ -41,7 +41,7 @@ class SVGColorParserTests
 	{
 		if (SVGColorParser.Parse("red") case .Ok(let c))
 		{
-			Test.Assert(c.R == 255);
+			Test.Assert(c.R == 1);
 			Test.Assert(c.G == 0);
 			Test.Assert(c.B == 0);
 		}
@@ -58,7 +58,7 @@ class SVGColorParserTests
 		{
 			Test.Assert(c.R == 0);
 			Test.Assert(c.G == 0);
-			Test.Assert(c.B == 255);
+			Test.Assert(c.B == 1);
 		}
 		else
 		{
@@ -71,9 +71,9 @@ class SVGColorParserTests
 	{
 		if (SVGColorParser.Parse("rgb(128, 64, 32)") case .Ok(let c))
 		{
-			Test.Assert(c.R == 128);
-			Test.Assert(c.G == 64);
-			Test.Assert(c.B == 32);
+			Test.Assert(c.R == 128f / 255f);
+			Test.Assert(c.G == 64f / 255f);
+			Test.Assert(c.B == 32f / 255f);
 		}
 		else
 		{
@@ -86,8 +86,8 @@ class SVGColorParserTests
 	{
 		if (SVGColorParser.Parse("#FfAa00") case .Ok(let c))
 		{
-			Test.Assert(c.R == 255);
-			Test.Assert(c.G == 170);
+			Test.Assert(c.R == 1);
+			Test.Assert(c.G == 170f / 255f);
 			Test.Assert(c.B == 0);
 		}
 		else
