@@ -38,6 +38,28 @@ static class InputMapping
 		return (.)shellButton;
 	}
 
+	/// Maps a UI-layer cursor request to the platform shell's CursorType.
+	/// The two enums overlap but aren't identical (Sedulous.UI uses
+	/// historical "Hand/IBeam/SizeNS" names while the platform layer
+	/// uses CSS-like "Pointer/Text/ResizeNS"); single translation point.
+	public static Sedulous.Shell.Input.CursorType MapCursor(Sedulous.UI.CursorType uiCursor)
+	{
+		switch (uiCursor)
+		{
+		case .Default, .Arrow: return .Default;
+		case .Hand:            return .Pointer;
+		case .IBeam:           return .Text;
+		case .Crosshair:       return .Crosshair;
+		case .SizeNS:          return .ResizeNS;
+		case .SizeWE:          return .ResizeEW;
+		case .SizeNWSE:        return .ResizeNWSE;
+		case .SizeNESW:        return .ResizeNESW;
+		case .Move:            return .Move;
+		case .NotAllowed:      return .NotAllowed;
+		case .Wait:            return .Wait;
+		}
+	}
+
 	/// Converts a shell key code to a printable character (US keyboard layout).
 	/// Returns '\0' if the key doesn't produce a printable character.
 	/// Fallback for when SDL_StartTextInput is not active.

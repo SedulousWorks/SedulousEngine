@@ -164,6 +164,15 @@ public class UIInputHelper
 		// Mouse wheel with current modifiers.
 		if (mouse.ScrollX != 0 || mouse.ScrollY != 0)
 			context.InputManager.ProcessMouseWheel(overrideX, overrideY, mouse.ScrollX, mouse.ScrollY, mCurrentModifiers);
+
+		// Sync OS cursor to whatever the hovered View asked for via its
+		// EffectiveCursor. InputManager updates CurrentCursor in UpdateHover;
+		// without this push the cursor stays whatever the shell last set
+		// (usually the default arrow) so resize edges, hand cursors on
+		// links, text I-beams, etc. never appear.
+		let wantedCursor = InputMapping.MapCursor(context.InputManager.CurrentCursor);
+		if (mouse.Cursor != wantedCursor)
+			mouse.Cursor = wantedCursor;
 	}
 
 	/// Process all keyboard input from a polled keyboard and route to a UIContext.
