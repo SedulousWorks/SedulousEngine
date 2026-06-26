@@ -9,17 +9,26 @@ using Sedulous.Resources;
 using Sedulous.Messaging;
 using Sedulous.Particles;
 using Sedulous.Images;
+using Sedulous.Images.Resources;
 using Sedulous.Textures.Resources;
 
 /// Manages one-shot particle effects for tower fire, enemy death, and projectile impacts.
 /// Creates burst particle entities that self-clean after their lifetime expires.
 class ParticleEffects
 {
+	/// URI of the cooked particle sprite produced by TowerDefense.Bootstrap.
+	/// Lives next to the rest of the cooked TD assets under project://.
+	private const String ParticleImageUri = "project://images/particle.image";
+
 	private Scene mScene;
 	private MessageBus mBus;
 	private ResourceSystem mResources;
 
-	// Shared particle texture
+	// Shared particle texture sourced from the cooked ImageResource.
+	// We hold the ImageResource ref so the Image stays alive for the
+	// TextureResource's lifetime (TextureResource borrows the Image
+	// non-owning).
+	private ImageResource mParticleImage ~ _?.ReleaseRef();
 	private TextureResource mParticleTexture ~ _?.ReleaseRef();
 
 	// Active effect entities, their effects, and remaining lifetimes
@@ -43,19 +52,19 @@ class ParticleEffects
 		mBus = bus;
 		mResources = resources;
 
-		// Load the particle texture once and keep it across play/stop cycles.
-		// Re-loading per cycle adds a new TextureResource (under a fresh Guid)
-		// to the resource cache every time, and the cache holds a ref the
-		// caller can't easily reclaim - reload-per-cycle leaks one texture
-		// (+ Image + sample buffer) per cycle. The field destructor
-		// (~_?.ReleaseRef()) handles final cleanup at module destruction.
+		// Load the cooked particle image once and keep it across play/stop
+		// cycles. Re-loading per cycle would add a fresh TextureResource
+		// to the cache (held ref the caller can't reclaim) on every cycle.
+		// The image is consumed from the resource system; ParticleEffects
+		// wraps it in a TextureResource so the GPU upload pipeline can
+		// pick it up. Both refs are released at shutdown.
 		if (mParticleTexture == null)
 		{
-			let texPath = scope String();
-			texPath.AppendF("{}/textures/kenney_particle-pack/PNG (Transparent)/circle_05.png", assetDir);
-			if (ImageLoaderFactory.LoadImage(texPath) case .Ok(var image))
+			if (resources.LoadResource<ImageResource>(ParticleImageUri) case .Ok(let handle))
 			{
-				mParticleTexture = new TextureResource(image, true);
+				mParticleImage = handle.Resource;
+				mParticleTexture = new TextureResource(mParticleImage.Image, false);
+				mParticleTexture.SetupForSprite();
 				resources.AddResource<TextureResource>(mParticleTexture);
 			}
 		}

@@ -5,7 +5,8 @@ using System.Collections;
 using Sedulous.UI;
 using Sedulous.Core.Mathematics;
 using Sedulous.Messaging;
-using Sedulous.Images;
+using Sedulous.Resources;
+using Sedulous.Images.Resources;
 
 /// In-game HUD using DockLayout: top bar (gold/lives/wave/status),
 /// bottom bar (tower buttons + info). Added directly to screen RootView.
@@ -28,8 +29,22 @@ class HUDManager
 	public delegate void() StartWaveCallback ~ delete _;
 	public delegate void(float) SetSpeedCallback ~ delete _;
 
-	// Tower preview images (owned).
-	private List<OwnedImageData> mTowerImages = new .() ~ DeleteContainerAndItems!(_);
+	/// URI prefix for cooked tower preview images. Each tower's weapon
+	/// model name (e.g. "weapon-ballista") concatenated with `.image`
+	/// resolves to the cooked image written by TowerDefense.Bootstrap.
+	private const String TowerPreviewUriPrefix = "project://images/";
+
+	// Tower preview ImageResource refs - keep them alive (and via them
+	// the underlying Image instances the ImageViews are displaying) for
+	// the HUD's lifetime. Released on Shutdown.
+	private List<ImageResource> mTowerImageRefs = new .() ~ {
+		for (let r in _) r?.ReleaseRef();
+		delete _;
+	};
+
+	// Resource system handed in at Setup; used by AddTowerButton to
+	// resolve preview images by URI.
+	private ResourceSystem mResources;
 
 	// Tower info panel (right side)
 	private TowerInfoPanel mTowerInfo = new .() ~ delete _;
@@ -66,8 +81,9 @@ class HUDManager
 		</svg>
 		""";
 
-	public void Setup(MessageBus bus, GameSubsystem gameSub, TowerPlacement placement, StringView previewDir)
+	public void Setup(MessageBus bus, GameSubsystem gameSub, TowerPlacement placement, ResourceSystem resources)
 	{
+		mResources = resources;
 		mRoot = new DockLayout();
 		mRoot.LastChildFill = false; // don't stretch bottom bar to fill
 		mRoot.IsHitTestVisible = false; // let clicks pass through to 3D
@@ -159,10 +175,10 @@ class HUDManager
 		bottomLayout.AlignItems = .Center;
 		bottomBar.AddView(bottomLayout, new LayoutParams() { Width = .Match, Height = .Match });
 
-		AddTowerButton(bottomLayout, .Ballista, "Ballista", placement, previewDir);
-		AddTowerButton(bottomLayout, .Cannon, "Cannon", placement, previewDir);
-		AddTowerButton(bottomLayout, .Catapult, "Catapult", placement, previewDir);
-		AddTowerButton(bottomLayout, .Turret, "Turret", placement, previewDir);
+		AddTowerButton(bottomLayout, .Ballista, "Ballista", placement);
+		AddTowerButton(bottomLayout, .Cannon, "Cannon", placement);
+		AddTowerButton(bottomLayout, .Catapult, "Catapult", placement);
+		AddTowerButton(bottomLayout, .Turret, "Turret", placement);
 
 		let infoLabel = new Label("Click to place | RMB cancel | Space = wave");
 		infoLabel.FontSize.Value = 12;
@@ -248,20 +264,24 @@ class HUDManager
 		}
 	}
 
-	private void AddTowerButton(FlexLayout layout, TowerType type, StringView name, TowerPlacement placement, StringView previewDir)
+	private void AddTowerButton(FlexLayout layout, TowerType type, StringView name, TowerPlacement placement)
 	{
 		let stats = TowerStats.Get(type);
 		let cost = stats.Levels[0].Cost;
 
-		// Load preview image.
-		OwnedImageData previewImage = null;
-		let previewPath = scope String();
-		previewPath.AppendF("{}/{}.png", previewDir, stats.WeaponModel);
-		if (ImageLoaderFactory.LoadImage(previewPath) case .Ok(let img))
+		// Load preview image from the cooked ImageResource. Held onto by
+		// mTowerImageRefs so the Image (passed to ImageView below) stays
+		// alive for the HUD's lifetime.
+		ImageResource previewImageRes = null;
+		if (mResources != null)
 		{
-			previewImage = new OwnedImageData(img.Width, img.Height, img.Format, img.Data);
-			mTowerImages.Add(previewImage);
-			delete img;
+			let uri = scope String();
+			uri.AppendF("{}{}.image", TowerPreviewUriPrefix, stats.WeaponModel);
+			if (mResources.LoadResource<ImageResource>(uri) case .Ok(let handle))
+			{
+				previewImageRes = handle.Resource;
+				mTowerImageRefs.Add(previewImageRes);
+			}
 		}
 
 		// Build content: image on left, name + cost stacked on right.
@@ -270,9 +290,9 @@ class HUDManager
 		content.Spacing = 6;
 		content.AlignItems = .Center;
 
-		if (previewImage != null)
+		if (previewImageRes != null && previewImageRes.Image != null)
 		{
-			let imgView = new ImageView(previewImage);
+			let imgView = new ImageView(previewImageRes.Image);
 			imgView.ScaleType.Value = .FitCenter;
 			content.AddView(imgView, new FlexLayout.LayoutParams() {
 				Width = .Fixed(.Px(36)), Height = .Fixed(.Px(36))

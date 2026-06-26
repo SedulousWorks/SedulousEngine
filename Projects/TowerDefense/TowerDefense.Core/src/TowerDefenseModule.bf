@@ -428,12 +428,11 @@ class TowerDefenseModule : IApplicationModule
 		let messaging = host.Context.GetSubsystem<MessagingSubsystem>();
 		let bus = messaging?.Bus;
 
-		// Resolve preview image directory.
-		let previewDir = scope String();
-		host.GetAssetPath("samples/models/kenney_tower-defense-kit/Previews", previewDir);
-
-		// HUD (DockLayout with top and bottom bars, fills screen)
-		mHUD.Setup(bus, mGameSub, mTowerPlacement, previewDir);
+		// HUD (DockLayout with top and bottom bars, fills screen). Tower
+		// preview images come from cooked ImageResources loaded via the
+		// host's ResourceSystem - the HUD constructs each URI by
+		// concatenating the weapon-model name onto a fixed prefix.
+		mHUD.Setup(bus, mGameSub, mTowerPlacement, host.ResourceSystem);
 		mHUD.StartWaveCallback = new () => StartWave();
 		mHUD.SetSpeedCallback = new (speed) => mGameSub.SetGameSpeed(speed);
 		root.AddView(mHUD.Root, new LayoutParams() { Width = .Match, Height = .Match });
