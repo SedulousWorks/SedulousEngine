@@ -860,6 +860,8 @@ public class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 		}
 	}
 
+	public View OwnerView => this;
+
 	// === Zone indicators ===
 
 	private void ShowZoneIndicators(float cursorX, float cursorY)

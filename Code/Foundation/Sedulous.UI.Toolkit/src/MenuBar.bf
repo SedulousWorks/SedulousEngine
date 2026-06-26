@@ -61,6 +61,8 @@ public class MenuBar : ViewGroup, IPopupOwner
 		mMenuMode = false;
 	}
 
+	public View OwnerView => this;
+
 	// === Measurement ===
 
 	protected override void OnMeasure(BoxConstraints constraints)

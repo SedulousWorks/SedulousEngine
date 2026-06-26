@@ -119,6 +119,8 @@ public class ContextMenu : View, IPopupOwner
 			mOpenSubmenu = null;
 	}
 
+	public View OwnerView => this;
+
 	// === Measurement ===
 
 	protected override void OnMeasure(BoxConstraints constraints)

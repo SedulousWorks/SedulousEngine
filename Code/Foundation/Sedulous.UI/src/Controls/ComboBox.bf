@@ -256,6 +256,8 @@ public class ComboBox : View, IPopupOwner
 		Invalidate();
 	}
 
+	public View OwnerView => this;
+
 	public override void OnActivate()
 	{
 		if (!IsEffectivelyEnabled) return;

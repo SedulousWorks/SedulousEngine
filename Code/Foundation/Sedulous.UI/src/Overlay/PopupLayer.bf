@@ -152,6 +152,12 @@ public class PopupLayer : ViewGroup
 	/// Close a specific popup.
 	public void ClosePopup(View popup)
 	{
+		// Cascade first: any popup whose IPopupOwner lives inside the popup
+		// we're about to delete must close NOW, otherwise its Owner pointer
+		// dangles into freed memory the next time we measure/lay out
+		// (repro: ComboBox dropdown open inside a Dialog, then Cancel).
+		CloseDependentPopups(popup);
+
 		for (int i = 0; i < mEntries.Count; i++)
 		{
 			if (mEntries[i].Popup === popup)
@@ -329,6 +335,40 @@ public class PopupLayer : ViewGroup
 	{
 		for (let e in mEntries)
 			if (e !== except && e.IsModal) return true;
+		return false;
+	}
+
+	/// Close any popups whose owner lives inside `parent`'s subtree.
+	/// Restart the scan after each close because the entry list mutates.
+	private void CloseDependentPopups(View parent)
+	{
+		while (true)
+		{
+			View toClose = null;
+			for (let entry in mEntries)
+			{
+				if (entry.Owner == null) continue;
+				let ownerView = entry.Owner.OwnerView;
+				if (ownerView == null) continue;
+				if (IsDescendant(ownerView, parent))
+				{
+					toClose = entry.Popup;
+					break;
+				}
+			}
+			if (toClose == null) break;
+			ClosePopup(toClose);
+		}
+	}
+
+	private static bool IsDescendant(View child, View ancestor)
+	{
+		var p = child;
+		while (p != null)
+		{
+			if (p === ancestor) return true;
+			p = p.Parent;
+		}
 		return false;
 	}
 
