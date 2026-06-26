@@ -1503,6 +1503,41 @@ class EditorApplication : Application, IDockableWindowHost
 		mInputHelper.ProcessMouseInput(mouse, mUIContext);
 		if (keyboard != null)
 			mInputHelper.ProcessKeyboardInput(keyboard, mUIContext, mFrameDelta);
+
+		// Click-anywhere-in-a-panel = activate that page. DockTabGroup
+		// already fires OnPanelActivated on tab-strip clicks; this covers
+		// clicks into the panel's CONTENT, which matter for side-by-side
+		// layouts and detached windows where the user expects clicking a
+		// viewport to "focus" its page (so e.g. the game keyboard adapter
+		// flips Focused via OnActivated and TD's space-to-start-wave
+		// starts working).
+		if (mouse.IsButtonPressed(.Left))
+			ActivatePageUnderClick();
+	}
+
+	private void ActivatePageUnderClick()
+	{
+		let pressed = mUIContext.GetViewById(mUIContext.InputManager.PressedId);
+		if (pressed == null) return;
+
+		var v = pressed;
+		while (v != null)
+		{
+			if (let panel = v as DockablePanel)
+			{
+				for (let page in mEditorContext.PageManager.OpenPages)
+				{
+					if (mPageDockPanels.TryGetValue(.(page), let p) && p === panel)
+					{
+						if (mEditorContext.PageManager.ActivePage !== page)
+							mEditorContext.PageManager.SetActive(page);
+						return;
+					}
+				}
+				return;
+			}
+			v = v.Parent;
+		}
 	}
 
 	protected override void OnUpdate(FrameContext frame)
