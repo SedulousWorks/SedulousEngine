@@ -47,6 +47,8 @@ class ModelAssetImporter : IAssetImporter
 		mResourceSystem = resourceSystem;
 	}
 
+	public StringView DisplayName => "Model";
+
 	public void GetSupportedExtensions(List<String> outExtensions)
 	{
 		outExtensions.Add(new .(".gltf"));

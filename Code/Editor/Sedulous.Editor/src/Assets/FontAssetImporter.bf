@@ -30,6 +30,8 @@ class FontAssetImporter : IAssetImporter
 		mLogger = logger;
 	}
 
+	public StringView DisplayName => "Font";
+
 	public void GetSupportedExtensions(List<String> outExtensions)
 	{
 		outExtensions.Add(new .(".ttf"));

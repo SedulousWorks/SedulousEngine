@@ -220,6 +220,8 @@ class EditorContext : IDisposable
 	}
 
 	/// Find the importer that handles a file extension. Returns null if none registered.
+	/// When more than one importer claims the extension, returns the first - use
+	/// `GetImportersForExtension` if you need to disambiguate (e.g. show a chooser).
 	public IAssetImporter GetImporterForExtension(StringView @extension)
 	{
 		let exts = scope List<String>();
@@ -238,6 +240,27 @@ class EditorContext : IDisposable
 		}
 		ClearAndDeleteItems(exts);
 		return null;
+	}
+
+	/// Collect every importer that claims a file extension. Caller-owned list;
+	/// importer references are borrowed (registry retains ownership).
+	public void GetImportersForExtension(StringView @extension, List<IAssetImporter> outImporters)
+	{
+		let exts = scope List<String>();
+		for (let importer in mImporters)
+		{
+			ClearAndDeleteItems(exts);
+			importer.GetSupportedExtensions(exts);
+			for (let ext in exts)
+			{
+				if (ext.Equals(@extension, .OrdinalIgnoreCase))
+				{
+					outImporters.Add(importer);
+					break;
+				}
+			}
+		}
+		ClearAndDeleteItems(exts);
 	}
 
 	/// Collects all file extension filters from all registered importers.

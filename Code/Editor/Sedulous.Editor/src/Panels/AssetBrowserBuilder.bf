@@ -888,17 +888,57 @@ static class AssetBrowserBuilder
 		AssetContentAdapter adapter, AssetBrowserPanel panel,
 		MountEntry entry, IWritableMount writable, StringView sourcePath)
 	{
-		// Find importer for this file
 		let ext = scope String();
 		Path.GetExtension(sourcePath, ext);
 
-		let importer = editorContext.GetImporterForExtension(ext);
-		if (importer == null)
+		let importers = scope List<IAssetImporter>();
+		editorContext.GetImportersForExtension(ext, importers);
+
+		if (importers.Count == 0)
 		{
 			editorContext.Logger?.LogWarning("No importer found for extension: {}", ext);
 			return;
 		}
 
+		if (importers.Count == 1)
+		{
+			DispatchImportFileWith(editorContext, adapter, panel, entry, writable,
+				sourcePath, importers[0]);
+			return;
+		}
+
+		// Multiple importers claim this extension - let the user pick.
+		let ctx = panel.ContentView?.Context;
+		if (ctx == null)
+		{
+			editorContext.Logger?.LogError("Cannot show importer chooser: no UI context for: {}", sourcePath);
+			return;
+		}
+
+		let fileName = scope String();
+		Path.GetFileName(sourcePath, fileName);
+
+		let chooser = new ImporterChooserDialog("Choose Importer", fileName, importers);
+		let pathCopy = new String(sourcePath);
+		chooser.OnClosed.Add(new [=chooser, =pathCopy, =editorContext, =adapter, =panel, =entry, =writable] (dlg, result) => {
+			defer delete pathCopy;
+			if (result == .OK && chooser.Selected != null)
+			{
+				DispatchImportFileWith(editorContext, adapter, panel, entry, writable,
+					pathCopy, chooser.Selected);
+			}
+		});
+		chooser.Show(ctx);
+	}
+
+	/// Drives the preview + ImportDialog flow for a known importer. Split
+	/// out from `DispatchImportFile` so the multi-importer chooser path can
+	/// reuse it after the user picks.
+	private static void DispatchImportFileWith(EditorContext editorContext,
+		AssetContentAdapter adapter, AssetBrowserPanel panel,
+		MountEntry entry, IWritableMount writable, StringView sourcePath,
+		IAssetImporter importer)
+	{
 		// Create preview
 		ImportPreview preview;
 		if (importer.CreatePreview(sourcePath) case .Ok(let p))

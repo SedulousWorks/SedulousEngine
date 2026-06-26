@@ -24,6 +24,8 @@ class TextureAssetImporter : IAssetImporter
 		mLogger = logger;
 	}
 
+	public StringView DisplayName => "Texture";
+
 	public void GetSupportedExtensions(List<String> outExtensions)
 	{
 		outExtensions.Add(new .(".png"));

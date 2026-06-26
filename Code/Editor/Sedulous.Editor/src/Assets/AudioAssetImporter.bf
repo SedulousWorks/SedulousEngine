@@ -25,6 +25,8 @@ class AudioAssetImporter : IAssetImporter
 		mLogger = logger;
 	}
 
+	public StringView DisplayName => "Audio Clip";
+
 	public void GetSupportedExtensions(List<String> outExtensions)
 	{
 		outExtensions.Add(new .(".wav"));

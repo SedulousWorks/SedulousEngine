@@ -14,6 +14,12 @@ using Sedulous.VFS;
 ///   4. Import(preview, ctx) - save selected items, register GUIDs in the index
 interface IAssetImporter
 {
+	/// Short human-readable label shown in the chooser dialog when multiple
+	/// importers claim the same file extension (e.g. "Texture", "Image",
+	/// "Model"). Should describe the produced resource type, not the source
+	/// format.
+	StringView DisplayName { get; }
+
 	/// File extensions this importer handles (e.g. ".gltf", ".glb", ".fbx").
 	void GetSupportedExtensions(List<String> outExtensions);
 
