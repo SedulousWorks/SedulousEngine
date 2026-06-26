@@ -28,7 +28,7 @@ public enum PixelFormat
 	BGRA8,        // 4 bytes per pixel (common in Windows)
 }
 
-public class Image
+public class Image : IImageData
 {
 
 
@@ -36,6 +36,7 @@ public class Image
 	private uint32 mWidth;
 	private uint32 mHeight;
 	private PixelFormat mFormat;
+	private ImageColorSpace mColorSpace;
 
 	public uint32 Width => mWidth;
 	public uint32 Height => mHeight;
@@ -44,11 +45,32 @@ public class Image
 	public uint32 PixelCount => mWidth * mHeight;
 	public uint32 DataSize => PixelCount * (uint32)GetBytesPerPixel(mFormat);
 
-	public this(uint32 width, uint32 height, PixelFormat format, uint8[] data = null)
+	/// Color space tag carried with the pixel data. Lets the GPU upload
+	/// pick an sRGB-decoding format for color textures or a linear format
+	/// for data textures (normal maps, masks, HDR). Defaults to sRGB
+	/// because the most common Image - an 8-bit color image - is sRGB.
+	public ImageColorSpace ColorSpace
+	{
+		get => mColorSpace;
+		set => mColorSpace = value;
+	}
+
+	// === IImageData ===
+
+	/// `IImageData.PixelData` returns the same span as `Data`. The
+	/// duplicate name exists because `IImageData` predates `Image` -
+	/// existing implementers (OwnedImageData / ImageDataRef) named it
+	/// `PixelData`, and changing them would ripple through every
+	/// IImageData consumer. The duplication is cheap and Image becomes
+	/// a drop-in for those consumers.
+	public Span<uint8> PixelData => mData;
+
+	public this(uint32 width, uint32 height, PixelFormat format, uint8[] data = null, ImageColorSpace colorSpace = .Srgb)
 	{
 		mWidth = width;
 		mHeight = height;
 		mFormat = format;
+		mColorSpace = colorSpace;
 
 		var dataSize = DataSize;
 		mData = new uint8[dataSize];
@@ -68,6 +90,7 @@ public class Image
 		mWidth = other.mWidth;
 		mHeight = other.mHeight;
 		mFormat = other.mFormat;
+		mColorSpace = other.mColorSpace;
 
 		mData = new uint8[other.mData.Count];
 		other.mData.CopyTo(mData);
