@@ -84,6 +84,7 @@ public class ViewportView : View
 	/// the viewport is rendering into). Args are (width, height) in pixels.
 	public Event<delegate void(uint32 width, uint32 height)> OnRenderTargetResized ~ _.Dispose();
 
+
 	/// How the texture is mapped into the layout rect when their aspects
 	/// differ. Default Stretch matches pre-fit-mode behavior. Letterbox
 	/// / Crop preserve the texture's aspect ratio.

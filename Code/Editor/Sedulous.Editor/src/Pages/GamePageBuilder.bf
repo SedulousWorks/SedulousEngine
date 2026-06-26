@@ -103,6 +103,17 @@ static class GamePageBuilder
 			Width = .Match, Grow = 1
 		});
 
+		// Mirror the viewport's live texture dims onto the page so the
+		// editor can push them into the runtime UI subsystem each frame.
+		// Must be subscribed BEFORE applyPreview() so the initial
+		// ResizeRenderTarget fires into this handler and seeds the page
+		// with the correct dimensions on the first frame.
+		viewportView.OnRenderTargetResized.Add(new [=page] (w, h) =>
+		{
+			page.ViewportRenderWidth = w;
+			page.ViewportRenderHeight = h;
+		});
+
 		// Apply the current preview-mode size and stay in sync with future
 		// selections from the dropdown. Page-level state is the source of
 		// truth; the viewport just mirrors it.
@@ -118,16 +129,6 @@ static class GamePageBuilder
 			uint32 pw, ph;
 			page.GetEffectivePreviewSize(out pw, out ph);
 			viewportView.SetFixedRenderSize(pw, ph);
-		});
-
-		// Mirror the viewport's live texture dims onto the page so the
-		// editor can push them into the runtime UI subsystem each frame.
-		// Covers both fixed-size and layout-tracked (MatchViewport) modes
-		// without the caller special-casing.
-		viewportView.OnRenderTargetResized.Add(new [=page] (w, h) =>
-		{
-			page.ViewportRenderWidth = w;
-			page.ViewportRenderHeight = h;
 		});
 
 		// Mirror page fit mode onto the viewport. The page-app FitMode
