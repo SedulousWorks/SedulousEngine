@@ -7,3 +7,5 @@ StartupObject = "TowerDefense.Bootstrap.Program"
 [Dependencies]
 corlib = "*"
 "TowerDefense.Core" = "*"
+"Sedulous.Images.Importer" = "*"
+"Sedulous.Images.Resources" = "*"

@@ -1,0 +1,9 @@
+uint64 %_type {3077667772913174682}
+int32 %_version {1}
+string %_id {"9e290473-3ff1-40ef-802a-02cbdd60b51c"}
+string %_name {"particle"}
+string %_sourcePath {"c:\\DEV\\SedulousWorks\\Repos\\SedulousEngine\\Assets\\/textures/kenney_particle-pack/PNG (Transparent)/circle_05.png"}
+int32 %width {512}
+int32 %height {512}
+int32 %format {3}
+int32 %colorSpace {0}

@@ -1,0 +1,9 @@
+uint64 %_type {3077667772913174682}
+int32 %_version {1}
+string %_id {"342c98b8-4a5c-4def-a0f3-1a2a34fc8a5d"}
+string %_name {"Preview"}
+string %_sourcePath {"C:\\DEV\\SedulousWorks\\Repos\\SedulousEngine\\Assets\\samples\\kenney_ui-pack\\Preview.png"}
+int32 %width {918}
+int32 %height {515}
+int32 %format {3}
+int32 %colorSpace {0}

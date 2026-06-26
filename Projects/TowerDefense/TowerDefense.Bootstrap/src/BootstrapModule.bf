@@ -8,6 +8,9 @@ using Sedulous.Engine.Core;
 using Sedulous.Engine.Core.Resources;
 using Sedulous.Engine.Render;
 using Sedulous.Geometry.Tooling.Resources;
+using Sedulous.Images;
+using Sedulous.Images.Importer;
+using Sedulous.Images.Resources;
 using Sedulous.Images.STB;
 using Sedulous.Materials.Resources;
 using Sedulous.Renderer;
@@ -61,6 +64,7 @@ class BootstrapModule : IApplicationModule
 		BuildFromScratch(host);
 		ExportForEditor(host);
 		ExportTowerPrefabs(host);
+		ExportImages(host);
 
 		// Manifest sits next to the scene/registry so the runtime can
 		// resolve model names -> resource refs without re-importing FBX.
@@ -371,6 +375,115 @@ class BootstrapModule : IApplicationModule
 			indexStream.Position = 0;
 			mount.Save("project.registry", indexStream);
 		}
+	}
+
+	// =========================================================================
+	// Image cooking
+	// =========================================================================
+
+	/// Cook the small set of raw images the runtime consumes (tower
+	/// preview icons, the particle sprite) into `ImageResource` files
+	/// under `<assets>/images/`. Runtime then loads them by URI through
+	/// the `ResourceSystem` instead of decoding PNGs itself, so TD.App
+	/// doesn't need to register an image loader.
+	///
+	/// `STBImageLoader.Initialize` is already called from `BuildFromScratch`
+	/// (the FBX importer needs it for embedded textures). We rely on
+	/// that registration here too.
+	private void ExportImages(IApplicationHost host)
+	{
+		let outputDir = host.ProjectAssetDirectory;
+
+		let provider = scope OpenDDLSerializerProvider();
+		let mount = scope FileSystemMount(outputDir);
+
+		// Merge into the existing project.registry alongside the meshes /
+		// textures / materials already written by ExportForEditor /
+		// ExportTowerPrefabs so URI-based AND Guid-based loads both
+		// resolve at runtime.
+		let index = scope InMemoryResourceIndex();
+		if (mount.Exists("project.registry"))
+		{
+			let regStream = mount.Open("project.registry");
+			if (regStream case .Ok(let s))
+			{
+				defer delete s;
+				index.DeserializeFrom(s);
+			}
+		}
+
+		let assetsDir = scope String();
+		host.GetAssetPath("", assetsDir);
+
+		let kit = scope String();
+		host.GetAssetPath("samples/models/kenney_tower-defense-kit/Previews", kit);
+
+		// (sourceFullPath, output-image-name) - output written to
+		// `images/{outName}.image` + `images/{outName}.image.bin` so the
+		// runtime URI is `project://images/{outName}.image`.
+		(String, String)[5] entries = .(
+			(scope String()..AppendF("{}/weapon-ballista.png", kit), scope String("weapon-ballista")),
+			(scope String()..AppendF("{}/weapon-cannon.png", kit), scope String("weapon-cannon")),
+			(scope String()..AppendF("{}/weapon-catapult.png", kit), scope String("weapon-catapult")),
+			(scope String()..AppendF("{}/weapon-turret.png", kit), scope String("weapon-turret")),
+			(scope String()..AppendF("{}/textures/kenney_particle-pack/PNG (Transparent)/circle_05.png", assetsDir), scope String("particle"))
+		);
+
+		for (let entry in entries)
+			CookImage(entry.0, entry.1, mount, provider, index);
+
+		let indexStream = scope MemoryStream();
+		if (index.SerializeTo(indexStream) case .Ok)
+		{
+			indexStream.Position = 0;
+			mount.Save("project.registry", indexStream);
+		}
+	}
+
+	private void CookImage(StringView sourcePath, StringView outName, IWritableMount mount, ISerializerProvider provider, InMemoryResourceIndex index)
+	{
+		if (!File.Exists(sourcePath))
+		{
+			Console.WriteLine("[Bootstrap] Image source missing, skipped: {}", sourcePath);
+			return;
+		}
+
+		ImageResource imgRes = null;
+		defer { if (imgRes != null) delete imgRes; }
+
+		if (ImageImporter.Import(sourcePath) case .Ok(let res))
+			imgRes = res;
+		else
+		{
+			Console.WriteLine("[Bootstrap] Image import failed: {}", sourcePath);
+			return;
+		}
+
+		imgRes.Name.Set(outName);
+
+		let locator = scope String()..AppendF("images/{}.image", outName);
+		if (SaveResourceText(imgRes, mount, locator, provider) case .Err)
+		{
+			Console.WriteLine("[Bootstrap] Image metadata save failed: {}", locator);
+			return;
+		}
+
+		let sidecarLocator = scope String()..AppendF("{}.bin", locator);
+		let pixelStream = scope MemoryStream();
+		if (imgRes.WritePixelsToStream(pixelStream) case .Err)
+		{
+			Console.WriteLine("[Bootstrap] Image pixel serialise failed: {}", sidecarLocator);
+			return;
+		}
+		pixelStream.Position = 0;
+		if (mount.Save(sidecarLocator, pixelStream) case .Err)
+		{
+			Console.WriteLine("[Bootstrap] Image pixel save failed: {}", sidecarLocator);
+			return;
+		}
+
+		index.Register(imgRes.Id, scope $"project://{locator}");
+		Console.WriteLine("[Bootstrap] Saved image: {}", locator);
 	}
 
 	// =========================================================================

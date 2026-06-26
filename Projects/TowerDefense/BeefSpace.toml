@@ -2,7 +2,7 @@ FileVersion = 1
 Locked = ["Bulkan", "cgltf-Beef", "Dxc-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "dr_libs-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
 
 [Workspace]
-StartupProject = "TowerDefense.App"
+StartupProject = "TowerDefense.Editor"
 
 [[Workspace.DistinctOptions]]
 Filter = ""
@@ -72,6 +72,7 @@ recastnavigation-Beef = {Path = "../../Code/Dependencies/recastnavigation-Beef"}
 "Sedulous.Models.GLTF" = {Path = "../../Code/Foundation/Sedulous.Models.GLTF"}
 "Sedulous.Images" = {Path = "../../Code/Foundation/Sedulous.Images"}
 "Sedulous.Images.Resources" = {Path = "../../Code/Foundation/Sedulous.Images.Resources"}
+"Sedulous.Images.Importer" = {Path = "../../Code/Foundation/Sedulous.Images.Importer"}
 "Sedulous.Images.IO" = {Path = "../../Code/Foundation/Sedulous.Images.IO"}
 "Sedulous.Images.SDL" = {Path = "../../Code/Foundation/Sedulous.Images.SDL"}
 "Sedulous.Images.STB" = {Path = "../../Code/Foundation/Sedulous.Images.STB"}
@@ -129,7 +130,7 @@ Foundation = []
 "Foundation/RHI" = ["Sedulous.RHI", "Sedulous.RHI.Vulkan", "Sedulous.RHI.DX12", "Sedulous.RHI.Validation", "Sedulous.RHI.Null", "Sedulous.ShaderReflection", "Sedulous.ShaderReflection.SPIRV", "Sedulous.ShaderReflection.DXIL"]
 "Foundation/Render" = ["Sedulous.Shaders", "Sedulous.RenderGraph", "Sedulous.Materials", "Sedulous.Materials.Resources", "Sedulous.Textures", "Sedulous.Textures.Resources", "Sedulous.Textures.Importer", "Sedulous.Renderer", "Sedulous.Particles", "Sedulous.DebugFont"]
 "Foundation/Geometry" = ["Sedulous.Geometry", "Sedulous.Geometry.Resources", "Sedulous.Geometry.Tooling", "Sedulous.Geometry.Tooling.Resources", "Sedulous.Models", "Sedulous.Models.FBX", "Sedulous.Models.GLTF"]
-"Foundation/Imaging" = ["Sedulous.Images", "Sedulous.Images.Resources", "Sedulous.Images.IO", "Sedulous.Images.SDL", "Sedulous.Images.STB"]
+"Foundation/Imaging" = ["Sedulous.Images", "Sedulous.Images.Resources", "Sedulous.Images.Importer", "Sedulous.Images.IO", "Sedulous.Images.SDL", "Sedulous.Images.STB"]
 "Foundation/Animation" = ["Sedulous.Animation", "Sedulous.Animation.Resources"]
 "Foundation/Audio" = ["Sedulous.Audio", "Sedulous.Audio.Decoders", "Sedulous.Audio.SDL3", "Sedulous.Audio.Resources", "Sedulous.Audio.Importer", "Sedulous.Audio.Effects"]
 "Foundation/Physics" = ["Sedulous.Physics", "Sedulous.Physics.Jolt"]

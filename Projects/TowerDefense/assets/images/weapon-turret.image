@@ -1,0 +1,9 @@
+uint64 %_type {3077667772913174682}
+int32 %_version {1}
+string %_id {"87d5fe8e-baba-45f5-a622-7eaf574f48c0"}
+string %_name {"weapon-turret"}
+string %_sourcePath {"c:\\DEV\\SedulousWorks\\Repos\\SedulousEngine\\Assets\\samples/models/kenney_tower-defense-kit/Previews/weapon-turret.png"}
+int32 %width {64}
+int32 %height {64}
+int32 %format {3}
+int32 %colorSpace {0}
