@@ -72,4 +72,14 @@ class EditorApplicationHost : IApplicationHost
 	{
 		mEditor.GetAssetPath(relativePath, outPath);
 	}
+
+	public void RequestExit()
+	{
+		// In the editor, "exit" means stop the play session. Deferred
+		// to the end of the frame so the module's UI event handlers
+		// finish before the view tree is torn down.
+		let page = mEditor.RunningGamePage;
+		if (page != null)
+			page.RequestStop();
+	}
 }

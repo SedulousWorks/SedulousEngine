@@ -84,6 +84,11 @@ public interface IApplicationHost
 	/// Combines a relative path under AssetDirectory into outPath. Helper
 	/// for modules loading per-project assets.
 	void GetAssetPath(StringView relativePath, String outPath);
+
+	/// Request that the host terminate the current session. For standalone
+	/// apps this exits the process. For the editor's play-in-editor mode
+	/// this stops the play session (equivalent to the Stop button).
+	void RequestExit();
 }
 
 /// Composition contract for the payload an application hosts.

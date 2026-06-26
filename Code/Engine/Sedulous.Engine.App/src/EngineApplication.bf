@@ -395,6 +395,13 @@ abstract class EngineApplication : IDisposable, IApplicationHost
 		mIsRunning = false;
 	}
 
+	/// IApplicationHost: request the host terminate the session.
+	/// For standalone apps this exits the process.
+	public void RequestExit()
+	{
+		Exit();
+	}
+
 	// ==================== Profiling ====================
 
 	/// Request that the current frame's profile be printed after

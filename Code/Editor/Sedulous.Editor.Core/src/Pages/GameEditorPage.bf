@@ -235,6 +235,14 @@ class GameEditorPage : IEditorPage
 		OnGameStateChanged(this);
 	}
 
+	/// Request a deferred stop at the end of the current frame.
+	/// Use this instead of StopGame() when called from inside module
+	/// code (e.g. a UI button handler) to avoid use-after-free from
+	/// tearing down the view tree while an event handler is still on
+	/// the call stack.
+	private bool mStopRequested;
+	public void RequestStop() { mStopRequested = true; }
+
 	// === IEditorPage ===
 
 	public StringView PageId => mPageId;
@@ -286,6 +294,14 @@ class GameEditorPage : IEditorPage
 		// starts clean unless GameInputHandler refeeds the adapter from
 		// a viewport-local event.
 		mMouseAdapter?.EndFrame();
+
+		// Process deferred stop request (from host.RequestExit called
+		// inside module code, e.g. a quit button handler).
+		if (mStopRequested)
+		{
+			mStopRequested = false;
+			StopGame();
+		}
 	}
 
 	public void Dispose()
