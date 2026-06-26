@@ -747,6 +747,27 @@ public abstract class View : IPropertyOwner
 		}
 	}
 
+	/// True if this view and all ancestors are Visible (no Hidden/Gone
+	/// along the chain) AND the view is attached to a RootView. Distinct
+	/// from `Visibility` which is local-only and from `IsHovered`. Used by
+	/// the editor to decide which DockablePanels are currently shown to
+	/// the user (active tab in some group, in either the main window or a
+	/// detached secondary), so their corresponding pages can tick.
+	public bool IsEffectivelyVisible
+	{
+		get
+		{
+			var v = this;
+			while (v != null)
+			{
+				if (v.Visibility != .Visible) return false;
+				if (v is RootView) return true;
+				v = v.Parent;
+			}
+			return false;
+		}
+	}
+
 	/// True if this view is currently hovered.
 	public bool IsHovered => Context?.InputManager?.HoveredId == Id;
 
