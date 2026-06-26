@@ -399,6 +399,7 @@ class EditorApplication : Application, IDockableWindowHost
 		// Register built-in asset importers
 		mEditorContext.RegisterAssetImporter(new ModelAssetImporter(mEditorLogger, mEditorContext.ResourceSystem));
 		mEditorContext.RegisterAssetImporter(new TextureAssetImporter(mEditorLogger));
+		mEditorContext.RegisterAssetImporter(new ImageAssetImporter(mEditorLogger));
 
 		mAudioDecoder = new AudioDecoderFactory();
 		mAudioDecoder.RegisterDefaultDecoders();
@@ -444,6 +445,7 @@ class EditorApplication : Application, IDockableWindowHost
 		mEditorContext.RegisterPageFactory(new PrefabEditorPageFactory(
 			Device, mVGRenderer, Shell.InputManager.Keyboard, mTypeRegistry));
 		mEditorContext.RegisterPageFactory(new TextureEditorPageFactory());
+		mEditorContext.RegisterPageFactory(new ImageEditorPageFactory());
 		mEditorContext.RegisterPageFactory(new MaterialEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
 		mEditorContext.RegisterPageFactory(new MeshEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
 		mEditorContext.RegisterPageFactory(new SkinnedMeshEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
