@@ -111,6 +111,18 @@ class SDL3Shell : IShell
 						mInputManager.SetFocusWindow(window.Handle);
 				}
 
+				// Track mouse-hover window separately from keyboard focus -
+				// drives `IMouse.MouseHoverWindow` so input routers can
+				// pick the window the cursor is OVER, not the one with
+				// keyboard focus.
+				if ((SDL_EventType)e.type == .SDL_EVENT_WINDOW_MOUSE_ENTER)
+					mInputManager.SetMouseHoverWindow(mWindowManager.GetSDL3Window(e.window.windowID));
+				else if ((SDL_EventType)e.type == .SDL_EVENT_WINDOW_MOUSE_LEAVE)
+				{
+					if (let leaving = mWindowManager.GetSDL3Window(e.window.windowID))
+						mInputManager.ClearMouseHoverWindow(leaving);
+				}
+
 			// Input events - delegate to input manager
 			default:
 				mInputManager.HandleEvent(&e);

@@ -1,5 +1,6 @@
 using System;
 using SDL3;
+using Sedulous.Shell;
 using Sedulous.Shell.Input;
 using Sedulous.Core;
 
@@ -17,6 +18,7 @@ class SDL3Mouse : IMouse
 	private bool[5] mCurrentButtons;
 	private bool[5] mPreviousButtons;
 	private SDL_Window* mFocusWindow;
+	private SDL3Window mMouseHoverWindow;
 
 	private EventAccessor<MouseMoveDelegate> mOnMove = new .() ~ delete _;
 	private EventAccessor<MouseButtonDelegate> mOnButton = new .() ~ delete _;
@@ -133,6 +135,24 @@ class SDL3Mouse : IMouse
 	public void SetFocusWindow(SDL_Window* window)
 	{
 		mFocusWindow = window;
+	}
+
+	public IWindow MouseHoverWindow => mMouseHoverWindow;
+
+	/// Update which window the cursor is over (from MOUSE_ENTER).
+	public void SetMouseHoverWindow(SDL3Window window)
+	{
+		mMouseHoverWindow = window;
+	}
+
+	/// Clear hover only if `leaving` matches the currently-tracked window.
+	/// Necessary because SDL fires ENTER for the new window before LEAVE
+	/// for the old one when the cursor crosses an OS window boundary, and
+	/// blindly clearing on LEAVE would erase the correct new ENTER.
+	public void ClearMouseHoverWindow(SDL3Window leaving)
+	{
+		if (mMouseHoverWindow === leaving)
+			mMouseHoverWindow = null;
 	}
 
 	/// Handles an SDL mouse motion event.

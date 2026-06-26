@@ -75,6 +75,7 @@ class GameMouseAdapter : IMouse
 	public float GlobalY => mShell?.GlobalY ?? 0;
 	public float DeltaX => mShell?.DeltaX ?? 0;
 	public float DeltaY => mShell?.DeltaY ?? 0;
+	public Sedulous.Shell.IWindow MouseHoverWindow => mShell?.MouseHoverWindow;
 	public float ScrollX => mLocalScrollX;
 	public float ScrollY => mLocalScrollY;
 

@@ -92,6 +92,20 @@ class SDL3InputManager : IInputManager
 		mMouse.SetFocusWindow(window);
 	}
 
+	/// Set which window the cursor is currently over (from MOUSE_ENTER).
+	public void SetMouseHoverWindow(SDL3Window window)
+	{
+		mMouse.SetMouseHoverWindow(window);
+	}
+
+	/// Clear the hover window if `leaving` is the one we currently track
+	/// (from MOUSE_LEAVE). Guarded so an ENTER for window B followed by a
+	/// LEAVE for window A doesn't wipe the correct hover.
+	public void ClearMouseHoverWindow(SDL3Window leaving)
+	{
+		mMouse.ClearMouseHoverWindow(leaving);
+	}
+
 	/// Handles an SDL event, routing it to the appropriate input device.
 	public void HandleEvent(SDL_Event* e)
 	{

@@ -1434,15 +1434,25 @@ class EditorApplication : Application, IDockableWindowHost
 
 		let dragDrop = mUIContext.DragDropManager;
 
-		// Determine which window has the mouse.
+		// Determine which window the mouse is OVER. Was previously based
+		// on Window.Focused, but keyboard focus only changes on click /
+		// Alt+Tab - so hovering the secondary window without clicking
+		// kept input routed to the main window, and the mouse coords
+		// (which SDL reports local to the hover window) drove hover
+		// effects on whatever happened to sit at the same coords in
+		// main. MouseHoverWindow comes from MOUSE_ENTER / LEAVE.
 		RootView inputRoot = mMainRoot;
-		for (let kv in mDockableWindowMap)
+		let hover = mouse.MouseHoverWindow;
+		if (hover != null && hover !== Window)
 		{
-			if (kv.value.Window.Focused)
+			for (let kv in mDockableWindowMap)
 			{
-				if (let data = kv.value.UserData as DockableWindowData)
-					inputRoot = data.RootView;
-				break;
+				if (kv.value.Window === hover)
+				{
+					if (let data = kv.value.UserData as DockableWindowData)
+						inputRoot = data.RootView;
+					break;
+				}
 			}
 		}
 

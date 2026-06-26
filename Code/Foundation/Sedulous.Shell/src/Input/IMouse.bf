@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Shell;
 
 namespace Sedulous.Shell.Input;
 
@@ -48,6 +49,13 @@ public interface IMouse
 
 	/// Gets or sets the current cursor type.
 	CursorType Cursor { get; set; }
+
+	/// The window the cursor is currently hovering over, or null when the
+	/// cursor is outside every application window. Distinct from keyboard
+	/// focus (which only changes on click / Alt+Tab on most platforms);
+	/// updated by mouse-enter / leave events. Use this - not
+	/// `IWindow.Focused` - to decide which window an input event belongs to.
+	IWindow MouseHoverWindow { get; }
 
 	/// Called when the mouse moves.
 	EventAccessor<MouseMoveDelegate> OnMove { get; }
