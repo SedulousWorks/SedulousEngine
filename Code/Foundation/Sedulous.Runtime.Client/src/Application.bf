@@ -486,10 +486,23 @@ abstract class Application
 			if (ctx.Window.State == .Minimized || ctx.Window.Width == 0 || ctx.Window.Height == 0)
 				continue;
 
+			// Sync the swapchain to the OS window size proactively. App code
+			// can call `SDL_SetWindowSize` mid-frame (e.g. dragging a
+			// dockable window's resize edge from `OnUpdate`); the matching
+			// `WINDOW_RESIZED` event won't be processed until the next
+			// frame's `ProcessEvents`, so without this we'd render against
+			// a stale extent and Present would return `OUT_OF_DATE` every
+			// frame during a drag (visible as a log spam + a "snap to
+			// catch up" lag behind the cursor).
+			if (ctx.SwapChain.Width != (uint32)ctx.Window.Width ||
+				ctx.SwapChain.Height != (uint32)ctx.Window.Height)
+			{
+				HandleSecondaryResize(ctx);
+			}
+
 			if (ctx.SwapChain.AcquireNextImage() case .Err)
 			{
-				if (ctx.Window.Width > 0 && ctx.Window.Height > 0)
-					ctx.SwapChain.Resize((uint32)ctx.Window.Width, (uint32)ctx.Window.Height);
+				HandleSecondaryResize(ctx);
 				continue;
 			}
 
@@ -538,10 +551,24 @@ abstract class Application
 			ICommandBuffer[1] bufs = .(commandBuffer);
 			mGraphicsQueue.Submit(bufs, mFrameFence, mFrameFenceValues[mainFrame.FrameIndex]);
 
-			ctx.SwapChain.Present(mGraphicsQueue).IgnoreError();
+			if (ctx.SwapChain.Present(mGraphicsQueue) case .Err)
+				HandleSecondaryResize(ctx);
 
 			pool.DestroyEncoder(ref encoder);
 		}
+	}
+
+	/// Resize the secondary swapchain to match its OS window and fire the
+	/// `OnSecondaryWindowResized` hook. Shared between the platform window
+	/// resize event and the present-out-of-date path so both routes recover
+	/// the same way.
+	private void HandleSecondaryResize(SecondaryWindowContext ctx)
+	{
+		if (ctx.Window.Width <= 0 || ctx.Window.Height <= 0)
+			return;
+		mDevice.WaitIdle();
+		ctx.SwapChain.Resize((uint32)ctx.Window.Width, (uint32)ctx.Window.Height);
+		OnSecondaryWindowResized(ctx, ctx.Window.Width, ctx.Window.Height);
 	}
 
 	// Internal implementation
@@ -858,12 +885,7 @@ abstract class Application
 				switch (evt.Type)
 				{
 				case .Resized:
-					if (ctx.Window.Width > 0 && ctx.Window.Height > 0)
-					{
-						mDevice.WaitIdle();
-						ctx.SwapChain.Resize((uint32)ctx.Window.Width, (uint32)ctx.Window.Height);
-						OnSecondaryWindowResized(ctx, ctx.Window.Width, ctx.Window.Height);
-					}
+					HandleSecondaryResize(ctx);
 				case .CloseRequested:
 					if (ctx.OnCloseRequested != null)
 						ctx.OnCloseRequested(ctx);
