@@ -1457,7 +1457,14 @@ class EditorApplication : Application, IDockableWindowHost
 		}
 
 		// Cross-window drag: move OS window, route input to main window.
-		if ((dragDrop.IsDragging || dragDrop.IsPotentialDrag) && inputRoot !== mMainRoot)
+		// Gate on IsDragging only - IsPotentialDrag fires on ANY mouse-down
+		// over an IDragSource (and DockablePanel is one), so checking it
+		// here would intercept ordinary clicks-and-hold inside a secondary
+		// window the moment the user pressed the button. MouseUp would then
+		// route to main and the secondary view's OnClick (which fires on
+		// MouseUp) would never run - presenting as "first click on a
+		// detached window does nothing, double-click works."
+		if (dragDrop.IsDragging && inputRoot !== mMainRoot)
 		{
 			let globalX = mouse.GlobalX;
 			let globalY = mouse.GlobalY;
