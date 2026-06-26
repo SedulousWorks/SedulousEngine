@@ -534,10 +534,18 @@ public class SSSParser
 		let r = (int32)ParseFloatValue(); MatchComma();
 		let g = (int32)ParseFloatValue(); MatchComma();
 		let b = (int32)ParseFloatValue();
-		int32 a = 255;
-		if (MatchComma()) a = (int32)(ParseFloatValue() * 255);
+		// rgba() alpha is 0..1 per CSS, but R/G/B are 0..255. Keep alpha
+		// as a float and route through the (float,float,float,float) ctor
+		// to avoid the int32-round-trip truncation that used to lose a
+		// half-percent of precision (e.g. 0.5 -> 127/255 != 0.5).
+		if (MatchComma())
+		{
+			let a = ParseFloatValue();
+			Expect(.RParen);
+			return .(r / 255.0f, g / 255.0f, b / 255.0f, a);
+		}
 		Expect(.RParen);
-		return .(r, g, b, a);
+		return .(r, g, b);
 	}
 
 	private Color ParseColorFunction()
