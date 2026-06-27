@@ -143,7 +143,7 @@ public struct TextureData
 		case .Depth24Plus, .Depth24PlusStencil8, .Depth32Float:
 			return 4;
 		case .Depth32FloatStencil8:
-			return 5;
+			return 8;
 		default:
 			return 4; // Default assumption
 		}

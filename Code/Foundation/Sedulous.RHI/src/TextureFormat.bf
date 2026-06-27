@@ -201,11 +201,9 @@ static class TextureFormatExt
 			.RG11B10Float,.RGB9E5Float,
 			.Depth24Plus,.Depth24PlusStencil8,.Depth32Float:
 			return 4;
-		// 5 bytes
-		case .Depth32FloatStencil8:
-			return 5;
 		// 8 bytes
-		case .RG32Uint,.RG32Sint,.RG32Float,
+		case .Depth32FloatStencil8,
+			.RG32Uint,.RG32Sint,.RG32Float,
 			.RGBA16Uint,.RGBA16Sint,.RGBA16Float,.RGBA16Unorm,.RGBA16Snorm:
 			return 8;
 		// 16 bytes
