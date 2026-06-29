@@ -20,6 +20,16 @@ public class GraphProfiler
 	/// Whether profiling is enabled
 	public bool Enabled = true;
 
+	/// Reset the query set at the start of the frame's encoder. Timestamps can only be
+	/// written into a freshly-reset pool, and the reset must be outside any render pass.
+	public void BeginFrame(ICommandEncoder encoder)
+	{
+		if (!mInitialized || !Enabled)
+			return;
+		encoder.ResetQuerySet(mQuerySet, 0, (uint32)(mMaxPasses * 2));
+		mPassNames.Clear();
+	}
+
 	/// Initialize the profiler with a maximum number of passes to track
 	public Result<void> Init(IDevice device, int32 maxPasses = 64)
 	{
@@ -88,7 +98,6 @@ public class GraphProfiler
 			return;
 
 		let queryCount = (uint32)Math.Min(passCount * 2, mMaxPasses * 2);
-		encoder.ResetQuerySet(mQuerySet, 0, queryCount);
 		encoder.ResolveQuerySet(mQuerySet, 0, queryCount, mReadbackBuffer, 0);
 	}
 

@@ -38,6 +38,10 @@ public class RenderGraph
 	// Transient texture pool
 	private TransientTexturePool mTexturePool ~ delete _;
 
+	// GPU profiler
+	private GraphProfiler mGpuProfiler ~ delete _;
+	private int32 mLastProfiledPassCount;
+
 	// Deferred deletion queues (per frame slot)
 	private List<List<DeferredDeletion>> mDeferredDeletions ~ {
 		for (let list in _) { for (let d in list) d.Execute(mDevice); delete list; }
@@ -48,6 +52,9 @@ public class RenderGraph
 	// rendering to specific array layers or mip levels. Deferred-deleted
 	// at the end of Execute since the GPU may still reference them.
 	private List<ITextureView> mSubresourceViews = new .() ~ delete _;
+
+	// Transient texture generation counter
+	private uint64 mNextTransientGeneration;
 
 	// Frame tracking
 	private int32 mFrameIndex;
@@ -170,6 +177,10 @@ public class RenderGraph
 		// --- Execute ---
 		mBarrierSolver.Reset(mResources);
 
+		if (mGpuProfiler != null)
+			mGpuProfiler.BeginFrame(encoder);
+		int32 profiledPassCount = 0;
+
 		for (let passIdx in mExecutionOrder)
 		{
 			let pass = mPasses[passIdx];
@@ -182,6 +193,9 @@ public class RenderGraph
 
 			// Debug label
 			encoder.BeginDebugLabel(pass.Name);
+
+			if (mGpuProfiler != null)
+				mGpuProfiler.BeginPass(encoder, profiledPassCount, pass.Name);
 
 			// Emit barriers
 			mBarrierSolver.EmitBarriers(pass, mResources, encoder);
@@ -200,7 +214,19 @@ public class RenderGraph
 			// Transition ReadableAfterWrite resources to ShaderRead after the pass
 			mBarrierSolver.EmitReadableAfterWriteBarriers(pass, mResources, encoder);
 
+			if (mGpuProfiler != null)
+			{
+				mGpuProfiler.EndPass(encoder, profiledPassCount);
+				profiledPassCount++;
+			}
+
 			encoder.EndDebugLabel();
+		}
+
+		if (mGpuProfiler != null)
+		{
+			mGpuProfiler.Resolve(encoder, profiledPassCount);
+			mLastProfiledPassCount = profiledPassCount;
 		}
 
 		// Final-state transitions (e.g., Present for swapchain)
@@ -233,6 +259,28 @@ public class RenderGraph
 		if (mTexturePool != null)
 			mTexturePool.EndFrame();
 	}
+
+	/// Turn on per-pass GPU timestamp profiling (lazy init; needs a device). Idempotent.
+	public void EnableGpuProfiling()
+	{
+		if (mGpuProfiler != null || mDevice == null)
+			return;
+		mGpuProfiler = new GraphProfiler();
+		if (mGpuProfiler.Init(mDevice) case .Err)
+		{
+			delete mGpuProfiler;
+			mGpuProfiler = null;
+			return;
+		}
+		let q = mDevice.GetQueue(.Graphics);
+		mGpuProfiler.SetTimestampPeriod(q.TimestampPeriod);
+	}
+
+	/// The GPU profiler (null if not enabled)
+	public GraphProfiler GpuProfiler => mGpuProfiler;
+
+	/// How many passes were timed in the last Execute
+	public int32 LastProfiledPassCount => mLastProfiledPassCount;
 
 	/// Reset for multi-view rendering: clears passes but keeps persistent resource state
 	public void Reset()
@@ -419,6 +467,19 @@ public class RenderGraph
 		if (res == null || res.Generation != handle.Generation)
 			return null;
 		return res.DepthOnlyView;
+	}
+
+	/// A stable id for the GPU texture currently backing a handle. For a transient it changes when
+	/// the graph (re)allocates a different physical texture (e.g. on resize). A bind-group cache
+	/// over GetTextureView MUST also key on this to stay correct across resizes. 0 when unresolved.
+	public uint64 GetTextureGeneration(RGHandle handle)
+	{
+		if (!handle.IsValid || handle.Index >= (uint32)mResources.Count)
+			return 0;
+		let res = mResources[handle.Index];
+		if (res == null || res.Generation != handle.Generation)
+			return 0;
+		return res.TextureGeneration;
 	}
 
 	/// Get the GPU buffer for a resource handle
@@ -833,10 +894,11 @@ public class RenderGraph
 				let rhiDesc = res.TextureDesc.ToTextureDesc(res.Name);
 
 				// Try pool first
-				if (mTexturePool != null && mTexturePool.TryAcquire(rhiDesc, let tex, let view))
+				if (mTexturePool != null && mTexturePool.TryAcquire(rhiDesc, let tex, let view, let pooledGen))
 				{
 					res.Texture = tex;
 					res.TextureView = view;
+					res.TextureGeneration = pooledGen;
 
 					// TODO: relabel the pooled texture's GPU debug name to match the
 					// current resource name (res.Name). The pool reuses textures by
@@ -858,6 +920,7 @@ public class RenderGraph
 				else
 				{
 					res.AllocateTexture(mDevice);
+					res.TextureGeneration = ++mNextTransientGeneration;
 				}
 			}
 			else if (res.ResourceType == .Buffer && mDevice != null)
@@ -883,7 +946,7 @@ public class RenderGraph
 				if (mTexturePool != null)
 				{
 					let rhiDesc = res.TextureDesc.ToTextureDesc(res.Name);
-					mTexturePool.ReturnToPool(rhiDesc, res.Texture, res.TextureView);
+					mTexturePool.ReturnToPool(rhiDesc, res.Texture, res.TextureView, res.TextureGeneration);
 					// DepthOnlyView is not pooled - defer deletion (commands may still reference it)
 					if (res.DepthOnlyView != null)
 						deletions.Add(.() { View = res.DepthOnlyView });
@@ -1016,16 +1079,24 @@ public class RenderGraph
 
 		let rp = encoder.BeginRenderPass(rpDesc);
 
-		// Viewport/scissor: set from attachment dimensions for bundle passes
-		// (bundles inherit it from the parent; they can't set it themselves).
-		if (hasBundles)
+		// Viewport/scissor: a per-pass override (split-screen sub-rect) if set, else the full
+		// attachment. Set here for bundle passes (bundles inherit it from the parent — WebGPU/
+		// DX12 can't set it inside a bundle); a plain execute callback may also rely on it.
+		int32 vpX = 0, vpY = 0;
+		uint32 vpW = 0, vpH = 0;
+		if (pass.HasViewport)
 		{
-			uint32 vpW = 0, vpH = 0;
-			if (PassRenderArea(pass, out vpW, out vpH) && vpW > 0 && vpH > 0)
-			{
-				rp.SetViewport(0, 0, (float)vpW, (float)vpH, 0, 1);
-				rp.SetScissor(0, 0, vpW, vpH);
-			}
+			vpX = pass.ViewportX; vpY = pass.ViewportY;
+			vpW = pass.ViewportW; vpH = pass.ViewportH;
+		}
+		else
+		{
+			PassRenderArea(pass, out vpW, out vpH);
+		}
+		if (vpW > 0 && vpH > 0)
+		{
+			rp.SetViewport((float)vpX, (float)vpY, (float)vpW, (float)vpH, 0, 1);
+			rp.SetScissor(vpX, vpY, vpW, vpH);
 		}
 
 		if (hasBundles)
