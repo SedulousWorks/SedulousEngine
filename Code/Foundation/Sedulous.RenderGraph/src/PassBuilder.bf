@@ -187,6 +187,15 @@ public struct PassBuilder
 		return this;
 	}
 
+	/// Set the bundle pass execute callback (parallel command recording).
+	/// The callback receives the command encoder (still recording, before
+	/// BeginRenderPass) and fills the out-list with finished bundles.
+	public Self SetBundleExecute(RenderBundlePassCallback callback) mut
+	{
+		mPass.BundleCallback = callback;
+		return this;
+	}
+
 	/// Set the compute pass execute callback
 	public Self SetComputeExecute(ComputePassExecuteCallback callback) mut
 	{

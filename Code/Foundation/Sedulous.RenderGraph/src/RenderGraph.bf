@@ -906,14 +906,64 @@ public class RenderGraph
 
 	// === Internal: Pass execution ===
 
+	/// Determines the render area (width x height) from a pass's attachments.
+	/// Used to set viewport/scissor for bundle passes (bundles inherit viewport
+	/// from the parent pass and can't set it themselves).
+	private bool PassRenderArea(RenderGraphPass pass, out uint32 outW, out uint32 outH)
+	{
+		outW = 0;
+		outH = 0;
+
+		bool TryFromHandle(RGHandle h, out uint32 w, out uint32 h2)
+		{
+			w = 0; h2 = 0;
+			if (h.IsValid && h.Index < (uint32)mResources.Count)
+			{
+				let res = mResources[h.Index];
+				if (res != null && res.TextureDesc.Width > 0 && res.TextureDesc.Height > 0)
+				{
+					w = res.TextureDesc.Width;
+					h2 = res.TextureDesc.Height;
+					return true;
+				}
+			}
+			return false;
+		}
+
+		for (let ct in pass.ColorTargets)
+		{
+			if (TryFromHandle(ct.Handle, out outW, out outH))
+				return true;
+		}
+		if (pass.DepthTarget.HasValue)
+		{
+			if (TryFromHandle(pass.DepthTarget.Value.Handle, out outW, out outH))
+				return true;
+		}
+		return false;
+	}
+
 	private void ExecuteRenderPass(RenderGraphPass pass, ICommandEncoder encoder)
 	{
-		if (pass.ExecuteCallback == null)
+		let hasBundles = pass.BundleCallback != null;
+		if (pass.ExecuteCallback == null && !hasBundles)
 			return;
+
+		// A bundle pass records its bundles NOW (encoder in recording state, before
+		// the pass begins); the graph then begins with secondary contents + replays
+		// them. Done before building the pass desc so the encoder is still recording.
+		List<IRenderBundle> bundles = null;
+		if (hasBundles)
+		{
+			bundles = scope .();
+			pass.BundleCallback(encoder, bundles);
+		}
 
 		// Build RHI render pass descriptor
 		var rpDesc = RenderPassDesc();
 		rpDesc.Label = pass.Name;
+		if (hasBundles)
+			rpDesc.Contents = .SecondaryCommandBuffers;
 
 		// Color attachments
 		for (int i = 0; i < pass.ColorTargets.Count; i++)
@@ -922,8 +972,6 @@ public class RenderGraph
 			var view = GetTextureView(ct.Handle);
 			if (view == null) continue;
 
-			// Create a per-layer/mip view when targeting a specific subresource
-			// (e.g., rendering to a single cubemap face or mip level).
 			if (!ct.Subresource.IsAll)
 			{
 				if (let subView = CreateSubresourceView(ct.Handle, ct.Subresource))
@@ -967,7 +1015,28 @@ public class RenderGraph
 		}
 
 		let rp = encoder.BeginRenderPass(rpDesc);
-		pass.ExecuteCallback(rp);
+
+		// Viewport/scissor: set from attachment dimensions for bundle passes
+		// (bundles inherit it from the parent; they can't set it themselves).
+		if (hasBundles)
+		{
+			uint32 vpW = 0, vpH = 0;
+			if (PassRenderArea(pass, out vpW, out vpH) && vpW > 0 && vpH > 0)
+			{
+				rp.SetViewport(0, 0, (float)vpW, (float)vpH, 0, 1);
+				rp.SetScissor(0, 0, vpW, vpH);
+			}
+		}
+
+		if (hasBundles)
+		{
+			if (bundles != null && bundles.Count > 0)
+				rp.ExecuteBundles(Span<IRenderBundle>(bundles.Ptr, bundles.Count));
+		}
+		else
+		{
+			pass.ExecuteCallback(rp);
+		}
 		rp.End();
 	}
 

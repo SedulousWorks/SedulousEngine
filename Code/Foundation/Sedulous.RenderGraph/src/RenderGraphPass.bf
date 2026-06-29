@@ -38,6 +38,8 @@ public class RenderGraphPass
 
 	/// Typed callbacks for execution
 	public RenderPassExecuteCallback ExecuteCallback ~ delete _;
+	/// Render pass whose body is executed render bundles (parallel recording).
+	public RenderBundlePassCallback BundleCallback ~ delete _;
 	public ComputePassExecuteCallback ComputeCallback ~ delete _;
 	public CopyPassExecuteCallback CopyCallback ~ delete _;
 

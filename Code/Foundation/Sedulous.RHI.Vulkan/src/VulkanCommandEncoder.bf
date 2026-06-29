@@ -117,6 +117,9 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 			}
 		}
 
+		if (desc.Contents == .SecondaryCommandBuffers)
+			renderingInfo.flags |= .VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT;
+
 		VulkanNative.vkCmdBeginRendering(mCmdBuf, &renderingInfo);
 		return mRenderPassEncoder;
 	}

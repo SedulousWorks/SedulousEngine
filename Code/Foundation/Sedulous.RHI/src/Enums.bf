@@ -336,6 +336,16 @@ enum StoreOp
 	DontCare,
 }
 
+/// How draws are supplied to a render pass. Inline (the default) records draw
+/// commands directly. SecondaryCommandBuffers means the pass body is supplied
+/// by executed render bundles only (no inline draws). Vulkan begins the
+/// rendering scope with the secondary-command-buffer contents flag; DX12 ignores it.
+enum RenderPassContents
+{
+	Inline,
+	SecondaryCommandBuffers,
+}
+
 /// Index buffer element format.
 enum IndexFormat
 {

@@ -820,6 +820,9 @@ struct RenderPassDesc
 	public IQuerySet TimestampQuerySet;
 	public uint32 BeginTimestampIndex;
 	public uint32 EndTimestampIndex;
+	/// How draws are supplied. Set to SecondaryCommandBuffers when executing
+	/// render bundles (Vulkan needs to know at begin time).
+	public RenderPassContents Contents = .Inline;
 	public StringView Label;
 }
 

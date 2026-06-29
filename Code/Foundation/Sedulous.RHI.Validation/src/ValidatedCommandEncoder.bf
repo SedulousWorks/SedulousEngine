@@ -1,6 +1,7 @@
 namespace Sedulous.RHI.Validation;
 
 using System;
+using System.Collections;
 using Sedulous.RHI;
 
 /// Encoder state machine states.
@@ -24,6 +25,7 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 	private EncoderState mState = .Recording;
 	private ValidatedRenderPassEncoder mRenderPassEncoder;
 	private ValidatedComputePassEncoder mComputePassEncoder;
+	private List<ValidatedRenderBundleEncoder> mBundleEncoders = new .() ~ DeleteContainerAndItems!(_);
 	private int mDebugLabelDepth;
 
 	public this(ICommandEncoder inner)
@@ -102,7 +104,21 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 	public IRenderBundleEncoder CreateRenderBundleEncoder(RenderBundleDesc desc)
 	{
 		if (!CheckState("CreateRenderBundleEncoder", .Recording)) return null;
-		return mInner.CreateRenderBundleEncoder(desc);
+
+		if (desc.ColorFormatCount == 0 && desc.DepthStencilFormat == .Undefined)
+		{
+			ValidationLogger.Warn("CreateRenderBundleEncoder: no color formats and no depth/stencil format");
+		}
+		if (desc.Width == 0 || desc.Height == 0)
+		{
+			ValidationLogger.Warn("CreateRenderBundleEncoder: viewport width or height is 0");
+		}
+
+		let inner = mInner.CreateRenderBundleEncoder(desc);
+		if (inner == null) return null;
+		let validated = new ValidatedRenderBundleEncoder(inner);
+		mBundleEncoders.Add(validated);
+		return validated;
 	}
 
 	/// Called by sub-pass encoders when End() is called.
