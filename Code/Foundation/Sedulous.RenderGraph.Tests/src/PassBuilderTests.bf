@@ -186,6 +186,28 @@ class PassBuilderTests
 	}
 
 	[Test]
+	public static void SetViewport_RecordsOverride()
+	{
+		let pass = scope RenderGraphPass("Test", .Render);
+		var builder = PassBuilder(pass);
+
+		builder.SetViewport(10, 20, 100, 200);
+
+		Test.Assert(pass.HasViewport);
+		Test.Assert(pass.ViewportX == 10);
+		Test.Assert(pass.ViewportY == 20);
+		Test.Assert(pass.ViewportW == 100);
+		Test.Assert(pass.ViewportH == 200);
+	}
+
+	[Test]
+	public static void NoViewport_DefaultsFalse()
+	{
+		let pass = scope RenderGraphPass("Test", .Render);
+		Test.Assert(!pass.HasViewport);
+	}
+
+	[Test]
 	public static void GetInputs_LoadOpCreatesRead()
 	{
 		let pass = scope RenderGraphPass("Test", .Render);

@@ -25,6 +25,11 @@ public class RenderGraphPass
 	/// Explicit pass dependencies
 	public List<PassHandle> Dependencies = new .() ~ delete _;
 
+	/// Optional per-pass viewport/scissor override (else the full attachment is used)
+	public bool HasViewport;
+	public int32 ViewportX, ViewportY;
+	public uint32 ViewportW, ViewportH;
+
 	/// Whether this pass was culled during compilation
 	public bool IsCulled;
 	/// If true, this pass is never culled (e.g., final output)

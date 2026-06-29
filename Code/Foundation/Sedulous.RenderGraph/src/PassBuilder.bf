@@ -146,6 +146,20 @@ public struct PassBuilder
 		return this;
 	}
 
+	// === Viewport ===
+
+	/// Override the pass's viewport + scissor (a sub-rect of the attachment, e.g. split-screen).
+	/// Without it the pass covers the full attachment.
+	public Self SetViewport(int32 x, int32 y, uint32 w, uint32 h) mut
+	{
+		mPass.HasViewport = true;
+		mPass.ViewportX = x;
+		mPass.ViewportY = y;
+		mPass.ViewportW = w;
+		mPass.ViewportH = h;
+		return this;
+	}
+
 	// === Dependencies ===
 
 	/// Add an explicit dependency on another pass

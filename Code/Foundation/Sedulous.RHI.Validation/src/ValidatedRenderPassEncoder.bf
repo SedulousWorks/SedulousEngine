@@ -231,6 +231,10 @@ class ValidatedRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 	public void ExecuteBundles(Span<IRenderBundle> bundles)
 	{
 		if (!CheckActive("ExecuteBundles")) return;
+		if (!mViewportSet)
+			ValidationLogger.Warn("ExecuteBundles: viewport not set — bundles inherit viewport from the parent pass");
+		if (!mScissorSet)
+			ValidationLogger.Warn("ExecuteBundles: scissor not set — bundles inherit scissor from the parent pass");
 		mInner.ExecuteBundles(bundles);
 	}
 
