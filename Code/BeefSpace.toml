@@ -116,6 +116,7 @@ SampleVG001_Shapes = {Path = "Samples/VG/SampleVG001_Shapes"}
 "Sedulous.Textures" = {Path = "Foundation/Sedulous.Textures"}
 "Sedulous.Runtime" = {Path = "Foundation/Sedulous.Runtime"}
 "Sedulous.Runtime.Client" = {Path = "Foundation/Sedulous.Runtime.Client"}
+"Sedulous.Runtime.Graphics" = {Path = "Foundation/Sedulous.Runtime.Graphics"}
 "Sedulous.Renderer" = {Path = "Foundation/Sedulous.Renderer"}
 "Sedulous.Engine.Core" = {Path = "Engine/Sedulous.Engine.Core"}
 "Sedulous.Engine.App" = {Path = "Engine/Sedulous.Engine.App"}
@@ -223,7 +224,7 @@ Foundation = []
 "Foundation/Models" = ["Sedulous.Models", "Sedulous.Models.FBX", "Sedulous.Models.GLTF", "Sedulous.Models.Tests"]
 "Foundation/Net" = ["Sedulous.Net", "Sedulous.Net.HTTP", "Sedulous.Net.HTTP.Tests", "Sedulous.Net.Tests"]
 "Foundation/Render" = ["Sedulous.Materials", "Sedulous.Shaders", "Sedulous.Textures", "Sedulous.Textures.Resources", "Sedulous.Textures.Importer", "Sedulous.Materials.Resources", "Sedulous.RenderGraph", "Sedulous.RenderGraph.Tests", "Sedulous.Renderer", "Sedulous.Particles"]
-"Foundation/Runtime" = ["Sedulous.Runtime", "Sedulous.Runtime.Client"]
+"Foundation/Runtime" = ["Sedulous.Runtime", "Sedulous.Runtime.Client", "Sedulous.Runtime.Graphics"]
 "Foundation/Jobs" = ["Sedulous.Jobs", "Sedulous.Jobs.Tests"]
 "Foundation/Resources" = ["Sedulous.Resources", "Sedulous.Resources.Tests"]
 "Foundation/Serialization" = ["Sedulous.Serialization", "Sedulous.Serialization.Tests", "Sedulous.Serialization.OpenDDL", "Sedulous.Serialization.Xml", "Sedulous.OpenDDL", "Sedulous.OpenDDL.Tests", "Sedulous.Xml", "Sedulous.Xml.Tests"]
