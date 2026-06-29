@@ -126,6 +126,61 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		return mComputePassEncoder;
 	}
 
+	// ===== Render Bundles =====
+
+	public IRenderBundleEncoder CreateRenderBundleEncoder(RenderBundleDesc desc)
+	{
+		let sec = mPool.AcquireSecondary();
+		if (sec.Handle == 0) return null;
+
+		// Build color format array for inheritance info
+		VkFormat[RenderBundleDesc.MaxColorAttachments] colorFmts = default;
+		for (uint32 i = 0; i < desc.ColorFormatCount && i < RenderBundleDesc.MaxColorAttachments; i++)
+			colorFmts[i] = VulkanConversions.ToVkFormat(desc.ColorFormats[i]);
+
+		let hasDepth = desc.DepthStencilFormat != .Undefined;
+
+		// Dynamic-rendering inheritance: the attachment signature this bundle is compatible with.
+		VkCommandBufferInheritanceRenderingInfo inh = .();
+		inh.colorAttachmentCount = desc.ColorFormatCount;
+		inh.pColorAttachmentFormats = &colorFmts[0];
+		inh.depthAttachmentFormat = hasDepth ? VulkanConversions.ToVkFormat(desc.DepthStencilFormat) : .VK_FORMAT_UNDEFINED;
+		inh.stencilAttachmentFormat = (hasDepth && desc.DepthStencilFormat.HasStencil())
+			? VulkanConversions.ToVkFormat(desc.DepthStencilFormat) : .VK_FORMAT_UNDEFINED;
+		inh.rasterizationSamples = desc.SampleCount > 0 ? (.)desc.SampleCount : .VK_SAMPLE_COUNT_1_BIT;
+
+		VkCommandBufferInheritanceInfo ii = .();
+		ii.pNext = &inh;
+
+		VkCommandBufferBeginInfo bi = .();
+		bi.flags = .VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | .VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		bi.pInheritanceInfo = &ii;
+		VulkanNative.vkBeginCommandBuffer(sec, &bi);
+
+		// Bundles carry no pass-level dynamic state and Vulkan secondaries don't
+		// inherit it, so record the bundle's viewport + scissor up front (Y-flipped).
+		if (desc.Width > 0 && desc.Height > 0)
+		{
+			VkViewport vp = .();
+			vp.x = (float)desc.ViewportX;
+			vp.y = (float)desc.ViewportY + (float)desc.Height;
+			vp.width = (float)desc.Width;
+			vp.height = -(float)desc.Height;
+			vp.minDepth = 0.0f;
+			vp.maxDepth = 1.0f;
+			VulkanNative.vkCmdSetViewport(sec, 0, 1, &vp);
+
+			VkRect2D scissor = .();
+			scissor.offset = .() { x = desc.ViewportX, y = desc.ViewportY };
+			scissor.extent = .() { width = desc.Width, height = desc.Height };
+			VulkanNative.vkCmdSetScissor(sec, 0, 1, &scissor);
+		}
+
+		let enc = new VulkanRenderBundleEncoder(sec);
+		mPool.TrackBundleEncoder(enc);
+		return enc;
+	}
+
 	public void Barrier(BarrierGroup barriers)
 	{
 		List<VkMemoryBarrier2> memBarriers = scope .(barriers.MemoryBarriers.Length);

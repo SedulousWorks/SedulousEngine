@@ -328,6 +328,25 @@ class DX12RenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 			offset, dxCountBuf.Handle, countOffset);
 	}
 
+	// ===== Bundles =====
+
+	public void ExecuteBundles(Span<IRenderBundle> bundles)
+	{
+		for (let bundle in bundles)
+		{
+			if (let b = bundle as DX12RenderBundle)
+			{
+				// DX12 requires the parent command list to have the same root
+				// signature and PSO set before ExecuteBundle.
+				if (b.RootSig != null)
+					mEncoder.CmdList.SetGraphicsRootSignature(b.RootSig);
+				if (b.PSO != null)
+					mEncoder.CmdList.SetPipelineState(b.PSO);
+				mEncoder.CmdList.ExecuteBundle(b.CmdList);
+			}
+		}
+	}
+
 	// ===== End =====
 
 	public void End()

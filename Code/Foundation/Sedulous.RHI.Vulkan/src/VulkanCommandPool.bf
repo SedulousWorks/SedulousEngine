@@ -16,6 +16,11 @@ class VulkanCommandPool : ICommandPool
 	private List<VkCommandBuffer> mFreeHandles = new .() ~ delete _;
 	private List<VulkanCommandBuffer> mCommandBuffers = new .() ~ delete _;
 
+	// Render bundles (secondary command buffers)
+	private List<VkCommandBuffer> mFreeSecondaries = new .() ~ delete _;
+	private List<VkCommandBuffer> mLiveSecondaries = new .() ~ delete _;
+	private List<IRenderBundleEncoder> mTrackedBundleEncoders = new .() ~ DeleteContainerAndItems!(_);
+
 	public this() { }
 
 	public Result<void> Init(VulkanDevice device, QueueType queueType)
@@ -93,6 +98,16 @@ class VulkanCommandPool : ICommandPool
 		}
 		mCommandBuffers.Clear();
 
+		// Recycle secondary command buffers (render bundles)
+		for (let sec in mLiveSecondaries)
+			mFreeSecondaries.Add(sec);
+		mLiveSecondaries.Clear();
+
+		// Free bundle encoder wrappers
+		for (let enc in mTrackedBundleEncoders)
+			delete enc;
+		mTrackedBundleEncoders.Clear();
+
 		// Reset all buffers in one call (cheap with TRANSIENT_BIT)
 		VulkanNative.vkResetCommandPool(mDevice.Handle, mPool, .None);
 	}
@@ -117,6 +132,35 @@ class VulkanCommandPool : ICommandPool
 	public void TrackCommandBuffer(VulkanCommandBuffer cb)
 	{
 		mCommandBuffers.Add(cb);
+	}
+
+	/// Allocate (or recycle) a SECONDARY command buffer for a render bundle encoder.
+	public VkCommandBuffer AcquireSecondary()
+	{
+		VkCommandBuffer cb = .Null;
+
+		if (mFreeSecondaries.Count > 0)
+		{
+			cb = mFreeSecondaries.PopBack();
+		}
+		else
+		{
+			VkCommandBufferAllocateInfo ai = .();
+			ai.commandPool = mPool;
+			ai.level = .VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+			ai.commandBufferCount = 1;
+			if (VulkanNative.vkAllocateCommandBuffers(mDevice.Handle, &ai, &cb) != .VK_SUCCESS)
+				return .Null;
+		}
+
+		mLiveSecondaries.Add(cb);
+		return cb;
+	}
+
+	/// Track a bundle-encoder wrapper so it (and the bundle it owns) is freed on Reset.
+	public void TrackBundleEncoder(IRenderBundleEncoder encoder)
+	{
+		mTrackedBundleEncoders.Add(encoder);
 	}
 }
 

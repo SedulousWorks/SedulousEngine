@@ -113,6 +113,37 @@ class DX12CommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		return mComputePassEncoder;
 	}
 
+	// ===== Render Bundles =====
+
+	public IRenderBundleEncoder CreateRenderBundleEncoder(RenderBundleDesc desc)
+	{
+		ID3D12CommandAllocator* alloc = null;
+		HRESULT hr = mDevice.Handle.CreateCommandAllocator(
+			.D3D12_COMMAND_LIST_TYPE_BUNDLE,
+			ID3D12CommandAllocator.IID, (void**)&alloc);
+		if (!SUCCEEDED(hr) || alloc == null) return null;
+
+		ID3D12GraphicsCommandList* list = null;
+		hr = mDevice.Handle.CreateCommandList(0,
+			.D3D12_COMMAND_LIST_TYPE_BUNDLE, alloc, null,
+			ID3D12GraphicsCommandList.IID, (void**)&list);
+		if (!SUCCEEDED(hr) || list == null)
+		{
+			alloc.Release();
+			return null;
+		}
+
+		// Bundles inherit the parent's descriptor heaps
+		EnsureDescriptorHeaps();
+		ID3D12DescriptorHeap*[2] heaps = .(
+			mDevice.GpuSrvHeap.Heap,
+			mDevice.GpuSamplerHeap.Heap
+		);
+		list.SetDescriptorHeaps(2, &heaps[0]);
+
+		return new DX12RenderBundleEncoder(mDevice, list, alloc);
+	}
+
 	// ===== Barriers =====
 	struct CoalescedEntry
 	{

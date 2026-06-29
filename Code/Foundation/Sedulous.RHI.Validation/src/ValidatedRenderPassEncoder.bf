@@ -226,6 +226,14 @@ class ValidatedRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 		mInner.DrawIndexedIndirect(buffer, offset, drawCount, stride);
 	}
 
+	// ===== Bundles =====
+
+	public void ExecuteBundles(Span<IRenderBundle> bundles)
+	{
+		if (!CheckActive("ExecuteBundles")) return;
+		mInner.ExecuteBundles(bundles);
+	}
+
 	// ===== Queries =====
 
 	public void WriteTimestamp(IQuerySet querySet, uint32 index)

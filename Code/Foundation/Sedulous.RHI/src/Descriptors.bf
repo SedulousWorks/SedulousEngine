@@ -883,6 +883,26 @@ struct BarrierGroup
 	public Span<MemoryBarrier> MemoryBarriers;
 }
 
+/// Describes the attachment signature a render bundle is compatible with.
+/// A bundle can be replayed into any render pass whose color/depth formats
+/// and sample count match. The viewport rect is baked into the bundle
+/// (Vulkan secondaries and DX12 bundles don't inherit dynamic viewport).
+struct RenderBundleDesc
+{
+	public const int MaxColorAttachments = 8;
+
+	public TextureFormat[MaxColorAttachments] ColorFormats;
+	public uint32 ColorFormatCount = 0;
+	public TextureFormat DepthStencilFormat = .Undefined;
+	public uint32 SampleCount = 1;
+	/// The bundle's viewport/scissor sub-rect. Width/height must be > 0.
+	public int32 ViewportX = 0;
+	public int32 ViewportY = 0;
+	public uint32 Width = 0;
+	public uint32 Height = 0;
+	public StringView Label;
+}
+
 // =============================================================================
 // Query Descriptor
 // =============================================================================

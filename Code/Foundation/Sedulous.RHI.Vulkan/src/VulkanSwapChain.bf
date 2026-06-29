@@ -189,15 +189,35 @@ class VulkanSwapChain : ISwapChain
 		VkPresentModeKHR[] modes = scope VkPresentModeKHR[(.)modeCount];
 		VulkanNative.vkGetPhysicalDeviceSurfacePresentModesKHR(physDevice, surface, &modeCount, modes.CArray());
 
-		let desired = VulkanConversions.ToVkPresentMode(requested);
-		for (let mode in modes)
+		bool has(VkPresentModeKHR m)
 		{
-			if (mode == desired)
-				return mode;
+			for (let mode in modes)
+				if (mode == m) return true;
+			return false;
 		}
 
-		// FIFO is guaranteed by spec
-		return .VK_PRESENT_MODE_FIFO_KHR;
+		let desired = VulkanConversions.ToVkPresentMode(requested);
+		if (has(desired))
+			return desired;
+
+		// Requested mode unavailable: preserve the request's INTENT rather than
+		// dropping straight to vsync. Immediate and Mailbox both mean "don't block
+		// on the refresh", so fall back to whichever uncapped mode the surface does
+		// expose (Wayland commonly offers Mailbox but NOT Immediate) before settling
+		// for FIFO. FIFO is the only mode guaranteed present by the spec.
+		VkPresentModeKHR chosen = .VK_PRESENT_MODE_FIFO_KHR;
+		if (requested == .Immediate || requested == .Mailbox)
+		{
+			if (has(.VK_PRESENT_MODE_MAILBOX_KHR))        chosen = .VK_PRESENT_MODE_MAILBOX_KHR;
+			else if (has(.VK_PRESENT_MODE_IMMEDIATE_KHR)) chosen = .VK_PRESENT_MODE_IMMEDIATE_KHR;
+		}
+		else if (requested == .FifoRelaxed && has(.VK_PRESENT_MODE_FIFO_RELAXED_KHR))
+		{
+			chosen = .VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+		}
+
+		System.Diagnostics.Debug.WriteLine(scope $"[swapchain] requested present mode ({(int32)desired}) unavailable; using ({(int32)chosen})");
+		return chosen;
 	}
 
 	private Result<void> RetrieveImages(VkFormat format)

@@ -99,6 +99,12 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		return mComputePassEncoder;
 	}
 
+	public IRenderBundleEncoder CreateRenderBundleEncoder(RenderBundleDesc desc)
+	{
+		if (!CheckState("CreateRenderBundleEncoder", .Recording)) return null;
+		return mInner.CreateRenderBundleEncoder(desc);
+	}
+
 	/// Called by sub-pass encoders when End() is called.
 	public void OnPassEnded()
 	{

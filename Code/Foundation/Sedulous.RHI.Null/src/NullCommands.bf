@@ -33,6 +33,7 @@ class NullCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	public IRenderPassEncoder BeginRenderPass(RenderPassDesc desc) => mRenderPassEncoder;
 	public IComputePassEncoder BeginComputePass(StringView label = default) => mComputePassEncoder;
+	public IRenderBundleEncoder CreateRenderBundleEncoder(RenderBundleDesc desc) => null;
 
 	public void Barrier(BarrierGroup barriers) { }
 	public void CopyBufferToBuffer(IBuffer src, uint64 srcOffset, IBuffer dst, uint64 dstOffset, uint64 size) { }
@@ -87,6 +88,7 @@ class NullRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 	public void DrawIndexed(uint32 indexCount, uint32 instanceCount = 1, uint32 firstIndex = 0, int32 baseVertex = 0, uint32 firstInstance = 0) { }
 	public void DrawIndirect(IBuffer buffer, uint64 offset, uint32 drawCount = 1, uint32 stride = 0) { }
 	public void DrawIndexedIndirect(IBuffer buffer, uint64 offset, uint32 drawCount = 1, uint32 stride = 0) { }
+	public void ExecuteBundles(Span<IRenderBundle> bundles) { }
 	public void WriteTimestamp(IQuerySet querySet, uint32 index) { }
 	public void BeginOcclusionQuery(IQuerySet querySet, uint32 index) { }
 	public void EndOcclusionQuery(IQuerySet querySet, uint32 index) { }

@@ -194,6 +194,19 @@ class VulkanRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 			vkCountBuf.Handle, countOffset, maxDrawCount, actualStride);
 	}
 
+	public void ExecuteBundles(Span<IRenderBundle> bundles)
+	{
+		if (bundles.IsEmpty) return;
+		VkCommandBuffer[] secs = scope VkCommandBuffer[bundles.Length];
+		for (int i = 0; i < bundles.Length; i++)
+		{
+			let vkBundle = bundles[i] as VulkanRenderBundle;
+			if (vkBundle != null)
+				secs[i] = vkBundle.Handle;
+		}
+		VulkanNative.vkCmdExecuteCommands(mCmdBuf, (uint32)bundles.Length, secs.CArray());
+	}
+
 	public void End()
 	{
 		VulkanNative.vkCmdEndRendering(mCmdBuf);

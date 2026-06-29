@@ -29,6 +29,13 @@ interface ICommandEncoder
 	/// Must call End() on the returned encoder before continuing with this encoder.
 	IComputePassEncoder BeginComputePass(StringView label = default);
 
+	// ===== Render Bundles =====
+
+	/// Begin recording a render bundle (a reusable, off-thread-recordable draw
+	/// sequence replayable into passes matching `desc`'s attachment signature).
+	/// Returns null if the backend does not support bundles.
+	IRenderBundleEncoder CreateRenderBundleEncoder(RenderBundleDesc desc);
+
 	// ===== Barriers (outside passes) =====
 
 	/// Inserts pipeline barriers for resource state transitions.

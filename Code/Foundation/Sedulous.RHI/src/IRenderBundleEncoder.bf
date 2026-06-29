@@ -2,10 +2,17 @@ namespace Sedulous.RHI;
 
 using System;
 
-/// Encodes drawing commands within a render pass.
-/// Obtained from ICommandEncoder.BeginRenderPass().
-/// Must call End() when finished.
-interface IRenderPassEncoder
+/// Records draw commands into a render bundle. Shares the same draw-recording
+/// surface as IRenderPassEncoder (pipeline, bind groups, vertex/index buffers,
+/// draw calls) but NOT the pass-level dynamic state (viewport, scissor, blend
+/// constant, stencil ref) or queries. This is exactly the subset valid inside
+/// a WebGPU render bundle.
+///
+/// A Renderer that accepts an IRenderBundleEncoder records identically whether
+/// it targets a live pass (inline) or an off-thread bundle, which is what makes
+/// parallel command recording fall out: split a draw list into N bundles
+/// recorded on N threads, then ExecuteBundles.
+interface IRenderBundleEncoder
 {
 	// ===== Pipeline & Binding =====
 
@@ -26,20 +33,6 @@ interface IRenderPassEncoder
 	/// Binds an index buffer.
 	void SetIndexBuffer(IBuffer buffer, IndexFormat format, uint64 offset = 0);
 
-	// ===== Dynamic State =====
-
-	/// Sets the viewport.
-	void SetViewport(float x, float y, float w, float h, float minDepth, float maxDepth);
-
-	/// Sets the scissor rectangle.
-	void SetScissor(int32 x, int32 y, uint32 w, uint32 h);
-
-	/// Sets the blend constant color.
-	void SetBlendConstant(float r, float g, float b, float a);
-
-	/// Sets the stencil reference value.
-	void SetStencilReference(uint32 reference);
-
 	// ===== Draw Commands =====
 
 	/// Draws non-indexed primitives.
@@ -56,26 +49,8 @@ interface IRenderPassEncoder
 	/// Draws indexed primitives with parameters read from a buffer.
 	void DrawIndexedIndirect(IBuffer buffer, uint64 offset, uint32 drawCount = 1, uint32 stride = 0);
 
-	// ===== Bundles =====
+	// ===== Finish =====
 
-	/// Execute pre-recorded render bundles in order (replays their draws into
-	/// this pass). The bundles must have been recorded with a compatible
-	/// attachment signature (matching color/depth formats and sample count).
-	void ExecuteBundles(Span<IRenderBundle> bundles);
-
-	// ===== Queries =====
-
-	/// Writes a GPU timestamp within the render pass.
-	void WriteTimestamp(IQuerySet querySet, uint32 index);
-
-	/// Begins an occlusion query.
-	void BeginOcclusionQuery(IQuerySet querySet, uint32 index);
-
-	/// Ends an occlusion query.
-	void EndOcclusionQuery(IQuerySet querySet, uint32 index);
-
-	// ===== End =====
-
-	/// Ends the render pass. The encoder must not be used after this call.
-	void End();
+	/// Finish recording and return the immutable bundle (owned by the command pool).
+	IRenderBundle Finish();
 }

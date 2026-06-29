@@ -50,6 +50,7 @@ class MockEncoder : ICommandEncoder
 	// Stubs for unused ICommandEncoder methods
 	public IRenderPassEncoder BeginRenderPass(RenderPassDesc desc) => null;
 	public IComputePassEncoder BeginComputePass(StringView label) => null;
+	public IRenderBundleEncoder CreateRenderBundleEncoder(RenderBundleDesc desc) => null;
 	public void CopyBufferToBuffer(IBuffer src, uint64 srcOffset, IBuffer dst, uint64 dstOffset, uint64 size) {}
 	public void CopyBufferToTexture(IBuffer src, ITexture dst, BufferTextureCopyRegion region) {}
 	public void CopyTextureToBuffer(ITexture src, IBuffer dst, BufferTextureCopyRegion region) {}
