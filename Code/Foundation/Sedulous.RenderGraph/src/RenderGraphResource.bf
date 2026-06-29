@@ -45,6 +45,11 @@ public class RenderGraphResource
 	/// GPU buffer handle
 	public IBuffer Buffer;
 
+	/// Stable id of the backing physical texture; changes when a transient is (re)allocated a
+	/// different texture (e.g. on resize). Consumers caching a bind group over TextureView key on
+	/// this so a reused-address view does not alias a stale, destroyed texture.
+	public uint64 TextureGeneration;
+
 	// --- State tracking ---
 	/// Last known resource state (for barrier computation, persists across frames for persistent resources)
 	public ResourceState LastKnownState = .Undefined;

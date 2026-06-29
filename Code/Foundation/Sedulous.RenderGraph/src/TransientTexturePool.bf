@@ -14,6 +14,7 @@ public class TransientTexturePool
 		public ITexture Texture;
 		public ITextureView View;
 		public int32 UnusedFrames;
+		public uint64 Generation;
 	}
 
 	private List<PooledTexture> mPool = new .() ~ delete _;
@@ -29,7 +30,7 @@ public class TransientTexturePool
 
 	/// Try to acquire a matching texture from the pool.
 	/// Returns true and sets texture/view if a match is found.
-	public bool TryAcquire(TextureDesc desc, out ITexture texture, out ITextureView view)
+	public bool TryAcquire(TextureDesc desc, out ITexture texture, out ITextureView view, out uint64 generation)
 	{
 		for (int i = 0; i < mPool.Count; i++)
 		{
@@ -38,6 +39,7 @@ public class TransientTexturePool
 			{
 				texture = entry.Texture;
 				view = entry.View;
+				generation = entry.Generation;
 				mPool.RemoveAt(i);
 				return true;
 			}
@@ -45,18 +47,20 @@ public class TransientTexturePool
 
 		texture = null;
 		view = null;
+		generation = 0;
 		return false;
 	}
 
 	/// Return a texture to the pool for future reuse
-	public void ReturnToPool(TextureDesc desc, ITexture texture, ITextureView view)
+	public void ReturnToPool(TextureDesc desc, ITexture texture, ITextureView view, uint64 generation)
 	{
 		mPool.Add(.()
 		{
 			Desc = desc,
 			Texture = texture,
 			View = view,
-			UnusedFrames = 0
+			UnusedFrames = 0,
+			Generation = generation
 		});
 	}
 
