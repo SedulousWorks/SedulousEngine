@@ -760,6 +760,12 @@ abstract class Application
 		// Reset the command pool for this frame (reclaims encoders + command buffers)
 		mCommandPools[frameIndex].Reset();
 
+		/*if (mSwapChain.Width != (uint32)mWindow.Width ||
+			mSwapChain.Height != (uint32)mWindow.Height)
+		{
+			HandleResize();
+		}*/
+
 		// Acquire next image
 		using (SProfiler.Begin("AcquireImage"))
 		{
