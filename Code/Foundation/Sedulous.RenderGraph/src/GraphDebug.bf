@@ -157,8 +157,9 @@ public static class GraphDebug
 		{
 		case .ReadTexture:      return "read";
 		case .ReadBuffer:       return "read";
-		case .ReadDepthStencil: return "depth-read";
-		case .ReadCopySrc:      return "copy-src";
+		case .ReadDepthStencil:   return "depth-read";
+		case .SampleDepthStencil: return "depth-sample";
+		case .ReadCopySrc:        return "copy-src";
 		case .WriteColorTarget: return "color-out";
 		case .WriteDepthTarget: return "depth-out";
 		case .WriteStorage:     return "storage-write";

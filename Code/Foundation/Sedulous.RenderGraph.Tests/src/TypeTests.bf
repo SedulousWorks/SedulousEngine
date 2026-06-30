@@ -52,6 +52,7 @@ class TypeTests
 		Test.Assert(RGAccessType.ReadBuffer.IsRead);
 		Test.Assert(RGAccessType.ReadDepthStencil.IsRead);
 		Test.Assert(RGAccessType.ReadCopySrc.IsRead);
+		Test.Assert(RGAccessType.SampleDepthStencil.IsRead);
 		Test.Assert(RGAccessType.ReadWriteStorage.IsRead);
 
 		Test.Assert(!RGAccessType.WriteColorTarget.IsRead);
@@ -71,6 +72,7 @@ class TypeTests
 
 		Test.Assert(!RGAccessType.ReadTexture.IsWrite);
 		Test.Assert(!RGAccessType.ReadBuffer.IsWrite);
+		Test.Assert(!RGAccessType.SampleDepthStencil.IsWrite);
 	}
 
 	[Test]
@@ -83,6 +85,7 @@ class TypeTests
 		Test.Assert(RGAccessType.ReadCopySrc.ToResourceState() == .CopySrc);
 		Test.Assert(RGAccessType.WriteCopyDst.ToResourceState() == .CopyDst);
 		Test.Assert(RGAccessType.WriteStorage.ToResourceState() == .ShaderWrite);
+		Test.Assert(RGAccessType.SampleDepthStencil.ToResourceState() == .DepthStencilRead);
 	}
 
 	[Test]

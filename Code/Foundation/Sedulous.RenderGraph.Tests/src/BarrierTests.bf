@@ -558,6 +558,50 @@ class BarrierTests
 		Test.Assert(encoder.RecordedTextureBarriers.Count == 0);
 	}
 
+	/// SampleDepth on a written cascade array reads as DepthStencilRead (CSM scenario).
+	/// 4 layers written individually as depth targets, then whole-array sampled in lighting pass.
+	[Test]
+	public static void SampleDepth_WrittenCascadeArray_ReadsAsDepthStencilRead()
+	{
+		let solver = scope BarrierSolver();
+		let encoder = scope MockEncoder();
+
+		// 4-layer shadow map array (CSM)
+		let tex = scope MockTexture(.Undefined, mipLevels: 1, arrayLayers: 4);
+		let view = scope MockTextureView(tex);
+
+		let resources = scope List<RenderGraphResource>();
+		let res = new RenderGraphResource("ShadowCSM", .Texture, .Imported);
+		res.Texture = tex;
+		res.TextureView = view;
+		res.LastKnownState = .Undefined;
+		resources.Add(res);
+		defer delete res;
+
+		solver.Reset(resources);
+
+		// Write each cascade layer individually as depth targets
+		for (uint32 i = 0; i < 4; i++)
+		{
+			let cascadePass = scope RenderGraphPass("Cascade", .Render);
+			cascadePass.Accesses.Add(.(RGHandle(0, 0), .WriteDepthTarget, .(0, 1, i, 1)));
+			solver.EmitBarriers(cascadePass, resources, encoder);
+		}
+		encoder.RecordedTextureBarriers.Clear();
+
+		// Lighting pass: sample the whole array as depth texture
+		let lightingPass = scope RenderGraphPass("Lighting", .Render);
+		lightingPass.Accesses.Add(.(RGHandle(0, 0), .SampleDepthStencil));
+		solver.EmitBarriers(lightingPass, resources, encoder);
+
+		// All 4 layers should transition DepthStencilWrite -> DepthStencilRead.
+		// Since all layers are in the same state (DepthStencilWrite), the solver
+		// should collapse to a single whole-resource barrier.
+		Test.Assert(encoder.RecordedTextureBarriers.Count == 1);
+		Test.Assert(encoder.RecordedTextureBarriers[0].OldState == .DepthStencilWrite);
+		Test.Assert(encoder.RecordedTextureBarriers[0].NewState == .DepthStencilRead);
+	}
+
 	/// Persistent resources preserve per-subresource state across UpdatePersistentStates.
 	[Test]
 	public static void PersistentResource_PreservesPerSubresourceState()

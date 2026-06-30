@@ -99,6 +99,10 @@ public enum RGAccessType : uint8
 	ReadDepthStencil,
 	/// Copy source
 	ReadCopySrc,
+	/// Sample a depth texture in a shader (e.g. shadow map).
+	/// Like ReadTexture (read dependency + barrier, NOT an attachment)
+	/// but transitions to DepthStencilRead instead of ShaderRead.
+	SampleDepthStencil,
 
 	// --- Writes ---
 	/// Render target (color attachment) write
@@ -128,7 +132,7 @@ extension RGAccessType
 		{
 			switch (this)
 			{
-			case .ReadTexture, .ReadBuffer, .ReadDepthStencil, .ReadCopySrc,
+			case .ReadTexture, .ReadBuffer, .ReadDepthStencil, .ReadCopySrc, .SampleDepthStencil,
 				 .ReadWriteStorage, .ReadWriteDepthTarget, .ReadWriteColorTarget:
 				return true;
 			default:
@@ -158,10 +162,11 @@ extension RGAccessType
 	{
 		switch (this)
 		{
-		case .ReadTexture:      return .ShaderRead;
-		case .ReadBuffer:       return .ShaderRead;
-		case .ReadDepthStencil: return .DepthStencilRead;
-		case .ReadCopySrc:      return .CopySrc;
+		case .ReadTexture:        return .ShaderRead;
+		case .ReadBuffer:         return .ShaderRead;
+		case .ReadDepthStencil:   return .DepthStencilRead;
+		case .ReadCopySrc:        return .CopySrc;
+		case .SampleDepthStencil: return .DepthStencilRead;
 		case .WriteColorTarget: return .RenderTarget;
 		case .WriteDepthTarget: return .DepthStencilWrite;
 		case .WriteStorage:     return .ShaderWrite;

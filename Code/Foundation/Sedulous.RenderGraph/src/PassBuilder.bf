@@ -37,6 +37,16 @@ public struct PassBuilder
 		return this;
 	}
 
+	/// Sample a depth texture in this pass's shader (e.g. a shadow map).
+	/// Like ReadTexture — a read dependency + barrier, NOT a depth attachment
+	/// (unlike ReadDepth) — but transitions to DepthStencilRead, the layout
+	/// a depth sampler expects.
+	public Self SampleDepth(RGHandle handle, RGSubresourceRange subresource = default) mut
+	{
+		mPass.Accesses.Add(.(handle, .SampleDepthStencil, subresource));
+		return this;
+	}
+
 	// === Buffer reads ===
 
 	/// Declare a buffer read (uniform or storage)

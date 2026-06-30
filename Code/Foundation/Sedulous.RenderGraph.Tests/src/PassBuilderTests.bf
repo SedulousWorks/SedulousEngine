@@ -86,6 +86,37 @@ class PassBuilderTests
 	}
 
 	[Test]
+	public static void SampleDepth_ReadsWithoutAttachment()
+	{
+		let pass = scope RenderGraphPass("Test", .Render);
+		var builder = PassBuilder(pass);
+		let handle = RGHandle(0, 1);
+
+		builder.SampleDepth(handle);
+
+		// Should NOT set a depth target (unlike ReadDepth)
+		Test.Assert(!pass.DepthTarget.HasValue);
+		// Should add a SampleDepthStencil access
+		Test.Assert(pass.Accesses.Count == 1);
+		Test.Assert(pass.Accesses[0].Type == .SampleDepthStencil);
+		Test.Assert(pass.Accesses[0].Handle == handle);
+	}
+
+	[Test]
+	public static void SampleDepth_WithSubresource()
+	{
+		let pass = scope RenderGraphPass("Test", .Render);
+		var builder = PassBuilder(pass);
+		let handle = RGHandle(0, 1);
+		let sub = RGSubresourceRange(0, 1, 2, 1);
+
+		builder.SampleDepth(handle, sub);
+
+		Test.Assert(pass.Accesses[0].Subresource.BaseArrayLayer == 2);
+		Test.Assert(pass.Accesses[0].Subresource.ArrayLayerCount == 1);
+	}
+
+	[Test]
 	public static void NeverCull_SetsFlag()
 	{
 		let pass = scope RenderGraphPass("Test", .Render);
