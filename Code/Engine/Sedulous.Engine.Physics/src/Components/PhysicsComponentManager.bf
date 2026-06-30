@@ -61,13 +61,22 @@ class PhysicsComponentManager : ComponentManager<RigidBodyComponent>, IContactLi
 
 	protected override void OnRegisterUpdateFunctions()
 	{
-		// Body creation runs in PostTransform (after UpdateTransforms has
-		// propagated world matrices) - NOT in OnComponentInitialized, which
-		// fires from BeginFrame before any transform pass. Reading world
-		// matrices any earlier returns Identity and lands every freshly
-		// initialised body at the origin.
+		// Shape rebuild and deferred creation run in PostTransform (after
+		// UpdateTransforms has propagated world matrices). Initial body
+		// creation is done in OnComponentInitialized (see below).
 		RegisterUpdate(.PostTransform, new => CreatePendingBodies, 0, simulationOnly: false);
 		RegisterFixedUpdate(new => FixedUpdatePhysics);
+	}
+
+	/// Creates the physics body as soon as the component is initialized.
+	/// World matrices may not be propagated yet on the very first frame,
+	/// so the position may be at the entity's local transform rather than
+	/// the final world position. OnSceneStarted snaps all body transforms
+	/// to the correct world matrices when entering play mode.
+	protected override void OnComponentInitialized(RigidBodyComponent comp)
+	{
+		if (comp.NeedsBodyCreation && mPhysicsWorld != null)
+			CreatePhysicsBody(comp);
 	}
 
 	private void CreatePendingBodies(float deltaTime)
@@ -99,9 +108,9 @@ class PhysicsComponentManager : ComponentManager<RigidBodyComponent>, IContactLi
 		let scene = Scene;
 		if (scene == null) return;
 
-		// 1. Safety net: catch any bodies whose components were added
-		// mid-FixedUpdate (between PostTransform passes). Normal path lands
-		// in CreatePendingBodies once per frame.
+		// Safety net: catch any bodies whose components were added
+		// mid-FixedUpdate (between PostTransform passes). Normal path is
+		// OnComponentInitialized or CreatePendingBodies in PostTransform.
 		for (let comp in ActiveComponents)
 		{
 			if (!comp.IsActive) continue;
@@ -109,7 +118,7 @@ class PhysicsComponentManager : ComponentManager<RigidBodyComponent>, IContactLi
 				CreatePhysicsBody(comp);
 		}
 
-		// 2. Sync kinematic entities -> physics
+		// Sync kinematic entities -> physics
 		for (let comp in ActiveComponents)
 		{
 			if (!comp.IsActive || !comp.PhysicsBody.IsValid) continue;
@@ -196,7 +205,15 @@ class PhysicsComponentManager : ComponentManager<RigidBodyComponent>, IContactLi
 		let scene = Scene;
 		let worldMatrix = scene.GetWorldMatrix(comp.Owner);
 		let position = worldMatrix.Translation;
-		let rotation = Quaternion.CreateFromRotationMatrix(worldMatrix);
+		var rotation = Quaternion.CreateFromRotationMatrix(worldMatrix);
+
+		// Guard against degenerate world matrices (zero scale, unpropagated
+		// transforms) that produce unnormalized quaternions. Jolt asserts on
+		// unnormalized rotations during body creation.
+		let lenSq = rotation.X * rotation.X + rotation.Y * rotation.Y +
+			rotation.Z * rotation.Z + rotation.W * rotation.W;
+		if (lenSq < 0.0001f)
+			rotation = .Identity;
 
 		// Build body descriptor
 		var desc = PhysicsBodyDescriptor();
