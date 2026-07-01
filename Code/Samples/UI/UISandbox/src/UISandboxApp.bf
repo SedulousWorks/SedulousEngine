@@ -1,10 +1,13 @@
 namespace UISandbox;
 
 using System;
+using System.IO;
 using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
+using Sedulous.RuntimeGraphics;
 using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
+using Sedulous.Shell;
 using Sedulous.Shell.Input;
 using Sedulous.UI;
 using Sedulous.UI.Runtime;
@@ -16,18 +19,20 @@ using System.Collections;
 using Sedulous.UI.Toolkit;
 
 /// Render data for each dockable OS window (secondary window).
-class DockableWindowRenderData
+class DockableWindowRenderData : IRenderWindowData
 {
 	public RootView RootView ~ delete _;
 	public Sedulous.VG.VGContext VGContext ~ delete _;
 	public Sedulous.VG.Renderer.VGRenderer VGRenderer ~ { _.Dispose(); delete _; };
 	public View DockableView; // non-owning ref
 	public delegate void(View) OnCloseDelegate ~ delete _;
+
+	public void Dispose() { /* VGRenderer dispose handled by destructor */ }
 }
 
-/// Minimal UI sandbox application. Extends Application directly (no engine).
+/// Minimal UI sandbox application. Implements IApplication + IDockableWindowHost.
 /// App owns UIContext and RootView. Subsystem owns rendering pipeline.
-class UISandboxApp : Application, IDockableWindowHost
+class UISandboxApp : IApplication, IDockableWindowHost
 {
 	// Subsystem (registered with Context, cleaned up by Context)
 	private UISubsystem mUI;
@@ -44,7 +49,7 @@ class UISandboxApp : Application, IDockableWindowHost
 	private ReorderableListAdapter mReorderAdapter ~ delete _;
 
 	// Dockable window OS multi-window support.
-	private System.Collections.Dictionary<View, SecondaryWindowContext> mDockableWindowMap = new .() ~ delete _;
+	private System.Collections.Dictionary<View, RenderWindow> mDockableWindowMap = new .() ~ delete _;
 
 	// .sss theme loading infrastructure
 	private FileSystemMount mGuiMount ~ delete _;
@@ -57,7 +62,41 @@ class UISandboxApp : Application, IDockableWindowHost
 	private float mDragWindowOffsetY;
 	private int32 mRepeatCount;
 
-	protected override void OnInitialize(Context context)
+	// Stored references from Configure/OnStartup
+	private IApplicationHost mHost;
+	private IDevice mDevice;
+	private IShell mShell;
+	private String mAssetDirectory = new .() ~ delete _;
+	private FileSystemMount mBuiltinMount ~ delete _;
+
+	// Timing state
+	private float mDeltaTime;
+
+	public ApplicationSettings Settings()
+	{
+		return .()
+		{
+			Title = "UI Sandbox",
+			Width = 1280,
+			Height = 720,
+			EnableDepth = false
+		};
+	}
+
+	public void Configure(IApplicationHost host)
+	{
+		mHost = host;
+		mDevice = host.Graphics.Raw;
+		mShell = host.Shell;
+
+		DiscoverAssets();
+		mBuiltinMount = new FileSystemMount(mAssetDirectory);
+
+		// Subscribe to window events for secondary window close handling
+		mShell.WindowManager.OnWindowEvent.Subscribe(new => HandleWindowEvent);
+	}
+
+	public void OnStartup(IApplicationHost host)
 	{
 		// Create app-owned UI state
 		mUIContext = new UIContext();
@@ -70,7 +109,7 @@ class UISandboxApp : Application, IDockableWindowHost
 		StyleSheetLoader.InitializeGlobals();
 		MarkupLoader.Initialize();
 		let guiPath = scope String();
-		GetAssetPath("gui", guiPath);
+		Path.InternalCombine(guiPath, mAssetDirectory, "gui");
 		mGuiMount = new FileSystemMount(guiPath);
 		mGuiResourceProvider = new VfsResourceProvider(mGuiMount);
 
@@ -80,18 +119,20 @@ class UISandboxApp : Application, IDockableWindowHost
 		// Create and register subsystem
 		mUI = new UISubsystem();
 		mUI.ManualInputRouting = true; // App handles multi-window input routing
-		context.RegisterSubsystem<UISubsystem>(mUI);
+		host.Ctx.RegisterSubsystem<UISubsystem>(mUI);
 
 		// Initialize rendering - pass app-owned context and root
 		let shaderPath = scope String();
-		GetAssetPath("shaders", shaderPath);
+		Path.InternalCombine(shaderPath, mAssetDirectory, "shaders");
+
+		let rw = host.MainWindow;
 
 		// Pass BuiltinMount so the UI subsystem's font service routes
 		// font loads through the `builtin://` VFS scheme.
 		if (mUI.InitializeRendering(
 			mUIContext, mRoot,
-			Device, SwapChain.Format, (int32)SwapChain.BufferCount,
-			scope StringView[](shaderPath), Shell, Window, BuiltinMount) case .Err)
+			mDevice, rw.Swap.Format, (int32)rw.Swap.BufferCount,
+			scope StringView[](shaderPath), mShell, rw.Window, mBuiltinMount) case .Err)
 		{
 			Console.WriteLine("ERROR: Failed to initialize UI2 rendering");
 			return;
@@ -438,7 +479,7 @@ class UISandboxApp : Application, IDockableWindowHost
 			layoutScroll.AddView(layoutDemo, new LayoutParams() { Width = .Match });
 
 			// --- FlexLayout ---
-			let flexLabel = new Label("FlexLayout — rows and columns with grow/shrink");
+			let flexLabel = new Label("FlexLayout \u{2014} rows and columns with grow/shrink");
 			flexLabel.AddClass("label-dim");
 			flexLabel.FontSize.Value = 12;
 			layoutDemo.AddView(flexLabel);
@@ -458,7 +499,7 @@ class UISandboxApp : Application, IDockableWindowHost
 			layoutDemo.AddView(new Separator());
 
 			// --- DockLayout ---
-			let dockLabel = new Label("DockLayout — dock children to edges, last fills remaining");
+			let dockLabel = new Label("DockLayout \u{2014} dock children to edges, last fills remaining");
 			dockLabel.AddClass("label-dim");
 			dockLabel.FontSize.Value = 12;
 			layoutDemo.AddView(dockLabel);
@@ -475,7 +516,7 @@ class UISandboxApp : Application, IDockableWindowHost
 			layoutDemo.AddView(new Separator());
 
 			// --- GridLayout ---
-			let gridLabel = new Label("GridLayout — rows and columns with flex/fixed sizing");
+			let gridLabel = new Label("GridLayout \u{2014} rows and columns with flex/fixed sizing");
 			gridLabel.AddClass("label-dim");
 			gridLabel.FontSize.Value = 12;
 			layoutDemo.AddView(gridLabel);
@@ -500,7 +541,7 @@ class UISandboxApp : Application, IDockableWindowHost
 			layoutDemo.AddView(new Separator());
 
 			// --- FrameLayout ---
-			let frameLabel = new Label("FrameLayout — overlapping children with gravity positioning");
+			let frameLabel = new Label("FrameLayout \u{2014} overlapping children with gravity positioning");
 			frameLabel.AddClass("label-dim");
 			frameLabel.FontSize.Value = 12;
 			layoutDemo.AddView(frameLabel);
@@ -517,7 +558,7 @@ class UISandboxApp : Application, IDockableWindowHost
 			layoutDemo.AddView(new Separator());
 
 			// --- FlowLayout ---
-			let flowLabel = new Label("FlowLayout — wraps children to next line when space runs out");
+			let flowLabel = new Label("FlowLayout \u{2014} wraps children to next line when space runs out");
 			flowLabel.AddClass("label-dim");
 			flowLabel.FontSize.Value = 12;
 			layoutDemo.AddView(flowLabel);
@@ -537,7 +578,7 @@ class UISandboxApp : Application, IDockableWindowHost
 			layoutDemo.AddView(new Separator());
 
 			// --- AbsoluteLayout ---
-			let absLabel = new Label("AbsoluteLayout — explicit pixel positioning");
+			let absLabel = new Label("AbsoluteLayout \u{2014} explicit pixel positioning");
 			absLabel.AddClass("label-dim");
 			absLabel.FontSize.Value = 12;
 			layoutDemo.AddView(absLabel);
@@ -649,7 +690,7 @@ class UISandboxApp : Application, IDockableWindowHost
 		textInputDemo.AddView(pw1, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(300)) });
 
 		let pw2 = new PasswordBox();
-		pw2.PasswordChar.Value = '\u{25CF}'; // ● bullet
+		pw2.PasswordChar.Value = '\u{25CF}'; // bullet
 		pw2.SetPlaceholder("Custom mask");
 		textInputDemo.AddView(pw2, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(300)) });
 
@@ -1305,19 +1346,22 @@ class UISandboxApp : Application, IDockableWindowHost
 		UpdateThemeLabel();
 	}
 
-	protected override void OnInput(FrameContext frame)
+	public void OnUpdate(IApplicationHost host, float deltaTime)
 	{
+		mDeltaTime = deltaTime;
+
 		// Update repeat button
-		mRepeatBtn?.UpdateRepeat(frame.DeltaTime);
+		mRepeatBtn?.UpdateRepeat(deltaTime);
 
 		// Multi-window input routing.
-		let mouse = Shell?.InputManager?.Mouse;
-		let kb = Shell?.InputManager?.Keyboard;
-		let inputHelper = mUI.InputHelper;
+		let mouse = mShell?.InputManager?.Mouse;
+		let kb = mShell?.InputManager?.Keyboard;
+		let inputHelper = mUI?.InputHelper;
 
 		if (mouse != null && inputHelper != null)
 		{
 			let dragDrop = mUIContext.DragDropManager;
+			let mainWindow = host.MainWindow.Window;
 
 			// Determine which window has the mouse.
 			RootView inputRoot = mRoot;
@@ -1325,7 +1369,7 @@ class UISandboxApp : Application, IDockableWindowHost
 			{
 				if (kv.value.Window.Focused)
 				{
-					if (let data = kv.value.UserData as DockableWindowRenderData)
+					if (let data = kv.value.Data as DockableWindowRenderData)
 						inputRoot = data.RootView;
 					break;
 				}
@@ -1361,8 +1405,8 @@ class UISandboxApp : Application, IDockableWindowHost
 				}
 
 				mUIContext.ActiveInputRoot = mRoot;
-				let mx = globalX - (float)mWindow.X;
-				let my = globalY - (float)mWindow.Y;
+				let mx = globalX - (float)mainWindow.X;
+				let my = globalY - (float)mainWindow.Y;
 				inputHelper.ProcessMouseInput(mouse, mUIContext, mx, my);
 				if (kb != null)
 					inputHelper.ProcessKeyboardInput(kb, mUIContext, 0);
@@ -1379,10 +1423,10 @@ class UISandboxApp : Application, IDockableWindowHost
 			}
 		}
 
-		let keyboard = Shell.InputManager.Keyboard;
+		let keyboard = mShell.InputManager.Keyboard;
 
 		if (keyboard.IsKeyPressed(.Escape))
-			Exit();
+			host.RequestExit();
 
 		// Debug overlay toggles
 		if (keyboard.IsKeyPressed(.F2))
@@ -1403,6 +1447,86 @@ class UISandboxApp : Application, IDockableWindowHost
 			mThemeIndex = (mThemeIndex + 1) % 5;
 			ApplyTheme();
 		}
+	}
+
+	public void OnRenderWindow(IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
+	{
+		let data = frame.Window.Data as DockableWindowRenderData;
+		if (data != null)
+		{
+			// This is a dockable/secondary window
+			RenderDockableWindow(data, ref frame);
+		}
+		else
+		{
+			// This is the main window
+			RenderMainWindow(host, ref frame);
+		}
+	}
+
+	private void RenderMainWindow(IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
+	{
+		if (mUI == null || !mUI.IsRenderingInitialized)
+			return;
+
+		// Clear with theme background color.
+		let bg = mPalette.Background;
+		ColorAttachment[1] clearAttachments = .(.()
+			{
+				View = frame.BackbufferView,
+				LoadOp = .Clear,
+				StoreOp = .Store,
+				ClearValue = ClearColor(bg.R, bg.G, bg.B, 1.0f)
+			});
+		RenderPassDesc clearDesc = .() { ColorAttachments = .(clearAttachments) };
+		let clearPass = frame.Encoder.BeginRenderPass(clearDesc);
+		if (clearPass != null)
+			clearPass.End();
+
+		// Render UI overlay on top of cleared background.
+		mUI.Render(frame.Encoder, frame.BackbufferView,
+			frame.Window.Swap.Width, frame.Window.Swap.Height, (int32)frame.FrameIndex);
+	}
+
+	private void RenderDockableWindow(DockableWindowRenderData data, ref Sedulous.RuntimeGraphics.FrameContext frame)
+	{
+		// Prepare: update root view dimensions and layout
+		data.RootView.DpiScale = frame.Window.Window.ContentScale;
+		data.RootView.ViewportSize = .((float)frame.Window.Window.Width, (float)frame.Window.Window.Height);
+		mUIContext.UpdateRootView(data.RootView);
+
+		// Clear the dockable window
+		let bg = mPalette.Background;
+		ColorAttachment[1] clearAttachments = .(.()
+			{
+				View = frame.BackbufferView,
+				LoadOp = .Clear,
+				StoreOp = .Store,
+				ClearValue = ClearColor(bg.R, bg.G, bg.B, 1.0f)
+			});
+		RenderPassDesc passDesc = .() { ColorAttachments = .(clearAttachments) };
+		let renderPass = frame.Encoder.BeginRenderPass(passDesc);
+		if (renderPass == null)
+			return;
+
+		// Render UI into the dockable window
+		let vg = data.VGContext;
+		let renderer = data.VGRenderer;
+		let w = frame.Window.Swap.Width;
+		let h = frame.Window.Swap.Height;
+
+		vg.Clear();
+		mUIContext.DrawRootView(data.RootView, vg);
+		let batch = vg.GetBatch();
+		if (batch != null && batch.Commands.Count > 0)
+		{
+			let fi = (int32)frame.FrameIndex;
+			renderer.BeginFrame(fi);
+			let slice = renderer.Prepare(batch, fi, w, h);
+			renderer.Render(renderPass, w, h, fi, slice);
+		}
+
+		renderPass.End();
 	}
 
 	/// Creates a labeled colored box for layout demos.
@@ -1699,33 +1823,7 @@ class UISandboxApp : Application, IDockableWindowHost
 
 	private ThemePalette mPalette = .Dark;
 
-	protected override bool OnRenderFrame(RenderContext render)
-	{
-		if (mUI == null || !mUI.IsRenderingInitialized)
-			return false;
-
-		// Clear with theme background color.
-		let bg = mPalette.Background;
-		ColorAttachment[1] clearAttachments = .(.()
-			{
-				View = render.CurrentTextureView,
-				LoadOp = .Clear,
-				StoreOp = .Store,
-				ClearValue = ClearColor(bg.R, bg.G, bg.B, 1.0f)
-			});
-		RenderPassDesc clearDesc = .() { ColorAttachments = .(clearAttachments) };
-		let clearPass = render.Encoder.BeginRenderPass(clearDesc);
-		if (clearPass != null)
-			clearPass.End();
-
-		// Render UI overlay on top of cleared background.
-		mUI.Render(render.Encoder, render.CurrentTextureView,
-			render.SwapChain.Width, render.SwapChain.Height, render.Frame.FrameIndex);
-
-		return true;
-	}
-
-	protected override void OnShutdown()
+	public void OnShutdown(IApplicationHost host)
 	{
 		// Destroy all dockable OS windows before UI shutdown.
 		let dockableViews = scope System.Collections.List<View>();
@@ -1754,6 +1852,30 @@ class UISandboxApp : Application, IDockableWindowHost
 	}
 
 	// =================================================================
+	// Window event handling (for secondary window OS close button)
+	// =================================================================
+
+	private void HandleWindowEvent(IWindow window, WindowEvent evt)
+	{
+		if (evt.Type != .CloseRequested)
+			return;
+
+		// Check if it's a dockable window
+		for (let kv in mDockableWindowMap)
+		{
+			if (kv.value.Window == window)
+			{
+				if (let data = kv.value.Data as DockableWindowRenderData)
+				{
+					if (data.OnCloseDelegate != null)
+						data.OnCloseDelegate(kv.key);
+				}
+				return;
+			}
+		}
+	}
+
+	// =================================================================
 	// IDockableWindowHost
 	// =================================================================
 
@@ -1771,27 +1893,30 @@ class UISandboxApp : Application, IDockableWindowHost
 			Bordered = false
 		};
 
-		if (CreateSecondaryWindow(settings) case .Err)
+		let renderDesc = RenderWindowDesc()
+		{
+			Format = mHost.MainWindow.Swap.Format,
+			PresentMode = .Fifo
+		};
+
+		let rw = mHost.OpenWindow(settings, renderDesc);
+		if (rw == null)
 		{
 			Console.WriteLine("Failed to create dockable OS window");
 			delete onCloseRequested;
 			return;
 		}
 
-		let ctx = mSecondaryWindows[mSecondaryWindows.Count - 1];
-		ctx.Window.X = mWindow.X + (int32)screenX;
-		ctx.Window.Y = mWindow.Y + (int32)screenY;
+		let mainWindow = mHost.MainWindow.Window;
+		rw.Window.X = mainWindow.X + (int32)screenX;
+		rw.Window.Y = mainWindow.Y + (int32)screenY;
 
 		let data = new DockableWindowRenderData();
 		data.OnCloseDelegate = onCloseRequested;
-		if (onCloseRequested != null)
-			ctx.OnCloseRequested = new (swCtx) => { data.OnCloseDelegate(dockableWindow); };
-		else
-			ctx.OnCloseRequested = new (swCtx) => { };
 
 		data.RootView = new RootView();
-		data.RootView.DpiScale = ctx.Window.ContentScale;
-		data.RootView.ViewportSize = .((float)ctx.Window.Width, (float)ctx.Window.Height);
+		data.RootView.DpiScale = rw.Window.ContentScale;
+		data.RootView.ViewportSize = .((float)rw.Window.Width, (float)rw.Window.Height);
 		mUIContext.AddRootView(data.RootView);
 		data.RootView.AddView(dockableWindow);
 		data.DockableView = dockableWindow;
@@ -1799,14 +1924,14 @@ class UISandboxApp : Application, IDockableWindowHost
 		data.VGContext = new Sedulous.VG.VGContext(mUI.FontService);
 
 		data.VGRenderer = new Sedulous.VG.Renderer.VGRenderer();
-		if (data.VGRenderer.Initialize(Device, ctx.SwapChain.Format,
-			(int32)ctx.SwapChain.BufferCount, mUI.ShaderSystem) case .Err)
+		if (data.VGRenderer.Initialize(mDevice, rw.Swap.Format,
+			(int32)rw.Swap.BufferCount, mUI.ShaderSystem) case .Err)
 		{
 			Console.WriteLine("Failed to initialize VGRenderer for dockable window");
 		}
 
-		ctx.UserData = data;
-		mDockableWindowMap[dockableWindow] = ctx;
+		rw.SetData(data);
+		mDockableWindowMap[dockableWindow] = rw;
 	}
 
 	public void DestroyDockableWindow(View dockableWindow)
@@ -1816,32 +1941,35 @@ class UISandboxApp : Application, IDockableWindowHost
 
 	public void MoveDockableWindow(View dockableWindow, float screenX, float screenY)
 	{
-		if (mDockableWindowMap.TryGetValue(dockableWindow, let ctx))
+		if (mDockableWindowMap.TryGetValue(dockableWindow, let rw))
 		{
-			ctx.Window.X = mWindow.X + (int32)screenX;
-			ctx.Window.Y = mWindow.Y + (int32)screenY;
+			let mainWindow = mHost.MainWindow.Window;
+			rw.Window.X = mainWindow.X + (int32)screenX;
+			rw.Window.Y = mainWindow.Y + (int32)screenY;
 		}
 	}
 
 	public void ResizeDockableWindow(View dockableWindow, float screenX, float screenY, float width, float height)
 	{
-		if (mDockableWindowMap.TryGetValue(dockableWindow, let ctx))
+		if (mDockableWindowMap.TryGetValue(dockableWindow, let rw))
 		{
-			ctx.Window.X = mWindow.X + (int32)screenX;
-			ctx.Window.Y = mWindow.Y + (int32)screenY;
-			ctx.Window.Width = (int32)width;
-			ctx.Window.Height = (int32)height;
+			let mainWindow = mHost.MainWindow.Window;
+			rw.Window.X = mainWindow.X + (int32)screenX;
+			rw.Window.Y = mainWindow.Y + (int32)screenY;
+			rw.Window.Width = (int32)width;
+			rw.Window.Height = (int32)height;
 		}
 	}
 
 	public bool TryGetDockableWindowBounds(View dockableWindow, out float x, out float y, out float width, out float height)
 	{
-		if (mDockableWindowMap.TryGetValue(dockableWindow, let ctx))
+		if (mDockableWindowMap.TryGetValue(dockableWindow, let rw))
 		{
-			x = ctx.Window.X - mWindow.X;
-			y = ctx.Window.Y - mWindow.Y;
-			width = ctx.Window.Width;
-			height = ctx.Window.Height;
+			let mainWindow = mHost.MainWindow.Window;
+			x = rw.Window.X - mainWindow.X;
+			y = rw.Window.Y - mainWindow.Y;
+			width = rw.Window.Width;
+			height = rw.Window.Height;
 			return true;
 		}
 		x = 0;
@@ -1853,7 +1981,7 @@ class UISandboxApp : Application, IDockableWindowHost
 
 	public void GetGlobalMousePosition(out float globalX, out float globalY)
 	{
-		let mouse = Shell.InputManager.Mouse;
+		let mouse = mShell.InputManager.Mouse;
 		if (mouse != null)
 		{
 			globalX = mouse.GlobalX;
@@ -1868,55 +1996,21 @@ class UISandboxApp : Application, IDockableWindowHost
 
 	private void DestroyDockableWindowImpl(View dockableWindow, bool detachView = true)
 	{
-		if (!mDockableWindowMap.TryGetValue(dockableWindow, let ctx))
+		if (!mDockableWindowMap.TryGetValue(dockableWindow, let rw))
 			return;
 
 		mDockableWindowMap.Remove(dockableWindow);
 
-		if (let data = ctx.UserData as DockableWindowRenderData)
+		if (let data = rw.Data as DockableWindowRenderData)
 		{
 			if (detachView && dockableWindow.Parent == data.RootView)
 				data.RootView.RemoveView(dockableWindow, false);
 
 			mUIContext.RemoveRootView(data.RootView);
-			mDevice.WaitIdle();
-			delete data;
 		}
 
-		ctx.UserData = null;
-		DestroySecondaryWindow(ctx);
-	}
-
-	protected override void OnPrepareSecondaryFrame(SecondaryWindowContext ctx, FrameContext frame)
-	{
-		if (let data = ctx.UserData as DockableWindowRenderData)
-		{
-			data.RootView.DpiScale = ctx.Window.ContentScale;
-			data.RootView.ViewportSize = .((float)ctx.Window.Width, (float)ctx.Window.Height);
-			mUIContext.UpdateRootView(data.RootView);
-		}
-	}
-
-	protected override void OnRenderSecondaryWindow(SecondaryWindowContext ctx,
-		IRenderPassEncoder renderPass, FrameContext frame)
-	{
-		if (let data = ctx.UserData as DockableWindowRenderData)
-		{
-			let vg = data.VGContext;
-			let renderer = data.VGRenderer;
-			let w = ctx.SwapChain.Width;
-			let h = ctx.SwapChain.Height;
-
-			vg.Clear();
-			mUIContext.DrawRootView(data.RootView, vg);
-			let batch = vg.GetBatch();
-			if (batch == null || batch.Commands.Count == 0)
-				return;
-
-			renderer.BeginFrame(frame.FrameIndex);
-			let slice = renderer.Prepare(batch, frame.FrameIndex, w, h);
-			renderer.Render(renderPass, w, h, frame.FrameIndex, slice);
-		}
+		// RenderWindow dtor calls WaitIdle and cleans up GPU resources + data
+		mHost.CloseWindow(rw);
 	}
 
 	/// Generate a checkerboard image for ImageView demo.
@@ -1937,6 +2031,26 @@ class UISandboxApp : Application, IDockableWindowHost
 			}
 		}
 		return new OwnedImageData((.)w, (.)h, .RGBA8, data);
+	}
+
+	private void DiscoverAssets()
+	{
+		let cwd = System.IO.Directory.GetCurrentDirectory(.. scope .());
+		var searchDir = scope String(cwd);
+		while (true)
+		{
+			let assetsPath = scope String();
+			Path.InternalCombine(assetsPath, searchDir, "Assets");
+			if (System.IO.Directory.Exists(assetsPath))
+			{
+				let marker = scope String();
+				Path.InternalCombine(marker, assetsPath, ".assets");
+				if (System.IO.File.Exists(marker)) { mAssetDirectory.Set(assetsPath); return; }
+			}
+			let parent = Path.GetDirectoryPath(searchDir, .. scope .());
+			if (parent.IsEmpty || parent == searchDir) { mAssetDirectory.Set(cwd); return; }
+			searchDir.Set(parent);
+		}
 	}
 }
 

@@ -1,11 +1,13 @@
 namespace NuklearSample;
 
 using System;
+using System.IO;
 using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
 using Sedulous.Shaders;
 using Sedulous.Runtime.Client;
-using Sedulous.Runtime;
+using Sedulous.RuntimeGraphics;
+using Sedulous.Shell.SDL3;
 using Nuklear_Beef;
 
 /// Vertex structure matching Nuklear's expected format
@@ -25,7 +27,7 @@ struct NkUniforms
 }
 
 /// Nuklear integration sample demonstrating immediate-mode GUI with RHI rendering.
-class NuklearSampleApp : Application
+class NuklearSampleApp : IApplication
 {
 	// Nuklear context and font
 	private nk_context mNkContext;
@@ -65,17 +67,36 @@ class NuklearSampleApp : Application
 	private int32 mComboSelected = 0;
 	private float mPropertyValue = 1.0f;
 
-	public this() : base()
+	// Cached device
+	private IDevice mDevice;
+
+	// Asset directory
+	private String mAssetDirectory = new .() ~ delete _;
+
+	// Cached shell
+	private Sedulous.Shell.IShell mShell;
+
+	public ApplicationSettings Settings()
 	{
+		return .() { Title = "Nuklear Sample", Width = 1024, Height = 768, ClearColor = .(0.1f, 0.18f, 0.24f, 1.0f), EnableDepth = false };
 	}
 
-	protected override void OnInitialize(Context context)
+	public void Configure(IApplicationHost host)
 	{
+		DiscoverAssets();
+		mDevice = host.Graphics.Raw;
+		mShell = host.Shell;
+	}
+
+	public void OnStartup(IApplicationHost host)
+	{
+		let rw = host.MainWindow;
+
 		// Initialize shader system
 		mShaderSystem = new ShaderSystem();
 		String shaderPath = scope .();
-		GetAssetPath("samples/NuklearSample/shaders", shaderPath);
-		if (mShaderSystem.Initialize(Device, scope StringView[](shaderPath)) case .Err)
+		Path.InternalCombine(shaderPath, mAssetDirectory, "samples/NuklearSample/shaders");
+		if (mShaderSystem.Initialize(mDevice, scope StringView[](shaderPath)) case .Err)
 		{
 			Console.WriteLine("Failed to initialize shader system");
 			return;
@@ -132,7 +153,7 @@ class NuklearSampleApp : Application
 		if (!CreateBindings())
 			return;
 
-		if (!CreatePipeline())
+		if (!CreatePipeline(rw.Swap.Format))
 			return;
 
 		Console.WriteLine("Nuklear Sample initialized.");
@@ -150,7 +171,7 @@ class NuklearSampleApp : Application
 			.Sampled | .CopyDst
 		);
 
-		if (Device.CreateTexture(texDesc) not case .Ok(let tex))
+		if (mDevice.CreateTexture(texDesc) not case .Ok(let tex))
 		{
 			Console.WriteLine("Failed to create font texture");
 			return false;
@@ -167,12 +188,12 @@ class NuklearSampleApp : Application
 
 		Extent3D writeSize = .(width, height, 1);
 		Span<uint8> data = .((uint8*)imageData, (int)(width * height * 4));
-		TransferHelper.WriteTextureSync(Device.GetQueue(.Graphics), Device, mFontTexture, data, dataLayout, writeSize);
+		TransferHelper.WriteTextureSync(mDevice.GetQueue(.Graphics), mDevice, mFontTexture, data, dataLayout, writeSize);
 
 		// Create texture view
 		TextureViewDesc viewDesc = .();
 
-		if (Device.CreateTextureView(mFontTexture, viewDesc) not case .Ok(let view))
+		if (mDevice.CreateTextureView(mFontTexture, viewDesc) not case .Ok(let view))
 		{
 			Console.WriteLine("Failed to create font texture view");
 			return false;
@@ -192,7 +213,7 @@ class NuklearSampleApp : Application
 			MaxLod = 1.0f
 		};
 
-		if (Device.CreateSampler(samplerDesc) not case .Ok(let sampler))
+		if (mDevice.CreateSampler(samplerDesc) not case .Ok(let sampler))
 		{
 			Console.WriteLine("Failed to create font sampler");
 			return false;
@@ -213,7 +234,7 @@ class NuklearSampleApp : Application
 			Memory = .CpuToGpu
 		};
 
-		if (Device.CreateBuffer(vertexDesc) not case .Ok(let vb))
+		if (mDevice.CreateBuffer(vertexDesc) not case .Ok(let vb))
 		{
 			Console.WriteLine("Failed to create vertex buffer");
 			return false;
@@ -228,7 +249,7 @@ class NuklearSampleApp : Application
 			Memory = .CpuToGpu
 		};
 
-		if (Device.CreateBuffer(indexDesc) not case .Ok(let ib))
+		if (mDevice.CreateBuffer(indexDesc) not case .Ok(let ib))
 		{
 			Console.WriteLine("Failed to create index buffer");
 			return false;
@@ -243,7 +264,7 @@ class NuklearSampleApp : Application
 			Memory = .CpuToGpu
 		};
 
-		if (Device.CreateBuffer(uniformDesc) not case .Ok(let ub))
+		if (mDevice.CreateBuffer(uniformDesc) not case .Ok(let ub))
 		{
 			Console.WriteLine("Failed to create uniform buffer");
 			return false;
@@ -276,7 +297,7 @@ class NuklearSampleApp : Application
 			BindGroupLayoutEntry.Sampler(0, .Fragment)
 		);
 		BindGroupLayoutDesc bindGroupLayoutDesc = .(layoutEntries);
-		if (Device.CreateBindGroupLayout(bindGroupLayoutDesc) not case .Ok(let layout))
+		if (mDevice.CreateBindGroupLayout(bindGroupLayoutDesc) not case .Ok(let layout))
 		{
 			Console.WriteLine("Failed to create bind group layout");
 			return false;
@@ -290,7 +311,7 @@ class NuklearSampleApp : Application
 			BindGroupEntry.Sampler(mFontSampler)
 		);
 		BindGroupDesc bindGroupDesc = .(mBindGroupLayout, bindGroupEntries);
-		if (Device.CreateBindGroup(bindGroupDesc) not case .Ok(let group))
+		if (mDevice.CreateBindGroup(bindGroupDesc) not case .Ok(let group))
 		{
 			Console.WriteLine("Failed to create bind group");
 			return false;
@@ -300,7 +321,7 @@ class NuklearSampleApp : Application
 		// Create pipeline layout
 		IBindGroupLayout[1] layouts = .(mBindGroupLayout);
 		PipelineLayoutDesc pipelineLayoutDesc = .(layouts);
-		if (Device.CreatePipelineLayout(pipelineLayoutDesc) not case .Ok(let pipelineLayout))
+		if (mDevice.CreatePipelineLayout(pipelineLayoutDesc) not case .Ok(let pipelineLayout))
 		{
 			Console.WriteLine("Failed to create pipeline layout");
 			return false;
@@ -311,7 +332,7 @@ class NuklearSampleApp : Application
 		return true;
 	}
 
-	private bool CreatePipeline()
+	private bool CreatePipeline(TextureFormat swapFormat)
 	{
 		// Vertex attributes: position (float2), texcoord (float2), color (ubyte4 normalized)
 		VertexAttribute[3] vertexAttributes = .(
@@ -327,7 +348,7 @@ class NuklearSampleApp : Application
 		ColorTargetState[1] colorTargets = .(
 			.()
 			{
-				Format = SwapChain.Format,
+				Format = swapFormat,
 				Blend = .()
 				{
 					Color = .()
@@ -376,7 +397,7 @@ class NuklearSampleApp : Application
 			}
 		};
 
-		if (Device.CreateRenderPipeline(pipelineDesc) not case .Ok(let pipeline))
+		if (mDevice.CreateRenderPipeline(pipelineDesc) not case .Ok(let pipeline))
 		{
 			Console.WriteLine("Failed to create pipeline");
 			return false;
@@ -387,7 +408,7 @@ class NuklearSampleApp : Application
 		return true;
 	}
 
-	protected override void OnInput(FrameContext frame)
+	public void OnUpdate(IApplicationHost host, float deltaTime)
 	{
 		let mouse = mShell.InputManager.Mouse;
 		let keyboard = mShell.InputManager.Keyboard;
@@ -429,15 +450,9 @@ class NuklearSampleApp : Application
 
 		// End Nuklear input
 		nk_input_end(&mNkContext);
-	}
 
-	protected override void OnUpdate(FrameContext frame)
-	{
 		// Build Nuklear UI
 		BuildUI();
-
-		// Update background clear color based on UI
-		mSettings.ClearColor = Color32(mBackgroundColor.r, mBackgroundColor.g, mBackgroundColor.b, 1.0f);
 	}
 
 	private void BuildUI()
@@ -500,11 +515,11 @@ class NuklearSampleApp : Application
 		nk_end(&mNkContext);
 	}
 
-	protected override void OnPrepareFrame(FrameContext frame)
+	public void OnRenderWindow(IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
 	{
 		// Update projection matrix
-		float width = (float)SwapChain.Width;
-		float height = (float)SwapChain.Height;
+		float width = (float)frame.Width;
+		float height = (float)frame.Height;
 
 		Matrix projection = Matrix.CreateOrthographicOffCenter(0, width, height, 0, -1.0f, 1.0f);
 
@@ -517,6 +532,43 @@ class NuklearSampleApp : Application
 
 		// Convert Nuklear commands to vertex/index data
 		ConvertDrawCommands();
+
+		// Begin render pass
+		let rp = frame.BeginBackbufferPass(ClearColor(mBackgroundColor.r, mBackgroundColor.g, mBackgroundColor.b, mBackgroundColor.a));
+		if (rp != null && mVertexBuffer.size > 0 && mIndexBuffer.size > 0)
+		{
+			rp.SetPipeline(mPipeline);
+			rp.SetBindGroup(0, mBindGroup);
+			rp.SetVertexBuffer(0, mRhiVertexBuffer, 0);
+			rp.SetIndexBuffer(mRhiIndexBuffer, .UInt16, 0);
+
+			// Iterate draw commands
+			uint32 indexOffset = 0;
+			nk_draw_command* cmd = nk__draw_begin(&mNkContext, &mCommandBuffer);
+			while (cmd != null)
+			{
+				if (cmd.elem_count > 0)
+				{
+					// Set scissor rect (clamped to viewport)
+					let clipX = Math.Max(0, (int32)cmd.clip_rect.x);
+					let clipY = Math.Max(0, (int32)cmd.clip_rect.y);
+					let clipW = Math.Min((int32)frame.Width - clipX, (int32)cmd.clip_rect.w);
+					let clipH = Math.Min((int32)frame.Height - clipY, (int32)cmd.clip_rect.h);
+
+					if (clipW > 0 && clipH > 0)
+					{
+						rp.SetScissor(clipX, clipY, (uint32)clipW, (uint32)clipH);
+						rp.DrawIndexed(cmd.elem_count, 1, indexOffset, 0, 0);
+					}
+				}
+				indexOffset += cmd.elem_count;
+				cmd = nk__draw_next(cmd, &mCommandBuffer, &mNkContext);
+			}
+		}
+		frame.EndBackbufferPass();
+
+		// Clear Nuklear command buffer for next frame
+		nk_clear(&mNkContext);
 	}
 
 	private void ConvertDrawCommands()
@@ -558,44 +610,7 @@ class NuklearSampleApp : Application
 		}
 	}
 
-	protected override void OnRender(IRenderPassEncoder renderPass, FrameContext frame)
-	{
-		if (mVertexBuffer.size == 0 || mIndexBuffer.size == 0)
-			return;
-
-		renderPass.SetPipeline(mPipeline);
-		renderPass.SetBindGroup(0, mBindGroup);
-		renderPass.SetVertexBuffer(0, mRhiVertexBuffer, 0);
-		renderPass.SetIndexBuffer(mRhiIndexBuffer, .UInt16, 0);
-
-		// Iterate draw commands
-		uint32 indexOffset = 0;
-		nk_draw_command* cmd = nk__draw_begin(&mNkContext, &mCommandBuffer);
-		while (cmd != null)
-		{
-			if (cmd.elem_count > 0)
-			{
-				// Set scissor rect (clamped to viewport)
-				let clipX = Math.Max(0, (int32)cmd.clip_rect.x);
-				let clipY = Math.Max(0, (int32)cmd.clip_rect.y);
-				let clipW = Math.Min((int32)SwapChain.Width - clipX, (int32)cmd.clip_rect.w);
-				let clipH = Math.Min((int32)SwapChain.Height - clipY, (int32)cmd.clip_rect.h);
-
-				if (clipW > 0 && clipH > 0)
-				{
-					renderPass.SetScissor(clipX, clipY, (uint32)clipW, (uint32)clipH);
-					renderPass.DrawIndexed(cmd.elem_count, 1, indexOffset, 0, 0);
-				}
-			}
-			indexOffset += cmd.elem_count;
-			cmd = nk__draw_next(cmd, &mCommandBuffer, &mNkContext);
-		}
-
-		// Clear Nuklear command buffer for next frame
-		nk_clear(&mNkContext);
-	}
-
-	protected override void OnShutdown()
+	public void OnShutdown(IApplicationHost host)
 	{
 		// Clean up Nuklear
 		nk_buffer_free(&mCommandBuffer);
@@ -623,13 +638,50 @@ class NuklearSampleApp : Application
 
 		if (mShaderSystem != null) { mShaderSystem.Dispose(); delete mShaderSystem; }
 	}
+
+	private void DiscoverAssets()
+	{
+		let cwd = Directory.GetCurrentDirectory(.. scope .());
+		var searchDir = scope String(cwd);
+		while (true)
+		{
+			let assetsPath = scope String();
+			Path.InternalCombine(assetsPath, searchDir, "Assets");
+			if (Directory.Exists(assetsPath))
+			{
+				let marker = scope String();
+				Path.InternalCombine(marker, assetsPath, ".assets");
+				if (File.Exists(marker)) { mAssetDirectory.Set(assetsPath); return; }
+			}
+			let parent = Path.GetDirectoryPath(searchDir, .. scope .());
+			if (parent.IsEmpty || parent == searchDir) { mAssetDirectory.Set(cwd); return; }
+			searchDir.Set(parent);
+		}
+	}
 }
 
 class Program
 {
 	public static int Main(String[] args)
 	{
+		let shell = scope SDL3Shell();
+		if (shell.Initialize() case .Err)
+		{
+			Console.WriteLine("ERROR: Failed to initialize shell");
+			return 1;
+		}
+		defer shell.Shutdown();
+
+		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = true });
+		if (graphicsResult case .Err)
+		{
+			Console.WriteLine("ERROR: Failed to create graphics device");
+			return 1;
+		}
+		let graphics = graphicsResult.Value;
+		defer delete graphics;
+
 		let app = scope NuklearSampleApp();
-		return app.Run(.() { Title = "Nuklear Sample", Width = 1024, Height = 768, ClearColor = .(0.1f, 0.18f, 0.24f, 1.0f), EnableDepth = false });
+		return ApplicationHost.RunApplication(app, shell, graphics);
 	}
 }
