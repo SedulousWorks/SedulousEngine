@@ -1,16 +1,17 @@
 namespace FontRendering;
 
 using System;
-using System.Collections;
 using System.IO;
+using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
 using Sedulous.Shaders;
 using Sedulous.Runtime.Client;
-using Sedulous.Runtime;
+using Sedulous.RuntimeGraphics;
 using Sedulous.Fonts;
 using Sedulous.Fonts.IO;
 using Sedulous.Fonts.TTF;
+using Sedulous.Shell.SDL3;
 
 /// Vertex structure for text rendering with position, UV, and color.
 [CRepr]
@@ -37,7 +38,7 @@ struct Uniforms
 }
 
 /// Font rendering sample demonstrating text rendering using font atlases.
-class FontRenderingSample : Application
+class FontRenderingSample : IApplication
 {
 	// Font resources
 	private IFont mFont;
@@ -71,21 +72,41 @@ class FontRenderingSample : Application
 	// Animation state
 	private float mAnimationTime = 0;
 
+	// Timing
+	private float mTotalTime = 0;
+
 	// FPS tracking
 	private int mFrameCount = 0;
 	private float mFpsTimer = 0;
 	private int mCurrentFps = 0;
 
-	public this() : base()
+	// Cached device
+	private IDevice mDevice;
+
+	// Asset directory
+	private String mAssetDirectory = new .() ~ delete _;
+
+	// Cached screen dimensions
+	private uint32 mWidth;
+	private uint32 mHeight;
+
+	public ApplicationSettings Settings()
 	{
+		return .() { Title = "Font Rendering", Width = 1024, Height = 768, ClearColor = .(0.1f, 0.1f, 0.15f, 1.0f), EnableDepth = false };
 	}
 
-	protected override void OnInitialize(Context context)
+	public void Configure(IApplicationHost host)
+	{
+		DiscoverAssets();
+		mDevice = host.Graphics.Raw;
+	}
+
+	public void OnStartup(IApplicationHost host)
 	{
 		mShaderSystem = new ShaderSystem();
 		String shaderPath = scope .();
-		GetAssetPath("samples/FontRendering/shaders", shaderPath);
-		if (mShaderSystem.Initialize(Device, scope StringView[](shaderPath)) case .Err)
+		Path.InternalCombine(shaderPath, mAssetDirectory, "samples/FontRendering/shaders");
+		if (mShaderSystem.Initialize(mDevice, scope StringView[](shaderPath)) case .Err)
 		{
 			Console.WriteLine("Failed to initialize shader system");
 			return;
@@ -103,7 +124,8 @@ class FontRenderingSample : Application
 		if (!CreateBindings())
 			return;
 
-		if (!CreatePipeline())
+		let rw = host.MainWindow;
+		if (!CreatePipeline(rw.Swap.Format))
 			return;
 	}
 
@@ -111,7 +133,7 @@ class FontRenderingSample : Application
 	{
 		// Use Roboto font from assets
 		String fontPath = scope .();
-		GetAssetPath("fonts/roboto/Roboto-Regular.ttf", fontPath);
+		Path.InternalCombine(fontPath, mAssetDirectory, "fonts/roboto/Roboto-Regular.ttf");
 
 		if (!File.Exists(fontPath))
 		{
@@ -168,7 +190,7 @@ class FontRenderingSample : Application
 			.Sampled | .CopyDst
 		);
 
-		if (Device.CreateTexture(textureDesc) not case .Ok(let texture))
+		if (mDevice.CreateTexture(textureDesc) not case .Ok(let texture))
 		{
 			Console.WriteLine("Failed to create font texture");
 			return false;
@@ -184,14 +206,14 @@ class FontRenderingSample : Application
 		};
 
 		Extent3D writeSize = .(mFontAtlas.Width, mFontAtlas.Height, 1);
-		TransferHelper.WriteTextureSync(Device.GetQueue(.Graphics), Device, mFontTexture, mFontAtlas.PixelData, dataLayout, writeSize);
+		TransferHelper.WriteTextureSync(mDevice.GetQueue(.Graphics), mDevice, mFontTexture, mFontAtlas.PixelData, dataLayout, writeSize);
 
 		// Create texture view - must match texture format (R8Unorm)
 		TextureViewDesc viewDesc = .()
 		{
 			Format = .R8Unorm
 		};
-		if (Device.CreateTextureView(mFontTexture, viewDesc) not case .Ok(let view))
+		if (mDevice.CreateTextureView(mFontTexture, viewDesc) not case .Ok(let view))
 		{
 			Console.WriteLine("Failed to create font texture view");
 			return false;
@@ -208,7 +230,7 @@ class FontRenderingSample : Application
 			MinFilter = .Linear,
 			MipmapFilter = .Linear
 		};
-		if (Device.CreateSampler(samplerDesc) not case .Ok(let sampler))
+		if (mDevice.CreateSampler(samplerDesc) not case .Ok(let sampler))
 		{
 			Console.WriteLine("Failed to create sampler");
 			return false;
@@ -230,7 +252,7 @@ class FontRenderingSample : Application
 			Memory = .CpuToGpu
 		};
 
-		if (Device.CreateBuffer(vertexDesc) not case .Ok(let vb))
+		if (mDevice.CreateBuffer(vertexDesc) not case .Ok(let vb))
 		{
 			Console.WriteLine("Failed to create vertex buffer");
 			return false;
@@ -246,7 +268,7 @@ class FontRenderingSample : Application
 			Memory = .CpuToGpu
 		};
 
-		if (Device.CreateBuffer(indexDesc) not case .Ok(let ib))
+		if (mDevice.CreateBuffer(indexDesc) not case .Ok(let ib))
 		{
 			Console.WriteLine("Failed to create index buffer");
 			return false;
@@ -261,7 +283,7 @@ class FontRenderingSample : Application
 			Memory = .CpuToGpu
 		};
 
-		if (Device.CreateBuffer(uniformDesc) not case .Ok(let ub))
+		if (mDevice.CreateBuffer(uniformDesc) not case .Ok(let ub))
 		{
 			Console.WriteLine("Failed to create uniform buffer");
 			return false;
@@ -293,7 +315,7 @@ class FontRenderingSample : Application
 			BindGroupLayoutEntry.Sampler(0, .Fragment)
 		);
 		BindGroupLayoutDesc bindGroupLayoutDesc = .(layoutEntries);
-		if (Device.CreateBindGroupLayout(bindGroupLayoutDesc) not case .Ok(let layout))
+		if (mDevice.CreateBindGroupLayout(bindGroupLayoutDesc) not case .Ok(let layout))
 		{
 			Console.WriteLine("Failed to create bind group layout");
 			return false;
@@ -307,7 +329,7 @@ class FontRenderingSample : Application
 			BindGroupEntry.Sampler(mFontSampler)
 		);
 		BindGroupDesc bindGroupDesc = .(mBindGroupLayout, bindGroupEntries);
-		if (Device.CreateBindGroup(bindGroupDesc) not case .Ok(let group))
+		if (mDevice.CreateBindGroup(bindGroupDesc) not case .Ok(let group))
 		{
 			Console.WriteLine("Failed to create bind group");
 			return false;
@@ -317,7 +339,7 @@ class FontRenderingSample : Application
 		// Create pipeline layout
 		IBindGroupLayout[1] layouts = .(mBindGroupLayout);
 		PipelineLayoutDesc pipelineLayoutDesc = .(layouts);
-		if (Device.CreatePipelineLayout(pipelineLayoutDesc) not case .Ok(let pipelineLayout))
+		if (mDevice.CreatePipelineLayout(pipelineLayoutDesc) not case .Ok(let pipelineLayout))
 		{
 			Console.WriteLine("Failed to create pipeline layout");
 			return false;
@@ -328,7 +350,7 @@ class FontRenderingSample : Application
 		return true;
 	}
 
-	private bool CreatePipeline()
+	private bool CreatePipeline(TextureFormat swapFormat)
 	{
 		// Vertex attributes
 		VertexAttribute[3] vertexAttributes = .(
@@ -341,7 +363,7 @@ class FontRenderingSample : Application
 		);
 
 		// Color target with alpha blending
-		ColorTargetState[1] colorTargets = .(.(SwapChain.Format, .AlphaBlend));
+		ColorTargetState[1] colorTargets = .(.(swapFormat, .AlphaBlend));
 
 		// Pipeline descriptor
 		RenderPipelineDesc pipelineDesc = .()
@@ -372,7 +394,7 @@ class FontRenderingSample : Application
 			}
 		};
 
-		if (Device.CreateRenderPipeline(pipelineDesc) not case .Ok(let pipeline))
+		if (mDevice.CreateRenderPipeline(pipelineDesc) not case .Ok(let pipeline))
 		{
 			Console.WriteLine("Failed to create pipeline");
 			return false;
@@ -383,32 +405,55 @@ class FontRenderingSample : Application
 		return true;
 	}
 
-	protected override void OnUpdate(FrameContext frame)
+	public void OnUpdate(IApplicationHost host, float deltaTime)
 	{
-		mAnimationTime = frame.TotalTime;
+		mTotalTime += deltaTime;
+		mAnimationTime = mTotalTime;
 
 		// FPS calculation
 		mFrameCount++;
-		mFpsTimer += frame.DeltaTime;
+		mFpsTimer += deltaTime;
 		if (mFpsTimer >= 1.0f)
 		{
 			mCurrentFps = mFrameCount;
 			mFrameCount = 0;
 			mFpsTimer -= 1.0f;
 		}
+	}
+
+	public void OnRenderWindow(IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
+	{
+		mWidth = frame.Width;
+		mHeight = frame.Height;
 
 		// Update projection matrix
 		UpdateProjection();
 
 		// Build text quads
 		BuildTextQuads();
+
+		// Begin render pass
+		let rp = frame.BeginBackbufferPass(ClearColor(0.1f, 0.1f, 0.15f, 1.0f));
+		if (rp != null)
+		{
+			// Render text
+			if (mIndices.Count > 0)
+			{
+				rp.SetPipeline(mPipeline);
+				rp.SetBindGroup(0, mBindGroup);
+				rp.SetVertexBuffer(0, mVertexBuffer, 0);
+				rp.SetIndexBuffer(mIndexBuffer, .UInt16, 0);
+				rp.DrawIndexed((uint32)mIndices.Count, 1, 0, 0, 0);
+			}
+		}
+		frame.EndBackbufferPass();
 	}
 
 	private void UpdateProjection()
 	{
 		// Orthographic projection for 2D text rendering (origin top-left)
-		float width = (float)SwapChain.Width;
-		float height = (float)SwapChain.Height;
+		float width = (float)mWidth;
+		float height = (float)mHeight;
 
 		Matrix projection = Matrix.CreateOrthographicOffCenter(0, width, height, 0, -1, 1);
 
@@ -426,8 +471,8 @@ class FontRenderingSample : Application
 		mVertices.Clear();
 		mIndices.Clear();
 
-		float screenWidth = (float)SwapChain.Width;
-		float screenHeight = (float)SwapChain.Height;
+		float screenWidth = (float)mWidth;
+		float screenHeight = (float)mHeight;
 		float lineHeight = mFont.Metrics.LineHeight;
 		float margin = 20;
 		float columnWidth = screenWidth / 2 - margin * 2;
@@ -803,19 +848,7 @@ class FontRenderingSample : Application
 		}
 	}
 
-	protected override void OnRender(IRenderPassEncoder renderPass, FrameContext frame)
-	{
-		if (mIndices.Count == 0)
-			return;
-
-		renderPass.SetPipeline(mPipeline);
-		renderPass.SetBindGroup(0, mBindGroup);
-		renderPass.SetVertexBuffer(0, mVertexBuffer, 0);
-		renderPass.SetIndexBuffer(mIndexBuffer, .UInt16, 0);
-		renderPass.DrawIndexed((uint32)mIndices.Count, 1, 0, 0, 0);
-	}
-
-	protected override void OnShutdown()
+	public void OnShutdown(IApplicationHost host)
 	{
 		if (mDevice != null)
 		{
@@ -842,13 +875,50 @@ class FontRenderingSample : Application
 
 		TrueTypeFonts.Shutdown();
 	}
+
+	private void DiscoverAssets()
+	{
+		let cwd = Directory.GetCurrentDirectory(.. scope .());
+		var searchDir = scope String(cwd);
+		while (true)
+		{
+			let assetsPath = scope String();
+			Path.InternalCombine(assetsPath, searchDir, "Assets");
+			if (Directory.Exists(assetsPath))
+			{
+				let marker = scope String();
+				Path.InternalCombine(marker, assetsPath, ".assets");
+				if (File.Exists(marker)) { mAssetDirectory.Set(assetsPath); return; }
+			}
+			let parent = Path.GetDirectoryPath(searchDir, .. scope .());
+			if (parent.IsEmpty || parent == searchDir) { mAssetDirectory.Set(cwd); return; }
+			searchDir.Set(parent);
+		}
+	}
 }
 
 class Program
 {
 	public static int Main(String[] args)
 	{
+		let shell = scope SDL3Shell();
+		if (shell.Initialize() case .Err)
+		{
+			Console.WriteLine("ERROR: Failed to initialize shell");
+			return 1;
+		}
+		defer shell.Shutdown();
+
+		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = true });
+		if (graphicsResult case .Err)
+		{
+			Console.WriteLine("ERROR: Failed to create graphics device");
+			return 1;
+		}
+		let graphics = graphicsResult.Value;
+		defer delete graphics;
+
 		let app = scope FontRenderingSample();
-		return app.Run(.() { Title = "Font Rendering", Width = 1024, Height = 768, ClearColor = .(0.1f, 0.1f, 0.15f, 1.0f), EnableDepth = false });
+		return ApplicationHost.RunApplication(app, shell, graphics);
 	}
 }

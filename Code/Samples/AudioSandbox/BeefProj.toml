@@ -1,6 +1,25 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Audio" = "*", "Sedulous.Audio.SDL3" = "*", "Sedulous.Audio.Decoders" = "*", "Sedulous.RHI" = "*", "Sedulous.UI" = "*", "Sedulous.UI.Runtime" = "*", "Sedulous.Fonts" = "*", "Sedulous.Runtime.Client" = "*"}
 
 [Project]
 Name = "AudioSandbox"
 StartupObject = "AudioSandbox.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core.Mathematics" = "*"
+"Sedulous.Audio" = "*"
+"Sedulous.Audio.SDL3" = "*"
+"Sedulous.Audio.Decoders" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.Vulkan" = "*"
+"Sedulous.RHI.Validation" = "*"
+"Sedulous.UI" = "*"
+"Sedulous.UI.Runtime" = "*"
+"Sedulous.Fonts" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Runtime.Graphics" = "*"
+"Sedulous.Shell.SDL3" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.VFS.Disk" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Shell" = "*"

@@ -1,6 +1,24 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.RHI" = "*", "Sedulous.Shaders" = "*", "Sedulous.VG" = "*", "Sedulous.VG.SVG" = "*", "Sedulous.VG.Renderer" = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Runtime.Client" = "*", "Sedulous.Images" = "*", "Sedulous.Fonts" = "*", "Sedulous.Fonts.TTF" = "*"}
 
 [Project]
 Name = "VGSandbox"
 StartupObject = "VGSandbox.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.Vulkan" = "*"
+"Sedulous.RHI.Validation" = "*"
+"Sedulous.Shaders" = "*"
+"Sedulous.VG" = "*"
+"Sedulous.VG.SVG" = "*"
+"Sedulous.VG.Renderer" = "*"
+"Sedulous.Core.Mathematics" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Runtime.Graphics" = "*"
+"Sedulous.Shell.SDL3" = "*"
+"Sedulous.Images" = "*"
+"Sedulous.Fonts" = "*"
+"Sedulous.Fonts.TTF" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.VFS.Disk" = "*"

@@ -1,11 +1,13 @@
 namespace ImGuiSample;
 
 using System;
+using System.IO;
 using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
 using Sedulous.Shaders;
 using Sedulous.Runtime.Client;
-using Sedulous.Runtime;
+using Sedulous.RuntimeGraphics;
+using Sedulous.Shell.SDL3;
 using cimgui_Beef;
 
 /// Uniform buffer for projection matrix
@@ -16,7 +18,7 @@ struct ImGuiUniforms
 }
 
 /// ImGui integration sample demonstrating immediate-mode GUI with RHI rendering.
-class ImGuiSampleApp : Application
+class ImGuiSampleApp : IApplication
 {
 	// ImGui context
 	private ImGuiContext* mImGuiContext;
@@ -59,17 +61,36 @@ class ImGuiSampleApp : Application
 	// Cached delta time for input
 	private float mDeltaTime = 1.0f / 60.0f;
 
-	public this() : base()
+	// Cached device
+	private IDevice mDevice;
+
+	// Asset directory
+	private String mAssetDirectory = new .() ~ delete _;
+
+	// Cached shell
+	private Sedulous.Shell.IShell mShell;
+
+	public ApplicationSettings Settings()
 	{
+		return .() { Title = "ImGui Sample", Width = 1024, Height = 768, ClearColor = .(0.1f, 0.18f, 0.24f, 1.0f), EnableDepth = false };
 	}
 
-	protected override void OnInitialize(Context context)
+	public void Configure(IApplicationHost host)
 	{
+		DiscoverAssets();
+		mDevice = host.Graphics.Raw;
+		mShell = host.Shell;
+	}
+
+	public void OnStartup(IApplicationHost host)
+	{
+		let rw = host.MainWindow;
+
 		// Initialize shader system
 		mShaderSystem = new ShaderSystem();
 		String shaderPath = scope .();
-		GetAssetPath("samples/ImGuiSample/shaders", shaderPath);
-		if (mShaderSystem.Initialize(Device, scope StringView[](shaderPath)) case .Err)
+		Path.InternalCombine(shaderPath, mAssetDirectory, "samples/ImGuiSample/shaders");
+		if (mShaderSystem.Initialize(mDevice, scope StringView[](shaderPath)) case .Err)
 		{
 			Console.WriteLine("Failed to initialize shader system");
 			return;
@@ -82,7 +103,7 @@ class ImGuiSampleApp : Application
 		// Configure IO
 		mIO.ConfigFlags |= (.)ImGuiConfigFlags.ImGuiConfigFlags_DockingEnable;
 		mIO.BackendFlags |= (.)ImGuiBackendFlags.ImGuiBackendFlags_RendererHasTextures;
-		mIO.DisplaySize = .() { x = (float)SwapChain.Width, y = (float)SwapChain.Height };
+		mIO.DisplaySize = .() { x = (float)rw.Swap.Width, y = (float)rw.Swap.Height };
 		mIO.DeltaTime = 1.0f / 60.0f;
 
 		// Disable ini file saving for sample
@@ -101,7 +122,7 @@ class ImGuiSampleApp : Application
 		if (!CreateBindings())
 			return;
 
-		if (!CreatePipeline())
+		if (!CreatePipeline(rw.Swap.Format))
 			return;
 
 		Console.WriteLine("ImGui Sample initialized.");
@@ -119,7 +140,7 @@ class ImGuiSampleApp : Application
 			Memory = .CpuToGpu
 		};
 
-		if (Device.CreateBuffer(vertexDesc) not case .Ok(let vb))
+		if (mDevice.CreateBuffer(vertexDesc) not case .Ok(let vb))
 		{
 			Console.WriteLine("Failed to create vertex buffer");
 			return false;
@@ -134,7 +155,7 @@ class ImGuiSampleApp : Application
 			Memory = .CpuToGpu
 		};
 
-		if (Device.CreateBuffer(indexDesc) not case .Ok(let ib))
+		if (mDevice.CreateBuffer(indexDesc) not case .Ok(let ib))
 		{
 			Console.WriteLine("Failed to create index buffer");
 			return false;
@@ -149,7 +170,7 @@ class ImGuiSampleApp : Application
 			Memory = .CpuToGpu
 		};
 
-		if (Device.CreateBuffer(uniformDesc) not case .Ok(let ub))
+		if (mDevice.CreateBuffer(uniformDesc) not case .Ok(let ub))
 		{
 			Console.WriteLine("Failed to create uniform buffer");
 			return false;
@@ -181,7 +202,7 @@ class ImGuiSampleApp : Application
 			BindGroupLayoutEntry.Sampler(0, .Fragment)
 		);
 		BindGroupLayoutDesc bindGroupLayoutDesc = .(layoutEntries);
-		if (Device.CreateBindGroupLayout(bindGroupLayoutDesc) not case .Ok(let layout))
+		if (mDevice.CreateBindGroupLayout(bindGroupLayoutDesc) not case .Ok(let layout))
 		{
 			Console.WriteLine("Failed to create bind group layout");
 			return false;
@@ -191,7 +212,7 @@ class ImGuiSampleApp : Application
 		// Create pipeline layout
 		IBindGroupLayout[1] layouts = .(mBindGroupLayout);
 		PipelineLayoutDesc pipelineLayoutDesc = .(layouts);
-		if (Device.CreatePipelineLayout(pipelineLayoutDesc) not case .Ok(let pipelineLayout))
+		if (mDevice.CreatePipelineLayout(pipelineLayoutDesc) not case .Ok(let pipelineLayout))
 		{
 			Console.WriteLine("Failed to create pipeline layout");
 			return false;
@@ -202,7 +223,7 @@ class ImGuiSampleApp : Application
 		return true;
 	}
 
-	private bool CreatePipeline()
+	private bool CreatePipeline(TextureFormat swapFormat)
 	{
 		// ImDrawVert: float2 pos (0), float2 uv (8), uint32 col (16) = 20 bytes
 		VertexAttribute[3] vertexAttributes = .(
@@ -218,7 +239,7 @@ class ImGuiSampleApp : Application
 		ColorTargetState[1] colorTargets = .(
 			.()
 			{
-				Format = SwapChain.Format,
+				Format = swapFormat,
 				Blend = .()
 				{
 					Color = .()
@@ -267,7 +288,7 @@ class ImGuiSampleApp : Application
 			}
 		};
 
-		if (Device.CreateRenderPipeline(pipelineDesc) not case .Ok(let pipeline))
+		if (mDevice.CreateRenderPipeline(pipelineDesc) not case .Ok(let pipeline))
 		{
 			Console.WriteLine("Failed to create pipeline");
 			return false;
@@ -289,16 +310,16 @@ class ImGuiSampleApp : Application
 
 			// Delete previous texture resources if any
 			if (mFontSampler != null) { delete mFontSampler; mFontSampler = null; }
-			if (mFontTextureView != null) Device.DestroyTextureView(ref mFontTextureView);
-			if (mFontTexture != null) Device.DestroyTexture(ref mFontTexture);
-			if (mBindGroup != null) Device.DestroyBindGroup(ref mBindGroup);
+			if (mFontTextureView != null) mDevice.DestroyTextureView(ref mFontTextureView);
+			if (mFontTexture != null) mDevice.DestroyTexture(ref mFontTexture);
+			if (mBindGroup != null) mDevice.DestroyBindGroup(ref mBindGroup);
 
 			uint32 w = (uint32)tex.Width;
 			uint32 h = (uint32)tex.Height;
 
 			// Create texture
 			TextureDesc texDesc = TextureDesc.Texture2D(w, h, .RGBA8Unorm, .Sampled | .CopyDst);
-			if (Device.CreateTexture(texDesc) not case .Ok(let gpuTex))
+			if (mDevice.CreateTexture(texDesc) not case .Ok(let gpuTex))
 			{
 				Console.WriteLine("Failed to create font texture");
 				return false;
@@ -314,11 +335,11 @@ class ImGuiSampleApp : Application
 			};
 			Extent3D writeSize = .(w, h, 1);
 			Span<uint8> data = .((uint8*)pixels, (int)(w * h * 4));
-			TransferHelper.WriteTextureSync(Device.GetQueue(.Graphics), Device, mFontTexture, data, dataLayout, writeSize);
+			TransferHelper.WriteTextureSync(mDevice.GetQueue(.Graphics), mDevice, mFontTexture, data, dataLayout, writeSize);
 
 			// Create texture view
 			TextureViewDesc viewDesc = .();
-			if (Device.CreateTextureView(mFontTexture, viewDesc) not case .Ok(let view))
+			if (mDevice.CreateTextureView(mFontTexture, viewDesc) not case .Ok(let view))
 			{
 				Console.WriteLine("Failed to create font texture view");
 				return false;
@@ -337,7 +358,7 @@ class ImGuiSampleApp : Application
 				MinLod = 0.0f,
 				MaxLod = 1.0f
 			};
-			if (Device.CreateSampler(samplerDesc) not case .Ok(let sampler))
+			if (mDevice.CreateSampler(samplerDesc) not case .Ok(let sampler))
 			{
 				Console.WriteLine("Failed to create font sampler");
 				return false;
@@ -351,7 +372,7 @@ class ImGuiSampleApp : Application
 				BindGroupEntry.Sampler(mFontSampler)
 			);
 			BindGroupDesc bindGroupDesc = .(mBindGroupLayout, bindGroupEntries);
-			if (Device.CreateBindGroup(bindGroupDesc) not case .Ok(let group))
+			if (mDevice.CreateBindGroup(bindGroupDesc) not case .Ok(let group))
 			{
 				Console.WriteLine("Failed to create bind group");
 				return false;
@@ -382,7 +403,7 @@ class ImGuiSampleApp : Application
 					};
 					Extent3D writeSize = .(w, h, 1);
 					Span<uint8> data = .((uint8*)pixels, (int)(w * h * 4));
-					TransferHelper.WriteTextureSync(Device.GetQueue(.Graphics), Device, mFontTexture, data, dataLayout, writeSize);
+					TransferHelper.WriteTextureSync(mDevice.GetQueue(.Graphics), mDevice, mFontTexture, data, dataLayout, writeSize);
 				}
 			}
 			ImTextureData_SetStatus(tex, .ImTextureStatus_OK);
@@ -396,13 +417,17 @@ class ImGuiSampleApp : Application
 		return true;
 	}
 
-	protected override void OnInput(FrameContext frame)
+	public void OnUpdate(IApplicationHost host, float deltaTime)
 	{
+		mDeltaTime = deltaTime;
+
 		let mouse = mShell.InputManager.Mouse;
 		let keyboard = mShell.InputManager.Keyboard;
 
+		let rw = host.MainWindow;
+
 		// Update display size
-		mIO.DisplaySize = .() { x = (float)SwapChain.Width, y = (float)SwapChain.Height };
+		mIO.DisplaySize = .() { x = (float)rw.Swap.Width, y = (float)rw.Swap.Height };
 		mIO.DeltaTime = mDeltaTime > 0 ? mDeltaTime : 1.0f / 60.0f;
 
 		// Mouse
@@ -436,20 +461,12 @@ class ImGuiSampleApp : Application
 		ImGuiIO_AddKeyEvent(mIO, .ImGuiKey_X, keyboard.IsKeyDown(.X));
 		ImGuiIO_AddKeyEvent(mIO, .ImGuiKey_Y, keyboard.IsKeyDown(.Y));
 		ImGuiIO_AddKeyEvent(mIO, .ImGuiKey_Z, keyboard.IsKeyDown(.Z));
-	}
-
-	protected override void OnUpdate(FrameContext frame)
-	{
-		mDeltaTime = frame.DeltaTime;
 
 		// Start new ImGui frame
 		igNewFrame();
 
 		// Build UI
 		BuildUI();
-
-		// Update background clear color from UI
-		mSettings.ClearColor = Color32(mBackgroundColor[0], mBackgroundColor[1], mBackgroundColor[2], 1.0f);
 	}
 
 	private void BuildUI()
@@ -530,7 +547,7 @@ class ImGuiSampleApp : Application
 		mFirstFrame = false;
 	}
 
-	protected override void OnPrepareFrame(FrameContext frame)
+	public void OnRenderWindow(IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
 	{
 		// End ImGui frame and generate draw data
 		igRender();
@@ -594,57 +611,56 @@ class ImGuiSampleApp : Application
 			vtxOffset += (uint64)vtxSize;
 			idxOffset += (uint64)idxSize;
 		}
-	}
 
-	protected override void OnRender(IRenderPassEncoder renderPass, FrameContext frame)
-	{
-		ImDrawData* drawData = igGetDrawData();
-		if (drawData == null || !drawData.Valid || mTotalVtxCount == 0 || mBindGroup == null)
-			return;
-
-		renderPass.SetPipeline(mPipeline);
-		renderPass.SetBindGroup(0, mBindGroup);
-		renderPass.SetVertexBuffer(0, mVertexBuffer, 0);
-		renderPass.SetIndexBuffer(mIndexBuffer, .UInt16, 0);
-
-		// Iterate draw lists and commands
-		int32 globalVtxOffset = 0;
-		int32 globalIdxOffset = 0;
-
-		ImVec2 clipOff = drawData.DisplayPos;
-
-		for (int32 n = 0; n < drawData.CmdListsCount; n++)
+		// Begin render pass
+		let rp = frame.BeginBackbufferPass(ClearColor(mBackgroundColor[0], mBackgroundColor[1], mBackgroundColor[2], mBackgroundColor[3]));
+		if (rp != null && mTotalVtxCount > 0 && mBindGroup != null)
 		{
-			ImDrawList* cmdList = drawData.CmdLists.Data[n];
+			rp.SetPipeline(mPipeline);
+			rp.SetBindGroup(0, mBindGroup);
+			rp.SetVertexBuffer(0, mVertexBuffer, 0);
+			rp.SetIndexBuffer(mIndexBuffer, .UInt16, 0);
 
-			for (int32 cmdIdx = 0; cmdIdx < cmdList.CmdBuffer.Size; cmdIdx++)
+			// Iterate draw lists and commands
+			int32 globalVtxOffset = 0;
+			int32 globalIdxOffset = 0;
+
+			ImVec2 clipOff = drawData.DisplayPos;
+
+			for (int32 n = 0; n < drawData.CmdListsCount; n++)
 			{
-				ImDrawCmd* cmd = &cmdList.CmdBuffer.Data[cmdIdx];
+				ImDrawList* cmdList = drawData.CmdLists.Data[n];
 
-				if (cmd.ElemCount == 0)
-					continue;
-
-				// Apply scissor/clipping rectangle
-				let clipX = Math.Max(0, (int32)(cmd.ClipRect.x - clipOff.x));
-				let clipY = Math.Max(0, (int32)(cmd.ClipRect.y - clipOff.y));
-				let clipW = (int32)(cmd.ClipRect.z - cmd.ClipRect.x);
-				let clipH = (int32)(cmd.ClipRect.w - cmd.ClipRect.y);
-
-				if (clipW > 0 && clipH > 0)
+				for (int32 cmdIdx = 0; cmdIdx < cmdList.CmdBuffer.Size; cmdIdx++)
 				{
-					renderPass.SetScissor(clipX, clipY, (uint32)clipW, (uint32)clipH);
-					renderPass.DrawIndexed(cmd.ElemCount, 1,
-						(uint32)(cmd.IdxOffset + (uint32)globalIdxOffset),
-						(int32)(cmd.VtxOffset + (uint32)globalVtxOffset), 0);
-				}
-			}
+					ImDrawCmd* cmd = &cmdList.CmdBuffer.Data[cmdIdx];
 
-			globalVtxOffset += cmdList.VtxBuffer.Size;
-			globalIdxOffset += cmdList.IdxBuffer.Size;
+					if (cmd.ElemCount == 0)
+						continue;
+
+					// Apply scissor/clipping rectangle
+					let clipX = Math.Max(0, (int32)(cmd.ClipRect.x - clipOff.x));
+					let clipY = Math.Max(0, (int32)(cmd.ClipRect.y - clipOff.y));
+					let clipW = (int32)(cmd.ClipRect.z - cmd.ClipRect.x);
+					let clipH = (int32)(cmd.ClipRect.w - cmd.ClipRect.y);
+
+					if (clipW > 0 && clipH > 0)
+					{
+						rp.SetScissor(clipX, clipY, (uint32)clipW, (uint32)clipH);
+						rp.DrawIndexed(cmd.ElemCount, 1,
+							(uint32)(cmd.IdxOffset + (uint32)globalIdxOffset),
+							(int32)(cmd.VtxOffset + (uint32)globalVtxOffset), 0);
+					}
+				}
+
+				globalVtxOffset += cmdList.VtxBuffer.Size;
+				globalIdxOffset += cmdList.IdxBuffer.Size;
+			}
 		}
+		frame.EndBackbufferPass();
 	}
 
-	protected override void OnShutdown()
+	public void OnShutdown(IApplicationHost host)
 	{
 		// Clean up ImGui
 		if (mImGuiContext != null)
@@ -669,13 +685,50 @@ class ImGuiSampleApp : Application
 
 		if (mShaderSystem != null) { mShaderSystem.Dispose(); delete mShaderSystem; }
 	}
+
+	private void DiscoverAssets()
+	{
+		let cwd = Directory.GetCurrentDirectory(.. scope .());
+		var searchDir = scope String(cwd);
+		while (true)
+		{
+			let assetsPath = scope String();
+			Path.InternalCombine(assetsPath, searchDir, "Assets");
+			if (Directory.Exists(assetsPath))
+			{
+				let marker = scope String();
+				Path.InternalCombine(marker, assetsPath, ".assets");
+				if (File.Exists(marker)) { mAssetDirectory.Set(assetsPath); return; }
+			}
+			let parent = Path.GetDirectoryPath(searchDir, .. scope .());
+			if (parent.IsEmpty || parent == searchDir) { mAssetDirectory.Set(cwd); return; }
+			searchDir.Set(parent);
+		}
+	}
 }
 
 class Program
 {
 	public static int Main(String[] args)
 	{
+		let shell = scope SDL3Shell();
+		if (shell.Initialize() case .Err)
+		{
+			Console.WriteLine("ERROR: Failed to initialize shell");
+			return 1;
+		}
+		defer shell.Shutdown();
+
+		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = true });
+		if (graphicsResult case .Err)
+		{
+			Console.WriteLine("ERROR: Failed to create graphics device");
+			return 1;
+		}
+		let graphics = graphicsResult.Value;
+		defer delete graphics;
+
 		let app = scope ImGuiSampleApp();
-		return app.Run(.() { Title = "ImGui Sample", Width = 1024, Height = 768, ClearColor = .(0.1f, 0.18f, 0.24f, 1.0f), EnableDepth = false });
+		return ApplicationHost.RunApplication(app, shell, graphics);
 	}
 }

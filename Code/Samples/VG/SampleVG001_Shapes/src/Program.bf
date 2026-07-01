@@ -1,14 +1,18 @@
 namespace SampleVG001_Shapes;
 
 using System;
+using System.IO;
 using System.Collections;
 using Sedulous.RHI;
 using Sedulous.Core.Mathematics;
 using Sedulous.VG;
 using Sedulous.VG.SVG;
+using Sedulous.Runtime.Client;
+using Sedulous.RuntimeGraphics;
+using Sedulous.Shell.SDL3;
 using SampleFramework;
 
-class VGShapesSample : SampleApp
+class VGShapesSample : IApplication
 {
 	// VG shader: 2D orthographic projection with per-vertex color and coverage-based AA
 	const String cShaderSource = """
@@ -61,9 +65,6 @@ class VGShapesSample : SampleApp
 	private IBindGroup mBindGroup;
 	private IPipelineLayout mPipelineLayout;
 	private IRenderPipeline mPipeline;
-	private ICommandPool mCommandPool;
-	private IFence mFrameFence;
-	private uint64 mFrameFenceValue;
 
 	private VGContext mVGContext ~ delete _;
 
@@ -71,23 +72,40 @@ class VGShapesSample : SampleApp
 	private int mVertexCapacity;
 	private int mIndexCapacity;
 
-	public this() : base(.Vulkan, true)
+	// Cached device
+	private IDevice mDevice;
+
+	// Timing
+	private float mTotalTime = 0;
+
+	public ApplicationSettings Settings()
 	{
+		return .()
+		{
+			Title = "SampleVG001 - Vector Graphics Shapes",
+			Width = 1280, Height = 720,
+			EnableDepth = false
+		};
 	}
 
-	protected override StringView Title => "SampleVG001 - Vector Graphics Shapes";
-
-	protected override Result<void> OnInit()
+	public void Configure(IApplicationHost host)
 	{
+		mDevice = host.Graphics.Raw;
+	}
+
+	public void OnStartup(IApplicationHost host)
+	{
+		let rw = host.MainWindow;
+
 		// Init shader compiler
 		mShaderCompiler = new ShaderCompiler();
 		if (mShaderCompiler.Init() case .Err)
 		{
 			Console.WriteLine("ERROR: ShaderCompiler.Init failed");
-			return .Err;
+			return;
 		}
 
-		let format = (mBackendType == .Vulkan) ? ShaderOutputFormat.SPIRV : ShaderOutputFormat.DXIL;
+		let format = ShaderOutputFormat.SPIRV;
 
 		// Compile shaders
 		let vsBytecode = scope List<uint8>();
@@ -97,22 +115,22 @@ class VGShapesSample : SampleApp
 		if (mShaderCompiler.CompileVertex(cShaderSource, "VSMain", format, vsBytecode, errors) case .Err)
 		{
 			Console.WriteLine("VS compile failed: {}", errors);
-			return .Err;
+			return;
 		}
 		errors.Clear();
 		if (mShaderCompiler.CompilePixel(cShaderSource, "PSMain", format, psBytecode, errors) case .Err)
 		{
 			Console.WriteLine("PS compile failed: {}", errors);
-			return .Err;
+			return;
 		}
 
 		// Create shader modules
 		let vsResult = mDevice.CreateShaderModule(ShaderModuleDesc() { Code = Span<uint8>(vsBytecode.Ptr, vsBytecode.Count), Label = "VG_VS" });
-		if (vsResult case .Err) { Console.WriteLine("ERROR: CreateShaderModule (VS) failed"); return .Err; }
+		if (vsResult case .Err) { Console.WriteLine("ERROR: CreateShaderModule (VS) failed"); return; }
 		mVertexShader = vsResult.Value;
 
 		let psResult = mDevice.CreateShaderModule(ShaderModuleDesc() { Code = Span<uint8>(psBytecode.Ptr, psBytecode.Count), Label = "VG_PS" });
-		if (psResult case .Err) { Console.WriteLine("ERROR: CreateShaderModule (PS) failed"); return .Err; }
+		if (psResult case .Err) { Console.WriteLine("ERROR: CreateShaderModule (PS) failed"); return; }
 		mPixelShader = psResult.Value;
 
 		// Create uniform buffer (4x4 matrix = 64 bytes)
@@ -123,7 +141,7 @@ class VGShapesSample : SampleApp
 			Memory = .CpuToGpu,
 			Label = "VG_Uniforms"
 		});
-		if (ubResult case .Err) { Console.WriteLine("ERROR: CreateBuffer (UB) failed"); return .Err; }
+		if (ubResult case .Err) { Console.WriteLine("ERROR: CreateBuffer (UB) failed"); return; }
 		mUniformBuffer = ubResult.Value;
 
 		// Create bind group layout
@@ -139,7 +157,7 @@ class VGShapesSample : SampleApp
 			Entries = Span<BindGroupLayoutEntry>(bglEntries),
 			Label = "VG_BGL"
 		});
-		if (bglResult case .Err) { Console.WriteLine("ERROR: CreateBindGroupLayout failed"); return .Err; }
+		if (bglResult case .Err) { Console.WriteLine("ERROR: CreateBindGroupLayout failed"); return; }
 		mBindGroupLayout = bglResult.Value;
 
 		// Create bind group (entries are positional, matching layout order)
@@ -156,7 +174,7 @@ class VGShapesSample : SampleApp
 			Entries = Span<BindGroupEntry>(bgEntries),
 			Label = "VG_BG"
 		});
-		if (bgResult case .Err) { Console.WriteLine("ERROR: CreateBindGroup failed"); return .Err; }
+		if (bgResult case .Err) { Console.WriteLine("ERROR: CreateBindGroup failed"); return; }
 		mBindGroup = bgResult.Value;
 
 		// Create pipeline layout
@@ -167,7 +185,7 @@ class VGShapesSample : SampleApp
 			BindGroupLayouts = Span<IBindGroupLayout>(bglSpan),
 			Label = "VG_PL"
 		});
-		if (plResult case .Err) { Console.WriteLine("ERROR: CreatePipelineLayout failed"); return .Err; }
+		if (plResult case .Err) { Console.WriteLine("ERROR: CreatePipelineLayout failed"); return; }
 		mPipelineLayout = plResult.Value;
 
 		// Create render pipeline with VGVertex layout
@@ -188,7 +206,7 @@ class VGShapesSample : SampleApp
 		let colorTargets = scope ColorTargetState[1];
 		colorTargets[0] = ColorTargetState()
 		{
-			Format = mSwapChain.Format,
+			Format = rw.Swap.Format,
 			WriteMask = .All,
 			Blend = BlendState()
 			{
@@ -217,42 +235,36 @@ class VGShapesSample : SampleApp
 		};
 
 		let pipResult = mDevice.CreateRenderPipeline(rpDesc);
-		if (pipResult case .Err) { Console.WriteLine("ERROR: CreateRenderPipeline failed"); return .Err; }
+		if (pipResult case .Err) { Console.WriteLine("ERROR: CreateRenderPipeline failed"); return; }
 		mPipeline = pipResult.Value;
-
-		// Create command pool and fence
-		let poolResult = mDevice.CreateCommandPool(.Graphics);
-		if (poolResult case .Err) { Console.WriteLine("ERROR: CreateCommandPool failed"); return .Err; }
-		mCommandPool = poolResult.Value;
-
-		let fenceResult = mDevice.CreateFence(0);
-		if (fenceResult case .Err) { Console.WriteLine("ERROR: CreateFence failed"); return .Err; }
-		mFrameFence = fenceResult.Value;
-		mFrameFenceValue = 0;
 
 		// Create VG context
 		mVGContext = new VGContext();
-
-		return .Ok;
 	}
 
-	protected override void OnRender()
+	public void OnUpdate(IApplicationHost host, float deltaTime)
 	{
-		if (mFrameFenceValue > 0)
-			mFrameFence.Wait(mFrameFenceValue);
+		mTotalTime += deltaTime;
+	}
 
-		if (mSwapChain.AcquireNextImage() case .Err) return;
+	public void OnRenderWindow(IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
+	{
+		if (mPipeline == null || mVGContext == null)
+			return;
+
+		let w = frame.Width;
+		let h = frame.Height;
 
 		// Build VG scene
 		mVGContext.Clear();
-		BuildScene();
+		BuildScene(w, h);
 
 		let batch = mVGContext.GetBatch();
 		if (batch.IsEmpty)
 			return;
 
 		// Update projection matrix (2D orthographic)
-		UpdateProjection();
+		UpdateProjection(w, h);
 
 		// Ensure GPU buffers are large enough
 		EnsureBuffers(batch.VertexCount, batch.IndexCount);
@@ -260,40 +272,24 @@ class VGShapesSample : SampleApp
 		// Upload vertex/index data
 		UploadBatchData(batch);
 
-		// Render
-		mCommandPool.Reset();
-		let encoderResult = mCommandPool.CreateEncoder();
-		if (encoderResult case .Err) return;
-		var encoder = encoderResult.Value;
-
-		// Barrier: Present -> RenderTarget
-		let texBarriers = scope TextureBarrier[1];
-		texBarriers[0] = TextureBarrier()
-		{
-			Texture = mSwapChain.CurrentTexture,
-			OldState = .Present,
-			NewState = .RenderTarget
-		};
-		encoder.Barrier(BarrierGroup() { TextureBarriers = Span<TextureBarrier>(texBarriers) });
-
 		// Begin render pass
 		let colorAttachments = scope ColorAttachment[1];
 		colorAttachments[0] = ColorAttachment()
 		{
-			View = mSwapChain.CurrentTextureView,
+			View = frame.BackbufferView,
 			LoadOp = .Clear,
 			StoreOp = .Store,
 			ClearValue = ClearColor(0.12f, 0.12f, 0.14f, 1.0f)
 		};
 
-		let rp = encoder.BeginRenderPass(RenderPassDesc()
+		let rp = frame.Encoder.BeginRenderPass(RenderPassDesc()
 		{
 			ColorAttachments = .(colorAttachments)
 		});
 
 		rp.SetPipeline(mPipeline);
-		rp.SetViewport(0, 0, (float)mWidth, (float)mHeight, 0.0f, 1.0f);
-		rp.SetScissor(0, 0, mWidth, mHeight);
+		rp.SetViewport(0, 0, (float)w, (float)h, 0.0f, 1.0f);
+		rp.SetScissor(0, 0, w, h);
 		rp.SetBindGroup(0, mBindGroup);
 		rp.SetVertexBuffer(0, mVertexBuffer, 0);
 		rp.SetIndexBuffer(mIndexBuffer, .UInt32, 0);
@@ -307,23 +303,12 @@ class VGShapesSample : SampleApp
 		}
 
 		rp.End();
-
-		// Barrier: RenderTarget -> Present
-		texBarriers[0].OldState = .RenderTarget;
-		texBarriers[0].NewState = .Present;
-		encoder.Barrier(BarrierGroup() { TextureBarriers = Span<TextureBarrier>(texBarriers) });
-
-		var cmdBuf = encoder.Finish();
-		mFrameFenceValue++;
-		mGraphicsQueue.Submit(Span<ICommandBuffer>(&cmdBuf, 1), mFrameFence, mFrameFenceValue);
-		mSwapChain.Present(mGraphicsQueue);
-		mCommandPool.DestroyEncoder(ref encoder);
 	}
 
-	private void BuildScene()
+	private void BuildScene(uint32 width, uint32 height)
 	{
-		let w = (float)mWidth;
-		let h = (float)mHeight;
+		let w = (float)width;
+		let h = (float)height;
 
 		// --- Row 1: Basic filled shapes ---
 
@@ -479,11 +464,11 @@ class VGShapesSample : SampleApp
 		mVGContext.StrokeRect(.(0, 0, w, h), Color(60, 60, 60), 1.0f);
 	}
 
-	private void UpdateProjection()
+	private void UpdateProjection(uint32 width, uint32 height)
 	{
 		// Orthographic projection: (0,0) top-left, (width,height) bottom-right
-		let w = (float)mWidth;
-		let h = (float)mHeight;
+		let w = (float)width;
+		let h = (float)height;
 
 		// Column-major 4x4 ortho matrix
 		float[16] proj = .(
@@ -566,12 +551,8 @@ class VGShapesSample : SampleApp
 		}
 	}
 
-	protected override void OnShutdown()
+	public void OnShutdown(IApplicationHost host)
 	{
-		if (mFrameFence != null)
-			mDevice?.DestroyFence(ref mFrameFence);
-		if (mCommandPool != null)
-			mDevice?.DestroyCommandPool(ref mCommandPool);
 		if (mPipeline != null)
 			mDevice?.DestroyRenderPipeline(ref mPipeline);
 		if (mPipelineLayout != null)
@@ -602,7 +583,24 @@ class Program
 {
 	public static int Main(String[] args)
 	{
+		let shell = scope SDL3Shell();
+		if (shell.Initialize() case .Err)
+		{
+			Console.WriteLine("ERROR: Failed to initialize shell");
+			return 1;
+		}
+		defer shell.Shutdown();
+
+		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = true });
+		if (graphicsResult case .Err)
+		{
+			Console.WriteLine("ERROR: Failed to create graphics device");
+			return 1;
+		}
+		let graphics = graphicsResult.Value;
+		defer delete graphics;
+
 		let app = scope VGShapesSample();
-		return app.Run();
+		return ApplicationHost.RunApplication(app, shell, graphics);
 	}
 }

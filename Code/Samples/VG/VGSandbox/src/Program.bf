@@ -4,6 +4,7 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
 using Sedulous.Runtime.Client;
+using Sedulous.RuntimeGraphics;
 using Sedulous.VG;
 using Sedulous.VG.Renderer;
 using Sedulous.Shaders;
@@ -11,9 +12,11 @@ using Sedulous.Images;
 using Sedulous.Fonts;
 using Sedulous.Fonts.TTF;
 using Sedulous.VG.SVG;
+using Sedulous.VFS.Disk;
+using Sedulous.Shell.SDL3;
 
 /// VG Sandbox - NanoVG-inspired demo showcasing Sedulous.VG capabilities.
-class VGSandboxApp : Application
+class VGSandboxApp : IApplication
 {
 	private VGContext mVG;
 	private VGRenderer mVGRenderer;
@@ -35,16 +38,38 @@ class VGSandboxApp : Application
 
 	private float mTime = 0;
 
-	public this() : base()
+	// Asset directory
+	private String mAssetDirectory = new .() ~ delete _;
+
+	// Builtin mount for VFS font loading
+	private FileSystemMount mBuiltinMount ~ delete _;
+
+	// Cached device
+	private IDevice mDevice;
+
+	public ApplicationSettings Settings()
 	{
+		return .()
+		{
+			Title = "VG Sandbox",
+			Width = 1000, Height = 720,
+			EnableDepth = false
+		};
 	}
 
-	protected override void OnInitialize(Sedulous.Runtime.Context context)
+	public void Configure(IApplicationHost host)
+	{
+		DiscoverAssets();
+		mBuiltinMount = new FileSystemMount(mAssetDirectory);
+		mDevice = host.Graphics.Raw;
+	}
+
+	public void OnStartup(IApplicationHost host)
 	{
 		mShaderSystem = new ShaderSystem();
 		String shaderPath = scope .();
-		GetAssetPath("shaders", shaderPath);
-		if (mShaderSystem.Initialize(Device, scope StringView[](shaderPath)) case .Err)
+		System.IO.Path.InternalCombine(shaderPath, mAssetDirectory, "shaders");
+		if (mShaderSystem.Initialize(mDevice, scope StringView[](shaderPath)) case .Err)
 		{
 			Console.WriteLine("Failed to initialize shader system");
 			return;
@@ -53,8 +78,8 @@ class VGSandboxApp : Application
 		// Load fonts at a few sizes - Roboto-Regular from the shared assets.
 		// FontService already converts the R8 atlas to RGBA8 under the hood,
 		// so VG consumes the atlas just like any other IImageData image.
-		// Loads via the inherited `builtin://` mount (locator is relative).
-		mFontService = new TrueTypeFontService(BuiltinMount);
+		// Loads via the builtin mount (locator is relative).
+		mFontService = new TrueTypeFontService(mBuiltinMount);
 		let fontLocator = "fonts/roboto/Roboto-Regular.ttf";
 
 		LoadFontSize(fontLocator, 14);
@@ -65,9 +90,11 @@ class VGSandboxApp : Application
 		mFontMedium = mFontService.GetFont("Roboto", 20);
 		mFontLarge  = mFontService.GetFont("Roboto", 36);
 
+		let rw = host.MainWindow;
+
 		mVG = new VGContext(mFontService);
 		mVGRenderer = new VGRenderer();
-		if (mVGRenderer.Initialize(Device, SwapChain.Format, (int32)SwapChain.BufferCount, mShaderSystem) case .Err)
+		if (mVGRenderer.Initialize(mDevice, rw.Swap.Format, (int32)rw.Swap.BufferCount, mShaderSystem) case .Err)
 		{
 			Console.WriteLine("Failed to initialize VGRenderer");
 			return;
@@ -106,19 +133,19 @@ class VGSandboxApp : Application
 			mSVGIcon = iconDoc;
 	}
 
-	protected override void OnUpdate(FrameContext frame)
+	public void OnUpdate(IApplicationHost host, float deltaTime)
 	{
-		mTime = frame.TotalTime;
+		mTime += deltaTime;
 	}
 
-	protected override void OnPrepareFrame(FrameContext frame)
+	public void OnRenderWindow(IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
 	{
 		if (mVGRenderer == null) return;
 
 		mVG.Clear();
 
-		let w = (float)SwapChain.Width;
-		let h = (float)SwapChain.Height;
+		let w = (float)frame.Width;
+		let h = (float)frame.Height;
 
 		DrawLineWidths(mVG, 10, 10);
 		DrawLineCaps(mVG, 10, 230);
@@ -134,8 +161,26 @@ class VGSandboxApp : Application
 		DrawSVGDemo(mVG, 150, 470);
 
 		let batch = mVG.GetBatch();
-		mVGRenderer.BeginFrame(frame.FrameIndex);
-		mVGSlice = mVGRenderer.Prepare(batch, frame.FrameIndex, SwapChain.Width, SwapChain.Height);
+		let fi = (int32)frame.FrameIndex;
+		mVGRenderer.BeginFrame(fi);
+		mVGSlice = mVGRenderer.Prepare(batch, fi, frame.Width, frame.Height);
+
+		// Render
+		ColorAttachment[1] colorAttachments = .(.()
+		{
+			View = frame.BackbufferView,
+			LoadOp = .Clear,
+			StoreOp = .Store,
+			ClearValue = ClearColor(0.19f, 0.19f, 0.21f, 1.0f)
+		});
+		RenderPassDesc passDesc = .() { ColorAttachments = .(colorAttachments) };
+
+		let renderPass = frame.Encoder.BeginRenderPass(passDesc);
+		if (renderPass != null)
+		{
+			mVGRenderer.Render(renderPass, frame.Width, frame.Height, fi, mVGSlice);
+			renderPass.End();
+		}
 	}
 
 	/// Load a font at a specific pixel size into the shared service.
@@ -758,31 +803,7 @@ class VGSandboxApp : Application
 		return p;
 	}
 
-	protected override bool OnRenderFrame(RenderContext render)
-	{
-		if (mVGRenderer == null)
-			return false;
-
-		ColorAttachment[1] colorAttachments = .(.()
-		{
-			View = render.CurrentTextureView,
-			LoadOp = .Clear,
-			StoreOp = .Store,
-			ClearValue = ClearColor(0.19f, 0.19f, 0.21f, 1.0f)
-		});
-		RenderPassDesc passDesc = .() { ColorAttachments = .(colorAttachments) };
-
-		let renderPass = render.Encoder.BeginRenderPass(passDesc);
-		if (renderPass != null)
-		{
-			mVGRenderer.Render(renderPass, render.SwapChain.Width, render.SwapChain.Height, render.Frame.FrameIndex, mVGSlice);
-			renderPass.End();
-		}
-
-		return true;
-	}
-
-	protected override void OnShutdown()
+	public void OnShutdown(IApplicationHost host)
 	{
 		if (mVGRenderer != null)
 		{
@@ -802,18 +823,50 @@ class VGSandboxApp : Application
 			delete mShaderSystem;
 		}
 	}
+
+	private void DiscoverAssets()
+	{
+		let cwd = System.IO.Directory.GetCurrentDirectory(.. scope .());
+		var searchDir = scope String(cwd);
+		while (true)
+		{
+			let assetsPath = scope String();
+			System.IO.Path.InternalCombine(assetsPath, searchDir, "Assets");
+			if (System.IO.Directory.Exists(assetsPath))
+			{
+				let marker = scope String();
+				System.IO.Path.InternalCombine(marker, assetsPath, ".assets");
+				if (System.IO.File.Exists(marker)) { mAssetDirectory.Set(assetsPath); return; }
+			}
+			let parent = System.IO.Path.GetDirectoryPath(searchDir, .. scope .());
+			if (parent.IsEmpty || parent == searchDir) { mAssetDirectory.Set(cwd); return; }
+			searchDir.Set(parent);
+		}
+	}
 }
 
 class Program
 {
 	public static int Main(String[] args)
 	{
-		let app = scope VGSandboxApp();
-		return app.Run(.()
+		let shell = scope SDL3Shell();
+		if (shell.Initialize() case .Err)
 		{
-			Title = "VG Sandbox",
-			Width = 1000, Height = 720,
-			EnableDepth = false
-		});
+			Console.WriteLine("ERROR: Failed to initialize shell");
+			return 1;
+		}
+		defer shell.Shutdown();
+
+		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = true });
+		if (graphicsResult case .Err)
+		{
+			Console.WriteLine("ERROR: Failed to create graphics device");
+			return 1;
+		}
+		let graphics = graphicsResult.Value;
+		defer delete graphics;
+
+		let app = scope VGSandboxApp();
+		return ApplicationHost.RunApplication(app, shell, graphics);
 	}
 }

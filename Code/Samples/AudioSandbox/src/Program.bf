@@ -1,18 +1,20 @@
 namespace AudioSandbox;
 
 using System;
-using System.Collections;
 using System.IO;
+using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
 using Sedulous.Runtime.Client;
-using Sedulous.Runtime;
+using Sedulous.RuntimeGraphics;
 using Sedulous.UI;
 using Sedulous.UI.Runtime;
 using Sedulous.Fonts;
 using Sedulous.Audio;
 using Sedulous.Audio.SDL3;
 using Sedulous.Audio.Decoders;
+using Sedulous.VFS.Disk;
+using Sedulous.Shell.SDL3;
 
 /// Audio track info.
 class AudioTrack
@@ -29,7 +31,7 @@ class AudioTrack
 }
 
 /// Audio Sandbox - Audio Player with UI.
-class AudioSandboxApp : Application
+class AudioSandboxApp : IApplication
 {
 	// Audio system
 	private SDL3AudioSystem mAudioSystem ~ delete _;
@@ -51,11 +53,37 @@ class AudioSandboxApp : Application
 	private FlexLayout mTrackList;
 	private Button mPlayPauseButton;
 
-	public this() : base()
+	// Asset directory
+	private String mAssetDirectory = new .() ~ delete _;
+
+	// Builtin mount for VFS
+	private FileSystemMount mBuiltinMount ~ delete _;
+
+	// Cached device
+	private IDevice mDevice;
+
+	// Cached shell reference
+	private Sedulous.Shell.IShell mShell;
+
+	public ApplicationSettings Settings()
 	{
+		return .()
+		{
+			Title = "Audio Sandbox",
+			Width = 800, Height = 600,
+			EnableDepth = false
+		};
 	}
 
-	protected override void OnInitialize(Context context)
+	public void Configure(IApplicationHost host)
+	{
+		DiscoverAssets();
+		mBuiltinMount = new FileSystemMount(mAssetDirectory);
+		mDevice = host.Graphics.Raw;
+		mShell = host.Shell;
+	}
+
+	public void OnStartup(IApplicationHost host)
 	{
 		// Initialize audio
 		if (!InitializeAudio())
@@ -72,13 +100,14 @@ class AudioSandboxApp : Application
 
 		// Initialize UI subsystem
 		mUI = new UISubsystem();
-		context.RegisterSubsystem(mUI);
+		host.Ctx.RegisterSubsystem(mUI);
 
+		let rw = host.MainWindow;
 		String shaderPath = scope .();
-		GetAssetPath("shaders", shaderPath);
+		Path.InternalCombine(shaderPath, mAssetDirectory, "shaders");
 		// Pass BuiltinMount so the UI subsystem's font service routes font
 		// loads through the `builtin://` VFS scheme.
-		if (mUI.InitializeRendering(mUIContext, mRoot, mDevice, mSwapChain.Format, (int32)mSwapChain.BufferCount, scope StringView[](shaderPath), mShell, mWindow, BuiltinMount) case .Err)
+		if (mUI.InitializeRendering(mUIContext, mRoot, mDevice, rw.Swap.Format, (int32)rw.Swap.BufferCount, scope StringView[](shaderPath), mShell, rw.Window, mBuiltinMount) case .Err)
 		{
 			Console.WriteLine("Failed to initialize UI rendering");
 			return;
@@ -192,7 +221,7 @@ class AudioSandboxApp : Application
 	private void LoadAudioTracks()
 	{
 		String audioDir = scope .();
-		GetAssetPath("samples/audio/kenney_rpg-audio/Audio", audioDir);
+		Path.InternalCombine(audioDir, mAssetDirectory, "samples/audio/kenney_rpg-audio/Audio");
 
 		Console.WriteLine($"Loading audio from: {audioDir}");
 
@@ -331,7 +360,7 @@ class AudioSandboxApp : Application
 
 	// ==================== Lifecycle ====================
 
-	protected override void OnUpdate(FrameContext frame)
+	public void OnUpdate(IApplicationHost host, float deltaTime)
 	{
 		// Update audio system
 		mAudioSystem.Update();
@@ -344,37 +373,35 @@ class AudioSandboxApp : Application
 		}
 
 		// Spacebar for play/pause
-		if (mShell.InputManager.Keyboard.IsKeyPressed(.Space))
+		if (host.Shell.InputManager.Keyboard.IsKeyPressed(.Space))
 			TogglePlayPause();
 	}
 
-	protected override bool OnRenderFrame(RenderContext render)
+	public void OnRenderWindow(IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
 	{
 		if (mUI == null || !mUI.IsRenderingInitialized)
-			return false;
+			return;
 
 		// Clear with dark background
 		ColorAttachment[1] clearAttachments = .(.()
 		{
-			View = render.CurrentTextureView,
+			View = frame.BackbufferView,
 			LoadOp = .Clear,
 			StoreOp = .Store,
 			ClearValue = ClearColor(30 / 255.0f, 30 / 255.0f, 35 / 255.0f, 1.0f)
 		});
 		RenderPassDesc clearPass = .() { ColorAttachments = .(clearAttachments) };
-		let rp = render.Encoder.BeginRenderPass(clearPass);
+		let rp = frame.Encoder.BeginRenderPass(clearPass);
 		if (rp != null)
 			rp.End();
 
 		// Render UI
-		mUI.Render(render.Encoder, render.CurrentTextureView,
-			render.SwapChain.Width, render.SwapChain.Height,
-			render.Frame.FrameIndex);
-
-		return true;
+		mUI.Render(frame.Encoder, frame.BackbufferView,
+			frame.Width, frame.Height,
+			(int32)frame.FrameIndex);
 	}
 
-	protected override void OnShutdown()
+	public void OnShutdown(IApplicationHost host)
 	{
 		StopPlayback();
 		mAudioSystem?.Dispose();
@@ -395,18 +422,50 @@ class AudioSandboxApp : Application
 		delete mAudioSystem;
 		mAudioSystem = null;
 	}
+
+	private void DiscoverAssets()
+	{
+		let cwd = Directory.GetCurrentDirectory(.. scope .());
+		var searchDir = scope String(cwd);
+		while (true)
+		{
+			let assetsPath = scope String();
+			Path.InternalCombine(assetsPath, searchDir, "Assets");
+			if (Directory.Exists(assetsPath))
+			{
+				let marker = scope String();
+				Path.InternalCombine(marker, assetsPath, ".assets");
+				if (File.Exists(marker)) { mAssetDirectory.Set(assetsPath); return; }
+			}
+			let parent = Path.GetDirectoryPath(searchDir, .. scope .());
+			if (parent.IsEmpty || parent == searchDir) { mAssetDirectory.Set(cwd); return; }
+			searchDir.Set(parent);
+		}
+	}
 }
 
 class Program
 {
 	public static int Main(String[] args)
 	{
-		let app = scope AudioSandboxApp();
-		return app.Run(.()
+		let shell = scope SDL3Shell();
+		if (shell.Initialize() case .Err)
 		{
-			Title = "Audio Sandbox",
-			Width = 800, Height = 600,
-			EnableDepth = false
-		});
+			Console.WriteLine("ERROR: Failed to initialize shell");
+			return 1;
+		}
+		defer shell.Shutdown();
+
+		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = true });
+		if (graphicsResult case .Err)
+		{
+			Console.WriteLine("ERROR: Failed to create graphics device");
+			return 1;
+		}
+		let graphics = graphicsResult.Value;
+		defer delete graphics;
+
+		let app = scope AudioSandboxApp();
+		return ApplicationHost.RunApplication(app, shell, graphics);
 	}
 }

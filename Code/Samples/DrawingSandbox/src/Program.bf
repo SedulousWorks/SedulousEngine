@@ -1,19 +1,22 @@
 namespace DrawingSandbox;
 
 using System;
+using System.IO;
 using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
 using Sedulous.Runtime.Client;
+using Sedulous.RuntimeGraphics;
 using Sedulous.Drawing;
 using Sedulous.Fonts.TTF;
 using Sedulous.Drawing.Renderer;
 using Sedulous.Fonts;
 using Sedulous.Shaders;
-using Sedulous.Runtime;
+using Sedulous.VFS.Disk;
+using Sedulous.Shell.SDL3;
 
 /// Drawing sandbox sample demonstrating Sedulous.Drawing capabilities.
-class DrawingSandboxApp : Application
+class DrawingSandboxApp : IApplication
 {
 	// Font service
 	private TrueTypeFontService mTrueTypeFontService;
@@ -28,22 +31,51 @@ class DrawingSandboxApp : Application
 	// Shader system
 	private ShaderSystem mShaderSystem;
 
+	// Builtin mount for VFS font loading
+	private FileSystemMount mBuiltinMount ~ delete _;
+
+	// Asset directory
+	private String mAssetDirectory = new .() ~ delete _;
+
+	// Cached device reference
+	private IDevice mDevice;
+
 	// Font size used for labels
 	private const float FONT_SIZE = 20;
 
 	// Animation state
 	private float mAnimationTime = 0;
 
+	// Timing
+	private float mTotalTime = 0;
+
 	// FPS tracking
 	private int mFrameCount = 0;
 	private float mFpsTimer = 0;
 	private int mCurrentFps = 0;
 
-	public this() : base()
+	// Cached screen dimensions
+	private uint32 mWidth;
+	private uint32 mHeight;
+
+	public ApplicationSettings Settings()
 	{
+		return .()
+		{
+			Title = "Drawing Sandbox",
+			Width = 1280, Height = 720,
+			EnableDepth = false
+		};
 	}
 
-	protected override void OnInitialize(Context context)
+	public void Configure(IApplicationHost host)
+	{
+		DiscoverAssets();
+		mBuiltinMount = new FileSystemMount(mAssetDirectory);
+		mDevice = host.Graphics.Raw;
+	}
+
+	public void OnStartup(IApplicationHost host)
 	{
 		if (!InitializeFont())
 			return;
@@ -51,19 +83,21 @@ class DrawingSandboxApp : Application
 		// Initialize shader system
 		mShaderSystem = new ShaderSystem();
 		String shaderPath = scope .();
-		GetAssetPath("shaders", shaderPath);
-		if (mShaderSystem.Initialize(Device, scope StringView[](shaderPath)) case .Err)
+		Path.InternalCombine(shaderPath, mAssetDirectory, "shaders");
+		if (mShaderSystem.Initialize(mDevice, scope StringView[](shaderPath)) case .Err)
 		{
 			Console.WriteLine("Failed to initialize shader system");
 			return;
 		}
+
+		let rw = host.MainWindow;
 
 		// Create draw context with font service
 		mDrawContext = new DrawContext(mTrueTypeFontService);
 
 		// Create and initialize the drawing renderer
 		mDrawingRenderer = new DrawingRenderer();
-		if (mDrawingRenderer.Initialize(Device, SwapChain.Format, (int32)SwapChain.BufferCount, mShaderSystem) case .Err)
+		if (mDrawingRenderer.Initialize(mDevice, rw.Swap.Format, (int32)rw.Swap.BufferCount, mShaderSystem) case .Err)
 		{
 			Console.WriteLine("Failed to initialize DrawingRenderer");
 			return;
@@ -74,9 +108,9 @@ class DrawingSandboxApp : Application
 
 	private bool InitializeFont()
 	{
-		// Route font loading through the inherited `builtin://` mount so we
+		// Route font loading through the builtin mount so we
 		// open via VFS rather than raw disk paths.
-		mTrueTypeFontService = new TrueTypeFontService(BuiltinMount);
+		mTrueTypeFontService = new TrueTypeFontService(mBuiltinMount);
 
 		let locator = "fonts/roboto/Roboto-Regular.ttf";
 
@@ -94,13 +128,14 @@ class DrawingSandboxApp : Application
 		return true;
 	}
 
-	protected override void OnUpdate(FrameContext frame)
+	public void OnUpdate(IApplicationHost host, float deltaTime)
 	{
-		mAnimationTime = frame.TotalTime;
+		mTotalTime += deltaTime;
+		mAnimationTime = mTotalTime;
 
 		// FPS calculation
 		mFrameCount++;
-		mFpsTimer += frame.DeltaTime;
+		mFpsTimer += deltaTime;
 		if (mFpsTimer >= 1.0f)
 		{
 			mCurrentFps = mFrameCount;
@@ -109,29 +144,50 @@ class DrawingSandboxApp : Application
 		}
 	}
 
-	protected override void OnPrepareFrame(FrameContext frame)
+	public void OnRenderWindow(IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
 	{
 		if (mDrawingRenderer == null || !mDrawingRenderer.IsInitialized)
 			return;
+
+		mWidth = frame.Width;
+		mHeight = frame.Height;
 
 		// Build drawing commands
 		BuildDrawCommands();
 
 		// Prepare batch data for GPU
-		mDrawingRenderer.BeginFrame(frame.FrameIndex);
+		let fi = (int32)frame.FrameIndex;
+		mDrawingRenderer.BeginFrame(fi);
 		let batch = mDrawContext.GetBatch();
 		if (batch != null)
-			mDrawingSlice = mDrawingRenderer.Prepare(batch, frame.FrameIndex, SwapChain.Width, SwapChain.Height);
+			mDrawingSlice = mDrawingRenderer.Prepare(batch, fi, frame.Width, frame.Height);
 		else
 			mDrawingSlice = .Invalid;
+
+		// Create render pass targeting swap chain (no depth for 2D drawing)
+		ColorAttachment[1] colorAttachments = .(.()
+		{
+			View = frame.BackbufferView,
+			LoadOp = .Clear,
+			StoreOp = .Store,
+			ClearValue = ClearColor(0.1f, 0.1f, 0.15f, 1.0f)
+		});
+		RenderPassDesc passDesc = .() { ColorAttachments = .(colorAttachments) };
+
+		let renderPass = frame.Encoder.BeginRenderPass(passDesc);
+		if (renderPass != null)
+		{
+			mDrawingRenderer.Render(renderPass, frame.Width, frame.Height, fi, mDrawingSlice);
+			renderPass.End();
+		}
 	}
 
 	private void BuildDrawCommands()
 	{
 		mDrawContext.Clear();
 
-		float screenWidth = (float)SwapChain.Width;
-		float screenHeight = (float)SwapChain.Height;
+		float screenWidth = (float)mWidth;
+		float screenHeight = (float)mHeight;
 		float margin = 20;
 		float columnWidth = (screenWidth - margin * 4) / 3;
 
@@ -304,33 +360,7 @@ class DrawingSandboxApp : Application
 		mDrawContext.DrawText(text, FONT_SIZE, .(x, y), color);
 	}
 
-	protected override bool OnRenderFrame(RenderContext render)
-	{
-		if (mDrawingRenderer == null || !mDrawingRenderer.IsInitialized)
-			return false;
-
-		// Create render pass targeting swap chain (no depth for 2D drawing)
-		ColorAttachment[1] colorAttachments = .(.()
-		{
-			View = render.CurrentTextureView,
-			LoadOp = .Clear,
-			StoreOp = .Store,
-			ClearValue = ClearColor(0.1f, 0.1f, 0.15f, 1.0f)
-		});
-		RenderPassDesc passDesc = .() { ColorAttachments = .(colorAttachments) };
-
-		let renderPass = render.Encoder.BeginRenderPass(passDesc);
-		if (renderPass != null)
-		{
-			mDrawingRenderer.Render(renderPass, render.SwapChain.Width, render.SwapChain.Height, render.Frame.FrameIndex, mDrawingSlice);
-			renderPass.End();
-			//delete renderPass;
-		}
-
-		return true;
-	}
-
-	protected override void OnShutdown()
+	public void OnShutdown(IApplicationHost host)
 	{
 		if (mDrawingRenderer != null)
 		{
@@ -347,18 +377,50 @@ class DrawingSandboxApp : Application
 			delete mShaderSystem;
 		}
 	}
+
+	private void DiscoverAssets()
+	{
+		let cwd = Directory.GetCurrentDirectory(.. scope .());
+		var searchDir = scope String(cwd);
+		while (true)
+		{
+			let assetsPath = scope String();
+			Path.InternalCombine(assetsPath, searchDir, "Assets");
+			if (Directory.Exists(assetsPath))
+			{
+				let marker = scope String();
+				Path.InternalCombine(marker, assetsPath, ".assets");
+				if (File.Exists(marker)) { mAssetDirectory.Set(assetsPath); return; }
+			}
+			let parent = Path.GetDirectoryPath(searchDir, .. scope .());
+			if (parent.IsEmpty || parent == searchDir) { mAssetDirectory.Set(cwd); return; }
+			searchDir.Set(parent);
+		}
+	}
 }
 
 class Program
 {
 	public static int Main(String[] args)
 	{
-		let app = scope DrawingSandboxApp();
-		return app.Run(.()
+		let shell = scope SDL3Shell();
+		if (shell.Initialize() case .Err)
 		{
-			Title = "Drawing Sandbox",
-			Width = 1280, Height = 720,
-			EnableDepth = false
-		});
+			Console.WriteLine("ERROR: Failed to initialize shell");
+			return 1;
+		}
+		defer shell.Shutdown();
+
+		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = true });
+		if (graphicsResult case .Err)
+		{
+			Console.WriteLine("ERROR: Failed to create graphics device");
+			return 1;
+		}
+		let graphics = graphicsResult.Value;
+		defer delete graphics;
+
+		let app = scope DrawingSandboxApp();
+		return ApplicationHost.RunApplication(app, shell, graphics);
 	}
 }

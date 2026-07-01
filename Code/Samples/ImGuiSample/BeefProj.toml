@@ -1,6 +1,17 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.RHI" = "*", "Sedulous.Shaders" = "*", "Sedulous.Runtime.Client" = "*", "cimgui-Beef" = "*"}
 
 [Project]
 Name = "ImGuiSample"
 StartupObject = "ImGuiSample.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core.Mathematics" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.Vulkan" = "*"
+"Sedulous.RHI.Validation" = "*"
+"Sedulous.Shaders" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Runtime.Graphics" = "*"
+"Sedulous.Shell.SDL3" = "*"
+"cimgui-Beef" = "*"
