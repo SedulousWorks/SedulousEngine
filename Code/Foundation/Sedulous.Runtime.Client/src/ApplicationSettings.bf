@@ -25,4 +25,6 @@ struct ApplicationSettings
 	public BackendType Backend = .Vulkan;
 	public bool EnableValidation = true;
 	public bool EnableShaderCache = false;
+	public float FixedTimeStep = 1.0f / 60.0f;
+	public float MaxFrameTime = 0.25f;
 }
