@@ -7,7 +7,7 @@ using Sedulous.Animation.Resources;
 using Sedulous.Core.Mathematics;
 using Sedulous.Engine;
 using Sedulous.Engine.Animation;
-using Sedulous.Engine.App;
+using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine.Core;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.UI;
@@ -22,6 +22,7 @@ using Sedulous.Models.GLTF;
 using Sedulous.Renderer;
 using Sedulous.Resources;
 using Sedulous.Runtime;
+using Sedulous.Runtime.Client;
 using Sedulous.Shell.Input;
 using Sedulous.Textures.Resources;
 using Sedulous.UI;
@@ -31,8 +32,15 @@ using Sedulous.UI;
 /// All copies share the same mesh/skeleton/clip/material resources — only the
 /// per-entity AnimationPlayer state and transform are unique. Each instance gets
 /// a randomized starting time so the herd doesn't move in lockstep.
-class AnimationSandboxApp : EngineApplication
+class AnimationSandboxApp : DefaultApplication
 {
+	public override ApplicationSettings Settings() => .()
+	{
+		Title = "Engine Animation Sandbox",
+		EnableShaderCache = true,
+		EnableValidation = false
+	};
+
 	// Tweak this single constant to change how many instances each click of
 	// +/- adds or removes (and the initial spawn count).
 	const int32 BatchSize = 128;
@@ -78,17 +86,19 @@ class AnimationSandboxApp : EngineApplication
 	List<EntityHandle> mCharEntities = new .() ~ delete _;
 	Random mRandom = new .(12345) ~ delete _;
 
-	protected override void OnStartup()
+	public override void OnStartup(Sedulous.Runtime.Client.IApplicationHost host)
 	{
+		base.OnStartup(host);
+
 		Console.WriteLine("=== EngineAnimationSandbox OnStartup ===");
 
 		STBImageLoader.Initialize();
 		GltfModels.Initialize();
 
-		SetupScreenUI();
+		SetupScreenUI(host);
 
-		let sceneSub = Context.GetSubsystem<SceneSubsystem>();
-		let renderSub = Context.GetSubsystem<RenderSubsystem>();
+		let sceneSub = host.Ctx.GetSubsystem<SceneSubsystem>();
+		let renderSub = host.Ctx.GetSubsystem<RenderSubsystem>();
 		let renderer = renderSub.RenderContext;
 		let matSystem = renderer.MaterialSystem;
 
@@ -102,7 +112,7 @@ class AnimationSandboxApp : EngineApplication
 		mGrayMaterial.SetColor("BaseColor", .(0.45f, 0.46f, 0.48f, 1));
 
 		// ---- Ground plane ----
-		let resources = ResourceSystem;
+		let resources = mResourceSystem;
 		mPlaneRes = StaticMeshResource.CreatePlane(60, 60, 1, 1);
 		resources.AddResource<StaticMeshResource>(mPlaneRes);
 
@@ -194,7 +204,7 @@ class AnimationSandboxApp : EngineApplication
 			return false;
 		}
 
-		let resources = ResourceSystem;
+		let resources = mResourceSystem;
 
 		// Skeleton.
 		let skeleton = importResult.Skeletons[0];
@@ -374,7 +384,7 @@ class AnimationSandboxApp : EngineApplication
 		}
 	}
 
-	protected override void OnUpdate(float deltaTime)
+	public override void OnUpdate(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime)
 	{
 		// Smooth FPS readout so it doesn't strobe.
 		mFrameTimeMs = mFrameTimeMs * 0.9f + (deltaTime * 1000.0f) * 0.1f;
@@ -392,9 +402,9 @@ class AnimationSandboxApp : EngineApplication
 		DesyncNewPlayers();
 
 		// Camera + exit.
-		let uiSub = Context.GetSubsystem<EngineUISubsystem>();
+		let uiSub = host.Ctx.GetSubsystem<EngineUISubsystem>();
 		let uiHovered = uiSub?.IsMouseOverUI ?? false;
-		UpdateCamera(deltaTime, uiHovered);
+		UpdateCamera(host, deltaTime, uiHovered);
 	}
 
 	void UpdateCountLabel()
@@ -405,9 +415,9 @@ class AnimationSandboxApp : EngineApplication
 		mCountLabel.SetText(text);
 	}
 
-	void SetupScreenUI()
+	void SetupScreenUI(Sedulous.Runtime.Client.IApplicationHost host)
 	{
-		let uiSub = Context.GetSubsystem<EngineUISubsystem>();
+		let uiSub = host.Ctx.GetSubsystem<EngineUISubsystem>();
 		if (uiSub?.ScreenView == null) return;
 
 		let root = uiSub.ScreenView.Root;
@@ -471,14 +481,14 @@ class AnimationSandboxApp : EngineApplication
 		});
 	}
 
-	void UpdateCamera(float deltaTime, bool uiHovered = false)
+	void UpdateCamera(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime, bool uiHovered = false)
 	{
-		let keyboard = mShell.InputManager.Keyboard;
-		let mouse    = mShell.InputManager.Mouse;
+		let keyboard = host.Shell.InputManager.Keyboard;
+		let mouse    = host.Shell.InputManager.Mouse;
 
 		if (keyboard.IsKeyPressed(.Escape))
 		{
-			Exit();
+			host.RequestExit();
 			return;
 		}
 
@@ -518,9 +528,7 @@ class AnimationSandboxApp : EngineApplication
 		}
 	}
 
-	protected override void OnCleanup() { }
-
-	protected override void OnShutdown()
+	public override void OnShutdown(Sedulous.Runtime.Client.IApplicationHost host)
 	{
 		Console.WriteLine("=== EngineAnimationSandbox OnShutdown ({0} chars) ===", mCharEntities.Count);
 
@@ -534,5 +542,7 @@ class AnimationSandboxApp : EngineApplication
 			texRes?.ReleaseRef();
 		for (let matRes in mCharMaterialResources)
 			matRes?.ReleaseRef();
+
+		base.OnShutdown(host);
 	}
 }

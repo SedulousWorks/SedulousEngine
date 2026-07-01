@@ -1,11 +1,13 @@
 namespace EngineSandbox;
 
 using System;
-using Sedulous.Engine.App;
+using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Core;
 using Sedulous.Runtime;
+using Sedulous.Runtime.Client;
+using Sedulous.RuntimeGraphics;
 using Sedulous.RHI;
 using Sedulous.Renderer;
 using Sedulous.Geometry;
@@ -40,8 +42,16 @@ using Sedulous.UI;
 using Sedulous.Shell;
 using Sedulous.Images;
 
-class SandboxApp : EngineApplication
+class SandboxApp : DefaultApplication
 {
+	public override ApplicationSettings Settings() => .()
+	{
+		Title = "Engine Sandbox",
+		Width = 1280,
+		Height = 720,
+		EnableShaderCache = true
+	};
+
 	// Smoothed frame-time stats for the FPS counter.
 	private float mFpsSmoothed = 0.0f;
 	private float mFrameTimeMs = 0.0f;
@@ -135,8 +145,9 @@ class SandboxApp : EngineApplication
 	ParticleEffect mTrailEffect ~ delete _;
 	ParticleEffect mFireworksEffect ~ delete _;
 
-	protected override void OnStartup()
+	public override void OnStartup(Sedulous.Runtime.Client.IApplicationHost host)
 	{
+		base.OnStartup(host);
 		Console.WriteLine("=== EngineSandbox OnStartup ===");
 
 		// Initialize image loaders and writers
@@ -145,10 +156,10 @@ class SandboxApp : EngineApplication
 		SDLImageWriter.Initialize();
 
 		// Set up screen UI overlay.
-		SetupScreenUI();
+		SetupScreenUI(host.Ctx);
 
-		let sceneSub = Context.GetSubsystem<SceneSubsystem>();
-		let renderSub = Context.GetSubsystem<RenderSubsystem>();
+		let sceneSub = host.Ctx.GetSubsystem<SceneSubsystem>();
+		let renderSub = host.Ctx.GetSubsystem<RenderSubsystem>();
 		let renderer = renderSub.RenderContext;
 		let matSystem = renderer.MaterialSystem;
 
@@ -209,7 +220,7 @@ class SandboxApp : EngineApplication
 
 		// ==================== Geometry (registered as resources) ====================
 
-		let resources = ResourceSystem;
+		let resources = mResourceSystem;
 
 		// Create mesh resources and register with resource system
 		mPlaneRes = StaticMeshResource.CreatePlane(30, 30, 1, 1);
@@ -845,7 +856,7 @@ class SandboxApp : EngineApplication
 		// Build a navmesh from the ground plane and spawn crowd agents.
 		// 1=add agent, 2=remove agent, left-click=move target
 		{
-			let navSub = Context.GetSubsystem<NavigationSubsystem>();
+			let navSub = host.Ctx.GetSubsystem<NavigationSubsystem>();
 			let navWorld = navSub?.GetNavWorld(scene);
 			if (navWorld != null)
 			{
@@ -1021,7 +1032,7 @@ class SandboxApp : EngineApplication
 
 		// ==================== Audio ====================
 		{
-			let audioSub = Context.GetSubsystem<AudioSubsystem>();
+			let audioSub = host.Ctx.GetSubsystem<AudioSubsystem>();
 			if (audioSub != null)
 			{
 				let decoder = scope AudioDecoderFactory();
@@ -1224,7 +1235,7 @@ class SandboxApp : EngineApplication
 			comp.SetEffect(effect);
 	}
 
-	protected override void OnUpdate(float deltaTime)
+	public override void OnUpdate(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime)
 	{
 		// Add world UI content once component is initialized.
 		TryAddWorldUIContent();
@@ -1236,14 +1247,15 @@ class SandboxApp : EngineApplication
 		TryAddBillboards();
 
 		// ==================== UI Debug ====================
-		let uiSub = Context.GetSubsystem<EngineUISubsystem>();
+		let uiSub = host.Ctx.GetSubsystem<EngineUISubsystem>();
 
 		// F1 toggles UI debug bounds overlay.
-		if (mShell.InputManager.Keyboard.IsKeyPressed(.F1) && uiSub?.UIContext != null)
+		if (host.Shell.InputManager.Keyboard.IsKeyPressed(.F1) && uiSub?.UIContext != null)
 			uiSub.UIContext.DebugSettings.ShowBounds = !uiSub.UIContext.DebugSettings.ShowBounds;
 
 		// F12: capture screenshot
-		if (mShell.InputManager.Keyboard.IsKeyPressed(.F11))
+		// F11: capture screenshot
+		if (host.Shell.InputManager.Keyboard.IsKeyPressed(.F11))
 		{
 			let path = scope String();
 			System.IO.Path.InternalCombine(path, AssetCacheDirectory, scope $"screenshot_{System.DateTime.Now.Ticks}.png");
@@ -1253,10 +1265,10 @@ class SandboxApp : EngineApplication
 		// ==================== Camera Controls ====================
 		// Block camera mouse input when UI has the mouse.
 		let uiHovered = uiSub?.IsMouseOverUI ?? false;
-		UpdateCamera(deltaTime, uiHovered);
+		UpdateCamera(host, deltaTime, uiHovered);
 
 		// ==================== Debug HUD ====================
-		let rs = Context.GetSubsystem<RenderSubsystem>();
+		let rs = host.Ctx.GetSubsystem<RenderSubsystem>();
 		if (rs == null) return;
 		let dbg = rs.DebugDraw;
 		if (dbg == null) return;
@@ -1278,9 +1290,9 @@ class SandboxApp : EngineApplication
 		dbg.DrawAxis(Matrix.Identity, 1.5f);
 
 		// M key: play next RPG sound effect
-		if (mShell.InputManager.Keyboard.IsKeyPressed(.M) && mOneShotClips.Count > 0)
+		if (host.Shell.InputManager.Keyboard.IsKeyPressed(.M) && mOneShotClips.Count > 0)
 		{
-			let audioSub = Context.GetSubsystem<AudioSubsystem>();
+			let audioSub = host.Ctx.GetSubsystem<AudioSubsystem>();
 			if (audioSub != null)
 			{
 				audioSub.PlayOneShot(mOneShotClips[mOneShotIndex], 0.8f);
@@ -1291,8 +1303,8 @@ class SandboxApp : EngineApplication
 		// Navigation: 1=add agent, 2=remove, left-click=move target
 		if (mScene != null)
 		{
-			let keyboard = mShell.InputManager.Keyboard;
-			let mouse = mShell.InputManager.Mouse;
+			let keyboard = host.Shell.InputManager.Keyboard;
+			let mouse = host.Shell.InputManager.Mouse;
 			let navMgr = mScene.GetModule<NavigationComponentManager>();
 
 			if (navMgr != null)
@@ -1359,7 +1371,7 @@ class SandboxApp : EngineApplication
 							}
 
 							// Update path from first agent to target
-							let navSub = Context.GetSubsystem<NavigationSubsystem>();
+							let navSub = host.Ctx.GetSubsystem<NavigationSubsystem>();
 							let navWorld = navSub?.GetNavWorld(mScene);
 							if (navWorld != null && mNavAgentEntities.Count > 0)
 							{
@@ -1562,15 +1574,15 @@ class SandboxApp : EngineApplication
 		}
 	}
 
-	private void UpdateCamera(float deltaTime, bool uiHovered = false)
+	private void UpdateCamera(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime, bool uiHovered = false)
 	{
-		let keyboard = mShell.InputManager.Keyboard;
-		let mouse = mShell.InputManager.Mouse;
+		let keyboard = host.Shell.InputManager.Keyboard;
+		let mouse = host.Shell.InputManager.Mouse;
 
 		// Escape exits.
 		if (keyboard.IsKeyPressed(.Escape))
 		{
-			Exit();
+			host.RequestExit();
 			return;
 		}
 
@@ -1871,9 +1883,9 @@ class SandboxApp : EngineApplication
 		comp.MarkDirty();
 	}
 
-	private void SetupScreenUI()
+	private void SetupScreenUI(Context ctx)
 	{
-		let uiSub = Context.GetSubsystem<EngineUISubsystem>();
+		let uiSub = ctx.GetSubsystem<EngineUISubsystem>();
 		if (uiSub?.ScreenView == null) return;
 
 		let root = uiSub.ScreenView.Root;
@@ -2002,7 +2014,7 @@ class SandboxApp : EngineApplication
 		jitterSlider.OnValueChanged.Add(new (s, val) =>
 		{
 			// JitterScale is a pipeline-level property, not on RenderSceneModule
-			let rs = Context.GetSubsystem<RenderSubsystem>();
+			let rs = ctx.GetSubsystem<RenderSubsystem>();
 			let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null;
 			if (pipeline != null)
 				pipeline.JitterScale = val;
@@ -2025,11 +2037,7 @@ class SandboxApp : EngineApplication
 		});
 	}
 
-	protected override void OnCleanup()
-	{
-	}
-
-	protected override void OnShutdown()
+	public override void OnShutdown(Sedulous.Runtime.Client.IApplicationHost host)
 	{
 		// Release fox resources
 		for (let foxMatRes in mFoxMaterialResources)
@@ -2061,6 +2069,7 @@ class SandboxApp : EngineApplication
 			charMat?.ReleaseRef();
 
 		Console.WriteLine("=== EngineSandbox OnShutdown ===");
+		base.OnShutdown(host);
 	}
 
 	// ==================== Navigation Helpers ====================

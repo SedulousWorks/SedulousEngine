@@ -6,7 +6,7 @@ using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
 using Sedulous.Runtime;
 using Sedulous.Engine;
-using Sedulous.Engine.App;
+using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine.Render;
 using Sedulous.Renderer;
 using Sedulous.Geometry;
@@ -24,6 +24,9 @@ using Sedulous.Models.GLTF;
 using Sedulous.Shell;
 using Sedulous.Engine.Core;
 using Sedulous.Models.FBX;
+using Sedulous.Runtime.Client;
+using Sedulous.RuntimeGraphics;
+using Sedulous.Shell.SDL3;
 
 /// Loaded model asset: mesh resource + per-slot material resource refs.
 class LoadedModel
@@ -40,8 +43,14 @@ class LoadedModel
 }
 
 /// Stylized nature showcase scene.
-class ShowcaseApp : EngineApplication
+class ShowcaseApp : DefaultApplication
 {
+	public override ApplicationSettings Settings() => .()
+	{
+		Title = "Sedulous - Nature Showcase",
+		EnableShaderCache = true
+	};
+
 	private Scene mScene;
 	private EntityHandle mCameraEntity;
 
@@ -73,18 +82,20 @@ class ShowcaseApp : EngineApplication
 	private ResourceRef mRealisticSkyRef = .(.Empty, "builtin://skies/realistic_sky.texture") ~ _.Dispose();
 	private ResourceRef mStylizedSkyRef = .(.Empty, "builtin://skies/stylized_sky.texture") ~ _.Dispose();
 
-	protected override void OnStartup()
+	public override void OnStartup(Sedulous.Runtime.Client.IApplicationHost host)
 	{
+		base.OnStartup(host);
+
 		SDLImageLoader.Initialize();
 		STBImageLoader.Initialize();
 		GltfModels.Initialize();
 		FbxModels.Initialize();
 
-		let sceneSub = Context.GetSubsystem<SceneSubsystem>();
-		let renderSub = Context.GetSubsystem<RenderSubsystem>();
+		let sceneSub = host.Ctx.GetSubsystem<SceneSubsystem>();
+		let renderSub = host.Ctx.GetSubsystem<RenderSubsystem>();
 		let renderer = renderSub.RenderContext;
 		let matSystem = renderer.MaterialSystem;
-		let resources = ResourceSystem;
+		let resources = mResourceSystem;
 
 		// Create scene
 		let scene = sceneSub.CreateScene("NatureShowcase");
@@ -503,14 +514,14 @@ class ShowcaseApp : EngineApplication
 
 	// ==================== Update ====================
 
-	protected override void OnUpdate(float deltaTime)
+	public override void OnUpdate(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime)
 	{
 		// FPS counter
 		mFrameTimeMs = mFrameTimeMs * 0.9f + (deltaTime * 1000.0f) * 0.1f;
 		let fps = mFrameTimeMs > 0.001f ? 1000.0f / mFrameTimeMs : 0.0f;
 		mFpsSmoothed = mFpsSmoothed * 0.9f + fps * 0.1f;
 
-		let renderSub = Context.GetSubsystem<RenderSubsystem>();
+		let renderSub = host.Ctx.GetSubsystem<RenderSubsystem>();
 		if (let dbg = renderSub?.RenderContext?.DebugDraw)
 		{
 			let line1 = scope String();
@@ -524,13 +535,13 @@ class ShowcaseApp : EngineApplication
 			dbg.DrawScreenText(10, 22, line2, .(200, 200, 200));
 		}
 
-		let keyboard = mShell.InputManager.Keyboard;
-		let mouse = mShell.InputManager.Mouse;
+		let keyboard = host.Shell.InputManager.Keyboard;
+		let mouse = host.Shell.InputManager.Mouse;
 
 		// Escape to exit
 		if (keyboard.IsKeyPressed(.Escape))
 		{
-			Exit();
+			host.RequestExit();
 			return;
 		}
 
@@ -590,7 +601,7 @@ class ShowcaseApp : EngineApplication
 
 	// ==================== Shutdown ====================
 
-	protected override void OnShutdown()
+	public override void OnShutdown(Sedulous.Runtime.Client.IApplicationHost host)
 	{
 		// Sky textures are managed by RenderSceneModule + ApplyRenderSettings,
 		// cleaned up automatically by the resolve state in RenderSubsystem.
@@ -605,6 +616,8 @@ class ShowcaseApp : EngineApplication
 		// Model cache keys
 		for (let key in mModelCache.Keys)
 			delete key;
+
+		base.OnShutdown(host);
 	}
 }
 
@@ -612,12 +625,24 @@ class Program
 {
 	public static int Main(String[] args)
 	{
-		let app = scope ShowcaseApp();
-		return app.Run(.()
+		let shell = scope SDL3Shell();
+		if (shell.Initialize() case .Err)
 		{
-			Title = "Sedulous - Nature Showcase",
-			Width = 1280, Height = 720,
-			EnableShaderCache = true
-		});
+			Console.WriteLine("ERROR: Failed to initialize shell");
+			return 1;
+		}
+		defer shell.Shutdown();
+
+		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = true });
+		if (graphicsResult case .Err)
+		{
+			Console.WriteLine("ERROR: Failed to create graphics device");
+			return 1;
+		}
+		let graphics = graphicsResult.Value;
+		defer delete graphics;
+
+		let app = scope ShowcaseApp();
+		return ApplicationHost.RunApplication(app, shell, graphics);
 	}
 }

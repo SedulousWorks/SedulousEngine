@@ -2,11 +2,12 @@ namespace EngineRenderStressTest;
 
 using System;
 using System.Collections;
-using Sedulous.Engine.App;
+using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Core;
 using Sedulous.Runtime;
+using Sedulous.Runtime.Client;
 using Sedulous.RHI;
 using Sedulous.Renderer;
 using Sedulous.Renderer.Debug;
@@ -25,8 +26,15 @@ using Sedulous.Textures.Resources;
 using Sedulous.Profiler;
 using Sedulous.Images;
 
-class RenderStressTestApp : EngineApplication
+class RenderStressTestApp : DefaultApplication
 {
+	public override ApplicationSettings Settings() => .()
+	{
+		Title = "Render Stress Test",
+		EnableShaderCache = true,
+		EnableValidation = false
+	};
+
 	private const int32 SpheresPerBatch = 8000;
 	private const float SphereSpacing = 1.5f;
 
@@ -66,8 +74,10 @@ class RenderStressTestApp : EngineApplication
 	ITexture mSkyTexture;
 	ITextureView mSkyTextureView;
 
-	protected override void OnStartup()
+	public override void OnStartup(Sedulous.Runtime.Client.IApplicationHost host)
 	{
+		base.OnStartup(host);
+
 		Console.WriteLine("=== Render Stress Test ===");
 		Console.WriteLine("Controls:");
 		Console.WriteLine("  Space: Add 8000 spheres");
@@ -75,17 +85,16 @@ class RenderStressTestApp : EngineApplication
 		Console.WriteLine("  U: Toggle unique materials (more draw calls)");
 		Console.WriteLine("  WASD/QE: Move camera");
 		Console.WriteLine("  RMB: Look, Tab: Capture, Shift: Fast");
-		Console.WriteLine("  P: Print profiler stats");
 		Console.WriteLine("  Escape: Exit");
 
 		SDLImageLoader.Initialize();
 		STBImageLoader.Initialize();
 
-		let sceneSub = Context.GetSubsystem<SceneSubsystem>();
-		let renderSub = Context.GetSubsystem<RenderSubsystem>();
+		let sceneSub = host.Ctx.GetSubsystem<SceneSubsystem>();
+		let renderSub = host.Ctx.GetSubsystem<RenderSubsystem>();
 		let renderer = renderSub.RenderContext;
 		let matSystem = renderer.MaterialSystem;
-		let resources = ResourceSystem;
+		let resources = mResourceSystem;
 
 		mScene = sceneSub.CreateScene("StressTest");
 
@@ -304,13 +313,14 @@ class RenderStressTestApp : EngineApplication
 
 		mBatchCount++;
 		Console.WriteLine("  Done. Total spheres: {}", mSphereEntities.Count);
-		}
 
 		// Capture the spawn frame's profile breakdown without having to
 		// time the P hotkey. Prints right after SProfiler.EndFrame() of
 		// the current frame so AddSphereBatch and its sub-scopes are
 		// fully accounted for.
 		RequestProfilePrint();
+		}
+
 	}
 
 	private void RemoveLastBatch()
@@ -344,11 +354,11 @@ class RenderStressTestApp : EngineApplication
 
 	float m_Time = 0.0f;
 
-	protected override void OnUpdate(float deltaTime)
+	public override void OnUpdate(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime)
 	{
-		UpdateCamera(deltaTime);
+		UpdateCamera(host, deltaTime);
 
-		let keyboard = mShell.InputManager.Keyboard;
+		let keyboard = host.Shell.InputManager.Keyboard;
 
 		// Space: add batch
 		if (keyboard.IsKeyPressed(.Space))
@@ -404,7 +414,7 @@ class RenderStressTestApp : EngineApplication
 		}
 
 		// HUD
-		let rs = Context.GetSubsystem<RenderSubsystem>();
+		let rs = host.Ctx.GetSubsystem<RenderSubsystem>();
 		if (rs == null) return;
 		let dbg = rs.DebugDraw;
 		if (dbg == null) return;
@@ -421,7 +431,7 @@ class RenderStressTestApp : EngineApplication
 		dbg.DrawScreenText(8, 8, fpsText, .White);
 
 		let controlText = scope String();
-		controlText.AppendF("Space=+8K  Backspace=-8K B=Sin Wave Bob  U=UniqueMats({0})  P=Profile  Esc=Exit",
+		controlText.AppendF("Space=+8K  Backspace=-8K B=Sin Wave Bob  U=UniqueMats({0})  Esc=Exit",
 			mUseUniqueMaterials ? "ON" : "OFF");
 		dbg.DrawScreenText(8, 20, controlText, .LightGray);
 
@@ -431,14 +441,14 @@ class RenderStressTestApp : EngineApplication
 		dbg.DrawScreenText(8, 32, drawCallText, .LightGray);
 	}
 
-	private void UpdateCamera(float deltaTime)
+	private void UpdateCamera(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime)
 	{
-		let keyboard = mShell.InputManager.Keyboard;
-		let mouse = mShell.InputManager.Mouse;
+		let keyboard = host.Shell.InputManager.Keyboard;
+		let mouse = host.Shell.InputManager.Mouse;
 
 		if (keyboard.IsKeyPressed(.Escape))
 		{
-			Exit();
+			host.RequestExit();
 			return;
 		}
 
@@ -498,9 +508,9 @@ class RenderStressTestApp : EngineApplication
 		}
 	}
 
-	protected override void OnShutdown()
+	public override void OnShutdown(Sedulous.Runtime.Client.IApplicationHost host)
 	{
-		let renderSub = Context.GetSubsystem<RenderSubsystem>();
+		let renderSub = host.Ctx.GetSubsystem<RenderSubsystem>();
 		let device = renderSub.RenderContext.Device;
 
 		if (let skyPass = renderSub.GetPipeline(mScene).GetPass<SkyPass>())
@@ -514,5 +524,7 @@ class RenderStressTestApp : EngineApplication
 		mSphereRes?.ReleaseRef();
 
 		Console.WriteLine("=== Stress Test Shutdown ===");
+
+		base.OnShutdown(host);
 	}
 }

@@ -1,20 +1,32 @@
 namespace EngineRenderStressTest;
 
 using System;
+using Sedulous.Shell.SDL3;
+using Sedulous.RuntimeGraphics;
+using Sedulous.Runtime.Client;
 
 class Program
 {
 	static int Main(String[] args)
 	{
+		let shell = scope SDL3Shell();
+		if (shell.Initialize() case .Err)
+		{
+			Console.WriteLine("ERROR: Failed to initialize shell");
+			return 1;
+		}
+		defer shell.Shutdown();
+
+		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = false });
+		if (graphicsResult case .Err)
+		{
+			Console.WriteLine("ERROR: Failed to create graphics device");
+			return 1;
+		}
+		let graphics = graphicsResult.Value;
+		defer delete graphics;
+
 		let app = scope RenderStressTestApp();
-		app.Run(.()
-			{
-				Title = "Render Stress Test",
-				Width = 1280,
-				Height = 720,
-				EnableShaderCache = true,
-				EnableValidation = false
-			});
-		return 0;
+		return ApplicationHost.RunApplication(app, shell, graphics);
 	}
 }

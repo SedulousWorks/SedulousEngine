@@ -1,20 +1,32 @@
 namespace EngineAnimationSandbox;
 
 using System;
-using Sedulous.Engine.App;
+using Sedulous.Shell.SDL3;
+using Sedulous.RuntimeGraphics;
+using Sedulous.Runtime.Client;
 
 class Program
 {
 	public static int Main(String[] args)
 	{
-		let app = scope AnimationSandboxApp();
-		return app.Run(.()
+		let shell = scope SDL3Shell();
+		if (shell.Initialize() case .Err)
 		{
-			Title = "Engine Animation Sandbox",
-			Width = 1280,
-			Height = 720,
-			EnableShaderCache = true,
-			EnableValidation = false
-		});
+			Console.WriteLine("ERROR: Failed to initialize shell");
+			return 1;
+		}
+		defer shell.Shutdown();
+
+		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = false });
+		if (graphicsResult case .Err)
+		{
+			Console.WriteLine("ERROR: Failed to create graphics device");
+			return 1;
+		}
+		let graphics = graphicsResult.Value;
+		defer delete graphics;
+
+		let app = scope AnimationSandboxApp();
+		return ApplicationHost.RunApplication(app, shell, graphics);
 	}
 }
