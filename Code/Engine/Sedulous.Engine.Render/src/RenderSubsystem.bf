@@ -523,6 +523,7 @@ class RenderSubsystem : Subsystem, ISceneAware, ISceneRenderer, IScreenRenderer
 		}
 
 		// --- Anti-aliasing (TAA and FXAA are mutually exclusive by enum) ---
+		pipeline.TAAEnabled = settings.AntiAliasing == .TAA;
 		if (let taa = pipeline.PostProcessStack?.GetEffect<TAAEffect>())
 		{
 			taa.Enabled = settings.AntiAliasing == .TAA;

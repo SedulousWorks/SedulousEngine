@@ -1909,13 +1909,9 @@ class SandboxApp : EngineApplication
 		ssaoToggle.IsChecked.Value = false;
 		ssaoToggle.OnCheckedChanged.Add(new (cb, isChecked) =>
 		{
-			let rs = Context.GetSubsystem<RenderSubsystem>();
-			let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null;
-			if (pipeline?.PostProcessStack != null)
-			{
-				let ssao = pipeline.PostProcessStack.GetEffect<SSAOEffect>();
-				if (ssao != null) ssao.Enabled = isChecked;
-			}
+			let settings = mScene?.GetModule<RenderSceneModule>();
+			if (settings != null)
+				settings.SSAOEnabled = isChecked;
 		});
 		hudLayout.AddView(ssaoToggle, new FlexLayout.LayoutParams() { Width = .Match, Height = .Fixed(.Px(20)) });
 
@@ -1927,13 +1923,9 @@ class SandboxApp : EngineApplication
 		let radiusSlider = new Slider(0.1f, 3.0f, 0.5f);
 		radiusSlider.OnValueChanged.Add(new (s, val) =>
 		{
-			let rs = Context.GetSubsystem<RenderSubsystem>();
-			let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null;
-			if (pipeline?.PostProcessStack != null)
-			{
-				let ssao = pipeline.PostProcessStack.GetEffect<SSAOEffect>();
-				if (ssao != null) ssao.Radius = val;
-			}
+			let settings = mScene?.GetModule<RenderSceneModule>();
+			if (settings != null)
+				settings.SSAORadius = val;
 			radiusLabel.SetText(scope $"SSAO Radius: {val:F2}");
 		});
 		hudLayout.AddView(radiusSlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(400)), Height = .Fixed(.Px(24)) });
@@ -1945,13 +1937,9 @@ class SandboxApp : EngineApplication
 		let intensitySlider = new Slider(0.5f, 5.0f, 1.5f);
 		intensitySlider.OnValueChanged.Add(new (s, val) =>
 		{
-			let rs = Context.GetSubsystem<RenderSubsystem>();
-			let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null;
-			if (pipeline?.PostProcessStack != null)
-			{
-				let ssao = pipeline.PostProcessStack.GetEffect<SSAOEffect>();
-				if (ssao != null) ssao.Intensity = val;
-			}
+			let settings = mScene?.GetModule<RenderSceneModule>();
+			if (settings != null)
+				settings.SSAOIntensity = val;
 			intensityLabel.SetText(scope $"SSAO Intensity: {val:F2}");
 		});
 		hudLayout.AddView(intensitySlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(400)), Height = .Fixed(.Px(24)) });
@@ -1963,13 +1951,9 @@ class SandboxApp : EngineApplication
 		let biasSlider = new Slider(0.0f, 0.2f, 0.025f);
 		biasSlider.OnValueChanged.Add(new (s, val) =>
 		{
-			let rs = Context.GetSubsystem<RenderSubsystem>();
-			let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null;
-			if (pipeline?.PostProcessStack != null)
-			{
-				let ssao = pipeline.PostProcessStack.GetEffect<SSAOEffect>();
-				if (ssao != null) ssao.Bias = val;
-			}
+			let settings = mScene?.GetModule<RenderSceneModule>();
+			if (settings != null)
+				settings.SSAOBias = val;
 			biasLabel.SetText(scope $"SSAO Bias: {val:F3}");
 		});
 		hudLayout.AddView(biasSlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(400)), Height = .Fixed(.Px(24)) });
@@ -1983,12 +1967,13 @@ class SandboxApp : EngineApplication
 
 		fxaaToggle.OnCheckedChanged.Add(new (cb, isChecked) =>
 		{
-			let rs = Context.GetSubsystem<RenderSubsystem>();
-			let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null;
-			if (pipeline?.PostProcessStack != null)
+			let settings = mScene?.GetModule<RenderSceneModule>();
+			if (settings != null)
 			{
-				let fxaa = pipeline.PostProcessStack.GetEffect<FXAAEffect>();
-				if (fxaa != null) fxaa.Enabled = isChecked;
+				if (isChecked)
+					settings.AntiAliasing = .FXAA;
+				else if (settings.AntiAliasing == .FXAA)
+					settings.AntiAliasing = .None;
 				if (isChecked && taaToggle.IsChecked.Value)
 					taaToggle.IsChecked.Value = false;
 			}
@@ -2002,13 +1987,9 @@ class SandboxApp : EngineApplication
 		let blendSlider = new Slider(0.5f, 0.99f, 0.95f);
 		blendSlider.OnValueChanged.Add(new (s, val) =>
 		{
-			let rs = Context.GetSubsystem<RenderSubsystem>();
-			let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null;
-			if (pipeline?.PostProcessStack != null)
-			{
-				let taa = pipeline.PostProcessStack.GetEffect<TAAEffect>();
-				if (taa != null) taa.BlendFactor = val;
-			}
+			let settings = mScene?.GetModule<RenderSceneModule>();
+			if (settings != null)
+				settings.TAABlendFactor = val;
 			blendLabel.SetText(scope $"TAA Blend: {val:F2}");
 		});
 		hudLayout.AddView(blendSlider, new FlexLayout.LayoutParams() { Width = .Fixed(.Px(400)), Height = .Fixed(.Px(24)) });
@@ -2020,6 +2001,7 @@ class SandboxApp : EngineApplication
 		let jitterSlider = new Slider(0.0f, 2.0f, 1.0f);
 		jitterSlider.OnValueChanged.Add(new (s, val) =>
 		{
+			// JitterScale is a pipeline-level property, not on RenderSceneModule
 			let rs = Context.GetSubsystem<RenderSubsystem>();
 			let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null;
 			if (pipeline != null)
@@ -2030,18 +2012,15 @@ class SandboxApp : EngineApplication
 
 		taaToggle.OnCheckedChanged.Add(new (cb, isChecked) =>
 		{
-			let rs = Context.GetSubsystem<RenderSubsystem>();
-			let pipeline = (rs != null) ? rs.GetPipeline(mScene) : null;
-			if (pipeline != null)
+			let settings = mScene?.GetModule<RenderSceneModule>();
+			if (settings != null)
 			{
-				pipeline.TAAEnabled = isChecked;
-				if (pipeline.PostProcessStack != null)
-				{
-					let taa = pipeline.PostProcessStack.GetEffect<TAAEffect>();
-					if (taa != null) taa.Enabled = isChecked;
-					if (isChecked && fxaaToggle.IsChecked.Value)
-						fxaaToggle.IsChecked.Value = false;
-				}
+				if (isChecked)
+					settings.AntiAliasing = .TAA;
+				else if (settings.AntiAliasing == .TAA)
+					settings.AntiAliasing = .None;
+				if (isChecked && fxaaToggle.IsChecked.Value)
+					fxaaToggle.IsChecked.Value = false;
 			}
 		});
 	}
