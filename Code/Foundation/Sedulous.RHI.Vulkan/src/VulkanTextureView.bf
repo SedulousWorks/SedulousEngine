@@ -23,9 +23,10 @@ class VulkanTextureView : ITextureView
 	{
 		mDesc = desc;
 		mTexture = texture;
-		// Store dimensions for render area calculation
-		mWidth = texture.Desc.Width;
-		mHeight = texture.Desc.Height;
+		// Store mip-level dimensions for render area calculation.
+		// A view onto mip N should report that mip's extent, not mip-0's.
+		mWidth = Math.Max(1, texture.Desc.Width >> desc.BaseMipLevel);
+		mHeight = Math.Max(1, texture.Desc.Height >> desc.BaseMipLevel);
 		let format = (desc.Format == .Undefined) ? texture.Desc.Format : desc.Format;
 		mFormat = format;
 

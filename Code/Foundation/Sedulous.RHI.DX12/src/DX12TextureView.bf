@@ -338,4 +338,9 @@ class DX12TextureView : ITextureView
 
 	// --- Internal ---
 	public DX12Texture DX12Texture => mTexture;
+
+	/// Mip-level-adjusted width. A view onto mip N reports that mip's extent, not mip-0's.
+	public uint32 Width => Math.Max(1, mTexture.Desc.Width >> mDesc.BaseMipLevel);
+	/// Mip-level-adjusted height.
+	public uint32 Height => Math.Max(1, mTexture.Desc.Height >> mDesc.BaseMipLevel);
 }
