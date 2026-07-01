@@ -1,0 +1,32 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.DefaultApp"
+TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Runtime.Graphics" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Engine.Core" = "*"
+"Sedulous.Engine.Input" = "*"
+"Sedulous.Engine.Physics" = "*"
+"Sedulous.Engine.Animation" = "*"
+"Sedulous.Engine.Audio" = "*"
+"Sedulous.Engine.Navigation" = "*"
+"Sedulous.Engine.UI" = "*"
+"Sedulous.Engine.Render" = "*"
+"Sedulous.Fonts" = "*"
+"Sedulous.Fonts.TTF" = "*"
+"Sedulous.Shaders" = "*"
+"Sedulous.Resources" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.VFS.Disk" = "*"
+"Sedulous.Profiler" = "*"
+"Sedulous.Renderer" = "*"
+"Sedulous.Jobs" = "*"
+"Sedulous.Core.Logging" = "*"
+"Sedulous.Serialization.OpenDDL" = "*"
