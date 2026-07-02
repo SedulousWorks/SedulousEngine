@@ -103,6 +103,7 @@ class AnimationSandboxApp : DefaultApplication
 		let matSystem = renderer.MaterialSystem;
 
 		mScene = sceneSub.CreateScene("AnimationScene");
+		RuntimeScene = mScene;
 
 		// ---- Materials ----
 		mPbrMaterial = Materials.CreatePBR("PBR", "forward",

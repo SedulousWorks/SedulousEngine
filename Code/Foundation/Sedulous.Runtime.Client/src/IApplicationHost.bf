@@ -1,5 +1,7 @@
+using System;
 using Sedulous.RuntimeGraphics;
 using Sedulous.Shell;
+using Sedulous.Shell.Input;
 using Sedulous.Runtime;
 
 namespace Sedulous.Runtime.Client;
@@ -20,6 +22,41 @@ public interface IApplicationHost
 
 	/// The main window (created during Start). Null for headless runs.
 	RenderWindow MainWindow { get; }
+
+	/// Mouse the module should consume during OnUpdate. Standalone hosts
+	/// passthrough to Shell.InputManager.Mouse. The editor's
+	/// GameEditorPage returns a viewport-scoped adapter so cursor
+	/// coords are in the page-viewport's local space and click events
+	/// match the rendered scene.
+	IMouse Mouse { get => Shell?.InputManager?.Mouse; }
+
+	/// Keyboard the module should consume during OnUpdate. Standalone
+	/// hosts passthrough to Shell.InputManager.Keyboard. The editor's
+	/// GameEditorPage returns a focus-gated adapter that reports
+	/// "nothing pressed" while the game viewport is not focused.
+	IKeyboard Keyboard { get => Shell?.InputManager?.Keyboard; }
+
+	/// Returns a gamepad the module can consume during OnUpdate.
+	/// Standalone passes through to Shell.InputManager.GetGamepad.
+	/// Editor returns a focus-gated adapter. Returns null if index
+	/// is out of range.
+	IGamepad GetGamepad(int32 index) => Shell?.InputManager?.GetGamepad(index);
+
+	/// Engine built-in assets directory (shaders, fonts, default meshes).
+	/// Discovered by walking up from cwd looking for Assets/.assets marker.
+	StringView BuiltInAssetDirectory { get; }
+
+	/// Asset cache directory (shader cache, thumbnails).
+	StringView AssetCacheDirectory { get; }
+
+	/// Per-project assets directory. Standalone hosts derive this from
+	/// the working directory convention (<parent of cwd>/assets). The
+	/// editor returns the currently open project's directory. Empty
+	/// when no project convention applies or no project is loaded.
+	StringView ProjectAssetDirectory { get; }
+
+	/// Working directory at startup.
+	StringView RuntimeDirectory { get; }
 
 	/// Open an OS window at runtime backed by a RenderWindow.
 	/// Returns null when running headless (no graphics).

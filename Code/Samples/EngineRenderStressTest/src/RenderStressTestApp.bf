@@ -97,6 +97,7 @@ class RenderStressTestApp : DefaultApplication
 		let resources = mResourceSystem;
 
 		mScene = sceneSub.CreateScene("StressTest");
+		RuntimeScene = mScene;
 
 		// PBR material template
 		mPbrMaterial = Materials.CreatePBR("PBR", "forward",

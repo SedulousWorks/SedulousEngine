@@ -100,6 +100,7 @@ class ShowcaseApp : DefaultApplication
 		// Create scene
 		let scene = sceneSub.CreateScene("NatureShowcase");
 		mScene = scene;
+		RuntimeScene = scene;
 
 		// Ground material
 		mPbrMaterial = Materials.CreatePBR("PBR", "forward",

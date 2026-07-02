@@ -166,6 +166,7 @@ class SandboxApp : DefaultApplication
 		// Create scene
 		let scene = sceneSub.CreateScene("TestScene");
 		mScene = scene;
+		RuntimeScene = scene;
 
 		// Set up world-space UI panel demo.
 		SetupWorldUI();

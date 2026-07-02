@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Diagnostics;
+using System.IO;
 using Sedulous.RuntimeGraphics;
 using Sedulous.Shell;
 using Sedulous.Runtime;
@@ -26,6 +27,12 @@ sealed class ApplicationHost : IApplicationHost
 	private IShell mShell;
 	private GraphicsDevice mGraphics;
 
+	// Asset directories (discovered during Start)
+	private String mBuiltInAssetDirectory = new .() ~ delete _;
+	private String mAssetCacheDirectory = new .() ~ delete _;
+	private String mProjectAssetDirectory = new .() ~ delete _;
+	private String mRuntimeDirectory = new .() ~ delete _;
+
 	// State
 	private const int32 MaxFixedStepsPerFrame = 8;
 	private ApplicationSettings mSettings;
@@ -48,6 +55,10 @@ sealed class ApplicationHost : IApplicationHost
 	public Context Ctx => mContext;
 	public IShell Shell => mShell;
 	public GraphicsDevice Graphics => mGraphics;
+	public StringView BuiltInAssetDirectory => mBuiltInAssetDirectory;
+	public StringView AssetCacheDirectory => mAssetCacheDirectory;
+	public StringView ProjectAssetDirectory => mProjectAssetDirectory;
+	public StringView RuntimeDirectory => mRuntimeDirectory;
 
 	public RenderWindow OpenWindow(WindowSettings settings, RenderWindowDesc renderDesc)
 	{
@@ -105,6 +116,10 @@ sealed class ApplicationHost : IApplicationHost
 		mShell = shell;
 		mGraphics = graphics;
 		mSettings = app.Settings();
+
+		// Discover asset directories before anything else so Configure
+		// can use them (shader paths, builtin mount, etc.).
+		DiscoverAssetDirectories();
 
 		// Bring up the engine-wide JobSystem before any subsystem starts
 		JobSystem.Initialize();
@@ -276,5 +291,62 @@ sealed class ApplicationHost : IApplicationHost
 				wm.DestroyWindow(osWindow);
 		}
 		mPendingClose.Clear();
+	}
+
+	/// Discovers the built-in assets directory (by walking up from cwd
+	/// looking for Assets/.assets marker), the asset cache directory,
+	/// the project assets directory (convention: <parent of cwd>/assets),
+	/// and the runtime directory (cwd at startup).
+	private void DiscoverAssetDirectories()
+	{
+		let currentDir = Directory.GetCurrentDirectory(.. scope .());
+		mRuntimeDirectory.Set(currentDir);
+
+		// Project assets dir by convention: <parent of cwd>/assets
+		let parentOfCwd = Path.GetDirectoryPath(currentDir, .. scope .());
+		if (!parentOfCwd.IsEmpty)
+		{
+			let candidate = scope String();
+			Path.InternalCombine(candidate, parentOfCwd, "assets");
+			if (Directory.Exists(candidate))
+				mProjectAssetDirectory.Set(candidate);
+		}
+
+		// Walk up from cwd looking for Assets/.assets marker
+		String searchDir = scope .(currentDir);
+		while (true)
+		{
+			let assetsPath = scope String();
+			Path.InternalCombine(assetsPath, searchDir, "Assets");
+
+			if (Directory.Exists(assetsPath))
+			{
+				let markerPath = scope String();
+				Path.InternalCombine(markerPath, assetsPath, ".assets");
+
+				if (File.Exists(markerPath))
+				{
+					mBuiltInAssetDirectory.Set(assetsPath);
+					Path.InternalCombine(mAssetCacheDirectory, searchDir, "Assets", "cache");
+
+					if (!Directory.Exists(mAssetCacheDirectory))
+						Directory.CreateDirectory(mAssetCacheDirectory);
+
+					return;
+				}
+			}
+
+			let parentDir = Path.GetDirectoryPath(searchDir, .. scope .());
+
+			if (parentDir.IsEmpty || parentDir == searchDir)
+			{
+				Console.WriteLine("WARNING: Could not find Assets directory with .assets marker. Using current directory.");
+				mBuiltInAssetDirectory.Set(currentDir);
+				mAssetCacheDirectory.Set(currentDir);
+				return;
+			}
+
+			searchDir.Set(parentDir);
+		}
 	}
 }

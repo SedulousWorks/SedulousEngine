@@ -43,16 +43,18 @@ using Sedulous.Profiler;
 /// migrate from EngineApplication.
 class DefaultApplication : IApplication
 {
-	// Engine infrastructure (owned)
-	protected ShaderSystem mShaderSystem ~ { _?.Dispose(); delete _; };
-	protected TrueTypeFontService mFontService ~ delete _;
-	protected ResourceSystem mResourceSystem ~ delete _;
-	protected Sedulous.Core.Logging.Abstractions.ILogger mLogger ~ delete _;
-	protected FileSystemMount mBuiltinMount ~ delete _;
-	protected InMemoryResourceIndex mBuiltinIndex ~ delete _;
+	// Engine infrastructure (owned unless pre-set by an external host like the editor).
+	// When mOwnsInfrastructure is false, these are borrowed — don't delete them.
+	protected bool mOwnsInfrastructure = true;
+	protected ShaderSystem mShaderSystem ~ { if (mOwnsInfrastructure) { _?.Dispose(); delete _; } };
+	protected TrueTypeFontService mFontService ~ { if (mOwnsInfrastructure) delete _; };
+	protected ResourceSystem mResourceSystem ~ { if (mOwnsInfrastructure) delete _; };
+	protected Sedulous.Core.Logging.Abstractions.ILogger mLogger ~ { if (mOwnsInfrastructure) delete _; };
+	protected FileSystemMount mBuiltinMount ~ { if (mOwnsInfrastructure) delete _; };
+	protected InMemoryResourceIndex mBuiltinIndex ~ { if (mOwnsInfrastructure) delete _; };
 
 	// Asset directories (discovered at configure time)
-	private String mAssetDirectory = new .() ~ delete _;
+	private String mBuiltInAssetDirectory = new .() ~ delete _;
 	private String mAssetCacheDirectory = new .() ~ delete _;
 	private String mProjectAssetDirectory = new .() ~ delete _;
 	private String mRuntimeDirectory = new .() ~ delete _;
@@ -60,6 +62,21 @@ class DefaultApplication : IApplication
 	// Cached renderer interfaces (set in OnStartup after subsystems are ready)
 	private ISceneRenderer mSceneRenderer;
 	private IScreenRenderer mScreenRenderer;
+
+	/// The scene the host should render for this application. Set by the
+	/// game in OnLaunch after creating its gameplay scene. Cleared in
+	/// OnExit.
+	///
+	/// Standalone: DefaultApplication.OnRenderWindow renders this scene.
+	/// Editor: GameEditorPage reads this to know which scene to display
+	/// in the game viewport (the editor may have other scenes open in
+	/// edit-mode tabs - ActiveScenes[0] is not reliable).
+	///
+	/// This is a pragmatic solution. A future iteration may introduce a
+	/// more generic mechanism (e.g., a render target descriptor on
+	/// IApplication) once multi-viewport and split-screen use cases are
+	/// better understood.
+	public Scene RuntimeScene { get; protected set; }
 
 	// HDR output target (scene renders into this, then blit to backbuffer)
 	private ITexture mColorTarget;
@@ -80,6 +97,23 @@ class DefaultApplication : IApplication
 	// Subsystem references cached for window-dependent property updates
 	private EngineUISubsystem mUISub;
 
+	/// Pre-set shared infrastructure so Configure() reuses the editor's
+	/// systems instead of creating its own. Sets mOwnsInfrastructure = false
+	/// so the module won't delete the borrowed instances on shutdown.
+	/// Asset directories are NOT passed here - Configure reads them from
+	/// the host (IApplicationHost.BuiltInAssetDirectory, etc.).
+	/// Call BEFORE Configure().
+	public void PresetInfrastructure(
+		ResourceSystem resourceSystem, ShaderSystem shaderSystem,
+		TrueTypeFontService fontService, FileSystemMount builtinMount)
+	{
+		mOwnsInfrastructure = false;
+		mResourceSystem = resourceSystem;
+		mShaderSystem = shaderSystem;
+		mFontService = fontService;
+		mBuiltinMount = builtinMount;
+	}
+
 	/// The resource system (application-owned, shared with subsystems).
 	public ResourceSystem ResourceSystem => mResourceSystem;
 
@@ -90,7 +124,7 @@ class DefaultApplication : IApplication
 	public IFontService FontService => mFontService;
 
 	/// The discovered engine Assets directory (contains shaders, fonts, etc.).
-	public StringView AssetDirectory => mAssetDirectory;
+	public StringView BuiltInAssetDirectory => mBuiltInAssetDirectory;
 
 	/// Request that the current frame's profile be printed after the frame
 	/// completes. Call from inside OnUpdate when something interesting happens
@@ -113,7 +147,7 @@ class DefaultApplication : IApplication
 	public void GetAssetPath(StringView relativePath, String outPath)
 	{
 		outPath.Clear();
-		System.IO.Path.InternalCombine(outPath, mAssetDirectory, relativePath);
+		System.IO.Path.InternalCombine(outPath, mBuiltInAssetDirectory, relativePath);
 	}
 
 	/// The discovered asset cache directory.
@@ -133,28 +167,45 @@ class DefaultApplication : IApplication
 	/// Register subsystems, create engine infrastructure. The device is
 	/// available via host.Graphics.Raw but the main window does NOT exist
 	/// yet -- window-dependent properties are deferred to OnStartup.
+	///
+	/// When hosted by the editor, infrastructure (ResourceSystem, ShaderSystem,
+	/// FontService, asset directories) may be pre-set on the protected fields
+	/// before Configure is called. In that case, the existing instances are
+	/// kept and Configure only registers subsystems.
 	public virtual void Configure(Sedulous.Runtime.Client.IApplicationHost host)
 	{
 		let device = host.Graphics?.Raw;
 
-		// Discover asset directories (same logic as EngineApplication)
-		DiscoverAssetDirectories();
+		// Read asset directories from the host (ApplicationHost discovers
+		// them during Start; the editor provides its own values).
+		if (mBuiltInAssetDirectory.IsEmpty)
+			mBuiltInAssetDirectory.Set(host.BuiltInAssetDirectory);
+		if (mAssetCacheDirectory.IsEmpty)
+			mAssetCacheDirectory.Set(host.AssetCacheDirectory);
+		if (mProjectAssetDirectory.IsEmpty)
+			mProjectAssetDirectory.Set(host.ProjectAssetDirectory);
+		if (mRuntimeDirectory.IsEmpty)
+			mRuntimeDirectory.Set(host.RuntimeDirectory);
 
-		// Core systems
-		mLogger = new Sedulous.Core.Logging.Console.ConsoleLogger(.Information);
-		mResourceSystem = new ResourceSystem(mLogger);
-		mResourceSystem.EnableHotReload();
-		mResourceSystem.SetSerializerProvider(new OpenDDLSerializerProvider());
-		mResourceSystem.Startup();
+		// Core systems — skip if the host (editor) already provided them
+		if (mResourceSystem == null)
+		{
+			mLogger = new Sedulous.Core.Logging.Console.ConsoleLogger(.Information);
+			mResourceSystem = new ResourceSystem(mLogger);
+			mResourceSystem.EnableHotReload();
+			mResourceSystem.SetSerializerProvider(new OpenDDLSerializerProvider());
+			mResourceSystem.Startup();
+		}
 
 		// Mount builtin:// scheme and load registry
-		LoadBuiltinRegistry();
+		if (mBuiltinMount == null)
+			LoadBuiltinRegistry();
 
-		// Shader system (needs device)
-		if (device != null)
+		// Shader system (needs device) — skip if pre-set by editor host
+		if (mShaderSystem == null && device != null)
 		{
 			let shaderDir = scope String();
-			Path.InternalCombine(shaderDir, mAssetDirectory, "shaders");
+			Path.InternalCombine(shaderDir, mBuiltInAssetDirectory, "shaders");
 			let cacheDir = scope String();
 			Path.InternalCombine(cacheDir, mAssetCacheDirectory, "shaders");
 
@@ -164,13 +215,16 @@ class DefaultApplication : IApplication
 			mShaderSystem.Initialize(device, shaderPaths, settings.EnableShaderCache ? cacheDir : default);
 		}
 
-		// Font service (needs the builtin mount)
-		mFontService = new TrueTypeFontService(mBuiltinMount);
-		let robotoLocator = "fonts/roboto/Roboto-Regular.ttf";
-		if (mBuiltinMount != null && mBuiltinMount.Exists(robotoLocator))
+		// Font service — skip if pre-set by editor host
+		if (mFontService == null)
 		{
-			mFontService.LoadFont("Roboto", robotoLocator, .() { PixelHeight = 16 });
-			mFontService.LoadFont("Roboto", robotoLocator, .() { PixelHeight = 24 });
+			mFontService = new TrueTypeFontService(mBuiltinMount);
+			let robotoLocator = "fonts/roboto/Roboto-Regular.ttf";
+			if (mBuiltinMount != null && mBuiltinMount.Exists(robotoLocator))
+			{
+				mFontService.LoadFont("Roboto", robotoLocator, .() { PixelHeight = 16 });
+				mFontService.LoadFont("Roboto", robotoLocator, .() { PixelHeight = 24 });
+			}
 		}
 
 		// Register all standard subsystems
@@ -258,17 +312,12 @@ class DefaultApplication : IApplication
 			clearPass.End();
 		}
 
-		// Scene rendering
+		// Scene rendering - render RuntimeScene if set by the game module
 		mSceneRenderer.BeginRendering(encoder, mFrameIndex);
-		let sceneSub = host.Ctx.GetSubsystem<SceneSubsystem>();
-		if (sceneSub != null)
+		if (RuntimeScene != null)
 		{
-			for (let scene in sceneSub.ActiveScenes)
-			{
-				mSceneRenderer.RenderScene(scene, encoder, mColorTarget, mColorTargetView,
-					mRenderWidth, mRenderHeight, mFrameIndex);
-				break; // first active scene only
-			}
+			mSceneRenderer.RenderScene(RuntimeScene, encoder, mColorTarget, mColorTargetView,
+				mRenderWidth, mRenderHeight, mFrameIndex);
 		}
 		mSceneRenderer.EndRendering();
 
@@ -434,85 +483,25 @@ class DefaultApplication : IApplication
 		renderSub.Device = device;
 		renderSub.Window = host.MainWindow?.Window;
 		renderSub.ShaderSystem = mShaderSystem;
-		renderSub.AssetDirectory = mAssetDirectory;
+		renderSub.BuiltInAssetDirectory = mBuiltInAssetDirectory;
 		ctx.RegisterSubsystem(renderSub);
-	}
-
-	// ==================== Asset Discovery ====================
-
-	/// Discovers the assets and asset cache directories.
-	/// Searches from current directory upward for Assets folder with .assets marker.
-	private void DiscoverAssetDirectories()
-	{
-		let currentDir = Directory.GetCurrentDirectory(.. scope .());
-		mRuntimeDirectory.Set(currentDir);
-
-		// Derive project assets dir from RuntimeDirectory by convention:
-		// <parent of cwd>/assets. Apps following the standard layout
-		// (exe project dir nested under project root with sibling assets/)
-		// get a non-empty path here.
-		let parentOfCwd = Path.GetDirectoryPath(currentDir, .. scope .());
-		if (!parentOfCwd.IsEmpty)
-		{
-			let candidate = scope String();
-			Path.InternalCombine(candidate, parentOfCwd, "assets");
-			if (Directory.Exists(candidate))
-				mProjectAssetDirectory.Set(candidate);
-		}
-
-		String searchDir = scope .(currentDir);
-
-		while (true)
-		{
-			let assetsPath = scope String();
-			Path.InternalCombine(assetsPath, searchDir, "Assets");
-
-			if (Directory.Exists(assetsPath))
-			{
-				let markerPath = scope String();
-				Path.InternalCombine(markerPath, assetsPath, ".assets");
-
-				if (File.Exists(markerPath))
-				{
-					mAssetDirectory.Set(assetsPath);
-					Path.InternalCombine(mAssetCacheDirectory, searchDir, "Assets", "cache");
-
-					if (!Directory.Exists(mAssetCacheDirectory))
-						Directory.CreateDirectory(mAssetCacheDirectory);
-
-					return;
-				}
-			}
-
-			let parentDir = Path.GetDirectoryPath(searchDir, .. scope .());
-
-			if (parentDir.IsEmpty || parentDir == searchDir)
-			{
-				Console.WriteLine("WARNING: Could not find Assets directory with .assets marker. Using current directory.");
-				mAssetDirectory.Set(currentDir);
-				mAssetCacheDirectory.Set(currentDir);
-				return;
-			}
-
-			searchDir.Set(parentDir);
-		}
 	}
 
 	/// Sets up the builtin asset mount and (if present) its identity index.
 	/// Provides builtin:// scheme resources (primitives, materials, skies).
 	private void LoadBuiltinRegistry()
 	{
-		if (mAssetDirectory.IsEmpty)
+		if (mBuiltInAssetDirectory.IsEmpty)
 			return;
 
 		// Always mount the asset directory under "builtin://" so resources
 		// can be opened by URI even without an identity index.
-		mBuiltinMount = new FileSystemMount(mAssetDirectory);
+		mBuiltinMount = new FileSystemMount(mBuiltInAssetDirectory);
 		mResourceSystem.Mount("builtin", mBuiltinMount);
 
 		// Optional identity index: maps GUIDs to URIs for ResourceRef resolution.
 		let registryPath = scope String();
-		Path.InternalCombine(registryPath, mAssetDirectory, "builtin.registry");
+		Path.InternalCombine(registryPath, mBuiltInAssetDirectory, "builtin.registry");
 		if (!File.Exists(registryPath))
 			return;
 
