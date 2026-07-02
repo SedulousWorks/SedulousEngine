@@ -8,7 +8,9 @@ using Sedulous.RHI;
 using Sedulous.VG.Renderer;
 using Sedulous.Editor.Core;
 using Sedulous.Engine;
+using Sedulous.Engine.Core;
 using Sedulous.Engine.Render;
+using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine.UI;
 
 /// Builds the internal layout for a GameEditorPage:
@@ -154,7 +156,7 @@ static class GamePageBuilder
 			viewportView.AddInputHandler(inputHandler);
 		}
 
-		// Render the module's RuntimeScene each frame while the page is
+		// Render the first active scene each frame while the page is
 		// running. When idle (no Play pressed yet), the viewport stays as a
 		// flat clear. No editor camera here - the scene's active
 		// CameraComponent drives the view, same as in standalone.
@@ -164,7 +166,12 @@ static class GamePageBuilder
 
 			encoder.TransitionTexture(vp.ColorTexture, .Undefined, .RenderTarget);
 
-			let renderable = page.IsRunning ? page.EditorContext?.Module?.RuntimeScene : null;
+			Scene renderable = null;
+			if (page.IsRunning)
+			{
+				if (let defaultApp = page.EditorContext?.Module as DefaultApplication)
+					renderable = defaultApp.RuntimeScene;
+			}
 			if (sceneRenderer != null && renderable != null)
 			{
 				ColorAttachment[1] clearAttachments = .(.()

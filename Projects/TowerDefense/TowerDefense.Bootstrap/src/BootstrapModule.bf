@@ -4,6 +4,7 @@ using System;
 using System.IO;
 using Sedulous.Core.Mathematics;
 using Sedulous.Engine;
+using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine.Core;
 using Sedulous.Engine.Core.Resources;
 using Sedulous.Engine.Render;
@@ -16,13 +17,14 @@ using Sedulous.Materials.Resources;
 using Sedulous.Renderer;
 using Sedulous.Resources;
 using Sedulous.Runtime;
+using Sedulous.Runtime.Client;
 using Sedulous.Serialization;
 using Sedulous.Serialization.OpenDDL;
 using Sedulous.Textures.Resources;
 using Sedulous.VFS;
 using Sedulous.VFS.Disk;
 
-/// IApplicationModule that runs once - imports the Kenney FBX kit, builds
+/// DefaultApplication that runs once - imports the Kenney FBX kit, builds
 /// the gameplay scene + tower prefabs from scratch, saves every cooked
 /// asset (meshes, textures, materials, scene, prefabs, model manifest,
 /// resource registry) under `<ProjectAssetDirectory>/`, then asks the
@@ -32,32 +34,34 @@ using Sedulous.VFS.Disk;
 /// files this module produced. Re-running the bootstrap is idempotent
 /// in the sense that existing entries in the resource registry are
 /// merged, not overwritten - editor-authored entries survive.
-class BootstrapModule : IApplicationModule
+class BootstrapModule : DefaultApplication
 {
 	private ModelRegistry mModels = new .() ~ delete _;
 	private ModelManifest mManifest ~ delete _;
 	private Scene mScene;
 
-	public Scene RuntimeScene => mScene;
+	//public Scene RuntimeScene => mScene;
 
-	/// Fired once the bootstrap has finished writing every cooked asset.
-	/// `BootstrapApp` wires this to `EngineApplication.Exit` so the host
-	/// tears down on the next main-loop iteration. Owned by the module.
-	public delegate void() ExitRequest ~ delete _;
+	public override ApplicationSettings Settings() => .() { Title = "Tower Defense Bootstrap", Width = 640, Height = 360, EnableShaderCache = true };
 
-	public void Configure(IApplicationHost host)
+	public override void Configure(Sedulous.Runtime.Client.IApplicationHost host)
 	{
+		base.Configure(host);
+
 		// Bootstrap needs no per-context subsystems beyond what
-		// EngineApplication registers - SceneSubsystem + ResourceSystem
+		// DefaultApplication registers - SceneSubsystem + ResourceSystem
 		// + RenderSubsystem are enough to assemble + serialise the
 		// scene. Gameplay subsystems (GameSubsystem, MessagingSubsystem,
 		// audio, etc.) are intentionally omitted; the bootstrap doesn't
 		// run gameplay.
 	}
 
-	public void OnStartup(IApplicationHost host) { }
+	public override void OnStartup(Sedulous.Runtime.Client.IApplicationHost host)
+	{
+		base.OnStartup(host);
+	}
 
-	public void OnLaunch(IApplicationHost host)
+	public override void OnLaunch(Sedulous.Runtime.Client.IApplicationHost host)
 	{
 		Console.WriteLine("=== TowerDefense Bootstrap ===");
 
@@ -69,36 +73,41 @@ class BootstrapModule : IApplicationModule
 		// Manifest sits next to the scene/registry so the runtime can
 		// resolve model names -> resource refs without re-importing FBX.
 		let manifestPath = scope String();
-		Path.InternalCombine(manifestPath, host.ProjectAssetDirectory, "models.manifest");
+		Path.InternalCombine(manifestPath, ProjectAssetDirectory, "models.manifest");
 		mManifest.SaveToFile(manifestPath);
 		Console.WriteLine("[Bootstrap] Saved manifest: {}", manifestPath);
 
 		Console.WriteLine("=== Bootstrap complete ===");
-		ExitRequest?.Invoke();
+		host.RequestExit();
 	}
 
-	public void OnUpdate(IApplicationHost host, float deltaTime) { }
-	public void OnFixedUpdate(IApplicationHost host, float fixedDeltaTime) { }
+	public override void OnUpdate(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime)
+	{
+		base.OnUpdate(host, deltaTime);
+	}
 
-	public void OnExit(IApplicationHost host)
+	public override void OnExit(Sedulous.Runtime.Client.IApplicationHost host)
 	{
 		// Drop ref-counted handles + dedup state before the engine tears
 		// down so refcounts read zero at shutdown.
 		mModels.Shutdown();
 	}
 
-	public void OnShutdown(IApplicationHost host) { }
+	public override void OnShutdown(Sedulous.Runtime.Client.IApplicationHost host)
+	{
+		base.OnShutdown(host);
+	}
 
 	// =========================================================================
 	// First-run build
 	// =========================================================================
 
-	private void BuildFromScratch(IApplicationHost host)
+	private void BuildFromScratch(Sedulous.Runtime.Client.IApplicationHost host)
 	{
 		Console.WriteLine("[Bootstrap] Building from scratch...");
 
-		let sceneSub = host.Context.GetSubsystem<SceneSubsystem>();
-		let resources = host.ResourceSystem;
+		let sceneSub = host.Ctx.GetSubsystem<SceneSubsystem>();
+		let resources = mResourceSystem;
 
 		// Register the STB-backed image loader so the FBX importer can
 		// decode PNG / JPG / TGA textures referenced from the FBX files.
@@ -106,7 +115,7 @@ class BootstrapModule : IApplicationModule
 		// ImportedTexture's PixelData stays null, TextureResourceConverter
 		// returns null, and the material's texture refs collapse to the
 		// "texture_0" GUID-zero fallback (no texture written to disk and
-		// the material is dangling at runtime). EngineApplication doesn't
+		// the material is dangling at runtime). DefaultApplication doesn't
 		// register an image loader by default; the editor calls Initialize
 		// in its own startup, so the same omission used to bite first-run
 		// standalone TowerDefense too.
@@ -114,7 +123,7 @@ class BootstrapModule : IApplicationModule
 
 		// Import all FBX models from the shared Kenney sample kit.
 		let assetPath = scope String();
-		host.GetAssetPath("samples/models/kenney_tower-defense-kit/Models/FBX format", assetPath);
+		GetAssetPath("samples/models/kenney_tower-defense-kit/Models/FBX format", assetPath);
 		mModels.Initialize(assetPath);
 		mModels.RegistryName.Set("project");
 
@@ -169,9 +178,9 @@ class BootstrapModule : IApplicationModule
 	// Save cooked assets
 	// =========================================================================
 
-	private void ExportForEditor(IApplicationHost host)
+	private void ExportForEditor(Sedulous.Runtime.Client.IApplicationHost host)
 	{
-		let outputDir = host.ProjectAssetDirectory;
+		let outputDir = ProjectAssetDirectory;
 
 		if (!Directory.Exists(outputDir))
 			Directory.CreateDirectory(outputDir);
@@ -268,9 +277,9 @@ class BootstrapModule : IApplicationModule
 		}
 	}
 
-	private void ExportTowerPrefabs(IApplicationHost host)
+	private void ExportTowerPrefabs(Sedulous.Runtime.Client.IApplicationHost host)
 	{
-		let outputDir = host.ProjectAssetDirectory;
+		let outputDir = ProjectAssetDirectory;
 
 		let provider = scope OpenDDLSerializerProvider();
 		let typeReg = scope ComponentTypeRegistry();
@@ -390,9 +399,9 @@ class BootstrapModule : IApplicationModule
 	/// `STBImageLoader.Initialize` is already called from `BuildFromScratch`
 	/// (the FBX importer needs it for embedded textures). We rely on
 	/// that registration here too.
-	private void ExportImages(IApplicationHost host)
+	private void ExportImages(Sedulous.Runtime.Client.IApplicationHost host)
 	{
-		let outputDir = host.ProjectAssetDirectory;
+		let outputDir = ProjectAssetDirectory;
 
 		let provider = scope OpenDDLSerializerProvider();
 		let mount = scope FileSystemMount(outputDir);
@@ -413,10 +422,10 @@ class BootstrapModule : IApplicationModule
 		}
 
 		let assetsDir = scope String();
-		host.GetAssetPath("", assetsDir);
+		GetAssetPath("", assetsDir);
 
 		let kit = scope String();
-		host.GetAssetPath("samples/models/kenney_tower-defense-kit/Previews", kit);
+		GetAssetPath("samples/models/kenney_tower-defense-kit/Previews", kit);
 
 		// (sourceFullPath, output-image-name) - output written to
 		// `images/{outName}.image` + `images/{outName}.image.bin` so the

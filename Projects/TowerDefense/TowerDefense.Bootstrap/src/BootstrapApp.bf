@@ -1,17 +1,7 @@
 namespace TowerDefense.Bootstrap;
 
-using Sedulous.Engine.App;
-
-/// EngineApplication subclass that hosts BootstrapModule. Wires the
-/// module's ExitRequest delegate to its own Exit so the main loop
-/// breaks out as soon as the bootstrap finishes its OnLaunch pass.
-class BootstrapApp : EngineApplication
-{
-	private BootstrapModule mModule = new .() ~ delete _;
-
-	public this()
-	{
-		mModule.ExitRequest = new => Exit;
-		Module = mModule;
-	}
-}
+/// Thin DefaultApplication subclass that hosts BootstrapModule.
+/// BootstrapModule is the actual IApplication (extends DefaultApplication),
+/// so this wrapper is no longer needed. Kept as an alias for naming
+/// compatibility with Program.bf references.
+class BootstrapApp : BootstrapModule { }

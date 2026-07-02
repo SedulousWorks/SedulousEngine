@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.IO;
 using Sedulous.Engine;
+using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine.Core;
 using Sedulous.Engine.Core.Resources;
 using Sedulous.Engine.Render;
@@ -19,14 +20,20 @@ using Sedulous.VFS.Disk;
 using Sedulous.Messaging.Runtime;
 using Sedulous.UI;
 using Sedulous.Runtime;
+using Sedulous.Runtime.Client;
 
 /// Composition root for the Tower Defense game.
 ///
-/// Hosted by EngineApplication (standalone game) or - in a later phase -
+/// Extends DefaultApplication which registers all standard engine
+/// subsystems (input, scene, physics, animation, audio, navigation, UI,
+/// render) and owns ResourceSystem, ShaderSystem, FontService, and the
+/// builtin:// asset mount.
+///
+/// Hosted by ApplicationHost (standalone game) or - in a later phase -
 /// the editor when it loads the TowerDefense project at edit time. Owns the
-/// per-game state that used to live on TowerDefenseApp; the App now just
-/// drives per-frame input via OnUpdate and delegates everything else here.
-class TowerDefenseModule : IApplicationModule
+/// per-game state; the App now just drives per-frame input via OnUpdate
+/// and delegates everything else here.
+class TowerDefenseModule : DefaultApplication
 {
 	// Game subsystem
 	private GameSubsystem mGameSub;
@@ -67,7 +74,6 @@ class TowerDefenseModule : IApplicationModule
 	// Backref so OnUpdate (still on TowerDefenseApp during transition)
 	// can reach the module's per-frame state via public properties.
 	public Scene Scene => mScene;
-	public Scene RuntimeScene => mScene;
 	public GameSubsystem GameSub => mGameSub;
 	public TDCameraController Camera => mCamera;
 	public TowerPlacement TowerPlacement => mTowerPlacement;
@@ -76,9 +82,13 @@ class TowerDefenseModule : IApplicationModule
 
 	// ==================== Configuration ====================
 
-	public void Configure(IApplicationHost host)
+	public override ApplicationSettings Settings() => .() { Title = "Tower Defense", Width = 1600, Height = 900, EnableShaderCache = true };
+
+	public override void Configure(Sedulous.Runtime.Client.IApplicationHost host)
 	{
-		let context = host.Context;
+		base.Configure(host);
+
+		let context = host.Ctx;
 
 		// Register messaging subsystem (drains at -500)
 		context.RegisterSubsystem<MessagingSubsystem>(new MessagingSubsystem());
@@ -92,8 +102,10 @@ class TowerDefenseModule : IApplicationModule
 
 	// ==================== Startup ====================
 
-	public void OnStartup(IApplicationHost host)
+	public override void OnStartup(Sedulous.Runtime.Client.IApplicationHost host)
 	{
+		base.OnStartup(host);
+
 		// Tower Defense doesn't have host-persistent state that needs
 		// non-runtime initialisation - all per-game-launch work lives in
 		// OnLaunch. The editor invokes Configure / OnStartup at edit time
@@ -103,16 +115,18 @@ class TowerDefenseModule : IApplicationModule
 
 	// ==================== Launch (standalone or editor Play) ====================
 
-	public void OnLaunch(IApplicationHost host)
+	public override void OnLaunch(Sedulous.Runtime.Client.IApplicationHost host)
 	{
 		Console.WriteLine("=== Tower Defense OnLaunch ===");
 
-		let context = host.Context;
-		let resourceSystem = host.ResourceSystem;
+		let context = host.Ctx;
+		let resourceSystem = mResourceSystem;
 
-		// Project assets directory exposed by the host. EngineApplication
-		// derives it from RuntimeDirectory (cwd's parent + assets/); the
-		// editor returns the open project's <ProjectDirectory>/assets.
+		// Project assets directory exposed by the host. Standalone hosts
+		// derive it from RuntimeDirectory (cwd's parent + assets/); the
+		// editor returns the currently open project's directory. Read
+		// from the host dynamically so the editor's late project open
+		// is reflected.
 		let assetsDir = host.ProjectAssetDirectory;
 		let registryPath = scope String();
 		Path.InternalCombine(registryPath, assetsDir, "project.registry");
@@ -157,7 +171,7 @@ class TowerDefenseModule : IApplicationModule
 
 		// Set up particle effects
 		let assetDir = scope String();
-		host.GetAssetPath("", assetDir);
+		GetAssetPath("", assetDir);
 		mParticleEffects.Initialize(mScene, messaging?.Bus, resourceSystem, assetDir);
 
 		// Reset gameplay state at every launch so a second OnLaunch
@@ -185,12 +199,12 @@ class TowerDefenseModule : IApplicationModule
 	}
 
 	/// Subsequent runs: load from cached files, no FBX import.
-	private void LoadFromCache(IApplicationHost host, StringView cacheDir, StringView manifestPath)
+	private void LoadFromCache(Sedulous.Runtime.Client.IApplicationHost host, StringView cacheDir, StringView manifestPath)
 	{
 		Console.WriteLine("[Startup] Loading from cache...");
 
-		let sceneSub = host.Context.GetSubsystem<SceneSubsystem>();
-		let resourceSystem = host.ResourceSystem;
+		let sceneSub = host.Ctx.GetSubsystem<SceneSubsystem>();
+		let resourceSystem = mResourceSystem;
 
 		// Mount the cache directory under "project://" and load its identity index
 		// through the same mount so all reads route through the VFS.
@@ -216,6 +230,7 @@ class TowerDefenseModule : IApplicationModule
 
 		// Create scene (triggers ISceneAware - component managers get manifest)
 		mScene = sceneSub.CreateScene("GameScene");
+		RuntimeScene = mScene;
 
 		// Deserialize scene from file through the project mount.
 		let provider = resourceSystem.SerializerProvider;
@@ -263,14 +278,17 @@ class TowerDefenseModule : IApplicationModule
 
 	// ==================== Per-frame tick ====================
 
-	public void OnUpdate(IApplicationHost host, float deltaTime)
+	public override void OnUpdate(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime)
 	{
+		base.OnUpdate(host, deltaTime);
+
 		if (mScene == null)
 			return;
 
 		// Clean up expired particle effects
 		mParticleEffects.Update(deltaTime);
 
+		// Pull devices from the host, not shell directly. Standalone hosts
 		// Pull devices from the host, not shell directly. Standalone hosts
 		// passthrough to shell.InputManager; the editor wraps these so
 		// the cursor coords land in the page-viewport's local space and
@@ -292,7 +310,7 @@ class TowerDefenseModule : IApplicationModule
 			if (mGameSub.IsGameplayPhase)
 			{
 				mGameSub.PauseGame();
-				let uiSub = host.Context.GetSubsystem<EngineUISubsystem>();
+				let uiSub = host.Ctx.GetSubsystem<EngineUISubsystem>();
 				if (uiSub?.ScreenView != null)
 					mPauseUI.Show();
 			}
@@ -327,7 +345,7 @@ class TowerDefenseModule : IApplicationModule
 			// DebugDraw so they show up wherever the scene is being rendered
 			// (the standalone swapchain pipeline OR the editor's
 			// GameEditorPage pipeline).
-			let sceneRenderer = host.Context.GetSubsystemByInterface<ISceneRenderer>();
+			let sceneRenderer = host.Ctx.GetSubsystemByInterface<ISceneRenderer>();
 			let pipeline = sceneRenderer?.GetPipeline(mScene);
 			if (pipeline?.DebugDraw != null)
 			{
@@ -347,7 +365,7 @@ class TowerDefenseModule : IApplicationModule
 
 	// ==================== Exit (mirror of OnLaunch) ====================
 
-	public void OnExit(IApplicationHost host)
+	public override void OnExit(Sedulous.Runtime.Client.IApplicationHost host)
 	{
 		// Drop the scene reference before tear-down so GameSubsystem.Update
 		// returns to its dormant no-op state if anything keeps ticking
@@ -367,9 +385,9 @@ class TowerDefenseModule : IApplicationModule
 		// view tree. Each UI's Setup re-creates its root panel; without
 		// removing the prior one from EngineUISubsystem.ScreenView.Root
 		// every play/stop cycle stacks another ghost overlay on top.
-		let messaging = host.Context.GetSubsystem<MessagingSubsystem>();
+		let messaging = host.Ctx.GetSubsystem<MessagingSubsystem>();
 		let bus = messaging?.Bus;
-		let uiSub = host.Context.GetSubsystem<EngineUISubsystem>();
+		let uiSub = host.Ctx.GetSubsystem<EngineUISubsystem>();
 		let screenRoot = uiSub?.ScreenView?.Root;
 		mHUD.Shutdown(bus, screenRoot);
 		mGameOverUI.Shutdown(bus, screenRoot);
@@ -380,15 +398,16 @@ class TowerDefenseModule : IApplicationModule
 		// from a clean slate. Without this the editor leaks a FileSystemMount
 		// + index per play/stop/play cycle (and the second OnLaunch warns
 		// 'A mount is already registered for scheme project').
-		let context = host.Context;
+		let context = host.Ctx;
 		let sceneSub = context.GetSubsystem<SceneSubsystem>();
 		if (mScene != null)
 		{
 			sceneSub?.DestroyScene(mScene);
 			mScene = null;
+			RuntimeScene = null;
 		}
 
-		let resourceSystem = host.ResourceSystem;
+		let resourceSystem = mResourceSystem;
 		if (mProjectIndex != null)
 		{
 			resourceSystem.RemoveIndex(mProjectIndex);
@@ -410,29 +429,31 @@ class TowerDefenseModule : IApplicationModule
 
 	// ==================== Shutdown ====================
 
-	public void OnShutdown(IApplicationHost host)
+	public override void OnShutdown(Sedulous.Runtime.Client.IApplicationHost host)
 	{
 		// No host-persistent teardown - everything Tower Defense owns is
 		// allocated lazily in OnLaunch and released in OnExit.
+
+		base.OnShutdown(host);
 	}
 
 	// ==================== UI Setup ====================
 
-	private void SetupUI(IApplicationHost host)
+	private void SetupUI(Sedulous.Runtime.Client.IApplicationHost host)
 	{
-		let uiSub = host.Context.GetSubsystem<EngineUISubsystem>();
+		let uiSub = host.Ctx.GetSubsystem<EngineUISubsystem>();
 		if (uiSub?.ScreenView == null)
 			return;
 
 		let root = uiSub.ScreenView.Root;
-		let messaging = host.Context.GetSubsystem<MessagingSubsystem>();
+		let messaging = host.Ctx.GetSubsystem<MessagingSubsystem>();
 		let bus = messaging?.Bus;
 
 		// HUD (DockLayout with top and bottom bars, fills screen). Tower
 		// preview images come from cooked ImageResources loaded via the
 		// host's ResourceSystem - the HUD constructs each URI by
 		// concatenating the weapon-model name onto a fixed prefix.
-		mHUD.Setup(bus, mGameSub, mTowerPlacement, host.ResourceSystem);
+		mHUD.Setup(bus, mGameSub, mTowerPlacement, mResourceSystem);
 		mHUD.StartWaveCallback = new () => StartWave();
 		mHUD.SetSpeedCallback = new (speed) => mGameSub.SetGameSpeed(speed);
 		root.AddView(mHUD.Root, new LayoutParams() { Width = .Match, Height = .Match });
@@ -471,12 +492,12 @@ class TowerDefenseModule : IApplicationModule
 		Console.WriteLine("[Game] Restarted");
 	}
 
-	private void ReturnToMainMenu(IApplicationHost host)
+	private void ReturnToMainMenu(Sedulous.Runtime.Client.IApplicationHost host)
 	{
 		mGameSub.SetPhase(.MainMenu);
 		mGameSub.ResetGame();
 
-		let uiSub = host.Context.GetSubsystem<EngineUISubsystem>();
+		let uiSub = host.Ctx.GetSubsystem<EngineUISubsystem>();
 		if (uiSub?.ScreenView != null)
 			mMainMenu.Show();
 	}

@@ -66,14 +66,14 @@ abstract class Application
 
 	public ResourceSystem ResourceSystem => mResourceSystem;
 
-	/// The application's built-in asset mount. Points at `AssetDirectory`
+	/// The application's built-in asset mount. Points at `BuiltInAssetDirectory`
 	/// and is registered with `ResourceSystem` under `builtin://`. Created
 	/// before `OnInitialize` is called, so derived apps can use it during
 	/// their startup (e.g., to load fonts via VFS).
 	public FileSystemMount BuiltinMount => mBuiltinMount;
 
 	// Asset directories (discovered at construction time)
-	private String mAssetDirectory = new .() ~ delete _;
+	private String mBuiltInAssetDirectory = new .() ~ delete _;
 	private String mAssetCacheDirectory = new .() ~ delete _;
 
 	// Timing
@@ -145,8 +145,8 @@ abstract class Application
 	public ApplicationSettings Settings => mSettings;
 
 	/// Returns the discovered assets directory path.
-	/// This is an absolute path to the sssets folder containing the .ngassets marker file.
-	public StringView AssetDirectory => mAssetDirectory;
+	/// This is an absolute path to the sssets folder containing the .assets marker file.
+	public StringView BuiltInAssetDirectory => mBuiltInAssetDirectory;
 
 	/// Returns the discovered assetsCache directory path.
 	/// This is an absolute path to the assetsCache folder for cached/compiled assets.
@@ -157,7 +157,7 @@ abstract class Application
 	public void GetAssetPath(StringView relativePath, String outPath)
 	{
 		outPath.Clear();
-		Path.InternalCombine(outPath, mAssetDirectory, relativePath);
+		Path.InternalCombine(outPath, mBuiltInAssetDirectory, relativePath);
 	}
 
 	/// Returns a path relative to the assetsCache directory.
@@ -192,7 +192,7 @@ abstract class Application
 		// Created here - after the resource system is up but before the
 		// user-overridable OnInitialize hook - so apps can rely on it
 		// during their own startup.
-		mBuiltinMount = new FileSystemMount(mAssetDirectory);
+		mBuiltinMount = new FileSystemMount(mBuiltInAssetDirectory);
 		mResourceSystem.Mount("builtin", mBuiltinMount);
 
 		// Create the framework context
@@ -1006,7 +1006,7 @@ abstract class Application
 
 				if (File.Exists(markerPath))
 				{
-					mAssetDirectory.Set(assetsPath);
+					mBuiltInAssetDirectory.Set(assetsPath);
 
 					// cache is a sibling folder
 					Path.InternalCombine(mAssetCacheDirectory, searchDir, "Assets", "cache");
@@ -1027,7 +1027,7 @@ abstract class Application
 			{
 				// Fall back to current directory with warning
 				Console.WriteLine("WARNING: Could not find Assets directory with .assets marker. Using current directory.");
-				mAssetDirectory.Set(currentDir);
+				mBuiltInAssetDirectory.Set(currentDir);
 				mAssetCacheDirectory.Set(currentDir);
 				return;
 			}

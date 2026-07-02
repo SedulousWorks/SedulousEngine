@@ -34,6 +34,7 @@ recastnavigation-Beef = {Path = "../../Code/Dependencies/recastnavigation-Beef"}
 "Sedulous.Shell.SDL3" = {Path = "../../Code/Foundation/Sedulous.Shell.SDL3"}
 "Sedulous.Runtime" = {Path = "../../Code/Foundation/Sedulous.Runtime"}
 "Sedulous.Runtime.Client" = {Path = "../../Code/Foundation/Sedulous.Runtime.Client"}
+"Sedulous.Runtime.Graphics" = {Path = "../../Code/Foundation/Sedulous.Runtime.Graphics"}
 "Sedulous.Jobs" = {Path = "../../Code/Foundation/Sedulous.Jobs"}
 "Sedulous.Resources" = {Path = "../../Code/Foundation/Sedulous.Resources"}
 "Sedulous.VFS" = {Path = "../../Code/Foundation/Sedulous.VFS"}
@@ -105,6 +106,7 @@ recastnavigation-Beef = {Path = "../../Code/Dependencies/recastnavigation-Beef"}
 "Sedulous.Drawing.Renderer" = {Path = "../../Code/Foundation/Sedulous.Drawing.Renderer"}
 "Sedulous.Engine.Core" = {Path = "../../Code/Engine/Sedulous.Engine.Core"}
 "Sedulous.Engine.App" = {Path = "../../Code/Engine/Sedulous.Engine.App"}
+"Sedulous.Engine.DefaultApp" = {Path = "../../Code/Engine/Sedulous.Engine.DefaultApp"}
 "Sedulous.Engine.Input" = {Path = "../../Code/Engine/Sedulous.Engine.Input"}
 "Sedulous.Engine.Physics" = {Path = "../../Code/Engine/Sedulous.Engine.Physics"}
 "Sedulous.Engine.Audio" = {Path = "../../Code/Engine/Sedulous.Engine.Audio"}
@@ -124,7 +126,7 @@ Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "Dxc-Beef", "dr_libs-Beef", "g
 Foundation = []
 "Foundation/Core" = ["Sedulous.Core", "Sedulous.Core.Collections", "Sedulous.Core.Logging", "Sedulous.Core.Mathematics", "Sedulous.Core.Mathematics.Serialization", "Sedulous.Inspection", "Sedulous.Profiler"]
 "Foundation/Shell" = ["Sedulous.Shell", "Sedulous.Shell.SDL3"]
-"Foundation/Runtime" = ["Sedulous.Runtime", "Sedulous.Runtime.Client", "Sedulous.Jobs", "Sedulous.Resources", "Sedulous.VFS", "Sedulous.VFS.Disk"]
+"Foundation/Runtime" = ["Sedulous.Runtime", "Sedulous.Runtime.Client", "Sedulous.Runtime.Graphics", "Sedulous.Jobs", "Sedulous.Resources", "Sedulous.VFS", "Sedulous.VFS.Disk"]
 "Foundation/Serialization" = ["Sedulous.Serialization", "Sedulous.Serialization.OpenDDL", "Sedulous.Serialization.Xml", "Sedulous.OpenDDL", "Sedulous.Xml"]
 "Foundation/Messaging" = ["Sedulous.Messaging", "Sedulous.Messaging.Runtime"]
 "Foundation/RHI" = ["Sedulous.RHI", "Sedulous.RHI.Vulkan", "Sedulous.RHI.DX12", "Sedulous.RHI.Validation", "Sedulous.RHI.Null", "Sedulous.ShaderReflection", "Sedulous.ShaderReflection.SPIRV", "Sedulous.ShaderReflection.DXIL"]
@@ -138,6 +140,6 @@ Foundation = []
 "Foundation/UI" = ["Sedulous.UI", "Sedulous.UI.Runtime", "Sedulous.UI.Shell", "Sedulous.UI.IO", "Sedulous.UI.Toolkit", "Sedulous.UI.Viewport"]
 "Foundation/VG" = ["Sedulous.VG", "Sedulous.VG.SVG", "Sedulous.VG.Renderer"]
 "Foundation/Drawing" = ["Sedulous.Drawing", "Sedulous.Drawing.Renderer"]
-Engine = ["Sedulous.Engine.Core", "Sedulous.Engine.App", "Sedulous.Engine.Input", "Sedulous.Engine.Physics", "Sedulous.Engine.Audio", "Sedulous.Engine.Animation", "Sedulous.Engine.Navigation", "Sedulous.Engine.Render", "Sedulous.Engine.UI"]
+Engine = ["Sedulous.Engine.Core", "Sedulous.Engine.App", "Sedulous.Engine.DefaultApp", "Sedulous.Engine.Input", "Sedulous.Engine.Physics", "Sedulous.Engine.Audio", "Sedulous.Engine.Animation", "Sedulous.Engine.Navigation", "Sedulous.Engine.Render", "Sedulous.Engine.UI"]
 Editor = ["Sedulous.Editor.Core", "Sedulous.Editor"]
 Game = ["TowerDefense.Core", "TowerDefense.App", "TowerDefense.Editor", "TowerDefense.Bootstrap"]

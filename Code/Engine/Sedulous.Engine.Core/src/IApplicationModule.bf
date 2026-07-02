@@ -63,7 +63,7 @@ public interface IApplicationHost
 	/// Discovered Assets directory (the engine's Assets/, with the
 	/// .assets marker file). Absolute path; valid for the lifetime of the
 	/// host.
-	StringView AssetDirectory { get; }
+	StringView BuiltInAssetDirectory { get; }
 
 	/// Cache directory under Assets (e.g. compiled shader cache).
 	StringView AssetCacheDirectory { get; }
@@ -72,7 +72,7 @@ public interface IApplicationHost
 	/// RuntimeDirectory via the standard "exe under project root with
 	/// sibling assets/ folder" convention. For the editor's hosted
 	/// module, the currently-open project's assets path. Distinct from
-	/// AssetDirectory (engine-shipped Assets root). May be empty if the
+	/// BuiltInAssetDirectory (engine-shipped Assets root). May be empty if the
 	/// convention doesn't apply.
 	StringView ProjectAssetDirectory { get; }
 
@@ -81,7 +81,7 @@ public interface IApplicationHost
 	/// loaded project's root.
 	StringView RuntimeDirectory { get; }
 
-	/// Combines a relative path under AssetDirectory into outPath. Helper
+	/// Combines a relative path under BuiltInAssetDirectory into outPath. Helper
 	/// for modules loading per-project assets.
 	void GetAssetPath(StringView relativePath, String outPath);
 

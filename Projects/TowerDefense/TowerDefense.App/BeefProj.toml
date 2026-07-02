@@ -7,3 +7,6 @@ StartupObject = "TowerDefense.Program"
 [Dependencies]
 corlib = "*"
 "TowerDefense.Core" = "*"
+"Sedulous.Shell.SDL3" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Runtime.Graphics" = "*"

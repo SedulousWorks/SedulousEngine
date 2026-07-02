@@ -1,21 +1,32 @@
 namespace TowerDefense;
 
 using System;
-using Sedulous.Engine.App;
+using Sedulous.Shell.SDL3;
+using Sedulous.RuntimeGraphics;
+using Sedulous.Runtime.Client;
 
 class Program
 {
 	public static int Main(String[] args)
 	{
-		let app = scope TowerDefenseApp();
-		return app.Run(.()
+		let shell = scope SDL3Shell();
+		if (shell.Initialize() case .Err)
 		{
-			Title = "Tower Defense",
-			Width = 1920,
-			Height = 1080,
-			TargetWidth = 1920,
-			TargetHeight = 1080,
-			EnableShaderCache = true
-		});
+			Console.WriteLine("ERROR: Failed to initialize shell");
+			return 1;
+		}
+		defer shell.Shutdown();
+
+		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = true });
+		if (graphicsResult case .Err)
+		{
+			Console.WriteLine("ERROR: Failed to create graphics device");
+			return 1;
+		}
+		let graphics = graphicsResult.Value;
+		defer delete graphics;
+
+		let app = scope TowerDefenseModule();
+		return ApplicationHost.RunApplication(app, shell, graphics);
 	}
 }

@@ -38,6 +38,7 @@ using Sedulous.Audio.Decoders;
 using Sedulous.Audio.Resources;
 using Sedulous.Engine.Animation;
 using Sedulous.Engine.Physics;
+using Sedulous.Engine.DefaultApp;
 using Sedulous.Models.FBX;
 using Sedulous.Models.GLTF;
 using Sedulous.Images.STB;
@@ -55,11 +56,11 @@ class EditorApplication : Application, IDockableWindowHost
 	private Context mRuntimeContext;
 
 	// Optional project module (e.g., TowerDefenseModule). When set, the
-	// editor invokes its IApplicationModule lifecycle around the runtime
+	// editor invokes its IApplication lifecycle around the runtime
 	// context's startup/shutdown so the project's subsystems land alongside
 	// the engine ones at edit time. Set on the EditorApplication instance
 	// before Run() - the editor does not own / delete this.
-	private IApplicationModule mModule;
+	private Sedulous.Runtime.Client.IApplication mModule;
 	private Sedulous.Engine.UI.EngineUISubsystem mRuntimeUISub;
 
 	// Adapter that exposes EditorApplication state to project modules via
@@ -126,7 +127,7 @@ class EditorApplication : Application, IDockableWindowHost
 	/// around the runtime context's startup so the project's subsystems
 	/// are registered alongside the engine's at edit time. Must be set
 	/// before Run().
-	public IApplicationModule Module
+	public Sedulous.Runtime.Client.IApplication Module
 	{
 		get => mModule;
 		set => mModule = value;
@@ -268,59 +269,37 @@ class EditorApplication : Application, IDockableWindowHost
 		mRuntimeContext = new Context();
 		mTypeRegistry = new ComponentTypeRegistry();
 
-		// Register engine subsystems for scene rendering.
-		// SceneSubsystem manages scene lifecycle.
-		mRuntimeContext.RegisterSubsystem(new SceneSubsystem(mResourceSystem, mTypeRegistry));
-
-		// RenderSubsystem provides ISceneRenderer for viewport rendering.
-		let renderSub = new RenderSubsystem(mResourceSystem);
-		renderSub.Device = Device;
-		renderSub.Window = Window;
-		renderSub.ShaderSystem = mShaderSystem;
-		mRuntimeContext.RegisterSubsystem(renderSub);
-
-		// Register all engine subsystems so all component types are available
-		// in the editor (Add Component, inspector, scene serialization).
-		mRuntimeContext.RegisterSubsystem(new PhysicsSubsystem());
-		mRuntimeContext.RegisterSubsystem(new AnimationSubsystem(mResourceSystem));
-		mRuntimeContext.RegisterSubsystem(new AudioSubsystem(mResourceSystem));
-		mRuntimeContext.RegisterSubsystem(new NavigationSubsystem());
-
-		let uiSub = new Sedulous.Engine.UI.EngineUISubsystem();
-		uiSub.Device = Device;
-		uiSub.Shell = Shell;
-		// Today: runtime UI canvas tracks the editor's main window for visual
-		// parity with pre-decoupling behavior. Deferred: route this to the
-		// running GameEditorPage's viewport dimensions so PIE UI shrinks/grows
-		// with the play tab instead of the chrome window.
-		uiSub.RenderSize = .((float)Window.Width, (float)Window.Height);
-		uiSub.DpiScale = Window.ContentScale;
-		mRuntimeUISub = uiSub;
-		uiSub.ShaderSystem = mShaderSystem;
-		// Game-mode screen UI renders into the GameEditorPage viewport,
-		// which is RGBA16Float (HDR) - the screen-view pipelines must
-		// match that format, not the editor's swapchain.
-		uiSub.OutputFormat = .RGBA16Float;
-		// Input for the runtime UI flows through the GameEditorPage's
-		// IViewportInputHandler -> EngineUISubsystem.Dispatch* methods.
-		// Disable the subsystem's own shell polling so we don't
-		// double-dispatch (raw window coords on top of viewport-local).
-		uiSub.PollShellInput = false;
-		// Reuse the editor's font service for the embedded engine UI - the
-		// editor and the engine UI render through the same VFS-mounted
-		// Roboto. Non-owning: the editor still tears it down.
-		uiSub.FontService = mFontService;
-		mRuntimeContext.RegisterSubsystem(uiSub);
-
 		// Capture cwd + create the IApplicationHost adapter so the project
 		// module sees a stable view of editor state during Configure.
 		Directory.GetCurrentDirectory(mRuntimeDirectory);
 		mHost = new EditorApplicationHost(this);
 
-		// Project module Configure runs against the runtime context BEFORE
-		// Startup so its RegisterSubsystem calls reach OnInit alongside
-		// the engine subsystems registered above.
-		mModule?.Configure(mHost);
+		// When the module is a DefaultApplication, pre-set the editor's
+		// shared infrastructure so Configure() reuses it instead of
+		// creating duplicates. PresetInfrastructure sets
+		// mOwnsInfrastructure = false so the module won't delete the
+		// borrowed instances on shutdown.
+		if (let defaultApp = mModule as DefaultApplication)
+		{
+			defaultApp.PresetInfrastructure(
+				mResourceSystem, mShaderSystem,
+				mFontService, BuiltinMount);
+		}
+
+		// The module's Configure registers all engine subsystems on the
+		// runtime context (via host.Ctx). DefaultApplication.Configure
+		// registers the full set (Scene, Render, Physics, Animation,
+		// Audio, Navigation, UI, Input); the game module adds its own
+		// on top. Without a module, register the defaults directly so
+		// the editor still has subsystems for scene editing.
+		if (mModule != null)
+			mModule.Configure(mHost);
+		else
+			RegisterFallbackSubsystems();
+
+		// After the module registers subsystems, tweak editor-specific
+		// properties that differ from standalone defaults.
+		ApplyEditorSubsystemOverrides();
 
 		mRuntimeContext.Startup();
 
@@ -1231,6 +1210,76 @@ class EditorApplication : Application, IDockableWindowHost
 	/// by the base Application class before this runs.
 	///
 	/// Asset content lives in `BuiltinAssets.GenerateAll` - this method
+	/// Registers the default engine subsystems when no project module is
+	/// loaded. Mirrors what DefaultApplication.RegisterSubsystems does so
+	/// the editor can still create/edit scenes without a game project.
+	private void RegisterFallbackSubsystems()
+	{
+		mRuntimeContext.RegisterSubsystem(new Sedulous.Engine.Input.InputSubsystem());
+		mRuntimeContext.RegisterSubsystem(new SceneSubsystem(mResourceSystem, mTypeRegistry));
+		let renderSub = new RenderSubsystem(mResourceSystem);
+		renderSub.Device = Device;
+		renderSub.Window = Window;
+		renderSub.ShaderSystem = mShaderSystem;
+		renderSub.BuiltInAssetDirectory = new String(BuiltInAssetDirectory);
+		mRuntimeContext.RegisterSubsystem(renderSub);
+		mRuntimeContext.RegisterSubsystem(new PhysicsSubsystem());
+		mRuntimeContext.RegisterSubsystem(new AnimationSubsystem(mResourceSystem));
+		mRuntimeContext.RegisterSubsystem(new AudioSubsystem(mResourceSystem));
+		mRuntimeContext.RegisterSubsystem(new NavigationSubsystem());
+		let uiSub = new Sedulous.Engine.UI.EngineUISubsystem();
+		uiSub.Device = Device;
+		uiSub.Shell = Shell;
+		uiSub.ShaderSystem = mShaderSystem;
+		uiSub.OutputFormat = .RGBA16Float;
+		uiSub.FontService = mFontService;
+		mRuntimeContext.RegisterSubsystem(uiSub);
+	}
+
+	/// Tweaks subsystem properties for editor hosting after the module's
+	/// Configure has registered them. Sets editor-specific values that
+	/// differ from standalone defaults (e.g., PollShellInput = false,
+	/// viewport-scoped render size).
+	private void ApplyEditorSubsystemOverrides()
+	{
+		// SceneSubsystem: inject the editor's type registry for component
+		// serialization (Add Component, inspector, scene save/load).
+		let sceneSub = mRuntimeContext.GetSubsystem<SceneSubsystem>();
+		if (sceneSub != null && mTypeRegistry != null)
+			sceneSub.[Friend]mTypeRegistry = mTypeRegistry;
+
+		// RenderSubsystem: ensure Device/Window/ShaderSystem are set
+		// (the module's RegisterSubsystems may not have the editor's
+		// Window since Graphics/MainWindow are null in the editor host).
+		let renderSub = mRuntimeContext.GetSubsystem<RenderSubsystem>();
+		if (renderSub != null)
+		{
+			renderSub.Device = Device;
+			renderSub.Window = Window;
+			renderSub.ShaderSystem = mShaderSystem;
+			renderSub.BuiltInAssetDirectory = new String(BuiltInAssetDirectory);
+		}
+
+		// EngineUISubsystem: editor-specific overrides
+		let uiSub = mRuntimeContext.GetSubsystem<Sedulous.Engine.UI.EngineUISubsystem>();
+		if (uiSub != null)
+		{
+			uiSub.Device = Device;
+			uiSub.Shell = Shell;
+			uiSub.ShaderSystem = mShaderSystem;
+			uiSub.RenderSize = .((float)Window.Width, (float)Window.Height);
+			uiSub.DpiScale = Window.ContentScale;
+			// Game-mode screen UI renders into the GameEditorPage viewport
+			// (RGBA16Float/HDR) - pipelines must match that format.
+			uiSub.OutputFormat = .RGBA16Float;
+			// Input flows through GameEditorPage's viewport handler, not
+			// the subsystem's own shell polling.
+			uiSub.PollShellInput = false;
+			uiSub.FontService = mFontService;
+			mRuntimeUISub = uiSub;
+		}
+	}
+
 	/// owns only the gate (skip when `builtin.registry` exists) and the
 	/// index lifecycle. New default assets should be added to
 	/// `BuiltinAssets`, not here.

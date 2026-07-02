@@ -4,10 +4,10 @@ using System;
 using System.Collections;
 using Sedulous.UI;
 using Sedulous.Shell.Input;
-using Sedulous.Engine;
+using Sedulous.Runtime.Client;
 using Sedulous.Engine.App;
 
-/// Hosts a running instance of the loaded IApplicationModule's game inside
+/// Hosts a running instance of the loaded IApplication's game inside
 /// the editor as a docked tab. Distinct from per-scene Simulate (the toolbar
 /// Play button on SceneEditorPage), which runs the *currently edited* scene
 /// with snapshot/restore. GameEditorPage runs the *whole game flow* end to
@@ -31,19 +31,18 @@ class GameEditorPage : IEditorPage
 	// module swap doesn't leave Dispose calling OnExit on the wrong module.
 	// Asset-only sessions construct the page with null module / host; the
 	// page sits idle and the toolbar's Play button is a no-op.
-	private IApplicationModule mModule;
-	private IApplicationHost mHost;
+	private IApplication mModule;
+	private Sedulous.Runtime.Client.IApplicationHost mHost;
 	private bool mIsRunning;
 
 	// Owned objects (input handlers, controllers, etc.) - deleted on page dispose.
 	private List<Object> mOwnedObjects = new .() ~ { for (let obj in _) delete obj; delete _; };
 
-	// Viewport-scoped input adapters. The editor's IApplicationHost
-	// returns these when this page is running so the module's
-	// host.Mouse/Keyboard/GetGamepad calls see page-local coords and
-	// only fire while the Game tab is the active editor page.
-	// Created at construction (once we know the host's shell devices)
-	// and torn down with the page.
+	// Viewport-scoped input adapters. While the page is running, these
+	// see page-local coords and only fire while the Game tab is the
+	// active editor page. EditorApplicationHost.Mouse/Keyboard/GetGamepad
+	// return these adapters so module input is automatically scoped to
+	// the game viewport.
 	private GameMouseAdapter mMouseAdapter ~ delete _;
 	private GameKeyboardAdapter mKeyboardAdapter ~ delete _;
 	private Dictionary<int32, GameGamepadAdapter> mGamepadAdapters = new .() ~ DeleteDictionaryAndValues!(_);
@@ -158,10 +157,9 @@ class GameEditorPage : IEditorPage
 		}
 	}
 
-	/// Viewport-scoped mouse for the running module. The editor's
-	/// IApplicationHost returns this in place of `Shell.InputManager.Mouse`
-	/// while the page is running. GameInputHandler pumps viewport-local
-	/// coords into it on pointer move.
+	/// Viewport-scoped mouse for the running module. GameInputHandler
+	/// pumps viewport-local coords into it on pointer move. Routed
+	/// through EditorApplicationHost.Mouse when a game page is running.
 	public GameMouseAdapter MouseAdapter => mMouseAdapter;
 
 	/// Viewport-scoped keyboard. Focus-gated on `mIsActive` so the

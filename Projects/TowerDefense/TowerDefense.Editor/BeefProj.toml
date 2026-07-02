@@ -6,5 +6,6 @@ StartupObject = "TowerDefense.Editor.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Runtime.Client" = "*"
 "Sedulous.Editor" = "*"
 "TowerDefense.Core" = "*"

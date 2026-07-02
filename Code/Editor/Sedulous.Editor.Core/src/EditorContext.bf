@@ -6,7 +6,7 @@ using Sedulous.Runtime;
 using Sedulous.Shell;
 using Sedulous.UI.Toolkit;
 using Sedulous.UI;
-using Sedulous.Engine;
+using Sedulous.Runtime.Client;
 using Sedulous.Engine.App;
 using Sedulous.Engine.Core.Resources;
 using Sedulous.Resources;
@@ -60,12 +60,12 @@ class EditorContext : IDisposable
 	/// asset-only project, etc.) or null when running module-less - the
 	/// editor fully supports the asset-only path. Game-mode features
 	/// (Play Game, future game-bake actions) gate on this being non-null.
-	public IApplicationModule Module;
+	public IApplication Module;
 
 	/// Host adapter passed to module.OnLaunch / OnExit. Routes Context to
 	/// the editor's embedded RuntimeContext rather than the editor's own
 	/// Application context. Null exactly when Module is null.
-	public IApplicationHost ApplicationHost;
+	public Sedulous.Runtime.Client.IApplicationHost ApplicationHost;
 
 	/// Application-wide logger. Routes through EditorLogger so output appears in
 	/// the LogView panel (and the console) at the configured minimum level.

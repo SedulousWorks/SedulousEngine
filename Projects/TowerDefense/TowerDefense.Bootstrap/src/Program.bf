@@ -2,17 +2,19 @@ namespace TowerDefense.Bootstrap;
 
 using System;
 using System.IO;
-using Sedulous.Engine.App;
+using Sedulous.Shell.SDL3;
+using Sedulous.RuntimeGraphics;
+using Sedulous.Runtime.Client;
 
 class Program
 {
 	public static int Main(String[] args)
 	{
-		// EngineApplication.DiscoverAssetDirectories sets
+		// DefaultApplication.DiscoverAssetDirectories sets
 		// ProjectAssetDirectory to `<parent-of-cwd>/assets` only when
 		// the directory already exists. The bootstrap is what creates
-		// that directory, so pre-create it here before app.Run kicks
-		// off discovery - otherwise BootstrapModule sees an empty
+		// that directory, so pre-create it here before the app starts
+		// discovery - otherwise BootstrapModule sees an empty
 		// ProjectAssetDirectory and writes nowhere.
 		let cwd = Directory.GetCurrentDirectory(.. scope .());
 		let parent = Path.GetDirectoryPath(cwd, .. scope .());
@@ -24,15 +26,24 @@ class Program
 				Directory.CreateDirectory(assetsDir);
 		}
 
-		let app = scope BootstrapApp();
-		return app.Run(.()
+		let shell = scope SDL3Shell();
+		if (shell.Initialize() case .Err)
 		{
-			Title = "Tower Defense Bootstrap",
-			Width = 640,
-			Height = 360,
-			TargetWidth = 640,
-			TargetHeight = 360,
-			EnableShaderCache = true
-		});
+			Console.WriteLine("ERROR: Failed to initialize shell");
+			return 1;
+		}
+		defer shell.Shutdown();
+
+		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = true });
+		if (graphicsResult case .Err)
+		{
+			Console.WriteLine("ERROR: Failed to create graphics device");
+			return 1;
+		}
+		let graphics = graphicsResult.Value;
+		defer delete graphics;
+
+		let app = scope BootstrapModule();
+		return ApplicationHost.RunApplication(app, shell, graphics);
 	}
 }
