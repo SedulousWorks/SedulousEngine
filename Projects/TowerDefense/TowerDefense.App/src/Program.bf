@@ -26,7 +26,7 @@ class Program
 		let graphics = graphicsResult.Value;
 		defer delete graphics;
 
-		let app = scope TowerDefenseModule();
+		let app = scope TowerDefenseApp();
 		return ApplicationHost.RunApplication(app, shell, graphics);
 	}
 }

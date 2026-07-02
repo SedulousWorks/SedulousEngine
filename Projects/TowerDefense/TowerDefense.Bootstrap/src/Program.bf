@@ -14,7 +14,7 @@ class Program
 		// ProjectAssetDirectory to `<parent-of-cwd>/assets` only when
 		// the directory already exists. The bootstrap is what creates
 		// that directory, so pre-create it here before the app starts
-		// discovery - otherwise BootstrapModule sees an empty
+		// discovery - otherwise BootstrapApp sees an empty
 		// ProjectAssetDirectory and writes nowhere.
 		let cwd = Directory.GetCurrentDirectory(.. scope .());
 		let parent = Path.GetDirectoryPath(cwd, .. scope .());
@@ -43,7 +43,7 @@ class Program
 		let graphics = graphicsResult.Value;
 		defer delete graphics;
 
-		let app = scope BootstrapModule();
+		let app = scope BootstrapApp();
 		return ApplicationHost.RunApplication(app, shell, graphics);
 	}
 }

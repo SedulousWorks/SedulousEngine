@@ -48,7 +48,7 @@ class GameSubsystem : Subsystem, ISceneAware
 	/// The gameplay scene, set by the module after OnLaunch. Null at edit time.
 	public Scene Scene => mScene;
 
-	/// Called by TowerDefenseModule once the game scene is created in OnLaunch,
+	/// Called by TowerDefenseApp once the game scene is created in OnLaunch,
 	/// and again with null in OnExit. Untilthis is set the subsystem's Update
 	/// is a no-op - critical so it doesn't stomp on editor-owned scenes'
 	/// SimulationEnabled flag while the module is sitting idle at edit time.
