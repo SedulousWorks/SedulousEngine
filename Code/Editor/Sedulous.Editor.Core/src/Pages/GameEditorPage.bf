@@ -31,7 +31,7 @@ class GameEditorPage : IEditorPage
 	// module swap doesn't leave Dispose calling OnExit on the wrong module.
 	// Asset-only sessions construct the page with null module / host; the
 	// page sits idle and the toolbar's Play button is a no-op.
-	private IApplication mModule;
+	private IApplication mApp;
 	private Sedulous.Runtime.Client.IApplicationHost mHost;
 	private bool mIsRunning;
 
@@ -56,7 +56,7 @@ class GameEditorPage : IEditorPage
 	public Event<delegate void(GameEditorPage)> OnGameStateChanged ~ _.Dispose();
 
 	public bool IsRunning => mIsRunning;
-	public bool CanPlay => mModule != null && mHost != null && !mIsRunning;
+	public bool CanPlay => mApp != null && mHost != null && !mIsRunning;
 
 	/// Preview-resolution selection drives the viewport texture size:
 	///   - MatchViewport: texture auto-tracks the viewport's layout (no fixed size)
@@ -189,7 +189,7 @@ class GameEditorPage : IEditorPage
 	public this(EditorContext editorContext)
 	{
 		mEditorContext = editorContext;
-		mModule = editorContext?.Module;
+		mApp = editorContext?.App;
 		mHost = editorContext?.ApplicationHost;
 
 		// Seed preview fit mode from the loaded project settings so the
@@ -217,7 +217,7 @@ class GameEditorPage : IEditorPage
 	{
 		if (!CanPlay) return;
 
-		mModule.OnLaunch(mHost);
+		mApp.OnLaunch(mHost);
 		mIsRunning = true;
 		OnGameStateChanged(this);
 	}
@@ -228,7 +228,7 @@ class GameEditorPage : IEditorPage
 	{
 		if (!mIsRunning) return;
 
-		mModule?.OnExit(mHost);
+		mApp?.OnExit(mHost);
 		mIsRunning = false;
 		OnGameStateChanged(this);
 	}
@@ -285,8 +285,8 @@ class GameEditorPage : IEditorPage
 		// driver. Skipped while idle so OnLaunch's allocations don't get
 		// touched before they exist (and don't get torn down twice if the
 		// page tab outlives a Stop).
-		if (mIsRunning && mModule != null && mHost != null)
-			mModule.OnUpdate(mHost, deltaTime);
+		if (mIsRunning && mApp != null && mHost != null)
+			mApp.OnUpdate(mHost, deltaTime);
 
 		// Drop per-frame mouse state (scroll deltas) so the next frame
 		// starts clean unless GameInputHandler refeeds the adapter from
@@ -307,9 +307,9 @@ class GameEditorPage : IEditorPage
 		// Page tab being closed while the game is still running - make
 		// sure OnExit fires so the module can tear down whatever OnLaunch
 		// allocated (mounts, scenes, audio, particle effects, etc.).
-		if (mIsRunning && mModule != null && mHost != null)
+		if (mIsRunning && mApp != null && mHost != null)
 		{
-			mModule.OnExit(mHost);
+			mApp.OnExit(mHost);
 			mIsRunning = false;
 		}
 		delete mContentView;

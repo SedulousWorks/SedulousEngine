@@ -169,7 +169,7 @@ static class GamePageBuilder
 			Scene renderable = null;
 			if (page.IsRunning)
 			{
-				if (let defaultApp = page.EditorContext?.Module as DefaultApplication)
+				if (let defaultApp = page.EditorContext?.App as DefaultApplication)
 					renderable = defaultApp.RuntimeScene;
 			}
 			if (sceneRenderer != null && renderable != null)

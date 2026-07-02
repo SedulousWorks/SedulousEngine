@@ -60,11 +60,11 @@ class EditorContext : IDisposable
 	/// asset-only project, etc.) or null when running module-less - the
 	/// editor fully supports the asset-only path. Game-mode features
 	/// (Play Game, future game-bake actions) gate on this being non-null.
-	public IApplication Module;
+	public IApplication App;
 
-	/// Host adapter passed to module.OnLaunch / OnExit. Routes Context to
+	/// Host adapter passed to app.OnLaunch / OnExit. Routes Context to
 	/// the editor's embedded RuntimeContext rather than the editor's own
-	/// Application context. Null exactly when Module is null.
+	/// Application context. Null exactly when App is null.
 	public Sedulous.Runtime.Client.IApplicationHost ApplicationHost;
 
 	/// Application-wide logger. Routes through EditorLogger so output appears in

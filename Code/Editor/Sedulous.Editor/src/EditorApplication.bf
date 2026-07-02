@@ -60,7 +60,7 @@ class EditorApplication : Application, IDockableWindowHost
 	// context's startup/shutdown so the project's subsystems land alongside
 	// the engine ones at edit time. Set on the EditorApplication instance
 	// before Run() - the editor does not own / delete this.
-	private Sedulous.Runtime.Client.IApplication mModule;
+	private Sedulous.Runtime.Client.IApplication mApp;
 	private Sedulous.Engine.UI.EngineUISubsystem mRuntimeUISub;
 
 	// Adapter that exposes EditorApplication state to project modules via
@@ -127,10 +127,10 @@ class EditorApplication : Application, IDockableWindowHost
 	/// around the runtime context's startup so the project's subsystems
 	/// are registered alongside the engine's at edit time. Must be set
 	/// before Run().
-	public Sedulous.Runtime.Client.IApplication Module
+	public Sedulous.Runtime.Client.IApplication App
 	{
-		get => mModule;
-		set => mModule = value;
+		get => mApp;
+		set => mApp = value;
 	}
 
 	// Scene serialization (owned)
@@ -279,7 +279,7 @@ class EditorApplication : Application, IDockableWindowHost
 		// creating duplicates. PresetInfrastructure sets
 		// mOwnsInfrastructure = false so the module won't delete the
 		// borrowed instances on shutdown.
-		if (let defaultApp = mModule as DefaultApplication)
+		if (let defaultApp = mApp as DefaultApplication)
 		{
 			defaultApp.PresetInfrastructure(
 				mResourceSystem, mShaderSystem,
@@ -292,8 +292,8 @@ class EditorApplication : Application, IDockableWindowHost
 		// Audio, Navigation, UI, Input); the game module adds its own
 		// on top. Without a module, register the defaults directly so
 		// the editor still has subsystems for scene editing.
-		if (mModule != null)
-			mModule.Configure(mHost);
+		if (mApp != null)
+			mApp.Configure(mHost);
 		else
 			RegisterFallbackSubsystems();
 
@@ -305,7 +305,7 @@ class EditorApplication : Application, IDockableWindowHost
 
 		// Project module OnStartup fires after the runtime context is up
 		// so the module can resolve subsystems via Context.GetSubsystem<>.
-		mModule?.OnStartup(mHost);
+		mApp?.OnStartup(mHost);
 
 		// Default primitive assets + registry
 		EnsureDefaultAssets();
@@ -334,7 +334,7 @@ class EditorApplication : Application, IDockableWindowHost
 		mEditorContext.Thumbnails = new ThumbnailService(mEditorContext, mEditorLogger);
 		mEditorContext.Shell = Shell;
 		mEditorContext.ResourceSystem = mResourceSystem;
-		mEditorContext.Module = mModule;
+		mEditorContext.App = mApp;
 		mEditorContext.ApplicationHost = mHost;
 
 		// Surface the builtin mount entry to panels (asset browser, etc.).
@@ -358,7 +358,7 @@ class EditorApplication : Application, IDockableWindowHost
 		// module is loaded, the project auto-load is deferred to
 		// OnContextStarted so it runs after page factories are registered
 		// (RestoreOpenPages inside BuildEditorShell looks them up).
-		if (mModule == null)
+		if (mApp == null)
 			BuildProjectPicker();
 
 		mEditorLogger.Log(.Information, "Sedulous Editor initialized.");
@@ -448,7 +448,7 @@ class EditorApplication : Application, IDockableWindowHost
 		// module's project directory at RuntimeDirectory/../assets. Creates
 		// the directory if it doesn't exist (first run). RestoreOpenPages
 		// inside BuildEditorShell can resolve factories cleanly here.
-		if (mModule != null)
+		if (mApp != null)
 		{
 			let projectDir = scope String();
 			let runtimeParent = System.IO.Path.GetDirectoryPath(mRuntimeDirectory, .. scope .());
@@ -829,7 +829,7 @@ class EditorApplication : Application, IDockableWindowHost
 		// Asset-only editor sessions are fully supported - Open Game is a
 		// no-op when no module is loaded. The Game menu item stays visible
 		// so users see the feature exists; first cut just logs and bails.
-		if (mModule == null)
+		if (mApp == null)
 		{
 			mEditorLogger.Log(.Information,
 				"Open Game: no application module loaded - editor is running in asset-only mode.");
@@ -1674,7 +1674,7 @@ class EditorApplication : Application, IDockableWindowHost
 		{
 			mRuntimeContext.FixedUpdate(kFixedTimeStep);
 			if (runningGamePage != null)
-				mModule?.OnFixedUpdate(mHost, kFixedTimeStep);
+				mApp?.OnFixedUpdate(mHost, kFixedTimeStep);
 			mFixedUpdateAccumulator -= kFixedTimeStep;
 			fixedSteps++;
 		}
@@ -2155,7 +2155,7 @@ class EditorApplication : Application, IDockableWindowHost
 
 		// Project module OnShutdown fires before the runtime context tears
 		// down so the module can release subsystem-side refs.
-		mModule?.OnShutdown(mHost);
+		mApp?.OnShutdown(mHost);
 
 		// Clean up runtime context (must be deleted before Device is destroyed
 		// since its subsystems share the Device).
