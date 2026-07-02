@@ -30,6 +30,16 @@ class RenderWindow
 	/// Optional typed per-window payload (e.g. UI context).
 	public IRenderWindowData Data => mData;
 
+	/// The fence for the current frame-in-flight slot. Useful for GPU
+	/// readback tracking (e.g. thumbnail renderer waits on this fence
+	/// to know when submitted work completes).
+	public IFence CurrentFence => (mGraphicsDevice != null && mFences != null) ? mFences[mGraphicsDevice.CurrentFrame] : null;
+
+	/// The fence value that EndFrame will signal for the current slot.
+	/// Pass this to GPU readback tracking so it knows which value to
+	/// wait for after the frame's submit completes.
+	public uint64 NextFenceValue => (mGraphicsDevice != null && mFenceValues != null) ? mFenceValues[mGraphicsDevice.CurrentFrame] + 1 : 0;
+
 	/// Attach a typed per-window payload. Disposes and deletes any previous data.
 	public void SetData(IRenderWindowData data)
 	{

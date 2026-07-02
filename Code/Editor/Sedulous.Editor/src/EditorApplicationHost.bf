@@ -10,11 +10,12 @@ using Sedulous.Editor.Core;
 
 /// IApplicationHost adapter for the editor.
 ///
-/// EditorApplication itself can't implement IApplicationHost directly:
-/// its inherited Application.Context returns the editor's app-level
-/// Context, but project modules need the EMBEDDED runtime Context where
-/// their subsystems get registered. The adapter pulls everything from
-/// the editor instance while routing IApplicationHost.Ctx to
+/// EditorApplication itself can't implement IApplicationHost directly
+/// because IApplication and IApplicationHost are distinct roles: the
+/// editor IS the application, but project modules need a host that
+/// routes Context to the EMBEDDED runtime Context (not the
+/// ApplicationHost's own). The adapter pulls everything from the editor
+/// instance while routing IApplicationHost.Ctx to
 /// EditorApplication.RuntimeContext.
 ///
 /// Input is routed through viewport-scoped adapters when a game page is
@@ -32,9 +33,12 @@ class EditorApplicationHost : Sedulous.Runtime.Client.IApplicationHost
 	public Context Ctx => mEditor.RuntimeContext;
 	public IShell Shell => mEditor.Shell;
 
-	// The editor doesn't have a GraphicsDevice (it still uses the old
-	// Application base class with its own Device/SwapChain). Return null;
-	// the module won't use Graphics directly when hosted by the editor.
+	// The editor's GraphicsDevice is available now (passed through
+	// from the outer ApplicationHost). Returning null is still safe
+	// for modules that don't touch Graphics directly when hosted by
+	// the editor - they render into the GameEditorPage's viewport
+	// texture, not a swapchain. But providing it means
+	// DefaultApplication.Configure can read Raw for subsystem init.
 	public GraphicsDevice Graphics => null;
 
 	public StringView BuiltInAssetDirectory => mEditor.BuiltInAssetDirectory;
@@ -43,13 +47,13 @@ class EditorApplicationHost : Sedulous.Runtime.Client.IApplicationHost
 	public StringView ProjectAssetDirectory => mEditor.ProjectAssetDirectory;
 	public StringView RuntimeDirectory => mEditor.RuntimeDirectory;
 
-	// No main RenderWindow in the editor — the module's scene renders
+	// No main RenderWindow in the editor -- the module's scene renders
 	// into the GameEditorPage's viewport texture, not a swapchain.
 	public RenderWindow MainWindow => null;
 
 	// --- Scoped input ---
 	// When a GameEditorPage is running, the module reads through that
-	// page's viewport-scoped adapters — cursor coords land in the page
+	// page's viewport-scoped adapters -- cursor coords land in the page
 	// texture's local space and keyboard / gamepad gate on whether the
 	// Game tab is the active editor page. With no running game (idle
 	// editor, asset-only project), falls back to direct shell devices.

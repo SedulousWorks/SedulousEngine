@@ -5,6 +5,7 @@ using System.Collections;
 using Sedulous.RHI;
 using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
+using Sedulous.RuntimeGraphics;
 using Sedulous.Engine.App;
 using Sedulous.Shell;
 using Sedulous.Shell.Input;
@@ -47,10 +48,26 @@ using Sedulous.Serialization;
 using Sedulous.Editor.Pages;
 
 /// The Sedulous Editor application.
-/// Extends Runtime.Client.Application for direct control over UI and rendering.
+/// Implements IApplication for hosting via ApplicationHost. Manages its own
+/// UIContext/RootView and rendering pipeline (not via UISubsystem).
 /// Creates a RuntimeContext with engine subsystems for scene preview.
-class EditorApplication : Application, IDockableWindowHost
+class EditorApplication : IApplication, IDockableWindowHost
 {
+	// Stored references from Configure/OnStartup
+	private Sedulous.Runtime.Client.IApplicationHost mApplicationHost;
+	private IDevice mDevice;
+	private IShell mShell;
+	private GraphicsDevice mGraphicsDevice;
+	private IWindow mMainWindow; // main OS window (from host.MainWindow.Window)
+
+	// Infrastructure the editor owns directly (these were provided by
+	// the old Application base class).
+	private String mBuiltInAssetDirectory = new .() ~ delete _;
+	private String mAssetCacheDirectory = new .() ~ delete _;
+	private FileSystemMount mBuiltinMount ~ delete _;
+	private ResourceSystem mResourceSystem ~ delete _;
+	private ILogger mLogger ~ delete _;
+
 	// Runtime context (embedded engine for scene preview)
 	// Deleted explicitly in OnShutdown before Device is destroyed.
 	private Context mRuntimeContext;
@@ -66,7 +83,7 @@ class EditorApplication : Application, IDockableWindowHost
 	// Adapter that exposes EditorApplication state to project modules via
 	// IApplicationHost (in particular, routing Context to mRuntimeContext
 	// instead of the inherited Application.Context).
-	private EditorApplicationHost mHost ~ delete _;
+	private EditorApplicationHost mEditorHost ~ delete _;
 
 	// Captured working directory at startup. For TowerDefense.Editor this
 	// is Projects/TowerDefense/TowerDefense.Editor/; project modules walk
@@ -82,14 +99,39 @@ class EditorApplication : Application, IDockableWindowHost
 	private const int32 kMaxFixedStepsPerFrame = 8;
 	private float mFixedUpdateAccumulator = 0.0f;
 
+	// Timing state tracked by the editor itself
+	private float mDeltaTime;
+	private float mTotalTime;
+
 	/// The embedded runtime context where the engine's component managers
-	/// and the project module's subsystems live. Distinct from the base
-	/// Application.Context (which manages editor-app state).
+	/// and the project module's subsystems live. Distinct from the
+	/// ApplicationHost's Context (which manages editor-app state).
 	public Context RuntimeContext => mRuntimeContext;
 
 	/// Working directory at startup. Project modules use this to resolve
 	/// per-project content directories.
 	public StringView RuntimeDirectory => mRuntimeDirectory;
+
+	/// The platform shell (windowing, input, clipboard).
+	public IShell Shell => mShell;
+
+	/// The RHI device for GPU operations.
+	public IDevice Device => mDevice;
+
+	/// The main OS window.
+	public IWindow Window => mMainWindow;
+
+	/// Engine built-in assets directory.
+	public StringView BuiltInAssetDirectory => mBuiltInAssetDirectory;
+
+	/// Asset cache directory (shader cache, thumbnails).
+	public StringView AssetCacheDirectory => mAssetCacheDirectory;
+
+	/// The shared resource system.
+	public ResourceSystem ResourceSystem => mResourceSystem;
+
+	/// The application's built-in asset mount (builtin:// scheme).
+	public FileSystemMount BuiltinMount => mBuiltinMount;
 
 	/// Per-project assets directory for the currently-open project.
 	/// Editor convention is that the `.sedproj` file lives inside the
@@ -188,23 +230,73 @@ class EditorApplication : Application, IDockableWindowHost
 	private int32 mNewSceneCounter;
 
 	// Multi-window (floating dock panels + cross-window drag)
-	private Dictionary<View, SecondaryWindowContext> mDockableWindowMap = new .() ~ delete _;
+	private Dictionary<View, RenderWindow> mDockableWindowMap = new .() ~ delete _;
 	private IWindow mDragSourceWindow;
 	private float mDragWindowOffsetX;
 	private float mDragWindowOffsetY;
 
-	public this() : base() { }
+	public this() { }
 
-	protected override ILogger CreateLogger()
+	public ApplicationSettings Settings()
 	{
+		return .()
+		{
+			Title = "Sedulous Editor",
+			Width = 1600,
+			Height = 900,
+			EnableShaderCache = true
+		};
+	}
+
+	/// Returns a path relative to the assets directory.
+	public void GetAssetPath(StringView relativePath, String outPath)
+	{
+		outPath.Clear();
+		System.IO.Path.InternalCombine(outPath, mBuiltInAssetDirectory, relativePath);
+	}
+
+	/// Returns a path relative to the asset cache directory.
+	public void GetAssetCachePath(StringView relativePath, String outPath)
+	{
+		outPath.Clear();
+		System.IO.Path.InternalCombine(outPath, mAssetCacheDirectory, relativePath);
+	}
+
+	public void Configure(Sedulous.Runtime.Client.IApplicationHost host)
+	{
+		mApplicationHost = host;
+		mDevice = host.Graphics.Raw;
+		mShell = host.Shell;
+		mGraphicsDevice = host.Graphics;
+		mMainWindow = host.MainWindow.Window;
+
+		// Store asset directories from the host's discovery
+		mBuiltInAssetDirectory.Set(host.BuiltInAssetDirectory);
+		mAssetCacheDirectory.Set(host.AssetCacheDirectory);
+
+		// Create own ResourceSystem (the editor manages its own)
 		// Editor ships at Debug during active development so page-open,
 		// asset-resolve, and mount traces are visible in the LogView panel.
 		mEditorLogger = new EditorLogger(.Debug);
 		mEditorLogger.AddListener(mLogBuffer);
-		return mEditorLogger;
+		mLogger = mEditorLogger;
+
+		mResourceSystem = new Sedulous.Resources.ResourceSystem(mLogger);
+		mResourceSystem.EnableHotReload();
+		mResourceSystem.SetSerializerProvider(new Sedulous.Serialization.OpenDDL.OpenDDLSerializerProvider());
+		mResourceSystem.Startup();
+
+		// Mount the discovered asset directory under `builtin://` so the
+		// editor can read bundled assets (fonts, shaders, default primitives,
+		// etc.) through the VFS rather than raw disk paths.
+		mBuiltinMount = new FileSystemMount(mBuiltInAssetDirectory);
+		mResourceSystem.Mount("builtin", mBuiltinMount);
+
+		// Subscribe to window events for secondary window close handling
+		mShell.WindowManager.OnWindowEvent.Subscribe(new => HandleWindowEvent);
 	}
 
-	protected override void OnInitialize(Context context)
+	public void OnStartup(Sedulous.Runtime.Client.IApplicationHost host)
 	{
 		// Set serializer provider on project for OpenDDL-based .sedproj files
 		mProject.SetSerializerProvider(ResourceSystem.SerializerProvider);
@@ -224,17 +316,16 @@ class EditorApplication : Application, IDockableWindowHost
 		let shaderDir = scope String();
 		GetAssetPath("shaders", shaderDir);
 		StringView[1] shaderPaths = .(shaderDir);
-		
+
 		let shaderCacheDir = scope String();
 		GetAssetCachePath("shaders", shaderCacheDir);
-		mShaderSystem.Initialize(Device, shaderPaths, shaderCacheDir);
+		mShaderSystem.Initialize(mDevice, shaderPaths, shaderCacheDir);
 
-		// Font service. Loads Roboto through the inherited `builtin://`
-		// mount (created by the base Application class) instead of via raw
-		// disk paths. Locator is relative to the mount root.
-		mFontService = new TrueTypeFontService(BuiltinMount);
+		// Font service. Loads Roboto through the `builtin://` mount
+		// instead of via raw disk paths. Locator is relative to the mount root.
+		mFontService = new TrueTypeFontService(mBuiltinMount);
 		let robotoLocator = "fonts/roboto/Roboto-Regular.ttf";
-		if (BuiltinMount.Exists(robotoLocator))
+		if (mBuiltinMount.Exists(robotoLocator))
 		{
 			float[?] sizes = .(11, 12, 13, 14, 16, 18, 20, 24);
 			for (let size in sizes)
@@ -244,11 +335,11 @@ class EditorApplication : Application, IDockableWindowHost
 		// VG renderer (for UI drawing)
 		mVGContext = new VGContext(mFontService);
 		mVGRenderer = new VGRenderer();
-		mVGRenderer.Initialize(Device, SwapChain.Format, (int32)SwapChain.BufferCount, mShaderSystem);
+		mVGRenderer.Initialize(mDevice, host.MainWindow.Swap.Format, (int32)host.MainWindow.Swap.BufferCount, mShaderSystem);
 		mVGRenderer.SetExternalCache(mExternalTextureCache);
 
 		// Clipboard
-		mClipboard = new ShellClipboardAdapter(Shell.Clipboard);
+		mClipboard = new ShellClipboardAdapter(mShell.Clipboard);
 
 		// Editor icons (shared SVG drawables)
 		EditorIcons.Initialize();
@@ -272,7 +363,7 @@ class EditorApplication : Application, IDockableWindowHost
 		// Capture cwd + create the IApplicationHost adapter so the project
 		// module sees a stable view of editor state during Configure.
 		Directory.GetCurrentDirectory(mRuntimeDirectory);
-		mHost = new EditorApplicationHost(this);
+		mEditorHost = new EditorApplicationHost(this);
 
 		// When the module is a DefaultApplication, pre-set the editor's
 		// shared infrastructure so Configure() reuses it instead of
@@ -283,7 +374,7 @@ class EditorApplication : Application, IDockableWindowHost
 		{
 			defaultApp.PresetInfrastructure(
 				mResourceSystem, mShaderSystem,
-				mFontService, BuiltinMount);
+				mFontService, mBuiltinMount);
 		}
 
 		// The module's Configure registers all engine subsystems on the
@@ -293,7 +384,7 @@ class EditorApplication : Application, IDockableWindowHost
 		// on top. Without a module, register the defaults directly so
 		// the editor still has subsystems for scene editing.
 		if (mApp != null)
-			mApp.Configure(mHost);
+			mApp.Configure(mEditorHost);
 		else
 			RegisterFallbackSubsystems();
 
@@ -305,7 +396,7 @@ class EditorApplication : Application, IDockableWindowHost
 
 		// Project module OnStartup fires after the runtime context is up
 		// so the module can resolve subsystems via Context.GetSubsystem<>.
-		mApp?.OnStartup(mHost);
+		mApp?.OnStartup(mEditorHost);
 
 		// Default primitive assets + registry
 		EnsureDefaultAssets();
@@ -317,7 +408,7 @@ class EditorApplication : Application, IDockableWindowHost
 
 		// Editor context
 		mEditorContext = new EditorContext();
-		mEditorContext.EditorAppContext = mContext;
+		mEditorContext.EditorAppContext = host.Ctx;
 		mEditorContext.RuntimeContext = mRuntimeContext;
 		mEditorContext.Logger = mEditorLogger;
 		mEditorContext.SceneManager = mSceneManager;
@@ -330,20 +421,18 @@ class EditorApplication : Application, IDockableWindowHost
 		mEditorContext.Project = mProject;
 		mEditorContext.AssetCache = new EditorAssetCache();
 		mEditorContext.AssetCache.SetSerializerProvider(ResourceSystem.SerializerProvider);
-		mEditorContext.DialogService = Shell.Dialogs;
+		mEditorContext.DialogService = mShell.Dialogs;
 		mEditorContext.Thumbnails = new ThumbnailService(mEditorContext, mEditorLogger);
-		mEditorContext.Shell = Shell;
+		mEditorContext.Shell = mShell;
 		mEditorContext.ResourceSystem = mResourceSystem;
 		mEditorContext.App = mApp;
-		mEditorContext.ApplicationHost = mHost;
+		mEditorContext.ApplicationHost = mEditorHost;
 
 		// Surface the builtin mount entry to panels (asset browser, etc.).
-		// The mount itself is owned by the base Application class; we just
-		// pair it with the editor's identity index for browser display.
-		if (BuiltinMount != null)
+		if (mBuiltinMount != null)
 		{
 			mEditorContext.MountEntries.Add(new MountEntry(
-				"builtin", BuiltinMount, mBuiltinIndex, "builtin.registry", true));
+				"builtin", mBuiltinMount, mBuiltinIndex, "builtin.registry", true));
 		}
 
 		// Discover plugins
@@ -354,18 +443,6 @@ class EditorApplication : Application, IDockableWindowHost
 		GetAssetPath("cache/recent_projects.oddl", recentPath);
 		mRecentProjects.Initialize(recentPath, ResourceSystem.SerializerProvider);
 
-		// When no project module is loaded, show the picker now. When a
-		// module is loaded, the project auto-load is deferred to
-		// OnContextStarted so it runs after page factories are registered
-		// (RestoreOpenPages inside BuildEditorShell looks them up).
-		if (mApp == null)
-			BuildProjectPicker();
-
-		mEditorLogger.Log(.Information, "Sedulous Editor initialized.");
-	}
-
-	protected override void OnContextStarted()
-	{
 		// Register built-in asset creators
 		mEditorContext.RegisterAssetCreator(new MaterialAssetCreator());
 		mEditorContext.RegisterAssetCreator(new SceneAssetCreator());
@@ -398,7 +475,7 @@ class EditorApplication : Application, IDockableWindowHost
 			let sceneSub = mRuntimeContext.GetSubsystem<SceneSubsystem>();
 			let sceneRenderer = mRuntimeContext.GetSubsystemByInterface<ISceneRenderer>();
 			if (sceneSub != null && sceneRenderer != null)
-				mThumbnailRenderer = new ThumbnailRenderer(sceneSub, sceneRenderer, Device, ResourceSystem);
+				mThumbnailRenderer = new ThumbnailRenderer(sceneSub, sceneRenderer, mDevice, ResourceSystem);
 		}
 
 		// Register asset thumbnail generators. Only registered extensions
@@ -420,22 +497,22 @@ class EditorApplication : Application, IDockableWindowHost
 
 		// Register built-in page factories
 		mEditorContext.RegisterPageFactory(new SceneEditorPageFactory(
-			Device, mVGRenderer, Shell.InputManager.Keyboard, mTypeRegistry));
+			mDevice, mVGRenderer, mShell.InputManager.Keyboard, mTypeRegistry));
 		mEditorContext.RegisterPageFactory(new PrefabEditorPageFactory(
-			Device, mVGRenderer, Shell.InputManager.Keyboard, mTypeRegistry));
+			mDevice, mVGRenderer, mShell.InputManager.Keyboard, mTypeRegistry));
 		mEditorContext.RegisterPageFactory(new TextureEditorPageFactory());
 		mEditorContext.RegisterPageFactory(new ImageEditorPageFactory());
-		mEditorContext.RegisterPageFactory(new MaterialEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
-		mEditorContext.RegisterPageFactory(new MeshEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
-		mEditorContext.RegisterPageFactory(new SkinnedMeshEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
-		mEditorContext.RegisterPageFactory(new AnimationEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
-		mEditorContext.RegisterPageFactory(new SkeletonEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
-		mEditorContext.RegisterPageFactory(new AnimGraphEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
+		mEditorContext.RegisterPageFactory(new MaterialEditorPageFactory(mDevice, mVGRenderer, mShell.InputManager.Keyboard));
+		mEditorContext.RegisterPageFactory(new MeshEditorPageFactory(mDevice, mVGRenderer, mShell.InputManager.Keyboard));
+		mEditorContext.RegisterPageFactory(new SkinnedMeshEditorPageFactory(mDevice, mVGRenderer, mShell.InputManager.Keyboard));
+		mEditorContext.RegisterPageFactory(new AnimationEditorPageFactory(mDevice, mVGRenderer, mShell.InputManager.Keyboard));
+		mEditorContext.RegisterPageFactory(new SkeletonEditorPageFactory(mDevice, mVGRenderer, mShell.InputManager.Keyboard));
+		mEditorContext.RegisterPageFactory(new AnimGraphEditorPageFactory(mDevice, mVGRenderer, mShell.InputManager.Keyboard));
 		mEditorContext.RegisterPageFactory(new AudioClipEditorPageFactory());
 		mEditorContext.RegisterPageFactory(new SoundCueEditorPageFactory());
 		mEditorContext.RegisterPageFactory(new FontEditorPageFactory());
-		mEditorContext.RegisterPageFactory(new PropAnimEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard, mTypeRegistry));
-		mEditorContext.RegisterPageFactory(new ParticleEditorPageFactory(Device, mVGRenderer, Shell.InputManager.Keyboard));
+		mEditorContext.RegisterPageFactory(new PropAnimEditorPageFactory(mDevice, mVGRenderer, mShell.InputManager.Keyboard, mTypeRegistry));
+		mEditorContext.RegisterPageFactory(new ParticleEditorPageFactory(mDevice, mVGRenderer, mShell.InputManager.Keyboard));
 
 		// Register built-in gizmo renderers
 		mEditorContext.RegisterGizmoRenderer(typeof(LightComponent), new LightGizmoRenderer());
@@ -444,11 +521,16 @@ class EditorApplication : Application, IDockableWindowHost
 		// Initialize plugins after UI is set up.
 		mEditorContext.PluginRegistry.InitializeAll(mEditorContext);
 
-		// Module-loaded mode: now that page factories exist, auto-open the
-		// module's project directory at RuntimeDirectory/../assets. Creates
-		// the directory if it doesn't exist (first run). RestoreOpenPages
-		// inside BuildEditorShell can resolve factories cleanly here.
-		if (mApp != null)
+		// When no project module is loaded, show the picker now. When a
+		// module is loaded, auto-open the module's project directory at
+		// RuntimeDirectory/../assets. Creates the directory if it doesn't
+		// exist (first run). RestoreOpenPages inside BuildEditorShell can
+		// resolve factories cleanly here.
+		if (mApp == null)
+		{
+			BuildProjectPicker();
+		}
+		else
 		{
 			let projectDir = scope String();
 			let runtimeParent = System.IO.Path.GetDirectoryPath(mRuntimeDirectory, .. scope .());
@@ -460,6 +542,8 @@ class EditorApplication : Application, IDockableWindowHost
 			OpenProject(projectDir);
 			BuildEditorShell();
 		}
+
+		mEditorLogger.Log(.Information, "Sedulous Editor initialized.");
 	}
 
 	// ==================== Project Picker ====================
@@ -497,7 +581,7 @@ class EditorApplication : Application, IDockableWindowHost
 
 		let newBtn = new Button("New Project...");
 		newBtn.OnClick.Add(new (b) => {
-			Shell.Dialogs.ShowFolderDialog(new (paths) => {
+			mShell.Dialogs.ShowFolderDialog(new (paths) => {
 				if (paths.Length > 0 && paths[0].Length > 0)
 				{
 					let path = scope String(paths[0]);
@@ -505,16 +589,16 @@ class EditorApplication : Application, IDockableWindowHost
 					mProject.Save();
 					OpenProject(path);
 				}
-			}, default, Window);
+			}, default, mMainWindow);
 		});
 		btnRow.AddView(newBtn, new FlexLayout.LayoutParams() { Height = .Fixed(.Px(32)) });
 
 		let openBtn = new Button("Open Project...");
 		openBtn.OnClick.Add(new (b) => {
-			Shell.Dialogs.ShowFolderDialog(new (paths) => {
+			mShell.Dialogs.ShowFolderDialog(new (paths) => {
 				if (paths.Length > 0 && paths[0].Length > 0)
 					OpenProject(paths[0]);
-			}, default, Window);
+			}, default, mMainWindow);
 		});
 		btnRow.AddView(openBtn, new FlexLayout.LayoutParams() { Height = .Fixed(.Px(32)) });
 
@@ -796,7 +880,7 @@ class EditorApplication : Application, IDockableWindowHost
 		fileMenu.AddItem("Save As...", new () => OnSaveAs());
 		fileMenu.AddItem("Save All", new () => OnSaveAll());
 		fileMenu.AddSeparator();
-		fileMenu.AddItem("Exit", new () => Exit());
+		fileMenu.AddItem("Exit", new () => mApplicationHost?.RequestExit());
 
 		let editMenu = menuBar.AddMenu("Edit");
 		editMenu.AddItem("Undo", new () => {
@@ -849,7 +933,7 @@ class EditorApplication : Application, IDockableWindowHost
 		let page = new GameEditorPage(mEditorContext);
 		let sceneRenderer = mRuntimeContext.GetSubsystemByInterface<ISceneRenderer>();
 		let screenRenderer = mRuntimeContext.GetSubsystemByInterface<IScreenRenderer>();
-		let content = GamePageBuilder.Build(page, mEditorContext, Device, mVGRenderer,
+		let content = GamePageBuilder.Build(page, mEditorContext, mDevice, mVGRenderer,
 			sceneRenderer, screenRenderer);
 		page.SetContentView(content);
 		mEditorContext.PageManager.AddPage(page);
@@ -891,13 +975,13 @@ class EditorApplication : Application, IDockableWindowHost
 		if (mProject.ProjectDirectory.Length > 0)
 			defaultPath.Set(mProject.ProjectDirectory);
 
-		Shell.Dialogs.ShowOpenFileDialog(
+		mShell.Dialogs.ShowOpenFileDialog(
 			new (paths) => {
 				if (paths.Length > 0)
 					OpenSceneFile(paths[0]);
 			},
 			scope StringView[]("*.scene"),
-			defaultPath, false, Window);
+			defaultPath, false, mMainWindow);
 	}
 
 	private void OnSave()
@@ -933,7 +1017,7 @@ class EditorApplication : Application, IDockableWindowHost
 
 		let filter = scope String()..AppendF("*{}", ext);
 
-		Shell.Dialogs.ShowSaveFileDialog(
+		mShell.Dialogs.ShowSaveFileDialog(
 			new (paths) => {
 				if (paths.Length > 0)
 				{
@@ -947,7 +1031,7 @@ class EditorApplication : Application, IDockableWindowHost
 				}
 			},
 			scope StringView[](filter),
-			defaultPath, Window);
+			defaultPath, mMainWindow);
 	}
 
 	/// Saves every open page that's dirty and savable. Pages with no FilePath
@@ -1218,18 +1302,18 @@ class EditorApplication : Application, IDockableWindowHost
 		mRuntimeContext.RegisterSubsystem(new Sedulous.Engine.Input.InputSubsystem());
 		mRuntimeContext.RegisterSubsystem(new SceneSubsystem(mResourceSystem, mTypeRegistry));
 		let renderSub = new RenderSubsystem(mResourceSystem);
-		renderSub.Device = Device;
-		renderSub.Window = Window;
+		renderSub.Device = mDevice;
+		renderSub.Window = mMainWindow;
 		renderSub.ShaderSystem = mShaderSystem;
-		renderSub.BuiltInAssetDirectory = new String(BuiltInAssetDirectory);
+		renderSub.BuiltInAssetDirectory = mBuiltInAssetDirectory;
 		mRuntimeContext.RegisterSubsystem(renderSub);
 		mRuntimeContext.RegisterSubsystem(new PhysicsSubsystem());
 		mRuntimeContext.RegisterSubsystem(new AnimationSubsystem(mResourceSystem));
 		mRuntimeContext.RegisterSubsystem(new AudioSubsystem(mResourceSystem));
 		mRuntimeContext.RegisterSubsystem(new NavigationSubsystem());
 		let uiSub = new Sedulous.Engine.UI.EngineUISubsystem();
-		uiSub.Device = Device;
-		uiSub.Shell = Shell;
+		uiSub.Device = mDevice;
+		uiSub.Shell = mShell;
 		uiSub.ShaderSystem = mShaderSystem;
 		uiSub.OutputFormat = .RGBA16Float;
 		uiSub.FontService = mFontService;
@@ -1254,21 +1338,21 @@ class EditorApplication : Application, IDockableWindowHost
 		let renderSub = mRuntimeContext.GetSubsystem<RenderSubsystem>();
 		if (renderSub != null)
 		{
-			renderSub.Device = Device;
-			renderSub.Window = Window;
+			renderSub.Device = mDevice;
+			renderSub.Window = mMainWindow;
 			renderSub.ShaderSystem = mShaderSystem;
-			renderSub.BuiltInAssetDirectory = new String(BuiltInAssetDirectory);
+			renderSub.BuiltInAssetDirectory = new String(mBuiltInAssetDirectory);
 		}
 
 		// EngineUISubsystem: editor-specific overrides
 		let uiSub = mRuntimeContext.GetSubsystem<Sedulous.Engine.UI.EngineUISubsystem>();
 		if (uiSub != null)
 		{
-			uiSub.Device = Device;
-			uiSub.Shell = Shell;
+			uiSub.Device = mDevice;
+			uiSub.Shell = mShell;
 			uiSub.ShaderSystem = mShaderSystem;
-			uiSub.RenderSize = .((float)Window.Width, (float)Window.Height);
-			uiSub.DpiScale = Window.ContentScale;
+			uiSub.RenderSize = .((float)mMainWindow.Width, (float)mMainWindow.Height);
+			uiSub.DpiScale = mMainWindow.ContentScale;
 			// Game-mode screen UI renders into the GameEditorPage viewport
 			// (RGBA16Float/HDR) - pipelines must match that format.
 			uiSub.OutputFormat = .RGBA16Float;
@@ -1288,9 +1372,8 @@ class EditorApplication : Application, IDockableWindowHost
 		let assetRoot = scope String();
 		GetAssetPath("", assetRoot);
 
-		// Use the mount owned by the base Application class. We generate
+		// Use the mount owned by this editor instance. We generate
 		// and persist through this same mount so saves go through VFS.
-		let mBuiltinMount = BuiltinMount;
 
 		bool needsGeneration = !mBuiltinMount.Exists("builtin.registry");
 		let tempIndex = scope InMemoryResourceIndex();
@@ -1432,8 +1515,8 @@ class EditorApplication : Application, IDockableWindowHost
 		let page = new SceneEditorPage(scene, "", mEditorContext);
 
 		let sceneRenderer = mRuntimeContext.GetSubsystemByInterface<ISceneRenderer>();
-		let content = ScenePageBuilder.Build(page, mEditorContext, Device, mVGRenderer,
-			sceneRenderer, Shell.InputManager.Keyboard);
+		let content = ScenePageBuilder.Build(page, mEditorContext, mDevice, mVGRenderer,
+			sceneRenderer, mShell.InputManager.Keyboard);
 		page.SetContentView(content);
 
 		mEditorContext.PageManager.AddPage(page);
@@ -1442,14 +1525,18 @@ class EditorApplication : Application, IDockableWindowHost
 
 	// ==================== Frame Loop ====================
 
-	protected override void OnInput(FrameContext frame)
+	public void OnUpdate(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime)
 	{
-		mFrameDelta = frame.DeltaTime;
+		mDeltaTime = deltaTime;
+		mTotalTime += deltaTime;
+		mFrameDelta = deltaTime;
+
+		// --- Input phase ---
 
 		if (mUIContext == null) return;
 
-		let mouse = Shell.InputManager.Mouse;
-		let keyboard = Shell.InputManager.Keyboard;
+		let mouse = mShell.InputManager.Mouse;
+		let keyboard = mShell.InputManager.Keyboard;
 
 		// F8 toggles UI debug overlay (all options at once).
 		if (keyboard != null && keyboard.IsKeyPressed(.F8))
@@ -1492,13 +1579,13 @@ class EditorApplication : Application, IDockableWindowHost
 		// main. MouseHoverWindow comes from MOUSE_ENTER / LEAVE.
 		RootView inputRoot = mMainRoot;
 		let hover = mouse.MouseHoverWindow;
-		if (hover != null && hover !== Window)
+		if (hover != null && hover !== mMainWindow)
 		{
 			for (let kv in mDockableWindowMap)
 			{
 				if (kv.value.Window === hover)
 				{
-					if (let data = kv.value.UserData as DockableWindowData)
+					if (let data = kv.value.Data as DockableWindowData)
 						inputRoot = data.RootView;
 					break;
 				}
@@ -1542,8 +1629,8 @@ class EditorApplication : Application, IDockableWindowHost
 
 			// Route to main window with global-to-main-relative conversion.
 			mUIContext.ActiveInputRoot = mMainRoot;
-			let mx = globalX - (float)Window.X;
-			let my = globalY - (float)Window.Y;
+			let mx = globalX - (float)mMainWindow.X;
+			let my = globalY - (float)mMainWindow.Y;
 			mInputHelper.ProcessMouseInput(mouse, mUIContext, mx, my);
 			if (keyboard != null)
 				mInputHelper.ProcessKeyboardInput(keyboard, mUIContext, mFrameDelta);
@@ -1569,6 +1656,158 @@ class EditorApplication : Application, IDockableWindowHost
 		// starts working).
 		if (mouse.IsButtonPressed(.Left))
 			ActivatePageUnderClick();
+
+		// --- Update phase ---
+
+		// Flush buffered log messages to the LogView on the main thread.
+		mLogBuffer.Flush();
+
+		// TickReadback first so a finished GPU thumbnail clears the
+		// renderer's in-flight slot BEFORE the service tries to
+		// dispatch the next request. Otherwise we lose a frame per
+		// thumbnail (service sees busy, then we clear it - same frame
+		// wasted).
+		{
+			let mainFence = host.MainWindow?.CurrentFence;
+			if (mainFence != null)
+				mThumbnailRenderer?.TickReadback(mainFence);
+		}
+
+		// Process queued thumbnail requests (throttled per frame inside Update).
+		mEditorContext.Thumbnails?.Update();
+
+		// Push live render-target dimensions + DPI into the runtime UI
+		// subsystem before its Update runs. When a GameEditorPage is in
+		// its IsRunning state, route to the page's *current* viewport
+		// texture size - covers both fixed-size and layout-tracked
+		// (MatchViewport) modes uniformly so the runtime UI canvas
+		// always matches what the scene renders into. Falls back to
+		// the editor window only when no game is running.
+		if (mRuntimeUISub != null && mMainWindow != null)
+		{
+			var canvasW = (float)mMainWindow.Width;
+			var canvasH = (float)mMainWindow.Height;
+			var dpiScale = mMainWindow.ContentScale;
+			let game = RunningGamePage;
+			if (game != null && game.ViewportRenderWidth > 0 && game.ViewportRenderHeight > 0)
+			{
+				canvasW = (float)game.ViewportRenderWidth;
+				canvasH = (float)game.ViewportRenderHeight;
+				// Fixed-resolution previews render at the texture's pixel
+				// grid, so the editor window's HiDPI factor shouldn't
+				// scale UI again. MatchViewport keeps the window scale
+				// because the texture really is at the window's pixel
+				// density. ProjectTarget with a 0/0 setting collapses
+				// to MatchViewport at the viewport layer, so check the
+				// effective size (not just the enum) before forcing
+				// 1.0 - otherwise HiDPI UI shrinks in that fallback.
+				uint32 effW, effH;
+				game.GetEffectivePreviewSize(out effW, out effH);
+				if (effW > 0 && effH > 0)
+					dpiScale = 1.0f;
+			}
+			mRuntimeUISub.RenderSize = .(canvasW, canvasH);
+			mRuntimeUISub.DpiScale = dpiScale;
+		}
+
+		// Tick RuntimeContext (component init, scene updates for editor mode).
+		mRuntimeContext.BeginFrame(deltaTime);
+
+		// Fixed update loop. Runs unconditionally so simulating scene tabs
+		// can drive their physics; non-simulating scenes have
+		// SimulationEnabled=false and their FixedUpdate funcs no-op.
+		// Clamped to avoid spiral-of-death after a frame stall.
+		mFixedUpdateAccumulator += deltaTime;
+		int32 fixedSteps = 0;
+		// Check once per frame whether any Game page is currently running -
+		// module.OnFixedUpdate only fires when a GameEditorPage is in its
+		// IsRunning state, matching the OnLaunch/OnExit window. With only
+		// one Game page allowed at a time this collapses to "is one open?"
+		GameEditorPage runningGamePage = null;
+		for (let page in mEditorContext.PageManager.OpenPages)
+		{
+			if (let gp = page as GameEditorPage)
+			{
+				if (gp.IsRunning) { runningGamePage = gp; break; }
+			}
+		}
+		while (mFixedUpdateAccumulator >= kFixedTimeStep && fixedSteps < kMaxFixedStepsPerFrame)
+		{
+			mRuntimeContext.FixedUpdate(kFixedTimeStep);
+			if (runningGamePage != null)
+				mApp?.OnFixedUpdate(mEditorHost, kFixedTimeStep);
+			mFixedUpdateAccumulator -= kFixedTimeStep;
+			fixedSteps++;
+		}
+		if (mFixedUpdateAccumulator > kFixedTimeStep * 2)
+			mFixedUpdateAccumulator = kFixedTimeStep * 2;
+
+		mRuntimeContext.Update(deltaTime);
+		mRuntimeContext.PostUpdate(deltaTime);
+		mRuntimeContext.EndFrame();
+
+		// Update plugins
+		mEditorContext.PluginRegistry.UpdateAll(deltaTime);
+
+		// Update every open page, not just the active one. Pages (e.g.
+		// AnimationEditorPage) own their own playback timeline that has to
+		// advance per frame independent of focus; with side-by-side panels
+		// the user sees both pages rendering and expects both to play.
+		for (let page in mEditorContext.PageManager.OpenPages)
+			page?.Update(deltaTime);
+
+		// UI frame
+		mMainRoot.DpiScale = mMainWindow.ContentScale;
+		mMainRoot.ViewportSize = .((float)mMainWindow.Width, (float)mMainWindow.Height);
+		mUIContext.BeginFrame(deltaTime);
+		mUIContext.UpdateRootView(mMainRoot);
+
+		// Process OS file drops *after* UpdateRootView so the asset
+		// browser panel's bounds reflect the current frame's layout
+		// (LocalToScreen depends on cached layout positions). Drops
+		// outside the panel's screen rect are silently ignored - this
+		// is the gating UX the user asked for.
+		ProcessFileDrops();
+	}
+
+	private void ProcessFileDrops()
+	{
+		let input = mShell.InputManager;
+		if (input.DroppedFileCount == 0 || mAssetBrowserPanel == null) return;
+
+		let panelView = mAssetBrowserPanel.ContentView;
+		if (panelView == null || panelView.Context == null) return;
+
+		let adapter = mAssetBrowserPanel.ActiveContentAdapter;
+		let entry = adapter?.ActiveEntry;
+		if (entry == null) return;
+		let writable = entry.Mount as IWritableMount;
+		if (writable == null) return;
+
+		// SDL drops report window-relative *physical* pixels; UI views
+		// live in logical pixels. Divide by ContentScale once.
+		let scale = mMainWindow.ContentScale;
+		let dpiScale = (scale > 0.0001f) ? scale : 1.0f;
+
+		let topLeft = panelView.LocalToScreen(.Zero);
+		let panelRect = Sedulous.Core.Mathematics.RectangleF(
+			topLeft.X, topLeft.Y, panelView.Width, panelView.Height);
+
+		for (int i = 0; i < input.DroppedFileCount; i++)
+		{
+			let path = input.GetDroppedFile(i);
+			if (path.IsEmpty) continue;
+
+			float dropX, dropY;
+			if (!input.TryGetDroppedFilePosition(i, out dropX, out dropY)) continue;
+			let logicalX = dropX / dpiScale;
+			let logicalY = dropY / dpiScale;
+
+			if (!panelRect.Contains(logicalX, logicalY)) continue;
+
+			AssetBrowserBuilder.DispatchImportFile(mEditorContext, adapter,
+				mAssetBrowserPanel, entry, writable, path);
+		}
 	}
 
 	private void ActivatePageUnderClick()
@@ -1596,195 +1835,56 @@ class EditorApplication : Application, IDockableWindowHost
 		}
 	}
 
-	protected override void OnUpdate(FrameContext frame)
+	public void OnRenderWindow(Sedulous.Runtime.Client.IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
 	{
-		if (mUIContext == null) return;
-
-		mFrameDelta = frame.DeltaTime;
-
-		// Flush buffered log messages to the LogView on the main thread.
-		mLogBuffer.Flush();
-
-		// TickReadback first so a finished GPU thumbnail clears the
-		// renderer's in-flight slot BEFORE the service tries to
-		// dispatch the next request. Otherwise we lose a frame per
-		// thumbnail (service sees busy, then we clear it - same frame
-		// wasted).
-		mThumbnailRenderer?.TickReadback(mFrameFence);
-
-		// Process queued thumbnail requests (throttled per frame inside Update).
-		mEditorContext.Thumbnails?.Update();
-
-		// Push live render-target dimensions + DPI into the runtime UI
-		// subsystem before its Update runs. When a GameEditorPage is in
-		// its IsRunning state, route to the page's *current* viewport
-		// texture size - covers both fixed-size and layout-tracked
-		// (MatchViewport) modes uniformly so the runtime UI canvas
-		// always matches what the scene renders into. Falls back to
-		// the editor window only when no game is running.
-		if (mRuntimeUISub != null && Window != null)
+		let data = frame.Window.Data as DockableWindowData;
+		if (data != null)
 		{
-			var canvasW = (float)Window.Width;
-			var canvasH = (float)Window.Height;
-			var dpiScale = Window.ContentScale;
-			let game = RunningGamePage;
-			if (game != null && game.ViewportRenderWidth > 0 && game.ViewportRenderHeight > 0)
-			{
-				canvasW = (float)game.ViewportRenderWidth;
-				canvasH = (float)game.ViewportRenderHeight;
-				// Fixed-resolution previews render at the texture's pixel
-				// grid, so the editor window's HiDPI factor shouldn't
-				// scale UI again. MatchViewport keeps the window scale
-				// because the texture really is at the window's pixel
-				// density. ProjectTarget with a 0/0 setting collapses
-				// to MatchViewport at the viewport layer, so check the
-				// effective size (not just the enum) before forcing
-				// 1.0 - otherwise HiDPI UI shrinks in that fallback.
-				uint32 effW, effH;
-				game.GetEffectivePreviewSize(out effW, out effH);
-				if (effW > 0 && effH > 0)
-					dpiScale = 1.0f;
-			}
-			mRuntimeUISub.RenderSize = .(canvasW, canvasH);
-			mRuntimeUISub.DpiScale = dpiScale;
+			// This is a dockable/secondary window
+			RenderDockableWindow(data, ref frame);
 		}
-
-		// Tick RuntimeContext (component init, scene updates for editor mode).
-		mRuntimeContext.BeginFrame(frame.DeltaTime);
-
-		// Fixed update loop. Runs unconditionally so simulating scene tabs
-		// can drive their physics; non-simulating scenes have
-		// SimulationEnabled=false and their FixedUpdate funcs no-op.
-		// Clamped to avoid spiral-of-death after a frame stall.
-		mFixedUpdateAccumulator += frame.DeltaTime;
-		int32 fixedSteps = 0;
-		// Check once per frame whether any Game page is currently running -
-		// module.OnFixedUpdate only fires when a GameEditorPage is in its
-		// IsRunning state, matching the OnLaunch/OnExit window. With only
-		// one Game page allowed at a time this collapses to "is one open?"
-		GameEditorPage runningGamePage = null;
-		for (let page in mEditorContext.PageManager.OpenPages)
+		else
 		{
-			if (let gp = page as GameEditorPage)
-			{
-				if (gp.IsRunning) { runningGamePage = gp; break; }
-			}
-		}
-		while (mFixedUpdateAccumulator >= kFixedTimeStep && fixedSteps < kMaxFixedStepsPerFrame)
-		{
-			mRuntimeContext.FixedUpdate(kFixedTimeStep);
-			if (runningGamePage != null)
-				mApp?.OnFixedUpdate(mHost, kFixedTimeStep);
-			mFixedUpdateAccumulator -= kFixedTimeStep;
-			fixedSteps++;
-		}
-		if (mFixedUpdateAccumulator > kFixedTimeStep * 2)
-			mFixedUpdateAccumulator = kFixedTimeStep * 2;
-
-		mRuntimeContext.Update(frame.DeltaTime);
-		mRuntimeContext.PostUpdate(frame.DeltaTime);
-		mRuntimeContext.EndFrame();
-
-		// Update plugins
-		mEditorContext.PluginRegistry.UpdateAll(frame.DeltaTime);
-
-		// Update every open page, not just the active one. Pages (e.g.
-		// AnimationEditorPage) own their own playback timeline that has to
-		// advance per frame independent of focus; with side-by-side panels
-		// the user sees both pages rendering and expects both to play.
-		for (let page in mEditorContext.PageManager.OpenPages)
-			page?.Update(frame.DeltaTime);
-
-		// UI frame
-		mMainRoot.DpiScale = Window.ContentScale;
-		mMainRoot.ViewportSize = .((float)Window.Width, (float)Window.Height);
-		mUIContext.BeginFrame(frame.DeltaTime);
-		mUIContext.UpdateRootView(mMainRoot);
-
-		// Process OS file drops *after* UpdateRootView so the asset
-		// browser panel's bounds reflect the current frame's layout
-		// (LocalToScreen depends on cached layout positions). Drops
-		// outside the panel's screen rect are silently ignored - this
-		// is the gating UX the user asked for.
-		ProcessFileDrops();
-	}
-
-	private void ProcessFileDrops()
-	{
-		let input = Shell.InputManager;
-		if (input.DroppedFileCount == 0 || mAssetBrowserPanel == null) return;
-
-		let panelView = mAssetBrowserPanel.ContentView;
-		if (panelView == null || panelView.Context == null) return;
-
-		let adapter = mAssetBrowserPanel.ActiveContentAdapter;
-		let entry = adapter?.ActiveEntry;
-		if (entry == null) return;
-		let writable = entry.Mount as IWritableMount;
-		if (writable == null) return;
-
-		// SDL drops report window-relative *physical* pixels; UI views
-		// live in logical pixels. Divide by ContentScale once.
-		let scale = Window.ContentScale;
-		let dpiScale = (scale > 0.0001f) ? scale : 1.0f;
-
-		let topLeft = panelView.LocalToScreen(.Zero);
-		let panelRect = Sedulous.Core.Mathematics.RectangleF(
-			topLeft.X, topLeft.Y, panelView.Width, panelView.Height);
-
-		for (int i = 0; i < input.DroppedFileCount; i++)
-		{
-			let path = input.GetDroppedFile(i);
-			if (path.IsEmpty) continue;
-
-			float dropX, dropY;
-			if (!input.TryGetDroppedFilePosition(i, out dropX, out dropY)) continue;
-			let logicalX = dropX / dpiScale;
-			let logicalY = dropY / dpiScale;
-
-			if (!panelRect.Contains(logicalX, logicalY)) continue;
-
-			AssetBrowserBuilder.DispatchImportFile(mEditorContext, adapter,
-				mAssetBrowserPanel, entry, writable, path);
+			// This is the main window
+			RenderMainWindow(host, ref frame);
 		}
 	}
 
-	protected override void OnPrepareFrame(FrameContext frame)
+	private void RenderMainWindow(Sedulous.Runtime.Client.IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
 	{
 		if (mUIContext == null || mVGContext == null || mVGRenderer == null) return;
 
-		// Build VG geometry
+		let encoder = frame.Encoder;
+		let fi = (int32)frame.FrameIndex;
+		let w = frame.Window.Swap.Width;
+		let h = frame.Window.Swap.Height;
+
+		// Build VG geometry (was OnPrepareFrame)
 		mVGContext.Clear();
 		mUIContext.DrawRootView(mMainRoot, mVGContext);
 
-		// Upload to GPU. Slice token captured for Render later this frame.
-		mVGRenderer.BeginFrame(frame.FrameIndex);
+		// Upload to GPU
+		mVGRenderer.BeginFrame(fi);
 		let batch = mVGContext.GetBatch();
 		if (batch != null)
-			mVGSlice = mVGRenderer.Prepare(batch, frame.FrameIndex, SwapChain.Width, SwapChain.Height);
+			mVGSlice = mVGRenderer.Prepare(batch, fi, w, h);
 		else
 			mVGSlice = .Invalid;
-	}
-
-	protected override bool OnRenderFrame(RenderContext render)
-	{
-		let encoder = render.Encoder;
-		let frame = render.Frame;
 
 		// Render active viewport views (3D scenes) to their offscreen textures
 		// BEFORE UI rendering - the UI will display these textures via DrawImage.
 		let sceneRenderer = mRuntimeContext?.GetSubsystemByInterface<ISceneRenderer>();
 		if (sceneRenderer != null)
-			sceneRenderer.BeginRendering(encoder, frame.FrameIndex);
+			sceneRenderer.BeginRendering(encoder, fi);
 
-		RenderActiveViewports(encoder, frame.FrameIndex);
+		RenderActiveViewports(encoder, fi);
 
 		// Drive GPU thumbnail rendering inside the same Begin/End scope as
-		// the viewports. `mNextFenceValue` is the value the editor's
-		// submission for this frame will signal; ThumbnailRenderer records
-		// it so TickReadback (called at frame start) knows when to read.
+		// the viewports. NextFenceValue is the value the main window's
+		// EndFrame will signal; ThumbnailRenderer records it so
+		// TickReadback (called at frame start) knows when to read.
 		if (mThumbnailRenderer != null && sceneRenderer != null)
-			mThumbnailRenderer.RenderPending(encoder, frame.FrameIndex, mNextFenceValue);
+			mThumbnailRenderer.RenderPending(encoder, fi, frame.Window.NextFenceValue);
 
 		if (sceneRenderer != null)
 			sceneRenderer.EndRendering();
@@ -1792,7 +1892,7 @@ class EditorApplication : Application, IDockableWindowHost
 		// Begin render pass for UI
 		ColorAttachment[1] colorAttachments = .(.()
 		{
-			View = render.CurrentTextureView,
+			View = frame.BackbufferView,
 			LoadOp = .Clear,
 			StoreOp = .Store,
 			ClearValue = .(0.12f, 0.12f, 0.15f, 1)
@@ -1802,11 +1902,50 @@ class EditorApplication : Application, IDockableWindowHost
 		let renderPass = encoder.BeginRenderPass(passDesc);
 		if (renderPass != null)
 		{
-			mVGRenderer.Render(renderPass, SwapChain.Width, SwapChain.Height, frame.FrameIndex, mVGSlice);
+			mVGRenderer.Render(renderPass, w, h, fi, mVGSlice);
 			renderPass.End();
 		}
+	}
 
-		return true;
+	private void RenderDockableWindow(DockableWindowData data, ref Sedulous.RuntimeGraphics.FrameContext frame)
+	{
+		// Prepare: update root view dimensions and layout
+		data.RootView.DpiScale = frame.Window.Window.ContentScale;
+		data.RootView.ViewportSize = .((float)frame.Window.Window.Width, (float)frame.Window.Window.Height);
+		mUIContext.UpdateRootView(data.RootView);
+
+		// Clear the dockable window
+		ColorAttachment[1] colorAttachments = .(.()
+		{
+			View = frame.BackbufferView,
+			LoadOp = .Clear,
+			StoreOp = .Store,
+			ClearValue = .(0.12f, 0.12f, 0.15f, 1)
+		});
+
+		RenderPassDesc passDesc = .() { ColorAttachments = .(colorAttachments) };
+		let renderPass = frame.Encoder.BeginRenderPass(passDesc);
+		if (renderPass == null)
+			return;
+
+		// Render UI into the dockable window
+		let vg = data.VGContext;
+		let renderer = data.VGRenderer;
+		let w = frame.Window.Swap.Width;
+		let h = frame.Window.Swap.Height;
+
+		vg.Clear();
+		mUIContext.DrawRootView(data.RootView, vg);
+		let batch = vg.GetBatch();
+		if (batch != null && batch.Commands.Count > 0)
+		{
+			let fi = (int32)frame.FrameIndex;
+			renderer.BeginFrame(fi);
+			let slice = renderer.Prepare(batch, fi, w, h);
+			renderer.Render(renderPass, w, h, fi, slice);
+		}
+
+		renderPass.End();
 	}
 
 	// ==================== IDockableWindowHost ====================
@@ -1825,39 +1964,41 @@ class EditorApplication : Application, IDockableWindowHost
 			Bordered = false
 		};
 
-		if (CreateSecondaryWindow(settings) case .Err)
+		let renderDesc = RenderWindowDesc()
+		{
+			Format = mApplicationHost.MainWindow.Swap.Format,
+			PresentMode = .Fifo
+		};
+
+		let rw = mApplicationHost.OpenWindow(settings, renderDesc);
+		if (rw == null)
 		{
 			mEditorLogger.Log(.Error, "Failed to create floating OS window");
 			delete onCloseRequested;
 			return;
 		}
 
-		let ctx = mSecondaryWindows[mSecondaryWindows.Count - 1];
-		ctx.Window.X = Window.X + (int32)screenX;
-		ctx.Window.Y = Window.Y + (int32)screenY;
+		rw.Window.X = mMainWindow.X + (int32)screenX;
+		rw.Window.Y = mMainWindow.Y + (int32)screenY;
 
 		let data = new DockableWindowData();
 		data.OnCloseDelegate = onCloseRequested;
-		if (onCloseRequested != null)
-			ctx.OnCloseRequested = new (swCtx) => { data.OnCloseDelegate(dockableWindow); };
-		else
-			ctx.OnCloseRequested = new (swCtx) => { };
 
 		data.RootView = new RootView();
-		data.RootView.DpiScale = ctx.Window.ContentScale;
-		data.RootView.ViewportSize = .((float)ctx.Window.Width, (float)ctx.Window.Height);
+		data.RootView.DpiScale = rw.Window.ContentScale;
+		data.RootView.ViewportSize = .((float)rw.Window.Width, (float)rw.Window.Height);
 		mUIContext.AddRootView(data.RootView);
 		data.RootView.AddView(dockableWindow);
 		data.DockableView = dockableWindow;
 
 		data.VGContext = new VGContext(mFontService);
 		data.VGRenderer = new VGRenderer();
-		data.VGRenderer.Initialize(Device, ctx.SwapChain.Format,
-			(int32)ctx.SwapChain.BufferCount, mShaderSystem);
+		data.VGRenderer.Initialize(mDevice, rw.Swap.Format,
+			(int32)rw.Swap.BufferCount, mShaderSystem);
 		data.VGRenderer.SetExternalCache(mExternalTextureCache);
 
-		ctx.UserData = data;
-		mDockableWindowMap[dockableWindow] = ctx;
+		rw.SetData(data);
+		mDockableWindowMap[dockableWindow] = rw;
 	}
 
 	public void DestroyDockableWindow(View dockableWindow)
@@ -1867,42 +2008,42 @@ class EditorApplication : Application, IDockableWindowHost
 
 	public void MoveDockableWindow(View dockableWindow, float screenX, float screenY)
 	{
-		if (mDockableWindowMap.TryGetValue(dockableWindow, let ctx))
+		if (mDockableWindowMap.TryGetValue(dockableWindow, let rw))
 		{
-			let nx = Window.X + (int32)screenX;
-			let ny = Window.Y + (int32)screenY;
-			if (ctx.Window.X != nx) ctx.Window.X = nx;
-			if (ctx.Window.Y != ny) ctx.Window.Y = ny;
+			let nx = mMainWindow.X + (int32)screenX;
+			let ny = mMainWindow.Y + (int32)screenY;
+			if (rw.Window.X != nx) rw.Window.X = nx;
+			if (rw.Window.Y != ny) rw.Window.Y = ny;
 		}
 	}
 
 	public void ResizeDockableWindow(View dockableWindow, float screenX, float screenY, float width, float height)
 	{
-		if (mDockableWindowMap.TryGetValue(dockableWindow, let ctx))
+		if (mDockableWindowMap.TryGetValue(dockableWindow, let rw))
 		{
 			// Only push when the value actually changes - SDL_SetWindowPosition
 			// and SDL_SetWindowSize fire a window event each call, invalidating
 			// the swapchain even on no-ops. Spammed VK_ERROR_OUT_OF_DATE_KHR
 			// during resize otherwise.
-			let nx = Window.X + (int32)screenX;
-			let ny = Window.Y + (int32)screenY;
+			let nx = mMainWindow.X + (int32)screenX;
+			let ny = mMainWindow.Y + (int32)screenY;
 			let nw = (int32)width;
 			let nh = (int32)height;
-			if (ctx.Window.X != nx) ctx.Window.X = nx;
-			if (ctx.Window.Y != ny) ctx.Window.Y = ny;
-			if (ctx.Window.Width != nw) ctx.Window.Width = nw;
-			if (ctx.Window.Height != nh) ctx.Window.Height = nh;
+			if (rw.Window.X != nx) rw.Window.X = nx;
+			if (rw.Window.Y != ny) rw.Window.Y = ny;
+			if (rw.Window.Width != nw) rw.Window.Width = nw;
+			if (rw.Window.Height != nh) rw.Window.Height = nh;
 		}
 	}
 
 	public bool TryGetDockableWindowBounds(View dockableWindow, out float x, out float y, out float width, out float height)
 	{
-		if (mDockableWindowMap.TryGetValue(dockableWindow, let ctx))
+		if (mDockableWindowMap.TryGetValue(dockableWindow, let rw))
 		{
-			x = ctx.Window.X - Window.X;
-			y = ctx.Window.Y - Window.Y;
-			width = ctx.Window.Width;
-			height = ctx.Window.Height;
+			x = rw.Window.X - mMainWindow.X;
+			y = rw.Window.Y - mMainWindow.Y;
+			width = rw.Window.Width;
+			height = rw.Window.Height;
 			return true;
 		}
 		x = 0;
@@ -1914,7 +2055,7 @@ class EditorApplication : Application, IDockableWindowHost
 
 	public void GetGlobalMousePosition(out float globalX, out float globalY)
 	{
-		let mouse = Shell.InputManager.Mouse;
+		let mouse = mShell.InputManager.Mouse;
 		if (mouse != null)
 		{
 			globalX = mouse.GlobalX;
@@ -1929,56 +2070,42 @@ class EditorApplication : Application, IDockableWindowHost
 
 	private void DestroyDockableWindowImpl(View dockableWindow, bool detachView = true)
 	{
-		if (!mDockableWindowMap.TryGetValue(dockableWindow, let ctx))
+		if (!mDockableWindowMap.TryGetValue(dockableWindow, let rw))
 			return;
 
 		mDockableWindowMap.Remove(dockableWindow);
 
-		if (let data = ctx.UserData as DockableWindowData)
+		if (let data = rw.Data as DockableWindowData)
 		{
 			if (detachView && dockableWindow.Parent == data.RootView)
 				data.RootView.RemoveView(dockableWindow, false);
 
 			mUIContext.RemoveRootView(data.RootView);
-			Device.WaitIdle();
-			delete data;
 		}
 
-		ctx.UserData = null;
-		DestroySecondaryWindow(ctx);
+		// RenderWindow dtor calls WaitIdle and cleans up GPU resources + data
+		mApplicationHost.CloseWindow(rw);
 	}
 
-	// ==================== Secondary Window Rendering ====================
+	// ==================== Window Event Handling ====================
 
-	protected override void OnPrepareSecondaryFrame(SecondaryWindowContext ctx, FrameContext frame)
+	private void HandleWindowEvent(IWindow window, WindowEvent evt)
 	{
-		if (let data = ctx.UserData as DockableWindowData)
-		{
-			data.RootView.DpiScale = ctx.Window.ContentScale;
-			data.RootView.ViewportSize = .((float)ctx.Window.Width, (float)ctx.Window.Height);
-			mUIContext.UpdateRootView(data.RootView);
-		}
-	}
+		if (evt.Type != .CloseRequested)
+			return;
 
-	protected override void OnRenderSecondaryWindow(SecondaryWindowContext ctx,
-		IRenderPassEncoder renderPass, FrameContext frame)
-	{
-		if (let data = ctx.UserData as DockableWindowData)
+		// Check if it's a dockable window
+		for (let kv in mDockableWindowMap)
 		{
-			let vg = data.VGContext;
-			let renderer = data.VGRenderer;
-			let w = ctx.SwapChain.Width;
-			let h = ctx.SwapChain.Height;
-
-			vg.Clear();
-			mUIContext.DrawRootView(data.RootView, vg);
-			let batch = vg.GetBatch();
-			if (batch == null || batch.Commands.Count == 0)
+			if (kv.value.Window == window)
+			{
+				if (let data = kv.value.Data as DockableWindowData)
+				{
+					if (data.OnCloseDelegate != null)
+						data.OnCloseDelegate(kv.key);
+				}
 				return;
-
-			renderer.BeginFrame(frame.FrameIndex);
-			let slice = renderer.Prepare(batch, frame.FrameIndex, w, h);
-			renderer.Render(renderPass, w, h, frame.FrameIndex, slice);
+			}
 		}
 	}
 
@@ -2108,7 +2235,7 @@ class EditorApplication : Application, IDockableWindowHost
 
 	// ==================== Shutdown ====================
 
-	protected override void OnShutdown()
+	public void OnShutdown(Sedulous.Runtime.Client.IApplicationHost host)
 	{
 		// Save editor state before shutting down
 		SaveEditorLayout();
@@ -2155,7 +2282,7 @@ class EditorApplication : Application, IDockableWindowHost
 
 		// Project module OnShutdown fires before the runtime context tears
 		// down so the module can release subsystem-side refs.
-		mApp?.OnShutdown(mHost);
+		mApp?.OnShutdown(mEditorHost);
 
 		// Clean up runtime context (must be deleted before Device is destroyed
 		// since its subsystems share the Device).
@@ -2164,8 +2291,11 @@ class EditorApplication : Application, IDockableWindowHost
 		mRuntimeContext = null;
 
 		// Destroy floating windows (before UIContext so roots are removed cleanly)
+		let dockableViews = scope List<View>();
 		for (let kv in mDockableWindowMap)
-			DestroyDockableWindowImpl(kv.key, detachView: false);
+			dockableViews.Add(kv.key);
+		for (let view in dockableViews)
+			DestroyDockableWindowImpl(view, detachView: false);
 		mDockableWindowMap.Clear();
 
 		// Clean up UI
@@ -2176,7 +2306,7 @@ class EditorApplication : Application, IDockableWindowHost
 
 		delete mMainRoot;
 		mMainRoot = null;
-		
+
 		if (mUIContext != null)
 		{
 			delete mUIContext;
@@ -2199,15 +2329,9 @@ class EditorApplication : Application, IDockableWindowHost
 		mShaderSystem?.Dispose();
 		delete mShaderSystem;
 		mShaderSystem = null;
-	}
 
-	protected override void OnCleanup()
-	{
-
-	}
-
-	protected override void OnResize(int32 width, int32 height)
-	{
-		// UI updates viewport on next frame via mMainRoot.ViewportSize
+		// Shut down the resource system last (after everything that might
+		// hold resource handles has been torn down).
+		mResourceSystem?.Shutdown();
 	}
 }
