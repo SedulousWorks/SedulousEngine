@@ -54,7 +54,7 @@ class AudioSandboxApp : IApplication
 	private Button mPlayPauseButton;
 
 	// Asset directory
-	private String mAssetDirectory = new .() ~ delete _;
+	private String mBuiltInAssetDirectory = new .() ~ delete _;
 
 	// Builtin mount for VFS
 	private FileSystemMount mBuiltinMount ~ delete _;
@@ -78,7 +78,7 @@ class AudioSandboxApp : IApplication
 	public void Configure(IApplicationHost host)
 	{
 		DiscoverAssets();
-		mBuiltinMount = new FileSystemMount(mAssetDirectory);
+		mBuiltinMount = new FileSystemMount(mBuiltInAssetDirectory);
 		mDevice = host.Graphics.Raw;
 		mShell = host.Shell;
 	}
@@ -104,7 +104,7 @@ class AudioSandboxApp : IApplication
 
 		let rw = host.MainWindow;
 		String shaderPath = scope .();
-		Path.InternalCombine(shaderPath, mAssetDirectory, "shaders");
+		Path.InternalCombine(shaderPath, mBuiltInAssetDirectory, "shaders");
 		// Pass BuiltinMount so the UI subsystem's font service routes font
 		// loads through the `builtin://` VFS scheme.
 		if (mUI.InitializeRendering(mUIContext, mRoot, mDevice, rw.Swap.Format, (int32)rw.Swap.BufferCount, scope StringView[](shaderPath), mShell, rw.Window, mBuiltinMount) case .Err)
@@ -221,7 +221,7 @@ class AudioSandboxApp : IApplication
 	private void LoadAudioTracks()
 	{
 		String audioDir = scope .();
-		Path.InternalCombine(audioDir, mAssetDirectory, "samples/audio/kenney_rpg-audio/Audio");
+		Path.InternalCombine(audioDir, mBuiltInAssetDirectory, "samples/audio/kenney_rpg-audio/Audio");
 
 		Console.WriteLine($"Loading audio from: {audioDir}");
 
@@ -435,10 +435,10 @@ class AudioSandboxApp : IApplication
 			{
 				let marker = scope String();
 				Path.InternalCombine(marker, assetsPath, ".assets");
-				if (File.Exists(marker)) { mAssetDirectory.Set(assetsPath); return; }
+				if (File.Exists(marker)) { mBuiltInAssetDirectory.Set(assetsPath); return; }
 			}
 			let parent = Path.GetDirectoryPath(searchDir, .. scope .());
-			if (parent.IsEmpty || parent == searchDir) { mAssetDirectory.Set(cwd); return; }
+			if (parent.IsEmpty || parent == searchDir) { mBuiltInAssetDirectory.Set(cwd); return; }
 			searchDir.Set(parent);
 		}
 	}

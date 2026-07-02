@@ -84,7 +84,7 @@ class FontRenderingSample : IApplication
 	private IDevice mDevice;
 
 	// Asset directory
-	private String mAssetDirectory = new .() ~ delete _;
+	private String mBuiltInAssetDirectory = new .() ~ delete _;
 
 	// Cached screen dimensions
 	private uint32 mWidth;
@@ -105,7 +105,7 @@ class FontRenderingSample : IApplication
 	{
 		mShaderSystem = new ShaderSystem();
 		String shaderPath = scope .();
-		Path.InternalCombine(shaderPath, mAssetDirectory, "samples/FontRendering/shaders");
+		Path.InternalCombine(shaderPath, mBuiltInAssetDirectory, "samples/FontRendering/shaders");
 		if (mShaderSystem.Initialize(mDevice, scope StringView[](shaderPath)) case .Err)
 		{
 			Console.WriteLine("Failed to initialize shader system");
@@ -133,7 +133,7 @@ class FontRenderingSample : IApplication
 	{
 		// Use Roboto font from assets
 		String fontPath = scope .();
-		Path.InternalCombine(fontPath, mAssetDirectory, "fonts/roboto/Roboto-Regular.ttf");
+		Path.InternalCombine(fontPath, mBuiltInAssetDirectory, "fonts/roboto/Roboto-Regular.ttf");
 
 		if (!File.Exists(fontPath))
 		{
@@ -888,10 +888,10 @@ class FontRenderingSample : IApplication
 			{
 				let marker = scope String();
 				Path.InternalCombine(marker, assetsPath, ".assets");
-				if (File.Exists(marker)) { mAssetDirectory.Set(assetsPath); return; }
+				if (File.Exists(marker)) { mBuiltInAssetDirectory.Set(assetsPath); return; }
 			}
 			let parent = Path.GetDirectoryPath(searchDir, .. scope .());
-			if (parent.IsEmpty || parent == searchDir) { mAssetDirectory.Set(cwd); return; }
+			if (parent.IsEmpty || parent == searchDir) { mBuiltInAssetDirectory.Set(cwd); return; }
 			searchDir.Set(parent);
 		}
 	}

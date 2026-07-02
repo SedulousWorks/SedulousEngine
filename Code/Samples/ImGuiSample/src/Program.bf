@@ -65,7 +65,7 @@ class ImGuiSampleApp : IApplication
 	private IDevice mDevice;
 
 	// Asset directory
-	private String mAssetDirectory = new .() ~ delete _;
+	private String mBuiltInAssetDirectory = new .() ~ delete _;
 
 	// Cached shell
 	private Sedulous.Shell.IShell mShell;
@@ -89,7 +89,7 @@ class ImGuiSampleApp : IApplication
 		// Initialize shader system
 		mShaderSystem = new ShaderSystem();
 		String shaderPath = scope .();
-		Path.InternalCombine(shaderPath, mAssetDirectory, "samples/ImGuiSample/shaders");
+		Path.InternalCombine(shaderPath, mBuiltInAssetDirectory, "samples/ImGuiSample/shaders");
 		if (mShaderSystem.Initialize(mDevice, scope StringView[](shaderPath)) case .Err)
 		{
 			Console.WriteLine("Failed to initialize shader system");
@@ -698,10 +698,10 @@ class ImGuiSampleApp : IApplication
 			{
 				let marker = scope String();
 				Path.InternalCombine(marker, assetsPath, ".assets");
-				if (File.Exists(marker)) { mAssetDirectory.Set(assetsPath); return; }
+				if (File.Exists(marker)) { mBuiltInAssetDirectory.Set(assetsPath); return; }
 			}
 			let parent = Path.GetDirectoryPath(searchDir, .. scope .());
-			if (parent.IsEmpty || parent == searchDir) { mAssetDirectory.Set(cwd); return; }
+			if (parent.IsEmpty || parent == searchDir) { mBuiltInAssetDirectory.Set(cwd); return; }
 			searchDir.Set(parent);
 		}
 	}

@@ -66,7 +66,7 @@ class UISandboxApp : IApplication, IDockableWindowHost
 	private IApplicationHost mHost;
 	private IDevice mDevice;
 	private IShell mShell;
-	private String mAssetDirectory = new .() ~ delete _;
+	private String mBuiltInAssetDirectory = new .() ~ delete _;
 	private FileSystemMount mBuiltinMount ~ delete _;
 
 	// Timing state
@@ -90,7 +90,7 @@ class UISandboxApp : IApplication, IDockableWindowHost
 		mShell = host.Shell;
 
 		DiscoverAssets();
-		mBuiltinMount = new FileSystemMount(mAssetDirectory);
+		mBuiltinMount = new FileSystemMount(mBuiltInAssetDirectory);
 
 		// Subscribe to window events for secondary window close handling
 		mShell.WindowManager.OnWindowEvent.Subscribe(new => HandleWindowEvent);
@@ -109,7 +109,7 @@ class UISandboxApp : IApplication, IDockableWindowHost
 		StyleSheetLoader.InitializeGlobals();
 		MarkupLoader.Initialize();
 		let guiPath = scope String();
-		Path.InternalCombine(guiPath, mAssetDirectory, "gui");
+		Path.InternalCombine(guiPath, mBuiltInAssetDirectory, "gui");
 		mGuiMount = new FileSystemMount(guiPath);
 		mGuiResourceProvider = new VfsResourceProvider(mGuiMount);
 
@@ -123,7 +123,7 @@ class UISandboxApp : IApplication, IDockableWindowHost
 
 		// Initialize rendering - pass app-owned context and root
 		let shaderPath = scope String();
-		Path.InternalCombine(shaderPath, mAssetDirectory, "shaders");
+		Path.InternalCombine(shaderPath, mBuiltInAssetDirectory, "shaders");
 
 		let rw = host.MainWindow;
 
@@ -2045,10 +2045,10 @@ class UISandboxApp : IApplication, IDockableWindowHost
 			{
 				let marker = scope String();
 				Path.InternalCombine(marker, assetsPath, ".assets");
-				if (System.IO.File.Exists(marker)) { mAssetDirectory.Set(assetsPath); return; }
+				if (System.IO.File.Exists(marker)) { mBuiltInAssetDirectory.Set(assetsPath); return; }
 			}
 			let parent = Path.GetDirectoryPath(searchDir, .. scope .());
-			if (parent.IsEmpty || parent == searchDir) { mAssetDirectory.Set(cwd); return; }
+			if (parent.IsEmpty || parent == searchDir) { mBuiltInAssetDirectory.Set(cwd); return; }
 			searchDir.Set(parent);
 		}
 	}

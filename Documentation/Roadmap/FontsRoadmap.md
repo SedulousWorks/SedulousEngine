@@ -19,7 +19,7 @@ Design notes and pending work for the Sedulous font pipeline.
 - ~~**Dependency injection**~~ - UI subsystems (EngineUISubsystem, UISubsystem, GUISubsystem, LegacyUISubsystem, EngineLegacyUISubsystem) no longer own a TrueTypeFontService; they take an IFontService injected by the host application.
 
 ### VFS routing
-- ~~**Application base owns `builtin://` mount**~~ - `Sedulous.Runtime.Client.Application` creates a FileSystemMount over its discovered AssetDirectory and registers it with the ResourceSystem before OnInitialize. Every derived app gets it automatically.
+- ~~**Application base owns `builtin://` mount**~~ - `Sedulous.Runtime.Client.Application` creates a FileSystemMount over its discovered BuiltInAssetDirectory and registers it with the ResourceSystem before OnInitialize. Every derived app gets it automatically.
 - ~~**EngineApplication owns its own `builtin://` mount**~~ - separate Application class hierarchy with its own mount; equivalent behavior.
 - ~~**Host apps load fonts through VFS**~~ - editor, engine apps, sandboxes, ModelViewer construct TrueTypeFontService with their BuiltinMount and load via relative locator (`"fonts/roboto/Roboto-Regular.ttf"`) instead of `GetAssetPath`-resolved absolute paths.
 

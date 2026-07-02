@@ -35,7 +35,7 @@ class DrawingSandboxApp : IApplication
 	private FileSystemMount mBuiltinMount ~ delete _;
 
 	// Asset directory
-	private String mAssetDirectory = new .() ~ delete _;
+	private String mBuiltInAssetDirectory = new .() ~ delete _;
 
 	// Cached device reference
 	private IDevice mDevice;
@@ -71,7 +71,7 @@ class DrawingSandboxApp : IApplication
 	public void Configure(IApplicationHost host)
 	{
 		DiscoverAssets();
-		mBuiltinMount = new FileSystemMount(mAssetDirectory);
+		mBuiltinMount = new FileSystemMount(mBuiltInAssetDirectory);
 		mDevice = host.Graphics.Raw;
 	}
 
@@ -83,7 +83,7 @@ class DrawingSandboxApp : IApplication
 		// Initialize shader system
 		mShaderSystem = new ShaderSystem();
 		String shaderPath = scope .();
-		Path.InternalCombine(shaderPath, mAssetDirectory, "shaders");
+		Path.InternalCombine(shaderPath, mBuiltInAssetDirectory, "shaders");
 		if (mShaderSystem.Initialize(mDevice, scope StringView[](shaderPath)) case .Err)
 		{
 			Console.WriteLine("Failed to initialize shader system");
@@ -390,10 +390,10 @@ class DrawingSandboxApp : IApplication
 			{
 				let marker = scope String();
 				Path.InternalCombine(marker, assetsPath, ".assets");
-				if (File.Exists(marker)) { mAssetDirectory.Set(assetsPath); return; }
+				if (File.Exists(marker)) { mBuiltInAssetDirectory.Set(assetsPath); return; }
 			}
 			let parent = Path.GetDirectoryPath(searchDir, .. scope .());
-			if (parent.IsEmpty || parent == searchDir) { mAssetDirectory.Set(cwd); return; }
+			if (parent.IsEmpty || parent == searchDir) { mBuiltInAssetDirectory.Set(cwd); return; }
 			searchDir.Set(parent);
 		}
 	}

@@ -39,7 +39,7 @@ class VGSandboxApp : IApplication
 	private float mTime = 0;
 
 	// Asset directory
-	private String mAssetDirectory = new .() ~ delete _;
+	private String mBuiltInAssetDirectory = new .() ~ delete _;
 
 	// Builtin mount for VFS font loading
 	private FileSystemMount mBuiltinMount ~ delete _;
@@ -60,7 +60,7 @@ class VGSandboxApp : IApplication
 	public void Configure(IApplicationHost host)
 	{
 		DiscoverAssets();
-		mBuiltinMount = new FileSystemMount(mAssetDirectory);
+		mBuiltinMount = new FileSystemMount(mBuiltInAssetDirectory);
 		mDevice = host.Graphics.Raw;
 	}
 
@@ -68,7 +68,7 @@ class VGSandboxApp : IApplication
 	{
 		mShaderSystem = new ShaderSystem();
 		String shaderPath = scope .();
-		System.IO.Path.InternalCombine(shaderPath, mAssetDirectory, "shaders");
+		System.IO.Path.InternalCombine(shaderPath, mBuiltInAssetDirectory, "shaders");
 		if (mShaderSystem.Initialize(mDevice, scope StringView[](shaderPath)) case .Err)
 		{
 			Console.WriteLine("Failed to initialize shader system");
@@ -836,10 +836,10 @@ class VGSandboxApp : IApplication
 			{
 				let marker = scope String();
 				System.IO.Path.InternalCombine(marker, assetsPath, ".assets");
-				if (System.IO.File.Exists(marker)) { mAssetDirectory.Set(assetsPath); return; }
+				if (System.IO.File.Exists(marker)) { mBuiltInAssetDirectory.Set(assetsPath); return; }
 			}
 			let parent = System.IO.Path.GetDirectoryPath(searchDir, .. scope .());
-			if (parent.IsEmpty || parent == searchDir) { mAssetDirectory.Set(cwd); return; }
+			if (parent.IsEmpty || parent == searchDir) { mBuiltInAssetDirectory.Set(cwd); return; }
 			searchDir.Set(parent);
 		}
 	}
