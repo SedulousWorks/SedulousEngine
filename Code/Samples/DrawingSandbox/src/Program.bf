@@ -1,26 +1,17 @@
 namespace DrawingSandbox;
 
 using System;
-using System.IO;
-using System.Collections;
 using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
 using Sedulous.Runtime.Client;
 using Sedulous.RuntimeGraphics;
 using Sedulous.Drawing;
-using Sedulous.Fonts.TTF;
 using Sedulous.Drawing.Renderer;
-using Sedulous.Fonts;
-using Sedulous.Shaders;
-using Sedulous.VFS.Disk;
-using Sedulous.Shell.SDL3;
+using RuntimeSampleFramework;
 
 /// Drawing sandbox sample demonstrating Sedulous.Drawing capabilities.
-class DrawingSandboxApp : IApplication
+class DrawingSandboxApp : RuntimeSampleApp
 {
-	// Font service
-	private TrueTypeFontService mTrueTypeFontService;
-
 	// Drawing context (created after font service)
 	private DrawContext mDrawContext;
 
@@ -28,26 +19,8 @@ class DrawingSandboxApp : IApplication
 	private DrawingRenderer mDrawingRenderer;
 	private DrawingRenderSlice mDrawingSlice;
 
-	// Shader system
-	private ShaderSystem mShaderSystem;
-
-	// Builtin mount for VFS font loading
-	private FileSystemMount mBuiltinMount ~ delete _;
-
-	// Asset directory
-	private String mBuiltInAssetDirectory = new .() ~ delete _;
-
-	// Cached device reference
-	private IDevice mDevice;
-
 	// Font size used for labels
 	private const float FONT_SIZE = 20;
-
-	// Animation state
-	private float mAnimationTime = 0;
-
-	// Timing
-	private float mTotalTime = 0;
 
 	// FPS tracking
 	private int mFrameCount = 0;
@@ -58,45 +31,22 @@ class DrawingSandboxApp : IApplication
 	private uint32 mWidth;
 	private uint32 mHeight;
 
-	public ApplicationSettings Settings()
+	public override ApplicationSettings Settings() => .()
 	{
-		return .()
-		{
-			Title = "Drawing Sandbox",
-			Width = 1280, Height = 720,
-		};
-	}
+		Title = "Drawing Sandbox",
+		Width = 1280, Height = 720,
+	};
 
-	public void Configure(IApplicationHost host)
+	protected override void OnInit(Sedulous.Runtime.Client.IApplicationHost host)
 	{
-		DiscoverAssets();
-		mBuiltinMount = new FileSystemMount(mBuiltInAssetDirectory);
-		mDevice = host.Graphics.Raw;
-	}
-
-	public void OnStartup(IApplicationHost host)
-	{
-		if (!InitializeFont())
-			return;
-
-		// Initialize shader system
-		mShaderSystem = new ShaderSystem();
-		String shaderPath = scope .();
-		Path.InternalCombine(shaderPath, mBuiltInAssetDirectory, "shaders");
-		if (mShaderSystem.Initialize(mDevice, scope StringView[](shaderPath)) case .Err)
-		{
-			Console.WriteLine("Failed to initialize shader system");
-			return;
-		}
-
 		let rw = host.MainWindow;
 
 		// Create draw context with font service
-		mDrawContext = new DrawContext(mTrueTypeFontService);
+		mDrawContext = new DrawContext(FontService as Sedulous.Fonts.TTF.TrueTypeFontService);
 
 		// Create and initialize the drawing renderer
 		mDrawingRenderer = new DrawingRenderer();
-		if (mDrawingRenderer.Initialize(mDevice, rw.Swap.Format, (int32)rw.Swap.BufferCount, mShaderSystem) case .Err)
+		if (mDrawingRenderer.Initialize(Device, rw.Swap.Format, (int32)rw.Swap.BufferCount, ShaderSystem) case .Err)
 		{
 			Console.WriteLine("Failed to initialize DrawingRenderer");
 			return;
@@ -105,33 +55,8 @@ class DrawingSandboxApp : IApplication
 		Console.WriteLine("DrawingSandbox initialized with DrawingRenderer");
 	}
 
-	private bool InitializeFont()
+	protected override void OnUpdate(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime, float totalTime)
 	{
-		// Route font loading through the builtin mount so we
-		// open via VFS rather than raw disk paths.
-		mTrueTypeFontService = new TrueTypeFontService(mBuiltinMount);
-
-		let locator = "fonts/roboto/Roboto-Regular.ttf";
-
-		// Load font with extended Latin for diacritics
-		FontLoadOptions options = .ExtendedLatin;
-		options.PixelHeight = (int32)FONT_SIZE;
-
-		if (mTrueTypeFontService.LoadFont("Roboto", locator, options) case .Err)
-		{
-			Console.WriteLine(scope $"Failed to load font: {locator}");
-			return false;
-		}
-
-		Console.WriteLine("Font loaded successfully");
-		return true;
-	}
-
-	public void OnUpdate(IApplicationHost host, float deltaTime)
-	{
-		mTotalTime += deltaTime;
-		mAnimationTime = mTotalTime;
-
 		// FPS calculation
 		mFrameCount++;
 		mFpsTimer += deltaTime;
@@ -143,7 +68,7 @@ class DrawingSandboxApp : IApplication
 		}
 	}
 
-	public void OnRenderWindow(IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
+	protected override void OnRender(Sedulous.Runtime.Client.IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
 	{
 		if (mDrawingRenderer == null || !mDrawingRenderer.IsInitialized)
 			return;
@@ -219,7 +144,7 @@ class DrawingSandboxApp : IApplication
 
 		DrawLabel("Arc (animated)", col1X, y, Color.White);
 		y += 20;
-		float arcSweep = (Math.Sin(mAnimationTime * 2) * 0.5f + 0.5f) * Math.PI_f * 1.8f + 0.2f;
+		float arcSweep = (Math.Sin(TotalTime * 2) * 0.5f + 0.5f) * Math.PI_f * 1.8f + 0.2f;
 		mDrawContext.FillArc(.(col1X + 50, y + 50), 45, -Math.PI_f / 2, arcSweep, Color.Orange);
 		y += 120;
 
@@ -306,26 +231,26 @@ class DrawingSandboxApp : IApplication
 
 		mDrawContext.PushState();
 		mDrawContext.Translate(centerX, centerY);
-		mDrawContext.Rotate(mAnimationTime);
+		mDrawContext.Rotate(TotalTime);
 		mDrawContext.FillRect(.(-30, -30, 60, 60), Color(255, 100, 100, 200));
 		mDrawContext.PopState();
 
 		mDrawContext.PushState();
 		mDrawContext.Translate(centerX, centerY);
-		mDrawContext.Rotate(-mAnimationTime * 0.7f);
+		mDrawContext.Rotate(-TotalTime * 0.7f);
 		mDrawContext.FillRect(.(-25, -25, 50, 50), Color(100, 255, 100, 200));
 		mDrawContext.PopState();
 
 		mDrawContext.PushState();
 		mDrawContext.Translate(centerX, centerY);
-		mDrawContext.Rotate(mAnimationTime * 1.3f);
+		mDrawContext.Rotate(TotalTime * 1.3f);
 		mDrawContext.FillRect(.(-20, -20, 40, 40), Color(100, 100, 255, 200));
 		mDrawContext.PopState();
 		y += 140;
 
 		DrawLabel("Scale Animation", col3X, y, Color.White);
 		y += 20;
-		float scale = 0.5f + Math.Sin(mAnimationTime * 3) * 0.3f;
+		float scale = 0.5f + Math.Sin(TotalTime * 3) * 0.3f;
 		mDrawContext.PushState();
 		mDrawContext.Translate(col3X + 50, y + 30);
 		mDrawContext.Scale(scale, scale);
@@ -338,13 +263,13 @@ class DrawingSandboxApp : IApplication
 
 		mDrawContext.PushState();
 		mDrawContext.Translate(col3X + 60, y + 20);
-		mDrawContext.Rotate(mAnimationTime * 0.5f);
+		mDrawContext.Rotate(TotalTime * 0.5f);
 		DrawLabel("Spinning!", -30, -10, Color.Cyan);
 		mDrawContext.PopState();
 
 		mDrawContext.PushState();
 		mDrawContext.Translate(col3X + 160, y + 20);
-		let textScale = 0.8f + Math.Sin(mAnimationTime * 2) * 0.4f;
+		let textScale = 0.8f + Math.Sin(TotalTime * 2) * 0.4f;
 		mDrawContext.Scale(textScale, textScale);
 		DrawLabel("Pulsing", -25, -10, Color.Magenta);
 		mDrawContext.PopState();
@@ -359,7 +284,7 @@ class DrawingSandboxApp : IApplication
 		mDrawContext.DrawText(text, FONT_SIZE, .(x, y), color);
 	}
 
-	public void OnShutdown(IApplicationHost host)
+	protected override void OnCleanup(Sedulous.Runtime.Client.IApplicationHost host)
 	{
 		if (mDrawingRenderer != null)
 		{
@@ -368,33 +293,6 @@ class DrawingSandboxApp : IApplication
 		}
 
 		if (mDrawContext != null) delete mDrawContext;
-		if (mTrueTypeFontService != null) delete mTrueTypeFontService;
-
-		if (mShaderSystem != null)
-		{
-			mShaderSystem.Dispose();
-			delete mShaderSystem;
-		}
-	}
-
-	private void DiscoverAssets()
-	{
-		let cwd = Directory.GetCurrentDirectory(.. scope .());
-		var searchDir = scope String(cwd);
-		while (true)
-		{
-			let assetsPath = scope String();
-			Path.InternalCombine(assetsPath, searchDir, "Assets");
-			if (Directory.Exists(assetsPath))
-			{
-				let marker = scope String();
-				Path.InternalCombine(marker, assetsPath, ".assets");
-				if (File.Exists(marker)) { mBuiltInAssetDirectory.Set(assetsPath); return; }
-			}
-			let parent = Path.GetDirectoryPath(searchDir, .. scope .());
-			if (parent.IsEmpty || parent == searchDir) { mBuiltInAssetDirectory.Set(cwd); return; }
-			searchDir.Set(parent);
-		}
 	}
 }
 
@@ -402,24 +300,6 @@ class Program
 {
 	public static int Main(String[] args)
 	{
-		let shell = scope SDL3Shell();
-		if (shell.Initialize() case .Err)
-		{
-			Console.WriteLine("ERROR: Failed to initialize shell");
-			return 1;
-		}
-		defer shell.Shutdown();
-
-		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = true });
-		if (graphicsResult case .Err)
-		{
-			Console.WriteLine("ERROR: Failed to create graphics device");
-			return 1;
-		}
-		let graphics = graphicsResult.Value;
-		defer delete graphics;
-
-		let app = scope DrawingSandboxApp();
-		return ApplicationHost.RunApplication(app, shell, graphics);
+		return RuntimeSampleApp.Run<DrawingSandboxApp>();
 	}
 }
