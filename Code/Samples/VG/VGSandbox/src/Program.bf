@@ -143,6 +143,7 @@ class VGSandboxApp : RuntimeSampleApp
 		DrawUIConvenience(mVG, 150, 340);
 		DrawImmediatePath(mVG, 150, 410, mTime);
 		DrawSVGDemo(mVG, 150, 470);
+		DrawShapePrimitives(mVG, w - 380, h - 240, mTime);
 
 		let batch = mVG.GetBatch();
 		let fi = (int32)frame.FrameIndex;
@@ -720,6 +721,48 @@ class VGSandboxApp : RuntimeSampleApp
 				// Thin overlay
 				let thinStyle = StrokeStyle() { Width = 1.0f, Cap = .Butt, Join = .Miter };
 				vg.StrokePath(path, Color(0, 192, 255, 255), thinStyle);
+			}
+		}
+	}
+
+	/// Shape primitives: regular polygons, stars, per-corner rounded rects,
+	/// and inline SVG path parsing. Folded from SampleVG001_Shapes.
+	private void DrawShapePrimitives(VGContext vg, float x, float y, float t)
+	{
+		vg.DrawText("Shape Primitives", mFontMedium, .(x, y), Color(240, 240, 245, 255));
+		float cy = y + 22;
+
+		// Regular polygons
+		vg.FillRegularPolygon(.(x + 30, cy + 30), 25, 5, Color(Color32.Tomato));
+		vg.FillRegularPolygon(.(x + 90, cy + 30), 25, 6, Color(Color32.DodgerBlue));
+		vg.FillRegularPolygon(.(x + 150, cy + 30), 25, 8, Color(Color32.MediumOrchid));
+
+		// Stars
+		vg.FillStar(.(x + 220, cy + 30), 30, 14, 5, Color(Color32.Gold));
+		vg.FillStar(.(x + 290, cy + 30), 30, 16, 6, Color(Color32.OrangeRed));
+
+		cy += 70;
+
+		// Per-corner rounded rect
+		vg.FillRoundedRect(.(x, cy, 100, 50), .(0, 16, 0, 16), Color(Color32.MediumSeaGreen));
+		vg.FillRoundedRect(.(x + 110, cy, 100, 50), .(16, 0, 16, 0), Color(Color32.CornflowerBlue));
+
+		// SVG path heart icon
+		{
+			let pb = scope PathBuilder();
+			if (SVGPathParser.Parse(
+				"M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z",
+				pb) case .Ok)
+			{
+				let path = pb.ToPath();
+				defer delete path;
+
+				vg.PushState();
+				vg.Translate(x + 240, cy);
+				vg.Scale(3, 3);
+				vg.Translate(-12, -12);
+				vg.FillPath(path, Color(Color32.Crimson));
+				vg.PopState();
 			}
 		}
 	}

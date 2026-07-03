@@ -1,8 +1,8 @@
 FileVersion = 1
-Locked = ["Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "dr_libs-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
+Locked = ["Bulkan", "cgltf-Beef", "cimgui-Beef", "Dxc-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "dr_libs-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
 
 [Workspace]
-StartupProject = "FontRendering"
+StartupProject = "EngineSandbox"
 
 [[Workspace.DistinctOptions]]
 Filter = ""
@@ -46,7 +46,6 @@ Sample029_ResolveTexture = {Path = "Samples/Graphics/RHI/Sample029_ResolveTextur
 Bulkan = {Path = "Dependencies/Bulkan"}
 cgltf-Beef = {Path = "Dependencies/cgltf-Beef"}
 cimgui-Beef = {Path = "Dependencies/cimgui-Beef"}
-Nuklear-Beef = {Path = "Dependencies/Nuklear-Beef"}
 Dxc-Beef = {Path = "Dependencies/Dxc-Beef"}
 glslang-Beef = {Path = "Dependencies/glslang-Beef"}
 SDL3 = {Path = "Dependencies/SDL3-Beef"}
@@ -109,7 +108,6 @@ SR001_ReflectedPBR = {Path = "Samples/Graphics/ShaderReflection/SR001_ReflectedP
 "Sedulous.VG" = {Path = "Foundation/Sedulous.VG"}
 "Sedulous.VG.SVG" = {Path = "Foundation/Sedulous.VG.SVG"}
 "Sedulous.VG.Tests" = {Path = "Foundation/Sedulous.VG.Tests"}
-SampleVG001_Shapes = {Path = "Samples/VG/SampleVG001_Shapes"}
 "Sedulous.Materials" = {Path = "Foundation/Sedulous.Materials"}
 "Sedulous.Shaders" = {Path = "Foundation/Sedulous.Shaders"}
 "Sedulous.RenderGraph" = {Path = "Foundation/Sedulous.RenderGraph"}
@@ -176,7 +174,6 @@ VGSandbox = {Path = "Samples/VG/VGSandbox"}
 "Sedulous.VFS.Tests" = {Path = "Foundation/Sedulous.VFS.Tests"}
 FontRendering = {Path = "Samples/FontRendering"}
 ImGuiSample = {Path = "Samples/ImGuiSample"}
-NuklearSample = {Path = "Samples/NuklearSample"}
 SlugSample = {Path = "Experimental/SlugSample"}
 NetEcho = {Path = "Samples/Net/NetEcho"}
 NetHttpClient = {Path = "Samples/Net/NetHttpClient"}
@@ -208,8 +205,9 @@ UISandbox = {Path = "Samples/UI/UISandbox"}
 Sample030_RenderBundles = {Path = "Samples/Graphics/RHI/Sample030_RenderBundles"}
 
 [WorkspaceFolders]
-Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
-Samples = ["SampleVG001_Shapes", "NuklearSample"]
+Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "cimgui-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
+Samples = []
+"Samples/Graphics" = ["RenderGraphSandbox", "SampleFramework"]
 "Samples/Graphics/RHISamples" = ["Sample002_Textures", "Sample003_UniformBuffers", "Sample004_Compute", "Sample005_BindGroups", "Sample006_Blending", "Sample007_Instancing", "Sample008_DepthBuffer", "Sample009_Mipmaps", "Sample010_MSAA", "Sample011_MRT", "Sample012_Wireframe", "Sample013_BorderSampler", "Sample014_Blit", "Sample015_Queries", "Sample016_Readback", "Sample017_MultiQueue", "Sample018_Bindless", "Sample019_BatchUpload", "Sample020_MeshShaders", "Sample021_RayTracing", "Sample022_StencilOutline", "Sample023_CubeMap", "Sample024_OcclusionQuery", "Sample025_MultiDrawIndirect", "Sample026_DynamicOffsets", "Sample027_3DTexture", "Sample028_ProceduralRT", "Sample029_ResolveTexture", "Sample001_Triangle", "Sample030_RenderBundles"]
 "Samples/Graphics/ShaderReflection" = ["SR001_ReflectedPBR"]
 Foundation = []
@@ -241,7 +239,6 @@ Experimental = []
 "Foundation/Messaging" = ["Sedulous.Messaging", "Sedulous.Messaging.Runtime", "Sedulous.Messaging.Tests"]
 "Foundation/CodeGen" = ["Sedulous.Inspection"]
 "Foundation/UI" = ["Sedulous.UI", "Sedulous.UI.Runtime", "Sedulous.UI.Shell", "Sedulous.UI.Tests", "Sedulous.UI.IO", "Sedulous.UI.Toolkit", "Sedulous.UI.Viewport"]
-"Samples/Graphics" = ["RenderGraphSandbox", "SampleFramework"]
-"Samples/EngineSamples" = ["EngineAnimationSandbox", "EngineRenderStressTest", "EngineSandbox", "AudioSandbox", "DrawingSandbox", "FontRendering", "ImGuiSample", "RuntimeSampleFramework", "UISandbox", "VGSandbox", "Showcase"]
+"Samples/EngineSamples" = ["EngineAnimationSandbox", "EngineRenderStressTest", "EngineSandbox", "Showcase"]
 "Samples/NetSamples" = ["NetEcho", "NetHttpClient", "NetWebSocket"]
-"Samples/RuntimeSamples" = []
+"Samples/RuntimeSamples" = ["AudioSandbox", "DrawingSandbox", "FontRendering", "ImGuiSample", "RuntimeSampleFramework", "UISandbox", "VGSandbox"]
