@@ -8,21 +8,21 @@ StartupProject = "TowerDefense.Editor"
 Filter = ""
 
 [Projects]
-Bulkan = {Path = "../../Code/Dependencies/Bulkan"}
-cgltf-Beef = {Path = "../../Code/Dependencies/cgltf-Beef"}
-Dxc-Beef = {Path = "../../Code/Dependencies/Dxc-Beef"}
-glslang-Beef = {Path = "../../Code/Dependencies/glslang-Beef"}
-SDL3 = {Path = "../../Code/Dependencies/SDL3-Beef"}
-SPIRV-Cross = {Path = "../../Code/Dependencies/SPIRV-Cross-Beef"}
-stb_image-Beef = {Path = "../../Code/Dependencies/stb_image-Beef"}
-stb_truetype-Beef = {Path = "../../Code/Dependencies/stb_truetype-Beef"}
-stb_vorbis-Beef = {Path = "../../Code/Dependencies/stb_vorbis-Beef"}
-dr_libs-Beef = {Path = "../../Code/Dependencies/dr_libs-Beef"}
-ufbx-Beef = {Path = "../../Code/Dependencies/ufbx-Beef"}
-Win32 = {Path = "../../Code/Dependencies/Win32-Beef"}
-joltc-Beef = {Path = "../../Code/Dependencies/joltc-Beef"}
-SDL3_image = {Path = "../../Code/Dependencies/SDL3_image-Beef"}
-recastnavigation-Beef = {Path = "../../Code/Dependencies/recastnavigation-Beef"}
+Bulkan = {Path = "../../Dependencies/Bulkan"}
+cgltf-Beef = {Path = "../../Dependencies/cgltf-Beef"}
+Dxc-Beef = {Path = "../../Dependencies/Dxc-Beef"}
+glslang-Beef = {Path = "../../Dependencies/glslang-Beef"}
+SDL3 = {Path = "../../Dependencies/SDL3-Beef"}
+SPIRV-Cross = {Path = "../../Dependencies/SPIRV-Cross-Beef"}
+stb_image-Beef = {Path = "../../Dependencies/stb_image-Beef"}
+stb_truetype-Beef = {Path = "../../Dependencies/stb_truetype-Beef"}
+stb_vorbis-Beef = {Path = "../../Dependencies/stb_vorbis-Beef"}
+dr_libs-Beef = {Path = "../../Dependencies/dr_libs-Beef"}
+ufbx-Beef = {Path = "../../Dependencies/ufbx-Beef"}
+Win32 = {Path = "../../Dependencies/Win32-Beef"}
+joltc-Beef = {Path = "../../Dependencies/joltc-Beef"}
+SDL3_image = {Path = "../../Dependencies/SDL3_image-Beef"}
+recastnavigation-Beef = {Path = "../../Dependencies/recastnavigation-Beef"}
 "Sedulous.Core" = {Path = "../../Code/Foundation/Sedulous.Core"}
 "Sedulous.Core.Collections" = {Path = "../../Code/Foundation/Sedulous.Core.Collections"}
 "Sedulous.Core.Logging" = {Path = "../../Code/Foundation/Sedulous.Core.Logging"}

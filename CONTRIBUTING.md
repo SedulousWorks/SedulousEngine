@@ -18,7 +18,7 @@ Thank you for your interest in contributing to Sedulous.
 - `Code/Engine/` -- Engine.Core and subsystems (Render, Physics, Audio, etc.)
 - `Code/Editor/` -- Editor core and application
 - `Code/Samples/` -- Sample applications (EngineSandbox, LegacyUISandbox, etc.)
-- `Code/Dependencies/` -- Third-party Beeflang bindings
+- `Dependencies/` -- Third-party Beeflang bindings
 - `Documentation/` -- Architecture reference and roadmaps
 
 ## Coding Conventions

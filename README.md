@@ -77,7 +77,7 @@ Code/
   Editor/              -- Editor core + application
   Samples/             -- EngineSandbox, UISandbox, Showcase, RHI samples
   Tools/               -- Asset importers and utilities
-  Dependencies/        -- Third-party bindings
+Dependencies/          -- Third-party bindings
 
 Assets/                -- Shaders, fonts, GUI themes, sample assets
 Documentation/
