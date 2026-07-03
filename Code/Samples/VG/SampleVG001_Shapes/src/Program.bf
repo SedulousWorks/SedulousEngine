@@ -10,7 +10,7 @@ using Sedulous.VG.SVG;
 using Sedulous.Runtime.Client;
 using Sedulous.RuntimeGraphics;
 using Sedulous.Shell.SDL3;
-using SampleFramework;
+using GraphicsFramework;
 
 class VGShapesSample : IApplication
 {

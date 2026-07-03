@@ -1,0 +1,16 @@
+FileVersion = 1
+
+[Project]
+Name = "GraphicsFramework"
+TargetType = "BeefLib"
+StartupObject = "GraphicsFramework.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.Validation" = "*"
+"Sedulous.RHI.DX12" = "*"
+"Sedulous.RHI.Vulkan" = "*"
+SDL3 = "*"
+Dxc-Beef = "*"
+"Sedulous.Core.Mathematics" = "*"

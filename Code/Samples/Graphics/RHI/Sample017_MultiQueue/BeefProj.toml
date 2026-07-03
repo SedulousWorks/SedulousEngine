@@ -1,0 +1,13 @@
+FileVersion = 1
+
+[Project]
+Name = "Sample017_MultiQueue"
+StartupObject = "Sample017_MultiQueue.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.Validation" = "*"
+"Sedulous.RHI.DX12" = "*"
+"Sedulous.RHI.Vulkan" = "*"
+GraphicsFramework = "*"

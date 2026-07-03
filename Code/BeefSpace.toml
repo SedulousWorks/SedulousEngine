@@ -13,35 +13,35 @@ Filter = ""
 "Sedulous.RHI.Validation" = {Path = "Foundation/Sedulous.RHI.Validation"}
 "Sedulous.RHI.DX12" = {Path = "Foundation/Sedulous.RHI.DX12"}
 "Sedulous.RHI.Null" = {Path = "Foundation/Sedulous.RHI.Null"}
-SampleFramework = {Path = "Samples/SampleFramework"}
-Sample002_Textures = {Path = "Samples/RHI/Sample002_Textures"}
-Sample003_UniformBuffers = {Path = "Samples/RHI/Sample003_UniformBuffers"}
-Sample004_Compute = {Path = "Samples/RHI/Sample004_Compute"}
-Sample005_BindGroups = {Path = "Samples/RHI/Sample005_BindGroups"}
-Sample006_Blending = {Path = "Samples/RHI/Sample006_Blending"}
-Sample007_Instancing = {Path = "Samples/RHI/Sample007_Instancing"}
-Sample008_DepthBuffer = {Path = "Samples/RHI/Sample008_DepthBuffer"}
-Sample009_Mipmaps = {Path = "Samples/RHI/Sample009_Mipmaps"}
-Sample010_MSAA = {Path = "Samples/RHI/Sample010_MSAA"}
-Sample011_MRT = {Path = "Samples/RHI/Sample011_MRT"}
-Sample012_Wireframe = {Path = "Samples/RHI/Sample012_Wireframe"}
-Sample013_BorderSampler = {Path = "Samples/RHI/Sample013_BorderSampler"}
-Sample014_Blit = {Path = "Samples/RHI/Sample014_Blit"}
-Sample015_Queries = {Path = "Samples/RHI/Sample015_Queries"}
-Sample016_Readback = {Path = "Samples/RHI/Sample016_Readback"}
-Sample017_MultiQueue = {Path = "Samples/RHI/Sample017_MultiQueue"}
-Sample018_Bindless = {Path = "Samples/RHI/Sample018_Bindless"}
-Sample019_BatchUpload = {Path = "Samples/RHI/Sample019_BatchUpload"}
-Sample020_MeshShaders = {Path = "Samples/RHI/Sample020_MeshShaders"}
-Sample021_RayTracing = {Path = "Samples/RHI/Sample021_RayTracing"}
-Sample022_StencilOutline = {Path = "Samples/RHI/Sample022_StencilOutline"}
-Sample023_CubeMap = {Path = "Samples/RHI/Sample023_CubeMap"}
-Sample024_OcclusionQuery = {Path = "Samples/RHI/Sample024_OcclusionQuery"}
-Sample025_MultiDrawIndirect = {Path = "Samples/RHI/Sample025_MultiDrawIndirect"}
-Sample026_DynamicOffsets = {Path = "Samples/RHI/Sample026_DynamicOffsets"}
-Sample027_3DTexture = {Path = "Samples/RHI/Sample027_3DTexture"}
-Sample028_ProceduralRT = {Path = "Samples/RHI/Sample028_ProceduralRT"}
-Sample029_ResolveTexture = {Path = "Samples/RHI/Sample029_ResolveTexture"}
+SampleFramework = {Path = "Samples/Graphics/GraphicsFramework"}
+Sample002_Textures = {Path = "Samples/Graphics/RHI/Sample002_Textures"}
+Sample003_UniformBuffers = {Path = "Samples/Graphics/RHI/Sample003_UniformBuffers"}
+Sample004_Compute = {Path = "Samples/Graphics/RHI/Sample004_Compute"}
+Sample005_BindGroups = {Path = "Samples/Graphics/RHI/Sample005_BindGroups"}
+Sample006_Blending = {Path = "Samples/Graphics/RHI/Sample006_Blending"}
+Sample007_Instancing = {Path = "Samples/Graphics/RHI/Sample007_Instancing"}
+Sample008_DepthBuffer = {Path = "Samples/Graphics/RHI/Sample008_DepthBuffer"}
+Sample009_Mipmaps = {Path = "Samples/Graphics/RHI/Sample009_Mipmaps"}
+Sample010_MSAA = {Path = "Samples/Graphics/RHI/Sample010_MSAA"}
+Sample011_MRT = {Path = "Samples/Graphics/RHI/Sample011_MRT"}
+Sample012_Wireframe = {Path = "Samples/Graphics/RHI/Sample012_Wireframe"}
+Sample013_BorderSampler = {Path = "Samples/Graphics/RHI/Sample013_BorderSampler"}
+Sample014_Blit = {Path = "Samples/Graphics/RHI/Sample014_Blit"}
+Sample015_Queries = {Path = "Samples/Graphics/RHI/Sample015_Queries"}
+Sample016_Readback = {Path = "Samples/Graphics/RHI/Sample016_Readback"}
+Sample017_MultiQueue = {Path = "Samples/Graphics/RHI/Sample017_MultiQueue"}
+Sample018_Bindless = {Path = "Samples/Graphics/RHI/Sample018_Bindless"}
+Sample019_BatchUpload = {Path = "Samples/Graphics/RHI/Sample019_BatchUpload"}
+Sample020_MeshShaders = {Path = "Samples/Graphics/RHI/Sample020_MeshShaders"}
+Sample021_RayTracing = {Path = "Samples/Graphics/RHI/Sample021_RayTracing"}
+Sample022_StencilOutline = {Path = "Samples/Graphics/RHI/Sample022_StencilOutline"}
+Sample023_CubeMap = {Path = "Samples/Graphics/RHI/Sample023_CubeMap"}
+Sample024_OcclusionQuery = {Path = "Samples/Graphics/RHI/Sample024_OcclusionQuery"}
+Sample025_MultiDrawIndirect = {Path = "Samples/Graphics/RHI/Sample025_MultiDrawIndirect"}
+Sample026_DynamicOffsets = {Path = "Samples/Graphics/RHI/Sample026_DynamicOffsets"}
+Sample027_3DTexture = {Path = "Samples/Graphics/RHI/Sample027_3DTexture"}
+Sample028_ProceduralRT = {Path = "Samples/Graphics/RHI/Sample028_ProceduralRT"}
+Sample029_ResolveTexture = {Path = "Samples/Graphics/RHI/Sample029_ResolveTexture"}
 Bulkan = {Path = "Dependencies/Bulkan"}
 cgltf-Beef = {Path = "Dependencies/cgltf-Beef"}
 cimgui-Beef = {Path = "Dependencies/cimgui-Beef"}
@@ -60,7 +60,7 @@ Win32 = {Path = "Dependencies/Win32-Beef"}
 "Sedulous.ShaderReflection.SPIRV" = {Path = "Foundation/Sedulous.ShaderReflection.SPIRV"}
 "Sedulous.ShaderReflection.DXIL" = {Path = "Foundation/Sedulous.ShaderReflection.DXIL"}
 "Sedulous.ShaderReflection.Tests" = {Path = "Foundation/Sedulous.ShaderReflection.Tests"}
-SR001_ReflectedPBR = {Path = "Samples/ShaderReflection/SR001_ReflectedPBR"}
+SR001_ReflectedPBR = {Path = "Samples/Graphics/ShaderReflection/SR001_ReflectedPBR"}
 "Sedulous.Core" = {Path = "Foundation/Sedulous.Core"}
 "Sedulous.Core.Collections" = {Path = "Foundation/Sedulous.Core.Collections"}
 "Sedulous.Core.Logging" = {Path = "Foundation/Sedulous.Core.Logging"}
@@ -132,7 +132,7 @@ SampleVG001_Shapes = {Path = "Samples/VG/SampleVG001_Shapes"}
 "Sedulous.Editor.App" = {Path = "Editor/Sedulous.Editor.App"}
 EngineSandbox = {Path = "Samples/EngineSandbox"}
 EngineAnimationSandbox = {Path = "Samples/EngineAnimationSandbox"}
-RenderGraphSandbox = {Path = "Samples/RenderGraphSandbox"}
+RenderGraphSandbox = {Path = "Samples/Graphics/RenderGraphSandbox"}
 "Sedulous.Jobs" = {Path = "Foundation/Sedulous.Jobs"}
 "Sedulous.Jobs.Tests" = {Path = "Foundation/Sedulous.Jobs.Tests"}
 "Sedulous.Resources" = {Path = "Foundation/Sedulous.Resources"}
@@ -161,7 +161,7 @@ joltc-Beef = {Path = "Dependencies/joltc-Beef"}
 "Sedulous.Geometry.Tooling.Resources" = {Path = "Foundation/Sedulous.Geometry.Tooling.Resources"}
 "Sedulous.Materials.Resources" = {Path = "Foundation/Sedulous.Materials.Resources"}
 SDL3_image = {Path = "Dependencies/SDL3_image-Beef"}
-Sample001_Triangle = {Path = "Samples/RHI/Sample001_Triangle"}
+Sample001_Triangle = {Path = "Samples/Graphics/RHI/Sample001_Triangle"}
 DrawingSandbox = {Path = "Samples/DrawingSandbox"}
 VGSandbox = {Path = "Samples/VG/VGSandbox"}
 "Sedulous.Slug" = {Path = "Experimental/Sedulous.Slug"}
@@ -204,11 +204,11 @@ CuteSeriesImporter = {Path = "Tools/CuteSeriesImporter"}
 "Sedulous.UI.Toolkit" = {Path = "Foundation/Sedulous.UI.Toolkit"}
 "Sedulous.UI.Viewport" = {Path = "Foundation/Sedulous.UI.Viewport"}
 UISandbox = {Path = "Samples/UI/UISandbox"}
-Sample030_RenderBundles = {Path = "Samples/RHI/Sample030_RenderBundles"}
+Sample030_RenderBundles = {Path = "Samples/Graphics/RHI/Sample030_RenderBundles"}
 
 [WorkspaceFolders]
 Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "cimgui-Beef", "Nuklear-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
-Samples = ["SampleFramework", "SampleVG001_Shapes", "DrawingSandbox", "VGSandbox", "FontRendering", "ImGuiSample", "NuklearSample", "NetEcho", "NetHttpClient", "NetWebSocket", "AudioSandbox", "EngineSandbox", "EngineAnimationSandbox", "EngineRenderStressTest", "Showcase", "UISandbox", "RenderGraphSandbox"]
+Samples = ["GraphicsFramework", "SampleVG001_Shapes", "DrawingSandbox", "VGSandbox", "FontRendering", "ImGuiSample", "NuklearSample", "NetEcho", "NetHttpClient", "NetWebSocket", "AudioSandbox", "EngineSandbox", "EngineAnimationSandbox", "EngineRenderStressTest", "Showcase", "UISandbox", "RenderGraphSandbox"]
 "Samples/RHISamples" = ["Sample002_Textures", "Sample003_UniformBuffers", "Sample004_Compute", "Sample005_BindGroups", "Sample006_Blending", "Sample007_Instancing", "Sample008_DepthBuffer", "Sample009_Mipmaps", "Sample010_MSAA", "Sample011_MRT", "Sample012_Wireframe", "Sample013_BorderSampler", "Sample014_Blit", "Sample015_Queries", "Sample016_Readback", "Sample017_MultiQueue", "Sample018_Bindless", "Sample019_BatchUpload", "Sample020_MeshShaders", "Sample021_RayTracing", "Sample022_StencilOutline", "Sample023_CubeMap", "Sample024_OcclusionQuery", "Sample025_MultiDrawIndirect", "Sample026_DynamicOffsets", "Sample027_3DTexture", "Sample028_ProceduralRT", "Sample029_ResolveTexture", "Sample001_Triangle", "Sample030_RenderBundles"]
 "Samples/ShaderReflection" = ["SR001_ReflectedPBR"]
 Foundation = []
