@@ -1,0 +1,20 @@
+FileVersion = 1
+
+[Project]
+Name = "RuntimeSampleFramework"
+TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Runtime.Graphics" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Shell.SDL3" = "*"
+"Sedulous.Shaders" = "*"
+"Sedulous.Fonts" = "*"
+"Sedulous.Fonts.TTF" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.VFS.Disk" = "*"
+"Sedulous.Jobs" = "*"
