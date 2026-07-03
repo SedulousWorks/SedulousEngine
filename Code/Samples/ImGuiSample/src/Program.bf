@@ -7,8 +7,8 @@ using Sedulous.RHI;
 using Sedulous.Shaders;
 using Sedulous.Runtime.Client;
 using Sedulous.RuntimeGraphics;
-using Sedulous.Shell.SDL3;
 using cimgui_Beef;
+using RuntimeSampleFramework;
 
 /// Uniform buffer for projection matrix
 [CRepr]
@@ -18,7 +18,7 @@ struct ImGuiUniforms
 }
 
 /// ImGui integration sample demonstrating immediate-mode GUI with RHI rendering.
-class ImGuiSampleApp : IApplication
+class ImGuiSampleApp : RuntimeSampleApp
 {
 	// ImGui context
 	private ImGuiContext* mImGuiContext;
@@ -31,13 +31,15 @@ class ImGuiSampleApp : IApplication
 	private ITexture mFontTexture;
 	private ITextureView mFontTextureView;
 	private ISampler mFontSampler;
-	private ShaderSystem mShaderSystem;
 	private IShaderModule mVertShader;
 	private IShaderModule mFragShader;
 	private IBindGroupLayout mBindGroupLayout;
 	private IBindGroup mBindGroup;
 	private IPipelineLayout mPipelineLayout;
 	private IRenderPipeline mPipeline;
+
+	// Sample's own shader system (uses sample-specific shader path)
+	private ShaderSystem mSampleShaderSystem;
 
 	// Buffer sizes
 	private const int MAX_VERTEX_BUFFER = 512 * 1024;
@@ -61,36 +63,20 @@ class ImGuiSampleApp : IApplication
 	// Cached delta time for input
 	private float mDeltaTime = 1.0f / 60.0f;
 
-	// Cached device
-	private IDevice mDevice;
-
-	// Asset directory
-	private String mBuiltInAssetDirectory = new .() ~ delete _;
-
-	// Cached shell
-	private Sedulous.Shell.IShell mShell;
-
-	public ApplicationSettings Settings()
+	public override ApplicationSettings Settings()
 	{
 		return .() { Title = "ImGui Sample", Width = 1024, Height = 768 };
 	}
 
-	public void Configure(IApplicationHost host)
-	{
-		DiscoverAssets();
-		mDevice = host.Graphics.Raw;
-		mShell = host.Shell;
-	}
-
-	public void OnStartup(IApplicationHost host)
+	protected override void OnInit(Sedulous.Runtime.Client.IApplicationHost host)
 	{
 		let rw = host.MainWindow;
 
 		// Initialize shader system
-		mShaderSystem = new ShaderSystem();
+		mSampleShaderSystem = new ShaderSystem();
 		String shaderPath = scope .();
-		Path.InternalCombine(shaderPath, mBuiltInAssetDirectory, "samples/ImGuiSample/shaders");
-		if (mShaderSystem.Initialize(mDevice, scope StringView[](shaderPath)) case .Err)
+		Path.InternalCombine(shaderPath, BuiltInAssetDirectory, "samples/ImGuiSample/shaders");
+		if (mSampleShaderSystem.Initialize(Device, scope StringView[](shaderPath)) case .Err)
 		{
 			Console.WriteLine("Failed to initialize shader system");
 			return;
@@ -140,7 +126,7 @@ class ImGuiSampleApp : IApplication
 			Memory = .CpuToGpu
 		};
 
-		if (mDevice.CreateBuffer(vertexDesc) not case .Ok(let vb))
+		if (Device.CreateBuffer(vertexDesc) not case .Ok(let vb))
 		{
 			Console.WriteLine("Failed to create vertex buffer");
 			return false;
@@ -155,7 +141,7 @@ class ImGuiSampleApp : IApplication
 			Memory = .CpuToGpu
 		};
 
-		if (mDevice.CreateBuffer(indexDesc) not case .Ok(let ib))
+		if (Device.CreateBuffer(indexDesc) not case .Ok(let ib))
 		{
 			Console.WriteLine("Failed to create index buffer");
 			return false;
@@ -170,7 +156,7 @@ class ImGuiSampleApp : IApplication
 			Memory = .CpuToGpu
 		};
 
-		if (mDevice.CreateBuffer(uniformDesc) not case .Ok(let ub))
+		if (Device.CreateBuffer(uniformDesc) not case .Ok(let ub))
 		{
 			Console.WriteLine("Failed to create uniform buffer");
 			return false;
@@ -184,7 +170,7 @@ class ImGuiSampleApp : IApplication
 	private bool CreateBindings()
 	{
 		// Load shaders
-		let shaderResult = mShaderSystem.GetShaderPair("imgui");
+		let shaderResult = mSampleShaderSystem.GetShaderPair("imgui");
 		if (shaderResult case .Err)
 		{
 			Console.WriteLine("Failed to load shaders");
@@ -202,7 +188,7 @@ class ImGuiSampleApp : IApplication
 			BindGroupLayoutEntry.Sampler(0, .Fragment)
 		);
 		BindGroupLayoutDesc bindGroupLayoutDesc = .(layoutEntries);
-		if (mDevice.CreateBindGroupLayout(bindGroupLayoutDesc) not case .Ok(let layout))
+		if (Device.CreateBindGroupLayout(bindGroupLayoutDesc) not case .Ok(let layout))
 		{
 			Console.WriteLine("Failed to create bind group layout");
 			return false;
@@ -212,7 +198,7 @@ class ImGuiSampleApp : IApplication
 		// Create pipeline layout
 		IBindGroupLayout[1] layouts = .(mBindGroupLayout);
 		PipelineLayoutDesc pipelineLayoutDesc = .(layouts);
-		if (mDevice.CreatePipelineLayout(pipelineLayoutDesc) not case .Ok(let pipelineLayout))
+		if (Device.CreatePipelineLayout(pipelineLayoutDesc) not case .Ok(let pipelineLayout))
 		{
 			Console.WriteLine("Failed to create pipeline layout");
 			return false;
@@ -288,7 +274,7 @@ class ImGuiSampleApp : IApplication
 			}
 		};
 
-		if (mDevice.CreateRenderPipeline(pipelineDesc) not case .Ok(let pipeline))
+		if (Device.CreateRenderPipeline(pipelineDesc) not case .Ok(let pipeline))
 		{
 			Console.WriteLine("Failed to create pipeline");
 			return false;
@@ -310,16 +296,16 @@ class ImGuiSampleApp : IApplication
 
 			// Delete previous texture resources if any
 			if (mFontSampler != null) { delete mFontSampler; mFontSampler = null; }
-			if (mFontTextureView != null) mDevice.DestroyTextureView(ref mFontTextureView);
-			if (mFontTexture != null) mDevice.DestroyTexture(ref mFontTexture);
-			if (mBindGroup != null) mDevice.DestroyBindGroup(ref mBindGroup);
+			if (mFontTextureView != null) Device.DestroyTextureView(ref mFontTextureView);
+			if (mFontTexture != null) Device.DestroyTexture(ref mFontTexture);
+			if (mBindGroup != null) Device.DestroyBindGroup(ref mBindGroup);
 
 			uint32 w = (uint32)tex.Width;
 			uint32 h = (uint32)tex.Height;
 
 			// Create texture
 			TextureDesc texDesc = TextureDesc.Texture2D(w, h, .RGBA8Unorm, .Sampled | .CopyDst);
-			if (mDevice.CreateTexture(texDesc) not case .Ok(let gpuTex))
+			if (Device.CreateTexture(texDesc) not case .Ok(let gpuTex))
 			{
 				Console.WriteLine("Failed to create font texture");
 				return false;
@@ -335,11 +321,11 @@ class ImGuiSampleApp : IApplication
 			};
 			Extent3D writeSize = .(w, h, 1);
 			Span<uint8> data = .((uint8*)pixels, (int)(w * h * 4));
-			TransferHelper.WriteTextureSync(mDevice.GetQueue(.Graphics), mDevice, mFontTexture, data, dataLayout, writeSize);
+			TransferHelper.WriteTextureSync(Device.GetQueue(.Graphics), Device, mFontTexture, data, dataLayout, writeSize);
 
 			// Create texture view
 			TextureViewDesc viewDesc = .();
-			if (mDevice.CreateTextureView(mFontTexture, viewDesc) not case .Ok(let view))
+			if (Device.CreateTextureView(mFontTexture, viewDesc) not case .Ok(let view))
 			{
 				Console.WriteLine("Failed to create font texture view");
 				return false;
@@ -358,7 +344,7 @@ class ImGuiSampleApp : IApplication
 				MinLod = 0.0f,
 				MaxLod = 1.0f
 			};
-			if (mDevice.CreateSampler(samplerDesc) not case .Ok(let sampler))
+			if (Device.CreateSampler(samplerDesc) not case .Ok(let sampler))
 			{
 				Console.WriteLine("Failed to create font sampler");
 				return false;
@@ -372,7 +358,7 @@ class ImGuiSampleApp : IApplication
 				BindGroupEntry.Sampler(mFontSampler)
 			);
 			BindGroupDesc bindGroupDesc = .(mBindGroupLayout, bindGroupEntries);
-			if (mDevice.CreateBindGroup(bindGroupDesc) not case .Ok(let group))
+			if (Device.CreateBindGroup(bindGroupDesc) not case .Ok(let group))
 			{
 				Console.WriteLine("Failed to create bind group");
 				return false;
@@ -403,7 +389,7 @@ class ImGuiSampleApp : IApplication
 					};
 					Extent3D writeSize = .(w, h, 1);
 					Span<uint8> data = .((uint8*)pixels, (int)(w * h * 4));
-					TransferHelper.WriteTextureSync(mDevice.GetQueue(.Graphics), mDevice, mFontTexture, data, dataLayout, writeSize);
+					TransferHelper.WriteTextureSync(Device.GetQueue(.Graphics), Device, mFontTexture, data, dataLayout, writeSize);
 				}
 			}
 			ImTextureData_SetStatus(tex, .ImTextureStatus_OK);
@@ -417,12 +403,12 @@ class ImGuiSampleApp : IApplication
 		return true;
 	}
 
-	public void OnUpdate(IApplicationHost host, float deltaTime)
+	protected override void OnUpdate(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime, float totalTime)
 	{
 		mDeltaTime = deltaTime;
 
-		let mouse = mShell.InputManager.Mouse;
-		let keyboard = mShell.InputManager.Keyboard;
+		let mouse = Shell.InputManager.Mouse;
+		let keyboard = Shell.InputManager.Keyboard;
 
 		let rw = host.MainWindow;
 
@@ -547,7 +533,7 @@ class ImGuiSampleApp : IApplication
 		mFirstFrame = false;
 	}
 
-	public void OnRenderWindow(IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
+	protected override void OnRender(Sedulous.Runtime.Client.IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
 	{
 		// End ImGui frame and generate draw data
 		igRender();
@@ -662,50 +648,30 @@ class ImGuiSampleApp : IApplication
 		frame.EndBackbufferPass();
 	}
 
-	public void OnShutdown(IApplicationHost host)
+	protected override void OnCleanup(Sedulous.Runtime.Client.IApplicationHost host)
 	{
 		// Clean up ImGui
 		if (mImGuiContext != null)
 			igDestroyContext(mImGuiContext);
 
 		// Clean up RHI resources
-		if (mDevice != null)
+		if (Device != null)
 		{
-			mDevice.DestroyRenderPipeline(ref mPipeline);
-			mDevice.DestroyPipelineLayout(ref mPipelineLayout);
-			mDevice.DestroyBindGroup(ref mBindGroup);
-			mDevice.DestroyBindGroupLayout(ref mBindGroupLayout);
-			//mDevice.DestroyShaderModule(ref mFragShader);
-			//mDevice.DestroyShaderModule(ref mVertShader);
-			mDevice.DestroySampler(ref mFontSampler);
-			mDevice.DestroyTextureView(ref mFontTextureView);
-			mDevice.DestroyTexture(ref mFontTexture);
-			mDevice.DestroyBuffer(ref mUniformBuffer);
-			mDevice.DestroyBuffer(ref mIndexBuffer);
-			mDevice.DestroyBuffer(ref mVertexBuffer);
+			Device.DestroyRenderPipeline(ref mPipeline);
+			Device.DestroyPipelineLayout(ref mPipelineLayout);
+			Device.DestroyBindGroup(ref mBindGroup);
+			Device.DestroyBindGroupLayout(ref mBindGroupLayout);
+			//Device.DestroyShaderModule(ref mFragShader);
+			//Device.DestroyShaderModule(ref mVertShader);
+			Device.DestroySampler(ref mFontSampler);
+			Device.DestroyTextureView(ref mFontTextureView);
+			Device.DestroyTexture(ref mFontTexture);
+			Device.DestroyBuffer(ref mUniformBuffer);
+			Device.DestroyBuffer(ref mIndexBuffer);
+			Device.DestroyBuffer(ref mVertexBuffer);
 		}
 
-		if (mShaderSystem != null) { mShaderSystem.Dispose(); delete mShaderSystem; }
-	}
-
-	private void DiscoverAssets()
-	{
-		let cwd = Directory.GetCurrentDirectory(.. scope .());
-		var searchDir = scope String(cwd);
-		while (true)
-		{
-			let assetsPath = scope String();
-			Path.InternalCombine(assetsPath, searchDir, "Assets");
-			if (Directory.Exists(assetsPath))
-			{
-				let marker = scope String();
-				Path.InternalCombine(marker, assetsPath, ".assets");
-				if (File.Exists(marker)) { mBuiltInAssetDirectory.Set(assetsPath); return; }
-			}
-			let parent = Path.GetDirectoryPath(searchDir, .. scope .());
-			if (parent.IsEmpty || parent == searchDir) { mBuiltInAssetDirectory.Set(cwd); return; }
-			searchDir.Set(parent);
-		}
+		if (mSampleShaderSystem != null) { mSampleShaderSystem.Dispose(); delete mSampleShaderSystem; }
 	}
 }
 
@@ -713,24 +679,6 @@ class Program
 {
 	public static int Main(String[] args)
 	{
-		let shell = scope SDL3Shell();
-		if (shell.Initialize() case .Err)
-		{
-			Console.WriteLine("ERROR: Failed to initialize shell");
-			return 1;
-		}
-		defer shell.Shutdown();
-
-		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = true });
-		if (graphicsResult case .Err)
-		{
-			Console.WriteLine("ERROR: Failed to create graphics device");
-			return 1;
-		}
-		let graphics = graphicsResult.Value;
-		defer delete graphics;
-
-		let app = scope ImGuiSampleApp();
-		return ApplicationHost.RunApplication(app, shell, graphics);
+		return RuntimeSampleApp.Run<ImGuiSampleApp>();
 	}
 }

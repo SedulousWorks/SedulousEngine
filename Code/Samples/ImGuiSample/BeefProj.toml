@@ -6,12 +6,10 @@ StartupObject = "ImGuiSample.Program"
 
 [Dependencies]
 corlib = "*"
+RuntimeSampleFramework = "*"
 "Sedulous.Core.Mathematics" = "*"
 "Sedulous.RHI" = "*"
-"Sedulous.RHI.Vulkan" = "*"
-"Sedulous.RHI.Validation" = "*"
 "Sedulous.Shaders" = "*"
 "Sedulous.Runtime.Client" = "*"
 "Sedulous.Runtime.Graphics" = "*"
-"Sedulous.Shell.SDL3" = "*"
 "cimgui-Beef" = "*"

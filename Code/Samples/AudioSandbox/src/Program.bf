@@ -13,8 +13,7 @@ using Sedulous.Fonts;
 using Sedulous.Audio;
 using Sedulous.Audio.SDL3;
 using Sedulous.Audio.Decoders;
-using Sedulous.VFS.Disk;
-using Sedulous.Shell.SDL3;
+using RuntimeSampleFramework;
 
 /// Audio track info.
 class AudioTrack
@@ -31,7 +30,7 @@ class AudioTrack
 }
 
 /// Audio Sandbox - Audio Player with UI.
-class AudioSandboxApp : IApplication
+class AudioSandboxApp : RuntimeSampleApp
 {
 	// Audio system
 	private SDL3AudioSystem mAudioSystem ~ delete _;
@@ -53,19 +52,7 @@ class AudioSandboxApp : IApplication
 	private FlexLayout mTrackList;
 	private Button mPlayPauseButton;
 
-	// Asset directory
-	private String mBuiltInAssetDirectory = new .() ~ delete _;
-
-	// Builtin mount for VFS
-	private FileSystemMount mBuiltinMount ~ delete _;
-
-	// Cached device
-	private IDevice mDevice;
-
-	// Cached shell reference
-	private Sedulous.Shell.IShell mShell;
-
-	public ApplicationSettings Settings()
+	public override ApplicationSettings Settings()
 	{
 		return .()
 		{
@@ -74,15 +61,7 @@ class AudioSandboxApp : IApplication
 		};
 	}
 
-	public void Configure(IApplicationHost host)
-	{
-		DiscoverAssets();
-		mBuiltinMount = new FileSystemMount(mBuiltInAssetDirectory);
-		mDevice = host.Graphics.Raw;
-		mShell = host.Shell;
-	}
-
-	public void OnStartup(IApplicationHost host)
+	protected override void OnInit(Sedulous.Runtime.Client.IApplicationHost host)
 	{
 		// Initialize audio
 		if (!InitializeAudio())
@@ -103,10 +82,10 @@ class AudioSandboxApp : IApplication
 
 		let rw = host.MainWindow;
 		String shaderPath = scope .();
-		Path.InternalCombine(shaderPath, mBuiltInAssetDirectory, "shaders");
+		Path.InternalCombine(shaderPath, BuiltInAssetDirectory, "shaders");
 		// Pass BuiltinMount so the UI subsystem's font service routes font
 		// loads through the `builtin://` VFS scheme.
-		if (mUI.InitializeRendering(mUIContext, mRoot, mDevice, rw.Swap.Format, (int32)rw.Swap.BufferCount, scope StringView[](shaderPath), mShell, rw.Window, mBuiltinMount) case .Err)
+		if (mUI.InitializeRendering(mUIContext, mRoot, Device, rw.Swap.Format, (int32)rw.Swap.BufferCount, scope StringView[](shaderPath), Shell, rw.Window, BuiltinMount) case .Err)
 		{
 			Console.WriteLine("Failed to initialize UI rendering");
 			return;
@@ -220,7 +199,7 @@ class AudioSandboxApp : IApplication
 	private void LoadAudioTracks()
 	{
 		String audioDir = scope .();
-		Path.InternalCombine(audioDir, mBuiltInAssetDirectory, "samples/audio/kenney_rpg-audio/Audio");
+		Path.InternalCombine(audioDir, BuiltInAssetDirectory, "samples/audio/kenney_rpg-audio/Audio");
 
 		Console.WriteLine($"Loading audio from: {audioDir}");
 
@@ -359,7 +338,7 @@ class AudioSandboxApp : IApplication
 
 	// ==================== Lifecycle ====================
 
-	public void OnUpdate(IApplicationHost host, float deltaTime)
+	protected override void OnUpdate(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime, float totalTime)
 	{
 		// Update audio system
 		mAudioSystem.Update();
@@ -372,11 +351,11 @@ class AudioSandboxApp : IApplication
 		}
 
 		// Spacebar for play/pause
-		if (host.Shell.InputManager.Keyboard.IsKeyPressed(.Space))
+		if (Shell.InputManager.Keyboard.IsKeyPressed(.Space))
 			TogglePlayPause();
 	}
 
-	public void OnRenderWindow(IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
+	protected override void OnRender(Sedulous.Runtime.Client.IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
 	{
 		if (mUI == null || !mUI.IsRenderingInitialized)
 			return;
@@ -400,7 +379,7 @@ class AudioSandboxApp : IApplication
 			(int32)frame.FrameIndex);
 	}
 
-	public void OnShutdown(IApplicationHost host)
+	protected override void OnCleanup(Sedulous.Runtime.Client.IApplicationHost host)
 	{
 		StopPlayback();
 		mAudioSystem?.Dispose();
@@ -421,50 +400,12 @@ class AudioSandboxApp : IApplication
 		delete mAudioSystem;
 		mAudioSystem = null;
 	}
-
-	private void DiscoverAssets()
-	{
-		let cwd = Directory.GetCurrentDirectory(.. scope .());
-		var searchDir = scope String(cwd);
-		while (true)
-		{
-			let assetsPath = scope String();
-			Path.InternalCombine(assetsPath, searchDir, "Assets");
-			if (Directory.Exists(assetsPath))
-			{
-				let marker = scope String();
-				Path.InternalCombine(marker, assetsPath, ".assets");
-				if (File.Exists(marker)) { mBuiltInAssetDirectory.Set(assetsPath); return; }
-			}
-			let parent = Path.GetDirectoryPath(searchDir, .. scope .());
-			if (parent.IsEmpty || parent == searchDir) { mBuiltInAssetDirectory.Set(cwd); return; }
-			searchDir.Set(parent);
-		}
-	}
 }
 
 class Program
 {
 	public static int Main(String[] args)
 	{
-		let shell = scope SDL3Shell();
-		if (shell.Initialize() case .Err)
-		{
-			Console.WriteLine("ERROR: Failed to initialize shell");
-			return 1;
-		}
-		defer shell.Shutdown();
-
-		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = true });
-		if (graphicsResult case .Err)
-		{
-			Console.WriteLine("ERROR: Failed to create graphics device");
-			return 1;
-		}
-		let graphics = graphicsResult.Value;
-		defer delete graphics;
-
-		let app = scope AudioSandboxApp();
-		return ApplicationHost.RunApplication(app, shell, graphics);
+		return RuntimeSampleApp.Run<AudioSandboxApp>();
 	}
 }

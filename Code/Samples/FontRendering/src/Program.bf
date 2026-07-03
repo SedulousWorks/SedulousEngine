@@ -11,7 +11,7 @@ using Sedulous.RuntimeGraphics;
 using Sedulous.Fonts;
 using Sedulous.Fonts.IO;
 using Sedulous.Fonts.TTF;
-using Sedulous.Shell.SDL3;
+using RuntimeSampleFramework;
 
 /// Vertex structure for text rendering with position, UV, and color.
 [CRepr]
@@ -38,16 +38,13 @@ struct Uniforms
 }
 
 /// Font rendering sample demonstrating text rendering using font atlases.
-class FontRenderingSample : IApplication
+class FontRenderingSample : RuntimeSampleApp
 {
 	// Font resources
 	private IFont mFont;
 	private IFontAtlas mFontAtlas;
 	private TrueTypeTextShaper mTextShaper;
 	private List<GlyphPosition> mShapedPositions = new .() ~ delete _;
-
-	// Shader system
-	private ShaderSystem mShaderSystem;
 
 	// GPU resources
 	private IBuffer mVertexBuffer;
@@ -63,6 +60,9 @@ class FontRenderingSample : IApplication
 	private IPipelineLayout mPipelineLayout;
 	private IRenderPipeline mPipeline;
 
+	// Sample's own shader system (uses sample-specific shader path)
+	private ShaderSystem mSampleShaderSystem;
+
 	// Dynamic vertex/index data
 	private List<TextVertex> mVertices = new .() ~ delete _;
 	private List<uint16> mIndices = new .() ~ delete _;
@@ -72,41 +72,26 @@ class FontRenderingSample : IApplication
 	// Animation state
 	private float mAnimationTime = 0;
 
-	// Timing
-	private float mTotalTime = 0;
-
 	// FPS tracking
 	private int mFrameCount = 0;
 	private float mFpsTimer = 0;
 	private int mCurrentFps = 0;
 
-	// Cached device
-	private IDevice mDevice;
-
-	// Asset directory
-	private String mBuiltInAssetDirectory = new .() ~ delete _;
-
 	// Cached screen dimensions
 	private uint32 mWidth;
 	private uint32 mHeight;
 
-	public ApplicationSettings Settings()
+	public override ApplicationSettings Settings()
 	{
 		return .() { Title = "Font Rendering", Width = 1024, Height = 768 };
 	}
 
-	public void Configure(IApplicationHost host)
+	protected override void OnInit(Sedulous.Runtime.Client.IApplicationHost host)
 	{
-		DiscoverAssets();
-		mDevice = host.Graphics.Raw;
-	}
-
-	public void OnStartup(IApplicationHost host)
-	{
-		mShaderSystem = new ShaderSystem();
+		mSampleShaderSystem = new ShaderSystem();
 		String shaderPath = scope .();
-		Path.InternalCombine(shaderPath, mBuiltInAssetDirectory, "samples/FontRendering/shaders");
-		if (mShaderSystem.Initialize(mDevice, scope StringView[](shaderPath)) case .Err)
+		System.IO.Path.InternalCombine(shaderPath, BuiltInAssetDirectory, "samples/FontRendering/shaders");
+		if (mSampleShaderSystem.Initialize(Device, scope StringView[](shaderPath)) case .Err)
 		{
 			Console.WriteLine("Failed to initialize shader system");
 			return;
@@ -133,7 +118,7 @@ class FontRenderingSample : IApplication
 	{
 		// Use Roboto font from assets
 		String fontPath = scope .();
-		Path.InternalCombine(fontPath, mBuiltInAssetDirectory, "fonts/roboto/Roboto-Regular.ttf");
+		GetAssetPath("fonts/roboto/Roboto-Regular.ttf", fontPath);
 
 		if (!File.Exists(fontPath))
 		{
@@ -190,7 +175,7 @@ class FontRenderingSample : IApplication
 			.Sampled | .CopyDst
 		);
 
-		if (mDevice.CreateTexture(textureDesc) not case .Ok(let texture))
+		if (Device.CreateTexture(textureDesc) not case .Ok(let texture))
 		{
 			Console.WriteLine("Failed to create font texture");
 			return false;
@@ -206,14 +191,14 @@ class FontRenderingSample : IApplication
 		};
 
 		Extent3D writeSize = .(mFontAtlas.Width, mFontAtlas.Height, 1);
-		TransferHelper.WriteTextureSync(mDevice.GetQueue(.Graphics), mDevice, mFontTexture, mFontAtlas.PixelData, dataLayout, writeSize);
+		TransferHelper.WriteTextureSync(Device.GetQueue(.Graphics), Device, mFontTexture, mFontAtlas.PixelData, dataLayout, writeSize);
 
 		// Create texture view - must match texture format (R8Unorm)
 		TextureViewDesc viewDesc = .()
 		{
 			Format = .R8Unorm
 		};
-		if (mDevice.CreateTextureView(mFontTexture, viewDesc) not case .Ok(let view))
+		if (Device.CreateTextureView(mFontTexture, viewDesc) not case .Ok(let view))
 		{
 			Console.WriteLine("Failed to create font texture view");
 			return false;
@@ -230,7 +215,7 @@ class FontRenderingSample : IApplication
 			MinFilter = .Linear,
 			MipmapFilter = .Linear
 		};
-		if (mDevice.CreateSampler(samplerDesc) not case .Ok(let sampler))
+		if (Device.CreateSampler(samplerDesc) not case .Ok(let sampler))
 		{
 			Console.WriteLine("Failed to create sampler");
 			return false;
@@ -252,7 +237,7 @@ class FontRenderingSample : IApplication
 			Memory = .CpuToGpu
 		};
 
-		if (mDevice.CreateBuffer(vertexDesc) not case .Ok(let vb))
+		if (Device.CreateBuffer(vertexDesc) not case .Ok(let vb))
 		{
 			Console.WriteLine("Failed to create vertex buffer");
 			return false;
@@ -268,7 +253,7 @@ class FontRenderingSample : IApplication
 			Memory = .CpuToGpu
 		};
 
-		if (mDevice.CreateBuffer(indexDesc) not case .Ok(let ib))
+		if (Device.CreateBuffer(indexDesc) not case .Ok(let ib))
 		{
 			Console.WriteLine("Failed to create index buffer");
 			return false;
@@ -283,7 +268,7 @@ class FontRenderingSample : IApplication
 			Memory = .CpuToGpu
 		};
 
-		if (mDevice.CreateBuffer(uniformDesc) not case .Ok(let ub))
+		if (Device.CreateBuffer(uniformDesc) not case .Ok(let ub))
 		{
 			Console.WriteLine("Failed to create uniform buffer");
 			return false;
@@ -297,7 +282,7 @@ class FontRenderingSample : IApplication
 	private bool CreateBindings()
 	{
 		// Load text shaders
-		let shaderResult = mShaderSystem.GetShaderPair("text");
+		let shaderResult = mSampleShaderSystem.GetShaderPair("text");
 		if (shaderResult case .Err)
 		{
 			Console.WriteLine("Failed to load text shaders");
@@ -315,7 +300,7 @@ class FontRenderingSample : IApplication
 			BindGroupLayoutEntry.Sampler(0, .Fragment)
 		);
 		BindGroupLayoutDesc bindGroupLayoutDesc = .(layoutEntries);
-		if (mDevice.CreateBindGroupLayout(bindGroupLayoutDesc) not case .Ok(let layout))
+		if (Device.CreateBindGroupLayout(bindGroupLayoutDesc) not case .Ok(let layout))
 		{
 			Console.WriteLine("Failed to create bind group layout");
 			return false;
@@ -329,7 +314,7 @@ class FontRenderingSample : IApplication
 			BindGroupEntry.Sampler(mFontSampler)
 		);
 		BindGroupDesc bindGroupDesc = .(mBindGroupLayout, bindGroupEntries);
-		if (mDevice.CreateBindGroup(bindGroupDesc) not case .Ok(let group))
+		if (Device.CreateBindGroup(bindGroupDesc) not case .Ok(let group))
 		{
 			Console.WriteLine("Failed to create bind group");
 			return false;
@@ -339,7 +324,7 @@ class FontRenderingSample : IApplication
 		// Create pipeline layout
 		IBindGroupLayout[1] layouts = .(mBindGroupLayout);
 		PipelineLayoutDesc pipelineLayoutDesc = .(layouts);
-		if (mDevice.CreatePipelineLayout(pipelineLayoutDesc) not case .Ok(let pipelineLayout))
+		if (Device.CreatePipelineLayout(pipelineLayoutDesc) not case .Ok(let pipelineLayout))
 		{
 			Console.WriteLine("Failed to create pipeline layout");
 			return false;
@@ -394,7 +379,7 @@ class FontRenderingSample : IApplication
 			}
 		};
 
-		if (mDevice.CreateRenderPipeline(pipelineDesc) not case .Ok(let pipeline))
+		if (Device.CreateRenderPipeline(pipelineDesc) not case .Ok(let pipeline))
 		{
 			Console.WriteLine("Failed to create pipeline");
 			return false;
@@ -405,10 +390,9 @@ class FontRenderingSample : IApplication
 		return true;
 	}
 
-	public void OnUpdate(IApplicationHost host, float deltaTime)
+	protected override void OnUpdate(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime, float totalTime)
 	{
-		mTotalTime += deltaTime;
-		mAnimationTime = mTotalTime;
+		mAnimationTime = totalTime;
 
 		// FPS calculation
 		mFrameCount++;
@@ -421,7 +405,7 @@ class FontRenderingSample : IApplication
 		}
 	}
 
-	public void OnRenderWindow(IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
+	protected override void OnRender(Sedulous.Runtime.Client.IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
 	{
 		mWidth = frame.Width;
 		mHeight = frame.Height;
@@ -851,25 +835,25 @@ class FontRenderingSample : IApplication
 		}
 	}
 
-	public void OnShutdown(IApplicationHost host)
+	protected override void OnCleanup(Sedulous.Runtime.Client.IApplicationHost host)
 	{
-		if (mDevice != null)
+		if (Device != null)
 		{
-			mDevice.DestroyRenderPipeline(ref mPipeline);
-			mDevice.DestroyPipelineLayout(ref mPipelineLayout);
-			mDevice.DestroyBindGroup(ref mBindGroup);
-			mDevice.DestroyBindGroupLayout(ref mBindGroupLayout);
-			//mDevice.DestroyShaderModule(ref mFragShader);
-			//mDevice.DestroyShaderModule(ref mVertShader);
-			mDevice.DestroySampler(ref mFontSampler);
-			mDevice.DestroyTextureView(ref mFontTextureView);
-			mDevice.DestroyTexture(ref mFontTexture);
-			mDevice.DestroyBuffer(ref mUniformBuffer);
-			mDevice.DestroyBuffer(ref mIndexBuffer);
-			mDevice.DestroyBuffer(ref mVertexBuffer);
+			Device.DestroyRenderPipeline(ref mPipeline);
+			Device.DestroyPipelineLayout(ref mPipelineLayout);
+			Device.DestroyBindGroup(ref mBindGroup);
+			Device.DestroyBindGroupLayout(ref mBindGroupLayout);
+			//Device.DestroyShaderModule(ref mFragShader);
+			//Device.DestroyShaderModule(ref mVertShader);
+			Device.DestroySampler(ref mFontSampler);
+			Device.DestroyTextureView(ref mFontTextureView);
+			Device.DestroyTexture(ref mFontTexture);
+			Device.DestroyBuffer(ref mUniformBuffer);
+			Device.DestroyBuffer(ref mIndexBuffer);
+			Device.DestroyBuffer(ref mVertexBuffer);
 		}
 
-		if (mShaderSystem != null) { mShaderSystem.Dispose(); delete mShaderSystem; }
+		if (mSampleShaderSystem != null) { mSampleShaderSystem.Dispose(); delete mSampleShaderSystem; }
 
 		// Clean up font resources
 		if (mTextShaper != null) delete mTextShaper;
@@ -878,50 +862,12 @@ class FontRenderingSample : IApplication
 
 		TrueTypeFonts.Shutdown();
 	}
-
-	private void DiscoverAssets()
-	{
-		let cwd = Directory.GetCurrentDirectory(.. scope .());
-		var searchDir = scope String(cwd);
-		while (true)
-		{
-			let assetsPath = scope String();
-			Path.InternalCombine(assetsPath, searchDir, "Assets");
-			if (Directory.Exists(assetsPath))
-			{
-				let marker = scope String();
-				Path.InternalCombine(marker, assetsPath, ".assets");
-				if (File.Exists(marker)) { mBuiltInAssetDirectory.Set(assetsPath); return; }
-			}
-			let parent = Path.GetDirectoryPath(searchDir, .. scope .());
-			if (parent.IsEmpty || parent == searchDir) { mBuiltInAssetDirectory.Set(cwd); return; }
-			searchDir.Set(parent);
-		}
-	}
 }
 
 class Program
 {
 	public static int Main(String[] args)
 	{
-		let shell = scope SDL3Shell();
-		if (shell.Initialize() case .Err)
-		{
-			Console.WriteLine("ERROR: Failed to initialize shell");
-			return 1;
-		}
-		defer shell.Shutdown();
-
-		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = true });
-		if (graphicsResult case .Err)
-		{
-			Console.WriteLine("ERROR: Failed to create graphics device");
-			return 1;
-		}
-		let graphics = graphicsResult.Value;
-		defer delete graphics;
-
-		let app = scope FontRenderingSample();
-		return ApplicationHost.RunApplication(app, shell, graphics);
+		return RuntimeSampleApp.Run<FontRenderingSample>();
 	}
 }

@@ -12,22 +12,23 @@ using Sedulous.Images;
 using Sedulous.Fonts;
 using Sedulous.Fonts.TTF;
 using Sedulous.VG.SVG;
-using Sedulous.VFS.Disk;
-using Sedulous.Shell.SDL3;
+using RuntimeSampleFramework;
 
 /// VG Sandbox - NanoVG-inspired demo showcasing Sedulous.VG capabilities.
-class VGSandboxApp : IApplication
+class VGSandboxApp : RuntimeSampleApp
 {
 	private VGContext mVG;
 	private VGRenderer mVGRenderer;
 	private VGRenderSlice mVGSlice;
-	private ShaderSystem mShaderSystem;
+
+	// Sample's own shader system (uses base asset path for shaders)
+	private ShaderSystem mSampleShaderSystem;
 
 	// Checkerboard image used to demonstrate DrawImage.
 	private OwnedImageData mCheckerboard ~ delete _;
 
 	// Font service + cached fonts for text rendering.
-	private TrueTypeFontService mFontService;
+	private TrueTypeFontService mSampleFontService;
 	private CachedFont mFontSmall;
 	private CachedFont mFontMedium;
 	private CachedFont mFontLarge;
@@ -38,16 +39,7 @@ class VGSandboxApp : IApplication
 
 	private float mTime = 0;
 
-	// Asset directory
-	private String mBuiltInAssetDirectory = new .() ~ delete _;
-
-	// Builtin mount for VFS font loading
-	private FileSystemMount mBuiltinMount ~ delete _;
-
-	// Cached device
-	private IDevice mDevice;
-
-	public ApplicationSettings Settings()
+	public override ApplicationSettings Settings()
 	{
 		return .()
 		{
@@ -56,19 +48,12 @@ class VGSandboxApp : IApplication
 		};
 	}
 
-	public void Configure(IApplicationHost host)
+	protected override void OnInit(Sedulous.Runtime.Client.IApplicationHost host)
 	{
-		DiscoverAssets();
-		mBuiltinMount = new FileSystemMount(mBuiltInAssetDirectory);
-		mDevice = host.Graphics.Raw;
-	}
-
-	public void OnStartup(IApplicationHost host)
-	{
-		mShaderSystem = new ShaderSystem();
+		mSampleShaderSystem = new ShaderSystem();
 		String shaderPath = scope .();
-		System.IO.Path.InternalCombine(shaderPath, mBuiltInAssetDirectory, "shaders");
-		if (mShaderSystem.Initialize(mDevice, scope StringView[](shaderPath)) case .Err)
+		System.IO.Path.InternalCombine(shaderPath, BuiltInAssetDirectory, "shaders");
+		if (mSampleShaderSystem.Initialize(Device, scope StringView[](shaderPath)) case .Err)
 		{
 			Console.WriteLine("Failed to initialize shader system");
 			return;
@@ -78,22 +63,22 @@ class VGSandboxApp : IApplication
 		// FontService already converts the R8 atlas to RGBA8 under the hood,
 		// so VG consumes the atlas just like any other IImageData image.
 		// Loads via the builtin mount (locator is relative).
-		mFontService = new TrueTypeFontService(mBuiltinMount);
+		mSampleFontService = new TrueTypeFontService(BuiltinMount);
 		let fontLocator = "fonts/roboto/Roboto-Regular.ttf";
 
 		LoadFontSize(fontLocator, 14);
 		LoadFontSize(fontLocator, 20);
 		LoadFontSize(fontLocator, 36);
 
-		mFontSmall  = mFontService.GetFont("Roboto", 14);
-		mFontMedium = mFontService.GetFont("Roboto", 20);
-		mFontLarge  = mFontService.GetFont("Roboto", 36);
+		mFontSmall  = mSampleFontService.GetFont("Roboto", 14);
+		mFontMedium = mSampleFontService.GetFont("Roboto", 20);
+		mFontLarge  = mSampleFontService.GetFont("Roboto", 36);
 
 		let rw = host.MainWindow;
 
-		mVG = new VGContext(mFontService);
+		mVG = new VGContext(mSampleFontService);
 		mVGRenderer = new VGRenderer();
-		if (mVGRenderer.Initialize(mDevice, rw.Swap.Format, (int32)rw.Swap.BufferCount, mShaderSystem) case .Err)
+		if (mVGRenderer.Initialize(Device, rw.Swap.Format, (int32)rw.Swap.BufferCount, mSampleShaderSystem) case .Err)
 		{
 			Console.WriteLine("Failed to initialize VGRenderer");
 			return;
@@ -132,12 +117,12 @@ class VGSandboxApp : IApplication
 			mSVGIcon = iconDoc;
 	}
 
-	public void OnUpdate(IApplicationHost host, float deltaTime)
+	protected override void OnUpdate(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime, float totalTime)
 	{
 		mTime += deltaTime;
 	}
 
-	public void OnRenderWindow(IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
+	protected override void OnRender(Sedulous.Runtime.Client.IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
 	{
 		if (mVGRenderer == null) return;
 
@@ -187,7 +172,7 @@ class VGSandboxApp : IApplication
 	{
 		FontLoadOptions options = .ExtendedLatin;
 		options.PixelHeight = pixelHeight;
-		if (mFontService.LoadFont("Roboto", path, options) case .Err)
+		if (mSampleFontService.LoadFont("Roboto", path, options) case .Err)
 			Console.WriteLine(scope $"Failed to load font {path} @ {pixelHeight}px");
 	}
 
@@ -640,7 +625,7 @@ class VGSandboxApp : IApplication
 		// Alignment inside a bounds rect - draw an outline first so the box is visible.
 		let boxRect = RectangleF(x + 350, y + 50, 200, 60);
 		vg.StrokeRect(boxRect, Color(80, 100, 120, 255), 1.0f);
-		vg.DrawText("centered", mFontMedium.Font, mFontMedium.Atlas, mFontService.GetAtlasTexture(mFontMedium),
+		vg.DrawText("centered", mFontMedium.Font, mFontMedium.Atlas, mSampleFontService.GetAtlasTexture(mFontMedium),
 			boxRect, .Center, .Middle, Color(220, 220, 220, 255));
 
 		// Rotated text via transform stack - confirms glyph quads go through TransformVertices.
@@ -802,7 +787,7 @@ class VGSandboxApp : IApplication
 		return p;
 	}
 
-	public void OnShutdown(IApplicationHost host)
+	protected override void OnCleanup(Sedulous.Runtime.Client.IApplicationHost host)
 	{
 		if (mVGRenderer != null)
 		{
@@ -814,32 +799,12 @@ class VGSandboxApp : IApplication
 
 		// Font service owns its CachedFonts - delete after VGRenderer disposed
 		// so the cache stops referencing atlas textures before they're freed.
-		if (mFontService != null) delete mFontService;
+		if (mSampleFontService != null) delete mSampleFontService;
 
-		if (mShaderSystem != null)
+		if (mSampleShaderSystem != null)
 		{
-			mShaderSystem.Dispose();
-			delete mShaderSystem;
-		}
-	}
-
-	private void DiscoverAssets()
-	{
-		let cwd = System.IO.Directory.GetCurrentDirectory(.. scope .());
-		var searchDir = scope String(cwd);
-		while (true)
-		{
-			let assetsPath = scope String();
-			System.IO.Path.InternalCombine(assetsPath, searchDir, "Assets");
-			if (System.IO.Directory.Exists(assetsPath))
-			{
-				let marker = scope String();
-				System.IO.Path.InternalCombine(marker, assetsPath, ".assets");
-				if (System.IO.File.Exists(marker)) { mBuiltInAssetDirectory.Set(assetsPath); return; }
-			}
-			let parent = System.IO.Path.GetDirectoryPath(searchDir, .. scope .());
-			if (parent.IsEmpty || parent == searchDir) { mBuiltInAssetDirectory.Set(cwd); return; }
-			searchDir.Set(parent);
+			mSampleShaderSystem.Dispose();
+			delete mSampleShaderSystem;
 		}
 	}
 }
@@ -848,24 +813,6 @@ class Program
 {
 	public static int Main(String[] args)
 	{
-		let shell = scope SDL3Shell();
-		if (shell.Initialize() case .Err)
-		{
-			Console.WriteLine("ERROR: Failed to initialize shell");
-			return 1;
-		}
-		defer shell.Shutdown();
-
-		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = true });
-		if (graphicsResult case .Err)
-		{
-			Console.WriteLine("ERROR: Failed to create graphics device");
-			return 1;
-		}
-		let graphics = graphicsResult.Value;
-		defer delete graphics;
-
-		let app = scope VGSandboxApp();
-		return ApplicationHost.RunApplication(app, shell, graphics);
+		return RuntimeSampleApp.Run<VGSandboxApp>();
 	}
 }
