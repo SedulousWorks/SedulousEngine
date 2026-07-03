@@ -12,6 +12,7 @@ using Sedulous.Engine.Core;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine.UI;
+using Sedulous.RuntimeGraphics;
 
 /// Builds the internal layout for a GameEditorPage:
 ///   Toolbar (Play / Stop toggle, status text)
@@ -90,7 +91,7 @@ static class GamePageBuilder
 		fitCombo.SelectedIndex = (int32)page.PreviewFitMode;
 		fitCombo.OnSelectionChanged.Add(new [=page] (cb, idx) =>
 		{
-			page.PreviewFitMode = (Sedulous.Engine.App.FitMode)idx;
+			page.PreviewFitMode = (FitMode)idx;
 		});
 		toolbar.AddItem(fitCombo);
 

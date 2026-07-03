@@ -3,6 +3,7 @@ namespace Sedulous.Engine.App;
 using System;
 using System.IO;
 using Sedulous.Serialization;
+using Sedulous.RuntimeGraphics;
 
 /// On-disk per-project render settings. Lives at
 /// `<ProjectAssetDirectory>/project_settings.oddl` and is read by both

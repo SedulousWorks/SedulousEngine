@@ -53,7 +53,6 @@ class VGSandboxApp : IApplication
 		{
 			Title = "VG Sandbox",
 			Width = 1000, Height = 720,
-			EnableDepth = false
 		};
 	}
 

@@ -71,7 +71,6 @@ class AudioSandboxApp : IApplication
 		{
 			Title = "Audio Sandbox",
 			Width = 800, Height = 600,
-			EnableDepth = false
 		};
 	}
 

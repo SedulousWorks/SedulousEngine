@@ -6,34 +6,55 @@ using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
 using Sedulous.Shaders;
 using Sedulous.Runtime.Client;
-using Sedulous.Runtime;
+using Sedulous.RuntimeGraphics;
 using Sedulous.Slug;
 using Sedulous.Slug.TTF;
 using Sedulous.Slug.Renderer;
+using Sedulous.Shell.SDL3;
 
 /// Slug GPU font rendering sample.
 /// Demonstrates resolution-independent text rendering directly from
 /// quadratic Bezier curves using the Slug algorithm.
-class SlugSampleApp : Application
+class SlugSampleApp : IApplication
 {
 	private SlugFont mFont;
 	private SlugTextRenderer mRenderer;
 	private ShaderSystem mShaderSystem;
 
 	private float mTime = 0;
+	private float mTotalTime = 0;
 	private int mFrameCount = 0;
 	private float mFpsTimer = 0;
 	private int mCurrentFps = 0;
 
-	public this() : base()
+	// Cached device reference
+	private IDevice mDevice;
+
+	// Asset directory
+	private String mBuiltInAssetDirectory = new .() ~ delete _;
+
+	public ApplicationSettings Settings()
 	{
+		return .()
+		{
+			Title = "Slug Font Rendering",
+			Width = 1280, Height = 720
+		};
 	}
 
-	protected override void OnInitialize(Context context)
+	public void Configure(IApplicationHost host)
 	{
+		DiscoverAssets();
+		mDevice = host.Graphics.Raw;
+	}
+
+	public void OnStartup(IApplicationHost host)
+	{
+		let rw = host.MainWindow;
+
 		// 1. Load TTF font
 		String fontPath = scope .();
-		GetAssetPath("fonts/roboto/Roboto-Regular.ttf", fontPath);
+		Path.InternalCombine(fontPath, mBuiltInAssetDirectory, "fonts/roboto/Roboto-Regular.ttf");
 
 		if (!File.Exists(fontPath))
 		{
@@ -68,16 +89,16 @@ class SlugSampleApp : Application
 		mShaderSystem = new ShaderSystem();
 
 		String shaderPath = scope .();
-		GetAssetPath("shaders", shaderPath);
-		if (mShaderSystem.Initialize(Device, scope StringView[](shaderPath)) case .Err)
+		Path.InternalCombine(shaderPath, mBuiltInAssetDirectory, "shaders");
+		if (mShaderSystem.Initialize(mDevice, scope StringView[](shaderPath)) case .Err)
 		{
 			Console.WriteLine("Failed to initialize shader system");
 			return;
 		}
 
 		// 4. Initialize renderer (loads shaders, uploads textures, creates pipeline)
-		mRenderer = new SlugTextRenderer(Device);
-		switch (mRenderer.Initialize(mFont, textureData, (int32)SwapChain.BufferCount, SwapChain.Format, mShaderSystem))
+		mRenderer = new SlugTextRenderer(mDevice);
+		switch (mRenderer.Initialize(mFont, textureData, (int32)rw.Swap.BufferCount, rw.Swap.Format, mShaderSystem))
 		{
 		case .Ok:
 			Console.WriteLine("Slug renderer initialized!");
@@ -87,11 +108,12 @@ class SlugSampleApp : Application
 		}
 	}
 
-	protected override void OnUpdate(FrameContext frame)
+	public void OnUpdate(IApplicationHost host, float deltaTime)
 	{
-		mTime = frame.TotalTime;
+		mTotalTime += deltaTime;
+		mTime = mTotalTime;
 		mFrameCount++;
-		mFpsTimer += frame.DeltaTime;
+		mFpsTimer += deltaTime;
 		if (mFpsTimer >= 1.0f)
 		{
 			mCurrentFps = mFrameCount;
@@ -100,10 +122,13 @@ class SlugSampleApp : Application
 		}
 	}
 
-	protected override void OnPrepareFrame(FrameContext frame)
+	public void OnRenderWindow(IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
 	{
-		float w = (float)SwapChain.Width;
-		float h = (float)SwapChain.Height;
+		if (mRenderer == null)
+			return;
+
+		float w = (float)frame.Width;
+		float h = (float)frame.Height;
 		float margin = 30;
 
 		// Build text geometry on CPU
@@ -142,16 +167,19 @@ class SlugSampleApp : Application
 		mRenderer.DrawText("Press Escape to exit", margin, h - 40, 16.0f, .(150, 150, 170, 255));
 
 		// Upload to per-frame GPU buffers via WriteMappedBuffer (no sync stall)
-		mRenderer.Prepare(frame.FrameIndex, SwapChain.Width, SwapChain.Height);
+		let fi = (int32)frame.FrameIndex;
+		mRenderer.Prepare(fi, frame.Width, frame.Height);
+
+		// Render pass
+		let rp = frame.BeginBackbufferPass(ClearColor(0.08f, 0.08f, 0.12f, 1.0f));
+		if (rp != null)
+		{
+			mRenderer.Render(rp, fi);
+		}
+		frame.EndBackbufferPass();
 	}
 
-	protected override void OnRender(IRenderPassEncoder renderPass, FrameContext frame)
-	{
-		let frameIndex = (int32)SwapChain.CurrentImageIndex;
-		mRenderer.Render(renderPass, frameIndex);
-	}
-
-	protected override void OnShutdown()
+	public void OnShutdown(IApplicationHost host)
 	{
 		if (mRenderer != null)
 		{
@@ -173,13 +201,50 @@ class SlugSampleApp : Application
 			mFont = null;
 		}
 	}
+
+	private void DiscoverAssets()
+	{
+		let cwd = Directory.GetCurrentDirectory(.. scope .());
+		var searchDir = scope String(cwd);
+		while (true)
+		{
+			let assetsPath = scope String();
+			Path.InternalCombine(assetsPath, searchDir, "Assets");
+			if (Directory.Exists(assetsPath))
+			{
+				let marker = scope String();
+				Path.InternalCombine(marker, assetsPath, ".assets");
+				if (File.Exists(marker)) { mBuiltInAssetDirectory.Set(assetsPath); return; }
+			}
+			let parent = Path.GetDirectoryPath(searchDir, .. scope .());
+			if (parent.IsEmpty || parent == searchDir) { mBuiltInAssetDirectory.Set(cwd); return; }
+			searchDir.Set(parent);
+		}
+	}
 }
 
 class Program
 {
 	public static int Main(String[] args)
 	{
+		let shell = scope SDL3Shell();
+		if (shell.Initialize() case .Err)
+		{
+			Console.WriteLine("ERROR: Failed to initialize shell");
+			return 1;
+		}
+		defer shell.Shutdown();
+
+		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = true });
+		if (graphicsResult case .Err)
+		{
+			Console.WriteLine("ERROR: Failed to create graphics device");
+			return 1;
+		}
+		let graphics = graphicsResult.Value;
+		defer delete graphics;
+
 		let app = scope SlugSampleApp();
-		return app.Run(.() { Title = "Slug Font Rendering", Width = 1280, Height = 720, ClearColor = .(0.08f, 0.08f, 0.12f, 1.0f), EnableDepth = false });
+		return ApplicationHost.RunApplication(app, shell, graphics);
 	}
 }

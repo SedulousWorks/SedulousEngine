@@ -38,7 +38,6 @@ class AnimationSandboxApp : DefaultApplication
 	{
 		Title = "Engine Animation Sandbox",
 		EnableShaderCache = true,
-		EnableValidation = false
 	};
 
 	// Tweak this single constant to change how many instances each click of

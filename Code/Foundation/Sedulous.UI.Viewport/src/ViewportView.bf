@@ -13,7 +13,7 @@ using Sedulous.Images;
 public delegate void ViewportRenderDelegate(ViewportView viewport, ICommandEncoder encoder, int32 frameIndex);
 
 /// How the render texture is mapped into the view's layout rect.
-/// Mirrors the standalone-blit FitMode in Sedulous.Engine.App (the
+/// Mirrors the standalone-blit FitMode in Sedulous.RuntimeGraphics (the
 /// values are intentionally identical-ordinal so the editor's page
 /// builder can pass a converted cast directly).
 public enum ViewportFitMode : uint8

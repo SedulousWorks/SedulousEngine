@@ -5,6 +5,7 @@ using Sedulous.UI;
 using Sedulous.UI.Toolkit;
 using Sedulous.Editor.Core;
 using Sedulous.Engine.App;
+using Sedulous.RuntimeGraphics;
 
 /// Builds the form layout for a ProjectSettingsPage:
 ///   Toolbar (Save)

@@ -7,8 +7,10 @@ using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
 using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
+using Sedulous.RuntimeGraphics;
 using Sedulous.Shell;
 using Sedulous.Shell.Input;
+using Sedulous.Shell.SDL3;
 using Sedulous.Shaders;
 using Sedulous.Fonts;
 using Sedulous.Fonts.TTF;
@@ -44,11 +46,27 @@ using Sedulous.Animation.Resources;
 using Sedulous.Profiler;
 using Sedulous.Serialization.OpenDDL;
 using Sedulous.Renderer.Debug;
+using Sedulous.VFS.Disk;
+using Sedulous.Core.Logging.Abstractions;
 
-class ModelViewerApp : Application
+class ModelViewerApp : IApplication
 {
 	/// Files to load on startup (from command line args).
 	public String[] InitialFiles;
+
+	// Cached host/device/shell references
+	private IDevice mDevice;
+	private IShell mShell;
+	private ApplicationSettings mSettings;
+
+	// Asset directories
+	private String mBuiltInAssetDirectory = new .() ~ delete _;
+	private String mAssetCacheDirectory = new .() ~ delete _;
+
+	// Resource system (app-owned)
+	private ResourceSystem mResourceSystem ~ delete _;
+	private FileSystemMount mBuiltinMount ~ delete _;
+
 	// UI -- deleted explicitly in OnShutdown in safe order
 	private ShaderSystem mShaderSystem;
 	private TrueTypeFontService mFontService ~ delete _;
@@ -85,8 +103,41 @@ class ModelViewerApp : Application
 	private ITexture mSkyTexture;
 	private ITextureView mSkyTextureView;
 
-	protected override void OnInitialize(Context context)
+	// Timing
+	private float mTotalTime = 0;
+
+	public ApplicationSettings Settings()
 	{
+		return .()
+		{
+			Title = "Sedulous Model Viewer",
+			Width = 1280, Height = 800,
+			EnableShaderCache = true
+		};
+	}
+
+	public void Configure(IApplicationHost host)
+	{
+		DiscoverAssets();
+		mDevice = host.Graphics.Raw;
+		mShell = host.Shell;
+		mSettings = Settings();
+
+		// Create resource system
+		mResourceSystem = new ResourceSystem(null);
+		mResourceSystem.EnableHotReload();
+		mResourceSystem.SetSerializerProvider(new OpenDDLSerializerProvider());
+		mResourceSystem.Startup();
+
+		// Mount built-in assets
+		mBuiltinMount = new FileSystemMount(mBuiltInAssetDirectory);
+		mResourceSystem.Mount("builtin", mBuiltinMount);
+	}
+
+	public void OnStartup(IApplicationHost host)
+	{
+		let rw = host.MainWindow;
+
 		SDLImageLoader.Initialize();
 		STBImageLoader.Initialize();
 		GltfModels.Initialize();
@@ -95,16 +146,16 @@ class ModelViewerApp : Application
 		// Shader system
 		mShaderSystem = new ShaderSystem();
 		let shaderDir = scope String();
-		GetAssetPath("shaders", shaderDir);
+		System.IO.Path.InternalCombine(shaderDir, mBuiltInAssetDirectory, "shaders");
 		let shaderCacheDir = scope String();
-		GetAssetCachePath("shaders", shaderCacheDir);
-		mShaderSystem.Initialize(Device, .(scope StringView[](shaderDir)), mSettings.EnableShaderCache ? shaderCacheDir : default);
+		System.IO.Path.InternalCombine(shaderCacheDir, mBuiltInAssetDirectory, "cache", "shaders");
+		mShaderSystem.Initialize(mDevice, .(scope StringView[](shaderDir)), mSettings.EnableShaderCache ? shaderCacheDir : default);
 
-		// Font service - loads through the inherited `builtin://` mount,
+		// Font service - loads through the builtin mount,
 		// so the locator is relative to the asset directory.
-		mFontService = new TrueTypeFontService(BuiltinMount);
+		mFontService = new TrueTypeFontService(mBuiltinMount);
 		let fontLocator = "fonts/roboto/Roboto-Regular.ttf";
-		if (BuiltinMount.Exists(fontLocator))
+		if (mBuiltinMount.Exists(fontLocator))
 		{
 			for (let size in float[](12, 14, 16, 18, 20))
 				mFontService.LoadFont("Roboto", fontLocator, .() { PixelHeight = size });
@@ -113,11 +164,11 @@ class ModelViewerApp : Application
 		// VG renderer
 		mVGContext = new VGContext(mFontService);
 		mVGRenderer = new VGRenderer();
-		mVGRenderer.Initialize(Device, SwapChain.Format, (int32)SwapChain.BufferCount, mShaderSystem);
+		mVGRenderer.Initialize(mDevice, rw.Swap.Format, (int32)rw.Swap.BufferCount, mShaderSystem);
 		mVGRenderer.SetExternalCache(mExternalTextureCache);
 
 		// Clipboard
-		mClipboard = new ShellClipboardAdapter(Shell.Clipboard);
+		mClipboard = new ShellClipboardAdapter(mShell.Clipboard);
 
 		// UI context
 		ThemeRegistry.RegisterExtension(new ToolkitThemeExtension());
@@ -136,15 +187,15 @@ class ModelViewerApp : Application
 
 		// Runtime context (embedded engine)
 		mRuntimeContext = new Context();
-		mRuntimeContext.RegisterSubsystem(new SceneSubsystem(ResourceSystem));
+		mRuntimeContext.RegisterSubsystem(new SceneSubsystem(mResourceSystem));
 
-		let renderSub = new RenderSubsystem(ResourceSystem);
-		renderSub.Device = Device;
-		renderSub.Window = Window;
+		let renderSub = new RenderSubsystem(mResourceSystem);
+		renderSub.Device = mDevice;
+		renderSub.Window = rw.Window;
 		renderSub.ShaderSystem = mShaderSystem;
 		mRuntimeContext.RegisterSubsystem(renderSub);
 
-		let animSub = new AnimationSubsystem(ResourceSystem);
+		let animSub = new AnimationSubsystem(mResourceSystem);
 		mRuntimeContext.RegisterSubsystem(animSub);
 
 		mRuntimeContext.Startup();
@@ -279,7 +330,7 @@ class ModelViewerApp : Application
 
 		// Viewport
 		let viewport = new ViewportView();
-		viewport.Initialize(Device, mVGRenderer);
+		viewport.Initialize(mDevice, mVGRenderer);
 		viewport.OnRender.Add(new (vp, encoder, frameIndex) => {
 			RenderTabViewport(tab, vp, encoder, frameIndex);
 		});
@@ -522,7 +573,7 @@ class ModelViewerApp : Application
 			// If player already exists, load and play the new clip directly
 			if (anim.Player != null)
 			{
-				if (ResourceSystem.LoadByRef<AnimationClipResource>(clipRef) case .Ok(var handle))
+				if (mResourceSystem.LoadByRef<AnimationClipResource>(clipRef) case .Ok(var handle))
 				{
 					let clipRes = handle.Resource;
 					if (clipRes?.Clip != null)
@@ -586,9 +637,9 @@ class ModelViewerApp : Application
 
 		// Register new resources
 		for (let texRes in resResult.Textures)
-			ResourceSystem.AddResource<TextureResource>(texRes);
+			mResourceSystem.AddResource<TextureResource>(texRes);
 		for (let matRes in resResult.Materials)
-			ResourceSystem.AddResource<MaterialResource>(matRes);
+			mResourceSystem.AddResource<MaterialResource>(matRes);
 		resResult.Textures.Clear();
 		resResult.Materials.Clear();
 
@@ -686,7 +737,7 @@ class ModelViewerApp : Application
 		let meshRes = new StaticMeshResource(staticMesh, true);
 		importResult.StaticMeshes[0] = null;
 		meshRes.Name.Set(tab.Name);
-		ResourceSystem.AddResource<StaticMeshResource>(meshRes);
+		mResourceSystem.AddResource<StaticMeshResource>(meshRes);
 		tab.MeshResource = meshRes;
 
 		tab.Bounds = staticMesh.GetBounds();
@@ -731,7 +782,7 @@ class ModelViewerApp : Application
 			let skeleton = importResult.Skeletons[0];
 			importResult.Skeletons[0] = null;
 			let skelRes = new SkeletonResource(skeleton, true);
-			ResourceSystem.AddResource<SkeletonResource>(skelRes);
+			mResourceSystem.AddResource<SkeletonResource>(skelRes);
 			tab.SkeletonRes = skelRes;
 			tab.BoneCount = (int32)skeleton.BoneCount;
 		}
@@ -742,7 +793,7 @@ class ModelViewerApp : Application
 			let clip = importResult.Animations[i];
 			importResult.Animations[i] = null;
 			let clipRes = new AnimationClipResource(clip, true);
-			ResourceSystem.AddResource<AnimationClipResource>(clipRes);
+			mResourceSystem.AddResource<AnimationClipResource>(clipRes);
 			tab.AnimClipResources.Add(clipRes);
 
 			let clipName = new String();
@@ -758,7 +809,7 @@ class ModelViewerApp : Application
 		let skinnedMesh = importResult.SkinnedMeshes[0];
 		importResult.SkinnedMeshes[0] = null;
 		let meshRes = new SkinnedMeshResource(skinnedMesh, true);
-		ResourceSystem.AddResource<SkinnedMeshResource>(meshRes);
+		mResourceSystem.AddResource<SkinnedMeshResource>(meshRes);
 		tab.SkinnedMeshRes = meshRes;
 
 		tab.Bounds = skinnedMesh.Bounds;
@@ -823,10 +874,9 @@ class ModelViewerApp : Application
 	private void LoadSkyTexture()
 	{
 		let skyPath = scope String();
-		GetAssetPath("textures/environment/BlueSky.hdr", skyPath);
+		System.IO.Path.InternalCombine(skyPath, mBuiltInAssetDirectory, "textures/environment/BlueSky.hdr");
 
-		let device = Device;
-		let queue = device.GetQueue(.Graphics);
+		let queue = mDevice.GetQueue(.Graphics);
 
 		if (ImageLoaderFactory.LoadImage(skyPath) case .Ok(var image))
 		{
@@ -837,7 +887,7 @@ class ModelViewerApp : Application
 				Dimension = .Texture2D, MipLevelCount = 1, ArrayLayerCount = 1, SampleCount = 1
 			};
 
-			if (device.CreateTexture(skyTexDesc) case .Ok(let tex))
+			if (mDevice.CreateTexture(skyTexDesc) case .Ok(let tex))
 			{
 				mSkyTexture = tex;
 				var layout = TextureDataLayout() { BytesPerRow = image.Width * 16, RowsPerImage = image.Height };
@@ -847,12 +897,12 @@ class ModelViewerApp : Application
 				{
 					tb.WriteTexture(mSkyTexture, Span<uint8>(image.Data.Ptr, image.Data.Length), layout, writeSize);
 					tb.Submit();
-					device.WaitIdle();
+					mDevice.WaitIdle();
 					var tbRef = tb;
 					queue.DestroyTransferBatch(ref tbRef);
 				}
 
-				if (device.CreateTextureView(mSkyTexture, .() { Format = .RGBA32Float, Dimension = .Texture2D }) case .Ok(let view))
+				if (mDevice.CreateTextureView(mSkyTexture, .() { Format = .RGBA32Float, Dimension = .Texture2D }) case .Ok(let view))
 					mSkyTextureView = view;
 			}
 			delete image;
@@ -1133,26 +1183,28 @@ class ModelViewerApp : Application
 
 	// ==================== Frame Loop ====================
 
-	protected override void OnInput(FrameContext frame)
+	public void OnUpdate(IApplicationHost host, float deltaTime)
 	{
+		mTotalTime += deltaTime;
+
+		// Process UI input
 		if (mInputHelper != null && mUIContext != null)
 		{
 			mInputHelper.ProcessMouseInput(mShell.InputManager.Mouse, mUIContext);
-			mInputHelper.ProcessKeyboardInput(mShell.InputManager.Keyboard, mUIContext, frame.DeltaTime);
+			mInputHelper.ProcessKeyboardInput(mShell.InputManager.Keyboard, mUIContext, deltaTime);
 		}
-	}
 
-	protected override void OnUpdate(FrameContext frame)
-	{
+		let rw = host.MainWindow;
+
 		// UI frame first -- slider/button events update transforms before scene extraction
-		mMainRoot.DpiScale = Window.ContentScale;
-		mMainRoot.ViewportSize = .((float)Window.Width, (float)Window.Height);
-		mUIContext.BeginFrame(frame.DeltaTime);
+		mMainRoot.DpiScale = rw.Window.ContentScale;
+		mMainRoot.ViewportSize = .((float)rw.Window.Width, (float)rw.Window.Height);
+		mUIContext.BeginFrame(deltaTime);
 		mUIContext.UpdateRootView(mMainRoot);
 
 		// Update camera controller
 		let tab = ActiveTab;
-		tab?.CameraController?.Update(frame.DeltaTime);
+		tab?.CameraController?.Update(deltaTime);
 
 		// Focus model on R key
 		if (mShell.InputManager.Keyboard.IsKeyPressed(.R) && tab != null)
@@ -1175,61 +1227,57 @@ class ModelViewerApp : Application
 		}
 
 		// Update runtime context -- processes transforms set by UI/camera this frame
-		mRuntimeContext.BeginFrame(frame.DeltaTime);
-		mRuntimeContext.Update(frame.DeltaTime);
-		mRuntimeContext.PostUpdate(frame.DeltaTime);
+		mRuntimeContext.BeginFrame(deltaTime);
+		mRuntimeContext.Update(deltaTime);
+		mRuntimeContext.PostUpdate(deltaTime);
 		mRuntimeContext.EndFrame();
 	}
 
-	protected override void OnPrepareFrame(FrameContext frame)
+	public void OnRenderWindow(IApplicationHost host, ref Sedulous.RuntimeGraphics.FrameContext frame)
 	{
-		if (mVGContext == null || mVGRenderer == null) return;
+		// Prepare VG batch for UI
+		if (mVGContext != null && mVGRenderer != null)
+		{
+			mVGContext.Clear();
+			mUIContext.DrawRootView(mMainRoot, mVGContext);
 
-		mVGContext.Clear();
-		mUIContext.DrawRootView(mMainRoot, mVGContext);
+			mVGRenderer.BeginFrame((int32)frame.FrameIndex);
+			let batch = mVGContext.GetBatch();
+			if (batch != null)
+				mVGSlice = mVGRenderer.Prepare(batch, (int32)frame.FrameIndex, frame.Width, frame.Height);
+			else
+				mVGSlice = .Invalid;
+		}
 
-		mVGRenderer.BeginFrame(frame.FrameIndex);
-		let batch = mVGContext.GetBatch();
-		if (batch != null)
-			mVGSlice = mVGRenderer.Prepare(batch, frame.FrameIndex, SwapChain.Width, SwapChain.Height);
-		else
-			mVGSlice = .Invalid;
-	}
-
-	protected override bool OnRenderFrame(Sedulous.Runtime.Client.RenderContext render)
-	{
-		let encoder = render.Encoder;
-		let frame = render.Frame;
+		let encoder = frame.Encoder;
 
 		// Render 3D viewport before UI
 		let renderSub = mRuntimeContext.GetSubsystem<RenderSubsystem>();
-		renderSub?.BeginRendering(encoder, frame.FrameIndex);
-		ActiveTab?.Viewport?.RenderContent(encoder, frame.FrameIndex);
+		renderSub?.BeginRendering(encoder, (int32)frame.FrameIndex);
+		ActiveTab?.Viewport?.RenderContent(encoder, (int32)frame.FrameIndex);
 		renderSub?.EndRendering();
 
 		// UI render pass
 		ColorAttachment[1] colorAttachments = .(.()
 		{
-			View = render.CurrentTextureView,
+			View = frame.BackbufferView,
 			LoadOp = .Clear,
 			StoreOp = .Store,
-			ClearValue = .(0.12f, 0.12f, 0.15f, 1)
+			ClearValue = ClearColor(0.12f, 0.12f, 0.15f, 1)
 		});
 
 		RenderPassDesc passDesc = .() { ColorAttachments = .(colorAttachments) };
 		let renderPass = encoder.BeginRenderPass(passDesc);
 		if (renderPass != null)
 		{
-			mVGRenderer.Render(renderPass, SwapChain.Width, SwapChain.Height, frame.FrameIndex, mVGSlice);
+			mVGRenderer.Render(renderPass, frame.Width, frame.Height, (int32)frame.FrameIndex, mVGSlice);
 			renderPass.End();
 		}
-
-		return true;
 	}
 
 	// ==================== Shutdown ====================
 
-	protected override void OnShutdown()
+	public void OnShutdown(IApplicationHost host)
 	{
 		// Clear sky references from all pipelines
 		let renderSub = mRuntimeContext?.GetSubsystem<RenderSubsystem>();
@@ -1268,9 +1316,9 @@ class ModelViewerApp : Application
 
 		// Sky texture
 		if (mSkyTextureView != null)
-			Device.DestroyTextureView(ref mSkyTextureView);
+			mDevice.DestroyTextureView(ref mSkyTextureView);
 		if (mSkyTexture != null)
-			Device.DestroyTexture(ref mSkyTexture);
+			mDevice.DestroyTexture(ref mSkyTexture);
 
 		// UI cleanup in safe order
 		if (mUIContext != null)
@@ -1293,6 +1341,39 @@ class ModelViewerApp : Application
 		mShaderSystem?.Dispose();
 		delete mShaderSystem;
 		mShaderSystem = null;
+
+		// Resource system shutdown
+		if (mResourceSystem != null)
+			mResourceSystem.Shutdown();
+	}
+
+	// ==================== Asset Discovery ====================
+
+	private void DiscoverAssets()
+	{
+		let cwd = Directory.GetCurrentDirectory(.. scope .());
+		var searchDir = scope String(cwd);
+		while (true)
+		{
+			let assetsPath = scope String();
+			System.IO.Path.InternalCombine(assetsPath, searchDir, "Assets");
+			if (Directory.Exists(assetsPath))
+			{
+				let marker = scope String();
+				System.IO.Path.InternalCombine(marker, assetsPath, ".assets");
+				if (File.Exists(marker))
+				{
+					mBuiltInAssetDirectory.Set(assetsPath);
+					System.IO.Path.InternalCombine(mAssetCacheDirectory, searchDir, "Assets", "cache");
+					if (!Directory.Exists(mAssetCacheDirectory))
+						Directory.CreateDirectory(mAssetCacheDirectory);
+					return;
+				}
+			}
+			let parent = System.IO.Path.GetDirectoryPath(searchDir, .. scope .());
+			if (parent.IsEmpty || parent == searchDir) { mBuiltInAssetDirectory.Set(cwd); return; }
+			searchDir.Set(parent);
+		}
 	}
 }
 
@@ -1300,13 +1381,25 @@ class Program
 {
 	public static int Main(String[] args)
 	{
+		let shell = scope SDL3Shell();
+		if (shell.Initialize() case .Err)
+		{
+			Console.WriteLine("ERROR: Failed to initialize shell");
+			return 1;
+		}
+		defer shell.Shutdown();
+
+		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = true });
+		if (graphicsResult case .Err)
+		{
+			Console.WriteLine("ERROR: Failed to create graphics device");
+			return 1;
+		}
+		let graphics = graphicsResult.Value;
+		defer delete graphics;
+
 		let app = scope ModelViewerApp();
 		app.InitialFiles = args;
-		return app.Run(.()
-		{
-			Title = "Sedulous Model Viewer",
-			Width = 1280, Height = 800,
-			EnableShaderCache = true
-		});
+		return ApplicationHost.RunApplication(app, shell, graphics);
 	}
 }

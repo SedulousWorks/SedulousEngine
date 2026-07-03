@@ -54,7 +54,7 @@ class DefaultApplication : IApplication
 	protected InMemoryResourceIndex mBuiltinIndex ~ { if (mOwnsInfrastructure) delete _; };
 
 	// Asset directories (discovered at configure time)
-	private String mBuiltInAssetDirectory = new .() ~ delete _;
+	private String mBuiltInAssetDirectory = new .() /*~ delete _*/;
 	private String mAssetCacheDirectory = new .() ~ delete _;
 	private String mProjectAssetDirectory = new .() ~ delete _;
 	private String mRuntimeDirectory = new .() ~ delete _;

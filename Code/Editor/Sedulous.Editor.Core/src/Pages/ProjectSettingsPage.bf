@@ -6,6 +6,7 @@ using Sedulous.UI;
 using Sedulous.Engine.App;
 using Sedulous.Serialization;
 using Sedulous.Core.Logging.Abstractions;
+using Sedulous.RuntimeGraphics;
 
 /// Editor page for the per-project settings stored at
 /// `<ProjectAssetDirectory>/project_settings.oddl`. Holds a working copy

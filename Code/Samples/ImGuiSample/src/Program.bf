@@ -72,7 +72,7 @@ class ImGuiSampleApp : IApplication
 
 	public ApplicationSettings Settings()
 	{
-		return .() { Title = "ImGui Sample", Width = 1024, Height = 768, ClearColor = .(0.1f, 0.18f, 0.24f, 1.0f), EnableDepth = false };
+		return .() { Title = "ImGui Sample", Width = 1024, Height = 768 };
 	}
 
 	public void Configure(IApplicationHost host)
@@ -616,6 +616,8 @@ class ImGuiSampleApp : IApplication
 		let rp = frame.BeginBackbufferPass(ClearColor(mBackgroundColor[0], mBackgroundColor[1], mBackgroundColor[2], mBackgroundColor[3]));
 		if (rp != null && mTotalVtxCount > 0 && mBindGroup != null)
 		{
+			rp.SetViewport(0, 0, (float)frame.Width, (float)frame.Height, 0, 1);
+			rp.SetScissor(0, 0, frame.Width, frame.Height);
 			rp.SetPipeline(mPipeline);
 			rp.SetBindGroup(0, mBindGroup);
 			rp.SetVertexBuffer(0, mVertexBuffer, 0);

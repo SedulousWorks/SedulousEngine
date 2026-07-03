@@ -84,7 +84,6 @@ class VGShapesSample : IApplication
 		{
 			Title = "SampleVG001 - Vector Graphics Shapes",
 			Width = 1280, Height = 720,
-			EnableDepth = false
 		};
 	}
 

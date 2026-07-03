@@ -79,7 +79,6 @@ class UISandboxApp : IApplication, IDockableWindowHost
 			Title = "UI Sandbox",
 			Width = 1280,
 			Height = 720,
-			EnableDepth = false
 		};
 	}
 

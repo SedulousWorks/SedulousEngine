@@ -32,7 +32,6 @@ class RenderStressTestApp : DefaultApplication
 	{
 		Title = "Render Stress Test",
 		EnableShaderCache = true,
-		EnableValidation = false
 	};
 
 	private const int32 SpheresPerBatch = 8000;

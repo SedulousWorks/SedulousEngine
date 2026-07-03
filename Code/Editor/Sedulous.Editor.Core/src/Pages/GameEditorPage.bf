@@ -6,6 +6,7 @@ using Sedulous.UI;
 using Sedulous.Shell.Input;
 using Sedulous.Runtime.Client;
 using Sedulous.Engine.App;
+using Sedulous.RuntimeGraphics;
 
 /// Hosts a running instance of the loaded IApplication's game inside
 /// the editor as a docked tab. Distinct from per-scene Simulate (the toolbar

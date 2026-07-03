@@ -64,7 +64,6 @@ class DrawingSandboxApp : IApplication
 		{
 			Title = "Drawing Sandbox",
 			Width = 1280, Height = 720,
-			EnableDepth = false
 		};
 	}
 
