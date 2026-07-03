@@ -164,7 +164,7 @@ class AssetContentAdapter : ListAdapterBase
 		}
 
 		// Disk-backed mounts expose a real filesystem path, so items can
-		// carry an AbsolutePath (shell "reveal in explorer"). Non-disk
+		// carry an AbsolutePath (platform "reveal in explorer"). Non-disk
 		// mounts leave it null; addressing is otherwise (mount, locator).
 		let fsMount = mEntry.Mount as FileSystemMount;
 

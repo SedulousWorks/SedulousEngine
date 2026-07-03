@@ -4,7 +4,7 @@ using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
 using Sedulous.VG.Renderer;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 using Sedulous.UI.Viewport;
 using Sedulous.Engine;
 using Sedulous.Engine.Core;

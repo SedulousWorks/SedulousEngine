@@ -1,7 +1,7 @@
 namespace Sedulous.Engine.Input;
 
 using System;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 
 /// Identifies the source device for an input binding.
 enum InputSource

@@ -85,7 +85,7 @@ class AudioSandboxApp : RuntimeSampleApp
 		Path.InternalCombine(shaderPath, BuiltInAssetDirectory, "shaders");
 		// Pass BuiltinMount so the UI subsystem's font service routes font
 		// loads through the `builtin://` VFS scheme.
-		if (mUI.InitializeRendering(mUIContext, mRoot, Device, rw.Swap.Format, (int32)rw.Swap.BufferCount, scope StringView[](shaderPath), Shell, rw.Window, BuiltinMount) case .Err)
+		if (mUI.InitializeRendering(mUIContext, mRoot, Device, rw.Swap.Format, (int32)rw.Swap.BufferCount, scope StringView[](shaderPath), Platform, rw.Window, BuiltinMount) case .Err)
 		{
 			Console.WriteLine("Failed to initialize UI rendering");
 			return;
@@ -351,7 +351,7 @@ class AudioSandboxApp : RuntimeSampleApp
 		}
 
 		// Spacebar for play/pause
-		if (Shell.InputManager.Keyboard.IsKeyPressed(.Space))
+		if (Platform.InputManager.Keyboard.IsKeyPressed(.Space))
 			TogglePlayPause();
 	}
 

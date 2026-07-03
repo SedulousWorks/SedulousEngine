@@ -63,7 +63,7 @@ Applications    -- Games, Editor, Sandboxes
 Engine          -- Scene, Entities, Components, Transforms, Serialization
                    Subsystems: Scene, Input, Physics, Animation, Audio, Navigation, Render, UI
 Renderer        -- RenderContext, Pipeline, PostProcessing, Shadows, Particles, IBL
-Foundation      -- RHI, Shell, VG, Fonts, UI, Resources, Jobs, Shaders, Math
+Foundation      -- RHI, Platform, VG, Fonts, UI, Resources, Jobs, Shaders, Math
 ```
 
 **Foundation** libraries work standalone -- use them in tools and tests without the engine. **Renderer** is scene-independent; it takes flat render data and draws it. **Engine** provides the scene model and subsystems. **Applications** own the window and decide what to render.
@@ -72,7 +72,7 @@ Foundation      -- RHI, Shell, VG, Fonts, UI, Resources, Jobs, Shaders, Math
 
 ```
 Code/
-  Foundation/          -- Core libraries (RHI, Shell, VG, UI, Physics, Audio, etc.)
+  Foundation/          -- Core libraries (RHI, Platform, VG, UI, Physics, Audio, etc.)
   Engine/              -- Engine.Core (scene model) + subsystems
   Editor/              -- Editor core + application
   Samples/             -- EngineSandbox, UISandbox, Showcase, RHI samples

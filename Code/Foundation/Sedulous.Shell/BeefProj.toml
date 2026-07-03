@@ -1,5 +1,0 @@
-FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Core" = "*"}
-
-[Project]
-Name = "Sedulous.Shell"

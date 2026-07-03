@@ -3,7 +3,7 @@ using Sedulous.Images.STB;
 using Sedulous.Images.SDL;
 using Sedulous.Runtime.Client;
 using Sedulous.RuntimeGraphics;
-using Sedulous.Shell.SDL3;
+using Sedulous.Platform.SDL3;
 
 namespace UISandbox;
 
@@ -14,13 +14,13 @@ class Program
 		STBImageLoader.Initialize();
 		SDLImageLoader.Initialize();
 
-		let shell = scope SDL3Shell();
-		if (shell.Initialize() case .Err)
+		let platform = scope SDL3Platform();
+		if (platform.Initialize() case .Err)
 		{
-			Console.WriteLine("ERROR: Failed to initialize shell");
+			Console.WriteLine("ERROR: Failed to initialize platform");
 			return 1;
 		}
-		defer shell.Shutdown();
+		defer platform.Shutdown();
 
 		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = true });
 		if (graphicsResult case .Err)
@@ -32,6 +32,6 @@ class Program
 		defer delete graphics;
 
 		let app = scope UISandboxApp();
-		return ApplicationHost.RunApplication(app, shell, graphics);
+		return ApplicationHost.RunApplication(app, platform, graphics);
 	}
 }

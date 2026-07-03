@@ -38,7 +38,7 @@ The framework today is solid for editor/tools UI but rough for game UI:
 - **Every screen is code.** No markup loader means every menu, HUD, and
   dialog is a `new FlexLayout(); flex.AddView(...)` tree. Game UIs have
   many screens; iteration is slow.
-- **No gamepad path.** Shell SDL3 has full gamepad including DPad and
+- **No gamepad path.** Platform SDL3 has full gamepad including DPad and
   buttons, but `UIInputHelper` polls only mouse + keyboard. `FocusManager`
   has Tab/Shift+Tab; no directional focus. UIs cannot ship to console.
 - **Game UI primitives are reinvented per app.** TowerDefense has full
@@ -630,13 +630,13 @@ focus navigation so consoles ship.
 
 Survey of the current state:
 
-- **Shell (SDL3) gamepad input is complete.** `IGamepad` interface,
+- **Platform (SDL3) gamepad input is complete.** `IGamepad` interface,
   `GamepadButton` enum including `DPadUp/Down/Left/Right`, axes, polling.
-  Lives under `Code/Foundation/Sedulous.Shell/src/Input/` and
-  `Code/Foundation/Sedulous.Shell.SDL3/`.
+  Lives under `Code/Foundation/Sedulous.Platform/src/Input/` and
+  `Code/Foundation/Sedulous.Platform.SDL3/`.
 - **UI input bridge is keyboard + mouse only.** `UIInputHelper` (under
-  `Code/Foundation/Sedulous.UI.Shell/`) polls `shellInput.Mouse` and
-  `shellInput.Keyboard`. Gamepad is not polled.
+  `Code/Foundation/Sedulous.UI.Platform/`) polls `platformInput.Mouse` and
+  `platformInput.Keyboard`. Gamepad is not polled.
 - **FocusManager is Tab-only.** `FocusNext` / `FocusPrev` walk the focus
   tree in tab-index order. No directional picker.
 - **View has focus state.** `IsFocusable`, `IsTabStop`, `TabIndex`,
@@ -653,7 +653,7 @@ Survey of the current state:
 | 13.5 | Gamepad B | `OnCancel()` virtual; bubbles up | Modal/Dialog handles to close |
 | 13.6 | Left stick as alternate D-pad | Yes; configurable deadzone + repeat rate | Trivial once D-pad path exists |
 | 13.7 | Button layout | Xbox layout hardcoded v1 (A=Activate, B=Cancel) | Rebinding is a Gamekit feature |
-| 13.8 | UI traps gamepad input when focused | `UIInputHelper` sets `UIConsumedInput` flag on shell input | Already a placeholder slot |
+| 13.8 | UI traps gamepad input when focused | `UIInputHelper` sets `UIConsumedInput` flag on platform input | Already a placeholder slot |
 
 ### Wiring summary
 
@@ -690,7 +690,7 @@ view's `OnKeyDown` as today.
 **4. UIInputHelper additions:**
 
 ```beef
-let gamepad = shellInput.GetGamepad(0);
+let gamepad = platformInput.GetGamepad(0);
 if (gamepad != null && gamepad.Connected)
   ProcessGamepadInput(gamepad, context, deltaTime);
 ```
@@ -699,7 +699,7 @@ Polls D-pad button-pressed edges; maps to `ProcessFocusMove`. Polls left
 stick X/Y; with deadzone + repeat timer, also maps to `ProcessFocusMove`.
 Maps A button to `ProcessActivate`, B to `ProcessCancel`.
 
-When a focusable view exists, sets `UIConsumedInput = true` on shell
+When a focusable view exists, sets `UIConsumedInput = true` on platform
 input so game-side input contexts know to skip those events.
 
 **5. Control activate overrides:**
@@ -722,7 +722,7 @@ input so game-side input contexts know to skip those events.
 | 13D | Control `OnActivate` overrides | Enter on focused Button fires click |
 | 13E | `UIInputHelper.ProcessGamepadInput` (D-pad + buttons) | UISandbox navigable with gamepad |
 | 13F | Left stick navigation with deadzone + repeat | Stick navigation matches D-pad UX |
-| 13G | `UIConsumedInput` shell flag wiring | Game-side input contexts skip events when UI consumes |
+| 13G | `UIConsumedInput` platform flag wiring | Game-side input contexts skip events when UI consumes |
 
 ### Files
 
@@ -731,7 +731,7 @@ input so game-side input contexts know to skip those events.
 - `Code/Foundation/Sedulous.UI/src/Core/View.bf`
 - `Code/Foundation/Sedulous.UI/src/Input/FocusManager.bf`
 - `Code/Foundation/Sedulous.UI/src/Input/InputManager.bf`
-- `Code/Foundation/Sedulous.UI.Shell/src/UIInputHelper.bf`
+- `Code/Foundation/Sedulous.UI.Platform/src/UIInputHelper.bf`
 - Per-control `OnActivate` overrides
 
 **New:**

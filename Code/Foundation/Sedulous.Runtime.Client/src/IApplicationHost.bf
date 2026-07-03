@@ -1,7 +1,7 @@
 using System;
 using Sedulous.RuntimeGraphics;
-using Sedulous.Shell;
-using Sedulous.Shell.Input;
+using Sedulous.Platform;
+using Sedulous.Platform.Input;
 using Sedulous.Runtime;
 
 namespace Sedulous.Runtime.Client;
@@ -14,8 +14,8 @@ public interface IApplicationHost
 	/// The subsystem container. Register subsystems here in Configure().
 	Context Ctx { get; }
 
-	/// The platform shell (windowing, input, clipboard).
-	IShell Shell { get; }
+	/// The platform (windowing, input, clipboard).
+	IPlatform Platform { get; }
 
 	/// The shared GPU device (null for headless runs).
 	GraphicsDevice Graphics { get; }
@@ -24,23 +24,23 @@ public interface IApplicationHost
 	RenderWindow MainWindow { get; }
 
 	/// Mouse the module should consume during OnUpdate. Standalone hosts
-	/// passthrough to Shell.InputManager.Mouse. The editor's
+	/// passthrough to Platform.InputManager.Mouse. The editor's
 	/// GameEditorPage returns a viewport-scoped adapter so cursor
 	/// coords are in the page-viewport's local space and click events
 	/// match the rendered scene.
-	IMouse Mouse { get => Shell?.InputManager?.Mouse; }
+	IMouse Mouse { get => Platform?.InputManager?.Mouse; }
 
 	/// Keyboard the module should consume during OnUpdate. Standalone
-	/// hosts passthrough to Shell.InputManager.Keyboard. The editor's
+	/// hosts passthrough to Platform.InputManager.Keyboard. The editor's
 	/// GameEditorPage returns a focus-gated adapter that reports
 	/// "nothing pressed" while the game viewport is not focused.
-	IKeyboard Keyboard { get => Shell?.InputManager?.Keyboard; }
+	IKeyboard Keyboard { get => Platform?.InputManager?.Keyboard; }
 
 	/// Returns a gamepad the module can consume during OnUpdate.
-	/// Standalone passes through to Shell.InputManager.GetGamepad.
+	/// Standalone passes through to Platform.InputManager.GetGamepad.
 	/// Editor returns a focus-gated adapter. Returns null if index
 	/// is out of range.
-	IGamepad GetGamepad(int32 index) => Shell?.InputManager?.GetGamepad(index);
+	IGamepad GetGamepad(int32 index) => Platform?.InputManager?.GetGamepad(index);
 
 	/// Engine built-in assets directory (shaders, fonts, default meshes).
 	/// Discovered by walking up from cwd looking for Assets/.assets marker.

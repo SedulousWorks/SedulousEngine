@@ -7,7 +7,7 @@ TargetType = "BeefLib"
 [Dependencies]
 corlib = "*"
 "Sedulous.RHI" = "*"
-"Sedulous.Shell" = "*"
+"Sedulous.Platform" = "*"
 "Sedulous.Runtime" = "*"
 "Sedulous.Runtime.Graphics" = "*"
 "Sedulous.Jobs" = "*"

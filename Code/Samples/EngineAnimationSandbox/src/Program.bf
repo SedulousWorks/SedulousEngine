@@ -1,7 +1,7 @@
 namespace EngineAnimationSandbox;
 
 using System;
-using Sedulous.Shell.SDL3;
+using Sedulous.Platform.SDL3;
 using Sedulous.RuntimeGraphics;
 using Sedulous.Runtime.Client;
 
@@ -9,13 +9,13 @@ class Program
 {
 	public static int Main(String[] args)
 	{
-		let shell = scope SDL3Shell();
-		if (shell.Initialize() case .Err)
+		let platform = scope SDL3Platform();
+		if (platform.Initialize() case .Err)
 		{
-			Console.WriteLine("ERROR: Failed to initialize shell");
+			Console.WriteLine("ERROR: Failed to initialize platform");
 			return 1;
 		}
-		defer shell.Shutdown();
+		defer platform.Shutdown();
 
 		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = false });
 		if (graphicsResult case .Err)
@@ -27,6 +27,6 @@ class Program
 		defer delete graphics;
 
 		let app = scope AnimationSandboxApp();
-		return ApplicationHost.RunApplication(app, shell, graphics);
+		return ApplicationHost.RunApplication(app, platform, graphics);
 	}
 }

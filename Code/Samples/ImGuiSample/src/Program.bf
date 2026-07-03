@@ -407,8 +407,8 @@ class ImGuiSampleApp : RuntimeSampleApp
 	{
 		mDeltaTime = deltaTime;
 
-		let mouse = Shell.InputManager.Mouse;
-		let keyboard = Shell.InputManager.Keyboard;
+		let mouse = Platform.InputManager.Mouse;
+		let keyboard = Platform.InputManager.Keyboard;
 
 		let rw = host.MainWindow;
 

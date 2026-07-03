@@ -6,7 +6,7 @@ using Sedulous.UI;
 using Sedulous.UI.Toolkit;
 using Sedulous.Core.Mathematics;
 using Sedulous.Resources;
-using Sedulous.Shell;
+using Sedulous.Platform;
 
 /// Property editor for a List<ResourceRef>.
 /// Shows per-slot ResourceRef rows with path, browse, and clear buttons.

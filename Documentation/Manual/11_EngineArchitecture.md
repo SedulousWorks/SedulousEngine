@@ -201,7 +201,7 @@ Use immediate `Publish` for events that need instant response (UI updates). Use 
 The full frame loop in `EngineApplication`:
 
 ```
-1. Shell.ProcessEvents()              -- OS window events, input
+1. Platform.ProcessEvents()              -- OS window events, input
 2. JobSystem.ProcessCompletions()     -- Async job callbacks
 3. ResourceSystem.Update()            -- Hot-reload, async load completions
 4. Context.BeginFrame(dt)

@@ -23,7 +23,7 @@ using Sedulous.Renderer;
 using Sedulous.Resources;
 using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 using Sedulous.Textures.Resources;
 using Sedulous.UI;
 
@@ -483,8 +483,8 @@ class AnimationSandboxApp : DefaultApplication
 
 	void UpdateCamera(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime, bool uiHovered = false)
 	{
-		let keyboard = host.Shell.InputManager.Keyboard;
-		let mouse    = host.Shell.InputManager.Mouse;
+		let keyboard = host.Platform.InputManager.Keyboard;
+		let mouse    = host.Platform.InputManager.Mouse;
 
 		if (keyboard.IsKeyPressed(.Escape))
 		{

@@ -1,0 +1,5 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.Platform" = "*", SDL3 = "*"}
+
+[Project]
+Name = "Sedulous.Platform.SDL3"

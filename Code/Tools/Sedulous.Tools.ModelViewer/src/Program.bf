@@ -8,16 +8,16 @@ using Sedulous.RHI;
 using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
 using Sedulous.RuntimeGraphics;
-using Sedulous.Shell;
-using Sedulous.Shell.Input;
-using Sedulous.Shell.SDL3;
+using Sedulous.Platform;
+using Sedulous.Platform.Input;
+using Sedulous.Platform.SDL3;
 using Sedulous.Shaders;
 using Sedulous.Fonts;
 using Sedulous.Fonts.TTF;
 using Sedulous.VG;
 using Sedulous.VG.Renderer;
 using Sedulous.UI;
-using Sedulous.UI.Shell;
+using Sedulous.UI.Platform;
 using Sedulous.UI.Toolkit;
 using Sedulous.UI.Viewport;
 using Sedulous.Renderer;
@@ -54,9 +54,9 @@ class ModelViewerApp : IApplication
 	/// Files to load on startup (from command line args).
 	public String[] InitialFiles;
 
-	// Cached host/device/shell references
+	// Cached host/device/platform references
 	private IDevice mDevice;
-	private IShell mShell;
+	private IPlatform mPlatform;
 	private ApplicationSettings mSettings;
 
 	// Asset directories
@@ -76,7 +76,7 @@ class ModelViewerApp : IApplication
 	private UIContext mUIContext;
 	private RootView mMainRoot;
 	private UIInputHelper mInputHelper ~ delete _;
-	private ShellClipboardAdapter mClipboard ~ delete _;
+	private PlatformClipboardAdapter mClipboard ~ delete _;
 
 	// Runtime context (embedded engine for 3D rendering)
 	private Context mRuntimeContext;
@@ -120,7 +120,7 @@ class ModelViewerApp : IApplication
 	{
 		DiscoverAssets();
 		mDevice = host.Graphics.Raw;
-		mShell = host.Shell;
+		mPlatform = host.Platform;
 		mSettings = Settings();
 
 		// Create resource system
@@ -168,7 +168,7 @@ class ModelViewerApp : IApplication
 		mVGRenderer.SetExternalCache(mExternalTextureCache);
 
 		// Clipboard
-		mClipboard = new ShellClipboardAdapter(mShell.Clipboard);
+		mClipboard = new PlatformClipboardAdapter(mPlatform.Clipboard);
 
 		// UI context
 		ThemeRegistry.RegisterExtension(new ToolkitThemeExtension());
@@ -716,7 +716,7 @@ class ModelViewerApp : IApplication
 		BuildTabContent(tab);
 
 		// Attach camera controller to this tab's viewport
-		let camController = new ViewportCameraController(scene, mShell.InputManager.Keyboard);
+		let camController = new ViewportCameraController(scene, mPlatform.InputManager.Keyboard);
 		camController.FitToBounds(tab.Bounds);
 		tab.CameraController = camController;
 		camController.Attach(tab.Viewport);
@@ -1190,8 +1190,8 @@ class ModelViewerApp : IApplication
 		// Process UI input
 		if (mInputHelper != null && mUIContext != null)
 		{
-			mInputHelper.ProcessMouseInput(mShell.InputManager.Mouse, mUIContext);
-			mInputHelper.ProcessKeyboardInput(mShell.InputManager.Keyboard, mUIContext, deltaTime);
+			mInputHelper.ProcessMouseInput(mPlatform.InputManager.Mouse, mUIContext);
+			mInputHelper.ProcessKeyboardInput(mPlatform.InputManager.Keyboard, mUIContext, deltaTime);
 		}
 
 		let rw = host.MainWindow;
@@ -1207,15 +1207,15 @@ class ModelViewerApp : IApplication
 		tab?.CameraController?.Update(deltaTime);
 
 		// Focus model on R key
-		if (mShell.InputManager.Keyboard.IsKeyPressed(.R) && tab != null)
+		if (mPlatform.InputManager.Keyboard.IsKeyPressed(.R) && tab != null)
 			tab.CameraController?.FitToBounds(tab.Bounds);
 
 		// Debug: print current camera state
-		if (mShell.InputManager.Keyboard.IsKeyPressed(.O) && tab != null)
+		if (mPlatform.InputManager.Keyboard.IsKeyPressed(.O) && tab != null)
 			tab.CameraController?.PrintState();
 
 		// File drop
-		let inputMgr = mShell.InputManager;
+		let inputMgr = mPlatform.InputManager;
 		for (int i = 0; i < inputMgr.DroppedFileCount; i++)
 		{
 			let file = inputMgr.GetDroppedFile(i);
@@ -1381,13 +1381,13 @@ class Program
 {
 	public static int Main(String[] args)
 	{
-		let shell = scope SDL3Shell();
-		if (shell.Initialize() case .Err)
+		let platform = scope SDL3Platform();
+		if (platform.Initialize() case .Err)
 		{
-			Console.WriteLine("ERROR: Failed to initialize shell");
+			Console.WriteLine("ERROR: Failed to initialize platform");
 			return 1;
 		}
-		defer shell.Shutdown();
+		defer platform.Shutdown();
 
 		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = true });
 		if (graphicsResult case .Err)
@@ -1400,6 +1400,6 @@ class Program
 
 		let app = scope ModelViewerApp();
 		app.InitialFiles = args;
-		return ApplicationHost.RunApplication(app, shell, graphics);
+		return ApplicationHost.RunApplication(app, platform, graphics);
 	}
 }

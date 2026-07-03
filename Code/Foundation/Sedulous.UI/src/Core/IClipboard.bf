@@ -3,7 +3,7 @@ namespace Sedulous.UI;
 using System;
 
 /// Interface for clipboard operations.
-/// Defined in the UI layer to avoid Shell dependencies.
+/// Defined in the UI layer to avoid Platform dependencies.
 /// Applications provide an adapter that bridges their platform's clipboard.
 public interface IClipboard
 {

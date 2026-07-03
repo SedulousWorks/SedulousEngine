@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", "Sedulous.Platform" = "*", "Sedulous.Platform.SDL3" = "*"}
+
+[Project]
+Name = "Sedulous.Platform.Tests"
+TargetType = "BeefTest"

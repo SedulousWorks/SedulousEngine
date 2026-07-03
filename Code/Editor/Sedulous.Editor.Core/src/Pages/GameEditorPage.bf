@@ -3,7 +3,7 @@ namespace Sedulous.Editor.Core;
 using System;
 using System.Collections;
 using Sedulous.UI;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 using Sedulous.Runtime.Client;
 using Sedulous.Engine.App;
 using Sedulous.RuntimeGraphics;
@@ -176,10 +176,10 @@ class GameEditorPage : IEditorPage
 		if (mGamepadAdapters.TryGetValue(index, let existing))
 			return existing;
 
-		let shellGamepad = mHost?.Shell?.InputManager?.GetGamepad(index);
-		if (shellGamepad == null) return null;
+		let platformGamepad = mHost?.Platform?.InputManager?.GetGamepad(index);
+		if (platformGamepad == null) return null;
 
-		let adapter = new GameGamepadAdapter(shellGamepad);
+		let adapter = new GameGamepadAdapter(platformGamepad);
 		adapter.Focused = mIsActive;
 		mGamepadAdapters[index] = adapter;
 		return adapter;
@@ -200,11 +200,11 @@ class GameEditorPage : IEditorPage
 		if (editorContext != null)
 			mPreviewFitMode = editorContext.ProjectSettings.FitMode;
 
-		// Build the mouse / keyboard adapters around the host's shell
+		// Build the mouse / keyboard adapters around the host's platform
 		// devices. Gamepad adapters are built lazily in GetGamepadAdapter
 		// because the editor doesn't know how many pads the game module
-		// will poll for and the shell's gamepad list is dynamic.
-		let im = mHost?.Shell?.InputManager;
+		// will poll for and the platform's gamepad list is dynamic.
+		let im = mHost?.Platform?.InputManager;
 		if (im != null)
 		{
 			mMouseAdapter = new GameMouseAdapter(im.Mouse);

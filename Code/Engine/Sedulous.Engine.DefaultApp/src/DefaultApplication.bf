@@ -3,7 +3,7 @@ namespace Sedulous.Engine.DefaultApp;
 using System;
 using System.IO;
 using Sedulous.RHI;
-using Sedulous.Shell;
+using Sedulous.Platform;
 using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
 using Sedulous.RuntimeGraphics;
@@ -387,8 +387,8 @@ class DefaultApplication : IApplication
 	public virtual void OnUpdate(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime)
 	{
 		// P-key: print profile frame
-		if (host.Shell?.InputManager?.Keyboard != null &&
-			host.Shell.InputManager.Keyboard.IsKeyPressed(.P))
+		if (host.Platform?.InputManager?.Keyboard != null &&
+			host.Platform.InputManager.Keyboard.IsKeyPressed(.P))
 			PrintProfileFrame();
 
 		// Deferred profile print request
@@ -448,8 +448,8 @@ class DefaultApplication : IApplication
 
 		// Input (-900)
 		let inputSub = new InputSubsystem();
-		if (host.Shell?.InputManager != null)
-			inputSub.SetInputManager(host.Shell.InputManager);
+		if (host.Platform?.InputManager != null)
+			inputSub.SetInputManager(host.Platform.InputManager);
 		ctx.RegisterSubsystem(inputSub);
 
 		// Scene (-500)
@@ -470,7 +470,7 @@ class DefaultApplication : IApplication
 		// UI (400)
 		let uiSub = new EngineUISubsystem();
 		uiSub.Device = device;
-		uiSub.Shell = host.Shell;
+		uiSub.Platform = host.Platform;
 		uiSub.ShaderSystem = mShaderSystem;
 		uiSub.OutputFormat = .RGBA16Float;
 		uiSub.FrameCount = (int32)(host.Graphics?.FramesInFlight ?? 2);

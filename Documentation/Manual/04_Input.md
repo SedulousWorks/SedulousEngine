@@ -1,15 +1,15 @@
 # Input
 
-Sedulous provides two layers of input: raw device access via `IShell.InputManager` and a higher-level action/binding system via `Sedulous.Engine.Input`.
+Sedulous provides two layers of input: raw device access via `IPlatform.InputManager` and a higher-level action/binding system via `Sedulous.Engine.Input`.
 
-## Raw Input (Shell Layer)
+## Raw Input (Platform Layer)
 
-Direct device state queries through `Shell.InputManager`:
+Direct device state queries through `Platform.InputManager`:
 
 ### Keyboard
 
 ```beef
-let keyboard = Shell.InputManager.Keyboard;
+let keyboard = Platform.InputManager.Keyboard;
 
 // Continuous state (held down)
 if (keyboard.IsKeyDown(.W))
@@ -26,7 +26,7 @@ if (keyboard.IsKeyReleased(.Escape))
 ### Mouse
 
 ```beef
-let mouse = Shell.InputManager.Mouse;
+let mouse = Platform.InputManager.Mouse;
 
 // Position (window-local)
 let x = mouse.X;
@@ -73,7 +73,7 @@ using Sedulous.Engine.Input;
 
 protected override void OnConfigure(Context context)
 {
-    context.RegisterSubsystem(new InputSubsystem(Shell.InputManager));
+    context.RegisterSubsystem(new InputSubsystem(Platform.InputManager));
 }
 ```
 

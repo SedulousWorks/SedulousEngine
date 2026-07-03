@@ -3,7 +3,7 @@ namespace Sedulous.Editor;
 using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.UI;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 using Sedulous.UI.Viewport;
 
 /// Camera input handler for viewport views.

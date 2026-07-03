@@ -1,6 +1,6 @@
 namespace Sedulous.UI;
 
-/// Keyboard key codes. Values match Sedulous.Shell.Input.KeyCode
+/// Keyboard key codes. Values match Sedulous.Platform.Input.KeyCode
 /// so the Runtime bridge can cast directly without a mapping table.
 public enum KeyCode
 {

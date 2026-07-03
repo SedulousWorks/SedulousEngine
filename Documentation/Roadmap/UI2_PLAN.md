@@ -82,7 +82,7 @@ FloatAnimation, ColorAnimation, Vector2Animation, Storyboard, ViewAnimator
 
 **Data:** IModel, ModelIndex
 
-**Shell Bridge:** UIInputHelper, InputMapping, ShellClipboardAdapter
+**Platform Bridge:** UIInputHelper, InputMapping, PlatformClipboardAdapter
 
 **Runtime:** UISubsystem (with input routing, clipboard bridge, cursor sync)
 
@@ -357,7 +357,7 @@ Engine integration libraries and application migration.
 
 - [x] UISubsystem (renamed from UI2Subsystem) - theme setup, clipboard bridge, cursor sync,
       ManualInputRouting for multi-window apps
-- [x] Shell integration - UIInputHelper dispatches shell events to InputManager
+- [x] Platform integration - UIInputHelper dispatches platform events to InputManager
 - [x] Sedulous.Engine.UI - EngineUISubsystem, ScreenUIView, UIComponent, UIComponentManager,
       WorldUIPass (ported from Engine.LegacyUI)
 - [x] Sedulous.UI.Viewport - ViewportView, IViewportInputHandler

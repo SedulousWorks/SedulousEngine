@@ -6,7 +6,7 @@ Name = "Sedulous.Engine.Core"
 [Dependencies]
 corlib = "*"
 "Sedulous.Runtime" = "*"
-"Sedulous.Shell" = "*"
+"Sedulous.Platform" = "*"
 "Sedulous.Resources" = "*"
 "Sedulous.Core.Mathematics" = "*"
 "Sedulous.VFS" = "*"

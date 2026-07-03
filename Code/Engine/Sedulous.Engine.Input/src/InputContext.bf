@@ -2,7 +2,7 @@ namespace Sedulous.Engine.Input;
 
 using System;
 using System.Collections;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 
 /// Delegate for action callbacks.
 delegate void ActionCallback(InputAction action);

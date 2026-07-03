@@ -3,7 +3,7 @@ namespace TowerDefense.Editor;
 using System;
 using Sedulous.Runtime.Client;
 using Sedulous.RuntimeGraphics;
-using Sedulous.Shell.SDL3;
+using Sedulous.Platform.SDL3;
 using Sedulous.Editor;
 using TowerDefense;
 
@@ -11,9 +11,9 @@ class Program
 {
 	static int Main(String[] args)
 	{
-		let shell = scope SDL3Shell();
-		shell.Initialize();
-		defer shell.Shutdown();
+		let platform = scope SDL3Platform();
+		platform.Initialize();
+		defer platform.Shutdown();
 
 		let gfxResult = GraphicsDevice.Create(.());
 		if (gfxResult case .Err)
@@ -25,6 +25,6 @@ class Program
 		let editor = scope EditorApplication();
 		editor.App = tdApp;
 
-		return ApplicationHost.RunApplication(editor, shell, gfx);
+		return ApplicationHost.RunApplication(editor, platform, gfx);
 	}
 }

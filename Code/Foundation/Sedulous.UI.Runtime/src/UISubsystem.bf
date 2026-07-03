@@ -8,16 +8,16 @@ using Sedulous.VG.Renderer;
 using Sedulous.Shaders;
 using Sedulous.Fonts;
 using Sedulous.Core.Mathematics;
-using Sedulous.Shell;
+using Sedulous.Platform;
 using Sedulous.Profiler;
 using Sedulous.UI;
-using Sedulous.UI.Shell;
+using Sedulous.UI.Platform;
 using Sedulous.Fonts.TTF;
 using Sedulous.VFS;
 
 /// Subsystem that provides UI rendering and lifecycle management.
 /// Owns rendering pipeline (VGContext, VGRenderer, ShaderSystem, FontService).
-/// Owns input bridge (UIInputHelper, ShellClipboardAdapter).
+/// Owns input bridge (UIInputHelper, PlatformClipboardAdapter).
 /// Does NOT own UIContext or RootView - the application creates and owns those.
 /// All cleanup happens in OnShutdown in reverse creation order.
 public class UISubsystem : Subsystem
@@ -32,12 +32,12 @@ public class UISubsystem : Subsystem
 
 	// Input bridge (owned)
 	private UIInputHelper mInputHelper;
-	private ShellClipboardAdapter mClipboardAdapter;
+	private PlatformClipboardAdapter mClipboardAdapter;
 
 	// Platform references (not owned)
 	private IDevice mDevice;
 	private IWindow mWindow;
-	private IShell mShell;
+	private IPlatform mPlatform;
 
 	// UI references (not owned - app creates and owns these)
 	private UIContext mUIContext;
@@ -48,7 +48,7 @@ public class UISubsystem : Subsystem
 	private int32 mFrameCount;
 
 	/// When true, the application handles all input routing via InputHelper.
-	/// UI2Subsystem skips its automatic shell input processing.
+	/// UISubsystem skips its automatic platform input processing.
 	/// Set when the app needs multi-window input control.
 	public bool ManualInputRouting;
 
@@ -82,14 +82,14 @@ public class UISubsystem : Subsystem
 		TextureFormat targetFormat,
 		int32 frameCount,
 		Span<StringView> shaderPaths,
-		IShell shell = null,
+		IPlatform platform = null,
 		IWindow window = null,
 		IMount fontMount = null)
 	{
 		mUIContext = uiContext;
 		mRoot = root;
 		mDevice = device;
-		mShell = shell;
+		mPlatform = platform;
 		mWindow = window;
 		mFrameCount = frameCount;
 
@@ -115,14 +115,14 @@ public class UISubsystem : Subsystem
 		// Provide font service to UIContext so it can create draw contexts
 		uiContext.FontService = mFontService;
 
-		// Input bridge (Shell -> UI2)
-		if (shell?.InputManager != null)
+		// Input bridge (Platform -> UI)
+		if (platform?.InputManager != null)
 			mInputHelper = new UIInputHelper();
 
-		// Clipboard bridge (Shell -> UI2)
-		if (shell?.Clipboard != null)
+		// Clipboard bridge (Platform -> UI)
+		if (platform?.Clipboard != null)
 		{
-			mClipboardAdapter = new ShellClipboardAdapter(shell.Clipboard);
+			mClipboardAdapter = new PlatformClipboardAdapter(platform.Clipboard);
 			uiContext.Clipboard = mClipboardAdapter;
 		}
 
@@ -154,15 +154,15 @@ public class UISubsystem : Subsystem
 		if (mWindow != null)
 			mRoot.DpiScale = mWindow.ContentScale;
 
-		// Route shell input -> UI2 events (unless app handles routing manually)
-		if (!ManualInputRouting && mInputHelper != null && mShell?.InputManager != null)
-			mInputHelper.Update(mShell.InputManager, mUIContext, deltaTime);
+		// Route platform input -> UI events (unless app handles routing manually)
+		if (!ManualInputRouting && mInputHelper != null && mPlatform?.InputManager != null)
+			mInputHelper.Update(mPlatform.InputManager, mUIContext, deltaTime);
 
 		// Run frame lifecycle
 		mUIContext.BeginFrame(deltaTime);
 		mUIContext.UpdateRootView(mRoot);
 
-		// Sync cursor from UI2 -> Shell
+		// Sync cursor from UI -> Platform
 		SyncCursor();
 	}
 
@@ -211,18 +211,18 @@ public class UISubsystem : Subsystem
 		}
 	}
 
-	/// Sync UI2 cursor type to Shell cursor.
+	/// Sync UI2 cursor type to Platform cursor.
 	private void SyncCursor()
 	{
-		if (mShell?.InputManager?.Mouse == null || mUIContext.InputManager == null)
+		if (mPlatform?.InputManager?.Mouse == null || mUIContext.InputManager == null)
 			return;
 
 		let uiCursor = mUIContext.InputManager.CurrentCursor;
-		mShell.InputManager.Mouse.Cursor = MapCursorToShell(uiCursor);
+		mPlatform.InputManager.Mouse.Cursor = MapCursorToPlatform(uiCursor);
 	}
 
-	/// Map UI2 CursorType to Shell CursorType.
-	private static Sedulous.Shell.Input.CursorType MapCursorToShell(Sedulous.UI.CursorType cursor)
+	/// Map UI2 CursorType to Platform CursorType.
+	private static Sedulous.Platform.Input.CursorType MapCursorToPlatform(Sedulous.UI.CursorType cursor)
 	{
 		switch (cursor)
 		{

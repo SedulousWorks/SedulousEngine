@@ -10,7 +10,7 @@ using Sedulous.Renderer;
 using Sedulous.Renderer.Debug;
 using Sedulous.Engine.Render;
 using Sedulous.UI.Viewport;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 using Sedulous.Editor.Core;
 using Sedulous.Core.Mathematics;
 using Sedulous.Renderer.Passes;

@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.RHI;
-using Sedulous.Shell;
+using Sedulous.Platform;
 
 namespace Sedulous.RuntimeGraphics;
 

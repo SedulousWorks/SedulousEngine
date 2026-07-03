@@ -2,14 +2,14 @@ namespace Sedulous.Engine.UI;
 
 using System;
 using Sedulous.Runtime;
-using Sedulous.Shell;
-using Sedulous.Shell.Input;
+using Sedulous.Platform;
+using Sedulous.Platform.Input;
 using Sedulous.Engine;
 using Sedulous.Engine.Core;
 using Sedulous.Renderer;
 using Sedulous.RHI;
 using Sedulous.UI;
-using Sedulous.UI.Shell;
+using Sedulous.UI.Platform;
 using Sedulous.Fonts;
 using Sedulous.Shaders;
 using Sedulous.Core.Mathematics;
@@ -27,7 +27,7 @@ class EngineUISubsystem : Subsystem, ISceneAware, IScreenOverlay
 
 	// Set by the host before Startup.
 	public IDevice Device;
-	public IShell Shell;
+	public IPlatform Platform;
 	public ShaderSystem ShaderSystem;
 
 	/// Logical render-target size in pixels. Drives `ScreenView.Root.ViewportSize`,
@@ -52,18 +52,18 @@ class EngineUISubsystem : Subsystem, ISceneAware, IScreenOverlay
 	public TextureFormat OutputFormat = .BGRA8UnormSrgb;
 	public int32 FrameCount = 2;
 
-	/// When true (the default), Update polls Shell.InputManager and routes
+	/// When true (the default), Update polls Platform.InputManager and routes
 	/// mouse/keyboard/gamepad through the priority chain plus the world-UI
 	/// raycast fallback. Standalone applications leave it true so input
 	/// "just works".
 	///
 	/// Set false when a host drives input externally - the editor's
 	/// GameEditorPage routes mouse events into the runtime UIContext via
-	/// the Dispatch* methods below, so polling shell here would
+	/// the Dispatch* methods below, so polling platform here would
 	/// double-dispatch (raw window coords on top of viewport-local). DPI
 	/// sync, frame begin, layout and per-context ticks still run on
 	/// every Update regardless of this flag.
-	public bool PollShellInput = true;
+	public bool PollPlatformInput = true;
 
 	/// Optional window-pixel -> UI-canvas-pixel transform applied to polled
 	/// mouse coords before they reach the UI input chain. Standalone
@@ -71,7 +71,7 @@ class EngineUISubsystem : Subsystem, ISceneAware, IScreenOverlay
 	/// resolution that differs from the window (fit-mode-aware inverse of
 	/// the swapchain blit) so UI hit-testing happens in the same pixel
 	/// grid the UI was laid out in. Null = identity; used by editor too
-	/// when PollShellInput is true. Returning a point outside the canvas
+	/// when PollPlatformInput is true. Returning a point outside the canvas
 	/// (e.g. for letterbox bar clicks) naturally produces no UI hit since
 	/// no view's rect covers it.
 	///
@@ -103,7 +103,7 @@ class EngineUISubsystem : Subsystem, ISceneAware, IScreenOverlay
 	private WorldUIPass mWorldUIPass;
 	private bool mWorldUIPassRegistered;
 	private UIInputHelper mInputHelper;
-	private ShellClipboardAdapter mClipboardAdapter;
+	private PlatformClipboardAdapter mClipboardAdapter;
 
 	// World UI input state.
 	private UIComponent mHoveredWorldComp;
@@ -180,14 +180,14 @@ class EngineUISubsystem : Subsystem, ISceneAware, IScreenOverlay
 		sheet.ReleaseRef();
 
 		// Clipboard bridge.
-		if (Shell?.Clipboard != null)
+		if (Platform?.Clipboard != null)
 		{
-			mClipboardAdapter = new ShellClipboardAdapter(Shell.Clipboard);
+			mClipboardAdapter = new PlatformClipboardAdapter(Platform.Clipboard);
 			mUIContext.Clipboard = mClipboardAdapter;
 		}
 
 		// Input bridge.
-		if (Shell?.InputManager != null)
+		if (Platform?.InputManager != null)
 			mInputHelper = new UIInputHelper();
 
 		// Screen UI view - needs Device + SwapChain format.
@@ -239,16 +239,16 @@ class EngineUISubsystem : Subsystem, ISceneAware, IScreenOverlay
 		let chain = scope System.Collections.List<UIContext>();
 		BuildInputChain(chain);
 
-		// Route UI input through the chain. When PollShellInput is false an
+		// Route UI input through the chain. When PollPlatformInput is false an
 		// external host (e.g. editor GameEditorPage) is driving input via
-		// the Dispatch* methods, so we skip shell polling here to avoid
+		// the Dispatch* methods, so we skip platform polling here to avoid
 		// double-dispatch with mismatched coordinate spaces. World UI
-		// raycasting still polls shell today and is gated for the same
-		// reason; see comment on PollShellInput.
-		if (PollShellInput && Shell?.InputManager != null)
+		// raycasting still polls platform today and is gated for the same
+		// reason; see comment on PollPlatformInput.
+		if (PollPlatformInput && Platform?.InputManager != null)
 		{
 			if (mInputHelper != null)
-				mInputHelper.Update(Shell.InputManager, chain, deltaTime, ScreenToCanvas);
+				mInputHelper.Update(Platform.InputManager, chain, deltaTime, ScreenToCanvas);
 
 			if (!IsMouseOverAnyChainUI(chain))
 				RouteWorldUIInput(deltaTime);
@@ -272,7 +272,7 @@ class EngineUISubsystem : Subsystem, ISceneAware, IScreenOverlay
 	// =====================================================================
 	// External input injection
 	//
-	// Used when PollShellInput is false: a host (the editor's
+	// Used when PollPlatformInput is false: a host (the editor's
 	// GameInputHandler) translates platform input it owns and routes it
 	// through the same chain Update uses, so screen-space UI, scene HUDs,
 	// and billboards all see the events. Each Dispatch* method walks the
@@ -280,10 +280,10 @@ class EngineUISubsystem : Subsystem, ISceneAware, IScreenOverlay
 	// true) - identical semantics to UIInputHelper's chain dispatch.
 	//
 	// World-UI raycasting under managed input is a separate follow-up: it
-	// currently polls Shell.Mouse and runs a multi-frame hover state
+	// currently polls Platform.Mouse and runs a multi-frame hover state
 	// machine that needs to be refactored to consume the injected mouse
 	// stream instead. Until then world-UI input is only routed when
-	// PollShellInput is true (standalone).
+	// PollPlatformInput is true (standalone).
 	// =====================================================================
 
 	private System.Collections.List<UIContext> mDispatchChain = new .() ~ delete _;
@@ -478,7 +478,7 @@ class EngineUISubsystem : Subsystem, ISceneAware, IScreenOverlay
 		let viewportHeight = activePipeline.OutputHeight;
 		if (viewportWidth == 0 || viewportHeight == 0) return;
 
-		let inputMgr = Shell.InputManager;
+		let inputMgr = Platform.InputManager;
 		let mouse = inputMgr.Mouse;
 		if (mouse == null) return;
 
@@ -620,10 +620,10 @@ class EngineUISubsystem : Subsystem, ISceneAware, IScreenOverlay
 	}
 
 	private void RouteWorldMouseButton(UIComponent comp, IMouse mouse,
-		Sedulous.Shell.Input.MouseButton shellBtn, ref bool prevDown, float px, float py)
+		Sedulous.Platform.Input.MouseButton platformBtn, ref bool prevDown, float px, float py)
 	{
-		let down = mouse.IsButtonDown(shellBtn);
-		let uiBtn = InputMapping.MapMouseButton(shellBtn);
+		let down = mouse.IsButtonDown(platformBtn);
+		let uiBtn = InputMapping.MapMouseButton(platformBtn);
 
 		if (down && !prevDown)
 			comp.UIContext.InputManager.ProcessMouseDown(uiBtn, px, py, comp.InputTotalTime);

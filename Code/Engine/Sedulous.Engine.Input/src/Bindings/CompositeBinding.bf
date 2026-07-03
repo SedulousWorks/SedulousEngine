@@ -1,7 +1,7 @@
 namespace Sedulous.Engine.Input;
 
 using System;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 using Sedulous.Core.Mathematics;
 
 /// Combines 4 bindings into a Vector2 (e.g., WASD movement).

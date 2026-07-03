@@ -7,7 +7,7 @@ using Sedulous.Editor.Core;
 using Sedulous.Editor;
 using Sedulous.RHI;
 using Sedulous.VG.Renderer;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 using Sedulous.Engine;
 using Sedulous.Engine.Core;
 using Sedulous.Engine.Render;

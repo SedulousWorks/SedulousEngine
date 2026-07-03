@@ -5,7 +5,7 @@ using Sedulous.Engine.Core;
 using Sedulous.Editor.Core;
 using Sedulous.Resources;
 using Sedulous.Serialization;
-using Sedulous.Shell;
+using Sedulous.Platform;
 using Sedulous.UI.Toolkit;
 using Sedulous.Particles;
 using Sedulous.Physics;

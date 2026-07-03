@@ -1,16 +1,16 @@
 namespace Sedulous.Editor.Core;
 
 using Sedulous.Core;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 
 /// IMouse adapter owned by a GameEditorPage. The editor renders the
 /// game into a sub-rect of the editor window (the page's ViewportView),
-/// so a module that polls shell.InputManager.Mouse directly sees
+/// so a module that polls platform.InputManager.Mouse directly sees
 /// window-relative pixel coords - off by the viewport's screen origin
 /// and out-of-range whenever the pointer is over chrome. This adapter
 /// overrides X / Y with the last viewport-local position fed in by
 /// `GameInputHandler.OnMouseMove`; everything else is a passthrough
-/// to the underlying shell mouse.
+/// to the underlying platform mouse.
 ///
 /// Button-state polling stays passthrough: SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH
 /// already makes the first click on a refocused window register, and the
@@ -18,16 +18,16 @@ using Sedulous.Shell.Input;
 /// click ghosts don't reach the game.
 ///
 /// Event subscribers (OnMove / OnButton / OnScroll) passthrough to the
-/// shell. TD polls; it doesn't subscribe. If a future module subscribes
+/// platform. TD polls; it doesn't subscribe. If a future module subscribes
 /// expecting viewport-local coords, the right fix is to forward through
 /// `GameInputHandler` rather than wrap EventAccessor here.
 class GameMouseAdapter : IMouse
 {
-	private IMouse mShell;
+	private IMouse mPlatform;
 	private float mLocalX;
 	private float mLocalY;
 	// Scroll is sourced from GameInputHandler.OnMouseWheel rather than
-	// passed through from shell. Shell IMouse accumulates the wheel
+	// passed through from platform. Platform IMouse accumulates the wheel
 	// delta anywhere in the editor window, so passthrough would let the
 	// scene editor (or any docked panel) drive the game's camera zoom
 	// when the user scrolls in it. The page resets these to zero each
@@ -35,9 +35,9 @@ class GameMouseAdapter : IMouse
 	private float mLocalScrollX;
 	private float mLocalScrollY;
 
-	public this(IMouse shell)
+	public this(IMouse platform)
 	{
-		mShell = shell;
+		mPlatform = platform;
 	}
 
 	/// Called by GameInputHandler whenever the pointer moves inside the
@@ -71,40 +71,40 @@ class GameMouseAdapter : IMouse
 
 	public float X => mLocalX;
 	public float Y => mLocalY;
-	public float GlobalX => mShell?.GlobalX ?? 0;
-	public float GlobalY => mShell?.GlobalY ?? 0;
-	public float DeltaX => mShell?.DeltaX ?? 0;
-	public float DeltaY => mShell?.DeltaY ?? 0;
-	public Sedulous.Shell.IWindow MouseHoverWindow => mShell?.MouseHoverWindow;
+	public float GlobalX => mPlatform?.GlobalX ?? 0;
+	public float GlobalY => mPlatform?.GlobalY ?? 0;
+	public float DeltaX => mPlatform?.DeltaX ?? 0;
+	public float DeltaY => mPlatform?.DeltaY ?? 0;
+	public Sedulous.Platform.IWindow MouseHoverWindow => mPlatform?.MouseHoverWindow;
 	public float ScrollX => mLocalScrollX;
 	public float ScrollY => mLocalScrollY;
 
 	public bool IsButtonDown(MouseButton button) =>
-		(mShell?.IsButtonDown(button)) ?? false;
+		(mPlatform?.IsButtonDown(button)) ?? false;
 	public bool IsButtonPressed(MouseButton button) =>
-		(mShell?.IsButtonPressed(button)) ?? false;
+		(mPlatform?.IsButtonPressed(button)) ?? false;
 	public bool IsButtonReleased(MouseButton button) =>
-		(mShell?.IsButtonReleased(button)) ?? false;
+		(mPlatform?.IsButtonReleased(button)) ?? false;
 
 	public bool RelativeMode
 	{
-		get => mShell?.RelativeMode ?? false;
-		set { if (mShell != null) mShell.RelativeMode = value; }
+		get => mPlatform?.RelativeMode ?? false;
+		set { if (mPlatform != null) mPlatform.RelativeMode = value; }
 	}
 
 	public bool Visible
 	{
-		get => mShell?.Visible ?? true;
-		set { if (mShell != null) mShell.Visible = value; }
+		get => mPlatform?.Visible ?? true;
+		set { if (mPlatform != null) mPlatform.Visible = value; }
 	}
 
 	public CursorType Cursor
 	{
-		get => mShell?.Cursor ?? .Default;
-		set { if (mShell != null) mShell.Cursor = value; }
+		get => mPlatform?.Cursor ?? .Default;
+		set { if (mPlatform != null) mPlatform.Cursor = value; }
 	}
 
-	public EventAccessor<MouseMoveDelegate> OnMove => mShell?.OnMove;
-	public EventAccessor<MouseButtonDelegate> OnButton => mShell?.OnButton;
-	public EventAccessor<MouseScrollDelegate> OnScroll => mShell?.OnScroll;
+	public EventAccessor<MouseMoveDelegate> OnMove => mPlatform?.OnMove;
+	public EventAccessor<MouseButtonDelegate> OnButton => mPlatform?.OnButton;
+	public EventAccessor<MouseScrollDelegate> OnScroll => mPlatform?.OnScroll;
 }

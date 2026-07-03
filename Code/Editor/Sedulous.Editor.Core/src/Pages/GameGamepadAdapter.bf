@@ -1,7 +1,7 @@
 namespace Sedulous.Editor.Core;
 
 using System;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 
 /// IGamepad adapter owned by a GameEditorPage. Focus-gated identically
 /// to GameKeyboardAdapter - when the page isn't the active editor tab,
@@ -15,12 +15,12 @@ using Sedulous.Shell.Input;
 /// flip with focus would confuse pause-menu reconnection prompts.
 class GameGamepadAdapter : IGamepad
 {
-	private IGamepad mShell;
+	private IGamepad mPlatform;
 	private bool mFocused;
 
-	public this(IGamepad shell)
+	public this(IGamepad platform)
 	{
-		mShell = shell;
+		mPlatform = platform;
 	}
 
 	public bool Focused
@@ -29,22 +29,22 @@ class GameGamepadAdapter : IGamepad
 		set => mFocused = value;
 	}
 
-	public int Index => mShell?.Index ?? -1;
-	public StringView Name => mShell?.Name ?? "";
-	public bool Connected => mShell?.Connected ?? false;
+	public int Index => mPlatform?.Index ?? -1;
+	public StringView Name => mPlatform?.Name ?? "";
+	public bool Connected => mPlatform?.Connected ?? false;
 
 	public bool IsButtonDown(GamepadButton button) =>
-		mFocused && (mShell?.IsButtonDown(button) ?? false);
+		mFocused && (mPlatform?.IsButtonDown(button) ?? false);
 	public bool IsButtonPressed(GamepadButton button) =>
-		mFocused && (mShell?.IsButtonPressed(button) ?? false);
+		mFocused && (mPlatform?.IsButtonPressed(button) ?? false);
 	public bool IsButtonReleased(GamepadButton button) =>
-		mFocused && (mShell?.IsButtonReleased(button) ?? false);
+		mFocused && (mPlatform?.IsButtonReleased(button) ?? false);
 
 	public float GetAxis(GamepadAxis axis) =>
-		mFocused ? (mShell?.GetAxis(axis) ?? 0) : 0;
+		mFocused ? (mPlatform?.GetAxis(axis) ?? 0) : 0;
 
 	public void SetRumble(float lowFreq, float highFreq, uint32 durationMs)
 	{
-		mShell?.SetRumble(lowFreq, highFreq, durationMs);
+		mPlatform?.SetRumble(lowFreq, highFreq, durationMs);
 	}
 }

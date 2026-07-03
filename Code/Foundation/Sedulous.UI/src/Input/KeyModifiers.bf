@@ -1,6 +1,6 @@
 namespace Sedulous.UI;
 
-/// Keyboard modifier flags. Values match Sedulous.Shell.Input.KeyModifiers
+/// Keyboard modifier flags. Values match Sedulous.Platform.Input.KeyModifiers
 /// so the Runtime bridge can cast directly.
 public enum KeyModifiers
 {

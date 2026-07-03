@@ -602,14 +602,14 @@ static class AssetBrowserBuilder
 
 		menu.AddSeparator();
 
-		// Show in Explorer - OS shell action, only meaningful for a real
+		// Show in Explorer - OS platform action, only meaningful for a real
 		// filesystem mount (non-disk mounts have no AbsolutePath).
 		if (item.Entry != null && item.Entry.Mount is FileSystemMount && item.AbsolutePath != null)
 		{
 			menu.AddItem("Show in Explorer", new [=item, =editorContext] () => {
 				let dirPath = scope String();
 				Path.GetDirectoryPath(item.AbsolutePath, dirPath);
-				editorContext.Shell?.RevealInFileManager(dirPath);
+				editorContext.Platform?.RevealInFileManager(dirPath);
 			});
 		}
 
@@ -667,11 +667,11 @@ static class AssetBrowserBuilder
 
 		menu.AddSeparator();
 
-		// Show in Explorer - OS shell action, disk mounts only.
+		// Show in Explorer - OS platform action, disk mounts only.
 		if (folderItem.Entry != null && folderItem.Entry.Mount is FileSystemMount && folderItem.AbsolutePath != null)
 		{
 			menu.AddItem("Show in Explorer", new [=folderItem, =editorContext] () => {
-				editorContext.Shell?.RevealInFileManager(folderItem.AbsolutePath);
+				editorContext.Platform?.RevealInFileManager(folderItem.AbsolutePath);
 			});
 		}
 
@@ -1043,7 +1043,7 @@ static class AssetBrowserBuilder
 			if (!absPathOwned.IsEmpty)
 			{
 				menu.AddItem("Show in Explorer", new [=absPathOwned, =editorContext] () => {
-					editorContext.Shell?.RevealInFileManager(absPathOwned);
+					editorContext.Platform?.RevealInFileManager(absPathOwned);
 				});
 			}
 		}
@@ -1075,7 +1075,7 @@ static class AssetBrowserBuilder
 			if (!absPathOwned.IsEmpty)
 			{
 				menu.AddItem("Show in Explorer", new [=absPathOwned, =editorContext] () => {
-					editorContext.Shell?.RevealInFileManager(absPathOwned);
+					editorContext.Platform?.RevealInFileManager(absPathOwned);
 				});
 			}
 

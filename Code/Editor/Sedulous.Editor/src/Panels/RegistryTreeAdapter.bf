@@ -27,7 +27,7 @@ class RegistryTreeAdapter : ITreeAdapter
 		public int32 Id;
 		public int32 ParentId = -1;
 		public String DisplayName ~ delete _;
-		public String AbsolutePath ~ delete _;     // Disk mounts only (shell reveal); empty otherwise
+		public String AbsolutePath ~ delete _;     // Disk mounts only (platform reveal); empty otherwise
 		public String RelativePath ~ delete _;     // Mount-relative locator (primary key)
 		public MountEntry Entry;                    // Which mount this belongs to
 		public bool IsMountRoot;
@@ -304,7 +304,7 @@ class RegistryTreeAdapter : ITreeAdapter
 			return;
 		sortedDirs.Sort(scope (a, b) => a.CompareTo(b, true));
 
-		// Disk-backed mounts get a real AbsolutePath (shell reveal);
+		// Disk-backed mounts get a real AbsolutePath (platform reveal);
 		// otherwise it stays empty, mirroring CreateMountRootNode.
 		let fsMount = (node.Entry != null) ? node.Entry.Mount as FileSystemMount : null;
 

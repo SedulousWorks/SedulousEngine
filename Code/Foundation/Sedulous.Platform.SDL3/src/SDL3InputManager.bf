@@ -1,0 +1,228 @@
+using System;
+using System.Collections;
+using SDL3;
+using Sedulous.Platform.Input;
+
+namespace Sedulous.Platform.SDL3;
+
+/// SDL3 implementation of input management.
+class SDL3InputManager : IInputManager
+{
+	private SDL3Keyboard mKeyboard = new .() ~ delete _;
+	private SDL3Mouse mMouse = new .() ~ delete _;
+	private SDL3Touch mTouch = new .() ~ delete _;
+	private List<SDL3Gamepad> mGamepads = new .() ~ DeleteContainerAndItems!(_);
+
+	private struct DroppedFile
+	{
+		public String Path;
+		public float X;
+		public float Y;
+	}
+	private List<DroppedFile> mDroppedFiles = new .() ~ {
+		for (let d in _) delete d.Path;
+		delete _;
+	};
+
+	public const int MaxGamepads = 8;
+
+	public IKeyboard Keyboard => mKeyboard;
+	public IMouse Mouse => mMouse;
+	public ITouch Touch => mTouch;
+	public int GamepadCount => mGamepads.Count;
+	public int DroppedFileCount => mDroppedFiles.Count;
+
+	public this()
+	{
+		// Pre-allocate gamepad slots
+		for (int i = 0; i < MaxGamepads; i++)
+		{
+			mGamepads.Add(new SDL3Gamepad(i));
+		}
+	}
+
+	public IGamepad GetGamepad(int index)
+	{
+		if (index >= 0 && index < mGamepads.Count)
+			return mGamepads[index];
+		return null;
+	}
+
+	public StringView GetDroppedFile(int index)
+	{
+		if (index >= 0 && index < mDroppedFiles.Count)
+			return mDroppedFiles[index].Path;
+		return default;
+	}
+
+	public bool TryGetDroppedFilePosition(int index, out float x, out float y)
+	{
+		if (index >= 0 && index < mDroppedFiles.Count)
+		{
+			let d = mDroppedFiles[index];
+			x = d.X;
+			y = d.Y;
+			return true;
+		}
+		x = 0; y = 0;
+		return false;
+	}
+
+	public void Update()
+	{
+		// Frame update is handled by BeginFrame calls
+	}
+
+	/// Called at the start of each frame before processing events.
+	public void BeginFrame()
+	{
+		mKeyboard.BeginFrame();
+		mMouse.BeginFrame();
+		for (let gamepad in mGamepads)
+			gamepad.BeginFrame();
+
+		// Clear dropped files from previous frame.
+		for (let d in mDroppedFiles) delete d.Path;
+		mDroppedFiles.Clear();
+	}
+
+	/// Sets the focus window for mouse relative mode.
+	public void SetFocusWindow(SDL_Window* window)
+	{
+		mMouse.SetFocusWindow(window);
+	}
+
+	/// Set which window the cursor is currently over (from MOUSE_ENTER).
+	public void SetMouseHoverWindow(SDL3Window window)
+	{
+		mMouse.SetMouseHoverWindow(window);
+	}
+
+	/// Clear the hover window if `leaving` is the one we currently track
+	/// (from MOUSE_LEAVE). Guarded so an ENTER for window B followed by a
+	/// LEAVE for window A doesn't wipe the correct hover.
+	public void ClearMouseHoverWindow(SDL3Window leaving)
+	{
+		mMouse.ClearMouseHoverWindow(leaving);
+	}
+
+	/// Handles an SDL event, routing it to the appropriate input device.
+	public void HandleEvent(SDL_Event* e)
+	{
+		switch ((SDL_EventType)e.type)
+		{
+		case .SDL_EVENT_KEY_DOWN, .SDL_EVENT_KEY_UP:
+			mKeyboard.HandleKeyEvent(&e.key);
+
+		case .SDL_EVENT_TEXT_INPUT:
+			mKeyboard.HandleTextInput(&e.text);
+
+		case .SDL_EVENT_MOUSE_MOTION:
+			mMouse.HandleMotionEvent(&e.motion);
+
+		case .SDL_EVENT_MOUSE_BUTTON_DOWN, .SDL_EVENT_MOUSE_BUTTON_UP:
+			mMouse.HandleButtonEvent(&e.button);
+
+		case .SDL_EVENT_MOUSE_WHEEL:
+			mMouse.HandleWheelEvent(&e.wheel);
+
+		case .SDL_EVENT_FINGER_DOWN:
+			mTouch.HandleFingerDown(&e.tfinger);
+
+		case .SDL_EVENT_FINGER_UP:
+			mTouch.HandleFingerUp(&e.tfinger);
+
+		case .SDL_EVENT_FINGER_MOTION:
+			mTouch.HandleFingerMotion(&e.tfinger);
+
+		case .SDL_EVENT_GAMEPAD_ADDED:
+			HandleGamepadAdded(e.gdevice.which);
+
+		case .SDL_EVENT_GAMEPAD_REMOVED:
+			HandleGamepadRemoved(e.gdevice.which);
+
+		case .SDL_EVENT_GAMEPAD_BUTTON_DOWN, .SDL_EVENT_GAMEPAD_BUTTON_UP:
+			HandleGamepadButton(&e.gbutton);
+
+		case .SDL_EVENT_GAMEPAD_AXIS_MOTION:
+			HandleGamepadAxis(&e.gaxis);
+
+		case .SDL_EVENT_DROP_FILE:
+			HandleFileDrop(&e.drop);
+
+		default:
+		}
+	}
+
+	private void HandleGamepadAdded(SDL_JoystickID instanceId)
+	{
+		// Find an empty slot
+		for (let gamepad in mGamepads)
+		{
+			if (!gamepad.Connected)
+			{
+				gamepad.Open(instanceId);
+				break;
+			}
+		}
+	}
+
+	private void HandleGamepadRemoved(SDL_JoystickID instanceId)
+	{
+		for (let gamepad in mGamepads)
+		{
+			if (gamepad.Connected && gamepad.InstanceID == instanceId)
+			{
+				gamepad.Close();
+				break;
+			}
+		}
+	}
+
+	private void HandleGamepadButton(SDL_GamepadButtonEvent* e)
+	{
+		for (let gamepad in mGamepads)
+		{
+			if (gamepad.Connected && gamepad.InstanceID == e.which)
+			{
+				gamepad.HandleButtonEvent(e);
+				break;
+			}
+		}
+	}
+
+	private void HandleGamepadAxis(SDL_GamepadAxisEvent* e)
+	{
+		for (let gamepad in mGamepads)
+		{
+			if (gamepad.Connected && gamepad.InstanceID == e.which)
+			{
+				gamepad.HandleAxisEvent(e);
+				break;
+			}
+		}
+	}
+
+	private void HandleFileDrop(SDL_DropEvent* e)
+	{
+		if (e.data != null)
+		{
+			let path = new String(StringView(e.data));
+			mDroppedFiles.Add(.() { Path = path, X = e.x, Y = e.y });
+		}
+	}
+
+	/// Opens any gamepads that are already connected at startup.
+	public void InitializeGamepads()
+	{
+		int32 count = 0;
+		let gamepads = SDL_GetGamepads(&count);
+		if (gamepads != null && count > 0)
+		{
+			for (int32 i = 0; i < count && i < MaxGamepads; i++)
+			{
+				mGamepads[i].Open(gamepads[i]);
+			}
+		}
+	}
+}

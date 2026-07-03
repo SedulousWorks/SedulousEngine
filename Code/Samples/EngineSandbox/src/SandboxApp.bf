@@ -17,7 +17,7 @@ using Sedulous.Materials;
 using Sedulous.Resources;
 using Sedulous.Images.STB;
 using Sedulous.Renderer.Debug;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 using Sedulous.Models;
 using Sedulous.Models.GLTF;
 using Sedulous.Geometry.Tooling;
@@ -39,7 +39,7 @@ using Sedulous.Physics;
 
 using Sedulous.Engine.UI;
 using Sedulous.UI;
-using Sedulous.Shell;
+using Sedulous.Platform;
 using Sedulous.Images;
 
 class SandboxApp : DefaultApplication
@@ -1251,12 +1251,12 @@ class SandboxApp : DefaultApplication
 		let uiSub = host.Ctx.GetSubsystem<EngineUISubsystem>();
 
 		// F1 toggles UI debug bounds overlay.
-		if (host.Shell.InputManager.Keyboard.IsKeyPressed(.F1) && uiSub?.UIContext != null)
+		if (host.Platform.InputManager.Keyboard.IsKeyPressed(.F1) && uiSub?.UIContext != null)
 			uiSub.UIContext.DebugSettings.ShowBounds = !uiSub.UIContext.DebugSettings.ShowBounds;
 
 		// F12: capture screenshot
 		// F11: capture screenshot
-		if (host.Shell.InputManager.Keyboard.IsKeyPressed(.F11))
+		if (host.Platform.InputManager.Keyboard.IsKeyPressed(.F11))
 		{
 			let path = scope String();
 			System.IO.Path.InternalCombine(path, AssetCacheDirectory, scope $"screenshot_{System.DateTime.Now.Ticks}.png");
@@ -1291,7 +1291,7 @@ class SandboxApp : DefaultApplication
 		dbg.DrawAxis(Matrix.Identity, 1.5f);
 
 		// M key: play next RPG sound effect
-		if (host.Shell.InputManager.Keyboard.IsKeyPressed(.M) && mOneShotClips.Count > 0)
+		if (host.Platform.InputManager.Keyboard.IsKeyPressed(.M) && mOneShotClips.Count > 0)
 		{
 			let audioSub = host.Ctx.GetSubsystem<AudioSubsystem>();
 			if (audioSub != null)
@@ -1304,8 +1304,8 @@ class SandboxApp : DefaultApplication
 		// Navigation: 1=add agent, 2=remove, left-click=move target
 		if (mScene != null)
 		{
-			let keyboard = host.Shell.InputManager.Keyboard;
-			let mouse = host.Shell.InputManager.Mouse;
+			let keyboard = host.Platform.InputManager.Keyboard;
+			let mouse = host.Platform.InputManager.Mouse;
 			let navMgr = mScene.GetModule<NavigationComponentManager>();
 
 			if (navMgr != null)
@@ -1577,8 +1577,8 @@ class SandboxApp : DefaultApplication
 
 	private void UpdateCamera(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime, bool uiHovered = false)
 	{
-		let keyboard = host.Shell.InputManager.Keyboard;
-		let mouse = host.Shell.InputManager.Mouse;
+		let keyboard = host.Platform.InputManager.Keyboard;
+		let mouse = host.Platform.InputManager.Mouse;
 
 		// Escape exits.
 		if (keyboard.IsKeyPressed(.Escape))

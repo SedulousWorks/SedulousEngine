@@ -25,7 +25,7 @@ using Sedulous.Editor.Core;
 ///
 /// Keyboard / gamepad routing isn't wired here yet - `IViewportInputHandler`
 /// only declares mouse callbacks. The editor will need to either capture
-/// shell keyboard while the viewport is focused, or extend the viewport
+/// platform keyboard while the viewport is focused, or extend the viewport
 /// input interface, before TD's keyboard shortcuts (Space to start wave,
 /// P to pause, etc.) become reachable inside the page.
 class GameInputHandler : IViewportInputHandler
@@ -76,7 +76,7 @@ class GameInputHandler : IViewportInputHandler
 	{
 		if (!mPage.IsRunning) return;
 		// Feed the page's mouse adapter so the module's host.Mouse
-		// reads this wheel delta. Shell IMouse.ScrollY accumulates the
+		// reads this wheel delta. Platform IMouse.ScrollY accumulates the
 		// wheel anywhere in the window, so passthrough would let
 		// scrolling inside the scene editor (or another docked panel)
 		// drive the game's camera - the bug we're avoiding here.

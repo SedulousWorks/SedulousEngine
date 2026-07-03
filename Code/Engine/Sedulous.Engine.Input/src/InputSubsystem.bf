@@ -3,10 +3,10 @@ namespace Sedulous.Engine.Input;
 using System;
 using System.Collections;
 using Sedulous.Runtime;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 
 /// Subsystem that manages input contexts and action processing.
-/// Bridges Shell.InputManager with high-level action system.
+/// Bridges Platform.InputManager with high-level action system.
 public class InputSubsystem : Subsystem
 {
 	/// Input should be processed very early, before game logic.

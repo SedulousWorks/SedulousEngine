@@ -10,7 +10,7 @@ using Sedulous.RuntimeGraphics;
 using Sedulous.Slug;
 using Sedulous.Slug.TTF;
 using Sedulous.Slug.Renderer;
-using Sedulous.Shell.SDL3;
+using Sedulous.Platform.SDL3;
 
 /// Slug GPU font rendering sample.
 /// Demonstrates resolution-independent text rendering directly from
@@ -227,13 +227,13 @@ class Program
 {
 	public static int Main(String[] args)
 	{
-		let shell = scope SDL3Shell();
-		if (shell.Initialize() case .Err)
+		let platform = scope SDL3Platform();
+		if (platform.Initialize() case .Err)
 		{
-			Console.WriteLine("ERROR: Failed to initialize shell");
+			Console.WriteLine("ERROR: Failed to initialize platform");
 			return 1;
 		}
-		defer shell.Shutdown();
+		defer platform.Shutdown();
 
 		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = true });
 		if (graphicsResult case .Err)
@@ -245,6 +245,6 @@ class Program
 		defer delete graphics;
 
 		let app = scope SlugSampleApp();
-		return ApplicationHost.RunApplication(app, shell, graphics);
+		return ApplicationHost.RunApplication(app, platform, graphics);
 	}
 }

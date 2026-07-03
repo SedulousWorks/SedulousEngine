@@ -19,7 +19,7 @@ using Sedulous.Geometry.Tooling.Resources;
 using Sedulous.Core.Mathematics;
 using Sedulous.Materials;
 using Sedulous.Resources;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 using Sedulous.Images.STB;
 using Sedulous.Images.SDL;
 using Sedulous.Textures.Resources;
@@ -358,7 +358,7 @@ class RenderStressTestApp : DefaultApplication
 	{
 		UpdateCamera(host, deltaTime);
 
-		let keyboard = host.Shell.InputManager.Keyboard;
+		let keyboard = host.Platform.InputManager.Keyboard;
 
 		// Space: add batch
 		if (keyboard.IsKeyPressed(.Space))
@@ -443,8 +443,8 @@ class RenderStressTestApp : DefaultApplication
 
 	private void UpdateCamera(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime)
 	{
-		let keyboard = host.Shell.InputManager.Keyboard;
-		let mouse = host.Shell.InputManager.Mouse;
+		let keyboard = host.Platform.InputManager.Keyboard;
+		let mouse = host.Platform.InputManager.Mouse;
 
 		if (keyboard.IsKeyPressed(.Escape))
 		{

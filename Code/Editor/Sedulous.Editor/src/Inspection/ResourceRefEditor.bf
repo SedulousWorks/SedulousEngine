@@ -6,7 +6,7 @@ using Sedulous.UI.Toolkit;
 using Sedulous.Core.Mathematics;
 using Sedulous.Resources;
 using Sedulous.Serialization;
-using Sedulous.Shell;
+using Sedulous.Platform;
 using Sedulous.VFS;
 using Sedulous.Editor.Core;
 

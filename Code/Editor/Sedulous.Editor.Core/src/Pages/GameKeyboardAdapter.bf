@@ -1,7 +1,7 @@
 namespace Sedulous.Editor.Core;
 
 using Sedulous.Core;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 
 /// IKeyboard adapter owned by a GameEditorPage. Gates polled key state
 /// on page focus so gameplay hotkeys (Space / P / Escape / etc.) only
@@ -13,19 +13,19 @@ using Sedulous.Shell.Input;
 /// unfocused: IsKeyDown / IsKeyPressed / IsKeyReleased all return false
 /// and Modifiers reports None, regardless of physical state.
 ///
-/// OnKeyEvent / OnTextInput passthrough to the shell - the page only
+/// OnKeyEvent / OnTextInput passthrough to the platform - the page only
 /// ticks module.OnUpdate while active, so subscribed handlers that
 /// only run from inside that tick are naturally scoped. (TD polls;
 /// it doesn't subscribe - if a future module subscribes expecting
 /// focus gating, EventAccessor would need its own filtering wrapper.)
 class GameKeyboardAdapter : IKeyboard
 {
-	private IKeyboard mShell;
+	private IKeyboard mPlatform;
 	private bool mFocused;
 
-	public this(IKeyboard shell)
+	public this(IKeyboard platform)
 	{
-		mShell = shell;
+		mPlatform = platform;
 	}
 
 	public bool Focused
@@ -35,17 +35,17 @@ class GameKeyboardAdapter : IKeyboard
 	}
 
 	public bool IsKeyDown(KeyCode key) =>
-		mFocused && (mShell?.IsKeyDown(key) ?? false);
+		mFocused && (mPlatform?.IsKeyDown(key) ?? false);
 
 	public bool IsKeyPressed(KeyCode key) =>
-		mFocused && (mShell?.IsKeyPressed(key) ?? false);
+		mFocused && (mPlatform?.IsKeyPressed(key) ?? false);
 
 	public bool IsKeyReleased(KeyCode key) =>
-		mFocused && (mShell?.IsKeyReleased(key) ?? false);
+		mFocused && (mPlatform?.IsKeyReleased(key) ?? false);
 
 	public KeyModifiers Modifiers =>
-		mFocused ? (mShell?.Modifiers ?? .None) : .None;
+		mFocused ? (mPlatform?.Modifiers ?? .None) : .None;
 
-	public EventAccessor<KeyEventDelegate> OnKeyEvent => mShell?.OnKeyEvent;
-	public EventAccessor<TextInputDelegate> OnTextInput => mShell?.OnTextInput;
+	public EventAccessor<KeyEventDelegate> OnKeyEvent => mPlatform?.OnKeyEvent;
+	public EventAccessor<TextInputDelegate> OnTextInput => mPlatform?.OnTextInput;
 }

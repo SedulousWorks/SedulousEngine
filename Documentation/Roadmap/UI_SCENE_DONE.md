@@ -168,11 +168,11 @@ Implementation is a one-line change per method: `return mArgs.Handled;`
 after the existing dispatch. Existing call sites that ignore the return
 value continue to work — Beef permits ignoring return values.
 
-**`UIInputHelper` chain dispatch.** Today `Update(shellInput, context,
+**`UIInputHelper` chain dispatch.** Today `Update(platformInput, context,
 deltaTime)` routes to a single context. Add a chain-aware overload:
 
 ```beef
-public void Update(IInputManager shellInput, Span<UIContext> contextChain, float deltaTime)
+public void Update(IInputManager platformInput, Span<UIContext> contextChain, float deltaTime)
 ```
 
 Existing single-context call sites continue to work via a one-element
@@ -205,7 +205,7 @@ implementation.
 
 | # | Sub-phase | Verifiable result |
 |---|---|---|
-| A | `UISceneModule` skeleton: `SceneModule` + `IPipelineOverlay` shells, VG resource fields, no rendering logic yet | Builds clean. Module can be added to a scene. `pipeline.RegisterOverlay` accepts it. |
+| A | `UISceneModule` skeleton: `SceneModule` + `IPipelineOverlay` platforms, VG resource fields, no rendering logic yet | Builds clean. Module can be added to a scene. `pipeline.RegisterOverlay` accepts it. |
 | B | VG init / teardown: `Initialize(...)` (takes device, format, frameCount, fontService, shaderSystem, sharedStyleSheet); destructor cleans up; `Root` and `UIContext` constructed | Module life cycle test: create → add to scene → destroy → no leaks. |
 | C | `Render` implementation: layout + draw via VGRenderer | Sandbox: add a Label or Button to `Root` via game code; it renders in the engine sandbox. |
 | D | `EngineUISubsystem` wiring: construct + add in `OnSceneCreated`, register with pipeline in `OnSceneReady`, unregister + delete in `OnSceneDestroyed` | Sandbox scene has working HUD; closing scene doesn't leak. |
@@ -228,8 +228,8 @@ implementation.
 
 **Modified (input — sub-phases E/F/G):**
 - `Code/Foundation/Sedulous.UI/src/Input/InputManager.bf` — change the seven `Process*` methods to return `bool` (the post-dispatch `args.Handled`). Existing call sites that ignore the return value remain valid.
-- `Code/Foundation/Sedulous.UI.Shell/src/UIInputHelper.bf`:
-  - Add `Update(IInputManager shellInput, Span<UIContext> contextChain, float deltaTime)` overload
+- `Code/Foundation/Sedulous.UI.Platform/src/UIInputHelper.bf`:
+  - Add `Update(IInputManager platformInput, Span<UIContext> contextChain, float deltaTime)` overload
   - Mouse / keyboard / text / gamepad helpers walk the chain, stop on first `Handled`
   - Existing single-context `Update` stays as a one-element-chain wrapper
 

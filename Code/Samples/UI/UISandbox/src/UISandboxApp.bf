@@ -7,8 +7,8 @@ using Sedulous.Runtime.Client;
 using Sedulous.RuntimeGraphics;
 using Sedulous.Core.Mathematics;
 using Sedulous.RHI;
-using Sedulous.Shell;
-using Sedulous.Shell.Input;
+using Sedulous.Platform;
+using Sedulous.Platform.Input;
 using Sedulous.UI;
 using Sedulous.UI.Runtime;
 using Sedulous.UI.IO;
@@ -57,7 +57,7 @@ class UISandboxApp : IApplication, IDockableWindowHost
 
 	private Label mThemeLabel;
 
-	private Sedulous.Shell.IWindow mDragSourceWindow; // OS window being dragged cross-window
+	private Sedulous.Platform.IWindow mDragSourceWindow; // OS window being dragged cross-window
 	private float mDragWindowOffsetX;
 	private float mDragWindowOffsetY;
 	private int32 mRepeatCount;
@@ -65,7 +65,7 @@ class UISandboxApp : IApplication, IDockableWindowHost
 	// Stored references from Configure/OnStartup
 	private IApplicationHost mHost;
 	private IDevice mDevice;
-	private IShell mShell;
+	private IPlatform mPlatform;
 	private String mBuiltInAssetDirectory = new .() ~ delete _;
 	private FileSystemMount mBuiltinMount ~ delete _;
 
@@ -86,13 +86,13 @@ class UISandboxApp : IApplication, IDockableWindowHost
 	{
 		mHost = host;
 		mDevice = host.Graphics.Raw;
-		mShell = host.Shell;
+		mPlatform = host.Platform;
 
 		DiscoverAssets();
 		mBuiltinMount = new FileSystemMount(mBuiltInAssetDirectory);
 
 		// Subscribe to window events for secondary window close handling
-		mShell.WindowManager.OnWindowEvent.Subscribe(new => HandleWindowEvent);
+		mPlatform.WindowManager.OnWindowEvent.Subscribe(new => HandleWindowEvent);
 	}
 
 	public void OnStartup(IApplicationHost host)
@@ -131,7 +131,7 @@ class UISandboxApp : IApplication, IDockableWindowHost
 		if (mUI.InitializeRendering(
 			mUIContext, mRoot,
 			mDevice, rw.Swap.Format, (int32)rw.Swap.BufferCount,
-			scope StringView[](shaderPath), mShell, rw.Window, mBuiltinMount) case .Err)
+			scope StringView[](shaderPath), mPlatform, rw.Window, mBuiltinMount) case .Err)
 		{
 			Console.WriteLine("ERROR: Failed to initialize UI2 rendering");
 			return;
@@ -1353,8 +1353,8 @@ class UISandboxApp : IApplication, IDockableWindowHost
 		mRepeatBtn?.UpdateRepeat(deltaTime);
 
 		// Multi-window input routing.
-		let mouse = mShell?.InputManager?.Mouse;
-		let kb = mShell?.InputManager?.Keyboard;
+		let mouse = mPlatform?.InputManager?.Mouse;
+		let kb = mPlatform?.InputManager?.Keyboard;
 		let inputHelper = mUI?.InputHelper;
 
 		if (mouse != null && inputHelper != null)
@@ -1422,7 +1422,7 @@ class UISandboxApp : IApplication, IDockableWindowHost
 			}
 		}
 
-		let keyboard = mShell.InputManager.Keyboard;
+		let keyboard = mPlatform.InputManager.Keyboard;
 
 		if (keyboard.IsKeyPressed(.Escape))
 			host.RequestExit();
@@ -1883,7 +1883,7 @@ class UISandboxApp : IApplication, IDockableWindowHost
 	public void CreateDockableWindow(View dockableWindow, float width, float height,
 		float screenX, float screenY, delegate void(View) onCloseRequested = null)
 	{
-		let settings = Sedulous.Shell.WindowSettings()
+		let settings = Sedulous.Platform.WindowSettings()
 		{
 			Title = scope .("Float"),
 			Width = (int32)width,
@@ -1980,7 +1980,7 @@ class UISandboxApp : IApplication, IDockableWindowHost
 
 	public void GetGlobalMousePosition(out float globalX, out float globalY)
 	{
-		let mouse = mShell.InputManager.Mouse;
+		let mouse = mPlatform.InputManager.Mouse;
 		if (mouse != null)
 		{
 			globalX = mouse.GlobalX;

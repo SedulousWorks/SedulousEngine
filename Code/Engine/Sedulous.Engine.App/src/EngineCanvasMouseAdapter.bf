@@ -2,9 +2,9 @@ namespace Sedulous.Engine.App;
 
 using Sedulous.Core;
 using Sedulous.Core.Mathematics;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 
-/// IMouse adapter that wraps the shell mouse and applies a window-pixel
+/// IMouse adapter that wraps the platform mouse and applies a window-pixel
 /// -> canvas-pixel transform to `X` / `Y` on every read. Standalone
 /// EngineApplication uses this for `IApplicationHost.Mouse` so module
 /// code (raycasts, tower placement, custom hit-tests) consumes
@@ -22,17 +22,17 @@ using Sedulous.Shell.Input;
 /// same downstream contract: `host.Mouse.X/Y` reads in target-canvas
 /// pixels.
 ///
-/// Buttons / scroll / events passthrough to the shell mouse - only
+/// Buttons / scroll / events passthrough to the platform mouse - only
 /// position is remapped. RelativeMode + cursor visibility passthrough
 /// so platform behavior stays consistent.
 class EngineCanvasMouseAdapter : IMouse
 {
-	private IMouse mShell;
+	private IMouse mPlatform;
 	private delegate Vector2(Vector2) mWindowToCanvas;
 
-	public this(IMouse shell)
+	public this(IMouse platform)
 	{
-		mShell = shell;
+		mPlatform = platform;
 	}
 
 	/// Replace the window-pixel -> canvas-pixel transform. Owned by
@@ -53,8 +53,8 @@ class EngineCanvasMouseAdapter : IMouse
 	{
 		get
 		{
-			if (mShell == null) return .Zero;
-			let raw = Vector2(mShell.X, mShell.Y);
+			if (mPlatform == null) return .Zero;
+			let raw = Vector2(mPlatform.X, mPlatform.Y);
 			if (mWindowToCanvas == null) return raw;
 			return mWindowToCanvas(raw);
 		}
@@ -62,40 +62,40 @@ class EngineCanvasMouseAdapter : IMouse
 
 	public float X => Transformed.X;
 	public float Y => Transformed.Y;
-	public float GlobalX => mShell?.GlobalX ?? 0;
-	public float GlobalY => mShell?.GlobalY ?? 0;
-	public float DeltaX => mShell?.DeltaX ?? 0;
-	public float DeltaY => mShell?.DeltaY ?? 0;
-	public Sedulous.Shell.IWindow MouseHoverWindow => mShell?.MouseHoverWindow;
-	public float ScrollX => mShell?.ScrollX ?? 0;
-	public float ScrollY => mShell?.ScrollY ?? 0;
+	public float GlobalX => mPlatform?.GlobalX ?? 0;
+	public float GlobalY => mPlatform?.GlobalY ?? 0;
+	public float DeltaX => mPlatform?.DeltaX ?? 0;
+	public float DeltaY => mPlatform?.DeltaY ?? 0;
+	public Sedulous.Platform.IWindow MouseHoverWindow => mPlatform?.MouseHoverWindow;
+	public float ScrollX => mPlatform?.ScrollX ?? 0;
+	public float ScrollY => mPlatform?.ScrollY ?? 0;
 
 	public bool IsButtonDown(MouseButton button) =>
-		(mShell?.IsButtonDown(button)) ?? false;
+		(mPlatform?.IsButtonDown(button)) ?? false;
 	public bool IsButtonPressed(MouseButton button) =>
-		(mShell?.IsButtonPressed(button)) ?? false;
+		(mPlatform?.IsButtonPressed(button)) ?? false;
 	public bool IsButtonReleased(MouseButton button) =>
-		(mShell?.IsButtonReleased(button)) ?? false;
+		(mPlatform?.IsButtonReleased(button)) ?? false;
 
 	public bool RelativeMode
 	{
-		get => mShell?.RelativeMode ?? false;
-		set { if (mShell != null) mShell.RelativeMode = value; }
+		get => mPlatform?.RelativeMode ?? false;
+		set { if (mPlatform != null) mPlatform.RelativeMode = value; }
 	}
 
 	public bool Visible
 	{
-		get => mShell?.Visible ?? true;
-		set { if (mShell != null) mShell.Visible = value; }
+		get => mPlatform?.Visible ?? true;
+		set { if (mPlatform != null) mPlatform.Visible = value; }
 	}
 
 	public CursorType Cursor
 	{
-		get => mShell?.Cursor ?? .Default;
-		set { if (mShell != null) mShell.Cursor = value; }
+		get => mPlatform?.Cursor ?? .Default;
+		set { if (mPlatform != null) mPlatform.Cursor = value; }
 	}
 
-	public EventAccessor<MouseMoveDelegate> OnMove => mShell?.OnMove;
-	public EventAccessor<MouseButtonDelegate> OnButton => mShell?.OnButton;
-	public EventAccessor<MouseScrollDelegate> OnScroll => mShell?.OnScroll;
+	public EventAccessor<MouseMoveDelegate> OnMove => mPlatform?.OnMove;
+	public EventAccessor<MouseButtonDelegate> OnButton => mPlatform?.OnButton;
+	public EventAccessor<MouseScrollDelegate> OnScroll => mPlatform?.OnScroll;
 }

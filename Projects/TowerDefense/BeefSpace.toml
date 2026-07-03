@@ -30,8 +30,8 @@ recastnavigation-Beef = {Path = "../../Dependencies/recastnavigation-Beef"}
 "Sedulous.Core.Mathematics.Serialization" = {Path = "../../Code/Foundation/Sedulous.Core.Mathematics.Serialization"}
 "Sedulous.Inspection" = {Path = "../../Code/Foundation/Sedulous.Inspection"}
 "Sedulous.Profiler" = {Path = "../../Code/Foundation/Sedulous.Profiler"}
-"Sedulous.Shell" = {Path = "../../Code/Foundation/Sedulous.Shell"}
-"Sedulous.Shell.SDL3" = {Path = "../../Code/Foundation/Sedulous.Shell.SDL3"}
+"Sedulous.Platform" = {Path = "../../Code/Foundation/Sedulous.Platform"}
+"Sedulous.Platform.SDL3" = {Path = "../../Code/Foundation/Sedulous.Platform.SDL3"}
 "Sedulous.Runtime" = {Path = "../../Code/Foundation/Sedulous.Runtime"}
 "Sedulous.Runtime.Client" = {Path = "../../Code/Foundation/Sedulous.Runtime.Client"}
 "Sedulous.Runtime.Graphics" = {Path = "../../Code/Foundation/Sedulous.Runtime.Graphics"}
@@ -95,7 +95,7 @@ recastnavigation-Beef = {Path = "../../Dependencies/recastnavigation-Beef"}
 "Sedulous.Fonts.Resources" = {Path = "../../Code/Foundation/Sedulous.Fonts.Resources"}
 "Sedulous.UI" = {Path = "../../Code/Foundation/Sedulous.UI"}
 "Sedulous.UI.Runtime" = {Path = "../../Code/Foundation/Sedulous.UI.Runtime"}
-"Sedulous.UI.Shell" = {Path = "../../Code/Foundation/Sedulous.UI.Shell"}
+"Sedulous.UI.Platform" = {Path = "../../Code/Foundation/Sedulous.UI.Platform"}
 "Sedulous.UI.IO" = {Path = "../../Code/Foundation/Sedulous.UI.IO"}
 "Sedulous.UI.Toolkit" = {Path = "../../Code/Foundation/Sedulous.UI.Toolkit"}
 "Sedulous.UI.Viewport" = {Path = "../../Code/Foundation/Sedulous.UI.Viewport"}
@@ -125,7 +125,7 @@ recastnavigation-Beef = {Path = "../../Dependencies/recastnavigation-Beef"}
 Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
 Foundation = []
 "Foundation/Core" = ["Sedulous.Core", "Sedulous.Core.Collections", "Sedulous.Core.Logging", "Sedulous.Core.Mathematics", "Sedulous.Core.Mathematics.Serialization", "Sedulous.Inspection", "Sedulous.Profiler"]
-"Foundation/Shell" = ["Sedulous.Shell", "Sedulous.Shell.SDL3"]
+"Foundation/Platform" = ["Sedulous.Platform", "Sedulous.Platform.SDL3"]
 "Foundation/Runtime" = ["Sedulous.Runtime", "Sedulous.Runtime.Client", "Sedulous.Runtime.Graphics", "Sedulous.Jobs", "Sedulous.Resources", "Sedulous.VFS", "Sedulous.VFS.Disk"]
 "Foundation/Serialization" = ["Sedulous.Serialization", "Sedulous.Serialization.OpenDDL", "Sedulous.Serialization.Xml", "Sedulous.OpenDDL", "Sedulous.Xml"]
 "Foundation/Messaging" = ["Sedulous.Messaging", "Sedulous.Messaging.Runtime"]
@@ -137,7 +137,7 @@ Foundation = []
 "Foundation/Audio" = ["Sedulous.Audio", "Sedulous.Audio.Decoders", "Sedulous.Audio.SDL3", "Sedulous.Audio.Resources", "Sedulous.Audio.Importer", "Sedulous.Audio.Effects"]
 "Foundation/Physics" = ["Sedulous.Physics", "Sedulous.Physics.Jolt"]
 "Foundation/Fonts" = ["Sedulous.Fonts", "Sedulous.Fonts.IO", "Sedulous.Fonts.TTF", "Sedulous.Fonts.Baked", "Sedulous.Fonts.Importer", "Sedulous.Fonts.Resources"]
-"Foundation/UI" = ["Sedulous.UI", "Sedulous.UI.Runtime", "Sedulous.UI.Shell", "Sedulous.UI.IO", "Sedulous.UI.Toolkit", "Sedulous.UI.Viewport"]
+"Foundation/UI" = ["Sedulous.UI", "Sedulous.UI.Runtime", "Sedulous.UI.Platform", "Sedulous.UI.IO", "Sedulous.UI.Toolkit", "Sedulous.UI.Viewport"]
 "Foundation/VG" = ["Sedulous.VG", "Sedulous.VG.SVG", "Sedulous.VG.Renderer"]
 "Foundation/Drawing" = ["Sedulous.Drawing", "Sedulous.Drawing.Renderer"]
 Engine = ["Sedulous.Engine.Core", "Sedulous.Engine.App", "Sedulous.Engine.DefaultApp", "Sedulous.Engine.Input", "Sedulous.Engine.Physics", "Sedulous.Engine.Audio", "Sedulous.Engine.Animation", "Sedulous.Engine.Navigation", "Sedulous.Engine.Render", "Sedulous.Engine.UI"]

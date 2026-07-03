@@ -7,8 +7,8 @@ using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
 using Sedulous.RuntimeGraphics;
 using Sedulous.Engine.App;
-using Sedulous.Shell;
-using Sedulous.Shell.Input;
+using Sedulous.Platform;
+using Sedulous.Platform.Input;
 using Sedulous.Shaders;
 using Sedulous.Fonts;
 using Sedulous.Fonts.TTF;
@@ -16,7 +16,7 @@ using Sedulous.Fonts.Resources;
 using Sedulous.VG;
 using Sedulous.VG.Renderer;
 using Sedulous.UI;
-using Sedulous.UI.Shell;
+using Sedulous.UI.Platform;
 using Sedulous.UI.Toolkit;
 using Sedulous.Core.Mathematics;
 using Sedulous.Editor.Core;
@@ -56,7 +56,7 @@ class EditorApplication : IApplication, IDockableWindowHost
 	// Stored references from Configure/OnStartup
 	private Sedulous.Runtime.Client.IApplicationHost mApplicationHost;
 	private IDevice mDevice;
-	private IShell mShell;
+	private IPlatform mPlatform;
 	private GraphicsDevice mGraphicsDevice;
 	private IWindow mMainWindow; // main OS window (from host.MainWindow.Window)
 
@@ -112,8 +112,8 @@ class EditorApplication : IApplication, IDockableWindowHost
 	/// per-project content directories.
 	public StringView RuntimeDirectory => mRuntimeDirectory;
 
-	/// The platform shell (windowing, input, clipboard).
-	public IShell Shell => mShell;
+	/// The platform (windowing, input, clipboard).
+	public IPlatform Platform => mPlatform;
 
 	/// The RHI device for GPU operations.
 	public IDevice Device => mDevice;
@@ -152,7 +152,7 @@ class EditorApplication : IApplication, IDockableWindowHost
 	/// playing. EditorApplicationHost uses this to route the module's
 	/// host.Mouse / Keyboard / GetGamepad to the page's viewport-scoped
 	/// adapters; with no running game, the host falls back to direct
-	/// shell devices (Sub-phase A behavior).
+	/// platform devices.
 	public GameEditorPage RunningGamePage
 	{
 		get
@@ -207,7 +207,7 @@ class EditorApplication : IApplication, IDockableWindowHost
 	private ThumbnailRenderer mThumbnailRenderer ~ delete _;
 	private VGExternalTextureCache mExternalTextureCache = new .() ~ delete _;
 	private ShaderSystem mShaderSystem;
-	private ShellClipboardAdapter mClipboard ~ delete _;
+	private PlatformClipboardAdapter mClipboard ~ delete _;
 	private UIInputHelper mInputHelper = new .() ~ delete _;
 	private float mFrameDelta;
 
@@ -266,7 +266,7 @@ class EditorApplication : IApplication, IDockableWindowHost
 	{
 		mApplicationHost = host;
 		mDevice = host.Graphics.Raw;
-		mShell = host.Shell;
+		mPlatform = host.Platform;
 		mGraphicsDevice = host.Graphics;
 		mMainWindow = host.MainWindow.Window;
 
@@ -293,7 +293,7 @@ class EditorApplication : IApplication, IDockableWindowHost
 		mResourceSystem.Mount("builtin", mBuiltinMount);
 
 		// Subscribe to window events for secondary window close handling
-		mShell.WindowManager.OnWindowEvent.Subscribe(new => HandleWindowEvent);
+		mPlatform.WindowManager.OnWindowEvent.Subscribe(new => HandleWindowEvent);
 	}
 
 	public void OnStartup(Sedulous.Runtime.Client.IApplicationHost host)
@@ -339,7 +339,7 @@ class EditorApplication : IApplication, IDockableWindowHost
 		mVGRenderer.SetExternalCache(mExternalTextureCache);
 
 		// Clipboard
-		mClipboard = new ShellClipboardAdapter(mShell.Clipboard);
+		mClipboard = new PlatformClipboardAdapter(mPlatform.Clipboard);
 
 		// Editor icons (shared SVG drawables)
 		EditorIcons.Initialize();
@@ -421,9 +421,9 @@ class EditorApplication : IApplication, IDockableWindowHost
 		mEditorContext.Project = mProject;
 		mEditorContext.AssetCache = new EditorAssetCache();
 		mEditorContext.AssetCache.SetSerializerProvider(ResourceSystem.SerializerProvider);
-		mEditorContext.DialogService = mShell.Dialogs;
+		mEditorContext.DialogService = mPlatform.Dialogs;
 		mEditorContext.Thumbnails = new ThumbnailService(mEditorContext, mEditorLogger);
-		mEditorContext.Shell = mShell;
+		mEditorContext.Platform = mPlatform;
 		mEditorContext.ResourceSystem = mResourceSystem;
 		mEditorContext.App = mApp;
 		mEditorContext.ApplicationHost = mEditorHost;
@@ -497,22 +497,22 @@ class EditorApplication : IApplication, IDockableWindowHost
 
 		// Register built-in page factories
 		mEditorContext.RegisterPageFactory(new SceneEditorPageFactory(
-			mDevice, mVGRenderer, mShell.InputManager.Keyboard, mTypeRegistry));
+			mDevice, mVGRenderer, mPlatform.InputManager.Keyboard, mTypeRegistry));
 		mEditorContext.RegisterPageFactory(new PrefabEditorPageFactory(
-			mDevice, mVGRenderer, mShell.InputManager.Keyboard, mTypeRegistry));
+			mDevice, mVGRenderer, mPlatform.InputManager.Keyboard, mTypeRegistry));
 		mEditorContext.RegisterPageFactory(new TextureEditorPageFactory());
 		mEditorContext.RegisterPageFactory(new ImageEditorPageFactory());
-		mEditorContext.RegisterPageFactory(new MaterialEditorPageFactory(mDevice, mVGRenderer, mShell.InputManager.Keyboard));
-		mEditorContext.RegisterPageFactory(new MeshEditorPageFactory(mDevice, mVGRenderer, mShell.InputManager.Keyboard));
-		mEditorContext.RegisterPageFactory(new SkinnedMeshEditorPageFactory(mDevice, mVGRenderer, mShell.InputManager.Keyboard));
-		mEditorContext.RegisterPageFactory(new AnimationEditorPageFactory(mDevice, mVGRenderer, mShell.InputManager.Keyboard));
-		mEditorContext.RegisterPageFactory(new SkeletonEditorPageFactory(mDevice, mVGRenderer, mShell.InputManager.Keyboard));
-		mEditorContext.RegisterPageFactory(new AnimGraphEditorPageFactory(mDevice, mVGRenderer, mShell.InputManager.Keyboard));
+		mEditorContext.RegisterPageFactory(new MaterialEditorPageFactory(mDevice, mVGRenderer, mPlatform.InputManager.Keyboard));
+		mEditorContext.RegisterPageFactory(new MeshEditorPageFactory(mDevice, mVGRenderer, mPlatform.InputManager.Keyboard));
+		mEditorContext.RegisterPageFactory(new SkinnedMeshEditorPageFactory(mDevice, mVGRenderer, mPlatform.InputManager.Keyboard));
+		mEditorContext.RegisterPageFactory(new AnimationEditorPageFactory(mDevice, mVGRenderer, mPlatform.InputManager.Keyboard));
+		mEditorContext.RegisterPageFactory(new SkeletonEditorPageFactory(mDevice, mVGRenderer, mPlatform.InputManager.Keyboard));
+		mEditorContext.RegisterPageFactory(new AnimGraphEditorPageFactory(mDevice, mVGRenderer, mPlatform.InputManager.Keyboard));
 		mEditorContext.RegisterPageFactory(new AudioClipEditorPageFactory());
 		mEditorContext.RegisterPageFactory(new SoundCueEditorPageFactory());
 		mEditorContext.RegisterPageFactory(new FontEditorPageFactory());
-		mEditorContext.RegisterPageFactory(new PropAnimEditorPageFactory(mDevice, mVGRenderer, mShell.InputManager.Keyboard, mTypeRegistry));
-		mEditorContext.RegisterPageFactory(new ParticleEditorPageFactory(mDevice, mVGRenderer, mShell.InputManager.Keyboard));
+		mEditorContext.RegisterPageFactory(new PropAnimEditorPageFactory(mDevice, mVGRenderer, mPlatform.InputManager.Keyboard, mTypeRegistry));
+		mEditorContext.RegisterPageFactory(new ParticleEditorPageFactory(mDevice, mVGRenderer, mPlatform.InputManager.Keyboard));
 
 		// Register built-in gizmo renderers
 		mEditorContext.RegisterGizmoRenderer(typeof(LightComponent), new LightGizmoRenderer());
@@ -581,7 +581,7 @@ class EditorApplication : IApplication, IDockableWindowHost
 
 		let newBtn = new Button("New Project...");
 		newBtn.OnClick.Add(new (b) => {
-			mShell.Dialogs.ShowFolderDialog(new (paths) => {
+			mPlatform.Dialogs.ShowFolderDialog(new (paths) => {
 				if (paths.Length > 0 && paths[0].Length > 0)
 				{
 					let path = scope String(paths[0]);
@@ -595,7 +595,7 @@ class EditorApplication : IApplication, IDockableWindowHost
 
 		let openBtn = new Button("Open Project...");
 		openBtn.OnClick.Add(new (b) => {
-			mShell.Dialogs.ShowFolderDialog(new (paths) => {
+			mPlatform.Dialogs.ShowFolderDialog(new (paths) => {
 				if (paths.Length > 0 && paths[0].Length > 0)
 					OpenProject(paths[0]);
 			}, default, mMainWindow);
@@ -975,7 +975,7 @@ class EditorApplication : IApplication, IDockableWindowHost
 		if (mProject.ProjectDirectory.Length > 0)
 			defaultPath.Set(mProject.ProjectDirectory);
 
-		mShell.Dialogs.ShowOpenFileDialog(
+		mPlatform.Dialogs.ShowOpenFileDialog(
 			new (paths) => {
 				if (paths.Length > 0)
 					OpenSceneFile(paths[0]);
@@ -1017,7 +1017,7 @@ class EditorApplication : IApplication, IDockableWindowHost
 
 		let filter = scope String()..AppendF("*{}", ext);
 
-		mShell.Dialogs.ShowSaveFileDialog(
+		mPlatform.Dialogs.ShowSaveFileDialog(
 			new (paths) => {
 				if (paths.Length > 0)
 				{
@@ -1313,7 +1313,7 @@ class EditorApplication : IApplication, IDockableWindowHost
 		mRuntimeContext.RegisterSubsystem(new NavigationSubsystem());
 		let uiSub = new Sedulous.Engine.UI.EngineUISubsystem();
 		uiSub.Device = mDevice;
-		uiSub.Shell = mShell;
+		uiSub.Platform = mPlatform;
 		uiSub.ShaderSystem = mShaderSystem;
 		uiSub.OutputFormat = .RGBA16Float;
 		uiSub.FontService = mFontService;
@@ -1322,7 +1322,7 @@ class EditorApplication : IApplication, IDockableWindowHost
 
 	/// Tweaks subsystem properties for editor hosting after the module's
 	/// Configure has registered them. Sets editor-specific values that
-	/// differ from standalone defaults (e.g., PollShellInput = false,
+	/// differ from standalone defaults (e.g., PollPlatformInput = false,
 	/// viewport-scoped render size).
 	private void ApplyEditorSubsystemOverrides()
 	{
@@ -1349,7 +1349,7 @@ class EditorApplication : IApplication, IDockableWindowHost
 		if (uiSub != null)
 		{
 			uiSub.Device = mDevice;
-			uiSub.Shell = mShell;
+			uiSub.Platform = mPlatform;
 			uiSub.ShaderSystem = mShaderSystem;
 			uiSub.RenderSize = .((float)mMainWindow.Width, (float)mMainWindow.Height);
 			uiSub.DpiScale = mMainWindow.ContentScale;
@@ -1357,8 +1357,8 @@ class EditorApplication : IApplication, IDockableWindowHost
 			// (RGBA16Float/HDR) - pipelines must match that format.
 			uiSub.OutputFormat = .RGBA16Float;
 			// Input flows through GameEditorPage's viewport handler, not
-			// the subsystem's own shell polling.
-			uiSub.PollShellInput = false;
+			// the subsystem's own platform polling.
+			uiSub.PollPlatformInput = false;
 			uiSub.FontService = mFontService;
 			mRuntimeUISub = uiSub;
 		}
@@ -1516,7 +1516,7 @@ class EditorApplication : IApplication, IDockableWindowHost
 
 		let sceneRenderer = mRuntimeContext.GetSubsystemByInterface<ISceneRenderer>();
 		let content = ScenePageBuilder.Build(page, mEditorContext, mDevice, mVGRenderer,
-			sceneRenderer, mShell.InputManager.Keyboard);
+			sceneRenderer, mPlatform.InputManager.Keyboard);
 		page.SetContentView(content);
 
 		mEditorContext.PageManager.AddPage(page);
@@ -1535,8 +1535,8 @@ class EditorApplication : IApplication, IDockableWindowHost
 
 		if (mUIContext == null) return;
 
-		let mouse = mShell.InputManager.Mouse;
-		let keyboard = mShell.InputManager.Keyboard;
+		let mouse = mPlatform.InputManager.Mouse;
+		let keyboard = mPlatform.InputManager.Keyboard;
 
 		// F8 toggles UI debug overlay (all options at once).
 		if (keyboard != null && keyboard.IsKeyPressed(.F8))
@@ -1772,7 +1772,7 @@ class EditorApplication : IApplication, IDockableWindowHost
 
 	private void ProcessFileDrops()
 	{
-		let input = mShell.InputManager;
+		let input = mPlatform.InputManager;
 		if (input.DroppedFileCount == 0 || mAssetBrowserPanel == null) return;
 
 		let panelView = mAssetBrowserPanel.ContentView;
@@ -1955,7 +1955,7 @@ class EditorApplication : IApplication, IDockableWindowHost
 	public void CreateDockableWindow(View dockableWindow, float width, float height,
 		float screenX, float screenY, delegate void(View) onCloseRequested = null)
 	{
-		let settings = Sedulous.Shell.WindowSettings()
+		let settings = Sedulous.Platform.WindowSettings()
 		{
 			Title = scope .("Float"),
 			Width = (int32)width,
@@ -2055,7 +2055,7 @@ class EditorApplication : IApplication, IDockableWindowHost
 
 	public void GetGlobalMousePosition(out float globalX, out float globalY)
 	{
-		let mouse = mShell.InputManager.Mouse;
+		let mouse = mPlatform.InputManager.Mouse;
 		if (mouse != null)
 		{
 			globalX = mouse.GlobalX;

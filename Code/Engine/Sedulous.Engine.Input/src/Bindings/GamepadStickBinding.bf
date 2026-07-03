@@ -1,7 +1,7 @@
 namespace Sedulous.Engine.Input;
 
 using System;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 using Sedulous.Core.Mathematics;
 
 /// Which gamepad stick to use.

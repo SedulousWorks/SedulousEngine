@@ -2,7 +2,7 @@ namespace Sedulous.Engine.Input;
 
 using System;
 using System.Collections;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 using Sedulous.Core.Mathematics;
 
 /// A named action with one or more bindings.

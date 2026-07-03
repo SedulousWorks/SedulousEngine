@@ -673,7 +673,7 @@ but is only called from code (EngineSandbox). The editor needs UI and wiring.
 - `SelectionModel` -- single/multi selection with events
 - **GridView** -- **DONE**: custom `GridContentView` in Editor.App (flow layout, virtualized)
 - `Label` -- **DONE**: added `Ellipsis` property for text truncation with "..."
-- `IShell` -- **DONE**: added `OpenURL` and `RevealInFileManager` platform abstractions
+- `IPlatform` -- **DONE**: added `OpenURL` and `RevealInFileManager` platform abstractions
 
 #### Phase 4a: Asset Browser Panel -- Core UI - DONE
 
@@ -770,7 +770,7 @@ Right-click on a file/asset in the content view:
 - ✅ **Copy GUID** -- copies GUID string to clipboard
 - **Find References** -- (stub for now, future: scan scene files for this GUID)
 - **Reimport** -- DEFERRED (only for resources with SourcePath, triggers re-import)
-- ✅ **Show in Explorer** -- opens OS file browser via `IShell.RevealInFileManager`
+- ✅ **Show in Explorer** -- opens OS file browser via `IPlatform.RevealInFileManager`
 
 **4c-2. Folder / Empty Space Context Menu**
 
@@ -1431,18 +1431,18 @@ sees it.
 - Inspector read-only during play
 - **Per-host IMouse abstraction for module gameplay input** -- module
   per-frame logic (`IApplicationModule.OnUpdate`, e.g. TD's
-  `TowerPlacement.Update`) polls `host.Shell.InputManager.Mouse`
+  `TowerPlacement.Update`) polls `host.Platform.InputManager.Mouse`
   directly for cursor position and click edges. Standalone gets
   window-space coordinates from the OS that match what the game
   renders. Inside `GameEditorPage`, the user clicks in viewport-local
   space (the RGBA16Float page texture is a sub-rect of the editor
-  window), so `Shell.Mouse.X/Y` is off by the viewport's offset/scale
+  window), so `Platform.Mouse.X/Y` is off by the viewport's offset/scale
   and clicks land on the wrong grid cell. Fix: introduce an
   `IMouse`-shaped abstraction the host provides (e.g.
-  `IApplicationHost.GameMouse`). Standalone returns the shell mouse
+  `IApplicationHost.GameMouse`). Standalone returns the platform mouse
   directly; the editor returns a viewport-fed adapter driven by
   `GameInputHandler`'s event stream. Module passes that abstraction
-  to `TowerPlacement.Update` etc. instead of polling shell. Same
+  to `TowerPlacement.Update` etc. instead of polling platform. Same
   pattern applies to gameplay code that wants raw keyboard scoped to
   the page focus.
 
@@ -1485,7 +1485,7 @@ longer build from `fsMount.RootPath` / `Directory.Enumerate*`.
     via `item.Entry`/`item.Locator` (the `MountResolver` round-trips
     collapsed); `IsMissing` computed once in the adapter from enumeration
     and read by the cell views (per-cell `File.Exists` removed).
-  - ✅ P4: `AbsolutePath` demoted to disk-only shell-reveal; "Show in
+  - ✅ P4: `AbsolutePath` demoted to disk-only platform-reveal; "Show in
     Explorer" gated on `Mount is FileSystemMount` (item/folder) and
     non-empty node path (tree).
   - ✅ P5: audited - the resolver is retained and correctly used by

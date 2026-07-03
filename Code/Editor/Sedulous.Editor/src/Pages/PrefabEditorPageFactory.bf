@@ -4,7 +4,7 @@ using System;
 using System.Collections;
 using Sedulous.RHI;
 using Sedulous.VG.Renderer;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 using Sedulous.Engine.Core;
 using Sedulous.Engine.Core.Resources;
 using Sedulous.Engine.Render;

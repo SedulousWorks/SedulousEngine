@@ -53,6 +53,6 @@ public interface IDockableWindowHost
 	/// deltas computed from per-window-local coordinates are unreliable
 	/// when the window itself follows the cursor or resizes mid-event;
 	/// global deltas stay valid regardless. Same frame as
-	/// `IMouse.GlobalX/GlobalY` in Sedulous.Shell.
+	/// `IMouse.GlobalX/GlobalY` in Sedulous.Platform.
 	void GetGlobalMousePosition(out float globalX, out float globalY);
 }

@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.RHI;
 using Sedulous.RHI.Validation;
-using Sedulous.Shell;
+using Sedulous.Platform;
 
 namespace Sedulous.RuntimeGraphics;
 

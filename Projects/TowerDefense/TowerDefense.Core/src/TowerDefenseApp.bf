@@ -288,9 +288,9 @@ class TowerDefenseApp : DefaultApplication
 		// Clean up expired particle effects
 		mParticleEffects.Update(deltaTime);
 
-		// Pull devices from the host, not shell directly. Standalone hosts
-		// Pull devices from the host, not shell directly. Standalone hosts
-		// passthrough to shell.InputManager; the editor wraps these so
+		// Pull devices from the host, not platform directly. Standalone hosts
+		// Pull devices from the host, not platform directly. Standalone hosts
+		// passthrough to platform.InputManager; the editor wraps these so
 		// the cursor coords land in the page-viewport's local space and
 		// keyboard / hotkeys gate on viewport focus.
 		let keyboard = host.Keyboard;
@@ -335,7 +335,7 @@ class TowerDefenseApp : DefaultApplication
 			if (keyboard.IsKeyPressed(.Num4)) { mTowerPlacement.SelectedType = .Turret; }
 			if (keyboard.IsKeyPressed(.Num0)) { mTowerPlacement.SelectedType = null; }
 
-			// Tower placement (mouse click on grid). Polls Shell.Mouse - in
+			// Tower placement (mouse click on grid). Polls Platform.Mouse - in
 			// the editor that's window-space coordinates, so clicks won't
 			// align with the page viewport until we abstract IMouse per
 			// host. Tracked under Editor Roadmap Phase 6.

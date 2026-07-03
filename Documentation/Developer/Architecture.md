@@ -28,7 +28,7 @@ rendering pipeline, engine subsystems, application models, and how they compose.
 │  IOverlayRenderer interface                                                 │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Foundation Layer                                                           │
-│  RHI (Vulkan, DX12)  │  Shell (SDL3)  │  VG + Fonts  │  UI + Toolkit        │
+│  RHI (Vulkan, DX12)  │  Platform (SDL3)  │  VG + Fonts  │  UI + Toolkit        │
 │  Resources  │  VFS (Disk, Pak)  │  Jobs  │  Shaders  │  Physics (Jolt)      │
 │  Audio  │  Animation  │  Core.Mathematics  │  Serialization  │  Images      │
 │  Geometry  │  Profiler                                                      │
@@ -53,8 +53,8 @@ in tools, sandboxes, and tests.
 
 | Library | Purpose |
 |---------|---------|
-| **Sedulous.Shell** | Platform abstraction - IShell, IWindow, IWindowManager, IInputManager (keyboard, mouse, gamepad, touch), IClipboard, IDialogService, CursorType, IWindowAware |
-| **Sedulous.Shell.SDL3** | SDL3 implementation of IShell (cross-platform) |
+| **Sedulous.Platform** | Platform abstraction - IPlatform, IWindow, IWindowManager, IInputManager (keyboard, mouse, gamepad, touch), IClipboard, IDialogService, CursorType, IWindowAware |
+| **Sedulous.Platform.SDL3** | SDL3 implementation of IPlatform (cross-platform) |
 
 ### Rendering Hardware Interface (RHI)
 
@@ -73,7 +73,7 @@ WebGPU-inspired but lower-level. Interface-based - backends are swappable.
 | Library | Purpose |
 |---------|---------|
 | **Sedulous.Runtime** | Context (pure subsystem lifecycle manager - no ResourceSystem/JobSystem ownership), Subsystem base class (UpdateOrder, OnInit/OnReady/OnPrepareShutdown/OnShutdown), interface-based subsystem queries (GetSubsystemByInterface<T>) |
-| **Sedulous.Runtime.Client** | Application base class - lightweight app with Shell + RHI + SwapChain. Owns device, window, frame loop. Virtual CreateLogger(). For sandboxes, tools, and editor |
+| **Sedulous.Runtime.Client** | Application base class - lightweight app with Platform + RHI + SwapChain. Owns device, window, frame loop. Virtual CreateLogger(). For sandboxes, tools, and editor |
 | **Sedulous.Jobs** | JobSystem singleton - runs jobs immediately, ProcessCompletions called by application |
 | **Sedulous.Resources** | ResourceSystem - async loading, URI-based mount table (Sedulous.VFS), GUID indices, caching, per-type ResourceManagers, hot-reload via per-mount change sources |
 | **Sedulous.VFS** | Virtual filesystem core - IMount and capability interfaces (IEnumerableMount, IWatchableMount, IWritableMount), IChangeSource. See [VFS.md](VFS.md). |
@@ -112,14 +112,14 @@ WebGPU-inspired but lower-level. Interface-based - backends are swappable.
 | Library | Purpose |
 |---------|---------|
 | **Sedulous.UI** | Android-inspired retained-mode UI framework: View/ViewGroup/RootView hierarchy with ViewId registry, BoxConstraints + LayoutParams layout (replaces Android's MeasureSpec), containers (FlexLayout instead of LinearLayout, plus Absolute/Dock/Flow/Frame/Grid), drawable system (Color, Gradient, NineSlice, SVG, Atlas, StateList, etc.), stylesheet-driven theming (StyleSelector/StyleRule + Dark/Light/RoundedDark/Textured presets), input/focus/drag-drop/animation/shortcut/tooltip managers, mutation queue. Renders via VGContext. No engine dependency - runs headless for tests. See [../Roadmap/UI2_PLAN.md](../Roadmap/UI2_PLAN.md) for lineage and design rationale |
-| **Sedulous.UI.Shell** | Bridge: UIInputHelper (Shell -> UI input routing), InputMapping, ShellClipboardAdapter |
+| **Sedulous.UI.Platform** | Bridge: UIInputHelper (Platform -> UI input routing), InputMapping, PlatformClipboardAdapter |
 | **Sedulous.UI.Runtime** | UISubsystem for standalone apps (owns UIContext + VGRenderer). Used by UISandbox |
 | **Sedulous.UI.Toolkit** | Advanced widgets: Docking (DockManager, DockablePanel, DockableWindow, zone indicators), SplitView, MenuBar, StatusBar, Toolbar, BreadcrumbBar, PropertyGrid (typed editors for bool/int/float/string/enum/range/color/Vector3), ColorPicker, TabView, DraggableTreeView, IDockableWindowHost |
 | **Sedulous.UI.Viewport** | Shared ViewportView + IViewportInputHandler - render-to-texture viewport host reused by the editor and any tool embedding a 3D view |
 
 > **Sedulous.LegacyUI** stack (deprecated, moved to `Code/Deprecated/`) -- the
 > earlier Android-inspired UI framework that Sedulous.UI replaces. Includes
-> Sedulous.LegacyUI{,.Shell,.Runtime,.Toolkit,.Resources,.Tests,.Viewport} and
+> Sedulous.LegacyUI{,.Platform,.Runtime,.Toolkit,.Resources,.Tests,.Viewport} and
 > Sedulous.Engine.LegacyUI (the matching engine subsystem). Kept for reference
 > only -- no active development. **Sedulous.GUI** is older still, predating
 > LegacyUI; also under `Code/Deprecated/`.
@@ -147,10 +147,10 @@ WebGPU-inspired but lower-level. Interface-based - backends are swappable.
 
 ### Runtime.Client.Application - Lightweight Apps
 
-For sandboxes, tools, demos, editor, and anything that needs Shell + RHI without
+For sandboxes, tools, demos, editor, and anything that needs Platform + RHI without
 the full engine. EditorApplication extends this.
 
-**Owns:** Shell, Backend, Device, Window, SwapChain, CommandPools, Fence, DepthBuffer,
+**Owns:** Platform, Backend, Device, Window, SwapChain, CommandPools, Fence, DepthBuffer,
 Logger (via virtual CreateLogger), ResourceSystem, JobSystem lifecycle.
 
 **Features:**
@@ -167,7 +167,7 @@ Logger (via virtual CreateLogger), ResourceSystem, JobSystem lifecycle.
 
 For games and interactive applications with scenes, physics, rendering, audio, etc.
 
-**Owns:** Shell, Backend, Device, Window + all presentation (SwapChain, OutputTargets,
+**Owns:** Platform, Backend, Device, Window + all presentation (SwapChain, OutputTargets,
 CommandPools, Fence, BlitHelper, frame index). Creates Context with all standard
 subsystems, passing ResourceSystem to those that need it.
 
@@ -659,7 +659,7 @@ interface ISceneAware
 OnSceneReady runs after ALL OnSceneCreated handlers - safe to access resources
 created by other subsystems (e.g., per-scene Pipeline created by RenderSubsystem).
 
-### IWindowAware (Sedulous.Shell)
+### IWindowAware (Sedulous.Platform)
 
 ```beef
 interface IWindowAware
@@ -668,7 +668,7 @@ interface IWindowAware
 }
 ```
 
-Lives in Sedulous.Shell (platform layer) so any subsystem can implement it without
+Lives in Sedulous.Platform (platform layer) so any subsystem can implement it without
 depending on engine layers. The app iterates all subsystems and broadcasts resize
 to any that implement it.
 

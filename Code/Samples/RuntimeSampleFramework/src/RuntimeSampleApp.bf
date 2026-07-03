@@ -5,8 +5,8 @@ using System.IO;
 using Sedulous.RHI;
 using Sedulous.Runtime.Client;
 using Sedulous.RuntimeGraphics;
-using Sedulous.Shell;
-using Sedulous.Shell.SDL3;
+using Sedulous.Platform;
+using Sedulous.Platform.SDL3;
 using Sedulous.Shaders;
 using Sedulous.Fonts;
 using Sedulous.Fonts.TTF;
@@ -30,7 +30,7 @@ public abstract class RuntimeSampleApp : IApplication
 
 	// Cached from host (not owned)
 	private IDevice mDevice;
-	private IShell mShell;
+	private IPlatform mPlatform;
 	private Sedulous.Runtime.Client.IApplicationHost mHost;
 
 	// Timing
@@ -42,8 +42,8 @@ public abstract class RuntimeSampleApp : IApplication
 	/// The RHI device.
 	protected IDevice Device => mDevice;
 
-	/// The platform shell.
-	protected IShell Shell => mShell;
+	/// The platform.
+	protected IPlatform Platform => mPlatform;
 
 	/// The application host.
 	protected Sedulous.Runtime.Client.IApplicationHost Host => mHost;
@@ -81,7 +81,7 @@ public abstract class RuntimeSampleApp : IApplication
 	{
 		mHost = host;
 		mDevice = host.Graphics?.Raw;
-		mShell = host.Shell;
+		mPlatform = host.Platform;
 		mBuiltInAssetDirectory.Set(host.BuiltInAssetDirectory);
 
 		// Builtin mount for VFS font loading
@@ -147,16 +147,16 @@ public abstract class RuntimeSampleApp : IApplication
 
 	// --- Convenience runner ---
 
-	/// Create shell + device + host and run the app. Typical Program.Main body.
+	/// Create platform + device + host and run the app. Typical Program.Main body.
 	public static int32 Run<T>() where T : RuntimeSampleApp, new, delete
 	{
-		let shell = scope SDL3Shell();
-		if (shell.Initialize() case .Err)
+		let platform = scope SDL3Platform();
+		if (platform.Initialize() case .Err)
 		{
-			Console.WriteLine("ERROR: Failed to initialize shell");
+			Console.WriteLine("ERROR: Failed to initialize platform");
 			return 1;
 		}
-		defer shell.Shutdown();
+		defer platform.Shutdown();
 
 		let gfxResult = GraphicsDevice.Create(.());
 		if (gfxResult case .Err)
@@ -168,6 +168,6 @@ public abstract class RuntimeSampleApp : IApplication
 		defer delete gfx;
 
 		let app = scope T();
-		return ApplicationHost.RunApplication(app, shell, gfx);
+		return ApplicationHost.RunApplication(app, platform, gfx);
 	}
 }

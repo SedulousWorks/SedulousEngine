@@ -3,7 +3,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.IO;
 using Sedulous.RuntimeGraphics;
-using Sedulous.Shell;
+using Sedulous.Platform;
 using Sedulous.Runtime;
 using Sedulous.Jobs;
 
@@ -24,7 +24,7 @@ sealed class ApplicationHost : IApplicationHost
 
 	// Borrowed (owned by the entry point)
 	private IApplication mApp;
-	private IShell mShell;
+	private IPlatform mPlatform;
 	private GraphicsDevice mGraphics;
 
 	// Asset directories (discovered during Start)
@@ -53,7 +53,7 @@ sealed class ApplicationHost : IApplicationHost
 	// --- IApplicationHost ---
 
 	public Context Ctx => mContext;
-	public IShell Shell => mShell;
+	public IPlatform Platform => mPlatform;
 	public GraphicsDevice Graphics => mGraphics;
 	public StringView BuiltInAssetDirectory => mBuiltInAssetDirectory;
 	public StringView AssetCacheDirectory => mAssetCacheDirectory;
@@ -62,10 +62,10 @@ sealed class ApplicationHost : IApplicationHost
 
 	public RenderWindow OpenWindow(WindowSettings settings, RenderWindowDesc renderDesc)
 	{
-		if (mShell == null || mGraphics == null)
+		if (mPlatform == null || mGraphics == null)
 			return null;
 
-		let wm = mShell.WindowManager;
+		let wm = mPlatform.WindowManager;
 		if (wm == null)
 			return null;
 
@@ -105,15 +105,15 @@ sealed class ApplicationHost : IApplicationHost
 	// --- Lifecycle ---
 
 	/// Bring the application up: read settings, register subsystems (app's
-	/// Configure), start the Context, create the main RenderWindow (if shell +
+	/// Configure), start the Context, create the main RenderWindow (if platform +
 	/// graphics), then enter play (app OnLaunch). Idempotent.
-	public void Start(IApplication app, IShell shell, GraphicsDevice graphics = null)
+	public void Start(IApplication app, IPlatform platform, GraphicsDevice graphics = null)
 	{
 		if (mStarted)
 			return;
 
 		mApp = app;
-		mShell = shell;
+		mPlatform = platform;
 		mGraphics = graphics;
 		mSettings = app.Settings();
 
@@ -128,7 +128,7 @@ sealed class ApplicationHost : IApplicationHost
 		// (e.g. RenderSubsystem) have a valid IWindow during their Init/Ready.
 		// This matches the old EngineApplication order where the window existed
 		// before subsystem registration.
-		if (mShell != null && mGraphics != null && mShell.WindowManager != null)
+		if (mPlatform != null && mGraphics != null && mPlatform.WindowManager != null)
 		{
 			let title = scope String(mSettings.Title);
 			let windowSettings = WindowSettings()
@@ -140,7 +140,7 @@ sealed class ApplicationHost : IApplicationHost
 				Bordered = true
 			};
 
-			if (mShell.WindowManager.CreateWindow(windowSettings) case .Ok(let osWindow))
+			if (mPlatform.WindowManager.CreateWindow(windowSettings) case .Ok(let osWindow))
 			{
 				let renderDesc = RenderWindowDesc()
 				{
@@ -241,10 +241,10 @@ sealed class ApplicationHost : IApplicationHost
 
 	/// Convenience runner: create a host on the stack, drive a blocking loop
 	/// with wall-clock timing, then tear down. Returns the exit code.
-	public static int32 RunApplication(IApplication app, IShell shell, GraphicsDevice graphics = null)
+	public static int32 RunApplication(IApplication app, IPlatform platform, GraphicsDevice graphics = null)
 	{
 		ApplicationHost host = scope .();
-		host.Start(app, shell, graphics);
+		host.Start(app, platform, graphics);
 
 		// Start the stopwatch AFTER Start() so the first frame's delta doesn't
 		// include startup time (loading assets, creating scenes, etc.). This
@@ -256,9 +256,9 @@ sealed class ApplicationHost : IApplicationHost
 		stopwatch.Start();
 		float lastTime = 0.0f;
 
-		while (shell.IsRunning && host.IsRunning)
+		while (platform.IsRunning && host.IsRunning)
 		{
-			shell.ProcessEvents();
+			platform.ProcessEvents();
 
 			float currentTime = (float)stopwatch.Elapsed.TotalSeconds;
 			float deltaTime = currentTime - lastTime;
@@ -280,7 +280,7 @@ sealed class ApplicationHost : IApplicationHost
 		if (mPendingClose.Count == 0)
 			return;
 
-		let wm = (mShell != null) ? mShell.WindowManager : null;
+		let wm = (mPlatform != null) ? mPlatform.WindowManager : null;
 
 		for (let dead in mPendingClose)
 		{

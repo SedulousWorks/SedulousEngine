@@ -19,7 +19,7 @@ uiContext.AddRootView(root);
 // Initialize the UI subsystem (rendering, fonts, input)
 let ui = new UISubsystem();
 ui.InitializeRendering(uiContext, root, device, swapChainFormat,
-    frameCount, shaderPaths, shell, window, fontMount);
+    frameCount, shaderPaths, platform, window, fontMount);
 ui.LoadFont("default", "fonts/NotoSans-Regular.ttf");
 
 // Apply a theme

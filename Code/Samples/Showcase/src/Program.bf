@@ -21,12 +21,12 @@ using Sedulous.Images.STB;
 using Sedulous.Images.SDL;
 using Sedulous.Models;
 using Sedulous.Models.GLTF;
-using Sedulous.Shell;
+using Sedulous.Platform;
 using Sedulous.Engine.Core;
 using Sedulous.Models.FBX;
 using Sedulous.Runtime.Client;
 using Sedulous.RuntimeGraphics;
-using Sedulous.Shell.SDL3;
+using Sedulous.Platform.SDL3;
 
 /// Loaded model asset: mesh resource + per-slot material resource refs.
 class LoadedModel
@@ -536,8 +536,8 @@ class ShowcaseApp : DefaultApplication
 			dbg.DrawScreenText(10, 22, line2, .(200, 200, 200));
 		}
 
-		let keyboard = host.Shell.InputManager.Keyboard;
-		let mouse = host.Shell.InputManager.Mouse;
+		let keyboard = host.Platform.InputManager.Keyboard;
+		let mouse = host.Platform.InputManager.Mouse;
 
 		// Escape to exit
 		if (keyboard.IsKeyPressed(.Escape))
@@ -626,13 +626,13 @@ class Program
 {
 	public static int Main(String[] args)
 	{
-		let shell = scope SDL3Shell();
-		if (shell.Initialize() case .Err)
+		let platform = scope SDL3Platform();
+		if (platform.Initialize() case .Err)
 		{
-			Console.WriteLine("ERROR: Failed to initialize shell");
+			Console.WriteLine("ERROR: Failed to initialize platform");
 			return 1;
 		}
-		defer shell.Shutdown();
+		defer platform.Shutdown();
 
 		let graphicsResult = GraphicsDevice.Create(.() { EnableValidation = true });
 		if (graphicsResult case .Err)
@@ -644,6 +644,6 @@ class Program
 		defer delete graphics;
 
 		let app = scope ShowcaseApp();
-		return ApplicationHost.RunApplication(app, shell, graphics);
+		return ApplicationHost.RunApplication(app, platform, graphics);
 	}
 }

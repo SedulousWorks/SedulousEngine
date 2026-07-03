@@ -1,7 +1,7 @@
 namespace Sedulous.Engine.Input;
 
 using System;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 
 /// Binding for a keyboard key with optional modifier requirements.
 class KeyBinding : InputBinding

@@ -2,7 +2,7 @@ namespace Sedulous.Runtime.Client;
 
 using System;
 using Sedulous.Core.Mathematics;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 
 /// Reusable orbital/flythrough camera controller.
 /// Handles keyboard and mouse input for two camera modes:

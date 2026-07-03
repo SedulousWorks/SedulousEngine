@@ -14,7 +14,7 @@ Thank you for your interest in contributing to Sedulous.
 
 ## Project Layout
 
-- `Code/Foundation/` -- Self-contained libraries (RHI, Shell, VG, UI, etc.)
+- `Code/Foundation/` -- Self-contained libraries (RHI, Platform, VG, UI, etc.)
 - `Code/Engine/` -- Engine.Core and subsystems (Render, Physics, Audio, etc.)
 - `Code/Editor/` -- Editor core and application
 - `Code/Samples/` -- Sample applications (EngineSandbox, LegacyUISandbox, etc.)

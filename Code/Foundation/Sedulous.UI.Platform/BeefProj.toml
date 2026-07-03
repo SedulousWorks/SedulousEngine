@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.UI.Platform"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.UI" = "*"
+"Sedulous.Platform" = "*"
+corlib = "*"

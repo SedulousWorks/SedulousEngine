@@ -3,7 +3,7 @@ namespace TowerDefense;
 using System;
 using Sedulous.Core.Mathematics;
 using Sedulous.Engine.Core;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 
 /// Top-down camera controller for tower defense.
 /// WASD to pan, scroll wheel to zoom, fixed viewing angle.

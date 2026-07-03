@@ -4,8 +4,8 @@ using System;
 using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
 using Sedulous.RuntimeGraphics;
-using Sedulous.Shell;
-using Sedulous.Shell.Input;
+using Sedulous.Platform;
+using Sedulous.Platform.Input;
 using Sedulous.Editor.Core;
 
 /// IApplicationHost adapter for the editor.
@@ -31,7 +31,7 @@ class EditorApplicationHost : Sedulous.Runtime.Client.IApplicationHost
 	}
 
 	public Context Ctx => mEditor.RuntimeContext;
-	public IShell Shell => mEditor.Shell;
+	public IPlatform Platform => mEditor.Platform;
 
 	// The editor's GraphicsDevice is available now (passed through
 	// from the outer ApplicationHost). Returning null is still safe
@@ -56,7 +56,7 @@ class EditorApplicationHost : Sedulous.Runtime.Client.IApplicationHost
 	// page's viewport-scoped adapters -- cursor coords land in the page
 	// texture's local space and keyboard / gamepad gate on whether the
 	// Game tab is the active editor page. With no running game (idle
-	// editor, asset-only project), falls back to direct shell devices.
+	// editor, asset-only project), falls back to direct platform devices.
 
 	public IMouse Mouse
 	{
@@ -64,7 +64,7 @@ class EditorApplicationHost : Sedulous.Runtime.Client.IApplicationHost
 		{
 			let page = mEditor.RunningGamePage;
 			if (page?.MouseAdapter != null) return page.MouseAdapter;
-			return mEditor.Shell?.InputManager?.Mouse;
+			return mEditor.Platform?.InputManager?.Mouse;
 		}
 	}
 
@@ -74,7 +74,7 @@ class EditorApplicationHost : Sedulous.Runtime.Client.IApplicationHost
 		{
 			let page = mEditor.RunningGamePage;
 			if (page?.KeyboardAdapter != null) return page.KeyboardAdapter;
-			return mEditor.Shell?.InputManager?.Keyboard;
+			return mEditor.Platform?.InputManager?.Keyboard;
 		}
 	}
 
@@ -83,7 +83,7 @@ class EditorApplicationHost : Sedulous.Runtime.Client.IApplicationHost
 		let page = mEditor.RunningGamePage;
 		let adapter = page?.GetGamepadAdapter(index);
 		if (adapter != null) return adapter;
-		return mEditor.Shell?.InputManager?.GetGamepad(index);
+		return mEditor.Platform?.InputManager?.GetGamepad(index);
 	}
 
 	// Window creation not supported in the editor host.

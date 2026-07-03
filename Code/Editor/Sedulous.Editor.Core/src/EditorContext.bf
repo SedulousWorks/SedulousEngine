@@ -3,7 +3,7 @@ namespace Sedulous.Editor.Core;
 using System;
 using System.Collections;
 using Sedulous.Runtime;
-using Sedulous.Shell;
+using Sedulous.Platform;
 using Sedulous.UI.Toolkit;
 using Sedulous.UI;
 using Sedulous.Runtime.Client;
@@ -53,7 +53,7 @@ class EditorContext : IDisposable
 
 	// Platform services
 	public IDialogService DialogService;
-	public IShell Shell;
+	public IPlatform Platform;
 	public ResourceSystem ResourceSystem;
 
 	/// The application module the editor is hosting (TowerDefense, an

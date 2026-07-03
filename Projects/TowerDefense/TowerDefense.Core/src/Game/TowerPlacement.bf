@@ -8,7 +8,7 @@ using Sedulous.Resources;
 using Sedulous.Serialization;
 using Sedulous.Engine.Core.Resources;
 using Sedulous.Messaging;
-using Sedulous.Shell.Input;
+using Sedulous.Platform.Input;
 using Sedulous.Renderer.Debug;
 
 /// Handles tower placement, selection, upgrade, and sell.
