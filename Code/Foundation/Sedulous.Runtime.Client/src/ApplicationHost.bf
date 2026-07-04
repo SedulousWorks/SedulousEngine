@@ -6,6 +6,7 @@ using Sedulous.RuntimeGraphics;
 using Sedulous.Shell;
 using Sedulous.Runtime;
 using Sedulous.Jobs;
+using Sedulous.Profiler;
 
 namespace Sedulous.Runtime.Client;
 
@@ -121,6 +122,9 @@ sealed class ApplicationHost : IApplicationHost
 		// can use them (shader paths, builtin mount, etc.).
 		DiscoverAssetDirectories();
 
+		// Initialize profiler so Begin/End scopes capture timing data.
+		SProfiler.Initialize();
+
 		// Bring up the engine-wide JobSystem before any subsystem starts
 		JobSystem.Initialize();
 
@@ -169,6 +173,7 @@ sealed class ApplicationHost : IApplicationHost
 	/// Advance exactly one frame with an explicit delta.
 	public void Tick(float deltaTime)
 	{
+		SProfiler.BeginFrame();
 		mContext.BeginFrame(deltaTime);
 
 		// Fixed-step accumulator loop (capped to prevent spiral-of-death on
@@ -209,6 +214,7 @@ sealed class ApplicationHost : IApplicationHost
 
 		mContext.EndFrame();
 		FlushPendingCloses();
+		SProfiler.EndFrame();
 	}
 
 	/// Tear the application down: leave play, stop the Context, destroy windows.
@@ -234,6 +240,7 @@ sealed class ApplicationHost : IApplicationHost
 
 		// Tear down the engine-wide JobSystem last
 		JobSystem.Shutdown();
+		SProfiler.Shutdown();
 
 		mStarted = false;
 		mRunning = false;
