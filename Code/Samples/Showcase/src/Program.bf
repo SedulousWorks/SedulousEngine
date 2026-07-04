@@ -517,6 +517,8 @@ class ShowcaseApp : DefaultApplication
 
 	public override void OnUpdate(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime)
 	{
+		base.OnUpdate(host, deltaTime);
+
 		// FPS counter
 		mFrameTimeMs = mFrameTimeMs * 0.9f + (deltaTime * 1000.0f) * 0.1f;
 		let fps = mFrameTimeMs > 0.001f ? 1000.0f / mFrameTimeMs : 0.0f;

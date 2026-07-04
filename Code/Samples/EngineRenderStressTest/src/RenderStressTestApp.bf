@@ -356,6 +356,7 @@ class RenderStressTestApp : DefaultApplication
 
 	public override void OnUpdate(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime)
 	{
+		base.OnUpdate(host, deltaTime);
 		UpdateCamera(host, deltaTime);
 
 		let keyboard = host.Shell.InputManager.Keyboard;

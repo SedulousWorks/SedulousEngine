@@ -1238,6 +1238,8 @@ class SandboxApp : DefaultApplication
 
 	public override void OnUpdate(Sedulous.Runtime.Client.IApplicationHost host, float deltaTime)
 	{
+		base.OnUpdate(host, deltaTime);
+
 		// Add world UI content once component is initialized.
 		TryAddWorldUIContent();
 
