@@ -1,5 +1,2 @@
-# Beef
-build/
-recovery/
-BeefSpace.toml
-BeefSpace_User.toml
+build-linux-release/
+build-linux-debug/

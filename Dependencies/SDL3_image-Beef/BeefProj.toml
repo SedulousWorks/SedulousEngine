@@ -21,3 +21,15 @@ PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/SDL3_image-3.2.4/lib/x86
 [Configs.Release.Win64]
 LibPaths = ["$(ProjectDir)/dist/SDL3_image-3.2.4/lib/x64/SDL3_image.lib"]
 PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/SDL3_image-3.2.4/lib/x64/*.dll\")", "CopyToDependents(\"$(ProjectDir)/dist/SDL3_image-3.2.4/lib/x64/optional/*.dll\")", "CopyToDependents(\"$(ProjectDir)/dist/SDL3_image-3.2.4/lib/x64/optional/*.txt\")"]
+
+[Configs.Debug.Linux64]
+LibPaths = ["$(ProjectDir)/dist/SDL3_image-3.2.4/lib/linux-x64/libSDL3_image.so.0"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/SDL3_image-3.2.4/lib/linux-x64/*.so.0\")"]
+
+[Configs.Release.Linux64]
+LibPaths = ["$(ProjectDir)/dist/SDL3_image-3.2.4/lib/linux-x64/libSDL3_image.so.0"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/SDL3_image-3.2.4/lib/linux-x64/*.so.0\")"]
+
+[Configs.Test.Linux64]
+LibPaths = ["$(ProjectDir)/dist/SDL3_image-3.2.4/lib/linux-x64/libSDL3_image.so.0"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/SDL3_image-3.2.4/lib/linux-x64/*.so.0\")"]
