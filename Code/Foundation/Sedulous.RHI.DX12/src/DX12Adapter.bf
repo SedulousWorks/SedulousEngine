@@ -34,6 +34,11 @@ class DX12Adapter : IAdapter
 		}
 	}
 
+	/// Adapter category, cheaply derived from the DXGI description (no
+	/// allocation). DXGI has no direct discrete/integrated flag, so infer it
+	/// from dedicated video memory. Used to rank adapters during selection.
+	public AdapterType Type => mDesc.DedicatedVideoMemory > 0 ? .DiscreteGpu : .IntegratedGpu;
+
 	public AdapterInfo GetInfo()
 	{
 		let info = new AdapterInfo();
@@ -48,12 +53,7 @@ class DX12Adapter : IAdapter
 
 		info.VendorId = mDesc.VendorId;
 		info.DeviceId = mDesc.DeviceId;
-
-		// Determine adapter type from dedicated video memory
-		if (mDesc.DedicatedVideoMemory > 0)
-			info.Type = .DiscreteGpu;
-		else
-			info.Type = .IntegratedGpu;
+		info.Type = Type;
 
 		info.SupportedFeatures = BuildFeatures();
 		return info;

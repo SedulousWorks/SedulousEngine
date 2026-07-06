@@ -93,6 +93,22 @@ class DX12Backend : IBackend
 
 			i++;
 		}
+
+		// Order the adapters best-first (discrete GPU preferred) so callers can
+		// simply take adapters[0]. Stable insertion sort keeps the driver's native
+		// order among adapters of equal preference; adapter counts are tiny.
+		for (int i = 1; i < mAdapters.Count; i++)
+		{
+			let key = mAdapters[i];
+			let keyRank = AdapterSelection.PreferenceRank(key.Type);
+			int j = i;
+			while (j > 0 && AdapterSelection.PreferenceRank(mAdapters[j - 1].Type) > keyRank)
+			{
+				mAdapters[j] = mAdapters[j - 1];
+				j--;
+			}
+			mAdapters[j] = key;
+		}
 	}
 
 	public void EnumerateAdapters(List<IAdapter> adapters)
