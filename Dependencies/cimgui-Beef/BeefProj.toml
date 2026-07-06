@@ -13,3 +13,12 @@ LibPaths = ["$(ProjectDir)/dist/Release-Win64/cimgui.lib"]
 
 [Configs.Test.Win64]
 LibPaths = ["$(ProjectDir)/dist/Debug-Win64/cimgui.lib"]
+
+[Configs.Debug.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libcimgui.a"]
+
+[Configs.Release.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libcimgui.a"]
+
+[Configs.Test.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libcimgui.a"]

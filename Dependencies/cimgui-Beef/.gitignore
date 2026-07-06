@@ -4,3 +4,5 @@ build/
 build-debug/
 build-release/
 recovery/
+build-linux-release/
+build-linux-debug/
