@@ -67,6 +67,7 @@ SR001_ReflectedPBR = {Path = "Samples/Graphics/ShaderReflection/SR001_ReflectedP
 "Sedulous.Core.Mathematics" = {Path = "Foundation/Sedulous.Core.Mathematics"}
 "Sedulous.Core.Mathematics.Tests" = {Path = "Foundation/Sedulous.Core.Mathematics.Tests"}
 "Sedulous.Core.Tests" = {Path = "Foundation/Sedulous.Core.Tests"}
+"Sedulous.Surface" = {Path = "Foundation/Sedulous.Surface"}
 "Sedulous.Shell" = {Path = "Foundation/Sedulous.Shell"}
 "Sedulous.Shell.SDL3" = {Path = "Foundation/Sedulous.Shell.SDL3"}
 "Sedulous.Shell.Tests" = {Path = "Foundation/Sedulous.Shell.Tests"}
@@ -211,7 +212,7 @@ Samples = []
 "Samples/Graphics/RHISamples" = ["Sample002_Textures", "Sample003_UniformBuffers", "Sample004_Compute", "Sample005_BindGroups", "Sample006_Blending", "Sample007_Instancing", "Sample008_DepthBuffer", "Sample009_Mipmaps", "Sample010_MSAA", "Sample011_MRT", "Sample012_Wireframe", "Sample013_BorderSampler", "Sample014_Blit", "Sample015_Queries", "Sample016_Readback", "Sample017_MultiQueue", "Sample018_Bindless", "Sample019_BatchUpload", "Sample020_MeshShaders", "Sample021_RayTracing", "Sample022_StencilOutline", "Sample023_CubeMap", "Sample024_OcclusionQuery", "Sample025_MultiDrawIndirect", "Sample026_DynamicOffsets", "Sample027_3DTexture", "Sample028_ProceduralRT", "Sample029_ResolveTexture", "Sample001_Triangle", "Sample030_RenderBundles"]
 "Samples/Graphics/ShaderReflection" = ["SR001_ReflectedPBR"]
 Foundation = []
-"Foundation/Core" = ["Sedulous.Core", "Sedulous.Core.Collections", "Sedulous.Core.Logging", "Sedulous.Core.Mathematics", "Sedulous.Core.Mathematics.Tests", "Sedulous.Core.Tests", "Sedulous.Core.Mathematics.Serialization"]
+"Foundation/Core" = ["Sedulous.Core", "Sedulous.Core.Collections", "Sedulous.Core.Logging", "Sedulous.Core.Mathematics", "Sedulous.Core.Mathematics.Tests", "Sedulous.Core.Tests", "Sedulous.Core.Mathematics.Serialization", "Sedulous.Surface"]
 "Foundation/Shell" = ["Sedulous.Shell", "Sedulous.Shell.SDL3", "Sedulous.Shell.Tests"]
 "Foundation/Profiling" = ["Sedulous.Profiler", "Sedulous.Profiler.Tests"]
 "Foundation/Animation" = ["Sedulous.Animation", "Sedulous.Animation.Tests", "Sedulous.Animation.Resources"]
