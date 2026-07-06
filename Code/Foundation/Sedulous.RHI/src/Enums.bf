@@ -446,6 +446,26 @@ enum AdapterType
 	Unknown,
 }
 
+/// Adapter selection helpers. Backends sort their adapters by preference after
+/// enumeration so that EnumerateAdapters()[0] is the recommended default GPU.
+static class AdapterSelection
+{
+	/// Preference rank for adapter selection (lower is better): a discrete GPU is
+	/// preferred over an integrated one, over an unknown type, over a CPU device.
+	/// This is an explicit ordering - it deliberately does not match the
+	/// AdapterType enum's declaration order (Unknown must outrank Cpu).
+	public static int PreferenceRank(AdapterType type)
+	{
+		switch (type)
+		{
+		case .DiscreteGpu:   return 0;
+		case .IntegratedGpu: return 1;
+		case .Unknown:       return 2;
+		case .Cpu:           return 3;
+		}
+	}
+}
+
 /// Query type.
 enum QueryType
 {

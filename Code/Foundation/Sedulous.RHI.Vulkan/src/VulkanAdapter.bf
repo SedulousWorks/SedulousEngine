@@ -81,20 +81,29 @@ class VulkanAdapter : IAdapter
 		}
 	}
 
+	/// Adapter category, cheaply derived from the physical device properties
+	/// (no allocation). Used to rank adapters during selection.
+	public AdapterType Type
+	{
+		get
+		{
+			switch (mProperties.deviceType)
+			{
+			case .VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:   return .DiscreteGpu;
+			case .VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: return .IntegratedGpu;
+			case .VK_PHYSICAL_DEVICE_TYPE_CPU:            return .Cpu;
+			default:                                      return .Unknown;
+			}
+		}
+	}
+
 	public AdapterInfo GetInfo()
 	{
 		let info = new AdapterInfo();
 		info.Name.Set(StringView(&mProperties.deviceName));
 		info.VendorId = mProperties.vendorID;
 		info.DeviceId = mProperties.deviceID;
-
-		switch (mProperties.deviceType)
-		{
-		case .VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:   info.Type = .DiscreteGpu;
-		case .VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: info.Type = .IntegratedGpu;
-		case .VK_PHYSICAL_DEVICE_TYPE_CPU:            info.Type = .Cpu;
-		default:                                      info.Type = .Unknown;
-		}
+		info.Type = Type;
 
 		info.SupportedFeatures = BuildFeatures();
 		return info;
