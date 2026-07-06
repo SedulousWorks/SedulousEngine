@@ -20,3 +20,9 @@ PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/SDL3-3.4.0/lib/x86/*.dll
 [Configs.Release.Win64]
 LibPaths = ["$(ProjectDir)/dist/SDL3-3.4.0/lib/x64/SDL3.lib"]
 PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/SDL3-3.4.0/lib/x64/*.dll\")"]
+
+[Configs.Debug.Linux64]
+LibPaths = ["/usr/lib/x86_64-linux-gnu/libSDL3.so"]
+
+[Configs.Release.Linux64]
+LibPaths = ["/usr/lib/x86_64-linux-gnu/libSDL3.so"]
