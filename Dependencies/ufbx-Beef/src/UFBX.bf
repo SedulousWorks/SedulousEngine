@@ -3469,19 +3469,19 @@ static{
 	// Part 4: API functions
 static{
 	// Extern data constants
-	[CLink] public static extern ufbx_string ufbx_empty_string;
-	[CLink] public static extern ufbx_blob ufbx_empty_blob;
-	[CLink] public static extern ufbx_matrix ufbx_identity_matrix;
-	[CLink] public static extern ufbx_transform ufbx_identity_transform;
-	[CLink] public static extern ufbx_vec2 ufbx_zero_vec2;
-	[CLink] public static extern ufbx_vec3 ufbx_zero_vec3;
-	[CLink] public static extern ufbx_vec4 ufbx_zero_vec4;
-	[CLink] public static extern ufbx_quat ufbx_identity_quat;
-	[CLink] public static extern ufbx_coordinate_axes ufbx_axes_right_handed_y_up;
-	[CLink] public static extern ufbx_coordinate_axes ufbx_axes_right_handed_z_up;
-	[CLink] public static extern ufbx_coordinate_axes ufbx_axes_left_handed_y_up;
-	[CLink] public static extern ufbx_coordinate_axes ufbx_axes_left_handed_z_up;
-	[CLink] public static extern uint32 ufbx_source_version;
+	[LinkName("ufbx_empty_string")] public static extern ufbx_string ufbx_empty_string;
+	[LinkName("ufbx_empty_blob")] public static extern ufbx_blob ufbx_empty_blob;
+	[LinkName("ufbx_identity_matrix")] public static extern ufbx_matrix ufbx_identity_matrix;
+	[LinkName("ufbx_identity_transform")] public static extern ufbx_transform ufbx_identity_transform;
+	[LinkName("ufbx_zero_vec2")] public static extern ufbx_vec2 ufbx_zero_vec2;
+	[LinkName("ufbx_zero_vec3")] public static extern ufbx_vec3 ufbx_zero_vec3;
+	[LinkName("ufbx_zero_vec4")] public static extern ufbx_vec4 ufbx_zero_vec4;
+	[LinkName("ufbx_identity_quat")] public static extern ufbx_quat ufbx_identity_quat;
+	[LinkName("ufbx_axes_right_handed_y_up")] public static extern ufbx_coordinate_axes ufbx_axes_right_handed_y_up;
+	[LinkName("ufbx_axes_right_handed_z_up")] public static extern ufbx_coordinate_axes ufbx_axes_right_handed_z_up;
+	[LinkName("ufbx_axes_left_handed_y_up")] public static extern ufbx_coordinate_axes ufbx_axes_left_handed_y_up;
+	[LinkName("ufbx_axes_left_handed_z_up")] public static extern ufbx_coordinate_axes ufbx_axes_left_handed_z_up;
+	[LinkName("ufbx_source_version")] public static extern uint32 ufbx_source_version;
 
 	// Thread safety check
 	[CLink] public static extern bool ufbx_is_thread_safe();
