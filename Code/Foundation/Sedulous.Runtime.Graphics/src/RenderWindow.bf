@@ -120,6 +120,21 @@ class RenderWindow
 		return true;
 	}
 
+	/// Rebuild the swapchain at the current window size. Called when acquire or
+	/// present reports the surface is out of date / suboptimal - common on X11
+	/// once the window manager settles the size, where the initial swapchain no
+	/// longer matches. Without this the presented Result would go unhandled.
+	private void RecreateSwapChain()
+	{
+		let nw = (uint32)mWindow.Width;
+		let nh = (uint32)mWindow.Height;
+		if (nw == 0 || nh == 0) return;
+		mWidth = nw;
+		mHeight = nh;
+		mGraphicsDevice.Raw.WaitIdle();
+		mSwapChain.Resize(nw, nh);
+	}
+
 	/// Acquire this window's backbuffer and open a host-created encoder from
 	/// the current frame's pool (after the per-window fence guards reuse).
 	/// The returned FrameContext is invalid when the window is minimized/
@@ -137,7 +152,11 @@ class RenderWindow
 			mFences[fi].Wait(mFenceValues[fi]);
 
 		if (mSwapChain.AcquireNextImage() case .Err)
+		{
+			// Surface out of date (e.g. mid-resize); rebuild and skip this frame.
+			RecreateSwapChain();
 			return .();
+		}
 
 		mPools[fi].Reset();
 
@@ -178,7 +197,10 @@ class RenderWindow
 		ICommandBuffer[1] bufs = .(cb);
 		mGraphicsDevice.GfxQueue.Submit(bufs, mFences[fi], mFenceValues[fi]);
 
-		mSwapChain.Present(mGraphicsDevice.GfxQueue);
+		// SUBOPTIMAL/OUT_OF_DATE come back as .Err here; rebuild the swapchain so
+		// it matches the surface again (and so the Result is handled, not fatal).
+		if (mSwapChain.Present(mGraphicsDevice.GfxQueue) case .Err)
+			RecreateSwapChain();
 
 		var enc = frame.Encoder;
 		mPools[fi].DestroyEncoder(ref enc);
