@@ -12,3 +12,15 @@ PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/Win32/Debug/*.dll\")"]
 [Configs.Release.Win64]
 LibPaths = ["$(ProjectDir)/dist/Win32/Release/spirv-cross-c-shared.lib"]
 PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/Win32/Release/*.dll\")"]
+
+[Configs.Debug.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Linux64/Release/libspirv-cross-c-shared.so.0"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/Linux64/Release/*.so.0\")"]
+
+[Configs.Release.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Linux64/Release/libspirv-cross-c-shared.so.0"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/Linux64/Release/*.so.0\")"]
+
+[Configs.Test.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Linux64/Release/libspirv-cross-c-shared.so.0"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/Linux64/Release/*.so.0\")"]

@@ -1,3 +1,5 @@
 build
 recovery
 BeefSpace_User.toml
+build-linux-release/
+build-linux-debug/
