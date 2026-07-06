@@ -57,6 +57,11 @@ class VulkanBackend : IBackend
 		extensions.Add(VulkanNative.VK_KHR_SURFACE_EXTENSION_NAME);
 #if BF_PLATFORM_WINDOWS
 		extensions.Add(VulkanNative.VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+#else
+		// Enable both Linux windowing-system surface extensions; SDL3 decides at
+		// runtime which one the window actually uses (X11 or Wayland).
+		extensions.Add(VulkanNative.VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
+		extensions.Add(VulkanNative.VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
 #endif
 		if (enableValidation)
 			extensions.Add("VK_EXT_debug_utils");
@@ -84,7 +89,12 @@ class VulkanBackend : IBackend
 		// Load instance functions - some optional extension functions may not be
 		// available (e.g. VK_KHR_display, VK_EXT_debug_report). Log failures
 		// but don't treat them as fatal, matching how the legacy RHI handles this.
-		VulkanNative.LoadInstanceFunctions(mInstance, .Agnostic | .Win32, null,
+#if BF_PLATFORM_WINDOWS
+		let platformFuncs = InstanceFunctionFlags.Win32;
+#else
+		let platformFuncs = InstanceFunctionFlags.Xlib | .Wayland;
+#endif
+		VulkanNative.LoadInstanceFunctions(mInstance, .Agnostic | platformFuncs, null,
 			scope (func) => { Console.WriteLine("[Vulkan] Could not load instance function: {}", func); }
 		).IgnoreError();
 
@@ -186,8 +196,43 @@ class VulkanBackend : IBackend
 
 		return .Ok(new VulkanSurface(surface, mInstance));
 #else
-		Console.WriteLine("VulkanBackend: surface creation not supported on this platform");
-		return .Err;
+		if (windowHandle == null)
+		{
+			Console.WriteLine("VulkanBackend: window handle is null");
+			return .Err;
+		}
+
+		// SDL3 may choose Wayland even when DISPLAY is set, so try Wayland first
+		// when it's available, then fall back to X11. displayHandle is the
+		// wl_display*/X11 Display* and windowHandle is the wl_surface*/X11 Window.
+		VkSurfaceKHR surface = default;
+		VkResult result = .VK_ERROR_INITIALIZATION_FAILED;
+
+		String waylandDisplay = scope .();
+		bool preferWayland = (Environment.GetEnvironmentVariable("WAYLAND_DISPLAY", waylandDisplay) case .Ok) && !waylandDisplay.IsEmpty;
+		if (preferWayland)
+		{
+			VkWaylandSurfaceCreateInfoKHR createInfo = .();
+			createInfo.display = displayHandle;
+			createInfo.surface = windowHandle;
+			result = VulkanNative.vkCreateWaylandSurfaceKHR(mInstance, &createInfo, null, &surface);
+		}
+
+		if (result != .VK_SUCCESS)
+		{
+			VkXlibSurfaceCreateInfoKHR createInfo = .();
+			createInfo.dpy = displayHandle;
+			createInfo.window = windowHandle;
+			result = VulkanNative.vkCreateXlibSurfaceKHR(mInstance, &createInfo, null, &surface);
+		}
+
+		if (result != .VK_SUCCESS)
+		{
+			Console.WriteLine(scope $"VulkanBackend: Vulkan surface creation failed ({result})");
+			return .Err;
+		}
+
+		return .Ok(new VulkanSurface(surface, mInstance));
 #endif
 	}
 

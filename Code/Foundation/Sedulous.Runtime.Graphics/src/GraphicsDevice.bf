@@ -78,8 +78,12 @@ class GraphicsDevice
 			if (Sedulous.RHI.Vulkan.VulkanBackend.Create(desc.EnableValidation) case .Ok(let vkBackend))
 				rawBackend = vkBackend;
 		case .DX12:
+#if BF_PLATFORM_WINDOWS
 			if (Sedulous.RHI.DX12.DX12Backend.Create(desc.EnableValidation) case .Ok(let dxBackend))
 				rawBackend = dxBackend;
+#else
+			Console.WriteLine("ERROR: DX12 backend is not available on this platform");
+#endif
 		default:
 		}
 		if (rawBackend == null)
@@ -161,7 +165,7 @@ class GraphicsDevice
 	{
 		// Create surface
 		ISurface surface;
-		if (mBackend.CreateSurface(window.NativeHandle) case .Ok(let s))
+		if (mBackend.CreateSurface(window.NativeHandle, window.DisplayHandle) case .Ok(let s))
 			surface = s;
 		else
 			return .Err;

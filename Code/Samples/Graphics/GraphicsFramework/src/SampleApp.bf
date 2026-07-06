@@ -10,7 +10,9 @@ using System.Collections;
 enum BackendType
 {
 	Vulkan,
+#if BF_PLATFORM_WINDOWS
 	DX12,
+#endif
 }
 
 /// Abstract base class for all samples.
@@ -83,8 +85,15 @@ abstract class SampleApp
 
 		// Create window
 		let titleStr = scope String(Title);
-		mWindow = SDL_CreateWindow(titleStr.CStr(), (.)mWidth, (.)mHeight,
-			.SDL_WINDOW_RESIZABLE);
+		SDL_WindowFlags windowFlags = .SDL_WINDOW_RESIZABLE;
+#if !BF_PLATFORM_WINDOWS
+		// On Linux these samples always use the Vulkan backend, so create the
+		// window as a Vulkan client (skip under the headless "dummy" driver).
+		let videoDriver = SDL_GetCurrentVideoDriver();
+		if (videoDriver != null && StringView(videoDriver) != "dummy")
+			windowFlags |= .SDL_WINDOW_VULKAN;
+#endif
+		mWindow = SDL_CreateWindow(titleStr.CStr(), (.)mWidth, (.)mHeight, windowFlags);
 		if (mWindow == null)
 		{
 			Console.WriteLine("ERROR: SDL_CreateWindow failed");
@@ -98,16 +107,34 @@ abstract class SampleApp
 			return .Err;
 		}
 
-		// Create surface from native window handle
+		// Create surface from the native window handle(s)
 		let props = SDL_GetWindowProperties(mWindow);
-		void* hwnd = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, null);
-		if (hwnd == null)
+#if BF_PLATFORM_WINDOWS
+		void* windowHandle = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, null);
+		void* displayHandle = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_INSTANCE_POINTER, null);
+#else
+		void* windowHandle;
+		void* displayHandle;
+		let driver = SDL_GetCurrentVideoDriver();
+		if (driver != null && StringView(driver) == "wayland")
 		{
-			Console.WriteLine("ERROR: Failed to get HWND from SDL window");
+			windowHandle = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, null);
+			displayHandle = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, null);
+		}
+		else
+		{
+			// X11 Window is an XID (integer), not a pointer.
+			windowHandle = (void*)(int)SDL_GetNumberProperty(props, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
+			displayHandle = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_X11_DISPLAY_POINTER, null);
+		}
+#endif
+		if (windowHandle == null)
+		{
+			Console.WriteLine("ERROR: Failed to get native window handle from SDL window");
 			return .Err;
 		}
 
-		let surfaceResult = mBackend.CreateSurface(hwnd);
+		let surfaceResult = mBackend.CreateSurface(windowHandle, displayHandle);
 		if (surfaceResult case .Err)
 		{
 			Console.WriteLine("ERROR: CreateSurface failed");
@@ -154,6 +181,7 @@ abstract class SampleApp
 	{
 		switch (mBackendType)
 		{
+#if BF_PLATFORM_WINDOWS
 		case .DX12:
 			let result = Sedulous.RHI.DX12.DX12Backend.Create(mValidation);
 			if (result case .Ok(let backend))
@@ -163,6 +191,7 @@ abstract class SampleApp
 			}
 			Console.WriteLine("ERROR: DX12Backend.Create failed");
 			return .Err;
+#endif
 
 		case .Vulkan:
 			let result = Sedulous.RHI.Vulkan.VulkanBackend.Create(mValidation);
