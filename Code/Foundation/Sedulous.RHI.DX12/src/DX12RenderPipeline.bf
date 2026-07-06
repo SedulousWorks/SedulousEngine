@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;
@@ -178,7 +179,7 @@ class DX12RenderPipeline : IRenderPipeline
 		{
 			let nameStr = scope String();
 			nameStr.Append(desc.Label);
-			let wideName = nameStr.ToScopedNativeWChar!();
+			let wideName = (char16*)(nameStr.ToScopedNativeWChar!());
 			HRESULT hr = dxCache.Handle.LoadGraphicsPipeline(wideName, &psoDesc,
 				ID3D12PipelineState.IID, (void**)&mPipelineState);
 			if (SUCCEEDED(hr))
@@ -199,7 +200,7 @@ class DX12RenderPipeline : IRenderPipeline
 		{
 			let nameStr = scope String();
 			nameStr.Append(desc.Label);
-			let wideName = nameStr.ToScopedNativeWChar!();
+			let wideName = (char16*)(nameStr.ToScopedNativeWChar!());
 			dxCache.Handle.StorePipeline(wideName, mPipelineState);
 		}
 
@@ -232,3 +233,5 @@ class DX12RenderPipeline : IRenderPipeline
 	public D3D_PRIMITIVE_TOPOLOGY Topology => mTopology;
 	public uint32 GetVertexStride(uint32 slot) => (slot < (uint32)mVertexBufferCount) ? mVertexStrides[slot] : 0;
 }
+
+#endif // BF_PLATFORM_WINDOWS

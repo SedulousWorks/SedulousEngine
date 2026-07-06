@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;
@@ -44,7 +45,7 @@ class DX12ComputePipeline : IComputePipeline
 		{
 			let nameStr = scope String();
 			nameStr.Append(desc.Label);
-			let wideName = nameStr.ToScopedNativeWChar!();
+			let wideName = (char16*)(nameStr.ToScopedNativeWChar!());
 			HRESULT hr = dxCache.Handle.LoadComputePipeline(wideName, &psoDesc,
 				ID3D12PipelineState.IID, (void**)&mPipelineState);
 			if (SUCCEEDED(hr))
@@ -65,7 +66,7 @@ class DX12ComputePipeline : IComputePipeline
 		{
 			let nameStr = scope String();
 			nameStr.Append(desc.Label);
-			let wideName = nameStr.ToScopedNativeWChar!();
+			let wideName = (char16*)(nameStr.ToScopedNativeWChar!());
 			dxCache.Handle.StorePipeline(wideName, mPipelineState);
 		}
 
@@ -84,3 +85,5 @@ class DX12ComputePipeline : IComputePipeline
 	// --- Internal ---
 	public ID3D12PipelineState* Handle => mPipelineState;
 }
+
+#endif // BF_PLATFORM_WINDOWS

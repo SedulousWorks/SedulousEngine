@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;
@@ -80,3 +81,5 @@ class DX12AccelStruct : IAccelStruct
 	public uint64 GpuAddress => mGpuAddress;
 	public uint64 Size => mSize;
 }
+
+#endif // BF_PLATFORM_WINDOWS

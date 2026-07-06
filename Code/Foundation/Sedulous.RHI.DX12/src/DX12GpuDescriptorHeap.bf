@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;
@@ -144,3 +145,5 @@ class DX12GpuDescriptorHeap
 	public uint32 IncrementSize => mIncrementSize;
 	public D3D12_DESCRIPTOR_HEAP_TYPE HeapType => mType;
 }
+
+#endif // BF_PLATFORM_WINDOWS

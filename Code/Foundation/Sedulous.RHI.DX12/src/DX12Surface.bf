@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using Win32.Foundation;
@@ -15,3 +16,5 @@ class DX12Surface : ISurface
 
 	public HWND Handle => mHwnd;
 }
+
+#endif // BF_PLATFORM_WINDOWS

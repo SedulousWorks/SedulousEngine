@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;
@@ -344,3 +345,5 @@ class DX12TextureView : ITextureView
 	/// Mip-level-adjusted height.
 	public uint32 Height => Math.Max(1, mTexture.Desc.Height >> mDesc.BaseMipLevel);
 }
+
+#endif // BF_PLATFORM_WINDOWS

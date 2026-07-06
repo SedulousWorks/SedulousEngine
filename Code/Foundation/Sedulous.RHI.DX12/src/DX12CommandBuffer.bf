@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using Win32.Graphics.Direct3D12;
@@ -27,3 +28,5 @@ class DX12CommandBuffer : ICommandBuffer
 	// --- Internal ---
 	public ID3D12GraphicsCommandList* Handle => mCommandList;
 }
+
+#endif // BF_PLATFORM_WINDOWS

@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;
@@ -96,3 +97,5 @@ class DX12BindGroupLayout : IBindGroupLayout
 	public uint32 DynamicOffsetCount => mDynamicOffsetCount;
 	public bool HasBindless => mHasBindless;
 }
+
+#endif // BF_PLATFORM_WINDOWS

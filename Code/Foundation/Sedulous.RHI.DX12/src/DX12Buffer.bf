@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;
@@ -114,3 +115,5 @@ class DX12Buffer : IBuffer
 	public ID3D12Resource* Handle => mResource;
 	public D3D12_RESOURCE_STATES State { get => mState; set => mState = value; }
 }
+
+#endif // BF_PLATFORM_WINDOWS

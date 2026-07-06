@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;
@@ -73,7 +74,7 @@ class DX12RayTracingPipeline : IRayTracingPipeline
 			exportNames.Add(exportName);
 
 			D3D12_EXPORT_DESC exportDesc = default;
-			exportDesc.Name = exportName.ToScopedNativeWChar!::();
+			exportDesc.Name = (char16*)(exportName.ToScopedNativeWChar!::());
 			exportDesc.Flags = .D3D12_EXPORT_FLAG_NONE;
 
 			exports.Add(exportDesc);
@@ -133,19 +134,19 @@ class DX12RayTracingPipeline : IRayTracingPipeline
 			hitGroupNames.Add(hgName);
 
 			D3D12_HIT_GROUP_DESC hg = default;
-			hg.HitGroupExport = hgName.ToScopedNativeWChar!::();
+			hg.HitGroupExport = (char16*)(hgName.ToScopedNativeWChar!::());
 			hg.Type = (group.Type == .TrianglesHitGroup)
 				? .D3D12_HIT_GROUP_TYPE_TRIANGLES
 				: .D3D12_HIT_GROUP_TYPE_PROCEDURAL_PRIMITIVE;
 
 			if (group.ClosestHitShaderIndex != uint32.MaxValue && (int)group.ClosestHitShaderIndex < exportNames.Count)
-				hg.ClosestHitShaderImport = exportNames[(int)group.ClosestHitShaderIndex].ToScopedNativeWChar!::();
+				hg.ClosestHitShaderImport = (char16*)(exportNames[(int)group.ClosestHitShaderIndex].ToScopedNativeWChar!::());
 
 			if (group.AnyHitShaderIndex != uint32.MaxValue && (int)group.AnyHitShaderIndex < exportNames.Count)
-				hg.AnyHitShaderImport = exportNames[(int)group.AnyHitShaderIndex].ToScopedNativeWChar!::();
+				hg.AnyHitShaderImport = (char16*)(exportNames[(int)group.AnyHitShaderIndex].ToScopedNativeWChar!::());
 
 			if (group.IntersectionShaderIndex != uint32.MaxValue && (int)group.IntersectionShaderIndex < exportNames.Count)
-				hg.IntersectionShaderImport = exportNames[(int)group.IntersectionShaderIndex].ToScopedNativeWChar!::();
+				hg.IntersectionShaderImport = (char16*)(exportNames[(int)group.IntersectionShaderIndex].ToScopedNativeWChar!::());
 
 			hitGroups.Add(hg);
 		}
@@ -235,7 +236,7 @@ class DX12RayTracingPipeline : IRayTracingPipeline
 	public void* GetShaderIdentifier(StringView exportName)
 	{
 		if (mProperties == null) return null;
-		let wideName = scope String(exportName).ToScopedNativeWChar!();
+		let wideName = (char16*)(scope String(exportName).ToScopedNativeWChar!());
 		return mProperties.GetShaderIdentifier(wideName);
 	}
 
@@ -250,3 +251,5 @@ class DX12RayTracingPipeline : IRayTracingPipeline
 	public ID3D12StateObjectProperties* Properties => mProperties;
 	public List<String> GroupExportNames => mGroupExportNames;
 }
+
+#endif // BF_PLATFORM_WINDOWS

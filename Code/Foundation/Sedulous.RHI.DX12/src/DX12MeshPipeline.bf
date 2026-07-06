@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;
@@ -275,3 +276,5 @@ class DX12MeshPipeline : IMeshPipeline
 	// --- Internal ---
 	public ID3D12PipelineState* Handle => mPipelineState;
 }
+
+#endif // BF_PLATFORM_WINDOWS

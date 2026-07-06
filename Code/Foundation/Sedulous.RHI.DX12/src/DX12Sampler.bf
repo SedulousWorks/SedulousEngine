@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;
@@ -60,3 +61,5 @@ class DX12Sampler : ISampler
 	// --- Internal ---
 	public D3D12_CPU_DESCRIPTOR_HANDLE Handle => mHandle;
 }
+
+#endif // BF_PLATFORM_WINDOWS

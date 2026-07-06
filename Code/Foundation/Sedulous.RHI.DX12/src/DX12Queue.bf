@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;
@@ -154,3 +155,5 @@ class DX12Queue : IQueue
 	// --- Internal ---
 	public ID3D12CommandQueue* Handle => mQueue;
 }
+
+#endif // BF_PLATFORM_WINDOWS

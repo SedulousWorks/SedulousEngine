@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;
@@ -133,3 +134,5 @@ class DX12Adapter : IAdapter
 	public IDXGIFactory4* Factory => mFactory;
 	public DXGI_ADAPTER_DESC1 Desc => mDesc;
 }
+
+#endif // BF_PLATFORM_WINDOWS

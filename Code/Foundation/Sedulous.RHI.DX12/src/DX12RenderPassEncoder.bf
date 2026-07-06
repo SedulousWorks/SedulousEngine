@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;
@@ -405,3 +406,5 @@ class DX12RenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 		mCurrentMeshPipeline = null;
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

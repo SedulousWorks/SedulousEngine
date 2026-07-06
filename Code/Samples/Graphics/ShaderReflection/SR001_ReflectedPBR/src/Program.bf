@@ -175,8 +175,6 @@ class ReflectedPBRSample : SampleApp
 		ShaderReflection.RegisterBackend(sDxilBackend);
 	}
 
-	//public this() :base(.DX12) { }
-
 	protected override StringView Title => "SR001 - Reflected PBR Sphere";
 
 	protected override Result<void> OnInit()

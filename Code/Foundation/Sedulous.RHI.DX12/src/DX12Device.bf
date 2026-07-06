@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;
@@ -548,7 +549,7 @@ class DX12Device : IDevice
 	public static void SetDebugName(ID3D12Object* obj, StringView name)
 	{
 		if (name.IsEmpty || obj == null) return;
-		let wideName = name.ToScopedNativeWChar!();
+		let wideName = (char16*)(name.ToScopedNativeWChar!());
 		obj.SetName(wideName);
 	}
 	public DX12DescriptorHeapAllocator RtvHeap => mRtvHeap;
@@ -695,3 +696,5 @@ class DX12Device : IDevice
 		signatureBlob.Release();
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

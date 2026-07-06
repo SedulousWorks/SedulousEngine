@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;
@@ -203,3 +204,5 @@ class DX12RenderBundleEncoder : IRenderBundleEncoder
 		return mBundle;
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

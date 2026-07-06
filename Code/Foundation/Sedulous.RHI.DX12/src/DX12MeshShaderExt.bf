@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;
@@ -35,3 +36,5 @@ class DX12MeshShaderExt : IMeshShaderExt
 		pipeline = null;
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;
@@ -83,3 +84,5 @@ class DX12DescriptorHeapAllocator
 	public ID3D12DescriptorHeap* Heap => mHeap;
 	public uint32 DescriptorSize => mDescriptorSize;
 }
+
+#endif // BF_PLATFORM_WINDOWS

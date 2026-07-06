@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;  // Math
@@ -102,3 +103,5 @@ class DX12DescriptorStaging
 		mRetiredBlocks.Clear();
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

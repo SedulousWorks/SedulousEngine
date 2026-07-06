@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;
@@ -268,3 +269,5 @@ class DX12BindGroup : IBindGroup
 	public int32 SamplerOffset => mSamplerOffset;
 	public List<uint64> DynamicGpuAddresses => mDynamicGpuAddresses;
 }
+
+#endif // BF_PLATFORM_WINDOWS

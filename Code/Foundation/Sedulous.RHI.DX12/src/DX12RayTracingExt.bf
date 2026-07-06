@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;
@@ -98,7 +99,7 @@ class DX12RayTracingExt : IRayTracingExt
 			}
 
 			let exportName = dxPipeline.GroupExportNames[(int)groupIdx];
-			let wideName = scope String(exportName).ToScopedNativeWChar!();
+			let wideName = (char16*)(scope String(exportName).ToScopedNativeWChar!());
 			void* identifier = dxPipeline.Properties.GetShaderIdentifier(wideName);
 			if (identifier == null)
 			{
@@ -112,3 +113,5 @@ class DX12RayTracingExt : IRayTracingExt
 		return .Ok;
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

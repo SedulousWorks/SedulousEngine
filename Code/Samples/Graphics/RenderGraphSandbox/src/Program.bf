@@ -66,10 +66,6 @@ class RenderGraphSandboxApp : SampleApp
 
 	protected override StringView Title => "RenderGraph Sandbox — Triangle";
 
-	public this() : base(.DX12)
-	{
-
-	}
 
 	protected override Result<void> OnInit()
 	{

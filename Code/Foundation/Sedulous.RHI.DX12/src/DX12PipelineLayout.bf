@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;
@@ -251,3 +252,5 @@ class DX12PipelineLayout : IPipelineLayout
 	public uint32 NumBindGroups => mNumBindGroups;
 	public List<DynamicRootEntry> DynamicRootEntries => mDynamicRootEntries;
 }
+
+#endif // BF_PLATFORM_WINDOWS

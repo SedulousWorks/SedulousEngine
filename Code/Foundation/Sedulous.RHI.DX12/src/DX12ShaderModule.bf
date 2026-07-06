@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace Sedulous.RHI.DX12;
 
 using System;
@@ -29,3 +30,5 @@ class DX12ShaderModule : IShaderModule
 	// --- Internal ---
 	public Span<uint8> Bytecode => mBytecode;
 }
+
+#endif // BF_PLATFORM_WINDOWS
