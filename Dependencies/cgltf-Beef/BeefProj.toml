@@ -10,3 +10,12 @@ LibPaths = ["$(ProjectDir)/dist/Debug-Win64/cgltf.lib"]
 
 [Configs.Release.Win64]
 LibPaths = ["$(ProjectDir)/dist/Release-Win64/cgltf.lib"]
+
+[Configs.Debug.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libcgltf.a"]
+
+[Configs.Release.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libcgltf.a"]
+
+[Configs.Test.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libcgltf.a"]
