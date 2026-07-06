@@ -33,6 +33,15 @@ class SDL3WindowManager : IWindowManager
 		if (settings.Hidden)
 			flags |= .SDL_WINDOW_HIDDEN;
 
+#if !BF_PLATFORM_WINDOWS
+		// On Linux the RHI backend is always Vulkan, so create the window as a
+		// Vulkan client. Skip it under the headless "dummy" video driver, which
+		// has no Vulkan support (matches the reference SDL3 shell behaviour).
+		let videoDriver = SDL_GetCurrentVideoDriver();
+		if (videoDriver != null && StringView(videoDriver) != "dummy")
+			flags |= .SDL_WINDOW_VULKAN;
+#endif
+
 		let title = settings.Title != null ? settings.Title.CStr() : "Sedulous";
 
 		// Convert position constants to SDL equivalents

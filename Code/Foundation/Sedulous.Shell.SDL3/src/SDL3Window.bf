@@ -112,6 +112,16 @@ class SDL3Window : IWindow
 
 	public float ContentScale => SDL_GetWindowDisplayScale(mWindow);
 
+#if !BF_PLATFORM_WINDOWS
+	// SDL3 can pick either Wayland or X11 at runtime (e.g. on Arch it may choose
+	// Wayland even when DISPLAY is set), so detect the active driver by name.
+	private static bool IsWayland()
+	{
+		let driver = SDL_GetCurrentVideoDriver();
+		return driver != null && StringView(driver) == "wayland";
+	}
+#endif
+
 	public void* NativeHandle
 	{
 		get
@@ -120,7 +130,25 @@ class SDL3Window : IWindow
 #if BF_PLATFORM_WINDOWS
 			return SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, null);
 #else
-			return null;
+			if (IsWayland())
+				return SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, null);
+			// X11 Window is an XID (integer), not a pointer.
+			return (void*)(int)SDL_GetNumberProperty(props, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
+#endif
+		}
+	}
+
+	public void* DisplayHandle
+	{
+		get
+		{
+			let props = SDL_GetWindowProperties(mWindow);
+#if BF_PLATFORM_WINDOWS
+			return SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_INSTANCE_POINTER, null);
+#else
+			if (IsWayland())
+				return SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, null);
+			return SDL_GetPointerProperty(props, SDL_PROP_WINDOW_X11_DISPLAY_POINTER, null);
 #endif
 		}
 	}

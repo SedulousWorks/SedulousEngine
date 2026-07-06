@@ -59,7 +59,12 @@ public interface IWindow
 	/// Sets or clears fullscreen mode.
 	void SetFullscreen(bool fullscreen);
 
-	/// Gets the native platform handle for this window.
-	/// On Windows, this returns the HWND.
+	/// Gets the native platform window handle for this window.
+	/// Windows: HWND. Linux/X11: the X11 Window (XID). Linux/Wayland: the wl_surface.
 	void* NativeHandle { get; }
+
+	/// Gets the native platform display/connection handle for this window.
+	/// Windows: HINSTANCE. Linux/X11: the X11 Display*. Linux/Wayland: the wl_display*.
+	/// Used together with NativeHandle to create a rendering surface.
+	void* DisplayHandle { get; }
 }
