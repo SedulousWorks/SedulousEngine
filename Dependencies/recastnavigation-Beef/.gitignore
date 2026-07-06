@@ -1,2 +1,4 @@
 build-debug/
 build-release/
+build-linux-release/
+build-linux-debug/

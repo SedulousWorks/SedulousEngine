@@ -31,3 +31,12 @@ LibPaths = [
     "$(ProjectDir)/dist/Debug-Win64/DetourTileCache-c.lib",
     "$(ProjectDir)/dist/Debug-Win64/DebugUtils-c.lib"
 ]
+
+[Configs.Debug.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libDetourCrowd-c.a", "$(ProjectDir)/dist/Release-Linux64/libDetourTileCache-c.a", "$(ProjectDir)/dist/Release-Linux64/libDebugUtils-c.a", "$(ProjectDir)/dist/Release-Linux64/libDetour-c.a", "$(ProjectDir)/dist/Release-Linux64/libRecast-c.a"]
+
+[Configs.Release.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libDetourCrowd-c.a", "$(ProjectDir)/dist/Release-Linux64/libDetourTileCache-c.a", "$(ProjectDir)/dist/Release-Linux64/libDebugUtils-c.a", "$(ProjectDir)/dist/Release-Linux64/libDetour-c.a", "$(ProjectDir)/dist/Release-Linux64/libRecast-c.a"]
+
+[Configs.Test.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libDetourCrowd-c.a", "$(ProjectDir)/dist/Release-Linux64/libDetourTileCache-c.a", "$(ProjectDir)/dist/Release-Linux64/libDebugUtils-c.a", "$(ProjectDir)/dist/Release-Linux64/libDetour-c.a", "$(ProjectDir)/dist/Release-Linux64/libRecast-c.a"]
