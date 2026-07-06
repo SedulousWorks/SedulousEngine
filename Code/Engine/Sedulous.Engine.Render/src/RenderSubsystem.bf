@@ -135,8 +135,9 @@ class RenderSubsystem : Subsystem, ISceneAware, ISceneRenderer, IScreenRenderer
 
 	/// Shader system (set by app, not owned).
 	public ShaderSystem ShaderSystem { get; set; }
-
-	public String BuiltInAssetDirectory { get; set; } ~ delete _;
+	
+	/// Asset directory (set by app, not owned).
+	public String BuiltInAssetDirectory { get; set; }
 
 	// ==================== ISceneRenderer ====================
 
