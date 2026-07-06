@@ -16,3 +16,14 @@ PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/Release-Win64/*.dll\")",
 [Configs.Test.Win64]
 LibPaths = ["$(ProjectDir)/dist/Debug-Win64/joltcd.lib", "$(ProjectDir)/dist/Debug-Win64/joltd.lib"]
 PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/Debug-Win64/*.dll\")", "CopyToDependents(\"$(ProjectDir)/dist/Debug-Win64/*.pdb\")"]
+[Configs.Debug.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libjoltc.so"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/Release-Linux64/*.so\")"]
+
+[Configs.Release.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libjoltc.so"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/Release-Linux64/*.so\")"]
+
+[Configs.Test.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libjoltc.so"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/Release-Linux64/*.so\")"]
