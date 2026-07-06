@@ -3,6 +3,7 @@ namespace Sedulous.RHI.Vulkan;
 using System;
 using System.Collections;
 using Bulkan;
+using Sedulous.Surface;
 
 /// Vulkan implementation of IBackend.
 class VulkanBackend : IBackend
@@ -179,51 +180,38 @@ class VulkanBackend : IBackend
 			adapters.Add(adapter);
 	}
 
-	public Result<ISurface> CreateSurface(void* windowHandle, void* displayHandle = null)
+	public Result<ISurface> CreateSurface(SurfaceInfo info)
 	{
+		// The windowing system is carried in info.Type, so we create exactly the
+		// matching surface - no guessing. Feeding handles to the wrong platform
+		// entry point (e.g. an X11 Display* to the Wayland WSI) would segfault.
+		VkSurfaceKHR surface = default;
+		VkResult result;
+
+		switch (info.Type)
+		{
 #if BF_PLATFORM_WINDOWS
-		VkWin32SurfaceCreateInfoKHR createInfo = .();
-		createInfo.hinstance = (void*)(int)Windows.GetModuleHandleA(null);
-		createInfo.hwnd = windowHandle;
-
-		VkSurfaceKHR surface = default;
-		let result = VulkanNative.vkCreateWin32SurfaceKHR(mInstance, &createInfo, null, &surface);
-		if (result != .VK_SUCCESS)
-		{
-			Console.WriteLine(scope $"VulkanBackend: vkCreateWin32SurfaceKHR failed ({result})");
-			return .Err;
-		}
-
-		return .Ok(new VulkanSurface(surface, mInstance));
+		case .Win32:
+			VkWin32SurfaceCreateInfoKHR createInfo = .();
+			createInfo.hinstance = (void*)(int)Windows.GetModuleHandleA(null);
+			createInfo.hwnd = info.Win32.Hwnd;
+			result = VulkanNative.vkCreateWin32SurfaceKHR(mInstance, &createInfo, null, &surface);
 #else
-		if (windowHandle == null)
-		{
-			Console.WriteLine("VulkanBackend: window handle is null");
-			return .Err;
-		}
-
-		// SDL3 may choose Wayland even when DISPLAY is set, so try Wayland first
-		// when it's available, then fall back to X11. displayHandle is the
-		// wl_display*/X11 Display* and windowHandle is the wl_surface*/X11 Window.
-		VkSurfaceKHR surface = default;
-		VkResult result = .VK_ERROR_INITIALIZATION_FAILED;
-
-		String waylandDisplay = scope .();
-		bool preferWayland = (Environment.GetEnvironmentVariable("WAYLAND_DISPLAY", waylandDisplay) case .Ok) && !waylandDisplay.IsEmpty;
-		if (preferWayland)
-		{
-			VkWaylandSurfaceCreateInfoKHR createInfo = .();
-			createInfo.display = displayHandle;
-			createInfo.surface = windowHandle;
-			result = VulkanNative.vkCreateWaylandSurfaceKHR(mInstance, &createInfo, null, &surface);
-		}
-
-		if (result != .VK_SUCCESS)
-		{
+		case .X11:
 			VkXlibSurfaceCreateInfoKHR createInfo = .();
-			createInfo.dpy = displayHandle;
-			createInfo.window = windowHandle;
+			createInfo.dpy = info.X11.Display;
+			createInfo.window = (void*)(int)info.X11.Window;
 			result = VulkanNative.vkCreateXlibSurfaceKHR(mInstance, &createInfo, null, &surface);
+
+		case .Wayland:
+			VkWaylandSurfaceCreateInfoKHR createInfo = .();
+			createInfo.display = info.Wayland.Display;
+			createInfo.surface = info.Wayland.Surface;
+			result = VulkanNative.vkCreateWaylandSurfaceKHR(mInstance, &createInfo, null, &surface);
+#endif
+		default:
+			Console.WriteLine(scope $"VulkanBackend: unsupported surface type {info.Type}");
+			return .Err;
 		}
 
 		if (result != .VK_SUCCESS)
@@ -233,7 +221,6 @@ class VulkanBackend : IBackend
 		}
 
 		return .Ok(new VulkanSurface(surface, mInstance));
-#endif
 	}
 
 	public void Destroy()

@@ -4,6 +4,7 @@ using System;
 using SDL3;
 using Sedulous.RHI;
 using Sedulous.RHI.Validation;
+using Sedulous.Surface;
 using System.Collections;
 
 /// Backend type selection.
@@ -107,34 +108,29 @@ abstract class SampleApp
 			return .Err;
 		}
 
-		// Create surface from the native window handle(s)
+		// Describe the native surface for the RHI.
 		let props = SDL_GetWindowProperties(mWindow);
 #if BF_PLATFORM_WINDOWS
-		void* windowHandle = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, null);
-		void* displayHandle = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_INSTANCE_POINTER, null);
+		SurfaceInfo surfaceInfo = .FromWin32(SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, null));
 #else
-		void* windowHandle;
-		void* displayHandle;
+		SurfaceInfo surfaceInfo;
 		let driver = SDL_GetCurrentVideoDriver();
 		if (driver != null && StringView(driver) == "wayland")
 		{
-			windowHandle = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, null);
-			displayHandle = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, null);
+			surfaceInfo = .FromWayland(
+				SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, null),
+				SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, null));
 		}
 		else
 		{
 			// X11 Window is an XID (integer), not a pointer.
-			windowHandle = (void*)(int)SDL_GetNumberProperty(props, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
-			displayHandle = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_X11_DISPLAY_POINTER, null);
+			surfaceInfo = .FromX11(
+				SDL_GetPointerProperty(props, SDL_PROP_WINDOW_X11_DISPLAY_POINTER, null),
+				(uint64)SDL_GetNumberProperty(props, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0));
 		}
 #endif
-		if (windowHandle == null)
-		{
-			Console.WriteLine("ERROR: Failed to get native window handle from SDL window");
-			return .Err;
-		}
 
-		let surfaceResult = mBackend.CreateSurface(windowHandle, displayHandle);
+		let surfaceResult = mBackend.CreateSurface(surfaceInfo);
 		if (surfaceResult case .Err)
 		{
 			Console.WriteLine("ERROR: CreateSurface failed");

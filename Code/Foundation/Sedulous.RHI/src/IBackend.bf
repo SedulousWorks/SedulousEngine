@@ -2,6 +2,7 @@ namespace Sedulous.RHI;
 
 using System;
 using System.Collections;
+using Sedulous.Surface;
 
 /// A graphics backend (Vulkan, DX12, etc.). Entry point for the RHI.
 ///
@@ -20,10 +21,11 @@ interface IBackend
 	/// they are destroyed when the backend is destroyed).
 	void EnumerateAdapters(List<IAdapter> adapters);
 
-	/// Creates a surface from native window handles.
-	/// - windowHandle: HWND (Windows), or X11 Window (Linux)
-	/// - displayHandle: null (Windows), or X11 Display* (Linux)
-	Result<ISurface> CreateSurface(void* windowHandle, void* displayHandle = null);
+	/// Creates a presentation surface for a window. The SurfaceInfo carries the
+	/// native handles together with the windowing system that produced them, so
+	/// the backend never has to guess (X11 vs Wayland) which would risk feeding
+	/// handles to the wrong platform surface entry point.
+	Result<ISurface> CreateSurface(SurfaceInfo info);
 
 	/// Destroys this backend and all objects created from it.
 	void Destroy();

@@ -6,6 +6,7 @@ using System.Collections;
 using Win32;
 using Win32.Foundation;
 using Win32.Graphics.Direct3D12;
+using Sedulous.Surface;
 using Win32.Graphics.Dxgi;
 using Win32.System.Com;
 using Sedulous.RHI;
@@ -100,14 +101,14 @@ class DX12Backend : IBackend
 			adapters.Add(adapter);
 	}
 
-	public Result<ISurface> CreateSurface(void* windowHandle, void* displayHandle = null)
+	public Result<ISurface> CreateSurface(SurfaceInfo info)
 	{
-		if (windowHandle == null)
+		if (info.Type != .Win32 || info.Win32.Hwnd == null)
 		{
-			System.Diagnostics.Debug.WriteLine("DX12Backend: CreateSurface called with null window handle");
+			System.Diagnostics.Debug.WriteLine("DX12Backend: CreateSurface requires a Win32 surface");
 			return .Err;
 		}
-		return .Ok(new DX12Surface((HWND)windowHandle));
+		return .Ok(new DX12Surface((HWND)info.Win32.Hwnd));
 	}
 
 	public void Destroy()

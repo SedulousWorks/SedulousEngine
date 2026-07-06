@@ -1,5 +1,5 @@
 FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Core" = "*"}
+Dependencies = {corlib = "*", "Sedulous.Core" = "*", "Sedulous.Surface" = "*"}
 
 [Project]
 Name = "Sedulous.Shell"

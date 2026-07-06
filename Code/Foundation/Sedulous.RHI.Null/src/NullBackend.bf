@@ -2,6 +2,7 @@ namespace Sedulous.RHI.Null;
 
 using System;
 using System.Collections;
+using Sedulous.Surface;
 
 /// No-op RHI backend. All operations succeed immediately without GPU interaction.
 /// Useful for headless testing, CI pipelines, and benchmarking CPU-side logic.
@@ -25,7 +26,7 @@ class NullBackend : IBackend
 		adapters.Add(mAdapter);
 	}
 
-	public Result<ISurface> CreateSurface(void* windowHandle, void* displayHandle = null)
+	public Result<ISurface> CreateSurface(SurfaceInfo info)
 	{
 		return .Ok(new NullSurface());
 	}

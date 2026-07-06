@@ -1,6 +1,7 @@
 using System;
 using SDL3;
 using Sedulous.Shell;
+using Sedulous.Surface;
 
 namespace Sedulous.Shell.SDL3;
 
@@ -122,33 +123,24 @@ class SDL3Window : IWindow
 	}
 #endif
 
-	public void* NativeHandle
+	public SurfaceInfo SurfaceInfo
 	{
 		get
 		{
 			let props = SDL_GetWindowProperties(mWindow);
 #if BF_PLATFORM_WINDOWS
-			return SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, null);
+			return .FromWin32(SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, null));
 #else
 			if (IsWayland())
-				return SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, null);
+			{
+				return .FromWayland(
+					SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, null),
+					SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, null));
+			}
 			// X11 Window is an XID (integer), not a pointer.
-			return (void*)(int)SDL_GetNumberProperty(props, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
-#endif
-		}
-	}
-
-	public void* DisplayHandle
-	{
-		get
-		{
-			let props = SDL_GetWindowProperties(mWindow);
-#if BF_PLATFORM_WINDOWS
-			return SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_INSTANCE_POINTER, null);
-#else
-			if (IsWayland())
-				return SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, null);
-			return SDL_GetPointerProperty(props, SDL_PROP_WINDOW_X11_DISPLAY_POINTER, null);
+			return .FromX11(
+				SDL_GetPointerProperty(props, SDL_PROP_WINDOW_X11_DISPLAY_POINTER, null),
+				(uint64)SDL_GetNumberProperty(props, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0));
 #endif
 		}
 	}

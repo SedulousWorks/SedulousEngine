@@ -4,3 +4,7 @@ FileVersion = 1
 Name = "Sedulous.RHI"
 TargetType = "BeefLib"
 StartupObject = "Sedulous.RHI.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Surface" = "*"

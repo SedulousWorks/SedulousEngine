@@ -165,7 +165,7 @@ class GraphicsDevice
 	{
 		// Create surface
 		ISurface surface;
-		if (mBackend.CreateSurface(window.NativeHandle, window.DisplayHandle) case .Ok(let s))
+		if (mBackend.CreateSurface(window.SurfaceInfo) case .Ok(let s))
 			surface = s;
 		else
 			return .Err;

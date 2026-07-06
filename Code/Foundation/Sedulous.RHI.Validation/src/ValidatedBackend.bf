@@ -3,6 +3,7 @@ namespace Sedulous.RHI.Validation;
 using System;
 using System.Collections;
 using Sedulous.RHI;
+using Sedulous.Surface;
 
 /// Validation wrapper for IBackend.
 /// Factory entry point: CreateValidatedBackend(inner).
@@ -42,15 +43,15 @@ class ValidatedBackend : IBackend
 			adapters.Add(wrapper);
 	}
 
-	public Result<ISurface> CreateSurface(void* windowHandle, void* displayHandle = null)
+	public Result<ISurface> CreateSurface(SurfaceInfo info)
 	{
-		if (windowHandle == null)
+		if (info.Type == .Unspecified)
 		{
-			ValidationLogger.Error("CreateSurface: windowHandle is null");
+			ValidationLogger.Error("CreateSurface: surface type is Unspecified");
 			return .Err;
 		}
 
-		return mInner.CreateSurface(windowHandle, displayHandle);
+		return mInner.CreateSurface(info);
 	}
 
 	public void Destroy()

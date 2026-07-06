@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Surface;
 
 namespace Sedulous.Shell;
 
@@ -59,12 +60,8 @@ public interface IWindow
 	/// Sets or clears fullscreen mode.
 	void SetFullscreen(bool fullscreen);
 
-	/// Gets the native platform window handle for this window.
-	/// Windows: HWND. Linux/X11: the X11 Window (XID). Linux/Wayland: the wl_surface.
-	void* NativeHandle { get; }
-
-	/// Gets the native platform display/connection handle for this window.
-	/// Windows: HINSTANCE. Linux/X11: the X11 Display*. Linux/Wayland: the wl_display*.
-	/// Used together with NativeHandle to create a rendering surface.
-	void* DisplayHandle { get; }
+	/// Gets the native surface description for this window: the platform handles
+	/// plus the windowing system that produced them (Win32/X11/Wayland/...), ready
+	/// to hand to a rendering backend's CreateSurface.
+	SurfaceInfo SurfaceInfo { get; }
 }
