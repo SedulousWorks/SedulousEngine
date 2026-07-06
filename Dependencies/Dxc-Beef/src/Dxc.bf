@@ -35,13 +35,21 @@ namespace Dxc_Beef
 		/// While this function is similar to CoCreateInstance, there is no COM involvement.
 		/// </remarks>
 
+#if BF_PLATFORM_WINDOWS
 		[CallingConvention(.Stdcall), CLink, Import("dxcompiler.lib")]
+#else
+		[CallingConvention(.Stdcall), CLink]
+#endif
 		private static extern HRESULT DxcCreateInstance(
 			in Guid rclsid,
 			in Guid riid,
 			out void* ppv);
 
+#if BF_PLATFORM_WINDOWS
 		[CallingConvention(.Stdcall), CLink, Import("dxcompiler.lib")]
+#else
+		[CallingConvention(.Stdcall), CLink]
+#endif
 		private static extern HRESULT DxcCreateInstance2(
 			in IMalloc* pMalloc,
 			in Guid rclsid,

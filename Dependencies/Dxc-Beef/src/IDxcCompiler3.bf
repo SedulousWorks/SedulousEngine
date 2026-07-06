@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Interop;
 namespace Dxc_Beef
 {
 	public struct IDxcCompiler3 : IUnknown
@@ -15,7 +16,7 @@ namespace Dxc_Beef
 			// Preprocess HLSL source (-P)
 			public function [CallingConvention(.Stdcall)] HRESULT(IDxcCompiler3* self,
 				DxcBuffer* pSource, // Source text to compile
-				char16** pArguments, // Array of pointers to arguments
+				c_wchar** pArguments, // Array of pointers to arguments
 				uint32 argCount, // Number of arguments
 				IDxcIncludeHandler* pIncludeHandler, // user-provided interface to handle #include directives (optional)
 			ref Guid riid, out void** ppResult // IDxcResult: status, buffer, and errors
@@ -44,7 +45,7 @@ namespace Dxc_Beef
 			out void** ppResult // IDxcResult: status, buffer, and errors
 			) mut
 		{
-			List<char16*> parguments = scope .()
+			List<c_wchar*> parguments = scope .()
 				{
 					Count = arguments.Length
 				};

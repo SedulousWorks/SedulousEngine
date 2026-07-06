@@ -1,4 +1,5 @@
 using System;
+using System.Interop;
 namespace Dxc_Beef
 {
 	public struct IDxcLibrary : IUnknown
@@ -14,7 +15,7 @@ namespace Dxc_Beef
 				IDxcBlob* pBlob, uint32 offset, uint32 length, out IDxcBlob* ppResult) CreateBlobFromBlob;
 
 			public function [CallingConvention(.Stdcall)] HRESULT(IDxcLibrary* self,
-				char16* pFileName, uint32* codePage,
+				c_wchar* pFileName, uint32* codePage,
 				out IDxcBlobEncoding* pBlobEncoding
 				) CreateBlobFromFile;
 

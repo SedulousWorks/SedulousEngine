@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Interop;
 namespace Dxc_Beef
 {
 	public struct IDxcIncludeHandler : IUnknown
@@ -8,7 +9,7 @@ namespace Dxc_Beef
 
 		public struct VTable : IUnknown.VTable
 		{
-			public function [CallingConvention(.Stdcall)] HRESULT(IDxcIncludeHandler* self, char16* pFilename, out IDxcBlob* ppIncludeSource) LoadSource;
+			public function [CallingConvention(.Stdcall)] HRESULT(IDxcIncludeHandler* self, c_wchar* pFilename, out IDxcBlob* ppIncludeSource) LoadSource;
 		}
 
 		protected new VTable* VT

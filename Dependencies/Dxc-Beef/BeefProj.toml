@@ -12,3 +12,11 @@ PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/bin/x64/*.dll\")"]
 [Configs.Release.Win64]
 LibPaths = ["$(ProjectDir)/dist/lib/x64/dxcompiler.lib", "$(ProjectDir)/dist/lib/x64/dxil.lib"]
 PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/bin/x64/*.dll\")"]
+
+[Configs.Debug.Linux64]
+LibPaths = ["$(ProjectDir)/dist/lib/linux-x64/libdxcompiler.so"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/lib/linux-x64/*.so\")"]
+
+[Configs.Release.Linux64]
+LibPaths = ["$(ProjectDir)/dist/lib/linux-x64/libdxcompiler.so"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/lib/linux-x64/*.so\")"]
