@@ -82,6 +82,16 @@ class SDL3Window : IWindow
 		}
 	}
 
+	public void SetPosition(int32 x, int32 y)
+	{
+		SDL_SetWindowPosition(mWindow, x, y);
+	}
+
+	public void SetSize(int32 width, int32 height)
+	{
+		SDL_SetWindowSize(mWindow, width, height);
+	}
+
 	public WindowState State
 	{
 		get

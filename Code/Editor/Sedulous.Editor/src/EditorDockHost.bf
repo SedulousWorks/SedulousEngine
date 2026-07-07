@@ -86,8 +86,7 @@ class EditorDockHost : IDockableWindowHost
 			return;
 		}
 
-		rw.Window.X = mEditor.Window.X + (int32)screenX;
-		rw.Window.Y = mEditor.Window.Y + (int32)screenY;
+		rw.Window.SetPosition(mEditor.Window.X + (int32)screenX, mEditor.Window.Y + (int32)screenY);
 
 		let data = new DockableWindowData();
 		data.OnCloseDelegate = onCloseRequested;
@@ -137,10 +136,11 @@ class EditorDockHost : IDockableWindowHost
 			let ny = mEditor.Window.Y + (int32)screenY;
 			let nw = (int32)width;
 			let nh = (int32)height;
-			if (rw.Window.X != nx) rw.Window.X = nx;
-			if (rw.Window.Y != ny) rw.Window.Y = ny;
-			if (rw.Window.Width != nw) rw.Window.Width = nw;
-			if (rw.Window.Height != nh) rw.Window.Height = nh;
+			// Set position/size atomically - two per-axis writes race on X11.
+			if (rw.Window.X != nx || rw.Window.Y != ny)
+				rw.Window.SetPosition(nx, ny);
+			if (rw.Window.Width != nw || rw.Window.Height != nh)
+				rw.Window.SetSize(nw, nh);
 		}
 	}
 

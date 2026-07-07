@@ -24,6 +24,18 @@ public interface IWindow
 	/// Gets or sets the window height.
 	int32 Height { get; set; }
 
+	/// Atomically sets the window position in one call. The per-axis X/Y setters
+	/// each read the other axis back to preserve it, but SDL_SetWindowPosition is
+	/// asynchronous on X11 - the read-back returns the stale (pre-move) value, so
+	/// setting X then Y makes the Y-set re-apply the old X and pin it. Moving both
+	/// axes must go through this single call. (Confirmed by tracing the editor's
+	/// float-window drag: X stayed pinned while only Y followed the cursor.)
+	void SetPosition(int32 x, int32 y);
+
+	/// Atomically sets the window size in one call (same asynchronous-readback
+	/// reason as SetPosition when changing width and height together).
+	void SetSize(int32 width, int32 height);
+
 	/// Gets the current window state.
 	WindowState State { get; }
 

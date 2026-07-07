@@ -1059,11 +1059,14 @@ class EditorApplication : IApplication
 				}
 			}
 
-			// Move the dockable OS window to follow cursor.
+			// Move the dockable OS window to follow cursor. Set both axes in one
+			// call - two per-axis writes race on X11 (the second reads back the
+			// first axis' stale pre-move value and pins it).
 			if (mDockHost.DragSourceWindow != null)
 			{
-				mDockHost.DragSourceWindow.X = (int32)(globalX - mDockHost.DragWindowOffsetX);
-				mDockHost.DragSourceWindow.Y = (int32)(globalY - mDockHost.DragWindowOffsetY);
+				mDockHost.DragSourceWindow.SetPosition(
+					(int32)(globalX - mDockHost.DragWindowOffsetX),
+					(int32)(globalY - mDockHost.DragWindowOffsetY));
 			}
 
 			// Route to main window with global-to-main-relative conversion.
