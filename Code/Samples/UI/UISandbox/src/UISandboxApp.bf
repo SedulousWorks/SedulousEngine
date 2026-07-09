@@ -1859,6 +1859,15 @@ class UISandboxApp : IApplication, IDockableWindowHost
 		if (evt.Type != .CloseRequested)
 			return;
 
+		// Closing the main window quits the app, even with secondary (dockable)
+		// windows open. The shell otherwise only stops on SDL's last-window QUIT,
+		// which an open secondary window suppresses.
+		if (window === mHost.MainWindow?.Window)
+		{
+			mHost.RequestExit();
+			return;
+		}
+
 		// Check if it's a dockable window
 		for (let kv in mDockableWindowMap)
 		{
