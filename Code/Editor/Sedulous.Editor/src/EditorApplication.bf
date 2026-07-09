@@ -345,6 +345,17 @@ class EditorApplication : IApplication
 
 		// Subscribe to window events for secondary window close handling
 		mShell.WindowManager.OnWindowEvent.Subscribe(new => mDockHost.HandleWindowEvent);
+		// Closing the main window quits the app.
+		mShell.WindowManager.OnWindowEvent.Subscribe(new => HandleMainWindowEvent);
+	}
+
+	/// Closing the main editor window exits the app, even while secondary
+	/// (floating dock) windows are open. The shell otherwise only quits on
+	/// SDL's last-window-closed QUIT, which an open secondary window suppresses.
+	private void HandleMainWindowEvent(IWindow window, WindowEvent evt)
+	{
+		if (evt.Type == .CloseRequested && window === mMainWindow)
+			mApplicationHost?.RequestExit();
 	}
 
 	public void OnStartup(Sedulous.Runtime.Client.IApplicationHost host)
