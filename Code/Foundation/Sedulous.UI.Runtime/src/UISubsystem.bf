@@ -150,17 +150,20 @@ public class UISubsystem : Subsystem
 		if (!mRenderingInitialized || mUIContext == null || mRoot == null)
 			return;
 
-		// Sync DPI scale from window
-		if (mWindow != null)
-			mRoot.DpiScale = mWindow.ContentScale;
-
 		// Route shell input -> UI2 events (unless app handles routing manually)
 		if (!ManualInputRouting && mInputHelper != null && mShell?.InputManager != null)
 			mInputHelper.Update(mShell.InputManager, mUIContext, deltaTime);
 
-		// Run frame lifecycle
+		// Drain deferred mutations / tick animations. Layout is NOT run here --
+		// it happens in Render(), after the app's OnUpdate has routed input, so
+		// input-driven tree changes (e.g. switching to a TabView tab, which
+		// makes previously-Gone content Visible) are laid out before they are
+		// first drawn. Laying out here (before input) would draw the newly
+		// visible subtree at its stale 0x0 bounds for one frame; controls that
+		// cache layout-dependent state (multiline EditText glyph wrapping) would
+		// bake in that zero-width result permanently. Order matches Raptor's
+		// input -> layout -> draw.
 		mUIContext.BeginFrame(deltaTime);
-		mUIContext.UpdateRootView(mRoot);
 
 		// Sync cursor from UI2 -> Shell
 		SyncCursor();
@@ -174,10 +177,24 @@ public class UISubsystem : Subsystem
 		if (!mRenderingInitialized || mUIContext == null || mRoot == null)
 			return;
 
+		// Never draw at zero size -- the tree hasn't been laid out at a real
+		// size yet, and drawing here would cache layout-dependent state at 0.
+		if (width == 0 || height == 0)
+			return;
+
 		using (SProfiler.Begin("UI2Subsystem.Render"))
 		{
-			// Update viewport size
+			// Sync DPI + viewport to the swapchain size (authoritative) and lay
+			// out the tree immediately before drawing. Running layout here --
+			// after the app's OnUpdate has routed input -- guarantees the draw
+			// reflects the post-input tree, so a subtree that just became
+			// visible this frame (e.g. a newly selected TabView tab) is arranged
+			// at its real size before its first draw. Matches Raptor's
+			// input -> layout -> draw ordering.
+			if (mWindow != null)
+				mRoot.DpiScale = mWindow.ContentScale;
 			mRoot.ViewportSize = .((float)width, (float)height);
+			mUIContext.UpdateRootView(mRoot);
 
 			// Build VG geometry from UI tree
 			mVGContext.Clear();
