@@ -345,6 +345,17 @@ public class TabView : ViewGroup
 		}
 	}
 
+	public override void OnMouseLeave()
+	{
+		// Hover is tracked in OnMouseMove, which stops firing once the cursor
+		// leaves the strip - clear it here or the tab stays stuck in Hover.
+		if (mHoveredTabIndex != -1)
+		{
+			mHoveredTabIndex = -1;
+			Invalidate();
+		}
+	}
+
 	public override void OnKeyDown(KeyEventArgs e)
 	{
 		if (mTabs.Count == 0) return;
