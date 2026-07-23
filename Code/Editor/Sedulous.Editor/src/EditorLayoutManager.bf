@@ -227,9 +227,8 @@ class EditorLayoutManager
 		}
 
 		mPageDockPanels[.(page)] = panel;
-
-		// Activate the new tab so the opened page is immediately visible
-		dockManager.ActivatePanel(panel);
+		// (Docking activates the new tab - DockManager behavior since the
+		// dock-activates change - so no explicit ActivatePanel is needed here.)
 	}
 
 	public void OnPageClosed(IEditorPage page)

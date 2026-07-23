@@ -210,4 +210,41 @@ class DockingTests
 
 		Test.Assert(dm.[Friend]mRootNode is DockSplit);
 	}
+
+	// Docking a panel into a tab group makes it the ACTIVE tab (mainstream-IDE
+	// behavior). Covers both the DockPanel and DockPanelRelativeTo Center paths.
+	[Test]
+	public static void DockManager_DockPanel_Center_ActivatesDockedTab()
+	{
+		let ctx = scope UIContext();
+		let root = scope RootView();
+		root.ViewportSize = .(800, 600);
+		ctx.AddRootView(root);
+
+		let dm = new DockManager();
+		root.AddView(dm);
+		ctx.BeginFrame(0.016f);
+		root.Measure(BoxConstraints.Tight(800, 600));
+		root.Layout(0, 0, 800, 600);
+
+		let p1 = dm.AddPanel("P1", new Label("Content 1"));
+		let p2 = dm.AddPanel("P2", new Label("Content 2"));
+		let p3 = dm.AddPanel("P3", new Label("Content 3"));
+
+		dm.DockPanel(p1, .Center);
+		dm.DockPanel(p2, .Center); // tabs with p1 - and becomes the active tab
+
+		let group = p2.Parent as DockTabGroup;
+		Test.Assert(group != null);
+		Test.Assert(group.PanelCount == 2);
+		Test.Assert(group.SelectedPanel === p2);
+
+		// Same through the relative-to path.
+		dm.DockPanelRelativeTo(p3, .Center, p1.Parent);
+		Test.Assert(group.SelectedPanel === p3);
+
+		// Explicit activation still works on a background tab.
+		dm.ActivatePanel(p1);
+		Test.Assert(group.SelectedPanel === p1);
+	}
 }

@@ -153,6 +153,11 @@ public class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 					AddView(group);
 				}
 			}
+			// A freshly docked tab becomes the ACTIVE tab. Covers programmatic
+			// docking, interactive drag-drop, and window redock - all funnel
+			// through here. Layout restore is unaffected (ApplyLayout rebuilds
+			// tab groups directly and sets the active tab itself).
+			ActivatePanel(panel);
 			Invalidate();
 			return;
 		}
