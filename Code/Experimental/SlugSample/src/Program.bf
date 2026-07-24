@@ -174,7 +174,7 @@ class SlugSampleApp : IApplication
 		let rp = frame.BeginBackbufferPass(ClearColor(0.08f, 0.08f, 0.12f, 1.0f));
 		if (rp != null)
 		{
-			mRenderer.Render(rp, fi);
+			mRenderer.Render(rp, (uint32)w, (uint32)h, fi);
 		}
 		frame.EndBackbufferPass();
 	}

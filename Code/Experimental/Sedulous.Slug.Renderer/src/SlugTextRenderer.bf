@@ -104,11 +104,13 @@ public class SlugTextRenderer : IDisposable
 	}
 
 	/// Render the prepared text. Call inside a render pass.
-	public void Render(IRenderPassEncoder renderPass, int32 frameIndex)
+	public void Render(IRenderPassEncoder renderPass, uint32 width, uint32 height, int32 frameIndex)
 	{
 		if (!mInitialized || mTriangles.Count == 0)
 			return;
 
+		renderPass.SetViewport(0, 0, width, height, 0, 1);
+		renderPass.SetScissor(0, 0, width, height);
 		renderPass.SetPipeline(mPipeline);
 		renderPass.SetBindGroup(0, mBindGroups[frameIndex]);
 		renderPass.SetVertexBuffer(0, mVertexBuffers[frameIndex]);
