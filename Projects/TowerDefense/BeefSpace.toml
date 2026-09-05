@@ -2,7 +2,7 @@ FileVersion = 1
 Locked = ["Bulkan", "cgltf-Beef", "Dxc-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "dr_libs-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
 
 [Workspace]
-StartupProject = "TowerDefense.App"
+StartupProject = "TowerDefense.Editor"
 
 [[Workspace.DistinctOptions]]
 Filter = ""
@@ -120,11 +120,12 @@ recastnavigation-Beef = {Path = "../../Dependencies/recastnavigation-Beef"}
 "TowerDefense.App" = {Path = "TowerDefense.App"}
 "TowerDefense.Editor" = {Path = "TowerDefense.Editor"}
 "TowerDefense.Bootstrap" = {Path = "TowerDefense.Bootstrap"}
+"Sedulous.Surface" = {Path = "../../Code/Foundation/Sedulous.Surface"}
 
 [WorkspaceFolders]
 Dependencies = ["corlib", "Bulkan", "cgltf-Beef", "Dxc-Beef", "dr_libs-Beef", "glslang-Beef", "SDL3", "SPIRV-Cross", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef", "Win32", "joltc-Beef", "SDL3_image", "recastnavigation-Beef"]
 Foundation = []
-"Foundation/Core" = ["Sedulous.Core", "Sedulous.Core.Collections", "Sedulous.Core.Logging", "Sedulous.Core.Mathematics", "Sedulous.Core.Mathematics.Serialization", "Sedulous.Inspection", "Sedulous.Profiler"]
+"Foundation/Core" = ["Sedulous.Core", "Sedulous.Core.Collections", "Sedulous.Core.Logging", "Sedulous.Core.Mathematics", "Sedulous.Core.Mathematics.Serialization", "Sedulous.Inspection", "Sedulous.Profiler", "Sedulous.Surface"]
 "Foundation/Shell" = ["Sedulous.Shell", "Sedulous.Shell.SDL3"]
 "Foundation/Runtime" = ["Sedulous.Runtime", "Sedulous.Runtime.Client", "Sedulous.Runtime.Graphics", "Sedulous.Jobs", "Sedulous.Resources", "Sedulous.VFS", "Sedulous.VFS.Disk"]
 "Foundation/Serialization" = ["Sedulous.Serialization", "Sedulous.Serialization.OpenDDL", "Sedulous.Serialization.Xml", "Sedulous.OpenDDL", "Sedulous.Xml"]
