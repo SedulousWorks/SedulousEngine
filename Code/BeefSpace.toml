@@ -1,0 +1,22 @@
+FileVersion = 1
+
+[Projects]
+"Sedulous.Core" = {Path = "Foundation/Sedulous.Core"}
+
+[WorkspaceFolders]
+Dependencies = ["corlib"]
+"Sedulous/Foundation" = ["Sedulous.Core"]
+"Sedulous/Tools" = []
+"Sedulous/Samples" = []
+Sedulous = []
+"Sedulous/Engine" = []
+"Sedulous/Editor" = []
+"Sedulous/Extensions" = []
+"Sedulous/Integration" = []
+"Sedulous/Pipeline" = []
+
+[Configs.Test.Win32]
+ConfigSelections = {corlib = {Config = "Debug"}}
+
+[Configs.Test.Win64]
+ConfigSelections = {corlib = {Config = "Debug"}}
