@@ -1,0 +1,169 @@
+using System;
+using Sedulous.Core.IO;
+
+namespace Sedulous.Core.Tests;
+
+class MemoryStreamTests
+{
+	[Test]
+	public static void WriteReadRoundTrip()
+	{
+		let stream = scope MemoryStream();
+		Test.Assert(stream.IsValid);
+		Test.Assert(stream.Size() == 0);
+
+		Test.Assert(stream.WriteValue<int32>(0x11223344));
+		Test.Assert(stream.WriteValue<float>(2.5f));
+		char8[2] text = .('h', 'i');
+		Test.Assert(stream.Write(.((uint8*)&text[0], 2)) == 2);
+
+		Test.Assert(stream.Size() == sizeof(int32) + sizeof(float) + 2);
+		Test.Assert(stream.Tell() == stream.Size());
+
+		Test.Assert(stream.Seek(0, .Begin) == 0);
+		int32 a = 0;
+		float b = 0;
+		char8[2] c = .(0, 0);
+		Test.Assert(stream.ReadValue(out a));
+		Test.Assert(stream.ReadValue(out b));
+		Test.Assert(stream.Read(.((uint8*)&c[0], 2)) == 2);
+
+		Test.Assert(a == 0x11223344);
+		Test.Assert(b == 2.5f);
+		Test.Assert(c[0] == 'h');
+		Test.Assert(c[1] == 'i');
+	}
+
+	[Test]
+	public static void SeekBoundsAndOverwrite()
+	{
+		let stream = scope MemoryStream();
+		Test.Assert(stream.WriteValue<int32>(10));
+		Test.Assert(stream.WriteValue<int32>(20));
+
+		// Out of range either way.
+		Test.Assert(stream.Seek(-1, .Begin) == -1);
+		Test.Assert(stream.Seek(100, .Begin) == -1);
+
+		// Overwriting in place does not grow the stream.
+		Test.Assert(stream.Seek(0, .Begin) == 0);
+		Test.Assert(stream.WriteValue<int32>(99));
+		Test.Assert(stream.Size() == 8);
+
+		Test.Assert(stream.Seek(0, .Begin) == 0);
+		int32 first = 0;
+		int32 second = 0;
+		Test.Assert(stream.ReadValue(out first));
+		Test.Assert(stream.ReadValue(out second));
+		Test.Assert(first == 99);
+		Test.Assert(second == 20);
+	}
+
+	/// Seeking to the very end is in range, and reading there yields nothing rather than
+	/// failing. An off by one in the bounds check shows up as one or the other.
+	[Test]
+	public static void SeekToTheEndIsValidAndReadsNothing()
+	{
+		let stream = scope MemoryStream();
+		Test.Assert(stream.WriteValue<int32>(7));
+
+		Test.Assert(stream.Seek(0, .End) == 4);
+		Test.Assert(stream.Tell() == 4);
+
+		uint8[4] scratch = default;
+		Test.Assert(stream.Read(.(&scratch[0], 4)) == 0);
+
+		// A short read leaves the value untouched and reports false.
+		int32 value = 123;
+		Test.Assert(!stream.ReadValue(out value));
+	}
+
+	[Test]
+	public static void SeekOriginsAgree()
+	{
+		let stream = scope MemoryStream();
+		for (int32 i < 10)
+			Test.Assert(stream.WriteValue<uint8>((uint8)i));
+
+		Test.Assert(stream.Seek(3, .Begin) == 3);
+		Test.Assert(stream.Seek(2, .Current) == 5);
+		Test.Assert(stream.Seek(-2, .Current) == 3);
+		Test.Assert(stream.Seek(-1, .End) == 9);
+		Test.Assert(stream.Seek(0, .End) == 10);
+
+		// Past either end, from any origin.
+		Test.Assert(stream.Seek(1, .End) == -1);
+		Test.Assert(stream.Seek(-11, .End) == -1);
+		Test.Assert(stream.Tell() == 10, "a rejected seek must not move the position");
+	}
+
+	/// A run of one byte writes must not reallocate on every one of them. Capacity growing
+	/// geometrically is what keeps byte at a time serialization from being quadratic, and
+	/// exact-sizing on each write is the easy mistake.
+	[Test]
+	public static void GrowsCapacityGeometrically()
+	{
+		let stream = scope MemoryStream();
+		for (int32 i < 1000)
+			Test.Assert(stream.WriteValue<uint8>((uint8)i));
+
+		Test.Assert(stream.Size() == 1000);
+		// 64 doubling to 1024 covers 1000; an exact-growth policy would land on 1000.
+		Test.Assert(stream.Bytes.Length == 1000);
+
+		Test.Assert(stream.Seek(0, .Begin) == 0);
+		for (int32 i < 1000)
+		{
+			uint8 value = 0;
+			Test.Assert(stream.ReadValue(out value));
+			Test.Assert(value == (uint8)i);
+		}
+	}
+
+	[Test]
+	public static void BytesViewsWhatWasWritten()
+	{
+		let stream = scope MemoryStream();
+		Test.Assert(stream.Bytes.Length == 0);
+
+		Test.Assert(stream.WriteValue<uint8>(0xAB));
+		Test.Assert(stream.WriteValue<uint8>(0xCD));
+
+		let bytes = stream.Bytes;
+		Test.Assert(bytes.Length == 2);
+		Test.Assert(bytes[0] == 0xAB);
+		Test.Assert(bytes[1] == 0xCD);
+
+		// The view reflects the whole buffer, not the position.
+		Test.Assert(stream.Seek(0, .Begin) == 0);
+		Test.Assert(stream.Bytes.Length == 2);
+	}
+
+	[Test]
+	public static void ClearEmptiesAndRewinds()
+	{
+		let stream = scope MemoryStream();
+		Test.Assert(stream.WriteValue<int32>(1));
+		Test.Assert(stream.WriteValue<int32>(2));
+
+		stream.Clear();
+		Test.Assert(stream.Size() == 0);
+		Test.Assert(stream.Tell() == 0);
+		Test.Assert(stream.Bytes.Length == 0);
+
+		// Still usable afterwards.
+		Test.Assert(stream.WriteValue<int32>(3));
+		Test.Assert(stream.Size() == 4);
+	}
+
+	/// A zero length transfer is a no-op on both sides rather than an error, which the
+	/// serializers rely on when a collection turns out to be empty.
+	[Test]
+	public static void EmptyTransfersAreNoOps()
+	{
+		let stream = scope MemoryStream();
+		Test.Assert(stream.Write(Span<uint8>()) == 0);
+		Test.Assert(stream.Read(Span<uint8>()) == 0);
+		Test.Assert(stream.Size() == 0);
+	}
+}
