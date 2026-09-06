@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Physics"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Editor.Physics.Program"
+
+[Dependencies]
+corlib = "*"

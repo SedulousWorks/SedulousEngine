@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Tools.ShaderPack"
+TargetType = "BeefConsoleApplication"
+StartupObject = "Sedulous.Tools.ShaderPack.Program"
+
+[Dependencies]
+corlib = "*"

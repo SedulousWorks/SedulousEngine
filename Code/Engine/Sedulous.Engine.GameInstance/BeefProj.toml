@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.GameInstance"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Engine.GameInstance.Program"
+
+[Dependencies]
+corlib = "*"

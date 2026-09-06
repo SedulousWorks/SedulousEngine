@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Samples.RHI.Sample002_Textures"
+TargetType = "BeefGUIApplication"
+StartupObject = "Sedulous.Samples.RHI.Sample002_Textures.Program"
+
+[Dependencies]
+corlib = "*"

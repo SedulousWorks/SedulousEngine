@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Camera.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Editor.Camera.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Editor.Camera" = "*"

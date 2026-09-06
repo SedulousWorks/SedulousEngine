@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Particles.Resource.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Particles.Resource.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Particles.Resource" = "*"

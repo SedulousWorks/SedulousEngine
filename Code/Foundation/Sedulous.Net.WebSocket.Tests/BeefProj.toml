@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Net.WebSocket.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Net.WebSocket.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Net.WebSocket" = "*"

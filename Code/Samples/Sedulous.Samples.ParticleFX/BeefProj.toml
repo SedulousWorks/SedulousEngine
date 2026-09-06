@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Samples.ParticleFX"
+TargetType = "BeefGUIApplication"
+StartupObject = "Sedulous.Samples.ParticleFX.Program"
+
+[Dependencies]
+corlib = "*"

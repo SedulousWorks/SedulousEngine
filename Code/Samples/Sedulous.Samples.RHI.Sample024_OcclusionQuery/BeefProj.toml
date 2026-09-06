@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Samples.RHI.Sample024_OcclusionQuery"
+TargetType = "BeefGUIApplication"
+StartupObject = "Sedulous.Samples.RHI.Sample024_OcclusionQuery.Program"
+
+[Dependencies]
+corlib = "*"

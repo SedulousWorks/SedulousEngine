@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Shaders.Resource"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Shaders.Resource.Program"
+
+[Dependencies]
+corlib = "*"

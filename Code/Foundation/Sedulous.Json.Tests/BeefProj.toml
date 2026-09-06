@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Json.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Json.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Json" = "*"

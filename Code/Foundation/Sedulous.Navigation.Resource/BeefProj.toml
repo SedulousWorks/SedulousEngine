@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Navigation.Resource"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Navigation.Resource.Program"
+
+[Dependencies]
+corlib = "*"

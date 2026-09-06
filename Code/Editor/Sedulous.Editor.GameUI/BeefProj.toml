@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.GameUI"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Editor.GameUI.Program"
+
+[Dependencies]
+corlib = "*"

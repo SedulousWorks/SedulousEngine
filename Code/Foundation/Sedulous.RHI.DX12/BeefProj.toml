@@ -1,6 +1,9 @@
 FileVersion = 1
 
 [Project]
-Name = "Sedulous.Core"
+Name = "Sedulous.RHI.DX12"
 TargetType = "BeefLib"
-StartupObject = "Sedulous.Core.Program"
+StartupObject = "Sedulous.RHI.DX12.Program"
+
+[Dependencies]
+corlib = "*"

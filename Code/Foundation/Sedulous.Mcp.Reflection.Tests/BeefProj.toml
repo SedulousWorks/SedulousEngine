@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Mcp.Reflection.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Mcp.Reflection.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Mcp.Reflection" = "*"

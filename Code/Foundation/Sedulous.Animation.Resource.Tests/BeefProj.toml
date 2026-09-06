@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Animation.Resource.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Animation.Resource.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Animation.Resource" = "*"

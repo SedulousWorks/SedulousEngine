@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Json"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Json.Program"
+
+[Dependencies]
+corlib = "*"

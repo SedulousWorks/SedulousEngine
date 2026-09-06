@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Samples.RHI.Sample013_BorderSampler"
+TargetType = "BeefGUIApplication"
+StartupObject = "Sedulous.Samples.RHI.Sample013_BorderSampler.Program"
+
+[Dependencies]
+corlib = "*"

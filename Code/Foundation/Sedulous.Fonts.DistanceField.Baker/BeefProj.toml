@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Fonts.DistanceField.Baker"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Fonts.DistanceField.Baker.Program"
+
+[Dependencies]
+corlib = "*"

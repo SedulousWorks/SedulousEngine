@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Terrain"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Editor.Terrain.Program"
+
+[Dependencies]
+corlib = "*"

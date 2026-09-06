@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Samples.AnimatedCrowd"
+TargetType = "BeefGUIApplication"
+StartupObject = "Sedulous.Samples.AnimatedCrowd.Program"
+
+[Dependencies]
+corlib = "*"

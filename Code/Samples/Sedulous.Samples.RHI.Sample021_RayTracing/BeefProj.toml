@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Samples.RHI.Sample021_RayTracing"
+TargetType = "BeefGUIApplication"
+StartupObject = "Sedulous.Samples.RHI.Sample021_RayTracing.Program"
+
+[Dependencies]
+corlib = "*"

@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Samples.RHI.Sample016_Readback"
+TargetType = "BeefGUIApplication"
+StartupObject = "Sedulous.Samples.RHI.Sample016_Readback.Program"
+
+[Dependencies]
+corlib = "*"

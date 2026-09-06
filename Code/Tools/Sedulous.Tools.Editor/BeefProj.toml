@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Tools.Editor"
+TargetType = "BeefGUIApplication"
+StartupObject = "Sedulous.Tools.Editor.Program"
+
+[Dependencies]
+corlib = "*"

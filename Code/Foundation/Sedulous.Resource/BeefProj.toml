@@ -1,6 +1,9 @@
 FileVersion = 1
 
 [Project]
-Name = "Sedulous.Core"
+Name = "Sedulous.Resource"
 TargetType = "BeefLib"
-StartupObject = "Sedulous.Core.Program"
+StartupObject = "Sedulous.Resource.Program"
+
+[Dependencies]
+corlib = "*"

@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.ModelImporter"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.ModelImporter.Program"
+
+[Dependencies]
+corlib = "*"

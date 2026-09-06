@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Texture.Compression.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Texture.Compression.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Texture.Compression" = "*"

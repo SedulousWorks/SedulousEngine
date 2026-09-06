@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Texture"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Texture.Program"
+
+[Dependencies]
+corlib = "*"

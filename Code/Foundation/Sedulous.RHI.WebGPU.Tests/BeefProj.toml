@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.RHI.WebGPU.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.RHI.WebGPU.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.RHI.WebGPU" = "*"

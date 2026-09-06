@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Navigation.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Editor.Navigation.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Editor.Navigation" = "*"

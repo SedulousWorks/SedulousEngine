@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Spline.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Spline.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Spline" = "*"

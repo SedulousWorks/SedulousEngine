@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Samples.Sandbox"
+TargetType = "BeefGUIApplication"
+StartupObject = "Sedulous.Samples.Sandbox.Program"
+
+[Dependencies]
+corlib = "*"

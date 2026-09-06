@@ -4,3 +4,6 @@ FileVersion = 1
 Name = "Sedulous.Core"
 TargetType = "BeefLib"
 StartupObject = "Sedulous.Core.Program"
+
+[Dependencies]
+corlib = "*"

@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Extensions.Imgui"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Extensions.Imgui.Program"
+
+[Dependencies]
+corlib = "*"

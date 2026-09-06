@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.VG.Backend.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.VG.Backend.Tests.Program"
+
+[Dependencies]
+corlib = "*"

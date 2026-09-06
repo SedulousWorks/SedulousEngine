@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Samples.MultiWindow"
+TargetType = "BeefGUIApplication"
+StartupObject = "Sedulous.Samples.MultiWindow.Program"
+
+[Dependencies]
+corlib = "*"

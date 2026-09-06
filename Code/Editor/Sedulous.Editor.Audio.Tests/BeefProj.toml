@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Audio.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Editor.Audio.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Editor.Audio" = "*"

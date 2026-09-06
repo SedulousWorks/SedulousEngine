@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Samples.WebScene"
+TargetType = "BeefGUIApplication"
+StartupObject = "Sedulous.Samples.WebScene.Program"
+
+[Dependencies]
+corlib = "*"

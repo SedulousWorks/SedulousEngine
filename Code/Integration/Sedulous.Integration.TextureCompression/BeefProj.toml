@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Integration.TextureCompression"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Integration.TextureCompression.Program"
+
+[Dependencies]
+corlib = "*"

@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.PropertyAnimation.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Editor.PropertyAnimation.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Editor.PropertyAnimation" = "*"

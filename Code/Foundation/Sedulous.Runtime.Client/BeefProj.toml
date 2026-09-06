@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Runtime.Client"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Runtime.Client.Program"
+
+[Dependencies]
+corlib = "*"

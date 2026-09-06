@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Integration.Mcp"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Integration.Mcp.Program"
+
+[Dependencies]
+corlib = "*"

@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Heightfield.Resource.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Heightfield.Resource.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Heightfield.Resource" = "*"

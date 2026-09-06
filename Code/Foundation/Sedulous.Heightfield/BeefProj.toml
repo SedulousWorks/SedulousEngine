@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Heightfield"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Heightfield.Program"
+
+[Dependencies]
+corlib = "*"

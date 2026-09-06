@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Messaging"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Messaging.Program"
+
+[Dependencies]
+corlib = "*"

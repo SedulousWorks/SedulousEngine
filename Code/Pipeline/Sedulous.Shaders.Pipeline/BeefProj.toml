@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Shaders.Pipeline"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Shaders.Pipeline.Program"
+
+[Dependencies]
+corlib = "*"

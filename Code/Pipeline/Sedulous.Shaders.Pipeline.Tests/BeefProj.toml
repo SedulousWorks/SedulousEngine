@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Shaders.Pipeline.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Shaders.Pipeline.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Shaders.Pipeline" = "*"

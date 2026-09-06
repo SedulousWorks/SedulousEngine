@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.PropertyAnimation"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Editor.PropertyAnimation.Program"
+
+[Dependencies]
+corlib = "*"

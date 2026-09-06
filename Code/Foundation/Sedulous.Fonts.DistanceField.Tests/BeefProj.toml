@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Fonts.DistanceField.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Fonts.DistanceField.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Fonts.DistanceField" = "*"

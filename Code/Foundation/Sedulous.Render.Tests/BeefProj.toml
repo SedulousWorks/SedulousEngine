@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Render.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Render.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Render" = "*"

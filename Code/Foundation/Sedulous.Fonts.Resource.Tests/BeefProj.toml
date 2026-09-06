@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Fonts.Resource.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Fonts.Resource.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Fonts.Resource" = "*"

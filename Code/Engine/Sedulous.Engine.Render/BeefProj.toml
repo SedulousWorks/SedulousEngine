@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.Render"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Engine.Render.Program"
+
+[Dependencies]
+corlib = "*"

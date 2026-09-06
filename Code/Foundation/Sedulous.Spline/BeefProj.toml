@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Spline"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Spline.Program"
+
+[Dependencies]
+corlib = "*"

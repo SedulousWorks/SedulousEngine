@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Tools.Export"
+TargetType = "BeefConsoleApplication"
+StartupObject = "Sedulous.Tools.Export.Program"
+
+[Dependencies]
+corlib = "*"

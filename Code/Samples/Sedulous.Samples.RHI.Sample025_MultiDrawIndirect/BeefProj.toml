@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Samples.RHI.Sample025_MultiDrawIndirect"
+TargetType = "BeefGUIApplication"
+StartupObject = "Sedulous.Samples.RHI.Sample025_MultiDrawIndirect.Program"
+
+[Dependencies]
+corlib = "*"

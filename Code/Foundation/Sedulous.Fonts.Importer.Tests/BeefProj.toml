@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Fonts.Importer.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Fonts.Importer.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Fonts.Importer" = "*"

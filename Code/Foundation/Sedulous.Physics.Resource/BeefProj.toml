@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Physics.Resource"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Physics.Resource.Program"
+
+[Dependencies]
+corlib = "*"

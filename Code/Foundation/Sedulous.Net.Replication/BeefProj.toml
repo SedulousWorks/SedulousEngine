@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Net.Replication"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Net.Replication.Program"
+
+[Dependencies]
+corlib = "*"
