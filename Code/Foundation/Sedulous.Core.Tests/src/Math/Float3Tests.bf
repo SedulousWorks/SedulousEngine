@@ -3,6 +3,27 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
+/// Raptor's static_assert(Float3{1,0,0} == Float3::UnitX), plus the CRepr layout, which
+/// is a compile-time fact and part of the contract because these reach GPU buffers. A
+/// layout change should stop the build, not wait for a test run.
+static
+{
+	private static void Assert_Float3ConstantsFold()
+	{
+		Compiler.Assert(Float3(1.0f, 0.0f, 0.0f) == Float3.UnitX);
+		Compiler.Assert(Float3(0.0f, 1.0f, 0.0f) == Float3.UnitY);
+		Compiler.Assert(Float3(0.0f, 0.0f, 1.0f) == Float3.UnitZ);
+	}
+
+	private static void Assert_Float3Layout()
+	{
+		Compiler.Assert(sizeof(Float3) == 12);
+		Compiler.Assert(offsetof(Float3, x) == 0);
+		Compiler.Assert(offsetof(Float3, y) == 4);
+		Compiler.Assert(offsetof(Float3, z) == 8);
+	}
+}
+
 /// Ported from Raptor's Float3 cases. Adds the division operators, Distance, the
 /// indexer setter, the Float2 constructor and the anti-commutativity of Cross, none of
 /// which Raptor reaches.
@@ -25,14 +46,6 @@ class Float3Tests
 
 		Test.Assert(a[0] == 5.0f);
 		Test.Assert(a[2] == 9.0f);
-	}
-
-	/// Raptor's static_assert(Float3{1,0,0} == Float3::UnitX).
-	[Test]
-	public static void ConstantsFoldAtCompileTime()
-	{
-		const bool cIsUnitX = Float3(1.0f, 0.0f, 0.0f) == Float3.UnitX;
-		Test.Assert(cIsUnitX);
 	}
 
 	/// The component-wise product and quotient are easy to confuse with a dot or a
@@ -152,13 +165,4 @@ class Float3Tests
 		Test.Assert(NearlyEqual(a, Float3(1.0f, 1.0f, 1.5f), 0.6f));
 	}
 
-	/// CRepr layout is part of the contract: these reach GPU buffers.
-	[Test]
-	public static void LayoutIsThreeTightlyPackedFloats()
-	{
-		Test.Assert(sizeof(Float3) == 12);
-		Test.Assert(offsetof(Float3, x) == 0);
-		Test.Assert(offsetof(Float3, y) == 4);
-		Test.Assert(offsetof(Float3, z) == 8);
-	}
 }

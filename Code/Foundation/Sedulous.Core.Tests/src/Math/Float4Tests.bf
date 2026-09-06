@@ -3,6 +3,20 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
+/// The CRepr layout is a compile-time fact and part of the contract, because these reach
+/// GPU buffers. A layout change should stop the build rather than wait for a test run.
+static
+{
+	private static void Assert_Float4Layout()
+	{
+		Compiler.Assert(sizeof(Float4) == 16);
+		Compiler.Assert(offsetof(Float4, x) == 0);
+		Compiler.Assert(offsetof(Float4, y) == 4);
+		Compiler.Assert(offsetof(Float4, z) == 8);
+		Compiler.Assert(offsetof(Float4, w) == 12);
+	}
+}
+
 /// Raptor covers Float4 inside two shared cases. The operators, the indexer, Lerp and
 /// NearlyEqual are added here.
 class Float4Tests
@@ -84,11 +98,4 @@ class Float4Tests
 		Test.Assert(NearlyEqual(Float4.One, Float4(1.0f, 1.0f, 1.0f, 1.5f), 0.6f));
 	}
 
-	[Test]
-	public static void LayoutIsFourTightlyPackedFloats()
-	{
-		Test.Assert(sizeof(Float4) == 16);
-		Test.Assert(offsetof(Float4, x) == 0);
-		Test.Assert(offsetof(Float4, w) == 12);
-	}
 }

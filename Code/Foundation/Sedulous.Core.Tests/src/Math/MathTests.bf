@@ -3,6 +3,23 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
+/// Raptor's static_asserts. Compiler.Assert has to sit in a function body, so the
+/// convention is a private, never-called Assert_* method: it is evaluated at compile
+/// time regardless, and a failure stops the build rather than the run.
+static
+{
+	private static void Assert_AbsFolds()
+	{
+		Compiler.Assert(Abs(-1.0f) == 1.0f);
+	}
+
+	private static void Assert_ScalarConstantsFold()
+	{
+		Compiler.Assert(TwoPi == Pi * 2.0f);
+		Compiler.Assert(DegToRad * 180.0f == Pi);
+	}
+}
+
 /// Scalar math. Raptor's "math: scalar helpers" is the first case; the rest close gaps
 /// it leaves, notably the Round tie rule on both parities and both signs, and the
 /// trigonometry and exponentials which it does not reach at all.
@@ -22,15 +39,6 @@ class MathTests
 		Test.Assert(Round(3.3f) == 3.0f);
 		Test.Assert(Round(3.5f) == 4.0f);
 		Test.Assert(Round(-3.5f) == -4.0f);
-	}
-
-	/// Raptor's static_assert(Abs(-1.0f) == 1.0f) becomes a const, which fails the build
-	/// rather than the run if Abs stops folding.
-	[Test]
-	public static void AbsFoldsAtCompileTime()
-	{
-		const float cAbs = Abs(-1.0f);
-		Test.Assert(cAbs == 1.0f);
 	}
 
 	/// A delegated Round that used banker's rounding would send 3.5 to 4 and 2.5 to 2,
