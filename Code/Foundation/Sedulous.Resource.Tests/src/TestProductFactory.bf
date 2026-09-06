@@ -8,6 +8,9 @@ namespace Sedulous.Resource.Tests;
 class TestProductFactory : IResourceFactory
 {
 	public static int32 Builds;
+	/// Makes the factory itself refuse to build, which is distinct from an identity that
+	/// names nothing and from a product type nothing registered a factory for.
+	public bool Refuse;
 
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<TestProduct>();
 
@@ -17,6 +20,9 @@ class TestProductFactory : IResourceFactory
 		if (source == null)
 			return null;
 		defer delete source;
+
+		if (Refuse)
+			return null;
 
 		Builds++;
 		let product = new TestProduct();

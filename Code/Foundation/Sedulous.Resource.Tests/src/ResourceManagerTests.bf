@@ -147,6 +147,21 @@ class ResourceManagerTests
 		Test.Assert(proxy.State == .Failed);
 	}
 
+	/// A factory that is registered, given a real instance, and still declines. Distinct
+	/// from both cases above: this one reaches the factory and comes back empty handed.
+	[Test]
+	public static void AFactoryThatRefusesToBuildFails()
+	{
+		let fixture = scope ResourceFixture("scratch_resource_refused");
+		let factory = scope TestProductFactory();
+		factory.Refuse = true;
+		fixture.Manager.AddFactory(factory);
+
+		let proxy = fixture.Manager.Bind<TestProduct>(fixture.Author("mesh", 2, 2));
+		Test.Assert(proxy.Get == null);
+		Test.Assert(proxy.State == .Failed, "a null product is a failure, not a ready nothing");
+	}
+
 	/// Flush drops the product but keeps the handle, so proxies survive and the next bind
 	/// rebuilds in place.
 	[Test]
