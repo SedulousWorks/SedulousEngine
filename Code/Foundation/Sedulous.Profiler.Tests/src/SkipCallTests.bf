@@ -12,6 +12,15 @@ namespace Sedulous.Profiler.Tests;
 /// from here.
 class SkipCallTests
 {
+	public struct SkippedToken : IDisposable
+	{
+		[SkipCall]
+		public void Dispose()
+		{
+			sCalls++;
+		}
+	}
+
 	private static int32 sCalls;
 	private static int32 sArgEvals;
 
@@ -19,6 +28,13 @@ class SkipCallTests
 	private static void Skipped(StringView name)
 	{
 		sCalls++;
+	}
+
+	[SkipCall]
+	private static SkippedToken SkippedScope(StringView name)
+	{
+		sCalls++;
+		return .();
 	}
 
 	private static StringView AnArgument()
@@ -40,9 +56,15 @@ class SkipCallTests
 		Skipped(local);
 
 		{
-			// The shape instrumentation actually uses.
 			Skipped("entering");
 			defer Skipped("leaving");
+		}
+
+		// The shape instrumentation actually uses. A skipped call still type checks as a
+		// value, so the factory, its argument and the Dispose all go and the using
+		// statement disappears with them.
+		using (SkippedScope(AnArgument()))
+		{
 		}
 
 		Test.Assert(sCalls == 0, scope $"the body ran {sCalls} times");

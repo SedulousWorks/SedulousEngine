@@ -47,6 +47,65 @@ class GlobalProfilerTests
 		Test.Assert(DepthOf(frame, "Inner") == 1, "defer closed the outer scope after the inner one");
 	}
 
+	/// The form instrumentation should actually use. Leaving the block closes the scope,
+	/// so the nesting follows the braces rather than a defer that has to be remembered.
+	[Test]
+	public static void UsingBracketsAScopeWithItsBlock()
+	{
+		let profiler = scope Profiler();
+		InitGlobalProfiler(profiler);
+		defer ShutdownGlobalProfiler();
+
+		ProfileFrameBegin();
+		using (ProfileScope("Outer"))
+		{
+			using (ProfileScope("Inner"))
+			{
+			}
+
+			// Closed with the inner block, so this is a sibling and not a child.
+			using (ProfileScope("Sibling"))
+			{
+			}
+		}
+		ProfileFrameEnd();
+
+		let frame = profiler.CompletedFrame;
+		Test.Assert(frame.Samples.Count == 3, scope $"got {frame.Samples.Count}");
+		Test.Assert(DepthOf(frame, "Outer") == 0);
+		Test.Assert(DepthOf(frame, "Inner") == 1);
+		Test.Assert(DepthOf(frame, "Sibling") == 1, "a sibling of Inner, not nested in it");
+	}
+
+	/// An early return still closes the scope, which is the reason to prefer using over a
+	/// matched pair of calls.
+	[Test]
+	public static void UsingClosesTheScopeOnAnEarlyReturn()
+	{
+		let profiler = scope Profiler();
+		InitGlobalProfiler(profiler);
+		defer ShutdownGlobalProfiler();
+
+		ProfileFrameBegin();
+		ReturnsEarly();
+		using (ProfileScope("After"))
+		{
+		}
+		ProfileFrameEnd();
+
+		let frame = profiler.CompletedFrame;
+		Test.Assert(frame.Samples.Count == 2);
+		Test.Assert(DepthOf(frame, "After") == 0, "the abandoned scope was closed, not left open");
+	}
+
+	private static void ReturnsEarly()
+	{
+		using (ProfileScope("Abandoned"))
+		{
+			return;
+		}
+	}
+
 	/// Installing replaces, and owning deletes. Not owning leaves the caller's profiler
 	/// alone, which is what the scope allocated ones above depend on.
 	[Test]

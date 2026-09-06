@@ -21,10 +21,17 @@ namespace Sedulous.Profiler;
 /// PROFILING; a release build without it compiles these to nothing. PROFILING exists
 /// because the build worth profiling is usually the optimised one.
 ///
-/// A scope is bracketed with defer, which is Beef's answer to the RAII helper:
+/// A scope is bracketed with using, which is Beef's answer to the RAII helper:
 ///
-///     ProfileScopeBegin("Render");
-///     defer ProfileScopeEnd();
+///     using (ProfileScope("Render"))
+///     {
+///         ...
+///     }
+///
+/// That form is free too: a skipped call still type checks as a value, so when profiling
+/// is compiled out the factory, the argument and the Dispose all go, and the using
+/// statement is gone with them. ProfileScopeBegin and ProfileScopeEnd are there for a
+/// region that is not a block, and take defer instead.
 ///
 /// Names must be literals or otherwise outlive the frame: samples borrow them.
 static
@@ -68,6 +75,16 @@ static
 	{
 		if (sGlobalProfiler != null)
 			sGlobalProfiler.EndFrame();
+	}
+
+#if !SEDULOUS_PROFILING
+	[SkipCall]
+#endif
+	public static ProfileScopeToken ProfileScope(StringView name)
+	{
+		if (sGlobalProfiler != null)
+			sGlobalProfiler.BeginScope(name);
+		return .();
 	}
 
 #if !SEDULOUS_PROFILING
