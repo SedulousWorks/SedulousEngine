@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Reflection;
 
 namespace Sedulous.Core.Serialization;
@@ -57,30 +58,53 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 
 		body.Append("\tar.BeginObject();\n");
 
-		for (let field in type.GetFields())
+		// Base first, then this type. An inherited field is part of what this object IS,
+		// so leaving it out writes an object that cannot be reconstructed: the base state
+		// simply vanishes, and a binary read is positional, so it vanishes SILENTLY.
+		//
+		// The whole chain is walked here rather than delegating to the base's own
+		// Serialize, so the object gets ONE version envelope and one key order. A base
+		// that also declares [Serializable] keeps its own envelope for when it is stored
+		// on its own; it is not nested inside this one.
+		let chain = scope List<Type>();
+		for (var walk = type; walk != null; walk = walk.BaseType)
 		{
-			// Instance fields declared HERE. An inherited field belongs to the base's own
-			// body, and walking it again would write it twice.
-			if (!field.IsInstanceField || (field.DeclaringType != type))
-				continue;
+			// Object itself declares nothing worth storing, and stopping there keeps the
+			// walk off corlib.
+			if (walk == typeof(Object))
+				break;
+			chain.Add(walk);
+		}
 
-			body.AppendF("\tar.Key(\"{}\");\n", field.Name);
-
-			// A type that knows how to describe ITSELF does. That is the escape hatch for
-			// anything the dispatcher cannot know about: a resource reference stores only
-			// its identity, and Core cannot be told what a resource is.
-			if (HasSelfSerialize(field.FieldType))
+		for (int i = chain.Count - 1; i >= 0; i--)
+		{
+			let declaring = chain[i];
+			for (let field in declaring.GetFields())
 			{
-				body.AppendF("\t{}.Serialize(ar);\n", field.Name);
-				continue;
-			}
+				// Fields declared by THIS link of the chain. Every type reports inherited
+				// fields too, so without the filter a base field is written once per
+				// level below it.
+				if (!field.IsInstanceField || (field.DeclaringType != declaring))
+					continue;
 
-			// A value type goes through the dispatcher, which covers enums too; a
-			// reference type IS the handle its overload takes.
-			if (field.FieldType.IsValueType)
-				body.AppendF("\tSedulous.Core.Serialization.SerializeValue(ar, ref {});\n", field.Name);
-			else
-				body.AppendF("\tSedulous.Core.Serialization.Serialize(ar, {});\n", field.Name);
+				body.AppendF("\tar.Key(\"{}\");\n", field.Name);
+
+				// A type that knows how to describe ITSELF does. That is the escape hatch for
+				// anything the dispatcher cannot know about: a resource reference stores only
+				// its identity, and Core cannot be told what a resource is.
+				if (HasSelfSerialize(field.FieldType))
+				{
+					body.AppendF("\t{}.Serialize(ar);\n", field.Name);
+					continue;
+				}
+
+				// A value type goes through the dispatcher, which covers enums too; a
+				// reference type IS the handle its overload takes.
+				if (field.FieldType.IsValueType)
+					body.AppendF("\tSedulous.Core.Serialization.SerializeValue(ar, ref {});\n", field.Name);
+				else
+					body.AppendF("\tSedulous.Core.Serialization.Serialize(ar, {});\n", field.Name);
+			}
 		}
 
 		body.Append("\tar.EndObject();\n");
