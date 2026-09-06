@@ -10,9 +10,12 @@ namespace Sedulous.Core.Serialization;
 /// failure when someone forgets: the type simply never loads. Here it is read off the
 /// declarations, so forgetting is not available.
 ///
-/// Every [Serializable] type VISIBLE from the applying project is registered, its own and
-/// its dependencies'. Registering a dependency's type twice is harmless, since the later
-/// registration replaces the earlier with the same thing.
+/// Registers the [Serializable] types declared in the NAMESPACE this is applied in.
+///
+/// Scoped that way because comptime can enumerate every type in the compilation, including
+/// ones this project cannot name: a sibling project's types are visible to the enumeration
+/// and invisible to the emitted code. A project that owns types in several namespaces
+/// applies this once per namespace.
 ///
 /// Calling RegisterAll stays explicit, because when the table is populated is the
 /// application's business, not Core's.
@@ -22,8 +25,23 @@ struct SerializableRegistryAttribute : Attribute, IComptimeTypeApply
 	[Comptime]
 	public void ApplyToType(Type type)
 	{
+		// Scoped to the namespace this is applied in. Comptime can enumerate every type in
+		// the compilation, including ones this project cannot NAME: a sibling project's
+		// types are visible to the enumeration and invisible to the emitted code, and
+		// registering them would emit a reference that does not compile. The namespace is
+		// the honest approximation of "the types this project owns".
+		let owner = scope String();
+		type.GetFullName(owner);
+		let lastDot = owner.LastIndexOf('.');
+		let namespacePrefix = scope String();
+		if (lastDot > 0)
+		{
+			namespacePrefix.Append(StringView(owner, 0, lastDot));
+			namespacePrefix.Append('.');
+		}
+
 		let body = scope String();
-		body.Append("/// Registers every [Serializable] type declared in this project.\n");
+		body.AppendF("/// Registers every [Serializable] type under {}\n", namespacePrefix);
 		body.Append("public static void RegisterAll()\n{\n");
 
 		for (let declaration in Type.TypeDeclarations)
@@ -33,6 +51,9 @@ struct SerializableRegistryAttribute : Attribute, IComptimeTypeApply
 
 			let name = scope:: String();
 			declaration.GetFullName(name);
+			if (!namespacePrefix.IsEmpty && !name.StartsWith(namespacePrefix))
+				continue;
+
 			body.AppendF("\tSedulous.Core.Serialization.SerializableRegistry.Register({}.TypeId, () => new {}());\n", name, name);
 		}
 
