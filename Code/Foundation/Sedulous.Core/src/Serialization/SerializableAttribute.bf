@@ -46,9 +46,14 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 		let qualifiedName = scope String();
 		type.GetFullName(qualifiedName);
 
+		// A derived stored type has its OWN identity and its own version, so hiding the
+		// base's constants is the intent rather than an accident. Said explicitly, because
+		// otherwise every serializable subclass compiles with two warnings.
+		let hides = InheritsSerializable(type) ? "new " : "";
+
 		let body = scope String();
-		body.AppendF("public const uint64 TypeId = 0x{:X}UL;\n", Sedulous.Core.Serialization.TypeIdOf(qualifiedName));
-		body.AppendF("public const uint32 DataVersion = {};\n\n", mDataVersion);
+		body.AppendF("public {}const uint64 TypeId = 0x{:X}UL;\n", hides, Sedulous.Core.Serialization.TypeIdOf(qualifiedName));
+		body.AppendF("public {}const uint32 DataVersion = {};\n\n", hides, mDataVersion);
 		body.Append("void Sedulous.Core.Serialization.ISerializable.Serialize(Sedulous.Core.Serialization.ISerializer ar)\n{\n");
 
 		// A version envelope costs bytes in every payload, so declaring a version is how
@@ -123,6 +128,19 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 
 		Compiler.EmitTypeBody(type, body);
 		Compiler.EmitAddInterface(type, typeof(ISerializable));
+	}
+
+	/// Whether any ancestor also carries [Serializable], and so declares the constants
+	/// this type is about to declare again.
+	[Comptime]
+	private static bool InheritsSerializable(Type type)
+	{
+		for (var walk = type.BaseType; walk != null; walk = walk.BaseType)
+		{
+			if (walk.HasCustomAttribute<SerializableAttribute>())
+				return true;
+		}
+		return false;
 	}
 
 	/// Whether a type is a List<T>, which serializes as a counted array rather than as an
