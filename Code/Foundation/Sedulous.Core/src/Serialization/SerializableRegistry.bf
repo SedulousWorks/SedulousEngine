@@ -40,6 +40,24 @@ static class SerializableRegistry
 		return null;
 	}
 
+	/// Forgets one type.
+	///
+	/// A factory is a FUNCTION POINTER, so one registered by a shared library outlives the
+	/// library unless something removes it. The next Create for that id would then jump
+	/// into unmapped memory, which is why a plugin host has to be able to take a
+	/// registration back rather than only add one.
+	public static bool Unregister(uint64 typeId) => sFactories.Remove(typeId);
+
+	/// The ids currently registered, appended to the list.
+	///
+	/// For a host that needs to know what a module added: snapshot before, snapshot after,
+	/// and the difference is what that module owns.
+	public static void CopyIds(List<uint64> outIds)
+	{
+		for (let entry in sFactories)
+			outIds.Add(entry.key);
+	}
+
 	/// Forgets everything. For tests, and for a host that tears a module back down.
 	public static void Clear() => sFactories.Clear();
 }
