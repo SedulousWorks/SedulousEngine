@@ -8,14 +8,14 @@ namespace Sedulous.Core;
 [CRepr]
 struct Float3
 {
-	public float x = 0.0f;
-	public float y = 0.0f;
-	public float z = 0.0f;
+	public float X = 0.0f;
+	public float Y = 0.0f;
+	public float Z = 0.0f;
 
 	public this() { }
-	public this(float x, float y, float z) { this.x = x; this.y = y; this.z = z; }
-	public this(float s) { this.x = s; this.y = s; this.z = s; }
-	public this(Float2 xy, float z) { this.x = xy.x; this.y = xy.y; this.z = z; }
+	public this(float x, float y, float z) { this.X = x; this.Y = y; this.Z = z; }
+	public this(float s) { this.X = s; this.Y = s; this.Z = s; }
+	public this(Float2 xy, float z) { this.X = xy.X; this.Y = xy.Y; this.Z = z; }
 
 	public const Float3 Zero = .(0.0f, 0.0f, 0.0f);
 	public const Float3 One = .(1.0f, 1.0f, 1.0f);
@@ -28,45 +28,45 @@ struct Float3
 		[Inline] get
 		{
 			Debug.Assert((i >= 0) && (i < 3));
-			return (i == 0) ? x : ((i == 1) ? y : z);
+			return (i == 0) ? X : ((i == 1) ? Y : Z);
 		}
 		[Inline] set mut
 		{
 			Debug.Assert((i >= 0) && (i < 3));
-			if (i == 0) x = value; else if (i == 1) y = value; else z = value;
+			if (i == 0) X = value; else if (i == 1) Y = value; else Z = value;
 		}
 	}
 
-	public static Float3 operator-(Float3 v) => .(-v.x, -v.y, -v.z);
+	public static Float3 operator-(Float3 v) => .(-v.X, -v.Y, -v.Z);
 
-	public void operator+=(Float3 r) mut { x += r.x; y += r.y; z += r.z; }
-	public void operator-=(Float3 r) mut { x -= r.x; y -= r.y; z -= r.z; }
-	public void operator*=(float s) mut { x *= s; y *= s; z *= s; }
-	public void operator/=(float s) mut { x /= s; y /= s; z /= s; }
+	public void operator+=(Float3 r) mut { X += r.X; Y += r.Y; Z += r.Z; }
+	public void operator-=(Float3 r) mut { X -= r.X; Y -= r.Y; Z -= r.Z; }
+	public void operator*=(float s) mut { X *= s; Y *= s; Z *= s; }
+	public void operator/=(float s) mut { X /= s; Y /= s; Z /= s; }
 
-	public static Float3 operator+(Float3 a, Float3 b) => .(a.x + b.x, a.y + b.y, a.z + b.z);
-	public static Float3 operator-(Float3 a, Float3 b) => .(a.x - b.x, a.y - b.y, a.z - b.z);
+	public static Float3 operator+(Float3 a, Float3 b) => .(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
+	public static Float3 operator-(Float3 a, Float3 b) => .(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
 	/// Component-wise, not a dot or a cross.
-	public static Float3 operator*(Float3 a, Float3 b) => .(a.x * b.x, a.y * b.y, a.z * b.z);
-	public static Float3 operator*(Float3 v, float s) => .(v.x * s, v.y * s, v.z * s);
-	public static Float3 operator*(float s, Float3 v) => .(v.x * s, v.y * s, v.z * s);
-	public static Float3 operator/(Float3 v, float s) => .(v.x / s, v.y / s, v.z / s);
+	public static Float3 operator*(Float3 a, Float3 b) => .(a.X * b.X, a.Y * b.Y, a.Z * b.Z);
+	public static Float3 operator*(Float3 v, float s) => .(v.X * s, v.Y * s, v.Z * s);
+	public static Float3 operator*(float s, Float3 v) => .(v.X * s, v.Y * s, v.Z * s);
+	public static Float3 operator/(Float3 v, float s) => .(v.X / s, v.Y / s, v.Z / s);
 	/// Component-wise.
-	public static Float3 operator/(Float3 a, Float3 b) => .(a.x / b.x, a.y / b.y, a.z / b.z);
+	public static Float3 operator/(Float3 a, Float3 b) => .(a.X / b.X, a.Y / b.Y, a.Z / b.Z);
 	public static bool operator==(Float3 a, Float3 b) =>
-		(a.x == b.x) && (a.y == b.y) && (a.z == b.z);
+		(a.X == b.X) && (a.Y == b.Y) && (a.Z == b.Z);
 }
 
 static
 {
 	[Inline]
-	public static float Dot(Float3 a, Float3 b) => a.x * b.x + a.y * b.y + a.z * b.z;
+	public static float Dot(Float3 a, Float3 b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z;
 
 	[Inline]
 	public static Float3 Cross(Float3 a, Float3 b) => .(
-		a.y * b.z - a.z * b.y,
-		a.z * b.x - a.x * b.z,
-		a.x * b.y - a.y * b.x);
+		a.Y * b.Z - a.Z * b.Y,
+		a.Z * b.X - a.X * b.Z,
+		a.X * b.Y - a.Y * b.X);
 
 	[Inline] public static float LengthSquared(Float3 v) => Dot(v, v);
 	[Inline] public static float Length(Float3 v) => Sqrt(LengthSquared(v));
@@ -85,17 +85,17 @@ static
 	public static Float3 Lerp(Float3 a, Float3 b, float t) => a + (b - a) * t;
 
 	public static Float3 Min(Float3 a, Float3 b) => .(
-		a.x < b.x ? a.x : b.x,
-		a.y < b.y ? a.y : b.y,
-		a.z < b.z ? a.z : b.z);
+		a.X < b.X ? a.X : b.X,
+		a.Y < b.Y ? a.Y : b.Y,
+		a.Z < b.Z ? a.Z : b.Z);
 
 	public static Float3 Max(Float3 a, Float3 b) => .(
-		a.x > b.x ? a.x : b.x,
-		a.y > b.y ? a.y : b.y,
-		a.z > b.z ? a.z : b.z);
+		a.X > b.X ? a.X : b.X,
+		a.Y > b.Y ? a.Y : b.Y,
+		a.Z > b.Z ? a.Z : b.Z);
 
 	public static bool NearlyEqual(Float3 a, Float3 b, float epsilon = Epsilon) =>
-		NearlyEqual(a.x, b.x, epsilon) &&
-		NearlyEqual(a.y, b.y, epsilon) &&
-		NearlyEqual(a.z, b.z, epsilon);
+		NearlyEqual(a.X, b.X, epsilon) &&
+		NearlyEqual(a.Y, b.Y, epsilon) &&
+		NearlyEqual(a.Z, b.Z, epsilon);
 }

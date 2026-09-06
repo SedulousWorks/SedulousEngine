@@ -22,14 +22,14 @@ class Curve
 	/// The curve's time span: the last key's time, or zero when empty. A normalized clip
 	/// is expected to have its first key at t = 0, but that is a convention rather than
 	/// something enforced here.
-	public float Duration => mKeys.IsEmpty ? 0.0f : mKeys[mKeys.Count - 1].time;
+	public float Duration => mKeys.IsEmpty ? 0.0f : mKeys[mKeys.Count - 1].Time;
 
 	/// Inserts a key, keeping the list sorted by time. Stable for equal times: the new
 	/// key lands after existing keys at the same time.
 	public void AddKey(CurveKey key)
 	{
 		var i = mKeys.Count;
-		while ((i > 0) && (mKeys[i - 1].time > key.time))
+		while ((i > 0) && (mKeys[i - 1].Time > key.Time))
 			i--;
 		mKeys.Insert(i, key);
 	}
@@ -44,34 +44,34 @@ class Curve
 		let count = mKeys.Count;
 		if (count == 0)
 			return 0.0f;
-		if ((count == 1) || (time <= mKeys[0].time))
-			return mKeys[0].value;
-		if (time >= mKeys[count - 1].time)
-			return mKeys[count - 1].value;
+		if ((count == 1) || (time <= mKeys[0].Time))
+			return mKeys[0].Value;
+		if (time >= mKeys[count - 1].Time)
+			return mKeys[count - 1].Value;
 
 		// Find the segment containing time. A linear scan, since key counts are small.
 		var i = 0;
-		while ((i + 1 < count) && (mKeys[i + 1].time <= time))
+		while ((i + 1 < count) && (mKeys[i + 1].Time <= time))
 			i++;
 
 		let a = mKeys[i];
 		let b = mKeys[i + 1];
 
-		let segment = b.time - a.time;
+		let segment = b.Time - a.Time;
 		if (segment <= 1e-6f)
-			return b.value;   // coincident keys: jump to the later value
+			return b.Value;   // coincident keys: jump to the later value
 
-		let localT = (time - a.time) / segment;
+		let localT = (time - a.Time) / segment;
 
-		switch (a.interpolation)
+		switch (a.Interpolation)
 		{
 		case .Constant:
-			return a.value;
+			return a.Value;
 		case .Linear:
-			return a.value + (b.value - a.value) * localT;
+			return a.Value + (b.Value - a.Value) * localT;
 		case .Cubic:
 			// Tangents are slopes, scaled by the segment length into the [0,1] basis.
-			return Hermite(a.value, a.tangentOut * segment, b.value, b.tangentIn * segment, localT);
+			return Hermite(a.Value, a.TangentOut * segment, b.Value, b.TangentIn * segment, localT);
 		}
 	}
 

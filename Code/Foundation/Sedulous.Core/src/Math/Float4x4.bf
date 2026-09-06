@@ -6,7 +6,7 @@ namespace Sedulous.Core;
 /// 4x4 row-major matrix: transforms, projections, multiply, Transpose/Determinant/
 /// Inverse, point and direction transforms.
 ///
-/// Conventions: row-major storage m[row][col]; row vectors, so v' = v * M;
+/// Conventions: row-major storage M[row][col]; row vectors, so v' = v * M;
 /// composition reads left to right; XNA style right-handed projections with NDC depth
 /// in [0, 1]; translation in the last row.
 ///
@@ -16,9 +16,9 @@ namespace Sedulous.Core;
 [CRepr]
 struct Float4x4
 {
-	public float[4][4] m;
+	public float[4][4] M;
 
-	public this() { m = default; }
+	public this() { M = default; }
 
 	/// Row-major, reading left to right and top to bottom.
 	public this(
@@ -27,26 +27,26 @@ struct Float4x4
 		float m20, float m21, float m22, float m23,
 		float m30, float m31, float m32, float m33)
 	{
-		m = .(.(m00, m01, m02, m03),
+		M = .(.(m00, m01, m02, m03),
 			  .(m10, m11, m12, m13),
 			  .(m20, m21, m22, m23),
 			  .(m30, m31, m32, m33));
 	}
 
 	/// Raw row-major float pointer, sixteen contiguous floats, for GPU upload.
-	public float* Data mut => &m[0][0];
+	public float* Data mut => &M[0][0];
 
 	public float this[int row, int col]
 	{
 		[Inline] get
 		{
 			Debug.Assert((row >= 0) && (row < 4) && (col >= 0) && (col < 4));
-			return m[row][col];
+			return M[row][col];
 		}
 		[Inline] set mut
 		{
 			Debug.Assert((row >= 0) && (row < 4) && (col >= 0) && (col < 4));
-			m[row][col] = value;
+			M[row][col] = value;
 		}
 	}
 
@@ -60,12 +60,12 @@ struct Float4x4
 		1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, 1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 1.0f, 0.0f,
-		t.x,  t.y,  t.z,  1.0f);
+		t.X,  t.Y,  t.Z,  1.0f);
 
 	public static Float4x4 Scale(Float3 s) => .(
-		s.x,  0.0f, 0.0f, 0.0f,
-		0.0f, s.y,  0.0f, 0.0f,
-		0.0f, 0.0f, s.z,  0.0f,
+		s.X,  0.0f, 0.0f, 0.0f,
+		0.0f, s.Y,  0.0f, 0.0f,
+		0.0f, 0.0f, s.Z,  0.0f,
 		0.0f, 0.0f, 0.0f, 1.0f);
 
 	public static Float4x4 RotationX(float radians)
@@ -130,9 +130,9 @@ struct Float4x4
 		let xAxis = Normalized(Cross(up, zAxis));
 		let yAxis = Cross(zAxis, xAxis);
 		return .(
-			xAxis.x,          yAxis.x,          zAxis.x,          0.0f,
-			xAxis.y,          yAxis.y,          zAxis.y,          0.0f,
-			xAxis.z,          yAxis.z,          zAxis.z,          0.0f,
+			xAxis.X,          yAxis.X,          zAxis.X,          0.0f,
+			xAxis.Y,          yAxis.Y,          zAxis.Y,          0.0f,
+			xAxis.Z,          yAxis.Z,          zAxis.Z,          0.0f,
 			-Dot(xAxis, eye), -Dot(yAxis, eye), -Dot(zAxis, eye), 1.0f);
 	}
 
@@ -145,26 +145,26 @@ struct Float4x4
 			{
 				var sum = 0.0f;
 				for (int k < 4)
-					sum += a.m[row][k] * b.m[k][col];
-				result.m[row][col] = sum;
+					sum += a.M[row][k] * b.M[k][col];
+				result.M[row][col] = sum;
 			}
 		}
 		return result;
 	}
 
 	/// Row-vector transform: v' = v * M.
-	public static Float4 operator*(Float4 v, Float4x4 m) => .(
-		v.x * m.m[0][0] + v.y * m.m[1][0] + v.z * m.m[2][0] + v.w * m.m[3][0],
-		v.x * m.m[0][1] + v.y * m.m[1][1] + v.z * m.m[2][1] + v.w * m.m[3][1],
-		v.x * m.m[0][2] + v.y * m.m[1][2] + v.z * m.m[2][2] + v.w * m.m[3][2],
-		v.x * m.m[0][3] + v.y * m.m[1][3] + v.z * m.m[2][3] + v.w * m.m[3][3]);
+	public static Float4 operator*(Float4 v, Float4x4 M) => .(
+		v.X * M.M[0][0] + v.Y * M.M[1][0] + v.Z * M.M[2][0] + v.W * M.M[3][0],
+		v.X * M.M[0][1] + v.Y * M.M[1][1] + v.Z * M.M[2][1] + v.W * M.M[3][1],
+		v.X * M.M[0][2] + v.Y * M.M[1][2] + v.Z * M.M[2][2] + v.W * M.M[3][2],
+		v.X * M.M[0][3] + v.Y * M.M[1][3] + v.Z * M.M[2][3] + v.W * M.M[3][3]);
 
 	/// Exact element-wise equality, for an identity fast path.
 	public static bool operator==(Float4x4 a, Float4x4 b)
 	{
 		for (int row < 4)
 			for (int col < 4)
-				if (a.m[row][col] != b.m[row][col])
+				if (a.M[row][col] != b.M[row][col])
 					return false;
 		return true;
 	}
@@ -177,40 +177,41 @@ static
 		Float4x4 result = .();
 		for (int row < 4)
 			for (int col < 4)
-				result.m[row][col] = a.m[col][row];
+				result.M[row][col] = a.M[col][row];
 		return result;
 	}
 
 	/// Transforms a position: implicit w = 1, so translation applies.
 	public static Float3 TransformPoint(Float3 p, Float4x4 m) => .(
-		p.x * m.m[0][0] + p.y * m.m[1][0] + p.z * m.m[2][0] + m.m[3][0],
-		p.x * m.m[0][1] + p.y * m.m[1][1] + p.z * m.m[2][1] + m.m[3][1],
-		p.x * m.m[0][2] + p.y * m.m[1][2] + p.z * m.m[2][2] + m.m[3][2]);
+		p.X * m.M[0][0] + p.Y * m.M[1][0] + p.Z * m.M[2][0] + m.M[3][0],
+		p.X * m.M[0][1] + p.Y * m.M[1][1] + p.Z * m.M[2][1] + m.M[3][1],
+		p.X * m.M[0][2] + p.Y * m.M[1][2] + p.Z * m.M[2][2] + m.M[3][2]);
 
 	/// Transforms a direction: implicit w = 0, so translation is ignored.
 	public static Float3 TransformDirection(Float3 d, Float4x4 m) => .(
-		d.x * m.m[0][0] + d.y * m.m[1][0] + d.z * m.m[2][0],
-		d.x * m.m[0][1] + d.y * m.m[1][1] + d.z * m.m[2][1],
-		d.x * m.m[0][2] + d.y * m.m[1][2] + d.z * m.m[2][2]);
+		d.X * m.M[0][0] + d.Y * m.M[1][0] + d.Z * m.M[2][0],
+		d.X * m.M[0][1] + d.Y * m.M[1][1] + d.Z * m.M[2][1],
+		d.X * m.M[0][2] + d.Y * m.M[1][2] + d.Z * m.M[2][2]);
 
 	/// Transforms a 2D position held in a 4x4 affine transform: implicit z = 0, w = 1,
 	/// translation applies, and the result projects back to 2D.
 	public static Float2 TransformPoint2D(Float2 p, Float4x4 m) => .(
-		p.x * m.m[0][0] + p.y * m.m[1][0] + m.m[3][0],
-		p.x * m.m[0][1] + p.y * m.m[1][1] + m.m[3][1]);
+		p.X * m.M[0][0] + p.Y * m.M[1][0] + m.M[3][0],
+		p.X * m.M[0][1] + p.Y * m.M[1][1] + m.M[3][1]);
 
 	public static bool NearlyEqual(Float4x4 a, Float4x4 b, float epsilon = Epsilon)
 	{
 		for (int row < 4)
 			for (int col < 4)
-				if (!NearlyEqual(a.m[row][col], b.m[row][col], epsilon))
+				if (!NearlyEqual(a.M[row][col], b.M[row][col], epsilon))
 					return false;
 		return true;
 	}
 
 	public static float Determinant(Float4x4 mat)
 	{
-		let m = &mat.m[0][0];
+		var mat;
+		let m = &mat.M[0][0];
 		let s0 = m[0] * m[5] - m[1] * m[4];
 		let s1 = m[0] * m[6] - m[2] * m[4];
 		let s2 = m[0] * m[7] - m[3] * m[4];
@@ -230,7 +231,8 @@ static
 	/// rather than producing infinities.
 	public static Float4x4 Inverse(Float4x4 mat)
 	{
-		let m = &mat.m[0][0];
+		var mat;
+		let m = &mat.M[0][0];
 		float[16] inv = ?;
 
 		inv[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] +
@@ -272,7 +274,7 @@ static
 
 		let invDet = 1.0f / det;
 		Float4x4 result = .();
-		let outp = &result.m[0][0];
+		let outp = &result.M[0][0];
 		for (int i < 16)
 			outp[i] = inv[i] * invDet;
 		return result;

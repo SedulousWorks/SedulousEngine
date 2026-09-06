@@ -31,7 +31,7 @@ class BoundingSphereTests
 
 		// Exactly tangent counts as intersecting, since the test is not strict there.
 		let tangent = Plane.FromPointNormal(Float3(0.0f, 2.0f, 0.0f), Float3.UnitY);
-		Test.Assert(tangent.SignedDistance(s.center) == -2.0f);
+		Test.Assert(tangent.SignedDistance(s.Center) == -2.0f);
 		Test.Assert(s.Intersects(tangent) == .Intersecting);
 	}
 
@@ -43,8 +43,8 @@ class BoundingSphereTests
 		let m = BoundingSphere.Merge(a, b);
 
 		// Spanning -2..2 on x, so centred at the origin with radius 2.
-		Test.Assert(NearlyEqual(m.center, Float3.Zero, 1.0e-4f));
-		Test.Assert(NearlyEqual(m.radius, 2.0f, 1.0e-4f));
+		Test.Assert(NearlyEqual(m.Center, Float3.Zero, 1.0e-4f));
+		Test.Assert(NearlyEqual(m.Radius, 2.0f, 1.0e-4f));
 
 		// The result encloses both originals.
 		Test.Assert(Contains(m, a) == .Contains);
@@ -61,27 +61,27 @@ class BoundingSphereTests
 		let small = BoundingSphere(Float3(1.0f, 0.0f, 0.0f), 1.0f);
 
 		let m1 = BoundingSphere.Merge(big, small);
-		Test.Assert(NearlyEqual(m1.radius, 10.0f));
-		Test.Assert(NearlyEqual(m1.center, big.center));
+		Test.Assert(NearlyEqual(m1.Radius, 10.0f));
+		Test.Assert(NearlyEqual(m1.Center, big.Center));
 
 		let m2 = BoundingSphere.Merge(small, big);
-		Test.Assert(NearlyEqual(m2.radius, 10.0f));
-		Test.Assert(NearlyEqual(m2.center, big.center));
+		Test.Assert(NearlyEqual(m2.Radius, 10.0f));
+		Test.Assert(NearlyEqual(m2.Center, big.Center));
 
 		// Concentric and identical is one degenerate case, where the distance is zero.
 		let same = BoundingSphere.Merge(big, big);
-		Test.Assert(NearlyEqual(same.radius, 10.0f));
+		Test.Assert(NearlyEqual(same.Radius, 10.0f));
 
 		// Concentric with DIFFERENT radii is the case the first shortcut exists for.
 		// Identical radii are caught by the second one, so only this reaches the first,
 		// and without it the general formula divides by a zero distance and yields NaN.
 		let concentric = BoundingSphere.Merge(big, BoundingSphere(Float3.Zero, 1.0f));
-		Test.Assert(concentric.radius == concentric.radius);   // not NaN
-		Test.Assert(NearlyEqual(concentric.radius, 10.0f));
-		Test.Assert(NearlyEqual(concentric.center, Float3.Zero));
+		Test.Assert(concentric.Radius == concentric.Radius);   // not NaN
+		Test.Assert(NearlyEqual(concentric.Radius, 10.0f));
+		Test.Assert(NearlyEqual(concentric.Center, Float3.Zero));
 
 		let concentricFlipped = BoundingSphere.Merge(BoundingSphere(Float3.Zero, 1.0f), big);
-		Test.Assert(NearlyEqual(concentricFlipped.radius, 10.0f));
+		Test.Assert(NearlyEqual(concentricFlipped.Radius, 10.0f));
 	}
 
 	[Test]
@@ -97,14 +97,14 @@ class BoundingSphereTests
 
 		// Every point is inside, allowing for the surface being exclusive.
 		for (let p in pts)
-			Test.Assert(LengthSquared(p - s.center) <= s.radius * s.radius + 1.0e-3f);
+			Test.Assert(LengthSquared(p - s.Center) <= s.Radius * s.Radius + 1.0e-3f);
 
 		// X is the widest spread, so the sphere is driven by it.
-		Test.Assert(s.radius >= 5.0f - 1.0e-3f);
+		Test.Assert(s.Radius >= 5.0f - 1.0e-3f);
 
 		// Empty gives a zero sphere rather than reading past the end.
 		Float3[1] none = ?;
-		Test.Assert(BoundingSphere.FromPoints(Span<Float3>(&none[0], 0)).radius == 0.0f);
+		Test.Assert(BoundingSphere.FromPoints(Span<Float3>(&none[0], 0)).Radius == 0.0f);
 	}
 
 	/// FromPoints picks its starting axis from the widest spread, so a point set that is
@@ -121,15 +121,15 @@ class BoundingSphereTests
 
 		var y = wideY;
 		let sy = BoundingSphere.FromPoints(Span<Float3>(&y[0], y.Count));
-		Test.Assert(sy.radius >= 8.0f - 1.0e-3f);
+		Test.Assert(sy.Radius >= 8.0f - 1.0e-3f);
 		for (let p in wideY)
-			Test.Assert(LengthSquared(p - sy.center) <= sy.radius * sy.radius + 1.0e-3f);
+			Test.Assert(LengthSquared(p - sy.Center) <= sy.Radius * sy.Radius + 1.0e-3f);
 
 		var z = wideZ;
 		let sz = BoundingSphere.FromPoints(Span<Float3>(&z[0], z.Count));
-		Test.Assert(sz.radius >= 8.0f - 1.0e-3f);
+		Test.Assert(sz.Radius >= 8.0f - 1.0e-3f);
 		for (let p in wideZ)
-			Test.Assert(LengthSquared(p - sz.center) <= sz.radius * sz.radius + 1.0e-3f);
+			Test.Assert(LengthSquared(p - sz.Center) <= sz.Radius * sz.Radius + 1.0e-3f);
 	}
 
 	[Test]
@@ -139,17 +139,17 @@ class BoundingSphereTests
 
 		// A point already inside changes nothing.
 		s.Expand(Float3(0.5f, 0.0f, 0.0f));
-		Test.Assert(NearlyEqual(s.radius, 1.0f));
-		Test.Assert(NearlyEqual(s.center, Float3.Zero));
+		Test.Assert(NearlyEqual(s.Radius, 1.0f));
+		Test.Assert(NearlyEqual(s.Center, Float3.Zero));
 
 		// A point outside grows the sphere just enough to reach it.
 		s.Expand(Float3(3.0f, 0.0f, 0.0f));
-		Test.Assert(s.radius >= 2.0f - 1.0e-4f);
-		Test.Assert(LengthSquared(Float3(3.0f, 0.0f, 0.0f) - s.center)
-			<= s.radius * s.radius + 1.0e-3f);
+		Test.Assert(s.Radius >= 2.0f - 1.0e-4f);
+		Test.Assert(LengthSquared(Float3(3.0f, 0.0f, 0.0f) - s.Center)
+			<= s.Radius * s.Radius + 1.0e-3f);
 		// And the original extent is still enclosed.
-		Test.Assert(LengthSquared(Float3(-1.0f, 0.0f, 0.0f) - s.center)
-			<= s.radius * s.radius + 1.0e-3f);
+		Test.Assert(LengthSquared(Float3(-1.0f, 0.0f, 0.0f) - s.Center)
+			<= s.Radius * s.Radius + 1.0e-3f);
 	}
 
 	[Test]

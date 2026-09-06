@@ -2,31 +2,31 @@ using System;
 
 namespace Sedulous.Core;
 
-/// A 2D rectangle whose x and y are the min corner.
+/// A 2D rectangle whose X and Y are the min corner.
 [CRepr]
 struct Rectangle
 {
-	public float x;
-	public float y;
-	public float width;
-	public float height;
+	public float X;
+	public float Y;
+	public float Width;
+	public float Height;
 
-	public this() { x = 0; y = 0; width = 0; height = 0; }
+	public this() { X = 0; Y = 0; Width = 0; Height = 0; }
 	public this(float x, float y, float width, float height)
 	{
-		this.x = x; this.y = y; this.width = width; this.height = height;
+		this.X = x; this.Y = y; this.Width = width; this.Height = height;
 	}
 
-	public Float2 Min() => .(x, y);
-	public Float2 Max() => .(x + width, y + height);
-	public Float2 Center() => .(x + width * 0.5f, y + height * 0.5f);
+	public Float2 Min() => .(X, Y);
+	public Float2 Max() => .(X + Width, Y + Height);
+	public Float2 Center() => .(X + Width * 0.5f, Y + Height * 0.5f);
 
 	public bool Contains(Float2 p) =>
-		(p.x >= x) && (p.x <= x + width) && (p.y >= y) && (p.y <= y + height);
+		(p.X >= X) && (p.X <= X + Width) && (p.Y >= Y) && (p.Y <= Y + Height);
 
 	public bool Intersects(Rectangle other) =>
-		(x <= other.x + other.width) && (x + width >= other.x) &&
-		(y <= other.y + other.height) && (y + height >= other.y);
+		(X <= other.X + other.Width) && (X + Width >= other.X) &&
+		(Y <= other.Y + other.Height) && (Y + Height >= other.Y);
 
 	/// The overlapping rectangle of two rects, empty with zero size when they are
 	/// disjoint.
@@ -36,12 +36,12 @@ struct Rectangle
 	/// shadowing, so the shape is kept.
 	public static Rectangle Intersect(Rectangle a, Rectangle b)
 	{
-		let ax1 = a.x + a.width;
-		let bx1 = b.x + b.width;
-		let ay1 = a.y + a.height;
-		let by1 = b.y + b.height;
-		let x0 = a.x > b.x ? a.x : b.x;
-		let y0 = a.y > b.y ? a.y : b.y;
+		let ax1 = a.X + a.Width;
+		let bx1 = b.X + b.Width;
+		let ay1 = a.Y + a.Height;
+		let by1 = b.Y + b.Height;
+		let x0 = a.X > b.X ? a.X : b.X;
+		let y0 = a.Y > b.Y ? a.Y : b.Y;
 		let x1 = ax1 < bx1 ? ax1 : bx1;
 		let y1 = ay1 < by1 ? ay1 : by1;
 		let w = (x1 - x0) > 0.0f ? (x1 - x0) : 0.0f;

@@ -2,26 +2,26 @@ using System;
 
 namespace Sedulous.Core;
 
-/// Position, rotation and scale, composed as S * R * T.
+/// Position, Rotation and Scale, composed as S * R * T.
 [CRepr]
 struct Transform
 {
-	public Float3 position = Float3.Zero;
-	public Quaternion rotation = Quaternion.Identity;
-	public Float3 scale = Float3.One;
+	public Float3 Position = Float3.Zero;
+	public Quaternion Rotation = Quaternion.Identity;
+	public Float3 Scale = Float3.One;
 
 	public this() { }
 	public this(Float3 position, Quaternion rotation, Float3 scale)
 	{
-		this.position = position; this.rotation = rotation; this.scale = scale;
+		this.Position = position; this.Rotation = rotation; this.Scale = scale;
 	}
 
 	public Float4x4 ToMatrix()
 	{
-		var result = Float4x4.Scale(scale) * RotationMatrix(rotation);
-		result.m[3][0] = position.x;
-		result.m[3][1] = position.y;
-		result.m[3][2] = position.z;
+		var result = Float4x4.Scale(Scale) * RotationMatrix(Rotation);
+		result.M[3][0] = Position.X;
+		result.M[3][1] = Position.Y;
+		result.M[3][2] = Position.Z;
 		return result;
 	}
 
@@ -30,15 +30,15 @@ struct Transform
 	public static Transform FromMatrix(Float4x4 m)
 	{
 		Transform t = .();
-		Decompose(m, out t.position, out t.rotation, out t.scale);
+		Decompose(m, out t.Position, out t.Rotation, out t.Scale);
 		return t;
 	}
 
-	/// Component-wise: position and scale lerp, rotation slerps.
+	/// Component-wise: Position and Scale lerp, Rotation slerps.
 	public static Transform Lerp(Transform a, Transform b, float t) => .(
-		Sedulous.Core.Lerp(a.position, b.position, t),
-		Slerp(a.rotation, b.rotation, t),
-		Sedulous.Core.Lerp(a.scale, b.scale, t));
+		Sedulous.Core.Lerp(a.Position, b.Position, t),
+		Slerp(a.Rotation, b.Rotation, t),
+		Sedulous.Core.Lerp(a.Scale, b.Scale, t));
 }
 
 static
@@ -62,7 +62,7 @@ static
 	public static Float4x4 RigidPart(Float4x4 m)
 	{
 		var t = Transform.FromMatrix(m);
-		t.scale = Float3.One;
+		t.Scale = Float3.One;
 		return t.ToMatrix();
 	}
 }

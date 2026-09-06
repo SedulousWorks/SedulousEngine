@@ -8,20 +8,20 @@ namespace Sedulous.Core;
 [CRepr]
 struct Float4
 {
-	public float x = 0.0f;
-	public float y = 0.0f;
-	public float z = 0.0f;
-	public float w = 0.0f;
+	public float X = 0.0f;
+	public float Y = 0.0f;
+	public float Z = 0.0f;
+	public float W = 0.0f;
 
 	public this() { }
 	public this(float x, float y, float z, float w)
 	{
-		this.x = x; this.y = y; this.z = z; this.w = w;
+		this.X = x; this.Y = y; this.Z = z; this.W = w;
 	}
-	public this(float s) { this.x = s; this.y = s; this.z = s; this.w = s; }
+	public this(float s) { this.X = s; this.Y = s; this.Z = s; this.W = s; }
 	public this(Float3 xyz, float w)
 	{
-		this.x = xyz.x; this.y = xyz.y; this.z = xyz.z; this.w = w;
+		this.X = xyz.X; this.Y = xyz.Y; this.Z = xyz.Z; this.W = w;
 	}
 
 	public const Float4 Zero = .(0.0f, 0.0f, 0.0f, 0.0f);
@@ -34,10 +34,10 @@ struct Float4
 			Debug.Assert((i >= 0) && (i < 4));
 			switch (i)
 			{
-			case 0: return x;
-			case 1: return y;
-			case 2: return z;
-			default: return w;
+			case 0: return X;
+			case 1: return Y;
+			case 2: return Z;
+			default: return W;
 			}
 		}
 		[Inline] set mut
@@ -45,37 +45,37 @@ struct Float4
 			Debug.Assert((i >= 0) && (i < 4));
 			switch (i)
 			{
-			case 0: x = value;
-			case 1: y = value;
-			case 2: z = value;
-			default: w = value;
+			case 0: X = value;
+			case 1: Y = value;
+			case 2: Z = value;
+			default: W = value;
 			}
 		}
 	}
 
-	[Inline] public Float3 XYZ() => .(x, y, z);
+	[Inline] public Float3 XYZ() => .(X, Y, Z);
 
-	public static Float4 operator-(Float4 v) => .(-v.x, -v.y, -v.z, -v.w);
+	public static Float4 operator-(Float4 v) => .(-v.X, -v.Y, -v.Z, -v.W);
 
-	public void operator+=(Float4 r) mut { x += r.x; y += r.y; z += r.z; w += r.w; }
-	public void operator-=(Float4 r) mut { x -= r.x; y -= r.y; z -= r.z; w -= r.w; }
-	public void operator*=(float s) mut { x *= s; y *= s; z *= s; w *= s; }
+	public void operator+=(Float4 r) mut { X += r.X; Y += r.Y; Z += r.Z; W += r.W; }
+	public void operator-=(Float4 r) mut { X -= r.X; Y -= r.Y; Z -= r.Z; W -= r.W; }
+	public void operator*=(float s) mut { X *= s; Y *= s; Z *= s; W *= s; }
 
 	public static Float4 operator+(Float4 a, Float4 b) =>
-		.(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w);
+		.(a.X + b.X, a.Y + b.Y, a.Z + b.Z, a.W + b.W);
 	public static Float4 operator-(Float4 a, Float4 b) =>
-		.(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w);
-	public static Float4 operator*(Float4 v, float s) => .(v.x * s, v.y * s, v.z * s, v.w * s);
-	public static Float4 operator*(float s, Float4 v) => .(v.x * s, v.y * s, v.z * s, v.w * s);
+		.(a.X - b.X, a.Y - b.Y, a.Z - b.Z, a.W - b.W);
+	public static Float4 operator*(Float4 v, float s) => .(v.X * s, v.Y * s, v.Z * s, v.W * s);
+	public static Float4 operator*(float s, Float4 v) => .(v.X * s, v.Y * s, v.Z * s, v.W * s);
 	public static bool operator==(Float4 a, Float4 b) =>
-		(a.x == b.x) && (a.y == b.y) && (a.z == b.z) && (a.w == b.w);
+		(a.X == b.X) && (a.Y == b.Y) && (a.Z == b.Z) && (a.W == b.W);
 }
 
 static
 {
 	[Inline]
 	public static float Dot(Float4 a, Float4 b) =>
-		a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
+		a.X * b.X + a.Y * b.Y + a.Z * b.Z + a.W * b.W;
 
 	[Inline] public static float LengthSquared(Float4 v) => Dot(v, v);
 	[Inline] public static float Length(Float4 v) => Sqrt(LengthSquared(v));
@@ -93,8 +93,8 @@ static
 	public static Float4 Lerp(Float4 a, Float4 b, float t) => a + (b - a) * t;
 
 	public static bool NearlyEqual(Float4 a, Float4 b, float epsilon = Epsilon) =>
-		NearlyEqual(a.x, b.x, epsilon) &&
-		NearlyEqual(a.y, b.y, epsilon) &&
-		NearlyEqual(a.z, b.z, epsilon) &&
-		NearlyEqual(a.w, b.w, epsilon);
+		NearlyEqual(a.X, b.X, epsilon) &&
+		NearlyEqual(a.Y, b.Y, epsilon) &&
+		NearlyEqual(a.Z, b.Z, epsilon) &&
+		NearlyEqual(a.W, b.W, epsilon);
 }

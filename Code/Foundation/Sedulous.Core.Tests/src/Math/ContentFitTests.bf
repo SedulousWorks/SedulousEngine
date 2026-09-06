@@ -26,15 +26,15 @@ class ContentFitTests
 		let dst = f.DstRect();
 		let src = f.SrcRect();
 
-		Test.Assert(NearlyEqual(dst.x, 0.0f) && NearlyEqual(dst.y, 0.0f));
-		Test.Assert(NearlyEqual(dst.width, cRegionW) && NearlyEqual(dst.height, cRegionH));
-		Test.Assert(NearlyEqual(src.width, cContentW) && NearlyEqual(src.height, cContentH));
+		Test.Assert(NearlyEqual(dst.X, 0.0f) && NearlyEqual(dst.Y, 0.0f));
+		Test.Assert(NearlyEqual(dst.Width, cRegionW) && NearlyEqual(dst.Height, cRegionH));
+		Test.Assert(NearlyEqual(src.Width, cContentW) && NearlyEqual(src.Height, cContentH));
 
 		// The scale differs per axis, which is exactly the distortion Stretch allows.
 		let s = f.Scale();
-		Test.Assert(NearlyEqual(s.x, cContentW / cRegionW));
-		Test.Assert(NearlyEqual(s.y, cContentH / cRegionH));
-		Test.Assert(!NearlyEqual(s.x, s.y));
+		Test.Assert(NearlyEqual(s.X, cContentW / cRegionW));
+		Test.Assert(NearlyEqual(s.Y, cContentH / cRegionH));
+		Test.Assert(!NearlyEqual(s.X, s.Y));
 	}
 
 	/// 4:3 content in a 16:9 region fits by height, leaving pillarbox bars either side.
@@ -46,23 +46,23 @@ class ContentFitTests
 
 		// Height is the limiting axis: 900/600 = 1.5, against 1600/800 = 2.0.
 		let expectedW = cContentW * 1.5f;   // 1200
-		Test.Assert(NearlyEqual(dst.height, cRegionH));
-		Test.Assert(NearlyEqual(dst.width, expectedW));
+		Test.Assert(NearlyEqual(dst.Height, cRegionH));
+		Test.Assert(NearlyEqual(dst.Width, expectedW));
 
 		// Centred, so the bars are equal.
-		Test.Assert(NearlyEqual(dst.x, (cRegionW - expectedW) * 0.5f));   // 200
-		Test.Assert(NearlyEqual(dst.y, 0.0f));
+		Test.Assert(NearlyEqual(dst.X, (cRegionW - expectedW) * 0.5f));   // 200
+		Test.Assert(NearlyEqual(dst.Y, 0.0f));
 
 		// Aspect is preserved.
-		Test.Assert(NearlyEqual(dst.width / dst.height, cContentW / cContentH, 1.0e-4f));
+		Test.Assert(NearlyEqual(dst.Width / dst.Height, cContentW / cContentH, 1.0e-4f));
 
 		// The whole content is sampled: the bars are empty region, not cropped content.
 		let src = f.SrcRect();
-		Test.Assert(NearlyEqual(src.width, cContentW) && NearlyEqual(src.height, cContentH));
+		Test.Assert(NearlyEqual(src.Width, cContentW) && NearlyEqual(src.Height, cContentH));
 
 		// Both axes scale equally.
 		let s = f.Scale();
-		Test.Assert(NearlyEqual(s.x, s.y, 1.0e-4f));
+		Test.Assert(NearlyEqual(s.X, s.Y, 1.0e-4f));
 	}
 
 	/// Crop fills the region and slices the source instead, which is the mirror image of
@@ -75,20 +75,20 @@ class ContentFitTests
 		let src = f.SrcRect();
 
 		// The destination is the whole region: no bars.
-		Test.Assert(NearlyEqual(dst.width, cRegionW) && NearlyEqual(dst.height, cRegionH));
-		Test.Assert(NearlyEqual(dst.x, 0.0f) && NearlyEqual(dst.y, 0.0f));
+		Test.Assert(NearlyEqual(dst.Width, cRegionW) && NearlyEqual(dst.Height, cRegionH));
+		Test.Assert(NearlyEqual(dst.X, 0.0f) && NearlyEqual(dst.Y, 0.0f));
 
 		// Width is the limiting axis now, so the source loses height.
-		Test.Assert(NearlyEqual(src.width, cContentW));
-		Test.Assert(src.height < cContentH);
-		Test.Assert(NearlyEqual(src.height, cRegionH / 2.0f));   // s = 1600/800 = 2
+		Test.Assert(NearlyEqual(src.Width, cContentW));
+		Test.Assert(src.Height < cContentH);
+		Test.Assert(NearlyEqual(src.Height, cRegionH / 2.0f));   // s = 1600/800 = 2
 
 		// The slice is centred, so equal amounts are lost top and bottom.
-		Test.Assert(NearlyEqual(src.x, 0.0f));
-		Test.Assert(NearlyEqual(src.y, (cContentH - src.height) * 0.5f));
+		Test.Assert(NearlyEqual(src.X, 0.0f));
+		Test.Assert(NearlyEqual(src.Y, (cContentH - src.Height) * 0.5f));
 
 		let s = f.Scale();
-		Test.Assert(NearlyEqual(s.x, s.y, 1.0e-4f));
+		Test.Assert(NearlyEqual(s.X, s.Y, 1.0e-4f));
 	}
 
 	/// IntegerScale floors the letterbox scale, which is the whole reason it exists.
@@ -101,15 +101,15 @@ class ContentFitTests
 		let dst = f.DstRect();
 
 		// 1000/320 = 3.125, 500/200 = 2.5; the smaller is 2.5, floored to 2.
-		Test.Assert(NearlyEqual(dst.width, 640.0f));
-		Test.Assert(NearlyEqual(dst.height, 400.0f));
-		Test.Assert(NearlyEqual(dst.x, (1000.0f - 640.0f) * 0.5f));
-		Test.Assert(NearlyEqual(dst.y, (500.0f - 400.0f) * 0.5f));
+		Test.Assert(NearlyEqual(dst.Width, 640.0f));
+		Test.Assert(NearlyEqual(dst.Height, 400.0f));
+		Test.Assert(NearlyEqual(dst.X, (1000.0f - 640.0f) * 0.5f));
+		Test.Assert(NearlyEqual(dst.Y, (500.0f - 400.0f) * 0.5f));
 
 		// Letterbox on the same inputs would use the unfloored 2.5.
 		var letter = f;
-		letter.mode = .Letterbox;
-		Test.Assert(NearlyEqual(letter.DstRect().width, 800.0f));
+		letter.Mode = .Letterbox;
+		Test.Assert(NearlyEqual(letter.DstRect().Width, 800.0f));
 	}
 
 	/// A region smaller than the content would floor to zero, which would draw nothing.
@@ -120,8 +120,8 @@ class ContentFitTests
 		let f = ContentFit(Rectangle(0.0f, 0.0f, 100.0f, 100.0f), Float2(320.0f, 200.0f),
 			.IntegerScale);
 		let dst = f.DstRect();
-		Test.Assert(NearlyEqual(dst.width, 320.0f));
-		Test.Assert(NearlyEqual(dst.height, 200.0f));
+		Test.Assert(NearlyEqual(dst.Width, 320.0f));
+		Test.Assert(NearlyEqual(dst.Height, 200.0f));
 	}
 
 	/// The round trip is the contract input relies on: a point mapped into content space
@@ -137,9 +137,9 @@ class ContentFitTests
 
 			// Sample points inside the drawn area, including its corners.
 			Float2[?] points = .(
-				Float2(dst.x + 1.0f, dst.y + 1.0f),
-				Float2(dst.x + dst.width * 0.5f, dst.y + dst.height * 0.5f),
-				Float2(dst.x + dst.width - 1.0f, dst.y + dst.height - 1.0f));
+				Float2(dst.X + 1.0f, dst.Y + 1.0f),
+				Float2(dst.X + dst.Width * 0.5f, dst.Y + dst.Height * 0.5f),
+				Float2(dst.X + dst.Width - 1.0f, dst.Y + dst.Height - 1.0f));
 
 			for (let pt in points)
 			{
@@ -161,15 +161,15 @@ class ContentFitTests
 		Float2 content = ?;
 
 		// Inside the left bar.
-		Test.Assert(!f.ToContent(Float2(dst.x - 10.0f, cRegionH * 0.5f), out content));
+		Test.Assert(!f.ToContent(Float2(dst.X - 10.0f, cRegionH * 0.5f), out content));
 		// Inside the right bar.
-		Test.Assert(!f.ToContent(Float2(dst.x + dst.width + 10.0f, cRegionH * 0.5f), out content));
+		Test.Assert(!f.ToContent(Float2(dst.X + dst.Width + 10.0f, cRegionH * 0.5f), out content));
 		// Outside the region entirely.
 		Test.Assert(!f.ToContent(Float2(-100.0f, -100.0f), out content));
 		Test.Assert(!f.ToContent(Float2(cRegionW + 100.0f, cRegionH + 100.0f), out content));
 
 		// And a point on the content itself is accepted.
-		Test.Assert(f.ToContent(Float2(dst.x + 1.0f, cRegionH * 0.5f), out content));
+		Test.Assert(f.ToContent(Float2(dst.X + 1.0f, cRegionH * 0.5f), out content));
 	}
 
 	/// Under Crop the destination is the whole region, so nothing inside the region is
@@ -182,16 +182,16 @@ class ContentFitTests
 
 		Test.Assert(f.ToContent(Float2(0.0f, 0.0f), out content));
 		// The top-left of the region maps to the top-left of the SLICE, which is inset.
-		Test.Assert(NearlyEqual(content.x, 0.0f));
-		Test.Assert(content.y > 0.0f);
-		Test.Assert(NearlyEqual(content.y, f.SrcRect().y, 1.0e-3f));
+		Test.Assert(NearlyEqual(content.X, 0.0f));
+		Test.Assert(content.Y > 0.0f);
+		Test.Assert(NearlyEqual(content.Y, f.SrcRect().Y, 1.0e-3f));
 
 		// A point outside the region is still rejected.
 		Test.Assert(!f.ToContent(Float2(-1.0f, 0.0f), out content));
 	}
 
 	/// The standard fixture is a wide region, so Crop only ever slices vertically and
-	/// src.x stays zero. A tall region slices the other axis, which is the only way to
+	/// src.X stays zero. A tall region slices the other axis, which is the only way to
 	/// exercise the horizontal offset in the source rect and in FromContent.
 	[Test]
 	public static void CropSlicesHorizontallyForATallRegion()
@@ -201,22 +201,22 @@ class ContentFitTests
 		let src = f.SrcRect();
 
 		// s = max(600/800, 900/600) = 1.5, so the visible width is 600/1.5 = 400.
-		Test.Assert(NearlyEqual(src.width, 400.0f));
-		Test.Assert(NearlyEqual(src.height, 600.0f));
+		Test.Assert(NearlyEqual(src.Width, 400.0f));
+		Test.Assert(NearlyEqual(src.Height, 600.0f));
 
 		// The slice is centred horizontally: 200 lost from each side.
-		Test.Assert(NearlyEqual(src.x, 200.0f));
-		Test.Assert(NearlyEqual(src.y, 0.0f));
+		Test.Assert(NearlyEqual(src.X, 200.0f));
+		Test.Assert(NearlyEqual(src.Y, 0.0f));
 
 		// The left edge of the region maps to the left edge of the slice, not to zero.
 		Float2 content = ?;
 		Test.Assert(f.ToContent(Float2(0.0f, 450.0f), out content));
-		Test.Assert(NearlyEqual(content.x, 200.0f, 1.0e-3f));
+		Test.Assert(NearlyEqual(content.X, 200.0f, 1.0e-3f));
 
-		// And FromContent inverts that, which it cannot do if it ignores src.x.
+		// And FromContent inverts that, which it cannot do if it ignores src.X.
 		let back = f.FromContent(content);
-		Test.Assert(NearlyEqual(back.x, 0.0f, 1.0e-2f));
-		Test.Assert(NearlyEqual(f.FromContent(Float2(600.0f, 300.0f)).x, 600.0f, 1.0e-2f));
+		Test.Assert(NearlyEqual(back.X, 0.0f, 1.0e-2f));
+		Test.Assert(NearlyEqual(f.FromContent(Float2(600.0f, 300.0f)).X, 600.0f, 1.0e-2f));
 	}
 
 	/// The centre of the region maps to the centre of the content in every mode. This is
@@ -240,12 +240,12 @@ class ContentFitTests
 	{
 		let noContent = ContentFit(Rectangle(0.0f, 0.0f, 100.0f, 100.0f), Float2(0.0f, 0.0f),
 			.Letterbox);
-		Test.Assert(NearlyEqual(noContent.DstRect().width, 100.0f));
-		Test.Assert(NearlyEqual(noContent.SrcRect().width, 0.0f));
+		Test.Assert(NearlyEqual(noContent.DstRect().Width, 100.0f));
+		Test.Assert(NearlyEqual(noContent.SrcRect().Width, 0.0f));
 
 		// Scale has no meaningful value, and must not be a NaN or an infinity.
 		let s = noContent.Scale();
-		Test.Assert(s.x == 0.0f);
+		Test.Assert(s.X == 0.0f);
 
 		let noRegion = ContentFit(Rectangle(0.0f, 0.0f, 0.0f, 0.0f), Float2(320.0f, 200.0f),
 			.Letterbox);
@@ -262,8 +262,8 @@ class ContentFitTests
 			Float2(cContentW, cContentH), .Letterbox);
 		let dst = f.DstRect();
 
-		Test.Assert(NearlyEqual(dst.y, 30.0f));
-		Test.Assert(NearlyEqual(dst.x, 50.0f + (cRegionW - dst.width) * 0.5f));
+		Test.Assert(NearlyEqual(dst.Y, 30.0f));
+		Test.Assert(NearlyEqual(dst.X, 50.0f + (cRegionW - dst.Width) * 0.5f));
 
 		// And the mapping follows the offset.
 		Float2 content = ?;

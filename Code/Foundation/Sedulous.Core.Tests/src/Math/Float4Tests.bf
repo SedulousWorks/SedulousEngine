@@ -10,10 +10,10 @@ static
 	private static void Assert_Float4Layout()
 	{
 		Compiler.Assert(sizeof(Float4) == 16);
-		Compiler.Assert(offsetof(Float4, x) == 0);
-		Compiler.Assert(offsetof(Float4, y) == 4);
-		Compiler.Assert(offsetof(Float4, z) == 8);
-		Compiler.Assert(offsetof(Float4, w) == 12);
+		Compiler.Assert(offsetof(Float4, X) == 0);
+		Compiler.Assert(offsetof(Float4, Y) == 4);
+		Compiler.Assert(offsetof(Float4, Z) == 8);
+		Compiler.Assert(offsetof(Float4, W) == 12);
 	}
 }
 
@@ -26,7 +26,7 @@ class Float4Tests
 	{
 		let v = Float4(Float3(1.0f, 2.0f, 3.0f), 1.0f);
 		Test.Assert(v.XYZ() == Float3(1.0f, 2.0f, 3.0f));
-		Test.Assert(v.w == 1.0f);
+		Test.Assert(v.W == 1.0f);
 		Test.Assert(Dot(Float4.One, Float4.One) == 4.0f);
 	}
 

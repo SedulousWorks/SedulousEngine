@@ -151,7 +151,7 @@ class BoundingVolumesTests
 		Float3[8] corners = ?;
 		GetCorners(b, ref corners);
 
-		// Sedulous's order: index 0 is (min.x, max.y, max.z), index 7 is all min.
+		// Sedulous's order: index 0 is (min.X, max.Y, max.Z), index 7 is all min.
 		Test.Assert(NearlyEqual(corners[0], Float3(-1.0f, 2.0f, 3.0f)));
 		Test.Assert(NearlyEqual(corners[7], Float3(-1.0f, -2.0f, -3.0f)));
 		Test.Assert(NearlyEqual(corners[1], Float3(1.0f, 2.0f, 3.0f)));
@@ -166,8 +166,8 @@ class BoundingVolumesTests
 
 		// A sphere's bounding box is the cube around it.
 		let fromSphere = BoundingBoxFromSphere(BoundingSphere(Float3(1.0f, 2.0f, 3.0f), 2.0f));
-		Test.Assert(NearlyEqual(fromSphere.min, Float3(-1.0f, 0.0f, 1.0f)));
-		Test.Assert(NearlyEqual(fromSphere.max, Float3(3.0f, 4.0f, 5.0f)));
+		Test.Assert(NearlyEqual(fromSphere.Min, Float3(-1.0f, 0.0f, 1.0f)));
+		Test.Assert(NearlyEqual(fromSphere.Max, Float3(3.0f, 4.0f, 5.0f)));
 	}
 
 	[Test]
@@ -176,12 +176,12 @@ class BoundingVolumesTests
 		let b = AABB(Float3(-1.0f, -1.0f, -1.0f), Float3(1.0f, 1.0f, 1.0f));
 
 		let translated = TransformAABB(b, Float4x4.Translation(Float3(10.0f, 0.0f, 0.0f)));
-		Test.Assert(NearlyEqual(translated.min, Float3(9.0f, -1.0f, -1.0f)));
-		Test.Assert(NearlyEqual(translated.max, Float3(11.0f, 1.0f, 1.0f)));
+		Test.Assert(NearlyEqual(translated.Min, Float3(9.0f, -1.0f, -1.0f)));
+		Test.Assert(NearlyEqual(translated.Max, Float3(11.0f, 1.0f, 1.0f)));
 
 		let scaled = TransformAABB(b, Float4x4.Scale(Float3(2.0f, 3.0f, 4.0f)));
-		Test.Assert(NearlyEqual(scaled.min, Float3(-2.0f, -3.0f, -4.0f)));
-		Test.Assert(NearlyEqual(scaled.max, Float3(2.0f, 3.0f, 4.0f)));
+		Test.Assert(NearlyEqual(scaled.Min, Float3(-2.0f, -3.0f, -4.0f)));
+		Test.Assert(NearlyEqual(scaled.Max, Float3(2.0f, 3.0f, 4.0f)));
 	}
 
 	/// Rotating an axis-aligned box gives a larger axis-aligned box, because the result
@@ -194,13 +194,13 @@ class BoundingVolumesTests
 		let rotated = TransformAABB(b, Float4x4.RotationZ(DegreesToRadians(45.0f)));
 
 		let root2 = Sqrt(2.0f);
-		Test.Assert(NearlyEqual(rotated.max.x, root2, 1.0e-4f));
-		Test.Assert(NearlyEqual(rotated.max.y, root2, 1.0e-4f));
-		Test.Assert(NearlyEqual(rotated.max.z, 1.0f, 1.0e-4f));
+		Test.Assert(NearlyEqual(rotated.Max.X, root2, 1.0e-4f));
+		Test.Assert(NearlyEqual(rotated.Max.Y, root2, 1.0e-4f));
+		Test.Assert(NearlyEqual(rotated.Max.Z, 1.0f, 1.0e-4f));
 
 		// A quarter turn maps the box onto itself, so the bound does not grow.
 		let quarter = TransformAABB(b, Float4x4.RotationZ(DegreesToRadians(90.0f)));
-		Test.Assert(NearlyEqual(quarter.max, Float3(1.0f, 1.0f, 1.0f), 1.0e-4f));
+		Test.Assert(NearlyEqual(quarter.Max, Float3(1.0f, 1.0f, 1.0f), 1.0e-4f));
 
 		// The result always encloses the transformed corners.
 		let m = Float4x4.RotationZ(DegreesToRadians(30.0f))

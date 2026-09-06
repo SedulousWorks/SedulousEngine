@@ -85,7 +85,7 @@ class QuaternionTests
 	{
 		let a = Quaternion.FromAxisAngle(Float3.UnitZ, DegreesToRadians(10.0f));
 		// The same rotation, negated: q and -q are the same orientation.
-		let negated = Quaternion(-a.x, -a.y, -a.z, -a.w);
+		let negated = Quaternion(-a.X, -a.Y, -a.Z, -a.W);
 
 		// Interpolating between a rotation and its own double cover must not move.
 		let mid = Slerp(a, negated, 0.5f);

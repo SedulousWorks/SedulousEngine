@@ -22,9 +22,9 @@ class Float4x4Tests
 	public static void TranslationLivesInTheLastRow()
 	{
 		let t = Float4x4.Translation(Float3(10.0f, 20.0f, 30.0f));
-		Test.Assert(t.m[3][0] == 10.0f);
-		Test.Assert(t.m[3][1] == 20.0f);
-		Test.Assert(t.m[3][2] == 30.0f);
+		Test.Assert(t.M[3][0] == 10.0f);
+		Test.Assert(t.M[3][1] == 20.0f);
+		Test.Assert(t.M[3][2] == 30.0f);
 
 		let p = TransformPoint(Float3(1.0f, 1.0f, 1.0f), t);
 		Test.Assert(NearlyEqual(p, Float3(11.0f, 21.0f, 31.0f)));
@@ -98,8 +98,8 @@ class Float4x4Tests
 	public static void PerspectiveHasTheExpectedProjectiveStructure()
 	{
 		let proj = Float4x4.PerspectiveFovRH(DegreesToRadians(90.0f), 1.0f, 1.0f, 100.0f);
-		Test.Assert(proj.m[2][3] == -1.0f);            // w' = -z, right-handed
-		Test.Assert(NearlyEqual(proj.m[0][0], 1.0f));  // xScale = 1/tan(45) at aspect 1
+		Test.Assert(proj.M[2][3] == -1.0f);            // w' = -z, right-handed
+		Test.Assert(NearlyEqual(proj.M[0][0], 1.0f));  // xScale = 1/tan(45) at aspect 1
 	}
 
 	/// Raptor checks two entries of the perspective matrix. These pin the depth range,
@@ -114,8 +114,8 @@ class Float4x4Tests
 		// A point on the near plane lands at NDC z = 0, one on the far plane at z = 1.
 		let atNear = Float4(0.0f, 0.0f, -zNear, 1.0f) * proj;
 		let atFar = Float4(0.0f, 0.0f, -zFar, 1.0f) * proj;
-		Test.Assert(NearlyEqual(atNear.z / atNear.w, 0.0f, 1.0e-4f));
-		Test.Assert(NearlyEqual(atFar.z / atFar.w, 1.0f, 1.0e-4f));
+		Test.Assert(NearlyEqual(atNear.Z / atNear.W, 0.0f, 1.0e-4f));
+		Test.Assert(NearlyEqual(atFar.Z / atFar.W, 1.0f, 1.0e-4f));
 	}
 
 	[Test]
@@ -124,8 +124,8 @@ class Float4x4Tests
 		let proj = Float4x4.OrthographicRH(4.0f, 4.0f, 1.0f, 100.0f);
 		let atNear = Float4(0.0f, 0.0f, -1.0f, 1.0f) * proj;
 		let atFar = Float4(0.0f, 0.0f, -100.0f, 1.0f) * proj;
-		Test.Assert(NearlyEqual(atNear.z, 0.0f, 1.0e-4f));
-		Test.Assert(NearlyEqual(atFar.z, 1.0f, 1.0e-4f));
+		Test.Assert(NearlyEqual(atNear.Z, 0.0f, 1.0e-4f));
+		Test.Assert(NearlyEqual(atFar.Z, 1.0f, 1.0e-4f));
 	}
 
 	/// LookAt is untested in Raptor. The camera looks down -Z, so a camera at +Z looking
@@ -139,7 +139,7 @@ class Float4x4Tests
 		Test.Assert(NearlyEqual(TransformPoint(Float3(0.0f, 0.0f, 5.0f), view),
 			Float3.Zero, 1.0e-4f));
 		// A point in front of the camera has negative view-space z.
-		Test.Assert(TransformPoint(Float3.Zero, view).z < 0.0f);
+		Test.Assert(TransformPoint(Float3.Zero, view).Z < 0.0f);
 	}
 
 	[Test]
@@ -147,9 +147,9 @@ class Float4x4Tests
 	{
 		let t = Float4x4.Translation(Float3(1.0f, 2.0f, 3.0f));
 		let tt = Transpose(t);
-		Test.Assert(tt.m[0][3] == 1.0f);
-		Test.Assert(tt.m[1][3] == 2.0f);
-		Test.Assert(tt.m[2][3] == 3.0f);
+		Test.Assert(tt.M[0][3] == 1.0f);
+		Test.Assert(tt.M[1][3] == 2.0f);
+		Test.Assert(tt.M[2][3] == 3.0f);
 		Test.Assert(NearlyEqual(Transpose(tt), t));
 		Test.Assert(NearlyEqual(Transpose(Float4x4.Identity()), Float4x4.Identity()));
 	}
@@ -169,10 +169,10 @@ class Float4x4Tests
 	public static void InverseUndoesTheTransform()
 	{
 		Transform xform = .();
-		xform.scale = Float3(2.0f, 0.5f, 3.0f);
-		xform.rotation = Quaternion.FromAxisAngle(
+		xform.Scale = Float3(2.0f, 0.5f, 3.0f);
+		xform.Rotation = Quaternion.FromAxisAngle(
 			Normalized(Float3(1.0f, 2.0f, 3.0f)), DegreesToRadians(50.0f));
-		xform.position = Float3(5.0f, -2.0f, 1.0f);
+		xform.Position = Float3(5.0f, -2.0f, 1.0f);
 
 		let m = xform.ToMatrix();
 		let inv = Inverse(m);

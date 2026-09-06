@@ -32,7 +32,7 @@ static
 		var intersects = false;
 		for (int i < BoundingFrustum.PlaneCount)
 		{
-			switch (s.Intersects(f.planes[i]))
+			switch (s.Intersects(f.Planes[i]))
 			{
 			case .Front: return .Disjoint;
 			case .Intersecting: intersects = true;
@@ -49,22 +49,22 @@ static
 
 	public static AABB BoundingBoxFromSphere(BoundingSphere s)
 	{
-		let c = Float3(s.radius, s.radius, s.radius);
-		return .(s.center - c, s.center + c);
+		let c = Float3(s.Radius, s.Radius, s.Radius);
+		return .(s.Center - c, s.Center + c);
 	}
 
-	/// Sedulous's corner order: index 0 is (min.x, max.y, max.z) through to 7 being
-	/// (min.x, min.y, min.z).
+	/// Sedulous's corner order: index 0 is (min.X, max.Y, max.Z) through to 7 being
+	/// (min.X, min.Y, min.Z).
 	public static void GetCorners(AABB b, ref Float3[8] corners)
 	{
-		corners[0] = .(b.min.x, b.max.y, b.max.z);
-		corners[1] = .(b.max.x, b.max.y, b.max.z);
-		corners[2] = .(b.max.x, b.min.y, b.max.z);
-		corners[3] = .(b.min.x, b.min.y, b.max.z);
-		corners[4] = .(b.min.x, b.max.y, b.min.z);
-		corners[5] = .(b.max.x, b.max.y, b.min.z);
-		corners[6] = .(b.max.x, b.min.y, b.min.z);
-		corners[7] = .(b.min.x, b.min.y, b.min.z);
+		corners[0] = .(b.Min.X, b.Max.Y, b.Max.Z);
+		corners[1] = .(b.Max.X, b.Max.Y, b.Max.Z);
+		corners[2] = .(b.Max.X, b.Min.Y, b.Max.Z);
+		corners[3] = .(b.Min.X, b.Min.Y, b.Max.Z);
+		corners[4] = .(b.Min.X, b.Max.Y, b.Min.Z);
+		corners[5] = .(b.Max.X, b.Max.Y, b.Min.Z);
+		corners[6] = .(b.Max.X, b.Min.Y, b.Min.Z);
+		corners[7] = .(b.Min.X, b.Min.Y, b.Min.Z);
 	}
 
 	/// AABB.Contains already answers this as a bool; this is the ContainmentType form,
@@ -75,25 +75,25 @@ static
 	public static PlaneIntersectionType Intersects(AABB b, Plane plane)
 	{
 		let pos = Float3(
-			plane.normal.x >= 0 ? b.min.x : b.max.x,
-			plane.normal.y >= 0 ? b.min.y : b.max.y,
-			plane.normal.z >= 0 ? b.min.z : b.max.z);
+			plane.Normal.X >= 0 ? b.Min.X : b.Max.X,
+			plane.Normal.Y >= 0 ? b.Min.Y : b.Max.Y,
+			plane.Normal.Z >= 0 ? b.Min.Z : b.Max.Z);
 		let neg = Float3(
-			plane.normal.x >= 0 ? b.max.x : b.min.x,
-			plane.normal.y >= 0 ? b.max.y : b.min.y,
-			plane.normal.z >= 0 ? b.max.z : b.min.z);
+			plane.Normal.X >= 0 ? b.Max.X : b.Min.X,
+			plane.Normal.Y >= 0 ? b.Max.Y : b.Min.Y,
+			plane.Normal.Z >= 0 ? b.Max.Z : b.Min.Z);
 
-		if (Dot(plane.normal, pos) + plane.d > 0.0f)
+		if (Dot(plane.Normal, pos) + plane.D > 0.0f)
 			return .Front;
-		if (Dot(plane.normal, neg) + plane.d < 0.0f)
+		if (Dot(plane.Normal, neg) + plane.D < 0.0f)
 			return .Back;
 		return .Intersecting;
 	}
 
 	public static bool Intersects(AABB b, BoundingSphere s)
 	{
-		let clamped = ClampVec(s.center, b.min, b.max);
-		return LengthSquared(s.center - clamped) <= s.radius * s.radius;
+		let clamped = ClampVec(s.Center, b.Min, b.Max);
+		return LengthSquared(s.Center - clamped) <= s.Radius * s.Radius;
 	}
 
 	/// The transformed bounds that encloses the transformed original: the centre moves and
@@ -103,13 +103,13 @@ static
 		let c = b.Center();
 		let e = b.Extents();
 		let nc = Float3(
-			c.x * m[0, 0] + c.y * m[1, 0] + c.z * m[2, 0] + m[3, 0],
-			c.x * m[0, 1] + c.y * m[1, 1] + c.z * m[2, 1] + m[3, 1],
-			c.x * m[0, 2] + c.y * m[1, 2] + c.z * m[2, 2] + m[3, 2]);
+			c.X * m[0, 0] + c.Y * m[1, 0] + c.Z * m[2, 0] + m[3, 0],
+			c.X * m[0, 1] + c.Y * m[1, 1] + c.Z * m[2, 1] + m[3, 1],
+			c.X * m[0, 2] + c.Y * m[1, 2] + c.Z * m[2, 2] + m[3, 2]);
 		let ne = Float3(
-			Abs(m[0, 0]) * e.x + Abs(m[1, 0]) * e.y + Abs(m[2, 0]) * e.z,
-			Abs(m[0, 1]) * e.x + Abs(m[1, 1]) * e.y + Abs(m[2, 1]) * e.z,
-			Abs(m[0, 2]) * e.x + Abs(m[1, 2]) * e.y + Abs(m[2, 2]) * e.z);
+			Abs(m[0, 0]) * e.X + Abs(m[1, 0]) * e.Y + Abs(m[2, 0]) * e.Z,
+			Abs(m[0, 1]) * e.X + Abs(m[1, 1]) * e.Y + Abs(m[2, 1]) * e.Z,
+			Abs(m[0, 2]) * e.X + Abs(m[1, 2]) * e.Y + Abs(m[2, 2]) * e.Z);
 		return .(nc - ne, nc + ne);
 	}
 
@@ -120,7 +120,7 @@ static
 		var intersects = false;
 		for (int i < BoundingFrustum.PlaneCount)
 		{
-			switch (Intersects(b, f.planes[i]))
+			switch (Intersects(b, f.Planes[i]))
 			{
 			case .Front: return .Disjoint;
 			case .Intersecting: intersects = true;
@@ -134,15 +134,15 @@ static
 
 	public static ContainmentType ContainsCT(AABB b, BoundingSphere s)
 	{
-		let clamped = ClampVec(s.center, b.min, b.max);
-		if (s.radius * s.radius <= LengthSquared(s.center - clamped))
+		let clamped = ClampVec(s.Center, b.Min, b.Max);
+		if (s.Radius * s.Radius <= LengthSquared(s.Center - clamped))
 			return .Disjoint;
 
-		if ((s.center.x > b.max.x - s.radius) || (s.center.y > b.max.y - s.radius) ||
-			(s.center.z > b.max.z - s.radius) || (b.min.x + s.radius > s.center.x) ||
-			(b.min.y + s.radius > s.center.y) || (b.min.z + s.radius > s.center.z) ||
-			(b.max.x - b.min.x <= s.radius) || (b.max.y - b.min.y <= s.radius) ||
-			(b.max.z - b.min.z <= s.radius))
+		if ((s.Center.X > b.Max.X - s.Radius) || (s.Center.Y > b.Max.Y - s.Radius) ||
+			(s.Center.Z > b.Max.Z - s.Radius) || (b.Min.X + s.Radius > s.Center.X) ||
+			(b.Min.Y + s.Radius > s.Center.Y) || (b.Min.Z + s.Radius > s.Center.Z) ||
+			(b.Max.X - b.Min.X <= s.Radius) || (b.Max.Y - b.Min.Y <= s.Radius) ||
+			(b.Max.Z - b.Min.Z <= s.Radius))
 			return .Intersects;
 
 		return .Contains;
@@ -152,8 +152,8 @@ static
 
 	public static bool Intersects(BoundingSphere a, BoundingSphere b)
 	{
-		let combined = a.radius + b.radius;
-		return LengthSquared(a.center - b.center) <= combined * combined;
+		let combined = a.Radius + b.Radius;
+		return LengthSquared(a.Center - b.Center) <= combined * combined;
 	}
 
 	public static bool Intersects(BoundingSphere s, AABB b) => Intersects(b, s);
@@ -165,7 +165,7 @@ static
 			return .Disjoint;
 		for (int i < BoundingFrustum.CornerCount)
 		{
-			if (s.Contains(f.corners[i]) == .Disjoint)
+			if (s.Contains(f.Corners[i]) == .Disjoint)
 				return .Intersects;
 		}
 		return .Contains;
@@ -173,7 +173,7 @@ static
 
 	public static BoundingSphere BoundingSphereFromFrustum(BoundingFrustum f)
 	{
-		var corners = f.corners;
+		var corners = f.Corners;
 		return BoundingSphere.FromPoints(Span<Float3>(&corners[0], BoundingFrustum.CornerCount));
 	}
 
@@ -182,11 +182,11 @@ static
 	public static bool Intersects(Ray ray, Plane plane, out float outT)
 	{
 		outT = 0.0f;
-		let nDotDir = Dot(plane.normal, ray.direction);
+		let nDotDir = Dot(plane.Normal, ray.Direction);
 		if (ApproxZero(nDotDir))
 			return false;
 
-		let dist = -(Dot(plane.normal, ray.position) + plane.d) / nDotDir;
+		let dist = -(Dot(plane.Normal, ray.Position) + plane.D) / nDotDir;
 		if (ApproxZero(dist))
 		{
 			outT = 0.0f;
@@ -202,8 +202,8 @@ static
 	public static bool Intersects(Ray ray, BoundingSphere sphere, out float outT)
 	{
 		outT = 0.0f;
-		let r2 = sphere.radius * sphere.radius;
-		let offset = sphere.center - ray.position;
+		let r2 = sphere.Radius * sphere.Radius;
+		let offset = sphere.Center - ray.Position;
 		let offLen2 = LengthSquared(offset);
 		if (offLen2 < r2)
 		{
@@ -211,7 +211,7 @@ static
 			return true;
 		}
 
-		let toCenter = Dot(ray.direction, offset);
+		let toCenter = Dot(ray.Direction, offset);
 		if (toCenter < 0.0f)
 			return false;
 
@@ -231,15 +231,15 @@ static
 		var mn = 0.0f;
 		var mx = 0.0f;
 
-		if (ApproxZero(ray.direction.x))
+		if (ApproxZero(ray.Direction.X))
 		{
-			if ((ray.position.x < bounds.min.x) || (ray.position.x > bounds.max.x))
+			if ((ray.Position.X < bounds.Min.X) || (ray.Position.X > bounds.Max.X))
 				return false;
 		}
 		else
 		{
-			mn = (bounds.min.x - ray.position.x) / ray.direction.x;
-			mx = (bounds.max.x - ray.position.x) / ray.direction.x;
+			mn = (bounds.Min.X - ray.Position.X) / ray.Direction.X;
+			mx = (bounds.Max.X - ray.Position.X) / ray.Direction.X;
 			if (mn > mx)
 			{
 				let t = mn; mn = mx; mx = t;
@@ -248,15 +248,15 @@ static
 			hasMax = true;
 		}
 
-		if (ApproxZero(ray.direction.y))
+		if (ApproxZero(ray.Direction.Y))
 		{
-			if ((ray.position.y < bounds.min.y) || (ray.position.y > bounds.max.y))
+			if ((ray.Position.Y < bounds.Min.Y) || (ray.Position.Y > bounds.Max.Y))
 				return false;
 		}
 		else
 		{
-			var y0 = (bounds.min.y - ray.position.y) / ray.direction.y;
-			var y1 = (bounds.max.y - ray.position.y) / ray.direction.y;
+			var y0 = (bounds.Min.Y - ray.Position.Y) / ray.Direction.Y;
+			var y1 = (bounds.Max.Y - ray.Position.Y) / ray.Direction.Y;
 			if (y0 > y1)
 			{
 				let t = y0; y0 = y1; y1 = t;
@@ -265,15 +265,15 @@ static
 			if (!hasMax || (y1 > mx)) { mx = y1; hasMax = true; }
 		}
 
-		if (ApproxZero(ray.direction.z))
+		if (ApproxZero(ray.Direction.Z))
 		{
-			if ((ray.position.z < bounds.min.z) || (ray.position.z > bounds.max.z))
+			if ((ray.Position.Z < bounds.Min.Z) || (ray.Position.Z > bounds.Max.Z))
 				return false;
 		}
 		else
 		{
-			var z0 = (bounds.min.z - ray.position.z) / ray.direction.z;
-			var z1 = (bounds.max.z - ray.position.z) / ray.direction.z;
+			var z0 = (bounds.Min.Z - ray.Position.Z) / ray.Direction.Z;
+			var z1 = (bounds.Max.Z - ray.Position.Z) / ray.Direction.Z;
 			if (z0 > z1)
 			{
 				let t = z0; z0 = z1; z1 = t;
@@ -297,7 +297,7 @@ static
 	public static bool Intersects(BoundingFrustum f, Ray ray, out float outT)
 	{
 		outT = 0.0f;
-		if (f.Contains(ray.position) == .Contains)
+		if (f.Contains(ray.Position) == .Contains)
 		{
 			outT = 0.0f;
 			return true;
@@ -307,9 +307,9 @@ static
 		var mn = FloatMax;
 		for (int i < BoundingFrustum.PlaneCount)
 		{
-			let n = f.planes[i].normal;
-			let dirDotN = Dot(ray.direction, n);
-			let posDotN = Dot(ray.position, n) + f.planes[i].d;
+			let n = f.Planes[i].Normal;
+			let dirDotN = Dot(ray.Direction, n);
+			let posDotN = Dot(ray.Position, n) + f.Planes[i].D;
 
 			if (ApproxNonZero(dirDotN))
 			{
@@ -350,12 +350,12 @@ static
 
 	public static ContainmentType Contains(BoundingSphere a, BoundingSphere b)
 	{
-		let d2 = LengthSquared(a.center - b.center);
-		let combined = a.radius + b.radius;
+		let d2 = LengthSquared(a.Center - b.Center);
+		let combined = a.Radius + b.Radius;
 		if (d2 > combined * combined)
 			return .Disjoint;
 
-		let sub = a.radius - b.radius;
+		let sub = a.Radius - b.Radius;
 		return (sub * sub < d2) ? .Intersects : .Contains;
 	}
 
@@ -378,34 +378,34 @@ static
 			return .Contains;
 
 		var dist = 0.0f;
-		if (s.center.x < bounds.min.x)
-			dist += (s.center.x - bounds.min.x) * (s.center.x - bounds.min.x);
-		else if (s.center.x > bounds.max.x)
-			dist += (s.center.x - bounds.max.x) * (s.center.x - bounds.max.x);
+		if (s.Center.X < bounds.Min.X)
+			dist += (s.Center.X - bounds.Min.X) * (s.Center.X - bounds.Min.X);
+		else if (s.Center.X > bounds.Max.X)
+			dist += (s.Center.X - bounds.Max.X) * (s.Center.X - bounds.Max.X);
 
-		if (s.center.y < bounds.min.y)
-			dist += (s.center.y - bounds.min.y) * (s.center.y - bounds.min.y);
-		else if (s.center.y > bounds.max.y)
-			dist += (s.center.y - bounds.max.y) * (s.center.y - bounds.max.y);
+		if (s.Center.Y < bounds.Min.Y)
+			dist += (s.Center.Y - bounds.Min.Y) * (s.Center.Y - bounds.Min.Y);
+		else if (s.Center.Y > bounds.Max.Y)
+			dist += (s.Center.Y - bounds.Max.Y) * (s.Center.Y - bounds.Max.Y);
 
-		if (s.center.z < bounds.min.z)
-			dist += (s.center.z - bounds.min.z) * (s.center.z - bounds.min.z);
-		else if (s.center.z > bounds.max.z)
-			dist += (s.center.z - bounds.max.z) * (s.center.z - bounds.max.z);
+		if (s.Center.Z < bounds.Min.Z)
+			dist += (s.Center.Z - bounds.Min.Z) * (s.Center.Z - bounds.Min.Z);
+		else if (s.Center.Z > bounds.Max.Z)
+			dist += (s.Center.Z - bounds.Max.Z) * (s.Center.Z - bounds.Max.Z);
 
-		return (dist <= s.radius * s.radius) ? .Intersects : .Disjoint;
+		return (dist <= s.Radius * s.Radius) ? .Intersects : .Disjoint;
 	}
 
 	public static ContainmentType ContainsCT(AABB b, AABB o)
 	{
-		if ((o.max.x < b.min.x) || (o.min.x > b.max.x) ||
-			(o.max.y < b.min.y) || (o.min.y > b.max.y) ||
-			(o.max.z < b.min.z) || (o.min.z > b.max.z))
+		if ((o.Max.X < b.Min.X) || (o.Min.X > b.Max.X) ||
+			(o.Max.Y < b.Min.Y) || (o.Min.Y > b.Max.Y) ||
+			(o.Max.Z < b.Min.Z) || (o.Min.Z > b.Max.Z))
 			return .Disjoint;
 
-		if ((o.min.x >= b.min.x) && (o.max.x <= b.max.x) &&
-			(o.min.y >= b.min.y) && (o.max.y <= b.max.y) &&
-			(o.min.z >= b.min.z) && (o.max.z <= b.max.z))
+		if ((o.Min.X >= b.Min.X) && (o.Max.X <= b.Max.X) &&
+			(o.Min.Y >= b.Min.Y) && (o.Max.Y <= b.Max.Y) &&
+			(o.Min.Z >= b.Min.Z) && (o.Max.Z <= b.Max.Z))
 			return .Contains;
 
 		return .Intersects;
@@ -417,7 +417,7 @@ static
 			return .Disjoint;
 		for (int i < BoundingFrustum.CornerCount)
 		{
-			if (ContainsCT(b, f.corners[i]) == .Disjoint)
+			if (ContainsCT(b, f.Corners[i]) == .Disjoint)
 				return .Intersects;
 		}
 		return .Contains;
@@ -430,7 +430,7 @@ static
 		var intersection = false;
 		for (int i < BoundingFrustum.PlaneCount)
 		{
-			switch (g.Intersects(f.planes[i]))
+			switch (g.Intersects(f.Planes[i]))
 			{
 			case .Front: return .Disjoint;
 			case .Intersecting: intersection = true;

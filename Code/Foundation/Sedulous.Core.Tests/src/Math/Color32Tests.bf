@@ -39,11 +39,11 @@ class Color32Tests
 	public static void ToColor32RoundsRatherThanTruncating()
 	{
 		// 0.5 * 255 = 127.5, which rounds to 128 and truncates to 127.
-		Test.Assert(ToColor32(Color(0.5f, 0.5f, 0.5f, 0.5f)).r == 128);
+		Test.Assert(ToColor32(Color(0.5f, 0.5f, 0.5f, 0.5f)).R == 128);
 		// Just under a byte boundary still rounds up.
-		Test.Assert(ToColor32(Color(0.999f, 0.0f, 0.0f, 1.0f)).r == 255);
+		Test.Assert(ToColor32(Color(0.999f, 0.0f, 0.0f, 1.0f)).R == 255);
 		// And just over the previous one does not.
-		Test.Assert(ToColor32(Color(1.4f / 255.0f, 0.0f, 0.0f, 1.0f)).r == 1);
+		Test.Assert(ToColor32(Color(1.4f / 255.0f, 0.0f, 0.0f, 1.0f)).R == 1);
 	}
 
 	/// ToColor maps alpha linearly, like every other channel. Raptor only converts
@@ -53,13 +53,13 @@ class Color32Tests
 	public static void ToColorMapsAlphaLinearly()
 	{
 		let c = ToColor(Color32(10, 20, 30, 128));
-		Test.Assert(NearlyEqual(c.a, 128.0f / 255.0f, 1.0e-6f));
-		Test.Assert(NearlyEqual(c.r, 10.0f / 255.0f, 1.0e-6f));
-		Test.Assert(NearlyEqual(c.g, 20.0f / 255.0f, 1.0e-6f));
-		Test.Assert(NearlyEqual(c.b, 30.0f / 255.0f, 1.0e-6f));
+		Test.Assert(NearlyEqual(c.A, 128.0f / 255.0f, 1.0e-6f));
+		Test.Assert(NearlyEqual(c.R, 10.0f / 255.0f, 1.0e-6f));
+		Test.Assert(NearlyEqual(c.G, 20.0f / 255.0f, 1.0e-6f));
+		Test.Assert(NearlyEqual(c.B, 30.0f / 255.0f, 1.0e-6f));
 
 		// Half alpha is half, not the curve's value for it.
-		Test.Assert(c.a > 0.49f);
+		Test.Assert(c.A > 0.49f);
 	}
 
 	/// The default alpha is opaque, matching Color.
@@ -68,7 +68,7 @@ class Color32Tests
 	{
 		Color32 c = .();
 		Test.Assert(c == Color32.Black);
-		Test.Assert(c.a == 255);
+		Test.Assert(c.A == 255);
 	}
 
 	/// The sRGB EOTF is piecewise: a linear segment below the knee and a power curve
@@ -118,10 +118,10 @@ class Color32Tests
 		let linear = ToLinear(half);
 
 		// Alpha is the plain 0..255 to 0..1 mapping.
-		Test.Assert(NearlyEqual(linear.a, 128.0f / 255.0f, 1.0e-6f));
+		Test.Assert(NearlyEqual(linear.A, 128.0f / 255.0f, 1.0e-6f));
 		// RGB went through the curve, so it is well below the alpha value.
-		Test.Assert(linear.r < linear.a);
-		Test.Assert(NearlyEqual(linear.r, SrgbToLinear(128.0f / 255.0f), 1.0e-6f));
+		Test.Assert(linear.R < linear.A);
+		Test.Assert(NearlyEqual(linear.R, SrgbToLinear(128.0f / 255.0f), 1.0e-6f));
 
 		// The endpoints are unmoved.
 		Test.Assert(NearlyEqual(ToLinear(Color32.White), Color.White, 1.0e-5f));

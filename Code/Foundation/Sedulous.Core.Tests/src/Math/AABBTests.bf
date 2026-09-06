@@ -22,16 +22,16 @@ class AABBTests
 		grown.Expand(Float3(-1.0f, 0.0f, 5.0f));
 		grown.Expand(Float3(3.0f, 4.0f, -2.0f));
 		Test.Assert(grown.IsValid());
-		Test.Assert(NearlyEqual(grown.min, Float3(-1.0f, 0.0f, -2.0f)));
-		Test.Assert(NearlyEqual(grown.max, Float3(3.0f, 4.0f, 5.0f)));
+		Test.Assert(NearlyEqual(grown.Min, Float3(-1.0f, 0.0f, -2.0f)));
+		Test.Assert(NearlyEqual(grown.Max, Float3(3.0f, 4.0f, 5.0f)));
 
 		let a = AABB(Float3(0.0f, 0.0f, 0.0f), Float3(1.0f, 1.0f, 1.0f));
 		let b = AABB(Float3(2.0f, 2.0f, 2.0f), Float3(3.0f, 3.0f, 3.0f));
 		Test.Assert(!a.Intersects(b));
 
 		let m = Merge(a, b);
-		Test.Assert(NearlyEqual(m.min, Float3.Zero));
-		Test.Assert(NearlyEqual(m.max, Float3(3.0f, 3.0f, 3.0f)));
+		Test.Assert(NearlyEqual(m.Min, Float3.Zero));
+		Test.Assert(NearlyEqual(m.Max, Float3(3.0f, 3.0f, 3.0f)));
 		Test.Assert(m.Intersects(a));
 	}
 
@@ -59,8 +59,8 @@ class AABBTests
 	public static void AabbSizeAndFromCenterExtents()
 	{
 		let bounds = AABB.FromCenterExtents(Float3(1.0f, 2.0f, 3.0f), Float3(0.5f, 1.0f, 1.5f));
-		Test.Assert(NearlyEqual(bounds.min, Float3(0.5f, 1.0f, 1.5f)));
-		Test.Assert(NearlyEqual(bounds.max, Float3(1.5f, 3.0f, 4.5f)));
+		Test.Assert(NearlyEqual(bounds.Min, Float3(0.5f, 1.0f, 1.5f)));
+		Test.Assert(NearlyEqual(bounds.Max, Float3(1.5f, 3.0f, 4.5f)));
 		Test.Assert(NearlyEqual(bounds.Center(), Float3(1.0f, 2.0f, 3.0f)));
 		Test.Assert(NearlyEqual(bounds.Size(), Float3(1.0f, 2.0f, 3.0f)));
 		Test.Assert(NearlyEqual(bounds.Extents(), Float3(0.5f, 1.0f, 1.5f)));
@@ -76,7 +76,7 @@ class AABBTests
 	{
 		let real = AABB(Float3(-1.0f, -2.0f, -3.0f), Float3(4.0f, 5.0f, 6.0f));
 		let merged = Merge(AABB.Empty(), real);
-		Test.Assert(NearlyEqual(merged.min, real.min));
-		Test.Assert(NearlyEqual(merged.max, real.max));
+		Test.Assert(NearlyEqual(merged.Min, real.Min));
+		Test.Assert(NearlyEqual(merged.Max, real.Max));
 	}
 }

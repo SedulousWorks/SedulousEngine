@@ -10,8 +10,8 @@ static
 	private static void Assert_Float2Layout()
 	{
 		Compiler.Assert(sizeof(Float2) == 8);
-		Compiler.Assert(offsetof(Float2, x) == 0);
-		Compiler.Assert(offsetof(Float2, y) == 4);
+		Compiler.Assert(offsetof(Float2, X) == 0);
+		Compiler.Assert(offsetof(Float2, Y) == 4);
 	}
 }
 

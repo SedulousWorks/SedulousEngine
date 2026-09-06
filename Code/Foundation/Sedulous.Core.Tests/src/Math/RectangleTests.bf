@@ -47,30 +47,30 @@ class RectangleTests
 
 		// Partial overlap in both axes.
 		let partial = Rectangle.Intersect(a, Rectangle(2.0f, 1.0f, 4.0f, 2.0f));
-		Test.Assert(NearlyEqual(partial.x, 2.0f) && NearlyEqual(partial.y, 1.0f));
-		Test.Assert(NearlyEqual(partial.width, 2.0f) && NearlyEqual(partial.height, 2.0f));
+		Test.Assert(NearlyEqual(partial.X, 2.0f) && NearlyEqual(partial.Y, 1.0f));
+		Test.Assert(NearlyEqual(partial.Width, 2.0f) && NearlyEqual(partial.Height, 2.0f));
 
 		// Order does not matter.
 		let flipped = Rectangle.Intersect(Rectangle(2.0f, 1.0f, 4.0f, 2.0f), a);
-		Test.Assert(NearlyEqual(flipped.x, partial.x) && NearlyEqual(flipped.width, partial.width));
+		Test.Assert(NearlyEqual(flipped.X, partial.X) && NearlyEqual(flipped.Width, partial.Width));
 
 		// One containing the other yields the inner rectangle.
 		let inner = Rectangle(1.0f, 1.0f, 2.0f, 2.0f);
 		let contained = Rectangle.Intersect(a, inner);
-		Test.Assert(NearlyEqual(contained.x, 1.0f) && NearlyEqual(contained.width, 2.0f));
+		Test.Assert(NearlyEqual(contained.X, 1.0f) && NearlyEqual(contained.Width, 2.0f));
 
 		// Disjoint yields zero size rather than a negative one, on each axis
 		// independently: overlapping in x but not y still has to come out empty.
 		let disjoint = Rectangle.Intersect(a, Rectangle(10.0f, 10.0f, 1.0f, 1.0f));
-		Test.Assert(disjoint.width == 0.0f);
-		Test.Assert(disjoint.height == 0.0f);
+		Test.Assert(disjoint.Width == 0.0f);
+		Test.Assert(disjoint.Height == 0.0f);
 
 		let sameXOnly = Rectangle.Intersect(a, Rectangle(1.0f, 10.0f, 2.0f, 1.0f));
-		Test.Assert(sameXOnly.height == 0.0f);
+		Test.Assert(sameXOnly.Height == 0.0f);
 
 		// Touching along an edge overlaps in zero width, not negative.
 		let touching = Rectangle.Intersect(a, Rectangle(4.0f, 0.0f, 2.0f, 4.0f));
-		Test.Assert(touching.width == 0.0f);
-		Test.Assert(NearlyEqual(touching.height, 4.0f));
+		Test.Assert(touching.Width == 0.0f);
+		Test.Assert(NearlyEqual(touching.Height, 4.0f));
 	}
 }

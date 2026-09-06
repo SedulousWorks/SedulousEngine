@@ -18,9 +18,9 @@ static
 	private static void Assert_Float3Layout()
 	{
 		Compiler.Assert(sizeof(Float3) == 12);
-		Compiler.Assert(offsetof(Float3, x) == 0);
-		Compiler.Assert(offsetof(Float3, y) == 4);
-		Compiler.Assert(offsetof(Float3, z) == 8);
+		Compiler.Assert(offsetof(Float3, X) == 0);
+		Compiler.Assert(offsetof(Float3, Y) == 4);
+		Compiler.Assert(offsetof(Float3, Z) == 8);
 	}
 }
 

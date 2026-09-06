@@ -2,34 +2,34 @@ using System;
 
 namespace Sedulous.Core;
 
-/// A centre and a radius.
+/// A centre and a Radius.
 [CRepr]
 struct BoundingSphere
 {
-	public Float3 center;
-	public float radius = 0.0f;
+	public Float3 Center;
+	public float Radius = 0.0f;
 
-	public this() { center = default; }
-	public this(Float3 center, float radius) { this.center = center; this.radius = radius; }
+	public this() { Center = default; }
+	public this(Float3 center, float radius) { this.Center = center; this.Radius = radius; }
 
 	public static BoundingSphere FromCenterRadius(Float3 c, float r) => .(c, r);
 
 	/// The smallest sphere enclosing both.
 	public static BoundingSphere Merge(BoundingSphere a, BoundingSphere b)
 	{
-		let offset = b.center - a.center;
+		let offset = b.Center - a.Center;
 		let distance = Length(offset);
-		if (a.radius + b.radius >= distance)
+		if (a.Radius + b.Radius >= distance)
 		{
-			if (distance <= a.radius - b.radius)
+			if (distance <= a.Radius - b.Radius)
 				return a;
-			if (distance <= b.radius - a.radius)
+			if (distance <= b.Radius - a.Radius)
 				return b;
 		}
 		let n = offset * (1.0f / distance);
-		let mn = Min(-a.radius, distance - b.radius);
-		let mx = (Max(a.radius, distance + b.radius) - mn) * 0.5f;
-		return .(a.center + n * (mx + mn), mx);
+		let mn = Min(-a.Radius, distance - b.Radius);
+		let mx = (Max(a.Radius, distance + b.Radius) - mn) * 0.5f;
+		return .(a.Center + n * (mx + mn), mx);
 	}
 
 	/// Ritter-style enclosing sphere of a point set.
@@ -51,71 +51,71 @@ struct BoundingSphere
 		for (int i = 1; i < points.Length; i++)
 		{
 			let p = points[i];
-			if (p.x < minX.x) minX = p;
-			if (p.x > maxX.x) maxX = p;
-			if (p.y < minY.y) minY = p;
-			if (p.y > maxY.y) maxY = p;
-			if (p.z < minZ.z) minZ = p;
-			if (p.z > maxZ.z) maxZ = p;
+			if (p.X < minX.X) minX = p;
+			if (p.X > maxX.X) maxX = p;
+			if (p.Y < minY.Y) minY = p;
+			if (p.Y > maxY.Y) maxY = p;
+			if (p.Z < minZ.Z) minZ = p;
+			if (p.Z > maxZ.Z) maxZ = p;
 		}
 
 		let dX = Distance(minX, maxX);
 		let dY = Distance(minY, maxY);
 		let dZ = Distance(minZ, maxZ);
 
-		Float3 center;
-		float radius;
+		Float3 Center;
+		float Radius;
 		if ((dX > dY) && (dX > dZ))
 		{
-			center = Lerp(minX, maxX, 0.5f);
-			radius = dX * 0.5f;
+			Center = Lerp(minX, maxX, 0.5f);
+			Radius = dX * 0.5f;
 		}
 		else if (dY > dZ)
 		{
-			center = Lerp(minY, maxY, 0.5f);
-			radius = dY * 0.5f;
+			Center = Lerp(minY, maxY, 0.5f);
+			Radius = dY * 0.5f;
 		}
 		else
 		{
-			center = Lerp(minZ, maxZ, 0.5f);
-			radius = dZ * 0.5f;
+			Center = Lerp(minZ, maxZ, 0.5f);
+			Radius = dZ * 0.5f;
 		}
 
 		for (int i = 0; i < points.Length; i++)
 		{
-			let rel = points[i] - center;
+			let rel = points[i] - Center;
 			let dist = Length(rel);
-			if (dist > radius)
+			if (dist > Radius)
 			{
-				radius = (radius + dist) * 0.5f;
-				center = center + rel * (1.0f - radius / dist);
+				Radius = (Radius + dist) * 0.5f;
+				Center = Center + rel * (1.0f - Radius / dist);
 			}
 		}
-		return .(center, radius);
+		return .(Center, Radius);
 	}
 
 	public void Expand(Float3 p) mut
 	{
-		let rel = p - center;
+		let rel = p - Center;
 		let dist = Length(rel);
-		if (dist > radius)
+		if (dist > Radius)
 		{
-			let nr = (radius + dist) * 0.5f;
-			center = center + rel * (1.0f - nr / dist);
-			radius = nr;
+			let nr = (Radius + dist) * 0.5f;
+			Center = Center + rel * (1.0f - nr / dist);
+			Radius = nr;
 		}
 	}
 
 	public ContainmentType Contains(Float3 point) =>
-		LengthSquared(point - center) < radius * radius ? .Contains : .Disjoint;
+		LengthSquared(point - Center) < Radius * Radius ? .Contains : .Disjoint;
 
 	/// Signed-distance plane test. Front means fully on the normal's positive side.
 	public PlaneIntersectionType Intersects(Plane plane)
 	{
-		let dist = Dot(plane.normal, center) + plane.d;
-		if (dist > radius)
+		let dist = Dot(plane.Normal, Center) + plane.D;
+		if (dist > Radius)
 			return .Front;
-		if (dist < -radius)
+		if (dist < -Radius)
 			return .Back;
 		return .Intersecting;
 	}

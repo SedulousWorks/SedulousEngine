@@ -2,19 +2,19 @@ using System;
 
 namespace Sedulous.Core;
 
-/// Unit quaternion rotation, stored (x, y, z, w).
+/// Unit quaternion rotation, stored (X, Y, Z, W).
 [CRepr]
 struct Quaternion
 {
-	public float x = 0.0f;
-	public float y = 0.0f;
-	public float z = 0.0f;
-	public float w = 1.0f;
+	public float X = 0.0f;
+	public float Y = 0.0f;
+	public float Z = 0.0f;
+	public float W = 1.0f;
 
 	public this() { }
 	public this(float x, float y, float z, float w)
 	{
-		this.x = x; this.y = y; this.z = z; this.w = w;
+		this.X = x; this.Y = y; this.Z = z; this.W = w;
 	}
 
 	public const Quaternion Identity = .(0.0f, 0.0f, 0.0f, 1.0f);
@@ -24,24 +24,24 @@ struct Quaternion
 		let half = radians * 0.5f;
 		let s = Sin(half);
 		let a = Normalized(axis);
-		return .(a.x * s, a.y * s, a.z * s, Cos(half));
+		return .(a.X * s, a.Y * s, a.Z * s, Cos(half));
 	}
 
 	/// Hamilton product: applies b, then a, to a vector.
 	public static Quaternion operator*(Quaternion a, Quaternion b) => .(
-		a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
-		a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
-		a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
-		a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z);
+		a.W * b.X + a.X * b.W + a.Y * b.Z - a.Z * b.Y,
+		a.W * b.Y - a.X * b.Z + a.Y * b.W + a.Z * b.X,
+		a.W * b.Z + a.X * b.Y - a.Y * b.X + a.Z * b.W,
+		a.W * b.W - a.X * b.X - a.Y * b.Y - a.Z * b.Z);
 }
 
 static
 {
-	public static Quaternion Conjugate(Quaternion q) => .(-q.x, -q.y, -q.z, q.w);
+	public static Quaternion Conjugate(Quaternion q) => .(-q.X, -q.Y, -q.Z, q.W);
 
 	[Inline]
 	public static float Dot(Quaternion a, Quaternion b) =>
-		a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
+		a.X * b.X + a.Y * b.Y + a.Z * b.Z + a.W * b.W;
 
 	/// General inverse, conjugate over the squared length. Equals the conjugate for a
 	/// unit quaternion.
@@ -51,7 +51,7 @@ static
 		if (lengthSq <= Epsilon * Epsilon)
 			return Quaternion.Identity;
 		let inv = 1.0f / lengthSq;
-		return .(-q.x * inv, -q.y * inv, -q.z * inv, q.w * inv);
+		return .(-q.X * inv, -q.Y * inv, -q.Z * inv, q.W * inv);
 	}
 
 	public static Quaternion Normalized(Quaternion q)
@@ -60,19 +60,19 @@ static
 		if (lengthSq <= Epsilon * Epsilon)
 			return Quaternion.Identity;
 		let inv = 1.0f / Sqrt(lengthSq);
-		return .(q.x * inv, q.y * inv, q.z * inv, q.w * inv);
+		return .(q.X * inv, q.Y * inv, q.Z * inv, q.W * inv);
 	}
 
 	public static Float3 RotateVector(Quaternion q, Float3 v)
 	{
-		let u = Float3(q.x, q.y, q.z);
-		let s = q.w;
+		let u = Float3(q.X, q.Y, q.Z);
+		let s = q.W;
 		return u * (2.0f * Dot(u, v)) + v * (s * s - Dot(u, u)) + Cross(u, v) * (2.0f * s);
 	}
 
 	public static bool NearlyEqual(Quaternion a, Quaternion b, float epsilon = Epsilon) =>
-		NearlyEqual(a.x, b.x, epsilon) && NearlyEqual(a.y, b.y, epsilon) &&
-		NearlyEqual(a.z, b.z, epsilon) && NearlyEqual(a.w, b.w, epsilon);
+		NearlyEqual(a.X, b.X, epsilon) && NearlyEqual(a.Y, b.Y, epsilon) &&
+		NearlyEqual(a.Z, b.Z, epsilon) && NearlyEqual(a.W, b.W, epsilon);
 
 	/// Spherical linear interpolation along the shortest arc; the result is unit.
 	public static Quaternion Slerp(Quaternion a, Quaternion b, float t)
@@ -81,17 +81,17 @@ static
 		var cosTheta = Dot(a, b);
 		if (cosTheta < 0.0f)   // shortest path
 		{
-			b = Quaternion(-b.x, -b.y, -b.z, -b.w);
+			b = Quaternion(-b.X, -b.Y, -b.Z, -b.W);
 			cosTheta = -cosTheta;
 		}
 
 		if (cosTheta > 0.9995f) // nearly parallel: lerp and normalize
 		{
 			return Normalized(Quaternion(
-				a.x + (b.x - a.x) * t,
-				a.y + (b.y - a.y) * t,
-				a.z + (b.z - a.z) * t,
-				a.w + (b.w - a.w) * t));
+				a.X + (b.X - a.X) * t,
+				a.Y + (b.Y - a.Y) * t,
+				a.Z + (b.Z - a.Z) * t,
+				a.W + (b.W - a.W) * t));
 		}
 
 		let theta0 = Acos(cosTheta);
@@ -101,18 +101,18 @@ static
 		let s1 = sinTheta / sinTheta0;
 		let s0 = Cos(theta) - cosTheta * s1;
 		return .(
-			a.x * s0 + b.x * s1,
-			a.y * s0 + b.y * s1,
-			a.z * s0 + b.z * s1,
-			a.w * s0 + b.w * s1);
+			a.X * s0 + b.X * s1,
+			a.Y * s0 + b.Y * s1,
+			a.Z * s0 + b.Z * s1,
+			a.W * s0 + b.W * s1);
 	}
 
 	/// Rotation matrix for a unit quaternion, row-vector convention, XNA layout.
 	public static Float4x4 RotationMatrix(Quaternion q)
 	{
-		let xx = q.x * q.x; let yy = q.y * q.y; let zz = q.z * q.z;
-		let xy = q.x * q.y; let xz = q.x * q.z; let yz = q.y * q.z;
-		let wx = q.w * q.x; let wy = q.w * q.y; let wz = q.w * q.z;
+		let xx = q.X * q.X; let yy = q.Y * q.Y; let zz = q.Z * q.Z;
+		let xy = q.X * q.Y; let xz = q.X * q.Z; let yz = q.Y * q.Z;
+		let wx = q.W * q.X; let wy = q.W * q.Y; let wz = q.W * q.Z;
 		return .(
 			1.0f - 2.0f * (yy + zz), 2.0f * (xy + wz),        2.0f * (xz - wy),        0.0f,
 			2.0f * (xy - wz),        1.0f - 2.0f * (xx + zz), 2.0f * (yz + wx),        0.0f,
@@ -137,52 +137,52 @@ static
 	/// yaw and roll are not unique. This is the editor's rotation-as-euler seam.
 	public static void ToYawPitchRoll(Quaternion q, out float yaw, out float pitch, out float roll)
 	{
-		pitch = Asin(Clamp(2.0f * (q.w * q.x - q.y * q.z), -1.0f, 1.0f));
-		yaw = Atan2(2.0f * (q.w * q.y + q.x * q.z), 1.0f - 2.0f * (q.x * q.x + q.y * q.y));
-		roll = Atan2(2.0f * (q.w * q.z + q.x * q.y), 1.0f - 2.0f * (q.x * q.x + q.z * q.z));
+		pitch = Asin(Clamp(2.0f * (q.W * q.X - q.Y * q.Z), -1.0f, 1.0f));
+		yaw = Atan2(2.0f * (q.W * q.Y + q.X * q.Z), 1.0f - 2.0f * (q.X * q.X + q.Y * q.Y));
+		roll = Atan2(2.0f * (q.W * q.Z + q.X * q.Y), 1.0f - 2.0f * (q.X * q.X + q.Z * q.Z));
 	}
 
 	/// RotationMatrix's inverse: the unit quaternion of a pure rotation matrix, using
 	/// Shepperd's method over the trace and the dominant diagonal element.
 	public static Quaternion QuaternionFromRotationMatrix(Float4x4 m)
 	{
-		let trace = m.m[0][0] + m.m[1][1] + m.m[2][2];
+		let trace = m.M[0][0] + m.M[1][1] + m.M[2][2];
 		Quaternion result = .();
 		if (trace > 0.0f)
 		{
 			var s = Sqrt(trace + 1.0f);
-			result.w = s * 0.5f;
+			result.W = s * 0.5f;
 			s = 0.5f / s;
-			result.x = (m.m[1][2] - m.m[2][1]) * s;
-			result.y = (m.m[2][0] - m.m[0][2]) * s;
-			result.z = (m.m[0][1] - m.m[1][0]) * s;
+			result.X = (m.M[1][2] - m.M[2][1]) * s;
+			result.Y = (m.M[2][0] - m.M[0][2]) * s;
+			result.Z = (m.M[0][1] - m.M[1][0]) * s;
 		}
-		else if ((m.m[0][0] >= m.m[1][1]) && (m.m[0][0] >= m.m[2][2]))
+		else if ((m.M[0][0] >= m.M[1][1]) && (m.M[0][0] >= m.M[2][2]))
 		{
-			let s = Sqrt(1.0f + m.m[0][0] - m.m[1][1] - m.m[2][2]);
+			let s = Sqrt(1.0f + m.M[0][0] - m.M[1][1] - m.M[2][2]);
 			let invS = 0.5f / s;
-			result.x = 0.5f * s;
-			result.y = (m.m[0][1] + m.m[1][0]) * invS;
-			result.z = (m.m[0][2] + m.m[2][0]) * invS;
-			result.w = (m.m[1][2] - m.m[2][1]) * invS;
+			result.X = 0.5f * s;
+			result.Y = (m.M[0][1] + m.M[1][0]) * invS;
+			result.Z = (m.M[0][2] + m.M[2][0]) * invS;
+			result.W = (m.M[1][2] - m.M[2][1]) * invS;
 		}
-		else if (m.m[1][1] > m.m[2][2])
+		else if (m.M[1][1] > m.M[2][2])
 		{
-			let s = Sqrt(1.0f + m.m[1][1] - m.m[0][0] - m.m[2][2]);
+			let s = Sqrt(1.0f + m.M[1][1] - m.M[0][0] - m.M[2][2]);
 			let invS = 0.5f / s;
-			result.x = (m.m[1][0] + m.m[0][1]) * invS;
-			result.y = 0.5f * s;
-			result.z = (m.m[2][1] + m.m[1][2]) * invS;
-			result.w = (m.m[2][0] - m.m[0][2]) * invS;
+			result.X = (m.M[1][0] + m.M[0][1]) * invS;
+			result.Y = 0.5f * s;
+			result.Z = (m.M[2][1] + m.M[1][2]) * invS;
+			result.W = (m.M[2][0] - m.M[0][2]) * invS;
 		}
 		else
 		{
-			let s = Sqrt(1.0f + m.m[2][2] - m.m[0][0] - m.m[1][1]);
+			let s = Sqrt(1.0f + m.M[2][2] - m.M[0][0] - m.M[1][1]);
 			let invS = 0.5f / s;
-			result.x = (m.m[2][0] + m.m[0][2]) * invS;
-			result.y = (m.m[2][1] + m.m[1][2]) * invS;
-			result.z = 0.5f * s;
-			result.w = (m.m[0][1] - m.m[1][0]) * invS;
+			result.X = (m.M[2][0] + m.M[0][2]) * invS;
+			result.Y = (m.M[2][1] + m.M[1][2]) * invS;
+			result.Z = 0.5f * s;
+			result.W = (m.M[0][1] - m.M[1][0]) * invS;
 		}
 		return result;
 	}
@@ -194,14 +194,14 @@ static
 	public static bool Decompose(Float4x4 m, out Float3 translation, out Quaternion rotation,
 		out Float3 scale)
 	{
-		translation = .(m.m[3][0], m.m[3][1], m.m[3][2]);
+		translation = .(m.M[3][0], m.M[3][1], m.M[3][2]);
 
 		scale = .(
-			Sqrt(m.m[0][0] * m.m[0][0] + m.m[0][1] * m.m[0][1] + m.m[0][2] * m.m[0][2]),
-			Sqrt(m.m[1][0] * m.m[1][0] + m.m[1][1] * m.m[1][1] + m.m[1][2] * m.m[1][2]),
-			Sqrt(m.m[2][0] * m.m[2][0] + m.m[2][1] * m.m[2][1] + m.m[2][2] * m.m[2][2]));
+			Sqrt(m.M[0][0] * m.M[0][0] + m.M[0][1] * m.M[0][1] + m.M[0][2] * m.M[0][2]),
+			Sqrt(m.M[1][0] * m.M[1][0] + m.M[1][1] * m.M[1][1] + m.M[1][2] * m.M[1][2]),
+			Sqrt(m.M[2][0] * m.M[2][0] + m.M[2][1] * m.M[2][1] + m.M[2][2] * m.M[2][2]));
 
-		if ((scale.x == 0.0f) || (scale.y == 0.0f) || (scale.z == 0.0f))
+		if ((scale.X == 0.0f) || (scale.Y == 0.0f) || (scale.Z == 0.0f))
 		{
 			scale = Float3.One;
 			rotation = Quaternion.Identity;
@@ -211,18 +211,18 @@ static
 		// A mirrored basis has a negative determinant and cannot be a pure rotation, so
 		// one axis takes the sign.
 		let det =
-			m.m[0][0] * (m.m[1][1] * m.m[2][2] - m.m[1][2] * m.m[2][1]) -
-			m.m[0][1] * (m.m[1][0] * m.m[2][2] - m.m[1][2] * m.m[2][0]) +
-			m.m[0][2] * (m.m[1][0] * m.m[2][1] - m.m[1][1] * m.m[2][0]);
+			m.M[0][0] * (m.M[1][1] * m.M[2][2] - m.M[1][2] * m.M[2][1]) -
+			m.M[0][1] * (m.M[1][0] * m.M[2][2] - m.M[1][2] * m.M[2][0]) +
+			m.M[0][2] * (m.M[1][0] * m.M[2][1] - m.M[1][1] * m.M[2][0]);
 		if (det < 0.0f)
-			scale.z = -scale.z;
+			scale.Z = -scale.Z;
 
 		var r = Float4x4.Identity();
 		for (int c < 3)
 		{
-			r.m[0][c] = m.m[0][c] / scale.x;
-			r.m[1][c] = m.m[1][c] / scale.y;
-			r.m[2][c] = m.m[2][c] / scale.z;
+			r.M[0][c] = m.M[0][c] / scale.X;
+			r.M[1][c] = m.M[1][c] / scale.Y;
+			r.M[2][c] = m.M[2][c] / scale.Z;
 		}
 		rotation = QuaternionFromRotationMatrix(r);
 		return true;

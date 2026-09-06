@@ -13,11 +13,11 @@ class RayTests
 		let b = Ray(Float3(10.0f, 0.0f, 0.0f), Float3.UnitY);
 
 		let mid = a.Interpolate(b, 0.5f);
-		Test.Assert(NearlyEqual(mid.position, Float3(5.0f, 0.0f, 0.0f)));
-		Test.Assert(NearlyEqual(mid.direction, Float3(0.5f, 0.5f, 0.0f)));
+		Test.Assert(NearlyEqual(mid.Position, Float3(5.0f, 0.0f, 0.0f)));
+		Test.Assert(NearlyEqual(mid.Direction, Float3(0.5f, 0.5f, 0.0f)));
 
-		Test.Assert(NearlyEqual(a.Interpolate(b, 0.0f).position, a.position));
-		Test.Assert(NearlyEqual(a.Interpolate(b, 1.0f).position, b.position));
+		Test.Assert(NearlyEqual(a.Interpolate(b, 0.0f).Position, a.Position));
+		Test.Assert(NearlyEqual(a.Interpolate(b, 1.0f).Position, b.Position));
 	}
 
 	[Test]

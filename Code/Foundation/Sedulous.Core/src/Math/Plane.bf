@@ -2,28 +2,28 @@ using System;
 
 namespace Sedulous.Core;
 
-/// A plane, normal dot p + d = 0.
+/// A plane, Normal dot p + D = 0.
 [CRepr]
 struct Plane
 {
-	public Float3 normal;
-	public float d;
+	public Float3 Normal;
+	public float D;
 
-	public this() { normal = default; d = 0.0f; }
-	public this(Float3 normal, float d) { this.normal = normal; this.d = d; }
+	public this() { Normal = default; D = 0.0f; }
+	public this(Float3 normal, float d) { this.Normal = normal; this.D = d; }
 
 	public static Plane FromPointNormal(Float3 point, Float3 unitNormal) =>
 		.(unitNormal, -Dot(unitNormal, point));
 
-	/// Positive in front, on the normal's side; negative behind; near zero on the plane.
-	public float SignedDistance(Float3 p) => Dot(normal, p) + d;
+	/// Positive in front, on the Normal's side; negative behind; near zero on the plane.
+	public float SignedDistance(Float3 p) => Dot(Normal, p) + D;
 
 	public Plane Normalized()
 	{
-		let length = Length(normal);
+		let length = Length(Normal);
 		if (length <= Epsilon)
 			return this;
 		let inv = 1.0f / length;
-		return .(normal * inv, d * inv);
+		return .(Normal * inv, D * inv);
 	}
 }

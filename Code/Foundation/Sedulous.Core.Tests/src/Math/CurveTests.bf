@@ -102,9 +102,9 @@ class CurveTests
 		c.AddKey(CurveKey(1.0f, 10.0f));
 
 		Test.Assert(c.KeyCount == 3);
-		Test.Assert(NearlyEqual(c.Keys[0].time, 0.0f));
-		Test.Assert(NearlyEqual(c.Keys[1].time, 1.0f));
-		Test.Assert(NearlyEqual(c.Keys[2].time, 2.0f));
+		Test.Assert(NearlyEqual(c.Keys[0].Time, 0.0f));
+		Test.Assert(NearlyEqual(c.Keys[1].Time, 1.0f));
+		Test.Assert(NearlyEqual(c.Keys[2].Time, 2.0f));
 
 		// Sampling still works after out-of-order inserts.
 		Test.Assert(NearlyEqual(c.Evaluate(0.5f), 5.0f));
@@ -160,9 +160,9 @@ class CurveTests
 		c.AddKey(CurveKey(1.0f, 3.0f));
 
 		Test.Assert(c.KeyCount == 3);
-		Test.Assert(NearlyEqual(c.Keys[0].value, 1.0f));
-		Test.Assert(NearlyEqual(c.Keys[1].value, 2.0f));
-		Test.Assert(NearlyEqual(c.Keys[2].value, 3.0f));
+		Test.Assert(NearlyEqual(c.Keys[0].Value, 1.0f));
+		Test.Assert(NearlyEqual(c.Keys[1].Value, 2.0f));
+		Test.Assert(NearlyEqual(c.Keys[2].Value, 3.0f));
 	}
 
 	/// Each segment reads its own left key's mode, so a curve can mix them. Raptor only

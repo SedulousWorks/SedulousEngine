@@ -8,15 +8,15 @@ namespace Sedulous.Core;
 [CRepr]
 struct Color
 {
-	public float r = 0.0f;
-	public float g = 0.0f;
-	public float b = 0.0f;
-	public float a = 1.0f;
+	public float R = 0.0f;
+	public float G = 0.0f;
+	public float B = 0.0f;
+	public float A = 1.0f;
 
 	public this() { }
 	public this(float r, float g, float b, float a = 1.0f)
 	{
-		this.r = r; this.g = g; this.b = b; this.a = a;
+		this.R = r; this.G = g; this.B = b; this.A = a;
 	}
 
 	public const Color White = .(1.0f, 1.0f, 1.0f, 1.0f);
@@ -31,7 +31,7 @@ struct Color
 
 	/// Packs to 0xRRGGBBAA, with components clamped to 0..1.
 	public uint32 ToRGBA8() =>
-		(ByteOf(r) << 24) | (ByteOf(g) << 16) | (ByteOf(b) << 8) | ByteOf(a);
+		(ByteOf(R) << 24) | (ByteOf(G) << 16) | (ByteOf(B) << 8) | ByteOf(A);
 
 	public static Color FromRGBA8(uint32 packed) => .(
 		(float)((packed >> 24) & 0xFF) / 255.0f,
@@ -41,21 +41,21 @@ struct Color
 
 	/// From 0-255 channel bytes, the common literal form: Color.Rgb(28, 28, 33). Saves
 	/// every UI widget rolling its own 0-255 helper.
-	public static Color Rgb(uint8 r, uint8 g, uint8 b, uint8 a = 255) => .(
-		(float)r / 255.0f, (float)g / 255.0f, (float)b / 255.0f, (float)a / 255.0f);
+	public static Color Rgb(uint8 R, uint8 G, uint8 B, uint8 A = 255) => .(
+		(float)R / 255.0f, (float)G / 255.0f, (float)B / 255.0f, (float)A / 255.0f);
 
-	public static Color operator*(Color c, float s) => .(c.r * s, c.g * s, c.b * s, c.a * s);
-	public static Color operator+(Color a, Color b) => .(a.r + b.r, a.g + b.g, a.b + b.b, a.a + b.a);
-	public static bool operator==(Color a, Color b) =>
-		(a.r == b.r) && (a.g == b.g) && (a.b == b.b) && (a.a == b.a);
+	public static Color operator*(Color c, float s) => .(c.R * s, c.G * s, c.B * s, c.A * s);
+	public static Color operator+(Color A, Color B) => .(A.R + B.R, A.G + B.G, A.B + B.B, A.A + B.A);
+	public static bool operator==(Color A, Color B) =>
+		(A.R == B.R) && (A.G == B.G) && (A.B == B.B) && (A.A == B.A);
 }
 
 static
 {
 	public static Color Lerp(Color a, Color b, float t) => .(
-		Lerp(a.r, b.r, t), Lerp(a.g, b.g, t), Lerp(a.b, b.b, t), Lerp(a.a, b.a, t));
+		Lerp(a.R, b.R, t), Lerp(a.G, b.G, t), Lerp(a.B, b.B, t), Lerp(a.A, b.A, t));
 
 	public static bool NearlyEqual(Color a, Color b, float epsilon = Epsilon) =>
-		NearlyEqual(a.r, b.r, epsilon) && NearlyEqual(a.g, b.g, epsilon) &&
-		NearlyEqual(a.b, b.b, epsilon) && NearlyEqual(a.a, b.a, epsilon);
+		NearlyEqual(a.R, b.R, epsilon) && NearlyEqual(a.G, b.G, epsilon) &&
+		NearlyEqual(a.B, b.B, epsilon) && NearlyEqual(a.A, b.A, epsilon);
 }

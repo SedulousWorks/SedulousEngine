@@ -10,12 +10,12 @@ namespace Sedulous.Core;
 [CRepr]
 struct Float2
 {
-	public float x = 0.0f;
-	public float y = 0.0f;
+	public float X = 0.0f;
+	public float Y = 0.0f;
 
 	public this() { }
-	public this(float x, float y) { this.x = x; this.y = y; }
-	public this(float s) { this.x = s; this.y = s; }
+	public this(float x, float y) { this.X = x; this.Y = y; }
+	public this(float s) { this.X = s; this.Y = s; }
 
 	public const Float2 Zero = .(0.0f, 0.0f);
 	public const Float2 One = .(1.0f, 1.0f);
@@ -27,35 +27,35 @@ struct Float2
 		[Inline] get
 		{
 			Debug.Assert((i >= 0) && (i < 2));
-			return (i == 0) ? x : y;
+			return (i == 0) ? X : Y;
 		}
 		[Inline] set mut
 		{
 			Debug.Assert((i >= 0) && (i < 2));
-			if (i == 0) x = value; else y = value;
+			if (i == 0) X = value; else Y = value;
 		}
 	}
 
-	public static Float2 operator-(Float2 v) => .(-v.x, -v.y);
+	public static Float2 operator-(Float2 v) => .(-v.X, -v.Y);
 
-	public void operator+=(Float2 r) mut { x += r.x; y += r.y; }
-	public void operator-=(Float2 r) mut { x -= r.x; y -= r.y; }
-	public void operator*=(float s) mut { x *= s; y *= s; }
-	public void operator/=(float s) mut { x /= s; y /= s; }
+	public void operator+=(Float2 r) mut { X += r.X; Y += r.Y; }
+	public void operator-=(Float2 r) mut { X -= r.X; Y -= r.Y; }
+	public void operator*=(float s) mut { X *= s; Y *= s; }
+	public void operator/=(float s) mut { X /= s; Y /= s; }
 
-	public static Float2 operator+(Float2 a, Float2 b) => .(a.x + b.x, a.y + b.y);
-	public static Float2 operator-(Float2 a, Float2 b) => .(a.x - b.x, a.y - b.y);
+	public static Float2 operator+(Float2 a, Float2 b) => .(a.X + b.X, a.Y + b.Y);
+	public static Float2 operator-(Float2 a, Float2 b) => .(a.X - b.X, a.Y - b.Y);
 	/// Component-wise, not a dot or a scale.
-	public static Float2 operator*(Float2 a, Float2 b) => .(a.x * b.x, a.y * b.y);
-	public static Float2 operator*(Float2 v, float s) => .(v.x * s, v.y * s);
-	public static Float2 operator*(float s, Float2 v) => .(v.x * s, v.y * s);
-	public static Float2 operator/(Float2 v, float s) => .(v.x / s, v.y / s);
-	public static bool operator==(Float2 a, Float2 b) => (a.x == b.x) && (a.y == b.y);
+	public static Float2 operator*(Float2 a, Float2 b) => .(a.X * b.X, a.Y * b.Y);
+	public static Float2 operator*(Float2 v, float s) => .(v.X * s, v.Y * s);
+	public static Float2 operator*(float s, Float2 v) => .(v.X * s, v.Y * s);
+	public static Float2 operator/(Float2 v, float s) => .(v.X / s, v.Y / s);
+	public static bool operator==(Float2 a, Float2 b) => (a.X == b.X) && (a.Y == b.Y);
 }
 
 static
 {
-	[Inline] public static float Dot(Float2 a, Float2 b) => a.x * b.x + a.y * b.y;
+	[Inline] public static float Dot(Float2 a, Float2 b) => a.X * b.X + a.Y * b.Y;
 
 	[Inline] public static float LengthSquared(Float2 v) => Dot(v, v);
 	[Inline] public static float Length(Float2 v) => Sqrt(LengthSquared(v));
@@ -75,5 +75,5 @@ static
 	public static Float2 Lerp(Float2 a, Float2 b, float t) => a + (b - a) * t;
 
 	public static bool NearlyEqual(Float2 a, Float2 b, float epsilon = Epsilon) =>
-		NearlyEqual(a.x, b.x, epsilon) && NearlyEqual(a.y, b.y, epsilon);
+		NearlyEqual(a.X, b.X, epsilon) && NearlyEqual(a.Y, b.Y, epsilon);
 }

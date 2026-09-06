@@ -9,9 +9,9 @@ namespace Sedulous.Core;
 [CRepr]
 struct Float3x3
 {
-	public float[3][3] m;
+	public float[3][3] M;
 
-	public this() { m = default; }
+	public this() { M = default; }
 
 	/// Row-major, reading left to right and top to bottom.
 	public this(
@@ -19,7 +19,7 @@ struct Float3x3
 		float m10, float m11, float m12,
 		float m20, float m21, float m22)
 	{
-		m = .(.(m00, m01, m02),
+		M = .(.(m00, m01, m02),
 			  .(m10, m11, m12),
 			  .(m20, m21, m22));
 	}
@@ -29,12 +29,12 @@ struct Float3x3
 		[Inline] get
 		{
 			Debug.Assert((row >= 0) && (row < 3) && (col >= 0) && (col < 3));
-			return m[row][col];
+			return M[row][col];
 		}
 		[Inline] set mut
 		{
 			Debug.Assert((row >= 0) && (row < 3) && (col >= 0) && (col < 3));
-			m[row][col] = value;
+			M[row][col] = value;
 		}
 	}
 
@@ -46,9 +46,9 @@ struct Float3x3
 	/// The upper-left 3x3 of a Float4x4: the rotation and scale part, dropping
 	/// translation.
 	public static Float3x3 FromMat4(Float4x4 mat) => .(
-		mat.m[0][0], mat.m[0][1], mat.m[0][2],
-		mat.m[1][0], mat.m[1][1], mat.m[1][2],
-		mat.m[2][0], mat.m[2][1], mat.m[2][2]);
+		mat.M[0][0], mat.M[0][1], mat.M[0][2],
+		mat.M[1][0], mat.M[1][1], mat.M[1][2],
+		mat.M[2][0], mat.M[2][1], mat.M[2][2]);
 
 	public static Float3x3 operator*(Float3x3 a, Float3x3 b)
 	{
@@ -59,18 +59,18 @@ struct Float3x3
 			{
 				var sum = 0.0f;
 				for (int k < 3)
-					sum += a.m[row][k] * b.m[k][col];
-				result.m[row][col] = sum;
+					sum += a.M[row][k] * b.M[k][col];
+				result.M[row][col] = sum;
 			}
 		}
 		return result;
 	}
 
 	/// Row-vector transform: v' = v * M.
-	public static Float3 operator*(Float3 v, Float3x3 m) => .(
-		v.x * m.m[0][0] + v.y * m.m[1][0] + v.z * m.m[2][0],
-		v.x * m.m[0][1] + v.y * m.m[1][1] + v.z * m.m[2][1],
-		v.x * m.m[0][2] + v.y * m.m[1][2] + v.z * m.m[2][2]);
+	public static Float3 operator*(Float3 v, Float3x3 M) => .(
+		v.X * M.M[0][0] + v.Y * M.M[1][0] + v.Z * M.M[2][0],
+		v.X * M.M[0][1] + v.Y * M.M[1][1] + v.Z * M.M[2][1],
+		v.X * M.M[0][2] + v.Y * M.M[1][2] + v.Z * M.M[2][2]);
 }
 
 static
@@ -80,14 +80,14 @@ static
 		Float3x3 result = .();
 		for (int row < 3)
 			for (int col < 3)
-				result.m[row][col] = a.m[col][row];
+				result.M[row][col] = a.M[col][row];
 		return result;
 	}
 
 	public static float Determinant(Float3x3 m) =>
-		m.m[0][0] * (m.m[1][1] * m.m[2][2] - m.m[1][2] * m.m[2][1]) -
-		m.m[0][1] * (m.m[1][0] * m.m[2][2] - m.m[1][2] * m.m[2][0]) +
-		m.m[0][2] * (m.m[1][0] * m.m[2][1] - m.m[1][1] * m.m[2][0]);
+		m.M[0][0] * (m.M[1][1] * m.M[2][2] - m.M[1][2] * m.M[2][1]) -
+		m.M[0][1] * (m.M[1][0] * m.M[2][2] - m.M[1][2] * m.M[2][0]) +
+		m.M[0][2] * (m.M[1][0] * m.M[2][1] - m.M[1][1] * m.M[2][0]);
 
 	/// Adjugate over determinant. Returns Identity when singular.
 	public static Float3x3 Inverse(Float3x3 m)
@@ -98,15 +98,15 @@ static
 		let invDet = 1.0f / det;
 
 		Float3x3 result = .();
-		result.m[0][0] = (m.m[1][1] * m.m[2][2] - m.m[1][2] * m.m[2][1]) * invDet;
-		result.m[0][1] = (m.m[0][2] * m.m[2][1] - m.m[0][1] * m.m[2][2]) * invDet;
-		result.m[0][2] = (m.m[0][1] * m.m[1][2] - m.m[0][2] * m.m[1][1]) * invDet;
-		result.m[1][0] = (m.m[1][2] * m.m[2][0] - m.m[1][0] * m.m[2][2]) * invDet;
-		result.m[1][1] = (m.m[0][0] * m.m[2][2] - m.m[0][2] * m.m[2][0]) * invDet;
-		result.m[1][2] = (m.m[0][2] * m.m[1][0] - m.m[0][0] * m.m[1][2]) * invDet;
-		result.m[2][0] = (m.m[1][0] * m.m[2][1] - m.m[1][1] * m.m[2][0]) * invDet;
-		result.m[2][1] = (m.m[0][1] * m.m[2][0] - m.m[0][0] * m.m[2][1]) * invDet;
-		result.m[2][2] = (m.m[0][0] * m.m[1][1] - m.m[0][1] * m.m[1][0]) * invDet;
+		result.M[0][0] = (m.M[1][1] * m.M[2][2] - m.M[1][2] * m.M[2][1]) * invDet;
+		result.M[0][1] = (m.M[0][2] * m.M[2][1] - m.M[0][1] * m.M[2][2]) * invDet;
+		result.M[0][2] = (m.M[0][1] * m.M[1][2] - m.M[0][2] * m.M[1][1]) * invDet;
+		result.M[1][0] = (m.M[1][2] * m.M[2][0] - m.M[1][0] * m.M[2][2]) * invDet;
+		result.M[1][1] = (m.M[0][0] * m.M[2][2] - m.M[0][2] * m.M[2][0]) * invDet;
+		result.M[1][2] = (m.M[0][2] * m.M[1][0] - m.M[0][0] * m.M[1][2]) * invDet;
+		result.M[2][0] = (m.M[1][0] * m.M[2][1] - m.M[1][1] * m.M[2][0]) * invDet;
+		result.M[2][1] = (m.M[0][1] * m.M[2][0] - m.M[0][0] * m.M[2][1]) * invDet;
+		result.M[2][2] = (m.M[0][0] * m.M[1][1] - m.M[0][1] * m.M[1][0]) * invDet;
 		return result;
 	}
 
@@ -114,7 +114,7 @@ static
 	{
 		for (int row < 3)
 			for (int col < 3)
-				if (!NearlyEqual(a.m[row][col], b.m[row][col], epsilon))
+				if (!NearlyEqual(a.M[row][col], b.M[row][col], epsilon))
 					return false;
 		return true;
 	}

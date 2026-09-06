@@ -84,6 +84,6 @@ class ColorTests
 	{
 		Color c = .();
 		Test.Assert(NearlyEqual(c, Color.Black));
-		Test.Assert(c.a == 1.0f);
+		Test.Assert(c.A == 1.0f);
 	}
 }

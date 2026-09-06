@@ -70,11 +70,11 @@ class BoundingFrustumTests
 		let inside = Float3(0.0f, 0.0f, -10.0f);
 
 		for (int i < BoundingFrustum.PlaneCount)
-			Test.Assert(f.planes[i].SignedDistance(inside) < 0.0f);
+			Test.Assert(f.Planes[i].SignedDistance(inside) < 0.0f);
 
 		// And the plane normals are unit length after extraction.
 		for (int i < BoundingFrustum.PlaneCount)
-			Test.Assert(NearlyEqual(Length(f.planes[i].normal), 1.0f, 1.0e-4f));
+			Test.Assert(NearlyEqual(Length(f.Planes[i].Normal), 1.0f, 1.0e-4f));
 	}
 
 	/// The eight corners have to be the actual frustum corners: on the near or far
@@ -89,7 +89,7 @@ class BoundingFrustumTests
 		var farCount = 0;
 		for (int i < BoundingFrustum.CornerCount)
 		{
-			let c = f.corners[i];
+			let c = f.Corners[i];
 			// Every corner sits on the near or the far plane.
 			let onNear = NearlyZero(f.Near.SignedDistance(c), 1.0e-2f);
 			let onFar = NearlyZero(f.Far.SignedDistance(c), 1.0e-2f);
@@ -103,10 +103,10 @@ class BoundingFrustumTests
 		// The near corners are at depth 1 with half-extent 1; the far ones at 100.
 		for (int i < BoundingFrustum.CornerCount)
 		{
-			let c = f.corners[i];
-			let depth = -c.z;
-			Test.Assert(NearlyEqual(Abs(c.x), depth, 1.0e-2f));
-			Test.Assert(NearlyEqual(Abs(c.y), depth, 1.0e-2f));
+			let c = f.Corners[i];
+			let depth = -c.Z;
+			Test.Assert(NearlyEqual(Abs(c.X), depth, 1.0e-2f));
+			Test.Assert(NearlyEqual(Abs(c.Y), depth, 1.0e-2f));
 		}
 	}
 
@@ -196,7 +196,7 @@ class BoundingFrustumTests
 		let s = BoundingSphereFromFrustum(f);
 
 		for (int i < BoundingFrustum.CornerCount)
-			Test.Assert(LengthSquared(f.corners[i] - s.center) <= s.radius * s.radius + 1.0e-1f);
+			Test.Assert(LengthSquared(f.Corners[i] - s.Center) <= s.Radius * s.Radius + 1.0e-1f);
 	}
 
 	/// SetMatrix must replace the previous planes rather than blend with them.
