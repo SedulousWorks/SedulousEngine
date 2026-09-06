@@ -1,0 +1,12 @@
+FileVersion = 1
+Dependencies = {corlib = "*", SPIRV-Cross = "*"}
+
+[Project]
+Name = "SPIRV-Cross.Test"
+StartupObject = "SPIRV_Cross.Test.Program"
+
+[Configs.Debug.Win64]
+DebugCommandArguments = "c_api_test.spv 0 67 0"
+
+[Configs.Release.Win64]
+DebugCommandArguments = "c_api_test.spv 0 49 0"

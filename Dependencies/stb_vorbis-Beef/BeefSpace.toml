@@ -1,0 +1,5 @@
+FileVersion = 1
+Projects = {stb_vorbis-Beef = {Path = "."}}
+
+[Workspace]
+StartupProject = "stb_vorbis-Beef"

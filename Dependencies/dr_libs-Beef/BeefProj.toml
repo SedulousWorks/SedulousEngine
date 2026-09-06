@@ -1,0 +1,22 @@
+FileVersion = 1
+Dependencies = {corlib = "*", corlib = "*"}
+
+[Project]
+Name = "dr_libs-Beef"
+TargetType = "BeefLib"
+StartupObject = "dr_libs_Beef.Program"
+
+[Configs.Debug.Win64]
+LibPaths = ["$(ProjectDir)/dist/Debug-Win64/dr_flac.lib", "$(ProjectDir)/dist/Debug-Win64/dr_mp3.lib", "$(ProjectDir)/dist/Debug-Win64/dr_wav.lib"]
+
+[Configs.Release.Win64]
+LibPaths = ["$(ProjectDir)/dist/Release-Win64/dr_flac.lib", "$(ProjectDir)/dist/Release-Win64/dr_mp3.lib", "$(ProjectDir)/dist/Release-Win64/dr_wav.lib"]
+
+[Configs.Debug.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libdr_flac.a", "$(ProjectDir)/dist/Release-Linux64/libdr_mp3.a", "$(ProjectDir)/dist/Release-Linux64/libdr_wav.a"]
+
+[Configs.Release.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libdr_flac.a", "$(ProjectDir)/dist/Release-Linux64/libdr_mp3.a", "$(ProjectDir)/dist/Release-Linux64/libdr_wav.a"]
+
+[Configs.Test.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libdr_flac.a", "$(ProjectDir)/dist/Release-Linux64/libdr_mp3.a", "$(ProjectDir)/dist/Release-Linux64/libdr_wav.a"]

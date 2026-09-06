@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", glslang-Beef = "*"}
+
+[Project]
+Name = "glslang-Beef.Test"
+StartupObject = "glslang_Beef.Test.Program"

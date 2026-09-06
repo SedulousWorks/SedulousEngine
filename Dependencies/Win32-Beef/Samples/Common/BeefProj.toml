@@ -1,0 +1,7 @@
+FileVersion = 1
+Dependencies = {corlib = "*", Win32 = "*"}
+
+[Project]
+Name = "Common"
+TargetType = "BeefLib"
+StartupObject = "Common.Program"

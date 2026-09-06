@@ -1,0 +1,5 @@
+FileVersion = 1
+Projects = {glslang-Beef = {Path = "."}, "glslang-Beef.Test" = {Path = "glslang-Beef.Test"}}
+
+[Workspace]
+StartupProject = "glslang-Beef.Test"

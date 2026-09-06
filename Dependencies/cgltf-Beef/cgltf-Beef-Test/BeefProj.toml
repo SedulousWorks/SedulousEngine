@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", cgltf-Beef = "*"}
+
+[Project]
+Name = "cgltf-Beef-Test"
+StartupObject = "cgltf_Beef_Test.Program"

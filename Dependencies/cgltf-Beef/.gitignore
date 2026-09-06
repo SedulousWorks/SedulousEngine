@@ -1,0 +1,6 @@
+BeefSpace_User.toml
+
+build/
+recovery/
+build-linux-release/
+build-linux-debug/

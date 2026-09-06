@@ -1,0 +1,8 @@
+FileVersion = 1
+Projects = {dr_libs-Beef = {Path = "."}}
+
+[Configs.Test.Win32]
+ConfigSelections = {corlib = {Config = "Debug"}}
+
+[Configs.Test.Win64]
+ConfigSelections = {corlib = {Config = "Debug"}}

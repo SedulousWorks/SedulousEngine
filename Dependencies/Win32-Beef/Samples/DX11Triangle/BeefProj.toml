@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", Win32 = "*"}
+
+[Project]
+Name = "DX11Triangle"
+StartupObject = "DX11Triangle.Program"

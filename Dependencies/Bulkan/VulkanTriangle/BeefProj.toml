@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", Bulkan = "*", SDL2 = "*"}
+
+[Project]
+Name = "VulkanTriangle"
+StartupObject = "VulkanTriangle.Program"

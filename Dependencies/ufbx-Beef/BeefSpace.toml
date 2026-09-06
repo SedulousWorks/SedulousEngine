@@ -1,0 +1,11 @@
+FileVersion = 1
+Projects = {ufbx-Beef = {Path = "."}, ufbx-Beef-Test = {Path = "ufbx-Beef-Test"}}
+
+[Workspace]
+StartupProject = "ufbx-Beef-Test"
+
+[Configs.Test.Win32]
+ConfigSelections = {corlib = {Config = "Debug"}}
+
+[Configs.Test.Win64]
+ConfigSelections = {corlib = {Config = "Debug"}}

@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", ufbx-Beef = "*"}
+
+[Project]
+Name = "ufbx-Beef-Test"
+StartupObject = "ufbx_Beef_Test.Program"
