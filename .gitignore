@@ -3,20 +3,5 @@ build/
 recovery/
 BeefSpace_User.toml
 
+# LLM
 .claude/
-.editor/
-.vscode/
-nul
-
-Assets/cache/
-Assets/shaders/editorcache/
-EngineRewrite.md
-RHI.md
-ShaderReflection.md
-GameIdeas/
-/Projects/*
-!/Projects/TowerDefense/
-Code/Foundation/Sedulous.UI/DESIGN.md
-Assets/skies/realistic_sky.texture.bin
-Documentation/Plans/ScriptingLanguagePlan.md
-support/

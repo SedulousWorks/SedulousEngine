@@ -1,6 +1,0 @@
-FileVersion = 1
-
-[Project]
-Name = "Sedulous.Core.Collections"
-TargetType = "BeefLib"
-StartupObject = "Sedulous.Core.Collections.Program"

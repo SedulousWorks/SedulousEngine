@@ -1,6 +1,0 @@
-FileVersion = 1
-Dependencies = {corlib = "*", corlib = "*", Win32 = "*"}
-
-[Project]
-Name = "XInputSample"
-StartupObject = "XInputSample.Program"

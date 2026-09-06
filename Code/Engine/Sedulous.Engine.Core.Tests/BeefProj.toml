@@ -1,6 +1,0 @@
-FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Engine.Core" = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Serialization" = "*", "Sedulous.Serialization.OpenDDL" = "*", "Sedulous.Resources" = "*", "Sedulous.Core.Logging" = "*", "Sedulous.VFS" = "*", "Sedulous.VFS.Disk" = "*"}
-
-[Project]
-Name = "Sedulous.Engine.Core.Tests"
-TargetType = "BeefTest"

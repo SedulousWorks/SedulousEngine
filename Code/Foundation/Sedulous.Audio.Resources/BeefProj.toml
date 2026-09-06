@@ -1,5 +1,0 @@
-FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Audio" = "*", "Sedulous.Resources" = "*", "Sedulous.Serialization" = "*"}
-
-[Project]
-Name = "Sedulous.Audio.Resources"

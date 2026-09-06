@@ -1,3 +1,0 @@
-int32 %TargetWidth {1366}
-int32 %TargetHeight {768}
-uint8 %FitMode {1}

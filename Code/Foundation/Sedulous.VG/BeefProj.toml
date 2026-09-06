@@ -1,5 +1,0 @@
-FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.Core" = "*", "Sedulous.Core.Mathematics" = "*", "Sedulous.Images" = "*", "Sedulous.Fonts" = "*"}
-
-[Project]
-Name = "Sedulous.VG"

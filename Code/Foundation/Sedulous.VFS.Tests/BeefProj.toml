@@ -1,6 +1,0 @@
-FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.VFS" = "*", "Sedulous.VFS.Disk" = "*", "Sedulous.VFS.Pak" = "*", "Sedulous.VFS.Pak.Tool" = "*"}
-
-[Project]
-Name = "Sedulous.VFS.Tests"
-TargetType = "BeefTest"

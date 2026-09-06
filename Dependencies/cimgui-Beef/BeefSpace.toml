@@ -1,5 +1,0 @@
-FileVersion = 1
-Projects = {cimgui-Beef = {Path = "."}}
-
-[Workspace]
-StartupProject = "cimgui-Beef"

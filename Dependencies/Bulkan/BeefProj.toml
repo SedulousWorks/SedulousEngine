@@ -1,6 +1,0 @@
-FileVersion = 1
-
-[Project]
-Name = "Bulkan"
-TargetType = "BeefLib"
-StartupObject = "Bulkan.Program"

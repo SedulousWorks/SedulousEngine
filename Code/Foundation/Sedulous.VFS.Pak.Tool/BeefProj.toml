@@ -1,5 +1,0 @@
-FileVersion = 1
-Dependencies = {corlib = "*", "Sedulous.VFS" = "*", "Sedulous.VFS.Pak" = "*"}
-
-[Project]
-Name = "Sedulous.VFS.Pak.Tool"
