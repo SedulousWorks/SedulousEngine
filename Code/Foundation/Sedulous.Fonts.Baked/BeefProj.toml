@@ -1,9 +1,0 @@
-FileVersion = 1
-
-[Project]
-Name = "Sedulous.Fonts.Baked"
-TargetType = "BeefLib"
-StartupObject = "Sedulous.Fonts.Baked.Program"
-
-[Dependencies]
-corlib = "*"

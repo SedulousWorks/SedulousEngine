@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Fonts.Coverage.Baker"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Fonts.Coverage.Baker.Program"
+
+[Dependencies]
+corlib = "*"

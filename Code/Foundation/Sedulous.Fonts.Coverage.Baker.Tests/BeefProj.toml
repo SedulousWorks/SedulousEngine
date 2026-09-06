@@ -1,0 +1,10 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Fonts.Coverage.Baker.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Fonts.Coverage.Baker.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Fonts.Coverage.Baker" = "*"

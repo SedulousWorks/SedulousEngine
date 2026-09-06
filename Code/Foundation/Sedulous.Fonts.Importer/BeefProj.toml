@@ -1,9 +1,0 @@
-FileVersion = 1
-
-[Project]
-Name = "Sedulous.Fonts.Importer"
-TargetType = "BeefLib"
-StartupObject = "Sedulous.Fonts.Importer.Program"
-
-[Dependencies]
-corlib = "*"
