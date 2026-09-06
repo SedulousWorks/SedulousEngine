@@ -8,3 +8,4 @@ StartupObject = "Sedulous.Lod.Tests.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Lod" = "*"
+"Sedulous.Core" = "*"
