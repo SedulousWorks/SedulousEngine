@@ -105,12 +105,19 @@ class GeneratedSerializeTests
 		Test.Assert(stream.Tell() == stream.Size(), "the whole payload is accounted for");
 	}
 
-	/// The data version travels with the type, so a body that has to read an older layout
-	/// has something to branch on.
+	/// The type carries its own stable id and version, both emitted by the attribute.
 	[Test]
-	public static void TheDataVersionIsAvailableOnTheType()
+	public static void TheTypeCarriesItsIdAndVersion()
 	{
-		Test.Assert(SerializableSample.DataVersion == 1);
+		Test.Assert(SerializableSample.DataVersion == 0, "unversioned by default");
+		Test.Assert(VersionedSample.DataVersion == 3);
+
+		// The id is the hash of the qualified name, so it is reproducible from the name
+		// alone and nobody has to maintain a number.
+		Test.Assert(SerializableSample.TypeId == TypeIdOf("Sedulous.Core.Tests.SerializableSample"));
+		Test.Assert(VersionedSample.TypeId == TypeIdOf("Sedulous.Core.Tests.VersionedSample"));
+		Test.Assert(SerializableSample.TypeId != VersionedSample.TypeId);
+		Test.Assert(SerializableSample.TypeId != 0);
 	}
 
 	/// The opt-out. A derived quantity must not be stored, or a hand-edited file could

@@ -8,7 +8,10 @@ namespace Sedulous.Core.Tests;
 ///
 /// Nothing here describes the data: the field declarations are the description, which is
 /// the whole point of the attribute.
-[Serializable(1)]
+///
+/// Unversioned, so it writes exactly its fields and nothing else. That is what lets the
+/// format test read the payload back by hand.
+[Serializable]
 class SerializableSample
 {
 	public int32 Id;

@@ -27,8 +27,10 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 {
 	private uint32 mDataVersion;
 
-	/// dataVersion is the version this type's data is written with, for a body that has to
-	/// read an older layout. Zero means unversioned.
+	/// dataVersion is the version this type's data is written with. Zero, the default,
+	/// means unversioned and writes no envelope at all. Any other value brackets the
+	/// payload with its version chain, so a later build reading older data sees the
+	/// version that data carries in ar.Version and can branch on it.
 	public this(uint32 dataVersion = 0)
 	{
 		mDataVersion = dataVersion;
@@ -40,9 +42,19 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 		// A union has no single field list to walk, so there is nothing honest to emit.
 		Runtime.Assert(!type.IsUnion, "[Serializable] cannot describe a union");
 
+		let qualifiedName = scope String();
+		type.GetFullName(qualifiedName);
+
 		let body = scope String();
+		body.AppendF("public const uint64 TypeId = 0x{:X}UL;\n", Sedulous.Core.Serialization.TypeIdOf(qualifiedName));
 		body.AppendF("public const uint32 DataVersion = {};\n\n", mDataVersion);
 		body.Append("void Sedulous.Core.Serialization.ISerializable.Serialize(Sedulous.Core.Serialization.ISerializer ar)\n{\n");
+
+		// A version envelope costs bytes in every payload, so declaring a version is how
+		// you opt into one. An unversioned type writes exactly its fields.
+		if (mDataVersion > 0)
+			body.Append("\tSedulous.Core.Serialization.BeginVersionedPayload(ar, TypeId, DataVersion);\n");
+
 		body.Append("\tar.BeginObject();\n");
 
 		for (let field in type.GetFields())
@@ -61,7 +73,10 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 				body.AppendF("\tSedulous.Core.Serialization.Serialize(ar, {});\n", field.Name);
 		}
 
-		body.Append("\tar.EndObject();\n}");
+		body.Append("\tar.EndObject();\n");
+		if (mDataVersion > 0)
+			body.Append("\tSedulous.Core.Serialization.EndVersionedPayload(ar);\n");
+		body.Append("}");
 
 		Compiler.EmitTypeBody(type, body);
 		Compiler.EmitAddInterface(type, typeof(ISerializable));
