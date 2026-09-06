@@ -7,3 +7,7 @@ StartupObject = "Sedulous.Geometry.Resource.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Geometry" = "*"
+"Sedulous.Resource" = "*"
