@@ -403,12 +403,15 @@ class XmlSerializer : Serializer
 		case .UInt32: (*(uint32*)value).ToString(output);
 		case .Int64: (*(int64*)value).ToString(output);
 		case .UInt64: (*(uint64*)value).ToString(output);
-		// G9 and G17 are the digit counts that make a binary32 and a binary64 survive a
-		// round trip through decimal. NOT the default formatting: it is shortest-form and
-		// varies by platform, so a value written on one and read on another came back a
-		// near miss rather than itself.
-		case .Float32: (*(float*)value).ToString(output, "G9", null);
-		case .Float64: (*(double*)value).ToString(output, "G17", null);
+		// The default, which is the SHORTEST string that round-trips. Not a fixed digit
+		// count: G9 would write 0.1 as 0.100000001, and this format is meant to be read
+		// and edited by a person.
+		//
+		// It relies on the toolchain: Beef's Parse was lossy until August 2026, so an
+		// older one reads back a near miss. The round-trip tests catch that, and a failure
+		// there means the toolchain rather than this code.
+		case .Float32: (*(float*)value).ToString(output);
+		case .Float64: (*(double*)value).ToString(output);
 		}
 	}
 

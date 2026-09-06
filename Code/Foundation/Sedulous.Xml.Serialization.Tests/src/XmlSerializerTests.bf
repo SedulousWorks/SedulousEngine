@@ -81,25 +81,30 @@ class XmlSerializerTests
 		Test.Assert(text == "<root><i32 name=\"width\">7</i32></root>", scope $"got '{text}'");
 	}
 
-	/// The digits actually written, asserted exactly.
+	/// The written text has to parse back to the same BITS.
 	///
-	/// The round trip below passes on a platform whose shortest-form formatting happens to
-	/// be sufficient and fails on one where it is not, so it cannot be trusted on its own
-	/// to catch a formatting change. This pins the text.
+	/// The property, not the spelling: the exact digits are the toolchain's business, and
+	/// asserting them would fail whenever it improved. What matters is that whatever it
+	/// wrote is enough to recover the value.
+	///
+	/// A failure here is the toolchain, not this code. Beef's float Parse was lossy until
+	/// August 2026, so an older one cannot round-trip its own output.
 	[Test]
-	public static void FloatsAreWrittenWithEnoughDigits()
+	public static void WhatIsWrittenParsesBackExactly()
 	{
-		var value = 1.0f / 3.0f;
-		let writer = scope XmlSerializer();
-		writer.Key("v");
-		Serialize(writer, ref value);
+		for (let original in float[](0.1f, 1.0f / 3.0f, 0.25f, 1e-30f, 1e30f))
+		{
+			let text = scope:: String();
+			original.ToString(text);
 
-		var settings = XmlWriteSettings.Default;
-		settings.CompactMode = true;
-		let text = scope String();
-		writer.GetOutput(text, settings);
+			let parsed = float.Parse(text);
+			Test.Assert(parsed case .Ok, scope $"'{text}' did not parse");
 
-		Test.Assert(text == "<root><f32 name=\"v\">0.333333343</f32></root>", scope $"got '{text}'");
+			var expected = original;
+			var readBack = parsed.Value;
+			Test.Assert(readBack == expected,
+				scope $"'{text}' parsed to 0x{*(uint32*)&readBack:X}, wanted 0x{*(uint32*)&expected:X}");
+		}
 	}
 
 	/// A float has to come back as the SAME value, not a near one, or a round trip
