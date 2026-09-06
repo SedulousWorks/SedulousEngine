@@ -65,6 +65,16 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 				continue;
 
 			body.AppendF("\tar.Key(\"{}\");\n", field.Name);
+
+			// A type that knows how to describe ITSELF does. That is the escape hatch for
+			// anything the dispatcher cannot know about: a resource reference stores only
+			// its identity, and Core cannot be told what a resource is.
+			if (HasSelfSerialize(field.FieldType))
+			{
+				body.AppendF("\t{}.Serialize(ar);\n", field.Name);
+				continue;
+			}
+
 			// A value type goes through the dispatcher, which covers enums too; a
 			// reference type IS the handle its overload takes.
 			if (field.FieldType.IsValueType)
@@ -80,5 +90,20 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 
 		Compiler.EmitTypeBody(type, body);
 		Compiler.EmitAddInterface(type, typeof(ISerializable));
+	}
+
+	/// Whether a type carries its own Serialize, taking just the serializer.
+	[Comptime]
+	private static bool HasSelfSerialize(Type type)
+	{
+		if (let instance = type as TypeInstance)
+		{
+			for (let method in instance.GetMethods())
+			{
+				if ((method.Name == "Serialize") && (method.ParamCount == 1))
+					return true;
+			}
+		}
+		return false;
 	}
 }
