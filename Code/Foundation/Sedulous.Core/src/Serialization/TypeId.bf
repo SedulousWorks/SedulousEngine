@@ -17,7 +17,11 @@ static
 		for (let c in qualifiedName)
 		{
 			hash ^= (uint64)(uint8)c;
-			hash *= 0x100000001B3UL;
+			// &* rather than *, because FNV RELIES on the multiply wrapping. Plain
+			// arithmetic traps on overflow wherever those checks are on, and this runs for
+			// every stored type: it would take the whole format down at once, through a
+			// build configuration rather than a code change.
+			hash = hash &* 0x100000001B3UL;
 		}
 		return hash;
 	}
