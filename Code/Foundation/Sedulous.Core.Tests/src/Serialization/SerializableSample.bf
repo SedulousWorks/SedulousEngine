@@ -19,5 +19,6 @@ class SerializableSample
 	public bool Enabled;
 	public SampleKind Kind;
 	public Float3 Position;
+	public Guid Id2;
 	public String Name = new .() ~ delete _;
 }

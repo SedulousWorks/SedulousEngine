@@ -40,6 +40,11 @@ interface ISerializer
 	/// Moves an opaque blob: raw in binary, encoded in text.
 	void Blob(void* data, int size);
 
+	/// Moves a guid as whatever primitive the backend prefers. Binary stores the raw
+	/// sixteen bytes, which is compact; text stores the canonical thirty six character
+	/// form, which is readable and copyable as one value.
+	void GuidValue(ref Guid value);
+
 	/// Fails the whole payload. A Serialize body that reads structurally invalid data, a
 	/// cross-field invariant a positional format cannot express, calls this so corrupt
 	/// data loads loudly rather than silently.

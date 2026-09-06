@@ -43,6 +43,10 @@ class BinarySerializer : Serializer
 
 	public override void Blob(void* data, int size) => RawBytes(data, size);
 
+	/// The raw sixteen bytes rather than the thirty six character string: a guid appears
+	/// once per stored object, so the difference is not marginal.
+	public override void GuidValue(ref Guid value) => RawBytes(&value, sizeof(Guid));
+
 	public override void Text(String value)
 	{
 		if (IsWriting)

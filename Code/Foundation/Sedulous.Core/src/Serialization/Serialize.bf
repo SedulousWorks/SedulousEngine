@@ -129,6 +129,10 @@ static
 		ar.EndArray();
 	}
 
+	/// A guid is whatever primitive the backend prefers, rather than a decomposed struct.
+	/// It is one value everywhere it is used, and it should read as one.
+	public static void Serialize(ISerializer ar, ref Guid value) => ar.GuidValue(ref value);
+
 	// ---- reference types ----
 
 	public static void Serialize(ISerializer ar, String value) => ar.Text(value);
@@ -170,6 +174,7 @@ static
 		if (typeof(T) == typeof(Quaternion)) { Serialize(ar, ref *(Quaternion*)&value); return; }
 		if (typeof(T) == typeof(Color)) { Serialize(ar, ref *(Color*)&value); return; }
 		if (typeof(T) == typeof(Float4x4)) { Serialize(ar, ref *(Float4x4*)&value); return; }
+		if (typeof(T) == typeof(Guid)) { Serialize(ar, ref *(Guid*)&value); return; }
 
 		Runtime.FatalError(scope $"No Serialize for {typeof(T)}. Add an overload, or give the type a hand written body.");
 	}

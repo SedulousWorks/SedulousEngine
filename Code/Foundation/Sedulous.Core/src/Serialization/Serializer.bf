@@ -100,6 +100,28 @@ abstract class Serializer : ISerializer
 	public abstract void Text(String value);
 	public abstract void Blob(void* data, int size);
 
+	/// The canonical string, which is what a text backend wants. BinarySerializer
+	/// overrides this with the compact raw form.
+	///
+	/// A guid that does not parse leaves the value alone rather than zeroing it, and fails
+	/// the payload: a malformed guid is corrupt data, not an empty one.
+	public virtual void GuidValue(ref Guid value)
+	{
+		let text = scope String();
+		if (mMode == .Write)
+			value.ToString(text, 'D');
+
+		Text(text);
+
+		if (mMode == .Read)
+		{
+			if (Guid.Parse(text) case .Ok(let parsed))
+				value = parsed;
+			else
+				Fail(.InvalidArgument);
+		}
+	}
+
 	/// Brackets a self-delimiting sub-region, so a payload whose type this build cannot
 	/// instantiate can be captured or skipped uniformly. Binary length-prefixes the
 	/// enclosed bytes; a self-describing format leans on its own element boundaries and

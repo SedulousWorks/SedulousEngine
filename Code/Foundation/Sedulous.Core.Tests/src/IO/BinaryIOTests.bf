@@ -122,6 +122,24 @@ class BinaryIOTests
 		Test.Assert(!reader.IsOk);
 	}
 
+	/// A count longer than the stream is corrupt, and must be doubted before it is
+	/// allocated. A large enough garbage count would otherwise take the process down before
+	/// the short read was ever reported.
+	[Test]
+	public static void AnImpossibleStringLengthIsRefusedBeforeAllocating()
+	{
+		let stream = scope MemoryStream();
+		Test.Assert(stream.WriteValue<uint32>(0xFFFFFFF0));
+		Test.Assert(stream.WriteValue<uint8>((uint8)'x'));
+		Test.Assert(stream.Seek(0, .Begin) == 0);
+
+		let reader = scope BinaryReader(stream);
+		let text = scope String("stale contents");
+		Test.Assert(!reader.ReadString(text));
+		Test.Assert(!reader.IsOk);
+		Test.Assert(text.IsEmpty);
+	}
+
 	/// Both sides agree on the string encoding: a uint32 count of bytes, then the bytes.
 	/// Anything else and a file written by one would not be readable by the other.
 	[Test]

@@ -10,6 +10,8 @@ namespace Sedulous.Core.Tests;
 /// Serialize.cppm, or through the external RTTI module it has to be registered with.
 class GeneratedSerializeTests
 {
+	private static readonly Guid cSampleGuid = Guid.Parse("2f1b8c74-9a3d-4e51-b6f0-1c2d3e4f5a6b").Value;
+
 	private static void Fill(SerializableSample sample)
 	{
 		sample.Id = -42;
@@ -17,6 +19,7 @@ class GeneratedSerializeTests
 		sample.Enabled = true;
 		sample.Kind = .Beta;
 		sample.Position = .(1.0f, 2.0f, 3.0f);
+		sample.Id2 = cSampleGuid;
 		sample.Name.Set("generated");
 	}
 
@@ -46,6 +49,7 @@ class GeneratedSerializeTests
 		Test.Assert(target.Enabled);
 		Test.Assert(target.Kind == .Beta);
 		Test.Assert(target.Position == Float3(1.0f, 2.0f, 3.0f));
+		Test.Assert(target.Id2 == cSampleGuid);
 		Test.Assert(target.Name == "generated");
 	}
 
@@ -82,6 +86,7 @@ class GeneratedSerializeTests
 		bool enabled = false;
 		int16 kind = 0;
 		float x = 0, y = 0, z = 0;
+		Guid guid = default;
 		let name = scope String();
 
 		Test.Assert(reader.Read(out id));
@@ -91,6 +96,7 @@ class GeneratedSerializeTests
 		Test.Assert(reader.Read(out x));
 		Test.Assert(reader.Read(out y));
 		Test.Assert(reader.Read(out z));
+		Test.Assert(reader.Read(out guid));
 		Test.Assert(reader.ReadString(name));
 
 		Test.Assert(id == -42);
@@ -100,6 +106,7 @@ class GeneratedSerializeTests
 		Test.Assert(x == 1.0f);
 		Test.Assert(y == 2.0f);
 		Test.Assert(z == 3.0f);
+		Test.Assert(guid == cSampleGuid, "a guid is sixteen raw bytes in binary, not a string");
 		Test.Assert(name == "generated");
 		Test.Assert(reader.IsOk);
 		Test.Assert(stream.Tell() == stream.Size(), "the whole payload is accounted for");

@@ -49,6 +49,16 @@ class BinaryReader
 		if (length == 0)
 			return mOk;
 
+		// A count longer than what is left cannot be real. Sizing the buffer to it first
+		// would be trusting a corrupt file about its own size, and a large enough garbage
+		// count takes the process down before the short read is ever reported.
+		let remaining = mStream.Size() - mStream.Tell();
+		if ((remaining >= 0) && ((int64)length > remaining))
+		{
+			mOk = false;
+			return false;
+		}
+
 		// The length came off the stream, so it is only as trustworthy as the file. Read
 		// it in one transfer against the buffer we actually sized, and let a short read
 		// report itself, rather than trusting the count enough to loop on it.

@@ -22,8 +22,8 @@ class VersionedPayloadTests
 			Serialize(writer, (ISerializable)sample);
 		}
 
-		// Id, weight, enabled, kind, three floats, and an empty length-prefixed string.
-		Test.Assert(plain.Size() == 4 + 4 + 1 + 2 + 12 + 4);
+		// Id, weight, enabled, kind, three floats, a guid, and an empty prefixed string.
+		Test.Assert(plain.Size() == 4 + 4 + 1 + 2 + 12 + 16 + 4);
 	}
 
 	[Test]
