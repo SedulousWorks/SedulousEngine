@@ -50,6 +50,86 @@ static
 
 	public static bool FileExists(StringView path) => System.IO.File.Exists(path);
 
+	/// Calls onEntry for each immediate child of a directory, with the entry's NAME rather
+	/// than its path. False when the directory cannot be opened.
+	///
+	/// A callback rather than a filled list, as in Raptor: the name is only valid during
+	/// the call, and Core has no business deciding who owns a copy of it.
+	public static bool ListDirectory(StringView path, delegate void(StringView name, bool isDirectory) onEntry)
+	{
+		if (!System.IO.Directory.Exists(path))
+			return false;
+
+		let name = scope String();
+		for (let entry in System.IO.Directory.Enumerate(path))
+		{
+			name.Clear();
+			entry.GetFileName(name);
+			// The platform yields the self and parent links; they are not children.
+			if ((name == ".") || (name == ".."))
+				continue;
+			onEntry(name, entry.IsDirectory);
+		}
+		return true;
+	}
+
+	/// Size and last-write time of one regular file. False when the path is not one.
+	///
+	/// The time is in platform ticks rather than Raptor's whole seconds. A stat sweep
+	/// diffs these to find what changed, and a file edited twice within one second is
+	/// exactly the case a second-granularity stamp cannot see.
+	public static bool FileStat(StringView path, out int64 size, out int64 modifiedTicks)
+	{
+		size = 0;
+		modifiedTicks = 0;
+
+		if (!System.IO.File.Exists(path))
+			return false;
+
+		let parent = PathParent(path);
+		let target = PathFilename(path);
+		if (target.IsEmpty)
+			return false;
+
+		var found = false;
+		let name = scope String();
+		for (let entry in System.IO.Directory.Enumerate(parent.IsEmpty ? "." : parent))
+		{
+			name.Clear();
+			entry.GetFileName(name);
+			if (name != target)
+				continue;
+			if (entry.IsDirectory)
+				return false;
+			size = entry.GetFileSize();
+			modifiedTicks = entry.GetLastWriteTimeUtc().Ticks;
+			found = true;
+			break;
+		}
+		return found;
+	}
+
+	public static bool MoveFile(StringView from, StringView to) => System.IO.File.Move(from, to) case .Ok;
+
+	/// The directory holding this executable.
+	///
+	/// Discovery anchors here rather than at the working directory, which is unreliable:
+	/// an application launched from a menu or a desktop entry inherits whatever directory
+	/// the launcher happened to be in.
+	public static void GetExecutableDirectory(String outPath)
+	{
+		let exePath = scope String();
+		System.Environment.GetExecutableFilePath(exePath);
+		outPath.Clear();
+		outPath.Append(PathParent(exePath));
+	}
+
+	public static void GetCurrentDirectory(String outPath)
+	{
+		outPath.Clear();
+		System.IO.Directory.GetCurrentDirectory(outPath);
+	}
+
 	public static bool DeleteFile(StringView path) => System.IO.File.Delete(path) case .Ok;
 
 	public static bool DirectoryExists(StringView path) => System.IO.Directory.Exists(path);

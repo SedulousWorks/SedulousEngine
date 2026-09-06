@@ -132,4 +132,139 @@ class FileSystemTests
 
 		Test.Assert(RemoveDirectoryRecursive(kScratch));
 	}
+
+	[Test]
+	public static void ListDirectoryYieldsImmediateChildren()
+	{
+		RemoveDirectoryRecursive(kScratch);
+		Test.Assert(CreateDirectory(kScratch));
+
+		let sub = PathJoin(kScratch, "sub", .. scope String());
+		Test.Assert(CreateDirectory(sub));
+
+		uint8[2] payload = .(1, 2);
+		Test.Assert(WriteFile(PathJoin(kScratch, "a.bin", .. scope String()), .(&payload[0], 2)) case .Ok);
+		Test.Assert(WriteFile(PathJoin(kScratch, "b.bin", .. scope String()), .(&payload[0], 2)) case .Ok);
+		// A grandchild, to prove enumeration does not recurse.
+		Test.Assert(WriteFile(PathJoin(sub, "deep.bin", .. scope String()), .(&payload[0], 2)) case .Ok);
+
+		let names = scope List<String>();
+		defer { ClearAndDeleteItems!(names); }
+		var directories = 0;
+		Test.Assert(ListDirectory(kScratch, scope [&] (name, isDirectory) =>
+			{
+				names.Add(new String(name));
+				if (isDirectory)
+					directories++;
+			}));
+
+		Test.Assert(names.Count == 3, scope $"saw {names.Count} entries");
+		Test.Assert(directories == 1);
+
+		var sawA = false, sawB = false, sawSub = false, sawDeep = false;
+		for (let name in names)
+		{
+			if (name == "a.bin") sawA = true;
+			if (name == "b.bin") sawB = true;
+			if (name == "sub") sawSub = true;
+			if (name == "deep.bin") sawDeep = true;
+		}
+		Test.Assert(sawA && sawB && sawSub);
+		Test.Assert(!sawDeep, "enumeration is one level, not a walk");
+
+		Test.Assert(RemoveDirectoryRecursive(kScratch));
+	}
+
+	[Test]
+	public static void ListDirectoryOfAMissingDirectoryFails()
+	{
+		Test.Assert(!ListDirectory("no_such_directory_at_all", scope (name, isDirectory) => {}));
+	}
+
+	[Test]
+	public static void FileStatReportsSizeAndTime()
+	{
+		RemoveDirectoryRecursive(kScratch);
+		Test.Assert(CreateDirectory(kScratch));
+		let path = PathJoin(kScratch, "stat.bin", .. scope String());
+
+		uint8[7] payload = default;
+		Test.Assert(WriteFile(path, .(&payload[0], 7)) case .Ok);
+
+		int64 size = 0;
+		int64 modified = 0;
+		Test.Assert(FileStat(path, out size, out modified));
+		Test.Assert(size == 7);
+		Test.Assert(modified > 0, "a real timestamp, not a zero placeholder");
+
+		// A directory is not a regular file, and neither is something absent.
+		int64 ignoredSize = 0;
+		int64 ignoredTime = 0;
+		Test.Assert(!FileStat(kScratch, out ignoredSize, out ignoredTime));
+		Test.Assert(!FileStat(PathJoin(kScratch, "missing.bin", .. scope String()), out ignoredSize, out ignoredTime));
+
+		Test.Assert(RemoveDirectoryRecursive(kScratch));
+	}
+
+	/// The size has to follow the file, or a stat-sweep watcher would never see a rewrite.
+	[Test]
+	public static void FileStatFollowsARewrite()
+	{
+		RemoveDirectoryRecursive(kScratch);
+		Test.Assert(CreateDirectory(kScratch));
+		let path = PathJoin(kScratch, "rewrite.bin", .. scope String());
+
+		uint8[4] small = default;
+		Test.Assert(WriteFile(path, .(&small[0], 4)) case .Ok);
+		int64 first = 0;
+		int64 time = 0;
+		Test.Assert(FileStat(path, out first, out time));
+
+		uint8[9] larger = default;
+		Test.Assert(WriteFile(path, .(&larger[0], 9)) case .Ok);
+		int64 second = 0;
+		Test.Assert(FileStat(path, out second, out time));
+
+		Test.Assert(first == 4);
+		Test.Assert(second == 9);
+
+		Test.Assert(RemoveDirectoryRecursive(kScratch));
+	}
+
+	[Test]
+	public static void MoveFileMovesIt()
+	{
+		RemoveDirectoryRecursive(kScratch);
+		Test.Assert(CreateDirectory(kScratch));
+		let from = PathJoin(kScratch, "from.bin", .. scope String());
+		let to = PathJoin(kScratch, "to.bin", .. scope String());
+
+		uint8[3] payload = .(7, 8, 9);
+		Test.Assert(WriteFile(from, .(&payload[0], 3)) case .Ok);
+		Test.Assert(MoveFile(from, to));
+		Test.Assert(!FileExists(from));
+		Test.Assert(FileExists(to));
+
+		let readBack = scope List<uint8>();
+		Test.Assert(ReadFile(to, readBack) case .Ok);
+		Test.Assert(readBack.Count == 3);
+		Test.Assert(readBack[0] == 7);
+
+		Test.Assert(!MoveFile(PathJoin(kScratch, "absent.bin", .. scope String()), to));
+
+		Test.Assert(RemoveDirectoryRecursive(kScratch));
+	}
+
+	/// Discovery anchors at the executable, so it has to name a directory that exists.
+	[Test]
+	public static void TheExecutableAndWorkingDirectoriesResolve()
+	{
+		let exeDir = GetExecutableDirectory(.. scope String());
+		Test.Assert(!exeDir.IsEmpty);
+		Test.Assert(DirectoryExists(exeDir), scope $"executable directory '{exeDir}'");
+
+		let cwd = GetCurrentDirectory(.. scope String());
+		Test.Assert(!cwd.IsEmpty);
+		Test.Assert(DirectoryExists(cwd), scope $"working directory '{cwd}'");
+	}
 }
