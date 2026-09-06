@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Samples.TerrainPlayground"
+TargetType = "BeefGUIApplication"
+StartupObject = "Samples.TerrainPlayground.Program"
+
+[Dependencies]
+corlib = "*"

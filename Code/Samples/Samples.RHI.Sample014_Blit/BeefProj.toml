@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Samples.RHI.Sample014_Blit"
+TargetType = "BeefGUIApplication"
+StartupObject = "Samples.RHI.Sample014_Blit.Program"
+
+[Dependencies]
+corlib = "*"

@@ -1,9 +1,0 @@
-FileVersion = 1
-
-[Project]
-Name = "Sedulous.Samples.RHI.Sample022_StencilOutline"
-TargetType = "BeefGUIApplication"
-StartupObject = "Sedulous.Samples.RHI.Sample022_StencilOutline.Program"
-
-[Dependencies]
-corlib = "*"

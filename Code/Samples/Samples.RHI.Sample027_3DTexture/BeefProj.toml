@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Samples.RHI.Sample027_3DTexture"
+TargetType = "BeefGUIApplication"
+StartupObject = "Samples.RHI.Sample027_3DTexture.Program"
+
+[Dependencies]
+corlib = "*"

@@ -1,9 +1,0 @@
-FileVersion = 1
-
-[Project]
-Name = "Sedulous.Samples.RHI.Sample026_DynamicOffsets"
-TargetType = "BeefGUIApplication"
-StartupObject = "Sedulous.Samples.RHI.Sample026_DynamicOffsets.Program"
-
-[Dependencies]
-corlib = "*"

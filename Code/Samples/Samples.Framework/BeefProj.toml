@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Samples.Framework"
+TargetType = "BeefLib"
+StartupObject = "Samples.Framework.Program"
+
+[Dependencies]
+corlib = "*"

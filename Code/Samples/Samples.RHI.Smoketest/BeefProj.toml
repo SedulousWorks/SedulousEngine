@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Samples.RHI.Smoketest"
+TargetType = "BeefConsoleApplication"
+StartupObject = "Samples.RHI.Smoketest.Program"
+
+[Dependencies]
+corlib = "*"

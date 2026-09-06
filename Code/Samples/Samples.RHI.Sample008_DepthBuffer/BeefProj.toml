@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Samples.RHI.Sample008_DepthBuffer"
+TargetType = "BeefGUIApplication"
+StartupObject = "Samples.RHI.Sample008_DepthBuffer.Program"
+
+[Dependencies]
+corlib = "*"

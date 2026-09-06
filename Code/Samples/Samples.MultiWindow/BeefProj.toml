@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Samples.MultiWindow"
+TargetType = "BeefGUIApplication"
+StartupObject = "Samples.MultiWindow.Program"
+
+[Dependencies]
+corlib = "*"

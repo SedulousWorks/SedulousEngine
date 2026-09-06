@@ -1,9 +1,0 @@
-FileVersion = 1
-
-[Project]
-Name = "Sedulous.Samples.Common"
-TargetType = "BeefLib"
-StartupObject = "Sedulous.Samples.Common.Program"
-
-[Dependencies]
-corlib = "*"

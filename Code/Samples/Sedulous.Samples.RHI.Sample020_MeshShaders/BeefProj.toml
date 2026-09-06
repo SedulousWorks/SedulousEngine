@@ -1,9 +1,0 @@
-FileVersion = 1
-
-[Project]
-Name = "Sedulous.Samples.RHI.Sample020_MeshShaders"
-TargetType = "BeefGUIApplication"
-StartupObject = "Sedulous.Samples.RHI.Sample020_MeshShaders.Program"
-
-[Dependencies]
-corlib = "*"

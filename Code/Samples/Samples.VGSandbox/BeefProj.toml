@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Samples.VGSandbox"
+TargetType = "BeefGUIApplication"
+StartupObject = "Samples.VGSandbox.Program"
+
+[Dependencies]
+corlib = "*"

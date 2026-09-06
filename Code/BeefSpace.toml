@@ -315,56 +315,56 @@ FileVersion = 1
 "Sedulous.Tools.Export" = {Path = "Tools/Sedulous.Tools.Export"}
 "Sedulous.Tools.Mcp" = {Path = "Tools/Sedulous.Tools.Mcp"}
 "Sedulous.Tools.ShaderPack" = {Path = "Tools/Sedulous.Tools.ShaderPack"}
-"Sedulous.Samples.AnimStressTest" = {Path = "Samples/Sedulous.Samples.AnimStressTest"}
-"Sedulous.Samples.AnimatedCrowd" = {Path = "Samples/Sedulous.Samples.AnimatedCrowd"}
-"Sedulous.Samples.AudioPlayground" = {Path = "Samples/Sedulous.Samples.AudioPlayground"}
-"Sedulous.Samples.Common" = {Path = "Samples/Sedulous.Samples.Common"}
-"Sedulous.Samples.Framework" = {Path = "Samples/Sedulous.Samples.Framework"}
-"Sedulous.Samples.GameUiSandbox" = {Path = "Samples/Sedulous.Samples.GameUiSandbox"}
-"Sedulous.Samples.HelloWindow" = {Path = "Samples/Sedulous.Samples.HelloWindow"}
-"Sedulous.Samples.InputActions" = {Path = "Samples/Sedulous.Samples.InputActions"}
-"Sedulous.Samples.MultiWindow" = {Path = "Samples/Sedulous.Samples.MultiWindow"}
-"Sedulous.Samples.NetEcho" = {Path = "Samples/Sedulous.Samples.NetEcho"}
-"Sedulous.Samples.ParticleFX" = {Path = "Samples/Sedulous.Samples.ParticleFX"}
-"Sedulous.Samples.PhysicsPlayground" = {Path = "Samples/Sedulous.Samples.PhysicsPlayground"}
-"Sedulous.Samples.RHI.Sample001_Triangle" = {Path = "Samples/Sedulous.Samples.RHI.Sample001_Triangle"}
-"Sedulous.Samples.RHI.Sample002_Textures" = {Path = "Samples/Sedulous.Samples.RHI.Sample002_Textures"}
-"Sedulous.Samples.RHI.Sample003_UniformBuffers" = {Path = "Samples/Sedulous.Samples.RHI.Sample003_UniformBuffers"}
-"Sedulous.Samples.RHI.Sample004_Compute" = {Path = "Samples/Sedulous.Samples.RHI.Sample004_Compute"}
-"Sedulous.Samples.RHI.Sample005_BindGroups" = {Path = "Samples/Sedulous.Samples.RHI.Sample005_BindGroups"}
-"Sedulous.Samples.RHI.Sample006_Blending" = {Path = "Samples/Sedulous.Samples.RHI.Sample006_Blending"}
-"Sedulous.Samples.RHI.Sample007_Instancing" = {Path = "Samples/Sedulous.Samples.RHI.Sample007_Instancing"}
-"Sedulous.Samples.RHI.Sample008_DepthBuffer" = {Path = "Samples/Sedulous.Samples.RHI.Sample008_DepthBuffer"}
-"Sedulous.Samples.RHI.Sample009_Mipmaps" = {Path = "Samples/Sedulous.Samples.RHI.Sample009_Mipmaps"}
-"Sedulous.Samples.RHI.Sample010_MSAA" = {Path = "Samples/Sedulous.Samples.RHI.Sample010_MSAA"}
-"Sedulous.Samples.RHI.Sample011_MRT" = {Path = "Samples/Sedulous.Samples.RHI.Sample011_MRT"}
-"Sedulous.Samples.RHI.Sample012_Wireframe" = {Path = "Samples/Sedulous.Samples.RHI.Sample012_Wireframe"}
-"Sedulous.Samples.RHI.Sample013_BorderSampler" = {Path = "Samples/Sedulous.Samples.RHI.Sample013_BorderSampler"}
-"Sedulous.Samples.RHI.Sample014_Blit" = {Path = "Samples/Sedulous.Samples.RHI.Sample014_Blit"}
-"Sedulous.Samples.RHI.Sample015_Queries" = {Path = "Samples/Sedulous.Samples.RHI.Sample015_Queries"}
-"Sedulous.Samples.RHI.Sample016_Readback" = {Path = "Samples/Sedulous.Samples.RHI.Sample016_Readback"}
-"Sedulous.Samples.RHI.Sample017_MultiQueue" = {Path = "Samples/Sedulous.Samples.RHI.Sample017_MultiQueue"}
-"Sedulous.Samples.RHI.Sample018_Bindless" = {Path = "Samples/Sedulous.Samples.RHI.Sample018_Bindless"}
-"Sedulous.Samples.RHI.Sample019_BatchUpload" = {Path = "Samples/Sedulous.Samples.RHI.Sample019_BatchUpload"}
-"Sedulous.Samples.RHI.Sample020_MeshShaders" = {Path = "Samples/Sedulous.Samples.RHI.Sample020_MeshShaders"}
-"Sedulous.Samples.RHI.Sample021_RayTracing" = {Path = "Samples/Sedulous.Samples.RHI.Sample021_RayTracing"}
-"Sedulous.Samples.RHI.Sample022_StencilOutline" = {Path = "Samples/Sedulous.Samples.RHI.Sample022_StencilOutline"}
-"Sedulous.Samples.RHI.Sample023_CubeMap" = {Path = "Samples/Sedulous.Samples.RHI.Sample023_CubeMap"}
-"Sedulous.Samples.RHI.Sample024_OcclusionQuery" = {Path = "Samples/Sedulous.Samples.RHI.Sample024_OcclusionQuery"}
-"Sedulous.Samples.RHI.Sample025_MultiDrawIndirect" = {Path = "Samples/Sedulous.Samples.RHI.Sample025_MultiDrawIndirect"}
-"Sedulous.Samples.RHI.Sample026_DynamicOffsets" = {Path = "Samples/Sedulous.Samples.RHI.Sample026_DynamicOffsets"}
-"Sedulous.Samples.RHI.Sample027_3DTexture" = {Path = "Samples/Sedulous.Samples.RHI.Sample027_3DTexture"}
-"Sedulous.Samples.RHI.Sample028_ProceduralRT" = {Path = "Samples/Sedulous.Samples.RHI.Sample028_ProceduralRT"}
-"Sedulous.Samples.RHI.Sample029_ResolveTexture" = {Path = "Samples/Sedulous.Samples.RHI.Sample029_ResolveTexture"}
-"Sedulous.Samples.RHI.Sample030_RenderBundles" = {Path = "Samples/Sedulous.Samples.RHI.Sample030_RenderBundles"}
-"Sedulous.Samples.RHI.Smoketest" = {Path = "Samples/Sedulous.Samples.RHI.Smoketest"}
-"Sedulous.Samples.RenderStressTest" = {Path = "Samples/Sedulous.Samples.RenderStressTest"}
-"Sedulous.Samples.Sandbox" = {Path = "Samples/Sedulous.Samples.Sandbox"}
-"Sedulous.Samples.TerrainPlayground" = {Path = "Samples/Sedulous.Samples.TerrainPlayground"}
-"Sedulous.Samples.UISandbox" = {Path = "Samples/Sedulous.Samples.UISandbox"}
-"Sedulous.Samples.VGSandbox" = {Path = "Samples/Sedulous.Samples.VGSandbox"}
-"Sedulous.Samples.WebScene" = {Path = "Samples/Sedulous.Samples.WebScene"}
-"Sedulous.Samples.WebTriangle" = {Path = "Samples/Sedulous.Samples.WebTriangle"}
+"Samples.AnimStressTest" = {Path = "Samples/Samples.AnimStressTest"}
+"Samples.AnimatedCrowd" = {Path = "Samples/Samples.AnimatedCrowd"}
+"Samples.AudioPlayground" = {Path = "Samples/Samples.AudioPlayground"}
+"Samples.Common" = {Path = "Samples/Samples.Common"}
+"Samples.Framework" = {Path = "Samples/Samples.Framework"}
+"Samples.GameUiSandbox" = {Path = "Samples/Samples.GameUiSandbox"}
+"Samples.HelloWindow" = {Path = "Samples/Samples.HelloWindow"}
+"Samples.InputActions" = {Path = "Samples/Samples.InputActions"}
+"Samples.MultiWindow" = {Path = "Samples/Samples.MultiWindow"}
+"Samples.NetEcho" = {Path = "Samples/Samples.NetEcho"}
+"Samples.ParticleFX" = {Path = "Samples/Samples.ParticleFX"}
+"Samples.PhysicsPlayground" = {Path = "Samples/Samples.PhysicsPlayground"}
+"Samples.RHI.Sample001_Triangle" = {Path = "Samples/Samples.RHI.Sample001_Triangle"}
+"Samples.RHI.Sample002_Textures" = {Path = "Samples/Samples.RHI.Sample002_Textures"}
+"Samples.RHI.Sample003_UniformBuffers" = {Path = "Samples/Samples.RHI.Sample003_UniformBuffers"}
+"Samples.RHI.Sample004_Compute" = {Path = "Samples/Samples.RHI.Sample004_Compute"}
+"Samples.RHI.Sample005_BindGroups" = {Path = "Samples/Samples.RHI.Sample005_BindGroups"}
+"Samples.RHI.Sample006_Blending" = {Path = "Samples/Samples.RHI.Sample006_Blending"}
+"Samples.RHI.Sample007_Instancing" = {Path = "Samples/Samples.RHI.Sample007_Instancing"}
+"Samples.RHI.Sample008_DepthBuffer" = {Path = "Samples/Samples.RHI.Sample008_DepthBuffer"}
+"Samples.RHI.Sample009_Mipmaps" = {Path = "Samples/Samples.RHI.Sample009_Mipmaps"}
+"Samples.RHI.Sample010_MSAA" = {Path = "Samples/Samples.RHI.Sample010_MSAA"}
+"Samples.RHI.Sample011_MRT" = {Path = "Samples/Samples.RHI.Sample011_MRT"}
+"Samples.RHI.Sample012_Wireframe" = {Path = "Samples/Samples.RHI.Sample012_Wireframe"}
+"Samples.RHI.Sample013_BorderSampler" = {Path = "Samples/Samples.RHI.Sample013_BorderSampler"}
+"Samples.RHI.Sample014_Blit" = {Path = "Samples/Samples.RHI.Sample014_Blit"}
+"Samples.RHI.Sample015_Queries" = {Path = "Samples/Samples.RHI.Sample015_Queries"}
+"Samples.RHI.Sample016_Readback" = {Path = "Samples/Samples.RHI.Sample016_Readback"}
+"Samples.RHI.Sample017_MultiQueue" = {Path = "Samples/Samples.RHI.Sample017_MultiQueue"}
+"Samples.RHI.Sample018_Bindless" = {Path = "Samples/Samples.RHI.Sample018_Bindless"}
+"Samples.RHI.Sample019_BatchUpload" = {Path = "Samples/Samples.RHI.Sample019_BatchUpload"}
+"Samples.RHI.Sample020_MeshShaders" = {Path = "Samples/Samples.RHI.Sample020_MeshShaders"}
+"Samples.RHI.Sample021_RayTracing" = {Path = "Samples/Samples.RHI.Sample021_RayTracing"}
+"Samples.RHI.Sample022_StencilOutline" = {Path = "Samples/Samples.RHI.Sample022_StencilOutline"}
+"Samples.RHI.Sample023_CubeMap" = {Path = "Samples/Samples.RHI.Sample023_CubeMap"}
+"Samples.RHI.Sample024_OcclusionQuery" = {Path = "Samples/Samples.RHI.Sample024_OcclusionQuery"}
+"Samples.RHI.Sample025_MultiDrawIndirect" = {Path = "Samples/Samples.RHI.Sample025_MultiDrawIndirect"}
+"Samples.RHI.Sample026_DynamicOffsets" = {Path = "Samples/Samples.RHI.Sample026_DynamicOffsets"}
+"Samples.RHI.Sample027_3DTexture" = {Path = "Samples/Samples.RHI.Sample027_3DTexture"}
+"Samples.RHI.Sample028_ProceduralRT" = {Path = "Samples/Samples.RHI.Sample028_ProceduralRT"}
+"Samples.RHI.Sample029_ResolveTexture" = {Path = "Samples/Samples.RHI.Sample029_ResolveTexture"}
+"Samples.RHI.Sample030_RenderBundles" = {Path = "Samples/Samples.RHI.Sample030_RenderBundles"}
+"Samples.RHI.Smoketest" = {Path = "Samples/Samples.RHI.Smoketest"}
+"Samples.RenderStressTest" = {Path = "Samples/Samples.RenderStressTest"}
+"Samples.Sandbox" = {Path = "Samples/Samples.Sandbox"}
+"Samples.TerrainPlayground" = {Path = "Samples/Samples.TerrainPlayground"}
+"Samples.UISandbox" = {Path = "Samples/Samples.UISandbox"}
+"Samples.VGSandbox" = {Path = "Samples/Samples.VGSandbox"}
+"Samples.WebScene" = {Path = "Samples/Samples.WebScene"}
+"Samples.WebTriangle" = {Path = "Samples/Samples.WebTriangle"}
 
 [WorkspaceFolders]
 Dependencies = ["corlib", "Bulkan", "Dxc-Beef", "SDL3", "SDL3_image", "SPIRV-Cross", "Win32", "cgltf-Beef", "cimgui-Beef", "dr_libs-Beef", "glslang-Beef", "joltc-Beef", "recastnavigation-Beef", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef"]
@@ -376,8 +376,8 @@ Sedulous = []
 "Sedulous/Extensions" = ["Sedulous.Extensions.Imgui"]
 "Sedulous/Integration" = ["Sedulous.Integration.Mcp", "Sedulous.Integration.TextureCompression"]
 "Sedulous/Tools" = ["Sedulous.Tools.Cook", "Sedulous.Tools.Editor", "Sedulous.Tools.Export", "Sedulous.Tools.Mcp", "Sedulous.Tools.ShaderPack"]
-"Sedulous/Samples" = ["Sedulous.Samples.AnimStressTest", "Sedulous.Samples.AnimatedCrowd", "Sedulous.Samples.AudioPlayground", "Sedulous.Samples.Common", "Sedulous.Samples.Framework", "Sedulous.Samples.GameUiSandbox", "Sedulous.Samples.HelloWindow", "Sedulous.Samples.InputActions", "Sedulous.Samples.MultiWindow", "Sedulous.Samples.NetEcho", "Sedulous.Samples.ParticleFX", "Sedulous.Samples.PhysicsPlayground", "Sedulous.Samples.RenderStressTest", "Sedulous.Samples.Sandbox", "Sedulous.Samples.TerrainPlayground", "Sedulous.Samples.UISandbox", "Sedulous.Samples.VGSandbox", "Sedulous.Samples.WebScene", "Sedulous.Samples.WebTriangle"]
-"Sedulous/Samples/RHI" = ["Sedulous.Samples.RHI.Sample001_Triangle", "Sedulous.Samples.RHI.Sample002_Textures", "Sedulous.Samples.RHI.Sample003_UniformBuffers", "Sedulous.Samples.RHI.Sample004_Compute", "Sedulous.Samples.RHI.Sample005_BindGroups", "Sedulous.Samples.RHI.Sample006_Blending", "Sedulous.Samples.RHI.Sample007_Instancing", "Sedulous.Samples.RHI.Sample008_DepthBuffer", "Sedulous.Samples.RHI.Sample009_Mipmaps", "Sedulous.Samples.RHI.Sample010_MSAA", "Sedulous.Samples.RHI.Sample011_MRT", "Sedulous.Samples.RHI.Sample012_Wireframe", "Sedulous.Samples.RHI.Sample013_BorderSampler", "Sedulous.Samples.RHI.Sample014_Blit", "Sedulous.Samples.RHI.Sample015_Queries", "Sedulous.Samples.RHI.Sample016_Readback", "Sedulous.Samples.RHI.Sample017_MultiQueue", "Sedulous.Samples.RHI.Sample018_Bindless", "Sedulous.Samples.RHI.Sample019_BatchUpload", "Sedulous.Samples.RHI.Sample020_MeshShaders", "Sedulous.Samples.RHI.Sample021_RayTracing", "Sedulous.Samples.RHI.Sample022_StencilOutline", "Sedulous.Samples.RHI.Sample023_CubeMap", "Sedulous.Samples.RHI.Sample024_OcclusionQuery", "Sedulous.Samples.RHI.Sample025_MultiDrawIndirect", "Sedulous.Samples.RHI.Sample026_DynamicOffsets", "Sedulous.Samples.RHI.Sample027_3DTexture", "Sedulous.Samples.RHI.Sample028_ProceduralRT", "Sedulous.Samples.RHI.Sample029_ResolveTexture", "Sedulous.Samples.RHI.Sample030_RenderBundles", "Sedulous.Samples.RHI.Smoketest"]
+"Sedulous/Samples" = ["Samples.AnimStressTest", "Samples.AnimatedCrowd", "Samples.AudioPlayground", "Samples.Common", "Samples.Framework", "Samples.GameUiSandbox", "Samples.HelloWindow", "Samples.InputActions", "Samples.MultiWindow", "Samples.NetEcho", "Samples.ParticleFX", "Samples.PhysicsPlayground", "Samples.RenderStressTest", "Samples.Sandbox", "Samples.TerrainPlayground", "Samples.UISandbox", "Samples.VGSandbox", "Samples.WebScene", "Samples.WebTriangle"]
+"Sedulous/Samples/RHI" = ["Samples.RHI.Sample001_Triangle", "Samples.RHI.Sample002_Textures", "Samples.RHI.Sample003_UniformBuffers", "Samples.RHI.Sample004_Compute", "Samples.RHI.Sample005_BindGroups", "Samples.RHI.Sample006_Blending", "Samples.RHI.Sample007_Instancing", "Samples.RHI.Sample008_DepthBuffer", "Samples.RHI.Sample009_Mipmaps", "Samples.RHI.Sample010_MSAA", "Samples.RHI.Sample011_MRT", "Samples.RHI.Sample012_Wireframe", "Samples.RHI.Sample013_BorderSampler", "Samples.RHI.Sample014_Blit", "Samples.RHI.Sample015_Queries", "Samples.RHI.Sample016_Readback", "Samples.RHI.Sample017_MultiQueue", "Samples.RHI.Sample018_Bindless", "Samples.RHI.Sample019_BatchUpload", "Samples.RHI.Sample020_MeshShaders", "Samples.RHI.Sample021_RayTracing", "Samples.RHI.Sample022_StencilOutline", "Samples.RHI.Sample023_CubeMap", "Samples.RHI.Sample024_OcclusionQuery", "Samples.RHI.Sample025_MultiDrawIndirect", "Samples.RHI.Sample026_DynamicOffsets", "Samples.RHI.Sample027_3DTexture", "Samples.RHI.Sample028_ProceduralRT", "Samples.RHI.Sample029_ResolveTexture", "Samples.RHI.Sample030_RenderBundles", "Samples.RHI.Smoketest"]
 
 [Configs.Test.Win32]
 ConfigSelections = {corlib = {Config = "Debug"}}

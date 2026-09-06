@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Samples.NetEcho"
+TargetType = "BeefConsoleApplication"
+StartupObject = "Samples.NetEcho.Program"
+
+[Dependencies]
+corlib = "*"

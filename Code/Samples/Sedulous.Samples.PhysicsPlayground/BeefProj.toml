@@ -1,9 +1,0 @@
-FileVersion = 1
-
-[Project]
-Name = "Sedulous.Samples.PhysicsPlayground"
-TargetType = "BeefGUIApplication"
-StartupObject = "Sedulous.Samples.PhysicsPlayground.Program"
-
-[Dependencies]
-corlib = "*"

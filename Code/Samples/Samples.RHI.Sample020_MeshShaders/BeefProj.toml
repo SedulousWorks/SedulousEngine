@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Samples.RHI.Sample020_MeshShaders"
+TargetType = "BeefGUIApplication"
+StartupObject = "Samples.RHI.Sample020_MeshShaders.Program"
+
+[Dependencies]
+corlib = "*"

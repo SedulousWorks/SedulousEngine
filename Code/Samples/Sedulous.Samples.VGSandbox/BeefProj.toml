@@ -1,9 +1,0 @@
-FileVersion = 1
-
-[Project]
-Name = "Sedulous.Samples.VGSandbox"
-TargetType = "BeefGUIApplication"
-StartupObject = "Sedulous.Samples.VGSandbox.Program"
-
-[Dependencies]
-corlib = "*"

@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Samples.RHI.Sample003_UniformBuffers"
+TargetType = "BeefGUIApplication"
+StartupObject = "Samples.RHI.Sample003_UniformBuffers.Program"
+
+[Dependencies]
+corlib = "*"

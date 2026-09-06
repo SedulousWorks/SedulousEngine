@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Samples.RenderStressTest"
+TargetType = "BeefGUIApplication"
+StartupObject = "Samples.RenderStressTest.Program"
+
+[Dependencies]
+corlib = "*"

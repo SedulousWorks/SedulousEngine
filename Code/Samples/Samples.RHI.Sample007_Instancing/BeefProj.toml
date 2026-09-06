@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Samples.RHI.Sample007_Instancing"
+TargetType = "BeefGUIApplication"
+StartupObject = "Samples.RHI.Sample007_Instancing.Program"
+
+[Dependencies]
+corlib = "*"

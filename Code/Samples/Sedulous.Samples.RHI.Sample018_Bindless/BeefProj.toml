@@ -1,9 +1,0 @@
-FileVersion = 1
-
-[Project]
-Name = "Sedulous.Samples.RHI.Sample018_Bindless"
-TargetType = "BeefGUIApplication"
-StartupObject = "Sedulous.Samples.RHI.Sample018_Bindless.Program"
-
-[Dependencies]
-corlib = "*"

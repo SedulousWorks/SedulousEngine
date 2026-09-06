@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Samples.RHI.Sample019_BatchUpload"
+TargetType = "BeefGUIApplication"
+StartupObject = "Samples.RHI.Sample019_BatchUpload.Program"
+
+[Dependencies]
+corlib = "*"

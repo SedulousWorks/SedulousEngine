@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Samples.WebScene"
+TargetType = "BeefGUIApplication"
+StartupObject = "Samples.WebScene.Program"
+
+[Dependencies]
+corlib = "*"

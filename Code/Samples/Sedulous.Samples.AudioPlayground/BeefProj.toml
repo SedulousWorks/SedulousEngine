@@ -1,9 +1,0 @@
-FileVersion = 1
-
-[Project]
-Name = "Sedulous.Samples.AudioPlayground"
-TargetType = "BeefGUIApplication"
-StartupObject = "Sedulous.Samples.AudioPlayground.Program"
-
-[Dependencies]
-corlib = "*"

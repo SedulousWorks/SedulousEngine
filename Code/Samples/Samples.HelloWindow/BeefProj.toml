@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Samples.HelloWindow"
+TargetType = "BeefGUIApplication"
+StartupObject = "Samples.HelloWindow.Program"
+
+[Dependencies]
+corlib = "*"

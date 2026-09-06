@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Samples.RHI.Sample029_ResolveTexture"
+TargetType = "BeefGUIApplication"
+StartupObject = "Samples.RHI.Sample029_ResolveTexture.Program"
+
+[Dependencies]
+corlib = "*"

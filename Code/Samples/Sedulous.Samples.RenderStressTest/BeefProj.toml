@@ -1,9 +1,0 @@
-FileVersion = 1
-
-[Project]
-Name = "Sedulous.Samples.RenderStressTest"
-TargetType = "BeefGUIApplication"
-StartupObject = "Sedulous.Samples.RenderStressTest.Program"
-
-[Dependencies]
-corlib = "*"

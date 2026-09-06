@@ -1,9 +1,0 @@
-FileVersion = 1
-
-[Project]
-Name = "Sedulous.Samples.RHI.Smoketest"
-TargetType = "BeefConsoleApplication"
-StartupObject = "Sedulous.Samples.RHI.Smoketest.Program"
-
-[Dependencies]
-corlib = "*"

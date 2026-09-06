@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Samples.RHI.Sample017_MultiQueue"
+TargetType = "BeefGUIApplication"
+StartupObject = "Samples.RHI.Sample017_MultiQueue.Program"
+
+[Dependencies]
+corlib = "*"

@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Samples.RHI.Sample005_BindGroups"
+TargetType = "BeefGUIApplication"
+StartupObject = "Samples.RHI.Sample005_BindGroups.Program"
+
+[Dependencies]
+corlib = "*"

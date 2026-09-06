@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "Samples.RHI.Sample022_StencilOutline"
+TargetType = "BeefGUIApplication"
+StartupObject = "Samples.RHI.Sample022_StencilOutline.Program"
+
+[Dependencies]
+corlib = "*"
