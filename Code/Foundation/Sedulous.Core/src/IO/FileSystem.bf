@@ -86,8 +86,8 @@ static
 		if (!System.IO.File.Exists(path))
 			return false;
 
-		let parent = PathParent(path);
-		let target = PathFilename(path);
+		let parent = PathParent(path, .. scope String());
+		let target = PathFilename(path, .. scope String());
 		if (target.IsEmpty)
 			return false;
 
@@ -121,7 +121,7 @@ static
 		let exePath = scope String();
 		System.Environment.GetExecutableFilePath(exePath);
 		outPath.Clear();
-		outPath.Append(PathParent(exePath));
+		PathParent(exePath, outPath);
 	}
 
 	public static void GetCurrentDirectory(String outPath)

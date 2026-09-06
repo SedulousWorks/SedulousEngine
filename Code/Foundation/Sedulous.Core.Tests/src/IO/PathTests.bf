@@ -8,59 +8,43 @@ class PathTests
 	[Test]
 	public static void Queries()
 	{
-		Test.Assert(PathFilename("/a/b/c.txt") == "c.txt");
-		Test.Assert(PathFilename("noslash.dat") == "noslash.dat");
-		Test.Assert(PathExtension("/a/b/c.txt") == ".txt");
-		Test.Assert(PathExtension("/a/b/c") == "");
-		Test.Assert(PathExtension("/a/.hidden") == "", "a dotfile is all name and no extension");
-		Test.Assert(PathStem("/a/b/c.txt") == "c");
-		Test.Assert(PathParent("/a/b/c.txt") == "/a/b");
-		Test.Assert(PathParent("file") == "");
+		Test.Assert(PathFilename("/a/b/c.txt", .. scope String()) == "c.txt");
+		Test.Assert(PathFilename("noslash.dat", .. scope String()) == "noslash.dat");
+		Test.Assert(PathExtension("/a/b/c.txt", .. scope String()) == ".txt");
+		Test.Assert(PathExtension("/a/b/c", .. scope String()) == "");
+		Test.Assert(PathExtension("/a/.hidden", .. scope String()) == "", "a dotfile is all name and no extension");
+		Test.Assert(PathStem("/a/b/c.txt", .. scope String()) == "c");
+		Test.Assert(PathParent("/a/b/c.txt", .. scope String()) == "/a/b");
+		Test.Assert(PathParent("file", .. scope String()) == "");
 
 		Test.Assert(PathIsAbsolute("/etc/hosts"));
 		Test.Assert(!PathIsAbsolute("relative/path"));
 	}
 
-	/// The queries return views INTO the path, so none of them allocates and each one has
-	/// to get its offsets right rather than leaning on a copy.
+	/// Every query FILLS a string rather than returning a view, which is the Beef pattern
+	/// and also removes the question of what an empty view is: there is no view. An empty
+	/// answer is an empty string, and that reads the same on every platform and against
+	/// every comparison overload.
 	[Test]
-	public static void QueriesReturnViewsIntoTheInput()
+	public static void AnEmptyAnswerIsAnEmptyString()
 	{
-		let path = "/a/b/c.txt";
-		let name = PathFilename(path);
-		Test.Assert(name.Ptr == path.Ptr + 5, "the filename must alias the path, not copy it");
-		Test.Assert(PathExtension(path).Ptr == path.Ptr + 6);
-		Test.Assert(PathStem(path).Ptr == path.Ptr + 5);
-		Test.Assert(PathParent(path).Ptr == path.Ptr);
-	}
+		let name = scope String("stale contents");
+		PathFilename("/a/b/", name);
+		Test.Assert(name.IsEmpty, "a trailing separator leaves no filename");
+		Test.Assert(name == "");
+		Test.Assert(name == StringView());
 
-	/// An empty result is a zero length view INTO the path, never a null one.
-	///
-	/// A null view compares equal to "" only where the comparison null-checks before it
-	/// compares pointers, which is not true of every overload or every corlib revision, so
-	/// returning one makes the same assertion pass on one platform and fail on another.
-	/// Asserted against BOTH spellings here, since each exercises a different overload.
-	[Test]
-	public static void AnEmptyResultIsAViewNotANullView()
-	{
-		let path = "/a/b/c";
+		let @extension = scope String("stale");
+		PathExtension("/a/b/c", @extension);
+		Test.Assert(@extension.IsEmpty);
 
-		let noExtension = PathExtension(path);
-		Test.Assert(noExtension.Length == 0);
-		Test.Assert(noExtension.Ptr != null, "anchored in the input, not null");
-		Test.Assert(noExtension == "");
-		Test.Assert(noExtension == StringView());
+		let parent = scope String("stale");
+		PathParent("file", parent);
+		Test.Assert(parent.IsEmpty);
 
-		let noParent = PathParent("file");
-		Test.Assert(noParent.Length == 0);
-		Test.Assert(noParent.Ptr != null);
-		Test.Assert(noParent == "");
-		Test.Assert(noParent == StringView());
-
-		let noStem = PathStem("");
-		Test.Assert(noStem.Length == 0);
-		Test.Assert(noStem == "");
-		Test.Assert(noStem == StringView());
+		let stem = scope String("stale");
+		PathStem("", stem);
+		Test.Assert(stem.IsEmpty);
 	}
 
 	/// A trailing separator, both separators, and the degenerate inputs. A filename loop
@@ -68,30 +52,62 @@ class PathTests
 	[Test]
 	public static void QueryEdgeCases()
 	{
-		Test.Assert(PathFilename("/a/b/") == "", "a trailing separator leaves no filename");
-		Test.Assert(PathParent("/a/b/") == "/a/b");
-		Test.Assert(PathFilename("") == "");
-		Test.Assert(PathParent("") == "");
-		Test.Assert(PathExtension("") == "");
-		Test.Assert(PathStem("") == "");
+		Test.Assert(PathParent("/a/b/", .. scope String()) == "/a/b");
+		Test.Assert(PathFilename("", .. scope String()) == "");
+		Test.Assert(PathParent("", .. scope String()) == "");
+		Test.Assert(PathExtension("", .. scope String()) == "");
+		Test.Assert(PathStem("", .. scope String()) == "");
 
 		// Deep paths: the last separator wins, not the first.
-		Test.Assert(PathFilename("/one/two/three/four.tar.gz") == "four.tar.gz");
-		Test.Assert(PathExtension("/one/two/three/four.tar.gz") == ".gz", "the last dot wins");
-		Test.Assert(PathStem("/one/two/three/four.tar.gz") == "four.tar");
+		Test.Assert(PathFilename("/one/two/three/four.tar.gz", .. scope String()) == "four.tar.gz");
+		Test.Assert(PathExtension("/one/two/three/four.tar.gz", .. scope String()) == ".gz", "the last dot wins");
+		Test.Assert(PathStem("/one/two/three/four.tar.gz", .. scope String()) == "four.tar");
 
-		// A backslash counts as a separator whatever the host is.
-		Test.Assert(PathFilename(@"a\b\c.txt") == "c.txt");
-		Test.Assert(PathParent(@"a\b\c.txt") == @"a\b");
+		// A backslash counts as a separator whatever the host is, which is what corlib's
+		// IsDirectorySeparatorChar says on both platforms.
+		Test.Assert(PathFilename(@"a\b\c.txt", .. scope String()) == "c.txt");
+		Test.Assert(PathParent(@"a\b\c.txt", .. scope String()) == @"a\b");
 
 		// A dot in a directory name is not the file's extension.
-		Test.Assert(PathExtension("/a.b/c") == "");
-		Test.Assert(PathStem("/a.b/c") == "c");
+		Test.Assert(PathExtension("/a.b/c", .. scope String()) == "");
+		Test.Assert(PathStem("/a.b/c", .. scope String()) == "c");
 
 		Test.Assert(!PathIsAbsolute(""));
 		Test.Assert(PathIsSeparator('/'));
 		Test.Assert(PathIsSeparator('\\'));
 		Test.Assert(!PathIsSeparator('.'));
+	}
+
+	/// A colon is NOT a separator here, on any platform. corlib's Path splits on
+	/// VolumeSeparatorChar, which is ':' on Windows and '/' elsewhere, so delegating these
+	/// would make "ns:local" answer "local" on Windows and "ns:local" on Linux. These are
+	/// logical paths, and they have to mean one thing everywhere.
+	[Test]
+	public static void AColonIsNotASeparator()
+	{
+		Test.Assert(PathFilename("ns:local", .. scope String()) == "ns:local");
+		Test.Assert(PathParent("ns:local", .. scope String()) == "");
+		Test.Assert(PathFilename("a/ns:local", .. scope String()) == "ns:local");
+	}
+
+	/// A drive qualified root is absolute on every platform, so a path authored on
+	/// Windows is read the same way here.
+	[Test]
+	public static void DriveQualifiedRootsAreAbsoluteEverywhere()
+	{
+		Test.Assert(PathIsAbsolute(@"C:\Windows"));
+		Test.Assert(PathIsAbsolute("C:/Windows"));
+		Test.Assert(PathIsAbsolute("c:/windows"));
+
+		// A drive with no separator is drive RELATIVE, not absolute: where it lands
+		// depends on a per-drive working directory.
+		Test.Assert(!PathIsAbsolute("C:Windows"));
+		Test.Assert(!PathIsAbsolute("C:"));
+		Test.Assert(!PathIsAbsolute("1:/x"), "not a drive letter");
+
+		// A UNC share, and the POSIX root.
+		Test.Assert(PathIsAbsolute(@"\\server\share"));
+		Test.Assert(PathIsAbsolute("/etc"));
 	}
 
 	[Test]
@@ -103,6 +119,11 @@ class PathTests
 		Test.Assert(PathJoin("", "c.txt", .. scope String()) == "c.txt");
 		Test.Assert(PathJoin("/a/b", "/absolute", .. scope String()) == "/absolute",
 			"an absolute second part wins outright");
+
+		// The forward slash on every platform, not corlib's platform separator: these
+		// paths are stored and compared.
+		Test.Assert(PathJoin(@"a\b", "c", .. scope String()) == @"a\b/c");
+		Test.Assert(PathJoin("/a/b", @"C:\x", .. scope String()) == @"C:\x", "an absolute drive path wins too");
 	}
 
 	/// Join writes the whole result rather than appending to what it was handed, so a

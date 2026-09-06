@@ -44,7 +44,7 @@ static
 				return;
 			}
 
-			let parent = PathParent(directory);
+			let parent = PathParent(directory, .. scope:: String());
 			if (parent.Length == directory.Length)
 				break; // a root that is its own parent
 			directory.Set(parent);
