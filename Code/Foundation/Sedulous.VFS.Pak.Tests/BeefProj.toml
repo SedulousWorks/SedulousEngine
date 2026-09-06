@@ -7,4 +7,6 @@ StartupObject = "Sedulous.VFS.Pak.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.VFS" = "*"
 "Sedulous.VFS.Pak" = "*"
