@@ -8,6 +8,9 @@ namespace Sedulous.Resource.Tests;
 class CompositeFactory : IResourceFactory
 {
 	public int32 Builds;
+	/// Resolves the child WITHOUT waiting, so the composite can be built against a child
+	/// that has not settled yet.
+	public bool Async;
 	private Guid mChildId;
 
 	public this(Guid childId)
@@ -23,7 +26,7 @@ class CompositeFactory : IResourceFactory
 		let product = new CompositeProduct();
 
 		// Binding here is what tells the manager this build consumed the child.
-		let child = manager.Bind<TestProduct>(mChildId);
+		let child = Async ? manager.BindAsync<TestProduct>(mChildId) : manager.Bind<TestProduct>(mChildId);
 		product.ChildArea = (child.Get != null) ? child.Get.Area : 0;
 		return product;
 	}
