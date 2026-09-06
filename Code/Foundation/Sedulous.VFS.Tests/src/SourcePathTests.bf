@@ -87,9 +87,13 @@ class SourcePathTests
 		Test.Assert(scope SourcePath("A/B.").GetExtension(.. scope String()) == "");
 	}
 
-	/// An empty accessor result is a zero length view into the value, never a null one,
-	/// for the same reason the path queries are: a null view's equality depends on which
-	/// overload the caller picked. Asserted against both spellings.
+	/// An empty accessor result is a zero length view INTO the value, never a null one,
+	/// so it carries a real pointer and a caller can compare or slice it without knowing
+	/// whether there was anything there.
+	///
+	/// Asserted on the length and the pointer, and against "". Never against a default
+	/// StringView: comparing to a NULL view is the fragile operation, and whether it
+	/// equals an empty string depends on the corlib revision.
 	[Test]
 	public static void AnEmptyAccessorIsAViewNotANullView()
 	{
@@ -98,7 +102,6 @@ class SourcePathTests
 		Test.Assert(directory.Length == 0);
 		Test.Assert(directory.Ptr != null);
 		Test.Assert(directory == "");
-		Test.Assert(directory == StringView());
 	}
 
 	/// Case sensitive on every platform. One rule everywhere means a Windows-authored

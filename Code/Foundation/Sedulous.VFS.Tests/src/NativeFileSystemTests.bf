@@ -32,13 +32,18 @@ class NativeFileSystemTests
 		Test.Assert(fs.Exists("hello.txt"));
 		Test.Assert(!fs.Exists("missing.txt"));
 
-		let stream = fs.Open("hello.txt", .Read);
-		Test.Assert(stream != null);
-		defer delete stream;
+		// Scoped, so the file is CLOSED before the directory is removed. A deferred
+		// delete would run at the end of the method instead, and Windows refuses to
+		// remove a directory holding an open file where POSIX simply unlinks it.
+		{
+			let stream = fs.Open("hello.txt", .Read);
+			Test.Assert(stream != null);
+			defer delete stream;
 
-		uint8[9] buffer = default;
-		Test.Assert(stream.Read(.(&buffer[0], 9)) == 9);
-		Test.Assert(StringView((char8*)&buffer[0], 9) == "hello vfs");
+			uint8[9] buffer = default;
+			Test.Assert(stream.Read(.(&buffer[0], 9)) == 9);
+			Test.Assert(StringView((char8*)&buffer[0], 9) == "hello vfs");
+		}
 
 		Test.Assert(RemoveDirectoryRecursive(kScratch));
 	}

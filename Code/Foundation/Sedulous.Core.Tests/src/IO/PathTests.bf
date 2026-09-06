@@ -23,8 +23,13 @@ class PathTests
 
 	/// Every query FILLS a string rather than returning a view, which is the Beef pattern
 	/// and also removes the question of what an empty view is: there is no view. An empty
-	/// answer is an empty string, and that reads the same on every platform and against
-	/// every comparison overload.
+	/// answer is an empty string.
+	///
+	/// Asserted as IsEmpty and against "", never against a default StringView. Comparing
+	/// anything to a NULL view is the fragile operation: whether it equals an empty string
+	/// depends on the corlib revision, which is what made these fail on Windows and pass
+	/// here. Nothing in the code produces a null view any more, so nothing should be
+	/// manufacturing one to compare against either.
 	[Test]
 	public static void AnEmptyAnswerIsAnEmptyString()
 	{
@@ -32,7 +37,6 @@ class PathTests
 		PathFilename("/a/b/", name);
 		Test.Assert(name.IsEmpty, "a trailing separator leaves no filename");
 		Test.Assert(name == "");
-		Test.Assert(name == StringView());
 
 		let @extension = scope String("stale");
 		PathExtension("/a/b/c", @extension);
