@@ -8,3 +8,4 @@ StartupObject = "Sedulous.Image.Tests.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Image" = "*"
+"Sedulous.Core" = "*"
