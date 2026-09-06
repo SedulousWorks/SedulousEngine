@@ -98,6 +98,15 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 					continue;
 				}
 
+				// A list is count prefixed and walks its elements through the dispatcher.
+				// It has to be spelled out here because a List is a reference type, and
+				// the reference overload below takes the object itself.
+				if (IsList(field.FieldType))
+				{
+					body.AppendF("\tSedulous.Core.Serialization.SerializeList(ar, {});\n", field.Name);
+					continue;
+				}
+
 				// A value type goes through the dispatcher, which covers enums too; a
 				// reference type IS the handle its overload takes.
 				if (field.FieldType.IsValueType)
@@ -114,6 +123,16 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 
 		Compiler.EmitTypeBody(type, body);
 		Compiler.EmitAddInterface(type, typeof(ISerializable));
+	}
+
+	/// Whether a type is a List<T>, which serializes as a counted array rather than as an
+	/// object. Matched by name because comptime has no generic definition to compare to.
+	[Comptime]
+	private static bool IsList(Type type)
+	{
+		let name = scope String();
+		type.GetFullName(name);
+		return name.StartsWith("System.Collections.List<");
 	}
 
 	/// Whether a type carries its own Serialize, taking just the serializer.

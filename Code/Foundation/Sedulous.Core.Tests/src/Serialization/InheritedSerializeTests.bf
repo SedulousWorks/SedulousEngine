@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
@@ -41,6 +42,72 @@ class InheritedSerializeTests
 		Test.Assert(target.MiddleWeight == 2.5f, "and the middle level");
 		Test.Assert(target.LeafPosition == Float3(1.0f, 2.0f, 3.0f));
 		Test.Assert(target.LeafEnabled);
+	}
+
+	/// A list field round trips through the counted array path. It did not compile at all
+	/// before: a List is a reference type, and the reference overload takes the object, so
+	/// a generated body naming one failed to build.
+	[Test]
+	public static void ListFieldsRoundTrip()
+	{
+		let stream = scope MemoryStream();
+		let source = scope ListSample();
+		source.Head = 3;
+		source.Blob.Add(1); source.Blob.Add(2); source.Blob.Add(255);
+		source.Counts.Add(-7); source.Counts.Add(70000);
+		source.Weights.Add(0.5f); source.Weights.Add(2.25f);
+		source.Points.Add(.(1, 2, 3)); source.Points.Add(.(4, 5, 6));
+		source.Tail.Set("after");
+
+		{
+			let writer = scope BinarySerializer(stream, .Write);
+			Serialize(writer, (ISerializable)source);
+			Test.Assert(writer.IsOk);
+		}
+
+		Test.Assert(stream.Seek(0, .Begin) == 0);
+		let target = scope ListSample();
+		// Pre-populated, to prove a read CLEARS rather than appends.
+		target.Blob.Add(99);
+		target.Counts.Add(99);
+
+		let reader = scope BinarySerializer(stream, .Read);
+		Serialize(reader, (ISerializable)target);
+		Test.Assert(reader.IsOk);
+
+		Test.Assert(target.Head == 3);
+		Test.Assert(target.Blob.Count == 3, scope $"got {target.Blob.Count}");
+		Test.Assert((target.Blob[0] == 1) && (target.Blob[2] == 255));
+		Test.Assert(target.Counts.Count == 2);
+		Test.Assert((target.Counts[0] == -7) && (target.Counts[1] == 70000));
+		Test.Assert((target.Weights[0] == 0.5f) && (target.Weights[1] == 2.25f));
+		Test.Assert(target.Points[1] == Float3(4, 5, 6), "a list of composites walks the dispatcher");
+		Test.Assert(target.Tail == "after", "and the field after the lists is still aligned");
+	}
+
+	/// An empty list is still written, so the field after it stays aligned in a positional
+	/// format.
+	[Test]
+	public static void AnEmptyListStillOccupiesItsPlace()
+	{
+		let stream = scope MemoryStream();
+		{
+			let source = scope ListSample();
+			source.Head = 11;
+			source.Tail.Set("tail");
+			let writer = scope BinarySerializer(stream, .Write);
+			Serialize(writer, (ISerializable)source);
+		}
+
+		Test.Assert(stream.Seek(0, .Begin) == 0);
+		let target = scope ListSample();
+		let reader = scope BinarySerializer(stream, .Read);
+		Serialize(reader, (ISerializable)target);
+
+		Test.Assert(reader.IsOk);
+		Test.Assert(target.Head == 11);
+		Test.Assert(target.Blob.IsEmpty);
+		Test.Assert(target.Tail == "tail");
 	}
 
 	/// An inherited field is written ONCE, not once per level below it. Every type
