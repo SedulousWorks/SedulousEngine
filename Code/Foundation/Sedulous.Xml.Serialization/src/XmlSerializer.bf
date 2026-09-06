@@ -403,10 +403,12 @@ class XmlSerializer : Serializer
 		case .UInt32: (*(uint32*)value).ToString(output);
 		case .Int64: (*(int64*)value).ToString(output);
 		case .UInt64: (*(uint64*)value).ToString(output);
-		// Beef's default float formatting is round-trip exact, so a value written and
-		// read back is the same value rather than a near one.
-		case .Float32: (*(float*)value).ToString(output);
-		case .Float64: (*(double*)value).ToString(output);
+		// G9 and G17 are the digit counts that make a binary32 and a binary64 survive a
+		// round trip through decimal. NOT the default formatting: it is shortest-form and
+		// varies by platform, so a value written on one and read on another came back a
+		// near miss rather than itself.
+		case .Float32: (*(float*)value).ToString(output, "G9", null);
+		case .Float64: (*(double*)value).ToString(output, "G17", null);
 		}
 	}
 

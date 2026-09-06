@@ -81,6 +81,27 @@ class XmlSerializerTests
 		Test.Assert(text == "<root><i32 name=\"width\">7</i32></root>", scope $"got '{text}'");
 	}
 
+	/// The digits actually written, asserted exactly.
+	///
+	/// The round trip below passes on a platform whose shortest-form formatting happens to
+	/// be sufficient and fails on one where it is not, so it cannot be trusted on its own
+	/// to catch a formatting change. This pins the text.
+	[Test]
+	public static void FloatsAreWrittenWithEnoughDigits()
+	{
+		var value = 1.0f / 3.0f;
+		let writer = scope XmlSerializer();
+		writer.Key("v");
+		Serialize(writer, ref value);
+
+		var settings = XmlWriteSettings.Default;
+		settings.CompactMode = true;
+		let text = scope String();
+		writer.GetOutput(text, settings);
+
+		Test.Assert(text == "<root><f32 name=\"v\">0.333333343</f32></root>", scope $"got '{text}'");
+	}
+
 	/// A float has to come back as the SAME value, not a near one, or a round trip
 	/// silently degrades every time a document is loaded and saved.
 	[Test]
@@ -103,7 +124,38 @@ class XmlSerializerTests
 			let reader = scope:: XmlSerializer(document);
 			reader.Key("v");
 			Serialize(reader, ref readBack);
-			Test.Assert(readBack == original, scope $"{original} came back as {readBack}");
+			// Compared as BITS: two floats that differ in the last place print the same at
+			// the default precision, which is exactly how this hid.
+			var expected = original;
+			Test.Assert(readBack == expected,
+				scope $"0x{*(uint32*)&expected:X} came back as 0x{*(uint32*)&readBack:X}");
+		}
+	}
+
+	/// The same for doubles, which need seventeen digits rather than nine.
+	[Test]
+	public static void DoublesRoundTripExactly()
+	{
+		let awkward = scope double[](0.1, 1.0 / 3.0, 1.7976931348623157e308, 2.2250738585072014e-308, -0.0);
+
+		for (let original in awkward)
+		{
+			var value = original;
+			let document = scope:: XmlDocument();
+			{
+				let writer = scope:: XmlSerializer();
+				writer.Key("v");
+				Serialize(writer, ref value);
+				Reparse(writer, document);
+			}
+
+			double readBack = 0;
+			let reader = scope:: XmlSerializer(document);
+			reader.Key("v");
+			Serialize(reader, ref readBack);
+			var expected = original;
+			Test.Assert(readBack == expected,
+				scope $"0x{*(uint64*)&expected:X} came back as 0x{*(uint64*)&readBack:X}");
 		}
 	}
 
