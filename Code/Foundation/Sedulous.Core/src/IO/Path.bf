@@ -49,6 +49,11 @@ static
 
 	/// The extension including its dot, or empty. A leading-dot name such as .gitignore
 	/// is all name and no extension.
+	///
+	/// "Empty" is a zero length view INTO the path, never a null one. A null view compares
+	/// equal to "" only where the comparison happens to null-check first, so returning one
+	/// makes a caller's == depend on which overload it picked and on which corlib it was
+	/// built against. A view anchored in the input has one answer everywhere.
 	public static StringView PathExtension(StringView path)
 	{
 		let name = PathFilename(path);
@@ -59,7 +64,7 @@ static
 				dot = i;
 		}
 		if ((dot == name.Length) || (dot == 0))
-			return default;
+			return .(name, name.Length, 0);
 		return .(name, dot, name.Length - dot);
 	}
 
@@ -71,7 +76,8 @@ static
 		return .(name, 0, name.Length - @extension.Length);
 	}
 
-	/// Everything before the last separator, or empty if there is none.
+	/// Everything before the last separator, or empty if there is none. Empty is a zero
+	/// length view into the path rather than a null one, as in PathExtension.
 	public static StringView PathParent(StringView path)
 	{
 		var lastSeparator = path.Length;
@@ -81,7 +87,7 @@ static
 				lastSeparator = i;
 		}
 		if (lastSeparator == path.Length)
-			return default;
+			return .(path, 0, 0);
 		return .(path, 0, lastSeparator);
 	}
 

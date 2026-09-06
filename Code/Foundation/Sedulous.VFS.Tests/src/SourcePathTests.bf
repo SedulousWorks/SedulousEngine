@@ -87,6 +87,20 @@ class SourcePathTests
 		Test.Assert(scope SourcePath("A/B.").GetExtension(.. scope String()) == "");
 	}
 
+	/// An empty accessor result is a zero length view into the value, never a null one,
+	/// for the same reason the path queries are: a null view's equality depends on which
+	/// overload the caller picked. Asserted against both spellings.
+	[Test]
+	public static void AnEmptyAccessorIsAViewNotANullView()
+	{
+		let bare = scope SourcePath("Roboto.ttf");
+		let directory = bare.Directory;
+		Test.Assert(directory.Length == 0);
+		Test.Assert(directory.Ptr != null);
+		Test.Assert(directory == "");
+		Test.Assert(directory == StringView());
+	}
+
 	/// Case sensitive on every platform. One rule everywhere means a Windows-authored
 	/// mismatch fails a test rather than a user on Linux.
 	[Test]

@@ -54,12 +54,15 @@ class SourcePath
 	}
 
 	/// "Fonts/Roboto.ttf" gives "Fonts"; a bare filename gives empty.
+	///
+	/// Empty is a zero length view into the value rather than a null one, so comparing it
+	/// does not depend on which equality overload the caller happened to select.
 	public StringView Directory
 	{
 		get
 		{
 			let slash = mValue.LastIndexOf('/');
-			return (slash < 0) ? default : StringView(mValue, 0, slash);
+			return (slash < 0) ? StringView(mValue, 0, 0) : StringView(mValue, 0, slash);
 		}
 	}
 

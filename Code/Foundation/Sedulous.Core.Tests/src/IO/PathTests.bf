@@ -34,6 +34,35 @@ class PathTests
 		Test.Assert(PathParent(path).Ptr == path.Ptr);
 	}
 
+	/// An empty result is a zero length view INTO the path, never a null one.
+	///
+	/// A null view compares equal to "" only where the comparison null-checks before it
+	/// compares pointers, which is not true of every overload or every corlib revision, so
+	/// returning one makes the same assertion pass on one platform and fail on another.
+	/// Asserted against BOTH spellings here, since each exercises a different overload.
+	[Test]
+	public static void AnEmptyResultIsAViewNotANullView()
+	{
+		let path = "/a/b/c";
+
+		let noExtension = PathExtension(path);
+		Test.Assert(noExtension.Length == 0);
+		Test.Assert(noExtension.Ptr != null, "anchored in the input, not null");
+		Test.Assert(noExtension == "");
+		Test.Assert(noExtension == StringView());
+
+		let noParent = PathParent("file");
+		Test.Assert(noParent.Length == 0);
+		Test.Assert(noParent.Ptr != null);
+		Test.Assert(noParent == "");
+		Test.Assert(noParent == StringView());
+
+		let noStem = PathStem("");
+		Test.Assert(noStem.Length == 0);
+		Test.Assert(noStem == "");
+		Test.Assert(noStem == StringView());
+	}
+
 	/// A trailing separator, both separators, and the degenerate inputs. A filename loop
 	/// that stops at the first separator rather than the last passes the simple cases.
 	[Test]
