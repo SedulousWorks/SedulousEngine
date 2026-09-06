@@ -7,3 +7,4 @@ StartupObject = "Sedulous.Settings.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"

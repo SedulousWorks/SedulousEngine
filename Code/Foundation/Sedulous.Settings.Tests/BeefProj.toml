@@ -8,3 +8,6 @@ StartupObject = "Sedulous.Settings.Tests.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Settings" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Xml" = "*"
+"Sedulous.Xml.Serialization" = "*"
