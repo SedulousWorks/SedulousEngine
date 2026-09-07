@@ -12,15 +12,16 @@ static class Process
 	/// Cook diagnostics are small, and this caps a runaway tool without truncating a real
 	/// error.
 	private const int cMaxOutputBytes = 64 * 1024;
+	private const int cReadChunk = 4096;
 
 	/// Runs `executable` with `arguments` and BLOCKS until it exits, capturing its combined
-	/// output.
+	/// standard output and standard error.
 	///
-	/// An explicit path, with no shell and no PATH search, and each argument passed whole
-	/// with no splitting or globbing. That is what makes it safe to hand a caller-supplied
-	/// path: nothing in it is interpreted.
+	/// An explicit path, with no shell and no PATH search, and each argument passed whole.
+	/// That is what makes it safe to hand a caller supplied path: nothing in it is
+	/// interpreted.
 	///
-	/// For cook-time tool invocations. Do NOT call it on a thread that must stay responsive.
+	/// For cook time tool invocations. Do NOT call it on a thread that must stay responsive.
 	public static void Run(StringView executable, Span<StringView> arguments,
 		ProcessResult outResult)
 	{
@@ -37,57 +38,77 @@ static class Process
 			AppendQuoted(commandLine, argument);
 		}
 
-		// Captured through a temporary file because Beef attaches a stream rather than
-		// handing back a pipe.
-		let capturePath = scope String();
-		Path.GetTempPath(capturePath);
-		Path.InternalCombine(capturePath, scope $"sedulous_proc_{Platform.BfpProcess_GetCurrentId()}_{gCaptureCounter++}.txt");
-		defer { File.Delete(capturePath).IgnoreError(); }
+		let startInfo = scope ProcessStartInfo();
+		startInfo.SetFileName(executable);
+		startInfo.SetArguments(commandLine);
+		startInfo.UseShellExecute = false;
+		startInfo.CreateNoWindow = true;
+		startInfo.RedirectStandardOutput = true;
+		startInfo.RedirectStandardError = true;
 
+		let process = scope SpawnedProcess();
+		if (process.Start(startInfo) case .Err)
 		{
-			let startInfo = scope ProcessStartInfo();
-			startInfo.SetFileName(executable);
-			startInfo.SetArguments(commandLine);
-			startInfo.UseShellExecute = false;
-			startInfo.CreateNoWindow = true;
-			startInfo.RedirectStandardOutput = true;
-			startInfo.RedirectStandardError = true;
-
-			// System.IO's stream, not Core's: SpawnedProcess attaches an IFileStream.
-			let capture = scope System.IO.FileStream();
-			if (capture.Create(capturePath, .Write, .Read) case .Err)
-			{
-				outResult.Output.Set("could not open a capture file for the child's output");
-				return;
-			}
-
-			let process = scope SpawnedProcess();
-			if (process.Start(startInfo) case .Err)
-			{
-				outResult.Output.Set("could not start ");
-				outResult.Output.Append(executable);
-				return;
-			}
-			// Both streams go to the same file, which is what makes the capture combined.
-			process.AttachStandardOutput(capture).IgnoreError();
-			process.AttachStandardError(capture).IgnoreError();
-
-			process.WaitFor(-1);
-			outResult.ExitCode = process.ExitCode;
+			// The exit code stays negative, which is how a caller tells "could not start it"
+			// from "ran and refused".
+			outResult.Output.AppendF("could not start {}", executable);
+			return;
 		}
 
-		ReadCapture(capturePath, outResult.Output);
+		// The attached streams READ the child's pipes; they are not a redirect into a file.
+		let standardOutput = scope System.IO.FileStream();
+		let standardError = scope System.IO.FileStream();
+		let haveOutput = process.AttachStandardOutput(standardOutput) case .Ok;
+		let haveError = process.AttachStandardError(standardError) case .Ok;
+
+		// Drained BEFORE waiting: a child that fills its pipe blocks until someone reads,
+		// and waiting first would deadlock against exactly the tool whose diagnostic is
+		// wanted.
+		Drain(haveOutput ? standardOutput : null, haveError ? standardError : null,
+			outResult.Output);
+
+		process.WaitFor(-1);
+		outResult.ExitCode = process.ExitCode;
 	}
 
-	private static void ReadCapture(StringView path, String outText)
+	/// Reads both pipes to their end, alternating so neither can fill while the other is
+	/// being read.
+	///
+	/// The two are interleaved rather than read one after the other because a child writing
+	/// heavily to the stream that is not being read would block forever. Alternating bounds
+	/// that to one chunk of imbalance.
+	private static void Drain(System.IO.FileStream standardOutput, System.IO.FileStream standardError, String outText)
 	{
-		let bytes = scope List<uint8>();
-		if (ReadFile(path, bytes) case .Err)
-			return;
+		var outputOpen = standardOutput != null;
+		var errorOpen = standardError != null;
+		let chunk = scope uint8[cReadChunk];
 
-		let length = Math.Min(bytes.Count, cMaxOutputBytes);
-		if (length > 0)
-			outText.Append(StringView((char8*)bytes.Ptr, length));
+		while (outputOpen || errorOpen)
+		{
+			if (outputOpen)
+				outputOpen = ReadChunk(standardOutput, chunk, outText);
+			if (errorOpen)
+				errorOpen = ReadChunk(standardError, chunk, outText);
+		}
+	}
+
+	/// Appends one chunk, returning whether the stream still has more.
+	private static bool ReadChunk(System.IO.FileStream stream, Span<uint8> chunk, String outText)
+	{
+		switch (stream.TryRead(chunk))
+		{
+		case .Ok(let read):
+			if (read <= 0)
+				return false;
+			// Capped rather than truncated mid-read: the cap exists to bound a runaway
+			// tool, and the first 64 KiB is where a real diagnostic is.
+			let room = cMaxOutputBytes - outText.Length;
+			if (room > 0)
+				outText.Append(StringView((char8*)chunk.Ptr, Math.Min(read, room)));
+			return true;
+		case .Err:
+			return false;
+		}
 	}
 
 	/// Wraps an argument in quotes, escaping what a command line would otherwise eat.
@@ -102,6 +123,4 @@ static class Process
 		}
 		outCommandLine.Append('"');
 	}
-
-	private static int gCaptureCounter = 0;
 }
