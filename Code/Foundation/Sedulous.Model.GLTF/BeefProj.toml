@@ -7,3 +7,9 @@ StartupObject = "Sedulous.Model.GLTF.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Model" = "*"
+"Sedulous.Model.IO" = "*"
+"Sedulous.Image" = "*"
+"Sedulous.Image.IO" = "*"
+"cgltf-Beef" = "*"
