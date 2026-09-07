@@ -53,6 +53,17 @@ abstract class SampleApp
 	protected virtual PresentMode PresentMode => .Fifo;
 	protected virtual uint32 BufferCount => 2;
 
+	/// How many DEDICATED compute queues the sample needs.
+	///
+	/// DIVERGES from Raptor, whose framework always asks for one graphics queue and
+	/// nothing else. Its multi queue sample therefore always reports no dedicated compute
+	/// queue and falls back to running both halves on one, which is the opposite of what
+	/// the sample exists to show. A sample that wants a second queue says so here.
+	protected virtual uint32 ComputeQueueCount => 0;
+
+	/// How many dedicated transfer queues the sample needs.
+	protected virtual uint32 TransferQueueCount => 0;
+
 	protected abstract Result<void> OnInit();
 	protected abstract void OnRender();
 	protected virtual void OnResize(uint32 width, uint32 height) {}
@@ -195,6 +206,8 @@ abstract class SampleApp
 
 		var desc = DeviceDesc();
 		desc.GraphicsQueueCount = 1;
+		desc.ComputeQueueCount = ComputeQueueCount;
+		desc.TransferQueueCount = TransferQueueCount;
 		desc.RequiredFeatures = RequiredFeatures;
 		if (!(adapter.CreateDevice(desc) case .Ok(let device)))
 		{
