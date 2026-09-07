@@ -145,32 +145,39 @@ static class TextureFormats
 		}
 	}
 
-	/// Bytes per pixel for an uncompressed format; zero for a compressed one, where a pixel
-	/// has no independent size and BlockBytes is the question to ask.
+	/// Bytes per texel of an uncompressed format; zero for a block compressed one, where a
+	/// texel has no independent size and BlockBytes is the question to ask.
 	///
-	/// NOTE: this also returns zero for a number of perfectly ordinary uncompressed formats
-	/// that the table below simply does not list, R8Uint and RGBA8Snorm among them. That is
-	/// Raptor's behaviour and is ported as is rather than quietly corrected; the tests pin
-	/// it so a later fix is a deliberate change with a failing test behind it.
+	/// EVERY uncompressed member is listed. The table used to omit sixteen ordinary ones,
+	/// the Snorm, Uint and Sint variants of R8, RG8 and RGBA8 among them, so anything sizing
+	/// an upload from one of those got zero bytes. Found by this port and fixed in Raptor as
+	/// 561a1896; a member missing from here is a defect, not a default.
 	public static uint32 BytesPerPixel(TextureFormat f)
 	{
 		switch (f)
 		{
-		case .R8Unorm, .Stencil8:
+		case .R8Unorm, .R8Snorm, .R8Uint, .R8Sint, .Stencil8:
 			return 1;
-		case .R16Uint, .R16Sint, .R16Float, .RG8Unorm, .Depth16Unorm:
+		case .R16Uint, .R16Sint, .R16Float,
+			.RG8Unorm, .RG8Snorm, .RG8Uint, .RG8Sint,
+			.Depth16Unorm:
 			return 2;
-		case .RGBA8Unorm, .RGBA8UnormSrgb, .BGRA8Unorm, .BGRA8UnormSrgb, .RG16Float,
-			.R32Float, .R32Uint, .R32Sint, .RGB10A2Unorm, .RG11B10Float,
+		case .R32Uint, .R32Sint, .R32Float,
+			.RG16Uint, .RG16Sint, .RG16Float,
+			.RGBA8Unorm, .RGBA8UnormSrgb, .RGBA8Snorm, .RGBA8Uint, .RGBA8Sint,
+			.BGRA8Unorm, .BGRA8UnormSrgb,
+			.RGB10A2Unorm, .RGB10A2Uint, .RG11B10Float, .RGB9E5Float,
+			// Depth24Plus is opaque, and four is the footprint every backend allocates.
 			.Depth24Plus, .Depth24PlusStencil8, .Depth32Float:
 			return 4;
-		case .Depth32FloatStencil8,
-			.RG32Float, .RG32Uint, .RGBA16Float, .RGBA16Uint, .RGBA16Sint:
+		case .RG32Uint, .RG32Sint, .RG32Float,
+			.RGBA16Uint, .RGBA16Sint, .RGBA16Float, .RGBA16Unorm, .RGBA16Snorm,
+			.Depth32FloatStencil8:
 			return 8;
-		case .RGBA32Float, .RGBA32Uint, .RGBA32Sint:
+		case .RGBA32Uint, .RGBA32Sint, .RGBA32Float:
 			return 16;
 		default:
-			return 0; // compressed, or a format the table does not list
+			return 0; // block compressed: size these with BlockBytes
 		}
 	}
 

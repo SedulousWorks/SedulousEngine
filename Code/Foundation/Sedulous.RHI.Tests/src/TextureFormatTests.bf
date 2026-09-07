@@ -91,25 +91,61 @@ class TextureFormatTests
 		Test.Assert(TextureFormats.BytesPerPixel(.ASTC4x4Unorm) == 0);
 	}
 
-	/// PINS A KNOWN GAP rather than asserting the desirable answer.
+	/// EVERY uncompressed format has a texel size, and every compressed one has a block
+	/// size. Neither is never the answer.
 	///
-	/// The table does not list several ordinary uncompressed formats, so they report zero
-	/// bytes per pixel. That is Raptor's behaviour, ported as is: a caller sizing an upload
-	/// from one of these gets zero. If this is ever fixed, this test fails and the fix is a
-	/// deliberate change rather than a silent one.
+	/// Walked over the whole enum rather than spot checked, so a format added later that
+	/// nobody sizes fails HERE instead of silently making an upload zero bytes long. The
+	/// table used to omit sixteen ordinary uncompressed formats, which is exactly the shape
+	/// of defect this catches.
 	[Test]
-	public static void SomeUncompressedFormatsReportZeroBytesPerPixel()
+	public static void EveryFormatIsSizedOneWayOrTheOther()
 	{
-		for (let f in TextureFormat[](.R8Snorm, .R8Uint, .R8Sint, .RG8Snorm, .RG8Uint, .RG8Sint,
-			.RG16Uint, .RG16Sint, .RGBA8Snorm, .RGBA8Uint, .RGBA8Sint, .RGB10A2Uint,
-			.RGB9E5Float, .RGBA16Unorm, .RGBA16Snorm, .RG32Sint, .RGBA16Uint, .RGBA32Uint))
+		for (var raw = 1; raw <= (int)TextureFormat.ASTC8x8UnormSrgb; raw++)
 		{
-			if (f == .RGBA16Uint || f == .RGBA32Uint)
-				continue; // these two ARE listed
-			Test.Assert(!TextureFormats.IsCompressed(f), scope $"{f} is uncompressed");
-			Test.Assert(TextureFormats.BytesPerPixel(f) == 0,
-				scope $"{f} still reports zero; the table gained an entry");
+			let format = (TextureFormat)raw;
+			let bytesPerPixel = TextureFormats.BytesPerPixel(format);
+			let blockBytes = TextureFormats.BlockBytes(format);
+
+			if (TextureFormats.IsCompressed(format))
+			{
+				Test.Assert(blockBytes > 0, scope $"{format} is compressed but has no block size");
+				Test.Assert(bytesPerPixel == 0,
+					scope $"{format} is compressed, so it has no per texel size");
+			}
+			else
+			{
+				Test.Assert(bytesPerPixel > 0,
+					scope $"{format} is uncompressed but reports zero bytes per texel");
+				Test.Assert(blockBytes == 0,
+					scope $"{format} is uncompressed, so it has no block size");
+			}
 		}
+	}
+
+	/// The formats the table used to miss, checked by value.
+	///
+	/// Spot checks on top of the sweep above: the sweep proves each is non zero, and these
+	/// prove each is the RIGHT size.
+	[Test]
+	public static void TheFormerlyMissingFormatsAreSizedCorrectly()
+	{
+		Test.Assert(TextureFormats.BytesPerPixel(.R8Snorm) == 1);
+		Test.Assert(TextureFormats.BytesPerPixel(.R8Uint) == 1);
+		Test.Assert(TextureFormats.BytesPerPixel(.R8Sint) == 1);
+		Test.Assert(TextureFormats.BytesPerPixel(.RG8Snorm) == 2);
+		Test.Assert(TextureFormats.BytesPerPixel(.RG8Uint) == 2);
+		Test.Assert(TextureFormats.BytesPerPixel(.RG8Sint) == 2);
+		Test.Assert(TextureFormats.BytesPerPixel(.RG16Uint) == 4);
+		Test.Assert(TextureFormats.BytesPerPixel(.RG16Sint) == 4);
+		Test.Assert(TextureFormats.BytesPerPixel(.RGBA8Snorm) == 4);
+		Test.Assert(TextureFormats.BytesPerPixel(.RGBA8Uint) == 4);
+		Test.Assert(TextureFormats.BytesPerPixel(.RGBA8Sint) == 4);
+		Test.Assert(TextureFormats.BytesPerPixel(.RGB10A2Uint) == 4);
+		Test.Assert(TextureFormats.BytesPerPixel(.RGB9E5Float) == 4);
+		Test.Assert(TextureFormats.BytesPerPixel(.RG32Sint) == 8);
+		Test.Assert(TextureFormats.BytesPerPixel(.RGBA16Unorm) == 8);
+		Test.Assert(TextureFormats.BytesPerPixel(.RGBA16Snorm) == 8);
 	}
 
 	[Test]
