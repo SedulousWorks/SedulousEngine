@@ -56,7 +56,7 @@ elseif($option -eq "build")
 		        mkdir $targetPath
             }
 			copy-item "./build/lib/Debug/msdfgen-c.lib" ($targetPath + "msdfgen-c.lib") -Force
-			copy-item "./build/msdfgen/Debug/msdfgen-core.lib" ($targetPath + "msdfgen-core.lib") -Force
+			copy-item "./build/lib/Debug/msdfgen-core.lib" ($targetPath + "msdfgen-core.lib") -Force
 			$built = $true
         }
 
@@ -73,7 +73,7 @@ elseif($option -eq "build")
 		        mkdir $targetPath
             }
 			copy-item "./build/lib/Release/msdfgen-c.lib" ($targetPath + "msdfgen-c.lib") -Force
-			copy-item "./build/msdfgen/Release/msdfgen-core.lib" ($targetPath + "msdfgen-core.lib") -Force
+			copy-item "./build/lib/Release/msdfgen-core.lib" ($targetPath + "msdfgen-core.lib") -Force
 			$built = $true
         }
 
