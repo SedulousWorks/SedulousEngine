@@ -22,6 +22,7 @@ class VulkanDevice : IDevice
 	private List<VulkanQueue> mTransferQueues = new .() ~ DeleteContainerAndItems!(_);
 
 	private BindingShifts mBindingShifts = BindingShifts.Standard;
+	private VulkanDescriptorPoolManager mPoolManager ~ delete _;
 
 	private bool mBindlessEnabled = false;
 	private bool mMeshEnabled = false;
@@ -163,6 +164,11 @@ class VulkanDevice : IDevice
 			return .Err;
 
 		RetrieveQueues(adapter, desc, graphicsFamily, computeFamily, transferFamily);
+
+		// Acceleration structure descriptors are only namable in a pool when the extension
+		// is on, so the manager is told whether ray tracing was enabled.
+		mPoolManager = new VulkanDescriptorPoolManager(mDevice, 256, mRayTracingEnabled);
+
 		ProbeDepthFormats(adapter);
 
 		if (mRayTracingEnabled)
@@ -352,6 +358,9 @@ class VulkanDevice : IDevice
 			return;
 		mDestroyed = true;
 
+		if (mPoolManager != null)
+			mPoolManager.Destroy();
+
 		ClearAndDeleteItems!(mGraphicsQueues);
 		ClearAndDeleteItems!(mComputeQueues);
 		ClearAndDeleteItems!(mTransferQueues);
@@ -433,9 +442,38 @@ class VulkanDevice : IDevice
 		}
 		return .Ok(module);
 	}
-	public Result<IBindGroupLayout> CreateBindGroupLayout(BindGroupLayoutDesc desc) => NotYetPorted<IBindGroupLayout>("CreateBindGroupLayout");
-	public Result<IBindGroup> CreateBindGroup(BindGroupDesc desc) => NotYetPorted<IBindGroup>("CreateBindGroup");
-	public Result<IPipelineLayout> CreatePipelineLayout(PipelineLayoutDesc desc) => NotYetPorted<IPipelineLayout>("CreatePipelineLayout");
+	public Result<IBindGroupLayout> CreateBindGroupLayout(BindGroupLayoutDesc desc)
+	{
+		let layout = new VulkanBindGroupLayout();
+		if (layout.Initialize(mDevice, desc, mBindingShifts) case .Err)
+		{
+			delete layout;
+			return .Err;
+		}
+		return .Ok(layout);
+	}
+
+	public Result<IBindGroup> CreateBindGroup(BindGroupDesc desc)
+	{
+		let group = new VulkanBindGroup();
+		if (group.Initialize(mDevice, mPoolManager, desc, mBindingShifts) case .Err)
+		{
+			delete group;
+			return .Err;
+		}
+		return .Ok(group);
+	}
+
+	public Result<IPipelineLayout> CreatePipelineLayout(PipelineLayoutDesc desc)
+	{
+		let layout = new VulkanPipelineLayout();
+		if (layout.Initialize(mDevice, desc) case .Err)
+		{
+			delete layout;
+			return .Err;
+		}
+		return .Ok(layout);
+	}
 	public Result<IPipelineCache> CreatePipelineCache(PipelineCacheDesc desc) => NotYetPorted<IPipelineCache>("CreatePipelineCache");
 	public Result<IRenderPipeline> CreateRenderPipeline(RenderPipelineDesc desc) => NotYetPorted<IRenderPipeline>("CreateRenderPipeline");
 	public Result<IComputePipeline> CreateComputePipeline(ComputePipelineDesc desc) => NotYetPorted<IComputePipeline>("CreateComputePipeline");
@@ -508,9 +546,33 @@ class VulkanDevice : IDevice
 		}
 		x = null;
 	}
-	public void DestroyBindGroupLayout(ref IBindGroupLayout x) {}
-	public void DestroyBindGroup(ref IBindGroup x) {}
-	public void DestroyPipelineLayout(ref IPipelineLayout x) {}
+	public void DestroyBindGroupLayout(ref IBindGroupLayout x)
+	{
+		if (let layout = x as VulkanBindGroupLayout)
+		{
+			layout.Cleanup(mDevice);
+			delete layout;
+		}
+		x = null;
+	}
+	public void DestroyBindGroup(ref IBindGroup x)
+	{
+		if (let group = x as VulkanBindGroup)
+		{
+			group.Cleanup(mPoolManager);
+			delete group;
+		}
+		x = null;
+	}
+	public void DestroyPipelineLayout(ref IPipelineLayout x)
+	{
+		if (let layout = x as VulkanPipelineLayout)
+		{
+			layout.Cleanup(mDevice);
+			delete layout;
+		}
+		x = null;
+	}
 	public void DestroyPipelineCache(ref IPipelineCache x) {}
 	public void DestroyRenderPipeline(ref IRenderPipeline x) {}
 	public void DestroyComputePipeline(ref IComputePipeline x) {}
@@ -535,4 +597,70 @@ class VulkanDevice : IDevice
 	}
 	public void DestroySwapChain(ref ISwapChain x) {}
 	public void DestroySurface(ref ISurface x) {}
+
+	// ---- extensions ----
+	//
+	// These OVERRIDE the interface defaults, which refuse. Leaving the defaults in place
+	// would make an unported path and an unsupported device look identical, and the whole
+	// point of the loud refusal is that they do not.
+
+	/// Sized from a build estimate rather than by the caller: how much room a structure
+	/// needs depends on the geometry AND the driver, so Vulkan is asked.
+	public Result<IAccelStruct> CreateAccelStruct(AccelStructDesc desc)
+	{
+		if (!mRayTracingEnabled)
+		{
+			Console.Error.WriteLine("Sedulous.RHI.Vulkan: CreateAccelStruct needs a device created with ray tracing enabled");
+			return .Err;
+		}
+
+		VkAccelerationStructureBuildGeometryInfoKHR buildInfo = .();
+		buildInfo.type = (desc.Type == .TopLevel)
+			? .VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR
+			: .VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+		buildInfo.geometryCount = 0;
+
+		uint32 primitiveCount = 0;
+		VkAccelerationStructureBuildSizesInfoKHR sizes = .();
+		VulkanNative.vkGetAccelerationStructureBuildSizesKHR(mDevice,
+			.VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, &primitiveCount, &sizes);
+
+		// An estimate with no geometry still needs somewhere to live, so it is floored
+		// rather than becoming a zero sized buffer the driver rejects.
+		let size = Math.Max(sizes.accelerationStructureSize, (uint64)1024);
+
+		let accelStruct = new VulkanAccelStruct();
+		if (accelStruct.Initialize(mDevice, mAdapter, desc, size) case .Err)
+		{
+			delete accelStruct;
+			return .Err;
+		}
+		return .Ok(accelStruct);
+	}
+
+	public void DestroyAccelStruct(ref IAccelStruct accelStruct)
+	{
+		if (let impl = accelStruct as VulkanAccelStruct)
+		{
+			impl.Cleanup(mDevice);
+			delete impl;
+		}
+		accelStruct = null;
+	}
+
+	public Result<IMeshPipeline> CreateMeshPipeline(MeshPipelineDesc desc)
+		=> NotYetPorted<IMeshPipeline>("CreateMeshPipeline");
+	public void DestroyMeshPipeline(ref IMeshPipeline pipeline) { pipeline = null; }
+
+	public Result<IRayTracingPipeline> CreateRayTracingPipeline(RayTracingPipelineDesc desc)
+		=> NotYetPorted<IRayTracingPipeline>("CreateRayTracingPipeline");
+	public void DestroyRayTracingPipeline(ref IRayTracingPipeline pipeline) { pipeline = null; }
+
+	/// Copies out the group handles a shader binding table is built from.
+	public Result<void> GetShaderGroupHandles(IRayTracingPipeline pipeline, uint32 firstGroup,
+		uint32 groupCount, Span<uint8> outData)
+	{
+		Console.Error.WriteLine("Sedulous.RHI.Vulkan: GetShaderGroupHandles is not ported yet");
+		return .Err;
+	}
 }
