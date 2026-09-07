@@ -7,3 +7,5 @@ StartupObject = "Sedulous.RHI.Validation.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.RHI" = "*"
