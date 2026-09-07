@@ -602,18 +602,164 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	// ---- IRayTracingEncoderExt ----
 
+	/// The address a build or a shader reaches this buffer by.
+	///
+	/// Zero when the buffer was not created for it, which the driver rejects rather than
+	/// silently reading nothing.
+	private uint64 GetBufferDeviceAddress(VulkanBuffer buffer)
+	{
+		if (buffer == null)
+			return 0;
+		VkBufferDeviceAddressInfo info = .();
+		info.buffer = buffer.Handle;
+		return VulkanNative.vkGetBufferDeviceAddress(mDevice, &info);
+	}
+
+	private static VkGeometryFlagsKHR ToVkGeometryFlags(GeometryFlags flags)
+	{
+		VkGeometryFlagsKHR result = default;
+		if (flags.HasFlag(.Opaque))
+			result |= .VK_GEOMETRY_OPAQUE_BIT_KHR;
+		if (flags.HasFlag(.NoDuplicateAnyHitInvocation))
+			result |= .VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR;
+		return result;
+	}
+
 	public void BuildBottomLevelAccelStruct(IAccelStruct dst, IBuffer scratchBuffer,
 		uint64 scratchOffset, Span<AccelStructGeometryTriangles> triangles,
 		Span<AccelStructGeometryAABBs> aabbs)
 	{
-		Console.Error.WriteLine("Sedulous.RHI.Vulkan: acceleration structure builds are not ported yet");
+		let accelStruct = dst as VulkanAccelStruct;
+		let scratch = scratchBuffer as VulkanBuffer;
+		if ((accelStruct == null) || (scratch == null))
+			return;
+
+		let total = triangles.Length + aabbs.Length;
+		if (total == 0)
+			return;
+
+		let geometries = scope VkAccelerationStructureGeometryKHR[total];
+		let ranges = scope VkAccelerationStructureBuildRangeInfoKHR[total];
+		int count = 0;
+
+		for (let triangle in triangles)
+		{
+			let vertexBuffer = triangle.VertexBuffer as VulkanBuffer;
+			// A geometry with no vertices is SKIPPED rather than built empty, which keeps
+			// the caller from having to filter its own list.
+			if (vertexBuffer == null)
+				continue;
+
+			VkAccelerationStructureGeometryTrianglesDataKHR data = .();
+			data.vertexFormat = VulkanConversions.ToVkVertexFormat(triangle.VertexFormat);
+			data.vertexData.deviceAddress = GetBufferDeviceAddress(vertexBuffer)
+				+ triangle.VertexOffset;
+			data.vertexStride = triangle.VertexStride;
+			// The highest INDEX, not the count, which is what bounds the driver's reads.
+			data.maxVertex = triangle.VertexCount - 1;
+
+			if (let indexBuffer = triangle.IndexBuffer as VulkanBuffer)
+			{
+				data.indexType = VulkanConversions.ToVkIndexType(triangle.IndexFormat);
+				data.indexData.deviceAddress = GetBufferDeviceAddress(indexBuffer)
+					+ triangle.IndexOffset;
+			}
+			else
+			{
+				data.indexType = .VK_INDEX_TYPE_NONE_KHR;
+			}
+
+			if (let transformBuffer = triangle.TransformBuffer as VulkanBuffer)
+			{
+				data.transformData.deviceAddress = GetBufferDeviceAddress(transformBuffer)
+					+ triangle.TransformOffset;
+			}
+
+			geometries[count] = .();
+			geometries[count].geometryType = .VK_GEOMETRY_TYPE_TRIANGLES_KHR;
+			geometries[count].geometry.triangles = data;
+			geometries[count].flags = ToVkGeometryFlags(triangle.Flags);
+
+			ranges[count] = .();
+			// Indexed geometry counts its INDICES, not its vertices, since the vertex
+			// buffer is then shared between triangles.
+			ranges[count].primitiveCount = (triangle.IndexBuffer != null)
+				? triangle.IndexCount / 3
+				: triangle.VertexCount / 3;
+			count++;
+		}
+
+		for (let aabb in aabbs)
+		{
+			let aabbBuffer = aabb.AabbBuffer as VulkanBuffer;
+			if (aabbBuffer == null)
+				continue;
+
+			VkAccelerationStructureGeometryAabbsDataKHR data = .();
+			data.data.deviceAddress = GetBufferDeviceAddress(aabbBuffer) + aabb.Offset;
+			data.stride = aabb.Stride;
+
+			geometries[count] = .();
+			geometries[count].geometryType = .VK_GEOMETRY_TYPE_AABBS_KHR;
+			geometries[count].geometry.aabbs = data;
+			geometries[count].flags = ToVkGeometryFlags(aabb.Flags);
+
+			ranges[count] = .();
+			ranges[count].primitiveCount = aabb.Count;
+			count++;
+		}
+
+		if (count == 0)
+			return;
+
+		VkAccelerationStructureBuildGeometryInfoKHR buildInfo = .();
+		buildInfo.type = .VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+		// Tracing is what these are built for, so the build pays for a faster traversal.
+		buildInfo.flags = .VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+		buildInfo.mode = .VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+		buildInfo.dstAccelerationStructure = accelStruct.Handle;
+		buildInfo.geometryCount = (uint32)count;
+		buildInfo.pGeometries = &geometries[0];
+		buildInfo.scratchData.deviceAddress = GetBufferDeviceAddress(scratch) + scratchOffset;
+
+		var rangePointer = &ranges[0];
+		VulkanNative.vkCmdBuildAccelerationStructuresKHR(mCommandBuffer, 1, &buildInfo,
+			&rangePointer);
 	}
 
 	public void BuildTopLevelAccelStruct(IAccelStruct dst, IBuffer scratchBuffer,
 		uint64 scratchOffset, IBuffer instanceBuffer, uint64 instanceOffset,
 		uint32 instanceCount)
 	{
-		Console.Error.WriteLine("Sedulous.RHI.Vulkan: acceleration structure builds are not ported yet");
+		let accelStruct = dst as VulkanAccelStruct;
+		let scratch = scratchBuffer as VulkanBuffer;
+		let instances = instanceBuffer as VulkanBuffer;
+		if ((accelStruct == null) || (scratch == null) || (instances == null))
+			return;
+
+		VkAccelerationStructureGeometryInstancesDataKHR data = .();
+		data.data.deviceAddress = GetBufferDeviceAddress(instances) + instanceOffset;
+
+		VkAccelerationStructureGeometryKHR geometry = .();
+		geometry.geometryType = .VK_GEOMETRY_TYPE_INSTANCES_KHR;
+		geometry.geometry.instances = data;
+
+		VkAccelerationStructureBuildGeometryInfoKHR buildInfo = .();
+		buildInfo.type = .VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+		buildInfo.flags = .VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+		buildInfo.mode = .VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+		buildInfo.dstAccelerationStructure = accelStruct.Handle;
+		// A top level structure is always exactly one geometry: the instance list.
+		buildInfo.geometryCount = 1;
+		buildInfo.pGeometries = &geometry;
+		buildInfo.scratchData.deviceAddress = GetBufferDeviceAddress(scratch) + scratchOffset;
+
+		VkAccelerationStructureBuildRangeInfoKHR range = .();
+		range.primitiveCount = instanceCount;
+
+		var rangePointer = &range;
+		VulkanNative.vkCmdBuildAccelerationStructuresKHR(mCommandBuffer, 1, &buildInfo,
+			&rangePointer);
 	}
 
 	public void SetRayTracingPipeline(IRayTracingPipeline pipeline)
@@ -657,6 +803,39 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		IBuffer hitSBT, uint64 hitOffset, uint64 hitStride,
 		uint32 width, uint32 height, uint32 depth)
 	{
-		Console.Error.WriteLine("Sedulous.RHI.Vulkan: TraceRays is not ported yet");
+		let raygen = raygenSBT as VulkanBuffer;
+		// The raygen table is the only one a trace cannot do without.
+		if (raygen == null)
+			return;
+
+		VkStridedDeviceAddressRegionKHR raygenRegion = .();
+		raygenRegion.deviceAddress = GetBufferDeviceAddress(raygen) + raygenOffset;
+		// Size equals stride: the raygen table holds exactly one record, and the spec
+		// requires the two to match for it.
+		raygenRegion.stride = raygenStride;
+		raygenRegion.size = raygenStride;
+
+		VkStridedDeviceAddressRegionKHR missRegion = .();
+		if (let miss = missSBT as VulkanBuffer)
+		{
+			missRegion.deviceAddress = GetBufferDeviceAddress(miss) + missOffset;
+			missRegion.stride = missStride;
+			missRegion.size = missStride;
+		}
+
+		VkStridedDeviceAddressRegionKHR hitRegion = .();
+		if (let hit = hitSBT as VulkanBuffer)
+		{
+			hitRegion.deviceAddress = GetBufferDeviceAddress(hit) + hitOffset;
+			hitRegion.stride = hitStride;
+			hitRegion.size = hitStride;
+		}
+
+		// Left empty: the RHI exposes no callable shaders, and a zeroed region is how
+		// Vulkan is told there are none.
+		VkStridedDeviceAddressRegionKHR callableRegion = .();
+
+		VulkanNative.vkCmdTraceRaysKHR(mCommandBuffer, &raygenRegion, &missRegion, &hitRegion,
+			&callableRegion, width, height, depth);
 	}
 }
