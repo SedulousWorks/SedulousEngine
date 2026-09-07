@@ -252,6 +252,47 @@ class FileProviderTests
 			"and the shader still resolves afterwards");
 	}
 
+	/// Reload detection works with an ABSOLUTE root.
+	///
+	/// A regression test: the mount joins its root with each relative name, so a root that
+	/// is already absolute is the case where a path can end up normalised differently from
+	/// the one the change source reports, and a changed file then matches nothing. Nothing
+	/// changing is reported until something does.
+	[Test]
+	public static void ReloadWorksWithAnAbsoluteRoot()
+	{
+		let root = MakeRoot("absolute", .. scope String());
+		defer { RemoveDirectoryRecursive(root); }
+		// MakeRoot already produces an absolute path, which is the point: this asserts the
+		// provider handles it rather than only handling a relative one.
+		Test.Assert(PathIsAbsolute(root), "the root under test is absolute");
+
+		Write(root, "hot.ps.hlsl", "float4 main() : SV_Target0 { return float4(1,0,0,1); }\n");
+
+		let provider = scope FileShaderSourceProvider();
+		Test.Assert(provider.Initialize(root) case .Ok);
+
+		let changed = scope List<String>();
+		defer { ClearAndDeleteItems!(changed); }
+
+		// Nothing has been touched since the mount was made, so polling past the throttle
+		// must report nothing. A provider that reports a change here would reload every
+		// frame forever.
+		for (int i < FileShaderSourceProvider.PollEveryNCalls * 2 + 1)
+			provider.PollChanges(changed);
+		Test.Assert(changed.IsEmpty, "an untouched tree reports no changes");
+
+		Write(root, "hot.ps.hlsl", "float4 main() : SV_Target0 { return float4(0,1,0,1); }\n");
+
+		for (int i < FileShaderSourceProvider.PollEveryNCalls * 2 + 1)
+		{
+			if (provider.PollChanges(changed))
+				break;
+		}
+		Test.Assert(changed.Count == 1, "and the edit is seen through the absolute root");
+		Test.Assert(changed[0] == "hot");
+	}
+
 	/// An .hlsli edit reloads EVERY shader the provider serves. Which shaders include it is
 	/// unknown, so a full recompile is the correct answer rather than a guess.
 	[Test]
