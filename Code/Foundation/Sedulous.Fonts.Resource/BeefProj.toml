@@ -7,3 +7,11 @@ StartupObject = "Sedulous.Fonts.Resource.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Image" = "*"
+"Sedulous.Fonts" = "*"
+"Sedulous.Fonts.Coverage" = "*"
+"Sedulous.Fonts.DistanceField" = "*"
+"Sedulous.Fonts.TrueType" = "*"
