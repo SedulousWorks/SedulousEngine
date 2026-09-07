@@ -23,24 +23,24 @@ interface ICommandEncoder
 	/// it is noise.
 	void TransitionTexture(ITexture texture, ResourceState oldState, ResourceState newState)
 	{
-		var barrier = TextureBarrier();
+		TextureBarrier barrier = .();
 		barrier.Texture = texture;
 		barrier.OldState = oldState;
 		barrier.NewState = newState;
 
-		var group = BarrierGroup();
+		BarrierGroup group = .();
 		group.TextureBarriers = .(&barrier, 1);
 		Barrier(group);
 	}
 
 	void TransitionBuffer(IBuffer buffer, ResourceState oldState, ResourceState newState)
 	{
-		var barrier = BufferBarrier();
+		BufferBarrier barrier = .();
 		barrier.Buffer = buffer;
 		barrier.OldState = oldState;
 		barrier.NewState = newState;
 
-		var group = BarrierGroup();
+		BarrierGroup group = .();
 		group.BufferBarriers = .(&barrier, 1);
 		Barrier(group);
 	}
