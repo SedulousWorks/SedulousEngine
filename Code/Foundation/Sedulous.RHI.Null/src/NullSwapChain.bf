@@ -56,7 +56,19 @@ class NullSwapChain : ISwapChain
 	public ITexture CurrentTexture => mTexture;
 	public ITextureView CurrentTextureView => mView;
 
-	public Result<void> Present(IQueue queue) => .Ok;
+	/// The queue the last Present was given.
+	///
+	/// Recorded because a real backend CASTS this to its own queue type, so a layer that
+	/// forwards a wrapper instead of the queue it wraps silently fails to present. Nothing
+	/// here casts, so without this the Null backend cannot show that difference and a
+	/// validation layer that forgot to unwrap would pass its tests.
+	public IQueue LastPresentQueue { get; private set; } = null;
+
+	public Result<void> Present(IQueue queue)
+	{
+		LastPresentQueue = queue;
+		return .Ok;
+	}
 
 	public Result<void> Resize(uint32 width, uint32 height)
 	{

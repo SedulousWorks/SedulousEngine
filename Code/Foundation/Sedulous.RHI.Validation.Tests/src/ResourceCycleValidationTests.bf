@@ -74,6 +74,37 @@ class ResourceCycleValidationTests
 		Test.Assert(fixture.Messages.HasError("counts do not match"));
 	}
 
+	/// Present forwards the queue the wrapper WRAPS, not the wrapper.
+	///
+	/// A real backend casts the queue to its own type, so a forwarded wrapper fails that
+	/// cast and presentation silently does nothing; the next acquire then blocks forever on
+	/// an image that was never released. The Null backend casts nothing, which is why it
+	/// records what it was given instead.
+	[Test]
+	public static void PresentForwardsTheUnwrappedQueue()
+	{
+		let fixture = scope ValidationFixture();
+		Test.Assert(fixture.Backend.CreateSurface((void*)(int)1) case .Ok(let surface));
+
+		var desc = SwapChainDesc();
+		desc.Width = 64; desc.Height = 64; desc.BufferCount = 2;
+		Test.Assert(fixture.Device.CreateSwapChain(surface, desc) case .Ok(var swapChain));
+
+		let queue = fixture.Device.GetQueue(.Graphics);
+		Test.Assert(queue is ValidatedQueue, "the device hands out a wrapped queue");
+
+		swapChain.AcquireNextImage().IgnoreError();
+		swapChain.Present(queue).IgnoreError();
+
+		let inner = (swapChain as ValidatedSwapChain).Inner as NullSwapChain;
+		Test.Assert(inner != null);
+		Test.Assert(inner.LastPresentQueue != null, "the inner swap chain was presented to");
+		Test.Assert(!(inner.LastPresentQueue is ValidatedQueue),
+			"and was given the real queue rather than the wrapper");
+
+		fixture.Device.DestroySwapChain(ref swapChain);
+	}
+
 	/// The acquire, present and resize cycle has a strict order that backends enforce with
 	/// a hang.
 	[Test]

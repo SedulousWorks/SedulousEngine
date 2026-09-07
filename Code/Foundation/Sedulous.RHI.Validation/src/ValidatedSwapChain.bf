@@ -40,9 +40,21 @@ class ValidatedSwapChain : ISwapChain
 	{
 		if (!mAcquired)
 			ValidationLog.Warn("SwapChain.Present: no image has been acquired");
-		let result = mInner.Present(queue);
+
+		// UNWRAPPED before forwarding: the inner swap chain casts the queue to its own
+		// backend type, and a wrapper fails that cast. Presentation would then silently do
+		// nothing, and the next acquire would block forever on an image that was never
+		// released.
+		let result = mInner.Present(Unwrap(queue));
 		mAcquired = false;
 		return result;
+	}
+
+	private static IQueue Unwrap(IQueue queue)
+	{
+		if (let validated = queue as ValidatedQueue)
+			return validated.Inner;
+		return queue;
 	}
 
 	/// Resizing destroys the back buffers, so doing it while one is held leaves the caller
