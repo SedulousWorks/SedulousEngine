@@ -7,4 +7,8 @@ StartupObject = "Sedulous.Fonts.DistanceField.Baker.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Fonts" = "*"
+"Sedulous.Fonts.DistanceField" = "*"
 "Sedulous.Fonts.DistanceField.Baker" = "*"
+"Sedulous.Fonts.TrueType" = "*"

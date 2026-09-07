@@ -7,4 +7,6 @@ StartupObject = "Sedulous.Fonts.DistanceField.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Fonts" = "*"
 "Sedulous.Fonts.DistanceField" = "*"
