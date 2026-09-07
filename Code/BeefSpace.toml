@@ -146,6 +146,7 @@ FileVersion = 1
 "Sedulous.Shaders.System.Tests" = {Path = "Foundation/Sedulous.Shaders.System.Tests"}
 "Sedulous.Shaders.Tests" = {Path = "Foundation/Sedulous.Shaders.Tests"}
 "Sedulous.Shell" = {Path = "Foundation/Sedulous.Shell"}
+"Sedulous.Shell.Tests" = {Path = "Foundation/Sedulous.Shell.Tests"}
 "Sedulous.Shell.Null" = {Path = "Foundation/Sedulous.Shell.Null"}
 "Sedulous.Shell.Null.Tests" = {Path = "Foundation/Sedulous.Shell.Null.Tests"}
 "Sedulous.Shell.SDL3" = {Path = "Foundation/Sedulous.Shell.SDL3"}
