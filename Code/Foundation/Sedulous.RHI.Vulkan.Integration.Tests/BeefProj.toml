@@ -1,0 +1,16 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.RHI.Vulkan.Integration.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.RHI.Vulkan.Integration.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.Vulkan" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Shell.SDL3" = "*"
+"Bulkan" = "*"
+"SDL3" = "*"
