@@ -2,8 +2,12 @@ FileVersion = 1
 
 [Project]
 Name = "Samples.RHI.Sample026_DynamicOffsets"
-TargetType = "BeefGUIApplication"
+TargetType = "BeefConsoleApplication"
 StartupObject = "Samples.RHI.Sample026_DynamicOffsets.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Shaders" = "*"
+"Samples.Framework" = "*"
