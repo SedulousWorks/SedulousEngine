@@ -119,8 +119,9 @@ class VulkanQueueTests
 	/// A requested compute queue is granted exactly when the adapter HAS a compute only
 	/// family, and a shader access barrier recorded on it finishes cleanly.
 	///
-	/// The recording is what the pure cases cannot check: that the masked stages are the
-	/// ones that reach the driver, where the validation layers would flag a graphics stage.
+	/// The pure cases pin the mask; this drives the real path, so a driver rejection or a
+	/// crash shows up here. The backend is created WITH the layers on, so a bad mask also
+	/// prints its VUID alongside the run, though nothing here can fail the test on it.
 	[Test]
 	public static void AComputeQueueRecordsAShaderBarrierCleanly()
 	{
@@ -159,18 +160,35 @@ class VulkanQueueTests
 		Test.Assert(pool.CreateEncoder() case .Ok(var encoder));
 
 		// ShaderWrite to ShaderRead: the state whose mapping names ALL_GRAPHICS.
-		var barrier = MemoryBarrier();
-		barrier.OldState = .ShaderWrite;
-		barrier.NewState = .ShaderRead;
-		var barriers = MemoryBarrier[1](barrier);
+		var memoryBarrier = MemoryBarrier();
+		memoryBarrier.OldState = .ShaderWrite;
+		memoryBarrier.NewState = .ShaderRead;
+		var memoryBarriers = MemoryBarrier[1](memoryBarrier);
+
+		// Sample017's exact hand over: a vertex buffer given to compute as storage. This is
+		// the barrier that carries VERTEX_ATTRIBUTE_READ onto a compute family, which the
+		// stage cut alone does not remove.
+		var bufferDesc = BufferDesc();
+		bufferDesc.Size = 256;
+		bufferDesc.Usage = .Vertex | .Storage;
+		bufferDesc.Label = "queue_test_vertices";
+		Test.Assert(device.CreateBuffer(bufferDesc) case .Ok(var buffer));
+
+		var bufferBarrier = BufferBarrier();
+		bufferBarrier.Buffer = buffer;
+		bufferBarrier.OldState = .VertexBuffer;
+		bufferBarrier.NewState = .ShaderWrite;
+		var bufferBarriers = BufferBarrier[1](bufferBarrier);
 
 		var group = BarrierGroup();
-		group.MemoryBarriers = barriers;
+		group.MemoryBarriers = memoryBarriers;
+		group.BufferBarriers = bufferBarriers;
 		encoder.Barrier(group);
 
-		Test.Assert(encoder.Finish() != null, "the barrier recorded and the buffer closed");
+		Test.Assert(encoder.Finish() != null, "the barriers recorded and the buffer closed");
 
 		pool.DestroyEncoder(ref encoder);
+		device.DestroyBuffer(ref buffer);
 		device.DestroyCommandPool(ref pool);
 	}
 }
