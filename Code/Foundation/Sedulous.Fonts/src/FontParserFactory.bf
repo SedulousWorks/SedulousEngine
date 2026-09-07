@@ -32,16 +32,21 @@ static class FontParserFactory
 	}
 
 	/// Takes a parser back out AND gives ownership back: the caller deletes it.
-	public static void UnregisterParser(IFontParser parser)
+	///
+	/// Returns whether it was actually in the table, which is how a caller knows ownership
+	/// came back. False means somebody already emptied the registry, which deleted it, and
+	/// deleting again would be a double free.
+	public static bool UnregisterParser(IFontParser parser)
 	{
 		for (int i < sParsers.Count)
 		{
 			if (sParsers[i] === parser)
 			{
 				sParsers.RemoveAt(i);
-				return;
+				return true;
 			}
 		}
+		return false;
 	}
 
 	/// The FIRST parser claiming the extension, so a later registration is consulted only

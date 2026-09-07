@@ -7,3 +7,7 @@ StartupObject = "Sedulous.Fonts.TrueType.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Fonts" = "*"
+"Sedulous.Fonts.Coverage" = "*"
+"stb_truetype-Beef" = "*"

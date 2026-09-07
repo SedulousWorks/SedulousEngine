@@ -26,16 +26,21 @@ static class FontAtlasBakerFactory
 	}
 
 	/// Takes a baker back out AND gives ownership back: the caller deletes it.
-	public static void UnregisterBaker(IFontAtlasBaker baker)
+	///
+	/// Returns whether it was actually in the table, which is how a caller knows ownership
+	/// came back. False means somebody already emptied the registry, which deleted it, and
+	/// deleting again would be a double free.
+	public static bool UnregisterBaker(IFontAtlasBaker baker)
 	{
 		for (int i < sBakers.Count)
 		{
 			if (sBakers[i] === baker)
 			{
 				sBakers.RemoveAt(i);
-				return;
+				return true;
 			}
 		}
+		return false;
 	}
 
 	public static IFontAtlasBaker GetBakerForExtension(StringView fileExtension)
