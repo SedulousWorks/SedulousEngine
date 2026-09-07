@@ -375,11 +375,64 @@ class VulkanDevice : IDevice
 		return .Err;
 	}
 
-	public Result<IBuffer> CreateBuffer(BufferDesc desc) => NotYetPorted<IBuffer>("CreateBuffer");
-	public Result<ITexture> CreateTexture(TextureDesc desc) => NotYetPorted<ITexture>("CreateTexture");
-	public Result<ITextureView> CreateTextureView(ITexture texture, TextureViewDesc desc) => NotYetPorted<ITextureView>("CreateTextureView");
-	public Result<ISampler> CreateSampler(SamplerDesc desc) => NotYetPorted<ISampler>("CreateSampler");
-	public Result<IShaderModule> CreateShaderModule(ShaderModuleDesc desc) => NotYetPorted<IShaderModule>("CreateShaderModule");
+	public Result<IBuffer> CreateBuffer(BufferDesc desc)
+	{
+		let buffer = new VulkanBuffer();
+		if (buffer.Initialize(mDevice, mAdapter, desc) case .Err)
+		{
+			delete buffer;
+			return .Err;
+		}
+		return .Ok(buffer);
+	}
+
+	public Result<ITexture> CreateTexture(TextureDesc desc)
+	{
+		let texture = new VulkanTexture();
+		if (texture.Initialize(mDevice, mAdapter, desc) case .Err)
+		{
+			delete texture;
+			return .Err;
+		}
+		return .Ok(texture);
+	}
+
+	public Result<ITextureView> CreateTextureView(ITexture texture, TextureViewDesc desc)
+	{
+		let source = texture as VulkanTexture;
+		if (source == null)
+			return .Err;
+
+		let view = new VulkanTextureView();
+		if (view.Initialize(mDevice, source, desc) case .Err)
+		{
+			delete view;
+			return .Err;
+		}
+		return .Ok(view);
+	}
+
+	public Result<ISampler> CreateSampler(SamplerDesc desc)
+	{
+		let sampler = new VulkanSampler();
+		if (sampler.Initialize(mDevice, desc) case .Err)
+		{
+			delete sampler;
+			return .Err;
+		}
+		return .Ok(sampler);
+	}
+
+	public Result<IShaderModule> CreateShaderModule(ShaderModuleDesc desc)
+	{
+		let module = new VulkanShaderModule();
+		if (module.Initialize(mDevice, desc) case .Err)
+		{
+			delete module;
+			return .Err;
+		}
+		return .Ok(module);
+	}
 	public Result<IBindGroupLayout> CreateBindGroupLayout(BindGroupLayoutDesc desc) => NotYetPorted<IBindGroupLayout>("CreateBindGroupLayout");
 	public Result<IBindGroup> CreateBindGroup(BindGroupDesc desc) => NotYetPorted<IBindGroup>("CreateBindGroup");
 	public Result<IPipelineLayout> CreatePipelineLayout(PipelineLayoutDesc desc) => NotYetPorted<IPipelineLayout>("CreatePipelineLayout");
@@ -387,15 +440,74 @@ class VulkanDevice : IDevice
 	public Result<IRenderPipeline> CreateRenderPipeline(RenderPipelineDesc desc) => NotYetPorted<IRenderPipeline>("CreateRenderPipeline");
 	public Result<IComputePipeline> CreateComputePipeline(ComputePipelineDesc desc) => NotYetPorted<IComputePipeline>("CreateComputePipeline");
 	public Result<ICommandPool> CreateCommandPool(QueueType queueType) => NotYetPorted<ICommandPool>("CreateCommandPool");
-	public Result<IFence> CreateFence(uint64 initialValue) => NotYetPorted<IFence>("CreateFence");
-	public Result<IQuerySet> CreateQuerySet(QuerySetDesc desc) => NotYetPorted<IQuerySet>("CreateQuerySet");
+	public Result<IFence> CreateFence(uint64 initialValue)
+	{
+		let fence = new VulkanFence();
+		if (fence.Initialize(mDevice, initialValue) case .Err)
+		{
+			delete fence;
+			return .Err;
+		}
+		return .Ok(fence);
+	}
+
+	public Result<IQuerySet> CreateQuerySet(QuerySetDesc desc)
+	{
+		let querySet = new VulkanQuerySet();
+		if (querySet.Initialize(mDevice, desc) case .Err)
+		{
+			delete querySet;
+			return .Err;
+		}
+		return .Ok(querySet);
+	}
 	public Result<ISwapChain> CreateSwapChain(ISurface surface, SwapChainDesc desc) => NotYetPorted<ISwapChain>("CreateSwapChain");
 
-	public void DestroyBuffer(ref IBuffer x) {}
-	public void DestroyTexture(ref ITexture x) {}
-	public void DestroyTextureView(ref ITextureView x) {}
-	public void DestroySampler(ref ISampler x) {}
-	public void DestroyShaderModule(ref IShaderModule x) {}
+	public void DestroyBuffer(ref IBuffer x)
+	{
+		if (let resource = x as VulkanBuffer)
+		{
+			resource.Cleanup(mDevice);
+			delete resource;
+		}
+		x = null;
+	}
+	public void DestroyTexture(ref ITexture x)
+	{
+		if (let resource = x as VulkanTexture)
+		{
+			resource.Cleanup(mDevice);
+			delete resource;
+		}
+		x = null;
+	}
+	public void DestroyTextureView(ref ITextureView x)
+	{
+		if (let resource = x as VulkanTextureView)
+		{
+			resource.Cleanup(mDevice);
+			delete resource;
+		}
+		x = null;
+	}
+	public void DestroySampler(ref ISampler x)
+	{
+		if (let resource = x as VulkanSampler)
+		{
+			resource.Cleanup(mDevice);
+			delete resource;
+		}
+		x = null;
+	}
+	public void DestroyShaderModule(ref IShaderModule x)
+	{
+		if (let resource = x as VulkanShaderModule)
+		{
+			resource.Cleanup(mDevice);
+			delete resource;
+		}
+		x = null;
+	}
 	public void DestroyBindGroupLayout(ref IBindGroupLayout x) {}
 	public void DestroyBindGroup(ref IBindGroup x) {}
 	public void DestroyPipelineLayout(ref IPipelineLayout x) {}
@@ -403,8 +515,24 @@ class VulkanDevice : IDevice
 	public void DestroyRenderPipeline(ref IRenderPipeline x) {}
 	public void DestroyComputePipeline(ref IComputePipeline x) {}
 	public void DestroyCommandPool(ref ICommandPool x) {}
-	public void DestroyFence(ref IFence x) {}
-	public void DestroyQuerySet(ref IQuerySet x) {}
+	public void DestroyFence(ref IFence x)
+	{
+		if (let resource = x as VulkanFence)
+		{
+			resource.Cleanup(mDevice);
+			delete resource;
+		}
+		x = null;
+	}
+	public void DestroyQuerySet(ref IQuerySet x)
+	{
+		if (let resource = x as VulkanQuerySet)
+		{
+			resource.Cleanup(mDevice);
+			delete resource;
+		}
+		x = null;
+	}
 	public void DestroySwapChain(ref ISwapChain x) {}
 	public void DestroySurface(ref ISurface x) {}
 }
