@@ -7,3 +7,7 @@ StartupObject = "Sedulous.Fonts.Coverage.Baker.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Fonts" = "*"
+"Sedulous.Fonts.Coverage" = "*"
+"Sedulous.Fonts.TrueType" = "*"
