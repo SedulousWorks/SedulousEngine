@@ -349,4 +349,21 @@ class SDL3ShellTests
 		fixture.Shell.ProcessEvents();
 		Test.Assert(fixture.Shell.Input.HoverWindow == 0);
 	}
+
+	/// Every window system has a name for the log, and none of them share one: the whole
+	/// point is to compare this line against the graphics backend's.
+	[Test]
+	public static void EveryWindowSystemHasItsOwnName()
+	{
+		let systems = scope WindowSystem[](.Unknown, .Win32, .X11, .Wayland, .Cocoa, .Web);
+		let seen = scope List<String>();
+		for (let system in systems)
+		{
+			let name = WindowSystems.Name(system);
+			Test.Assert(!name.IsEmpty);
+			for (let previous in seen)
+				Test.Assert(previous != name, scope $"two systems both named {name}");
+			seen.Add(scope:: String(name));
+		}
+	}
 }
