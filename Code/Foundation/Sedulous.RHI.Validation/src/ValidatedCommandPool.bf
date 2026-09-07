@@ -34,24 +34,32 @@ class ValidatedCommandPool : ICommandPool
 		return .Err;
 	}
 
+	/// Destroys one encoder, wrapper and all.
+	///
+	/// The wrapper is owned HERE rather than by Reset, because a caller may reset the pool
+	/// and then destroy an encoder it still holds. Freeing wrappers on reset would make
+	/// that ordinary sequence read freed memory.
 	public void DestroyEncoder(ref ICommandEncoder encoder)
 	{
 		if (let validated = encoder as ValidatedCommandEncoder)
 		{
 			var inner = validated.Inner;
 			mInner.DestroyEncoder(ref inner);
+			mEncoders.Remove(validated);
+			delete validated;
 			encoder = null;
 			return;
 		}
 		mInner.DestroyEncoder(ref encoder);
 	}
 
-	/// Resetting invalidates every encoder and bundle from this pool, so the wrappers go
-	/// with them: keeping one would let a caller record into a reset allocator, which is
-	/// exactly the DX12 crash the pool contract exists to prevent.
+	/// Resetting invalidates every encoder and bundle this pool produced.
+	///
+	/// BUNDLE encoders are freed here, since nothing else owns them. Command encoders are
+	/// not: destroying one after a reset is an ordinary sequence, and freeing them here
+	/// would turn it into a use after free.
 	public void Reset()
 	{
-		ClearAndDeleteItems!(mEncoders);
 		delete mBundleEncoder;
 		mBundleEncoder = null;
 		mInner.Reset();

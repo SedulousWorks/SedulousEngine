@@ -306,6 +306,53 @@ class VulkanCommandTests
 		sDevice.DestroyBuffer(ref firstBuffer);
 	}
 
+	/// An encoder can be destroyed AFTER the pool it came from was reset.
+	///
+	/// That order is ordinary: a caller resets the pool for the next frame and then
+	/// releases the encoder it still holds. A reset that freed encoders itself would turn
+	/// the following destroy into a read of freed memory, which is a crash rather than a
+	/// wrong picture.
+	[Test]
+	public static void AnEncoderSurvivesUntilItIsDestroyed()
+	{
+		if (!Ready()) { Console.WriteLine("SKIP: no Vulkan"); return; }
+
+		let queue = sDevice.GetQueue(.Graphics);
+		Test.Assert(sDevice.CreateCommandPool(.Graphics) case .Ok(var pool));
+		Test.Assert(sDevice.CreateFence(0) case .Ok(var fence));
+
+		var descriptor = BufferDesc();
+		descriptor.Size = 256;
+		descriptor.Usage = .CopyDst | .CopySrc;
+		descriptor.Memory = .GpuOnly;
+		Test.Assert(sDevice.CreateBuffer(descriptor) case .Ok(var source));
+		Test.Assert(sDevice.CreateBuffer(descriptor) case .Ok(var destination));
+
+		Test.Assert(pool.CreateEncoder() case .Ok(var encoder));
+		encoder.CopyBufferToBuffer(source, 0, destination, 0, 256);
+		var buffers = ICommandBuffer[1](encoder.Finish());
+		queue.Submit(buffers, fence, 1);
+		Test.Assert(fence.Wait(1));
+
+		// Reset FIRST, destroy after: the sequence the samples use.
+		pool.Reset();
+		pool.DestroyEncoder(ref encoder);
+		Test.Assert(encoder == null, "the caller's handle was cleared");
+
+		// The pool is still usable, so the reset did what it was for.
+		Test.Assert(pool.CreateEncoder() case .Ok(var next));
+		next.CopyBufferToBuffer(source, 0, destination, 0, 256);
+		var moreBuffers = ICommandBuffer[1](next.Finish());
+		queue.Submit(moreBuffers, fence, 2);
+		Test.Assert(fence.Wait(2), "the pool still works afterwards");
+		pool.DestroyEncoder(ref next);
+
+		sDevice.DestroyFence(ref fence);
+		sDevice.DestroyCommandPool(ref pool);
+		sDevice.DestroyBuffer(ref destination);
+		sDevice.DestroyBuffer(ref source);
+	}
+
 	/// A pool hands out a fresh encoder after a reset, and the second one records and
 	/// submits just as the first did.
 	[Test]

@@ -85,9 +85,21 @@ class VulkanCommandPool : ICommandPool
 		return .Ok(encoder);
 	}
 
-	/// Releases the caller's handle. The POOL owns the encoder until it is reset, because
-	/// the command buffer behind it is still the pool's.
-	public void DestroyEncoder(ref ICommandEncoder encoder) => encoder = null;
+	/// Destroys one encoder.
+	///
+	/// The encoder is owned HERE rather than by the pool's reset, because a caller is
+	/// allowed to reset the pool and then destroy an encoder it still holds, which is what
+	/// the samples do. A reset that freed encoders would leave that call reading freed
+	/// memory. The command BUFFER behind it stays the pool's and comes back on reset.
+	public void DestroyEncoder(ref ICommandEncoder encoder)
+	{
+		if (let vulkanEncoder = encoder as VulkanCommandEncoder)
+		{
+			mEncoders.Remove(vulkanEncoder);
+			delete vulkanEncoder;
+		}
+		encoder = null;
+	}
 
 	/// Recycles everything the pool produced.
 	///
@@ -100,7 +112,8 @@ class VulkanCommandPool : ICommandPool
 		for (let buffer in mTrackedBuffers)
 			mFreeHandles.Add(buffer.Handle);
 		ClearAndDeleteItems!(mTrackedBuffers);
-		ClearAndDeleteItems!(mEncoders);
+		// Encoders are NOT freed here. A caller may reset and then destroy an encoder it
+		// still holds, and freeing them here would make that a use after free.
 
 		// Each bundle encoder frees the bundle it produced, so a bundle outlives its
 		// encoder but not the pool's next reset.
