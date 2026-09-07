@@ -2,8 +2,12 @@ FileVersion = 1
 
 [Project]
 Name = "Samples.RHI.Sample006_Blending"
-TargetType = "BeefGUIApplication"
+TargetType = "BeefConsoleApplication"
 StartupObject = "Samples.RHI.Sample006_Blending.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Shaders" = "*"
+"Samples.Framework" = "*"
