@@ -45,7 +45,7 @@ class TestPlugin : IRuntimePlugin
 		}
 
 		if (RegistersASerializable)
-			SerializableRegistry.Register(PluginOwnedType.TypeId, () => new PluginOwnedType());
+			GlobalSerializableRegistry.Register(PluginOwnedType.TypeId, () => new PluginOwnedType());
 	}
 
 	public void OnUnload(Context context)
@@ -118,12 +118,12 @@ class PluginHostTests
 		let context = scope Context();
 		Trace.Clear();
 
-		SerializableRegistry.Clear();
-		defer SerializableRegistry.Clear();
+		GlobalSerializableRegistry.Clear();
+		defer GlobalSerializableRegistry.Clear();
 
 		// Something the HOST registered, which must survive the plugin coming and going.
-		SerializableRegistry.Register(HostOwnedType.TypeId, () => new HostOwnedType());
-		Test.Assert(SerializableRegistry.Count == 1);
+		GlobalSerializableRegistry.Register(HostOwnedType.TypeId, () => new HostOwnedType());
+		Test.Assert(GlobalSerializableRegistry.Count == 1);
 
 		let plugin = scope TestPlugin("registrar");
 		plugin.RegistersASerializable = true;
@@ -131,16 +131,16 @@ class PluginHostTests
 		let host = scope PluginHost(context);
 		host.Add(plugin);
 
-		Test.Assert(SerializableRegistry.IsRegistered(PluginOwnedType.TypeId), "the plugin added its type");
-		Test.Assert(SerializableRegistry.Count == 2);
+		Test.Assert(GlobalSerializableRegistry.IsRegistered(PluginOwnedType.TypeId), "the plugin added its type");
+		Test.Assert(GlobalSerializableRegistry.Count == 2);
 
 		host.UnloadAll();
 
-		Test.Assert(!SerializableRegistry.IsRegistered(PluginOwnedType.TypeId),
+		Test.Assert(!GlobalSerializableRegistry.IsRegistered(PluginOwnedType.TypeId),
 			"the plugin's registration went with it");
-		Test.Assert(SerializableRegistry.IsRegistered(HostOwnedType.TypeId),
+		Test.Assert(GlobalSerializableRegistry.IsRegistered(HostOwnedType.TypeId),
 			"and the host's did not");
-		Test.Assert(SerializableRegistry.Count == 1);
+		Test.Assert(GlobalSerializableRegistry.Count == 1);
 	}
 
 	/// A plugin that registers nothing takes nothing away, which is the case that would
@@ -151,18 +151,18 @@ class PluginHostTests
 		let context = scope Context();
 		Trace.Clear();
 
-		SerializableRegistry.Clear();
-		defer SerializableRegistry.Clear();
-		SerializableRegistry.Register(HostOwnedType.TypeId, () => new HostOwnedType());
-		SerializableRegistry.Register(PluginOwnedType.TypeId, () => new PluginOwnedType());
+		GlobalSerializableRegistry.Clear();
+		defer GlobalSerializableRegistry.Clear();
+		GlobalSerializableRegistry.Register(HostOwnedType.TypeId, () => new HostOwnedType());
+		GlobalSerializableRegistry.Register(PluginOwnedType.TypeId, () => new PluginOwnedType());
 
 		let plugin = scope TestPlugin("quiet");
 		let host = scope PluginHost(context);
 		host.Add(plugin);
 		host.UnloadAll();
 
-		Test.Assert(SerializableRegistry.Count == 2, "both registrations are untouched");
-		Test.Assert(SerializableRegistry.IsRegistered(PluginOwnedType.TypeId));
+		Test.Assert(GlobalSerializableRegistry.Count == 2, "both registrations are untouched");
+		Test.Assert(GlobalSerializableRegistry.IsRegistered(PluginOwnedType.TypeId));
 	}
 
 	/// Re-registering a type the host already had is NOT the plugin's to take away. The
@@ -173,9 +173,9 @@ class PluginHostTests
 		let context = scope Context();
 		Trace.Clear();
 
-		SerializableRegistry.Clear();
-		defer SerializableRegistry.Clear();
-		SerializableRegistry.Register(PluginOwnedType.TypeId, () => new PluginOwnedType());
+		GlobalSerializableRegistry.Clear();
+		defer GlobalSerializableRegistry.Clear();
+		GlobalSerializableRegistry.Register(PluginOwnedType.TypeId, () => new PluginOwnedType());
 
 		let plugin = scope TestPlugin("overrider");
 		plugin.RegistersASerializable = true; // registers the SAME id the host already had
@@ -184,7 +184,7 @@ class PluginHostTests
 		host.Add(plugin);
 		host.UnloadAll();
 
-		Test.Assert(SerializableRegistry.IsRegistered(PluginOwnedType.TypeId),
+		Test.Assert(GlobalSerializableRegistry.IsRegistered(PluginOwnedType.TypeId),
 			"it was already registered before the plugin, so it stays");
 	}
 
