@@ -7,3 +7,5 @@ StartupObject = "Sedulous.Shaders.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Dxc-Beef" = "*"
