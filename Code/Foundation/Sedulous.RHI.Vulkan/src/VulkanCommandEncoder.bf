@@ -447,13 +447,20 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 		for (uint32 level = 1; level < mipLevels; level++)
 		{
-			// The level above becomes readable.
+			// The level above becomes the blit SOURCE.
+			//
+			// For the base level the old layout is UNDEFINED rather than the transfer
+			// destination, because whatever the caller left it in is unknown: an upload
+			// through the transfer batch leaves it shader readable, and naming the wrong
+			// old layout is an error even though the contents are about to be read.
+			// Discarding is safe here only because the base level is read, not written.
 			VkImageMemoryBarrier2 toSource = .();
 			toSource.srcStageMask = (uint64)VkPipelineStageFlags2.VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
 			toSource.srcAccessMask = (uint64)VkAccessFlags2.VK_ACCESS_2_TRANSFER_WRITE_BIT;
 			toSource.dstStageMask = (uint64)VkPipelineStageFlags2.VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
 			toSource.dstAccessMask = (uint64)VkAccessFlags2.VK_ACCESS_2_TRANSFER_READ_BIT;
-			toSource.oldLayout = .VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			toSource.oldLayout = (level == 1) ? .VK_IMAGE_LAYOUT_UNDEFINED
+				: .VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 			toSource.newLayout = .VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 			toSource.srcQueueFamilyIndex = VulkanNative.VK_QUEUE_FAMILY_IGNORED;
 			toSource.dstQueueFamilyIndex = VulkanNative.VK_QUEUE_FAMILY_IGNORED;
@@ -464,9 +471,28 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 					baseArrayLayer = 0, layerCount = target.Desc.ArrayLayerCount
 				};
 
+			// This level becomes the blit DESTINATION. It has never been written, so
+			// UNDEFINED is both true and the cheapest thing to say.
+			VkImageMemoryBarrier2 toDestination = .();
+			toDestination.srcStageMask = (uint64)VkPipelineStageFlags2.VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+			toDestination.srcAccessMask = 0;
+			toDestination.dstStageMask = (uint64)VkPipelineStageFlags2.VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
+			toDestination.dstAccessMask = (uint64)VkAccessFlags2.VK_ACCESS_2_TRANSFER_WRITE_BIT;
+			toDestination.oldLayout = .VK_IMAGE_LAYOUT_UNDEFINED;
+			toDestination.newLayout = .VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			toDestination.srcQueueFamilyIndex = VulkanNative.VK_QUEUE_FAMILY_IGNORED;
+			toDestination.dstQueueFamilyIndex = VulkanNative.VK_QUEUE_FAMILY_IGNORED;
+			toDestination.image = target.Handle;
+			toDestination.subresourceRange = .()
+				{
+					aspectMask = aspect, baseMipLevel = level, levelCount = 1,
+					baseArrayLayer = 0, layerCount = target.Desc.ArrayLayerCount
+				};
+
+			VkImageMemoryBarrier2[2] barriers = .(toSource, toDestination);
 			VkDependencyInfo dependency = .();
-			dependency.imageMemoryBarrierCount = 1;
-			dependency.pImageMemoryBarriers = &toSource;
+			dependency.imageMemoryBarrierCount = 2;
+			dependency.pImageMemoryBarriers = &barriers[0];
 			VulkanNative.vkCmdPipelineBarrier2(mCommandBuffer, &dependency);
 
 			let nextWidth = Math.Max(1, width / 2);
@@ -494,12 +520,34 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 			height = nextHeight;
 		}
 
-		// Every level but the last is now a transfer source; the last is still a
-		// destination. Recorded so a later barrier knows what it is transitioning from.
-		target.SetSubresourceLayout(0, mipLevels - 1, 0, uint32.MaxValue,
+		// The last level was only ever written, so it is brought to match the rest. Leaving
+		// it a destination would make the whole chain non uniform, and the caller's next
+		// barrier over every level would then name the wrong old layout for exactly one.
+		VkImageMemoryBarrier2 lastToSource = .();
+		lastToSource.srcStageMask = (uint64)VkPipelineStageFlags2.VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
+		lastToSource.srcAccessMask = (uint64)VkAccessFlags2.VK_ACCESS_2_TRANSFER_WRITE_BIT;
+		lastToSource.dstStageMask = (uint64)VkPipelineStageFlags2.VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
+		lastToSource.dstAccessMask = (uint64)VkAccessFlags2.VK_ACCESS_2_TRANSFER_READ_BIT;
+		lastToSource.oldLayout = .VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		lastToSource.newLayout = .VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		lastToSource.srcQueueFamilyIndex = VulkanNative.VK_QUEUE_FAMILY_IGNORED;
+		lastToSource.dstQueueFamilyIndex = VulkanNative.VK_QUEUE_FAMILY_IGNORED;
+		lastToSource.image = target.Handle;
+		lastToSource.subresourceRange = .()
+			{
+				aspectMask = aspect, baseMipLevel = mipLevels - 1, levelCount = 1,
+				baseArrayLayer = 0, layerCount = target.Desc.ArrayLayerCount
+			};
+
+		VkDependencyInfo lastDependency = .();
+		lastDependency.imageMemoryBarrierCount = 1;
+		lastDependency.pImageMemoryBarriers = &lastToSource;
+		VulkanNative.vkCmdPipelineBarrier2(mCommandBuffer, &lastDependency);
+
+		// EVERY level is now a transfer source, so the tracking is uniform again.
+		target.CurrentLayout = .VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		target.SetSubresourceLayout(0, mipLevels, 0, uint32.MaxValue,
 			.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-		target.SetSubresourceLayout(mipLevels - 1, 1, 0, uint32.MaxValue,
-			.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	}
 
 	public void ResolveTexture(ITexture src, ITexture dst)

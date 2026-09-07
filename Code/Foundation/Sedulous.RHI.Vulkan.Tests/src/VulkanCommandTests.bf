@@ -1,6 +1,7 @@
 using System;
 using Sedulous.Core;
 using Sedulous.RHI;
+using Bulkan;
 using Sedulous.RHI.Vulkan;
 
 namespace Sedulous.RHI.Vulkan.Tests;
@@ -436,6 +437,81 @@ class VulkanCommandTests
 		sDevice.DestroyCommandPool(ref pool);
 		queue.DestroyTransferBatch(ref batch);
 		sDevice.DestroyBuffer(ref readback);
+		sDevice.DestroyTexture(ref texture);
+	}
+
+	/// Generating a mip chain leaves EVERY level in the same layout.
+	///
+	/// The chain is built by blitting each level from the one above, so mid-generation the
+	/// levels are deliberately split between source and destination. What must be true
+	/// afterwards is that they agree again: a caller's next barrier covers the whole chain
+	/// at once, and one level in a different layout makes that barrier name the wrong old
+	/// layout for exactly that level.
+	///
+	/// The base level's incoming layout is also unknown to the generator, since an upload
+	/// leaves it shader readable, so this uploads through a batch first to put it in that
+	/// state rather than a convenient one.
+	[Test]
+	public static void GeneratingMipmapsLeavesEveryLevelInOneLayout()
+	{
+		if (!Ready()) { Console.WriteLine("SKIP: no Vulkan"); return; }
+
+		const uint32 cWidth = 64;
+		const uint32 cHeight = 64;
+		// 64 halves down to 1 in seven levels.
+		const uint32 cMipCount = 7;
+
+		var textureDesc = TextureDesc();
+		textureDesc.Format = .RGBA8Unorm;
+		textureDesc.Width = cWidth;
+		textureDesc.Height = cHeight;
+		textureDesc.MipLevelCount = cMipCount;
+		textureDesc.Usage = .Sampled | .CopySrc | .CopyDst;
+		Test.Assert(sDevice.CreateTexture(textureDesc) case .Ok(var texture));
+
+		// Uploaded first, so the base level arrives shader readable rather than in
+		// whatever layout would make the generator's job easy.
+		let pixels = scope uint8[cWidth * cHeight * 4];
+		for (int i < pixels.Count)
+			pixels[i] = (uint8)i;
+
+		let queue = sDevice.GetQueue(.Graphics);
+		Test.Assert(queue.CreateTransferBatch() case .Ok(var batch));
+		var layout = TextureDataLayout();
+		layout.BytesPerRow = cWidth * 4;
+		layout.RowsPerImage = cHeight;
+		batch.WriteTexture(texture, pixels, layout, .(cWidth, cHeight, 1));
+		Test.Assert(batch.Submit() case .Ok);
+		queue.DestroyTransferBatch(ref batch);
+
+		let vulkanTexture = texture as VulkanTexture;
+		Test.Assert(vulkanTexture != null);
+		Test.Assert(vulkanTexture.GetSubresourceLayout(0, 0)
+			== .VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			"the upload left the base level shader readable");
+
+		Test.Assert(sDevice.CreateCommandPool(.Graphics) case .Ok(var pool));
+		Test.Assert(pool.CreateEncoder() case .Ok(var encoder));
+		encoder.GenerateMipmaps(texture);
+
+		Test.Assert(sDevice.CreateFence(0) case .Ok(var fence));
+		var buffers = ICommandBuffer[1](encoder.Finish());
+		queue.Submit(buffers, fence, 1);
+		Test.Assert(fence.Wait(1), "the generation completed");
+		Test.Assert(!sDevice.IsLost());
+
+		// Every level, including the LAST, which is the one that is only ever written and
+		// so the one a generator forgets to bring back.
+		for (uint32 level < cMipCount)
+		{
+			Test.Assert(vulkanTexture.GetSubresourceLayout(level, 0)
+				== .VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				"every level ends as a transfer source");
+		}
+
+		sDevice.DestroyFence(ref fence);
+		pool.DestroyEncoder(ref encoder);
+		sDevice.DestroyCommandPool(ref pool);
 		sDevice.DestroyTexture(ref texture);
 	}
 
