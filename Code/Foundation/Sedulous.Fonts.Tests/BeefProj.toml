@@ -8,3 +8,5 @@ StartupObject = "Sedulous.Fonts.Tests.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Fonts" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Image" = "*"
