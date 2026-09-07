@@ -41,14 +41,62 @@ class Model
 	public Span<ModelTexture> Textures => .(mTextures.Ptr, mTextures.Count);
 	public Span<TextureSampler> Samplers => .(mSamplers.Ptr, mSamplers.Count);
 
-	// Adding TAKES OWNERSHIP in every case.
-	public void AddMesh(ModelMesh mesh) => mMeshes.Add(mesh);
-	public void AddMaterial(ModelMaterial material) => mMaterials.Add(material);
-	public void AddBone(ModelBone bone) => mBones.Add(bone);
-	public void AddSkin(ModelSkin skin) => mSkins.Add(skin);
-	public void AddAnimation(ModelAnimation animation) => mAnimations.Add(animation);
-	public void AddTexture(ModelTexture texture) => mTextures.Add(texture);
-	public void AddSampler(TextureSampler sampler) => mSamplers.Add(sampler);
+	// Adding TAKES OWNERSHIP in every case, and every one returns the INDEX the thing
+	// landed at. A model refers to its own parts by index throughout (a mesh part names a
+	// material, a texture names a sampler, a bone names its parent), so a loader that adds
+	// something and then has to point at it needs the index back rather than counting.
+	public int32 AddMesh(ModelMesh mesh)
+	{
+		let index = (int32)mMeshes.Count;
+		mMeshes.Add(mesh);
+		return index;
+	}
+
+	public int32 AddMaterial(ModelMaterial material)
+	{
+		let index = (int32)mMaterials.Count;
+		mMaterials.Add(material);
+		return index;
+	}
+
+	/// Also STAMPS the bone with its index, which is what everything downstream reads:
+	/// BuildBoneHierarchy takes the root from it, a skin's joints are bone indices, and an
+	/// animation channel names the bone it drives by index.
+	public int32 AddBone(ModelBone bone)
+	{
+		let index = (int32)mBones.Count;
+		bone.Index = index;
+		mBones.Add(bone);
+		return index;
+	}
+
+	public int32 AddSkin(ModelSkin skin)
+	{
+		let index = (int32)mSkins.Count;
+		mSkins.Add(skin);
+		return index;
+	}
+
+	public int32 AddAnimation(ModelAnimation animation)
+	{
+		let index = (int32)mAnimations.Count;
+		mAnimations.Add(animation);
+		return index;
+	}
+
+	public int32 AddTexture(ModelTexture texture)
+	{
+		let index = (int32)mTextures.Count;
+		mTextures.Add(texture);
+		return index;
+	}
+
+	public int32 AddSampler(TextureSampler sampler)
+	{
+		let index = (int32)mSamplers.Count;
+		mSamplers.Add(sampler);
+		return index;
+	}
 
 	/// The bounds of every mesh together. Each mesh's own bounds have to be current first.
 	public void CalculateBounds()
