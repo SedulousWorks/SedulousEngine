@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Threading;
 using Bulkan;
 using Sedulous.Core;
@@ -21,6 +22,18 @@ class VulkanTexture : ITexture
 
 	private TextureDesc mDesc;
 	private VkImage mImage;
+
+	/// The layout the whole image is in, when every subresource agrees.
+	public VkImageLayout CurrentLayout = .VK_IMAGE_LAYOUT_UNDEFINED;
+
+	/// Per subresource layouts, used ONLY while they disagree.
+	///
+	/// Empty is the common case and means CurrentLayout covers everything. Tracking per
+	/// subresource is promoted to when part of an image is transitioned on its own, as
+	/// generating mips does, and collapsed back the moment they all match again: an image
+	/// that is uniform is far more common, and a barrier over a uniform image needs no
+	/// per level bookkeeping.
+	private List<VkImageLayout> mSubresourceLayouts = new List<VkImageLayout>() ~ delete _;
 	private VkDeviceMemory mMemory;
 	/// False for a swap chain image, which the chain owns and this only describes.
 	private bool mOwnsImage = true;
@@ -98,6 +111,64 @@ class VulkanTexture : ITexture
 		mImage = image;
 		mDesc = desc;
 		mOwnsImage = false;
+	}
+
+	public VkImageLayout GetSubresourceLayout(uint32 mip, uint32 layer)
+	{
+		if (mSubresourceLayouts.IsEmpty)
+			return CurrentLayout;
+		let index = (int)(mip + layer * mDesc.MipLevelCount);
+		if ((index < 0) || (index >= mSubresourceLayouts.Count))
+			return CurrentLayout;
+		return mSubresourceLayouts[index];
+	}
+
+	/// Records that a range is now in `layout`.
+	public void SetSubresourceLayout(uint32 baseMip, uint32 mipCount, uint32 baseLayer,
+		uint32 layerCount, VkImageLayout layout)
+	{
+		let totalMips = mDesc.MipLevelCount;
+		let totalLayers = Math.Max(mDesc.ArrayLayerCount, 1);
+		let mipEnd = (mipCount == uint32.MaxValue) ? totalMips
+			: Math.Min(baseMip + mipCount, totalMips);
+		let layerEnd = (layerCount == uint32.MaxValue) ? totalLayers
+			: Math.Min(baseLayer + layerCount, totalLayers);
+
+		// The whole image, so collapse to a single layout and drop the per subresource
+		// table entirely.
+		if ((baseMip == 0) && (mipEnd >= totalMips) && (baseLayer == 0)
+			&& (layerEnd >= totalLayers))
+		{
+			CurrentLayout = layout;
+			mSubresourceLayouts.Clear();
+			return;
+		}
+
+		if (mSubresourceLayouts.IsEmpty)
+		{
+			// Nothing changes, so stay uniform rather than paying for a table.
+			if (layout == CurrentLayout)
+				return;
+			mSubresourceLayouts.Resize((int)(totalMips * totalLayers));
+			for (int i < mSubresourceLayouts.Count)
+				mSubresourceLayouts[i] = CurrentLayout;
+		}
+
+		for (uint32 layer = baseLayer; layer < layerEnd; layer++)
+		{
+			for (uint32 mip = baseMip; mip < mipEnd; mip++)
+				mSubresourceLayouts[(int)(mip + layer * totalMips)] = layout;
+		}
+
+		// Back to uniform the moment they all agree again.
+		let first = mSubresourceLayouts[0];
+		for (int i = 1; i < mSubresourceLayouts.Count; i++)
+		{
+			if (mSubresourceLayouts[i] != first)
+				return;
+		}
+		CurrentLayout = first;
+		mSubresourceLayouts.Clear();
 	}
 
 	public void Cleanup(VkDevice device)
