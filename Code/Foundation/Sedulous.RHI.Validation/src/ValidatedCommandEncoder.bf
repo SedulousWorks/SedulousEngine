@@ -10,13 +10,11 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 	private ICommandEncoder mInner;
 	private IRayTracingEncoderExt mInnerRayTracing;
 
-	private bool mFinished = false;
+	private EncoderState mState = .Recording;
 	private ValidatedRenderPassEncoder mRenderPass ~ delete _;
 	private ValidatedComputePassEncoder mComputePass ~ delete _;
 	private ValidatedRenderBundleEncoder mBundleEncoder ~ delete _;
 
-	private bool mRenderPassOpen = false;
-	private bool mComputePassOpen = false;
 	private int mOpenDebugLabels = 0;
 	private bool mRayTracingPipelineBound = false;
 
@@ -30,7 +28,7 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	public IRenderPassEncoder BeginRenderPass(RenderPassDesc desc)
 	{
-		if (Finished("BeginRenderPass"))
+		if (NotRecording("BeginRenderPass"))
 			return null;
 
 		// A pass with nothing attached renders nowhere, which is almost always a descriptor
@@ -52,30 +50,30 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		if (inner == null)
 			return null;
 
-		mRenderPassOpen = true;
+		mState = .InRenderPass;
 		delete mRenderPass;
-		mRenderPass = new ValidatedRenderPassEncoder(inner);
+		mRenderPass = new ValidatedRenderPassEncoder(inner, this);
 		return mRenderPass;
 	}
 
 	public IComputePassEncoder BeginComputePass(StringView label)
 	{
-		if (Finished("BeginComputePass"))
+		if (NotRecording("BeginComputePass"))
 			return null;
 
 		let inner = mInner.BeginComputePass(label);
 		if (inner == null)
 			return null;
 
-		mComputePassOpen = true;
+		mState = .InComputePass;
 		delete mComputePass;
-		mComputePass = new ValidatedComputePassEncoder(inner);
+		mComputePass = new ValidatedComputePassEncoder(inner, this);
 		return mComputePass;
 	}
 
 	public IRenderBundleEncoder CreateRenderBundleEncoder(RenderBundleDesc desc)
 	{
-		if (Finished("CreateRenderBundleEncoder"))
+		if (NotRecording("CreateRenderBundleEncoder"))
 			return null;
 
 		let inner = mInner.CreateRenderBundleEncoder(desc);
@@ -89,7 +87,7 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	public void Barrier(BarrierGroup group)
 	{
-		if (Finished("Barrier"))
+		if (NotRecording("Barrier"))
 			return;
 		mInner.Barrier(group);
 	}
@@ -97,7 +95,7 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 	public void CopyBufferToBuffer(IBuffer src, uint64 srcOffset, IBuffer dst, uint64 dstOffset,
 		uint64 size)
 	{
-		if (Finished("CopyBufferToBuffer"))
+		if (NotRecording("CopyBufferToBuffer"))
 			return;
 		if (src == null)
 		{
@@ -116,7 +114,7 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	public void CopyBufferToTexture(IBuffer src, ITexture dst, BufferTextureCopyRegion region)
 	{
-		if (Finished("CopyBufferToTexture"))
+		if (NotRecording("CopyBufferToTexture"))
 			return;
 		if (src == null)
 		{
@@ -133,7 +131,7 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	public void CopyTextureToBuffer(ITexture src, IBuffer dst, BufferTextureCopyRegion region)
 	{
-		if (Finished("CopyTextureToBuffer"))
+		if (NotRecording("CopyTextureToBuffer"))
 			return;
 		if (src == null)
 		{
@@ -150,7 +148,7 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	public void CopyTextureToTexture(ITexture src, ITexture dst, TextureCopyRegion region)
 	{
-		if (Finished("CopyTextureToTexture"))
+		if (NotRecording("CopyTextureToTexture"))
 			return;
 		if (src == null)
 		{
@@ -167,7 +165,7 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	public void Blit(ITexture src, ITexture dst)
 	{
-		if (Finished("Blit"))
+		if (NotRecording("Blit"))
 			return;
 		if ((src == null) || (dst == null))
 		{
@@ -179,7 +177,7 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	public void GenerateMipmaps(ITexture texture)
 	{
-		if (Finished("GenerateMipmaps"))
+		if (NotRecording("GenerateMipmaps"))
 			return;
 		if (texture == null)
 		{
@@ -191,7 +189,7 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	public void ResolveTexture(ITexture src, ITexture dst)
 	{
-		if (Finished("ResolveTexture"))
+		if (NotRecording("ResolveTexture"))
 			return;
 		if ((src == null) || (dst == null))
 		{
@@ -203,7 +201,7 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	public void ResetQuerySet(IQuerySet querySet, uint32 first, uint32 count)
 	{
-		if (Finished("ResetQuerySet"))
+		if (NotRecording("ResetQuerySet"))
 			return;
 		if (querySet == null)
 		{
@@ -215,7 +213,7 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	public void WriteTimestamp(IQuerySet querySet, uint32 index)
 	{
-		if (Finished("WriteTimestamp"))
+		if (NotRecording("WriteTimestamp"))
 			return;
 		if (querySet == null)
 		{
@@ -228,7 +226,7 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 	public void ResolveQuerySet(IQuerySet querySet, uint32 first, uint32 count, IBuffer dst,
 		uint64 dstOffset)
 	{
-		if (Finished("ResolveQuerySet"))
+		if (NotRecording("ResolveQuerySet"))
 			return;
 		if (querySet == null)
 		{
@@ -277,17 +275,17 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 	/// worse accept: the checks here name which pass rather than leaving a driver error.
 	public ICommandBuffer Finish()
 	{
-		if (mFinished)
+		if (mState == .Finished)
 		{
 			ValidationLog.Error("CommandEncoder.Finish: already finished");
 			return null;
 		}
-		if (mRenderPassOpen && !RenderPassEnded)
+		if (mState == .InRenderPass)
 		{
 			ValidationLog.Error("CommandEncoder.Finish: a render pass is still open");
 			return null;
 		}
-		if (mComputePassOpen && !ComputePassEnded)
+		if (mState == .InComputePass)
 		{
 			ValidationLog.Error("CommandEncoder.Finish: a compute pass is still open");
 			return null;
@@ -295,7 +293,7 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		if (mOpenDebugLabels > 0)
 			ValidationLog.Warn(scope $"CommandEncoder.Finish: {mOpenDebugLabels} debug label(s) were not closed");
 
-		mFinished = true;
+		mState = .Finished;
 		return mInner.Finish();
 	}
 
@@ -305,7 +303,7 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		uint64 scratchOffset, Span<AccelStructGeometryTriangles> triangles,
 		Span<AccelStructGeometryAABBs> aabbs)
 	{
-		if (Finished("BuildBottomLevelAccelStruct"))
+		if (NotRecording("BuildBottomLevelAccelStruct"))
 			return;
 		if (dst == null)
 		{
@@ -327,7 +325,7 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		uint64 scratchOffset, IBuffer instanceBuffer, uint64 instanceOffset,
 		uint32 instanceCount)
 	{
-		if (Finished("BuildTopLevelAccelStruct"))
+		if (NotRecording("BuildTopLevelAccelStruct"))
 			return;
 		if ((dst == null) || (scratchBuffer == null) || (instanceBuffer == null))
 		{
@@ -342,7 +340,7 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	public void SetRayTracingPipeline(IRayTracingPipeline pipeline)
 	{
-		if (Finished("SetRayTracingPipeline"))
+		if (NotRecording("SetRayTracingPipeline"))
 			return;
 		if (pipeline == null)
 		{
@@ -392,7 +390,7 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		IBuffer hitSBT, uint64 hitOffset, uint64 hitStride,
 		uint32 width, uint32 height, uint32 depth)
 	{
-		if (Finished("TraceRays"))
+		if (NotRecording("TraceRays"))
 			return;
 		if (!mRayTracingPipelineBound)
 		{
@@ -412,15 +410,41 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	// ---- guards ----
 
-	private bool RenderPassEnded => (mRenderPass == null) || mRenderPass.[Friend]mEnded;
-	private bool ComputePassEnded => (mComputePass == null) || mComputePass.[Friend]mEnded;
-
 	private bool Finished(StringView operation)
 	{
-		if (!mFinished)
+		if (mState != .Finished)
 			return false;
 		ValidationLog.Error(scope $"CommandEncoder.{operation}: the encoder is already finished");
 		return true;
+	}
+
+	/// True when the operation must NOT go ahead.
+	///
+	/// Most of the encoder's surface is legal only while plainly recording: a copy, a
+	/// barrier or a second pass begun while a pass is open is invalid, and naming which
+	/// state it is actually in is what makes the mistake findable.
+	private bool NotRecording(StringView operation)
+	{
+		if (mState == .Finished)
+		{
+			ValidationLog.Error(scope $"CommandEncoder.{operation}: the encoder is already finished");
+			return true;
+		}
+		if (mState != .Recording)
+		{
+			let openPass = (mState == .InRenderPass) ? "a render pass is open"
+				: "a compute pass is open";
+			ValidationLog.Error(scope $"CommandEncoder.{operation}: expected to be recording, but {openPass}");
+			return true;
+		}
+		return false;
+	}
+
+	/// Called by a pass encoder when it ends, which returns the encoder to recording.
+	public void OnPassEnded()
+	{
+		if (mState != .Finished)
+			mState = .Recording;
 	}
 
 	private bool RayTracingAvailable(StringView operation)

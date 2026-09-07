@@ -9,6 +9,8 @@ class ValidatedRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 {
 	private IRenderPassEncoder mInner;
 	private IMeshShaderPassExt mInnerMeshShaders;
+	/// The encoder that opened this pass, so ending it returns that encoder to recording.
+	private ValidatedCommandEncoder mOwner;
 
 	private bool mEnded = false;
 	private bool mPipelineBound = false;
@@ -16,9 +18,10 @@ class ValidatedRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 	private bool mViewportSet = false;
 	private bool mScissorSet = false;
 
-	public this(IRenderPassEncoder inner)
+	public this(IRenderPassEncoder inner, ValidatedCommandEncoder owner = null)
 	{
 		mInner = inner;
+		mOwner = owner;
 		// Asked ONCE at construction: the answer cannot change, and a cast per call would
 		// pay for the question on every draw.
 		mInnerMeshShaders = inner as IMeshShaderPassExt;
@@ -246,6 +249,8 @@ class ValidatedRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 		}
 		mEnded = true;
 		mInner.End();
+		if (mOwner != null)
+			mOwner.OnPassEnded();
 	}
 
 	// ---- IMeshShaderPassExt ----

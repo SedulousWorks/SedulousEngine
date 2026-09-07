@@ -355,4 +355,95 @@ class EncoderValidationTests
 		bundleEncoder.SetPipeline(pipeline);
 		Test.Assert(fixture.Messages.HasError("already finished"));
 	}
+
+	/// Most of the encoder's surface is legal only while plainly RECORDING. A copy, a
+	/// barrier or a second BeginRenderPass issued while a pass is open is invalid, and a
+	/// backend's response runs from a validation error to undefined behaviour.
+	///
+	/// This is the case the port was missing: it gated everything on "not finished" alone,
+	/// so only finishing with a pass open was caught.
+	[Test]
+	public static void OperationsInsideAnOpenPassAreRefused()
+	{
+		let fixture = scope ValidationFixture();
+		let pass = fixture.BeginPass(var pool, var encoder);
+		Test.Assert(pass != null);
+		let buffer = fixture.MakeBuffer();
+		let texture = fixture.MakeTexture();
+		fixture.Messages.Clear();
+
+		// A pass cannot be nested inside a pass.
+		Test.Assert(encoder.BeginRenderPass(.()) == null);
+		Test.Assert(fixture.Messages.HasError("a render pass is open"),
+			"a second BeginRenderPass while one is open");
+
+		fixture.Messages.Clear();
+		Test.Assert(encoder.BeginComputePass() == null);
+		Test.Assert(fixture.Messages.HasError("a render pass is open"));
+
+		// Nor can transfers or barriers be issued from inside one.
+		fixture.Messages.Clear();
+		encoder.CopyBufferToBuffer(buffer, 0, buffer, 0, 16);
+		Test.Assert(fixture.Messages.HasError("a render pass is open"));
+
+		fixture.Messages.Clear();
+		encoder.Barrier(.());
+		Test.Assert(fixture.Messages.HasError("a render pass is open"));
+
+		fixture.Messages.Clear();
+		encoder.Blit(texture, texture);
+		Test.Assert(fixture.Messages.HasError("a render pass is open"));
+
+		fixture.Messages.Clear();
+		encoder.GenerateMipmaps(texture);
+		Test.Assert(fixture.Messages.HasError("a render pass is open"));
+
+		fixture.Messages.Clear();
+		Test.Assert(encoder.CreateRenderBundleEncoder(.()) == null);
+		Test.Assert(fixture.Messages.HasError("a render pass is open"));
+
+		// Ending the pass puts the encoder back to recording, and the same calls are then
+		// fine. Without that the state machine would be a one way trip.
+		pass.End();
+		fixture.Messages.Clear();
+		encoder.CopyBufferToBuffer(buffer, 0, buffer, 0, 16);
+		encoder.Barrier(.());
+		let described = scope String();
+		fixture.Messages.Describe(described);
+		Test.Assert(fixture.Messages.Count == 0,
+			scope $"after ending the pass these are legal again, but got: {described}");
+
+		Test.Assert(encoder.BeginRenderPass(.()) != null || fixture.Messages.Count > 0,
+			"and a pass can be begun again");
+	}
+
+	/// The same gate over a COMPUTE pass, and it names which kind is open.
+	[Test]
+	public static void OperationsInsideAnOpenComputePassAreRefused()
+	{
+		let fixture = scope ValidationFixture();
+		Test.Assert(fixture.Device.CreateCommandPool(.Graphics) case .Ok(var pool));
+		Test.Assert(pool.CreateEncoder() case .Ok(let encoder));
+		let compute = encoder.BeginComputePass();
+		let buffer = fixture.MakeBuffer();
+		fixture.Messages.Clear();
+
+		encoder.CopyBufferToBuffer(buffer, 0, buffer, 0, 16);
+		Test.Assert(fixture.Messages.HasError("a compute pass is open"),
+			"and it says which kind of pass is open");
+
+		fixture.Messages.Clear();
+		Test.Assert(encoder.BeginRenderPass(.()) == null);
+		Test.Assert(fixture.Messages.HasError("a compute pass is open"));
+
+		fixture.Messages.Clear();
+		encoder.WriteTimestamp(null, 0);
+		Test.Assert(fixture.Messages.HasError("a compute pass is open"),
+			"the state is checked before the argument");
+
+		compute.End();
+		fixture.Messages.Clear();
+		encoder.Barrier(.());
+		Test.Assert(fixture.Messages.Count == 0, "ending it returns the encoder to recording");
+	}
 }

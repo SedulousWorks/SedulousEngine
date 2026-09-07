@@ -7,10 +7,16 @@ namespace Sedulous.RHI.Validation;
 class ValidatedComputePassEncoder : IComputePassEncoder
 {
 	private IComputePassEncoder mInner;
+	/// The encoder that opened this pass, so ending it returns that encoder to recording.
+	private ValidatedCommandEncoder mOwner;
 	private bool mEnded = false;
 	private bool mPipelineBound = false;
 
-	public this(IComputePassEncoder inner) => mInner = inner;
+	public this(IComputePassEncoder inner, ValidatedCommandEncoder owner = null)
+	{
+		mInner = inner;
+		mOwner = owner;
+	}
 
 	public IComputePassEncoder Inner => mInner;
 
@@ -126,6 +132,8 @@ class ValidatedComputePassEncoder : IComputePassEncoder
 		}
 		mEnded = true;
 		mInner.End();
+		if (mOwner != null)
+			mOwner.OnPassEnded();
 	}
 
 	private bool Ended(StringView operation)
