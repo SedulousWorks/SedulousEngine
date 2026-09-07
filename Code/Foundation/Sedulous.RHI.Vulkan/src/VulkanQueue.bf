@@ -42,6 +42,21 @@ class VulkanQueue : IQueue
 	}
 
 	/// Submits with no synchronisation.
+	/// Takes the swap chain's pending acquire and present semaphores, if this queue is the
+	/// one they belong to.
+	///
+	/// AcquireNextImage latches them on the DEVICE, because the queue does not know a swap
+	/// chain exists. They belong to the submission that renders the acquired image, which
+	/// is a GRAPHICS submission: without the queue check whichever queue submitted first
+	/// took them, so an async compute submit would wait on the acquire for nothing and
+	/// signal "present" before the frame had been drawn.
+	private bool TakeSwapChainSync(ref VkSemaphore acquire, ref VkSemaphore present)
+	{
+		if (mType != .Graphics)
+			return false;
+		return mDevice.ConsumePendingSwapChainSync(ref acquire, ref present);
+	}
+
 	public void Submit(Span<ICommandBuffer> commandBuffers)
 	{
 		if (commandBuffers.IsEmpty)
@@ -82,8 +97,7 @@ class VulkanQueue : IQueue
 
 		VkSemaphore acquireSemaphore = .Null;
 		VkSemaphore presentSemaphore = .Null;
-		let hasSwapChainSync = mDevice.ConsumePendingSwapChainSync(ref acquireSemaphore,
-			ref presentSemaphore);
+		let hasSwapChainSync = TakeSwapChainSync(ref acquireSemaphore, ref presentSemaphore);
 
 		var waitSemaphores = VkSemaphore[1](acquireSemaphore);
 		// The wait is on the colour attachment output stage: everything before it can run
@@ -133,15 +147,25 @@ class VulkanQueue : IQueue
 		if (count == 0)
 			return;
 
-		let waitCount = waitFences.Length;
+		// This overload consumes the pending acquire too. DIVERGES from Raptor, where only
+		// the two argument submit does. A sample whose only graphics submission of the
+		// frame waits on another queue's fence, which is exactly what Sample017 does, then
+		// has nobody wait on the acquire and nobody signal the present: the layers report
+		// an unsignalled present semaphore and a presentable image modified without
+		// waiting. What matters is the QUEUE, not which overload was reached for.
+		VkSemaphore acquireSemaphore = .Null;
+		VkSemaphore presentSemaphore = .Null;
+		let hasSwapChainSync = TakeSwapChainSync(ref acquireSemaphore, ref presentSemaphore);
+
+		let waitCount = waitFences.Length + (hasSwapChainSync ? 1 : 0);
 		let waitSemaphores = scope VkSemaphore[waitCount == 0 ? 1 : waitCount];
 		let values = scope uint64[waitCount == 0 ? 1 : waitCount];
-		// Every wait is at the top of the pipe: the RHI does not express a finer stage, and
-		// a broader wait is correct if pessimistic.
+		// Every fence wait is at the top of the pipe: the RHI does not express a finer
+		// stage, and a broader wait is correct if pessimistic.
 		let stages = scope VkPipelineStageFlags[waitCount == 0 ? 1 : waitCount];
 
 		int actualWaits = 0;
-		for (int i < waitCount)
+		for (int i < waitFences.Length)
 		{
 			if (let waitFence = waitFences[i] as VulkanFence)
 			{
@@ -151,15 +175,26 @@ class VulkanQueue : IQueue
 				actualWaits++;
 			}
 		}
+		if (hasSwapChainSync)
+		{
+			waitSemaphores[actualWaits] = acquireSemaphore;
+			// A binary semaphore carries no value, so its slot is zero and ignored.
+			values[actualWaits] = 0;
+			// Colour attachment output, not top of pipe: everything before it can run
+			// before the image has even been acquired.
+			stages[actualWaits] = .VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			actualWaits++;
+		}
 
-		var signalSemaphore = fence.Handle;
-		var signalTarget = signalValue;
+		var signalSemaphores = VkSemaphore[2](fence.Handle, presentSemaphore);
+		var signalValues = uint64[2](signalValue, 0);
+		let signalCount = hasSwapChainSync ? 2 : 1;
 
 		VkTimelineSemaphoreSubmitInfo timelineInfo = .();
 		timelineInfo.waitSemaphoreValueCount = (uint32)actualWaits;
 		timelineInfo.pWaitSemaphoreValues = (actualWaits > 0) ? &values[0] : null;
-		timelineInfo.signalSemaphoreValueCount = 1;
-		timelineInfo.pSignalSemaphoreValues = &signalTarget;
+		timelineInfo.signalSemaphoreValueCount = (uint32)signalCount;
+		timelineInfo.pSignalSemaphoreValues = &signalValues[0];
 
 		VkSubmitInfo submitInfo = .();
 		submitInfo.pNext = &timelineInfo;
@@ -168,8 +203,8 @@ class VulkanQueue : IQueue
 		submitInfo.waitSemaphoreCount = (uint32)actualWaits;
 		submitInfo.pWaitSemaphores = (actualWaits > 0) ? &waitSemaphores[0] : null;
 		submitInfo.pWaitDstStageMask = (actualWaits > 0) ? &stages[0] : null;
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &signalSemaphore;
+		submitInfo.signalSemaphoreCount = (uint32)signalCount;
+		submitInfo.pSignalSemaphores = &signalSemaphores[0];
 
 		if (VulkanNative.vkQueueSubmit(mQueue, 1, &submitInfo, .Null) == .VK_ERROR_DEVICE_LOST)
 			mDevice.MarkLost();

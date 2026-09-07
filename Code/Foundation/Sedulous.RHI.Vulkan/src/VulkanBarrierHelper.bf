@@ -6,6 +6,83 @@ namespace Sedulous.RHI.Vulkan;
 /// Turning a resource state into the stage, access and image layout a Vulkan barrier needs.
 static class VulkanBarrierHelper
 {
+	/// Cuts a stage mask down to what `queue`'s family can actually execute.
+	///
+	/// GetStageAccess names ALL_GRAPHICS | COMPUTE_SHADER for shader access because it does
+	/// not know the queue. A barrier recorded on a compute only or transfer only family
+	/// with a graphics stage in it is INVALID
+	/// (VUID-vkCmdPipelineBarrier2-srcStageMask-03849 and its siblings). A graphics family
+	/// executes everything, so it is left alone. A mask the cut would empty, a render
+	/// target state on a compute queue, becomes ALL_COMMANDS: valid on every family and
+	/// merely stronger than needed.
+	public static VkPipelineStageFlags2 MaskStagesForQueue(VkPipelineStageFlags2 stages,
+		QueueType queue)
+	{
+		if ((queue == .Graphics) || (stages == 0))
+			return stages;
+
+		const VkPipelineStageFlags2 cAnyFamily = .VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
+			| .VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT
+			| .VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
+			| .VK_PIPELINE_STAGE_2_HOST_BIT
+			| .VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT
+			| .VK_PIPELINE_STAGE_2_COPY_BIT
+			| .VK_PIPELINE_STAGE_2_CLEAR_BIT;
+		const VkPipelineStageFlags2 cCompute = cAnyFamily
+			| .VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
+			| .VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT
+			| .VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR
+			| .VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR
+			| .VK_PIPELINE_STAGE_2_BLIT_BIT
+			| .VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+
+		let allowed = (queue == .Compute) ? cCompute : cAnyFamily;
+		let masked = stages & allowed;
+		return (masked != 0) ? masked : .VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+	}
+
+	/// Cuts an access mask down the same way, to what the retained stages can support.
+	///
+	/// Cutting the stages alone is NOT enough: VERTEX_ATTRIBUTE_READ left in an access mask
+	/// whose stages were reduced to ALL_COMMANDS on a compute family is still rejected,
+	/// because ALL_COMMANDS expands per family and the compute expansion has no stage that
+	/// supports it (VUID-VkBufferMemoryBarrier2-srcAccessMask-03902 and its siblings). An
+	/// empty result is legal and means an execution dependency with no memory dependency.
+	public static VkAccessFlags2 MaskAccessForQueue(VkAccessFlags2 access, QueueType queue)
+	{
+		if ((queue == .Graphics) || (access == 0))
+			return access;
+
+		const VkAccessFlags2 cAnyFamily = .VK_ACCESS_2_TRANSFER_READ_BIT
+			| .VK_ACCESS_2_TRANSFER_WRITE_BIT
+			| .VK_ACCESS_2_HOST_READ_BIT
+			| .VK_ACCESS_2_HOST_WRITE_BIT
+			| .VK_ACCESS_2_MEMORY_READ_BIT
+			| .VK_ACCESS_2_MEMORY_WRITE_BIT;
+		const VkAccessFlags2 cCompute = cAnyFamily
+			| .VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT
+			| .VK_ACCESS_2_UNIFORM_READ_BIT
+			| .VK_ACCESS_2_SHADER_READ_BIT
+			| .VK_ACCESS_2_SHADER_WRITE_BIT
+			| .VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
+			| .VK_ACCESS_2_SHADER_STORAGE_READ_BIT
+			| .VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT
+			| .VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR
+			| .VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+
+		return access & ((queue == .Compute) ? cCompute : cAnyFamily);
+	}
+
+	/// Both halves of a StageAccess cut to one queue family, which is how a caller should
+	/// reach for this: masking one without the other produces a mask pair the layers reject.
+	public static StageAccess MaskForQueue(StageAccess stageAccess, QueueType queue)
+	{
+		var result = StageAccess();
+		result.StageMask = MaskStagesForQueue(stageAccess.StageMask, queue);
+		result.AccessMask = MaskAccessForQueue(stageAccess.AccessMask, queue);
+		return result;
+	}
+
 	/// The stages and accesses a state covers.
 	///
 	/// A state is a FLAG SET, so several reads combine and the masks accumulate: that is

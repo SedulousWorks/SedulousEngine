@@ -171,6 +171,11 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 	public IRenderBundleEncoder CreateRenderBundleEncoder(RenderBundleDesc desc)
 		=> mPool.CreateRenderBundleEncoder(desc);
 
+	/// Every barrier's stages and accesses go through here, because a state maps to them
+	/// without knowing which family will execute them and this encoder does know.
+	private StageAccess ForQueue(StageAccess stageAccess)
+		=> VulkanBarrierHelper.MaskForQueue(stageAccess, mPool.QueueType);
+
 	/// Submits every barrier in the group as ONE dependency, which is what makes a group
 	/// cheaper than the same barriers issued separately.
 	public void Barrier(BarrierGroup group)
@@ -186,8 +191,8 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		for (int i < memoryCount)
 		{
 			let barrier = group.MemoryBarriers[i];
-			let src = VulkanBarrierHelper.GetStageAccess(barrier.OldState);
-			let dst = VulkanBarrierHelper.GetStageAccess(barrier.NewState);
+			let src = ForQueue(VulkanBarrierHelper.GetStageAccess(barrier.OldState));
+			let dst = ForQueue(VulkanBarrierHelper.GetStageAccess(barrier.NewState));
 			memoryBarriers[i] = .();
 			memoryBarriers[i].srcStageMask = (uint64)src.StageMask;
 			memoryBarriers[i].srcAccessMask = (uint64)src.AccessMask;
@@ -198,8 +203,8 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		for (int i < bufferCount)
 		{
 			let barrier = group.BufferBarriers[i];
-			let src = VulkanBarrierHelper.GetStageAccess(barrier.OldState);
-			let dst = VulkanBarrierHelper.GetStageAccess(barrier.NewState);
+			let src = ForQueue(VulkanBarrierHelper.GetStageAccess(barrier.OldState));
+			let dst = ForQueue(VulkanBarrierHelper.GetStageAccess(barrier.NewState));
 			bufferBarriers[i] = .();
 			bufferBarriers[i].srcStageMask = (uint64)src.StageMask;
 			bufferBarriers[i].srcAccessMask = (uint64)src.AccessMask;
@@ -218,8 +223,8 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		for (int i < textureCount)
 		{
 			let barrier = group.TextureBarriers[i];
-			let src = VulkanBarrierHelper.GetStageAccess(barrier.OldState);
-			let dst = VulkanBarrierHelper.GetStageAccess(barrier.NewState);
+			let src = ForQueue(VulkanBarrierHelper.GetStageAccess(barrier.OldState));
+			let dst = ForQueue(VulkanBarrierHelper.GetStageAccess(barrier.NewState));
 			let texture = barrier.Texture as VulkanTexture;
 			let format = (texture != null) ? texture.Desc.Format : TextureFormat.Undefined;
 			let newLayout = VulkanBarrierHelper.GetImageLayout(barrier.NewState, format);

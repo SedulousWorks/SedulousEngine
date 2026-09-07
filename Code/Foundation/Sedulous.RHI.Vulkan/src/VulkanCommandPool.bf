@@ -20,6 +20,7 @@ class VulkanCommandPool : ICommandPool
 	private VkCommandPool mPool;
 	private VulkanDevice mOwner;
 	private uint32 mFamilyIndex;
+	private QueueType mQueueType;
 
 	private List<VkCommandBuffer> mFreeHandles = new .() ~ delete _;
 	private List<VulkanCommandBuffer> mTrackedBuffers = new .() ~ DeleteContainerAndItems!(_);
@@ -33,11 +34,17 @@ class VulkanCommandPool : ICommandPool
 	public VkDevice Device => mDevice;
 	public VulkanDevice Owner => mOwner;
 
+	/// The queue family this pool records for. A barrier must not name a stage the
+	/// family cannot execute, which is what VulkanBarrierHelper.MaskStagesForQueue uses
+	/// it for.
+	public QueueType QueueType => mQueueType;
+
 	public Result<void> Initialize(VkDevice device, VulkanAdapter adapter, QueueType queueType,
 		VulkanDevice owner)
 	{
 		mDevice = device;
 		mOwner = owner;
+		mQueueType = queueType;
 
 		let family = adapter.FindQueueFamily(queueType);
 		if (family < 0)

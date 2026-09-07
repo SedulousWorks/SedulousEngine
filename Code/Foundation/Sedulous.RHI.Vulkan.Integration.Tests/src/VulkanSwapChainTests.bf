@@ -198,6 +198,59 @@ class VulkanSwapChainTests
 		sDevice.DestroySwapChain(ref swapChain);
 	}
 
+	/// A frame whose ONLY graphics submission is the wait-fences overload still presents.
+	///
+	/// The shape Sample017 has: the graphics work waits on another queue's fence, so the
+	/// two argument submit never runs that frame. When only that overload picked up the
+	/// pending acquire, nothing waited on it and nothing signalled the present semaphore,
+	/// and the layers reported a presentable image modified without waiting. What decides
+	/// is the QUEUE, not which overload the caller reached for.
+	[Test]
+	public static void AFrameSubmittedWithWaitFencesStillPresents()
+	{
+		if (!Ready()) { Console.WriteLine("SKIP: no display or no Vulkan"); return; }
+
+		Test.Assert(MakeSwapChain() case .Ok(var swapChain));
+		let queue = sDevice.GetQueue(.Graphics);
+		Test.Assert(sDevice.CreateCommandPool(.Graphics) case .Ok(var pool));
+		Test.Assert(sDevice.CreateFence(0) case .Ok(var fence));
+		// Created ALREADY at the value that will be waited on, so the wait is real but
+		// completes at once and the test needs no second queue to signal it.
+		Test.Assert(sDevice.CreateFence(1) case .Ok(var waitFence));
+
+		let frameCount = swapChain.BufferCount * 2;
+		for (uint32 frame = 1; frame <= frameCount; ++frame)
+		{
+			if (!(swapChain.AcquireNextImage() case .Ok))
+			{
+				Console.WriteLine("SKIP: the surface went out of date");
+				break;
+			}
+
+			Test.Assert(pool.CreateEncoder() case .Ok(var encoder));
+			encoder.TransitionTexture(swapChain.CurrentTexture, .Undefined, .RenderTarget);
+			encoder.TransitionTexture(swapChain.CurrentTexture, .RenderTarget, .Present);
+
+			var buffers = ICommandBuffer[1](encoder.Finish());
+			var waitFences = IFence[1](waitFence);
+			var waitValues = uint64[1](1);
+			queue.Submit(buffers, waitFences, waitValues, fence, (uint64)frame);
+			Test.Assert(fence.Wait((uint64)frame), "the frame's work completed");
+
+			Test.Assert(swapChain.Present(queue) case .Ok, "the frame was presented");
+
+			pool.DestroyEncoder(ref encoder);
+			pool.Reset();
+		}
+
+		Test.Assert(!sDevice.IsLost(), "the device survived the run");
+
+		sDevice.DestroyFence(ref waitFence);
+		sDevice.DestroyFence(ref fence);
+		sDevice.DestroyCommandPool(ref pool);
+		sDevice.DestroySwapChain(ref swapChain);
+	}
+
 	/// A resize rebuilds the chain at the new size and leaves it usable, which a chain that
 	/// leaked its old images or semaphores would not survive.
 	[Test]
