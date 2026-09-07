@@ -7,4 +7,12 @@ StartupObject = "Sedulous.Shaders.Resource.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.Null" = "*"
+"Sedulous.Shaders" = "*"
+"Sedulous.Shaders.System" = "*"
 "Sedulous.Shaders.Resource" = "*"
+"Dxc-Beef" = "*"
