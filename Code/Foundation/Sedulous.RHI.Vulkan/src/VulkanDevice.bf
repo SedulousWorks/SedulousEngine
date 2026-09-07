@@ -407,17 +407,7 @@ class VulkanDevice : IDevice
 		}
 	}
 
-	// ---- IDevice: not yet ported ----
-	//
-	// Each resource type is filled in as it lands. Refusing loudly rather than quietly is
-	// deliberate: a silent .Err here would look like a driver failure rather than an
-	// unfinished port.
-
-	private static Result<T> NotYetPorted<T>(StringView what)
-	{
-		Console.Error.WriteLine(scope $"Sedulous.RHI.Vulkan: {what} is not ported yet");
-		return .Err;
-	}
+	// ---- IDevice: resource creation ----
 
 	public Result<IBuffer> CreateBuffer(BufferDesc desc)
 	{
