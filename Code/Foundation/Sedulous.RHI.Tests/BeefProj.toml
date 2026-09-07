@@ -1,0 +1,11 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.RHI.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.RHI.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.RHI" = "*"

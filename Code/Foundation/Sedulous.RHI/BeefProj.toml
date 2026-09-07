@@ -7,3 +7,4 @@ StartupObject = "Sedulous.RHI.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
