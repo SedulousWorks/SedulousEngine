@@ -57,7 +57,10 @@ struct Ref<T> where T : class
 	{
 		if ((manager == null) || (Id == Guid.Empty))
 			return;
-		mProxy = manager.Bind<T>(Id);
+		// Through the async path while the manager is in that mode, which a scene load
+		// turns on around resolving its resources. The proxy is null until Pump finalizes
+		// it, which Proxy already tolerates.
+		mProxy = manager.AsyncBindsEnabled ? manager.BindAsync<T>(Id) : manager.Bind<T>(Id);
 	}
 
 	/// Re-points at the current identity, dropping the override and any previous binding.

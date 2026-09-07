@@ -46,6 +46,15 @@ class ResourceManager
 	private List<CompletedDecode> mCompleted = new .() ~ delete _;
 	private Monitor mCompletedLock = new .() ~ delete _;
 
+	/// While set, Ref binds route through the async path.
+	private bool mAsyncBinds;
+
+	/// Products a rebuild replaced, waiting out the frames that may still reference them.
+	private List<Grave> mGraveyard = new .() ~ delete _;
+
+	/// Comfortably more than the frames a renderer can have in flight at once.
+	private const uint32 cGraveFrames = 8;
+
 	/// The constructing thread is the main one: finalizing and pumping happen there.
 	public this(IContentDatabase database, JobSystem jobs = null)
 	{
@@ -72,6 +81,13 @@ class ResourceManager
 
 		for (let entry in mHandles)
 			entry.value.Release();
+
+		// Whatever is still parked goes now: there is no next frame to wait for, and the
+		// GPU objects it was being kept alive for are being torn down too.
+		for (let grave in mGraveyard)
+			delete grave.Product;
+		mGraveyard.Clear();
+
 		ClearEdges(mDependencies);
 		ClearEdges(mDependents);
 	}
@@ -181,18 +197,31 @@ class ResourceManager
 	/// this to show progress.
 	public int PendingCount => mPending.Count;
 
+	/// While enabled, Ref.Bind routes through BindAsync rather than Bind.
+	///
+	/// A scene load turns this on around resolving its resources so the whole set decodes
+	/// on workers; the caller then pumps to completion. Off by default, so every existing
+	/// bind stays synchronous. AsyncBindScope is the way to set it.
+	public bool AsyncBindsEnabled => mAsyncBinds;
+	public void SetAsyncBinds(bool enabled) => mAsyncBinds = enabled;
+
 	/// Finalizes what has finished decoding, on the MAIN thread, oldest first, until the
 	/// budget is spent. Tick once a frame BEFORE the subsystems update, so anything spawned
 	/// this frame sees a ready resource.
 	///
 	/// With a pool of no workers, which is the single-threaded case, it also drives queued
 	/// decodes inline: nothing else is going to run them.
-	public void Pump(int maxToFinalize = 16)
+	public void Pump(double budgetSeconds = 0.002)
 	{
 		AssertMainThread();
 
-		var finalized = 0;
-		while (finalized < maxToFinalize)
+		// Corlib's timestamp is in MICROSECONDS on both platforms, which is what the
+		// profiler's clock is built on too.
+		const double cTicksPerSecond = 1000000.0;
+		let started = Stopwatch.GetTimestamp();
+		double Elapsed() => (double)(Stopwatch.GetTimestamp() - started) / cTicksPerSecond;
+
+		while (true)
 		{
 			CompletedDecode entry = default;
 			var have = false;
@@ -208,14 +237,21 @@ class ResourceManager
 
 			if (!have)
 			{
-				// Nothing has run the decode, and with no workers nothing will.
-				if ((mJobs != null) && (mJobs.WorkerCount == 0) && DriveOneInlineDecode())
+				// Nothing has run the decode, and with no workers nothing will. Driving one
+				// inline is still subject to the budget: a single frame must not be spent
+				// decoding a whole scene.
+				if ((mJobs != null) && (mJobs.WorkerCount == 0) && (Elapsed() < budgetSeconds)
+					&& DriveOneInlineDecode())
 					continue;
 				break;
 			}
 
 			FinalizeCompleted(entry);
-			finalized++;
+
+			// Checked AFTER finalizing, so a budget of zero still makes progress: a pump
+			// that can never finalize anything is a load that never completes.
+			if (Elapsed() >= budgetSeconds)
+				break;
 		}
 
 		ReapPending();
@@ -245,7 +281,7 @@ class ResourceManager
 				}
 			}
 
-			Pump(int.MaxValue);
+			Pump(double.MaxValue);
 			if (mPending.IsEmpty || !outstanding)
 				break;
 		}
@@ -334,6 +370,131 @@ class ResourceManager
 
 	// ---- building ----
 
+	// ---- diagnostics ----
+
+	/// Whether a factory is registered for a product type.
+	public bool HasFactory(uint64 productTypeId) => mFactories.ContainsKey(productTypeId);
+
+	public int FactoryCount => mFactories.Count;
+
+	/// The identities the cache holds a handle for but no product.
+	///
+	/// What editor tooling cooks from: a bind that failed because nothing has built that
+	/// resource yet leaves a handle behind, and the list of those IS the work queue. They
+	/// heal off the list as they build, so a cook run empties it rather than being told
+	/// separately what to do.
+	public void CollectUnresolved(List<Guid> outIds)
+	{
+		for (let entry in mHandles)
+		{
+			if (entry.value.Product == null)
+				outIds.Add(entry.key);
+		}
+	}
+
+	/// What the cache is holding, one row per product type, unsorted.
+	///
+	/// Measure before designing eviction. Unreferenced counts the handles whose product
+	/// exists and that NOTHING outside the cache holds, which is exactly what a purge would
+	/// release; a cache-only handle has one reference, the map's own.
+	public void ReportLiveProducts(List<LiveProductRow> outRows)
+	{
+		outRows.Clear();
+		for (let entry in mHandles)
+		{
+			let handle = entry.value;
+			if (handle == null)
+				continue;
+
+			int rowIndex = -1;
+			for (int i < outRows.Count)
+			{
+				if (outRows[i].ProductTypeId == handle.ProductTypeId)
+				{
+					rowIndex = i;
+					break;
+				}
+			}
+			if (rowIndex < 0)
+			{
+				var fresh = LiveProductRow();
+				fresh.ProductTypeId = handle.ProductTypeId;
+				outRows.Add(fresh);
+				rowIndex = outRows.Count - 1;
+			}
+
+			var row = outRows[rowIndex];
+			if (handle.State == .Pending)
+			{
+				row.Pending++;
+			}
+			else if (handle.Product != null)
+			{
+				row.Live++;
+				// Raptor counts STRONG references and calls one cache-only, because its
+				// proxies own the handle. Here a proxy observes it WEAKLY and the cache is
+				// the only strong owner by design, so the same question is asked of the
+				// weak count: the control block starts at one for the cache itself, and
+				// anything above that is a stored proxy still watching.
+				if (handle.Control.WeakCount == 1)
+					row.Unreferenced++;
+			}
+			else
+			{
+				row.Failed++;
+			}
+			outRows[rowIndex] = row;
+		}
+	}
+
+	// ---- garbage ----
+
+	/// Ages the parked products and releases the ones no frame can still be referencing.
+	///
+	/// Ticked once a frame by the host. Without it a hot reload frees a product's GPU
+	/// objects while a frame that was recorded against them is still executing.
+	public void CollectGarbage()
+	{
+		// Taken OUT of the member first. Releasing a product runs its destructor, which can
+		// RE-ENTER the manager: a dying composite drops its child proxies, and that
+		// bookkeeping can park more products. Mutating the list a loop is walking is a use
+		// after free, and it is the crash a mass reload produces, when hundreds of products
+		// age out together.
+		let graves = scope List<Grave>();
+		graves.AddRange(mGraveyard);
+		mGraveyard.Clear();
+
+		let dropped = scope List<Object>();
+		for (var grave in graves)
+		{
+			if (grave.FramesLeft <= 1)
+			{
+				dropped.Add(grave.Product);
+				continue;
+			}
+			grave.FramesLeft--;
+			mGraveyard.Add(grave);
+		}
+
+		// Released only after the walk, so a destructor that parks something new adds to
+		// the NEXT collection rather than to the one in progress.
+		for (let product in dropped)
+			delete product;
+	}
+
+	/// How many products are waiting out their frames. For tests and for a memory report.
+	public int GraveyardCount => mGraveyard.Count;
+
+	private void Bury(Object product)
+	{
+		if (product == null)
+			return;
+		var grave = Grave();
+		grave.Product = product;
+		grave.FramesLeft = cGraveFrames;
+		mGraveyard.Add(grave);
+	}
+
 	private void BuildInto(ResourceHandle handle, uint64 productTypeId, Guid id)
 	{
 		// A rebuild may resolve different children than last time, so the old outgoing
@@ -341,7 +502,10 @@ class ResourceManager
 		ClearForwardDependencies(id);
 
 		handle.SetProductTypeId(productTypeId);
-		handle.Replace(null);
+		// Parked rather than destroyed: a GPU product owns views and buffers that frames
+		// still in flight may reference, and freeing it the instant a hot reload lands is a
+		// use after free on the GPU side. CollectGarbage releases it a few frames later.
+		Bury(handle.Detach(null));
 
 		let instance = mDatabase.GetInstance(id);
 		if (instance == null)
@@ -462,6 +626,12 @@ class ResourceManager
 		if (product == null)
 			return;
 
+		// On the MAIN thread, because this runs inside Pump: a callback that touches the
+		// scene or the renderer has to, and a decode thread cannot. Fired before the
+		// dependents cascade, so a caller waiting on this resource sees it ready before
+		// anything built from it starts rebuilding.
+		entry.Handle.FireOnReady();
+
 		// A child settling revives whatever was built while it was still pending, through
 		// the same edge a reload uses. A composite built against a child that had no
 		// product yet is rebuilt now that there is one, so the result composes rather than
@@ -479,7 +649,7 @@ class ResourceManager
 		if (mPending.TryGetValue(id, let record) && (mJobs != null))
 			mJobs.Wait(record.Counter); // runs the decode here if no worker has
 
-		Pump(int.MaxValue);
+		Pump(double.MaxValue);
 	}
 
 	/// Runs one queued decode on this thread, for a pool with no workers.

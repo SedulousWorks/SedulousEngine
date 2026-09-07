@@ -17,6 +17,7 @@ class ResourceHandle : SharedObject
 	private Object mProduct;
 	private uint64 mProductTypeId;
 	private ResourceState mState = .Unloaded;
+	private delegate void() mOnReady ~ delete _;
 
 	/// The current product, or null. Borrowed: the handle owns it.
 	public Object Product => mProduct;
@@ -26,6 +27,30 @@ class ResourceHandle : SharedObject
 	public ~this()
 	{
 		delete mProduct;
+	}
+
+	/// Fires ONCE, on the main thread, when an async load reaches Ready, and is then
+	/// cleared.
+	///
+	/// Set it before or during Pending. A load that is ALREADY ready fires nothing: the
+	/// callback is for the transition, and a caller holding a ready handle can just look at
+	/// it. Owned here; pass null to cancel.
+	public void SetOnReady(delegate void() callback)
+	{
+		delete mOnReady;
+		mOnReady = callback;
+	}
+
+	/// Taken and cleared BEFORE it is called, so a callback that binds something (and so
+	/// re-enters the manager) cannot see itself still armed and fire twice.
+	internal void FireOnReady()
+	{
+		if (mOnReady == null)
+			return;
+		let callback = mOnReady;
+		mOnReady = null;
+		callback();
+		delete callback;
 	}
 
 	internal void SetProductTypeId(uint64 productTypeId) => mProductTypeId = productTypeId;
@@ -39,5 +64,20 @@ class ResourceHandle : SharedObject
 			return;
 		delete mProduct;
 		mProduct = product;
+	}
+
+	/// Swaps the product WITHOUT destroying the old one, handing it back instead.
+	///
+	/// A rebuild uses this so the outgoing product can be parked rather than freed: a GPU
+	/// product owns views and buffers that frames still in flight may reference, and
+	/// destroying it the instant a hot reload lands is a use after free on the GPU side.
+	/// The manager's graveyard holds it for a few frames.
+	internal Object Detach(Object product)
+	{
+		if (mProduct === product)
+			return null;
+		let old = mProduct;
+		mProduct = product;
+		return old;
 	}
 }

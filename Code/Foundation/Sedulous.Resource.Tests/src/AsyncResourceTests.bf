@@ -57,9 +57,13 @@ class AsyncResourceTests
 		let proxy = manager.BindAsync<TestProduct>(fixture.Author("mesh", 2, 2));
 
 		// Polled rather than waited on, so the main thread never picks the work up itself.
+		//
+		// On the decode having RETURNED, not having started: a decode that is merely under
+		// way has not pushed its result to the completed list, and pumping then finalizes
+		// nothing. That raced, and failed about one run in twenty.
 		for (int attempt < 2000)
 		{
-			if (factory.Decodes > 0)
+			if (factory.DecodesFinished > 0)
 				break;
 			Thread.Sleep(1);
 		}

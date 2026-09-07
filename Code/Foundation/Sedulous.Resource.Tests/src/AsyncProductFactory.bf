@@ -15,7 +15,12 @@ class DecodedIntermediate
 /// ran on so a test can check the contract rather than assume it.
 class AsyncProductFactory : IResourceFactory
 {
+	/// Incremented when a decode STARTS.
 	public int32 Decodes;
+	/// Incremented when a decode has RETURNED. A test that pumps has to poll this one:
+	/// a decode that has merely started has not pushed its result yet, so pumping on
+	/// Decodes races the worker.
+	public int32 DecodesFinished;
 	public int32 Finalizes;
 	public int DecodeThreadId;
 	public int FinalizeThreadId;
@@ -26,10 +31,15 @@ class AsyncProductFactory : IResourceFactory
 	/// The decode succeeds and the finalize refuses, which fails on the other side of the
 	/// thread hop and must still settle rather than hang.
 	public bool RefuseFinalize;
+	/// Milliseconds each finalize takes, for testing that Pump keeps to its budget.
+	public int32 FinalizeSleepMs;
+	/// Cleared to make the factory look like one that never migrated to the two stage
+	/// path, which has to fall back to a synchronous build.
+	public bool SupportsAsyncStage = true;
 
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<TestProduct>();
 
-	public bool SupportsAsync => true;
+	public bool SupportsAsync => SupportsAsyncStage;
 
 	/// Synchronous fallback, for when async is not available.
 	public Object Create(ResourceManager manager, Instance instance)
@@ -49,7 +59,10 @@ class AsyncProductFactory : IResourceFactory
 		Interlocked.Increment(ref Decodes);
 
 		if (RefuseDecode)
+		{
+			Interlocked.Increment(ref DecodesFinished);
 			return null;
+		}
 
 		let source = instance.ReadObject();
 		if (source == null)
@@ -58,6 +71,7 @@ class AsyncProductFactory : IResourceFactory
 
 		let decoded = new DecodedIntermediate();
 		decoded.Area = ((TestSource)source).Width * ((TestSource)source).Height;
+		Interlocked.Increment(ref DecodesFinished);
 		return decoded;
 	}
 
@@ -65,6 +79,8 @@ class AsyncProductFactory : IResourceFactory
 	{
 		FinalizeThreadId = Thread.CurrentThread.Id;
 		Finalizes++;
+		if (FinalizeSleepMs > 0)
+			Thread.Sleep((int32)FinalizeSleepMs);
 
 		let intermediate = (DecodedIntermediate)decoded;
 		defer delete intermediate;
