@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", msdfgen-Beef = "*"}
+
+[Project]
+Name = "msdfgen-Beef-Test"
+StartupObject = "msdfgen_Beef_Test.Program"

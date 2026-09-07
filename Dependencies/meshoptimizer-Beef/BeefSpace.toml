@@ -1,0 +1,11 @@
+FileVersion = 1
+Projects = {meshoptimizer-Beef = {Path = "."}, meshoptimizer-Beef-Test = {Path = "meshoptimizer-Beef-Test"}}
+
+[Workspace]
+StartupProject = "meshoptimizer-Beef-Test"
+
+[Configs.Test.Win32]
+ConfigSelections = {corlib = {Config = "Debug"}}
+
+[Configs.Test.Win64]
+ConfigSelections = {corlib = {Config = "Debug"}}

@@ -1,0 +1,11 @@
+FileVersion = 1
+Projects = {msdfgen-Beef = {Path = "."}, msdfgen-Beef-Test = {Path = "msdfgen-Beef-Test"}}
+
+[Workspace]
+StartupProject = "msdfgen-Beef-Test"
+
+[Configs.Test.Win32]
+ConfigSelections = {corlib = {Config = "Debug"}}
+
+[Configs.Test.Win64]
+ConfigSelections = {corlib = {Config = "Debug"}}
