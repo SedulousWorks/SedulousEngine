@@ -17,7 +17,7 @@ static class FontAtlasTexture
 	/// Null when there is nothing usable to expand, including an atlas whose buffer is
 	/// SHORTER than its own dimensions claim, which is a half constructed atlas rather
 	/// than an empty one.
-	public static Image ExpandR8ToRGBA8(IFontAtlas atlas)
+	public static OwnedImageData ExpandR8ToRGBA8(IFontAtlas atlas)
 	{
 		if (atlas == null)
 			return null;
@@ -32,7 +32,9 @@ static class FontAtlasTexture
 		if (coverage.Length < pixelCount)
 			return null;
 
-		let rgba = scope List<uint8>();
+		// Built directly into the buffer the image adopts, rather than into a scratch list
+		// that is then copied: an atlas is a megabyte or two and this runs on every load.
+		let rgba = new List<uint8>();
 		rgba.Resize(pixelCount * 4);
 		for (int i < pixelCount)
 		{
@@ -41,6 +43,6 @@ static class FontAtlasTexture
 			rgba[i * 4 + 2] = 255;
 			rgba[i * 4 + 3] = coverage[i];
 		}
-		return new Image(width, height, .RGBA8, .(rgba.Ptr, rgba.Count));
+		return new OwnedImageData(width, height, .RGBA8, rgba);
 	}
 }
