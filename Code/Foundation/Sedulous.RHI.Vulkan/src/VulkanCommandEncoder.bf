@@ -329,10 +329,15 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 	{
 		VkBufferImageCopy copy = default;
 		copy.bufferOffset = region.BufferOffset;
-		// Zero means TIGHTLY PACKED, and Vulkan spells that as zero too, so it passes
-		// through rather than being computed here.
-		copy.bufferRowLength = 0;
-		copy.bufferImageHeight = 0;
+		// In TEXELS, not bytes, so the caller's byte stride is converted. Zero means
+		// tightly packed, which is the answer both when the caller gave no stride and when
+		// the format is block compressed: a compressed format has no bytes per PIXEL to
+		// divide by, and its data is packed per level anyway.
+		let bytesPerPixel = TextureFormats.BytesPerPixel(texture.Desc.Format);
+		copy.bufferRowLength = ((bytesPerPixel > 0) && (region.BytesPerRow > 0))
+			? region.BytesPerRow / bytesPerPixel
+			: 0;
+		copy.bufferImageHeight = (bytesPerPixel > 0) ? region.RowsPerImage : 0;
 		copy.imageSubresource = .()
 			{
 				aspectMask = VulkanConversions.GetAspectMask(texture.Desc.Format),

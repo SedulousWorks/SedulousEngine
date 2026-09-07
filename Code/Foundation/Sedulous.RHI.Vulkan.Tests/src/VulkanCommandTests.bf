@@ -440,6 +440,95 @@ class VulkanCommandTests
 		sDevice.DestroyTexture(ref texture);
 	}
 
+	/// A readback into a PADDED buffer lands one image row per buffer row.
+	///
+	/// A copy destination's rows are usually aligned, to 256 bytes for DX12 compatibility,
+	/// so the buffer stride is larger than the image row. A copy that ignored the stride
+	/// would pack the rows tightly and every row after the first would be read from the
+	/// wrong place, which looks like a partly written image rather than like an error.
+	[Test]
+	public static void APaddedReadbackLandsOneRowPerBufferRow()
+	{
+		if (!Ready()) { Console.WriteLine("SKIP: no Vulkan"); return; }
+
+		const uint32 cWidth = 4;
+		const uint32 cHeight = 4;
+		const uint32 cBytesPerPixel = 4;
+		// Far wider than the four pixels a row holds, so a tightly packed copy is
+		// unmistakable.
+		const uint32 cPaddedStride = 256;
+
+		var textureDesc = TextureDesc();
+		textureDesc.Format = .RGBA8Unorm;
+		textureDesc.Width = cWidth;
+		textureDesc.Height = cHeight;
+		textureDesc.Usage = .Sampled | .CopyDst | .CopySrc;
+		Test.Assert(sDevice.CreateTexture(textureDesc) case .Ok(var texture));
+
+		// Each pixel carries its own row, so a row read from the wrong offset shows up as
+		// the wrong number rather than as plausible noise.
+		let source = scope uint8[cWidth * cHeight * cBytesPerPixel];
+		for (uint32 y < cHeight)
+		{
+			for (uint32 x < cWidth)
+			{
+				let at = (y * cWidth + x) * cBytesPerPixel;
+				source[at + 0] = (uint8)(x + 1);
+				source[at + 1] = (uint8)(y + 1);
+				source[at + 2] = 0x77;
+				source[at + 3] = 0xFF;
+			}
+		}
+
+		let queue = sDevice.GetQueue(.Graphics);
+		Test.Assert(queue.CreateTransferBatch() case .Ok(var batch));
+		var uploadLayout = TextureDataLayout();
+		uploadLayout.BytesPerRow = cWidth * cBytesPerPixel;
+		uploadLayout.RowsPerImage = cHeight;
+		batch.WriteTexture(texture, source, uploadLayout, .(cWidth, cHeight, 1));
+		Test.Assert(batch.Submit() case .Ok);
+		queue.DestroyTransferBatch(ref batch);
+
+		var readbackDesc = BufferDesc();
+		readbackDesc.Size = (uint64)cPaddedStride * cHeight;
+		readbackDesc.Usage = .CopyDst;
+		readbackDesc.Memory = .GpuToCpu;
+		Test.Assert(sDevice.CreateBuffer(readbackDesc) case .Ok(var readback));
+
+		Test.Assert(sDevice.CreateCommandPool(.Graphics) case .Ok(var pool));
+		Test.Assert(pool.CreateEncoder() case .Ok(var encoder));
+
+		encoder.TransitionTexture(texture, .ShaderRead, .CopySrc);
+		var region = BufferTextureCopyRegion();
+		region.BytesPerRow = cPaddedStride;
+		region.RowsPerImage = cHeight;
+		region.TextureExtent = .(cWidth, cHeight, 1);
+		encoder.CopyTextureToBuffer(texture, readback, region);
+
+		var buffers = ICommandBuffer[1](encoder.Finish());
+		queue.Submit(buffers);
+		queue.WaitIdle();
+
+		let mapped = (uint8*)readback.Map();
+		Test.Assert(mapped != null);
+		for (uint32 y < cHeight)
+		{
+			for (uint32 x < cWidth)
+			{
+				// Indexed by the PADDED stride, which is where each row must have landed.
+				let at = y * cPaddedStride + x * cBytesPerPixel;
+				Test.Assert(mapped[at + 0] == (uint8)(x + 1), "the column came back");
+				Test.Assert(mapped[at + 1] == (uint8)(y + 1), "at the right row");
+			}
+		}
+		readback.Unmap();
+
+		pool.DestroyEncoder(ref encoder);
+		sDevice.DestroyCommandPool(ref pool);
+		sDevice.DestroyBuffer(ref readback);
+		sDevice.DestroyTexture(ref texture);
+	}
+
 	/// Generating a mip chain leaves EVERY level in the same layout.
 	///
 	/// The chain is built by blitting each level from the one above, so mid-generation the
