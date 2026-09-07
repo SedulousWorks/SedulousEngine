@@ -7,3 +7,13 @@ StartupObject = "Samples.Framework.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.Validation" = "*"
+"Sedulous.RHI.Vulkan" = "*"
+"Sedulous.Shaders" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Shell.SDL3" = "*"
+"Bulkan" = "*"
+"SDL3" = "*"
+"Dxc-Beef" = "*"
