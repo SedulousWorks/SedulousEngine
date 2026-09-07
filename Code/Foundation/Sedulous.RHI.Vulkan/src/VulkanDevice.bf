@@ -28,6 +28,7 @@ class VulkanDevice : IDevice
 	private bool mMeshEnabled = false;
 	private bool mRayTracingEnabled = false;
 	private bool mDestroyed = false;
+	private bool mLost = false;
 
 	private uint32 mShaderGroupHandleSize = 0;
 	private uint32 mShaderGroupHandleAlignment = 0;
@@ -344,7 +345,20 @@ class VulkanDevice : IDevice
 		return support;
 	}
 
-	public bool IsLost() => false;
+	/// STICKY once set: a lost device cannot recover, so the caller must stop submitting
+	/// and rebuild it. Latched from a submit, present or wait that reported the loss.
+	public bool IsLost() => mLost;
+
+	public void MarkLost() => mLost = true;
+
+	/// Takes the swap chain semaphores a pending acquire left, if any, so the next
+	/// submission can wait on the acquire and signal the present.
+	///
+	/// Returns false until the swap chain is ported, which leaves submission
+	/// unsynchronised against presentation rather than waiting on a semaphore nothing
+	/// signals.
+	public bool ConsumePendingSwapChainSync(ref VkSemaphore acquire, ref VkSemaphore present)
+		=> false;
 
 	public void WaitIdle()
 	{
@@ -506,7 +520,16 @@ class VulkanDevice : IDevice
 		}
 		return .Ok(pipeline);
 	}
-	public Result<ICommandPool> CreateCommandPool(QueueType queueType) => NotYetPorted<ICommandPool>("CreateCommandPool");
+	public Result<ICommandPool> CreateCommandPool(QueueType queueType)
+	{
+		let pool = new VulkanCommandPool();
+		if (pool.Initialize(mDevice, mAdapter, queueType, this) case .Err)
+		{
+			delete pool;
+			return .Err;
+		}
+		return .Ok(pool);
+	}
 	public Result<IFence> CreateFence(uint64 initialValue)
 	{
 		let fence = new VulkanFence();
@@ -629,7 +652,15 @@ class VulkanDevice : IDevice
 		}
 		x = null;
 	}
-	public void DestroyCommandPool(ref ICommandPool x) {}
+	public void DestroyCommandPool(ref ICommandPool x)
+	{
+		if (let pool = x as VulkanCommandPool)
+		{
+			pool.Cleanup();
+			delete pool;
+		}
+		x = null;
+	}
 	public void DestroyFence(ref IFence x)
 	{
 		if (let resource = x as VulkanFence)
