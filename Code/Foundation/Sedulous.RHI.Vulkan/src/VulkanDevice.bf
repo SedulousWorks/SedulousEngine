@@ -474,9 +474,38 @@ class VulkanDevice : IDevice
 		}
 		return .Ok(layout);
 	}
-	public Result<IPipelineCache> CreatePipelineCache(PipelineCacheDesc desc) => NotYetPorted<IPipelineCache>("CreatePipelineCache");
-	public Result<IRenderPipeline> CreateRenderPipeline(RenderPipelineDesc desc) => NotYetPorted<IRenderPipeline>("CreateRenderPipeline");
-	public Result<IComputePipeline> CreateComputePipeline(ComputePipelineDesc desc) => NotYetPorted<IComputePipeline>("CreateComputePipeline");
+	public Result<IPipelineCache> CreatePipelineCache(PipelineCacheDesc desc)
+	{
+		let cache = new VulkanPipelineCache();
+		if (cache.Initialize(mDevice, desc) case .Err)
+		{
+			delete cache;
+			return .Err;
+		}
+		return .Ok(cache);
+	}
+
+	public Result<IRenderPipeline> CreateRenderPipeline(RenderPipelineDesc desc)
+	{
+		let pipeline = new VulkanRenderPipeline();
+		if (pipeline.Initialize(mDevice, desc) case .Err)
+		{
+			delete pipeline;
+			return .Err;
+		}
+		return .Ok(pipeline);
+	}
+
+	public Result<IComputePipeline> CreateComputePipeline(ComputePipelineDesc desc)
+	{
+		let pipeline = new VulkanComputePipeline();
+		if (pipeline.Initialize(mDevice, desc) case .Err)
+		{
+			delete pipeline;
+			return .Err;
+		}
+		return .Ok(pipeline);
+	}
 	public Result<ICommandPool> CreateCommandPool(QueueType queueType) => NotYetPorted<ICommandPool>("CreateCommandPool");
 	public Result<IFence> CreateFence(uint64 initialValue)
 	{
@@ -573,9 +602,33 @@ class VulkanDevice : IDevice
 		}
 		x = null;
 	}
-	public void DestroyPipelineCache(ref IPipelineCache x) {}
-	public void DestroyRenderPipeline(ref IRenderPipeline x) {}
-	public void DestroyComputePipeline(ref IComputePipeline x) {}
+	public void DestroyPipelineCache(ref IPipelineCache x)
+	{
+		if (let resource = x as VulkanPipelineCache)
+		{
+			resource.Cleanup(mDevice);
+			delete resource;
+		}
+		x = null;
+	}
+	public void DestroyRenderPipeline(ref IRenderPipeline x)
+	{
+		if (let resource = x as VulkanRenderPipeline)
+		{
+			resource.Cleanup(mDevice);
+			delete resource;
+		}
+		x = null;
+	}
+	public void DestroyComputePipeline(ref IComputePipeline x)
+	{
+		if (let resource = x as VulkanComputePipeline)
+		{
+			resource.Cleanup(mDevice);
+			delete resource;
+		}
+		x = null;
+	}
 	public void DestroyCommandPool(ref ICommandPool x) {}
 	public void DestroyFence(ref IFence x)
 	{
@@ -649,18 +702,71 @@ class VulkanDevice : IDevice
 	}
 
 	public Result<IMeshPipeline> CreateMeshPipeline(MeshPipelineDesc desc)
-		=> NotYetPorted<IMeshPipeline>("CreateMeshPipeline");
-	public void DestroyMeshPipeline(ref IMeshPipeline pipeline) { pipeline = null; }
+	{
+		if (!mMeshEnabled)
+		{
+			Console.Error.WriteLine("Sedulous.RHI.Vulkan: CreateMeshPipeline needs a device created with mesh shaders enabled");
+			return .Err;
+		}
+		let pipeline = new VulkanMeshPipeline();
+		if (pipeline.Initialize(mDevice, desc) case .Err)
+		{
+			delete pipeline;
+			return .Err;
+		}
+		return .Ok(pipeline);
+	}
+
+	public void DestroyMeshPipeline(ref IMeshPipeline pipeline)
+	{
+		if (let impl = pipeline as VulkanMeshPipeline)
+		{
+			impl.Cleanup(mDevice);
+			delete impl;
+		}
+		pipeline = null;
+	}
 
 	public Result<IRayTracingPipeline> CreateRayTracingPipeline(RayTracingPipelineDesc desc)
-		=> NotYetPorted<IRayTracingPipeline>("CreateRayTracingPipeline");
-	public void DestroyRayTracingPipeline(ref IRayTracingPipeline pipeline) { pipeline = null; }
+	{
+		if (!mRayTracingEnabled)
+		{
+			Console.Error.WriteLine("Sedulous.RHI.Vulkan: CreateRayTracingPipeline needs a device created with ray tracing enabled");
+			return .Err;
+		}
+		let pipeline = new VulkanRayTracingPipeline();
+		if (pipeline.Initialize(mDevice, desc) case .Err)
+		{
+			delete pipeline;
+			return .Err;
+		}
+		return .Ok(pipeline);
+	}
+
+	public void DestroyRayTracingPipeline(ref IRayTracingPipeline pipeline)
+	{
+		if (let impl = pipeline as VulkanRayTracingPipeline)
+		{
+			impl.Cleanup(mDevice);
+			delete impl;
+		}
+		pipeline = null;
+	}
 
 	/// Copies out the group handles a shader binding table is built from.
+	///
+	/// The caller sizes its buffer from ShaderGroupHandleSize times the group count, and
+	/// aligns the table entries by ShaderGroupHandleAlignment.
 	public Result<void> GetShaderGroupHandles(IRayTracingPipeline pipeline, uint32 firstGroup,
 		uint32 groupCount, Span<uint8> outData)
 	{
-		Console.Error.WriteLine("Sedulous.RHI.Vulkan: GetShaderGroupHandles is not ported yet");
-		return .Err;
+		let impl = pipeline as VulkanRayTracingPipeline;
+		if ((impl == null) || outData.IsEmpty)
+			return .Err;
+
+		if (VulkanNative.vkGetRayTracingShaderGroupHandlesKHR(mDevice, impl.Handle, firstGroup,
+			groupCount, (uint)outData.Length, outData.Ptr) != .VK_SUCCESS)
+			return .Err;
+		return .Ok;
 	}
 }
