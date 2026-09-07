@@ -56,6 +56,7 @@ FileVersion = 1
 "Sedulous.Http.Tests" = {Path = "Foundation/Sedulous.Http.Tests"}
 "Sedulous.Image" = {Path = "Foundation/Sedulous.Image"}
 "Sedulous.Image.IO" = {Path = "Foundation/Sedulous.Image.IO"}
+"Sedulous.Image.IO.Tests" = {Path = "Foundation/Sedulous.Image.IO.Tests"}
 "Sedulous.Image.Resource" = {Path = "Foundation/Sedulous.Image.Resource"}
 "Sedulous.Image.Tests" = {Path = "Foundation/Sedulous.Image.Tests"}
 "Sedulous.Input" = {Path = "Foundation/Sedulous.Input"}

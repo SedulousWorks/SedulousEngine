@@ -480,7 +480,7 @@ static{
 
 // get a VERY brief reason for failure
 // on most compilers (and ALL modern mainstream compilers) this is threadsafe
-[CLink] public static extern char8* stbi_failure_reason  (void);
+[CLink] public static extern char8* stbi_failure_reason  ();
 
 // free the loaded image -- this is just free()
 [CLink] public static extern void     stbi_image_free      (void *retval_from_stbi_load);
