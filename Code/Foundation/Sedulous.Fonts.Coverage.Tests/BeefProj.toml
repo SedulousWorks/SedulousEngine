@@ -7,4 +7,6 @@ StartupObject = "Sedulous.Fonts.Coverage.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Fonts" = "*"
 "Sedulous.Fonts.Coverage" = "*"
