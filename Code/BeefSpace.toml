@@ -84,6 +84,7 @@ FileVersion = 1
 "Sedulous.Model.FBX" = {Path = "Foundation/Sedulous.Model.FBX"}
 "Sedulous.Model.GLTF" = {Path = "Foundation/Sedulous.Model.GLTF"}
 "Sedulous.Model.IO" = {Path = "Foundation/Sedulous.Model.IO"}
+"Sedulous.Model.IO.Tests" = {Path = "Foundation/Sedulous.Model.IO.Tests"}
 "Sedulous.Model.Resource" = {Path = "Foundation/Sedulous.Model.Resource"}
 "Sedulous.Model.Tests" = {Path = "Foundation/Sedulous.Model.Tests"}
 "Sedulous.Navigation" = {Path = "Foundation/Sedulous.Navigation"}
