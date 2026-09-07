@@ -7,3 +7,12 @@ StartupObject = "Samples.RHI.Smoketest.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.Null" = "*"
+"Sedulous.RHI.Validation" = "*"
+"Sedulous.RHI.Vulkan" = "*"
+"Sedulous.Shaders" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Shell.SDL3" = "*"
+"Samples.Framework" = "*"
