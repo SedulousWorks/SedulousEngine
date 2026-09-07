@@ -14,20 +14,11 @@ namespace Samples.RHI.Sample017_MultiQueue;
 /// A device without a dedicated compute queue falls back to one queue for both, which is
 /// still correct, only not concurrent.
 ///
-/// AS PORTED, that fallback is the path that actually runs: like Raptor, this asks for no
-/// dedicated compute queue, so the device creates none. The framework now has a hook for
-/// requesting one (ComputeQueueCount), and turning it on here reveals two problems in the
-/// shared design rather than in this sample:
-///
-///   - ShaderWrite maps to ALL_GRAPHICS together with COMPUTE_SHADER, and a compute-only
-///     queue family may not name a graphics stage in a barrier at all.
-///   - The swap chain's acquire and present semaphores are latched on the DEVICE and taken
-///     by whichever queue submits first. With two queues that is the compute submit, which
-///     then waits with a graphics-only stage and signals the present before the graphics
-///     work has run.
-///
-/// Both need a decision on the RHI surface, so the sample stays faithful and the finding is
-/// written down here.
+/// Running it on a real second queue found two defects in the shared design rather than in
+/// this sample, both since fixed on both engines: barriers named ALL_GRAPHICS on a compute
+/// only family, which is invalid, and the swap chain's device latched semaphores were taken
+/// by whichever queue submitted first, so the compute submit signalled the present before
+/// the frame was drawn.
 class MultiQueueSample : SampleApp
 {
 	private const String cComputeSource = """

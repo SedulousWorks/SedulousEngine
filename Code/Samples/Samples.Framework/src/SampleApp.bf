@@ -55,11 +55,11 @@ abstract class SampleApp
 
 	/// How many DEDICATED compute queues the sample needs.
 	///
-	/// DIVERGES from Raptor, whose framework always asks for one graphics queue and
-	/// nothing else. Its multi queue sample therefore always reports no dedicated compute
-	/// queue and falls back to running both halves on one, which is the opposite of what
-	/// the sample exists to show. A sample that wants a second queue says so here.
-	protected virtual uint32 ComputeQueueCount => 0;
+	/// One by default, matching Raptor, which now asks unconditionally. The device clamps
+	/// the request to what the adapter actually has, so a GPU with no compute only family
+	/// still gets zero and a sample that checks GetQueueCount sees the real answer rather
+	/// than the framework's silence. A sample wanting none, or more, says so here.
+	protected virtual uint32 ComputeQueueCount => 1;
 
 	/// How many dedicated transfer queues the sample needs.
 	protected virtual uint32 TransferQueueCount => 0;
