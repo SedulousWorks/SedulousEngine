@@ -32,6 +32,39 @@ class VulkanResourceTests
 		return true;
 	}
 
+	/// The device reports the MSAA counts the hardware actually has, for BOTH colour and
+	/// depth.
+	///
+	/// The intersection matters: a device offering 8x colour with 4x depth cannot run an 8x
+	/// scene pass, and reporting the colour limit alone would fail later at texture creation
+	/// instead of here. A backend that never overrode these inherits the interface default
+	/// of one, which silently disables MSAA everywhere.
+	[Test]
+	public static void SampleCountsComeFromTheHardware()
+	{
+		if (!Ready()) { Console.WriteLine("SKIP: no Vulkan"); return; }
+
+		let maximum = sDevice.MaxColorDepthSampleCount;
+		Test.Assert(maximum >= 1, "a device always supports single sampling");
+		Test.Assert((maximum == 1) || (maximum == 2) || (maximum == 4),
+			"the engine ceiling is 4x, so nothing above it is reported");
+
+		Test.Assert(sDevice.SupportsSampleCount(1), "single sampling always works");
+		// Not a power of two, and above the ceiling, are both refused.
+		Test.Assert(!sDevice.SupportsSampleCount(3));
+		Test.Assert(!sDevice.SupportsSampleCount(8));
+
+		// The maximum has to agree with the per count query, or a caller that snaps to the
+		// maximum would then be told the result is unsupported.
+		Test.Assert(sDevice.SupportsSampleCount(maximum));
+
+		// Any discrete GPU has 4x on both attachments, so less than that here means the
+		// query is wrong rather than the hardware being unusual. This is what fails if the
+		// backend stops overriding the queries and falls back to the interface default.
+		Test.Assert(maximum == 4, "the hardware's real 4x colour and depth is reported");
+		Test.Assert(sDevice.SupportsSampleCount(2), "and 2x with it");
+	}
+
 	/// A host visible buffer is PERSISTENTLY mapped, so a write through the pointer is
 	/// visible on the next map without any unmapping in between.
 	[Test]

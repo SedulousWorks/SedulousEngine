@@ -371,10 +371,14 @@ class VulkanTransferBatch : ITransferBatch
 			.VK_PIPELINE_STAGE_TRANSFER_BIT, .None, 0, null, 0, null, 1, &before);
 
 		VkBufferImageCopy region = .();
-		region.bufferOffset = copy.StagingOffset;
+		// The layout's offset is where the image starts WITHIN the staged bytes, on top of
+		// where the staging allocation itself begins.
+		region.bufferOffset = copy.StagingOffset + copy.Layout.Offset;
 		// In TEXELS, not bytes, and zero means tightly packed to the copy extent.
 		region.bufferRowLength = RowLengthInTexels(copy);
-		region.bufferImageHeight = copy.Layout.RowsPerImage;
+		region.bufferImageHeight = HasTexelStride(copy.Dst.Desc.Format)
+			? copy.Layout.RowsPerImage
+			: 0;
 		region.imageSubresource.aspectMask = aspect;
 		region.imageSubresource.mipLevel = copy.MipLevel;
 		region.imageSubresource.baseArrayLayer = copy.ArrayLayer;
@@ -400,15 +404,20 @@ class VulkanTransferBatch : ITransferBatch
 
 	/// Converts the layout's byte stride to the texel stride Vulkan wants.
 	///
-	/// Zero when the stride is unset, or when the format has no byte size to divide by, both
-	/// of which mean tightly packed.
+	/// Zero means tightly packed, which is the answer in two cases: the caller gave no
+	/// stride, and the format is block compressed. A compressed format has no bytes per
+	/// PIXEL to divide by, and its data is uploaded tightly packed per level, which is the
+	/// same rule the command encoder's buffer to texture copy applies.
 	private static uint32 RowLengthInTexels(TextureCopy copy)
 	{
 		if (copy.Layout.BytesPerRow == 0)
 			return 0;
-		let bytesPerPixel = TextureFormats.BytesPerPixel(copy.Dst.Desc.Format);
-		if (bytesPerPixel == 0)
+		if (!HasTexelStride(copy.Dst.Desc.Format))
 			return 0;
-		return copy.Layout.BytesPerRow / bytesPerPixel;
+		return copy.Layout.BytesPerRow / TextureFormats.BytesPerPixel(copy.Dst.Desc.Format);
 	}
+
+	/// Whether a stride in this format can be expressed in texels at all.
+	private static bool HasTexelStride(TextureFormat format)
+		=> TextureFormats.BytesPerPixel(format) > 0;
 }

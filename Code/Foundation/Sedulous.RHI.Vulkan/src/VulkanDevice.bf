@@ -407,6 +407,46 @@ class VulkanDevice : IDevice
 		}
 	}
 
+	/// The highest MSAA count usable for BOTH colour and depth.
+	///
+	/// The intersection, not the colour limit: a scene pass needs the same count on both
+	/// attachments, and a device that offers 8x colour with 4x depth cannot run an 8x pass.
+	///
+	/// Capped at 4x, which is the engine's ceiling and what the web guarantees.
+	public uint32 MaxColorDepthSampleCount
+	{
+		get
+		{
+			let both = ColorDepthSampleCounts();
+			if (both.HasFlag(.VK_SAMPLE_COUNT_4_BIT))
+				return 4;
+			if (both.HasFlag(.VK_SAMPLE_COUNT_2_BIT))
+				return 2;
+			return 1;
+		}
+	}
+
+	/// Whether this EXACT count works for both attachments.
+	///
+	/// Asked per count rather than derived from the maximum because the valid set is not
+	/// simply everything below the ceiling.
+	public bool SupportsSampleCount(uint32 count)
+	{
+		if (count <= 1)
+			return true;
+		// The engine ceiling is 4x, and only powers of two are sample counts at all.
+		if ((count != 2) && (count != 4))
+			return false;
+		// A count of 2 or 4 equals its VK_SAMPLE_COUNT bit, so the mask is tested directly.
+		return ((uint32)ColorDepthSampleCounts() & count) != 0;
+	}
+
+	private VkSampleCountFlags ColorDepthSampleCounts()
+	{
+		let limits = mAdapter.Properties.limits;
+		return limits.framebufferColorSampleCounts & limits.framebufferDepthSampleCounts;
+	}
+
 	// ---- IDevice: resource creation ----
 
 	public Result<IBuffer> CreateBuffer(BufferDesc desc)
@@ -731,20 +771,18 @@ class VulkanDevice : IDevice
 			return .Err;
 		}
 
-		VkAccelerationStructureBuildGeometryInfoKHR buildInfo = .();
-		buildInfo.type = (desc.Type == .TopLevel)
-			? .VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR
-			: .VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-		buildInfo.geometryCount = 0;
-
-		uint32 primitiveCount = 0;
-		VkAccelerationStructureBuildSizesInfoKHR sizes = .();
-		VulkanNative.vkGetAccelerationStructureBuildSizesKHR(mDevice,
-			.VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, &primitiveCount, &sizes);
-
-		// An estimate with no geometry still needs somewhere to live, so it is floored
-		// rather than becoming a zero sized buffer the driver rejects.
-		let size = Math.Max(sizes.accelerationStructureSize, (uint64)1024);
+		// A FLAT allocation, with no build sizes query, matching Raptor.
+		//
+		// The query cannot be asked here: AccelStructDesc carries no geometry, and asking
+		// with a geometry count of zero is invalid for a top level structure and useless for
+		// a bottom level one. So the size is a fixed ceiling instead, large enough for the
+		// structures the engine builds.
+		//
+		// KNOWN LIMIT, shared with Raptor: a structure whose build needs more than this
+		// FAILS, and the build call is where that surfaces. Closing it needs a sizing query
+		// on the RHI surface and a size on the descriptor, which touches every backend.
+		const uint64 cAccelStructSize = 256 * 1024;
+		let size = cAccelStructSize;
 
 		let accelStruct = new VulkanAccelStruct();
 		if (accelStruct.Initialize(mDevice, mAdapter, desc, size) case .Err)

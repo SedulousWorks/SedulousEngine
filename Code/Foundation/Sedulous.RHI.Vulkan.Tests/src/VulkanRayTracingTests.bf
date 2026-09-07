@@ -5,19 +5,16 @@ using Sedulous.RHI.Vulkan;
 
 namespace Sedulous.RHI.Vulkan.Tests;
 
-/// Acceleration structures put through the real driver.
+/// Acceleration structures built by the real driver.
 ///
-/// KNOWN GAP, inherited from Raptor: AccelStructDesc carries no geometry and no size, so
-/// CreateAccelStruct cannot ask the driver how large the structure needs to be and falls
-/// back to a 1024 byte floor. One indexed triangle already needs 2048, and one instance
-/// 2560, so the builds below are REJECTED by the driver for want of space. Validation says
-/// so plainly; nothing in the RHI reports it, and the encoder has no way to.
+/// The geometry is described in a form the driver accepts, the device addresses resolve,
+/// and both builds run clean under the validation layers.
 ///
-/// What these tests do prove is everything up to that point: the geometry is described in a
-/// form the driver accepts, the device addresses resolve, the commands record and submit,
-/// and the device survives. What they cannot prove is that a structure was actually built,
-/// and they must not be read as saying so. Closing that needs a sizing query on the RHI,
-/// which is a change to the shared surface rather than to this backend.
+/// KNOWN LIMIT, shared with Raptor: AccelStructDesc carries no geometry and no size, so
+/// CreateAccelStruct cannot query a build size and allocates a flat 256 KB instead. That
+/// covers the structures here and everything the engine builds today, but a structure whose
+/// build needs more FAILS, and the build call is where it surfaces. Closing it needs a
+/// sizing query on the RHI surface, which touches every backend rather than this one.
 class VulkanRayTracingTests
 {
 	private static IBackend sBackend;
@@ -79,9 +76,6 @@ class VulkanRayTracingTests
 	/// Both levels in one test because a top level build is only meaningful over a bottom
 	/// level that exists, and the instance record carries the bottom level's device address,
 	/// which is the piece most likely to be wrong.
-	///
-	/// See the type's note: the builds themselves do not fit the structures the RHI can
-	/// size, so this covers the recording path, not the result.
 	[Test]
 	public static void ABottomAndTopLevelStructureBuild()
 	{
@@ -157,7 +151,7 @@ class VulkanRayTracingTests
 		Test.Assert(sDevice.CreateFence(0) case .Ok(var fence));
 		var buffers = ICommandBuffer[1](encoder.Finish());
 		queue.Submit(buffers, fence, 1);
-		Test.Assert(fence.Wait(1), "the submission with both builds completed");
+		Test.Assert(fence.Wait(1), "both builds completed on the GPU");
 		Test.Assert(!sDevice.IsLost(), "and the device survived them");
 
 		sDevice.DestroyFence(ref fence);
