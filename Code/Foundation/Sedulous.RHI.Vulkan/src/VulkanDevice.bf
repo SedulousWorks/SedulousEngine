@@ -29,6 +29,9 @@ class VulkanDevice : IDevice
 	private bool mRayTracingEnabled = false;
 	private bool mDestroyed = false;
 	private bool mLost = false;
+	private VkSemaphore mPendingAcquire = .Null;
+	private VkSemaphore mPendingPresent = .Null;
+	private bool mHasPendingSync = false;
 
 	private uint32 mShaderGroupHandleSize = 0;
 	private uint32 mShaderGroupHandleAlignment = 0;
@@ -351,14 +354,32 @@ class VulkanDevice : IDevice
 
 	public void MarkLost() => mLost = true;
 
-	/// Takes the swap chain semaphores a pending acquire left, if any, so the next
-	/// submission can wait on the acquire and signal the present.
+	/// Leaves the semaphores an acquire produced for the next fence-signalling submit.
 	///
-	/// Returns false until the swap chain is ported, which leaves submission
-	/// unsynchronised against presentation rather than waiting on a semaphore nothing
-	/// signals.
+	/// The device is the meeting point because the swap chain does not know which
+	/// submission will draw into the image it just handed out, and the queue does not know
+	/// a swap chain exists.
+	public void SetPendingSwapChainSync(VkSemaphore acquire, VkSemaphore present)
+	{
+		mPendingAcquire = acquire;
+		mPendingPresent = present;
+		mHasPendingSync = true;
+	}
+
+	/// Takes those semaphores, if an acquire left any.
+	///
+	/// CONSUMING: only the first submit after an acquire waits on it, and every later
+	/// submit in the frame runs unsynchronised against presentation, which is correct
+	/// because they are already ordered behind the first on the same queue.
 	public bool ConsumePendingSwapChainSync(ref VkSemaphore acquire, ref VkSemaphore present)
-		=> false;
+	{
+		if (!mHasPendingSync)
+			return false;
+		acquire = mPendingAcquire;
+		present = mPendingPresent;
+		mHasPendingSync = false;
+		return true;
+	}
 
 	public void WaitIdle()
 	{
@@ -551,7 +572,21 @@ class VulkanDevice : IDevice
 		}
 		return .Ok(querySet);
 	}
-	public Result<ISwapChain> CreateSwapChain(ISurface surface, SwapChainDesc desc) => NotYetPorted<ISwapChain>("CreateSwapChain");
+	public Result<ISwapChain> CreateSwapChain(ISurface surface, SwapChainDesc desc)
+	{
+		let vulkanSurface = surface as VulkanSurface;
+		if (vulkanSurface == null)
+			return .Err;
+
+		let swapChain = new VulkanSwapChain();
+		if (swapChain.Initialize(mDevice, mAdapter.PhysicalDevice, vulkanSurface.Handle, desc,
+			this) case .Err)
+		{
+			delete swapChain;
+			return .Err;
+		}
+		return .Ok(swapChain);
+	}
 
 	public void DestroyBuffer(ref IBuffer x)
 	{
@@ -679,7 +714,15 @@ class VulkanDevice : IDevice
 		}
 		x = null;
 	}
-	public void DestroySwapChain(ref ISwapChain x) {}
+	public void DestroySwapChain(ref ISwapChain x)
+	{
+		if (let swapChain = x as VulkanSwapChain)
+		{
+			swapChain.Cleanup();
+			delete swapChain;
+		}
+		x = null;
+	}
 	public void DestroySurface(ref ISurface x) {}
 
 	// ---- extensions ----
