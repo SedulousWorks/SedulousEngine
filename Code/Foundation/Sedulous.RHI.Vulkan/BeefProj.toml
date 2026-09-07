@@ -7,3 +7,6 @@ StartupObject = "Sedulous.RHI.Vulkan.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.RHI" = "*"
+"Bulkan" = "*"
