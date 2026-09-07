@@ -46,6 +46,9 @@ struct Color
 
 	public static Color operator*(Color c, float s) => .(c.R * s, c.G * s, c.B * s, c.A * s);
 	public static Color operator+(Color A, Color B) => .(A.R + B.R, A.G + B.G, A.B + B.B, A.A + B.A);
+	/// [Commutable] so Beef can derive != from this one declaration. Without it every use
+	/// of != warns, and a warning costs the whole incremental build.
+	[Commutable]
 	public static bool operator==(Color A, Color B) =>
 		(A.R == B.R) && (A.G == B.G) && (A.B == B.B) && (A.A == B.A);
 }

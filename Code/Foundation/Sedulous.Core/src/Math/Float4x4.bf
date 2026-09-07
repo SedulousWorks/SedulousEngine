@@ -160,6 +160,9 @@ struct Float4x4
 		v.X * M.M[0][3] + v.Y * M.M[1][3] + v.Z * M.M[2][3] + v.W * M.M[3][3]);
 
 	/// Exact element-wise equality, for an identity fast path.
+	/// [Commutable] so Beef can derive != from this one declaration. Without it every use
+	/// of != warns, and a warning costs the whole incremental build.
+	[Commutable]
 	public static bool operator==(Float4x4 a, Float4x4 b)
 	{
 		for (int row < 4)

@@ -67,6 +67,9 @@ struct Float4
 		.(a.X - b.X, a.Y - b.Y, a.Z - b.Z, a.W - b.W);
 	public static Float4 operator*(Float4 v, float s) => .(v.X * s, v.Y * s, v.Z * s, v.W * s);
 	public static Float4 operator*(float s, Float4 v) => .(v.X * s, v.Y * s, v.Z * s, v.W * s);
+	/// [Commutable] so Beef can derive != from this one declaration. Without it every use
+	/// of != warns, and a warning costs the whole incremental build.
+	[Commutable]
 	public static bool operator==(Float4 a, Float4 b) =>
 		(a.X == b.X) && (a.Y == b.Y) && (a.Z == b.Z) && (a.W == b.W);
 }

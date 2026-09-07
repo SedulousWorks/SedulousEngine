@@ -53,6 +53,9 @@ struct Float3
 	public static Float3 operator/(Float3 v, float s) => .(v.X / s, v.Y / s, v.Z / s);
 	/// Component-wise.
 	public static Float3 operator/(Float3 a, Float3 b) => .(a.X / b.X, a.Y / b.Y, a.Z / b.Z);
+	/// [Commutable] so Beef can derive != from this one declaration. Without it every use
+	/// of != warns, and a warning costs the whole incremental build.
+	[Commutable]
 	public static bool operator==(Float3 a, Float3 b) =>
 		(a.X == b.X) && (a.Y == b.Y) && (a.Z == b.Z);
 }
