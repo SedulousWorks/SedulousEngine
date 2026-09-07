@@ -36,5 +36,9 @@ class ContentFixture
 
 	/// A fresh database over the same directory, which is how a rescan is tested: whatever
 	/// the previous session wrote has to be found again from the files alone.
-	public ContentDatabase Open() => new ContentDatabase(Mount, Factory, "asset");
+	///
+	/// A registry may be given, which is what lets one process hold two databases resolving
+	/// stored type names through different tables.
+	public ContentDatabase Open(SerializableRegistry serializables = null)
+		=> new ContentDatabase(Mount, Factory, "asset", serializables);
 }

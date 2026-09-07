@@ -17,24 +17,25 @@ class UnknownSectionTests
 {
 	private static SerializerFactory Binary() => new (stream, mode) => new BinarySerializerContext(stream, mode);
 
-	/// Registers only the sections a given build is supposed to know about.
-	private static void RegisterOnly(bool includeX)
+	/// A registry holding only the sections a given build is supposed to know about.
+	///
+	/// Its OWN registry rather than the global one cleared and refilled: the point of the
+	/// injection is that a load can be run against an exact table without disturbing what
+	/// the rest of the process registered, and clearing a global disturbs it by definition.
+	private static SerializableRegistry RegistryFor(bool includeX)
 	{
-		SerializableRegistry.Clear();
-		SerializableRegistry.Register(SectionA.TypeId, () => new SectionA());
-		SerializableRegistry.Register(SectionB.TypeId, () => new SectionB());
+		let registry = new SerializableRegistry();
+		registry.Register(SectionA.TypeId, () => new SectionA());
+		registry.Register(SectionB.TypeId, () => new SectionB());
 		if (includeX)
-			SerializableRegistry.Register(SectionX.TypeId, () => new SectionX());
+			registry.Register(SectionX.TypeId, () => new SectionX());
+		return registry;
 	}
 
 	/// Author A, X and B; load with a build that has never heard of X; re-save; then load
 	/// with a build that has. X's data has to come out the far side intact.
 	private static void RunPassthrough(SerializerFactory factory)
 	{
-		// Whatever happens, leave the registry as the other tests expect to find it.
-		defer TestSections.RegisterAll();
-		TestSections.RegisterAll();
-
 		let stored = scope MemoryStream();
 		{
 			let source = scope Settings();
@@ -47,11 +48,12 @@ class UnknownSectionTests
 
 		let resaved = scope MemoryStream();
 		{
-			RegisterOnly(false); // this build has never heard of X
+			let withoutX = RegistryFor(false); // this build has never heard of X
+			defer:: delete withoutX;
 
 			let middle = scope Settings();
 			Test.Assert(stored.Seek(0, .Begin) == 0);
-			Test.Assert(middle.Load(stored, factory) case .Ok, "an unknown section must not abort the load");
+			Test.Assert(middle.Load(stored, factory, withoutX) case .Ok, "an unknown section must not abort the load");
 
 			Test.Assert(middle.SectionCount == 2, "A and B loaded");
 			Test.Assert(middle.UnknownSectionCount == 1, "X was kept verbatim");
@@ -64,11 +66,12 @@ class UnknownSectionTests
 		}
 
 		{
-			RegisterOnly(true); // and now it has
+			let withX = RegistryFor(true); // and now it has
+			defer:: delete withX;
 
 			let target = scope Settings();
 			Test.Assert(resaved.Seek(0, .Begin) == 0);
-			Test.Assert(target.Load(resaved, factory) case .Ok);
+			Test.Assert(target.Load(resaved, factory, withX) case .Ok);
 
 			Test.Assert(target.UnknownSectionCount == 0, "everything resolved this time");
 			Test.Assert(target.SectionCount == 3);
@@ -101,8 +104,8 @@ class UnknownSectionTests
 	[Test]
 	public static void RepeatedRoundTripsDoNotDuplicateAPreservedSection()
 	{
-		defer TestSections.RegisterAll();
-		TestSections.RegisterAll();
+
+
 
 		let factory = Binary();
 		defer delete factory;
@@ -115,14 +118,15 @@ class UnknownSectionTests
 			Test.Assert(source.Save(stream, factory) case .Ok);
 		}
 
-		RegisterOnly(false);
+		let withoutX = RegistryFor(false);
+		defer delete withoutX;
 
 		var current = stream;
 		for (int pass < 4)
 		{
 			let store = scope:: Settings();
 			Test.Assert(current.Seek(0, .Begin) == 0);
-			Test.Assert(store.Load(current, factory) case .Ok, scope $"pass {pass}");
+			Test.Assert(store.Load(current, factory, withoutX) case .Ok, scope $"pass {pass}");
 			Test.Assert(store.UnknownSectionCount == 1, scope $"pass {pass} carried {store.UnknownSectionCount}");
 			Test.Assert(store.SectionCount == 1);
 
@@ -132,10 +136,11 @@ class UnknownSectionTests
 		}
 
 		// And after all that, X is still one section holding its original value.
-		RegisterOnly(true);
+		let withX = RegistryFor(true);
+		defer delete withX;
 		let final = scope Settings();
 		Test.Assert(current.Seek(0, .Begin) == 0);
-		Test.Assert(final.Load(current, factory) case .Ok);
+		Test.Assert(final.Load(current, factory, withX) case .Ok);
 		Test.Assert(final.SectionCount == 2, scope $"got {final.SectionCount} sections");
 		Test.Assert(final.Find<SectionX>().X == 7);
 	}
@@ -145,8 +150,8 @@ class UnknownSectionTests
 	[Test]
 	public static void ACleanLoadClearsPreviouslyPreservedSections()
 	{
-		defer TestSections.RegisterAll();
-		TestSections.RegisterAll();
+
+
 
 		let factory = Binary();
 		defer delete factory;
@@ -166,15 +171,16 @@ class UnknownSectionTests
 			Test.Assert(source.Save(knownOnly, factory) case .Ok);
 		}
 
-		RegisterOnly(false);
+		let withoutX2 = RegistryFor(false);
+		defer delete withoutX2;
 		let store = scope Settings();
 
 		Test.Assert(withUnknown.Seek(0, .Begin) == 0);
-		Test.Assert(store.Load(withUnknown, factory) case .Ok);
+		Test.Assert(store.Load(withUnknown, factory, withoutX2) case .Ok);
 		Test.Assert(store.UnknownSectionCount == 1);
 
 		Test.Assert(knownOnly.Seek(0, .Begin) == 0);
-		Test.Assert(store.Load(knownOnly, factory) case .Ok);
+		Test.Assert(store.Load(knownOnly, factory, withoutX2) case .Ok);
 		Test.Assert(store.UnknownSectionCount == 0, "the second file had no unknown section to carry");
 		Test.Assert(store.Find<SectionA>().A == 3);
 	}

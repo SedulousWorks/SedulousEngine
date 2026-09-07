@@ -24,6 +24,8 @@ class ContentDatabase : IContentDatabase
 	private IFileSystem mMount;
 	private SerializerFactory mFactory;
 	private String mExtension = new .() ~ delete _;
+	/// BORROWED, like the mount and the factory.
+	private SerializableRegistry mSerializables;
 
 	private Group mRoot;
 	private List<Group> mAllGroups = new .() ~ DeleteContainerAndItems!(_);
@@ -32,17 +34,26 @@ class ContentDatabase : IContentDatabase
 	private ScanStats mScanStats;
 
 	/// Scans the mount on construction. The extension is given without a dot.
-	public this(IFileSystem mount, SerializerFactory factory, StringView fileExtension)
+	///
+	/// The registry is INJECTED rather than reached for, defaulting to the global one.
+	/// Two databases in one process can then carry different registrations: a tool
+	/// inspecting content built by another build, or a test that wants a table holding
+	/// exactly the types it declared.
+	public this(IFileSystem mount, SerializerFactory factory, StringView fileExtension,
+		SerializableRegistry serializables = null)
 	{
 		mMount = mount;
 		mFactory = factory;
 		mExtension.Set(fileExtension);
+		mSerializables = (serializables != null) ? serializables : GlobalSerializableRegistry;
 
 		mRoot = RegisterGroup(null, "");
 		Scan(mRoot, "");
 	}
 
 	public IFileSystem Mount => mMount;
+	/// What this database resolves stored type names through.
+	public SerializableRegistry Serializables => mSerializables;
 	public StringView Extension => mExtension;
 	public ScanStats LastScanStats => mScanStats;
 

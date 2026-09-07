@@ -73,7 +73,7 @@ class Instance
 		if (!ReadHeader(archive, var id, scope String()))
 			return null;
 
-		let object = SerializableRegistry.Create(TypeIdOf(mTypeName));
+		let object = mDatabase.Serializables.Create(TypeIdOf(mTypeName));
 		if (object == null)
 			return null;
 

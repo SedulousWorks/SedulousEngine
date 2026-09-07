@@ -143,8 +143,12 @@ class Settings
 	///
 	/// A section whose type is not registered is captured verbatim rather than abandoned,
 	/// which is what stops an older build from quietly deleting a newer one's settings.
-	public Result<void, ErrorCode> Load(IStream stream, SerializerFactory factory)
+	/// The registry is INJECTED rather than reached for, defaulting to the global one, so
+	/// a caller can load a file against a table holding exactly the sections it expects.
+	public Result<void, ErrorCode> Load(IStream stream, SerializerFactory factory,
+		SerializableRegistry serializables = null)
 	{
+		let registry = (serializables != null) ? serializables : GlobalSerializableRegistry;
 		let context = factory(stream, .Read);
 		if (context == null)
 			return .Err(.Internal);
@@ -184,7 +188,7 @@ class Settings
 				return archive.Status;
 
 			let id = TypeIdOf(typeName);
-			let object = SerializableRegistry.Create(id);
+			let object = registry.Create(id);
 
 			archive.BeginFramedRegion();
 			if (object != null)
