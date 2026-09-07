@@ -48,9 +48,9 @@ class ForeignTypeTests
 	public static void ItIsRegisteredLikeAnyOtherSerializableType()
 	{
 		TestSerializables.RegisterAll();
-		Test.Assert(SerializableRegistry.IsRegistered(ForeignType.TypeId));
+		Test.Assert(GlobalSerializableRegistry.IsRegistered(ForeignType.TypeId));
 
-		let created = SerializableRegistry.Create(ForeignType.TypeId);
+		let created = GlobalSerializableRegistry.Create(ForeignType.TypeId);
 		Test.Assert(created != null);
 		defer delete created;
 		Test.Assert(created is ForeignType);

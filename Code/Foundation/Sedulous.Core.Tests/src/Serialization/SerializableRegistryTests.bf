@@ -11,15 +11,15 @@ class SerializableRegistryTests
 	[Test]
 	public static void RegisterAllFindsEveryDeclaredType()
 	{
-		SerializableRegistry.Clear();
-		Test.Assert(SerializableRegistry.Count == 0);
+		GlobalSerializableRegistry.Clear();
+		Test.Assert(GlobalSerializableRegistry.Count == 0);
 
 		TestSerializables.RegisterAll();
 
 		// Both attributed types, found without either being listed anywhere by hand.
-		Test.Assert(SerializableRegistry.IsRegistered(SerializableSample.TypeId));
-		Test.Assert(SerializableRegistry.IsRegistered(VersionedSample.TypeId));
-		Test.Assert(SerializableRegistry.Count >= 2);
+		Test.Assert(GlobalSerializableRegistry.IsRegistered(SerializableSample.TypeId));
+		Test.Assert(GlobalSerializableRegistry.IsRegistered(VersionedSample.TypeId));
+		Test.Assert(GlobalSerializableRegistry.Count >= 2);
 	}
 
 	[Test]
@@ -27,12 +27,12 @@ class SerializableRegistryTests
 	{
 		TestSerializables.RegisterAll();
 
-		let created = SerializableRegistry.Create(SerializableSample.TypeId);
+		let created = GlobalSerializableRegistry.Create(SerializableSample.TypeId);
 		Test.Assert(created != null);
 		defer delete created;
 		Test.Assert(created is SerializableSample);
 
-		let versioned = SerializableRegistry.Create(VersionedSample.TypeId);
+		let versioned = GlobalSerializableRegistry.Create(VersionedSample.TypeId);
 		Test.Assert(versioned != null);
 		defer delete versioned;
 		Test.Assert(versioned is VersionedSample);
@@ -44,8 +44,8 @@ class SerializableRegistryTests
 	public static void AnUnknownIdCreatesNothing()
 	{
 		TestSerializables.RegisterAll();
-		Test.Assert(SerializableRegistry.Create(0) == null);
-		Test.Assert(!SerializableRegistry.IsRegistered(0));
+		Test.Assert(GlobalSerializableRegistry.Create(0) == null);
+		Test.Assert(!GlobalSerializableRegistry.IsRegistered(0));
 	}
 
 	/// Only what carries the attribute is registered. A hand-written ISerializable is
@@ -54,7 +54,7 @@ class SerializableRegistryTests
 	public static void OnlyAttributedTypesAreRegistered()
 	{
 		TestSerializables.RegisterAll();
-		Test.Assert(SerializableRegistry.Create(TypeIdOf("Sedulous.Core.Tests.HandWrittenSample")) == null);
+		Test.Assert(GlobalSerializableRegistry.Create(TypeIdOf("Sedulous.Core.Tests.HandWrittenSample")) == null);
 	}
 
 	/// The whole point: a stream records which type wrote it, and the reader reconstructs
@@ -83,7 +83,7 @@ class SerializableRegistryTests
 			uint64 typeId = 0;
 			Serialize(reader, ref typeId);
 
-			let loaded = SerializableRegistry.Create(typeId);
+			let loaded = GlobalSerializableRegistry.Create(typeId);
 			Test.Assert(loaded != null, "the id named a type the registry knows");
 			defer delete loaded;
 
@@ -128,7 +128,7 @@ class SerializableRegistryTests
 			let reader = scope BinarySerializer(stream, .Read);
 			uint64 typeId = 0;
 			Serialize(reader, ref typeId);
-			Test.Assert(SerializableRegistry.Create(typeId) == null, "unknown, as intended");
+			Test.Assert(GlobalSerializableRegistry.Create(typeId) == null, "unknown, as intended");
 
 			reader.BeginFramedRegion();
 			reader.EndFramedRegion();

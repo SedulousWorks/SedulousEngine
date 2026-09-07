@@ -42,7 +42,11 @@ struct SerializableRegistryAttribute : Attribute, IComptimeTypeApply
 
 		let body = scope String();
 		body.AppendF("/// Registers every [Serializable] type under {}\n", namespacePrefix);
-		body.Append("public static void RegisterAll()\n{\n");
+		body.Append("///\n");
+		body.Append("/// Into the global registry unless another is given, which is how a caller runs two\n");
+		body.Append("/// tables with different registrations in one process.\n");
+		body.Append("public static void RegisterAll(Sedulous.Core.Serialization.SerializableRegistry registry = null)\n{\n");
+		body.Append("\tlet target = (registry != null) ? registry : Sedulous.Core.Serialization.GlobalSerializableRegistry;\n");
 
 		for (let declaration in Type.TypeDeclarations)
 		{
@@ -54,7 +58,7 @@ struct SerializableRegistryAttribute : Attribute, IComptimeTypeApply
 			if (!namespacePrefix.IsEmpty && !name.StartsWith(namespacePrefix))
 				continue;
 
-			body.AppendF("\tSedulous.Core.Serialization.SerializableRegistry.Register({}.TypeId, () => new {}());\n", name, name);
+			body.AppendF("\ttarget.Register({}.TypeId, () => new {}());\n", name, name);
 		}
 
 		body.Append("}\n");
