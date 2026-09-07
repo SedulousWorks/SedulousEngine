@@ -74,6 +74,62 @@ static class ImageIO
 		return Adopt16(data, width, height, image);
 	}
 
+	/// Writes an image to a file.
+	///
+	/// Eight bit formats only. A float or sixteen bit image has no meaning in a PNG or a
+	/// JPEG without a conversion, and choosing that conversion is the caller's decision,
+	/// not this function's: tone mapping an HDR image is a look, not a detail.
+	///
+	/// A BGR ordered image is converted first, since stb writes the bytes in the order it
+	/// is handed them and would otherwise swap red and blue.
+	public static Result<void, ErrorCode> SaveImage(Image image, StringView path,
+		ImageFileFormat format, int32 jpgQuality = 90)
+	{
+		if ((image.Width == 0) || (image.Height == 0))
+			return .Err(.InvalidArgument);
+
+		switch (image.Format)
+		{
+		case .R8, .RG8, .RGB8, .RGBA8:
+			return Write(image, path, format, jpgQuality);
+
+		case .BGR8, .BGRA8:
+			// Converted rather than refused: the caller asked to save an image it has, and
+			// the channel order is this function's problem, not theirs.
+			let converted = image.ConvertFormat((image.Format == .BGR8) ? .RGB8 : .RGBA8);
+			defer delete converted;
+			return Write(converted, path, format, jpgQuality);
+
+		default:
+			return .Err(.NotSupported);
+		}
+	}
+
+	private static Result<void, ErrorCode> Write(Image image, StringView path,
+		ImageFileFormat format, int32 jpgQuality)
+	{
+		let terminated = scope String(path);
+		let width = (int32)image.Width;
+		let height = (int32)image.Height;
+		let channels = image.ChannelCount;
+		let pixels = image.PixelData.Ptr;
+
+		int32 ok = 0;
+		switch (format)
+		{
+		case .PNG:
+			// The stride is given explicitly because an image's rows are tightly packed
+			// here, and stb's zero-means-packed only holds for the same assumption.
+			ok = stbi_write_png(terminated, width, height, channels, pixels, width * channels);
+		case .JPG:
+			ok = stbi_write_jpg(terminated, width, height, channels, pixels, jpgQuality);
+		case .BMP:
+			ok = stbi_write_bmp(terminated, width, height, channels, pixels);
+		}
+
+		return (ok != 0) ? .Ok : .Err(.Unknown);
+	}
+
 	/// Why the last load failed, as stb reports it. Worth surfacing: "unknown image type"
 	/// and "corrupt JPEG" are the same ErrorCode and very different problems.
 	public static void LastFailureReason(String outReason)

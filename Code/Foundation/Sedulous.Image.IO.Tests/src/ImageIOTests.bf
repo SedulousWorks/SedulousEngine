@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core.IO;
 using Sedulous.Core;
 using Sedulous.Image;
 using Sedulous.Image.IO;
@@ -100,6 +101,141 @@ class ImageIOTests
 		let image = scope Image();
 		Test.Assert(ImageIO.LoadImage("./no_such_image_file.png", image) case .Err);
 		Test.Assert(ImageIO.LoadImage16("./no_such_image_file.png", image) case .Err);
+	}
+
+	/// The round trip: an image written out and read back is the image that went in.
+	///
+	/// PNG is lossless, so this is an equality check rather than an approximation, and it
+	/// is the test that actually proves the writer is wired to the reader.
+	[Test]
+	public static void APngRoundTripsThroughDisk()
+	{
+		let path = scope $"scratch_imageio_roundtrip.png";
+		defer DeleteFile(path);
+
+		let source = scope Image(4, 3, .RGBA8);
+		for (uint32 y < 3)
+		{
+			for (uint32 x < 4)
+				source.SetPixel(x, y, .((uint8)(x * 60), (uint8)(y * 80), 200, (uint8)(255 - x * 10)));
+		}
+
+		Test.Assert(ImageIO.SaveImage(source, path, .PNG) case .Ok);
+
+		let loaded = scope Image();
+		Test.Assert(ImageIO.LoadImage(path, loaded) case .Ok);
+
+		Test.Assert(loaded.Width == 4 && loaded.Height == 3);
+		Test.Assert(loaded.Format == .RGBA8);
+		for (uint32 y < 3)
+		{
+			for (uint32 x < 4)
+			{
+				Test.Assert(loaded.GetPixel(x, y) == source.GetPixel(x, y),
+					scope $"pixel {x},{y} changed across the round trip");
+			}
+		}
+	}
+
+	/// Rows come back in the same ORDER, which a vertical flip on write would break while
+	/// leaving every other assertion above intact.
+	[Test]
+	public static void TheRowOrderSurvivesTheRoundTrip()
+	{
+		let path = scope $"scratch_imageio_rows.png";
+		defer DeleteFile(path);
+
+		let source = scope Image(1, 3, .RGBA8);
+		source.SetPixel(0, 0, .(10, 0, 0, 255));
+		source.SetPixel(0, 1, .(20, 0, 0, 255));
+		source.SetPixel(0, 2, .(30, 0, 0, 255));
+
+		Test.Assert(ImageIO.SaveImage(source, path, .PNG) case .Ok);
+
+		let loaded = scope Image();
+		Test.Assert(ImageIO.LoadImage(path, loaded) case .Ok);
+		Test.Assert(loaded.GetPixel(0, 0).R == 10, "the top row is still the top row");
+		Test.Assert(loaded.GetPixel(0, 2).R == 30);
+	}
+
+	/// Every writable format is actually written, and comes back as an image.
+	[Test]
+	public static void EveryWritableFormatProducesAReadableFile()
+	{
+		let source = scope Image(4, 4, .RGB8);
+		source.FillColor(.(200, 100, 50, 255));
+
+		for (let format in ImageFileFormat[3](.PNG, .BMP, .JPG))
+		{
+			let path = scope:: $"scratch_imageio_{format}.img";
+			defer:: DeleteFile(path);
+
+			Test.Assert(ImageIO.SaveImage(source, path, format) case .Ok, scope $"writing {format}");
+
+			let loaded = scope:: Image();
+			Test.Assert(ImageIO.LoadImage(path, loaded) case .Ok, scope $"reading {format} back");
+			Test.Assert(loaded.Width == 4 && loaded.Height == 4, scope $"{format} size");
+
+			// JPEG is lossy, so the colour is only approximately what went in.
+			let pixel = loaded.GetPixel(1, 1);
+			Test.Assert(Abs((int32)pixel.R - 200) < 12, scope $"{format} red came back {pixel.R}");
+			Test.Assert(Abs((int32)pixel.B - 50) < 12, scope $"{format} blue came back {pixel.B}");
+		}
+	}
+
+	/// A BGR ordered image is CONVERTED before writing rather than refused, since stb
+	/// writes bytes in the order it is handed them and would otherwise swap red and blue.
+	[Test]
+	public static void ABgrImageIsConvertedRatherThanWrittenBackwards()
+	{
+		let path = scope $"scratch_imageio_bgra.png";
+		defer DeleteFile(path);
+
+		let source = scope Image(2, 2, .BGRA8);
+		source.FillColor(.(255, 0, 0, 255)); // red, stored blue first
+
+		Test.Assert(ImageIO.SaveImage(source, path, .PNG) case .Ok);
+
+		let loaded = scope Image();
+		Test.Assert(ImageIO.LoadImage(path, loaded) case .Ok);
+		Test.Assert(loaded.GetPixel(0, 0) == Color32(255, 0, 0, 255),
+			"still red, not blue with the channels swapped");
+	}
+
+	/// A format with no eight bit meaning is refused rather than written as bytes: the
+	/// conversion is a look, and choosing it is the caller's decision.
+	[Test]
+	public static void AFloatImageIsRefusedRatherThanMangled()
+	{
+		let path = scope $"scratch_imageio_float.png";
+		// Cleaned up either side: the assertion below is that the file is ABSENT, and a
+		// stray file from any earlier run would fail it for the wrong reason forever.
+		DeleteFile(path);
+		defer DeleteFile(path);
+
+		let source = scope Image(2, 2, .RGBA32F);
+		Test.Assert(ImageIO.SaveImage(source, path, .PNG) case .Err);
+		Test.Assert(!FileExists(path), "and nothing was written");
+	}
+
+	/// An empty image is refused, since there is nothing to write.
+	[Test]
+	public static void AnEmptyImageIsRefused()
+	{
+		let path = scope $"scratch_imageio_empty.png";
+		defer DeleteFile(path);
+
+		let source = scope Image();
+		Test.Assert(ImageIO.SaveImage(source, path, .PNG) case .Err);
+		Test.Assert(!FileExists(path), "and nothing was written");
+	}
+
+	/// A path that cannot be written fails rather than reporting success.
+	[Test]
+	public static void AnUnwritablePathFails()
+	{
+		let source = scope Image(2, 2, .RGBA8);
+		Test.Assert(ImageIO.SaveImage(source, "./no_such_dir_here/out.png", .PNG) case .Err);
 	}
 
 	/// Loading into an image that already holds something REPLACES it, so a reused image
