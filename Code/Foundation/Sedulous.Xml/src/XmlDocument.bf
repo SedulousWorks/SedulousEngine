@@ -11,6 +11,8 @@ class XmlDocument : XmlNode
 {
 	private XmlDeclaration mDeclaration;
 	private XmlElement mRootElement;
+	private int32 mErrorLine = 1;
+	private int32 mErrorColumn = 1;
 	private XmlParseSettings mParseSettings = .Default;
 
 	public this() : base(.Document)
@@ -45,9 +47,78 @@ class XmlDocument : XmlNode
 		mDeclaration = null;
 		mRootElement = null;
 		mParseSettings = settings;
+		mErrorLine = 1;
+		mErrorColumn = 1;
 
 		var remaining = text;
-		return ParseDocument(ref remaining);
+		let result = ParseDocument(ref remaining);
+		if (result != .Ok)
+		{
+			// The parser threads the remaining view down by reference, so whatever is left
+			// when it gives up starts AT the failure. Counting the consumed prefix once,
+			// here, is the whole cost: nothing has to carry a line and column through every
+			// scanning function for the case where nothing goes wrong.
+			LocateOffset(text, text.Length - remaining.Length);
+		}
+		return result;
+	}
+
+	/// Where the last failed parse gave up: line and column, both counted from ONE, as
+	/// every editor and compiler reports them.
+	///
+	/// Where it GAVE UP, which is just past the thing it rejected rather than at that
+	/// thing's first character: a mismatched close tag is detected once its NAME has been
+	/// read, so the position lands on the ">" after it. The LINE is exact, which is what an
+	/// editor diagnostic marks; the column points at the end of what was wrong rather than
+	/// its start. Pinning it to the start would mean carrying a position through every
+	/// scanning function for the sake of the case where nothing goes wrong.
+	///
+	/// Both are 1 after a parse that succeeded, and after no parse at all.
+	///
+	/// Raptor declares these and never updates them, so they always answer 1 there and the
+	/// editor pages that subtract one from the line always mark line zero. Tracked properly
+	/// here rather than the stub being carried across.
+	public int32 ErrorLine => mErrorLine;
+	public int32 ErrorColumn => mErrorColumn;
+
+	/// Turns a byte offset into a line and column by walking the text up to it.
+	///
+	/// CRLF counts once, and a lone CR counts as a line ending too, so a file written on
+	/// any of the three conventions reports the line a person would count.
+	///
+	/// The column is in BYTES, not characters: a line with a multi byte character before
+	/// the error reports a column past where it looks. Honest for the byte oriented scan
+	/// this parser is, and what an editor seeking into the buffer wants.
+	private void LocateOffset(StringView text, int offset)
+	{
+		int32 line = 1;
+		int32 column = 1;
+		// No clamp: `remaining` is always a suffix of `text`, so the offset cannot exceed
+		// its length.
+		for (int i = 0; i < offset; i++)
+		{
+			let c = text[i];
+			if (c == '\r')
+			{
+				line++;
+				column = 1;
+				// A following newline belongs to this same ending.
+				if (((i + 1) < offset) && (text[i + 1] == '\n'))
+					i++;
+			}
+			else if (c == '\n')
+			{
+				line++;
+				column = 1;
+			}
+			else
+			{
+				column++;
+			}
+		}
+
+		mErrorLine = line;
+		mErrorColumn = column;
 	}
 
 	// ---- writing ----
