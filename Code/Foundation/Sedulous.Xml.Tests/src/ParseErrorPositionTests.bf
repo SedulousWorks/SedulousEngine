@@ -92,4 +92,22 @@ class ParseErrorPositionTests
 		Test.Assert(document.Parse("<root/>") == .Ok);
 		Test.Assert(document.ErrorLine == 1 && document.ErrorColumn == 1);
 	}
+
+	/// The column counts CODE POINTS, so a multi byte character before the error advances it
+	/// by one, not by its byte length. Adopted from Raptor's own fix.
+	[Test]
+	public static void TheColumnCountsCodePointsNotBytes()
+	{
+		let document = scope XmlDocument();
+
+		// The same document twice, once with a two byte character and once with a one byte
+		// character in its place. The reported column must be identical.
+		Test.Assert(document.Parse("<r\u{E9}></x>") == .TagMismatch);
+		Test.Assert(document.ErrorLine == 1);
+		let afterMultibyte = document.ErrorColumn;
+
+		Test.Assert(document.Parse("<re></x>") == .TagMismatch);
+		Test.Assert(document.ErrorColumn == afterMultibyte,
+			scope $"multibyte gave column {afterMultibyte}, single byte gave {document.ErrorColumn}");
+	}
 }

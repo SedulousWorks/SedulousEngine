@@ -68,9 +68,14 @@ class FbxLoader : IModelLoader
 		options.use_blender_pbr_material = true;
 		// Reads the files the model POINTS AT: an OBJ's .mtl above all. Without it a
 		// material arrives with its name and nothing else, so every OBJ loads untextured
-		// and untinted while still looking like it worked. Raptor leaves this off, so its
-		// loader has the same gap.
+		// and untinted while still looking like it worked.
 		options.load_external_files = true;
+		// A MISSING sidecar is not an error: the file still describes geometry, and failing
+		// the whole load over an absent .mtl would refuse models that render fine.
+		options.ignore_missing_external_files = true;
+		// Find the .mtl beside the OBJ by filename when the file does not say where it is,
+		// which is the common case for exported models.
+		options.obj_search_mtl_by_filename = true;
 
 		let pathZ = scope String(path);
 		ufbx_error error = default;
@@ -817,10 +822,11 @@ class FbxLoader : IModelLoader
 
 		// Compared by BYTES, not by hash.
 		//
-		// Raptor keys its map on the hash alone, so two genuinely different vertices that
-		// collide are welded into one. That is rare and, when it happens, shows up as a
-		// pulled seam that no amount of staring at the source file explains. Hashing to a
-		// bucket and then comparing costs one comparison and cannot do that.
+		// Keying on the hash alone welds two genuinely different vertices whenever their
+		// hashes collide. That is rare and, when it happens, shows up as a pulled seam that
+		// no amount of staring at the source file explains. Hashing to a bucket and then
+		// comparing costs one comparison and cannot do that. Raptor was keyed on the hash
+		// until this port found it, and now compares the same way.
 		let hash = (int)HashBytes(vertex, layout.Stride);
 		if (buckets.TryGetValue(hash, let existing))
 		{

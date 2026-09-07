@@ -83,12 +83,14 @@ class XmlDocument : XmlNode
 
 	/// Turns a byte offset into a line and column by walking the text up to it.
 	///
-	/// CRLF counts once, and a lone CR counts as a line ending too, so a file written on
-	/// any of the three conventions reports the line a person would count.
+	/// The column counts CODE POINTS, not bytes: a UTF-8 continuation byte does not advance
+	/// it, so a line holding a multi byte character reports the column a person counting
+	/// characters would. This matches Raptor.
 	///
-	/// The column is in BYTES, not characters: a line with a multi byte character before
-	/// the error reports a column past where it looks. Honest for the byte oriented scan
-	/// this parser is, and what an editor seeking into the buffer wants.
+	/// CRLF counts as one ending, and a lone CR counts as an ending too, so a file written
+	/// on any of the three conventions reports the line a person would count. Raptor breaks
+	/// on newline alone, which reports line 1 for everything in a CR only file; XML treats
+	/// all three as line endings, so the wider handling is kept here.
 	private void LocateOffset(StringView text, int offset)
 	{
 		int32 line = 1;
@@ -111,8 +113,9 @@ class XmlDocument : XmlNode
 				line++;
 				column = 1;
 			}
-			else
+			else if ((((uint8)c) & 0xC0) != 0x80)
 			{
+				// Not a UTF-8 continuation byte, so this begins a character.
 				column++;
 			}
 		}
