@@ -14,7 +14,7 @@ class MaterialInstanceTests
 		let builder = scope MaterialBuilder("lit");
 		return builder
 			..Shader("forward")
-			..Scalar("roughness", 0.5f)
+			..Float("roughness", 0.5f)
 			..Texture("albedoMap")
 			.Build();
 	}
@@ -129,7 +129,7 @@ class MaterialInstanceTests
 		// Four tightly packed scalars, so a four component write into the LAST one runs
 		// twelve bytes past the end of the buffer.
 		let builder = scope MaterialBuilder("packed");
-		let packed = builder..Shader("s")..Scalar("a")..Scalar("b")..Scalar("c")..Scalar("d").Build();
+		let packed = builder..Shader("s")..Float("a")..Float("b")..Float("c")..Float("d").Build();
 		defer delete packed;
 		let tight = scope MaterialInstance(packed);
 

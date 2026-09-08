@@ -76,7 +76,7 @@ class MaterialSystemTests
 		let lit = Lit();
 		defer delete lit;
 		let plainBuilder = scope MaterialBuilder("plain");
-		let plain = plainBuilder..Shader("s")..Scalar("value").Build();
+		let plain = plainBuilder..Shader("s")..Float("value").Build();
 		defer delete plain;
 
 		Test.Assert(fixture.System.GetOrCreateLayout(lit) != fixture.System.GetOrCreateLayout(plain));

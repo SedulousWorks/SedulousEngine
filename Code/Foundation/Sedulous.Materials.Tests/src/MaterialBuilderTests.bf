@@ -17,7 +17,7 @@ class MaterialBuilderTests
 			..Shader("forward")
 			..Flags(.NormalMap)
 			..Color("baseColor", .(1, 0, 0, 1))
-			..Scalar("roughness", 0.5f)
+			..Float("roughness", 0.5f)
 			..Texture("albedoMap")
 			..Texture("normalMap")
 			..Sampler("linearSampler")
@@ -56,9 +56,9 @@ class MaterialBuilderTests
 		let builder = scope MaterialBuilder("m");
 		let material = builder
 			..Shader("s")
-			..Scalar("a")
-			..Vector3("v")
-			..Scalar("b")
+			..Float("a")
+			..Float3("v")
+			..Float("b")
 			.Build();
 		defer delete material;
 
@@ -79,7 +79,7 @@ class MaterialBuilderTests
 	public static void ScalarsAndPairsPackTightly()
 	{
 		let builder = scope MaterialBuilder("m");
-		let material = builder..Shader("s")..Scalar("a")..Vector2("b")..Scalar("c").Build();
+		let material = builder..Shader("s")..Float("a")..Float2("b")..Float("c").Build();
 		defer delete material;
 
 		Test.Assert(material.FindProperty("a", let a) && (a.Offset == 0));
@@ -94,7 +94,7 @@ class MaterialBuilderTests
 	{
 		let builder = scope MaterialBuilder("m");
 		let material = builder
-			..Shader("s")..Scalar("a")..Texture("t")..Sampler("s0")..Scalar("b").Build();
+			..Shader("s")..Float("a")..Texture("t")..Sampler("s0")..Float("b").Build();
 		defer delete material;
 
 		for (int i = 0; i < material.PropertyCount; i++)

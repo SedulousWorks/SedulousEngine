@@ -89,7 +89,7 @@ class MaterialBuilder
 
 	// ---- uniform properties ----
 
-	public MaterialBuilder Scalar(StringView name, float value = 0.0f)
+	public MaterialBuilder Float(StringView name, float value = 0.0f)
 	{
 		AddUniform(name, .Float, 4, false);
 		mMaterial.AllocateDefaultUniformData();
@@ -97,7 +97,7 @@ class MaterialBuilder
 		return this;
 	}
 
-	public MaterialBuilder Vector2(StringView name, Float2 value = .Zero)
+	public MaterialBuilder Float2(StringView name, Float2 value = .Zero)
 	{
 		AddUniform(name, .Float2, 8, false);
 		mMaterial.AllocateDefaultUniformData();
@@ -108,7 +108,7 @@ class MaterialBuilder
 	/// A three component vector occupies SIXTEEN bytes, not twelve: that is the std140 rule
 	/// every backend agrees on, and packing it tightly puts every following member at an
 	/// offset the shader does not read from.
-	public MaterialBuilder Vector3(StringView name, Float3 value = .Zero)
+	public MaterialBuilder Float3(StringView name, Float3 value = .Zero)
 	{
 		AddUniform(name, .Float3, 12, true);
 		mMaterial.AllocateDefaultUniformData();
@@ -116,7 +116,7 @@ class MaterialBuilder
 		return this;
 	}
 
-	public MaterialBuilder Vector4(StringView name, Float4 value = .Zero)
+	public MaterialBuilder Float4(StringView name, Float4 value = .Zero)
 	{
 		AddUniform(name, .Float4, 16, true);
 		mMaterial.AllocateDefaultUniformData();
@@ -127,7 +127,7 @@ class MaterialBuilder
 	/// A colour IS a four component vector. The name exists so a call site says which it
 	/// means, and so the default is white rather than transparent black.
 	public MaterialBuilder Color(StringView name, Float4 value = .(1, 1, 1, 1))
-		=> Vector4(name, value);
+		=> Float4(name, value);
 
 	// ---- resource properties ----
 
