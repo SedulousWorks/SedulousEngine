@@ -11,5 +11,8 @@ namespace Sedulous.Core.Serialization;
 interface ISerializable
 {
 	/// Describes this object's data once, running in whichever direction ar is set to.
-	void Serialize(ISerializer ar);
+	/// `mut`, so a VALUE type can implement it: a struct reading itself back has to write
+	/// its own fields, and a non mut member would make every value component a class.
+	/// A class implementer is unaffected, mut being a no op for one.
+	void Serialize(ISerializer ar) mut;
 }

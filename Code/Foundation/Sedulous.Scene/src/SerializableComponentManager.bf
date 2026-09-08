@@ -35,7 +35,7 @@ class SerializableComponentManager<T> : ComponentManager<T>
 
 	public override void WriteComponent(ISerializer ar, EntityHandle entity)
 	{
-		let component = Get(entity);
+		var component = Get(entity);
 		if (component == null)
 			return;
 

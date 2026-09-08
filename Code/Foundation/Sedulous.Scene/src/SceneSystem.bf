@@ -48,6 +48,12 @@ abstract class SceneSystem
 	public virtual Type SettingsType => null;
 	public virtual void* SettingsInstance => null;
 	public virtual StringView SettingsId => default;
+
+	/// The settings block's own data version, which a SerializeSettings body gates on to
+	/// migrate an older scene. DIVERGES from Raptor, which reads it off the reflected type;
+	/// there is no reflected data version here, so a system states it.
+	public virtual uint32 SettingsDataVersion => 1;
+
 	public virtual void SerializeSettings(ISerializer ar) {}
 
 	/// Binds every resource reference this system holds, settings blocks included: the
