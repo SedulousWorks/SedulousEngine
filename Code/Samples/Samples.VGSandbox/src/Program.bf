@@ -2,10 +2,11 @@ using System;
 
 namespace Samples.VGSandbox;
 
-/// Placeholder entry point so the project links before it is ported.
 class Program
 {
-	public static void Main()
+	public static int Main(String[] args)
 	{
+		let app = scope VGSandboxApp();
+		return app.Run(args);
 	}
 }

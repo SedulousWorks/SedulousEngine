@@ -2,8 +2,21 @@ FileVersion = 1
 
 [Project]
 Name = "Samples.VGSandbox"
-TargetType = "BeefGUIApplication"
+TargetType = "BeefConsoleApplication"
 StartupObject = "Samples.VGSandbox.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Shaders" = "*"
+"Sedulous.Shaders.System" = "*"
+"Samples.Framework" = "*"
+"Sedulous.Image" = "*"
+"Sedulous.Fonts" = "*"
+"Sedulous.Fonts.TrueType" = "*"
+"Sedulous.Fonts.DistanceField" = "*"
+"Sedulous.Fonts.DistanceField.Baker" = "*"
+"Sedulous.VG" = "*"
+"Sedulous.VG.Renderer" = "*"
+"Sedulous.VG.SVG" = "*"
