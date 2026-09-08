@@ -8,10 +8,10 @@ namespace Sedulous.Scene.Resource;
 
 /// The scene stream's shape: its header, and the small pieces every section is built from.
 ///
-/// ONE format. Raptor still reads its v1 and v2 streams and the three retired prefab
-/// section layouts; nothing has ever been written in those here, so this reads and writes
-/// the current form only and refuses anything else by name. A version field stays in the
-/// header so a future change has somewhere to say so.
+/// ONE format, on both engines: Raptor retired its v1 and v2 readers and the three old
+/// prefab section layouts, and nothing was ever written in them here. So this reads and
+/// writes the current form only and refuses anything else by name. A version field stays
+/// in the header so a future change has somewhere to say so.
 static class SceneStreamFormat
 {
 	/// A sentinel chosen so it cannot be mistaken for a length prefix.
