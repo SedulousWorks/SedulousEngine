@@ -30,13 +30,22 @@ static class ScenePrefabs
 
 		for (let descriptor in pending)
 		{
-			// A NESTED record does not spawn on its own: its owner's spawn consumes it.
-			// Nesting lands later; until then such a record is left for the orphan pass
-			// below rather than spawned twice.
+			// A NESTED record does not spawn on its own: its owner's spawn consumes it, so
+			// that the owner's customisation is applied first and becomes its baseline.
 			if (descriptor.OwnerRootEntityId != Guid())
 				continue;
 
-			let root = Respawn(scene, descriptor, resolver);
+			// This instance's own nested records, handed to the spawn so the owner's
+			// customisation and the scene's are layered in the right order.
+			let sceneDeltas = scope:: List<PendingPrefabInstance>();
+			for (let candidate in pending)
+			{
+				if ((candidate.OwnerRootEntityId != Guid())
+					&& (candidate.OwnerRootEntityId == descriptor.RootLiveId))
+					sceneDeltas.Add(candidate);
+			}
+
+			let root = Respawn(scene, descriptor, resolver, sceneDeltas);
 			if (!root.IsAssigned)
 				continue;
 
@@ -44,10 +53,42 @@ static class ScenePrefabs
 		}
 
 		RestoreSiblingOrder(scene, order);
+		SpawnOrphanedNested(scene, pending, resolver);
+	}
+
+	/// A nested record whose OWNER never came back.
+	///
+	/// Its owner's record may have vanished, or its owner's template may no longer contain
+	/// it. Either way the entities would otherwise be silently lost, so it spawns standalone
+	/// and becomes a plain top level instance: a demoted instance is recoverable, a deleted
+	/// one is not.
+	private static void SpawnOrphanedNested(Scene scene, List<PendingPrefabInstance> pending,
+		PayloadResolver resolver)
+	{
+		let order = scope List<(Guid entity, Guid nextSibling)>();
+
+		for (let descriptor in pending)
+		{
+			if (descriptor.OwnerRootEntityId == Guid())
+				continue;
+			// Its owner's spawn already consumed it.
+			if (scene.FindEntity(descriptor.RootLiveId).IsAssigned)
+				continue;
+
+			let root = Respawn(scene, descriptor, resolver, null);
+			if (!root.IsAssigned)
+				continue;
+
+			GlobalLog(.Warning,
+				"ScenePrefabs: a nested instance's owner did not come back, so it was spawned standalone");
+			order.Add((scene.GetEntityId(root), descriptor.NextSiblingId));
+		}
+
+		RestoreSiblingOrder(scene, order);
 	}
 
 	private static EntityHandle Respawn(Scene scene, PendingPrefabInstance descriptor,
-		PayloadResolver resolver)
+		PayloadResolver resolver, List<PendingPrefabInstance> sceneDeltas)
 	{
 		let payload = (resolver != null) ? resolver(descriptor.PrefabId) : null;
 		if (payload == null)
@@ -68,7 +109,8 @@ static class ScenePrefabs
 		let parent = (descriptor.ParentEntityId != Guid())
 			? scene.FindEntity(descriptor.ParentEntityId) : EntityHandle.Invalid;
 
-		let root = PrefabSpawn.Spawn(scene, payload, descriptor.PrefabId, parent, preassigned);
+		let root = PrefabSpawn.Spawn(scene, payload, descriptor.PrefabId, parent, preassigned,
+			resolver, sceneDeltas);
 		if (!root.IsAssigned)
 			return .Invalid;
 

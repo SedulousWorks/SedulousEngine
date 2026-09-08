@@ -50,8 +50,21 @@ static class PrefabCapture
 		let name = scope String(scene.GetEntityName(root));
 		Sedulous.Core.Serialization.Serialize(ar, "name", name);
 
+		// An instance INSIDE the subtree persists as a record, not as its entities: it is
+		// still an instance, and flattening it would quietly turn it into a copy that an
+		// edit to its own prefab would never reach again.
+		let contained = scope List<PrefabInstanceState>();
+		let nestedMembers = scope HashSet<Guid>();
+		PrefabNesting.CollectContained(scene, root, contained, nestedMembers);
+
+		let all = scope List<EntityHandle>();
+		SceneStreamFormat.CollectSubtree(scene, root, all);
 		let handles = scope List<EntityHandle>();
-		SceneStreamFormat.CollectSubtree(scene, root, handles);
+		for (let entity in all)
+		{
+			if (!nestedMembers.Contains(scene.GetEntityId(entity)))
+				handles.Add(entity);
+		}
 
 		uint32 entityCount = (uint32)handles.Count;
 		ar.Key("entities");
@@ -106,15 +119,49 @@ static class PrefabCapture
 		ar.BeginArray(ref settingsCount);
 		ar.EndArray();
 
-		// The nested instance section. Empty for now: capturing a subtree that itself
-		// contains instances lands with the nesting work.
+		// The contained instances, as records.
 		var sectionMode = SceneStreamFormat.cPrefabWireReferenced;
 		SerializeValue(ar, "prefabMode", ref sectionMode);
-		uint32 nestedCount = 0;
+
+		let records = scope List<PendingPrefabInstance>();
+		defer { ClearAndDeleteItems!(records); }
+		for (let nested in contained)
+			records.Add(BuildNestedRecord(scene, nested));
+
+		uint32 nestedCount = (uint32)records.Count;
 		ar.Key("prefabInstances");
 		ar.BeginArray(ref nestedCount);
+		for (let record in records)
+			PrefabRecordSerializer.Write(ar, scene, record, text);
 		ar.EndArray();
 
 		return ar.IsPayloadOk ? .Ok : .Err(.Unknown);
+	}
+
+	/// One contained instance as a record in the OWNER's namespace.
+	///
+	/// Its identity here is the root's live guid, which is what a scene record matches
+	/// against when the owner is spawned again. The deltas are the ordinary live versus
+	/// baseline ones: what the person editing this prefab changed about the inner one.
+	private static PendingPrefabInstance BuildNestedRecord(Scene scene, PrefabInstanceState nested)
+	{
+		let record = PrefabDeltas.Compute(scene, nested);
+		record.RootLiveId = nested.RootEntityId;
+		record.NestedRootSourceId = (nested.NestedRootSourceId != Guid())
+			? nested.NestedRootSourceId : nested.RootEntityId;
+
+		let root = scene.FindEntity(nested.RootEntityId);
+		if (root.IsAssigned)
+		{
+			let parent = scene.GetParent(root);
+			record.ParentEntityId = parent.IsAssigned ? scene.GetEntityId(parent) : Guid();
+			let sibling = scene.GetNextSibling(root);
+			record.NextSiblingId = sibling.IsAssigned ? scene.GetEntityId(sibling) : Guid();
+			// A nested record's placement IS template content: where the outer prefab puts
+			// the inner one is part of what the outer prefab says.
+			record.RootTransform = scene.GetLocalTransform(root);
+			record.ApplyPlacement = true;
+		}
+		return record;
 	}
 }

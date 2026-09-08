@@ -40,7 +40,8 @@ static class PrefabRebuild
 	///
 	/// Its placement and its position among its siblings are kept, because those are
 	/// properties of where the instance was PUT rather than of what it was changed into.
-	public static bool Revert(Scene scene, Guid rootEntityId, Span<uint8> payload)
+	public static bool Revert(Scene scene, Guid rootEntityId, Span<uint8> payload,
+		ScenePrefabs.PayloadResolver resolver = null)
 	{
 		let state = scene.FindPrefabInstanceByRoot(rootEntityId);
 		if (state == null)
@@ -61,6 +62,13 @@ static class PrefabRebuild
 		for (int i = 0; i < state.SourceIds.Count; i++)
 			preassigned[state.SourceIds[i]] = state.LiveIds[i];
 
+		// A contained instance reverts WITH its owner: it keeps its member guids, so
+		// cross references stay valid, but none of its deltas, and the owner template's
+		// placement wins. Reverting is asking for the template back, all the way down.
+		let subs = scope List<PendingPrefabInstance>();
+		defer { ClearAndDeleteItems!(subs); }
+		StripContained(scene, root, subs, false);
+
 		let rescued = scope List<RescuedChild>();
 		DetachUserChildren(scene, state.LiveIds, rescued);
 		TearDown(scene, state.LiveIds, rootEntityId);
@@ -70,7 +78,7 @@ static class PrefabRebuild
 		stream.Seek(0, .Begin);
 
 		let parent = (parentId != Guid()) ? scene.FindEntity(parentId) : EntityHandle.Invalid;
-		let spawned = PrefabSpawn.Spawn(scene, stream, prefabId, parent, preassigned);
+		let spawned = PrefabSpawn.Spawn(scene, stream, prefabId, parent, preassigned, resolver, subs);
 		if (!spawned.IsAssigned)
 			return false;
 
@@ -100,6 +108,15 @@ static class PrefabRebuild
 			for (let list in rescuedPerInstance)
 				delete list;
 		}
+		let subsPerInstance = scope List<List<PendingPrefabInstance>>();
+		defer
+		{
+			for (let list in subsPerInstance)
+			{
+				ClearAndDeleteItems!(list);
+				delete list;
+			}
+		}
 		let roots = scope List<Guid>();
 
 		scene.ForEachPrefabInstance(scope [&](state) =>
@@ -128,6 +145,12 @@ static class PrefabRebuild
 
 			roots.Add(state.RootEntityId);
 			deltas.Add(PrefabDeltas.Compute(scene, state));
+
+			// A contained instance rebuilds with its owner, keeping its guids and its own
+			// deltas so nothing anybody changed about it is lost to the outer edit.
+			let subs = new List<PendingPrefabInstance>();
+			StripContained(scene, scene.FindEntity(state.RootEntityId), subs, true);
+			subsPerInstance.Add(subs);
 
 			let rescued = new List<RescuedChild>();
 			DetachUserChildren(scene, state.LiveIds, rescued);
@@ -174,7 +197,8 @@ static class PrefabRebuild
 			let parent = (delta.ParentEntityId != Guid())
 				? scene.FindEntity(delta.ParentEntityId) : EntityHandle.Invalid;
 
-			let root = PrefabSpawn.Spawn(scene, stream, delta.PrefabId, parent, preassigned);
+			let root = PrefabSpawn.Spawn(scene, stream, delta.PrefabId, parent, preassigned,
+				resolver, subsPerInstance[i]);
 			if (!root.IsAssigned)
 				continue;
 
@@ -253,5 +277,58 @@ static class PrefabRebuild
 				scene.DestroyEntity(entity);
 		}
 		scene.RemovePrefabInstance(rootEntityId);
+	}
+
+	/// Takes the instances contained in `root`'s subtree out of the scene, describing each
+	/// so the respawn can put it back.
+	///
+	/// `keepDeltas` says whether what somebody changed about a contained instance survives.
+	/// A rebuild keeps it, because an edit to the outer template should not discard work on
+	/// the inner one. A revert drops it, because reverting is asking for the template back
+	/// all the way down; the member guids are still kept, so cross references stay valid.
+	private static void StripContained(Scene scene, EntityHandle root,
+		List<PendingPrefabInstance> outSubs, bool keepDeltas)
+	{
+		if (!root.IsAssigned)
+			return;
+
+		let contained = scope List<PrefabInstanceState>();
+		let members = scope HashSet<Guid>();
+		PrefabNesting.CollectContained(scene, root, contained, members);
+
+		let subRoots = scope List<Guid>();
+		for (let nested in contained)
+		{
+			PendingPrefabInstance record;
+			if (keepDeltas)
+			{
+				record = PrefabDeltas.Compute(scene, nested);
+			}
+			else
+			{
+				record = new PendingPrefabInstance();
+				record.PrefabId = nested.PrefabId;
+				record.SourceIds.AddRange(nested.SourceIds);
+				record.LiveIds.AddRange(nested.LiveIds);
+				// The owner template's placement wins, since the scene is asking for the
+				// template back rather than for where this one happened to sit.
+				record.ApplyPlacement = false;
+			}
+			record.RootLiveId = nested.RootEntityId;
+			record.NestedRootSourceId = (nested.NestedRootSourceId != Guid())
+				? nested.NestedRootSourceId : nested.RootEntityId;
+			outSubs.Add(record);
+			subRoots.Add(nested.RootEntityId);
+
+			for (let live in nested.LiveIds)
+			{
+				let entity = scene.FindEntity(live);
+				if (entity.IsAssigned)
+					scene.DestroyEntity(entity);
+			}
+		}
+
+		for (let subRoot in subRoots)
+			scene.RemovePrefabInstance(subRoot);
 	}
 }
