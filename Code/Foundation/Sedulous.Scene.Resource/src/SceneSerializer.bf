@@ -55,7 +55,7 @@ static class SceneSerializer
 		SerializeEntities(ar, scene, writing, prefabMembers);
 		SerializeComponents(ar, scene, writing, text, prefabMembers);
 		SerializeSettings(ar, scene, writing, text, includeSettings);
-		SerializePrefabSection(ar, scene, writing, prefabMode);
+		SerializePrefabSection(ar, scene, writing, text, prefabMode);
 	}
 
 	private static void SerializeName(ISerializer ar, Scene scene, bool writing)
@@ -606,7 +606,7 @@ static class SceneSerializer
 	/// array are written now so the format is whole and a stream written today reads
 	/// unchanged once the records arrive.
 	private static void SerializePrefabSection(ISerializer ar, Scene scene, bool writing,
-		ScenePrefabMode prefabMode)
+		bool text, ScenePrefabMode prefabMode)
 	{
 		var sectionMode = (prefabMode == .Referenced)
 			? SceneStreamFormat.cPrefabWireReferenced
@@ -626,10 +626,195 @@ static class SceneSerializer
 			return;
 		}
 
+		if (sectionMode == SceneStreamFormat.cPrefabWireReferenced)
+			SerializeReferencedInstances(ar, scene, writing, text);
+		else
+			SerializeExpandedStates(ar, scene, writing);
+	}
+
+	/// Reference plus deltas: which prefab, the member map, and the overrides DERIVED right
+	/// here by comparing live state against the spawn time baselines.
+	///
+	/// Reading parks each record as a pending descriptor. The serializer cannot resolve a
+	/// prefab asset itself, having no database, so respawning is a separate pass with a
+	/// resolver the caller supplies.
+	private static void SerializeReferencedInstances(ISerializer ar, Scene scene, bool writing,
+		bool text)
+	{
 		uint32 instanceCount = 0;
-		ar.Key((sectionMode == SceneStreamFormat.cPrefabWireReferenced)
-			? "prefabInstances" : "prefabStates");
+		// Kept apart by OWNERSHIP: a computed delta is this call's to free, a parked
+		// descriptor belongs to the scene.
+		let computed = scope List<PendingPrefabInstance>();
+		defer { ClearAndDeleteItems!(computed); }
+		let parked = scope List<PendingPrefabInstance>();
+
+		if (writing)
+		{
+			scene.ForEachPrefabInstance(scope [&](state) =>
+			{
+				computed.Add(PrefabDeltas.Compute(scene, state));
+			});
+			// A descriptor that was parked and never respawned re-emits VERBATIM: a load
+			// then save that never ran the resolve pass, which is what a transcode is, must
+			// not quietly drop the section.
+			scene.ForEachPendingPrefabInstance(scope [&](pending) => { parked.Add(pending); });
+			instanceCount = (uint32)(computed.Count + parked.Count);
+		}
+
+		ar.Key("prefabInstances");
 		ar.BeginArray(ref instanceCount);
+
+		if (writing)
+		{
+			for (let record in computed)
+				PrefabRecordSerializer.Write(ar, scene, record, text);
+			for (let record in parked)
+				PrefabRecordSerializer.Write(ar, scene, record, text);
+		}
+		else
+		{
+			for (uint32 i < instanceCount)
+			{
+				let pending = new PendingPrefabInstance();
+				PrefabRecordSerializer.Read(ar, scene, pending, text);
+				scene.AddPendingPrefabInstance(pending);
+			}
+		}
+
 		ar.EndArray();
 	}
+
+	/// Expanded: the members serialized flat above like any other entity, and the instance
+	/// STATE written beside them verbatim.
+	///
+	/// What a snapshot uses. Restoring rebuilds the exact bookkeeping with no payload to
+	/// resolve, which is what lets entering play in an editor be instant and exact.
+	private static void SerializeExpandedStates(ISerializer ar, Scene scene, bool writing)
+	{
+		uint32 instanceCount = 0;
+		let states = scope List<PrefabInstanceState>();
+
+		if (writing)
+		{
+			scene.ForEachPrefabInstance(scope [&](state) => { states.Add(state); });
+			instanceCount = (uint32)states.Count;
+		}
+
+		ar.Key("prefabStates");
+		ar.BeginArray(ref instanceCount);
+
+		if (writing)
+		{
+			for (let state in states)
+				WriteInstanceState(ar, state);
+		}
+		else
+		{
+			for (uint32 i < instanceCount)
+			{
+				let state = new PrefabInstanceState();
+				if (!ReadInstanceState(ar, state))
+				{
+					delete state;
+					break;
+				}
+				scene.AddPrefabInstance(state);
+			}
+		}
+
+		ar.EndArray();
+	}
+
+	private static void WriteInstanceState(ISerializer ar, PrefabInstanceState state)
+	{
+		var prefabId = state.PrefabId;
+		var rootId = state.RootEntityId;
+		var ownerRootId = state.OwnerRootEntityId;
+		var nestedRootSourceId = state.NestedRootSourceId;
+		SerializeValue(ar, "prefab", ref prefabId);
+		SerializeValue(ar, "root", ref rootId);
+		SerializeValue(ar, "owner", ref ownerRootId);
+		SerializeValue(ar, "nestedSrcRoot", ref nestedRootSourceId);
+
+		uint32 memberCount = (uint32)state.SourceIds.Count;
+		ar.Key("members");
+		ar.BeginArray(ref memberCount);
+		for (int i = 0; i < state.SourceIds.Count; i++)
+		{
+			var source = state.SourceIds[i];
+			var live = state.LiveIds[i];
+			var baseline = state.BaselineTransforms[i];
+			SerializeValue(ar, "src", ref source);
+			SerializeValue(ar, "live", ref live);
+			SceneStreamFormat.SerializeTransform(ar, ref baseline);
+		}
+		ar.EndArray();
+
+		uint32 baselineCount = (uint32)state.ComponentBaselines.Count;
+		ar.Key("baselines");
+		ar.BeginArray(ref baselineCount);
+		for (let baseline in state.ComponentBaselines)
+		{
+			var source = baseline.SourceEntity;
+			SerializeValue(ar, "src", ref source);
+			Sedulous.Core.Serialization.Serialize(ar, "type", baseline.TypeId);
+			SerializeBlob(ar, "blob", baseline.Blob);
+		}
+		ar.EndArray();
+	}
+
+	private static bool ReadInstanceState(ISerializer ar, PrefabInstanceState state)
+	{
+		SerializeValue(ar, "prefab", ref state.PrefabId);
+		SerializeValue(ar, "root", ref state.RootEntityId);
+		SerializeValue(ar, "owner", ref state.OwnerRootEntityId);
+		SerializeValue(ar, "nestedSrcRoot", ref state.NestedRootSourceId);
+
+		uint32 memberCount = 0;
+		ar.Key("members");
+		ar.BeginArray(ref memberCount);
+		if (memberCount > cMaxRecordEntries)
+		{
+			ar.FailPayload(.OutOfRange);
+			ar.EndArray();
+			return false;
+		}
+		for (uint32 i < memberCount)
+		{
+			Guid source = .();
+			Guid live = .();
+			Transform baseline = .();
+			SerializeValue(ar, "src", ref source);
+			SerializeValue(ar, "live", ref live);
+			SceneStreamFormat.SerializeTransform(ar, ref baseline);
+			state.SourceIds.Add(source);
+			state.LiveIds.Add(live);
+			state.BaselineTransforms.Add(baseline);
+		}
+		ar.EndArray();
+
+		uint32 baselineCount = 0;
+		ar.Key("baselines");
+		ar.BeginArray(ref baselineCount);
+		if (baselineCount > cMaxRecordEntries)
+		{
+			ar.FailPayload(.OutOfRange);
+			ar.EndArray();
+			return false;
+		}
+		for (uint32 i < baselineCount)
+		{
+			let baseline = new PrefabComponentBaseline();
+			SerializeValue(ar, "src", ref baseline.SourceEntity);
+			Sedulous.Core.Serialization.Serialize(ar, "type", baseline.TypeId);
+			SerializeBlob(ar, "blob", baseline.Blob);
+			state.ComponentBaselines.Add(baseline);
+		}
+		ar.EndArray();
+		return true;
+	}
+
+	/// A count larger than this is a misparse rather than a record, and believing it would
+	/// allocate whatever number happened to be in the stream.
+	private const uint32 cMaxRecordEntries = 1 << 20;
 }
