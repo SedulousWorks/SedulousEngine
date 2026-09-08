@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Core.Serialization;
 
 namespace Sedulous.Input;
 
@@ -7,9 +8,13 @@ namespace Sedulous.Input;
 ///
 /// Pure DATA. Evaluating it is the runtime's job, which is what lets an editor, a cooker
 /// and a game all hold the same thing and mean the same by it.
-class InputMap
+class InputMap : ISerializable
 {
 	public List<ActionSet> Sets = new .() ~ DeleteContainerAndItems!(_);
+
+	/// Self describing, so a map nests wherever a serializable does: the cooked resource
+	/// wrapping one does not have to know its layout, and neither does anything else.
+	public void Serialize(ISerializer ar) => InputMapSerialization.SerializeInputMap(ar, this);
 
 	/// The set with this name, or null.
 	public ActionSet FindSet(StringView name)

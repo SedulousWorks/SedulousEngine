@@ -1,9 +1,9 @@
 FileVersion = 1
 
 [Project]
-Name = "Sedulous.Input.Resource"
-TargetType = "BeefLib"
-StartupObject = "Sedulous.Input.Resource.Program"
+Name = "Sedulous.Input.Resource.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Input.Resource.Tests.Program"
 
 [Dependencies]
 corlib = "*"
@@ -11,3 +11,4 @@ corlib = "*"
 "Sedulous.Content" = "*"
 "Sedulous.Resource" = "*"
 "Sedulous.Input" = "*"
+"Sedulous.Input.Resource" = "*"
