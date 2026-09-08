@@ -43,7 +43,7 @@ class PrefabApplyTests
 		manager.Get(spawned).Value = 77.0f;
 
 		let applied = scope MemoryStream();
-		Test.Assert(PrefabApply.CaptureAsTemplate(scene, state, applied, .Binary) case .Ok);
+		Test.Assert(PrefabApply.CaptureAsTemplate(scene, state, applied, null, .Binary) case .Ok);
 		applied.Seek(0, .Begin);
 
 		// A fresh instance of the NEW template carries the edit.
@@ -82,7 +82,7 @@ class PrefabApplyTests
 		// The FIRST is applied back to the prefab.
 		manager.Get(first).Value = 77.0f;
 		let applied = scope MemoryStream();
-		Test.Assert(PrefabApply.CaptureAsTemplate(scene, firstState, applied, .Binary) case .Ok);
+		Test.Assert(PrefabApply.CaptureAsTemplate(scene, firstState, applied, null, .Binary) case .Ok);
 		applied.Seek(0, .Begin);
 		let appliedBytes = scope List<uint8>();
 		appliedBytes.AddRange(applied.Bytes);
@@ -117,7 +117,7 @@ class PrefabApplyTests
 		scene.SetLocalTransform(spawned, placed);
 
 		let applied = scope MemoryStream();
-		Test.Assert(PrefabApply.CaptureAsTemplate(scene, state, applied, .Binary) case .Ok);
+		Test.Assert(PrefabApply.CaptureAsTemplate(scene, state, applied, null, .Binary) case .Ok);
 		applied.Seek(0, .Begin);
 
 		let target = scope Scene();
@@ -147,7 +147,7 @@ class PrefabApplyTests
 		scene.SetParent(addition, scene.GetFirstChild(spawned));
 
 		let applied = scope MemoryStream();
-		Test.Assert(PrefabApply.CaptureAsTemplate(scene, state, applied, .Binary) case .Ok);
+		Test.Assert(PrefabApply.CaptureAsTemplate(scene, state, applied, null, .Binary) case .Ok);
 		applied.Seek(0, .Begin);
 
 		let target = scope Scene();
@@ -177,7 +177,7 @@ class PrefabApplyTests
 		scene.SetLocalTransform(scene.GetFirstChild(spawned), moved);
 
 		let applied = scope MemoryStream();
-		Test.Assert(PrefabApply.CaptureAsTemplate(scene, state, applied, .Binary) case .Ok);
+		Test.Assert(PrefabApply.CaptureAsTemplate(scene, state, applied, null, .Binary) case .Ok);
 		applied.Seek(0, .Begin);
 
 		let target = scope Scene();
@@ -201,6 +201,6 @@ class PrefabApplyTests
 		scene.DestroyEntity(spawned);
 
 		let applied = scope MemoryStream();
-		Test.Assert(PrefabApply.CaptureAsTemplate(scene, state, applied, .Binary) case .Err(.NotFound));
+		Test.Assert(PrefabApply.CaptureAsTemplate(scene, state, applied, null, .Binary) case .Err(.NotFound));
 	}
 }

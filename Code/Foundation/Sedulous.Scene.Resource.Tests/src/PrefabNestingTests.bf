@@ -326,4 +326,52 @@ class PrefabNestingTests
 		Test.Assert(survivor.IsAssigned, "the nested instance was not lost with its owner");
 		Test.Assert(loaded.GetParent(survivor) == EntityHandle.Invalid, "it became top level");
 	}
+
+	/// Applying an outer instance back to its prefab KEEPS what that instance says about
+	/// its nested one.
+	///
+	/// This is why a nested record is diffed against the child's own template rather than
+	/// against the instance's baselines. The owner's customisation was folded INTO those
+	/// baselines on purpose, so a baseline diff reports it as nothing at all, and the
+	/// applied template would come out having forgotten it.
+	[Test]
+	public static void ApplyingAnOwnerKeepsWhatItSaysAboutItsNestedInstance()
+	{
+		let payloads = scope Payloads();
+		let innerPayload = scope MemoryStream();
+		CaptureInner(innerPayload, 10.0f);
+		payloads.Add(InnerId, innerPayload);
+		let outerPayload = scope MemoryStream();
+		CaptureOuter(outerPayload, payloads, 55.0f);
+		payloads.Add(OuterId, outerPayload);
+
+		let scene = scope Scene();
+		let manager = scene.AddSystem<HealthManager>();
+		ScenePrefabs.PayloadResolver resolver = scope [&](id) => payloads.Resolve(id);
+		let outer = payloads.Resolve(OuterId);
+		defer delete outer;
+		let spawned = PrefabSpawn.Spawn(scene, outer, OuterId, .Invalid, null, resolver);
+		let state = scene.FindPrefabInstanceByRoot(scene.GetEntityId(spawned));
+
+		// Sanity: the outer's customisation of the inner is live and is the baseline.
+		Test.Assert(manager.Get(scene.GetFirstChild(spawned)).Value == 55.0f);
+
+		// Apply this instance back to the outer prefab.
+		let applied = scope MemoryStream();
+		Test.Assert(PrefabApply.CaptureAsTemplate(scene, state, applied, resolver, .Binary) case .Ok);
+		applied.Seek(0, .Begin);
+		payloads.Add(OuterId, applied);
+
+		// A FRESH instance of the applied template still customises its nested one.
+		let target = scope Scene();
+		let targetManager = target.AddSystem<HealthManager>();
+		let reapplied = payloads.Resolve(OuterId);
+		defer delete reapplied;
+		let fresh = PrefabSpawn.Spawn(target, reapplied, OuterId, .Invalid, null, resolver);
+
+		Test.Assert(fresh.IsAssigned);
+		Test.Assert(target.GetChildCount(fresh) == 1, "the nested instance came with the template");
+		Test.Assert(targetManager.Get(target.GetFirstChild(fresh)).Value == 55.0f,
+			"and the owner's customisation of it survived the apply");
+	}
 }

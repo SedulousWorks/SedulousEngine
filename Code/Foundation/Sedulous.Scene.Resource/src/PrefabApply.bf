@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
+using Sedulous.Core.Logging;
 using Sedulous.Core.Serialization;
 using Sedulous.Scene;
 using Sedulous.Xml.Serialization;
@@ -26,17 +27,23 @@ static class PrefabApply
 {
 	/// Captures `state`'s instance as a template payload. A source lands in the prefab
 	/// asset as text.
+	/// `resolver` reaches the templates of the prefabs this instance CONTAINS. Their
+	/// records are diffed against those pure templates rather than against baselines that
+	/// already have this owner's customisation folded in; without a resolver the diff
+	/// degrades to the baseline one and that customisation is lost, which is said out loud
+	/// rather than quietly.
 	public static Result<void, ErrorCode> CaptureAsTemplate(Scene scene,
-		PrefabInstanceState state, IStream output, SceneStreamEncoding encoding = .Text)
+		PrefabInstanceState state, IStream output, ScenePrefabs.PayloadResolver resolver = null,
+		SceneStreamEncoding encoding = .Text)
 	{
 		if (encoding == .Binary)
 		{
 			let ar = scope BinarySerializer(output, .Write);
-			return WriteBody(ar, scene, state, false);
+			return WriteBody(ar, scene, state, false, resolver);
 		}
 
 		let ar = scope XmlSerializer();
-		if (WriteBody(ar, scene, state, true) case .Err(let error))
+		if (WriteBody(ar, scene, state, true, resolver) case .Err(let error))
 			return .Err(error);
 
 		let text = scope String();
@@ -46,7 +53,7 @@ static class PrefabApply
 	}
 
 	private static Result<void, ErrorCode> WriteBody(ISerializer ar, Scene scene,
-		PrefabInstanceState state, bool text)
+		PrefabInstanceState state, bool text, ScenePrefabs.PayloadResolver resolver)
 	{
 		let root = scene.FindEntity(state.RootEntityId);
 		if (!root.IsAssigned)
@@ -82,8 +89,21 @@ static class PrefabApply
 		let name = scope String(scene.GetEntityName(root));
 		Sedulous.Core.Serialization.Serialize(ar, "name", name);
 
+		// An instance inside the subtree becomes a nested RECORD rather than plain entities:
+		// an owner-linked one keeps its stable identity, and one somebody spawned inside is
+		// absorbed as a new record.
+		let contained = scope List<PrefabInstanceState>();
+		let nestedMembers = scope HashSet<Guid>();
+		PrefabNesting.CollectContained(scene, root, contained, nestedMembers);
+
+		let all = scope List<EntityHandle>();
+		SceneStreamFormat.CollectSubtree(scene, root, all);
 		let handles = scope List<EntityHandle>();
-		SceneStreamFormat.CollectSubtree(scene, root, handles);
+		for (let entity in all)
+		{
+			if (!nestedMembers.Contains(scene.GetEntityId(entity)))
+				handles.Add(entity);
+		}
 
 		uint32 entityCount = (uint32)handles.Count;
 		ar.Key("entities");
@@ -157,14 +177,58 @@ static class PrefabApply
 		ar.BeginArray(ref settingsCount);
 		ar.EndArray();
 
-		// The nested record section. Empty until nesting lands, matching capture.
 		var sectionMode = SceneStreamFormat.cPrefabWireReferenced;
 		SerializeValue(ar, "prefabMode", ref sectionMode);
-		uint32 nestedCount = 0;
+
+		let records = scope List<PendingPrefabInstance>();
+		defer { ClearAndDeleteItems!(records); }
+		for (let nested in contained)
+			records.Add(BuildNestedRecord(scene, nested, resolver, scope (live) => Substituted(live)));
+
+		uint32 nestedCount = (uint32)records.Count;
 		ar.Key("prefabInstances");
 		ar.BeginArray(ref nestedCount);
+		for (let record in records)
+			PrefabRecordSerializer.Write(ar, scene, record, text);
 		ar.EndArray();
 
 		return ar.IsPayloadOk ? .Ok : .Err(.Unknown);
+	}
+
+	/// One contained instance as a record in the template being written.
+	///
+	/// Diffed against the child's OWN template when the resolver can reach it. The
+	/// instance's baselines cannot serve: they already have this owner's customisation
+	/// folded in, so diffing against them would report that customisation as nothing and
+	/// drop it out of the template being written.
+	private static PendingPrefabInstance BuildNestedRecord(Scene scene,
+		PrefabInstanceState nested, ScenePrefabs.PayloadResolver resolver,
+		delegate Guid(Guid) substituted)
+	{
+		PendingPrefabInstance record;
+		let childTemplate = (resolver != null) ? resolver(nested.PrefabId) : null;
+		if (childTemplate != null)
+		{
+			defer:: delete childTemplate;
+			record = PrefabTemplateDiff.ComputeVsTemplate(scene, nested, childTemplate);
+		}
+		else
+		{
+			GlobalLog(.Warning,
+				"PrefabApply: a nested template did not resolve, so this owner's customisation of it may be lost");
+			record = PrefabDeltas.Compute(scene, nested);
+		}
+
+		// Its identity in the template being written is the one it already answers to in
+		// its owner's namespace, so a scene record still matches it after the apply.
+		if (nested.NestedRootSourceId != Guid())
+			record.RootLiveId = nested.NestedRootSourceId;
+
+		record.ParentEntityId = substituted(record.ParentEntityId);
+		record.NextSiblingId = substituted(record.NextSiblingId);
+		// The links belong to the live scene, not to a template.
+		record.OwnerRootEntityId = Guid();
+		record.NestedRootSourceId = Guid();
+		return record;
 	}
 }
