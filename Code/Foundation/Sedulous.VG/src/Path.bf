@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Threading;
 using Sedulous.Core;
 
 namespace Sedulous.VG;
@@ -11,8 +12,18 @@ namespace Sedulous.VG;
 /// geometry for a shape that no longer exists.
 class Path
 {
+	private static int64 sNextInstanceId;
+
 	private List<PathCommand> mCommands = new .() ~ delete _;
 	private List<Float2> mPoints = new .() ~ delete _;
+
+	/// A process unique id, minted per constructed path.
+	///
+	/// A tessellation cache keys on THIS, never on the reference. After a delete the
+	/// allocator can hand a new path the same address, and a pointer keyed cache then
+	/// serves the dead path's geometry: the same rule ImageData states, for the same
+	/// reason. Raptor's path cache is keyed by pointer and has that hazard.
+	public readonly uint64 InstanceId = (uint64)Interlocked.Increment(ref sNextInstanceId);
 
 	public this() {}
 
