@@ -206,6 +206,36 @@ static
 		ar.EndArray();
 	}
 
+	/// The same for a list of STRINGS, which the value type overload cannot take: a string
+	/// is a reference, and its BYTES rather than its handle are what get stored.
+	///
+	/// THE LIST OWNS ITS ITEMS. Reading deletes what was there and allocates fresh ones, so
+	/// a reused list neither accumulates nor leaks.
+	public static void SerializeList(ISerializer ar, List<String> list)
+	{
+		uint32 count = (uint32)list.Count;
+		ar.BeginArray(ref count);
+
+		if (ar.Mode == .Read)
+		{
+			ClearAndDeleteItems!(list);
+			list.Reserve((int)count);
+			for (uint32 i < count)
+			{
+				let element = new String();
+				ar.Text(element);
+				list.Add(element);
+			}
+		}
+		else
+		{
+			for (int i < list.Count)
+				ar.Text(list[i]);
+		}
+
+		ar.EndArray();
+	}
+
 	// ---- named fields ----
 	//
 	// The key is emitted for every field whatever the backend is: binary ignores it, text
