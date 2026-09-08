@@ -7,4 +7,5 @@ StartupObject = "Sedulous.Heightfield.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
 "Sedulous.Heightfield" = "*"
