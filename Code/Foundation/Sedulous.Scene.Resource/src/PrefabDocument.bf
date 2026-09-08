@@ -8,9 +8,8 @@ namespace Sedulous.Scene.Resource;
 /// A DISTINCT type from SceneDocument so a browser, a creator and a picker can tell a
 /// prefab from a scene. The stream format behind it is identical, which is what lets a
 /// scene editor open a prefab unchanged.
-class PrefabDocument : ISerializable
+[Serializable]
+class PrefabDocument
 {
 	public String Name = new .() ~ delete _;
-
-	public void Serialize(ISerializer ar) => Sedulous.Core.Serialization.Serialize(ar, "name", Name);
 }
