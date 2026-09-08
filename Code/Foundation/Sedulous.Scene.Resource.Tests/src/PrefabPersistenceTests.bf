@@ -75,7 +75,7 @@ class PrefabPersistenceTests
 		CapturePayload(payload);
 
 		let scene = scope Scene();
-		let manager = scene.AddSystem<HealthManager>();
+		scene.AddSystem<HealthManager>();
 		let spawned = PrefabSpawn.Spawn(scene, payload, PrefabId);
 		let spawnedId = scene.GetEntityId(spawned);
 		let barrelId = scene.GetEntityId(scene.GetFirstChild(spawned));

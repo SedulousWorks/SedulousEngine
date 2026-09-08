@@ -86,7 +86,7 @@ static class ScenePrefabs
 	/// that is itself still moving settles over several passes, since a chain has to anchor
 	/// on something that does not move; a parent mismatch is skipped, because restoring an
 	/// ORDER must never reparent.
-	private static void RestoreSiblingOrder(Scene scene, List<(Guid entity, Guid nextSibling)> fixes)
+	public static void RestoreSiblingOrder(Scene scene, List<(Guid entity, Guid nextSibling)> fixes)
 	{
 		for (int pass = 0; pass <= fixes.Count; pass++)
 		{
