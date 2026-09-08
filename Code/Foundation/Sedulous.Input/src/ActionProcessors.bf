@@ -19,9 +19,11 @@ struct ActionProcessors
 	/// one gives fine control near the centre, which is what a stick wants for aiming.
 	public float ResponseExponent = 1.0f;
 
-	/// Whether the value follows a global time scale. STORED but not yet applied: there is
-	/// no time scale system for it to read, and a flag that silently did nothing would be
-	/// worse than one that is honestly waiting.
+	/// Whether the value follows the runtime's time scale, so a rate driving per second
+	/// gameplay slows with the world.
+	///
+	/// Opt IN, because the obvious case wants the opposite: a pointer rate must never be
+	/// scaled, or slowing time slows the mouse.
 	public bool TimeScale = false;
 
 	public this() {}
