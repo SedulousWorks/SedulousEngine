@@ -7,4 +7,11 @@ StartupObject = "Sedulous.Runtime.Client.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Graphics.Null" = "*"
+"Sedulous.Runtime" = "*"
 "Sedulous.Runtime.Client" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Shell.Null" = "*"
