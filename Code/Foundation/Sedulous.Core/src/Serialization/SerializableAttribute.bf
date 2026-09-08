@@ -92,7 +92,7 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 				if (!field.IsInstanceField || (field.DeclaringType != declaring))
 					continue;
 
-				body.AppendF("\tar.Key(\"{}\");\n", field.Name);
+				body.AppendF("\tar.Key(\"{}\");\n", WireKey(field.Name, .. scope String()));
 
 				// A type that knows how to describe ITSELF does. That is the escape hatch for
 				// anything the dispatcher cannot know about: a resource reference stores only
@@ -155,6 +155,24 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 
 	/// Whether a type carries its own Serialize, taking just the serializer.
 	[Comptime]
+	/// The key a field is stored under: its name with the first letter lowercased.
+	///
+	/// The stored form is camelCase because that is what the ENGINE'S FORMAT is, and a
+	/// hand-written Serialize body has always written it that way. A generated body that
+	/// emitted the declaration verbatim would make the same field read "Width" in one
+	/// record and "width" in the next, which a text envelope shows and a person editing one
+	/// has to keep straight.
+	///
+	/// Only the first letter, so an inner capital survives: "BaseColor" stores as
+	/// "baseColor".
+	[Comptime]
+	private static void WireKey(StringView name, String outKey)
+	{
+		outKey.Set(name);
+		if (!outKey.IsEmpty)
+			outKey[0] = outKey[0].ToLower;
+	}
+
 	private static bool HasSelfSerialize(Type type)
 	{
 		if (let instance = type as TypeInstance)
