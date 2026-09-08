@@ -25,6 +25,14 @@ abstract class ComponentManagerBase : SceneSystem
 	/// generic face of Add, for tools that only know the type.
 	public virtual bool AddDefaultComponent(EntityHandle entity) => false;
 
+	/// The LIVE component's address, or null when it is absent or the handle is stale.
+	///
+	/// The generic face of Get, for code that has the type only as a Type: reflection
+	/// needs somewhere to read the fields from. Transient like Get, and for the same
+	/// reason: the pool swap removes and reallocates, so this is re-asked on every access
+	/// rather than kept.
+	public abstract void* GetComponentAddress(EntityHandle entity);
+
 	// ---- serialization, opted into by SerializableComponentManager ----
 
 	/// Whether these components persist, and the stable id on disk that routes a record

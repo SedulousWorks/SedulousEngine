@@ -5,13 +5,12 @@ namespace Sedulous.Scene;
 
 /// A component pool whose components PERSIST.
 ///
-/// Serialization is opt in: subclass this instead of ComponentManager when the components
-/// should be saved, and a manager that says nothing simply is not written. The component
-/// type must be ISerializable, which is what a record's payload is.
+/// Serialization is opt in: subclass this rather than ComponentManager when the components
+/// should be saved, and a manager that says nothing simply is not written.
 ///
-/// Construct it with a stable id on disk. That id, not the runtime type, is what routes a
-/// record back here on load: a runtime type is not stable across builds, and a rename must
-/// not silently orphan every saved component.
+/// The identity on disk comes from the component's own [SerializableComponent] attribute,
+/// not from this manager: the id describes the TYPE, and stating it here would let two
+/// managers of the same component disagree about what it is called.
 ///
 /// DIVERGES from Raptor in how the payload is reached. Raptor finds a free Serialize by
 /// argument dependent lookup; Beef has no such thing, so the component states it by
@@ -20,14 +19,21 @@ class SerializableComponentManager<T> : ComponentManager<T>
 	where T : struct, ISerializable
 {
 	private String mTypeId = new .() ~ delete _;
-	private uint32 mDataVersion;
+	private uint32 mDataVersion = 1;
 
-	/// `typeId` is the stable id on disk; `dataVersion` is the component's own data
-	/// version, which a Serialize body gates on to migrate an older scene.
-	public this(StringView typeId, uint32 dataVersion = 1)
+	public this()
 	{
-		mTypeId.Set(typeId);
-		mDataVersion = dataVersion;
+		if (typeof(T).GetCustomAttribute<SerializableComponentAttribute>() case .Ok(let attribute))
+		{
+			mTypeId.Set(attribute.TypeId);
+			mDataVersion = attribute.DataVersion;
+		}
+		else
+		{
+			// Not a warning: a pool that cannot name itself cannot route a record back on
+			// load, so every component it holds would be silently unreadable.
+			Runtime.FatalError(scope $"{typeof(T)} is stored by a SerializableComponentManager but carries no [SerializableComponent] attribute");
+		}
 	}
 
 	public override bool IsSerializable => true;

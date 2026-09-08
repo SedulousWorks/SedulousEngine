@@ -90,6 +90,8 @@ class ComponentManager<T> : ComponentManagerBase where T : struct
 
 	public void Remove(EntityHandle entity) => RemoveComponent(entity);
 
+	public override void* GetComponentAddress(EntityHandle entity) => (void*)Get(entity);
+
 	public override uint32 ComponentCount => (uint32)mDense.Count;
 	public uint32 Count => (uint32)mDense.Count;
 
