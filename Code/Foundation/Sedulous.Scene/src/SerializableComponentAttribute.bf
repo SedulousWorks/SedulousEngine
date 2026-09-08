@@ -17,8 +17,12 @@ namespace Sedulous.Scene;
 struct SerializableComponentAttribute : Attribute
 {
 	public String TypeId;
-	/// Bumped when the stored shape changes, and gated on by a Serialize body that has to
-	/// read an older scene.
+	/// Bumped when the stored shape changes.
+	///
+	/// There is no migration: a payload stamped with any other version is REFUSED, so a
+	/// bump means the data written under the old one has to be re-saved. A reader that
+	/// guessed at an older layout would decode the wrong fields and hand back something
+	/// that looks plausible, which is worse than saying no.
 	public uint32 DataVersion;
 
 	public this(String typeId, uint32 dataVersion = 1)

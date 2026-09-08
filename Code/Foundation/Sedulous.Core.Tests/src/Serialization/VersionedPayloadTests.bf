@@ -6,7 +6,11 @@ using Sedulous.Core.Serialization;
 
 namespace Sedulous.Core.Tests;
 
-/// Version envelopes: what lets a build read data an older build wrote.
+/// Version envelopes: the stamp that says which layout a payload was written under.
+///
+/// ONE supported layout per type. The stamp exists to REFUSE anything else, not to migrate
+/// it: a reader that guessed at an older layout would decode the wrong fields and hand back
+/// a value that looks perfectly plausible.
 class VersionedPayloadTests
 {
 	/// Declaring a version is how you opt in. It costs bytes in every payload, so a type
@@ -78,33 +82,73 @@ class VersionedPayloadTests
 		Test.Assert(target.Value == -321);
 	}
 
-	/// The point of the whole mechanism: data written before a field existed still loads,
-	/// and the body can tell that it did.
+	/// A payload written under an older version is REFUSED, not migrated.
+	///
+	/// This is the whole bargain: bumping a data version means re-saving what was written
+	/// under the old one. The alternative is a reader that quietly decodes the wrong
+	/// fields, which fails much later and much less obviously.
 	[Test]
-	public static void OldDataReadsWithTheVersionItWasWrittenWith()
+	public static void StaleDataIsRefusedRatherThanMigrated()
 	{
-		// A version one payload: Width only, no Height.
 		let old = scope MemoryStream();
 		{
 			let writer = scope BinarySerializer(old, .Write);
-			let sample = scope MigratingSample();
+			let sample = scope StaleVersionSample();
 			sample.WriteVersion = 1;
 			sample.Width = 42;
-			sample.Height = 999; // never written at version one
+			sample.Height = 999;
 			Serialize(writer, (ISerializable)sample);
 		}
-		Test.Assert(old.Size() == 4 + (8 + 4) + 4, "version one stores Width alone");
 
-		// The current build reads it and fills in what version one implied.
 		Test.Assert(old.Seek(0, .Begin) == 0);
-		let migrated = scope MigratingSample();
+		let target = scope StaleVersionSample();
+		let reader = scope BinarySerializer(old, .Read);
+		Serialize(reader, (ISerializable)target);
+
+		Test.Assert(!reader.IsOk, "the version one payload was refused");
+		Test.Assert(reader.Status case .Err(.NotSupported));
+	}
+
+	/// A chain carrying MORE entries than the type declares is refused too: it describes a
+	/// type hierarchy this build does not have, so the fields after it are not ours to read.
+	[Test]
+	public static void AChainWithExtraEntriesIsRefused()
+	{
+		let stream = scope MemoryStream();
 		{
-			let reader = scope BinarySerializer(old, .Read);
-			Serialize(reader, (ISerializable)migrated);
-			Test.Assert(reader.IsOk);
+			let writer = scope BinarySerializer(stream, .Write);
+			SerializedDataVersion[2] chain = .(.(StaleVersionSample.TypeId, StaleVersionSample.CurrentVersion),
+				.(0xBA5E, 1));
+			BeginVersionedPayload(writer, .(&chain[0], 2));
+			EndVersionedPayload(writer);
 		}
-		Test.Assert(migrated.Width == 42);
-		Test.Assert(migrated.Height == 1, "absent before version two, so it takes the implied value");
+
+		Test.Assert(stream.Seek(0, .Begin) == 0);
+		let reader = scope BinarySerializer(stream, .Read);
+		BeginVersionedPayload(reader, StaleVersionSample.TypeId, StaleVersionSample.CurrentVersion);
+		Test.Assert(!reader.IsOk);
+		Test.Assert(reader.Status case .Err(.NotSupported));
+		EndVersionedPayload(reader);
+	}
+
+	/// And a chain naming a DIFFERENT type: the right version of the wrong thing is still
+	/// the wrong thing.
+	[Test]
+	public static void AChainNamingAnotherTypeIsRefused()
+	{
+		let stream = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(stream, .Write);
+			BeginVersionedPayload(writer, 0xF00D, StaleVersionSample.CurrentVersion);
+			EndVersionedPayload(writer);
+		}
+
+		Test.Assert(stream.Seek(0, .Begin) == 0);
+		let reader = scope BinarySerializer(stream, .Read);
+		BeginVersionedPayload(reader, StaleVersionSample.TypeId, StaleVersionSample.CurrentVersion);
+		Test.Assert(!reader.IsOk);
+		Test.Assert(reader.Status case .Err(.NotSupported));
+		EndVersionedPayload(reader);
 	}
 
 	[Test]
@@ -113,15 +157,15 @@ class VersionedPayloadTests
 		let stream = scope MemoryStream();
 		{
 			let writer = scope BinarySerializer(stream, .Write);
-			let sample = scope MigratingSample();
+			let sample = scope StaleVersionSample();
 			sample.Width = 7;
 			sample.Height = 11;
 			Serialize(writer, (ISerializable)sample);
 		}
-		Test.Assert(stream.Size() == 4 + (8 + 4) + 4 + 4, "version two stores both");
+		Test.Assert(stream.Size() == 4 + (8 + 4) + 4 + 4, "the chain, then both fields");
 
 		Test.Assert(stream.Seek(0, .Begin) == 0);
-		let target = scope MigratingSample();
+		let target = scope StaleVersionSample();
 		{
 			let reader = scope BinarySerializer(stream, .Read);
 			Serialize(reader, (ISerializable)target);

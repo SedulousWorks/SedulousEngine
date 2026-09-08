@@ -613,6 +613,19 @@ static class SceneSerializer
 			: SceneStreamFormat.cPrefabWireExpanded;
 		SerializeValue(ar, "prefabMode", ref sectionMode);
 
+		// Only the two current layouts are read. A retired tag is REFUSED rather than
+		// guessed at: misreading this section turns array counts into garbage, and a
+		// garbage count is an allocation of whatever number happened to be there.
+		if (!writing && (sectionMode != SceneStreamFormat.cPrefabWireReferenced)
+			&& (sectionMode != SceneStreamFormat.cPrefabWireExpanded))
+		{
+			GlobalLog(.Error,
+				"SceneSerializer: the prefab section is tagged {}, which is not a current layout. Re-save the scene.",
+				sectionMode);
+			ar.FailPayload(.NotSupported);
+			return;
+		}
+
 		uint32 instanceCount = 0;
 		ar.Key((sectionMode == SceneStreamFormat.cPrefabWireReferenced)
 			? "prefabInstances" : "prefabStates");

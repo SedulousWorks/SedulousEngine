@@ -3,7 +3,10 @@ using System.Collections;
 
 namespace Sedulous.Core.Serialization;
 
-/// Brackets a payload whose layout may evolve.
+/// Brackets a payload stamped with its type's data version.
+///
+/// ONE supported layout per type: the current one. A payload written under any other
+/// version is refused, not migrated.
 static
 {
 	/// A chain longer than this is not a chain, it is a corrupt length being trusted.
@@ -55,6 +58,26 @@ static
 		}
 
 		ar.EndArray();
+
+		// ONE supported layout per type: the current one.
+		//
+		// A stored chain that differs in any way, its length, a type id or a version, is
+		// REFUSED rather than migrated. There is no migration path: bump the data version
+		// when the wire changes, and re-save what was written under the old one. A reader
+		// that guessed at an older layout would decode the wrong fields and hand back a
+		// value that looks plausible, which is worse than saying no.
+		if (ar.Mode == .Read)
+		{
+			var matches = (int)count == declared.Length;
+			for (int i = 0; matches && (i < (int)count); i++)
+			{
+				matches = (chain[i].TypeId == declared[i].TypeId)
+					&& (chain[i].Version == declared[i].Version);
+			}
+			if (!matches)
+				ar.FailPayload(.NotSupported);
+		}
+
 		// Copied into the serializer's own stack, so the local chain can go.
 		ar.PushVersionScope(chain);
 	}
