@@ -101,8 +101,10 @@ class ShaderCompiler
 		}
 
 		// The argument strings must outlive the Compile call, so they are scoped here rather
-		// than built inside the helpers.
+		// than built inside the helpers. OWNED: the list's own scope frees the list, not the
+		// strings in it.
 		let storage = scope List<String>();
+		defer { ClearAndDeleteItems!(storage); }
 		let arguments = scope List<StringView>();
 		BuildArguments(stage, entryPoint, target, options, storage, arguments);
 
