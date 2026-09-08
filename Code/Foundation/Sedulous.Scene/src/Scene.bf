@@ -254,6 +254,11 @@ class Scene
 			mPrefabInstances.Add(state);
 	}
 
+	/// The instance whose root is `rootEntityId`, or null.
+	///
+	/// BORROWED, and only until the instance is torn down. A rebuild, a revert or a
+	/// snapshot restore destroys and recreates these, so hold the root GUID across one of
+	/// those and ask again. Same discipline as an entity: keep the id, not the pointer.
 	public PrefabInstanceState FindPrefabInstanceByRoot(Guid rootEntityId)
 	{
 		for (let state in mPrefabInstances)
