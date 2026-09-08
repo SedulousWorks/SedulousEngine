@@ -7,4 +7,7 @@ StartupObject = "Sedulous.Terrain.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Heightfield" = "*"
+"Sedulous.Lod" = "*"
 "Sedulous.Terrain" = "*"
