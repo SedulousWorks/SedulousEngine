@@ -147,12 +147,13 @@ class VulkanQueue : IQueue
 		if (count == 0)
 			return;
 
-		// This overload consumes the pending acquire too. DIVERGES from Raptor, where only
-		// the two argument submit does. A sample whose only graphics submission of the
-		// frame waits on another queue's fence, which is exactly what Sample017 does, then
-		// has nobody wait on the acquire and nobody signal the present: the layers report
-		// an unsignalled present semaphore and a presentable image modified without
-		// waiting. What matters is the QUEUE, not which overload was reached for.
+		// This overload consumes the pending acquire too: a frame whose only graphics
+		// submission waits on another queue's fence, which is exactly what Sample017 does,
+		// would otherwise leave nobody to wait on the acquire and nobody to signal the
+		// present. What matters is the QUEUE, not which overload was reached for.
+		//
+		// AFTER the rejections above, so a submit that is refused leaves the pair latched
+		// for the submit that will honour it.
 		VkSemaphore acquireSemaphore = .Null;
 		VkSemaphore presentSemaphore = .Null;
 		let hasSwapChainSync = TakeSwapChainSync(ref acquireSemaphore, ref presentSemaphore);

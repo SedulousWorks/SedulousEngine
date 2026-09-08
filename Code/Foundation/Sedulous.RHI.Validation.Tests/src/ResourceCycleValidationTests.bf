@@ -65,6 +65,12 @@ class ResourceCycleValidationTests
 		queue.Submit(.(), null, 1);
 		Test.Assert(fixture.Messages.HasError("signalFence is null"));
 
+		// BOTH fenced overloads, not just the shorter one: the fence is what the caller
+		// waits on, so a submit that cannot signal is a submit nobody can order against.
+		fixture.Messages.Clear();
+		queue.Submit(.(), .(), .(), null, 1);
+		Test.Assert(fixture.Messages.HasError("signalFence is null"));
+
 		// The wait spans are POSITIONAL, so a length mismatch pairs a fence with the wrong
 		// value or reads past the end.
 		fixture.Messages.Clear();

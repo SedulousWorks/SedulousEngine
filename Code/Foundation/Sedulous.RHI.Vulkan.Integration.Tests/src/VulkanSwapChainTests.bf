@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Bulkan;
 using Sedulous.RHI;
 using Sedulous.RHI.Vulkan;
 using Sedulous.Shell;
@@ -247,6 +248,50 @@ class VulkanSwapChainTests
 
 		sDevice.DestroyFence(ref waitFence);
 		sDevice.DestroyFence(ref fence);
+		sDevice.DestroyCommandPool(ref pool);
+		sDevice.DestroySwapChain(ref swapChain);
+	}
+
+	/// A submit the backend REJECTS leaves the acquire and present pair latched.
+	///
+	/// The pair is consumed once per acquire, so a submit that takes it and then does not
+	/// run would strand the frame: nothing waits on the acquire and nothing signals the
+	/// present. Every rejection therefore has to come BEFORE the consume, which this pins
+	/// with the cheapest rejection there is, a fenced submit with no fence.
+	[Test]
+	public static void ARejectedSubmitLeavesTheSwapChainSyncLatched()
+	{
+		if (!Ready()) { Console.WriteLine("SKIP: no display or no Vulkan"); return; }
+
+		let device = sDevice as VulkanDevice;
+		Test.Assert(device != null, "the integration suite runs on the real backend");
+
+		Test.Assert(MakeSwapChain() case .Ok(var swapChain));
+		let queue = sDevice.GetQueue(.Graphics);
+		Test.Assert(sDevice.CreateCommandPool(.Graphics) case .Ok(var pool));
+
+		if (!(swapChain.AcquireNextImage() case .Ok))
+		{
+			Console.WriteLine("SKIP: the surface went out of date");
+			sDevice.DestroyCommandPool(ref pool);
+			sDevice.DestroySwapChain(ref swapChain);
+			return;
+		}
+
+		Test.Assert(pool.CreateEncoder() case .Ok(var encoder));
+		encoder.TransitionTexture(swapChain.CurrentTexture, .Undefined, .Present);
+		var buffers = ICommandBuffer[1](encoder.Finish());
+
+		// Both fenced overloads, since both consume.
+		queue.Submit(buffers, null, 1);
+		queue.Submit(buffers, .(), .(), null, 1);
+
+		VkSemaphore acquire = .Null;
+		VkSemaphore present = .Null;
+		Test.Assert(device.ConsumePendingSwapChainSync(ref acquire, ref present),
+			"the rejected submits left the pair for a submit that will honour it");
+
+		pool.DestroyEncoder(ref encoder);
 		sDevice.DestroyCommandPool(ref pool);
 		sDevice.DestroySwapChain(ref swapChain);
 	}
