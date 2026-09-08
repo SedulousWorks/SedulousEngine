@@ -297,7 +297,7 @@ class ActionRuntime
 	public Float2 Vector2(ActionRef negX, ActionRef posX, ActionRef negY, ActionRef posY)
 	{
 		var value = Float2(Value(posX) - Value(negX), Value(posY) - Value(negY));
-		let length = Math.Sqrt((value.X * value.X) + (value.Y * value.Y));
+		let length = Sqrt((value.X * value.X) + (value.Y * value.Y));
 		if (length > 1.0f)
 		{
 			value.X /= length;
@@ -343,7 +343,7 @@ class ActionRuntime
 
 	private static float ApplyDeadZone(float value, float deadZone)
 	{
-		let magnitude = Math.Abs(value);
+		let magnitude = Abs(value);
 		if (magnitude <= deadZone)
 			return 0.0f;
 
@@ -357,11 +357,11 @@ class ActionRuntime
 	/// diagonals live inside the corners of a square, so a stick at rest drifts diagonally.
 	private static Float2 ApplyCircularDeadZone(Float2 value, float deadZone)
 	{
-		let length = Math.Sqrt((value.X * value.X) + (value.Y * value.Y));
+		let length = Sqrt((value.X * value.X) + (value.Y * value.Y));
 		if (length <= deadZone)
 			return .Zero;
 
-		let rescaled = Math.Min((length - deadZone) / (1.0f - deadZone), 1.0f);
+		let rescaled = Min((length - deadZone) / (1.0f - deadZone), 1.0f);
 		let factor = rescaled / length;
 		return .(value.X * factor, value.Y * factor);
 	}
@@ -475,7 +475,7 @@ class ActionRuntime
 					* binding.Scale * sign;
 				// Largest magnitude across pads wins, so two players on one action do not
 				// cancel each other out.
-				if (Math.Abs(value) > Math.Abs(result.Value.X))
+				if (Abs(value) > Abs(result.Value.X))
 					result.Value.X = value;
 			});
 
@@ -508,7 +508,7 @@ class ActionRuntime
 
 			if (binding.Normalize)
 			{
-				let length = Math.Sqrt((result.Value.X * result.Value.X)
+				let length = Sqrt((result.Value.X * result.Value.X)
 					+ (result.Value.Y * result.Value.Y));
 				if (length > 1.0f)
 				{
@@ -604,7 +604,7 @@ class ActionRuntime
 				var value = Float2((owning.X - state.TouchAnchor.X) / radius,
 					(owning.Y - state.TouchAnchor.Y) / radius);
 
-				let length = Math.Sqrt((value.X * value.X) + (value.Y * value.Y));
+				let length = Sqrt((value.X * value.X) + (value.Y * value.Y));
 				if (length > 1.0f)
 				{
 					value.X /= length;
@@ -640,14 +640,14 @@ class ActionRuntime
 		if ((exponent == 1.0f) || (value == 0.0f))
 			return value;
 
-		let curved = Math.Pow(Math.Abs(value), exponent);
+		let curved = Pow(Abs(value), exponent);
 		return (value < 0.0f) ? -curved : curved;
 	}
 
 	private static float MoveToward(float current, float target, float maxDelta)
 	{
 		let difference = target - current;
-		if (Math.Abs(difference) <= maxDelta)
+		if (Abs(difference) <= maxDelta)
 			return target;
 		return current + ((difference > 0.0f) ? maxDelta : -maxDelta);
 	}
@@ -669,9 +669,9 @@ class ActionRuntime
 				? EvaluateTouchBinding(binding, devices, ref state)
 				: EvaluateBinding(binding, devices);
 
-			if (Math.Abs(contribution.Value.X) > Math.Abs(target.X))
+			if (Abs(contribution.Value.X) > Abs(target.X))
 				target.X = contribution.Value.X;
-			if (Math.Abs(contribution.Value.Y) > Math.Abs(target.Y))
+			if (Abs(contribution.Value.Y) > Abs(target.Y))
 				target.Y = contribution.Value.Y;
 			digitalDown = digitalDown || contribution.DigitalDown;
 		}
@@ -708,7 +708,7 @@ class ActionRuntime
 			state.Smoothed = target;
 		}
 
-		let strength = Math.Max(Math.Abs(state.Smoothed.X), Math.Abs(state.Smoothed.Y));
+		let strength = Max(Abs(state.Smoothed.X), Abs(state.Smoothed.Y));
 		let physicallyPressed = digitalDown || (strength > cPressPoint);
 
 		// A press that lives through a suppression window must not fire when the window

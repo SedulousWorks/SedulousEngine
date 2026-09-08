@@ -97,7 +97,7 @@ static class BindingCapture
 			{
 				for (uint32 code = 0; code < (uint32)GamepadAxis.Count; code++)
 				{
-					if (Math.Abs(pad.Axis((GamepadAxis)code)) <= cActivate)
+					if (Abs(pad.Axis((GamepadAxis)code)) <= cActivate)
 						continue;
 					binding.Source = .GamepadAxis;
 					binding.Code = code;

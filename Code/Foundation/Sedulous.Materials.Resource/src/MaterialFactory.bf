@@ -117,7 +117,7 @@ class MaterialFactory : IResourceFactory
 	private static void BindDefaultTextures(ResourceManager manager, MaterialSource source,
 		Material material)
 	{
-		let count = Math.Min(source.TextureSlots.Count, source.TextureIds.Count);
+		let count = Min(source.TextureSlots.Count, source.TextureIds.Count);
 		for (int i = 0; i < count; i++)
 		{
 			let id = source.TextureIds[i];

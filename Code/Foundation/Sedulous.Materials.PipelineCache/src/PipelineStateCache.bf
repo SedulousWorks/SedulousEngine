@@ -162,7 +162,7 @@ class PipelineStateCache
 			// The target count is honoured EXACTLY, zero included: a masked shadow pass has
 			// a fragment stage that discards and writes no colour at all. Falling back to
 			// one would give it a target the pass does not have.
-			let count = Math.Min((int)config.ColorTargetCount, RhiLimits.MaxColorAttachments);
+			let count = Min((int)config.ColorTargetCount, RhiLimits.MaxColorAttachments);
 			for (int i = 0; i < count; i++)
 			{
 				// Target zero is the shaded colour, and takes the override when one is

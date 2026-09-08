@@ -104,8 +104,8 @@ static class TextureUpload
 			outWrites.Add(write);
 
 			offset += levelBytes;
-			levelWidth = Math.Max((uint32)1, levelWidth >> 1);
-			levelHeight = Math.Max((uint32)1, levelHeight >> 1);
+			levelWidth = Max((uint32)1, levelWidth >> 1);
+			levelHeight = Max((uint32)1, levelHeight >> 1);
 		}
 	}
 

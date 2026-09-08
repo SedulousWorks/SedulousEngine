@@ -163,7 +163,7 @@ class Material
 	public void SetRawDefaultUniformData(Span<uint8> data)
 	{
 		AllocateDefaultUniformData();
-		let count = Math.Min(data.Length, mDefaultUniformData.Count);
+		let count = Min(data.Length, mDefaultUniformData.Count);
 		if (count > 0)
 			Internal.MemCpy(mDefaultUniformData.Ptr, data.Ptr, count);
 	}

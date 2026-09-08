@@ -100,8 +100,8 @@ struct TextureData
 	{
 		// Every dimension floors at one: a 8x1 texture still has mips, and they are all
 		// one texel tall.
-		let mipWidth = Math.Max((uint32)1, Width >> mipLevel);
-		let mipHeight = Math.Max((uint32)1, Height >> mipLevel);
+		let mipWidth = Max((uint32)1, Width >> mipLevel);
+		let mipHeight = Max((uint32)1, Height >> mipLevel);
 
 		if (TextureFormats.IsCompressed(Format))
 			return TextureFormats.CompressedLevelBytes(Format, mipWidth, mipHeight)
