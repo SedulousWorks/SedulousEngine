@@ -14,8 +14,11 @@ static class DashGenerator
 	/// Splits `points` by an alternating dash and gap `pattern`, appending each dash as its
 	/// own polyline.
 	///
-	/// EVEN indices of the pattern are dashes and odd ones gaps, so a pattern of odd length
-	/// alternates its own meaning on each pass, which is what SVG specifies.
+	/// EVEN indices are dashes and odd ones gaps, and an ODD LENGTH pattern is walked
+	/// TWICE: SVG says a pattern of odd length repeats to an even one, so `5 3 2` runs as
+	/// `5 3 2 5 3 2` and each element alternates its meaning on the second pass. Walking
+	/// the raw pattern instead would make every element a dash or a gap forever, and a
+	/// three element pattern would draw as one long dash with no gaps.
 	///
 	/// THE CALLER OWNS the lists appended to `output`.
 	public static void GenerateDashes(Span<Float2> points, bool closed, Span<float> pattern,
@@ -24,9 +27,12 @@ static class DashGenerator
 		if ((points.Length < 2) || pattern.IsEmpty)
 			return;
 
+		// The cycle actually walked: the pattern, or the pattern twice when its length is odd.
+		let cycle = ((pattern.Length % 2) == 0) ? pattern.Length : (pattern.Length * 2);
+
 		var patternLength = 0.0f;
-		for (let element in pattern)
-			patternLength += element;
+		for (int i < cycle)
+			patternLength += pattern[i % pattern.Length];
 		// An all zero pattern would consume nothing per step and never advance.
 		if (patternLength <= 0.0f)
 			return;
@@ -44,15 +50,16 @@ static class DashGenerator
 		var patternRemaining = 0.0f;
 		{
 			var accumulated = 0.0f;
-			for (int i = 0; i < pattern.Length; i++)
+			for (int i = 0; i < cycle; i++)
 			{
-				if ((accumulated + pattern[i]) > dashOffset)
+				let element = pattern[i % pattern.Length];
+				if ((accumulated + element) > dashOffset)
 				{
 					patternIndex = i;
-					patternRemaining = pattern[i] - (dashOffset - accumulated);
+					patternRemaining = element - (dashOffset - accumulated);
 					break;
 				}
-				accumulated += pattern[i];
+				accumulated += element;
 			}
 		}
 
@@ -107,8 +114,8 @@ static class DashGenerator
 				if (patternRemaining > cEpsilon)
 					continue;
 
-				patternIndex = (patternIndex + 1) % pattern.Length;
-				patternRemaining = pattern[patternIndex];
+				patternIndex = (patternIndex + 1) % cycle;
+				patternRemaining = pattern[patternIndex % pattern.Length];
 				isDash = (patternIndex % 2) == 0;
 				// Cleared whichever way it turned: the next dash is a SEPARATE polyline,
 				// or the gap has nothing to append to.

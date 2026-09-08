@@ -111,32 +111,47 @@ class DashGeneratorTests
 		Test.Assert(Near(TotalLength(closed), 40.0f), "four, including the closing one");
 	}
 
-	/// An ODD length pattern does NOT alternate here: the dash test is the element's index
-	/// modulo two, and a one element pattern is index zero forever, so everything is a
-	/// dash. A pattern of ten draws the whole line, in ten unit pieces.
-	///
-	/// This DIVERGES FROM SVG, which repeats an odd list to make it even, so a dasharray of
-	/// "10" is ten on and ten off. Pinned as the behaviour actually is, because that is what
-	/// the renderer draws today and an SVG import would need the doubling applied before it
-	/// gets here.
+	/// An ODD length pattern is walked TWICE, so its elements alternate meaning on the
+	/// second pass: SVG says a dasharray of "10" is ten on and ten off, not a solid line in
+	/// ten unit pieces.
 	[Test]
-	public static void AnOddPatternNeverAlternates()
+	public static void AnOddPatternRepeatsToAnEvenOne()
 	{
 		let points = scope Float2[](.(0, 0), .(100, 0));
-		let pattern = scope float[](10);
 
-		let dashes = scope List<List<Float2>>();
-		defer { ClearAndDeleteItems!(dashes); }
-		DashGenerator.GenerateDashes(points, false, pattern, 0.0f, dashes);
+		let single = scope List<List<Float2>>();
+		defer { ClearAndDeleteItems!(single); }
+		DashGenerator.GenerateDashes(points, false, scope float[](10), 0.0f, single);
 
-		Test.Assert(Near(TotalLength(dashes), 100.0f), "solid, not dashed");
-		Test.Assert(dashes.Count == 10, "in one piece per pattern element");
-
-		// Doubling it by hand gives what SVG would have drawn.
+		// The same as writing the doubled pattern out by hand, which is what it means.
 		let doubled = scope List<List<Float2>>();
 		defer { ClearAndDeleteItems!(doubled); }
 		DashGenerator.GenerateDashes(points, false, scope float[](10, 10), 0.0f, doubled);
-		Test.Assert(Near(TotalLength(doubled), 50.0f));
+
+		Test.Assert(Near(TotalLength(single), 50.0f), "half on, half off");
+		Test.Assert(Near(TotalLength(single), TotalLength(doubled)));
+		Test.Assert(single.Count == doubled.Count);
+	}
+
+	/// A three element pattern alternates the same way: `5 3 2` runs as `5 3 2 5 3 2`, so
+	/// the five and the two are dashes on the first pass and the three is on the second.
+	[Test]
+	public static void AThreeElementPatternAlternatesOnTheSecondPass()
+	{
+		let points = scope Float2[](.(0, 0), .(100, 0));
+
+		let dashes = scope List<List<Float2>>();
+		defer { ClearAndDeleteItems!(dashes); }
+		DashGenerator.GenerateDashes(points, false, scope float[](5, 3, 2), 0.0f, dashes);
+
+		let doubled = scope List<List<Float2>>();
+		defer { ClearAndDeleteItems!(doubled); }
+		DashGenerator.GenerateDashes(points, false, scope float[](5, 3, 2, 5, 3, 2), 0.0f, doubled);
+
+		Test.Assert(Near(TotalLength(dashes), TotalLength(doubled)));
+		Test.Assert(dashes.Count == doubled.Count);
+		// Half the cycle is drawn: 5 + 2 + 3 of every 20.
+		Test.Assert(Near(TotalLength(dashes), 50.0f, 5.0f));
 	}
 
 	/// Degenerate inputs produce nothing rather than looping forever or faulting.
