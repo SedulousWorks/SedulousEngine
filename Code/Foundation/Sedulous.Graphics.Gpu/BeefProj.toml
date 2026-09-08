@@ -1,0 +1,17 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Graphics.Gpu"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Graphics.Gpu.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.Null" = "*"
+"Sedulous.RHI.Validation" = "*"
+"Sedulous.RHI.Vulkan" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Graphics.Null" = "*"
+"Bulkan" = "*"
