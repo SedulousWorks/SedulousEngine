@@ -7,3 +7,6 @@ StartupObject = "Sedulous.Texture.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Image" = "*"
