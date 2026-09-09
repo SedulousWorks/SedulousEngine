@@ -14,7 +14,10 @@ class Skeleton
 	private List<Bone> mBones = new .() ~ DeleteContainerAndItems!(_);
 	private List<int32> mRootBones = new .() ~ delete _;
 	private List<int32> mHierarchicalOrder = new .() ~ delete _;
-	private Dictionary<String, int32> mNameMap = new .() ~ delete _;
+	/// The map OWNS its keys rather than pointing at the bones' own strings: a bone renamed
+	/// after the map was built would leave a key hashed under the name it no longer has, and
+	/// every lookup of it would miss.
+	private Dictionary<String, int32> mNameMap = new .() ~ DeleteDictionaryAndKeys!(_);
 
 	/// Reused across skinning calls, which is the hot path: a scene's worth of skeletons
 	/// evaluating every frame must not allocate to do it.
@@ -40,7 +43,7 @@ class Skeleton
 		ClearAndDeleteItems!(mBones);
 		mRootBones.Clear();
 		mHierarchicalOrder.Clear();
-		mNameMap.Clear();
+		ClearNameMap();
 		mName.Clear();
 		Resize(boneCount);
 	}
@@ -70,14 +73,25 @@ class Skeleton
 	public Bone GetBone(int32 index) => InBounds(index) ? mBones[index] : null;
 
 	/// Builds the name lookup. After every bone and its name is set.
+	///
+	/// The names are COPIED, so renaming a bone afterwards leaves the map merely stale rather
+	/// than broken: the old name still resolves until the map is rebuilt, which is what a
+	/// rename is expected to do.
 	public void BuildNameMap()
 	{
-		mNameMap.Clear();
+		ClearNameMap();
 		for (let bone in mBones)
 		{
 			if (!bone.Name.IsEmpty)
-				mNameMap[bone.Name] = bone.Index;
+				mNameMap[new String(bone.Name)] = bone.Index;
 		}
+	}
+
+	private void ClearNameMap()
+	{
+		for (let key in mNameMap.Keys)
+			delete key;
+		mNameMap.Clear();
 	}
 
 	/// Caches which bones are roots. After the parents are set.
