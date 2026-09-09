@@ -174,6 +174,47 @@ class SocketTests
 	}
 
 	[Test]
+	public static void AQuietPeerReadsAsZeroAndAGonePeerAsMinusOne()
+	{
+		let listener = scope TcpListener(0);
+		Test.Assert(listener.IsOpen);
+
+		let client = TcpSocket.Connect("127.0.0.1", listener.BoundPort);
+		defer delete client;
+
+		TcpSocket server = null;
+		defer { if (server != null) delete server; }
+		for (int i = 0; i < cPollAttempts; i++)
+		{
+			if (server == null)
+				server = listener.Accept();
+			if ((server != null) && (client.ConnectStatus == 1))
+				break;
+			Thread.Sleep(1);
+		}
+		Test.Assert(server != null);
+
+		// Connected and silent. NOUGHT, not minus one: the difference is the whole non
+		// blocking contract, and conflating them makes a server drop every live connection on
+		// its first quiet read.
+		let buffer = scope uint8[64];
+		Test.Assert(server.Receive(buffer) == 0);
+		Test.Assert(client.Receive(buffer) == 0);
+
+		client.Close();
+
+		int64 afterClose = 0;
+		for (int i = 0; i < cPollAttempts; i++)
+		{
+			afterClose = server.Receive(buffer);
+			if (afterClose != 0)
+				break;
+			Thread.Sleep(1);
+		}
+		Test.Assert(afterClose == -1);
+	}
+
+	[Test]
 	public static void ConnectingToAnUnresolvableHostFails()
 	{
 		let socket = TcpSocket.Connect("no-such-host.invalid", 80);

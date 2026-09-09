@@ -72,9 +72,14 @@ class TcpSocket
 	{
 		if (!mSocket.IsOpen)
 			return -1;
-		if (mSocket.Send(data.Ptr, data.Length) case .Ok(let sent))
-			return (int64)sent;
-		return -1;
+		switch (mSocket.Send(data.Ptr, data.Length))
+		{
+		case .Ok(let sent): return (int64)sent;
+		// The send buffer is full, which is BACKPRESSURE and not a failure. Reporting it as
+		// an error would make a caller abandon a live connection.
+		case .Err(.WouldBlock): return 0;
+		case .Err: return -1;
+		}
 	}
 
 	/// Bytes read; nought means nothing yet, and minus one means closed.
@@ -82,9 +87,15 @@ class TcpSocket
 	{
 		if (!mSocket.IsOpen)
 			return -1;
-		if (mSocket.Recv(outData.Ptr, outData.Length) case .Ok(let received))
-			return (int64)received;
-		return -1;
+		switch (mSocket.Recv(outData.Ptr, outData.Length))
+		{
+		case .Ok(let received): return (int64)received;
+		// NOTHING YET is not the same as GONE, and the whole non blocking model rests on the
+		// difference: a caller that cannot tell them apart drops every live connection on its
+		// first quiet read.
+		case .Err(.WouldBlock): return 0;
+		case .Err: return -1;
+		}
 	}
 
 	public void Close() => mSocket.Close();
