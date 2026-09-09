@@ -7,3 +7,4 @@ StartupObject = "Sedulous.Particles.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
