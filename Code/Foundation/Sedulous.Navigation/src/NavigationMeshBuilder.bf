@@ -16,10 +16,18 @@ static class NavigationMeshBuilder
 	/// which includes everything, accepts it.
 	private const uint16 cPolyFlagWalk = 0x01;
 
-	/// The most stage samples kept, and how many cells are skipped between them. A diagnostic
-	/// overlay rather than an export: a large zone would otherwise produce millions.
+	/// The most stage samples one TILE keeps, and how many cells are skipped between them. A
+	/// diagnostic overlay rather than an export: a large zone would otherwise produce millions.
 	private const int cMaxStageSamples = 60000;
 	private const int cStageStride = 2;
+
+	/// And the most kept ACROSS a whole bake, applied as the tiles are concatenated.
+	///
+	/// Deliberately tighter than Raptor, which bounds each tile and not the total: a grid of
+	/// many tiles there can hand a debug overlay millions of points. The per tile bound stays
+	/// as well, because it is what makes each tile's capture independent of every other and so
+	/// identical whether the tiles baked in parallel or one after another.
+	private const int cMaxBakeSamples = 240000;
 
 	/// The grid the tiles sit on, derived from the geometry's own bounds.
 	private struct TileGrid
@@ -76,6 +84,10 @@ static class NavigationMeshBuilder
 
 	/// The tiled bake: the geometry's bounds split into tiles, each baked independently and
 	/// assembled ROW MAJOR into one blob. An empty tile is simply absent.
+	///
+	/// The tiles may bake across workers, since each is its own Recast pipeline over its own
+	/// buffers. The ASSEMBLY is always row major, so the blob is byte identical either way and
+	/// the flag trades latency only.
 	public static Result<void, ErrorCode> BuildTiled(Span<Float3> vertices, Span<uint32> indices,
 		NavigationBakeParams parameters, List<uint8> outData,
 		NavigationBakeStages outStages = null)
@@ -86,40 +98,74 @@ static class NavigationMeshBuilder
 		if (!ComputeTileGrid(vertices, parameters, let grid))
 			return .Err(.InvalidArgument);
 
-		let tileTotal = (int)grid.CountX * (int)grid.CountY;
+		let tileTotal = (int32)grid.CountX * (int32)grid.CountY;
+
+		// A buffer PER TILE, for the result and for the capture alike. Nothing is shared, so a
+		// tile's output cannot depend on which other tiles ran, or when.
+		let tileData = scope List<List<uint8>>();
+		let tileStatus = scope List<Result<void, ErrorCode>>();
+		let tileStages = scope List<NavigationBakeStages>();
+		defer
+		{
+			ClearAndDeleteItems!(tileData);
+			ClearAndDeleteItems!(tileStages);
+		}
+		for (int32 i = 0; i < tileTotal; i++)
+		{
+			tileData.Add(new List<uint8>());
+			tileStatus.Add(.Err(.NotFound));
+			if (outStages != null)
+				tileStages.Add(new NavigationBakeStages());
+		}
+
+		delegate void(int32) bakeOne = scope [&](index) =>
+			{
+				let tileX = index % grid.CountX;
+				let tileY = index / grid.CountX;
+				tileStatus[index] = BuildOneTile(vertices, indices, parameters, grid, tileX, tileY,
+					tileData[index], (outStages != null) ? tileStages[index] : null);
+			};
+
+		if (parameters.ParallelBake && (tileTotal > 1))
+		{
+			// A pool for this bake only, and a grain of one: a tile is a substantial unit of
+			// work, so there is nothing to gain by batching them.
+			let jobs = scope JobSystem();
+			jobs.ParallelFor(tileTotal, bakeOne, 1);
+		}
+		else
+		{
+			for (int32 i = 0; i < tileTotal; i++)
+				bakeOne(i);
+		}
 
 		let records = scope List<NavigationBlob.TileRecord>();
-		let tiles = scope List<List<uint8>>();
-		defer { ClearAndDeleteItems!(tiles); }
 		var payloadBytes = 0;
 
-		// Row major, which is what makes the blob deterministic. Raptor bakes the tiles across
-		// workers and assembles in this same order; here they bake in it, and the bytes are
-		// the same either way.
-		for (int index = 0; index < tileTotal; index++)
+		// ROW MAJOR, which is what makes the blob deterministic however the tiles were baked.
+		for (int32 index = 0; index < tileTotal; index++)
 		{
-			let tileX = (int32)(index % (int)grid.CountX);
-			let tileY = (int32)(index / (int)grid.CountX);
+			// The capture concatenates for an empty tile too: a tile still rasterised spans
+			// before it turned out to hold nothing, and that emptiness is exactly what the
+			// overlay is for debugging.
+			if (outStages != null)
+				AppendStages(outStages, tileStages[index]);
 
-			let tileData = new List<uint8>();
-			let status = BuildOneTile(vertices, indices, parameters, grid, tileX, tileY, tileData,
-				outStages);
-
-			if (status case .Err(let error))
+			if (tileStatus[index] case .Err(let error))
 			{
-				if (error != .NotFound)
-				{
-					delete tileData;
-					return .Err(error);
-				}
 				// An empty tile is NORMAL: most of a grid sits off the geometry.
-				delete tileData;
+				if (error != .NotFound)
+					return .Err(error);
 				continue;
 			}
 
-			records.Add(.() { TileX = tileX, TileY = tileY, DataSize = (uint32)tileData.Count });
-			payloadBytes += NavigationBlob.TileRecordSize + tileData.Count;
-			tiles.Add(tileData);
+			records.Add(.()
+				{
+					TileX = index % grid.CountX,
+					TileY = index / grid.CountX,
+					DataSize = (uint32)tileData[index].Count
+				});
+			payloadBytes += NavigationBlob.TileRecordSize + tileData[index].Count;
 		}
 
 		if (records.IsEmpty)
@@ -145,12 +191,28 @@ static class NavigationMeshBuilder
 
 		NavigationBlob.Append(outData, header);
 		NavigationBlob.Append(outData, info);
-		for (int i = 0; i < records.Count; i++)
+		for (let record in records)
 		{
-			NavigationBlob.Append(outData, records[i]);
-			NavigationBlob.Append(outData, Span<uint8>(tiles[i].Ptr, tiles[i].Count));
+			let index = record.TileY * grid.CountX + record.TileX;
+			NavigationBlob.Append(outData, record);
+			NavigationBlob.Append(outData,
+				Span<uint8>(tileData[index].Ptr, tileData[index].Count));
 		}
 		return .Ok;
+	}
+
+	/// Folds one tile's capture into the bake's, up to the bake wide bound.
+	private static void AppendStages(NavigationBakeStages outStages, NavigationBakeStages tile)
+	{
+		outStages.ContourLines.AddRange(tile.ContourLines);
+
+		let room = cMaxBakeSamples - outStages.WalkableSamples.Count;
+		if (room <= 0)
+			return;
+		if (tile.WalkableSamples.Count <= room)
+			outStages.WalkableSamples.AddRange(tile.WalkableSamples);
+		else
+			outStages.WalkableSamples.AddRange(Span<Float3>(tile.WalkableSamples.Ptr, room));
 	}
 
 	/// Bakes ONE tile of the grid the full bake would derive from these bounds, to raw tile

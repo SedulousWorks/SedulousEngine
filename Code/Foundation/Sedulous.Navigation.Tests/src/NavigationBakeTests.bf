@@ -162,6 +162,46 @@ class NavigationBakeTests
 		Test.Assert(!refused.IsValid);
 	}
 
+	/// The tiles may bake ACROSS WORKERS, and the bytes must not know: each tile is its own
+	/// pipeline over its own buffers, and the assembly is row major either way. The flag trades
+	/// latency only, so a bake that changed with it would be a bug in the parallelism rather
+	/// than a choice.
+	[Test]
+	public static void ParallelAndSerialBakesAreByteIdentical()
+	{
+		let verts = scope List<Float3>();
+		let indices = scope List<uint32>();
+		// Big enough to be a real grid, with an obstacle so the tiles differ from each other.
+		AddGround(verts, indices, -30.0f, 30.0f, -30.0f, 30.0f);
+		AddBox(verts, indices, -2, 2, -2, 2, 3.0f);
+
+		var serialParams = NavigationBakeParams();
+		serialParams.ParallelBake = false;
+		var parallelParams = NavigationBakeParams();
+		parallelParams.ParallelBake = true;
+
+		let serial = scope List<uint8>();
+		let parallel = scope List<uint8>();
+		let serialStages = scope NavigationBakeStages();
+		let parallelStages = scope NavigationBakeStages();
+
+		Test.Assert(NavigationMeshBuilder.BuildTiled(verts, indices, serialParams, serial,
+			serialStages) case .Ok);
+		Test.Assert(NavigationMeshBuilder.BuildTiled(verts, indices, parallelParams, parallel,
+			parallelStages) case .Ok);
+
+		Test.Assert(BytesEqual(serial, parallel), "the flag trades latency, never bytes");
+
+		// The capture concatenates row major either way, so it matches point for point: a
+		// shared buffer written as the tiles ran would interleave here instead.
+		Test.Assert(serialStages.ContourLines.Count == parallelStages.ContourLines.Count);
+		Test.Assert(serialStages.WalkableSamples.Count == parallelStages.WalkableSamples.Count);
+		for (int i < serialStages.ContourLines.Count)
+			Test.Assert(serialStages.ContourLines[i] == parallelStages.ContourLines[i]);
+		for (int i < serialStages.WalkableSamples.Count)
+			Test.Assert(serialStages.WalkableSamples[i] == parallelStages.WalkableSamples[i]);
+	}
+
 	/// The stage capture is an OBSERVER: everything it collects sits on the geometry, and the
 	/// blob is the same with it and without it.
 	[Test]
