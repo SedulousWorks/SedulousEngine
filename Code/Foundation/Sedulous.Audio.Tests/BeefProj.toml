@@ -7,4 +7,7 @@ StartupObject = "Sedulous.Audio.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.VFS" = "*"
+"miniaudio-Beef" = "*"
 "Sedulous.Audio" = "*"

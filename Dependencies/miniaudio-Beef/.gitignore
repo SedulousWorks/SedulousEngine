@@ -1,0 +1,4 @@
+build-linux-debug/
+build-linux-release/
+build-win64-debug/
+build-win64-release/
