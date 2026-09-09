@@ -5,42 +5,51 @@ namespace Sedulous.UI;
 /// Comparing and interpolating style values, which is what transitions are built on.
 ///
 /// Raptor's VariableFallback free function has no counterpart: its only job is to unbox a
-/// StyleValueBox, and this port holds the fallback directly on VariableReference.
+/// StyleValueBox, and this port holds the fallback on VariableReference directly.
 static class StyleValueOps
 {
-	/// Whether two values are the same for the purpose of RETARGETING a transition. Drawables
-	/// compare by identity; keywords and variables always compare unequal, having been
-	/// resolved before this is reached.
+	/// Whether two values are the same for the purpose of RETARGETING a transition.
+	///
+	/// Drawables compare by identity. Keywords and variables always compare unequal, having
+	/// been resolved into concrete values well before this is reached, so a plain generated
+	/// equality would answer the wrong question for them.
 	public static bool Equivalent(StyleValue a, StyleValue b)
 	{
-		if (a.GetKind() != b.GetKind())
-			return false;
-
-		switch (a.GetKind())
+		switch (a)
 		{
-		case .None: return true;
-		case .Color: return a.AsColor.Value == b.AsColor.Value;
-		case .Float: return a.AsFloat.Value == b.AsFloat.Value;
-		case .Thickness: return a.AsThickness.Value == b.AsThickness.Value;
-		case .Drawable: return a.AsDrawable == b.AsDrawable;
-		case .Bool: return a.AsBool.Value == b.AsBool.Value;
-		case .String: return a.AsString.Value == b.AsString.Value;
-		case .Length: return a.AsLength.Value == b.AsLength.Value;
-		case .Shadow: return a.AsShadow.Value == b.AsShadow.Value;
-		case .Transitions: return a.AsTransitions == b.AsTransitions;
-		default: return false;
+		case .None:
+			return b case .None;
+		case .Color(let value):
+			return (b case .Color(let other)) && (value == other);
+		case .Float(let value):
+			return (b case .Float(let other)) && (value == other);
+		case .Thickness(let value):
+			return (b case .Thickness(let other)) && (value == other);
+		case .Drawable(let value):
+			return (b case .Drawable(let other)) && (value == other);
+		case .Bool(let value):
+			return (b case .Bool(let other)) && (value == other);
+		case .String(let value):
+			return (b case .String(let other)) && (value == other);
+		case .Length(let value):
+			return (b case .Length(let other)) && (value == other);
+		case .Shadow(let value):
+			return (b case .Shadow(let other)) && (value == other);
+		case .Transitions(let value):
+			return (b case .Transitions(let other)) && (value == other);
+		default:
+			return false;
 		}
 	}
 
-	private static bool IsNumeric(StyleValue.Kind kind) =>
-		(kind == .Float) || (kind == .Length);
+	private static bool IsNumeric(StyleValueKind kind) => (kind == .Float) || (kind == .Length);
 
 	/// Whether a transition can run between these two: both numeric, where a Float and a
 	/// Length mix as lengths, or both the same colour, thickness, shadow or drawable.
 	public static bool Interpolable(StyleValue a, StyleValue b)
 	{
-		let ka = a.GetKind();
-		let kb = b.GetKind();
+		let ka = a.Kind;
+		let kb = b.Kind;
 
 		if (IsNumeric(ka) && IsNumeric(kb))
 			return true;
@@ -67,16 +76,16 @@ static class StyleValueOps
 		if (t >= 1.0f)
 			return b;
 
-		let ka = a.GetKind();
-		let kb = b.GetKind();
+		if ((a case .Float(let fa)) && (b case .Float(let fb)))
+			return .Float(Mix(fa, fb, t));
 
-		if ((ka == .Float) && (kb == .Float))
-			return StyleValue.FloatVal(Mix(a.AsFloat.Value, b.AsFloat.Value, t));
+		let ka = a.Kind;
+		let kb = b.Kind;
 
 		if (IsNumeric(ka) && IsNumeric(kb))
 		{
-			// A Float mixed with a Length is promoted to a dp Length, so the pair has a
-			// common footing to interpolate on.
+			// A Float mixed with a Length is promoted to a dp Length, so the pair has common
+			// footing to interpolate on.
 			let from = (ka == .Length) ? a.AsLength.Value : Unit.Dp(a.AsFloat.Value);
 			let to = (kb == .Length) ? b.AsLength.Value : Unit.Dp(b.AsFloat.Value);
 
@@ -86,25 +95,23 @@ static class StyleValueOps
 			result.px = Mix(from.px, to.px, t);
 			result.percent = Mix(from.percent, to.percent, t);
 			result.em = Mix(from.em, to.em, t);
-			return StyleValue.LengthVal(result);
+			return .Length(result);
 		}
 
 		if (ka != kb)
 			return (t < 0.5f) ? a : b;
 
-		switch (ka)
+		switch (a)
 		{
-		case .Color:
-			return StyleValue.ColorVal(MixColor(a.AsColor.Value, b.AsColor.Value, t));
+		case .Color(let from):
+			return .Color(MixColor(from, b.AsColor.Value, t));
 
-		case .Thickness:
-			let from = a.AsThickness.Value;
+		case .Thickness(let from):
 			let to = b.AsThickness.Value;
-			return StyleValue.ThicknessVal(.(Mix(from.Left, to.Left, t), Mix(from.Top, to.Top, t),
+			return .Thickness(.(Mix(from.Left, to.Left, t), Mix(from.Top, to.Top, t),
 				Mix(from.Right, to.Right, t), Mix(from.Bottom, to.Bottom, t)));
 
-		case .Shadow:
-			let from = a.AsShadow.Value;
+		case .Shadow(let from):
 			let to = b.AsShadow.Value;
 			BoxShadow result = .();
 			result.OffsetX = Mix(from.OffsetX, to.OffsetX, t);
@@ -114,7 +121,7 @@ static class StyleValueOps
 			result.Color = MixColor(from.Color, to.Color, t);
 			// Inset is a yes or no, so it switches rather than blending.
 			result.Inset = (t < 0.5f) ? from.Inset : to.Inset;
-			return StyleValue.ShadowVal(result);
+			return .Shadow(result);
 
 		default:
 			return (t < 0.5f) ? a : b;

@@ -21,7 +21,7 @@ class VariableReference : RefCounted
 	/// can define StyleValue without the type referring to itself. Beef needs no such trick:
 	/// StyleValue is a struct holding only a REFERENCE to this class, so the sizes resolve.
 	/// A fallback of kind None means there is none.
-	public StyleValue Fallback = .();
+	public StyleValue Fallback = .None;
 
 	public this() {}
 

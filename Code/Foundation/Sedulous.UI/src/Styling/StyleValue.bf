@@ -5,175 +5,175 @@ namespace Sedulous.UI;
 
 /// A tagged value stored in a style rule.
 ///
-/// DIVERGES from Raptor in WHO OWNS the payloads. Raptor holds the drawable, the variable
-/// reference and the transition list as RefPtr members, so copying a StyleValue refcounts
-/// them. A Beef struct has neither a copy constructor nor a destructor, so those members are
-/// BORROWED here and the StyleSheet owns them, which is where Raptor already keeps them too:
-/// its OwnDrawable and OwnResource arrays are the real owner and the RefPtrs are belt and
-/// braces on top.
+/// A payload enum, which is what legacy Sedulous used and what Beef is built for. Raptor
+/// spells it as a class holding every payload side by side plus a Kind, because C++ has no
+/// such thing; that costs about a hundred and thirty bytes per value where this costs around
+/// thirty two, and it lets a caller read a payload the tag says is not there. Here exactly one
+/// payload exists and the compiler will not let you reach the others.
 ///
-/// A StyleValue is therefore valid for as long as the sheet that produced it. That is already
-/// how consumers treat it, Raptor's own accessors being documented as borrowing, and a sheet
-/// swap ends every running transition rather than leaving values behind pointing at rules
-/// that have gone.
-struct StyleValue
+/// The reference payloads are BORROWED: the StyleRule holding the value owns them, since an
+/// enum has no destructor to release anything with.
+enum StyleValue
 {
-	public enum Kind
+	case None;
+	case Color(Color value);
+	case Float(float value);
+	case Thickness(Thickness value);
+	/// Borrowed.
+	case Drawable(Drawable value);
+	case Bool(bool value);
+	/// Borrowed.
+	case String(StringView value);
+	case Length(Unit value);
+	case Shadow(BoxShadow value);
+	/// Borrowed.
+	case Transitions(TransitionList value);
+	/// Take the parent's computed value.
+	case Inherit;
+	/// As if never set.
+	case Initial;
+	/// Borrowed.
+	case Variable(VariableReference value);
+
+	public StyleValueKind Kind
 	{
-		None,
-		Color,
-		Float,
-		Thickness,
-		Drawable,
-		Bool,
-		String,
-		/// A length carrying units: percentages, em, and calc sums. A plain number stays a
-		/// Float.
-		Length,
-		Shadow,
-		Transitions,
-		/// The `inherit` keyword: take the parent's computed value.
-		Inherit,
-		/// The `initial` keyword: as if never set.
-		Initial,
-		/// A `var(--name, fallback)` reference.
-		Variable
+		get
+		{
+			switch (this)
+			{
+			case .None: return .None;
+			case .Color: return .Color;
+			case .Float: return .Float;
+			case .Thickness: return .Thickness;
+			case .Drawable: return .Drawable;
+			case .Bool: return .Bool;
+			case .String: return .String;
+			case .Length: return .Length;
+			case .Shadow: return .Shadow;
+			case .Transitions: return .Transitions;
+			case .Inherit: return .Inherit;
+			case .Initial: return .Initial;
+			case .Variable: return .Variable;
+			}
+		}
 	}
 
-	private Kind mKind = .None;
-	private Color mColor = .();
-	private float mFloat = 0.0f;
-	private Thickness mThickness = .();
-	private bool mBool = false;
-	private Unit mLength = .();
-	private BoxShadow mShadow = .();
-	// Borrowed; the sheet owns these.
-	private Drawable mDrawable = null;
-	private StringView mString = default;
-	private VariableReference mVariable = null;
-	private TransitionList mTransitions = null;
-
-	public this() {}
-
-	public static StyleValue ColorVal(Color value)
-	{
-		StyleValue v = .();
-		v.mKind = .Color;
-		v.mColor = value;
-		return v;
-	}
-
-	public static StyleValue FloatVal(float value)
-	{
-		StyleValue v = .();
-		v.mKind = .Float;
-		v.mFloat = value;
-		return v;
-	}
-
-	public static StyleValue ThicknessVal(Thickness value)
-	{
-		StyleValue v = .();
-		v.mKind = .Thickness;
-		v.mThickness = value;
-		return v;
-	}
-
-	/// BORROWS the drawable; the sheet keeps it alive.
-	public static StyleValue DrawableRef(Drawable value)
-	{
-		StyleValue v = .();
-		v.mKind = .Drawable;
-		v.mDrawable = value;
-		return v;
-	}
-
-	public static StyleValue BoolVal(bool value)
-	{
-		StyleValue v = .();
-		v.mKind = .Bool;
-		v.mBool = value;
-		return v;
-	}
-
-	/// BORROWS the text; the sheet keeps the backing alive.
-	public static StyleValue StringRef(StringView value)
-	{
-		StyleValue v = .();
-		v.mKind = .String;
-		v.mString = value;
-		return v;
-	}
-
-	public static StyleValue LengthVal(Unit value)
-	{
-		StyleValue v = .();
-		v.mKind = .Length;
-		v.mLength = value;
-		return v;
-	}
-
-	public static StyleValue ShadowVal(BoxShadow value)
-	{
-		StyleValue v = .();
-		v.mKind = .Shadow;
-		v.mShadow = value;
-		return v;
-	}
-
-	/// BORROWS the list; the sheet keeps it alive.
-	public static StyleValue TransitionsRef(TransitionList value)
-	{
-		StyleValue v = .();
-		v.mKind = .Transitions;
-		v.mTransitions = value;
-		return v;
-	}
-
-	public static StyleValue Inherit()
-	{
-		StyleValue v = .();
-		v.mKind = .Inherit;
-		return v;
-	}
-
-	public static StyleValue Initial()
-	{
-		StyleValue v = .();
-		v.mKind = .Initial;
-		return v;
-	}
-
-	/// BORROWS the reference; the sheet keeps it alive.
-	public static StyleValue VariableRef(VariableReference reference)
-	{
-		StyleValue v = .();
-		v.mKind = .Variable;
-		v.mVariable = reference;
-		return v;
-	}
-
-	public static StyleValue None() => .();
-
-	public Kind GetKind() => mKind;
-	public bool IsNone => mKind == .None;
+	public bool IsNone => this case .None;
 
 	/// Whether the cascade still has to turn this into a concrete value.
-	public bool NeedsResolution =>
-		(mKind == .Inherit) || (mKind == .Initial) || (mKind == .Variable);
+	public bool NeedsResolution
+	{
+		get
+		{
+			switch (this)
+			{
+			case .Inherit, .Initial, .Variable: return true;
+			default: return false;
+			}
+		}
+	}
 
-	public Color? AsColor => (mKind == .Color) ? mColor : null;
-	public float? AsFloat => (mKind == .Float) ? mFloat : null;
-	public Thickness? AsThickness => (mKind == .Thickness) ? mThickness : null;
-	public bool? AsBool => (mKind == .Bool) ? mBool : null;
-	public Unit? AsLength => (mKind == .Length) ? mLength : null;
-	public BoxShadow? AsShadow => (mKind == .Shadow) ? mShadow : null;
+	public Color? AsColor
+	{
+		get
+		{
+			if (this case .Color(let value))
+				return value;
+			return null;
+		}
+	}
+
+	public float? AsFloat
+	{
+		get
+		{
+			if (this case .Float(let value))
+				return value;
+			return null;
+		}
+	}
+
+	public Thickness? AsThickness
+	{
+		get
+		{
+			if (this case .Thickness(let value))
+				return value;
+			return null;
+		}
+	}
+
+	public bool? AsBool
+	{
+		get
+		{
+			if (this case .Bool(let value))
+				return value;
+			return null;
+		}
+	}
+
+	public Unit? AsLength
+	{
+		get
+		{
+			if (this case .Length(let value))
+				return value;
+			return null;
+		}
+	}
+
+	public BoxShadow? AsShadow
+	{
+		get
+		{
+			if (this case .Shadow(let value))
+				return value;
+			return null;
+		}
+	}
 
 	/// Borrowed, and null when the kind differs.
-	public Drawable AsDrawable => (mKind == .Drawable) ? mDrawable : null;
-	public VariableReference Variable => (mKind == .Variable) ? mVariable : null;
-	public TransitionList AsTransitions => (mKind == .Transitions) ? mTransitions : null;
+	public Drawable AsDrawable
+	{
+		get
+		{
+			if (this case .Drawable(let value))
+				return value;
+			return null;
+		}
+	}
 
-	/// Borrowed, and empty when the kind differs.
-	public StringView? AsString => (mKind == .String) ? mString : null;
+	/// Borrowed, and null when the kind differs.
+	public TransitionList AsTransitions
+	{
+		get
+		{
+			if (this case .Transitions(let value))
+				return value;
+			return null;
+		}
+	}
+
+	/// Borrowed, and null when the kind differs.
+	public VariableReference AsVariable
+	{
+		get
+		{
+			if (this case .Variable(let value))
+				return value;
+			return null;
+		}
+	}
+
+	/// Borrowed, and null when the kind differs.
+	public StringView? AsString
+	{
+		get
+		{
+			if (this case .String(let value))
+				return value;
+			return null;
+		}
+	}
 }

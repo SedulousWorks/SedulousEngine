@@ -71,25 +71,25 @@ class StyleRule : RefCounted
 
 	public StyleRule Set(StyleProperty property, Color color)
 	{
-		SetOverwrite(property, StyleValue.ColorVal(color));
+		SetOverwrite(property, StyleValue.Color(color));
 		return this;
 	}
 
 	public StyleRule Set(StyleProperty property, float value)
 	{
-		SetOverwrite(property, StyleValue.FloatVal(value));
+		SetOverwrite(property, StyleValue.Float(value));
 		return this;
 	}
 
 	public StyleRule Set(StyleProperty property, Thickness value)
 	{
-		SetOverwrite(property, StyleValue.ThicknessVal(value));
+		SetOverwrite(property, StyleValue.Thickness(value));
 		return this;
 	}
 
 	public StyleRule Set(StyleProperty property, bool value)
 	{
-		SetOverwrite(property, StyleValue.BoolVal(value));
+		SetOverwrite(property, StyleValue.Bool(value));
 		return this;
 	}
 
@@ -97,14 +97,14 @@ class StyleRule : RefCounted
 	public StyleRule Set(StyleProperty property, Drawable drawable)
 	{
 		mOwnedDrawables.Add(drawable);
-		SetOverwrite(property, StyleValue.DrawableRef(drawable));
+		SetOverwrite(property, StyleValue.Drawable(drawable));
 		return this;
 	}
 
 	/// COPIES the text; the rule keeps the copy alive.
 	public StyleRule Set(StyleProperty property, StringView value)
 	{
-		SetOverwrite(property, StyleValue.StringRef(OwnString(value)));
+		SetOverwrite(property, StyleValue.String(OwnString(value)));
 		return this;
 	}
 
