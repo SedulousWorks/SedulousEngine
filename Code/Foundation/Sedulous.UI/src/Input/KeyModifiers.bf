@@ -27,6 +27,12 @@ enum KeyModifiers : uint32
 	case Alt = LeftAlt | RightAlt;
 	case Gui = LeftGui | RightGui;
 
+	public static KeyModifiers operator|(KeyModifiers a, KeyModifiers b) =>
+		(KeyModifiers)((uint32)a | (uint32)b);
+
+	public static KeyModifiers operator&(KeyModifiers a, KeyModifiers b) =>
+		(KeyModifiers)((uint32)a & (uint32)b);
+
 	/// ANY of the given bits, which is what Raptor's free HasFlag means.
 	///
 	/// Spelled out rather than left to the compiler generated HasFlag, whose C# ancestor
