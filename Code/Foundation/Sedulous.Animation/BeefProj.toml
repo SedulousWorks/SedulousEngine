@@ -7,3 +7,4 @@ StartupObject = "Sedulous.Animation.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
