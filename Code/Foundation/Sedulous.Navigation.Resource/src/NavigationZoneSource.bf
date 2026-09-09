@@ -8,7 +8,8 @@ namespace Sedulous.Navigation.Resource;
 ///
 /// Baked in the ZONE'S own frame, which is where the runtime places it too: a navmesh baked in
 /// one frame and queried in another puts every wall in the wrong place.
-[Serializable]
+// 2: the frame stamp left the record; the blob alone is what a zone carries now.
+[Serializable(2)]
 class NavigationZoneSource
 {
 	/// The header and the Detour tiles behind it.

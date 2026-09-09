@@ -10,7 +10,8 @@ namespace Sedulous.Audio.Resource;
 /// The fixed four come first, in bus order, then the named buses; both index runs of ONE
 /// shared effect pool. The wire stays generic even though today's editor authors a flat
 /// chain, because a richer chain editor later then needs no change to the format.
-[Serializable]
+// 2: the named custom bus section joined the fixed four.
+[Serializable(2)]
 class AudioBusLayoutSource
 {
 	// The fixed four, in bus order.
