@@ -7,3 +7,5 @@ StartupObject = "Sedulous.RenderGraph.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.RHI" = "*"
