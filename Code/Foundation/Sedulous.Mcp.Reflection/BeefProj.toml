@@ -7,3 +7,6 @@ StartupObject = "Sedulous.Mcp.Reflection.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Json" = "*"
+"Sedulous.Mcp" = "*"
