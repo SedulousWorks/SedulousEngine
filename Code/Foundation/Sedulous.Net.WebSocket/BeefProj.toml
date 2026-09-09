@@ -7,3 +7,6 @@ StartupObject = "Sedulous.Net.WebSocket.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Net" = "*"
+"Sedulous.Http" = "*"
