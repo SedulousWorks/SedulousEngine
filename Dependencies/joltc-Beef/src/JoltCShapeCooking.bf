@@ -31,6 +31,11 @@ static
 
 	/// A shape's binary state, which carries its own subtype tag and so is self describing.
 	/// Null when the shape cannot be saved.
+	///
+	/// LEAF SHAPES ONLY. The backend writes a shape's own data and its subtype tag, and NOT
+	/// its children or its materials, so a compound or a scaled shape saved through here
+	/// restores as a broken one. Cooking produces hulls and meshes, which are leaves, so this
+	/// is a bound on what the seam is for rather than a fault in it.
 	[CLink] public static extern jcb_blob* jcb_shape_save(JPH_Shape* shape);
 
 	/// Restores a saved shape. Null when the bytes are not a shape this build can restore,

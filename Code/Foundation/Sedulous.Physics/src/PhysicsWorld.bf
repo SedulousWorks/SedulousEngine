@@ -16,10 +16,6 @@ namespace Sedulous.Physics;
 /// ONE WORLD PER SCENE, stepped from the fixed update lane.
 class PhysicsWorld
 {
-	/// The default temporary arena the backend steps through, which it allocates from and
-	/// unwinds within a single step.
-	private const uint32 cTempAllocatorBytes = 10 * 1024 * 1024;
-
 	private PhysicsWorldSettings mSettings = new .() ~ delete _;
 
 	private JPH_BroadPhaseLayerInterface* mBroadPhaseLayers = null;
@@ -295,8 +291,13 @@ class PhysicsWorld
 		return (JPH_Shape*)JPH_HeightFieldShapeSettings_CreateShape(settings);
 	}
 
-	/// One shape at the origin is used AS IT IS; anything else becomes a compound, since a
-	/// compound of one still costs a level of indirection on every query through it.
+	/// One shape with NO PLACEMENT of its own is used as it is; anything else becomes a
+	/// compound, since a compound of one still costs a level of indirection on every query
+	/// through it.
+	///
+	/// A placement is a rotation as much as an offset: a lone shape carrying only a rotation
+	/// used bare would drop it silently, and a bar authored on its side would collide
+	/// upright.
 	///
 	/// THE CALLER OWNS what comes back.
 	private JPH_Shape* BuildShape(BodyDesc desc)
@@ -304,9 +305,7 @@ class PhysicsWorld
 		if (desc.Shapes.IsEmpty)
 			return null;
 
-		if ((desc.Shapes.Count == 1) && (desc.Shapes[0].LocalPosition.X == 0.0f)
-			&& (desc.Shapes[0].LocalPosition.Y == 0.0f)
-			&& (desc.Shapes[0].LocalPosition.Z == 0.0f))
+		if ((desc.Shapes.Count == 1) && IsUnplaced(desc.Shapes[0]))
 			return BuildOne(desc.Shapes[0], desc.Density);
 
 		let compound = JPH_StaticCompoundShapeSettings_Create();
@@ -332,6 +331,13 @@ class PhysicsWorld
 
 		return (JPH_Shape*)JPH_StaticCompoundShape_Create(compound);
 	}
+
+	/// Whether a shape sits at its body's own origin, unrotated.
+	private static bool IsUnplaced(ShapeDesc desc) =>
+		(desc.LocalPosition.X == 0.0f) && (desc.LocalPosition.Y == 0.0f)
+		&& (desc.LocalPosition.Z == 0.0f)
+		&& (desc.LocalRotation.X == 0.0f) && (desc.LocalRotation.Y == 0.0f)
+		&& (desc.LocalRotation.Z == 0.0f) && (desc.LocalRotation.W == 1.0f);
 
 	// ==================== bodies ====================
 
@@ -504,6 +510,11 @@ class PhysicsWorld
 	/// The tables themselves are STATIC because the backend keeps the pointer it is handed
 	/// rather than copying what it points at: a table built on the stack would be read long
 	/// after the frame that held it was gone.
+	///
+	/// PROCESS WIDE also means exclusive: another module installing its own procedures for
+	/// either of these would REPLACE ours for every world in the process, not add to them.
+	/// Anything else needing a query side layer filter goes through this one and dispatches
+	/// on the user word.
 	private static bool sCallbacksInstalled = false;
 	private static Monitor sCallbackLock = new .() ~ delete _;
 	private static JPH_ObjectLayerFilter_Procs sLayerProcs = .();
@@ -607,7 +618,11 @@ class PhysicsWorld
 
 			// The material slot the cooker stored, which only a triangle mesh carries. The
 			// leaf is what holds it: a compound's sub shape id has to be walked down first.
-			let shape = JPH_BodyInterface_GetShape(Bodies, hit.bodyID);
+			//
+			// Read off the body ALREADY LOCKED above, never through the body interface: that
+			// would take a second shared lock on the same body, which is undefined on a
+			// shared mutex and deadlocks outright if a writer is waiting between the two.
+			let shape = JPH_Body_GetShape(lock.body);
 			if (shape != null)
 			{
 				JPH_SubShapeID remainder = 0;
@@ -1153,16 +1168,7 @@ class PhysicsWorld
 
 		// The connected bodies are WOKEN: one held asleep by the joint must answer to gravity
 		// again once it is released, and removing the constraint alone leaves it sleeping.
-		//
-		// BY ID through the body interface, never through the constraint's own body pointers:
-		// those dangle when a connected body was destroyed before the joint was.
-		let bodies = Bodies;
-		for (let bodyId in scope JPH_BodyID[](slot.BodyA, slot.BodyB))
-		{
-			if ((bodyId != BodyId.Invalid) && JPH_BodyInterface_IsAdded(bodies, bodyId)
-				&& (JPH_BodyInterface_GetMotionType(bodies, bodyId) != .JPH_MotionType_Static))
-				JPH_BodyInterface_ActivateBody(bodies, bodyId);
-		}
+		WakeJointBodies(slot);
 
 		JPH_PhysicsSystem_RemoveConstraint(mSystem, slot.Joint);
 		JPH_Constraint_Destroy(slot.Joint);
@@ -1199,16 +1205,24 @@ class PhysicsWorld
 		// target was nought, or before the motor was enabled, would otherwise ignore the
 		// constraint and a live edit would do nothing. Only while actually driving, so a
 		// settled motor can still sleep.
+		//
+		// BY ID off the slot, never through the constraint's own body pointers: those dangle
+		// once a connected body is destroyed before the joint, and this is called every fixed
+		// step. The same reason DestroyJoint wakes by id.
 		if (enabled && (targetVelocity != 0.0f))
+			WakeJointBodies(mJoints[(int)id.Value]);
+	}
+
+	/// Wakes a joint's surviving bodies. A dead id is refused by the interface rather than
+	/// followed, which is the whole point of going through it.
+	private void WakeJointBodies(JointSlot slot)
+	{
+		let bodies = Bodies;
+		for (let bodyId in scope JPH_BodyID[](slot.BodyA, slot.BodyB))
 		{
-			let bodies = Bodies;
-			let twoBody = (JPH_TwoBodyConstraint*)joint;
-			for (let body in scope JPH_Body*[](JPH_TwoBodyConstraint_GetBody1(twoBody),
-				JPH_TwoBodyConstraint_GetBody2(twoBody)))
-			{
-				if ((body != null) && !JPH_Body_IsStatic(body))
-					JPH_BodyInterface_ActivateBody(bodies, JPH_Body_GetID(body));
-			}
+			if ((bodyId != BodyId.Invalid) && JPH_BodyInterface_IsAdded(bodies, bodyId)
+				&& (JPH_BodyInterface_GetMotionType(bodies, bodyId) != .JPH_MotionType_Static))
+				JPH_BodyInterface_ActivateBody(bodies, bodyId);
 		}
 	}
 

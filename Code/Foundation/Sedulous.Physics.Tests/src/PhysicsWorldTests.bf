@@ -247,6 +247,36 @@ class PhysicsWorldTests
 		return position.X;
 	}
 
+	/// A LONE shape carrying only a rotation keeps it: a placement is a rotation as much as
+	/// an offset, and a bar authored on its side must not collide upright.
+	[Test]
+	public static void ALoneShapeKeepsItsLocalRotation()
+	{
+		let world = scope PhysicsWorld();
+
+		let bar = scope BodyDesc();
+		bar.Motion = .Static;
+		bar.Layer = .Static;
+		bar.Position = .(0, 0, 0);
+
+		var slab = ShapeDesc();
+		slab.Kind = .Box;
+		// Long in X, thin in Y and Z, then laid over onto its Z axis so it stands tall.
+		slab.HalfExtents = .(2.0f, 0.1f, 0.1f);
+		slab.LocalRotation = Quaternion.FromAxisAngle(.(0, 0, 1), 3.14159265f * 0.5f);
+		bar.Shapes.Add(slab);
+		Test.Assert(world.CreateBody(bar).IsValid);
+
+		// Rotated, the bar reaches to about two in Y and only a tenth in X. A ray straight
+		// down well above it hits; unrotated it would be a tenth tall and this would miss.
+		Test.Assert(world.RayCast(.(0.0f, 5.0f, 0.0f), .(0.0f, -1.0f, 0.0f), 10.0f, let hit));
+		Test.Assert(Near(hit.Position.Y, 2.0f, 0.05f));
+
+		// And it is NOT wide: a ray down at x = 1 passes through where the unrotated bar
+		// would have been.
+		Test.Assert(!world.RayCast(.(1.0f, 5.0f, 0.0f), .(0.0f, -1.0f, 0.0f), 10.0f, ?));
+	}
+
 	/// An explicit mass overrides the scalar the density would have given, and leaving it
 	/// unset changes nothing at all.
 	[Test]

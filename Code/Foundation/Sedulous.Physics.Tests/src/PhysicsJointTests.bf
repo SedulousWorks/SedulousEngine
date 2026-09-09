@@ -101,6 +101,49 @@ class PhysicsJointTests
 		Test.Assert(Near(position.Y, 3.0f, 0.09f));
 	}
 
+	/// Driving a motor after one of its bodies is gone is SAFE.
+	///
+	/// The wake goes by the slot's body ids through the interface, which refuses a dead one,
+	/// rather than through the constraint's own body pointers, which dangle the moment a
+	/// connected body is destroyed before the joint. The subsystem calls this every fixed
+	/// step, so a destroyed body would be read every step until the joint went too.
+	[Test]
+	public static void DrivingAMotorAfterABodyIsDestroyedIsSafe()
+	{
+		let world = scope PhysicsWorld();
+		world.SetGravity(.(0, 0, 0));
+
+		let anchorDesc = BoxAt!(0.0f, MotionKind.Static);
+		let anchor = world.CreateBody(anchorDesc);
+		let armDesc = BoxAt!(2.0f);
+		let arm = world.CreateBody(armDesc);
+
+		var desc = JointDesc();
+		desc.Kind = .Hinge;
+		desc.BodyA = arm;
+		desc.BodyB = anchor;
+		desc.Anchor = .(0.0f, 1.0f, 0.0f);
+		desc.Axis = .(0.0f, 0.0f, 1.0f);
+		desc.MotorEnabled = true;
+		desc.MotorTargetVelocity = 1.0f;
+		desc.MotorLimit = 1.0e6f;
+		let joint = world.CreateJoint(desc);
+		Test.Assert(joint.IsValid);
+
+		Simulate(world, 10);
+
+		// The joint OUTLIVES one of its bodies, which is the reconcile order that found this.
+		world.DestroyBody(arm);
+
+		world.SetJointMotor(joint, true, 2.0f);
+		Simulate(world, 10);
+		world.SetJointMotor(joint, true, -2.0f);
+		Simulate(world, 10);
+
+		world.DestroyJoint(joint);
+		Simulate(world, 5);
+	}
+
 	/// A slider LOCKS everything but its own axis, and its limits stop the travel along it.
 	[Test]
 	public static void ASliderConstrainsTravelToItsAxisAndLimits()
