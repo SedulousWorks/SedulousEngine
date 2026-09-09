@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 option="${1:-help}"; target="${2:-ALL}"
-configure() { echo "Configuring $1..."; cmake -S ./joltc -B "$2" -G Ninja -DCMAKE_BUILD_TYPE="$1" -DINTERPROCEDURAL_OPTIMIZATION=OFF; }
+configure() { echo "Configuring $1..."; cmake -S . -B "$2" -G Ninja -DCMAKE_BUILD_TYPE="$1" -DINTERPROCEDURAL_OPTIMIZATION=OFF; }
 build() {
   local cfg="$1" dir="$2" distdir="$3"
   [ -d "$dir" ] || { echo "$cfg build dir missing. Run 'make $cfg' first."; return; }
