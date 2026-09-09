@@ -148,4 +148,12 @@ class MaterialSourceTests
 		defer delete created;
 		Test.Assert(created is MaterialSource);
 	}
+
+	/// The cooked record carries an EXPLICIT data version, matching what Raptor stamps.
+	[Test]
+	public static void TheCookedRecordIsVersioned()
+	{
+		Test.Assert(MaterialSource.DataVersion == 3);
+	}
+
 }

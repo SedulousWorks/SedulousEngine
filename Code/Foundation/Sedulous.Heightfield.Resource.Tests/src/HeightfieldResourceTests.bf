@@ -177,4 +177,16 @@ class HeightfieldResourceTests
 		Test.Assert(Near(source.MinY, -12.5f));
 		Test.Assert(Near(source.MaxY, 37.5f));
 	}
+
+	/// The cooked record carries an EXPLICIT data version, matching what Raptor stamps.
+	///
+	/// Without one the payload has no envelope at all, and the one layout refusal both
+	/// engines rely on cannot fire: a record written under a different shape would be read
+	/// as though it were this one.
+	[Test]
+	public static void TheCookedRecordIsVersioned()
+	{
+		Test.Assert(HeightfieldSource.DataVersion == 1);
+	}
+
 }

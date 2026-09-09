@@ -18,8 +18,10 @@ static
 	/// the body between here and EndVersionedPayload sees the version its DATA was written
 	/// with rather than the version this build declares.
 	///
-	/// Writing emits what the type declares. Reading takes whatever the stream stored, so
-	/// a body can branch: if (ar.Version >= 2) read the field that version two added.
+	/// Writing emits what the type declares. Reading takes whatever the stream stored and
+	/// REFUSES anything but the declared chain, so a body reads one layout: the scope is
+	/// what the data said rather than what this build assumed, and a mismatch has already
+	/// failed the payload by the time the body runs.
 	public static void BeginVersionedPayload(ISerializer ar, Span<SerializedDataVersion> declared)
 	{
 		let chain = scope List<SerializedDataVersion>();

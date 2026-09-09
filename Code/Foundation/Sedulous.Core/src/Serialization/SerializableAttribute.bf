@@ -29,9 +29,13 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 	private uint32 mDataVersion;
 
 	/// dataVersion is the version this type's data is written with. Zero, the default,
-	/// means unversioned and writes no envelope at all. Any other value brackets the
-	/// payload with its version chain, so a later build reading older data sees the
-	/// version that data carries in ar.Version and can branch on it.
+	/// means unversioned and writes no envelope at all, so nothing can be checked when it
+	/// is read back: a record whose layout has ever changed wants a real version.
+	///
+	/// Any other value brackets the payload with its version chain, and ONE LAYOUT is
+	/// supported per type: a payload stamped with a different version is REFUSED rather
+	/// than migrated or guessed at. Bump this when the wire changes, and re-save what was
+	/// written under the old one.
 	public this(uint32 dataVersion = 0)
 	{
 		mDataVersion = dataVersion;

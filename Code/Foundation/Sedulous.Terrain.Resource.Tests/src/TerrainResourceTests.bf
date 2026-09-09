@@ -303,4 +303,15 @@ class TerrainResourceTests
 		Test.Assert(TerrainPaletteData.SliceBytes(4, 1) == 16 * 4, "only the mips asked for");
 		Test.Assert(TerrainPaletteData.SliceBytes(0, 0) == 0);
 	}
+
+	/// The cooked records carry EXPLICIT data versions, matching what Raptor stamps: the
+	/// terrain's layout has grown five times, and a payload from before any of those
+	/// additions is refused rather than read as though the fields were there.
+	[Test]
+	public static void TheCookedRecordsAreVersioned()
+	{
+		Test.Assert(TerrainSource.DataVersion == 5);
+		Test.Assert(SplatWeightsSource.DataVersion == 1);
+	}
+
 }

@@ -10,7 +10,9 @@ namespace Sedulous.Heightfield.Resource;
 /// The samples are NOT here. They ride the sidecar stream this names, the way an image's
 /// pixels do: a database browsing a hundred terrains wants a hundred headers, not a hundred
 /// megabytes of grid.
-[Serializable]
+/// Version one, matching the cooked layout Raptor stamps: a payload written under any other
+/// is refused rather than guessed at.
+[Serializable(1)]
 class HeightfieldSource
 {
 	/// The sidecar stream carrying the raw samples.
