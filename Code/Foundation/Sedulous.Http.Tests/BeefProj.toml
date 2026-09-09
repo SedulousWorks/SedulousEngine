@@ -7,4 +7,6 @@ StartupObject = "Sedulous.Http.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Net" = "*"
 "Sedulous.Http" = "*"
