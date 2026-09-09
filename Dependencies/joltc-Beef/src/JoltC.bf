@@ -629,23 +629,23 @@ typealias JPH_Color = uint32;
 
 [CRepr] struct JPH_CollidePointResult
 {
-	JPH_BodyID bodyID;
-	JPH_SubShapeID subShapeID2;
+	public JPH_BodyID bodyID;
+	public JPH_SubShapeID subShapeID2;
 }
 
 [CRepr] struct JPH_CollideShapeResult
 {
-	JPH_Vec3		contactPointOn1;
-	JPH_Vec3		contactPointOn2;
-	JPH_Vec3		penetrationAxis;
-	float			penetrationDepth;
-	JPH_SubShapeID	subShapeID1;
-	JPH_SubShapeID	subShapeID2;
-	JPH_BodyID		bodyID2;
-	uint32		shape1FaceCount;
-	JPH_Vec3*		shape1Faces;
-	uint32		shape2FaceCount;
-	JPH_Vec3*		shape2Faces;
+	public JPH_Vec3			contactPointOn1;
+	public JPH_Vec3			contactPointOn2;
+	public JPH_Vec3			penetrationAxis;
+	public float			penetrationDepth;
+	public JPH_SubShapeID	subShapeID1;
+	public JPH_SubShapeID	subShapeID2;
+	public JPH_BodyID		bodyID2;
+	public uint32			shape1FaceCount;
+	public JPH_Vec3*		shape1Faces;
+	public uint32			shape2FaceCount;
+	public JPH_Vec3*		shape2Faces;
 }
 
 [CRepr] struct JPH_ShapeCastResult
@@ -1344,9 +1344,9 @@ static
 	[CLink] public static extern void JPH_Shape_MakeScaleValid(JPH_Shape* shape, JPH_Vec3* scale, JPH_Vec3* result);
 	[CLink] public static extern JPH_Shape* JPH_Shape_ScaleShape(JPH_Shape* shape, JPH_Vec3* scale);
 	[CLink] public static extern bool JPH_Shape_CastRay(JPH_Shape* shape, JPH_Vec3* origin, JPH_Vec3* direction, JPH_RayCastResult* hit);
-	[CLink] public static extern bool JPH_Shape_CastRay2(JPH_Shape* shape, JPH_Vec3* origin, JPH_Vec3* direction, JPH_RayCastSettings* rayCastSettings, JPH_CollisionCollectorType collectorType, JPH_CastRayResultCallback* callback, void* userData, JPH_ShapeFilter* shapeFilter);
+	[CLink] public static extern bool JPH_Shape_CastRay2(JPH_Shape* shape, JPH_Vec3* origin, JPH_Vec3* direction, JPH_RayCastSettings* rayCastSettings, JPH_CollisionCollectorType collectorType, JPH_CastRayResultCallback callback, void* userData, JPH_ShapeFilter* shapeFilter);
 	[CLink] public static extern bool JPH_Shape_CollidePoint(JPH_Shape* shape, JPH_Vec3* point, JPH_ShapeFilter* shapeFilter);
-	[CLink] public static extern bool JPH_Shape_CollidePoint2(JPH_Shape* shape, JPH_Vec3* point, JPH_CollisionCollectorType collectorType, JPH_CollidePointResultCallback* callback, void* userData, JPH_ShapeFilter* shapeFilter);
+	[CLink] public static extern bool JPH_Shape_CollidePoint2(JPH_Shape* shape, JPH_Vec3* point, JPH_CollisionCollectorType collectorType, JPH_CollidePointResultCallback callback, void* userData, JPH_ShapeFilter* shapeFilter);
 
 	/* JPH_ConvexShape */
 	[CLink] public static extern float JPH_ConvexShapeSettings_GetDensity(JPH_ConvexShapeSettings* shape);
@@ -1986,29 +1986,29 @@ static
 	//--------------------------------------------------------------------------------------------------
 	[CLink] public static extern bool JPH_BroadPhaseQuery_CastRay(JPH_BroadPhaseQuery* query,
 		JPH_Vec3* origin, JPH_Vec3* direction,
-		JPH_RayCastBodyCollectorCallback* callback, void* userData,
+		JPH_RayCastBodyCollectorCallback callback, void* userData,
 		JPH_BroadPhaseLayerFilter* broadPhaseLayerFilter,
 		JPH_ObjectLayerFilter* objectLayerFilter);
 
 	[CLink] public static extern bool JPH_BroadPhaseQuery_CastRay2(JPH_BroadPhaseQuery* query,
 		JPH_Vec3* origin, JPH_Vec3* direction,
 		JPH_CollisionCollectorType collectorType,
-		JPH_RayCastBodyResultCallback* callback, void* userData,
+		JPH_RayCastBodyResultCallback callback, void* userData,
 		JPH_BroadPhaseLayerFilter* broadPhaseLayerFilter,
 		JPH_ObjectLayerFilter* objectLayerFilter);
 
 	[CLink] public static extern bool JPH_BroadPhaseQuery_CollideAABox(JPH_BroadPhaseQuery* query,
-		JPH_AABox* @box, JPH_CollideShapeBodyCollectorCallback* callback, void* userData,
+		JPH_AABox* @box, JPH_CollideShapeBodyCollectorCallback callback, void* userData,
 		JPH_BroadPhaseLayerFilter* broadPhaseLayerFilter,
 		JPH_ObjectLayerFilter* objectLayerFilter);
 
 	[CLink] public static extern bool JPH_BroadPhaseQuery_CollideSphere(JPH_BroadPhaseQuery* query,
-		JPH_Vec3* center, float radius, JPH_CollideShapeBodyCollectorCallback* callback, void* userData,
+		JPH_Vec3* center, float radius, JPH_CollideShapeBodyCollectorCallback callback, void* userData,
 		JPH_BroadPhaseLayerFilter* broadPhaseLayerFilter,
 		JPH_ObjectLayerFilter* objectLayerFilter);
 
 	[CLink] public static extern bool JPH_BroadPhaseQuery_CollidePoint(JPH_BroadPhaseQuery* query,
-		JPH_Vec3* point, JPH_CollideShapeBodyCollectorCallback* callback, void* userData,
+		JPH_Vec3* point, JPH_CollideShapeBodyCollectorCallback callback, void* userData,
 		JPH_BroadPhaseLayerFilter* broadPhaseLayerFilter,
 		JPH_ObjectLayerFilter* objectLayerFilter);
 
@@ -2025,7 +2025,7 @@ static
 	[CLink] public static extern bool JPH_NarrowPhaseQuery_CastRay2(JPH_NarrowPhaseQuery* query,
 		JPH_RVec3* origin, JPH_Vec3* direction,
 		JPH_RayCastSettings* rayCastSettings,
-		JPH_CastRayCollectorCallback* callback, void* userData,
+		JPH_CastRayCollectorCallback callback, void* userData,
 		JPH_BroadPhaseLayerFilter* broadPhaseLayerFilter,
 		JPH_ObjectLayerFilter* objectLayerFilter,
 		JPH_BodyFilter* bodyFilter,
@@ -2043,7 +2043,7 @@ static
 
 	[CLink] public static extern bool JPH_NarrowPhaseQuery_CollidePoint(JPH_NarrowPhaseQuery* query,
 		JPH_RVec3* point,
-		JPH_CollidePointCollectorCallback* callback, void* userData,
+		JPH_CollidePointCollectorCallback callback, void* userData,
 		JPH_BroadPhaseLayerFilter* broadPhaseLayerFilter,
 		JPH_ObjectLayerFilter* objectLayerFilter,
 		JPH_BodyFilter* bodyFilter,
@@ -2052,7 +2052,7 @@ static
 	[CLink] public static extern bool JPH_NarrowPhaseQuery_CollidePoint2(JPH_NarrowPhaseQuery* query,
 		JPH_RVec3* point,
 		JPH_CollisionCollectorType collectorType,
-		JPH_CollidePointResultCallback* callback, void* userData,
+		JPH_CollidePointResultCallback callback, void* userData,
 		JPH_BroadPhaseLayerFilter* broadPhaseLayerFilter,
 		JPH_ObjectLayerFilter* objectLayerFilter,
 		JPH_BodyFilter* bodyFilter,
@@ -2062,7 +2062,7 @@ static
 		JPH_Shape* shape, JPH_Vec3* scale, JPH_RMat4* centerOfMassTransform,
 		JPH_CollideShapeSettings* settings,
 		JPH_RVec3* baseOffset,
-		JPH_CollideShapeCollectorCallback* callback, void* userData,
+		JPH_CollideShapeCollectorCallback callback, void* userData,
 		JPH_BroadPhaseLayerFilter* broadPhaseLayerFilter,
 		JPH_ObjectLayerFilter* objectLayerFilter,
 		JPH_BodyFilter* bodyFilter,
@@ -2073,7 +2073,7 @@ static
 		JPH_CollideShapeSettings* settings,
 		JPH_RVec3* baseOffset,
 		JPH_CollisionCollectorType collectorType,
-		JPH_CollideShapeResultCallback* callback, void* userData,
+		JPH_CollideShapeResultCallback callback, void* userData,
 		JPH_BroadPhaseLayerFilter* broadPhaseLayerFilter,
 		JPH_ObjectLayerFilter* objectLayerFilter,
 		JPH_BodyFilter* bodyFilter,
@@ -2084,7 +2084,7 @@ static
 		JPH_RMat4* worldTransform, JPH_Vec3* direction,
 		JPH_ShapeCastSettings* settings,
 		JPH_RVec3* baseOffset,
-		JPH_CastShapeCollectorCallback* callback, void* userData,
+		JPH_CastShapeCollectorCallback callback, void* userData,
 		JPH_BroadPhaseLayerFilter* broadPhaseLayerFilter,
 		JPH_ObjectLayerFilter* objectLayerFilter,
 		JPH_BodyFilter* bodyFilter,
@@ -2582,14 +2582,14 @@ static
 		JPH_Vec3* scale1, JPH_Vec3* scale2,
 		JPH_Mat4* centerOfMassTransform1, JPH_Mat4* centerOfMassTransform2,
 		JPH_CollideShapeSettings* collideShapeSettings,
-		JPH_CollideShapeCollectorCallback* callback, void* userData, JPH_ShapeFilter* shapeFilter);
+		JPH_CollideShapeCollectorCallback callback, void* userData, JPH_ShapeFilter* shapeFilter);
 
 	[CLink] public static extern bool JPH_CollisionDispatch_CastShapeVsShapeLocalSpace(
 		JPH_Vec3* direction, JPH_Shape* shape1, JPH_Shape* shape2,
 		JPH_Vec3* scale1InShape2LocalSpace, JPH_Vec3* scale2,
 		JPH_Mat4* centerOfMassTransform1InShape2LocalSpace, JPH_Mat4* centerOfMassWorldTransform2,
 		JPH_ShapeCastSettings* shapeCastSettings,
-		JPH_CastShapeCollectorCallback* callback, void* userData,
+		JPH_CastShapeCollectorCallback callback, void* userData,
 		JPH_ShapeFilter* shapeFilter);
 
 	[CLink] public static extern bool JPH_CollisionDispatch_CastShapeVsShapeWorldSpace(
@@ -2597,7 +2597,7 @@ static
 		JPH_Vec3* scale1, JPH_Vec3* inScale2,
 		JPH_Mat4* centerOfMassWorldTransform1, JPH_Mat4* centerOfMassWorldTransform2,
 		JPH_ShapeCastSettings* shapeCastSettings,
-		JPH_CastShapeCollectorCallback* callback, void* userData,
+		JPH_CastShapeCollectorCallback callback, void* userData,
 		JPH_ShapeFilter* shapeFilter);
 }
 	/* DebugRenderer */
