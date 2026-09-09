@@ -1,0 +1,16 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Audio.Resource.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Audio.Resource.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.VFS" = "*"
+"miniaudio-Beef" = "*"
+"Sedulous.Audio" = "*"
+"Sedulous.Audio.Resource" = "*"
