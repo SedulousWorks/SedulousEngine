@@ -485,6 +485,23 @@ int32_t mab_sound_group_stop(mab_sound_group* group)
     return (int32_t)ma_sound_group_stop((ma_sound_group*)group);
 }
 
+int32_t mab_sound_group_stop_with_fade_ms(mab_sound_group* group, uint64_t milliseconds)
+{
+    return (int32_t)ma_sound_stop_with_fade_in_milliseconds((ma_sound*)group,
+                                                            (ma_uint64)milliseconds);
+}
+
+void mab_sound_group_set_fade_in_ms(mab_sound_group* group, float from, float to,
+                                    uint64_t milliseconds)
+{
+    ma_sound_set_fade_in_milliseconds((ma_sound*)group, from, to, (ma_uint64)milliseconds);
+}
+
+void mab_sound_group_reset_stop_time_and_fade(mab_sound_group* group)
+{
+    ma_sound_reset_stop_time_and_fade((ma_sound*)group);
+}
+
 /* ---------------------------------------------------------------------------------------- */
 /* The node graph.                                                                            */
 /* ---------------------------------------------------------------------------------------- */

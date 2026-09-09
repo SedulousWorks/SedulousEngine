@@ -192,6 +192,15 @@ static
 	[CLink] public static extern int32 mab_sound_group_start(mab_sound_group* group);
 	[CLink] public static extern int32 mab_sound_group_stop(mab_sound_group* group);
 
+	/// A group IS a sound, so the same fade then stop declick applies: halting the group node
+	/// freezes every voice routed through it in place.
+	[CLink] public static extern int32 mab_sound_group_stop_with_fade_ms(mab_sound_group* group,
+		uint64 milliseconds);
+	[CLink] public static extern void mab_sound_group_set_fade_in_ms(mab_sound_group* group,
+		float from, float to, uint64 milliseconds);
+	[CLink] public static extern void mab_sound_group_reset_stop_time_and_fade(
+		mab_sound_group* group);
+
 	// ---- the node graph ----
 
 	[CLink] public static extern int32 mab_node_attach_output_bus(mab_node* node, uint32 outputBus,
