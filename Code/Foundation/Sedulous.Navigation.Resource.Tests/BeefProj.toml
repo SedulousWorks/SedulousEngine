@@ -1,14 +1,16 @@
 FileVersion = 1
 
 [Project]
-Name = "Sedulous.Navigation.Resource"
-TargetType = "BeefLib"
-StartupObject = "Sedulous.Navigation.Resource.Program"
+Name = "Sedulous.Navigation.Resource.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Navigation.Resource.Tests.Program"
 
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
 "Sedulous.Content" = "*"
 "Sedulous.Resource" = "*"
+"Sedulous.VFS" = "*"
 "recastnavigation-Beef" = "*"
 "Sedulous.Navigation" = "*"
+"Sedulous.Navigation.Resource" = "*"
