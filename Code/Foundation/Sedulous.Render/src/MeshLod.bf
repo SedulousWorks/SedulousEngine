@@ -16,7 +16,7 @@ static class MeshLod
 	/// list is longer than its level count would select a level that is not there.
 	public static Span<float> MeshThresholds(StaticMesh mesh)
 	{
-		let count = Math.Min((int)mesh.LodCount, mesh.LodCoverage.Count);
+		let count = Min((int)mesh.LodCount, mesh.LodCoverage.Count);
 		return .(mesh.LodCoverage.Ptr, count);
 	}
 

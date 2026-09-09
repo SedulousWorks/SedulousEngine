@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core;
 
 namespace Sedulous.Render;
 
@@ -39,7 +40,7 @@ static class SortKeys
 	/// front categories.
 	public static uint32 QuantizeDepth(float depth01, bool invert)
 	{
-		var depth = Math.Clamp(depth01, 0.0f, 1.0f);
+		var depth = Clamp(depth01, 0.0f, 1.0f);
 		if (invert)
 			depth = 1.0f - depth;
 

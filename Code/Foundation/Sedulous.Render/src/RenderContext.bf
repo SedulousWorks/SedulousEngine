@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Core;
 
 namespace Sedulous.Render;
 
@@ -21,7 +22,7 @@ class RenderContext
 	/// the start of a frame, before any extraction.
 	public void BeginFrame(uint32 slotCount)
 	{
-		let slots = Math.Max(slotCount, (uint32)1);
+		let slots = Max(slotCount, (uint32)1);
 
 		while ((uint32)mArenas.Count < slots)
 		{

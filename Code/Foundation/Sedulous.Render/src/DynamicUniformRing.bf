@@ -1,5 +1,6 @@
 using System;
 using Sedulous.RHI;
+using Sedulous.Core;
 
 namespace Sedulous.Render;
 
@@ -35,7 +36,7 @@ class DynamicUniformRing
 		mDevice = device;
 		mUsage = usage;
 		mLabel.Set(label);
-		mFramesInFlight = Math.Max(framesInFlight, (uint32)1);
+		mFramesInFlight = Max(framesInFlight, (uint32)1);
 		mSlotSize = slotSize;
 	}
 
@@ -51,7 +52,7 @@ class DynamicUniformRing
 		if ((slotsPerFrame <= mSlotsPerFrame) && (mBuffer != null))
 			return true;
 
-		let wanted = Math.Max(slotsPerFrame, (uint32)1);
+		let wanted = Max(slotsPerFrame, (uint32)1);
 
 		// A frame in flight may still be reading the old buffer. With a queue wired it is
 		// retired, which is the web safe path; without one the device is drained.

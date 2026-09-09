@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.RHI;
+using Sedulous.Core;
 
 namespace Sedulous.Render;
 
@@ -33,7 +34,7 @@ class GpuRetireQueue
 		mDevice = device;
 		// One more than the ring: something retired DURING a frame is safe once that frame's
 		// whole ring has come round again.
-		mAge = Math.Max(framesInFlight, 1) + 1;
+		mAge = Max(framesInFlight, 1) + 1;
 	}
 
 	public void Retire(IBuffer buffer)

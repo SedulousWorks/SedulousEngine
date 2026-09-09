@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.RHI;
+using Sedulous.Core;
 
 namespace Sedulous.Render;
 
@@ -62,7 +63,7 @@ class GpuBufferPool
 		}
 
 		// A single allocation larger than a chunk gets a chunk of its own.
-		if (!AddChunk(Math.Max(size, mChunkSize)))
+		if (!AddChunk(Max(size, mChunkSize)))
 			return .();
 
 		var chunk = mChunks[mCurrent];

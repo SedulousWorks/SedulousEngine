@@ -33,7 +33,7 @@ static class TaaJitter
 		let x = HaltonSeq(index, 2) - 0.5f;
 		let y = HaltonSeq(index, 3) - 0.5f;
 
-		return .(x * 2.0f / (float)Math.Max(width, (uint32)1),
-			y * 2.0f / (float)Math.Max(height, (uint32)1));
+		return .(x * 2.0f / (float)Max(width, (uint32)1),
+			y * 2.0f / (float)Max(height, (uint32)1));
 	}
 }

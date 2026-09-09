@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Core;
 
 namespace Sedulous.Render;
 
@@ -65,7 +66,7 @@ class FrameArena : ITypedAllocator
 		if (size <= 0)
 			return null;
 
-		let align = Math.Max(alignment, 1);
+		let align = Max(alignment, 1);
 
 		if (!mChunks.IsEmpty)
 		{
@@ -90,7 +91,7 @@ class FrameArena : ITypedAllocator
 		}
 
 		// A single allocation larger than a chunk gets a chunk of its own.
-		if (!AddChunk(Math.Max(mChunkSize, Align(size, cChunkAlign))))
+		if (!AddChunk(Max(mChunkSize, Align(size, cChunkAlign))))
 			return null;
 
 		mCurrent = mChunks.Count - 1;
