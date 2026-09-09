@@ -7,3 +7,8 @@ StartupObject = "Sedulous.Mcp.Http.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Net" = "*"
+"Sedulous.Http" = "*"
+"Sedulous.Json" = "*"
+"Sedulous.Mcp" = "*"
