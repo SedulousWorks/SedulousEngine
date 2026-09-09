@@ -7,4 +7,6 @@ StartupObject = "Sedulous.Navigation.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"recastnavigation-Beef" = "*"
 "Sedulous.Navigation" = "*"
