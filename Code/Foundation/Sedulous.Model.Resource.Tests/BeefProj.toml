@@ -1,21 +1,19 @@
 FileVersion = 1
 
 [Project]
-Name = "Sedulous.Model.Resource"
-TargetType = "BeefLib"
-StartupObject = "Sedulous.Model.Resource.Program"
+Name = "Sedulous.Model.Resource.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Model.Resource.Tests.Program"
 
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
 "Sedulous.Content" = "*"
 "Sedulous.Resource" = "*"
+"Sedulous.VFS" = "*"
 "Sedulous.Geometry" = "*"
 "Sedulous.Geometry.Resource" = "*"
-"Sedulous.Materials" = "*"
-"Sedulous.Materials.Resource" = "*"
-"Sedulous.Texture" = "*"
-"Sedulous.Texture.Resource" = "*"
 "Sedulous.Animation" = "*"
 "Sedulous.Animation.Resource" = "*"
 "Sedulous.Model" = "*"
+"Sedulous.Model.Resource" = "*"
