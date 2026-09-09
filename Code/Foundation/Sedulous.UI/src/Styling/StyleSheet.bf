@@ -219,7 +219,7 @@ class StyleSheet : RefCounted
 			mOwnedDrawables.Add(drawable);
 	}
 
-	/// CONSUMES the caller's reference. Same either-or rule as OwnDrawable.
+	/// CONSUMES the caller's reference. The sheet is the anchor, as with OwnDrawable.
 	public void OwnResource(RefCounted resource)
 	{
 		if (resource != null)

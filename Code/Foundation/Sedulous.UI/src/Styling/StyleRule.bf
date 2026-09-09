@@ -8,10 +8,13 @@ namespace Sedulous.UI;
 ///
 /// Ref counted, so a sheet can hold rules and hand back stable references from its builders.
 ///
-/// OWNS THE BACKING for every value it stores. A StyleValue borrows its drawable, string,
-/// variable reference and transition list, so something has to keep them alive; the rule
-/// holding a value is the natural owner, and it makes a rule self contained rather than
-/// depending on the sheet having been told separately.
+/// Owns the STRING backing of its values, and borrows everything else.
+///
+/// A StyleValue borrows its payloads, so something must keep them alive. Strings live here
+/// because they are copied out of the source text, which does not outlive the sheet. Drawables
+/// and other resources belong to the SHEET: that is where the parser's factories put them, and
+/// MergeFrom carries a sheet's owned resources across with its rules, so a rule shared into
+/// another sheet keeps working after the original dies.
 class StyleRule : RefCounted
 {
 	public struct Entry
@@ -36,10 +39,8 @@ class StyleRule : RefCounted
 	private List<Entry> mProperties = new .() ~ delete _;
 	private List<CustomEntry> mCustom = new .() ~ DeleteContainerAndItems!(_);
 
-	// The backing this rule keeps alive for its borrowed StyleValue payloads.
+	/// The string backing for this rule's values, copied out of the source text.
 	private List<String> mOwnedStrings = new .() ~ DeleteContainerAndItems!(_);
-	private List<Drawable> mOwnedDrawables = new .() ~ ReleaseAll(_);
-	private List<RefCounted> mOwnedResources = new .() ~ ReleaseAllResources(_);
 
 	/// The owning sheet's version counter.
 	///
@@ -49,20 +50,6 @@ class StyleRule : RefCounted
 	private uint32* mOwnerVersion = null;
 
 	public this() {}
-
-	private static void ReleaseAll(List<Drawable> drawables)
-	{
-		for (let drawable in drawables)
-			drawable.ReleaseRef();
-		delete drawables;
-	}
-
-	private static void ReleaseAllResources(List<RefCounted> resources)
-	{
-		for (let resource in resources)
-			resource.ReleaseRef();
-		delete resources;
-	}
 
 	public void BindOwnerVersion(uint32* version) => mOwnerVersion = version;
 	public uint32* OwnerVersion => mOwnerVersion;
@@ -93,10 +80,10 @@ class StyleRule : RefCounted
 		return this;
 	}
 
-	/// CONSUMES the caller's reference on the drawable; the rule keeps it alive.
+	/// BORROWS the drawable, which the SHEET owns. Hand it to StyleSheet.OwnDrawable first;
+	/// the parser's factories already do.
 	public StyleRule Set(StyleProperty property, Drawable drawable)
 	{
-		mOwnedDrawables.Add(drawable);
 		SetOverwrite(property, StyleValue.Drawable(drawable));
 		return this;
 	}
@@ -108,19 +95,12 @@ class StyleRule : RefCounted
 		return this;
 	}
 
-	/// Any value, a length, keyword or variable reference included. The caller is responsible
-	/// for having handed this rule anything the value borrows, through TakeOwnership.
+	/// Any value, a length, keyword or variable reference included. Whatever the value borrows
+	/// must already be owned by the sheet, or by this rule through TakeOwnership.
 	public StyleRule SetValue(StyleProperty property, StyleValue value)
 	{
 		SetOverwrite(property, value);
 		return this;
-	}
-
-	/// Keeps a ref counted payload alive for as long as this rule, for a value built
-	/// elsewhere. CONSUMES the caller's reference.
-	public void TakeOwnership(RefCounted resource)
-	{
-		mOwnedResources.Add(resource);
 	}
 
 	/// Copies text into storage this rule owns, and answers a view of it.
