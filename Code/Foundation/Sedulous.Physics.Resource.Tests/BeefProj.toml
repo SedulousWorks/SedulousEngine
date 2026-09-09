@@ -1,0 +1,16 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Physics.Resource.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Physics.Resource.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.VFS" = "*"
+"joltc-Beef" = "*"
+"Sedulous.Physics" = "*"
+"Sedulous.Physics.Resource" = "*"

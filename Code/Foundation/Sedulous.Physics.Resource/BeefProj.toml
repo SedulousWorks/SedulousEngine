@@ -7,3 +7,8 @@ StartupObject = "Sedulous.Physics.Resource.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Resource" = "*"
+"joltc-Beef" = "*"
+"Sedulous.Physics" = "*"
