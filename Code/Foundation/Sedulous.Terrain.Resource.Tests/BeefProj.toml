@@ -7,4 +7,11 @@ StartupObject = "Sedulous.Terrain.Resource.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Heightfield" = "*"
+"Sedulous.Heightfield.Resource" = "*"
+"Sedulous.Terrain" = "*"
 "Sedulous.Terrain.Resource" = "*"
