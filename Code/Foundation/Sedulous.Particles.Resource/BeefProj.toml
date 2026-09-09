@@ -7,3 +7,13 @@ StartupObject = "Sedulous.Particles.Resource.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Particles" = "*"
+"Sedulous.Texture" = "*"
+"Sedulous.Texture.Resource" = "*"
+"Sedulous.Geometry" = "*"
+"Sedulous.Geometry.Resource" = "*"
+"Sedulous.Materials" = "*"
+"Sedulous.Materials.Resource" = "*"
