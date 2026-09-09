@@ -7,3 +7,6 @@ StartupObject = "Sedulous.Render.Api.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Scene" = "*"
