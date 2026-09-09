@@ -26,6 +26,7 @@ extern "C" {
 typedef unsigned int C_dtPolyRef;
 typedef struct dtNavMesh_s* dtNavMeshHandle;
 typedef struct dtQueryFilter_s* dtQueryFilterHandle;
+typedef struct dtNavMeshQuery_s* dtNavMeshQueryHandle;
 
 /* Constants */
 #define C_DT_CROWDAGENT_MAX_NEIGHBOURS 6
@@ -132,6 +133,12 @@ DETOURCROWD_C_API int C_dtCrowdAgentIsPartial(dtCrowdHandle crowd, int idx);
 DETOURCROWD_C_API void C_dtCrowdAgentGetPosition(dtCrowdHandle crowd, int idx, float* pos);
 DETOURCROWD_C_API void C_dtCrowdAgentGetDesiredVelocity(dtCrowdHandle crowd, int idx, float* dvel);
 DETOURCROWD_C_API void C_dtCrowdAgentGetVelocity(dtCrowdHandle crowd, int idx, float* vel);
+/* The crowd's current speed INTENT for the agent, which is not the length of either velocity:
+   it is recorded before obstacle avoidance rewrites the desired one. 0 for a dead agent. */
+DETOURCROWD_C_API float C_dtCrowdAgentGetDesiredSpeed(dtCrowdHandle crowd, int idx);
+/* The crowd's own navmesh query, so a caller snaps a target with exactly the query the crowd
+   will steer against. */
+DETOURCROWD_C_API dtNavMeshQueryHandle C_dtCrowdGetNavMeshQuery(dtCrowdHandle crowd);
 DETOURCROWD_C_API void C_dtCrowdAgentGetParams(dtCrowdHandle crowd, int idx, C_dtCrowdAgentParams* params);
 DETOURCROWD_C_API int C_dtCrowdAgentGetCornerCount(dtCrowdHandle crowd, int idx);
 DETOURCROWD_C_API void C_dtCrowdAgentGetCornerVerts(dtCrowdHandle crowd, int idx, float* verts, int maxVerts);

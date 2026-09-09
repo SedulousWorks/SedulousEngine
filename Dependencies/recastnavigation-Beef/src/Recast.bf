@@ -110,32 +110,41 @@ struct rcConfig
 	public float detailSampleMaxError;
 }
 
-/* Span structure */
+/* Span structure.
+   smin, smax and area are C BITFIELDS sharing one 32-bit word. Beef's own bitfields pack the
+   same way, from the low bit in declaration order, so the layout matches Recast's exactly: a
+   field per member would put `next` at the wrong offset and every walk of a column would read
+   garbage. */
 [CRepr]
 struct rcSpan
 {
-	public uint32 smin; // 13 bits
-	public uint32 smax; // 13 bits
-	public uint32 area; // 6 bits
+	[Bitfield<uint32>(.Public, .Bits(13), "smin")] // the span's lower limit
+	[Bitfield<uint32>(.Public, .Bits(13), "smax")] // the span's upper limit
+	[Bitfield<uint32>(.Public, .Bits(6), "area")]  // the area id it was marked with
+	private uint32 mPacked;
+
 	public rcSpan* next;
 }
 
-/* Compact cell structure */
+/* Compact cell structure. One 32-bit word of bitfields, as rcSpan. */
 [CRepr]
 struct rcCompactCell
 {
-	public uint32 index; // 24 bits
-	public uint32 count; // 8 bits
+	[Bitfield<uint32>(.Public, .Bits(24), "index")] // where the column's first span sits
+	[Bitfield<uint32>(.Public, .Bits(8), "count")]  // how many spans the column holds
+	private uint32 mPacked;
 }
 
-/* Compact span structure */
+/* Compact span structure. The trailing con and h are bitfields sharing one word. */
 [CRepr]
 struct rcCompactSpan
 {
 	public uint16 y;
 	public uint16 reg;
-	public uint32 con; // 24 bits
-	public uint32 h; // 8 bits
+
+	[Bitfield<uint32>(.Public, .Bits(24), "con")] // the packed neighbour connections
+	[Bitfield<uint32>(.Public, .Bits(8), "h")]    // the span's height above y
+	private uint32 mPacked;
 }
 
 /* Heightfield layer structure */

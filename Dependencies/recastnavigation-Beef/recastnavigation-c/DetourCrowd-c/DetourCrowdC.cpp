@@ -98,6 +98,16 @@ DETOURCROWD_C_API void C_dtCrowdAgentGetVelocity(dtCrowdHandle crowd, int idx, f
     }
 }
 
+DETOURCROWD_C_API float C_dtCrowdAgentGetDesiredSpeed(dtCrowdHandle crowd, int idx) {
+    const ::dtCrowdAgent* agent = reinterpret_cast<::dtCrowd*>(crowd)->getAgent(idx);
+    return agent ? agent->desiredSpeed : 0.0f;
+}
+
+DETOURCROWD_C_API dtNavMeshQueryHandle C_dtCrowdGetNavMeshQuery(dtCrowdHandle crowd) {
+    return reinterpret_cast<dtNavMeshQueryHandle>(
+        const_cast<::dtNavMeshQuery*>(reinterpret_cast<::dtCrowd*>(crowd)->getNavMeshQuery()));
+}
+
 DETOURCROWD_C_API void C_dtCrowdAgentGetParams(dtCrowdHandle crowd, int idx, C_dtCrowdAgentParams* params) {
     const ::dtCrowdAgent* agent = reinterpret_cast<::dtCrowd*>(crowd)->getAgent(idx);
     if (agent && params) {

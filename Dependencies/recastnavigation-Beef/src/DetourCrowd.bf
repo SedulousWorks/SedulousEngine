@@ -141,6 +141,14 @@ static
 	public static extern void C_dtCrowdAgentGetVelocity(dtCrowdHandle crowd, int32 idx, float* vel);
 	[CLink]
 	public static extern void C_dtCrowdAgentGetParams(dtCrowdHandle crowd, int32 idx, dtCrowdAgentParams* @params);
+	/// The crowd's current speed INTENT for the agent, which is not the length of either
+	/// velocity: it is recorded before obstacle avoidance rewrites the desired one.
+	[CLink]
+	public static extern float C_dtCrowdAgentGetDesiredSpeed(dtCrowdHandle crowd, int32 idx);
+	/// The crowd's OWN query, so a caller snaps a target with exactly the query the crowd will
+	/// steer against.
+	[CLink]
+	public static extern dtNavMeshQueryHandle C_dtCrowdGetNavMeshQuery(dtCrowdHandle crowd);
 	[CLink]
 	public static extern int32 C_dtCrowdAgentGetCornerCount(dtCrowdHandle crowd, int32 idx);
 	[CLink]
