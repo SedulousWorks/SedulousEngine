@@ -37,6 +37,7 @@ class UIContext
 	private FocusManager mFocusManager ~ delete _;
 	private ShortcutManager mShortcutManager ~ delete _;
 	private AnimationManager mAnimationManager = new .() ~ delete _;
+	private DragDropManager mDragDropManager ~ delete _;
 
 	/// BORROWED: the roots are owned by whoever created them.
 	private List<RootView> mRootViews = new .() ~ delete _;
@@ -50,6 +51,7 @@ class UIContext
 		mInputManager = new .(this);
 		mFocusManager = new .(this);
 		mShortcutManager = new .(this);
+		mDragDropManager = new .(this);
 	}
 
 	public ~this()
@@ -63,6 +65,7 @@ class UIContext
 	public FocusManager GetFocusManager() => mFocusManager;
 	public ShortcutManager GetShortcuts() => mShortcutManager;
 	public AnimationManager Animations => mAnimationManager;
+	public DragDropManager DragDrop => mDragDropManager;
 
 	// ---- Frame damage --------------------------------------------------------------------------
 
@@ -198,8 +201,8 @@ class UIContext
 	/// Forgets a view EVERYWHERE before it goes: the registry, and every manager holding its
 	/// id or a pointer to it.
 	///
-	/// The tooltip and drag managers are not ported, so they hold nothing to sweep and are not
-	/// called here. Their sweeps belong in this method and must be added with them.
+	/// The tooltip manager is not ported, so it holds nothing to sweep and is not called here.
+	/// Its sweep belongs in this method and must be added with it.
 	public void Unregister(View view)
 	{
 		if ((view == null) || !view.Id.IsValid)
@@ -208,6 +211,9 @@ class UIContext
 		mInputManager.OnViewDeleted(view);
 		mFocusManager.OnViewDeleted(view);
 		mShortcutManager.RemoveScopedTo(view);
+		// A drag holds the source and the current drop target as RAW pointers, so a view
+		// leaving mid drag has to be reported before it goes.
+		mDragDropManager.OnViewDeleted(view);
 		// A running animation holds a raw pointer to its target, so it has to go before the
 		// view does: a fade left running over a removed view writes to freed memory.
 		mAnimationManager.CancelForView(view);
