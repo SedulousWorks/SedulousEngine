@@ -249,7 +249,7 @@ extension View
 			|| clampsHeight)
 		{
 			let root = Root();
-			let dpiScale = (root != null) ? Max(root.DpiScale, 0.01f) : 1.0f;
+			let dpiScale = Max(RootDpiScale(root), 0.01f);
 
 			// A percentage resolves against the CONTAINING box on the same axis, being the
 			// incoming constraint's maximum after margin and nought when unbounded; em
@@ -353,7 +353,7 @@ extension View
 		var boxHeight = Max(0.0f, height - margin.TotalVertical);
 
 		let root = Root();
-		let dpi = (root != null) ? Max(root.DpiScale, 0.01f) : 1.0f;
+		let dpi = Max(RootDpiScale(root), 0.01f);
 
 		let right = Round((left + boxWidth) * dpi) / dpi;
 		let bottom = Round((top + boxHeight) * dpi) / dpi;

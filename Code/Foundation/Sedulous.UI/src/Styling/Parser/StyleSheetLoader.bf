@@ -113,13 +113,14 @@ class StyleSheetLoader
 		return sheet;
 	}
 
-	/// Registers the built in factories. Idempotent, and safe to call at startup.
+	/// Registers the built in drawable factories and view types. Idempotent, and safe to call
+	/// at startup.
 	///
-	/// DIVERGES from Raptor, which also calls UITypeRegistry.RegisterBuiltins here. That body
-	/// reaches every control class and is not ported yet, so a host registers the types it
-	/// needs until the controls land.
+	/// A host that loads a sheet needs both: the factories to build what a declaration names,
+	/// and the type names for element selectors to resolve against.
 	public static void InitializeGlobals()
 	{
 		DrawableFactoryRegistry.RegisterBuiltins();
+		UITypeRegistry.RegisterBuiltins();
 	}
 }

@@ -133,6 +133,13 @@ class View : RefCounted, IPropertyOwner
 		return result;
 	}
 
+	/// The dpi scale of the root a view sits under, and one when it is unparented.
+	///
+	/// Raptor keeps this on ViewGroup; here it is on View, which is where the callers are.
+	/// Callers that DIVIDE by it clamp it themselves: a root reporting nought is a host bug
+	/// rather than something to paper over silently everywhere.
+	protected static float RootDpiScale(RootView root) => (root != null) ? root.DpiScale : 1.0f;
+
 	public Float2 ScreenToLocal(Float2 screen)
 	{
 		var result = screen;

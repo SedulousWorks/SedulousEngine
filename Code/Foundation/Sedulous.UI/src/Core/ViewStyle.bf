@@ -549,7 +549,7 @@ extension View
 			: ResolveStyleLength(.FontSize, 0.0f, 16.0f);
 
 		let root = Root();
-		let dpiScale = (root != null) ? Max(root.DpiScale, 0.01f) : 1.0f;
+		let dpiScale = Max(RootDpiScale(root), 0.01f);
 		return length.Value.Resolve(dpiScale, referenceSize, fontSize);
 	}
 

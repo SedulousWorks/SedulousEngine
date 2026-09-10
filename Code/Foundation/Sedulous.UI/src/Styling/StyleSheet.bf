@@ -306,6 +306,43 @@ class StyleSheet : RefCounted
 		return .None;
 	}
 
+	/// This sheet's value for a property on a view, at the view's OWN control state.
+	///
+	/// The per sheet primitive. It sees only this sheet: the inline style, the local sheets up
+	/// the chain and inheritance are View.ResolveStyle's job, and a caller wanting the value a
+	/// view actually paints with wants that instead. This is for asking one sheet directly.
+	public StyleValue Resolve(View view, StyleProperty property) =>
+		ResolveMatching(view, view.GetControlState(), "", property);
+
+	public Color ResolveColor(View view, StyleProperty property, Color defaultValue = Color.White)
+	{
+		let value = Resolve(view, property).AsColor;
+		return (value != null) ? value.Value : defaultValue;
+	}
+
+	public float ResolveFloat(View view, StyleProperty property, float defaultValue = 0.0f)
+	{
+		let value = Resolve(view, property).AsFloat;
+		return (value != null) ? value.Value : defaultValue;
+	}
+
+	public Thickness ResolveThickness(View view, StyleProperty property,
+		Thickness defaultValue = default)
+	{
+		let value = Resolve(view, property).AsThickness;
+		return (value != null) ? value.Value : defaultValue;
+	}
+
+	/// Borrowed, and null when the sheet declares no drawable for it.
+	public Drawable ResolveDrawable(View view, StyleProperty property) =>
+		Resolve(view, property).AsDrawable;
+
+	public bool ResolveBool(View view, StyleProperty property, bool defaultValue = false)
+	{
+		let value = Resolve(view, property).AsBool;
+		return (value != null) ? value.Value : defaultValue;
+	}
+
 	/// A pseudo element's value, resolved at an explicit state rather than the view's own.
 	public StyleValue ResolvePart(View view, StringView pseudoElement, StyleProperty property,
 		ControlState partState) =>
