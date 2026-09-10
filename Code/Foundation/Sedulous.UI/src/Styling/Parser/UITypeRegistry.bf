@@ -89,7 +89,7 @@ static class UITypeRegistry
 
 		Register("ContextMenu", typeof(ContextMenu));
 		Register("TooltipView", typeof(TooltipView));
-		// Dialog is not ported yet; it registers here when it lands.
+		Register("Dialog", typeof(Dialog));
 	}
 
 	/// The type registered under a name, or null.

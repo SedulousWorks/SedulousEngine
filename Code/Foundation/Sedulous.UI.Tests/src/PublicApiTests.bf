@@ -98,6 +98,7 @@ class PublicApiTests
 		Test.Assert(UITypeRegistry.Resolve("Flex") == typeof(FlexLayout), "markup reads better short");
 		Test.Assert(UITypeRegistry.Resolve("EditText") == typeof(EditText));
 		Test.Assert(UITypeRegistry.Resolve("ContextMenu") == typeof(ContextMenu));
+		Test.Assert(UITypeRegistry.Resolve("Dialog") == typeof(Dialog));
 
 		Test.Assert(UITypeRegistry.Resolve("NotAControl") == null);
 	}
