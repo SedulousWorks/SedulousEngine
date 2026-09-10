@@ -24,7 +24,7 @@ class PasswordBox : EditText
 	{
 		outText.Clear();
 		let mask = PasswordChar.Value;
-		for (int32 i < Utf8CharCount(Text))
+		for (int32 i < Utf8Text.CharCount(Text))
 			outText.Append(mask);
 	}
 

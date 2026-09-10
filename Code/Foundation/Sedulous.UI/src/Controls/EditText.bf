@@ -198,8 +198,8 @@ class EditText : View, ITextEditHost
 	void ITextEditHost.ReplaceText(int32 charStart, int32 charLength, StringView replacement)
 	{
 		// The behaviour counts in CHARACTERS; the buffer is bytes, and only we know that.
-		let byteStart = CharToByteOffset(mText, charStart);
-		let byteEnd = CharToByteOffset(mText, charStart + charLength);
+		let byteStart = Utf8Text.CharToByteOffset(mText, charStart);
+		let byteEnd = Utf8Text.CharToByteOffset(mText, charStart + charLength);
 
 		mText.Remove(byteStart, byteEnd - byteStart);
 		mText.Insert(byteStart, replacement);
@@ -269,7 +269,7 @@ class EditText : View, ITextEditHost
 	}
 
 	/// The number of CHARACTERS, not bytes.
-	public int32 TextCharCount => Utf8CharCount(mText);
+	public int32 TextCharCount => Utf8Text.CharCount(mText);
 
 	public float LineHeight
 	{
@@ -944,41 +944,6 @@ class EditText : View, ITextEditHost
 	}
 
 	// ---- UTF-8 ------------------------------------------------------------------------------
-
-	/// The byte offset a character index starts at, or the length when it runs past the end.
-	///
-	/// A UTF-8 continuation byte is 10xxxxxx, so anything else begins a character. That is the
-	/// whole rule, and it does not need a decoder.
-	protected static int CharToByteOffset(StringView text, int32 charIndex)
-	{
-		if (charIndex <= 0)
-			return 0;
-
-		var chars = 0;
-		for (int i < text.Length)
-		{
-			if ((((uint8)text[i]) & 0xC0) == 0x80)
-				continue;
-
-			if (chars == charIndex)
-				return i;
-
-			chars++;
-		}
-
-		return text.Length;
-	}
-
-	protected static int32 Utf8CharCount(StringView text)
-	{
-		var count = 0;
-		for (int i < text.Length)
-		{
-			if ((((uint8)text[i]) & 0xC0) != 0x80)
-				count++;
-		}
-		return (int32)count;
-	}
 
 	/// The character at an index, or nought past the end.
 	private static char32 CharAt(StringView text, int32 charIndex)
