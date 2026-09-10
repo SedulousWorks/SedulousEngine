@@ -1,0 +1,202 @@
+/* rounded-dark.sss - the rounded dark theme, the EDITOR's live look. THE REFERENCE for the
+ * dark-family color logic (dark.sss is this sheet with flat geometry). Everything derives
+ * from the palette - a warm palette like GraphiteOrange applies end-to-end.
+ *
+ * ==================== DESIGN SYSTEM ====================
+ * Type ramp:  16 default | 14 text inputs + expander headers | 12 compact chrome
+ *             (buttons, combos, tabs, dock tabs, status bar)
+ * Spacing:    2 4 6 8 12 16 - button pad 8 12, input pad 4 6, gaps 6
+ * Geometry:   radius 6 main | 3 check | 9 radio | 12 pill | 8 thumb | 2-5 tracks;
+ *             ROUND radio marks. Geometry is this theme's identity - color logic is shared.
+ * Color logic (dark family) - see dark.sss for the derivation table.
+ * ======================================================= */
+
+/* === Global defaults ===
+ * AccentColor + CornerRadius as GLOBAL defaults: accent-resolving controls (tree drop
+ * indicators, node links) follow the palette, and self-drawing toolkit controls round
+ * consistently at the theme radius (the flat themes leave radius 0). */
+View {
+    text-color: $text;
+    accent-color: $primary-accent;
+    success-color: $success;
+    warning-color: $warning;
+    error-color: $error;
+    corner-radius: 6;
+    font-size: 16;
+    /* Motion: visual state changes (hover, press, focus, class toggles) ease over 120ms;
+     * geometry never animates. A control opts out with `transition: none`. */
+    transition: background 120ms ease-out, text-color 120ms ease-out,
+                text-dim-color 120ms ease-out, border-color 120ms ease-out,
+                accent-color 120ms ease-out, box-shadow 120ms ease-out,
+                opacity 120ms ease-out;
+}
+
+/* === Button - rounded state ramps (state-rounded == Palette::CreateStateRounded) === */
+ButtonBase {
+    background: state-rounded($surface-bright, radius=6);
+    checked-background: state-rounded($primary-accent, radius=6);
+    text-color: $text;
+    font-size: 12;
+    padding: 8 12;  /* CSS order: vertical horizontal (= C++ Thickness{12,8}) */
+}
+
+
+/* === IconButton (icon chrome - compact) ===
+ * Without this, IconButton inherits ButtonBase's button-bar padding (8 12) via subclass
+ * matching; since the box model made styled padding effective in measure, that inflated
+ * 18px icons to 42x34 chrome and overflowed tight bands (inspector section headers). */
+IconButton { padding: 2; }
+
+/* === Panel === */
+.panel {
+    background: rounded-rect($surface, radius=6, border=$border, border-width=1);
+}
+
+/* === Label === */
+.label { text-color: $text; }
+.label-dim { text-color: $text-dim; }
+
+/* === EditText (sunken input background) === */
+EditText {
+    background: rounded-rect(darken($surface, 25%), radius=6, border=$border, border-width=1);
+    text-color: $text;
+    placeholder-color: $text-dim;
+    font-size: 14;
+    padding: 4 6;   /* CSS order: vertical horizontal (= C++ Thickness{6,4}) */
+    cursor-color: $primary-accent;
+    selection-color: alpha($primary-accent, 0.35);
+}
+
+/* === NumericField - rounded OUTER spin corners (per-corner radii, P0b) === */
+NumericField {
+    background: rounded-rect(darken($surface, 25%), radius=6, border=$border, border-width=1);
+    text-color: $text;
+    placeholder-color: $text-dim;
+    font-size: 14;
+    padding: 4 6;   /* CSS order: vertical horizontal (= C++ Thickness{6,4}) */
+    cursor-color: $primary-accent;
+    selection-color: alpha($primary-accent, 0.35);
+}
+NumericField::spin-up { background: state-rounded($surface-bright, radius=0 6 0 0); }
+NumericField::spin-down { background: state-rounded($surface-bright, radius=0 0 6 0); }
+
+/* === CheckBox - rounded === */
+CheckBox::box {
+    background: rounded-rect(darken($surface, 25%), radius=3, border=lighten($border, 35%), border-width=1);
+    width: 18;
+}
+CheckBox::box:checked {
+    background: rounded-rect($primary-accent, radius=3, border=lighten($border, 35%), border-width=1);
+}
+CheckBox { spacing: 6; }
+
+/* === RadioButton - circular === */
+RadioButton::box {
+    background: rounded-rect(darken($surface, 25%), radius=9, border=lighten($border, 35%), border-width=1);
+}
+RadioButton::box:checked {
+    background: rounded-rect($primary-accent, radius=9, border=lighten($border, 35%), border-width=1);
+}
+
+/* === Slider - rounded track and thumb === */
+Slider::track { background: rounded-rect(lighten($surface, 12%), radius=2); height: 4; }
+Slider::fill { background: rounded-rect($primary-accent, radius=2); }
+Slider::thumb { background: rounded-rect($text, radius=8); width: 16; }
+
+/* === ProgressBar - rounded === */
+ProgressBar::track { background: rounded-rect(lighten($surface, 12%), radius=4); }
+ProgressBar::fill { background: rounded-rect($primary-accent, radius=4); }
+
+/* === ToggleSwitch - pill track, round knob === */
+ToggleSwitch::track {
+    background: rounded-rect($surface, radius=12, border=$border, border-width=1);
+}
+ToggleSwitch::track:checked {
+    background: rounded-rect($primary-accent, radius=12, border=$border, border-width=1);
+}
+ToggleSwitch::knob { background: rounded-rect($text, radius=10); }
+ToggleSwitch { border-color: $border; }
+
+/* === ComboBox === */
+ComboBox {
+    background: rounded-rect($surface-bright, radius=6, border=$border, border-width=1);
+    font-size: 12;  /* match the surrounding editor content density */
+}
+ComboBox::arrow { text-color: lighten($text-dim, 15%); }
+
+/* === ScrollBar - rounded === */
+ScrollBar::track { background: rounded-rect(alpha(darken($surface, 15%), 0.6), radius=5); }
+ScrollBar::thumb { background: rounded-rect(alpha(lighten($border, 50%), 0.78), radius=5); }
+
+/* === Separator === */
+Separator { border-color: $border; }
+
+/* === Expander === */
+Expander { font-size: 14; }  /* header text (property-grid category headers) */
+Expander::header { background: rounded-rect($surface-bright, radius=6); }
+Expander::header:hover { background: rounded-rect(lighten($surface-bright, 10%), radius=6); }
+Expander::chevron { text-color: lighten($text-dim, 15%); }
+
+/* === TabView - rounded tabs === */
+TabView::strip { background: rounded-rect(darken($surface, 15%), radius=4); }
+TabView::content { background: rounded-rect($surface, radius=4); }
+TabView::tab { text-color: $text-dim; }
+TabView::tab:checked {
+    background: rounded-rect($surface, radius=4);
+    text-color: $text;
+}
+TabView::tab:hover {
+    background: rounded-rect(lighten($surface, 5%), radius=4);
+    text-color: lighten($text-dim, 30%);
+}
+TabView::close-button { text-color: $text-dim; width: 12; }
+TabView::close-button:hover { text-color: $text; }
+TabView {
+    border-color: $border;
+    accent-color: $primary-accent;
+}
+
+/* === ContextMenu === */
+.contextmenu {
+    background: rounded-rect($surface-bright, radius=6, border=lighten($border, 20%), border-width=1);
+    menu-item-hover-drawable: rounded-rect(alpha($primary-accent, 0.39), radius=3);
+    text-color: $text;
+    font-size: 14;
+    border-color: lighten($border, 20%);
+    accent-color: alpha($primary-accent, 0.39);
+}
+
+/* === Dialog (surface BELOW the button surface so buttons stand out) === */
+Dialog {
+    background: rounded-rect($surface, radius=6, border=lighten($border, 30%), border-width=1);
+}
+
+/* === Tooltip === */
+TooltipView {
+    background: rounded-rect(alpha($surface-bright, 0.92), radius=6, border=$border, border-width=1);
+    text-color: $text;
+}
+
+/* === ListView / TreeView / GridView === */
+ListView {
+    background: color($background);
+    selection-color: alpha($primary-accent, 0.35);
+}
+TreeView { background: color($background); }
+GridView {
+    background: color($background);
+    selection-color: alpha($primary-accent, 0.35);
+}
+
+/* === Icons (shared baked ThemeIconSet glyphs; ROUND radio mark here) === */
+CheckBox::checkmark { background: svg(checkmark); }
+RadioButton::mark { background: svg(radio-mark-round); }
+TabView::close-button { background: svg(close); }
+Expander::chevron:checked { background: svg(chevron-down); }
+Expander::chevron { background: svg(chevron-right); }
+TreeView::chevron:checked { background: svg(chevron-down); }
+TreeView::chevron { background: svg(chevron-right); }
+.contextmenu::submenu-arrow { background: svg(chevron-right); }
+ComboBox::arrow { background: svg(arrow-down); }
+NumericField::arrow-up { background: svg(arrow-up); }
+NumericField::arrow-down { background: svg(arrow-down); }

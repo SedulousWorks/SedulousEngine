@@ -1,0 +1,206 @@
+/* light.sss - the built-in light theme, RE-AUTHORED for the consistency pass
+ * (ui-theme-migration.md). Same structure and ramps as dark.sss; the color logic runs in
+ * the LIGHT direction (chrome darkens gently off the white surface instead of lightening).
+ * Everything derives from the palette so alternate light palettes apply end-to-end.
+ *
+ * ==================== DESIGN SYSTEM ====================
+ * Type ramp:  16 default | 14 text inputs + expander headers | 12 compact chrome
+ *             (buttons, combos, tabs, dock tabs, status bar)
+ * Spacing:    2 4 6 8 12 16 - button pad 8 12, input pad 4 6, gaps 6
+ * Geometry:   radius 0 (flat); square check/radio marks
+ * Color logic (light family) - EVERYTHING derives from the palette:
+ *   window $background | panel/wells $surface (white wells read sunken via $border edge)
+ *   raised interactive mix($surface, $border, 60%) | subtle tracks mix($surface, $border, 80%)
+ *   strips darken($surface, 5%) | headers mix($surface, $border, 35%) | popups $surface
+ *   selection alpha($primary-accent, 0.24) | menu hover alpha($primary-accent, 0.24)
+ *   active/checked $primary-accent | knobs $surface, thumbs $primary-accent
+ *   borders $border | muted glyphs darken($text-dim, 20%)
+ *   icons tint=$text (dark glyphs on light chrome, shared tinted bakes)
+ * ======================================================= */
+
+/* === Global defaults === */
+View {
+    text-color: $text;
+    accent-color: $primary-accent;
+    success-color: $success;
+    warning-color: $warning;
+    error-color: $error;
+    font-size: 16;
+    /* Motion: visual state changes (hover, press, focus, class toggles) ease over 120ms;
+     * geometry never animates. A control opts out with `transition: none`. */
+    transition: background 120ms ease-out, text-color 120ms ease-out,
+                text-dim-color 120ms ease-out, border-color 120ms ease-out,
+                accent-color 120ms ease-out, box-shadow 120ms ease-out,
+                opacity 120ms ease-out;
+}
+
+/* === Button === */
+ButtonBase {
+    background: state-colors(mix($surface, $border, 60%));
+    checked-background: state-colors($primary-accent);
+    text-color: $text;
+    font-size: 12;
+    padding: 8 12;  /* CSS order: vertical horizontal */
+    corner-radius: 0;
+}
+
+
+/* === IconButton (icon chrome - compact) ===
+ * Without this, IconButton inherits ButtonBase's button-bar padding (8 12) via subclass
+ * matching; since the box model made styled padding effective in measure, that inflated
+ * 18px icons to 42x34 chrome and overflowed tight bands (inspector section headers). */
+IconButton { padding: 2; }
+
+/* === Panel === */
+.panel {
+    background: rounded-rect($surface, radius=0, border=$border, border-width=1);
+}
+
+/* === Label === */
+.label { text-color: $text; }
+.label-dim { text-color: $text-dim; }
+
+/* === EditText === */
+EditText {
+    background: rounded-rect($surface, radius=0, border=$border, border-width=1);
+    text-color: $text;
+    placeholder-color: $text-dim;
+    font-size: 14;
+    padding: 4 6;   /* CSS order: vertical horizontal */
+    cursor-color: $primary-accent;
+    selection-color: alpha($primary-accent, 0.24);
+}
+
+/* === NumericField === */
+NumericField {
+    background: rounded-rect($surface, radius=0, border=$border, border-width=1);
+    text-color: $text;
+    placeholder-color: $text-dim;
+    font-size: 14;
+    padding: 4 6;   /* CSS order: vertical horizontal */
+    cursor-color: $primary-accent;
+    selection-color: alpha($primary-accent, 0.24);
+}
+NumericField::spin-up { background: state-colors(darken($surface, 8%)); }
+NumericField::spin-down { background: state-colors(darken($surface, 8%)); }
+
+/* === CheckBox === */
+CheckBox::box {
+    background: rounded-rect($surface, radius=0, border=$border, border-width=1);
+    width: 18;
+}
+CheckBox::box:checked {
+    background: rounded-rect($primary-accent, radius=0, border=$border, border-width=1);
+}
+CheckBox { spacing: 6; }
+
+/* === RadioButton (square in the flat theme) === */
+RadioButton::box {
+    background: rounded-rect($surface, radius=0, border=$border, border-width=1);
+}
+RadioButton::box:checked {
+    background: rounded-rect($primary-accent, radius=0, border=$border, border-width=1);
+}
+
+/* === Slider === */
+Slider::track { background: color(mix($surface, $border, 80%)); height: 4; }
+Slider::fill { background: color($primary-accent); }
+Slider::thumb { background: color($primary-accent); width: 16; }
+
+/* === ProgressBar === */
+ProgressBar::track { background: color(mix($surface, $border, 80%)); }
+ProgressBar::fill { background: color($primary-accent); }
+
+/* === ToggleSwitch === */
+ToggleSwitch::track {
+    background: rounded-rect($border, radius=0, border=$border, border-width=1);
+}
+ToggleSwitch::track:checked {
+    background: rounded-rect($primary-accent, radius=0, border=$border, border-width=1);
+}
+ToggleSwitch::knob { background: color($surface); }
+ToggleSwitch { border-color: $border; }
+
+/* === ComboBox (white raised chrome reads via its border) === */
+ComboBox {
+    background: rounded-rect($surface, radius=0, border=$border, border-width=1);
+    font-size: 12;
+}
+ComboBox::arrow { text-color: darken($text-dim, 20%); }
+
+/* === ScrollBar === */
+ScrollBar::track { background: color(alpha(darken($surface, 10%), 0.6)); }
+ScrollBar::thumb { background: color(alpha(darken($border, 20%), 0.78)); }
+
+/* === Separator === */
+Separator { border-color: $border; }
+
+/* === Expander === */
+Expander { font-size: 14; }  /* header text (property-grid category headers) */
+Expander::header { background: color(mix($surface, $border, 35%)); }
+Expander::header:hover { background: color(darken(mix($surface, $border, 35%), 5%)); }
+Expander::chevron { text-color: darken($text-dim, 20%); }
+
+/* === TabView === */
+TabView::strip { background: color(darken($surface, 5%)); }
+TabView::content { background: color($surface); }
+TabView::tab { text-color: $text-dim; }
+TabView::tab:checked {
+    background: color($surface);
+    text-color: $text;
+}
+TabView::tab:hover {
+    background: color(darken($surface, 3%));
+    text-color: darken($text-dim, 20%);
+}
+TabView::close-button { text-color: $text-dim; width: 12; }
+TabView::close-button:hover { text-color: $text; }
+TabView {
+    border-color: $border;
+    accent-color: $primary-accent;
+}
+
+/* === ContextMenu === */
+.contextmenu {
+    background: rounded-rect($surface, radius=0, border=$border, border-width=1);
+    menu-item-hover-drawable: rounded-rect(alpha($primary-accent, 0.24), radius=0);
+    text-color: $text;
+    font-size: 14;
+    border-color: $border;
+    accent-color: alpha($primary-accent, 0.24);
+}
+
+/* === Dialog === */
+Dialog {
+    background: rounded-rect($surface, radius=0, border=$border, border-width=1);
+}
+
+/* === Tooltip (was a cream literal; now derives like the rest of the chrome) === */
+TooltipView {
+    background: rounded-rect(alpha($surface-bright, 0.96), radius=0, border=$border, border-width=1);
+    text-color: $text;
+}
+
+/* === ListView / TreeView / GridView === */
+ListView {
+    background: color($background);
+    selection-color: alpha($primary-accent, 0.24);
+}
+TreeView { background: color($background); }
+GridView {
+    background: color($background);
+    selection-color: alpha($primary-accent, 0.24);
+}
+
+/* === Icons (tint=$text: dark glyphs on light chrome; shared tinted baked instances) === */
+CheckBox::checkmark { background: svg(checkmark, tint=$text); }
+RadioButton::mark { background: svg(radio-mark-square, tint=$text); }
+TabView::close-button { background: svg(close, tint=$text); }
+Expander::chevron:checked { background: svg(chevron-down, tint=$text); }
+Expander::chevron { background: svg(chevron-right, tint=$text); }
+TreeView::chevron:checked { background: svg(chevron-down, tint=$text); }
+TreeView::chevron { background: svg(chevron-right, tint=$text); }
+.contextmenu::submenu-arrow { background: svg(chevron-right, tint=$text); }
+ComboBox::arrow { background: svg(arrow-down, tint=$text); }
+NumericField::arrow-up { background: svg(arrow-up, tint=$text); }
+NumericField::arrow-down { background: svg(arrow-down, tint=$text); }
