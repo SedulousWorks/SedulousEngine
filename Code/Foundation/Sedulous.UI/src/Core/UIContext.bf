@@ -38,6 +38,7 @@ class UIContext
 	private ShortcutManager mShortcutManager ~ delete _;
 	private AnimationManager mAnimationManager = new .() ~ delete _;
 	private DragDropManager mDragDropManager ~ delete _;
+	private TooltipManager mTooltipManager ~ delete _;
 
 	/// BORROWED: the roots are owned by whoever created them.
 	private List<RootView> mRootViews = new .() ~ delete _;
@@ -52,6 +53,7 @@ class UIContext
 		mFocusManager = new .(this);
 		mShortcutManager = new .(this);
 		mDragDropManager = new .(this);
+		mTooltipManager = new .(this);
 	}
 
 	public ~this()
@@ -66,6 +68,7 @@ class UIContext
 	public ShortcutManager GetShortcuts() => mShortcutManager;
 	public AnimationManager Animations => mAnimationManager;
 	public DragDropManager DragDrop => mDragDropManager;
+	public TooltipManager Tooltips => mTooltipManager;
 
 	// ---- Frame damage --------------------------------------------------------------------------
 
@@ -201,8 +204,6 @@ class UIContext
 	/// Forgets a view EVERYWHERE before it goes: the registry, and every manager holding its
 	/// id or a pointer to it.
 	///
-	/// The tooltip manager is not ported, so it holds nothing to sweep and is not called here.
-	/// Its sweep belongs in this method and must be added with it.
 	public void Unregister(View view)
 	{
 		if ((view == null) || !view.Id.IsValid)
@@ -214,6 +215,7 @@ class UIContext
 		// A drag holds the source and the current drop target as RAW pointers, so a view
 		// leaving mid drag has to be reported before it goes.
 		mDragDropManager.OnViewDeleted(view);
+		mTooltipManager.OnViewDeleted(view);
 		// A running animation holds a raw pointer to its target, so it has to go before the
 		// view does: a fade left running over a removed view writes to freed memory.
 		mAnimationManager.CancelForView(view);
@@ -309,6 +311,7 @@ class UIContext
 		mDeltaTime = deltaTime;
 		mTotalTime += deltaTime;
 		mMutationQueue.Drain();
+		mTooltipManager.Update(deltaTime);
 
 		// Each listed view advances its own clocks and marks its own damage, visual or layout
 		// by the property's kind. A view with nothing left running takes itself off the list,
@@ -332,8 +335,6 @@ class UIContext
 		mPhase = .Animating;
 		mAnimationManager.Update(deltaTime);
 		mPhase = .Idle;
-
-		// SEAM: Raptor also updates the tooltip manager here. It lands with Overlay.
 	}
 
 	/// Measures and arranges one root against its own viewport.
