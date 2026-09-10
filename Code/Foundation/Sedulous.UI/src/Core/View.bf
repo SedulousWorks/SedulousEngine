@@ -157,6 +157,14 @@ class View : RefCounted, IPropertyOwner
 		Context.MutationQueue.QueueDelete(this);
 	}
 
+	/// The same thing.
+	///
+	/// Raptor keeps both names, its RemoveView taking a `deleteChild` flag that its own
+	/// comment marks advisory: under reference counted ownership, dropping the tree's
+	/// reference frees the view unless something else holds one, whichever name was used.
+	/// Kept so calling code ported from Raptor reads unchanged.
+	public void QueueDestroy() => QueueRemove();
+
 	// ---- User data -----------------------------------------------------------------------------
 
 	/// Arbitrary data hung off a view by key. NON owning: the caller keeps it alive.
@@ -245,6 +253,46 @@ class View : RefCounted, IPropertyOwner
 		return true;
 	}
 
+	/// Whether this view is actually ON SCREEN: visible itself, visible all the way up, and
+	/// the chain reaching a RootView.
+	///
+	/// A DETACHED subtree answers false however visible its own views are, because the walk
+	/// runs off the top without meeting a root. That is what separates this from Visibility,
+	/// which is only what this one view asked for.
+	public bool IsEffectivelyVisible()
+	{
+		var view = this;
+		while (view != null)
+		{
+			if (view.Visibility != .Visible)
+				return false;
+			if (view is RootView)
+				return true;
+			view = view.Parent;
+		}
+		return false;
+	}
+
+	/// Whether this view or any descendant holds keyboard focus.
+	///
+	/// Walked UPWARD from the focused view rather than downward over the subtree: the focused
+	/// view is one registry lookup away and the parent chain is short, where a descendant
+	/// search would visit everything.
+	public bool IsFocusWithin()
+	{
+		if (Context == null)
+			return false;
+
+		var focused = Context.GetFocusManager().FocusedView;
+		while (focused != null)
+		{
+			if (focused.Id == Id)
+				return true;
+			focused = focused.Parent;
+		}
+		return false;
+	}
+
 	/// Whether the pointer is over this view.
 	public bool IsHovered() =>
 		(Context != null) && (Context.GetInputManager().HoveredId == Id);
@@ -306,6 +354,29 @@ class View : RefCounted, IPropertyOwner
 
 	public virtual float GetBaseline() => -1.0f;
 	public virtual void OnDraw(UIDrawContext ctx) {}
+
+	// ---- Hit testing -------------------------------------------------------------------------
+
+	/// The view at a point given in THIS view's coordinates, or null when the point misses.
+	///
+	/// A leaf answers itself when the point is inside its box. The three gates are separate on
+	/// purpose: interaction and visibility disqualify the SUBTREE, while IsHitTestVisible
+	/// disqualifies only this view, which is what lets a container pass the pointer through to
+	/// whatever is behind it while its children stay clickable.
+	public virtual View HitTest(Float2 localPoint)
+	{
+		if (!IsInteractionEnabled || (Visibility != .Visible))
+			return null;
+
+		if ((localPoint.X < 0) || (localPoint.Y < 0)
+			|| (localPoint.X >= Width) || (localPoint.Y >= Height))
+			return null;
+
+		if (!IsHitTestVisible)
+			return null;
+
+		return this;
+	}
 
 	// ---- Gamepad and directional activation ----------------------------------------------------
 

@@ -30,7 +30,15 @@ class FocusManager
 	public FocusSource Source => mFocusSource;
 	public int FocusStackDepth => mSavedCount;
 
+	/// The focused view, resolved through the context's registry. Null when nothing holds
+	/// focus, or when the view that did has gone.
+	public View FocusedView => mContext.GetViewById(mFocusedId);
+
 	public ViewId CapturedId => mCapturedId;
+	public View CapturedView => mCapturedId.IsValid ? mContext.GetViewById(mCapturedId) : null;
+	/// An id alone is not capture: the view it names must still exist.
+	public bool HasCapture => mCapturedId.IsValid && (CapturedView != null);
+	public void SetCapture(View view) => mCapturedId = (view != null) ? view.Id : ViewId.Invalid;
 	public void ReleaseCapture() => mCapturedId = ViewId.Invalid;
 
 	/// Forgets a view that is going away, so focus and capture cannot outlive it.

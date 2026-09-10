@@ -551,6 +551,39 @@ extension View
 		outValue.Append((value != null) ? value.Value : defaultValue);
 	}
 
+	/// Appends the effective font family: the FontFamily cascade, falling back to the active
+	/// font service's default.
+	///
+	/// Appended to a caller's String rather than returned, because ResolveStyle hands back a
+	/// StyleValue by value and the StringView inside it borrows from that temporary. Raptor
+	/// returns by value for exactly the same reason, its comment recording an ASAN catch.
+	public void ResolveStyleFontFamily(String outFamily)
+	{
+		// Held in a NAMED local: AsString borrows into the value, which would dangle if the
+		// temporary died at the end of the expression.
+		let family = ResolveStyle(.FontFamily);
+		if (let name = family.AsString)
+		{
+			outFamily.Append(name);
+			return;
+		}
+
+		if ((Context != null) && (Context.FontService != null))
+			Context.FontService.GetDefaultFontFamily(outFamily);
+	}
+
+	/// The same, but a non empty per instance override WINS. A control with its own typed
+	/// FontFamily property calls this so the property beats the sheet.
+	public void ResolveStyleFontFamily(String outFamily, StringView instanceOverride)
+	{
+		if (!instanceOverride.IsEmpty)
+		{
+			outFamily.Append(instanceOverride);
+			return;
+		}
+		ResolveStyleFontFamily(outFamily);
+	}
+
 	// ---- Pseudo elements -----------------------------------------------------------------------
 
 	/// A pseudo element's value: the same cascade order as the element, but UNCACHED, because

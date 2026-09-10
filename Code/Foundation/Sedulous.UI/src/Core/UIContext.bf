@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Fonts;
+using Sedulous.VG;
 
 namespace Sedulous.UI;
 
@@ -278,4 +279,84 @@ class UIContext
 
 	public IFontService FontService => mFontService;
 	public void SetFontService(IFontService fontService) => mFontService = fontService;
+
+	/// Whether the FOCUSED view wants platform text input.
+	///
+	/// The shell bridge reads this as focus moves, to start and stop the window's IME. It is
+	/// also a redraw producer: a focused text field has a caret to blink.
+	public bool WantsTextInput()
+	{
+		let focused = mFocusManager.FocusedView;
+		return (focused != null) && focused.WantsTextInput();
+	}
+
+	// ---- Frame lifecycle -----------------------------------------------------------------------
+
+	/// Opens a frame: drains the deferred tree changes, advances the clocks, and ticks the
+	/// running style transitions.
+	public void BeginFrame(float deltaTime)
+	{
+		mDeltaTime = deltaTime;
+		mTotalTime += deltaTime;
+		mMutationQueue.Drain();
+
+		// Each listed view advances its own clocks and marks its own damage, visual or layout
+		// by the property's kind. A view with nothing left running takes itself off the list,
+		// so this is walked BACKWARD to let entries drop out mid iteration.
+		for (int i = mTransitioning.Count - 1; i >= 0; i--)
+		{
+			if (!mTransitioning[i].AdvanceTransitions(deltaTime))
+				mTransitioning.RemoveAtFast(i);
+		}
+
+		// Continuous damage producers, marked BEFORE the host samples the damage state,
+		// because the redraw gate hands out no free frames. A focused text input needs its
+		// caret blink serviced whether or not anything else moved.
+		if (WantsTextInput())
+			MarkNeedsRedraw();
+
+		// SEAM: Raptor also updates the tooltip manager here, marks damage while animations
+		// are running, and ticks the animation manager under a NON idle phase so that an
+		// onComplete callback which mutates the tree routes through the mutation queue rather
+		// than running inline. Both managers land with the Overlay and Animation subsystems.
+	}
+
+	/// Measures and arranges one root against its own viewport.
+	///
+	/// Layout runs in LOGICAL units: the physical viewport is divided by the DPI scale here,
+	/// and the scale is reapplied once at draw, so nothing in between has to know about it.
+	public void UpdateRootView(RootView root)
+	{
+		if (root == null)
+			return;
+
+		mPhase = .Layout;
+		let logical = root.LogicalSize;
+		root.Measure(BoxConstraints.Tight(logical.X, logical.Y));
+		root.Layout(0, 0, logical.X, logical.Y);
+		mPhase = .Idle;
+	}
+
+	/// Draws a root's tree into a vector graphics context.
+	///
+	/// The context's CURRENT font service is pushed into the VG on EVERY draw rather than
+	/// trusted from construction time: a service swapped afterwards, such as one binding a
+	/// cooked font, would otherwise leave the VG resolving atlases against the stale one, and
+	/// text would go silently invisible.
+	public void DrawRootView(RootView root, VGContext vg)
+	{
+		if (root == null)
+			return;
+
+		vg.SetFontService(mFontService); // the one source of truth, re-asserted per draw
+		mPhase = .Drawing;
+
+		let ctx = scope UIDrawContext(vg, root.DpiScale, mFontService);
+		if (root.DpiScale != 1.0f)
+			vg.Scale(root.DpiScale, root.DpiScale);
+		root.OnDraw(ctx);
+
+		mPhase = .Idle;
+		mNeedsRedraw = false;
+	}
 }
