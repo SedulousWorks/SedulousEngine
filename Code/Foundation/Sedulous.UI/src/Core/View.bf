@@ -73,6 +73,10 @@ class View : RefCounted
 
 	/// BORROWED: the parent owns this view, not the other way about.
 	public View Parent = null;
+	/// BORROWED. Null until the view is attached to a tree.
+	public UIContext Context = null;
+
+	public bool IsAttached => Context != null;
 
 	protected bool mNeedsRedraw = true;
 
@@ -161,6 +165,25 @@ class View : RefCounted
 
 	public bool NeedsRedraw => mNeedsRedraw;
 	public void ClearRedrawFlag() => mNeedsRedraw = false;
+
+	/// A layout affecting change: the host re-measures, re-lays out and redraws.
+	///
+	/// The SAFE default for any mutation, since almost anything can move geometry.
+	public void Invalidate()
+	{
+		mNeedsRedraw = true;
+		if (Context != null)
+			Context.MarkNeedsLayout();
+	}
+
+	/// A visual only change: a hover tint, a press, a focus ring, a caret. Redraws WITHOUT the
+	/// whole tree relayout, so use it only where geometry provably cannot change.
+	public void InvalidateVisual()
+	{
+		mNeedsRedraw = true;
+		if (Context != null)
+			Context.MarkNeedsRedraw();
+	}
 
 	public virtual float GetBaseline() => -1.0f;
 	public virtual void OnDraw(UIDrawContext ctx) {}
