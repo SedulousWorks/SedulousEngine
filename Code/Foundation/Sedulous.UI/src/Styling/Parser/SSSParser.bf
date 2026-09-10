@@ -74,6 +74,42 @@ class SSSParser
 		return result;
 	}
 
+	/// Parses a `style="..."` attribute body and applies it to the view's INLINE sheet.
+	///
+	/// Values must be literal: theme variables and the @ rules are not resolved here, because an
+	/// inline attribute has no sheet around it to have declared them.
+	///
+	/// Any drawable a value builds is owned by the inline sheet, so it lives exactly as long as
+	/// the view does.
+	public static void ApplyInlineStyle(View view, StringView body)
+	{
+		if (view == null)
+			return;
+
+		// The drawable factories have to be registered here as well as in the sheet loader:
+		// without them an inline `background: rounded-rect(...)` is simply not recognised and
+		// falls back to a plain white colour rather than failing visibly.
+		DrawableFactoryRegistry.RegisterBuiltins();
+
+		let tokens = new List<Token>();
+		let tokenizer = scope Tokenizer(body);
+		tokenizer.TokenizeAll(tokens);
+
+		// Empty registries, held here so they outlive the parser, which only borrows them.
+		let palette = scope Dictionary<String, Color>();
+		let svgRegistry = scope Dictionary<String, String>();
+		let imageRegistry = scope Dictionary<String, ImageData>();
+
+		// OWNERSHIP of the token list transfers to the parser.
+		let parser = scope SSSParser(tokens, palette, svgRegistry, imageRegistry, null, "");
+
+		// Pointed at the view's own inline sheet, so a drawable value lands on the view.
+		let inlineSheet = view.GetOrCreateInlineSheet();
+		parser.ParseDeclarations(inlineSheet, inlineSheet.GetOrCreateInlineElementRule());
+
+		view.Invalidate();
+	}
+
 	/// Parses a bare declaration body, with no selectors or braces, into an existing rule.
 	/// This is what a `style="..."` markup attribute is.
 	public void ParseDeclarations(StyleSheet ownerSheet, StyleRule targetRule)
