@@ -13,6 +13,7 @@ enum PipelineKind : uint8
 	case Cover;
 	case CoverRadial;
 	case CoverConic;
+	case BoxShadow;
 
-	public const int Count = 7;
+	public const int Count = 8;
 }

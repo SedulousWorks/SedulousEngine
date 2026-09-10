@@ -46,6 +46,7 @@ class VGRenderer
 	private TextureFormat mTargetFormat = .BGRA8UnormSrgb;
 	private VGTargetConfig mTargetConfig = .();
 	private bool mInitialized = false;
+	private VGRenderStats mLastRenderStats = .();
 
 	// Borrowed: the shader system owns these and outlives the renderer. Kept so a blend
 	// variant can be built lazily on first use.
@@ -54,6 +55,7 @@ class VGRenderer
 	private IShaderModule mDistanceFieldModule;
 	private IShaderModule mGradRadialModule;
 	private IShaderModule mGradConicModule;
+	private IShaderModule mBoxShadowModule;
 
 	private IBindGroupLayout mBindGroupLayout;
 	private IPipelineLayout mPipelineLayout;
@@ -62,6 +64,9 @@ class VGRenderer
 	private IRenderPipeline mDistanceFieldPipeline;
 	private IRenderPipeline mGradRadialPipeline;
 	private IRenderPipeline mGradConicPipeline;
+	/// Nullable: a host that never supplies the shadow shader draws no box shadows at all,
+	/// rather than drawing the quadrant quads as flat colour.
+	private IRenderPipeline mBoxShadowPipeline;
 	private IRenderPipeline mStencilWriteNonZero;
 	private IRenderPipeline mStencilWriteEvenOdd;
 	private IRenderPipeline mCoverPipeline;
@@ -155,7 +160,8 @@ class VGRenderer
 	public Result<void, ErrorCode> Initialize(IDevice device, IShaderModule vertexShader,
 		IShaderModule fragmentShader, TextureFormat targetFormat, int32 frameCount,
 		IShaderModule distanceFieldFragmentShader = null, IShaderModule gradRadialFragmentShader = null,
-		IShaderModule gradConicFragmentShader = null, VGTargetConfig targetConfig = .())
+		IShaderModule gradConicFragmentShader = null, VGTargetConfig targetConfig = .(),
+		IShaderModule boxShadowFragmentShader = null)
 	{
 		mDevice = device;
 		mQueue = device.GetQueue(.Graphics, 0);
@@ -168,6 +174,7 @@ class VGRenderer
 		mDistanceFieldModule = distanceFieldFragmentShader;
 		mGradRadialModule = gradRadialFragmentShader;
 		mGradConicModule = gradConicFragmentShader;
+		mBoxShadowModule = boxShadowFragmentShader;
 
 		if (CreateSamplers() case .Err)
 			return .Err(.Unknown);
@@ -193,6 +200,13 @@ class VGRenderer
 		{
 			if (!(CreatePipeline(vertexShader, gradConicFragmentShader, .None)
 				case .Ok(out mGradConicPipeline)))
+				return .Err(.Unknown);
+		}
+		// The box shadow family, for the UI's blurred rounded rects. Direct fills only.
+		if (boxShadowFragmentShader != null)
+		{
+			if (!(CreatePipeline(vertexShader, boxShadowFragmentShader, .None)
+				case .Ok(out mBoxShadowPipeline)))
 				return .Err(.Unknown);
 		}
 
@@ -438,6 +452,7 @@ class VGRenderer
 	public void Render(IRenderPassEncoder renderPass, int32 viewportX, int32 viewportY,
 		uint32 width, uint32 height, int32 frameIndex, VGRenderSlice slice)
 	{
+		mLastRenderStats = .();
 		if (!slice.IsValid || (slice.DrawCommandCount == 0))
 			return;
 
@@ -473,7 +488,10 @@ class VGRenderer
 			// its winding fans as visible colour.
 			let pipeline = PipelineFor(command);
 			if (pipeline == null)
+			{
+				mLastRenderStats.Skipped++;
 				continue;
+			}
 
 			if (pipeline != currentPipeline)
 			{
@@ -509,8 +527,13 @@ class VGRenderer
 
 			ApplyScissor(renderPass, command, viewportX, viewportY, width, height);
 			renderPass.DrawIndexed((uint32)command.IndexCount, 1, (uint32)command.StartIndex, 0, 0);
+			mLastRenderStats.Drawn++;
 		}
 	}
+
+	/// What the LAST Render did with its commands. Observable headlessly, so the dispatch
+	/// decisions can be checked on the null backend without a pixel probe.
+	public VGRenderStats LastRenderStats => mLastRenderStats;
 
 	private static void ApplyScissor(IRenderPassEncoder renderPass, VGCommand command,
 		int32 viewportX, int32 viewportY, uint32 width, uint32 height)
@@ -877,6 +900,15 @@ class VGRenderer
 			return (blended || clipped) ? Variant(.GradConic, command.BlendMode, clipped)
 				: mGradConicPipeline;
 		}
+		if (command.DrawMode == .BoxShadow)
+		{
+			// No substitute exists: the default shader would paint the quadrant quads as flat
+			// colour over everything around the box, so SKIP when the shader was not given.
+			if (mBoxShadowPipeline == null)
+				return null;
+			return (blended || clipped) ? Variant(.BoxShadow, command.BlendMode, clipped)
+				: mBoxShadowPipeline;
+		}
 
 		return (blended || clipped) ? Variant(.Default, command.BlendMode, clipped) : mPipeline;
 	}
@@ -914,6 +946,7 @@ class VGRenderer
 		case .CoverConic:
 			fragment = mGradConicModule;
 			role = .Cover;
+		case .BoxShadow: fragment = mBoxShadowModule;
 		}
 
 		let cannotBuild = (mVertexModule == null) || (fragment == null)
@@ -1347,6 +1380,7 @@ class VGRenderer
 		DestroyPipeline(ref mDistanceFieldPipeline);
 		DestroyPipeline(ref mGradRadialPipeline);
 		DestroyPipeline(ref mGradConicPipeline);
+		DestroyPipeline(ref mBoxShadowPipeline);
 		DestroyPipeline(ref mStencilWriteNonZero);
 		DestroyPipeline(ref mStencilWriteEvenOdd);
 		DestroyPipeline(ref mCoverPipeline);

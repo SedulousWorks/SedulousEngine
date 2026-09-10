@@ -13,4 +13,9 @@ enum VGDrawMode
 	case GradientRadial;
 	/// A conic gradient computed per pixel: the parameter is the angle.
 	case GradientConic;
+	/// A Gaussian blurred rounded rectangle, which is what a box shadow is. The context
+	/// emits four quadrant quads carrying the rounded box distance operand in the texture
+	/// coordinate and the corner radius in the coverage, and the shader finishes the
+	/// distance and integrates the Gaussian across it.
+	case BoxShadow;
 }

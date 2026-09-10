@@ -89,7 +89,7 @@ class VGRenderDispatchTests
 		for (let blend in scope VGBlendMode[](.Normal, .Additive, .Multiply, .Screen))
 		{
 			for (let draw in scope VGDrawMode[](
-				.Default, .DistanceField, .GradientRadial, .GradientConic))
+				.Default, .DistanceField, .GradientRadial, .GradientConic, .BoxShadow))
 			{
 				var command = VGCommand();
 				command.BlendMode = blend;
@@ -120,6 +120,55 @@ class VGRenderDispatchTests
 		Dispatch(fixture, batch);
 	}
 
+	/// A box shadow with NO shadow shader is SKIPPED rather than falling back, which is
+	/// where it differs from a distance field or a gradient.
+	///
+	/// The fallback is wrong here in a way it is not there: the default shader has no notion
+	/// of the distance operand the quadrant quads carry, so it would paint them as flat
+	/// colour over everything around the box. A missing shadow is better than a black square.
+	[Test]
+	public static void ABoxShadowWithoutItsShaderIsSkipped()
+	{
+		let fixture = scope RendererFixture();
+		uint8[4] pixel = .(255, 255, 255, 255);
+		let white = White(&pixel);
+		defer delete white;
+
+		var command = VGCommand();
+		command.DrawMode = .BoxShadow;
+
+		let batch = scope VGBatch();
+		FillBatch(batch, white, command);
+		Dispatch(fixture, batch);
+
+		Test.Assert(fixture.Renderer.LastRenderStats.Skipped == 1);
+		Test.Assert(fixture.Renderer.LastRenderStats.Drawn == 0);
+	}
+
+	/// WITH the shader it dispatches like anything else, in every blend mode.
+	[Test]
+	public static void ABoxShadowWithItsShaderDraws()
+	{
+		let fixture = scope RendererFixture(false, true);
+		uint8[4] pixel = .(255, 255, 255, 255);
+		let white = White(&pixel);
+		defer delete white;
+
+		for (let blend in scope VGBlendMode[](.Normal, .Additive, .Multiply, .Screen))
+		{
+			var command = VGCommand();
+			command.DrawMode = .BoxShadow;
+			command.BlendMode = blend;
+
+			let batch = scope VGBatch();
+			FillBatch(batch, white, command);
+			Dispatch(fixture, batch);
+
+			Test.Assert(fixture.Renderer.LastRenderStats.Drawn == 1);
+			Test.Assert(fixture.Renderer.LastRenderStats.Skipped == 0);
+		}
+	}
+
 	/// A stencil phase command with NO stencil pipelines is skipped entirely. A context
 	/// should not emit one, but a stale batch must not draw its winding fans as colour.
 	[Test]
@@ -139,6 +188,9 @@ class VGRenderDispatchTests
 			let batch = scope VGBatch();
 			FillBatch(batch, white, command);
 			Dispatch(fixture, batch);
+
+			Test.Assert(fixture.Renderer.LastRenderStats.Skipped == 1);
+			Test.Assert(fixture.Renderer.LastRenderStats.Drawn == 0);
 		}
 	}
 

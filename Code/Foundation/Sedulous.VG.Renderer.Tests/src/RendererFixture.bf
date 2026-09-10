@@ -20,6 +20,7 @@ class RendererFixture
 	public IShaderModule DistanceFieldShader;
 	public IShaderModule GradRadialShader;
 	public IShaderModule GradConicShader;
+	public IShaderModule BoxShadowShader;
 	public VGRenderer Renderer = new .() ~ delete _;
 
 	public const int32 FrameCount = 2;
@@ -37,6 +38,7 @@ class RendererFixture
 			DistanceFieldShader = CreateModule();
 			GradRadialShader = CreateModule();
 			GradConicShader = CreateModule();
+			BoxShadowShader = CreateModule();
 		}
 
 		var config = VGTargetConfig();
@@ -44,7 +46,8 @@ class RendererFixture
 			config.DepthStencilFormat = VGRenderer.PickStencilCapableFormat(Device, 1);
 
 		Test.Assert(Renderer.Initialize(Device, VertexShader, FragmentShader, .BGRA8Unorm,
-			FrameCount, DistanceFieldShader, GradRadialShader, GradConicShader, config) case .Ok);
+			FrameCount, DistanceFieldShader, GradRadialShader, GradConicShader, config,
+			BoxShadowShader) case .Ok);
 	}
 
 	private IShaderModule CreateModule()
@@ -61,6 +64,7 @@ class RendererFixture
 		delete Renderer;
 		Renderer = null;
 
+		DestroyModule(ref BoxShadowShader);
 		DestroyModule(ref GradConicShader);
 		DestroyModule(ref GradRadialShader);
 		DestroyModule(ref DistanceFieldShader);

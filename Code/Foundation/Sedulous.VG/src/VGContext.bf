@@ -490,6 +490,84 @@ class VGContext
 		FillPath(path, color);
 	}
 
+	/// A Gaussian blurred rounded rectangle, which is the UI's box shadow. `rect` and
+	/// `radii` are the SHADOW's own box, the caller having already applied the offset and
+	/// the spread; `blur` is the CSS blur radius, so sigma is half of it and the shadow
+	/// fades over three sigma outside the box.
+	///
+	/// An OUTSET shadow paints outside the box and is fully opaque within it, the box's own
+	/// background covering the inside; an INSET one paints only inside, fading inward from
+	/// the edge. No blur degrades to a hard rounded rect when outset, and to nothing when
+	/// inset.
+	///
+	/// Emitted as FOUR QUADRANT quads in the BoxShadow draw mode: within a single quadrant
+	/// the rounded box distance operand `|p - c| - (halfSize - r)` is LINEAR in position, so
+	/// it interpolates exactly from the four vertices, carried in sigma units in the texture
+	/// coordinate, and the shader has only to finish
+	/// `length(max(q, 0)) + min(max(q.x, q.y), 0) - r`. Non uniform radii come free, each
+	/// quadrant carrying its own corner radius as coverage = r / sigma, negated for inset.
+	/// Batches with every other shadow in the same command.
+	public void FillBoxShadow(Rectangle rect, CornerRadii radii, float blur, Color color,
+		bool inset = false)
+	{
+		if ((rect.Width <= 0.0f) || (rect.Height <= 0.0f) || (color.A <= 0.0f))
+			return;
+
+		if (blur <= 0.0f)
+		{
+			if (!inset)
+				FillRoundedRect(rect, radii, color);
+			return;
+		}
+
+		let sigma = blur * 0.5f;
+		let extent = inset ? 0.0f : (sigma * 3.0f);
+		let half = Float2(rect.Width * 0.5f, rect.Height * 0.5f);
+		let center = Float2(rect.X + half.X, rect.Y + half.Y);
+		let opColor = ApplyOpacity(color);
+
+		SetDrawMode(.BoxShadow);
+		SetupForSolidDraw();
+
+		// The quadrant signs pick the corner; the outer reach runs three sigma past the box
+		// so the tail has room to fade.
+		float[4] corner = .(radii.TopLeft, radii.TopRight, radii.BottomRight, radii.BottomLeft);
+		float[4][2] signs = .(.(-1.0f, -1.0f), .(1.0f, -1.0f), .(1.0f, 1.0f), .(-1.0f, 1.0f));
+		for (int quadrant < 4)
+		{
+			let sx = signs[quadrant][0];
+			let sy = signs[quadrant][1];
+			let r = Min(corner[quadrant], Min(half.X, half.Y));
+			let coverage = (inset ? -r : r) / sigma;
+			let reachX = half.X + extent;
+			let reachY = half.Y + extent;
+			// q at a local offset (ax, ay) is |offset| - (half - r), in sigma units. Only two
+			// values per axis appear, at the offsets 0 and the reach.
+			let qxNear = (0.0f - (half.X - r)) / sigma;
+			let qxFar = (reachX - (half.X - r)) / sigma;
+			let qyNear = (0.0f - (half.Y - r)) / sigma;
+			let qyFar = (reachY - (half.Y - r)) / sigma;
+
+			let p0 = center;
+			let p1 = Float2(center.X + sx * reachX, center.Y);
+			let p2 = Float2(center.X + sx * reachX, center.Y + sy * reachY);
+			let p3 = Float2(center.X, center.Y + sy * reachY);
+			let baseIndex = (uint32)mBatch.Vertices.Count;
+			mBatch.Vertices.Add(VGVertex(TransformPoint(p0), .(qxNear, qyNear), opColor, coverage));
+			mBatch.Vertices.Add(VGVertex(TransformPoint(p1), .(qxFar, qyNear), opColor, coverage));
+			mBatch.Vertices.Add(VGVertex(TransformPoint(p2), .(qxFar, qyFar), opColor, coverage));
+			mBatch.Vertices.Add(VGVertex(TransformPoint(p3), .(qxNear, qyFar), opColor, coverage));
+			mBatch.Indices.Add(baseIndex + 0);
+			mBatch.Indices.Add(baseIndex + 1);
+			mBatch.Indices.Add(baseIndex + 2);
+			mBatch.Indices.Add(baseIndex + 0);
+			mBatch.Indices.Add(baseIndex + 2);
+			mBatch.Indices.Add(baseIndex + 3);
+		}
+
+		SetDrawMode(.Default);
+	}
+
 	public void FillCircle(Float2 center, float radius, Color color)
 	{
 		let builder = scope PathBuilder();

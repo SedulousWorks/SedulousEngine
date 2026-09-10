@@ -26,6 +26,7 @@ class VGSandboxApp : SampleApp
 	private IShaderModule mDistanceFieldFragmentShader;
 	private IShaderModule mRadialGradientFragmentShader;
 	private IShaderModule mConicGradientFragmentShader;
+	private IShaderModule mBoxShadowFragmentShader;
 
 	private ITexture mMultisampleColor = null;
 	private ITextureView mMultisampleColorView = null;
@@ -72,9 +73,10 @@ class VGSandboxApp : SampleApp
 		mDistanceFieldFragmentShader = mShaderHost.GetVariant("vg_df", .Fragment, .None);
 		mRadialGradientFragmentShader = mShaderHost.GetVariant("vg_grad_radial", .Fragment, .None);
 		mConicGradientFragmentShader = mShaderHost.GetVariant("vg_grad_conic", .Fragment, .None);
+		mBoxShadowFragmentShader = mShaderHost.GetVariant("vg_shadow", .Fragment, .None);
 		if ((mVertexShader == null) || (mFragmentShader == null)
 			|| (mDistanceFieldFragmentShader == null) || (mRadialGradientFragmentShader == null)
-			|| (mConicGradientFragmentShader == null))
+			|| (mConicGradientFragmentShader == null) || (mBoxShadowFragmentShader == null))
 		{
 			Console.Error.WriteLine("VGSandbox: a VG shader variant did not resolve");
 			return .Err;
@@ -92,7 +94,7 @@ class VGSandboxApp : SampleApp
 
 		if (mRenderer.Initialize(mDevice, mVertexShader, mFragmentShader, mSwapChain.Format,
 			cFrames, mDistanceFieldFragmentShader, mRadialGradientFragmentShader,
-			mConicGradientFragmentShader, targetConfig) case .Err)
+			mConicGradientFragmentShader, targetConfig, mBoxShadowFragmentShader) case .Err)
 			return .Err;
 
 		if (!(mDevice.CreateCommandPool(.Graphics) case .Ok(let pool)))
