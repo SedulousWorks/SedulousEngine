@@ -96,6 +96,12 @@ class ViewGroup : View
 	}
 
 	/// Adds a child, keeping its current layout style. CONSUMES the caller's reference.
+	///
+	/// REPARENTING transfers the old parent's reference instead: the caller of
+	/// `newParent.AddView(existingChild)` holds nothing to give, so taking a reference across
+	/// the detach is what keeps the count right. Without it the removal's release would drop
+	/// the child by one, and where the old parent held the ONLY reference the child would be
+	/// freed halfway through being adopted.
 	public virtual ViewGroup AddView(View child)
 	{
 		AssertNotDrawing();
@@ -105,7 +111,10 @@ class ViewGroup : View
 			return this;
 
 		if (let oldParent = child.Parent as ViewGroup)
+		{
+			child.AddRef();
 			oldParent.RemoveView(child);
+		}
 
 		child.Parent = this;
 		if (Context != null)
@@ -166,6 +175,8 @@ class ViewGroup : View
 	}
 
 	/// CONSUMES the caller's reference. The index is clamped to the end.
+	///
+	/// Reparents by transferring the old parent's reference, as AddView does.
 	public void InsertView(View child, int index)
 	{
 		AssertNotDrawing();
@@ -175,7 +186,10 @@ class ViewGroup : View
 			return;
 
 		if (let oldParent = child.Parent as ViewGroup)
+		{
+			child.AddRef();
 			oldParent.RemoveView(child);
+		}
 
 		child.Parent = this;
 		if (Context != null)
