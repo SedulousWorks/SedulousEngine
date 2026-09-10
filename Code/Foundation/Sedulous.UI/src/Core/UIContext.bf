@@ -36,6 +36,7 @@ class UIContext
 	private InputManager mInputManager ~ delete _;
 	private FocusManager mFocusManager ~ delete _;
 	private ShortcutManager mShortcutManager ~ delete _;
+	private AnimationManager mAnimationManager = new .() ~ delete _;
 
 	/// BORROWED: the roots are owned by whoever created them.
 	private List<RootView> mRootViews = new .() ~ delete _;
@@ -61,6 +62,7 @@ class UIContext
 	public InputManager GetInputManager() => mInputManager;
 	public FocusManager GetFocusManager() => mFocusManager;
 	public ShortcutManager GetShortcuts() => mShortcutManager;
+	public AnimationManager Animations => mAnimationManager;
 
 	// ---- Frame damage --------------------------------------------------------------------------
 
@@ -196,9 +198,8 @@ class UIContext
 	/// Forgets a view EVERYWHERE before it goes: the registry, and every manager holding its
 	/// id or a pointer to it.
 	///
-	/// The tooltip, drag and animation managers are not ported, so they hold nothing to sweep
-	/// and are not called here. Their sweeps belong in this method and must be added with
-	/// them.
+	/// The tooltip and drag managers are not ported, so they hold nothing to sweep and are not
+	/// called here. Their sweeps belong in this method and must be added with them.
 	public void Unregister(View view)
 	{
 		if ((view == null) || !view.Id.IsValid)
@@ -207,6 +208,9 @@ class UIContext
 		mInputManager.OnViewDeleted(view);
 		mFocusManager.OnViewDeleted(view);
 		mShortcutManager.RemoveScopedTo(view);
+		// A running animation holds a raw pointer to its target, so it has to go before the
+		// view does: a fade left running over a removed view writes to freed memory.
+		mAnimationManager.CancelForView(view);
 		mRegistry.Remove(view.Id.RawValue);
 	}
 
@@ -312,13 +316,18 @@ class UIContext
 		// Continuous damage producers, marked BEFORE the host samples the damage state,
 		// because the redraw gate hands out no free frames. A focused text input needs its
 		// caret blink serviced whether or not anything else moved.
-		if (WantsTextInput())
+		if ((mAnimationManager.ActiveCount > 0) || WantsTextInput())
 			MarkNeedsRedraw();
 
-		// SEAM: Raptor also updates the tooltip manager here, marks damage while animations
-		// are running, and ticks the animation manager under a NON idle phase so that an
-		// onComplete callback which mutates the tree routes through the mutation queue rather
-		// than running inline. Both managers land with the Overlay and Animation subsystems.
+		// Ticked under a NON idle phase on purpose: an onComplete callback may mutate the view
+		// tree, a screen transition removing its screen on finish being the usual case, and
+		// under Idle that would run inline. An inline RemoveView reaches CancelForView, which
+		// re-enters the very loop being walked.
+		mPhase = .Animating;
+		mAnimationManager.Update(deltaTime);
+		mPhase = .Idle;
+
+		// SEAM: Raptor also updates the tooltip manager here. It lands with Overlay.
 	}
 
 	/// Measures and arranges one root against its own viewport.
