@@ -234,6 +234,81 @@ class StyleSheet : RefCounted
 		return drawable;
 	}
 
+	// ---- The cascade ---------------------------------------------------------------------------
+
+	/// Appends every rule matching this view, state and pseudo element, in ASCENDING cascade
+	/// order: specificity first, then source order. So the LAST rule in the list that declares
+	/// a property is the one that wins it.
+	///
+	/// Callers concatenate several sheets, the context's, the ancestors' local ones and the
+	/// inline one, into a single list.
+	public void CollectMatching(View view, ControlState state, StringView pseudo,
+		List<StyleRule> outRules)
+	{
+		// Gathered in SOURCE order, then stable sorted by specificity, so rules of equal
+		// specificity keep their declaration order and the later one ends up later, and wins.
+		let first = outRules.Count;
+		for (let rule in mRules)
+		{
+			if (rule.Selector.Matches(view, state, pseudo))
+				outRules.Add(rule);
+		}
+
+		// An insertion sort, which is stable, over just the range this call appended.
+		for (int i = first + 1; i < outRules.Count; i++)
+		{
+			let key = outRules[i];
+			let keySpecificity = key.Selector.Specificity;
+			var j = i;
+			while ((j > first) && (outRules[j - 1].Selector.Specificity > keySpecificity))
+			{
+				outRules[j] = outRules[j - 1];
+				j--;
+			}
+			outRules[j] = key;
+		}
+	}
+
+	/// The ordered cascade over THIS sheet: the last matching declaration wins.
+	private StyleValue ResolveMatching(View view, ControlState state, StringView pseudo,
+		StyleProperty property)
+	{
+		let matching = scope List<StyleRule>();
+		CollectMatching(view, state, pseudo, matching);
+
+		for (int i = matching.Count - 1; i >= 0; i--)
+		{
+			let value = matching[i].GetValue(property);
+			if (value != null)
+				return value.Value;
+		}
+		return .None;
+	}
+
+	/// A pseudo element's value, resolved at an explicit state rather than the view's own.
+	public StyleValue ResolvePart(View view, StringView pseudoElement, StyleProperty property,
+		ControlState partState) =>
+		ResolveMatching(view, partState, pseudoElement, property);
+
+	/// Borrowed, and null when the part declares no drawable.
+	public Drawable ResolvePartDrawable(View view, StringView part, StyleProperty property,
+		ControlState partState) =>
+		ResolvePart(view, part, property, partState).AsDrawable;
+
+	public Color ResolvePartColor(View view, StringView part, StyleProperty property,
+		ControlState partState, Color defaultValue = Color.White)
+	{
+		let value = ResolvePart(view, part, property, partState).AsColor;
+		return (value != null) ? value.Value : defaultValue;
+	}
+
+	public float ResolvePartFloat(View view, StringView part, StyleProperty property,
+		ControlState partState, float defaultValue = 0.0f)
+	{
+		let value = ResolvePart(view, part, property, partState).AsFloat;
+		return (value != null) ? value.Value : defaultValue;
+	}
+
 	// ---- Internals -----------------------------------------------------------------------------
 
 	/// A fresh rule, added and BORROWED back.

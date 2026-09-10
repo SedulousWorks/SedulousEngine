@@ -7,7 +7,6 @@ namespace Sedulous.UI;
 /// pseudo element name, as a CHAIN of compounds joined by the descendant and child
 /// combinators.
 ///
-/// Matches itself is not here: it reads the view tree, so it lives with View.
 class StyleSelector
 {
 	// The SUBJECT compound, meaning the rightmost one, which is the view the rule applies to.
@@ -79,6 +78,141 @@ class StyleSelector
 		(ViewType == null) && !UnknownType && StyleClasses.IsEmpty && (Id == null)
 		&& (State == null) && (Structural == .None) && (PseudoElement == null)
 		&& Ancestors.IsEmpty;
+
+	/// Whether this selector matches a view in a given state, and an optional pseudo element
+	/// name.
+	///
+	/// A selector naming a pseudo element matches ONLY when one is asked for, and one naming
+	/// none matches only when none is: `Slider::thumb` must not apply to the slider itself.
+	public bool Matches(View view, ControlState state, StringView pseudoElement = default)
+	{
+		if (PseudoElement != null)
+		{
+			if (pseudoElement.IsEmpty || (PseudoElement != pseudoElement))
+				return false;
+		}
+		else if (!pseudoElement.IsEmpty)
+		{
+			return false;
+		}
+
+		if (UnknownType)
+			return false;
+		if ((ViewType != null) && !view.GetType().IsSubtypeOf(ViewType))
+			return false;
+
+		for (let styleClass in StyleClasses)
+		{
+			if (!view.HasClass(styleClass))
+				return false;
+		}
+
+		if ((Id != null) && (view.Name != Id))
+			return false;
+
+		if (State != null)
+		{
+			let required = State.Value;
+			// The normal state constrains nothing, having no flags to require.
+			if ((required != .Normal) && !HasAnyStateFlag(state, required))
+				return false;
+		}
+
+		if (Structural != .None)
+		{
+			let structuralOnly = scope SelectorCompound();
+			structuralOnly.Structural = Structural;
+			if (!CompoundMatches(structuralOnly, view, state))
+				return false;
+		}
+
+		return Ancestors.IsEmpty || AncestorsMatch(0, view);
+	}
+
+	/// Whether ANY required flag is present, which is what Raptor's free HasFlag means.
+	///
+	/// Not an all-bits test, so a compound state selector such as `:hover:checked` matches a
+	/// view holding only one of the two. Named for what it does, since the surrounding comment
+	/// in Raptor says "All flags must be present on the view" and the code does not.
+	private static bool HasAnyStateFlag(ControlState state, ControlState required) =>
+		((uint32)state & (uint32)required) != 0;
+
+	/// One compound against one view.
+	private static bool CompoundMatches(SelectorCompound compound, View view, ControlState state)
+	{
+		if (compound.UnknownType)
+			return false;
+		if ((compound.ViewType != null) && !view.GetType().IsSubtypeOf(compound.ViewType))
+			return false;
+
+		for (let styleClass in compound.StyleClasses)
+		{
+			if (!view.HasClass(styleClass))
+				return false;
+		}
+
+		if ((compound.Id != null) && (view.Name != compound.Id))
+			return false;
+
+		if (compound.State != null)
+		{
+			let required = compound.State.Value;
+			if ((required != .Normal) && !HasAnyStateFlag(state, required))
+				return false;
+		}
+
+		if (compound.Structural == .None)
+			return true;
+
+		let parent = view.Parent as ViewGroup;
+
+		if (compound.Structural.HasFlag(.FirstChild)
+			&& ((parent == null) || (parent.ChildCount == 0)
+				|| (parent.GetChildAt(0) != view)))
+			return false;
+
+		if (compound.Structural.HasFlag(.LastChild)
+			&& ((parent == null) || (parent.ChildCount == 0)
+				|| (parent.GetChildAt(parent.ChildCount - 1) != view)))
+			return false;
+
+		if (compound.Structural.HasFlag(.Empty))
+		{
+			let self = view as ViewGroup;
+			if ((self != null) && (self.ChildCount != 0))
+				return false;
+		}
+
+		return true;
+	}
+
+	/// The ancestor steps from `index` on, right to left with BACKTRACKING: a descendant step
+	/// may match ANY ancestor, and the steps beyond it must still match from there.
+	private bool AncestorsMatch(int index, View from)
+	{
+		if (index >= Ancestors.Count)
+			return true;
+
+		let step = Ancestors[index];
+
+		if (step.DirectParent)
+		{
+			let parent = from.Parent;
+			return (parent != null)
+				&& CompoundMatches(step.Compound, parent, parent.GetControlState())
+				&& AncestorsMatch(index + 1, parent);
+		}
+
+		var ancestor = from.Parent;
+		while (ancestor != null)
+		{
+			if (CompoundMatches(step.Compound, ancestor, ancestor.GetControlState())
+				&& AncestorsMatch(index + 1, ancestor))
+				return true;
+			ancestor = ancestor.Parent;
+		}
+		return false;
+	}
 
 	/// Targets ONLY the named pseudo element, with nothing else constrained.
 	public bool IsPseudoElementOnly(StringView part) =>

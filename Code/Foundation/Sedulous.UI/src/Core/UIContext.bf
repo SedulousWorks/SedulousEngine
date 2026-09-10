@@ -31,7 +31,15 @@ class UIContext
 	private IClipboard mClipboard = null;
 	private IFontService mFontService = null;
 
-	public this() {}
+	/// OWNED. Only their state is ported so far; see each manager.
+	private InputManager mInputManager ~ delete _;
+	private FocusManager mFocusManager ~ delete _;
+
+	public this()
+	{
+		mInputManager = new .(this);
+		mFocusManager = new .(this);
+	}
 
 	public ~this()
 	{
@@ -39,6 +47,9 @@ class UIContext
 	}
 
 	public UIContextPhase CurrentPhase => mPhase;
+
+	public InputManager GetInputManager() => mInputManager;
+	public FocusManager GetFocusManager() => mFocusManager;
 
 	// ---- Frame damage --------------------------------------------------------------------------
 

@@ -161,6 +161,41 @@ class View : RefCounted
 		return true;
 	}
 
+	/// Whether the pointer is over this view.
+	public bool IsHovered() =>
+		(Context != null) && (Context.GetInputManager().HoveredId == Id);
+
+	/// Whether this view holds keyboard focus.
+	public bool IsFocused() =>
+		(Context != null) && (Context.GetFocusManager().FocusedId == Id);
+
+	/// Whether this view's focus VISUAL should draw.
+	///
+	/// A text editing view always shows its border and caret: you have to see where typing
+	/// goes however focus arrived. Everything else draws the ring only for keyboard acquired
+	/// focus, so pointer and programmatic focus are held without lighting up.
+	public bool IsFocusVisible()
+	{
+		if (!IsFocused())
+			return false;
+		if (WantsTextInput())
+			return true;
+		return Context.GetFocusManager().Source == .Keyboard;
+	}
+
+	/// The current visual state, for drawable and theme lookups.
+	public virtual ControlState GetControlState()
+	{
+		var state = ControlState.Normal;
+		if (!IsEffectivelyEnabled())
+			state |= .Disabled;
+		if (IsFocusVisible())
+			state |= .Focused;
+		if (IsHovered())
+			state |= .Hover;
+		return state;
+	}
+
 	// ---- Draw ----------------------------------------------------------------------------------
 
 	public bool NeedsRedraw => mNeedsRedraw;
