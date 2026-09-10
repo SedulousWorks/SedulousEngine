@@ -146,6 +146,17 @@ class View : RefCounted, IPropertyOwner
 		return result;
 	}
 
+	// ---- Deferred mutation ---------------------------------------------------------------------
+
+	/// Queues this view for removal from its parent at the next safe point, which is what a
+	/// handler running inside its own view has to use.
+	public void QueueRemove()
+	{
+		if ((Context == null) || IsPendingDeletion)
+			return;
+		Context.MutationQueue.QueueDelete(this);
+	}
+
 	// ---- User data -----------------------------------------------------------------------------
 
 	/// Arbitrary data hung off a view by key. NON owning: the caller keeps it alive.

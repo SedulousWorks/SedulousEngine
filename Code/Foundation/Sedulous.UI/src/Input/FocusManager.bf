@@ -32,4 +32,13 @@ class FocusManager
 
 	public ViewId CapturedId => mCapturedId;
 	public void ReleaseCapture() => mCapturedId = ViewId.Invalid;
+
+	/// Forgets a view that is going away, so focus and capture cannot outlive it.
+	public void OnViewDeleted(View view)
+	{
+		if (mFocusedId == view.Id)
+			mFocusedId = ViewId.Invalid;
+		if (mCapturedId == view.Id)
+			mCapturedId = ViewId.Invalid;
+	}
 }

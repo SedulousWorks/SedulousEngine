@@ -34,11 +34,20 @@ class UIContext
 	/// OWNED. Only their state is ported so far; see each manager.
 	private InputManager mInputManager ~ delete _;
 	private FocusManager mFocusManager ~ delete _;
+	private ShortcutManager mShortcutManager ~ delete _;
+
+	/// BORROWED: the roots are owned by whoever created them.
+	private List<RootView> mRootViews = new .() ~ delete _;
+	private RootView mActiveInputRoot = null;
+	/// BORROWED: every attached view, by id, so a manager can hold an id rather than a
+	/// pointer and never dangle.
+	private Dictionary<uint32, View> mRegistry = new .() ~ delete _;
 
 	public this()
 	{
 		mInputManager = new .(this);
 		mFocusManager = new .(this);
+		mShortcutManager = new .(this);
 	}
 
 	public ~this()
@@ -50,6 +59,7 @@ class UIContext
 
 	public InputManager GetInputManager() => mInputManager;
 	public FocusManager GetFocusManager() => mFocusManager;
+	public ShortcutManager GetShortcuts() => mShortcutManager;
 
 	// ---- Frame damage --------------------------------------------------------------------------
 
@@ -131,6 +141,135 @@ class UIContext
 	}
 
 	public int TransitioningViewCount => mTransitioning.Count;
+
+	// ---- Root views ----------------------------------------------------------------------------
+
+	public int RootViewCount => mRootViews.Count;
+	public RootView GetRootView(int index) => mRootViews[index];
+
+	public RootView ActiveInputRoot => mActiveInputRoot;
+	public void SetActiveInputRoot(RootView root) => mActiveInputRoot = root;
+
+	/// The DPI scale of the active input root.
+	public float DpiScale => (mActiveInputRoot != null) ? mActiveInputRoot.DpiScale : 1.0f;
+
+	/// BORROWS the root: whoever made it keeps it alive.
+	public void AddRootView(RootView root)
+	{
+		if ((root == null) || mRootViews.Contains(root))
+			return;
+
+		mRootViews.Add(root);
+		AttachView(root);
+		// The first root added becomes the input target until something says otherwise.
+		if (mActiveInputRoot == null)
+			mActiveInputRoot = root;
+	}
+
+	public void RemoveRootView(RootView root)
+	{
+		if (root == null)
+			return;
+
+		for (int i < mRootViews.Count)
+		{
+			if (mRootViews[i] != root)
+				continue;
+
+			DetachView(root);
+			mRootViews.RemoveAt(i);
+			if (mActiveInputRoot == root)
+				mActiveInputRoot = mRootViews.IsEmpty ? null : mRootViews[0];
+			return;
+		}
+	}
+
+	// ---- The view registry ---------------------------------------------------------------------
+
+	public void Register(View view)
+	{
+		if ((view != null) && view.Id.IsValid)
+			mRegistry[view.Id.RawValue] = view;
+	}
+
+	/// Forgets a view EVERYWHERE before it goes: the registry, and every manager holding its
+	/// id or a pointer to it.
+	///
+	/// The tooltip, drag and animation managers are not ported, so they hold nothing to sweep
+	/// and are not called here. Their sweeps belong in this method and must be added with
+	/// them.
+	public void Unregister(View view)
+	{
+		if ((view == null) || !view.Id.IsValid)
+			return;
+
+		mInputManager.OnViewDeleted(view);
+		mFocusManager.OnViewDeleted(view);
+		mShortcutManager.RemoveScopedTo(view);
+		mRegistry.Remove(view.Id.RawValue);
+	}
+
+	/// BORROWED, and null when nothing is registered under that id, which is what makes an id
+	/// safe to hold across a frame where a pointer would not be.
+	public View GetViewById(ViewId id)
+	{
+		if (mRegistry.TryGetValue(id.RawValue, let view))
+			return view;
+		return null;
+	}
+
+	public T GetViewById<T>(ViewId id) where T : View => GetViewById(id) as T;
+
+	// ---- Attach and detach -----------------------------------------------------------------
+
+	/// Attaches a view and its whole subtree to this context.
+	public void AttachView(View view)
+	{
+		// The ancestors changed, and so did the siblings a :first-child or :last-child
+		// selector matches.
+		InvalidateStyles();
+		view.Context = this;
+		Register(view);
+
+		if (let group = view as ViewGroup)
+		{
+			for (int i < group.ChildCount)
+				AttachView(group.GetChildAt(i));
+
+			// A visual child that is not also a content child, such as a scroll view's bars.
+			for (int i < group.VisualChildCount)
+			{
+				let visual = group.GetVisualChild(i);
+				if ((visual != null) && (visual.Context != this))
+					AttachView(visual);
+			}
+		}
+	}
+
+	/// Detaches a view and its whole subtree.
+	public void DetachView(View view)
+	{
+		InvalidateStyles();
+		Unregister(view);
+
+		if (view.IsTransitionRegistered)
+			UnregisterTransitioning(view);
+		view.ClearTransitions();
+		view.Context = null;
+
+		if (let group = view as ViewGroup)
+		{
+			for (int i < group.ChildCount)
+				DetachView(group.GetChildAt(i));
+
+			for (int i < group.VisualChildCount)
+			{
+				let visual = group.GetVisualChild(i);
+				if ((visual != null) && (visual.Context != null))
+					DetachView(visual);
+			}
+		}
+	}
 
 	// ---- Injected seams ------------------------------------------------------------------------
 

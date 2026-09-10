@@ -8,7 +8,6 @@ namespace Sedulous.UI;
 /// A handler that removes the view it is running inside would pull the ground from under the
 /// dispatch walking the tree, so the change is queued and drained between frames instead.
 ///
-/// PARTIAL PORT: QueueDelete needs ViewGroup and lands with it.
 class MutationQueue
 {
 	private List<delegate void()> mQueue = new .() ~ DeleteContainerAndItems!(_);
@@ -17,6 +16,27 @@ class MutationQueue
 
 	/// OWNERSHIP of the action transfers.
 	public void QueueAction(delegate void() action) => mQueue.Add(action);
+
+	/// Queues a view for removal from its parent at the next drain.
+	///
+	/// Takes a STRONG reference for the wait: the queue co-owns the view until the action
+	/// runs, so a synchronous RemoveView between queueing and draining can never leave the
+	/// action holding a freed pointer.
+	public void QueueDelete(View view)
+	{
+		if ((view == null) || view.IsPendingDeletion)
+			return;
+
+		view.IsPendingDeletion = true;
+		view.AddRef();
+		QueueAction(new [=]() =>
+			{
+				if (let parent = view.Parent as ViewGroup)
+					parent.RemoveView(view);
+				view.IsPendingDeletion = false;
+				view.ReleaseRef();
+			});
+	}
 
 	public bool HasPending => !mQueue.IsEmpty;
 

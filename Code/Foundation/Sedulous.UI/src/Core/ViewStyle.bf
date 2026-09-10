@@ -649,6 +649,10 @@ extension View
 		}
 	}
 
+	/// Whether the context currently ticks this view. Read by DetachView, which must de-list
+	/// it before the context loses sight of it.
+	public bool IsTransitionRegistered => mTransitionRegistered;
+
 	public void ClearTransitions()
 	{
 		DeleteAndNullify!(mTransitionState);

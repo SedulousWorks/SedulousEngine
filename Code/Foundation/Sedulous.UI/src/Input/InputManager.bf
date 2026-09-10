@@ -37,4 +37,13 @@ class InputManager
 	public float MouseY => mMouseY;
 	public CursorType CurrentCursor => mCurrentCursor;
 	public KeyModifiers CurrentModifiers => mCurrentModifiers;
+
+	/// Forgets a view that is going away, so a deleted view cannot stay hovered or pressed.
+	public void OnViewDeleted(View view)
+	{
+		if (mHoveredId == view.Id)
+			mHoveredId = ViewId.Invalid;
+		if (mPressedId == view.Id)
+			mPressedId = ViewId.Invalid;
+	}
 }
