@@ -78,6 +78,19 @@ class View : RefCounted
 
 	public bool IsAttached => Context != null;
 
+	/// The RootView this view belongs to, found by walking up. Null when detached from one.
+	public RootView Root()
+	{
+		var view = this;
+		while (view != null)
+		{
+			if (let root = view as RootView)
+				return root;
+			view = view.Parent;
+		}
+		return null;
+	}
+
 	protected bool mNeedsRedraw = true;
 
 	public this() {}
