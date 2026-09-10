@@ -12,14 +12,14 @@ namespace Sedulous.UI;
 /// measure and the draw therefore cache their results, keyed on the VALUES that produced them.
 class Label : View
 {
-	public Property<String> Text = new .() ~ delete _;
+	public Property<String> Text = new .(new String()) ~ delete _;
 	public Property<TextAlignment> HAlign = new .(.Left) ~ delete _;
 	public Property<VerticalAlignment> VAlign = new .(.Middle) ~ delete _;
 	public Property<bool> WordWrap = new .(false) ~ delete _;
 	public Property<bool> Ellipsis = new .(false) ~ delete _;
 	/// Null defers to the cascade.
 	public Property<float?> FontSize = new .() ~ delete _;
-	public Property<String> FontFamily = new .() ~ delete _;
+	public Property<String> FontFamily = new .(new String()) ~ delete _;
 	public Property<Color?> TextColor = new .() ~ delete _;
 
 	/// Keyed on VALUES, never on a font pointer: a freed font's address can come back as a
@@ -79,7 +79,7 @@ class Label : View
 
 	public this(StringView text) : this()
 	{
-		Text.SetSilent(new String(text));
+		Text.Value.Set(text); // reuses the empty String the property was built with
 	}
 
 	public ~this()

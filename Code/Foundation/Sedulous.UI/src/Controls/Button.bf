@@ -7,11 +7,11 @@ namespace Sedulous.UI;
 /// A push button with a text label.
 class Button : ButtonBase
 {
-	public Property<String> Text = new .() ~ delete _;
+	public Property<String> Text = new .(new String()) ~ delete _;
 	/// Null defers to the cascade's font size.
 	public Property<float?> FontSize = new .() ~ delete _;
 	/// Empty defers to the cascade's family.
-	public Property<String> FontFamily = new .() ~ delete _;
+	public Property<String> FontFamily = new .(new String()) ~ delete _;
 
 	public this(StringView text)
 	{
@@ -19,7 +19,7 @@ class Button : ButtonBase
 		FontSize.SetOwner(this);
 		// VISUAL: changing the family redraws the text but cannot move anything.
 		FontFamily.SetOwner(this, .Visual);
-		Text.SetSilent(new String(text));
+		Text.Value.Set(text); // reuses the empty String the property was built with
 	}
 
 	public ~this()
