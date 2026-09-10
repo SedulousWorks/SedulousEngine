@@ -404,10 +404,27 @@ class FocusManager
 
 	/// What keyboard traversal is confined to.
 	///
-	/// SEAM: Raptor scopes this to the topmost focus taking popup when one is open, so a modal
-	/// traps Tab and arrows rather than reaching background controls through its own backdrop,
-	/// and so popup content is reachable at all: popups are not ViewGroup children of the
-	/// popup layer, so a full root walk never finds them. That needs PopupLayer, which lands
-	/// with Overlay. Until then traversal is the window root.
-	private View FocusRoot => mContext.ActiveInputRoot;
+	/// The topmost focus taking popup when one is open, and the window root otherwise. Scoping
+	/// to the popup does two things at once: a modal TRAPS Tab and arrows rather than reaching
+	/// background controls through its own backdrop, and popup content becomes reachable at
+	/// all, since popups are not ViewGroup children and a walk from the root never finds them.
+	private View FocusRoot
+	{
+		get
+		{
+			let root = mContext.ActiveInputRoot;
+			if (root == null)
+				return null;
+
+			// PEEKED, never created: looking for a focus scope must not bring a layer into
+			// being on a window that has never shown a popup.
+			if (let layer = root.PeekPopupLayer)
+			{
+				if (let scopePopup = layer.TopmostFocusScopePopup)
+					return scopePopup;
+			}
+
+			return root;
+		}
+	}
 }
