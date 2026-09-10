@@ -163,8 +163,8 @@ class TooltipManager
 	/// Fills the tooltip with its content. False when there is nothing to show, which is how a
 	/// provider says "not here, not now".
 	///
-	/// SEAM: the plain TEXT fallback needs Label, which lands with the controls. Until then a
-	/// view with TooltipText but no provider shows nothing rather than an empty frame.
+	/// A PROVIDER is asked first, so a view that builds its own content is never reduced to its
+	/// plain text; a view with only TooltipText gets a label.
 	private bool BuildContent(View target)
 	{
 		if (let provider = target.AsTooltipProvider())
@@ -177,7 +177,11 @@ class TooltipManager
 			return true;
 		}
 
-		return false;
+		if (target.TooltipText.IsEmpty)
+			return false;
+
+		mTooltipView.SetContent(new Label(target.TooltipText));
+		return true;
 	}
 
 	private void Hide()

@@ -4,8 +4,8 @@ using Sedulous.UI;
 
 namespace Sedulous.UI.Tests;
 
-/// Panel and the button base: the press cycle, the click, and the control state a theme keys
-/// its drawables off.
+/// Panel, Label and the button base: the press cycle, the click, the control state a theme
+/// keys its drawables off, and the text control everything else labels itself with.
 class ButtonTests
 {
 	private static void MakeTree(out UIContext context, out RootView root)
@@ -241,5 +241,67 @@ class ButtonTests
 
 		Test.Assert(panel.MeasuredSize.X == 40);
 		Test.Assert(panel.MeasuredSize.Y == 20);
+	}
+
+	// ---- Label --------------------------------------------------------------------------------
+
+	[Test]
+	public static void ALabelTakesItsTextAtConstructionOrAfterwards()
+	{
+		let atConstruction = new Label("Hello");
+		defer atConstruction.ReleaseRef();
+		Test.Assert(atConstruction.Text.Value == "Hello");
+
+		let assigned = new Label();
+		defer assigned.ReleaseRef();
+		// SetText answers the label, so one can be built in a single expression.
+		Test.Assert(assigned.SetText("World") == assigned);
+		Test.Assert(assigned.Text.Value == "World");
+	}
+
+	/// With no font service a label still measures to SOMETHING on the vertical: the font size
+	/// stands in for the line height, so a headless layout does not collapse its rows.
+	[Test]
+	public static void ALabelMeasuresToItsFontSizeWithoutAFontService()
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+
+		let label = new Label("Hello");
+		root.AddView(label);
+		UITest.LayoutPass(context, root);
+
+		Test.Assert(label.MeasuredSize.Y > 0);
+	}
+
+	/// Ellipsis comes from the PROPERTY or from `text-overflow: ellipsis` in the cascade, and
+	/// the property wins when it is set.
+	[Test]
+	public static void EllipsisComesFromThePropertyOrTheCascade()
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+
+		StyleSheetLoader.InitializeGlobals();
+		UITypeRegistry.Register("Label", typeof(Label));
+		let loader = scope StyleSheetLoader();
+		context.SetStyleSheet(loader.Load("""
+			Label { text-overflow: ellipsis; }
+			Label.clip { text-overflow: clip; }
+			"""));
+
+		let styled = new Label("A long line of text");
+		root.AddView(styled);
+		Test.Assert(styled.EffectiveEllipsis(), "from the sheet");
+
+		// A more specific rule turns it back OFF, as any other property would.
+		let clipped = new Label("A long line of text");
+		clipped.AddClass("clip");
+		root.AddView(clipped);
+		Test.Assert(!clipped.EffectiveEllipsis());
+
+		// And the property beats the cascade either way.
+		clipped.Ellipsis.Value = true;
+		Test.Assert(clipped.EffectiveEllipsis());
 	}
 }

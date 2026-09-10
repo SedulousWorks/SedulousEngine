@@ -144,6 +144,44 @@ class TooltipTests
 		Test.Assert(tooltips.IsShowing, "still up");
 	}
 
+	/// A view with only TOOLTIP TEXT and no provider gets a label built for it.
+	[Test]
+	public static void AViewWithOnlyTooltipTextGetsALabel()
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+		let tooltips = context.Tooltips;
+
+		let view = new TestView(100, 50);
+		view.TooltipText.Set("Explain this");
+		root.AddView(view);
+
+		tooltips.OnHoverChanged(view);
+		context.BeginFrame(0.6f);
+
+		Test.Assert(tooltips.IsShowing);
+		Test.Assert(root.GetPopupLayer().PopupCount == 1);
+	}
+
+	/// A PROVIDER wins over the text, so a view that builds its own content is never reduced to
+	/// its plain string.
+	[Test]
+	public static void AProviderBeatsThePlainText()
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+
+		let view = new TipView(100, 50);
+		view.TooltipText.Set("plain");
+		root.AddView(view);
+
+		context.Tooltips.OnHoverChanged(view);
+		context.BeginFrame(0.6f);
+
+		Test.Assert(view.BuildCount == 1, "the provider was asked");
+		Test.Assert(context.Tooltips.IsShowing);
+	}
+
 	/// Hovering something with NO tooltip anywhere above it shows nothing.
 	[Test]
 	public static void AViewWithNoTooltipOwnerShowsNothing()
