@@ -17,13 +17,16 @@ abstract class ListAdapterBase : IListAdapter
 
 	public void SetObserver(IListAdapterObserver observer) => mObserver = observer;
 
-	protected void NotifyDataSetChanged()
+	/// PUBLIC, because the thing that knows the data changed is as often the model holding
+	/// the adapter as the adapter itself. Protected would leave a model with no way to say so.
+	public void NotifyDataSetChanged()
 	{
 		if (mObserver != null)
 			mObserver.OnDataSetChanged();
 	}
 
-	protected void NotifyRangeChanged(int32 start, int32 count)
+	/// The narrow notification: only the named rows are rebound, in place.
+	public void NotifyRangeChanged(int32 start, int32 count)
 	{
 		if (mObserver != null)
 			mObserver.OnItemRangeChanged(start, count);

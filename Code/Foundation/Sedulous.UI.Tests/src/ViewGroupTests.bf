@@ -174,6 +174,35 @@ class ViewGroupTests
 		Test.Assert(context.NeedsLayout);
 	}
 
+	/// A VISUAL invalidation asks for a redraw without asking for a relayout.
+	///
+	/// That distinction is what keeps a hover tint, a press state or a focus ring from
+	/// relaying out the tree every frame the pointer moves. A plain Invalidate stays the safe
+	/// default and asks for both.
+	[Test]
+	public static void AVisualInvalidationRedrawsWithoutRelayingOut()
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+
+		let view = new TestView(50, 20);
+		root.AddView(view);
+		// A tree mutation damages layout, which is the safe default.
+		Test.Assert(context.NeedsLayout);
+		Test.Assert(context.NeedsRedraw);
+
+		UITest.LayoutPass(context, root);
+		context.ClearLayoutDamage();
+		Test.Assert(!context.NeedsLayout);
+
+		view.InvalidateVisual();
+		Test.Assert(!context.NeedsLayout, "no relayout for a repaint");
+		Test.Assert(context.NeedsRedraw);
+
+		view.Invalidate();
+		Test.Assert(context.NeedsLayout);
+	}
+
 	// ---- Removing ---------------------------------------------------------------------------
 
 	[Test]
