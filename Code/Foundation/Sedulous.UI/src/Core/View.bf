@@ -13,7 +13,7 @@ namespace Sedulous.UI;
 ///
 /// Ref counted: a parent owns its children by reference, and the back pointers here are
 /// borrowed.
-class View : RefCounted
+class View : RefCounted, IPropertyOwner
 {
 	// ---- Identity ------------------------------------------------------------------------------
 
@@ -145,6 +145,66 @@ class View : RefCounted
 		}
 		return result;
 	}
+
+	// ---- User data -----------------------------------------------------------------------------
+
+	/// Arbitrary data hung off a view by key. NON owning: the caller keeps it alive.
+	private Dictionary<String, void*> mUserData = new .() ~ DeleteDictionaryAndKeys!(_);
+
+	public void SetUserData(StringView key, void* data)
+	{
+		if (mUserData.TryGetAlt(key, let existingKey, ?))
+		{
+			mUserData[existingKey] = data;
+			return;
+		}
+		mUserData[new String(key)] = data;
+	}
+
+	public void* GetUserData(StringView key)
+	{
+		if (mUserData.TryGetValueAlt(key, let data))
+			return data;
+		return null;
+	}
+
+	public T* GetUserData<T>(StringView key) => (T*)GetUserData(key);
+
+	// ---- Property changes ------------------------------------------------------------------
+
+	/// A property DECLARES its own damage, so a visual only one skips the relayout and
+	/// everything else takes the safe path.
+	public void OnPropertyChanged(InvalidationKind kind)
+	{
+		if (kind == .Visual)
+			InvalidateVisual();
+		else
+			Invalidate();
+	}
+
+	// ---- Input events, bubble phase --------------------------------------------------------
+
+	public virtual void OnMouseDown(MouseEventArgs e) {}
+	public virtual void OnMouseUp(MouseEventArgs e) {}
+	public virtual void OnMouseMove(MouseEventArgs e) {}
+	public virtual void OnMouseWheel(MouseWheelEventArgs e) {}
+	public virtual void OnMouseEnter() {}
+	public virtual void OnMouseLeave() {}
+	public virtual void OnKeyDown(KeyEventArgs e) {}
+	public virtual void OnKeyUp(KeyEventArgs e) {}
+	public virtual void OnTextInput(TextInputEventArgs e) {}
+	public virtual void OnFocusGained() {}
+	public virtual void OnFocusLost() {}
+
+	// ---- Input events, capture phase, root to target before the target sees it -------------
+
+	public virtual void OnMouseDownCapture(MouseEventArgs e) {}
+	public virtual void OnMouseUpCapture(MouseEventArgs e) {}
+	public virtual void OnMouseMoveCapture(MouseEventArgs e) {}
+	public virtual void OnMouseWheelCapture(MouseWheelEventArgs e) {}
+	public virtual void OnKeyDownCapture(KeyEventArgs e) {}
+	public virtual void OnKeyUpCapture(KeyEventArgs e) {}
+	public virtual void OnTextInputCapture(TextInputEventArgs e) {}
 
 	// ---- Style classes -------------------------------------------------------------------------
 

@@ -543,6 +543,68 @@ extension View
 		return defaultValue;
 	}
 
+	/// Appends the resolved string value, or the default when nothing sets one.
+	public void ResolveStyleString(StyleProperty property, String outValue,
+		StringView defaultValue = default)
+	{
+		let value = ResolveStyle(property).AsString;
+		outValue.Append((value != null) ? value.Value : defaultValue);
+	}
+
+	// ---- Pseudo elements -----------------------------------------------------------------------
+
+	/// A pseudo element's value: the same cascade order as the element, but UNCACHED, because
+	/// a part's state varies from draw to draw and caching it would key on the wrong thing.
+	public StyleValue ResolvePartStyle(StringView part, StyleProperty property,
+		ControlState partState)
+	{
+		let rules = scope List<StyleRule>();
+
+		if ((Context != null) && (Context.GetStyleSheet() != null))
+			Context.GetStyleSheet().CollectMatching(this, partState, part, rules);
+
+		let chain = scope List<View>();
+		var ancestor = this;
+		while ((ancestor != null) && (chain.Count < cMaxSheetChainDepth))
+		{
+			if (ancestor.mLocalStyleSheet != null)
+				chain.Add(ancestor);
+			ancestor = ancestor.Parent;
+		}
+		for (int i = chain.Count - 1; i >= 0; i--)
+			chain[i].mLocalStyleSheet.CollectMatching(this, partState, part, rules);
+
+		if (mInlineSheet != null)
+			mInlineSheet.CollectMatching(this, partState, part, rules);
+
+		for (int i = rules.Count - 1; i >= 0; i--)
+		{
+			let value = rules[i].GetValue(property);
+			if (value != null)
+				return ResolveKeywords(property, value.Value, 0);
+		}
+		return .None;
+	}
+
+	/// Borrowed, and null when the part declares no drawable.
+	public Drawable ResolvePartDrawable(StringView part, StyleProperty property,
+		ControlState partState) =>
+		ResolvePartStyle(part, property, partState).AsDrawable;
+
+	public Color ResolvePartColor(StringView part, StyleProperty property,
+		ControlState partState, Color defaultValue = Color.White)
+	{
+		let value = ResolvePartStyle(part, property, partState).AsColor;
+		return (value != null) ? value.Value : defaultValue;
+	}
+
+	public float ResolvePartFloat(StringView part, StyleProperty property,
+		ControlState partState, float defaultValue = 0.0f)
+	{
+		let value = ResolvePartStyle(part, property, partState).AsFloat;
+		return (value != null) ? value.Value : defaultValue;
+	}
+
 	// ---- Transitions ---------------------------------------------------------------------------
 
 	private static float ApplyTransitionEasing(TransitionEasing easing, float t)
