@@ -188,11 +188,18 @@ extension View
 	}
 
 	/// CONSUMES the caller's reference: the inline sheet takes ownership of the drawable.
+	/// CONSUMES the caller's reference. A caller that wants to keep one takes it first.
+	///
+	/// Any drawable this property already held is RELEASED. Inline styles are reassigned at
+	/// runtime, which is what they are for, so without this a control that swaps its background
+	/// on hover would pile up every drawable it ever set until the view died.
 	public void SetStyle(StyleProperty property, Drawable drawable)
 	{
 		let sheet = GetOrCreateInlineSheet();
+		let rule = sheet.GetOrCreateInlineElementRule();
+		ReleasePreviousDrawable(sheet, rule, property, drawable);
 		sheet.OwnDrawable(drawable);
-		sheet.GetOrCreateInlineElementRule().Set(property, drawable);
+		rule.Set(property, drawable);
 		Invalidate();
 	}
 
@@ -214,13 +221,33 @@ extension View
 		Invalidate();
 	}
 
-	/// CONSUMES the caller's reference.
+	/// CONSUMES the caller's reference, and releases whatever this part's property held before.
 	public void SetPartStyle(StringView part, StyleProperty property, Drawable drawable)
 	{
 		let sheet = GetOrCreateInlineSheet();
+		let rule = sheet.GetOrCreateInlinePartRule(part);
+		ReleasePreviousDrawable(sheet, rule, property, drawable);
 		sheet.OwnDrawable(drawable);
-		sheet.GetOrCreateInlinePartRule(part).Set(property, drawable);
+		rule.Set(property, drawable);
 		Invalidate();
+	}
+
+	/// Drops the drawable a rule's property currently holds, if the inline sheet owns it.
+	///
+	/// Guarded against setting the SAME drawable twice: releasing it there would free something
+	/// the rule is about to point at again.
+	private static void ReleasePreviousDrawable(StyleSheet sheet, StyleRule rule,
+		StyleProperty property, Drawable replacement)
+	{
+		let existing = rule.GetValue(property);
+		if (existing == null)
+			return;
+
+		let previous = existing.Value.AsDrawable;
+		if ((previous == null) || (previous == replacement))
+			return;
+
+		sheet.DisownDrawable(previous);
 	}
 
 	/// Removes one inline override.

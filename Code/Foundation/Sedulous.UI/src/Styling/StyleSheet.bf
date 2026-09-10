@@ -219,6 +219,27 @@ class StyleSheet : RefCounted
 			mOwnedDrawables.Add(drawable);
 	}
 
+	/// Drops a drawable this sheet owns, releasing the reference it held.
+	///
+	/// Exists for the INLINE path, where a value is reassigned repeatedly at runtime: without
+	/// it, every background a hover handler set would stay alive until the view died. A sheet
+	/// loaded from a file never needs this, its drawables being written once.
+	///
+	/// Answers whether the drawable was actually owned here.
+	public bool DisownDrawable(Drawable drawable)
+	{
+		if (drawable == null)
+			return false;
+
+		let index = mOwnedDrawables.IndexOf(drawable);
+		if (index < 0)
+			return false;
+
+		mOwnedDrawables.RemoveAt(index);
+		drawable.ReleaseRef();
+		return true;
+	}
+
 	/// CONSUMES the caller's reference. The sheet is the anchor, as with OwnDrawable.
 	public void OwnResource(RefCounted resource)
 	{
