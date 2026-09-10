@@ -72,4 +72,55 @@ class ShortcutManager
 	}
 
 	public int Count => mShortcuts.Count;
+
+	/// Runs the first shortcut matching a key, answering whether one did.
+	///
+	/// SCOPED shortcuts are tried first: a shortcut belonging to the dialog you are in should
+	/// beat a global one on the same key, or a text editor's Ctrl+F would be stolen by the
+	/// window's.
+	public bool TryDispatch(KeyCode key, KeyModifiers modifiers)
+	{
+		let focused = mContext.GetFocusManager().FocusedView;
+
+		for (let shortcut in mShortcuts)
+		{
+			if (!shortcut.IsEnabled || (shortcut.Scope == null))
+				continue;
+			if (!shortcut.Matches(key, modifiers))
+				continue;
+			if ((focused != null) && IsInScope(focused, shortcut.Scope))
+			{
+				shortcut.Action();
+				return true;
+			}
+		}
+
+		for (let shortcut in mShortcuts)
+		{
+			if (!shortcut.IsEnabled || (shortcut.Scope != null))
+				continue;
+			if (shortcut.Matches(key, modifiers))
+			{
+				shortcut.Action();
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/// Whether a view sits inside a scope, itself counting as inside.
+	///
+	/// Named scopeView because `scope` is a Beef keyword.
+	private static bool IsInScope(View view, View scopeView)
+	{
+		var current = view;
+		while (current != null)
+		{
+			if (current == scopeView)
+				return true;
+			current = current.Parent;
+		}
+		return false;
+	}
 }
