@@ -12,6 +12,11 @@ struct PopupEntry
 	/// Blocks input to everything underneath.
 	public bool IsModal = false;
 	/// Whether the layer is the popup's PRIMARY owner, so closing destroys it.
+	///
+	/// RECORDED ONLY: ShowPopup always consumes the caller's reference and ClosePopup always
+	/// releases it, whatever this says. A caller that keeps its own reference AddRefs before
+	/// showing, which is what TooltipManager and the modal backdrop do. Raptor drives the
+	/// lifetime from this flag instead; here it survives as description, not mechanism.
 	public bool OwnsView = true;
 	/// Whether this popup took focus when it opened, and so restores on close.
 	public bool PushedFocus = false;
