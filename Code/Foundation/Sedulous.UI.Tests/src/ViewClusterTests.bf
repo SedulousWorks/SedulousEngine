@@ -297,8 +297,9 @@ class ViewClusterTests
 		Test.Assert(context.GetInputManager() != null);
 		Test.Assert(context.GetFocusManager() != null);
 		Test.Assert(context.GetShortcuts() != null);
-		// SEAM: Raptor also checks DragDrop, Animations and Tooltips here. Those managers land
-		// with the DragDrop, Animation and Overlay subsystems.
+		Test.Assert(context.DragDrop != null);
+		Test.Assert(context.Animations != null);
+		Test.Assert(context.Tooltips != null);
 	}
 
 	// ---- View: identity and tree ------------------------------------------------------------

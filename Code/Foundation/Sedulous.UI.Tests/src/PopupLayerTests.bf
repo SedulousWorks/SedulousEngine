@@ -361,4 +361,28 @@ class PopupLayerTests
 
 		Test.Assert(popup.Height == 200.0f, "only two hundred fit below four hundred");
 	}
+
+	/// A layer dying with a popup still open must clear that popup's Parent.
+	///
+	/// Popups live in the layer's ENTRIES rather than among its children, so a retained one - a
+	/// menu bar's menu, a combo box's list - outlives the layer and would otherwise keep a
+	/// Parent pointing into freed memory, which the next ShowPopup would follow.
+	[Test]
+	public static void ALayerDyingClearsItsOpenPopupsParent()
+	{
+		let popup = new TestView(50, 30);
+		defer popup.ReleaseRef();
+
+		{
+			let layer = new PopupLayer();
+			defer layer.ReleaseRef();
+
+			// AddRef because ShowPopup consumes, and this popup outlives the layer.
+			popup.AddRef();
+			layer.ShowPopup(popup, null, 10, 10, false, false, false, false);
+			Test.Assert(popup.Parent == layer);
+		}
+
+		Test.Assert(popup.Parent == null, "the layer died with the popup still open");
+	}
 }

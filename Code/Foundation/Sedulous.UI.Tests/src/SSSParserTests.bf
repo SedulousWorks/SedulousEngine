@@ -716,4 +716,99 @@ class SSSParserTests
 
 		Test.Assert(fixture.AddView().ResolveStyleDrawable(.Background) is ImageDrawable);
 	}
+
+	// ---- Type selectors and the registry -------------------------------------------------------
+
+	/// A type selector matches SUBTYPES, so a rule on ButtonBase dresses every button, and one
+	/// on View dresses everything.
+	[Test]
+	public static void ATypeSelectorMatchesSubtypes()
+	{
+		StyleSheetLoader.InitializeGlobals();
+
+		let context = new UIContext();
+		let root = new RootView();
+		UITest.Init(context, root);
+		defer { root.ReleaseRef(); delete context; }
+
+		let loader = scope StyleSheetLoader();
+		context.SetStyleSheet(loader.Load("ButtonBase { padding: 10 20; } View { font-size: 13; }"));
+
+		let button = new Button("Test");
+		root.AddView(button);
+		let checkBox = new CheckBox("C");
+		root.AddView(checkBox);
+
+		let padding = button.ResolveStyleThickness(.Padding);
+		Test.Assert(padding.Top == 10);
+		Test.Assert(padding.Left == 20);
+
+		// The View rule reaches both, being a base of everything.
+		Test.Assert(button.ResolveStyleFloat(.FontSize) == 13);
+		Test.Assert(checkBox.ResolveStyleFloat(.FontSize) == 13);
+
+		// But the ButtonBase rule does NOT reach the checkbox, which is not one.
+		Test.Assert(checkBox.ResolveStyleThickness(.Padding).Top != 10);
+	}
+
+	/// Type plus class beats type alone, because it is more specific.
+	[Test]
+	public static void ATypeAndClassRuleBeatsTypeAlone()
+	{
+		StyleSheetLoader.InitializeGlobals();
+
+		let context = new UIContext();
+		let root = new RootView();
+		UITest.Init(context, root);
+		defer { root.ReleaseRef(); delete context; }
+
+		let loader = scope StyleSheetLoader();
+		context.SetStyleSheet(loader.Load("View { font-size: 12; } ButtonBase.primary { font-size: 24; }"));
+
+		let button = new Button("Test");
+		button.AddClass("primary");
+		root.AddView(button);
+
+		Test.Assert(button.ResolveStyleFloat(.FontSize) == 24);
+	}
+
+	/// A rule for one control does not leak into another, pseudo-elements included: a
+	/// ComboBox::arrow background is not a Button's background.
+	[Test]
+	public static void ATypeSelectorDoesNotLeakAcrossControls()
+	{
+		StyleSheetLoader.InitializeGlobals();
+
+		let context = new UIContext();
+		let root = new RootView();
+		UITest.Init(context, root);
+		defer { root.ReleaseRef(); delete context; }
+
+		let loader = scope StyleSheetLoader();
+		context.SetStyleSheet(loader.Load("""
+			ButtonBase { background: rounded-rect(rgb(10,20,30), radius=2); }
+			ComboBox::arrow { background: rounded-rect(rgb(200,100,50), radius=2); }
+			"""));
+
+		let button = new Button("x");
+		root.AddView(button);
+
+		let background = button.ResolveStyleDrawable(.Background) as RoundedRectDrawable;
+		Test.Assert(background != null);
+		Test.Assert(background.FillColor.R == 10 / 255.0f, "the ButtonBase rule");
+		Test.Assert(background.FillColor.G == 20 / 255.0f);
+	}
+
+	/// Registering the builtins is what makes those selectors resolve at all, aliases included.
+	[Test]
+	public static void TheBuiltInTypesResolveForSelectors()
+	{
+		UITypeRegistry.Clear();
+		UITypeRegistry.RegisterBuiltins();
+
+		Test.Assert(UITypeRegistry.Resolve("ComboBox") != null);
+		Test.Assert(UITypeRegistry.Resolve("EditText") != null);
+		Test.Assert(UITypeRegistry.Resolve("NumericField") != null);
+		Test.Assert(UITypeRegistry.Resolve("Flex") == typeof(FlexLayout), "the alias too");
+	}
 }
