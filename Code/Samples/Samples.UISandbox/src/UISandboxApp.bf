@@ -10,6 +10,8 @@ using Sedulous.UI;
 using Sedulous.UI.Application;
 using Sedulous.UI.Runtime;
 using Sedulous.UI.Toolkit;
+using Sedulous.UI.VFS;
+using Sedulous.VFS;
 
 namespace Samples.UISandbox;
 
@@ -58,6 +60,11 @@ class UISandboxApp : IApplication
 	/// The docking host, which floats panels into real OS windows.
 	private RuntimeDockableWindowHost mDockHost = null;
 
+	// The VFS the markup and the .sss themes are read through, rooted at the UI asset
+	// directory. Built on first use and kept for the application's life.
+	private NativeFileSystem mUIFileSystem = null;
+	private VfsResourceProvider mResourceProvider = null;
+
 	/// The UI on runtime bridge, which owns the context and the per window renderer and input.
 	private UIHost mUIHost = null;
 
@@ -77,6 +84,30 @@ class UISandboxApp : IApplication
 
 		if (mFonts != null)
 			delete mFonts;
+
+		if (mResourceProvider != null)
+			delete mResourceProvider;
+
+		if (mUIFileSystem != null)
+			delete mUIFileSystem;
+	}
+
+	/// BORROWED, and null when this checkout carries no UI assets. Built on first use.
+	public VfsResourceProvider ResourceProvider
+	{
+		get
+		{
+			if (mResourceProvider != null)
+				return mResourceProvider;
+
+			let root = scope String();
+			if (!SandboxContent.FindDirectory(SandboxContent.cUiAssetDir, root))
+				return null;
+
+			mUIFileSystem = new NativeFileSystem(root);
+			mResourceProvider = new VfsResourceProvider(mUIFileSystem);
+			return mResourceProvider;
+		}
 	}
 
 	public void OnStartup(IApplicationHost host)
@@ -218,6 +249,9 @@ class UISandboxApp : IApplication
 		ToolkitTab.Build(this, tabView);
 		PropertyGridTab.Build(tabView);
 		CurveEditorTab.Build(tabView);
+		NodeGraphTab.Build(tabView);
+		DockingTab.Build(this, tabView);
+		PauseMenuTab.Build(this, tabView);
 	}
 
 	/// BORROWED, for the tab builders.
