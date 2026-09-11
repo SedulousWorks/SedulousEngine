@@ -7,4 +7,10 @@ StartupObject = "Sedulous.UI.Gamekit.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Fonts" = "*"
+"Sedulous.Input" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.UI" = "*"
 "Sedulous.UI.Gamekit" = "*"
+"Sedulous.VG" = "*"
