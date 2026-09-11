@@ -524,13 +524,13 @@ class IBLSystem
 		for (uint32 face = 0; face < 6; face++)
 		{
 			let push = MakeSkyPush(context, (int32)face);
-			graph.AddRenderPass("ibl.env.face", scope [&] (builder) =>
+			graph.AddRenderPass("ibl.env.face", scope (builder) =>
 				{
 					builder.SetColorTarget(0, envHandle, .Clear, .Store, .Black, .(0, 1, face, 1));
 					builder.SetViewport(0, 0, cEnvResolution, cEnvResolution);
 					builder.NeverCull();
 
-					builder.SetExecute(new [=] (encoder) =>
+					builder.SetExecute(new (encoder) =>
 						{
 							encoder.SetPipeline(envPipeline);
 							if (envBindGroup != null)
@@ -584,12 +584,12 @@ class IBLSystem
 		RGHandle shHandle)
 	{
 		let shBindGroup = context.ShBindGroup;
-		graph.AddComputePass("ibl.sh", scope [&] (builder) =>
+		graph.AddComputePass("ibl.sh", scope (builder) =>
 			{
 				builder.ReadTexture(envHandle);
 				builder.WriteStorage(shHandle);
 
-				builder.SetComputeExecute(new [=] (encoder) =>
+				builder.SetComputeExecute(new (encoder) =>
 					{
 						if (shBindGroup == null)
 							return;
@@ -617,7 +617,7 @@ class IBLSystem
 				var push = IblPush();
 				push.FaceIndex = (int32)face;
 
-				graph.AddRenderPass("ibl.env.mip", scope [&] (builder) =>
+				graph.AddRenderPass("ibl.env.mip", scope (builder) =>
 					{
 						builder.ReadTexture(envHandle, .(mip - 1, 1, 0, 6));
 						builder.SetColorTarget(0, envHandle, .Clear, .Store, .Black,
@@ -625,7 +625,7 @@ class IBLSystem
 						builder.SetViewport(0, 0, resolution, resolution);
 						builder.NeverCull();
 
-						builder.SetExecute(new [=] (encoder) =>
+						builder.SetExecute(new (encoder) =>
 							{
 								encoder.SetPipeline(mDownsamplePipeline);
 								encoder.SetBindGroup(0, sourceBindGroup);
@@ -657,7 +657,7 @@ class IBLSystem
 				push.FaceIndex = (int32)face;
 				push.Roughness = roughness;
 
-				graph.AddRenderPass("ibl.prefilter", scope [&] (builder) =>
+				graph.AddRenderPass("ibl.prefilter", scope (builder) =>
 					{
 						builder.ReadTexture(envHandle);
 						builder.SetColorTarget(0, prefilterHandle, .Clear, .Store, .Black,
@@ -665,7 +665,7 @@ class IBLSystem
 						builder.SetViewport(0, 0, resolution, resolution);
 						builder.NeverCull();
 
-						builder.SetExecute(new [=] (encoder) =>
+						builder.SetExecute(new (encoder) =>
 							{
 								encoder.SetPipeline(mPrefilterPipeline);
 								encoder.SetBindGroup(0, envBindGroup);
@@ -681,13 +681,13 @@ class IBLSystem
 
 	private void DeclareBrdf(RenderGraph graph, RGHandle brdfHandle)
 	{
-		graph.AddRenderPass("ibl.brdf", scope [&] (builder) =>
+		graph.AddRenderPass("ibl.brdf", scope (builder) =>
 			{
 				builder.SetColorTarget(0, brdfHandle, .Clear, .Store, .Black);
 				builder.SetViewport(0, 0, cBrdfResolution, cBrdfResolution);
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						encoder.SetPipeline(mBrdfPipeline);
 						encoder.Draw(3, 1, 0, 0);

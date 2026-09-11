@@ -23,7 +23,7 @@ class JobSystemTests
 		let done = scope Counter(100);
 		for (int i < 100)
 		{
-			jobs.Submit(new [&] () =>
+			jobs.Submit(new [&lock, &counter] () =>
 				{
 					using (lock.Enter())
 						counter++;
@@ -45,7 +45,7 @@ class JobSystemTests
 		var ran = 0;
 		let done = scope Counter(10);
 		for (int i < 10)
-			jobs.Submit(new [&] () => { ran++; }, done);
+			jobs.Submit(new [&ran] () => { ran++; }, done);
 
 		// Nothing has run yet: there is no worker to run it.
 		jobs.Wait(done);
@@ -79,7 +79,7 @@ class JobSystemTests
 
 		for (int i < 50)
 		{
-			jobs.Submit(new [&] () =>
+			jobs.Submit(new [&lock, &counter] () =>
 				{
 					using (lock.Enter())
 						counter++;
@@ -97,7 +97,7 @@ class JobSystemTests
 		let seen = scope int[count]*;
 		Internal.MemSet(seen, 0, count * sizeof(int));
 
-		jobs.ParallelFor(count, scope [&] (i) => { seen[i]++; });
+		jobs.ParallelFor(count, scope (i) => { seen[i]++; });
 
 		for (int i < count)
 			Test.Assert(seen[i] == 1, scope $"index {i} ran {seen[i]} times");
@@ -115,7 +115,7 @@ class JobSystemTests
 		{
 			let seen = scope:: int[count]*;
 			Internal.MemSet(seen, 0, count * sizeof(int));
-			jobs.ParallelFor(count, scope:: [&] (i) => { seen[i]++; }, grain);
+			jobs.ParallelFor(count, scope:: (i) => { seen[i]++; }, grain);
 			for (int i < count)
 				Test.Assert(seen[i] == 1, scope $"grain {grain}, index {i}");
 		}
@@ -126,7 +126,7 @@ class JobSystemTests
 	{
 		let jobs = scope JobSystem(2);
 		var ran = 0;
-		jobs.ParallelFor(0, scope [&] (i) => { ran++; });
+		jobs.ParallelFor(0, scope [&ran] (i) => { ran++; });
 		Test.Assert(ran == 0);
 	}
 
@@ -146,14 +146,14 @@ class JobSystemTests
 		let gate = scope Counter(kWork);
 		for (int32 i < kWork)
 		{
-			jobs.Submit(new [&] () =>
+			jobs.Submit(new [&lock, &work] () =>
 				{
 					using (lock.Enter())
 						work++;
 				}, gate);
 		}
 
-		jobs.SubmitAfter(gate, new [&] () =>
+		jobs.SubmitAfter(gate, new [&lock, &seenByFinalize, &finalizeRan, &work] () =>
 			{
 				using (lock.Enter())
 				{
@@ -182,7 +182,7 @@ class JobSystemTests
 		// One job will signal the gate, so it starts at one and B parks behind it.
 		let gate = scope Counter(1);
 		let finished = scope Counter(1);
-		jobs.SubmitAfter(gate, new [&] () =>
+		jobs.SubmitAfter(gate, new [&lock, &order] () =>
 			{
 				using (lock.Enter())
 					order.Append('B');
@@ -192,7 +192,7 @@ class JobSystemTests
 		Thread.Sleep(20);
 		Test.Assert(order.IsEmpty);
 
-		jobs.Submit(new [&] () =>
+		jobs.Submit(new [&lock, &order] () =>
 			{
 				using (lock.Enter())
 					order.Append('A');

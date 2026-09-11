@@ -165,14 +165,14 @@ class BloomPass
 			let destinationWidth = levelWidth[i];
 			let destinationHeight = levelHeight[i];
 
-			graph.AddRenderPass("bloom.down", scope [&] (builder) =>
+			graph.AddRenderPass("bloom.down", scope (builder) =>
 				{
 					builder.SetColorTarget(0, destination, .Clear, .Store, .Black);
 					builder.ReadTexture(source);
 					builder.SetViewport(0, 0, destinationWidth, destinationHeight);
 					builder.NeverCull();
 
-					builder.SetExecute(new [=] (encoder) =>
+					builder.SetExecute(new (encoder) =>
 						{
 							Draw(encoder, graph, source, mDownPipeline, push);
 						});
@@ -192,7 +192,7 @@ class BloomPass
 			let destinationWidth = levelWidth[i];
 			let destinationHeight = levelHeight[i];
 
-			graph.AddRenderPass("bloom.up", scope [&] (builder) =>
+			graph.AddRenderPass("bloom.up", scope (builder) =>
 				{
 					// Loaded rather than cleared, because the blend adds to what is there.
 					builder.SetColorTarget(0, destination, .Load, .Store, .Black);
@@ -200,7 +200,7 @@ class BloomPass
 					builder.SetViewport(0, 0, destinationWidth, destinationHeight);
 					builder.NeverCull();
 
-					builder.SetExecute(new [=] (encoder) =>
+					builder.SetExecute(new (encoder) =>
 						{
 							Draw(encoder, graph, source, mUpPipeline, push);
 						});

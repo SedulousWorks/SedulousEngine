@@ -151,7 +151,7 @@ class FileSystemTests
 		let names = scope List<String>();
 		defer { ClearAndDeleteItems!(names); }
 		var directories = 0;
-		Test.Assert(ListDirectory(kScratch, scope [&] (name, isDirectory) =>
+		Test.Assert(ListDirectory(kScratch, scope [&names, &directories] (name, isDirectory) =>
 			{
 				names.Add(new String(name));
 				if (isDirectory)

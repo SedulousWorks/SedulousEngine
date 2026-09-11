@@ -29,7 +29,7 @@ class AnimationPlayerTests
 		let player = scope AnimationPlayer(skeleton);
 
 		var fireCount = 0;
-		player.SetEventHandler(new [&](name, time) => { fireCount++; });
+		player.SetEventHandler(new [&fireCount](name, time) => { fireCount++; });
 
 		let clip = scope AnimationClip("Test", 1.0f);
 		clip.AddEvent(0.5f, "Hit");
@@ -47,7 +47,7 @@ class AnimationPlayerTests
 
 		let fired = scope List<String>();
 		defer { ClearAndDeleteItems!(fired); }
-		player.SetEventHandler(new [&](name, time) => { fired.Add(new String(name)); });
+		player.SetEventHandler(new (name, time) => { fired.Add(new String(name)); });
 
 		let clip = scope AnimationClip("Test", 2.0f);
 		clip.AddEvent(0.3f, "A");
@@ -76,7 +76,7 @@ class AnimationPlayerTests
 		let player = scope AnimationPlayer(skeleton);
 
 		var fireCount = 0;
-		player.SetEventHandler(new [&](name, time) => { fireCount++; });
+		player.SetEventHandler(new [&fireCount](name, time) => { fireCount++; });
 
 		let clip = scope AnimationClip("Test", 1.0f, true);
 		clip.AddEvent(0.5f, "Hit");
@@ -119,13 +119,13 @@ class AnimationPlayerTests
 		let clip = scope AnimationClip("Test", 1.0f);
 		clip.AddEvent(0.5f, "Hit");
 
-		player.SetEventHandler(new [&](name, time) => { first++; });
+		player.SetEventHandler(new [&first](name, time) => { first++; });
 		player.Play(clip);
 		player.Update(0.6f);
 		Test.Assert(first == 1);
 		Test.Assert(second == 0);
 
-		player.SetEventHandler(new [&](name, time) => { second++; });
+		player.SetEventHandler(new [&second](name, time) => { second++; });
 		player.Play(clip);
 		player.Update(0.6f);
 		Test.Assert(first == 1, "the old handler is gone, not merely quiet");

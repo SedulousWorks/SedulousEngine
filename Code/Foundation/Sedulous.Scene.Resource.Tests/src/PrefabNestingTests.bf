@@ -98,7 +98,7 @@ class PrefabNestingTests
 
 		let scene = scope Scene();
 		let manager = scene.AddSystem<HealthManager>();
-		ScenePrefabs.PayloadResolver resolver = scope [&](id) => payloads.Resolve(id);
+		ScenePrefabs.PayloadResolver resolver = scope (id) => payloads.Resolve(id);
 
 		let outer = payloads.Resolve(OuterId);
 		defer delete outer;
@@ -138,7 +138,7 @@ class PrefabNestingTests
 
 		let scene = scope Scene();
 		scene.AddSystem<HealthManager>();
-		ScenePrefabs.PayloadResolver resolver = scope [&](id) => payloads.Resolve(id);
+		ScenePrefabs.PayloadResolver resolver = scope (id) => payloads.Resolve(id);
 		let outer = payloads.Resolve(OuterId);
 		defer delete outer;
 		let spawned = PrefabSpawn.Spawn(scene, outer, OuterId, .Invalid, null, resolver);
@@ -167,7 +167,7 @@ class PrefabNestingTests
 
 		let scene = scope Scene();
 		let manager = scene.AddSystem<HealthManager>();
-		ScenePrefabs.PayloadResolver resolver = scope [&](id) => payloads.Resolve(id);
+		ScenePrefabs.PayloadResolver resolver = scope (id) => payloads.Resolve(id);
 		let outer = payloads.Resolve(OuterId);
 		defer delete outer;
 		let spawned = PrefabSpawn.Spawn(scene, outer, OuterId, .Invalid, null, resolver);
@@ -198,7 +198,7 @@ class PrefabNestingTests
 
 		let scene = scope Scene();
 		let manager = scene.AddSystem<HealthManager>();
-		ScenePrefabs.PayloadResolver resolver = scope [&](id) => payloads.Resolve(id);
+		ScenePrefabs.PayloadResolver resolver = scope (id) => payloads.Resolve(id);
 		let outer = payloads.Resolve(OuterId);
 		defer delete outer;
 		let spawned = PrefabSpawn.Spawn(scene, outer, OuterId, .Invalid, null, resolver);
@@ -258,7 +258,7 @@ class PrefabNestingTests
 
 		let scene = scope Scene();
 		let manager = scene.AddSystem<HealthManager>();
-		ScenePrefabs.PayloadResolver resolver = scope [&](id) => payloads.Resolve(id);
+		ScenePrefabs.PayloadResolver resolver = scope (id) => payloads.Resolve(id);
 		let outer = payloads.Resolve(OuterId);
 		defer delete outer;
 		let spawned = PrefabSpawn.Spawn(scene, outer, OuterId, .Invalid, null, resolver);
@@ -295,7 +295,7 @@ class PrefabNestingTests
 
 		let scene = scope Scene();
 		scene.AddSystem<HealthManager>();
-		ScenePrefabs.PayloadResolver resolver = scope [&](id) => payloads.Resolve(id);
+		ScenePrefabs.PayloadResolver resolver = scope (id) => payloads.Resolve(id);
 		let outer = payloads.Resolve(OuterId);
 		defer delete outer;
 		PrefabSpawn.Spawn(scene, outer, OuterId, .Invalid, null, resolver);
@@ -314,7 +314,7 @@ class PrefabNestingTests
 
 		// A resolver that can no longer reach the OUTER prefab: its record cannot spawn, so
 		// the nested one is orphaned.
-		ScenePrefabs.PayloadResolver partial = scope [&](id) =>
+		ScenePrefabs.PayloadResolver partial = scope (id) =>
 		{
 			if (id == OuterId)
 				return null;
@@ -347,7 +347,7 @@ class PrefabNestingTests
 
 		let scene = scope Scene();
 		let manager = scene.AddSystem<HealthManager>();
-		ScenePrefabs.PayloadResolver resolver = scope [&](id) => payloads.Resolve(id);
+		ScenePrefabs.PayloadResolver resolver = scope (id) => payloads.Resolve(id);
 		let outer = payloads.Resolve(OuterId);
 		defer delete outer;
 		let spawned = PrefabSpawn.Spawn(scene, outer, OuterId, .Invalid, null, resolver);

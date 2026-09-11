@@ -119,7 +119,7 @@ static class PrefabRebuild
 		}
 		let roots = scope List<Guid>();
 
-		scene.ForEachPrefabInstance(scope [&](state) =>
+		scene.ForEachPrefabInstance(scope (state) =>
 		{
 			// A nested instance rebuilds with its owner rather than on its own. Nesting
 			// itself is not ported yet, so this is the guard rather than the mechanism.

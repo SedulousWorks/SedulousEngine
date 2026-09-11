@@ -105,14 +105,14 @@ class DebugBlitPass
 		if (sourceIsDepth && config.LinearizeDepth)
 			push.Mode |= 16;
 
-		graph.AddRenderPass("debug.blit", scope [&] (builder) =>
+		graph.AddRenderPass("debug.blit", scope (builder) =>
 			{
 				builder.SetColorTarget(0, ldr, .Load, .Store);
 				builder.ReadTexture(source);
 				builder.SetViewport(viewportX, viewportY, viewportWidth, viewportHeight);
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						var view = sourceIsDepth
 							? graph.GetDepthOnlyTextureView(source)

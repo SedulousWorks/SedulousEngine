@@ -166,7 +166,7 @@ class DebugDrawPass
 		let overlayTriangleCount = (uint32)(total - overlayTriangleStart);
 		let entry = mGeomPipelines[pipelines];
 
-		graph.AddRenderPass("debug.geom", scope [&] (builder) =>
+		graph.AddRenderPass("debug.geom", scope (builder) =>
 			{
 				builder.SetColorTarget(0, color, .Load, .Store, .Black);
 				// Depth TESTED, never sampled, so it is not read as a texture: doing both
@@ -175,7 +175,7 @@ class DebugDrawPass
 				builder.SetViewport(viewportX, viewportY, viewportWidth, viewportHeight);
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						encoder.SetVertexBuffer(0, buffer, 0);
 
@@ -231,13 +231,13 @@ class DebugDrawPass
 		let push = float[4](1.0f / (float)viewportWidth, 1.0f / (float)viewportHeight, 0.0f, 0.0f);
 		let bindGroup = mFontBindGroup;
 
-		graph.AddRenderPass("debug.screen", scope [&] (builder) =>
+		graph.AddRenderPass("debug.screen", scope (builder) =>
 			{
 				builder.SetColorTarget(0, color, .Load, .Store, .Black);
 				builder.SetViewport(viewportX, viewportY, viewportWidth, viewportHeight);
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						encoder.SetPipeline(pipeline);
 						encoder.SetBindGroup(0, bindGroup);

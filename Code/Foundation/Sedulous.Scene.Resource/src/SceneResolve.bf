@@ -111,7 +111,7 @@ static class SceneResolve
 	{
 		if (!scene.UnresolvedComponents.IsEmpty)
 		{
-			scene.ForEachManager(scope [&](manager) =>
+			scene.ForEachManager(scope (manager) =>
 			{
 				if (manager.IsSerializable)
 					ResolveUnresolvedComponents(scene, manager);

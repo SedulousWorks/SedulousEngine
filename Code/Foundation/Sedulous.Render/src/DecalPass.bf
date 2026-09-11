@@ -239,7 +239,7 @@ class DecalPass
 
 		let uboBindGroup = EnsureUboBindGroup();
 
-		graph.AddRenderPass("decal", scope [&] (builder) =>
+		graph.AddRenderPass("decal", scope (builder) =>
 			{
 				builder.SetColorTarget(0, hdr, .Load, .Store, .Black);
 				builder.ReadTexture(depth);
@@ -248,7 +248,7 @@ class DecalPass
 				builder.SetViewport(viewportX, viewportY, viewportWidth, viewportHeight);
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						let depthBindGroup = EnsureDepthBindGroup(graph.GetTextureView(depth),
 							graph.GetTextureGeneration(depth));

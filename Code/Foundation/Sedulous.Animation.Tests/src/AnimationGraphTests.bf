@@ -301,7 +301,7 @@ class AnimationGraphTests
 
 		let fired = scope List<String>();
 		defer { ClearAndDeleteItems!(fired); }
-		AnimationEventHandler handler = scope [&](name, time) =>
+		AnimationEventHandler handler = scope (name, time) =>
 			{
 				fired.Add(new String(name));
 			};
@@ -346,7 +346,7 @@ class AnimationGraphTests
 
 		let fired = scope List<String>();
 		defer { ClearAndDeleteItems!(fired); }
-		AnimationEventHandler handler = scope [&](name, time) =>
+		AnimationEventHandler handler = scope (name, time) =>
 			{
 				fired.Add(new String(name));
 			};

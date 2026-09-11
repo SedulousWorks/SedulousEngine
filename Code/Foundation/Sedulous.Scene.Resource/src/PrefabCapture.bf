@@ -90,7 +90,7 @@ static class PrefabCapture
 
 		let managers = scope List<ComponentManagerBase>();
 		let owners = scope List<EntityHandle>();
-		scene.ForEachManager(scope [&](manager) =>
+		scene.ForEachManager(scope (manager) =>
 		{
 			if (!manager.IsSerializable)
 				return;

@@ -91,7 +91,7 @@ class ForwardPass
 		let colorLoad = clearColor ? LoadOp.Clear : LoadOp.Load;
 		let drawViewProj = view.Camera.ViewProjection;
 
-		graph.AddRenderPass("forward", scope [&] (builder) =>
+		graph.AddRenderPass("forward", scope (builder) =>
 			{
 				// The sub range targets ONE LAYER when capturing into a cube face; empty is
 				// the whole target.
@@ -137,7 +137,7 @@ class ForwardPass
 
 				builder.NeverCull();
 
-				builder.SetBundleExecute(new [=] (encoder, bundles) =>
+				builder.SetBundleExecute(new (encoder, bundles) =>
 					{
 						ResolveAndEmit(view, registry, encoder, frameIndex, viewIndex, colorFormat,
 							drawViewProj, prevViewProj, jitter, prevJitter, .Opaque, cluster,
@@ -157,7 +157,7 @@ class ForwardPass
 		if ((view.Width == 0) || (view.Height == 0))
 			return;
 
-		graph.AddRenderPass("transparent", scope [&] (builder) =>
+		graph.AddRenderPass("transparent", scope (builder) =>
 			{
 				builder.SetColorTarget(0, color, .Load, .Store, view.Settings.Clear);
 				builder.SetReadOnlyDepthTarget(depth);
@@ -182,7 +182,7 @@ class ForwardPass
 
 				builder.NeverCull();
 
-				builder.SetBundleExecute(new [=] (encoder, bundles) =>
+				builder.SetBundleExecute(new (encoder, bundles) =>
 					{
 						// The opaque depth is readable now, being a read only target, so its
 						// view is resolved and handed to the renderers for a soft particle to
@@ -217,7 +217,7 @@ class ForwardPass
 		if (!any)
 			return;
 
-		graph.AddRenderPass("worldui", scope [&] (builder) =>
+		graph.AddRenderPass("worldui", scope (builder) =>
 			{
 				builder.SetColorTarget(0, color, .Load, .Store, view.Settings.Clear);
 				builder.SetReadOnlyDepthTarget(depth);
@@ -225,7 +225,7 @@ class ForwardPass
 					view.ViewportHeight);
 				builder.NeverCull();
 
-				builder.SetBundleExecute(new [=] (encoder, bundles) =>
+				builder.SetBundleExecute(new (encoder, bundles) =>
 					{
 						ResolveAndEmit(view, registry, encoder, frameIndex, viewIndex, colorFormat,
 							drawViewProj, prevViewProj, .(0, 0), .(0, 0), .PostTonemap, .(), .(),
@@ -391,7 +391,7 @@ class ForwardPass
 
 		let poolBase = (int)frameIndex * (int)mWorkerSlots;
 
-		jobs.ParallelFor(chunks, scope [&] (c) =>
+		jobs.ParallelFor(chunks, scope (c) =>
 			{
 				// One pool per chunk, so the recording never shares one.
 				let pool = mWorkerPools[poolBase + (int)c];

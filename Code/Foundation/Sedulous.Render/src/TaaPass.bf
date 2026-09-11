@@ -168,7 +168,7 @@ class TaaPass
 
 		let previousView = mViews[viewIndex].Views[previousSlot];
 
-		graph.AddRenderPass("taa", scope [&] (builder) =>
+		graph.AddRenderPass("taa", scope (builder) =>
 			{
 				builder.SetColorTarget(0, resolved, .Clear, .Store, .Black);
 				builder.SetColorTarget(1, historyCurrent, .Clear, .Store, .Black);
@@ -180,7 +180,7 @@ class TaaPass
 				builder.ReadTexture(depth);
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						let bindGroup = EnsureBindGroup(graph.GetTextureView(current),
 							previousView, graph.GetTextureView(motion), graph.GetTextureView(depth),

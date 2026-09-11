@@ -28,7 +28,7 @@ static class PrefabNesting
 	public static void CollectContained(Scene scene, EntityHandle root,
 		List<PrefabInstanceState> outStates, HashSet<Guid> outMembers)
 	{
-		scene.ForEachPrefabInstance(scope [&](state) =>
+		scene.ForEachPrefabInstance(scope (state) =>
 		{
 			let entity = scene.FindEntity(state.RootEntityId);
 			if (!entity.IsAssigned || (entity == root))
@@ -74,7 +74,7 @@ static class PrefabNesting
 				state.BaselineTransforms[i] = scene.GetLocalTransform(live);
 
 			let sourceId = state.SourceIds[i];
-			scene.ForEachManager(scope [&](manager) =>
+			scene.ForEachManager(scope (manager) =>
 			{
 				if (!manager.IsSerializable || !manager.HasComponent(live))
 					return;

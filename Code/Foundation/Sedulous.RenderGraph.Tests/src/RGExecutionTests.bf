@@ -55,7 +55,7 @@ class RGExecutionTests
 			harness.BackbufferView, ResourceState.Present);
 		let scene = graph.CreateTransient("Scene", .(TextureFormat.RGBA16Float, 64, 64));
 
-		graph.AddRenderPass("Scene", scope [&] (builder) =>
+		graph.AddRenderPass("Scene", scope (builder) =>
 			{
 				builder.SetColorTarget(0, scene, .Clear, .Store);
 				builder.SetExecute(new [&] (encoder) =>
@@ -64,7 +64,7 @@ class RGExecutionTests
 						view = graph.GetTextureView(scene);
 					});
 			});
-		graph.AddRenderPass("Present", scope [&] (builder) =>
+		graph.AddRenderPass("Present", scope (builder) =>
 			{
 				builder.ReadTexture(scene);
 				builder.SetColorTarget(0, backbuffer, .Clear, .Store);
@@ -115,7 +115,7 @@ class RGExecutionTests
 		let first = graph.CreateTransient("A", .(TextureFormat.RGBA16Float, 64, 64));
 		let second = graph.CreateTransient("B", .(TextureFormat.RGBA8Unorm, 32, 32));
 
-		graph.AddRenderPass("PassA", scope [&] (builder) =>
+		graph.AddRenderPass("PassA", scope (builder) =>
 			{
 				builder.SetColorTarget(0, first, .Clear, .Store);
 				builder.SetExecute(new [&] (encoder) =>

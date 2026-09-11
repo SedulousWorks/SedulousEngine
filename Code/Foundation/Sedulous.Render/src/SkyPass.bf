@@ -134,7 +134,7 @@ class SkyPass
 		uniform.SkyFlags = .(mDevice.NeedsClipSpaceYFlip ? -1.0f : 1.0f, 0.0f, 0.0f, 0.0f);
 
 		let uid = envUid;
-		graph.AddRenderPass("sky", scope [&] (builder) =>
+		graph.AddRenderPass("sky", scope (builder) =>
 			{
 				builder.SetColorTarget(0, color, .Load, .Store, .Black, colorSub);
 				// The camera's own motion, which the temporal resolve needs even where
@@ -147,7 +147,7 @@ class SkyPass
 				builder.SetViewport(viewportX, viewportY, viewportWidth, viewportHeight);
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						let bindGroup = EnsureBindGroup(slot, envView, uid, uniform);
 						if (bindGroup == null)

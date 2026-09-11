@@ -49,7 +49,7 @@ class SceneSnapshot
 		// storage is reading a list something else is rewriting. Destroying a root takes
 		// its children with it, so the roots are the whole scene.
 		let roots = scope List<EntityHandle>();
-		scene.ForEachEntity(scope [&](entity) =>
+		scene.ForEachEntity(scope (entity) =>
 		{
 			if (!scene.GetParent(entity).IsAssigned)
 				roots.Add(entity);

@@ -298,13 +298,13 @@ class SsgiPass
 		var downPush = SsgiDownPush();
 		downPush.SrcTexelSize = texelSize;
 
-		graph.AddRenderPass("ssgi.down", scope [&] (builder) =>
+		graph.AddRenderPass("ssgi.down", scope (builder) =>
 			{
 				builder.SetColorTarget(0, sceneQuarter, .Clear, .Store, .Black);
 				builder.ReadTexture(hdr);
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						let bindGroup = EnsureDownBindGroup(graph.GetTextureView(hdr),
 							graph.GetTextureGeneration(hdr));
@@ -338,7 +338,7 @@ class SsgiPass
 		tracePush.FrameIndex = frameIndex;
 		tracePush.MaxRadiance = (parameters.MaxRadiance > 0.1f) ? parameters.MaxRadiance : 0.1f;
 
-		graph.AddRenderPass("ssgi.trace", scope [&] (builder) =>
+		graph.AddRenderPass("ssgi.trace", scope (builder) =>
 			{
 				builder.SetColorTarget(0, bounce, .Clear, .Store, .Black);
 				builder.ReadTexture(sceneQuarter);
@@ -346,7 +346,7 @@ class SsgiPass
 				builder.ReadTexture(normal);
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						let bindGroup = EnsureBindGroup(graph.GetTextureView(sceneQuarter),
 							graph.GetTextureView(depth), graph.GetTextureView(normal),
@@ -375,14 +375,14 @@ class SsgiPass
 		blurPush.VpSize = vpSize;
 		blurPush.YSign = mDevice.NeedsClipSpaceYFlip ? 1.0f : -1.0f;
 
-		graph.AddRenderPass("ssgi.blur", scope [&] (builder) =>
+		graph.AddRenderPass("ssgi.blur", scope (builder) =>
 			{
 				builder.SetColorTarget(0, filtered, .Clear, .Store, .Black);
 				builder.ReadTexture(bounce);
 				builder.ReadTexture(depth);
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						let bindGroup = EnsureBlurBindGroup(graph.GetTextureView(bounce),
 							graph.GetTextureView(depth),
@@ -434,7 +434,7 @@ class SsgiPass
 
 		let previousView = mViews[viewIndex].Views[previousSlot];
 
-		graph.AddRenderPass("ssgi.resolve", scope [&] (builder) =>
+		graph.AddRenderPass("ssgi.resolve", scope (builder) =>
 			{
 				builder.SetColorTarget(0, composited, .Clear, .Store, .Black);
 				builder.SetColorTarget(1, historyCurrent, .Clear, .Store, .Black);
@@ -444,7 +444,7 @@ class SsgiPass
 				builder.ReadTexture(hdr);
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						let bindGroup = EnsureResolveBindGroup(graph.GetTextureView(filtered),
 							previousView, graph.GetTextureView(velocity), graph.GetTextureView(hdr),

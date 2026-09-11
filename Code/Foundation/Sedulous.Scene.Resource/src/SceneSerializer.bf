@@ -44,7 +44,7 @@ static class SceneSerializer
 		let prefabMembers = scope HashSet<Guid>();
 		if (writing && (prefabMode == .Referenced))
 		{
-			scene.ForEachPrefabInstance(scope [&](state) =>
+			scene.ForEachPrefabInstance(scope (state) =>
 			{
 				for (let live in state.LiveIds)
 					prefabMembers.Add(live);
@@ -210,7 +210,7 @@ static class SceneSerializer
 
 		if (writing)
 		{
-			scene.ForEachManager(scope [&](manager) =>
+			scene.ForEachManager(scope (manager) =>
 			{
 				if (!manager.IsSerializable)
 					return;
@@ -650,14 +650,14 @@ static class SceneSerializer
 
 		if (writing)
 		{
-			scene.ForEachPrefabInstance(scope [&](state) =>
+			scene.ForEachPrefabInstance(scope (state) =>
 			{
 				computed.Add(PrefabDeltas.Compute(scene, state));
 			});
 			// A descriptor that was parked and never respawned re-emits VERBATIM: a load
 			// then save that never ran the resolve pass, which is what a transcode is, must
 			// not quietly drop the section.
-			scene.ForEachPendingPrefabInstance(scope [&](pending) => { parked.Add(pending); });
+			scene.ForEachPendingPrefabInstance(scope (pending) => { parked.Add(pending); });
 			instanceCount = (uint32)(computed.Count + parked.Count);
 		}
 
@@ -696,7 +696,7 @@ static class SceneSerializer
 
 		if (writing)
 		{
-			scene.ForEachPrefabInstance(scope [&](state) => { states.Add(state); });
+			scene.ForEachPrefabInstance(scope (state) => { states.Add(state); });
 			instanceCount = (uint32)states.Count;
 		}
 

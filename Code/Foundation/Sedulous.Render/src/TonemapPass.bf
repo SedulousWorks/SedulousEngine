@@ -147,7 +147,7 @@ class TonemapPass
 		let lutView = gradeOn ? grading.View : null;
 		let lutUid = gradeOn ? grading.Uid : 0;
 
-		graph.AddRenderPass("tonemap", scope [&] (builder) =>
+		graph.AddRenderPass("tonemap", scope (builder) =>
 			{
 				builder.SetColorTarget(0, ldr, load, .Store, clear);
 				builder.ReadTexture(hdr);
@@ -159,7 +159,7 @@ class TonemapPass
 				builder.SetViewport(viewportX, viewportY, viewportWidth, viewportHeight);
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						let hdrView = graph.GetTextureView(hdr);
 						// The generation MIXES every input's, so a change in any of them

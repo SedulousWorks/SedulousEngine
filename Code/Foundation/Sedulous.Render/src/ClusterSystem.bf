@@ -239,7 +239,7 @@ class ClusterSystem
 		let offsetsHandle = graph.ImportBuffer("cluster.offsets", offsets);
 		let indicesHandle = graph.ImportBuffer("cluster.indices", indices);
 
-		graph.AddComputePass("cluster.build", scope [&] (builder) =>
+		graph.AddComputePass("cluster.build", scope (builder) =>
 			{
 				builder.WriteStorage(offsetsHandle);
 				builder.WriteStorage(indicesHandle);
@@ -247,7 +247,7 @@ class ClusterSystem
 				// declared later, so the pass says so itself.
 				builder.HasSideEffects();
 
-				builder.SetComputeExecute(new [=] (encoder) =>
+				builder.SetComputeExecute(new (encoder) =>
 					{
 						encoder.SetPipeline(pipeline);
 						var offset = paramsOffset;

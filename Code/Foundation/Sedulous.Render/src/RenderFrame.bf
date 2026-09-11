@@ -1035,13 +1035,13 @@ class RenderFrame
 				// view's culled draw list, so view frustum culling cannot drop an off camera
 				// caster whose shadow is visible. The per cascade cull then keeps each caster
 				// to about one cascade.
-				mGraph.AddRenderPass("shadow.cascade", scope [&] (builder) =>
+				mGraph.AddRenderPass("shadow.cascade", scope (builder) =>
 					{
 						builder.SetDepthTarget(shadowHandle, .Clear, .Store, 1.0f,
 							.(0, 0, layer, 1));
 						builder.SetViewport(0, 0, shadowResolution, shadowResolution);
 
-						builder.SetExecute(new [=] (encoder) =>
+						builder.SetExecute(new (encoder) =>
 							{
 								// A cascade follows its OWNING view's level selection, so the
 								// shadow matches what that view draws.
@@ -1116,13 +1116,13 @@ class RenderFrame
 
 		let atlasResolution = mShadows.AtlasResolution;
 
-		mGraph.AddRenderPass("shadow.atlas", scope [&] (builder) =>
+		mGraph.AddRenderPass("shadow.atlas", scope (builder) =>
 			{
 				builder.SetDepthTarget(atlasHandle, .Clear, .Store, 1.0f, .(0, 0, layer, 1));
 				// The pass's default; each tile sets its own below.
 				builder.SetViewport(0, 0, atlasResolution, atlasResolution);
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						for (let draw in draws)
 						{
@@ -1388,14 +1388,14 @@ class RenderFrame
 
 		// The depth prepass: opaque only, clearing and writing the camera depth so the forward
 		// shades each opaque pixel once. Declared before the forward, which loads it.
-		mGraph.AddRenderPass("depth.prepass", scope [&] (builder) =>
+		mGraph.AddRenderPass("depth.prepass", scope (builder) =>
 			{
 				builder.SetDepthTarget(depth, .Clear, .Store);
 				builder.SetViewport(view.ViewportX, view.ViewportY, view.ViewportWidth,
 					view.ViewportHeight);
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						RecordDepthPrepass(encoder, view, mRegistry, viewIndex);
 					});
@@ -1463,7 +1463,7 @@ class RenderFrame
 
 				// An EMPTY pass: the multisampled colour loads and resolves at the pass's end
 				// through the fixed function resolve attachment. No draws, and never a blit.
-				mGraph.AddRenderPass("msaa.colorResolve", scope [&] (builder) =>
+				mGraph.AddRenderPass("msaa.colorResolve", scope (builder) =>
 					{
 						builder.SetColorTarget(0, msaaHdr, .Load, .Store);
 						builder.SetResolveTarget(0, resolvedHdr);
@@ -1764,7 +1764,7 @@ class RenderFrame
 
 		let overlays = mSceneOverlays;
 
-		mGraph.AddRenderPass("scene.overlay", scope [&] (builder) =>
+		mGraph.AddRenderPass("scene.overlay", scope (builder) =>
 			{
 				builder.SetColorTarget(0, colorHandle, .Load, .Store, .Black);
 				if (depthStencil.IsValid)
@@ -1775,7 +1775,7 @@ class RenderFrame
 				}
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						for (let overlay in overlays)
 							overlay.Render(encoder, overlayView);

@@ -210,7 +210,7 @@ class AoPass
 		// that flips clip space, so the sample is flipped back here.
 		push.FlipAoY = mDevice.NeedsClipSpaceYFlip ? 1.0f : 0.0f;
 
-		graph.AddRenderPass("ao.apply", scope [&] (builder) =>
+		graph.AddRenderPass("ao.apply", scope (builder) =>
 			{
 				builder.SetColorTarget(0, applied, .Clear, .Store, .Black);
 				builder.ReadTexture(hdr);
@@ -218,7 +218,7 @@ class AoPass
 				builder.SetViewport(0, 0, width, height);
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						let bindGroup = EnsureBindGroup(graph.GetTextureView(hdr),
 							graph.GetTextureView(ao), graph.GetTextureGeneration(hdr)
@@ -247,7 +247,7 @@ class AoPass
 		Internal.MemCpy(&pushData[0], push, pushSize);
 		let pushBytes = pushSize;
 
-		graph.AddRenderPass("ao.gen", scope [&] (builder) =>
+		graph.AddRenderPass("ao.gen", scope (builder) =>
 			{
 				// Cleared to WHITE, which is no occlusion: an unwritten pixel must not
 				// darken the scene.
@@ -257,7 +257,7 @@ class AoPass
 				builder.SetViewport(0, 0, width, height);
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						let bindGroup = EnsureBindGroup(graph.GetTextureView(depth),
 							graph.GetTextureView(normal), graph.GetTextureGeneration(depth)
@@ -284,7 +284,7 @@ class AoPass
 		push.Direction = direction;
 		push.TexelSize = texel;
 
-		graph.AddRenderPass("ao.blur", scope [&] (builder) =>
+		graph.AddRenderPass("ao.blur", scope (builder) =>
 			{
 				builder.SetColorTarget(0, result, .Clear, .Store, .White);
 				builder.ReadTexture(ao);
@@ -292,7 +292,7 @@ class AoPass
 				builder.SetViewport(0, 0, width, height);
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						let bindGroup = EnsureBindGroup(graph.GetTextureView(ao),
 							graph.GetTextureView(depth), graph.GetTextureGeneration(ao)

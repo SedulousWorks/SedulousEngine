@@ -146,7 +146,7 @@ class ExposurePass
 		// is only rewritten once that many frames have passed, its buffer long since done.
 		let slot = (int)view * mFramesInFlight + (frameIndex % mFramesInFlight);
 
-		graph.AddRenderPass("exposure.measure", scope [&] (builder) =>
+		graph.AddRenderPass("exposure.measure", scope (builder) =>
 			{
 				builder.SetColorTarget(0, currentHandle, .Clear, .Store, .Black);
 				builder.ReadTexture(hdr);
@@ -154,7 +154,7 @@ class ExposurePass
 				builder.SetViewport(0, 0, 1, 1);
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						let bindGroup = EnsureBindGroup(slot, graph.GetTextureView(hdr),
 							previousView, graph.GetTextureGeneration(hdr));

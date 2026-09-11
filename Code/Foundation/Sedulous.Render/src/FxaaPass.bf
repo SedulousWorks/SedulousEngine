@@ -107,14 +107,14 @@ class FxaaPass
 
 		let load = clearColor ? LoadOp.Clear : LoadOp.Load;
 
-		graph.AddRenderPass("fxaa", scope [&] (builder) =>
+		graph.AddRenderPass("fxaa", scope (builder) =>
 			{
 				builder.SetColorTarget(0, ldr, load, .Store, clear);
 				builder.ReadTexture(source);
 				builder.SetViewport(viewportX, viewportY, viewportWidth, viewportHeight);
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						let bindGroup = EnsureBindGroup(slot, graph.GetTextureView(source),
 							graph.GetTextureGeneration(source));

@@ -54,14 +54,14 @@ class AnimationClipTests
 			let clip = scope AnimationClip("Test", 2.0f);
 			clip.AddEvent(0.5f, "Hit");
 			var count = 0;
-			clip.FireEvents(0.0f, 1.0f, scope [&](name, time) => { count++; });
+			clip.FireEvents(0.0f, 1.0f, scope [&count](name, time) => { count++; });
 			Test.Assert(count == 1);
 		}
 		{
 			let clip = scope AnimationClip("Test", 2.0f);
 			clip.AddEvent(1.5f, "Hit");
 			var count = 0;
-			clip.FireEvents(0.0f, 1.0f, scope [&](name, time) => { count++; });
+			clip.FireEvents(0.0f, 1.0f, scope [&count](name, time) => { count++; });
 			Test.Assert(count == 0);
 		}
 		{
@@ -69,7 +69,7 @@ class AnimationClipTests
 			let clip = scope AnimationClip("Test", 1.0f);
 			clip.AddEvent(0.5f, "Exact");
 			var count = 0;
-			clip.FireEvents(0.3f, 0.5f, scope [&](name, time) => { count++; });
+			clip.FireEvents(0.3f, 0.5f, scope [&count](name, time) => { count++; });
 			Test.Assert(count == 1);
 		}
 	}
@@ -85,7 +85,7 @@ class AnimationClipTests
 			clip.SortEvents();
 
 			let fired = scope List<String>();
-			clip.FireEvents(0.0f, 1.5f, scope [&](name, time) =>
+			clip.FireEvents(0.0f, 1.5f, scope (name, time) =>
 				{
 					fired.Add(new String(name));
 				});
@@ -106,7 +106,7 @@ class AnimationClipTests
 			clip.SortEvents();
 
 			let fired = scope List<String>();
-			clip.FireEvents(0.9f, 1.3f, scope [&](name, time) =>
+			clip.FireEvents(0.9f, 1.3f, scope (name, time) =>
 				{
 					fired.Add(new String(name));
 				});
@@ -124,7 +124,7 @@ class AnimationClipTests
 			clip.SortEvents();
 
 			var count = 0;
-			clip.FireEvents(0.5f, 1.5f, scope [&](name, time) => { count++; });
+			clip.FireEvents(0.5f, 1.5f, scope [&count](name, time) => { count++; });
 			Test.Assert(count == 2);
 		}
 	}

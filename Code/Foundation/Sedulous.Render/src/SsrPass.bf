@@ -224,7 +224,7 @@ class SsrPass
 		tracePush.Debug = parameters.Debug;
 		tracePush.Glossy = (parameters.Glossy >= 0.0f) ? parameters.Glossy : 0.0f;
 
-		graph.AddRenderPass("ssr.trace", scope [&] (builder) =>
+		graph.AddRenderPass("ssr.trace", scope (builder) =>
 			{
 				builder.SetColorTarget(0, reflection, .Clear, .Store, .Black);
 				builder.ReadTexture(hdr);
@@ -234,7 +234,7 @@ class SsrPass
 				builder.SetViewport(0, 0, width, height);
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						let bindGroup = EnsureBindGroup(graph.GetTextureView(hdr),
 							graph.GetTextureView(depth), graph.GetTextureView(normal),
@@ -284,7 +284,7 @@ class SsrPass
 
 		let previousView = mViews[viewIndex].Views[previousSlot];
 
-		graph.AddRenderPass("ssr.resolve", scope [&] (builder) =>
+		graph.AddRenderPass("ssr.resolve", scope (builder) =>
 			{
 				builder.SetColorTarget(0, composited, .Clear, .Store, .Black);
 				builder.SetColorTarget(1, historyCurrent, .Clear, .Store, .Black);
@@ -294,7 +294,7 @@ class SsrPass
 				builder.ReadTexture(hdr);
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						let bindGroup = EnsureResolveBindGroup(graph.GetTextureView(reflection),
 							previousView, graph.GetTextureView(velocity), graph.GetTextureView(hdr),

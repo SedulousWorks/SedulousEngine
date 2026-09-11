@@ -311,7 +311,7 @@ class ReflectionProbeSystem
 			if (faceBindGroup == null)
 				continue;
 
-			graph.AddRenderPass("probes.blit", scope [&] (builder) =>
+			graph.AddRenderPass("probes.blit", scope (builder) =>
 				{
 					builder.SetColorTarget(0, prefiltered, .Clear, .Store, .Black,
 						.(0, 0, slot * 6 + face, 1));
@@ -319,7 +319,7 @@ class ReflectionProbeSystem
 					builder.SetViewport(0, 0, cPrefilterResolution, cPrefilterResolution);
 					builder.NeverCull();
 
-					builder.SetExecute(new [=] (encoder) =>
+					builder.SetExecute(new (encoder) =>
 						{
 							encoder.SetPipeline(mBlitPipeline);
 							encoder.SetBindGroup(0, faceBindGroup);
@@ -347,7 +347,7 @@ class ReflectionProbeSystem
 
 			for (uint32 face = 0; face < 6; face++)
 			{
-				graph.AddRenderPass("probes.prefilter", scope [&] (builder) =>
+				graph.AddRenderPass("probes.prefilter", scope (builder) =>
 					{
 						builder.ReadTexture(prefiltered, .(0, 1, slot * 6, 6));
 						builder.SetColorTarget(0, prefiltered, .Clear, .Store, .Black,
@@ -355,7 +355,7 @@ class ReflectionProbeSystem
 						builder.SetViewport(0, 0, resolution, resolution);
 						builder.NeverCull();
 
-						builder.SetExecute(new [=] (encoder) =>
+						builder.SetExecute(new (encoder) =>
 							{
 								var push = ProbePrefilterPush();
 								push.FaceIndex = (int32)face;

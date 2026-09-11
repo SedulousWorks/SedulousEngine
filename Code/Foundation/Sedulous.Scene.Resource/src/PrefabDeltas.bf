@@ -97,7 +97,7 @@ static class PrefabDeltas
 	private static void CollectComponentOps(Scene scene, PrefabInstanceState state, int memberIndex,
 		EntityHandle live, PendingPrefabInstance delta)
 	{
-		scene.ForEachManager(scope [&](manager) =>
+		scene.ForEachManager(scope (manager) =>
 		{
 			if (!manager.IsSerializable)
 				return;

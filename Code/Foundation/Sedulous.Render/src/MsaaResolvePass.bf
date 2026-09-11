@@ -119,7 +119,7 @@ class MsaaResolvePass
 		outputs.Depth = graph.CreateTransient("msaa.resolvedDepth", .(depthFormat, width, height));
 
 		let resolved = outputs;
-		graph.AddRenderPass("msaa.resolve", scope [&] (builder) =>
+		graph.AddRenderPass("msaa.resolve", scope (builder) =>
 			{
 				builder.SetColorTarget(0, resolved.Normal, .DontCare, .Store);
 				builder.SetColorTarget(1, resolved.Velocity, .DontCare, .Store);
@@ -136,7 +136,7 @@ class MsaaResolvePass
 				builder.SetViewport(0, 0, width, height);
 				builder.NeverCull();
 
-				builder.SetExecute(new [=] (encoder) =>
+				builder.SetExecute(new (encoder) =>
 					{
 						let bindGroup = EnsureBindGroup(graph.GetTextureView(msaaNormal),
 							graph.GetTextureView(msaaVelocity), graph.GetTextureView(msaaMaterial),

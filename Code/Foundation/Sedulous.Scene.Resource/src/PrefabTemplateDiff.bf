@@ -214,7 +214,7 @@ static class PrefabTemplateDiff
 		List<(Guid source, String typeId, List<uint8> blob)> templateBlobs,
 		PendingPrefabInstance record)
 	{
-		scene.ForEachManager(scope [&](manager) =>
+		scene.ForEachManager(scope (manager) =>
 		{
 			if (!manager.IsSerializable)
 				return;
