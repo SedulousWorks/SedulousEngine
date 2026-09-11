@@ -185,4 +185,68 @@ class FileStreamTests
 
 		Test.Assert(RemoveDirectoryRecursive(kScratch));
 	}
+
+	/// Two readers of one file at once, which streamed audio needs: each voice of a clip opens
+	/// its own stream and they must not share a cursor.
+	///
+	/// Only Windows enforces share modes, so this passes on Linux whatever the mode is. It is
+	/// here because the contract is the POSIX one the engine is written against, and Windows is
+	/// where breaking it shows.
+	[Test]
+	public static void TwoReadersCanHoldTheSameFile()
+	{
+		let path = PathJoin(kScratch, "shared.bin", .. scope String());
+		RemoveDirectoryRecursive(kScratch);
+		Test.Assert(CreateDirectory(kScratch));
+
+		{
+			let file = scope FileStream(path, .Write);
+			Test.Assert(file.IsValid);
+			Test.Assert(file.WriteValue<int32>(0x5EDU));
+		}
+
+		let first = scope FileStream(path, .Read);
+		Test.Assert(first.IsValid);
+
+		let second = scope FileStream(path, .Read);
+		Test.Assert(second.IsValid, "a second reader must not be refused");
+
+		// INDEPENDENT cursors: reading through one must not move the other.
+		int32 a = 0;
+		Test.Assert(first.ReadValue(out a));
+		Test.Assert(first.Tell() == 4);
+		Test.Assert(second.Tell() == 0);
+
+		int32 b = 0;
+		Test.Assert(second.ReadValue(out b));
+		Test.Assert(a == b);
+
+		RemoveDirectoryRecursive(kScratch);
+	}
+
+	/// Rewriting a file while a reader still holds it, which an asset regenerated during a
+	/// live load does. POSIX allows it; a restrictive share mode makes Windows alone refuse.
+	[Test]
+	public static void AnOpenReaderDoesNotBlockAWriter()
+	{
+		let path = PathJoin(kScratch, "rewrite.bin", .. scope String());
+		RemoveDirectoryRecursive(kScratch);
+		Test.Assert(CreateDirectory(kScratch));
+
+		{
+			let file = scope FileStream(path, .Write);
+			Test.Assert(file.IsValid);
+			Test.Assert(file.WriteValue<int32>(1));
+		}
+
+		let reader = scope FileStream(path, .Read);
+		Test.Assert(reader.IsValid);
+
+		let writer = scope FileStream(path, .Write);
+		Test.Assert(writer.IsValid, "an open reader must not block a rewrite");
+		Test.Assert(writer.WriteValue<int32>(2));
+
+		RemoveDirectoryRecursive(kScratch);
+	}
+
 }

@@ -33,7 +33,16 @@ class FileStream : IStream
 			access = .Write;
 		}
 
-		mIsValid = mFile.Open(path, fileMode, access) case .Ok;
+		// Shares EVERYTHING, which is what matches the POSIX semantics the rest of the engine
+		// is written against: there an open reader never stops a file being rewritten,
+		// replaced or unlinked. The default of no sharing makes Windows alone refuse a second
+		// open, so two voices of one streamed clip, or regenerating an asset while its own
+		// payload stream is open, fail there and pass on Linux.
+		//
+		// This is not a lock and never was one: it only ever blocked other openers, and only
+		// while a handle happened to be alive. Code needing exclusive access must take a real
+		// lock.
+		mIsValid = mFile.Open(path, fileMode, access, .Read | .Write | .Delete) case .Ok;
 	}
 
 	public override bool IsValid => mIsValid;
