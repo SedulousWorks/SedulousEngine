@@ -209,6 +209,8 @@ class UISandboxApp : IApplication
 		TextInputTab.Build(tabView);
 		DataControlsTab.Build(this, tabView);
 		OverlaysTab.Build(this, tabView);
+		DragDropTab.Build(tabView);
+		AnimationsTab.Build(this, tabView);
 	}
 
 	/// BORROWED, for the tab builders.
