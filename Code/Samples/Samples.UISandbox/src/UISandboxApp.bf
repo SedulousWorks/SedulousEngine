@@ -54,19 +54,14 @@ class UISandboxApp : IApplication
 
 	public ~this()
 	{
-		// Torn down in the reverse of the order they were built: the host holds the context
-		// every view is registered in.
-		if (mRoot != null)
-			mRoot.ReleaseRef();
-
+		// The root and the style sheet are NOT released here: AttachWindow and SetStyleSheet
+		// both consume the reference they were handed, and the host and the context release
+		// them with themselves.
 		if (mDockHost != null)
 			delete mDockHost;
 
 		if (mUIHost != null)
 			delete mUIHost;
-
-		if (mSheet != null)
-			mSheet.ReleaseRef();
 
 		if (mTestImage != null)
 			delete mTestImage;
@@ -206,6 +201,7 @@ class UISandboxApp : IApplication
 		ScrollViewTab.Build(tabView);
 		LayoutsTab.Build(tabView);
 		TabPlacementTab.Build(tabView);
+		TextInputTab.Build(tabView);
 	}
 
 	/// BORROWED, for the tab builders.
@@ -226,8 +222,6 @@ class UISandboxApp : IApplication
 
 	private void ApplyTheme()
 	{
-		let previous = mSheet;
-
 		switch (mThemeIndex)
 		{
 		case 0: mSheet = DarkTheme.Create();
@@ -235,12 +229,8 @@ class UISandboxApp : IApplication
 		default: mSheet = RoundedDarkTheme.Create();
 		}
 
+		// CONSUMES the sheet, and releases whichever one it was showing before.
 		mUIHost.Context.SetStyleSheet(mSheet);
-
-		// AFTER the context took the new one: the context holds the only other reference, and
-		// releasing first would free the sheet still being drawn from.
-		if (previous != null)
-			previous.ReleaseRef();
 
 		if (mThemeButton == null)
 			return;
