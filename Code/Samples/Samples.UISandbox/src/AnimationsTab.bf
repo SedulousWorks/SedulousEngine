@@ -39,18 +39,18 @@ static class AnimationsTab
 		let row = SandboxViews.HFlex(6.0f);
 		let animations = app.Host.Context.Animations;
 
-		AddButton(row, "Fade Out", new [&](sender) =>
+		AddButton(row, "Fade Out", new (sender) =>
 			{
 				animations.Add(ViewAnimator.FadeOut(target, 0.5f, Easing.EaseOutCubic));
 			});
-		AddButton(row, "Fade In", new [&](sender) =>
+		AddButton(row, "Fade In", new (sender) =>
 			{
 				animations.Add(ViewAnimator.FadeIn(target, 0.5f, Easing.EaseOutCubic));
 			});
 
 		// A sequence rather than one curve: the overshoot and the settle are separate motions,
 		// and only the second bounces.
-		AddButton(row, "Bounce", new [&](sender) =>
+		AddButton(row, "Bounce", new (sender) =>
 			{
 				let storyboard = new Storyboard(.Sequential);
 				storyboard.Add(ViewAnimator.ScaleTo(target, 1.0f, 1.3f, 0.15f, Easing.EaseOutCubic));
@@ -58,7 +58,7 @@ static class AnimationsTab
 				animations.Add(storyboard);
 			});
 
-		AddButton(row, "Slide", new [&](sender) =>
+		AddButton(row, "Slide", new (sender) =>
 			{
 				let storyboard = new Storyboard(.Sequential);
 				storyboard.Add(ViewAnimator.TranslateX(target, 0, 50, 0.3f, Easing.EaseOutCubic));
@@ -93,7 +93,7 @@ static class AnimationsTab
 	{
 		let button = new Button(text);
 		button.Transform = transform;
-		button.OnClick.Add(new [&](sender) => clicked.SetText(message));
+		button.OnClick.Add(new (sender) => clicked.SetText(message));
 		row.AddView(button);
 	}
 

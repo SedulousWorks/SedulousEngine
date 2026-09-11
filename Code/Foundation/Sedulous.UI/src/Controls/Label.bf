@@ -91,11 +91,10 @@ class Label : View
 	/// Sets the text and answers this, so a label can be built in one expression.
 	public Label SetText(StringView text)
 	{
-		let replacement = new String(text);
-		let previous = Text.Value;
-		Text.Value = replacement;
-		if (previous != replacement)
-			delete previous;
+		if (Text.Value == null)
+			Text.Value = new String(text);
+		else
+			Text.Value.Set(text);
 		Invalidate();
 		return this;
 	}

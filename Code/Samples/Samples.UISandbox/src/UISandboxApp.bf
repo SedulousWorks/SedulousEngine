@@ -364,7 +364,7 @@ class UISandboxApp : IApplication
 		mRoot.AddView(mToastHost);
 
 		mThemeButton = new Button("Theme: Dark");
-		mThemeButton.OnClick.Add(new [&](sender) =>
+		mThemeButton.OnClick.Add(new (sender) =>
 			{
 				mThemeIndex = (mThemeIndex + 1) % 5;
 				ApplyTheme();

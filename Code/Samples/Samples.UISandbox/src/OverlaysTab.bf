@@ -78,14 +78,14 @@ static class OverlaysTab
 		let row = SandboxViews.HFlex(8.0f);
 
 		let alert = new Button("Alert");
-		alert.OnClick.Add(new [&](sender) =>
+		alert.OnClick.Add(new (sender) =>
 			{
 				Dialog.Alert("Information", "This is an alert dialog.").Show(app.Host.Context);
 			});
 		row.AddView(alert);
 
 		let confirm = new Button("Confirm");
-		confirm.OnClick.Add(new [&](sender) =>
+		confirm.OnClick.Add(new (sender) =>
 			{
 				Dialog.Confirm("Confirm", "Are you sure you want to proceed?")
 					.Show(app.Host.Context);
@@ -130,13 +130,13 @@ static class OverlaysTab
 		AddToastButton(app, row, "Error (sticky)", .Error, "Cook: 1 failed (close me).", 0.0f);
 
 		let withAction = new Button("With action");
-		withAction.OnClick.Add(new [&](sender) =>
+		withAction.OnClick.Add(new (sender) =>
 			{
 				ToastRequest request = .("Scene saved.", .Success);
 				// Sticky, so the action stays reachable.
 				request.DurationSeconds = 0.0f;
 				request.ActionLabel = "Undo";
-				request.OnAction = new [&]() =>
+				request.OnAction = new () =>
 					{
 						ToastRequest ack = .("Undone.", .Info);
 						ack.DurationSeconds = 3.0f;
@@ -153,7 +153,7 @@ static class OverlaysTab
 		ToastSeverity severity, StringView message, float duration)
 	{
 		let button = new Button(text);
-		button.OnClick.Add(new [&](sender) =>
+		button.OnClick.Add(new (sender) =>
 			{
 				ToastRequest request = .(message, severity);
 				request.DurationSeconds = duration;

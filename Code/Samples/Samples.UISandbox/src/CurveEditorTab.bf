@@ -55,9 +55,9 @@ static class CurveEditorTab
 
 		// Every edit path lands on one of these three, so the readout follows a drag, an add
 		// and a delete alike.
-		curve.OnKeyChanged.Add(new [&](channelIndex, keyIndex) => Refresh(curve, status));
-		curve.OnKeyAdded.Add(new [&](channelIndex, keyIndex) => Refresh(curve, status));
-		curve.OnKeyRemoved.Add(new [&](channelIndex, keyIndex) => Refresh(curve, status));
+		curve.OnKeyChanged.Add(new (channelIndex, keyIndex) => Refresh(curve, status));
+		curve.OnKeyAdded.Add(new (channelIndex, keyIndex) => Refresh(curve, status));
+		curve.OnKeyRemoved.Add(new (channelIndex, keyIndex) => Refresh(curve, status));
 	}
 
 	private static void Refresh(CurveCanvas curve, Label status)

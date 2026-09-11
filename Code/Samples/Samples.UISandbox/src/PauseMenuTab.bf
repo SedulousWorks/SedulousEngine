@@ -58,7 +58,7 @@ static class PauseMenuTab
 	private static void LogClick(ViewGroup root, StringView name, StringView message)
 	{
 		if (let button = root.FindByName<Button>(name))
-			button.OnClick.Add(new [&](sender) => Console.WriteLine(message));
+			button.OnClick.Add(new (sender) => Console.WriteLine(message));
 	}
 
 	private static void Recolour(ViewGroup root, StringView name, Color color)

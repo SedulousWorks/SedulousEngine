@@ -103,7 +103,7 @@ static class ControlsTab
 
 		let label = MakeLabel("Count: 0");
 		let button = new RepeatButton("Hold Me");
-		button.OnClick.Add(new [&](sender) =>
+		button.OnClick.Add(new (sender) =>
 			{
 				label.SetText(scope $"Count: {app.BumpRepeatCount()}");
 			});
