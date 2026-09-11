@@ -1,0 +1,163 @@
+/* toolkit-dark.sss - toolkit-control styling, DARK branch, authored to the shared design
+ * system (ui-theme-migration.md consistency pass). Merged into the theme sheet by
+ * ToolkitThemeExtension when the palette reads dark (background luminance below half), so
+ * any palette-derived dark look (Dark, GraphiteOrange) flows through unchanged.
+ *
+ * Follows the dark-family DESIGN SYSTEM in dark.sss: ramp 16/14/12 (menu bar 14, dock tabs
+ * + status bar 12), dim text = $text-dim, selection/hover accents = alpha($primary-accent).
+ * Dark chrome recedes by DARKENING the surface (bars/strips) and separates by LIGHTENING
+ * (split dividers) - the light branch runs the other way, hence two fragments.
+ */
+
+/* === DockManager === */
+DockManager { background: color($background); }
+
+/* === DockablePanel === */
+DockablePanel {
+    text-color: $text;
+    background: color($surface);
+    font-size: 12;  /* header title (compact chrome; without this the View 16 default wins) */
+}
+DockablePanel::header { background: rounded-rect(darken($surface, 10%), radius=0); }
+DockablePanel::content { background: color($surface); }
+DockablePanel::close-button { text-color: $text-dim; }
+DockablePanel::close-button:hover { text-color: $error; }
+
+/* === DockTabGroup === */
+DockTabGroup {
+    border-color: $border;
+    accent-color: $primary-accent;
+    /* Compact tab-strip text (a specific size so the 24px strip doesn't inherit the global
+     * 16px default); wins over the View default via CSS last-declared tie-break. */
+    font-size: 12;
+}
+DockTabGroup::strip { background: color(darken($surface, 15%)); }
+DockTabGroup::content { background: color($surface); }
+DockTabGroup::tab { text-color: $text-dim; }
+/* rounded-rect (radius 0) so DockTabGroup can mask tab top corners to the theme's resolved
+ * CornerRadius (rounded in the rounded theme, square here). */
+DockTabGroup::tab:checked {
+    background: rounded-rect($surface, radius=0);
+    text-color: $text;
+}
+DockTabGroup::tab:hover {
+    background: rounded-rect(lighten(darken($surface, 15%), 5%), radius=0);
+    text-color: lighten($text-dim, 30%);
+}
+DockTabGroup::close-button { text-color: $text-dim; }
+DockTabGroup::close-button:hover { text-color: $error; }
+
+/* === DockSplit === */
+DockSplit {
+    border-color: lighten($surface, 10%);
+    accent-color: lighten($surface, 25%);
+}
+
+/* === DockableWindow === */
+DockableWindow { background: rounded-rect($surface, radius=0, border=$border, border-width=1); }
+
+/* === MenuBar === */
+MenuBar {
+    background: color(darken($surface, 15%));
+    text-color: $text;
+    border-color: $border;
+    font-size: 14;
+    /* Menu-item hover fills the whole item rect, so use a MUTED translucent accent (not the
+     * full accent, which would paint solid blocks behind the titles). */
+    accent-color: alpha($primary-accent, 0.22);
+}
+
+/* === Toolbar === */
+Toolbar {
+    background: color(darken($surface, 15%));
+    border-color: $border;
+    font-size: 12;  /* button labels (compact chrome; resolved via the Toolbar ancestor) */
+    selection-color: darken($primary-accent, 30%);
+}
+
+/* === StatusBar === */
+StatusBar {
+    background: color(darken($surface, 20%));
+    border-color: $border;
+    text-color: alpha($text, 0.78);
+    /* Section text is child Labels (default 12) - a StatusBar font-size rule cannot reach
+     * them (no descendant selectors / style inheritance yet; audit remainder). */
+}
+
+/* === SplitView === */
+SplitView {
+    border-color: lighten($surface, 10%);
+    accent-color: lighten($surface, 25%);
+    text-dim-color: alpha($text-dim, 0.7);
+}
+
+/* === FloatingPanel === (colors resolved in code so the panel rounds to the theme CornerRadius) */
+FloatingPanel {
+    text-color: $text;
+    background-color: $surface;
+    border-color: $border;
+    font-size: 12;
+}
+FloatingPanel::header { background-color: darken($surface, 10%); }
+FloatingPanel::chevron { text-color: $text-dim; }
+FloatingPanel::close-button { text-color: $text-dim; }
+FloatingPanel::close-button:hover { text-color: $error; }
+
+/* === BreadcrumbBar === (rounded-rect so it can round to the theme CornerRadius) */
+BreadcrumbBar {
+    background: rounded-rect(darken($surface, 10%), radius=0);
+    text-color: $text;
+    accent-color: $primary-accent;
+    font-size: 12;  /* segments (compact chrome) */
+}
+
+/* === ColorPicker === */
+ColorPicker {
+    background: color($surface);
+    border-color: $border;
+}
+
+/* === PropertyGrid === */
+PropertyGrid {
+    background: color($surface);
+    border-color: $border;
+}
+
+/* === ToastCard === (floating notification cards). ToastCard resolves Background as a COLOR
+ * (ResolveStyleColor), so background-color (raw color), NOT background (a drawable would be
+ * ignored and the card falls back to its hardcoded value). Fully opaque so it reads over any
+ * content. */
+ToastCard {
+    background-color: $surface-bright;
+    text-color: $text;
+}
+
+/* === Timeline (the dopesheet: ruler ticks/labels, lane gutter + selection wash, key
+ * diamonds via accent, playhead via error) === */
+Timeline {
+    background-color: darken($surface, 30%);
+    border-color: lighten($surface, 15%);
+    text-dim-color: $text-dim;
+    accent-color: $primary-accent;
+    error-color: $error;
+}
+
+/* === CurveCanvas / GradientEditor (curve + gradient editing canvases; key/tangent/axis
+ * handle colors stay semantic constants) === */
+CurveCanvas {
+    background-color: darken($surface, 30%);
+    border-color: lighten($surface, 15%);
+    text-dim-color: $text-dim;
+}
+GradientEditor {
+    background-color: darken($surface, 30%);
+    border-color: lighten($surface, 15%);
+    text-dim-color: lighten($text-dim, 20%);
+}
+
+/* === DockDragPreview (floating drag ghost - panel chrome; header derives in code) === */
+DockDragPreview {
+    background-color: $surface;
+    border-color: $border;
+    text-color: $text;
+}
