@@ -11,6 +11,12 @@ using Sedulous.UI.Application;
 using Sedulous.UI.Runtime;
 using Sedulous.UI.Toolkit;
 using Sedulous.UI.VFS;
+using Sedulous.UI.Viewport;
+using Sedulous.Graphics;
+using Sedulous.RHI;
+using Sedulous.Shaders;
+using Sedulous.Shell;
+using Samples.Common;
 using Sedulous.VFS;
 
 namespace Samples.UISandbox;
@@ -64,6 +70,19 @@ class UISandboxApp : IApplication
 	// directory. Built on first use and kept for the application's life.
 	private NativeFileSystem mUIFileSystem = null;
 	private VfsResourceProvider mResourceProvider = null;
+
+	// The viewport and what draws into it. The view owns its offscreen targets and its gated
+	// input surface; the application owns the router, the camera and the cube.
+	/// BORROWED: the panel tree owns it.
+	private ViewportView mViewport = null;
+	/// The window currently hosting the viewport, which changes when its panel is floated.
+	private RenderWindow mViewportWindow = null;
+	private RenderWindow mMainWindow = null;
+	private InputRouter mViewportRouter = null;
+	private ShaderCompiler mCubeCompiler = null;
+	private SpinningCube mCube = new .() ~ delete _;
+	private FlyCamera mCamera = .();
+	private float mTime = 0.0f;
 
 	/// The UI on runtime bridge, which owns the context and the per window renderer and input.
 	private UIHost mUIHost = null;
@@ -134,6 +153,83 @@ class UISandboxApp : IApplication
 
 		// Adds the root to the context and wires this window's renderer and input.
 		mUIHost.AttachWindow(mainWindow, mRoot);
+
+		mMainWindow = mainWindow;
+		// AFTER the attach: the window's renderer does not exist until then.
+		WireViewport(host);
+	}
+
+	public void SetViewport(ViewportView viewport) => mViewport = viewport;
+
+	/// Brings the 3D content up: the viewport's target registered with the window's renderer,
+	/// the cube built against the viewport's OWN formats, and an input router carrying the
+	/// view's gated surface.
+	private void WireViewport(IApplicationHost host)
+	{
+		if ((mViewport == null) || (mMainWindow == null))
+			return;
+
+		let device = host.Graphics.Raw;
+		mViewport.Initialize(device, mUIHost.RendererFor(mMainWindow), host.Shell.Input,
+			mMainWindow.Window.Id);
+		mViewportWindow = mMainWindow;
+
+		mCubeCompiler = new ShaderCompiler();
+		if (mCubeCompiler.Initialize() case .Ok)
+		{
+			mCube.Init(device, mCubeCompiler, (int32)host.Graphics.FramesInFlight,
+				mViewport.ColorFormat, mViewport.DepthFormat).IgnoreError();
+		}
+
+		// Framing the cube, and slower than the default so it stays usable in a small panel.
+		mCamera.Position = .(0.0f, 0.0f, 4.5f);
+		mCamera.Yaw = 0.0f;
+		mCamera.Pitch = 0.0f;
+		mCamera.MoveSpeed = 4.0f;
+		mCamera.FastSpeed = 12.0f;
+
+		mViewport.OnRender = new (view, encoder, frameIndex) =>
+			{
+				let width = view.RenderWidth;
+				let height = view.RenderHeight;
+				if ((width == 0) || (height == 0))
+					return;
+
+				let aspect = (float)width / (float)height;
+				let projection = Float4x4.PerspectiveFovRH(1.0f, aspect, 0.1f, 100.0f);
+				let view4 = Float4x4.LookAtRH(mCamera.Position,
+					mCamera.Position + mCamera.Forward, mCamera.Up);
+				let model = Float4x4.RotationY(mTime) * Float4x4.RotationX(mTime * 0.5f);
+				// ROW VECTOR order: the vector goes through model, then view, then projection.
+				let mvp = model * view4 * projection;
+
+				mCube.Render(encoder, view.ColorTargetView, view.DepthTargetView, width, height,
+					view.ClearColor, mvp, frameIndex);
+			};
+
+		// The host's own router is private, so the surface gets one of ours.
+		mViewportRouter = new InputRouter(host.Shell.Input);
+		if (mViewport.Surface != null)
+			mViewportRouter.AddSurface(mViewport.Surface);
+	}
+
+	/// Re-binds the viewport when its panel moves to another window, so its UI samples the
+	/// right renderer's target and its input routes to the right window.
+	private void UpdateViewportHostWindow()
+	{
+		if ((mViewport == null) || (mUIHost == null) || (mViewport.Root() == null))
+			return;
+
+		let host = mUIHost.WindowForRoot(mViewport.Root());
+		if ((host == null) || (host == mViewportWindow))
+			return;
+
+		// Only once the new window's renderer exists, which is after its own attach ran.
+		if (let renderer = mUIHost.RendererFor(host))
+		{
+			mViewport.AttachToWindow(renderer, host.Window.Id);
+			mViewportWindow = host;
+		}
 	}
 
 	public void OnUpdate(IApplicationHost host, float deltaTime)
@@ -152,12 +248,55 @@ class UISandboxApp : IApplication
 		// Drag follow: a floating dock window tracks the desktop cursor.
 		if (mDockHost != null)
 			mDockHost.Tick();
+
+		mTime += deltaTime;
+		if ((mViewport == null) || (mViewportRouter == null))
+			return;
+
+		UpdateViewportHostWindow();
+		// AFTER the UI laid out this frame, so the surface tracks where the view actually is.
+		mViewport.SyncInputRegion();
+		mViewportRouter.Update();
+
+		// The camera reads the gated devices only while the UI says the viewport is genuinely
+		// hovered or focused, so an occluded or inactive tab cannot leak input into it and a
+		// look-drag off the view keeps going while it holds focus.
+		if (mViewport.IsHovered() || mViewport.IsFocused())
+			mCamera.Update(mViewport.Keyboard, mViewport.Mouse, deltaTime);
 	}
 
 	public void OnRenderWindow(IApplicationHost host, ref FrameContext frame)
 	{
+		// The 3D content goes into its offscreen target BEFORE the UI draws, because the UI
+		// samples that target as an image. Only on whichever window is hosting it.
+		if ((mViewport != null) && mViewport.IsReady && frame.Valid &&
+			(frame.Window == mViewportWindow))
+			mViewport.RenderContent(frame.Encoder, (int32)frame.FrameIndex);
+
 		if (mUIHost != null)
 			mUIHost.RenderWindow(ref frame);
+	}
+
+	public void OnShutdown(IApplicationHost host)
+	{
+		// The viewport's targets and its external texture registration go while the device and
+		// the per window renderer are still alive: the view outlives the window inside the tree.
+		if (mViewport != null)
+			mViewport.Shutdown();
+
+		mCube.Shutdown();
+
+		if (mViewportRouter != null)
+		{
+			delete mViewportRouter;
+			mViewportRouter = null;
+		}
+
+		if (mCubeCompiler != null)
+		{
+			delete mCubeCompiler;
+			mCubeCompiler = null;
+		}
 	}
 
 	// ---- fonts ------------------------------------------------------------------------------
@@ -250,6 +389,7 @@ class UISandboxApp : IApplication
 		PropertyGridTab.Build(tabView);
 		CurveEditorTab.Build(tabView);
 		NodeGraphTab.Build(tabView);
+		ViewportTab.Build(this, tabView);
 		DockingTab.Build(this, tabView);
 		PauseMenuTab.Build(this, tabView);
 	}

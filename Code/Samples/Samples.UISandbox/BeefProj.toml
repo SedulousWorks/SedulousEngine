@@ -7,6 +7,8 @@ StartupObject = "Samples.UISandbox.Program"
 
 [Dependencies]
 corlib = "*"
+"Samples.Common" = "*"
+"Samples.Framework" = "*"
 "Sedulous.Core" = "*"
 "Sedulous.Fonts" = "*"
 "Sedulous.Fonts.TrueType" = "*"
