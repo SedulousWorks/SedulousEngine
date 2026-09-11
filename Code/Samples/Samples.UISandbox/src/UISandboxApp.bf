@@ -46,6 +46,11 @@ class UISandboxApp : IApplication
 	/// reference, so it lives on the application rather than in the builder that registers it.
 	private ToolkitThemeExtension mToolkitTheme = new .() ~ delete _;
 
+	// The item view data sources. The views BORROW them, so the application keeps them alive.
+	private DemoListAdapter mListAdapter = new .(1000) ~ delete _;
+	private DemoTreeAdapter mTreeAdapter = new .() ~ delete _;
+	private DemoGridAdapter mGridAdapter = new .(200) ~ delete _;
+
 	/// The docking host, which floats panels into real OS windows.
 	private RuntimeDockableWindowHost mDockHost = null;
 
@@ -202,6 +207,8 @@ class UISandboxApp : IApplication
 		LayoutsTab.Build(tabView);
 		TabPlacementTab.Build(tabView);
 		TextInputTab.Build(tabView);
+		DataControlsTab.Build(this, tabView);
+		OverlaysTab.Build(this, tabView);
 	}
 
 	/// BORROWED, for the tab builders.
@@ -215,6 +222,11 @@ class UISandboxApp : IApplication
 
 	/// BORROWED.
 	public UIHost Host => mUIHost;
+
+	/// BORROWED, all three.
+	public DemoListAdapter ListAdapter => mListAdapter;
+	public DemoTreeAdapter TreeAdapter => mTreeAdapter;
+	public DemoGridAdapter GridAdapter => mGridAdapter;
 
 	public void SetRepeatButton(RepeatButton button) => mRepeatButton = button;
 
