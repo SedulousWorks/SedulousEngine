@@ -203,6 +203,9 @@ class UISandboxApp : IApplication
 		mMain.AddView(tabView, SandboxViews.Grow(1));
 
 		ControlsTab.Build(this, tabView);
+		ScrollViewTab.Build(tabView);
+		LayoutsTab.Build(tabView);
+		TabPlacementTab.Build(tabView);
 	}
 
 	/// BORROWED, for the tab builders.
