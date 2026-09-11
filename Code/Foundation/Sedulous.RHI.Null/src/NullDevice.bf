@@ -154,7 +154,10 @@ class NullDevice : IDevice
 	public void DestroyFence(ref IFence fence) { delete fence; fence = null; }
 	public void DestroyQuerySet(ref IQuerySet querySet) { delete querySet; querySet = null; }
 	public void DestroySwapChain(ref ISwapChain swapChain) { delete swapChain; swapChain = null; }
-	public void DestroySurface(ref ISurface surface) { delete surface; surface = null; }
+	/// A NO-OP, as in Vulkan: the BACKEND owns its surfaces and frees them with itself, so
+	/// deleting one here leaves a stale pointer in its list to free a second time. It went
+	/// unnoticed while the backend object was itself leaked and its destructor never ran.
+	public void DestroySurface(ref ISurface surface) { surface = null; }
 
 	// ---- extensions ----
 	//

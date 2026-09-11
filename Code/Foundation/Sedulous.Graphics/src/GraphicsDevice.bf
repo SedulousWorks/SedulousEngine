@@ -51,7 +51,11 @@ class GraphicsDevice
 		mBackend = null;
 		if (mInnerBackend != null)
 		{
+			// Destroy tears the native state down and frees what the backend owns; the
+			// OBJECT is the owner's to free. Raptor's Destroy self-deletes, so its
+			// destructor needs no counterpart to this.
 			mInnerBackend.Destroy();
+			delete mInnerBackend;
 			mInnerBackend = null;
 		}
 	}
@@ -110,7 +114,10 @@ class GraphicsDevice
 		if ((backend != null) && (backend !== innerBackend))
 			delete backend;
 		if (innerBackend != null)
+		{
 			innerBackend.Destroy();
+			delete innerBackend;
+		}
 	}
 
 	public IDevice Raw => mDevice;
