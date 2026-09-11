@@ -7,4 +7,10 @@ StartupObject = "Sedulous.UI.Toolkit.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Fonts" = "*"
+"Sedulous.Image" = "*"
+"Sedulous.UI" = "*"
 "Sedulous.UI.Toolkit" = "*"
+"Sedulous.VG" = "*"
+"Sedulous.VG.SVG" = "*"
