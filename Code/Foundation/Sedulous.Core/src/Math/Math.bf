@@ -46,6 +46,9 @@ static
 	[Inline] public static float Pow(float b, float exp) => (float)System.Math.Pow(b, exp);
 	/// Natural log.
 	[Inline] public static float Log(float x) => (float)System.Math.Log(x);
+	/// Base ten log. Delegated rather than written as Log(x) / Log(10), which loses the exactness
+	/// at powers of ten that anything picking a decade depends on.
+	[Inline] public static float Log10(float x) => (float)System.Math.Log10(x);
 	[Inline] public static float Exp(float x) => (float)System.Math.Exp(x);
 
 	/// Rounds half away from zero, matching C's round rather than banker's rounding.
