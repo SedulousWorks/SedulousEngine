@@ -495,4 +495,32 @@ class TransitionTests
 		fixture.Context.BeginFrame(0.05f); // nothing dangling to tick
 		Test.Assert(fixture.Context.TransitioningViewCount == 0);
 	}
+
+	/// The shipped themes declare their own MOTION, and declare it narrowly.
+	///
+	/// There is no user-agent sheet and no hard-coded list of which controls animate: a theme
+	/// says what transitions, so a theme that wants none simply says nothing. What it must not
+	/// say is geometry - animating a font size relayouts the tree every frame of the
+	/// transition, so the rule covers colour and nothing else.
+	[Test]
+	public static void TheShippedThemesCarryAMotionRuleThatExcludesGeometry()
+	{
+		StyleSheetLoader.InitializeGlobals();
+
+		let context = new UIContext();
+		let root = new RootView();
+		UITest.Init(context, root);
+		defer { root.ReleaseRef(); delete context; }
+
+		context.SetStyleSheet(DarkTheme.Create());
+
+		let button = new Button("Go");
+		root.AddView(button);
+
+		let transitions = button.ResolveStyle(.Transition).AsTransitions;
+		Test.Assert(transitions != null, "the theme declares motion");
+		Test.Assert(transitions.Find(.Background) != null);
+		Test.Assert(transitions.Find(.TextColor) != null);
+		Test.Assert(transitions.Find(.FontSize) == null, "geometry never animates");
+	}
 }
