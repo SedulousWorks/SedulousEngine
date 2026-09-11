@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 
 namespace Sedulous.UI;
 
@@ -43,5 +44,39 @@ static class Utf8Text
 				count++;
 		}
 		return (int32)count;
+	}
+
+	/// The byte offset a character STARTS at, given an offset that may be in the middle of one.
+	///
+	/// Rounds DOWN to the containing character, which is what a caller stepping backwards
+	/// through a buffer needs: the previous character's start, not a byte inside it.
+	public static int PrevBoundary(StringView text, int byteOffset)
+	{
+		var index = Math.Min(byteOffset, text.Length) - 1;
+		while ((index > 0) && ((((uint8)text[index]) & 0xC0) == 0x80))
+			index--;
+
+		return Math.Max(index, 0);
+	}
+
+	/// The codepoint starting at an offset, ADVANCING the offset past it.
+	///
+	/// Nought at or past the end, which every caller here treats as "nothing there" rather than
+	/// as a real character.
+	public static uint32 DecodeAt(StringView text, ref int byteOffset)
+	{
+		if ((byteOffset < 0) || (byteOffset >= text.Length))
+			return 0;
+
+		let decoded = UTF8.Decode(&text.Ptr[byteOffset], text.Length - byteOffset);
+		if (decoded.length <= 0)
+		{
+			// A malformed byte still has to ADVANCE, or a scan over bad input never ends.
+			byteOffset++;
+			return 0;
+		}
+
+		byteOffset += decoded.length;
+		return (uint32)decoded.c;
 	}
 }
