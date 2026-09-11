@@ -206,6 +206,27 @@ class SDL3Shell : IShell
 					mInput.KeyboardDevice.SetModifiers(e.Modifiers);
 				}
 
+			case .SDL_EVENT_TEXT_INPUT:
+				// Only arrives once SDL_StartTextInput has run, which the UI drives from
+				// whatever holds focus. One event may carry SEVERAL characters, so the whole
+				// UTF-8 run is copied and the consumer decodes it.
+				var e = InputEvent();
+				e.Kind = .TextInput;
+				e.Window = (uint32)event.text.windowID;
+				if (event.text.text != null)
+				{
+					var n = 0;
+					// Bounded by the payload, so a long composition is TRUNCATED rather than
+					// written past the end of a fixed array.
+					while (((n + 1) < e.Text.Count) && (event.text.text[n] != 0))
+					{
+						e.Text[n] = (char8)event.text.text[n];
+						n++;
+					}
+					e.Text[n] = 0;
+				}
+				mInput.EmitEvent(e);
+
 			case .SDL_EVENT_MOUSE_MOTION:
 				mInput.SetHoverWindow((uint32)event.motion.windowID);
 				var e = InputEvent();
