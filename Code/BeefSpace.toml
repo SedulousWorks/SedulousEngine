@@ -1,25 +1,29 @@
 FileVersion = 1
+ExtraPlatforms = ["Linux64"]
+
+[Workspace]
+StartupProject = "Samples.UISandbox"
 
 [Projects]
-"Bulkan" = {Path = "../Dependencies/Bulkan"}
-"Dxc-Beef" = {Path = "../Dependencies/Dxc-Beef"}
-"SDL3" = {Path = "../Dependencies/SDL3-Beef"}
-"SDL3_image" = {Path = "../Dependencies/SDL3_image-Beef"}
-"SPIRV-Cross" = {Path = "../Dependencies/SPIRV-Cross-Beef"}
-"Win32" = {Path = "../Dependencies/Win32-Beef"}
-"cgltf-Beef" = {Path = "../Dependencies/cgltf-Beef"}
-"meshoptimizer-Beef" = {Path = "../Dependencies/meshoptimizer-Beef"}
-"msdfgen-Beef" = {Path = "../Dependencies/msdfgen-Beef"}
-"cimgui-Beef" = {Path = "../Dependencies/cimgui-Beef"}
-"dr_libs-Beef" = {Path = "../Dependencies/dr_libs-Beef"}
-"glslang-Beef" = {Path = "../Dependencies/glslang-Beef"}
-"joltc-Beef" = {Path = "../Dependencies/joltc-Beef"}
-"recastnavigation-Beef" = {Path = "../Dependencies/recastnavigation-Beef"}
-"stb_image-Beef" = {Path = "../Dependencies/stb_image-Beef"}
-"stb_truetype-Beef" = {Path = "../Dependencies/stb_truetype-Beef"}
-"miniaudio-Beef" = {Path = "../Dependencies/miniaudio-Beef"}
-"stb_vorbis-Beef" = {Path = "../Dependencies/stb_vorbis-Beef"}
-"ufbx-Beef" = {Path = "../Dependencies/ufbx-Beef"}
+Bulkan = {Path = "../Dependencies/Bulkan"}
+Dxc-Beef = {Path = "../Dependencies/Dxc-Beef"}
+SDL3 = {Path = "../Dependencies/SDL3-Beef"}
+SDL3_image = {Path = "../Dependencies/SDL3_image-Beef"}
+SPIRV-Cross = {Path = "../Dependencies/SPIRV-Cross-Beef"}
+Win32 = {Path = "../Dependencies/Win32-Beef"}
+cgltf-Beef = {Path = "../Dependencies/cgltf-Beef"}
+meshoptimizer-Beef = {Path = "../Dependencies/meshoptimizer-Beef"}
+msdfgen-Beef = {Path = "../Dependencies/msdfgen-Beef"}
+cimgui-Beef = {Path = "../Dependencies/cimgui-Beef"}
+dr_libs-Beef = {Path = "../Dependencies/dr_libs-Beef"}
+glslang-Beef = {Path = "../Dependencies/glslang-Beef"}
+joltc-Beef = {Path = "../Dependencies/joltc-Beef"}
+recastnavigation-Beef = {Path = "../Dependencies/recastnavigation-Beef"}
+stb_image-Beef = {Path = "../Dependencies/stb_image-Beef"}
+stb_truetype-Beef = {Path = "../Dependencies/stb_truetype-Beef"}
+miniaudio-Beef = {Path = "../Dependencies/miniaudio-Beef"}
+stb_vorbis-Beef = {Path = "../Dependencies/stb_vorbis-Beef"}
+ufbx-Beef = {Path = "../Dependencies/ufbx-Beef"}
 "Sedulous.Animation" = {Path = "Foundation/Sedulous.Animation"}
 "Sedulous.Animation.Resource" = {Path = "Foundation/Sedulous.Animation.Resource"}
 "Sedulous.Animation.Resource.Tests" = {Path = "Foundation/Sedulous.Animation.Resource.Tests"}
@@ -394,12 +398,3 @@ Sedulous = []
 "Sedulous/Tools" = ["Sedulous.Tools.Cook", "Sedulous.Tools.Editor", "Sedulous.Tools.Export", "Sedulous.Tools.Mcp", "Sedulous.Tools.ShaderPack"]
 "Sedulous/Samples" = ["Samples.AnimStressTest", "Samples.AnimatedCrowd", "Samples.AudioPlayground", "Samples.Common", "Samples.Framework", "Samples.GameUiSandbox", "Samples.HelloWindow", "Samples.InputActions", "Samples.MultiWindow", "Samples.NetEcho", "Samples.ParticleFX", "Samples.PhysicsPlayground", "Samples.RenderStressTest", "Samples.Sandbox", "Samples.TerrainPlayground", "Samples.UISandbox", "Samples.VGSandbox", "Samples.WebScene", "Samples.WebTriangle"]
 "Sedulous/Samples/RHI" = ["Samples.RHI.Sample001_Triangle", "Samples.RHI.Sample002_Textures", "Samples.RHI.Sample003_UniformBuffers", "Samples.RHI.Sample004_Compute", "Samples.RHI.Sample005_BindGroups", "Samples.RHI.Sample006_Blending", "Samples.RHI.Sample007_Instancing", "Samples.RHI.Sample008_DepthBuffer", "Samples.RHI.Sample009_Mipmaps", "Samples.RHI.Sample010_MSAA", "Samples.RHI.Sample011_MRT", "Samples.RHI.Sample012_Wireframe", "Samples.RHI.Sample013_BorderSampler", "Samples.RHI.Sample014_Blit", "Samples.RHI.Sample015_Queries", "Samples.RHI.Sample016_Readback", "Samples.RHI.Sample017_MultiQueue", "Samples.RHI.Sample018_Bindless", "Samples.RHI.Sample019_BatchUpload", "Samples.RHI.Sample020_MeshShaders", "Samples.RHI.Sample021_RayTracing", "Samples.RHI.Sample022_StencilOutline", "Samples.RHI.Sample023_CubeMap", "Samples.RHI.Sample024_OcclusionQuery", "Samples.RHI.Sample025_MultiDrawIndirect", "Samples.RHI.Sample026_DynamicOffsets", "Samples.RHI.Sample027_3DTexture", "Samples.RHI.Sample028_ProceduralRT", "Samples.RHI.Sample029_ResolveTexture", "Samples.RHI.Sample030_RenderBundles", "Samples.RHI.Smoketest"]
-
-[Configs.Test.Win32]
-ConfigSelections = {corlib = {Config = "Debug"}}
-
-[Configs.Test.Win64]
-ConfigSelections = {corlib = {Config = "Debug"}}
-
-[Configs.Test.Linux64]
-ConfigSelections = {corlib = {Config = "Debug"}}
