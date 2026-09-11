@@ -63,7 +63,7 @@ class ColorPicker : ViewGroup, IHSVSource
 		mHexInput.MaxLength.Value = 7;
 		// COMMIT, not text changed: Return and typing then clicking away both apply, while a
 		// half typed hex does not repaint the dialog on every keystroke.
-		mHexInput.OnCommit.Add(new [=](sender) => { OnHexSubmit(); });
+		mHexInput.OnCommit.Add(new (sender) => { OnHexSubmit(); });
 		AddView(mHexInput);
 
 		mRField = MakeChannelField();
@@ -81,7 +81,7 @@ class ColorPicker : ViewGroup, IHSVSource
 		field.SetMax(255);
 		field.SetStep(1);
 		field.SetValue(255);
-		field.OnValueChanged.Add(new [=](sender, value) => { SyncFromRGB(); });
+		field.OnValueChanged.Add(new (sender, value) => { SyncFromRGB(); });
 		AddView(field);
 		return field;
 	}

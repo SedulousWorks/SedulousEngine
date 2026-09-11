@@ -103,7 +103,7 @@ class FloatEditor : PropertyEditor
 		mField.SetDecimalPlaces(mDecimalPlaces);
 		mField.SetValue(mValue);
 
-		mField.OnValueChanged.Add(new [=](sender, value) =>
+		mField.OnValueChanged.Add(new (sender, value) =>
 			{
 				if (mSyncing)
 					return;

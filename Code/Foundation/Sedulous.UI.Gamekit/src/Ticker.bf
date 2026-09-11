@@ -52,7 +52,7 @@ class Ticker : Label
 		animations.CancelForView(this);
 
 		let animation = new FloatAnimation((float)mCurrent, (float)target, duration,
-			new [=](value) =>
+			new (value) =>
 			{
 				// Rounded to the nearest whole number each frame, away from zero, so a
 				// countdown reads the same way a count up does.
@@ -61,7 +61,7 @@ class Ticker : Label
 			});
 		animation.Target = this;
 		// The exact target on completion: the float end value need not round back to it.
-		animation.OnComplete.Add(new [=](finished) => { Render(target); });
+		animation.OnComplete.Add(new (finished) => { Render(target); });
 		animations.Add(animation);
 	}
 

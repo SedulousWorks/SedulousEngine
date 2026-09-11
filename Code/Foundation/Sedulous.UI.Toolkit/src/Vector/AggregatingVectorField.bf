@@ -63,7 +63,7 @@ abstract class AggregatingVectorField : FlexLayout
 			field.SetValue(GetComponent(axis));
 
 			let boundAxis = axis;
-			field.OnValueChanged.Add(new [=](sender, value) =>
+			field.OnValueChanged.Add(new (sender, value) =>
 				{
 					if (!mSyncing)
 						SetComponentFromField(boundAxis, (float)value);
@@ -131,7 +131,7 @@ abstract class AggregatingVectorField : FlexLayout
 
 	private void WireChildEditEvents(NumericField field)
 	{
-		field.OnEditBegan.Add(new [=](sender) =>
+		field.OnEditBegan.Add(new (sender) =>
 			{
 				// A begin CANCELS a pending close, which is what makes a focus jump between
 				// sibling fields one transaction rather than two.
@@ -141,7 +141,7 @@ abstract class AggregatingVectorField : FlexLayout
 				mEditCount++;
 			});
 
-		field.OnEditEnded.Add(new [=](sender) =>
+		field.OnEditEnded.Add(new (sender) =>
 			{
 				mEditCount--;
 				if (mEditCount != 0)
@@ -158,7 +158,7 @@ abstract class AggregatingVectorField : FlexLayout
 					return;
 				}
 
-				Context.MutationQueue.QueueAction(new [=]() =>
+				Context.MutationQueue.QueueAction(new () =>
 					{
 						if (!mPendingEnd)
 							return;

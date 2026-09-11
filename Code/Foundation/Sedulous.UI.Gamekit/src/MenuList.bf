@@ -60,7 +60,7 @@ class MenuList : FlexLayout
 		if (onSelect != null)
 			mCallbacks.Add(onSelect);
 
-		row.OnClick.Add(new [=](button) =>
+		row.OnClick.Add(new (button) =>
 			{
 				if (onSelect != null)
 					onSelect();

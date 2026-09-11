@@ -94,9 +94,9 @@ class RangeEditor : PropertyEditor
 		mSlider.Value.Value = mValue;
 
 		// The DRAG bounds the transaction, so a sweep across the whole range is one undo step.
-		mSlider.OnDragStarted.Add(new [=](sender) => { BeginEdit(); });
-		mSlider.OnDragEnded.Add(new [=](sender) => { EndEdit(); });
-		mSlider.OnValueChanged.Add(new [=](sender, value) =>
+		mSlider.OnDragStarted.Add(new (sender) => { BeginEdit(); });
+		mSlider.OnDragEnded.Add(new (sender) => { EndEdit(); });
+		mSlider.OnValueChanged.Add(new (sender, value) =>
 			{
 				if (mSyncing)
 					return;
@@ -126,7 +126,7 @@ class RangeEditor : PropertyEditor
 		mNumericField.SetStep((mStep > 0.0f) ? mStep : 0.1);
 		mNumericField.SetDecimalPlaces(2);
 		mNumericField.SetValue(mValue);
-		mNumericField.OnValueChanged.Add(new [=](sender, value) =>
+		mNumericField.OnValueChanged.Add(new (sender, value) =>
 			{
 				if (mSyncing)
 					return;

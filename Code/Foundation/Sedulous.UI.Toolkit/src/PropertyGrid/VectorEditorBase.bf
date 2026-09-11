@@ -93,7 +93,7 @@ abstract class VectorEditorBase : PropertyEditor
 			mFields[axis] = field;
 
 			let boundAxis = axis;
-			field.OnValueChanged.Add(new [=](sender, value) =>
+			field.OnValueChanged.Add(new (sender, value) =>
 				{
 					if (mSyncing)
 						return;

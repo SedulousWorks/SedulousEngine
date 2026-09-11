@@ -44,7 +44,7 @@ class BoolEditor : PropertyEditor
 	{
 		mCheckBox = new CheckBox();
 		mCheckBox.IsChecked.Value = mValue;
-		mCheckBox.OnCheckedChanged.Add(new [=](sender, value) =>
+		mCheckBox.OnCheckedChanged.Add(new (sender, value) =>
 			{
 				BeginEdit();
 				mValue = value;

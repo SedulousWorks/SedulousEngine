@@ -366,12 +366,12 @@ class PropertyGrid : ViewGroup
 			label.SetText(editor.DisplayName);
 			label.FontSize.Value = 12.0f;
 			label.Ellipsis.Value = true;
-			label.OnRenameCommitted.Add(new [=](sender, newName) =>
+			label.OnRenameCommitted.Add(new (sender, newName) =>
 				{
 					if (editor.OnLabelRenamed != null)
 						editor.OnLabelRenamed(newName);
 				});
-			editor.BindDisplayNameSink(new [=](text) => { label.SetText(text); });
+			editor.BindDisplayNameSink(new (text) => { label.SetText(text); });
 			row.AddView(label, labelStyle);
 			return;
 		}
@@ -381,7 +381,7 @@ class PropertyGrid : ViewGroup
 		label.FontSize.Value = 12.0f;
 		label.VAlign.Value = .Middle;
 		label.Ellipsis.Value = true;
-		editor.BindDisplayNameSink(new [=](text) => { label.SetText(text); });
+		editor.BindDisplayNameSink(new (text) => { label.SetText(text); });
 		row.AddView(label, labelStyle);
 	}
 

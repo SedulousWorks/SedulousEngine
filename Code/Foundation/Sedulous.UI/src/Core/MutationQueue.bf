@@ -29,7 +29,7 @@ class MutationQueue
 
 		view.IsPendingDeletion = true;
 		view.AddRef();
-		QueueAction(new [=]() =>
+		QueueAction(new () =>
 			{
 				if (let parent = view.Parent as ViewGroup)
 					parent.RemoveView(view);

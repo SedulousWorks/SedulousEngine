@@ -43,7 +43,7 @@ class ButtonEditor : PropertyEditor
 		mButton = new Button(Name);
 		mButton.IsEnabled = mButtonEnabled;
 		// QUALIFIED: corlib names a delegate type Action, which wins over the field otherwise.
-		mButton.OnClick.Add(new [=](sender) =>
+		mButton.OnClick.Add(new (sender) =>
 			{
 				if (this.Action != null)
 					this.Action();

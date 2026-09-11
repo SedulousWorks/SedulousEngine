@@ -49,7 +49,7 @@ class Bar : ProgressBar
 		animations.CancelForView(this);
 
 		let animation = new FloatAnimation(Value.Value, clamped, duration,
-			new [=](fill) => { Value.Value = fill; });
+			new (fill) => { Value.Value = fill; });
 		animation.Target = this; // cancelled if the bar is removed mid drain
 		animations.Add(animation);
 	}

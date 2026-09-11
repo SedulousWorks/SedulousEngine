@@ -82,13 +82,13 @@ class ColorEditor : PropertyEditor
 		let picker = new ColorPicker();
 		picker.SetColor(mValue);
 		picker.SetOriginalColor(mValue);
-		picker.OnColorChanged.Add(new [=](sender, color) => { Apply(color); });
+		picker.OnColorChanged.Add(new (sender, color) => { Apply(color); });
 
 		let dialog = new Dialog("Color Picker");
 		dialog.SetContent(picker);
 		dialog.AddButton("OK", .OK);
 		dialog.AddButton("Cancel", .Cancel);
-		dialog.OnClosed.Add(new [=](sender, result) =>
+		dialog.OnClosed.Add(new (sender, result) =>
 			{
 				if (result == .OK)
 				{

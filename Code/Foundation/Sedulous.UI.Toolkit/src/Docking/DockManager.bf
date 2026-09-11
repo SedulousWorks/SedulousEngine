@@ -73,7 +73,7 @@ class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 	{
 		let panel = new DockablePanel(title, content);
 		panel.DockHost = this;
-		panel.OnCloseRequested.Add(new [=](p) => { ClosePanel(p); });
+		panel.OnCloseRequested.Add(new (p) => { ClosePanel(p); });
 		mPanels.Add(panel);
 		return panel;
 	}
@@ -203,8 +203,8 @@ class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 		let window = new DockableWindow(panel);
 		mDockableWindows.Add(window);
 		window.WindowHost = DockableWindowHost;
-		window.OnDockRequested.Add(new [=](w) => { RedockDockableWindow(w); });
-		window.OnCloseRequested.Add(new [=](w) => { CloseDockableWindow(w); });
+		window.OnDockRequested.Add(new (w) => { RedockDockableWindow(w); });
+		window.OnCloseRequested.Add(new (w) => { CloseDockableWindow(w); });
 
 		if ((DockableWindowHost != null) && DockableWindowHost.SupportsOSWindows())
 			CreateRealWindow(window, width, height, x, y);
@@ -223,7 +223,7 @@ class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 
 		// The system's own close button routes through the PANEL's RequestClose, so the veto a
 		// dirty page installs applies there too. A window with no panel closes outright.
-		DockableWindowHost.CreateDockableWindow(window, width, height, x, y, new [=](view) =>
+		DockableWindowHost.CreateDockableWindow(window, width, height, x, y, new (view) =>
 			{
 				let closing = view as DockableWindow;
 				if (closing == null)

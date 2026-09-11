@@ -97,7 +97,7 @@ class ToastHost : ViewGroup
 		if (!request.ActionLabel.IsEmpty)
 		{
 			let action = new Button(request.ActionLabel);
-			action.OnClick.Add(new [=](button) =>
+			action.OnClick.Add(new (button) =>
 				{
 					InvokeAction(id);
 					MarkClosing(id);
@@ -106,7 +106,7 @@ class ToastHost : ViewGroup
 		}
 
 		let close = new Button("\u{00D7}");
-		close.OnClick.Add(new [=](button) => { MarkClosing(id); });
+		close.OnClick.Add(new (button) => { MarkClosing(id); });
 		card.AddView(close);
 
 		AddView(card);

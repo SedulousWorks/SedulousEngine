@@ -105,7 +105,7 @@ class ComboBoxDropdown : View
 			return;
 
 		let context = Context;
-		context.MutationQueue.QueueAction(new [=]() =>
+		context.MutationQueue.QueueAction(new () =>
 			{
 				if (let root = context.ActiveInputRoot)
 					root.GetPopupLayer().ClosePopup(this);

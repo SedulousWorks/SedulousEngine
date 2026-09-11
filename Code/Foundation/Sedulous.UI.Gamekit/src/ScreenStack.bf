@@ -86,7 +86,7 @@ class ScreenStack
 		let previousTop = Top;
 		mEntries.Add(entry);
 
-		RunStructural(new [=]() =>
+		RunStructural(new () =>
 			{
 				if (mRoot == null)
 					return;
@@ -132,9 +132,9 @@ class ScreenStack
 		let screen = entry.Screen;
 		let saved = entry.SavedFocus;
 
-		PlayTransition(screen, screen.OutTransition, false, new [=]() =>
+		PlayTransition(screen, screen.OutTransition, false, new() =>
 			{
-				RunStructural(new [=]() =>
+				RunStructural(new() =>
 					{
 						if (mRoot != null)
 							mRoot.RemoveView(screen);
@@ -168,7 +168,7 @@ class ScreenStack
 			mEntries.RemoveAt(mEntries.Count - 1);
 			let previous = entry.Screen;
 
-			RunStructural(new [=]() =>
+			RunStructural(new() =>
 				{
 					if (mRoot != null)
 						mRoot.RemoveView(previous);
@@ -190,7 +190,7 @@ class ScreenStack
 			mEntries.RemoveAt(mEntries.Count - 1);
 			let screen = entry.Screen;
 
-			RunStructural(new [=]() =>
+			RunStructural(new() =>
 				{
 					if (mRoot != null)
 						mRoot.RemoveView(screen);
@@ -338,7 +338,7 @@ class ScreenStack
 		if (onDone != null)
 		{
 			mPendingCompletions.Add(onDone);
-			animation.OnComplete.Add(new [=](finished) =>
+			animation.OnComplete.Add(new(finished) =>
 				{
 					if (mPendingCompletions.Remove(onDone))
 					{

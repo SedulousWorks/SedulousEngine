@@ -121,7 +121,7 @@ class Dialog : ViewGroup
 		let button = new Button(text);
 
 		if (result != .None)
-			button.OnClick.Add(new [=](b) => { Close(result); });
+			button.OnClick.Add(new (b) => { Close(result); });
 
 		mButtonRow.AddView(button);
 		return button;
@@ -182,7 +182,7 @@ class Dialog : ViewGroup
 
 		// QUEUED: a close commonly runs from a button's own click handling, and tearing the
 		// dialog down mid dispatch would pull the ground out from under it.
-		context.MutationQueue.QueueAction(new [=]() =>
+		context.MutationQueue.QueueAction(new () =>
 			{
 				if (let root = context.ActiveInputRoot)
 					root.GetPopupLayer().ClosePopup(this);

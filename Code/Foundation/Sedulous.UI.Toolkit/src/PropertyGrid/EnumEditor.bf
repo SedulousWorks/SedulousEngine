@@ -58,7 +58,7 @@ class EnumEditor : PropertyEditor
 
 		// The GUARD is what stops a refresh from being read back as a user edit: writing the
 		// selection raises the same event a click does.
-		mComboBox.OnSelectionChanged.Add(new [=](sender, index) =>
+		mComboBox.OnSelectionChanged.Add(new (sender, index) =>
 			{
 				if (mSyncing)
 					return;

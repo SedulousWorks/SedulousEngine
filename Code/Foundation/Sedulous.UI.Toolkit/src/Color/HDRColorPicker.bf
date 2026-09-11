@@ -62,11 +62,11 @@ class HDRColorPicker : ViewGroup, IHSVSource
 		mPreviewOriginal.Color.Value = Color.White;
 		AddView(mPreviewOriginal);
 
-		mIntensityField = MakeField("Int", 64.0, 0.1, new [=]() => { SyncFromIntensity(); });
-		mRField = MakeField("R", 64.0, 0.01, new [=]() => { SyncFromRGB(); });
-		mGField = MakeField("G", 64.0, 0.01, new [=]() => { SyncFromRGB(); });
-		mBField = MakeField("B", 64.0, 0.01, new [=]() => { SyncFromRGB(); });
-		mAField = MakeField("A", 1.0, 0.01, new [=]() => { SyncFromAlpha(); });
+		mIntensityField = MakeField("Int", 64.0, 0.1, new () => { SyncFromIntensity(); });
+		mRField = MakeField("R", 64.0, 0.01, new () => { SyncFromRGB(); });
+		mGField = MakeField("G", 64.0, 0.01, new () => { SyncFromRGB(); });
+		mBField = MakeField("B", 64.0, 0.01, new () => { SyncFromRGB(); });
+		mAField = MakeField("A", 1.0, 0.01, new () => { SyncFromAlpha(); });
 
 		mOriginalColor = CurrentColor;
 		SyncViewsFromState();
@@ -83,7 +83,7 @@ class HDRColorPicker : ViewGroup, IHSVSource
 		field.SetDecimalPlaces(3);
 		field.SetValue(1);
 		field.SetPrefix(prefix);
-		field.OnValueChanged.Add(new [=](sender, value) => { onChanged(); });
+		field.OnValueChanged.Add(new (sender, value) => { onChanged(); });
 		// The handler is owned by the field's event, which deletes it on disposal.
 		AddView(field);
 		return field;

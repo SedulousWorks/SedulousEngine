@@ -78,7 +78,7 @@ class BottomDock : FlexLayout
 		button.FontSize.Value = 11.0f;
 
 		let index = (int32)mTabs.Count;
-		button.OnClick.Add(new [=](sender) => { OnTabClicked(index); });
+		button.OnClick.Add(new (sender) => { OnTabClicked(index); });
 
 		LayoutStyle buttonStyle = .();
 		buttonStyle.Width = SizeSpec.Fixed(Unit.Dp(96.0f));

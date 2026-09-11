@@ -135,7 +135,7 @@ class ContextMenu : View, IPopupOwner
 
 		// QUEUED: a close commonly runs from inside this menu's own event handling, and
 		// destroying the view mid dispatch would pull the ground out from under it.
-		context.MutationQueue.QueueAction(new [=]() =>
+		context.MutationQueue.QueueAction(new () =>
 			{
 				if (let root = context.ActiveInputRoot)
 					root.GetPopupLayer().ClosePopup(this);
@@ -155,7 +155,7 @@ class ContextMenu : View, IPopupOwner
 		if (context == null)
 			return;
 
-		context.MutationQueue.QueueAction(new [=]() =>
+		context.MutationQueue.QueueAction(new () =>
 			{
 				if (let activeRoot = context.ActiveInputRoot)
 					activeRoot.GetPopupLayer().ClosePopup(root);

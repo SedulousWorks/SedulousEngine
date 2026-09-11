@@ -96,7 +96,7 @@ class StringEditor : PropertyEditor
 	{
 		mEditText = new FocusReportingEditText(this);
 		mEditText.SetText(mValue);
-		mEditText.OnSubmit.Add(new [=](sender) =>
+		mEditText.OnSubmit.Add(new (sender) =>
 			{
 				CommitFrom(sender.Text);
 				// Submit ENDS the edit whether or not the text changed: pressing Return is the

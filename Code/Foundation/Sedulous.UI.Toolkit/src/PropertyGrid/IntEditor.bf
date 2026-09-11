@@ -99,7 +99,7 @@ class IntEditor : PropertyEditor
 		mField.SetDecimalPlaces(0);
 		mField.SetValue((double)mValue);
 
-		mField.OnValueChanged.Add(new [=](sender, value) =>
+		mField.OnValueChanged.Add(new (sender, value) =>
 			{
 				if (mSyncing)
 					return;
