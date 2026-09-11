@@ -41,6 +41,7 @@ class UIHost
 
 	/// OWNED: the shader host owns the vector modules, and the rest are the host's own.
 	private ShaderSystemHost mShaderHost = new .() ~ delete _;
+	private String mShaderRoot = new .("Shaders") ~ delete _;
 	private UIContext mContext = new .() ~ delete _;
 	private InputRouter mRouter = null ~ delete _;
 	private UIInputBridge mBridge = null ~ delete _;
@@ -74,11 +75,17 @@ class UIHost
 	/// Near black, stored LINEAR. See SetClearColor for why.
 	private ClearColor mClearColor = .(0.006f, 0.006f, 0.009f, 1.0f);
 
-	public this(GraphicsDevice device, IShell shell, IFontService fonts)
+	/// `shaderRoot` is where the engine's shader corpus lives. The default is the SHIPPED
+	/// layout; a development checkout keeps it under the data directory instead, and a host
+	/// running from a checkout has to say so or the vector shaders resolve to nothing and the
+	/// UI renders blank.
+	public this(GraphicsDevice device, IShell shell, IFontService fonts,
+		StringView shaderRoot = "Shaders")
 	{
 		mDevice = device;
 		mShell = shell;
 		mFonts = fonts;
+		mShaderRoot.Set(shaderRoot);
 
 		mRouter = new InputRouter(shell.Input);
 		mBridge = new UIInputBridge(mContext);
@@ -617,7 +624,7 @@ class UIHost
 	/// same path the renderer itself uses rather than a bespoke inline compile.
 	private void InitShaders()
 	{
-		if (mShaderHost.Initialize(mDevice.Raw, "Shaders") case .Err)
+		if (mShaderHost.Initialize(mDevice.Raw, mShaderRoot) case .Err)
 			return; // No compiler and no pack: the UI stays unrendered, loudly but not fatally.
 
 		mVertexShader = mShaderHost.GetVariant("vg", .Vertex, .None);
