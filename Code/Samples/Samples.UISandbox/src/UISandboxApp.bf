@@ -227,7 +227,7 @@ class UISandboxApp : IApplication
 		mThemeButton = new Button("Theme: Dark");
 		mThemeButton.OnClick.Add(new [&](sender) =>
 			{
-				mThemeIndex = (mThemeIndex + 1) % 3;
+				mThemeIndex = (mThemeIndex + 1) % 5;
 				ApplyTheme();
 			});
 		mMain.AddView(mThemeButton,
@@ -282,7 +282,10 @@ class UISandboxApp : IApplication
 		{
 		case 0: mSheet = DarkTheme.Create();
 		case 1: mSheet = LightTheme.Create();
-		default: mSheet = RoundedDarkTheme.Create();
+		case 2: mSheet = RoundedDarkTheme.Create();
+		case 3: mSheet = SandboxThemes.CreateTextured();
+		default: mSheet = SandboxThemes.LoadSheet(ResourceProvider, "themes/breeze.sss",
+			ThemePalette.Dark());
 		}
 
 		// CONSUMES the sheet, and releases whichever one it was showing before.
@@ -291,7 +294,7 @@ class UISandboxApp : IApplication
 		if (mThemeButton == null)
 			return;
 
-		StringView[3] names = .("Dark", "Light", "Rounded Dark");
+		StringView[5] names = .("Dark", "Light", "Rounded Dark", "Textured", "Breeze (.sss)");
 		mThemeButton.SetText(scope $"Theme: {names[mThemeIndex]}");
 	}
 }
