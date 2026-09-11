@@ -51,6 +51,10 @@ class UISandboxApp : IApplication
 	private DemoTreeAdapter mTreeAdapter = new .() ~ delete _;
 	private DemoGridAdapter mGridAdapter = new .(200) ~ delete _;
 
+	/// The draggable tree BORROWS it, so it lives on the application.
+	private ReorderableListAdapter mReorderAdapter =
+		new .("Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot") ~ delete _;
+
 	/// The docking host, which floats panels into real OS windows.
 	private RuntimeDockableWindowHost mDockHost = null;
 
@@ -211,6 +215,9 @@ class UISandboxApp : IApplication
 		OverlaysTab.Build(this, tabView);
 		DragDropTab.Build(tabView);
 		AnimationsTab.Build(this, tabView);
+		ToolkitTab.Build(this, tabView);
+		PropertyGridTab.Build(tabView);
+		CurveEditorTab.Build(tabView);
 	}
 
 	/// BORROWED, for the tab builders.
@@ -229,6 +236,7 @@ class UISandboxApp : IApplication
 	public DemoListAdapter ListAdapter => mListAdapter;
 	public DemoTreeAdapter TreeAdapter => mTreeAdapter;
 	public DemoGridAdapter GridAdapter => mGridAdapter;
+	public ReorderableListAdapter ReorderAdapter => mReorderAdapter;
 
 	public void SetRepeatButton(RepeatButton button) => mRepeatButton = button;
 
