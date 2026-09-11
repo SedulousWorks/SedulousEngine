@@ -2,7 +2,7 @@ using Sedulous.Core;
 using Sedulous.UI;
 using Sedulous.VG;
 
-namespace Sedulous.UI.Gamekit;
+namespace Sedulous.UI.Toolkit;
 
 /// One toast: a severity accent down its left edge, the message, and whatever buttons the
 /// request asked for.

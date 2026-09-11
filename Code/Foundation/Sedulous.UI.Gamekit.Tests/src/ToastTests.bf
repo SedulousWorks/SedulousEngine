@@ -94,4 +94,34 @@ class ToastTests
 		host.Update(0.0f); // the action marked it closing
 		Test.Assert(!host.Contains(id));
 	}
+
+	/// The NEWEST card sits nearest the corner and older ones stack upward, so a new toast never
+	/// pushes the one being read out from under the cursor.
+	[Test]
+	public static void CardsStackUpwardFromTheBottomRight()
+	{
+		let bed = scope WidgetBed();
+		let host = Attach(bed);
+
+		var older = ToastRequest("older");
+		older.DurationSeconds = 0.0f;
+		host.Show(older);
+
+		var newest = ToastRequest("newest");
+		newest.DurationSeconds = 0.0f;
+		host.Show(newest);
+
+		host.Measure(BoxConstraints.Tight(800.0f, 600.0f));
+		host.Layout(0, 0, 800.0f, 600.0f);
+		Test.Assert(host.Width == 800.0f, "the host fills the viewport");
+
+		let olderCard = host.GetChildAt(0);
+		let newestCard = host.GetChildAt(1);
+
+		Test.Assert(Abs(olderCard.Bounds.X - (800.0f - host.CornerMargin - host.ToastWidth)) <= 0.01f);
+		Test.Assert(Abs(newestCard.Bounds.X - olderCard.Bounds.X) <= 0.01f);
+		Test.Assert(newestCard.Bounds.Y > olderCard.Bounds.Y);
+		Test.Assert(Abs((newestCard.Bounds.Y + newestCard.Height) - (600.0f - host.CornerMargin))
+			<= 0.01f);
+	}
 }
