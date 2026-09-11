@@ -14,8 +14,13 @@ namespace Sedulous.UI;
 class UIContext
 {
 	private UIContextPhase mPhase = .Idle;
-	private bool mNeedsRedraw = false;
-	private bool mNeedsLayout = false;
+	// TRUE to begin with, because a context that has never laid out is damaged by definition.
+	// The first frame has nothing to invalidate it: a tree is built BEFORE it is attached, so
+	// every Invalidate along the way finds a null context and marks nothing, and a host that
+	// sized its root up front sees no structural change either. Starting clean draws that
+	// first frame unlaid-out, and it stays that way until something resizes the window.
+	private bool mNeedsRedraw = true;
+	private bool mNeedsLayout = true;
 	private float mDeltaTime = 0.0f;
 	private float mTotalTime = 0.0f;
 

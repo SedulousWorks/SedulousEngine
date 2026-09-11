@@ -29,6 +29,18 @@ class RootView : ViewGroup
 	/// OWNED, created on first access.
 	private PopupLayer mPopupLayer = null;
 
+	public ~this()
+	{
+		// The child list's reference goes with ~ViewGroup; this is the SECOND one, taken in
+		// GetPopupLayer so the field stays valid independently of the tree. Without it the
+		// layer never reaches zero and outlives its root.
+		if (mPopupLayer != null)
+		{
+			mPopupLayer.ReleaseRef();
+			mPopupLayer = null;
+		}
+	}
+
 	/// The overlay layer for this window, created on first use.
 	public PopupLayer GetPopupLayer()
 	{

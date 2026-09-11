@@ -126,13 +126,19 @@ static class ShellInputMapping
 	{
 		var result = Sedulous.UI.KeyModifiers.None;
 
-		if (modifiers.HasFlag(.Shift))
+		// HasANY, not HasFlag. Shift is both shift bits and HasFlag demands every bit of its
+		// argument, so it answers false for the one shift a person actually holds. Both enums
+		// carry HasAny for exactly this, and it is what Raptor's `(mods & Shift) != None` is.
+		//
+		// The composite goes out rather than the side that came in, which is what lets the
+		// whole UI ask HasFlag(.Shift) downstream and be right.
+		if (modifiers.HasAny(.Shift))
 			result |= .Shift;
-		if (modifiers.HasFlag(.Ctrl))
+		if (modifiers.HasAny(.Ctrl))
 			result |= .Ctrl;
-		if (modifiers.HasFlag(.Alt))
+		if (modifiers.HasAny(.Alt))
 			result |= .Alt;
-		if (modifiers.HasFlag(.Gui))
+		if (modifiers.HasAny(.Gui))
 			result |= .Gui;
 
 		return result;
