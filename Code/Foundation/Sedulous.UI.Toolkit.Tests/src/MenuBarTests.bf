@@ -39,7 +39,7 @@ class MenuBarTests
 		let editMenu = bar.AddMenu("Edit");
 
 		var ran = false;
-		fileMenu.AddItem("Open", new [&]() => { ran = true; });
+		fileMenu.AddItem("Open", new [&ran]() => { ran = true; });
 		fileMenu.AddSeparator();
 		editMenu.AddItem("Undo", new () => {});
 

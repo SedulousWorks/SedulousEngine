@@ -97,7 +97,7 @@ class TimelineTests
 
 		var fires = 0;
 		var last = -1.0f;
-		timeline.OnPlayheadMoved.Add(new [&](t) => { fires++; last = t; });
+		timeline.OnPlayheadMoved.Add(new [&fires, &last](t) => { fires++; last = t; });
 
 		timeline.SetPlayheadTime(1.0f);
 		Test.Assert(timeline.PlayheadTime == 1.0f);
@@ -134,7 +134,7 @@ class TimelineTests
 		Test.Assert(timeline.LaneCount == 1);
 
 		var selectionEvents = 0;
-		timeline.OnSelectionChanged.Add(new [&]() => { selectionEvents++; });
+		timeline.OnSelectionChanged.Add(new [&selectionEvents]() => { selectionEvents++; });
 
 		let down = Mouse(50.0f, 35.0f);
 		defer delete down;
@@ -146,7 +146,7 @@ class TimelineTests
 		Test.Assert(selectionEvents == 1);
 
 		var moves = 0;
-		timeline.OnKeysMoved.Add(new [&](delta) => { moves++; });
+		timeline.OnKeysMoved.Add(new [&moves](delta) => { moves++; });
 
 		let up = Mouse(50.0f, 35.0f);
 		defer delete up;
@@ -166,7 +166,7 @@ class TimelineTests
 
 		var moved = -999.0f;
 		var moves = 0;
-		timeline.OnKeysMoved.Add(new [&](delta) => { moved = delta; moves++; });
+		timeline.OnKeysMoved.Add(new [&moved, &moves](delta) => { moved = delta; moves++; });
 
 		let down = Mouse(50.0f, 35.0f);
 		defer delete down;
@@ -203,7 +203,7 @@ class TimelineTests
 		timeline.SetLanes(Lanes(scope float[](0.5f)));
 
 		var moves = 0;
-		timeline.OnKeysMoved.Add(new [&](delta) => { moves++; });
+		timeline.OnKeysMoved.Add(new [&moves](delta) => { moves++; });
 
 		let down = Mouse(50.0f, 35.0f);
 		defer delete down;
@@ -377,7 +377,7 @@ class TimelineTests
 
 		var fired = -2;
 		var fires = 0;
-		timeline.OnLaneSelected.Add(new [&](lane) => { fired = lane; fires++; });
+		timeline.OnLaneSelected.Add(new [&fired, &fires](lane) => { fired = lane; fires++; });
 
 		// The gutter, on the SECOND row: the ruler is 24 and lane zero is 22, so lane one runs
 		// from 46 to 68.
@@ -429,7 +429,7 @@ class TimelineTests
 		timeline.Layout(0, 0, 800.0f, 200.0f);
 
 		var views = 0;
-		timeline.OnViewChanged.Add(new [&]() => { views++; });
+		timeline.OnViewChanged.Add(new [&views]() => { views++; });
 
 		timeline.SetPixelsPerSecond(200.0f);
 		Test.Assert(views >= 1);

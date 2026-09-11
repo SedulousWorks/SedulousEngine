@@ -249,7 +249,7 @@ class DockingTests
 		group.AddPanel(new DockablePanel("P3"));
 
 		var selected = 0;
-		group.OnTabSelected.Add(new [&](panel) => { selected++; });
+		group.OnTabSelected.Add(new [&selected](panel) => { selected++; });
 
 		group.SetSelectedIndex(2);
 		Test.Assert(group.SelectedIndex == 2);
@@ -354,7 +354,7 @@ class DockingTests
 		bed.SettleLayout();
 
 		DockablePanel activated = null;
-		bed.Manager.OnPanelActivated.Add(new [&](panel) => { activated = panel; });
+		bed.Manager.OnPanelActivated.Add(new [&activated](panel) => { activated = panel; });
 
 		PressInside(bed, a);
 		Test.Assert(activated == a);
@@ -381,11 +381,11 @@ class DockingTests
 		defer panel.ReleaseRef();
 
 		var closed = 0;
-		panel.OnCloseRequested.Add(new [&](p) => { closed++; });
+		panel.OnCloseRequested.Add(new [&closed](p) => { closed++; });
 
 		var allow = false;
 		var asked = 0;
-		panel.OnCloseInterceptor = new [&](p) =>
+		panel.OnCloseInterceptor = new [&allow, &asked](p) =>
 			{
 				asked++;
 				return allow;
@@ -461,7 +461,7 @@ class DockingTests
 
 		var allow = false;
 		var asked = 0;
-		panel.OnCloseInterceptor = new [&](p) =>
+		panel.OnCloseInterceptor = new [&allow, &asked](p) =>
 			{
 				asked++;
 				return allow;

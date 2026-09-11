@@ -78,7 +78,7 @@ class ToastTests
 		var request = ToastRequest("Deleted");
 		request.DurationSeconds = 0.0f;
 		request.ActionLabel = "Undo";
-		request.OnAction = new [&]() => { fired = true; };
+		request.OnAction = new [&fired]() => { fired = true; };
 		let id = host.Show(request);
 
 		// The card lays out as message, action, close.

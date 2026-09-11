@@ -14,7 +14,7 @@ class VectorEditorTests
 	{
 		Float2 observed = .Zero;
 		let editor = scope Float2Editor("Position", .(1.0f, 2.0f), -1000.0f, 1000.0f, 0.1f,
-			new [&](value) => { observed = value; });
+			new [&observed](value) => { observed = value; });
 
 		Test.Assert(editor.Value.X == 1.0f);
 		Test.Assert(editor.Value.Y == 2.0f);
@@ -39,7 +39,7 @@ class VectorEditorTests
 	{
 		Float3 observed = .Zero;
 		let editor = scope Float3Editor("Position", .(1.0f, 2.0f, 3.0f), -1000.0f, 1000.0f, 0.1f,
-			new [&](value) => { observed = value; });
+			new [&observed](value) => { observed = value; });
 
 		Test.Assert(editor.Value.X == 1.0f);
 		Test.Assert(editor.Value.Z == 3.0f);
@@ -63,7 +63,7 @@ class VectorEditorTests
 	{
 		Float4 observed = .Zero;
 		let editor = scope Float4Editor("Rect", .(1.0f, 2.0f, 3.0f, 4.0f), -1000.0f, 1000.0f, 0.1f,
-			new [&](value) => { observed = value; });
+			new [&observed](value) => { observed = value; });
 
 		Test.Assert(editor.Value.X == 1.0f);
 		Test.Assert(editor.Value.W == 4.0f);
@@ -91,8 +91,8 @@ class VectorEditorTests
 
 		var began = 0;
 		var ended = 0;
-		editor.OnEditBegin.Add(new [&](sender) => { began++; });
-		editor.OnEditEnd.Add(new [&](sender) => { ended++; });
+		editor.OnEditBegin.Add(new [&began](sender) => { began++; });
+		editor.OnEditEnd.Add(new [&ended](sender) => { ended++; });
 
 		let row = editor.EditorView as FlexLayout;
 		let x = row.GetChildAt(0) as NumericField;

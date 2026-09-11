@@ -50,8 +50,8 @@ class ViewClusterTests
 		var order = 0;
 		var first = -1;
 		var second = -1;
-		queue.QueueAction(new [&]() => { first = order++; });
-		queue.QueueAction(new [&]() => { second = order++; });
+		queue.QueueAction(new [&first, &order]() => { first = order++; });
+		queue.QueueAction(new [&order, &second]() => { second = order++; });
 
 		queue.Drain();
 
@@ -67,7 +67,9 @@ class ViewClusterTests
 	{
 		let queue = scope MutationQueue();
 		var counter = 0;
-		queue.QueueAction(new [&]() =>
+		// The outer one captures `queue` as well, because the nested action it creates reaches
+		// for it: a capture list has to cover what its whole body touches, nested bodies too.
+		queue.QueueAction(new [&counter, &queue]() =>
 			{
 				counter++;
 				queue.QueueAction(new [&counter]() => { counter++; });

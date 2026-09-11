@@ -47,7 +47,7 @@ class ColorPickerTests
 		defer picker.ReleaseRef();
 
 		var fired = false;
-		picker.OnColorChanged.Add(new [&](sender, color) => { fired = true; });
+		picker.OnColorChanged.Add(new [&fired](sender, color) => { fired = true; });
 
 		picker.SetColor(Color.Rgb(0, 255, 0));
 		Test.Assert(!fired);

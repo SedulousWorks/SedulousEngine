@@ -71,7 +71,7 @@ class SDL3ShellTests
 			return;
 
 		bool asked = false;
-		fixture.Shell.SetMainWindowCloseHandler(new [&] () =>
+		fixture.Shell.SetMainWindowCloseHandler(new [&asked] () =>
 		{
 			asked = true;
 			return false;

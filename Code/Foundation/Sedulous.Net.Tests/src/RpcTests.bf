@@ -58,7 +58,7 @@ class RpcTests
 		var receivedX = 0;
 		var receivedFlag = false;
 		var senderSeen = InvalidPeer;
-		table.On("Order", new [&](sender, args) =>
+		table.On("Order", new [&receivedFlag, &receivedX, &senderSeen](sender, args) =>
 			{
 				senderSeen = sender;
 				receivedX = args.ReadI32();
@@ -85,7 +85,7 @@ class RpcTests
 		let table = scope RpcTable();
 
 		var handled = false;
-		table.On("Known", new [&](sender, args) => { handled = true; });
+		table.On("Known", new [&handled](sender, args) => { handled = true; });
 
 		// A peer calling something this build does not have.
 		table.Call(fixture.Client, fixture.ServerPeer, "Unknown");
@@ -106,7 +106,7 @@ class RpcTests
 		let table = scope RpcTable();
 
 		var count = 0;
-		table.On("Tick", new [&](sender, args) => { count++; });
+		table.On("Tick", new [&count](sender, args) => { count++; });
 
 		table.CallAll(fixture.Server, "Tick");
 		fixture.Pump(30);
@@ -122,8 +122,8 @@ class RpcTests
 
 		var first = 0;
 		var second = 0;
-		table.On("Once", new [&](sender, args) => { first++; });
-		table.On("Once", new [&](sender, args) => { second++; });
+		table.On("Once", new [&first](sender, args) => { first++; });
+		table.On("Once", new [&second](sender, args) => { second++; });
 
 		table.Call(fixture.Client, fixture.ServerPeer, "Once");
 		fixture.Pump(30);

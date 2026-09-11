@@ -44,7 +44,7 @@ class NetworkManagerTests
 		var received = false;
 		var argument = 0.0;
 		var from = InvalidPeer;
-		server.Rpc.On("order", new [&](sender, args) =>
+		server.Rpc.On("order", new [&argument, &from, &received](sender, args) =>
 			{
 				argument = ReadDouble(args);
 				from = sender;
@@ -94,7 +94,7 @@ class NetworkManagerTests
 
 		var received = false;
 		var argument = 0.0;
-		server.Rpc.On("order", new [&](sender, args) =>
+		server.Rpc.On("order", new [&argument, &received](sender, args) =>
 			{
 				argument = ReadDouble(args);
 				received = true;

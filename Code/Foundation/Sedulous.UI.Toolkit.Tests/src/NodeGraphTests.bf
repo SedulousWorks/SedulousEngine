@@ -232,12 +232,12 @@ class NodeGraphTests
 		var removedDest = -1;
 		var order = scope String();
 
-		canvas.OnConnectionDeleting.Add(new [&](index) =>
+		canvas.OnConnectionDeleting.Add(new [&deletingIndex, &order](index) =>
 			{
 				deletingIndex = index;
 				order.Append("D");
 			});
-		canvas.OnConnectionRemoved.Add(new [&](sourceNode, sourcePort, destNode, destPort) =>
+		canvas.OnConnectionRemoved.Add(new [&order, &removedDest, &removedSource](sourceNode, sourcePort, destNode, destPort) =>
 			{
 				removedSource = sourceNode;
 				removedDest = destNode;
@@ -265,7 +265,7 @@ class NodeGraphTests
 		canvas.AddNode(MakeNode("C"));
 
 		var changes = 0;
-		canvas.OnSelectionChanged.Add(new [&]() => { changes++; });
+		canvas.OnSelectionChanged.Add(new [&changes]() => { changes++; });
 
 		canvas.SelectNode(0);
 		Test.Assert(canvas.GetNode(0).IsSelected);
@@ -414,7 +414,7 @@ class NodeGraphTests
 		let idle = canvas.AddNode(MakeNode("Idle"));
 
 		var fired = false;
-		canvas.OnNodeLinkRequested.Add(new [&](source, target) => { fired = true; });
+		canvas.OnNodeLinkRequested.Add(new [&fired](source, target) => { fired = true; });
 
 		canvas.StartLinkFrom(-1);
 		canvas.StartLinkFrom(5);

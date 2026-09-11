@@ -149,7 +149,7 @@ class CurveCanvasTests
 		var selectedChannel = -2;
 		var selectedKey = -2;
 		var fires = 0;
-		canvas.OnSelectionChanged.Add(new [&](channel, key) =>
+		canvas.OnSelectionChanged.Add(new [&fires, &selectedChannel, &selectedKey](channel, key) =>
 			{
 				selectedChannel = channel;
 				selectedKey = key;
@@ -258,7 +258,7 @@ class CurveCanvasTests
 		canvas.MaxKeys = 2;
 
 		var added = 0;
-		canvas.OnKeyAdded.Add(new [&](channel, key) => { added++; });
+		canvas.OnKeyAdded.Add(new [&added](channel, key) => { added++; });
 
 		for (int32 i = 0; i < 4; i++)
 		{

@@ -29,8 +29,8 @@ class GradientEditorTests
 
 		var added = 0;
 		var changed = 0;
-		editor.OnStopAdded.Add(new [&](index) => { added++; });
-		editor.OnStopChanged.Add(new [&](index) => { changed++; });
+		editor.OnStopAdded.Add(new [&added](index) => { added++; });
+		editor.OnStopChanged.Add(new [&changed](index) => { changed++; });
 
 		GradientStop[2] stops = .(.(0.0f, .(0, 0, 0, 1)), .(1.0f, .(1, 1, 1, 1)));
 		editor.SetStops(stops);
@@ -49,7 +49,7 @@ class GradientEditorTests
 		defer editor.ReleaseRef();
 
 		var changedIndex = -99;
-		editor.OnStopChanged.Add(new [&](index) => { changedIndex = index; });
+		editor.OnStopChanged.Add(new [&changedIndex](index) => { changedIndex = index; });
 
 		editor.UpdateStopColor(1, .(1, 0, 0, 1));
 		Test.Assert(changedIndex == 1);

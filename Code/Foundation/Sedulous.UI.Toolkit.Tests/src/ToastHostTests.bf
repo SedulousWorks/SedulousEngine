@@ -52,7 +52,7 @@ class ToastHostTests
 		var request = ToastRequest("Deleted");
 		request.DurationSeconds = 0.0f;
 		request.ActionLabel = "Undo";
-		request.OnAction = new [&]() => { fired = true; };
+		request.OnAction = new [&fired]() => { fired = true; };
 		let id = host.Show(request);
 
 		let card = host.GetChildAt(0) as ViewGroup;
@@ -78,7 +78,7 @@ class ToastHostTests
 		var request = ToastRequest("Deleted");
 		request.DurationSeconds = 0.0f;
 		request.ActionLabel = "Undo";
-		request.OnAction = new [&]() => { fired = true; };
+		request.OnAction = new [&fired]() => { fired = true; };
 		let id = host.Show(request);
 
 		let card = host.GetChildAt(0) as ViewGroup;

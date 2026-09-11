@@ -183,7 +183,7 @@ class NullShellTests
 		Test.Assert(shell.RequestMainWindowClose(), "no handler means the close proceeds");
 
 		var asked = 0;
-		shell.SetMainWindowCloseHandler(new [&] () => { asked++; return false; });
+		shell.SetMainWindowCloseHandler(new [&asked] () => { asked++; return false; });
 		Test.Assert(!shell.RequestMainWindowClose(), "the handler said no");
 		Test.Assert(asked == 1);
 

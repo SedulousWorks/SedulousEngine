@@ -26,7 +26,7 @@ class BottomDockTests
 
 		var events = 0;
 		var lastExpanded = false;
-		dock.OnExpandedChanged.Add(new [&](expanded) =>
+		dock.OnExpandedChanged.Add(new [&events, &lastExpanded](expanded) =>
 			{
 				events++;
 				lastExpanded = expanded;

@@ -14,7 +14,7 @@ class ScalarEditorTests
 	public static void ABoolRoundTripsThroughItsCheckBox()
 	{
 		var observed = false;
-		let editor = scope BoolEditor("Enabled", false, new [&](value) => { observed = value; });
+		let editor = scope BoolEditor("Enabled", false, new [&observed](value) => { observed = value; });
 
 		Test.Assert(editor.Name == "Enabled");
 		Test.Assert(!editor.Value);
@@ -34,7 +34,7 @@ class ScalarEditorTests
 	public static void AButtonEditorInvokesItsAction()
 	{
 		var clicks = 0;
-		let editor = scope ButtonEditor("Add Condition", new [&]() => { clicks++; });
+		let editor = scope ButtonEditor("Add Condition", new [&clicks]() => { clicks++; });
 
 		let button = editor.EditorView as Button;
 		Test.Assert(button != null);
@@ -67,7 +67,7 @@ class ScalarEditorTests
 	{
 		let observed = scope String();
 		let editor = scope StringEditor("Label", "hello",
-			new [&](value) => { observed.Set(value); });
+			new(value) => { observed.Set(value); });
 
 		Test.Assert(editor.Value == "hello");
 
@@ -88,7 +88,7 @@ class ScalarEditorTests
 	public static void AnIntRoundTripsWithNoDecimalPlaces()
 	{
 		int64 observed = 0;
-		let editor = scope IntEditor("Count", 5, 0, 100, new [&](value) => { observed = value; });
+		let editor = scope IntEditor("Count", 5, 0, 100, new [&observed](value) => { observed = value; });
 
 		Test.Assert(editor.Value == 5);
 
@@ -109,7 +109,7 @@ class ScalarEditorTests
 	{
 		var observed = 0.0;
 		let editor = scope FloatEditor("Scale", 1.0, 0.0, 10.0, 0.1, 3,
-			new [&](value) => { observed = value; });
+			new [&observed](value) => { observed = value; });
 
 		Test.Assert(editor.Value == 1.0);
 
@@ -130,7 +130,7 @@ class ScalarEditorTests
 	{
 		int32 observed = -1;
 		StringView[3] items = .("Opaque", "Cutout", "Transparent");
-		let editor = scope EnumEditor("Blend", 0, items, new [&](value) => { observed = value; });
+		let editor = scope EnumEditor("Blend", 0, items, new [&observed](value) => { observed = value; });
 
 		Test.Assert(editor.Value == 0);
 
@@ -152,7 +152,7 @@ class ScalarEditorTests
 	{
 		var observed = 0.0f;
 		let editor = scope RangeEditor("Opacity", 0.5f, 0.0f, 1.0f, 0.0f,
-			new [&](value) => { observed = value; });
+			new [&observed](value) => { observed = value; });
 
 		Test.Assert(editor.Value == 0.5f);
 

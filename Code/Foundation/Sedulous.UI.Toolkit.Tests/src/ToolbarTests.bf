@@ -36,7 +36,7 @@ class ToolbarTests
 
 		var fired = 0;
 		var lastValue = false;
-		toggle.OnCheckedChanged.Add(new [&](sender, value) =>
+		toggle.OnCheckedChanged.Add(new [&fired, &lastValue](sender, value) =>
 			{
 				fired++;
 				lastValue = value;
@@ -61,7 +61,7 @@ class ToolbarTests
 
 		let button = bar.AddButton("Save");
 		var clicked = false;
-		button.OnClick.Add(new [&](sender) => { clicked = true; });
+		button.OnClick.Add(new [&clicked](sender) => { clicked = true; });
 
 		button.OnClick(button);
 		Test.Assert(clicked);

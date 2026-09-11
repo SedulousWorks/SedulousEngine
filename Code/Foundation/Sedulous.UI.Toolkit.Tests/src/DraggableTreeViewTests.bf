@@ -113,7 +113,7 @@ class DraggableTreeViewTests
 		var firedFrom = -1;
 		var firedTo = -1;
 		var fires = 0;
-		view.OnItemReordered.Add(new [&](sender, from, to) =>
+		view.OnItemReordered.Add(new [&firedFrom, &firedTo, &fires](sender, from, to) =>
 			{
 				firedFrom = from;
 				firedTo = to;
@@ -148,7 +148,7 @@ class DraggableTreeViewTests
 		view.ItemHeight = 20.0f;
 
 		var intoFires = 0;
-		view.OnItemDroppedInto.Add(new [&](sender, from, to) => { intoFires++; });
+		view.OnItemDroppedInto.Add(new [&intoFires](sender, from, to) => { intoFires++; });
 
 		let treeDrag = new TreeDragData(0);
 		defer treeDrag.ReleaseRef();

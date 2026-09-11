@@ -30,7 +30,7 @@ class AsyncSurfaceTests
 
 		int32 readyCount = 0;
 		int readyThread = 0;
-		proxy.Handle.SetOnReady(new [&] () =>
+		proxy.Handle.SetOnReady(new [&readyCount, &readyThread] () =>
 		{
 			readyCount++;
 			readyThread = Thread.CurrentThread.Id;
@@ -58,7 +58,7 @@ class AsyncSurfaceTests
 		Test.Assert(proxy.State == .Ready);
 
 		int32 readyCount = 0;
-		proxy.Handle.SetOnReady(new [&] () => { readyCount++; });
+		proxy.Handle.SetOnReady(new [&readyCount] () => { readyCount++; });
 		manager.Pump();
 		Test.Assert(readyCount == 0);
 	}

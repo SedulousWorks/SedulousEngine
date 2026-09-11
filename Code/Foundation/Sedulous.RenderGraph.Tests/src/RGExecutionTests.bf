@@ -55,10 +55,10 @@ class RGExecutionTests
 			harness.BackbufferView, ResourceState.Present);
 		let scene = graph.CreateTransient("Scene", .(TextureFormat.RGBA16Float, 64, 64));
 
-		graph.AddRenderPass("Scene", scope (builder) =>
+		graph.AddRenderPass("Scene", scope [&generation, &graph, &scene, &view] (builder) =>
 			{
 				builder.SetColorTarget(0, scene, .Clear, .Store);
-				builder.SetExecute(new [&] (encoder) =>
+				builder.SetExecute(new [&generation, &graph, &scene, &view] (encoder) =>
 					{
 						generation = graph.GetTextureGeneration(scene);
 						view = graph.GetTextureView(scene);
@@ -115,10 +115,10 @@ class RGExecutionTests
 		let first = graph.CreateTransient("A", .(TextureFormat.RGBA16Float, 64, 64));
 		let second = graph.CreateTransient("B", .(TextureFormat.RGBA8Unorm, 32, 32));
 
-		graph.AddRenderPass("PassA", scope (builder) =>
+		graph.AddRenderPass("PassA", scope [&first, &firstGeneration, &graph] (builder) =>
 			{
 				builder.SetColorTarget(0, first, .Clear, .Store);
-				builder.SetExecute(new [&] (encoder) =>
+				builder.SetExecute(new [&first, &firstGeneration, &graph] (encoder) =>
 					{
 						firstGeneration = graph.GetTextureGeneration(first);
 					});
@@ -126,7 +126,7 @@ class RGExecutionTests
 		graph.AddRenderPass("PassB", scope [&] (builder) =>
 			{
 				builder.SetColorTarget(0, second, .Clear, .Store);
-				builder.SetExecute(new [&] (encoder) =>
+				builder.SetExecute(new [&graph, &second, &secondGeneration] (encoder) =>
 					{
 						secondGeneration = graph.GetTextureGeneration(second);
 					});
@@ -166,13 +166,13 @@ class RGExecutionTests
 		graph.AddRenderPass("Orphan", scope [&] (builder) =>
 			{
 				builder.SetColorTarget(0, orphaned, .Clear, .Store);
-				builder.SetExecute(new [&] (encoder) => { orphanRan = true; });
+				builder.SetExecute(new [&orphanRan] (encoder) => { orphanRan = true; });
 			});
 		graph.AddRenderPass("Kept", scope [&] (builder) =>
 			{
 				builder.SetColorTarget(0, backbuffer, .Clear, .Store);
 				builder.NeverCull();
-				builder.SetExecute(new [&] (encoder) => { keptRan = true; });
+				builder.SetExecute(new [&keptRan] (encoder) => { keptRan = true; });
 			});
 
 		Test.Assert(graph.Execute(harness.Encoder) case .Ok);
@@ -198,7 +198,7 @@ class RGExecutionTests
 				builder.SetColorTarget(0, backbuffer, .Clear, .Store);
 				builder.NeverCull();
 				builder.EnableIf(new () => false);
-				builder.SetExecute(new [&] (encoder) => { ran = true; });
+				builder.SetExecute(new [&ran] (encoder) => { ran = true; });
 			});
 
 		Test.Assert(graph.Execute(harness.Encoder) case .Ok);
@@ -224,7 +224,7 @@ class RGExecutionTests
 			{
 				builder.SetColorTarget(0, backbuffer, .Clear, .Store);
 				builder.NeverCull();
-				builder.SetBundleExecute(new [&] (encoder, bundles) => { recorded = true; });
+				builder.SetBundleExecute(new [&recorded] (encoder, bundles) => { recorded = true; });
 			});
 
 		Test.Assert(graph.Execute(harness.Encoder) case .Ok);
@@ -269,12 +269,12 @@ class RGExecutionTests
 		graph.AddComputePass("Compute", scope [&] (builder) =>
 			{
 				builder.HasSideEffects();
-				builder.SetComputeExecute(new [&] (encoder) => { computeRan = true; });
+				builder.SetComputeExecute(new [&computeRan] (encoder) => { computeRan = true; });
 			});
 		graph.AddCopyPass("Copy", scope [&] (builder) =>
 			{
 				builder.HasSideEffects();
-				builder.SetCopyExecute(new [&] (encoder) => { copyRan = true; });
+				builder.SetCopyExecute(new [&copyRan] (encoder) => { copyRan = true; });
 			});
 
 		Test.Assert(graph.Execute(harness.Encoder) case .Ok);

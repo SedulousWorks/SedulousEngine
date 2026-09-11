@@ -64,9 +64,9 @@ class MenuListTests
 
 		var picked = -1;
 		var activatedIndex = -1;
-		menu.OnItemActivated.Add(new [&](list, index) => { activatedIndex = index; });
-		menu.AddItem("First", new [&]() => { picked = 0; });
-		let second = menu.AddItem("Second", new [&]() => { picked = 1; });
+		menu.OnItemActivated.Add(new [&activatedIndex](list, index) => { activatedIndex = index; });
+		menu.AddItem("First", new [&picked]() => { picked = 0; });
+		let second = menu.AddItem("Second", new [&picked]() => { picked = 1; });
 
 		second.FireClick();
 		Test.Assert(picked == 1);

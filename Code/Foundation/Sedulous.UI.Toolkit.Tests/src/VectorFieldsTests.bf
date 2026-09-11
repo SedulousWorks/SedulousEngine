@@ -56,7 +56,7 @@ class VectorFieldsTests
 
 		Float3 observed = .Zero;
 		var fired = 0;
-		field.OnValueChanged.Add(new [&](value) => { observed = value; fired++; });
+		field.OnValueChanged.Add(new [&fired, &observed](value) => { observed = value; fired++; });
 
 		field.SetValue(.(1.0f, 2.0f, 3.0f));
 		Test.Assert(fired == 0, "the host writing a value is not an edit");
@@ -79,8 +79,8 @@ class VectorFieldsTests
 
 		var began = 0;
 		var ended = 0;
-		field.OnEditBegan.Add(new [&](sender) => { began++; });
-		field.OnEditEnded.Add(new [&](sender) => { ended++; });
+		field.OnEditBegan.Add(new [&began](sender) => { began++; });
+		field.OnEditEnded.Add(new [&ended](sender) => { ended++; });
 
 		let x = field.GetChildAt(0) as NumericField;
 		let y = field.GetChildAt(1) as NumericField;

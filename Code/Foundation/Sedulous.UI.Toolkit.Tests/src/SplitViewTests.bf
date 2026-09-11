@@ -45,7 +45,7 @@ class SplitViewTests
 
 		var fired = false;
 		var lastRatio = -1.0f;
-		split.OnSplitChanged.Add(new [&](sender, ratio) =>
+		split.OnSplitChanged.Add(new [&fired, &lastRatio](sender, ratio) =>
 			{
 				fired = true;
 				lastRatio = ratio;

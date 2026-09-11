@@ -289,7 +289,7 @@ class CodeEditViewTests
 
 		int32 toggledLine = -1;
 		var toggledSet = false;
-		h.View.OnBreakpointToggled.Add(new [&](line, set) =>
+		h.View.OnBreakpointToggled.Add(new [&toggledLine, &toggledSet](line, set) =>
 			{
 				toggledLine = line;
 				toggledSet = set;

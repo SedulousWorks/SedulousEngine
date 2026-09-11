@@ -94,7 +94,7 @@ class McpHttpHostTests
 		let callBody = scope String();
 		let ignored = scope String();
 
-		let client = scope Thread(new [&]() =>
+		let client = scope Thread(new [&badMethodStatus, &badPathStatus, &badTokenStatus, &callBody, &callStatus, &done, &ignored, &initBody, &initStatus, &noTokenStatus, &notificationStatus, &port]() =>
 			{
 				initStatus = Fetch(port, Post(cToken,
 					"""
@@ -162,7 +162,7 @@ class McpHttpHostTests
 		int32 status = -1;
 		let ignored = scope String();
 
-		let client = scope Thread(new [&]() =>
+		let client = scope Thread(new [&done, &ignored, &port, &status]() =>
 			{
 				let events = Post("", "");
 				events.Method.Set("GET");
@@ -193,7 +193,7 @@ class McpHttpHostTests
 		let receivedMonitor = scope Monitor();
 		var clientDone = false;
 
-		let listener = scope Thread(new [&]() =>
+		let listener = scope Thread(new [&clientDone, &port, &received, &receivedMonitor]() =>
 			{
 				let socket = TcpSocket.Connect("127.0.0.1", port);
 				defer delete socket;

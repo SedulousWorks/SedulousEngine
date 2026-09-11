@@ -485,7 +485,7 @@ class CodeDocumentTests
 		var first = -99;
 		var removed = -99;
 		var added = -99;
-		doc.OnLinesChanged = new [&](f, r, a) =>
+		doc.OnLinesChanged = new [&added, &first, &removed](f, r, a) =>
 			{
 				first = f;
 				removed = r;

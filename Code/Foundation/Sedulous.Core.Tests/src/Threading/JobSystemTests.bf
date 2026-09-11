@@ -213,7 +213,7 @@ class JobSystemTests
 
 		var ran = false;
 		let done = scope Counter(1);
-		jobs.SubmitAfter(satisfied, new [&] () => { ran = true; }, done);
+		jobs.SubmitAfter(satisfied, new [&ran] () => { ran = true; }, done);
 		jobs.Wait(done);
 		Test.Assert(ran);
 	}
@@ -229,7 +229,7 @@ class JobSystemTests
 		var ran = 0;
 
 		for (int i < 20)
-			jobs.Submit(new [&] () => { ran++; }, done);
+			jobs.Submit(new [&ran] () => { ran++; }, done);
 
 		Test.Assert(ran == 0);
 		jobs.Wait(done);
@@ -296,7 +296,7 @@ class JobSystemTests
 		var observed = -1;
 
 		// Run on one of big's workers, and ask small what slot we are.
-		big.Submit(new [&] () =>
+		big.Submit(new [&observed, &small] () =>
 			{
 				// Inside a worker of `big`, but a stranger to `small`.
 				observed = small.CurrentSlot;
@@ -317,7 +317,7 @@ class JobSystemTests
 		Test.Assert(done.Value == 1);
 
 		let gate = scope WaitEvent();
-		jobs.Submit(new [&] () => { gate.WaitFor(1000); }, done);
+		jobs.Submit(new () => { gate.WaitFor(1000); }, done);
 
 		Thread.Sleep(20);
 		Test.Assert(done.Value == 1);

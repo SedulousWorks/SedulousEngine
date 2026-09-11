@@ -345,7 +345,7 @@ class ReplicationTests
 		// Stands in for the host's SpawnPrefab: records the id and produces a Mover bearing
 		// entity, as a real prefab would.
 		let spawned = scope List<Guid>();
-		clientReplication.SetSpawnHandler(new [&](scene, prefab, id) =>
+		clientReplication.SetSpawnHandler(new(scene, prefab, id) =>
 			{
 				spawned.Add(prefab);
 				let entity = scene.CreateEntity();
@@ -383,7 +383,7 @@ class ReplicationTests
 		AddManagers(client);
 		let clientReplication = scope StateReplication();
 		let spawned = scope List<Guid>();
-		clientReplication.SetSpawnHandler(new [&](scene, prefab, id) =>
+		clientReplication.SetSpawnHandler(new(scene, prefab, id) =>
 			{
 				spawned.Add(prefab);
 				let entity = scene.CreateEntity();
@@ -498,7 +498,7 @@ class ReplicationTests
 		let idB = replication.AssignNetworkId(server, b);
 
 		var peerOneSeesA = true;
-		replication.SetRelevance(new [&](peerId, id, entity) =>
+		replication.SetRelevance(new(peerId, id, entity) =>
 			{
 				if (peerId == 1)
 					return (id == idA) && peerOneSeesA;

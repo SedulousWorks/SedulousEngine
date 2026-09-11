@@ -126,7 +126,7 @@ class SettingsTests
 		let seen = scope String();
 		var fired = 0;
 
-		settings.OnChanged.Add(new [&] (name) => { seen.Set(name); fired++; });
+		settings.OnChanged.Add(new [&fired, &seen] (name) => { seen.Set(name); fired++; });
 		defer settings.OnChanged.Dispose();
 
 		settings.Section<GameSettings>().Profile.Set("x");

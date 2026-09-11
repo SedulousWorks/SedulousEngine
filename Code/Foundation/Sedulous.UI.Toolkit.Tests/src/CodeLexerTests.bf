@@ -375,7 +375,7 @@ class CodeLexerTests
 		CodeLexerRegistry.Clear();
 		defer CodeLexerRegistry.Clear();
 
-		CodeLexerRegistry.Register("testlang", new [&] () => (ICodeLexer)(new CLikeLexer(MakeSpec())));
+		CodeLexerRegistry.Register("testlang", new () => (ICodeLexer)(new CLikeLexer(MakeSpec())));
 
 		let found = CodeLexerRegistry.Create("testlang");
 		Test.Assert(found != null);

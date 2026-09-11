@@ -57,7 +57,7 @@ class HttpServerTests
 		HttpResponse echo = null;
 		HttpResponse missing = null;
 
-		let client = scope Thread(new [&]() =>
+		let client = scope Thread(new [&done, &echo, &missing, &port]() =>
 			{
 				let post = scope HttpRequest("POST", "/echo");
 				post.AddHeader("Content-Type", "application/json");
@@ -96,7 +96,7 @@ class HttpServerTests
 
 		var done = false;
 		HttpResponse response = null;
-		let client = scope Thread(new [&]() =>
+		let client = scope Thread(new [&done, &port, &response]() =>
 			{
 				let get = scope HttpRequest("GET", "/anything");
 				if (HttpClient.Fetch("127.0.0.1", port, get) case .Ok(let got))
@@ -122,7 +122,7 @@ class HttpServerTests
 
 		var done = false;
 		var status = 0;
-		let rawClient = scope Thread(new [&]() =>
+		let rawClient = scope Thread(new [&done, &port, &status]() =>
 			{
 				let raw = ConnectRaw(port);
 				defer delete raw;
@@ -160,7 +160,7 @@ class HttpServerTests
 		// takes nothing else with it.
 		var secondDone = false;
 		HttpResponse after = null;
-		let client = scope Thread(new [&]() =>
+		let client = scope Thread(new [&after, &port, &secondDone]() =>
 			{
 				let get = scope HttpRequest("GET", "/still-here");
 				if (HttpClient.Fetch("127.0.0.1", port, get) case .Ok(let got))
@@ -186,7 +186,7 @@ class HttpServerTests
 		server.SetHandler(new (request) => HttpResponse.EventStreamResponse());
 
 		SseStream held = null;
-		server.SetStreamHandler(new [&](request, stream) =>
+		server.SetStreamHandler(new [&held](request, stream) =>
 			{
 				// The consumer takes its OWN reference, which is what lets it outlive the
 				// server's sweep.
@@ -198,7 +198,7 @@ class HttpServerTests
 		let receivedLock = scope Monitor();
 		var clientDone = false;
 
-		let client = scope Thread(new [&]() =>
+		let client = scope Thread(new [&clientDone, &port, &received, &receivedLock]() =>
 			{
 				let raw = ConnectRaw(port);
 				defer delete raw;
@@ -274,7 +274,7 @@ class HttpServerTests
 		server.SetHandler(new (request) => HttpResponse.EventStreamResponse());
 
 		SseStream held = null;
-		server.SetStreamHandler(new [&](request, stream) =>
+		server.SetStreamHandler(new [&held](request, stream) =>
 			{
 				stream.AddRef();
 				held = stream;
@@ -284,7 +284,7 @@ class HttpServerTests
 		let receivedLock = scope Monitor();
 		var clientDone = false;
 
-		let client = scope Thread(new [&]() =>
+		let client = scope Thread(new [&clientDone, &port, &received, &receivedLock]() =>
 			{
 				let raw = ConnectRaw(port);
 				defer delete raw;

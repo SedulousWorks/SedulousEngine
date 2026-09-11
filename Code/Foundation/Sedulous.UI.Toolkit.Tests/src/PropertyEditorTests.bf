@@ -27,8 +27,8 @@ class PropertyEditorTests
 
 		var began = 0;
 		var ended = 0;
-		editor.OnEditBegin.Add(new [&](sender) => { began++; });
-		editor.OnEditEnd.Add(new [&](sender) => { ended++; });
+		editor.OnEditBegin.Add(new [&began](sender) => { began++; });
+		editor.OnEditEnd.Add(new [&ended](sender) => { ended++; });
 
 		editor.Begin();
 		Test.Assert(began == 1);
@@ -55,8 +55,8 @@ class PropertyEditorTests
 
 		var ended = false;
 		var cancelled = false;
-		editor.OnEditEnd.Add(new [&](sender) => { ended = true; });
-		editor.OnEditCancelled.Add(new [&](sender) => { cancelled = true; });
+		editor.OnEditEnd.Add(new [&ended](sender) => { ended = true; });
+		editor.OnEditCancelled.Add(new [&cancelled](sender) => { cancelled = true; });
 
 		editor.Begin();
 		editor.Cancel();
@@ -117,7 +117,7 @@ class PropertyEditorTests
 		let editor = scope ButtonEditor("Revert to Prefab", null);
 
 		let seen = scope String();
-		editor.BindDisplayNameSink(new [&](text) => { seen.Set(text); });
+		editor.BindDisplayNameSink(new(text) => { seen.Set(text); });
 		editor.SetDisplayName("Revert to Prefab \u{25CF}");
 
 		Test.Assert(seen == "Revert to Prefab \u{25CF}");

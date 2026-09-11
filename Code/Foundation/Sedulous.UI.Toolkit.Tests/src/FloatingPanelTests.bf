@@ -138,7 +138,7 @@ class FloatingPanelTests
 		defer panel.ReleaseRef();
 
 		var closed = 0;
-		panel.OnClose.Add(new [&]() => { closed++; });
+		panel.OnClose.Add(new [&closed]() => { closed++; });
 		panel.OnClose();
 		Test.Assert(closed == 1);
 	}
