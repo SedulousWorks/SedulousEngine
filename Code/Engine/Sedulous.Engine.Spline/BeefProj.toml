@@ -7,3 +7,6 @@ StartupObject = "Sedulous.Engine.Spline.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Spline" = "*"
