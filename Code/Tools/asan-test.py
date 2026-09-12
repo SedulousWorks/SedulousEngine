@@ -110,7 +110,9 @@ def main():
         sys.stderr.write("no ASan runtime found (install clang or libasan)\n")
         return 2
 
-    env = dict(os.environ, LD_PRELOAD=runtime, ASAN_OPTIONS=ASAN_OPTIONS)
+    # A caller can override the whole option string, e.g. to cut memory during a sweep.
+    env = dict(os.environ, LD_PRELOAD=runtime,
+               ASAN_OPTIONS=os.environ.get("ASAN_OPTIONS") or ASAN_OPTIONS)
     code, failures = run(exe, env)
     # A nonzero exit with no test failure is LeakSanitizer's, and its report is above.
     print("%s: exit %d, %d test failure(s)" % (project, code, len(failures)))
