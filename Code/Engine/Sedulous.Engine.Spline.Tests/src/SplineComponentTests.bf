@@ -65,6 +65,48 @@ class SplineComponentTests
 			&& Near(sampled.Z, expected.Z));
 	}
 
+	/// Every query answers in WORLD space: the points are stored entity local, and the
+	/// entity transform is what places them.
+	[Test]
+	public static void TheQueriesAnswerInWorldSpace()
+	{
+		let scene = scope Scene("splines");
+		SplineScene.AddSplineSceneManagers(scene);
+		let manager = scene.GetSystem<SplineComponentManager>();
+		Test.Assert(manager != null);
+
+		let entity = scene.CreateEntity("path");
+		let component = manager.Add(entity);
+		component.Curve.Points.Add(SplinePoint(.(0, 0, 0)));
+		component.Curve.Points.Add(SplinePoint(.(10, 0, 0)));
+		component.Curve.UpdateAutoHandles();
+		component.Curve.RebuildArcLength();
+
+		// Lifted five units, so a local answer and a world one cannot be confused.
+		var placed = Transform();
+		placed.Position = .(0, 5, 0);
+		scene.SetLocalTransform(entity, placed);
+		scene.UpdateTransforms();
+
+		Test.Assert(manager.PointCount(entity) == 2);
+		Test.Assert(!manager.IsClosed(entity));
+		Test.Assert(Near(manager.Length(entity), 10.0f));
+
+		let mid = manager.SampleAtDistance(entity, 5.0f);
+		Test.Assert(mid.Valid);
+		Test.Assert(Near(mid.Position.X, 5.0f, 0.05f) && Near(mid.Position.Y, 5.0f, 0.05f));
+		Test.Assert(Near(mid.Tangent.X, 1.0f) && Near(mid.Tangent.Y, 0.0f));
+
+		let nearest = manager.ClosestPoint(entity, .(3, 9, 0));
+		Test.Assert(nearest.Valid);
+		Test.Assert(Near(nearest.Position.X, 3.0f, 0.05f) && Near(nearest.Position.Y, 5.0f, 0.05f));
+
+		// No spline on the entity gives the INVALID hit, zeroed, rather than an error.
+		let bare = scene.CreateEntity("bare");
+		Test.Assert(!manager.SampleAt(bare, 0.5f).Valid);
+		Test.Assert(manager.Length(bare) == 0.0f);
+	}
+
 	/// Builds a scene with a straight ten unit path and a follower on it.
 	private static void MakePath(Scene scene, out EntityHandle path, out EntityHandle mover)
 	{
