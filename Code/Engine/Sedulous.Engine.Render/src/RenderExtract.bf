@@ -58,6 +58,13 @@ static class RenderExtract
 		// The raw cache is refreshed from the proxies EVERY frame: a few pointer loads, and a
 		// late cook or a hot reload heals live rather than pinning whatever was null at
 		// resolve time.
+		//
+		// BORROWED, where Raptor's cache holds a strong reference per entry. Material is not
+		// reference counted here, and the render data beside it already borrows the primary
+		// material the same way, so this follows the port rather than introducing a second
+		// rule. It IS a weaker guarantee: Raptor keeps each material alive from extract until
+		// the snapshot is recorded, and this relies on the material system outliving the
+		// frame. Whoever makes materials individually releasable has to revisit it.
 		component.MaterialCache.Clear();
 		for (int i < component.Materials.Count)
 			component.MaterialCache.Add(component.Materials[i].Get);
@@ -184,5 +191,106 @@ static class RenderExtract
 		}
 
 		context.MergeInto(outScene);
+	}
+
+	/// Fills the snapshot with ONE record per visible instanced set: the set, not its
+	/// instances.
+	///
+	/// Per frame cost is constant in the instance count, because the renderer holds the
+	/// transforms in a persistent buffer keyed by the entity and the whole set culls against
+	/// one merged bounds.
+	public static void ExtractInstancedMeshesInto(Scene scene, ExtractedScene outScene)
+	{
+		let sets = scene.GetSystem<InstancedMeshComponentManager>();
+		if (sets == null)
+			return;
+
+		sets.ForEach(scope (component, entity) =>
+			{
+				// Gated BEFORE the caches below: an inactive set is simply absent from the
+				// snapshot. The renderer draws from the snapshot, and its buffer is only a
+				// cache that revalidates by version when the set comes back.
+				if (!scene.IsEffectivelyActive(entity) || !component.Visible
+					|| (component.Mesh.Get == null) || (component.Count == 0))
+					return;
+
+				// The entity relative instances are composed into world space and CACHED,
+				// rebuilt only when the authored set changed or the entity moved. The
+				// renderer keys its upload on the composed version, so either kind of change
+				// re uploads.
+				let entityWorld = scene.GetWorldMatrix(entity);
+				if ((component.ComposedFromVersion != component.Version)
+					|| !(component.ComposedEntityWorld == entityWorld))
+				{
+					component.WorldTransforms.Clear();
+					for (int i < component.Instances.Count)
+						component.WorldTransforms.Add(component.Instances[i] * entityWorld);
+
+					component.ComposedEntityWorld = entityWorld;
+					component.ComposedFromVersion = component.Version;
+					component.ComposedVersion++;
+				}
+
+				// The merged bounds are the union of the mesh's local box under every composed
+				// instance, cached the same way and rebuilt only when that set changed.
+				if (component.BoundsVersion != component.ComposedVersion)
+				{
+					let localBounds = component.Mesh.Get.Bounds;
+					var merged = AABB.Empty();
+					for (let transform in component.WorldTransforms)
+					{
+						let center = TransformPoint(localBounds.Center(), transform);
+						let radius = WorldBoundsRadius(localBounds, transform);
+						merged.Expand(center - Float3(radius, radius, radius));
+						merged.Expand(center + Float3(radius, radius, radius));
+					}
+					component.CachedCenter = merged.Center();
+					component.CachedRadius = Length(merged.Extents());
+					component.BoundsVersion = component.ComposedVersion;
+				}
+
+				let data = outScene.Add<MultiMeshRenderData>();
+				if (data == null)
+					return;
+
+				data.MultiMesh = true;
+				data.Key = PackEntity(entity);
+				// BORROWED for the frame, which the snapshot being immutable is what makes safe.
+				data.Transforms = component.WorldTransforms.Ptr;
+				let tintsMatch = !component.Tints.IsEmpty
+					&& (component.Tints.Count == component.Instances.Count);
+				data.Tints = tintsMatch ? component.Tints.Ptr : null;
+				data.InstanceCount = component.Count;
+				data.Version = component.ComposedVersion;
+				data.Mesh = component.Mesh.Get;
+				data.Material = component.Material.Get;
+				data.SubmeshMaterials = component.SubmeshMaterials.IsEmpty
+					? null : component.SubmeshMaterials.Ptr;
+				data.SubmeshMaterialCount = (uint32)component.SubmeshMaterials.Count;
+				data.Color = component.Color;
+				// The merged bounds are what let the whole set cull and depth sort as one.
+				data.WorldCenter = component.CachedCenter;
+				data.WorldRadius = component.CachedRadius;
+				data.EntityId = PackEntity(entity);
+				data.Category = CategoryForMaterial(component.Material.Get);
+				data.SortBatchKey = SortKeys.BatchKey(
+					Internal.UnsafeCastToPtr(component.Mesh.Get),
+					Internal.UnsafeCastToPtr(component.Material.Get));
+
+				data.PosePool = component.PosePool;
+				data.PreviousPosePool = component.PrevPosePool;
+				data.PoseCount = component.PoseCount;
+				data.PoseBoneCount = component.BoneCount;
+				data.PoseAssignment = component.PoseAssignment;
+				// The explicit indices are borrowed ONLY when the policy asks for them and the
+				// list is the right length; otherwise null leaves the renderer on its hashed
+				// default rather than reading a mismatched array.
+				let explicitPoses = (component.PoseAssignment == .Explicit)
+					&& (component.PoseIndices.Count == component.Instances.Count);
+				data.PoseIndices = explicitPoses ? component.PoseIndices.Ptr : null;
+
+				// The renderer id stays nought, since the mesh renderer draws these too, and
+				// the world matrix stays identity: the per instance transforms ride above.
+			});
 	}
 }
