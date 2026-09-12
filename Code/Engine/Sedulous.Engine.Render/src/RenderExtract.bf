@@ -390,4 +390,200 @@ static class RenderExtract
 				outScene.AddDecal(instance);
 			});
 	}
+
+	/// Reads the scene's primary camera. False when there is none.
+	///
+	/// The view is the INVERSE of the entity's world matrix, and the projection comes from the
+	/// component's own fields.
+	public static bool ExtractPrimaryCamera(Scene scene, ref ViewCamera outCamera,
+		Color* outClear = null)
+	{
+		let cameras = scene.GetSystem<CameraComponentManager>();
+		if (cameras == null)
+			return false;
+
+		var found = false;
+		var camera = ViewCamera();
+		var clear = Color(0, 0, 0, 1);
+
+		cameras.ForEach(scope [&] (component, entity) =>
+			{
+				// An INACTIVE primary is skipped, so the choice falls through to the next one
+				// rather than the scene losing its camera.
+				if (found || !component.Primary || !scene.IsEffectivelyActive(entity))
+					return;
+
+				found = true;
+				let world = scene.GetWorldMatrix(entity);
+				camera.View = Inverse(world);
+				camera.Projection = Float4x4.PerspectiveFovRH(component.FovYRadians,
+					component.Aspect, component.NearZ, component.FarZ);
+				camera.Position = TransformPoint(Float3(0, 0, 0), world);
+				camera.FarZ = component.FarZ;
+				clear = component.ClearColor;
+			});
+
+		if (found)
+		{
+			outCamera = camera;
+			if (outClear != null)
+				*outClear = clear;
+		}
+		return found;
+	}
+
+	/// Packs every enabled light into the snapshot as a shading input.
+	///
+	/// The FIRST enabled directional light that casts becomes the scene's shadow caster; its
+	/// cascades are fitted to the camera later, when the frame is built.
+	public static void ExtractLightsInto(Scene scene, ExtractedScene outScene)
+	{
+		let lights = scene.GetSystem<LightComponentManager>();
+		if (lights == null)
+			return;
+
+		var haveShadow = false;
+		// Tiles spent per atlas layer, budgeted separately, and the running entry index that
+		// becomes the next caster's shadow index.
+		var realtimeTiles = 0u;
+		var staticTiles = 0u;
+		var flatEntries = 0u;
+
+		lights.ForEach(scope [&] (component, entity) =>
+			{
+				if (!scene.IsEffectivelyActive(entity) || !component.Enabled)
+					return;
+
+				let world = scene.GetWorldMatrix(entity);
+				var light = GpuLight();
+				light.PositionWS = TransformPoint(Float3(0, 0, 0), world);
+				// Forward is -Z, which is the third basis row negated under the row vector
+				// convention.
+				light.DirectionWS = Normalized(Float3(-world.M[2][0], -world.M[2][1],
+					-world.M[2][2]));
+				light.Range = component.Range;
+				light.Color = .(component.Color.R, component.Color.G, component.Color.B);
+				light.Intensity = component.Intensity;
+				light.Type = (float)(uint32)component.Type;
+				light.InnerCos = Math.Cos(component.InnerAngle);
+				light.OuterCos = Math.Cos(component.OuterAngle);
+
+				if (!haveShadow && component.CastsShadows && (component.Type == .Directional))
+				{
+					haveShadow = true;
+					// Marks this light as shadowed for the forward shader.
+					light.ShadowIndex = 0.0f;
+					var directional = DirectionalShadow();
+					directional.Direction = light.DirectionWS;
+					directional.Valid = true;
+					outScene.SetDirectionalShadow(directional);
+				}
+
+				// A local caster takes its BASE atlas tile as its shadow index and registers
+				// itself; the shadow system builds the matrices at frame time. A spot needs one
+				// tile and a point six, one per cube face, and each atlas layer has its own
+				// budget.
+				let localCaster = component.CastsShadows
+					&& ((component.Type == .Spot) || (component.Type == .Point));
+				let tilesNeeded = (component.Type == .Point) ? 6u : 1u;
+				let isStatic = (component.ShadowUpdate == .Static);
+				let layerTiles = isStatic ? staticTiles : realtimeTiles;
+
+				if (localCaster && (layerTiles + tilesNeeded <= RenderLimits.MaxLocalShadowTiles))
+				{
+					light.ShadowIndex = (float)flatEntries;
+
+					var caster = LocalShadowCaster();
+					caster.Type = (uint32)component.Type;
+					caster.PositionWS = light.PositionWS;
+					caster.DirectionWS = light.DirectionWS;
+					caster.Range = component.Range;
+					caster.OuterAngle = component.OuterAngle;
+					caster.IsStatic = isStatic;
+					outScene.AddLocalShadowCaster(caster);
+
+					if (isStatic)
+						staticTiles += tilesNeeded;
+					else
+						realtimeTiles += tilesNeeded;
+					flatEntries += tilesNeeded;
+				}
+
+				outScene.AddLight(light);
+			});
+	}
+
+	/// Reads the scene's environment into the snapshot.
+	///
+	/// A scene with no environment system keeps the snapshot's own dim default, which is what
+	/// makes a bare scene still visible rather than black.
+	public static void ExtractEnvironmentInto(Scene scene, ExtractedScene outScene)
+	{
+		let system = scene.GetSystem<EnvironmentSystem>();
+		if (system == null)
+			return;
+
+		let settings = system.Environment;
+		// The flat fill is premultiplied here, so the snapshot carries one colour rather than
+		// a colour and a scale that every reader has to remember to combine.
+		outScene.SetAmbient(Float3(settings.AmbientColor.R, settings.AmbientColor.G,
+			settings.AmbientColor.B) * settings.AmbientIntensity);
+
+		var sky = SkySnapshot();
+		sky.Mode = settings.SkyMode;
+		sky.Intensity = settings.SkyIntensity;
+		sky.BackgroundIntensity = settings.SkyBackgroundIntensity;
+		sky.Rotation = settings.SkyRotation;
+		sky.Horizon = .(settings.SkyHorizon.R, settings.SkyHorizon.G, settings.SkyHorizon.B);
+		sky.Zenith = .(settings.SkyZenith.R, settings.SkyZenith.G, settings.SkyZenith.B);
+		sky.Ground = .(settings.SkyGround.R, settings.SkyGround.G, settings.SkyGround.B);
+		sky.SunIntensity = settings.SunIntensity;
+		sky.SunAngularSize = settings.SunAngularSize;
+		sky.Turbidity = settings.Turbidity;
+		sky.IblDiffuseIntensity = settings.IblDiffuseIntensity;
+		sky.IblSpecularIntensity = settings.IblSpecularIntensity;
+
+		// The resolved product, for the textured modes. The uid is what the lighting watches:
+		// it rebuilds its environment products when the texture swaps, whether that was a pick
+		// or a hot reload.
+		if (let skyTexture = settings.SkyTexture.Get)
+		{
+			sky.Texture = skyTexture.View;
+			sky.TextureUid = skyTexture.Uid;
+			sky.TextureIsCube = skyTexture.IsCube;
+		}
+
+		outScene.SetSky(sky);
+	}
+
+	/// Reads the scene's reflection probes into the snapshot, capped at what the renderer can
+	/// bind. The probe system captures and prefilters them at frame time.
+	public static void ExtractReflectionProbesInto(Scene scene, ExtractedScene outScene)
+	{
+		let probes = scene.GetSystem<ReflectionProbeComponentManager>();
+		if (probes == null)
+			return;
+
+		var count = 0u;
+		probes.ForEach(scope [&] (component, entity) =>
+			{
+				if (!scene.IsEffectivelyActive(entity) || !component.Enabled
+					|| (count >= RenderLimits.MaxReflectionProbes))
+					return;
+
+				let world = scene.GetWorldMatrix(entity);
+				var probe = ReflectionProbe();
+				probe.Key = PackEntity(entity);
+				probe.Center = TransformPoint(Float3(0, 0, 0), world);
+				probe.HalfExtents = component.HalfExtents;
+				probe.BlendDistance = component.BlendDistance;
+				probe.Intensity = component.Intensity;
+				probe.Resolution = component.Resolution;
+				probe.Priority = component.Priority;
+				probe.Update = component.Update;
+				probe.Parallax = component.Parallax;
+				outScene.AddReflectionProbe(probe);
+				count++;
+			});
+	}
 }
