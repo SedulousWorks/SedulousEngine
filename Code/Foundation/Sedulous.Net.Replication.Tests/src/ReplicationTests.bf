@@ -498,7 +498,9 @@ class ReplicationTests
 		let idB = replication.AssignNetworkId(server, b);
 
 		var peerOneSeesA = true;
-		replication.SetRelevance(new(peerId, id, entity) =>
+		// BY REFERENCE: the test flips peerOneSeesA after this is installed, and the handler
+		// has to see the new value. A by-value copy keeps answering the old one.
+		replication.SetRelevance(new [&idA, &peerOneSeesA] (peerId, id, entity) =>
 			{
 				if (peerId == 1)
 					return (id == idA) && peerOneSeesA;

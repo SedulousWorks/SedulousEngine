@@ -410,6 +410,10 @@ class MaterialSystem : IMaterialInstanceSink
 			desc.Size = (material.UniformDataSize + 15) & ~(uint64)15;
 			desc.Usage = .Uniform;
 			desc.Memory = .CpuToGpu;
+			// LABELLED, because these are handed out by DetachUniformBuffer for a caller to
+			// retire later: one that goes astray is an anonymous small allocation in a leak
+			// report, with nothing on it to say where it came from.
+			desc.Label = "material-uniforms";
 
 			if (!(mDevice.CreateBuffer(desc) case .Ok(let created)))
 				return false;

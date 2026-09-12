@@ -177,14 +177,23 @@ class MaterialSystemTests
 
 		Test.Assert(fixture.System.DetachBindGroup(instance) == group);
 		Test.Assert(fixture.System.GetBindGroup(instance) == null, "the system let go of it");
-		Test.Assert(fixture.System.DetachUniformBuffer(instance) != null);
+
+		let buffer = fixture.System.DetachUniformBuffer(instance);
+		Test.Assert(buffer != null);
 
 		// Nothing left to detach twice.
 		Test.Assert(fixture.System.DetachBindGroup(instance) == null);
 		Test.Assert(fixture.System.DetachUniformBuffer(instance) == null);
 
+		// Retiring BOTH, which is what the contract above says and what this test was only
+		// half doing: the buffer came back owned by nobody and was dropped on the floor.
+		// The group goes first, since freeing it while its buffer is still bound is the
+		// complaint a validating backend makes.
 		var doomedGroup = group;
 		fixture.Device.DestroyBindGroup(ref doomedGroup);
+
+		var doomedBuffer = buffer;
+		fixture.Device.DestroyBuffer(ref doomedBuffer);
 	}
 
 	/// A replaced bind group is retired rather than freed, because an in flight frame may
