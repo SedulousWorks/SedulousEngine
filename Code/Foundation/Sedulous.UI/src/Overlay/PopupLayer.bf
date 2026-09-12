@@ -195,7 +195,8 @@ class PopupLayer : ViewGroup
 
 			if (!HasModalPopup && (mBackdrop != null) && (mBackdrop.Parent != null))
 			{
-				mBackdrop.AddRef(); // RemoveView releases the tree's reference; the layer keeps its own
+				// RemoveView releases the tree's reference and the field keeps its own, so
+				// nothing has to be added back first.
 				RemoveView(mBackdrop);
 			}
 
