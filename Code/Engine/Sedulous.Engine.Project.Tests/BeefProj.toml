@@ -1,0 +1,13 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.Project.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Engine.Project.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Xml.Serialization" = "*"
+"Sedulous.Engine.Project" = "*"

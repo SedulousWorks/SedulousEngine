@@ -1,0 +1,21 @@
+<root>
+	<array name="dataVersions" count="1">
+		<u64 name="type">15697994609334965484</u64>
+		<u32 name="version">9</u32>
+	</array>
+	<object>
+		<string name="name">Shipped</string>
+		<string name="engineVersion">0.1.0</string>
+		<string name="defaultSceneId">00000000-0000-0000-0000-000000000000</string>
+		<string name="defaultScene"/>
+		<string name="startupScript"/>
+		<string name="nativeModule"/>
+		<string name="defaultInputMapId">00000000-0000-0000-0000-000000000000</string>
+		<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
+		<string name="defaultUiThemeId">00000000-0000-0000-0000-000000000000</string>
+		<string name="startupScriptId">00000000-0000-0000-0000-000000000000</string>
+		<string name="defaultUiFontId">00000000-0000-0000-0000-000000000000</string>
+		<string name="loadingDocumentId">00000000-0000-0000-0000-000000000000</string>
+		<u32 name="renderMsaaSamples">2</u32>
+	</object>
+</root>
