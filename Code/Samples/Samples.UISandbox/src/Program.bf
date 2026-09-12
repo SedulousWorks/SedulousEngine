@@ -26,7 +26,10 @@ class Program
 		}
 
 		GraphicsDeviceDesc deviceDesc = .();
-		deviceDesc.Backend = .Vulkan;
+		// Vulkan unless the command line says otherwise, which is what lets one built binary
+		// be pointed at whichever backend a machine has. Raptor's sandbox reads the same
+		// flags through the same helper.
+		deviceDesc.Backend = BackendSelection.FromArguments(args);
 		deviceDesc.EnableValidation = true;
 
 		if (!(GpuGraphics.CreateDevice(deviceDesc) case .Ok(let graphics)))
