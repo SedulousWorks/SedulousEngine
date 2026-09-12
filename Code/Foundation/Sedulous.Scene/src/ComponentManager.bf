@@ -18,7 +18,7 @@ namespace Sedulous.Scene;
 ///
 /// A manager needing stable addresses or polymorphism in the pool can swap the storage
 /// behind this same surface with no consumer noticing.
-class ComponentManager<T> : ComponentManagerBase where T : struct
+class ComponentManager<T> : ComponentManagerBase where T : struct, new
 {
 	private const uint32 cInvalid = 0xFFFFFFFF;
 
@@ -41,7 +41,10 @@ class ComponentManager<T> : ComponentManagerBase where T : struct
 		Debug.Assert(!HasComponent(entity), "one component of a type per entity");
 
 		let dense = (uint32)mDense.Count;
-		mDense.Add(default);
+		// CONSTRUCTED, not zeroed: a component's field initialisers are its defaults, and
+		// `default` would silently replace them with zero. Raptor gets this from C++ value
+		// initialisation, which runs the member initialisers.
+		mDense.Add(T());
 		mOwners.Add(entity);
 		mSparse[entity.Index] = dense;
 		mPendingInit.Add(entity);
@@ -120,6 +123,18 @@ class ComponentManager<T> : ComponentManagerBase where T : struct
 				OnComponentInitialized(component, entity);
 		}
 		mPendingInit.Clear();
+	}
+
+	/// Sweeps whatever is still held, so a component that owns heap data is torn down by the
+	/// same hook a removal uses.
+	///
+	/// Raptor gets this free: its dense array is a C++ vector, and destroying it destroys
+	/// every component in it. A Beef List of structs frees only the storage, so a manager
+	/// that never had its components removed would leak whatever they own.
+	public ~this()
+	{
+		for (int i = 0; i < mDense.Count; i++)
+			OnComponentDestroyed(&mDense[i], mOwners[i]);
 	}
 
 	// ---- lifecycle hooks, on the MANAGER rather than the component ----

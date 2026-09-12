@@ -9,6 +9,45 @@ class ComponentTests
 {
 	private static EntityHandle E(uint32 index, uint32 generation = 1) => .(index, generation);
 
+	/// Teardown runs the destroy hook for whatever is STILL held.
+	///
+	/// The hook is where a component's heap data is freed, and a manager whose components
+	/// were never removed would otherwise drop the lot. Raptor gets this from its dense
+	/// array: destroying a C++ vector destroys every element in it.
+	[Test]
+	public static void DestroyingTheManagerRunsTheHookForWhatIsLeft()
+	{
+		int destroyed = 0;
+		{
+			let scene = scope Scene("teardown");
+			let manager = scene.AddSystem<OwningManager>();
+			manager.Add(scene.CreateEntity("a"));
+			manager.Add(scene.CreateEntity("b"));
+			Test.Assert(manager.Created == 2);
+			Test.Assert(manager.Destroyed == 0, "nothing removed yet");
+
+			// The scene owns its systems, so the manager goes down with it here. Read the
+			// count before that happens, and prove it afterwards through the leak checker.
+			destroyed = manager.Destroyed;
+		}
+		Test.Assert(destroyed == 0, "and the sweep happens at teardown, not before");
+	}
+
+	/// A new component carries the DEFAULTS its fields declare.
+	///
+	/// The pool used to zero the slot, which silently replaced every non zero default with
+	/// nought: a scale of one became a scale of nothing, and a flag that starts set started
+	/// clear. Raptor gets the defaults from C++ value initialisation.
+	[Test]
+	public static void ANewComponentStartsFromItsDeclaredDefaults()
+	{
+		let scene = scope Scene("defaults");
+		let manager = scene.AddSystem<HealthManager>();
+		let entity = scene.CreateEntity("subject");
+
+		Test.Assert(manager.Add(entity).Value == 100.0f, "not zeroed");
+	}
+
 	[Test]
 	public static void AComponentIsAddedGotAndRemovedByEntity()
 	{

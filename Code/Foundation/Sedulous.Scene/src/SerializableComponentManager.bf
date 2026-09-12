@@ -16,7 +16,7 @@ namespace Sedulous.Scene;
 /// argument dependent lookup; Beef has no such thing, so the component states it by
 /// implementing ISerializable, which the constraint here requires.
 class SerializableComponentManager<T> : ComponentManager<T>
-	where T : struct, ISerializable
+	where T : struct, ISerializable, new
 {
 	private String mTypeId = new .() ~ delete _;
 	private uint32 mDataVersion = 1;

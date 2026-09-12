@@ -9,7 +9,7 @@ namespace Sedulous.Scene;
 /// IComponentResources, and the post load bind happens for every one of them without a
 /// line of per manager code.
 class ResourceBindingComponentManager<T> : SerializableComponentManager<T>
-	where T : struct, ISerializable, IComponentResources
+	where T : struct, ISerializable, IComponentResources, new
 {
 	public override void ResolveResources(ResourceManager manager)
 	{
