@@ -33,6 +33,49 @@ class RenderSubsystem : Subsystem, ISceneObserver
 
 	private RenderFrame mFrame = null ~ delete _;
 
+	// ---- global post override ----
+	//
+	// Exposure, bloom and the rest are AUTHORED per scene and resolved per view. These stay as
+	// a GLOBAL override for a sample's debug panel: touching ANY of them latches the flag, and
+	// the resolve then prefers these over what the scene authored. Left alone, which is the
+	// editor's path, the scene's own settings drive.
+	private bool mGlobalPostActive = false;
+	private float mExposure = 1.0f;
+	private bool mBloomEnabled = true;
+	private float mBloomIntensity = 0.05f;
+	private float mBloomThreshold = 1.0f;
+	private float mBloomKnee = 0.6f;
+	/// Partial by default, because full darkens a curved surface more than it should.
+	private AoMode mAoMode = .Off;
+	private float mAoStrength = 0.6f;
+	private float mAoRadius = 0.5f;
+	private float mAoIntensity = 1.0f;
+	/// A pure renderer toggle rather than an override, so it does NOT latch.
+	private int32 mAoDebug = 0;
+	private bool mSsrEnabled = false;
+	private SsrParams mSsrParams = .();
+	private uint32 mGlobalMsaaSamples = 1;
+	/// The ceiling the device reported, filled once the passes are built.
+	private uint32 mMaxMsaaSamples = 1;
+	/// BORROWED from the pass set; null means multisampling is unavailable.
+	private MsaaResolvePass mMsaaResolvePass = null;
+	private bool mInstanceSharing = true;
+	private bool mViewCulling = false;
+	private bool mFxaaEnabled = false;
+	private float mFxaaSubpixel = 0.75f;
+	private bool mTaaEnabled = false;
+	private float mTaaBlend = 0.97f;
+	private float mTaaGamma = 1.25f;
+	private float mTaaMotionScale = 32.0f;
+	private float mShadowDistance = 300.0f;
+	private float mShadowFarFade = 40.0f;
+
+	// ---- debug draw destinations ----
+	private DebugDraw mDebugGlobal = new .() ~ delete _;
+	private DebugDraw mDebugScreen = new .() ~ delete _;
+	private Dictionary<Scene, DebugDraw> mDebugScenes = new .() ~ DeleteDictionaryAndValues!(_);
+	private Dictionary<void*, DebugDraw> mDebugViews = new .() ~ DeleteDictionaryAndValues!(_);
+
 	public this(IDevice device, uint32 framesInFlight)
 	{
 		mDevice = device;
@@ -85,5 +128,228 @@ class RenderSubsystem : Subsystem, ISceneObserver
 			if (mProviders[i].Scene === scene)
 				mProviders.RemoveAt(i);
 		}
+	}
+
+	// ---- global post override ---------------------------------------------------------------
+
+	/// Whether any global setter has been touched. Until one is, the scene's authored settings
+	/// are what resolve.
+	public bool GlobalPostActive => mGlobalPostActive;
+
+	/// The linear multiplier the tonemap applies.
+	public float Exposure
+	{
+		get => mExposure;
+		set { mExposure = value; mGlobalPostActive = true; }
+	}
+
+	/// Off skips the whole pyramid rather than running it at zero strength.
+	public bool BloomEnabled
+	{
+		get => mBloomEnabled;
+		set { mBloomEnabled = value; mGlobalPostActive = true; }
+	}
+
+	public float BloomIntensity
+	{
+		get => mBloomIntensity;
+		set { mBloomIntensity = value; mGlobalPostActive = true; }
+	}
+
+	public float BloomThreshold
+	{
+		get => mBloomThreshold;
+		set { mBloomThreshold = value; mGlobalPostActive = true; }
+	}
+
+	public float BloomKnee
+	{
+		get => mBloomKnee;
+		set { mBloomKnee = value; mGlobalPostActive = true; }
+	}
+
+	public AoMode AoMode
+	{
+		get => mAoMode;
+		set { mAoMode = value; mGlobalPostActive = true; }
+	}
+
+	/// The composite amount.
+	public float AoStrength
+	{
+		get => mAoStrength;
+		set { mAoStrength = value; mGlobalPostActive = true; }
+	}
+
+	/// The world space radius the estimator searches.
+	public float AoRadius
+	{
+		get => mAoRadius;
+		set { mAoRadius = value; mGlobalPostActive = true; }
+	}
+
+	public float AoIntensity
+	{
+		get => mAoIntensity;
+		set { mAoIntensity = value; mGlobalPostActive = true; }
+	}
+
+	/// Which intermediate the occlusion pass shows. A frame global debug view, NOT an
+	/// override, so it deliberately does not latch the flag.
+	public int32 AoDebug
+	{
+		get => mAoDebug;
+		set => mAoDebug = value;
+	}
+
+	public bool SsrEnabled
+	{
+		get => mSsrEnabled;
+		set { mSsrEnabled = value; mGlobalPostActive = true; }
+	}
+
+	public SsrParams* SsrParams => &mSsrParams;
+
+	/// The scene pass sample count for the global path, clamped per view against the device.
+	public uint32 MsaaSamples
+	{
+		get => mGlobalMsaaSamples;
+		set
+		{
+			mGlobalMsaaSamples = (value < 1) ? 1 : value;
+			mGlobalPostActive = true;
+		}
+	}
+
+	/// Whether this EXACT count is usable on the active device.
+	///
+	/// The valid set is not contiguous, since some backends offer only one and four, so a
+	/// menu has to ask per count rather than assume everything up to a ceiling.
+	public bool SupportsMsaaSamples(uint32 count)
+	{
+		// One is always available, and is what off means.
+		if (count <= 1)
+			return true;
+
+		// Multisampling needs the resolve pass. Without it, or without a device, only one is
+		// usable however capable the hardware is.
+		if ((mMsaaResolvePass == null) || (mDevice == null))
+			return false;
+
+		return (count <= mMaxMsaaSamples) && mDevice.SupportsSampleCount(count);
+	}
+
+	/// Builds the instance data once and shares it between the depth prepass and the forward
+	/// pass, rather than filling it twice.
+	public bool InstanceSharing
+	{
+		get => mInstanceSharing;
+		set => mInstanceSharing = value;
+	}
+
+	/// Skips renderables outside the camera frustum, per view. Off by default: it is a no op
+	/// for a benchmark that frames everything and a win for a real scene with much off screen.
+	/// Shadow casters are gathered separately, so culling the camera view never drops a shadow.
+	public bool ViewCulling
+	{
+		get => mViewCulling;
+		set => mViewCulling = value;
+	}
+
+	/// Last frame's totals, summed over views. Both nought when culling was off.
+	public void ViewCullStats(out uint32 culled, out uint32 total)
+	{
+		if (mFrame != null)
+		{
+			mFrame.CullStats(out culled, out total);
+			return;
+		}
+		culled = 0;
+		total = 0;
+	}
+
+	/// The fallback when temporal is off. Ignored while it is on.
+	public bool FxaaEnabled
+	{
+		get => mFxaaEnabled;
+		set { mFxaaEnabled = value; mGlobalPostActive = true; }
+	}
+
+	public float FxaaSubpixel
+	{
+		get => mFxaaSubpixel;
+		set { mFxaaSubpixel = value; mGlobalPostActive = true; }
+	}
+
+	public bool TaaEnabled
+	{
+		get => mTaaEnabled;
+		set { mTaaEnabled = value; mGlobalPostActive = true; }
+	}
+
+	/// The history weight, which is what stability trades against ghosting.
+	public float TaaBlend
+	{
+		get => mTaaBlend;
+		set { mTaaBlend = value; mGlobalPostActive = true; }
+	}
+
+	public float TaaGamma
+	{
+		get => mTaaGamma;
+		set { mTaaGamma = value; mGlobalPostActive = true; }
+	}
+
+	/// How fast the history is dropped as things move.
+	public float TaaMotionScale
+	{
+		get => mTaaMotionScale;
+		set => mTaaMotionScale = value;
+	}
+
+	/// The directional shadow reach, in world units, clamped to the camera's far plane.
+	public float ShadowDistance
+	{
+		get => mShadowDistance;
+		set => mShadowDistance = value;
+	}
+
+	/// The WIDTH of the soft edge shadows dissolve across at that reach, which is what stops
+	/// the coverage boundary popping as a tilted camera turns.
+	public float ShadowFarFade
+	{
+		get => mShadowFarFade;
+		set => mShadowFarFade = value;
+	}
+
+	// ---- debug draw -------------------------------------------------------------------------
+	//
+	// Destinations by WHERE the draw lands. Global goes into every view; a scene's goes into
+	// every view OF THAT SCENE, so two scenes side by side do not bleed into each other; a
+	// view's goes only into the one view whose key matches, which keeps an editor viewport's
+	// grid out of a second view of the same scene; the screen one is drawn ONCE over the whole
+	// window, so a three dimensional call there has no camera and is ignored.
+
+	public DebugDraw DebugGlobal => mDebugGlobal;
+	public DebugDraw DebugScreen => mDebugScreen;
+
+	public DebugDraw DebugScene(Scene scene)
+	{
+		if (mDebugScenes.TryGetValue(scene, let existing))
+			return existing;
+
+		let created = new DebugDraw();
+		mDebugScenes[scene] = created;
+		return created;
+	}
+
+	public DebugDraw DebugView(void* viewportKey)
+	{
+		if (mDebugViews.TryGetValue(viewportKey, let existing))
+			return existing;
+
+		let created = new DebugDraw();
+		mDebugViews[viewportKey] = created;
+		return created;
 	}
 }
