@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.RHI;
 using Sedulous.RHI.Null;
@@ -17,6 +18,17 @@ class ValidationFixture
 	public IBackend Backend ~ delete _;
 	public IDevice Device;
 
+	// Everything handed out by the helpers below, plus whatever a test hands over with Own.
+	// The null backend does not track what it creates, so an undestroyed resource is a leak;
+	// the validation layer only REPORTS live ones, which is a diagnostic rather than a sweep.
+	private List<IBuffer> mBuffers = new .() ~ delete _;
+	private List<ITexture> mTextures = new .() ~ delete _;
+	private List<ITextureView> mViews = new .() ~ delete _;
+	private List<ICommandPool> mPools = new .() ~ delete _;
+	private List<IShaderModule> mModules = new .() ~ delete _;
+	private List<IRenderPipeline> mRenderPipelines = new .() ~ delete _;
+	private List<IComputePipeline> mComputePipelines = new .() ~ delete _;
+
 	public this(bool createDevice = true)
 	{
 		mInner = NullRhi.CreateBackend();
@@ -32,20 +44,60 @@ class ValidationFixture
 		}
 	}
 
+	/// Frees what the tests left live, in dependency order, then the device.
+	///
+	/// A test that wants to observe the layer's own "destroyed with N live" warning destroys
+	/// nothing and still leaks nothing, which is the point of putting this here rather than in
+	/// each test body.
+	public ~this()
+	{
+		if (Device == null)
+			return;
+
+		// Views before their textures, and pipelines before the modules they were built from.
+		for (var view in ref mViews)
+			Device.DestroyTextureView(ref view);
+		for (var texture in ref mTextures)
+			Device.DestroyTexture(ref texture);
+		for (var pipeline in ref mRenderPipelines)
+			Device.DestroyRenderPipeline(ref pipeline);
+		for (var pipeline in ref mComputePipelines)
+			Device.DestroyComputePipeline(ref pipeline);
+		for (var module in ref mModules)
+			Device.DestroyShaderModule(ref module);
+		for (var buffer in ref mBuffers)
+			Device.DestroyBuffer(ref buffer);
+		for (var pool in ref mPools)
+			Device.DestroyCommandPool(ref pool);
+
+		Device.Destroy();
+		Device = null;
+	}
+
+	// ---- Handing a resource over, for what a test creates itself ----
+
+	public IBuffer Own(IBuffer x) { if (x != null) mBuffers.Add(x); return x; }
+	public ITexture Own(ITexture x) { if (x != null) mTextures.Add(x); return x; }
+	public ITextureView Own(ITextureView x) { if (x != null) mViews.Add(x); return x; }
+	public ICommandPool Own(ICommandPool x) { if (x != null) mPools.Add(x); return x; }
+	public IShaderModule Own(IShaderModule x) { if (x != null) mModules.Add(x); return x; }
+	public IRenderPipeline Own(IRenderPipeline x) { if (x != null) mRenderPipelines.Add(x); return x; }
+	public IComputePipeline Own(IComputePipeline x) { if (x != null) mComputePipelines.Add(x); return x; }
+
 	/// A buffer that passes validation, for tests that need a valid argument.
 	public IBuffer MakeBuffer(uint64 size = 256)
 	{
 		var desc = BufferDesc();
 		desc.Size = size;
 		if (Device.CreateBuffer(desc) case .Ok(let buffer))
-			return buffer;
+			return Own(buffer);
 		return null;
 	}
 
 	public ITexture MakeTexture()
 	{
 		if (Device.CreateTexture(TextureDesc.RenderTarget(.RGBA8Unorm, 64, 64)) case .Ok(let t))
-			return t;
+			return Own(t);
 		return null;
 	}
 
@@ -57,7 +109,7 @@ class ValidationFixture
 		encoder = null;
 		if (!(Device.CreateCommandPool(.Graphics) case .Ok(let createdPool)))
 			return null;
-		pool = createdPool;
+		pool = Own(createdPool);
 		if (!(pool.CreateEncoder() case .Ok(let createdEncoder)))
 			return null;
 		encoder = createdEncoder;
@@ -65,6 +117,8 @@ class ValidationFixture
 		let texture = MakeTexture();
 		if (!(Device.CreateTextureView(texture, .()) case .Ok(let view)))
 			return null;
+
+		Own(view);
 
 		var desc = RenderPassDesc();
 		var attachment = ColorAttachment();
