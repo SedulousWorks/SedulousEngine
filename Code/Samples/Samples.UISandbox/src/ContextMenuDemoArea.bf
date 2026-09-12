@@ -38,6 +38,7 @@ class ContextMenuDemoArea : View
 			return;
 
 		let menu = new ContextMenu();
+		defer menu.ReleaseRef(); // Show takes its own; from then on the layer holds it
 		menu.AddItem("Cut", new () => {});
 		menu.AddItem("Copy", new () => {});
 		menu.AddItem("Paste", new () => {});
