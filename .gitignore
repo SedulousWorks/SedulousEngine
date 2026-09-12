@@ -5,3 +5,6 @@ BeefSpace_User.toml
 
 # LLM
 .claude/
+
+# Test scratch. Suites create these beside the project they run from.
+scratch_*/

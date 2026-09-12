@@ -21,6 +21,14 @@ class ProjectManifestTests
 		Test.Assert(CreateDirectory(kScratch));
 	}
 
+	/// Sorted last, so the manifests these cases write do not survive the run. A suite that
+	/// leaves them behind is a suite whose output gets committed by accident.
+	[Test]
+	public static void ZzCleanup()
+	{
+		RemoveDirectoryRecursive(kScratch);
+	}
+
 	[Test]
 	public static void AManifestRoundTripsThroughTheDefaultFileName()
 	{
