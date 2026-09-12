@@ -864,6 +864,10 @@ class PhysicsWorld
 	{
 		var settings = JPH_CharacterVirtualSettings();
 		JPH_CharacterVirtualSettings_Init(&settings);
+		// Init hands back a default empty shape holding a reference, so replacing the pointer
+		// below would strand it.
+		if (settings.@base.shape != null)
+			JPH_Shape_Destroy((JPH_Shape*)settings.@base.shape);
 
 		let shape = (JPH_Shape*)JPH_CapsuleShape_Create(desc.CapsuleHalfHeight,
 			desc.CapsuleRadius);

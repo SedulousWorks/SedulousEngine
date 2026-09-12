@@ -7665,6 +7665,9 @@ void JPH_CharacterBaseSettings_Init(const CharacterBaseSettings& joltSettings, J
 		JPH_EmptyShapeSettings* empty_shape_settings = JPH_EmptyShapeSettings_Create(&vec);
 		JPH_EmptyShape* shape = JPH_EmptyShapeSettings_CreateShape(empty_shape_settings);
 		settings->shape = reinterpret_cast<const JPH_Shape*>(shape);
+		// CreateShape adds a reference for the caller, so the settings object has done its
+		// job here. Without this it and its cached shape leak on every character created.
+		JPH_ShapeSettings_Destroy(reinterpret_cast<JPH_ShapeSettings*>(empty_shape_settings));
 	}
 }
 
