@@ -61,6 +61,10 @@ class ValidatedDevice : IDevice
 
 	public IDevice Inner => mInner;
 
+	/// Whether Destroy has run. Every operation refuses past that point, so a caller tidying
+	/// up afterwards has to reach the inner device instead of being told no.
+	public bool IsDestroyed => mDestroyed;
+
 	public DeviceType Type => mInner.Type;
 	public DeviceFeatures Features => mInner.Features;
 	public ShaderFormat PreferredShaderFormat => mInner.PreferredShaderFormat;

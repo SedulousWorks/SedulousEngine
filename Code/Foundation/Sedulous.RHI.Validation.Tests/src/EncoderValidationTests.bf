@@ -13,6 +13,7 @@ class EncoderValidationTests
 	{
 		let fixture = scope ValidationFixture();
 		Test.Assert(fixture.Device.CreateCommandPool(.Graphics) case .Ok(var pool));
+		fixture.Own(pool);
 		Test.Assert(pool.CreateEncoder() case .Ok(let encoder));
 		fixture.Messages.Clear();
 
@@ -26,6 +27,7 @@ class EncoderValidationTests
 	{
 		let fixture = scope ValidationFixture();
 		Test.Assert(fixture.Device.CreateCommandPool(.Graphics) case .Ok(var pool));
+		fixture.Own(pool);
 		Test.Assert(pool.CreateEncoder() case .Ok(let encoder));
 		fixture.Messages.Clear();
 
@@ -49,12 +51,15 @@ class EncoderValidationTests
 
 		fixture.Messages.Clear();
 		Test.Assert(fixture.Device.CreatePipelineLayout(.()) case .Ok(var layout));
+		fixture.Own(layout);
 		Test.Assert(fixture.Device.CreateShaderModule(
 			.() { Code = scope uint8[4](1, 2, 3, 4) }) case .Ok(var module));
+			fixture.Own(module);
 		var pipelineDesc = RenderPipelineDesc();
 		pipelineDesc.Layout = layout;
 		pipelineDesc.Vertex.Shader.Module = module;
 		Test.Assert(fixture.Device.CreateRenderPipeline(pipelineDesc) case .Ok(let pipeline));
+		fixture.Own(pipeline);
 		fixture.Messages.Clear();
 
 		pass.SetPipeline(pipeline);
@@ -198,6 +203,7 @@ class EncoderValidationTests
 	{
 		let fixture = scope ValidationFixture();
 		Test.Assert(fixture.Device.CreateCommandPool(.Graphics) case .Ok(var pool));
+		fixture.Own(pool);
 		Test.Assert(pool.CreateEncoder() case .Ok(let encoder));
 		let compute = encoder.BeginComputePass();
 		fixture.Messages.Clear();
@@ -217,6 +223,7 @@ class EncoderValidationTests
 	{
 		let fixture = scope ValidationFixture();
 		Test.Assert(fixture.Device.CreateCommandPool(.Graphics) case .Ok(var pool));
+		fixture.Own(pool);
 		Test.Assert(pool.CreateEncoder() case .Ok(let encoder));
 		fixture.Messages.Clear();
 
@@ -239,6 +246,7 @@ class EncoderValidationTests
 	{
 		let fixture = scope ValidationFixture();
 		Test.Assert(fixture.Device.CreateCommandPool(.Graphics) case .Ok(var pool));
+		fixture.Own(pool);
 		Test.Assert(pool.CreateEncoder() case .Ok(let encoder));
 		let buffer = fixture.MakeBuffer();
 		fixture.Messages.Clear();
@@ -276,6 +284,7 @@ class EncoderValidationTests
 	{
 		let fixture = scope ValidationFixture();
 		Test.Assert(fixture.Device.CreateCommandPool(.Graphics) case .Ok(var pool));
+		fixture.Own(pool);
 		Test.Assert(pool.CreateEncoder() case .Ok(let encoder));
 		let compute = encoder.BeginComputePass();
 		fixture.Messages.Clear();
@@ -293,12 +302,15 @@ class EncoderValidationTests
 
 		// Bind something, then the zero dimension warning becomes reachable.
 		Test.Assert(fixture.Device.CreatePipelineLayout(.()) case .Ok(var layout));
+		fixture.Own(layout);
 		Test.Assert(fixture.Device.CreateShaderModule(
 			.() { Code = scope uint8[4](1, 2, 3, 4) }) case .Ok(var module));
+			fixture.Own(module);
 		var desc = ComputePipelineDesc();
 		desc.Layout = layout;
 		desc.Compute.Module = module;
 		Test.Assert(fixture.Device.CreateComputePipeline(desc) case .Ok(let pipeline));
+		fixture.Own(pipeline);
 		fixture.Messages.Clear();
 
 		compute.SetPipeline(pipeline);
@@ -322,6 +334,7 @@ class EncoderValidationTests
 	{
 		let fixture = scope ValidationFixture();
 		Test.Assert(fixture.Device.CreateCommandPool(.Graphics) case .Ok(var pool));
+		fixture.Own(pool);
 		let bundleEncoder = pool.CreateRenderBundleEncoder(.());
 		Test.Assert(bundleEncoder != null);
 		fixture.Messages.Clear();
@@ -330,12 +343,15 @@ class EncoderValidationTests
 		Test.Assert(fixture.Messages.HasError("no pipeline is bound"));
 
 		Test.Assert(fixture.Device.CreatePipelineLayout(.()) case .Ok(var layout));
+		fixture.Own(layout);
 		Test.Assert(fixture.Device.CreateShaderModule(
 			.() { Code = scope uint8[4](1, 2, 3, 4) }) case .Ok(var module));
+			fixture.Own(module);
 		var desc = RenderPipelineDesc();
 		desc.Layout = layout;
 		desc.Vertex.Shader.Module = module;
 		Test.Assert(fixture.Device.CreateRenderPipeline(desc) case .Ok(let pipeline));
+		fixture.Own(pipeline);
 		fixture.Messages.Clear();
 
 		bundleEncoder.SetPipeline(pipeline);
@@ -423,6 +439,7 @@ class EncoderValidationTests
 	{
 		let fixture = scope ValidationFixture();
 		Test.Assert(fixture.Device.CreateCommandPool(.Graphics) case .Ok(var pool));
+		fixture.Own(pool);
 		Test.Assert(pool.CreateEncoder() case .Ok(let encoder));
 		let compute = encoder.BeginComputePass();
 		let buffer = fixture.MakeBuffer();

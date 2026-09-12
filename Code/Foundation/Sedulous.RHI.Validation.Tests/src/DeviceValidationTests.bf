@@ -18,6 +18,7 @@ class DeviceValidationTests
 		var desc = BufferDesc();
 		desc.Size = 64;
 		Test.Assert(fixture.Device.CreateBuffer(desc) case .Ok(var buffer));
+		fixture.Own(buffer);
 		fixture.Device.DestroyBuffer(ref buffer);
 
 		let described = scope String();
@@ -68,6 +69,7 @@ class DeviceValidationTests
 		readOnly.Usage = .StorageRead;
 		readOnly.Memory = .CpuToGpu;
 		Test.Assert(fixture.Device.CreateBuffer(readOnly) case .Ok(var buffer));
+		fixture.Own(buffer);
 		Test.Assert(fixture.Messages.Count == 0, "the documented alternative is not flagged");
 		fixture.Device.DestroyBuffer(ref buffer);
 	}
@@ -97,8 +99,10 @@ class DeviceValidationTests
 	{
 		let fixture = scope ValidationFixture();
 		Test.Assert(fixture.Device.CreatePipelineLayout(.()) case .Ok(var layout));
+		fixture.Own(layout);
 		Test.Assert(fixture.Device.CreateShaderModule(
 			.() { Code = scope uint8[4](1, 2, 3, 4) }) case .Ok(var module));
+			fixture.Own(module);
 		fixture.Messages.Clear();
 
 		// Render: layout, then vertex shader.
@@ -114,6 +118,7 @@ class DeviceValidationTests
 		fixture.Messages.Clear();
 		render.Vertex.Shader.Module = module;
 		Test.Assert(fixture.Device.CreateRenderPipeline(render) case .Ok(var renderPipeline));
+		fixture.Own(renderPipeline);
 		Test.Assert(fixture.Messages.Count == 0, "a complete descriptor passes");
 		fixture.Device.DestroyRenderPipeline(ref renderPipeline);
 
@@ -144,6 +149,7 @@ class DeviceValidationTests
 
 		// While it is alive, no complaint.
 		Test.Assert(fixture.Device.CreateTextureView(texture, .()) case .Ok(var view));
+		fixture.Own(view);
 		Test.Assert(fixture.Messages.Count == 0);
 
 		fixture.Device.DestroyTextureView(ref view);
@@ -251,6 +257,7 @@ class DeviceValidationTests
 
 		fixture.Messages.Clear();
 		Test.Assert(fixture.Device.CreateBindGroupLayout(.()) case .Ok(var layout));
+		fixture.Own(layout);
 		fixture.Messages.Clear();
 
 		// The null backend's layout reports no entries, so ONE entry is one too many.
@@ -265,6 +272,7 @@ class DeviceValidationTests
 		var matching = BindGroupDesc();
 		matching.Layout = layout;
 		Test.Assert(fixture.Device.CreateBindGroup(matching) case .Ok(var group));
+		fixture.Own(group);
 		Test.Assert(fixture.Messages.Count == 0);
 		fixture.Device.DestroyBindGroup(ref group);
 		fixture.Device.DestroyBindGroupLayout(ref layout);

@@ -17,6 +17,7 @@ class ResourceCycleValidationTests
 	{
 		let fixture = scope ValidationFixture();
 		Test.Assert(fixture.Device.CreateFence(0) case .Ok(var fence));
+		fixture.Own(fence);
 		let queue = fixture.Device.GetQueue(.Graphics);
 		fixture.Messages.Clear();
 
@@ -37,6 +38,7 @@ class ResourceCycleValidationTests
 	{
 		let fixture = scope ValidationFixture();
 		Test.Assert(fixture.Device.CreateFence(0) case .Ok(var fence));
+		fixture.Own(fence);
 		let queue = fixture.Device.GetQueue(.Graphics);
 		queue.Submit(.(), fence, 5);
 		fixture.Messages.Clear();
@@ -54,6 +56,7 @@ class ResourceCycleValidationTests
 		let fixture = scope ValidationFixture();
 		let queue = fixture.Device.GetQueue(.Graphics);
 		Test.Assert(fixture.Device.CreateFence(0) case .Ok(var fence));
+		fixture.Own(fence);
 		fixture.Messages.Clear();
 
 		// A null command buffer is almost always a Finish that was never called.
@@ -222,6 +225,7 @@ class ResourceCycleValidationTests
 		let queue = fixture.Device.GetQueue(.Transfer);
 		Test.Assert(queue.CreateTransferBatch() case .Ok(var batch));
 		Test.Assert(fixture.Device.CreateFence(0) case .Ok(var fence));
+		fixture.Own(fence);
 		let buffer = fixture.MakeBuffer();
 		let payload = scope uint8[4](1, 2, 3, 4);
 		fixture.Messages.Clear();

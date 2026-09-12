@@ -28,6 +28,11 @@ class ValidationFixture
 	private List<IShaderModule> mModules = new .() ~ delete _;
 	private List<IRenderPipeline> mRenderPipelines = new .() ~ delete _;
 	private List<IComputePipeline> mComputePipelines = new .() ~ delete _;
+	private List<IFence> mFences = new .() ~ delete _;
+	private List<IPipelineLayout> mPipelineLayouts = new .() ~ delete _;
+	private List<ISampler> mSamplers = new .() ~ delete _;
+	private List<IBindGroup> mBindGroups = new .() ~ delete _;
+	private List<IBindGroupLayout> mBindGroupLayouts = new .() ~ delete _;
 
 	public this(bool createDevice = true)
 	{
@@ -54,23 +59,43 @@ class ValidationFixture
 		if (Device == null)
 			return;
 
+		// A test that destroyed the device on purpose leaves the wrapper refusing every
+		// operation, so the tidy-up goes to the INNER device there. Freeing through the
+		// wrapper otherwise is what keeps a resource the test already destroyed from being
+		// freed twice: it untracks, sees nothing, and does not forward.
+		var target = Device;
+		if ((Device is ValidatedDevice) && ((ValidatedDevice)Device).IsDestroyed)
+			target = ((ValidatedDevice)Device).Inner;
+
 		// Views before their textures, and pipelines before the modules they were built from.
 		for (var view in ref mViews)
-			Device.DestroyTextureView(ref view);
+			target.DestroyTextureView(ref view);
 		for (var texture in ref mTextures)
-			Device.DestroyTexture(ref texture);
+			target.DestroyTexture(ref texture);
 		for (var pipeline in ref mRenderPipelines)
-			Device.DestroyRenderPipeline(ref pipeline);
+			target.DestroyRenderPipeline(ref pipeline);
 		for (var pipeline in ref mComputePipelines)
-			Device.DestroyComputePipeline(ref pipeline);
+			target.DestroyComputePipeline(ref pipeline);
 		for (var module in ref mModules)
-			Device.DestroyShaderModule(ref module);
+			target.DestroyShaderModule(ref module);
+		for (var group in ref mBindGroups)
+			target.DestroyBindGroup(ref group);
+		for (var layout in ref mBindGroupLayouts)
+			target.DestroyBindGroupLayout(ref layout);
+		for (var layout in ref mPipelineLayouts)
+			target.DestroyPipelineLayout(ref layout);
+		for (var sampler in ref mSamplers)
+			target.DestroySampler(ref sampler);
+		for (var fence in ref mFences)
+			target.DestroyFence(ref fence);
 		for (var buffer in ref mBuffers)
-			Device.DestroyBuffer(ref buffer);
+			target.DestroyBuffer(ref buffer);
 		for (var pool in ref mPools)
-			Device.DestroyCommandPool(ref pool);
+			target.DestroyCommandPool(ref pool);
 
-		Device.Destroy();
+		if (target == Device)
+			Device.Destroy();
+
 		Device = null;
 	}
 
@@ -83,6 +108,11 @@ class ValidationFixture
 	public IShaderModule Own(IShaderModule x) { if (x != null) mModules.Add(x); return x; }
 	public IRenderPipeline Own(IRenderPipeline x) { if (x != null) mRenderPipelines.Add(x); return x; }
 	public IComputePipeline Own(IComputePipeline x) { if (x != null) mComputePipelines.Add(x); return x; }
+	public IFence Own(IFence x) { if (x != null) mFences.Add(x); return x; }
+	public IPipelineLayout Own(IPipelineLayout x) { if (x != null) mPipelineLayouts.Add(x); return x; }
+	public ISampler Own(ISampler x) { if (x != null) mSamplers.Add(x); return x; }
+	public IBindGroup Own(IBindGroup x) { if (x != null) mBindGroups.Add(x); return x; }
+	public IBindGroupLayout Own(IBindGroupLayout x) { if (x != null) mBindGroupLayouts.Add(x); return x; }
 
 	/// A buffer that passes validation, for tests that need a valid argument.
 	public IBuffer MakeBuffer(uint64 size = 256)
