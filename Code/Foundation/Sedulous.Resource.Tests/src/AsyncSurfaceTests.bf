@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Diagnostics;
 using System.Threading;
 using Sedulous.Core;
 using Sedulous.Content;
@@ -118,8 +119,23 @@ class AsyncSurfaceTests
 		for (int i < cCount)
 			manager.BindAsync<TestProduct>(fixture.Author(scope $"m{i}", (int32)i + 1, 1));
 
+		// Bounded by the CLOCK, never by a spin count. Pump does not run decodes while
+		// there are workers, it only finalizes what they have already decoded, so counting
+		// empty pumps measures how fast THIS thread spins rather than how long the workers
+		// were given: ten thousand of them go by in about ten milliseconds, which is less
+		// than four file backed decodes take.
+		const double cTicksPerSecond = 1000000.0;
+		let started = Stopwatch.GetTimestamp();
+		double Elapsed() => (double)(Stopwatch.GetTimestamp() - started) / cTicksPerSecond;
+
+		while ((factory.DecodesFinished < cCount) && (Elapsed() < 30.0))
+			Thread.Sleep(1);
+		Test.Assert(factory.DecodesFinished == cCount, "the workers decoded everything");
+
+		// With every decode already waiting, the budget is the only thing pacing the
+		// finalizes, so the count below is the measurement rather than a spin.
 		int pumps = 0;
-		while ((manager.PendingCount > 0) && (pumps < 10000))
+		while ((manager.PendingCount > 0) && (Elapsed() < 60.0))
 		{
 			manager.Pump(0.001); // A millisecond, against a five millisecond finalize.
 			pumps++;
