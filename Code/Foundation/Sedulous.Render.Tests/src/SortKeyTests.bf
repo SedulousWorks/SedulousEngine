@@ -62,13 +62,16 @@ class SortKeyTests
 	[Test]
 	public static void TheBatchKeyStaysWithinItsField()
 	{
-		var a = 1;
-		var b = 2;
-		let key = SortKeys.BatchKey(&a, &b);
+		// NOT the addresses of two locals: the key shifts away the low four bits, so a pair
+		// sharing a sixteen byte block collapses to one value and the order stops mattering.
+		// Nothing dereferences these, so a pair of made up addresses is the honest input.
+		let a = (void*)0x1000;
+		let b = (void*)0x2000;
+		let key = SortKeys.BatchKey(a, b);
 
 		Test.Assert(key < (1U << SortKeys.StateBits));
-		Test.Assert(SortKeys.BatchKey(&a, &b) == key, "and it is stable");
-		Test.Assert(SortKeys.BatchKey(&b, &a) != key, "while the order of the pair matters");
+		Test.Assert(SortKeys.BatchKey(a, b) == key, "and it is stable");
+		Test.Assert(SortKeys.BatchKey(b, a) != key, "while the order of the pair matters");
 	}
 
 	[Test]
