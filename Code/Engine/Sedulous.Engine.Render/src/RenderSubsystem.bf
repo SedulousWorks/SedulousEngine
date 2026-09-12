@@ -1,6 +1,9 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
+using Sedulous.Materials;
+using Sedulous.Materials.PipelineCache;
 using Sedulous.Render;
 using Sedulous.RHI;
 using Sedulous.Runtime;
@@ -32,8 +35,26 @@ class RenderSubsystem : Subsystem, ISceneObserver
 	private OverlayRegistry<IScreenOverlay> mScreenOverlays = new .() ~ delete _;
 
 	private RenderFrame mFrame = null ~ delete _;
-	/// BORROWED from the pass set; null where image based lighting is unavailable.
-	private IBLSystem mIblSystem = null;
+	// ---- the pass set, all OWNED and all OPTIONAL ----
+	//
+	// Every one of these degrades rather than fails: no clustering falls back to the shader's
+	// all lights path, no shadows renders unshadowed, no lighting leaves flat ambient, and no
+	// tonemap writes the target directly. That is what lets the renderer come up on a machine
+	// that cannot do all of it.
+	private PipelineStateCache mPsoCache = null ~ delete _;
+	private MaterialSystem mMaterialSystem = null ~ delete _;
+	private MeshRenderer mMeshRenderer = null ~ delete _;
+	private SpriteRenderer mSpriteRenderer = null ~ delete _;
+	private ClusterSystem mClusterSystem = null ~ delete _;
+	private TonemapPass mTonemapPass = null ~ delete _;
+	private ShadowSystem mShadowSystem = null ~ delete _;
+	private IBLSystem mIblSystem = null ~ delete _;
+	private ReflectionProbeSystem mProbeSystem = null ~ delete _;
+
+	/// Every grow path replacement retires through this instead of idling the GPU mid frame,
+	/// which on the web would pump the event loop, expire the canvas texture and drop the
+	/// frame's submission.
+	private GpuRetireQueue mRetireQueue = new .() ~ delete _;
 
 	// ---- global post override ----
 	//
@@ -392,5 +413,93 @@ class RenderSubsystem : Subsystem, ISceneObserver
 
 		mDevice.WaitIdle();
 		mFrame.ReadGpuProfile(outReport);
+	}
+
+	// ---- bring up ---------------------------------------------------------------------------
+
+	/// The engine's shader root, when nothing overrides it.
+	private const String cEngineShaderRoot = "Shaders";
+
+	protected override void OnInit()
+	{
+		// The host settles the pack versus compiler question: a cooked pack beside the
+		// executable means no compiler is needed, and otherwise it stands one up over the
+		// shader root with hot reload. Every consumer uses the same host.
+		if (mShaderHost.Initialize(mDevice, cEngineShaderRoot) case .Err)
+			return; // neither a compiler nor a pack, so the renderer stays inert
+
+		mShaders = mShaderHost.System;
+
+		let format = mDevice.PreferredShaderFormat;
+		if (mShaderHost.UsingPack)
+		{
+			GlobalLog(.Information, "RenderSubsystem: using a cooked shader pack, {} variants", mShaderHost.PackVariantCount);
+		}
+		else if (format == .WGSL)
+		{
+			// The runtime compiler cannot emit this format at all, so every lookup will miss
+			// and the scene renders BLACK. Said loudly, because the symptom otherwise looks
+			// like a broken scene rather than a missing cook.
+			GlobalLog(.Error, "RenderSubsystem: the device wants WGSL and there is no cooked pack. The runtime compiler cannot produce WGSL, so NOTHING will render.");
+		}
+
+		mPsoCache = new PipelineStateCache(mShaders, mDevice);
+		mMaterialSystem = new MaterialSystem();
+		if (mMaterialSystem.Initialize(mDevice) case .Err)
+		{
+			DeleteAndNullify!(mMaterialSystem);
+			return;
+		}
+
+		mMeshRenderer = new MeshRenderer(mDevice, mShaders, mPsoCache, mMaterialSystem,
+			mFramesInFlight);
+		if (mMeshRenderer.Initialize() case .Err)
+		{
+			DeleteAndNullify!(mMeshRenderer);
+			return;
+		}
+		// FIRST, so it takes renderer id nought, which is what render data defaults to.
+		mRegistry.Register(mMeshRenderer);
+
+		mRetireQueue.Initialize(mDevice, (int32)mFramesInFlight);
+		mMeshRenderer.SetRetireQueue(mRetireQueue);
+
+		// Sprites register next, taking id one, and share the blended forward pass.
+		mSpriteRenderer = new SpriteRenderer(mDevice, mShaders, mFramesInFlight);
+		if (mSpriteRenderer.Initialize() case .Ok)
+		{
+			mRegistry.Register(mSpriteRenderer);
+			mSpriteRenderer.SetRetireQueue(mRetireQueue);
+		}
+		else
+		{
+			DeleteAndNullify!(mSpriteRenderer);
+		}
+
+		// Clustered light culling, one compute pass per view.
+		mClusterSystem = new ClusterSystem(mDevice, mShaders, mFramesInFlight);
+		if (mClusterSystem.Initialize() case .Err)
+			DeleteAndNullify!(mClusterSystem);
+		else
+			mClusterSystem.SetRetireQueue(mRetireQueue);
+
+		// The forward pass renders linear high range colour; this maps it to the target.
+		mTonemapPass = new TonemapPass(mDevice, mShaders, mFramesInFlight);
+		if (mTonemapPass.Initialize() case .Err)
+			DeleteAndNullify!(mTonemapPass);
+
+		mShadowSystem = new ShadowSystem(mDevice, mFramesInFlight);
+		if (mShadowSystem.Initialize() case .Err)
+			DeleteAndNullify!(mShadowSystem);
+		else
+			mShadowSystem.SetRetireQueue(mRetireQueue);
+
+		mIblSystem = new IBLSystem(mDevice, mShaders);
+		if (mIblSystem.Initialize() case .Err)
+			DeleteAndNullify!(mIblSystem);
+
+		mProbeSystem = new ReflectionProbeSystem(mDevice, mShaders);
+		if (mProbeSystem.Initialize() case .Err)
+			DeleteAndNullify!(mProbeSystem);
 	}
 }
