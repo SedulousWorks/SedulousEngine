@@ -967,7 +967,11 @@ class VGRenderer
 
 		if (built != null)
 			return built;
-		return clipped ? null : mPipeline;
+
+		// The default pipeline is a tolerable stand in for a distance field or gradient
+		// variant, which degrade to flat colour, but NEVER for a box shadow: that would paint
+		// the quadrant quads as flat colour over everything around the box. Skip instead.
+		return (clipped || (kind == .BoxShadow)) ? null : mPipeline;
 	}
 
 	/// The clipped write pair, built lazily because it needs a stencil attachment.

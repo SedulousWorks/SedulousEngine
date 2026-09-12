@@ -114,7 +114,7 @@ class StyleSelector
 		{
 			let required = State.Value;
 			// The normal state constrains nothing, having no flags to require.
-			if ((required != .Normal) && !HasAnyStateFlag(state, required))
+			if ((required != .Normal) && !HasAllStateFlags(state, required))
 				return false;
 		}
 
@@ -129,13 +129,12 @@ class StyleSelector
 		return Ancestors.IsEmpty || AncestorsMatch(0, view);
 	}
 
-	/// Whether ANY required flag is present, which is what Raptor's free HasFlag means.
+	/// Whether EVERY required flag is present.
 	///
-	/// Not an all-bits test, so a compound state selector such as `:hover:checked` matches a
-	/// view holding only one of the two. Named for what it does, since the surrounding comment
-	/// in Raptor says "All flags must be present on the view" and the code does not.
-	private static bool HasAnyStateFlag(ControlState state, ControlState required) =>
-		((uint32)state & (uint32)required) != 0;
+	/// A compound state selector is a conjunction: `:hover:checked` describes a view that is
+	/// both, so a hovered but unchecked one must not match it.
+	private static bool HasAllStateFlags(ControlState state, ControlState required) =>
+		((uint32)state & (uint32)required) == (uint32)required;
 
 	/// One compound against one view.
 	private static bool CompoundMatches(SelectorCompound compound, View view, ControlState state)
@@ -157,7 +156,7 @@ class StyleSelector
 		if (compound.State != null)
 		{
 			let required = compound.State.Value;
-			if ((required != .Normal) && !HasAnyStateFlag(state, required))
+			if ((required != .Normal) && !HasAllStateFlags(state, required))
 				return false;
 		}
 

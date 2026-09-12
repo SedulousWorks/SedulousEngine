@@ -246,6 +246,30 @@ class GridViewTests
 		Test.Assert(grid.Selection.SelectedCount == 0);
 	}
 
+	/// A SMALLER adapter prunes for the same reason a shrunken data set does: the selection is
+	/// positional, so an index past the new end would quietly highlight whichever cell
+	/// inherits it.
+	[Test]
+	public static void SwappingInASmallerAdapterDropsSelectionPastTheEnd()
+	{
+		let big = scope SimpleListAdapter(20);
+		let small = scope SimpleListAdapter(4);
+		let grid = new GridView();
+		defer grid.ReleaseRef();
+
+		// Multiple, so both indices survive the second pick: Select alone replaces.
+		grid.Selection.Mode = .Multiple;
+		grid.SetAdapter(big);
+		grid.Selection.Toggle(15);
+		grid.Selection.Toggle(2);
+		Test.Assert(grid.Selection.SelectedCount == 2);
+
+		grid.SetAdapter(small);
+
+		Test.Assert(!grid.Selection.IsSelected(15), "past the new end");
+		Test.Assert(grid.Selection.IsSelected(2), "and a still valid index is kept");
+	}
+
 	// ---- Keys ---------------------------------------------------------------------------------
 
 	/// A cell gets FIRST refusal on a key, and an unconsumed one falls through to navigation.

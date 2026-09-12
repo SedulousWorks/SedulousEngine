@@ -61,8 +61,10 @@ class DockLayout : ViewGroup
 			maxHeight = Max(maxHeight, usedTop + usedBottom);
 		}
 
-		MeasuredSize = .(constraints.ConstrainWidth(maxWidth + Padding.TotalHorizontal),
-			constraints.ConstrainHeight(maxHeight + Padding.TotalVertical));
+		// The CHROME was deflated above, padding and border both, so it is the chrome that
+		// comes back. Adding only the padding measured a bordered dock short by its border.
+		MeasuredSize = .(constraints.ConstrainWidth(maxWidth + chrome.TotalHorizontal),
+			constraints.ConstrainHeight(maxHeight + chrome.TotalVertical));
 	}
 
 	protected override void OnLayout(float left, float top, float width, float height)

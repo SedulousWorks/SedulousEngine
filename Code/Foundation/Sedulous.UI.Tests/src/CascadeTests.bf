@@ -18,6 +18,7 @@ class CascadeTests
 		UITypeRegistry.Register("RootView", typeof(RootView));
 		UITypeRegistry.Register("TestView", typeof(TestView));
 		UITypeRegistry.Register("TestGroup", typeof(TestGroup));
+		UITypeRegistry.Register("StateView", typeof(StateView));
 	}
 
 	/// OWNERSHIP of the sheet transfers to the caller.
@@ -491,4 +492,29 @@ class CascadeTests
 		Test.Assert(editor.GetStyleSheet().Version == editorSheetVersion,
 			"the editor's chain holds no game sheet, so nothing invalidated it");
 	}
+	/// A compound state selector is a CONJUNCTION: `:hover:checked` describes a view that is
+	/// both, and the match used to fire on either bit alone.
+	[Test]
+	public static void ACompoundStateSelectorNeedsEveryFlag()
+	{
+		let fixture = scope Fixture(LoadSSS("""
+			StateView { text-color: #000000; }
+			StateView:hover:checked { text-color: #ff0000; }
+			"""));
+
+		let view = new StateView();
+		fixture.Root.AddView(view);
+
+		view.State = .Hover;
+		Test.Assert(Near(Red(view), 0.0f), "hovered alone is not the compound");
+		view.State = .Checked;
+		Test.Assert(Near(Red(view), 0.0f), "checked alone is not either");
+
+		view.State = ControlState.Hover | ControlState.Checked;
+		Test.Assert(Near(Red(view), 1.0f), "both is");
+
+		view.State = ControlState.Hover | ControlState.Checked | ControlState.Focused;
+		Test.Assert(Near(Red(view), 1.0f), "and an extra flag does not disqualify it");
+	}
+
 }

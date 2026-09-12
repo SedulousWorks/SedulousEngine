@@ -30,6 +30,37 @@ class DockAndGridLayoutTests
 
 	// ---- DockLayout -------------------------------------------------------------------------
 
+	/// A styled border is part of what the dock MEASURES to, not just the padding.
+	///
+	/// The measure deflates by the whole chrome, so the whole chrome has to come back: adding
+	/// only the padding left a bordered dock short by its border.
+	[Test]
+	public static void AStyledBorderCountsTowardTheMeasuredSize()
+	{
+		let context = scope UIContext();
+		let root = new RootView();
+		defer root.ReleaseRef();
+		UITest.Init(context, root, 400, 300);
+
+		// A frame gives the dock LOOSE constraints, so it wraps its content rather than
+		// being stretched to the root and hiding the difference.
+		let host = new FrameLayout();
+		let dock = new DockLayout();
+		dock.SetStyle(.BorderWidth, 5.0f);
+		dock.Padding = Thickness(2, 2, 2, 2);
+
+		let top = new TestView(100, 50);
+		dock.AddView(top, Docked(.Top));
+		host.AddView(dock);
+		root.AddView(host);
+		UITest.LayoutPass(context, root);
+
+		// A top docked child spans the dock rather than sizing it, so only the height is its.
+		Test.Assert(Near(dock.MeasuredSize.Y, 50 + 2 * (5 + 2)), "border and padding both");
+		Test.Assert(Near(top.Bounds.X, 7), "inset by the border plus the padding");
+		Test.Assert(Near(top.Bounds.Y, 7));
+	}
+
 	/// A top docked child takes the full WIDTH and only the height it measured to.
 	[Test]
 	public static void ATopDockedChildSpansTheWidth()

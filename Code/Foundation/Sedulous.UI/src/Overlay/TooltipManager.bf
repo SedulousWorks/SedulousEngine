@@ -116,9 +116,12 @@ class TooltipManager
 			return;
 
 		mInteractive = target.IsTooltipInteractive;
-		// Only an interactive tooltip is hit testable; an ordinary one must not stand between
-		// the pointer and what it is describing.
+		// Hit test visibility is SELF only, which the tool float layers rely on, so on its own
+		// it still left the tooltip's CONTENT standing between the pointer and the thing being
+		// described. Interaction takes out the whole subtree: an ordinary tooltip is
+		// pass-through, an interactive one is a real target.
 		mTooltipView.IsHitTestVisible = mInteractive;
+		mTooltipView.IsInteractionEnabled = mInteractive;
 
 		let root = mContext.ActiveInputRoot;
 		if (root == null)

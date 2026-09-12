@@ -95,6 +95,9 @@ class GridView : ViewGroup, IListAdapterObserver
 		if (mAdapter != null)
 			mAdapter.SetObserver(this);
 
+		// The selection is positional, so a smaller adapter has to drop the indices past its
+		// end here for the same reason a shrunken data set does.
+		Selection.PruneFrom((mAdapter != null) ? mAdapter.ItemCount : 0);
 		RecycleAllActive();
 		Invalidate();
 	}

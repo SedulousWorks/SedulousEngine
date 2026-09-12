@@ -313,4 +313,54 @@ class TooltipTests
 
 		Test.Assert(layer.HitTest(.(5, 5)) != null, "an interactive one can be reached");
 	}
+
+	/// Nothing ANYWHERE in an ordinary tooltip answers a hit, its content included.
+	///
+	/// Hit test visibility is self only, which the tool float layers rely on, so clearing it
+	/// on the tooltip view alone still left the CONTENT catching the pointer between the
+	/// cursor and the thing being described. The probe sweeps the layer rather than guessing
+	/// where the tooltip was placed.
+	[Test]
+	public static void AnOrdinaryTooltipPassesThePointerThroughItsWholeSubtree()
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+
+		let plain = new TipView(100, 50);
+		root.AddView(plain);
+		context.Tooltips.OnHoverChanged(plain);
+		context.BeginFrame(0.6f);
+		let layer = root.GetPopupLayer();
+		UITest.LayoutPass(context, root);
+		Test.Assert(context.Tooltips.IsShowing, "the tooltip is up");
+
+		for (int x = 0; x < 800; x += 10)
+		{
+			for (int y = 0; y < 600; y += 10)
+				Test.Assert(layer.HitTest(.(x, y)) == null, "nothing in it catches the pointer");
+		}
+
+		// The interactive case is a real target, so SOMETHING in the same sweep answers.
+		context.Tooltips.OnMouseDown();
+		let interactive = new TipView(100, 50);
+		interactive.IsTooltipInteractive = true;
+		root.AddView(interactive);
+		context.Tooltips.OnHoverChanged(interactive);
+		context.BeginFrame(0.6f);
+		UITest.LayoutPass(context, root);
+
+		var reached = false;
+		for (int x = 0; (x < 800) && !reached; x += 10)
+		{
+			for (int y = 0; y < 600; y += 10)
+			{
+				if (layer.HitTest(.(x, y)) != null)
+				{
+					reached = true;
+					break;
+				}
+			}
+		}
+		Test.Assert(reached, "an interactive one is reachable");
+	}
 }
