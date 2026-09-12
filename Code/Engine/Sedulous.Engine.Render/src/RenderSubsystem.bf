@@ -32,6 +32,8 @@ class RenderSubsystem : Subsystem, ISceneObserver
 	private OverlayRegistry<IScreenOverlay> mScreenOverlays = new .() ~ delete _;
 
 	private RenderFrame mFrame = null ~ delete _;
+	/// BORROWED from the pass set; null where image based lighting is unavailable.
+	private IBLSystem mIblSystem = null;
 
 	// ---- global post override ----
 	//
@@ -119,8 +121,12 @@ class RenderSubsystem : Subsystem, ISceneObserver
 			mFrame.SetDeltaSeconds(deltaTime);
 	}
 
-	/// Drops the providers registered for a scene that is going away, since they are borrowed
-	/// and about to dangle.
+	/// Drops everything keyed on a scene that is going away.
+	///
+	/// The providers are borrowed and about to dangle. The debug list has to go for a second
+	/// reason: the map is keyed on the scene itself and anything may mint an entry, so without
+	/// this every reload leaks one, and a recycled address would silently adopt the dead
+	/// scene's drawings.
 	public void OnDestroying(Scene scene)
 	{
 		for (int i = mProviders.Count - 1; i >= 0; i--)
@@ -128,6 +134,9 @@ class RenderSubsystem : Subsystem, ISceneObserver
 			if (mProviders[i].Scene === scene)
 				mProviders.RemoveAt(i);
 		}
+
+		if (mDebugScenes.GetAndRemove(scene) case .Ok(let pair))
+			delete pair.value;
 	}
 
 	// ---- global post override ---------------------------------------------------------------
@@ -351,5 +360,37 @@ class RenderSubsystem : Subsystem, ISceneObserver
 		let created = new DebugDraw();
 		mDebugViews[viewportKey] = created;
 		return created;
+	}
+
+	// ---- environment source -----------------------------------------------------------------
+
+	/// Sets the scene's equirectangular environment, as four floats per texel.
+	///
+	/// The image based lighting rebuilds from it when the sky mode asks for one. A COPY is
+	/// taken and uploaded next frame, and it is a no op where lighting is unavailable.
+	public void SetSkyEquirect(uint32 width, uint32 height, Span<float> rgba)
+	{
+		if (mIblSystem != null)
+			mIblSystem.SetEquirect(width, height, rgba);
+	}
+
+	/// Sets the scene's cube environment: six faces concatenated in the usual axis order.
+	public void SetSkyCubemap(uint32 faceSize, Span<uint8> sixFaces)
+	{
+		if (mIblSystem != null)
+			mIblSystem.SetCubemap(faceSize, sixFaces);
+	}
+
+	/// Reads back the GPU timings for the last frame.
+	///
+	/// IDLES the device first, because the timings are only there once the work that produced
+	/// them has finished. A debug path, never a per frame one.
+	public void BuildGpuProfileReport(String outReport)
+	{
+		if ((mFrame == null) || (mDevice == null))
+			return;
+
+		mDevice.WaitIdle();
+		mFrame.ReadGpuProfile(outReport);
 	}
 }
