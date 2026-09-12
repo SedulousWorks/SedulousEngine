@@ -12,9 +12,9 @@ class AsyncResourceTests
 	public static void BindAsyncIsPendingUntilPumped()
 	{
 		let fixture = scope ResourceFixture("scratch_async_pending");
+		let factory = scope AsyncProductFactory();
 		let jobs = scope JobSystem(2);
 		let manager = scope ResourceManager(fixture.Database, jobs);
-		let factory = scope AsyncProductFactory();
 		factory.Gate = new WaitEvent();
 		manager.AddFactory(factory);
 
@@ -48,9 +48,9 @@ class AsyncResourceTests
 	public static void ADecodeCanRunOnAWorkerAndFinalizeOnTheMainThread()
 	{
 		let fixture = scope ResourceFixture("scratch_async_threads");
+		let factory = scope AsyncProductFactory();
 		let jobs = scope JobSystem(2);
 		let manager = scope ResourceManager(fixture.Database, jobs);
-		let factory = scope AsyncProductFactory();
 		manager.AddFactory(factory);
 
 		let mainThreadId = Thread.CurrentThread.Id;
@@ -84,8 +84,8 @@ class AsyncResourceTests
 	public static void WithoutAJobSystemItBuildsSynchronously()
 	{
 		let fixture = scope ResourceFixture("scratch_async_nojobs");
-		let manager = scope ResourceManager(fixture.Database);
 		let factory = scope AsyncProductFactory();
+		let manager = scope ResourceManager(fixture.Database);
 		manager.AddFactory(factory);
 
 		let proxy = manager.BindAsync<TestProduct>(fixture.Author("mesh", 3, 3));
@@ -99,10 +99,10 @@ class AsyncResourceTests
 	public static void AFactoryThatHasNotOptedInBuildsSynchronously()
 	{
 		let fixture = scope ResourceFixture("scratch_async_optout");
+		let factory = scope TestProductFactory();
 		let jobs = scope JobSystem(2);
 		let manager = scope ResourceManager(fixture.Database, jobs);
 		// The plain factory: SupportsAsync is the interface default, which is false.
-		let factory = scope TestProductFactory();
 		manager.AddFactory(factory);
 
 		let proxy = manager.BindAsync<TestProduct>(fixture.Author("mesh", 2, 3));
@@ -116,9 +116,9 @@ class AsyncResourceTests
 	public static void ASynchronousBindCompletesAPendingLoad()
 	{
 		let fixture = scope ResourceFixture("scratch_async_upgrade");
+		let factory = scope AsyncProductFactory();
 		let jobs = scope JobSystem(2);
 		let manager = scope ResourceManager(fixture.Database, jobs);
-		let factory = scope AsyncProductFactory();
 		factory.Gate = new WaitEvent();
 		manager.AddFactory(factory);
 
@@ -142,9 +142,9 @@ class AsyncResourceTests
 	public static void ConcurrentBindsShareOneLoad()
 	{
 		let fixture = scope ResourceFixture("scratch_async_share");
+		let factory = scope AsyncProductFactory();
 		let jobs = scope JobSystem(2);
 		let manager = scope ResourceManager(fixture.Database, jobs);
-		let factory = scope AsyncProductFactory();
 		factory.Gate = new WaitEvent();
 		manager.AddFactory(factory);
 
@@ -171,8 +171,8 @@ class AsyncResourceTests
 		let jobs = scope JobSystem(0);
 		Test.Assert(jobs.WorkerCount == 0);
 
-		let manager = scope ResourceManager(fixture.Database, jobs);
 		let factory = scope AsyncProductFactory();
+		let manager = scope ResourceManager(fixture.Database, jobs);
 		manager.AddFactory(factory);
 
 		let proxy = manager.BindAsync<TestProduct>(fixture.Author("mesh", 3, 4));
@@ -190,9 +190,9 @@ class AsyncResourceTests
 	public static void AFailedDecodeSettlesAsFailed()
 	{
 		let fixture = scope ResourceFixture("scratch_async_fail");
+		let factory = scope AsyncProductFactory();
 		let jobs = scope JobSystem(2);
 		let manager = scope ResourceManager(fixture.Database, jobs);
-		let factory = scope AsyncProductFactory();
 		manager.AddFactory(factory);
 
 		// An identity with no instance behind it cannot decode, so it falls back to the
@@ -212,9 +212,9 @@ class AsyncResourceTests
 	public static void ARefusedDecodeSettlesAsFailed()
 	{
 		let fixture = scope ResourceFixture("scratch_async_refuse_decode");
+		let factory = scope AsyncProductFactory();
 		let jobs = scope JobSystem(2);
 		let manager = scope ResourceManager(fixture.Database, jobs);
-		let factory = scope AsyncProductFactory();
 		factory.RefuseDecode = true;
 		manager.AddFactory(factory);
 
@@ -232,9 +232,9 @@ class AsyncResourceTests
 	public static void ARefusedFinalizeSettlesAsFailed()
 	{
 		let fixture = scope ResourceFixture("scratch_async_refuse_finalize");
+		let factory = scope AsyncProductFactory();
 		let jobs = scope JobSystem(2);
 		let manager = scope ResourceManager(fixture.Database, jobs);
-		let factory = scope AsyncProductFactory();
 		factory.RefuseFinalize = true;
 		manager.AddFactory(factory);
 
@@ -285,9 +285,9 @@ class AsyncResourceTests
 	public static void ManyLoadsSettleTogether()
 	{
 		let fixture = scope ResourceFixture("scratch_async_many");
+		let factory = scope AsyncProductFactory();
 		let jobs = scope JobSystem(4);
 		let manager = scope ResourceManager(fixture.Database, jobs);
-		let factory = scope AsyncProductFactory();
 		manager.AddFactory(factory);
 
 		let proxies = scope System.Collections.List<Proxy<TestProduct>>();

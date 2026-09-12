@@ -20,9 +20,9 @@ class AsyncSurfaceTests
 	public static void OnReadyFiresOnceOnTheMainThread()
 	{
 		let fixture = scope ResourceFixture("scratch_async_onready");
+		let factory = scope AsyncProductFactory();
 		let jobs = scope JobSystem(2);
 		let manager = scope ResourceManager(fixture.Database, jobs);
-		let factory = scope AsyncProductFactory();
 		manager.AddFactory(factory);
 
 		let id = fixture.Author("mesh", 3, 1);
@@ -49,8 +49,8 @@ class AsyncSurfaceTests
 	public static void OnReadyDoesNotFireForAnAlreadyReadyHandle()
 	{
 		let fixture = scope ResourceFixture("scratch_async_onready_late");
-		let manager = scope ResourceManager(fixture.Database);
 		let factory = scope TestProductFactory();
+		let manager = scope ResourceManager(fixture.Database);
 		manager.AddFactory(factory);
 
 		let id = fixture.Author("mesh", 2, 2);
@@ -71,9 +71,9 @@ class AsyncSurfaceTests
 		let fixture = scope ResourceFixture("scratch_async_fallback");
 
 		{
+			let factory = scope AsyncProductFactory();
 			let jobs = scope JobSystem(2);
 			let manager = scope ResourceManager(fixture.Database, jobs);
-			let factory = scope AsyncProductFactory();
 			factory.SupportsAsyncStage = false;
 			manager.AddFactory(factory);
 
@@ -88,8 +88,8 @@ class AsyncSurfaceTests
 
 		{
 			// Supports async, but there is no pool to run a decode on.
-			let manager = scope ResourceManager(fixture.Database);
 			let factory = scope AsyncProductFactory();
+			let manager = scope ResourceManager(fixture.Database);
 			manager.AddFactory(factory);
 
 			let id = fixture.Author("b", 6, 1);
@@ -107,9 +107,9 @@ class AsyncSurfaceTests
 	public static void PumpKeepsToItsBudgetAndResumesNextTick()
 	{
 		let fixture = scope ResourceFixture("scratch_async_budget");
+		let factory = scope AsyncProductFactory();
 		let jobs = scope JobSystem(2);
 		let manager = scope ResourceManager(fixture.Database, jobs);
-		let factory = scope AsyncProductFactory();
 		// Each finalize costs more than the budget, so at most one fits in a pump.
 		factory.FinalizeSleepMs = 5;
 		manager.AddFactory(factory);
@@ -136,9 +136,9 @@ class AsyncSurfaceTests
 	public static void ARefBindsAsynchronouslyInsideTheScope()
 	{
 		let fixture = scope ResourceFixture("scratch_async_scope");
+		let factory = scope AsyncProductFactory();
 		let jobs = scope JobSystem(2);
 		let manager = scope ResourceManager(fixture.Database, jobs);
-		let factory = scope AsyncProductFactory();
 		factory.Gate = new WaitEvent(); // Hold the decode so the pending state is observable.
 		manager.AddFactory(factory);
 
@@ -192,9 +192,9 @@ class AsyncSurfaceTests
 	public static void ABatchReportsProgressAsLoadsFinalize()
 	{
 		let fixture = scope ResourceFixture("scratch_async_batch");
+		let factory = scope AsyncProductFactory();
 		let jobs = scope JobSystem(3);
 		let manager = scope ResourceManager(fixture.Database, jobs);
-		let factory = scope AsyncProductFactory();
 		factory.Gate = new WaitEvent(); // Hold every decode.
 		manager.AddFactory(factory);
 

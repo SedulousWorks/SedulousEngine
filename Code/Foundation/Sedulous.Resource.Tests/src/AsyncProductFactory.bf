@@ -66,7 +66,12 @@ class AsyncProductFactory : IResourceFactory
 
 		let source = instance.ReadObject();
 		if (source == null)
+		{
+			// Counted even on the refusal: a test that polls this one would otherwise wait
+			// for a decode that has already given up.
+			Interlocked.Increment(ref DecodesFinished);
 			return null;
+		}
 		defer delete source;
 
 		let decoded = new DecodedIntermediate();
