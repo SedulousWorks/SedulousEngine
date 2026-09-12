@@ -436,6 +436,10 @@ class XmlDocument : XmlNode
 
 	private XmlResult ParseAttributes(ref StringView text, XmlElement element)
 	{
+		// Hoisted out of the loop: both lexer calls clear the output, the element copies what
+		// it is given, and a scope:: inside the loop grows the frame once per attribute.
+		let name = scope String();
+		let value = scope String();
 		for (;;)
 		{
 			SkipWhitespace(ref text);
@@ -446,7 +450,6 @@ class XmlDocument : XmlNode
 			if ((text[0] == '>') || text.StartsWith("/>"))
 				return .Ok;
 
-			let name = scope:: String();
 			if (XmlLexer.ReadName(text, let nameLength, name) != .Ok)
 				return .AttributeInvalid;
 			Advance(ref text, nameLength);
@@ -460,7 +463,6 @@ class XmlDocument : XmlNode
 			Advance(ref text, 1);
 			SkipWhitespace(ref text);
 
-			let value = scope:: String();
 			let valueResult = XmlLexer.ReadAttributeValue(text, let valueLength, value);
 			if (valueResult != .Ok)
 				return valueResult;
