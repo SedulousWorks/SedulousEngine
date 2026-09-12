@@ -158,7 +158,9 @@ class DeviceValidationTests
 		fixture.Messages.Clear();
 
 		// Through the stale handle, it is caught.
-		fixture.Device.CreateTextureView(stale, .()).IgnoreError();
+		// The layer reports and still forwards, so a view really is created: own it.
+		if (fixture.Device.CreateTextureView(stale, .()) case .Ok(let staleView))
+			fixture.Own(staleView);
 		Test.Assert(fixture.Messages.HasError("was destroyed, or was not created by this device"));
 
 		fixture.Messages.Clear();
