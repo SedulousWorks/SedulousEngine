@@ -361,6 +361,7 @@ class VulkanSwapChainTests
 		if (sBackend != null)
 		{
 			sBackend.Destroy();
+			delete sBackend;
 			sBackend = null;
 		}
 		if (sShell != null)

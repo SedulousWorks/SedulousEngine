@@ -116,6 +116,7 @@ class FileProviderTests
 		{
 			device.Destroy();
 			backend.Destroy();
+			delete backend;
 		}
 
 		let compiler = MakeCompiler();
@@ -163,6 +164,7 @@ class FileProviderTests
 		{
 			device.Destroy();
 			backend.Destroy();
+			delete backend;
 		}
 
 		let compiler = MakeCompiler();
@@ -220,6 +222,7 @@ class FileProviderTests
 		{
 			device.Destroy();
 			backend.Destroy();
+			delete backend;
 		}
 
 		let compiler = MakeCompiler();

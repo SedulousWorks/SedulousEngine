@@ -62,6 +62,7 @@ class ShaderSystemHostTests
 		{
 			device.Destroy();
 			backend.Destroy();
+			delete backend;
 		}
 
 		let host = scope ShaderSystemHost();
@@ -91,6 +92,7 @@ class ShaderSystemHostTests
 		{
 			device.Destroy();
 			backend.Destroy();
+			delete backend;
 		}
 
 		let host = scope ShaderSystemHost();
@@ -115,6 +117,7 @@ class ShaderSystemHostTests
 		{
 			device.Destroy();
 			backend.Destroy();
+			delete backend;
 		}
 
 		let host = scope ShaderSystemHost();
@@ -147,6 +150,7 @@ class ShaderSystemHostTests
 		{
 			device.Destroy();
 			backend.Destroy();
+			delete backend;
 		}
 
 		let host = scope ShaderSystemHost();

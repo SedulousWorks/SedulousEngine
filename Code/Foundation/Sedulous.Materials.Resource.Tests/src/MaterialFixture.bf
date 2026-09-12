@@ -28,7 +28,10 @@ class MaterialFixture
 	public ContentDatabase Database ~ delete _;
 	public ResourceManager Manager ~ delete _;
 
-	public IBackend Backend;
+	/// Freed by the FIELD destructor rather than in ~this, which runs first: the factories
+	/// declared below still reach the device on the way out, and the device belongs to the
+	/// adapter the backend owns. Reverse declaration order puts them first.
+	public IBackend Backend ~ delete _;
 	public IDevice Device;
 	public ShaderSystem Shaders ~ delete _;
 
@@ -74,6 +77,13 @@ class MaterialFixture
 
 	public ~this()
 	{
+		// The manager holds the BOUND resources, and a bound texture owns a GPU texture it
+		// frees through the device. Field destructors run after this body and in reverse
+		// declaration order, which would put the manager after the backend, so it goes by
+		// hand here instead.
+		delete Manager;
+		Manager = null;
+
 		// The shader system holds GPU modules, so it goes before the device.
 		delete Shaders;
 		Shaders = null;

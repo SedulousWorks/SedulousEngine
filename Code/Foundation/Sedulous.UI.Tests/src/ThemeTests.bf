@@ -150,6 +150,35 @@ class ThemeTests
 		CheckDesignSystem(rounded);
 	}
 
+	/// The two dark themes are ONE look in two geometries: same palette, same colours, and
+	/// the corner radius is the whole difference. Defaulting the rounded one to another
+	/// palette made it a different theme entirely, which is what it looked like on screen.
+	[Test]
+	public static void TheRoundedDarkThemeIsTheDarkThemeRounded()
+	{
+		StyleSheetLoader.InitializeGlobals();
+
+		let flat = DarkTheme.Create();
+		defer flat.ReleaseRef();
+
+		let rounded = RoundedDarkTheme.Create();
+		defer rounded.ReleaseRef();
+
+		let flatText = FindValue(flat, typeof(View), "", .TextColor);
+		let roundedText = FindValue(rounded, typeof(View), "", .TextColor);
+		Test.Assert(flatText != null);
+		Test.Assert(roundedText != null);
+		Test.Assert(flatText.Value.AsColor.Value == roundedText.Value.AsColor.Value,
+			"the same palette, so the same text colour");
+
+		// And the geometry is what differs.
+		let flatRadius = FindValue(flat, typeof(View), "", .CornerRadius);
+		let roundedRadius = FindValue(rounded, typeof(View), "", .CornerRadius);
+		Test.Assert(roundedRadius != null);
+		Test.Assert(roundedRadius.Value.AsFloat.Value == 6.0f);
+		Test.Assert((flatRadius == null) || (flatRadius.Value.AsFloat.Value == 0.0f));
+	}
+
 	/// The rounded theme's own identity on top of the shared system.
 	[Test]
 	public static void TheRoundedThemeRoundsEverything()

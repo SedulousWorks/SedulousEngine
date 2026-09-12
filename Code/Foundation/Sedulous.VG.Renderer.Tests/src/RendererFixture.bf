@@ -74,7 +74,10 @@ class RendererFixture
 		if (Device != null)
 			Device.Destroy();
 		if (Backend != null)
+		{
 			Backend.Destroy();
+			delete Backend;
+		}
 	}
 
 	private void DestroyModule(ref IShaderModule module)

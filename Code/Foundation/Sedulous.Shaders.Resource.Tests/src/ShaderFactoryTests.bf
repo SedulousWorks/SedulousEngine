@@ -72,7 +72,10 @@ class ShaderFactoryTests
 			if (Device != null)
 				Device.Destroy();
 			if (Backend != null)
+			{
 				Backend.Destroy();
+				delete Backend;
+			}
 			RemoveDirectoryRecursive(mRoot);
 		}
 

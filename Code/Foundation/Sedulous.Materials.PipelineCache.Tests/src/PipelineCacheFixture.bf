@@ -48,7 +48,10 @@ class PipelineCacheFixture
 		if (Device != null)
 			Device.Destroy();
 		if (Backend != null)
+		{
 			Backend.Destroy();
+			delete Backend;
+		}
 	}
 
 	/// Puts a variant in the pack. The bytes are never executed: the null backend takes

@@ -58,6 +58,7 @@ class ShaderSystemTests
 		{
 			device.Destroy();
 			backend.Destroy();
+			delete backend;
 		}
 
 		let compiler = MakeCompiler();
@@ -104,6 +105,7 @@ class ShaderSystemTests
 		{
 			device.Destroy();
 			backend.Destroy();
+			delete backend;
 		}
 
 		// A blob the null backend will accept as a module.
@@ -147,6 +149,7 @@ class ShaderSystemTests
 		{
 			device.Destroy();
 			backend.Destroy();
+			delete backend;
 		}
 
 		let compiler = MakeCompiler();
@@ -185,6 +188,7 @@ class ShaderSystemTests
 		{
 			device.Destroy();
 			backend.Destroy();
+			delete backend;
 		}
 
 		let compiler = MakeCompiler();
@@ -220,6 +224,7 @@ class ShaderSystemTests
 		{
 			device.Destroy();
 			backend.Destroy();
+			delete backend;
 		}
 
 		uint8[8] blob = .(1, 2, 3, 4, 5, 6, 7, 8);
@@ -248,6 +253,7 @@ class ShaderSystemTests
 		{
 			device.Destroy();
 			backend.Destroy();
+			delete backend;
 		}
 
 		let compiler = MakeCompiler();
@@ -279,6 +285,7 @@ class ShaderSystemTests
 		{
 			device.Destroy();
 			backend.Destroy();
+			delete backend;
 		}
 
 		let shaders = scope Sedulous.Shaders.ShaderSystem(device);

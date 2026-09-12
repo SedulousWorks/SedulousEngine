@@ -182,6 +182,7 @@ class VulkanRayTracingTests
 		if (sBackend != null)
 		{
 			sBackend.Destroy();
+			delete sBackend;
 			sBackend = null;
 		}
 	}

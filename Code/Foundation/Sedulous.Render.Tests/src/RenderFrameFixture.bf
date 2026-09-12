@@ -112,7 +112,10 @@ class RenderFrameFixture
 		if (Device != null)
 			Device.Destroy();
 		if (Backend != null)
+		{
 			Backend.Destroy();
+			delete Backend;
+		}
 	}
 
 	/// A camera looking at the origin from a few units back, which frames a unit cube.

@@ -130,7 +130,7 @@ class VulkanQueueTests
 			Console.WriteLine("SKIP: no Vulkan");
 			return;
 		}
-		defer backend.Destroy();
+		defer { backend.Destroy(); delete backend; }
 
 		let adapters = backend.EnumerateAdapters();
 		if (adapters.IsEmpty)
