@@ -168,7 +168,7 @@ class McpServer
 		// Absent arguments are an empty object, so a tool taking none needs no special case.
 		var arguments = parameters.Get("arguments");
 		JsonValue owned = null;
-		defer delete owned;
+		defer { delete owned; }
 		if ((arguments == null) || arguments.IsNull)
 		{
 			owned = JsonValue.MakeObject();
