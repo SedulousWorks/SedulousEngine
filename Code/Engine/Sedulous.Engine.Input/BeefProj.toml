@@ -7,3 +7,7 @@ StartupObject = "Sedulous.Engine.Input.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Input" = "*"
