@@ -7,3 +7,12 @@ StartupObject = "Sedulous.Engine.Render.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Geometry" = "*"
+"Sedulous.Materials" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Texture.Resource" = "*"
+"Sedulous.Render" = "*"
+"Sedulous.Render.Api" = "*"

@@ -14,14 +14,16 @@ namespace Sedulous.Engine.Project;
 /// move; the string beside it is the readable mirror, and the fallback for a manifest
 /// written before its guid existed.
 ///
-/// FIELD ORDER IS THE WIRE. These are declared in the order Raptor serializes them, which
-/// is not the order Raptor declares them, so the two engines write the same document.
+/// FIELD ORDER IS THE WIRE: the generator walks the declaration, so inserting a field in the
+/// middle changes what existing manifests mean. Append, and bump the version when the shape
+/// has to change. The order happens to follow Raptor's, which is no constraint: projects are
+/// not shared between the two engines.
 [Serializable(9)]
 class ProjectSettings
 {
 	public String Name = new .() ~ delete _;
-	/// The engine that last saved this project. Re-stamped on every save. Named for the
-	/// WIRE KEY, which the generator derives from the field name.
+	/// The engine that last saved this project. Re-stamped on every save. Named for the WIRE
+	/// KEY, which the generator derives from the field name.
 	public String EngineVersion = new .() ~ delete _;
 
 	public Guid DefaultSceneId;
