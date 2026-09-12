@@ -16,6 +16,9 @@ class VulkanCommandTests
 {
 	private static IBackend sBackend;
 	private static IDevice sDevice;
+	/// A failed attempt is NEVER retried: the next test would build another backend that the
+	/// first failure already proved useless, and leak it.
+	private static bool sTried;
 
 	/// The compute shader's local size, so one dispatch covers the whole buffer.
 	private const int cElementCount = 64;
@@ -24,6 +27,9 @@ class VulkanCommandTests
 	{
 		if (sDevice != null)
 			return true;
+		if (sTried)
+			return false;
+		sTried = true;
 		if (!(VulkanRhi.CreateBackend(false) case .Ok(let backend)))
 			return false;
 		sBackend = backend;
@@ -671,5 +677,23 @@ class VulkanCommandTests
 
 		pool.DestroyEncoder(ref encoder);
 		sDevice.DestroyCommandPool(ref pool);
+	}
+
+	/// Named to sort last so the device outlives the tests above.
+	[Test]
+	public static void ZzTearDown()
+	{
+		if (sDevice != null)
+		{
+			sDevice.WaitIdle();
+			sDevice.Destroy();
+			sDevice = null;
+		}
+		if (sBackend != null)
+		{
+			sBackend.Destroy();
+			delete sBackend;
+			sBackend = null;
+		}
 	}
 }

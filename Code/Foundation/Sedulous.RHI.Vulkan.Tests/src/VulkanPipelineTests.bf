@@ -13,11 +13,17 @@ class VulkanPipelineTests
 {
 	private static IBackend sBackend;
 	private static IDevice sDevice;
+	/// A failed attempt is NEVER retried: the next test would build another backend that the
+	/// first failure already proved useless, and leak it.
+	private static bool sTried;
 
 	private static bool Ready()
 	{
 		if (sDevice != null)
 			return true;
+		if (sTried)
+			return false;
+		sTried = true;
 		if (!(VulkanRhi.CreateBackend(false) case .Ok(let backend)))
 			return false;
 		sBackend = backend;
