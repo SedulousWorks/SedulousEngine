@@ -127,6 +127,9 @@ class FileProviderTests
 		Test.Assert(provider.Initialize(root) case .Ok);
 
 		let shaders = scope Sedulous.Shaders.ShaderSystem(compiler, device);
+		// Nothing here reads the bytecode's quality, and optimization is most of what
+		// DXC spends its time on.
+		shaders.OptimizationLevel = 0;
 		shaders.SetSourceProvider(provider);
 		StringView[1] includePaths = .(root);
 		shaders.SetIncludePaths(includePaths);
@@ -175,6 +178,9 @@ class FileProviderTests
 		Test.Assert(provider.Initialize(root) case .Ok);
 
 		let shaders = scope Sedulous.Shaders.ShaderSystem(compiler, device);
+		// Nothing here reads the bytecode's quality, and optimization is most of what
+		// DXC spends its time on.
+		shaders.OptimizationLevel = 0;
 		shaders.SetSourceProvider(provider);
 
 		let plain = shaders.GetVariant("declared", .Fragment, .None);
@@ -233,6 +239,9 @@ class FileProviderTests
 		Test.Assert(provider.Initialize(root) case .Ok);
 
 		let shaders = scope Sedulous.Shaders.ShaderSystem(compiler, device);
+		// Nothing here reads the bytecode's quality, and optimization is most of what
+		// DXC spends its time on.
+		shaders.OptimizationLevel = 0;
 		shaders.SetSourceProvider(provider);
 		Test.Assert(shaders.GetVariant("live", .Fragment, .None) != null);
 		Test.Assert(shaders.Version("live") == 0);

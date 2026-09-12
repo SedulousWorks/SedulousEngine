@@ -58,6 +58,9 @@ class ShaderFactoryTests
 
 			Shaders = (Compiler != null) ? new ShaderSystem(Compiler, Device)
 				: new ShaderSystem(Device);
+			// Nothing here reads the bytecode's quality, and optimization is most of what DXC
+			// spends its time on.
+			Shaders.OptimizationLevel = 0;
 			Shader = new ShaderFactory(Shaders);
 			Manager.AddFactory(Shader);
 		}

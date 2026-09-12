@@ -66,6 +66,9 @@ class ShaderSystemTests
 		defer delete compiler;
 
 		let shaders = scope Sedulous.Shaders.ShaderSystem(compiler, device);
+		// Nothing here reads the bytecode's quality, and optimization is most of what
+		// DXC spends its time on.
+		shaders.OptimizationLevel = 0;
 		shaders.RegisterSource("flagged", .Fragment, cFlaggedPixelShader);
 
 		let plain = shaders.GetVariant("flagged", .Fragment, .None);
@@ -157,6 +160,9 @@ class ShaderSystemTests
 		defer delete compiler;
 
 		let shaders = scope Sedulous.Shaders.ShaderSystem(compiler, device);
+		// Nothing here reads the bytecode's quality, and optimization is most of what
+		// DXC spends its time on.
+		shaders.OptimizationLevel = 0;
 		shaders.RegisterSource("cached", .Fragment, cFlaggedPixelShader);
 
 		Test.Assert(shaders.Version("cached") == 0, "an untouched shader is at version zero");
@@ -200,6 +206,9 @@ class ShaderSystemTests
 		pack.Add("overridden", .Fragment, .None, .SpirV, blob);
 
 		let shaders = scope Sedulous.Shaders.ShaderSystem(compiler, device);
+		// Nothing here reads the bytecode's quality, and optimization is most of what
+		// DXC spends its time on.
+		shaders.OptimizationLevel = 0;
 		shaders.SetCookedPack(pack);
 
 		// Before registering, the pack answers.
@@ -261,6 +270,9 @@ class ShaderSystemTests
 		defer delete compiler;
 
 		let shaders = scope Sedulous.Shaders.ShaderSystem(compiler, device);
+		// Nothing here reads the bytecode's quality, and optimization is most of what
+		// DXC spends its time on.
+		shaders.OptimizationLevel = 0;
 		shaders.RegisterSource("temporary", .Fragment,
 			"float4 main() : SV_Target0 { return 0; }");
 		Test.Assert(shaders.GetVariant("temporary", .Fragment, .None) != null);

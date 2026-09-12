@@ -40,6 +40,14 @@ class ShaderSystem
 	private Dictionary<uint64, uint64> mVersions = new Dictionary<uint64, uint64>() ~ delete _;
 	private List<String> mIncludePaths = new List<String>() ~ DeleteContainerAndItems!(_);
 
+	/// The DXC optimization level every on demand compile asks for. Three is what Raptor
+	/// compiles at and what a build wants.
+	///
+	/// A test suite is the reason this is settable: optimization is most of what DXC spends
+	/// its time on, and a test that only needs a module back gets it nearly three times
+	/// sooner at zero. Nothing downstream of here reads the bytecode's quality.
+	public int32 OptimizationLevel = 3;
+
 	/// The compiler and the device are BORROWED and must outlive this.
 	public this(ShaderCompiler compiler, Sedulous.RHI.IDevice device)
 	{
@@ -313,7 +321,7 @@ class ShaderSystem
 
 		var options = CompileOptions();
 		options.ShaderModel = "6_0";
-		options.OptimizationLevel = 3;
+		options.OptimizationLevel = OptimizationLevel;
 		options.Defines = defines;
 		options.IncludePaths = includeViews;
 		if (!isDX12)

@@ -71,6 +71,9 @@ class RenderFrameFixture
 			return;
 
 		Shaders = new ShaderSystem(Compiler, Device);
+		// Nothing here reads the bytecode's quality, and optimization is most of what DXC
+		// spends its time on.
+		Shaders.OptimizationLevel = 0;
 		Shaders.SetSourceProvider(Provider);
 		let includePaths = scope StringView[1](root);
 		Shaders.SetIncludePaths(includePaths);
