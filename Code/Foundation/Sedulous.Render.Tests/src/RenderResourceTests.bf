@@ -264,5 +264,8 @@ class RenderResourceTests
 
 		Test.Assert(ring.Reserve(16));
 		Test.Assert(queue.PendingCount == 1, "the old buffer is waiting out the frames");
+
+		// Nothing ticks here, so the retired buffer goes out through the shutdown path.
+		queue.Flush();
 	}
 }
