@@ -7,4 +7,10 @@ StartupObject = "Sedulous.Engine.Net.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Net" = "*"
+"Sedulous.Net.Replication" = "*"
+"Sedulous.Net.Manager" = "*"
 "Sedulous.Engine.Net" = "*"
