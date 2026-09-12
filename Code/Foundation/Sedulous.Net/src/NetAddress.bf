@@ -42,6 +42,14 @@ static class NetAddress
 	public static bool ResolveHostIPv4(StringView host, out uint32 outIp)
 	{
 		outIp = 0;
+
+		// Winsock has to be STARTED before any call reaches it, and this is a resolver: it
+		// touches the stack without anyone having made a socket first. The socket types init
+		// in their constructors, so a caller that connects before resolving happens to work
+		// and one that resolves first gets WSANOTINITIALISED. A no-op everywhere but Windows,
+		// and Windows refcounts it, which is why the socket types call it freely too.
+		Socket.Init();
+
 		if (Socket.GetAddrInfo(host, Socket.AddrInfo() { ai_family = Socket.AF_INET })
 			case .Ok(var info))
 		{
