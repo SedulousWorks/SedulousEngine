@@ -36,6 +36,7 @@ class RGBarrierTests
 			ResourceState initialState = .Undefined)
 		{
 			var desc = TextureDesc.RenderTarget(.RGBA8Unorm, 64, 64);
+			desc.Label = "RGBarrierTests.Fixture.this";
 			desc.MipLevelCount = mips;
 			desc.ArrayLayerCount = layers;
 
@@ -443,7 +444,7 @@ class RGBarrierTests
 	public static void ABufferTransitionsAsAWhole()
 	{
 		let fixture = scope Fixture();
-		let buffer = fixture.Device.CreateBuffer(.() { Size = 256, Usage = .Storage }).Value;
+		let buffer = fixture.Device.CreateBuffer(.() { Label = "RGBarrierTests.ABufferTransitionsAsAWhole", Size = 256, Usage = .Storage }).Value;
 		defer { var doomed = buffer; fixture.Device.DestroyBuffer(ref doomed); }
 
 		let resource = new RenderGraphResource("Counts", .Buffer, .Imported);

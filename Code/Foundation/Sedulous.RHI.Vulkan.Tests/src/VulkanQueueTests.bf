@@ -169,6 +169,7 @@ class VulkanQueueTests
 		// the barrier that carries VERTEX_ATTRIBUTE_READ onto a compute family, which the
 		// stage cut alone does not remove.
 		var bufferDesc = BufferDesc();
+		bufferDesc.Label = "VulkanQueueTests.AComputeQueueRecordsAShaderBarrierCleanly";
 		bufferDesc.Size = 256;
 		bufferDesc.Usage = .Vertex | .Storage;
 		bufferDesc.Label = "queue_test_vertices";

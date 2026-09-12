@@ -210,10 +210,14 @@ class RGGraphTests
 		defer delete backend;
 		let device = backend.EnumerateAdapters()[0].CreateDevice(.()).Value;
 
-		let first = device.CreateTexture(TextureDesc.RenderTarget(.RGBA8Unorm, 4, 4)).Value;
-		let second = device.CreateTexture(TextureDesc.RenderTarget(.RGBA8Unorm, 4, 4)).Value;
-		let firstView = device.CreateTextureView(first, .()).Value;
-		let secondView = device.CreateTextureView(second, .()).Value;
+		var textureDesc = TextureDesc.RenderTarget(.RGBA8Unorm, 4, 4);
+		textureDesc.Label = "RGGraphTests.PingPongSwapsItsSlots";
+		let first = device.CreateTexture(textureDesc).Value;
+		var textureDesc2 = TextureDesc.RenderTarget(.RGBA8Unorm, 4, 4);
+		textureDesc2.Label = "RGGraphTests.PingPongSwapsItsSlots";
+		let second = device.CreateTexture(textureDesc2).Value;
+		let firstView = device.CreateTextureView(first, .() { Label = "RGGraphTests.PingPongSwapsItsSlots" }).Value;
+		let secondView = device.CreateTextureView(second, .() { Label = "RGGraphTests.PingPongSwapsItsSlots" }).Value;
 		defer
 		{
 			var a = first; var b = second; var av = firstView; var bv = secondView;

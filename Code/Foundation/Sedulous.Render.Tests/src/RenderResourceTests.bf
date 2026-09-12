@@ -21,7 +21,7 @@ class RenderResourceTests
 		}
 
 		public IBuffer MakeBuffer(uint64 size = 256) =>
-			Device.CreateBuffer(.() { Size = size, Usage = .Uniform | .CopyDst }).Value;
+			Device.CreateBuffer(.() { Label = "RenderResourceTests.Harness.MakeBuffer", Size = size, Usage = .Uniform | .CopyDst }).Value;
 	}
 
 	/// A retired resource survives every frame that could still reference it, and no longer.

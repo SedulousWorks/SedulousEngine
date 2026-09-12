@@ -79,6 +79,7 @@ class VulkanResourceTests
 		if (!Ready()) { Console.WriteLine("SKIP: no Vulkan"); return; }
 
 		var desc = BufferDesc();
+		desc.Label = "VulkanResourceTests.AHostVisibleBufferMapsAndRoundTrips";
 		desc.Size = 1024;
 		desc.Usage = .CopySrc | .CopyDst;
 		desc.Memory = .CpuToGpu;
@@ -110,6 +111,7 @@ class VulkanResourceTests
 		if (!Ready()) { Console.WriteLine("SKIP: no Vulkan"); return; }
 
 		var desc = BufferDesc();
+		desc.Label = "VulkanResourceTests.ADeviceLocalBufferIsNotMappable";
 		desc.Size = 256;
 		desc.Usage = .Vertex | .CopyDst;
 		desc.Memory = .GpuOnly;
@@ -127,6 +129,7 @@ class VulkanResourceTests
 		if (!Ready()) { Console.WriteLine("SKIP: no Vulkan"); return; }
 
 		var desc = BufferDesc();
+		desc.Label = "VulkanResourceTests.AReadbackBufferIsMappable";
 		desc.Size = 512;
 		desc.Usage = .CopyDst;
 		desc.Memory = .GpuToCpu;
@@ -144,6 +147,7 @@ class VulkanResourceTests
 		let before = VulkanTexture.LiveAllocations;
 
 		var desc = TextureDesc.RenderTarget(.RGBA8Unorm, 256, 128);
+		desc.Label = "VulkanResourceTests.TexturesAndViewsAreCreatedOnTheDevice";
 		desc.MipLevelCount = 4;
 		Test.Assert(sDevice.CreateTexture(desc) case .Ok(var texture));
 		Test.Assert(texture.Desc.Width == 256);
@@ -151,7 +155,7 @@ class VulkanResourceTests
 			"one allocation per texture, and it is counted");
 
 		// A view of mip zero sees the whole texture.
-		Test.Assert(sDevice.CreateTextureView(texture, .()) case .Ok(var full));
+		Test.Assert(sDevice.CreateTextureView(texture, .() { Label = "VulkanResourceTests.TexturesAndViewsAreCreatedOnTheDevice" }) case .Ok(var full));
 		Test.Assert(full.Texture === texture);
 		let asVulkan = full as VulkanTextureView;
 		Test.Assert(asVulkan.Width == 256);
@@ -160,6 +164,7 @@ class VulkanResourceTests
 		// A view of mip two is a QUARTER the size in each axis. The render area comes from
 		// these, so a stale mip zero size would overrun the attachment and fault the GPU.
 		var mipDesc = TextureViewDesc();
+		mipDesc.Label = "VulkanResourceTests.TexturesAndViewsAreCreatedOnTheDevice";
 		mipDesc.BaseMipLevel = 2;
 		mipDesc.MipLevelCount = 1;
 		Test.Assert(sDevice.CreateTextureView(texture, mipDesc) case .Ok(var mip));
@@ -186,11 +191,13 @@ class VulkanResourceTests
 
 		for (let format in TextureFormat[](.Depth32Float, .Depth24PlusStencil8, .Depth24Plus))
 		{
-			let desc = TextureDesc.DepthBuffer(format, 128, 128);
+			var desc = TextureDesc.DepthBuffer(format, 128, 128);
+			desc.Label = "VulkanResourceTests.ADepthTextureIsCreatedWhicheverFormatTheDeviceHas";
 			Test.Assert(sDevice.CreateTexture(desc) case .Ok(var texture),
 				scope $"{format} creates a depth buffer");
 
 			var viewDesc = TextureViewDesc();
+			viewDesc.Label = "VulkanResourceTests.ADepthTextureIsCreatedWhicheverFormatTheDeviceHas";
 			viewDesc.Aspect = .DepthOnly;
 			Test.Assert(sDevice.CreateTextureView(texture, viewDesc) case .Ok(var view),
 				scope $"{format} views its depth aspect");
@@ -208,10 +215,12 @@ class VulkanResourceTests
 		if (!Ready()) { Console.WriteLine("SKIP: no Vulkan"); return; }
 
 		var desc = TextureDesc.RenderTarget(.RGBA8Unorm, 64, 64);
+		desc.Label = "VulkanResourceTests.ASixLayerTextureViewsAsACube";
 		desc.ArrayLayerCount = 6;
 		Test.Assert(sDevice.CreateTexture(desc) case .Ok(var texture));
 
 		var viewDesc = TextureViewDesc();
+		viewDesc.Label = "VulkanResourceTests.ASixLayerTextureViewsAsACube";
 		viewDesc.Dimension = .TextureCube;
 		viewDesc.ArrayLayerCount = 6;
 		Test.Assert(sDevice.CreateTextureView(texture, viewDesc) case .Ok(var cube),
@@ -226,12 +235,13 @@ class VulkanResourceTests
 	{
 		if (!Ready()) { Console.WriteLine("SKIP: no Vulkan"); return; }
 
-		Test.Assert(sDevice.CreateSampler(.()) case .Ok(var trilinear));
+		Test.Assert(sDevice.CreateSampler(.() { Label = "VulkanResourceTests.SamplersCoverTheOrdinaryAndComparisonCases" }) case .Ok(var trilinear));
 		Test.Assert(trilinear.Desc.MinFilter == .Linear);
 		sDevice.DestroySampler(ref trilinear);
 
 		// A comparison sampler, which is what shadow filtering binds.
 		var shadow = SamplerDesc();
+		shadow.Label = "VulkanResourceTests.SamplersCoverTheOrdinaryAndComparisonCases";
 		shadow.Compare = .LessEqual;
 		shadow.AddressU = .ClampToEdge;
 		shadow.AddressV = .ClampToEdge;
@@ -241,6 +251,7 @@ class VulkanResourceTests
 
 		// And an anisotropic one, which the device must report support for.
 		var aniso = SamplerDesc();
+		aniso.Label = "VulkanResourceTests.SamplersCoverTheOrdinaryAndComparisonCases";
 		aniso.MaxAnisotropy = 4;
 		Test.Assert(sDevice.CreateSampler(aniso) case .Ok(var anisotropic));
 		sDevice.DestroySampler(ref anisotropic);
@@ -274,6 +285,7 @@ class VulkanResourceTests
 		for (let type in QueryType[](.Timestamp, .Occlusion, .PipelineStatistics))
 		{
 			var desc = QuerySetDesc();
+			desc.Label = "VulkanResourceTests.QuerySetsAreCreatedForEachKind";
 			desc.Type = type;
 			desc.Count = 8;
 			Test.Assert(sDevice.CreateQuerySet(desc) case .Ok(var querySet),
@@ -290,7 +302,7 @@ class VulkanResourceTests
 	public static void AnEmptyShaderModuleIsRefused()
 	{
 		if (!Ready()) { Console.WriteLine("SKIP: no Vulkan"); return; }
-		Test.Assert(sDevice.CreateShaderModule(.()) case .Err);
+		Test.Assert(sDevice.CreateShaderModule(.() { Label = "VulkanResourceTests.AnEmptyShaderModuleIsRefused" }) case .Err);
 	}
 
 	/// Runs last by name, tearing down what the other cases shared.

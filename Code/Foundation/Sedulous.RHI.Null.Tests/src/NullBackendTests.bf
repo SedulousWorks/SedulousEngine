@@ -82,6 +82,7 @@ class NullBackendTests
 		Test.Assert(backend.EnumerateAdapters()[0].CreateDevice(.()) case .Ok(let device));
 
 		var desc = BufferDesc();
+		desc.Label = "NullBackendTests.ABufferMapsToRealMemoryThatRoundTrips";
 		desc.Size = 256;
 		desc.Usage = .Vertex | .CopyDst;
 		desc.Memory = .CpuToGpu;
@@ -114,7 +115,7 @@ class NullBackendTests
 		defer delete backend;
 		Test.Assert(backend.EnumerateAdapters()[0].CreateDevice(.()) case .Ok(let device));
 
-		Test.Assert(device.CreateBuffer(.()) case .Ok(var buffer));
+		Test.Assert(device.CreateBuffer(.() { Label = "NullBackendTests.AnEmptyBufferMapsToNull" }) case .Ok(var buffer));
 		Test.Assert(buffer.Map() == null);
 		device.DestroyBuffer(ref buffer);
 	}
@@ -126,7 +127,8 @@ class NullBackendTests
 		defer delete backend;
 		Test.Assert(backend.EnumerateAdapters()[0].CreateDevice(.()) case .Ok(let device));
 
-		let textureDesc = TextureDesc.RenderTarget(.RGBA8Unorm, 320, 240);
+		var textureDesc = TextureDesc.RenderTarget(.RGBA8Unorm, 320, 240);
+		textureDesc.Label = "NullBackendTests.TexturesAndViewsCarryTheirDescriptors";
 		Test.Assert(device.CreateTexture(textureDesc) case .Ok(var texture));
 		Test.Assert(texture.Desc.Width == 320);
 		Test.Assert(texture.Desc.Format == .RGBA8Unorm);
@@ -136,6 +138,7 @@ class NullBackendTests
 		Test.Assert(texture.InitialState == .RenderTarget, "the state is settable");
 
 		var viewDesc = TextureViewDesc();
+		viewDesc.Label = "NullBackendTests.TexturesAndViewsCarryTheirDescriptors";
 		viewDesc.Format = .RGBA8Unorm;
 		Test.Assert(device.CreateTextureView(texture, viewDesc) case .Ok(var view));
 		Test.Assert(view.Texture === texture, "the view remembers what it views");
@@ -157,18 +160,18 @@ class NullBackendTests
 		let backend = NullRhi.CreateBackend();
 		defer delete backend;
 		Test.Assert(backend.EnumerateAdapters()[0].CreateDevice(.()) case .Ok(let device));
-		Test.Assert(device.CreateTexture(.()) case .Ok(var texture));
+		Test.Assert(device.CreateTexture(.() { Label = "NullBackendTests.TextureViewIdsAreUniqueAndMonotonic" }) case .Ok(var texture));
 
-		Test.Assert(device.CreateTextureView(texture, .()) case .Ok(var first));
+		Test.Assert(device.CreateTextureView(texture, .() { Label = "NullBackendTests.TextureViewIdsAreUniqueAndMonotonic" }) case .Ok(var first));
 		let firstId = first.UniqueId;
 
-		Test.Assert(device.CreateTextureView(texture, .()) case .Ok(var second));
+		Test.Assert(device.CreateTextureView(texture, .() { Label = "NullBackendTests.TextureViewIdsAreUniqueAndMonotonic" }) case .Ok(var second));
 		Test.Assert(second.UniqueId > firstId, "ids only go up");
 
 		// Free the first and make another. Even if the allocator reuses the address, the id
 		// must not repeat.
 		device.DestroyTextureView(ref first);
-		Test.Assert(device.CreateTextureView(texture, .()) case .Ok(var third));
+		Test.Assert(device.CreateTextureView(texture, .() { Label = "NullBackendTests.TextureViewIdsAreUniqueAndMonotonic" }) case .Ok(var third));
 		Test.Assert(third.UniqueId != firstId, "an id is never reused");
 		Test.Assert(third.UniqueId > second.UniqueId);
 
@@ -184,34 +187,36 @@ class NullBackendTests
 		defer delete backend;
 		Test.Assert(backend.EnumerateAdapters()[0].CreateDevice(.()) case .Ok(let device));
 
-		Test.Assert(device.CreateSampler(.()) case .Ok(var sampler));
+		Test.Assert(device.CreateSampler(.() { Label = "NullBackendTests.TheRestOfTheCreationSurfaceRoundTrips" }) case .Ok(var sampler));
 		Test.Assert(sampler.Desc.MinFilter == .Linear);
 		device.DestroySampler(ref sampler);
 
-		Test.Assert(device.CreateShaderModule(.()) case .Ok(var module));
+		Test.Assert(device.CreateShaderModule(.() { Label = "NullBackendTests.TheRestOfTheCreationSurfaceRoundTrips" }) case .Ok(var module));
 		device.DestroyShaderModule(ref module);
 
-		Test.Assert(device.CreateBindGroupLayout(.()) case .Ok(var layout));
+		Test.Assert(device.CreateBindGroupLayout(.() { Label = "NullBackendTests.TheRestOfTheCreationSurfaceRoundTrips" }) case .Ok(var layout));
 		Test.Assert(layout.Entries.IsEmpty);
 		device.DestroyBindGroupLayout(ref layout);
 
-		Test.Assert(device.CreateBindGroup(.()) case .Ok(var group));
+		Test.Assert(device.CreateBindGroup(.() { Label = "NullBackendTests.TheRestOfTheCreationSurfaceRoundTrips" }) case .Ok(var group));
 		device.DestroyBindGroup(ref group);
 
-		Test.Assert(device.CreatePipelineLayout(.()) case .Ok(var pipelineLayout));
+		Test.Assert(device.CreatePipelineLayout(.() { Label = "NullBackendTests.TheRestOfTheCreationSurfaceRoundTrips" }) case .Ok(var pipelineLayout));
 
-		Test.Assert(device.CreatePipelineCache(.()) case .Ok(var cache));
+		Test.Assert(device.CreatePipelineCache(.() { Label = "NullBackendTests.TheRestOfTheCreationSurfaceRoundTrips" }) case .Ok(var cache));
 		Test.Assert(cache.GetDataSize() == 0);
 		Test.Assert(cache.GetData(.()) case .Ok, "writing nothing matches the zero size");
 		device.DestroyPipelineCache(ref cache);
 
 		var renderDesc = RenderPipelineDesc();
+		renderDesc.Label = "NullBackendTests.TheRestOfTheCreationSurfaceRoundTrips";
 		renderDesc.Layout = pipelineLayout;
 		Test.Assert(device.CreateRenderPipeline(renderDesc) case .Ok(var renderPipeline));
 		Test.Assert(renderPipeline.Layout === pipelineLayout, "the pipeline keeps its layout");
 		device.DestroyRenderPipeline(ref renderPipeline);
 
 		var computeDesc = ComputePipelineDesc();
+		computeDesc.Label = "NullBackendTests.TheRestOfTheCreationSurfaceRoundTrips";
 		computeDesc.Layout = pipelineLayout;
 		Test.Assert(device.CreateComputePipeline(computeDesc) case .Ok(var computePipeline));
 		Test.Assert(computePipeline.Layout === pipelineLayout);
@@ -220,6 +225,7 @@ class NullBackendTests
 		device.DestroyPipelineLayout(ref pipelineLayout);
 
 		var querySetDesc = QuerySetDesc();
+		querySetDesc.Label = "NullBackendTests.TheRestOfTheCreationSurfaceRoundTrips";
 		querySetDesc.Type = .Occlusion;
 		querySetDesc.Count = 16;
 		Test.Assert(device.CreateQuerySet(querySetDesc) case .Ok(var querySet));

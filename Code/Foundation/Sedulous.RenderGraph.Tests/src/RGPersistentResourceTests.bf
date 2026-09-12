@@ -18,7 +18,9 @@ class RGPersistentResourceTests
 		defer delete backend;
 		let device = backend.EnumerateAdapters()[0].CreateDevice(.()).Value;
 
-		let texture = device.CreateTexture(TextureDesc.RenderTarget(.RGBA8Unorm, 4, 4)).Value;
+		var textureDesc = TextureDesc.RenderTarget(.RGBA8Unorm, 4, 4);
+		textureDesc.Label = "RGPersistentResourceTests.ASingleSlotAnswersItselfForBoth";
+		let texture = device.CreateTexture(textureDesc).Value;
 		defer { var doomed = texture; device.DestroyTexture(ref doomed); }
 
 		let resource = scope PersistentResource(texture, null);
@@ -37,8 +39,12 @@ class RGPersistentResourceTests
 		defer delete backend;
 		let device = backend.EnumerateAdapters()[0].CreateDevice(.()).Value;
 
-		let first = device.CreateTexture(TextureDesc.RenderTarget(.RGBA8Unorm, 4, 4)).Value;
-		let second = device.CreateTexture(TextureDesc.RenderTarget(.RGBA8Unorm, 4, 4)).Value;
+		var textureDesc = TextureDesc.RenderTarget(.RGBA8Unorm, 4, 4);
+		textureDesc.Label = "RGPersistentResourceTests.PingPongAlternatesBetweenItsSlots";
+		let first = device.CreateTexture(textureDesc).Value;
+		var textureDesc2 = TextureDesc.RenderTarget(.RGBA8Unorm, 4, 4);
+		textureDesc2.Label = "RGPersistentResourceTests.PingPongAlternatesBetweenItsSlots";
+		let second = device.CreateTexture(textureDesc2).Value;
 		defer
 		{
 			var a = first; var b = second;
@@ -65,8 +71,12 @@ class RGPersistentResourceTests
 		defer delete backend;
 		let device = backend.EnumerateAdapters()[0].CreateDevice(.()).Value;
 
-		let original = device.CreateTexture(TextureDesc.RenderTarget(.RGBA8Unorm, 4, 4)).Value;
-		let resized = device.CreateTexture(TextureDesc.RenderTarget(.RGBA8Unorm, 8, 8)).Value;
+		var textureDesc = TextureDesc.RenderTarget(.RGBA8Unorm, 4, 4);
+		textureDesc.Label = "RGPersistentResourceTests.TheActiveSlotCanBeRepointed";
+		let original = device.CreateTexture(textureDesc).Value;
+		var textureDesc2 = TextureDesc.RenderTarget(.RGBA8Unorm, 8, 8);
+		textureDesc2.Label = "RGPersistentResourceTests.TheActiveSlotCanBeRepointed";
+		let resized = device.CreateTexture(textureDesc2).Value;
 		defer
 		{
 			var a = original; var b = resized;

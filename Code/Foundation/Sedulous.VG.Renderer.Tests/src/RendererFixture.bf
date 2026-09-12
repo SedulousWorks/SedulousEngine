@@ -54,6 +54,7 @@ class RendererFixture
 	{
 		uint8[4] code = .(1, 2, 3, 4);
 		var desc = ShaderModuleDesc();
+		desc.Label = "RendererFixture.CreateModule";
 		desc.Code = .(&code[0], 4);
 		return Device.CreateShaderModule(desc).Value;
 	}

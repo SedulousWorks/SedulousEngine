@@ -47,6 +47,7 @@ class ViewportViewTests
 		{
 			uint8[4] code = .();
 			var desc = ShaderModuleDesc();
+			desc.Label = "ViewportViewTests.Harness.MakeModule";
 			desc.Code = .(&code[0], 4);
 
 			if (Device.CreateShaderModule(desc) case .Ok(let module))

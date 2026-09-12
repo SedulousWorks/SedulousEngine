@@ -26,6 +26,7 @@ class IblSystemTests
 			TextureDesc.RenderTarget(.RGBA8Unorm, 8, 8, 1, "sky")).Value;
 		defer { var t = texture; fixture.Device.DestroyTexture(ref t); }
 		var viewDesc = TextureViewDesc();
+		viewDesc.Label = "IblSystemTests.TwoScenesGetTheirOwnProducts";
 		viewDesc.Format = .RGBA8Unorm;
 		let view = fixture.Device.CreateTextureView(texture, viewDesc).Value;
 		defer { var v = view; fixture.Device.DestroyTextureView(ref v); }
@@ -117,6 +118,7 @@ class IblSystemTests
 			TextureDesc.RenderTarget(.RGBA8Unorm, 8, 8, 1, "sky")).Value;
 		defer { var t = texture; fixture.Device.DestroyTexture(ref t); }
 		var viewDesc = TextureViewDesc();
+		viewDesc.Label = "IblSystemTests.OnlyTheSceneWhoseSkyChangedRebuilds";
 		viewDesc.Format = .RGBA8Unorm;
 		let view = fixture.Device.CreateTextureView(texture, viewDesc).Value;
 		defer { var v = view; fixture.Device.DestroyTextureView(ref v); }

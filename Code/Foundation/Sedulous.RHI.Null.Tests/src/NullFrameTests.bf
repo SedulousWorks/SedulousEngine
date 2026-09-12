@@ -253,7 +253,7 @@ class NullFrameTests
 		Test.Assert(queue.CreateTransferBatch() case .Ok(let same));
 		Test.Assert(batch === same, "the queue owns one");
 
-		Test.Assert(device.CreateBuffer(.()) case .Ok(var buffer));
+		Test.Assert(device.CreateBuffer(.() { Label = "NullFrameTests.TheTransferBatchBelongsToTheQueueAndCompletesAtOnce" }) case .Ok(var buffer));
 		let bytes = scope uint8[4](1, 2, 3, 4);
 		batch.WriteBuffer(buffer, 0, bytes);
 		Test.Assert(batch.Submit() case .Ok);

@@ -47,9 +47,11 @@ class RenderFrameFixture
 		Device = Backend.EnumerateAdapters()[0].CreateDevice(.()).Value;
 
 		var desc = TextureDesc.RenderTarget(.BGRA8Unorm, width, height, 1, "test.color");
+		desc.Label = "RenderFrameFixture.this";
 		Color = Device.CreateTexture(desc).Value;
 
 		var viewDesc = TextureViewDesc();
+		viewDesc.Label = "RenderFrameFixture.this";
 		viewDesc.Format = .BGRA8Unorm;
 		ColorView = Device.CreateTextureView(Color, viewDesc).Value;
 

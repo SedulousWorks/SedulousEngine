@@ -44,6 +44,7 @@ class VulkanPipelineTests
 	private static IShaderModule MakeModule(uint32* words, int wordCount)
 	{
 		var desc = ShaderModuleDesc();
+		desc.Label = "VulkanPipelineTests.MakeModule";
 		desc.Code = TestShaders.AsBytes(words, wordCount);
 		if (sDevice.CreateShaderModule(desc) case .Ok(let module))
 			return module;
@@ -62,7 +63,7 @@ class VulkanPipelineTests
 		Test.Assert(vertex != null, "the vertex SPIR-V was accepted");
 		Test.Assert(fragment != null);
 
-		Test.Assert(sDevice.CreatePipelineLayout(.()) case .Ok(var layout));
+		Test.Assert(sDevice.CreatePipelineLayout(.() { Label = "VulkanPipelineTests.AGraphicsPipelineCompiles" }) case .Ok(var layout));
 
 		// One vertex buffer holding a float3 position at location zero, matching the shader.
 		let attributes = scope VertexAttribute[1](.(.Float32x3, 0, 0));
@@ -84,6 +85,7 @@ class VulkanPipelineTests
 		depth.Format = .Depth32Float;
 
 		var desc = RenderPipelineDesc();
+		desc.Label = "VulkanPipelineTests.AGraphicsPipelineCompiles";
 		desc.Layout = layout;
 		desc.Vertex.Shader = .(vertex, "main", .Vertex);
 		desc.Vertex.Buffers = buffers;
@@ -108,7 +110,7 @@ class VulkanPipelineTests
 		if (!Ready()) { Console.WriteLine("SKIP: no Vulkan"); return; }
 
 		var vertex = MakeModule(&TestShaders.Vertex[0], TestShaders.Vertex.Count);
-		Test.Assert(sDevice.CreatePipelineLayout(.()) case .Ok(var layout));
+		Test.Assert(sDevice.CreatePipelineLayout(.() { Label = "VulkanPipelineTests.ADepthOnlyPipelineNeedsNoFragmentStage" }) case .Ok(var layout));
 
 		let attributes = scope VertexAttribute[1](.(.Float32x3, 0, 0));
 		var buffer = VertexBufferLayout();
@@ -120,6 +122,7 @@ class VulkanPipelineTests
 		depth.Format = .Depth32Float;
 
 		var desc = RenderPipelineDesc();
+		desc.Label = "VulkanPipelineTests.ADepthOnlyPipelineNeedsNoFragmentStage";
 		desc.Layout = layout;
 		desc.Vertex.Shader = .(vertex, "main", .Vertex);
 		desc.Vertex.Buffers = buffers;
@@ -137,10 +140,11 @@ class VulkanPipelineTests
 	{
 		if (!Ready()) { Console.WriteLine("SKIP: no Vulkan"); return; }
 
-		Test.Assert(sDevice.CreateRenderPipeline(.()) case .Err, "no layout");
+		Test.Assert(sDevice.CreateRenderPipeline(.() { Label = "VulkanPipelineTests.APipelineRefusesAMissingLayoutOrShader" }) case .Err, "no layout");
 
-		Test.Assert(sDevice.CreatePipelineLayout(.()) case .Ok(var layout));
+		Test.Assert(sDevice.CreatePipelineLayout(.() { Label = "VulkanPipelineTests.APipelineRefusesAMissingLayoutOrShader" }) case .Ok(var layout));
 		var desc = RenderPipelineDesc();
+		desc.Label = "VulkanPipelineTests.APipelineRefusesAMissingLayoutOrShader";
 		desc.Layout = layout;
 		Test.Assert(sDevice.CreateRenderPipeline(desc) case .Err, "no vertex shader");
 		sDevice.DestroyPipelineLayout(ref layout);
@@ -160,15 +164,18 @@ class VulkanPipelineTests
 		let entries = scope BindGroupLayoutEntry[1](
 			BindGroupLayoutEntry.StorageBuffer(0, .Compute, false, 4));
 		var layoutDesc = BindGroupLayoutDesc();
+		layoutDesc.Label = "VulkanPipelineTests.AComputePipelineCompilesAgainstItsLayout";
 		layoutDesc.Entries = entries;
 		Test.Assert(sDevice.CreateBindGroupLayout(layoutDesc) case .Ok(var setLayout));
 
 		let setLayouts = scope IBindGroupLayout[1](setLayout);
 		var pipelineLayoutDesc = PipelineLayoutDesc();
+		pipelineLayoutDesc.Label = "VulkanPipelineTests.AComputePipelineCompilesAgainstItsLayout";
 		pipelineLayoutDesc.BindGroupLayouts = setLayouts;
 		Test.Assert(sDevice.CreatePipelineLayout(pipelineLayoutDesc) case .Ok(var layout));
 
 		var desc = ComputePipelineDesc();
+		desc.Label = "VulkanPipelineTests.AComputePipelineCompilesAgainstItsLayout";
 		desc.Layout = layout;
 		desc.Compute = .(compute, "main", .Compute);
 
@@ -187,21 +194,24 @@ class VulkanPipelineTests
 	{
 		if (!Ready()) { Console.WriteLine("SKIP: no Vulkan"); return; }
 
-		Test.Assert(sDevice.CreatePipelineCache(.()) case .Ok(var cache));
+		Test.Assert(sDevice.CreatePipelineCache(.() { Label = "VulkanPipelineTests.APipelineCacheFillsAndRoundTrips" }) case .Ok(var cache));
 		let emptySize = cache.GetDataSize();
 
 		var compute = MakeModule(&TestShaders.Compute[0], TestShaders.Compute.Count);
 		let entries = scope BindGroupLayoutEntry[1](
 			BindGroupLayoutEntry.StorageBuffer(0, .Compute, false, 4));
 		var layoutDesc = BindGroupLayoutDesc();
+		layoutDesc.Label = "VulkanPipelineTests.APipelineCacheFillsAndRoundTrips";
 		layoutDesc.Entries = entries;
 		Test.Assert(sDevice.CreateBindGroupLayout(layoutDesc) case .Ok(var setLayout));
 		let setLayouts = scope IBindGroupLayout[1](setLayout);
 		var pipelineLayoutDesc = PipelineLayoutDesc();
+		pipelineLayoutDesc.Label = "VulkanPipelineTests.APipelineCacheFillsAndRoundTrips";
 		pipelineLayoutDesc.BindGroupLayouts = setLayouts;
 		Test.Assert(sDevice.CreatePipelineLayout(pipelineLayoutDesc) case .Ok(var layout));
 
 		var desc = ComputePipelineDesc();
+		desc.Label = "VulkanPipelineTests.APipelineCacheFillsAndRoundTrips";
 		desc.Layout = layout;
 		desc.Compute = .(compute, "main", .Compute);
 		desc.Cache = cache;
@@ -217,6 +227,7 @@ class VulkanPipelineTests
 			Test.Assert(cache.GetData(blob) case .Ok);
 
 			var seeded = PipelineCacheDesc();
+			seeded.Label = "VulkanPipelineTests.APipelineCacheFillsAndRoundTrips";
 			seeded.InitialData = blob;
 			Test.Assert(sDevice.CreatePipelineCache(seeded) case .Ok(var warm),
 				"the driver recognised its own blob");

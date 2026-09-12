@@ -30,7 +30,7 @@ class PipelineCacheFixture
 		Shaders = new ShaderSystem(Device);
 		Shaders.SetCookedPack(Pack);
 
-		Layout = Device.CreatePipelineLayout(.()).Value;
+		Layout = Device.CreatePipelineLayout(.() { Label = "PipelineCacheFixture.this" }).Value;
 		Cache = new PipelineStateCache(Shaders, Device);
 	}
 

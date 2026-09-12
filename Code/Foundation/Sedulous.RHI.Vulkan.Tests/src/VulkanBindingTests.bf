@@ -52,6 +52,7 @@ class VulkanBindingTests
 			BindGroupLayoutEntry.Sampler(0, .Fragment));
 
 		var desc = BindGroupLayoutDesc();
+		desc.Label = "VulkanBindingTests.ALayoutIsBuiltFromItsEntries";
 		desc.Entries = entries;
 
 		Test.Assert(sDevice.CreateBindGroupLayout(desc) case .Ok(var layout));
@@ -100,6 +101,7 @@ class VulkanBindingTests
 		let entries = scope BindGroupLayoutEntry[1](
 			BindGroupLayoutEntry.UniformBuffer(0, .Vertex));
 		var layoutDesc = BindGroupLayoutDesc();
+		layoutDesc.Label = "VulkanBindingTests.APipelineLayoutTakesSetLayoutsAndPushConstants";
 		layoutDesc.Entries = entries;
 		Test.Assert(sDevice.CreateBindGroupLayout(layoutDesc) case .Ok(var setLayout));
 
@@ -110,6 +112,7 @@ class VulkanBindingTests
 		let ranges = scope PushConstantRange[1](pushRange);
 
 		var desc = PipelineLayoutDesc();
+		desc.Label = "VulkanBindingTests.APipelineLayoutTakesSetLayoutsAndPushConstants";
 		desc.BindGroupLayouts = setLayouts;
 		desc.PushConstantRanges = ranges;
 
@@ -117,7 +120,7 @@ class VulkanBindingTests
 		sDevice.DestroyPipelineLayout(ref pipelineLayout);
 
 		// An empty layout is legitimate: a shader that binds nothing still needs one.
-		Test.Assert(sDevice.CreatePipelineLayout(.()) case .Ok(var empty));
+		Test.Assert(sDevice.CreatePipelineLayout(.() { Label = "VulkanBindingTests.APipelineLayoutTakesSetLayoutsAndPushConstants" }) case .Ok(var empty));
 		sDevice.DestroyPipelineLayout(ref empty);
 
 		sDevice.DestroyBindGroupLayout(ref setLayout);
@@ -132,6 +135,7 @@ class VulkanBindingTests
 
 		let setLayouts = scope IBindGroupLayout[1](null);
 		var desc = PipelineLayoutDesc();
+		desc.Label = "VulkanBindingTests.APipelineLayoutRefusesANullSetLayout";
 		desc.BindGroupLayouts = setLayouts;
 		Test.Assert(sDevice.CreatePipelineLayout(desc) case .Err);
 	}
@@ -147,19 +151,23 @@ class VulkanBindingTests
 			BindGroupLayoutEntry.SampledTexture(0, .Fragment),
 			BindGroupLayoutEntry.Sampler(0, .Fragment));
 		var layoutDesc = BindGroupLayoutDesc();
+		layoutDesc.Label = "VulkanBindingTests.ABindGroupIsFilledFromRealResources";
 		layoutDesc.Entries = entries;
 		Test.Assert(sDevice.CreateBindGroupLayout(layoutDesc) case .Ok(var layout));
 
 		var bufferDesc = BufferDesc();
+		bufferDesc.Label = "VulkanBindingTests.ABindGroupIsFilledFromRealResources";
 		bufferDesc.Size = 256;
 		bufferDesc.Usage = .Uniform;
 		bufferDesc.Memory = .CpuToGpu;
 		Test.Assert(sDevice.CreateBuffer(bufferDesc) case .Ok(var buffer));
 
-		Test.Assert(sDevice.CreateTexture(TextureDesc.RenderTarget(.RGBA8Unorm, 32, 32))
+		var textureDesc = TextureDesc.RenderTarget(.RGBA8Unorm, 32, 32);
+		textureDesc.Label = "VulkanBindingTests.ABindGroupIsFilledFromRealResources";
+		Test.Assert(sDevice.CreateTexture(textureDesc)
 			case .Ok(var texture));
-		Test.Assert(sDevice.CreateTextureView(texture, .()) case .Ok(var view));
-		Test.Assert(sDevice.CreateSampler(.()) case .Ok(var sampler));
+		Test.Assert(sDevice.CreateTextureView(texture, .() { Label = "VulkanBindingTests.ABindGroupIsFilledFromRealResources" }) case .Ok(var view));
+		Test.Assert(sDevice.CreateSampler(.() { Label = "VulkanBindingTests.ABindGroupIsFilledFromRealResources" }) case .Ok(var sampler));
 
 		let groupEntries = scope BindGroupEntry[3](
 			BindGroupEntry.BufferEntry(buffer, 0, 256),
@@ -167,6 +175,7 @@ class VulkanBindingTests
 			BindGroupEntry.SamplerEntry(sampler));
 
 		var groupDesc = BindGroupDesc();
+		groupDesc.Label = "VulkanBindingTests.ABindGroupIsFilledFromRealResources";
 		groupDesc.Layout = layout;
 		groupDesc.Entries = groupEntries;
 
@@ -187,7 +196,7 @@ class VulkanBindingTests
 	public static void ABindGroupRefusesANullLayout()
 	{
 		if (!Ready()) { Console.WriteLine("SKIP: no Vulkan"); return; }
-		Test.Assert(sDevice.CreateBindGroup(.()) case .Err);
+		Test.Assert(sDevice.CreateBindGroup(.() { Label = "VulkanBindingTests.ABindGroupRefusesANullLayout" }) case .Err);
 	}
 
 	/// A count of all ones asks for an UNBOUNDED array, which becomes a large partially
@@ -210,6 +219,7 @@ class VulkanBindingTests
 
 		let entries = scope BindGroupLayoutEntry[1](bindless);
 		var layoutDesc = BindGroupLayoutDesc();
+		layoutDesc.Label = "VulkanBindingTests.AnUnboundedEntryBecomesABindlessArray";
 		layoutDesc.Entries = entries;
 
 		Test.Assert(sDevice.CreateBindGroupLayout(layoutDesc) case .Ok(var layout));
@@ -220,13 +230,16 @@ class VulkanBindingTests
 
 		// The group takes no positional entries: a bindless slot is filled afterwards.
 		var groupDesc = BindGroupDesc();
+		groupDesc.Label = "VulkanBindingTests.AnUnboundedEntryBecomesABindlessArray";
 		groupDesc.Layout = layout;
 		Test.Assert(sDevice.CreateBindGroup(groupDesc) case .Ok(var group));
 
 		// Writing one slot of the array in place, which is the point of bindless.
-		Test.Assert(sDevice.CreateTexture(TextureDesc.RenderTarget(.RGBA8Unorm, 16, 16))
+		var textureDesc = TextureDesc.RenderTarget(.RGBA8Unorm, 16, 16);
+		textureDesc.Label = "VulkanBindingTests.AnUnboundedEntryBecomesABindlessArray";
+		Test.Assert(sDevice.CreateTexture(textureDesc)
 			case .Ok(var texture));
-		Test.Assert(sDevice.CreateTextureView(texture, .()) case .Ok(var view));
+		Test.Assert(sDevice.CreateTextureView(texture, .() { Label = "VulkanBindingTests.AnUnboundedEntryBecomesABindlessArray" }) case .Ok(var view));
 
 		var update = BindlessUpdateEntry();
 		update.LayoutIndex = 0;
@@ -258,10 +271,12 @@ class VulkanBindingTests
 		let entries = scope BindGroupLayoutEntry[1](
 			BindGroupLayoutEntry.UniformBuffer(0, .Vertex));
 		var layoutDesc = BindGroupLayoutDesc();
+		layoutDesc.Label = "VulkanBindingTests.TheDescriptorPoolGrowsBeyondOnePool";
 		layoutDesc.Entries = entries;
 		Test.Assert(sDevice.CreateBindGroupLayout(layoutDesc) case .Ok(var layout));
 
 		var bufferDesc = BufferDesc();
+		bufferDesc.Label = "VulkanBindingTests.TheDescriptorPoolGrowsBeyondOnePool";
 		bufferDesc.Size = 64;
 		bufferDesc.Usage = .Uniform;
 		bufferDesc.Memory = .CpuToGpu;
@@ -269,6 +284,7 @@ class VulkanBindingTests
 
 		let groupEntries = scope BindGroupEntry[1](BindGroupEntry.BufferEntry(buffer, 0, 64));
 		var groupDesc = BindGroupDesc();
+		groupDesc.Label = "VulkanBindingTests.TheDescriptorPoolGrowsBeyondOnePool";
 		groupDesc.Layout = layout;
 		groupDesc.Entries = groupEntries;
 

@@ -64,12 +64,14 @@ class VulkanCommandTests
 			source[i] = (uint32)(i + 1);
 
 		var storageDesc = BufferDesc();
+		storageDesc.Label = "VulkanCommandTests.AStagedUploadArrivesInTheBuffer";
 		storageDesc.Size = cElementCount * sizeof(uint32);
 		storageDesc.Usage = .CopyDst | .CopySrc;
 		storageDesc.Memory = .GpuOnly;
 		Test.Assert(sDevice.CreateBuffer(storageDesc) case .Ok(var storage));
 
 		var readbackDesc = BufferDesc();
+		readbackDesc.Label = "VulkanCommandTests.AStagedUploadArrivesInTheBuffer";
 		readbackDesc.Size = storageDesc.Size;
 		readbackDesc.Usage = .CopyDst;
 		readbackDesc.Memory = .GpuToCpu;
@@ -113,12 +115,14 @@ class VulkanCommandTests
 		let byteSize = (uint64)(cElementCount * sizeof(uint32));
 
 		var storageDesc = BufferDesc();
+		storageDesc.Label = "VulkanCommandTests.ADispatchDoublesTheUploadedData";
 		storageDesc.Size = byteSize;
 		storageDesc.Usage = .Storage | .CopyDst | .CopySrc;
 		storageDesc.Memory = .GpuOnly;
 		Test.Assert(sDevice.CreateBuffer(storageDesc) case .Ok(var storage));
 
 		var readbackDesc = BufferDesc();
+		readbackDesc.Label = "VulkanCommandTests.ADispatchDoublesTheUploadedData";
 		readbackDesc.Size = byteSize;
 		readbackDesc.Usage = .CopyDst;
 		readbackDesc.Memory = .GpuToCpu;
@@ -130,6 +134,7 @@ class VulkanCommandTests
 		Test.Assert(batch.Submit() case .Ok);
 
 		var moduleDesc = ShaderModuleDesc();
+		moduleDesc.Label = "VulkanCommandTests.ADispatchDoublesTheUploadedData";
 		moduleDesc.Code = TestShaders.AsBytes(&TestShaders.ComputeDouble[0],
 			TestShaders.ComputeDouble.Count);
 		Test.Assert(sDevice.CreateShaderModule(moduleDesc) case .Ok(var module));
@@ -138,20 +143,24 @@ class VulkanCommandTests
 		// is what the shader was compiled against.
 		var entry = BindGroupLayoutEntry.StorageBuffer(0, .Compute);
 		var layoutDesc = BindGroupLayoutDesc();
+		layoutDesc.Label = "VulkanCommandTests.ADispatchDoublesTheUploadedData";
 		layoutDesc.Entries = .(&entry, 1);
 		Test.Assert(sDevice.CreateBindGroupLayout(layoutDesc) case .Ok(var bindLayout));
 
 		var bindEntry = BindGroupEntry.BufferEntry(storage, 0, byteSize);
 		var groupDesc = BindGroupDesc();
+		groupDesc.Label = "VulkanCommandTests.ADispatchDoublesTheUploadedData";
 		groupDesc.Layout = bindLayout;
 		groupDesc.Entries = .(&bindEntry, 1);
 		Test.Assert(sDevice.CreateBindGroup(groupDesc) case .Ok(var bindGroup));
 
 		var pipelineLayoutDesc = PipelineLayoutDesc();
+		pipelineLayoutDesc.Label = "VulkanCommandTests.ADispatchDoublesTheUploadedData";
 		pipelineLayoutDesc.BindGroupLayouts = .(&bindLayout, 1);
 		Test.Assert(sDevice.CreatePipelineLayout(pipelineLayoutDesc) case .Ok(var pipelineLayout));
 
 		var pipelineDesc = ComputePipelineDesc();
+		pipelineDesc.Label = "VulkanCommandTests.ADispatchDoublesTheUploadedData";
 		pipelineDesc.Layout = pipelineLayout;
 		pipelineDesc.Compute = .(module, "main", .Compute);
 		Test.Assert(sDevice.CreateComputePipeline(pipelineDesc) case .Ok(var pipeline));
@@ -209,12 +218,14 @@ class VulkanCommandTests
 		let byteSize = (uint64)(cElementCount * sizeof(uint32));
 
 		var storageDesc = BufferDesc();
+		storageDesc.Label = "VulkanCommandTests.AResetBatchStagesTheNewContents";
 		storageDesc.Size = byteSize;
 		storageDesc.Usage = .CopyDst | .CopySrc;
 		storageDesc.Memory = .GpuOnly;
 		Test.Assert(sDevice.CreateBuffer(storageDesc) case .Ok(var storage));
 
 		var readbackDesc = BufferDesc();
+		readbackDesc.Label = "VulkanCommandTests.AResetBatchStagesTheNewContents";
 		readbackDesc.Size = byteSize;
 		readbackDesc.Usage = .CopyDst;
 		readbackDesc.Memory = .GpuToCpu;
@@ -268,6 +279,7 @@ class VulkanCommandTests
 		defer delete chunk;
 
 		var descriptor = BufferDesc();
+		descriptor.Label = "VulkanCommandTests.AGrownStagingBufferKeepsWhatWasAlreadyStaged";
 		descriptor.Size = cChunkBytes;
 		descriptor.Usage = .CopyDst | .CopySrc;
 		descriptor.Memory = .GpuOnly;
@@ -275,6 +287,7 @@ class VulkanCommandTests
 		Test.Assert(sDevice.CreateBuffer(descriptor) case .Ok(var secondBuffer));
 
 		var readbackDesc = BufferDesc();
+		readbackDesc.Label = "VulkanCommandTests.AGrownStagingBufferKeepsWhatWasAlreadyStaged";
 		readbackDesc.Size = cChunkBytes;
 		readbackDesc.Usage = .CopyDst;
 		readbackDesc.Memory = .GpuToCpu;
@@ -328,6 +341,7 @@ class VulkanCommandTests
 		Test.Assert(sDevice.CreateFence(0) case .Ok(var fence));
 
 		var descriptor = BufferDesc();
+		descriptor.Label = "VulkanCommandTests.AnEncoderSurvivesUntilItIsDestroyed";
 		descriptor.Size = 256;
 		descriptor.Usage = .CopyDst | .CopySrc;
 		descriptor.Memory = .GpuOnly;
@@ -370,6 +384,7 @@ class VulkanCommandTests
 		Test.Assert(sDevice.CreateCommandPool(.Graphics) case .Ok(var pool));
 
 		var descriptor = BufferDesc();
+		descriptor.Label = "VulkanCommandTests.APoolIsReusableAfterReset";
 		descriptor.Size = 256;
 		descriptor.Usage = .CopyDst | .CopySrc;
 		descriptor.Memory = .GpuOnly;
@@ -421,6 +436,7 @@ class VulkanCommandTests
 		const uint32 cPaddedStride = 32;
 
 		var textureDesc = TextureDesc();
+		textureDesc.Label = "VulkanCommandTests.APaddedTextureUploadStripsTheRowPadding";
 		textureDesc.Format = .RGBA8Unorm;
 		textureDesc.Width = cWidth;
 		textureDesc.Height = cHeight;
@@ -454,6 +470,7 @@ class VulkanCommandTests
 		// stride it was uploaded at.
 		let tightSize = (uint64)(cWidth * cHeight * cBytesPerPixel);
 		var readbackDesc = BufferDesc();
+		readbackDesc.Label = "VulkanCommandTests.APaddedTextureUploadStripsTheRowPadding";
 		readbackDesc.Size = tightSize;
 		readbackDesc.Usage = .CopyDst;
 		readbackDesc.Memory = .GpuToCpu;
@@ -512,6 +529,7 @@ class VulkanCommandTests
 		const uint32 cPaddedStride = 256;
 
 		var textureDesc = TextureDesc();
+		textureDesc.Label = "VulkanCommandTests.APaddedReadbackLandsOneRowPerBufferRow";
 		textureDesc.Format = .RGBA8Unorm;
 		textureDesc.Width = cWidth;
 		textureDesc.Height = cHeight;
@@ -543,6 +561,7 @@ class VulkanCommandTests
 		queue.DestroyTransferBatch(ref batch);
 
 		var readbackDesc = BufferDesc();
+		readbackDesc.Label = "VulkanCommandTests.APaddedReadbackLandsOneRowPerBufferRow";
 		readbackDesc.Size = (uint64)cPaddedStride * cHeight;
 		readbackDesc.Usage = .CopyDst;
 		readbackDesc.Memory = .GpuToCpu;
@@ -604,6 +623,7 @@ class VulkanCommandTests
 		const uint32 cMipCount = 7;
 
 		var textureDesc = TextureDesc();
+		textureDesc.Label = "VulkanCommandTests.GeneratingMipmapsLeavesEveryLevelInOneLayout";
 		textureDesc.Format = .RGBA8Unorm;
 		textureDesc.Width = cWidth;
 		textureDesc.Height = cHeight;

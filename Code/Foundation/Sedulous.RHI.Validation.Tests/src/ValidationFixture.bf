@@ -118,6 +118,7 @@ class ValidationFixture
 	public IBuffer MakeBuffer(uint64 size = 256)
 	{
 		var desc = BufferDesc();
+		desc.Label = "ValidationFixture.MakeBuffer";
 		desc.Size = size;
 		if (Device.CreateBuffer(desc) case .Ok(let buffer))
 			return Own(buffer);
@@ -126,7 +127,9 @@ class ValidationFixture
 
 	public ITexture MakeTexture()
 	{
-		if (Device.CreateTexture(TextureDesc.RenderTarget(.RGBA8Unorm, 64, 64)) case .Ok(let t))
+		var textureDesc = TextureDesc.RenderTarget(.RGBA8Unorm, 64, 64);
+		textureDesc.Label = "ValidationFixture.MakeTexture";
+		if (Device.CreateTexture(textureDesc) case .Ok(let t))
 			return Own(t);
 		return null;
 	}
@@ -145,7 +148,7 @@ class ValidationFixture
 		encoder = createdEncoder;
 
 		let texture = MakeTexture();
-		if (!(Device.CreateTextureView(texture, .()) case .Ok(let view)))
+		if (!(Device.CreateTextureView(texture, .() { Label = "ValidationFixture.BeginPass" }) case .Ok(let view)))
 			return null;
 
 		Own(view);

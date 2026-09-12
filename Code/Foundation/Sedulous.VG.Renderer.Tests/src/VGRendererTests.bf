@@ -256,12 +256,13 @@ class VGRendererTests
 		let key = scope OwnedImageData(4, 4, .RGBA8, .(), .Linear);
 
 		var textureDesc = TextureDesc();
+		textureDesc.Label = "VGRendererTests.AnExternalViewRegistersAndUnregisters";
 		textureDesc.Format = .RGBA8Unorm;
 		textureDesc.Width = 4;
 		textureDesc.Height = 4;
 		textureDesc.Usage = .Sampled;
 		var texture = fixture.Device.CreateTexture(textureDesc).Value;
-		var view = fixture.Device.CreateTextureView(texture, .()).Value;
+		var view = fixture.Device.CreateTextureView(texture, .() { Label = "VGRendererTests.AnExternalViewRegistersAndUnregisters" }).Value;
 
 		Test.Assert(!fixture.Renderer.IsExternalTextureRegistered(key));
 
@@ -286,13 +287,14 @@ class VGRendererTests
 		let key = scope OwnedImageData(4, 4, .RGBA8, .(), .Linear);
 
 		var textureDesc = TextureDesc();
+		textureDesc.Label = "VGRendererTests.ReRegisteringRebinds";
 		textureDesc.Format = .RGBA8Unorm;
 		textureDesc.Width = 4;
 		textureDesc.Height = 4;
 		textureDesc.Usage = .Sampled;
 		var texture = fixture.Device.CreateTexture(textureDesc).Value;
-		var first = fixture.Device.CreateTextureView(texture, .()).Value;
-		var second = fixture.Device.CreateTextureView(texture, .()).Value;
+		var first = fixture.Device.CreateTextureView(texture, .() { Label = "VGRendererTests.ReRegisteringRebinds" }).Value;
+		var second = fixture.Device.CreateTextureView(texture, .() { Label = "VGRendererTests.ReRegisteringRebinds" }).Value;
 
 		fixture.Renderer.RegisterExternalTexture(key, first);
 		fixture.Renderer.RegisterExternalTexture(key, second);
@@ -345,12 +347,13 @@ class VGRendererTests
 		let key = scope OwnedImageData(4, 4, .RGBA8, .(), .Linear);
 
 		var textureDesc = TextureDesc();
+		textureDesc.Label = "VGRendererTests.ABatchEvictionSkipsAnExternalEntry";
 		textureDesc.Format = .RGBA8Unorm;
 		textureDesc.Width = 4;
 		textureDesc.Height = 4;
 		textureDesc.Usage = .Sampled;
 		var texture = fixture.Device.CreateTexture(textureDesc).Value;
-		var view = fixture.Device.CreateTextureView(texture, .()).Value;
+		var view = fixture.Device.CreateTextureView(texture, .() { Label = "VGRendererTests.ABatchEvictionSkipsAnExternalEntry" }).Value;
 
 		fixture.Renderer.RegisterExternalTexture(key, view);
 		fixture.Renderer.EvictCachedTexture(key);

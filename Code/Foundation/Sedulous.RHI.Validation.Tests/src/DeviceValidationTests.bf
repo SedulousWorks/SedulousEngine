@@ -16,6 +16,7 @@ class DeviceValidationTests
 		// A correct sequence reports NOTHING. A layer that cried wolf on valid usage would
 		// be turned off, which is the only way it can fail completely.
 		var desc = BufferDesc();
+		desc.Label = "DeviceValidationTests.TheLayerIsTransparentWhenNothingIsWrong";
 		desc.Size = 64;
 		Test.Assert(fixture.Device.CreateBuffer(desc) case .Ok(var buffer));
 		fixture.Own(buffer);
@@ -35,7 +36,7 @@ class DeviceValidationTests
 	public static void AZeroSizedBufferIsRefused()
 	{
 		let fixture = scope ValidationFixture();
-		Test.Assert(fixture.Device.CreateBuffer(.()) case .Err);
+		Test.Assert(fixture.Device.CreateBuffer(.() { Label = "DeviceValidationTests.AZeroSizedBufferIsRefused" }) case .Err);
 		Test.Assert(fixture.Messages.HasError("size is zero"));
 	}
 
@@ -48,6 +49,7 @@ class DeviceValidationTests
 		let fixture = scope ValidationFixture();
 
 		var upload = BufferDesc();
+		upload.Label = "DeviceValidationTests.StorageOnCpuVisibleMemoryIsRefused";
 		upload.Size = 64;
 		upload.Usage = .Storage;
 		upload.Memory = .CpuToGpu;
@@ -56,6 +58,7 @@ class DeviceValidationTests
 
 		fixture.Messages.Clear();
 		var readback = BufferDesc();
+		readback.Label = "DeviceValidationTests.StorageOnCpuVisibleMemoryIsRefused";
 		readback.Size = 64;
 		readback.Usage = .Storage;
 		readback.Memory = .GpuToCpu;
@@ -65,6 +68,7 @@ class DeviceValidationTests
 		// StorageRead is the way to have a mappable buffer a shader reads, so it passes.
 		fixture.Messages.Clear();
 		var readOnly = BufferDesc();
+		readOnly.Label = "DeviceValidationTests.StorageOnCpuVisibleMemoryIsRefused";
 		readOnly.Size = 64;
 		readOnly.Usage = .StorageRead;
 		readOnly.Memory = .CpuToGpu;
@@ -80,17 +84,18 @@ class DeviceValidationTests
 		let fixture = scope ValidationFixture();
 
 		var texture = TextureDesc();
+		texture.Label = "DeviceValidationTests.ZeroSizedTexturesAndEmptyShadersAreRefused";
 		texture.Width = 0;
 		texture.Height = 16;
 		Test.Assert(fixture.Device.CreateTexture(texture) case .Err);
 		Test.Assert(fixture.Messages.HasError("width or height is zero"));
 
 		fixture.Messages.Clear();
-		Test.Assert(fixture.Device.CreateShaderModule(.()) case .Err);
+		Test.Assert(fixture.Device.CreateShaderModule(.() { Label = "DeviceValidationTests.ZeroSizedTexturesAndEmptyShadersAreRefused" }) case .Err);
 		Test.Assert(fixture.Messages.HasError("code is empty"));
 
 		fixture.Messages.Clear();
-		Test.Assert(fixture.Device.CreateQuerySet(.()) case .Err);
+		Test.Assert(fixture.Device.CreateQuerySet(.() { Label = "DeviceValidationTests.ZeroSizedTexturesAndEmptyShadersAreRefused" }) case .Err);
 		Test.Assert(fixture.Messages.HasError("count is zero"));
 	}
 
@@ -98,7 +103,7 @@ class DeviceValidationTests
 	public static void PipelinesNeedALayoutAndAShader()
 	{
 		let fixture = scope ValidationFixture();
-		Test.Assert(fixture.Device.CreatePipelineLayout(.()) case .Ok(var layout));
+		Test.Assert(fixture.Device.CreatePipelineLayout(.() { Label = "DeviceValidationTests.PipelinesNeedALayoutAndAShader" }) case .Ok(var layout));
 		fixture.Own(layout);
 		Test.Assert(fixture.Device.CreateShaderModule(
 			.() { Code = scope uint8[4](1, 2, 3, 4) }) case .Ok(var module));
@@ -106,11 +111,12 @@ class DeviceValidationTests
 		fixture.Messages.Clear();
 
 		// Render: layout, then vertex shader.
-		Test.Assert(fixture.Device.CreateRenderPipeline(.()) case .Err);
+		Test.Assert(fixture.Device.CreateRenderPipeline(.() { Label = "DeviceValidationTests.PipelinesNeedALayoutAndAShader" }) case .Err);
 		Test.Assert(fixture.Messages.HasError("CreateRenderPipeline: layout is null"));
 
 		fixture.Messages.Clear();
 		var render = RenderPipelineDesc();
+		render.Label = "DeviceValidationTests.PipelinesNeedALayoutAndAShader";
 		render.Layout = layout;
 		Test.Assert(fixture.Device.CreateRenderPipeline(render) case .Err);
 		Test.Assert(fixture.Messages.HasError("vertex shader module is null"));
@@ -124,11 +130,12 @@ class DeviceValidationTests
 
 		// Compute: the same two.
 		fixture.Messages.Clear();
-		Test.Assert(fixture.Device.CreateComputePipeline(.()) case .Err);
+		Test.Assert(fixture.Device.CreateComputePipeline(.() { Label = "DeviceValidationTests.PipelinesNeedALayoutAndAShader" }) case .Err);
 		Test.Assert(fixture.Messages.HasError("CreateComputePipeline: layout is null"));
 
 		fixture.Messages.Clear();
 		var compute = ComputePipelineDesc();
+		compute.Label = "DeviceValidationTests.PipelinesNeedALayoutAndAShader";
 		compute.Layout = layout;
 		Test.Assert(fixture.Device.CreateComputePipeline(compute) case .Err);
 		Test.Assert(fixture.Messages.HasError("compute shader module is null"));
@@ -148,7 +155,7 @@ class DeviceValidationTests
 		fixture.Messages.Clear();
 
 		// While it is alive, no complaint.
-		Test.Assert(fixture.Device.CreateTextureView(texture, .()) case .Ok(var view));
+		Test.Assert(fixture.Device.CreateTextureView(texture, .() { Label = "DeviceValidationTests.ViewingADestroyedTextureIsReported" }) case .Ok(var view));
 		fixture.Own(view);
 		Test.Assert(fixture.Messages.Count == 0);
 
@@ -159,12 +166,12 @@ class DeviceValidationTests
 
 		// Through the stale handle, it is caught.
 		// The layer reports and still forwards, so a view really is created: own it.
-		if (fixture.Device.CreateTextureView(stale, .()) case .Ok(let staleView))
+		if (fixture.Device.CreateTextureView(stale, .() { Label = "DeviceValidationTests.ViewingADestroyedTextureIsReported" }) case .Ok(let staleView))
 			fixture.Own(staleView);
 		Test.Assert(fixture.Messages.HasError("was destroyed, or was not created by this device"));
 
 		fixture.Messages.Clear();
-		Test.Assert(fixture.Device.CreateTextureView(null, .()) case .Err);
+		Test.Assert(fixture.Device.CreateTextureView(null, .() { Label = "DeviceValidationTests.ViewingADestroyedTextureIsReported" }) case .Err);
 		Test.Assert(fixture.Messages.HasError("texture is null"));
 	}
 
@@ -215,6 +222,7 @@ class DeviceValidationTests
 		fixture.Messages.Clear();
 
 		var desc = BufferDesc();
+		desc.Label = "DeviceValidationTests.UsingADestroyedDeviceIsRefused";
 		desc.Size = 64;
 		Test.Assert(fixture.Device.CreateBuffer(desc) case .Err);
 		Test.Assert(fixture.Messages.HasError("the device is destroyed"));
@@ -254,16 +262,17 @@ class DeviceValidationTests
 	{
 		let fixture = scope ValidationFixture();
 
-		Test.Assert(fixture.Device.CreateBindGroup(.()) case .Err);
+		Test.Assert(fixture.Device.CreateBindGroup(.() { Label = "DeviceValidationTests.ABindGroupMustMatchItsLayout" }) case .Err);
 		Test.Assert(fixture.Messages.HasError("layout is null"));
 
 		fixture.Messages.Clear();
-		Test.Assert(fixture.Device.CreateBindGroupLayout(.()) case .Ok(var layout));
+		Test.Assert(fixture.Device.CreateBindGroupLayout(.() { Label = "DeviceValidationTests.ABindGroupMustMatchItsLayout" }) case .Ok(var layout));
 		fixture.Own(layout);
 		fixture.Messages.Clear();
 
 		// The null backend's layout reports no entries, so ONE entry is one too many.
 		var desc = BindGroupDesc();
+		desc.Label = "DeviceValidationTests.ABindGroupMustMatchItsLayout";
 		desc.Layout = layout;
 		let entries = scope BindGroupEntry[1];
 		desc.Entries = entries;
@@ -272,6 +281,7 @@ class DeviceValidationTests
 
 		fixture.Messages.Clear();
 		var matching = BindGroupDesc();
+		matching.Label = "DeviceValidationTests.ABindGroupMustMatchItsLayout";
 		matching.Layout = layout;
 		Test.Assert(fixture.Device.CreateBindGroup(matching) case .Ok(var group));
 		fixture.Own(group);

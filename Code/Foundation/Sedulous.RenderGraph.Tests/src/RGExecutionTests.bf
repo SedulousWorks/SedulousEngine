@@ -27,8 +27,10 @@ class RGExecutionTests
 			Pool = Device.CreateCommandPool(.Graphics).Value;
 			Encoder = Pool.CreateEncoder().Value;
 
-			Backbuffer = Device.CreateTexture(TextureDesc.RenderTarget(.RGBA8Unorm, 64, 64)).Value;
-			BackbufferView = Device.CreateTextureView(Backbuffer, .()).Value;
+			var textureDesc = TextureDesc.RenderTarget(.RGBA8Unorm, 64, 64);
+			textureDesc.Label = "RGExecutionTests.Harness.this";
+			Backbuffer = Device.CreateTexture(textureDesc).Value;
+			BackbufferView = Device.CreateTextureView(Backbuffer, .() { Label = "RGExecutionTests.Harness.this" }).Value;
 		}
 
 		public ~this()
@@ -305,9 +307,10 @@ class RGExecutionTests
 		let pool = scope TransientTexturePool(harness.Device);
 		pool.MaxUnusedFrames = 2;
 
-		let desc = TextureDesc.RenderTarget(.RGBA8Unorm, 16, 16);
+		var desc = TextureDesc.RenderTarget(.RGBA8Unorm, 16, 16);
+		desc.Label = "RGExecutionTests.ThePoolAgesOutWhatIsUnwanted";
 		let texture = harness.Device.CreateTexture(desc).Value;
-		let view = harness.Device.CreateTextureView(texture, .()).Value;
+		let view = harness.Device.CreateTextureView(texture, .() { Label = "RGExecutionTests.ThePoolAgesOutWhatIsUnwanted" }).Value;
 		pool.ReturnToPool(desc, texture, view, 1);
 		Test.Assert(pool.Count == 1);
 
@@ -327,9 +330,10 @@ class RGExecutionTests
 		let harness = scope Harness();
 		let pool = scope TransientTexturePool(harness.Device);
 
-		let desc = TextureDesc.RenderTarget(.RGBA8Unorm, 16, 16);
+		var desc = TextureDesc.RenderTarget(.RGBA8Unorm, 16, 16);
+		desc.Label = "RGExecutionTests.ThePoolMatchesExactly";
 		let texture = harness.Device.CreateTexture(desc).Value;
-		let view = harness.Device.CreateTextureView(texture, .()).Value;
+		let view = harness.Device.CreateTextureView(texture, .() { Label = "RGExecutionTests.ThePoolMatchesExactly" }).Value;
 		pool.ReturnToPool(desc, texture, view, 7);
 
 		var different = desc;

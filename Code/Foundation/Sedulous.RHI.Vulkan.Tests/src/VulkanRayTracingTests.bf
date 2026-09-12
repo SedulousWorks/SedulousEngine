@@ -53,6 +53,7 @@ class VulkanRayTracingTests
 	private static IBuffer MakeInputBuffer(void* data, uint64 size)
 	{
 		var desc = BufferDesc();
+		desc.Label = "VulkanRayTracingTests.MakeInputBuffer";
 		desc.Size = size;
 		desc.Usage = .AccelStructInput | .CopyDst;
 		// Host visible, so the test can fill it without a transfer and the build reads
@@ -68,6 +69,7 @@ class VulkanRayTracingTests
 	private static IBuffer MakeScratchBuffer(uint64 size)
 	{
 		var desc = BufferDesc();
+		desc.Label = "VulkanRayTracingTests.MakeScratchBuffer";
 		desc.Size = size;
 		desc.Usage = .AccelStructScratch;
 		desc.Memory = .GpuOnly;

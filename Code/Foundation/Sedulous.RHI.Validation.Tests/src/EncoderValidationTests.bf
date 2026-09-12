@@ -50,12 +50,13 @@ class EncoderValidationTests
 		Test.Assert(fixture.Messages.HasError("no pipeline is bound"));
 
 		fixture.Messages.Clear();
-		Test.Assert(fixture.Device.CreatePipelineLayout(.()) case .Ok(var layout));
+		Test.Assert(fixture.Device.CreatePipelineLayout(.() { Label = "EncoderValidationTests.ADrawNeedsAPipelineAViewportAndAScissor" }) case .Ok(var layout));
 		fixture.Own(layout);
 		Test.Assert(fixture.Device.CreateShaderModule(
 			.() { Code = scope uint8[4](1, 2, 3, 4) }) case .Ok(var module));
 			fixture.Own(module);
 		var pipelineDesc = RenderPipelineDesc();
+		pipelineDesc.Label = "EncoderValidationTests.ADrawNeedsAPipelineAViewportAndAScissor";
 		pipelineDesc.Layout = layout;
 		pipelineDesc.Vertex.Shader.Module = module;
 		Test.Assert(fixture.Device.CreateRenderPipeline(pipelineDesc) case .Ok(let pipeline));
@@ -301,12 +302,13 @@ class EncoderValidationTests
 		Test.Assert(fixture.Messages.HasError("DispatchIndirect: no pipeline is bound"));
 
 		// Bind something, then the zero dimension warning becomes reachable.
-		Test.Assert(fixture.Device.CreatePipelineLayout(.()) case .Ok(var layout));
+		Test.Assert(fixture.Device.CreatePipelineLayout(.() { Label = "EncoderValidationTests.ComputePassRulesMirrorTheRenderPassOnes" }) case .Ok(var layout));
 		fixture.Own(layout);
 		Test.Assert(fixture.Device.CreateShaderModule(
 			.() { Code = scope uint8[4](1, 2, 3, 4) }) case .Ok(var module));
 			fixture.Own(module);
 		var desc = ComputePipelineDesc();
+		desc.Label = "EncoderValidationTests.ComputePassRulesMirrorTheRenderPassOnes";
 		desc.Layout = layout;
 		desc.Compute.Module = module;
 		Test.Assert(fixture.Device.CreateComputePipeline(desc) case .Ok(let pipeline));
@@ -342,12 +344,13 @@ class EncoderValidationTests
 		bundleEncoder.Draw(3);
 		Test.Assert(fixture.Messages.HasError("no pipeline is bound"));
 
-		Test.Assert(fixture.Device.CreatePipelineLayout(.()) case .Ok(var layout));
+		Test.Assert(fixture.Device.CreatePipelineLayout(.() { Label = "EncoderValidationTests.ABundleNeedsAPipelineButNotAViewport" }) case .Ok(var layout));
 		fixture.Own(layout);
 		Test.Assert(fixture.Device.CreateShaderModule(
 			.() { Code = scope uint8[4](1, 2, 3, 4) }) case .Ok(var module));
 			fixture.Own(module);
 		var desc = RenderPipelineDesc();
+		desc.Label = "EncoderValidationTests.ABundleNeedsAPipelineButNotAViewport";
 		desc.Layout = layout;
 		desc.Vertex.Shader.Module = module;
 		Test.Assert(fixture.Device.CreateRenderPipeline(desc) case .Ok(let pipeline));
