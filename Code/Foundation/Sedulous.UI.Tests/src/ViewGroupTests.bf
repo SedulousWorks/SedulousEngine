@@ -464,9 +464,8 @@ class ViewGroupTests
 	public static void DestroyingAGroupClearsItsChildrensBackPointers()
 	{
 		let child = new TestView(50, 30);
-		// Our own reference, held past both groups. Each AddView CONSUMES one, so each gets
-		// its own.
-		child.AddRef();
+		// The creation reference is ours, held past both groups. Each AddView CONSUMES one,
+		// so each group gets an added reference of its own.
 		defer child.ReleaseRef();
 
 		{

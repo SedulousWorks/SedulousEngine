@@ -47,6 +47,7 @@ class InputFilter
 		}
 	}
 
+	/// The caller owns the filter.
 	public static InputFilter Digits()
 	{
 		let filter = new InputFilter();
@@ -54,6 +55,7 @@ class InputFilter
 		return filter;
 	}
 
+	/// The caller owns the filter.
 	public static InputFilter HexDigits()
 	{
 		let filter = new InputFilter();

@@ -119,7 +119,6 @@ class LocalStyleSheetTests
 	public static void OneLocalSheetIsSharedBetweenViews()
 	{
 		let sheet = new StyleSheet();
-		sheet.AddRef();
 		defer sheet.ReleaseRef();
 
 		let first = new TestView(50, 30);

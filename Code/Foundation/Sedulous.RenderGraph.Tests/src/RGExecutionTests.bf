@@ -338,9 +338,13 @@ class RGExecutionTests
 		Test.Assert(missTexture == null);
 		Test.Assert(missGeneration == 0);
 
-		Test.Assert(pool.TryAcquire(desc, let hitTexture, let hitView, let hitGeneration));
+		Test.Assert(pool.TryAcquire(desc, var hitTexture, var hitView, let hitGeneration));
 		Test.Assert(hitTexture == texture);
 		Test.Assert(hitGeneration == 7, "the identity came back with it");
 		Test.Assert(pool.Count == 0, "and it left the pool");
+
+		// Acquiring took it out of the pool, so the pool will not free it.
+		harness.Device.DestroyTextureView(ref hitView);
+		harness.Device.DestroyTexture(ref hitTexture);
 	}
 }

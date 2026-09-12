@@ -176,6 +176,7 @@ class DrawableAndEditingTests
 	public static void TheDigitsFilterAcceptsOnlyDigits()
 	{
 		let filter = InputFilter.Digits();
+		defer delete filter;
 
 		Test.Assert(filter.Accept('0'));
 		Test.Assert(filter.Accept('5'));
@@ -189,6 +190,7 @@ class DrawableAndEditingTests
 	public static void TheHexFilterTakesBothCases()
 	{
 		let filter = InputFilter.HexDigits();
+		defer delete filter;
 
 		Test.Assert(filter.Accept('0'));
 		Test.Assert(filter.Accept('9'));

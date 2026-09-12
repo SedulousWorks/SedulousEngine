@@ -53,9 +53,19 @@ class DockingTests
 	private class FakeWindowHost : IDockableWindowHost
 	{
 		public bool Chrome = false;
+		/// Every view ever handed over, in order: entries stay after the window is destroyed.
 		public List<View> Created = new .() ~ delete _;
+		/// CreateDockableWindow CONSUMES the reference, so every window handed over is this
+		/// host's to release once the test is done with it.
+		private List<View> mLive = new .() ~ delete _;
 		public delegate void(View) LastOnClose = null ~ delete _;
 		public int32 Destroyed = 0;
+
+		public ~this()
+		{
+			for (let view in mLive)
+				view.ReleaseRef();
+		}
 
 		public bool SupportsOSWindows() => true;
 
@@ -65,6 +75,7 @@ class DockingTests
 			delegate void(View) onCloseRequested)
 		{
 			Created.Add(view);
+			mLive.Add(view);
 			delete LastOnClose;
 			LastOnClose = onCloseRequested;
 		}
@@ -72,6 +83,8 @@ class DockingTests
 		// A BLOCK body: Beef will not take an increment as an expression body.
 		public void DestroyDockableWindow(View view)
 		{
+			// NOT released here: the real host tears its window down asynchronously, and the
+			// manager still queues a node deletion on this view straight after the call.
 			Destroyed++;
 		}
 
