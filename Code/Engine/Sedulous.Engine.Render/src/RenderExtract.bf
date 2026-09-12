@@ -2,8 +2,11 @@ using System;
 using Sedulous.Core;
 using Sedulous.Geometry;
 using Sedulous.Materials;
+using Sedulous.RHI;
 using Sedulous.Render;
+using Sedulous.Resource;
 using Sedulous.Scene;
+using Sedulous.Texture.Resource;
 
 namespace Sedulous.Engine.Render;
 
@@ -291,6 +294,100 @@ static class RenderExtract
 
 				// The renderer id stays nought, since the mesh renderer draws these too, and
 				// the world matrix stays identity: the per instance transforms ride above.
+			});
+	}
+
+	/// The view a sprite or decal draws with: the runtime override WINS, and otherwise the
+	/// cooked product behind the reference. Null means there is nothing to draw yet.
+	private static ITextureView ResolveView(ITextureView over, Ref<Texture> asset)
+	{
+		if (over != null)
+			return over;
+
+		let product = asset.Get;
+		return (product != null) ? product.View : null;
+	}
+
+	/// Fills the snapshot with one record per visible sprite. Serial, because sprites are few.
+	///
+	/// Stamps the sprite renderer's id so emission routes them there, and files them as
+	/// transparent so they sort back to front alongside transparent meshes.
+	public static void ExtractSpritesInto(Scene scene, ExtractedScene outScene,
+		uint16 spriteRendererId)
+	{
+		let sprites = scene.GetSystem<SpriteComponentManager>();
+		if (sprites == null)
+			return;
+
+		sprites.ForEach(scope (component, entity) =>
+			{
+				if (!scene.IsEffectivelyActive(entity) || !component.Visible)
+					return;
+
+				let view = ResolveView(component.Texture, component.TextureAsset);
+				if (view == null)
+					return;
+
+				let data = outScene.Add<SpriteRenderData>();
+				if (data == null)
+					return;
+
+				// Drawn after tonemap means world UI, which keeps the colours as authored.
+				data.Category = component.PostTonemap
+					? RenderCategories.WorldUI : RenderCategories.Transparent;
+				data.RendererId = spriteRendererId;
+				data.WorldCenter = TransformPoint(Float3(0, 0, 0), scene.GetWorldMatrix(entity));
+				// Half the billboard's diagonal, for frustum culling. The size is already in
+				// world units, since the sprite renderer sizes the quad directly, so the
+				// entity's scale is deliberately not folded in.
+				data.WorldRadius = 0.5f * Length(component.Size);
+				data.Size = component.Size;
+				data.UvRect = component.UvRect;
+				data.Tint = component.Tint;
+				data.Orientation = (uint32)component.Orientation;
+				data.Additive = component.Additive;
+				data.PostTonemap = component.PostTonemap;
+
+				if (component.Orientation == .EntityOriented)
+				{
+					// The entity's own right and up span the quad. NORMALISED, so the size
+					// alone sets the extent, which is the contract every other orientation
+					// keeps.
+					let world = scene.GetWorldMatrix(entity);
+					data.AxisRight = Normalized(Float3(world.M[0][0], world.M[0][1], world.M[0][2]));
+					data.AxisUp = Normalized(Float3(world.M[1][0], world.M[1][1], world.M[1][2]));
+				}
+
+				data.Texture = view;
+			});
+	}
+
+	/// Fills the snapshot's decal list. Serial, because decals are few.
+	public static void ExtractDecalsInto(Scene scene, ExtractedScene outScene)
+	{
+		let decals = scene.GetSystem<DecalComponentManager>();
+		if (decals == null)
+			return;
+
+		decals.ForEach(scope (component, entity) =>
+			{
+				if (!scene.IsEffectivelyActive(entity) || !component.Visible)
+					return;
+
+				let view = ResolveView(component.Texture, component.TextureAsset);
+				if (view == null)
+					return;
+
+				var instance = DecalInstance();
+				// The size is baked in as an EXTRA scale under the entity transform, in row
+				// vector order, so the entity's rotation aims the projection axis while the
+				// size sets the box extents.
+				instance.World = Float4x4.Scale(component.Size) * scene.GetWorldMatrix(entity);
+				instance.Color = component.Color;
+				instance.FadeStart = component.FadeStart;
+				instance.FadeEnd = component.FadeEnd;
+				instance.Texture = view;
+				outScene.AddDecal(instance);
 			});
 	}
 }
