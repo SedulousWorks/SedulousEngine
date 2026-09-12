@@ -53,7 +53,9 @@ class RenderGraphResource
 	public bool ReadableAfterWrite = false;
 
 	/// Null unless the lifetime is persistent. NOT OWNED: the caller created it and keeps it.
-	public PersistentResource PersistentData = null;
+	/// OWNED once the graph attaches one. What it points AT is external, which is the whole
+	/// contract of a persistent resource, but the tracking object itself is the graph's.
+	public PersistentResource PersistentData = null ~ delete _;
 
 	public this(StringView name, RGResourceType type, RGResourceLifetime lifetime)
 	{

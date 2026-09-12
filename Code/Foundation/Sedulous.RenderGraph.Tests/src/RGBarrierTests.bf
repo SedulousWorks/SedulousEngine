@@ -414,8 +414,8 @@ class RGBarrierTests
 		let fixture = scope Fixture();
 		let texture = fixture.MakeTexture(1, 2);
 		let resource = fixture.AddResource("History", texture, .Persistent);
+		// The resource owns it once attached, so there is nothing to free here.
 		resource.PersistentData = new PersistentResource(texture, null);
-		defer delete resource.PersistentData;
 
 		// The first frame writes one layer, so the two diverge.
 		fixture.Solver.Reset(fixture.Resources);
