@@ -35,6 +35,46 @@ static class NetAddress
 	public static Socket.IPv4Address UnpackIPv4(uint32 ip) =>
 		.((uint8)(ip >> 24), (uint8)(ip >> 16), (uint8)(ip >> 8), (uint8)ip);
 
+	/// A strict dotted quad, the way inet_pton reads one: four decimal octets, one dot
+	/// between each, and nothing else.
+	public static bool ParseIPv4(StringView text, out uint32 outIp)
+	{
+		outIp = 0;
+
+		uint32 packed = 0;
+		int index = 0;
+		for (int part < 4)
+		{
+			int digits = 0;
+			uint32 octet = 0;
+			while ((index < text.Length) && text[index].IsDigit)
+			{
+				octet = (octet * 10) + (uint32)(text[index] - '0');
+				digits++;
+				if ((octet > 255) || (digits > 3))
+					return false;
+				index++;
+			}
+			if (digits == 0)
+				return false;
+
+			packed = (packed << 8) | octet;
+			if (part == 3)
+				break;
+
+			// Every octet but the last is followed by exactly one dot.
+			if ((index >= text.Length) || (text[index] != '.'))
+				return false;
+			index++;
+		}
+		// A trailing anything, a fifth octet included, is not a dotted quad.
+		if (index != text.Length)
+			return false;
+
+		outIp = packed;
+		return true;
+	}
+
 	/// The address for a host, which may be a dotted quad or a name.
 	///
 	/// A NAME BLOCKS for the lookup, so this belongs at a connect edge and not in a frame.
@@ -42,6 +82,16 @@ static class NetAddress
 	public static bool ResolveHostIPv4(StringView host, out uint32 outIp)
 	{
 		outIp = 0;
+
+		// Windows resolves an EMPTY name to the local host where Linux calls it unknown, so
+		// the refusal has to be ours. Raptor's Win32System.cpp:667 rejects it the same way.
+		if (host.IsEmpty)
+			return false;
+
+		// A literal never touches the resolver, so it answers with no network reachable and
+		// before Winsock is up.
+		if (ParseIPv4(host, out outIp))
+			return true;
 
 		// Winsock has to be STARTED before any call reaches it, and this is a resolver: it
 		// touches the stack without anyone having made a socket first. The socket types init

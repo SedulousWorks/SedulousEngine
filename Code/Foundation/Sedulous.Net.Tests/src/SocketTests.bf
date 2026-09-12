@@ -39,9 +39,37 @@ class SocketTests
 		Test.Assert(NetAddress.ResolveHostIPv4("127.0.0.1", let literal));
 		Test.Assert(literal == 0x7F000001);
 
+		// Windows resolves an empty name to the local host, so the refusal is ours to make.
 		Test.Assert(!NetAddress.ResolveHostIPv4("", let empty));
 		// The .invalid domain is reserved by RFC 2606 and can never resolve.
 		Test.Assert(!NetAddress.ResolveHostIPv4("no-such-host.invalid", let missing));
+	}
+
+	/// A literal is read HERE rather than by the platform, so what counts as one cannot drift
+	/// between an inet_pton that takes shortened forms and one that does not.
+	[Test]
+	public static void ADottedQuadIsReadWithoutTheResolver()
+	{
+		Test.Assert(NetAddress.ParseIPv4("0.0.0.0", let zero));
+		Test.Assert(zero == 0);
+		Test.Assert(NetAddress.ParseIPv4("127.0.0.1", let loopback));
+		Test.Assert(loopback == 0x7F000001);
+		Test.Assert(NetAddress.ParseIPv4("255.255.255.255", let broadcast));
+		Test.Assert(broadcast == 0xFFFFFFFF);
+		Test.Assert(NetAddress.ParseIPv4("192.168.0.42", let lan));
+		Test.Assert(lan == 0xC0A8002A);
+
+		Test.Assert(!NetAddress.ParseIPv4("", let empty));
+		Test.Assert(!NetAddress.ParseIPv4("127.0.0", let short));
+		Test.Assert(!NetAddress.ParseIPv4("127.0.0.1.5", let long));
+		Test.Assert(!NetAddress.ParseIPv4("127.0.0.256", let overflow));
+		Test.Assert(!NetAddress.ParseIPv4("127.0.0.0001", let padded));
+		Test.Assert(!NetAddress.ParseIPv4("127.0..1", let hole));
+		Test.Assert(!NetAddress.ParseIPv4("127.0.0.1 ", let trailing));
+		Test.Assert(!NetAddress.ParseIPv4(" 127.0.0.1", let leading));
+		Test.Assert(!NetAddress.ParseIPv4("127.0.0.1:80", let ported));
+		Test.Assert(!NetAddress.ParseIPv4("localhost", let name));
+		Test.Assert(!NetAddress.ParseIPv4("-1.0.0.1", let negative));
 	}
 
 	[Test]
