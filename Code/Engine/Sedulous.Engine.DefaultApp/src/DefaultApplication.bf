@@ -57,7 +57,6 @@ class DefaultApplication : IApplication
 	private GameInstance mInstance = new .() ~ delete _;
 	private List<GameInstance> mExtraInstances = new .() ~ DeleteContainerAndItems!(_);
 
-	private SceneComposition mComposition = null ~ delete _;
 
 	private AudioEngineSettings mAudioEngineSettings = null;
 	private String mUIFontPath = new .() ~ delete _;
@@ -120,8 +119,8 @@ class DefaultApplication : IApplication
 		mScenes = host.Context.AddSubsystem<SceneSubsystem>();
 		// The assembly blueprint: every registered manager's scene is built from the FULL
 		// composition, which is the single source of truth.
-		mComposition = EngineSceneComposition.Build();
-		mScenes.SetComposition(mComposition);
+		// TAKES OWNERSHIP, so nothing here keeps a reference to free a second time.
+		mScenes.SetComposition(EngineSceneComposition.Build());
 		// The run's scene group lives on the instance, so it is registered here to tick on
 		// the context's lane.
 		mScenes.RegisterManager(mInstance.Scenes);

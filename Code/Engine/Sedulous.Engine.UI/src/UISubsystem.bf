@@ -54,6 +54,8 @@ class UISubsystem : Subsystem, ISceneObserver
 	private ScreenStack mScreenStack = new .() ~ delete _;
 	/// The scene LESS screen tier, ABOVE everything.
 	private ViewGroup mOverlayLayer = null;
+	/// BORROWED. Installing a sheet CONSUMES the reference, so the context owns it from that
+	/// moment and this is only a back pointer for comparison.
 	private StyleSheet mTheme = null;
 
 	private TrueTypeFontService mFonts ~ delete _;
@@ -101,7 +103,9 @@ class UISubsystem : Subsystem, ISceneObserver
 	/// editor is, leaves this null, and null also clears it.
 	public void SetTextInputTarget(IWindow window) => mBridge.SetTextInputTarget(window);
 
-	public UIContext Context => mContext;
+	/// Named apart from the subsystem's RUNTIME context, which it would otherwise shadow.
+	/// Two different things called Context on one type is worth a longer name.
+	public UIContext UiContext => mContext;
 
 	/// Whether any interactive canvas is under the pointer or holds text focus.
 	public bool PointerOverUI => mPointerConsumed;
@@ -234,8 +238,10 @@ class UISubsystem : Subsystem, ISceneObserver
 
 		mContext.SetFontService(mFonts);
 
-		mTheme = GameTheme.Create();
-		mContext.SetStyleSheet(mTheme);
+		let theme = GameTheme.Create();
+		mTheme = theme;
+		// CONSUMES the reference: the context owns the sheet from here.
+		mContext.SetStyleSheet(theme);
 
 		// The scene LESS screen tier. The screen root holds ONLY the global overlay layer,
 		// each scene's canvases and billboards living in that scene's own root, and it hit
@@ -292,10 +298,13 @@ class UISubsystem : Subsystem, ISceneObserver
 
 		for (let ui in mSceneUIs)
 		{
+			if (ui.Scene != null)
+				ReleaseSceneComponents(ui.Scene);
+
 			if (ui.Root != null)
 			{
 				mContext.RemoveRootView(ui.Root);
-				delete ui.Root;
+				ui.Root.ReleaseRef();
 			}
 		}
 		ClearAndDeleteItems!(mSceneUIs);
@@ -303,7 +312,7 @@ class UISubsystem : Subsystem, ISceneObserver
 		for (let entry in mTextureCanvasRoots)
 		{
 			mContext.RemoveRootView(entry.Root);
-			delete entry.Root;
+			entry.Root.ReleaseRef();
 		}
 		ClearAndDeleteItems!(mTextureCanvasRoots);
 
@@ -311,18 +320,15 @@ class UISubsystem : Subsystem, ISceneObserver
 		if (mScreenRoot != null)
 		{
 			mContext.RemoveRootView(mScreenRoot);
-			delete mScreenRoot;
+			mScreenRoot.ReleaseRef();
 			mScreenRoot = null;
 		}
 
 		delete mRenderState;
 		mRenderState = null;
 
-		if (mTheme != null)
-		{
-			mTheme.ReleaseRef();
-			mTheme = null;
-		}
+		// The context owns the sheet and releases it with itself, so this is only dropped.
+		mTheme = null;
 	}
 
 	public void OnSystemsReady(Scene scene)
@@ -345,6 +351,10 @@ class UISubsystem : Subsystem, ISceneObserver
 
 	public void OnDestroying(Scene scene)
 	{
+		// The components let go FIRST: the tree releases its own half below, and nothing else
+		// would ever release theirs.
+		ReleaseSceneComponents(scene);
+
 		for (int i < mSceneUIs.Count)
 		{
 			if (mSceneUIs[i].Scene !== scene)
@@ -353,7 +363,7 @@ class UISubsystem : Subsystem, ISceneObserver
 			if (mSceneUIs[i].Root != null)
 			{
 				mContext.RemoveRootView(mSceneUIs[i].Root);
-				delete mSceneUIs[i].Root;
+				mSceneUIs[i].Root.ReleaseRef();
 			}
 
 			delete mSceneUIs[i];
@@ -419,11 +429,11 @@ class UISubsystem : Subsystem, ISceneObserver
 			}
 		}
 
-		if (mTheme != null)
-			mTheme.ReleaseRef();
-
-		mTheme = (sheet != null) ? sheet : GameTheme.Create();
-		mContext.SetStyleSheet(mTheme);
+		// Installing CONSUMES the new reference and releases whatever was there, so nothing
+		// is released here: doing so would drop a reference this no longer owns.
+		let installed = (sheet != null) ? sheet : GameTheme.Create();
+		mTheme = installed;
+		mContext.SetStyleSheet(installed);
 	}
 
 	// ==================== GPU bring-up ====================

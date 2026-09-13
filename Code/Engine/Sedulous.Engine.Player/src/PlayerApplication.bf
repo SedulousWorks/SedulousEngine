@@ -279,16 +279,15 @@ class PlayerApplication : DefaultApplication
 		if ((Input == null) || (mSettings.DefaultInputMapId == Guid()) || (Resources == null))
 			return;
 
-		if (let map = Resources.Bind<InputMapResource>(mSettings.DefaultInputMapId))
-		{
-			Instance.SetInputMap(map.Get.Map);
-			GlobalLog(.Information, "Player: input map bound, {} set(s)",
-				map.Get.Map.Sets.Count);
-		}
-		else
+		let map = Resources.Bind<InputMapResource>(mSettings.DefaultInputMapId).Get;
+		if (map == null)
 		{
 			GlobalLog(.Warning, "Player: the default input map did not resolve");
+			return;
 		}
+
+		Instance.SetInputMap(map.Map);
+		GlobalLog(.Information, "Player: input map bound, {} set(s)", map.Map.Sets.Count);
 	}
 
 	/// The scene pass's sample count. The subsystem clamps per view against what the device
@@ -314,15 +313,15 @@ class PlayerApplication : DefaultApplication
 			|| (Resources == null))
 			return;
 
-		if (let layout = Resources.Bind<AudioBusLayoutResource>(mSettings.DefaultBusLayoutId))
-		{
-			Audio.Engine.ApplyBusLayout(layout.Get.Layout);
-			GlobalLog(.Information, "Player: audio bus layout applied");
-		}
-		else
+		let layout = Resources.Bind<AudioBusLayoutResource>(mSettings.DefaultBusLayoutId).Get;
+		if (layout == null)
 		{
 			GlobalLog(.Warning, "Player: the default bus layout did not resolve");
+			return;
 		}
+
+		Audio.Engine.ApplyBusLayout(layout.Layout);
+		GlobalLog(.Information, "Player: audio bus layout applied");
 	}
 
 	/// The per user volumes, applied ON TOP of the layout: a user's slider is absolute.
@@ -372,15 +371,15 @@ class PlayerApplication : DefaultApplication
 			return;
 		}
 
-		if (let font = Resources.Bind<Font>(mSettings.DefaultUiFontId))
-		{
-			UI.SetDefaultFont(font.Get);
-			GlobalLog(.Information, "Player: default UI font bound");
-		}
-		else
+		let font = Resources.Bind<Font>(mSettings.DefaultUiFontId).Get;
+		if (font == null)
 		{
 			GlobalLog(.Warning, "Player: the default UI font did not resolve");
+			return;
 		}
+
+		UI.SetDefaultFont(font);
+		GlobalLog(.Information, "Player: default UI font bound");
 	}
 
 	/// The project's theme. Unset or unresolved leaves the built in one.
@@ -389,15 +388,15 @@ class PlayerApplication : DefaultApplication
 		if ((UI == null) || (mSettings.DefaultUiThemeId == Guid()) || (Resources == null))
 			return;
 
-		if (let theme = Resources.Bind<UITheme>(mSettings.DefaultUiThemeId))
-		{
-			UI.SetDefaultTheme(theme.Get);
-			GlobalLog(.Information, "Player: default UI theme bound");
-		}
-		else
+		let theme = Resources.Bind<UITheme>(mSettings.DefaultUiThemeId).Get;
+		if (theme == null)
 		{
 			GlobalLog(.Warning, "Player: the default UI theme did not resolve");
+			return;
 		}
+
+		UI.SetDefaultTheme(theme);
+		GlobalLog(.Information, "Player: default UI theme bound");
 	}
 
 	/// Pushes the splash, then loads the scene BEHIND it, with the update driving both.

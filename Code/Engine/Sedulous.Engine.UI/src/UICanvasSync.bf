@@ -241,21 +241,21 @@ extension UISubsystem
 		if (theme === component.ThemeFrom)
 			return;
 
-		if (component.ThemeSheet != null)
-		{
-			component.ThemeSheet.ReleaseRef();
-			component.ThemeSheet = null;
-		}
-
+		StyleSheet sheet = null;
 		if ((theme != null) && !theme.StyleSheet.IsEmpty)
 		{
 			let loader = scope StyleSheetLoader();
 			loader.SetPalette(GameTheme.Palette());
-			component.ThemeSheet = loader.Load(theme.StyleSheet);
+			sheet = loader.Load(theme.StyleSheet);
 		}
 
+		// Installing CONSUMES the reference and releases whatever the view held, so the
+		// component keeps only a back pointer and never releases it itself.
+		component.ThemeSheet = sheet;
 		if (component.Root != null)
-			component.Root.SetLocalStyleSheet(component.ThemeSheet);
+			component.Root.SetLocalStyleSheet(sheet);
+		else if (sheet != null)
+			sheet.ReleaseRef();
 
 		component.ThemeFrom = theme;
 	}
@@ -363,22 +363,115 @@ extension UISubsystem
 		if (theme === component.ThemeFrom)
 			return;
 
-		if (component.ThemeSheet != null)
-		{
-			component.ThemeSheet.ReleaseRef();
-			component.ThemeSheet = null;
-		}
-
+		StyleSheet sheet = null;
 		if ((theme != null) && !theme.StyleSheet.IsEmpty)
 		{
 			let loader = scope StyleSheetLoader();
 			loader.SetPalette(GameTheme.Palette());
-			component.ThemeSheet = loader.Load(theme.StyleSheet);
+			sheet = loader.Load(theme.StyleSheet);
 		}
 
+		component.ThemeSheet = sheet;
 		if (component.Root != null)
-			component.Root.SetLocalStyleSheet(component.ThemeSheet);
+			component.Root.SetLocalStyleSheet(sheet);
+		else if (sheet != null)
+			sheet.ReleaseRef();
 
 		component.ThemeFrom = theme;
+	}
+
+	/// Releases every reference the COMPONENTS of a scene are holding, before that scene's
+	/// root goes.
+	///
+	/// A view is counted, and a component holds its own reference alongside the tree's. When
+	/// a scene dies the tree lets go of its half, but nothing would let go of the component's:
+	/// the manager is about to be destroyed with the scene and has no hook that runs first. So
+	/// the subsystem does it here, which is the only place that knows both.
+	public void ReleaseSceneComponents(Scene scene)
+	{
+		if (let canvases = scene.GetSystem<UICanvasComponentManager>())
+		{
+			canvases.ForEach(scope (component, owner) =>
+				{
+					ReleaseView(ref component.Root);
+					ReleaseViewGroup(ref component.Host);
+					ReleaseRoot(ref component.RenderRoot);
+					ReleaseSheet(ref component.ThemeSheet);
+					component.BuiltFrom = null;
+					component.ThemeFrom = null;
+				});
+		}
+
+		if (let billboards = scene.GetSystem<UIBillboardComponentManager>())
+		{
+			billboards.ForEach(scope (component, owner) =>
+				{
+					ReleaseView(ref component.Root);
+					component.BuiltFrom = null;
+				});
+		}
+
+		if (let panels = scene.GetSystem<UIWorldPanelComponentManager>())
+		{
+			panels.ForEach(scope [&] (component, owner) =>
+				{
+					ReleaseView(ref component.Root);
+					ReleaseRoot(ref component.RenderRoot);
+					ReleaseSheet(ref component.ThemeSheet);
+					component.BuiltFrom = null;
+					component.ThemeFrom = null;
+				});
+		}
+	}
+
+	private static void ReleaseView(ref View view)
+	{
+		if (view == null)
+			return;
+		view.ReleaseRef();
+		view = null;
+	}
+
+	private static void ReleaseViewGroup(ref ViewGroup group)
+	{
+		if (group == null)
+			return;
+		group.ReleaseRef();
+		group = null;
+	}
+
+	private void ReleaseRoot(ref RootView root)
+	{
+		if (root == null)
+			return;
+
+		// It is a context root in its own right, so it is unregistered before it goes, the
+		// context storing roots without owning them.
+		mContext.RemoveRootView(root);
+		MarkTextureRootReleased(root);
+		root.ReleaseRef();
+		root = null;
+	}
+
+	/// Drops the registry's own keep alive reference for a root being released here, so the
+	/// sweep does not release it a second time.
+	private void MarkTextureRootReleased(RootView root)
+	{
+		for (int i = mTextureCanvasRoots.Count - 1; i >= 0; i--)
+		{
+			if (mTextureCanvasRoots[i].Root !== root)
+				continue;
+
+			mTextureCanvasRoots[i].Root.ReleaseRef();
+			delete mTextureCanvasRoots[i];
+			mTextureCanvasRoots.RemoveAt(i);
+		}
+	}
+
+	/// The component's sheet is a BACK POINTER: the view it was installed on owns it, so this
+	/// only forgets it.
+	private static void ReleaseSheet(ref StyleSheet sheet)
+	{
+		sheet = null;
 	}
 }
