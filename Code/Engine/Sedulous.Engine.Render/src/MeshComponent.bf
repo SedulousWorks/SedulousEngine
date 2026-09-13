@@ -22,7 +22,7 @@ namespace Sedulous.Engine.Render;
 /// The lists are BORROWED from the manager, which creates and frees them: a component is a
 /// struct in a packed pool and cannot own heap data.
 [SerializableComponent("mesh", 4)]
-struct MeshComponent : ISerializable
+struct MeshComponent : ISerializable, IComponentResources
 {
 	public Ref<StaticMesh> Mesh = .(Guid());
 	/// The serialized identities.
@@ -69,6 +69,20 @@ struct MeshComponent : ISerializable
 			var reference = Ref<Material>(Guid());
 			reference.SetDirect(material);
 			Materials.Add(reference);
+		}
+	}
+
+	/// Attaches every reference to the manager's proxies. The material CACHE is deliberately
+	/// left alone: extraction refreshes it from the refs once a frame, so a late cook heals
+	/// without a second resolve.
+	public void ResolveResources(ResourceManager manager) mut
+	{
+		Mesh.Bind(manager);
+		for (int i < Materials.Count)
+		{
+			var reference = Materials[i];
+			reference.Bind(manager);
+			Materials[i] = reference;
 		}
 	}
 

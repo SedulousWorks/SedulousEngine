@@ -3,6 +3,6 @@ using Sedulous.Scene;
 namespace Sedulous.Engine.Render;
 
 /// The pool of decals.
-class DecalComponentManager : SerializableComponentManager<DecalComponent>
+class DecalComponentManager : ResourceBindingComponentManager<DecalComponent>
 {
 }

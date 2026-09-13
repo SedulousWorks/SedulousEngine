@@ -11,7 +11,7 @@ namespace Sedulous.Engine.Render;
 ///
 /// It creates and frees every list a component points at, for the same reason the mesh pool
 /// does: the component is a struct the pool copies.
-class InstancedMeshComponentManager : SerializableComponentManager<InstancedMeshComponent>
+class InstancedMeshComponentManager : ResourceBindingComponentManager<InstancedMeshComponent>
 {
 	protected override void OnComponentCreated(InstancedMeshComponent* component,
 		EntityHandle entity)
@@ -35,15 +35,5 @@ class InstancedMeshComponentManager : SerializableComponentManager<InstancedMesh
 		DeleteAndNullify!(component.Tints);
 		DeleteAndNullify!(component.PoseIndices);
 		DeleteAndNullify!(component.WorldTransforms);
-	}
-
-	public void ResolveResources(ResourceManager resources, EntityHandle entity)
-	{
-		let component = Get(entity);
-		if (component == null)
-			return;
-
-		component.Mesh.Bind(resources);
-		component.Material.Bind(resources);
 	}
 }

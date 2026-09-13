@@ -23,7 +23,7 @@ namespace Sedulous.Engine.Render;
 ///
 /// Every list here is BORROWED from the manager, which creates and frees them.
 [SerializableComponent("instanced_mesh")]
-struct InstancedMeshComponent : ISerializable
+struct InstancedMeshComponent : ISerializable, IComponentResources
 {
 	public Ref<StaticMesh> Mesh = .(Guid());
 	public Ref<Material> Material = .(Guid());
@@ -81,6 +81,12 @@ struct InstancedMeshComponent : ISerializable
 	public this() {}
 
 	public uint32 Count => (uint32)Instances.Count;
+
+	public void ResolveResources(ResourceManager manager) mut
+	{
+		Mesh.Bind(manager);
+		Material.Bind(manager);
+	}
 
 	/// Replaces the whole set in one go, which is the fast path for static content: one
 	/// version bump rather than one per instance.

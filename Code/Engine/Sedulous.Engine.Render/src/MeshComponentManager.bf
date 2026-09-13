@@ -11,7 +11,7 @@ namespace Sedulous.Engine.Render;
 ///
 /// It creates and frees each component's material lists, because a component is a struct in a
 /// packed pool and cannot own heap data itself.
-class MeshComponentManager : SerializableComponentManager<MeshComponent>
+class MeshComponentManager : ResourceBindingComponentManager<MeshComponent>
 {
 	protected override void OnComponentCreated(MeshComponent* component, EntityHandle entity)
 	{
@@ -41,22 +41,5 @@ class MeshComponentManager : SerializableComponentManager<MeshComponent>
 			component.Mesh.Bind(resources);
 
 		return true;
-	}
-
-	/// Attaches every reference to the manager's proxies. The material CACHE is refreshed at
-	/// extract instead, once per frame, so a late cook heals without a reload.
-	public void ResolveResources(ResourceManager resources, EntityHandle entity)
-	{
-		let component = Get(entity);
-		if (component == null)
-			return;
-
-		component.Mesh.Bind(resources);
-		for (int i < component.Materials.Count)
-		{
-			var reference = component.Materials[i];
-			reference.Bind(resources);
-			component.Materials[i] = reference;
-		}
 	}
 }

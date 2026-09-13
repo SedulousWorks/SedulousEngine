@@ -14,7 +14,7 @@ namespace Sedulous.Engine.Render;
 /// the surface. Size is the box extents: x and y are the footprint, z is how far along the
 /// projection axis it reaches.
 [SerializableComponent("decal")]
-struct DecalComponent : ISerializable
+struct DecalComponent : ISerializable, IComponentResources
 {
 	/// A runtime override, which WINS over the asset. BORROWED.
 	public ITextureView Texture = null;
@@ -28,6 +28,12 @@ struct DecalComponent : ISerializable
 	public bool Visible = true;
 
 	public this() {}
+
+	/// The raw view override is runtime only, so only the ASSET reference binds.
+	public void ResolveResources(ResourceManager manager) mut
+	{
+		TextureAsset.Bind(manager);
+	}
 
 	public void Serialize(ISerializer ar) mut
 	{

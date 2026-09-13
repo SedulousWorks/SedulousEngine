@@ -10,7 +10,7 @@ namespace Sedulous.Engine.Render;
 
 /// A textured billboard drawn at the entity's world position, sized in world units.
 [SerializableComponent("sprite")]
-struct SpriteComponent : ISerializable
+struct SpriteComponent : ISerializable, IComponentResources
 {
 	/// A runtime override for a sample or procedural art, which WINS over the asset.
 	/// BORROWED: whoever made it keeps it alive while the component is attached.
@@ -30,6 +30,12 @@ struct SpriteComponent : ISerializable
 	public bool Visible = true;
 
 	public this() {}
+
+	/// The raw view override is runtime only, so only the ASSET reference binds.
+	public void ResolveResources(ResourceManager manager) mut
+	{
+		TextureAsset.Bind(manager);
+	}
 
 	public void Serialize(ISerializer ar) mut
 	{
