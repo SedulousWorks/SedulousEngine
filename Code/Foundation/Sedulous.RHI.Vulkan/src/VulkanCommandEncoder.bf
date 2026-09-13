@@ -623,8 +623,15 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 			.VK_QUERY_RESULT_64_BIT | .VK_QUERY_RESULT_WAIT_BIT);
 	}
 
+	/// The label calls are made UNCONDITIONALLY by callers, the render graph emitting one
+	/// per pass, so an unavailable extension has to degrade to NOTHING rather than to a
+	/// call through an unresolved entry point. The loader only resolves these when the
+	/// instance enabled the extension, and a null there is a crash on the first pass.
 	public void BeginDebugLabel(StringView label, float r, float g, float b, float a)
 	{
+		if (!VulkanBackend.DebugUtilsEnabled)
+			return;
+
 		let text = scope String(label);
 		VkDebugUtilsLabelEXT info = .();
 		info.pLabelName = text.CStr();
@@ -632,10 +639,19 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		VulkanNative.vkCmdBeginDebugUtilsLabelEXT(mCommandBuffer, &info);
 	}
 
-	public void EndDebugLabel() => VulkanNative.vkCmdEndDebugUtilsLabelEXT(mCommandBuffer);
+	public void EndDebugLabel()
+	{
+		if (!VulkanBackend.DebugUtilsEnabled)
+			return;
+
+		VulkanNative.vkCmdEndDebugUtilsLabelEXT(mCommandBuffer);
+	}
 
 	public void InsertDebugLabel(StringView label, float r, float g, float b, float a)
 	{
+		if (!VulkanBackend.DebugUtilsEnabled)
+			return;
+
 		let text = scope String(label);
 		VkDebugUtilsLabelEXT info = .();
 		info.pLabelName = text.CStr();

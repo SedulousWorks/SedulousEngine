@@ -56,7 +56,14 @@ class VulkanBackend : IBackend
 			return .Err;
 #endif
 
-		if (enableValidation)
+		// ASKED FOR rather than tied to validation. The debug label calls are made
+		// UNCONDITIONALLY by the render graph, once per pass, and the loader only resolves
+		// their entry points when the extension is enabled: leaving it off validation
+		// builds left every one of those calls pointing at null, which is a crash on the
+		// first pass of the first frame on the SHIPPING path. It is also what a frame
+		// capture reads the pass names out of, which nobody wants only in a validation
+		// build.
+		if (ProbeDebugUtils())
 			extensions.Add("VK_EXT_debug_utils");
 
 		let layers = scope List<char8*>();
@@ -101,6 +108,39 @@ class VulkanBackend : IBackend
 	/// Both are enabled when both are present, because the surface type is not decided
 	/// until a window exists: a shell may hand back a Wayland surface even where X11 is
 	/// also available.
+	/// Whether the instance enabled VK_EXT_debug_utils, and so whether the command label
+	/// entry points resolved to anything.
+	///
+	/// STATIC because Bulkan's entry points are: they are resolved once for the process, so
+	/// what a caller needs to know is whether THOSE are live, not which backend object it
+	/// came through.
+	private static bool sDebugUtilsEnabled = false;
+	public static bool DebugUtilsEnabled => sDebugUtilsEnabled;
+
+	/// Whether the loader has the debug utils extension at all. Enabling one it does not
+	/// have fails instance creation outright, so this is asked rather than assumed, exactly
+	/// as the surface extensions are.
+	private bool ProbeDebugUtils()
+	{
+		uint32 count = 0;
+		VulkanNative.vkEnumerateInstanceExtensionProperties(null, &count, null);
+		if (count == 0)
+			return false;
+
+		let available = scope VkExtensionProperties[count];
+		VulkanNative.vkEnumerateInstanceExtensionProperties(null, &count, &available[0]);
+
+		for (uint32 i = 0; i < count; i++)
+		{
+			if (StringView(&available[i].extensionName[0]) == "VK_EXT_debug_utils")
+			{
+				sDebugUtilsEnabled = true;
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private bool ProbeSurfaceExtensions(List<char8*> extensions)
 	{
 		uint32 count = 0;
