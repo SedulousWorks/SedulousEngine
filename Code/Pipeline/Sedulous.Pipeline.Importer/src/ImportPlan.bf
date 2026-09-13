@@ -27,33 +27,10 @@ class ImportPlan : ISerializable
 	/// Appends an entry and TAKES OWNERSHIP of it.
 	public void Add(ImportPlanEntry entry) => Entries.Add(entry);
 
-	/// Written by hand rather than through a list helper: the helpers take value types or
-	/// strings, and an entry is a class the list OWNS, so reading has to delete what was there
-	/// and allocate fresh ones.
 	public void Serialize(ISerializer ar)
 	{
 		ar.Key("entries");
-		uint32 count = (uint32)Entries.Count;
-		ar.BeginArray(ref count);
-
-		if (ar.Mode == .Read)
-		{
-			ClearAndDeleteItems!(Entries);
-			Entries.Reserve((int)count);
-			for (uint32 i < count)
-			{
-				let entry = new ImportPlanEntry();
-				entry.Serialize(ar);
-				Entries.Add(entry);
-			}
-		}
-		else
-		{
-			for (let entry in Entries)
-				entry.Serialize(ar);
-		}
-
-		ar.EndArray();
+		SerializeList(ar, Entries);
 	}
 
 	/// Re-import memory: overlays a PREVIOUS import's stored decisions onto a freshly described

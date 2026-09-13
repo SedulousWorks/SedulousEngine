@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Content;
+using Sedulous.Core.Serialization;
 using Sedulous.VFS;
 
 namespace Sedulous.Pipeline.Core;
@@ -32,6 +33,13 @@ class AssetBuildContext
 	/// pixels, has to come through here. Casting a cooked product back to its authoring
 	/// envelope does not work, which is the lesson the terrain palette cook paid for.
 	public IContentDatabase SourceDatabase = null;
+
+	/// How to make a serializer, for a builder that has to round trip data through one.
+	///
+	/// Not in Raptor's version, which deep copies with a copy constructor. Beef has none, so a
+	/// faithful clone of a polymorphic graph goes out through a serializer and back, and the
+	/// factory is the driver's to choose.
+	public SerializerFactory Serializers = null;
 
 	/// The target being produced for, which a variant builder reads its encoder profile from.
 	public CookTarget Target = .Host;

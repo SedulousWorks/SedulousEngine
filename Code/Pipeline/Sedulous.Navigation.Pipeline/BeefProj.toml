@@ -7,3 +7,8 @@ StartupObject = "Sedulous.Navigation.Pipeline.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Navigation" = "*"
+"Sedulous.Navigation.Resource" = "*"
+"Sedulous.Pipeline.Core" = "*"

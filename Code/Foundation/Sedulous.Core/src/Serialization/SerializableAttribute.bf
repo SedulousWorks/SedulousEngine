@@ -96,11 +96,27 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 				if (!field.IsInstanceField || (field.DeclaringType != declaring))
 					continue;
 
+				// Deliberately left out: state that is not part of what the object IS, or bulk
+				// that travels beside the envelope rather than inside it.
+				if (field.GetCustomAttribute<NotSerializedAttribute>() case .Ok)
+					continue;
+
 				body.AppendF("\tar.Key(\"{}\");\n", WireKey(field.Name, .. scope String()));
 
-				// A type that knows how to describe ITSELF does. That is the escape hatch for
-				// anything the dispatcher cannot know about: a resource reference stores only
-				// its identity, and Core cannot be told what a resource is.
+				// A field that IS serializable goes through the interface, checked before the
+				// self Serialize below: [Serializable] emits an EXPLICIT implementation, which
+				// a direct call cannot reach, so naming the method would emit code that does
+				// not compile. The overload takes the handle and dispatches.
+				if (field.FieldType.ImplementsInterface(typeof(ISerializable)))
+				{
+					body.AppendF("\tSedulous.Core.Serialization.Serialize(ar, {});\n", field.Name);
+					continue;
+				}
+
+				// A type that knows how to describe ITSELF does, without implementing the
+				// interface. That is the escape hatch for anything the dispatcher cannot know
+				// about: a resource reference stores only its identity, and Core cannot be told
+				// what a resource is.
 				if (HasSelfSerialize(field.FieldType))
 				{
 					body.AppendF("\t{}.Serialize(ar);\n", field.Name);

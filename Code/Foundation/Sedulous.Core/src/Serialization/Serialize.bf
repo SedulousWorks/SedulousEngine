@@ -236,6 +236,37 @@ static
 		ar.EndArray();
 	}
 
+	/// The same for a list of OBJECTS that describe themselves, which neither overload above
+	/// can take: the element is a reference, and what gets stored is the object it points at.
+	///
+	/// THE LIST OWNS ITS ITEMS. Reading deletes what was there and constructs fresh ones, so a
+	/// reused list neither accumulates nor leaks.
+	public static void SerializeList<T>(ISerializer ar, List<T> list)
+		where T : ISerializable, class, new, delete
+	{
+		uint32 count = (uint32)list.Count;
+		ar.BeginArray(ref count);
+
+		if (ar.Mode == .Read)
+		{
+			ClearAndDeleteItems!(list);
+			list.Reserve((int)count);
+			for (uint32 i < count)
+			{
+				let element = new T();
+				element.Serialize(ar);
+				list.Add(element);
+			}
+		}
+		else
+		{
+			for (int i < list.Count)
+				list[i].Serialize(ar);
+		}
+
+		ar.EndArray();
+	}
+
 	// ---- named fields ----
 	//
 	// The key is emitted for every field whatever the backend is: binary ignores it, text

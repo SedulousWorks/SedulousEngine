@@ -97,7 +97,8 @@ static class ImportPaths
 				continue;
 			defer delete object;
 
-			let asset = object as Asset;
+			// An interface handle reaches its class through the object it is part of.
+			let asset = Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(object)) as Asset;
 			if ((asset == null) || (asset.FileName.Value != fileName))
 				continue;
 

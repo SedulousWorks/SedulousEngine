@@ -7,3 +7,8 @@ StartupObject = "Sedulous.Input.Pipeline.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Input" = "*"
+"Sedulous.Input.Resource" = "*"
+"Sedulous.Pipeline.Core" = "*"
