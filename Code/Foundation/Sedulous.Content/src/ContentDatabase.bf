@@ -103,6 +103,11 @@ class ContentDatabase : IContentDatabase
 	/// Makes a serializer for a stream. THE CALLER OWNS the context.
 	public SerializerContext CreateSerializer(IStream stream, SerializeMode mode) => mFactory(stream, mode);
 
+	/// The factory itself, for a caller that has to hand it on rather than use it: a cook
+	/// passes it to every builder, since Beef has no copy constructor and a faithful clone of
+	/// a polymorphic graph goes out through a serializer and back.
+	public SerializerFactory Serializers => mFactory;
+
 	// ---- tooling ----
 
 	/// Removes an instance: its envelope and every data-stream sidecar, then its place in

@@ -7,3 +7,13 @@ StartupObject = "Sedulous.Terrain.Pipeline.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Image" = "*"
+"Sedulous.Image.IO" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Pipeline.Importer" = "*"
+"Sedulous.Terrain" = "*"
+"Sedulous.Terrain.Resource" = "*"
+"Sedulous.Texture.Pipeline" = "*"
+"Sedulous.VFS" = "*"
