@@ -8,3 +8,8 @@ StartupObject = "Sedulous.Engine.Audio.Tests.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Engine.Audio" = "*"
+"Sedulous.Audio" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Scene.Resource" = "*"
+"Sedulous.Settings" = "*"
