@@ -3,7 +3,11 @@ using System;
 namespace Sedulous.Core;
 
 /// Position, Rotation and Scale, composed as S * R * T.
-[CRepr]
+///
+/// REFLECTED, because a property animation track names the transform as a target and resolves
+/// its path against this type. Beef's reflection is opt in, so a track over an unreflected
+/// transform would simply not resolve.
+[CRepr, Reflect(.Type | .NonStaticFields)]
 struct Transform
 {
 	public Float3 Position = Float3.Zero;

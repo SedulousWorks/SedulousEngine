@@ -80,12 +80,28 @@ static class PropertyBindingResolver
 	public static Result<void> Write(PropertyBinding binding, Object instance,
 		PropertyValue value)
 	{
-		if ((binding == null) || !binding.IsResolved || (instance == null) || !value.HasValue)
+		if (instance == null)
+			return .Err;
+		return Write(binding, Internal.UnsafeCastToPtr(instance), instance.GetType(), value);
+	}
+
+	/// The same write against a RAW instance: an address and the type that describes it.
+	///
+	/// What an engine component needs. A component lives as a struct inside its manager's
+	/// packed pool rather than as an object, so there is no reference to hand over, and the
+	/// pool's storage moves under it as components are added and removed. Nothing is cached:
+	/// the caller re-derives the address every write and this walks from it afresh.
+	public static Result<void> Write(PropertyBinding binding, void* instance, Type instanceType,
+		PropertyValue value)
+	{
+		if ((binding == null) || !binding.IsResolved || (instance == null)
+			|| (instanceType == null) || !value.HasValue)
 			return .Err;
 
 		void* address = ?;
 		Type ownerType = ?;
-		if (!(WalkToLeafOwner(binding, instance, out address, out ownerType) case .Ok))
+		if (!(WalkToLeafOwner(binding, instance, instanceType, out address, out ownerType)
+			case .Ok))
 			return .Err;
 
 		let leaf = binding.Chain[binding.Chain.Length - 1];
@@ -108,12 +124,22 @@ static class PropertyBindingResolver
 	/// type is not one a track animates.
 	public static PropertyValue Read(PropertyBinding binding, Object instance)
 	{
-		if ((binding == null) || !binding.IsResolved || (instance == null))
+		if (instance == null)
+			return .Empty;
+		return Read(binding, Internal.UnsafeCastToPtr(instance), instance.GetType());
+	}
+
+	/// The same read against a RAW instance, for the same reason the raw write exists.
+	public static PropertyValue Read(PropertyBinding binding, void* instance, Type instanceType)
+	{
+		if ((binding == null) || !binding.IsResolved || (instance == null)
+			|| (instanceType == null))
 			return .Empty;
 
 		void* address = ?;
 		Type ownerType = ?;
-		if (!(WalkToLeafOwner(binding, instance, out address, out ownerType) case .Ok))
+		if (!(WalkToLeafOwner(binding, instance, instanceType, out address, out ownerType)
+			case .Ok))
 			return .Empty;
 
 		let leaf = binding.Chain[binding.Chain.Length - 1];
@@ -151,11 +177,11 @@ static class PropertyBindingResolver
 
 	/// Walks the chain down to the leaf's OWNER, answering that owner's address and type. The
 	/// walk starts fresh from the live instance every time.
-	private static Result<void> WalkToLeafOwner(PropertyBinding binding, Object instance,
-		out void* address, out Type ownerType)
+	private static Result<void> WalkToLeafOwner(PropertyBinding binding, void* instance,
+		Type instanceType, out void* address, out Type ownerType)
 	{
-		address = Internal.UnsafeCastToPtr(instance);
-		ownerType = instance.GetType();
+		address = instance;
+		ownerType = instanceType;
 
 		let chain = binding.Chain;
 		for (int i = 0; (i + 1) < chain.Length; i++)
