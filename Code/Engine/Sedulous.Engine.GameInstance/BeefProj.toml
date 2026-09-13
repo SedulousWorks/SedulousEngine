@@ -7,3 +7,13 @@ StartupObject = "Sedulous.Engine.GameInstance.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Input" = "*"
+"Sedulous.Messaging" = "*"
+"Sedulous.Net.Manager" = "*"
+"Sedulous.Net.Replication" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Scene.Resource" = "*"
+"Sedulous.Engine.Net" = "*"
