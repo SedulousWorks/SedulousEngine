@@ -7,4 +7,8 @@ StartupObject = "Sedulous.Pipeline.Importer.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Pipeline.Core" = "*"
 "Sedulous.Pipeline.Importer" = "*"
+"Sedulous.VFS" = "*"
