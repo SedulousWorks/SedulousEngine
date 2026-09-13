@@ -67,6 +67,22 @@ class RenderSubsystem : Subsystem, ISceneObserver
 	/// frame's submission.
 	private GpuRetireQueue mRetireQueue = new .() ~ delete _;
 
+	// ---- the snapshot pool ----
+	//
+	// One snapshot per scene per frame, REUSED across frames rather than reallocated, with the
+	// owners recorded alongside so two views of one scene share the extraction instead of
+	// doing it twice.
+	private List<ExtractedScene> mScenes = new .() ~ DeleteContainerAndItems!(_);
+	private int mSceneCount = 0;
+	private List<Scene> mSnapshotOwners = new .() ~ delete _;
+	/// Per worker extraction arenas, provisioned once a frame.
+	private RenderContext mRenderContext = new .() ~ delete _;
+
+	/// Read once, from the environment, so an occlusion debug view can be forced on without a
+	/// rebuild when comparing backends.
+	private bool mAoDebugEnvRead = false;
+	private int32 mAoDebugEnv = 0;
+
 	// ---- global post override ----
 	//
 	// Exposure, bloom and the rest are AUTHORED per scene and resolved per view. These stay as
@@ -599,5 +615,74 @@ class RenderSubsystem : Subsystem, ISceneObserver
 		// The GPU has to finish before anything it is still reading is freed.
 		mDevice.WaitIdle();
 		mRetireQueue.Flush();
+	}
+
+	// ---- the frame ---------------------------------------------------------------------------
+
+	/// Opens the frame: hands the renderer everything it needs for it, then begins recording.
+	public void BeginRendering(ICommandEncoder encoder, uint32 frameIndex)
+	{
+		if (mFrame == null)
+			return;
+
+		// A shader reload rebuilds pipelines stamped with the old version, so the GPU is
+		// idled first to let the passes destroy and rebuild theirs immediately. A development
+		// hiccup only; the material path still goes through the retire ring.
+		if ((mShaders != null) && (mShaders.PumpReloads() > 0))
+			mDevice.WaitIdle();
+
+		mSceneCount = 0;
+		// Per frame tags, which is what lets two views of one scene share its snapshot.
+		mSnapshotOwners.Clear();
+		for (int i < mScenes.Count)
+			mSnapshotOwners.Add(null);
+
+		// One arena per worker slot, or a single one where there is no job system.
+		let slotCount = HasGlobalJobSystem() ? (uint32)GlobalJobs().SlotCount : 1;
+		mRenderContext.BeginFrame(slotCount);
+
+		// Frees what has aged past every frame still in flight.
+		mRetireQueue.Tick();
+
+		mFrame.SetExposure(mExposure);
+		mFrame.SetBloom(mBloomEnabled ? mBloomIntensity : 0.0f, mBloomThreshold, mBloomKnee);
+		mFrame.SetTaa(mTaaEnabled, mTaaBlend, mTaaGamma, mTaaMotionScale);
+		mFrame.SetShadowParams(mShadowDistance, mShadowFarFade);
+
+		// A debug harness: the environment can force the occlusion debug channel to screen, so
+		// the reconstruction can be compared across backends without a rebuild.
+		if (!mAoDebugEnvRead)
+		{
+			mAoDebugEnvRead = true;
+			let value = scope String();
+			if ((Environment.GetEnvironmentVariable("ENV_AO_DEBUG", value) case .Ok)
+				&& !value.IsEmpty)
+			{
+				let first = value[0];
+				if (first.IsDigit)
+					mAoDebugEnv = (int32)(first - '0');
+			}
+		}
+		if (mAoDebugEnv != 0)
+			mAoDebug = mAoDebugEnv;
+
+		mFrame.SetAo(mAoMode, mAoStrength, mAoRadius, mAoIntensity, mAoDebug);
+		mFrame.SetFxaa(mFxaaEnabled, mFxaaSubpixel);
+		mFrame.SetInstanceSharing(mInstanceSharing);
+		mFrame.SetViewCulling(mViewCulling);
+		mFrame.SetDebug(mDebugPass, mDebugGlobal, mDebugScreen);
+		mFrame.SetSceneOverlays(mSceneOverlays.LiveItems);
+		mFrame.SetDecal(mDecalPass);
+		mFrame.SetSsr(mSsrPass);
+		mFrame.SetSsgi(mSsgiPass);
+		mFrame.SetSsrParams(mSsrEnabled, mSsrParams);
+		mFrame.SetMsaaResolve(mMsaaResolvePass);
+		mFrame.SetProbes(mProbeSystem);
+
+		// The probe records re-accumulate per scene, so they start empty each frame.
+		if (mProbeSystem != null)
+			mProbeSystem.BeginFrame();
+
+		mFrame.Begin(encoder, frameIndex);
 	}
 }

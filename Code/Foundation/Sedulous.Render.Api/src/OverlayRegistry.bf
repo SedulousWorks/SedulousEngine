@@ -52,4 +52,8 @@ class OverlayRegistry<TOverlay> where TOverlay : IOverlay
 
 	/// In order. BORROWED: the registry owns nothing here.
 	public Span<TOverlay> Items => .(mItems.Ptr, mItems.Count);
+
+	/// The live list, BORROWED, for a consumer that holds it across a frame rather than
+	/// reading it once. A span would go stale the moment the registry grew.
+	public List<TOverlay> LiveItems => mItems;
 }
