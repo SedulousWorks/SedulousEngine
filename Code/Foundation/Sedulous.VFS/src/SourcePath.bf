@@ -29,6 +29,10 @@ class SourcePath
 		Normalize(raw, mValue);
 	}
 
+	/// Replaces the path in place, normalising as a constructor does. An importer writing a
+	/// fresh asset sets this rather than building a second object to assign over.
+	public void Set(StringView raw) => Normalize(raw, mValue);
+
 	public StringView Value => mValue;
 	public bool IsEmpty => mValue.IsEmpty;
 

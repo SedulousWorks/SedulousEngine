@@ -58,6 +58,13 @@ struct SerializableRegistryAttribute : Attribute, IComptimeTypeApply
 			if (!namespacePrefix.IsEmpty && !name.StartsWith(namespacePrefix))
 				continue;
 
+			// EXACTLY this namespace, not merely under it. A prefix match also catches a CHILD
+			// namespace, whose types this project cannot name either: Sedulous.Geometry's
+			// registry would claim Sedulous.Geometry.Pipeline's assets and emit references
+			// that do not compile.
+			if (name.Substring(namespacePrefix.Length).Contains('.'))
+				continue;
+
 			body.AppendF("\ttarget.Register({}.TypeId, () => new {}());\n", name, name);
 		}
 

@@ -7,3 +7,10 @@ StartupObject = "Sedulous.Geometry.Pipeline.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Geometry" = "*"
+"Sedulous.Geometry.Resource" = "*"
+"Sedulous.Lod" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"meshoptimizer-Beef" = "*"

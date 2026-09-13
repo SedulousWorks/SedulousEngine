@@ -7,4 +7,13 @@ StartupObject = "Sedulous.UI.Pipeline.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Pipeline.Importer" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.UI" = "*"
+"Sedulous.UI.Gamekit" = "*"
 "Sedulous.UI.Pipeline" = "*"
+"Sedulous.UI.Resource" = "*"
+"Sedulous.VFS" = "*"
