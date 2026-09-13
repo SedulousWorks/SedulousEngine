@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Engine.Input;
 using Sedulous.Engine.Scene;
 using Sedulous.Engine.UI;
 using Sedulous.Runtime;
@@ -19,9 +20,14 @@ class UITestFixture
 	public SceneSubsystem SceneSystems;
 	public UISubsystem UI;
 
+	/// Null unless the case asked for input. The CONTEXT never owns this one, since the
+	/// subsystem takes a constructor argument and only a default constructible one can be
+	/// added by type, so the fixture frees it.
+	public InputSubsystem Input ~ delete _;
+
 	private SceneModule mUIModule;
 
-	public this()
+	public this(bool withInput = false)
 	{
 		SceneSystems = Context.AddSubsystem<SceneSubsystem>();
 		SceneSystems.RegisterManager(Scenes);
@@ -31,13 +37,21 @@ class UITestFixture
 		// TAKES OWNERSHIP of what it is given.
 		SceneSystems.SetComposition(SceneComposition.Build(modules));
 
+		if (withInput)
+		{
+			Input = new InputSubsystem(null);
+			Context.RegisterSubsystem(Input);
+		}
+
 		UI = Context.AddSubsystem<UISubsystem>();
 		Context.Startup();
 	}
 
 	public ~this()
 	{
-		Context.Shutdown();
+		// DISPOSE rather than shut down: unregistering has to happen while the borrowed
+		// input subsystem is still alive, and the field destructors run after this body.
+		Context.Dispose();
 	}
 
 	/// One frame of the opening lane, which is where the UI's work runs.
