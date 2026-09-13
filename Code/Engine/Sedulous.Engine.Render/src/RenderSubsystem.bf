@@ -50,6 +50,17 @@ class RenderSubsystem : Subsystem, ISceneObserver
 	private ShadowSystem mShadowSystem = null ~ delete _;
 	private IBLSystem mIblSystem = null ~ delete _;
 	private ReflectionProbeSystem mProbeSystem = null ~ delete _;
+	private SkyPass mSkyPass = null ~ delete _;
+	private BloomPass mBloomPass = null ~ delete _;
+	private TaaPass mTaaPass = null ~ delete _;
+	private AoPass mAoPass = null ~ delete _;
+	private SsrPass mSsrPass = null ~ delete _;
+	private SsgiPass mSsgiPass = null ~ delete _;
+	private FxaaPass mFxaaPass = null ~ delete _;
+	private DebugBlitPass mDebugBlitPass = null ~ delete _;
+	private DecalPass mDecalPass = null ~ delete _;
+	private DebugDrawPass mDebugPass = null ~ delete _;
+	private ExposurePass mExposurePass = null ~ delete _;
 
 	/// Every grow path replacement retires through this instead of idling the GPU mid frame,
 	/// which on the web would pump the event loop, expire the canvas texture and drop the
@@ -80,8 +91,8 @@ class RenderSubsystem : Subsystem, ISceneObserver
 	private uint32 mGlobalMsaaSamples = 1;
 	/// The ceiling the device reported, filled once the passes are built.
 	private uint32 mMaxMsaaSamples = 1;
-	/// BORROWED from the pass set; null means multisampling is unavailable.
-	private MsaaResolvePass mMsaaResolvePass = null;
+	/// Null means multisampling is unavailable, whatever the device reports.
+	private MsaaResolvePass mMsaaResolvePass = null ~ delete _;
 	private bool mInstanceSharing = true;
 	private bool mViewCulling = false;
 	private bool mFxaaEnabled = false;
@@ -501,5 +512,92 @@ class RenderSubsystem : Subsystem, ISceneObserver
 		mProbeSystem = new ReflectionProbeSystem(mDevice, mShaders);
 		if (mProbeSystem.Initialize() case .Err)
 			DeleteAndNullify!(mProbeSystem);
+
+		// The visible sky, drawn from the environment.
+		mSkyPass = new SkyPass(mDevice, mShaders, mFramesInFlight);
+		if (mSkyPass.Initialize() case .Err)
+			DeleteAndNullify!(mSkyPass);
+
+		mBloomPass = new BloomPass(mDevice, mShaders);
+		if (mBloomPass.Initialize() case .Err)
+			DeleteAndNullify!(mBloomPass);
+
+		mTaaPass = new TaaPass(mDevice, mShaders);
+		if (mTaaPass.Initialize() case .Err)
+			DeleteAndNullify!(mTaaPass);
+
+		mAoPass = new AoPass(mDevice, mShaders);
+		if (mAoPass.Initialize() case .Err)
+			DeleteAndNullify!(mAoPass);
+
+		mSsrPass = new SsrPass(mDevice, mShaders);
+		if (mSsrPass.Initialize() case .Err)
+			DeleteAndNullify!(mSsrPass);
+
+		mSsgiPass = new SsgiPass(mDevice, mShaders);
+		if (mSsgiPass.Initialize() case .Err)
+			DeleteAndNullify!(mSsgiPass);
+
+		// Without the resolve pass multisampling is unavailable whatever the device can do,
+		// and every view clamps itself to one sample.
+		mMsaaResolvePass = new MsaaResolvePass(mDevice, mShaders);
+		if (mMsaaResolvePass.Initialize() case .Err)
+			DeleteAndNullify!(mMsaaResolvePass);
+
+		mMaxMsaaSamples = (mMsaaResolvePass != null) ? mDevice.MaxColorDepthSampleCount : 1;
+		GlobalLog(.Information, "RenderSubsystem: scene pass multisampling resolve={} ceiling={}x",
+			(mMsaaResolvePass != null) ? "ok" : "FAILED", mMaxMsaaSamples);
+
+		mFxaaPass = new FxaaPass(mDevice, mShaders, mFramesInFlight);
+		if (mFxaaPass.Initialize() case .Err)
+			DeleteAndNullify!(mFxaaPass);
+
+		mDebugBlitPass = new DebugBlitPass(mDevice, mShaders, mFramesInFlight);
+		if (mDebugBlitPass.Initialize() case .Err)
+			DeleteAndNullify!(mDebugBlitPass);
+
+		mDecalPass = new DecalPass(mDevice, mShaders, mFramesInFlight);
+		if (mDecalPass.Initialize() case .Err)
+			DeleteAndNullify!(mDecalPass);
+		else
+			mDecalPass.SetRetireQueue(mRetireQueue);
+
+		mDebugPass = new DebugDrawPass(mDevice, mShaders, mFramesInFlight);
+		if (mDebugPass.Initialize() case .Err)
+			DeleteAndNullify!(mDebugPass);
+
+		// Auto exposure goes quiet if this fails; the fixed setting still works.
+		mExposurePass = new ExposurePass(mDevice, mShaders, mFramesInFlight);
+		if (mExposurePass.Initialize() case .Err)
+			DeleteAndNullify!(mExposurePass);
+
+		mFrame = new RenderFrame(mDevice, mRegistry, mFramesInFlight, mClusterSystem,
+			mTonemapPass, mShadowSystem, mIblSystem, mSkyPass, mBloomPass, mTaaPass, mAoPass,
+			mFxaaPass, mExposurePass, mDebugBlitPass);
+		// Per pass timestamps, cheap enough to leave on and read from a debug dump.
+		mFrame.EnableGpuProfiling();
+	}
+
+	/// Registers as a scene observer, which is how the borrowed providers get cleaned up.
+	protected override void OnReady()
+	{
+		if (Context == null)
+			return;
+
+		if (let scenes = Context.GetSubsystem<Sedulous.Engine.Scene.SceneSubsystem>())
+			scenes.RegisterObserver(this, .Destroying);
+	}
+
+	protected override void OnShutdown()
+	{
+		if (Context != null)
+		{
+			if (let scenes = Context.GetSubsystem<Sedulous.Engine.Scene.SceneSubsystem>())
+				scenes.UnregisterObserver(this);
+		}
+
+		// The GPU has to finish before anything it is still reading is freed.
+		mDevice.WaitIdle();
+		mRetireQueue.Flush();
 	}
 }
