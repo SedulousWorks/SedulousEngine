@@ -67,6 +67,9 @@ class UISubsystem : Subsystem, ISceneObserver
 	private InputSubsystem mInput = null;
 	private RenderSubsystem mRender = null;
 
+	/// Gates the canvas textures to ONE pass per UI frame.
+	private uint64 mCanvasTexturesSerial = uint64.MaxValue;
+
 	/// Gates the vector rings to ONE rewind per UI frame.
 	private uint64 mFrameSerial = 0;
 
