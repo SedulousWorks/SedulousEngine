@@ -7,3 +7,12 @@ StartupObject = "Sedulous.Heightfield.Pipeline.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Heightfield" = "*"
+"Sedulous.Heightfield.Resource" = "*"
+"Sedulous.Image" = "*"
+"Sedulous.Image.IO" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Pipeline.Importer" = "*"
+"Sedulous.VFS" = "*"
