@@ -262,6 +262,13 @@ class DefaultApplication : IApplication
 		RegisterStandardFactories(resources, host);
 	}
 
+	/// Nothing by default: a subclass hooks the moment the engine is up and the project can
+	/// start being read.
+	public virtual void OnLaunch(IApplicationHost host) {}
+
+	/// And the moment the run is asked to end, before anything is torn down.
+	public virtual void OnExit(IApplicationHost host) {}
+
 	public virtual void OnUpdate(IApplicationHost host, float deltaTime)
 	{
 		// Finish the async loads FIRST, so this frame's spawns and ticks see ready
