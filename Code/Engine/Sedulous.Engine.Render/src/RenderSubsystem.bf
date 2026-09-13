@@ -4,6 +4,7 @@ using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.Materials;
 using Sedulous.Materials.PipelineCache;
+using Sedulous.Profiler;
 using Sedulous.Render;
 using Sedulous.RHI;
 using Sedulous.Runtime;
@@ -17,7 +18,7 @@ namespace Sedulous.Engine.Render;
 ///
 /// It renders rather than ticks, which is why it sorts LATE: everything that moves has
 /// already moved by the time it runs.
-class RenderSubsystem : Subsystem, ISceneObserver
+class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRenderer
 {
 	/// BORROWED: the owner outlives the subsystem.
 	private IDevice mDevice;
@@ -125,6 +126,22 @@ class RenderSubsystem : Subsystem, ISceneObserver
 	private DebugDraw mDebugScreen = new .() ~ delete _;
 	private Dictionary<Scene, DebugDraw> mDebugScenes = new .() ~ DeleteDictionaryAndValues!(_);
 	private Dictionary<void*, DebugDraw> mDebugViews = new .() ~ DeleteDictionaryAndValues!(_);
+
+	// ---- the screen overlay attachment ----
+	//
+	// A stencil buffer for the screen tier's stencil then cover fills, cached at the target
+	// size. A resize RETIRES the old pair rather than destroying it, because a frame still in
+	// flight may be reading it, and recreates at the new size.
+	private bool mOverlayDsProbed = false;
+	private TextureFormat mOverlayDsFormat = .Undefined;
+	private ITexture mOverlayDsTexture = null;
+	private ITextureView mOverlayDsView = null;
+	private uint32 mOverlayDsWidth = 0;
+	private uint32 mOverlayDsHeight = 0;
+
+	/// The PREVIOUS frame's graph inventory, OWNED, taken at compose time while the graph
+	/// still holds it: the next begin rebuilds the graph and it would be gone.
+	private List<DebugResourceInfo> mDebugResourceSnapshot = new .() ~ DeleteContainerAndItems!(_);
 
 	public this(IDevice device, uint32 framesInFlight)
 	{
@@ -615,6 +632,13 @@ class RenderSubsystem : Subsystem, ISceneObserver
 		// The GPU has to finish before anything it is still reading is freed.
 		mDevice.WaitIdle();
 		mRetireQueue.Flush();
+
+		// The screen overlay attachment is not retired but destroyed outright: the device is
+		// idle, so nothing is still reading it.
+		if (mOverlayDsView != null)
+			mDevice.DestroyTextureView(ref mOverlayDsView);
+		if (mOverlayDsTexture != null)
+			mDevice.DestroyTexture(ref mOverlayDsTexture);
 	}
 
 	// ---- the frame ---------------------------------------------------------------------------
@@ -684,5 +708,333 @@ class RenderSubsystem : Subsystem, ISceneObserver
 			mProbeSystem.BeginFrame();
 
 		mFrame.Begin(encoder, frameIndex);
+	}
+
+	/// Collects a scene, seen from its primary camera or from the override, into the frame.
+	/// Between the brackets.
+	public void RenderScene(Scene scene, ITextureView target, TextureFormat targetFormat,
+		uint32 width, uint32 height, ViewportRect viewport = .(),
+		CameraOverride* cameraOverride = null, TargetState targetState = .(),
+		ViewPostOverride* postOverride = null, void* viewportKey = null,
+		ViewDebugView debugView = null)
+	{
+		if ((mFrame == null) || (target == null))
+			return;
+
+		// ONE extraction per scene per frame: a scene rendered through several views, which is
+		// what a split screen is, shares one snapshot, so the per scene shadow, probe and image
+		// based lighting work grouped on the snapshot downstream runs once rather than per
+		// view. Scenes must not mutate between the renders of one frame, which is the bracket's
+		// contract.
+		ExtractedScene snapshot = null;
+		for (int i < mSceneCount)
+		{
+			if (mSnapshotOwners[i] === scene)
+			{
+				snapshot = mScenes[i];
+				break;
+			}
+		}
+
+		let firstSight = (snapshot == null);
+		if (firstSight)
+		{
+			snapshot = AcquireScene();
+			while (mSnapshotOwners.Count < mSceneCount)
+				mSnapshotOwners.Add(null);
+			mSnapshotOwners[mSceneCount - 1] = scene;
+
+			using (ProfileScope("Render.Extract"))
+			{
+				// Parallel where the job system is up, and it resets the snapshot itself.
+				RenderExtract.ExtractSceneInto(scene, snapshot, mRenderContext);
+				// The instanced sets: one item each, so O(1) a frame rather than per instance.
+				RenderExtract.ExtractInstancedMeshesInto(scene, snapshot);
+				// Billboards, into the same snapshot and after the meshes.
+				if (mSpriteRenderer != null)
+					RenderExtract.ExtractSpritesInto(scene, snapshot, mSpriteRenderer.RendererId);
+				// Screen space decals, which are the decal pass rather than the renderer path.
+				RenderExtract.ExtractDecalsInto(scene, snapshot);
+				// Lights are shading inputs, not draws.
+				RenderExtract.ExtractLightsInto(scene, snapshot);
+				RenderExtract.ExtractReflectionProbesInto(scene, snapshot);
+				RenderExtract.ExtractEnvironmentInto(scene, snapshot);
+
+				// Downstream systems, particles and world space UI among them, registered for
+				// THIS scene contribute into the same snapshot, which is what keeps the
+				// renderer ignorant of their types.
+				for (let provider in mProviders)
+				{
+					if ((provider.Scene === scene) && (provider.Provider != null))
+						provider.Provider.ExtractRenderData(snapshot);
+				}
+
+				// Maps the probes onto persistent array slots; the capture itself is later.
+				if (mProbeSystem != null)
+					mProbeSystem.Assign(snapshot, snapshot.ReflectionProbes);
+			}
+		}
+
+		var camera = ViewCamera();
+		// The cornflower fallback, for a scene with no primary camera.
+		var clearColor = Color(0.392f, 0.584f, 0.929f, 1.0f);
+		if (cameraOverride != null)
+		{
+			camera = cameraOverride.Camera;
+			clearColor = cameraOverride.ClearColor;
+		}
+		else
+		{
+			// The clear comes from the camera.
+			RenderExtract.ExtractPrimaryCamera(scene, ref camera, &clearColor);
+		}
+
+		var settings = ViewSettings();
+		settings.Clear = .(clearColor.R, clearColor.G, clearColor.B, clearColor.A);
+		settings.ViewportX = viewport.X;
+		settings.ViewportY = viewport.Y;
+		settings.ViewportWidth = viewport.Width;
+		settings.ViewportHeight = viewport.Height;
+		settings.TargetTexture = targetState.Texture;
+		settings.TargetCurrentState = targetState.CurrentState;
+		settings.TargetFinalState = targetState.FinalState;
+
+		// This view's post processing. The programmatic global override, which is a sample's
+		// debug panel, wins once touched; otherwise the scene's authored settings drive, with
+		// the exposure authored in stops resolved to the tonemap's linear multiplier. The
+		// antialiasing and reflection settings stay frame global.
+		if (mGlobalPostActive)
+		{
+			settings.Post.Exposure = mExposure;
+			// The legacy global API has no operator toggle.
+			settings.Post.AgxTonemap = true;
+			settings.Post.BloomEnabled = mBloomEnabled;
+			settings.Post.BloomThreshold = mBloomThreshold;
+			settings.Post.BloomKnee = mBloomKnee;
+			settings.Post.BloomIntensity = mBloomIntensity;
+			settings.Post.AoMode = (uint32)mAoMode;
+			settings.Post.AoStrength = mAoStrength;
+			settings.Post.AoRadius = mAoRadius;
+			settings.Post.AoIntensity = mAoIntensity;
+			settings.Post.TaaEnabled = mTaaEnabled;
+			settings.Post.TaaBlend = mTaaBlend;
+			settings.Post.TaaGamma = mTaaGamma;
+			settings.Post.FxaaEnabled = mFxaaEnabled;
+			settings.Post.FxaaSubpixel = mFxaaSubpixel;
+			settings.Post.SsrEnabled = mSsrEnabled;
+			settings.Post.SsrIntensity = mSsrParams.Intensity;
+			settings.Post.MsaaSamples = (uint8)mGlobalMsaaSamples;
+		}
+		else if (let post = scene.GetSystem<PostProcessSystem>())
+		{
+			settings.Post = ScenePost.Resolve(*post.Post);
+		}
+
+		// An editor viewport's show flags: ephemeral per view overrides that strip effects for
+		// editing clarity, layered ON TOP of the resolved settings and never written back.
+		if (postOverride != null)
+			ScenePost.ApplyOverride(ref settings.Post, *postOverride);
+
+		// The editor's debug view: a pass through selection, validated per view at declare
+		// time, so an unknown resource name simply shows the final image.
+		if (debugView != null)
+			settings.Debug = debugView;
+
+		// The motion vector requirement settles AFTER the overrides: antialiasing OR a temporal
+		// reflection pass. The reflection temporal flag is frame global, which is why the
+		// disjunction lands here rather than in the resolve.
+		settings.Post.NeedsMotion = settings.Post.TaaEnabled
+			|| (settings.Post.SsrEnabled && mSsrParams.Temporal)
+			// The indirect lighting's temporal resolve reprojects by velocity.
+			|| settings.Post.SsgiEnabled;
+
+		// The scene pass's multisampling: the AUTHORED intent snapped to what the device does.
+		// The supported set is NOT one through the ceiling, the web backend supporting only one
+		// and four and never two, so this clamps to the ceiling and then snaps DOWN to the
+		// nearest supported count. An unsupported count reaching texture or pipeline creation
+		// aborts the device, so it is the snap rather than the clamp that keeps a request for
+		// two from taking the web down.
+		{
+			var samples = (uint32)settings.Post.MsaaSamples;
+			if (samples < 1)
+				samples = 1;
+			if (samples > mMaxMsaaSamples)
+				samples = mMaxMsaaSamples;
+			while ((samples > 1) && !mDevice.SupportsSampleCount(samples))
+				samples >>= 1;
+			settings.Post.MsaaSamples = (uint8)samples;
+		}
+
+		// Binds the view and builds and sorts its draw list.
+		using (ProfileScope("Render.AddView"))
+		{
+			// EVERY view of a scene draws that scene's own list, which is the physics and
+			// navigation debugging a play session shows. A KEYED view ADDITIONALLY draws its
+			// own list, the editor's grid and selection gizmos, which never appears in another
+			// view of the same scene. Either may be null when nothing was drawn this frame,
+			// and the debug pass checks.
+			void* sceneDebug = null;
+			if (mDebugScenes.GetValue(scene) case .Ok(let debug))
+				sceneDebug = Internal.UnsafeCastToPtr(debug);
+
+			void* viewDebug = null;
+			if (viewportKey != null)
+			{
+				if (mDebugViews.GetValue(viewportKey) case .Ok(let keyed))
+					viewDebug = Internal.UnsafeCastToPtr(keyed);
+			}
+
+			mFrame.AddView(snapshot, camera, settings, target, targetFormat, width, height,
+				sceneDebug, Internal.UnsafeCastToPtr(scene), viewDebug);
+		}
+	}
+
+	/// Composes every collected view into the frame's encoder.
+	public void EndRendering()
+	{
+		using (ProfileScope("Render.Compose"))
+		{
+			if (mFrame != null)
+			{
+				mFrame.End();
+				// The graph's texture inventory, taken while the graph still holds it, since
+				// the next begin rebuilds it. The editor's debug view picker reads this copy.
+				mFrame.CollectDebugResources(mDebugResourceSnapshot);
+			}
+		}
+
+		// Immediate mode: the debug lists clear AFTER rendering, so the next frame's drawing
+		// starts empty. The application accumulates during its update, before the next begin.
+		mDebugGlobal.Clear();
+		mDebugScreen.Clear();
+		for (let debug in mDebugScenes.Values)
+			debug.Clear();
+		for (let debug in mDebugViews.Values)
+			debug.Clear();
+	}
+
+	/// The previous frame's inventory, COPIED: the caller owns the rows it receives.
+	public void GetDebugResources(List<DebugResourceInfo> outResources)
+	{
+		ClearAndDeleteItems!(outResources);
+		for (let row in mDebugResourceSnapshot)
+			outResources.Add(new .(row.Name, row.Width, row.Height, row.Samples, row.IsDepth));
+	}
+
+	// ---- the overlay registries --------------------------------------------------------------
+
+	/// The scene tier: drawn per view inside the compose, after the post stack and before the
+	/// debug drawing, matched to views by their scene. Idempotent and NON OWNING.
+	public void RegisterOverlay(ISceneOverlay overlay) => mSceneOverlays.Add(overlay);
+
+	public void UnregisterOverlay(ISceneOverlay overlay) => mSceneOverlays.Remove(overlay);
+
+	/// The screen tier: window space chrome, drawn once per target after the scene composed.
+	public void RegisterOverlay(IScreenOverlay overlay) => mScreenOverlays.Add(overlay);
+
+	public void UnregisterOverlay(IScreenOverlay overlay) => mScreenOverlays.Remove(overlay);
+
+	/// One shared load op pass against the target, which must be in the render target state and
+	/// is left there, with every registered source drawing into it in order. The HOST calls
+	/// this once per window target, after the scene composed.
+	public void RenderOverlays(ICommandEncoder encoder, ITextureView target,
+		TextureFormat targetFormat, uint32 width, uint32 height, uint32 frameIndex)
+	{
+		if ((target == null) || (width == 0) || (height == 0) || mScreenOverlays.IsEmpty)
+			return;
+
+		if (!mOverlayDsProbed)
+		{
+			mOverlayDsFormat = StencilFormatProbe.PickStencilFormat(mDevice);
+			mOverlayDsProbed = true;
+		}
+
+		if ((mOverlayDsFormat != .Undefined)
+			&& ((mOverlayDsTexture == null) || (mOverlayDsWidth != width)
+				|| (mOverlayDsHeight != height)))
+		{
+			mRetireQueue.Retire(mOverlayDsView);
+			mRetireQueue.Retire(mOverlayDsTexture);
+			mOverlayDsView = null;
+			mOverlayDsTexture = null;
+
+			var desc = TextureDesc();
+			desc.Dimension = .Texture2D;
+			desc.Format = mOverlayDsFormat;
+			desc.Width = width;
+			desc.Height = height;
+			desc.Depth = 1;
+			desc.Usage = .DepthStencil;
+			desc.Label = "screen.overlay.ds";
+			if (mDevice.CreateTexture(desc) case .Ok(let texture))
+			{
+				mOverlayDsTexture = texture;
+				if (mDevice.CreateTextureView(texture, .()) case .Ok(let view))
+				{
+					mOverlayDsView = view;
+				}
+				else
+				{
+					mRetireQueue.Retire(mOverlayDsTexture);
+					mOverlayDsTexture = null;
+				}
+			}
+
+			mOverlayDsWidth = width;
+			mOverlayDsHeight = height;
+		}
+
+		var pass = RenderPassDesc();
+		var color = ColorAttachment();
+		color.View = target;
+		color.LoadOp = .Load;
+		color.StoreOp = .Store;
+		pass.ColorAttachments.Add(color);
+
+		let haveDs = (mOverlayDsView != null);
+		if (haveDs)
+		{
+			// The backend does not transition a pass's attachments itself. The buffer clears
+			// fully, so its previous contents are discardable and Undefined is the right
+			// source state.
+			encoder.TransitionTexture(mOverlayDsTexture, .Undefined, .DepthStencilWrite);
+
+			var depthStencil = DepthStencilAttachment();
+			depthStencil.View = mOverlayDsView;
+			depthStencil.DepthLoadOp = .Clear;
+			depthStencil.DepthStoreOp = .DontCare;
+			// Stencil then cover expects nought.
+			depthStencil.StencilLoadOp = .Clear;
+			depthStencil.StencilStoreOp = .DontCare;
+			depthStencil.StencilClearValue = 0;
+			pass.DepthStencilAttachment = depthStencil;
+		}
+
+		if (let renderPass = encoder.BeginRenderPass(pass))
+		{
+			var view = ScreenOverlayView();
+			view.Width = width;
+			view.Height = height;
+			view.TargetFormat = targetFormat;
+			view.DepthStencilFormat = haveDs ? mOverlayDsFormat : .Undefined;
+			view.FrameIndex = frameIndex;
+
+			for (let overlay in mScreenOverlays.Items)
+				overlay.Render(renderPass, view);
+
+			renderPass.End();
+		}
+	}
+
+	/// The per frame snapshot pool: one per scene rendered, kept alive, and its arena chunks
+	/// reused, until the next begin.
+	private ExtractedScene AcquireScene()
+	{
+		if (mSceneCount == mScenes.Count)
+			mScenes.Add(new .());
+
+		let snapshot = mScenes[mSceneCount++];
+		snapshot.Reset();
+		return snapshot;
 	}
 }
