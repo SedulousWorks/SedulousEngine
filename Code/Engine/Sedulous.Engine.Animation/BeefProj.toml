@@ -7,3 +7,11 @@ StartupObject = "Sedulous.Engine.Animation.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Animation" = "*"
+"Sedulous.Profiler" = "*"
+"Sedulous.PropertyAnimation" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Engine.Render" = "*"
