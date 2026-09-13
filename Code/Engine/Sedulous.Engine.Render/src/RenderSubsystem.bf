@@ -160,6 +160,11 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 	public ShaderSystem Shaders => mShaders;
 	public uint32 FramesInFlight => mFramesInFlight;
 
+	/// The frames in flight retire queue an EXTERNAL renderer wires its own rings into, so a
+	/// grow retires the old buffer instead of idling the GPU mid frame. On the web that idle
+	/// pumps the event loop, expires the canvas texture and drops the frame's submission.
+	public GpuRetireQueue RetireQueue => mRetireQueue;
+
 	// ---- extension seam --------------------------------------------------------------------
 
 	/// Registers an external renderer, BORROWED, and hands back the dispatch id to stamp on
