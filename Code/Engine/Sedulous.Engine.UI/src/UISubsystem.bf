@@ -261,11 +261,26 @@ class UISubsystem : Subsystem, ISceneObserver
 			scenes.RegisterObserver(this, .Destroying);
 		}
 
+		// BOTH roles: the scene tier draws inside the compose per view, and the screen tier
+		// when the host asks for its overlays per window target. A headless context has no
+		// render subsystem at all, and then neither registers.
 		mRender = base.Context.GetSubsystem<RenderSubsystem>();
+		if (mRender != null)
+		{
+			mRender.RegisterOverlay((ISceneOverlay)this);
+			mRender.RegisterOverlay((IScreenOverlay)this);
+		}
 	}
 
 	protected override void OnShutdown()
 	{
+		if (mRender != null)
+		{
+			mRender.UnregisterOverlay((ISceneOverlay)this);
+			mRender.UnregisterOverlay((IScreenOverlay)this);
+			mRender = null;
+		}
+
 		if (base.Context != null)
 		{
 			if (let scenes = base.Context.GetSubsystem<SceneSubsystem>())
