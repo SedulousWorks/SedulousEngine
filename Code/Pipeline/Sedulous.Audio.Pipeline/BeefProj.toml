@@ -7,3 +7,10 @@ StartupObject = "Sedulous.Audio.Pipeline.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Audio" = "*"
+"Sedulous.Audio.Resource" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Pipeline.Importer" = "*"
+"Sedulous.VFS" = "*"
