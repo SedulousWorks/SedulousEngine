@@ -7,6 +7,7 @@ using Sedulous.Engine.Input;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Scene;
 using Sedulous.Fonts;
+using Sedulous.Profiler;
 using Sedulous.Fonts.Resource;
 using Sedulous.Fonts.TrueType;
 using Sedulous.Render;
@@ -71,6 +72,17 @@ class UISubsystem : Subsystem, ISceneObserver
 
 	private UIRenderState mRenderState = null ~ delete _;
 
+	// The polled pointer's edges, since the buttons are read per frame rather than streamed.
+	private bool[3] mPrevButtons = .(false, false, false);
+	/// True while an interactive canvas is under the pointer or holds text focus, which
+	/// mirrors the published mask.
+	private bool mPointerConsumed = false;
+
+	// Gamepad focus navigation, held and repeating per direction: up, down, left, right.
+	private float[4] mNavRepeat = .(0.0f, 0.0f, 0.0f, 0.0f);
+	private bool[4] mNavHeld = .(false, false, false, false);
+	private float mNavDeltaTime = 0.0f;
+
 	public this()
 	{
 		mBridge = new UIInputBridge(mContext);
@@ -87,6 +99,25 @@ class UISubsystem : Subsystem, ISceneObserver
 	public void SetTextInputTarget(IWindow window) => mBridge.SetTextInputTarget(window);
 
 	public UIContext Context => mContext;
+
+	/// Whether any interactive canvas is under the pointer or holds text focus.
+	public bool PointerOverUI => mPointerConsumed;
+
+	/// The frame's opening lane, on UNSCALED time: menus animate while the game is paused,
+	/// which is the whole reason this work does not run in the update lane.
+	public override void BeginFrame(float deltaTime)
+	{
+		using (ProfileScope("UI.BeginFrame"))
+		{
+			// One vector ring rewind per UI frame.
+			mFrameSerial++;
+			mContext.BeginFrame(deltaTime);
+			mNavDeltaTime = deltaTime;
+
+			SyncCanvases();
+			PumpInput();
+		}
+	}
 
 	/// The scene LESS screen tier's root: global overlays only, scene UI living in the per
 	/// scene roots.
