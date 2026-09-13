@@ -7,4 +7,9 @@ StartupObject = "Sedulous.Texture.Compression.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.RHI" = "*"
 "Sedulous.Texture.Compression" = "*"
+"astcenc-Beef" = "*"
+"bc7enc-Beef" = "*"
+"bcdec-Beef" = "*"
