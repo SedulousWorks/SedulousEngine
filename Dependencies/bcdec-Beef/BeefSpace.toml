@@ -1,0 +1,11 @@
+FileVersion = 1
+Projects = {bcdec-Beef = {Path = "."}, bcdec-Beef-Test = {Path = "bcdec-Beef-Test"}}
+
+[Workspace]
+StartupProject = "bcdec-Beef-Test"
+
+[Configs.Test.Win64]
+ConfigSelections = {corlib = {Config = "Debug"}}
+
+[Configs.Test.Linux64]
+ConfigSelections = {corlib = {Config = "Debug"}}

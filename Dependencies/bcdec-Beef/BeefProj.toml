@@ -1,0 +1,24 @@
+FileVersion = 1
+
+[Project]
+Name = "bcdec-Beef"
+TargetType = "BeefLib"
+StartupObject = "bcdec_Beef.Program"
+
+[Configs.Debug.Win64]
+LibPaths = ["$(ProjectDir)/dist/Debug-Win64/bcdec-c.lib"]
+
+[Configs.Release.Win64]
+LibPaths = ["$(ProjectDir)/dist/Release-Win64/bcdec-c.lib"]
+
+[Configs.Test.Win64]
+LibPaths = ["$(ProjectDir)/dist/Debug-Win64/bcdec-c.lib"]
+
+[Configs.Debug.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libbcdec-c.a"]
+
+[Configs.Release.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libbcdec-c.a"]
+
+[Configs.Test.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libbcdec-c.a"]

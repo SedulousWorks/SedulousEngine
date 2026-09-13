@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", bcdec-Beef = "*"}
+
+[Project]
+Name = "bcdec-Beef-Test"
+StartupObject = "bcdec_Beef_Test.Program"
