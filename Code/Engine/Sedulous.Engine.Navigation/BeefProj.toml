@@ -7,3 +7,13 @@ StartupObject = "Sedulous.Engine.Navigation.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Navigation" = "*"
+"Sedulous.Navigation.Resource" = "*"
+"Sedulous.Profiler" = "*"
+"Sedulous.Render" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Engine.Render" = "*"
+"Sedulous.Engine.Scene" = "*"
