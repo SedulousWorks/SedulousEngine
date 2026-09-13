@@ -1,0 +1,11 @@
+FileVersion = 1
+Projects = {astcenc-Beef = {Path = "."}, astcenc-Beef-Test = {Path = "astcenc-Beef-Test"}}
+
+[Workspace]
+StartupProject = "astcenc-Beef-Test"
+
+[Configs.Test.Win64]
+ConfigSelections = {corlib = {Config = "Debug"}}
+
+[Configs.Test.Linux64]
+ConfigSelections = {corlib = {Config = "Debug"}}
