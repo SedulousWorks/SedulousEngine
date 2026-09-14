@@ -15,6 +15,7 @@ static class SampleContent
 	public const String cShaderRoot = "Data/Shaders";
 	public const String cAssetRoot = "Data/Assets";
 	public const String cAudioDir = "Data/Assets/audio";
+	public const String cRobotoFont = "Data/Assets/fonts/roboto/Roboto-Regular.ttf";
 
 	/// The absolute path of a repository relative file, or false when this checkout has no
 	/// data. False rather than an assertion, because a sample still shows everything that does
