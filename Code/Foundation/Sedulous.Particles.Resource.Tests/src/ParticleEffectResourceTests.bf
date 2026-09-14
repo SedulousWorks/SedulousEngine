@@ -246,4 +246,75 @@ class ParticleEffectResourceTests
 		Test.Assert(fountain.GetBehavior(0) is AlphaOverLifetimeBehavior);
 		Test.Assert(fountain.InitializerCount == 4);
 	}
+
+	/// Skipping a module must not shift the SYSTEM after it.
+	///
+	/// This is what the framing is for. Unframed, an unknown module's parameters stay in the
+	/// positional stream and everything behind them slides: the next system's particle budget
+	/// is then read out of the middle of a curve, and a budget read as garbage is a runaway
+	/// allocation rather than a wrong-looking effect. Raptor cannot skip at all for exactly
+	/// this reason; the frame is what buys the choice.
+	[Test]
+	public static void ASkippedModuleDoesNotShiftTheNextSystem()
+	{
+		let fixture = scope Fixture("scratch_particle_resource_shift");
+
+		let record = scope ParticleEffectResource();
+		BuildEffect(record.Effect);
+		let id = fixture.Cook("effect", record);
+
+		// The dropped module sits in system ZERO, so system one is downstream of the hole.
+		let gravityId = TypeIdOf("Sedulous.Particles.GravityBehavior");
+		GlobalSerializableRegistry.Unregister(gravityId);
+		defer GlobalSerializableRegistry.Register(gravityId, () => new GravityBehavior());
+
+		let bound = fixture.Manager.Bind<ParticleEffectResource>(id);
+		Test.Assert(bound.Get != null);
+		Test.Assert(bound.Get.Effect.SystemCount == 2, "both systems still arrived");
+
+		let sparks = bound.Get.Effect.GetSystem(1);
+		Test.Assert(sparks != null);
+		Test.Assert(sparks.Name == "sparks", "the name after the hole is not garbage");
+		Test.Assert(sparks.MaxParticles == 2000, scope $"budget read as {sparks.MaxParticles}");
+		Test.Assert(!sparks.Emitter.IsEmitting, "and its emitter flag survived");
+		Test.Assert(sparks.InitializerCount == 1);
+		Test.Assert(sparks.BehaviorCount == 1);
+	}
+
+	/// A type id that still constructs, but into the WRONG KIND, is skipped like an unknown
+	/// one rather than misread as the kind the slot expected.
+	///
+	/// Constructible but wrong is the nastier half: the object exists, so a build that only
+	/// checked for null would hand it the next module's parameters to parse.
+	[Test]
+	public static void ATypeOfTheWrongKindInAModuleSlotIsSkipped()
+	{
+		let fixture = scope Fixture("scratch_particle_resource_wrongkind");
+
+		let record = scope ParticleEffectResource();
+		BuildEffect(record.Effect);
+		let id = fixture.Cook("effect", record);
+
+		// The lifetime slot now constructs a BEHAVIOUR: registered, constructible, and not an
+		// initializer.
+		let lifetimeId = TypeIdOf("Sedulous.Particles.LifetimeInitializer");
+		GlobalSerializableRegistry.Unregister(lifetimeId);
+		GlobalSerializableRegistry.Register(lifetimeId, () => new GravityBehavior());
+		defer
+		{
+			GlobalSerializableRegistry.Unregister(lifetimeId);
+			GlobalSerializableRegistry.Register(lifetimeId, () => new LifetimeInitializer());
+		}
+
+		let bound = fixture.Manager.Bind<ParticleEffectResource>(id);
+		Test.Assert(bound.Get != null, "the effect still loads");
+
+		let fountain = bound.Get.Effect.GetSystem(0);
+		Test.Assert(fountain.InitializerCount == 3, "the wrong-kind slot was dropped, not kept");
+		Test.Assert(fountain.BehaviorCount == 2, "and nothing after it was misread");
+
+		// The system behind the hole is intact, which is the alignment claim again.
+		let sparks = bound.Get.Effect.GetSystem(1);
+		Test.Assert(sparks.MaxParticles == 2000, scope $"budget read as {sparks.MaxParticles}");
+	}
 }
