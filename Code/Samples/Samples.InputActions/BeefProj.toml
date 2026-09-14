@@ -2,8 +2,24 @@ FileVersion = 1
 
 [Project]
 Name = "Samples.InputActions"
-TargetType = "BeefGUIApplication"
+TargetType = "BeefConsoleApplication"
 StartupObject = "Samples.InputActions.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Engine.Input" = "*"
+"Sedulous.Extensions.Imgui" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Graphics.Gpu" = "*"
+"Sedulous.Input" = "*"
+"Sedulous.Input.Resource" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Runtime.SDL3" = "*"
+"Sedulous.Settings" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Shell.SDL3" = "*"
+"Sedulous.Xml" = "*"
+"Sedulous.Xml.Serialization" = "*"
