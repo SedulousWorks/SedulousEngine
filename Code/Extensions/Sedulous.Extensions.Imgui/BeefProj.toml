@@ -3,7 +3,14 @@ FileVersion = 1
 [Project]
 Name = "Sedulous.Extensions.Imgui"
 TargetType = "BeefLib"
-StartupObject = "Sedulous.Extensions.Imgui.Program"
 
 [Dependencies]
 corlib = "*"
+"cimgui-Beef" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Shaders" = "*"
+"Sedulous.Shaders.System" = "*"
+"Sedulous.Shell" = "*"

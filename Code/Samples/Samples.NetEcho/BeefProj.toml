@@ -7,3 +7,5 @@ StartupObject = "Samples.NetEcho.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Net" = "*"
