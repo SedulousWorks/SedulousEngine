@@ -398,4 +398,47 @@ class VGRendererTests
 		fixture.Renderer.UnregisterExternalTexture(stranger);
 		Test.Assert(fixture.Renderer.CachedTextureCount == 0);
 	}
+
+	/// Tearing the renderer down must leave a still registered EXTERNAL view alone.
+	///
+	/// An external view belongs to whoever handed it over, so the cache holds it borrowed.
+	/// Disposing it here would be a double free the moment the owner tidies up, and the
+	/// owner is the one who cannot see that it already happened. The eviction cases above
+	/// cover the same rule on the other path; this one covers the destructor, which is the
+	/// path an early return is easiest to accidentally move below.
+	[Test]
+	public static void DisposingLeavesAStillRegisteredExternalViewAlone()
+	{
+		let fixture = scope RendererFixture();
+		let key = scope OwnedImageData(4, 4, .RGBA8, .(), .Linear);
+
+		var textureDesc = TextureDesc();
+		textureDesc.Label = "VGRendererTests.DisposingLeavesAnExternalViewAlone";
+		textureDesc.Format = .RGBA8Unorm;
+		textureDesc.Width = 4;
+		textureDesc.Height = 4;
+		textureDesc.Usage = .Sampled;
+		var texture = fixture.Device.CreateTexture(textureDesc).Value;
+		var view = fixture.Device.CreateTextureView(texture,
+			.() { Label = "VGRendererTests.DisposingLeavesAnExternalViewAlone" }).Value;
+
+		// A renderer of its own, so its teardown can be watched without taking the fixture's
+		// device down with it.
+		{
+			let renderer = scope VGRenderer();
+			Test.Assert(renderer.Initialize(fixture.Device, fixture.VertexShader,
+				fixture.FragmentShader, .BGRA8Unorm, RendererFixture.FrameCount) case .Ok);
+
+			renderer.RegisterExternalTexture(key, view);
+			Test.Assert(renderer.IsExternalTextureRegistered(key));
+			Test.Assert(renderer.CachedTextureCount == 1);
+
+			renderer.Dispose();
+		}
+
+		// Ours to free, and still ours: had the renderer taken it, this would be the second
+		// delete of the same object and the runtime would say so.
+		fixture.Device.DestroyTextureView(ref view);
+		fixture.Device.DestroyTexture(ref texture);
+	}
 }
