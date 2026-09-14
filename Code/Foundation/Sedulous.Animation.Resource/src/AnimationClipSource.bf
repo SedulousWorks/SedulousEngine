@@ -63,21 +63,37 @@ class AnimationClipSource
 		}
 	}
 
-	/// Rebuilds a clip IN PLACE.
+	/// Rebuilds a clip IN PLACE, answering false when the record is malformed and leaving
+	/// the clip EMPTY.
 	///
-	/// Every run is BOUNDED against the pool it reads from: a malformed record yields a
-	/// partial clip rather than a read past the end of an array.
-	public void FillClip(AnimationClip clip)
+	/// FAIL CLOSED rather than salvage what parses. A clip quietly missing keyframes still
+	/// animates, wrongly: a limb stops halfway through a swing, and tracing that back to a
+	/// bad cook is far harder than reading a resource that refused to bind. Cooked bytes
+	/// reach the runtime by paths no cook ever saw, so the check is here rather than there.
+	public bool FillClip(AnimationClip clip)
 	{
 		clip.ClearForReload();
+
+		let trackTotal = TrackBone.Count;
+		if ((TrackStart.Count < trackTotal) || (TrackCount.Count < trackTotal))
+			return false;
+
+		let pool = Min(KeyTime.Count, KeyValue.Count);
+		for (int i = 0; i < trackTotal; i++)
+		{
+			let start = (int)TrackStart[i];
+			let count = (int)TrackCount[i];
+			// Subtracted FROM the pool rather than added to the start, so a huge count
+			// cannot wrap the sum back into range.
+			if ((start > pool) || (count > pool - start))
+				return false;
+		}
+
 		clip.Name.Set(Name);
 		clip.Duration = Duration;
 		clip.IsLooping = IsLooping;
 
-		let pool = Min(KeyTime.Count, KeyValue.Count);
-		let trackCount = Min(Min(TrackBone.Count, TrackStart.Count), TrackCount.Count);
-
-		for (int i = 0; i < trackCount; i++)
+		for (int i = 0; i < trackTotal; i++)
 		{
 			uint8 kindValue = (i < TrackKindValue.Count) ? TrackKindValue[i] : 0;
 			let kind = (TrackKind)kindValue;
@@ -85,8 +101,8 @@ class AnimationClipSource
 			uint8 interpValue = (i < TrackInterp.Count) ? TrackInterp[i] : 1;
 			let interp = (InterpolationMode)interpValue;
 
-			let from = Min((int)TrackStart[i], pool);
-			let to = Min(from + (int)TrackCount[i], pool);
+			let from = (int)TrackStart[i];
+			let to = from + (int)TrackCount[i];
 
 			if (kind == .Rotation)
 			{
@@ -114,6 +130,8 @@ class AnimationClipSource
 
 		for (int i = 0; i < EventTime.Count; i++)
 			clip.AddEvent(EventTime[i], (i < EventName.Count) ? EventName[i] : "");
+
+		return true;
 	}
 
 	private static void AppendVec3Track(AnimationClipSource outSource,

@@ -238,4 +238,69 @@ class AnimationResourceTests
 		let clip = fixture.Manager.Bind<AnimationClip>(id);
 		Test.Assert(clip.Get == null);
 	}
+
+	/// A clip record whose track table claims more keys than its pool holds must FAIL
+	/// CLOSED, and bind nothing through the manager.
+	///
+	/// Salvaging what parses would hand back a clip quietly short of keyframes, which still
+	/// animates and so looks like an authoring mistake rather than a corrupt cook. The run
+	/// ending exactly ON the pool is the boundary that must still be accepted.
+	[Test]
+	public static void AClipRunPastItsPoolRefusesToBuild()
+	{
+		let source = scope AnimationClipSource();
+		source.TrackBone.Add(0);
+		source.TrackKindValue.Add(0);
+		source.TrackInterp.Add(1);
+		source.TrackStart.Add(0);
+		source.TrackCount.Add(3); // the pool below holds two
+		source.KeyTime.Add(0.0f);
+		source.KeyTime.Add(1.0f);
+		source.KeyValue.Add(.(0, 0, 0, 0));
+		source.KeyValue.Add(.(0, 1, 0, 0));
+
+		let clip = scope AnimationClip();
+		Test.Assert(!source.FillClip(clip), "a run past the pool is refused");
+		Test.Assert(clip.PositionTracks.Count == 0, "and leaves nothing half built");
+
+		// A track table shorter than its bone list is the same refusal.
+		let ragged = scope AnimationClipSource();
+		ragged.TrackBone.Add(0);
+		ragged.TrackBone.Add(1);
+		ragged.TrackStart.Add(0);
+		ragged.TrackCount.Add(0);
+		Test.Assert(!ragged.FillClip(clip), "a ragged track table is refused");
+
+		// Ending exactly at the pool is well formed and still fills.
+		source.TrackCount[0] = 2;
+		Test.Assert(source.FillClip(clip));
+		Test.Assert(clip.PositionTracks.Count == 1);
+		Test.Assert(clip.PositionTracks[0].Keyframes.Count == 2);
+	}
+
+	/// And through the manager the malformed record binds NOTHING, rather than a corrupt
+	/// clip something downstream would sample.
+	[Test]
+	public static void AMalformedClipRecordBindsNothing()
+	{
+		let fixture = scope AnimationResourceFixture("scratch_anim_clip_overrun");
+
+		let source = scope AnimationClipSource();
+		source.TrackBone.Add(0);
+		source.TrackKindValue.Add(0);
+		source.TrackInterp.Add(1);
+		source.TrackStart.Add(0);
+		source.TrackCount.Add(3);
+		source.KeyTime.Add(0.0f);
+		source.KeyTime.Add(1.0f);
+		source.KeyValue.Add(.(0, 0, 0, 0));
+		source.KeyValue.Add(.(0, 1, 0, 0));
+
+		let instance = fixture.Database.RootGroup.CreateInstance("clip",
+			AnimationResourceFixture.ClipTypeName);
+		instance.WriteObject(source).IgnoreError();
+
+		let bound = fixture.Manager.Bind<AnimationClip>(instance.Id);
+		Test.Assert(bound.Get == null, "a malformed record binds nothing");
+	}
 }

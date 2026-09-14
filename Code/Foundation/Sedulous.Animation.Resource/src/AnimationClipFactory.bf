@@ -33,7 +33,13 @@ class AnimationClipFactory : IResourceFactory
 		defer delete source;
 
 		let clip = new AnimationClip();
-		source.FillClip(clip);
+		// A malformed record binds NOTHING rather than a clip that is quietly short of
+		// keyframes: the caller can see a missing resource, not a subtly wrong animation.
+		if (!source.FillClip(clip))
+		{
+			delete clip;
+			return null;
+		}
 		return clip;
 	}
 }
