@@ -7,4 +7,12 @@ StartupObject = "Sedulous.Fonts.Pipeline.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Fonts" = "*"
 "Sedulous.Fonts.Pipeline" = "*"
+"Sedulous.Fonts.Resource" = "*"
+"Sedulous.Image" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.VFS" = "*"
