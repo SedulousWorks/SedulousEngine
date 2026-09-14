@@ -361,4 +361,27 @@ class SplineTests
 		curve.RebuildArcLength();
 		Test.Assert(curve.Length > before + 5.0f, scope $"got {curve.Length} after the edit");
 	}
+
+	/// A TWO point auto curve has no second neighbour to bend toward, so it has to come out
+	/// as the exact straight segment.
+	///
+	/// This is the degenerate case for auto handles: with one neighbour there is nothing to
+	/// average, and a handle scaled from a chord that is not there either bows the line or
+	/// collapses it to a point. The three point fixture above cannot catch that, because its
+	/// middle knot always has two neighbours.
+	[Test]
+	public static void ATwoPointAutoCurveIsTheStraightSegment()
+	{
+		let curve = scope SplineCurve();
+		curve.Points.Add(.(.(0, 0, 0)));
+		curve.Points.Add(.(.(10, 0, 0)));
+		curve.UpdateAutoHandles();
+		curve.RebuildArcLength();
+
+		Test.Assert(Near(curve.Evaluate(0.5f), .(5, 0, 0)), "the midpoint is the midpoint");
+		Test.Assert(Near(curve.Tangent(0.5f), .(1, 0, 0)), "pointing straight down the line");
+		Test.Assert(Near(curve.Length, 10.0f, 0.01f), scope $"got {curve.Length}");
+		Test.Assert(Near(curve.EvaluateAtDistance(2.5f), .(2.5f, 0, 0), 0.01f),
+			"distance along a straight segment is linear");
+	}
 }
