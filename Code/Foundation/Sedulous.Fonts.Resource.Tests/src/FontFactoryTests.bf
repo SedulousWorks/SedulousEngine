@@ -282,4 +282,45 @@ class FontFactoryTests
 		let proxy = fixture.Manager.Bind<Font>(instance.Id);
 		Test.Assert(proxy.Get == null);
 	}
+
+	/// Many decodes in flight at once, which is the case a single async load cannot reach.
+	///
+	/// A factory that keeps any state between the decode and the finalize stage passes the
+	/// one-at-a-time test and corrupts under load, because the second decode overwrites what
+	/// the first had not yet finalised. Twelve fonts over four workers is enough contention
+	/// for that to show, and each product is checked individually rather than by count.
+	[Test]
+	public static void ManyConcurrentDecodesEachProduceTheirOwnFont()
+	{
+		let jobs = scope JobSystem(4);
+		let fixture = scope FontFixture("scratch_font_concurrent", jobs);
+
+		let pixels = scope List<uint8>();
+		FontFixture.CoveragePixels(pixels);
+
+		let ids = scope List<Guid>();
+		for (int i = 0; i < 12; i++)
+			ids.Add(fixture.Cook(scope $"font{i:00}", .Coverage, pixels));
+
+		let fonts = scope List<Proxy<Font>>();
+		for (let id in ids)
+			fonts.Add(fixture.Manager.BindAsync<Font>(id));
+		fixture.Manager.WaitAll();
+
+		for (let font in fonts)
+		{
+			Test.Assert(font.Get != null, "every font arrived");
+			Test.Assert(font.State == .Ready);
+
+			// Its OWN tables, not a half finalised neighbour's: a factory holding state
+			// between the decode and the finalize stage hands back the wrong entry here.
+			Test.Assert(font.Get.Family == "TestFamily");
+			Test.Assert(font.Get.EntryCount == 2);
+			let closest = font.Get.ClosestEntry(13.0f);
+			Test.Assert(closest != null);
+			Test.Assert(closest.PixelHeight == 12.0f);
+			Test.Assert(closest.Font != null);
+			Test.Assert(closest.Font.HasGlyph(Cp('A')));
+		}
+	}
 }
