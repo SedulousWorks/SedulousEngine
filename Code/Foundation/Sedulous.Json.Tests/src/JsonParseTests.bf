@@ -178,4 +178,33 @@ class JsonParseTests
 		Test.Assert(!result.Ok);
 		Test.Assert(result.Error == "maximum nesting depth exceeded");
 	}
+
+	/// RFC 8259: a number may not carry a leading zero. The malformed list above catches the
+	/// bare case, but not a nested one, and not the half that actually bites.
+	///
+	/// That half is the legitimate zero forms. A leading-zero rule written one character too
+	/// wide rejects `0`, `-0`, `0.5` and `0e2`, all of which are valid JSON, and the failure
+	/// then looks like arithmetic going wrong rather than parsing.
+	[Test]
+	public static void ALeadingZeroIsNotANumberButZeroItselfIs()
+	{
+		let result = scope JsonParseResult();
+
+		// Nested as well as bare: a scanner that only checks the first token misses these.
+		let bad = scope String[]("01", "-01", "[1, 007]", "{\"a\": 00}");
+		for (let text in bad)
+		{
+			JsonParser.Parse(text, result);
+			Test.Assert(!result.Ok, scope $"{text} is not a number");
+		}
+
+		for (let text in scope String[]("0", "-0", "0e2", "[0, 10, 100]"))
+		{
+			JsonParser.Parse(text, result);
+			Test.Assert(result.Ok, scope $"{text} is valid JSON");
+		}
+
+		JsonParser.Parse("0.5", result);
+		Test.Assert(result.Ok && Near(result.Value.AsNumber(), 0.5));
+	}
 }
