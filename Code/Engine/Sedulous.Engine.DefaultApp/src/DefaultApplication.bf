@@ -112,6 +112,11 @@ class DefaultApplication : IApplication
 
 	// ==================== configuration ====================
 
+	/// The main window's render configuration. Declared here rather than left to the
+	/// interface's default, because an interface default is reachable only through the
+	/// interface: a subclass could not override it.
+	public virtual RenderWindowDesc MainRenderWindow => .();
+
 	public virtual void Configure(IApplicationHost host)
 	{
 		mHost = host;

@@ -2,8 +2,25 @@ FileVersion = 1
 
 [Project]
 Name = "Samples.RenderStressTest"
-TargetType = "BeefGUIApplication"
+TargetType = "BeefConsoleApplication"
 StartupObject = "Samples.RenderStressTest.Program"
 
 [Dependencies]
 corlib = "*"
+"Samples.Common" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Engine.DefaultApp" = "*"
+"Sedulous.Engine.Render" = "*"
+"Sedulous.Engine.Scene" = "*"
+"Sedulous.Extensions.Imgui" = "*"
+"Sedulous.Geometry" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Graphics.Gpu" = "*"
+"Sedulous.Materials" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Runtime.SDL3" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Shell.SDL3" = "*"
