@@ -2,8 +2,26 @@ FileVersion = 1
 
 [Project]
 Name = "Samples.AudioPlayground"
-TargetType = "BeefGUIApplication"
+TargetType = "BeefConsoleApplication"
 StartupObject = "Samples.AudioPlayground.Program"
 
 [Dependencies]
 corlib = "*"
+"Samples.Common" = "*"
+"Sedulous.Audio" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Engine.Audio" = "*"
+"Sedulous.Engine.DefaultApp" = "*"
+"Sedulous.Engine.Render" = "*"
+"Sedulous.Engine.Scene" = "*"
+"Sedulous.Extensions.Imgui" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Graphics.Gpu" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Render" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Runtime.SDL3" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Shell.SDL3" = "*"
