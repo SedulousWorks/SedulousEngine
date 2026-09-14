@@ -15,7 +15,11 @@ class ObjFixture
 	private String mPath = new .() ~ delete _;
 	private String mMaterialPath = new .() ~ delete _;
 
-	public this(StringView name, StringView contents, StringView materialLibrary = "")
+	/// `writeLibrary` false names a material library in the OBJ and then does NOT write it,
+	/// which is the absent sidecar case: the reference has to be there for the loader to go
+	/// looking, or there is nothing to fail to find.
+	public this(StringView name, StringView contents, StringView materialLibrary = "",
+		bool writeLibrary = true)
 	{
 		mPath.AppendF("scratch_fbx_{}.obj", name);
 
@@ -26,9 +30,14 @@ class ObjFixture
 		let document = scope String();
 		if (!materialLibrary.IsEmpty)
 		{
-			mMaterialPath.AppendF("scratch_fbx_{}.mtl", name);
-			File.WriteAllText(mMaterialPath, materialLibrary).IgnoreError();
-			document.AppendF("mtllib {}\n", mMaterialPath);
+			let libraryPath = scope String();
+			libraryPath.AppendF("scratch_fbx_{}.mtl", name);
+			if (writeLibrary)
+			{
+				mMaterialPath.Set(libraryPath);
+				File.WriteAllText(mMaterialPath, materialLibrary).IgnoreError();
+			}
+			document.AppendF("mtllib {}\n", libraryPath);
 		}
 		document.Append(contents);
 		File.WriteAllText(mPath, document).IgnoreError();

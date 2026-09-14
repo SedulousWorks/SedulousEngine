@@ -118,4 +118,20 @@ f 1 2 3
 		Test.Assert(mesh.Parts[0].IndexCount == 3);
 		Test.Assert(mesh.Parts[0].IndexStart == 0);
 	}
+
+	/// An OBJ naming a material library that is not there still LOADS. Refusing the whole
+	/// model over an absent sidecar would reject files that render perfectly well, only
+	/// untextured, and that is the caller's decision rather than the loader's.
+	[Test]
+	public static void AnAbsentMaterialLibraryIsNotAnError()
+	{
+		// The mtllib line is written, the .mtl is not: the loader goes looking and misses.
+		let fixture = scope ObjFixture("nolib", cTwoMaterials, cMaterialLibrary, false);
+		let model = scope ModelData();
+		let loader = scope FbxLoader();
+
+		Test.Assert(loader.Load(fixture.Path, model) == .Ok, "a missing .mtl is not a failure");
+		Test.Assert(model.Meshes.Length == 1, "and the geometry still arrived");
+		Test.Assert(model.Meshes[0].IndexCount == 6, "both triangles");
+	}
 }
