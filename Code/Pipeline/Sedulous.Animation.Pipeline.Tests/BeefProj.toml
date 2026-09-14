@@ -7,4 +7,11 @@ StartupObject = "Sedulous.Animation.Pipeline.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Animation" = "*"
 "Sedulous.Animation.Pipeline" = "*"
+"Sedulous.Animation.Resource" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.VFS" = "*"

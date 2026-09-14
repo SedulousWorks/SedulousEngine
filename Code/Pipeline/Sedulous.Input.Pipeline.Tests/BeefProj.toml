@@ -7,4 +7,5 @@ StartupObject = "Sedulous.Input.Pipeline.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Input" = "*"
 "Sedulous.Input.Pipeline" = "*"
