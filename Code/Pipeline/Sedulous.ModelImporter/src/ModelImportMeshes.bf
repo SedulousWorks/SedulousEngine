@@ -1,0 +1,156 @@
+using System;
+using System.Collections;
+using Sedulous.Content;
+using Sedulous.Core;
+using Sedulous.Core.Serialization;
+using Sedulous.Geometry;
+using Sedulous.Geometry.Pipeline;
+using Sedulous.Model;
+using Sedulous.Model.Resource;
+using Sedulous.Pipeline.Importer;
+
+namespace Sedulous.ModelImporter;
+
+/// Fanning a model's meshes out as mesh assets, folding authored levels of detail into the
+/// mesh they belong to.
+static class ModelImportMeshes
+{
+	private const String cStaticType = "Sedulous.Geometry.Pipeline.StaticMeshAsset";
+	private const String cSkinnedType = "Sedulous.Geometry.Pipeline.SkinnedMeshAsset";
+
+	/// A mesh big enough that a generated chain is worth having, counted in indices.
+	private const int cAutoLodIndexThreshold = 3 * 10000;
+
+	/// Creates one asset per mesh that is not a level of another, filling the manifest's
+	/// parallel mesh arrays and recording each slot's plan name for the collision pass.
+	public static Result<void, ErrorCode> Import(Model model, Group group,
+		ModelManifestSource manifest, List<String> claimed,
+		List<DeferredImportWrite> deferredWrites, bool generateLods, ImportOptions options,
+		List<String> outMeshSourceNames)
+	{
+		let hasSkin = !model.Skins.IsEmpty;
+		let meshes = model.Meshes;
+
+		let foldsInto = scope List<int32>();
+		let lodLevels = scope List<List<int>>();
+		defer { ClearAndDeleteItems!(lodLevels); }
+		ModelLodFold.Compute(model, foldsInto, lodLevels);
+
+		for (int i < meshes.Length)
+		{
+			let mesh = meshes[i];
+			let skinned = ModelCook.IsSkinned(mesh) && hasSkin;
+			let baseName = new String();
+			ImportedNames.ForAsset(mesh.Name, "mesh", i, baseName);
+			outMeshSourceNames.Add(baseName);
+
+			let parts = mesh.Parts;
+			// A mesh that is a LEVEL of another, or one the dialog turned off, still HOLDS its
+			// manifest slot. A node names its mesh by MODEL mesh index, so dropping an entry
+			// shifts every later one and the hierarchy silently loses meshes or points at the
+			// wrong ones.
+			if ((foldsInto[i] >= 0) || !options.SelectionEnabled(.Mesh, baseName))
+			{
+				manifest.MeshGuid.Add(.Empty);
+				manifest.MeshSkinned.Add(skinned);
+				manifest.MeshMaterial.Add(parts.IsEmpty ? -1 : parts[0].MaterialIndex);
+				continue;
+			}
+
+			let name = options.SelectionName(.Mesh, baseName);
+			Instance instance = null;
+			if (skinned)
+			{
+				let asset = new SkinnedMeshAsset();
+				var ownsAsset = true;
+				defer { if (ownsAsset) delete asset; }
+
+				MeshConvert.SkinnedFromModel(mesh, 0, asset.Source);
+				// The skinned overload keeps the parallel skinning stream in lockstep, and a
+				// level that cannot is refused rather than appended half attached.
+				for (let levelIndex in lodLevels[i])
+					LodChain.AppendFromModel(meshes[levelIndex], asset.Source);
+				// An AUTHORED chain always wins. Generation is for the big chainless meshes,
+				// and it only drops indices, so the skinning stream is untouched by it.
+				if ((asset.Source.LodCount <= 1) && generateLods
+					&& (asset.Source.IndexData.Count >= cAutoLodIndexThreshold))
+				{
+					MeshOptimize.GenerateLodChain(asset.Source);
+				}
+
+				instance = ClaimedInstances.Claim(group, name, cSkinnedType, claimed);
+				if (instance == null)
+					return .Err(.Unknown);
+
+				if (deferredWrites != null)
+				{
+					let geometry = scope List<uint8>();
+					MeshAssetStorage.SkinnedGeometryBytes(asset, geometry);
+					Defer(deferredWrites, instance, asset, geometry);
+					ownsAsset = false;
+				}
+				else if (MeshAssetStorage.WriteSkinned(instance, asset) case .Err(let error))
+				{
+					return .Err(error);
+				}
+			}
+			else
+			{
+				let asset = new StaticMeshAsset();
+				var ownsAsset = true;
+				defer { if (ownsAsset) delete asset; }
+
+				MeshConvert.StaticFromModel(mesh, asset.Source);
+				for (let levelIndex in lodLevels[i])
+					LodChain.AppendFromModel(meshes[levelIndex], asset.Source);
+				if ((asset.Source.LodCount <= 1) && generateLods
+					&& (asset.Source.IndexData.Count >= cAutoLodIndexThreshold))
+				{
+					MeshOptimize.GenerateLodChain(asset.Source);
+				}
+
+				instance = ClaimedInstances.Claim(group, name, cStaticType, claimed);
+				if (instance == null)
+					return .Err(.Unknown);
+
+				if (deferredWrites != null)
+				{
+					let geometry = scope List<uint8>();
+					MeshAssetStorage.StaticGeometryBytes(asset, geometry);
+					Defer(deferredWrites, instance, asset, geometry);
+					ownsAsset = false;
+				}
+				else if (MeshAssetStorage.WriteStatic(instance, asset) case .Err(let error))
+				{
+					return .Err(error);
+				}
+			}
+
+			manifest.MeshGuid.Add(instance.Id);
+			manifest.MeshSkinned.Add(skinned);
+			// ONE material per mesh, taken from the first submesh, which is what a manifest can
+			// carry: a mesh with several keeps them in its own submesh table.
+			manifest.MeshMaterial.Add(parts.IsEmpty ? -1 : parts[0].MaterialIndex);
+		}
+		return .Ok;
+	}
+
+	/// Parks both halves of a mesh write, the envelope and its geometry sidecar.
+	///
+	/// Rendering a mesh envelope is the single most expensive serialisation an import does, so
+	/// it goes to the worker with the bytes. The deferred write TAKES the asset.
+	private static void Defer(List<DeferredImportWrite> deferredWrites, Instance instance,
+		ISerializable asset, List<uint8> geometry)
+	{
+		let envelope = new DeferredImportWrite();
+		envelope.Instance = instance;
+		envelope.Object = asset;
+		deferredWrites.Add(envelope);
+
+		let sidecar = new DeferredImportWrite();
+		sidecar.Instance = instance;
+		sidecar.StreamName.Set(MeshAssetStorage.cGeometryStreamName);
+		sidecar.Owned.AddRange(geometry);
+		deferredWrites.Add(sidecar);
+	}
+}

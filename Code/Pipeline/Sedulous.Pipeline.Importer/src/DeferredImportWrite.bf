@@ -20,7 +20,10 @@ class DeferredImportWrite
 	/// BORROWED: the database owns it.
 	public Instance Instance = null;
 
-	/// An envelope write when set. BORROWED, and alive through the flush.
+	/// An envelope write when set, and OWNED.
+	///
+	/// Ownership has to sit here: the object is built during the fan out and nothing else is
+	/// alive to hold it until the flush runs, the importer having returned long before.
 	public ISerializable Object = null;
 
 	/// A data stream write when set.
@@ -35,6 +38,14 @@ class DeferredImportWrite
 	/// A raw copy when both paths are set.
 	public String CopyFrom = new .() ~ delete _;
 	public String CopyTo = new .() ~ delete _;
+
+	public ~this()
+	{
+		// An interface handle reaches its object through the object it is part of, and the
+		// virtual destructor then frees the concrete asset.
+		if (Object != null)
+			delete Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(Object));
+	}
 
 	public Span<uint8> Bytes => Owned.IsEmpty ? View : Span<uint8>(Owned.Ptr, Owned.Count);
 

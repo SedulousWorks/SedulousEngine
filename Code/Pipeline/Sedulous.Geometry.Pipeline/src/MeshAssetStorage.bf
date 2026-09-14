@@ -39,6 +39,17 @@ static class MeshAssetStorage
 		return instance.WriteData(cGeometryStreamName, bytes);
 	}
 
+	/// The sidecar's bytes on their own, for a caller that has to write the two halves
+	/// SEPARATELY: an import defers both to a worker, and the envelope and the stream travel
+	/// as two writes rather than one call.
+	public static void StaticGeometryBytes(StaticMeshAsset asset, List<uint8> outBytes)
+		=> SourceToBytes(asset.Source, StaticMeshSource.TypeId, StaticMeshSource.DataVersion,
+			outBytes);
+
+	public static void SkinnedGeometryBytes(SkinnedMeshAsset asset, List<uint8> outBytes)
+		=> SourceToBytes(asset.Source, SkinnedMeshSource.TypeId, SkinnedMeshSource.DataVersion,
+			outBytes);
+
 	/// After reading the envelope: pulls the sidecar into the asset's source.
 	///
 	/// A MISSING sidecar is a broken asset rather than an empty one, and says so: the envelope
