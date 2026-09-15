@@ -209,4 +209,92 @@ class TerrainSplatProbeTests
 		Test.Assert(probe.LeftR > probe.LeftB, "the ramp is warm green at a low height");
 		Test.Assert(probe.Filled > 30000, "and the terrain still rendered");
 	}
+	/// One flat frame with an optional base normal map, for the two orientation cases.
+	private static TerrainProbe RenderWithBaseNormal(TerrainProbeFixture fixture, Float3 toLight,
+		bool withNormal, uint8 nr, uint8 ng, uint8 nb)
+	{
+		let grid = TerrainFixtures.MakeFlat();
+		defer delete grid;
+
+		let owned = scope ProbeTextures();
+		let config = scope TerrainProbeConfig();
+		config.Terrain = grid;
+		config.ToLight = toLight;
+		config.BaseAlbedoView = TerrainSplatFixtures.MakeSolid(owned, fixture.Device, 170, 170, 170);
+		config.BaseTileScale = 1000.0f;
+		if (withNormal)
+			config.BaseNormalView = TerrainSplatFixtures.MakeSolid(owned, fixture.Device, nr, ng, nb);
+
+		return TerrainProbeRenderer.Render(fixture, config);
+	}
+
+	/// Flat ground has ONE geometric normal, so a sun from either side shades it the same. A
+	/// base normal map leaning toward +X has to make it directional: brighter under a sun from
+	/// +X than the flat control, darker under one from -X.
+	[Test]
+	public static void ABaseNormalMapPerturbsTheFlatGroundShading()
+	{
+		let fixture = scope TerrainProbeFixture();
+		if (!fixture.Ready)
+			return;
+
+		let plusX = Normalized(Float3(0.85f, 0.5f, 0.0f));
+		let minusX = Normalized(Float3(-0.85f, 0.5f, 0.0f));
+
+		// Tangent space (0.6, 0, 0.8) encoded as n * 0.5 + 0.5, which leans the world normal
+		// toward +X under the flat frame.
+		let mappedPlus = RenderWithBaseNormal(fixture, plusX, true, 204, 128, 229);
+		defer delete mappedPlus;
+		if (!mappedPlus.Valid)
+			return;
+
+		let mappedMinus = RenderWithBaseNormal(fixture, minusX, true, 204, 128, 229);
+		defer delete mappedMinus;
+		let flatPlus = RenderWithBaseNormal(fixture, plusX, false, 0, 0, 0);
+		defer delete flatPlus;
+		let flatMinus = RenderWithBaseNormal(fixture, minusX, false, 0, 0, 0);
+		defer delete flatMinus;
+
+		// The control first: without the map the two suns shade one normal about equally.
+		Test.Assert(Math.Abs(flatPlus.Total - flatMinus.Total) < flatPlus.Total * 0.06,
+			"the flat control is not directional");
+
+		Test.Assert(mappedPlus.Total > flatPlus.Total * 1.10, "the aligned sun brightens it");
+		Test.Assert(mappedMinus.Total < flatMinus.Total * 0.90, "and the opposed sun darkens it");
+	}
+
+	/// The tangent frame's bitangent points toward -Z, which under a top left UV origin IS
+	/// glTF and GL green up: a `_nor_gl_` map imports as authored.
+	///
+	/// A normal leaning toward +green must brighten under a sun from -Z. If this ever fails,
+	/// the sign belongs in the SHADER: never ask an author to flip their maps.
+	[Test]
+	public static void APlusGreenBaseNormalLeansTowardMinusZ()
+	{
+		let fixture = scope TerrainProbeFixture();
+		if (!fixture.Ready)
+			return;
+
+		let plusZ = Normalized(Float3(0.0f, 0.5f, 0.85f));
+		let minusZ = Normalized(Float3(0.0f, 0.5f, -0.85f));
+
+		// Tangent space (0, +0.6, +0.8).
+		let leanMinus = RenderWithBaseNormal(fixture, minusZ, true, 128, 204, 229);
+		defer delete leanMinus;
+		if (!leanMinus.Valid)
+			return;
+
+		let leanPlus = RenderWithBaseNormal(fixture, plusZ, true, 128, 204, 229);
+		defer delete leanPlus;
+		let flatMinus = RenderWithBaseNormal(fixture, minusZ, false, 0, 0, 0);
+		defer delete flatMinus;
+		let flatPlus = RenderWithBaseNormal(fixture, plusZ, false, 0, 0, 0);
+		defer delete flatPlus;
+
+		Test.Assert(Math.Abs(flatMinus.Total - flatPlus.Total) < flatMinus.Total * 0.06,
+			"the flat control is not directional");
+
+		Test.Assert(leanMinus.Total > flatMinus.Total * 1.10, "green leans toward minus Z");
+		Test.Assert(leanPlus.Total < flatPlus.Total * 0.90, "and away from plus Z");
+	}
 }
