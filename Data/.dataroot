@@ -1,0 +1,5 @@
+# Marker file for foundation.vfs FindDataRoot(). Its presence identifies this
+# directory as the engine/editor DATA ROOT (runtime assets, shaders, fonts).
+# The editor and a relocated distribution discover this dir by walking up from
+# the executable looking for a "Data" directory that contains this marker.
+version: 1

@@ -8,3 +8,6 @@ BeefSpace_User.toml
 
 # Test scratch. Suites create these beside the project they run from.
 scratch_*/
+
+# Cooked sample output. Written at run time, per sample, and never checked in.
+/Data/Output/
