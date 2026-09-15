@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using Sedulous.Core;
+using Sedulous.VFS;
 using Sedulous.Core.IO;
 using Sedulous.Materials;
 using Sedulous.Materials.PipelineCache;
@@ -26,6 +27,8 @@ class RenderFrameFixture
 {
 	public IBackend Backend;
 	public IDevice Device;
+	/// The data root mounted for this fixture, which is where the shaders come from.
+	public NativeFileSystem DataMount ~ delete _;
 	public ShaderCompiler Compiler ~ delete _;
 	public FileShaderSourceProvider Provider ~ delete _;
 	public ShaderSystem Shaders ~ delete _;
@@ -62,12 +65,14 @@ class RenderFrameFixture
 		if (Compiler.Initialize() case .Err)
 			return;
 
-		let root = scope String();
-		if (!FindShaderRoot(root))
+		let dataRoot = scope String();
+		FindDataRoot(dataRoot);
+		if (dataRoot.IsEmpty)
 			return;
+		DataMount = new NativeFileSystem(dataRoot);
 
 		Provider = new FileShaderSourceProvider();
-		if (Provider.Initialize(root) case .Err)
+		if (Provider.Initialize(DataMount, ShaderSystemHost.cShaderFolder) case .Err)
 			return;
 
 		Shaders = new ShaderSystem(Compiler, Device);
@@ -75,8 +80,7 @@ class RenderFrameFixture
 		// spends its time on.
 		Shaders.OptimizationLevel = 0;
 		Shaders.SetSourceProvider(Provider);
-		let includePaths = scope StringView[1](root);
-		Shaders.SetIncludePaths(includePaths);
+		Shaders.SetIncludeResolver(Provider);
 
 		PsoCache = new PipelineStateCache(Shaders, Device);
 		Materials = new MaterialSystem();
@@ -134,27 +138,4 @@ class RenderFrameFixture
 		return camera;
 	}
 
-	private static bool FindShaderRoot(String outPath)
-	{
-		let current = scope String();
-		GetCurrentDirectory(current);
-
-		for (int depth < 8)
-		{
-			let candidate = scope:: String();
-			PathJoin(current, "Data/Shaders", candidate);
-			if (Directory.Exists(candidate))
-			{
-				outPath.Set(candidate);
-				return true;
-			}
-
-			let parent = scope:: String();
-			PathParent(current, parent);
-			if (parent.IsEmpty || (parent == current))
-				break;
-			current.Set(parent);
-		}
-		return false;
-	}
 }

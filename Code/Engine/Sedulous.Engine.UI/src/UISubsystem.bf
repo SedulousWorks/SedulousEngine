@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.VFS;
 using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
 using Sedulous.Engine.Input;
@@ -45,7 +46,8 @@ class UISubsystem : Subsystem, ISceneObserver
 	/// The lane matters more than the order: ALL of it runs on the raw delta.
 	public override int32 UpdateOrder => -650;
 
-	private String mFontPath = new .() ~ delete _;
+	/// BORROWED from the application: the shader corpus and the built in font come from here.
+	private IFileSystem mDataFileSystem = null;
 
 	private UIContext mContext = new .() ~ delete _;
 	private UIInputBridge mBridge ~ delete _;
@@ -88,14 +90,13 @@ class UISubsystem : Subsystem, ISceneObserver
 	private bool[4] mNavHeld = .(false, false, false, false);
 	private float mNavDeltaTime = 0.0f;
 
-	public this()
+	/// The data mount is BORROWED: the application resolves the data root, owns the mount and
+	/// outlives this.
+	public this(IFileSystem dataFileSystem)
 	{
 		mBridge = new UIInputBridge(mContext);
+		mDataFileSystem = dataFileSystem;
 	}
-
-	/// An optional font for the default face. Empty tries the repository's own, and without
-	/// either, text simply does not render until a cooked font binds. Set before startup.
-	public void SetFontPath(StringView path) => mFontPath.Set(path);
 
 	/// The window whose platform text input follows GAME UI focus.
 	///
@@ -218,22 +219,17 @@ class UISubsystem : Subsystem, ISceneObserver
 
 		mFonts = new TrueTypeFontService();
 
-		var fontPath = mFontPath.IsEmpty
-			? "Data/Assets/fonts/roboto/Roboto-Regular.ttf"
-			: StringView(mFontPath);
-
-		if (mFonts.LoadFont("Roboto", fontPath) == .Success)
+		// The built in face, read THROUGH THE MOUNT rather than off a path: a dist that
+		// ships one has it here, and one that does not falls through to the project's own.
+		// There is nothing for a host to override any more.
+		if (!LoadBuiltInFont())
 		{
-			mFonts.SetDefaultFamily("Roboto");
-		}
-		else
-		{
-			// NOT fatal on its own: a cooked default font bound later replaces this probe,
-			// and a host does that right after startup. Only when neither resolves does game
-			// UI text fail to render at all.
+			// NOT fatal on its own: a cooked default font bound later replaces this, and a
+			// host does that right after startup. Only when neither resolves does game UI
+			// text fail to render at all.
 			GlobalLog(.Information,
-				"UISubsystem: the development fallback font '{}' is not present, which is normal outside the source tree. Game UI text needs the project's cooked default font to bind.",
-				fontPath);
+				"UISubsystem: no built in font at '{}' in the data root. Game UI text needs the project's cooked default font to bind.",
+				cBuiltInFont);
 		}
 
 		mContext.SetFontService(mFonts);
@@ -438,6 +434,33 @@ class UISubsystem : Subsystem, ISceneObserver
 
 	// ==================== GPU bring-up ====================
 
+	/// The engine's own face, the one constant of the layout this subsystem reads.
+	private const String cBuiltInFont = "Assets/fonts/roboto/Roboto-Regular.ttf";
+
+	private bool LoadBuiltInFont()
+	{
+		if ((mDataFileSystem == null) || !mDataFileSystem.Exists(cBuiltInFont))
+			return false;
+
+		let stream = mDataFileSystem.Open(cBuiltInFont, .Read);
+		if (stream == null)
+			return false;
+		defer delete stream;
+
+		let size = stream.Size();
+		if (size <= 0)
+			return false;
+
+		let bytes = scope uint8[(int)size];
+		if (stream.Read(bytes) != (int)size)
+			return false;
+		if (mFonts.LoadFontFromMemory("Roboto", bytes) != .Success)
+			return false;
+
+		mFonts.SetDefaultFamily("Roboto");
+		return true;
+	}
+
 	/// One time device and shader bring up, by whoever owns graphics. IDEMPOTENT, and without
 	/// it the overlay draws nothing at all.
 	public void EnsureRenderReady(IDevice device, int32 frameCount)
@@ -451,18 +474,10 @@ class UISubsystem : Subsystem, ISceneObserver
 		mRenderState.Device = device;
 		mRenderState.FrameCount = frameCount;
 
-		// Resolved through the shared host: a cooked pack where there is one, and the
-		// compiler over the shader directory otherwise. The vector shaders ship in the
-		// engine's own corpus like every other shader.
-		let root = scope String();
-		if (!FindShaderRoot(root))
-		{
-			GlobalLog(.Error,
-				"UISubsystem: no shader directory and no shader pack, so game UI will not render");
-			return;
-		}
-
-		if (mRenderState.ShaderHost.Initialize(device, root) case .Err)
+		// Resolved through the shared host over the application's data mount: a cooked pack
+		// where there is one, and the compiler over the root's Shaders folder otherwise. The
+		// vector shaders ship in the engine's own corpus like every other shader.
+		if (mRenderState.ShaderHost.Initialize(device, mDataFileSystem) case .Err)
 		{
 			GlobalLog(.Error,
 				"UISubsystem: no shader compiler and no shader pack, so game UI will not render");
@@ -492,29 +507,4 @@ class UISubsystem : Subsystem, ISceneObserver
 		mRenderState.CanvasStencilFormat = VGRenderer.PickStencilCapableFormat(device, 1);
 	}
 
-	/// Walks up from the working directory for the shader root, a Beef workspace carrying no
-	/// compiled in source path.
-	private static bool FindShaderRoot(String outPath)
-	{
-		let current = scope String();
-		GetCurrentDirectory(current);
-
-		for (int depth < 8)
-		{
-			let candidate = scope:: String();
-			PathJoin(current, "Data/Shaders", candidate);
-			if (System.IO.Directory.Exists(candidate))
-			{
-				outPath.Set(candidate);
-				return true;
-			}
-
-			let parent = scope:: String();
-			PathParent(current, parent);
-			if (parent.IsEmpty || (parent == current))
-				break;
-			current.Set(parent);
-		}
-		return false;
-	}
 }

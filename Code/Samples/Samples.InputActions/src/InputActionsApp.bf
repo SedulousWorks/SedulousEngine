@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.IO;
 using Sedulous.Core;
+using Sedulous.VFS;
 using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
 using Sedulous.Engine.Input;
@@ -47,15 +48,20 @@ class InputActionsApp : IApplication
 
 	private InputBindingOverrides Overlay => mStore.Section<InputBindingOverrides>();
 
+	/// OWNED: this sample is a bare IApplication, so it finds the data root itself rather
+	/// than taking one a DefaultApplication resolved.
+	private NativeFileSystem mDataMount = null ~ delete _;
+
 	public void Configure(IApplicationHost host)
 	{
+		mDataMount = new NativeFileSystem(FindDataRoot(.. scope String()));
 		mInput = new InputSubsystem((host.Shell != null) ? host.Shell.Input : null);
 		host.Context.RegisterSubsystem<InputSubsystem>(mInput);
 
 		let graphics = host.Graphics;
 		if ((graphics != null) && (graphics.Raw != null))
 		{
-			mOverlayGui = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight);
+			mOverlayGui = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight, mDataMount);
 			host.Context.RegisterSubsystem<ImguiSubsystem>(mOverlayGui);
 		}
 	}

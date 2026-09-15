@@ -16,7 +16,12 @@ struct CompileOptions
 	public bool EnableDebugInfo = false;
 	public bool RowMajorMatrices = false;
 	public Span<ShaderDefine> Defines = default;
+	/// Native include directories, passed as -I to the default disk handler. IGNORED when
+	/// IncludeResolver is set.
 	public Span<StringView> IncludePaths = default;
+	/// Where `#include` is resolved from, when it is not the native filesystem. A mount, a
+	/// pak or memory: the compiler asks this rather than opening a path.
+	public IShaderIncludeResolver IncludeResolver = null;
 	public BindingShifts BindingShifts = .();
 	/// How many descriptor sets the shifts are applied to.
 	///

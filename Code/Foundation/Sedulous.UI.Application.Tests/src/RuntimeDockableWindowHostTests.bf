@@ -63,7 +63,7 @@ class RuntimeDockableWindowHostTests
 		Test.Assert(graphics.CreateRenderWindow(shell.MainWindow, .()) case .Ok(let window));
 		defer delete window;
 
-		let uiHost = scope UIHost(graphics, shell, null);
+		let uiHost = scope UIHost(graphics, shell, null, null);
 		let appHost = scope FakeApplicationHost(shell, graphics, window);
 		let dockHost = scope RuntimeDockableWindowHost(appHost, uiHost);
 

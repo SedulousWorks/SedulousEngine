@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.VFS;
 using Sedulous.Fonts;
 using Sedulous.Graphics;
 using Sedulous.Image;
@@ -41,7 +42,8 @@ class UIHost
 
 	/// OWNED: the shader host owns the vector modules, and the rest are the host's own.
 	private ShaderSystemHost mShaderHost = new .() ~ delete _;
-	private String mShaderRoot = new .("Shaders") ~ delete _;
+	/// BORROWED from the application: where the engine's shader corpus is read from.
+	private IFileSystem mDataFileSystem = null;
 	private UIContext mContext = new .() ~ delete _;
 	private InputRouter mRouter = null ~ delete _;
 	private UIInputBridge mBridge = null ~ delete _;
@@ -75,17 +77,16 @@ class UIHost
 	/// Near black, stored LINEAR. See SetClearColor for why.
 	private ClearColor mClearColor = .(0.006f, 0.006f, 0.009f, 1.0f);
 
-	/// `shaderRoot` is where the engine's shader corpus lives. The default is the SHIPPED
-	/// layout; a development checkout keeps it under the data directory instead, and a host
-	/// running from a checkout has to say so or the vector shaders resolve to nothing and the
-	/// UI renders blank.
+	/// The data mount is BORROWED: the application resolves the data root once, owns the
+	/// mount and outlives this. The vector shaders come from its Shaders folder like every
+	/// other shader, so there is nothing to tell a host about a layout any more.
 	public this(GraphicsDevice device, IShell shell, IFontService fonts,
-		StringView shaderRoot = "Shaders")
+		IFileSystem dataFileSystem)
 	{
 		mDevice = device;
 		mShell = shell;
 		mFonts = fonts;
-		mShaderRoot.Set(shaderRoot);
+		mDataFileSystem = dataFileSystem;
 
 		mRouter = new InputRouter(shell.Input);
 		mBridge = new UIInputBridge(mContext);
@@ -624,7 +625,7 @@ class UIHost
 	/// same path the renderer itself uses rather than a bespoke inline compile.
 	private void InitShaders()
 	{
-		if (mShaderHost.Initialize(mDevice.Raw, mShaderRoot) case .Err)
+		if (mShaderHost.Initialize(mDevice.Raw, mDataFileSystem) case .Err)
 			return; // No compiler and no pack: the UI stays unrendered, loudly but not fatally.
 
 		mVertexShader = mShaderHost.GetVariant("vg", .Vertex, .None);

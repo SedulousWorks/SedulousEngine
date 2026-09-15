@@ -12,8 +12,7 @@ namespace Samples.VGSandbox;
 /// and the data sits at the repository root in all three cases.
 static class SandboxContent
 {
-	public const String cShaderRoot = "Data/Shaders";
-	public const String cFontFile = "Data/Assets/fonts/roboto/Roboto-Regular.ttf";
+	public const String cFontFile = "Assets/fonts/roboto/Roboto-Regular.ttf";
 
 	/// The absolute path of a repository relative file, or false when this checkout has no
 	/// data. False rather than an assertion, because the sample still draws everything that

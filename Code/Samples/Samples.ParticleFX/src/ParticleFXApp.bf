@@ -36,7 +36,7 @@ class ParticleFXApp : DefaultApplication
 {
 	private const float cCellSpacing = 15.0f;
 	private const int32 cGridColumns = 4;
-	private const String cCookedOutputDir = "Data/Output/ParticleFX";
+	private const String cCookedOutputDir = "Output/ParticleFX";
 
 	private static readonly String[16] cCellNames = .(
 		"fountain", "mesh solid", "mesh glow", "embers",
@@ -94,7 +94,7 @@ class ParticleFXApp : DefaultApplication
 		let graphics = host.Graphics;
 		if ((graphics != null) && (graphics.Raw != null))
 		{
-			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight);
+			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight, DataFileSystem);
 			host.Context.RegisterSubsystem<ImguiSubsystem>(mOverlay);
 		}
 	}
@@ -390,14 +390,15 @@ class ParticleFXApp : DefaultApplication
 		ParticleResources.RegisterAll();
 		ParticleModules.RegisterModules();
 
-		if (Directory.CreateDirectory(cCookedOutputDir) case .Err)
+		let cookedDir = DataPath(cCookedOutputDir, .. scope String());
+		if (Directory.CreateDirectory(cookedDir) case .Err)
 		{
-			if (!Directory.Exists(cCookedOutputDir))
+			if (!Directory.Exists(cookedDir))
 				return;
 		}
 
 		mCookedSerializers = new (stream, mode) => new BinarySerializerContext(stream, mode);
-		mCookedMount = new NativeFileSystem(cCookedOutputDir);
+		mCookedMount = new NativeFileSystem(cookedDir);
 		mCookedDatabase = new ContentDatabase(mCookedMount, mCookedSerializers, "rasset");
 
 		let instance = mCookedDatabase.RootGroup.CreateInstance("cooked_demo",

@@ -68,6 +68,8 @@ class UISandboxApp : IApplication
 
 	// The VFS the markup and the .sss themes are read through, rooted at the UI asset
 	// directory. Built on first use and kept for the application's life.
+	/// OWNED: this sample has no application to resolve the data root for it.
+	private NativeFileSystem mDataMount = null ~ delete _;
 	private NativeFileSystem mUIFileSystem = null;
 	private VfsResourceProvider mResourceProvider = null;
 
@@ -140,12 +142,12 @@ class UISandboxApp : IApplication
 
 		LoadFonts();
 
-		// The shipped layout keeps the shaders beside the binary; a checkout keeps them under
-		// the data directory, and the host has to be told which this is or the vector shaders
-		// resolve to nothing and the window comes up blank.
-		let shaderRoot = scope String("Shaders");
-		SandboxContent.FindDirectory(SandboxContent.cShaderRoot, shaderRoot);
-		mUIHost = new UIHost(host.Graphics, host.Shell, mFonts, shaderRoot);
+		// This sample is not an application, so it finds the data root itself and mounts it;
+		// the UI host reads the vector shaders through the mount like everything else.
+		let dataRoot = scope String();
+		FindDataRoot(dataRoot);
+		mDataMount = new NativeFileSystem(dataRoot);
+		mUIHost = new UIHost(host.Graphics, host.Shell, mFonts, mDataMount);
 		// The docking host needs both, and the docking tab needs IT, so it comes first.
 		mDockHost = new RuntimeDockableWindowHost(host, mUIHost);
 

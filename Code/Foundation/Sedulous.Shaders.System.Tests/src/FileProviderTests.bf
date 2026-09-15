@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.VFS;
 using Sedulous.Core.IO;
 using Sedulous.RHI;
 using Sedulous.RHI.Null;
@@ -66,9 +67,9 @@ class FileProviderTests
 		Write(root, "notes.txt", "not a shader\n");
 
 		let provider = scope FileShaderSourceProvider();
-		Test.Assert(provider.Initialize(root) case .Ok);
+		Test.Assert(provider.Initialize(scope NativeFileSystem(root), "") case .Ok);
 		Test.Assert(provider.ShaderFileCount == 3, "only the three stage files were mapped");
-		Test.Assert(provider.RootDirectory == root);
+		Test.Assert(provider.Folder.IsEmpty, "the mount root is the folder");
 
 		let names = scope List<String>();
 		provider.CollectShaderNames(names);
@@ -91,7 +92,7 @@ class FileProviderTests
 	public static void AMissingRootIsRefused()
 	{
 		let provider = scope FileShaderSourceProvider();
-		Test.Assert(provider.Initialize("/no/such/shader/root") case .Err);
+		Test.Assert(provider.Initialize(scope NativeFileSystem("/no/such/shader/root"), "Shaders") case .Err);
 		Test.Assert(provider.ShaderFileCount == 0);
 	}
 
@@ -124,15 +125,16 @@ class FileProviderTests
 		defer delete compiler;
 
 		let provider = scope FileShaderSourceProvider();
-		Test.Assert(provider.Initialize(root) case .Ok);
+		Test.Assert(provider.Initialize(scope NativeFileSystem(root), "") case .Ok);
 
 		let shaders = scope Sedulous.Shaders.ShaderSystem(compiler, device);
 		// Nothing here reads the bytecode's quality, and optimization is most of what
 		// DXC spends its time on.
 		shaders.OptimizationLevel = 0;
 		shaders.SetSourceProvider(provider);
-		StringView[1] includePaths = .(root);
-		shaders.SetIncludePaths(includePaths);
+		// The provider is the include resolver too, so the #include is read back through the
+		// same mount the source came from rather than off a native -I path.
+		shaders.SetIncludeResolver(provider);
 
 		// Nothing was registered, so this can only have come from the provider, and it only
 		// compiles if the include resolved.
@@ -175,7 +177,7 @@ class FileProviderTests
 		defer delete compiler;
 
 		let provider = scope FileShaderSourceProvider();
-		Test.Assert(provider.Initialize(root) case .Ok);
+		Test.Assert(provider.Initialize(scope NativeFileSystem(root), "") case .Ok);
 
 		let shaders = scope Sedulous.Shaders.ShaderSystem(compiler, device);
 		// Nothing here reads the bytecode's quality, and optimization is most of what
@@ -236,7 +238,7 @@ class FileProviderTests
 		defer delete compiler;
 
 		let provider = scope FileShaderSourceProvider();
-		Test.Assert(provider.Initialize(root) case .Ok);
+		Test.Assert(provider.Initialize(scope NativeFileSystem(root), "") case .Ok);
 
 		let shaders = scope Sedulous.Shaders.ShaderSystem(compiler, device);
 		// Nothing here reads the bytecode's quality, and optimization is most of what
@@ -282,7 +284,7 @@ class FileProviderTests
 		Write(root, "hot.ps.hlsl", "float4 main() : SV_Target0 { return float4(1,0,0,1); }\n");
 
 		let provider = scope FileShaderSourceProvider();
-		Test.Assert(provider.Initialize(root) case .Ok);
+		Test.Assert(provider.Initialize(scope NativeFileSystem(root), "") case .Ok);
 
 		let changed = scope List<String>();
 		defer { ClearAndDeleteItems!(changed); }
@@ -324,7 +326,7 @@ class FileProviderTests
 			""");
 
 		let provider = scope FileShaderSourceProvider();
-		Test.Assert(provider.Initialize(root) case .Ok);
+		Test.Assert(provider.Initialize(scope NativeFileSystem(root), "") case .Ok);
 
 		Write(root, "shared.hlsli", "static const float kTint = 0.5;\n");
 

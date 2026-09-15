@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using Sedulous.Core;
+using Sedulous.VFS;
 using Sedulous.Core.IO;
 using Sedulous.RHI;
 using Sedulous.RHI.TestSupport;
@@ -14,6 +15,8 @@ namespace Sedulous.Engine.Terrain.Backend.Tests;
 /// SKIPS rather than fails where there is no device or no shader directory.
 class TerrainProbeFixture
 {
+	/// The data root mounted for this fixture, which is where the shaders come from.
+	public NativeFileSystem DataMount ~ delete _;
 	public IBackend Backend;
 	public IDevice Device;
 	public ShaderSystemHost Host ~ delete _;
@@ -30,12 +33,14 @@ class TerrainProbeFixture
 		if (Device == null)
 			return;
 
-		let root = scope String();
-		if (!FindShaderRoot(root))
+		let dataRoot = scope String();
+		FindDataRoot(dataRoot);
+		if (dataRoot.IsEmpty)
 			return;
+		DataMount = new NativeFileSystem(dataRoot);
 
 		Host = new ShaderSystemHost();
-		if (Host.Initialize(Device, root) case .Err)
+		if (Host.Initialize(Device, DataMount) case .Err)
 			return;
 
 		Ready = true;
@@ -57,27 +62,4 @@ class TerrainProbeFixture
 
 	public ShaderSystem Shaders => Host.System;
 
-	private static bool FindShaderRoot(String outPath)
-	{
-		let current = scope String();
-		GetCurrentDirectory(current);
-
-		for (int depth < 8)
-		{
-			let candidate = scope:: String();
-			PathJoin(current, "Data/Shaders", candidate);
-			if (Directory.Exists(candidate))
-			{
-				outPath.Set(candidate);
-				return true;
-			}
-
-			let parent = scope:: String();
-			PathParent(current, parent);
-			if (parent.IsEmpty || (parent == current))
-				break;
-			current.Set(parent);
-		}
-		return false;
-	}
 }

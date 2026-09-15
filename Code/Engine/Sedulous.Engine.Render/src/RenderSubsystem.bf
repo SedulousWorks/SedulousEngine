@@ -7,6 +7,7 @@ using Sedulous.Materials.PipelineCache;
 using Sedulous.Profiler;
 using Sedulous.Render;
 using Sedulous.RHI;
+using Sedulous.VFS;
 using Sedulous.Runtime;
 using Sedulous.Scene;
 using Sedulous.Shaders;
@@ -25,6 +26,8 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 	private uint32 mFramesInFlight;
 
 	private ShaderSystemHost mShaderHost = new .() ~ delete _;
+	/// BORROWED from the application: where the engine's shader corpus is read from.
+	private IFileSystem mDataFileSystem = null;
 	/// BORROWED from the host above.
 	private ShaderSystem mShaders = null;
 
@@ -143,10 +146,13 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 	/// still holds it: the next begin rebuilds the graph and it would be gone.
 	private List<DebugResourceInfo> mDebugResourceSnapshot = new .() ~ DeleteContainerAndItems!(_);
 
-	public this(IDevice device, uint32 framesInFlight)
+	/// The data mount is BORROWED: the application resolves the data root, owns the mount and
+	/// outlives every subsystem it hands it to.
+	public this(IDevice device, uint32 framesInFlight, IFileSystem dataFileSystem)
 	{
 		mDevice = device;
 		mFramesInFlight = (framesInFlight < 1) ? 1 : framesInFlight;
+		mDataFileSystem = dataFileSystem;
 	}
 
 	/// Renders rather than ticks, so it runs after everything that moves has moved.
@@ -466,15 +472,12 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 
 	// ---- bring up ---------------------------------------------------------------------------
 
-	/// The engine's shader root, when nothing overrides it.
-	private const String cEngineShaderRoot = "Shaders";
-
 	protected override void OnInit()
 	{
-		// The host settles the pack versus compiler question: a cooked pack beside the
-		// executable means no compiler is needed, and otherwise it stands one up over the
-		// shader root with hot reload. Every consumer uses the same host.
-		if (mShaderHost.Initialize(mDevice, cEngineShaderRoot) case .Err)
+		// The host settles the pack versus compiler question: a cooked pack in the data root
+		// means no compiler is needed, and otherwise it stands one up over the root's Shaders
+		// folder with hot reload. Every consumer uses the same host over the same mount.
+		if (mShaderHost.Initialize(mDevice, mDataFileSystem) case .Err)
 			return; // neither a compiler nor a pack, so the renderer stays inert
 
 		mShaders = mShaderHost.System;

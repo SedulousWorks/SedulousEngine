@@ -98,7 +98,7 @@ class SandboxApp : DefaultApplication
 		let graphics = host.Graphics;
 		if ((graphics != null) && (graphics.Raw != null))
 		{
-			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight);
+			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight, DataFileSystem);
 			host.Context.RegisterSubsystem<ImguiSubsystem>(mOverlay);
 		}
 	}
@@ -651,7 +651,7 @@ class SandboxApp : DefaultApplication
 	private void LoadContent(IApplicationHost host)
 	{
 		let device = (host.Graphics != null) ? host.Graphics.Raw : null;
-		if (!mContent.Open(SandboxPaths.cOutputDir, device))
+		if (!mContent.Open(DataPath(SandboxPaths.cOutputDir, .. scope String()), device))
 			return;
 
 		let modelDir = scope String();

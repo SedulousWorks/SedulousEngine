@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.VFS;
 using Sedulous.Core.IO;
 using Sedulous.RHI;
 using Sedulous.RHI.Null;
@@ -66,7 +67,7 @@ class ShaderSystemHostTests
 		}
 
 		let host = scope ShaderSystemHost();
-		Test.Assert(host.Initialize(device, root) case .Ok);
+		Test.Assert(host.Initialize(device, scope NativeFileSystem(root)) case .Ok);
 		Test.Assert(host.IsReady);
 		Test.Assert(!host.UsingPack, "a source root means compiling on demand");
 		Test.Assert(host.PackVariantCount == 0);
@@ -96,7 +97,7 @@ class ShaderSystemHostTests
 		}
 
 		let host = scope ShaderSystemHost();
-		Test.Assert(host.Initialize(device, root, .ForcePack) case .Ok);
+		Test.Assert(host.Initialize(device, scope NativeFileSystem(root), .ForcePack) case .Ok);
 		Test.Assert(host.IsReady);
 		Test.Assert(!host.UsingPack, "there was no pack to use");
 		Test.Assert(host.GetVariant("hosted", .Fragment, .None) != null,
@@ -121,7 +122,7 @@ class ShaderSystemHostTests
 		}
 
 		let host = scope ShaderSystemHost();
-		Test.Assert(host.Initialize(device, "/no/such/shader/root", .ForceDev) case .Ok);
+		Test.Assert(host.Initialize(device, scope NativeFileSystem("/no/such/shader/root"), .ForceDev) case .Ok);
 		Test.Assert(host.IsReady, "a compiler alone is enough to be ready");
 		Test.Assert(!host.UsingPack);
 		Test.Assert(host.GetVariant("hosted", .Fragment, .None) == null,
@@ -154,7 +155,7 @@ class ShaderSystemHostTests
 		}
 
 		let host = scope ShaderSystemHost();
-		Test.Assert(host.Initialize(device, root) case .Ok);
+		Test.Assert(host.Initialize(device, scope NativeFileSystem(root)) case .Ok);
 		Test.Assert(host.IsReady);
 
 		host.Shutdown();

@@ -115,8 +115,13 @@ class ShaderCompiler
 				Encoding = DXC_CP_UTF8
 			};
 
+		// A compile carrying a resolver gets its own handler, built on the stack for this one
+		// call: DXC does not retain it, and the resolver it forwards to is the caller's.
+		var resolverHandler = ResolverIncludeHandler(mUtils, options.IncludeResolver);
+		let handler = (options.IncludeResolver != null) ? resolverHandler.Handle : mIncludeHandler;
+
 		void** resultPointer = null;
-		let hr = mCompiler.Compile(&sourceBuffer, arguments, mIncludeHandler,
+		let hr = mCompiler.Compile(&sourceBuffer, arguments, handler,
 			ref IDxcResult.IID, out resultPointer);
 		if ((hr != .S_OK) || (resultPointer == null))
 		{
@@ -194,6 +199,8 @@ class ShaderCompiler
 
 		for (let path in options.IncludePaths)
 		{
+			if (options.IncludeResolver != null)
+				break; // the resolver answers every include, so -I would never be reached
 			arguments.Add("-I");
 			arguments.Add(Own(path));
 		}

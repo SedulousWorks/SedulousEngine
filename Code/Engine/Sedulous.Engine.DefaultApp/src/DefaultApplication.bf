@@ -3,6 +3,9 @@ using System.Collections;
 using Sedulous.Audio;
 using Sedulous.Content;
 using Sedulous.Core;
+using Sedulous.Core.IO;
+using Sedulous.Core.Logging;
+using Sedulous.VFS;
 using Sedulous.Engine.Animation;
 using Sedulous.Engine.Audio;
 using Sedulous.Engine.GameInstance;
@@ -59,7 +62,10 @@ class DefaultApplication : IApplication
 
 
 	private AudioEngineSettings mAudioEngineSettings = null;
-	private String mUIFontPath = new .() ~ delete _;
+	private String mDataRootOverride = new .() ~ delete _;
+	private String mDataRoot = new .() ~ delete _;
+	/// OWNED: resolved once in Configure and handed to every consumer of engine data.
+	private NativeFileSystem mDataMount = null ~ delete _;
 
 	/// OWNED only when this application made it. Embedded in a larger host it BORROWS one,
 	/// and then the host pumps it.
@@ -91,7 +97,20 @@ class DefaultApplication : IApplication
 	public void SetAudioEngineSettings(AudioEngineSettings settings) =>
 		mAudioEngineSettings = settings;
 
-	public void SetUIFontPath(StringView path) => mUIFontPath.Set(path);
+	/// An explicit data root, which beats the discovery walk. The player fills this from
+	/// --data-root; set it before Configure or it is too late to matter.
+	public void SetDataRoot(StringView path) => mDataRootOverride.Set(path);
+
+	/// Where engine data was found, empty when it was not.
+	public StringView DataRoot => mDataRoot;
+
+	/// The mount over that root, which is what every consumer of engine data is handed.
+	public IFileSystem DataFileSystem => mDataMount;
+
+	/// A data-root-relative path as an absolute one, for the few things that take a path
+	/// rather than a mount: a cooked output database, a model a loader opens itself.
+	public void DataPath(StringView relative, String outPath) =>
+		Sedulous.VFS.DataPath(mDataRoot, relative, outPath);
 
 	/// Hands over a manager this application does NOT own, which is what an editor embedding
 	/// it does.
@@ -121,6 +140,21 @@ class DefaultApplication : IApplication
 	{
 		mHost = host;
 
+		// The data root is resolved ONCE, here, and mounted. Nothing below the application
+		// knows where it is, only what it reads relative to it.
+		ResolveDataRoot(mDataRootOverride, mDataRoot);
+		if (mDataRoot.IsEmpty)
+		{
+			// The mount still points at where a dist would keep it, so every miss on the way
+			// out names the place rather than reading as an unexplained absence.
+			GlobalLog(.Error,
+				"DefaultApplication: no data root, so there are no engine shaders and no built in font. Put Data beside the executable, or pass {} <dir>.",
+				cDataRootArgument);
+			PathJoin(GetExecutableDirectory(.. scope String()), "Data", mDataRoot);
+			host.RequestExit(1);
+		}
+		mDataMount = new NativeFileSystem(mDataRoot);
+
 		mScenes = host.Context.AddSubsystem<SceneSubsystem>();
 		// The assembly blueprint: every registered manager's scene is built from the FULL
 		// composition, which is the single source of truth.
@@ -133,7 +167,7 @@ class DefaultApplication : IApplication
 		let graphics = host.Graphics;
 		if ((graphics != null) && (graphics.Raw != null))
 		{
-			mRender = new RenderSubsystem(graphics.Raw, graphics.FramesInFlight);
+			mRender = new RenderSubsystem(graphics.Raw, graphics.FramesInFlight, mDataMount);
 			host.Context.RegisterSubsystem<RenderSubsystem>(mRender);
 
 			// Drives skeletal animation off the scene tick, and needs the render managers.
@@ -170,9 +204,8 @@ class DefaultApplication : IApplication
 		// path; an editor tab overrides this to its own gated source.
 		mInstance.SetInputSource(mInput.ShellSource);
 
-		mUI = host.Context.AddSubsystem<UISubsystem>();
-		if (!mUIFontPath.IsEmpty)
-			mUI.SetFontPath(mUIFontPath);
+		mUI = new UISubsystem(mDataMount);
+		host.Context.RegisterSubsystem<UISubsystem>(mUI);
 
 		// Each instance owns its OWN endpoint and goes online at runtime through the facade,
 		// so there is no application owned socket. The primary carries the prefab spawn

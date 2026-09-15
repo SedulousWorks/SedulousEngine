@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.VFS;
 using Sedulous.RHI;
 using Sedulous.Shaders;
 using Sedulous.VG;
@@ -19,6 +20,8 @@ class VGSandboxApp : SampleApp
 {
 	private const int32 cFrames = 2;
 
+	/// OWNED: this sample has no application to resolve the data root for it.
+	private NativeFileSystem mDataMount = null ~ delete _;
 	private ShaderSystemHost mShaderHost = null ~ delete _;
 	/// BORROWED from the shader host, which owns and frees the modules.
 	private IShaderModule mVertexShader;
@@ -56,16 +59,16 @@ class VGSandboxApp : SampleApp
 	protected override Result<void> OnInit()
 	{
 		// The VG shaders come out of the engine corpus, resolved the same way the runtime
-		// UI resolves them, rather than being compiled from a string in this file.
-		let shaderRoot = scope String();
-		if (!SandboxContent.FindDirectory(SandboxContent.cShaderRoot, shaderRoot))
-		{
-			Console.Error.WriteLine(scope $"VGSandbox: '{SandboxContent.cShaderRoot}' was not found");
+		// UI resolves them, rather than being compiled from a string in this file. This
+		// sample is not an application, so it finds the data root itself.
+		let dataRoot = scope String();
+		FindDataRoot(dataRoot);
+		if (dataRoot.IsEmpty)
 			return .Err;
-		}
+		mDataMount = new NativeFileSystem(dataRoot);
 
 		mShaderHost = new ShaderSystemHost();
-		if (mShaderHost.Initialize(mDevice, shaderRoot) case .Err)
+		if (mShaderHost.Initialize(mDevice, mDataMount) case .Err)
 			return .Err;
 
 		mVertexShader = mShaderHost.GetVariant("vg", .Vertex, .None);

@@ -6,16 +6,19 @@ using Sedulous.VFS;
 
 namespace Sedulous.Shaders;
 
-/// The DEVELOPMENT source provider: built in shaders as real files under a shader root.
+/// The DEVELOPMENT source provider: built in shaders as files in a FOLDER OF A MOUNT.
 ///
 /// The naming convention is the whole interface: the shader NAME is the file stem and the
 /// stage is the double extension, so `tonemap.ps.hlsl` serves the fragment stage of
-/// "tonemap". Shared code lives in `.hlsli` beside them, and the root doubles as the DXC
-/// include path.
+/// "tonemap". Shared code lives in `.hlsli` beside them.
+///
+/// It doubles as the compiler's include resolver, so an `#include` is read back through the
+/// same mount rather than off the native filesystem. That is what lets a pak backed mount
+/// serve a corpus a directory would otherwise have to.
 ///
 /// The manifest is scanned EAGERLY, because built ins have to be enumerable for tooling,
 /// but the sources themselves are read lazily.
-class FileShaderSourceProvider : IShaderSourceProvider
+class FileShaderSourceProvider : IShaderSourceProvider, IShaderIncludeResolver
 {
 	/// PollChanges is called once per frame and the sweep is proportional to the file count,
 	/// so only every Nth call actually sweeps. About a second at sixty frames per second:
@@ -31,27 +34,38 @@ class FileShaderSourceProvider : IShaderSourceProvider
 		public String FileName = new String() ~ delete _;
 	}
 
-	private String mRoot = new String() ~ delete _;
-	private NativeFileSystem mMount = null ~ delete _;
+	/// Mount relative, and "" means the mount root.
+	private String mFolder = new String() ~ delete _;
+	/// BORROWED: the application owns the data mount and outlives this.
+	private IFileSystem mMount = null;
 	/// Owned by the mount.
 	private IChangeSource mChanges = null;
 	private List<Entry> mEntries = new List<Entry>() ~ DeleteContainerAndItems!(_);
 	private uint32 mCallsSinceSweep = 0;
 
-	public StringView RootDirectory => mRoot;
+	/// The folder the manifest was scanned from, mount relative.
+	public StringView Folder => mFolder;
 	public int ShaderFileCount => mEntries.Count;
+	/// Whether the mount can report changes, which is what makes hot reload live. A native
+	/// mount can; a pak cannot.
+	public bool SupportsReload => mChanges != null;
 
-	/// Mounts the root and scans the manifest.
+	/// Scans a folder of a mount for the manifest.
 	///
-	/// An error when the root does not exist, which a caller falls back from loudly rather
-	/// than silently serving nothing.
-	public Result<void> Initialize(StringView rootDirectory)
+	/// An error when the mount cannot enumerate or the folder is not there, which a caller
+	/// falls back from loudly rather than silently serving nothing.
+	public Result<void> Initialize(IFileSystem fileSystem, StringView folder)
 	{
-		if (!DirectoryExists(rootDirectory))
-			return .Err;
+		mMount = fileSystem;
+		mFolder.Set(folder);
+		mEntries.Clear();
+		mChanges = null;
 
-		mRoot.Set(rootDirectory);
-		mMount = new NativeFileSystem(rootDirectory);
+		let enumerable = fileSystem as IEnumerableFileSystem;
+		if (enumerable == null)
+			return .Err;
+		if (!folder.IsEmpty && !fileSystem.Exists(folder))
+			return .Err;
 
 		let entries = scope List<DirEntry>();
 		defer
@@ -59,7 +73,7 @@ class FileShaderSourceProvider : IShaderSourceProvider
 			for (var entry in ref entries)
 				entry.Dispose();
 		}
-		if (mMount.Enumerate("", entries) case .Err)
+		if (enumerable.Enumerate(folder, entries) case .Err)
 			return .Err;
 
 		for (let entry in entries)
@@ -76,14 +90,42 @@ class FileShaderSourceProvider : IShaderSourceProvider
 			let mapped = new Entry();
 			mapped.Name.Set(stem);
 			mapped.Stage = stage;
-			mapped.FileName.Set(entry.Name);
+			Locate(entry.Name, mapped.FileName);
 			mEntries.Add(mapped);
 		}
 
-		mChanges = mMount.ChangeSource;
-		// The WHOLE mount, recursively, so an .hlsli edit is seen too.
-		mChanges.Track("");
+		// Hot reload only where the mount can watch.
+		if (let watchable = fileSystem as IWatchableFileSystem)
+		{
+			mChanges = watchable.ChangeSource;
+			// The WHOLE folder, recursively, so an .hlsli edit is seen too.
+			mChanges.Track(folder);
+		}
 		return .Ok;
+	}
+
+	/// A folder relative name as a mount relative path.
+	private void Locate(StringView name, String outPath)
+	{
+		if (mFolder.IsEmpty)
+			outPath.Set(name);
+		else
+			PathJoin(mFolder, name, outPath);
+	}
+
+	/// The preprocessor asks with the path as WRITTEN, relative to the including file: a first
+	/// level include arrives bare and is looked up in the folder, and a nested one already
+	/// carries the folder prefix. Both are tried, folder first.
+	public bool LoadInclude(StringView path, String outSource)
+	{
+		if ((mMount == null) || path.IsEmpty)
+			return false;
+
+		let inFolder = Locate(path, .. scope String());
+		if (mMount.Exists(inFolder) && ReadWholeFile(inFolder, outSource))
+			return true;
+
+		return (inFolder != path) && mMount.Exists(path) && ReadWholeFile(path, outSource);
 	}
 
 	public bool FetchSource(StringView name, ShaderStage stage, String outSource)
@@ -155,6 +197,10 @@ class FileShaderSourceProvider : IShaderSourceProvider
 
 	private bool ReadWholeFile(StringView fileName, String outSource)
 	{
+		// CLEARED first: LoadInclude tries two candidates, and a partial read from the first
+		// would otherwise be prefixed onto the second.
+		outSource.Clear();
+
 		let stream = mMount.Open(fileName, .Read);
 		if (stream == null)
 			return false;

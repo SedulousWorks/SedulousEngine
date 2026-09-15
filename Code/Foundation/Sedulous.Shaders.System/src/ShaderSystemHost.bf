@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
+using Sedulous.VFS;
 
 namespace Sedulous.Shaders;
 
@@ -10,17 +11,25 @@ namespace Sedulous.Shaders;
 /// This exists so the pack versus development decision is made ONCE, in one place, and every
 /// consumer resolves shaders the same way. The two modes:
 ///
-///   development  DXC plus a file provider over the shader root, compiling on demand with
-///                hot reload
-///   shipped      a cooked pack beside the executable, prebuilt blobs in the device's
-///                format, no compiler at all
+///   development  DXC plus a file provider over the data mount's Shaders folder, compiling
+///                on demand with hot reload
+///   shipped      the cooked Shaders/shaders.dpak read from that same mount, prebuilt blobs
+///                in the device's format, no compiler at all
+///
+/// BOTH read through the application's data mount and nothing else. There is no probing
+/// beside the executable and none of the working directory: the application resolves the
+/// data root once and hands the mount down.
 ///
 /// DEVELOPMENT WINS whenever both a compiler and a source root exist. A stray pack next to
 /// the binaries must never quietly take over a working development setup, because that kills
 /// hot reload with one log line and nothing else. Losing it has to be a choice.
 class ShaderSystemHost
 {
-	private const String cPackFileName = "shaders.dpak";
+	/// The layout under the data root, spelled once.
+	public const String cShaderFolder = "Shaders";
+	public const String cShaderPackFile = "shaders.dpak";
+	public const String cShaderPackPath = "Shaders/shaders.dpak";
+
 	/// Set in the environment to test a shipped configuration on a development machine.
 	private const String cPackEnvironmentVariable = "OPTION_USE_SHADER_PACK";
 
@@ -28,6 +37,8 @@ class ShaderSystemHost
 	private CookedShaderPack mPack = null ~ delete _;
 	private FileShaderSourceProvider mProvider = null ~ delete _;
 	private ShaderSystem mShaders = null ~ delete _;
+	/// BORROWED: the application owns the data mount and outlives this.
+	private IFileSystem mDataFileSystem = null;
 
 	public ~this()
 	{
@@ -41,12 +52,12 @@ class ShaderSystemHost
 	/// The cooked variant count in pack mode, zero otherwise. For diagnostics.
 	public int PackVariantCount => (mPack != null) ? mPack.Count : 0;
 
-	/// Builds the shader system for a device.
+	/// Builds the shader system for a device from the application's data mount, BORROWED for
+	/// the host's lifetime.
 	///
-	/// `engineShaderRoot` is the development HLSL source root. Returns an error only when
-	/// NEITHER a compiler nor a pack is available, since nothing could then resolve a
-	/// shader.
-	public Result<void> Initialize(Sedulous.RHI.IDevice device, StringView engineShaderRoot,
+	/// Returns an error only when NEITHER a compiler nor a pack is available, since nothing
+	/// could then resolve a shader.
+	public Result<void> Initialize(Sedulous.RHI.IDevice device, IFileSystem dataFileSystem,
 		ShaderPackPolicy policy = .Automatic)
 	{
 		// DXC is OPTIONAL: it is only needed in development. A shipped build with a cooked
@@ -57,11 +68,10 @@ class ShaderSystemHost
 		else
 			mCompiler = compiler;
 
-		let root = scope String(engineShaderRoot);
-		if (!DirectoryExists(root) && DirectoryExists("Shaders"))
-			root.Set("Shaders"); // a relocated build, where the shipped layout applies
+		mDataFileSystem = dataFileSystem;
 
-		let devPossible = (mCompiler != null) && DirectoryExists(root);
+		let haveSources = (dataFileSystem != null) && dataFileSystem.Exists(cShaderFolder);
+		let devPossible = (mCompiler != null) && haveSources;
 		let wantPack = WantPack(policy, devPossible);
 		let havePack = wantPack && LoadPack();
 
@@ -80,9 +90,9 @@ class ShaderSystemHost
 
 		if (wantPack)
 		{
-			Console.Error.WriteLine("Sedulous.Shaders: pack mode was requested but no usable shaders.dpak was found, so this falls back to compiling on demand");
+			Console.Error.WriteLine(scope $"Sedulous.Shaders: pack mode was requested but no usable {cShaderPackPath} was found in the data root, so this falls back to compiling on demand");
 		}
-		AttachFileProvider(root);
+		AttachFileProvider();
 		return .Ok;
 	}
 
@@ -107,21 +117,23 @@ class ShaderSystemHost
 		}
 	}
 
-	private void AttachFileProvider(StringView root)
+	private void AttachFileProvider()
 	{
 		let provider = new FileShaderSourceProvider();
-		if (provider.Initialize(root) case .Err)
+		if ((mDataFileSystem == null)
+			|| (provider.Initialize(mDataFileSystem, cShaderFolder) case .Err))
 		{
-			// No source root: only an explicit RegisterSource will resolve anything.
+			// No source folder: only an explicit RegisterSource will resolve anything.
 			delete provider;
-			Console.Error.WriteLine(scope $"Sedulous.Shaders: the shader root '{root}' was not found, so only explicitly registered shaders will resolve");
+			Console.Error.WriteLine(scope $"Sedulous.Shaders: no {cShaderFolder} folder in the data root, so only explicitly registered shaders will resolve");
 			return;
 		}
 
 		mProvider = provider;
 		mShaders.SetSourceProvider(mProvider);
-		StringView[1] includePaths = .(mProvider.RootDirectory);
-		mShaders.SetIncludePaths(includePaths);
+		// The provider is the include resolver too, so an #include is read back through the
+		// same mount the sources came from.
+		mShaders.SetIncludeResolver(mProvider);
 	}
 
 	/// Resolves a variant to a GPU module, or null when nothing is ready.
@@ -147,28 +159,20 @@ class ShaderSystemHost
 		mCompiler = null;
 	}
 
-	/// Looks for the pack beside the executable, then in the working directory.
+	/// Reads the cooked pack from the data mount, and from nowhere else.
 	///
-	/// Beside the executable first because that is what survives a relocated build.
+	/// No probing beside the executable and none of the working directory: a dist stages its
+	/// pack inside its own data root, so the mount is the only place it can be.
 	private bool LoadPack()
 	{
-		let candidates = scope List<String>();
-		defer { ClearAndDeleteItems!(candidates); }
+		if ((mDataFileSystem == null) || !mDataFileSystem.Exists(cShaderPackPath))
+			return false;
 
-		let executableDirectory = scope String();
-		GetExecutableDirectory(executableDirectory);
-		if (!executableDirectory.IsEmpty)
-			candidates.Add(PathJoin(executableDirectory, cPackFileName, .. new String()));
-		candidates.Add(new String(cPackFileName));
-
-		for (let path in candidates)
 		{
-			if (!FileExists(path))
-				continue;
-
-			let stream = scope FileStream(path, .Read);
-			if (!stream.IsValid)
-				continue;
+			let stream = mDataFileSystem.Open(cShaderPackPath, .Read);
+			if (stream == null)
+				return false;
+			defer delete stream;
 
 			let pack = new CookedShaderPack();
 			// An empty pack is treated as no pack: it would resolve nothing, and falling

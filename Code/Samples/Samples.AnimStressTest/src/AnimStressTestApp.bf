@@ -33,8 +33,8 @@ class AnimStressTestApp : DefaultApplication
 	private const float cCharacterSize = 6.0f;
 	private const float cFloorY = -7.0f;
 	private const float cFloorBaseSize = 120.0f;
-	private const String cOutputDir = "Data/Output/AnimStressTest";
-	private const String cModelFile = "Data/Assets/models/QuaterniusCharacter/glTF/Character.gltf";
+	private const String cOutputDir = "Output/AnimStressTest";
+	private const String cModelFile = "Assets/models/QuaterniusCharacter/glTF/Character.gltf";
 
 	private Scene mScene = null;
 	private EntityHandle mCamera = default;
@@ -70,7 +70,7 @@ class AnimStressTestApp : DefaultApplication
 		let graphics = host.Graphics;
 		if ((graphics != null) && (graphics.Raw != null))
 		{
-			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight);
+			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight, DataFileSystem);
 			host.Context.RegisterSubsystem<ImguiSubsystem>(mOverlay);
 		}
 	}
@@ -234,13 +234,14 @@ class AnimStressTestApp : DefaultApplication
 	private void LoadModel(IApplicationHost host)
 	{
 		let device = (host.Graphics != null) ? host.Graphics.Raw : null;
-		if (!mModel.Open(cOutputDir, device))
+		if (!mModel.Open(DataPath(cOutputDir, .. scope String()), device))
 			return;
 
 		// The model lives in the repository's data, found by walking up from wherever this was
 		// run. A checkout without it simply shows the empty stage.
 		let path = scope String();
-		if (!SampleContent.FindFile(cModelFile, path))
+		DataPath(cModelFile, path);
+		if (!FileExists(path))
 		{
 			Console.WriteLine(scope $"AnimStressTest: no model at {cModelFile}, showing an empty stage.");
 			return;

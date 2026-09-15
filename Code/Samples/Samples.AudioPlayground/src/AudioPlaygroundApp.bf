@@ -49,7 +49,7 @@ class AudioPlaygroundApp : DefaultApplication
 		let graphics = host.Graphics;
 		if ((graphics != null) && (graphics.Raw != null))
 		{
-			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight);
+			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight, DataFileSystem);
 			host.Context.RegisterSubsystem<ImguiSubsystem>(mOverlay);
 		}
 	}

@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Animation;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Engine.Animation;
 using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine.Render;
@@ -38,8 +39,8 @@ class AnimatedCrowdApp : DefaultApplication
 	private const uint32 cPoseCount = 32;
 	/// The cap on how many distinct clips the crowd mixes across.
 	private const int32 cMaxClipGroups = 6;
-	private const String cOutputDir = "Data/Output/AnimatedCrowd";
-	private const String cModelFile = "Data/Assets/models/QuaterniusCharacter/glTF/Character.gltf";
+	private const String cOutputDir = "Output/AnimatedCrowd";
+	private const String cModelFile = "Assets/models/QuaterniusCharacter/glTF/Character.gltf";
 
 	/// One colour per clip group, so a glance says which clip a character is playing.
 	private static readonly Float3[cMaxClipGroups] cClipColors = .(
@@ -93,7 +94,7 @@ class AnimatedCrowdApp : DefaultApplication
 		let graphics = host.Graphics;
 		if ((graphics != null) && (graphics.Raw != null))
 		{
-			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight);
+			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight, DataFileSystem);
 			host.Context.RegisterSubsystem<ImguiSubsystem>(mOverlay);
 		}
 	}
@@ -264,11 +265,12 @@ class AnimatedCrowdApp : DefaultApplication
 	private void LoadModel(IApplicationHost host)
 	{
 		let device = (host.Graphics != null) ? host.Graphics.Raw : null;
-		if (!mModel.Open(cOutputDir, device))
+		if (!mModel.Open(DataPath(cOutputDir, .. scope String()), device))
 			return;
 
 		let path = scope String();
-		if (!SampleContent.FindFile(cModelFile, path))
+		DataPath(cModelFile, path);
+		if (!FileExists(path))
 		{
 			Console.WriteLine(scope $"AnimatedCrowd: no model at {cModelFile}, showing an empty stage.");
 			return;

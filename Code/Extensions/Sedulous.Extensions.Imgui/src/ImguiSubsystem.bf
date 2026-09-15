@@ -1,6 +1,7 @@
 using System;
 using Sedulous.Graphics;
 using Sedulous.RHI;
+using Sedulous.VFS;
 using Sedulous.Runtime;
 using Sedulous.Shaders;
 using Sedulous.Shell;
@@ -19,6 +20,8 @@ class ImguiSubsystem : Subsystem
 	private uint32 mFramesInFlight = 2;
 
 	private ShaderSystemHost mShaderHost = new .() ~ delete _;
+	/// BORROWED, and where the overlay's shaders come from.
+	private IFileSystem mDataFileSystem = null;
 	private ImguiRenderer mRenderer = null ~ delete _;
 	private ImGuiContext* mContext = null;
 
@@ -30,10 +33,12 @@ class ImguiSubsystem : Subsystem
 	private bool mReady = false;
 	private bool mFrameOpen = false;
 
-	public this(IDevice device, uint32 framesInFlight)
+	/// The data mount is BORROWED: the application owns it and outlives this.
+	public this(IDevice device, uint32 framesInFlight, IFileSystem dataFileSystem)
 	{
 		mDevice = device;
 		mFramesInFlight = (framesInFlight < 1) ? 1 : framesInFlight;
+		mDataFileSystem = dataFileSystem;
 	}
 
 	public bool IsReady => mReady;
@@ -92,7 +97,7 @@ class ImguiSubsystem : Subsystem
 		// Cooked shaders from the pack where there is one, and the compiler over the shader
 		// tree where there is not. With neither, the overlay stays INERT rather than failing
 		// the application that registered it.
-		if (mShaderHost.Initialize(mDevice, "Shaders") case .Err)
+		if (mShaderHost.Initialize(mDevice, mDataFileSystem) case .Err)
 			return;
 
 		mContext = igCreateContext(null);

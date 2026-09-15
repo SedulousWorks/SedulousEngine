@@ -68,7 +68,7 @@ class TerrainPlaygroundApp : DefaultApplication
 		{
 			// REGISTERED rather than created by the context: the overlay needs the device and
 			// the frame count, which a default construction has no way to supply.
-			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight);
+			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight, DataFileSystem);
 			host.Context.RegisterSubsystem<ImguiSubsystem>(mOverlay);
 		}
 	}

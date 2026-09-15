@@ -61,13 +61,6 @@ class PhysicsPlaygroundApp : DefaultApplication
 	private FlyCamera mFly = .();
 	private float mSweepAngle = 0.0f;
 
-	public this()
-	{
-		let font = scope String();
-		if (SampleContent.FindFile(SampleContent.cRobotoFont, font))
-			SetUIFontPath(font);
-	}
-
 	public override void Configure(IApplicationHost host)
 	{
 		// Physics, input and UI all come from the base. Registering them again would leave
@@ -77,7 +70,7 @@ class PhysicsPlaygroundApp : DefaultApplication
 		let graphics = host.Graphics;
 		if ((graphics != null) && (graphics.Raw != null))
 		{
-			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight);
+			mOverlay = new ImguiSubsystem(graphics.Raw, graphics.FramesInFlight, DataFileSystem);
 			host.Context.RegisterSubsystem<ImguiSubsystem>(mOverlay);
 		}
 	}

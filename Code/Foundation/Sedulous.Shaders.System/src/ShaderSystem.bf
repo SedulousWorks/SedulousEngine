@@ -38,7 +38,8 @@ class ShaderSystem
 	/// Variant to the GPU module it owns.
 	private Dictionary<ShaderVariantKey, Sedulous.RHI.IShaderModule> mCache = new .() ~ delete _;
 	private Dictionary<uint64, uint64> mVersions = new Dictionary<uint64, uint64>() ~ delete _;
-	private List<String> mIncludePaths = new List<String>() ~ DeleteContainerAndItems!(_);
+	/// BORROWED from whoever set it, usually the file provider.
+	private IShaderIncludeResolver mIncludeResolver = null;
 
 	/// The DXC optimization level every on demand compile asks for. Three is what Raptor
 	/// compiles at and what a build wants.
@@ -96,13 +97,12 @@ class ShaderSystem
 	/// compiled, and a miss is a loud cook coverage bug.
 	public void SetCookedPack(CookedShaderPack pack) => mPack = pack;
 
-	/// The include search paths for resolving a shared .hlsli, copied.
-	public void SetIncludePaths(Span<StringView> paths)
-	{
-		ClearAndDeleteItems!(mIncludePaths);
-		for (let path in paths)
-			mIncludePaths.Add(new String(path));
-	}
+	/// Where a shared .hlsli is resolved from, BORROWED.
+	///
+	/// This replaces a list of native directories: the compiler asks the resolver rather than
+	/// opening a path, so a corpus behind a mount or a pak serves includes the same way a
+	/// directory does.
+	public void SetIncludeResolver(IShaderIncludeResolver resolver) => mIncludeResolver = resolver;
 
 	/// Asks the provider what changed, drops those sources and their variants, and bumps
 	/// their versions so a pipeline cache rebuilds.
@@ -315,15 +315,11 @@ class ShaderSystem
 		let defines = scope List<ShaderDefine>();
 		ShaderFlagNames.AppendDefines(flags, defines);
 
-		let includeViews = scope List<StringView>();
-		for (let path in mIncludePaths)
-			includeViews.Add(path);
-
 		var options = CompileOptions();
 		options.ShaderModel = "6_0";
 		options.OptimizationLevel = OptimizationLevel;
 		options.Defines = defines;
-		options.IncludePaths = includeViews;
+		options.IncludeResolver = mIncludeResolver;
 		if (!isDX12)
 		{
 			// Vulkan and WebGPU: shift the register spaces so HLSL b, t, u and s registers

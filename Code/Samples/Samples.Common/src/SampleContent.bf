@@ -1,54 +1,55 @@
 using System;
-using System.IO;
 using Sedulous.Core.IO;
+using Sedulous.VFS;
 
 namespace Samples.Common;
 
-/// Finds the repository's data next to wherever a sample was run from.
+/// The data root, for samples that are not applications and so have no host to ask.
 ///
-/// Raptor bakes the paths in at compile time from the source root. A Beef workspace has no
-/// equivalent, so the directory is WALKED UP from the working directory instead: a sample runs
-/// from the workspace root, from its own project directory, or from the build output, and the
-/// data sits at the repository root in all three cases.
+/// A DefaultApplication sample takes DataRoot and DataPath from the base class instead: the
+/// application resolves the root once at Configure and everything below reads relative to it.
+/// This is for the few places that run before or outside one.
 static class SampleContent
 {
-	public const String cShaderRoot = "Data/Shaders";
-	public const String cAssetRoot = "Data/Assets";
-	public const String cAudioDir = "Data/Assets/audio";
-	public const String cRobotoFont = "Data/Assets/fonts/roboto/Roboto-Regular.ttf";
+	/// The layout under the root, spelled here once for the samples that share it.
+	public const String cAssetRoot = "Assets";
+	public const String cAudioDir = "Assets/audio/playground";
+	public const String cRobotoFont = "Assets/fonts/roboto/Roboto-Regular.ttf";
 
-	/// The absolute path of a repository relative file, or false when this checkout has no
-	/// data. False rather than an assertion, because a sample still shows everything that does
-	/// not need it.
-	public static bool FindFile(StringView relative, String outPath) =>
-		Find(relative, outPath, false);
-
-	public static bool FindDirectory(StringView relative, String outPath) =>
-		Find(relative, outPath, true);
-
-	private static bool Find(StringView relative, String outPath, bool directory)
+	/// The data root, discovered once and kept. Empty when there is none, which every caller
+	/// treats as "that content is absent" rather than as a failure.
+	public static StringView Root
 	{
-		let current = scope String();
-		GetCurrentDirectory(current);
-
-		for (int depth < 8)
+		get
 		{
-			let candidate = scope:: String();
-			PathJoin(current, relative, candidate);
-			if (directory ? Directory.Exists(candidate) : File.Exists(candidate))
+			if (!sResolved)
 			{
-				outPath.Set(candidate);
-				return true;
+				FindDataRoot(sRoot);
+				sResolved = true;
 			}
-
-			let parent = scope:: String();
-			PathParent(current, parent);
-			if (parent.IsEmpty || (parent == current))
-				break;
-
-			current.Set(parent);
+			return sRoot;
 		}
+	}
 
+	private static String sRoot = new .() ~ delete _;
+	private static bool sResolved = false;
+
+	/// A root relative path as an absolute one, or false when this checkout has no data.
+	public static bool FindFile(StringView relative, String outPath)
+	{
+		DataPath(Root, relative, outPath);
+		if (!Root.IsEmpty && FileExists(outPath))
+			return true;
+		outPath.Clear();
+		return false;
+	}
+
+	public static bool FindDirectory(StringView relative, String outPath)
+	{
+		DataPath(Root, relative, outPath);
+		if (!Root.IsEmpty && DirectoryExists(outPath))
+			return true;
+		outPath.Clear();
 		return false;
 	}
 }

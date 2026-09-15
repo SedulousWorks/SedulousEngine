@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using Sedulous.Core;
+using Sedulous.VFS;
 using Sedulous.RHI;
 using Sedulous.RHI.Validation;
 using Sedulous.RHI.Vulkan;
@@ -71,10 +72,31 @@ abstract class SampleApp
 
 	protected void Exit() => mRunning = false;
 
+	/// Where engine data was found, and the mount over it. The mount is what a consumer of
+	/// engine data takes; the path is for the few things that want one.
+	public StringView DataRoot => mDataRoot;
+	public IFileSystem DataFileSystem => mDataMount;
+
+	public void DataPath(StringView relative, String outPath) =>
+		Sedulous.VFS.DataPath(mDataRoot, relative, outPath);
+
+	private String mDataRoot = new .() ~ delete _;
+	private NativeFileSystem mDataMount = null ~ delete _;
+
 	/// Runs the sample to completion, returning a process exit code.
 	public int Run(String[] args = null)
 	{
 		ParseArguments(args);
+
+		// These samples have no application above them, so this is where the data root is
+		// resolved: --data-root if it was given, otherwise the discovery walk.
+		ResolveDataRoot((args != null) ? args : Span<String>(), mDataRoot);
+		if (mDataRoot.IsEmpty)
+		{
+			Console.Error.WriteLine("SampleApp: no data root. Put Data with its .dataroot marker beside the sample, or pass --data-root <dir>.");
+			return 1;
+		}
+		mDataMount = new NativeFileSystem(mDataRoot);
 
 		if (Initialize() case .Err)
 		{

@@ -22,3 +22,5 @@ corlib = "*"
 "Sedulous.Shaders.System" = "*"
 "Sedulous.Engine.Scene" = "*"
 "Sedulous.Profiler" = "*"
+
+"Sedulous.VFS" = "*"

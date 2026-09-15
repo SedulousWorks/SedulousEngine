@@ -43,7 +43,10 @@ class UITestFixture
 			Context.RegisterSubsystem(Input);
 		}
 
-		UI = Context.AddSubsystem<UISubsystem>();
+		// No data mount: the fixture drives the subsystem's logic, not its shaders or its
+		// built in font, and both degrade rather than fail without one.
+		UI = new UISubsystem(null);
+		Context.RegisterSubsystem<UISubsystem>(UI);
 		Context.Startup();
 	}
 

@@ -15,7 +15,7 @@ class DebugViewIsolationTests
 	public static void EachViewportKeyGetsItsOwnStableBuffer()
 	{
 		let device = scope NullDevice();
-		let subsystem = scope RenderSubsystem(device, 2);
+		let subsystem = scope RenderSubsystem(device, 2, null);
 
 		// Two distinct keys, which is the main editor viewport and the camera preview inset.
 		int32 mainKey = 0;
