@@ -27,7 +27,9 @@ static class ClipCyclerGraph
 		{
 			let clip = model.Animations[i].Get;
 			let name = (clip != null) ? clip.Name : "State";
-			layer.AddState(new AnimationGraphState(name, new ClipStateNode(clip)));
+			// The node is made here, so the state has to be told to own it: the two argument
+			// form leaves it borrowed, and nothing else would free it.
+			layer.AddState(new AnimationGraphState(name, new ClipStateNode(clip), true));
 		}
 
 		for (int32 i < clipCount)
