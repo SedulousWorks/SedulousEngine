@@ -261,4 +261,37 @@ class ResourceManagerTests
 		Test.Assert(proxy.Get == null, "and the product with it");
 		Test.Assert(proxy.State == .Unloaded, "asked without crashing");
 	}
+
+	/// A reload cascade must survive the handle map GROWING underneath it.
+	///
+	/// Raptor's crash came from holding a raw pointer into the map across the recursive
+	/// rebuild: the rebuild's own child binds grew the map, a rehash moved the slots, and the
+	/// pointer then read freed memory. Beef looks up a handle OBJECT rather than a slot, so
+	/// the shape cannot recur, but the cascade is the only place the map grows mid walk and
+	/// nothing held that.
+	[Test]
+	public static void ReloadSurvivesTheHandleMapGrowingMidCascade()
+	{
+		let fixture = scope ResourceFixture("scratch_resource_rehash");
+		let childId = fixture.Author("child", 2, 2);
+		let parentId = fixture.Author("parent", 3, 3);
+
+		let composite = scope CompositeFactory(childId);
+		// Enough to force several growths of whatever the map started at.
+		for (int32 i < 64)
+			composite.ExtraChildren.Add(fixture.Author(scope $"extra{i:00}", i + 1, 1));
+		fixture.Manager.AddFactory(composite);
+
+		let parent = fixture.Manager.Bind<CompositeProduct>(parentId);
+		Test.Assert(parent.Get != null);
+		Test.Assert(composite.Builds == 1);
+
+		// Reloading the child cascades into the parent, whose rebuild binds all sixty five
+		// children again while the cascade is still walking.
+		fixture.Manager.Reload(childId);
+
+		Test.Assert(composite.Builds == 2, "the parent rebuilt");
+		Test.Assert(parent.Get != null, "and the proxy still resolves");
+		Test.Assert(parent.Get.ChildArea == 4, "to a product built from a live child");
+	}
 }

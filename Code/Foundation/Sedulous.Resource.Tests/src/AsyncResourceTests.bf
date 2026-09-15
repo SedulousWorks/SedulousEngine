@@ -305,4 +305,27 @@ class AsyncResourceTests
 			Test.Assert(proxies[i].Get.Area == (i + 1) * 2, scope $"load {i}");
 		}
 	}
+
+	/// Destroying the manager with a decode still in flight must DRAIN it.
+	///
+	/// The decode job holds the manager. Freeing the manager while a worker is inside one is
+	/// a use after free that only shows up under load, so the destructor waits the jobs out
+	/// and discards their results rather than finalising during teardown.
+	[Test]
+	public static void DestroyingTheManagerWithAnInFlightDecodeDrainsIt()
+	{
+		let fixture = scope ResourceFixture("scratch_async_teardown");
+		let factory = scope AsyncProductFactory();
+		let jobs = scope JobSystem(2);
+
+		{
+			let manager = scope ResourceManager(fixture.Database, jobs);
+			manager.AddFactory(factory);
+			manager.BindAsync<TestProduct>(fixture.Author("mesh", 2, 2));
+			// Deliberately never pumped: the decode is left in flight and the destructor at
+			// the end of this scope is what has to see it out.
+		}
+
+		Test.Assert(factory.DecodesFinished == 1, "the decode ran to completion during teardown");
+	}
 }
