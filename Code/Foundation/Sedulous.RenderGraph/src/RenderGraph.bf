@@ -116,7 +116,10 @@ class RenderGraph
 	/// This frame's per pass CPU RECORD cost, gathered by name with the expensive first.
 	public void AppendCpuPassReport(String outReport)
 	{
-		let names = scope List<String>();
+		// VIEWS into the pass records, never copies. A copy here was allocated inside the loop
+		// body, so it was freed at the end of the iteration that made it and the next
+		// comparison read a dangling string.
+		let names = scope List<StringView>();
 		let ticks = scope List<int64>();
 		let counts = scope List<int32>();
 		var total = (int64)0;
@@ -137,7 +140,7 @@ class RenderGraph
 
 			if (found < 0)
 			{
-				names.Add(new:ScopedAlloc! String(pass.Name));
+				names.Add(pass.Name);
 				ticks.Add(pass.Ticks);
 				counts.Add(1);
 				continue;

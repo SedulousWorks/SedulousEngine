@@ -139,7 +139,10 @@ class GraphProfiler
 	/// as one line rather than twenty four, sorted with the expensive first.
 	private void AppendAggregate(int32 count, String outReport)
 	{
-		let names = scope List<String>();
+		// VIEWS into the profiler's own name list, never copies. A copy here was allocated
+		// inside the loop body, so it was freed at the end of the iteration that made it and
+		// the next comparison read a dangling string.
+		let names = scope List<StringView>();
 		let sums = scope List<float>();
 		let counts = scope List<int32>();
 
@@ -158,7 +161,7 @@ class GraphProfiler
 
 			if (found < 0)
 			{
-				names.Add(new:ScopedAlloc! String(name));
+				names.Add(name);
 				sums.Add(mPassTimesMs[i]);
 				counts.Add(1);
 				continue;
