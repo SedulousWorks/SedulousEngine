@@ -37,8 +37,8 @@ class AnimStressTestApp : DefaultApplication
 	private const String cModelFile = "Assets/models/QuaterniusCharacter/glTF/Character.gltf";
 
 	private Scene mScene = null;
-	private EntityHandle mCamera = default;
-	private EntityHandle mFloor = default;
+	private EntityHandle mCamera = .Invalid;
+	private EntityHandle mFloor = .Invalid;
 
 	private CookedModel mModel = new .() ~ delete _;
 	private StaticMesh mFloorMesh = null ~ delete _;

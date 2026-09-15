@@ -24,7 +24,7 @@ namespace Samples.AudioPlayground;
 class AudioPlaygroundApp : DefaultApplication
 {
 	private Scene mScene = null;
-	private EntityHandle mCamera = default;
+	private EntityHandle mCamera = .Invalid;
 	private List<EntityHandle> mEmitters = new .() ~ delete _;
 
 	private AudioClip mAmbient = null ~ delete _;
@@ -35,7 +35,7 @@ class AudioPlaygroundApp : DefaultApplication
 
 	private ImguiSubsystem mOverlay = null ~ delete _;
 
-	private VoiceHandle mLastOneShot = default;
+	private VoiceHandle mLastOneShot = .();
 	private Float3 mLastOneShotPosition = .(0, 0, 0);
 	private bool mHaveOneShot = false;
 	private uint32 mRandomState = 0x12345678;

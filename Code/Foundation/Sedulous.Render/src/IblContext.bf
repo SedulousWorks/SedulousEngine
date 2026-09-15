@@ -50,9 +50,9 @@ class IblContext
 
 	/// This frame's handles, valid once prepared. The forward reads them, so the graph orders
 	/// any rebuild before the shading and puts the barriers in.
-	public RGHandle PrefilterHandle = default;
-	public RGHandle ShHandle = default;
-	public RGHandle EnvHandle = default;
+	public RGHandle PrefilterHandle = .Invalid;
+	public RGHandle ShHandle = .Invalid;
+	public RGHandle EnvHandle = .Invalid;
 
 	public SkySnapshot Sky = .();
 	public Float3 SunDir = .(0.0f, -1.0f, 0.0f);

@@ -32,12 +32,12 @@ class PhysicsPlaygroundApp : DefaultApplication
 	private Scene mScene = null;
 	private PhysicsSceneSystem mPhysics = null;
 
-	private EntityHandle mCamera = default;
-	private EntityHandle mSweeper = default;
-	private EntityHandle mBoulder = default;
-	private EntityHandle mHero = default;
-	private EntityHandle mHudEntity = default;
-	private EntityHandle mKioskEntity = default;
+	private EntityHandle mCamera = .Invalid;
+	private EntityHandle mSweeper = .Invalid;
+	private EntityHandle mBoulder = .Invalid;
+	private EntityHandle mHero = .Invalid;
+	private EntityHandle mHudEntity = .Invalid;
+	private EntityHandle mKioskEntity = .Invalid;
 	private List<EntityHandle> mCrates = new .() ~ delete _;
 
 	private UIDocument mHudDocument = null ~ delete _;

@@ -30,10 +30,10 @@ class TerrainPlaygroundApp : DefaultApplication
 	private const float cCasterRadius = 8.0f;
 
 	private Scene mScene = null;
-	private EntityHandle mCamera = default;
-	private EntityHandle mSun = default;
-	private EntityHandle mTerrain = default;
-	private EntityHandle mCaster = default;
+	private EntityHandle mCamera = .Invalid;
+	private EntityHandle mSun = .Invalid;
+	private EntityHandle mTerrain = .Invalid;
+	private EntityHandle mCaster = .Invalid;
 
 	private Heightfield mHeightfield = null ~ delete _;
 	private TerrainResource mTerrainResource = null ~ delete _;

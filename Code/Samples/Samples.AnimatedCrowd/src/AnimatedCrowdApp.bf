@@ -51,9 +51,9 @@ class AnimatedCrowdApp : DefaultApplication
 		"Random (hashed)", "Wave (diagonal)", "Columns", "Clusters", "Custom (rings)");
 
 	private Scene mScene = null;
-	private EntityHandle mCamera = default;
-	private EntityHandle mFloor = default;
-	private EntityHandle mKeyLight = default;
+	private EntityHandle mCamera = .Invalid;
+	private EntityHandle mFloor = .Invalid;
+	private EntityHandle mKeyLight = .Invalid;
 
 	private CookedModel mModel = new .() ~ delete _;
 	private StaticMesh mFloorMesh = null ~ delete _;

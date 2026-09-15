@@ -31,9 +31,9 @@ class RenderStressTestApp : DefaultApplication
 	private const float cFloorBaseSize = 500.0f;
 
 	private Scene mScene = null;
-	private EntityHandle mCamera = default;
-	private EntityHandle mSun = default;
-	private EntityHandle mGround = default;
+	private EntityHandle mCamera = .Invalid;
+	private EntityHandle mSun = .Invalid;
+	private EntityHandle mGround = .Invalid;
 
 	private StaticMesh mSphere = null ~ delete _;
 	private StaticMesh mGroundMesh = null ~ delete _;
@@ -43,7 +43,7 @@ class RenderStressTestApp : DefaultApplication
 
 	private List<EntityHandle> mSpheres = new .() ~ delete _;
 	private List<Float4x4> mInstanceTransforms = new .() ~ delete _;
-	private EntityHandle mMultiMeshEntity = default;
+	private EntityHandle mMultiMeshEntity = .Invalid;
 
 	private ImguiSubsystem mOverlay = null ~ delete _;
 

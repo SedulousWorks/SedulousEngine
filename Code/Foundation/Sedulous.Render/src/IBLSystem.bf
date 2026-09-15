@@ -102,7 +102,7 @@ class IBLSystem
 	private IComputePipeline mShPipeline = null;
 
 	private ResourceState mBrdfState = .Undefined;
-	private RGHandle mBrdfHandle = default;
+	private RGHandle mBrdfHandle = .Invalid;
 
 	private bool mReady = false;
 	/// The lookup table is constant, so it is generated once rather than per sky change.

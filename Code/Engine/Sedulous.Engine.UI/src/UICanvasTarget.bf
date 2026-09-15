@@ -9,7 +9,7 @@ class UICanvasTarget
 {
 	/// BORROWED, and part of the key rather than something this keeps alive.
 	public Scene Scene = null;
-	public EntityHandle Entity = default;
+	public EntityHandle Entity = .Invalid;
 
 	/// What the scene samples.
 	public ITexture Texture = null;

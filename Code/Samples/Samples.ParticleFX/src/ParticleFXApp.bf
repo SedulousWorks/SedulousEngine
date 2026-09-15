@@ -45,9 +45,9 @@ class ParticleFXApp : DefaultApplication
 		"tornado", "explosion", "magic circle", "fireflies");
 
 	private Scene mScene = null;
-	private EntityHandle mCamera = default;
-	private EntityHandle mLocalEmitter = default;
-	private EntityHandle mCookedEmitter = default;
+	private EntityHandle mCamera = .Invalid;
+	private EntityHandle mLocalEmitter = .Invalid;
+	private EntityHandle mCookedEmitter = .Invalid;
 
 	/// Every effect is OWNED here and borrowed by its component, which is the code path the
 	/// component documents.

@@ -42,12 +42,12 @@ class SandboxApp : DefaultApplication
 	private const float cBallRadius = 1.25f;
 
 	private Scene mScene = null;
-	private EntityHandle mCamera = default;
-	private EntityHandle mFloorEntity = default;
-	private EntityHandle mKeyLight = default;
-	private EntityHandle mProbeEntity = default;
-	private EntityHandle mGraphCharacter = default;
-	private EntityHandle mCampfireEntity = default;
+	private EntityHandle mCamera = .Invalid;
+	private EntityHandle mFloorEntity = .Invalid;
+	private EntityHandle mKeyLight = .Invalid;
+	private EntityHandle mProbeEntity = .Invalid;
+	private EntityHandle mGraphCharacter = .Invalid;
+	private EntityHandle mCampfireEntity = .Invalid;
 
 	private List<EntityHandle> mCubes = new .() ~ delete _;
 	private List<EntityHandle> mPointLights = new .() ~ delete _;

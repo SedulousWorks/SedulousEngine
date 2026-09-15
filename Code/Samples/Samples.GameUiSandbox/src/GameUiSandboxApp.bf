@@ -20,7 +20,7 @@ namespace Samples.GameUiSandbox;
 class GameUiSandboxApp : DefaultApplication
 {
 	private Scene mScene = null;
-	private EntityHandle mCamera = default;
+	private EntityHandle mCamera = .Invalid;
 	private UISubsystem mUI = null;
 
 	private ToastHost mToasts = null;
