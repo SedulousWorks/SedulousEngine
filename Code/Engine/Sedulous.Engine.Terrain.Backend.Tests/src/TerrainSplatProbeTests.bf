@@ -297,4 +297,269 @@ class TerrainSplatProbeTests
 		Test.Assert(leanMinus.Total > flatMinus.Total * 1.10, "green leans toward minus Z");
 		Test.Assert(leanPlus.Total < flatPlus.Total * 0.90, "and away from plus Z");
 	}
+	/// The coverage mask patterns the split case renders.
+	private enum MaskPattern { Off, SplitLeft, SplitRight, Cut }
+
+	/// MakeFlat's world size, so ONE mask repeat spans the whole footprint and the pattern
+	/// lands on screen as itself rather than as a tiling.
+	private const float cFlatWorldSize = 130.0f;
+
+	private static TerrainProbe RenderMasked(TerrainProbeFixture fixture, MaskPattern pattern)
+	{
+		let grid = TerrainFixtures.MakeFlat();
+		defer delete grid;
+
+		let owned = scope ProbeTextures();
+		let weights = TerrainSplatFixtures.MakeStripeWeights(1); // layer 0 one hot everywhere
+		defer delete weights;
+
+		let blue = scope Float3[](.(0.05f, 0.05f, 0.9f));
+		let palette = TerrainSplatFixtures.MakePaletteData(blue);
+		defer delete palette;
+
+		if (pattern != .Off)
+		{
+			let side = palette.SliceSize;
+			palette.MaskTexels.Resize(TerrainPaletteData.SliceBytes(side, palette.MipCount));
+			for (uint32 y = 0; y < side; y++)
+			{
+				for (uint32 x = 0; x < side; x++)
+				{
+					uint8 value = 255;
+					switch (pattern)
+					{
+					case .SplitLeft: value = (x < side / 2) ? 255 : 0;
+					case .SplitRight: value = (x < side / 2) ? 0 : 255;
+					case .Cut: value = 0;
+					case .Off:
+					}
+
+					let at = (int)(y * side + x) * 4;
+					palette.MaskTexels[at + 0] = value;
+					palette.MaskTexels[at + 1] = value;
+					palette.MaskTexels[at + 2] = value;
+					palette.MaskTexels[at + 3] = 255;
+				}
+			}
+		}
+
+		let splatCache = scope TerrainSplatTextureCache();
+		let paletteCache = scope TerrainPaletteTextureCache();
+		defer { splatCache.Clear(fixture.Device); paletteCache.Clear(fixture.Device); }
+
+		let scales = scope float[](cFlatWorldSize);
+		let views = splatCache.GetOrCreate(fixture.Device, weights, weights.Version);
+		let gpu = paletteCache.GetOrCreate(fixture.Device, palette, scales);
+		if (pattern != .Off)
+			Test.Assert(gpu.MaskArrayView != null, "a masked palette builds the mask array");
+
+		let config = scope TerrainProbeConfig();
+		config.Terrain = grid;
+		config.WeightView = views.WeightView;
+		config.IndexView = views.IndexView;
+		config.BaseAlbedoView = TerrainSplatFixtures.MakeSolid(owned, fixture.Device, 230, 30, 30);
+		config.PaletteArrayView = gpu.ArrayView;
+		config.TileScaleBuffer = gpu.TileScaleBuffer;
+		config.TileScaleGeneration = gpu.Generation;
+		config.PaletteCount = 1;
+		config.MaskArrayView = (pattern != .Off) ? gpu.MaskArrayView : null;
+
+		return TerrainProbeRenderer.Render(fixture, config);
+	}
+
+	/// A coverage mask cuts the painted layer away and the BASE shows through the hole.
+	[Test]
+	public static void ACoverageMaskCutsALayerToRevealTheBase()
+	{
+		let fixture = scope TerrainProbeFixture();
+		if (!fixture.Ready)
+			return;
+
+		let off = RenderMasked(fixture, .Off);
+		defer delete off;
+		if (!off.Valid)
+			return;
+
+		let cut = RenderMasked(fixture, .Cut);
+		defer delete cut;
+		let splitLeft = RenderMasked(fixture, .SplitLeft);
+		defer delete splitLeft;
+		let splitRight = RenderMasked(fixture, .SplitRight);
+		defer delete splitRight;
+
+		Test.Assert((off.LeftB + off.RightB) > (off.LeftR + off.RightR) * 1.5,
+			"with no mask the layer covers everything");
+		Test.Assert((cut.LeftR + cut.RightR) > (cut.LeftB + cut.RightB) * 1.5,
+			"an all zero mask falls through to the base");
+
+		// A real SPATIAL split: one screen half reads as the layer and the other as the base.
+		let leftIsLayer = splitLeft.LeftB > splitLeft.LeftR;
+		let rightIsLayer = splitLeft.RightB > splitLeft.RightR;
+		Test.Assert(leftIsLayer != rightIsLayer, "the mask splits the footprint on screen");
+
+		// And inverting the mask swaps which half it is.
+		Test.Assert((splitRight.LeftB > splitRight.LeftR) != leftIsLayer,
+			"flipping the mask flips the halves");
+	}
+	/// Both halves of the screen summed, which is how the whole footprint's colour reads.
+	private static double Red(TerrainProbe probe) => probe.LeftR + probe.RightR;
+	private static double Blue(TerrainProbe probe) => probe.LeftB + probe.RightB;
+
+	/// Two layers painted over each other with constant per layer height slices.
+	private static TerrainProbe RenderHeightBlend(TerrainProbeFixture fixture, uint8 h0, uint8 h1,
+		uint8 w0, uint8 w1, bool bindHeight, float contrast)
+	{
+		let grid = TerrainFixtures.MakeFlat();
+		defer delete grid;
+
+		let weights = TerrainSplatFixtures.MakeTwoLayerWeights(w0, w1);
+		defer delete weights;
+
+		let colors = scope Float3[](.(0.9f, 0.05f, 0.05f), .(0.05f, 0.05f, 0.9f));
+		let palette = TerrainSplatFixtures.MakePaletteData(colors);
+		defer delete palette;
+
+		// One CONSTANT height per layer, so the only thing that can break the tie is the
+		// height term itself.
+		let heights = scope Float3[](
+			.((float)h0 / 255.0f, (float)h0 / 255.0f, (float)h0 / 255.0f),
+			.((float)h1 / 255.0f, (float)h1 / 255.0f, (float)h1 / 255.0f));
+		TerrainSplatFixtures.FillSliceArray(palette.HeightTexels, heights, palette);
+
+		let splatCache = scope TerrainSplatTextureCache();
+		let paletteCache = scope TerrainPaletteTextureCache();
+		defer { splatCache.Clear(fixture.Device); paletteCache.Clear(fixture.Device); }
+
+		let scales = scope float[](1000.0f, 1000.0f);
+		let views = splatCache.GetOrCreate(fixture.Device, weights, weights.Version);
+		let gpu = paletteCache.GetOrCreate(fixture.Device, palette, scales);
+		if (bindHeight)
+			Test.Assert(gpu.HeightArrayView != null, "a palette with heights builds the array");
+
+		let config = scope TerrainProbeConfig();
+		config.Terrain = grid;
+		config.WeightView = views.WeightView;
+		config.IndexView = views.IndexView;
+		config.PaletteArrayView = gpu.ArrayView;
+		config.TileScaleBuffer = gpu.TileScaleBuffer;
+		config.TileScaleGeneration = gpu.Generation;
+		config.PaletteCount = 2;
+		config.HeightArrayView = bindHeight ? gpu.HeightArrayView : null;
+		config.HeightBlendContrast = contrast;
+
+		return TerrainProbeRenderer.Render(fixture, config);
+	}
+
+	/// Height blending breaks a fifty fifty tie toward the TALLER layer, and the weight still
+	/// counts when the heights are equal.
+	///
+	/// The equal height half is the one that catches a score that dropped its weight term: the
+	/// crossover has to sit at the weight tie, not below it.
+	[Test]
+	public static void HeightBlendBiasesTheTieTowardTheTallerLayer()
+	{
+		let fixture = scope TerrainProbeFixture();
+		if (!fixture.Ready)
+			return;
+
+		let redTall = RenderHeightBlend(fixture, 255, 0, 128, 128, true, 0.15f);
+		defer delete redTall;
+		if (!redTall.Valid)
+			return;
+
+		let blueTall = RenderHeightBlend(fixture, 0, 255, 128, 128, true, 0.15f);
+		defer delete blueTall;
+		let linear = RenderHeightBlend(fixture, 255, 0, 128, 128, false, 0.15f);
+		defer delete linear;
+		let weightWins = RenderHeightBlend(fixture, 128, 128, 180, 60, true, 0.15f);
+		defer delete weightWins;
+
+		Test.Assert(Red(redTall) > Blue(redTall) * 1.5, "the taller layer takes the tie");
+		Test.Assert(Blue(blueTall) > Red(blueTall) * 1.5, "and swapping it flips the winner");
+
+		// The control anchors it: the SAME weights with no height array bound stay an even mix,
+		// so binding the array is what tipped the result.
+		Test.Assert(Math.Abs(Red(linear) - Blue(linear)) < Red(linear) * 0.15,
+			"unbound heights leave the linear fifty fifty");
+		Test.Assert(Red(redTall) > Red(linear) * 1.2, "and binding them is what pushed red up");
+
+		Test.Assert(Red(weightWins) > Blue(weightWins) * 1.5,
+			"with equal heights the greater weight still wins");
+	}
+	private static double Green(TerrainProbe probe) => probe.LeftG + probe.RightG;
+
+	/// Two painted layers over a distinct base, with the upper one optionally masked away.
+	private static TerrainProbe RenderTwoPainted(TerrainProbeFixture fixture, bool maskUpper)
+	{
+		let grid = TerrainFixtures.MakeFlat();
+		defer delete grid;
+
+		let owned = scope ProbeTextures();
+		let weights = TerrainSplatFixtures.MakeTwoLayerWeights(128, 128); // about half each
+		defer delete weights;
+
+		let colors = scope Float3[](
+			.(0.9f, 0.05f, 0.05f),  // layer 0, the GROUND
+			.(0.05f, 0.9f, 0.05f)); // layer 1, the GRASS
+		let palette = TerrainSplatFixtures.MakePaletteData(colors);
+		defer delete palette;
+
+		if (maskUpper)
+		{
+			// The ground opaque, the grass cut away entirely.
+			let masks = scope Float3[](.(1.0f, 1.0f, 1.0f), .(0.0f, 0.0f, 0.0f));
+			TerrainSplatFixtures.FillSliceArray(palette.MaskTexels, masks, palette);
+		}
+
+		let splatCache = scope TerrainSplatTextureCache();
+		let paletteCache = scope TerrainPaletteTextureCache();
+		defer { splatCache.Clear(fixture.Device); paletteCache.Clear(fixture.Device); }
+
+		let scales = scope float[](1000.0f, 1000.0f);
+		let views = splatCache.GetOrCreate(fixture.Device, weights, weights.Version);
+		let gpu = paletteCache.GetOrCreate(fixture.Device, palette, scales);
+
+		let config = scope TerrainProbeConfig();
+		config.Terrain = grid;
+		config.WeightView = views.WeightView;
+		config.IndexView = views.IndexView;
+		// The base is a colour neither layer uses, so it is obvious if it wins.
+		config.BaseAlbedoView = TerrainSplatFixtures.MakeSolid(owned, fixture.Device, 30, 30, 230);
+		config.PaletteArrayView = gpu.ArrayView;
+		config.TileScaleBuffer = gpu.TileScaleBuffer;
+		config.TileScaleGeneration = gpu.Generation;
+		config.PaletteCount = 2;
+		config.MaskArrayView = maskUpper ? gpu.MaskArrayView : null;
+
+		return TerrainProbeRenderer.Render(fixture, config);
+	}
+
+	/// Coverage freed by a mask goes to the layer PAINTED beneath, not down to the base.
+	///
+	/// Reveal what you painted: dumping the freed share to the base canvas instead is the
+	/// behaviour this pins against coming back.
+	[Test]
+	public static void AMaskedLayerRevealsTheOnePaintedBeneathIt()
+	{
+		let fixture = scope TerrainProbeFixture();
+		if (!fixture.Ready)
+			return;
+
+		let masked = RenderTwoPainted(fixture, true);
+		defer delete masked;
+		if (!masked.Valid)
+			return;
+
+		let unmasked = RenderTwoPainted(fixture, false);
+		defer delete unmasked;
+
+		Test.Assert(Red(masked) > Blue(masked) * 1.5,
+			"the freed coverage went to the painted ground, not the base");
+
+		// The unmasked run is the baseline that makes the claim a redistribution rather than
+		// just the observation that red exists at all.
+		Test.Assert(Green(unmasked) > Blue(unmasked), "the grass was visible before masking");
+		Test.Assert(Red(masked) > Red(unmasked) * 1.3, "masking the grass grew the ground");
+		Test.Assert(Green(masked) < Green(unmasked) * 0.3, "and actually removed the grass");
+	}
 }
