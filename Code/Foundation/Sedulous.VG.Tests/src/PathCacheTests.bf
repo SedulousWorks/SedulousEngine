@@ -304,4 +304,69 @@ class PathCacheTests
 		cache.SetCapacity(3);
 		Test.Assert(cache.Count == 2);
 	}
+	/// Every input of the stroke tessellation belongs to the match. Matching on the width,
+	/// cap and join alone served the previous dashing to a caller that changed only the
+	/// pattern, so a dash animated by its offset would sit frozen.
+	[Test]
+	public static void EveryStrokeInputIsPartOfTheMatch()
+	{
+		let cache = scope PathCache();
+		let path = Rect(0, 0, 10, 10);
+		defer delete path;
+
+		let dash = scope float[](2.0f, 2.0f);
+
+		let solid = scope List<VGVertex>();
+		let solidIndices = scope List<uint32>();
+		cache.GetOrTessellateStroke(path, .White, StrokeStyle(1.0f), .(), false, solid,
+			solidIndices);
+
+		let dashed = scope List<VGVertex>();
+		let dashedIndices = scope List<uint32>();
+		cache.GetOrTessellateStroke(path, .White, StrokeStyle(1.0f), dash, false, dashed,
+			dashedIndices);
+		Test.Assert(dashed.Count != solid.Count, "a pattern is not the solid stroke");
+
+		// The first dash still starts at the path's first point, so the shift shows up
+		// somewhere along the run rather than at the very front.
+		var shifted = StrokeStyle(1.0f);
+		shifted.DashOffset = 1.0f;
+
+		let offset = scope List<VGVertex>();
+		let offsetIndices = scope List<uint32>();
+		cache.GetOrTessellateStroke(path, .White, shifted, dash, false, offset, offsetIndices);
+		Test.Assert(!offset.IsEmpty);
+
+		var differs = offset.Count != dashed.Count;
+		for (int i = 0; !differs && (i < offset.Count); i++)
+		{
+			differs = (offset[i].Position.X != dashed[i].Position.X)
+				|| (offset[i].Position.Y != dashed[i].Position.Y);
+		}
+		Test.Assert(differs, "the offset moved the dashes");
+	}
+
+	/// The tolerance is an input too, on both halves: it decides how finely a curve is
+	/// flattened before anything is tessellated.
+	[Test]
+	public static void TheToleranceIsPartOfTheMatch()
+	{
+		let cache = scope PathCache();
+
+		let builder = scope PathBuilder();
+		builder.MoveTo(0, 0);
+		builder.CubicTo(0, 20, 20, 20, 20, 0);
+		let path = builder.ToPath();
+		defer delete path;
+
+		let coarse = scope List<VGVertex>();
+		let coarseIndices = scope List<uint32>();
+		cache.GetOrTessellateFill(path, .Red, .NonZero, false, coarse, coarseIndices, 2.0f);
+
+		let fine = scope List<VGVertex>();
+		let fineIndices = scope List<uint32>();
+		cache.GetOrTessellateFill(path, .Red, .NonZero, false, fine, fineIndices, 0.05f);
+
+		Test.Assert(fine.Count > coarse.Count, "the finer tolerance retessellated");
+	}
 }

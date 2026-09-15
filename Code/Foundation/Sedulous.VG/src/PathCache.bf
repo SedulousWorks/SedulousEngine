@@ -27,7 +27,7 @@ class PathCache
 		let cached = GetOrCreate(path);
 		cached.LastAccessTime = mAccessCounter++;
 
-		if (cached.FillMatches(color, fillRule, antiAlias))
+		if (cached.FillMatches(color, fillRule, antiAlias, tolerance))
 		{
 			cached.GetFillMesh(let vertices, let indices);
 			Append(outVertices, outIndices, vertices, indices);
@@ -38,15 +38,15 @@ class PathCache
 		let indices = scope List<uint32>();
 		FillTessellator.Tessellate(path, fillRule, color, antiAlias, vertices, indices, tolerance);
 
-		cached.SetFillData(vertices, indices, color, fillRule, antiAlias);
+		cached.SetFillData(vertices, indices, color, fillRule, antiAlias, tolerance);
 		Append(outVertices, outIndices, vertices, indices);
 	}
 
 	/// The stroke twin.
 	///
-	/// The dash pattern is NOT part of the match, matching Raptor: a caller that changes it
-	/// between frames on the same path gets the previous dashing until something else
-	/// invalidates the entry. Animating a dash offset therefore wants Invalidate.
+	/// The dash pattern, the dash offset and the tolerance are all part of the match, so a
+	/// caller that changes only the dashing gets the dashing it asked for rather than what
+	/// the entry was last tessellated with.
 	public void GetOrTessellateStroke(Path path, Color color, StrokeStyle style,
 		Span<float> dashPattern, bool antiAlias, List<VGVertex> outVertices,
 		List<uint32> outIndices, float tolerance = 0.25f)
@@ -54,7 +54,7 @@ class PathCache
 		let cached = GetOrCreate(path);
 		cached.LastAccessTime = mAccessCounter++;
 
-		if (cached.StrokeMatches(color, style, antiAlias))
+		if (cached.StrokeMatches(color, style, dashPattern, antiAlias, tolerance))
 		{
 			cached.GetStrokeMesh(let vertices, let indices);
 			Append(outVertices, outIndices, vertices, indices);
@@ -79,7 +79,7 @@ class PathCache
 			}
 		}
 
-		cached.SetStrokeData(vertices, indices, color, style, antiAlias);
+		cached.SetStrokeData(vertices, indices, color, style, dashPattern, antiAlias, tolerance);
 		Append(outVertices, outIndices, vertices, indices);
 	}
 

@@ -20,6 +20,7 @@ class CachedPath
 	private Color mFillColor = .White;
 	private FillRule mFillRule = .NonZero;
 	private bool mFillAntiAlias = false;
+	private float mFillTolerance = 0.0f;
 
 	private List<VGVertex> mStrokeVertices = new .() ~ delete _;
 	private List<uint32> mStrokeIndices = new .() ~ delete _;
@@ -27,22 +28,41 @@ class CachedPath
 	private Color mStrokeColor = .White;
 	private StrokeStyle mStrokeStyle = .();
 	private bool mStrokeAntiAlias = false;
+	private float mStrokeTolerance = 0.0f;
+	private List<float> mStrokeDash = new .() ~ delete _;
 
 	public bool IsFillValid => mFillValid;
 	public bool IsStrokeValid => mStrokeValid;
 
-	/// Whether what is cached was tessellated for exactly this request.
-	public bool FillMatches(Color color, FillRule fillRule, bool antiAlias)
+	/// Whether what is cached was tessellated for EXACTLY this request, the tolerance
+	/// included: a finer tolerance flattens the same path into more points.
+	public bool FillMatches(Color color, FillRule fillRule, bool antiAlias, float tolerance)
 		=> mFillValid && (mFillColor == color) && (mFillRule == fillRule)
-			&& (mFillAntiAlias == antiAlias);
+			&& (mFillAntiAlias == antiAlias) && (mFillTolerance == tolerance);
 
-	/// The MITER LIMIT and the dash offset are deliberately not compared, matching Raptor:
-	/// the width, cap and join are what change the geometry's shape, and comparing every
-	/// field would miss the cache on a difference that produces identical vertices.
-	public bool StrokeMatches(Color color, StrokeStyle style, bool antiAlias)
-		=> mStrokeValid && (mStrokeColor == color) && (mStrokeStyle.Width == style.Width)
-			&& (mStrokeStyle.Cap == style.Cap) && (mStrokeStyle.Join == style.Join)
-			&& (mStrokeAntiAlias == antiAlias);
+	/// The stroke twin, comparing EVERY input of the stroke tessellation: the whole style
+	/// (miter limit and dash offset included), the dash pattern and the tolerance.
+	///
+	/// Comparing the width, cap and join alone served the previous dashing to a caller that
+	/// changed only the pattern or animated the offset, which looks like a frozen dash.
+	public bool StrokeMatches(Color color, StrokeStyle style, Span<float> dashPattern,
+		bool antiAlias, float tolerance)
+	{
+		if (!mStrokeValid || (mStrokeColor != color) || (mStrokeAntiAlias != antiAlias)
+			|| (mStrokeTolerance != tolerance) || (mStrokeStyle.Width != style.Width)
+			|| (mStrokeStyle.Cap != style.Cap) || (mStrokeStyle.Join != style.Join)
+			|| (mStrokeStyle.MiterLimit != style.MiterLimit)
+			|| (mStrokeStyle.DashOffset != style.DashOffset)
+			|| (mStrokeDash.Count != dashPattern.Length))
+			return false;
+
+		for (int i = 0; i < mStrokeDash.Count; i++)
+		{
+			if (mStrokeDash[i] != dashPattern[i])
+				return false;
+		}
+		return true;
+	}
 
 	/// EMPTY when invalid, so a caller that forgot to check appends nothing rather than
 	/// stale geometry.
@@ -59,7 +79,7 @@ class CachedPath
 	}
 
 	public void SetFillData(Span<VGVertex> vertices, Span<uint32> indices, Color color,
-		FillRule fillRule, bool antiAlias)
+		FillRule fillRule, bool antiAlias, float tolerance)
 	{
 		mFillVertices.Clear();
 		mFillVertices.AddRange(vertices);
@@ -69,11 +89,12 @@ class CachedPath
 		mFillColor = color;
 		mFillRule = fillRule;
 		mFillAntiAlias = antiAlias;
+		mFillTolerance = tolerance;
 		mFillValid = true;
 	}
 
 	public void SetStrokeData(Span<VGVertex> vertices, Span<uint32> indices, Color color,
-		StrokeStyle style, bool antiAlias)
+		StrokeStyle style, Span<float> dashPattern, bool antiAlias, float tolerance)
 	{
 		mStrokeVertices.Clear();
 		mStrokeVertices.AddRange(vertices);
@@ -83,6 +104,9 @@ class CachedPath
 		mStrokeColor = color;
 		mStrokeStyle = style;
 		mStrokeAntiAlias = antiAlias;
+		mStrokeTolerance = tolerance;
+		mStrokeDash.Clear();
+		mStrokeDash.AddRange(dashPattern);
 		mStrokeValid = true;
 	}
 
