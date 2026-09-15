@@ -54,7 +54,9 @@ class DefaultApplication : IApplication
 	private AudioSubsystem mAudio = null ~ delete _;
 	private InputSubsystem mInput = null ~ delete _;
 	private PhysicsSubsystem mPhysics = null;
-	private UISubsystem mUI = null;
+	/// OWNED, like the other REGISTERED subsystems: the context drives one it did not create
+	/// and never frees it.
+	private UISubsystem mUI = null ~ delete _;
 
 	/// The primary running game, which every application level operation targets.
 	private GameInstance mInstance = new .() ~ delete _;

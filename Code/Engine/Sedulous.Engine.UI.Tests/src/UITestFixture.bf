@@ -18,7 +18,8 @@ class UITestFixture
 	public Context Context = new .() ~ delete _;
 	public SceneManager Scenes = new .() ~ delete _;
 	public SceneSubsystem SceneSystems;
-	public UISubsystem UI;
+	/// OWNED: RegisterSubsystem borrows, so the fixture frees it.
+	public UISubsystem UI ~ delete _;
 
 	/// Null unless the case asked for input. The CONTEXT never owns this one, since the
 	/// subsystem takes a constructor argument and only a default constructible one can be
