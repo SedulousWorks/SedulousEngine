@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.RHI;
 using Sedulous.Shaders;
@@ -35,6 +36,13 @@ class ImguiRenderer
 
 	private ImguiFrameSlot[cMaxFramesInFlight] mFrames = .(new .(), new .(), new .(), new .())
 		~ { for (let slot in _) delete slot; }
+
+	/// Bind groups replaced mid frame, held until every frame that could still name them has
+	/// been through. Raptor never needs this: it reads the atlas at startup, so its bind groups
+	/// are made once and only ever destroyed at shutdown. The library asks for its texture on a
+	/// frame here instead, which means rebinding while the previous frame's command buffer is
+	/// still recorded against the old set.
+	private List<(IBindGroup Group, uint32 FramesLeft)> mRetired = new .() ~ delete _;
 
 	public this(IDevice device, ShaderSystem shaders, uint32 framesInFlight)
 	{
@@ -108,6 +116,7 @@ class ImguiRenderer
 		if ((target == null) || (drawData == null))
 			return;
 
+		TickRetired();
 		ServiceTextures(encoder, drawData);
 		let pipeline = EnsurePipeline(targetFormat);
 		if (pipeline == null)
@@ -307,7 +316,7 @@ class ImguiRenderer
 			if (slot.Projection == null)
 				continue;
 			if (slot.Bindings != null)
-				mDevice.DestroyBindGroup(ref slot.Bindings);
+				Retire(ref slot.Bindings);
 
 			let bindings = scope BindGroupEntry[](
 				BindGroupEntry.BufferEntry(slot.Projection, 0, sizeof(Float4x4)),
@@ -320,6 +329,43 @@ class ImguiRenderer
 			if (mDevice.CreateBindGroup(bindGroupDesc) case .Ok(let group))
 				slot.Bindings = group;
 		}
+	}
+
+	/// Holds a replaced bind group for a full round of frames before freeing it.
+	///
+	/// One more than the frames in flight, so the slot that recorded against it has come round
+	/// and been re-recorded before the set goes.
+	private void Retire(ref IBindGroup group)
+	{
+		if (group == null)
+			return;
+		mRetired.Add((group, mFramesInFlight + 1));
+		group = null;
+	}
+
+	private void TickRetired()
+	{
+		for (int i = mRetired.Count - 1; i >= 0; i--)
+		{
+			if (mRetired[i].FramesLeft > 1)
+			{
+				mRetired[i].FramesLeft--;
+				continue;
+			}
+
+			var group = mRetired[i].Group;
+			mDevice.DestroyBindGroup(ref group);
+			mRetired.RemoveAtFast(i);
+		}
+	}
+
+	/// Frees what is still held. The CALLER must have idled the device first, which Shutdown
+	/// does: there is no later frame to wait for.
+	private void FlushRetired()
+	{
+		for (var entry in ref mRetired)
+			mDevice.DestroyBindGroup(ref entry.Group);
+		mRetired.Clear();
 	}
 
 	private void DestroyFont()
@@ -468,6 +514,7 @@ class ImguiRenderer
 		if (mDevice == null)
 			return;
 
+		FlushRetired();
 		for (let slot in mFrames)
 		{
 			if (slot.Bindings != null)
