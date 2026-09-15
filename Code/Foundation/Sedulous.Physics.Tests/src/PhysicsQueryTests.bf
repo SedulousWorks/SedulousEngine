@@ -134,4 +134,48 @@ class PhysicsQueryTests
 		Test.Assert(!world.ShapeCast(sphere, .(500.0f, 10.0f, 0.0f), Quaternion.Identity,
 			.(0.0f, 1.0f, 0.0f), 10.0f, ?));
 	}
+	/// A query dimension of nought or less is a clean miss.
+	///
+	/// These numbers come off a game's own code, so they arrive unvalidated. The backend
+	/// asserts on a non positive radius and builds a garbage broad phase box for a negative
+	/// extent, so the guard has to sit in front of the shape rather than behind it.
+	[Test]
+	public static void ANonPositiveQuerySizeIsACleanMiss()
+	{
+		let world = FlatWorld!();
+		world.CreateBody(BoxAt!(0.5f, MotionKind.Static));
+
+		let hits = scope List<BodyId>();
+
+		var sphere = QueryShape();
+		sphere.Kind = .Sphere;
+		for (let radius in float[](0.0f, -1.0f))
+		{
+			sphere.Radius = radius;
+			Test.Assert(!world.ShapeCast(sphere, .(0.0f, 5.0f, 0.0f), Quaternion.Identity,
+				.(0.0f, -1.0f, 0.0f), 20.0f, ?));
+
+			world.ShapeOverlap(sphere, .(0.0f, 0.5f, 0.0f), Quaternion.Identity, hits);
+			Test.Assert(hits.IsEmpty, "and the output is cleared, not left as it was");
+		}
+
+		var cube = QueryShape();
+		cube.Kind = .Box;
+		cube.HalfExtents = .(1.0f, 0.0f, 1.0f); // flat in one axis is still degenerate
+		world.ShapeOverlap(cube, .(0.0f, 0.5f, 0.0f), Quaternion.Identity, hits);
+		Test.Assert(hits.IsEmpty);
+
+		var capsule = QueryShape();
+		capsule.Kind = .Capsule;
+		capsule.Radius = 0.5f;
+		capsule.HalfHeight = -2.0f;
+		world.ShapeOverlap(capsule, .(0.0f, 0.5f, 0.0f), Quaternion.Identity, hits);
+		Test.Assert(hits.IsEmpty);
+
+		// And a well formed query on the same world still answers, so the guard has not
+		// simply turned every query off.
+		sphere.Radius = 1.0f;
+		world.ShapeOverlap(sphere, .(0.0f, 0.5f, 0.0f), Quaternion.Identity, hits);
+		Test.Assert(!hits.IsEmpty);
+	}
 }

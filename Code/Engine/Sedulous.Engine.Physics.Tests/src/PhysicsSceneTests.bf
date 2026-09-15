@@ -4,6 +4,7 @@ using Sedulous.Core;
 using Sedulous.Engine.Physics;
 using Sedulous.Physics;
 using Sedulous.Scene;
+using Sedulous.Scene.Resource;
 
 namespace Sedulous.Engine.Physics.Tests;
 
@@ -156,5 +157,49 @@ class PhysicsSceneTests
 		}
 
 		Test.Assert(entered);
+	}
+	/// The editor's simulate cycle, run twice: capture, start, simulate, stop, restore.
+	///
+	/// This is the shape that hangs rather than the shape that fails. A restore puts the
+	/// entities back while the world still holds bodies for them, so a cycle that does not
+	/// tear the world down leaves stale bodies the next start builds duplicates against.
+	/// Terminating with the boxes back where they were authored is the whole assertion.
+	[Test]
+	public static void TheEditorSimulateCycleTerminates()
+	{
+		let play = scope PhysicsPlayScene();
+		play.AddFloor();
+
+		let boxes = scope List<EntityHandle>();
+		for (int i < 8)
+		{
+			let entity = play.AddBox(3.0f + (float)i);
+			play.Scene.SetLocalPosition(entity, .((float)i * 0.5f, 3.0f + (float)i, 0.0f));
+			boxes.Add(entity);
+		}
+		play.Scene.UpdateTransforms();
+
+		for (int cycle < 2)
+		{
+			let snapshot = SceneSnapshot.Capture(play.Scene);
+			defer delete snapshot;
+			Test.Assert(snapshot != null);
+
+			play.Start();
+			play.Step(120);
+
+			play.Scene.Stop();
+			Test.Assert(snapshot.Restore(play.Scene) case .Ok);
+			play.Scene.SetSimulationEnabled(false);
+			play.Step(60); // the stopped scene still ticks, and must stay put
+
+			play.Scene.UpdateTransforms();
+			for (int i < boxes.Count)
+			{
+				let y = play.Scene.GetWorldPosition(boxes[i]).Y;
+				Test.Assert(PhysicsPlayScene.Near(y, 3.0f + (float)i, 0.01f),
+					scope $"cycle {cycle}: box {i} is back where it was authored");
+			}
+		}
 	}
 }
