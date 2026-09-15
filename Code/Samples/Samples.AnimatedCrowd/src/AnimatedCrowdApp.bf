@@ -418,13 +418,22 @@ class AnimatedCrowdApp : DefaultApplication
 				let component = sets.Add(entity);
 				component.Mesh.SetDirect(drawMeshes[p]);
 				component.Material.SetDirect(drawMaterials[p]);
-				component.SubmeshMaterials = mModel.Materials;
+
+				// COPIED, never assigned. The pool creates and frees each of these lists, and
+				// Raptor's component holds them by value, so its assignments copy. Handing the
+				// component a list this method owns instead would leave it pointing at freed
+				// memory the moment the scope below ran, and leak the pool's own list.
+				component.SubmeshMaterials.Clear();
+				component.SubmeshMaterials.AddRange(mModel.Materials);
 
 				// BEFORE SetInstances: the version bump it makes is what uploads the tints.
-				component.Tints = tints[group];
+				component.Tints.Clear();
+				component.Tints.AddRange(tints[group]);
+
 				component.PoseAssignment = assignment;
+				component.PoseIndices.Clear();
 				if (assignment == .Explicit)
-					component.PoseIndices = poses[group];
+					component.PoseIndices.AddRange(poses[group]);
 
 				component.SetInstances(transforms[group]);
 				mCrowdParts.Add(entity);
