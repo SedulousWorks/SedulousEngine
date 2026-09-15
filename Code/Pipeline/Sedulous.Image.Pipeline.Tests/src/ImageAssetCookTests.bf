@@ -94,8 +94,10 @@ class ImageAssetCookTests
 		for (int i < image.Pixels.Length)
 			Test.Assert(image.Pixels[i] == (uint8)(i * 7), scope $"byte {i}");
 
-		// The view borrows the resource's own pixels rather than copying them.
+		// The view borrows the resource's own pixels rather than copying them, but the view
+		// itself is the caller's.
 		let view = image.View();
+		defer delete view;
 		Test.Assert(view.Width == 2);
 		Test.Assert(view.PixelData.Ptr == image.Pixels.Ptr);
 	}

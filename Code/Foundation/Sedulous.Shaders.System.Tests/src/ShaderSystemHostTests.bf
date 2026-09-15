@@ -12,6 +12,9 @@ namespace Sedulous.Shaders.System.Tests;
 /// The one place that decides between compiling on demand and serving a cooked pack.
 class ShaderSystemHostTests
 {
+	/// A scratch DATA ROOT: the host reads its corpus from the mount's Shaders folder, the
+	/// same layout a checkout and a dist both have, so the fixture builds that rather than
+	/// dropping the file at the mount's top level.
 	private static void MakeRoot(StringView name, String outPath)
 	{
 		global::System.IO.Path.GetTempPath(outPath).IgnoreError();
@@ -19,8 +22,10 @@ class ShaderSystemHostTests
 		RemoveDirectoryRecursive(outPath);
 		CreateDirectory(outPath);
 
-		let path = scope String();
-		PathJoin(outPath, "hosted.ps.hlsl", path);
+		let shaderDir = PathJoin(outPath, ShaderSystemHost.cShaderFolder, .. scope String());
+		CreateDirectory(shaderDir);
+
+		let path = PathJoin(shaderDir, "hosted.ps.hlsl", .. scope String());
 		let source = "float4 main() : SV_Target0 { return float4(1, 1, 1, 1); }\n";
 		WriteFile(path, .((uint8*)source.Ptr, source.Length)).IgnoreError();
 	}

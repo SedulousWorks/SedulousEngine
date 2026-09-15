@@ -19,7 +19,7 @@ class AudioPlayScene
 	/// BORROWED from the scene.
 	public AudioSceneSystem Audio = null;
 
-	private List<AudioClip> mClips = new .() ~ ClearAndDeleteItems!(_);
+	private List<AudioClip> mClips = new .() ~ DeleteContainerAndItems!(_);
 
 	/// The merge window is NOUGHT by default, because these cases place explicit voices and
 	/// the window would collapse them. A case about merging sets its own.

@@ -170,12 +170,15 @@ class PhysicsSceneTests
 		let play = scope PhysicsPlayScene();
 		play.AddFloor();
 
-		let boxes = scope List<EntityHandle>();
+		// The persistent ids, NOT the handles: a restore drains the scene and rebuilds it, so
+		// every handle taken before the cycle is stale afterwards. The ids survive the
+		// snapshot, which is what makes the same box findable on the other side.
+		let boxIds = scope List<Guid>();
 		for (int i < 8)
 		{
 			let entity = play.AddBox(3.0f + (float)i);
 			play.Scene.SetLocalPosition(entity, .((float)i * 0.5f, 3.0f + (float)i, 0.0f));
-			boxes.Add(entity);
+			boxIds.Add(play.Scene.GetEntityId(entity));
 		}
 		play.Scene.UpdateTransforms();
 
@@ -194,11 +197,14 @@ class PhysicsSceneTests
 			play.Step(60); // the stopped scene still ticks, and must stay put
 
 			play.Scene.UpdateTransforms();
-			for (int i < boxes.Count)
+			for (int i < boxIds.Count)
 			{
-				let y = play.Scene.GetWorldPosition(boxes[i]).Y;
+				let restored = play.Scene.FindEntity(boxIds[i]);
+				Test.Assert(restored.IsAssigned, scope $"cycle {cycle}: box {i} came back");
+
+				let y = play.Scene.GetWorldPosition(restored).Y;
 				Test.Assert(PhysicsPlayScene.Near(y, 3.0f + (float)i, 0.01f),
-					scope $"cycle {cycle}: box {i} is back where it was authored");
+					scope $"cycle {cycle}: box {i} is back where it was authored, not {y}");
 			}
 		}
 	}

@@ -276,6 +276,10 @@ class ResourceManagerTests
 		let childId = fixture.Author("child", 2, 2);
 		let parentId = fixture.Author("parent", 3, 3);
 
+		// The children need a factory of their own, or every bind below yields a handle with
+		// no product and the area this asserts on could never be anything but nought.
+		fixture.Manager.AddFactory(scope TestProductFactory());
+
 		let composite = scope CompositeFactory(childId);
 		// Enough to force several growths of whatever the map started at.
 		for (int32 i < 64)
