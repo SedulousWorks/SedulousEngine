@@ -337,6 +337,7 @@ abstract class SampleApp
 		if (mInnerBackend != null)
 		{
 			mInnerBackend.Destroy();
+			delete mInnerBackend;
 			mInnerBackend = null;
 		}
 
