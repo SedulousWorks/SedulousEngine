@@ -58,6 +58,9 @@ class DefaultApplication : IApplication
 	/// and never frees it.
 	private UISubsystem mUI = null ~ delete _;
 
+	/// OWNED: the network subsystem borrows this visitor and only clears its reference.
+	private delegate void(delegate void(NetworkManager)) mEndpointSource = null ~ delete _;
+
 	/// The primary running game, which every application level operation targets.
 	private GameInstance mInstance = new .() ~ delete _;
 	private List<GameInstance> mExtraInstances = new .() ~ DeleteContainerAndItems!(_);
@@ -188,14 +191,16 @@ class DefaultApplication : IApplication
 		// endpoint enumerator because this application owns the instance list while the
 		// subsystem owns the tick.
 		let net = host.Context.AddSubsystem<NetworkSubsystem>();
-		net.SetEndpointSource(new (visit) =>
+		// The subsystem BORROWS the visitor, so it is held here rather than handed over.
+		mEndpointSource = new (visit) =>
 			{
 				ForEachInstance(scope (instance) =>
 					{
 						if (let endpoint = instance.NetEndpoint)
 							visit(endpoint);
 					});
-			});
+			};
+		net.SetEndpointSource(mEndpointSource);
 
 		mAudio = new AudioSubsystem(mAudioEngineSettings);
 		host.Context.RegisterSubsystem<AudioSubsystem>(mAudio);
