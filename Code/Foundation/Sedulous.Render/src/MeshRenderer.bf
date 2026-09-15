@@ -636,7 +636,7 @@ class MeshRenderer : Renderer
 				continue;
 
 			let set = (MultiMeshRenderData)mesh;
-			if ((set.PosePool == null) || (set.PoseCount == 0) || (set.BoneCount == 0))
+			if ((set.PosePool == null) || (set.PoseCount == 0) || (set.PoseBoneCount == 0))
 				continue;
 			if ((set.Mesh == null) || !set.Mesh.IsSkinned)
 				continue;
@@ -646,7 +646,7 @@ class MeshRenderer : Renderer
 				continue;
 
 			mBoneStart[key] = .();
-			let poolCount = set.PoseCount * set.BoneCount;
+			let poolCount = set.PoseCount * set.PoseBoneCount;
 			mSkinnedScratch.Add(.()
 				{
 					Current = set.PosePool, Previous = set.PreviousPosePool, Count = poolCount,
@@ -923,7 +923,7 @@ class MeshRenderer : Renderer
 		// A skinned crowd needs its own offsets buffer, whose bone bases change every frame.
 		// It is allocated here and FILLED once the pool's base is known.
 		set.Skinned = (multiMesh.PosePool != null) && (multiMesh.PoseCount > 0)
-			&& (multiMesh.BoneCount > 0);
+			&& (multiMesh.PoseBoneCount > 0);
 
 		if (set.Skinned
 			&& ((set.OffsetsBuffer == null) || (multiMesh.InstanceCount > set.OffsetsCapacity)))
@@ -967,7 +967,7 @@ class MeshRenderer : Renderer
 
 			let multiMesh = (MultiMeshRenderData)mesh;
 			if ((multiMesh.PosePool == null) || (multiMesh.PoseCount == 0)
-				|| (multiMesh.BoneCount == 0))
+				|| (multiMesh.PoseBoneCount == 0))
 				continue;
 
 			if (!mMultiMeshSets.TryGetValue(multiMesh.Key, let set))
@@ -991,7 +991,7 @@ class MeshRenderer : Renderer
 				// the motion vectors stay right.
 				let pose = PoseSelection.SelectPose(multiMesh.PoseAssignment, i, multiMesh.PoseCount,
 					multiMesh.PoseIndices);
-				let bucket = pose * multiMesh.BoneCount;
+				let bucket = pose * multiMesh.PoseBoneCount;
 				mapped[regionBase + i] = MeshDataOffsets(i, pool.Base + bucket, pool.PrevBase + bucket, 0);
 			}
 

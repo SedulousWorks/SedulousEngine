@@ -31,6 +31,8 @@ class MultiMeshRenderData : MeshRenderData
 	/// How many distinct phases there are.
 	public uint32 PoseCount = 0;
 	/// Bones per palette.
+	/// NAMED APART from the base's BoneCount, which belongs to the single mesh path and stays
+	/// nought for a crowd. Reading the base field here compiles and silently disables skinning.
 	public uint32 PoseBoneCount = 0;
 
 	public PoseAssignment PoseAssignment = .Hashed;
