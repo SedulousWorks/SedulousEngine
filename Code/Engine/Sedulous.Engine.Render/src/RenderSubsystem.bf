@@ -644,6 +644,45 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 			mDevice.DestroyTextureView(ref mOverlayDsView);
 		if (mOverlayDsTexture != null)
 			mDevice.DestroyTexture(ref mOverlayDsTexture);
+
+		// EXPLICITLY ORDERED, rather than left to the field destructors.
+		//
+		// Beef destroys fields in reverse declaration order, which is not the order these
+		// depend on each other in. The frame has to go first, because it holds the per frame
+		// bind groups and encoders that still reference descriptor sets the material system
+		// owns; freeing those first is what validation catches as a set still in use by a
+		// command buffer. Every pass goes before the shader host it borrowed its system from,
+		// the mesh renderer before the material system whose instances it holds, and the
+		// material system before the pipeline cache.
+		//
+		// Nulled as they go, so the `~ delete _` on each field is a no-op afterwards.
+		DeleteAndNullify!(mFrame);
+
+		DeleteAndNullify!(mClusterSystem);
+		DeleteAndNullify!(mTonemapPass);
+		DeleteAndNullify!(mExposurePass);
+		DeleteAndNullify!(mShadowSystem);
+		DeleteAndNullify!(mSkyPass);
+		DeleteAndNullify!(mBloomPass);
+		DeleteAndNullify!(mTaaPass);
+		DeleteAndNullify!(mAoPass);
+		DeleteAndNullify!(mSsrPass);
+		DeleteAndNullify!(mSsgiPass);
+		DeleteAndNullify!(mFxaaPass);
+		DeleteAndNullify!(mDecalPass);
+		DeleteAndNullify!(mDebugPass);
+		DeleteAndNullify!(mDebugBlitPass);
+		DeleteAndNullify!(mProbeSystem);
+		DeleteAndNullify!(mIblSystem);
+		DeleteAndNullify!(mSpriteRenderer);
+
+		DeleteAndNullify!(mMeshRenderer);
+		DeleteAndNullify!(mMaterialSystem);
+		DeleteAndNullify!(mPsoCache);
+
+		// BORROWED from the host, which owns it and frees it in Shutdown.
+		mShaders = null;
+		mShaderHost.Shutdown();
 	}
 
 	// ---- the frame ---------------------------------------------------------------------------
