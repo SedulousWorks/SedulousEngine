@@ -562,4 +562,102 @@ class TerrainSplatProbeTests
 		Test.Assert(Red(masked) > Red(unmasked) * 1.3, "masking the grass grew the ground");
 		Test.Assert(Green(masked) < Green(unmasked) * 0.3, "and actually removed the grass");
 	}
+	/// One hot palette layer carrying its own ARRAY normal and ORM slices.
+	private static TerrainProbe RenderArrayPbr(TerrainProbeFixture fixture, Float3 toLight,
+		uint8 ao, Float4x4 chunkToWorld)
+	{
+		let grid = TerrainFixtures.MakeFlat();
+		defer delete grid;
+
+		let weights = TerrainSplatFixtures.MakeStripeWeights(1);
+		defer delete weights;
+
+		let gray = scope Float3[](.(0.66f, 0.66f, 0.66f));
+		let palette = TerrainSplatFixtures.MakePaletteData(gray);
+		defer delete palette;
+
+		// Tangent space (0.6, 0, 0.8), which tilts the shading normal toward the map's U axis
+		// and so toward LOCAL +X, wherever the chunk frame puts that.
+		let normals = scope Float3[](.(204.0f / 255.0f, 128.0f / 255.0f, 229.0f / 255.0f));
+		TerrainSplatFixtures.FillSliceArray(palette.NormalTexels, normals, palette);
+
+		// R = ambient occlusion, G = roughness, B = metalness.
+		let orm = scope Float3[](.((float)ao / 255.0f, 1.0f, 0.0f));
+		TerrainSplatFixtures.FillSliceArray(palette.OrmTexels, orm, palette);
+
+		let splatCache = scope TerrainSplatTextureCache();
+		let paletteCache = scope TerrainPaletteTextureCache();
+		defer { splatCache.Clear(fixture.Device); paletteCache.Clear(fixture.Device); }
+
+		let scales = scope float[](1000.0f);
+		let views = splatCache.GetOrCreate(fixture.Device, weights, weights.Version);
+		let gpu = paletteCache.GetOrCreate(fixture.Device, palette, scales);
+		Test.Assert(gpu.NormalArrayView != null, "the normal array was built");
+		Test.Assert(gpu.OrmArrayView != null, "and the ORM array");
+
+		let config = scope TerrainProbeConfig();
+		config.Terrain = grid;
+		config.ToLight = toLight;
+		config.ChunkToWorld = chunkToWorld;
+		config.WeightView = views.WeightView;
+		config.IndexView = views.IndexView;
+		config.PaletteArrayView = gpu.ArrayView;
+		config.NormalArrayView = gpu.NormalArrayView;
+		config.OrmArrayView = gpu.OrmArrayView;
+		config.TileScaleBuffer = gpu.TileScaleBuffer;
+		config.TileScaleGeneration = gpu.Generation;
+		config.PaletteCount = 1;
+
+		return TerrainProbeRenderer.Render(fixture, config);
+	}
+
+	/// The per LAYER array PBR path, which the base map probes never touch, and the pin that
+	/// its perturbation follows the CHUNK frame rather than a world axis.
+	///
+	/// Rotating the terrain a quarter turn has to move the asymmetry from world X onto world
+	/// Z. A frame built on world axes instead would leave it on X and shear the result.
+	[Test]
+	public static void TheArrayNormalAndOrmBlendThroughTopK()
+	{
+		let fixture = scope TerrainProbeFixture();
+		if (!fixture.Ready)
+			return;
+
+		let plusX = Normalized(Float3(0.85f, 0.5f, 0.0f));
+		let minusX = Normalized(Float3(-0.85f, 0.5f, 0.0f));
+		let plusZ = Normalized(Float3(0.0f, 0.5f, 0.85f));
+		let minusZ = Normalized(Float3(0.0f, 0.5f, -0.85f));
+
+		let alignedSun = RenderArrayPbr(fixture, plusX, 255, Float4x4.Identity());
+		defer delete alignedSun;
+		if (!alignedSun.Valid)
+			return;
+
+		let opposedSun = RenderArrayPbr(fixture, minusX, 255, Float4x4.Identity());
+		defer delete opposedSun;
+		let noAmbient = RenderArrayPbr(fixture, plusX, 0, Float4x4.Identity());
+		defer delete noAmbient;
+
+		Test.Assert(alignedSun.Total > opposedSun.Total * 1.10,
+			"the array normal makes flat ground directional");
+		Test.Assert(noAmbient.Total < alignedSun.Total * 0.95,
+			"and an occlusion of nought kills the ambient term");
+
+		// A quarter turn about Y: the tilt rides the chunk frame round with it.
+		let rotated = Float4x4.RotationY(Math.PI_f * 0.5f);
+		let rotatedPlusX = RenderArrayPbr(fixture, plusX, 255, rotated);
+		defer delete rotatedPlusX;
+		let rotatedMinusX = RenderArrayPbr(fixture, minusX, 255, rotated);
+		defer delete rotatedMinusX;
+		let rotatedPlusZ = RenderArrayPbr(fixture, plusZ, 255, rotated);
+		defer delete rotatedPlusZ;
+		let rotatedMinusZ = RenderArrayPbr(fixture, minusZ, 255, rotated);
+		defer delete rotatedMinusZ;
+
+		Test.Assert(Math.Abs(rotatedPlusX.Total - rotatedMinusX.Total) < rotatedPlusX.Total * 0.05,
+			"the asymmetry left world X");
+		// Magnitude rather than sign, so which way round it landed does not matter.
+		Test.Assert(Math.Abs(rotatedPlusZ.Total - rotatedMinusZ.Total) > rotatedPlusZ.Total * 0.10,
+			"and moved onto world Z");
+	}
 }
