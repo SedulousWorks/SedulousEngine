@@ -65,8 +65,15 @@ static class ParticleEffectSerialization
 			// Through Object, because Beef will not cast between an interface and an
 			// unrelated class directly even when the runtime type satisfies both.
 			if (reading)
-				module = AsObject(GlobalSerializableRegistry.Create(TypeIdOf(typeName)))
-					as ParticleInitializer;
+			{
+				// The registry hands OWNERSHIP over, so a type that constructs into the wrong
+				// kind has to be freed here: the cast below drops the only reference to it,
+				// and nothing downstream ever sees it.
+				let created = AsObject(GlobalSerializableRegistry.Create(TypeIdOf(typeName)));
+				module = created as ParticleInitializer;
+				if ((created != null) && (module == null))
+					delete created;
+			}
 
 			let framed = AsSerializer(ar);
 			if (framed != null)
@@ -109,8 +116,13 @@ static class ParticleEffectSerialization
 			ar.Text(typeName);
 
 			if (reading)
-				module = AsObject(GlobalSerializableRegistry.Create(TypeIdOf(typeName)))
-					as ParticleBehavior;
+			{
+				// Freed for the same reason the initializer slot frees it.
+				let created = AsObject(GlobalSerializableRegistry.Create(TypeIdOf(typeName)));
+				module = created as ParticleBehavior;
+				if ((created != null) && (module == null))
+					delete created;
+			}
 
 			let framed = AsSerializer(ar);
 			if (framed != null)
