@@ -286,7 +286,7 @@ class TaaPass
 			return null;
 
 		// The resolved image and the history it becomes, written in one pass.
-		var targets = ColorTargetState[2]();
+		var targets = ColorTargetState[2](.(), .());
 		targets[0].Format = HistoryFormat;
 		targets[1].Format = HistoryFormat;
 

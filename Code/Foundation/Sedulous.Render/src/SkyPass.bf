@@ -203,7 +203,7 @@ class SkyPass
 			mPipeline = null;
 		}
 
-		var targets = ColorTargetState[2]();
+		var targets = ColorTargetState[2](.(), .());
 		targets[0].Format = colorFormat;
 		targets[1].Format = RenderFormats.GVelocity;
 

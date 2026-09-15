@@ -160,7 +160,7 @@ class MsaaResolvePass
 		if ((vertex == null) || (fragment == null))
 			return null;
 
-		var targets = ColorTargetState[3]();
+		var targets = ColorTargetState[3](.(), .(), .());
 		targets[0].Format = RenderFormats.GNormal;
 		targets[1].Format = RenderFormats.GVelocity;
 		targets[2].Format = RenderFormats.GMaterial;

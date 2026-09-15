@@ -539,7 +539,7 @@ class SsgiPass
 			return false;
 
 		// The composited scene, and the bounce history it becomes.
-		var targets = ColorTargetState[2]();
+		var targets = ColorTargetState[2](.(), .());
 		targets[0].Format = cHdrFormat;
 		targets[1].Format = cHdrFormat;
 

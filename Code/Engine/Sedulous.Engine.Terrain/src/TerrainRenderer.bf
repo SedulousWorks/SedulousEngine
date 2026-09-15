@@ -838,7 +838,7 @@ class TerrainRenderer : Renderer
 		// Opaque terrain writes the whole gbuffer: the shaded colour, the view space normal,
 		// the motion vector, and the material terms. The forward pass binds all four, so the
 		// pipeline must declare all four.
-		var targets = ColorTargetState[4]();
+		var targets = ColorTargetState[4](.(), .(), .(), .());
 		targets[0].Format = colorFormat;
 		targets[1].Format = RenderFormats.GNormal;
 		targets[2].Format = RenderFormats.GVelocity;
