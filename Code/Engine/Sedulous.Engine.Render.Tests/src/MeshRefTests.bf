@@ -202,4 +202,41 @@ class MeshRefTests
 		SceneResolve.ResolveSceneResources(loaded, fixture.Manager);
 		Test.Assert(component.Materials.Count == 2);
 	}
+
+	/// The manager's live swap pair, which Raptor reached through its SceneRender script
+	/// facade. With no resource manager the id is set and nothing is bound, which is what a
+	/// bare tool gets.
+	[Test]
+	public static void TheManagerSwapsAMeshAndAMaterialSlotById()
+	{
+		let scene = scope Scene();
+		let meshes = scene.AddSystem<MeshComponentManager>();
+		let entity = scene.CreateEntity("Box");
+		meshes.Add(entity);
+
+		let meshId = Guid(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
+		let redId = Guid(2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
+		let blueId = Guid(3, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
+
+		Test.Assert(meshes.SetMesh(entity, meshId));
+		Test.Assert(meshes.SetMaterial(entity, redId));
+
+		let component = meshes.Get(entity);
+		Test.Assert(component.Mesh.Id == meshId);
+		Test.Assert(component.Mesh.Get == null, "no manager, so nothing bound");
+		// Slot 0 is the whole mesh slot, and the list was empty until the set.
+		Test.Assert(component.Materials.Count == 1);
+		Test.Assert(component.Materials[0].Id == redId);
+
+		// A higher slot grows the list rather than failing: a mesh may be bound before its
+		// materials are.
+		Test.Assert(meshes.SetMaterial(entity, blueId, 2));
+		Test.Assert(component.Materials.Count == 3);
+		Test.Assert(component.Materials[2].Id == blueId);
+		Test.Assert(component.Materials[0].Id == redId, "the slot that was already set held");
+
+		// An entity with no component, and a nonsense slot, are clean misses.
+		Test.Assert(!meshes.SetMaterial(scene.CreateEntity("Bare"), redId));
+		Test.Assert(!meshes.SetMaterial(entity, redId, -1));
+	}
 }

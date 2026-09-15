@@ -42,4 +42,26 @@ class MeshComponentManager : ResourceBindingComponentManager<MeshComponent>
 
 		return true;
 	}
+
+	/// Points one of the entity's material slots at a resource ID and binds it.
+	///
+	/// The counterpart to SetMesh, and Raptor's other half of the same facade. Slot 0 is the
+	/// whole-mesh slot a single material mesh uses, so it is the default; the list grows to
+	/// reach a higher slot, because a mesh may be bound before its materials are.
+	public bool SetMaterial(EntityHandle entity, Guid id, int slot = 0,
+		ResourceManager resources = null)
+	{
+		let component = Get(entity);
+		if ((component == null) || (slot < 0))
+			return false;
+
+		while (component.Materials.Count <= slot)
+			component.Materials.Add(.(Guid()));
+
+		component.Materials[slot].SetId(id);
+		if (resources != null)
+			component.Materials[slot].Bind(resources);
+
+		return true;
+	}
 }

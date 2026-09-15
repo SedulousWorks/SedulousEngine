@@ -149,4 +149,58 @@ class ParticleEffectRefTests
 		scene.Update(0.5f);
 		Test.Assert(component.Instance.Effect.GetSystem(0).AliveCount == alive);
 	}
+
+	/// The manager's playback controls, which Raptor reached through its SceneParticles script
+	/// facade. Stop lets what is alive run out; SetPaused freezes it where it stands.
+	[Test]
+	public static void TheManagerDrivesPlaybackPerEntity()
+	{
+		ParticleResources.RegisterAll();
+
+		let scene = scope Scene();
+		let manager = scene.AddSystem<ParticleEffectComponentManager>();
+		let entity = scene.CreateEntity("Emitter");
+		let component = manager.Add(entity);
+
+		let resource = scope ParticleEffectResource();
+		let system = resource.Effect.AddSystem(64);
+		system.Emitter.IsEmitting = true;
+		system.Emitter.SpawnRate = 100.0f;
+		system.AddInitializer<LifetimeInitializer>().Lifetime = .(10.0f, 10.0f);
+
+		// An entity with no effect yet takes every control as a clean no-op.
+		Test.Assert(!manager.IsPlaying(entity));
+		manager.Play(entity);
+		manager.Restart(entity);
+
+		component.EffectAsset.SetDirect(resource);
+		scene.Update(0.1f);
+		scene.Update(0.2f);
+		Test.Assert(manager.IsPlaying(entity));
+
+		let alive = component.Instance.Effect.GetSystem(0).AliveCount;
+		Test.Assert(alive > 0);
+
+		// Paused freezes the simulation outright, live particles included.
+		manager.SetPaused(entity, true);
+		scene.Update(0.5f);
+		Test.Assert(component.Instance.Effect.GetSystem(0).AliveCount == alive);
+
+		manager.SetPaused(entity, false);
+		scene.Update(0.1f);
+		Test.Assert(component.Instance.Effect.GetSystem(0).AliveCount > alive, "resumed emitting");
+
+		// Restart empties it and begins again, so the count drops back toward one tick's worth.
+		let beforeRestart = component.Instance.Effect.GetSystem(0).AliveCount;
+		manager.Restart(entity);
+		Test.Assert(component.Instance.Effect.GetSystem(0).AliveCount == 0);
+		scene.Update(0.1f);
+		Test.Assert(component.Instance.Effect.GetSystem(0).AliveCount < beforeRestart);
+
+		// Stop ends emission; what is already alive is long lived and stays.
+		let atStop = component.Instance.Effect.GetSystem(0).AliveCount;
+		manager.Stop(entity);
+		scene.Update(0.3f);
+		Test.Assert(component.Instance.Effect.GetSystem(0).AliveCount == atStop);
+	}
 }

@@ -132,6 +132,61 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 		component.Instance = new ParticleEffectInstance(component.OwnedEffect);
 	}
 
+	// ---- the control surface ----
+	//
+	// Raptor offers these through the SceneParticles script facade; they belong here, beside
+	// the components, and match the shape AudioSceneSystem already uses for a sound source.
+	// Each is a no-op on an entity with no effect attached yet.
+
+	/// Begins, or resumes, emission on the entity's effect.
+	public void Play(EntityHandle entity)
+	{
+		let instance = Instance(entity);
+		if (instance != null)
+			instance.Play();
+	}
+
+	/// Stops emitting. Live particles finish out rather than vanishing.
+	public void Stop(EntityHandle entity)
+	{
+		let instance = Instance(entity);
+		if (instance != null)
+			instance.Stop();
+	}
+
+	/// Resets to empty and begins emitting fresh, which is how a one shot re triggers.
+	public void Restart(EntityHandle entity)
+	{
+		let instance = Instance(entity);
+		if (instance == null)
+			return;
+
+		instance.Reset();
+		instance.Play();
+	}
+
+	/// Freezes the whole simulation for this effect, live particles included. Distinct from
+	/// Stop, which lets what is already alive run out.
+	public void SetPaused(EntityHandle entity, bool paused)
+	{
+		let instance = Instance(entity);
+		if (instance != null)
+			instance.IsActive = !paused;
+	}
+
+	/// True while the effect is still emitting or still has live particles.
+	public bool IsPlaying(EntityHandle entity)
+	{
+		let instance = Instance(entity);
+		return (instance != null) && !instance.IsFinished;
+	}
+
+	private ParticleEffectInstance Instance(EntityHandle entity)
+	{
+		let component = Get(entity);
+		return (component != null) ? component.Instance : null;
+	}
+
 	/// Attaches a resource for its RENDER RESOURCES only, without re cloning the effect.
 	///
 	/// An editor's preview keeps its live borrowed effect for the simulation, so a scalar edit
