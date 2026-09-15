@@ -198,4 +198,41 @@ class SceneRoundTripTests
 		Test.Assert(target.EntityCount == 0, "nothing was invented from a foreign stream");
 		Test.Assert(!reader.IsPayloadOk, "and the payload is marked failed");
 	}
+	/// An own-active child under a saved-inactive parent comes back DARK, with its own flag
+	/// intact.
+	///
+	/// The load order is what makes this worth pinning: the entities block sets the active
+	/// flags and the parents are relinked afterwards, so the reparent has to settle the
+	/// effective state or the child runs for a frame it was never meant to.
+	[Test]
+	public static void AChildUnderASavedInactiveParentLoadsDark()
+	{
+		let source = scope Scene();
+		source.AddSystem<HealthManager>();
+		let parent = source.CreateEntity("parent");
+		let child = source.CreateEntity("child");
+		source.SetParent(child, parent);
+		source.SetActive(parent, false); // the child's own flag stays set
+
+		let parentId = source.GetEntityId(parent);
+		let childId = source.GetEntityId(child);
+
+		let target = scope Scene();
+		target.AddSystem<HealthManager>();
+		RoundTrip(source, target, .Binary);
+
+		let restoredParent = target.FindEntity(parentId);
+		let restoredChild = target.FindEntity(childId);
+		Test.Assert(restoredParent.IsAssigned);
+		Test.Assert(restoredChild.IsAssigned);
+
+		Test.Assert(!target.IsActive(restoredParent));
+		Test.Assert(target.IsActive(restoredChild), "its own flag round trips");
+		Test.Assert(!target.IsEffectivelyActive(restoredParent));
+		Test.Assert(!target.IsEffectivelyActive(restoredChild), "dark from frame one");
+
+		// And activating the parent at runtime brings the subtree up.
+		target.SetActive(restoredParent, true);
+		Test.Assert(target.IsEffectivelyActive(restoredChild));
+	}
 }

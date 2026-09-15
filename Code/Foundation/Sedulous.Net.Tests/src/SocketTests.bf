@@ -249,4 +249,82 @@ class SocketTests
 		defer delete socket;
 		Test.Assert(socket.ConnectStatus == -1);
 	}
+	[Test]
+	public static void ConnectByNameReachesAListenerOnLoopback()
+	{
+		// The dotted quad path is covered above. This one goes through the resolver, which is
+		// a different branch of Connect and the one an ordinary caller takes.
+		let listener = scope TcpListener(0);
+		Test.Assert(listener.IsOpen);
+
+		let client = TcpSocket.Connect("localhost", listener.BoundPort);
+		defer delete client;
+
+		TcpSocket server = null;
+		defer { if (server != null) delete server; }
+		for (int i = 0; i < cPollAttempts; i++)
+		{
+			if (server == null)
+				server = listener.Accept();
+			if ((server != null) && (client.ConnectStatus == 1))
+				break;
+			Thread.Sleep(1);
+		}
+		Test.Assert(server != null);
+		Test.Assert(client.ConnectStatus == 1);
+	}
+
+	[Test]
+	public static void TheReliableTransportHandshakesAndDeliversOverRealSockets()
+	{
+		// Everything else about the transport runs on the sim, which delivers synchronously.
+		// This one puts it on the OS stack, where a packet arrives when it arrives, so a
+		// handshake that only works against the sim's timing would show up here.
+		let serverSocket = scope UdpSocket(0);
+		let clientSocket = scope UdpSocket(0);
+		Test.Assert(serverSocket.IsOpen);
+		Test.Assert(clientSocket.IsOpen);
+
+		let server = scope ReliableTransport(serverSocket);
+		let client = scope ReliableTransport(clientSocket);
+		server.SetAccepting(true);
+		let peer = client.Connect(serverSocket.LocalEndpoint);
+
+		delegate void(int) pump = scope [&] (count) =>
+			{
+				for (int i = 0; i < count; i++)
+				{
+					client.Update(10.0f);
+					server.Update(10.0f);
+					Thread.Sleep(1);
+				}
+			};
+
+		pump(30);
+
+		let event = scope NetEvent();
+		var connected = false;
+		while (server.Poll(event))
+		{
+			if (event.Kind == .Connected)
+				connected = true;
+		}
+		Test.Assert(connected);
+
+		let payload = scope uint8[](0xCA, 0xFE, 0xBA, 0xBE);
+		client.Send(peer, 0, payload, .ReliableOrdered);
+
+		var delivered = false;
+		for (int i = 0; (i < 100) && !delivered; i++)
+		{
+			pump(2);
+			while (server.Poll(event))
+			{
+				if ((event.Kind == .Received) && (event.Payload.Count == 4)
+					&& (event.Payload[0] == 0xCA) && (event.Payload[3] == 0xBE))
+					delivered = true;
+			}
+		}
+		Test.Assert(delivered);
+	}
 }
