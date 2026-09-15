@@ -562,4 +562,191 @@ class DockingTests
 				scope $"{edge}: refs {tool.RefCount}, expected {docked}");
 		}
 	}
+
+	/// The runtime host wraps a floated window in a RootView of its OWN and keeps two
+	/// references to it: one consumed by the UI host, one in its entry. Only the entry's goes
+	/// when the window is torn down; the other waits on the render window's deferred close.
+	///
+	/// Both halves matter here. The wrapping gives the window a PARENT, so the manager's
+	/// deferred node delete takes its re-parenting branch; the deferral keeps that parent alive
+	/// long enough for it to run.
+	private class DeferredRootHost : IDockableWindowHost
+	{
+		public UIContext Context = null;
+		public List<View> Created = new .() ~ delete _;
+		private List<RootView> mLive = new .() ~ delete _;
+		private List<RootView> mClosing = new .() ~ delete _;
+
+		public ~this()
+		{
+			// Anything still open goes the way a shutdown would take it.
+			for (let root in mClosing)
+				root.ReleaseRef();
+			for (let root in mLive)
+			{
+				Context.RemoveRootView(root);
+				root.ReleaseRef();
+				root.ReleaseRef();
+			}
+		}
+
+		public bool SupportsOSWindows() => true;
+		public bool UsesOSChrome() => false;
+
+		public void CreateDockableWindow(View view, float width, float height, float x, float y,
+			delegate void(View) onCloseRequested)
+		{
+			delete onCloseRequested;
+			Created.Add(view);
+
+			let root = new RootView();
+			root.ViewportSize = .(width, height);
+			root.AddView(view); // CONSUMES the window's reference
+			root.AddRef(); // the second of the two the runtime host holds
+			Context.AddRootView(root);
+			mLive.Add(root);
+		}
+
+		public void DestroyDockableWindow(View view)
+		{
+			for (int i < mLive.Count)
+			{
+				if (view.Parent !== mLive[i])
+					continue;
+
+				let root = mLive[i];
+				mLive.RemoveAt(i);
+				// A LOGICAL detach: the payload stays alive for the window's own teardown.
+				Context.RemoveRootView(root);
+				root.ReleaseRef(); // the entry's half
+				mClosing.Add(root); // the other waits on the deferred window close
+				return;
+			}
+		}
+
+		/// The render window actually going away, which frees its payload and with it the
+		/// root's remaining reference.
+		public void PumpDeferredCloses()
+		{
+			for (let root in mClosing)
+				root.ReleaseRef();
+			mClosing.Clear();
+		}
+
+		public void MoveDockableWindow(View view, float x, float y) {}
+		public void ResizeDockableWindow(View view, float x, float y, float w, float h) {}
+
+		public bool TryGetDockableWindowBounds(View view, out float x, out float y,
+			out float width, out float height)
+		{
+			x = 0; y = 0; width = 300; height = 250;
+			return true;
+		}
+
+		public void GetGlobalMousePosition(out float globalX, out float globalY)
+		{
+			globalX = 0;
+			globalY = 0;
+		}
+	}
+
+	/// The sandbox's gesture, against the host shape the runtime actually uses: float a panel
+	/// out and double click it back. ASan on the sample says one cycle strands a whole panel
+	/// subtree, so the count has to come back to where it started.
+	[Test]
+	public static void AFloatAndRedockCycleBalancesAgainstTheRuntimeHostShape()
+	{
+		let bed = scope DockBed();
+		let host = scope DeferredRootHost();
+		host.Context = bed.Context;
+		bed.Manager.DockableWindowHost = host;
+
+		let scene = bed.Manager.AddPanel("Scene", new Label("S"));
+		let console = bed.Manager.AddPanel("Console", new Label("C"));
+		bed.Manager.DockPanel(scene, .Center);
+		bed.Manager.DockPanel(console, .Bottom);
+		bed.SettleLayout();
+
+		let docked = console.RefCount;
+
+		for (let cycle < 3)
+		{
+			bed.Manager.FloatPanel(console, 40, 40);
+			bed.SettleLayout();
+
+			let window = host.Created[host.Created.Count - 1] as DockableWindow;
+			Test.Assert(window != null);
+
+			// The double click's route: the window asks to be re-docked.
+			bed.Manager.RedockDockableWindow(window);
+			bed.SettleLayout();
+			host.PumpDeferredCloses();
+			bed.SettleLayout();
+
+			Test.Assert(console.Parent != null, scope $"cycle {cycle}: back in the tree");
+			Test.Assert(console.RefCount == docked,
+				scope $"cycle {cycle}: refs {console.RefCount}, expected {docked}");
+		}
+	}
+
+	/// Dragging a tab out of its strip is the SANDBOX's undock, and it is not FloatPanel: the
+	/// strip hands the panel over as a drag source first. OnDragStarted takes it out of the
+	/// group and keeps the reference RemovePanel gives back, so OnDragCompleted owes it in
+	/// every direction the drag can end.
+	///
+	/// ASan on Samples.UISandbox said one undock and re-dock stranded a whole panel subtree
+	/// while FloatPanel and RedockDockableWindow both balanced, which is what pointed here.
+	[Test]
+	public static void EveryEndToATabDragHandsBackTheDragsReference()
+	{
+		// completed: the drop was accepted and the acceptor took its own reference.
+		// cancelled with a host: the panel floats, and FloatPanel takes its own.
+		// cancelled with no host: it goes back in the strip, which consumes the reference.
+		for (let ending in int[](0, 1, 2))
+		{
+			let bed = scope DockBed();
+			let host = scope FakeWindowHost();
+			if (ending != 2)
+				bed.Manager.DockableWindowHost = host;
+
+			let scene = bed.Manager.AddPanel("Scene", new Label("S"));
+			let tool = bed.Manager.AddPanel("Tool", new Label("T"));
+			bed.Manager.DockPanel(scene, .Center);
+			bed.Manager.DockPanel(tool, .Center); // same group, so there is a strip to drag from
+			bed.SettleLayout();
+
+			let group = tool.Parent as DockTabGroup;
+			Test.Assert(group != null, "the two panels share a tab group");
+
+			let docked = tool.RefCount;
+
+			let source = group.AsDragSource();
+			Test.Assert(source != null);
+
+			// The manager owns the drag data and releases it when the drag ends, so a test
+			// driving the protocol by hand has to do the same.
+			let data = new DockPanelDragData(tool);
+			defer data.ReleaseRef();
+
+			source.OnDragStarted(data);
+			Test.Assert(tool.Parent == null, "the tab left the strip as the drag began");
+
+			if (ending == 0)
+			{
+				// A completed drop: the manager places it, exactly as a zone drop would.
+				bed.Manager.DockPanelRelativeTo(tool, .Center, bed.Manager.RootNode);
+				source.OnDragCompleted(data, .Move, false);
+			}
+			else
+			{
+				source.OnDragCompleted(data, .None, true);
+			}
+
+			bed.SettleLayout();
+
+			Test.Assert(tool.Parent != null, scope $"ending {ending}: the panel was placed again");
+			Test.Assert(tool.RefCount == docked,
+				scope $"ending {ending}: refs {tool.RefCount}, expected {docked}");
+		}
+	}
 }

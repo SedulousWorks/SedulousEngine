@@ -160,13 +160,23 @@ extension DockTabGroup
 		mDragOriginalIndex = -1;
 		mDragTabIndex = -1;
 
-		if (!cancelled || (panel == null))
+		if (panel == null)
 			return;
+
+		// OnDragStarted took the panel out of the strip and KEPT the reference RemovePanel
+		// handed back, so every path out of here has to give it up. Only InsertPanel below
+		// consumes it; the other two placements take their own.
+		if (!cancelled)
+		{
+			// A completed drop was placed by whatever accepted it, which referenced it itself.
+			panel.ReleaseRef();
+			return;
+		}
 
 		let dockHost = panel.DockHost;
 		if (dockHost == null)
 		{
-			InsertPanel(originalIndex, panel);
+			InsertPanel(originalIndex, panel); // CONSUMES it
 			return;
 		}
 
@@ -181,5 +191,8 @@ extension DockTabGroup
 		}
 
 		dockHost.FloatPanel(panel, x, y);
+		// FloatPanel references the panel itself for the window it builds, so ours is still
+		// ours to drop.
+		panel.ReleaseRef();
 	}
 }
