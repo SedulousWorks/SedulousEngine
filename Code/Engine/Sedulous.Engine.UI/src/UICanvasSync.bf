@@ -289,8 +289,10 @@ extension UISubsystem
 					live.Add(component.Root);
 			});
 
-		// The canvas hosts' sweep, applied to the nameplates: a manager has no destroy hook,
-		// so what is gone is what nothing claimed.
+		// The canvas hosts' sweep, applied to the nameplates: this drops the LAYER's half of
+		// each tree, what is gone being what nothing claimed. The component's own half is
+		// dropped by the pool's OnComponentDestroyed, which is the only place that sees a
+		// removal.
 		for (int i = sceneUI.BillboardLayer.ChildCount - 1; i >= 0; i--)
 		{
 			let child = sceneUI.BillboardLayer.GetChildAt(i);
