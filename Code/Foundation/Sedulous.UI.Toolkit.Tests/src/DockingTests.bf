@@ -494,4 +494,72 @@ class DockingTests
 		Test.Assert(host.Destroyed == 1);
 		Test.Assert(bed.Manager.FindPanelById("doc") == null);
 	}
+
+	/// A float and re-dock round trip must leave the panel's reference count exactly where it
+	/// started: the registry's one plus the tree's one. A cycle that gains one leaks the whole
+	/// panel subtree at shutdown, which is what an editor does all day.
+	[Test]
+	public static void AFloatAndRedockCycleLeavesTheRefCountWhereItWas()
+	{
+		let bed = scope DockBed();
+		let host = scope FakeWindowHost();
+		bed.Manager.DockableWindowHost = host;
+
+		let scene = bed.Manager.AddPanel("Scene", new Label("S"));
+		let console = bed.Manager.AddPanel("Console", new Label("C"));
+		bed.Manager.DockPanel(scene, .Center);
+		bed.Manager.DockPanel(console, .Bottom);
+		bed.SettleLayout();
+
+		let docked = console.RefCount;
+
+		for (let cycle < 3)
+		{
+			bed.Manager.FloatPanel(console, 40, 40);
+			bed.SettleLayout();
+
+			let window = host.Created[host.Created.Count - 1] as DockableWindow;
+			Test.Assert(window != null);
+			bed.Manager.RedockDockableWindow(window);
+			bed.SettleLayout();
+
+			Test.Assert(console.RefCount == docked,
+				scope $"cycle {cycle}: refs {console.RefCount}, expected {docked}");
+			Test.Assert(console.Parent != null, scope $"cycle {cycle}: the panel is in the tree");
+		}
+	}
+
+	/// Re-docking to an EDGE goes through the split path rather than the tab path, and every
+	/// edge has to land the panel back in the tree. A target the split path does not recognise
+	/// would orphan the group it just put the panel in, and the panel with it.
+	[Test]
+	public static void RedockingToEveryEdgeKeepsThePanelInTheTree()
+	{
+		for (let edge in DockPosition[](.Left, .Right, .Top, .Bottom))
+		{
+			let bed = scope DockBed();
+			let host = scope FakeWindowHost();
+			bed.Manager.DockableWindowHost = host;
+
+			let scene = bed.Manager.AddPanel("Scene", new Label("S"));
+			let tool = bed.Manager.AddPanel("Tool", new Label("T"));
+			bed.Manager.DockPanel(scene, .Center);
+			bed.Manager.DockPanel(tool, edge);
+			bed.SettleLayout();
+
+			let docked = tool.RefCount;
+
+			bed.Manager.FloatPanel(tool, 40, 40);
+			bed.SettleLayout();
+			Test.Assert(tool.Parent != null, scope $"{edge}: floated into a window");
+
+			let window = host.Created[host.Created.Count - 1] as DockableWindow;
+			bed.Manager.RedockDockableWindow(window);
+			bed.SettleLayout();
+
+			Test.Assert(tool.Parent != null, scope $"{edge}: re-docked into the tree");
+			Test.Assert(tool.RefCount == docked,
+				scope $"{edge}: refs {tool.RefCount}, expected {docked}");
+		}
+	}
 }
