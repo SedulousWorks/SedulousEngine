@@ -111,4 +111,49 @@ class DataRootTests
 
 		Test.Assert(RemoveDirectoryRecursive(kScratch));
 	}
+	/// A valid override wins verbatim, and one without the marker is REFUSED rather than
+	/// silently used: a mistyped path that becomes the root fails later and further away,
+	/// on the first asset that is not where it should be.
+	[Test]
+	public static void AnOverrideIsValidatedBeforeItIsBelieved()
+	{
+		RemoveDirectoryRecursive(kScratch);
+		Test.Assert(CreateDirectory(kScratch));
+
+		let dataDir = PathJoin(kScratch, "Data", .. scope String());
+		Test.Assert(CreateDirectory(dataDir));
+		Test.Assert(WriteFile(PathJoin(dataDir, cDataRootMarker, .. scope String()), Span<uint8>()) case .Ok);
+
+		Test.Assert(ResolveDataRoot(dataDir, .. scope String()) == dataDir);
+		Test.Assert(ResolveDataRoot(kScratch, .. scope String()).IsEmpty, "no marker inside it");
+		Test.Assert(ResolveDataRoot("no_such_directory_anywhere", .. scope String()).IsEmpty);
+
+		// No override falls through to the walk, which from a test binary under the build
+		// output finds the repository's own Data.
+		let discovered = ResolveDataRoot("", .. scope String());
+		Test.Assert(!discovered.IsEmpty);
+		Test.Assert(IsDataRoot(discovered));
+		Test.Assert(discovered == FindDataRoot(.. scope String()));
+
+		Test.Assert(RemoveDirectoryRecursive(kScratch));
+	}
+
+	/// Both spellings of the flag, a missing one, and one left dangling with no value.
+	[Test]
+	public static void TheOverrideIsReadFromEitherSpelling()
+	{
+		let flag = scope String("--data-root");
+		let value = scope String("some/Data");
+		let joined = scope String("--data-root=other/Data");
+		let unrelated = scope String("--vk");
+
+		Test.Assert(DataRootFromArguments(scope String[](flag, value), .. scope String())
+			== "some/Data");
+		Test.Assert(DataRootFromArguments(scope String[](unrelated, joined), .. scope String())
+			== "other/Data");
+		Test.Assert(DataRootFromArguments(scope String[](unrelated), .. scope String()).IsEmpty);
+		Test.Assert(DataRootFromArguments(scope String[](flag), .. scope String()).IsEmpty,
+			"dangling, so there is nothing to take");
+		Test.Assert(DataRootFromArguments(Span<String>(), .. scope String()).IsEmpty);
+	}
 }
