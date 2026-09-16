@@ -245,7 +245,7 @@ class WebGpuSwapChain : ISwapChain
 		for (uint i = 0; i < caps.formatCount; i++)
 		{
 			if (caps.formats[i] == wanted)
-				return requested;
+				return Report(requested, requested);
 		}
 
 		let sibling = SwappedChannelOrder(requested);
@@ -265,6 +265,11 @@ class WebGpuSwapChain : ISwapChain
 
 	/// Says what the surface settled on, the way the Vulkan swap chain does, so a colour
 	/// that comes out wrong can be traced to the format rather than to the shader.
+	///
+	/// ALWAYS, including when the request was met: the same binary on this machine gets
+	/// RGBA from a Wayland surface and only BGRA from an X11 one, and a line that appears
+	/// solely on the fallback path makes that difference invisible in the logs of the run
+	/// that is behaving.
 	private static TextureFormat Report(TextureFormat requested, TextureFormat negotiated)
 	{
 		Console.WriteLine("[RHI] swapchain surface format: requested {}, negotiated {}",

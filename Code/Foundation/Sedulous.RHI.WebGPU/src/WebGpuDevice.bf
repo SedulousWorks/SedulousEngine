@@ -62,6 +62,18 @@ class WebGpuDevice : IDevice
 		mForceWgsl = (Environment.GetEnvironmentVariable("ENV_WEBGPU_WGSL", raw) case .Ok);
 		if (mForceWgsl)
 			mForceUniformPushConstants = true;
+
+		// Said out loud, the way the swap chain names its format: which shader path a run
+		// took is otherwise invisible.
+		//
+		// This is what the device PREFERS, which is not always what it is handed. The
+		// shader system honours it only on the cooked pack path; its on demand compile
+		// emits SPIR-V for anything that is not DX12, whatever this says. So a forced WGSL
+		// run with no pack present still runs SPIR-V, and only works because ingestion is
+		// available - which it will not be in a browser.
+		Console.WriteLine("[webgpu] shaders: prefers {} (SPIR-V ingestion {})",
+			mForceWgsl ? "WGSL with push constants emulated (ENV_WEBGPU_WGSL)" : "SPIR-V",
+			WebGpuApi.SpirvIngestion ? "available" : "unavailable");
 	}
 
 	public ~this()

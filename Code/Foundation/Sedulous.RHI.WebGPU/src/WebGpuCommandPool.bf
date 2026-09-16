@@ -58,6 +58,18 @@ class WebGpuCommandPool : ICommandPool
 	/// Nothing to recycle: a one shot encoder re-opens lazily.
 	public void Reset()
 	{
+		// The ENCODERS are not freed here, matching the Vulkan pool: a caller may reset and
+		// then destroy an encoder it still holds, and freeing them here would make that a
+		// use after free. Each one already re-opens a fresh WGPUCommandEncoder after Finish,
+		// so there is nothing to recycle for them.
+		//
+		// The BUNDLE ENCODERS are. The renderer's parallel emit mints one per worker pool
+		// EVERY frame and relies on this reset to reclaim it - "the pool never holds an open
+		// primary list and its per frame reset stays legal on every backend", as ForwardPass
+		// puts it. Raptor's WebGPU pool resets nothing, so those accumulated for the life of
+		// the pool, holding a finished WGPURenderBundle each and, through it, every resource
+		// that bundle referenced. Vulkan's pool has always reclaimed them here.
+		ClearAndDeleteItems!(mBundleEncoders);
 	}
 
 	public IRenderBundleEncoder CreateRenderBundleEncoder(RenderBundleDesc desc)

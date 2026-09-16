@@ -213,7 +213,12 @@ class WebGpuAdapter : IAdapter
 				if (route.Device != null)
 					route.Device.MarkLost();
 
-				GlobalLog(.Error, "[webgpu] device LOST (reason {}): {}", reason,
+				// Console, not GlobalLog, and for the same reason the Vulkan backend writes
+				// its validation messages there: a device error nobody sees is the worst
+				// case. GlobalLog has no console sink in a sample, so an uncaptured error
+				// vanished and a bind group that failed to build only showed up much later,
+				// as an "invalid BindGroup" abort inside an unrelated call.
+				Console.Error.WriteLine("[webgpu] device LOST (reason {}): {}", reason,
 					StringView((char8*)message.data, (int)message.length));
 			};
 		deviceDesc.deviceLostCallbackInfo.userdata1 = Internal.UnsafeCastToPtr(lostRoute);
@@ -221,7 +226,7 @@ class WebGpuAdapter : IAdapter
 		deviceDesc.uncapturedErrorCallbackInfo.callback =
 			(device, errorType, message, userdata1, userdata2) =>
 			{
-				GlobalLog(.Error, "[webgpu] uncaptured error (type {}): {}", errorType,
+				Console.Error.WriteLine("[webgpu] uncaptured error (type {}): {}", errorType,
 					StringView((char8*)message.data, (int)message.length));
 			};
 

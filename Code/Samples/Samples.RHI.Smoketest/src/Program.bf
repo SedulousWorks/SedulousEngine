@@ -396,6 +396,12 @@ class Program
 		WebGpuBackendInfo.NativeVersionString(version);
 		Console.WriteLine(scope $"wgpu-native {version}");
 
+		// Which shader path this build actually takes. SPIR-V ingestion is a wgpu-native
+		// instance feature that a browser never has, and the samples feed SPIR-V
+		// unconditionally, so a "no" here means every one of them would fail to make a
+		// module. Worth stating rather than inferring from whether they rendered.
+		Console.WriteLine(scope $"SPIR-V ingestion: {(WebGpuApi.SpirvIngestion ? "yes" : "no (WGSL only)")}");
+
 		let adapters = backend.EnumerateAdapters();
 		Console.WriteLine(scope $"WebGPU adapters: {adapters.Length}");
 		for (int i = 0; i < adapters.Length; i++)
