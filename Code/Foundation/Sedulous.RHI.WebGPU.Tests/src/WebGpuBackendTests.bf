@@ -97,4 +97,43 @@ class WebGpuBackendTests
 
 		Test.Assert(first.Name == captured, "the first name is still what it was");
 	}
+
+	/// The host takes adapters[0], and wgpu's enumeration order is arbitrary: on Windows
+	/// it routinely leads with an entry that cannot PRESENT, and the swapchain then dies
+	/// at configure. So a software adapter must never sort ahead of a real GPU.
+	///
+	/// This pins the ORDER rather than the ranking arithmetic, because the ranking is
+	/// only worth anything through what ends up first.
+	[Test]
+	public static void RealGpusSortAheadOfSoftware()
+	{
+		let backend = scope WebGpuBackend();
+		if (!TryStart(backend))
+			return;
+		defer backend.Destroy();
+
+		let adapters = backend.EnumerateAdapters();
+		if (adapters.IsEmpty)
+			return;
+
+		var sawSoftware = false;
+		for (let adapter in adapters)
+		{
+			let info = scope AdapterInfo();
+			adapter.GetInfo(info);
+
+			let isSoftware = info.Type == .Cpu;
+			if (isSoftware)
+				sawSoftware = true;
+			else
+				Test.Assert(!sawSoftware,
+					scope $"'{info.Name}' is a real GPU but sorted after a software one");
+		}
+
+		// Whatever else it is, the head of the list is the one that has to be able to
+		// present, so it must not be the software entry.
+		let first = scope AdapterInfo();
+		adapters[0].GetInfo(first);
+		Test.Assert(first.Type != .Cpu, "the host's default adapter is not a software one");
+	}
 }
