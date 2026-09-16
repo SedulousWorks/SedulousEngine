@@ -4,6 +4,7 @@ using Sedulous.RHI;
 using Sedulous.RHI.Null;
 using Sedulous.RHI.Validation;
 using Sedulous.RHI.Vulkan;
+using Sedulous.RHI.WebGPU;
 using Sedulous.Shell;
 using Sedulous.Shell.SDL3;
 
@@ -50,6 +51,9 @@ class Program
 
 		if (RunVulkan(native) case .Err)
 			return 1;
+
+		Console.WriteLine("\n=== WebGPU Backend ===");
+		RunWebGpu();
 
 		Console.WriteLine("\n=== Null Backend ===");
 		RunNull();
@@ -372,6 +376,111 @@ class Program
 		let magic = (result.Bytecode.Count >= 4) ? *(uint32*)&result.Bytecode[0] : 0;
 		Console.WriteLine(scope $"HLSL->SPIR-V: {result.Bytecode.Count} bytes, magic=0x{magic:X8} {(magic == 0x07230203) ? "(SPIR-V OK)" : "(unexpected)"}");
 	}
+
+	/// One of everything on WebGPU, which is the second real backend.
+	///
+	/// No surface and no swap chain here: the window is already bound to the Vulkan
+	/// surface the pass above made, and wgpu cannot take a second surface over the same
+	/// one. The samples cover presenting; this covers that every object a device hands out
+	/// can be made and unmade for real.
+	private static void RunWebGpu()
+	{
+		if (!(WebGpuRhi.CreateBackend() case .Ok(let backend)))
+		{
+			Console.WriteLine("WebGPU backend: unavailable - skipped");
+			return;
+		}
+		defer backend.Destroy();
+
+		let version = scope String();
+		WebGpuBackendInfo.NativeVersionString(version);
+		Console.WriteLine(scope $"wgpu-native {version}");
+
+		let adapters = backend.EnumerateAdapters();
+		Console.WriteLine(scope $"WebGPU adapters: {adapters.Length}");
+		for (int i = 0; i < adapters.Length; i++)
+		{
+			let info = scope AdapterInfo();
+			adapters[i].GetInfo(info);
+			Console.WriteLine(scope $"  [{i}] {info.Name} ({info.Type})");
+		}
+
+		if (adapters.IsEmpty)
+			return;
+
+		if (!(adapters[0].CreateDevice(DeviceDesc()) case .Ok(var device)))
+		{
+			Console.Error.WriteLine("WebGPU device: FAILED to create");
+			return;
+		}
+
+		Console.WriteLine(scope $"WebGPU device created (type={device.Type})");
+
+		// The buffer is the Map EMULATION: a CPU shadow that flushes through WriteBuffer.
+		var bufferDesc = BufferDesc();
+		bufferDesc.Size = 256;
+		bufferDesc.Usage = .Uniform;
+		bufferDesc.Memory = .CpuToGpu;
+		if (device.CreateBuffer(bufferDesc) case .Ok(var buffer))
+		{
+			let mapped = buffer.Map();
+			Console.WriteLine(scope $"WebGPU buffer mapped: {(mapped != null) ? "OK" : "FAIL"}");
+			if (mapped != null)
+			{
+				Internal.MemSet(mapped, 0x5A, 256);
+				buffer.Unmap();
+			}
+
+			device.DestroyBuffer(ref buffer);
+		}
+
+		var texture = device.CreateTexture(TextureDesc.RenderTarget(.RGBA8Unorm, 64, 64))
+			.GetValueOrDefault();
+		ITextureView view = null;
+		if (texture != null)
+		{
+			var viewDesc = TextureViewDesc();
+			viewDesc.Format = .RGBA8Unorm;
+			view = device.CreateTextureView(texture, viewDesc).GetValueOrDefault();
+		}
+
+		var sampler = device.CreateSampler(SamplerDesc()).GetValueOrDefault();
+		Console.WriteLine(scope $"WebGPU texture/view/sampler: {Ok(texture)}/{Ok(view)}/{Ok(sampler)}");
+
+		// WGSL rather than the SPIR-V blob above: which path a module takes is decided by
+		// LOOKING at the code for the SPIR-V magic, so this exercises the other branch.
+		let wgsl = "@vertex fn main() -> @builtin(position) vec4f { return vec4f(0.0); }";
+		var moduleDesc = ShaderModuleDesc();
+		moduleDesc.Code = .((uint8*)wgsl.Ptr, wgsl.Length);
+		var module = device.CreateShaderModule(moduleDesc).GetValueOrDefault();
+		Console.WriteLine(scope $"WebGPU WGSL shader module: {Ok(module)}");
+		if (module != null)
+			device.DestroyShaderModule(ref module);
+
+		// The fence has no WebGPU object behind it, so an EMPTY submission carrying a
+		// signal is the whole timeline emulation in one call.
+		if (device.CreateFence(0) case .Ok(var fence))
+		{
+			device.GetQueue(.Graphics, 0).Submit(.(), fence, 1);
+			let signaled = fence.Wait(1, uint64.MaxValue);
+			Console.WriteLine(scope $"WebGPU fence signaled: {(signaled ? "OK" : "FAIL")} (value {fence.CompletedValue()})");
+			device.DestroyFence(ref fence);
+		}
+
+		if (sampler != null)
+			device.DestroySampler(ref sampler);
+		if (view != null)
+			device.DestroyTextureView(ref view);
+		if (texture != null)
+			device.DestroyTexture(ref texture);
+
+		device.WaitIdle();
+		Console.WriteLine(scope $"WebGPU device lost: {(device.IsLost() ? "YES (bad)" : "no")}");
+		device.Destroy();
+		Console.WriteLine("WebGPU backend: OK");
+	}
+
+	private static StringView Ok(Object value) => (value != null) ? "OK" : "FAIL";
 
 	/// The same sequence again with no GPU behind it.
 	///

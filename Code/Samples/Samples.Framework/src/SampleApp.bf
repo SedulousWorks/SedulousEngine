@@ -5,6 +5,7 @@ using Sedulous.VFS;
 using Sedulous.RHI;
 using Sedulous.RHI.Validation;
 using Sedulous.RHI.Vulkan;
+using Sedulous.RHI.WebGPU;
 using Sedulous.Shaders;
 using Sedulous.Shell;
 using Sedulous.Shell.SDL3;
@@ -50,6 +51,15 @@ abstract class SampleApp
 
 	protected virtual StringView Title => "RHI Sample";
 	protected virtual DeviceFeatures RequiredFeatures => .();
+
+	/// How many frames to render before quitting, or zero to run until the window closes.
+	///
+	/// NOT in Raptor, and not engine behaviour: it exists so a sweep across every sample can
+	/// exercise the REAL shutdown path. Killing a sample on a timeout instead leaves teardown
+	/// untested, which is exactly how a double free in the backend's surface list survived a
+	/// green looking run of the whole suite.
+	private int mFrameLimit = 0;
+	private int mFramesRendered = 0;
 	protected virtual TextureFormat SwapChainFormat => .RGBA8UnormSrgb;
 	protected virtual PresentMode PresentMode => .Fifo;
 	protected virtual uint32 BufferCount => 2;
@@ -126,6 +136,11 @@ abstract class SampleApp
 			case "--vk", "--vulkan": mBackendType = .Vulkan;
 			case "--novalidation": mValidationEnabled = false;
 			default:
+				if (argument.StartsWith("--frames="))
+				{
+					if (int.Parse(argument.Substring("--frames=".Length)) case .Ok(let count))
+						mFrameLimit = count;
+				}
 			}
 		}
 	}
@@ -175,8 +190,12 @@ abstract class SampleApp
 			Console.Error.WriteLine("SampleApp: the DX12 backend is not ported yet");
 			return .Err;
 		case .WebGPU:
-			Console.Error.WriteLine("SampleApp: the WebGPU backend is not ported yet");
-			return .Err;
+			if (!(WebGpuRhi.CreateBackend() case .Ok(let backend)))
+			{
+				Console.Error.WriteLine("SampleApp: the WebGPU backend could not be created");
+				return .Err;
+			}
+			mInnerBackend = backend;
 		}
 
 		// The wrapper BORROWS the real backend, so both are kept: one to use, one to destroy.
@@ -288,6 +307,10 @@ abstract class SampleApp
 			{
 				CheckAndResize();
 				OnRender();
+
+				mFramesRendered++;
+				if ((mFrameLimit > 0) && (mFramesRendered >= mFrameLimit))
+					mRunning = false;
 			}
 		}
 	}

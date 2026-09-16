@@ -299,3 +299,26 @@ class WebGpuBackend : IBackend
 		}
 	}
 }
+
+/// Bringing the WebGPU backend up.
+static class WebGpuRhi
+{
+	/// A WebGPU backend, or an error when wgpu-native cannot make an instance. The CALLER
+	/// owns what comes back.
+	///
+	/// No validation flag, unlike the Vulkan entry point: wgpu-native validates
+	/// unconditionally and has no layer to switch on. ValidationRhi still wraps this the
+	/// same way, and catches what it catches above the backend.
+	public static Result<IBackend> CreateBackend()
+	{
+		let backend = new WebGpuBackend();
+		if (backend.Initialize() case .Err)
+		{
+			delete backend;
+			return .Err;
+		}
+
+		return .Ok(backend);
+	}
+}
+

@@ -6,6 +6,7 @@ using Sedulous.Graphics.Null;
 using Sedulous.RHI;
 using Sedulous.RHI.Validation;
 using Sedulous.RHI.Vulkan;
+using Sedulous.RHI.WebGPU;
 
 namespace Sedulous.Graphics.Gpu;
 
@@ -35,8 +36,12 @@ static class GpuGraphics
 			GlobalLog(.Error, "GpuGraphics.CreateDevice: the DX12 backend is not ported yet");
 			return .Err;
 		case .WebGPU:
-			GlobalLog(.Error, "GpuGraphics.CreateDevice: the WebGPU backend is not ported yet");
-			return .Err;
+			if (!(WebGpuRhi.CreateBackend() case .Ok(let backend)))
+			{
+				GlobalLog(.Error, "GpuGraphics.CreateDevice: the WebGPU backend could not be created");
+				return .Err;
+			}
+			inner = backend;
 		case .Null:
 			return .Err; // handled above
 		}
