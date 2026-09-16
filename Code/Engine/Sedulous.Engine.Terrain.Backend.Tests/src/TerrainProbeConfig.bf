@@ -17,6 +17,9 @@ class TerrainProbeConfig
 	public float Fov = 1.0f;
 	public ClearColor Clear = ClearColor.Black;
 	public bool Skirts = true;
+	/// Stands a cascaded shadow system up for the frame, so the terrain both casts into the
+	/// cascade and samples it.
+	public bool Shadows = false;
 
 	/// The direction TO the light. Null leaves the renderer's fallback sun.
 	public Float3? ToLight = null;

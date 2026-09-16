@@ -21,6 +21,11 @@ class TerrainProbe
 	public double BottomLuma = 0.0;
 	public double Total = 0.0;
 
+	/// The flat ground either side of a central ridge, measured WELL CLEAR of the bright
+	/// ridge stripe itself so a shadow on the ground is what moves them.
+	public double LeftGround = 0.0;
+	public double RightGround = 0.0;
+
 	public double LeftR = 0.0;
 	public double LeftG = 0.0;
 	public double LeftB = 0.0;

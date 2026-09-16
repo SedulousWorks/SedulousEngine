@@ -9,16 +9,7 @@ namespace Sedulous.Engine.Terrain.Backend.Tests;
 /// pixels are right: that a lit dome covers the view and actually shades, and that the
 /// scene's own sun is what drives that shading rather than something baked in.
 ///
-/// BOTH CURRENTLY FAIL, and they fail the same way: the terrain resolves all four of its
-/// chunks into draws and the frame records them, yet not one pixel lands, with or without a
-/// tone map in the chain. That is the same shape as the temporal resolve and the screen space
-/// reflection each rendering black, so it is very likely the same cause, and Raptor's own
-/// probe renders this dome lit on this machine.
-///
-/// The remaining eleven cases of Raptor's suite are left in the ledger rather than ported
-/// blind: every one of them reads colours out of a rendered terrain, so with nothing landing
-/// they could only be written unverified, and unverified assertions that happen to be red
-/// look like coverage without being any.
+/// The material cases live beside this in TerrainSplatProbeTests.
 class TerrainPixelProbeTests
 {
 	private const double cPixels = (double)TerrainProbeRenderer.Size * TerrainProbeRenderer.Size;
@@ -81,5 +72,49 @@ class TerrainPixelProbeTests
 		Test.Assert(deltaA * deltaB < 0.0, "the asymmetry inverted with the sun");
 		Test.Assert(Math.Abs(deltaA) > fromPlusX.Total * 0.02, "and it is a real asymmetry");
 		Test.Assert(Math.Abs(deltaB) > fromMinusX.Total * 0.02, "both ways round");
+	}
+	/// The ridge both CASTS into the cascade and RECEIVES from it.
+	///
+	/// Flat ground has one normal, so without shadows a low sun lights both sides of the
+	/// ridge equally; with the cascade the ridge darkens the side away from the sun. Either
+	/// half of cast or receive missing and the asymmetry never appears.
+	[Test]
+	public static void TheRidgeCastsACascadedShadowOntoTheGround()
+	{
+		let fixture = scope TerrainProbeFixture();
+		if (!fixture.Ready)
+			return;
+
+		let grid = TerrainFixtures.MakeRidge();
+		defer delete grid;
+
+		let config = scope TerrainProbeConfig();
+		config.Terrain = grid;
+		// Top down and far enough out to hold the whole ridge, under a LOW sun so the shadow
+		// it throws is long across the ground rather than tucked under it.
+		config.Eye = .(0.0f, 260.0f, 0.01f);
+		config.Target = .(0.0f, 0.0f, 0.0f);
+		config.Up = .(0.0f, 0.0f, 1.0f);
+		config.ToLight = Normalized(Float3(0.9f, 0.42f, 0.0f));
+
+		config.Shadows = false;
+		let unshadowed = TerrainProbeRenderer.Render(fixture, config);
+		defer delete unshadowed;
+		if (!unshadowed.Valid)
+			return;
+
+		config.Shadows = true;
+		let shadowed = TerrainProbeRenderer.Render(fixture, config);
+		defer delete shadowed;
+		Test.Assert(shadowed.Valid, "the shadowed frame rendered");
+
+		let unshadowedAsymmetry = Math.Abs(unshadowed.LeftGround - unshadowed.RightGround)
+			/ (unshadowed.LeftGround + unshadowed.RightGround);
+		let shadowedAsymmetry = Math.Abs(shadowed.LeftGround - shadowed.RightGround)
+			/ (shadowed.LeftGround + shadowed.RightGround);
+
+		Test.Assert(unshadowedAsymmetry < 0.06, "unshadowed, both sides are lit alike");
+		Test.Assert(shadowedAsymmetry > 0.15, "the cast shadow darkens one side");
+		Test.Assert(shadowed.Total < unshadowed.Total * 0.99, "and a shadow only removes light");
 	}
 }

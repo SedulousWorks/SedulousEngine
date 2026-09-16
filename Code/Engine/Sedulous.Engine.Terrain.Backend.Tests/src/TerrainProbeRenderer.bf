@@ -34,7 +34,16 @@ static class TerrainProbeRenderer
 		let registry = scope RendererRegistry();
 		registry.Register(renderer);
 
-		let frame = scope RenderFrame(device, registry, 2);
+		// SCOPED beside the frame rather than conditionally allocated, so the frame is torn
+		// down before it whatever the case asked for. Handing the frame null is what leaves a
+		// run with no cascade at all, which is the control every shadow claim is read against.
+		let shadows = scope ShadowSystem(device, 2);
+		if (shadows.Initialize() case .Err)
+			return probe;
+
+		let frame = scope RenderFrame(device, registry, 2, null, null,
+			config.Shadows ? shadows : null);
+		frame.SetShadowParams(800.0f, 20.0f);
 
 		let terrain = config.Terrain;
 		let chunks = scope List<TerrainChunk>();
@@ -62,6 +71,16 @@ static class TerrainProbeRenderer
 			sun.Color = .(1.0f, 1.0f, 1.0f);
 			sun.Intensity = 1.0f;
 			scene.AddLight(sun);
+
+			// The cascade is built from the scene's DECLARED directional shadow, not from the
+			// light list: a sun alone lights the scene but casts nothing.
+			if (config.Shadows)
+			{
+				var shadow = DirectionalShadow();
+				shadow.Direction = config.ToLight.Value * -1.0f;
+				shadow.Valid = true;
+				scene.SetDirectionalShadow(shadow);
+			}
 		}
 
 		let data = scene.Add<TerrainRenderData>();
@@ -220,6 +239,14 @@ static class TerrainProbeRenderer
 					probe.TopLuma += luma;
 				else
 					probe.BottomLuma += luma;
+
+				// The flat ground either side of a central ridge, leaving the ridge stripe and
+				// the rim out of both.
+				let fx = (float)x / (float)Size;
+				if ((fx > 0.12f) && (fx < 0.38f))
+					probe.LeftGround += luma;
+				else if ((fx > 0.62f) && (fx < 0.88f))
+					probe.RightGround += luma;
 
 				// The band centres, clear of the boundaries where bands blend and of the rim.
 				if ((y >= Size / 4) && (y < Size * 3 / 4))

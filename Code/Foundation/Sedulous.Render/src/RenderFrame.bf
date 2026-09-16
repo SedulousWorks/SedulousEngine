@@ -518,14 +518,19 @@ class RenderFrame
 				continue;
 
 			// The list is HETEROGENEOUS: any renderer can produce a caster, not only the mesh
-			// one. Only the GENERIC base fields are read here. The one mesh specific need, a
-			// skinned caster's sphere, is gated on the mesh renderer's id, which is nought by
-			// contract and the only producer that carries bone data.
+			// one. Only the GENERIC base fields are read here.
 			var stateBits = data.SortBatchKey & ((1u << SortKeys.StateBits) - 1);
 
-			if (data.RendererId == 0)
+			// The one mesh specific need, a skinned caster's sphere, is gated on the ITEM'S
+			// TYPE, not on a renderer id. RendererId is a DISPATCH key: the registry hands ids
+			// out in registration order and nought is merely the field's default, so "nought is
+			// the mesh renderer" holds only while the mesh renderer happens to register first.
+			// Register one other renderer alone, as the terrain probe harness does, and that
+			// renderer is nought; Raptor's static_cast then reads a terrain item's fields at
+			// mesh offsets, and this one fatals on the bad cast. Asking the type asks the
+			// question the code actually has.
+			if (let mesh = data as MeshRenderData)
 			{
-				let mesh = (MeshRenderData)data;
 				// A skinned caster deforms every frame, so its sphere is remembered and only
 				// the static tiles whose light volume it overlaps are re-rendered.
 				if ((mesh.BoneMatrices != null) && (mesh.BoneCount > 0))
