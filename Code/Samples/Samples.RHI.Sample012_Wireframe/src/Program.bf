@@ -60,6 +60,16 @@ class WireframeSample : SampleApp
 
 	protected override Result<void> OnInit()
 	{
+		// Checked as well as requested, the way Sample013 checks border sampling: a backend
+		// that ignored the request would otherwise fail later at pipeline creation with
+		// nothing explaining why. WebGPU is that backend - core WebGPU has no polygon mode
+		// at all, so a wireframe fill is refused rather than quietly filled.
+		if (!mDevice.Features.FillModeWireframe)
+		{
+			Console.Error.WriteLine("Sample012: this device does not support wireframe fill");
+			return .Err;
+		}
+
 		mCompiler = new Sedulous.Shaders.ShaderCompiler();
 		if (mCompiler.Initialize() case .Err)
 			return .Err;
