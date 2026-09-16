@@ -8,29 +8,11 @@ namespace Sedulous.RHI.WebGPU.Tests;
 /// that the factories behind it hand back real objects.
 class WebGpuDeviceTests
 {
-	/// Brings a backend and a device up, or hands back null when this machine has no
-	/// usable WebGPU. Every case skips rather than fails in that event, the way the rest
-	/// of the suite does, so a headless runner without a GPU stays green.
-	private static IDevice TryCreateDevice(WebGpuBackend backend)
-	{
-		if (backend.Initialize() case .Err)
-			return null;
-
-		let adapters = backend.EnumerateAdapters();
-		if (adapters.IsEmpty)
-			return null;
-
-		if (adapters[0].CreateDevice(.()) case .Ok(let device))
-			return device;
-
-		return null;
-	}
-
 	[Test]
 	public static void AnAdapterCreatesALiveDevice()
 	{
 		let backend = scope WebGpuBackend();
-		let device = TryCreateDevice(backend);
+		let device = WebGpuTestDevice.TryCreate(backend);
 		if (device == null)
 			return;
 		defer backend.Destroy();
@@ -63,7 +45,7 @@ class WebGpuDeviceTests
 	public static void OnlyOneAndFourSamplesAreOffered()
 	{
 		let backend = scope WebGpuBackend();
-		let device = TryCreateDevice(backend);
+		let device = WebGpuTestDevice.TryCreate(backend);
 		if (device == null)
 			return;
 		defer backend.Destroy();
@@ -82,7 +64,7 @@ class WebGpuDeviceTests
 	public static void TheFormatTableFollowsTheSpecClasses()
 	{
 		let backend = scope WebGpuBackend();
-		let device = TryCreateDevice(backend);
+		let device = WebGpuTestDevice.TryCreate(backend);
 		if (device == null)
 			return;
 		defer backend.Destroy();
@@ -120,7 +102,7 @@ class WebGpuDeviceTests
 	public static void TheDeviceMakesAndUnmakesResources()
 	{
 		let backend = scope WebGpuBackend();
-		let device = TryCreateDevice(backend);
+		let device = WebGpuTestDevice.TryCreate(backend);
 		if (device == null)
 			return;
 		defer backend.Destroy();
