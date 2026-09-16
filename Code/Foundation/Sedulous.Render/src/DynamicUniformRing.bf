@@ -27,6 +27,7 @@ class DynamicUniformRing
 	private uint32 mFrameBase = 0;
 	private uint32 mCursor = 0;
 	private uint32 mGeneration = 0;
+	private bool mInFrame = false;
 
 	/// `slotSize` is the per allocation stride, which a dynamic offset uniform needs aligned
 	/// to what the adapter demands and a storage ring can leave as the struct's own size.
@@ -71,10 +72,6 @@ class DynamicUniformRing
 		var desc = BufferDesc();
 		desc.Size = (uint64)mFramesInFlight * (uint64)wanted * mSlotSize;
 
-		// Said once per growth: a ring's SIZE is what an emulating backend pays to flush,
-		// and these are easy to misjudge by an order of magnitude from the slot count.
-		Console.WriteLine("[ring] {} grew to {} slots x {} B x {} frames = {} KB", mLabel,
-			wanted, mSlotSize, mFramesInFlight, desc.Size / 1024);
 		desc.Usage = mUsage;
 		desc.Memory = .CpuToGpu;
 		desc.Label = mLabel;
@@ -91,12 +88,19 @@ class DynamicUniformRing
 		return true;
 	}
 
-	/// Selects this frame's region and maps it for writing.
+	/// Selects this frame's region.
+	///
+	/// The buffer is mapped LAZILY, by the first allocation, so a ring nothing writes this
+	/// frame never maps, flushes or compares anything. On a backend that emulates mapping with
+	/// a CPU shadow, WebGPU, an unconditional map and unmap was a full buffer compare per ring
+	/// per frame: about 145 MB of it in a scene using none of the skinning, terrain, sprite or
+	/// particle rings.
 	public void BeginFrame(uint32 frameIndex)
 	{
 		mFrameBase = (frameIndex % mFramesInFlight) * mSlotsPerFrame;
 		mCursor = 0;
-		mMapped = (mBuffer != null) ? (uint8*)mBuffer.Map() : null;
+		mMapped = null;
+		mInFrame = true;
 	}
 
 	/// A run of contiguous slots in this frame's region.
@@ -105,8 +109,16 @@ class DynamicUniformRing
 	/// would move the buffer out from under the draws already recorded against it.
 	public DynamicUniformRange AllocateRange(uint32 count)
 	{
-		if ((mMapped == null) || (count == 0) || ((mCursor + count) > mSlotsPerFrame))
+		if (!mInFrame || (mBuffer == null) || (count == 0)
+			|| ((mCursor + count) > mSlotsPerFrame))
 			return .();
+
+		if (mMapped == null)
+		{
+			mMapped = (uint8*)mBuffer.Map(); // the first write this frame
+			if (mMapped == null)
+				return .();
+		}
 
 		let slot = mFrameBase + mCursor;
 		mCursor += count;
@@ -117,12 +129,25 @@ class DynamicUniformRing
 
 	public DynamicUniformRange Allocate() => AllocateRange(1);
 
+	/// Flushes exactly the slots this frame wrote, a no-op on a coherent mapping and a window
+	/// upload on the emulated one, then unmaps.
 	public void EndFrame()
 	{
 		if ((mMapped != null) && (mBuffer != null))
+		{
+			if (mCursor > 0)
+				mBuffer.FlushRange((uint64)mFrameBase * mSlotSize, (uint64)mCursor * mSlotSize);
+
 			mBuffer.Unmap();
+		}
 		mMapped = null;
+		mInFrame = false;
 	}
+
+	/// Slots allocated so far this frame: nought outside a frame, and nought when untouched.
+	public uint32 FrameAllocatedSlots => mCursor;
+	/// Whether this frame's first allocation has mapped the buffer yet.
+	public bool IsMappedThisFrame => mMapped != null;
 
 	public IBuffer Buffer => mBuffer;
 	public uint64 SlotSize => mSlotSize;

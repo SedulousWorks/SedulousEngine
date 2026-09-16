@@ -247,6 +247,32 @@ class RenderResourceTests
 		Test.Assert(!ring.Allocate().Ok, "and no frame has begun");
 	}
 
+	/// The ring maps LAZILY: a frame that allocates nothing never maps it, so there is nothing
+	/// to flush and, on a mapping a backend emulates with a CPU shadow, nothing to compare.
+	[Test]
+	public static void AFrameThatWritesNothingNeverMaps()
+	{
+		let harness = scope Harness();
+		let ring = scope DynamicUniformRing(harness.Device, 2, 256);
+		Test.Assert(ring.Reserve(4));
+
+		ring.BeginFrame(2);
+		Test.Assert(!ring.IsMappedThisFrame, "an untouched frame has not mapped");
+		Test.Assert(ring.FrameAllocatedSlots == 0);
+		ring.EndFrame(); // and there is nothing to flush
+
+		ring.BeginFrame(2);
+		Test.Assert(ring.AllocateRange(2).Ok);
+		Test.Assert(ring.IsMappedThisFrame, "the first allocation mapped it");
+		Test.Assert(ring.FrameAllocatedSlots == 2, "and EndFrame flushes exactly that much");
+		ring.EndFrame();
+		Test.Assert(!ring.IsMappedThisFrame);
+
+		// Outside a frame nothing allocates: the region base is undefined.
+		Test.Assert(!ring.Allocate().Ok);
+		Test.Assert(ring.SlotsPerFrame == 4);
+	}
+
 	/// A ring wired to a retire queue does NOT drain the device when it grows: the old buffer
 	/// is retired instead, which is what keeps a growth from dropping the frame on the web.
 	[Test]

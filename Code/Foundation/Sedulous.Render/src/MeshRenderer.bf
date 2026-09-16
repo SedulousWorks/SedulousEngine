@@ -33,9 +33,16 @@ class MeshRenderer : Renderer
 	/// One per shadow pass and category run, sized with headroom since a slot is tiny.
 	private const uint32 cMaxShadowPasses = 256;
 	private const uint32 cMaxLocalShadows = RenderLimits.MaxLocalShadowEntries;
-	/// The skinning pool's slots per frame. Each caster's bones are re-emitted per pass, so
-	/// the usage is the caster count times its bones times the passes, and this is sized so a
-	/// stress test does not overflow it.
+	/// The skinning pool: the staging ring and its device mirror START here and GROW, by
+	/// powers of two up to the cap, the first frame that needs more.
+	///
+	/// Reserving the cap up front cost 128 MB of staging plus 128 MB of VRAM unconditionally,
+	/// in a pool that is EMPTY in any scene without skinning. Growth happens in UploadSkinning
+	/// before anything has referenced this frame's ring or mirror, so the frame that grows
+	/// still skins everything. Each caster's bones are re-emitted per pass, so the usage is the
+	/// caster count times its bones times the passes, and the cap is what a stress test needs
+	/// at once.
+	private const uint32 cInitialBoneMatrices = 1 << 12;
 	private const uint32 cMaxBoneMatrices = 1 << 20;
 
 	private const uint64 cShBytes = sizeof(float) * 4 * 9;
@@ -158,6 +165,8 @@ class MeshRenderer : Renderer
 	private DynamicUniformRing mLocalShadowRing ~ delete _;
 	/// The skinning STAGING ring, written once a frame and copied to the device.
 	private DynamicUniformRing mBoneRing ~ delete _;
+	/// The per frame slots the pool is currently sized for.
+	private uint32 mBoneSlotsWanted = cInitialBoneMatrices;
 
 	/// A device local mirror of the staging ring. Skinning is read across many passes, the
 	/// forward and every cascade, so a host visible buffer would stream the same matrices over
@@ -488,7 +497,7 @@ class MeshRenderer : Renderer
 		if (!mViewRing.Reserve(maxDraws) || !mShadowViewRing.Reserve(cMaxShadowPasses)
 			|| !mObjectRing.Reserve(drawCap) || !mInstanceRing.Reserve(drawCap)
 			|| !mOffsetsRing.Reserve(drawCap) || !mLightRing.Reserve(cMaxLights)
-			|| !mLocalShadowRing.Reserve(cMaxLocalShadows) || !mBoneRing.Reserve(cMaxBoneMatrices))
+			|| !mLocalShadowRing.Reserve(cMaxLocalShadows) || !mBoneRing.Reserve(mBoneSlotsWanted))
 			return;
 
 		if (!EnsureBoneDevice())
@@ -540,6 +549,32 @@ class MeshRenderer : Renderer
 	}
 
 	// ==================== Skinning and the instanced sets ====================
+
+	/// Grows the pool to hold this many matrices per frame: the next power of two, capped.
+	///
+	/// Safe mid frame ONLY here, before this frame's block is allocated. The ring has not
+	/// mapped yet, mapping being lazy; the old buffers retire through the queue; and the
+	/// mirror's generation bump makes every set 0 bind group rebuild at record time.
+	private bool GrowBonePool(uint32 needed)
+	{
+		if (needed > cMaxBoneMatrices)
+			return false;
+
+		var wanted = Max(mBoneSlotsWanted, cInitialBoneMatrices);
+		while (wanted < needed)
+			wanted = (wanted >= (cMaxBoneMatrices >> 1)) ? cMaxBoneMatrices : wanted * 2;
+
+		mBoneSlotsWanted = wanted;
+		if (!mBoneRing.Reserve(wanted))
+			return false;
+
+		mBoneRing.BeginFrame(mFrameIndex); // the region base moved with the capacity
+		return EnsureBoneDevice();
+	}
+
+	/// The per frame slots the pool holds. It grows on demand, and the tests pin that.
+	public uint32 BonePoolSlotsPerFrame => mBoneRing.SlotsPerFrame;
+	public static uint32 InitialBonePoolSlots => cInitialBoneMatrices;
 
 	/// The device local mirror of the staging ring, recreated when the ring's capacity moves.
 	private bool EnsureBoneDevice()
@@ -661,6 +696,13 @@ class MeshRenderer : Renderer
 
 		if (total == 0)
 		{
+			mBoneStart.Clear();
+			return;
+		}
+
+		if ((total > mBoneRing.SlotsPerFrame) && !GrowBonePool(total))
+		{
+			// Over the cap, or the allocation failed: this frame's casters render unskinned.
 			mBoneStart.Clear();
 			return;
 		}

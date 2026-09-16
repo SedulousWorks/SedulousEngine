@@ -115,6 +115,106 @@ class WebGpuBufferTests
 		Test.Assert(buffer.UploadCount == afterFirst + 1, "a changed shadow uploaded");
 	}
 
+	/// FlushRange is the RING's shape: a large buffer of which one frame writes a small
+	/// window. It uploads THAT window and nothing else, and the Unmap that follows must not
+	/// then walk the whole shadow and send it all over again.
+	[Test]
+	public static void FlushRangeUploadsOnlyItsWindowAndUnmapAddsNothing()
+	{
+		let backend = scope WebGpuBackend();
+		let device = WebGpuTestDevice.TryCreate(backend);
+		if (device == null)
+			return;
+		defer backend.Destroy();
+
+		// A "ring": 1 KB, of which one frame writes 64 bytes at offset 512.
+		var ringDesc = BufferDesc();
+		ringDesc.Size = 1024;
+		ringDesc.Usage = .Uniform | .CopySrc;
+		ringDesc.Memory = .CpuToGpu;
+		var ring = device.CreateBuffer(ringDesc).GetValueOrDefault();
+		Test.Assert(ring != null);
+		let webgpuRing = (WebGpuBuffer)ring;
+
+		var readbackDesc = BufferDesc();
+		readbackDesc.Size = 1024;
+		readbackDesc.Usage = .CopyDst;
+		readbackDesc.Memory = .GpuToCpu;
+		var readback = device.CreateBuffer(readbackDesc).GetValueOrDefault();
+		Test.Assert(readback != null);
+
+		var pool = device.CreateCommandPool(.Graphics).GetValueOrDefault();
+		var fence = device.CreateFence(0).GetValueOrDefault();
+		let queue = device.GetQueue(.Graphics, 0);
+
+		void SubmitCopy(uint64 frame)
+		{
+			var encoder = pool.CreateEncoder().GetValueOrDefault();
+			encoder.CopyBufferToBuffer(ring, 0, readback, 0, 1024);
+			ICommandBuffer[1] buffers = .(encoder.Finish());
+			queue.Submit(.(&buffers[0], 1), fence, frame);
+			Test.Assert(fence.Wait(frame, uint64.MaxValue));
+			pool.DestroyEncoder(ref encoder);
+		}
+
+		// Frame one: map, write the window, flush the window, unmap. Exactly ONE upload, and
+		// the Unmap after a ranged flush must not add a whole buffer one.
+		var mapped = (uint8*)ring.Map();
+		Test.Assert(mapped != null);
+		Internal.MemSet(mapped + 512, 0x5A, 64);
+		ring.FlushRange(512, 64);
+		Test.Assert(webgpuRing.UploadCount == 1, "the window uploaded");
+		ring.Unmap();
+		Test.Assert(webgpuRing.UploadCount == 1, "and the Unmap added nothing");
+		SubmitCopy(1);
+		Test.Assert(webgpuRing.UploadCount == 1, "nor did the submit hook");
+
+		var bytes = (uint8*)readback.Map();
+		Test.Assert(bytes != null);
+		Test.Assert(bytes[0] == 0x00, "the untouched bytes stayed zero initialised");
+		Test.Assert(bytes[511] == 0x00);
+		Test.Assert(bytes[512] == 0x5A, "the window landed");
+		Test.Assert(bytes[575] == 0x5A);
+		Test.Assert(bytes[576] == 0x00);
+		readback.Unmap();
+
+		// Frame two: the same bytes flushed again are a SKIPPED upload, by the ranged compare.
+		ring.Map();
+		ring.FlushRange(512, 64);
+		ring.Unmap();
+		Test.Assert(webgpuRing.UploadCount == 1, "an unchanged window is not re-sent");
+
+		// Frame three: a different window uploads once more and lands BESIDE the first.
+		mapped = (uint8*)ring.Map();
+		Internal.MemSet(mapped + 128, 0xA5, 32);
+		ring.FlushRange(128, 32);
+		ring.Unmap();
+		Test.Assert(webgpuRing.UploadCount == 2);
+		SubmitCopy(2);
+
+		bytes = (uint8*)readback.Map();
+		Test.Assert(bytes != null);
+		Test.Assert(bytes[128] == 0xA5);
+		Test.Assert(bytes[159] == 0xA5);
+		Test.Assert(bytes[160] == 0x00);
+		Test.Assert(bytes[512] == 0x5A, "the earlier window survived a partial upload");
+		readback.Unmap();
+
+		// A plain Map and Unmap with no writes costs at most the whole shadow compare and
+		// never an upload: the GPU provably holds these exact bytes.
+		ring.Map();
+		ring.Unmap();
+		Test.Assert(webgpuRing.UploadCount == 2);
+
+		Test.Assert(!device.IsLost());
+
+		device.DestroyFence(ref fence);
+		device.DestroyCommandPool(ref pool);
+		device.DestroyBuffer(ref readback);
+		device.DestroyBuffer(ref ring);
+		device.Destroy();
+	}
+
 	/// The registry is what re-flushes a mapping left OPEN before a submit, which is the
 	/// coherent half of the contract. A buffer whose Unmap was paired is not outstanding
 	/// and must not be re-sent.

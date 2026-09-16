@@ -18,4 +18,15 @@ interface IBuffer
 	void* Map();
 
 	void Unmap();
+
+	/// Makes a WINDOW of a mapped CpuToGpu buffer visible to the GPU.
+	///
+	/// A real coherent mapping needs nothing, which is this default. A backend that EMULATES
+	/// mapping with a CPU shadow, WebGPU, uploads exactly that range instead of comparing and
+	/// re-sending the whole shadow on Unmap.
+	///
+	/// The contract is that a caller using this flushes EVERY range it wrote during the
+	/// mapping, and Unmap then only closes the mapping. A writer touching a small window of a
+	/// large buffer, the per frame rings, wants this.
+	void FlushRange(uint64 offset, uint64 size) {}
 }

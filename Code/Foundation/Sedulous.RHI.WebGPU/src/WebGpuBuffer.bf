@@ -41,6 +41,8 @@ sealed class WebGpuBuffer : IBuffer
 	/// The bytes last actually uploaded, which is what the skip compares against.
 	private List<uint8> mLastUploaded = new .() ~ delete _;
 	private bool mShadowOutstanding = false;
+	/// This mapping's writes went through FlushRange, so Unmap has nothing left to send.
+	private bool mRangeFlushed = false;
 	private bool mReadMapped = false;
 	private uint64 mUploadCount = 0;
 
@@ -101,6 +103,7 @@ sealed class WebGpuBuffer : IBuffer
 		{
 			// Flushed on Unmap AND before every submit, which is the coherence part.
 			mShadowOutstanding = true;
+			mRangeFlushed = false; // a fresh mapping: Unmap flushes the whole of it unless ranged
 			return mShadow.Ptr;
 		}
 
@@ -114,8 +117,13 @@ sealed class WebGpuBuffer : IBuffer
 	{
 		if (!mShadow.IsEmpty)
 		{
-			UploadShadowIfChanged();
+			// A mapping that flushed its writes by range has nothing left to send: the whole
+			// shadow compare would only re-read every byte to learn that.
+			if (!mRangeFlushed)
+				UploadShadowIfChanged();
+
 			mShadowOutstanding = false; // a paired caller pays exactly one upload
+			mRangeFlushed = false;
 			return;
 		}
 
@@ -124,6 +132,45 @@ sealed class WebGpuBuffer : IBuffer
 			wgpuBufferUnmap(mHandle);
 			mReadMapped = false;
 		}
+	}
+
+	/// The ranged half of the emulation: uploads exactly the window, aligned OUTWARD to four
+	/// bytes as a queue write demands, and skips it when the GPU already holds those bytes.
+	///
+	/// Marks the mapping range flushed, so neither Unmap nor the submit hook walks the whole
+	/// shadow again: from here the caller owns every write.
+	public void FlushRange(uint64 offset, uint64 size)
+	{
+		if (mShadow.IsEmpty || (size == 0))
+			return;
+
+		let total = (uint64)mShadow.Count;
+		let begin = offset & ~(uint64)3;
+		if (begin >= total)
+			return;
+
+		var end = (offset + size + 3) & ~(uint64)3;
+		end = Math.Min(end, total);
+
+		let first = (int)begin;
+		let count = (int)(end - begin);
+
+		if (mLastUploaded.Count != mShadow.Count)
+		{
+			// The first upload through this buffer. The GPU side is zero initialised and so is
+			// an untouched shadow, so a zeroed ledger is an honest picture of it.
+			mLastUploaded.Resize(mShadow.Count);
+		}
+
+		mRangeFlushed = true;
+		mShadowOutstanding = false;
+
+		if (RawMemory.Equal(mLastUploaded.Ptr + first, mShadow.Ptr + first, count))
+			return;
+
+		wgpuQueueWriteBuffer(mQueue, mHandle, begin, mShadow.Ptr + first, (uint)count);
+		Internal.MemCpy(mLastUploaded.Ptr + first, mShadow.Ptr + first, count);
+		mUploadCount++;
 	}
 
 	/// The queue's hook: re-upload the shadow while a mapping is left open, which is the
