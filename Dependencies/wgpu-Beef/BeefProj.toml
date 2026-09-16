@@ -1,0 +1,21 @@
+FileVersion = 1
+
+[Project]
+Name = "wgpu-Beef"
+TargetType = "BeefLib"
+
+[Configs.Debug.Win64]
+LibPaths = ["$(ProjectDir)/dist/lib/x64/wgpu_native.dll.lib"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/lib/x64/*.dll\")", "CopyToDependents(\"$(ProjectDir)/dist/lib/x64/*.pdb\")"]
+
+[Configs.Release.Win64]
+LibPaths = ["$(ProjectDir)/dist/lib/x64/wgpu_native.dll.lib"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/lib/x64/*.dll\")", "CopyToDependents(\"$(ProjectDir)/dist/lib/x64/*.pdb\")"]
+
+[Configs.Debug.Linux64]
+LibPaths = ["$(ProjectDir)/dist/lib/linux-x64/libwgpu_native.so"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/lib/linux-x64/*.so\")"]
+
+[Configs.Release.Linux64]
+LibPaths = ["$(ProjectDir)/dist/lib/linux-x64/libwgpu_native.so"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/lib/linux-x64/*.so\")"]

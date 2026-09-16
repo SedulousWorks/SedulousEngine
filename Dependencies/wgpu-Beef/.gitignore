@@ -1,0 +1,4 @@
+# Beef build artefacts; the vendored dist/ is deliberately tracked.
+build/
+BeefSpace_User.toml
+BeefProj_User.toml

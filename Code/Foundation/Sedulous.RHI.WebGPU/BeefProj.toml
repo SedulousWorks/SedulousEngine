@@ -7,3 +7,6 @@ StartupObject = "Sedulous.RHI.WebGPU.Program"
 
 [Dependencies]
 corlib = "*"
+"wgpu-Beef" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.RHI" = "*"

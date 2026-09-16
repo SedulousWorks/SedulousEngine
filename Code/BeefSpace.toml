@@ -27,6 +27,7 @@ stb_truetype-Beef = {Path = "../Dependencies/stb_truetype-Beef"}
 miniaudio-Beef = {Path = "../Dependencies/miniaudio-Beef"}
 stb_vorbis-Beef = {Path = "../Dependencies/stb_vorbis-Beef"}
 ufbx-Beef = {Path = "../Dependencies/ufbx-Beef"}
+wgpu-Beef = {Path = "../Dependencies/wgpu-Beef"}
 "Sedulous.Animation" = {Path = "Foundation/Sedulous.Animation"}
 "Sedulous.Animation.Resource" = {Path = "Foundation/Sedulous.Animation.Resource"}
 "Sedulous.Animation.Resource.Tests" = {Path = "Foundation/Sedulous.Animation.Resource.Tests"}
