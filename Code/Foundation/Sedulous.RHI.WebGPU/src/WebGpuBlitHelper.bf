@@ -105,7 +105,10 @@ class WebGpuBlitHelper
 		if (pipeline == null)
 			return false;
 
-		WGPUBindGroupEntry[2] entries = .();
+		// Per element .(), not a bare .(): a Beef fixed array ZERO FILLS rather than
+		// running each element's initialisers, and an entry's size defaults to the whole
+		// buffer rather than to nothing.
+		WGPUBindGroupEntry[2] entries = .(.(), .());
 		entries[0].binding = 0;
 		entries[0].textureView = sourceView;
 		entries[1].binding = 1;
@@ -158,7 +161,9 @@ class WebGpuBlitHelper
 		samplerDesc.minFilter = .WGPUFilterMode_Linear;
 		mSampler = wgpuDeviceCreateSampler(mDevice, &samplerDesc);
 
-		WGPUBindGroupLayoutEntry[2] entries = .();
+		// Per element again, for the same reason: each binding kind's type field defaults
+		// to Undefined rather than to the zero that means something else.
+		WGPUBindGroupLayoutEntry[2] entries = .(.(), .());
 		entries[0].binding = 0;
 		entries[0].visibility = WGPUShaderStage_Fragment;
 		entries[0].texture.sampleType = .WGPUTextureSampleType_Float;

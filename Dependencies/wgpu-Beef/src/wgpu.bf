@@ -394,21 +394,21 @@ typealias WGPULogCallback = function void(WGPULogLevel level, WGPUStringView mes
 	     * @b Warning: On integrated GPUs, large values can cause significant
 	     * system RAM consumption.
 	     */
-	public uint32 maxNonSamplerBindings;
+	public uint32 maxNonSamplerBindings = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * Maximum number of individual resources within binding arrays that can be accessed
 	     * in a single shader stage. Applies to all types of bindings except samplers.
 	     */
-	public uint32 maxBindingArrayElementsPerShaderStage;
+	public uint32 maxBindingArrayElementsPerShaderStage = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * Maximum number of individual samplers within binding arrays that
 	     * can be accessed in a single shader stage.
 	     */
-	public uint32 maxBindingArraySamplerElementsPerShaderStage;
+	public uint32 maxBindingArraySamplerElementsPerShaderStage = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The maximum number of views that can be used in multiview rendering.
 	     */
-	public uint32 maxMultiviewViewCount;
+	public uint32 maxMultiviewViewCount = WGPU_LIMIT_U32_UNDEFINED;
 }
 
 [CRepr] struct WGPUShaderDefine

@@ -5,9 +5,10 @@
   generate.py dist/include/webgpu/wgpu.h    src/wgpu.bf
 
 The headers are the source of truth, so a wgpu-native bump is a re-run rather
-than a hand patch. The shape it emits matches what the v29.0.0.0 bindings were
-written as, which is what lets those bindings serve as the regression oracle:
-generating from the OLD headers has to reproduce them.
+than a hand patch. The shape it emits was built against the hand written v29.0.0.0
+bindings as the oracle - generating from the OLD headers reproduced them - with the
+one deliberate departure described below: those bindings carried no struct defaults,
+and going without them is a bug rather than a difference in taste.
 
 What each C construct becomes:
 
@@ -19,6 +20,14 @@ What each C construct becomes:
   typedef struct WGPUX {..} WGPUX        -> [CRepr] struct WGPUX {..}
   typedef R (*WGPUProcX)(a)              -> typealias WGPUProcX = function R(a);
   WGPU_EXPORT R wgpuX(a)                 -> [CLink] public static extern R wgpuX(a);
+
+A struct's WGPU_X_INIT macro comes across as FIELD INITIALISERS, so `.()` in Beef
+means what starting from the macro means in C. That matters: several fields default
+to a sentinel rather than to zero - a colour attachment's depthSlice to UNDEFINED, a
+colour target's writeMask to All, a sampler's maxAnisotropy to 1 - and a zeroed one
+is a different, usually invalid, request. The one place it does not reach is a fixed
+array: `T[N] a = .()` zero fills in Beef instead of running each element's
+initialisers, so an array of these has to be spelled `.(.(), .())`.
 """
 import re
 import sys
@@ -133,6 +142,105 @@ class Generator:
         self.lines = self.text.split("\n")
         self.out = []
         self.flag_types = set(re.findall(r"^typedef\s+WGPUFlags\s+(\w+)\s*;", text, re.M))
+        # Which enum each member belongs to, so an INIT default naming one can be
+        # spelled the way Beef needs it: the member alone does not resolve.
+        self.enum_of_member = {}
+        for m in re.finditer(r"^typedef\s+enum\s+(\w+)\s*\{(.*?)\}\s*\1\s*;",
+                             self.text, re.M | re.S):
+            for line in m.group(2).split("\n"):
+                e = re.match(r"\s*(\w+)\s*=\s*([^,]+)", line)
+                if e:
+                    self.enum_of_member[e.group(1)] = (m.group(1), e.group(2).strip())
+        # Flag constants live in `static const WGPUFlagsType NAME = value;` lines.
+        self.flag_value = {c: v.strip() for c, v in re.findall(
+            r"^static\s+const\s+WGPU\w+\s+(\w+)\s*=\s*([^;]+);", self.text, re.M)}
+        self.struct_defaults = self.init_defaults()
+
+    def init_defaults(self):
+        """The WGPU_*_INIT macros, as per-struct field defaults.
+
+        The C header carries a designated-initialiser macro per struct, and a caller is
+        MEANT to start from it: several fields default to a sentinel rather than to zero
+        (depthSlice to UNDEFINED, a colour target's writeMask to All, maxAnisotropy to 1).
+        Beef has no such idiom, and a zero-initialised struct silently means something
+        else - a depth slice of 0 on a 2D view is a validation error, a write mask of 0
+        writes nothing. So the defaults come across as FIELD INITIALISERS, which `.()`
+        then applies for free.
+
+        The one place that does not reach is a fixed array: `T[N] a = .()` zero-fills in
+        Beef rather than running each element's initialisers, so an array of these has to
+        be spelled `.(.(), .())`.
+        """
+        table = {}
+        for m in re.finditer(
+                r"#define\s+WGPU_\w+_INIT\s+_wgpu_MAKE_INIT_STRUCT\(\s*(\w+)\s*,\s*\{(.*?)\n\}\)",
+                self.text, re.S):
+            typ, body = m.group(1), m.group(2)
+            fields = {}
+            for line in body.split("\n"):
+                f = re.search(r"/\*\.(\w+)=\*/\s*(.+?)\s*_wgpu_COMMA", line)
+                if not f:
+                    continue
+                value = self.default_value(f.group(2).strip())
+                if value is not None:
+                    fields[f.group(1)] = value
+            if fields:
+                table[typ] = fields
+        return table
+
+    def default_value(self, value):
+        """One INIT field's C value as Beef, or None where it is already zero.
+
+        Zero needs nothing: Beef zero-initialises, and emitting it would only add noise.
+        A nested _INIT is nothing here either - that struct carries its own initialisers,
+        and Beef default-constructs a struct field.
+        """
+        if value in ("NULL", "0", "0.", "0.f", "0.0f", "false", "WGPU_FALSE"):
+            return None
+        # _wgpu_STRUCT_ZERO_INIT / _wgpu_ENUM_ZERO_INIT mean LITERAL ZERO, and the header
+        # uses them deliberately where the nested struct's own defaults would be wrong: a
+        # bind group layout entry zeroes all four binding kinds, so each reads as
+        # BindingNotUsed rather than the Undefined its own INIT would give. They end in
+        # _INIT, so they have to be caught before the nested rule below.
+        if value.startswith("_wgpu_ENUM_ZERO_INIT") or value.startswith("_wgpu_STRUCT_ZERO_INIT"):
+            return None
+        if value.endswith("_INIT"):
+            # A NESTED struct, spelled out rather than left implicit: Beef zero fills a
+            # struct field that carries no initialiser of its own instead of running that
+            # struct's. Without this a nested default is silently lost - which is how a
+            # pipeline descriptor ends up with multisample.count 0 and will not build.
+            return ".()"
+
+        member = self.enum_of_member.get(value)
+        if member:
+            enum, literal = member
+            if self.is_zero(literal):
+                return None
+            # A member spelled bare does not resolve in Beef; qualify it.
+            return "%s.%s" % (enum, value)
+
+        if value in self.flag_value:
+            return None if self.is_zero(self.flag_value[value]) else value
+
+        if re.match(r"^WGPU_[A-Z0-9_]+$", value):
+            return value  # a sentinel constant, emitted by defines()
+
+        if self.is_zero(value):
+            return None
+        if re.match(r"^-?(?:0x[0-9A-Fa-f]+|\d+)$", value):
+            return value
+        # A C float literal: 32.f and 0.5 are both legal there, neither is in Beef.
+        f = re.match(r"^(-?\d*)\.(\d*)f?$", value)
+        if f:
+            return "%s.%sf" % (f.group(1) or "0", f.group(2) or "0")
+        return None
+
+    @staticmethod
+    def is_zero(literal):
+        try:
+            return int(literal.strip().rstrip("uUlL"), 0) == 0
+        except ValueError:
+            return False
 
     def emit(self, s=""):
         self.out.append(s)
@@ -234,13 +342,14 @@ class Generator:
             self.emit_docs(docs)
             self.emit("[CRepr] struct %s" % name)
             self.emit("{")
-            for field in self.fields(body):
+            for field in self.fields(body, self.struct_defaults.get(name, {})):
                 self.emit("\t" + field)
             self.emit("}")
             self.emit()
 
-    def fields(self, body):
+    def fields(self, body, defaults=None):
         out, pending = [], []
+        defaults = defaults or {}
         lines = body.split("\n")
         i = -1
         while i + 1 < len(lines):
@@ -266,7 +375,7 @@ class Generator:
                 pending = []
                 out.append("%s public struct" % ("[Union]" if kind == "union" else "[CRepr]"))
                 out.append("{")
-                for f in self.fields("\n".join(inner)):
+                for f in self.fields("\n".join(inner), defaults):
                     out.append("\t" + f)
                 out.append("} %s;" % (tail.group(1) if tail else "value"))
                 i = j
@@ -298,7 +407,9 @@ class Generator:
             c_type = decl[: decl.rfind(tokens[-1])] + "*" * tokens[-1].count("*")
             out.extend(pending)
             pending = []
-            out.append("public %s %s;" % (map_type(c_type), fname))
+            default = defaults.get(fname)
+            out.append("public %s %s%s;" % (map_type(c_type), fname,
+                                            (" = " + default) if default else ""))
         return out
 
     def functions(self):

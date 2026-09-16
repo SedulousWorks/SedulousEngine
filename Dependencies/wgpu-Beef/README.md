@@ -13,6 +13,26 @@ python3 generate.py dist/include/webgpu/webgpu.h src/webgpu.bf
 python3 generate.py dist/include/webgpu/wgpu.h   src/wgpu.bf
 ```
 
+## Struct defaults
+
+A struct's `WGPU_X_INIT` macro comes across as Beef field initialisers, so `WGPUFoo f = .();`
+means what `WGPU_FOO_INIT` means in C. Do not skip it: several fields default to a sentinel
+rather than to zero, and a zeroed one is a different, usually invalid, request.
+
+```beef
+WGPURenderPassColorAttachment color = .();  // depthSlice = UNDEFINED, as it must be for a 2D view
+WGPUColorTargetState target = .();          // writeMask = All, not "write nothing"
+WGPUSamplerDescriptor sampler = .();        // maxAnisotropy = 1, not the invalid 0
+```
+
+The one place this does not reach is a FIXED ARRAY. `T[N] a = .()` zero fills in Beef
+instead of running each element's initialisers, so an array of these has to be spelled
+out per element:
+
+```beef
+WGPUBindGroupEntry[2] entries = .(.(), .());
+```
+
 ## The two headers
 
 `webgpu.h` is the standard W3C C header every implementation provides, including

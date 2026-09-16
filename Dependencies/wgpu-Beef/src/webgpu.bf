@@ -2013,7 +2013,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 [CRepr] struct WGPUStringView
 {
 	public char8* data;
-	public uint length;
+	public uint length = WGPU_STRLEN;
 }
 
 /**
@@ -2179,25 +2179,25 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView vendor;
+	public WGPUStringView vendor = .();
 	    /**
 	     * This is an \ref OutputString.
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView architecture;
+	public WGPUStringView architecture = .();
 	    /**
 	     * This is an \ref OutputString.
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView device;
+	public WGPUStringView device = .();
 	    /**
 	     * This is an \ref OutputString.
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView description;
+	public WGPUStringView description = .();
 	    /**
 	     * The `INIT` macro sets this to @ref WGPUBackendType_Undefined.
 	     */
@@ -2264,7 +2264,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPUBufferBindingType_Undefined.
 	     */
-	public WGPUBufferBindingType type;
+	public WGPUBufferBindingType type = WGPUBufferBindingType.WGPUBufferBindingType_Undefined;
 	    /**
 	     * The `INIT` macro sets this to `WGPU_FALSE`.
 	     */
@@ -2286,7 +2286,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView label;
+	public WGPUStringView label = .();
 	    /**
 	     * The `INIT` macro sets this to @ref WGPUBufferUsage_None.
 	     */
@@ -2343,7 +2343,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView label;
+	public WGPUStringView label = .();
 }
 
 /**
@@ -2357,7 +2357,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView label;
+	public WGPUStringView label = .();
 }
 
 /**
@@ -2373,19 +2373,19 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxStorageBuffersInVertexStage;
+	public uint32 maxStorageBuffersInVertexStage = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxStorageTexturesInVertexStage;
+	public uint32 maxStorageTexturesInVertexStage = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxStorageBuffersInFragmentStage;
+	public uint32 maxStorageBuffersInFragmentStage = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxStorageTexturesInFragmentStage;
+	public uint32 maxStorageTexturesInFragmentStage = WGPU_LIMIT_U32_UNDEFINED;
 }
 
 /**
@@ -2404,7 +2404,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView message;
+	public WGPUStringView message = .();
 	    /**
 	     * Severity level of the message.
 	     *
@@ -2448,7 +2448,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView key;
+	public WGPUStringView key = .();
 	    /**
 	     * Represents a WGSL numeric or boolean value using @ref DoubleAsSupertype.
 	     *
@@ -2471,11 +2471,11 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to `1`.
 	     */
-	public uint32 height;
+	public uint32 height = 1;
 	    /**
 	     * The `INIT` macro sets this to `1`.
 	     */
-	public uint32 depthOrArrayLayers;
+	public uint32 depthOrArrayLayers = 1;
 }
 
 /**
@@ -2540,11 +2540,11 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to `1`.
 	     */
-	public uint32 count;
+	public uint32 count = 1;
 	    /**
 	     * The `INIT` macro sets this to `0xFFFFFFFF`.
 	     */
-	public uint32 mask;
+	public uint32 mask = 0xFFFFFFFF;
 	    /**
 	     * The `INIT` macro sets this to `WGPU_FALSE`.
 	     */
@@ -2585,11 +2585,11 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_QUERY_SET_INDEX_UNDEFINED.
 	     */
-	public uint32 beginningOfPassWriteIndex;
+	public uint32 beginningOfPassWriteIndex = WGPU_QUERY_SET_INDEX_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_QUERY_SET_INDEX_UNDEFINED.
 	     */
-	public uint32 endOfPassWriteIndex;
+	public uint32 endOfPassWriteIndex = WGPU_QUERY_SET_INDEX_UNDEFINED;
 }
 
 /**
@@ -2603,7 +2603,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView label;
+	public WGPUStringView label = .();
 	    /**
 	     * Array count for `bindGroupLayouts`. The `INIT` macro sets this to 0.
 	     */
@@ -2666,7 +2666,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView label;
+	public WGPUStringView label = .();
 	    /**
 	     * The `INIT` macro sets this to (@ref WGPUQueryType)0.
 	     */
@@ -2688,7 +2688,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView label;
+	public WGPUStringView label = .();
 }
 
 /**
@@ -2702,7 +2702,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView label;
+	public WGPUStringView label = .();
 }
 
 /**
@@ -2716,7 +2716,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView label;
+	public WGPUStringView label = .();
 	    /**
 	     * Array count for `colorFormats`. The `INIT` macro sets this to 0.
 	     */
@@ -2732,7 +2732,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to `1`.
 	     */
-	public uint32 sampleCount;
+	public uint32 sampleCount = 1;
 	    /**
 	     * The `INIT` macro sets this to `WGPU_FALSE`.
 	     */
@@ -2771,7 +2771,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_DEPTH_CLEAR_VALUE_UNDEFINED.
 	     */
-	public float depthClearValue;
+	public float depthClearValue = WGPU_DEPTH_CLEAR_VALUE_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to `WGPU_FALSE`.
 	     */
@@ -2803,7 +2803,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to `50000000`.
 	     */
-	public uint64 maxDrawCount;
+	public uint64 maxDrawCount = 50000000;
 }
 
 /**
@@ -2834,7 +2834,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPUSamplerBindingType_Undefined.
 	     */
-	public WGPUSamplerBindingType type;
+	public WGPUSamplerBindingType type = WGPUSamplerBindingType.WGPUSamplerBindingType_Undefined;
 }
 
 /**
@@ -2848,7 +2848,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView label;
+	public WGPUStringView label = .();
 	    /**
 	     * If set to @ref WGPUAddressMode_Undefined,
 	     * [defaults](@ref SentinelValues) to @ref WGPUAddressMode_ClampToEdge.
@@ -2906,7 +2906,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to `32.f`.
 	     */
-	public float lodMaxClamp;
+	public float lodMaxClamp = 32.0f;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPUCompareFunction_Undefined.
 	     */
@@ -2914,7 +2914,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to `1`.
 	     */
-	public uint16 maxAnisotropy;
+	public uint16 maxAnisotropy = 1;
 }
 
 /**
@@ -2944,7 +2944,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView code;
+	public WGPUStringView code = .();
 }
 
 /**
@@ -2994,7 +2994,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPUStorageTextureAccess_Undefined.
 	     */
-	public WGPUStorageTextureAccess access;
+	public WGPUStorageTextureAccess access = WGPUStorageTextureAccess.WGPUStorageTextureAccess_Undefined;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPUTextureFormat_Undefined.
 	     */
@@ -3146,7 +3146,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPUTextureUsage_RenderAttachment.
 	     */
-	public WGPUTextureUsage usage;
+	public WGPUTextureUsage usage = WGPUTextureUsage_RenderAttachment;
 	    /**
 	     * The width of the surface's textures.
 	     *
@@ -3347,11 +3347,11 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_COPY_STRIDE_UNDEFINED.
 	     */
-	public uint32 bytesPerRow;
+	public uint32 bytesPerRow = WGPU_COPY_STRIDE_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_COPY_STRIDE_UNDEFINED.
 	     */
-	public uint32 rowsPerImage;
+	public uint32 rowsPerImage = WGPU_COPY_STRIDE_UNDEFINED;
 }
 
 /**
@@ -3366,7 +3366,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPUTextureSampleType_Undefined.
 	     */
-	public WGPUTextureSampleType sampleType;
+	public WGPUTextureSampleType sampleType = WGPUTextureSampleType.WGPUTextureSampleType_Undefined;
 	    /**
 	     * If set to @ref WGPUTextureViewDimension_Undefined,
 	     * [defaults](@ref SentinelValues) to @ref WGPUTextureViewDimension_2D.
@@ -3497,7 +3497,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_WHOLE_SIZE.
 	     */
-	public uint64 size;
+	public uint64 size = WGPU_WHOLE_SIZE;
 	    /**
 	     * Set this if the binding is a sampler object.
 	     * Otherwise must be null.
@@ -3560,11 +3560,11 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_BLEND_COMPONENT_INIT.
 	     */
-	public WGPUBlendComponent color;
+	public WGPUBlendComponent color = .();
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_BLEND_COMPONENT_INIT.
 	     */
-	public WGPUBlendComponent alpha;
+	public WGPUBlendComponent alpha = .();
 }
 
 /**
@@ -3597,7 +3597,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView label;
+	public WGPUStringView label = .();
 	    /**
 	     * The `INIT` macro sets this to `NULL`.
 	     */
@@ -3619,7 +3619,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView entryPoint;
+	public WGPUStringView entryPoint = .();
 	    /**
 	     * Array count for `constants`. The `INIT` macro sets this to 0.
 	     */
@@ -3643,7 +3643,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to @ref WGPUOptionalBool_Undefined.
 	     */
-	public WGPUOptionalBool depthWriteEnabled;
+	public WGPUOptionalBool depthWriteEnabled = WGPUOptionalBool.WGPUOptionalBool_Undefined;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPUCompareFunction_Undefined.
 	     */
@@ -3651,19 +3651,19 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_STENCIL_FACE_STATE_INIT.
 	     */
-	public WGPUStencilFaceState stencilFront;
+	public WGPUStencilFaceState stencilFront = .();
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_STENCIL_FACE_STATE_INIT.
 	     */
-	public WGPUStencilFaceState stencilBack;
+	public WGPUStencilFaceState stencilBack = .();
 	    /**
 	     * The `INIT` macro sets this to `0xFFFFFFFF`.
 	     */
-	public uint32 stencilReadMask;
+	public uint32 stencilReadMask = 0xFFFFFFFF;
 	    /**
 	     * The `INIT` macro sets this to `0xFFFFFFFF`.
 	     */
-	public uint32 stencilWriteMask;
+	public uint32 stencilWriteMask = 0xFFFFFFFF;
 	    /**
 	     * The `INIT` macro sets this to `0`.
 	     */
@@ -3698,7 +3698,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_FUTURE_INIT.
 	     */
-	public WGPUFuture future;
+	public WGPUFuture future = .();
 	    /**
 	     * Whether or not the future completed.
 	     *
@@ -3736,131 +3736,131 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxTextureDimension1D;
+	public uint32 maxTextureDimension1D = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxTextureDimension2D;
+	public uint32 maxTextureDimension2D = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxTextureDimension3D;
+	public uint32 maxTextureDimension3D = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxTextureArrayLayers;
+	public uint32 maxTextureArrayLayers = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxBindGroups;
+	public uint32 maxBindGroups = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxBindGroupsPlusVertexBuffers;
+	public uint32 maxBindGroupsPlusVertexBuffers = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxBindingsPerBindGroup;
+	public uint32 maxBindingsPerBindGroup = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxDynamicUniformBuffersPerPipelineLayout;
+	public uint32 maxDynamicUniformBuffersPerPipelineLayout = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxDynamicStorageBuffersPerPipelineLayout;
+	public uint32 maxDynamicStorageBuffersPerPipelineLayout = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxSampledTexturesPerShaderStage;
+	public uint32 maxSampledTexturesPerShaderStage = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxSamplersPerShaderStage;
+	public uint32 maxSamplersPerShaderStage = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxStorageBuffersPerShaderStage;
+	public uint32 maxStorageBuffersPerShaderStage = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxStorageTexturesPerShaderStage;
+	public uint32 maxStorageTexturesPerShaderStage = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxUniformBuffersPerShaderStage;
+	public uint32 maxUniformBuffersPerShaderStage = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U64_UNDEFINED.
 	     */
-	public uint64 maxUniformBufferBindingSize;
+	public uint64 maxUniformBufferBindingSize = WGPU_LIMIT_U64_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U64_UNDEFINED.
 	     */
-	public uint64 maxStorageBufferBindingSize;
+	public uint64 maxStorageBufferBindingSize = WGPU_LIMIT_U64_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 minUniformBufferOffsetAlignment;
+	public uint32 minUniformBufferOffsetAlignment = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 minStorageBufferOffsetAlignment;
+	public uint32 minStorageBufferOffsetAlignment = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxVertexBuffers;
+	public uint32 maxVertexBuffers = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U64_UNDEFINED.
 	     */
-	public uint64 maxBufferSize;
+	public uint64 maxBufferSize = WGPU_LIMIT_U64_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxVertexAttributes;
+	public uint32 maxVertexAttributes = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxVertexBufferArrayStride;
+	public uint32 maxVertexBufferArrayStride = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxInterStageShaderVariables;
+	public uint32 maxInterStageShaderVariables = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxColorAttachments;
+	public uint32 maxColorAttachments = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxColorAttachmentBytesPerSample;
+	public uint32 maxColorAttachmentBytesPerSample = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxComputeWorkgroupStorageSize;
+	public uint32 maxComputeWorkgroupStorageSize = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxComputeInvocationsPerWorkgroup;
+	public uint32 maxComputeInvocationsPerWorkgroup = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxComputeWorkgroupSizeX;
+	public uint32 maxComputeWorkgroupSizeX = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxComputeWorkgroupSizeY;
+	public uint32 maxComputeWorkgroupSizeY = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxComputeWorkgroupSizeZ;
+	public uint32 maxComputeWorkgroupSizeZ = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxComputeWorkgroupsPerDimension;
+	public uint32 maxComputeWorkgroupsPerDimension = WGPU_LIMIT_U32_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_LIMIT_U32_UNDEFINED.
 	     */
-	public uint32 maxImmediateSize;
+	public uint32 maxImmediateSize = WGPU_LIMIT_U32_UNDEFINED;
 }
 
 /**
@@ -3879,7 +3879,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_DEPTH_SLICE_UNDEFINED.
 	     */
-	public uint32 depthSlice;
+	public uint32 depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to `NULL`.
 	     */
@@ -3895,7 +3895,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_COLOR_INIT.
 	     */
-	public WGPUColor clearValue;
+	public WGPUColor clearValue = .();
 }
 
 /**
@@ -3953,7 +3953,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView label;
+	public WGPUStringView label = .();
 }
 
 /**
@@ -3973,7 +3973,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView label;
+	public WGPUStringView label = .();
 }
 
 /**
@@ -3984,7 +3984,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_TEXEL_COPY_BUFFER_LAYOUT_INIT.
 	     */
-	public WGPUTexelCopyBufferLayout layout;
+	public WGPUTexelCopyBufferLayout layout = .();
 	    /**
 	     * The `INIT` macro sets this to `NULL`.
 	     */
@@ -4007,7 +4007,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_ORIGIN_3D_INIT.
 	     */
-	public WGPUOrigin3D origin;
+	public WGPUOrigin3D origin = .();
 	    /**
 	     * If set to @ref WGPUTextureAspect_Undefined,
 	     * [defaults](@ref SentinelValues) to @ref WGPUTextureAspect_All.
@@ -4026,7 +4026,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_TEXTURE_COMPONENT_SWIZZLE_INIT.
 	     */
-	public WGPUTextureComponentSwizzle swizzle;
+	public WGPUTextureComponentSwizzle swizzle = .();
 }
 
 /**
@@ -4040,7 +4040,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView label;
+	public WGPUStringView label = .();
 	    /**
 	     * The `INIT` macro sets this to @ref WGPUTextureUsage_None.
 	     */
@@ -4055,7 +4055,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_EXTENT_3D_INIT.
 	     */
-	public WGPUExtent3D size;
+	public WGPUExtent3D size = .();
 	    /**
 	     * The `INIT` macro sets this to @ref WGPUTextureFormat_Undefined.
 	     */
@@ -4063,11 +4063,11 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to `1`.
 	     */
-	public uint32 mipLevelCount;
+	public uint32 mipLevelCount = 1;
 	    /**
 	     * The `INIT` macro sets this to `1`.
 	     */
-	public uint32 sampleCount;
+	public uint32 sampleCount = 1;
 	    /**
 	     * Array count for `viewFormats`. The `INIT` macro sets this to 0.
 	     */
@@ -4126,7 +4126,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView label;
+	public WGPUStringView label = .();
 	    /**
 	     * The `INIT` macro sets this to `NULL`.
 	     */
@@ -4152,7 +4152,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView label;
+	public WGPUStringView label = .();
 	    /**
 	     * Array count for `entries`. The `INIT` macro sets this to 0.
 	     */
@@ -4184,7 +4184,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to @ref WGPUColorWriteMask_All.
 	     */
-	public WGPUColorWriteMask writeMask;
+	public WGPUColorWriteMask writeMask = WGPUColorWriteMask_All;
 }
 
 /**
@@ -4198,7 +4198,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView label;
+	public WGPUStringView label = .();
 	    /**
 	     * The `INIT` macro sets this to `NULL`.
 	     */
@@ -4206,7 +4206,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_COMPUTE_STATE_INIT.
 	     */
-	public WGPUComputeState compute;
+	public WGPUComputeState compute = .();
 }
 
 /**
@@ -4220,7 +4220,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView label;
+	public WGPUStringView label = .();
 	    /**
 	     * Array count for `requiredFeatures`. The `INIT` macro sets this to 0.
 	     */
@@ -4236,11 +4236,11 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_QUEUE_DESCRIPTOR_INIT.
 	     */
-	public WGPUQueueDescriptor defaultQueue;
+	public WGPUQueueDescriptor defaultQueue = .();
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_DEVICE_LOST_CALLBACK_INFO_INIT.
 	     */
-	public WGPUDeviceLostCallbackInfo deviceLostCallbackInfo;
+	public WGPUDeviceLostCallbackInfo deviceLostCallbackInfo = .();
 	    /**
 	     * Called when there is an uncaptured error on this device, from any thread.
 	     * See @ref ErrorScopes.
@@ -4249,7 +4249,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_UNCAPTURED_ERROR_CALLBACK_INFO_INIT.
 	     */
-	public WGPUUncapturedErrorCallbackInfo uncapturedErrorCallbackInfo;
+	public WGPUUncapturedErrorCallbackInfo uncapturedErrorCallbackInfo = .();
 }
 
 /**
@@ -4263,7 +4263,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView label;
+	public WGPUStringView label = .();
 	    /**
 	     * Array count for `colorAttachments`. The `INIT` macro sets this to 0.
 	     */
@@ -4297,7 +4297,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView label;
+	public WGPUStringView label = .();
 	    /**
 	     * The `INIT` macro sets this to @ref WGPUTextureFormat_Undefined.
 	     */
@@ -4313,7 +4313,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_MIP_LEVEL_COUNT_UNDEFINED.
 	     */
-	public uint32 mipLevelCount;
+	public uint32 mipLevelCount = WGPU_MIP_LEVEL_COUNT_UNDEFINED;
 	    /**
 	     * The `INIT` macro sets this to `0`.
 	     */
@@ -4321,7 +4321,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_ARRAY_LAYER_COUNT_UNDEFINED.
 	     */
-	public uint32 arrayLayerCount;
+	public uint32 arrayLayerCount = WGPU_ARRAY_LAYER_COUNT_UNDEFINED;
 	    /**
 	     * If set to @ref WGPUTextureAspect_Undefined,
 	     * [defaults](@ref SentinelValues) to @ref WGPUTextureAspect_All.
@@ -4350,7 +4350,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView entryPoint;
+	public WGPUStringView entryPoint = .();
 	    /**
 	     * Array count for `constants`. The `INIT` macro sets this to 0.
 	     */
@@ -4384,7 +4384,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView entryPoint;
+	public WGPUStringView entryPoint = .();
 	    /**
 	     * Array count for `constants`. The `INIT` macro sets this to 0.
 	     */
@@ -4414,7 +4414,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	     *
 	     * The `INIT` macro sets this to @ref WGPU_STRING_VIEW_INIT.
 	     */
-	public WGPUStringView label;
+	public WGPUStringView label = .();
 	    /**
 	     * The `INIT` macro sets this to `NULL`.
 	     */
@@ -4422,11 +4422,11 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_VERTEX_STATE_INIT.
 	     */
-	public WGPUVertexState vertex;
+	public WGPUVertexState vertex = .();
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_PRIMITIVE_STATE_INIT.
 	     */
-	public WGPUPrimitiveState primitive;
+	public WGPUPrimitiveState primitive = .();
 	    /**
 	     * The `INIT` macro sets this to `NULL`.
 	     */
@@ -4434,7 +4434,7 @@ typealias WGPUProcTextureViewRelease = function void(WGPUTextureView textureView
 	    /**
 	     * The `INIT` macro sets this to @ref WGPU_MULTISAMPLE_STATE_INIT.
 	     */
-	public WGPUMultisampleState multisample;
+	public WGPUMultisampleState multisample = .();
 	    /**
 	     * The `INIT` macro sets this to `NULL`.
 	     */
