@@ -232,6 +232,81 @@ class WebGpuSwapChain : ISwapChain
 	}
 #endif
 
+#if !BF_PLATFORM_WASM
+	/// The requested format when the surface offers it, else the closest thing it does.
+	///
+	/// Preference order is the requested format, then its sRGB sibling in the other channel
+	/// order, then the surface's own first choice. The sibling is tried before falling back
+	/// because sRGB-ness is what a renderer's output actually depends on; channel order is
+	/// the pipeline's business and it reads that back off Format.
+	private TextureFormat NegotiatedFormat(WGPUSurfaceCapabilities caps, TextureFormat requested)
+	{
+		let wanted = WebGpuConversions.ToWgpuTextureFormat(requested);
+		for (uint i = 0; i < caps.formatCount; i++)
+		{
+			if (caps.formats[i] == wanted)
+				return requested;
+		}
+
+		let sibling = SwappedChannelOrder(requested);
+		if (sibling != requested)
+		{
+			let wantedSibling = WebGpuConversions.ToWgpuTextureFormat(sibling);
+			for (uint i = 0; i < caps.formatCount; i++)
+			{
+				if (caps.formats[i] == wantedSibling)
+					return Report(requested, sibling);
+			}
+		}
+
+		let first = FromWgpuColorFormat(caps.formats[0]);
+		return Report(requested, (first != .Undefined) ? first : requested);
+	}
+
+	/// Says what the surface settled on, the way the Vulkan swap chain does, so a colour
+	/// that comes out wrong can be traced to the format rather than to the shader.
+	private static TextureFormat Report(TextureFormat requested, TextureFormat negotiated)
+	{
+		Console.WriteLine("[RHI] swapchain surface format: requested {}, negotiated {}",
+			requested, negotiated);
+
+		if (!TextureFormats.IsSrgb(negotiated))
+		{
+			Console.WriteLine("[RHI] swapchain negotiated a NON-sRGB format ({}); the surface offered no sRGB target, and output may look washed out where the final pass assumes encode-on-write",
+				negotiated);
+		}
+
+		return negotiated;
+	}
+
+	/// The same format in the other channel order, identity where there is no pair.
+	private static TextureFormat SwappedChannelOrder(TextureFormat format)
+	{
+		switch (format)
+		{
+		case .RGBA8Unorm: return .BGRA8Unorm;
+		case .RGBA8UnormSrgb: return .BGRA8UnormSrgb;
+		case .BGRA8Unorm: return .RGBA8Unorm;
+		case .BGRA8UnormSrgb: return .RGBA8UnormSrgb;
+		default: return format;
+		}
+	}
+
+	/// The RHI name for a wgpu colour format, for reading a surface's own choice back.
+	/// Undefined for anything outside the four a surface actually presents.
+	private static TextureFormat FromWgpuColorFormat(WGPUTextureFormat format)
+	{
+		switch (format)
+		{
+		case .WGPUTextureFormat_RGBA8Unorm: return .RGBA8Unorm;
+		case .WGPUTextureFormat_RGBA8UnormSrgb: return .RGBA8UnormSrgb;
+		case .WGPUTextureFormat_BGRA8Unorm: return .BGRA8Unorm;
+		case .WGPUTextureFormat_BGRA8UnormSrgb: return .BGRA8UnormSrgb;
+		default: return .Undefined;
+		}
+	}
+#endif
+
 	private Result<void> Configure(uint32 width, uint32 height)
 	{
 		mWidth = width;
@@ -280,28 +355,40 @@ class WebGpuSwapChain : ISwapChain
 			config.viewFormats = &viewFormat;
 		}
 #else
-		config.format = WebGpuConversions.ToWgpuTextureFormat(mFormat);
-
 		// Refuse CLEANLY when this adapter cannot present to the surface: wgpu-native PANICS
 		// inside configure otherwise ("Surface does not support the adapter's queue family",
 		// seen on Windows hybrid and multi adapter machines). Zero supported formats means no
 		// present support for this surface and adapter pair; the backend logs the adapter list
 		// at startup and ENV_WEBGPU_ADAPTER overrides the pick.
+		//
+		// The same query answers the FORMAT question, so both come off one call.
 		{
 			WGPUSurfaceCapabilities caps = .();
 			if (wgpuSurfaceGetCapabilities(mSurface.Handle, mAdapter, &caps)
 				== .WGPUStatus_Success)
 			{
-				let presentable = caps.formatCount > 0;
-				wgpuSurfaceCapabilitiesFreeMembers(caps);
-
-				if (!presentable)
+				if (caps.formatCount == 0)
 				{
+					wgpuSurfaceCapabilitiesFreeMembers(caps);
 					GlobalLog(.Error, "[webgpu] this adapter cannot present to the window surface - set ENV_WEBGPU_ADAPTER=<index> (adapter list logged at startup)");
 					return .Err;
 				}
+
+				// A requested format the surface does not offer is a PANIC inside configure,
+				// not an error return, so it has to be caught here. Raptor passes the
+				// requested format straight through, which holds on Windows, where a surface
+				// offers both channel orders; an X11 surface through wgpu's Vulkan backend
+				// offers only the BGRA pair, and the engine's RGBA8UnormSrgb default kills it.
+				//
+				// So negotiate, the way the web branch above already does for the canvas:
+				// take what the surface offers and retarget the engine to it. Callers read
+				// Format off the swap chain for their colour targets, so a sample follows.
+				mFormat = NegotiatedFormat(caps, mFormat);
+				wgpuSurfaceCapabilitiesFreeMembers(caps);
 			}
 		}
+
+		config.format = WebGpuConversions.ToWgpuTextureFormat(mFormat);
 #endif
 
 		wgpuSurfaceConfigure(mSurface.Handle, &config);
