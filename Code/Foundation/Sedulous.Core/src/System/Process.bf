@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 using Sedulous.Core.IO;
 
 namespace Sedulous.Core;
@@ -64,32 +65,50 @@ static class Process
 		// Drained BEFORE waiting: a child that fills its pipe blocks until someone reads,
 		// and waiting first would deadlock against exactly the tool whose diagnostic is
 		// wanted.
-		Drain(haveOutput ? standardOutput : null, haveError ? standardError : null,
-			outResult.Output);
+		//
+		// CONCURRENTLY, one thread per pipe, because these reads BLOCK. Reading them by
+		// turns instead deadlocks the moment a child writes hard to one and stays silent on
+		// the other: the turn to read the quiet pipe never returns, and the busy one fills.
+		// Raptor has no such problem because it points both of the child's descriptors at a
+		// SINGLE pipe; Beef's process API gives two, so they get drained in parallel to the
+		// same effect. tint is the specimen - it prints whole shaders to stdout and nothing
+		// to stderr, and hung the cook on the first file bigger than a pipe buffer.
+		let errorText = scope String();
+		let errorStream = haveError ? standardError : null;
+		let outputStream = haveOutput ? standardOutput : null;
+
+		let errorDrain = scope Thread(new [&errorStream, &errorText]() =>
+			{
+				Drain(errorStream, errorText);
+			});
+		errorDrain.Start(false);
+		Drain(outputStream, outResult.Output);
+		errorDrain.Join();
+
+		// Appended rather than interleaved: two pipes cannot be merged after the fact, and a
+		// caller wants the whole diagnostic, not its exact ordering.
+		if (!errorText.IsEmpty)
+		{
+			let room = cMaxOutputBytes - outResult.Output.Length;
+			if (room > 0)
+				outResult.Output.Append(errorText, 0, Math.Min(errorText.Length, room));
+		}
 
 		process.WaitFor(-1);
 		outResult.ExitCode = process.ExitCode;
 	}
 
-	/// Reads both pipes to their end, alternating so neither can fill while the other is
-	/// being read.
+	/// Reads ONE pipe to its end.
 	///
-	/// The two are interleaved rather than read one after the other because a child writing
-	/// heavily to the stream that is not being read would block forever. Alternating bounds
-	/// that to one chunk of imbalance.
-	private static void Drain(System.IO.FileStream standardOutput, System.IO.FileStream standardError, String outText)
+	/// Its own caller runs a second copy of this on another thread for the other pipe; see
+	/// Run for why they cannot share one.
+	private static void Drain(System.IO.FileStream stream, String outText)
 	{
-		var outputOpen = standardOutput != null;
-		var errorOpen = standardError != null;
-		let chunk = scope uint8[cReadChunk];
+		if (stream == null)
+			return;
 
-		while (outputOpen || errorOpen)
-		{
-			if (outputOpen)
-				outputOpen = ReadChunk(standardOutput, chunk, outText);
-			if (errorOpen)
-				errorOpen = ReadChunk(standardError, chunk, outText);
-		}
+		let chunk = scope uint8[cReadChunk];
+		while (ReadChunk(stream, chunk, outText)) {}
 	}
 
 	/// Appends one chunk, returning whether the stream still has more.
