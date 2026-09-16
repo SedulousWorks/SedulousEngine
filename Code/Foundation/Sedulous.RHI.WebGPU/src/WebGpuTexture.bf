@@ -20,7 +20,7 @@ class WebGpuTexture : ITexture
 	public ResourceState InitialState
 	{
 		get => mInitialState;
-		set mut => mInitialState = value;
+		set => mInitialState = value;
 	}
 
 	public ~this()
