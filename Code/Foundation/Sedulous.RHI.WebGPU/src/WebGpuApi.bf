@@ -80,7 +80,7 @@ static class WebGpuApi
 	/// above. On web it is the ONLY way a future ever resolves, because the callback
 	/// fires from a microtask that cannot run while wasm spins - so every pump above
 	/// already has the call in the right place and only gains a progress path there.
-	private static void YieldToEventLoop()
+	public static void YieldToEventLoop()
 	{
 		// The web tier lands this. Left as the seam rather than as nothing, so the two
 		// pumps do not have to be revisited to find where it goes.
@@ -96,6 +96,14 @@ static class WebGpuApi
 		public static void DevicePoll(WGPUDevice device)
 		{
 			wgpuDevicePoll(device, 0, null);
+		}
+
+		/// Polls the device until ONE specific submission retires, which is the only
+		/// place a blocking poll is safe: it is waiting on something specific rather
+		/// than on the queue at large. See WebGpuFence.Wait.
+		public static void DevicePollUntil(WGPUDevice device, ref WGPUSubmissionIndex index)
+		{
+			wgpuDevicePoll(device, 1, &index);
 		}
 
 		/// Lists the adapters. The standard header can only REQUEST one asynchronously
