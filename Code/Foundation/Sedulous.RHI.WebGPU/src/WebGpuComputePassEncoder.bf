@@ -6,7 +6,7 @@ using Sedulous.RHI;
 namespace Sedulous.RHI.WebGPU;
 
 /// A compute pass.
-class WebGpuComputePassEncoder : IComputePassEncoder
+sealed class WebGpuComputePassEncoder : IComputePassEncoder
 {
 	private WGPUComputePassEncoder mEncoder;
 	private PushConstantEmulator mPushConstants = new .() ~ delete _;

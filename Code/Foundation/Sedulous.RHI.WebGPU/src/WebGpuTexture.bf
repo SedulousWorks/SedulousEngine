@@ -6,7 +6,7 @@ using Sedulous.RHI;
 namespace Sedulous.RHI.WebGPU;
 
 /// A texture, either created here or WRAPPED around one the surface owns.
-class WebGpuTexture : ITexture
+sealed class WebGpuTexture : ITexture
 {
 	private WGPUTexture mHandle;
 	private TextureDesc mDesc;

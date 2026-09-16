@@ -15,7 +15,7 @@ namespace Sedulous.RHI.WebGPU;
 ///
 /// CompletedValue only advances when callbacks are DELIVERED. Wait pumps; anything just
 /// watching sees new values after any pump on the same instance.
-class WebGpuFence : IFence
+sealed class WebGpuFence : IFence
 {
 	/// The stand-in for a timeout: wgpu-native's timed waits are unimplemented, so the
 	/// iteration guard is what bounds the wait.

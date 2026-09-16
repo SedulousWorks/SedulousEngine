@@ -12,7 +12,7 @@ namespace Sedulous.RHI.WebGPU;
 /// Handles the device and queue lifecycle - creation, the loss latch, WaitIdle, fences,
 /// destruction - and is the factory for everything else. A factory WebGPU cannot support
 /// returns an HONEST error: callers get failures, never silent fakes.
-class WebGpuDevice : IDevice
+sealed class WebGpuDevice : IDevice
 {
 	private WGPUInstance mInstance;
 	private WGPUAdapter mAdapter;

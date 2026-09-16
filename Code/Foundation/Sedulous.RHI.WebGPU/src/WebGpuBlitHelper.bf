@@ -17,7 +17,7 @@ namespace Sedulous.RHI.WebGPU;
 ///
 /// Colour only. A depth blit would need a depth output variant, which nothing asks for
 /// yet, and a 3D texture would need a pass per slice; both fail rather than pretend.
-class WebGpuBlitHelper
+sealed class WebGpuBlitHelper
 {
 	/// One cached pipeline, keyed by the destination format it writes.
 	private struct FormatPipeline

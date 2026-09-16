@@ -18,7 +18,7 @@ namespace Sedulous.RHI.WebGPU;
 /// Blit and GenerateMipmaps ride the internal fullscreen blit pass, WebGPU having no
 /// image blit, though a same extent same format blit stays a plain copy. ResolveTexture
 /// is a resolve only render pass: load the MSAA attachment, discard it, resolve out.
-class WebGpuCommandEncoder : ICommandEncoder
+sealed class WebGpuCommandEncoder : ICommandEncoder
 {
 	private WGPUDevice mDevice;
 	/// BORROWED, owned by the device.

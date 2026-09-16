@@ -12,7 +12,7 @@ namespace Sedulous.RHI.WebGPU;
 /// there is nothing here to stage into. What the batch does instead is record COPIES of
 /// the payloads and replay them at Submit, which is what preserves the RHI's ordering
 /// contract: a write lands at submit time rather than at write time.
-class WebGpuTransferBatch : ITransferBatch
+sealed class WebGpuTransferBatch : ITransferBatch
 {
 	private struct BufferWrite
 	{

@@ -6,7 +6,7 @@ using Sedulous.RHI;
 namespace Sedulous.RHI.WebGPU;
 
 /// A view onto a texture: which mips, which layers, read as which format.
-class WebGpuTextureView : ITextureView
+sealed class WebGpuTextureView : ITextureView
 {
 	private readonly uint64 mUniqueId = TextureViewIds.Next();
 	private WGPUTextureView mHandle;

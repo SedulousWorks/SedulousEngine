@@ -29,7 +29,7 @@ namespace Sedulous.RHI.WebGPU;
 /// to MapRead and CopyDst, which is all WebGPU allows alongside MapRead.
 ///
 /// GpuOnly returns null, as it does on every backend.
-class WebGpuBuffer : IBuffer
+sealed class WebGpuBuffer : IBuffer
 {
 	private WGPUInstance mInstance;
 	private WGPUDevice mDevice;

@@ -9,7 +9,7 @@ namespace Sedulous.RHI.WebGPU;
 /// is gone. So the record OUTLIVES the fence: the fence severs every record it still
 /// holds when it is destroyed, and the callback only touches Fence while it is still
 /// attached.
-class WebGpuPendingSignal
+sealed class WebGpuPendingSignal
 {
 	/// Null once the fence has been destroyed, which is the callback's signal to do
 	/// nothing but free this.

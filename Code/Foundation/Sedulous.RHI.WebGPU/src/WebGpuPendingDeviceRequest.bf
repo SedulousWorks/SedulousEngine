@@ -9,7 +9,7 @@ namespace Sedulous.RHI.WebGPU;
 /// callback stays registered after the pump gives up, and would otherwise write through a
 /// dead frame. When the waiter gives up it sets Orphaned, and the callback frees this and
 /// releases whatever device it was handed, nobody else being left to.
-class WebGpuPendingDeviceRequest
+sealed class WebGpuPendingDeviceRequest
 {
 	public WGPUDevice Device = null;
 	public bool Done = false;

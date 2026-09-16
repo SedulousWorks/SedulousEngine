@@ -12,7 +12,7 @@ namespace Sedulous.RHI.WebGPU;
 /// ClampToEdge, core WebGPU having no border sampling, which also makes BorderColor
 /// meaningless. MipLodBias does not exist at all: in WGSL the bias belongs to the
 /// sample instruction rather than to the sampler.
-class WebGpuSampler : ISampler
+sealed class WebGpuSampler : ISampler
 {
 	private WGPUSampler mHandle;
 	private SamplerDesc mDesc;

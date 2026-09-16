@@ -7,7 +7,7 @@ namespace Sedulous.RHI.WebGPU;
 /// A finished render bundle: pre-recorded commands a pass can replay.
 ///
 /// Owned by the encoder that made it, which frees it at destruction.
-class WebGpuRenderBundle : IRenderBundle
+sealed class WebGpuRenderBundle : IRenderBundle
 {
 	private WGPURenderBundle mHandle;
 

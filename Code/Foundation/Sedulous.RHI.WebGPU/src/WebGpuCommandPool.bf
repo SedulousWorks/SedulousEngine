@@ -11,7 +11,7 @@ namespace Sedulous.RHI.WebGPU;
 /// WebGPU has no pool object: encoders come straight from the device and are one shot.
 /// So this OWNS the encoder wrappers it hands out and frees them at destruction, and
 /// Reset does nothing, each wrapper already opening a fresh encoder after it finishes.
-class WebGpuCommandPool : ICommandPool
+sealed class WebGpuCommandPool : ICommandPool
 {
 	private WGPUDevice mDevice;
 	/// BORROWED: the device owns it and it outlives every pool.

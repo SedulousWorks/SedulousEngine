@@ -11,7 +11,7 @@ namespace Sedulous.RHI.WebGPU;
 /// One honest narrowing: a wireframe fill has no WebGPU shape at all, polygon mode not
 /// being in the API, so it is refused and a caller keeps its debug wireframe off this
 /// backend. Depth bias rides the depth stencil state, which is where WebGPU puts it.
-class WebGpuRenderPipeline : IRenderPipeline
+sealed class WebGpuRenderPipeline : IRenderPipeline
 {
 	private WGPURenderPipeline mHandle;
 	private WebGpuPipelineLayout mLayout;

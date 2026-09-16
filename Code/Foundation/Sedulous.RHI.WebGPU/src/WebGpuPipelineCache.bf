@@ -9,7 +9,7 @@ namespace Sedulous.RHI.WebGPU;
 /// WebGPU has no cache object, the browser or driver caching internally, and the RHI
 /// treats caches as best effort. So creating one SUCCEEDS with an empty cache rather
 /// than failing: pipelines ignore it and there is never any data to serve.
-class WebGpuPipelineCache : IPipelineCache
+sealed class WebGpuPipelineCache : IPipelineCache
 {
 	public uint32 GetDataSize()
 	{

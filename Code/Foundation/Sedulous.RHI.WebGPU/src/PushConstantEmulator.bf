@@ -16,7 +16,7 @@ namespace Sedulous.RHI.WebGPU;
 /// the same memory and the second cannot overwrite what the first has not issued yet.
 /// Everything created that way lives until the pass ends; the recorded commands retain
 /// what the GPU needs, so releasing the wrappers after End is safe.
-class PushConstantEmulator
+sealed class PushConstantEmulator
 {
 	/// The RHI's push constant contract is 128 bytes; this pads past it.
 	public const uint32 cMaxBlockSize = 256;

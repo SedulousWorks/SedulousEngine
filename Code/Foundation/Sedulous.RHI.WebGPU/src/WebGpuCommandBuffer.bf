@@ -8,7 +8,7 @@ namespace Sedulous.RHI.WebGPU;
 ///
 /// Owns its handle until the queue TAKES it. A buffer that is never submitted releases
 /// on the next adopt or at destruction, so a recorded-then-abandoned frame does not leak.
-class WebGpuCommandBuffer : ICommandBuffer
+sealed class WebGpuCommandBuffer : ICommandBuffer
 {
 	private WGPUCommandBuffer mHandle;
 

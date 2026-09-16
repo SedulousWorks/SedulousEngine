@@ -12,7 +12,7 @@ namespace Sedulous.RHI.WebGPU;
 /// transfer queues, so the device hands out three thin wrappers that all funnel into
 /// that one: correct by construction, there being a single timeline, and still the shape
 /// a caller asking for a specific queue type expects.
-class WebGpuQueue : IQueue
+sealed class WebGpuQueue : IQueue
 {
 	/// How many command buffers go per submit. Batched and flushed when full, so a long
 	/// list costs a bounded number of calls.

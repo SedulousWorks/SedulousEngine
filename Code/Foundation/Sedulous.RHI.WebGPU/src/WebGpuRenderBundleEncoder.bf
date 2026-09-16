@@ -9,7 +9,7 @@ namespace Sedulous.RHI.WebGPU;
 /// Records commands once, for a pass to replay many times.
 ///
 /// It OWNS every bundle it finishes, until the encoder itself goes.
-class WebGpuRenderBundleEncoder : IRenderBundleEncoder
+sealed class WebGpuRenderBundleEncoder : IRenderBundleEncoder
 {
 	private WGPURenderBundleEncoder mEncoder;
 	private PushConstantEmulator mPushConstants = new .() ~ delete _;

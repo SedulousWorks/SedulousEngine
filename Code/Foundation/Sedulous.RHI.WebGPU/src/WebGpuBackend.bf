@@ -8,7 +8,7 @@ using Sedulous.RHI;
 namespace Sedulous.RHI.WebGPU;
 
 /// The WebGPU instance, the adapters on it, and the surfaces made from native windows.
-class WebGpuBackend : IBackend
+sealed class WebGpuBackend : IBackend
 {
 	private WGPUInstance mInstance;
 	private bool mInitialized = false;

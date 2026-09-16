@@ -11,7 +11,7 @@ namespace Sedulous.RHI.WebGPU;
 /// Owned by the device, which frees it in Destroy AFTER releasing the wgpu device and
 /// flushing pending callbacks - the one point where the still registered callback
 /// provably cannot fire again.
-class WebGpuDeviceLostRoute
+sealed class WebGpuDeviceLostRoute
 {
 	public WebGpuDevice Device = null;
 }

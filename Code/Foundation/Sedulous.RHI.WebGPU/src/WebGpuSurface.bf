@@ -8,7 +8,7 @@ namespace Sedulous.RHI.WebGPU;
 ///
 /// Owns the handle it is given. The backend makes these and keeps them, because a
 /// surface outlives the swapchain built on it.
-class WebGpuSurface : ISurface
+sealed class WebGpuSurface : ISurface
 {
 	private WGPUSurface mHandle;
 

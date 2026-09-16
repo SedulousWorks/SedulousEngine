@@ -10,7 +10,7 @@ namespace Sedulous.RHI.WebGPU;
 /// Which one is decided by LOOKING at the code rather than by being told, because the
 /// same descriptor carries both: the desktop DXC loop hands over SPIR-V, and the cook
 /// time path hands over WGSL text, which is also all a browser will ever accept.
-class WebGpuShaderModule : IShaderModule
+sealed class WebGpuShaderModule : IShaderModule
 {
 	/// The SPIR-V magic number, first word of every module.
 	private const uint32 cSpirvMagic = 0x07230203;

@@ -18,7 +18,7 @@ namespace Sedulous.RHI.WebGPU;
 ///
 /// A sampled texture's sample type comes from the entry's EXPLICIT declaration, because
 /// WebGPU validates it against the shader and a guess would fail there instead of here.
-class WebGpuBindGroupLayout : IBindGroupLayout
+sealed class WebGpuBindGroupLayout : IBindGroupLayout
 {
 	private WGPUBindGroupLayout mHandle;
 	/// Owned. Entries serves it, and the bind group replays it to shift by the same rule.

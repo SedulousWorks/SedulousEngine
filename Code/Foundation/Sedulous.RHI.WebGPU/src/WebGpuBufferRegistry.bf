@@ -11,7 +11,7 @@ namespace Sedulous.RHI.WebGPU;
 ///
 /// BORROWS every buffer in it. Single threaded, by the same contract as the rest of the
 /// backend.
-class WebGpuBufferRegistry
+sealed class WebGpuBufferRegistry
 {
 	private List<WebGpuBuffer> mBuffers = new .() ~ delete _;
 

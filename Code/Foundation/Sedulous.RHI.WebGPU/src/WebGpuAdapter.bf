@@ -10,7 +10,7 @@ namespace Sedulous.RHI.WebGPU;
 /// One WebGPU adapter: what it is, what it can do, and the device made from it.
 ///
 /// BORROWS its backend, which outlives every adapter on it.
-class WebGpuAdapter : IAdapter
+sealed class WebGpuAdapter : IAdapter
 {
 	private WebGpuBackend mBackend;
 	private WGPUAdapter mHandle;

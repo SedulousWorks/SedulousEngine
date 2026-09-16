@@ -10,7 +10,7 @@ namespace Sedulous.RHI.WebGPU;
 /// A timestamp set needs the TimestampQuery feature, which the device requests when its
 /// adapter has it. Occlusion is core. Pipeline statistics has no WebGPU shape at all, so
 /// asking for one fails honestly rather than returning something that never fills in.
-class WebGpuQuerySet : IQuerySet
+sealed class WebGpuQuerySet : IQuerySet
 {
 	private WGPUQuerySet mHandle;
 	private QueryType mType;

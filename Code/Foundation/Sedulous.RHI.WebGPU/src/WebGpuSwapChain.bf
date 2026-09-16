@@ -13,7 +13,7 @@ namespace Sedulous.RHI.WebGPU;
 /// borrowed WGPUTexture - the surface owns it - and creates its view; Present hands it to
 /// the compositor and drops the borrow. There is no image index in the API, so a frame
 /// counter modulo the buffer count satisfies the RHI's shape.
-class WebGpuSwapChain : ISwapChain
+sealed class WebGpuSwapChain : ISwapChain
 {
 	private WGPUAdapter mAdapter;
 	private WGPUDevice mDevice;

@@ -15,7 +15,7 @@ namespace Sedulous.RHI.WebGPU;
 /// matching the WGSL cook. The layout synthesises that group's bind group layout here
 /// and reports it; the pass encoders keep a CPU shadow of the block, upload it and bind
 /// the group before each draw.
-class WebGpuPipelineLayout : IPipelineLayout
+sealed class WebGpuPipelineLayout : IPipelineLayout
 {
 	private WGPUPipelineLayout mHandle;
 

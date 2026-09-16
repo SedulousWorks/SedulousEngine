@@ -6,7 +6,7 @@ using Sedulous.RHI;
 namespace Sedulous.RHI.WebGPU;
 
 /// A compute pipeline.
-class WebGpuComputePipeline : IComputePipeline
+sealed class WebGpuComputePipeline : IComputePipeline
 {
 	private WGPUComputePipeline mHandle;
 	private WebGpuPipelineLayout mLayout;

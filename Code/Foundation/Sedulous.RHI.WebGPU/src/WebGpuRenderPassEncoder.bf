@@ -7,7 +7,7 @@ using Sedulous.RHI;
 namespace Sedulous.RHI.WebGPU;
 
 /// A render pass.
-class WebGpuRenderPassEncoder : IRenderPassEncoder
+sealed class WebGpuRenderPassEncoder : IRenderPassEncoder
 {
 	/// How many bundles go per execute call. Batched rather than one at a time, and
 	/// flushed when full, so a long list costs a bounded number of calls.

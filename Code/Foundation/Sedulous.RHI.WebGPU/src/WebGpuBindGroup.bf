@@ -12,7 +12,7 @@ namespace Sedulous.RHI.WebGPU;
 /// backend shares, and each resolves to the layout entry's SHIFTED binding number. The
 /// shift is read back off the layout rather than recomputed from the group, so the two
 /// cannot drift: whatever the layout declared is what gets filled.
-class WebGpuBindGroup : IBindGroup
+sealed class WebGpuBindGroup : IBindGroup
 {
 	private WGPUBindGroup mHandle;
 	/// BORROWED, and outlives this by the RHI's ownership rules.
