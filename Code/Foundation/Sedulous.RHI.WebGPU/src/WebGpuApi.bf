@@ -106,6 +106,27 @@ static class WebGpuApi
 			wgpuDevicePoll(device, 1, &index);
 		}
 
+		/// Push constants as wgpu's IMMEDIATES, which is the native path. A browser has
+		/// none of these, which is exactly why PushConstantEmulator exists: the encoders
+		/// only reach here when the pipeline declared immediates rather than emulation.
+		public static void RenderSetImmediates(WGPURenderPassEncoder encoder, uint32 offset,
+			void* data, uint32 size)
+		{
+			wgpuRenderPassEncoderSetImmediates(encoder, offset, data, (uint)size);
+		}
+
+		public static void ComputeSetImmediates(WGPUComputePassEncoder encoder, uint32 offset,
+			void* data, uint32 size)
+		{
+			wgpuComputePassEncoderSetImmediates(encoder, offset, data, (uint)size);
+		}
+
+		public static void BundleSetImmediates(WGPURenderBundleEncoder encoder, uint32 offset,
+			void* data, uint32 size)
+		{
+			wgpuRenderBundleEncoderSetImmediates(encoder, offset, data, (uint)size);
+		}
+
 		/// Lists the adapters. The standard header can only REQUEST one asynchronously
 		/// by power preference, so this has no counterpart in a browser, which will have
 		/// to take that path instead.
