@@ -127,6 +127,15 @@ static class WebGpuApi
 			wgpuRenderBundleEncoderSetImmediates(encoder, offset, data, (uint)size);
 		}
 
+		/// An encoder level timestamp, which is a wgpu-native EXTENSION. A browser has
+		/// no timestamp query feature and ABORTS on this, so the profiler's timings are
+		/// unavailable there rather than fatal.
+		public static void EncoderWriteTimestamp(WGPUCommandEncoder encoder, WGPUQuerySet set,
+			uint32 index)
+		{
+			wgpuCommandEncoderWriteTimestamp(encoder, set, index);
+		}
+
 		/// Lists the adapters. The standard header can only REQUEST one asynchronously
 		/// by power preference, so this has no counterpart in a browser, which will have
 		/// to take that path instead.
