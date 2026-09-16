@@ -81,7 +81,7 @@ class HttpMessageParser
 			}
 			mHeadParsed = true;
 			mBuffer.Clear();
-			mBody.AddRange(spill);
+			mBody.AddRange(Span<uint8>(spill.Ptr, spill.Count));
 		}
 		else
 		{

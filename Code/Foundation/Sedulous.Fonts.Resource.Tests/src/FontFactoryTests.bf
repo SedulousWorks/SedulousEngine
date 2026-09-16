@@ -156,8 +156,8 @@ class FontFactoryTests
 				== b.Font.GetGlyphInfo(Cp('A')).AdvanceWidth);
 			Test.Assert(a.Font.GetKerning(Cp('A'), Cp('V')) == b.Font.GetKerning(Cp('A'), Cp('V')));
 			Test.Assert(a.AtlasImage.PixelData.Length == b.AtlasImage.PixelData.Length);
-			Test.Assert(Internal.MemCmp(a.AtlasImage.PixelData.Ptr, b.AtlasImage.PixelData.Ptr,
-				a.AtlasImage.PixelData.Length) == 0, scope $"entry {i} decoded differently");
+			Test.Assert(RawMemory.Equal(a.AtlasImage.PixelData.Ptr, b.AtlasImage.PixelData.Ptr,
+				a.AtlasImage.PixelData.Length), scope $"entry {i} decoded differently");
 		}
 	}
 

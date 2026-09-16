@@ -219,7 +219,7 @@ class HttpServer
 		request.Target.Set(connection.Parser.Target);
 		for (let header in connection.Parser.Headers)
 			request.Headers.Add(new HttpHeader(header.Name, header.Value));
-		request.Body.AddRange(connection.Parser.Body);
+		request.Body.AddRange(Span<uint8>(connection.Parser.Body.Ptr, connection.Parser.Body.Count));
 
 		let response = (mHandler != null)
 			? mHandler(request)
@@ -268,7 +268,7 @@ class HttpServer
 
 		let wire = scope List<uint8>();
 		wire.AddRange(Span<uint8>((uint8*)head.Ptr, head.Length));
-		wire.AddRange(response.Body);
+		wire.AddRange(Span<uint8>(response.Body.Ptr, response.Body.Count));
 
 		var sent = 0;
 		var patience = cSendPatience;

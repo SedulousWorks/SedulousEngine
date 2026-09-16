@@ -76,7 +76,7 @@ static class HttpClient
 
 		let wire = scope List<uint8>();
 		wire.AddRange(Span<uint8>((uint8*)head.Ptr, head.Length));
-		wire.AddRange(request.Body);
+		wire.AddRange(Span<uint8>(request.Body.Ptr, request.Body.Count));
 
 		var sent = 0;
 		while (sent < wire.Count)
@@ -133,7 +133,7 @@ static class HttpClient
 		response.Status = parser.Status;
 		for (let header in parser.Headers)
 			response.Headers.Add(new HttpHeader(header.Name, header.Value));
-		response.Body.AddRange(parser.Body);
+		response.Body.AddRange(Span<uint8>(parser.Body.Ptr, parser.Body.Count));
 		return .Ok(response);
 	}
 }

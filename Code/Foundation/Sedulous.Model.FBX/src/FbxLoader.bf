@@ -833,7 +833,7 @@ class FbxLoader : IModelLoader
 			for (let index in existing)
 			{
 				let other = &vertexBytes[(int)index * layout.Stride];
-				if (Internal.MemCmp(vertex, other, layout.Stride) == 0)
+				if (RawMemory.Equal(vertex, other, layout.Stride))
 					return index;
 			}
 		}
