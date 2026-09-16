@@ -199,14 +199,20 @@ class WebGpuBuffer : IBuffer
 	/// own notes for why the compare earns its keep.
 	private void UploadShadowIfChanged()
 	{
+		// RawMemory, not Internal.MemCmp: the latter compares a byte at a time, and these
+		// shadows are megabytes. See RawMemory for the measurement.
 		if ((mLastUploaded.Count == mShadow.Count)
-			&& (Internal.MemCmp(mLastUploaded.Ptr, mShadow.Ptr, mShadow.Count) == 0))
+			&& RawMemory.Equal(mLastUploaded.Ptr, mShadow.Ptr, mShadow.Count))
 			return;
 
 		wgpuQueueWriteBuffer(mQueue, mHandle, 0, mShadow.Ptr, (uint)mShadow.Count);
 
-		mLastUploaded.Clear();
-		mLastUploaded.AddRange(mShadow);
+		// Resize and MemCpy, the way Raptor does it, NOT Clear plus AddRange. Handing
+		// AddRange another List binds the IEnumerator overload, which copies one bounds
+		// checked byte at a time: measured at 0.06 GB/s against 13.7 GB/s for this, and it
+		// cost more than every other part of the frame put together.
+		mLastUploaded.Resize(mShadow.Count);
+		Internal.MemCpy(mLastUploaded.Ptr, mShadow.Ptr, mShadow.Count);
 		mUploadCount++;
 	}
 }
