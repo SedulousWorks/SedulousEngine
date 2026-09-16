@@ -32,6 +32,19 @@ class WebGpuAdapter : IAdapter
 		}
 	}
 
+	/// Which wgpu backend this adapter belongs to.
+	///
+	/// ONE physical GPU appears once per backend, so this is what tells two entries for
+	/// the same card apart. The backend orders on it; see WebGpuBackend.EnumerateNow.
+	public WGPUBackendType WgpuBackendType()
+	{
+		WGPUAdapterInfo info = .();
+		wgpuAdapterGetInfo(mHandle, &info);
+		let type = info.backendType;
+		wgpuAdapterInfoFreeMembers(info);
+		return type;
+	}
+
 	public void GetInfo(AdapterInfo outInfo)
 	{
 		WGPUAdapterInfo info = .();

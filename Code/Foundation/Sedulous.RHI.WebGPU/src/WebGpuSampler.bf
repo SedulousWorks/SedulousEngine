@@ -6,6 +6,12 @@ using Sedulous.RHI;
 namespace Sedulous.RHI.WebGPU;
 
 /// How a texture is read: filtering, addressing, and the optional compare.
+///
+/// TWO narrowings against the RHI desc, both silent because both are static facts of
+/// the platform rather than anything about this sampler. ClampToBorder becomes
+/// ClampToEdge, core WebGPU having no border sampling, which also makes BorderColor
+/// meaningless. MipLodBias does not exist at all: in WGSL the bias belongs to the
+/// sample instruction rather than to the sampler.
 class WebGpuSampler : ISampler
 {
 	private WGPUSampler mHandle;

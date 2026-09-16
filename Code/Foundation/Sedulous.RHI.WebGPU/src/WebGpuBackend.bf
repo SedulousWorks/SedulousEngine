@@ -141,7 +141,7 @@ class WebGpuBackend : IBackend
 		mInitialized = false;
 	}
 
-	/// The adapters, read once at bring up.
+	/// The adapters, read once at bring up, and ORDERED.
 	///
 	/// Enumeration is a wgpu-native EXTENSION: the standard header can only request one
 	/// adapter asynchronously by power preference, so a browser build will have to take
@@ -160,9 +160,142 @@ class WebGpuBackend : IBackend
 			if (handle == null)
 				continue;
 
-			let adapter = new WebGpuAdapter(this, handle);
-			mAdapters.Add(adapter);
+			mAdapters.Add(new WebGpuAdapter(this, handle));
+		}
+
+		LogAdapters();
+		if (!TakeEnvironmentPick())
+			OrderByRank();
+
+		for (let adapter in mAdapters)
 			mAdapterHandles.Add(adapter);
+	}
+
+	/// The host takes adapters[0], and wgpu's enumeration order is ARBITRARY. On Windows
+	/// it routinely leads with an adapter that cannot PRESENT - a layered, software or
+	/// non display GPU entry - and the swapchain then dies at configure with "Surface
+	/// does not support the adapter's queue family".
+	///
+	/// So real GPUs go first: discrete, then integrated, then the rest, stable within a
+	/// class because the insertion walks in enumeration order.
+	private void OrderByRank()
+	{
+		let ordered = scope List<WebGpuAdapter>(mAdapters.Count);
+
+		for (uint32 backend = 0; backend < 3; backend++)
+		{
+			for (uint32 rank = 0; rank < 4; rank++)
+			{
+				for (let adapter in mAdapters)
+				{
+					if ((BackendRank(adapter) == backend) && (ClassRank(adapter) == rank))
+						ordered.Add(adapter);
+				}
+			}
+		}
+
+		mAdapters.Clear();
+		mAdapters.AddRange(ordered);
+	}
+
+	/// One physical GPU appears once per wgpu backend. On WINDOWS prefer the D3D12 entry:
+	/// DXGI present works on every adapter, while a Vulkan entry's queue family often
+	/// cannot present on a hybrid machine and wgpu-native PANICS at configure. Elsewhere
+	/// Vulkan and Metal are the real ones.
+	private static uint32 BackendRank(WebGpuAdapter adapter)
+	{
+		let type = adapter.WgpuBackendType();
+
+#if BF_PLATFORM_WINDOWS
+		if (type == .WGPUBackendType_D3D12)
+			return 0;
+		if (type == .WGPUBackendType_Vulkan)
+			return 1;
+		return 2;
+#else
+		if ((type == .WGPUBackendType_Vulkan) || (type == .WGPUBackendType_Metal))
+			return 0;
+		return 1;
+#endif
+	}
+
+	/// Software last, because it is never present capable.
+	private static uint32 ClassRank(WebGpuAdapter adapter)
+	{
+		let info = scope AdapterInfo();
+		adapter.GetInfo(info);
+
+		switch (info.Type)
+		{
+		case .DiscreteGpu: return 0;
+		case .IntegratedGpu: return 1;
+		case .Unknown: return 2;
+		default: return 3;
+		}
+	}
+
+	/// Names every adapter, in enumeration order, because that order is what
+	/// ENV_WEBGPU_ADAPTER indexes into.
+	private void LogAdapters()
+	{
+		for (int i = 0; i < mAdapters.Count; i++)
+		{
+			let info = scope AdapterInfo();
+			mAdapters[i].GetInfo(info);
+
+			GlobalLog(.Information, "[webgpu] adapter {}: '{}' ({}, {})", i, info.Name,
+				ClassName(info.Type), BackendName(mAdapters[i].WgpuBackendType()));
+		}
+	}
+
+	/// The escape hatch for a hybrid GPU machine where the ranking still picks wrong:
+	/// ENV_WEBGPU_ADAPTER is an index into the list just logged, and moves that one to
+	/// the front INSTEAD of ranking. Returns whether it was honoured.
+	private bool TakeEnvironmentPick()
+	{
+		let raw = scope String();
+		if (Environment.GetEnvironmentVariable("ENV_WEBGPU_ADAPTER", raw) case .Err)
+			return false;
+		if (raw.IsEmpty)
+			return false;
+
+		if (int.Parse(raw) case .Ok(let index))
+		{
+			if ((index >= 0) && (index < mAdapters.Count))
+			{
+				let chosen = mAdapters[index];
+				mAdapters.RemoveAt(index);
+				mAdapters.Insert(0, chosen);
+				GlobalLog(.Information, "[webgpu] ENV_WEBGPU_ADAPTER={}", index);
+				return true;
+			}
+		}
+
+		GlobalLog(.Error,
+			"[webgpu] ENV_WEBGPU_ADAPTER is not a valid index into the list above - using the default order");
+		return false;
+	}
+
+	private static StringView ClassName(AdapterType type)
+	{
+		switch (type)
+		{
+		case .DiscreteGpu: return "discrete";
+		case .IntegratedGpu: return "integrated";
+		case .Cpu: return "cpu";
+		default: return "unknown";
+		}
+	}
+
+	private static StringView BackendName(WGPUBackendType type)
+	{
+		switch (type)
+		{
+		case .WGPUBackendType_Vulkan: return "vulkan";
+		case .WGPUBackendType_D3D12: return "d3d12";
+		case .WGPUBackendType_Metal: return "metal";
+		case .WGPUBackendType_OpenGL, .WGPUBackendType_OpenGLES: return "gl";
+		default: return "?";
 		}
 	}
 }
