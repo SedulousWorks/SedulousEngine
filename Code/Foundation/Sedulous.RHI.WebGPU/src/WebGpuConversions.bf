@@ -404,4 +404,33 @@ static class WebGpuConversions
 		default: return .WGPUPresentMode_Fifo;
 		}
 	}
+
+	// The two-way ones, which the C++ spells as ternaries rather than switches. Each
+	// names the ONE value that is not the default, so a new enum member lands on the
+	// default rather than silently on the named one.
+
+	public static WGPUFilterMode ToWgpuFilterMode(FilterMode filter)
+	{
+		return (filter == .Nearest) ? .WGPUFilterMode_Nearest : .WGPUFilterMode_Linear;
+	}
+
+	public static WGPUMipmapFilterMode ToWgpuMipmapFilterMode(MipmapFilterMode filter)
+	{
+		return (filter == .Nearest) ? .WGPUMipmapFilterMode_Nearest : .WGPUMipmapFilterMode_Linear;
+	}
+
+	public static WGPUFrontFace ToWgpuFrontFace(FrontFace face)
+	{
+		return (face == .CCW) ? .WGPUFrontFace_CCW : .WGPUFrontFace_CW;
+	}
+
+	public static WGPUVertexStepMode ToWgpuVertexStepMode(VertexStepMode mode)
+	{
+		return (mode == .Instance) ? .WGPUVertexStepMode_Instance : .WGPUVertexStepMode_Vertex;
+	}
+
+	public static WGPUStoreOp ToWgpuStoreOp(StoreOp op)
+	{
+		return (op == .Store) ? .WGPUStoreOp_Store : .WGPUStoreOp_Discard;
+	}
 }
