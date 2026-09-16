@@ -97,5 +97,15 @@ static class WebGpuApi
 		{
 			wgpuDevicePoll(device, 0, null);
 		}
+
+		/// Lists the adapters. The standard header can only REQUEST one asynchronously
+		/// by power preference, so this has no counterpart in a browser, which will have
+		/// to take that path instead.
+		///
+		/// Called twice: once with a null array to learn the count, then to fill.
+		public static int EnumerateAdapters(WGPUInstance instance, WGPUAdapter* adapters)
+		{
+			return (int)wgpuInstanceEnumerateAdapters(instance, null, adapters);
+		}
 	}
 }
