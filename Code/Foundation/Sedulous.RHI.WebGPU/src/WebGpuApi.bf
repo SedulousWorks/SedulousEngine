@@ -136,6 +136,22 @@ static class WebGpuApi
 			wgpuCommandEncoderWriteTimestamp(encoder, set, index);
 		}
 
+		/// Submits and hands back the submission's INDEX, which is what lets a fence
+		/// wait on exactly this submission. A browser has only the plain submit and
+		/// gets no index back, so its fences fall to the general pump.
+		public static WGPUSubmissionIndex SubmitForIndex(WGPUQueue queue, uint count,
+			WGPUCommandBuffer* commands)
+		{
+			return wgpuQueueSubmitForIndex(queue, count, commands);
+		}
+
+		/// Nanoseconds per timestamp tick. One when there is no way to ask, which keeps
+		/// a timing read honest rather than scaled by a guess.
+		public static float QueueTimestampPeriod(WGPUQueue queue)
+		{
+			return wgpuQueueGetTimestampPeriod(queue);
+		}
+
 		/// Lists the adapters. The standard header can only REQUEST one asynchronously
 		/// by power preference, so this has no counterpart in a browser, which will have
 		/// to take that path instead.
