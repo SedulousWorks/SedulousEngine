@@ -11,3 +11,7 @@ scratch_*/
 
 # Cooked sample output. Written at run time, per sample, and never checked in.
 /Data/Output/
+
+# Cooked shader packs are build output, the same as Raptor keeps its own under Bin.
+# Sedulous.Tools.ShaderPack writes them; a checkout compiles on demand without one.
+/Data/Shaders/*.dpak
