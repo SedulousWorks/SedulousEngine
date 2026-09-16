@@ -106,6 +106,16 @@ static class WebGpuApi
 			wgpuDevicePoll(device, 1, &index);
 		}
 
+		/// Drains EVERYTHING submitted, which is what a device wide WaitIdle means.
+		///
+		/// Blocks, with no submission index to wait on. Safe here and nowhere else in
+		/// the general case: a caller asking for idle wants the whole queue retired, and
+		/// wgpu-native returns from an already drained queue rather than parking on it.
+		public static void DevicePollWaitIdle(WGPUDevice device)
+		{
+			wgpuDevicePoll(device, 1, null);
+		}
+
 		/// Push constants as wgpu's IMMEDIATES, which is the native path. A browser has
 		/// none of these, which is exactly why PushConstantEmulator exists: the encoders
 		/// only reach here when the pipeline declared immediates rather than emulation.
