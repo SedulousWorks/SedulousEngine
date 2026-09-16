@@ -284,6 +284,16 @@ class DefaultApplication : IApplication
 
 	public virtual void OnStartup(IApplicationHost host)
 	{
+		// An application gets a profiler, so the P key below has a CPU tree to print.
+		//
+		// Raptor's profiler is a SINGLETON that is always live; this port made it an
+		// installable global instead, which is the better shape for a tool or a test that
+		// wants none - but nothing was installing one, so HasGlobalProfiler was false in
+		// every sample and half of DumpProfileOnRequest could never run. An application is
+		// exactly the case that should have one.
+		if (!HasGlobalProfiler())
+			InitGlobalProfiler(new Profiler(), true);
+
 		RegisterProductTypes();
 
 		let graphics = host.Graphics;
@@ -411,6 +421,9 @@ class DefaultApplication : IApplication
 
 	public virtual void OnShutdown(IApplicationHost host)
 	{
+		// Paired with the install in OnStartup; owned, so this frees it.
+		ShutdownGlobalProfiler();
+
 		for (let instance in mExtraInstances)
 		{
 			if (mScenes != null)

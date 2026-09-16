@@ -70,6 +70,11 @@ class DynamicUniformRing
 
 		var desc = BufferDesc();
 		desc.Size = (uint64)mFramesInFlight * (uint64)wanted * mSlotSize;
+
+		// Said once per growth: a ring's SIZE is what an emulating backend pays to flush,
+		// and these are easy to misjudge by an order of magnitude from the slot count.
+		Console.WriteLine("[ring] {} grew to {} slots x {} B x {} frames = {} KB", mLabel,
+			wanted, mSlotSize, mFramesInFlight, desc.Size / 1024);
 		desc.Usage = mUsage;
 		desc.Memory = .CpuToGpu;
 		desc.Label = mLabel;

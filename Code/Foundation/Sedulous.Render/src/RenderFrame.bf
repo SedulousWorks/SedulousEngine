@@ -1,3 +1,4 @@
+using Sedulous.Profiler;
 using System;
 using System.Collections;
 using Sedulous.Core;
@@ -785,6 +786,7 @@ class RenderFrame
 		if (mEncoder == null)
 			return;
 
+		ProfileScopeBegin("Compose.Head");
 		uint32 totalDraws = 0;
 		for (int i < mViews.ActiveCount)
 			totalDraws += (uint32)mViews.At(i).DrawList.Length;
@@ -846,24 +848,35 @@ class RenderFrame
 		// renderers' ring sizing.
 		let localPassCount = (uint32)(mRealtimeAtlasDraws.Count + mStaticRenderDraws.Count);
 
+		ProfileScopeEnd();
+		ProfileScopeBegin("Compose.Prepare");
 		PrepareRenderers(totalDraws, sceneCount, shadowMap, shadowGeneration, atlasView,
 			atlasGeneration, localPassCount);
 
+		ProfileScopeEnd();
+		ProfileScopeBegin("Compose.Declare");
 		DeclareFrame(sceneCount, hasShadow, shadowMap, atlasView, staticTileCount, renderStatic);
 
 		// Unmap the decal ring before the graph executes.
 		if (mDecalPass != null)
 			mDecalPass.EndFrame();
 
+		ProfileScopeEnd();
+		ProfileScopeBegin("Compose.Execute");
 		mGraph.Execute(mEncoder).IgnoreError();
+		ProfileScopeEnd();
 		// Age out the transient pool. Executing only RETURNS transients to it; this is what
 		// destroys the entries nothing has used for a while. Without it the pool keeps every
 		// size ever seen, which is invisible while one size recurs and an unbounded leak once
 		// a viewport starts resizing.
+		ProfileScopeBegin("Compose.GraphEndFrame");
 		mGraph.EndFrame();
+		ProfileScopeEnd();
 
+		ProfileScopeBegin("Compose.FinishFrame");
 		for (let renderer in mRegistry.Unique)
 			renderer.FinishFrame();
+		ProfileScopeEnd();
 
 		// This frame's matrices become next frame's previous ones.
 		mPrevViewProj.Clear();

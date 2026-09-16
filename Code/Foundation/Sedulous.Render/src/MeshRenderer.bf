@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Profiler;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Geometry;
@@ -518,12 +519,15 @@ class MeshRenderer : Renderer
 
 	public override void FinishFrame()
 	{
-		mViewRing.EndFrame();
-		mShadowViewRing.EndFrame();
-		mObjectRing.EndFrame();
-		mInstanceRing.EndFrame();
-		mBoneRing.EndFrame();
-		mOffsetsRing.EndFrame();
+		// Scoped per ring: unmapping is where the backend flushes its shadow, and on a
+		// backend that emulates mapping that is the most expensive thing in the frame.
+		// Split so the report names WHICH ring rather than just the total.
+		using (ProfileScope("Finish.ViewRing")) { mViewRing.EndFrame(); }
+		using (ProfileScope("Finish.ShadowViewRing")) { mShadowViewRing.EndFrame(); }
+		using (ProfileScope("Finish.ObjectRing")) { mObjectRing.EndFrame(); }
+		using (ProfileScope("Finish.InstanceRing")) { mInstanceRing.EndFrame(); }
+		using (ProfileScope("Finish.BoneRing")) { mBoneRing.EndFrame(); }
+		using (ProfileScope("Finish.OffsetsRing")) { mOffsetsRing.EndFrame(); }
 
 		// This frame's worlds become next frame's previous ones. A flat swap of the two lists:
 		// no clearing, since each visible entity overwrites its own slot when it resolves and a
