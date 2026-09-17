@@ -33,6 +33,11 @@ class ImguiRenderer
 	private uint32 mFontWidth = 0;
 	private uint32 mFontHeight = 0;
 	private bool mFontDirty = true;
+#if BF_PLATFORM_WASM
+	/// The web startup re-record window; see UploadTexture.
+	private const uint32 cFontUploadFrames = 20;
+	private uint32 mFontUploadFrames = 0;
+#endif
 
 	private ImguiFrameSlot[cMaxFramesInFlight] mFrames = .(new .(), new .(), new .(), new .())
 		~ { for (let slot in _) delete slot; }
@@ -299,7 +304,19 @@ class ImguiRenderer
 		// The identity only has to be NON ZERO: one atlas is bound for everything, so nothing
 		// ever looks it up.
 		ImTextureData_SetTexID(texture, 1);
+
+#if BF_PLATFORM_WASM
+		// Status OK is the LATCH: ImGui stops asking once it is set, so the copy above is
+		// recorded exactly once. A web startup submit can still be dropped, and losing that
+		// one shot copy while the latch says done leaves ImGui rendering an empty atlas
+		// forever. Re-record the (tiny) copy for the first frames instead, which is the same
+		// startup window the IBL env bake and the probe captures use.
+		mFontUploadFrames++;
+		if (mFontUploadFrames >= cFontUploadFrames)
+			ImTextureData_SetStatus(texture, .ImTextureStatus_OK);
+#else
 		ImTextureData_SetStatus(texture, .ImTextureStatus_OK);
+#endif
 
 		RebuildBindings();
 	}
