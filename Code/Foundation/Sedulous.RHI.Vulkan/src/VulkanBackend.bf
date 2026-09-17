@@ -132,7 +132,7 @@ class VulkanBackend : IBackend
 
 		for (uint32 i = 0; i < count; i++)
 		{
-			if (StringView(&available[i].extensionName[0]) == "VK_EXT_debug_utils")
+			if (StringView(&available[(int)i].extensionName[0]) == "VK_EXT_debug_utils")
 			{
 				sDebugUtilsEnabled = true;
 				return true;
@@ -151,7 +151,7 @@ class VulkanBackend : IBackend
 
 		for (uint32 i = 0; i < count; i++)
 		{
-			let name = StringView(&available[i].extensionName[0]);
+			let name = StringView(&available[(int)i].extensionName[0]);
 			if (name == "VK_KHR_xlib_surface")
 				mHasXlib = true;
 			else if (name == "VK_KHR_wayland_surface")
@@ -270,7 +270,7 @@ class VulkanBackend : IBackend
 
 		for (uint32 i = 0; i < count; i++)
 		{
-			let adapter = new VulkanAdapter(devices[i], mInstance);
+			let adapter = new VulkanAdapter(devices[(int)i], mInstance);
 			mAdapters.Add(adapter);
 			mAdapterHandles.Add(adapter);
 		}

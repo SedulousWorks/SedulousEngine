@@ -451,10 +451,10 @@ class VulkanCommandTests
 			for (uint32 x < cWidth)
 			{
 				let at = y * cPaddedStride + x * cBytesPerPixel;
-				staging[at + 0] = (uint8)(x + 1);
-				staging[at + 1] = (uint8)(y + 1);
-				staging[at + 2] = 0xCC;
-				staging[at + 3] = 0xFF;
+				staging[(int)at + 0] = (uint8)(x + 1);
+				staging[(int)at + 1] = (uint8)(y + 1);
+				staging[(int)at + 2] = 0xCC;
+				staging[(int)at + 3] = 0xFF;
 			}
 
 		var layout = TextureDataLayout();
@@ -544,10 +544,10 @@ class VulkanCommandTests
 			for (uint32 x < cWidth)
 			{
 				let at = (y * cWidth + x) * cBytesPerPixel;
-				source[at + 0] = (uint8)(x + 1);
-				source[at + 1] = (uint8)(y + 1);
-				source[at + 2] = 0x77;
-				source[at + 3] = 0xFF;
+				source[(int)at + 0] = (uint8)(x + 1);
+				source[(int)at + 1] = (uint8)(y + 1);
+				source[(int)at + 2] = 0x77;
+				source[(int)at + 3] = 0xFF;
 			}
 		}
 

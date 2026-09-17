@@ -435,7 +435,7 @@ class RayTracingSample : SampleApp
 			// Handles are read packed and written STRIDED: the gap between them is what
 			// the alignment requires.
 			Internal.MemCpy(mapped + (i * mShaderBindingTableStride),
-				&handles[i * handleSize], handleSize);
+				&handles[(int)i * (int)handleSize], (int)handleSize);
 		}
 		mShaderBindingTable.Unmap();
 

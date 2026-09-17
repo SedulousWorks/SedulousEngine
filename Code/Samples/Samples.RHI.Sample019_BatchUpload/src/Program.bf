@@ -292,17 +292,17 @@ class BatchUploadSample : SampleApp
 				if (iteration == cMaxIterations)
 				{
 					// Inside the set: near black, so the boundary stands out.
-					pixels[at + 0] = 10;
-					pixels[at + 1] = 10;
-					pixels[at + 2] = 30;
-					pixels[at + 3] = 255;
+					pixels[(int)at + 0] = 10;
+					pixels[(int)at + 1] = 10;
+					pixels[(int)at + 2] = 30;
+					pixels[(int)at + 3] = 255;
 					continue;
 				}
 				let t = (float)iteration / (float)cMaxIterations;
-				pixels[at + 0] = (uint8)(t * 200 + 55);
-				pixels[at + 1] = (uint8)(t * t * 255);
-				pixels[at + 2] = (uint8)(Math.Sqrt(t) * 255);
-				pixels[at + 3] = 255;
+				pixels[(int)at + 0] = (uint8)(t * 200 + 55);
+				pixels[(int)at + 1] = (uint8)(t * t * 255);
+				pixels[(int)at + 2] = (uint8)(Math.Sqrt(t) * 255);
+				pixels[(int)at + 3] = 255;
 			}
 		}
 	}

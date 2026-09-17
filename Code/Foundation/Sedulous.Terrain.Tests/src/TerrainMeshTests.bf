@@ -145,9 +145,9 @@ class TerrainMeshTests
 			// The coordinates lie in the XZ plane with u across and v along +Z, so a triangle
 			// wound counter clockwise seen from +Y has a NEGATIVE cross product here: the
 			// handedness flips going from a (u, v) plane to XZ under a +Y up convention.
-			let a = vertices[indices[i]];
-			let b = vertices[indices[i + 1]];
-			let c = vertices[indices[i + 2]];
+			let a = vertices[(int)indices[i]];
+			let b = vertices[(int)indices[i + 1]];
+			let c = vertices[(int)indices[i + 2]];
 			let cross = (b.X - a.X) * (c.Y - a.Y) - (b.Y - a.Y) * (c.X - a.X);
 			Test.Assert(cross < 0.0f, scope $"triangle {i / 3} is wound the other way");
 		}

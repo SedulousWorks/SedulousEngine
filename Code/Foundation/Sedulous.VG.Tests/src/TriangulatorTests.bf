@@ -16,9 +16,9 @@ class TriangulatorTests
 		var total = 0.0f;
 		for (int i = 0; i < indices.Count; i += 3)
 		{
-			let a = contour[indices[i]];
-			let b = contour[indices[i + 1]];
-			let c = contour[indices[i + 2]];
+			let a = contour[(int)indices[i]];
+			let b = contour[(int)indices[i + 1]];
+			let c = contour[(int)indices[i + 2]];
 			total += (((b.X - a.X) * (c.Y - a.Y)) - ((c.X - a.X) * (b.Y - a.Y))) * 0.5f;
 		}
 		return total;

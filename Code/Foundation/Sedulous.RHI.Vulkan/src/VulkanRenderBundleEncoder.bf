@@ -30,7 +30,7 @@ class VulkanRenderBundleEncoder : IRenderBundleEncoder
 		let colorCount = Math.Min(desc.ColorFormatCount, (uint32)RhiLimits.MaxColorAttachments);
 		let colorFormats = scope VkFormat[RhiLimits.MaxColorAttachments];
 		for (uint32 i = 0; i < colorCount; i++)
-			colorFormats[i] = VulkanConversions.ToVkFormat(desc.ColorFormats[i]);
+			colorFormats[(int)i] = VulkanConversions.ToVkFormat(desc.ColorFormats[i]);
 
 		let hasDepth = desc.DepthStencilFormat != .Undefined;
 

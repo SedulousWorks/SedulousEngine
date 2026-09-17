@@ -529,7 +529,7 @@ class RenderGraph
 		if (!handle.IsValid || (handle.Index >= (uint32)mResources.Count))
 			return .Err;
 
-		let resource = mResources[handle.Index];
+		let resource = mResources[(int)handle.Index];
 		if ((resource == null) || (resource.Generation != handle.Generation))
 			return .Err;
 
@@ -543,7 +543,7 @@ class RenderGraph
 		if (!handle.IsValid || (handle.Index >= (uint32)mResources.Count))
 			return .Err;
 
-		let resource = mResources[handle.Index];
+		let resource = mResources[(int)handle.Index];
 		if (resource == null)
 			return .Err;
 
@@ -619,7 +619,7 @@ class RenderGraph
 				if (!access.Handle.IsValid || (access.Handle.Index >= (uint32)mResources.Count))
 					continue;
 
-				let resource = mResources[access.Handle.Index];
+				let resource = mResources[(int)access.Handle.Index];
 				if (resource == null)
 					continue;
 
@@ -666,7 +666,7 @@ class RenderGraph
 				if (!output.Handle.IsValid || (output.Handle.Index >= (uint32)mResources.Count))
 					continue;
 
-				let resource = mResources[output.Handle.Index];
+				let resource = mResources[(int)output.Handle.Index];
 				if ((resource != null) && (resource.FinalState != null))
 				{
 					pass.IsCulled = false;
@@ -738,7 +738,7 @@ class RenderGraph
 				if (!read.Handle.IsValid || (read.Handle.Index >= (uint32)mResources.Count))
 					continue;
 
-				let resource = mResources[read.Handle.Index];
+				let resource = mResources[(int)read.Handle.Index];
 				let totalMips = (resource != null) ? resource.TotalMipLevels : 1;
 				let totalLayers = (resource != null) ? resource.TotalArrayLayers : 1;
 
@@ -809,7 +809,7 @@ class RenderGraph
 			{
 				if (dependency.IsValid && (dependency.Index < (uint32)passCount))
 				{
-					adjacency[dependency.Index].Add((int32)i);
+					adjacency[(int)dependency.Index].Add((int32)i);
 					inDegree[i]++;
 				}
 			}

@@ -144,7 +144,7 @@ class ExposurePass
 		// on the view alone mismatches every frame, and rebuilding it then frees a set the
 		// previous frame's command buffer is still reading. Folding the frame in means a slot
 		// is only rewritten once that many frames have passed, its buffer long since done.
-		let slot = (int)view * mFramesInFlight + (frameIndex % mFramesInFlight);
+		let slot = (int)view * (int)mFramesInFlight + (int)(frameIndex % mFramesInFlight);
 
 		graph.AddRenderPass("exposure.measure", scope (builder) =>
 			{

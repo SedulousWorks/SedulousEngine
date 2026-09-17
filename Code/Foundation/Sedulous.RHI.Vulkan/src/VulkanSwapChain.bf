@@ -60,7 +60,7 @@ class VulkanSwapChain : ISwapChain
 		{
 			if (mCurrentImageIndex >= (uint32)mTextures.Count)
 				return null;
-			return mTextures[mCurrentImageIndex];
+			return mTextures[(int)mCurrentImageIndex];
 		}
 	}
 
@@ -70,7 +70,7 @@ class VulkanSwapChain : ISwapChain
 		{
 			if (mCurrentImageIndex >= (uint32)mViews.Count)
 				return null;
-			return mViews[mCurrentImageIndex];
+			return mViews[(int)mCurrentImageIndex];
 		}
 	}
 
@@ -81,7 +81,7 @@ class VulkanSwapChain : ISwapChain
 		if (mSwapChain == .Null)
 			return .Err;
 
-		let acquireSemaphore = mAcquireSemaphores[mFrameIndex];
+		let acquireSemaphore = mAcquireSemaphores[(int)mFrameIndex];
 		uint32 imageIndex = 0;
 		let result = VulkanNative.vkAcquireNextImageKHR(mDevice, mSwapChain, uint64.MaxValue,
 			acquireSemaphore, .Null, &imageIndex);
@@ -94,7 +94,7 @@ class VulkanSwapChain : ISwapChain
 		if ((result != .VK_SUCCESS) && (result != .VK_SUBOPTIMAL_KHR))
 			return .Err;
 
-		mOwner.SetPendingSwapChainSync(acquireSemaphore, mPresentSemaphores[mCurrentImageIndex]);
+		mOwner.SetPendingSwapChainSync(acquireSemaphore, mPresentSemaphores[(int)mCurrentImageIndex]);
 		return .Ok;
 	}
 
@@ -104,7 +104,7 @@ class VulkanSwapChain : ISwapChain
 		if (vulkanQueue == null || mSwapChain == .Null)
 			return .Err;
 
-		var waitSemaphore = mPresentSemaphores[mCurrentImageIndex];
+		var waitSemaphore = mPresentSemaphores[(int)mCurrentImageIndex];
 		var swapChain = mSwapChain;
 		var imageIndex = mCurrentImageIndex;
 
@@ -341,7 +341,7 @@ class VulkanSwapChain : ISwapChain
 			textureDesc.Usage = .RenderTarget;
 
 			let texture = new VulkanTexture();
-			texture.InitializeFromExisting(images[i], textureDesc);
+			texture.InitializeFromExisting(images[(int)i], textureDesc);
 			mTextures.Add(texture);
 
 			var viewDesc = TextureViewDesc();

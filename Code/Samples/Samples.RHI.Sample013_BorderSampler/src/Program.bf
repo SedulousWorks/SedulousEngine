@@ -175,10 +175,10 @@ class BorderSamplerSample : SampleApp
 			{
 				let at = (y * cTextureWidth + x) * 4;
 				let white = ((x + y) % 2) == 0;
-				pixels[at + 0] = white ? 255 : 220;
-				pixels[at + 1] = white ? 255 : 60;
-				pixels[at + 2] = white ? 255 : 60;
-				pixels[at + 3] = 255;
+				pixels[(int)at + 0] = white ? 255 : 220;
+				pixels[(int)at + 1] = white ? 255 : 60;
+				pixels[(int)at + 2] = white ? 255 : 60;
+				pixels[(int)at + 3] = 255;
 			}
 		}
 

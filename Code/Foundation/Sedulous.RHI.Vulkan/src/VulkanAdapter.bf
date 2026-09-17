@@ -246,7 +246,7 @@ class VulkanAdapter : IAdapter
 
 		for (uint32 i = 0; i < extensionCount; i++)
 		{
-			let name = StringView(&extensions[i].extensionName[0]);
+			let name = StringView(&extensions[(int)i].extensionName[0]);
 			switch (name)
 			{
 			case "VK_KHR_dynamic_rendering": mSupportsDynamicRendering = true;

@@ -150,10 +150,10 @@ class MipmapSample : SampleApp
 			{
 				let light = (((x / 16) + (y / 16)) % 2) == 0;
 				let at = (y * cTextureWidth + x) * 4;
-				pixels[at + 0] = light ? 255 : 30;
-				pixels[at + 1] = light ? 255 : 30;
-				pixels[at + 2] = light ? 255 : 200;
-				pixels[at + 3] = 255;
+				pixels[(int)at + 0] = light ? 255 : 30;
+				pixels[(int)at + 1] = light ? 255 : 30;
+				pixels[(int)at + 2] = light ? 255 : 200;
+				pixels[(int)at + 3] = 255;
 			}
 		}
 

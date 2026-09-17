@@ -166,7 +166,7 @@ class Texture3DSample : SampleApp
 						* Math.Sin(fz * 12.0f);
 					let value = Math.Clamp(sphere + lattice * 0.3f, 0.0f, 1.0f);
 
-					data[z * cVolumeSize * cVolumeSize + y * cVolumeSize + x] =
+					data[((int)z * cVolumeSize * cVolumeSize) + ((int)y * cVolumeSize) + (int)x] =
 						(uint8)(value * 255.0f);
 				}
 			}
@@ -244,10 +244,10 @@ class Texture3DSample : SampleApp
 			}
 
 			let at = i * 4;
-			data[at + 0] = (uint8)(r * 255.0f);
-			data[at + 1] = (uint8)(g * 255.0f);
-			data[at + 2] = (uint8)(b * 255.0f);
-			data[at + 3] = 255;
+			data[(int)at + 0] = (uint8)(r * 255.0f);
+			data[(int)at + 1] = (uint8)(g * 255.0f);
+			data[(int)at + 2] = (uint8)(b * 255.0f);
+			data[(int)at + 3] = 255;
 		}
 
 		if (!(mGraphicsQueue.CreateTransferBatch() case .Ok(var batch)))

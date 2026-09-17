@@ -231,7 +231,7 @@ class ReflectionProbeSystem
 	}
 
 	public uint32 ActiveCount => mActive;
-	public Span<GpuProbe> CpuProbes => .(&mCpuProbes[0], mActive);
+	public Span<GpuProbe> CpuProbes => .(&mCpuProbes[0], (int)mActive);
 
 	/// Copies this frame's records into the metadata buffer. Once per frame, after assigning.
 	public void Upload()

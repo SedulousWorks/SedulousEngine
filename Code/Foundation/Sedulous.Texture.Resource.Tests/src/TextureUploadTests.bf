@@ -67,7 +67,7 @@ class TextureUploadTests
 		Test.Assert((writes[3].Offset == 336) && (writes[3].ByteCount == 4));
 
 		for (uint32 level = 0; level < 4; level++)
-			Test.Assert(writes[level].MipLevel == level);
+			Test.Assert(writes[(int)level].MipLevel == level);
 
 		Test.Assert(writes[3].Extent.Width == 1);
 		Test.Assert(writes[3].Extent.Height == 1);
@@ -162,10 +162,10 @@ class TextureUploadTests
 		Test.Assert(writes.Count == 6);
 		for (uint32 face = 0; face < 6; face++)
 		{
-			Test.Assert(writes[face].ArrayLayer == face);
-			Test.Assert(writes[face].MipLevel == 0);
-			Test.Assert(writes[face].Offset == (int)face * faceBytes);
-			Test.Assert(writes[face].ByteCount == faceBytes);
+			Test.Assert(writes[(int)face].ArrayLayer == face);
+			Test.Assert(writes[(int)face].MipLevel == 0);
+			Test.Assert(writes[(int)face].Offset == (int)face * faceBytes);
+			Test.Assert(writes[(int)face].ByteCount == faceBytes);
 		}
 	}
 
@@ -236,11 +236,11 @@ class TextureUploadTests
 		Test.Assert(writes.Count == 6);
 		for (uint32 face = 0; face < 6; face++)
 		{
-			Test.Assert(writes[face].ByteCount == 64, "one whole compressed face");
-			Test.Assert(writes[face].Offset == (int)face * 64);
-			Test.Assert(writes[face].ArrayLayer == face);
-			Test.Assert(writes[face].Layout.BytesPerRow == 32);
-			Test.Assert(writes[face].Layout.RowsPerImage == 2);
+			Test.Assert(writes[(int)face].ByteCount == 64, "one whole compressed face");
+			Test.Assert(writes[(int)face].Offset == (int)face * 64);
+			Test.Assert(writes[(int)face].ArrayLayer == face);
+			Test.Assert(writes[(int)face].Layout.BytesPerRow == 32);
+			Test.Assert(writes[(int)face].Layout.RowsPerImage == 2);
 		}
 	}
 }

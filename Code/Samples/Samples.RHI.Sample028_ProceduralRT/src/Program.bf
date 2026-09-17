@@ -454,7 +454,7 @@ class ProceduralRTSample : SampleApp
 		for (uint32 i < cShaderGroupCount)
 		{
 			Internal.MemCpy(mapped + (i * mShaderBindingTableStride),
-				&handles[i * handleSize], handleSize);
+				&handles[(int)i * (int)handleSize], (int)handleSize);
 		}
 		mShaderBindingTable.Unmap();
 		return .Ok;

@@ -83,7 +83,7 @@ class InstancedSkinningComponentManager : ComponentManager<InstancedSkinningComp
 		component.PrevPosePool = swap;
 
 		component.PosePool.Resize(poolSize);
-		component.Scratch.Resize(boneCount);
+		component.Scratch.Resize((int)boneCount);
 
 		let duration = (component.Clip.Duration > 0.0f) ? component.Clip.Duration : 1.0f;
 		component.Time += deltaTime * component.Speed;
@@ -104,7 +104,7 @@ class InstancedSkinningComponentManager : ComponentManager<InstancedSkinningComp
 
 			AnimationSampler.SampleClip(component.Clip, component.Skeleton, phase, scratch);
 			component.Skeleton.ComputeSkinningMatrices(scratch,
-				.(component.PosePool.Ptr + (int)index * (int)boneCount, boneCount));
+				.(component.PosePool.Ptr + (int)index * (int)boneCount, (int)boneCount));
 		}
 
 		// The first frame, or a change of pose count: there is no previous pool, so it becomes

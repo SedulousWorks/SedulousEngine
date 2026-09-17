@@ -333,7 +333,7 @@ class ActionRuntime
 		if (!reference.IsValid || (reference.Index >= (uint32)mRefs.Count))
 			return .Err;
 
-		for (let candidate in mRefs[reference.Index].Candidates)
+		for (let candidate in mRefs[(int)reference.Index].Candidates)
 		{
 			if (mSetEnabled[candidate.Set])
 				return .Ok(candidate.FlatIndex);

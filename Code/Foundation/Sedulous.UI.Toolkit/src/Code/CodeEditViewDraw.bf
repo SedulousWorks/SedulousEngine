@@ -110,8 +110,8 @@ extension CodeEditView
 					let text = mDoc.Line(line);
 					for (let token in tokens)
 					{
-						ctx.VG.DrawText(text.Substring(token.ByteBegin,
-							token.ByteEnd - token.ByteBegin), font,
+						ctx.VG.DrawText(text.Substring((int)token.ByteBegin,
+							(int)(token.ByteEnd - token.ByteBegin)), font,
 							Float2(textLeft + ((float)token.Column * advance), lineTop + ascent),
 							TokenColors.For(token.Kind, textColor));
 					}

@@ -151,7 +151,7 @@ class BindlessSample : SampleApp
 			for (uint32 y < cTextureSize)
 			{
 				for (uint32 x < cTextureSize)
-					GeneratePixel(t, x, y, &pixels[(y * cTextureSize + x) * 4]);
+					GeneratePixel(t, x, y, &pixels[(int)(y * cTextureSize + x) * 4]);
 			}
 
 			var textureDesc = TextureDesc();
@@ -255,10 +255,10 @@ class BindlessSample : SampleApp
 		var updates = scope BindlessUpdateEntry[cTextureCount];
 		for (uint32 i < cTextureCount)
 		{
-			updates[i] = .();
-			updates[i].LayoutIndex = 0;
-			updates[i].ArrayIndex = i;
-			updates[i].TextureView = mTextureViews[i];
+			updates[(int)i] = .();
+			updates[(int)i].LayoutIndex = 0;
+			updates[(int)i].ArrayIndex = i;
+			updates[(int)i].TextureView = mTextureViews[i];
 		}
 		mBindlessBindGroup.UpdateBindless(updates);
 

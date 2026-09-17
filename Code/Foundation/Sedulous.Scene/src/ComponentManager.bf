@@ -40,16 +40,16 @@ class ComponentManager<T> : ComponentManagerBase where T : struct, new
 	{
 		Debug.Assert(!HasComponent(entity), "one component of a type per entity");
 
-		let dense = (uint32)mDense.Count;
+		let slot = mDense.Count;
 		// CONSTRUCTED, not zeroed: a component's field initialisers are its defaults, and
 		// `default` would silently replace them with zero. Raptor gets this from C++ value
 		// initialisation, which runs the member initialisers.
 		mDense.Add(T());
 		mOwners.Add(entity);
-		mSparse[entity.Index] = dense;
+		mSparse[entity.Index] = (uint32)slot;
 		mPendingInit.Add(entity);
-		OnComponentCreated(&mDense[dense], entity);
-		return &mDense[dense];
+		OnComponentCreated(&mDense[slot], entity);
+		return &mDense[slot];
 	}
 
 	public override bool HasComponent(EntityHandle entity) => DenseIndex(entity) != cInvalid;
@@ -67,7 +67,7 @@ class ComponentManager<T> : ComponentManagerBase where T : struct, new
 	public T* Get(EntityHandle entity)
 	{
 		let index = DenseIndex(entity);
-		return (index != cInvalid) ? &mDense[index] : null;
+		return (index != cInvalid) ? &mDense[(int)index] : null;
 	}
 
 	public override void RemoveComponent(EntityHandle entity)
@@ -76,15 +76,18 @@ class ComponentManager<T> : ComponentManagerBase where T : struct, new
 		if (index == cInvalid)
 			return;
 
-		OnComponentDestroyed(&mDense[index], entity);
+		// Narrowed ONCE, past the sentinel check: the sparse map stores uint32 while a pool
+		// index is an int, and those are only the same width on a 64 bit target.
+		let slot = (int)index;
+		OnComponentDestroyed(&mDense[slot], entity);
 
 		// Swap the last element into the hole, which is what keeps the pool packed.
-		let last = (uint32)mDense.Count - 1;
-		if (index != last)
+		let last = mDense.Count - 1;
+		if (slot != last)
 		{
-			mDense[index] = mDense[last];
-			mOwners[index] = mOwners[last];
-			mSparse[mOwners[index].Index] = index;
+			mDense[slot] = mDense[last];
+			mOwners[slot] = mOwners[last];
+			mSparse[mOwners[slot].Index] = (uint32)slot;
 		}
 		mDense.PopBack();
 		mOwners.PopBack();
@@ -151,6 +154,6 @@ class ComponentManager<T> : ComponentManagerBase where T : struct, new
 
 		// The stored owner carries the WHOLE handle, so a stale one, whose slot was reused,
 		// fails the generation check and reads as absent.
-		return (mOwners[dense] == entity) ? dense : cInvalid;
+		return (mOwners[(int)dense] == entity) ? dense : cInvalid;
 	}
 }

@@ -48,7 +48,7 @@ static class GraphValidator
 
 		for (uint32 i = 0; i < (uint32)resources.Length; i++)
 		{
-			let resource = resources[i];
+			let resource = resources[(int)i];
 			if ((resource != null)
 				&& ((resource.Lifetime == .Imported) || (resource.Lifetime == .Persistent)))
 				written.Add(i);
@@ -140,8 +140,8 @@ static class GraphValidator
 
 	private static StringView NameOf(Span<RenderGraphResource> resources, uint32 index)
 	{
-		if ((index < (uint32)resources.Length) && (resources[index] != null))
-			return resources[index].Name;
+		if ((index < (uint32)resources.Length) && (resources[(int)index] != null))
+			return resources[(int)index].Name;
 		return "???";
 	}
 }

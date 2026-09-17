@@ -81,7 +81,7 @@ class RGGraphTests
 		Test.Assert(graph.OutputHeight == 600);
 
 		let handle = graph.CreateTransient("Half", .(TextureFormat.RGBA8Unorm, SizeMode.HalfSize));
-		let resource = graph.Resources[handle.Index];
+		let resource = graph.Resources[(int)handle.Index];
 		Test.Assert((resource.TextureDesc.Width == 400) && (resource.TextureDesc.Height == 300));
 	}
 
@@ -94,7 +94,7 @@ class RGGraphTests
 		let handle = graph.ImportTarget("Backbuffer", null, null, ResourceState.Present);
 		Test.Assert(handle.IsValid);
 
-		let resource = graph.Resources[handle.Index];
+		let resource = graph.Resources[(int)handle.Index];
 		Test.Assert(resource.Lifetime == .Imported);
 		Test.Assert(resource.FinalState.Value == .Present);
 	}
@@ -108,10 +108,10 @@ class RGGraphTests
 		graph.BeginFrame(0);
 
 		let handle = graph.ImportTarget("Imported", null, null);
-		Test.Assert(graph.Resources[handle.Index].LastKnownState == .Undefined);
+		Test.Assert(graph.Resources[(int)handle.Index].LastKnownState == .Undefined);
 
 		let stated = graph.ImportTarget("Stated", null, null, null, ResourceState.ShaderRead);
-		Test.Assert(graph.Resources[stated.Index].LastKnownState == .ShaderRead);
+		Test.Assert(graph.Resources[(int)stated.Index].LastKnownState == .ShaderRead);
 	}
 
 	/// A reset keeps the PERSISTENT resources and drops everything else, which is what a

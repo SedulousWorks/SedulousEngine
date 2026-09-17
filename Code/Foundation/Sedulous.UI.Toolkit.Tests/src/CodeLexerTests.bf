@@ -32,7 +32,7 @@ class CodeLexerTests
 	}
 
 	private static StringView TextOf(StringView line, CodeToken token) =>
-		line.Substring(token.ByteBegin, token.ByteEnd - token.ByteBegin);
+		line.Substring((int)token.ByteBegin, (int)(token.ByteEnd - token.ByteBegin));
 
 	/// The token whose text is exactly this, or a default one with nothing in it.
 	private static bool TryFind(List<CodeToken> tokens, StringView line, StringView text,

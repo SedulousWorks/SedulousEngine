@@ -222,6 +222,14 @@ namespace Win32.System.Kernel
 	}
 #endif
 
+	// The 32 bit SLIST_HEADER names this and the generator never emitted it: every target so
+	// far has been 64 bit, so this branch had not been compiled until wasm32.
+	[CRepr]
+	public struct SINGLE_LIST_ENTRY
+	{
+		public SINGLE_LIST_ENTRY* Next;
+	}
+
 	#if BF_32_BIT
 	[CRepr, Union]
 	public struct SLIST_HEADER

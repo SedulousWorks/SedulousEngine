@@ -33,8 +33,8 @@ class RenderContext
 		mSlots = slots;
 		for (uint32 slot = 0; slot < mSlots; slot++)
 		{
-			mArenas[slot].Reset();
-			mLists[slot].Clear();
+			mArenas[(int)slot].Reset();
+			mLists[(int)slot].Clear();
 		}
 	}
 
@@ -43,11 +43,11 @@ class RenderContext
 	public void ResetItems()
 	{
 		for (uint32 slot = 0; slot < mSlots; slot++)
-			mLists[slot].Clear();
+			mLists[(int)slot].Clear();
 	}
 
-	public FrameArena Arena(uint32 slot) => mArenas[slot];
-	public List<RenderData> Items(uint32 slot) => mLists[slot];
+	public FrameArena Arena(uint32 slot) => mArenas[(int)slot];
+	public List<RenderData> Items(uint32 slot) => mLists[(int)slot];
 	public uint32 SlotCount => mSlots;
 
 	/// Gathers every slot's items into the snapshot, on ONE thread, after the parallel fill.
@@ -55,7 +55,7 @@ class RenderContext
 	{
 		for (uint32 slot = 0; slot < mSlots; slot++)
 		{
-			for (let item in mLists[slot])
+			for (let item in mLists[(int)slot])
 				outScene.AddExternal(item);
 		}
 	}

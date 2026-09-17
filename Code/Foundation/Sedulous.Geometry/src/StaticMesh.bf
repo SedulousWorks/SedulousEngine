@@ -118,12 +118,12 @@ class StaticMesh
 			let i0 = Corner(t, 0);
 			let i1 = Corner(t, 1);
 			let i2 = Corner(t, 2);
-			let e1 = Vertices[i1].Position - Vertices[i0].Position;
-			let e2 = Vertices[i2].Position - Vertices[i0].Position;
+			let e1 = Vertices[(int)i1].Position - Vertices[(int)i0].Position;
+			let e2 = Vertices[(int)i2].Position - Vertices[(int)i0].Position;
 			let faceNormal = Cross(e1, e2);
-			Vertices[i0].Normal += faceNormal;
-			Vertices[i1].Normal += faceNormal;
-			Vertices[i2].Normal += faceNormal;
+			Vertices[(int)i0].Normal += faceNormal;
+			Vertices[(int)i1].Normal += faceNormal;
+			Vertices[(int)i2].Normal += faceNormal;
 		}
 
 		for (var vertex in ref Vertices)

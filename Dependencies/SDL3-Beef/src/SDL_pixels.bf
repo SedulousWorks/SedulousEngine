@@ -253,7 +253,9 @@ public static //extension SDL3
  */
 	public static SDL_PixelFormat SDL_DEFINE_PIXELFORMAT(SDL_PixelType type, int32 order, SDL_PackedLayout layout, uint32 bits, uint32 bytes)
 	{
-		return (SDL_PixelFormat)((1 << 28) | (((int32)type) << 24) | ((order) << 20) | (((int32)layout) << 16) | ((bits) << 8) | ((bytes) << 0));
+		// Composed in uint32, which is what SDL_PixelFormat is: `int` is 32 bit on wasm32, so
+		// mixing it with the uint32 fields no longer widens to a common type on its own.
+		return (SDL_PixelFormat)((uint32)(1 << 28) | ((uint32)type << 24) | ((uint32)order << 20) | ((uint32)layout << 16) | (bits << 8) | (bytes << 0));
 	}
 
 /**

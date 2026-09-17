@@ -246,7 +246,7 @@ class TerrainPaletteTextureCache
 	{
 		let scales = scope List<float>();
 		for (uint32 i < data.SliceCount)
-			scales.Add((i < paletteTileScales.Length) ? paletteTileScales[i] : 1.0f);
+			scales.Add(((int)i < paletteTileScales.Length) ? paletteTileScales[(int)i] : 1.0f);
 
 		var desc = BufferDesc();
 		desc.Size = (uint64)scales.Count * sizeof(float);

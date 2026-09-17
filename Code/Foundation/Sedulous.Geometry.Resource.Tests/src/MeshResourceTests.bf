@@ -118,7 +118,9 @@ class MeshResourceTests
 		{
 			// Deliberately different sizes, so a mesh holding another's contents is
 			// visible as a count rather than only as different bytes.
-			let mesh = Primitives.Sphere(1.0f, (uint32)(6 + i), 4);
+			uint32 segments = 6;
+			segments += (uint32)i;
+			let mesh = Primitives.Sphere(1.0f, segments, 4);
 			defer delete mesh;
 			ids.Add(fixture.CookStatic(scope $"sphere{i}", mesh));
 			expectedVertices.Add(mesh.VertexCount);

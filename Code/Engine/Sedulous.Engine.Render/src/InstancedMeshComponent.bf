@@ -108,12 +108,12 @@ struct InstancedMeshComponent : ISerializable, IComponentResources
 	{
 		if (index < (uint32)Instances.Count)
 		{
-			Instances[index] = transform;
+			Instances[(int)index] = transform;
 			Version++;
 		}
 	}
 
-	public void Reserve(uint32 count) mut => Instances.Reserve(count);
+	public void Reserve(uint32 count) mut => Instances.Reserve((int)count);
 
 	public void Clear() mut
 	{

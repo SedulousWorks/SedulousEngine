@@ -117,12 +117,12 @@ class Scene
 	{
 		if (!entity.IsAssigned || (entity.Index >= (uint32)mEntities.Count))
 			return false;
-		let slot = mEntities[entity.Index];
+		let slot = mEntities[(int)entity.Index];
 		return slot.Alive && (slot.Generation == entity.Generation);
 	}
 
 	public Guid GetEntityId(EntityHandle entity)
-		=> IsValid(entity) ? mEntities[entity.Index].PersistentId : Guid();
+		=> IsValid(entity) ? mEntities[(int)entity.Index].PersistentId : Guid();
 
 	public EntityHandle FindEntity(Guid id)
 	{
@@ -137,17 +137,17 @@ class Scene
 	}
 
 	public StringView GetEntityName(EntityHandle entity)
-		=> IsValid(entity) ? mEntities[entity.Index].Name : default;
+		=> IsValid(entity) ? mEntities[(int)entity.Index].Name : default;
 
 	public void SetEntityName(EntityHandle entity, StringView name)
 	{
 		if (!IsValid(entity))
 			return;
-		mEntities[entity.Index].Name.Set(name);
+		mEntities[(int)entity.Index].Name.Set(name);
 		mRevision++;
 	}
 
-	public bool IsActive(EntityHandle entity) => IsValid(entity) && mEntities[entity.Index].Active;
+	public bool IsActive(EntityHandle entity) => IsValid(entity) && mEntities[(int)entity.Index].Active;
 
 	/// The EFFECTIVE state: this entity's own flag AND every ancestor's.
 	///
@@ -155,16 +155,16 @@ class Scene
 	/// gating reads this and never IsActive: deactivating a parent must dark the whole
 	/// subtree without touching any child's own flag.
 	public bool IsEffectivelyActive(EntityHandle entity)
-		=> IsValid(entity) && mEntities[entity.Index].EffectiveActive;
+		=> IsValid(entity) && mEntities[(int)entity.Index].EffectiveActive;
 
 	public void SetActive(EntityHandle entity, bool active)
 	{
 		if (!IsValid(entity))
 			return;
-		if (mEntities[entity.Index].Active == active)
+		if (mEntities[(int)entity.Index].Active == active)
 			return;
 
-		mEntities[entity.Index].Active = active;
+		mEntities[(int)entity.Index].Active = active;
 		// Settle the cache BEFORE notifying, so a listener asking IsEffectivelyActive from
 		// the hook sees the new truth. The hook itself only reports an own flag change: it
 		// is not the gating mechanism, which is the poll above.
@@ -180,8 +180,8 @@ class Scene
 	{
 		for (uint32 i < (uint32)mEntities.Count)
 		{
-			if (mEntities[i].Alive)
-				fn(.(i, mEntities[i].Generation));
+			if (mEntities[(int)i].Alive)
+				fn(.(i, mEntities[(int)i].Generation));
 		}
 	}
 
@@ -193,8 +193,8 @@ class Scene
 	{
 		for (uint32 i < (uint32)mEntities.Count)
 		{
-			if (mEntities[i].Alive && (mEntities[i].Name == name))
-				return .(i, mEntities[i].Generation);
+			if (mEntities[(int)i].Alive && (mEntities[(int)i].Name == name))
+				return .(i, mEntities[(int)i].Generation);
 		}
 		return .Invalid;
 	}
@@ -342,27 +342,27 @@ class Scene
 	{
 		if (!IsValid(entity))
 			return;
-		mTransforms[entity.Index].Local = transform;
+		mTransforms[(int)entity.Index].Local = transform;
 		MarkDirty(entity);
 	}
 
 	public Transform GetLocalTransform(EntityHandle entity)
-		=> IsValid(entity) ? mTransforms[entity.Index].Local : Transform();
+		=> IsValid(entity) ? mTransforms[(int)entity.Index].Local : Transform();
 
 	public void SetLocalPosition(EntityHandle entity, Float3 position)
 	{
 		if (!IsValid(entity))
 			return;
-		mTransforms[entity.Index].Local.Position = position;
+		mTransforms[(int)entity.Index].Local.Position = position;
 		MarkDirty(entity);
 	}
 
 	/// The world matrix from the most recent UpdateTransforms. Identity until the first one.
 	public Float4x4 GetWorldMatrix(EntityHandle entity)
-		=> IsValid(entity) ? mTransforms[entity.Index].WorldMatrix : Float4x4.Identity();
+		=> IsValid(entity) ? mTransforms[(int)entity.Index].WorldMatrix : Float4x4.Identity();
 
 	public Float4x4 GetPrevWorldMatrix(EntityHandle entity)
-		=> IsValid(entity) ? mTransforms[entity.Index].PrevWorldMatrix : Float4x4.Identity();
+		=> IsValid(entity) ? mTransforms[(int)entity.Index].PrevWorldMatrix : Float4x4.Identity();
 
 	/// The translation ROW of the world matrix, this being a row vector convention.
 	public Float3 GetWorldPosition(EntityHandle entity)
@@ -375,20 +375,20 @@ class Scene
 	/// moved, was reparented, or a dirty ancestor cascaded through it. Read in
 	/// PostTransform.
 	public bool IsTransformUpdatedThisFrame(EntityHandle entity)
-		=> IsValid(entity) && mTransforms[entity.Index].UpdatedThisFrame;
+		=> IsValid(entity) && mTransforms[(int)entity.Index].UpdatedThisFrame;
 
 	public EntityHandle GetParent(EntityHandle entity)
-		=> IsValid(entity) ? mTransforms[entity.Index].Parent : .Invalid;
+		=> IsValid(entity) ? mTransforms[(int)entity.Index].Parent : .Invalid;
 
 	/// The first entity in the ROOT sibling list. Walk it with GetNextSibling for list
 	/// order, which is the order the hierarchy shows and serialization preserves.
 	public EntityHandle FirstRoot => mFirstRoot;
 
 	public EntityHandle GetFirstChild(EntityHandle entity)
-		=> IsValid(entity) ? mTransforms[entity.Index].FirstChild : .Invalid;
+		=> IsValid(entity) ? mTransforms[(int)entity.Index].FirstChild : .Invalid;
 
 	public EntityHandle GetNextSibling(EntityHandle entity)
-		=> IsValid(entity) ? mTransforms[entity.Index].NextSibling : .Invalid;
+		=> IsValid(entity) ? mTransforms[(int)entity.Index].NextSibling : .Invalid;
 
 	public uint32 GetChildCount(EntityHandle entity)
 	{
@@ -396,11 +396,11 @@ class Scene
 			return 0;
 
 		uint32 count = 0;
-		var child = mTransforms[entity.Index].FirstChild;
+		var child = mTransforms[(int)entity.Index].FirstChild;
 		while (child.IsAssigned && IsValid(child))
 		{
 			count++;
-			child = mTransforms[child.Index].NextSibling;
+			child = mTransforms[(int)child.Index].NextSibling;
 		}
 		return count;
 	}
@@ -422,10 +422,10 @@ class Scene
 			return;
 
 		RemoveFromParent(child);
-		mTransforms[child.Index].Parent = parent;
+		mTransforms[(int)child.Index].Parent = parent;
 		if (parent.IsAssigned)
-			AppendToList(child, ref mTransforms[parent.Index].FirstChild,
-				ref mTransforms[parent.Index].LastChild);
+			AppendToList(child, ref mTransforms[(int)parent.Index].FirstChild,
+				ref mTransforms[(int)parent.Index].LastChild);
 		else
 			AppendToList(child, ref mFirstRoot, ref mLastRoot);
 
@@ -466,28 +466,28 @@ class Scene
 			return;
 		if (child == sibling)
 			return;
-		if (mTransforms[sibling.Index].PrevSibling == child)
+		if (mTransforms[(int)sibling.Index].PrevSibling == child)
 			return;
 
-		let parent = mTransforms[sibling.Index].Parent;
+		let parent = mTransforms[(int)sibling.Index].Parent;
 		if (parent.IsAssigned && IsDescendantOf(parent, child))
 			return;
 
 		RemoveFromParent(child);
 
-		let prevOfSibling = mTransforms[sibling.Index].PrevSibling;
-		mTransforms[child.Index].Parent = parent;
-		mTransforms[child.Index].NextSibling = sibling;
-		mTransforms[child.Index].PrevSibling = prevOfSibling;
+		let prevOfSibling = mTransforms[(int)sibling.Index].PrevSibling;
+		mTransforms[(int)child.Index].Parent = parent;
+		mTransforms[(int)child.Index].NextSibling = sibling;
+		mTransforms[(int)child.Index].PrevSibling = prevOfSibling;
 
 		if (prevOfSibling.IsAssigned)
-			mTransforms[prevOfSibling.Index].NextSibling = child;
+			mTransforms[(int)prevOfSibling.Index].NextSibling = child;
 		else if (parent.IsAssigned)
-			mTransforms[parent.Index].FirstChild = child;
+			mTransforms[(int)parent.Index].FirstChild = child;
 		else
 			mFirstRoot = child;
 
-		mTransforms[sibling.Index].PrevSibling = child;
+		mTransforms[(int)sibling.Index].PrevSibling = child;
 
 		MarkDirty(child);
 		// The splice may have changed the parent as well as the position.
@@ -520,8 +520,8 @@ class Scene
 		var current = entity;
 		while (IsValid(current))
 		{
-			world = world * mTransforms[current.Index].Local.ToMatrix();
-			current = mTransforms[current.Index].Parent;
+			world = world * mTransforms[(int)current.Index].Local.ToMatrix();
+			current = mTransforms[(int)current.Index].Parent;
 		}
 		return world;
 	}
@@ -541,9 +541,9 @@ class Scene
 		{
 			if (index >= (uint32)mTransforms.Count)
 				continue;
-			mTransforms[index].UpdatedThisFrame = false;
-			if (!mTransforms[index].Dirty && mEntities[index].Alive)
-				mTransforms[index].PrevWorldMatrix = mTransforms[index].WorldMatrix;
+			mTransforms[(int)index].UpdatedThisFrame = false;
+			if (!mTransforms[(int)index].Dirty && mEntities[(int)index].Alive)
+				mTransforms[(int)index].PrevWorldMatrix = mTransforms[(int)index].WorldMatrix;
 		}
 		mTransformsUpdatedThisFrame.Clear();
 
@@ -554,15 +554,15 @@ class Scene
 		// moved the parent, which is how a pasted child ends up drawn at the origin.
 		for (uint32 i < count)
 		{
-			if (!mTransforms[i].Dirty || !mEntities[i].Alive)
+			if (!mTransforms[(int)i].Dirty || !mEntities[(int)i].Alive)
 				continue;
 
-			let parent = mTransforms[i].Parent;
+			let parent = mTransforms[(int)i].Parent;
 			if (!parent.IsAssigned)
 				UpdateTransformRecursive(i, Float4x4.Identity());
-			else if (!mTransforms[parent.Index].Dirty)
+			else if (!mTransforms[(int)parent.Index].Dirty)
 				// The parent is clean, so its cached world matrix is current.
-				UpdateTransformRecursive(i, mTransforms[parent.Index].WorldMatrix);
+				UpdateTransformRecursive(i, mTransforms[(int)parent.Index].WorldMatrix);
 		}
 	}
 
@@ -851,7 +851,7 @@ class Scene
 			mTransforms.Add(.());
 		}
 
-		let slot = mEntities[index];
+		let slot = mEntities[(int)index];
 		slot.Generation++;
 		slot.Alive = true;
 		slot.Active = true;
@@ -861,7 +861,7 @@ class Scene
 		slot.Name.Set(name);
 
 		// Identity local, no links, not dirty.
-		mTransforms[index] = .();
+		mTransforms[(int)index] = .();
 
 		mAliveCount++;
 		mRevision++;
@@ -879,10 +879,10 @@ class Scene
 
 		// The subtree goes first. The next sibling is snapshot before each child dies,
 		// since the link it would be read through is cleared by the destroy.
-		var child = mTransforms[index].FirstChild;
+		var child = mTransforms[(int)index].FirstChild;
 		while (child.IsAssigned)
 		{
-			let nextSibling = IsValid(child) ? mTransforms[child.Index].NextSibling
+			let nextSibling = IsValid(child) ? mTransforms[(int)child.Index].NextSibling
 				: EntityHandle.Invalid;
 			DestroyEntityImmediate(child);
 			child = nextSibling;
@@ -894,14 +894,14 @@ class Scene
 		for (let system in mSortedSystems)
 			system.OnEntityDestroyed(entity);
 
-		let slot = mEntities[index];
+		let slot = mEntities[(int)index];
 		mIdMap.Remove(slot.PersistentId);
 		slot.Reset();
 
 		mFreeList.Add(index);
 		mAliveCount--;
 		mRevision++;
-		mTransforms[index] = .();
+		mTransforms[(int)index] = .();
 	}
 
 	/// Recomputes the cached effective active bit for `entity`'s whole subtree against its
@@ -914,8 +914,8 @@ class Scene
 		if (!IsValid(entity))
 			return;
 
-		let parent = mTransforms[entity.Index].Parent;
-		let parentEffective = parent.IsAssigned ? mEntities[parent.Index].EffectiveActive : true;
+		let parent = mTransforms[(int)entity.Index].Parent;
+		let parentEffective = parent.IsAssigned ? mEntities[(int)parent.Index].EffectiveActive : true;
 
 		let stack = scope List<(uint32 index, bool parentEffective)>();
 		stack.Add((entity.Index, parentEffective));
@@ -923,18 +923,18 @@ class Scene
 		while (!stack.IsEmpty)
 		{
 			let item = stack.PopBack();
-			let slot = mEntities[item.index];
+			let slot = mEntities[(int)item.index];
 			let effective = slot.Active && item.parentEffective;
 
 			if ((slot.EffectiveActive == effective) && !slot.Active)
 				continue;
 
 			slot.EffectiveActive = effective;
-			var child = mTransforms[item.index].FirstChild;
+			var child = mTransforms[(int)item.index].FirstChild;
 			while (child.IsAssigned)
 			{
 				stack.Add((child.Index, effective));
-				child = mTransforms[child.Index].NextSibling;
+				child = mTransforms[(int)child.Index].NextSibling;
 			}
 		}
 	}
@@ -947,20 +947,20 @@ class Scene
 	{
 		if (!entity.IsAssigned)
 			return;
-		if (mTransforms[entity.Index].Dirty)
+		if (mTransforms[(int)entity.Index].Dirty)
 			return;
 
-		mTransforms[entity.Index].Dirty = true;
+		mTransforms[(int)entity.Index].Dirty = true;
 
-		var child = mTransforms[entity.Index].FirstChild;
+		var child = mTransforms[(int)entity.Index].FirstChild;
 		while (child.IsAssigned && IsValid(child))
 		{
-			let next = mTransforms[child.Index].NextSibling;
+			let next = mTransforms[(int)child.Index].NextSibling;
 			MarkDirty(child);
 			child = next;
 		}
 
-		let parent = mTransforms[entity.Index].Parent;
+		let parent = mTransforms[(int)entity.Index].Parent;
 		if (parent.IsAssigned)
 			MarkDirty(parent);
 	}
@@ -970,7 +970,7 @@ class Scene
 	/// world times the parent's inverse.
 	private void ApplyWorldAsLocal(EntityHandle child, Float4x4 childWorld)
 	{
-		let parent = mTransforms[child.Index].Parent;
+		let parent = mTransforms[(int)child.Index].Parent;
 		let local = parent.IsAssigned
 			? childWorld * Inverse(ComposeWorldMatrix(parent))
 			: childWorld;
@@ -979,27 +979,27 @@ class Scene
 
 	private void UpdateTransformRecursive(uint32 index, Float4x4 parentWorld)
 	{
-		mTransforms[index].PrevWorldMatrix = mTransforms[index].WorldMatrix;
-		mTransforms[index].WorldMatrix = mTransforms[index].Local.ToMatrix() * parentWorld;
-		mTransforms[index].Dirty = false;
-		mTransforms[index].UpdatedThisFrame = true;
+		mTransforms[(int)index].PrevWorldMatrix = mTransforms[(int)index].WorldMatrix;
+		mTransforms[(int)index].WorldMatrix = mTransforms[(int)index].Local.ToMatrix() * parentWorld;
+		mTransforms[(int)index].Dirty = false;
+		mTransforms[(int)index].UpdatedThisFrame = true;
 		mTransformsUpdatedThisFrame.Add(index);
 
-		let myWorld = mTransforms[index].WorldMatrix;
-		var child = mTransforms[index].FirstChild;
+		let myWorld = mTransforms[(int)index].WorldMatrix;
+		var child = mTransforms[(int)index].FirstChild;
 		while (child.IsAssigned && IsValid(child))
 		{
 			let childIndex = child.Index;
 			UpdateTransformRecursive(childIndex, myWorld);
-			child = mTransforms[childIndex].NextSibling;
+			child = mTransforms[(int)childIndex].NextSibling;
 		}
 	}
 
 	/// O(1) append to a head and tail sibling list; the tail pointer is what avoids a walk.
 	private void AppendToList(EntityHandle entity, ref EntityHandle head, ref EntityHandle tail)
 	{
-		mTransforms[entity.Index].NextSibling = .Invalid;
-		mTransforms[entity.Index].PrevSibling = tail;
+		mTransforms[(int)entity.Index].NextSibling = .Invalid;
+		mTransforms[(int)entity.Index].PrevSibling = tail;
 
 		if (!head.IsAssigned)
 		{
@@ -1007,28 +1007,28 @@ class Scene
 			tail = entity;
 			return;
 		}
-		mTransforms[tail.Index].NextSibling = entity;
+		mTransforms[(int)tail.Index].NextSibling = entity;
 		tail = entity;
 	}
 
 	/// O(1) splice out through the back pointer, with no walk to find the predecessor.
 	private void RemoveFromParent(EntityHandle child)
 	{
-		let parent = mTransforms[child.Index].Parent;
-		let prev = mTransforms[child.Index].PrevSibling;
-		let next = mTransforms[child.Index].NextSibling;
+		let parent = mTransforms[(int)child.Index].Parent;
+		let prev = mTransforms[(int)child.Index].PrevSibling;
+		let next = mTransforms[(int)child.Index].NextSibling;
 
 		if (prev.IsAssigned)
-			mTransforms[prev.Index].NextSibling = next;
+			mTransforms[(int)prev.Index].NextSibling = next;
 		if (next.IsAssigned)
-			mTransforms[next.Index].PrevSibling = prev;
+			mTransforms[(int)next.Index].PrevSibling = prev;
 
 		if (parent.IsAssigned)
 		{
-			if (mTransforms[parent.Index].FirstChild == child)
-				mTransforms[parent.Index].FirstChild = next;
-			if (mTransforms[parent.Index].LastChild == child)
-				mTransforms[parent.Index].LastChild = prev;
+			if (mTransforms[(int)parent.Index].FirstChild == child)
+				mTransforms[(int)parent.Index].FirstChild = next;
+			if (mTransforms[(int)parent.Index].LastChild == child)
+				mTransforms[(int)parent.Index].LastChild = prev;
 		}
 		else
 		{
@@ -1038,9 +1038,9 @@ class Scene
 				mLastRoot = prev;
 		}
 
-		mTransforms[child.Index].Parent = .Invalid;
-		mTransforms[child.Index].NextSibling = .Invalid;
-		mTransforms[child.Index].PrevSibling = .Invalid;
+		mTransforms[(int)child.Index].Parent = .Invalid;
+		mTransforms[(int)child.Index].NextSibling = .Invalid;
+		mTransforms[(int)child.Index].PrevSibling = .Invalid;
 	}
 
 	/// Whether `entity` IS `ancestor` or sits below it. Walked upward, which is the short
@@ -1052,7 +1052,7 @@ class Scene
 		{
 			if (current == ancestor)
 				return true;
-			current = mTransforms[current.Index].Parent;
+			current = mTransforms[(int)current.Index].Parent;
 		}
 		return false;
 	}

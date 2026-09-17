@@ -197,7 +197,7 @@ class VulkanBindGroup : IBindGroup
 			let entry = entries[i];
 			if (entry.LayoutIndex >= (uint32)layoutEntries.Length)
 				continue;
-			let layoutEntry = layoutEntries[entry.LayoutIndex];
+			let layoutEntry = layoutEntries[(int)entry.LayoutIndex];
 
 			VkWriteDescriptorSet write = .();
 			write.dstSet = mSet;

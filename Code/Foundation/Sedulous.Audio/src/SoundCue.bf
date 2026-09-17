@@ -56,7 +56,7 @@ class SoundCue
 
 		if (cue.Mode == .Sequential)
 		{
-			pick.VariantIndex = eligible[sequentialCursor % (uint32)eligibleCount];
+			pick.VariantIndex = eligible[(int)(sequentialCursor % (uint32)eligibleCount)];
 			sequentialCursor++;
 		}
 		else

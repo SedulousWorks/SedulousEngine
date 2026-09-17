@@ -1335,10 +1335,10 @@ class VGContext
 		{
 			let t = (float)i / (float)(cGradientLutWidth - 1);
 			let color = ToColor32(fill.SampleRamp(t));
-			pixels[(i * 4) + 0] = color.R;
-			pixels[(i * 4) + 1] = color.G;
-			pixels[(i * 4) + 2] = color.B;
-			pixels[(i * 4) + 3] = color.A;
+			pixels[(int)(i * 4) + 0] = color.R;
+			pixels[(int)(i * 4) + 1] = color.G;
+			pixels[(int)(i * 4) + 2] = color.B;
+			pixels[(int)(i * 4) + 3] = color.A;
 		}
 
 		// Keyed by the ramp's CONTENT, so a hundred fills of one gradient, and the same

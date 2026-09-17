@@ -99,15 +99,15 @@ static class TerrainImageOps
 
 				for (int c < 3)
 				{
-					let average = (SrgbToLinear(source[at[0] + (uint32)c])
-						+ SrgbToLinear(source[at[1] + (uint32)c])
-						+ SrgbToLinear(source[at[2] + (uint32)c])
-						+ SrgbToLinear(source[at[3] + (uint32)c])) * 0.25f;
+					let average = (SrgbToLinear(source[(int)at[0] + c])
+						+ SrgbToLinear(source[(int)at[1] + c])
+						+ SrgbToLinear(source[(int)at[2] + c])
+						+ SrgbToLinear(source[(int)at[3] + c])) * 0.25f;
 					destination[((int)y * (int)half + (int)x) * 4 + c] = LinearToSrgb(average);
 				}
 
-				let alpha = (uint32)source[at[0] + 3] + source[at[1] + 3] + source[at[2] + 3]
-					+ source[at[3] + 3];
+				let alpha = (uint32)source[(int)at[0] + 3] + source[(int)at[1] + 3] + source[(int)at[2] + 3]
+					+ source[(int)at[3] + 3];
 				destination[((int)y * (int)half + (int)x) * 4 + 3] = (uint8)((alpha + 2) / 4);
 			}
 		}

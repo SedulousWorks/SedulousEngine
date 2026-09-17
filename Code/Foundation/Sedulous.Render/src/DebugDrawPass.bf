@@ -151,7 +151,8 @@ class DebugDrawPass
 		if (total == 0)
 			return;
 
-		let slot = (int)(viewIndex % cMaxViews) * mFramesInFlight + (frameIndex % mFramesInFlight);
+		let slot = (int)(viewIndex % cMaxViews) * (int)mFramesInFlight
+			+ (int)(frameIndex % mFramesInFlight);
 		let buffer = UploadGeometry(slot, mGeomScratch);
 		if (buffer == null)
 			return;
@@ -218,7 +219,8 @@ class DebugDrawPass
 		if (mScreenScratch.IsEmpty)
 			return;
 
-		let slot = (int)(viewIndex % cMaxViews) * mFramesInFlight + (frameIndex % mFramesInFlight);
+		let slot = (int)(viewIndex % cMaxViews) * (int)mFramesInFlight
+			+ (int)(frameIndex % mFramesInFlight);
 		let buffer = UploadScreen(slot, mScreenScratch);
 		if (buffer == null)
 			return;

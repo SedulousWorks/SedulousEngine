@@ -413,9 +413,9 @@ class GeometryTests
 
 		for (uint32 t < triangles)
 		{
-			let p0 = sphere.Vertices[sphere.Indices.Get(t * 3 + 0)].Position;
-			let p1 = sphere.Vertices[sphere.Indices.Get(t * 3 + 1)].Position;
-			let p2 = sphere.Vertices[sphere.Indices.Get(t * 3 + 2)].Position;
+			let p0 = sphere.Vertices[(int)sphere.Indices.Get(t * 3 + 0)].Position;
+			let p1 = sphere.Vertices[(int)sphere.Indices.Get(t * 3 + 1)].Position;
+			let p2 = sphere.Vertices[(int)sphere.Indices.Get(t * 3 + 2)].Position;
 
 			let faceNormal = Cross(p1 - p0, p2 - p0);
 			let centroid = (p0 + p1 + p2) * (1.0f / 3.0f);
@@ -461,9 +461,9 @@ class GeometryTests
 				let i0 = mesh.Indices.Get(t * 3 + 0);
 				let i1 = mesh.Indices.Get(t * 3 + 1);
 				let i2 = mesh.Indices.Get(t * 3 + 2);
-				let p0 = mesh.Vertices[i0].Position;
-				let p1 = mesh.Vertices[i1].Position;
-				let p2 = mesh.Vertices[i2].Position;
+				let p0 = mesh.Vertices[(int)i0].Position;
+				let p1 = mesh.Vertices[(int)i1].Position;
+				let p2 = mesh.Vertices[(int)i2].Position;
 
 				let faceNormal = Cross(p1 - p0, p2 - p0);
 				// A pole or seam triangle can be degenerate, and a degenerate triangle has
@@ -471,7 +471,7 @@ class GeometryTests
 				if (LengthSquared(faceNormal) <= 0.000001f)
 					continue;
 
-				let shading = mesh.Vertices[i0].Normal + mesh.Vertices[i1].Normal + mesh.Vertices[i2].Normal;
+				let shading = mesh.Vertices[(int)i0].Normal + mesh.Vertices[(int)i1].Normal + mesh.Vertices[(int)i2].Normal;
 				Test.Assert(Dot(faceNormal, shading) > 0.0f,
 					scope $"triangle {t} is wound against its own normals");
 			}

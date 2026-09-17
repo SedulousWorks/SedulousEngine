@@ -21,10 +21,10 @@ class ThemeAndFontTests
 		defer delete pixels;
 		for (uint32 i < width * height)
 		{
-			pixels[i * 4] = r;
-			pixels[i * 4 + 1] = g;
-			pixels[i * 4 + 2] = b;
-			pixels[i * 4 + 3] = 255;
+			pixels[(int)i * 4] = r;
+			pixels[(int)i * 4 + 1] = g;
+			pixels[(int)i * 4 + 2] = b;
+			pixels[(int)i * 4 + 3] = 255;
 		}
 		return new OwnedImageData(width, height, .RGBA8, .(&pixels[0], pixels.Count), .Linear);
 	}

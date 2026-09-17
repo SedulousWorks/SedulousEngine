@@ -51,7 +51,7 @@ static class GraphDebug
 			{
 				if (!access.Handle.IsValid || (access.Handle.Index >= (uint32)resources.Length))
 					continue;
-				if (resources[access.Handle.Index] == null)
+				if (resources[(int)access.Handle.Index] == null)
 					continue;
 
 				let label = AccessLabel(access.Type);

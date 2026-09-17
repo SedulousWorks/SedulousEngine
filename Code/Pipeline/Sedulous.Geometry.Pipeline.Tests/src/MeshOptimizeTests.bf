@@ -151,7 +151,7 @@ class MeshOptimizeTests
 		var previous = lod0Indices;
 		for (uint32 level < added)
 		{
-			let count = (int)source.LodIndexCount[level];
+			let count = (int)source.LodIndexCount[(int)level];
 			Test.Assert(count > 0);
 			Test.Assert(count <= ((previous * 3) / 4));
 			previous = count;

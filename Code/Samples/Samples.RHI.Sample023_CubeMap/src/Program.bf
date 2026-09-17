@@ -241,10 +241,10 @@ class CubeMapSample : SampleApp
 					let t = 1.0f - distance * 0.5f;
 
 					let at = (y * cFaceSize + x) * 4;
-					pixels[at + 0] = (uint8)(faceColors[face][0] * t + 40 * (1.0f - t));
-					pixels[at + 1] = (uint8)(faceColors[face][1] * t + 40 * (1.0f - t));
-					pixels[at + 2] = (uint8)(faceColors[face][2] * t + 40 * (1.0f - t));
-					pixels[at + 3] = 255;
+					pixels[(int)at + 0] = (uint8)(faceColors[face][0] * t + 40 * (1.0f - t));
+					pixels[(int)at + 1] = (uint8)(faceColors[face][1] * t + 40 * (1.0f - t));
+					pixels[(int)at + 2] = (uint8)(faceColors[face][2] * t + 40 * (1.0f - t));
+					pixels[(int)at + 3] = 255;
 				}
 			}
 

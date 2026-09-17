@@ -88,7 +88,8 @@ class DebugBlitPass
 		if (pipeline == null)
 			return;
 
-		let slot = (int)(viewIndex % cMaxViews) * mFramesInFlight + (frameIndex % mFramesInFlight);
+		let slot = (int)(viewIndex % cMaxViews) * (int)mFramesInFlight
+			+ (int)(frameIndex % mFramesInFlight);
 
 		var push = DebugBlitPush();
 		push.UvScaleX = 1.0f;

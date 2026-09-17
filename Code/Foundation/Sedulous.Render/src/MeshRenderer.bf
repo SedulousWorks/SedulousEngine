@@ -954,7 +954,7 @@ class MeshRenderer : Renderer
 			let mapped = (MeshInstanceData*)set.InstanceBuffer.Map();
 			if (mapped != null)
 			{
-				let destination = mapped + (int)region * set.Capacity;
+				let destination = mapped + (int)region * (int)set.Capacity;
 				for (uint32 i = 0; i < multiMesh.InstanceCount; i++)
 				{
 					let tint = (multiMesh.Tints != null) ? multiMesh.Tints[i] : multiMesh.Color;

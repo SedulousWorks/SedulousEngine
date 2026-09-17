@@ -188,8 +188,8 @@ class VGStencilTests
 			// The cover is exactly four corners.
 			Test.Assert(command.IndexCount == 6);
 			let firstVertex = batch.Indices[command.StartIndex];
-			Test.Assert(batch.Vertices[firstVertex].Color.R == 1.0f);
-			Test.Assert(batch.Vertices[firstVertex].Color.G == 0.0f);
+			Test.Assert(batch.Vertices[(int)firstVertex].Color.R == 1.0f);
+			Test.Assert(batch.Vertices[(int)firstVertex].Color.G == 0.0f);
 		}
 	}
 

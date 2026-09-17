@@ -266,7 +266,7 @@ extension UIHost
 			decode[i] = SrgbToLinear(i / 255.0f);
 
 		let output = scope List<uint8>();
-		output.Resize((int)width * height * 4);
+		output.Resize((int)width * (int)height * 4);
 
 		let inverseCount = 1.0f / (Supersample * Supersample);
 
@@ -281,7 +281,7 @@ extension UIHost
 
 				for (uint32 sy < Supersample)
 				{
-					let row = pixels + (int)(y * Supersample + sy) * rowPitch + (int)x * Supersample * 4;
+					let row = pixels + (int)(y * Supersample + sy) * (int)rowPitch + (int)x * Supersample * 4;
 					for (uint32 sx < Supersample)
 					{
 						let texel = row + (int)sx * 4;
@@ -306,7 +306,7 @@ extension UIHost
 					b /= a;
 				}
 
-				let destination = ((int)y * width + x) * 4;
+				let destination = ((int)y * (int)width + (int)x) * 4;
 				output[destination + 0] = Encode(r);
 				output[destination + 1] = Encode(g);
 				output[destination + 2] = Encode(b);

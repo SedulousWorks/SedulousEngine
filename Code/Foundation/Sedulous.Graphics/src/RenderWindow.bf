@@ -136,14 +136,14 @@ class RenderWindow
 
 		// Guard reuse of this slot: its pool and its back buffer are still the GPU's until
 		// the fence this window signalled at this slot has been reached.
-		if (mFenceValues[frameIndex] > 0)
-			mFences[frameIndex].Wait(mFenceValues[frameIndex]);
+		if (mFenceValues[(int)frameIndex] > 0)
+			mFences[(int)frameIndex].Wait(mFenceValues[(int)frameIndex]);
 
 		if (mSwapChain.AcquireNextImage() case .Err)
 			return .();
 
-		mPools[frameIndex].Reset();
-		if (!(mPools[frameIndex].CreateEncoder() case .Ok(let encoder)))
+		mPools[(int)frameIndex].Reset();
+		if (!(mPools[(int)frameIndex].CreateEncoder() case .Ok(let encoder)))
 			return .();
 
 		// The host owns the back buffer's state, so the transition into it happens here
@@ -157,7 +157,7 @@ class RenderWindow
 		frame.Width = mSwapChain.Width;
 		frame.Height = mSwapChain.Height;
 		frame.Encoder = encoder;
-		frame.Pool = mPools[frameIndex];
+		frame.Pool = mPools[(int)frameIndex];
 		frame.Backbuffer = mSwapChain.CurrentTexture;
 		frame.BackbufferView = mSwapChain.CurrentTextureView;
 		return frame;
@@ -174,13 +174,13 @@ class RenderWindow
 		frame.Encoder.TransitionTexture(mSwapChain.CurrentTexture, .RenderTarget, .Present);
 
 		let commandBuffer = frame.Encoder.Finish();
-		mFenceValues[frameIndex]++;
+		mFenceValues[(int)frameIndex]++;
 		var buffers = ICommandBuffer[1](commandBuffer);
-		mDevice.GraphicsQueue.Submit(buffers, mFences[frameIndex], mFenceValues[frameIndex]);
+		mDevice.GraphicsQueue.Submit(buffers, mFences[(int)frameIndex], mFenceValues[(int)frameIndex]);
 		mSwapChain.Present(mDevice.GraphicsQueue).IgnoreError();
 
 		var encoder = frame.Encoder;
-		mPools[frameIndex].DestroyEncoder(ref encoder);
+		mPools[(int)frameIndex].DestroyEncoder(ref encoder);
 		frame.Encoder = null;
 	}
 }
