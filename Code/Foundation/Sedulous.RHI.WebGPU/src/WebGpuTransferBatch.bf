@@ -86,15 +86,16 @@ sealed class WebGpuTransferBatch : ITransferBatch
 	{
 		Replay();
 
+#if !BF_PLATFORM_WASM
 		// The Vulkan batch drains the queue before returning, so desktop matches it.
 		//
-		// On WEB this drain must be SKIPPED, and the reason is not performance. A queue
-		// write copies its payload at CALL time and the single queue preserves ordering,
-		// so every later submit already sees the data and nothing here needs completion.
-		// Pumping would yield to the browser MID FRAME, and a lazy first use upload runs
-		// inside a frame: the yield returns the animation frame, the browser expires the
-		// canvas texture, and that frame's submit is dropped entirely. It is the startup
-		// killer for one shot bakes and uploads.
+		// On WEB this drain is SKIPPED, and the reason is not performance. A queue write
+		// copies its payload at CALL time and the single queue preserves ordering, so every
+		// later submit already sees the data and nothing here needs completion. Pumping
+		// would yield to the browser MID FRAME, and a lazy first use upload runs inside a
+		// frame: the yield returns the animation frame, the browser expires the canvas
+		// texture, and that frame's submit is dropped entirely with "Destroyed texture used
+		// in a submit". It is the startup killer for one shot bakes and uploads.
 		var done = false;
 
 		WGPUQueueWorkDoneCallbackInfo info = .();
@@ -107,6 +108,7 @@ sealed class WebGpuTransferBatch : ITransferBatch
 
 		wgpuQueueOnSubmittedWorkDone(mQueue, info);
 		WebGpuApi.PumpUntilDevice(mInstance, mDevice, ref done);
+#endif
 
 		Reset();
 		return .Ok;
