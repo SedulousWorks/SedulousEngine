@@ -99,6 +99,17 @@ class NetworkController
 	/// Opens a client socket and connects.
 	public bool Connect(StringView host, uint16 port)
 	{
+		var port;
+#if BF_PLATFORM_WASM
+		// The SAME game script joins with the UDP port on every platform. A browser cannot
+		// speak UDP, so the web build redirects to the host's websocket gateway, which
+		// StartServer opens one above the UDP port by the convention above. Nought and
+		// 0xFFFF are left alone: an operating system assigned host has no gateway to redirect
+		// to, and 0xFFFF has nowhere above it to go.
+		if ((port != 0) && (port != 0xFFFF))
+			port = (uint16)(port + 1);
+#endif
+
 		delete mNet;
 		mNet = NetworkManager.JoinServer(host, port);
 		if (mNet == null)

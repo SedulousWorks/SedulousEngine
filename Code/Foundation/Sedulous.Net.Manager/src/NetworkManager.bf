@@ -116,14 +116,28 @@ class NetworkManager
 		return manager;
 	}
 
-	/// Binds an ephemeral UDP socket and connects to host:port. Null when the socket cannot
-	/// open.
+	/// Connects to host:port. Null when the socket cannot open.
 	///
-	/// DIVERGES from Raptor, which joins over a WebSocket on a web build. That path needs the
-	/// browser client socket, which is not ported.
+	/// A browser has no UDP, so the web build joins over a WEBSOCKET to the host's gateway,
+	/// and `port` there is the gateway's port rather than the UDP one. NetworkController does
+	/// that translation, so the same game script joins with the same number everywhere.
+	///
+	/// Nothing waits for the handshake. The browser socket queues sends until it opens, which
+	/// is what keeps the session's immediate connect packet from being dropped into it.
 	public static NetworkManager JoinServer(StringView host, uint16 port,
 		ReliableConfig config = .())
 	{
+#if BF_PLATFORM_WASM
+		let socket = new WebSocketClientSocket(host, port);
+		if (!socket.IsOpen)
+		{
+			delete socket;
+			return null;
+		}
+		let manager = new NetworkManager(socket, 0, port, config);
+		manager.ConnectTo(WebSocketClientSocket.ServerEndpoint);
+		return manager;
+#else
 		let socket = new UdpSocket(0);
 		if (!socket.IsOpen)
 		{
@@ -133,6 +147,7 @@ class NetworkManager
 		let manager = new NetworkManager(socket, socket.BoundPort, 0, config);
 		manager.ConnectTo(NetAddress.ResolveEndpoint(host, port));
 		return manager;
+#endif
 	}
 
 	/// The port this endpoint's OWNED socket is bound to; nought when the socket is borrowed.
