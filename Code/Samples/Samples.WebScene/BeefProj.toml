@@ -7,3 +7,9 @@ StartupObject = "Samples.WebScene.Program"
 
 [Dependencies]
 corlib = "*"
+"Samples.WebScene.App" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Graphics.Gpu" = "*"
+"Sedulous.Runtime.SDL3" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Shell.SDL3" = "*"

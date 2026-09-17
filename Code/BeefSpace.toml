@@ -388,7 +388,7 @@ wgpu-Beef = {Path = "../Dependencies/wgpu-Beef"}
 "Samples.UISandbox" = {Path = "Samples/Samples.UISandbox"}
 "Samples.VGSandbox" = {Path = "Samples/Samples.VGSandbox"}
 "Samples.WebScene" = {Path = "Samples/Samples.WebScene"}
-"Samples.WebTriangle" = {Path = "Samples/Samples.WebTriangle"}
+"Samples.WebScene.App" = {Path = "Samples/Samples.WebScene.App"}
 
 [WorkspaceFolders]
 Dependencies = ["corlib", "Bulkan", "astcenc-Beef", "bc7enc-Beef", "bcdec-Beef", "Dxc-Beef", "SDL3", "SDL3_image", "SPIRV-Cross", "Win32", "cgltf-Beef", "meshoptimizer-Beef", "msdfgen-Beef", "cimgui-Beef", "dr_libs-Beef", "joltc-Beef", "miniaudio-Beef", "recastnavigation-Beef", "stb_image-Beef", "stb_truetype-Beef", "stb_vorbis-Beef", "ufbx-Beef"]
@@ -400,5 +400,5 @@ Sedulous = []
 "Sedulous/Extensions" = ["Sedulous.Extensions.Imgui"]
 "Sedulous/Integration" = ["Sedulous.Integration.Mcp", "Sedulous.Integration.TextureCompression"]
 "Sedulous/Tools" = ["Sedulous.Tools.Cook", "Sedulous.Tools.Editor", "Sedulous.Tools.Export", "Sedulous.Tools.Mcp", "Sedulous.Tools.ShaderPack"]
-"Sedulous/Samples" = ["Samples.AnimStressTest", "Samples.AnimatedCrowd", "Samples.AudioPlayground", "Samples.Common", "Samples.Framework", "Samples.GameUiSandbox", "Samples.HelloWindow", "Samples.InputActions", "Samples.MultiWindow", "Samples.NetEcho", "Samples.ParticleFX", "Samples.PhysicsPlayground", "Samples.RenderStressTest", "Samples.Sandbox", "Samples.TerrainPlayground", "Samples.UISandbox", "Samples.VGSandbox", "Samples.WebScene", "Samples.WebTriangle"]
+"Sedulous/Samples" = ["Samples.AnimStressTest", "Samples.AnimatedCrowd", "Samples.AudioPlayground", "Samples.Common", "Samples.Framework", "Samples.GameUiSandbox", "Samples.HelloWindow", "Samples.InputActions", "Samples.MultiWindow", "Samples.NetEcho", "Samples.ParticleFX", "Samples.PhysicsPlayground", "Samples.RenderStressTest", "Samples.Sandbox", "Samples.TerrainPlayground", "Samples.UISandbox", "Samples.VGSandbox", "Samples.WebScene"]
 "Sedulous/Samples/RHI" = ["Samples.RHI.Sample001_Triangle", "Samples.RHI.Sample002_Textures", "Samples.RHI.Sample003_UniformBuffers", "Samples.RHI.Sample004_Compute", "Samples.RHI.Sample005_BindGroups", "Samples.RHI.Sample006_Blending", "Samples.RHI.Sample007_Instancing", "Samples.RHI.Sample008_DepthBuffer", "Samples.RHI.Sample009_Mipmaps", "Samples.RHI.Sample010_MSAA", "Samples.RHI.Sample011_MRT", "Samples.RHI.Sample012_Wireframe", "Samples.RHI.Sample013_BorderSampler", "Samples.RHI.Sample014_Blit", "Samples.RHI.Sample015_Queries", "Samples.RHI.Sample016_Readback", "Samples.RHI.Sample017_MultiQueue", "Samples.RHI.Sample018_Bindless", "Samples.RHI.Sample019_BatchUpload", "Samples.RHI.Sample020_MeshShaders", "Samples.RHI.Sample021_RayTracing", "Samples.RHI.Sample022_StencilOutline", "Samples.RHI.Sample023_CubeMap", "Samples.RHI.Sample024_OcclusionQuery", "Samples.RHI.Sample025_MultiDrawIndirect", "Samples.RHI.Sample026_DynamicOffsets", "Samples.RHI.Sample027_3DTexture", "Samples.RHI.Sample028_ProceduralRT", "Samples.RHI.Sample029_ResolveTexture", "Samples.RHI.Sample030_RenderBundles", "Samples.RHI.Smoketest"]

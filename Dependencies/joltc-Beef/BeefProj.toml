@@ -31,7 +31,9 @@ PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/Release-Linux64/*.so\")"
 # wasm32 links the STATIC archive and copies nothing: there is no shared library to place
 # beside an executable, so the PostBuildCmds the native configs carry have no counterpart.
 [Configs.Debug.wasm32]
-LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libjoltc.a"]
+# joltc BEFORE Jolt: the linker resolves left to right and the wrapper is what references it.
+LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libjoltc.a", "$(ProjectDir)/dist/Release-wasm32/libJolt.a"]
 
 [Configs.Release.wasm32]
-LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libjoltc.a"]
+# joltc BEFORE Jolt: the linker resolves left to right and the wrapper is what references it.
+LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libjoltc.a", "$(ProjectDir)/dist/Release-wasm32/libJolt.a"]

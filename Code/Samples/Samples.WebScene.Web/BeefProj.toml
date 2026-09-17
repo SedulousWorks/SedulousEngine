@@ -1,0 +1,35 @@
+FileVersion = 1
+
+[Project]
+Name = "Samples.WebScene.Web"
+TargetType = "BeefGUIApplication"
+StartupObject = "Samples.WebScene.Web.Program"
+
+[Dependencies]
+corlib = "*"
+"Samples.WebScene.App" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Graphics.Gpu" = "*"
+"Sedulous.Runtime.Web" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Shell.Web" = "*"
+
+# ERROR_ON_UNDEFINED_SYMBOLS=0 because the engine's projects hard-depend on Sedulous.RHI.Vulkan
+# and Sedulous.Shaders.System, and a Beef dependency cannot be conditioned on the platform. Their
+# objects reference vkCreateInstance and DxcCreateInstance, which a browser has neither of. The
+# code paths are UNREACHABLE here: the backend is WebGPU and shaders arrive cooked in a pack, so
+# nothing compiles at run time. Guarding those bindings with #if !BF_PLATFORM_WASM is the real
+# fix and removes the need for this.
+#
+# emdawnwebgpu supplies webgpu.h at compile time and the navigator.gpu binding at link time,
+# and it has to be on BOTH. TargetName carries the .html because emcc decides what to emit
+# from the extension and silently drops --shell-file without one.
+[Configs.Debug.wasm32]
+TargetName = "$(ProjectName).html"
+TargetDirectory = "$(ProjectDir)/dist"
+OtherLinkFlags = "$(LinkFlags) --use-port=emdawnwebgpu:cpp_bindings=false -s ALLOW_MEMORY_GROWTH=1 -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s ASSERTIONS=1 --shell-file $(ProjectDir)/shell.html"
+
+[Configs.Release.wasm32]
+TargetName = "$(ProjectName).html"
+TargetDirectory = "$(ProjectDir)/dist"
+OtherLinkFlags = "$(LinkFlags) --use-port=emdawnwebgpu:cpp_bindings=false -s ALLOW_MEMORY_GROWTH=1 -s ERROR_ON_UNDEFINED_SYMBOLS=0 --shell-file $(ProjectDir)/shell.html"

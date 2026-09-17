@@ -1,0 +1,51 @@
+FileVersion = 1
+
+# The WebScene SCENE, shared verbatim by the desktop and browser entry points.
+#
+# A library rather than part of either executable, because a Beef project's dependencies
+# cannot be conditioned on the platform: one project naming both Shell.SDL3 and Shell.Web
+# would drag SDL into a browser build and the web tier into a desktop one. Raptor splits the
+# same way, as Main.cpp and WebMain.cpp over one shared header.
+#
+# So nothing here names a shell backend, a runner or a graphics device factory. The scene
+# works through the host and shell INTERFACES and never asks which platform it is on.
+
+[Project]
+Name = "Samples.WebScene.App"
+TargetType = "BeefLib"
+
+[Dependencies]
+"Samples.Common" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Engine.DefaultApp" = "*"
+"Sedulous.Engine.Navigation" = "*"
+"Sedulous.Engine.Particles" = "*"
+"Sedulous.Engine.Render" = "*"
+"Sedulous.Engine.Scene" = "*"
+"Sedulous.Engine.UI" = "*"
+"Sedulous.Geometry" = "*"
+"Sedulous.Geometry.Resource" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Image" = "*"
+"Sedulous.Materials" = "*"
+"Sedulous.Materials.Resource" = "*"
+"Sedulous.Navigation" = "*"
+"Sedulous.Navigation.Resource" = "*"
+"Sedulous.Particles" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Render" = "*"
+"Sedulous.Render.Api" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Texture" = "*"
+"Sedulous.Texture.Pipeline" = "*"
+"Sedulous.Texture.Resource" = "*"
+"Sedulous.UI" = "*"
+"Sedulous.UI.Resource" = "*"
+"Sedulous.UI.Runtime" = "*"
+"Sedulous.VFS" = "*"
+corlib = "*"

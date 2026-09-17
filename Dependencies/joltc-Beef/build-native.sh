@@ -29,8 +29,12 @@ wasm() {
   echo "Building wasm32..."
   cmake --build build-wasm
   mkdir -p dist/Release-wasm32
-  cp -f "$(find build-wasm -name libjoltc.a | head -1)" dist/Release-wasm32/libjoltc.a
-  echo "Copied libjoltc.a -> dist/Release-wasm32"
+  # BOTH archives: the Linux .so bundles Jolt statically, but a static joltc.a only holds the
+  # C wrapper and leaves JPH::Allocate and the rest to libJolt.a beside it.
+  for l in libjoltc.a libJolt.a; do
+    cp -f "$(find build-wasm -name "$l" | head -1)" "dist/Release-wasm32/$l"
+    echo "Copied $l -> dist/Release-wasm32"
+  done
 }
 
 case "$option" in
