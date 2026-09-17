@@ -105,7 +105,21 @@ class GraphicsDevice
 			return .Err;
 		}
 
+#if BF_PLATFORM_WASM
+		// ONE frame in flight on the web, whatever was asked for. A browser surface hands
+		// out a SINGLE current texture that is reused every frame, and wgpuQueueSubmit
+		// validates ASYNCHRONOUSLY. With more than one frame in flight the next frame's
+		// AcquireNextImage releases that shared surface texture while the previous frame's
+		// still pending submit references it: "Destroyed texture used in a submit", and the
+		// submit is dropped. That is what silently kills the one shot IBL env bake and
+		// leaves the sky black in a reflection probe.
+		//
+		// Serialised, BeginFrame's fence wait guarantees a frame's submit has completed
+		// before the next acquire releases the surface texture.
+		let frames = (uint32)1;
+#else
 		let frames = (framesInFlight == 0) ? (uint32)1 : framesInFlight;
+#endif
 		return .Ok(new GraphicsDevice(backend, innerBackend, device, queue, frames));
 	}
 
