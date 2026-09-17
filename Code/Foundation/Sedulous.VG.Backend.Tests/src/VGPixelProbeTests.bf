@@ -20,7 +20,15 @@ class VGPixelProbeTests
 	[Test]
 	public static void FillRulesAndStencilClipsHold()
 	{
-		let fixture = scope VGProbeFixture();
+		// Both backends: the fill rules and the stencil clip is configured per backend, so one passing says nothing
+		// about the other.
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu))
+			FillRulesAndStencilClipsHoldOn(kind);
+	}
+
+	private static void FillRulesAndStencilClipsHoldOn(ProbeBackend kind)
+	{
+		let fixture = scope VGProbeFixture(kind);
 		if (!fixture.Ready)
 			return;
 
@@ -79,7 +87,15 @@ class VGPixelProbeTests
 	[Test]
 	public static void TheColourPipelinesAgreeAndSpreadsRepeat()
 	{
-		let fixture = scope VGProbeFixture();
+		// Both backends: the colour pipelines and the spreads is configured per backend, so one passing says nothing
+		// about the other.
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu))
+			TheColourPipelinesAgreeAndSpreadsRepeatOn(kind);
+	}
+
+	private static void TheColourPipelinesAgreeAndSpreadsRepeatOn(ProbeBackend kind)
+	{
+		let fixture = scope VGProbeFixture(kind);
 		if (!fixture.Ready)
 			return;
 
@@ -152,7 +168,15 @@ class VGPixelProbeTests
 	[Test]
 	public static void TheBlendModesActOverALightStrip()
 	{
-		let fixture = scope VGProbeFixture();
+		// Both backends: the blend modes is configured per backend, so one passing says nothing
+		// about the other.
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu))
+			TheBlendModesActOverALightStripOn(kind);
+	}
+
+	private static void TheBlendModesActOverALightStripOn(ProbeBackend kind)
+	{
+		let fixture = scope VGProbeFixture(kind);
 		if (!fixture.Ready)
 			return;
 
@@ -200,10 +224,18 @@ class VGPixelProbeTests
 	[Test]
 	public static void MultisamplingSoftensAHardDiagonal()
 	{
+		// Both backends: the multisample resolve is configured per backend, so one passing says nothing
+		// about the other.
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu))
+			MultisamplingSoftensAHardDiagonalOn(kind);
+	}
+
+	private static void MultisamplingSoftensAHardDiagonalOn(ProbeBackend kind)
+	{
 		// A stencil then cover fill has HARD edges: there are no analytic fringes, so what
 		// smooths an edge is the multisample resolve and nothing else. A diagonal must alias
 		// at one sample, every pixel wholly background or wholly fill, and antialias at four.
-		let fixture = scope VGProbeFixture();
+		let fixture = scope VGProbeFixture(kind);
 		if (!fixture.Ready)
 			return;
 

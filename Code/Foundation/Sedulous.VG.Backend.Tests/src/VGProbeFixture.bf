@@ -6,6 +6,7 @@ using Sedulous.Core.IO;
 using Sedulous.RHI;
 using Sedulous.RHI.TestSupport;
 using Sedulous.RHI.Vulkan;
+using Sedulous.RHI.WebGPU;
 using Sedulous.Shaders;
 
 namespace Sedulous.VG.Backend.Tests;
@@ -24,11 +25,24 @@ class VGProbeFixture
 
 	public bool Ready { get; private set; }
 
-	public this()
+	/// Which backend this fixture was asked for, so an assertion can name it.
+	public ProbeBackend Kind { get; private set; }
+
+	public this(ProbeBackend kind = .Vulkan)
 	{
-		if (!(VulkanRhi.CreateBackend(false) case .Ok(let backend)))
-			return;
-		Backend = backend;
+		Kind = kind;
+
+		switch (kind)
+		{
+		case .Vulkan:
+			if (!(VulkanRhi.CreateBackend(false) case .Ok(let backend)))
+				return;
+			Backend = backend;
+		case .WebGpu:
+			if (!(WebGpuRhi.CreateBackend() case .Ok(let backend)))
+				return;
+			Backend = backend;
+		}
 
 		Device = RhiTestSupport.MakeTestDevice(Backend);
 		if (Device == null)
