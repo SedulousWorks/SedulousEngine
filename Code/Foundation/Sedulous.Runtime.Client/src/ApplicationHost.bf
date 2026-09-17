@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.Graphics;
 using Sedulous.Profiler;
 using Sedulous.Runtime;
@@ -64,6 +65,11 @@ class ApplicationHost : IApplicationHost
 			{
 				if (mGraphics.CreateRenderWindow(main, app.MainRenderWindow) case .Ok(let window))
 					mWindows.Add(window);
+				else
+					// LOUD. A host with no render window ticks forever and draws nothing,
+					// which looks like a rendering bug rather than a setup failure.
+					GlobalLog(.Error, "ApplicationHost: CreateRenderWindow failed for the main window ({}x{}) - nothing will render",
+						main.Width, main.Height);
 			}
 		}
 
