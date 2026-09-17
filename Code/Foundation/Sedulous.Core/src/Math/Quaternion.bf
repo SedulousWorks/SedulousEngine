@@ -28,7 +28,7 @@ struct Quaternion
 	}
 
 	/// Hamilton product: applies b, then a, to a vector.
-	public static Quaternion operator*(Quaternion a, Quaternion b) => .(
+	public static Quaternion operator*(in Quaternion a, in Quaternion b) => .(
 		a.W * b.X + a.X * b.W + a.Y * b.Z - a.Z * b.Y,
 		a.W * b.Y - a.X * b.Z + a.Y * b.W + a.Z * b.X,
 		a.W * b.Z + a.X * b.Y - a.Y * b.X + a.Z * b.W,

@@ -44,12 +44,12 @@ struct Color
 	public static Color Rgb(uint8 R, uint8 G, uint8 B, uint8 A = 255) => .(
 		(float)R / 255.0f, (float)G / 255.0f, (float)B / 255.0f, (float)A / 255.0f);
 
-	public static Color operator*(Color c, float s) => .(c.R * s, c.G * s, c.B * s, c.A * s);
-	public static Color operator+(Color A, Color B) => .(A.R + B.R, A.G + B.G, A.B + B.B, A.A + B.A);
+	public static Color operator*(in Color c, float s) => .(c.R * s, c.G * s, c.B * s, c.A * s);
+	public static Color operator+(in Color A, in Color B) => .(A.R + B.R, A.G + B.G, A.B + B.B, A.A + B.A);
 	/// [Commutable] so Beef can derive != from this one declaration. Without it every use
 	/// of != warns, and a warning costs the whole incremental build.
 	[Commutable]
-	public static bool operator==(Color A, Color B) =>
+	public static bool operator==(in Color A, in Color B) =>
 		(A.R == B.R) && (A.G == B.G) && (A.B == B.B) && (A.A == B.A);
 }
 

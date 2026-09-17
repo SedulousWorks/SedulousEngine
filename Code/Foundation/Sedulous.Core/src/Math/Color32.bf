@@ -43,7 +43,7 @@ struct Color32
 	/// [Commutable] so Beef can derive != from this one declaration. Without it every use
 	/// of != warns, and a warning costs the whole incremental build.
 	[Commutable]
-	public static bool operator==(Color32 A, Color32 B) =>
+	public static bool operator==(in Color32 A, in Color32 B) =>
 		(A.R == B.R) && (A.G == B.G) && (A.B == B.B) && (A.A == B.A);
 }
 

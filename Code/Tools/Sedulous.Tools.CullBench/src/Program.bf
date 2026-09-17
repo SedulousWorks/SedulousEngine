@@ -52,6 +52,17 @@ static class Program
 		Run("localDot (Dot defined HERE)", scope () => LocalDot(bounds, frustum));
 		Run("scalars  (same call, float args)", scope () => ScalarArgs(bounds, frustum));
 		Run("inParams (Dot taking in Float3)", scope () => InParams(bounds, frustum));
+
+		Console.WriteLine();
+		Console.WriteLine("-- operators: a sphere cull written three ways --");
+		Run("op byval  (operator- by value)", scope () => OpByValue(bounds));
+		Run("op in     (operator- taking in)", scope () => OpIn(bounds));
+		Run("op manual (no operator at all)", scope () => OpManual(bounds));
+
+		Console.WriteLine();
+		Console.WriteLine("-- a 64 byte struct: Float4x4 into a call --");
+		Run("mat byval (Float4x4 by value)", scope () => MatByValue(bounds));
+		Run("mat in    (in Float4x4)", scope () => MatIn(bounds));
 		return 0;
 	}
 
@@ -146,6 +157,130 @@ static class Program
 				}
 			}
 			if (inside)
+				kept++;
+		}
+		return kept;
+	}
+
+	// ---- operators -------------------------------------------------------------------------
+	//
+	// The same struct declared each way, so the loops below differ in nothing else. `in` on a
+	// COMPOUND ASSIGNMENT is left out on purpose: that is a Beef codegen fault, the call site
+	// splatting the right hand side while the declaration expects a pointer.
+
+	[CRepr]
+	private struct V3
+	{
+		public float X;
+		public float Y;
+		public float Z;
+		public this(float x, float y, float z) { X = x; Y = y; Z = z; }
+		public static V3 operator-(V3 a, V3 b) => .(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
+	}
+
+	[CRepr]
+	private struct V3In
+	{
+		public float X;
+		public float Y;
+		public float Z;
+		public this(float x, float y, float z) { X = x; Y = y; Z = z; }
+		public static V3In operator-(in V3In a, in V3In b) => .(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
+	}
+
+	/// The local light branch of the cull: a sphere test, which is where the operators are.
+	private static int OpByValue(List<Float4> boundsList)
+	{
+		let cullBounds = boundsList.Ptr;
+		let count = boundsList.Count;
+		let center = V3(0.0f, 0.0f, 0.0f);
+		var kept = 0;
+
+		for (int k < count)
+		{
+			let b = cullBounds[k];
+			let delta = V3(b.X, b.Y, b.Z) - center;
+			let reach = 40.0f + b.W;
+			if ((delta.X * delta.X + delta.Y * delta.Y + delta.Z * delta.Z) <= (reach * reach))
+				kept++;
+		}
+		return kept;
+	}
+
+	private static int OpIn(List<Float4> boundsList)
+	{
+		let cullBounds = boundsList.Ptr;
+		let count = boundsList.Count;
+		let center = V3In(0.0f, 0.0f, 0.0f);
+		var kept = 0;
+
+		for (int k < count)
+		{
+			let b = cullBounds[k];
+			let delta = V3In(b.X, b.Y, b.Z) - center;
+			let reach = 40.0f + b.W;
+			if ((delta.X * delta.X + delta.Y * delta.Y + delta.Z * delta.Z) <= (reach * reach))
+				kept++;
+		}
+		return kept;
+	}
+
+	private static int OpManual(List<Float4> boundsList)
+	{
+		let cullBounds = boundsList.Ptr;
+		let count = boundsList.Count;
+		var kept = 0;
+
+		for (int k < count)
+		{
+			let b = cullBounds[k];
+			let reach = 40.0f + b.W;
+			if ((b.X * b.X + b.Y * b.Y + b.Z * b.Z) <= (reach * reach))
+				kept++;
+		}
+		return kept;
+	}
+
+	// ---- a bigger struct -----------------------------------------------------------------
+	//
+	// Float4x4 is 64 bytes, which the ABI passes in memory whichever way it is spelled. The
+	// small struct finding does NOT reach this far, and these two measure the same.
+
+	[Inline]
+	private static float TransformX(Float4x4 m, float x, float y, float z) =>
+		x * m.M[0][0] + y * m.M[1][0] + z * m.M[2][0] + m.M[3][0];
+
+	[Inline]
+	private static float TransformXIn(in Float4x4 m, float x, float y, float z) =>
+		x * m.M[0][0] + y * m.M[1][0] + z * m.M[2][0] + m.M[3][0];
+
+	private static int MatByValue(List<Float4> boundsList)
+	{
+		let cullBounds = boundsList.Ptr;
+		let count = boundsList.Count;
+		let m = Float4x4.Identity();
+		var kept = 0;
+
+		for (int k < count)
+		{
+			let b = cullBounds[k];
+			if (TransformX(m, b.X, b.Y, b.Z) < 40.0f)
+				kept++;
+		}
+		return kept;
+	}
+
+	private static int MatIn(List<Float4> boundsList)
+	{
+		let cullBounds = boundsList.Ptr;
+		let count = boundsList.Count;
+		let m = Float4x4.Identity();
+		var kept = 0;
+
+		for (int k < count)
+		{
+			let b = cullBounds[k];
+			if (TransformXIn(m, b.X, b.Y, b.Z) < 40.0f)
 				kept++;
 		}
 		return kept;
