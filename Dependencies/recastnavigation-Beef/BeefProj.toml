@@ -40,3 +40,11 @@ LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libDetourCrowd-c.a", "$(ProjectD
 
 [Configs.Test.Linux64]
 LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libDetourCrowd-c.a", "$(ProjectDir)/dist/Release-Linux64/libDetourTileCache-c.a", "$(ProjectDir)/dist/Release-Linux64/libDebugUtils-c.a", "$(ProjectDir)/dist/Release-Linux64/libDetour-c.a", "$(ProjectDir)/dist/Release-Linux64/libRecast-c.a"]
+
+# wasm32, built by `build-native.sh wasm`. Order matters as it does natively: Detour before
+# Recast, since the linker resolves left to right.
+[Configs.Debug.wasm32]
+LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libDetourCrowd-c.a", "$(ProjectDir)/dist/Release-wasm32/libDetourTileCache-c.a", "$(ProjectDir)/dist/Release-wasm32/libDebugUtils-c.a", "$(ProjectDir)/dist/Release-wasm32/libDetour-c.a", "$(ProjectDir)/dist/Release-wasm32/libRecast-c.a"]
+
+[Configs.Release.wasm32]
+LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libDetourCrowd-c.a", "$(ProjectDir)/dist/Release-wasm32/libDetourTileCache-c.a", "$(ProjectDir)/dist/Release-wasm32/libDebugUtils-c.a", "$(ProjectDir)/dist/Release-wasm32/libDetour-c.a", "$(ProjectDir)/dist/Release-wasm32/libRecast-c.a"]

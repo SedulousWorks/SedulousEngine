@@ -20,3 +20,12 @@ LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libminiaudio.a"]
 
 [Configs.Test.Linux64]
 LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libminiaudio.a"]
+
+# wasm32 has no shared libraries, so this is the static archive built by
+# `build-native.sh wasm`. Debug and Release link the same one: it is a Release build of a
+# third party library, which the engine does not debug through.
+[Configs.Debug.wasm32]
+LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libminiaudio.a"]
+
+[Configs.Release.wasm32]
+LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libminiaudio.a"]

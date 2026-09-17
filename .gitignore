@@ -15,3 +15,13 @@ scratch_*/
 # Cooked shader packs are build output, the same as Raptor keeps its own under Bin.
 # Sedulous.Tools.ShaderPack writes them; a checkout compiles on demand without one.
 /Data/Shaders/*.dpak
+
+# Web sample output: emcc writes the html, js and wasm beside the project, and the debug
+# wasm alone is four megabytes.
+Code/Samples/*/dist/
+Code/Web/build/
+
+# Emscripten build trees for the vendored native deps, the wasm counterpart of the
+# build-linux-* directories. The ARTIFACTS under dist/Release-wasm32 are committed; these are
+# the intermediates, and joltc's fetches JoltPhysics as a nested git checkout.
+Dependencies/*/build-wasm/

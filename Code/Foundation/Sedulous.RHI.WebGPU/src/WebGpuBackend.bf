@@ -84,9 +84,18 @@ sealed class WebGpuBackend : IBackend
 		WGPUSurfaceSourceXlibWindow xlib = .();
 		WGPUSurfaceSourceWaylandSurface wayland = .();
 		WGPUSurfaceSourceWindowsHWND win32 = .();
+		WebGpuCanvasSurfaceSource canvas = .();
 
 		switch (platform)
 		{
+		case .Web:
+			// The handle IS the selector, a null terminated CSS string the shell owns, not an
+			// opaque pointer. WGPU_STRLEN tells wgpu to measure it rather than be given a
+			// length, which is what keeps this from having to copy the string.
+			canvas.Chain.sType = WebGpuCanvasSurfaceSource.SType;
+			canvas.Selector = .() { data = (char8*)windowHandle, length = WGPU_STRLEN };
+			desc.nextInChain = &canvas.Chain;
+
 		case .X11:
 			xlib.chain.sType = .WGPUSType_SurfaceSourceXlibWindow;
 			xlib.display = displayHandle;
@@ -148,6 +157,13 @@ sealed class WebGpuBackend : IBackend
 	/// that path instead. Count with a null array first, then fill.
 	private void EnumerateNow()
 	{
+#if BF_PLATFORM_WASM
+		// A browser cannot enumerate: navigator.gpu hands out ONE adapter, asynchronously,
+		// chosen from a power preference. So there is nothing to rank or order, and the
+		// environment pick has nothing to pick between.
+		RequestAdapterNow();
+		return;
+#else
 		let count = WebGpuApi.NativeOnly.EnumerateAdapters(mInstance, null);
 		if (count == 0)
 			return;
@@ -169,7 +185,49 @@ sealed class WebGpuBackend : IBackend
 
 		for (let adapter in mAdapters)
 			mAdapterHandles.Add(adapter);
+#endif
 	}
+
+#if BF_PLATFORM_WASM
+	/// The browser's single adapter, requested asynchronously and pumped until it lands.
+	///
+	/// HighPerformance is asked for rather than left default: a laptop otherwise gets the
+	/// integrated GPU for a renderer that wants the discrete one, and the browser treats the
+	/// preference as a hint it is free to ignore, so this is a request and not a demand.
+	private void RequestAdapterNow()
+	{
+		WGPUAdapter handle = null;
+		var done = false;
+
+		WGPURequestAdapterOptions options = .();
+		options.powerPreference = .WGPUPowerPreference_HighPerformance;
+
+		WGPURequestAdapterCallbackInfo callback = .();
+		callback.mode = WebGpuApi.cCallbackMode;
+		callback.callback = (status, adapter, message, userdata1, userdata2) =>
+			{
+				*(WGPUAdapter*)userdata1 =
+					(status == .WGPURequestAdapterStatus_Success) ? adapter : null;
+				*(bool*)userdata2 = true;
+			};
+		callback.userdata1 = &handle;
+		callback.userdata2 = &done;
+
+		wgpuInstanceRequestAdapter(mInstance, &options, callback);
+		WebGpuApi.PumpUntil(mInstance, ref done);
+
+		if (handle == null)
+		{
+			GlobalLog(.Error, "[webgpu] no adapter. WebGPU may be unavailable in this browser.");
+			return;
+		}
+
+		let adapter = new WebGpuAdapter(this, handle);
+		mAdapters.Add(adapter);
+		mAdapterHandles.Add(adapter);
+		LogAdapters();
+	}
+#endif
 
 	/// The host takes adapters[0], and wgpu's enumeration order is ARBITRARY. On Windows
 	/// it routinely leads with an adapter that cannot PRESENT - a layered, software or

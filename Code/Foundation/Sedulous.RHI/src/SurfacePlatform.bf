@@ -16,5 +16,8 @@ enum SurfacePlatform : uint32
 	Win32,
 	X11,
 	Wayland,
-	Cocoa
+	Cocoa,
+	/// A browser canvas. The window handle is a CSS SELECTOR rather than a handle, which is
+	/// the one case where the pointer is not opaque: see NativeWindow's Web row.
+	Web
 }

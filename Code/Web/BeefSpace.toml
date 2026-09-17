@@ -1,0 +1,43 @@
+FileVersion = 1
+Platforms = ["wasm32"]
+ExtraPlatforms = ["wasm32"]
+
+# The BROWSER workspace.
+#
+# Separate from Code/BeefSpace.toml, and not a platform of it, because Beef cannot exclude a
+# project from a platform: BeefBuild links every project a workspace lists, so the main
+# workspace drags Vulkan, DXC and SDL into a wasm link and wasm-ld fails on the first symbol
+# none of them can supply. Listing only what a browser can actually run is the one mechanism
+# the toolchain gives.
+#
+# What is deliberately ABSENT, and why:
+#   Bulkan, RHI.Vulkan   no browser counterpart; WebGPU is the backend here
+#   SDL3, Shell.SDL3     Shell.Web is the browser's shell
+#   Dxc, Shaders.System  shaders arrive cooked in a pack; nothing compiles at run time
+#   Win32                not a platform the browser has
+#
+# wgpu-Beef is listed but links NOTHING on wasm: Emscripten's emdawnwebgpu port supplies
+# webgpu.h at compile time and binds navigator.gpu at link time, through the
+# --use-port=emdawnwebgpu flag each executable carries.
+
+[Workspace]
+StartupProject = "Samples.WebTriangle"
+
+[Projects]
+"wgpu-Beef" = {Path = "../../Dependencies/wgpu-Beef"}
+"Sedulous.Core" = {Path = "../Foundation/Sedulous.Core"}
+"Sedulous.RHI" = {Path = "../Foundation/Sedulous.RHI"}
+"Sedulous.RHI.WebGPU" = {Path = "../Foundation/Sedulous.RHI.WebGPU"}
+"Sedulous.Shell" = {Path = "../Foundation/Sedulous.Shell"}
+"Sedulous.Shell.Web" = {Path = "../Foundation/Sedulous.Shell.Web"}
+"Samples.WebTriangle" = {Path = "../Samples/Samples.WebTriangle"}
+
+[Configs.Release.wasm32]
+AllocType = "CRT"
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+
+[Configs.Debug.wasm32]
+AllocType = "CRT"
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false

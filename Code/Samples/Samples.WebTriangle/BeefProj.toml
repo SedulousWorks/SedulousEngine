@@ -7,3 +7,22 @@ StartupObject = "Samples.WebTriangle.Program"
 
 [Dependencies]
 corlib = "*"
+"wgpu-Beef" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.WebGPU" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Shell.Web" = "*"
+
+# emdawnwebgpu is what supplies webgpu.h at compile time and the navigator.gpu binding at
+# link time, and it has to be on BOTH, which is why it is here and not only a link flag.
+# The first wasm build fetches the port from Dawn's releases.
+[Configs.Debug.wasm32]
+TargetName = "$(ProjectName).html"
+TargetDirectory = "$(ProjectDir)/dist"
+OtherLinkFlags = "$(LinkFlags) --use-port=emdawnwebgpu:cpp_bindings=false -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 --shell-file $(ProjectDir)/shell.html"
+
+[Configs.Release.wasm32]
+TargetName = "$(ProjectName).html"
+TargetDirectory = "$(ProjectDir)/dist"
+OtherLinkFlags = "$(LinkFlags) --use-port=emdawnwebgpu:cpp_bindings=false -s ALLOW_MEMORY_GROWTH=1 --shell-file $(ProjectDir)/shell.html"

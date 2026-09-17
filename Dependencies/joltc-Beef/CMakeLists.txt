@@ -11,7 +11,12 @@ project(joltc_beef CXX C)
 # joltc decides its defaults from whether it is the top level project. It no longer is, so
 # say so explicitly: without this it would build STATIC, and the Beef side links a shared
 # library.
-set(JPH_MASTER_PROJECT ON)
+#
+# Overridable, because wasm has no shared libraries: the wasm build passes OFF and links the
+# static archive instead. A -D defines the cache entry, which makes this guard skip the set.
+if(NOT DEFINED JPH_MASTER_PROJECT)
+  set(JPH_MASTER_PROJECT ON)
+endif()
 
 # Neither ships, and building them costs a fetch of the test framework.
 set(JPH_SAMPLES OFF CACHE BOOL "" FORCE)

@@ -95,7 +95,11 @@ static class WebGpuApi
 		/// arrive. See PumpUntilDevice for why this never blocks.
 		public static void DevicePoll(WGPUDevice device)
 		{
+#if !BF_PLATFORM_WASM
 			wgpuDevicePoll(device, 0, null);
+#endif
+			// Nothing on web: the browser owns the timeline, and YieldToEventLoop is what
+			// actually lets a callback arrive there.
 		}
 
 		/// Polls the device until ONE specific submission retires, which is the only
@@ -103,7 +107,10 @@ static class WebGpuApi
 		/// than on the queue at large. See WebGpuFence.Wait.
 		public static void DevicePollUntil(WGPUDevice device, ref WGPUSubmissionIndex index)
 		{
+#if !BF_PLATFORM_WASM
 			wgpuDevicePoll(device, 1, &index);
+#endif
+			// A browser has no submission index to wait on; the fence falls to the pump.
 		}
 
 		/// Drains EVERYTHING submitted, which is what a device wide WaitIdle means.
@@ -113,7 +120,10 @@ static class WebGpuApi
 		/// wgpu-native returns from an already drained queue rather than parking on it.
 		public static void DevicePollWaitIdle(WGPUDevice device)
 		{
+#if !BF_PLATFORM_WASM
 			wgpuDevicePoll(device, 1, null);
+#endif
+			// A browser cannot block for idle at all: the work retires while the page runs.
 		}
 
 		/// Push constants as wgpu's IMMEDIATES, which is the native path. A browser has
@@ -122,19 +132,27 @@ static class WebGpuApi
 		public static void RenderSetImmediates(WGPURenderPassEncoder encoder, uint32 offset,
 			void* data, uint32 size)
 		{
+#if !BF_PLATFORM_WASM
 			wgpuRenderPassEncoderSetImmediates(encoder, offset, data, (uint)size);
+#endif
+			// UNREACHABLE on web: the adapter reports no immediates there, so every push
+			// constant goes through PushConstantEmulator and never arrives here.
 		}
 
 		public static void ComputeSetImmediates(WGPUComputePassEncoder encoder, uint32 offset,
 			void* data, uint32 size)
 		{
+#if !BF_PLATFORM_WASM
 			wgpuComputePassEncoderSetImmediates(encoder, offset, data, (uint)size);
+#endif
 		}
 
 		public static void BundleSetImmediates(WGPURenderBundleEncoder encoder, uint32 offset,
 			void* data, uint32 size)
 		{
+#if !BF_PLATFORM_WASM
 			wgpuRenderBundleEncoderSetImmediates(encoder, offset, data, (uint)size);
+#endif
 		}
 
 		/// An encoder level timestamp, which is a wgpu-native EXTENSION. A browser has
@@ -143,7 +161,11 @@ static class WebGpuApi
 		public static void EncoderWriteTimestamp(WGPUCommandEncoder encoder, WGPUQuerySet set,
 			uint32 index)
 		{
+#if !BF_PLATFORM_WASM
 			wgpuCommandEncoderWriteTimestamp(encoder, set, index);
+#endif
+			// The adapter never reports the feature on web, so the profiler asks for no
+			// encoder timestamps there and this is unreachable rather than silently wrong.
 		}
 
 		/// Submits and hands back the submission's INDEX, which is what lets a fence
@@ -152,14 +174,26 @@ static class WebGpuApi
 		public static WGPUSubmissionIndex SubmitForIndex(WGPUQueue queue, uint count,
 			WGPUCommandBuffer* commands)
 		{
+#if BF_PLATFORM_WASM
+			// The browser has only the plain submit and hands nothing back, so the caller's
+			// fence waits through the pump instead of on an index.
+			wgpuQueueSubmit(queue, count, commands);
+			return 0;
+#else
 			return wgpuQueueSubmitForIndex(queue, count, commands);
+#endif
 		}
 
 		/// Nanoseconds per timestamp tick. One when there is no way to ask, which keeps
 		/// a timing read honest rather than scaled by a guess.
 		public static float QueueTimestampPeriod(WGPUQueue queue)
 		{
+#if BF_PLATFORM_WASM
+			// One rather than a guess: a scaled reading would look plausible and be wrong.
+			return 1.0f;
+#else
 			return wgpuQueueGetTimestampPeriod(queue);
+#endif
 		}
 
 		/// Lists the adapters. The standard header can only REQUEST one asynchronously
@@ -169,7 +203,13 @@ static class WebGpuApi
 		/// Called twice: once with a null array to learn the count, then to fill.
 		public static int EnumerateAdapters(WGPUInstance instance, WGPUAdapter* adapters)
 		{
+#if BF_PLATFORM_WASM
+			// No enumeration in a browser at all. The backend takes the asynchronous
+			// RequestAdapter path instead; see WebGpuBackend.RequestAdapterNow.
+			return 0;
+#else
 			return (int)wgpuInstanceEnumerateAdapters(instance, null, adapters);
+#endif
 		}
 	}
 }
