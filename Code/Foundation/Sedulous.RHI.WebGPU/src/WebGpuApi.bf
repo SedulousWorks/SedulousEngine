@@ -82,9 +82,53 @@ static class WebGpuApi
 	/// already has the call in the right place and only gains a progress path there.
 	public static void YieldToEventLoop()
 	{
-		// The web tier lands this. Left as the seam rather than as nothing, so the two
-		// pumps do not have to be revisited to find where it goes.
+#if BF_PLATFORM_WASM
+		// The canvas texture the swap chain acquired EXPIRES when the requestAnimationFrame
+		// callback returns: the browser destroys it at composite time. Yielding between
+		// AcquireNextImage and Present hands control back MID FRAME, so this frame's later
+		// submit lands on a destroyed texture and the whole command buffer is dropped,
+		// silently losing any one shot work it carried. Said once, and loudly.
+		if (sFrameOpen && !sFrameYieldWarned)
+		{
+			sFrameYieldWarned = true;
+			Console.Error.WriteLine("[webgpu] YieldToEventLoop DURING an open frame. The "
+				+ "browser will expire the canvas texture and this frame's submit will be "
+				+ "dropped: find the mid frame waiter.");
+		}
+
+		// The ONLY way a WebGPU future resolves on web. Adapter, device, buffer map and work
+		// done callbacks all fire from a MICROTASK, and a microtask cannot run while wasm is
+		// spinning, so a pump without this spins its whole guard and then reports a timeout on
+		// a request that was always going to succeed.
+		//
+		// Requires the linking executable to enable ASYNCIFY, which is what makes a
+		// synchronous call able to unwind and resume.
+		emscripten_sleep(0);
+#endif
 	}
+
+#if BF_PLATFORM_WASM
+	[CLink, CallingConvention(.Cdecl)]
+	private static extern void emscripten_sleep(uint32 milliseconds);
+
+	private static bool sFrameOpen = false;
+	private static bool sFrameYieldWarned = false;
+
+	/// Bracket the frame, so a yield inside it can be recognised. Called by the swap chain
+	/// from acquire and present.
+	public static void NoteFrameOpen()
+	{
+		sFrameOpen = true;
+	}
+
+	public static void NoteFrameClosed()
+	{
+		sFrameOpen = false;
+	}
+#else
+	public static void NoteFrameOpen() {}
+	public static void NoteFrameClosed() {}
+#endif
 
 	/// The wgpu-native EXTENSIONS, which the standard header does not declare and a
 	/// browser does not have. Every one is behind this wrapper so the web build has a

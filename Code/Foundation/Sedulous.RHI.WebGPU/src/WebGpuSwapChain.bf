@@ -117,6 +117,9 @@ sealed class WebGpuSwapChain : ISwapChain
 		}
 
 		mHaveImage = true;
+		// From here until Present the canvas texture is LIVE, and a yield to the browser would
+		// expire it under the frame. See WebGpuApi.YieldToEventLoop.
+		WebGpuApi.NoteFrameOpen();
 		mFrameIndex++;
 		return .Ok;
 	}
@@ -125,6 +128,9 @@ sealed class WebGpuSwapChain : ISwapChain
 	{
 		if (!mHaveImage)
 			return .Err;
+
+		// The frame is closing, so a yield past this point is no longer mid frame.
+		WebGpuApi.NoteFrameClosed();
 
 #if BF_PLATFORM_WASM
 		// The browser presents the canvas automatically once the requestAnimationFrame
