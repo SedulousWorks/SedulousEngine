@@ -7,3 +7,6 @@ StartupObject = "Sedulous.RHI.DX12.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.RHI" = "*"
+"Win32" = "*"
