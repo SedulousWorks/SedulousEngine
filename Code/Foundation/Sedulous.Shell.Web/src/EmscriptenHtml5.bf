@@ -14,11 +14,16 @@ namespace Sedulous.Shell.Web;
 static class EmscriptenHtml5
 {
 	/// What a registration takes as its target when the listener belongs on the page rather
-	/// than on one element. These are the special values html5.h defines.
-	public const char8* TargetWindow = "#window";
-	public const char8* TargetDocument = "#document";
-	public const char8* TargetScreen = "#screen";
-	public const char8* TargetCanvas = "#canvas";
+	/// than on one element.
+	///
+	/// These are MAGIC POINTER VALUES, not strings: html5.h spells them `((const char*)1)` and
+	/// up, and the JS side compares the pointer before it ever tries to read a selector out of
+	/// it. Passing "#window" instead registers against a target that does not resolve, and
+	/// emscripten reports "the target element for event handler registration does not exist"
+	/// with an undefined target, so the keyboard silently never arrives.
+	public static char8* TargetDocument => (char8*)(void*)1;
+	public static char8* TargetWindow => (char8*)(void*)2;
+	public static char8* TargetScreen => (char8*)(void*)3;
 
 	/// Passed as the thread to run the callback on. Zero is "the calling thread", which for a
 	/// non pthreads build is the only one there is.
