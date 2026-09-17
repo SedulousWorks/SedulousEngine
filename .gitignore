@@ -25,3 +25,4 @@ Code/Web/build/
 # build-linux-* directories. The ARTIFACTS under dist/Release-wasm32 are committed; these are
 # the intermediates, and joltc's fetches JoltPhysics as a nested git checkout.
 Dependencies/*/build-wasm/
+__pycache__/
