@@ -22,6 +22,17 @@ sealed class WebGpuBackend : IBackend
 
 	public Result<void> Initialize()
 	{
+#if BF_PLATFORM_WASM
+		// A browser has neither piece of the desktop descriptor. InstanceExtras is a
+		// wgpu-native extension whose sType means nothing to emdawnwebgpu, and SPIR-V
+		// ingestion does not exist there at all: requesting it logs "ShaderSourceSPIRV
+		// requested, but not supported in Wasm" and then hands back a WORKING instance
+		// anyway, so the null check below would read that refusal as an acceptance.
+		// Believing it makes PreferredShaderFormat answer SpirV, and the shader system then
+		// asks a WGSL only pack for a format it does not carry.
+		mInstance = wgpuCreateInstance(null);
+		WebGpuApi.SpirvIngestion = false;
+#else
 		// Keep GL OUT of the instance. Left unset, wgpu-native enables every backend
 		// including GL, whose WGL instance thread on Windows dies with a fatal callback
 		// exception when an instance is created and torn down without the event loop
@@ -54,6 +65,7 @@ sealed class WebGpuBackend : IBackend
 			desc.nextInChain = &extras.chain;
 			mInstance = wgpuCreateInstance(&desc);
 		}
+#endif
 
 		if (mInstance == null)
 		{
