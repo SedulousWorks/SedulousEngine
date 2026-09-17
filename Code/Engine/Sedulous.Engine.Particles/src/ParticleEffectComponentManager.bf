@@ -32,6 +32,8 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 	private Scene mScene = null;
 	/// The particle renderer's dispatch id, set by the subsystem once it has registered it.
 	private uint16 mBillboardRendererId = 0;
+	/// Set by the subsystem from the render subsystem: the instanced mesh sets route here.
+	private uint16 mMeshRendererId = 0;
 
 	/// Cloning an effect is a serialization round trip, so the manager carries the factory.
 	private SerializerFactory mSerializers
@@ -74,6 +76,12 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 	public void SetBillboardRendererId(uint16 id)
 	{
 		mBillboardRendererId = id;
+	}
+
+	/// The mesh renderer's registration id, for the instanced mesh sets. Never assume nought.
+	public void SetMeshRendererId(uint16 id)
+	{
+		mMeshRendererId = id;
 	}
 
 	protected override void OnComponentCreated(ParticleEffectComponent* component,
@@ -532,8 +540,9 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 		let perSubmesh = (materialCache != null) && (materialCache.Count > 1);
 		data.SubmeshMaterials = perSubmesh ? materialCache.Ptr : null;
 		data.SubmeshMaterialCount = perSubmesh ? (uint32)materialCache.Count : 0;
-		// The mesh renderer, which is the first registered.
-		data.RendererId = 0;
+		// The mesh renderer, by its REAL registration id: first registered is only the usual
+		// case, not a guarantee.
+		data.RendererId = mMeshRendererId;
 		data.Category = MeshCategoryFor(material);
 
 		let center = (boundsMin + boundsMax) * 0.5f;

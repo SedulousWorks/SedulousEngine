@@ -173,6 +173,10 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 
 	// ---- extension seam --------------------------------------------------------------------
 
+	/// The BUILT IN mesh renderer's registration id, which is what mesh shaped data routes to.
+	/// A producer of MeshRenderData outside the extractor stamps THIS, never a literal nought.
+	public uint16 MeshRendererId => (mMeshRenderer != null) ? mMeshRenderer.RendererId : 0;
+
 	/// Registers an external renderer, BORROWED, and hands back the dispatch id to stamp on
 	/// its render data. The pipeline drives the whole registry per frame.
 	public uint16 RegisterRenderer(Renderer renderer)

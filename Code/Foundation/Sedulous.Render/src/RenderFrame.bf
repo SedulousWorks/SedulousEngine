@@ -266,6 +266,28 @@ class RenderFrame
 		}
 	}
 
+	/// This scene's shadow caster count, and how many of them are skinned, from the last frame
+	/// that built the scene's context. Diagnostics, and what the caster list's tests read.
+	public int ShadowCasterCount(ExtractedScene scene)
+	{
+		for (let context in mSceneShadowPool)
+		{
+			if ((context.Scene == scene) && (scene != null))
+				return context.Casters.Count;
+		}
+		return 0;
+	}
+
+	public int AnimatedShadowCasterCount(ExtractedScene scene)
+	{
+		for (let context in mSceneShadowPool)
+		{
+			if ((context.Scene == scene) && (scene != null))
+				return context.AnimatedSpheres.Count;
+		}
+		return 0;
+	}
+
 	/// The LAST composition's per view shadow state, for the tests and the tools.
 	public Span<ViewShadowDebug> ViewShadowInfo => mViewShadowDebug;
 	public Span<GpuLocalShadow> LocalShadowEntries => mLocalShadows;
@@ -523,27 +545,23 @@ class RenderFrame
 				&& (data.Category != RenderCategories.Masked))
 				continue;
 
-			// The list is HETEROGENEOUS: any renderer can produce a caster, not only the mesh
-			// one. Only the GENERIC base fields are read here.
-			var stateBits = data.SortBatchKey & ((1u << SortKeys.StateBits) - 1);
+			// The list is HETEROGENEOUS: any renderer, terrain or an external one, can produce
+			// a caster. Only the GENERIC base fields are read here, SortBatchKey included:
+			// every producer sets it at extraction with the same BatchKey the draw list builder
+			// sorts by, so there is nothing to recompute.
+			let stateBits = data.SortBatchKey & ((1u << SortKeys.StateBits) - 1);
 
-			// The one mesh specific need, a skinned caster's sphere, is gated on the ITEM'S
-			// TYPE, not on a renderer id. RendererId is a DISPATCH key: the registry hands ids
-			// out in registration order and nought is merely the field's default, so "nought is
-			// the mesh renderer" holds only while the mesh renderer happens to register first.
-			// Register one other renderer alone, as the terrain probe harness does, and that
-			// renderer is nought; Raptor's static_cast then reads a terrain item's fields at
-			// mesh offsets, and this one fatals on the bad cast. Asking the type asks the
-			// question the code actually has.
-			if (let mesh = data as MeshRenderData)
+			// The one mesh specific need, a skinned caster's sphere, asks the data what it IS.
+			// It used to gate on RendererId == 0, which is only the first REGISTERED renderer:
+			// the terrain probe registers terrain alone, so that read bones out of terrain
+			// fields. Raptor's static_cast did it silently; this one's checked cast trapped.
+			if (data.Kind == .Mesh)
 			{
+				let mesh = (MeshRenderData)data;
 				// A skinned caster deforms every frame, so its sphere is remembered and only
 				// the static tiles whose light volume it overlaps are re-rendered.
 				if ((mesh.BoneMatrices != null) && (mesh.BoneCount > 0))
 					context.AnimatedSpheres.Add(.(mesh.WorldCenter, mesh.WorldRadius));
-
-				stateBits = SortKeys.BatchKey(Internal.UnsafeCastToPtr(mesh.Mesh),
-					(mesh.Material != null) ? Internal.UnsafeCastToPtr(mesh.Material) : null);
 			}
 
 			context.Casters.Add(.(SortKeys.MakeSortKey(data.Category, stateBits, 0), data));

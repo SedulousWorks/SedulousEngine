@@ -400,4 +400,89 @@ class RenderFrameTests
 		Test.Assert(small.BonePoolSlotsPerFrame == MeshRenderer.InitialBonePoolSlots,
 			"a scene that fits left it alone");
 	}
+
+	/// The caster list asks the DATA what it is, never the renderer id.
+	///
+	/// With an external renderer registered FIRST it holds id nought, which is the terrain
+	/// probe's shape and any embedding that adds its own renderer before the built in one. The
+	/// old id gate then narrowed junk data to mesh data: it counted the two junk items as
+	/// animated casters and missed the real skinned one.
+	[Test]
+	public static void TheCasterListAsksTheDataWhatItIsNotTheRendererId()
+	{
+		// The stamp: the base is Generic, mesh data and everything derived from it is Mesh.
+		let generic = scope RenderData();
+		let mesh = scope MeshRenderData();
+		let multi = scope MultiMeshRenderData();
+		let junkStamp = scope JunkRenderData();
+		Test.Assert(generic.Kind == .Generic);
+		Test.Assert(mesh.Kind == .Mesh);
+		Test.Assert(multi.Kind == .Mesh, "a subclass inherits the stamp");
+		Test.Assert(junkStamp.Kind == .Generic, "an external renderer's data is Generic");
+
+		let fixture = scope RenderFrameFixture(128, 128);
+		if (!fixture.Ready)
+			return;
+
+		let meshRenderer = scope MeshRenderer(fixture.Device, fixture.Shaders, fixture.PsoCache,
+			fixture.Materials, 2);
+		Test.Assert(meshRenderer.Initialize() case .Ok);
+
+		// The EXTERNAL one registers first, so it holds nought and the mesh renderer does not.
+		let external = scope InertOpaqueRenderer();
+		let registry = scope RendererRegistry();
+		registry.Register(external);
+		registry.Register(meshRenderer);
+		Test.Assert(external.RendererId == 0);
+		Test.Assert(meshRenderer.RendererId == 1);
+
+		let shadows = scope ShadowSystem(fixture.Device, 2);
+		Test.Assert(shadows.Initialize() case .Ok);
+
+		let frame = scope RenderFrame(fixture.Device, registry, 2, null, null, shadows);
+
+		let skinned = MakeSkinnedTriangle();
+		defer delete skinned;
+		let material = MakeLitMaterial();
+		defer delete material;
+		Float4x4[8] palette = .();
+		for (int b < 8)
+			palette[b] = Float4x4.Identity();
+
+		// Two junk casters from the external renderer, and one skinned mesh caster.
+		let scene = scope ExtractedScene();
+		for (int i < 2)
+		{
+			let junk = scene.Add<JunkRenderData>();
+			junk.Category = RenderCategories.Opaque;
+			junk.RendererId = external.RendererId;
+			junk.WorldCenter = .((float)i, 0.0f, 0.0f);
+			junk.WorldRadius = 1.0f;
+		}
+
+		let data = scene.Add<MeshRenderData>();
+		data.World = Float4x4.Identity();
+		data.Mesh = skinned;
+		data.Material = material;
+		data.Category = RenderCategories.Opaque;
+		data.RendererId = meshRenderer.RendererId;
+		data.BoneMatrices = &palette[0];
+		data.BoneCount = 8;
+		data.WorldRadius = 1.0f;
+
+		var shadow = DirectionalShadow();
+		shadow.Direction = Normalized(Float3(0.3f, -1.0f, 0.2f));
+		shadow.Valid = true;
+		scene.SetDirectionalShadow(shadow);
+
+		let camera = RenderFrameFixture.LookingAtTheOrigin();
+		frame.Begin(fixture.Encoder, 0);
+		frame.AddView(scene, camera, .(), fixture.ColorView, .BGRA8Unorm, 128, 128);
+		frame.End();
+
+		// All three are casters, on the base fields alone; exactly the skinned MESH is animated.
+		Test.Assert(frame.ShadowCasterCount(scene) == 3, "every opaque item casts");
+		Test.Assert(frame.AnimatedShadowCasterCount(scene) == 1,
+			scope $"one animated caster, not {frame.AnimatedShadowCasterCount(scene)}");
+	}
 }

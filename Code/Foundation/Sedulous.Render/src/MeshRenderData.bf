@@ -9,6 +9,12 @@ namespace Sedulous.Render;
 /// Every pointer here is BORROWED for the frame; the producer keeps the resources alive.
 class MeshRenderData : RenderData
 {
+	/// Subclasses inherit the stamp, which is what makes a MultiMeshRenderData answer Mesh too.
+	public this()
+	{
+		Kind = .Mesh;
+	}
+
 	public Float4x4 World = .Identity();
 	/// A per instance tint.
 	public Color Color = .(1.0f, 1.0f, 1.0f, 1.0f);

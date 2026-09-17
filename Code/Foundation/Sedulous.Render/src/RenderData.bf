@@ -17,11 +17,16 @@ class RenderData
 {
 	public uint16 Category = RenderCategories.Opaque;
 
-	/// WHICH RENDERER draws this, which is the per item dispatch key: several renderers can
+	/// WHICH RENDERER draws this, which is the per item DISPATCH key: several renderers can
 	/// share a category, sprites and transparent meshes both being blended, and still be
-	/// routed correctly. The default is the first registered one, so mesh data needs no
-	/// change; another producer stamps its own renderer's id.
+	/// routed correctly. The default is the first registered one, the mesh renderer in the
+	/// standard subsystem, so mesh data needs no change. That is a dispatch default and NOT a
+	/// type: a frame registering another renderer first routes id nought there. Another
+	/// producer stamps its own renderer's id. Never infer the concrete type from it; read Kind.
 	public uint16 RendererId = 0;
+
+	/// What this data IS, stamped by the subtype's constructor. See RenderDataKind.
+	public RenderDataKind Kind = .Generic;
 
 	/// The world space point the depth sort is measured to, read GENERICALLY by the draw list
 	/// builder rather than by casting to a concrete type.

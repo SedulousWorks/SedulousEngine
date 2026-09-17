@@ -28,7 +28,10 @@ class ParticleSubsystem : Subsystem, ISceneObserver
 
 		manager.SetBillboardRendererId(mBillboardRendererId);
 		if (mRender != null)
+		{
+			manager.SetMeshRendererId(mRender.MeshRendererId);
 			mRender.RegisterProvider(scene, manager);
+		}
 	}
 
 	protected override void OnReady()
