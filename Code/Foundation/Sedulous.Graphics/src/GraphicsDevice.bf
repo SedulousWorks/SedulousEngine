@@ -197,6 +197,11 @@ class GraphicsDevice
 		case .X11: return .X11;
 		case .Wayland: return .Wayland;
 		case .Cocoa: return .Cocoa;
+		// The browser. WITHOUT this the canvas fell through to Unknown, the backend was
+		// handed a selector it was not told to read as one, the surface failed, and the
+		// host registered no RenderWindow at all: every frame ticked and nothing ever
+		// acquired a back buffer, which presents as a wholly black page and not one error.
+		case .Web: return .Web;
 		default: return .Unknown;
 		}
 	}
