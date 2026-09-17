@@ -17,12 +17,15 @@ corlib = "*"
 # emdawnwebgpu is what supplies webgpu.h at compile time and the navigator.gpu binding at
 # link time, and it has to be on BOTH, which is why it is here and not only a link flag.
 # The first wasm build fetches the port from Dawn's releases.
+# The stack is 2 MB, not emscripten's default 64 KB. That default is sized for tiny demos and
+# engine startup overflows it immediately, which traps and takes the whole tab down with no JS
+# exception to read. Raptor sets exactly this, for exactly this reason.
 [Configs.Debug.wasm32]
 TargetName = "$(ProjectName).html"
 TargetDirectory = "$(ProjectDir)/dist"
-OtherLinkFlags = "$(LinkFlags) -O3 --use-port=emdawnwebgpu:cpp_bindings=false -s ASYNCIFY -s ASYNCIFY_STACK_SIZE=1048576 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 --shell-file $(ProjectDir)/shell.html"
+OtherLinkFlags = "$(LinkFlags) -O3 --use-port=emdawnwebgpu:cpp_bindings=false -s ASYNCIFY -s ASYNCIFY_STACK_SIZE=1048576 -s STACK_SIZE=2097152 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 --shell-file $(ProjectDir)/shell.html"
 
 [Configs.Release.wasm32]
 TargetName = "$(ProjectName).html"
 TargetDirectory = "$(ProjectDir)/dist"
-OtherLinkFlags = "$(LinkFlags) -O3 --use-port=emdawnwebgpu:cpp_bindings=false -s ASYNCIFY -s ASYNCIFY_STACK_SIZE=1048576 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 --shell-file $(ProjectDir)/shell.html"
+OtherLinkFlags = "$(LinkFlags) -O3 --use-port=emdawnwebgpu:cpp_bindings=false -s ASYNCIFY -s ASYNCIFY_STACK_SIZE=1048576 -s STACK_SIZE=2097152 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 --shell-file $(ProjectDir)/shell.html"
