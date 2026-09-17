@@ -335,6 +335,7 @@ wgpu-Beef = {Path = "../Dependencies/wgpu-Beef"}
 "Sedulous.Integration.Mcp" = {Path = "Integration/Sedulous.Integration.Mcp"}
 "Sedulous.Integration.TextureCompression" = {Path = "Integration/Sedulous.Integration.TextureCompression"}
 "Sedulous.Tools.Cook" = {Path = "Tools/Sedulous.Tools.Cook"}
+"Sedulous.Tools.CullBench" = {Path = "Tools/Sedulous.Tools.CullBench"}
 "Sedulous.Tools.Editor" = {Path = "Tools/Sedulous.Tools.Editor"}
 "Sedulous.Tools.Export" = {Path = "Tools/Sedulous.Tools.Export"}
 "Sedulous.Tools.Mcp" = {Path = "Tools/Sedulous.Tools.Mcp"}

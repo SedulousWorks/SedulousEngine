@@ -77,14 +77,14 @@ struct Float4
 static
 {
 	[Inline]
-	public static float Dot(Float4 a, Float4 b) =>
+	public static float Dot(in Float4 a, in Float4 b) =>
 		a.X * b.X + a.Y * b.Y + a.Z * b.Z + a.W * b.W;
 
-	[Inline] public static float LengthSquared(Float4 v) => Dot(v, v);
-	[Inline] public static float Length(Float4 v) => Sqrt(LengthSquared(v));
+	[Inline] public static float LengthSquared(in Float4 v) => Dot(v, v);
+	[Inline] public static float Length(in Float4 v) => Sqrt(LengthSquared(v));
 
 	/// A unit vector, or Zero when the input is near-zero length.
-	public static Float4 Normalized(Float4 v)
+	public static Float4 Normalized(in Float4 v)
 	{
 		let lengthSq = LengthSquared(v);
 		if (lengthSq <= Epsilon * Epsilon)
@@ -93,9 +93,9 @@ static
 	}
 
 	[Inline]
-	public static Float4 Lerp(Float4 a, Float4 b, float t) => a + (b - a) * t;
+	public static Float4 Lerp(in Float4 a, in Float4 b, float t) => a + (b - a) * t;
 
-	public static bool NearlyEqual(Float4 a, Float4 b, float epsilon = Epsilon) =>
+	public static bool NearlyEqual(in Float4 a, in Float4 b, float epsilon = Epsilon) =>
 		NearlyEqual(a.X, b.X, epsilon) &&
 		NearlyEqual(a.Y, b.Y, epsilon) &&
 		NearlyEqual(a.Z, b.Z, epsilon) &&

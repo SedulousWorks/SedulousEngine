@@ -53,7 +53,7 @@ static
 	private static uint8 ByteOf(float v) => (uint8)(Clamp(v, 0.0f, 1.0f) * 255.0f + 0.5f);
 
 	/// Float colour to packed bytes, clamped to 0..1 and rounded.
-	public static Color32 ToColor32(Color c) => .(ByteOf(c.R), ByteOf(c.G), ByteOf(c.B), ByteOf(c.A));
+	public static Color32 ToColor32(in Color c) => .(ByteOf(c.R), ByteOf(c.G), ByteOf(c.B), ByteOf(c.A));
 
 	/// Packed bytes to float colour: exact 0..255 to 0..1, and round-trips ToColor32.
 	public static Color ToColor(Color32 c) => .(

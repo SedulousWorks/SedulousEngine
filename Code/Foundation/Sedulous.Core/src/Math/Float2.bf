@@ -58,15 +58,15 @@ struct Float2
 
 static
 {
-	[Inline] public static float Dot(Float2 a, Float2 b) => a.X * b.X + a.Y * b.Y;
+	[Inline] public static float Dot(in Float2 a, in Float2 b) => a.X * b.X + a.Y * b.Y;
 
-	[Inline] public static float LengthSquared(Float2 v) => Dot(v, v);
-	[Inline] public static float Length(Float2 v) => Sqrt(LengthSquared(v));
-	[Inline] public static float DistanceSquared(Float2 a, Float2 b) => LengthSquared(b - a);
-	[Inline] public static float Distance(Float2 a, Float2 b) => Length(b - a);
+	[Inline] public static float LengthSquared(in Float2 v) => Dot(v, v);
+	[Inline] public static float Length(in Float2 v) => Sqrt(LengthSquared(v));
+	[Inline] public static float DistanceSquared(in Float2 a, in Float2 b) => LengthSquared(b - a);
+	[Inline] public static float Distance(in Float2 a, in Float2 b) => Length(b - a);
 
 	/// A unit vector, or Zero when the input is near-zero length.
-	public static Float2 Normalized(Float2 v)
+	public static Float2 Normalized(in Float2 v)
 	{
 		let lengthSq = LengthSquared(v);
 		if (lengthSq <= Epsilon * Epsilon)
@@ -75,8 +75,8 @@ static
 	}
 
 	[Inline]
-	public static Float2 Lerp(Float2 a, Float2 b, float t) => a + (b - a) * t;
+	public static Float2 Lerp(in Float2 a, in Float2 b, float t) => a + (b - a) * t;
 
-	public static bool NearlyEqual(Float2 a, Float2 b, float epsilon = Epsilon) =>
+	public static bool NearlyEqual(in Float2 a, in Float2 b, float epsilon = Epsilon) =>
 		NearlyEqual(a.X, b.X, epsilon) && NearlyEqual(a.Y, b.Y, epsilon);
 }

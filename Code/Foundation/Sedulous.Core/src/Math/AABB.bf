@@ -17,7 +17,7 @@ struct AABB
 		Float3(FloatMax, FloatMax, FloatMax),
 		Float3(-FloatMax, -FloatMax, -FloatMax));
 
-	public static AABB FromCenterExtents(Float3 center, Float3 extents) =>
+	public static AABB FromCenterExtents(in Float3 center, in Float3 extents) =>
 		.(center - extents, center + extents);
 
 	public Float3 Center() => (Min + Max) * 0.5f;
@@ -50,5 +50,5 @@ struct AABB
 
 static
 {
-	public static AABB Merge(AABB a, AABB b) => .(Min(a.Min, b.Min), Max(a.Max, b.Max));
+	public static AABB Merge(in AABB a, in AABB b) => .(Min(a.Min, b.Min), Max(a.Max, b.Max));
 }

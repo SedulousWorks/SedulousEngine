@@ -1,0 +1,11 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Tools.CullBench"
+TargetType = "BeefConsoleApplication"
+StartupObject = "Sedulous.Tools.CullBench.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Render" = "*"

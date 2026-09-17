@@ -55,10 +55,10 @@ struct Color
 
 static
 {
-	public static Color Lerp(Color a, Color b, float t) => .(
+	public static Color Lerp(in Color a, in Color b, float t) => .(
 		Lerp(a.R, b.R, t), Lerp(a.G, b.G, t), Lerp(a.B, b.B, t), Lerp(a.A, b.A, t));
 
-	public static bool NearlyEqual(Color a, Color b, float epsilon = Epsilon) =>
+	public static bool NearlyEqual(in Color a, in Color b, float epsilon = Epsilon) =>
 		NearlyEqual(a.R, b.R, epsilon) && NearlyEqual(a.G, b.G, epsilon) &&
 		NearlyEqual(a.B, b.B, epsilon) && NearlyEqual(a.A, b.A, epsilon);
 }

@@ -56,13 +56,13 @@ struct Float4x4
 		0.0f, 0.0f, 1.0f, 0.0f,
 		0.0f, 0.0f, 0.0f, 1.0f);
 
-	public static Float4x4 Translation(Float3 t) => .(
+	public static Float4x4 Translation(in Float3 t) => .(
 		1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, 1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 1.0f, 0.0f,
 		t.X,  t.Y,  t.Z,  1.0f);
 
-	public static Float4x4 Scale(Float3 s) => .(
+	public static Float4x4 Scale(in Float3 s) => .(
 		s.X,  0.0f, 0.0f, 0.0f,
 		0.0f, s.Y,  0.0f, 0.0f,
 		0.0f, 0.0f, s.Z,  0.0f,
@@ -124,7 +124,7 @@ struct Float4x4
 			0.0f,         0.0f,          zNear * zRange, 1.0f);
 	}
 
-	public static Float4x4 LookAtRH(Float3 eye, Float3 target, Float3 up)
+	public static Float4x4 LookAtRH(in Float3 eye, in Float3 target, in Float3 up)
 	{
 		let zAxis = Normalized(eye - target);   // the camera looks down -z
 		let xAxis = Normalized(Cross(up, zAxis));
@@ -175,7 +175,7 @@ struct Float4x4
 
 static
 {
-	public static Float4x4 Transpose(Float4x4 a)
+	public static Float4x4 Transpose(in Float4x4 a)
 	{
 		Float4x4 result = .();
 		for (int row < 4)
@@ -185,24 +185,24 @@ static
 	}
 
 	/// Transforms a position: implicit w = 1, so translation applies.
-	public static Float3 TransformPoint(Float3 p, Float4x4 m) => .(
+	public static Float3 TransformPoint(in Float3 p, in Float4x4 m) => .(
 		p.X * m.M[0][0] + p.Y * m.M[1][0] + p.Z * m.M[2][0] + m.M[3][0],
 		p.X * m.M[0][1] + p.Y * m.M[1][1] + p.Z * m.M[2][1] + m.M[3][1],
 		p.X * m.M[0][2] + p.Y * m.M[1][2] + p.Z * m.M[2][2] + m.M[3][2]);
 
 	/// Transforms a direction: implicit w = 0, so translation is ignored.
-	public static Float3 TransformDirection(Float3 d, Float4x4 m) => .(
+	public static Float3 TransformDirection(in Float3 d, in Float4x4 m) => .(
 		d.X * m.M[0][0] + d.Y * m.M[1][0] + d.Z * m.M[2][0],
 		d.X * m.M[0][1] + d.Y * m.M[1][1] + d.Z * m.M[2][1],
 		d.X * m.M[0][2] + d.Y * m.M[1][2] + d.Z * m.M[2][2]);
 
 	/// Transforms a 2D position held in a 4x4 affine transform: implicit z = 0, w = 1,
 	/// translation applies, and the result projects back to 2D.
-	public static Float2 TransformPoint2D(Float2 p, Float4x4 m) => .(
+	public static Float2 TransformPoint2D(in Float2 p, in Float4x4 m) => .(
 		p.X * m.M[0][0] + p.Y * m.M[1][0] + m.M[3][0],
 		p.X * m.M[0][1] + p.Y * m.M[1][1] + m.M[3][1]);
 
-	public static bool NearlyEqual(Float4x4 a, Float4x4 b, float epsilon = Epsilon)
+	public static bool NearlyEqual(in Float4x4 a, in Float4x4 b, float epsilon = Epsilon)
 	{
 		for (int row < 4)
 			for (int col < 4)
@@ -211,7 +211,7 @@ static
 		return true;
 	}
 
-	public static float Determinant(Float4x4 mat)
+	public static float Determinant(in Float4x4 mat)
 	{
 		var mat;
 		let m = &mat.M[0][0];
@@ -232,7 +232,7 @@ static
 
 	/// Full inverse by adjugate over determinant. Returns Identity for a singular matrix
 	/// rather than producing infinities.
-	public static Float4x4 Inverse(Float4x4 mat)
+	public static Float4x4 Inverse(in Float4x4 mat)
 	{
 		var mat;
 		let m = &mat.M[0][0];

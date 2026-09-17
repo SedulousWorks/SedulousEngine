@@ -12,7 +12,7 @@ struct Plane
 	public this() { Normal = default; D = 0.0f; }
 	public this(Float3 normal, float d) { this.Normal = normal; this.D = d; }
 
-	public static Plane FromPointNormal(Float3 point, Float3 unitNormal) =>
+	public static Plane FromPointNormal(in Float3 point, in Float3 unitNormal) =>
 		.(unitNormal, -Dot(unitNormal, point));
 
 	/// Positive in front, on the Normal's side; negative behind; near zero on the plane.

@@ -62,21 +62,25 @@ struct Float3
 
 static
 {
+	// IN, not by value. Beef materialises a by value struct argument in memory even for an
+	// inlined call, and these run millions of times a frame: the shadow cascade cull measured
+	// 10.8 ns a caster by value against 4.9 with in, where writing the same arithmetic out by
+	// hand is 3.2. See Tools/Sedulous.Tools.CullBench.
 	[Inline]
-	public static float Dot(Float3 a, Float3 b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z;
+	public static float Dot(in Float3 a, in Float3 b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z;
 
 	[Inline]
-	public static Float3 Cross(Float3 a, Float3 b) => .(
+	public static Float3 Cross(in Float3 a, in Float3 b) => .(
 		a.Y * b.Z - a.Z * b.Y,
 		a.Z * b.X - a.X * b.Z,
 		a.X * b.Y - a.Y * b.X);
 
-	[Inline] public static float LengthSquared(Float3 v) => Dot(v, v);
-	[Inline] public static float Length(Float3 v) => Sqrt(LengthSquared(v));
-	[Inline] public static float Distance(Float3 a, Float3 b) => Length(b - a);
+	[Inline] public static float LengthSquared(in Float3 v) => Dot(v, v);
+	[Inline] public static float Length(in Float3 v) => Sqrt(LengthSquared(v));
+	[Inline] public static float Distance(in Float3 a, in Float3 b) => Length(b - a);
 
 	/// A unit vector, or Zero when the input is near-zero length.
-	public static Float3 Normalized(Float3 v)
+	public static Float3 Normalized(in Float3 v)
 	{
 		let lengthSq = LengthSquared(v);
 		if (lengthSq <= Epsilon * Epsilon)
@@ -85,19 +89,19 @@ static
 	}
 
 	[Inline]
-	public static Float3 Lerp(Float3 a, Float3 b, float t) => a + (b - a) * t;
+	public static Float3 Lerp(in Float3 a, in Float3 b, float t) => a + (b - a) * t;
 
-	public static Float3 Min(Float3 a, Float3 b) => .(
+	public static Float3 Min(in Float3 a, in Float3 b) => .(
 		a.X < b.X ? a.X : b.X,
 		a.Y < b.Y ? a.Y : b.Y,
 		a.Z < b.Z ? a.Z : b.Z);
 
-	public static Float3 Max(Float3 a, Float3 b) => .(
+	public static Float3 Max(in Float3 a, in Float3 b) => .(
 		a.X > b.X ? a.X : b.X,
 		a.Y > b.Y ? a.Y : b.Y,
 		a.Z > b.Z ? a.Z : b.Z);
 
-	public static bool NearlyEqual(Float3 a, Float3 b, float epsilon = Epsilon) =>
+	public static bool NearlyEqual(in Float3 a, in Float3 b, float epsilon = Epsilon) =>
 		NearlyEqual(a.X, b.X, epsilon) &&
 		NearlyEqual(a.Y, b.Y, epsilon) &&
 		NearlyEqual(a.Z, b.Z, epsilon);
