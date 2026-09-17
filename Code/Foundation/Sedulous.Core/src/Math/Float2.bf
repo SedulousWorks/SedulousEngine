@@ -36,37 +36,37 @@ struct Float2
 		}
 	}
 
-	public static Float2 operator-(in Float2 v) => .(-v.X, -v.Y);
+	public static Float2 operator-(Float2 v) => .(-v.X, -v.Y);
 
-	public void operator+=(in Float2 r) mut { X += r.X; Y += r.Y; }
-	public void operator-=(in Float2 r) mut { X -= r.X; Y -= r.Y; }
+	public void operator+=(Float2 r) mut { X += r.X; Y += r.Y; }
+	public void operator-=(Float2 r) mut { X -= r.X; Y -= r.Y; }
 	public void operator*=(float s) mut { X *= s; Y *= s; }
 	public void operator/=(float s) mut { X /= s; Y /= s; }
 
-	public static Float2 operator+(in Float2 a, in Float2 b) => .(a.X + b.X, a.Y + b.Y);
-	public static Float2 operator-(in Float2 a, in Float2 b) => .(a.X - b.X, a.Y - b.Y);
+	public static Float2 operator+(Float2 a, Float2 b) => .(a.X + b.X, a.Y + b.Y);
+	public static Float2 operator-(Float2 a, Float2 b) => .(a.X - b.X, a.Y - b.Y);
 	/// Component-wise, not a dot or a scale.
-	public static Float2 operator*(in Float2 a, in Float2 b) => .(a.X * b.X, a.Y * b.Y);
-	public static Float2 operator*(in Float2 v, float s) => .(v.X * s, v.Y * s);
-	public static Float2 operator*(float s, in Float2 v) => .(v.X * s, v.Y * s);
-	public static Float2 operator/(in Float2 v, float s) => .(v.X / s, v.Y / s);
+	public static Float2 operator*(Float2 a, Float2 b) => .(a.X * b.X, a.Y * b.Y);
+	public static Float2 operator*(Float2 v, float s) => .(v.X * s, v.Y * s);
+	public static Float2 operator*(float s, Float2 v) => .(v.X * s, v.Y * s);
+	public static Float2 operator/(Float2 v, float s) => .(v.X / s, v.Y / s);
 	/// [Commutable] so Beef can derive != from this one declaration. Without it every use
 	/// of != warns, and a warning costs the whole incremental build.
 	[Commutable]
-	public static bool operator==(in Float2 a, in Float2 b) => (a.X == b.X) && (a.Y == b.Y);
+	public static bool operator==(Float2 a, Float2 b) => (a.X == b.X) && (a.Y == b.Y);
 }
 
 static
 {
-	[Inline] public static float Dot(in Float2 a, in Float2 b) => a.X * b.X + a.Y * b.Y;
+	[Inline] public static float Dot(Float2 a, Float2 b) => a.X * b.X + a.Y * b.Y;
 
-	[Inline] public static float LengthSquared(in Float2 v) => Dot(v, v);
-	[Inline] public static float Length(in Float2 v) => Sqrt(LengthSquared(v));
-	[Inline] public static float DistanceSquared(in Float2 a, in Float2 b) => LengthSquared(b - a);
-	[Inline] public static float Distance(in Float2 a, in Float2 b) => Length(b - a);
+	[Inline] public static float LengthSquared(Float2 v) => Dot(v, v);
+	[Inline] public static float Length(Float2 v) => Sqrt(LengthSquared(v));
+	[Inline] public static float DistanceSquared(Float2 a, Float2 b) => LengthSquared(b - a);
+	[Inline] public static float Distance(Float2 a, Float2 b) => Length(b - a);
 
 	/// A unit vector, or Zero when the input is near-zero length.
-	public static Float2 Normalized(in Float2 v)
+	public static Float2 Normalized(Float2 v)
 	{
 		let lengthSq = LengthSquared(v);
 		if (lengthSq <= Epsilon * Epsilon)
@@ -75,8 +75,8 @@ static
 	}
 
 	[Inline]
-	public static Float2 Lerp(in Float2 a, in Float2 b, float t) => a + (b - a) * t;
+	public static Float2 Lerp(Float2 a, Float2 b, float t) => a + (b - a) * t;
 
-	public static bool NearlyEqual(in Float2 a, in Float2 b, float epsilon = Epsilon) =>
+	public static bool NearlyEqual(Float2 a, Float2 b, float epsilon = Epsilon) =>
 		NearlyEqual(a.X, b.X, epsilon) && NearlyEqual(a.Y, b.Y, epsilon);
 }

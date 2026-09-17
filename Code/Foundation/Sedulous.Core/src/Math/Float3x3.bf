@@ -45,7 +45,7 @@ struct Float3x3
 
 	/// The upper-left 3x3 of a Float4x4: the rotation and scale part, dropping
 	/// translation.
-	public static Float3x3 FromMat4(in Float4x4 mat) => .(
+	public static Float3x3 FromMat4(Float4x4 mat) => .(
 		mat.M[0][0], mat.M[0][1], mat.M[0][2],
 		mat.M[1][0], mat.M[1][1], mat.M[1][2],
 		mat.M[2][0], mat.M[2][1], mat.M[2][2]);
@@ -75,7 +75,7 @@ struct Float3x3
 
 static
 {
-	public static Float3x3 Transpose(in Float3x3 a)
+	public static Float3x3 Transpose(Float3x3 a)
 	{
 		Float3x3 result = .();
 		for (int row < 3)
@@ -84,13 +84,13 @@ static
 		return result;
 	}
 
-	public static float Determinant(in Float3x3 m) =>
+	public static float Determinant(Float3x3 m) =>
 		m.M[0][0] * (m.M[1][1] * m.M[2][2] - m.M[1][2] * m.M[2][1]) -
 		m.M[0][1] * (m.M[1][0] * m.M[2][2] - m.M[1][2] * m.M[2][0]) +
 		m.M[0][2] * (m.M[1][0] * m.M[2][1] - m.M[1][1] * m.M[2][0]);
 
 	/// Adjugate over determinant. Returns Identity when singular.
-	public static Float3x3 Inverse(in Float3x3 m)
+	public static Float3x3 Inverse(Float3x3 m)
 	{
 		let det = Determinant(m);
 		if (NearlyZero(det))
@@ -110,7 +110,7 @@ static
 		return result;
 	}
 
-	public static bool NearlyEqual(in Float3x3 a, in Float3x3 b, float epsilon = Epsilon)
+	public static bool NearlyEqual(Float3x3 a, Float3x3 b, float epsilon = Epsilon)
 	{
 		for (int row < 3)
 			for (int col < 3)

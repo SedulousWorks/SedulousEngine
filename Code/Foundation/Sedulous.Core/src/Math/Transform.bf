@@ -31,7 +31,7 @@ struct Transform
 
 	/// ToMatrix's inverse: decompose a TRS matrix, with identity components on a
 	/// degenerate one. This is the editor's world-preserving reparent seam.
-	public static Transform FromMatrix(in Float4x4 m)
+	public static Transform FromMatrix(Float4x4 m)
 	{
 		Transform t = .();
 		Decompose(m, out t.Position, out t.Rotation, out t.Scale);
@@ -39,7 +39,7 @@ struct Transform
 	}
 
 	/// Component-wise: Position and Scale lerp, Rotation slerps.
-	public static Transform Lerp(in Transform a, in Transform b, float t) => .(
+	public static Transform Lerp(Transform a, Transform b, float t) => .(
 		Sedulous.Core.Lerp(a.Position, b.Position, t),
 		Slerp(a.Rotation, b.Rotation, t),
 		Sedulous.Core.Lerp(a.Scale, b.Scale, t));
@@ -63,7 +63,7 @@ static
 	/// quantities, so both the bake frame and the runtime placement have to be rigid. A
 	/// zone sharing a scaled entity with its geometry would otherwise un-scale the
 	/// geometry the bake sees and erode the navmesh to nothing.
-	public static Float4x4 RigidPart(in Float4x4 m)
+	public static Float4x4 RigidPart(Float4x4 m)
 	{
 		var t = Transform.FromMatrix(m);
 		t.Scale = Float3.One;

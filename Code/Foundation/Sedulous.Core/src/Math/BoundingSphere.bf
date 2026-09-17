@@ -12,10 +12,10 @@ struct BoundingSphere
 	public this() { Center = default; }
 	public this(Float3 center, float radius) { this.Center = center; this.Radius = radius; }
 
-	public static BoundingSphere FromCenterRadius(in Float3 c, float r) => .(c, r);
+	public static BoundingSphere FromCenterRadius(Float3 c, float r) => .(c, r);
 
 	/// The smallest sphere enclosing both.
-	public static BoundingSphere Merge(in BoundingSphere a, in BoundingSphere b)
+	public static BoundingSphere Merge(BoundingSphere a, BoundingSphere b)
 	{
 		let offset = b.Center - a.Center;
 		let distance = Length(offset);

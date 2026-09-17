@@ -44,21 +44,21 @@ struct Color
 	public static Color Rgb(uint8 R, uint8 G, uint8 B, uint8 A = 255) => .(
 		(float)R / 255.0f, (float)G / 255.0f, (float)B / 255.0f, (float)A / 255.0f);
 
-	public static Color operator*(in Color c, float s) => .(c.R * s, c.G * s, c.B * s, c.A * s);
-	public static Color operator+(in Color A, in Color B) => .(A.R + B.R, A.G + B.G, A.B + B.B, A.A + B.A);
+	public static Color operator*(Color c, float s) => .(c.R * s, c.G * s, c.B * s, c.A * s);
+	public static Color operator+(Color A, Color B) => .(A.R + B.R, A.G + B.G, A.B + B.B, A.A + B.A);
 	/// [Commutable] so Beef can derive != from this one declaration. Without it every use
 	/// of != warns, and a warning costs the whole incremental build.
 	[Commutable]
-	public static bool operator==(in Color A, in Color B) =>
+	public static bool operator==(Color A, Color B) =>
 		(A.R == B.R) && (A.G == B.G) && (A.B == B.B) && (A.A == B.A);
 }
 
 static
 {
-	public static Color Lerp(in Color a, in Color b, float t) => .(
+	public static Color Lerp(Color a, Color b, float t) => .(
 		Lerp(a.R, b.R, t), Lerp(a.G, b.G, t), Lerp(a.B, b.B, t), Lerp(a.A, b.A, t));
 
-	public static bool NearlyEqual(in Color a, in Color b, float epsilon = Epsilon) =>
+	public static bool NearlyEqual(Color a, Color b, float epsilon = Epsilon) =>
 		NearlyEqual(a.R, b.R, epsilon) && NearlyEqual(a.G, b.G, epsilon) &&
 		NearlyEqual(a.B, b.B, epsilon) && NearlyEqual(a.A, b.A, epsilon);
 }

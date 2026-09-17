@@ -23,11 +23,11 @@ static
 	public static bool ApproxGreater(float a, float b) =>
 		(a == b) || ((Abs(a - b) >= BoundsApprox) && (a > b));
 
-	public static Float3 ClampVec(in Float3 v, in Float3 lo, in Float3 hi) => Max(Min(v, hi), lo);
+	public static Float3 ClampVec(Float3 v, Float3 lo, Float3 hi) => Max(Min(v, hi), lo);
 
 	// ---- frustum against sphere ----
 
-	public static ContainmentType Contains(in BoundingFrustum f, in BoundingSphere s)
+	public static ContainmentType Contains(BoundingFrustum f, BoundingSphere s)
 	{
 		var intersects = false;
 		for (int i < BoundingFrustum.PlaneCount)
@@ -42,12 +42,12 @@ static
 		return intersects ? .Intersects : .Contains;
 	}
 
-	public static bool Intersects(in BoundingFrustum f, in BoundingSphere s) =>
+	public static bool Intersects(BoundingFrustum f, BoundingSphere s) =>
 		Contains(f, s) != .Disjoint;
 
 	// ---- AABB helpers ----
 
-	public static AABB BoundingBoxFromSphere(in BoundingSphere s)
+	public static AABB BoundingBoxFromSphere(BoundingSphere s)
 	{
 		let c = Float3(s.Radius, s.Radius, s.Radius);
 		return .(s.Center - c, s.Center + c);
@@ -55,7 +55,7 @@ static
 
 	/// Sedulous's corner order: index 0 is (min.X, max.Y, max.Z) through to 7 being
 	/// (min.X, min.Y, min.Z).
-	public static void GetCorners(in AABB b, ref Float3[8] corners)
+	public static void GetCorners(AABB b, ref Float3[8] corners)
 	{
 		corners[0] = .(b.Min.X, b.Max.Y, b.Max.Z);
 		corners[1] = .(b.Max.X, b.Max.Y, b.Max.Z);
@@ -69,10 +69,10 @@ static
 
 	/// AABB.Contains already answers this as a bool; this is the ContainmentType form,
 	/// which cannot be an overload because only the return type differs.
-	public static ContainmentType ContainsCT(in AABB b, in Float3 p) =>
+	public static ContainmentType ContainsCT(AABB b, Float3 p) =>
 		b.Contains(p) ? .Contains : .Disjoint;
 
-	public static PlaneIntersectionType Intersects(in AABB b, in Plane plane)
+	public static PlaneIntersectionType Intersects(AABB b, Plane plane)
 	{
 		let pos = Float3(
 			plane.Normal.X >= 0 ? b.Min.X : b.Max.X,
@@ -90,7 +90,7 @@ static
 		return .Intersecting;
 	}
 
-	public static bool Intersects(in AABB b, in BoundingSphere s)
+	public static bool Intersects(AABB b, BoundingSphere s)
 	{
 		let clamped = ClampVec(s.Center, b.Min, b.Max);
 		return LengthSquared(s.Center - clamped) <= s.Radius * s.Radius;
@@ -98,7 +98,7 @@ static
 
 	/// The transformed bounds that encloses the transformed original: the centre moves and
 	/// the extents pick up the absolute row sums.
-	public static AABB TransformAABB(in AABB b, in Float4x4 m)
+	public static AABB TransformAABB(AABB b, Float4x4 m)
 	{
 		let c = b.Center();
 		let e = b.Extents();
@@ -115,7 +115,7 @@ static
 
 	// ---- frustum against bounds ----
 
-	public static ContainmentType Contains(in BoundingFrustum f, in AABB b)
+	public static ContainmentType Contains(BoundingFrustum f, AABB b)
 	{
 		var intersects = false;
 		for (int i < BoundingFrustum.PlaneCount)
@@ -130,9 +130,9 @@ static
 		return intersects ? .Intersects : .Contains;
 	}
 
-	public static bool Intersects(in BoundingFrustum f, in AABB b) => Contains(f, b) != .Disjoint;
+	public static bool Intersects(BoundingFrustum f, AABB b) => Contains(f, b) != .Disjoint;
 
-	public static ContainmentType ContainsCT(in AABB b, in BoundingSphere s)
+	public static ContainmentType ContainsCT(AABB b, BoundingSphere s)
 	{
 		let clamped = ClampVec(s.Center, b.Min, b.Max);
 		if (s.Radius * s.Radius <= LengthSquared(s.Center - clamped))
@@ -150,16 +150,16 @@ static
 
 	// ---- sphere cross-type ----
 
-	public static bool Intersects(in BoundingSphere a, in BoundingSphere b)
+	public static bool Intersects(BoundingSphere a, BoundingSphere b)
 	{
 		let combined = a.Radius + b.Radius;
 		return LengthSquared(a.Center - b.Center) <= combined * combined;
 	}
 
-	public static bool Intersects(in BoundingSphere s, in AABB b) => Intersects(b, s);
-	public static bool Intersects(in BoundingSphere s, in BoundingFrustum f) => Intersects(f, s);
+	public static bool Intersects(BoundingSphere s, AABB b) => Intersects(b, s);
+	public static bool Intersects(BoundingSphere s, BoundingFrustum f) => Intersects(f, s);
 
-	public static ContainmentType Contains(in BoundingSphere s, in BoundingFrustum f)
+	public static ContainmentType Contains(BoundingSphere s, BoundingFrustum f)
 	{
 		if (!Intersects(f, s))
 			return .Disjoint;
@@ -171,7 +171,7 @@ static
 		return .Contains;
 	}
 
-	public static BoundingSphere BoundingSphereFromFrustum(in BoundingFrustum f)
+	public static BoundingSphere BoundingSphereFromFrustum(BoundingFrustum f)
 	{
 		var corners = f.Corners;
 		return BoundingSphere.FromPoints(Span<Float3>(&corners[0], BoundingFrustum.CornerCount));
@@ -179,7 +179,7 @@ static
 
 	// ---- ray intersections; false means no hit, and outT is only set on a hit ----
 
-	public static bool Intersects(in Ray ray, in Plane plane, out float outT)
+	public static bool Intersects(Ray ray, Plane plane, out float outT)
 	{
 		outT = 0.0f;
 		let nDotDir = Dot(plane.Normal, ray.Direction);
@@ -199,7 +199,7 @@ static
 		return true;
 	}
 
-	public static bool Intersects(in Ray ray, in BoundingSphere sphere, out float outT)
+	public static bool Intersects(Ray ray, BoundingSphere sphere, out float outT)
 	{
 		outT = 0.0f;
 		let r2 = sphere.Radius * sphere.Radius;
@@ -223,7 +223,7 @@ static
 		return true;
 	}
 
-	public static bool Intersects(in Ray ray, in AABB bounds, out float outT)
+	public static bool Intersects(Ray ray, AABB bounds, out float outT)
 	{
 		outT = 0.0f;
 		var hasMin = false;
@@ -294,7 +294,7 @@ static
 		return true;
 	}
 
-	public static bool Intersects(in BoundingFrustum f, in Ray ray, out float outT)
+	public static bool Intersects(BoundingFrustum f, Ray ray, out float outT)
 	{
 		outT = 0.0f;
 		if (f.Contains(ray.Position) == .Contains)
@@ -343,12 +343,12 @@ static
 		return true;
 	}
 
-	public static bool Intersects(in Ray ray, in BoundingFrustum f, out float outT) =>
+	public static bool Intersects(Ray ray, BoundingFrustum f, out float outT) =>
 		Intersects(f, ray, out outT);
 
 	// ---- the remaining Contains and Intersects overloads ----
 
-	public static ContainmentType Contains(in BoundingSphere a, in BoundingSphere b)
+	public static ContainmentType Contains(BoundingSphere a, BoundingSphere b)
 	{
 		let d2 = LengthSquared(a.Center - b.Center);
 		let combined = a.Radius + b.Radius;
@@ -360,7 +360,7 @@ static
 	}
 
 	/// Corner test first, then the closest-point distance.
-	public static ContainmentType Contains(in BoundingSphere s, in AABB bounds)
+	public static ContainmentType Contains(BoundingSphere s, AABB bounds)
 	{
 		Float3[8] c = ?;
 		GetCorners(bounds, ref c);
@@ -396,7 +396,7 @@ static
 		return (dist <= s.Radius * s.Radius) ? .Intersects : .Disjoint;
 	}
 
-	public static ContainmentType ContainsCT(in AABB b, in AABB o)
+	public static ContainmentType ContainsCT(AABB b, AABB o)
 	{
 		if ((o.Max.X < b.Min.X) || (o.Min.X > b.Max.X) ||
 			(o.Max.Y < b.Min.Y) || (o.Min.Y > b.Max.Y) ||
@@ -411,7 +411,7 @@ static
 		return .Intersects;
 	}
 
-	public static ContainmentType ContainsCT(in AABB b, in BoundingFrustum f)
+	public static ContainmentType ContainsCT(AABB b, BoundingFrustum f)
 	{
 		if (!Intersects(f, b))
 			return .Disjoint;
@@ -423,9 +423,9 @@ static
 		return .Contains;
 	}
 
-	public static bool Intersects(in AABB b, in BoundingFrustum f) => Intersects(f, b);
+	public static bool Intersects(AABB b, BoundingFrustum f) => Intersects(f, b);
 
-	public static ContainmentType Contains(in BoundingFrustum f, in BoundingFrustum g)
+	public static ContainmentType Contains(BoundingFrustum f, BoundingFrustum g)
 	{
 		var intersection = false;
 		for (int i < BoundingFrustum.PlaneCount)
@@ -440,6 +440,6 @@ static
 		return intersection ? .Intersects : .Contains;
 	}
 
-	public static bool Intersects(in BoundingFrustum f, in BoundingFrustum g) =>
+	public static bool Intersects(BoundingFrustum f, BoundingFrustum g) =>
 		Contains(f, g) != .Disjoint;
 }

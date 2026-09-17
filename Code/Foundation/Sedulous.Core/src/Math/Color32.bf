@@ -43,7 +43,7 @@ struct Color32
 	/// [Commutable] so Beef can derive != from this one declaration. Without it every use
 	/// of != warns, and a warning costs the whole incremental build.
 	[Commutable]
-	public static bool operator==(in Color32 A, in Color32 B) =>
+	public static bool operator==(Color32 A, Color32 B) =>
 		(A.R == B.R) && (A.G == B.G) && (A.B == B.B) && (A.A == B.A);
 }
 
@@ -53,7 +53,7 @@ static
 	private static uint8 ByteOf(float v) => (uint8)(Clamp(v, 0.0f, 1.0f) * 255.0f + 0.5f);
 
 	/// Float colour to packed bytes, clamped to 0..1 and rounded.
-	public static Color32 ToColor32(in Color c) => .(ByteOf(c.R), ByteOf(c.G), ByteOf(c.B), ByteOf(c.A));
+	public static Color32 ToColor32(Color c) => .(ByteOf(c.R), ByteOf(c.G), ByteOf(c.B), ByteOf(c.A));
 
 	/// Packed bytes to float colour: exact 0..255 to 0..1, and round-trips ToColor32.
 	public static Color ToColor(Color32 c) => .(
