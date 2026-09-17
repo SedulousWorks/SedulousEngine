@@ -1,4 +1,6 @@
 using System;
+using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.Graphics;
 using Sedulous.Graphics.Gpu;
 using Sedulous.Runtime.SDL3;
@@ -18,6 +20,10 @@ class Program
 {
 	public static int Main(String[] args)
 	{
+		// See the web entry: GlobalLog is a no-op until a logger exists, and Raptor's
+		// APP_MAIN installs a console sink on both bodies.
+		InitGlobalLogger(new ConsoleLogger(.Information, "WebScene"), true);
+
 		WindowSettings windowSettings = .();
 		windowSettings.Title = "WebScene";
 		windowSettings.Width = 1280;

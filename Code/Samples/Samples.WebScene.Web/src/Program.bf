@@ -1,4 +1,6 @@
 using System;
+using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.Graphics;
 using Sedulous.Graphics.Gpu;
 using Sedulous.Runtime.Web;
@@ -19,6 +21,12 @@ class Program
 	{
 		// NOTHING here is scoped. The browser calls the frame after this returns, so anything
 		// on this stack would already be freed by the time the first frame ran.
+		// A CONSOLE SINK, first thing. GlobalLog drops every record when no logger is
+		// installed, so without this the engine's own diagnostics are invisible and a
+		// failure in the browser looks like a blank canvas with a silent console.
+		// Raptor installs one in APP_MAIN, on the desktop and the web body alike.
+		InitGlobalLogger(new ConsoleLogger(.Information, "WebScene"), true);
+
 		let shell = new WebShell();
 		if (shell.MainWindow == null)
 		{
