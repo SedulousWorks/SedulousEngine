@@ -6,13 +6,15 @@ using Sedulous.Core.IO;
 using Sedulous.RHI;
 using Sedulous.RHI.TestSupport;
 using Sedulous.RHI.Vulkan;
+using Sedulous.RHI.WebGPU;
 using Sedulous.Shaders;
 
 namespace Sedulous.Engine.Terrain.Backend.Tests;
 
-/// A real device and the engine's own terrain shaders.
+/// A real device and the engine's own terrain shaders, on whichever backend is asked for.
 ///
-/// SKIPS rather than fails where there is no device or no shader directory.
+/// SKIPS rather than fails where there is no device or no shader directory: a box without
+/// that backend has not answered the question wrongly.
 class TerrainProbeFixture
 {
 	/// The data root mounted for this fixture, which is where the shaders come from.
@@ -23,11 +25,24 @@ class TerrainProbeFixture
 
 	public bool Ready { get; private set; }
 
-	public this()
+	/// Which backend this fixture was asked for, so a skip message can name it.
+	public ProbeBackend Kind { get; private set; }
+
+	public this(ProbeBackend kind = .Vulkan)
 	{
-		if (!(VulkanRhi.CreateBackend(false) case .Ok(let backend)))
-			return;
-		Backend = backend;
+		Kind = kind;
+
+		switch (kind)
+		{
+		case .Vulkan:
+			if (!(VulkanRhi.CreateBackend(false) case .Ok(let backend)))
+				return;
+			Backend = backend;
+		case .WebGpu:
+			if (!(WebGpuRhi.CreateBackend() case .Ok(let backend)))
+				return;
+			Backend = backend;
+		}
 
 		Device = RhiTestSupport.MakeTestDevice(Backend);
 		if (Device == null)
