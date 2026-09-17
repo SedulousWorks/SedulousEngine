@@ -423,6 +423,9 @@ class RenderFrame
 			// The cascade's matrix already reaches back toward the light, so its frustum is the
 			// right assignment volume and each caster lands in about one cascade rather than
 			// being drawn into all of them.
+			ProfileScopeBegin("shadow.cull"); // the per cascade frustum scan
+			defer ProfileScopeEnd();
+
 			let frustum = BoundingFrustum(lightViewProj);
 			mShadowCullScratch.Clear();
 
@@ -481,6 +484,9 @@ class RenderFrame
 		// and handing a whole category run to the first item's renderer would give one
 		// renderer another's data to read as its own. A sprite's depth only resolve does
 		// nothing, sprites casting no shadows.
+		ProfileScopeBegin("shadow.resolve"); // the per survivor resolve and emit
+		defer ProfileScopeEnd();
+
 		mShadowResolved.Clear();
 		var i = 0;
 		while (i < items.Length)
