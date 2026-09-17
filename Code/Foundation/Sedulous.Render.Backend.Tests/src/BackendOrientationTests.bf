@@ -226,54 +226,94 @@ class BackendOrientationTests
 		return probe;
 	}
 
-	[Test]
-	public static void EachObjectLightsItsOwnHalfAtEveryStage()
+	/// The five runs every backend is held to. Raw forward, then with the tonemap, then with
+	/// the temporal resolve as well; then each object on its own. Each historical flip shows
+	/// up as a different one of these failing: a mirrored scene drops the cube on raw forward,
+	/// a wrongly firing tonemap side compensation drops it on one of the tonemap runs and not
+	/// the other, and a front face winding hack turns the plane only run black.
+	private static ProbeRun[5] Runs => .(
+		.("raw-forward", .() { TaaEnabled = false, UseTonemap = false }),
+		.("tonemap", .() { TaaEnabled = false, UseTonemap = true }),
+		.("taa", .() { TaaEnabled = true, UseTonemap = true }),
+		.("plane-only-raw", .() { TaaEnabled = false, UseTonemap = false, IncludeCube = false }),
+		.("cube-only-raw", .() { TaaEnabled = false, UseTonemap = false, IncludePlane = false }));
+
+	/// Every run on one backend, each held to what its scene must look like. Fills `out` so the
+	/// caller can compare one backend's numbers against another's.
+	private static void ProbeAll(BackendProbeFixture fixture, ref Probe[5] results)
 	{
-		let fixture = scope BackendProbeFixture();
-		if (!fixture.Ready)
-			return;
-
-		// Raw forward, then with the tonemap, then with the temporal resolve as well; then
-		// each object on its own. Each historical flip shows up as a different one of these
-		// failing: a mirrored scene drops the cube on raw forward, a wrongly firing tonemap
-		// side compensation drops it on one of the tonemap runs and not the other, and a
-		// front face winding hack turns the plane only run black.
-		let runs = scope ProbeRun[5](
-			.("raw-forward", .() { TaaEnabled = false, UseTonemap = false }),
-			.("tonemap", .() { TaaEnabled = false, UseTonemap = true }),
-			.("taa", .() { TaaEnabled = true, UseTonemap = true }),
-			.("plane-only-raw", .() { TaaEnabled = false, UseTonemap = false, IncludeCube = false }),
-			.("cube-only-raw", .() { TaaEnabled = false, UseTonemap = false, IncludePlane = false }));
-
-		for (let run in runs)
+		let runs = Runs;
+		for (int i < runs.Count)
 		{
+			let run = runs[i];
 			let probe = RenderProbe(fixture, run.Config);
-			Test.Assert(probe.Valid, scope $"{run.Name}: the probe rendered");
+			results[i] = probe;
+			Test.Assert(probe.Valid, scope $"{fixture.Kind} {run.Name}: the probe rendered");
 
 			if (run.Config.IncludeCube && run.Config.IncludePlane)
 			{
 				// Both: the small bright cube lights the top half, and the huge dim plane
 				// sums to MORE in the bottom, area beating brightness. A flip swaps the two
 				// and the dominance inverts.
-				Test.Assert(probe.TopLuma > 100000.0, scope $"{run.Name}: top lit");
+				Test.Assert(probe.TopLuma > 100000.0, scope $"{fixture.Kind} {run.Name}: top lit");
 				Test.Assert(probe.BottomLuma > probe.TopLuma * 1.3,
-					scope $"{run.Name}: the plane dominates below");
+					scope $"{fixture.Kind} {run.Name}: the plane dominates below");
 			}
 			else if (run.Config.IncludeCube)
 			{
 				// The cube alone, above eye level: ALL of its light is in the top half.
-				Test.Assert(probe.TopLuma > 100000.0, scope $"{run.Name}: top lit");
+				Test.Assert(probe.TopLuma > 100000.0, scope $"{fixture.Kind} {run.Name}: top lit");
 				Test.Assert(probe.BottomLuma < probe.TopLuma * 0.05,
-					scope $"{run.Name}: nothing below");
+					scope $"{fixture.Kind} {run.Name}: nothing below");
 			}
 			else
 			{
 				// The plane alone: it must RENDER, a winding hack culling it to black, and it
 				// must land entirely below, a flip mirroring it up.
-				Test.Assert(probe.BottomLuma > 100000.0, scope $"{run.Name}: bottom lit");
+				Test.Assert(probe.BottomLuma > 100000.0,
+					scope $"{fixture.Kind} {run.Name}: bottom lit");
 				Test.Assert(probe.TopLuma < probe.BottomLuma * 0.05,
-					scope $"{run.Name}: nothing above");
+					scope $"{fixture.Kind} {run.Name}: nothing above");
 			}
 		}
+	}
+
+	[Test]
+	public static void EachObjectLightsItsOwnHalfAtEveryStage()
+	{
+		let fixture = scope BackendProbeFixture(.Vulkan);
+		if (!fixture.Ready)
+			return;
+
+		Probe[5] reference = default;
+		ProbeAll(fixture, ref reference);
+
+		// And WebGPU has to agree, run for run. This is the vertical flip class at its source:
+		// the cook that mirrors the scene and the winding hack that culls the plane are both
+		// WebGPU side, so Vulkan alone would pass through either of them. Identical on a shared
+		// GPU; the tolerance absorbs driver rounding elsewhere, while a flip or a cull is a
+		// divergence of more than 100 percent.
+		let webgpu = scope BackendProbeFixture(.WebGpu);
+		if (!webgpu.Ready)
+			return;
+
+		Probe[5] other = default;
+		ProbeAll(webgpu, ref other);
+
+		let runs = Runs;
+		for (int i < runs.Count)
+		{
+			Parity(scope $"{runs[i].Name} top", other[i].TopLuma, reference[i].TopLuma);
+			Parity(scope $"{runs[i].Name} bottom", other[i].BottomLuma, reference[i].BottomLuma);
+		}
+	}
+
+	/// Cross backend tolerance, Raptor's epsilon.
+	private const double cParity = 0.05;
+
+	private static void Parity(StringView what, double actual, double expected)
+	{
+		Test.Assert(Math.Abs(actual - expected) <= Math.Abs(expected) * cParity,
+			scope $"WebGpu: {what} {actual} is not within {cParity} of Vulkan's {expected}");
 	}
 }

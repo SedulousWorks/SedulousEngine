@@ -6,12 +6,15 @@ using Sedulous.Core.IO;
 using Sedulous.RHI;
 using Sedulous.RHI.TestSupport;
 using Sedulous.RHI.Vulkan;
+using Sedulous.RHI.WebGPU;
 using Sedulous.Shaders;
 
 namespace Sedulous.Render.Backend.Tests;
 
 /// A REAL device and the engine's own shaders, for the probes that can only be answered by
 /// looking at pixels a GPU actually wrote.
+///
+/// Builds on whichever backend is asked for.
 ///
 /// SKIPS rather than fails where there is no device or no shader directory: a machine that
 /// cannot answer the question has not answered it wrongly, and a suite that goes red on a
@@ -24,14 +27,28 @@ class BackendProbeFixture
 	public IDevice Device;
 	public ShaderSystemHost Host ~ delete _;
 
-	/// False when this box has no Vulkan device, or this checkout no shaders.
+	/// False when this box has no device for the backend asked for, or this checkout no
+	/// shaders.
 	public bool Ready { get; private set; }
 
-	public this()
+	/// Which backend this fixture was asked for, so an assertion can name it.
+	public ProbeBackend Kind { get; private set; }
+
+	public this(ProbeBackend kind = .Vulkan)
 	{
-		if (!(VulkanRhi.CreateBackend(false) case .Ok(let backend)))
-			return;
-		Backend = backend;
+		Kind = kind;
+
+		switch (kind)
+		{
+		case .Vulkan:
+			if (!(VulkanRhi.CreateBackend(false) case .Ok(let backend)))
+				return;
+			Backend = backend;
+		case .WebGpu:
+			if (!(WebGpuRhi.CreateBackend() case .Ok(let backend)))
+				return;
+			Backend = backend;
+		}
 
 		Device = RhiTestSupport.MakeTestDevice(Backend);
 		if (Device == null)

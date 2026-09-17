@@ -225,7 +225,15 @@ class MsaaProbeTests
 	[Test]
 	public static void FourSamplesProduceEdgeCoverageThatOneDoesNot()
 	{
-		let fixture = scope BackendProbeFixture();
+		// EVERY backend, because the resolve is a backend feature: Vulkan resolves in the pass
+		// and WebGPU through a resolveTarget, and only running both holds them to one property.
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu))
+			EdgeCoverageOn(kind);
+	}
+
+	private static void EdgeCoverageOn(ProbeBackend kind)
+	{
+		let fixture = scope BackendProbeFixture(kind);
 		if (!fixture.Ready || !Has4xMsaa(fixture.Device))
 			return;
 
@@ -243,22 +251,28 @@ class MsaaProbeTests
 		let fringe4x = CountEdgeFringe(at4x, max4x);
 
 		// The cube has to actually render, as a clearly lit solid, at both counts.
-		Test.Assert(max1x > 300, "the cube renders at one sample");
-		Test.Assert(max4x > 300, "the cube renders at four");
+		Test.Assert(max1x > 300, scope $"{kind}: the cube renders at one sample");
+		Test.Assert(max4x > 300, scope $"{kind}: the cube renders at four");
 
 		// The property being accepted: four samples fill the silhouette with partial coverage
 		// pixels that the hard edged single sampled image, every pixel wholly cube or wholly
 		// background, simply does not have.
-		Test.Assert(fringe4x > fringe1x * 3, "four samples soften the silhouette");
-		Test.Assert(fringe4x > 40, "and over a real span of it");
+		Test.Assert(fringe4x > fringe1x * 3, scope $"{kind}: four samples soften the silhouette");
+		Test.Assert(fringe4x > 40, scope $"{kind}: and over a real span of it");
 	}
 
 	[Test]
 	public static void TheResolveComposesWithThePostStack()
 	{
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu))
+			PostStackOn(kind);
+	}
+
+	private static void PostStackOn(ProbeBackend kind)
+	{
 		// Each of these reads the RESOLVED single sampled buffers under multisampling, so this
 		// guards the rebinding that makes that work: each still has to render a sane lit image.
-		let fixture = scope BackendProbeFixture();
+		let fixture = scope BackendProbeFixture(kind);
 		if (!fixture.Ready || !Has4xMsaa(fixture.Device))
 			return;
 
@@ -272,7 +286,7 @@ class MsaaProbeTests
 		{
 			let image = RenderMsaa(fixture, run.Config);
 			defer delete image;
-			Test.Assert((image != null) && image.Valid, scope $"{run.Name}: rendered");
+			Test.Assert((image != null) && image.Valid, scope $"{kind} {run.Name}: rendered");
 
 			let max = MaxLuma(image);
 			let lit = image.CountWhere(scope (rgba) =>
@@ -283,9 +297,9 @@ class MsaaProbeTests
 			// The effect composed with the resolve without breaking it: the cube is still a
 			// clearly lit solid over a real area, and the values are sane rather than
 			// overflowed.
-			Test.Assert(max > 300, scope $"{run.Name}: lit");
-			Test.Assert(max <= 765, scope $"{run.Name}: not overflowed");
-			Test.Assert(lit > 200, scope $"{run.Name}: covers an area");
+			Test.Assert(max > 300, scope $"{kind} {run.Name}: lit");
+			Test.Assert(max <= 765, scope $"{kind} {run.Name}: not overflowed");
+			Test.Assert(lit > 200, scope $"{kind} {run.Name}: covers an area");
 		}
 	}
 }
