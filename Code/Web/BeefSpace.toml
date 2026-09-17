@@ -215,7 +215,18 @@ StartupProject = "Samples.WebScene.Web"
 AllocType = "CRT"
 EnableObjectDebugFlags = false
 EmitObjectAccessCheck = false
+# OFF for the release web build. Beef defaults debug info to Yes in every config, and for
+# wasm that means -gseparate-dwarf -gsource-map, which it appends AFTER a project's own link
+# flags so -g0 cannot override it. DWARF for a whole engine is most of the module.
+EmitDebugInfo = "No"
 
+# Debug keeps Beef's RUNTIME CHECKS on, which is the point of building it for the web: a
+# bounds or cast fault reports itself instead of trapping silently, and the names survive in
+# the stack trace.
+#
+# The allocator is the CRT's rather than Beef's debug one, and the object debug flags are off:
+# those carry assumptions that do not hold on wasm. The old wgpu-Beef workspace used exactly
+# this trio, which is where it comes from.
 [Configs.Debug.wasm32]
 AllocType = "CRT"
 EnableObjectDebugFlags = false

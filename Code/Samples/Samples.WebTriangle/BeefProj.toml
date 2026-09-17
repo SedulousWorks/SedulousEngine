@@ -20,9 +20,9 @@ corlib = "*"
 [Configs.Debug.wasm32]
 TargetName = "$(ProjectName).html"
 TargetDirectory = "$(ProjectDir)/dist"
-OtherLinkFlags = "$(LinkFlags) --use-port=emdawnwebgpu:cpp_bindings=false -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 --shell-file $(ProjectDir)/shell.html"
+OtherLinkFlags = "$(LinkFlags) -O3 --use-port=emdawnwebgpu:cpp_bindings=false -s ASYNCIFY -s ASYNCIFY_STACK_SIZE=1048576 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 --shell-file $(ProjectDir)/shell.html"
 
 [Configs.Release.wasm32]
 TargetName = "$(ProjectName).html"
 TargetDirectory = "$(ProjectDir)/dist"
-OtherLinkFlags = "$(LinkFlags) --use-port=emdawnwebgpu:cpp_bindings=false -s ALLOW_MEMORY_GROWTH=1 --shell-file $(ProjectDir)/shell.html"
+OtherLinkFlags = "$(LinkFlags) -O3 --use-port=emdawnwebgpu:cpp_bindings=false -s ASYNCIFY -s ASYNCIFY_STACK_SIZE=1048576 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 --shell-file $(ProjectDir)/shell.html"

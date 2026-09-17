@@ -20,15 +20,34 @@ corlib = "*"
 # error any more: the load simply misses and ShaderCompiler.Initialize logs and returns an
 # error, which is what Raptor does. Vulkan was never part of this - Bulkan already dlopens.
 #
+# The DATA the engine opens is preloaded into the package: a browser has no filesystem to
+# walk, so the .dataroot marker, the cooked WGSL shader pack and the bundled font are baked
+# in. webdata/ mirrors the layout the data root discovery expects. The pack is WGSL ONLY:
+# nothing compiles shaders at run time here, and SPIR-V would be dead weight.
+#
+# -O3 because Beef passes NO optimisation level to emcc, so the link would otherwise run at
+# -O0: wasm-opt never runs, nothing is eliminated at link time, and the module comes out
+# roughly twice the size it should be.
+#
+# ASYNCIFY, because every WebGPU future on the web resolves from a MICROTASK and a microtask
+# cannot run while wasm spins. WebGpuApi.YieldToEventLoop calls emscripten_sleep, and only
+# ASYNCIFY makes a synchronous call able to unwind and resume around it. Without this the
+# adapter request never completes and the device creation reports a failure that never happened.
+#
+# The stack size is not the default 4 KB on purpose: ASYNCIFY unwinds the WHOLE stack on every
+# sleep, and the GPU completion pump yields from deep inside a render frame, app through the
+# render subsystem and its passes into the RHI. The default overflows there and traps as
+# "unreachable"; a megabyte fits the deepest path comfortably.
+#
 # emdawnwebgpu supplies webgpu.h at compile time and the navigator.gpu binding at link time,
 # and it has to be on BOTH. TargetName carries the .html because emcc decides what to emit
 # from the extension and silently drops --shell-file without one.
 [Configs.Debug.wasm32]
 TargetName = "$(ProjectName).html"
 TargetDirectory = "$(ProjectDir)/dist"
-OtherLinkFlags = "$(LinkFlags) --use-port=emdawnwebgpu:cpp_bindings=false -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 --shell-file $(ProjectDir)/shell.html"
+OtherLinkFlags = "$(LinkFlags) -O3 --use-port=emdawnwebgpu:cpp_bindings=false -s ASYNCIFY -s ASYNCIFY_STACK_SIZE=1048576 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 --preload-file $(ProjectDir)/webdata/Data@Data --shell-file $(ProjectDir)/shell.html"
 
 [Configs.Release.wasm32]
 TargetName = "$(ProjectName).html"
 TargetDirectory = "$(ProjectDir)/dist"
-OtherLinkFlags = "$(LinkFlags) --use-port=emdawnwebgpu:cpp_bindings=false -s ALLOW_MEMORY_GROWTH=1 --shell-file $(ProjectDir)/shell.html"
+OtherLinkFlags = "$(LinkFlags) -O3 --use-port=emdawnwebgpu:cpp_bindings=false -s ASYNCIFY -s ASYNCIFY_STACK_SIZE=1048576 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 --preload-file $(ProjectDir)/webdata/Data@Data --shell-file $(ProjectDir)/shell.html"
