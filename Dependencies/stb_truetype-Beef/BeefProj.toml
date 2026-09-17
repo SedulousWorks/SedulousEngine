@@ -19,3 +19,11 @@ LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libstb_truetype.a"]
 
 [Configs.Test.Linux64]
 LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libstb_truetype.a"]
+
+# wasm32, built by `build-native.sh wasm`. One archive per platform library; wasm has no
+# shared libraries, so Debug and Release both link the Release build of a third party.
+[Configs.Debug.wasm32]
+LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libstb_truetype.a"]
+
+[Configs.Release.wasm32]
+LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libstb_truetype.a"]

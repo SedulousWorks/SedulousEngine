@@ -4,19 +4,6 @@ namespace Dxc_Beef
 {
 	public static class Dxc
 	{
-		private static function HRESULT(
-			in Guid rclsid,
-			in Guid riid,
-			out void* ppv
-			) DxcCreateInstanceProc = => DxcCreateInstance;
-
-		private static function HRESULT(
-			in IMalloc* pMalloc,
-			in Guid rclsid,
-			in Guid riid,
-			out void* ppv
-			) DxcCreateInstance2Proc = => DxcCreateInstance2;
-
 		/// <summary>
 		/// Creates a single uninitialized object of the class associated with a specified CLSID.
 		/// </summary>
@@ -37,24 +24,33 @@ namespace Dxc_Beef
 
 #if BF_PLATFORM_WINDOWS
 		[CallingConvention(.Stdcall), CLink, Import("dxcompiler.lib")]
-#else
-		[CallingConvention(.Stdcall), CLink]
-#endif
 		private static extern HRESULT DxcCreateInstance(
 			in Guid rclsid,
 			in Guid riid,
 			out void* ppv);
+#else
+		/// Resolved at run time, not linked. See DxcLibrary for why: a static reference makes
+		/// a wasm link fail on a symbol no browser has, for a path a browser never takes.
+		private static HRESULT DxcCreateInstance(in Guid rclsid, in Guid riid, out void* ppv)
+		{
+			let entry = DxcLibrary.CreateInstance;
+			if (entry == null)
+			{
+				ppv = null;
+				return (HRESULT)0x80004005; // E_FAIL: no dxcompiler on this machine
+			}
+			return entry(rclsid, riid, out ppv);
+		}
+#endif
 
 #if BF_PLATFORM_WINDOWS
 		[CallingConvention(.Stdcall), CLink, Import("dxcompiler.lib")]
-#else
-		[CallingConvention(.Stdcall), CLink]
-#endif
 		private static extern HRESULT DxcCreateInstance2(
 			in IMalloc* pMalloc,
 			in Guid rclsid,
 			in Guid riid,
 			out void* ppv);
+#endif
 
 		public static HRESULT CreateInstance<T>(out T* ppv) where T : IUnknown, var
 		{

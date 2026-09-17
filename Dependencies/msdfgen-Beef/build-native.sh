@@ -17,11 +17,28 @@ build() {
   mkdir -p "$distdir"
   for l in "${LIBS[@]}"; do cp -f "$(find "$dir" -name "$l" | head -1)" "$distdir/$l"; echo "Copied $l -> $distdir"; done
 }
+
+# ---- wasm32 (Emscripten) ----
+#
+# emcmake puts the emscripten toolchain in front of cmake; everything after is the same as a
+# native build. Needs emcc on PATH: source the emsdk's emsdk_env.sh first. The result lands in
+# dist/Release-wasm32, which is where the BeefProj's wasm32 LibPaths look.
+wasm() {
+  command -v emcmake >/dev/null || { echo "emcmake not on PATH. Source the emsdk's emsdk_env.sh."; exit 1; }
+  echo "Configuring wasm32..."
+  emcmake cmake -S "$SRC" -B build-wasm -G Ninja -DCMAKE_BUILD_TYPE=Release
+  echo "Building wasm32..."
+  cmake --build build-wasm
+  mkdir -p dist/Release-wasm32
+  for l in "${LIBS[@]}"; do cp -f "$(find build-wasm -name "$l" | head -1)" "dist/Release-wasm32/$l"; echo "Copied $l -> dist/Release-wasm32"; done
+}
+
 case "$option" in
   make)  { [ "$target" = DEBUG ] || [ "$target" = ALL ]; } && configure Debug build-linux-debug
          { [ "$target" = RELEASE ] || [ "$target" = ALL ]; } && configure Release build-linux-release; ;;
   build) { [ "$target" = DEBUG ] || [ "$target" = ALL ]; } && build Debug build-linux-debug dist/Debug-Linux64
          { [ "$target" = RELEASE ] || [ "$target" = ALL ]; } && build Release build-linux-release dist/Release-Linux64; ;;
+  wasm)  wasm; ;;
   clean) rm -rf build-linux-debug build-linux-release; echo "Clean complete."; ;;
   *) echo "Usage: build-native.sh [make|build|clean] [DEBUG|RELEASE|ALL]"; ;;
 esac
