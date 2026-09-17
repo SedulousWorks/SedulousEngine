@@ -29,13 +29,16 @@ class SerializableComponentManager<T> : ComponentManager<T>
 	/// Reads the component's [SerializableComponent] at COMPILE time and bakes the two values
 	/// in, rather than reconstructing the attribute on every manager built.
 	///
-	/// Comptime is not an optimisation here, it is the only path that works everywhere.
-	/// Type.GetCustomAttribute has to CONSTRUCT the attribute to hand it back, and at runtime
-	/// that construction goes through MethodInfo.Invoke, which is libffi. The wasm runtime is
-	/// built with -DBF_DISABLE_FFI, so PrepCif answers NoFFI there and every runtime
-	/// GetCustomAttribute returns Err: on the web this pool used to fatal on a component whose
-	/// attribute was plainly present. Comptime reads it through the compiler and never calls a
-	/// constructor at all. HasCustomAttribute stays usable at runtime, being a type id compare.
+	/// Comptime began as the only path that worked everywhere: Type.GetCustomAttribute has to
+	/// CONSTRUCT the attribute to hand it back, construction goes through MethodInfo.Invoke,
+	/// and the wasm runtime had no FFI to dispatch it, so this pool used to fatal on the web
+	/// over an attribute that was plainly present. Invoke works on wasm now, so that is no
+	/// longer the reason.
+	///
+	/// It stays comptime because it is simply better. The compiler reads the attribute and
+	/// bakes the two values in, so building a pool costs nothing at run time, and a component
+	/// missing its attribute is caught when it is compiled rather than when it is first
+	/// constructed.
 	///
 	/// The message is built with Append rather than interpolation: comptime cannot evaluate an
 	/// interpolated string, which boxes its arguments into a Span<Object>.
