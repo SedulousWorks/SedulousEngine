@@ -12,12 +12,24 @@ namespace Sedulous.Engine.Terrain.Backend.Tests;
 /// on a real device and reads the colours back. The band readout is the middle half of each
 /// vertical sixth, clear of the boundaries where stripes blend.
 ///
-/// Raptor runs each of these against Vulkan and WebGPU and cross-checks the two. There is no
-/// WebGPU backend here, so the Vulkan half is the whole of it; the parity case that exists
-/// only to compare them is left in the ledger.
+/// Each case renders on Vulkan, asserts the real outcome there, then renders the same frame on
+/// the desktop WebGPU backend and cross checks the numbers. The second run is not ceremony: it
+/// is the whole reason these are pixel probes rather than null device tests, because the splat
+/// path is where the two shader cooks can disagree and nothing else would show it.
 class TerrainSplatProbeTests
 {
 	private const int cBands = TerrainProbe.Bands;
+
+	/// Cross backend tolerance. Raptor's epsilon, wide enough for driver rounding and far too
+	/// narrow to hide a frontend that blends differently.
+	private const double cParity = 0.05;
+
+	/// Assert a WebGPU measurement against the Vulkan one it must match.
+	private static void Parity(StringView what, double actual, double expected)
+	{
+		Test.Assert(Math.Abs(actual - expected) <= Math.Abs(expected) * cParity,
+			scope $"WebGpu: {what} {actual} is not within {cParity} of Vulkan's {expected}");
+	}
 
 	/// Six distinguishable colours, one per palette layer: R, G, B and their pairs, so a band
 	/// can be classified by WHICH channels are lit rather than by an exact value.
@@ -41,15 +53,9 @@ class TerrainSplatProbeTests
 		return bits;
 	}
 
-	/// SIX distinct palette layers on one terrain, which the retired four layer model could
-	/// not represent at all.
-	[Test]
-	public static void SixPaletteLayersRenderAsDistinctStripes()
+	/// One stripe frame on whichever device the fixture holds. The CALLER owns the probe.
+	private static TerrainProbe RenderStripes(TerrainProbeFixture fixture)
 	{
-		let fixture = scope TerrainProbeFixture();
-		if (!fixture.Ready)
-			return;
-
 		let grid = TerrainFixtures.MakeFlat();
 		defer delete grid;
 
@@ -70,8 +76,8 @@ class TerrainSplatProbeTests
 
 		let views = splatCache.GetOrCreate(fixture.Device, weights, weights.Version);
 		let gpu = paletteCache.GetOrCreate(fixture.Device, palette, scales);
-		Test.Assert(views.WeightView != null, "the splat pair resolved");
-		Test.Assert(gpu.ArrayView != null, "and the palette array");
+		Test.Assert(views.WeightView != null, scope $"{fixture.Kind}: the splat pair resolved");
+		Test.Assert(gpu.ArrayView != null, scope $"{fixture.Kind}: and the palette array");
 
 		let config = scope TerrainProbeConfig();
 		config.Terrain = grid;
@@ -82,7 +88,19 @@ class TerrainSplatProbeTests
 		config.TileScaleGeneration = gpu.Generation;
 		config.PaletteCount = cBands;
 
-		let probe = TerrainProbeRenderer.Render(fixture, config);
+		return TerrainProbeRenderer.Render(fixture, config);
+	}
+
+	/// SIX distinct palette layers on one terrain, which the retired four layer model could
+	/// not represent at all, rendering the SAME on every backend.
+	[Test]
+	public static void SixPaletteLayersRenderAsDistinctStripes()
+	{
+		let fixture = scope TerrainProbeFixture(.Vulkan);
+		if (!fixture.Ready)
+			return;
+
+		let probe = RenderStripes(fixture);
 		defer delete probe;
 		Test.Assert(probe.Valid, "the stripes rendered");
 
@@ -99,19 +117,34 @@ class TerrainSplatProbeTests
 
 		Test.Assert(forward || mirrored,
 			scope $"all six layers appear in palette order (got {BandClass(probe, 0)}, {BandClass(probe, 1)}, {BandClass(probe, 2)}, {BandClass(probe, 3)}, {BandClass(probe, 4)}, {BandClass(probe, 5)})");
+
+		// And every band matches per channel on WebGPU. This is the R5 pixel parity
+		// requirement: six layers through the array sampler have to survive the other cook.
+		let webgpu = scope TerrainProbeFixture(.WebGpu);
+		if (!webgpu.Ready)
+			return;
+
+		let other = RenderStripes(webgpu);
+		defer delete other;
+		Test.Assert(other.Valid, "WebGpu: the stripes rendered");
+
+		for (int b < cBands)
+		{
+			Parity(scope $"band {b} R", other.BandR[b], probe.BandR[b]);
+			Parity(scope $"band {b} G", other.BandG[b], probe.BandG[b]);
+			Parity(scope $"band {b} B", other.BandB[b], probe.BandB[b]);
+		}
 	}
 	/// The editor's paint loop end to end: a CPU raster, the version keyed cache, the blend.
 	///
 	/// All zero weights over a red base render red; painting palette layer nought blue and
 	/// bumping the version makes the cache re upload, and the SAME terrain renders blue. That
 	/// the colour changed at all is what proves the paint reached the GPU.
-	[Test]
-	public static void PaintingTheWeightsReUploadsAndChangesThePixel()
+	/// The unpainted frame and the repainted one, on whichever device the fixture holds. The
+	/// CALLER owns both probes.
+	private static void RenderRepaint(TerrainProbeFixture fixture, out TerrainProbe before,
+		out TerrainProbe after)
 	{
-		let fixture = scope TerrainProbeFixture();
-		if (!fixture.Ready)
-			return;
-
 		let grid = TerrainFixtures.MakeFlat();
 		defer delete grid;
 
@@ -141,8 +174,7 @@ class TerrainSplatProbeTests
 		var views = splatCache.GetOrCreate(fixture.Device, weights, weights.Version);
 		config.WeightView = views.WeightView;
 		config.IndexView = views.IndexView;
-		let before = TerrainProbeRenderer.Render(fixture, config);
-		defer delete before;
+		before = TerrainProbeRenderer.Render(fixture, config);
 
 		// Several dabs, so the brush converges on one hot rather than leaving a partial blend.
 		for (int i < 24)
@@ -151,8 +183,18 @@ class TerrainSplatProbeTests
 		views = splatCache.GetOrCreate(fixture.Device, weights, weights.Version);
 		config.WeightView = views.WeightView;
 		config.IndexView = views.IndexView;
-		let after = TerrainProbeRenderer.Render(fixture, config);
-		defer delete after;
+		after = TerrainProbeRenderer.Render(fixture, config);
+	}
+
+	[Test]
+	public static void PaintingTheWeightsReUploadsAndChangesThePixel()
+	{
+		let fixture = scope TerrainProbeFixture(.Vulkan);
+		if (!fixture.Ready)
+			return;
+
+		RenderRepaint(fixture, var before, var after);
+		defer { delete before; delete after; }
 
 		Test.Assert(before.Valid && after.Valid, "both frames rendered");
 
@@ -160,6 +202,19 @@ class TerrainSplatProbeTests
 		Test.Assert(before.RightR > before.RightB * 1.5);
 		Test.Assert(after.LeftB > after.LeftR * 1.5, "and painted reads as the blue layer");
 		Test.Assert(after.RightB > after.RightR * 1.5);
+
+		// The same two frames on WebGPU. The upload is the thing under test here, so parity
+		// covers the re-upload path across backends, not just the blend that reads it.
+		let webgpu = scope TerrainProbeFixture(.WebGpu);
+		if (!webgpu.Ready)
+			return;
+
+		RenderRepaint(webgpu, var wBefore, var wAfter);
+		defer { delete wBefore; delete wAfter; }
+		Test.Assert(wBefore.Valid && wAfter.Valid, "WebGpu: both frames rendered");
+
+		Parity("unpainted left R", wBefore.LeftR, before.LeftR);
+		Parity("painted left B", wAfter.LeftB, after.LeftB);
 	}
 
 	/// Paint layers bound with NOTHING painted and no base albedo keeps the fresh terrain
@@ -261,6 +316,17 @@ class TerrainSplatProbeTests
 
 		Test.Assert(mappedPlus.Total > flatPlus.Total * 1.10, "the aligned sun brightens it");
 		Test.Assert(mappedMinus.Total < flatMinus.Total * 0.90, "and the opposed sun darkens it");
+
+		// The aligned case again on WebGPU. The SampleGrad on the normal tap is the surface
+		// the two cooks are most likely to disagree about.
+		let webgpu = scope TerrainProbeFixture(.WebGpu);
+		if (!webgpu.Ready)
+			return;
+
+		let other = RenderWithBaseNormal(webgpu, plusX, true, 204, 128, 229);
+		defer delete other;
+		Test.Assert(other.Valid, "WebGpu: the mapped frame rendered");
+		Parity("mapped aligned total", other.Total, mappedPlus.Total);
 	}
 
 	/// The tangent frame's bitangent points toward -Z, which under a top left UV origin IS
@@ -400,6 +466,21 @@ class TerrainSplatProbeTests
 		// And inverting the mask swaps which half it is.
 		Test.Assert((splitRight.LeftB > splitRight.LeftR) != leftIsLayer,
 			"flipping the mask flips the halves");
+
+		// The split fixture on WebGPU: the same half must be the layer, not merely a similar
+		// total, because a mask read that lands the wrong way round still sums the same.
+		let webgpu = scope TerrainProbeFixture(.WebGpu);
+		if (!webgpu.Ready)
+			return;
+
+		let other = RenderMasked(webgpu, .SplitLeft);
+		defer delete other;
+		Test.Assert(other.Valid, "WebGpu: the split frame rendered");
+		Test.Assert((other.LeftB > other.LeftR) == leftIsLayer,
+			"WebGpu: the same half reads as the layer");
+		Test.Assert((other.RightB > other.RightR) == rightIsLayer,
+			"WebGpu: and the same half reads as the base");
+		Parity("split total", other.Total, splitLeft.Total);
 	}
 	/// Both halves of the screen summed, which is how the whole footprint's colour reads.
 	private static double Red(TerrainProbe probe) => probe.LeftR + probe.RightR;
@@ -485,6 +566,18 @@ class TerrainSplatProbeTests
 
 		Test.Assert(Red(weightWins) > Blue(weightWins) * 1.5,
 			"with equal heights the greater weight still wins");
+
+		// The red tall case on WebGPU. SampleGrad on the HEIGHT array is its own divergence
+		// surface, separate from the albedo and normal taps.
+		let webgpu = scope TerrainProbeFixture(.WebGpu);
+		if (!webgpu.Ready)
+			return;
+
+		let other = RenderHeightBlend(webgpu, 255, 0, 128, 128, true, 0.15f);
+		defer delete other;
+		Test.Assert(other.Valid, "WebGpu: the red tall frame rendered");
+		Parity("red tall total", other.Total, redTall.Total);
+		Parity("red tall R", Red(other), Red(redTall));
 	}
 	private static double Green(TerrainProbe probe) => probe.LeftG + probe.RightG;
 
@@ -561,6 +654,19 @@ class TerrainSplatProbeTests
 		Test.Assert(Green(unmasked) > Blue(unmasked), "the grass was visible before masking");
 		Test.Assert(Red(masked) > Red(unmasked) * 1.3, "masking the grass grew the ground");
 		Test.Assert(Green(masked) < Green(unmasked) * 0.3, "and actually removed the grass");
+
+		// The masked frame on WebGPU, asserting the redistribution again rather than only the
+		// number: the coverage has to land on the painted ground there too.
+		let webgpu = scope TerrainProbeFixture(.WebGpu);
+		if (!webgpu.Ready)
+			return;
+
+		let other = RenderTwoPainted(webgpu, true);
+		defer delete other;
+		Test.Assert(other.Valid, "WebGpu: the masked frame rendered");
+		Test.Assert(Red(other) > Blue(other) * 1.5,
+			"WebGpu: the freed coverage still went to the painted ground");
+		Parity("masked R", Red(other), Red(masked));
 	}
 	/// One hot palette layer carrying its own ARRAY normal and ORM slices.
 	private static TerrainProbe RenderArrayPbr(TerrainProbeFixture fixture, Float3 toLight,
@@ -659,5 +765,16 @@ class TerrainSplatProbeTests
 		// Magnitude rather than sign, so which way round it landed does not matter.
 		Test.Assert(Math.Abs(rotatedPlusZ.Total - rotatedMinusZ.Total) > rotatedPlusZ.Total * 0.10,
 			"and moved onto world Z");
+
+		// The aligned array normal case on WebGPU, which is the tap that reads the normal and
+		// ORM out of the palette array rather than a single texture.
+		let webgpu = scope TerrainProbeFixture(.WebGpu);
+		if (!webgpu.Ready)
+			return;
+
+		let other = RenderArrayPbr(webgpu, plusX, 255, Float4x4.Identity());
+		defer delete other;
+		Test.Assert(other.Valid, "WebGpu: the array PBR frame rendered");
+		Parity("aligned array normal total", other.Total, alignedSun.Total);
 	}
 }
