@@ -72,7 +72,8 @@ sealed class WebGpuDevice : IDevice
 		// run with no pack present still runs SPIR-V, and only works because ingestion is
 		// available - which it will not be in a browser.
 		Console.WriteLine("[webgpu] shaders: prefers {} (SPIR-V ingestion {})",
-			mForceWgsl ? "WGSL with push constants emulated (ENV_WEBGPU_WGSL)" : "SPIR-V",
+			mForceWgsl ? "WGSL with push constants emulated (ENV_WEBGPU_WGSL)" :
+				(PreferredShaderFormat == .SpirV ? "SPIR-V" : "WGSL"),
 			WebGpuApi.SpirvIngestion ? "available" : "unavailable");
 	}
 
