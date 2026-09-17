@@ -120,4 +120,79 @@ class WebGpuBlitTests
 		device.DestroyTexture(ref mipTexture);
 		device.Destroy();
 	}
+
+	/// Blit capability is the ALLOWLIST of WebGPU's renderable colour formats.
+	///
+	/// The predicate decides whether texture creation widens usage to RenderAttachment for a
+	/// mip chain, so a format WebGPU cannot render must answer no or creation fails outright.
+	/// As an exclusion list it named the BC formats and forgot ASTC and the 8 bit snorms.
+	[Test]
+	public static void BlitCapableIsTheRenderableColourFormatsOnly()
+	{
+		// No device needed for the predicate itself. Every compressed, depth and stencil
+		// format must say no, whatever the enumerator.
+		for (int raw = 0; raw <= (int)TextureFormat.ASTC8x8UnormSrgb; raw++)
+		{
+			let format = (TextureFormat)raw;
+			if (TextureFormats.IsCompressed(format) || TextureFormats.IsDepthFormat(format)
+				|| (format == .Stencil8) || (format == .Undefined))
+			{
+				Test.Assert(!WebGpuConversions.IsBlitCapableFormat(format),
+					scope $"{format} must not be blit capable");
+			}
+		}
+
+		// ASTC was the fall through the exclusion list missed; BC was always excluded.
+		Test.Assert(!WebGpuConversions.IsBlitCapableFormat(.ASTC4x4Unorm));
+		Test.Assert(!WebGpuConversions.IsBlitCapableFormat(.ASTC8x8UnormSrgb));
+		Test.Assert(!WebGpuConversions.IsBlitCapableFormat(.BC7RGBAUnormSrgb));
+
+		// Not renderable in WebGPU core either.
+		Test.Assert(!WebGpuConversions.IsBlitCapableFormat(.R8Snorm));
+		Test.Assert(!WebGpuConversions.IsBlitCapableFormat(.RG8Snorm));
+		Test.Assert(!WebGpuConversions.IsBlitCapableFormat(.RGBA8Snorm));
+		Test.Assert(!WebGpuConversions.IsBlitCapableFormat(.RGBA16Unorm));
+		Test.Assert(!WebGpuConversions.IsBlitCapableFormat(.RGB9E5Float));
+		Test.Assert(!WebGpuConversions.IsBlitCapableFormat(.RG11B10Float));
+
+		// The renderable set the mip blit actually targets.
+		Test.Assert(WebGpuConversions.IsBlitCapableFormat(.RGBA8Unorm));
+		Test.Assert(WebGpuConversions.IsBlitCapableFormat(.RGBA8UnormSrgb));
+		Test.Assert(WebGpuConversions.IsBlitCapableFormat(.BGRA8UnormSrgb));
+		Test.Assert(WebGpuConversions.IsBlitCapableFormat(.RGBA16Float));
+		Test.Assert(WebGpuConversions.IsBlitCapableFormat(.R32Float));
+		Test.Assert(WebGpuConversions.IsBlitCapableFormat(.RGB10A2Unorm));
+
+		// On a live device: a mip chained texture in a format that is NOT blit capable must
+		// still be creatable, usage never widened, and GenerateMipmaps a clean no-op on it.
+		let backend = scope WebGpuBackend();
+		let device = WebGpuTestDevice.TryCreate(backend);
+		if (device == null)
+			return;
+		defer backend.Destroy();
+
+		var desc = TextureDesc();
+		desc.Format = .RGBA8Snorm;
+		desc.Width = 16;
+		desc.Height = 16;
+		desc.MipLevelCount = 3;
+		desc.Usage = .Sampled | .CopyDst;
+		var texture = device.CreateTexture(desc).GetValueOrDefault();
+		Test.Assert(texture != null, "a non blit capable mip chain still creates");
+
+		var pool = device.CreateCommandPool(.Graphics).GetValueOrDefault();
+		var encoder = pool.CreateEncoder().GetValueOrDefault();
+		encoder.GenerateMipmaps(texture); // not blit capable: a no-op, and no validation error
+		ICommandBuffer[1] buffers = .(encoder.Finish());
+		var fence = device.CreateFence(0).GetValueOrDefault();
+		device.GetQueue(.Graphics, 0).Submit(.(&buffers[0], 1), fence, 1);
+		Test.Assert(fence.Wait(1, uint64.MaxValue));
+		Test.Assert(!device.IsLost());
+
+		pool.DestroyEncoder(ref encoder);
+		device.DestroyFence(ref fence);
+		device.DestroyCommandPool(ref pool);
+		device.DestroyTexture(ref texture);
+		device.Destroy();
+	}
 }

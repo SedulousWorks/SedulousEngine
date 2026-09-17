@@ -108,13 +108,11 @@ sealed class WebGpuSwapChain : ISwapChain
 		mCurrentView = new WebGpuTextureView();
 		if (mCurrentView.Initialize(surfaceTexture.texture, mCurrentTexture, viewDesc) case .Err)
 		{
-			// Torn down HERE rather than through DropCurrent: the image is not current yet,
-			// so DropCurrent returns early and would strand the borrow. Raptor calls it
-			// anyway and leaks the surface texture down this path.
+			// DropCurrent releases whatever exists, so the borrow goes back even though the
+			// image never became current.
 			DeleteAndNullify!(mCurrentView);
 			DeleteAndNullify!(mCurrentTexture);
-			wgpuTextureRelease(mOwnedHandle);
-			mOwnedHandle = null;
+			DropCurrent();
 			return .Err;
 		}
 
@@ -436,13 +434,17 @@ sealed class WebGpuSwapChain : ISwapChain
 		return false;
 	}
 
+	/// Releases WHATEVER exists, rather than returning early when no image is current.
+	///
+	/// The flag is only set once the per frame view has built, so an early exit keyed on it
+	/// strands the borrowed surface texture down any path that fails before then.
 	private void DropCurrent()
 	{
-		if (!mHaveImage)
-			return;
-
-		DeleteAndNullify!(mCurrentView);
-		DeleteAndNullify!(mCurrentTexture);
+		if (mHaveImage)
+		{
+			DeleteAndNullify!(mCurrentView);
+			DeleteAndNullify!(mCurrentTexture);
+		}
 
 		if (mOwnedHandle != null)
 		{
