@@ -69,7 +69,7 @@ static class NavigationFixture
 			return false;
 		if (a.IsEmpty)
 			return true;
-		return RawMemory.Equal(a.Ptr, b.Ptr, a.Count);
+		return Internal.MemCmp(a.Ptr, b.Ptr, a.Count) == 0;
 	}
 
 	public static bool Finite(Float3 v) =>

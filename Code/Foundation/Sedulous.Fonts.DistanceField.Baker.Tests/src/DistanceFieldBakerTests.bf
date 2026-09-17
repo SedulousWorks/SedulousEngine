@@ -171,7 +171,7 @@ class DistanceFieldBakerTests
 		let firstPixels = first.PixelData;
 		let secondPixels = second.PixelData;
 		Test.Assert(firstPixels.Length == secondPixels.Length);
-		Test.Assert(RawMemory.Equal(firstPixels.Ptr, secondPixels.Ptr, firstPixels.Length),
+		Test.Assert(Internal.MemCmp(firstPixels.Ptr, secondPixels.Ptr, firstPixels.Length) == 0,
 			"the two bakes differ byte for byte");
 	}
 

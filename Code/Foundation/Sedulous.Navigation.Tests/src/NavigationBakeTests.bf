@@ -124,8 +124,8 @@ class NavigationBakeTests
 				Test.Assert(NavigationMeshBuilder.BuildTileAt(verts, indices, parameters, 1, 2,
 					regenerated) case .Ok);
 				Test.Assert(regenerated.Count == (int)record.DataSize);
-				Test.Assert(RawMemory.Equal(regenerated.Ptr, &blob[cursor],
-					(int)record.DataSize));
+				Test.Assert(Internal.MemCmp(regenerated.Ptr, &blob[cursor],
+					(int)record.DataSize) == 0);
 				found = true;
 				break;
 			}

@@ -165,7 +165,7 @@ sealed class WebGpuBuffer : IBuffer
 		mRangeFlushed = true;
 		mShadowOutstanding = false;
 
-		if (RawMemory.Equal(mLastUploaded.Ptr + first, mShadow.Ptr + first, count))
+		if (Internal.MemCmp(mLastUploaded.Ptr + first, mShadow.Ptr + first, count) == 0)
 			return;
 
 		wgpuQueueWriteBuffer(mQueue, mHandle, begin, mShadow.Ptr + first, (uint)count);
@@ -246,10 +246,10 @@ sealed class WebGpuBuffer : IBuffer
 	/// own notes for why the compare earns its keep.
 	private void UploadShadowIfChanged()
 	{
-		// RawMemory, not Internal.MemCmp: the latter compares a byte at a time, and these
-		// shadows are megabytes. See RawMemory for the measurement.
+		// Internal.MemCmp is the memcmp INTRINSIC now, so a megabyte shadow compares at
+		// libc speed and needs no detour through a [CLink] of our own.
 		if ((mLastUploaded.Count == mShadow.Count)
-			&& RawMemory.Equal(mLastUploaded.Ptr, mShadow.Ptr, mShadow.Count))
+			&& (Internal.MemCmp(mLastUploaded.Ptr, mShadow.Ptr, mShadow.Count) == 0))
 			return;
 
 		wgpuQueueWriteBuffer(mQueue, mHandle, 0, mShadow.Ptr, (uint)mShadow.Count);
