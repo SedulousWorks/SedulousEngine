@@ -1,3 +1,5 @@
+using System;
+
 namespace Sedulous.Core;
 
 /// One keyframe.
@@ -13,8 +15,10 @@ struct CurveKey
 	public float TangentOut = 0.0f;
 	public CurveKeyInterpolation Interpolation = .Linear;
 
+	[Inline]
 	public this() { }
 
+	[Inline]
 	public this(float time, float value,
 		CurveKeyInterpolation interpolation = .Linear,
 		float tangentIn = 0.0f, float tangentOut = 0.0f)

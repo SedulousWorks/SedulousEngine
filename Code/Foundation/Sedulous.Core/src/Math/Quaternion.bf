@@ -11,7 +11,9 @@ struct Quaternion
 	public float Z = 0.0f;
 	public float W = 1.0f;
 
+	[Inline]
 	public this() { }
+	[Inline]
 	public this(float x, float y, float z, float w)
 	{
 		this.X = x; this.Y = y; this.Z = z; this.W = w;
@@ -28,6 +30,7 @@ struct Quaternion
 	}
 
 	/// Hamilton product: applies b, then a, to a vector.
+	[Inline]
 	public static Quaternion operator*(Quaternion a, Quaternion b) => .(
 		a.W * b.X + a.X * b.W + a.Y * b.Z - a.Z * b.Y,
 		a.W * b.Y - a.X * b.Z + a.Y * b.W + a.Z * b.X,

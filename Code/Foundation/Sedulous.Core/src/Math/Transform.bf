@@ -14,7 +14,9 @@ struct Transform
 	public Quaternion Rotation = Quaternion.Identity;
 	public Float3 Scale = Float3.One;
 
+	[Inline]
 	public this() { }
+	[Inline]
 	public this(Float3 position, Quaternion rotation, Float3 scale)
 	{
 		this.Position = position; this.Rotation = rotation; this.Scale = scale;

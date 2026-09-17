@@ -17,7 +17,9 @@ struct Color32
 	public uint8 B = 0;
 	public uint8 A = 255;
 
+	[Inline]
 	public this() { }
+	[Inline]
 	public this(uint8 r, uint8 g, uint8 b, uint8 a = 255)
 	{
 		this.R = r; this.G = g; this.B = b; this.A = a;
@@ -43,6 +45,7 @@ struct Color32
 	/// [Commutable] so Beef can derive != from this one declaration. Without it every use
 	/// of != warns, and a warning costs the whole incremental build.
 	[Commutable]
+	[Inline]
 	public static bool operator==(Color32 A, Color32 B) =>
 		(A.R == B.R) && (A.G == B.G) && (A.B == B.B) && (A.A == B.A);
 }

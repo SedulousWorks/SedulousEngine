@@ -12,9 +12,13 @@ struct Float3
 	public float Y = 0.0f;
 	public float Z = 0.0f;
 
+	[Inline]
 	public this() { }
+	[Inline]
 	public this(float x, float y, float z) { this.X = x; this.Y = y; this.Z = z; }
+	[Inline]
 	public this(float s) { this.X = s; this.Y = s; this.Z = s; }
+	[Inline]
 	public this(Float2 xy, float z) { this.X = xy.X; this.Y = xy.Y; this.Z = z; }
 
 	public const Float3 Zero = .(0.0f, 0.0f, 0.0f);
@@ -37,25 +41,38 @@ struct Float3
 		}
 	}
 
+	[Inline]
 	public static Float3 operator-(Float3 v) => .(-v.X, -v.Y, -v.Z);
 
+	[Inline]
 	public void operator+=(Float3 r) mut { X += r.X; Y += r.Y; Z += r.Z; }
+	[Inline]
 	public void operator-=(Float3 r) mut { X -= r.X; Y -= r.Y; Z -= r.Z; }
+	[Inline]
 	public void operator*=(float s) mut { X *= s; Y *= s; Z *= s; }
+	[Inline]
 	public void operator/=(float s) mut { X /= s; Y /= s; Z /= s; }
 
+	[Inline]
 	public static Float3 operator+(Float3 a, Float3 b) => .(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
+	[Inline]
 	public static Float3 operator-(Float3 a, Float3 b) => .(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
 	/// Component-wise, not a dot or a cross.
+	[Inline]
 	public static Float3 operator*(Float3 a, Float3 b) => .(a.X * b.X, a.Y * b.Y, a.Z * b.Z);
+	[Inline]
 	public static Float3 operator*(Float3 v, float s) => .(v.X * s, v.Y * s, v.Z * s);
+	[Inline]
 	public static Float3 operator*(float s, Float3 v) => .(v.X * s, v.Y * s, v.Z * s);
+	[Inline]
 	public static Float3 operator/(Float3 v, float s) => .(v.X / s, v.Y / s, v.Z / s);
 	/// Component-wise.
+	[Inline]
 	public static Float3 operator/(Float3 a, Float3 b) => .(a.X / b.X, a.Y / b.Y, a.Z / b.Z);
 	/// [Commutable] so Beef can derive != from this one declaration. Without it every use
 	/// of != warns, and a warning costs the whole incremental build.
 	[Commutable]
+	[Inline]
 	public static bool operator==(Float3 a, Float3 b) =>
 		(a.X == b.X) && (a.Y == b.Y) && (a.Z == b.Z);
 }

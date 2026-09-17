@@ -9,7 +9,9 @@ struct AABB
 	public Float3 Min;
 	public Float3 Max;
 
+	[Inline]
 	public this() { Min = default; Max = default; }
+	[Inline]
 	public this(Float3 min, Float3 max) { this.Min = min; this.Max = max; }
 
 	/// An inverted box, Min above Max, so the first Expand sets real bounds.

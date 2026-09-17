@@ -9,7 +9,9 @@ struct BoundingSphere
 	public Float3 Center;
 	public float Radius = 0.0f;
 
+	[Inline]
 	public this() { Center = default; }
+	[Inline]
 	public this(Float3 center, float radius) { this.Center = center; this.Radius = radius; }
 
 	public static BoundingSphere FromCenterRadius(Float3 c, float r) => .(c, r);

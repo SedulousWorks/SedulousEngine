@@ -9,7 +9,9 @@ struct Plane
 	public Float3 Normal;
 	public float D;
 
+	[Inline]
 	public this() { Normal = default; D = 0.0f; }
+	[Inline]
 	public this(Float3 normal, float d) { this.Normal = normal; this.D = d; }
 
 	public static Plane FromPointNormal(Float3 point, Float3 unitNormal) =>

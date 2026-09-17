@@ -13,12 +13,16 @@ struct Float4
 	public float Z = 0.0f;
 	public float W = 0.0f;
 
+	[Inline]
 	public this() { }
+	[Inline]
 	public this(float x, float y, float z, float w)
 	{
 		this.X = x; this.Y = y; this.Z = z; this.W = w;
 	}
+	[Inline]
 	public this(float s) { this.X = s; this.Y = s; this.Z = s; this.W = s; }
+	[Inline]
 	public this(Float3 xyz, float w)
 	{
 		this.X = xyz.X; this.Y = xyz.Y; this.Z = xyz.Z; this.W = w;
@@ -55,21 +59,30 @@ struct Float4
 
 	[Inline] public Float3 XYZ() => .(X, Y, Z);
 
+	[Inline]
 	public static Float4 operator-(Float4 v) => .(-v.X, -v.Y, -v.Z, -v.W);
 
+	[Inline]
 	public void operator+=(Float4 r) mut { X += r.X; Y += r.Y; Z += r.Z; W += r.W; }
+	[Inline]
 	public void operator-=(Float4 r) mut { X -= r.X; Y -= r.Y; Z -= r.Z; W -= r.W; }
+	[Inline]
 	public void operator*=(float s) mut { X *= s; Y *= s; Z *= s; W *= s; }
 
+	[Inline]
 	public static Float4 operator+(Float4 a, Float4 b) =>
 		.(a.X + b.X, a.Y + b.Y, a.Z + b.Z, a.W + b.W);
+	[Inline]
 	public static Float4 operator-(Float4 a, Float4 b) =>
 		.(a.X - b.X, a.Y - b.Y, a.Z - b.Z, a.W - b.W);
+	[Inline]
 	public static Float4 operator*(Float4 v, float s) => .(v.X * s, v.Y * s, v.Z * s, v.W * s);
+	[Inline]
 	public static Float4 operator*(float s, Float4 v) => .(v.X * s, v.Y * s, v.Z * s, v.W * s);
 	/// [Commutable] so Beef can derive != from this one declaration. Without it every use
 	/// of != warns, and a warning costs the whole incremental build.
 	[Commutable]
+	[Inline]
 	public static bool operator==(Float4 a, Float4 b) =>
 		(a.X == b.X) && (a.Y == b.Y) && (a.Z == b.Z) && (a.W == b.W);
 }

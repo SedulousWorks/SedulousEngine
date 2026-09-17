@@ -56,6 +56,7 @@ static class Program
 		Console.WriteLine();
 		Console.WriteLine("-- operators: a sphere cull written three ways --");
 		Run("op byval  (operator- by value)", scope () => OpByValue(bounds));
+		Run("op inline (by value, [Inline])", scope () => OpInline(bounds));
 		Run("op in     (operator- taking in)", scope () => OpIn(bounds));
 		Run("op manual (no operator at all)", scope () => OpManual(bounds));
 
@@ -165,6 +166,10 @@ static class Program
 	// ---- operators -------------------------------------------------------------------------
 	//
 	// The same struct declared each way, so the loops below differ in nothing else.
+	//
+	// V3 is left WITHOUT [Inline] on purpose: it is the control, and it is what every one of
+	// these types used to look like. The engine's own types carry [Inline] now, which is what
+	// V3Inline measures, and that is the whole difference between 8 ns and 1 ns here.
 
 	[CRepr]
 	private struct V3
@@ -174,6 +179,20 @@ static class Program
 		public float Z;
 		public this(float x, float y, float z) { X = x; Y = y; Z = z; }
 		public static V3 operator-(V3 a, V3 b) => .(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
+	}
+
+	/// The SAME by value signature as V3, with the constructor and operator inlined. This is
+	/// the shape Sedulous.Core's math types took, and it is the one to copy.
+	[CRepr]
+	private struct V3Inline
+	{
+		public float X;
+		public float Y;
+		public float Z;
+		[Inline]
+		public this(float x, float y, float z) { X = x; Y = y; Z = z; }
+		[Inline]
+		public static V3Inline operator-(V3Inline a, V3Inline b) => .(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
 	}
 
 	[CRepr]
@@ -198,6 +217,26 @@ static class Program
 		{
 			let b = cullBounds[k];
 			let delta = V3(b.X, b.Y, b.Z) - center;
+			let reach = 40.0f + b.W;
+			if ((delta.X * delta.X + delta.Y * delta.Y + delta.Z * delta.Z) <= (reach * reach))
+				kept++;
+		}
+		return kept;
+	}
+
+	/// The same by value loop as OpByValue, over the struct whose constructor and operator
+	/// are inlined. Identical source, one attribute apart.
+	private static int OpInline(List<Float4> boundsList)
+	{
+		let cullBounds = boundsList.Ptr;
+		let count = boundsList.Count;
+		let center = V3Inline(0.0f, 0.0f, 0.0f);
+		var kept = 0;
+
+		for (int k < count)
+		{
+			let b = cullBounds[k];
+			let delta = V3Inline(b.X, b.Y, b.Z) - center;
 			let reach = 40.0f + b.W;
 			if ((delta.X * delta.X + delta.Y * delta.Y + delta.Z * delta.Z) <= (reach * reach))
 				kept++;

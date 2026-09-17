@@ -18,9 +18,11 @@ struct Float4x4
 {
 	public float[4][4] M;
 
+	[Inline]
 	public this() { M = default; }
 
 	/// Row-major, reading left to right and top to bottom.
+	[Inline]
 	public this(
 		float m00, float m01, float m02, float m03,
 		float m10, float m11, float m12, float m13,
@@ -136,6 +138,7 @@ struct Float4x4
 			-Dot(xAxis, eye), -Dot(yAxis, eye), -Dot(zAxis, eye), 1.0f);
 	}
 
+	[Inline]
 	public static Float4x4 operator*(Float4x4 a, Float4x4 b)
 	{
 		Float4x4 result = .();
@@ -153,6 +156,7 @@ struct Float4x4
 	}
 
 	/// Row-vector transform: v' = v * M.
+	[Inline]
 	public static Float4 operator*(Float4 v, Float4x4 M) => .(
 		v.X * M.M[0][0] + v.Y * M.M[1][0] + v.Z * M.M[2][0] + v.W * M.M[3][0],
 		v.X * M.M[0][1] + v.Y * M.M[1][1] + v.Z * M.M[2][1] + v.W * M.M[3][1],
@@ -163,6 +167,7 @@ struct Float4x4
 	/// [Commutable] so Beef can derive != from this one declaration. Without it every use
 	/// of != warns, and a warning costs the whole incremental build.
 	[Commutable]
+	[Inline]
 	public static bool operator==(Float4x4 a, Float4x4 b)
 	{
 		for (int row < 4)

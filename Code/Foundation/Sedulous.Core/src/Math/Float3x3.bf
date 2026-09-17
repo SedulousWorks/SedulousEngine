@@ -11,9 +11,11 @@ struct Float3x3
 {
 	public float[3][3] M;
 
+	[Inline]
 	public this() { M = default; }
 
 	/// Row-major, reading left to right and top to bottom.
+	[Inline]
 	public this(
 		float m00, float m01, float m02,
 		float m10, float m11, float m12,
@@ -50,6 +52,7 @@ struct Float3x3
 		mat.M[1][0], mat.M[1][1], mat.M[1][2],
 		mat.M[2][0], mat.M[2][1], mat.M[2][2]);
 
+	[Inline]
 	public static Float3x3 operator*(Float3x3 a, Float3x3 b)
 	{
 		Float3x3 result = .();
@@ -67,6 +70,7 @@ struct Float3x3
 	}
 
 	/// Row-vector transform: v' = v * M.
+	[Inline]
 	public static Float3 operator*(Float3 v, Float3x3 M) => .(
 		v.X * M.M[0][0] + v.Y * M.M[1][0] + v.Z * M.M[2][0],
 		v.X * M.M[0][1] + v.Y * M.M[1][1] + v.Z * M.M[2][1],

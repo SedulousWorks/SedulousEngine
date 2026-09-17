@@ -9,7 +9,9 @@ struct Ray
 	public Float3 Position;
 	public Float3 Direction;
 
+	[Inline]
 	public this() { Position = default; Direction = default; }
+	[Inline]
 	public this(Float3 position, Float3 direction)
 	{
 		this.Position = position; this.Direction = direction;
