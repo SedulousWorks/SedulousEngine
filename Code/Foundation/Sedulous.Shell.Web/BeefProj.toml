@@ -3,7 +3,8 @@ FileVersion = 1
 [Project]
 Name = "Sedulous.Shell.Web"
 TargetType = "BeefLib"
-StartupObject = "Sedulous.Shell.Web.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Shell" = "*"

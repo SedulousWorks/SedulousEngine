@@ -1,5 +1,5 @@
 FileVersion = 1
-ExtraPlatforms = ["Linux64"]
+ExtraPlatforms = ["Linux64", "wasm32"]
 
 [Workspace]
 StartupProject = "Samples.UISandbox"
