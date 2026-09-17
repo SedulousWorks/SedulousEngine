@@ -216,8 +216,8 @@ AllocType = "CRT"
 EnableObjectDebugFlags = false
 EmitObjectAccessCheck = false
 # OFF for the release web build. Beef defaults debug info to Yes in every config, and for
-# wasm that means -gseparate-dwarf -gsource-map, which it appends AFTER a project's own link
-# flags so -g0 cannot override it. DWARF for a whole engine is most of the module.
+# wasm that means -gseparate-dwarf -gsource-map. DWARF for a whole engine is most of the
+# module: 17.3 MB with it against 8.0 MB without.
 EmitDebugInfo = "No"
 
 # Debug keeps Beef's RUNTIME CHECKS on, which is the point of building it for the web: a
