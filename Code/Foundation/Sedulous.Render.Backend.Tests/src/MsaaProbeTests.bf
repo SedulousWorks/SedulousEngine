@@ -262,9 +262,11 @@ class MsaaProbeTests
 		if (!fixture.Ready || !Has4xMsaa(fixture.Device))
 			return;
 
-		let runs = scope EffectRun[2](
+		let runs = scope EffectRun[4](
 			.("fxaa", .() { Samples = 4, Fxaa = true }),
-			.("ao", .() { Samples = 4, AoMode = 1 }));
+			.("ao", .() { Samples = 4, AoMode = 1 }),
+			.("taa", .() { Samples = 4, Taa = true }),
+			.("ssr", .() { Samples = 4, Ssr = true }));
 
 		for (let run in runs)
 		{
@@ -281,44 +283,6 @@ class MsaaProbeTests
 			// The effect composed with the resolve without breaking it: the cube is still a
 			// clearly lit solid over a real area, and the values are sane rather than
 			// overflowed.
-			Test.Assert(max > 300, scope $"{run.Name}: lit");
-			Test.Assert(max <= 765, scope $"{run.Name}: not overflowed");
-			Test.Assert(lit > 200, scope $"{run.Name}: covers an area");
-		}
-	}
-
-	/// The TEMPORAL half of Raptor's effect stack run, split off because BOTH fail here.
-	///
-	/// The resolve and the reflection each come back dark where Raptor's render lit. That is
-	/// the same signature as the temporal resolve failing on its own, and almost certainly the
-	/// same cause: both write a transient that a later pass reads, and what the later pass
-	/// reads is not what was written.
-	///
-	/// Kept as its own case so the effects that DO compose stay a live guard on the resolve
-	/// rebinding rather than being masked by this.
-	[Test]
-	public static void TheTemporalEffectsComposeWithTheResolve()
-	{
-		let fixture = scope BackendProbeFixture();
-		if (!fixture.Ready || !Has4xMsaa(fixture.Device))
-			return;
-
-		let runs = scope EffectRun[2](
-			.("taa", .() { Samples = 4, Taa = true }),
-			.("ssr", .() { Samples = 4, Ssr = true }));
-
-		for (let run in runs)
-		{
-			let image = RenderMsaa(fixture, run.Config);
-			defer delete image;
-			Test.Assert((image != null) && image.Valid, scope $"{run.Name}: rendered");
-
-			let max = MaxLuma(image);
-			let lit = image.CountWhere(scope (rgba) =>
-				{
-					return ((uint32)rgba[0] + rgba[1] + rgba[2]) > 100;
-				});
-
 			Test.Assert(max > 300, scope $"{run.Name}: lit");
 			Test.Assert(max <= 765, scope $"{run.Name}: not overflowed");
 			Test.Assert(lit > 200, scope $"{run.Name}: covers an area");

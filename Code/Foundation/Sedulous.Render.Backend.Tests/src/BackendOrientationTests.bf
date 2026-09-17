@@ -238,9 +238,10 @@ class BackendOrientationTests
 		// failing: a mirrored scene drops the cube on raw forward, a wrongly firing tonemap
 		// side compensation drops it on one of the tonemap runs and not the other, and a
 		// front face winding hack turns the plane only run black.
-		let runs = scope ProbeRun[4](
+		let runs = scope ProbeRun[5](
 			.("raw-forward", .() { TaaEnabled = false, UseTonemap = false }),
 			.("tonemap", .() { TaaEnabled = false, UseTonemap = true }),
+			.("taa", .() { TaaEnabled = true, UseTonemap = true }),
 			.("plane-only-raw", .() { TaaEnabled = false, UseTonemap = false, IncludeCube = false }),
 			.("cube-only-raw", .() { TaaEnabled = false, UseTonemap = false, IncludePlane = false }));
 
@@ -274,28 +275,5 @@ class BackendOrientationTests
 					scope $"{run.Name}: nothing above");
 			}
 		}
-	}
-
-	/// The temporal resolve, which Raptor probes as a third run of the case above.
-	///
-	/// SPLIT OFF because it FAILS: the resolved image comes back entirely black, while the
-	/// same scene through the raw forward and the tonemap paths is correct. The resolve
-	/// clears its targets and then returns early when its bind group cannot be built, which
-	/// is exactly the black seen here, and it is not the motion vectors: asking the frame for
-	/// them changes nothing.
-	///
-	/// It is kept as its own case rather than folded in, so the orientation probe above stays
-	/// a live guard on the vertical flip class instead of being masked by this one.
-	[Test]
-	public static void TheTemporalResolveKeepsTheScene()
-	{
-		let fixture = scope BackendProbeFixture();
-		if (!fixture.Ready)
-			return;
-
-		let probe = RenderProbe(fixture, .() { TaaEnabled = true, UseTonemap = true });
-		Test.Assert(probe.Valid, "the probe rendered");
-		Test.Assert(probe.TopLuma > 100000.0, "top lit");
-		Test.Assert(probe.BottomLuma > probe.TopLuma * 1.3, "the plane dominates below");
 	}
 }
