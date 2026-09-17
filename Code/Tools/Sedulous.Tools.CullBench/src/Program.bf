@@ -164,9 +164,7 @@ static class Program
 
 	// ---- operators -------------------------------------------------------------------------
 	//
-	// The same struct declared each way, so the loops below differ in nothing else. `in` on a
-	// COMPOUND ASSIGNMENT is left out on purpose: that is a Beef codegen fault, the call site
-	// splatting the right hand side while the declaration expects a pointer.
+	// The same struct declared each way, so the loops below differ in nothing else.
 
 	[CRepr]
 	private struct V3

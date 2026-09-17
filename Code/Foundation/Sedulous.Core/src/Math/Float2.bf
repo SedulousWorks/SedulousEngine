@@ -38,8 +38,8 @@ struct Float2
 
 	public static Float2 operator-(in Float2 v) => .(-v.X, -v.Y);
 
-	public void operator+=(Float2 r) mut { X += r.X; Y += r.Y; }
-	public void operator-=(Float2 r) mut { X -= r.X; Y -= r.Y; }
+	public void operator+=(in Float2 r) mut { X += r.X; Y += r.Y; }
+	public void operator-=(in Float2 r) mut { X -= r.X; Y -= r.Y; }
 	public void operator*=(float s) mut { X *= s; Y *= s; }
 	public void operator/=(float s) mut { X /= s; Y /= s; }
 

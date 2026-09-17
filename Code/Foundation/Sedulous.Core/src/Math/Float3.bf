@@ -39,12 +39,8 @@ struct Float3
 
 	public static Float3 operator-(in Float3 v) => .(-v.X, -v.Y, -v.Z);
 
-	// The compound assignments stay BY VALUE. `in` on them is a Beef codegen fault: the call
-	// site splats the right hand side into registers while the declaration expects a pointer,
-	// and LLVM rejects the module ("Incorrect number of arguments passed to called function").
-	// Every other operator here takes `in`, which measured three times faster.
-	public void operator+=(Float3 r) mut { X += r.X; Y += r.Y; Z += r.Z; }
-	public void operator-=(Float3 r) mut { X -= r.X; Y -= r.Y; Z -= r.Z; }
+	public void operator+=(in Float3 r) mut { X += r.X; Y += r.Y; Z += r.Z; }
+	public void operator-=(in Float3 r) mut { X -= r.X; Y -= r.Y; Z -= r.Z; }
 	public void operator*=(float s) mut { X *= s; Y *= s; Z *= s; }
 	public void operator/=(float s) mut { X /= s; Y /= s; Z /= s; }
 

@@ -57,8 +57,8 @@ struct Float4
 
 	public static Float4 operator-(in Float4 v) => .(-v.X, -v.Y, -v.Z, -v.W);
 
-	public void operator+=(Float4 r) mut { X += r.X; Y += r.Y; Z += r.Z; W += r.W; }
-	public void operator-=(Float4 r) mut { X -= r.X; Y -= r.Y; Z -= r.Z; W -= r.W; }
+	public void operator+=(in Float4 r) mut { X += r.X; Y += r.Y; Z += r.Z; W += r.W; }
+	public void operator-=(in Float4 r) mut { X -= r.X; Y -= r.Y; Z -= r.Z; W -= r.W; }
 	public void operator*=(float s) mut { X *= s; Y *= s; Z *= s; W *= s; }
 
 	public static Float4 operator+(in Float4 a, in Float4 b) =>
