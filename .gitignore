@@ -19,6 +19,8 @@ scratch_*/
 # Web sample output: emcc writes the html, js and wasm beside the project, and the debug
 # wasm alone is four megabytes.
 Code/Samples/*/dist/
+# The player's browser entry writes the same output, and it is not a sample.
+Code/Engine/*/dist/
 Code/Web/build/
 
 # Emscripten build trees for the vendored native deps, the wasm counterpart of the

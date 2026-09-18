@@ -1,0 +1,48 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.Player.Web"
+TargetType = "BeefGUIApplication"
+StartupObject = "Sedulous.Engine.Player.Web.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Engine.Player" = "*"
+"Sedulous.Engine.Project" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Graphics.Gpu" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.WebGPU" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Runtime.Web" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Shell.Web" = "*"
+
+# The wasm link, which is the other half of why this is a separate project: none of it is
+# expressible in code.
+#
+# -O3 because Beef passes NO optimisation level to emcc, so the link would otherwise run at
+# -O0: wasm-opt never runs and the module comes out roughly twice the size it should be.
+#
+# ASYNCIFY twice over here. Every WebGPU future resolves from a microtask that cannot run
+# while wasm spins, and WebDist.Fetch calls emscripten_wget synchronously: both need a
+# synchronous call able to unwind and resume. The stack is sized for the deeper of the two,
+# the GPU completion pump yielding from inside a render frame.
+#
+# NO --preload-file, and that is the difference from the samples. A sample knows its data at
+# link time and bakes it in; the player is one binary that runs whichever game is served
+# beside it, so it fetches at startup instead. See WebDist.
+#
+# emdawnwebgpu supplies webgpu.h at compile time and the navigator.gpu binding at link time,
+# and it has to be on BOTH. TargetName carries the .html because emcc decides what to emit
+# from the extension and silently drops --shell-file without one.
+[Configs.Debug.wasm32]
+TargetName = "$(ProjectName).html"
+TargetDirectory = "$(ProjectDir)/dist"
+OtherLinkFlags = "$(LinkFlags) -O3 -lwebsocket.js --use-port=emdawnwebgpu:cpp_bindings=false -s ASYNCIFY -s ASYNCIFY_STACK_SIZE=1048576 -s STACK_SIZE=2097152 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 --shell-file $(ProjectDir)/shell.html"
+
+[Configs.Release.wasm32]
+TargetName = "$(ProjectName).html"
+TargetDirectory = "$(ProjectDir)/dist"
+OtherLinkFlags = "$(LinkFlags) -O3 -lwebsocket.js --use-port=emdawnwebgpu:cpp_bindings=false -s ASYNCIFY -s ASYNCIFY_STACK_SIZE=1048576 -s STACK_SIZE=2097152 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 --shell-file $(ProjectDir)/shell.html"

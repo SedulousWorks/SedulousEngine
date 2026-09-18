@@ -103,16 +103,16 @@ class Program
 	/// baked name here.
 	private static void ResolveProjectDir(String outDir)
 	{
-		let working = Directory.GetCurrentDirectory(.. scope String());
+		let working = scope String();
+		GetCurrentDirectory(working);
 		if (HasGame(working))
 		{
 			outDir.Set(working);
 			return;
 		}
 
-		let exePath = scope String();
-		Environment.GetExecutableFilePath(exePath);
-		let exeDir = Path.GetDirectoryPath(exePath, .. scope String());
+		let exeDir = scope String();
+		GetExecutableDirectory(exeDir);
 		if (HasGame(exeDir))
 		{
 			outDir.Set(exeDir);
@@ -126,8 +126,8 @@ class Program
 	/// build has, or the manifest a dev tree has.
 	private static bool HasGame(StringView dir)
 	{
-		if (File.Exists(Path.InternalCombine(.. scope String(), dir, ProjectLayout.DistContentPak)))
+		if (FileExists(PathJoin(dir, ProjectLayout.DistContentPak, .. scope String())))
 			return true;
-		return File.Exists(Path.InternalCombine(.. scope String(), dir, ProjectLayout.ManifestFile));
+		return FileExists(PathJoin(dir, ProjectLayout.ManifestFile, .. scope String()));
 	}
 }

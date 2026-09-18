@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sedulous Player</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #14151a; color: #d8dae0;
+               font: 14px/1.5 system-ui, sans-serif; }
+  #canvas { display: block; width: 100vw; height: 100vh; outline: none; }
+  #status { position: fixed; left: 12px; bottom: 12px; opacity: 0.7; }
+</style>
+</head>
+<body>
+<!-- tabindex makes the canvas focusable, which is what lets it receive key events at all. -->
+<canvas id="canvas" tabindex="0"></canvas>
+<div id="status">starting…</div>
+<script>
+  // The WebGPU backend's mid frame wait tripwire prints a C stack, and Chrome truncates
+  // Error.stack at ten frames by default: exactly deep enough to reach WaitIdle and stop
+  // BEFORE the frame that names the waiter the message is asking you to find.
+  Error.stackTraceLimit = 64;
+
+  var statusEl = document.getElementById('status');
+  var canvas = document.getElementById('canvas');
+
+  // The canvas BACKING size is what the swap chain renders at, and CSS only sets its
+  // displayed size. Without this the canvas stays at its default 300x150 backing store and
+  // everything is drawn into a fraction of the page. Capped at 2 so a high ratio display
+  // does not quadruple the pixel cost for no visible gain.
+  function resize() {
+    var ratio = Math.min(window.devicePixelRatio || 1, 2);
+    // Never zero: a collapsed canvas would configure a zero size swap chain.
+    canvas.width = Math.max(1, Math.floor(canvas.clientWidth * ratio));
+    canvas.height = Math.max(1, Math.floor(canvas.clientHeight * ratio));
+  }
+  window.addEventListener('resize', resize);
+  resize();
+  canvas.focus();
+
+  if (!navigator.gpu) {
+    statusEl.textContent = 'WebGPU is not available in this browser.';
+  }
+
+  var Module = {
+    canvas: canvas,
+    print: function (text) { console.log(text); statusEl.textContent = text; },
+    printErr: function (text) { console.error(text); statusEl.textContent = text; },
+  };
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>

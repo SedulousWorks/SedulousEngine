@@ -72,6 +72,7 @@ StartupProject = "Samples.WebScene.Web"
 "Sedulous.Engine.Particles" = {Path = "../Engine/Sedulous.Engine.Particles"}
 "Sedulous.Engine.Physics" = {Path = "../Engine/Sedulous.Engine.Physics"}
 "Sedulous.Engine.Player" = {Path = "../Engine/Sedulous.Engine.Player"}
+"Sedulous.Engine.Player.Web" = {Path = "../Engine/Sedulous.Engine.Player.Web"}
 "Sedulous.Engine.Project" = {Path = "../Engine/Sedulous.Engine.Project"}
 "Sedulous.Engine.Render" = {Path = "../Engine/Sedulous.Engine.Render"}
 "Sedulous.Engine.Scene" = {Path = "../Engine/Sedulous.Engine.Scene"}
