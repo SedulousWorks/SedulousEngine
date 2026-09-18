@@ -81,6 +81,7 @@ class Program
 		{
 			delete backend;
 			rawBackend.Destroy();
+			delete rawBackend;
 		}
 
 		let adapters = backend.EnumerateAdapters();
@@ -401,7 +402,7 @@ class Program
 			Console.WriteLine("DX12 backend: FAILED to create");
 			return;
 		}
-		defer backend.Destroy();
+		defer { backend.Destroy(); delete backend; }
 
 		let adapters = backend.EnumerateAdapters();
 		Console.WriteLine(scope $"DX12 adapters: {adapters.Length}");
@@ -435,7 +436,7 @@ class Program
 			Console.WriteLine("WebGPU backend: unavailable - skipped");
 			return;
 		}
-		defer backend.Destroy();
+		defer { backend.Destroy(); delete backend; }
 
 		let version = scope String();
 		WebGpuBackendInfo.NativeVersionString(version);
