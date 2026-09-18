@@ -1,0 +1,18 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.Player.Desktop"
+TargetType = "BeefGUIApplication"
+StartupObject = "Sedulous.Engine.Player.Desktop.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Engine.Player" = "*"
+"Sedulous.Engine.Project" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Graphics.Gpu" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Runtime.SDL3" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Shell.SDL3" = "*"
