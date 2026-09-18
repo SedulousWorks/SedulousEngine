@@ -1,3 +1,5 @@
+using Sedulous.Core;
+
 namespace Sedulous.Input;
 
 /// What an action PRODUCES.
@@ -6,6 +8,7 @@ namespace Sedulous.Input;
 /// editor's validation surfaces, rather than a silent zero: the archived engine collapsed
 /// everything to an {X, Y} pair and lost the distinction, so a button and a stick read the
 /// same and nothing could tell you which you had meant.
+[Scriptable(.AllPublic)]
 enum ActionKind : uint8
 {
 	Button,

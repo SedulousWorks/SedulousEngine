@@ -1,3 +1,5 @@
+using Sedulous.Core;
+
 namespace Sedulous.Texture;
 
 /// The logical shape of a texture ASSET, which is not the same as its GPU storage: a
@@ -6,6 +8,7 @@ namespace Sedulous.Texture;
 /// view.
 ///
 /// Values are stored in cooked textures, so they are appended and never reordered.
+[Scriptable(.AllPublic)]
 enum TextureShape : uint8
 {
 	case Texture2D;

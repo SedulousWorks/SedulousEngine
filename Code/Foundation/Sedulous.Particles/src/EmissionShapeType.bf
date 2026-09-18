@@ -1,5 +1,8 @@
+using Sedulous.Core;
+
 namespace Sedulous.Particles;
 
+[Scriptable(.AllPublic)]
 enum EmissionShapeType : uint8
 {
 	case Point;

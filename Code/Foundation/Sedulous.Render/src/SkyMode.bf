@@ -1,7 +1,10 @@
+using Sedulous.Core;
+
 namespace Sedulous.Render;
 
 /// How the scene's environment radiance, which is both the sky and the source of the image
 /// based lighting, is produced.
+[Scriptable(.AllPublic)]
 enum SkyMode : uint32
 {
 	/// A gradient between horizon, zenith and ground.

@@ -1,6 +1,9 @@
+using Sedulous.Core;
+
 namespace Sedulous.Fonts.Pipeline;
 
 /// How a font asset bakes.
+[Scriptable(.AllPublic)]
 enum FontBakeMode : uint32
 {
 	/// A ramp of coverage rasterisations, one atlas per size.

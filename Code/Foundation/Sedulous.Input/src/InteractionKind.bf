@@ -1,9 +1,12 @@
+using Sedulous.Core;
+
 namespace Sedulous.Input;
 
 /// The shape a BUTTON action's press takes.
 ///
 /// A small state machine per action, so a game does not write the same press timing logic
 /// for every ability it has.
+[Scriptable(.AllPublic)]
 enum InteractionKind : uint8
 {
 	/// Plain press and release edges.

@@ -1,6 +1,9 @@
+using Sedulous.Core;
+
 namespace Sedulous.Physics.Pipeline;
 
 /// What kind of shape a mesh is cooked into.
+[Scriptable(.AllPublic)]
 enum CollisionCookKind : uint8
 {
 	/// A simplified hull, which a dynamic body can use.

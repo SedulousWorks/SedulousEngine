@@ -1,3 +1,5 @@
+using Sedulous.Core;
+
 namespace Sedulous.Input;
 
 /// Which physical thing a binding reads.
@@ -5,6 +7,7 @@ namespace Sedulous.Input;
 /// The tag on a flat record: only the fields its source uses mean anything, and the rest
 /// stay at their defaults. Flat because it then serializes compactly and an editor can show
 /// it as a grid rather than a tree of variants.
+[Scriptable(.AllPublic)]
 enum BindingSource : uint8
 {
 	/// Code is a KeyCode, with an optional required modifier mask.

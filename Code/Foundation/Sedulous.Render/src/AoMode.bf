@@ -1,6 +1,9 @@
+using Sedulous.Core;
+
 namespace Sedulous.Render;
 
 /// Which ambient occlusion estimator a view uses.
+[Scriptable(.AllPublic)]
 enum AoMode : uint32
 {
 	case Off = 0;

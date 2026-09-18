@@ -1,6 +1,9 @@
+using Sedulous.Core;
+
 namespace Sedulous.Render;
 
 /// How a reflection probe's captured cubemap refreshes.
+[Scriptable(.AllPublic)]
 enum ProbeUpdateMode : uint32
 {
 	/// Captured once and fully prefiltered, then cached until the probe moves or is

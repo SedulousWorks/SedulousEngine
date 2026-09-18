@@ -1,9 +1,12 @@
+using Sedulous.Core;
+
 namespace Sedulous.Audio;
 
 /// The FIXED bus layout: everything feeds Master, through one of three.
 ///
 /// This enum IS the topology, and it is the addressing model components and saved data use.
 /// Named buses are additive on top of it rather than a replacement for it.
+[Scriptable(.AllPublic)]
 enum AudioBus : uint8
 {
 	case Master = 0;

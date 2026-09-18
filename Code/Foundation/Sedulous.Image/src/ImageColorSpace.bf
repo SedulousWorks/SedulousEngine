@@ -1,3 +1,5 @@
+using Sedulous.Core;
+
 namespace Sedulous.Image;
 
 /// How the stored channel values are to be read.
@@ -5,6 +7,7 @@ namespace Sedulous.Image;
 /// This is not decoration: a GPU converts sRGB to linear when sampling, and getting it
 /// wrong on a normal map or a mask corrupts the values rather than merely shifting the
 /// look.
+[Scriptable(.AllPublic)]
 enum ImageColorSpace : uint32
 {
 	/// sRGB encoded, for photographs and interface art.

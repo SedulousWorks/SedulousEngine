@@ -1,6 +1,9 @@
+using Sedulous.Core;
+
 namespace Sedulous.Engine.Render;
 
 /// How a sprite billboard turns to face the world, mirroring the shader's own modes.
+[Scriptable(.AllPublic)]
 enum SpriteOrientation : uint32
 {
 	/// A full billboard, always square to the camera.

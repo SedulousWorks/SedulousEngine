@@ -1,6 +1,9 @@
+using Sedulous.Core;
+
 namespace Sedulous.Materials;
 
 /// The predefined vertex layouts, which are the byte formats meshes and sprites supply.
+[Scriptable(.AllPublic)]
 enum VertexLayoutType : uint8
 {
 	/// Procedural: no vertex input at all.

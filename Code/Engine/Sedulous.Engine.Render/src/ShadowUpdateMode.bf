@@ -1,6 +1,9 @@
+using Sedulous.Core;
+
 namespace Sedulous.Engine.Render;
 
 /// How often a local light's shadow is re-rendered.
+[Scriptable(.AllPublic)]
 enum ShadowUpdateMode : uint32
 {
 	/// Re-rendered every frame.

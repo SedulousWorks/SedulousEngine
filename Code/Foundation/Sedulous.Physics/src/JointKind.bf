@@ -1,5 +1,8 @@
+using Sedulous.Core;
+
 namespace Sedulous.Physics;
 
+[Scriptable(.AllPublic)]
 enum JointKind : uint8
 {
 	case Fixed;
