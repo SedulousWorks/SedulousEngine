@@ -3,7 +3,9 @@ using System.Collections;
 using Sedulous.RHI;
 using Win32;
 using Win32.Foundation;
+using Win32.Graphics.Direct3D;
 using Win32.Graphics.Direct3D12;
+using Win32.Graphics.Dxgi.Common;
 
 namespace Sedulous.RHI.DX12;
 
@@ -543,9 +545,197 @@ class DxCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		mCmdList.CopyTextureRegion(&dstLoc, 0, 0, 0, &srcLoc, &srcBox);
 	}
 
-	public void Blit(ITexture src, ITexture dst) {}
-	public void GenerateMipmaps(ITexture texture) {}
-	public void ResolveTexture(ITexture src, ITexture dst) {}
+	/// One subresource through the device's fullscreen triangle pipeline.
+	///
+	/// Expects the source subresource already in a shader resource state and the destination
+	/// in render target. Both descriptors are TEMPORARY: the render target view comes from the
+	/// device's RTV heap and goes back at the end, and the shader resource view is written
+	/// into the CPU heap, staged into the shader visible one, and its CPU slot freed at once.
+	private void BlitSubresource(DxTexture srcTex, uint32 srcMip, DxTexture dstTex, uint32 dstMip,
+		uint32 dstWidth, uint32 dstHeight, DXGI_FORMAT dxgiFormat)
+	{
+		let blitRootSig = mDevice.BlitRootSignature;
+		if (blitRootSig == null)
+			return;
+
+		let blitPso = mDevice.GetOrCreateBlitPSO(dxgiFormat);
+		if (blitPso == null)
+			return;
+
+		let rtvHandle = mDevice.RtvHeap.Allocate();
+		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = .();
+		rtvDesc.Format = dxgiFormat;
+		rtvDesc.ViewDimension = .D3D12_RTV_DIMENSION_TEXTURE2D;
+		rtvDesc.Texture2D.MipSlice = dstMip;
+		mDevice.Handle.CreateRenderTargetView(dstTex.Handle, &rtvDesc, rtvHandle);
+
+		let tempSrvOff = mDevice.CpuSrvHeap.Allocate(1);
+		if (tempSrvOff < 0)
+		{
+			mDevice.RtvHeap.Free(rtvHandle);
+			return;
+		}
+
+		let tempCpuHandle = mDevice.CpuSrvHeap.GetCpuHandle((uint32)tempSrvOff);
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = .();
+		srvDesc.Format = dxgiFormat;
+		srvDesc.ViewDimension = .D3D12_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.Texture2D.MostDetailedMip = srcMip;
+		srvDesc.Texture2D.MipLevels = 1;
+		mDevice.Handle.CreateShaderResourceView(srcTex.Handle, &srvDesc, tempCpuHandle);
+
+		let stagedOff = mPool.SrvStaging.CopyFrom((uint32)tempSrvOff, 1);
+		mDevice.CpuSrvHeap.Free((uint32)tempSrvOff, 1);
+		if (stagedOff < 0)
+		{
+			mDevice.RtvHeap.Free(rtvHandle);
+			return;
+		}
+
+		let srvGpuHandle = mDevice.GpuSrvHeap.GetGpuHandle((uint32)stagedOff);
+		EnsureDescriptorHeaps();
+
+		mCmdList.SetGraphicsRootSignature(blitRootSig);
+		mCmdList.SetPipelineState(blitPso);
+		mCmdList.SetGraphicsRootDescriptorTable(0, srvGpuHandle);
+
+		var rtv = rtvHandle;
+		mCmdList.OMSetRenderTargets(1, &rtv, FALSE, null);
+
+		D3D12_VIEWPORT vp = .();
+		vp.Width = (float)dstWidth;
+		vp.Height = (float)dstHeight;
+		vp.MaxDepth = 1.0f;
+		mCmdList.RSSetViewports(1, &vp);
+
+		D3D12_RECT sc = .();
+		sc.right = (int32)dstWidth;
+		sc.bottom = (int32)dstHeight;
+		mCmdList.RSSetScissorRects(1, &sc);
+
+		// Three vertices and no buffers: the vertex shader builds the triangle from its id.
+		mCmdList.IASetPrimitiveTopology(.D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		mCmdList.DrawInstanced(3, 1, 0, 0);
+
+		mDevice.RtvHeap.Free(rtvHandle);
+	}
+
+	public void Blit(ITexture src, ITexture dst)
+	{
+		let dxSrc = src as DxTexture;
+		let dxDst = dst as DxTexture;
+		if ((dxSrc == null) || (dxDst == null))
+			return;
+
+		let dxgiFormat = DxConversions.ToDxgiFormat(dxDst.Desc.Format);
+
+		// The caller has both in copy states; a draw needs them shader readable and render
+		// targetable, so they go there and straight back.
+		D3D12_RESOURCE_BARRIER[2] barriers = .();
+		barriers[0].Type = .D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barriers[0].Transition.pResource = dxSrc.Handle;
+		barriers[0].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		barriers[0].Transition.StateBefore = .D3D12_RESOURCE_STATE_COPY_SOURCE;
+		barriers[0].Transition.StateAfter = .D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE |
+			.D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+		barriers[1].Type = .D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barriers[1].Transition.pResource = dxDst.Handle;
+		barriers[1].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		barriers[1].Transition.StateBefore = .D3D12_RESOURCE_STATE_COPY_DEST;
+		barriers[1].Transition.StateAfter = .D3D12_RESOURCE_STATE_RENDER_TARGET;
+		mCmdList.ResourceBarrier(2, &barriers[0]);
+
+		BlitSubresource(dxSrc, 0, dxDst, 0, dxDst.Desc.Width, dxDst.Desc.Height, dxgiFormat);
+
+		barriers[0].Transition.StateBefore = .D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE |
+			.D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+		barriers[0].Transition.StateAfter = .D3D12_RESOURCE_STATE_COPY_SOURCE;
+		barriers[1].Transition.StateBefore = .D3D12_RESOURCE_STATE_RENDER_TARGET;
+		barriers[1].Transition.StateAfter = .D3D12_RESOURCE_STATE_COPY_DEST;
+		mCmdList.ResourceBarrier(2, &barriers[0]);
+	}
+
+	/// Each mip drawn from the one above it.
+	///
+	/// Every transition is taken from what the TRACKER says the subresource is actually in,
+	/// and recorded back. Hardcoding a before state and never telling the tracker left the
+	/// resource in copy source after a GenerateMipmaps while the tracker still believed
+	/// common, which is what the upload path leaves it in; the next barrier then declared the
+	/// wrong before state and the debug layer rejected it once per mip.
+	///
+	/// This walks LAYER ZERO only, because the blit addresses a single mip, so an array or
+	/// cube texture still gets only its first slice's chain built.
+	public void GenerateMipmaps(ITexture texture)
+	{
+		let dxTex = texture as DxTexture;
+		if (dxTex == null)
+			return;
+
+		let d = dxTex.Desc;
+		if (d.MipLevelCount <= 1)
+			return;
+
+		let dxgiFormat = DxConversions.ToDxgiFormat(d.Format);
+		const D3D12_RESOURCE_STATES cSrvState = .D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE |
+			.D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+
+		void Transition(uint32 mip, D3D12_RESOURCE_STATES after)
+		{
+			let before = dxTex.GetSubresourceState(mip, 0);
+			if (before == after)
+				return;
+
+			D3D12_RESOURCE_BARRIER b = .();
+			b.Type = .D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			b.Transition.pResource = dxTex.Handle;
+			b.Transition.Subresource = mip;
+			b.Transition.StateBefore = before;
+			b.Transition.StateAfter = after;
+			mCmdList.ResourceBarrier(1, &b);
+			dxTex.SetSubresourceState(mip, 1, 0, 1, after);
+		}
+
+		for (uint32 mip = 1; mip < d.MipLevelCount; mip++)
+		{
+			let dstWidth = Math.Max(1, d.Width >> mip);
+			let dstHeight = Math.Max(1, d.Height >> mip);
+
+			// No restore per mip: mip N stays shader readable and is read again as the source
+			// for N plus one, so the only transitions left are the ones that change something.
+			Transition(mip - 1, cSrvState);
+			Transition(mip, .D3D12_RESOURCE_STATE_RENDER_TARGET);
+			BlitSubresource(dxTex, mip - 1, dxTex, mip, dstWidth, dstHeight, dxgiFormat);
+		}
+
+		// Settle the WHOLE resource, not just the mips walked above: on an array or cube
+		// texture the loop touches only the first slice, so settling those alone would leave
+		// the tracker permanently non uniform and every later reader of the single state
+		// stale.
+		DxTexture.TransitionWhole(mCmdList, dxTex, .D3D12_RESOURCE_STATE_COMMON);
+	}
+	public void ResolveTexture(ITexture src, ITexture dst)
+	{
+		let dxSrc = src as DxTexture;
+		let dxDst = dst as DxTexture;
+		if ((dxSrc == null) || (dxDst == null))
+			return;
+
+		// Barrier from the TRACKED state and record the result. Hardcoding copy source and
+		// copy destination here desynced the tracker the moment a resolve target was used any
+		// other way, an MSAA colour target resting in RENDER_TARGET rather than COPY_SOURCE.
+		// Go through the whole texture helper rather than reading the current state directly:
+		// that is only valid while the texture is uniform, and reading it in per subresource
+		// mode reintroduces the very divergence this is fixing.
+		DxTexture.TransitionWhole(mCmdList, dxSrc, .D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+		DxTexture.TransitionWhole(mCmdList, dxDst, .D3D12_RESOURCE_STATE_RESOLVE_DEST);
+
+		mCmdList.ResolveSubresource(dxDst.Handle, 0, dxSrc.Handle, 0,
+			DxConversions.ToDxgiFormat(dxDst.Desc.Format));
+
+		DxTexture.TransitionWhole(mCmdList, dxSrc, .D3D12_RESOURCE_STATE_COMMON);
+		DxTexture.TransitionWhole(mCmdList, dxDst, .D3D12_RESOURCE_STATE_COMMON);
+	}
 
 	public void BuildBottomLevelAccelStruct(IAccelStruct dst, IBuffer scratchBuffer,
 		uint64 scratchOffset, Span<AccelStructGeometryTriangles> triangles,

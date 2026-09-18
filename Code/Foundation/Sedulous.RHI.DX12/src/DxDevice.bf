@@ -1,10 +1,12 @@
 using System;
 using System.Collections;
+using System.Threading;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.RHI;
 using Win32;
 using Win32.Graphics.Direct3D;
+using Win32.Graphics.Direct3D.Fxc;
 using Win32.Graphics.Direct3D12;
 using Win32.Graphics.Dxgi.Common;
 using Win32.System.Com;
@@ -57,6 +59,14 @@ class DxDevice : IDevice
 	private ID3D12CommandSignature* mDispatchSignature = null;
 	private ID3D12CommandSignature* mDispatchMeshSignature = null;
 
+	// The internal blit pipeline: a fullscreen triangle that samples one texture. Used by
+	// Blit and GenerateMipmaps, which D3D12 has no built in for.
+	private ID3D12RootSignature* mBlitRootSignature = null; // owned
+	private ID3DBlob* mBlitVsBlob = null; // owned, and the bytecode points INTO it
+	private ID3DBlob* mBlitPsBlob = null; // owned
+	private Dictionary<DXGI_FORMAT, ID3D12PipelineState*> mBlitPsoCache = new .() ~ delete _;
+	private Monitor mBlitMonitor = new .() ~ delete _;
+
 	private bool mMeshEnabled = false;
 	private bool mRtEnabled = false;
 
@@ -75,6 +85,7 @@ class DxDevice : IDevice
 	public ID3D12CommandSignature* DrawIndexedSignature => mDrawIndexedSignature;
 	public ID3D12CommandSignature* DispatchSignature => mDispatchSignature;
 	public ID3D12CommandSignature* DispatchMeshSignature => mDispatchMeshSignature;
+	public ID3D12RootSignature* BlitRootSignature => mBlitRootSignature;
 	public bool MeshEnabled => mMeshEnabled;
 	public bool RtEnabled => mRtEnabled;
 
@@ -137,6 +148,7 @@ class DxDevice : IDevice
 		CreateQueues(mTransferQueues, .Transfer, desc.TransferQueueCount);
 
 		CreateIndirectCommandSignatures();
+		CreateBlitPipeline();
 		DetectExtensionSupport();
 
 		mFeatures = adapter.BuildFeatures();
@@ -215,6 +227,17 @@ class DxDevice : IDevice
 		ClearAndDeleteItems!(mGraphicsQueues);
 		ClearAndDeleteItems!(mComputeQueues);
 		ClearAndDeleteItems!(mTransferQueues);
+
+		for (let pso in mBlitPsoCache.Values)
+			pso.Release();
+		mBlitPsoCache.Clear();
+		if (mBlitVsBlob != null) { mBlitVsBlob.Release(); mBlitVsBlob = null; }
+		if (mBlitPsBlob != null) { mBlitPsBlob.Release(); mBlitPsBlob = null; }
+		if (mBlitRootSignature != null)
+		{
+			mBlitRootSignature.Release();
+			mBlitRootSignature = null;
+		}
 
 		if (mDrawSignature != null) { mDrawSignature.Release(); mDrawSignature = null; }
 		if (mDrawIndexedSignature != null)
@@ -638,6 +661,168 @@ class DxDevice : IDevice
 	// pipeline and extension detection are still in RaptorCode, which says what remains.
 	// The command pool and the swap chain wait on their own types.
 	// ==================================================================
+
+	/// The blit pipeline: a fullscreen triangle generated from the vertex id, sampling one
+	/// texture. D3D12 has no blit of its own, so Blit and GenerateMipmaps draw with this.
+	///
+	/// The HLSL is compiled at RUN TIME through D3DCompile rather than cooked, because it is
+	/// three lines that never change and cooking it would put a backend's private shader into
+	/// the asset pipeline.
+	private void CreateBlitPipeline()
+	{
+		let vsSource = """
+			struct VSOutput {
+				float4 Position : SV_Position;
+				float2 UV : TEXCOORD0;
+			};
+			VSOutput main(uint vertexId : SV_VertexID) {
+				VSOutput output;
+				output.UV = float2((vertexId << 1) & 2, vertexId & 2);
+				output.Position = float4(output.UV * float2(2, -2) + float2(-1, 1), 0, 1);
+				return output;
+			}
+			""";
+
+		let psSource = """
+			Texture2D srcTexture : register(t0);
+			SamplerState srcSampler : register(s0);
+			float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
+				return srcTexture.Sample(srcSampler, uv);
+			}
+			""";
+
+		ID3DBlob* errorBlob = null;
+		defer { if (errorBlob != null) errorBlob.Release(); }
+
+		var hr = D3DCompile(vsSource.Ptr, (uint)vsSource.Length, null, null, null,
+			(uint8*)"main".CStr(), (uint8*)"vs_5_0".CStr(), 0, 0, &mBlitVsBlob, &errorBlob);
+		if (FAILED(hr))
+		{
+			if (errorBlob != null)
+			{
+				GlobalLog(.Error, "DxDevice: the blit vertex shader did not compile: {0}",
+					StringView((char8*)errorBlob.GetBufferPointer()));
+			}
+			return;
+		}
+
+		if (errorBlob != null) { errorBlob.Release(); errorBlob = null; }
+
+		hr = D3DCompile(psSource.Ptr, (uint)psSource.Length, null, null, null,
+			(uint8*)"main".CStr(), (uint8*)"ps_5_0".CStr(), 0, 0, &mBlitPsBlob, &errorBlob);
+		if (FAILED(hr))
+		{
+			if (errorBlob != null)
+			{
+				GlobalLog(.Error, "DxDevice: the blit pixel shader did not compile: {0}",
+					StringView((char8*)errorBlob.GetBufferPointer()));
+			}
+			mBlitVsBlob.Release();
+			mBlitVsBlob = null;
+			return;
+		}
+
+		if (errorBlob != null) { errorBlob.Release(); errorBlob = null; }
+
+		// One SRV table at t0, and a STATIC linear clamp sampler at s0: a static sampler costs
+		// no descriptor and no heap slot, which suits a pipeline that binds one texture.
+		D3D12_DESCRIPTOR_RANGE srvRange = .();
+		srvRange.RangeType = .D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		srvRange.NumDescriptors = 1;
+		srvRange.BaseShaderRegister = 0;
+		srvRange.RegisterSpace = 0;
+		srvRange.OffsetInDescriptorsFromTableStart = 0;
+
+		D3D12_ROOT_PARAMETER rootParam = .();
+		rootParam.ParameterType = .D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		rootParam.ShaderVisibility = .D3D12_SHADER_VISIBILITY_PIXEL;
+		rootParam.DescriptorTable.NumDescriptorRanges = 1;
+		rootParam.DescriptorTable.pDescriptorRanges = &srvRange;
+
+		D3D12_STATIC_SAMPLER_DESC staticSampler = .();
+		staticSampler.Filter = .D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+		staticSampler.AddressU = .D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		staticSampler.AddressV = .D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		staticSampler.AddressW = .D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		staticSampler.MaxAnisotropy = 1;
+		staticSampler.ComparisonFunc = .D3D12_COMPARISON_FUNC_NEVER;
+		staticSampler.MinLOD = 0;
+		staticSampler.MaxLOD = float.MaxValue;
+		staticSampler.ShaderVisibility = .D3D12_SHADER_VISIBILITY_PIXEL;
+
+		D3D12_ROOT_SIGNATURE_DESC rsDesc = .();
+		rsDesc.NumParameters = 1;
+		rsDesc.pParameters = &rootParam;
+		rsDesc.NumStaticSamplers = 1;
+		rsDesc.pStaticSamplers = &staticSampler;
+
+		ID3DBlob* signatureBlob = null;
+		defer { if (signatureBlob != null) signatureBlob.Release(); }
+
+		hr = D3D12SerializeRootSignature(&rsDesc, .D3D_ROOT_SIGNATURE_VERSION_1, &signatureBlob,
+			&errorBlob);
+		if (FAILED(hr))
+		{
+			if (errorBlob != null)
+			{
+				GlobalLog(.Error, "DxDevice: the blit root signature did not serialise: {0}",
+					StringView((char8*)errorBlob.GetBufferPointer()));
+			}
+			return;
+		}
+
+		mDevice.CreateRootSignature(0, signatureBlob.GetBufferPointer(),
+			signatureBlob.GetBufferSize(), ID3D12RootSignature.IID, (void**)&mBlitRootSignature);
+	}
+
+	/// The blit pipeline state for one render target format, made on first use.
+	///
+	/// A pipeline state bakes its target format, so there is one per format rather than one
+	/// overall. LOCKED, because render bundles record on job system workers and two could ask
+	/// for the same format at once.
+	public ID3D12PipelineState* GetOrCreateBlitPSO(DXGI_FORMAT format)
+	{
+		if (mBlitRootSignature == null)
+			return null;
+
+		using (mBlitMonitor.Enter())
+		{
+			if (mBlitPsoCache.TryGetValue(format, let existing))
+				return existing;
+
+			D3D12_GRAPHICS_PIPELINE_STATE_DESC psd = .();
+			psd.pRootSignature = mBlitRootSignature;
+			psd.VS.pShaderBytecode = mBlitVsBlob.GetBufferPointer();
+			psd.VS.BytecodeLength = mBlitVsBlob.GetBufferSize();
+			psd.PS.pShaderBytecode = mBlitPsBlob.GetBufferPointer();
+			psd.PS.BytecodeLength = mBlitPsBlob.GetBufferSize();
+			psd.InputLayout.pInputElementDescs = null;
+			psd.InputLayout.NumElements = 0;
+			psd.PrimitiveTopologyType = .D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			psd.RasterizerState.FillMode = .D3D12_FILL_MODE_SOLID;
+			psd.RasterizerState.CullMode = .D3D12_CULL_MODE_NONE;
+			psd.RasterizerState.DepthClipEnable = FALSE;
+			psd.BlendState.RenderTarget[0].BlendEnable = FALSE;
+			psd.BlendState.RenderTarget[0].RenderTargetWriteMask = 0x0F;
+			psd.DepthStencilState.DepthEnable = FALSE;
+			psd.DepthStencilState.StencilEnable = FALSE;
+			psd.DSVFormat = .DXGI_FORMAT_UNKNOWN;
+			psd.NumRenderTargets = 1;
+			psd.RTVFormats[0] = format;
+			psd.SampleDesc.Count = 1;
+			psd.SampleMask = uint32.MaxValue;
+
+			ID3D12PipelineState* newPso = null;
+			if (SUCCEEDED(mDevice.CreateGraphicsPipelineState(&psd, ID3D12PipelineState.IID,
+				(void**)&newPso)))
+			{
+				mBlitPsoCache[format] = newPso;
+				return newPso;
+			}
+
+			return null;
+		}
+	}
 
 	/// The indirect argument layouts, cached once because a command signature is immutable
 	/// and every indirect draw needs one. The strides are the D3D12 argument structs: four,
