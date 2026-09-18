@@ -799,8 +799,22 @@ class DxDevice : IDevice
 		return support;
 	}
 
-	public Result<ICommandPool> CreateCommandPool(QueueType queueType) => .Err;
-	public void DestroyCommandPool(ref ICommandPool pool) {}
+	public Result<ICommandPool> CreateCommandPool(QueueType queueType)
+	{
+		let pool = new DxCommandPool();
+		if (pool.Initialize(this, mDevice, queueType) case .Err)
+		{
+			delete pool;
+			return .Err;
+		}
+		return .Ok(pool);
+	}
+
+	public void DestroyCommandPool(ref ICommandPool pool)
+	{
+		if (let p = pool as DxCommandPool) { p.Cleanup(); delete p; }
+		pool = null;
+	}
 
 	public Result<ISwapChain> CreateSwapChain(ISurface surface, SwapChainDesc desc)
 	{
