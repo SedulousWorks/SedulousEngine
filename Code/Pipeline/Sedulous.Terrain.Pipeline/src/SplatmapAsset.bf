@@ -1,3 +1,4 @@
+using Sedulous.Core;
 using Sedulous.Core.Serialization;
 using Sedulous.Pipeline.Core;
 
@@ -8,6 +9,7 @@ namespace Sedulous.Terrain.Pipeline;
 /// TWO modes, told apart by the file name. Empty means the asset is EDITABLE: its two sidecars
 /// are the truth, which is what painting saves. Set means it was IMPORTED from an image, and
 /// re-importing deliberately resets whatever was painted.
+[Category("Terrain")]
 [Serializable]
 class SplatmapAsset : Asset
 {

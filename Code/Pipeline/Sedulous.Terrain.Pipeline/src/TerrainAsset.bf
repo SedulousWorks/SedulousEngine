@@ -1,3 +1,4 @@
+using Sedulous.Core;
 using System;
 using System.Collections;
 using Sedulous.Core.Serialization;
@@ -11,6 +12,7 @@ namespace Sedulous.Terrain.Pipeline;
 /// Everything is referenced by IDENTITY, and an asset's identity equals its cooked product's,
 /// so the same reference works on both sides. Terrain has no source file of its own, which is
 /// why the file name a plain asset carries goes unused.
+[Category("Terrain")]
 [Serializable]
 class TerrainAsset : Asset
 {

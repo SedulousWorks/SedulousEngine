@@ -9,6 +9,7 @@ namespace Sedulous.Heightfield.Pipeline;
 /// A file name means a sixteen bit heightmap resampled onto the grid. WITHOUT one the grid is
 /// authored in place: the heights sidecar is then the truth, which is what a sculpt save
 /// writes.
+[Category("Terrain")]
 [Serializable]
 class HeightfieldAsset : Asset
 {

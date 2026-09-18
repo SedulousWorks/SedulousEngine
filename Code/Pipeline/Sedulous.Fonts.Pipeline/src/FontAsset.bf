@@ -1,3 +1,4 @@
+using Sedulous.Core;
 using System;
 using System.Collections;
 using Sedulous.Core.Serialization;
@@ -6,18 +7,23 @@ using Sedulous.Pipeline.Core;
 namespace Sedulous.Fonts.Pipeline;
 
 /// A font file and how it should become a cooked font.
+[Category("Fonts")]
 [Serializable]
 class FontAsset : Asset
 {
 	/// The runtime family name. Empty means the bake takes the file's own.
 	public String Family = new .() ~ delete _;
 
+	[DisplayName("Bake Mode")]
 	public FontBakeMode Mode = .RasterRamp;
 
 	/// Raster ramp: one cooked entry per size.
 	public List<float> Sizes = new .() ~ delete _;
 
 	/// Distance field: the single bake size.
+	[DisplayName("Distance-Field Size")]
+	[Range(8.0f, 128.0f, 1.0f)]
+	[VisibleWhen("Mode=1")] // DistanceField only
 	public float DistanceFieldSize = 48.0f;
 
 	public int32 FirstCodepoint = 32;

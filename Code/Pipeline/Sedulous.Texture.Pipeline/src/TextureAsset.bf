@@ -1,3 +1,4 @@
+using Sedulous.Core;
 using System;
 using Sedulous.Core.Serialization;
 using Sedulous.Image;
@@ -11,6 +12,7 @@ namespace Sedulous.Texture.Pipeline;
 ///
 /// The compression fields are AUTHORING data: the builder feeds them to the policy table to
 /// pick the cooked format, and the runtime never sees them.
+[Category("Textures")]
 [Serializable]
 class TextureAsset : Asset
 {

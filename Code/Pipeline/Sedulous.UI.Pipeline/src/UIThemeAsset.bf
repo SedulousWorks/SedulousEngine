@@ -1,3 +1,4 @@
+using Sedulous.Core;
 using System;
 using Sedulous.Core.Serialization;
 using Sedulous.Pipeline.Core;
@@ -7,6 +8,8 @@ namespace Sedulous.UI.Pipeline;
 /// A stylesheet.
 ///
 /// The stylesheet lives ONLY in the linked source file, never inline.
+[DisplayName("UI Theme")]
+[Category("UI")]
 [Serializable]
 class UIThemeAsset : Asset
 {
