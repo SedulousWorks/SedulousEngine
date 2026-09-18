@@ -26,6 +26,7 @@ using Sedulous.Resource;
 using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
 using Sedulous.Scene;
+using Sedulous.Scene.Resource;
 using Sedulous.Shell;
 
 namespace Sedulous.Engine.DefaultApp;
@@ -440,11 +441,58 @@ class DefaultApplication : IApplication
 	// ==================== networking ====================
 
 	/// Resolves a prefab a replicated spawn named, into the scene the endpoint replicates.
+	///
+	/// The APP owns this because it is the only thing that knows the content database; the
+	/// NetworkController applies it to each endpoint, so a reconnect keeps it and the app
+	/// hands it over once at wiring rather than rewiring per endpoint.
+	///
+	/// The server assigns the ids and the game rules decide relevancy. Replication then
+	/// applies the transform and the fields ON TOP of what spawns here, so this only has to
+	/// produce the entity, not position it.
 	private StateReplication.SpawnHandler MakeSpawnResolver()
 	{
-		// Without a content database there is nothing to resolve a prefab through, so a
-		// spawn simply produces no entity rather than half of one.
-		return new (scene, prefab, id) => EntityHandle.Invalid;
+		// Reads the database and the manager WHEN INVOKED, not when wired: the content
+		// database is handed over after construction, and the controller asks for this once.
+		return new (scene, prefab, id) =>
+			ResolveNetworkPrefab(mContentDatabase, Resources, scene, prefab);
+	}
+
+	/// The resolver's body, as a plain function of what it needs.
+	///
+	/// STATIC and public because it depends on nothing but its arguments, which makes it the
+	/// testable half: the instance method above exists only to supply the database and the
+	/// manager from the app that owns them. Raptor keeps this inside the lambda, where nothing
+	/// can reach it, and has no test for it on either side.
+	///
+	/// Answers an unassigned handle for every failure, and does so deliberately: a replicated
+	/// spawn that cannot be resolved should produce NO entity rather than half of one, and the
+	/// replication that follows applies transform and fields on top of whatever this returns.
+	public static EntityHandle ResolveNetworkPrefab(ContentDatabase database,
+		ResourceManager resources, Scene scene, Guid prefab)
+	{
+		// No database means nothing to resolve a prefab through.
+		if ((database == null) || (scene == null))
+			return EntityHandle.Invalid;
+
+		let instance = database.GetInstance(prefab);
+		if (instance == null)
+			return EntityHandle.Invalid;
+
+		// THE CALLER OWNS the stream, which Raptor's UniquePtr says in its type and Beef has
+		// to be told.
+		let payload = instance.ReadData("scene");
+		if (payload == null)
+			return EntityHandle.Invalid;
+		defer delete payload;
+
+		let root = PrefabSpawn.Spawn(scene, payload, prefab);
+
+		// The spawned subtree names its resources by id and nothing has bound them yet, so
+		// without this the entity arrives with every mesh and material unresolved.
+		if (root.IsAssigned && (resources != null))
+			SceneResolve.ResolveSceneResources(scene, resources);
+
+		return root;
 	}
 
 	/// Enters a preset role at startup. None leaves it offline.

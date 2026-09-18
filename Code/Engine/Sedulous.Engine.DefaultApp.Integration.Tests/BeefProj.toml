@@ -1,0 +1,16 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.DefaultApp.Integration.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Engine.DefaultApp.Integration.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Scene.Resource" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Engine.DefaultApp" = "*"
