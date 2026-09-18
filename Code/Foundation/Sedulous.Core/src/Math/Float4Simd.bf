@@ -15,6 +15,16 @@ extension float4
 	[Inline]
 	public static float4 operator-(float4 v) => 0.0f - v;
 
+	/// One lane broadcast to all four, Raptor's SplatX through SplatW.
+	///
+	/// A shuffle with four equal indices, which is what the hardware broadcast is anyway. Named
+	/// because a matrix transform does twelve of them and `ShuffleVector(v, 1, 1, 1, 1)` reads
+	/// as an arbitrary permutation rather than as "take y".
+	[Inline] public static float4 SplatX(float4 v) => ShuffleVector(v, 0, 0, 0, 0);
+	[Inline] public static float4 SplatY(float4 v) => ShuffleVector(v, 1, 1, 1, 1);
+	[Inline] public static float4 SplatZ(float4 v) => ShuffleVector(v, 2, 2, 2, 2);
+	[Inline] public static float4 SplatW(float4 v) => ShuffleVector(v, 3, 3, 3, 3);
+
 	/// Horizontal sum: every lane added together, Raptor's HSum4.
 	///
 	/// There is no horizontal add in the portable vector set, so the sum FOLDS: add the pair

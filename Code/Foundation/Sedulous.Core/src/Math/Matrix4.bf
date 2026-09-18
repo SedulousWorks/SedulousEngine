@@ -65,10 +65,10 @@ struct Matrix4
 	[Inline]
 	private static float4 TransformRow(float4 v, float4[4] rows)
 	{
-		var result = float4.ShuffleVector(v, 0, 0, 0, 0) * rows[0];
-		result += float4.ShuffleVector(v, 1, 1, 1, 1) * rows[1];
-		result += float4.ShuffleVector(v, 2, 2, 2, 2) * rows[2];
-		result += float4.ShuffleVector(v, 3, 3, 3, 3) * rows[3];
+		var result = float4.SplatX(v) * rows[0];
+		result += float4.SplatY(v) * rows[1];
+		result += float4.SplatZ(v) * rows[2];
+		result += float4.SplatW(v) * rows[3];
 		return result;
 	}
 
@@ -90,9 +90,9 @@ static
 	[Inline]
 	public static Vector3 TransformPoint(Vector3 p, Matrix4 m)
 	{
-		var result = float4.ShuffleVector(p.R, 0, 0, 0, 0) * m.Row[0];
-		result += float4.ShuffleVector(p.R, 1, 1, 1, 1) * m.Row[1];
-		result += float4.ShuffleVector(p.R, 2, 2, 2, 2) * m.Row[2];
+		var result = float4.SplatX(p.R) * m.Row[0];
+		result += float4.SplatY(p.R) * m.Row[1];
+		result += float4.SplatZ(p.R) * m.Row[2];
 		result += m.Row[3]; // the implicit w = 1
 		return .(result);
 	}
@@ -109,9 +109,9 @@ static
 	[Inline]
 	public static Vector3 TransformDirection(Vector3 d, Matrix4 m)
 	{
-		var result = float4.ShuffleVector(d.R, 0, 0, 0, 0) * m.Row[0];
-		result += float4.ShuffleVector(d.R, 1, 1, 1, 1) * m.Row[1];
-		result += float4.ShuffleVector(d.R, 2, 2, 2, 2) * m.Row[2];
+		var result = float4.SplatX(d.R) * m.Row[0];
+		result += float4.SplatY(d.R) * m.Row[1];
+		result += float4.SplatZ(d.R) * m.Row[2];
 		return .(result);
 	}
 }
