@@ -800,8 +800,36 @@ class DxDevice : IDevice
 	}
 
 	public Result<ICommandPool> CreateCommandPool(QueueType queueType) => .Err;
-	public Result<ISwapChain> CreateSwapChain(ISurface surface, SwapChainDesc desc) => .Err;
-
 	public void DestroyCommandPool(ref ICommandPool pool) {}
-	public void DestroySwapChain(ref ISwapChain swapChain) {}
+
+	public Result<ISwapChain> CreateSwapChain(ISurface surface, SwapChainDesc desc)
+	{
+		let dxSurface = surface as DxSurface;
+		if (dxSurface == null)
+		{
+			GlobalLog(.Error, "DxDevice: the surface is not a DxSurface");
+			return .Err;
+		}
+
+		// A swap chain is created AGAINST a queue, which is what it presents on, so there has
+		// to be one.
+		if (mGraphicsQueues.IsEmpty)
+			return .Err;
+
+		let sc = new DxSwapChain();
+		if (sc.Initialize(mDevice, mAdapter.Factory, mGraphicsQueues[0].Handle, dxSurface, desc,
+			mSrvHeap, mRtvHeap, mDsvHeap) case .Err)
+		{
+			delete sc;
+			return .Err;
+		}
+
+		return .Ok(sc);
+	}
+
+	public void DestroySwapChain(ref ISwapChain swapChain)
+	{
+		if (let r = swapChain as DxSwapChain) { r.Cleanup(); delete r; }
+		swapChain = null;
+	}
 }
