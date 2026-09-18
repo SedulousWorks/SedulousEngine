@@ -23,6 +23,7 @@ class Program
 		// See the web entry: GlobalLog is a no-op until a logger exists, and Raptor's
 		// APP_MAIN installs a console sink on both bodies.
 		InitGlobalLogger(new ConsoleLogger(.Information, "WebScene"), true);
+		defer ShutdownGlobalLogger();
 
 		WindowSettings windowSettings = .();
 		windowSettings.Title = "WebScene";
