@@ -5,6 +5,10 @@ using Sedulous.RHI.Null;
 using Sedulous.RHI.Validation;
 using Sedulous.RHI.Vulkan;
 using Sedulous.RHI.WebGPU;
+#if BF_PLATFORM_WINDOWS
+// The namespace itself does not exist off Windows: every file in that backend is compiled out.
+using Sedulous.RHI.DX12;
+#endif
 using Sedulous.Shell;
 using Sedulous.Shell.SDL3;
 
@@ -54,6 +58,9 @@ class Program
 
 		Console.WriteLine("\n=== WebGPU Backend ===");
 		RunWebGpu();
+
+		Console.WriteLine("\n=== DX12 Backend ===");
+		RunDx12();
 
 		Console.WriteLine("\n=== Null Backend ===");
 		RunNull();
@@ -383,6 +390,44 @@ class Program
 	/// surface the pass above made, and wgpu cannot take a second surface over the same
 	/// one. The samples cover presenting; this covers that every object a device hands out
 	/// can be made and unmade for real.
+	/// DX12, which exists only on Windows. Elsewhere this says so and moves on, the way the
+	/// other backends report themselves unavailable, so the smoketest reads the same on every
+	/// platform.
+	private static void RunDx12()
+	{
+#if BF_PLATFORM_WINDOWS
+		if (!(DxRhi.CreateBackend(true) case .Ok(let backend)))
+		{
+			Console.WriteLine("DX12 backend: FAILED to create");
+			return;
+		}
+		defer backend.Destroy();
+
+		let adapters = backend.EnumerateAdapters();
+		Console.WriteLine(scope $"DX12 adapters: {adapters.Length}");
+		for (int i = 0; i < adapters.Length; i++)
+		{
+			let info = scope AdapterInfo();
+			adapters[i].GetInfo(info);
+			Console.WriteLine(scope $"  [{i}] {info.Name} ({info.Type})");
+		}
+
+		if (adapters.IsEmpty)
+			return;
+
+		if (!(adapters[0].CreateDevice(DeviceDesc()) case .Ok(var device)))
+		{
+			Console.Error.WriteLine("DX12 device: FAILED to create");
+			return;
+		}
+
+		Console.WriteLine(scope $"DX12 device created (type={device.Type})");
+		device.Destroy();
+#else
+		Console.WriteLine("DX12 backend: Windows only - skipped");
+#endif
+	}
+
 	private static void RunWebGpu()
 	{
 		if (!(WebGpuRhi.CreateBackend() case .Ok(let backend)))

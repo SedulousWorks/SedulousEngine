@@ -6,6 +6,10 @@ using Sedulous.RHI;
 using Sedulous.RHI.Validation;
 using Sedulous.RHI.Vulkan;
 using Sedulous.RHI.WebGPU;
+#if BF_PLATFORM_WINDOWS
+// The namespace itself does not exist off Windows: every file in that backend is compiled out.
+using Sedulous.RHI.DX12;
+#endif
 using Sedulous.Shaders;
 using Sedulous.Shell;
 using Sedulous.Shell.SDL3;
@@ -187,8 +191,17 @@ abstract class SampleApp
 			}
 			mInnerBackend = backend;
 		case .DX12:
-			Console.Error.WriteLine("SampleApp: the DX12 backend is not ported yet");
+#if BF_PLATFORM_WINDOWS
+			if (!(DxRhi.CreateBackend(mValidationEnabled) case .Ok(let backend)))
+			{
+				Console.Error.WriteLine("SampleApp: the DX12 backend could not be created");
+				return .Err;
+			}
+			mInnerBackend = backend;
+#else
+			Console.Error.WriteLine("SampleApp: DX12 is Windows only");
 			return .Err;
+#endif
 		case .WebGPU:
 			if (!(WebGpuRhi.CreateBackend() case .Ok(let backend)))
 			{
