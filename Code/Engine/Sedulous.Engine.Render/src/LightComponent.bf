@@ -1,25 +1,37 @@
 using System;
+using Sedulous.Scene;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
-using Sedulous.Scene;
 
 namespace Sedulous.Engine.Render;
 
 /// A light on an entity, which extraction packs into the renderer's shading inputs.
 [SerializableComponent("light")]
+[DisplayName("Light")]
+[Category("Rendering")]
+[Scriptable]
 struct LightComponent : ISerializable
 {
+	[Scriptable]
 	public LightType Type = .Directional;
+	[Scriptable]
 	public Color Color = .(1.0f, 1.0f, 1.0f, 1.0f);
+	[Scriptable]
 	public float Intensity = 1.0f;
 	/// Falloff distance, for a point or a spot.
+	[Scriptable]
 	public float Range = 10.0f;
 	/// Spot cone inner half angle, in radians.
+	[Scriptable]
 	public float InnerAngle = 0.5f;
 	/// Spot cone outer half angle, in radians.
+	[Scriptable]
 	public float OuterAngle = 0.6f;
+	[Scriptable]
 	public ShadowUpdateMode ShadowUpdate = .Realtime;
+	[Scriptable]
 	public bool Enabled = true;
+	[Scriptable]
 	public bool CastsShadows = false;
 
 	public this() {}

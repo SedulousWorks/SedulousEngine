@@ -1,11 +1,11 @@
 using System;
+using Sedulous.Scene;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
 using Sedulous.Geometry;
 using Sedulous.Materials;
 using Sedulous.Resource;
-using Sedulous.Scene;
 
 namespace Sedulous.Engine.Render;
 
@@ -22,8 +22,12 @@ namespace Sedulous.Engine.Render;
 /// The lists are BORROWED from the manager, which creates and frees them: a component is a
 /// struct in a packed pool and cannot own heap data.
 [SerializableComponent("mesh", 4)]
+[DisplayName("Mesh")]
+[Category("Rendering")]
+[Scriptable]
 struct MeshComponent : ISerializable, IComponentResources
 {
+	[Scriptable]
 	public Ref<StaticMesh> Mesh = .(Guid());
 	/// The serialized identities.
 	public List<Ref<Material>> Materials = null;
@@ -33,7 +37,9 @@ struct MeshComponent : ISerializable, IComponentResources
 	public List<Material> MaterialCache = null;
 	/// A per instance tint, multiplied into the shaded colour. Distinct per entity even when
 	/// many share one mesh and material, so it rides the per instance path.
+	[Scriptable]
 	public Color Color = .(1.0f, 1.0f, 1.0f, 1.0f);
+	[Scriptable]
 	public bool Visible = true;
 
 	/// Per bone skinning matrices, supplied per frame by whoever owns the pose. BORROWED and
@@ -45,9 +51,11 @@ struct MeshComponent : ISerializable, IComponentResources
 
 	/// Above zero switches to a coarser level sooner, each unit halving the effective screen
 	/// coverage; below zero holds detail longer.
+	[Scriptable]
 	public float LodBias = 0.0f;
 	/// Pins one level for a debug view or a cinematic. Minus one is automatic, and anything
 	/// else is clamped to the chain.
+	[Scriptable]
 	public int32 ForceLod = -1;
 
 	public this() {}

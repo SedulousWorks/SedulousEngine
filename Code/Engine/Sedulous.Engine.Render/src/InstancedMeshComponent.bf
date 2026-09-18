@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Scene;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
@@ -6,7 +7,6 @@ using Sedulous.Geometry;
 using Sedulous.Materials;
 using Sedulous.Render;
 using Sedulous.Resource;
-using Sedulous.Scene;
 
 namespace Sedulous.Engine.Render;
 
@@ -23,9 +23,14 @@ namespace Sedulous.Engine.Render;
 ///
 /// Every list here is BORROWED from the manager, which creates and frees them.
 [SerializableComponent("instanced_mesh")]
+[DisplayName("Instanced Mesh")]
+[Category("Rendering")]
+[Scriptable]
 struct InstancedMeshComponent : ISerializable, IComponentResources
 {
+	[Scriptable]
 	public Ref<StaticMesh> Mesh = .(Guid());
+	[Scriptable]
 	public Ref<Material> Material = .(Guid());
 	/// Optional per submesh materials, indexed by the submesh's material index. Non empty
 	/// means each submesh draws with its own; otherwise the one above covers the whole mesh.
@@ -35,9 +40,11 @@ struct InstancedMeshComponent : ISerializable, IComponentResources
 	/// moving the entity moves the whole set.
 	public List<Float4x4> Instances = null;
 	/// The shared tint, used when the per instance list is empty.
+	[Scriptable]
 	public Color Color = .(1.0f, 1.0f, 1.0f, 1.0f);
 	/// Optional, parallel to the instances. Read at UPLOAD, so set it before the instances.
 	public List<Color> Tints = null;
+	[Scriptable]
 	public bool Visible = true;
 
 	/// A shared pose pool for a skinned crowd, set per frame by the animation side: instance
