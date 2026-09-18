@@ -6,6 +6,7 @@ namespace Sedulous.Core;
 ///
 /// The packed byte counterpart is Color32; conversions between them live there.
 [CRepr]
+[Scriptable(.AllPublic)]
 struct Color
 {
 	public float R = 0.0f;
@@ -60,9 +61,11 @@ struct Color
 
 static
 {
+	[Scriptable]
 	public static Color Lerp(Color a, Color b, float t) => .(
 		Lerp(a.R, b.R, t), Lerp(a.G, b.G, t), Lerp(a.B, b.B, t), Lerp(a.A, b.A, t));
 
+	[Scriptable]
 	public static bool NearlyEqual(Color a, Color b, float epsilon = Epsilon) =>
 		NearlyEqual(a.R, b.R, epsilon) && NearlyEqual(a.G, b.G, epsilon) &&
 		NearlyEqual(a.B, b.B, epsilon) && NearlyEqual(a.A, b.A, epsilon);

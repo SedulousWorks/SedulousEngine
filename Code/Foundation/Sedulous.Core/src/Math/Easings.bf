@@ -14,12 +14,17 @@ static
 	public typealias EasingFunction = function float(float t);
 
 	// --- linear ---
+	[Scriptable]
 	public static float EaseInLinear(float t) => t;
+	[Scriptable]
 	public static float EaseOutLinear(float t) => t;
 
 	// --- quadratic ---
+	[Scriptable]
 	public static float EaseInQuadratic(float t) => t * t;
+	[Scriptable]
 	public static float EaseOutQuadratic(float t) => -1.0f * t * (t - 2.0f);
+	[Scriptable]
 	public static float EaseInOutQuadratic(float t)
 	{
 		var t;
@@ -31,13 +36,16 @@ static
 	}
 
 	// --- cubic ---
+	[Scriptable]
 	public static float EaseInCubic(float t) => t * t * t;
+	[Scriptable]
 	public static float EaseOutCubic(float t)
 	{
 		var t;
 		t -= 1.0f;
 		return t * t * t + 1.0f;
 	}
+	[Scriptable]
 	public static float EaseInOutCubic(float t)
 	{
 		var t;
@@ -49,13 +57,16 @@ static
 	}
 
 	// --- quartic ---
+	[Scriptable]
 	public static float EaseInQuartic(float t) => t * t * t * t;
+	[Scriptable]
 	public static float EaseOutQuartic(float t)
 	{
 		var t;
 		t -= 1.0f;
 		return -1.0f * (t * t * t * t - 1.0f);
 	}
+	[Scriptable]
 	public static float EaseInOutQuartic(float t)
 	{
 		var t;
@@ -67,13 +78,16 @@ static
 	}
 
 	// --- quintic ---
+	[Scriptable]
 	public static float EaseInQuintic(float t) => t * t * t * t * t;
+	[Scriptable]
 	public static float EaseOutQuintic(float t)
 	{
 		var t;
 		t -= 1.0f;
 		return t * t * t * t * t + 1.0f;
 	}
+	[Scriptable]
 	public static float EaseInOutQuintic(float t)
 	{
 		var t;
@@ -85,23 +99,29 @@ static
 	}
 
 	// --- sinusoidal ---
+	[Scriptable]
 	public static float EaseInSin(float t) => -1.0f * Cos(t * HalfPi) + 1.0f;
+	[Scriptable]
 	public static float EaseOutSin(float t) => Sin(t * HalfPi);
+	[Scriptable]
 	public static float EaseInOutSin(float t) => -0.5f * (Cos(Pi * t) - 1.0f);
 
 	// --- exponential ---
+	[Scriptable]
 	public static float EaseInExponential(float t)
 	{
 		if (t == 0.0f)
 			return 0.0f;
 		return Pow(2.0f, 10.0f * (t - 1.0f));
 	}
+	[Scriptable]
 	public static float EaseOutExponential(float t)
 	{
 		if (t == 1.0f)
 			return 1.0f;
 		return -Pow(2.0f, -10.0f * t) + 1.0f;
 	}
+	[Scriptable]
 	public static float EaseInOutExponential(float t)
 	{
 		var t;
@@ -117,13 +137,16 @@ static
 	}
 
 	// --- circular ---
+	[Scriptable]
 	public static float EaseInCircular(float t) => -1.0f * (Sqrt(1.0f - t * t) - 1.0f);
+	[Scriptable]
 	public static float EaseOutCircular(float t)
 	{
 		var t;
 		t -= 1.0f;
 		return Sqrt(1.0f - t * t);
 	}
+	[Scriptable]
 	public static float EaseInOutCircular(float t)
 	{
 		var t;
@@ -135,11 +158,13 @@ static
 	}
 
 	// --- back, which overshoots ---
+	[Scriptable]
 	public static float EaseInBack(float t)
 	{
 		const float s = 1.70158f;
 		return t * t * ((s + 1.0f) * t - s);
 	}
+	[Scriptable]
 	public static float EaseOutBack(float t)
 	{
 		var t;
@@ -147,6 +172,7 @@ static
 		t -= 1.0f;
 		return t * t * ((s + 1.0f) * t + s) + 1.0f;
 	}
+	[Scriptable]
 	public static float EaseInOutBack(float t)
 	{
 		var t;
@@ -160,6 +186,7 @@ static
 	}
 
 	// --- elastic ---
+	[Scriptable]
 	public static float EaseInElastic(float t)
 	{
 		var t;
@@ -172,6 +199,7 @@ static
 		t -= 1.0f;
 		return -(Pow(2.0f, 10.0f * t) * Sin((t - s) * (2.0f * Pi) / p));
 	}
+	[Scriptable]
 	public static float EaseOutElastic(float t)
 	{
 		if (t == 0.0f)
@@ -182,6 +210,7 @@ static
 		const float s = p / 4.0f;
 		return Pow(2.0f, -10.0f * t) * Sin((t - s) * (2.0f * Pi) / p) + 1.0f;
 	}
+	[Scriptable]
 	public static float EaseInOutElastic(float t)
 	{
 		var t;
@@ -202,6 +231,7 @@ static
 	}
 
 	// --- bounce; out is defined first because in and inout are written in terms of it ---
+	[Scriptable]
 	public static float EaseOutBounce(float t)
 	{
 		var t;
@@ -220,7 +250,9 @@ static
 		t -= 2.625f / 2.75f;
 		return 7.5625f * t * t + 0.984375f;
 	}
+	[Scriptable]
 	public static float EaseInBounce(float t) => 1.0f - EaseOutBounce(1.0f - t);
+	[Scriptable]
 	public static float EaseInOutBounce(float t)
 	{
 		if (t < 0.5f)

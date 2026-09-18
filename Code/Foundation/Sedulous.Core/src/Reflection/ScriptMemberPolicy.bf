@@ -20,5 +20,10 @@ enum ScriptMemberPolicy
 	///
 	/// Reserve it for types whose shape is the point. A type that grows members for internal
 	/// reasons is the wrong shape for this and should stay MarkedOnly.
+	///
+	/// REACHES THE TYPE'S OWN MEMBERS AND NOTHING ELSE. The maths types keep Dot, Cross and
+	/// the rest in a namespace level static block beside the struct, the way Raptor keeps them
+	/// as free functions, and a block is not a member of anything: those carry their own
+	/// [Scriptable] whatever the type says.
 	AllPublic
 }

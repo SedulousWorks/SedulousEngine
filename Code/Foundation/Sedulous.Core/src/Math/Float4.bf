@@ -6,6 +6,7 @@ namespace Sedulous.Core;
 /// 4D float vector: arithmetic, Dot/Length/Normalized, XYZ, component constants.
 /// Converts from Float3.
 [CRepr]
+[Scriptable(.AllPublic)]
 struct Float4
 {
 	public float X = 0.0f;
@@ -89,14 +90,18 @@ struct Float4
 
 static
 {
+	[Scriptable]
 	[Inline]
 	public static float Dot(Float4 a, Float4 b) =>
 		a.X * b.X + a.Y * b.Y + a.Z * b.Z + a.W * b.W;
 
+	[Scriptable]
 	[Inline] public static float LengthSquared(Float4 v) => Dot(v, v);
+	[Scriptable]
 	[Inline] public static float Length(Float4 v) => Sqrt(LengthSquared(v));
 
 	/// A unit vector, or Zero when the input is near-zero length.
+	[Scriptable]
 	public static Float4 Normalized(Float4 v)
 	{
 		let lengthSq = LengthSquared(v);
@@ -105,9 +110,11 @@ static
 		return v * (1.0f / Sqrt(lengthSq));
 	}
 
+	[Scriptable]
 	[Inline]
 	public static Float4 Lerp(Float4 a, Float4 b, float t) => a + (b - a) * t;
 
+	[Scriptable]
 	public static bool NearlyEqual(Float4 a, Float4 b, float epsilon = Epsilon) =>
 		NearlyEqual(a.X, b.X, epsilon) &&
 		NearlyEqual(a.Y, b.Y, epsilon) &&

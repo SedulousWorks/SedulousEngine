@@ -4,6 +4,7 @@ namespace Sedulous.Core;
 
 /// A 2D rectangle whose X and Y are the min corner.
 [CRepr]
+[Scriptable(.AllPublic)]
 struct Rectangle
 {
 	public float X;

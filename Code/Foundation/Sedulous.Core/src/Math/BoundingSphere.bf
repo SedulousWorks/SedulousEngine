@@ -4,6 +4,7 @@ namespace Sedulous.Core;
 
 /// A centre and a Radius.
 [CRepr]
+[Scriptable(.AllPublic)]
 struct BoundingSphere
 {
 	public Float3 Center;

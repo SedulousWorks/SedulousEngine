@@ -8,6 +8,7 @@ namespace Sedulous.Core;
 /// its path against this type. Beef's reflection is opt in, so a track over an unreflected
 /// transform would simply not resolve.
 [CRepr, Reflect(.Type | .NonStaticFields)]
+[Scriptable(.AllPublic)]
 struct Transform
 {
 	public Float3 Position = Float3.Zero;
@@ -65,6 +66,7 @@ static
 	/// quantities, so both the bake frame and the runtime placement have to be rigid. A
 	/// zone sharing a scaled entity with its geometry would otherwise un-scale the
 	/// geometry the bake sees and erode the navmesh to nothing.
+	[Scriptable]
 	public static Float4x4 RigidPart(Float4x4 m)
 	{
 		var t = Transform.FromMatrix(m);

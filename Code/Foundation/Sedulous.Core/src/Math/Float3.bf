@@ -80,20 +80,26 @@ struct Float3
 
 static
 {
+	[Scriptable]
 	[Inline]
 	public static float Dot(Float3 a, Float3 b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z;
 
+	[Scriptable]
 	[Inline]
 	public static Float3 Cross(Float3 a, Float3 b) => .(
 		a.Y * b.Z - a.Z * b.Y,
 		a.Z * b.X - a.X * b.Z,
 		a.X * b.Y - a.Y * b.X);
 
+	[Scriptable]
 	[Inline] public static float LengthSquared(Float3 v) => Dot(v, v);
+	[Scriptable]
 	[Inline] public static float Length(Float3 v) => Sqrt(LengthSquared(v));
+	[Scriptable]
 	[Inline] public static float Distance(Float3 a, Float3 b) => Length(b - a);
 
 	/// A unit vector, or Zero when the input is near-zero length.
+	[Scriptable]
 	public static Float3 Normalized(Float3 v)
 	{
 		let lengthSq = LengthSquared(v);
@@ -102,19 +108,23 @@ static
 		return v / Sqrt(lengthSq);
 	}
 
+	[Scriptable]
 	[Inline]
 	public static Float3 Lerp(Float3 a, Float3 b, float t) => a + (b - a) * t;
 
+	[Scriptable]
 	public static Float3 Min(Float3 a, Float3 b) => .(
 		a.X < b.X ? a.X : b.X,
 		a.Y < b.Y ? a.Y : b.Y,
 		a.Z < b.Z ? a.Z : b.Z);
 
+	[Scriptable]
 	public static Float3 Max(Float3 a, Float3 b) => .(
 		a.X > b.X ? a.X : b.X,
 		a.Y > b.Y ? a.Y : b.Y,
 		a.Z > b.Z ? a.Z : b.Z);
 
+	[Scriptable]
 	public static bool NearlyEqual(Float3 a, Float3 b, float epsilon = Epsilon) =>
 		NearlyEqual(a.X, b.X, epsilon) &&
 		NearlyEqual(a.Y, b.Y, epsilon) &&

@@ -4,6 +4,7 @@ namespace Sedulous.Core;
 
 /// A plane, Normal dot p + D = 0.
 [CRepr]
+[Scriptable(.AllPublic)]
 struct Plane
 {
 	public Float3 Normal;

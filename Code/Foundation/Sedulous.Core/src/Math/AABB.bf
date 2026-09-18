@@ -4,6 +4,7 @@ namespace Sedulous.Core;
 
 /// Axis-aligned bounding box.
 [CRepr]
+[Scriptable(.AllPublic)]
 struct AABB
 {
 	public Float3 Min;
@@ -52,5 +53,6 @@ struct AABB
 
 static
 {
+	[Scriptable]
 	public static AABB Merge(AABB a, AABB b) => .(Min(a.Min, b.Min), Max(a.Max, b.Max));
 }

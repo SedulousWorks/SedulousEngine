@@ -8,6 +8,7 @@ namespace Sedulous.Core;
 /// CRepr because these reach GPU buffers and file formats, where the layout is part of
 /// the contract rather than an implementation detail.
 [CRepr]
+[Scriptable(.AllPublic)]
 struct Float2
 {
 	public float X = 0.0f;
@@ -73,14 +74,20 @@ struct Float2
 
 static
 {
+	[Scriptable]
 	[Inline] public static float Dot(Float2 a, Float2 b) => a.X * b.X + a.Y * b.Y;
 
+	[Scriptable]
 	[Inline] public static float LengthSquared(Float2 v) => Dot(v, v);
+	[Scriptable]
 	[Inline] public static float Length(Float2 v) => Sqrt(LengthSquared(v));
+	[Scriptable]
 	[Inline] public static float DistanceSquared(Float2 a, Float2 b) => LengthSquared(b - a);
+	[Scriptable]
 	[Inline] public static float Distance(Float2 a, Float2 b) => Length(b - a);
 
 	/// A unit vector, or Zero when the input is near-zero length.
+	[Scriptable]
 	public static Float2 Normalized(Float2 v)
 	{
 		let lengthSq = LengthSquared(v);
@@ -89,9 +96,11 @@ static
 		return v / Sqrt(lengthSq);
 	}
 
+	[Scriptable]
 	[Inline]
 	public static Float2 Lerp(Float2 a, Float2 b, float t) => a + (b - a) * t;
 
+	[Scriptable]
 	public static bool NearlyEqual(Float2 a, Float2 b, float epsilon = Epsilon) =>
 		NearlyEqual(a.X, b.X, epsilon) && NearlyEqual(a.Y, b.Y, epsilon);
 }

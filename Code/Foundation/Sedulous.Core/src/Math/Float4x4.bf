@@ -14,6 +14,7 @@ namespace Sedulous.Core;
 /// so it is a two-argument indexer here. Large matrices are taken by `in` where Raptor
 /// takes const&.
 [CRepr]
+[Scriptable(.AllPublic)]
 struct Float4x4
 {
 	public float[4][4] M;
@@ -180,6 +181,7 @@ struct Float4x4
 
 static
 {
+	[Scriptable]
 	public static Float4x4 Transpose(Float4x4 a)
 	{
 		Float4x4 result = .();
@@ -190,12 +192,14 @@ static
 	}
 
 	/// Transforms a position: implicit w = 1, so translation applies.
+	[Scriptable]
 	public static Float3 TransformPoint(Float3 p, Float4x4 m) => .(
 		p.X * m.M[0][0] + p.Y * m.M[1][0] + p.Z * m.M[2][0] + m.M[3][0],
 		p.X * m.M[0][1] + p.Y * m.M[1][1] + p.Z * m.M[2][1] + m.M[3][1],
 		p.X * m.M[0][2] + p.Y * m.M[1][2] + p.Z * m.M[2][2] + m.M[3][2]);
 
 	/// Transforms a direction: implicit w = 0, so translation is ignored.
+	[Scriptable]
 	public static Float3 TransformDirection(Float3 d, Float4x4 m) => .(
 		d.X * m.M[0][0] + d.Y * m.M[1][0] + d.Z * m.M[2][0],
 		d.X * m.M[0][1] + d.Y * m.M[1][1] + d.Z * m.M[2][1],
@@ -203,10 +207,12 @@ static
 
 	/// Transforms a 2D position held in a 4x4 affine transform: implicit z = 0, w = 1,
 	/// translation applies, and the result projects back to 2D.
+	[Scriptable]
 	public static Float2 TransformPoint2D(Float2 p, Float4x4 m) => .(
 		p.X * m.M[0][0] + p.Y * m.M[1][0] + m.M[3][0],
 		p.X * m.M[0][1] + p.Y * m.M[1][1] + m.M[3][1]);
 
+	[Scriptable]
 	public static bool NearlyEqual(Float4x4 a, Float4x4 b, float epsilon = Epsilon)
 	{
 		for (int row < 4)
@@ -216,6 +222,7 @@ static
 		return true;
 	}
 
+	[Scriptable]
 	public static float Determinant(Float4x4 mat)
 	{
 		var mat;
@@ -237,6 +244,7 @@ static
 
 	/// Full inverse by adjugate over determinant. Returns Identity for a singular matrix
 	/// rather than producing infinities.
+	[Scriptable]
 	public static Float4x4 Inverse(Float4x4 mat)
 	{
 		var mat;

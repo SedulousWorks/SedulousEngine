@@ -7,6 +7,7 @@ namespace Sedulous.Core;
 ///
 /// Element access is a two-argument indexer where Raptor spells it operator()(row, col).
 [CRepr]
+[Scriptable(.AllPublic)]
 struct Float3x3
 {
 	public float[3][3] M;
@@ -79,6 +80,7 @@ struct Float3x3
 
 static
 {
+	[Scriptable]
 	public static Float3x3 Transpose(Float3x3 a)
 	{
 		Float3x3 result = .();
@@ -88,12 +90,14 @@ static
 		return result;
 	}
 
+	[Scriptable]
 	public static float Determinant(Float3x3 m) =>
 		m.M[0][0] * (m.M[1][1] * m.M[2][2] - m.M[1][2] * m.M[2][1]) -
 		m.M[0][1] * (m.M[1][0] * m.M[2][2] - m.M[1][2] * m.M[2][0]) +
 		m.M[0][2] * (m.M[1][0] * m.M[2][1] - m.M[1][1] * m.M[2][0]);
 
 	/// Adjugate over determinant. Returns Identity when singular.
+	[Scriptable]
 	public static Float3x3 Inverse(Float3x3 m)
 	{
 		let det = Determinant(m);
@@ -114,6 +118,7 @@ static
 		return result;
 	}
 
+	[Scriptable]
 	public static bool NearlyEqual(Float3x3 a, Float3x3 b, float epsilon = Epsilon)
 	{
 		for (int row < 3)
