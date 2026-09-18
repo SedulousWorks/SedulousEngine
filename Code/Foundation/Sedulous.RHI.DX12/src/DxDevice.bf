@@ -51,6 +51,12 @@ class DxDevice : IDevice
 	private DxGpuDescriptorHeap mCpuSrvHeap = new .() ~ delete _;
 	private DxGpuDescriptorHeap mCpuSamplerHeap = new .() ~ delete _;
 
+	// Cached command signatures for indirect execution, all owned and released in Destroy.
+	private ID3D12CommandSignature* mDrawSignature = null;
+	private ID3D12CommandSignature* mDrawIndexedSignature = null;
+	private ID3D12CommandSignature* mDispatchSignature = null;
+	private ID3D12CommandSignature* mDispatchMeshSignature = null;
+
 	private bool mMeshEnabled = false;
 	private bool mRtEnabled = false;
 
@@ -65,6 +71,10 @@ class DxDevice : IDevice
 	public DxGpuDescriptorHeap GpuSamplerHeap => mGpuSamplerHeap;
 	public DxGpuDescriptorHeap CpuSrvHeap => mCpuSrvHeap;
 	public DxGpuDescriptorHeap CpuSamplerHeap => mCpuSamplerHeap;
+	public ID3D12CommandSignature* DrawSignature => mDrawSignature;
+	public ID3D12CommandSignature* DrawIndexedSignature => mDrawIndexedSignature;
+	public ID3D12CommandSignature* DispatchSignature => mDispatchSignature;
+	public ID3D12CommandSignature* DispatchMeshSignature => mDispatchMeshSignature;
 	public bool MeshEnabled => mMeshEnabled;
 	public bool RtEnabled => mRtEnabled;
 
@@ -126,7 +136,20 @@ class DxDevice : IDevice
 		CreateQueues(mComputeQueues, .Compute, desc.ComputeQueueCount);
 		CreateQueues(mTransferQueues, .Transfer, desc.TransferQueueCount);
 
+		CreateIndirectCommandSignatures();
+		DetectExtensionSupport();
+
 		mFeatures = adapter.BuildFeatures();
+
+		// Fixed by D3D12 rather than queried, and only meaningful once ray tracing is known
+		// to be there.
+		if (mRtEnabled)
+		{
+			mShaderGroupHandleSize = 32; // D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES
+			mShaderGroupHandleAlignment = 32; // D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT
+			mShaderGroupBaseAlignment = 64; // D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT
+		}
+
 		return .Ok;
 	}
 
@@ -192,6 +215,19 @@ class DxDevice : IDevice
 		ClearAndDeleteItems!(mGraphicsQueues);
 		ClearAndDeleteItems!(mComputeQueues);
 		ClearAndDeleteItems!(mTransferQueues);
+
+		if (mDrawSignature != null) { mDrawSignature.Release(); mDrawSignature = null; }
+		if (mDrawIndexedSignature != null)
+		{
+			mDrawIndexedSignature.Release();
+			mDrawIndexedSignature = null;
+		}
+		if (mDispatchSignature != null) { mDispatchSignature.Release(); mDispatchSignature = null; }
+		if (mDispatchMeshSignature != null)
+		{
+			mDispatchMeshSignature.Release();
+			mDispatchMeshSignature = null;
+		}
 
 		mCpuSrvHeap.Destroy();
 		mCpuSamplerHeap.Destroy();
@@ -603,7 +639,165 @@ class DxDevice : IDevice
 	// The command pool and the swap chain wait on their own types.
 	// ==================================================================
 
-	public FormatSupport GetFormatSupport(TextureFormat format) => .();
+	/// The indirect argument layouts, cached once because a command signature is immutable
+	/// and every indirect draw needs one. The strides are the D3D12 argument structs: four,
+	/// five and three uint32 respectively.
+	private void CreateIndirectCommandSignatures()
+	{
+		D3D12_INDIRECT_ARGUMENT_DESC argDesc = .();
+		D3D12_COMMAND_SIGNATURE_DESC sigDesc = .();
+		sigDesc.NumArgumentDescs = 1;
+		sigDesc.pArgumentDescs = &argDesc;
+		sigDesc.NodeMask = 0;
+
+		argDesc.Type = .D3D12_INDIRECT_ARGUMENT_TYPE_DRAW;
+		sigDesc.ByteStride = 16;
+		mDevice.CreateCommandSignature(&sigDesc, null, ID3D12CommandSignature.IID,
+			(void**)&mDrawSignature);
+
+		argDesc.Type = .D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+		sigDesc.ByteStride = 20;
+		mDevice.CreateCommandSignature(&sigDesc, null, ID3D12CommandSignature.IID,
+			(void**)&mDrawIndexedSignature);
+
+		argDesc.Type = .D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
+		sigDesc.ByteStride = 12;
+		mDevice.CreateCommandSignature(&sigDesc, null, ID3D12CommandSignature.IID,
+			(void**)&mDispatchSignature);
+	}
+
+	/// What this device can do beyond the base feature level. The mesh signature is made here
+	/// rather than beside the others because it cannot exist without mesh support.
+	private void DetectExtensionSupport()
+	{
+		D3D12_FEATURE_DATA_D3D12_OPTIONS7 options7 = .();
+		if (SUCCEEDED(mDevice.CheckFeatureSupport(.D3D12_FEATURE_D3D12_OPTIONS7, &options7,
+			(uint32)sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS7))) &&
+			(options7.MeshShaderTier != .D3D12_MESH_SHADER_TIER_NOT_SUPPORTED))
+		{
+			mMeshEnabled = true;
+
+			D3D12_INDIRECT_ARGUMENT_DESC argDesc = .();
+			argDesc.Type = .D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH;
+
+			D3D12_COMMAND_SIGNATURE_DESC sigDesc = .();
+			sigDesc.ByteStride = 12; // D3D12_DISPATCH_MESH_ARGUMENTS: three uint32
+			sigDesc.NumArgumentDescs = 1;
+			sigDesc.pArgumentDescs = &argDesc;
+			sigDesc.NodeMask = 0;
+
+			mDevice.CreateCommandSignature(&sigDesc, null, ID3D12CommandSignature.IID,
+				(void**)&mDispatchMeshSignature);
+		}
+
+		D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = .();
+		if (SUCCEEDED(mDevice.CheckFeatureSupport(.D3D12_FEATURE_D3D12_OPTIONS5, &options5,
+			(uint32)sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5))) &&
+			(options5.RaytracingTier != .D3D12_RAYTRACING_TIER_NOT_SUPPORTED))
+		{
+			mRtEnabled = true;
+		}
+	}
+
+	/// D3D12 has no device wide sample count mask: the only query is per format, where zero
+	/// quality levels means unsupported. The engine's MSAA scene pass binds a whole MRT set at
+	/// ONE count, so a count counts as supported only when EVERY attachment format the pass
+	/// uses supports it, which is the same colour-and-depth-agree rule the Vulkan device
+	/// applies to its two bitmasks.
+	private bool SampleCountSupported(uint32 count)
+	{
+		if (count <= 1)
+			return true;
+		if ((count != 2) && (count != 4)) // the engine ceiling is 4x, and only powers of two
+			return false;
+
+		// The formats the pipeline allocates at the pass sample count: depth, the HDR colour
+		// target, and the G-buffer aux targets.
+		DXGI_FORMAT[5] passFormats = .(
+			.DXGI_FORMAT_D32_FLOAT,          // the default depth format
+			.DXGI_FORMAT_R16G16B16A16_FLOAT, // HDR colour
+			.DXGI_FORMAT_R16G16_FLOAT,       // G-buffer normal and velocity
+			.DXGI_FORMAT_R8G8_UNORM,         // G-buffer material
+			.DXGI_FORMAT_B8G8R8A8_UNORM);    // the default colour format, non HDR path
+
+		for (let fmt in passFormats)
+		{
+			D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS q = .();
+			q.Format = fmt;
+			q.SampleCount = count;
+			q.Flags = .D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
+
+			if (FAILED(mDevice.CheckFeatureSupport(.D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &q,
+				(uint32)sizeof(D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS))) ||
+				(q.NumQualityLevels == 0))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	public uint32 MaxColorDepthSampleCount
+	{
+		get
+		{
+			if (SampleCountSupported(4))
+				return 4; // the engine ceiling; 8x is out of scope
+			if (SampleCountSupported(2))
+				return 2;
+			return 1;
+		}
+	}
+
+	public bool SupportsSampleCount(uint32 count) => SampleCountSupported(count);
+
+	/// Asked of the driver per format rather than answered with one broad capability set.
+	///
+	/// Claiming the same set for everything is not merely imprecise: it reports support for
+	/// formats D3D12 cannot represent at all. ASTC is the concrete case, having no DXGI
+	/// spelling, so a caller told "supported" would upload and sample garbage where Vulkan and
+	/// WebGPU correctly skip.
+	public FormatSupport GetFormatSupport(TextureFormat format)
+	{
+		let dxgi = DxConversions.ToDxgiFormat(format);
+		if (dxgi == .DXGI_FORMAT_UNKNOWN)
+			return .Unsupported; // no DXGI spelling at all: ASTC, ETC and so on
+
+		D3D12_FEATURE_DATA_FORMAT_SUPPORT fs = .();
+		fs.Format = dxgi;
+		if (FAILED(mDevice.CheckFeatureSupport(.D3D12_FEATURE_FORMAT_SUPPORT, &fs,
+			(uint32)sizeof(D3D12_FEATURE_DATA_FORMAT_SUPPORT))))
+			return .Unsupported;
+
+		FormatSupport support = .Unsupported;
+		let s1 = fs.Support1;
+
+		if (s1.HasFlag(.D3D12_FORMAT_SUPPORT1_TEXTURE2D))
+			support |= .Texture;
+		if (s1.HasFlag(.D3D12_FORMAT_SUPPORT1_RENDER_TARGET))
+			support |= .ColorAttachment;
+		if (s1.HasFlag(.D3D12_FORMAT_SUPPORT1_DEPTH_STENCIL))
+			support |= .DepthStencil;
+		if (s1.HasFlag(.D3D12_FORMAT_SUPPORT1_BUFFER))
+			support |= .Buffer;
+		if (s1.HasFlag(.D3D12_FORMAT_SUPPORT1_IA_VERTEX_BUFFER))
+			support |= .VertexBuffer;
+		if (s1.HasFlag(.D3D12_FORMAT_SUPPORT1_BLENDABLE))
+			support |= .BlendableColor;
+		// SHADER_SAMPLE is "can be sampled with a filtering sampler"; a point only format
+		// exposes SHADER_LOAD without it.
+		if (s1.HasFlag(.D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE))
+			support |= .LinearFilter;
+		if (s1.HasFlag(.D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW))
+		{
+			support |= .StorageTexture;
+			if (s1.HasFlag(.D3D12_FORMAT_SUPPORT1_BUFFER))
+				support |= .StorageBuffer;
+		}
+
+		return support;
+	}
 
 	public Result<ICommandPool> CreateCommandPool(QueueType queueType) => .Err;
 	public Result<ISwapChain> CreateSwapChain(ISurface surface, SwapChainDesc desc) => .Err;
