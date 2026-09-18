@@ -737,17 +737,280 @@ class DxCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		DxTexture.TransitionWhole(mCmdList, dxDst, .D3D12_RESOURCE_STATE_COMMON);
 	}
 
+	private static D3D12_RAYTRACING_GEOMETRY_FLAGS ToGeometryFlags(GeometryFlags flags)
+	{
+		D3D12_RAYTRACING_GEOMETRY_FLAGS result = .D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
+		if (flags.HasFlag(.Opaque))
+			result |= .D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
+		if (flags.HasFlag(.NoDuplicateAnyHitInvocation))
+			result |= .D3D12_RAYTRACING_GEOMETRY_FLAG_NO_DUPLICATE_ANYHIT_INVOCATION;
+		return result;
+	}
+
 	public void BuildBottomLevelAccelStruct(IAccelStruct dst, IBuffer scratchBuffer,
 		uint64 scratchOffset, Span<AccelStructGeometryTriangles> triangles,
-		Span<AccelStructGeometryAABBs> aabbs) {}
+		Span<AccelStructGeometryAABBs> aabbs)
+	{
+		let dxAs = dst as DxAccelStruct;
+		let dxScratch = scratchBuffer as DxBuffer;
+		if ((dxAs == null) || (dxScratch == null))
+			return;
+
+		// Ray tracing lives on command list four, so the list is queried per call.
+		ID3D12GraphicsCommandList4* cmdList4 = null;
+		if (FAILED(mCmdList.QueryInterface(ID3D12GraphicsCommandList4.IID, (void**)&cmdList4)) ||
+			(cmdList4 == null))
+			return;
+		defer cmdList4.Release();
+
+		let totalGeoms = triangles.Length + aabbs.Length;
+		let geomDescs = scope List<D3D12_RAYTRACING_GEOMETRY_DESC>();
+		geomDescs.Resize(totalGeoms);
+		int idx = 0;
+
+		for (let t in triangles)
+		{
+			geomDescs[idx] = .();
+			geomDescs[idx].Type = .D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+			geomDescs[idx].Flags = ToGeometryFlags(t.Flags);
+
+			if (let vb = t.VertexBuffer as DxBuffer)
+			{
+				geomDescs[idx].Triangles.VertexBuffer.StartAddress = vb.GpuAddress + t.VertexOffset;
+				geomDescs[idx].Triangles.VertexBuffer.StrideInBytes = t.VertexStride;
+				geomDescs[idx].Triangles.VertexCount = t.VertexCount;
+				geomDescs[idx].Triangles.VertexFormat =
+					DxConversions.ToDxgiVertexFormat(t.VertexFormat);
+			}
+
+			if (t.IndexBuffer != null)
+			{
+				if (let ib = t.IndexBuffer as DxBuffer)
+				{
+					geomDescs[idx].Triangles.IndexBuffer = ib.GpuAddress + t.IndexOffset;
+					geomDescs[idx].Triangles.IndexCount = t.IndexCount;
+					geomDescs[idx].Triangles.IndexFormat = (t.IndexFormat == .UInt16)
+						? .DXGI_FORMAT_R16_UINT
+						: .DXGI_FORMAT_R32_UINT;
+				}
+			}
+			else
+			{
+				// UNKNOWN is how non indexed geometry is spelled, not a missing value.
+				geomDescs[idx].Triangles.IndexFormat = .DXGI_FORMAT_UNKNOWN;
+			}
+
+			if (t.TransformBuffer != null)
+			{
+				if (let tb = t.TransformBuffer as DxBuffer)
+					geomDescs[idx].Triangles.Transform3x4 = tb.GpuAddress + t.TransformOffset;
+			}
+
+			idx++;
+		}
+
+		for (let a in aabbs)
+		{
+			geomDescs[idx] = .();
+			geomDescs[idx].Type = .D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS;
+			geomDescs[idx].Flags = ToGeometryFlags(a.Flags);
+
+			if (let ab = a.AabbBuffer as DxBuffer)
+			{
+				geomDescs[idx].AABBs.AABBs.StartAddress = ab.GpuAddress + a.Offset;
+				geomDescs[idx].AABBs.AABBs.StrideInBytes = a.Stride;
+				geomDescs[idx].AABBs.AABBCount = a.Count;
+			}
+
+			idx++;
+		}
+
+		D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = .();
+		buildDesc.DestAccelerationStructureData = dxAs.DeviceAddress;
+		buildDesc.ScratchAccelerationStructureData = dxScratch.GpuAddress + scratchOffset;
+		buildDesc.Inputs.Type = .D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
+		buildDesc.Inputs.Flags =
+			.D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+		buildDesc.Inputs.NumDescs = (uint32)totalGeoms;
+		buildDesc.Inputs.DescsLayout = .D3D12_ELEMENTS_LAYOUT_ARRAY;
+		buildDesc.Inputs.pGeometryDescs = geomDescs.Ptr;
+
+		cmdList4.BuildRaytracingAccelerationStructure(&buildDesc, 0, null);
+	}
+
 	public void BuildTopLevelAccelStruct(IAccelStruct dst, IBuffer scratchBuffer,
-		uint64 scratchOffset, IBuffer instanceBuffer, uint64 instanceOffset,
-		uint32 instanceCount) {}
-	public void SetRayTracingPipeline(IRayTracingPipeline pipeline) {}
-	public void SetBindGroup(uint32 index, IBindGroup group, Span<uint32> dynamicOffsets = default) {}
-	public void SetPushConstants(ShaderStage stages, uint32 offset, uint32 size, void* data) {}
+		uint64 scratchOffset, IBuffer instanceBuffer, uint64 instanceOffset, uint32 instanceCount)
+	{
+		let dxAs = dst as DxAccelStruct;
+		let dxScratch = scratchBuffer as DxBuffer;
+		let dxInstances = instanceBuffer as DxBuffer;
+		if ((dxAs == null) || (dxScratch == null) || (dxInstances == null))
+			return;
+
+		ID3D12GraphicsCommandList4* cmdList4 = null;
+		if (FAILED(mCmdList.QueryInterface(ID3D12GraphicsCommandList4.IID, (void**)&cmdList4)) ||
+			(cmdList4 == null))
+			return;
+		defer cmdList4.Release();
+
+		D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = .();
+		buildDesc.DestAccelerationStructureData = dxAs.DeviceAddress;
+		buildDesc.ScratchAccelerationStructureData = dxScratch.GpuAddress + scratchOffset;
+		buildDesc.Inputs.Type = .D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
+		buildDesc.Inputs.Flags =
+			.D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+		buildDesc.Inputs.NumDescs = instanceCount;
+		buildDesc.Inputs.DescsLayout = .D3D12_ELEMENTS_LAYOUT_ARRAY;
+		// The instances are read from a BUFFER here rather than from a description array.
+		buildDesc.Inputs.InstanceDescs = dxInstances.GpuAddress + instanceOffset;
+
+		cmdList4.BuildRaytracingAccelerationStructure(&buildDesc, 0, null);
+	}
+
+	public void SetRayTracingPipeline(IRayTracingPipeline pipeline)
+	{
+		mCurrentRtPipeline = pipeline as DxRayTracingPipeline;
+		if (mCurrentRtPipeline == null)
+			return;
+
+		EnsureDescriptorHeaps();
+
+		ID3D12GraphicsCommandList4* cmdList4 = null;
+		if (SUCCEEDED(mCmdList.QueryInterface(ID3D12GraphicsCommandList4.IID,
+			(void**)&cmdList4)) && (cmdList4 != null))
+		{
+			cmdList4.SetPipelineState1(mCurrentRtPipeline.Handle);
+			cmdList4.Release();
+		}
+
+		// Ray tracing binds through the COMPUTE root signature, not a third set of its own.
+		if (let layout = mCurrentRtPipeline.PipelineLayout)
+			mCmdList.SetComputeRootSignature(layout.Handle);
+	}
+
+	public void SetBindGroup(uint32 index, IBindGroup group, Span<uint32> dynamicOffsets = default)
+	{
+		let dxGroup = group as DxBindGroup;
+		if ((dxGroup == null) || (mCurrentRtPipeline == null))
+			return;
+
+		let layout = mCurrentRtPipeline.PipelineLayout;
+		if (layout == null)
+			return;
+
+		let dxLayout = dxGroup.Layout as DxBindGroupLayout;
+
+		// The same three routes as the two pass encoders, through the compute root set.
+		if ((dxGroup.CbvSrvUavOffset >= 0) && (dxLayout != null) && (dxLayout.CbvSrvUavCount > 0))
+		{
+			let rootIdx = layout.GetCbvSrvUavRootIndex(index);
+			if (rootIdx >= 0)
+			{
+				let stagedOffset = mPool.SrvStaging.CopyFrom((uint32)dxGroup.CbvSrvUavOffset,
+					dxLayout.CbvSrvUavCount);
+				if (stagedOffset >= 0)
+				{
+					mCmdList.SetComputeRootDescriptorTable((uint32)rootIdx,
+						mGpuSrvHeap.GetGpuHandle((uint32)stagedOffset));
+				}
+			}
+		}
+
+		if ((dxGroup.GpuSamplerOffset >= 0) && (dxLayout != null) && (dxLayout.SamplerCount > 0))
+		{
+			let rootIdx = layout.GetSamplerRootIndex(index);
+			if (rootIdx >= 0)
+			{
+				mCmdList.SetComputeRootDescriptorTable((uint32)rootIdx,
+					mGpuSamplerHeap.GetGpuHandle((uint32)dxGroup.GpuSamplerOffset));
+			}
+		}
+
+		let dynAddrs = dxGroup.DynamicGpuAddresses;
+		int dynOffsetIdx = 0;
+
+		for (let entry in layout.DynamicRootEntries)
+		{
+			if (entry.GroupIndex != index)
+				continue;
+			if (entry.DynamicIndex >= (uint32)dynAddrs.Length)
+				continue;
+
+			var gpuAddr = dynAddrs[(int)entry.DynamicIndex];
+			if (dynOffsetIdx < dynamicOffsets.Length)
+				gpuAddr += (uint64)dynamicOffsets[dynOffsetIdx];
+			dynOffsetIdx++;
+
+			switch (entry.ParamType)
+			{
+			case .D3D12_ROOT_PARAMETER_TYPE_CBV:
+				mCmdList.SetComputeRootConstantBufferView((uint32)entry.RootParamIndex, gpuAddr);
+			case .D3D12_ROOT_PARAMETER_TYPE_SRV:
+				mCmdList.SetComputeRootShaderResourceView((uint32)entry.RootParamIndex, gpuAddr);
+			case .D3D12_ROOT_PARAMETER_TYPE_UAV:
+				mCmdList.SetComputeRootUnorderedAccessView((uint32)entry.RootParamIndex, gpuAddr);
+			default:
+			}
+		}
+	}
+
+	public void SetPushConstants(ShaderStage stages, uint32 offset, uint32 size, void* data)
+	{
+		if (mCurrentRtPipeline == null)
+			return;
+
+		let layout = mCurrentRtPipeline.PipelineLayout;
+		if ((layout == null) || (layout.PushConstantRootIndex < 0))
+			return;
+
+		mCmdList.SetComputeRoot32BitConstants((uint32)layout.PushConstantRootIndex, size / 4, data,
+			offset / 4);
+	}
+
 	public void TraceRays(IBuffer raygenSBT, uint64 raygenOffset, uint64 raygenStride,
 		IBuffer missSBT, uint64 missOffset, uint64 missStride,
 		IBuffer hitSBT, uint64 hitOffset, uint64 hitStride,
-		uint32 width, uint32 height, uint32 depth = 1) {}
+		uint32 width, uint32 height, uint32 depth = 1)
+	{
+		ID3D12GraphicsCommandList4* cmdList4 = null;
+		if (FAILED(mCmdList.QueryInterface(ID3D12GraphicsCommandList4.IID, (void**)&cmdList4)) ||
+			(cmdList4 == null))
+			return;
+		defer cmdList4.Release();
+
+		D3D12_DISPATCH_RAYS_DESC dispatchDesc = .();
+
+		// The raygen record is a SINGLE record, so it carries a size and no stride.
+		if (let dxBuf = raygenSBT as DxBuffer)
+		{
+			dispatchDesc.RayGenerationShaderRecord.StartAddress = dxBuf.GpuAddress + raygenOffset;
+			dispatchDesc.RayGenerationShaderRecord.SizeInBytes = raygenStride;
+		}
+
+		if (missSBT != null)
+		{
+			if (let dxBuf = missSBT as DxBuffer)
+			{
+				dispatchDesc.MissShaderTable.StartAddress = dxBuf.GpuAddress + missOffset;
+				dispatchDesc.MissShaderTable.StrideInBytes = missStride;
+				dispatchDesc.MissShaderTable.SizeInBytes = missStride; // one entry assumed
+			}
+		}
+
+		if (hitSBT != null)
+		{
+			if (let dxBuf = hitSBT as DxBuffer)
+			{
+				dispatchDesc.HitGroupTable.StartAddress = dxBuf.GpuAddress + hitOffset;
+				dispatchDesc.HitGroupTable.StrideInBytes = hitStride;
+				dispatchDesc.HitGroupTable.SizeInBytes = hitStride; // one entry assumed
+			}
+		}
+
+		dispatchDesc.Width = width;
+		dispatchDesc.Height = height;
+		dispatchDesc.Depth = depth;
+
+		cmdList4.DispatchRays(&dispatchDesc);
+	}
 }
