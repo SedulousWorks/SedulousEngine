@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using Sedulous.UI;
 
 namespace Sedulous.UI.Gamekit;
@@ -16,7 +17,19 @@ static class GamekitMarkup
 	/// The guard ASKS THE REGISTRY rather than keeping a flag of its own. A flag survives
 	/// MarkupRegistry.Clear, which tests call between cases, and would then report a
 	/// registration that no longer exists.
+	///
+	/// Asking is a READ of the registry's map, so the whole probe and write runs under the
+	/// registry's own registration lock: the cook calls this from job workers, and two of
+	/// them would otherwise both read "not registered" and both write.
 	public static void Register()
+	{
+		using (MarkupRegistry.RegistrationLock.Enter())
+		{
+			RegisterLocked();
+		}
+	}
+
+	private static void RegisterLocked()
 	{
 		if (MarkupRegistry.IsRegistered("screen"))
 			return;

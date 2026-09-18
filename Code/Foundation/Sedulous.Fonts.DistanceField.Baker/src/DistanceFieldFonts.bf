@@ -1,3 +1,4 @@
+using System.Threading;
 using Sedulous.Fonts;
 
 namespace Sedulous.Fonts.DistanceField.Baker;
@@ -12,23 +13,34 @@ static class DistanceFieldFonts
 {
 	private static DistanceFieldFontAtlasBaker sBaker;
 
+	/// Serialises Initialize and Shutdown against each other. The font asset builder calls
+	/// Initialize per build and the cook runs builds on job workers, so the null check alone
+	/// let two of them each construct a baker and register it twice.
+	private static Monitor sLock = new .() ~ delete _;
+
 	public static void Initialize()
 	{
-		if (sBaker != null)
-			return;
-		sBaker = new DistanceFieldFontAtlasBaker();
-		FontAtlasBakerFactory.RegisterBaker(sBaker);
+		using (sLock.Enter())
+		{
+			if (sBaker != null)
+				return;
+			sBaker = new DistanceFieldFontAtlasBaker();
+			FontAtlasBakerFactory.RegisterBaker(sBaker);
+		}
 	}
 
 	/// The unregister return guards the delete: somebody may have emptied the registry
 	/// wholesale, which already freed what we handed over.
 	public static void Shutdown()
 	{
-		if (sBaker == null)
-			return;
-		if (FontAtlasBakerFactory.UnregisterBaker(sBaker))
-			delete sBaker;
-		sBaker = null;
+		using (sLock.Enter())
+		{
+			if (sBaker == null)
+				return;
+			if (FontAtlasBakerFactory.UnregisterBaker(sBaker))
+				delete sBaker;
+			sBaker = null;
+		}
 	}
 
 	public static bool IsInitialized => sBaker != null;

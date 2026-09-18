@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using Sedulous.Core;
 
 namespace Sedulous.UI;
@@ -17,16 +18,20 @@ extension MarkupRegistry
 	/// Registers every built-in view and its markup-settable properties. Run once.
 	public static void RegisterBuiltins()
 	{
-		if (sBuiltinsRegistered)
-			return;
+		// Under the registration lock, flag included: the cook calls this from job workers.
+		using (RegistrationLock.Enter())
+		{
+			if (sBuiltinsRegistered)
+				return;
 
-		sBuiltinsRegistered = true;
+			sBuiltinsRegistered = true;
 
-		RegisterLayouts();
-		RegisterTextControls();
-		RegisterToggleControls();
-		RegisterValueControls();
-		RegisterContainers();
+			RegisterLayouts();
+			RegisterTextControls();
+			RegisterToggleControls();
+			RegisterValueControls();
+			RegisterContainers();
+		}
 	}
 
 	// ---- Layouts ------------------------------------------------------------------------------

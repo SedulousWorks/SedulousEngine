@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Threading;
 using Sedulous.Core;
 using Sedulous.Image;
 using Sedulous.VG;
@@ -20,6 +21,10 @@ static class DrawableFactoryRegistry
 
 	private static Dictionary<String, FactoryFn> sFactories = new .() ~ DeleteDictionaryAndKeys!(_);
 	private static bool sBuiltinsRegistered = false;
+
+	/// Serialises the once guard below. The style sheet loader and the parser both call it,
+	/// and the cook reaches both from job workers.
+	private static Monitor sLock = new .() ~ delete _;
 
 	/// Registers a factory, replacing any of the same name.
 	public static void Register(StringView name, FactoryFn factory)
@@ -69,6 +74,14 @@ static class DrawableFactoryRegistry
 
 	/// Registers the built in factories. Idempotent, the map being process wide.
 	public static void RegisterBuiltins()
+	{
+		using (sLock.Enter())
+		{
+			RegisterBuiltinsLocked();
+		}
+	}
+
+	private static void RegisterBuiltinsLocked()
 	{
 		if (sBuiltinsRegistered)
 			return;

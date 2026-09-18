@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Threading;
 
 namespace Sedulous.UI;
 
@@ -13,6 +14,15 @@ static class UITypeRegistry
 {
 	private static Dictionary<String, Type> sTypes = new .() ~ DeleteDictionaryAndKeys!(_);
 	private static bool sBuiltinsRegistered = false;
+
+	/// Serialises the once guard below, which the cook reaches from job workers through the
+	/// style sheet loader. Held by RegisterBuiltins and Clear only, so nothing nests.
+	///
+	/// PUBLIC because the toolkit registers its own controls into this same map behind its
+	/// own once guard: any such registrar must hold this, or it races the built-ins.
+	private static Monitor sLock = new .() ~ delete _;
+
+	public static Monitor RegistrationLock => sLock;
 
 	/// Registers a type under a name, replacing any previous registration.
 	public static void Register(StringView name, Type type)
@@ -32,6 +42,14 @@ static class UITypeRegistry
 	/// names, because markup reads better as <Flex> than <FlexLayout> and a sheet may address
 	/// either.
 	public static void RegisterBuiltins()
+	{
+		using (sLock.Enter())
+		{
+			RegisterBuiltinsLocked();
+		}
+	}
+
+	private static void RegisterBuiltinsLocked()
 	{
 		if (sBuiltinsRegistered)
 			return;
@@ -105,10 +123,13 @@ static class UITypeRegistry
 	/// Forgets every registration. For tests, which must not leak state into one another.
 	public static void Clear()
 	{
-		for (let key in sTypes.Keys)
-			delete key;
-		sTypes.Clear();
-		// The guard goes with them, or a cleared registry could never be repopulated.
-		sBuiltinsRegistered = false;
+		using (sLock.Enter())
+		{
+			for (let key in sTypes.Keys)
+				delete key;
+			sTypes.Clear();
+			// The guard goes with them, or a cleared registry could never be repopulated.
+			sBuiltinsRegistered = false;
+		}
 	}
 }

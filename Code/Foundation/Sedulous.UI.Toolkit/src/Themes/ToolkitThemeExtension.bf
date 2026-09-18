@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using Sedulous.Core;
 using Sedulous.UI;
 
@@ -23,6 +24,16 @@ class ToolkitThemeExtension : IThemeExtension
 	/// Idempotent. Called by construction, and callable directly by a host that parses
 	/// toolkit-styling sheets without registering the extension.
 	public static void RegisterToolkitTypes()
+	{
+		// Under the type registry's own lock, flag included: this writes the same map the
+		// built-ins do, so the two once guards have to be one another's.
+		using (UITypeRegistry.RegistrationLock.Enter())
+		{
+			RegisterToolkitTypesLocked();
+		}
+	}
+
+	private static void RegisterToolkitTypesLocked()
 	{
 		if (sTypesRegistered)
 			return;

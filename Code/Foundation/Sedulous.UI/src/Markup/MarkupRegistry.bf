@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Threading;
 using Sedulous.Core;
 
 namespace Sedulous.UI;
@@ -25,6 +26,17 @@ static class MarkupRegistry
 	private static Dictionary<String, ViewFactory> sViewFactories = new .() ~ ClearRegistry!(_);
 	private static Dictionary<String, PropertySetter> sViewProps = new .() ~ ClearRegistry!(_);
 	private static bool sBuiltinsRegistered = false;
+
+	/// Serialises FIRST TIME registration, because the cook reaches it from job workers: two
+	/// asset builders cooking two UI documents both call MarkupLoader.Initialize, and a plain
+	/// flag lets both through to rehash the dictionaries under each other.
+	///
+	/// Held by the once guarded entry points only, never by Register itself, so nothing nests.
+	/// ANY extension registering into this registry must hold it, which is why it is public:
+	/// Gamekit's <screen> writes these same maps.
+	private static Monitor sLock = new .() ~ delete _;
+
+	public static Monitor RegistrationLock => sLock;
 
 	/// Deletes the owned keys and delegates, then the dictionary.
 	private static mixin ClearRegistry(var map)
@@ -68,6 +80,14 @@ static class MarkupRegistry
 	/// Forgets every registration, the built-in guard included. For tests, which must not leak
 	/// state into one another.
 	public static void Clear()
+	{
+		using (sLock.Enter())
+		{
+			ClearLocked();
+		}
+	}
+
+	private static void ClearLocked()
 	{
 		for (let pair in sViewFactories)
 		{
