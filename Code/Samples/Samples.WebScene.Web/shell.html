@@ -15,6 +15,11 @@
 <canvas id="canvas" tabindex="0"></canvas>
 <div id="status">starting…</div>
 <script>
+  // The WebGPU backend's mid frame wait tripwire prints a C stack, and Chrome truncates
+  // Error.stack at ten frames by default: exactly deep enough to reach WaitIdle and stop
+  // BEFORE the frame that names the waiter the message is asking you to find.
+  Error.stackTraceLimit = 64;
+
   var statusEl = document.getElementById('status');
   var canvas = document.getElementById('canvas');
 
@@ -24,8 +29,9 @@
   // does not quadruple the pixel cost for no visible gain.
   function resize() {
     var ratio = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.floor(canvas.clientWidth * ratio);
-    canvas.height = Math.floor(canvas.clientHeight * ratio);
+    // Never zero: a collapsed canvas would configure a zero size swap chain.
+    canvas.width = Math.max(1, Math.floor(canvas.clientWidth * ratio));
+    canvas.height = Math.max(1, Math.floor(canvas.clientHeight * ratio));
   }
   window.addEventListener('resize', resize);
   resize();

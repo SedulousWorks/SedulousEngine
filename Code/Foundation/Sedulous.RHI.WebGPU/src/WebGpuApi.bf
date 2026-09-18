@@ -13,9 +13,10 @@ namespace Sedulous.RHI.WebGPU;
 /// sidecar as an ordinary library, so the entry points ARE the table, and what is left
 /// here is the part that was never about loading.
 ///
-/// The web half of that story still has to come back when the web tier does: a browser
-/// has none of the wgpu-native extensions, so those call sites are the seam, marked
-/// NativeOnly below.
+/// The web half of that story is the NativeOnly class below: a browser has none of the
+/// wgpu-native extensions, so every call to one is compiled out of the wasm build there.
+/// Raptor cannot do that and instead forward declares the whole extension list on web, as
+/// symbols that are never defined or bound, so that taking their address still compiles.
 static class WebGpuApi
 {
 	/// wgpu-native v29 PANICS inside wgpuInstanceWaitAny with a nonzero timeout - "not
