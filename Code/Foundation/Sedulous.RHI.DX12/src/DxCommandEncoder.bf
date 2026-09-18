@@ -434,10 +434,114 @@ class DxCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 	}
 
 	public void CopyBufferToBuffer(IBuffer src, uint64 srcOffset, IBuffer dst, uint64 dstOffset,
-		uint64 size) {}
-	public void CopyBufferToTexture(IBuffer src, ITexture dst, BufferTextureCopyRegion region) {}
-	public void CopyTextureToBuffer(ITexture src, IBuffer dst, BufferTextureCopyRegion region) {}
-	public void CopyTextureToTexture(ITexture src, ITexture dst, TextureCopyRegion region) {}
+		uint64 size)
+	{
+		let dxSrc = src as DxBuffer;
+		let dxDst = dst as DxBuffer;
+		if ((dxSrc == null) || (dxDst == null))
+			return;
+
+		mCmdList.CopyBufferRegion(dxDst.Handle, dstOffset, dxSrc.Handle, srcOffset, size);
+	}
+
+	public void CopyBufferToTexture(IBuffer src, ITexture dst, BufferTextureCopyRegion region)
+	{
+		let dxSrc = src as DxBuffer;
+		let dxTex = dst as DxTexture;
+		if ((dxSrc == null) || (dxTex == null))
+			return;
+
+		let subresource = region.TextureMipLevel +
+			region.TextureArrayLayer * dxTex.Desc.MipLevelCount;
+
+		// A buffer side of a texture copy is a PLACED FOOTPRINT: the buffer has no format or
+		// extent of its own, so the copy names them here.
+		D3D12_TEXTURE_COPY_LOCATION srcLoc = .();
+		srcLoc.pResource = dxSrc.Handle;
+		srcLoc.Type = .D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+		srcLoc.PlacedFootprint.Offset = region.BufferOffset;
+		srcLoc.PlacedFootprint.Footprint.Format = DxConversions.ToDxgiFormat(dxTex.Desc.Format);
+		srcLoc.PlacedFootprint.Footprint.Width = region.TextureExtent.Width;
+		srcLoc.PlacedFootprint.Footprint.Height = region.TextureExtent.Height;
+		srcLoc.PlacedFootprint.Footprint.Depth = region.TextureExtent.Depth;
+		srcLoc.PlacedFootprint.Footprint.RowPitch = region.BytesPerRow;
+
+		D3D12_TEXTURE_COPY_LOCATION dstLoc = .();
+		dstLoc.pResource = dxTex.Handle;
+		dstLoc.Type = .D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		dstLoc.SubresourceIndex = subresource;
+
+		mCmdList.CopyTextureRegion(&dstLoc, region.TextureOrigin.X, region.TextureOrigin.Y,
+			region.TextureOrigin.Z, &srcLoc, null);
+	}
+
+	public void CopyTextureToBuffer(ITexture src, IBuffer dst, BufferTextureCopyRegion region)
+	{
+		let dxTex = src as DxTexture;
+		let dxDst = dst as DxBuffer;
+		if ((dxTex == null) || (dxDst == null))
+			return;
+
+		let subresource = region.TextureMipLevel +
+			region.TextureArrayLayer * dxTex.Desc.MipLevelCount;
+
+		D3D12_TEXTURE_COPY_LOCATION srcLoc = .();
+		srcLoc.pResource = dxTex.Handle;
+		srcLoc.Type = .D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		srcLoc.SubresourceIndex = subresource;
+
+		D3D12_TEXTURE_COPY_LOCATION dstLoc = .();
+		dstLoc.pResource = dxDst.Handle;
+		dstLoc.Type = .D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+		dstLoc.PlacedFootprint.Offset = region.BufferOffset;
+		dstLoc.PlacedFootprint.Footprint.Format = DxConversions.ToDxgiFormat(dxTex.Desc.Format);
+		dstLoc.PlacedFootprint.Footprint.Width = region.TextureExtent.Width;
+		dstLoc.PlacedFootprint.Footprint.Height = region.TextureExtent.Height;
+		dstLoc.PlacedFootprint.Footprint.Depth = region.TextureExtent.Depth;
+		dstLoc.PlacedFootprint.Footprint.RowPitch = region.BytesPerRow;
+
+		// The origin moves to the SOURCE BOX here, because the destination is the buffer.
+		D3D12_BOX srcBox = .();
+		srcBox.left = region.TextureOrigin.X;
+		srcBox.top = region.TextureOrigin.Y;
+		srcBox.front = region.TextureOrigin.Z;
+		srcBox.right = region.TextureOrigin.X + region.TextureExtent.Width;
+		srcBox.bottom = region.TextureOrigin.Y + region.TextureExtent.Height;
+		srcBox.back = region.TextureOrigin.Z + region.TextureExtent.Depth;
+
+		mCmdList.CopyTextureRegion(&dstLoc, 0, 0, 0, &srcLoc, &srcBox);
+	}
+
+	public void CopyTextureToTexture(ITexture src, ITexture dst, TextureCopyRegion region)
+	{
+		let dxSrc = src as DxTexture;
+		let dxDst = dst as DxTexture;
+		if ((dxSrc == null) || (dxDst == null))
+			return;
+
+		let srcSub = region.SrcMipLevel + region.SrcArrayLayer * dxSrc.Desc.MipLevelCount;
+		let dstSub = region.DstMipLevel + region.DstArrayLayer * dxDst.Desc.MipLevelCount;
+
+		D3D12_TEXTURE_COPY_LOCATION srcLoc = .();
+		srcLoc.pResource = dxSrc.Handle;
+		srcLoc.Type = .D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		srcLoc.SubresourceIndex = srcSub;
+
+		D3D12_TEXTURE_COPY_LOCATION dstLoc = .();
+		dstLoc.pResource = dxDst.Handle;
+		dstLoc.Type = .D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		dstLoc.SubresourceIndex = dstSub;
+
+		D3D12_BOX srcBox = .();
+		srcBox.left = 0;
+		srcBox.top = 0;
+		srcBox.front = 0;
+		srcBox.right = region.Extent.Width;
+		srcBox.bottom = region.Extent.Height;
+		srcBox.back = region.Extent.Depth;
+
+		mCmdList.CopyTextureRegion(&dstLoc, 0, 0, 0, &srcLoc, &srcBox);
+	}
 
 	public void Blit(ITexture src, ITexture dst) {}
 	public void GenerateMipmaps(ITexture texture) {}
