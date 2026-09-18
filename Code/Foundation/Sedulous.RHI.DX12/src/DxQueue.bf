@@ -109,13 +109,23 @@ class DxQueue : IQueue
 
 	public Result<ITransferBatch> CreateTransferBatch()
 	{
-		// Lands with DxTransferBatch.
-		return .Err;
+		let batch = new DxTransferBatch();
+		if (batch.Initialize(mD3dDevice, mQueue, mQueueType) case .Err)
+		{
+			delete batch;
+			return .Err;
+		}
+		return .Ok(batch);
 	}
 
 	public void DestroyTransferBatch(ref ITransferBatch batch)
 	{
-		// Lands with DxTransferBatch.
+		if (let dx = batch as DxTransferBatch)
+		{
+			dx.Destroy();
+			delete dx;
+		}
+		batch = null;
 	}
 
 	public float TimestampPeriod() => mTsPeriod;
