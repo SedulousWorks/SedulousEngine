@@ -20,9 +20,9 @@ class VGPixelProbeTests
 	[Test]
 	public static void FillRulesAndStencilClipsHold()
 	{
-		// Both backends: the fill rules and the stencil clip is configured per backend, so one passing says nothing
+		// Every backend: the fill rules and the stencil clip is configured per backend, so one passing says nothing
 		// about the other.
-		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu))
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu, .Dx12))
 			FillRulesAndStencilClipsHoldOn(kind);
 	}
 
@@ -87,9 +87,9 @@ class VGPixelProbeTests
 	[Test]
 	public static void TheColourPipelinesAgreeAndSpreadsRepeat()
 	{
-		// Both backends: the colour pipelines and the spreads is configured per backend, so one passing says nothing
+		// Every backend: the colour pipelines and the spreads is configured per backend, so one passing says nothing
 		// about the other.
-		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu))
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu, .Dx12))
 			TheColourPipelinesAgreeAndSpreadsRepeatOn(kind);
 	}
 
@@ -168,9 +168,9 @@ class VGPixelProbeTests
 	[Test]
 	public static void TheBlendModesActOverALightStrip()
 	{
-		// Both backends: the blend modes is configured per backend, so one passing says nothing
+		// Every backend: the blend modes is configured per backend, so one passing says nothing
 		// about the other.
-		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu))
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu, .Dx12))
 			TheBlendModesActOverALightStripOn(kind);
 	}
 
@@ -224,9 +224,9 @@ class VGPixelProbeTests
 	[Test]
 	public static void MultisamplingSoftensAHardDiagonal()
 	{
-		// Both backends: the multisample resolve is configured per backend, so one passing says nothing
+		// Every backend: the multisample resolve is configured per backend, so one passing says nothing
 		// about the other.
-		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu))
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu, .Dx12))
 			MultisamplingSoftensAHardDiagonalOn(kind);
 	}
 

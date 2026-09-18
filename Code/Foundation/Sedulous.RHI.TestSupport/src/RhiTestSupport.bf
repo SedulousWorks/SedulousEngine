@@ -50,7 +50,9 @@ static class RhiTestSupport
 		if ((colorTarget == null) || (width == 0) || (height == 0))
 			return image;
 
-		// Both backends want 256 byte rows in the buffer, whatever the image's own width is.
+		// Every backend wants 256 byte rows in the buffer, whatever the image's own width is: it is
+		// DX12 that REQUIRES it, the placed footprint pitch being a multiple of 256, and the
+		// others are happy to be handed the same.
 		let bytesPerRow = (width * 4 + 255) & ~(uint32)255;
 
 		var bufferDesc = BufferDesc();
