@@ -215,6 +215,51 @@ class DxDevice : IDevice
 		for (let q in mGraphicsQueues) q.WaitIdle();
 		for (let q in mComputeQueues) q.WaitIdle();
 		for (let q in mTransferQueues) q.WaitIdle();
+
+		// A natural point to empty the queue: the GPU is idle, so whatever it was going to
+		// complain about it has complained about by now.
+		DrainDebugMessages();
+	}
+
+	/// Report and clear whatever the debug layer has stored.
+	///
+	/// The info queue is a RING that fills and then silently drops, so it has to be emptied or
+	/// it stops being useful. Only warnings and worse are reported; the info tier is mostly
+	/// state-setting chatter.
+	private void DrainDebugMessages()
+	{
+		if (mInfoQueue == null)
+			return;
+
+		let count = mInfoQueue.GetNumStoredMessages();
+		for (uint64 i = 0; i < count; i++)
+		{
+			uint len = 0;
+			mInfoQueue.GetMessage(i, null, &len);
+			if (len == 0)
+				continue;
+
+			// The message is variable length, with its description trailing the struct, so the
+			// queue is asked for the size first and the buffer sized to it.
+			let buffer = new uint8[len];
+			defer delete buffer;
+
+			let msg = (D3D12_MESSAGE*)buffer.Ptr;
+			if (mInfoQueue.GetMessage(i, msg, &len) != 0 /* S_OK */)
+				continue;
+
+			if (msg.Severity > .D3D12_MESSAGE_SEVERITY_WARNING)
+				continue;
+
+			let severity = (msg.Severity == .D3D12_MESSAGE_SEVERITY_ERROR) ? "ERROR"
+				: (msg.Severity == .D3D12_MESSAGE_SEVERITY_WARNING) ? "WARN"
+				: "CORRUPT";
+
+			let text = StringView((char8*)msg.pDescription, (int)msg.DescriptionByteLength);
+			GlobalLog(.Error, "DX12 {0}: {1}", severity, text);
+		}
+
+		mInfoQueue.ClearStoredMessages();
 	}
 
 	public void Destroy()
