@@ -15,18 +15,28 @@ namespace Sedulous.Engine.Physics;
 ///
 /// Gameplay writes the movement velocity and a one shot jump; the tick reads them.
 [SerializableComponent("physics.Character")]
+[DisplayName("Character")]
+[Category("Physics")]
+[Scriptable]
 struct CharacterComponent : ISerializable
 {
 	// ---- authored ----
 
+	[Scriptable]
 	public float Radius = 0.35f;
 	/// The cylinder's half length, so the whole capsule is twice this plus two radii.
+	[Scriptable]
 	public float HalfHeight = 0.55f;
+	[Scriptable]
 	public float MaxSlopeDegrees = 50.0f;
+	[Scriptable]
 	public float Mass = 70.0f;
 	/// The push force cap. The backend's own default barely nudges a prop.
+	[Scriptable]
 	public float MaxStrength = 500.0f;
+	[Scriptable]
 	public float StepUp = 0.4f;
+	[Scriptable]
 	public float StepDown = 0.5f;
 
 	// ---- the input gameplay writes ----
@@ -51,11 +61,13 @@ struct CharacterComponent : ISerializable
 	public this() {}
 
 	/// Steers along the ground. The vertical is left to gravity and to the jump.
+	[Scriptable]
 	public void Move(float velocityX, float velocityZ) mut
 	{
 		MoveVelocity = .(velocityX, 0.0f, velocityZ);
 	}
 
+	[Scriptable]
 	public void Jump(float speed) mut
 	{
 		JumpSpeed = speed;
@@ -66,12 +78,14 @@ struct CharacterComponent : ISerializable
 	/// The TICK moves the character rather than the caller setting a position: a live
 	/// character owns its transform, so a plain move would be overwritten on the next step.
 	/// Momentum drops with it, and the request clears once applied.
+	[Scriptable]
 	public void SetPosition(Float3 position) mut
 	{
 		TeleportTo = position;
 		TeleportPending = true;
 	}
 
+	[Scriptable]
 	public bool Grounded => Ground == .OnGround;
 
 	public void Serialize(ISerializer ar) mut

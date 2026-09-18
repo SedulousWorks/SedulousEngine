@@ -8,8 +8,12 @@ namespace Sedulous.Engine.Audio;
 /// The ears. The FIRST active one is the scene's primary; every active one collects, which is
 /// what a split screen needs.
 [SerializableComponent("audio.Listener")]
+[DisplayName("Audio Listener")]
+[Category("Audio")]
+[Scriptable]
 struct AudioListenerComponent : ISerializable
 {
+	[Scriptable]
 	public bool IsActive = true;
 
 	// ---- runtime ----

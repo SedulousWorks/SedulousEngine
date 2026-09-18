@@ -15,15 +15,25 @@ namespace Sedulous.Engine.Physics;
 /// Its offset is its transform relative to the body's entity, captured at that moment: the
 /// compound is built once, so moving the collider afterwards moves nothing.
 [SerializableComponent("physics.Collider")]
+[DisplayName("Collider")]
+[Category("Physics")]
+[Scriptable]
 struct ColliderComponent : ISerializable, IComponentResources
 {
+	[Scriptable]
 	public ShapeKind Shape = .Box;
+	[Scriptable]
 	public Float3 HalfExtents = .(0.5f, 0.5f, 0.5f);
+	[Scriptable]
 	public float Radius = 0.5f;
+	[Scriptable]
 	public float HalfHeight = 0.5f;
+	[Scriptable]
 	public float PlaneHalfExtent = 1000.0f;
 
+	[Scriptable]
 	public Ref<CollisionShape> CollisionShape = .(Guid());
+	[Scriptable]
 	public Ref<Heightfield> Heightfield = .(Guid());
 
 	public this() {}

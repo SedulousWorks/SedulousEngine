@@ -13,47 +13,71 @@ namespace Sedulous.Engine.Audio;
 /// jitter per trigger. Everything below the authored block is runtime state the scene system
 /// owns and nothing serializes.
 [SerializableComponent("audio.Source", 3)]
+[DisplayName("Audio Source")]
+[Category("Audio")]
+[Scriptable]
 struct AudioSourceComponent : ISerializable, IComponentResources
 {
 	// ---- authored ----
 
 	/// Which of the two references below plays.
+	[Scriptable]
 	public AudioSourceType SourceType = .Clip;
+	[Scriptable]
 	public Ref<AudioClip> Clip = .(Guid());
+	[Scriptable]
 	public Ref<SoundCue> Cue = .(Guid());
 
+	[Scriptable]
 	public AudioBus Bus = .Effects;
 	/// A NAMED custom bus. When the applied layout carries one of this name the voice routes
 	/// there; an unknown or empty name falls back to the fixed bus above.
+	[Scriptable]
 	public String BusName = null;
 
+	[Scriptable]
 	public float Volume = 1.0f;
 	/// Real resampling at runtime.
+	[Scriptable]
 	public float Pitch = 1.0f;
 	/// ORed with the clip's own authored intent.
+	[Scriptable]
 	public bool Loop = false;
+	[Scriptable]
 	public bool Spatial = true;
 	/// Starts when the scene's simulation starts.
+	[Scriptable]
 	public bool AutoPlay = false;
 
 	/// The distance low pass FLOOR in hertz for a spatial source: the cutoff glides from open
 	/// at the near distance to this at the far one. Nought muffles nothing.
+	[Scriptable]
 	public float DistanceLowpassHz = 4000.0f;
 
 	/// This source's feed into the scene's reverb, from nought to one. The zones drive the
 	/// room's character; this scales how much of this voice reaches it. Nought is dry.
+	[Scriptable]
 	public float ReverbSend = 0.0f;
 
 	/// Pool contention: the higher survives.
+	[Scriptable]
 	public uint8 Priority = 128;
+	[Scriptable]
 	public float MinDistance = 1.0f;
+	[Scriptable]
 	public float MaxDistance = 100.0f;
+	[Scriptable]
 	public AudioAttenuationModel AttenuationModel = .Inverse;
+	[Scriptable]
 	public float Rolloff = 1.0f;
 	/// Velocities feed the spatialiser every frame.
+	[Scriptable]
 	public float DopplerFactor = 1.0f;
+	[Scriptable]
 	public float ConeInnerAngleDegrees = 360.0f;
+	[Scriptable]
 	public float ConeOuterAngleDegrees = 360.0f;
+	[Scriptable]
 	public float ConeOuterGain = 0.0f;
 
 	// ---- runtime ----
