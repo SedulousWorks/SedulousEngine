@@ -5,6 +5,7 @@ namespace Sedulous.Particles;
 
 /// A steady push with an optional per particle jitter, which is what keeps a wind from
 /// moving every particle identically.
+[DisplayName("Wind")]
 [Serializable]
 class WindBehavior : ParticleBehavior
 {

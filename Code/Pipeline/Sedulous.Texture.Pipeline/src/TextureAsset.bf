@@ -13,26 +13,40 @@ namespace Sedulous.Texture.Pipeline;
 /// The compression fields are AUTHORING data: the builder feeds them to the policy table to
 /// pick the cooked format, and the runtime never sees them.
 [Category("Textures")]
+[DisplayName("Texture")]
 [Serializable]
 class TextureAsset : Asset
 {
+	[DisplayName("Color Space")]
 	public ImageColorSpace ColorSpace = .Srgb;
 
 	/// Embedded mode, which a model import produces: no file name, these two set, and the
 	/// pixels in the source instance's own stream rather than an external file.
+	[DisplayName("Embedded Width")]
 	public uint32 EmbeddedWidth = 0;
+	[DisplayName("Embedded Height")]
 	public uint32 EmbeddedHeight = 0;
 
+	[DisplayName("Shape")]
 	public TextureShape Shape = .Texture2D;
+	[DisplayName("Min Filter")]
 	public TextureFilter MinFilter = .Linear;
+	[DisplayName("Mag Filter")]
 	public TextureFilter MagFilter = .Linear;
+	[DisplayName("Wrap U")]
 	public TextureWrap WrapU = .Repeat;
+	[DisplayName("Wrap V")]
 	public TextureWrap WrapV = .Repeat;
+	[DisplayName("Wrap W")]
 	public TextureWrap WrapW = .Repeat;
+	[DisplayName("Generate Mipmaps")]
 	public bool GenerateMipmaps = true;
+	[DisplayName("Anisotropy")]
 	public float Anisotropy = 1.0f;
 
+	[DisplayName("Usage")]
 	public SourceUsage Usage = .Color;
+	[DisplayName("Compression")]
 	public CompressionChoice Compression = .Default;
 
 	/// DISPLAY ONLY provenance: where an embedded texture came from, being the model's own

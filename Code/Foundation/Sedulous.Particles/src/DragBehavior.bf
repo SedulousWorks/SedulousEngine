@@ -5,6 +5,7 @@ namespace Sedulous.Particles;
 
 /// Bleeds speed away. Linear rather than quadratic, and FLOORED at zero so a large drag over
 /// a large step slows a particle to a stop rather than reversing it.
+[DisplayName("Drag")]
 [Serializable]
 class DragBehavior : ParticleBehavior
 {

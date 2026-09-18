@@ -4,6 +4,7 @@ using Sedulous.Core.Serialization;
 namespace Sedulous.Particles;
 
 /// Drives ONLY alpha from a curve, leaving the hue to whatever set it.
+[DisplayName("Alpha over Lifetime")]
 [Serializable]
 class AlphaOverLifetimeBehavior : ParticleBehavior
 {

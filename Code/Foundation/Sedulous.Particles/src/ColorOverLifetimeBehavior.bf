@@ -4,6 +4,7 @@ using Sedulous.Core.Serialization;
 namespace Sedulous.Particles;
 
 /// Drives colour from a gradient sampled at normalised lifetime.
+[DisplayName("Color over Lifetime")]
 [Serializable]
 class ColorOverLifetimeBehavior : ParticleBehavior
 {

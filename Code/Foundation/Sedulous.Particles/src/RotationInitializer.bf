@@ -4,6 +4,7 @@ using Sedulous.Core.Serialization;
 namespace Sedulous.Particles;
 
 /// Spins a billboard: a starting angle and a rate, both in radians.
+[DisplayName("Rotation")]
 [Serializable]
 class RotationInitializer : ParticleInitializer
 {

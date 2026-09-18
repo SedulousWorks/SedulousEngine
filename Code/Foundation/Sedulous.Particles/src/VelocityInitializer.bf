@@ -5,6 +5,7 @@ namespace Sedulous.Particles;
 
 /// Gives a particle its starting velocity, and records it: the start velocity is what a
 /// speed-over-lifetime curve scales, so it has to survive whatever the forces do.
+[DisplayName("Velocity")]
 [Serializable]
 class VelocityInitializer : ParticleInitializer
 {

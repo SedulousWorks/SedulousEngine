@@ -6,6 +6,7 @@ namespace Sedulous.Physics.Pipeline;
 
 /// Authored surface properties.
 [Category("Physics")]
+[DisplayName("Physical Material")]
 [Serializable]
 class PhysicalMaterialAsset : Asset
 {

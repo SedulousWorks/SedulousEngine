@@ -8,6 +8,7 @@ namespace Sedulous.Particles;
 ///
 /// Measured against the start velocity rather than the current one, so this does not compound
 /// with itself frame over frame the way scaling the live speed would.
+[DisplayName("Speed over Lifetime")]
 [Serializable]
 class SpeedOverLifetimeBehavior : ParticleBehavior
 {

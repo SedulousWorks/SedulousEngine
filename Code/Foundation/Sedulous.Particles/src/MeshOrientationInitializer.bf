@@ -4,6 +4,7 @@ using Sedulous.Core.Serialization;
 namespace Sedulous.Particles;
 
 /// Picks the axis a mesh particle spins about.
+[DisplayName("Mesh Orientation")]
 [Serializable]
 class MeshOrientationInitializer : ParticleInitializer
 {

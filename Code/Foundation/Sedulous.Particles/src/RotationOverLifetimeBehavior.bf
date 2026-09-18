@@ -8,6 +8,7 @@ namespace Sedulous.Particles;
 ///
 /// So an inactive curve still spins: the behaviour is what advances rotation at all, and a
 /// system with a rotation initializer and no curve should turn at its authored speed.
+[DisplayName("Rotation over Lifetime")]
 [Serializable]
 class RotationOverLifetimeBehavior : ParticleBehavior
 {

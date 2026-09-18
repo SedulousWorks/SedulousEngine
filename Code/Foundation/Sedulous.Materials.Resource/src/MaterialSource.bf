@@ -20,17 +20,26 @@ namespace Sedulous.Materials.Resource;
 [Serializable(3)]
 class MaterialSource
 {
+	[DisplayName("Name")]
 	public String Name = new .() ~ delete _;
 
 	/// A cooked shader resource. NIL means fall back to ShaderName, which is how a builtin
 	/// shader is referenced: it has no asset to point at.
+	[DisplayName("Shader")]
 	public Guid ShaderId = .();
+	[DisplayName("Shader Name")]
+	[Description("Builtin shader name fallback when Shader is unset")]
 	public String ShaderName = new .() ~ delete _;
+	[DisplayName("Shader Flags")]
 	public uint32 ShaderFlags = 0;
 
+	[DisplayName("Blend Mode")]
 	public BlendMode BlendMode = .Opaque;
+	[DisplayName("Depth Mode")]
 	public DepthMode DepthMode = .ReadWrite;
+	[DisplayName("Cull Mode")]
 	public CullModeConfig CullMode = .Back;
+	[DisplayName("Vertex Layout")]
 	public VertexLayoutType VertexLayout = .Mesh;
 
 	public List<String> PropertyNames = new .() ~ DeleteContainerAndItems!(_);
@@ -49,7 +58,9 @@ class MaterialSource
 	public List<Guid> TextureIds = new .() ~ delete _;
 
 	/// AddressMode values, wired from the source asset's sampler at import.
+	[DisplayName("Sampler U")]
 	public uint8 SamplerU = 0;
+	[DisplayName("Sampler V")]
 	public uint8 SamplerV = 0;
 
 	/// Captures a built material's declared layout and defaults into an authorable source

@@ -8,6 +8,7 @@ namespace Sedulous.Particles;
 ///
 /// CPU ONLY: the field is a cheap trigonometric stand in for noise, and a GPU path would
 /// sample a real noise texture instead, which would not match sample for sample.
+[DisplayName("Turbulence")]
 [Serializable]
 class TurbulenceBehavior : ParticleBehavior
 {

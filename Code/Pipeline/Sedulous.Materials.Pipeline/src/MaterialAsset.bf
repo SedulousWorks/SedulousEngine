@@ -7,6 +7,7 @@ namespace Sedulous.Materials.Pipeline;
 
 /// The authored material. Its source IS the runtime source, so writing it out IS the cook.
 [Category("Materials")]
+[DisplayName("Material")]
 [Serializable]
 class MaterialAsset : Asset
 {

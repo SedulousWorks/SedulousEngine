@@ -4,6 +4,7 @@ using Sedulous.Core.Serialization;
 namespace Sedulous.Particles;
 
 /// Pulls particles toward a point, or pushes them away when the strength is negative.
+[DisplayName("Attractor")]
 [Serializable]
 class AttractorBehavior : ParticleBehavior
 {

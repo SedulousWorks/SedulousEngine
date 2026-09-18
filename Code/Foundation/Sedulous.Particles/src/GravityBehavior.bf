@@ -5,6 +5,7 @@ namespace Sedulous.Particles;
 
 /// A constant acceleration. The multiplier scales Earth gravity, so one is what a falling
 /// thing does and a fraction is what dust does.
+[DisplayName("Gravity")]
 [Serializable]
 class GravityBehavior : ParticleBehavior
 {

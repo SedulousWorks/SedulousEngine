@@ -9,6 +9,7 @@ namespace Sedulous.Input.Pipeline;
 /// The authored input map. Authored in the editor, so the file name a plain asset carries goes
 /// unused.
 [Category("Input")]
+[DisplayName("Input Map")]
 [Serializable]
 class InputMapAsset : Asset
 {

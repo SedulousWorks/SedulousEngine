@@ -4,6 +4,7 @@ using Sedulous.Core.Serialization;
 namespace Sedulous.Particles;
 
 /// Sets how long a particle lives, and starts its age at nothing.
+[DisplayName("Lifetime")]
 [Serializable]
 class LifetimeInitializer : ParticleInitializer
 {

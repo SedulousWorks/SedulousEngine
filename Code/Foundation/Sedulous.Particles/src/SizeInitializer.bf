@@ -4,6 +4,7 @@ using Sedulous.Core.Serialization;
 namespace Sedulous.Particles;
 
 /// Gives a particle its starting size, in world units across.
+[DisplayName("Size")]
 [Serializable]
 class SizeInitializer : ParticleInitializer
 {

@@ -10,12 +10,15 @@ namespace Sedulous.Shaders.Pipeline;
 /// The VERTEX source is the file name a plain asset carries; the fragment one sits beside it.
 /// Both are mount relative at cook time.
 [Category("Rendering")]
+[DisplayName("Shader")]
 [Serializable]
 class ShaderAsset : Asset
 {
 	/// How a material refers to this shader.
+	[DisplayName("Name")]
 	public String Name = new .() ~ delete _;
 
 	/// The fragment stage's source file.
+	[DisplayName("Fragment File")]
 	public String FragmentFile = new .() ~ delete _;
 }

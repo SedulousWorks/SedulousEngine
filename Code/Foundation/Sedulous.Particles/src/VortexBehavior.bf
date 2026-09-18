@@ -5,6 +5,7 @@ namespace Sedulous.Particles;
 
 /// Swings particles around an axis. The push falls off with distance, so the core spins fast
 /// and the fringe drifts.
+[DisplayName("Vortex")]
 [Serializable]
 class VortexBehavior : ParticleBehavior
 {

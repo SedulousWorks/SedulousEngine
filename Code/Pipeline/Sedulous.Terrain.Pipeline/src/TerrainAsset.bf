@@ -13,6 +13,7 @@ namespace Sedulous.Terrain.Pipeline;
 /// so the same reference works on both sides. Terrain has no source file of its own, which is
 /// why the file name a plain asset carries goes unused.
 [Category("Terrain")]
+[DisplayName("Terrain")]
 [Serializable]
 class TerrainAsset : Asset
 {
@@ -43,5 +44,6 @@ class TerrainAsset : Asset
 	/// How soft the skirt is where two layers compete by height.
 	public float HeightBlendContrast = 0.25f;
 
+	[DisplayName("Cast Shadows")]
 	public bool CastShadows = true;
 }

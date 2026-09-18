@@ -4,6 +4,7 @@ using Sedulous.Core.Serialization;
 namespace Sedulous.Particles;
 
 /// Gives a particle its starting colour.
+[DisplayName("Color")]
 [Serializable]
 class ColorInitializer : ParticleInitializer
 {

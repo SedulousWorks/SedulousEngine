@@ -4,6 +4,7 @@ using Sedulous.Core.Serialization;
 namespace Sedulous.Particles;
 
 /// Places a particle by sampling the emission shape.
+[DisplayName("Position")]
 [Serializable]
 class PositionInitializer : ParticleInitializer
 {

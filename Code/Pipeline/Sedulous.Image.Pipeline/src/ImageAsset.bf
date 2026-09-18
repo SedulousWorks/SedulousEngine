@@ -7,8 +7,10 @@ namespace Sedulous.Image.Pipeline;
 
 /// An image file, with the colour space that says how to read it.
 [Category("Textures")]
+[DisplayName("Image")]
 [Serializable]
 class ImageAsset : Asset
 {
+	[DisplayName("Color Space")]
 	public ImageColorSpace ColorSpace = .Srgb;
 }

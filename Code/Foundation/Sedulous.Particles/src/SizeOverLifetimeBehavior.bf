@@ -4,6 +4,7 @@ using Sedulous.Core.Serialization;
 namespace Sedulous.Particles;
 
 /// Drives size from a curve sampled at normalised lifetime.
+[DisplayName("Size over Lifetime")]
 [Serializable]
 class SizeOverLifetimeBehavior : ParticleBehavior
 {

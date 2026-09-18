@@ -19,7 +19,12 @@ namespace Sedulous.Core;
 /// fine and every backend can dispatch it by argument count. Same name with the SAME arity
 /// is not, because a dynamically typed caller passing a number picks neither the float nor
 /// the int overload, and it has to be split with [[ScriptNameAttribute]].
-[AttributeUsage(.Types | .Field | .Property | .Method,
+/// StaticField and Constructor are in the target list on purpose. Raptor exposes named
+/// constants (.Constant("Zero", Float3::Zero)) and constructors (.Constructor<f32, f32, f32>)
+/// alongside methods, and a script surface for a value type is poor without both. Beef spells
+/// a static field and an instance field differently in AttributeUsage, so listing Field alone
+/// would silently refuse every constant.
+[AttributeUsage(.Types | .Field | .StaticField | .Property | .Method | .Constructor,
 	.NotInherited | .ReflectAttribute | .DisallowAllowMultiple)]
 struct ScriptableAttribute : Attribute
 {

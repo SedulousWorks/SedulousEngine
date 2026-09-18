@@ -4,6 +4,7 @@ using Sedulous.Core.Serialization;
 namespace Sedulous.Particles;
 
 /// Pushes particles straight out from the emitter, which is what an explosion does.
+[DisplayName("Radial Force")]
 [Serializable]
 class RadialForceBehavior : ParticleBehavior
 {

@@ -1,3 +1,4 @@
+using Sedulous.Core;
 using System;
 using Sedulous.VFS;
 
@@ -20,5 +21,6 @@ class Asset
 	/// TYPED rather than a string, because normalisation guarantees the forward slash relative
 	/// form in cooked data: a Windows authored backslash heals on load instead of breaking
 	/// the mount for everybody else.
+	[DisplayName("Source File")]
 	public SourcePath FileName = new .() ~ delete _;
 }

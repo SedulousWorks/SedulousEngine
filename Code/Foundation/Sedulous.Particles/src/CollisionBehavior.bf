@@ -16,6 +16,7 @@ namespace Sedulous.Particles;
 /// Describes ITSELF rather than carrying [Serializable]: the generated body walks every field,
 /// and a fixed array of shape structs is not something the value dispatcher can write. The
 /// hand written body is count bound instead, which is the shape the record wants anyway.
+[DisplayName("Collision")]
 class CollisionBehavior : ParticleBehavior, ISerializable
 {
 	public const int32 MaxPlanes = 4;
