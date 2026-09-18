@@ -17,14 +17,15 @@ namespace Sedulous.RHI.DX12;
 /// a reference to and releases in the destructor. The FACTORY is not: the backend owns that
 /// and outlives every adapter it enumerated, so this only names it.
 ///
-/// Devices created through this will be OWNED here, the way the Vulkan adapter owns its own,
-/// so a caller never has to decide who deletes one. CreateDevice cannot make one yet, so
-/// there is nothing to hold; the list lands with DxDevice.
+/// Devices created through this are OWNED here, the way the Vulkan adapter owns its own, so a
+/// caller never has to decide who deletes one.
 class DxAdapter : IAdapter
 {
 	private IDXGIAdapter1* mAdapter = null; // owned, released in the destructor
 	private IDXGIFactory4* mFactory = null; // NOT owned, the backend's
 	private DXGI_ADAPTER_DESC1 mDesc = .();
+	/// Devices made here are OWNED here, so a caller never has to decide who deletes one.
+	private List<DxDevice> mDevices = new .() ~ DeleteContainerAndItems!(_);
 
 	public this(IDXGIAdapter1* adapter, IDXGIFactory4* factory)
 	{
@@ -125,7 +126,14 @@ class DxAdapter : IAdapter
 
 	public Result<IDevice> CreateDevice(DeviceDesc desc)
 	{
-		// Lands with DxDevice, which is what this has to construct.
-		return .Err;
+		let dev = new DxDevice();
+		if (dev.Initialize(this, desc) case .Err)
+		{
+			delete dev;
+			return .Err;
+		}
+
+		mDevices.Add(dev);
+		return .Ok(dev);
 	}
 }
