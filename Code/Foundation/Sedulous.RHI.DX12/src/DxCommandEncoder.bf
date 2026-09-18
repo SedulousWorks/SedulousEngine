@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.RHI;
 using Win32;
 using Win32.Foundation;
@@ -204,7 +205,233 @@ class DxCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 	// what remains. They answer as no-ops here rather than pretending to record.
 	// ==================================================================
 
-	public void Barrier(BarrierGroup group) {}
+	/// One coalesced transition for a single subresource: where it started, where it ends.
+	private struct CoalescedEntry
+	{
+		public ID3D12Resource* Resource;
+		public uint32 Subresource;
+		public D3D12_RESOURCE_STATES FirstBefore;
+		public D3D12_RESOURCE_STATES LastAfter;
+	}
+
+	public void Barrier(BarrierGroup group)
+	{
+		let total = group.BufferBarriers.Length + group.TextureBarriers.Length +
+			group.MemoryBarriers.Length;
+		if (total == 0)
+			return;
+
+		let dxBarriers = scope List<D3D12_RESOURCE_BARRIER>();
+		dxBarriers.Reserve(total);
+
+		for (let bb in group.BufferBarriers)
+		{
+			let dxBuf = bb.Buffer as DxBuffer;
+			if (dxBuf == null)
+				continue;
+
+			let oldState = ToResourceStates(bb.OldState);
+			let newState = ToResourceStates(bb.NewState);
+			if (oldState == newState)
+				continue;
+
+			D3D12_RESOURCE_BARRIER b = .();
+			b.Type = .D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			b.Flags = .D3D12_RESOURCE_BARRIER_FLAG_NONE;
+			b.Transition.pResource = dxBuf.Handle;
+			b.Transition.StateBefore = oldState;
+			b.Transition.StateAfter = newState;
+			b.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+			dxBuf.SetState(newState);
+			dxBarriers.Add(b);
+		}
+
+		// Texture barriers are COALESCED per resource and subresource before being emitted.
+		// The solver can produce several for one texture in a single batch: ParticlePass
+		// declares both ReadDepth and ReadTexture on SceneDepth, giving DEPTH_WRITE to
+		// DEPTH_READ and then DEPTH_READ to SHADER_READ. D3D12 applies every barrier in one
+		// call SIMULTANEOUSLY, so the second one's before state would not match reality.
+		// Folding A to B and B to C into a single A to C is what makes the batch legal.
+		let coalesced = scope List<CoalescedEntry>();
+		coalesced.Reserve(group.TextureBarriers.Length);
+
+		for (let tb in group.TextureBarriers)
+		{
+			let dxTex = tb.Texture as DxTexture;
+			if (dxTex == null)
+				continue;
+
+			let newState = ToResourceStates(tb.NewState, dxTex.Desc.Format);
+
+			// ALL_SUBRESOURCES is legal only when every subresource really is in one state. In
+			// per subresource mode the single state is a stale leftover, so the barrier would
+			// carry the wrong before state; the per subresource path below reads each real
+			// state instead, and collapses the tracker back to uniform on the way out.
+			let isWholeResource = (tb.MipLevelCount == uint32.MaxValue) &&
+				(tb.ArrayLayerCount == uint32.MaxValue) && dxTex.HasUniformState;
+
+			if (isWholeResource)
+			{
+				let resolvedOldState = dxTex.CurrentState;
+				if (resolvedOldState == newState)
+					continue;
+
+				var found = false;
+				for (var entry in ref coalesced)
+				{
+					if ((entry.Resource == dxTex.Handle) &&
+						(entry.Subresource == D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES))
+					{
+						entry.LastAfter = newState;
+						found = true;
+						break;
+					}
+				}
+
+				if (!found)
+				{
+					coalesced.Add(.() {
+						Resource = dxTex.Handle,
+						Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
+						FirstBefore = resolvedOldState,
+						LastAfter = newState
+					});
+				}
+
+				dxTex.SetState(newState);
+			}
+			else
+			{
+				let mipCount = dxTex.Desc.MipLevelCount;
+				let layerCount = dxTex.StateLayerCount;
+				let baseMip = tb.BaseMipLevel;
+				let mipEnd = Math.Min(baseMip + tb.MipLevelCount, mipCount);
+				let baseLayer = tb.BaseArrayLayer;
+				let layerEnd = Math.Min(baseLayer + tb.ArrayLayerCount, layerCount);
+
+				for (uint32 layer = baseLayer; layer < layerEnd; layer++)
+				{
+					for (uint32 mip = baseMip; mip < mipEnd; mip++)
+					{
+						let resolvedOldState = dxTex.GetSubresourceState(mip, layer);
+						let sub = mip + layer * mipCount;
+						if (resolvedOldState == newState)
+							continue;
+
+						var found = false;
+						for (var entry in ref coalesced)
+						{
+							if ((entry.Resource == dxTex.Handle) && (entry.Subresource == sub))
+							{
+								entry.LastAfter = newState;
+								found = true;
+								break;
+							}
+						}
+
+						if (!found)
+						{
+							coalesced.Add(.() {
+								Resource = dxTex.Handle,
+								Subresource = sub,
+								FirstBefore = resolvedOldState,
+								LastAfter = newState
+							});
+						}
+					}
+				}
+
+				dxTex.SetSubresourceState(baseMip, tb.MipLevelCount, baseLayer, tb.ArrayLayerCount,
+					newState);
+			}
+		}
+
+		for (let entry in coalesced)
+		{
+			if (entry.FirstBefore == entry.LastAfter)
+				continue; // A to B to A, which cancelled out
+
+			D3D12_RESOURCE_BARRIER b = .();
+			b.Type = .D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			b.Flags = .D3D12_RESOURCE_BARRIER_FLAG_NONE;
+			b.Transition.pResource = entry.Resource;
+			b.Transition.StateBefore = entry.FirstBefore;
+			b.Transition.StateAfter = entry.LastAfter;
+			b.Transition.Subresource = entry.Subresource;
+			dxBarriers.Add(b);
+		}
+
+		// A memory barrier is a global UAV barrier, which is the nearest D3D12 has.
+		for (let mb in group.MemoryBarriers)
+		{
+			D3D12_RESOURCE_BARRIER b = .();
+			b.Type = .D3D12_RESOURCE_BARRIER_TYPE_UAV;
+			b.Flags = .D3D12_RESOURCE_BARRIER_FLAG_NONE;
+			b.UAV.pResource = null;
+			dxBarriers.Add(b);
+		}
+
+		if (!dxBarriers.IsEmpty)
+			mCmdList.ResourceBarrier((uint32)dxBarriers.Count, dxBarriers.Ptr);
+	}
+
+	public static D3D12_RESOURCE_STATES ToResourceStates(ResourceState state) =>
+		ToResourceStates(state, .Undefined);
+
+	/// The RHI's state set as D3D12's, which needs the FORMAT: a depth texture being sampled
+	/// goes to DEPTH_READ rather than to the shader resource states.
+	public static D3D12_RESOURCE_STATES ToResourceStates(ResourceState state, TextureFormat format)
+	{
+		if (state == .Undefined)
+			return .D3D12_RESOURCE_STATE_COMMON;
+
+		D3D12_RESOURCE_STATES result = .D3D12_RESOURCE_STATE_COMMON;
+
+		if (state.HasFlag(.VertexBuffer))
+			result |= .D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+		if (state.HasFlag(.IndexBuffer))
+			result |= .D3D12_RESOURCE_STATE_INDEX_BUFFER;
+		if (state.HasFlag(.UniformBuffer))
+			result |= .D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+
+		if (state.HasFlag(.ShaderRead))
+		{
+			if (TextureFormats.IsDepthFormat(format))
+			{
+				result |= .D3D12_RESOURCE_STATE_DEPTH_READ;
+			}
+			else
+			{
+				result |= .D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+				result |= .D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+			}
+		}
+
+		if (state.HasFlag(.ShaderWrite))
+			result |= .D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+		if (state.HasFlag(.RenderTarget))
+			result |= .D3D12_RESOURCE_STATE_RENDER_TARGET;
+		if (state.HasFlag(.DepthStencilWrite))
+			result |= .D3D12_RESOURCE_STATE_DEPTH_WRITE;
+		if (state.HasFlag(.DepthStencilRead))
+			result |= .D3D12_RESOURCE_STATE_DEPTH_READ;
+		if (state.HasFlag(.IndirectArgument))
+			result |= .D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+		if (state.HasFlag(.CopySrc))
+			result |= .D3D12_RESOURCE_STATE_COPY_SOURCE;
+		if (state.HasFlag(.CopyDst))
+			result |= .D3D12_RESOURCE_STATE_COPY_DEST;
+		if (state.HasFlag(.Present))
+			result |= .D3D12_RESOURCE_STATE_PRESENT;
+		if (state.HasFlag(.General))
+			result |= .D3D12_RESOURCE_STATE_COMMON;
+		if (state.HasFlag(.AccelStructRead))
+			result |= .D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
+		if (state.HasFlag(.AccelStructWrite))
+			result |= .D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+
+		return result;
+	}
 
 	public void CopyBufferToBuffer(IBuffer src, uint64 srcOffset, IBuffer dst, uint64 dstOffset,
 		uint64 size) {}
