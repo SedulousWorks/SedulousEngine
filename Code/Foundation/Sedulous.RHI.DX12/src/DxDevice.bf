@@ -215,45 +215,399 @@ class DxDevice : IDevice
 		}
 	}
 
+	/// A debug name, visible in PIX and the graphics debuggers. Any ID3D12Object takes one.
+	/// Names are ASCII, so widening is a cast per character.
+	private static void SetDebugName(ID3D12Object* obj, StringView name)
+	{
+		if ((obj == null) || name.IsEmpty)
+			return;
+
+		let wide = scope List<char16>();
+		for (int i = 0; i < name.Length; i++)
+			wide.Add((char16)(uint8)name[i]);
+		wide.Add(0);
+
+		obj.SetName(wide.Ptr);
+	}
+
 	// ==================================================================
-	// PARTIALLY PORTED. The resource creation and destruction pairs, format support, the
-	// indirect command signatures and the internal blit pipeline are still in
-	// RaptorCode/Foundation/RHI.DX12/DxDevice.cppm, which says what remains. Everything
-	// below answers honestly rather than pretending, so nothing silently half works.
+	// Resource creation. Everything made here is handed to the CALLER, who gives it back
+	// through the matching Destroy, which is what the Vulkan device does too.
+	// ==================================================================
+
+	public Result<IBuffer> CreateBuffer(BufferDesc desc)
+	{
+		let b = new DxBuffer();
+		if (b.Initialize(mDevice, desc) case .Err)
+		{
+			delete b;
+			return .Err;
+		}
+		SetDebugName((ID3D12Object*)b.Handle, desc.Label);
+		return .Ok(b);
+	}
+
+	public Result<ITexture> CreateTexture(TextureDesc desc)
+	{
+		let t = new DxTexture();
+		if (t.Initialize(mDevice, desc) case .Err)
+		{
+			delete t;
+			return .Err;
+		}
+		SetDebugName((ID3D12Object*)t.Handle, desc.Label);
+		return .Ok(t);
+	}
+
+	public Result<ITextureView> CreateTextureView(ITexture texture, TextureViewDesc desc)
+	{
+		let dxTex = texture as DxTexture;
+		if (dxTex == null)
+		{
+			GlobalLog(.Error, "DxDevice: the texture is not a DxTexture");
+			return .Err;
+		}
+
+		let v = new DxTextureView();
+		if (v.Initialize(mDevice, dxTex, desc, mSrvHeap, mRtvHeap, mDsvHeap) case .Err)
+		{
+			delete v;
+			return .Err;
+		}
+		return .Ok(v);
+	}
+
+	public Result<ISampler> CreateSampler(SamplerDesc desc)
+	{
+		let s = new DxSampler();
+		if (s.Initialize(mDevice, desc, mSamplerHeap) case .Err)
+		{
+			delete s;
+			return .Err;
+		}
+		return .Ok(s);
+	}
+
+	public Result<IShaderModule> CreateShaderModule(ShaderModuleDesc desc)
+	{
+		let m = new DxShaderModule();
+		if (m.Initialize(desc) case .Err)
+		{
+			delete m;
+			return .Err;
+		}
+		return .Ok(m);
+	}
+
+	public Result<IBindGroupLayout> CreateBindGroupLayout(BindGroupLayoutDesc desc)
+	{
+		let l = new DxBindGroupLayout();
+		if (l.Initialize(desc) case .Err)
+		{
+			delete l;
+			return .Err;
+		}
+		return .Ok(l);
+	}
+
+	public Result<IBindGroup> CreateBindGroup(BindGroupDesc desc)
+	{
+		let g = new DxBindGroup();
+		if (g.Initialize(mDevice, desc, mCpuSrvHeap, mCpuSamplerHeap, mGpuSamplerHeap) case .Err)
+		{
+			delete g;
+			return .Err;
+		}
+		return .Ok(g);
+	}
+
+	public Result<IPipelineLayout> CreatePipelineLayout(PipelineLayoutDesc desc)
+	{
+		let l = new DxPipelineLayout();
+		if (l.Initialize(mDevice, desc) case .Err)
+		{
+			GlobalLog(.Error, "DxDevice: CreatePipelineLayout failed");
+			delete l;
+			return .Err;
+		}
+		SetDebugName((ID3D12Object*)l.Handle, desc.Label);
+		return .Ok(l);
+	}
+
+	public Result<IPipelineCache> CreatePipelineCache(PipelineCacheDesc desc)
+	{
+		let c = new DxPipelineCache();
+		if (c.Initialize(mDevice, desc) case .Err)
+		{
+			delete c;
+			return .Err;
+		}
+		if (c.Handle != null)
+			SetDebugName((ID3D12Object*)c.Handle, desc.Label);
+		return .Ok(c);
+	}
+
+	public Result<IRenderPipeline> CreateRenderPipeline(RenderPipelineDesc desc)
+	{
+		let p = new DxRenderPipeline();
+		if (p.Initialize(mDevice, desc) case .Err)
+		{
+			delete p;
+			return .Err;
+		}
+		SetDebugName((ID3D12Object*)p.Handle, desc.Label);
+		return .Ok(p);
+	}
+
+	public Result<IComputePipeline> CreateComputePipeline(ComputePipelineDesc desc)
+	{
+		let p = new DxComputePipeline();
+		if (p.Initialize(mDevice, desc) case .Err)
+		{
+			delete p;
+			return .Err;
+		}
+		SetDebugName((ID3D12Object*)p.Handle, desc.Label);
+		return .Ok(p);
+	}
+
+	public Result<IFence> CreateFence(uint64 initialValue)
+	{
+		let f = new DxFence();
+		if (f.Initialize(mDevice, initialValue) case .Err)
+		{
+			delete f;
+			return .Err;
+		}
+		return .Ok(f);
+	}
+
+	public Result<IQuerySet> CreateQuerySet(QuerySetDesc desc)
+	{
+		let q = new DxQuerySet();
+		if (q.Initialize(mDevice, desc) case .Err)
+		{
+			delete q;
+			return .Err;
+		}
+		SetDebugName((ID3D12Object*)q.Handle, desc.Label);
+		return .Ok(q);
+	}
+
+	// ---- mesh shaders, refused outright when the device has none ----
+
+	public Result<IMeshPipeline> CreateMeshPipeline(MeshPipelineDesc desc)
+	{
+		if (!mMeshEnabled)
+			return .Err;
+
+		let p = new DxMeshPipeline();
+		if (p.Initialize(mDevice, desc) case .Err)
+		{
+			delete p;
+			return .Err;
+		}
+		SetDebugName((ID3D12Object*)p.Handle, desc.Label);
+		return .Ok(p);
+	}
+
+	public void DestroyMeshPipeline(ref IMeshPipeline pipeline)
+	{
+		if (let p = pipeline as DxMeshPipeline)
+		{
+			p.Cleanup();
+			delete p;
+		}
+		pipeline = null;
+	}
+
+	// ---- ray tracing, likewise ----
+
+	public Result<IAccelStruct> CreateAccelStruct(AccelStructDesc desc)
+	{
+		if (!mRtEnabled)
+			return .Err;
+
+		let a = new DxAccelStruct();
+		if (a.Initialize(mDevice, desc) case .Err)
+		{
+			delete a;
+			return .Err;
+		}
+		return .Ok(a);
+	}
+
+	public void DestroyAccelStruct(ref IAccelStruct accelStruct)
+	{
+		if (let a = accelStruct as DxAccelStruct)
+		{
+			a.Cleanup();
+			delete a;
+		}
+		accelStruct = null;
+	}
+
+	public Result<IRayTracingPipeline> CreateRayTracingPipeline(RayTracingPipelineDesc desc)
+	{
+		if (!mRtEnabled)
+			return .Err;
+
+		let p = new DxRayTracingPipeline();
+		if (p.Initialize(mDevice, desc) case .Err)
+		{
+			delete p;
+			return .Err;
+		}
+		return .Ok(p);
+	}
+
+	public void DestroyRayTracingPipeline(ref IRayTracingPipeline pipeline)
+	{
+		if (let p = pipeline as DxRayTracingPipeline)
+		{
+			p.Cleanup();
+			delete p;
+		}
+		pipeline = null;
+	}
+
+	/// The shader identifiers for a run of groups, packed back to back into outData.
+	public Result<void> GetShaderGroupHandles(IRayTracingPipeline pipeline, uint32 firstGroup,
+		uint32 groupCount, Span<uint8> outData)
+	{
+		let dxPipeline = pipeline as DxRayTracingPipeline;
+		if (dxPipeline == null)
+			return .Err;
+
+		const uint32 cHandleSize = 32; // D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES
+		if ((uint32)outData.Length < groupCount * cHandleSize)
+		{
+			GlobalLog(.Error, "DxDevice: the output buffer is too small for the group handles");
+			return .Err;
+		}
+
+		let exportNames = dxPipeline.GroupExportNames;
+		for (uint32 i = 0; i < groupCount; i++)
+		{
+			let groupIdx = (int)(firstGroup + i);
+			if (groupIdx >= exportNames.Length)
+			{
+				GlobalLog(.Error, "DxDevice: the shader group index is out of range");
+				return .Err;
+			}
+
+			let identifier = dxPipeline.GetShaderIdentifier(exportNames[groupIdx]);
+			if (identifier == null)
+			{
+				GlobalLog(.Error, "DxDevice: GetShaderIdentifier answered null");
+				return .Err;
+			}
+
+			Internal.MemCpy(&outData[(int)(i * cHandleSize)], identifier, cHandleSize);
+		}
+
+		return .Ok;
+	}
+
+	// ==================================================================
+	// Resource destruction. Cleanup gives up the native handles, then the object goes.
+	// ==================================================================
+
+	public void DestroyBuffer(ref IBuffer buffer)
+	{
+		if (let r = buffer as DxBuffer) { r.Cleanup(); delete r; }
+		buffer = null;
+	}
+
+	public void DestroyTexture(ref ITexture texture)
+	{
+		if (let r = texture as DxTexture) { r.Cleanup(); delete r; }
+		texture = null;
+	}
+
+	public void DestroyTextureView(ref ITextureView view)
+	{
+		if (let r = view as DxTextureView) { r.Cleanup(); delete r; }
+		view = null;
+	}
+
+	public void DestroySampler(ref ISampler sampler)
+	{
+		if (let r = sampler as DxSampler) { r.Cleanup(); delete r; }
+		sampler = null;
+	}
+
+	public void DestroyShaderModule(ref IShaderModule module)
+	{
+		if (let r = module as DxShaderModule) { r.Cleanup(); delete r; }
+		module = null;
+	}
+
+	public void DestroyBindGroupLayout(ref IBindGroupLayout layout)
+	{
+		if (let r = layout as DxBindGroupLayout) { delete r; }
+		layout = null;
+	}
+
+	public void DestroyBindGroup(ref IBindGroup group)
+	{
+		if (let r = group as DxBindGroup) { r.Cleanup(); delete r; }
+		group = null;
+	}
+
+	public void DestroyPipelineLayout(ref IPipelineLayout layout)
+	{
+		if (let r = layout as DxPipelineLayout) { r.Cleanup(); delete r; }
+		layout = null;
+	}
+
+	public void DestroyPipelineCache(ref IPipelineCache cache)
+	{
+		if (let r = cache as DxPipelineCache) { r.Cleanup(); delete r; }
+		cache = null;
+	}
+
+	public void DestroyRenderPipeline(ref IRenderPipeline pipeline)
+	{
+		if (let r = pipeline as DxRenderPipeline) { r.Cleanup(); delete r; }
+		pipeline = null;
+	}
+
+	public void DestroyComputePipeline(ref IComputePipeline pipeline)
+	{
+		if (let r = pipeline as DxComputePipeline) { r.Cleanup(); delete r; }
+		pipeline = null;
+	}
+
+	public void DestroyFence(ref IFence fence)
+	{
+		if (let r = fence as DxFence) { r.Cleanup(); delete r; }
+		fence = null;
+	}
+
+	public void DestroyQuerySet(ref IQuerySet querySet)
+	{
+		if (let r = querySet as DxQuerySet) { r.Cleanup(); delete r; }
+		querySet = null;
+	}
+
+	public void DestroySurface(ref ISurface surface)
+	{
+		// The backend owns surfaces, so nothing is freed here.
+		surface = null;
+	}
+
+	// ==================================================================
+	// PARTIALLY PORTED. Format support, the indirect command signatures, the internal blit
+	// pipeline and extension detection are still in RaptorCode, which says what remains.
+	// The command pool and the swap chain wait on their own types.
 	// ==================================================================
 
 	public FormatSupport GetFormatSupport(TextureFormat format) => .();
 
-	public Result<IBuffer> CreateBuffer(BufferDesc desc) => .Err;
-	public Result<ITexture> CreateTexture(TextureDesc desc) => .Err;
-	public Result<ITextureView> CreateTextureView(ITexture texture, TextureViewDesc desc) => .Err;
-	public Result<ISampler> CreateSampler(SamplerDesc desc) => .Err;
-	public Result<IShaderModule> CreateShaderModule(ShaderModuleDesc desc) => .Err;
-	public Result<IBindGroupLayout> CreateBindGroupLayout(BindGroupLayoutDesc desc) => .Err;
-	public Result<IBindGroup> CreateBindGroup(BindGroupDesc desc) => .Err;
-	public Result<IPipelineLayout> CreatePipelineLayout(PipelineLayoutDesc desc) => .Err;
-	public Result<IPipelineCache> CreatePipelineCache(PipelineCacheDesc desc) => .Err;
-	public Result<IRenderPipeline> CreateRenderPipeline(RenderPipelineDesc desc) => .Err;
-	public Result<IComputePipeline> CreateComputePipeline(ComputePipelineDesc desc) => .Err;
 	public Result<ICommandPool> CreateCommandPool(QueueType queueType) => .Err;
-	public Result<IFence> CreateFence(uint64 initialValue) => .Err;
-	public Result<IQuerySet> CreateQuerySet(QuerySetDesc desc) => .Err;
 	public Result<ISwapChain> CreateSwapChain(ISurface surface, SwapChainDesc desc) => .Err;
 
-	public void DestroyBuffer(ref IBuffer buffer) {}
-	public void DestroyTexture(ref ITexture texture) {}
-	public void DestroyTextureView(ref ITextureView view) {}
-	public void DestroySampler(ref ISampler sampler) {}
-	public void DestroyShaderModule(ref IShaderModule module) {}
-	public void DestroyBindGroupLayout(ref IBindGroupLayout layout) {}
-	public void DestroyBindGroup(ref IBindGroup group) {}
-	public void DestroyPipelineLayout(ref IPipelineLayout layout) {}
-	public void DestroyPipelineCache(ref IPipelineCache cache) {}
-	public void DestroyRenderPipeline(ref IRenderPipeline pipeline) {}
-	public void DestroyComputePipeline(ref IComputePipeline pipeline) {}
 	public void DestroyCommandPool(ref ICommandPool pool) {}
-	public void DestroyFence(ref IFence fence) {}
-	public void DestroyQuerySet(ref IQuerySet querySet) {}
 	public void DestroySwapChain(ref ISwapChain swapChain) {}
-	public void DestroySurface(ref ISurface surface) {}
 }
