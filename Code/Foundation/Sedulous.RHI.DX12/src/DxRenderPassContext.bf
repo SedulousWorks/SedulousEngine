@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using Win32.Graphics.Direct3D12;
 
 namespace Sedulous.RHI.DX12;
@@ -19,3 +20,5 @@ struct DxRenderPassContext
 
 	public this() {}
 }
+
+#endif // BF_PLATFORM_WINDOWS

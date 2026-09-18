@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using Sedulous.RHI;
 using Win32;
@@ -61,3 +62,5 @@ class DxAccelStruct : IAccelStruct
 		mGpuAddr = 0;
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using Sedulous.RHI;
 using Win32.Graphics.Direct3D12;
@@ -353,3 +354,5 @@ class DxTextureView : ITextureView
 		}
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

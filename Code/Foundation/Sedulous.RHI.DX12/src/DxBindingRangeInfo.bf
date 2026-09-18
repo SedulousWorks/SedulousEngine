@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using Sedulous.RHI;
 
 namespace Sedulous.RHI.DX12;
@@ -20,3 +21,5 @@ struct DxBindingRangeInfo
 
 	public this() {}
 }
+
+#endif // BF_PLATFORM_WINDOWS

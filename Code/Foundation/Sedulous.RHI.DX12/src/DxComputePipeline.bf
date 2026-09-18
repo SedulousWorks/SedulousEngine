@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using Sedulous.Core.Logging;
 using Sedulous.RHI;
@@ -57,3 +58,5 @@ class DxComputePipeline : IComputePipeline
 		}
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

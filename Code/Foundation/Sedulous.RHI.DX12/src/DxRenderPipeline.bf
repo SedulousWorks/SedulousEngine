@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using System.Collections;
 using Sedulous.Core.Logging;
@@ -198,3 +199,5 @@ class DxRenderPipeline : IRenderPipeline
 		}
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using System.Collections;
 using Sedulous.Core.Logging;
@@ -215,3 +216,5 @@ class DxSwapChain : ISwapChain
 		ClearAndDeleteItems!(mTextures);
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

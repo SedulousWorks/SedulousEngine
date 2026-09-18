@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using System.Collections;
 using Sedulous.RHI;
@@ -1014,3 +1015,5 @@ class DxCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		cmdList4.DispatchRays(&dispatchDesc);
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

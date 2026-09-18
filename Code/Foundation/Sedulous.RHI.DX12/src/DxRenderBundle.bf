@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using Sedulous.RHI;
 using Win32.Graphics.Direct3D12;
 
@@ -37,3 +38,5 @@ class DxRenderBundle : IRenderBundle
 		if (mAlloc != null) { mAlloc.Release(); mAlloc = null; }
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

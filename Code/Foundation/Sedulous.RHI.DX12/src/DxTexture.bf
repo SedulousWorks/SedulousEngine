@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using System.Collections;
 using Sedulous.Core.Logging;
@@ -241,3 +242,5 @@ class DxTexture : ITexture
 		tex.SetState(after); // every subresource is now `after`, so uniform is the truth
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

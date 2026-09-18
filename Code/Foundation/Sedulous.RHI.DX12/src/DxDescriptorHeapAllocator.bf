@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using System.Collections;
 using Sedulous.RHI;
@@ -92,3 +93,5 @@ class DxDescriptorHeapAllocator
 		mAlive.Clear();
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

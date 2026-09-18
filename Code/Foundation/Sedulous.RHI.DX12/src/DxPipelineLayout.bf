@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using System.Collections;
 using Sedulous.Core.Logging;
@@ -184,3 +185,5 @@ class DxPipelineLayout : IPipelineLayout
 		}
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

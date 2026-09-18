@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using Sedulous.Core.Logging;
 using Sedulous.RHI;
@@ -77,3 +78,5 @@ class DxQuerySet : IQuerySet
 		}
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using System.Collections;
 using Sedulous.Core.Logging;
@@ -156,3 +157,5 @@ class DxDescriptorStaging
 			(int)mHeapType);
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

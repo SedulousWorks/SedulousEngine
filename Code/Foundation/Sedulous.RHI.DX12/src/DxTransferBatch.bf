@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using System.Collections;
 using Sedulous.Core.Logging;
@@ -258,3 +259,5 @@ class DxTransferBatch : ITransferBatch
 		mStagingBuffers.Clear();
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

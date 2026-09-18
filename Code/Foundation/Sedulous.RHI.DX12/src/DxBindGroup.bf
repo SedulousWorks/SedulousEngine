@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using System.Collections;
 using Sedulous.RHI;
@@ -273,3 +274,5 @@ class DxBindGroup : IBindGroup
 			.D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

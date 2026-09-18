@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using Sedulous.Core.Logging;
 using Sedulous.RHI;
@@ -234,3 +235,5 @@ class DxMeshPipeline : IMeshPipeline
 		offset += sizeof(T);
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

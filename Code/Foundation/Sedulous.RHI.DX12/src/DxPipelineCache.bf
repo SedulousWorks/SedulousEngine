@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using Sedulous.RHI;
 using Win32;
@@ -68,3 +69,5 @@ class DxPipelineCache : IPipelineCache
 		}
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using System.Collections;
 using System.Threading;
@@ -1077,3 +1078,5 @@ class DxDevice : IDevice
 		swapChain = null;
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

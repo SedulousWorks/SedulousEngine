@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using System.Collections;
 using Sedulous.Core;
@@ -151,3 +152,5 @@ static class DxRhi
 		return .Ok(backend);
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

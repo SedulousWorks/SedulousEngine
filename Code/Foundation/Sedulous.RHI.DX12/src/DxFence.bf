@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
@@ -75,3 +76,5 @@ class DxFence : IFence
 		return WaitForSingleObject(mEvent, timeoutMs) == .WAIT_OBJECT_0;
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

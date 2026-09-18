@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using System.Collections;
 using System.Text;
@@ -137,3 +138,5 @@ class DxAdapter : IAdapter
 		return .Ok(dev);
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

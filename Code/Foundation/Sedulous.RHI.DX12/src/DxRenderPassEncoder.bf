@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using Sedulous.RHI;
 using Win32;
@@ -419,3 +420,5 @@ class DxRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 		mCurrentMeshPipeline = null;
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

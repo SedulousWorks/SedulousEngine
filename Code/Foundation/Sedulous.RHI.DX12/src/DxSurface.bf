@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using Sedulous.RHI;
 using Win32.Foundation;
 
@@ -15,3 +16,5 @@ class DxSurface : ISurface
 
 	public HWND Handle => mHwnd;
 }
+
+#endif // BF_PLATFORM_WINDOWS

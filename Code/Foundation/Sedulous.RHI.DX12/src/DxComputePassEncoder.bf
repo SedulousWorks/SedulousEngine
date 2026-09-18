@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using Sedulous.RHI;
 using Win32.Graphics.Direct3D12;
@@ -146,3 +147,5 @@ class DxComputePassEncoder : IComputePassEncoder
 
 	public void End() => mCurrentPipeline = null;
 }
+
+#endif // BF_PLATFORM_WINDOWS

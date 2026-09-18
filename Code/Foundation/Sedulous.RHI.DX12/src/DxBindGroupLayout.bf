@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using System.Collections;
 using Sedulous.RHI;
@@ -82,3 +83,5 @@ class DxBindGroupLayout : IBindGroupLayout
 		return .Ok;
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS

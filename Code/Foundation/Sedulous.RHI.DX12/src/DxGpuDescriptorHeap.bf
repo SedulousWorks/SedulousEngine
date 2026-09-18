@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using System.Collections;
 using System.Threading;
@@ -157,3 +158,5 @@ class DxGpuDescriptorHeap
 		mFreeBlocks.Clear();
 	}
 }
+
+#endif // BF_PLATFORM_WINDOWS
