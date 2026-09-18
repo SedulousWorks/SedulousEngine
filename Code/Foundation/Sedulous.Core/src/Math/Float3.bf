@@ -6,6 +6,7 @@ namespace Sedulous.Core;
 /// 3D float vector: arithmetic, Dot/Cross/Length/Normalized, Min/Max, Lerp, component
 /// constants. Converts from Float2.
 [CRepr]
+[Scriptable(.AllPublic)]
 struct Float3
 {
 	public float X = 0.0f;

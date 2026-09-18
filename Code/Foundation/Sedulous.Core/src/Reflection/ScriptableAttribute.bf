@@ -11,8 +11,11 @@ namespace Sedulous.Core;
 /// property Raptor gets for free: the surface is what someone decided it is.
 ///
 /// Apply to a TYPE to bind the type, and to each MEMBER to expose it. A bound type with no
-/// marked members is legal and useful: a value a script passes through without reaching
-/// into.
+/// exposed members is legal and useful: a value a script passes through without reaching into.
+///
+/// A type may instead say [Scriptable(.AllPublic)] and expose its whole public surface, which
+/// is what a closed value type wants; see [[ScriptMemberPolicy]] for when that is right. The
+/// default stays MarkedOnly, so the strict answer is the one you get by writing nothing.
 ///
 /// THE OVERLOAD RULE, which a generator has to enforce rather than discover: no two exposed
 /// methods on a type may share name, ARITY and staticness. Same name with different arity is
@@ -28,4 +31,16 @@ namespace Sedulous.Core;
 	.NotInherited | .ReflectAttribute | .DisallowAllowMultiple)]
 struct ScriptableAttribute : Attribute
 {
+	/// Only meaningful on a type; a member carrying this is exposed either way.
+	public ScriptMemberPolicy Members;
+
+	public this()
+	{
+		Members = .MarkedOnly;
+	}
+
+	public this(ScriptMemberPolicy members)
+	{
+		Members = members;
+	}
 }
