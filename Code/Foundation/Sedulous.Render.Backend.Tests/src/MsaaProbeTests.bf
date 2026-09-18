@@ -227,7 +227,7 @@ class MsaaProbeTests
 	{
 		// EVERY backend, because the resolve is a backend feature: Vulkan resolves in the pass
 		// and WebGPU through a resolveTarget, and only running both holds them to one property.
-		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu))
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu, .Dx12))
 			EdgeCoverageOn(kind);
 	}
 
@@ -264,7 +264,7 @@ class MsaaProbeTests
 	[Test]
 	public static void TheResolveComposesWithThePostStack()
 	{
-		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu))
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu, .Dx12))
 			PostStackOn(kind);
 	}
 

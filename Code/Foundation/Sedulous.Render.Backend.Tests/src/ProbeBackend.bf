@@ -12,5 +12,9 @@ namespace Sedulous.Render.Backend.Tests;
 enum ProbeBackend
 {
 	Vulkan,
-	WebGpu
+	WebGpu,
+	/// DX12, which only exists on Windows. The fixture answers NOT READY for it elsewhere, so
+	/// every probe that iterates this list skips it on other platforms without a guard of its
+	/// own.
+	Dx12
 }

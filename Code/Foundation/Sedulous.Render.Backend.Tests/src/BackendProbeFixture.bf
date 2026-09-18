@@ -7,6 +7,10 @@ using Sedulous.RHI;
 using Sedulous.RHI.TestSupport;
 using Sedulous.RHI.Vulkan;
 using Sedulous.RHI.WebGPU;
+#if BF_PLATFORM_WINDOWS
+// The namespace itself does not exist off Windows: every file in the backend is guarded out.
+using Sedulous.RHI.DX12;
+#endif
 using Sedulous.Shaders;
 
 namespace Sedulous.Render.Backend.Tests;
@@ -48,6 +52,14 @@ class BackendProbeFixture
 			if (!(WebGpuRhi.CreateBackend() case .Ok(let backend)))
 				return;
 			Backend = backend;
+		case .Dx12:
+#if BF_PLATFORM_WINDOWS
+			if (!(DxRhi.CreateBackend() case .Ok(let backend)))
+				return;
+			Backend = backend;
+#else
+			return; // no DX12 off Windows, so this fixture is simply not ready
+#endif
 		}
 
 		Device = RhiTestSupport.MakeTestDevice(Backend);

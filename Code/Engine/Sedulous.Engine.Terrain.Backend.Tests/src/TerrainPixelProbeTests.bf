@@ -86,7 +86,7 @@ class TerrainPixelProbeTests
 	[Test]
 	public static void TheRidgeCastsACascadedShadowOntoTheGround()
 	{
-		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu))
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu, .Dx12))
 		{
 			let fixture = scope:: TerrainProbeFixture(kind);
 			if (!fixture.Ready)
@@ -153,7 +153,7 @@ class TerrainPixelProbeTests
 		if (!expected.Valid)
 			return;
 
-		for (let kind in scope ProbeBackend[](.WebGpu))
+		for (let kind in scope ProbeBackend[](.WebGpu, .Dx12))
 		{
 			let fixture = scope:: TerrainProbeFixture(kind);
 			if (!fixture.Ready)
