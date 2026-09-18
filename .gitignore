@@ -21,7 +21,6 @@ scratch_*/
 Code/Samples/*/dist/
 # The player's browser entry writes the same output, and it is not a sample.
 Code/Engine/*/dist/
-Code/Web/build/
 
 # Emscripten build trees for the vendored native deps, the wasm counterpart of the
 # build-linux-* directories. The ARTIFACTS under dist/Release-wasm32 are committed; these are
