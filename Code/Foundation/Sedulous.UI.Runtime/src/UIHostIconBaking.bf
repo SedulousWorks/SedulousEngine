@@ -208,8 +208,9 @@ extension UIHost
 		else
 			return null;
 
-		if (!(pool.CreateEncoder() case .Ok(let encoder)))
+		if (!(pool.CreateEncoder() case .Ok(var encoder)))
 			return null;
+		defer pool.DestroyEncoder(ref encoder);
 
 		encoder.TransitionTexture(target, .Undefined, .RenderTarget);
 
