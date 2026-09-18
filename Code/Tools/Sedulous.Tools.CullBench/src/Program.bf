@@ -1,4 +1,5 @@
 using System;
+using System.Numerics;
 using System.Collections;
 using System.Diagnostics;
 using Sedulous.Core;
@@ -52,6 +53,15 @@ static class Program
 		Run("localDot (Dot defined HERE)", scope () => LocalDot(bounds, frustum));
 		Run("scalars  (same call, float args)", scope () => ScalarArgs(bounds, frustum));
 		Run("inParams (Dot taking in Float3)", scope () => InParams(bounds, frustum));
+		Run("simd4    (float4 plane dot)", scope () => Simd4(bounds, frustum));
+		Run("simd4in  (float4 taken by in)", scope () => Simd4In(bounds, frustum));
+		Run("simd4x4  (four planes at once)", scope () => Simd4x4(bounds, frustum));
+
+		Console.WriteLine();
+		Console.WriteLine("-- bulk transform: every point through a matrix, no early out --");
+		Run("xform scalar (Float4x4 by hand)", scope () => XformScalar(bounds));
+		Run("xform simd4  (float4 rows)", scope () => XformSimd(bounds));
+		Run("xform simd4 fma (fused)", scope () => XformSimdFma(bounds));
 
 		Console.WriteLine();
 		Console.WriteLine("-- operators: a sphere cull written three ways --");
@@ -519,4 +529,231 @@ static class Program
 		}
 		return kept;
 	}
+	// ---- SIMD ---------------------------------------------------------------------------------
+	//
+	// The question these answer is not whether float4 is fast, it is whether Beef hands one to a
+	// call in a REGISTER. Every scalar struct above pays for being materialised in memory (see the
+	// by value row), and a float4 that pays the same toll is a wider load for no win.
+
+	/// Plane distance as one lane wise multiply plus a horizontal sum: the plane is (nx,ny,nz,d)
+	/// and the centre is (x,y,z,1), so the fourth lane carries the constant for free.
+	[Inline]
+	private static float PlaneDot(float4 plane, float4 centre)
+	{
+		let product = plane * centre;
+		// float4 has no horizontal add, so fold it: xy+zw then x+y.
+		let folded = product + float4.ShuffleVector(product, 2, 3, 0, 1);
+		return folded.x + folded.y;
+	}
+
+	[Inline]
+	private static float PlaneDotIn(in float4 plane, in float4 centre)
+	{
+		let product = plane * centre;
+		let folded = product + float4.ShuffleVector(product, 2, 3, 0, 1);
+		return folded.x + folded.y;
+	}
+
+	private static int Simd4(List<Float4> boundsList, BoundingFrustum frustum)
+	{
+		let cullBounds = boundsList.Ptr;
+		let count = boundsList.Count;
+
+		float4[BoundingFrustum.PlaneCount] planes = ?;
+		for (int p < BoundingFrustum.PlaneCount)
+		{
+			let n = frustum.Planes[p].Normal;
+			planes[p] = .(n.X, n.Y, n.Z, frustum.Planes[p].D);
+		}
+
+		var kept = 0;
+		for (int k < count)
+		{
+			let bounds = cullBounds[k];
+			let centre = float4(bounds.X, bounds.Y, bounds.Z, 1.0f);
+			var inside = true;
+			for (int p < BoundingFrustum.PlaneCount)
+			{
+				if (PlaneDot(planes[p], centre) > bounds.W)
+				{
+					inside = false;
+					break;
+				}
+			}
+			if (inside)
+				kept++;
+		}
+		return kept;
+	}
+
+	private static int Simd4In(List<Float4> boundsList, BoundingFrustum frustum)
+	{
+		let cullBounds = boundsList.Ptr;
+		let count = boundsList.Count;
+
+		float4[BoundingFrustum.PlaneCount] planes = ?;
+		for (int p < BoundingFrustum.PlaneCount)
+		{
+			let n = frustum.Planes[p].Normal;
+			planes[p] = .(n.X, n.Y, n.Z, frustum.Planes[p].D);
+		}
+
+		var kept = 0;
+		for (int k < count)
+		{
+			let bounds = cullBounds[k];
+			let centre = float4(bounds.X, bounds.Y, bounds.Z, 1.0f);
+			var inside = true;
+			for (int p < BoundingFrustum.PlaneCount)
+			{
+				if (PlaneDotIn(planes[p], centre) > bounds.W)
+				{
+					inside = false;
+					break;
+				}
+			}
+			if (inside)
+				kept++;
+		}
+		return kept;
+	}
+
+	/// The shape SIMD is actually for: the six planes TRANSPOSED, so four are tested in one
+	/// go and the horizontal sum disappears entirely. Two passes cover six planes.
+	private static int Simd4x4(List<Float4> boundsList, BoundingFrustum frustum)
+	{
+		let cullBounds = boundsList.Ptr;
+		let count = boundsList.Count;
+
+		// Structure of arrays: nx holds the x component of four planes, and so on.
+		float4[2] nx = ?, ny = ?, nz = ?, pd = ?;
+		for (int group < 2)
+		{
+			float[4] gx = ?, gy = ?, gz = ?, gd = ?;
+			for (int lane < 4)
+			{
+				// The last group is short, so pad with a plane nothing fails: normal zero and
+				// a distance below any radius.
+				let p = group * 4 + lane;
+				let live = p < BoundingFrustum.PlaneCount;
+				let n = live ? frustum.Planes[p].Normal : Float3(0, 0, 0);
+				gx[lane] = n.X;
+				gy[lane] = n.Y;
+				gz[lane] = n.Z;
+				gd[lane] = live ? frustum.Planes[p].D : -float.MaxValue;
+			}
+			nx[group] = .(gx[0], gx[1], gx[2], gx[3]);
+			ny[group] = .(gy[0], gy[1], gy[2], gy[3]);
+			nz[group] = .(gz[0], gz[1], gz[2], gz[3]);
+			pd[group] = .(gd[0], gd[1], gd[2], gd[3]);
+		}
+
+		var kept = 0;
+		for (int k < count)
+		{
+			let bounds = cullBounds[k];
+			let cx = float4(bounds.X, bounds.X, bounds.X, bounds.X);
+			let cy = float4(bounds.Y, bounds.Y, bounds.Y, bounds.Y);
+			let cz = float4(bounds.Z, bounds.Z, bounds.Z, bounds.Z);
+			let radius = float4(bounds.W, bounds.W, bounds.W, bounds.W);
+
+			var inside = true;
+			for (int group < 2)
+			{
+				let distance = nx[group] * cx + ny[group] * cy + nz[group] * cz + pd[group];
+				let outside = distance > radius;
+				if (outside.x || outside.y || outside.z || outside.w)
+				{
+					inside = false;
+					break;
+				}
+			}
+			if (inside)
+				kept++;
+		}
+		return kept;
+	}
+
+	// ---- bulk transform -----------------------------------------------------------------------
+	//
+	// What SIMD is actually for, as against the cull above: every element is touched, there is no
+	// early out to lose, and the work per element is four lanes wide by nature.
+
+	private static Float4x4 BenchMatrix()
+	{
+		Float4x4 m = .();
+		m.M = .((0.8f, 0.1f, 0.2f, 0.0f),
+				(-0.1f, 0.9f, 0.05f, 0.0f),
+				(0.3f, -0.2f, 1.1f, 0.0f),
+				(4.0f, -3.0f, 2.0f, 1.0f));
+		return m;
+	}
+
+	private static int XformScalar(List<Float4> pointList)
+	{
+		let points = pointList.Ptr;
+		let count = pointList.Count;
+		let m = BenchMatrix();
+
+		var kept = 0;
+		for (int k < count)
+		{
+			let p = points[k];
+			let x = p.X * m.M[0][0] + p.Y * m.M[1][0] + p.Z * m.M[2][0] + m.M[3][0];
+			let y = p.X * m.M[0][1] + p.Y * m.M[1][1] + p.Z * m.M[2][1] + m.M[3][1];
+			let z = p.X * m.M[0][2] + p.Y * m.M[1][2] + p.Z * m.M[2][2] + m.M[3][2];
+			if ((x + y + z) > 0.0f)
+				kept++;
+		}
+		return kept;
+	}
+
+	/// The rows as float4, the point splatted per component: the standard shape, four lanes of
+	/// the result computed together.
+	private static int XformSimd(List<Float4> pointList)
+	{
+		let points = pointList.Ptr;
+		let count = pointList.Count;
+		let m = BenchMatrix();
+		let r0 = float4(m.M[0][0], m.M[0][1], m.M[0][2], m.M[0][3]);
+		let r1 = float4(m.M[1][0], m.M[1][1], m.M[1][2], m.M[1][3]);
+		let r2 = float4(m.M[2][0], m.M[2][1], m.M[2][2], m.M[2][3]);
+		let r3 = float4(m.M[3][0], m.M[3][1], m.M[3][2], m.M[3][3]);
+
+		var kept = 0;
+		for (int k < count)
+		{
+			let p = points[k];
+			let transformed = r0 * p.X + r1 * p.Y + r2 * p.Z + r3;
+			if ((transformed.x + transformed.y + transformed.z) > 0.0f)
+				kept++;
+		}
+		return kept;
+	}
+
+	/// The same, through FusedMultiplyAdd: one rounding per lane, and on a machine with FMA
+	/// half the instructions.
+	private static int XformSimdFma(List<Float4> pointList)
+	{
+		let points = pointList.Ptr;
+		let count = pointList.Count;
+		let m = BenchMatrix();
+		let r0 = float4(m.M[0][0], m.M[0][1], m.M[0][2], m.M[0][3]);
+		let r1 = float4(m.M[1][0], m.M[1][1], m.M[1][2], m.M[1][3]);
+		let r2 = float4(m.M[2][0], m.M[2][1], m.M[2][2], m.M[2][3]);
+		let r3 = float4(m.M[3][0], m.M[3][1], m.M[3][2], m.M[3][3]);
+
+		var kept = 0;
+		for (int k < count)
+		{
+			let p = points[k];
+			var transformed = float4.FusedMultiplyAdd(r0, float4(p.X, p.X, p.X, p.X), r3);
+			transformed = float4.FusedMultiplyAdd(r1, float4(p.Y, p.Y, p.Y, p.Y), transformed);
+			transformed = float4.FusedMultiplyAdd(r2, float4(p.Z, p.Z, p.Z, p.Z), transformed);
+			if ((transformed.x + transformed.y + transformed.z) > 0.0f)
+				kept++;
+		}
+		return kept;
+	}
+
 }
