@@ -11,7 +11,12 @@ enum ScriptMemberPolicy
 	/// bookkeeping the engine needs, and the distinction is not visible from the outside.
 	MarkedOnly,
 
-	/// Every public member is exposed, and [[HiddenAttribute]] withholds one.
+	/// Every public FIELD AND PROPERTY is exposed, and [[HiddenAttribute]] withholds one.
+	///
+	/// Data only. A method is never swept in, and always needs its own [Scriptable], because
+	/// the public methods on a data type are mostly the engine's own contract with it -
+	/// Serialize, ResolveResources - and handing a script Serialize is not a surface, it is
+	/// an accident.
 	///
 	/// What a closed VALUE TYPE wants. Float3's public surface is x, y, z, five constants and
 	/// its free functions, all of which are the API by construction: marking each one says

@@ -9,6 +9,9 @@ namespace Sedulous.Engine.Render;
 /// The scene's environment: what lights it from all around, and what the sky looks like.
 ///
 /// ONE per scene rather than a component, because there is only ever one environment.
+[DisplayName("Environment")]
+[Category("Rendering")]
+[Scriptable(.AllPublic)]
 struct EnvironmentSettings
 {
 	/// A flat ambient FILL added on top of the image based ambient in every sky mode, so an

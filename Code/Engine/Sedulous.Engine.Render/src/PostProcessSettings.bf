@@ -11,6 +11,9 @@ namespace Sedulous.Engine.Render;
 ///
 /// ONE per scene, like the environment. The defaults match what the subsystem used before
 /// any of this was authorable, so a scene looks the same until someone edits the block.
+[DisplayName("Post Processing")]
+[Category("Rendering")]
+[Scriptable(.AllPublic)]
 struct PostProcessSettings
 {
 	/// Photographic STOPS: the tonemap applies two to this power, so nought is neutral, plus

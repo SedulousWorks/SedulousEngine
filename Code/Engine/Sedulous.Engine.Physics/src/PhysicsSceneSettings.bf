@@ -13,10 +13,16 @@ namespace Sedulous.Engine.Physics;
 ///
 /// The lists are OWNED by this block rather than by a manager, because a settings block is one
 /// per scene and is a plain object rather than a component in a pool.
+[DisplayName("Physics Settings")]
+[Category("Physics")]
+[Scriptable]
 class PhysicsSceneSettings : ISerializable
 {
+	[Scriptable]
 	public Float3 Gravity = .(0.0f, -9.81f, 0.0f);
+	[Scriptable]
 	public int32 CollisionSteps = 1;
+	[Scriptable]
 	public bool DebugDraw = false;
 
 	public List<String> GroupNames = new .() ~ DeleteContainerAndItems!(_);
