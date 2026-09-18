@@ -14,22 +14,31 @@ namespace Sedulous.Engine.Navigation;
 ///
 /// Everything below the authored block is transient and never serialized.
 [SerializableComponent("navigation.Agent", 2)]
+[DisplayName("Nav Agent")]
+[Category("Navigation")]
+[Scriptable]
 struct NavAgentComponent : ISerializable
 {
 	// ---- authored ----
 
+	[Scriptable]
 	public float Radius = 0.6f;
+	[Scriptable]
 	public float Height = 2.0f;
+	[Scriptable]
 	public float MaxSpeed = 3.5f;
+	[Scriptable]
 	public float MaxAcceleration = 8.0f;
 
 	/// The ARRIVAL radius: the agent counts as finished, and stops steering, within this
 	/// distance of its target. That is what "walk near the door", following at a distance and
 	/// surrounding all want. Nought walks onto the point itself.
+	[Scriptable]
 	public float StopDistance = 0.0f;
 
 	/// Whether the agent writes the entity's transform from the crowd's output. When it does
 	/// not, the entity is NOT moved and a script or physics reads the desired velocity.
+	[Scriptable]
 	public bool MoveEntity = true;
 
 	// ---- runtime ----
@@ -45,7 +54,9 @@ struct NavAgentComponent : ISerializable
 	public bool TargetDirty = false;
 	/// A halt the tick has not applied yet.
 	public bool StopRequested = false;
+	[Scriptable]
 	public bool Finished = true;
+	[Scriptable]
 	public float RemainingDistance = 0.0f;
 	/// The crowd's steering output in WORLD space, which is what a reporting agent is read
 	/// for.
@@ -68,6 +79,7 @@ struct NavAgentComponent : ISerializable
 	public this() {}
 
 	/// Steers toward a world space destination.
+	[Scriptable]
 	public void Navigate(Float3 destination) mut
 	{
 		Target = destination;
@@ -78,6 +90,7 @@ struct NavAgentComponent : ISerializable
 	}
 
 	/// Halts where the agent is.
+	[Scriptable]
 	public void Stop() mut
 	{
 		HasTarget = false;
@@ -87,6 +100,7 @@ struct NavAgentComponent : ISerializable
 
 	/// A destination, a speed and an arrival radius in one call, which is the common scripted
 	/// move order.
+	[Scriptable]
 	public void NavigateAt(Float3 destination, float moveSpeed, float arriveDistance) mut
 	{
 		MaxSpeed = moveSpeed;

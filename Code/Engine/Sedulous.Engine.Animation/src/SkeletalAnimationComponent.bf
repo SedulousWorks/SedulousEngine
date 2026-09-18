@@ -5,6 +5,8 @@ using Sedulous.Core.Serialization;
 using Sedulous.Resource;
 using Sedulous.Scene;
 
+using Sedulous.Core;
+
 namespace Sedulous.Engine.Animation;
 
 /// Skeletal animation on an entity: a player over a shared skeleton plays a clip and produces
@@ -22,9 +24,14 @@ namespace Sedulous.Engine.Animation;
 /// The player and the lists are OWNED BY THE MANAGER, because a component is a struct in a
 /// packed pool and cannot own heap data.
 [SerializableComponent("skeletal_animation")]
+[DisplayName("Skeletal Animation")]
+[Category("Animation")]
+[Scriptable]
 struct SkeletalAnimationComponent : ISerializable, IComponentResources
 {
+	[Scriptable]
 	public Ref<Skeleton> Skeleton = .(Guid());
+	[Scriptable]
 	public Ref<AnimationClip> Clip = .(Guid());
 
 	/// Created lazily by the manager, on the first tick that has a skeleton.
@@ -35,12 +42,16 @@ struct SkeletalAnimationComponent : ISerializable, IComponentResources
 	public AnimationClip PlayerClip = null;
 
 	/// The entities whose mesh receives the matrices. Empty means the owner.
+	[Scriptable]
 	public List<EntityRef> MeshEntities = null;
 
+	[Scriptable]
 	public float Speed = 1.0f;
 	/// The initial clock, which is what desynchronises a herd. Applied on the first tick.
+	[Scriptable]
 	public float StartTime = 0.0f;
 	/// Play the bound clip on the first tick.
+	[Scriptable]
 	public bool AutoPlay = true;
 
 	public this() {}

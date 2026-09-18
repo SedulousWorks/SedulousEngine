@@ -18,22 +18,35 @@ namespace Sedulous.Engine.UI;
 /// The view tree, the host group and the offscreen target are OWNED BY THE SUBSYSTEM, a
 /// component being a struct in a packed pool that cannot own heap data.
 [SerializableComponent("ui.Canvas")]
+[DisplayName("UI Canvas")]
+[Category("UI")]
+[Scriptable]
 struct UICanvasComponent : ISerializable, IComponentResources
 {
 	// ---- authored ----
 
+	[Scriptable]
 	public Ref<UIDocument> Document = .(Guid());
 	/// Optional. Unset takes the context's own theme.
+	[Scriptable]
 	public Ref<UITheme> Theme = .(Guid());
 	/// Draw and dispatch order, higher being on top.
+	[Scriptable]
 	public int32 Order = 0;
+	[Scriptable]
 	public bool Visible = true;
+	[Scriptable]
 	public bool Interactive = true;
+	[Scriptable]
 	public CanvasScalerMode ScalerMode = .ConstantPixel;
+	[Scriptable]
 	public Float2 ReferenceResolution = .(1920.0f, 1080.0f);
+	[Scriptable]
 	public CanvasRenderMode RenderMode = .ScreenOverlay;
 	/// Render texture mode: how big the target is, in pixels.
+	[Scriptable]
 	public uint32 RenderTextureWidth = 512;
+	[Scriptable]
 	public uint32 RenderTextureHeight = 512;
 
 	// ---- runtime, never serialized ----

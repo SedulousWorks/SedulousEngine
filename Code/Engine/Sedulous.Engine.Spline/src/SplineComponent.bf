@@ -3,6 +3,8 @@ using Sedulous.Core.Serialization;
 using Sedulous.Scene;
 using Sedulous.Spline;
 
+using Sedulous.Core;
+
 namespace Sedulous.Engine.Spline;
 
 /// An authorable curve as scene DATA, and nothing more.
@@ -11,6 +13,9 @@ namespace Sedulous.Engine.Spline;
 /// follow first among them, and the editor's spline tool authors it. The manager exists so
 /// it serializes and rides scene composition.
 [SerializableComponent("spline")]
+[DisplayName("Spline")]
+[Category("Utility")]
+[Scriptable]
 struct SplineComponent : ISerializable
 {
 	/// BORROWED from the manager, which creates one per component and frees it again. A

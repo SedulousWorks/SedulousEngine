@@ -5,6 +5,8 @@ using Sedulous.Core.Serialization;
 using Sedulous.Resource;
 using Sedulous.Scene;
 
+using Sedulous.Core;
+
 namespace Sedulous.Engine.Animation;
 
 /// State machine driven skeletal animation: a graph player over a shared skeleton and graph
@@ -15,9 +17,14 @@ namespace Sedulous.Engine.Animation;
 /// are driven through the player's parameters. The feed contract is the same: the named
 /// entities receive the matrices, and an empty list feeds the owner.
 [SerializableComponent("animation_graph")]
+[DisplayName("Animation Graph")]
+[Category("Animation")]
+[Scriptable]
 struct AnimationGraphComponent : ISerializable, IComponentResources
 {
+	[Scriptable]
 	public Ref<Skeleton> Skeleton = .(Guid());
+	[Scriptable]
 	public Ref<AnimationGraph> Graph = .(Guid());
 
 	/// Created lazily by the manager.
@@ -27,9 +34,11 @@ struct AnimationGraphComponent : ISerializable, IComponentResources
 	public AnimationGraph PlayerGraph = null;
 
 	/// The feed targets, by stable id. Empty means the owner.
+	[Scriptable]
 	public List<EntityRef> MeshEntities = null;
 
 	/// Whether to evaluate at all this frame.
+	[Scriptable]
 	public bool Active = true;
 
 	public this() {}

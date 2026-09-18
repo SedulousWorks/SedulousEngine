@@ -5,6 +5,8 @@ using Sedulous.PropertyAnimation;
 using Sedulous.Resource;
 using Sedulous.Scene;
 
+using Sedulous.Core;
+
 namespace Sedulous.Engine.Animation;
 
 /// Plays ONE property animation clip on its entity, whose tracks drive reflected properties on
@@ -18,16 +20,25 @@ namespace Sedulous.Engine.Animation;
 /// overwriting this. Animate the transform of a KINEMATIC or non physical entity; a dynamic
 /// body's other properties animate perfectly well.
 [SerializableComponent("property_animator")]
+[DisplayName("Property Animator")]
+[Category("Animation")]
+[Scriptable]
 struct PropertyAnimatorComponent : ISerializable, IComponentResources
 {
+	[Scriptable]
 	public Ref<PropertyAnimationClip> Clip = .(Guid());
+	[Scriptable]
 	public bool AutoPlay = true;
+	[Scriptable]
 	public float Speed = 1.0f;
+	[Scriptable]
 	public PropertyLoopMode LoopMode = .Loop;
 
 	// ---- runtime state ----
 
+	[Scriptable]
 	public bool Playing = false;
+	[Scriptable]
 	public float Time = 0.0f;
 	public int8 PingPongDirection = 1;
 	/// The clip the bindings were built for, BORROWED and compared by reference.
@@ -38,6 +49,7 @@ struct PropertyAnimatorComponent : ISerializable, IComponentResources
 	public this() {}
 
 	/// Playback, which mutates only the clock and the state: the manager's tick applies it.
+	[Scriptable]
 	public void Play() mut
 	{
 		Playing = true;
@@ -45,14 +57,17 @@ struct PropertyAnimatorComponent : ISerializable, IComponentResources
 		PingPongDirection = 1;
 	}
 
+	[Scriptable]
 	public void Stop() mut
 	{
 		Playing = false;
 		Time = 0.0f;
 	}
 
+	[Scriptable]
 	public void Pause() mut => Playing = false;
 
+	[Scriptable]
 	public void Resume() mut => Playing = true;
 
 	public void ResolveResources(ResourceManager manager) mut

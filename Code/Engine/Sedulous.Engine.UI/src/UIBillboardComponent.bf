@@ -14,18 +14,29 @@ namespace Sedulous.Engine.UI;
 /// then screen pixels. An anchor BEHIND the camera parks off screen rather than being pulled
 /// out of the tree, so nothing churns as an entity turns away.
 [SerializableComponent("ui.Billboard")]
+[DisplayName("UI Billboard")]
+[Category("UI")]
+[Scriptable]
 struct UIBillboardComponent : ISerializable, IComponentResources
 {
 	// ---- authored ----
 
+	[Scriptable]
 	public Ref<UIDocument> Document = .(Guid());
+	[Scriptable]
 	public Float3 Offset = .(0.0f, 0.0f, 0.0f);
+	[Scriptable]
 	public BillboardOrientation Orientation = .Cylindrical;
+	[Scriptable]
 	public BillboardScale ScaleMode = .Fixed;
 	/// Distance mode: the scale is the reference over the distance, clamped.
+	[Scriptable]
 	public float ReferenceDistance = 10.0f;
+	[Scriptable]
 	public float MinScale = 0.3f;
+	[Scriptable]
 	public float MaxScale = 2.0f;
+	[Scriptable]
 	public bool Visible = true;
 
 	// ---- runtime, never serialized ----

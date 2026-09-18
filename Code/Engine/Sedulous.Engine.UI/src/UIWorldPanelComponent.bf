@@ -20,18 +20,27 @@ namespace Sedulous.Engine.UI;
 /// panel, the hit becomes a texture coordinate, and that becomes a pixel injected into the
 /// panel's own root.
 [SerializableComponent("ui.WorldPanel")]
+[DisplayName("UI World Panel")]
+[Category("UI")]
+[Scriptable]
 struct UIWorldPanelComponent : ISerializable, IComponentResources
 {
 	// ---- authored ----
 
+	[Scriptable]
 	public Ref<UIDocument> Document = .(Guid());
 	/// Optional. Unset takes the context's own theme.
+	[Scriptable]
 	public Ref<UITheme> Theme = .(Guid());
 	/// How big the quad is in the world.
+	[Scriptable]
 	public Float2 SizeMeters = .(1.6f, 0.9f);
 	/// The texture's density: the target is the size times this.
+	[Scriptable]
 	public float PixelsPerMeter = 200.0f;
+	[Scriptable]
 	public bool Interactive = true;
+	[Scriptable]
 	public bool Visible = true;
 
 	// ---- runtime, never serialized ----

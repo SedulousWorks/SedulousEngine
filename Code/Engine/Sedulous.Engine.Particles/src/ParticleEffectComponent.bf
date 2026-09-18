@@ -9,6 +9,8 @@ using Sedulous.Resource;
 using Sedulous.RHI;
 using Sedulous.Scene;
 
+using Sedulous.Core;
+
 namespace Sedulous.Engine.Particles;
 
 /// Attaches a particle effect to an entity.
@@ -21,9 +23,13 @@ namespace Sedulous.Engine.Particles;
 /// The instance, the clone and the caches are OWNED BY THE MANAGER, because a component is a
 /// struct in a packed pool and cannot own heap data.
 [SerializableComponent("particle_effect")]
+[DisplayName("Particle Effect")]
+[Category("Effects")]
+[Scriptable]
 struct ParticleEffectComponent : ISerializable, IComponentResources
 {
 	/// BORROWED on the code path, and the clone below on the authored one.
+	[Scriptable]
 	public ParticleEffect Effect = null;
 	/// The runtime simulation, created when an effect attaches.
 	public ParticleEffectInstance Instance = null;
@@ -34,16 +40,22 @@ struct ParticleEffectComponent : ISerializable, IComponentResources
 	/// A mesh mode system draws this per particle through the instanced mesh path. The
 	/// COMPONENT's mesh wins over the effect's, which is what makes it a per placement
 	/// override.
+	[Scriptable]
 	public Ref<StaticMesh> Mesh = .(Guid());
+	[Scriptable]
 	public Ref<Material> Material = .(Guid());
+	[Scriptable]
 	public float MeshScale = 1.0f;
 
 	/// A light mode system adds a point light per particle, capped, so particles illuminate
 	/// what is around them. The intensity scales with the particle's alpha, so a light fades
 	/// out with the particle rather than snapping off; the range is per emitter.
+	[Scriptable]
 	public float LightIntensity = 4.0f;
+	[Scriptable]
 	public float LightRange = 4.0f;
 
+	[Scriptable]
 	public bool Visible = true;
 
 	// ---- the cooked path ----

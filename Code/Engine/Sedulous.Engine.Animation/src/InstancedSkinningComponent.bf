@@ -17,6 +17,9 @@ namespace Sedulous.Engine.Animation;
 /// Put it on the entity that carries the instanced mesh, or point the targets at one. The
 /// skeleton and clip are BORROWED and must outlive it; the pools are the manager's.
 [Component]
+[DisplayName("Instanced Skinning")]
+[Category("Animation")]
+[Scriptable]
 struct InstancedSkinningComponent
 {
 	/// BORROWED, and shared across the crowd.
@@ -25,7 +28,9 @@ struct InstancedSkinningComponent
 	public AnimationClip Clip = null;
 
 	/// The number of unique phase buckets. More is a smoother spread and more compute.
+	[Scriptable]
 	public uint32 PoseCount = 32;
+	[Scriptable]
 	public float Speed = 1.0f;
 
 	/// The instanced mesh entities to feed, which is one set per skinned mesh of a multi part
