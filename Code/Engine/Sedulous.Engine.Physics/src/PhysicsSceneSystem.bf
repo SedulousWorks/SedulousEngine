@@ -71,6 +71,128 @@ class PhysicsSceneSystem : SceneSystem
 	///
 	/// Raptor reaches this through its script facade; the port puts it here, because it is
 	/// the world that makes it possible and the facade only forwarded.
+	// ---- scene queries --------------------------------------------------------------------
+	//
+	// Raptor keeps these on a ScenePhysics facade that forwards to the world. There is no
+	// facade here, so they live where the world does, and they are the script surface for
+	// asking the scene about space: what is at a point, what a ray meets, how heavy the world
+	// is. Every one answers something explicit rather than mutating state to read back.
+
+	[Scriptable]
+	public void SetGravity(Float3 gravity)
+	{
+		if (mWorld != null)
+			mWorld.SetGravity(gravity);
+	}
+
+	[Scriptable]
+	public Float3 Gravity => (mWorld != null) ? mWorld.Gravity : .(0, 0, 0);
+
+	[Scriptable]
+	public int BodyCount => (mWorld != null) ? mWorld.BodyCount : 0;
+
+	/// A ray against this scene's world, answering the CLOSEST hit. Direction must be unit
+	/// length: Distance scales by its magnitude otherwise.
+	[Scriptable]
+	public PhysicsHit RayCast(Float3 from, Float3 direction, float maxDistance,
+		uint32 groupMask = 0xFFFFFFFF)
+	{
+		var result = PhysicsHit();
+		if (mWorld == null)
+			return result;
+		if (mWorld.RayCast(from, direction, maxDistance, let hit, groupMask))
+			FillHit(ref result, hit, maxDistance);
+		return result;
+	}
+
+	/// A swept SPHERE from `from` along `direction`, answering the closest hit. Like RayCast
+	/// with a volume: the ray that slips through a gap a fat projectile cannot.
+	[Scriptable]
+	public PhysicsHit SphereCast(Float3 from, Float3 direction, float maxDistance, float radius,
+		uint32 groupMask = 0xFFFFFFFF)
+	{
+		var result = PhysicsHit();
+		if (mWorld == null)
+			return result;
+		var shape = QueryShape();
+		shape.Kind = .Sphere;
+		shape.Radius = radius;
+		if (mWorld.ShapeCast(shape, from, .Identity, direction, maxDistance, let hit, groupMask))
+			FillHit(ref result, hit, maxDistance);
+		return result;
+	}
+
+	/// The body NEAREST `center` whose shape overlaps a sphere of `radius` there, or Hit false.
+	///
+	/// One handle rather than a list, because "act on the closest thing in range" is what a
+	/// script asks far more often than "act on all of them", and the group mask does the
+	/// category filtering. Nearest is by body ORIGIN, and Position is that origin; an overlap
+	/// has no contact surface, so Normal is zero.
+	[Scriptable]
+	public PhysicsHit NearestOverlap(Float3 center, float radius, uint32 groupMask = 0xFFFFFFFF)
+	{
+		var result = PhysicsHit();
+		if (mWorld == null)
+			return result;
+
+		var shape = QueryShape();
+		shape.Kind = .Sphere;
+		shape.Radius = radius;
+		let bodies = scope List<BodyId>();
+		mWorld.ShapeOverlap(shape, center, .Identity, bodies, groupMask);
+
+		var bestSq = float.MaxValue;
+		for (let body in bodies)
+		{
+			mWorld.GetBodyTransform(body, let position, ?);
+			let d = position - center;
+			let dSq = Dot(d, d);
+			if (dSq < bestSq)
+			{
+				bestSq = dSq;
+				result.Hit = true;
+				result.Entity = PhysicsEntityPacking.UnpackEntity(mWorld.UserData(body));
+				result.Position = position;
+			}
+		}
+		if (result.Hit)
+			result.Distance = Sqrt(bestSq);
+		return result;
+	}
+
+	/// Every entity whose body overlaps a sphere of `radius` at `center`, filtered to the
+	/// group mask. Bodies carrying no live entity are left out rather than answered as Invalid.
+	[Scriptable]
+	public void OverlapSphere(Float3 center, float radius, List<EntityHandle> outEntities,
+		uint32 groupMask = 0xFFFFFFFF)
+	{
+		outEntities.Clear();
+		if ((mWorld == null) || (mScene == null))
+			return;
+
+		var shape = QueryShape();
+		shape.Kind = .Sphere;
+		shape.Radius = radius;
+		let bodies = scope List<BodyId>();
+		mWorld.ShapeOverlap(shape, center, .Identity, bodies, groupMask);
+		for (let body in bodies)
+		{
+			let entity = PhysicsEntityPacking.UnpackEntity(mWorld.UserData(body));
+			if (mScene.IsValid(entity))
+				outEntities.Add(entity);
+		}
+	}
+
+	private static void FillHit(ref PhysicsHit result, RayHit hit, float maxDistance)
+	{
+		result.Hit = true;
+		result.Entity = PhysicsEntityPacking.UnpackEntity(hit.UserData);
+		result.Distance = hit.Fraction * maxDistance;
+		result.Position = hit.Position;
+		result.Normal = hit.Normal;
+		result.Surface = (int32)hit.Surface;
+	}
+
 	[Scriptable]
 	public void ApplyImpulse(EntityHandle entity, Float3 impulse)
 	{
