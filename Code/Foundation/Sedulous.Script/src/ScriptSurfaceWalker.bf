@@ -113,6 +113,9 @@ static class ScriptSurfaceWalker
 		public List<String> Known;
 		/// The callables seen so far: script name, staticness and kinds, for the overload rule.
 		public List<String> Signatures = new .();
+		/// The entity side's callables across EVERY type, since they all land on the one
+		/// entity type.
+		public List<String> EntitySignatures;
 		/// Every violation of it in the whole walk, reported together.
 		public String Violations;
 
@@ -186,6 +189,7 @@ static class ScriptSurfaceWalker
 		}
 
 		let violations = scope String();
+		let entitySignatures = scope List<String>();
 		int typeIndex = 0;
 		for (let decl in candidates)
 		{
@@ -197,6 +201,7 @@ static class ScriptSurfaceWalker
 			let ctx = scope TypeCtx();
 			ctx.Known = known;
 			ctx.Violations = violations;
+			ctx.EntitySignatures = entitySignatures;
 			ctx.FullName.Set(fullName);
 			ctx.IsInlineStruct = type.IsStruct && !type.IsEnum && ScriptValueMap.IsInlineStruct(fullName);
 			ctx.Name.Set(isStaticBlock ? "" : name);
@@ -656,8 +661,88 @@ static class ScriptSurfaceWalker
 			if (m.GetCustomAttribute<DescriptionAttribute>() case .Ok(let ds))
 				code.AppendF(".Describe({})", Quote(ds.Text, .. scope .()));
 			EmitCall(ctx, m, false);
+			if (IsEntityFirst(ctx, m))
+				EmitEntityCall(ctx, m);
 			code.Append(";\n");
 		}
+	}
+
+	/// The entity-first rule: an instance method whose first parameter is an entity handle,
+	/// by value, on the scene, which owns its entities, or on a scene system or manager that
+	/// asked with [ScriptOnEntity], since a system's verb is not always the entity's.
+	[Comptime]
+	private static bool IsEntityFirst(TypeCtx ctx, MethodInfo m)
+	{
+		if (m.IsStatic || m.IsConstructor || (m.ParamCount < 1))
+			return false;
+		let onScene = (ctx.Role == .Plain) && (ctx.FullName == "Sedulous.Scene.Scene");
+		if (!onScene)
+		{
+			if ((ctx.Role != .SceneSystem) && (ctx.Role != .ComponentManager))
+				return false;
+			if (!m.HasCustomAttribute<ScriptOnEntityAttribute>())
+				return false;
+		}
+		let pt = m.GetParamType(0);
+		if (pt is RefType)
+			return false;
+		return pt.GetFullName(.. scope .()) == "Sedulous.Scene.EntityHandle";
+	}
+
+	/// The entity side's name: the script name with the word Entity dropped, so
+	/// GetEntityName reads GetName on the entity and DestroyEntity reads Destroy.
+	[Comptime]
+	private static void EntityNameOf(MethodInfo m, String outName)
+	{
+		if (m.GetCustomAttribute<ScriptNameAttribute>() case .Ok(let sn))
+			outName.Set(sn.Name);
+		else
+			outName.Set(m.Name);
+		outName.Replace("Entity", "");
+	}
+
+	/// The entity side of an entity-first method: the same call, Self the entity and the
+	/// arguments shifted by one, the owner resolved through the entity's scene.
+	[Comptime]
+	private static void EmitEntityCall(TypeCtx ctx, MethodInfo m)
+	{
+		let entityName = EntityNameOf(m, .. scope .());
+		if (entityName.IsEmpty)
+			return;
+		CheckEntityOverload(ctx, m, entityName);
+
+		let body = scope String();
+		if (!EmitCallBody(ctx, m, false, 1, body, scope String()))
+			return; // the type side already carries the reason
+		let name = ctx.NextThunk(.. scope .());
+		EmitThunk(ctx, name, false, body, false, true);
+		ctx.Code.AppendF(".BindEntity({}, => {})", Quote(entityName, .. scope .()), name);
+	}
+
+	/// The overload rule on the entity side: every entity-first method of every type lands
+	/// on the one entity type, so the names and kinds must be unique across all of them.
+	[Comptime]
+	private static void CheckEntityOverload(TypeCtx ctx, MethodInfo m, StringView entityName)
+	{
+		let signature = scope String();
+		signature.Append(entityName);
+		signature.Append("|entity(");
+		for (int i = 1; i < m.ParamCount; i++)
+		{
+			var pt = m.GetParamType(i);
+			if (let r = pt as RefType)
+				pt = r.UnderlyingType;
+			if (i > 1)
+				signature.Append(", ");
+			ScriptValueMap.KindKey(pt, signature);
+		}
+		signature.Append(")");
+		for (let seen in ctx.EntitySignatures)
+		{
+			if (seen == signature)
+				ctx.Violations.AppendF("  {}.{} on the entity: {}\n", ctx.FullName, m.Name, signature);
+		}
+		ctx.EntitySignatures.Add(new String(signature));
 	}
 
 	[Comptime]
@@ -699,16 +784,39 @@ static class ScriptSurfaceWalker
 		}
 
 		let body = scope String();
+		let reason = scope String();
+		if (!EmitCallBody(ctx, m, isGlobal, 0, body, reason))
+		{
+			code.AppendF(".Blocked({})", Quote(reason, .. scope .()));
+			return;
+		}
+		let name = ctx.NextThunk(.. scope .());
+		EmitThunk(ctx, name, isStatic, body, true);
+		code.AppendF(".Bind(=> {})", name);
+	}
+
+	/// The body of a call thunk: the argument reads and checks, one call per arity, the
+	/// by-ref write backs. The first `selfParams` parameters come from Self rather than
+	/// the arguments, which is the entity side of an entity-first method. False, with the
+	/// reason, when a type cannot cross.
+	[Comptime]
+	private static bool EmitCallBody(TypeCtx ctx, MethodInfo m, bool isGlobal, int selfParams, String body, String outReason)
+	{
+		let isStatic = m.IsStatic || m.IsConstructor || isGlobal;
 		let args = scope String();
 		let after = scope String();
-		let sceneExpr = SceneExprFor(ctx, isStatic, .. scope .());
+		let sceneExpr = scope String();
+		if (selfParams > 0)
+			sceneExpr.Set("scene");
+		else
+			SceneExprFor(ctx, isStatic, sceneExpr);
 		int required = 0;
 		for (int i = 0; i < m.ParamCount; i++)
 		{
 			if (!m.HasParamDefault(i))
 				required = i + 1;
 		}
-		body.AppendF("\tif (!frame.ExpectArgs({})) return;\n", required);
+		body.AppendF("\tif (!frame.ExpectArgs({})) return;\n", Math.Max(required - selfParams, 0));
 		for (int i = 0; i < m.ParamCount; i++)
 		{
 			var pt = m.GetParamType(i);
@@ -721,28 +829,36 @@ static class ScriptSurfaceWalker
 				pt = r.UnderlyingType;
 			}
 			let ptn = pt.GetFullName(.. scope .());
-			let slot = scope $"frame.Args[{i}]";
+			if (i > 0)
+				args.Append(", ");
+			if (i < selfParams)
+			{
+				// The entity a script called on.
+				body.AppendF("\tvar a{} = frame.Self.AsEntity;\n", i);
+				args.AppendF("a{}", i);
+				continue;
+			}
+			let slotIndex = i - selfParams;
+			let slot = scope $"frame.Args[{slotIndex}]";
 			let read = scope String();
 			if (!ScriptValueMap.Read(pt, slot, ctx.Known, read))
 			{
-				code.AppendF(".Blocked({})", Quote(read, .. scope .()));
-				return;
+				outReason.Set(read);
+				return false;
 			}
 
-			ScriptValueMap.ExpectFor(pt, i, body);
+			ScriptValueMap.ExpectFor(pt, slotIndex, body);
 			if (!sceneExpr.IsEmpty && (ptn == "Sedulous.Scene.EntityHandle"))
-				body.AppendF("\tif (!frame.ExpectEntityIn({}, {})) return;\n", i, sceneExpr);
+				body.AppendF("\tif (!frame.ExpectEntityIn({}, {})) return;\n", slotIndex, sceneExpr);
 			// An optional argument is read only when the script passed it; when it did not,
 			// the call below is the shorter arity and the COMPILER supplies the default, in
 			// the declaring context where its text means what it says. The default's text
 			// is never pasted here.
 			if (m.HasParamDefault(i))
-				body.AppendF("\t{} a{} = default;\n\tif (frame.Args.Length > {})\n\t\ta{} = {};\n", ptn, i, i, i, read);
+				body.AppendF("\t{} a{} = default;\n\tif (frame.Args.Length > {})\n\t\ta{} = {};\n", ptn, i, slotIndex, i, read);
 			else
 				body.AppendF("\tvar a{} = {};\n", i, read);
 
-			if (i > 0)
-				args.Append(", ");
 			if (byRef)
 			{
 				switch (refKind)
@@ -773,15 +889,15 @@ static class ScriptSurfaceWalker
 			let write = scope String();
 			if (!ScriptValueMap.Write(resultType, CallWith(ctx, m, isGlobal, args, .. scope .()), "frame.Result", ctx.Known, write, sceneArg))
 			{
-				code.AppendF(".Blocked({})", Quote(write, .. scope .()));
-				return;
+				outReason.Set(write);
+				return false;
 			}
 			body.AppendF("\t{}\n", write);
 		}
 		else
 		{
 			body.Append("\tswitch (frame.Args.Length)\n\t{\n");
-			for (int n = required; n <= m.ParamCount; n++)
+			for (int n = Math.Max(required, selfParams); n <= m.ParamCount; n++)
 			{
 				let partial = scope String();
 				for (int i = 0; i < n; i++)
@@ -793,21 +909,18 @@ static class ScriptSurfaceWalker
 				let write = scope String();
 				if (!ScriptValueMap.Write(resultType, CallWith(ctx, m, isGlobal, partial, .. scope .()), "frame.Result", ctx.Known, write, sceneArg))
 				{
-					code.AppendF(".Blocked({})", Quote(write, .. scope .()));
-					return;
+					outReason.Set(write);
+					return false;
 				}
 				if (n < m.ParamCount)
-					body.AppendF("\tcase {}: {}\n", n, write);
+					body.AppendF("\tcase {}: {}\n", n - selfParams, write);
 				else
 					body.AppendF("\tdefault: {}\n", write);
 			}
 			body.Append("\t}\n");
 		}
 		body.Append(after);
-
-		let name = ctx.NextThunk(.. scope .());
-		EmitThunk(ctx, name, isStatic, body, true);
-		code.AppendF(".Bind(=> {})", name);
+		return true;
 	}
 
 	/// The call expression for `args`: a construction, a global, a static, or a call on self.
@@ -879,12 +992,16 @@ static class ScriptSurfaceWalker
 
 	/// One static thunk function: the self prologue, the body, the self write back.
 	[Comptime]
-	private static void EmitThunk(TypeCtx ctx, StringView name, bool isStatic, StringView body, bool mutatesSelf)
+	private static void EmitThunk(TypeCtx ctx, StringView name, bool isStatic, StringView body, bool mutatesSelf, bool entitySelf = false)
 	{
 		let t = ctx.Thunks;
 		t.AppendF("static void {}(ref ScriptCallFrame frame)\n{{\n\tframe.Begin();\n", name);
 		bool writeBack = false;
-		if (!isStatic)
+		if (entitySelf)
+		{
+			EntityPrologue(ctx, t);
+		}
+		else if (!isStatic)
 		{
 			let prologue = scope String();
 			SelfPrologue(ctx, prologue, out writeBack, scope String());
@@ -894,6 +1011,18 @@ static class ScriptSurfaceWalker
 		if (mutatesSelf)
 			SelfWriteBack(ctx, writeBack, t);
 		t.Append("}\n\n");
+	}
+
+	/// The lines that resolve `self` for the entity side of an entity-first method: the
+	/// entity's scene, then the owner in it, the scene itself or its system.
+	[Comptime]
+	private static void EntityPrologue(TypeCtx ctx, String outCode)
+	{
+		outCode.Append("\tif (frame.Self.Kind != .Entity) { frame.Fail(\"self is not an entity\"); return; }\n\tlet scene = frame.SceneOf(frame.Self);\n\tif (scene == null) { frame.Fail(\"the entity has no scene\"); return; }\n");
+		if (ctx.FullName == "Sedulous.Scene.Scene")
+			outCode.Append("\tlet self = scene;\n");
+		else
+			outCode.AppendF("\tlet self = scene.GetSystem<{}>();\n\tif (self == null) {{ frame.Fail(\"no {} in the entity's scene\"); return; }}\n", ctx.FullName, ctx.Name);
 	}
 
 	/// The resolver a scene system or manager gets: the scene's instance, Self the scene.

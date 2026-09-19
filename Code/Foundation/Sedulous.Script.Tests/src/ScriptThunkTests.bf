@@ -393,4 +393,46 @@ static class ScriptThunkTests
 		Field(s, scope $"{cFixture}.FixtureSystem", "Ticks").Get(ref frame);
 		Test.Assert(!frame.Failed && (frame.Result.AsInt == systemB.TickCount));
 	}
+
+	/// The entity side of an entity-first method: Self the entity, its scene resolving the
+	/// manager, the arguments shifted past it.
+	[Test]
+	public static void AnEntityFirstMethodIsAlsoCalledOnTheEntity()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let ctx = scope ScratchCallContext();
+		let poke = Method(s, scope $"{cFixture}.WidgetComponentManager", "Poke");
+		Test.Assert(poke.OnEntity && (poke.EntityName == "Poke"));
+		Test.Assert(poke.EntityParams.Length == 0);
+		Test.Assert(!Method(s, scope $"{cFixture}.WidgetComponentManager", "Nudge").OnEntity, "a verb that did not ask stays off the entity");
+
+		let a = scope Scene("a");
+		let b = scope Scene("b");
+		a.AddSystem<WidgetComponentManager>();
+		let widgetsB = b.AddSystem<WidgetComponentManager>();
+		let inB = b.CreateEntity("in b");
+
+		// The entity carries B; B's manager is poked, whatever the ambient scene.
+		ctx.Scene = a;
+		var frame = ScriptCallFrame(ctx, default);
+		frame.Self = .FromEntity(inB, b);
+		poke.EntityInvoke(ref frame);
+		Test.Assert(!frame.Failed, scope String(frame.Error));
+		Test.Assert((widgetsB.Pokes == 1) && (widgetsB.LastPoked == inB));
+
+		// Not an entity: refused, not dereferenced.
+		frame = ScriptCallFrame(ctx, default);
+		frame.Self = .FromInt(3);
+		poke.EntityInvoke(ref frame);
+		Test.Assert(frame.Failed && frame.Error.Contains("not an entity"));
+
+		// A scene with no such manager: refused by name.
+		let bare = scope Scene("bare");
+		let orphan = bare.CreateEntity("orphan");
+		frame = ScriptCallFrame(ctx, default);
+		frame.Self = .FromEntity(orphan, bare);
+		poke.EntityInvoke(ref frame);
+		Test.Assert(frame.Failed && frame.Error.Contains("WidgetComponentManager"));
+	}
 }

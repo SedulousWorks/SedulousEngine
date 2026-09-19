@@ -21,10 +21,23 @@ class ScriptMethodInfo
 	public List<ScriptParamInfo> Params = new .() ~ DeleteContainerAndItems!(_);
 	/// The emitted callable, null when the member could not be bound.
 	public ScriptThunk Invoke = null;
+	/// The entity-first rule: an instance method of the scene, a scene system or a manager
+	/// whose first parameter is an entity is ALSO a method on the entity itself, the entity
+	/// as Self and the rest as the arguments, so a script writes `other.GetName()` as well
+	/// as `scene.GetEntityName(other)`. The name here is the entity side's, the Beef name
+	/// with the word Entity dropped; empty when the rule does not apply.
+	public String EntityName = new .() ~ delete _;
+	/// The thunk for the entity side: Self is the entity, whose scene resolves the owner.
+	public ScriptThunk EntityInvoke = null;
 	/// Why it could not be bound: the type the frame cannot carry. Empty when it could.
 	public String Unsupported = new .() ~ delete _;
 
 	public bool IsCallable => Invoke != null;
+	public bool OnEntity => (EntityInvoke != null) && !EntityName.IsEmpty;
+
+	/// The arguments the entity side takes: the parameters after the entity.
+	public Span<ScriptParamInfo> EntityParams => Params.IsEmpty ? default : Span<ScriptParamInfo>(Params.Ptr + 1, Params.Count - 1);
+	public int RequiredEntityParams => Math.Max(RequiredParams - 1, 0);
 
 	/// Adds a parameter. Chains, for the generated populate code.
 	public ScriptMethodInfo Param(StringView name, StringView typeName, ScriptValueKind kind,
@@ -76,6 +89,14 @@ class ScriptMethodInfo
 	public ScriptMethodInfo Bind(ScriptThunk thunk)
 	{
 		Invoke = thunk;
+		return this;
+	}
+
+	/// Marks the entity side: the name a script uses on the entity, and its thunk.
+	public ScriptMethodInfo BindEntity(StringView entityName, ScriptThunk thunk)
+	{
+		EntityName.Set(entityName);
+		EntityInvoke = thunk;
 		return this;
 	}
 

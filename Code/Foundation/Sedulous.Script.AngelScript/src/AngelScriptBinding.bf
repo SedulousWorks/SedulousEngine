@@ -11,6 +11,8 @@ class AngelScriptBinding
 	{
 		/// A method, a global function or a constructor: Method with its thunk.
 		case Call;
+		/// The entity side of an entity-first method: `other.GetName()`, Self the entity.
+		case EntityCall;
 		/// A property getter: Field.Get.
 		case Get;
 		/// A property setter: Field.Set.

@@ -68,6 +68,53 @@ static class BehaviorMessagingTests
 		Test.Assert(!play.BehaviorOf(a).Faulted && !play.BehaviorOf(b, 0).Faulted);
 	}
 
+	private const String cNeighbour = """
+		class Neighbour
+		{
+			Entity self;
+			Scene@ scene;
+			Entity other;
+			int hits = 0;
+			string tag;
+			bool sendOnUpdate = false;
+			void onUpdate(float dt)
+			{
+				if (sendOnUpdate)
+				{
+					sendOnUpdate = false;
+					// The entity's own verbs: no scene in sight.
+					other.Send("hit", 2);
+					other.Send("tag", self.GetName());
+					self.SetName(self.GetName() + "!");
+					if (!other.IsValid() || !other.IsActive()) hits = -100;
+				}
+			}
+			void onHit(int damage) { hits += damage; }
+			void onTag(const string &in who) { tag = who; }
+		}
+		""";
+
+	/// The entity-first rule at the script's level: what a script says to an entity, it
+	/// says on the entity.
+	[Test]
+	public static void AnEntitySendsAndNamesItself()
+	{
+		let play = scope ScriptPlayScene();
+		let neighbour = play.Class("Neighbour", cNeighbour);
+		let a = play.AddBehavior(neighbour, "a");
+		let b = play.AddBehavior(neighbour, "b");
+		play.Start();
+		play.Step();
+		play.Runtime.SetProperty(play.BehaviorOf(a).Instance, "other", .FromEntity(b, play.Scene));
+		play.Runtime.SetProperty(play.BehaviorOf(a).Instance, "sendOnUpdate", .FromBool(true));
+		play.Step();
+		Test.Assert(play.PropInt(b, "hits") == 2, "other.Send with a payload");
+		Test.Assert(play.Prop(b, "tag").AsString == "a", "the sender's own name, through self.GetName");
+		Test.Assert(play.Scene.GetEntityName(a) == "a!", "self.SetName wrote the scene's name");
+		Test.Assert(play.PropInt(a, "hits") == 0, "IsValid and IsActive answered on the entity");
+		Test.Assert(!play.BehaviorOf(a).Faulted && !play.BehaviorOf(b).Faulted);
+	}
+
 	[Test]
 	public static void ASendToAnEntityWithNoScriptsIsANoOp()
 	{

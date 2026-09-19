@@ -154,6 +154,8 @@ class NullScriptRuntime : ScriptRuntime
 				o.AppendF(" [was {}]", m.Name);
 			if (!m.IsCallable)
 				o.AppendF(" !blocked: {}", m.Unsupported);
+			if (m.OnEntity)
+				o.AppendF(" [on entity: {}]", m.EntityName);
 			o.Append("\n");
 			if (!m.Description.IsEmpty)
 				o.AppendF("        // {}\n", m.Description);

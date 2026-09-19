@@ -175,6 +175,37 @@ static class FixtureScriptTests
 		Test.Assert(vm.Problems.Back.Contains("another scene"), vm.Problems.Back);
 	}
 
+	/// The entity side of an entity-first method: `e.Poke()` reaches the manager in the
+	/// entity's scene, and a verb that did not ask is not there.
+	[Test]
+	public static void AnEntityFirstMethodIsAMethodOnTheEntity()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let vm = Bound(s);
+		defer delete vm;
+
+		let ok = vm.Compile("t", "t.as", """
+			void poke(const Entity &in e) { e.Poke(); e.Poke(); }
+			""");
+		Dump(vm);
+		Test.Assert(ok, "compiled");
+		Test.Assert(!vm.Compile("u", "u.as", "void nudge(const Entity &in e) { e.Nudge(2.0f); }"), "Nudge stays on the manager");
+		ClearAndDeleteItems!(vm.Problems);
+
+		let a = scope Scene("a");
+		let b = scope Scene("b");
+		a.AddSystem<WidgetComponentManager>();
+		let widgetsB = b.AddSystem<WidgetComponentManager>();
+		vm.CallContext.Scene = a;
+		let entity = b.CreateEntity("w");
+		var args = ScriptValue[1](.FromEntity(entity, b));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("t", "void poke(const Entity &in)", args, ref r), "poked through the entity");
+		Dump(vm);
+		Test.Assert((widgetsB.Pokes == 2) && (widgetsB.LastPoked == entity), "B's manager, the entity's scene, not the ambient one");
+	}
+
 	[Test]
 	public static void AScriptErrorIsReportedNotRaised()
 	{

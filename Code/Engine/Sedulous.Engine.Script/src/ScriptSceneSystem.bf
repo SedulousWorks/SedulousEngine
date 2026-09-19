@@ -113,18 +113,19 @@ class ScriptSceneSystem : SceneSystem
 	public double Elapsed => mElapsed;
 
 	/// Queues `on<Message>()` for every enabled behaviour of `target` that declares it.
-	/// Delivered at the tick's top level, never inside the caller.
-	[Scriptable]
+	/// Delivered at the tick's top level, never inside the caller. On the entity too, so a
+	/// script writes `other.Send("hit", 5)`.
+	[Scriptable, ScriptOnEntity]
 	public void Send(EntityHandle target, StringView message) => Queue(target, message, .Nil, false);
-	[Scriptable]
+	[Scriptable, ScriptOnEntity]
 	public void Send(EntityHandle target, StringView message, float payload) => Queue(target, message, .FromFloat(payload), true);
-	[Scriptable]
+	[Scriptable, ScriptOnEntity]
 	public void Send(EntityHandle target, StringView message, int32 payload) => Queue(target, message, .FromInt(payload), true);
-	[Scriptable]
+	[Scriptable, ScriptOnEntity]
 	public void Send(EntityHandle target, StringView message, bool payload) => Queue(target, message, .FromBool(payload), true);
-	[Scriptable]
+	[Scriptable, ScriptOnEntity]
 	public void Send(EntityHandle target, StringView message, StringView payload) => Queue(target, message, .FromString(payload), true);
-	[Scriptable]
+	[Scriptable, ScriptOnEntity]
 	public void Send(EntityHandle target, StringView message, EntityHandle payload) => Queue(target, message, .FromEntity(payload, mScene), true);
 
 	/// Publishes an event on the scene's bus: every behaviour and the Level declaring

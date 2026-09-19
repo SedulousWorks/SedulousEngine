@@ -244,6 +244,50 @@ class AngelScriptRuntime : ScriptRuntime
 			if (!m.IsCallable)
 				continue;
 			BindMethod(t, m, statics);
+			if (m.OnEntity)
+				BindEntityMethod(t, m);
+		}
+	}
+
+	/// The entity side of an entity-first method, on the Entity value: the parameters after
+	/// the entity, one registration per arity, as the type side.
+	private void BindEntityMethod(ScriptTypeInfo t, ScriptMethodInfo m)
+	{
+		let returnDecl = scope String();
+		if (!DeclOf(m.ReturnKind, m.ReturnTypeName, returnDecl))
+			return; // the type side reported it
+		let paramDecls = scope List<String>();
+		defer { ClearAndDeleteItems(paramDecls); }
+		for (let p in m.EntityParams)
+		{
+			let d = new String();
+			if (!ParamDecl(p.Kind, p.TypeName, p.IsByRef, d))
+			{
+				delete d;
+				return;
+			}
+			d.AppendF(" {}", p.Name);
+			paramDecls.Add(d);
+		}
+		for (int arity = m.RequiredEntityParams; arity <= paramDecls.Count; arity++)
+		{
+			let b = new AngelScriptBinding();
+			b.Kind = .EntityCall;
+			b.Owner = t;
+			b.Method = m;
+			b.Arity = arity;
+			mBindings.Add(b);
+			let decl = scope String();
+			decl.AppendF("{} {}(", returnDecl, m.EntityName);
+			for (int i = 0; i < arity; i++)
+			{
+				if (i > 0)
+					decl.Append(", ");
+				decl.Append(paramDecls[i]);
+			}
+			// Const: the entity value is only read, so a `const Entity &in` may call it.
+			decl.Append(") const");
+			Check(AS.asc_engine_register_object_method(mEngine, "Entity", decl.CStr(), Internal.UnsafeCastToPtr(b)), scope $"{t.FullName}.{m.Name} on Entity as {decl}");
 		}
 	}
 
@@ -572,13 +616,15 @@ class AngelScriptRuntime : ScriptRuntime
 			kinds[0] = b.Field.Kind;
 			args[0] = ReadArg(gen, 0, b.Field.Kind, b.Field.TypeName);
 		}
-		else if ((b.Kind == .Call) || (b.Kind == .Construct))
+		else if ((b.Kind == .Call) || (b.Kind == .Construct) || (b.Kind == .EntityCall))
 		{
+			// The entity side's parameters start after the entity, which is Self.
+			int firstParam = (b.Kind == .EntityCall) ? 1 : 0;
 			paramInfos = b.Method.Params;
 			count = b.Arity;
 			for (int i = 0; i < count; i++)
 			{
-				let p = paramInfos[i];
+				let p = paramInfos[i + firstParam];
 				kinds[i] = p.Kind;
 				args[i] = ReadArg(gen, i, p.Kind, p.TypeName);
 			}
@@ -591,7 +637,14 @@ class AngelScriptRuntime : ScriptRuntime
 		let isStatic = (b.Kind == .Construct) || ((b.Kind != .Get && b.Kind != .Set) ? (b.Method.IsStatic || owner.Kind == .Global) : b.Field.IsStatic) || (owner.Kind == .Global);
 		void* selfMemory = null;
 		ScriptValueKind selfKind = .Nil;
-		if (!isStatic)
+		if (b.Kind == .EntityCall)
+		{
+			// Called on an entity value, whatever type declared the method.
+			selfMemory = AS.asc_generic_get_object(gen);
+			selfKind = .Entity;
+			frame.Self = ReadValue(selfMemory, .Entity, "");
+		}
+		else if (!isStatic)
 		{
 			selfMemory = AS.asc_generic_get_object(gen);
 			selfKind = SelfKind(owner);
@@ -611,7 +664,7 @@ class AngelScriptRuntime : ScriptRuntime
 			resultKind = b.Field.Kind;
 			target = AS.asc_generic_get_address_of_return_location(gen);
 		}
-		else if (b.Kind == .Call)
+		else if ((b.Kind == .Call) || (b.Kind == .EntityCall))
 		{
 			resultKind = b.Method.ReturnKind;
 			target = AS.asc_generic_get_address_of_return_location(gen);
@@ -623,6 +676,7 @@ class AngelScriptRuntime : ScriptRuntime
 		{
 		case .Get: b.Field.Get(ref frame);
 		case .Set: b.Field.Set(ref frame);
+		case .EntityCall: b.Method.EntityInvoke(ref frame);
 		default: b.Method.Invoke(ref frame);
 		}
 		context.ResultTarget = null;
@@ -633,17 +687,19 @@ class AngelScriptRuntime : ScriptRuntime
 			return;
 		}
 
-		// An inline struct self was copied; put it back.
-		if (!isStatic && (selfMemory != null))
+		// An inline struct self was copied; put it back. Not the entity of an entity call,
+		// which is const to the script.
+		if (!isStatic && (selfMemory != null) && (b.Kind != .EntityCall))
 			WriteSelf(selfMemory, selfKind, frame.Self);
 
 		// By-ref arguments, back into the script's variables.
 		if (paramInfos != null)
 		{
+			int firstParam = (b.Kind == .EntityCall) ? 1 : 0;
 			for (int i = 0; i < count; i++)
 			{
-				if (paramInfos[i].IsByRef)
-					WriteValue(AS.asc_generic_get_arg_address(gen, (uint32)i), kinds[i], paramInfos[i].TypeName, args[i]);
+				if (paramInfos[i + firstParam].IsByRef)
+					WriteValue(AS.asc_generic_get_arg_address(gen, (uint32)i), kinds[i], paramInfos[i + firstParam].TypeName, args[i]);
 			}
 		}
 
