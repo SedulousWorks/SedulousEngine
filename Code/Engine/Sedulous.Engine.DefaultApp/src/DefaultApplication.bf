@@ -16,6 +16,10 @@ using Sedulous.Engine.Particles;
 using Sedulous.Engine.Physics;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Scene;
+using Sedulous.Engine.Script;
+using Sedulous.Engine.ScriptSurface;
+using Sedulous.Script;
+using Sedulous.Script.AngelScript;
 using Sedulous.Engine.Terrain;
 using Sedulous.Engine.UI;
 using Sedulous.Graphics;
@@ -78,6 +82,8 @@ class DefaultApplication : IApplication, ISceneObserver
 	private ResourceManager mOwnedResources = null ~ delete _;
 	private ResourceManager mBorrowedResources = null;
 	private ContentDatabase mContentDatabase = null;
+	/// The runtime script surface, populated once from the root; every run binds it.
+	private ScriptSurface mScriptSurface = new .() ~ delete _;
 
 	private NetworkStartup mNetStartup = .();
 
@@ -161,6 +167,7 @@ class DefaultApplication : IApplication, ISceneObserver
 		}
 		mDataMount = new NativeFileSystem(mDataRoot);
 
+		EngineScriptSurface.Populate(mScriptSurface);
 		mScenes = host.Context.AddSubsystem<SceneSubsystem>();
 		// The assembly blueprint: every registered manager's scene is built from the FULL
 		// composition, which is the single source of truth.
@@ -189,6 +196,18 @@ class DefaultApplication : IApplication, ISceneObserver
 
 		mPhysics = host.Context.AddSubsystem<PhysicsSubsystem>();
 		host.Context.AddSubsystem<NavigationSubsystem>();
+
+		// Scripting: the backend, and the run's surface. The COMPLETE runtime surface, from
+		// the composition root, never a hand picked subset: a list kept here would drift.
+		AngelScriptBackend.Register();
+		let scripts = host.Context.AddSubsystem<ScriptSubsystem>();
+		scripts.Configure = new (runtime) =>
+			{
+				runtime.Bind(mScriptSurface);
+				for (let p in runtime.Problems)
+					GlobalLog(.Warning, scope $"Script: {p}");
+				ClearAndDeleteItems!(runtime.Problems);
+			};
 
 		// The net subsystem injects the replication managers into every scene so authored
 		// network components work, and OWNS the per frame transport pump. It is given the

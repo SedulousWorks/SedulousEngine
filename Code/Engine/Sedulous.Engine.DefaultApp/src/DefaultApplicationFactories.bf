@@ -17,6 +17,7 @@ using Sedulous.PropertyAnimation.Resource;
 using Sedulous.Resource;
 using Sedulous.Runtime.Client;
 using Sedulous.Scene.Resource;
+using Sedulous.Script.Resource;
 using Sedulous.Shaders.Resource;
 using Sedulous.Terrain.Resource;
 using Sedulous.Texture.Resource;
@@ -48,6 +49,7 @@ extension DefaultApplication
 		HeightfieldResources.RegisterAll();
 		ImageResources.RegisterAll();
 		InputResources.RegisterAll();
+		ScriptResources.RegisterAll();
 		MaterialResources.RegisterAll();
 		ModelResources.RegisterAll();
 		NavigationResources.RegisterAll();
@@ -82,6 +84,7 @@ extension DefaultApplication
 		AddOwnedFactory(resources, new PropertyAnimationClipFactory());
 		AddOwnedFactory(resources, new ParticleEffectFactory());
 		AddOwnedFactory(resources, new InputMapFactory());
+		AddOwnedFactory(resources, new ScriptClassFactory());
 		AddOwnedFactory(resources, new CollisionShapeFactory());
 		AddOwnedFactory(resources, new NavigationZoneFactory());
 		AddOwnedFactory(resources, new PhysicalMaterialFactory());

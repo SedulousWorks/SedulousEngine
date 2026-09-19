@@ -889,12 +889,22 @@ class AngelScriptRuntime : ScriptRuntime
 
 	// ==================== modules and calls ====================
 
-	public override bool Compile(StringView moduleName, StringView sectionName, StringView source)
+	public override bool CompileModule(StringView moduleName, Span<ScriptSection> sections)
 	{
 		let module = AS.asc_engine_get_module(mEngine, scope String(moduleName).CStr(), AS.asGM_ALWAYS_CREATE);
-		if (AS.asc_module_add_script_section(module, scope String(sectionName).CStr(), source.Ptr, (uint)source.Length) < 0)
-			return false;
+		for (let section in sections)
+		{
+			if (AS.asc_module_add_script_section(module, scope String(section.Name).CStr(), section.Source.Ptr, (uint)section.Source.Length) < 0)
+				return false;
+		}
 		return AS.asc_module_build(module) >= 0;
+	}
+
+	public override void DiscardModule(StringView moduleName)
+	{
+		let module = AS.asc_engine_get_module(mEngine, scope String(moduleName).CStr(), AS.asGM_ONLY_IF_EXISTS);
+		if (module != null)
+			AS.asc_module_discard(module);
 	}
 
 	public override bool Call(StringView moduleName, StringView declaration, Span<ScriptValue> args, ref ScriptValue result)
@@ -1038,6 +1048,67 @@ class AngelScriptRuntime : ScriptRuntime
 		CancelCoroutinesFor(o);
 		mObjects.Remove(o);
 		delete o;
+	}
+
+	public override bool DescribeClass(StringView moduleName, StringView className, List<ScriptMemberDesc> outMembers)
+	{
+		let module = AS.asc_engine_get_module(mEngine, scope String(moduleName).CStr(), AS.asGM_ONLY_IF_EXISTS);
+		let type = (module != null) ? AS.asc_module_get_type_info_by_name(module, scope String(className).CStr()) : null;
+		if (type == null)
+			return false;
+
+		let properties = AS.asc_typeinfo_get_property_count(type);
+		for (uint32 i = 0; i < properties; i++)
+		{
+			int32 isPrivate = 0, isProtected = 0;
+			AS.asc_typeinfo_get_property_access(type, i, &isPrivate, &isProtected);
+			if ((isPrivate != 0) || (isProtected != 0))
+				continue;
+			char8* name = null;
+			int32 typeId = 0;
+			int32 offset = 0;
+			AS.asc_typeinfo_get_property(type, i, &name, &typeId, &offset);
+			let m = new ScriptMemberDesc();
+			m.Name.Set(StringView(name));
+			m.Kind = KindOfTypeId(typeId);
+			m.TypeName.Set(StringView(AS.asc_engine_get_type_declaration(mEngine, typeId, 0)));
+			outMembers.Add(m);
+		}
+		let methods = AS.asc_typeinfo_get_method_count(type);
+		for (uint32 i = 0; i < methods; i++)
+		{
+			let fn = AS.asc_typeinfo_get_method_by_index(type, i);
+			let m = new ScriptMemberDesc();
+			m.Name.Set(StringView(AS.asc_function_get_name(fn)));
+			m.Arity = (int)AS.asc_function_get_param_count(fn);
+			outMembers.Add(m);
+		}
+		return true;
+	}
+
+	/// The kind a value of AngelScript type `typeId` crosses as.
+	private ScriptValueKind KindOfTypeId(int32 typeId)
+	{
+		switch (typeId)
+		{
+		case AS.asTYPEID_BOOL: return .Bool;
+		case AS.asTYPEID_INT8, AS.asTYPEID_INT16, AS.asTYPEID_INT32, AS.asTYPEID_INT64,
+			AS.asTYPEID_UINT8, AS.asTYPEID_UINT16, AS.asTYPEID_UINT32, AS.asTYPEID_UINT64:
+			return .Int;
+		case AS.asTYPEID_FLOAT, AS.asTYPEID_DOUBLE: return .Float;
+		default:
+			if ((typeId & AS.asTYPEID_MASK_OBJECT) == 0)
+				return .Int; // an enum
+			if ((typeId & AS.asTYPEID_OBJHANDLE) != 0)
+				return ((typeId & AS.asTYPEID_SCRIPTOBJECT) != 0) ? .Nil : .Object;
+			let name = StringView(AS.asc_typeinfo_get_name(AS.asc_engine_get_type_info_by_id(mEngine, typeId)));
+			if (name == "string")
+				return .String;
+			let inlineKind = InlineKindOf(name);
+			if (inlineKind != .Nil)
+				return inlineKind;
+			return mByName.ContainsKey(scope String(name)) ? .Struct : .Nil;
+		}
 	}
 
 	public override bool HasMethod(ScriptObject object, StringView name, int arity)

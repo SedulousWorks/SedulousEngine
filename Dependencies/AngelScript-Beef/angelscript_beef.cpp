@@ -201,6 +201,14 @@ int asc_typeinfo_get_property(asc_typeinfo* type, unsigned index, const char** n
 {
 	return T(type)->GetProperty(index, name, typeId, nullptr, nullptr, offset);
 }
+int asc_typeinfo_get_property_access(asc_typeinfo* type, unsigned index, int* isPrivate, int* isProtected)
+{
+	bool priv = false, prot = false;
+	int r = T(type)->GetProperty(index, nullptr, nullptr, &priv, &prot);
+	if (isPrivate != nullptr) *isPrivate = priv ? 1 : 0;
+	if (isProtected != nullptr) *isProtected = prot ? 1 : 0;
+	return r;
+}
 
 /* ---- functions ---- */
 

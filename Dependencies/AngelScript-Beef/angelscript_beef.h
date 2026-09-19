@@ -83,6 +83,8 @@ asc_function* asc_typeinfo_get_factory_by_index(asc_typeinfo* type, unsigned ind
 asc_function* asc_typeinfo_get_factory_by_decl(asc_typeinfo* type, const char* decl);
 unsigned      asc_typeinfo_get_property_count(asc_typeinfo* type);
 int           asc_typeinfo_get_property(asc_typeinfo* type, unsigned index, const char** name, int* typeId, int* offset);
+/* isPrivate / isProtected: 1 when so, for a script class's members. */
+int           asc_typeinfo_get_property_access(asc_typeinfo* type, unsigned index, int* isPrivate, int* isProtected);
 
 /* ---- functions ---- */
 const char*   asc_function_get_name(asc_function* fn);

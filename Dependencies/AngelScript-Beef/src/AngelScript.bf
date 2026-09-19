@@ -66,6 +66,7 @@ static class AS
 	[CLink] public static extern Function* asc_typeinfo_get_factory_by_decl(TypeInfo* type, char8* decl);
 	[CLink] public static extern uint32 asc_typeinfo_get_property_count(TypeInfo* type);
 	[CLink] public static extern int32 asc_typeinfo_get_property(TypeInfo* type, uint32 index, char8** name, int32* typeId, int32* offset);
+	[CLink] public static extern int32 asc_typeinfo_get_property_access(TypeInfo* type, uint32 index, int32* isPrivate, int32* isProtected);
 
 	// ---- functions ----
 	[CLink] public static extern char8* asc_function_get_name(Function* fn);

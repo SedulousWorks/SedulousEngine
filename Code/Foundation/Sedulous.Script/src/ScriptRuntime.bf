@@ -27,7 +27,15 @@ abstract class ScriptRuntime
 
 	/// Compiles `source` into the module, replacing what it held. False on a compile error,
 	/// with the messages in Problems.
-	public virtual bool Compile(StringView moduleName, StringView sectionName, StringView source) => false;
+	public bool Compile(StringView moduleName, StringView sectionName, StringView source)
+		=> CompileModule(moduleName, scope ScriptSection[](.(sectionName, source)));
+
+	/// Compiles the sections into one module, replacing what it held: every behaviour
+	/// class of a run in one module, each keeping its own file identity for errors.
+	public virtual bool CompileModule(StringView moduleName, Span<ScriptSection> sections) => false;
+
+	/// Drops a module and everything compiled into it.
+	public virtual void DiscardModule(StringView moduleName) {}
 
 	/// Calls a global function of a module by its declaration, `float f(int, int)` say.
 	/// False when it is not there, or the call failed; the reason is in Problems.
@@ -45,6 +53,11 @@ abstract class ScriptRuntime
 	public virtual ScriptObject Instantiate(StringView moduleName, StringView className) => null;
 
 	public virtual void Release(ScriptObject object) {}
+
+	/// The public properties and methods of a compiled class, as the language reports
+	/// them. What a cook harvests properties and handlers from. False when the class is
+	/// not in the module.
+	public virtual bool DescribeClass(StringView moduleName, StringView className, List<ScriptMemberDesc> outMembers) => false;
 
 	/// Whether the object's class has a method of that name taking `arity` arguments.
 	public virtual bool HasMethod(ScriptObject object, StringView name, int arity) => false;
