@@ -28,4 +28,12 @@ class ResourceBindingComponentManager<T> : SerializableComponentManager<T>
 			component.ResolveResources(manager);
 		});
 	}
+
+	public override void ResolveEntityResources(EntityHandle entity, ResourceManager manager)
+	{
+		mResources = manager;
+		var component = Get(entity);
+		if (component != null)
+			component.ResolveResources(manager);
+	}
 }

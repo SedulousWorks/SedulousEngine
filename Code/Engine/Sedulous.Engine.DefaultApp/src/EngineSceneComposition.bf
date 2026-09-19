@@ -10,6 +10,7 @@ using Sedulous.Engine.Spline;
 using Sedulous.Engine.Terrain;
 using Sedulous.Engine.UI;
 using Sedulous.Scene;
+using Sedulous.Scene.Resource;
 
 namespace Sedulous.Engine.DefaultApp;
 
@@ -33,7 +34,8 @@ static class EngineSceneComposition
 {
 	/// Ordering alone, with no dependencies declared, exactly as Raptor has it: what matters
 	/// is that the order is fixed, not that any domain needs another built first.
-	private static SceneModule[10] sModules = .(
+	private static SceneModule[11] sModules = .(
+		.("prefabs", => PrefabSpawnScene.AddPrefabSpawnSceneManagers, null),
 		.("render", => RenderScene.AddRenderSceneManagers, null),
 		.("animation", => AnimationScene.AddAnimationSceneManagers, null),
 		.("particles", => ParticleScene.AddParticleSceneManagers, null),

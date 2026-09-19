@@ -260,26 +260,32 @@ static class ScriptSurfaceWalker
 		else if (type.IsStruct)
 			kind = .Struct;
 		ctx.Kind = kind;
-		code.AppendF("\t{{\n\t\tlet t = surface.AddType({}, .{}, {});\n", Quote(fullName, .. scope .()), kind, Quote(domain, .. scope .()));
+		let header = scope String();
+		header.AppendF("surface.AddType({}, .{}, {})", Quote(fullName, .. scope .()), kind, Quote(domain, .. scope .()));
+		// The members are emitted first, so a type with none is added without a `t` the
+		// compiler would warn about; and a warning forces a full rebuild.
+		let members = scope String();
+		let savedCode = ctx.Code;
+		ctx.Code = members;
 
 		bool allPublic = false;
 		if (type.GetCustomAttribute<ScriptableAttribute>() case .Ok(let s))
 			allPublic = s.Members == .AllPublic;
 		if (allPublic)
-			code.Append("\t\tt.Everything();\n");
+			members.Append("\t\tt.Everything();\n");
 
 		if (type.GetCustomAttribute<DisplayNameAttribute>() case .Ok(let dn))
-			code.AppendF("\t\tt.Display({});\n", Quote(dn.Name, .. scope .()));
+			members.AppendF("\t\tt.Display({});\n", Quote(dn.Name, .. scope .()));
 		if (type.GetCustomAttribute<DescriptionAttribute>() case .Ok(let ds))
-			code.AppendF("\t\tt.Describe({});\n", Quote(ds.Text, .. scope .()));
+			members.AppendF("\t\tt.Describe({});\n", Quote(ds.Text, .. scope .()));
 		if (type.GetCustomAttribute<CategoryAttribute>() case .Ok(let c))
-			code.AppendF("\t\tt.Categorised({});\n", Quote(c.Name, .. scope .()));
+			members.AppendF("\t\tt.Categorised({});\n", Quote(c.Name, .. scope .()));
 
 		EmitRole(ctx, managers);
 
 		if (kind == .Enum)
 		{
-			EmitEnumValues(type, code);
+			EmitEnumValues(type, members);
 		}
 		else
 		{
@@ -287,7 +293,12 @@ static class ScriptSurfaceWalker
 			EmitProperties(ctx, allPublic);
 			EmitMethods(ctx);
 		}
-		code.Append("\t}\n");
+
+		ctx.Code = savedCode;
+		if (members.IsEmpty)
+			code.AppendF("\t{};\n", header);
+		else
+			code.AppendF("\t{{\n\t\tlet t = {};\n{}\t}}\n", header, members);
 	}
 
 	[Comptime]

@@ -45,7 +45,7 @@ namespace Sedulous.Engine.DefaultApp;
 /// the facade surface, the backends, the per context configurator, the load facade and the
 /// script tick. The script projects are out of scope, so none of that is here, and an
 /// instance runs its scenes without a Game object.
-class DefaultApplication : IApplication
+class DefaultApplication : IApplication, ISceneObserver
 {
 	/// BORROWED: stable for the application's lifetime.
 	private IApplicationHost mHost = null;
@@ -169,6 +169,9 @@ class DefaultApplication : IApplication
 		// The run's scene group lives on the instance, so it is registered here to tick on
 		// the context's lane.
 		mScenes.RegisterManager(mInstance.Scenes);
+		// A script's Spawn reaches the content through the scene's spawn system, which only
+		// the app can point at the database and the manager.
+		mScenes.RegisterObserver(this, .SystemsReady);
 
 		let graphics = host.Graphics;
 		if ((graphics != null) && (graphics.Raw != null))
@@ -440,6 +443,13 @@ class DefaultApplication : IApplication
 
 	// ==================== networking ====================
 
+	/// Every composed scene's spawn system gets the app's content and resources.
+	public void OnSystemsReady(Scene scene)
+	{
+		if (let spawner = scene.GetSystem<PrefabSpawnSystem>())
+			spawner.SetSource(mContentDatabase, Resources);
+	}
+
 	/// Resolves a prefab a replicated spawn named, into the scene the endpoint replicates.
 	///
 	/// The APP owns this because it is the only thing that knows the content database; the
@@ -457,43 +467,15 @@ class DefaultApplication : IApplication
 			ResolveNetworkPrefab(mContentDatabase, Resources, scene, prefab);
 	}
 
-	/// The resolver's body, as a plain function of what it needs.
-	///
-	/// STATIC and public because it depends on nothing but its arguments, which makes it the
-	/// testable half: the instance method above exists only to supply the database and the
-	/// manager from the app that owns them. Raptor keeps this inside the lambda, where nothing
-	/// can reach it, and has no test for it on either side.
+	/// The resolver's body: the one spawn recipe, PrefabSpawnSystem's, with the app's
+	/// database and manager supplied. A script's Spawn runs the same one through the scene.
 	///
 	/// Answers an unassigned handle for every failure, and does so deliberately: a replicated
 	/// spawn that cannot be resolved should produce NO entity rather than half of one, and the
 	/// replication that follows applies transform and fields on top of whatever this returns.
 	public static EntityHandle ResolveNetworkPrefab(ContentDatabase database,
 		ResourceManager resources, Scene scene, Guid prefab)
-	{
-		// No database means nothing to resolve a prefab through.
-		if ((database == null) || (scene == null))
-			return EntityHandle.Invalid;
-
-		let instance = database.GetInstance(prefab);
-		if (instance == null)
-			return EntityHandle.Invalid;
-
-		// THE CALLER OWNS the stream, which Raptor's UniquePtr says in its type and Beef has
-		// to be told.
-		let payload = instance.ReadData("scene");
-		if (payload == null)
-			return EntityHandle.Invalid;
-		defer delete payload;
-
-		let root = PrefabSpawn.Spawn(scene, payload, prefab);
-
-		// The spawned subtree names its resources by id and nothing has bound them yet, so
-		// without this the entity arrives with every mesh and material unresolved.
-		if (root.IsAssigned && (resources != null))
-			SceneResolve.ResolveSceneResources(scene, resources);
-
-		return root;
-	}
+		=> PrefabSpawnSystem.SpawnInto(scene, database, resources, prefab);
 
 	/// Enters a preset role at startup. None leaves it offline.
 	private void ApplyNetworkStartup(GameInstance instance)

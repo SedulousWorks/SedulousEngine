@@ -30,6 +30,22 @@ static class SceneResolve
 			system.ResolveResources(resources);
 	}
 
+	/// Binds the references held by `root` and everything under it: what a subtree spawned
+	/// into a resolved scene needs, without re-walking the whole scene for it.
+	public static void ResolveEntityResources(Scene scene, EntityHandle root, ResourceManager resources)
+	{
+		if (!scene.IsValid(root))
+			return;
+		for (let system in scene.Systems)
+			system.ResolveEntityResources(root, resources);
+		var child = scene.GetFirstChild(root);
+		while (child.IsAssigned)
+		{
+			ResolveEntityResources(scene, child, resources);
+			child = scene.GetNextSibling(child);
+		}
+	}
+
 	/// Turns the parked records of `manager`'s type into real components.
 	///
 	/// Called when a manager JOINS a live scene, which is what a plugin loading does, or

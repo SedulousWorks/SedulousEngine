@@ -62,6 +62,11 @@ abstract class SceneSystem
 	/// system with resource bearing settings overrides it too.
 	public virtual void ResolveResources(ResourceManager manager) {}
 
+	/// Binds the references ONE entity's component of this system holds, for a subtree
+	/// that arrived after the scene was resolved. A system with no per entity data does
+	/// nothing.
+	public virtual void ResolveEntityResources(EntityHandle entity, ResourceManager manager) {}
+
 	/// Lower runs EARLIER within a phase.
 	public virtual int32 UpdateOrder => 0;
 
