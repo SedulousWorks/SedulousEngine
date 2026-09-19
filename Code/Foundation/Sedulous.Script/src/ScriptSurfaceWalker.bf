@@ -775,9 +775,8 @@ static class ScriptSurfaceWalker
 			}
 			let ptn = pt.GetFullName(.. scope .());
 			code.AppendF(".Param({}, {}, .{}", Quote(m.GetParamName(i), .. scope .()), Quote(ptn, .. scope .()), ScriptValueMap.KindOf(pt, .. scope .()));
-			let defaultText = m.GetParamDefault(i);
-			if (!defaultText.IsEmpty)
-				code.AppendF(", {}, {})", Bool(byRef), Quote(defaultText, .. scope .()));
+			if (HasDefault(m, i))
+				code.AppendF(", {}, true)", Bool(byRef));
 			else if (byRef)
 				code.Append(", true)");
 			else
@@ -829,7 +828,7 @@ static class ScriptSurfaceWalker
 		int required = 0;
 		for (int i = 0; i < m.ParamCount; i++)
 		{
-			if (!m.HasParamDefault(i))
+			if (!HasDefault(m, i))
 				required = i + 1;
 		}
 		body.AppendF("\tif (!frame.ExpectArgs({})) return;\n", Math.Max(required - selfParams, 0));
@@ -892,7 +891,7 @@ static class ScriptSurfaceWalker
 			// the call below is the shorter arity and the COMPILER supplies the default, in
 			// the declaring context where its text means what it says. The default's text
 			// is never pasted here.
-			if (m.HasParamDefault(i))
+			if (HasDefault(m, i))
 				body.AppendF("\t{} a{} = default;\n\tif (frame.Args.Length > {})\n\t\ta{} = {};\n", ptn, i, slotIndex, i, read);
 			else
 				body.AppendF("\tvar a{} = {};\n", i, read);
@@ -977,6 +976,11 @@ static class ScriptSurfaceWalker
 		outCode.AppendF("\t{}\n", write);
 		return true;
 	}
+
+	/// Whether parameter `i` was declared with a default: the flag the compiler sets, not
+	/// the value, which the thunk never needs.
+	[Comptime]
+	private static bool HasDefault(MethodInfo m, int i) => m.GetParamFlags(i).HasFlag(.HasDefault);
 
 	/// The call expression for `args`: a construction, a global, a static, or a call on self.
 	[Comptime]

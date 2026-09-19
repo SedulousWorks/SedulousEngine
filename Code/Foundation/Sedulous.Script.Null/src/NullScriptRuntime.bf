@@ -145,7 +145,7 @@ class NullScriptRuntime : ScriptRuntime
 					o.Append("ref ");
 				o.AppendF("{}: {}", p.Name, Short(p.TypeName, .. scope .()));
 				if (p.HasDefault)
-					o.AppendF(" = {}", p.Default);
+					o.Append(" = ...");
 			}
 			o.Append(")");
 			if (!m.IsConstructor && (m.ReturnTypeName != "void"))

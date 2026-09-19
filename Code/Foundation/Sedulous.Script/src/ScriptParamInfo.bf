@@ -12,9 +12,8 @@ class ScriptParamInfo
 	public ScriptValueKind Kind = .Nil;
 	/// Passed by reference: `ref`, `out`, or `in`.
 	public bool IsByRef = false;
-	/// The default as written in the declaration, empty when the parameter has none. Beef
-	/// source, so generated code can pass it through as is.
-	public String Default = new .() ~ delete _;
-
-	public bool HasDefault => !Default.IsEmpty;
+	/// Declared with a default, so a call may leave it out and every one after it. The
+	/// value itself is not carried: the thunk calls the shorter arity and the compiler
+	/// supplies it, in the declaring context.
+	public bool HasDefault = false;
 }

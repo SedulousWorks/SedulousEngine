@@ -41,14 +41,14 @@ class ScriptMethodInfo
 
 	/// Adds a parameter. Chains, for the generated populate code.
 	public ScriptMethodInfo Param(StringView name, StringView typeName, ScriptValueKind kind,
-		bool byRef = false, StringView defaultText = default)
+		bool byRef = false, bool hasDefault = false)
 	{
 		let p = new ScriptParamInfo();
 		p.Name.Set(name);
 		p.TypeName.Set(typeName);
 		p.Kind = kind;
 		p.IsByRef = byRef;
-		p.Default.Set(defaultText);
+		p.HasDefault = hasDefault;
 		Params.Add(p);
 		return this;
 	}
