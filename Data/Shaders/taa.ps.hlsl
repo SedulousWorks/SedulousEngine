@@ -20,9 +20,9 @@ struct TaaPush {
 };
 PUSH_CONSTANT(TaaPush, pc, space1);
 
-// Linearize a non-reverse-Z depth (0=near, 1=far) to view-space Z, so the disocclusion threshold is
-// depth-independent. Sky/background (d=1) maps to FarPlane; there's no divide-by-zero in [0,1].
-float LinearizeDepth(float d, float n, float f) { return (n * f) / (f - d * (f - n)); }
+// Linearize the NDC depth (depth.hlsli's convention) to view-space Z, so the disocclusion threshold is
+// depth-independent. Sky/background (kDepthFar) maps to FarPlane; there's no divide-by-zero in [0,1].
+#include "depth.hlsli"
 
 float  Luminance(float3 c)  { return dot(c, float3(0.2126, 0.7152, 0.0722)); }
 float3 RGBToYCoCg(float3 c) { return float3(0.25*c.r + 0.5*c.g + 0.25*c.b, 0.5*c.r - 0.5*c.b, -0.25*c.r + 0.5*c.g - 0.25*c.b); }
@@ -72,13 +72,13 @@ PSOut main(float4 pos : SV_Position, float2 uv : TEXCOORD0) {
     float centerLin = LinearizeDepth(DepthTexture.SampleLevel(PointSamp, uv, 0).r, pc.NearPlane, pc.FarPlane);
 
     // Closest depth in a 3x3 neighborhood -> stable motion-vector selection (reduces silhouette ghosting).
-    float  closestDepth = 1.0;
+    float  closestDepth = FarthestDepth();
     float2 closestUV    = uv;
     for (int y = -1; y <= 1; ++y) {
         for (int x = -1; x <= 1; ++x) {
             float2 s = uv + float2(x, y) * pc.TexelSize;
             float  d = DepthTexture.SampleLevel(PointSamp, s, 0).r;
-            if (d < closestDepth) { closestDepth = d; closestUV = s; }
+            if (IsNearerDepth(d, closestDepth)) { closestDepth = d; closestUV = s; }
         }
     }
     float2 motion    = MotionVectors.SampleLevel(PointSamp, closestUV, 0).rg;

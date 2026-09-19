@@ -62,8 +62,8 @@ static class ShadowMath
 		let ys = float[4](-1.0f, -1.0f, 1.0f, 1.0f);
 		for (int i < 4)
 		{
-			nearCorners[i] = UnprojectNDC(inverseViewProj, xs[i], ys[i], 0.0f);
-			farCorners[i] = UnprojectNDC(inverseViewProj, xs[i], ys[i], 1.0f);
+			nearCorners[i] = UnprojectNDC(inverseViewProj, xs[i], ys[i], Projection.NdcDepthNear);
+			farCorners[i] = UnprojectNDC(inverseViewProj, xs[i], ys[i], Projection.NdcDepthFar);
 		}
 
 		let direction = Normalized(lightDir);

@@ -65,7 +65,7 @@ class DxTexture : ITexture
 		if (d.Usage.HasFlag(.DepthStencil))
 		{
 			clearVal.Format = DxConversions.ToDxgiFormat(d.Format);
-			clearVal.DepthStencil.Depth = 1.0f;
+			clearVal.DepthStencil.Depth = Depth.ClearValue;
 			clearVal.DepthStencil.Stencil = 0;
 			pClearVal = &clearVal;
 			mState = .D3D12_RESOURCE_STATE_DEPTH_WRITE;

@@ -1863,7 +1863,7 @@ class MeshRenderer : Renderer
 		// for the early rejection to work. A shadow map pass stays single sampled.
 		config.SampleCount = context.DepthPrepass ? context.SampleCount : 1;
 		config.DepthMode = .ReadWrite;
-		config.DepthCompare = .Less;
+		config.DepthCompare = Depth.Nearer;
 
 		// FRONT faces into the shadow map. That is the conventional default and gives flat and
 		// architectural casters tight contacts. A curved caster keeps a small grazing gap
@@ -1879,8 +1879,9 @@ class MeshRenderer : Renderer
 		// the equal depth test rejects the very fragments it was meant to accept.
 		if (!context.DepthPrepass)
 		{
-			config.DepthBias = 50;
-			config.DepthBiasSlopeScale = 1.5f;
+			// The bias pushes casters AWAY from the light; its sign follows the depth convention.
+			config.DepthBias = (int16)Depth.BiasAwayFromViewer(50);
+			config.DepthBiasSlopeScale = Depth.SlopeBiasAwayFromViewer(1.5f);
 		}
 
 		return config;
@@ -1916,7 +1917,7 @@ class MeshRenderer : Renderer
 			config.ShaderFlags |= .GBuffer;
 			// An equal depth fragment from the prepass must PASS, so each opaque pixel is
 			// shaded exactly once.
-			config.DepthCompare = .LessEqual;
+			config.DepthCompare = Depth.NearerOrEqual;
 			if (config.BlendMode == .Masked)
 				config.ShaderFlags |= .AlphaTest;
 		}
@@ -2281,7 +2282,7 @@ class MeshRenderer : Renderer
 		samplerDesc.AddressV = .ClampToEdge;
 		samplerDesc.AddressW = .ClampToEdge;
 		// Lit where the fragment is no further than what the map recorded.
-		samplerDesc.Compare = .LessEqual;
+		samplerDesc.Compare = Depth.NearerOrEqual; // lit when the receiver is at or nearer than the occluder
 		samplerDesc.Label = "mesh.shadowSampler";
 		if (!(mDevice.CreateSampler(samplerDesc) case .Ok(let shadowSampler)))
 			return .Err;

@@ -8,7 +8,7 @@ struct RGDepthTarget
 	public RGHandle Handle = .Invalid;
 	public LoadOp DepthLoadOp = .Clear;
 	public StoreOp DepthStoreOp = .Store;
-	public float DepthClearValue = 1.0f;
+	public float DepthClearValue = Depth.ClearValue; // the far plane
 	/// Declares the pass will not WRITE depth, which lets the same texture be sampled while
 	/// it is attached.
 	public bool ReadOnly = false;

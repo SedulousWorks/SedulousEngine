@@ -279,7 +279,7 @@ class StencilOutlineSample : SampleApp
 		depthAttachment.View = mDepthStencilView;
 		depthAttachment.DepthLoadOp = .Clear;
 		depthAttachment.DepthStoreOp = .Store;
-		depthAttachment.DepthClearValue = 1.0f;
+		depthAttachment.DepthClearValue = Depth.ClearValue;
 		depthAttachment.StencilLoadOp = .Clear;
 		depthAttachment.StencilStoreOp = .Store;
 		// Cleared to ZERO, which is what makes "not equal to one" mean "not covered".

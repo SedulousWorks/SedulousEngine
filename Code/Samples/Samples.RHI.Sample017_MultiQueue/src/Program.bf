@@ -266,7 +266,7 @@ class MultiQueueSample : SampleApp
 		desc.Primitive.Topology = .PointList;
 		var depthStencil = DepthStencilState();
 		depthStencil.Format = .Depth24PlusStencil8;
-		depthStencil.DepthCompare = .Less;
+		depthStencil.DepthCompare = Depth.Nearer;
 		desc.DepthStencil = depthStencil;
 
 		if (!(mDevice.CreateRenderPipeline(desc) case .Ok(let pipeline)))
@@ -376,7 +376,7 @@ class MultiQueueSample : SampleApp
 		depthAttachment.View = mDepthBuffer.View;
 		depthAttachment.DepthLoadOp = .Clear;
 		depthAttachment.DepthStoreOp = .Store;
-		depthAttachment.DepthClearValue = 1.0f;
+		depthAttachment.DepthClearValue = Depth.ClearValue;
 
 		var passDesc = RenderPassDesc();
 		passDesc.ColorAttachments.Add(colorAttachment);

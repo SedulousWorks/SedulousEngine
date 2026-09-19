@@ -102,30 +102,57 @@ class Float4x4Tests
 		Test.Assert(NearlyEqual(proj.M[0][0], 1.0f));  // xScale = 1/tan(45) at aspect 1
 	}
 
-	/// Raptor checks two entries of the perspective matrix. These pin the depth range,
-	/// which is the part that silently differs between the D3D and GL conventions.
-	[Test]
-	public static void PerspectiveMapsNearAndFarToZeroAndOne()
+	/// NDC depth of a point `distance` in front of a camera at the origin looking down -Z.
+	private static float NdcDepthAt(Float4x4 proj, float distance)
 	{
-		let zNear = 1.0f;
-		let zFar = 100.0f;
-		let proj = Float4x4.PerspectiveFovRH(DegreesToRadians(90.0f), 1.0f, zNear, zFar);
-
-		// A point on the near plane lands at NDC z = 0, one on the far plane at z = 1.
-		let atNear = Float4(0.0f, 0.0f, -zNear, 1.0f) * proj;
-		let atFar = Float4(0.0f, 0.0f, -zFar, 1.0f) * proj;
-		Test.Assert(NearlyEqual(atNear.Z / atNear.W, 0.0f, 1.0e-4f));
-		Test.Assert(NearlyEqual(atFar.Z / atFar.W, 1.0f, 1.0e-4f));
+		let clip = Float4(0.0f, 0.0f, -distance, 1.0f) * proj;
+		return clip.Z / clip.W;
 	}
 
+	/// The depth convention is REVERSE-Z: near maps to 1, far to 0, nearer is larger. The
+	/// builders, the closed form and its inverse agree, and the reason for the switch is
+	/// measurable: two surfaces 0.02 apart at 900 units are hundreds of ulps apart.
 	[Test]
-	public static void OrthographicMapsNearAndFarToZeroAndOne()
+	public static void TheDepthConventionIsReverseZ()
 	{
-		let proj = Float4x4.OrthographicRH(4.0f, 4.0f, 1.0f, 100.0f);
-		let atNear = Float4(0.0f, 0.0f, -1.0f, 1.0f) * proj;
-		let atFar = Float4(0.0f, 0.0f, -100.0f, 1.0f) * proj;
-		Test.Assert(NearlyEqual(atNear.Z, 0.0f, 1.0e-4f));
-		Test.Assert(NearlyEqual(atFar.Z, 1.0f, 1.0e-4f));
+		Test.Assert(Projection.ReverseZ);
+		Test.Assert(Projection.NdcDepthNear == 1.0f);
+		Test.Assert(Projection.NdcDepthFar == 0.0f);
+		Test.Assert(Projection.IsNearer(0.7f, 0.2f));
+		Test.Assert(Projection.IsBackground(Projection.NdcDepthFar));
+		Test.Assert(!Projection.IsBackground(1.0e-7f));
+
+		let n = 0.1f;
+		let f = 1000.0f;
+		let proj = Float4x4.PerspectiveFovRH(1.0f, 16.0f / 9.0f, n, f);
+		Test.Assert(NearlyEqual(NdcDepthAt(proj, n), Projection.NdcDepthNear, 1.0e-5f));
+		Test.Assert(NearlyEqual(NdcDepthAt(proj, f), Projection.NdcDepthFar, 1.0e-5f));
+
+		// Monotonic: farther is smaller, and the matrix agrees with the closed form.
+		float previous = 2.0f;
+		for (let d in scope float[](n, 0.5f, 1.0f, 10.0f, 100.0f, 500.0f, f))
+		{
+			let depth = NdcDepthAt(proj, d);
+			Test.Assert(depth < previous);
+			Test.Assert(NearlyEqual(depth, Projection.DepthAtDistance(d, n, f), 1.0e-5f));
+			// Linearize inverts it, with a relative tolerance since the far end is large.
+			Test.Assert(Abs(Projection.LinearizeDepth(depth, n, f) - d) <= d * 1.0e-4f);
+			previous = depth;
+		}
+
+		// Reverse-Z spends the float where a perspective divide starves it: two surfaces
+		// 0.02 apart at 900 units are far apart in ulps, where under standard-Z the gap is
+		// a fraction of one at depth ~1 and they z-fight.
+		let wall = NdcDepthAt(proj, 900.0f);
+		let face = NdcDepthAt(proj, 900.0f - 0.02f);
+		Test.Assert(face > wall);
+		Test.Assert((face - wall) > 100.0f * 1.2e-7f * wall, "more than 100 ulps of the smaller value");
+
+		// Orthographic: the same reading.
+		let ortho = Float4x4.OrthographicRH(10.0f, 10.0f, 2.0f, 50.0f);
+		Test.Assert(NearlyEqual(NdcDepthAt(ortho, 2.0f), Projection.NdcDepthNear, 1.0e-6f));
+		Test.Assert(NearlyEqual(NdcDepthAt(ortho, 50.0f), Projection.NdcDepthFar, 1.0e-6f));
+		Test.Assert(NearlyEqual(NdcDepthAt(ortho, 26.0f), 0.5f, 1.0e-6f));
 	}
 
 	/// LookAt is untested in Raptor. The camera looks down -Z, so a camera at +Z looking

@@ -21,7 +21,7 @@ class WebGpuSkyDrawTests
 		@vertex fn vertexMain(@builtin(vertex_index) index : u32)
 		    -> @builtin(position) vec4f {
 		  let uv = vec2f(f32((index << 1u) & 2u), f32(index & 2u));
-		  return vec4f(uv * 2.0 - 1.0, 1.0, 1.0);
+		  return vec4f(uv * 2.0 - 1.0, 0.0, 1.0); // z = 0: the far plane (reverse-Z, Depth)
 		}
 		@fragment fn fragmentMain() -> FragmentOutput {
 		  var output : FragmentOutput;
@@ -92,7 +92,7 @@ class WebGpuSkyDrawTests
 		depthState.Format = .Depth32Float;
 		depthState.DepthTestEnabled = true;
 		depthState.DepthWriteEnabled = false;
-		depthState.DepthCompare = .LessEqual;
+		depthState.DepthCompare = Depth.NearerOrEqual; // at the far plane: only a cleared pixel
 
 		var pipelineDesc = RenderPipelineDesc();
 		pipelineDesc.Layout = pipelineLayout;
@@ -116,13 +116,13 @@ class WebGpuSkyDrawTests
 			DepthStencilAttachment depth = .();
 			depth.View = depthView;
 			depth.DepthLoadOp = .Clear;
-			depth.DepthClearValue = 1.0f;
+			depth.DepthClearValue = Depth.ClearValue;
 			pass.DepthStencilAttachment = depth;
 
 			encoder.BeginRenderPass(pass).End();
 		}
 
-		// Pass 2 is the sky itself: load the colour, read only depth, fullscreen at z = 1.
+		// Pass 2 is the sky itself: load the colour, read only depth, fullscreen at the far plane.
 		{
 			RenderPassDesc pass = .();
 			ColorAttachment color = .();

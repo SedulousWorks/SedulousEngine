@@ -37,24 +37,25 @@ class DepthBufferSample : SampleApp
 		}
 		""";
 
-	/// Three quads, position then RGBA, one vertex per row. Depth decreases with each, so
-	/// each is nearer the camera than the one before.
+	/// Three quads, position then RGBA, one vertex per row. Depth INCREASES with each, so
+	/// each is nearer the camera than the one before: the engine's reverse-Z convention
+	/// (Depth: nearer is the larger value, the clear is the far plane at 0).
 	private static float[84] sVertices = .(
 		// Red: large and furthest back.
-		-0.6f, -0.6f, 0.8f,   1.0f, 0.2f, 0.2f, 1.0f,
-		 0.4f, -0.6f, 0.8f,   1.0f, 0.2f, 0.2f, 1.0f,
-		 0.4f,  0.6f, 0.8f,   1.0f, 0.2f, 0.2f, 1.0f,
-		-0.6f,  0.6f, 0.8f,   1.0f, 0.2f, 0.2f, 1.0f,
+		-0.6f, -0.6f, 0.2f,   1.0f, 0.2f, 0.2f, 1.0f,
+		 0.4f, -0.6f, 0.2f,   1.0f, 0.2f, 0.2f, 1.0f,
+		 0.4f,  0.6f, 0.2f,   1.0f, 0.2f, 0.2f, 1.0f,
+		-0.6f,  0.6f, 0.2f,   1.0f, 0.2f, 0.2f, 1.0f,
 		// Green: overlaps red, and nearer.
 		-0.2f, -0.4f, 0.5f,   0.2f, 1.0f, 0.2f, 1.0f,
 		 0.6f, -0.4f, 0.5f,   0.2f, 1.0f, 0.2f, 1.0f,
 		 0.6f,  0.4f, 0.5f,   0.2f, 1.0f, 0.2f, 1.0f,
 		-0.2f,  0.4f, 0.5f,   0.2f, 1.0f, 0.2f, 1.0f,
 		// Blue: overlaps both, and nearest.
-		-0.4f, -0.7f, 0.2f,   0.2f, 0.3f, 1.0f, 1.0f,
-		 0.2f, -0.7f, 0.2f,   0.2f, 0.3f, 1.0f, 1.0f,
-		 0.2f,  0.7f, 0.2f,   0.2f, 0.3f, 1.0f, 1.0f,
-		-0.4f,  0.7f, 0.2f,   0.2f, 0.3f, 1.0f, 1.0f);
+		-0.4f, -0.7f, 0.8f,   0.2f, 0.3f, 1.0f, 1.0f,
+		 0.2f, -0.7f, 0.8f,   0.2f, 0.3f, 1.0f, 1.0f,
+		 0.2f,  0.7f, 0.8f,   0.2f, 0.3f, 1.0f, 1.0f,
+		-0.4f,  0.7f, 0.8f,   0.2f, 0.3f, 1.0f, 1.0f);
 
 	private static uint16[18] sIndices = .(
 		0, 1, 2, 0, 2, 3,
@@ -199,7 +200,7 @@ class DepthBufferSample : SampleApp
 		var depthStencil = DepthStencilState();
 		depthStencil.Format = .Depth24PlusStencil8;
 		depthStencil.DepthWriteEnabled = true;
-		depthStencil.DepthCompare = .Less;
+		depthStencil.DepthCompare = Depth.Nearer;
 		desc.DepthStencil = depthStencil;
 
 		if (!(mDevice.CreateRenderPipeline(desc) case .Ok(let pipeline)))
@@ -233,7 +234,7 @@ class DepthBufferSample : SampleApp
 		depthAttachment.View = mDepthView;
 		depthAttachment.DepthLoadOp = .Clear;
 		depthAttachment.DepthStoreOp = .Store;
-		depthAttachment.DepthClearValue = 1.0f;
+		depthAttachment.DepthClearValue = Depth.ClearValue;
 
 		var passDesc = RenderPassDesc();
 		passDesc.ColorAttachments.Add(colorAttachment);

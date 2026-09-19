@@ -112,29 +112,37 @@ struct Float4x4
 			0.0f, 0.0f, 0.0f, 1.0f);
 	}
 
-	/// Right-handed perspective, NDC z in [0, 1], XNA and D3D style.
+	/// Right-handed perspective, REVERSE-Z: NDC z in [0, 1] with the NEAR plane at 1 and the
+	/// FAR plane at 0, the engine's one depth convention (see [Projection]). With a float depth
+	/// buffer this spends the float's precision where a perspective divide starves it, far
+	/// away: the resolvable depth step grows linearly with distance instead of quadratically.
+	/// Derivation, row vector, view z negative forward (ze = -d):
+	///   ndc = n (f - d) / ((f - n) d)  ->  z' = ze * n/(f-n) + n f/(f-n),  w' = -ze.
 	[Scriptable]
 	public static Float4x4 PerspectiveFovRH(float fovYRadians, float aspect, float zNear, float zFar)
 	{
 		let yScale = 1.0f / Tan(fovYRadians * 0.5f);
 		let xScale = yScale / aspect;
-		let zRange = zFar / (zNear - zFar);
+		let zRange = zNear / (zFar - zNear);
 		return .(
 			xScale, 0.0f,   0.0f,            0.0f,
 			0.0f,   yScale, 0.0f,            0.0f,
 			0.0f,   0.0f,   zRange,          -1.0f,
-			0.0f,   0.0f,   zNear * zRange,  0.0f);
+			0.0f,   0.0f,   zFar * zRange,   0.0f);
 	}
 
+	/// Right-handed orthographic, REVERSE-Z (near to 1, far to 0), the same convention as the
+	/// perspective builder so shadow cascades, thumbnails and the camera share one depth
+	/// reading: ndc = (f - d) / (f - n)  ->  z' = ze / (f - n) + f / (f - n).
 	[Scriptable]
 	public static Float4x4 OrthographicRH(float width, float height, float zNear, float zFar)
 	{
-		let zRange = 1.0f / (zNear - zFar);
+		let zRange = 1.0f / (zFar - zNear);
 		return .(
 			2.0f / width, 0.0f,          0.0f,           0.0f,
 			0.0f,         2.0f / height, 0.0f,           0.0f,
 			0.0f,         0.0f,          zRange,         0.0f,
-			0.0f,         0.0f,          zNear * zRange, 1.0f);
+			0.0f,         0.0f,          zFar * zRange,  1.0f);
 	}
 
 	[Scriptable]

@@ -206,11 +206,11 @@ class RGCullingTests
 
 		graph.AddRenderPass("Cascade0", scope (builder) =>
 			{
-				builder.SetDepthTarget(cascades, .Clear, .Store, 1.0f, .(0, 1, 0, 1));
+				builder.SetDepthTarget(cascades, .Clear, .Store, Depth.ClearValue, .(0, 1, 0, 1));
 			});
 		graph.AddRenderPass("Cascade1", scope (builder) =>
 			{
-				builder.SetDepthTarget(cascades, .Clear, .Store, 1.0f, .(0, 1, 1, 1));
+				builder.SetDepthTarget(cascades, .Clear, .Store, Depth.ClearValue, .(0, 1, 1, 1));
 			});
 		graph.AddRenderPass("Shade", scope (builder) =>
 			{

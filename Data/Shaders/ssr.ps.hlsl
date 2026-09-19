@@ -2,6 +2,7 @@
 // Copyright (c) 2026-Present Robert Campbell
 
 #include "push_constant.hlsli"
+#include "depth.hlsli"
 Texture2D<float4> SceneTex    : register(t0, space0);   // lit HDR (reflected + composited into)
 Texture2D         DepthTex    : register(t1, space0);
 Texture2D         NormalTex   : register(t2, space0);   // octahedral view-space normal
@@ -66,7 +67,7 @@ float Ign(float2 p) { return frac(52.9829189 * frac(dot(p, float2(0.06711056, 0.
 // into the HDR happens in the resolve pass (after temporal accumulation). No reflection -> (0,0,0,0).
 float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     float  depth = DepthTex.SampleLevel(PointSamp, uv, 0).r;
-    if (depth >= 1.0) { return float4(0.0, 0.0, 0.0, 0.0); }   // background: no reflector
+    if (IsBackgroundDepth(depth)) { return float4(0.0, 0.0, 0.0, 0.0); }   // background: no reflector
 
     float2 mat       = MaterialTex.SampleLevel(PointSamp, uv, 0).rg;
     float  roughness = mat.r;
@@ -116,7 +117,7 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
         float2 ls = lerp(luv0, luv1, j);
         if (any(ls < 0.0) || any(ls > 1.0)) { break; }         // left the viewport
         float  sd = DepthTex.SampleLevel(PointSamp, LocalToFull(ls), 0).r;
-        if (sd >= 1.0) { jPrev = j; continue; }                // sky: nothing to hit
+        if (IsBackgroundDepth(sd)) { jPrev = j; continue; }    // sky: nothing to hit
         float  rayLin  = 1.0 / lerp(iz0, iz1, j);              // ray linear depth (= -view.z)
         float  surfLin = -ViewPos(ls, sd).z;                   // stored surface linear depth
         float  dif = rayLin - surfLin;                         // >0 once the ray passes behind the surface

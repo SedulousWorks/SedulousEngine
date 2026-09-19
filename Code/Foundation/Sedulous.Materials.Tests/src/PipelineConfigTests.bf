@@ -94,7 +94,8 @@ class PipelineConfigTests
 		Differs(changed, "colour write mask");
 
 		changed = baseline;
-		changed.DepthCompare = .Greater;
+		// Anything but the convention's own: the baseline IS Depth.Nearer.
+		changed.DepthCompare = Depth.Farther;
 		Differs(changed, "depth compare");
 
 		changed = baseline;
@@ -171,7 +172,7 @@ class PipelineConfigTests
 	{
 		let skybox = PipelineConfig.ForSkybox("sky");
 		Test.Assert(skybox.VertexLayout == .PositionOnly);
-		Test.Assert(skybox.DepthCompare == .LessEqual, "drawn AT the far plane");
+		Test.Assert(skybox.DepthCompare == Depth.NearerOrEqual, "drawn AT the far plane: only a cleared pixel passes");
 		Test.Assert(skybox.CullMode == .Front, "seen from the inside");
 		Test.Assert(skybox.DepthMode == .ReadOnly);
 

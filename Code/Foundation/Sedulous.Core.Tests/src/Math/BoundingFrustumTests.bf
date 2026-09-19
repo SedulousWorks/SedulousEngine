@@ -211,4 +211,35 @@ class BoundingFrustumTests
 		Test.Assert(f.Contains(Float3(0.0f, 0.0f, -50.0f)) == .Disjoint);
 		Test.Assert(f.Contains(Float3(0.0f, 0.0f, -10.0f)) == .Contains);
 	}
+
+	/// The extraction is reverse-Z aware: the near and far planes come out where the camera
+	/// puts them, not swapped, whatever the projection does with NDC depth.
+	[Test]
+	public static void NearAndFarPlanesAreWhereTheCameraPutsThem()
+	{
+		let n = 0.5f;
+		let f = 200.0f;
+		let view = Float4x4.LookAtRH(.(0, 0, 0), .(0, 0, -1), .(0, 1, 0));
+		let proj = Float4x4.PerspectiveFovRH(DegreesToRadians(90.0f), 1.0f, n, f);
+		let frustum = BoundingFrustum(view * proj);
+
+		// Just inside each plane is contained; just outside is not.
+		Test.Assert(frustum.Contains(Float3(0, 0, -(n + 0.01f))) == .Contains);
+		Test.Assert(frustum.Contains(Float3(0, 0, -(n - 0.01f))) == .Disjoint);
+		Test.Assert(frustum.Contains(Float3(0, 0, -(f - 0.1f))) == .Contains);
+		Test.Assert(frustum.Contains(Float3(0, 0, -(f + 0.1f))) == .Disjoint);
+		Test.Assert(frustum.Contains(Float3(0, 0, 1.0f)) == .Disjoint, "behind the camera");
+
+		// The named planes sit at the near and far distances, and the corners follow them.
+		Test.Assert(NearlyEqual(-Dot(frustum.Near.Normal, Float3(0, 0, -n)) - frustum.Near.D, 0.0f, 1.0e-3f));
+		Test.Assert(NearlyEqual(-Dot(frustum.Far.Normal, Float3(0, 0, -f)) - frustum.Far.D, 0.0f, 1.0e-2f));
+		for (int i = 0; i < 4; i++)
+		{
+			Test.Assert(NearlyEqual(frustum.Corners[i].Z, -n, 1.0e-3f));
+			Test.Assert(NearlyEqual(frustum.Corners[4 + i].Z, -f, 1.0e-1f));
+		}
+		// A sphere straddling the far plane intersects; one past it does not.
+		Test.Assert(Intersects(frustum, BoundingSphere(Float3(0, 0, -f), 1.0f)));
+		Test.Assert(!Intersects(frustum, BoundingSphere(Float3(0, 0, -(f + 5.0f)), 1.0f)));
+	}
 }

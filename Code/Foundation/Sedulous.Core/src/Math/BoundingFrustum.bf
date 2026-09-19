@@ -42,13 +42,16 @@ struct BoundingFrustum
 	public Plane Bottom => Planes[5];
 
 	/// Gribb-Hartmann plane extraction for a row-vector, row-major view-projection with
-	/// NDC z in [0,1]. The Planes come out pointing outward.
+	/// NDC z in [0,1]. The Planes come out pointing outward. REVERSE-Z ([Projection]): the
+	/// near plane is where z' = w' (depth 1) and the far plane where z' = 0, so the two
+	/// column combinations are the swap of the standard-Z extraction; the side planes are
+	/// unaffected.
 	public void SetMatrix(Float4x4 m) mut
 	{
 		Matrix = m;
-		Planes[0] = .(Float3(-m[0, 2], -m[1, 2], -m[2, 2]), -m[3, 2]);                     // Near
-		Planes[1] = .(Float3(m[0, 2] - m[0, 3], m[1, 2] - m[1, 3], m[2, 2] - m[2, 3]),
-			m[3, 2] - m[3, 3]);                                                            // Far
+		Planes[0] = .(Float3(m[0, 2] - m[0, 3], m[1, 2] - m[1, 3], m[2, 2] - m[2, 3]),
+			m[3, 2] - m[3, 3]);                                                            // Near (z' <= w')
+		Planes[1] = .(Float3(-m[0, 2], -m[1, 2], -m[2, 2]), -m[3, 2]);                     // Far (z' >= 0)
 		Planes[2] = .(Float3(-m[0, 3] - m[0, 0], -m[1, 3] - m[1, 0], -m[2, 3] - m[2, 0]),
 			-m[3, 3] - m[3, 0]);                                                           // Left
 		Planes[3] = .(Float3(m[0, 0] - m[0, 3], m[1, 0] - m[1, 3], m[2, 0] - m[2, 3]),

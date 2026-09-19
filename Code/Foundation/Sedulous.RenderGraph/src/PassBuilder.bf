@@ -108,7 +108,7 @@ class PassBuilder
 	}
 
 	public PassBuilder SetDepthTarget(RGHandle handle, LoadOp loadOp = .Clear,
-		StoreOp storeOp = .Store, float clearDepth = 1.0f, RGSubresourceRange subresource = .(),
+		StoreOp storeOp = .Store, float clearDepth = Depth.ClearValue, RGSubresourceRange subresource = .(),
 		LoadOp stencilLoadOp = .DontCare, StoreOp stencilStoreOp = .DontCare,
 		uint32 clearStencil = 0)
 	{
@@ -146,7 +146,7 @@ class PassBuilder
 		target.Handle = handle;
 		target.DepthLoadOp = .Load;
 		target.DepthStoreOp = .Store;
-		target.DepthClearValue = 1.0f;
+		target.DepthClearValue = Depth.ClearValue;
 		target.ReadOnly = true;
 		target.Subresource = subresource;
 		mPass.DepthTarget = target;

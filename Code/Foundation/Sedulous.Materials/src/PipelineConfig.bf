@@ -48,7 +48,7 @@ struct PipelineConfig
 	// ---- depth and stencil ----
 
 	public DepthMode DepthMode = .ReadWrite;
-	public CompareFunction DepthCompare = .Less;
+	public CompareFunction DepthCompare = Depth.Nearer; // the engine's depth convention
 	public TextureFormat DepthFormat = .Depth32Float;
 	public int16 DepthBias = 0;
 	public float DepthBiasSlopeScale = 0.0f;
@@ -169,7 +169,7 @@ struct PipelineConfig
 		config.ShaderName = shader;
 		config.VertexLayout = .PositionOnly;
 		config.DepthMode = .ReadOnly;
-		config.DepthCompare = .LessEqual;
+		config.DepthCompare = Depth.NearerOrEqual; // at the far plane: only a cleared pixel
 		config.CullMode = .Front;
 		return config;
 	}

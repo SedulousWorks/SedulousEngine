@@ -96,7 +96,7 @@ class RGDescriptorTests
 		let target = RGDepthTarget();
 		Test.Assert(target.DepthLoadOp == .Clear);
 		Test.Assert(target.DepthStoreOp == .Store);
-		Test.Assert(target.DepthClearValue == 1.0f);
+		Test.Assert(target.DepthClearValue == Depth.ClearValue); // the far plane
 		Test.Assert(!target.ReadOnly);
 		Test.Assert(target.StencilLoadOp == .DontCare);
 		Test.Assert(target.StencilStoreOp == .DontCare);

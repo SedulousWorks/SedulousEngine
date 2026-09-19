@@ -8,6 +8,7 @@
 // nothing - the ambient/IBL already in the HDR stands in for off-screen light.
 
 #include "push_constant.hlsli"
+#include "depth.hlsli"
 Texture2D<float4> SceneTex  : register(t0, space0);   // PREFILTERED lit HDR (quarter-res box
                                                       // average, ssgi_down) - every gather tap
                                                       // is a ~16-pixel mean, so one blown-out
@@ -88,7 +89,7 @@ float3 MarchRay(float3 P, float3 D, float2 luv0start, float iz0, float jit, out 
         float2 ls = lerp(luv0, luv1, j);
         if (any(ls < 0.0) || any(ls > 1.0)) { break; }
         float  sd = DepthTex.SampleLevel(PointSamp, LocalToFull(ls), 0).r;
-        if (sd >= 1.0) { jPrev = j; continue; }
+        if (IsBackgroundDepth(sd)) { jPrev = j; continue; }   // sky: nothing to hit
         float  rayLin  = 1.0 / lerp(iz0, iz1, j);
         float  surfLin = -ViewPos(ls, sd).z;
         float  dif = rayLin - surfLin;
@@ -110,7 +111,7 @@ float3 MarchRay(float3 P, float3 D, float2 luv0start, float iz0, float jit, out 
     // can land on a sky texel next to the geometry - gathering bright sky as "bounce" gives
     // persistent jittering white speckle no temporal filter can fix. Reject non-surface hits.
     float hitDepth = DepthTex.SampleLevel(PointSamp, LocalToFull(hitLocal), 0).r;
-    if (hitDepth >= 1.0) { return float3(0.0, 0.0, 0.0); }
+    if (IsBackgroundDepth(hitDepth)) { return float3(0.0, 0.0, 0.0); }
     // Distance falloff to ZERO at the gather radius (Godot SSIL's obscurance falloff):
     // the thickness band can accept a refined hit whose actual surface is far past the
     // ray - a bright far-field surface must attenuate out, not spike.
@@ -135,7 +136,7 @@ float3 MarchRay(float3 P, float3 D, float2 luv0start, float iz0, float jit, out 
 // temporal accumulate + additive composite happen in ssgi_resolve.
 float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     float depth = DepthTex.SampleLevel(PointSamp, uv, 0).r;
-    if (depth >= 1.0) { return float4(0.0, 0.0, 0.0, 0.0); }   // background receives no GI
+    if (IsBackgroundDepth(depth)) { return float4(0.0, 0.0, 0.0, 0.0); }   // background receives no GI
 
     float2 luv = FullToLocal(uv);
     float3 P = ViewPos(luv, depth);

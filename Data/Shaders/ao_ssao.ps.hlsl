@@ -2,6 +2,7 @@
 // Copyright (c) 2026-Present Robert Campbell
 
 #include "push_constant.hlsli"
+#include "depth.hlsli"
 #include "ao_common.hlsli"
 
 Texture2D    DepthTex  : register(t0, space0);
@@ -47,7 +48,7 @@ static const float3 KERNEL[16] = {
 
 float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     float depth = DepthTex.SampleLevel(PointSamp, uv, 0).r;
-    if (depth >= 1.0) { return float4(1.0, 0, 0, 0); }
+    if (IsBackgroundDepth(depth)) { return float4(1.0, 0, 0, 0); }   // background: no occlusion
 
     float3 P = ViewPos(uv, depth);
     float3 N = OctDecode(NormalTex.SampleLevel(PointSamp, uv, 0).rg);

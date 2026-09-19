@@ -2,6 +2,7 @@
 // Copyright (c) 2026-Present Robert Campbell
 
 // variants: ALPHA_TEST GBUFFER
+#include "depth.hlsli"
 #define CASCADE_COUNT 4
 cbuffer View : register(b0, space0) {        // shared with the VS (same layout)
     row_major float4x4 ViewProj;
@@ -84,7 +85,7 @@ float SampleCascade(int cascade, float3 worldPos, float3 N, float NdotL) {
     // uv.y sign is backend-driven (ShadowParams.y): -1 on Vulkan (neg viewport), +1 on Y-flip targets.
     float2 uv  = float2(ndc.x * 0.5 + 0.5, ndc.y * ShadowParams.y * 0.5 + 0.5);
     if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) { return 1.0; }
-    float compareDepth = ndc.z - ShadowDepthBias;
+    float compareDepth = BiasTowardViewer(ndc.z, ShadowDepthBias);   // toward the light: fewer false occluders
     float layer = CascadeLayerBase + (float)cascade;   // this view's slice of the shared array
     float sum = 0.0;
     [unroll] for (int y = -1; y <= 1; ++y) {
@@ -150,9 +151,9 @@ float SampleLocalShadow(int idx, float3 worldPos) {
     if (lc.w <= 0.0) { return 1.0; }
     float3 ndc = lc.xyz / lc.w;
     float2 uv  = float2(ndc.x * 0.5 + 0.5, ndc.y * ShadowParams.y * 0.5 + 0.5);   // backend-driven uv.y sign
-    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 || ndc.z <= 0.0 || ndc.z >= 1.0) { return 1.0; }
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 || ndc.z < 0.0 || ndc.z > 1.0) { return 1.0; }   // outside the light's depth range
     float2 atlasUV = uv * s.atlasScaleBias.xy + s.atlasScaleBias.zw;
-    float compareDepth = ndc.z - s.depthBias;
+    float compareDepth = BiasTowardViewer(ndc.z, s.depthBias);
     float sum = 0.0;
     [unroll] for (int y = -1; y <= 1; ++y) {
         [unroll] for (int x = -1; x <= 1; ++x) {

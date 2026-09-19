@@ -17,8 +17,8 @@ static class WorldPanelMath
 		let ndcX = (pointerPx.X / viewSize.X) * 2.0f - 1.0f;
 		let ndcY = 1.0f - (pointerPx.Y / viewSize.Y) * 2.0f;
 
-		outOrigin = Unproject(inverseViewProjection, ndcX, ndcY, 0.0f);
-		let far = Unproject(inverseViewProjection, ndcX, ndcY, 1.0f);
+		outOrigin = Unproject(inverseViewProjection, ndcX, ndcY, Projection.NdcDepthNear);
+		let far = Unproject(inverseViewProjection, ndcX, ndcY, Projection.NdcDepthFar);
 		outDirection = Normalized(far - outOrigin);
 	}
 

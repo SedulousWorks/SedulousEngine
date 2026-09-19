@@ -232,7 +232,7 @@ class WireframeSample : SampleApp
 		// and writing depth would let a near edge erase a far one that shares a pixel.
 		var depthStencil = DepthStencilState();
 		depthStencil.Format = .Depth24PlusStencil8;
-		depthStencil.DepthCompare = .LessEqual;
+		depthStencil.DepthCompare = Depth.NearerOrEqual;
 		depthStencil.DepthWriteEnabled = false;
 		desc.DepthStencil = depthStencil;
 
@@ -268,7 +268,7 @@ class WireframeSample : SampleApp
 		depthAttachment.View = mDepthBuffer.View;
 		depthAttachment.DepthLoadOp = .Clear;
 		depthAttachment.DepthStoreOp = .Store;
-		depthAttachment.DepthClearValue = 1.0f;
+		depthAttachment.DepthClearValue = Depth.ClearValue;
 
 		var passDesc = RenderPassDesc();
 		passDesc.ColorAttachments.Add(colorAttachment);

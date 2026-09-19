@@ -11,7 +11,8 @@ struct DepthStencilAttachment
 	public LoadOp DepthLoadOp = .Clear;
 	public StoreOp DepthStoreOp = .Store;
 	/// One, being the far plane under the usual Less test.
-	public float DepthClearValue = 1.0f;
+	/// The far plane, so the first fragment anywhere wins: see Depth.
+	public float DepthClearValue = Depth.ClearValue;
 	/// Declares the pass will not WRITE depth, which lets the same texture be sampled while
 	/// it is attached.
 	public bool DepthReadOnly = false;

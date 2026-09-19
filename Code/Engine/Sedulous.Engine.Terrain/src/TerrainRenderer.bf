@@ -853,7 +853,7 @@ class TerrainRenderer : Renderer
 		depthStencil.DepthTestEnabled = true;
 		depthStencil.DepthWriteEnabled = true;
 		// An equal depth fragment from the prepass must PASS, so each pixel shades once.
-		depthStencil.DepthCompare = .LessEqual;
+		depthStencil.DepthCompare = Depth.NearerOrEqual;
 
 		var desc = RenderPipelineDesc();
 		desc.Layout = mPipelineLayout;
@@ -917,11 +917,11 @@ class TerrainRenderer : Renderer
 		depthStencil.Format = depthFormat;
 		depthStencil.DepthTestEnabled = true;
 		depthStencil.DepthWriteEnabled = true;
-		depthStencil.DepthCompare = .Less;
+		depthStencil.DepthCompare = Depth.Nearer;
 		if (biased)
 		{
-			depthStencil.DepthBias = 50;
-			depthStencil.DepthBiasSlopeScale = 1.5f;
+			depthStencil.DepthBias = Depth.BiasAwayFromViewer(50);
+			depthStencil.DepthBiasSlopeScale = Depth.SlopeBiasAwayFromViewer(1.5f);
 		}
 
 		var desc = RenderPipelineDesc();
@@ -1103,7 +1103,7 @@ class TerrainRenderer : Renderer
 		samplerDesc.AddressV = .ClampToEdge;
 		samplerDesc.AddressW = .ClampToEdge;
 		// Lit where the fragment's depth is at or before the stored one.
-		samplerDesc.Compare = .LessEqual;
+		samplerDesc.Compare = Depth.NearerOrEqual; // lit when the receiver is at or nearer than the occluder
 		samplerDesc.Label = "terrain.shadowSampler";
 		if (!(mDevice.CreateSampler(samplerDesc) case .Ok(let sampler)))
 			return .Err;

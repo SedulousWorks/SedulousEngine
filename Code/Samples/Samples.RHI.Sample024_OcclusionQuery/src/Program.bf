@@ -39,23 +39,24 @@ class OcclusionQuerySample : SampleApp
 		}
 		""";
 
-	/// Three quads, position then RGBA. The first is the OCCLUDER at depth 0.3; the second
-	/// is off to the left and clear of it; the third sits directly behind it.
+	/// Three quads, position then RGBA. The first is the OCCLUDER at depth 0.7, the nearest
+	/// under the engine's reverse-Z convention (Depth: nearer is the larger value); the
+	/// second is off to the left and clear of it; the third sits directly behind it at 0.3.
 	private static float[84] sVertices = .(
-		-0.30f, -0.40f, 0.3f,   0.4f, 0.4f, 0.4f, 1.0f,
-		 0.30f, -0.40f, 0.3f,   0.4f, 0.4f, 0.4f, 1.0f,
-		 0.30f,  0.40f, 0.3f,   0.5f, 0.5f, 0.5f, 1.0f,
-		-0.30f,  0.40f, 0.3f,   0.5f, 0.5f, 0.5f, 1.0f,
+		-0.30f, -0.40f, 0.7f,   0.4f, 0.4f, 0.4f, 1.0f,
+		 0.30f, -0.40f, 0.7f,   0.4f, 0.4f, 0.4f, 1.0f,
+		 0.30f,  0.40f, 0.7f,   0.5f, 0.5f, 0.5f, 1.0f,
+		-0.30f,  0.40f, 0.7f,   0.5f, 0.5f, 0.5f, 1.0f,
 
-		-0.70f, -0.30f, 0.7f,   1.0f, 0.3f, 0.3f, 1.0f,
-		 0.00f, -0.30f, 0.7f,   1.0f, 0.3f, 0.3f, 1.0f,
-		 0.00f,  0.30f, 0.7f,   1.0f, 0.5f, 0.5f, 1.0f,
-		-0.70f,  0.30f, 0.7f,   1.0f, 0.5f, 0.5f, 1.0f,
+		-0.70f, -0.30f, 0.3f,   1.0f, 0.3f, 0.3f, 1.0f,
+		 0.00f, -0.30f, 0.3f,   1.0f, 0.3f, 0.3f, 1.0f,
+		 0.00f,  0.30f, 0.3f,   1.0f, 0.5f, 0.5f, 1.0f,
+		-0.70f,  0.30f, 0.3f,   1.0f, 0.5f, 0.5f, 1.0f,
 
-		-0.15f, -0.20f, 0.7f,   0.3f, 0.3f, 1.0f, 1.0f,
-		 0.15f, -0.20f, 0.7f,   0.3f, 0.3f, 1.0f, 1.0f,
-		 0.15f,  0.20f, 0.7f,   0.5f, 0.5f, 1.0f, 1.0f,
-		-0.15f,  0.20f, 0.7f,   0.5f, 0.5f, 1.0f, 1.0f);
+		-0.15f, -0.20f, 0.3f,   0.3f, 0.3f, 1.0f, 1.0f,
+		 0.15f, -0.20f, 0.3f,   0.3f, 0.3f, 1.0f, 1.0f,
+		 0.15f,  0.20f, 0.3f,   0.5f, 0.5f, 1.0f, 1.0f,
+		-0.15f,  0.20f, 0.3f,   0.5f, 0.5f, 1.0f, 1.0f);
 
 	private static uint16[18] sIndices = .(
 		0, 1, 2, 0, 2, 3,
@@ -216,7 +217,7 @@ class OcclusionQuerySample : SampleApp
 		var depthStencil = DepthStencilState();
 		depthStencil.Format = .Depth24PlusStencil8;
 		depthStencil.DepthWriteEnabled = true;
-		depthStencil.DepthCompare = .Less;
+		depthStencil.DepthCompare = Depth.Nearer;
 		desc.DepthStencil = depthStencil;
 
 		if (!(mDevice.CreateRenderPipeline(desc) case .Ok(let pipeline)))
@@ -281,7 +282,7 @@ class OcclusionQuerySample : SampleApp
 		depthAttachment.View = mDepthView;
 		depthAttachment.DepthLoadOp = .Clear;
 		depthAttachment.DepthStoreOp = .Store;
-		depthAttachment.DepthClearValue = 1.0f;
+		depthAttachment.DepthClearValue = Depth.ClearValue;
 
 		var passDesc = RenderPassDesc();
 		passDesc.ColorAttachments.Add(colorAttachment);

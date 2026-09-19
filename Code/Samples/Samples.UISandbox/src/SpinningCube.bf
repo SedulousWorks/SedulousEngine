@@ -199,7 +199,7 @@ class SpinningCube
 		var depthStencil = DepthStencilState();
 		depthStencil.Format = depthFormat;
 		depthStencil.DepthWriteEnabled = true;
-		depthStencil.DepthCompare = .Less;
+		depthStencil.DepthCompare = Depth.Nearer;
 		desc.DepthStencil = depthStencil;
 
 		// No culling, because the winding is not worth getting right for a demo cube and a
@@ -238,7 +238,7 @@ class SpinningCube
 		depthAttachment.View = depthView;
 		depthAttachment.DepthLoadOp = .Clear;
 		depthAttachment.DepthStoreOp = .Store;
-		depthAttachment.DepthClearValue = 1.0f;
+		depthAttachment.DepthClearValue = Depth.ClearValue;
 
 		var passDesc = RenderPassDesc();
 		passDesc.ColorAttachments.Add(colorAttachment);

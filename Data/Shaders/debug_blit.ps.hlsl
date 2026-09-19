@@ -8,6 +8,7 @@
 // the view's sub-rect and overlays/gizmos still draw on top.
 
 #include "push_constant.hlsli"
+#include "depth.hlsli"
 Texture2D Source : register(t0, space0);
 struct DebugBlitPush {
     float2 UvScale;    // fullscreen uv -> view sub-rect
@@ -22,11 +23,8 @@ struct DebugBlitPush {
 };
 PUSH_CONSTANT(DebugBlitPush, pc, space1);
 
-float LinearizeDepth(float d) {
-    // Standard perspective depth -> view-space distance, normalized by far.
-    float z = (pc.NearZ * pc.FarZ) / max(pc.FarZ - d * (pc.FarZ - pc.NearZ), 1e-6);
-    return z / pc.FarZ;
-}
+// Perspective depth -> view-space distance (depth.hlsli's convention), normalized by far.
+float LinearizeDepthNormalized(float d) { return LinearizeDepth(d, pc.NearZ, pc.FarZ) / pc.FarZ; }
 
 float4 main(float4 pos : SV_Position, float2 rawUv : TEXCOORD0) : SV_Target {
     float2 uv = pc.UvOffset + rawUv * pc.UvScale;
@@ -36,7 +34,7 @@ float4 main(float4 pos : SV_Position, float2 rawUv : TEXCOORD0) : SV_Target {
 
     uint channel = pc.Mode & 7u;
     bool linearize = (pc.Mode & 16u) != 0u;
-    if (linearize) { v = LinearizeDepth(v.r).xxxx; }
+    if (linearize) { v = LinearizeDepthNormalized(v.r).xxxx; }
 
     float3 rgb;
     if      (channel == 1u) { rgb = v.rrr; }

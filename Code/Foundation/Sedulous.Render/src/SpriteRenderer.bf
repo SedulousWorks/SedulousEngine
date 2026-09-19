@@ -373,7 +373,7 @@ class SpriteRenderer : Renderer
 		depthStencil.Format = mDepthFormat;
 		depthStencil.DepthTestEnabled = true;
 		depthStencil.DepthWriteEnabled = false;
-		depthStencil.DepthCompare = .LessEqual;
+		depthStencil.DepthCompare = Depth.NearerOrEqual;
 
 		var desc = RenderPipelineDesc();
 		desc.Layout = mPipelineLayout;

@@ -2,6 +2,7 @@
 // Copyright (c) 2026-Present Robert Campbell
 
 #pragma pack_matrix(row_major)
+#include "depth.hlsli"
 
 // Terrain chunk PS. Terrain is always opaque, so it writes the full forward GBUFFER (like unlit.ps):
 // SV_Target0 shaded colour, 1 octahedral view-space normal, 2 screen-space motion vector, 3 material
@@ -87,7 +88,7 @@ float SampleCascade(int cascade, float3 worldPos, float3 N, float NdotL) {
     float3 ndc = lc.xyz / lc.w;
     float2 uv  = float2(ndc.x * 0.5 + 0.5, ndc.y * ShadowParams.y * 0.5 + 0.5);
     if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) { return 1.0; }
-    float compareDepth = ndc.z - ShadowMeta.w;
+    float compareDepth = BiasTowardViewer(ndc.z, ShadowMeta.w);   // toward the light: fewer false occluders
     float layer = ShadowMeta.y + (float)cascade;
     float sum = 0.0;
     [unroll] for (int y = -1; y <= 1; ++y) {

@@ -1079,7 +1079,7 @@ class RenderFrame
 				// to about one cascade.
 				mGraph.AddRenderPass("shadow.cascade", scope (builder) =>
 					{
-						builder.SetDepthTarget(shadowHandle, .Clear, .Store, 1.0f,
+						builder.SetDepthTarget(shadowHandle, .Clear, .Store, Depth.ClearValue,
 							.(0, 0, layer, 1));
 						builder.SetViewport(0, 0, shadowResolution, shadowResolution);
 
@@ -1160,7 +1160,7 @@ class RenderFrame
 
 		mGraph.AddRenderPass("shadow.atlas", scope (builder) =>
 			{
-				builder.SetDepthTarget(atlasHandle, .Clear, .Store, 1.0f, .(0, 0, layer, 1));
+				builder.SetDepthTarget(atlasHandle, .Clear, .Store, Depth.ClearValue, .(0, 0, layer, 1));
 				// The pass's default; each tile sets its own below.
 				builder.SetViewport(0, 0, atlasResolution, atlasResolution);
 
@@ -1812,7 +1812,7 @@ class RenderFrame
 				if (depthStencil.IsValid)
 				{
 					// The depth goes unused; the stencil clears to nought for the fills.
-					builder.SetDepthTarget(depthStencil, .Clear, .DontCare, 1.0f, .(), .Clear,
+					builder.SetDepthTarget(depthStencil, .Clear, .DontCare, Depth.ClearValue, .(), .Clear,
 						.DontCare, 0);
 				}
 				builder.NeverCull();

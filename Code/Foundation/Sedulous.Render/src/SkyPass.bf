@@ -217,7 +217,7 @@ class SkyPass
 		depthStencil.Format = depthFormat;
 		depthStencil.DepthTestEnabled = true;
 		depthStencil.DepthWriteEnabled = false;
-		depthStencil.DepthCompare = .LessEqual;
+		depthStencil.DepthCompare = Depth.NearerOrEqual; // the sky sits AT the far plane: only a cleared pixel passes
 
 		var desc = RenderPipelineDesc();
 		desc.Layout = mPipelineLayout;

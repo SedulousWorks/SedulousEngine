@@ -457,11 +457,11 @@ class DebugDrawPass
 		DestroyGeomPipelines(ref mGeomPipelines[index]);
 
 		mGeomPipelines[index].LineDepth = MakeGeomPipeline(colorFormat, depthFormat, .LineList,
-			.LessEqual);
+			Depth.NearerOrEqual);
 		mGeomPipelines[index].LineOverlay = MakeGeomPipeline(colorFormat, depthFormat, .LineList,
 			.Always);
 		mGeomPipelines[index].TriangleDepth = MakeGeomPipeline(colorFormat, depthFormat,
-			.TriangleList, .LessEqual);
+			.TriangleList, Depth.NearerOrEqual);
 		mGeomPipelines[index].TriangleOverlay = MakeGeomPipeline(colorFormat, depthFormat,
 			.TriangleList, .Always);
 

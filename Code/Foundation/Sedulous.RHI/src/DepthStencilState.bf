@@ -5,7 +5,8 @@ struct DepthStencilState
 	public TextureFormat Format = .Undefined;
 	public bool DepthTestEnabled = true;
 	public bool DepthWriteEnabled = true;
-	public CompareFunction DepthCompare = .Less;
+	/// The engine's depth convention: see Depth.
+	public CompareFunction DepthCompare = Depth.Nearer;
 
 	public bool StencilEnabled = false;
 	public uint8 StencilReadMask = 0xFF;
