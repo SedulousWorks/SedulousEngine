@@ -105,12 +105,10 @@ static class BehaviorLifecycleTests
 		play.Step();
 		Test.Assert(play.Scripts.InstanceCount == 2);
 
-		// The destroy releases the instance, so the count is read through the runtime.
-		let bInstance = play.BehaviorOf(b).Instance;
-		var v = ScriptValue.Nil;
+		// The destroy releases the instance, which is gone, so the count is what says so:
+		// the released object is not touched again.
 		play.Scene.DestroyEntity(b);
 		Test.Assert(play.Scripts.InstanceCount == 1, "released with its entity");
-		Test.Assert(!play.Runtime.GetProperty(bInstance, "destroys", ref v) || true, "the object is gone");
 
 		// Stop: the survivor's onDestroy fires and its instance goes.
 		let aInstance = play.BehaviorOf(a).Instance;
