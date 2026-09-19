@@ -21,6 +21,10 @@ class AngelScriptBinding
 		case Construct;
 		/// `scene.Physics`: Owner.FromScene with the scene as Self.
 		case Resolve;
+		/// `startCoroutine(fn)`: the backend's own.
+		case StartCoroutine;
+		/// `wait(seconds)` inside a coroutine: the backend's own.
+		case Wait;
 	}
 
 	public Role Kind;

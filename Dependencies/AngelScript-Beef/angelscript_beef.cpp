@@ -291,6 +291,15 @@ int asc_set_active_exception(const char* message)
 	asIScriptContext* ctx = asGetActiveContext();
 	return (ctx != nullptr) ? ctx->SetException(message) : asERROR;
 }
+asc_context* asc_get_active_context(void) { return reinterpret_cast<asc_context*>(asGetActiveContext()); }
+int asc_context_suspend(asc_context* ctx) { return C(ctx)->Suspend(); }
+void* asc_context_get_user_data(asc_context* ctx) { return C(ctx)->GetUserData(); }
+void asc_context_set_user_data(asc_context* ctx, void* data) { C(ctx)->SetUserData(data); }
+
+void asc_function_add_ref(asc_function* fn) { F(fn)->AddRef(); }
+void asc_function_release(asc_function* fn) { F(fn)->Release(); }
+void* asc_function_get_delegate_object(asc_function* fn) { return F(fn)->GetDelegateObject(); }
+asc_function* asc_function_get_delegate_function(asc_function* fn) { return Wrap(F(fn)->GetDelegateFunction()); }
 
 /* ---- the generic call ---- */
 

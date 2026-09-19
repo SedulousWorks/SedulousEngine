@@ -140,6 +140,20 @@ asc_function* asc_context_get_exception_function(asc_context* ctx);
 int           asc_context_get_exception_line_number(asc_context* ctx, int* column, const char** section);
 /* Raises an exception in the context of the generic call in progress. */
 int           asc_set_active_exception(const char* message);
+/* The context running the generic call in progress, null outside one. */
+asc_context*  asc_get_active_context(void);
+/* Asks the running context to suspend at the next opportunity; Execute then returns
+ * asEXECUTION_SUSPENDED and a later Execute resumes it. */
+int           asc_context_suspend(asc_context* ctx);
+void*         asc_context_get_user_data(asc_context* ctx);
+void          asc_context_set_user_data(asc_context* ctx, void* data);
+
+/* ---- function handles (funcdefs, delegates) ---- */
+void          asc_function_add_ref(asc_function* fn);
+void          asc_function_release(asc_function* fn);
+/* For a delegate: the object it is bound to and the method; null for a plain function. */
+void*         asc_function_get_delegate_object(asc_function* fn);
+asc_function* asc_function_get_delegate_function(asc_function* fn);
 
 /* ---- the generic call ---- */
 asc_engine*   asc_generic_get_engine(asc_generic* gen);

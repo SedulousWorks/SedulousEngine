@@ -122,6 +122,14 @@ static class AS
 	[CLink] public static extern Function* asc_context_get_exception_function(Context* ctx);
 	[CLink] public static extern int32 asc_context_get_exception_line_number(Context* ctx, int32* column, char8** section);
 	[CLink] public static extern int32 asc_set_active_exception(char8* message);
+	[CLink] public static extern Context* asc_get_active_context();
+	[CLink] public static extern int32 asc_context_suspend(Context* ctx);
+	[CLink] public static extern void* asc_context_get_user_data(Context* ctx);
+	[CLink] public static extern void asc_context_set_user_data(Context* ctx, void* data);
+	[CLink] public static extern void asc_function_add_ref(Function* fn);
+	[CLink] public static extern void asc_function_release(Function* fn);
+	[CLink] public static extern void* asc_function_get_delegate_object(Function* fn);
+	[CLink] public static extern Function* asc_function_get_delegate_function(Function* fn);
 
 	// ---- the generic call ----
 	[CLink] public static extern Engine* asc_generic_get_engine(Generic* gen);

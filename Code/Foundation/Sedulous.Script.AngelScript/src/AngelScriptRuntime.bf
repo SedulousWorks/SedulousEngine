@@ -35,7 +35,23 @@ namespace Sedulous.Script.AngelScript;
 class AngelScriptRuntime : ScriptRuntime
 {
 	private AS.Engine* mEngine = null;
-	private AS.Context* mContext = null;
+	/// Execution contexts, one per call in flight: a script calling the engine calling a
+	/// script needs a second, so they are pooled rather than one.
+	private List<AS.Context*> mFreeContexts = new .() ~ delete _;
+	private List<AS.Context*> mAllContexts = new .() ~ delete _;
+
+	/// One live coroutine: its own context, the seconds still to wait, and the object it
+	/// is a method of, so that object's teardown cancels it.
+	private class Coroutine
+	{
+		public AS.Context* Context;
+		public AS.Function* Function;
+		public double Remaining;
+		public void* Owner;
+	}
+	private List<Coroutine> mCoroutines = new .() ~ DeleteContainerAndItems!(_);
+	/// Objects handed out by Instantiate, released with the runtime if the host did not.
+	private List<AngelScriptObject> mObjects = new .() ~ DeleteContainerAndItems!(_);
 	private AngelScriptCallContext mCallContext = new .() ~ delete _;
 	private List<AngelScriptBinding> mBindings = new .() ~ DeleteContainerAndItems!(_);
 	/// Objects factories made for scripts, freed with the runtime.
@@ -43,11 +59,6 @@ class AngelScriptRuntime : ScriptRuntime
 	/// The per role-type handle a global property points at: a non-null token, since the
 	/// thunk resolves the real system from the context.
 	private List<void*> mTokens = new .() ~ delete _;
-	/// Copies of value arguments a call in progress references: a `&in` parameter is
-	/// given a POINTER, so what it points at must outlive Execute.
-	private List<void*> mArgCopies = new .() ~ delete _;
-	private List<void*> mArgStrings = new .() ~ delete _;
-
 	/// The global handle names taken, so a later one is not refused.
 	private HashSet<String> mHandleNames = new .() ~ DeleteContainerAndItems!(_);
 	/// The properties on Scene taken, likewise.
@@ -69,7 +80,37 @@ class AngelScriptRuntime : ScriptRuntime
 		AS.asc_engine_register_std_string(mEngine);
 		AS.asc_engine_register_script_array(mEngine, 1);
 		DeclareInlineKinds();
-		mContext = AS.asc_engine_create_context(mEngine);
+		DeclareCoroutines();
+	}
+
+	private AS.Context* AcquireContext()
+	{
+		if (!mFreeContexts.IsEmpty)
+			return mFreeContexts.PopBack();
+		let ctx = AS.asc_engine_create_context(mEngine);
+		mAllContexts.Add(ctx);
+		return ctx;
+	}
+
+	private void ReleaseContext(AS.Context* ctx)
+	{
+		AS.asc_context_unprepare(ctx);
+		mFreeContexts.Add(ctx);
+	}
+
+	/// `startCoroutine(fn)` and `wait(seconds)`: the scheduler's surface. A coroutine is any
+	/// `void f()`, a delegate to an object's method included.
+	private void DeclareCoroutines()
+	{
+		AS.asc_engine_register_funcdef(mEngine, "void ScriptCoroutine()");
+		let start = new AngelScriptBinding();
+		start.Kind = .StartCoroutine;
+		mBindings.Add(start);
+		AS.asc_engine_register_global_function(mEngine, "void startCoroutine(ScriptCoroutine@ fn)", Internal.UnsafeCastToPtr(start));
+		let wait = new AngelScriptBinding();
+		wait.Kind = .Wait;
+		mBindings.Add(wait);
+		AS.asc_engine_register_global_function(mEngine, "void wait(float seconds)", Internal.UnsafeCastToPtr(wait));
 	}
 
 	/// The inline value kinds exist in the language whatever the surface declares, since
@@ -91,7 +132,16 @@ class AngelScriptRuntime : ScriptRuntime
 
 	public ~this()
 	{
-		AS.asc_context_release(mContext);
+		for (let co in mCoroutines)
+		{
+			AS.asc_context_abort(co.Context);
+			AS.asc_context_release(co.Context);
+			AS.asc_function_release(co.Function);
+		}
+		// The objects before the engine that owns their memory.
+		ClearAndDeleteItems!(mObjects);
+		for (let ctx in mAllContexts)
+			AS.asc_context_release(ctx);
 		AS.asc_engine_release(mEngine);
 	}
 
@@ -484,6 +534,12 @@ class AngelScriptRuntime : ScriptRuntime
 			let entity = *(ScriptEntity*)AS.asc_generic_get_arg_address(gen, 0);
 			*(ScriptEntity*)AS.asc_generic_get_object(gen) = entity;
 			return;
+		case .StartCoroutine:
+			StartCoroutine((AS.Function*)AS.asc_generic_get_arg_address(gen, 0));
+			return;
+		case .Wait:
+			WaitCurrent(AS.asc_generic_get_arg_float(gen, 0));
+			return;
 		case .Resolve:
 			// `scene.Physics`: the scene's instance of the system.
 			var frame = ScriptCallFrame(context, default);
@@ -605,6 +661,23 @@ class AngelScriptRuntime : ScriptRuntime
 		else if (resultKind != .Nil)
 		{
 			WriteReturn(gen, target, resultKind, (b.Kind == .Get) ? b.Field.TypeName : b.Method.ReturnTypeName, frame.Result);
+		}
+	}
+
+	/// The kind of one of the inline value types declared up front, by its AngelScript
+	/// name; Nil for any other name.
+	private static ScriptValueKind InlineKindOf(StringView asName)
+	{
+		switch (asName)
+		{
+		case "Float2": return .Float2;
+		case "Float3": return .Float3;
+		case "Float4": return .Float4;
+		case "Quaternion": return .Quaternion;
+		case "Color": return .Color;
+		case "Entity": return .Entity;
+		case "Guid": return .Guid;
+		default: return .Nil;
 		}
 	}
 
@@ -838,53 +911,420 @@ class AngelScriptRuntime : ScriptRuntime
 			Problem(scope $"{moduleName} has no {declaration}");
 			return false;
 		}
-		if (AS.asc_context_prepare(mContext, fn) < 0)
-			return false;
+		return Execute(fn, null, args, ref result, declaration);
+	}
 
-		// Arguments by the function's own parameter types.
+	/// Runs `fn` on a pooled context, `self` set when it is a method, with the arguments
+	/// marshalled by the function's own parameter types and the result by its return type.
+	private bool Execute(AS.Function* fn, void* self, Span<ScriptValue> args, ref ScriptValue result, StringView what)
+	{
+		let ctx = AcquireContext();
+		defer ReleaseContext(ctx);
+		if (AS.asc_context_prepare(ctx, fn) < 0)
+		{
+			Problem(scope $"{what}: could not prepare the call");
+			return false;
+		}
+		if (self != null)
+			AS.asc_context_set_object(ctx, self);
+
+		let copies = scope List<void*>();
+		let strings = scope List<void*>();
 		for (int i = 0; i < args.Length; i++)
 		{
 			int32 typeId = 0;
 			uint32 flags = 0;
 			AS.asc_function_get_param(fn, (uint32)i, &typeId, &flags, null);
-			SetContextArg((uint32)i, typeId, flags, args[i]);
+			SetContextArg(ctx, (uint32)i, typeId, flags, args[i], copies, strings);
 		}
 
-		let state = AS.asc_context_execute(mContext);
-		for (let p in mArgCopies)
+		let state = AS.asc_context_execute(ctx);
+		for (let p in copies)
 			Internal.Free(p);
-		mArgCopies.Clear();
-		for (let p in mArgStrings)
+		for (let p in strings)
 		{
 			AS.asc_string_destruct(p);
 			Internal.Free(p);
 		}
-		mArgStrings.Clear();
 		if (state != AS.asEXECUTION_FINISHED)
 		{
-			if (state == AS.asEXECUTION_EXCEPTION)
-			{
-				int32 column = 0;
-				char8* section = null;
-				let line = AS.asc_context_get_exception_line_number(mContext, &column, &section);
-				Problem(scope $"{StringView(section)}({line},{column}): exception: {StringView(AS.asc_context_get_exception_string(mContext))}");
-			}
-			else
-			{
-				Problem(scope $"{declaration}: execution ended in state {state}");
-			}
-			AS.asc_context_unprepare(mContext);
+			ReportExecution(ctx, state, what);
 			return false;
 		}
 
 		uint32 returnFlags = 0;
 		let returnType = AS.asc_function_get_return_type_id(fn, &returnFlags);
-		result = ReadContextReturn(returnType);
-		AS.asc_context_unprepare(mContext);
+		result = ReadContextReturn(ctx, returnType);
 		return true;
 	}
 
-	private void SetContextArg(uint32 i, int32 typeId, uint32 flags, ScriptValue value)
+	private void ReportExecution(AS.Context* ctx, int32 state, StringView what)
+	{
+		if (state == AS.asEXECUTION_EXCEPTION)
+		{
+			int32 column = 0;
+			char8* section = null;
+			let line = AS.asc_context_get_exception_line_number(ctx, &column, &section);
+			Problem(scope $"{StringView(section)}({line},{column}): exception: {StringView(AS.asc_context_get_exception_string(ctx))}");
+		}
+		else
+		{
+			Problem(scope $"{what}: execution ended in state {state}");
+		}
+	}
+
+	// ==================== script objects ====================
+
+	public override ScriptObject Instantiate(StringView moduleName, StringView className)
+	{
+		let module = AS.asc_engine_get_module(mEngine, scope String(moduleName).CStr(), AS.asGM_ONLY_IF_EXISTS);
+		if (module == null)
+		{
+			Problem(scope $"no module {moduleName}");
+			return null;
+		}
+		let type = AS.asc_module_get_type_info_by_name(module, scope String(className).CStr());
+		if (type == null)
+		{
+			Problem(scope $"{moduleName} has no class {className}");
+			return null;
+		}
+		// The default factory: `Mover @Mover()`.
+		let factory = AS.asc_typeinfo_get_factory_by_decl(type, scope $"{className} @{className}()".CStr());
+		if (factory == null)
+		{
+			Problem(scope $"{className} has no default constructor");
+			return null;
+		}
+
+		let ctx = AcquireContext();
+		defer ReleaseContext(ctx);
+		if (AS.asc_context_prepare(ctx, factory) < 0)
+			return null;
+		let state = AS.asc_context_execute(ctx);
+		if (state != AS.asEXECUTION_FINISHED)
+		{
+			ReportExecution(ctx, state, scope $"constructing {className}");
+			return null;
+		}
+		let made = (AS.ScriptObject*)AS.asc_context_get_return_object(ctx);
+		if (made == null)
+			return null;
+		// The context's reference dies with Unprepare; this one is the host's.
+		AS.asc_object_add_ref(made);
+
+		let object = new AngelScriptObject();
+		object.Runtime = this;
+		object.ClassName.Set(className);
+		object.Object = made;
+		object.Type = type;
+		let count = AS.asc_object_get_property_count(made);
+		for (uint32 i = 0; i < count; i++)
+		{
+			var property = AngelScriptObject.Property();
+			property.Index = i;
+			property.TypeId = AS.asc_object_get_property_type_id(made, i);
+			object.Properties[new String(StringView(AS.asc_object_get_property_name(made, i)))] = property;
+		}
+		mObjects.Add(object);
+		return object;
+	}
+
+	public override void Release(ScriptObject object)
+	{
+		let o = object as AngelScriptObject;
+		if (o == null)
+			return;
+		CancelCoroutinesFor(o);
+		mObjects.Remove(o);
+		delete o;
+	}
+
+	public override bool HasMethod(ScriptObject object, StringView name, int arity)
+	{
+		let o = object as AngelScriptObject;
+		if (o == null)
+			return false;
+		let count = AS.asc_typeinfo_get_method_count(o.Type);
+		for (uint32 i = 0; i < count; i++)
+		{
+			let m = AS.asc_typeinfo_get_method_by_index(o.Type, i);
+			if ((StringView(AS.asc_function_get_name(m)) == name) && (AS.asc_function_get_param_count(m) == (uint32)arity))
+				return true;
+		}
+		return false;
+	}
+
+	/// The method of that name whose parameters take these arguments: the count, and each
+	/// argument's kind against the parameter's type.
+	private AS.Function* FindMethod(AngelScriptObject o, StringView name, Span<ScriptValue> args)
+	{
+		let count = AS.asc_typeinfo_get_method_count(o.Type);
+		for (uint32 i = 0; i < count; i++)
+		{
+			let m = AS.asc_typeinfo_get_method_by_index(o.Type, i);
+			if ((StringView(AS.asc_function_get_name(m)) != name) || (AS.asc_function_get_param_count(m) != (uint32)args.Length))
+				continue;
+			bool fits = true;
+			for (int a = 0; a < args.Length; a++)
+			{
+				int32 typeId = 0;
+				uint32 flags = 0;
+				AS.asc_function_get_param(m, (uint32)a, &typeId, &flags, null);
+				if (!Takes(typeId, args[a]))
+				{
+					fits = false;
+					break;
+				}
+			}
+			if (fits)
+				return m;
+		}
+		return null;
+	}
+
+	/// Whether a parameter of `typeId` takes the value: a number into any numeric type, the
+	/// rest by kind.
+	private bool Takes(int32 typeId, ScriptValue value)
+	{
+		switch (typeId)
+		{
+		case AS.asTYPEID_BOOL: return value.Kind == .Bool;
+		case AS.asTYPEID_INT8, AS.asTYPEID_INT16, AS.asTYPEID_INT32, AS.asTYPEID_INT64,
+			AS.asTYPEID_UINT8, AS.asTYPEID_UINT16, AS.asTYPEID_UINT32, AS.asTYPEID_UINT64:
+			return value.Kind == .Int;
+		case AS.asTYPEID_FLOAT, AS.asTYPEID_DOUBLE: return value.IsNumber;
+		default:
+			if ((typeId & AS.asTYPEID_MASK_OBJECT) == 0)
+				return value.Kind == .Int; // an enum
+			if ((typeId & AS.asTYPEID_OBJHANDLE) != 0)
+				return (value.Kind == .Object) || value.IsNil;
+			let name = StringView(AS.asc_typeinfo_get_name(AS.asc_engine_get_type_info_by_id(mEngine, typeId)));
+			if (name == "string")
+				return value.Kind == .String;
+			let inlineKind = InlineKindOf(name);
+			if (inlineKind != .Nil)
+				return value.Kind == inlineKind;
+			if (mByName.TryGetValue(scope String(name), let t))
+				return value.Kind == .Struct;
+			return false;
+		}
+	}
+
+	public override bool Invoke(ScriptObject object, StringView name, Span<ScriptValue> args, ref ScriptValue result)
+	{
+		let o = object as AngelScriptObject;
+		if (o == null)
+			return false;
+		let fn = FindMethod(o, name, args);
+		if (fn == null)
+		{
+			Problem(scope $"{o.ClassName} has no {name} taking these {args.Length} arguments");
+			return false;
+		}
+		return Execute(fn, o.Object, args, ref result, scope $"{o.ClassName}.{name}");
+	}
+
+	public override bool GetProperty(ScriptObject object, StringView name, ref ScriptValue value)
+	{
+		let o = object as AngelScriptObject;
+		if (o == null)
+			return false;
+		if (!o.Properties.TryGetValue(scope String(name), let property))
+			return false;
+		let address = AS.asc_object_get_address_of_property(o.Object, property.Index);
+		value = ReadTyped(property.TypeId, address);
+		return true;
+	}
+
+	public override bool SetProperty(ScriptObject object, StringView name, ScriptValue value)
+	{
+		let o = object as AngelScriptObject;
+		if (o == null)
+			return false;
+		if (!o.Properties.TryGetValue(scope String(name), let property))
+			return false;
+		if (!Takes(property.TypeId, value))
+			return false;
+		let address = AS.asc_object_get_address_of_property(o.Object, property.Index);
+		WriteTyped(property.TypeId, address, value);
+		return true;
+	}
+
+	/// A value of AngelScript type `typeId` out of memory, as a ScriptValue.
+	private ScriptValue ReadTyped(int32 typeId, void* address)
+	{
+		switch (typeId)
+		{
+		case AS.asTYPEID_BOOL: return .FromBool(*(bool*)address);
+		case AS.asTYPEID_INT8: return .FromInt(*(int8*)address);
+		case AS.asTYPEID_INT16: return .FromInt(*(int16*)address);
+		case AS.asTYPEID_INT32: return .FromInt(*(int32*)address);
+		case AS.asTYPEID_INT64: return .FromInt(*(int64*)address);
+		case AS.asTYPEID_UINT8: return .FromInt(*(uint8*)address);
+		case AS.asTYPEID_UINT16: return .FromInt(*(uint16*)address);
+		case AS.asTYPEID_UINT32: return .FromInt(*(uint32*)address);
+		case AS.asTYPEID_UINT64: return .FromInt((int64)*(uint64*)address);
+		case AS.asTYPEID_FLOAT: return .FromFloat(*(float*)address);
+		case AS.asTYPEID_DOUBLE: return .FromFloat(*(double*)address);
+		default:
+			if ((typeId & AS.asTYPEID_MASK_OBJECT) == 0)
+				return .FromInt(*(int32*)address); // an enum
+			if ((typeId & AS.asTYPEID_OBJHANDLE) != 0)
+			{
+				// A handle slot holds the pointer; a script object is not a Beef object.
+				let target = *(void**)address;
+				if ((target == null) || ((typeId & AS.asTYPEID_SCRIPTOBJECT) != 0))
+					return .Nil;
+				return .FromObject(Internal.UnsafeCastToObject(target));
+			}
+			let name = StringView(AS.asc_typeinfo_get_name(AS.asc_engine_get_type_info_by_id(mEngine, typeId)));
+			if (name == "string")
+				return .FromString(StringOf(address));
+			let inlineKind = InlineKindOf(name);
+			if (inlineKind != .Nil)
+				return ReadValue(address, inlineKind, "");
+			if (mByName.TryGetValue(scope String(name), let t))
+				return .FromStruct(address, t.BeefType);
+			return .Nil;
+		}
+	}
+
+	private void WriteTyped(int32 typeId, void* address, ScriptValue value)
+	{
+		switch (typeId)
+		{
+		case AS.asTYPEID_BOOL: *(bool*)address = value.AsBool;
+		case AS.asTYPEID_INT8, AS.asTYPEID_UINT8: *(uint8*)address = (uint8)value.AsInt;
+		case AS.asTYPEID_INT16, AS.asTYPEID_UINT16: *(uint16*)address = (uint16)value.AsInt;
+		case AS.asTYPEID_INT32, AS.asTYPEID_UINT32: *(uint32*)address = (uint32)value.AsInt;
+		case AS.asTYPEID_INT64, AS.asTYPEID_UINT64: *(uint64*)address = (uint64)value.AsInt;
+		case AS.asTYPEID_FLOAT: *(float*)address = (float)value.AsNumber;
+		case AS.asTYPEID_DOUBLE: *(double*)address = value.AsNumber;
+		default:
+			if ((typeId & AS.asTYPEID_MASK_OBJECT) == 0)
+			{
+				*(int32*)address = (int32)value.AsInt;
+				return;
+			}
+			if ((typeId & AS.asTYPEID_OBJHANDLE) != 0)
+			{
+				// Only uncounted engine handles are written; a script object handle would
+				// need its count kept.
+				if ((typeId & AS.asTYPEID_SCRIPTOBJECT) == 0)
+					*(void**)address = (value.AsObject != null) ? Internal.UnsafeCastToPtr(value.AsObject) : null;
+				return;
+			}
+			let name = StringView(AS.asc_typeinfo_get_name(AS.asc_engine_get_type_info_by_id(mEngine, typeId)));
+			if (name == "string")
+			{
+				AS.asc_string_assign(address, value.AsString.Ptr, (uint)value.AsString.Length);
+				return;
+			}
+			let inlineKind = InlineKindOf(name);
+			if (inlineKind != .Nil)
+			{
+				WriteValue(address, inlineKind, "", value);
+				return;
+			}
+			if (mByName.TryGetValue(scope String(name), let t) && (value.AsStruct != null))
+				Internal.MemCpy(address, value.AsStruct, t.Size);
+		}
+	}
+
+	// ==================== coroutines ====================
+
+	public override int CoroutineCount => mCoroutines.Count;
+
+	/// `startCoroutine(fn)`: a context of its own, run at once until it waits or ends.
+	private void StartCoroutine(AS.Function* fn)
+	{
+		if (fn == null)
+		{
+			AS.asc_set_active_exception("startCoroutine: null function");
+			return;
+		}
+		let co = new Coroutine();
+		co.Context = AS.asc_engine_create_context(mEngine);
+		co.Function = fn;
+		AS.asc_function_add_ref(fn);
+		co.Owner = AS.asc_function_get_delegate_object(fn);
+		AS.asc_context_set_user_data(co.Context, Internal.UnsafeCastToPtr(co));
+		mCoroutines.Add(co);
+		if (AS.asc_context_prepare(co.Context, fn) < 0)
+		{
+			Drop(co);
+			return;
+		}
+		Step(co);
+	}
+
+	/// `wait(seconds)` on a coroutine's own context: bank the wait and suspend. On any
+	/// other context there is nothing to suspend, and the wait is a fault.
+	private void WaitCurrent(float seconds)
+	{
+		let active = AS.asc_get_active_context();
+		let co = (active != null) ? Internal.UnsafeCastToObject(AS.asc_context_get_user_data(active)) as Coroutine : null;
+		if (co == null)
+		{
+			AS.asc_set_active_exception("wait() is only valid inside a coroutine");
+			return;
+		}
+		co.Remaining = seconds;
+		AS.asc_context_suspend(active);
+	}
+
+	/// Resumes the coroutine: it runs until it waits again, finishes or faults.
+	private void Step(Coroutine co)
+	{
+		let state = AS.asc_context_execute(co.Context);
+		if (state == AS.asEXECUTION_SUSPENDED)
+			return;
+		if (state != AS.asEXECUTION_FINISHED)
+			ReportExecution(co.Context, state, "coroutine");
+		Drop(co);
+	}
+
+	private void Drop(Coroutine co)
+	{
+		mCoroutines.Remove(co);
+		AS.asc_context_abort(co.Context);
+		AS.asc_context_release(co.Context);
+		AS.asc_function_release(co.Function);
+		delete co;
+	}
+
+	public override void AdvanceCoroutines(double deltaSeconds)
+	{
+		// A snapshot: a step may start another coroutine, or end this one.
+		let due = scope List<Coroutine>();
+		for (let co in mCoroutines)
+		{
+			co.Remaining -= deltaSeconds;
+			if (co.Remaining <= 0)
+				due.Add(co);
+		}
+		for (let co in due)
+		{
+			if (mCoroutines.Contains(co))
+				Step(co);
+		}
+	}
+
+	public override void CancelCoroutinesFor(ScriptObject object)
+	{
+		let o = object as AngelScriptObject;
+		if (o == null)
+			return;
+		for (int i = mCoroutines.Count - 1; i >= 0; i--)
+		{
+			if (mCoroutines[i].Owner == o.Object)
+				Drop(mCoroutines[i]);
+		}
+	}
+
+	private void SetContextArg(AS.Context* mContext, uint32 i, int32 typeId, uint32 flags, ScriptValue value,
+		List<void*> mArgCopies, List<void*> mArgStrings)
 	{
 		switch (typeId)
 		{
@@ -932,7 +1372,7 @@ class AngelScriptRuntime : ScriptRuntime
 		}
 	}
 
-	private ScriptValue ReadContextReturn(int32 typeId)
+	private ScriptValue ReadContextReturn(AS.Context* mContext, int32 typeId)
 	{
 		switch (typeId)
 		{
@@ -963,11 +1403,11 @@ class AngelScriptRuntime : ScriptRuntime
 				mOwned.Add(s);
 				return .FromString(s);
 			}
+			let inlineKind = InlineKindOf(name);
+			if (inlineKind != .Nil)
+				return ReadValue(memory, inlineKind, "");
 			if (mByName.TryGetValue(scope String(name), let t))
 			{
-				let kind = KindOfStruct(t);
-				if (kind != .Struct)
-					return ReadValue(memory, kind, "");
 				// Copied into scratch: the return object dies with Unprepare.
 				let copy = mCallContext.AllocStruct(t.BeefType, t.Size, t.Align);
 				Internal.MemCpy(copy, memory, t.Size);
