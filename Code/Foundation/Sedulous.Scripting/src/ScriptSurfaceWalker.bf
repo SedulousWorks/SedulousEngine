@@ -32,9 +32,13 @@ namespace Sedulous.Scripting;
 /// resolver at the boundary can tell apart. Two that do not FAIL THE BUILD, and [ScriptName]
 /// splits them.
 ///
-/// A thunk resolves what it is called on from the type's role: a scene system through the
-/// frame's scene, a component through its manager and the entity in Self, a service through
-/// the context, a class or struct from Self itself. A member whose types cannot cross the
+/// A thunk resolves what it is called on from the type's role: a scene system from the
+/// object in Self, else the context's scene; a component through its manager in the ENTITY'S
+/// scene (an entity value carries the scene it lives in) and the entity in Self; a service
+/// through the context; a class or struct from Self itself. A scene system also gets a
+/// resolver, the scene's instance from a Scene self, which is how a script reaches
+/// `scene.Physics`. An entity a scene bound call answers is tagged with that scene, and an
+/// entity it takes is checked to be in it. A member whose types cannot cross the
 /// boundary (see ScriptValueMap) is still on the table, marked Blocked with the type that
 /// stopped it, so the listing shows the gap.
 ///
@@ -338,6 +342,8 @@ static class ScriptSurfaceWalker
 			ctx.Role = BaseRole(type);
 		if (ctx.Role != .Plain)
 			ctx.Code.AppendF("\t\tt.As(.{});\n", ctx.Role);
+		if ((ctx.Role == .SceneSystem) || (ctx.Role == .ComponentManager))
+			EmitResolver(ctx);
 	}
 
 	/// The role a class's bases give it: a scene system, or an engine service.
@@ -394,23 +400,31 @@ static class ScriptSurfaceWalker
 
 	/// The lines that resolve `self` for an instance member, per the type's role, and
 	/// whether the self value must be written back after the call (an inline struct).
+	/// `sceneExpr` is how the body names the scene the call is in, empty when it has none:
+	/// entities it answers are tagged with it, entities it takes are checked against it.
 	[Comptime]
-	private static void SelfPrologue(TypeCtx ctx, String outCode, out bool writeBack)
+	private static void SelfPrologue(TypeCtx ctx, String outCode, out bool writeBack, String sceneExpr)
 	{
 		writeBack = false;
 		let t = ctx.FullName;
 		switch (ctx.Role)
 		{
 		case .SceneSystem, .ComponentManager:
-			outCode.AppendF("\tlet scene = frame.Context.Scene;\n\tlet self = (scene != null) ? scene.GetSystem<{}>() : null;\n\tif (self == null) {{ frame.Fail(\"no {} in the scene\"); return; }}\n", t, ctx.Name);
+			// The system a script holds, else the ambient scene's, for a host with no object.
+			outCode.AppendF("\tvar self = frame.Self.AsObject as {};\n\tif (self == null)\n\t{{\n\t\tlet ambient = frame.Context.Scene;\n\t\tself = (ambient != null) ? ambient.GetSystem<{}>() : null;\n\t}}\n\tif (self == null) {{ frame.Fail(\"no {} in the scene\"); return; }}\n", t, t, ctx.Name);
+			sceneExpr.Set("self.Scene");
 		case .Component:
-			outCode.AppendF("\tlet scene = frame.Context.Scene;\n\tlet manager = (scene != null) ? scene.GetSystem<{}>() : null;\n\tlet self = (manager != null) ? manager.Get(frame.Self.AsEntity) : null;\n\tif (self == null) {{ frame.Fail(\"the entity has no {}\"); return; }}\n", ctx.Manager, ctx.Name);
+			// The entity's own scene, else the ambient one.
+			outCode.AppendF("\tlet scene = frame.SceneOf(frame.Self);\n\tlet manager = (scene != null) ? scene.GetSystem<{}>() : null;\n\tlet self = (manager != null) ? manager.Get(frame.Self.AsEntity) : null;\n\tif (self == null) {{ frame.Fail(\"the entity has no {}\"); return; }}\n", ctx.Manager, ctx.Name);
+			sceneExpr.Set("scene");
 		case .Service:
 			outCode.AppendF("\tlet self = frame.Context.FindService(typeof({})) as {};\n\tif (self == null) {{ frame.Fail(\"no {} service\"); return; }}\n", t, t, ctx.Name);
 		case .Plain:
 			if (ctx.Kind == .Class)
 			{
 				outCode.AppendF("\tlet self = frame.Self.AsObject as {};\n\tif (self == null) {{ frame.Fail(\"self is not a {}\"); return; }}\n", t, ctx.Name);
+				if (t == "Sedulous.Scene.Scene")
+					sceneExpr.Set("self");
 			}
 			else if (ctx.IsInlineStruct)
 			{
@@ -555,8 +569,12 @@ static class ScriptSurfaceWalker
 		}
 		else
 		{
+			let sceneExpr = scope String("null");
+			let s = SceneExprFor(ctx, isStatic, .. scope .());
+			if (!s.IsEmpty)
+				sceneExpr.Set(s);
 			let write = scope String();
-			if (!ScriptValueMap.Write(memberType, access, "frame.Result", ctx.Known, write))
+			if (!ScriptValueMap.Write(memberType, access, "frame.Result", ctx.Known, write, sceneExpr))
 			{
 				code.AppendF(".Blocked({})", Quote(write, .. scope .()));
 				return;
@@ -683,6 +701,7 @@ static class ScriptSurfaceWalker
 		let body = scope String();
 		let args = scope String();
 		let after = scope String();
+		let sceneExpr = SceneExprFor(ctx, isStatic, .. scope .());
 		int required = 0;
 		for (int i = 0; i < m.ParamCount; i++)
 		{
@@ -711,6 +730,8 @@ static class ScriptSurfaceWalker
 			}
 
 			ScriptValueMap.ExpectFor(pt, i, body);
+			if (!sceneExpr.IsEmpty && (ptn == "Sedulous.Scene.EntityHandle"))
+				body.AppendF("\tif (!frame.ExpectEntityIn({}, {})) return;\n", i, sceneExpr);
 			let defaultText = m.GetParamDefault(i);
 			if (!defaultText.IsEmpty)
 				body.AppendF("\t{} a{} = {};\n\tif (frame.Args.Length > {})\n\t\ta{} = {};\n", ptn, i, defaultText, i, i, read);
@@ -731,7 +752,7 @@ static class ScriptSurfaceWalker
 				if (refKind != .In)
 				{
 					let write = scope String();
-					if (ScriptValueMap.Write(pt, scope $"a{i}", slot, ctx.Known, write))
+					if (ScriptValueMap.Write(pt, scope $"a{i}", slot, ctx.Known, write, sceneExpr.IsEmpty ? "null" : sceneExpr))
 						after.AppendF("\t{}\n", write);
 					else if (pt.IsStruct)
 						after.AppendF("\t*({}*){}.AsStruct = a{};\n", ptn, slot, i);
@@ -763,7 +784,7 @@ static class ScriptSurfaceWalker
 
 		let write = scope String();
 		let resultType = m.IsConstructor ? ctx.Type : m.ReturnType;
-		if (!ScriptValueMap.Write(resultType, call, "frame.Result", ctx.Known, write))
+		if (!ScriptValueMap.Write(resultType, call, "frame.Result", ctx.Known, write, sceneExpr.IsEmpty ? "null" : sceneExpr))
 		{
 			code.AppendF(".Blocked({})", Quote(write, .. scope .()));
 			return;
@@ -806,23 +827,50 @@ static class ScriptSurfaceWalker
 		ctx.Signatures.Add(new String(signature));
 	}
 
+	/// The scene expression a member's body may use, per the role, or empty. What
+	/// SelfPrologue will set, known before the body is written.
+	[Comptime]
+	private static void SceneExprFor(TypeCtx ctx, bool isStatic, String outExpr)
+	{
+		if (isStatic)
+			return;
+		switch (ctx.Role)
+		{
+		case .SceneSystem, .ComponentManager: outExpr.Set("self.Scene");
+		case .Component: outExpr.Set("scene");
+		case .Plain:
+			if ((ctx.Kind == .Class) && (ctx.FullName == "Sedulous.Scene.Scene"))
+				outExpr.Set("self");
+		default:
+		}
+	}
+
 	/// One static thunk function: the self prologue, the body, the self write back.
 	[Comptime]
 	private static void EmitThunk(TypeCtx ctx, StringView name, bool isStatic, StringView body, bool mutatesSelf)
 	{
 		let t = ctx.Thunks;
-		t.AppendF("static void {}(ref ScriptCallFrame frame)\n{{\n", name);
+		t.AppendF("static void {}(ref ScriptCallFrame frame)\n{{\n\tframe.Begin();\n", name);
 		bool writeBack = false;
 		if (!isStatic)
 		{
 			let prologue = scope String();
-			SelfPrologue(ctx, prologue, out writeBack);
+			SelfPrologue(ctx, prologue, out writeBack, scope String());
 			t.Append(prologue);
 		}
 		t.Append(body);
 		if (mutatesSelf)
 			SelfWriteBack(ctx, writeBack, t);
 		t.Append("}\n\n");
+	}
+
+	/// The resolver a scene system or manager gets: the scene's instance, Self the scene.
+	[Comptime]
+	private static void EmitResolver(TypeCtx ctx)
+	{
+		let name = ctx.NextThunk(.. scope .());
+		ctx.Thunks.AppendF("static void {}(ref ScriptCallFrame frame)\n{{\n\tframe.Begin();\n\tlet scene = frame.Self.AsObject as Sedulous.Scene.Scene;\n\tif (scene == null) {{ frame.Fail(\"self is not a Scene\"); return; }}\n\tframe.Result = .FromObject(scene.GetSystem<{}>());\n}}\n\n", name, ctx.FullName);
+		ctx.Code.AppendF("\t\tt.ResolvedBy(=> {});\n", name);
 	}
 
 	[Comptime]

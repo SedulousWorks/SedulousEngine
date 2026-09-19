@@ -332,4 +332,65 @@ static class ScriptThunkTests
 		Field(s, scope $"{cFixture}.WidgetComponent", "Skin").Set(ref frame);
 		Test.Assert(!frame.Failed && (widgets.Get(entity).Skin.Id == id));
 	}
+
+	/// An entity value names its scene: a component resolves there whatever scene is
+	/// ambient, a manager refuses an entity from another scene, and a scene answers the
+	/// system a script asks for.
+	[Test]
+	public static void EntitiesAndSystemsAreSceneBound()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let ctx = scope ScratchCallContext();
+		let component = scope $"{cFixture}.WidgetComponent";
+
+		let a = scope Scene("a");
+		let b = scope Scene("b");
+		a.AddSystem<WidgetComponentManager>();
+		let widgetsB = b.AddSystem<WidgetComponentManager>();
+		let systemB = b.AddSystem<FixtureSystem>();
+		let inB = b.CreateEntity("in b");
+		widgetsB.Add(inB).Size = 7;
+		let inA = a.CreateEntity("in a");
+
+		// The ambient scene is A; the entity says B; B is where it resolves.
+		ctx.Scene = a;
+		var frame = ScriptCallFrame(ctx, default);
+		frame.Self = .FromEntity(inB, b);
+		Field(s, component, "Size").Get(ref frame);
+		Test.Assert(!frame.Failed && (frame.Result.AsFloat == 7), scope String(frame.Error));
+
+		// A manager held as an object works in its own scene, and refuses another's entity.
+		let manager = s.Find(scope $"{cFixture}.WidgetComponentManager");
+		var arg = ScriptValue[1](.FromEntity(inB, b));
+		frame = ScriptCallFrame(ctx, arg);
+		frame.Self = .FromObject(widgetsB);
+		Method(s, scope $"{cFixture}.WidgetComponentManager", "Poke").Invoke(ref frame);
+		Test.Assert(!frame.Failed);
+		arg[0] = .FromEntity(inA, a);
+		Method(s, scope $"{cFixture}.WidgetComponentManager", "Poke").Invoke(ref frame);
+		Test.Assert(frame.Failed && frame.Error.Contains("another scene"));
+		// An entity naming no scene is taken to be in it.
+		arg[0] = .FromEntity(inB);
+		Method(s, scope $"{cFixture}.WidgetComponentManager", "Poke").Invoke(ref frame);
+		Test.Assert(!frame.Failed);
+
+		// The resolver: the scene's instance, from a Scene self.
+		let system = s.Find(scope $"{cFixture}.FixtureSystem");
+		Test.Assert((system.FromScene != null) && (manager.FromScene != null));
+		Test.Assert(s.Find(scope $"{cFixture}.Thing").FromScene == null, "a plain class has none");
+		frame = ScriptCallFrame(ctx, default);
+		frame.Self = .FromObject(b);
+		system.FromScene(ref frame);
+		Test.Assert(!frame.Failed && (frame.Result.AsObject === systemB));
+		frame.Self = .FromObject(scope Object());
+		system.FromScene(ref frame);
+		Test.Assert(frame.Failed);
+
+		// And a system held as an object is used as is, not the ambient scene's.
+		frame = ScriptCallFrame(ctx, default);
+		frame.Self = .FromObject(systemB);
+		Field(s, scope $"{cFixture}.FixtureSystem", "Ticks").Get(ref frame);
+		Test.Assert(!frame.Failed && (frame.Result.AsInt == systemB.TickCount));
+	}
 }

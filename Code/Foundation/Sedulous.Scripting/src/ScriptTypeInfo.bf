@@ -32,6 +32,10 @@ class ScriptTypeInfo
 	public int32 Size = 0;
 	public int32 Align = 1;
 
+	/// For a SceneSystem or ComponentManager: the callable that answers the scene's
+	/// instance, Self being the scene. How a script reaches `scene.Physics`.
+	public ScriptThunk FromScene = null;
+
 	public List<ScriptFieldInfo> Fields = new .() ~ DeleteContainerAndItems!(_);
 	public List<ScriptMethodInfo> Methods = new .() ~ DeleteContainerAndItems!(_);
 	public List<ScriptEnumValueInfo> EnumValues = new .() ~ DeleteContainerAndItems!(_);
@@ -109,6 +113,12 @@ class ScriptTypeInfo
 		BeefType = type;
 		Size = size;
 		Align = align;
+		return this;
+	}
+
+	public ScriptTypeInfo ResolvedBy(ScriptThunk fromScene)
+	{
+		FromScene = fromScene;
 		return this;
 	}
 

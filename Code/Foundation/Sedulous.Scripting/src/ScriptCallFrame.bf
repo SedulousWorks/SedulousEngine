@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Scene;
 
 namespace Sedulous.Scripting;
 
@@ -20,6 +21,13 @@ struct ScriptCallFrame
 	{
 		Context = context;
 		Args = args;
+	}
+
+	/// A thunk's first act: a frame may be reused across calls, and each starts clean.
+	public void Begin() mut
+	{
+		Failed = false;
+		Result = .Nil;
 	}
 
 	/// The message of the last failure, on the context.
@@ -50,6 +58,22 @@ struct ScriptCallFrame
 		if (Args[i].Matches(kind, typeName, var exact))
 			return true;
 		Fail(scope $"argument {i}: expected {kind}{(typeName.IsEmpty ? "" : " ")}{typeName}, got {Args[i].Kind}");
+		return false;
+	}
+
+	/// The scene an entity value resolves in: its own, else the context's.
+	public Scene SceneOf(ScriptValue entity) => entity.AsEntityScene ?? Context.Scene;
+
+	/// Argument `i`, an entity, belongs to `scene`, or a failure. An entity that names no
+	/// scene is taken to be in it.
+	public bool ExpectEntityIn(int i, Scene scene) mut
+	{
+		if (i >= Args.Length)
+			return true;
+		let owner = Args[i].AsEntityScene;
+		if ((owner == null) || (owner === scene))
+			return true;
+		Fail(scope $"argument {i}: the entity belongs to another scene");
 		return false;
 	}
 

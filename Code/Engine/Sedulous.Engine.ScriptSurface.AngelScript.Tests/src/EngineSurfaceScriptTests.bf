@@ -53,6 +53,16 @@ static class EngineSurfaceScriptTests
 				Transform t = scene.GetLocalTransform(e);
 				return p.Y + t.Scale.X + Length(Float3(3, 4, 0)) + float(scene.IsValid(e) ? 100 : 0);
 			}
+			// Two scenes: each entity resolves in its own, whatever the other is doing.
+			int bodies(Scene@ a, Scene@ b)
+			{
+				Entity ea = a.CreateEntity("a");
+				Entity eb = b.CreateEntity("b");
+				b.SetLocalPosition(eb, Float3(0, 5, 0));
+				b.UpdateTransforms();
+				a.UpdateTransforms();
+				return int(a.GetWorldPosition(ea).Y) * 10 + int(b.GetWorldPosition(eb).Y) + a.Physics.BodyCount + b.Physics.BodyCount;
+			}
 			""");
 		for (let p in vm.Problems)
 			Console.WriteLine("  {}", p);
@@ -66,5 +76,16 @@ static class EngineSurfaceScriptTests
 			Console.WriteLine("  {}", p);
 		Test.Assert(Math.Abs(r.AsFloat - (2 + 2 + 5 + 100)) < 1e-4, scope $"got {r.AsFloat}");
 		Test.Assert(scene.EntityCount == 1);
+
+		let a = scope Scene("a");
+		let b = scope Scene("b");
+		a.AddSystem<Sedulous.Engine.Physics.PhysicsSceneSystem>();
+		b.AddSystem<Sedulous.Engine.Physics.PhysicsSceneSystem>();
+		var two = ScriptValue[2](.FromObject(a), .FromObject(b));
+		Test.Assert(vm.Call("game", "int bodies(Scene@, Scene@)", two, ref r), "two scenes at once");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(r.AsInt == 5, scope $"got {r.AsInt}");
+		Test.Assert((a.EntityCount == 1) && (b.EntityCount == 1));
 	}
 }

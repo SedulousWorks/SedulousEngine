@@ -37,6 +37,7 @@ static class EngineThunkTests
 		Method(s, cScene, "CreateEntity").Invoke(ref frame);
 		Test.Assert(!frame.Failed, scope String(frame.Error));
 		Test.Assert(frame.Result.Kind == .Entity);
+		Test.Assert(frame.Result.AsEntityScene === scene, "the entity a scene answers names that scene");
 		let entity = frame.Result.AsEntity;
 		Test.Assert(scene.IsValid(entity) && (scene.GetEntityName(entity) == "player"));
 

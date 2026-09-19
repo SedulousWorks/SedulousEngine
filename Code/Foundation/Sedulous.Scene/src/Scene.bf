@@ -628,6 +628,7 @@ class Scene
 		mSystems.Add(system);
 		mSystemsByType[TypeKey<T>()] = system;
 		InsertSortedSystem(system);
+		system.AttachScene(this);
 		system.OnSceneCreate(this);
 		return system;
 	}

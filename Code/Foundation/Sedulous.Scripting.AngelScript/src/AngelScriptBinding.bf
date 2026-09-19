@@ -19,6 +19,8 @@ class AngelScriptBinding
 		case ComponentFromEntity;
 		/// A value type's construct behaviour: Method is the constructor thunk.
 		case Construct;
+		/// `scene.Physics`: Owner.FromScene with the scene as Self.
+		case Resolve;
 	}
 
 	public Role Kind;

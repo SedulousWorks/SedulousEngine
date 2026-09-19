@@ -17,10 +17,14 @@ namespace Sedulous.Scripting.AngelScript;
 ///    and the rest) the same, so a script holds them by value and passes them `const &in`;
 ///  - a class is a reference type without a count (the engine owns its objects), held by
 ///    handle; an object a factory creates is kept by the runtime and freed with it;
-///  - a component is a value type holding the ENTITY: `MeshComponent(entity).Visible`;
-///  - a scene system, component manager or service is a handle in a global property named
-///    for it (its display name, else its type name without the role suffix, and its role
-///    appended when that name is taken): `Physics.RayCast(...)`, `AudioService.PlayMusic(...)`;
+///  - an entity is a value carrying its handle AND its scene, so a call on it resolves in
+///    that scene however many scenes there are; a component is a value holding the entity:
+///    `MeshComponent(entity).Visible`;
+///  - a scene system or component manager is a read only property on Scene named for it
+///    (its display name, else its type name without the role suffix): `scene.Physics.RayCast(...)`;
+///    the handle is the scene's own instance, and a script may keep it;
+///  - a service is a handle in a global property named the same way, `Service` appended
+///    when the name is taken: `AudioService.PlayMusic(...)`;
 ///  - static members and a namespace's free functions are global functions and virtual
 ///    properties, the statics inside a namespace named for the type;
 ///  - fields and properties are virtual properties (`get_X`/`set_X`);
@@ -39,8 +43,15 @@ class AngelScriptRuntime : ScriptRuntime
 	/// The per role-type handle a global property points at: a non-null token, since the
 	/// thunk resolves the real system from the context.
 	private List<void*> mTokens = new .() ~ delete _;
+	/// Copies of value arguments a call in progress references: a `&in` parameter is
+	/// given a POINTER, so what it points at must outlive Execute.
+	private List<void*> mArgCopies = new .() ~ delete _;
+	private List<void*> mArgStrings = new .() ~ delete _;
+
 	/// The global handle names taken, so a later one is not refused.
 	private HashSet<String> mHandleNames = new .() ~ DeleteContainerAndItems!(_);
+	/// The properties on Scene taken, likewise.
+	private HashSet<String> mSceneProperties = new .() ~ DeleteContainerAndItems!(_);
 	/// Surface types by their AngelScript name, for declarations.
 	private Dictionary<String, ScriptTypeInfo> mByName = new .() ~ DeleteDictionaryAndKeys!(_);
 
@@ -68,7 +79,9 @@ class AngelScriptRuntime : ScriptRuntime
 	{
 		let pod = AS.asOBJ_VALUE | AS.asOBJ_POD | AS.asOBJ_APP_CLASS;
 		AS.asc_engine_register_object_type(mEngine, "Guid", sizeof(Guid), pod | AS.asOBJ_APP_CLASS_ALIGN8);
-		AS.asc_engine_register_object_type(mEngine, "Entity", sizeof(EntityHandle), pod);
+		// An entity carries its scene: what makes a component or a scene call resolve in the
+		// right scene however many there are.
+		AS.asc_engine_register_object_type(mEngine, "Entity", sizeof(ScriptEntity), pod | AS.asOBJ_APP_CLASS_ALIGN8);
 		AS.asc_engine_register_object_type(mEngine, "Float2", sizeof(Float2), pod | AS.asOBJ_APP_CLASS_ALLFLOATS);
 		AS.asc_engine_register_object_type(mEngine, "Float3", sizeof(Float3), pod | AS.asOBJ_APP_CLASS_ALLFLOATS);
 		AS.asc_engine_register_object_type(mEngine, "Float4", sizeof(Float4), pod | AS.asOBJ_APP_CLASS_ALLFLOATS);
@@ -128,7 +141,7 @@ class AngelScriptRuntime : ScriptRuntime
 				return;
 			}
 			// A component is held by its entity; any other struct by its own bytes.
-			let size = (t.Role == .Component) ? (int32)sizeof(EntityHandle) : t.Size;
+			let size = (t.Role == .Component) ? (int32)sizeof(ScriptEntity) : t.Size;
 			let flags = AS.asOBJ_VALUE | AS.asOBJ_POD | AS.asOBJ_APP_CLASS | ((t.Align >= 8) ? AS.asOBJ_APP_CLASS_ALIGN8 : 0);
 			if (Check(AS.asc_engine_register_object_type(mEngine, scope String(AsName(t)).CStr(), size, flags), t.FullName))
 				mByName[new String(AsName(t))] = t;
@@ -143,9 +156,12 @@ class AngelScriptRuntime : ScriptRuntime
 		if ((t.Kind == .Enum) || ((t.Kind != .Global) && !mByName.ContainsKey(scope String(AsName(t)))))
 			return;
 
-		// A scene system, manager or service is reached through a global handle.
-		if (t.Role == .SceneSystem || t.Role == .ComponentManager || t.Role == .Service)
+		// A service is reached through a global handle; a scene system or manager through
+		// the scene that owns it, `scene.Physics`.
+		if (t.Role == .Service)
 			DeclareRoleHandle(t);
+		else if ((t.Role == .SceneSystem) || (t.Role == .ComponentManager))
+			DeclareSceneProperty(t);
 
 		// A component is constructed from the entity it lives on.
 		if (t.Role == .Component)
@@ -175,37 +191,57 @@ class AngelScriptRuntime : ScriptRuntime
 		}
 	}
 
-	private void DeclareRoleHandle(ScriptTypeInfo t)
+	/// The short name a script reaches a role type by: its display name, else its type
+	/// name without the role suffix.
+	private static void ShortName(ScriptTypeInfo t, String outName)
 	{
-		let name = scope String();
 		if (!t.DisplayName.IsEmpty)
 		{
-			name.Set(t.DisplayName);
-			name.Replace(" ", "");
+			outName.Set(t.DisplayName);
+			outName.Replace(" ", "");
+			return;
 		}
-		else
+		outName.Set(AsName(t));
+		for (let suffix in scope String[]("SceneSystem", "ComponentManager", "Subsystem", "System", "Manager"))
 		{
-			name.Set(AsName(t));
-			for (let suffix in scope String[]("SceneSystem", "ComponentManager", "Subsystem", "System", "Manager"))
+			if (outName.EndsWith(suffix) && (outName.Length > suffix.Length))
 			{
-				if (name.EndsWith(suffix) && (name.Length > suffix.Length))
-				{
-					name.RemoveFromEnd(suffix.Length);
-					break;
-				}
+				outName.RemoveFromEnd(suffix.Length);
+				return;
 			}
 		}
+	}
+
+	/// `scene.Physics`: a read only property on Scene answering the scene's instance,
+	/// through the type's resolver. Needs Scene on the surface.
+	private void DeclareSceneProperty(ScriptTypeInfo t)
+	{
+		if ((t.FromScene == null) || !mByName.ContainsKey(scope String("Scene")))
+			return;
+		let name = ShortName(t, .. scope .());
+		if (mSceneProperties.Contains(name))
+			name.Append("System");
+		let b = new AngelScriptBinding();
+		b.Kind = .Resolve;
+		b.Owner = t;
+		mBindings.Add(b);
+		if (Check(AS.asc_engine_register_object_method(mEngine, "Scene", scope $"{AsName(t)}@ get_{name}() property".CStr(), Internal.UnsafeCastToPtr(b)), t.FullName))
+			mSceneProperties.Add(new String(name));
+	}
+
+	private void DeclareRoleHandle(ScriptTypeInfo t)
+	{
+		let name = ShortName(t, .. scope .());
 		// The property is a handle variable: it holds the token's address.
 		let slot = new void*[1]*;
 		let token = Internal.UnsafeCastToPtr(t);
 		slot[0] = token;
 		mTokens.Add(slot);
-		// A short name a type or another handle already took gets its role appended: the
-		// scene's Audio system keeps `Audio`, the engine's subsystem becomes `AudioService`.
-		// Checked BEFORE registering: a refused registration marks the whole engine
-		// misconfigured, and nothing compiles after.
+		// A short name a type or another handle already took gets its role appended:
+		// `AudioService`. Checked BEFORE registering: a refused registration marks the
+		// whole engine misconfigured, and nothing compiles after.
 		if (mHandleNames.Contains(name) || (AS.asc_engine_get_type_info_by_name(mEngine, name.CStr()) != null))
-			name.Append((t.Role == .Service) ? "Service" : "System");
+			name.Append("Service");
 		if (Check(AS.asc_engine_register_global_property(mEngine, scope $"{AsName(t)}@ {name}".CStr(), slot), t.FullName))
 			mHandleNames.Add(new String(name));
 	}
@@ -444,9 +480,21 @@ class AngelScriptRuntime : ScriptRuntime
 		switch (b.Kind)
 		{
 		case .ComponentFromEntity:
-			// The value's bytes ARE the entity.
-			let entity = *(EntityHandle*)AS.asc_generic_get_arg_address(gen, 0);
-			*(EntityHandle*)AS.asc_generic_get_object(gen) = entity;
+			// The value's bytes ARE the entity, scene included.
+			let entity = *(ScriptEntity*)AS.asc_generic_get_arg_address(gen, 0);
+			*(ScriptEntity*)AS.asc_generic_get_object(gen) = entity;
+			return;
+		case .Resolve:
+			// `scene.Physics`: the scene's instance of the system.
+			var frame = ScriptCallFrame(context, default);
+			frame.Self = .FromObject(Internal.UnsafeCastToObject(AS.asc_generic_get_object(gen)));
+			b.Owner.FromScene(ref frame);
+			if (frame.Failed)
+			{
+				AS.asc_set_active_exception(scope String(frame.Error).CStr());
+				return;
+			}
+			AS.asc_generic_set_return_address(gen, (frame.Result.AsObject != null) ? Internal.UnsafeCastToPtr(frame.Result.AsObject) : null);
 			return;
 		default:
 		}
@@ -652,7 +700,9 @@ class AngelScriptRuntime : ScriptRuntime
 		switch (kind)
 		{
 		case .Guid: return .FromGuid(*(Guid*)memory);
-		case .Entity: return .FromEntity(*(EntityHandle*)memory);
+		case .Entity:
+			let e = *(ScriptEntity*)memory;
+			return .FromEntity(e.Handle, e.Scene);
 		case .Float2: return .FromFloat2(*(Float2*)memory);
 		case .Float3: return .FromFloat3(*(Float3*)memory);
 		case .Float4: return .FromFloat4(*(Float4*)memory);
@@ -685,7 +735,7 @@ class AngelScriptRuntime : ScriptRuntime
 		switch (kind)
 		{
 		case .Guid: *(Guid*)memory = value.AsGuid;
-		case .Entity: *(EntityHandle*)memory = value.AsEntity;
+		case .Entity: *(ScriptEntity*)memory = .(value.AsEntity, value.AsEntityScene);
 		case .Float2: *(Float2*)memory = value.AsFloat2;
 		case .Float3: *(Float3*)memory = value.AsFloat3;
 		case .Float4: *(Float4*)memory = value.AsFloat4;
@@ -801,6 +851,15 @@ class AngelScriptRuntime : ScriptRuntime
 		}
 
 		let state = AS.asc_context_execute(mContext);
+		for (let p in mArgCopies)
+			Internal.Free(p);
+		mArgCopies.Clear();
+		for (let p in mArgStrings)
+		{
+			AS.asc_string_destruct(p);
+			Internal.Free(p);
+		}
+		mArgStrings.Clear();
 		if (state != AS.asEXECUTION_FINISHED)
 		{
 			if (state == AS.asEXECUTION_EXCEPTION)
@@ -857,17 +916,18 @@ class AngelScriptRuntime : ScriptRuntime
 			}
 			else if (value.Kind == .String)
 			{
-				let s = new uint8[AS.asc_string_size()]*;
+				let s = Internal.Malloc((int)AS.asc_string_size());
 				AS.asc_string_construct(s, value.AsString.Ptr, (uint)value.AsString.Length);
+				mArgStrings.Add(s);
 				AS.asc_context_set_arg_object(mContext, i, s);
-				AS.asc_string_destruct(s);
-				delete s;
 			}
 			else
 			{
-				// An inline value type: by address of a copy the context takes.
-				var copy = value;
-				AS.asc_context_set_arg_object(mContext, i, &copy.Data);
+				// An inline value type, by a copy that lives until the call returns.
+				let copy = Internal.Malloc(sizeof(ScriptValueData));
+				*(ScriptValueData*)copy = value.Data;
+				mArgCopies.Add(copy);
+				AS.asc_context_set_arg_object(mContext, i, copy);
 			}
 		}
 	}

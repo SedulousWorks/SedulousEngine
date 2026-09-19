@@ -138,35 +138,41 @@ static class FixtureScriptTests
 		let vm = Bound(s);
 		defer delete vm;
 
+		// The fixture has no Scene type of its own, so the systems are reached by the
+		// handles a host passes in, and an entity by the value it passes in.
 		let ok = vm.Compile("t", "t.as", """
-			int ticks() { return Fixture.Ticks; }
-			float widget(const Entity &in e) { WidgetComponent w(e); w.Size = w.Size * 2; Widget.Poke(e); return w.Size; }
+			int ticks(FixtureSystem@ fixture) { return fixture.Ticks; }
+			float widget(const Entity &in e, WidgetComponentManager@ widgets) { WidgetComponent w(e); w.Size = w.Size * 2; widgets.Poke(e); return w.Size; }
 			""");
 		Dump(vm);
 		Test.Assert(ok, "compiled");
 
-		let scene = scope Scene();
-		let widgets = scene.AddSystem<WidgetComponentManager>();
-		let system = scene.AddSystem<FixtureSystem>();
+		let a = scope Scene("a");
+		let b = scope Scene("b");
+		let widgetsA = a.AddSystem<WidgetComponentManager>();
+		let widgetsB = b.AddSystem<WidgetComponentManager>();
+		let system = b.AddSystem<FixtureSystem>();
 		system.TickCount = 12;
-		vm.CallContext.Scene = scene;
+		// The ambient scene is A throughout; everything below happens in B.
+		vm.CallContext.Scene = a;
 
 		var r = ScriptValue.Nil;
-		Test.Assert(vm.Call("t", "int ticks()", default, ref r), "a scene system through its global handle");
+		var systemArg = ScriptValue[1](.FromObject(system));
+		Test.Assert(vm.Call("t", "int ticks(FixtureSystem@)", systemArg, ref r), "a scene system by handle");
 		Dump(vm);
 		Test.Assert(r.AsInt == 12);
 
-		let entity = scene.CreateEntity("w");
-		widgets.Add(entity).Size = 4;
-		var arg = ScriptValue[1](.FromEntity(entity));
-		Test.Assert(vm.Call("t", "float widget(const Entity &in)", arg, ref r), "a component through its entity");
+		let entity = b.CreateEntity("w");
+		widgetsB.Add(entity).Size = 4;
+		var args = ScriptValue[2](.FromEntity(entity, b), .FromObject(widgetsB));
+		Test.Assert(vm.Call("t", "float widget(const Entity &in, WidgetComponentManager@)", args, ref r), "a component through its entity, in the entity's scene");
 		Dump(vm);
-		Test.Assert(Near(r.AsFloat, 8) && Near(widgets.Get(entity).Size, 8));
+		Test.Assert(Near(r.AsFloat, 8) && Near(widgetsB.Get(entity).Size, 8));
 
-		// No scene: the call raises a script exception, reported, not a crash.
-		vm.CallContext.Scene = null;
-		Test.Assert(!vm.Call("t", "int ticks()", default, ref r));
-		Test.Assert(vm.Problems.Back.Contains("FixtureSystem"));
+		// The wrong scene's manager refuses the entity: a script exception, reported.
+		args[1] = .FromObject(widgetsA);
+		Test.Assert(!vm.Call("t", "float widget(const Entity &in, WidgetComponentManager@)", args, ref r));
+		Test.Assert(vm.Problems.Back.Contains("another scene"), vm.Problems.Back);
 	}
 
 	[Test]

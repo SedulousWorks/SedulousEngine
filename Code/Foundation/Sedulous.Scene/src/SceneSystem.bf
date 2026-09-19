@@ -19,6 +19,16 @@ abstract class SceneSystem
 	/// A plain system returns null.
 	public virtual ComponentManagerBase AsComponentManager => null;
 
+	/// The scene this system was added to. BORROWED: the scene outlives its systems. Set
+	/// by the scene before OnSceneCreate, so a system need not keep its own.
+	public Scene Scene { get; private set; } = null;
+
+	/// The scene's to call, when it adds the system; nothing else has a reason to.
+	public void AttachScene(Scene scene)
+	{
+		Scene = scene;
+	}
+
 	// ---- lifecycle, driven by the scene ----
 
 	public virtual void OnSceneCreate(Scene scene) {}

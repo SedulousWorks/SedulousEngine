@@ -180,7 +180,8 @@ static class ScriptValueMap
 	/// The statement storing `expr`, of `type`, into `slot` (a ScriptValue lvalue), or into
 	/// the frame's struct storage when it is a pointer kind. False when it cannot cross.
 	[Comptime]
-	public static bool Write(Type type, StringView expr, StringView slot, List<String> known, String outCode)
+	public static bool Write(Type type, StringView expr, StringView slot, List<String> known, String outCode,
+		StringView entityScene = "null")
 	{
 		let name = type.GetFullName(.. scope .());
 		switch (name)
@@ -193,7 +194,7 @@ static class ScriptValueMap
 		case "System.StringView": outCode.AppendF("{} = .FromString({});", slot, expr); return true;
 		case "System.String": outCode.AppendF("{} = .FromObject({});", slot, expr); return true;
 		case "System.Guid": outCode.AppendF("{} = .FromGuid({});", slot, expr); return true;
-		case "Sedulous.Scene.EntityHandle": outCode.AppendF("{} = .FromEntity({});", slot, expr); return true;
+		case "Sedulous.Scene.EntityHandle": outCode.AppendF("{} = .FromEntity({}, {});", slot, expr, entityScene); return true;
 		case "Sedulous.Core.Float2": outCode.AppendF("{} = .FromFloat2({});", slot, expr); return true;
 		case "Sedulous.Core.Float3": outCode.AppendF("{} = .FromFloat3({});", slot, expr); return true;
 		case "Sedulous.Core.Float4": outCode.AppendF("{} = .FromFloat4({});", slot, expr); return true;
