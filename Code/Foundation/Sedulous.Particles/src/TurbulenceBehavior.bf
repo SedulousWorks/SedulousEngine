@@ -10,6 +10,7 @@ namespace Sedulous.Particles;
 /// sample a real noise texture instead, which would not match sample for sample.
 [DisplayName("Turbulence")]
 [Serializable]
+[Scriptable(.AllPublic)]
 class TurbulenceBehavior : ParticleBehavior
 {
 	public float Strength = 1.0f;

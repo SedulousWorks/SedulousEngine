@@ -2,6 +2,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Particles;
 
+[Scriptable(.AllPublic)]
 struct CurveKeyColor
 {
 	public float Time = 0.0f;

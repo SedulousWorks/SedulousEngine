@@ -15,15 +15,19 @@ struct Float4
 	public float W = 0.0f;
 
 	[Inline]
+	[Scriptable]
 	public this() { }
 	[Inline]
+	[Scriptable]
 	public this(float x, float y, float z, float w)
 	{
 		this.X = x; this.Y = y; this.Z = z; this.W = w;
 	}
 	[Inline]
+	[Scriptable]
 	public this(float s) { this.X = s; this.Y = s; this.Z = s; this.W = s; }
 	[Inline]
+	[Scriptable]
 	public this(Float3 xyz, float w)
 	{
 		this.X = xyz.X; this.Y = xyz.Y; this.Z = xyz.Z; this.W = w;
@@ -58,6 +62,7 @@ struct Float4
 		}
 	}
 
+	[Scriptable]
 	[Inline] public Float3 XYZ() => .(X, Y, Z);
 
 	[Inline]

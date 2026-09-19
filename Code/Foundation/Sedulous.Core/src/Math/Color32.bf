@@ -19,8 +19,10 @@ struct Color32
 	public uint8 A = 255;
 
 	[Inline]
+	[Scriptable]
 	public this() { }
 	[Inline]
+	[Scriptable]
 	public this(uint8 r, uint8 g, uint8 b, uint8 a = 255)
 	{
 		this.R = r; this.G = g; this.B = b; this.A = a;

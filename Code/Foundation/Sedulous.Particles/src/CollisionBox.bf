@@ -4,9 +4,12 @@ using Sedulous.Core.Serialization;
 namespace Sedulous.Particles;
 
 /// A world space axis aligned box particles bounce off.
+[Scriptable]
 struct CollisionBox
 {
+	[Scriptable]
 	public Float3 Center = .(0, 0, 0);
+	[Scriptable]
 	public Float3 HalfExtents = .(0.5f, 0.5f, 0.5f);
 
 	public this() {}

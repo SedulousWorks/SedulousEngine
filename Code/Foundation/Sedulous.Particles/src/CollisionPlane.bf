@@ -5,9 +5,12 @@ namespace Sedulous.Particles;
 
 /// A world space half space. A point with Dot(Normal, p) below Distance is BEHIND the plane,
 /// which is what counts as penetrating it.
+[Scriptable]
 struct CollisionPlane
 {
+	[Scriptable]
 	public Float3 Normal = .(0, 1, 0);
+	[Scriptable]
 	public float Distance = 0.0f;
 
 	public this() {}

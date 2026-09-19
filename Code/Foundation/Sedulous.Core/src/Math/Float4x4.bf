@@ -20,10 +20,12 @@ struct Float4x4
 	public float[4][4] M;
 
 	[Inline]
+	[Scriptable]
 	public this() { M = default; }
 
 	/// Row-major, reading left to right and top to bottom.
 	[Inline]
+	[Scriptable]
 	public this(
 		float m00, float m01, float m02, float m03,
 		float m10, float m11, float m12, float m13,
@@ -53,24 +55,28 @@ struct Float4x4
 		}
 	}
 
+	[Scriptable]
 	public static Float4x4 Identity() => .(
 		1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, 1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 1.0f, 0.0f,
 		0.0f, 0.0f, 0.0f, 1.0f);
 
+	[Scriptable]
 	public static Float4x4 Translation(Float3 t) => .(
 		1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, 1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 1.0f, 0.0f,
 		t.X,  t.Y,  t.Z,  1.0f);
 
+	[Scriptable]
 	public static Float4x4 Scale(Float3 s) => .(
 		s.X,  0.0f, 0.0f, 0.0f,
 		0.0f, s.Y,  0.0f, 0.0f,
 		0.0f, 0.0f, s.Z,  0.0f,
 		0.0f, 0.0f, 0.0f, 1.0f);
 
+	[Scriptable]
 	public static Float4x4 RotationX(float radians)
 	{
 		let c = Cos(radians);
@@ -82,6 +88,7 @@ struct Float4x4
 			0.0f, 0.0f, 0.0f, 1.0f);
 	}
 
+	[Scriptable]
 	public static Float4x4 RotationY(float radians)
 	{
 		let c = Cos(radians);
@@ -93,6 +100,7 @@ struct Float4x4
 			0.0f, 0.0f, 0.0f, 1.0f);
 	}
 
+	[Scriptable]
 	public static Float4x4 RotationZ(float radians)
 	{
 		let c = Cos(radians);
@@ -105,6 +113,7 @@ struct Float4x4
 	}
 
 	/// Right-handed perspective, NDC z in [0, 1], XNA and D3D style.
+	[Scriptable]
 	public static Float4x4 PerspectiveFovRH(float fovYRadians, float aspect, float zNear, float zFar)
 	{
 		let yScale = 1.0f / Tan(fovYRadians * 0.5f);
@@ -117,6 +126,7 @@ struct Float4x4
 			0.0f,   0.0f,   zNear * zRange,  0.0f);
 	}
 
+	[Scriptable]
 	public static Float4x4 OrthographicRH(float width, float height, float zNear, float zFar)
 	{
 		let zRange = 1.0f / (zNear - zFar);
@@ -127,6 +137,7 @@ struct Float4x4
 			0.0f,         0.0f,          zNear * zRange, 1.0f);
 	}
 
+	[Scriptable]
 	public static Float4x4 LookAtRH(Float3 eye, Float3 target, Float3 up)
 	{
 		let zAxis = Normalized(eye - target);   // the camera looks down -z
@@ -182,6 +193,7 @@ struct Float4x4
 static
 {
 	[Scriptable]
+	[Scriptable]
 	public static Float4x4 Transpose(Float4x4 a)
 	{
 		Float4x4 result = .();
@@ -223,6 +235,7 @@ static
 	}
 
 	[Scriptable]
+	[Scriptable]
 	public static float Determinant(Float4x4 mat)
 	{
 		var mat;
@@ -244,6 +257,7 @@ static
 
 	/// Full inverse by adjugate over determinant. Returns Identity for a singular matrix
 	/// rather than producing infinities.
+	[Scriptable]
 	[Scriptable]
 	public static Float4x4 Inverse(Float4x4 mat)
 	{

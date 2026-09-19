@@ -7,6 +7,7 @@ namespace Sedulous.Particles;
 /// thing does and a fraction is what dust does.
 [DisplayName("Gravity")]
 [Serializable]
+[Scriptable(.AllPublic)]
 class GravityBehavior : ParticleBehavior
 {
 	public float Multiplier = 1.0f;

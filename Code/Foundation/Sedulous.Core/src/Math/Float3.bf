@@ -14,12 +14,16 @@ struct Float3
 	public float Z = 0.0f;
 
 	[Inline]
+	[Scriptable]
 	public this() { }
 	[Inline]
+	[Scriptable]
 	public this(float x, float y, float z) { this.X = x; this.Y = y; this.Z = z; }
 	[Inline]
+	[Scriptable]
 	public this(float s) { this.X = s; this.Y = s; this.Z = s; }
 	[Inline]
+	[Scriptable]
 	public this(Float2 xy, float z) { this.X = xy.X; this.Y = xy.Y; this.Z = z; }
 
 	public const Float3 Zero = .(0.0f, 0.0f, 0.0f);

@@ -1,7 +1,10 @@
+using Sedulous.Core;
+
 namespace Sedulous.Particles;
 
 /// Spawn TIMING only. It answers how many particles are due this frame and spawns none of
 /// them, which is what keeps the emission window, the bursts and the budget in one place.
+[Scriptable(.AllPublic)]
 class ParticleEmitter
 {
 	public EmissionMode Mode = .Continuous;

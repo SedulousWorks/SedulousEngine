@@ -7,6 +7,7 @@ namespace Sedulous.Particles;
 /// moving every particle identically.
 [DisplayName("Wind")]
 [Serializable]
+[Scriptable(.AllPublic)]
 class WindBehavior : ParticleBehavior
 {
 	public Float3 Force = .(1, 0, 0);

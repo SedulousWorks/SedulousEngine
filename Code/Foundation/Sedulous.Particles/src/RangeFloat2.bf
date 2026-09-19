@@ -4,9 +4,12 @@ using Sedulous.Core.Serialization;
 namespace Sedulous.Particles;
 
 /// A pair of vectors, sampled by ONE shared factor. See RangeFloat.
+[Scriptable]
 struct RangeFloat2
 {
+	[Scriptable]
 	public Float2 Min = .(0, 0);
+	[Scriptable]
 	public Float2 Max = .(0, 0);
 
 	public this() {}

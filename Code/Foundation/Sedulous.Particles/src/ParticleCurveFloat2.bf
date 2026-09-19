@@ -7,12 +7,14 @@ namespace Sedulous.Particles;
 ///
 /// PARALLEL ARRAYS rather than an array of keys, which is what Sedulous shipped: the
 /// component sweeps read one array at a time.
+[Scriptable]
 struct ParticleCurveFloat2
 {
 	public float[ParticleCurve.MaxKeys] Times = .();
 	public Float2[ParticleCurve.MaxKeys] Values = .();
 	public Float2[ParticleCurve.MaxKeys] TangentsIn = .();
 	public Float2[ParticleCurve.MaxKeys] TangentsOut = .();
+	[Scriptable]
 	public int32 KeyCount = 0;
 
 	public this() {}

@@ -7,9 +7,11 @@ namespace Sedulous.Particles;
 ///
 /// NOT ACTIVE with no keys, which is what gates the behaviours that read one: an unset curve
 /// is a behaviour that does nothing rather than a behaviour that drives everything to zero.
+[Scriptable]
 struct ParticleCurveFloat
 {
 	public CurveKeyFloat[ParticleCurve.MaxKeys] Keys = .();
+	[Scriptable]
 	public int32 KeyCount = 0;
 
 	public this() {}

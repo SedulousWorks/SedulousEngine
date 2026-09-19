@@ -16,13 +16,16 @@ struct Transform
 	public Float3 Scale = Float3.One;
 
 	[Inline]
+	[Scriptable]
 	public this() { }
 	[Inline]
+	[Scriptable]
 	public this(Float3 position, Quaternion rotation, Float3 scale)
 	{
 		this.Position = position; this.Rotation = rotation; this.Scale = scale;
 	}
 
+	[Scriptable]
 	public Float4x4 ToMatrix()
 	{
 		var result = Float4x4.Scale(Scale) * RotationMatrix(Rotation);

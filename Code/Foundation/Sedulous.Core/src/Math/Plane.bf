@@ -11,14 +11,17 @@ struct Plane
 	public float D;
 
 	[Inline]
+	[Scriptable]
 	public this() { Normal = default; D = 0.0f; }
 	[Inline]
+	[Scriptable]
 	public this(Float3 normal, float d) { this.Normal = normal; this.D = d; }
 
 	public static Plane FromPointNormal(Float3 point, Float3 unitNormal) =>
 		.(unitNormal, -Dot(unitNormal, point));
 
 	/// Positive in front, on the Normal's side; negative behind; near zero on the plane.
+	[Scriptable]
 	public float SignedDistance(Float3 p) => Dot(Normal, p) + D;
 
 	public Plane Normalized()

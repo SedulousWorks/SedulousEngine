@@ -1,12 +1,15 @@
 using System;
 using System.Collections;
 
+using Sedulous.Core;
+
 namespace Sedulous.Input;
 
 /// One named thing a game asks about: "Jump", "Move", "Look".
 ///
 /// RENAMED from Raptor's `Action`, which would shadow corlib's `System.Action` delegate
 /// for every file in this namespace. The engine's own concept keeps the qualified name.
+[Scriptable(.AllPublic)]
 class InputAction
 {
 	public String Name = new .() ~ delete _;

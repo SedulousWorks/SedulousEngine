@@ -15,8 +15,10 @@ struct Color
 	public float A = 1.0f;
 
 	[Inline]
+	[Scriptable]
 	public this() { }
 	[Inline]
+	[Scriptable]
 	public this(float r, float g, float b, float a = 1.0f)
 	{
 		this.R = r; this.G = g; this.B = b; this.A = a;
@@ -33,9 +35,11 @@ struct Color
 	private static uint32 ByteOf(float c) => (uint32)(Clamp(c, 0.0f, 1.0f) * 255.0f + 0.5f);
 
 	/// Packs to 0xRRGGBBAA, with components clamped to 0..1.
+	[Scriptable]
 	public uint32 ToRGBA8() =>
 		(ByteOf(R) << 24) | (ByteOf(G) << 16) | (ByteOf(B) << 8) | ByteOf(A);
 
+	[Scriptable]
 	public static Color FromRGBA8(uint32 packed) => .(
 		(float)((packed >> 24) & 0xFF) / 255.0f,
 		(float)((packed >> 16) & 0xFF) / 255.0f,

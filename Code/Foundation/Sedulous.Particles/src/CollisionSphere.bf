@@ -4,9 +4,12 @@ using Sedulous.Core.Serialization;
 namespace Sedulous.Particles;
 
 /// A world space sphere particles bounce off.
+[Scriptable]
 struct CollisionSphere
 {
+	[Scriptable]
 	public Float3 Center = .(0, 0, 0);
+	[Scriptable]
 	public float Radius = 1.0f;
 
 	public this() {}

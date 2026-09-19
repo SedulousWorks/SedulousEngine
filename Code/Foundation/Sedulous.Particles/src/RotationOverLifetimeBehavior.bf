@@ -10,6 +10,7 @@ namespace Sedulous.Particles;
 /// system with a rotation initializer and no curve should turn at its authored speed.
 [DisplayName("Rotation over Lifetime")]
 [Serializable]
+[Scriptable(.AllPublic)]
 class RotationOverLifetimeBehavior : ParticleBehavior
 {
 	public ParticleCurveFloat Curve = .();

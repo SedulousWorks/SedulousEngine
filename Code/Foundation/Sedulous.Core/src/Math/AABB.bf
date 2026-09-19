@@ -11,24 +11,31 @@ struct AABB
 	public Float3 Max;
 
 	[Inline]
+	[Scriptable]
 	public this() { Min = default; Max = default; }
 	[Inline]
+	[Scriptable]
 	public this(Float3 min, Float3 max) { this.Min = min; this.Max = max; }
 
 	/// An inverted box, Min above Max, so the first Expand sets real bounds.
+	[Scriptable]
 	public static AABB Empty() => .(
 		Float3(FloatMax, FloatMax, FloatMax),
 		Float3(-FloatMax, -FloatMax, -FloatMax));
 
+	[Scriptable]
 	public static AABB FromCenterExtents(Float3 center, Float3 extents) =>
 		.(center - extents, center + extents);
 
+	[Scriptable]
 	public Float3 Center() => (Min + Max) * 0.5f;
+	[Scriptable]
 	public Float3 Size() => Max - Min;
 	public Float3 Extents() => (Max - Min) * 0.5f;
 
 	public bool IsValid() => (Min.X <= Max.X) && (Min.Y <= Max.Y) && (Min.Z <= Max.Z);
 
+	[Scriptable]
 	public bool Contains(Float3 p) =>
 		(p.X >= Min.X) && (p.X <= Max.X) &&
 		(p.Y >= Min.Y) && (p.Y <= Max.Y) &&

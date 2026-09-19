@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
 
+using Sedulous.Core;
+
 namespace Sedulous.Input;
 
 /// A CONTEXT: "Gameplay", "Menu", "Vehicle".
@@ -8,6 +10,7 @@ namespace Sedulous.Input;
 /// Priority decides which one answers when the same action name lives in several enabled
 /// sets, higher winning. That is what lets a menu take "Cancel" while gameplay still holds
 /// its own, without either knowing about the other.
+[Scriptable(.AllPublic)]
 class ActionSet
 {
 	public String Name = new .() ~ delete _;

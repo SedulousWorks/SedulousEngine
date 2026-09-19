@@ -14,10 +14,14 @@ namespace Sedulous.Net.Replication;
 /// server copies the entity transform INTO this component before sending, and the client
 /// applies this component, interpolated, BACK onto the entity transform after receiving.
 [SerializableComponent("net.Transform")]
+[Scriptable]
 struct NetworkedTransform : ISerializable
 {
+	[Scriptable]
 	[Replicated] public Float3 Position = Float3.Zero;
+	[Scriptable]
 	[Replicated] public Quaternion Rotation = Quaternion.Identity;
+	[Scriptable]
 	[Replicated] public Float3 Scale = Float3.One;
 
 	public this() {}

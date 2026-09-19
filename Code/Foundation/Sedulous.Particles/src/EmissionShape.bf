@@ -5,20 +5,27 @@ namespace Sedulous.Particles;
 
 /// The volume a system spawns into: a tagged shape that answers a position and an outward
 /// direction for one particle.
+[Scriptable]
 struct EmissionShape
 {
+	[Scriptable]
 	public EmissionShapeType Type = .Point;
 
 	/// Sphere, hemisphere, cone, ring and circle. For an edge, its half length.
+	[Scriptable]
 	public float Radius = 1.0f;
 	/// A box's half extents.
+	[Scriptable]
 	public Float3 Extents = .(1, 1, 1);
 	/// A cone's half angle, in radians.
+	[Scriptable]
 	public float Angle = 0.7853982f;
 	/// How much of the full turn is used, nought to one, which is what makes an arc rather
 	/// than a full ring.
+	[Scriptable]
 	public float Arc = 1.0f;
 	/// Whether a sphere, ring or circle spawns on its SURFACE rather than throughout.
+	[Scriptable]
 	public bool EmitFromShell = false;
 
 	public this() {}

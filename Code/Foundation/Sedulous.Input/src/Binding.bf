@@ -1,3 +1,5 @@
+using Sedulous.Core;
+
 namespace Sedulous.Input;
 
 /// One physical binding: a tag, and the fields that tag gives meaning to.
@@ -5,6 +7,7 @@ namespace Sedulous.Input;
 /// FLAT rather than a union or a hierarchy. Only the fields its source uses are read, the
 /// rest sit at defaults that cost almost nothing on disk, and an editor can render the
 /// whole thing as one grid row instead of a shape that changes per source.
+[Scriptable(.AllPublic)]
 struct Binding
 {
 	public BindingSource Source = .Key;

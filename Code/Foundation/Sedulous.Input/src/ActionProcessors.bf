@@ -1,6 +1,9 @@
+using Sedulous.Core;
+
 namespace Sedulous.Input;
 
 /// Conditioning applied to an action's folded value each frame.
+[Scriptable(.AllPublic)]
 struct ActionProcessors
 {
 	/// Above zero, a key driven axis RAMPS toward its target at this much per second

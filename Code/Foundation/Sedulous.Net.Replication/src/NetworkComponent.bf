@@ -2,6 +2,8 @@ using System;
 using Sedulous.Core.Serialization;
 using Sedulous.Scene;
 
+using Sedulous.Core;
+
 namespace Sedulous.Net.Replication;
 
 /// Tags an entity as replicated.
@@ -11,11 +13,15 @@ namespace Sedulous.Net.Replication;
 /// own fields are IDENTITY, not replicated state: none carries [Replicated], so the field
 /// codec never touches them.
 [SerializableComponent("net.Network")]
+[Scriptable]
 struct NetworkComponent : ISerializable
 {
+	[Scriptable]
 	public NetworkId Id = .();
+	[Scriptable]
 	public NetworkAuthority Authority = .Server;
 	/// The source prefab for a network spawn. Unset means a bare, non prefab networked entity.
+	[Scriptable]
 	public Guid Prefab = .();
 
 	public this() {}

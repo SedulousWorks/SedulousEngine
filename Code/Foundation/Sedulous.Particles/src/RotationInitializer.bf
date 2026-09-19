@@ -6,6 +6,7 @@ namespace Sedulous.Particles;
 /// Spins a billboard: a starting angle and a rate, both in radians.
 [DisplayName("Rotation")]
 [Serializable]
+[Scriptable(.AllPublic)]
 class RotationInitializer : ParticleInitializer
 {
 	/// A full turn by default, so a sheet of sprites does not all face the same way.

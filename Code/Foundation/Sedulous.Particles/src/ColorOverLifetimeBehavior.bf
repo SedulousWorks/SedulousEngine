@@ -6,6 +6,7 @@ namespace Sedulous.Particles;
 /// Drives colour from a gradient sampled at normalised lifetime.
 [DisplayName("Color over Lifetime")]
 [Serializable]
+[Scriptable(.AllPublic)]
 class ColorOverLifetimeBehavior : ParticleBehavior
 {
 	public ParticleCurveColor Curve = .();

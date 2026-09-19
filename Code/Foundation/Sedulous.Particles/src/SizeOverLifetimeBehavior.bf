@@ -6,6 +6,7 @@ namespace Sedulous.Particles;
 /// Drives size from a curve sampled at normalised lifetime.
 [DisplayName("Size over Lifetime")]
 [Serializable]
+[Scriptable(.AllPublic)]
 class SizeOverLifetimeBehavior : ParticleBehavior
 {
 	public ParticleCurveFloat2 Curve = .();

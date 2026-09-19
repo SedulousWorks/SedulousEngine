@@ -6,6 +6,7 @@ namespace Sedulous.Particles;
 /// Pulls particles toward a point, or pushes them away when the strength is negative.
 [DisplayName("Attractor")]
 [Serializable]
+[Scriptable(.AllPublic)]
 class AttractorBehavior : ParticleBehavior
 {
 	public float Strength = 1.0f;

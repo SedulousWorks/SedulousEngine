@@ -13,8 +13,10 @@ struct Quaternion
 	public float W = 1.0f;
 
 	[Inline]
+	[Scriptable]
 	public this() { }
 	[Inline]
+	[Scriptable]
 	public this(float x, float y, float z, float w)
 	{
 		this.X = x; this.Y = y; this.Z = z; this.W = w;
@@ -22,6 +24,7 @@ struct Quaternion
 
 	public const Quaternion Identity = .(0.0f, 0.0f, 0.0f, 1.0f);
 
+	[Scriptable]
 	public static Quaternion FromAxisAngle(Float3 axis, float radians)
 	{
 		let half = radians * 0.5f;
@@ -42,6 +45,7 @@ struct Quaternion
 static
 {
 	[Scriptable]
+	[Scriptable]
 	public static Quaternion Conjugate(Quaternion q) => .(-q.X, -q.Y, -q.Z, q.W);
 
 	[Scriptable]
@@ -51,6 +55,7 @@ static
 
 	/// General inverse, conjugate over the squared length. Equals the conjugate for a
 	/// unit quaternion.
+	[Scriptable]
 	[Scriptable]
 	public static Quaternion Inverse(Quaternion q)
 	{
@@ -62,6 +67,7 @@ static
 	}
 
 	[Scriptable]
+	[Scriptable]
 	public static Quaternion Normalized(Quaternion q)
 	{
 		let lengthSq = Dot(q, q);
@@ -71,6 +77,7 @@ static
 		return .(q.X * inv, q.Y * inv, q.Z * inv, q.W * inv);
 	}
 
+	[Scriptable]
 	[Scriptable]
 	public static Float3 RotateVector(Quaternion q, Float3 v)
 	{

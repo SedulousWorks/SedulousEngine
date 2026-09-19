@@ -6,6 +6,7 @@ namespace Sedulous.Particles;
 /// Sets how long a particle lives, and starts its age at nothing.
 [DisplayName("Lifetime")]
 [Serializable]
+[Scriptable(.AllPublic)]
 class LifetimeInitializer : ParticleInitializer
 {
 	public RangeFloat Lifetime = .(1.0f, 1.0f);

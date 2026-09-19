@@ -6,6 +6,7 @@ namespace Sedulous.Particles;
 /// Drives ONLY alpha from a curve, leaving the hue to whatever set it.
 [DisplayName("Alpha over Lifetime")]
 [Serializable]
+[Scriptable(.AllPublic)]
 class AlphaOverLifetimeBehavior : ParticleBehavior
 {
 	public ParticleCurveFloat Curve = .();

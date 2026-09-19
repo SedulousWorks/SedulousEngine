@@ -7,6 +7,7 @@ namespace Sedulous.Particles;
 /// speed-over-lifetime curve scales, so it has to survive whatever the forces do.
 [DisplayName("Velocity")]
 [Serializable]
+[Scriptable(.AllPublic)]
 class VelocityInitializer : ParticleInitializer
 {
 	public Float3 BaseVelocity = .(0, 1, 0);

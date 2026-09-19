@@ -6,6 +6,7 @@ namespace Sedulous.Particles;
 /// Pushes particles straight out from the emitter, which is what an explosion does.
 [DisplayName("Radial Force")]
 [Serializable]
+[Scriptable(.AllPublic)]
 class RadialForceBehavior : ParticleBehavior
 {
 	public float Strength = 1.0f;

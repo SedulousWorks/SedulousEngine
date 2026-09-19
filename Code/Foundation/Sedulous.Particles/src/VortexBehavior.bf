@@ -7,6 +7,7 @@ namespace Sedulous.Particles;
 /// and the fringe drifts.
 [DisplayName("Vortex")]
 [Serializable]
+[Scriptable(.AllPublic)]
 class VortexBehavior : ParticleBehavior
 {
 	public float Strength = 1.0f;

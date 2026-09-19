@@ -15,10 +15,13 @@ struct Float2
 	public float Y = 0.0f;
 
 	[Inline]
+	[Scriptable]
 	public this() { }
 	[Inline]
+	[Scriptable]
 	public this(float x, float y) { this.X = x; this.Y = y; }
 	[Inline]
+	[Scriptable]
 	public this(float s) { this.X = s; this.Y = s; }
 
 	public const Float2 Zero = .(0.0f, 0.0f);

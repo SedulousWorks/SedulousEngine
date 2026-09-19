@@ -8,9 +8,11 @@ namespace Sedulous.Particles;
 /// LINEAR between its keys rather than cubic, unlike the scalar curve: a cubic through
 /// colours overshoots, and an overshoot in a colour channel is a colour that was never
 /// authored.
+[Scriptable]
 struct ParticleCurveColor
 {
 	public CurveKeyColor[ParticleCurve.MaxKeys] Keys = .();
+	[Scriptable]
 	public int32 KeyCount = 0;
 
 	public this() {}

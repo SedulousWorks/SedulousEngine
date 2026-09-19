@@ -4,9 +4,12 @@ using Sedulous.Core.Serialization;
 namespace Sedulous.Particles;
 
 /// A pair of colours, sampled by ONE shared factor. See RangeFloat.
+[Scriptable]
 struct RangeColor
 {
+	[Scriptable]
 	public Float4 Min = .(1, 1, 1, 1);
+	[Scriptable]
 	public Float4 Max = .(1, 1, 1, 1);
 
 	public this() {}
