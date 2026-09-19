@@ -1,6 +1,6 @@
 using Sedulous.Core;
 
-namespace Sedulous.Scripting.Tests.Fixture;
+namespace Sedulous.Scripting.Fixture;
 
 static
 {

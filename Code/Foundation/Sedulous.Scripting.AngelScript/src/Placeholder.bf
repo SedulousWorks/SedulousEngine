@@ -1,1 +1,0 @@
-namespace Sedulous.Scripting.AngelScript;

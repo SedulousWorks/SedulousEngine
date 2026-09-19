@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Scripting;
 
-namespace Sedulous.Scripting.Tests;
+namespace Sedulous.Scripting.Fixture;
 
 /// A context for calling thunks by hand: services by type, struct storage freed with it.
 class ScratchCallContext : ScriptCallContext

@@ -1,14 +1,14 @@
 using System;
 using Sedulous.Core;
 using Sedulous.Scripting;
-using Sedulous.Scripting.Tests.Fixture;
+using Sedulous.Scripting.Fixture;
 
 namespace Sedulous.Scripting.Tests;
 
 /// Picking a callable from the table for what a script actually passed.
 static class ScriptOverloadResolverTests
 {
-	private const String cFixture = "Sedulous.Scripting.Tests.Fixture";
+	private const String cFixture = "Sedulous.Scripting.Fixture";
 
 	[Test]
 	public static void AnExactKindWinsOverAPromotion()

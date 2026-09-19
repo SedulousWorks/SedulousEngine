@@ -3,7 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Scene;
 using Sedulous.Scripting;
-using Sedulous.Scripting.Tests.Fixture;
+using Sedulous.Scripting.Fixture;
 
 namespace Sedulous.Scripting.Tests;
 
@@ -11,7 +11,7 @@ namespace Sedulous.Scripting.Tests;
 /// crosses, and the failures a frame reports.
 static class ScriptThunkTests
 {
-	private const String cFixture = "Sedulous.Scripting.Tests.Fixture";
+	private const String cFixture = "Sedulous.Scripting.Fixture";
 
 	private static ScriptMethodInfo Method(ScriptSurface s, StringView type, StringView name, int arity = -1)
 	{

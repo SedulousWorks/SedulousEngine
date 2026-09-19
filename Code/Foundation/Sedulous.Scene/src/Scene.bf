@@ -576,6 +576,7 @@ class Scene
 	/// First clear last frame's updated flags and snapshot the previous world matrix for
 	/// anything that STOPPED moving; then recompute the dirty subtrees, parent before
 	/// child.
+	[Scriptable]
 	public void UpdateTransforms()
 	{
 		let count = (uint32)mTransforms.Count;

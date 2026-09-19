@@ -261,7 +261,7 @@ static class ScriptSurfaceWalker
 			kind = .Struct;
 		ctx.Kind = kind;
 		let header = scope String();
-		header.AppendF("surface.AddType({}, .{}, {})", Quote(fullName, .. scope .()), kind, Quote(domain, .. scope .()));
+		header.AppendF("surface.AddType({}, .{}, {}).Typed(typeof({}), {}, {})", Quote(fullName, .. scope .()), kind, Quote(domain, .. scope .()), fullName, type.Size, type.Align);
 		// The members are emitted first, so a type with none is added without a `t` the
 		// compiler would warn about; and a warning forces a full rebuild.
 		let members = scope String();

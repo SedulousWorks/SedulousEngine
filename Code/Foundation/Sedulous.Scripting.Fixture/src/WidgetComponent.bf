@@ -4,7 +4,7 @@ using Sedulous.Core.Serialization;
 using Sedulous.Resource;
 using Sedulous.Scene;
 
-namespace Sedulous.Scripting.Tests.Fixture;
+namespace Sedulous.Scripting.Fixture;
 
 [SerializableComponent("fixture_widget")]
 [Scriptable]

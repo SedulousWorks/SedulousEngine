@@ -1,0 +1,13 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Scripting.Fixture"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Scripting.Fixture.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Scripting" = "*"

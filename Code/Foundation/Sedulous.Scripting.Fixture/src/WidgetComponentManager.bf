@@ -1,7 +1,7 @@
 using Sedulous.Core;
 using Sedulous.Scene;
 
-namespace Sedulous.Scripting.Tests.Fixture;
+namespace Sedulous.Scripting.Fixture;
 
 [Scriptable]
 class WidgetComponentManager : ResourceBindingComponentManager<WidgetComponent>

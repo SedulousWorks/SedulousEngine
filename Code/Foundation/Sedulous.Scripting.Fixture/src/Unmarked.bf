@@ -1,4 +1,4 @@
-namespace Sedulous.Scripting.Tests.Fixture;
+namespace Sedulous.Scripting.Fixture;
 
 /// Not on the surface at all.
 class Unmarked

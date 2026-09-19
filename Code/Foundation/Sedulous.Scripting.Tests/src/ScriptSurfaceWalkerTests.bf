@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Scripting;
+using Sedulous.Scripting.Fixture;
 using Sedulous.Scripting.Null;
 
 namespace Sedulous.Scripting.Tests;
@@ -9,7 +10,7 @@ namespace Sedulous.Scripting.Tests;
 /// What the walk puts on the surface, and what it keeps off.
 static class ScriptSurfaceWalkerTests
 {
-	private const String cFixture = "Sedulous.Scripting.Tests.Fixture";
+	private const String cFixture = "Sedulous.Scripting.Fixture";
 
 	private static ScriptFieldInfo Field(ScriptTypeInfo t, StringView name)
 	{
@@ -36,7 +37,7 @@ static class ScriptSurfaceWalkerTests
 		Test.Assert(FixtureSurface.TypeCount == 8, scope $"found {FixtureSurface.TypeCount}");
 		Test.Assert(s.Types.Count == FixtureSurface.TypeCount);
 		Test.Assert(s.Find(scope $"{cFixture}.Unmarked") == null);
-		Test.Assert(s.Find("Sedulous.Scripting.Tests.FixtureSurface") == null, "the root itself is off");
+		Test.Assert(s.Find("Sedulous.Scripting.Fixture.FixtureSurface") == null, "the root itself is off");
 
 		// Stable order: sorted by full name, so a dump diffs.
 		for (int i = 1; i < s.Types.Count; i++)

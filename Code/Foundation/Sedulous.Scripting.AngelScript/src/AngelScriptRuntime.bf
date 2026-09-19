@@ -1,0 +1,919 @@
+using System;
+using System.Collections;
+using AngelScript;
+using Sedulous.Core;
+using Sedulous.Scene;
+using Sedulous.Scripting;
+
+namespace Sedulous.Scripting.AngelScript;
+
+/// The AngelScript backend: binds a surface, compiles modules, calls into them.
+///
+/// Everything registers with the generic calling convention, and every call from a script
+/// into the engine lands in one trampoline that finds the table entry behind the auxiliary
+/// pointer, builds a ScriptCallFrame from the generic call's arguments, invokes the emitted
+/// thunk and marshals the result back. How the surface maps onto the language:
+///  - a struct is a POD value type of its Beef size; the inline kinds (Float3, Guid, Entity
+///    and the rest) the same, so a script holds them by value and passes them `const &in`;
+///  - a class is a reference type without a count (the engine owns its objects), held by
+///    handle; an object a factory creates is kept by the runtime and freed with it;
+///  - a component is a value type holding the ENTITY: `MeshComponent(entity).Visible`;
+///  - a scene system, component manager or service is a handle in a global property named
+///    for it (its display name, else its type name without the role suffix, and its role
+///    appended when that name is taken): `Physics.RayCast(...)`, `AudioService.PlayMusic(...)`;
+///  - static members and a namespace's free functions are global functions and virtual
+///    properties, the statics inside a namespace named for the type;
+///  - fields and properties are virtual properties (`get_X`/`set_X`);
+///  - a method with defaults is registered once per arity, the thunk fills what is missing;
+///  - enums are enums, Beef `int` is `int64`, StringView and String are `string`.
+/// A member whose types the language cannot take (a list, a raw pointer) is skipped and
+/// noted in Problems, as is a name AngelScript refuses.
+class AngelScriptRuntime : ScriptRuntime
+{
+	private AS.Engine* mEngine = null;
+	private AS.Context* mContext = null;
+	private AngelScriptCallContext mCallContext = new .() ~ delete _;
+	private List<AngelScriptBinding> mBindings = new .() ~ DeleteContainerAndItems!(_);
+	/// Objects factories made for scripts, freed with the runtime.
+	private List<Object> mOwned = new .() ~ DeleteContainerAndItems!(_);
+	/// The per role-type handle a global property points at: a non-null token, since the
+	/// thunk resolves the real system from the context.
+	private List<void*> mTokens = new .() ~ delete _;
+	/// The global handle names taken, so a later one is not refused.
+	private HashSet<String> mHandleNames = new .() ~ DeleteContainerAndItems!(_);
+	/// Surface types by their AngelScript name, for declarations.
+	private Dictionary<String, ScriptTypeInfo> mByName = new .() ~ DeleteDictionaryAndKeys!(_);
+
+	public override StringView Name => "AngelScript";
+	public override ScriptCallContext Context => mCallContext;
+	public AngelScriptCallContext CallContext => mCallContext;
+
+	public this()
+	{
+		mEngine = AS.asc_engine_create();
+		AS.asc_engine_set_message_callback(mEngine, => OnMessage, Internal.UnsafeCastToPtr(this));
+		AS.asc_engine_set_generic_callback(mEngine, => OnGeneric, Internal.UnsafeCastToPtr(this));
+		// Value types by non-const reference, for `&out` and `&inout` on them.
+		AS.asc_engine_set_property(mEngine, AS.asEP_ALLOW_UNSAFE_REFERENCES, 1);
+		AS.asc_engine_register_std_string(mEngine);
+		AS.asc_engine_register_script_array(mEngine, 1);
+		DeclareInlineKinds();
+		mContext = AS.asc_engine_create_context(mEngine);
+	}
+
+	/// The inline value kinds exist in the language whatever the surface declares, since
+	/// a frame carries them by value. A surface type of the same name maps onto the one
+	/// declared here and adds its members.
+	private void DeclareInlineKinds()
+	{
+		let pod = AS.asOBJ_VALUE | AS.asOBJ_POD | AS.asOBJ_APP_CLASS;
+		AS.asc_engine_register_object_type(mEngine, "Guid", sizeof(Guid), pod | AS.asOBJ_APP_CLASS_ALIGN8);
+		AS.asc_engine_register_object_type(mEngine, "Entity", sizeof(EntityHandle), pod);
+		AS.asc_engine_register_object_type(mEngine, "Float2", sizeof(Float2), pod | AS.asOBJ_APP_CLASS_ALLFLOATS);
+		AS.asc_engine_register_object_type(mEngine, "Float3", sizeof(Float3), pod | AS.asOBJ_APP_CLASS_ALLFLOATS);
+		AS.asc_engine_register_object_type(mEngine, "Float4", sizeof(Float4), pod | AS.asOBJ_APP_CLASS_ALLFLOATS);
+		AS.asc_engine_register_object_type(mEngine, "Quaternion", sizeof(Quaternion), pod | AS.asOBJ_APP_CLASS_ALLFLOATS);
+		AS.asc_engine_register_object_type(mEngine, "Color", sizeof(Color), pod | AS.asOBJ_APP_CLASS_ALLFLOATS);
+	}
+
+	public ~this()
+	{
+		AS.asc_context_release(mContext);
+		AS.asc_engine_release(mEngine);
+	}
+
+	private static void OnMessage(char8* section, int32 row, int32 col, int32 type, char8* message, void* user)
+	{
+		let self = Internal.UnsafeCastToObject(user) as AngelScriptRuntime;
+		let kind = (type == AS.asMSGTYPE_ERROR) ? "error" : ((type == AS.asMSGTYPE_WARNING) ? "warning" : "info");
+		self.Problem(scope $"{StringView(section)}({row},{col}): {kind}: {StringView(message)}");
+	}
+
+	// ==================== binding ====================
+
+	public override void Bind(ScriptSurface surface)
+	{
+		base.Bind(surface);
+
+		// Declare every type before any member, since a member's declaration names types.
+		for (let t in surface.Types)
+			DeclareType(t);
+		for (let t in surface.Types)
+			BindMembers(t);
+	}
+
+	/// The AngelScript name of a surface type: its bare name, except the entity handle,
+	/// which is `Entity` to a script.
+	private static StringView AsName(ScriptTypeInfo t)
+		=> (t.FullName == "Sedulous.Scene.EntityHandle") ? "Entity" : t.Name;
+
+	private void DeclareType(ScriptTypeInfo t)
+	{
+		switch (t.Kind)
+		{
+		case .Global:
+			return;
+		case .Enum:
+			if (Check(AS.asc_engine_register_enum(mEngine, scope String(AsName(t)).CStr()), t.FullName))
+			{
+				for (let v in t.EnumValues)
+					Check(AS.asc_engine_register_enum_value(mEngine, scope String(AsName(t)).CStr(), scope String(v.Name).CStr(), (int32)v.Value), t.FullName);
+				mByName[new String(AsName(t))] = t;
+			}
+		case .Struct:
+			// Already in the language: one of the inline kinds declared up front.
+			if (AS.asc_engine_get_type_info_by_name(mEngine, scope String(AsName(t)).CStr()) != null)
+			{
+				mByName[new String(AsName(t))] = t;
+				return;
+			}
+			// A component is held by its entity; any other struct by its own bytes.
+			let size = (t.Role == .Component) ? (int32)sizeof(EntityHandle) : t.Size;
+			let flags = AS.asOBJ_VALUE | AS.asOBJ_POD | AS.asOBJ_APP_CLASS | ((t.Align >= 8) ? AS.asOBJ_APP_CLASS_ALIGN8 : 0);
+			if (Check(AS.asc_engine_register_object_type(mEngine, scope String(AsName(t)).CStr(), size, flags), t.FullName))
+				mByName[new String(AsName(t))] = t;
+		case .Class:
+			if (Check(AS.asc_engine_register_object_type(mEngine, scope String(AsName(t)).CStr(), 0, AS.asOBJ_REF | AS.asOBJ_NOCOUNT), t.FullName))
+				mByName[new String(AsName(t))] = t;
+		}
+	}
+
+	private void BindMembers(ScriptTypeInfo t)
+	{
+		if ((t.Kind == .Enum) || ((t.Kind != .Global) && !mByName.ContainsKey(scope String(AsName(t)))))
+			return;
+
+		// A scene system, manager or service is reached through a global handle.
+		if (t.Role == .SceneSystem || t.Role == .ComponentManager || t.Role == .Service)
+			DeclareRoleHandle(t);
+
+		// A component is constructed from the entity it lives on.
+		if (t.Role == .Component)
+		{
+			let b = new AngelScriptBinding();
+			b.Kind = .ComponentFromEntity;
+			b.Owner = t;
+			mBindings.Add(b);
+			Check(AS.asc_engine_register_object_behaviour(mEngine, scope String(AsName(t)).CStr(), AS.asBEHAVE_CONSTRUCT, "void f(const Entity &in)", Internal.UnsafeCastToPtr(b)), t.FullName);
+		}
+
+		let statics = scope String();
+		if (t.Kind != .Global)
+			statics.Set(AsName(t));
+
+		for (let f in t.Fields)
+		{
+			if (f.Get == null)
+				continue;
+			BindField(t, f, statics);
+		}
+		for (let m in t.Methods)
+		{
+			if (!m.IsCallable)
+				continue;
+			BindMethod(t, m, statics);
+		}
+	}
+
+	private void DeclareRoleHandle(ScriptTypeInfo t)
+	{
+		let name = scope String();
+		if (!t.DisplayName.IsEmpty)
+		{
+			name.Set(t.DisplayName);
+			name.Replace(" ", "");
+		}
+		else
+		{
+			name.Set(AsName(t));
+			for (let suffix in scope String[]("SceneSystem", "ComponentManager", "Subsystem", "System", "Manager"))
+			{
+				if (name.EndsWith(suffix) && (name.Length > suffix.Length))
+				{
+					name.RemoveFromEnd(suffix.Length);
+					break;
+				}
+			}
+		}
+		// The property is a handle variable: it holds the token's address.
+		let slot = new void*[1]*;
+		let token = Internal.UnsafeCastToPtr(t);
+		slot[0] = token;
+		mTokens.Add(slot);
+		// A short name a type or another handle already took gets its role appended: the
+		// scene's Audio system keeps `Audio`, the engine's subsystem becomes `AudioService`.
+		// Checked BEFORE registering: a refused registration marks the whole engine
+		// misconfigured, and nothing compiles after.
+		if (mHandleNames.Contains(name) || (AS.asc_engine_get_type_info_by_name(mEngine, name.CStr()) != null))
+			name.Append((t.Role == .Service) ? "Service" : "System");
+		if (Check(AS.asc_engine_register_global_property(mEngine, scope $"{AsName(t)}@ {name}".CStr(), slot), t.FullName))
+			mHandleNames.Add(new String(name));
+	}
+
+	/// A field or property becomes a virtual property: `T get_X() property` and its setter.
+	private void BindField(ScriptTypeInfo t, ScriptFieldInfo f, StringView statics)
+	{
+		let typeDecl = scope String();
+		if (!DeclOf(f.Kind, f.TypeName, typeDecl))
+		{
+			Problem(scope $"{t.FullName}.{f.Name}: {f.TypeName} has no AngelScript type, skipped");
+			return;
+		}
+
+		let get = new AngelScriptBinding();
+		get.Kind = .Get;
+		get.Owner = t;
+		get.Field = f;
+		mBindings.Add(get);
+
+		let isGlobal = f.IsStatic || (t.Kind == .Global);
+		let getDecl = scope $"{typeDecl} get_{f.ScriptName}() property";
+		if (isGlobal)
+		{
+			AS.asc_engine_set_default_namespace(mEngine, scope String(statics).CStr());
+			Check(AS.asc_engine_register_global_function(mEngine, getDecl.CStr(), Internal.UnsafeCastToPtr(get)), t.FullName);
+		}
+		else
+		{
+			Check(AS.asc_engine_register_object_method(mEngine, scope String(AsName(t)).CStr(), getDecl.CStr(), Internal.UnsafeCastToPtr(get)), t.FullName);
+		}
+
+		if (f.Set != null)
+		{
+			let set = new AngelScriptBinding();
+			set.Kind = .Set;
+			set.Owner = t;
+			set.Field = f;
+			mBindings.Add(set);
+			let paramDecl = ParamDecl(f.Kind, f.TypeName, false, .. scope .());
+			let setDecl = scope $"void set_{f.ScriptName}({paramDecl}) property";
+			if (isGlobal)
+				Check(AS.asc_engine_register_global_function(mEngine, setDecl.CStr(), Internal.UnsafeCastToPtr(set)), t.FullName);
+			else
+				Check(AS.asc_engine_register_object_method(mEngine, scope String(AsName(t)).CStr(), setDecl.CStr(), Internal.UnsafeCastToPtr(set)), t.FullName);
+		}
+		if (isGlobal)
+			AS.asc_engine_set_default_namespace(mEngine, "");
+	}
+
+	/// A method is registered once per arity its defaults allow.
+	private void BindMethod(ScriptTypeInfo t, ScriptMethodInfo m, StringView statics)
+	{
+		let returnDecl = scope String();
+		if (m.IsConstructor)
+		{
+			if (t.Kind == .Class)
+				returnDecl.AppendF("{}@", AsName(t));
+			else
+				returnDecl.Set("void");
+		}
+		else if (!DeclOf(m.ReturnKind, m.ReturnTypeName, returnDecl))
+		{
+			Problem(scope $"{t.FullName}.{m.Name}: returns {m.ReturnTypeName}, which has no AngelScript type, skipped");
+			return;
+		}
+
+		let paramDecls = scope List<String>();
+		defer { ClearAndDeleteItems(paramDecls); }
+		for (let p in m.Params)
+		{
+			let d = new String();
+			if (!ParamDecl(p.Kind, p.TypeName, p.IsByRef, d))
+			{
+				delete d;
+				Problem(scope $"{t.FullName}.{m.Name}: parameter {p.Name} is {p.TypeName}, which has no AngelScript type, skipped");
+				return;
+			}
+			d.AppendF(" {}", p.Name);
+			paramDecls.Add(d);
+		}
+
+		let isGlobal = m.IsStatic || (t.Kind == .Global);
+		let name = m.IsConstructor ? "f" : m.ScriptName;
+		for (int arity = m.RequiredParams; arity <= m.Params.Count; arity++)
+		{
+			let b = new AngelScriptBinding();
+			b.Kind = m.IsConstructor ? .Construct : .Call;
+			b.Owner = t;
+			b.Method = m;
+			b.Arity = arity;
+			mBindings.Add(b);
+
+			let decl = scope String();
+			decl.AppendF("{} {}(", returnDecl, name);
+			for (int i = 0; i < arity; i++)
+			{
+				if (i > 0)
+					decl.Append(", ");
+				decl.Append(paramDecls[i]);
+			}
+			decl.Append(")");
+
+			int32 rc;
+			if (m.IsConstructor)
+			{
+				let behaviour = (t.Kind == .Class) ? AS.asBEHAVE_FACTORY : AS.asBEHAVE_CONSTRUCT;
+				rc = AS.asc_engine_register_object_behaviour(mEngine, scope String(AsName(t)).CStr(), behaviour, decl.CStr(), Internal.UnsafeCastToPtr(b));
+			}
+			else if (isGlobal)
+			{
+				if (t.Kind != .Global)
+					AS.asc_engine_set_default_namespace(mEngine, scope String(statics).CStr());
+				rc = AS.asc_engine_register_global_function(mEngine, decl.CStr(), Internal.UnsafeCastToPtr(b));
+				if (t.Kind != .Global)
+					AS.asc_engine_set_default_namespace(mEngine, "");
+			}
+			else
+			{
+				rc = AS.asc_engine_register_object_method(mEngine, scope String(AsName(t)).CStr(), decl.CStr(), Internal.UnsafeCastToPtr(b));
+			}
+			Check(rc, scope $"{t.FullName}.{m.Name} as {decl}");
+		}
+	}
+
+	private bool Check(int32 rc, StringView what)
+	{
+		if (rc >= 0)
+			return true;
+		Problem(scope $"{what}: AngelScript refused it ({rc})");
+		return false;
+	}
+
+	// ---- declarations ----
+
+	/// The AngelScript type for a kind, as a value: `float`, `Float3`, `Thing@`, `string`.
+	private bool DeclOf(ScriptValueKind kind, StringView typeName, String outDecl)
+	{
+		switch (kind)
+		{
+		case .Nil: outDecl.Append("void"); return true;
+		case .Bool: outDecl.Append("bool"); return true;
+		case .Float: outDecl.Append((typeName == "double") ? "double" : "float"); return true;
+		case .Int:
+			switch (typeName)
+			{
+			case "int8": outDecl.Append("int8");
+			case "int16": outDecl.Append("int16");
+			case "int32": outDecl.Append("int");
+			case "int64", "int": outDecl.Append("int64");
+			case "uint8", "char8": outDecl.Append("uint8");
+			case "uint16": outDecl.Append("uint16");
+			case "uint32", "char32": outDecl.Append("uint");
+			case "uint64", "uint": outDecl.Append("uint64");
+			default:
+				// An enum, by its surface name.
+				let e = mSurface.Find(typeName);
+				if ((e == null) || !mByName.ContainsKey(scope String(AsName(e))))
+					return false;
+				outDecl.Append(AsName(e));
+			}
+			return true;
+		case .String: outDecl.Append("string"); return true;
+		case .Guid: outDecl.Append("Guid"); return true;
+		case .Entity: outDecl.Append("Entity"); return true;
+		case .Float2: outDecl.Append("Float2"); return true;
+		case .Float3: outDecl.Append("Float3"); return true;
+		case .Float4: outDecl.Append("Float4"); return true;
+		case .Quaternion: outDecl.Append("Quaternion"); return true;
+		case .Color: outDecl.Append("Color"); return true;
+		case .Object:
+			if (typeName == "System.String")
+			{
+				outDecl.Append("string");
+				return true;
+			}
+			let c = mSurface.Find(typeName);
+			if ((c == null) || !mByName.ContainsKey(scope String(AsName(c))))
+				return false;
+			outDecl.AppendF("{}@", AsName(c));
+			return true;
+		case .Struct:
+			let st = mSurface.Find(typeName);
+			if ((st == null) || !mByName.ContainsKey(scope String(AsName(st))))
+				return false;
+			outDecl.Append(AsName(st));
+			return true;
+		}
+	}
+
+	/// A parameter's declaration: primitives and handles by value, value types and strings
+	/// by const reference, a by-ref parameter by `&inout`.
+	private bool ParamDecl(ScriptValueKind kind, StringView typeName, bool byRef, String outDecl)
+	{
+		let type = scope String();
+		if (!DeclOf(kind, typeName, type))
+			return false;
+		let isValue = ByReferenceKind(kind, typeName);
+		if (byRef)
+			outDecl.AppendF("{} &inout", type);
+		else if (isValue)
+			outDecl.AppendF("const {} &in", type);
+		else
+			outDecl.Append(type);
+		return true;
+	}
+
+	/// Whether a kind is an AngelScript value type or string, passed by reference.
+	private static bool ByReferenceKind(ScriptValueKind kind, StringView typeName)
+	{
+		switch (kind)
+		{
+		case .String, .Guid, .Entity, .Float2, .Float3, .Float4, .Quaternion, .Color, .Struct:
+			return true;
+		case .Object:
+			return typeName == "System.String";
+		default:
+			return false;
+		}
+	}
+
+	// ==================== the trampoline ====================
+
+	private const int cMaxArgs = 16;
+
+	private static void OnGeneric(AS.Generic* gen, void* aux, void* user)
+	{
+		let self = Internal.UnsafeCastToObject(user) as AngelScriptRuntime;
+		let binding = Internal.UnsafeCastToObject(aux) as AngelScriptBinding;
+		self.Dispatch(gen, binding);
+	}
+
+	private void Dispatch(AS.Generic* gen, AngelScriptBinding b)
+	{
+		let context = mCallContext;
+		switch (b.Kind)
+		{
+		case .ComponentFromEntity:
+			// The value's bytes ARE the entity.
+			let entity = *(EntityHandle*)AS.asc_generic_get_arg_address(gen, 0);
+			*(EntityHandle*)AS.asc_generic_get_object(gen) = entity;
+			return;
+		default:
+		}
+
+		// Arguments, from the declaration's parameters.
+		ScriptValue[cMaxArgs] args = .();
+		ScriptValueKind[cMaxArgs] kinds = .();
+		int count = 0;
+		List<ScriptParamInfo> paramInfos = null;
+		if (b.Kind == .Set)
+		{
+			count = 1;
+			kinds[0] = b.Field.Kind;
+			args[0] = ReadArg(gen, 0, b.Field.Kind, b.Field.TypeName);
+		}
+		else if ((b.Kind == .Call) || (b.Kind == .Construct))
+		{
+			paramInfos = b.Method.Params;
+			count = b.Arity;
+			for (int i = 0; i < count; i++)
+			{
+				let p = paramInfos[i];
+				kinds[i] = p.Kind;
+				args[i] = ReadArg(gen, i, p.Kind, p.TypeName);
+			}
+		}
+
+		var frame = ScriptCallFrame(context, Span<ScriptValue>(&args[0], count));
+
+		// Self, from what the call is on.
+		let owner = b.Owner;
+		let isStatic = (b.Kind == .Construct) || ((b.Kind != .Get && b.Kind != .Set) ? (b.Method.IsStatic || owner.Kind == .Global) : b.Field.IsStatic) || (owner.Kind == .Global);
+		void* selfMemory = null;
+		ScriptValueKind selfKind = .Nil;
+		if (!isStatic)
+		{
+			selfMemory = AS.asc_generic_get_object(gen);
+			selfKind = SelfKind(owner);
+			frame.Self = ReadSelf(selfMemory, selfKind, owner);
+		}
+
+		// Where a struct result goes: the value under construction, or the return location.
+		void* target = null;
+		ScriptValueKind resultKind = .Nil;
+		if (b.Kind == .Construct)
+		{
+			target = AS.asc_generic_get_object(gen);
+			resultKind = (owner.Role == .Component) ? .Entity : owner.Kind == .Struct ? KindOfStruct(owner) : .Object;
+		}
+		else if (b.Kind == .Get)
+		{
+			resultKind = b.Field.Kind;
+			target = AS.asc_generic_get_address_of_return_location(gen);
+		}
+		else if (b.Kind == .Call)
+		{
+			resultKind = b.Method.ReturnKind;
+			target = AS.asc_generic_get_address_of_return_location(gen);
+		}
+		context.ResultTarget = (resultKind == .Struct) ? target : null;
+
+		// The call.
+		switch (b.Kind)
+		{
+		case .Get: b.Field.Get(ref frame);
+		case .Set: b.Field.Set(ref frame);
+		default: b.Method.Invoke(ref frame);
+		}
+		context.ResultTarget = null;
+
+		if (frame.Failed)
+		{
+			AS.asc_set_active_exception(scope String(frame.Error).CStr());
+			return;
+		}
+
+		// An inline struct self was copied; put it back.
+		if (!isStatic && (selfMemory != null))
+			WriteSelf(selfMemory, selfKind, frame.Self);
+
+		// By-ref arguments, back into the script's variables.
+		if (paramInfos != null)
+		{
+			for (int i = 0; i < count; i++)
+			{
+				if (paramInfos[i].IsByRef)
+					WriteValue(AS.asc_generic_get_arg_address(gen, (uint32)i), kinds[i], paramInfos[i].TypeName, args[i]);
+			}
+		}
+
+		// The result.
+		if (b.Kind == .Construct)
+		{
+			if (owner.Kind == .Class)
+			{
+				// A factory: the object is the script's to use and the runtime's to free.
+				let made = frame.Result.AsObject;
+				if (made != null)
+					mOwned.Add(made);
+				AS.asc_generic_set_return_address(gen, (made != null) ? Internal.UnsafeCastToPtr(made) : null);
+			}
+			else if (resultKind != .Struct)
+			{
+				WriteValue(target, resultKind, "", frame.Result);
+			}
+			// A Struct result was constructed in place through ResultTarget.
+		}
+		else if (resultKind != .Nil)
+		{
+			WriteReturn(gen, target, resultKind, (b.Kind == .Get) ? b.Field.TypeName : b.Method.ReturnTypeName, frame.Result);
+		}
+	}
+
+	private static ScriptValueKind KindOfStruct(ScriptTypeInfo t)
+	{
+		switch (t.FullName)
+		{
+		case "Sedulous.Core.Float2": return .Float2;
+		case "Sedulous.Core.Float3": return .Float3;
+		case "Sedulous.Core.Float4": return .Float4;
+		case "Sedulous.Core.Quaternion": return .Quaternion;
+		case "Sedulous.Core.Color": return .Color;
+		case "Sedulous.Scene.EntityHandle": return .Entity;
+		case "System.Guid": return .Guid;
+		default: return .Struct;
+		}
+	}
+
+	private static ScriptValueKind SelfKind(ScriptTypeInfo owner)
+	{
+		if (owner.Role == .Component)
+			return .Entity;
+		if (owner.Kind == .Class)
+			return .Object;
+		return KindOfStruct(owner);
+	}
+
+	private static ScriptValue ReadSelf(void* memory, ScriptValueKind kind, ScriptTypeInfo owner)
+	{
+		switch (kind)
+		{
+		case .Object: return .FromObject(Internal.UnsafeCastToObject(memory));
+		case .Struct: return .FromStruct(memory, owner.BeefType);
+		default: return ReadValue(memory, kind, "");
+		}
+	}
+
+	private static void WriteSelf(void* memory, ScriptValueKind kind, ScriptValue value)
+	{
+		switch (kind)
+		{
+		case .Float2, .Float3, .Float4, .Quaternion, .Color, .Guid, .Entity:
+			WriteValue(memory, kind, "", value);
+		default:
+		}
+	}
+
+	/// An argument of the generic call as a ScriptValue.
+	private ScriptValue ReadArg(AS.Generic* gen, int i, ScriptValueKind kind, StringView typeName)
+	{
+		let arg = (uint32)i;
+		switch (kind)
+		{
+		case .Nil: return .Nil;
+		case .Bool: return .FromBool(AS.asc_generic_get_arg_byte(gen, arg) != 0);
+		case .Float:
+			return .FromFloat((typeName == "double") ? AS.asc_generic_get_arg_double(gen, arg) : (double)AS.asc_generic_get_arg_float(gen, arg));
+		case .Int:
+			switch (typeName)
+			{
+			case "int8": return .FromInt((int8)AS.asc_generic_get_arg_byte(gen, arg));
+			case "uint8", "char8": return .FromInt(AS.asc_generic_get_arg_byte(gen, arg));
+			case "int16": return .FromInt((int16)AS.asc_generic_get_arg_word(gen, arg));
+			case "uint16": return .FromInt(AS.asc_generic_get_arg_word(gen, arg));
+			case "int32": return .FromInt((int32)AS.asc_generic_get_arg_dword(gen, arg));
+			case "uint32", "char32": return .FromInt(AS.asc_generic_get_arg_dword(gen, arg));
+			case "int64", "int": return .FromInt((int64)AS.asc_generic_get_arg_qword(gen, arg));
+			case "uint64", "uint": return .FromInt((int64)AS.asc_generic_get_arg_qword(gen, arg));
+			default: return .FromInt((int32)AS.asc_generic_get_arg_dword(gen, arg)); // an enum
+			}
+		case .String:
+			return .FromString(StringOf(AS.asc_generic_get_arg_address(gen, arg)));
+		case .Object:
+			if (typeName == "System.String")
+			{
+				// A Beef String the callee may fill, copied back by the caller after.
+				let s = new String(StringOf(AS.asc_generic_get_arg_address(gen, arg)));
+				mOwned.Add(s);
+				return .FromObject(s);
+			}
+			return .FromObject(Internal.UnsafeCastToObject(AS.asc_generic_get_arg_object(gen, arg)));
+		case .Struct:
+			let st = mSurface.Find(typeName);
+			return .FromStruct(AS.asc_generic_get_arg_address(gen, arg), (st != null) ? st.BeefType : null);
+		default:
+			return ReadValue(AS.asc_generic_get_arg_address(gen, arg), kind, typeName);
+		}
+	}
+
+	/// An inline value out of memory.
+	private static ScriptValue ReadValue(void* memory, ScriptValueKind kind, StringView typeName)
+	{
+		switch (kind)
+		{
+		case .Guid: return .FromGuid(*(Guid*)memory);
+		case .Entity: return .FromEntity(*(EntityHandle*)memory);
+		case .Float2: return .FromFloat2(*(Float2*)memory);
+		case .Float3: return .FromFloat3(*(Float3*)memory);
+		case .Float4: return .FromFloat4(*(Float4*)memory);
+		case .Quaternion: return .FromQuaternion(*(Quaternion*)memory);
+		case .Color: return .FromColor(*(Color*)memory);
+		case .Bool: return .FromBool(*(bool*)memory);
+		case .Float: return .FromFloat((typeName == "double") ? *(double*)memory : (double)*(float*)memory);
+		case .Int:
+			switch (typeName)
+			{
+			case "int8": return .FromInt(*(int8*)memory);
+			case "uint8", "char8": return .FromInt(*(uint8*)memory);
+			case "int16": return .FromInt(*(int16*)memory);
+			case "uint16": return .FromInt(*(uint16*)memory);
+			case "int32": return .FromInt(*(int32*)memory);
+			case "uint32", "char32": return .FromInt(*(uint32*)memory);
+			case "int64", "int": return .FromInt(*(int64*)memory);
+			case "uint64", "uint": return .FromInt((int64)*(uint64*)memory);
+			default: return .FromInt(*(int32*)memory);
+			}
+		default: return .Nil;
+		}
+	}
+
+	/// A value into memory the script owns: a by-ref argument, a constructed value.
+	private static void WriteValue(void* memory, ScriptValueKind kind, StringView typeName, ScriptValue value)
+	{
+		if (memory == null)
+			return;
+		switch (kind)
+		{
+		case .Guid: *(Guid*)memory = value.AsGuid;
+		case .Entity: *(EntityHandle*)memory = value.AsEntity;
+		case .Float2: *(Float2*)memory = value.AsFloat2;
+		case .Float3: *(Float3*)memory = value.AsFloat3;
+		case .Float4: *(Float4*)memory = value.AsFloat4;
+		case .Quaternion: *(Quaternion*)memory = value.AsQuaternion;
+		case .Color: *(Color*)memory = value.AsColor;
+		case .Bool: *(bool*)memory = value.AsBool;
+		case .Float:
+			if (typeName == "double")
+				*(double*)memory = value.AsNumber;
+			else
+				*(float*)memory = (float)value.AsNumber;
+		case .Int:
+			switch (typeName)
+			{
+			case "int8", "uint8", "char8": *(uint8*)memory = (uint8)value.AsInt;
+			case "int16", "uint16": *(uint16*)memory = (uint16)value.AsInt;
+			case "int64", "int", "uint64", "uint": *(uint64*)memory = (uint64)value.AsInt;
+			default: *(uint32*)memory = (uint32)value.AsInt;
+			}
+		case .String:
+			AS.asc_string_assign(memory, value.AsString.Ptr, (uint)value.AsString.Length);
+		case .Object:
+			if (typeName == "System.String")
+			{
+				let s = value.AsObject as String;
+				if (s != null)
+					AS.asc_string_assign(memory, s.Ptr, (uint)s.Length);
+			}
+		default:
+		}
+	}
+
+	/// The thunk's result, to the generic call.
+	private static void WriteReturn(AS.Generic* gen, void* location, ScriptValueKind kind, StringView typeName, ScriptValue value)
+	{
+		switch (kind)
+		{
+		case .Bool: AS.asc_generic_set_return_byte(gen, value.AsBool ? 1 : 0);
+		case .Float:
+			if (typeName == "double")
+				AS.asc_generic_set_return_double(gen, value.AsNumber);
+			else
+				AS.asc_generic_set_return_float(gen, (float)value.AsNumber);
+		case .Int:
+			switch (typeName)
+			{
+			case "int8", "uint8", "char8": AS.asc_generic_set_return_byte(gen, (uint8)value.AsInt);
+			case "int16", "uint16": AS.asc_generic_set_return_word(gen, (uint16)value.AsInt);
+			case "int64", "int", "uint64", "uint": AS.asc_generic_set_return_qword(gen, (uint64)value.AsInt);
+			default: AS.asc_generic_set_return_dword(gen, (uint32)value.AsInt);
+			}
+		case .String:
+			AS.asc_string_construct(location, value.AsString.Ptr, (uint)value.AsString.Length);
+		case .Object:
+			if (typeName == "System.String")
+			{
+				let s = value.AsObject as String;
+				AS.asc_string_construct(location, (s != null) ? s.Ptr : "", (s != null) ? (uint)s.Length : 0);
+			}
+			else
+			{
+				AS.asc_generic_set_return_address(gen, (value.AsObject != null) ? Internal.UnsafeCastToPtr(value.AsObject) : null);
+			}
+		case .Struct:
+			// Built in place at the return location through ResultTarget; nothing to do,
+			// unless the thunk answered nothing.
+		default:
+			WriteValue(location, kind, typeName, value);
+		}
+	}
+
+	private static StringView StringOf(void* str)
+	{
+		uint length = 0;
+		let data = AS.asc_string_data(str, &length);
+		return StringView(data, (int)length);
+	}
+
+	// ==================== modules and calls ====================
+
+	public override bool Compile(StringView moduleName, StringView sectionName, StringView source)
+	{
+		let module = AS.asc_engine_get_module(mEngine, scope String(moduleName).CStr(), AS.asGM_ALWAYS_CREATE);
+		if (AS.asc_module_add_script_section(module, scope String(sectionName).CStr(), source.Ptr, (uint)source.Length) < 0)
+			return false;
+		return AS.asc_module_build(module) >= 0;
+	}
+
+	public override bool Call(StringView moduleName, StringView declaration, Span<ScriptValue> args, ref ScriptValue result)
+	{
+		let module = AS.asc_engine_get_module(mEngine, scope String(moduleName).CStr(), AS.asGM_ONLY_IF_EXISTS);
+		if (module == null)
+		{
+			Problem(scope $"no module {moduleName}");
+			return false;
+		}
+		let fn = AS.asc_module_get_function_by_decl(module, scope String(declaration).CStr());
+		if (fn == null)
+		{
+			Problem(scope $"{moduleName} has no {declaration}");
+			return false;
+		}
+		if (AS.asc_context_prepare(mContext, fn) < 0)
+			return false;
+
+		// Arguments by the function's own parameter types.
+		for (int i = 0; i < args.Length; i++)
+		{
+			int32 typeId = 0;
+			uint32 flags = 0;
+			AS.asc_function_get_param(fn, (uint32)i, &typeId, &flags, null);
+			SetContextArg((uint32)i, typeId, flags, args[i]);
+		}
+
+		let state = AS.asc_context_execute(mContext);
+		if (state != AS.asEXECUTION_FINISHED)
+		{
+			if (state == AS.asEXECUTION_EXCEPTION)
+			{
+				int32 column = 0;
+				char8* section = null;
+				let line = AS.asc_context_get_exception_line_number(mContext, &column, &section);
+				Problem(scope $"{StringView(section)}({line},{column}): exception: {StringView(AS.asc_context_get_exception_string(mContext))}");
+			}
+			else
+			{
+				Problem(scope $"{declaration}: execution ended in state {state}");
+			}
+			AS.asc_context_unprepare(mContext);
+			return false;
+		}
+
+		uint32 returnFlags = 0;
+		let returnType = AS.asc_function_get_return_type_id(fn, &returnFlags);
+		result = ReadContextReturn(returnType);
+		AS.asc_context_unprepare(mContext);
+		return true;
+	}
+
+	private void SetContextArg(uint32 i, int32 typeId, uint32 flags, ScriptValue value)
+	{
+		switch (typeId)
+		{
+		case AS.asTYPEID_BOOL, AS.asTYPEID_INT8, AS.asTYPEID_UINT8:
+			AS.asc_context_set_arg_byte(mContext, i, (value.Kind == .Bool) ? (value.AsBool ? 1 : 0) : (uint8)value.AsInt);
+		case AS.asTYPEID_INT16, AS.asTYPEID_UINT16:
+			AS.asc_context_set_arg_word(mContext, i, (uint16)value.AsInt);
+		case AS.asTYPEID_INT32, AS.asTYPEID_UINT32:
+			AS.asc_context_set_arg_dword(mContext, i, (uint32)value.AsInt);
+		case AS.asTYPEID_INT64, AS.asTYPEID_UINT64:
+			AS.asc_context_set_arg_qword(mContext, i, (uint64)value.AsInt);
+		case AS.asTYPEID_FLOAT:
+			AS.asc_context_set_arg_float(mContext, i, (float)value.AsNumber);
+		case AS.asTYPEID_DOUBLE:
+			AS.asc_context_set_arg_double(mContext, i, value.AsNumber);
+		default:
+			if ((typeId & AS.asTYPEID_MASK_OBJECT) == 0)
+			{
+				// An enum.
+				AS.asc_context_set_arg_dword(mContext, i, (uint32)value.AsInt);
+			}
+			else if ((typeId & AS.asTYPEID_OBJHANDLE) != 0)
+			{
+				AS.asc_context_set_arg_address(mContext, i, (value.AsObject != null) ? Internal.UnsafeCastToPtr(value.AsObject) : null);
+			}
+			else if (value.Kind == .Struct)
+			{
+				AS.asc_context_set_arg_object(mContext, i, value.AsStruct);
+			}
+			else if (value.Kind == .String)
+			{
+				let s = new uint8[AS.asc_string_size()]*;
+				AS.asc_string_construct(s, value.AsString.Ptr, (uint)value.AsString.Length);
+				AS.asc_context_set_arg_object(mContext, i, s);
+				AS.asc_string_destruct(s);
+				delete s;
+			}
+			else
+			{
+				// An inline value type: by address of a copy the context takes.
+				var copy = value;
+				AS.asc_context_set_arg_object(mContext, i, &copy.Data);
+			}
+		}
+	}
+
+	private ScriptValue ReadContextReturn(int32 typeId)
+	{
+		switch (typeId)
+		{
+		case AS.asTYPEID_VOID: return .Nil;
+		case AS.asTYPEID_BOOL: return .FromBool(AS.asc_context_get_return_byte(mContext) != 0);
+		case AS.asTYPEID_INT8: return .FromInt((int8)AS.asc_context_get_return_byte(mContext));
+		case AS.asTYPEID_UINT8: return .FromInt(AS.asc_context_get_return_byte(mContext));
+		case AS.asTYPEID_INT16: return .FromInt((int16)AS.asc_context_get_return_word(mContext));
+		case AS.asTYPEID_UINT16: return .FromInt(AS.asc_context_get_return_word(mContext));
+		case AS.asTYPEID_INT32: return .FromInt((int32)AS.asc_context_get_return_dword(mContext));
+		case AS.asTYPEID_UINT32: return .FromInt(AS.asc_context_get_return_dword(mContext));
+		case AS.asTYPEID_INT64: return .FromInt((int64)AS.asc_context_get_return_qword(mContext));
+		case AS.asTYPEID_UINT64: return .FromInt((int64)AS.asc_context_get_return_qword(mContext));
+		case AS.asTYPEID_FLOAT: return .FromFloat(AS.asc_context_get_return_float(mContext));
+		case AS.asTYPEID_DOUBLE: return .FromFloat(AS.asc_context_get_return_double(mContext));
+		default:
+			if ((typeId & AS.asTYPEID_MASK_OBJECT) == 0)
+				return .FromInt((int32)AS.asc_context_get_return_dword(mContext));
+			if ((typeId & AS.asTYPEID_OBJHANDLE) != 0)
+				return .FromObject(Internal.UnsafeCastToObject(AS.asc_context_get_return_address(mContext)));
+			// A value type: known by its name.
+			let name = StringView(AS.asc_typeinfo_get_name(AS.asc_engine_get_type_info_by_id(mEngine, typeId)));
+			let memory = AS.asc_context_get_return_object(mContext);
+			if (name == "string")
+			{
+				// Copied out: the context's return value dies with Unprepare.
+				let s = new String(StringOf(memory));
+				mOwned.Add(s);
+				return .FromString(s);
+			}
+			if (mByName.TryGetValue(scope String(name), let t))
+			{
+				let kind = KindOfStruct(t);
+				if (kind != .Struct)
+					return ReadValue(memory, kind, "");
+				// Copied into scratch: the return object dies with Unprepare.
+				let copy = mCallContext.AllocStruct(t.BeefType, t.Size, t.Align);
+				Internal.MemCpy(copy, memory, t.Size);
+				return .FromStruct(copy, t.BeefType);
+			}
+			return .Nil;
+		}
+	}
+}

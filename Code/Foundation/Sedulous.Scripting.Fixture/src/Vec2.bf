@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core;
 
-namespace Sedulous.Scripting.Tests.Fixture;
+namespace Sedulous.Scripting.Fixture;
 
 /// A value type with the whole public data surface exposed, some marked methods, and a
 /// public field hidden by hand.

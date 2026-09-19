@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core;
 using Sedulous.Resource;
 
-namespace Sedulous.Scripting.Tests.Fixture;
+namespace Sedulous.Scripting.Fixture;
 
 /// A class with marked members only: a field, two properties, an overload set told apart
 /// by ScriptName, a by-reference parameter, and a static factory.

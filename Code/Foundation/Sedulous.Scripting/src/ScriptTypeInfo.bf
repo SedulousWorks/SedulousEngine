@@ -25,6 +25,12 @@ class ScriptTypeInfo
 	public String Category = new .() ~ delete _;
 	/// True when the type was marked AllPublic: every public data member is on the surface.
 	public bool AllPublic = false;
+	/// The Beef type itself, for a backend that has to size, check or reflect it. Null for
+	/// a Global.
+	public Type BeefType = null;
+	/// The instance size and alignment, for a struct a backend allocates inline.
+	public int32 Size = 0;
+	public int32 Align = 1;
 
 	public List<ScriptFieldInfo> Fields = new .() ~ DeleteContainerAndItems!(_);
 	public List<ScriptMethodInfo> Methods = new .() ~ DeleteContainerAndItems!(_);
@@ -95,6 +101,14 @@ class ScriptTypeInfo
 		Role = role;
 		ManagerTypeName.Set(managerTypeName);
 		ComponentTypeId.Set(componentTypeId);
+		return this;
+	}
+
+	public ScriptTypeInfo Typed(Type type, int32 size, int32 align)
+	{
+		BeefType = type;
+		Size = size;
+		Align = align;
 		return this;
 	}
 
