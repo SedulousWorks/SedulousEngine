@@ -16,6 +16,7 @@ namespace Sedulous.Input;
 /// behave is HELD SUPPRESSION LATCHING: an action suppressed while physically held stays
 /// released until it is physically released, so closing a menu never re-fires a Fire the
 /// player has been holding down through it.
+[Scriptable]
 class ActionRuntime
 {
 	/// Where an analog value starts counting as a press.
@@ -106,6 +107,7 @@ class ActionRuntime
 
 	// ---- sets ----
 
+	[Scriptable]
 	public void EnableSet(StringView name, bool enabled = true)
 	{
 		for (int i = 0; i < mMap.Sets.Count; i++)
@@ -115,8 +117,10 @@ class ActionRuntime
 		}
 	}
 
+	[Scriptable]
 	public void DisableSet(StringView name) => EnableSet(name, false);
 
+	[Scriptable]
 	public bool IsSetEnabled(StringView name)
 	{
 		for (int i = 0; i < mMap.Sets.Count; i++)
@@ -133,12 +137,14 @@ class ActionRuntime
 	/// Every exclusive transition also latches whatever is physically held. A modal
 	/// boundary demands a fresh press, so a held Fire neither confirms the menu that just
 	/// opened nor fires again when it closes.
+	[Scriptable]
 	public void PushExclusiveSet(StringView name)
 	{
 		mExclusiveStack.Add(new String(name));
 		mLatchHeldOnce = true;
 	}
 
+	[Scriptable]
 	public void PopExclusiveSet()
 	{
 		if (mExclusiveStack.IsEmpty)
@@ -157,6 +163,7 @@ class ActionRuntime
 	/// FLAT rather than per set: a caller asks for "Jump", not for "Gameplay's Jump". At
 	/// query time the highest priority candidate in an enabled set answers, which is what
 	/// lets a menu take Cancel while gameplay still declares its own.
+	[Scriptable]
 	public ActionRef Resolve(StringView name)
 	{
 		for (int i = 0; i < mRefs.Count; i++)
@@ -253,6 +260,7 @@ class ActionRuntime
 
 	// ---- queries ----
 
+	[Scriptable]
 	public bool IsDown(ActionRef reference)
 	{
 		if (StateFor(reference) case .Ok(let index))
@@ -260,6 +268,7 @@ class ActionRuntime
 		return false;
 	}
 
+	[Scriptable]
 	public bool WasPressed(ActionRef reference)
 	{
 		if (StateFor(reference) case .Ok(let index))
@@ -267,6 +276,7 @@ class ActionRuntime
 		return false;
 	}
 
+	[Scriptable]
 	public bool WasReleased(ActionRef reference)
 	{
 		if (StateFor(reference) case .Ok(let index))
@@ -274,6 +284,7 @@ class ActionRuntime
 		return false;
 	}
 
+	[Scriptable]
 	public float Value(ActionRef reference)
 	{
 		if (StateFor(reference) case .Ok(let index))
@@ -281,6 +292,7 @@ class ActionRuntime
 		return 0.0f;
 	}
 
+	[Scriptable]
 	public Float2 Value2D(ActionRef reference)
 	{
 		if (StateFor(reference) case .Ok(let index))
@@ -290,10 +302,12 @@ class ActionRuntime
 
 	/// A signed axis from two actions, for a caller composing one on the spot rather than
 	/// declaring it in the map.
+	[Scriptable]
 	public float Axis(ActionRef negative, ActionRef positive) => Value(positive) - Value(negative);
 
 	/// The same for a vector, CLAMPED to length one so a diagonal is not faster than a
 	/// cardinal.
+	[Scriptable]
 	public Float2 Vector2(ActionRef negX, ActionRef posX, ActionRef negY, ActionRef posY)
 	{
 		var value = Float2(Value(posX) - Value(negX), Value(posY) - Value(negY));

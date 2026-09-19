@@ -16,6 +16,7 @@ namespace Sedulous.Engine.Audio;
 ///
 /// It owns the ONE engine, hands it to every scene's audio system, pushes the winning
 /// listeners, and carries the engine global one shot surface that needs no entity at all.
+[Scriptable]
 class AudioSubsystem : Subsystem, ISceneObserver
 {
 	/// One watched scene and its audio system, both BORROWED.
@@ -145,6 +146,7 @@ class AudioSubsystem : Subsystem, ISceneObserver
 
 	// ---- the engine global one shots ----
 
+	[Scriptable]
 	public VoiceHandle PlayOneShot(AudioClip clip, AudioBus bus = .Effects, float volume = 1.0f,
 		float pitch = 1.0f)
 	{
@@ -158,6 +160,7 @@ class AudioSubsystem : Subsystem, ISceneObserver
 		return mEngine.Play(clip, parameters);
 	}
 
+	[Scriptable]
 	public VoiceHandle PlayOneShot3D(AudioClip clip, Float3 position,
 		AudioPlayParams baseParams = .())
 	{
@@ -172,6 +175,7 @@ class AudioSubsystem : Subsystem, ISceneObserver
 
 	/// One cue TRIGGER as a one shot: a weighted variant and its jitter, through the same
 	/// resolution the components use.
+	[Scriptable]
 	public VoiceHandle PlayCueOneShot(SoundCue cue, AudioBus bus = .Effects)
 	{
 		var parameters = AudioPlayParams();
@@ -179,6 +183,7 @@ class AudioSubsystem : Subsystem, ISceneObserver
 		return PlayCueResolved(cue, parameters);
 	}
 
+	[Scriptable]
 	public VoiceHandle PlayCueOneShot3D(SoundCue cue, Float3 position,
 		AudioPlayParams baseParams = .())
 	{
@@ -190,6 +195,7 @@ class AudioSubsystem : Subsystem, ISceneObserver
 
 	// ---- music, which is scene free and survives a scene swap ----
 
+	[Scriptable]
 	public VoiceHandle PlayMusic(AudioClip clip, float crossFadeSeconds = 1.0f,
 		float volume = 1.0f)
 		=> (mEngine != null) ? mEngine.PlayMusic(clip, crossFadeSeconds, volume) : .();
@@ -208,12 +214,14 @@ class AudioSubsystem : Subsystem, ISceneObserver
 
 	public bool IsPlaying(VoiceHandle handle) => (mEngine != null) && mEngine.IsPlaying(handle);
 
+	[Scriptable]
 	public void SetBusVolume(AudioBus bus, float volume)
 	{
 		if (mEngine != null)
 			mEngine.SetBusVolume(bus, volume);
 	}
 
+	[Scriptable]
 	public float BusVolume(AudioBus bus) => (mEngine != null) ? mEngine.BusVolume(bus) : 0.0f;
 
 	// ---- content path playback ----

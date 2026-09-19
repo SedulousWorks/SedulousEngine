@@ -11,6 +11,7 @@ namespace Sedulous.Engine.Render;
 ///
 /// It creates and frees each component's material lists, because a component is a struct in a
 /// packed pool and cannot own heap data itself.
+[Scriptable]
 class MeshComponentManager : ResourceBindingComponentManager<MeshComponent>
 {
 	protected override void OnComponentCreated(MeshComponent* component, EntityHandle entity)
@@ -25,20 +26,21 @@ class MeshComponentManager : ResourceBindingComponentManager<MeshComponent>
 		DeleteAndNullify!(component.MaterialCache);
 	}
 
-	/// Points the entity's mesh at a resource ID and binds it, so the swap takes effect live.
+	/// Points the entity's mesh at a resource ID and binds it through the manager the scene
+	/// was resolved with, so the swap takes effect live.
 	///
 	/// Raptor offers this through the SceneRender script facade; it belongs here, where the
-	/// components already are. A null manager binds nothing and leaves the id set, which is
-	/// what a bare tool with no resource manager gets.
-	public bool SetMesh(EntityHandle entity, Guid id, ResourceManager resources = null)
+	/// components already are. Before any resolve there is no manager: the id is set and
+	/// nothing binds, which is what a bare tool gets.
+	[Scriptable]
+	public bool SetMesh(EntityHandle entity, Guid id)
 	{
 		let component = Get(entity);
 		if (component == null)
 			return false;
 
 		component.Mesh.SetId(id);
-		if (resources != null)
-			component.Mesh.Bind(resources);
+		component.Mesh.Rebind(Resources);
 
 		return true;
 	}
@@ -48,8 +50,8 @@ class MeshComponentManager : ResourceBindingComponentManager<MeshComponent>
 	/// The counterpart to SetMesh, and Raptor's other half of the same facade. Slot 0 is the
 	/// whole-mesh slot a single material mesh uses, so it is the default; the list grows to
 	/// reach a higher slot, because a mesh may be bound before its materials are.
-	public bool SetMaterial(EntityHandle entity, Guid id, int slot = 0,
-		ResourceManager resources = null)
+	[Scriptable]
+	public bool SetMaterial(EntityHandle entity, Guid id, int slot = 0)
 	{
 		let component = Get(entity);
 		if ((component == null) || (slot < 0))
@@ -59,8 +61,7 @@ class MeshComponentManager : ResourceBindingComponentManager<MeshComponent>
 			component.Materials.Add(.(Guid()));
 
 		component.Materials[slot].SetId(id);
-		if (resources != null)
-			component.Materials[slot].Bind(resources);
+		component.Materials[slot].Rebind(Resources);
 
 		return true;
 	}
