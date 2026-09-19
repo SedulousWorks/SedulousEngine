@@ -153,6 +153,20 @@ class AudioSceneSystem : SceneSystem
 		return (component != null) && (mEngine != null) && mEngine.IsPlaying(component.Voice);
 	}
 
+	/// Swaps the source's clip to the resource with this id, bound through the manager the
+	/// scene was resolved with. A playing voice runs on; the next Play uses the new clip.
+	[Scriptable]
+	public void SetClip(EntityHandle entity, Guid id)
+	{
+		let sources = (mScene != null) ? mScene.GetSystem<AudioSourceComponentManager>() : null;
+		let component = (sources != null) ? sources.Get(entity) : null;
+		if (component == null)
+			return;
+
+		component.Clip.SetId(id);
+		component.Clip.Rebind(sources.Resources);
+	}
+
 	// ---- the per frame sync, with the final transforms ready ----
 
 	public override void OnUpdate(ScenePhase phase, float deltaTime)

@@ -419,4 +419,27 @@ class AudioSceneTests
 		Test.Assert(component.Voice.IsValid);
 		Test.Assert(play.Engine.IsPlaying(component.Voice));
 	}
+
+	/// SetClip lands the identity and drops the direct object; a playing voice runs on. With
+	/// no resolve behind the scene there is no manager, so nothing binds until one comes.
+	[Test]
+	public static void SetClipSwapsTheIdentityAndLeavesThePlayingVoiceAlone()
+	{
+		let play = scope AudioPlayScene();
+		let clip = play.AddClip(1.0f);
+		let entity = play.AddSource(clip, .(0, 0, 0));
+		play.Start();
+		let component = play.Sources.Get(entity);
+		Test.Assert(play.Audio.IsPlaying(entity));
+
+		let id = Guid.Create();
+		play.Audio.SetClip(entity, id);
+		Test.Assert(component.Clip.Id == id);
+		Test.Assert(component.Clip.Get == null, "the direct override is gone");
+		Test.Assert(play.Sources.Resources == null);
+		Test.Assert(play.Audio.IsPlaying(entity), "the voice already started keeps going");
+
+		// No source: a no-op.
+		play.Audio.SetClip(play.Scene.CreateEntity("bare"), id);
+	}
 }
