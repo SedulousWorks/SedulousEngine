@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core;
 using Sedulous.Scene;
-using Sedulous.Scripting;
+using Sedulous.Script;
 using Sedulous.Engine.ScriptSurface;
 
 namespace Sedulous.Engine.ScriptSurface.Tests;

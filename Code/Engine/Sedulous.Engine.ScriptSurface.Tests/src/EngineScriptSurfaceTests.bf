@@ -2,8 +2,8 @@ using System;
 using System.Collections;
 using System.IO;
 using Sedulous.Core;
-using Sedulous.Scripting;
-using Sedulous.Scripting.Null;
+using Sedulous.Script;
+using Sedulous.Script.Null;
 using Sedulous.Engine.ScriptSurface;
 
 namespace Sedulous.Engine.ScriptSurface.Tests;

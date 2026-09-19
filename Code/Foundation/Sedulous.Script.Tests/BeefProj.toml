@@ -1,14 +1,15 @@
 FileVersion = 1
 
 [Project]
-Name = "Sedulous.Engine.ScriptSurface.Tests"
+Name = "Sedulous.Script.Tests"
 TargetType = "BeefTest"
-StartupObject = "Sedulous.Engine.ScriptSurface.Tests.Program"
+StartupObject = "Sedulous.Script.Tests.Program"
 
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
+"Sedulous.Resource" = "*"
 "Sedulous.Scene" = "*"
 "Sedulous.Script" = "*"
+"Sedulous.Script.Fixture" = "*"
 "Sedulous.Script.Null" = "*"
-"Sedulous.Engine.ScriptSurface" = "*"

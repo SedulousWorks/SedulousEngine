@@ -1,0 +1,11 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Script.Null"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Script.Null.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Script" = "*"

@@ -1,6 +1,6 @@
 using System;
 using Sedulous.Core;
-using Sedulous.Scripting;
+using Sedulous.Script;
 
 namespace Sedulous.Engine.ScriptSurface;
 

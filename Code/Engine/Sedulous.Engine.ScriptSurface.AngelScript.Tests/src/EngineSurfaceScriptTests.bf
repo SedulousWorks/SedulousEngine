@@ -2,8 +2,8 @@ using System;
 using System.IO;
 using Sedulous.Core;
 using Sedulous.Scene;
-using Sedulous.Scripting;
-using Sedulous.Scripting.AngelScript;
+using Sedulous.Script;
+using Sedulous.Script.AngelScript;
 using Sedulous.Engine.ScriptSurface;
 
 namespace Sedulous.Engine.ScriptSurface.AngelScript.Tests;
