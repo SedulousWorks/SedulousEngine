@@ -106,6 +106,14 @@ abstract class ScriptRuntime
 	// between steps. The host resumes the due ones ONCE per simulated frame at the tick's
 	// top level, where no script call is active, and cancels an object's when it goes.
 
+	// ---- introspection ----
+
+	/// What this backend actually bound and how a script spells it: the source for an API
+	/// browser or completion, which the surface listing is not, since a language spells a
+	/// static as `Float3::Dot` or a property as `get_X`, and a backend may have refused a
+	/// member. The caller owns what comes back.
+	public virtual void DescribeBoundApi(List<ScriptApiType> outTypes) {}
+
 	// ---- debugging ----
 
 	/// Whether this backend debugs: CreateDebugger answers one.

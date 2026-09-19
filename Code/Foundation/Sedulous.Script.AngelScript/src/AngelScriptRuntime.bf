@@ -139,6 +139,68 @@ class AngelScriptRuntime : ScriptRuntime
 	/// BORROWED: the debugger in force, which self registers and detaches.
 	private AngelScriptDebugger mDebugger = null;
 
+	/// Everything the bind registered, as it was spelled: the bound API.
+	private List<ScriptApiType> mApi = new .() ~ DeleteContainerAndItems!(_);
+
+	public override void DescribeBoundApi(List<ScriptApiType> outTypes)
+	{
+		for (let t in mApi)
+		{
+			let copy = new ScriptApiType();
+			copy.ScriptName.Set(t.ScriptName);
+			copy.TypeFullName.Set(t.TypeFullName);
+			copy.IsNamespace = t.IsNamespace;
+			for (let m in t.Members)
+			{
+				let member = new ScriptApiMember();
+				member.Name.Set(m.Name);
+				member.Signature.Set(m.Signature);
+				member.IsStatic = m.IsStatic;
+				member.Kind = m.Kind;
+				copy.Members.Add(member);
+			}
+			outTypes.Add(copy);
+		}
+	}
+
+	/// The API entry for a script name, made on first use. The global namespace is "".
+	private ScriptApiType ApiType(StringView scriptName, StringView fullName, bool isNamespace)
+	{
+		for (let t in mApi)
+		{
+			if (t.ScriptName == scriptName)
+				return t;
+		}
+		let t = new ScriptApiType();
+		t.ScriptName.Set(scriptName);
+		t.TypeFullName.Set(fullName);
+		t.IsNamespace = isNamespace;
+		mApi.Add(t);
+		return t;
+	}
+
+	private void Record(ScriptApiType type, StringView name, StringView signature, bool isStatic, ScriptApiMemberKind kind)
+	{
+		let m = new ScriptApiMember();
+		m.Name.Set(name);
+		m.Signature.Set(signature);
+		m.IsStatic = isStatic;
+		m.Kind = kind;
+		type.Members.Add(m);
+	}
+
+	private ScriptApiType GlobalApi => ApiType("", "", true);
+
+	/// The handle a service's instance members are reached through, `Run.LoadScene`, else
+	/// the type's own name.
+	private Dictionary<ScriptTypeInfo, String> mHandleOf = new .() ~ DeleteDictionaryAndValues!(_);
+	private StringView ReachedAs(ScriptTypeInfo t)
+	{
+		if (mHandleOf.TryGetValue(t, let handle))
+			return handle;
+		return AsName(t);
+	}
+
 	public ~this()
 	{
 		if (mDebugger != null)
@@ -168,6 +230,13 @@ class AngelScriptRuntime : ScriptRuntime
 	public override void Bind(ScriptSurface surface, Span<StringView> domains = default)
 	{
 		base.Bind(surface, domains);
+		ClearAndDeleteItems!(mApi);
+		DeleteDictionaryAndValues!(mHandleOf);
+		mHandleOf = new .();
+		// The language's own globals, bound before any surface.
+		Record(GlobalApi, "startCoroutine", "void startCoroutine(ScriptCoroutine@ fn)", true, .Method);
+		Record(GlobalApi, "wait", "void wait(float seconds)", true, .Method);
+		Record(GlobalApi, "yield", "void yield()", true, .Method);
 
 		// Declare every type before any member, since a member's declaration names types.
 		for (let t in surface.Types)
@@ -196,8 +265,12 @@ class AngelScriptRuntime : ScriptRuntime
 		case .Enum:
 			if (Check(AS.asc_engine_register_enum(mEngine, scope String(AsName(t)).CStr()), t.FullName))
 			{
+				let api = ApiType(AsName(t), t.FullName, false);
 				for (let v in t.EnumValues)
-					Check(AS.asc_engine_register_enum_value(mEngine, scope String(AsName(t)).CStr(), scope String(v.Name).CStr(), (int32)v.Value), t.FullName);
+				{
+					if (Check(AS.asc_engine_register_enum_value(mEngine, scope String(AsName(t)).CStr(), scope String(v.Name).CStr(), (int32)v.Value), t.FullName))
+						Record(api, v.Name, scope $"{AsName(t)}::{v.Name} = {v.Value}", true, .Constant);
+				}
 				mByName[new String(AsName(t))] = t;
 			}
 		case .Struct:
@@ -205,16 +278,23 @@ class AngelScriptRuntime : ScriptRuntime
 			if (AS.asc_engine_get_type_info_by_name(mEngine, scope String(AsName(t)).CStr()) != null)
 			{
 				mByName[new String(AsName(t))] = t;
+				ApiType(AsName(t), t.FullName, false);
 				return;
 			}
 			// A component is held by its entity; any other struct by its own bytes.
 			let size = (t.Role == .Component) ? (int32)sizeof(ScriptEntity) : t.Size;
 			let flags = AS.asOBJ_VALUE | AS.asOBJ_POD | AS.asOBJ_APP_CLASS | ((t.Align >= 8) ? AS.asOBJ_APP_CLASS_ALIGN8 : 0);
 			if (Check(AS.asc_engine_register_object_type(mEngine, scope String(AsName(t)).CStr(), size, flags), t.FullName))
+			{
 				mByName[new String(AsName(t))] = t;
+				ApiType(AsName(t), t.FullName, false);
+			}
 		case .Class:
 			if (Check(AS.asc_engine_register_object_type(mEngine, scope String(AsName(t)).CStr(), 0, AS.asOBJ_REF | AS.asOBJ_NOCOUNT), t.FullName))
+			{
 				mByName[new String(AsName(t))] = t;
+				ApiType(AsName(t), t.FullName, false);
+			}
 		}
 	}
 
@@ -237,7 +317,8 @@ class AngelScriptRuntime : ScriptRuntime
 			b.Kind = .ComponentFromEntity;
 			b.Owner = t;
 			mBindings.Add(b);
-			Check(AS.asc_engine_register_object_behaviour(mEngine, scope String(AsName(t)).CStr(), AS.asBEHAVE_CONSTRUCT, "void f(const Entity &in)", Internal.UnsafeCastToPtr(b)), t.FullName);
+			if (Check(AS.asc_engine_register_object_behaviour(mEngine, scope String(AsName(t)).CStr(), AS.asBEHAVE_CONSTRUCT, "void f(const Entity &in)", Internal.UnsafeCastToPtr(b)), t.FullName))
+				Record(ApiType(AsName(t), t.FullName, false), AsName(t), scope $"{AsName(t)}(const Entity &in entity)", false, .Method);
 		}
 
 		let statics = scope String();
@@ -298,7 +379,8 @@ class AngelScriptRuntime : ScriptRuntime
 			}
 			// Const: the entity value is only read, so a `const Entity &in` may call it.
 			decl.Append(") const");
-			Check(AS.asc_engine_register_object_method(mEngine, "Entity", decl.CStr(), Internal.UnsafeCastToPtr(b)), scope $"{t.FullName}.{m.Name} on Entity as {decl}");
+			if (Check(AS.asc_engine_register_object_method(mEngine, "Entity", decl.CStr(), Internal.UnsafeCastToPtr(b)), scope $"{t.FullName}.{m.Name} on Entity as {decl}"))
+				Record(ApiType("Entity", "Sedulous.Scene.EntityHandle", false), m.EntityName, decl, false, .Method);
 		}
 	}
 
@@ -337,7 +419,10 @@ class AngelScriptRuntime : ScriptRuntime
 		b.Owner = t;
 		mBindings.Add(b);
 		if (Check(AS.asc_engine_register_object_method(mEngine, "Scene", scope $"{AsName(t)}@ get_{name}() property".CStr(), Internal.UnsafeCastToPtr(b)), t.FullName))
+		{
 			mSceneProperties.Add(new String(name));
+			Record(ApiType("Scene", "Sedulous.Scene.Scene", false), name, scope $"{AsName(t)}@ Scene.{name}", false, .Property);
+		}
 	}
 
 	private void DeclareRoleHandle(ScriptTypeInfo t)
@@ -354,7 +439,11 @@ class AngelScriptRuntime : ScriptRuntime
 		if (mHandleNames.Contains(name) || (AS.asc_engine_get_type_info_by_name(mEngine, name.CStr()) != null))
 			name.Append("Service");
 		if (Check(AS.asc_engine_register_global_property(mEngine, scope $"{AsName(t)}@ {name}".CStr(), slot), t.FullName))
+		{
 			mHandleNames.Add(new String(name));
+			mHandleOf[t] = new String(name);
+			Record(GlobalApi, name, scope $"{AsName(t)}@ {name}", true, .Property);
+		}
 	}
 
 	/// A field or property becomes a virtual property: `T get_X() property` and its setter.
@@ -375,14 +464,23 @@ class AngelScriptRuntime : ScriptRuntime
 
 		let isGlobal = f.IsStatic || (t.Kind == .Global);
 		let getDecl = scope $"{typeDecl} get_{f.ScriptName}() property";
+		bool bound;
 		if (isGlobal)
 		{
 			AS.asc_engine_set_default_namespace(mEngine, scope String(statics).CStr());
-			Check(AS.asc_engine_register_global_function(mEngine, getDecl.CStr(), Internal.UnsafeCastToPtr(get)), t.FullName);
+			bound = Check(AS.asc_engine_register_global_function(mEngine, getDecl.CStr(), Internal.UnsafeCastToPtr(get)), t.FullName);
 		}
 		else
 		{
-			Check(AS.asc_engine_register_object_method(mEngine, scope String(AsName(t)).CStr(), getDecl.CStr(), Internal.UnsafeCastToPtr(get)), t.FullName);
+			bound = Check(AS.asc_engine_register_object_method(mEngine, scope String(AsName(t)).CStr(), getDecl.CStr(), Internal.UnsafeCastToPtr(get)), t.FullName);
+		}
+		if (bound)
+		{
+			// Spelled as a script reads it: `Type::Field` for a static, `Type.Field` on an
+			// instance, a bare name in the global namespace.
+			let api = (t.Kind == .Global) ? GlobalApi : ApiType(AsName(t), t.FullName, false);
+			let spelled = (t.Kind == .Global) ? scope:: $"{f.ScriptName}" : (isGlobal ? scope:: $"{AsName(t)}::{f.ScriptName}" : scope:: $"{ReachedAs(t)}.{f.ScriptName}");
+			Record(api, f.ScriptName, scope $"{typeDecl} {spelled}{(f.Set != null) ? "" : " (read only)"}", isGlobal, .Property);
 		}
 
 		if (f.Set != null)
@@ -482,7 +580,29 @@ class AngelScriptRuntime : ScriptRuntime
 			{
 				rc = AS.asc_engine_register_object_method(mEngine, scope String(AsName(t)).CStr(), decl.CStr(), Internal.UnsafeCastToPtr(b));
 			}
-			Check(rc, scope $"{t.FullName}.{m.Name} as {decl}");
+			if (Check(rc, scope $"{t.FullName}.{m.Name} as {decl}"))
+			{
+				// As a script spells the call: `Type::Name(...)` for a static, `Type(...)`
+				// for a constructor, the bare declaration in the global namespace.
+				let api = (t.Kind == .Global) ? GlobalApi : ApiType(AsName(t), t.FullName, false);
+				let spelled = scope String();
+				if (m.IsConstructor)
+					spelled.AppendF("{}(", AsName(t));
+				else if (t.Kind == .Global)
+					spelled.AppendF("{} {}(", returnDecl, name);
+				else if (isGlobal)
+					spelled.AppendF("{} {}::{}(", returnDecl, AsName(t), name);
+				else
+					spelled.AppendF("{} {}.{}(", returnDecl, ReachedAs(t), name);
+				for (int i = 0; i < arity; i++)
+				{
+					if (i > 0)
+						spelled.Append(", ");
+					spelled.Append(paramDecls[i]);
+				}
+				spelled.Append(")");
+				Record(api, m.IsConstructor ? AsName(t) : m.ScriptName, spelled, isGlobal, .Method);
+			}
 		}
 	}
 

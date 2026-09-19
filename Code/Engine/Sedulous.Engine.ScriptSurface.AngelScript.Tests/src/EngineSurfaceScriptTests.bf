@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.IO;
 using Sedulous.Core;
 using Sedulous.Scene;
@@ -30,6 +31,36 @@ static class EngineSurfaceScriptTests
 
 		// Every member the surface binds, the language binds: the lists cross as arrays.
 		Test.Assert(vm.Problems.Count == 0, scope $"{vm.Problems.Count} members the language refused; see the report");
+
+		// And what it bound, as a script spells it, beside the listing: the API a browser
+		// or a completion shows.
+		let api = scope List<ScriptApiType>();
+		defer { ClearAndDeleteItems(api); }
+		vm.DescribeBoundApi(api);
+		let text = scope String();
+		text.AppendF("angelscript bound api: {} types\n\n", api.Count);
+		for (let t in api)
+		{
+			text.AppendF("{}{}{}\n", t.IsNamespace ? "namespace " : "", t.ScriptName.IsEmpty ? "<global>" : t.ScriptName, t.TypeFullName.IsEmpty ? "" : scope:: $" [{t.TypeFullName}]");
+			for (let m in t.Members)
+				text.AppendF("    {}\n", m.Signature);
+			text.Append("\n");
+		}
+		let apiPath = scope String();
+		Path.GetAbsolutePath("../../build/engine-script-api-angelscript.txt", Directory.GetCurrentDirectory(.. scope .()), apiPath);
+		File.WriteAllText(apiPath, text).IgnoreError();
+		Test.Assert(api.Count > 100, scope $"{api.Count} bound types");
+		// Spot checks of the spelling at the engine's scale.
+		var scene = (ScriptApiType)null;
+		for (let t in api)
+			if (t.ScriptName == "Scene")
+				scene = t;
+		Test.Assert(scene != null);
+		bool physics = false;
+		for (let m in scene.Members)
+			if (m.Signature == "PhysicsSceneSystem@ Scene.Physics")
+				physics = true;
+		Test.Assert(physics, "the scene's system property");
 	}
 
 	[Test]
