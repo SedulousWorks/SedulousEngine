@@ -7,6 +7,7 @@ namespace Sedulous.Engine.Spline;
 ///
 /// Invalid with everything zeroed when the entity carries no spline, which is the same shape
 /// a ray cast result uses: a miss is a value, not an error.
+[Scriptable(.AllPublic)]
 struct SplineHit
 {
 	public bool Valid = false;

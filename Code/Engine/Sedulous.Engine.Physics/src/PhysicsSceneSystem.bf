@@ -18,6 +18,8 @@ namespace Sedulous.Engine.Physics;
 /// steps on the FIXED clock, and hands the render frame interpolated poses.
 ///
 /// SIMULATION ONLY: an editor's edit mode runs nothing.
+[DisplayName("Physics")]
+[Scriptable]
 class PhysicsSceneSystem : SceneSystem
 {
 	/// BORROWED: the scene outlives its systems.
@@ -69,6 +71,7 @@ class PhysicsSceneSystem : SceneSystem
 	///
 	/// Raptor reaches this through its script facade; the port puts it here, because it is
 	/// the world that makes it possible and the facade only forwarded.
+	[Scriptable]
 	public void ApplyImpulse(EntityHandle entity, Float3 impulse)
 	{
 		let bodies = (mScene != null) ? mScene.GetSystem<RigidBodyComponentManager>() : null;

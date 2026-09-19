@@ -17,6 +17,8 @@ namespace Sedulous.Engine.Audio;
 /// The tick runs after the transforms are final: it plays what activation armed, syncs each
 /// live voice's position and velocity, reaps the finished one shots, works out the listener
 /// pose, and settles the reverb.
+[DisplayName("Audio")]
+[Scriptable]
 class AudioSceneSystem : SceneSystem
 {
 	/// BORROWED: the scene outlives its systems.
@@ -110,6 +112,7 @@ class AudioSceneSystem : SceneSystem
 	// ---- the control surface ----
 
 	/// Starts, or restarts, the entity's source.
+	[Scriptable]
 	public VoiceHandle Play(EntityHandle entity)
 	{
 		let component = Component(entity);
@@ -119,6 +122,7 @@ class AudioSceneSystem : SceneSystem
 		return PlayComponent(component, entity);
 	}
 
+	[Scriptable]
 	public void Stop(EntityHandle entity)
 	{
 		let component = Component(entity);
@@ -132,6 +136,7 @@ class AudioSceneSystem : SceneSystem
 		component.HasPreviousPosition = false;
 	}
 
+	[Scriptable]
 	public void SetPaused(EntityHandle entity, bool paused)
 	{
 		let component = Component(entity);
@@ -141,6 +146,7 @@ class AudioSceneSystem : SceneSystem
 		mEngine.SetPaused(component.Voice, paused);
 	}
 
+	[Scriptable]
 	public bool IsPlaying(EntityHandle entity)
 	{
 		let component = Component(entity);
