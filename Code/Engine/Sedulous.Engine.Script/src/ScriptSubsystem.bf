@@ -52,6 +52,21 @@ class ScriptSubsystem : Subsystem, ISceneObserver
 		mHost.Teardown();
 	}
 
+	// ---- contact events, the neutral ingress ----
+
+	/// Delivers a resolved contact to BOTH entities' declared handlers, each seeing the
+	/// OTHER as the entity. Physics agnostic: the host bridges physics contacts to this. Only
+	/// ENQUEUES onto the owning scene's deferred queue, drained at the scene tick's top
+	/// level, so there is no re-entrancy even though physics stepped this frame.
+	public void DeliverContact(Scene scene, EntityHandle a, EntityHandle b, ScriptContactKind kind,
+		Float3 point, Float3 normal, float speed)
+	{
+		if (scene == null)
+			return;
+		if (let system = scene.GetSystem<ScriptSceneSystem>())
+			system.DeliverContact(a, b, kind, point, normal, speed);
+	}
+
 	public void OnSystemsReady(Scene scene)
 	{
 		let system = scene.GetSystem<ScriptSceneSystem>();

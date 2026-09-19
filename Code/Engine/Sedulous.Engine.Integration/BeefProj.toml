@@ -7,3 +7,8 @@ StartupObject = "Sedulous.Engine.Integration.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Physics" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Engine.Physics" = "*"
+"Sedulous.Engine.Script" = "*"

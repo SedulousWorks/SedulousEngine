@@ -10,6 +10,7 @@ using Sedulous.Engine.Animation;
 using Sedulous.Engine.Audio;
 using Sedulous.Engine.GameInstance;
 using Sedulous.Engine.Input;
+using Sedulous.Engine.Integration;
 using Sedulous.Engine.Navigation;
 using Sedulous.Engine.Net;
 using Sedulous.Engine.Particles;
@@ -87,6 +88,9 @@ class DefaultApplication : IApplication, ISceneObserver
 	private ScriptSurface mScriptSurface = new .() ~ delete _;
 
 	private NetworkStartup mNetStartup = .();
+
+	/// OWNED: physics contacts to script handlers. Uninstalled before the subsystems go.
+	private ScriptPhysicsContactBridge mContactBridge = new .() ~ delete _;
 
 	// ---- screenshots ----
 	private ScreenshotCapture mScreenshot = new .() ~ delete _;
@@ -241,6 +245,9 @@ class DefaultApplication : IApplication, ISceneObserver
 					GlobalLog(.Warning, scope $"Script: {p}");
 				ClearAndDeleteItems!(runtime.Problems);
 			};
+		// Physics contacts reach behaviours through the composition root's bridge: neither
+		// subsystem names the other.
+		mContactBridge.Install(mPhysics, scripts);
 
 		// The net subsystem injects the replication managers into every scene so authored
 		// network components work, and OWNS the per frame transport pump. It is given the
@@ -555,6 +562,7 @@ class DefaultApplication : IApplication, ISceneObserver
 	{
 		// Paired with the install in OnStartup; owned, so this frees it.
 		ShutdownGlobalProfiler();
+		mContactBridge.Uninstall();
 
 		for (let instance in mExtraInstances)
 		{
