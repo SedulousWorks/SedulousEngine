@@ -705,7 +705,7 @@ static class ScriptSurfaceWalker
 		int required = 0;
 		for (int i = 0; i < m.ParamCount; i++)
 		{
-			if (m.GetParamDefault(i).IsEmpty)
+			if (!m.HasParamDefault(i))
 				required = i + 1;
 		}
 		body.AppendF("\tif (!frame.ExpectArgs({})) return;\n", required);
@@ -732,9 +732,12 @@ static class ScriptSurfaceWalker
 			ScriptValueMap.ExpectFor(pt, i, body);
 			if (!sceneExpr.IsEmpty && (ptn == "Sedulous.Scene.EntityHandle"))
 				body.AppendF("\tif (!frame.ExpectEntityIn({}, {})) return;\n", i, sceneExpr);
-			let defaultText = m.GetParamDefault(i);
-			if (!defaultText.IsEmpty)
-				body.AppendF("\t{} a{} = {};\n\tif (frame.Args.Length > {})\n\t\ta{} = {};\n", ptn, i, defaultText, i, i, read);
+			// An optional argument is read only when the script passed it; when it did not,
+			// the call below is the shorter arity and the COMPILER supplies the default, in
+			// the declaring context where its text means what it says. The default's text
+			// is never pasted here.
+			if (m.HasParamDefault(i))
+				body.AppendF("\t{} a{} = default;\n\tif (frame.Args.Length > {})\n\t\ta{} = {};\n", ptn, i, i, i, read);
 			else
 				body.AppendF("\tvar a{} = {};\n", i, read);
 
@@ -761,40 +764,69 @@ static class ScriptSurfaceWalker
 			args.AppendF("a{}", i);
 		}
 
-		let call = scope String();
-		if (m.IsConstructor)
+		// One call per arity the script may use, the compiler filling in the defaults it
+		// was not given.
+		let resultType = m.IsConstructor ? ctx.Type : m.ReturnType;
+		let sceneArg = sceneExpr.IsEmpty ? "null" : sceneExpr;
+		if (required == m.ParamCount)
 		{
-			if (ctx.Kind == .Class)
-				call.AppendF("new {}({})", ctx.FullName, args);
-			else
-				call.AppendF("{}({})", ctx.FullName, args);
-		}
-		else if (isGlobal)
-		{
-			call.AppendF("{}({})", m.Name, args);
-		}
-		else if (m.IsStatic)
-		{
-			call.AppendF("{}.{}({})", ctx.FullName, m.Name, args);
+			let write = scope String();
+			if (!ScriptValueMap.Write(resultType, CallWith(ctx, m, isGlobal, args, .. scope .()), "frame.Result", ctx.Known, write, sceneArg))
+			{
+				code.AppendF(".Blocked({})", Quote(write, .. scope .()));
+				return;
+			}
+			body.AppendF("\t{}\n", write);
 		}
 		else
 		{
-			call.AppendF("self.{}({})", m.Name, args);
+			body.Append("\tswitch (frame.Args.Length)\n\t{\n");
+			for (int n = required; n <= m.ParamCount; n++)
+			{
+				let partial = scope String();
+				for (int i = 0; i < n; i++)
+				{
+					if (i > 0)
+						partial.Append(", ");
+					partial.AppendF("a{}", i);
+				}
+				let write = scope String();
+				if (!ScriptValueMap.Write(resultType, CallWith(ctx, m, isGlobal, partial, .. scope .()), "frame.Result", ctx.Known, write, sceneArg))
+				{
+					code.AppendF(".Blocked({})", Quote(write, .. scope .()));
+					return;
+				}
+				if (n < m.ParamCount)
+					body.AppendF("\tcase {}: {}\n", n, write);
+				else
+					body.AppendF("\tdefault: {}\n", write);
+			}
+			body.Append("\t}\n");
 		}
-
-		let write = scope String();
-		let resultType = m.IsConstructor ? ctx.Type : m.ReturnType;
-		if (!ScriptValueMap.Write(resultType, call, "frame.Result", ctx.Known, write, sceneExpr.IsEmpty ? "null" : sceneExpr))
-		{
-			code.AppendF(".Blocked({})", Quote(write, .. scope .()));
-			return;
-		}
-		body.AppendF("\t{}\n", write);
 		body.Append(after);
 
 		let name = ctx.NextThunk(.. scope .());
 		EmitThunk(ctx, name, isStatic, body, true);
 		code.AppendF(".Bind(=> {})", name);
+	}
+
+	/// The call expression for `args`: a construction, a global, a static, or a call on self.
+	[Comptime]
+	private static void CallWith(TypeCtx ctx, MethodInfo m, bool isGlobal, StringView args, String outCall)
+	{
+		if (m.IsConstructor)
+		{
+			if (ctx.Kind == .Class)
+				outCall.AppendF("new {}({})", ctx.FullName, args);
+			else
+				outCall.AppendF("{}({})", ctx.FullName, args);
+		}
+		else if (isGlobal)
+			outCall.AppendF("{}({})", m.Name, args);
+		else if (m.IsStatic)
+			outCall.AppendF("{}.{}({})", ctx.FullName, m.Name, args);
+		else
+			outCall.AppendF("self.{}({})", m.Name, args);
 	}
 
 	/// The overload rule: the script name, staticness and parameter kinds together must be
