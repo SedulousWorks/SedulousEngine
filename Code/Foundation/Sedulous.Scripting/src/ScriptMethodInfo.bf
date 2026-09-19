@@ -14,6 +14,8 @@ class ScriptMethodInfo
 	public String DisplayName = new .() ~ delete _;
 	public String Description = new .() ~ delete _;
 	public String ReturnTypeName = new .() ~ delete _;
+	/// How the result crosses; Nil for void.
+	public ScriptValueKind ReturnKind = .Nil;
 	public bool IsStatic = false;
 	public bool IsConstructor = false;
 	public List<ScriptParamInfo> Params = new .() ~ DeleteContainerAndItems!(_);
@@ -25,16 +27,38 @@ class ScriptMethodInfo
 	public bool IsCallable => Invoke != null;
 
 	/// Adds a parameter. Chains, for the generated populate code.
-	public ScriptMethodInfo Param(StringView name, StringView typeName, bool byRef = false,
-		StringView defaultText = default)
+	public ScriptMethodInfo Param(StringView name, StringView typeName, ScriptValueKind kind,
+		bool byRef = false, StringView defaultText = default)
 	{
 		let p = new ScriptParamInfo();
 		p.Name.Set(name);
 		p.TypeName.Set(typeName);
+		p.Kind = kind;
 		p.IsByRef = byRef;
 		p.Default.Set(defaultText);
 		Params.Add(p);
 		return this;
+	}
+
+	public ScriptMethodInfo Returns(ScriptValueKind kind)
+	{
+		ReturnKind = kind;
+		return this;
+	}
+
+	/// The arguments a call must supply: the parameters without a default.
+	public int RequiredParams
+	{
+		get
+		{
+			int n = 0;
+			for (let p in Params)
+			{
+				if (!p.HasDefault)
+					n++;
+			}
+			return n;
+		}
 	}
 
 	public ScriptMethodInfo Describe(StringView description)

@@ -249,4 +249,87 @@ static class ScriptThunkTests
 		Method(s, scope $"{cFixture}.WidgetComponentManager", "Poke").Invoke(ref frame);
 		Test.Assert(!frame.Failed);
 	}
+
+	/// A thunk trusts nothing in the frame: too few arguments, the wrong kind, the wrong
+	/// struct or a null one all fail with a message, before anything is read.
+	[Test]
+	public static void ThunksCheckTheArgumentsBeforeReadingThem()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let ctx = scope ScratchCallContext();
+		let thing = scope $"{cFixture}.Thing";
+		let made = scope Thing();
+
+		// Too few.
+		var frame = ScriptCallFrame(ctx, default);
+		frame.Self = .FromObject(made);
+		Method(s, thing, "SetMode").Invoke(ref frame);
+		Test.Assert(frame.Failed && frame.Error.Contains("at least 1"));
+
+		// Wrong kind.
+		var text = ScriptValue[1](.FromString("x"));
+		frame = ScriptCallFrame(ctx, text);
+		frame.Self = .FromObject(made);
+		Method(s, thing, "SetMode").Invoke(ref frame);
+		Test.Assert(frame.Failed && frame.Error.Contains("argument 0") && frame.Error.Contains("Int"));
+
+		// A number promotes into a float slot; a float does not into an integer slot.
+		var one = ScriptValue[1](.FromInt(3));
+		frame = ScriptCallFrame(ctx, one);
+		frame.Self = .FromObject(made);
+		Field(s, thing, "Speed").Set(ref frame);
+		Test.Assert(!frame.Failed && (made.Speed == 3.0f));
+		one[0] = .FromFloat(2.5);
+		Field(s, thing, "Count").Set(ref frame);
+		Test.Assert(frame.Failed);
+
+		// The wrong struct, and a null struct pointer, for a ref parameter.
+		var wrong = Guid();
+		var refArgs = ScriptValue[2](.FromInt(1), .FromStruct(&wrong, typeof(Guid)));
+		frame = ScriptCallFrame(ctx, refArgs);
+		frame.Self = .FromObject(made);
+		Method(s, thing, "TryGet").Invoke(ref frame);
+		Test.Assert(frame.Failed && frame.Error.Contains("Vec2"));
+		refArgs[1] = .FromStruct(null, typeof(Vec2));
+		Method(s, thing, "TryGet").Invoke(ref frame);
+		Test.Assert(frame.Failed, "a null pointer never reaches the write back");
+
+		// A field setter with nothing to set.
+		frame = ScriptCallFrame(ctx, default);
+		frame.Self = .FromObject(made);
+		Field(s, thing, "Count").Set(ref frame);
+		Test.Assert(frame.Failed);
+	}
+
+	/// A Ref<T> field crosses as its Guid. On a component the manager rebinds it; on a
+	/// plain class there is nothing to bind through, so the identity lands unbound.
+	[Test]
+	public static void ResourceReferencesCrossAsGuids()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let ctx = scope ScratchCallContext();
+		let made = scope Thing();
+		let id = Guid.Create();
+
+		var one = ScriptValue[1](.FromGuid(id));
+		var frame = ScriptCallFrame(ctx, one);
+		frame.Self = .FromObject(made);
+		Field(s, scope $"{cFixture}.Thing", "Buddy").Set(ref frame);
+		Test.Assert(!frame.Failed && (made.Buddy.Id == id) && (made.Buddy.Get == null));
+		Field(s, scope $"{cFixture}.Thing", "Buddy").Get(ref frame);
+		Test.Assert((frame.Result.Kind == .Guid) && (frame.Result.AsGuid == id));
+
+		// On a component, through the pool.
+		let scene = scope Scene();
+		let widgets = scene.AddSystem<WidgetComponentManager>();
+		let entity = scene.CreateEntity("w");
+		widgets.Add(entity);
+		ctx.Scene = scene;
+		frame = ScriptCallFrame(ctx, one);
+		frame.Self = .FromEntity(entity);
+		Field(s, scope $"{cFixture}.WidgetComponent", "Skin").Set(ref frame);
+		Test.Assert(!frame.Failed && (widgets.Get(entity).Skin.Id == id));
+	}
 }

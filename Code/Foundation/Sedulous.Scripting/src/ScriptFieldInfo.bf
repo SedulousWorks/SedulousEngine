@@ -8,6 +8,8 @@ class ScriptFieldInfo
 	public String Name = new .() ~ delete _;
 	public String ScriptName = new .() ~ delete _;
 	public String TypeName = new .() ~ delete _;
+	/// How it crosses. A Ref<T> field is declared Ref<T> and crosses as Guid.
+	public ScriptValueKind Kind = .Nil;
 	public String DisplayName = new .() ~ delete _;
 	public String Description = new .() ~ delete _;
 	public String Category = new .() ~ delete _;
@@ -76,6 +78,12 @@ class ScriptFieldInfo
 	public ScriptFieldInfo Blocked(StringView reason)
 	{
 		Unsupported.Set(reason);
+		return this;
+	}
+
+	public ScriptFieldInfo OfKind(ScriptValueKind kind)
+	{
+		Kind = kind;
 		return this;
 	}
 

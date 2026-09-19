@@ -24,6 +24,51 @@ static class ScriptValueMap
 		return false;
 	}
 
+	/// The ScriptValueKind a type crosses as, as the emitted `.Kind` text. Nil for void and
+	/// for a type that cannot cross.
+	[Comptime]
+	public static void KindOf(Type type, String outKind)
+	{
+		let name = type.GetFullName(.. scope .());
+		switch (name)
+		{
+		case "void": outKind.Append("Nil"); return;
+		case "float", "double": outKind.Append("Float"); return;
+		case "bool": outKind.Append("Bool"); return;
+		case "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64", "char8", "char32":
+			outKind.Append("Int"); return;
+		case "System.StringView": outKind.Append("String"); return;
+		case "System.String": outKind.Append("Object"); return;
+		case "System.Guid": outKind.Append("Guid"); return;
+		case "Sedulous.Scene.EntityHandle": outKind.Append("Entity"); return;
+		case "Sedulous.Core.Float2", "Sedulous.Core.Float3", "Sedulous.Core.Float4",
+			"Sedulous.Core.Quaternion", "Sedulous.Core.Color":
+			outKind.Append(name.Substring("Sedulous.Core.".Length)); return;
+		}
+		if (type.IsEnum)
+			outKind.Append("Int");
+		else if (IsRef(name))
+			outKind.Append("Guid");
+		else if (type.IsObject)
+			outKind.Append("Object");
+		else if (type.IsStruct && !type.IsPointer && !name.EndsWith("]"))
+			outKind.Append("Struct");
+		else
+			outKind.Append("Nil");
+	}
+
+	/// The check a thunk makes before reading argument `i` as `type`: the kind, and the
+	/// type name for a class or struct.
+	[Comptime]
+	public static void ExpectFor(Type type, int i, String outCode)
+	{
+		let kind = KindOf(type, .. scope .());
+		if ((kind == "Object") || (kind == "Struct"))
+			outCode.AppendF("\tif (!frame.Expect({}, .{}, \"{}\")) return;\n", i, kind, type.GetFullName(.. scope .()));
+		else
+			outCode.AppendF("\tif (!frame.Expect({}, .{})) return;\n", i, kind);
+	}
+
 	/// The dispatch key of a type: what an overload resolver can tell apart at the boundary.
 	/// Integers and enums are all Int, floats all Float; a class or struct is its own key.
 	[Comptime]
@@ -84,8 +129,8 @@ static class ScriptValueMap
 		let name = type.GetFullName(.. scope .());
 		switch (name)
 		{
-		case "float": outCode.AppendF("(float){}.AsFloat", value); return true;
-		case "double": outCode.AppendF("{}.AsFloat", value); return true;
+		case "float": outCode.AppendF("(float){}.AsNumber", value); return true;
+		case "double": outCode.AppendF("{}.AsNumber", value); return true;
 		case "bool": outCode.AppendF("{}.AsBool", value); return true;
 		case "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64", "char8", "char32":
 			outCode.AppendF("({}){}.AsInt", name, value); return true;

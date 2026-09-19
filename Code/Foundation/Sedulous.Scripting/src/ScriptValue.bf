@@ -71,4 +71,41 @@ struct ScriptValue
 	public void* AsStruct => (Kind == .Struct) ? Data.Struct : null;
 
 	public bool IsNil => Kind == .Nil;
+
+	/// A script has one number: an Int crosses into a float parameter. The reverse does
+	/// not hold; a float into an integer would truncate silently.
+	public bool IsNumber => (Kind == .Float) || (Kind == .Int);
+	public double AsNumber => (Kind == .Int) ? (double)Data.Int : Data.Float;
+
+	/// Whether this value can fill a slot of `kind`, with `typeName` naming the class or
+	/// struct for the Object and Struct kinds. Exact is a kind match; a promotion is Int
+	/// into Float, or Nil into Object.
+	public bool Matches(ScriptValueKind kind, StringView typeName, out bool exact)
+	{
+		exact = Kind == kind;
+		switch (kind)
+		{
+		case .Float:
+			return IsNumber;
+		case .Object:
+			if (Kind == .Nil)
+				return true;
+			if (Kind != .Object)
+				return false;
+			// The runtime type, or a base of it: a script may hold a derived object.
+			var t = Data.Object.GetType();
+			while (t != null)
+			{
+				if (t.GetFullName(.. scope .()) == typeName)
+					return true;
+				t = t.BaseType;
+			}
+			return false;
+		case .Struct:
+			return (Kind == .Struct) && (Data.Struct != null) && (StructType != null)
+				&& (StructType.GetFullName(.. scope .()) == typeName);
+		default:
+			return Kind == kind;
+		}
+	}
 }

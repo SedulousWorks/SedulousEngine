@@ -105,6 +105,8 @@ class NullScriptRuntime : ScriptRuntime
 			if (f.IsStatic)
 				o.Append("static ");
 			o.AppendF("{}: {}", f.ScriptName, Short(f.TypeName, .. scope .()));
+			if (f.Kind == .Guid && f.TypeName.StartsWith("Sedulous.Resource.Ref<"))
+				o.Append(" as Guid");
 			if (f.IsProperty)
 				o.Append(f.CanWrite ? " { get; set; }" : " { get; }");
 			else if (!f.CanWrite)

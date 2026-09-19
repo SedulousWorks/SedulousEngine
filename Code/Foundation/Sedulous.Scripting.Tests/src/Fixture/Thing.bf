@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Resource;
 
 namespace Sedulous.Scripting.Tests.Fixture;
 
@@ -43,6 +44,17 @@ class Thing
 	public StringView Label() => "thing";
 	[Scriptable]
 	public Vec2 Bounds() => .(3, 4);
+	/// A resource reference on a class with no manager: crosses as its Guid.
+	[Scriptable]
+	public Ref<Thing> Buddy = .(Guid());
+	/// An overload set a resolver must pick through: the integer and the float.
+	[Scriptable]
+	public void Follow(Thing other) { Leader = other; }
+	public Thing Leader;
+	[Scriptable]
+	public int Twice(int x) => x * 2;
+	[Scriptable]
+	public float Twice(float x) => x * 2;
 
 	// Observed by the tests, not on the surface.
 	public Vec2 LastTarget;

@@ -60,6 +60,7 @@ static class ScriptSurfaceWalkerTests
 
 		let x = Field(v, "X");
 		Test.Assert((x != null) && (x.TypeName == "float") && !x.IsStatic && !x.IsProperty && x.CanWrite);
+		Test.Assert(x.Kind == .Float);
 		let y = Field(v, "Y");
 		Test.Assert((y != null) && y.HasRange && (y.RangeMin == 0) && (y.RangeMax == 1) && (y.RangeStep == 0.1f));
 		let zero = Field(v, "Zero");
@@ -75,8 +76,10 @@ static class ScriptSurfaceWalkerTests
 		Test.Assert((ctor != null) && ctor.IsConstructor && (ctor.Params.Count == 2));
 		Test.Assert((ctor.Params[0].Name == "x") && (ctor.Params[0].TypeName == "float"));
 		let dot = Method(v, "Dot");
-		Test.Assert((dot != null) && dot.IsStatic && (dot.ReturnTypeName == "float"));
+		Test.Assert((dot != null) && dot.IsStatic && (dot.ReturnTypeName == "float") && (dot.ReturnKind == .Float));
 		Test.Assert(dot.Params[1].TypeName == scope $"{cFixture}.Vec2");
+		Test.Assert(dot.Params[1].Kind == .Struct, "a struct that is not an inline kind");
+		Test.Assert(ctor.ReturnKind == .Struct);
 		Test.Assert(Method(v, "Normalized") == null, "AllPublic is data only; an unmarked method stays off");
 	}
 
@@ -114,6 +117,14 @@ static class ScriptSurfaceWalkerTests
 
 		let make = Method(t, "Make");
 		Test.Assert((make != null) && make.IsStatic && (make.ReturnTypeName == scope $"{cFixture}.Thing"));
+		Test.Assert(make.ReturnKind == .Object);
+		Test.Assert((Method(t, "SetMode").Params[0].Kind == .Int) && (Method(t, "GetMode").ReturnKind == .Int), "enums are Int");
+		Test.Assert(Method(t, "Label").ReturnKind == .String);
+		Test.Assert(Method(t, "Go").ReturnKind == .Nil);
+
+		// A resource reference is declared Ref<T> and crosses as its Guid.
+		let buddy = Field(t, "Buddy");
+		Test.Assert((buddy != null) && buddy.TypeName.StartsWith("Sedulous.Resource.Ref<") && (buddy.Kind == .Guid));
 		Test.Assert(Method(t, "Internal") == null);
 	}
 

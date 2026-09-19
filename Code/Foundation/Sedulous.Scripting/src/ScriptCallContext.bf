@@ -12,6 +12,9 @@ abstract class ScriptCallContext
 	/// BORROWED. Null in a host with no scene, and every scene bound call then fails.
 	public Scene Scene = null;
 
+	/// The message of the last failed call through this context.
+	public String LastError = new .() ~ delete _;
+
 	/// An engine level service by type: a subsystem, or anything else a host registers.
 	/// Null when the host has none of that type.
 	public abstract Object FindService(Type type);

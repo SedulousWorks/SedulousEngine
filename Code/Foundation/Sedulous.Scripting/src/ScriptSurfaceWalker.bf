@@ -66,21 +66,25 @@ static class ScriptSurfaceWalker
 	{
 		public List<String> Components = new .();
 		public List<String> Managers = new .();
+		/// Whether the manager is a ResourceBindingComponentManager, with a Resources to
+		/// rebind a swapped reference through.
+		public List<bool> Binds = new .();
 
-		public void Add(StringView component, StringView manager)
+		public void Add(StringView component, StringView manager, bool binds)
 		{
 			Components.Add(new String(component));
 			Managers.Add(new String(manager));
+			Binds.Add(binds);
 		}
 
-		public String Find(StringView component)
+		public int IndexOf(StringView component)
 		{
 			for (int i = 0; i < Components.Count; i++)
 			{
 				if (Components[i] == component)
-					return Managers[i];
+					return i;
 			}
-			return null;
+			return -1;
 		}
 	}
 
@@ -93,6 +97,8 @@ static class ScriptSurfaceWalker
 		public ScriptTypeKind Kind;
 		public ScriptTypeRole Role = .Plain;
 		public String Manager = new .();
+		/// The manager can rebind a swapped Ref<T> through its Resources.
+		public bool ManagerBinds = false;
 		/// Thunk name prefix, unique in the root.
 		public String Prefix = new .();
 		public int Counter = 0;
@@ -138,8 +144,8 @@ static class ScriptSurfaceWalker
 			if (type == null)
 				continue;
 			let component = PooledComponent(type, .. scope .());
-			if (!component.IsEmpty && (managers.Find(component) == null))
-				managers.Add(component, fullName);
+			if (!component.IsEmpty && (managers.IndexOf(component) < 0))
+				managers.Add(component, fullName, HasBase(type, "Sedulous.Scene.ResourceBindingComponentManager<"));
 		}
 
 		// Every marked declaration first, so the emitter knows the whole surface before it
@@ -301,8 +307,12 @@ static class ScriptSurfaceWalker
 			if (!isComponent)
 				return;
 
-			if (let m = managers.Find(ctx.FullName))
-				ctx.Manager.Set(m);
+			let at = managers.IndexOf(ctx.FullName);
+			if (at >= 0)
+			{
+				ctx.Manager.Set(managers.Managers[at]);
+				ctx.ManagerBinds = managers.Binds[at];
+			}
 			ctx.Role = .Component;
 			ctx.Code.AppendF("\t\tt.As(.Component, {}, {});\n", Quote(ctx.Manager, .. scope .()), Quote(typeId, .. scope .()));
 			return;
@@ -334,6 +344,20 @@ static class ScriptSurfaceWalker
 			t = t.BaseType;
 		}
 		return .Plain;
+	}
+
+	/// Whether a base of the type has this full name prefix.
+	[Comptime]
+	private static bool HasBase(Type type, StringView prefix)
+	{
+		var t = type.BaseType;
+		while (t != null)
+		{
+			if (t.GetFullName(.. scope .()).StartsWith(prefix))
+				return true;
+			t = t.BaseType;
+		}
+		return false;
 	}
 
 	/// The component type a manager pools, from a ComponentManager<T> in its bases. Empty
@@ -421,7 +445,7 @@ static class ScriptSurfaceWalker
 
 			let typeName = f.FieldType.GetFullName(.. scope .());
 			let code = ctx.Code;
-			code.AppendF("\t\tt.AddField({}, {}, {})", Quote(f.Name, .. scope .()), Quote(typeName, .. scope .()), Bool(f.IsStatic));
+			code.AppendF("\t\tt.AddField({}, {}, {}).OfKind(.{})", Quote(f.Name, .. scope .()), Quote(typeName, .. scope .()), Bool(f.IsStatic), ScriptValueMap.KindOf(f.FieldType, .. scope .()));
 			let readOnly = f.IsReadOnly || f.IsConst;
 			if (readOnly)
 				code.Append(".ReadOnly()");
@@ -481,7 +505,7 @@ static class ScriptSurfaceWalker
 
 			let typeName = m.ReturnType.GetFullName(.. scope .());
 			let code = ctx.Code;
-			code.AppendF("\t\tt.AddField({}, {}, {}, true)", Quote(name, .. scope .()), Quote(typeName, .. scope .()), Bool(m.IsStatic));
+			code.AppendF("\t\tt.AddField({}, {}, {}, true).OfKind(.{})", Quote(name, .. scope .()), Quote(typeName, .. scope .()), Bool(m.IsStatic), ScriptValueMap.KindOf(m.ReturnType, .. scope .()));
 			if (!canWrite)
 				code.Append(".ReadOnly()");
 			EmitMethodMetadataAsField(m, code);
@@ -540,10 +564,21 @@ static class ScriptSurfaceWalker
 
 		// Set.
 		let setBody = scope String();
+		setBody.Append("\tif (!frame.ExpectArgs(1)) return;\n");
 		if (isRef)
 		{
-			let resources = (ctx.Role == .Component) ? "manager.Resources" : "null";
-			setBody.AppendF("\t{}.SetId(frame.Args[0].AsGuid);\n\t{}.Rebind({});\n", access, access, resources);
+			setBody.Append("\tif (!frame.Expect(0, .Guid)) return;\n");
+			if ((ctx.Role == .Component) && ctx.ManagerBinds)
+			{
+				// The pool's manager binds it, through what the scene was resolved with.
+				setBody.AppendF("\t{}.SetId(frame.Args[0].AsGuid);\n\t{}.Rebind(manager.Resources);\n", access, access);
+			}
+			else
+			{
+				// No manager to bind through: the identity lands and the old binding is
+				// dropped, so nothing stale is rendered; the next resolve binds it.
+				setBody.AppendF("\t{}.SetId(frame.Args[0].AsGuid);\n\t{}.ClearBinding();\n", access, access);
+			}
 		}
 		else
 		{
@@ -553,6 +588,7 @@ static class ScriptSurfaceWalker
 				code.AppendF(".Bind(=> {}, null).Blocked({})", getName, Quote(read, .. scope .()));
 				return;
 			}
+			ScriptValueMap.ExpectFor(memberType, 0, setBody);
 			setBody.AppendF("\t{} = {};\n", access, read);
 		}
 		let setName = ctx.NextThunk(.. scope .());
@@ -576,12 +612,12 @@ static class ScriptSurfaceWalker
 			let code = ctx.Code;
 			if (m.IsConstructor)
 			{
-				code.Append("\t\tt.AddConstructor()");
+				code.AppendF("\t\tt.AddConstructor().Returns(.{})", ScriptValueMap.KindOf(ctx.Type, .. scope .()));
 			}
 			else
 			{
 				let ret = m.ReturnType.GetFullName(.. scope .());
-				code.AppendF("\t\tt.AddMethod({}, {}, {})", Quote(m.Name, .. scope .()), Quote(ret, .. scope .()), Bool(m.IsStatic));
+				code.AppendF("\t\tt.AddMethod({}, {}, {}).Returns(.{})", Quote(m.Name, .. scope .()), Quote(ret, .. scope .()), Bool(m.IsStatic), ScriptValueMap.KindOf(m.ReturnType, .. scope .()));
 			}
 			EmitParams(m, code);
 			if (m.GetCustomAttribute<ScriptNameAttribute>() case .Ok(let sn))
@@ -608,7 +644,7 @@ static class ScriptSurfaceWalker
 				pt = r.UnderlyingType;
 			}
 			let ptn = pt.GetFullName(.. scope .());
-			code.AppendF(".Param({}, {}", Quote(m.GetParamName(i), .. scope .()), Quote(ptn, .. scope .()));
+			code.AppendF(".Param({}, {}, .{}", Quote(m.GetParamName(i), .. scope .()), Quote(ptn, .. scope .()), ScriptValueMap.KindOf(pt, .. scope .()));
 			let defaultText = m.GetParamDefault(i);
 			if (!defaultText.IsEmpty)
 				code.AppendF(", {}, {})", Bool(byRef), Quote(defaultText, .. scope .()));
@@ -636,6 +672,13 @@ static class ScriptSurfaceWalker
 		let body = scope String();
 		let args = scope String();
 		let after = scope String();
+		int required = 0;
+		for (int i = 0; i < m.ParamCount; i++)
+		{
+			if (m.GetParamDefault(i).IsEmpty)
+				required = i + 1;
+		}
+		body.AppendF("\tif (!frame.ExpectArgs({})) return;\n", required);
 		for (int i = 0; i < m.ParamCount; i++)
 		{
 			var pt = m.GetParamType(i);
@@ -656,6 +699,7 @@ static class ScriptSurfaceWalker
 				return;
 			}
 
+			ScriptValueMap.ExpectFor(pt, i, body);
 			let defaultText = m.GetParamDefault(i);
 			if (!defaultText.IsEmpty)
 				body.AppendF("\t{} a{} = {};\n\tif (frame.Args.Length > {})\n\t\ta{} = {};\n", ptn, i, defaultText, i, i, read);
@@ -834,7 +878,7 @@ static class ScriptSurfaceWalker
 				continue;
 
 			let ret = m.ReturnType.GetFullName(.. scope .());
-			methods.AppendF("\t\tt.AddMethod({}, {}, true)", Quote(m.Name, .. scope .()), Quote(ret, .. scope .()));
+			methods.AppendF("\t\tt.AddMethod({}, {}, true).Returns(.{})", Quote(m.Name, .. scope .()), Quote(ret, .. scope .()), ScriptValueMap.KindOf(m.ReturnType, .. scope .()));
 			EmitParams(m, methods);
 			if (m.GetCustomAttribute<ScriptNameAttribute>() case .Ok(let sn))
 				methods.AppendF(".Named({})", Quote(sn.Name, .. scope .()));
