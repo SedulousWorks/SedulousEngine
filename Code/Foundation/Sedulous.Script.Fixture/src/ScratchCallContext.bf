@@ -23,7 +23,7 @@ class ScratchCallContext : ScriptCallContext
 		return null;
 	}
 
-	public override void* AllocStruct(Type type, int size, int align)
+	public override void* AllocScratch(int size, int align)
 	{
 		let p = Internal.Malloc(size);
 		mAllocs.Add(p);

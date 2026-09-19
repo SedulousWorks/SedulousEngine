@@ -30,12 +30,28 @@ class AngelScriptCallContext : ScriptCallContext
 		return null;
 	}
 
+	public override void* AllocScratch(int size, int align)
+	{
+		let p = Internal.Malloc(size);
+		mScratch.Add(p);
+		return p;
+	}
+
 	public override void* AllocStruct(Type type, int size, int align)
 	{
 		if (ResultTarget != null)
 			return ResultTarget;
-		let p = Internal.Malloc(size);
-		mScratch.Add(p);
-		return p;
+		return AllocScratch(size, align);
+	}
+
+	/// The scratch high water mark before a call, and the release back to it once the
+	/// call's result is consumed: nested calls stack, and a tick's lists do not pile up.
+	public int ScratchMark => mScratch.Count;
+
+	public void ReleaseScratch(int mark)
+	{
+		for (int i = mScratch.Count - 1; i >= mark; i--)
+			Internal.Free(mScratch[i]);
+		mScratch.Count = Math.Min(mark, mScratch.Count);
 	}
 }

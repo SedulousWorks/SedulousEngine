@@ -127,6 +127,9 @@ static class ScriptSurfaceWalker
 			outName.AppendF("{}_{}", Prefix, Counter);
 			Counter++;
 		}
+
+		[Comptime]
+		public bool IsInlineName(StringView fullName) => ScriptValueMap.IsInlineStruct(fullName);
 	}
 
 	[Comptime]
@@ -579,12 +582,12 @@ static class ScriptSurfaceWalker
 			if (!s.IsEmpty)
 				sceneExpr.Set(s);
 			let write = scope String();
-			if (!ScriptValueMap.Write(memberType, access, "frame.Result", ctx.Known, write, sceneExpr))
+			if (!WriteResult(ctx, memberType, access, sceneExpr, write))
 			{
 				code.AppendF(".Blocked({})", Quote(write, .. scope .()));
 				return;
 			}
-			getBody.AppendF("\t{}\n", write);
+			getBody.Append(write);
 		}
 
 		let getName = ctx.NextThunk(.. scope .());
@@ -613,6 +616,19 @@ static class ScriptSurfaceWalker
 				// dropped, so nothing stale is rendered; the next resolve binds it.
 				setBody.AppendF("\t{}.SetId(frame.Args[0].AsGuid);\n\t{}.ClearBinding();\n", access, access);
 			}
+		}
+		else if (ScriptValueMap.IsList(memberName))
+		{
+			// The owner keeps its list; the contents are replaced.
+			let unpack = scope String();
+			if (!ScriptValueMap.ReadList(memberType, "frame.Args[0]", access, ctx.Known, unpack))
+			{
+				code.AppendF(".Bind(=> {}, null).Blocked({})", getName, Quote(unpack, .. scope .()));
+				return;
+			}
+			ScriptValueMap.ExpectFor(memberType, 0, setBody);
+			setBody.AppendF("\tif ({} == null) {{ frame.Fail(\"{} has no list\"); return; }}\n\t{}.Clear();\n", access, member, access);
+			setBody.Append(unpack);
 		}
 		else
 		{
@@ -840,6 +856,28 @@ static class ScriptSurfaceWalker
 			}
 			let slotIndex = i - selfParams;
 			let slot = scope $"frame.Args[{slotIndex}]";
+			if (ScriptValueMap.IsList(ptn))
+			{
+				// A list crosses by copy both ways: unpacked into a list of the thunk's,
+				// handed to the callee, and packed back after so the VM sees what the
+				// callee did to it, an out list included.
+				let unpack = scope String();
+				if (!ScriptValueMap.ReadList(pt, slot, scope $"a{i}", ctx.Known, unpack))
+				{
+					outReason.Set(unpack);
+					return false;
+				}
+				ScriptValueMap.ExpectFor(pt, slotIndex, body);
+				body.AppendF("\tlet a{} = scope {}();\n", i, ptn);
+				body.Append(unpack);
+				let repack = scope String();
+				ScriptValueMap.WriteList(pt, scope $"a{i}", slot, ctx.Known, repack, sceneExpr.IsEmpty ? "null" : sceneExpr);
+				after.Append(repack);
+				if (byRef)
+					args.Append((refKind == .Out) ? "out " : ((refKind == .In) ? "in " : "ref "));
+				args.AppendF("a{}", i);
+				continue;
+			}
 			let read = scope String();
 			if (!ScriptValueMap.Read(pt, slot, ctx.Known, read))
 			{
@@ -867,14 +905,15 @@ static class ScriptSurfaceWalker
 				case .In: args.Append("in ");
 				default: args.Append("ref ");
 				}
-				// Written back so the caller sees what the callee did to it.
+				// Written back so the caller sees what the callee did to it: a plain struct
+				// in place, into the VM's own storage for the argument.
 				if (refKind != .In)
 				{
 					let write = scope String();
-					if (ScriptValueMap.Write(pt, scope $"a{i}", slot, ctx.Known, write, sceneExpr.IsEmpty ? "null" : sceneExpr))
-						after.AppendF("\t{}\n", write);
-					else if (pt.IsStruct)
+					if (pt.IsStruct && !ctx.IsInlineName(ptn))
 						after.AppendF("\t*({}*){}.AsStruct = a{};\n", ptn, slot, i);
+					else if (ScriptValueMap.Write(pt, scope $"a{i}", slot, ctx.Known, write, sceneExpr.IsEmpty ? "null" : sceneExpr))
+						after.AppendF("\t{}\n", write);
 				}
 			}
 			args.AppendF("a{}", i);
@@ -887,12 +926,12 @@ static class ScriptSurfaceWalker
 		if (required == m.ParamCount)
 		{
 			let write = scope String();
-			if (!ScriptValueMap.Write(resultType, CallWith(ctx, m, isGlobal, args, .. scope .()), "frame.Result", ctx.Known, write, sceneArg))
+			if (!WriteResult(ctx, resultType, CallWith(ctx, m, isGlobal, args, .. scope .()), sceneArg, write))
 			{
 				outReason.Set(write);
 				return false;
 			}
-			body.AppendF("\t{}\n", write);
+			body.Append(write);
 		}
 		else
 		{
@@ -907,19 +946,35 @@ static class ScriptSurfaceWalker
 					partial.AppendF("a{}", i);
 				}
 				let write = scope String();
-				if (!ScriptValueMap.Write(resultType, CallWith(ctx, m, isGlobal, partial, .. scope .()), "frame.Result", ctx.Known, write, sceneArg))
+				if (!WriteResult(ctx, resultType, CallWith(ctx, m, isGlobal, partial, .. scope .()), sceneArg, write))
 				{
 					outReason.Set(write);
 					return false;
 				}
 				if (n < m.ParamCount)
-					body.AppendF("\tcase {}: {}\n", n - selfParams, write);
+					body.AppendF("\tcase {}:\n{}", n - selfParams, write);
 				else
-					body.AppendF("\tdefault: {}\n", write);
+					body.AppendF("\tdefault:\n{}", write);
 			}
 			body.Append("\t}\n");
 		}
 		body.Append(after);
+		return true;
+	}
+
+	/// The lines storing a call's result: one store, or a list packed by statements.
+	[Comptime]
+	private static bool WriteResult(TypeCtx ctx, Type resultType, StringView call, StringView sceneArg, String outCode)
+	{
+		if (ScriptValueMap.IsList(resultType.GetFullName(.. scope .())))
+			return ScriptValueMap.WriteList(resultType, call, "frame.Result", ctx.Known, outCode, sceneArg);
+		let write = scope String();
+		if (!ScriptValueMap.Write(resultType, call, "frame.Result", ctx.Known, write, sceneArg))
+		{
+			outCode.Set(write);
+			return false;
+		}
+		outCode.AppendF("\t{}\n", write);
 		return true;
 	}
 

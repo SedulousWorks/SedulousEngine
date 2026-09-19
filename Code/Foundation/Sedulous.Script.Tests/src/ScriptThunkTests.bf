@@ -435,4 +435,83 @@ static class ScriptThunkTests
 		poke.EntityInvoke(ref frame);
 		Test.Assert(frame.Failed && frame.Error.Contains("WidgetComponentManager"));
 	}
+
+	/// Lists cross by copy in both directions: an argument unpacked, a filled argument
+	/// packed back, a result packed, a field read and replaced.
+	[Test]
+	public static void ListsCrossByCopyBothWays()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let ctx = scope ScratchCallContext();
+		let thing = scope $"{cFixture}.Thing";
+		let made = scope Thing();
+
+		let sum = Method(s, thing, "Sum");
+		Test.Assert((sum.Params[0].Kind == .List) && (sum.Params[0].TypeName == "System.Collections.List<float>"));
+		Test.Assert(sum.IsCallable, sum.Unsupported);
+
+		// In: a packed list of floats, summed.
+		let values = ctx.AllocList(3, .Float, "float");
+		values.Items[0] = .FromFloat(1); values.Items[1] = .FromFloat(2.5); values.Items[2] = .FromInt(4);
+		var args = ScriptValue[1](.FromList(values));
+		var frame = ScriptCallFrame(ctx, args);
+		frame.Self = .FromObject(made);
+		sum.Invoke(ref frame);
+		Test.Assert(!frame.Failed, scope String(frame.Error));
+		Test.Assert(Near((float)frame.Result.AsFloat, 7.5f));
+
+		// The element type is checked; Nil is an empty list.
+		args[0] = .FromList(ctx.AllocList(0, .Int, "int"));
+		sum.Invoke(ref frame);
+		Test.Assert(frame.Failed && frame.Error.Contains("argument 0"));
+		args[0] = .Nil;
+		sum.Invoke(ref frame);
+		Test.Assert(!frame.Failed && Near((float)frame.Result.AsFloat, 0));
+
+		// Out: Fill(outValues, 3) fills the callee's list, packed back into the slot.
+		var fillArgs = ScriptValue[2](.Nil, .FromInt(3));
+		frame = ScriptCallFrame(ctx, fillArgs);
+		frame.Self = .FromObject(made);
+		Method(s, thing, "Fill").Invoke(ref frame);
+		Test.Assert(!frame.Failed && (frame.Result.AsInt == 3));
+		let filled = fillArgs[0].AsList;
+		Test.Assert((filled != null) && (filled.Count == 3) && (filled.ElementKind == .Int) && (filled.ElementType == "int"));
+		Test.Assert((filled.Items[0].AsInt == 1) && (filled.Items[2].AsInt == 3));
+
+		// A result of objects.
+		let a = scope Thing();
+		let b = scope Thing();
+		made.mFollowers.Add(a);
+		made.mFollowers.Add(b);
+		frame = ScriptCallFrame(ctx, default);
+		frame.Self = .FromObject(made);
+		Method(s, thing, "Followers").Invoke(ref frame);
+		let followers = frame.Result.AsList;
+		Test.Assert((followers != null) && (followers.Count == 2) && (followers.ElementKind == .Object));
+		Test.Assert((followers.Items[0].AsObject === a) && (followers.Items[1].AsObject === b));
+
+		// A field of plain structs: read as a copy, written by replacing the contents.
+		made.Points.Add(.(1, 2));
+		frame = ScriptCallFrame(ctx, default);
+		frame.Self = .FromObject(made);
+		let points = Field(s, thing, "Points");
+		Test.Assert((points.Kind == .List) && (points.Set != null), points.Unsupported);
+		points.Get(ref frame);
+		let read = frame.Result.AsList;
+		Test.Assert((read != null) && (read.Count == 1) && (read.ElementKind == .Struct));
+		Test.Assert(Near((*(Vec2*)read.Items[0].AsStruct).Y, 2));
+
+		let replacement = ctx.AllocList(2, .Struct, scope $"{cFixture}.Vec2");
+		var p0 = Vec2(5, 6);
+		var p1 = Vec2(7, 8);
+		replacement.Items[0] = .FromStruct(&p0, typeof(Vec2));
+		replacement.Items[1] = .FromStruct(&p1, typeof(Vec2));
+		var setArgs = ScriptValue[1](.FromList(replacement));
+		frame = ScriptCallFrame(ctx, setArgs);
+		frame.Self = .FromObject(made);
+		points.Set(ref frame);
+		Test.Assert(!frame.Failed, scope String(frame.Error));
+		Test.Assert((made.Points.Count == 2) && Near(made.Points[1].X, 7));
+	}
 }

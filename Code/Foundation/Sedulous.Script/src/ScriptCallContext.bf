@@ -3,23 +3,38 @@ using Sedulous.Scene;
 
 namespace Sedulous.Script;
 
-/// What a thunk reaches beyond its arguments: the scene a scene bound call resolves its
-/// systems and components in, the engine services, and storage for a struct result.
-///
-/// A backend supplies one; a test supplies a scratch one.
+/// What a thunk reaches beyond its arguments: the ambient scene, the host's services, and
+/// storage for what it hands back by pointer.
 abstract class ScriptCallContext
 {
-	/// BORROWED. Null in a host with no scene, and every scene bound call then fails.
+	/// The scene a call is in when nothing names one: an entity value with no scene of its
+	/// own, or a system reached with no object. Null outside any scene.
 	public Scene Scene = null;
 
-	/// The message of the last failed call through this context.
+	/// The last failure a frame reported, for a host with no exception to raise.
 	public String LastError = new .() ~ delete _;
 
-	/// An engine level service by type: a subsystem, or anything else a host registers.
-	/// Null when the host has none of that type.
 	public abstract Object FindService(Type type);
 
-	/// Storage for a struct result, owned by the VM side and valid at least until the
-	/// call returns to it. A VM makes this its own value cell; a test frees it after.
-	public abstract void* AllocStruct(Type type, int size, int align);
+	/// Storage that lives at least until the VM has consumed the call's result. A VM
+	/// releases it when it has, or with the context.
+	public abstract void* AllocScratch(int size, int align);
+
+	/// Where a struct result goes: scratch, unless the VM has a place of its own for it.
+	public virtual void* AllocStruct(Type type, int size, int align) => AllocScratch(size, align);
+
+	/// A list of `count` Nil values of `elementKind`, in scratch, for the thunk to fill.
+	public ScriptList* AllocList(int count, ScriptValueKind elementKind, StringView elementType)
+	{
+		// strideof, not sizeof: the items are an array, and a Beef sizeof leaves off the
+		// tail padding the next element starts after.
+		let list = (ScriptList*)AllocScratch(strideof(ScriptList), alignof(ScriptList));
+		list.Count = (int32)count;
+		list.ElementKind = elementKind;
+		list.ElementType = elementType;
+		list.Items = (count > 0) ? (ScriptValue*)AllocScratch(strideof(ScriptValue) * count, alignof(ScriptValue)) : null;
+		for (int i < count)
+			list.Items[i] = .Nil;
+		return list;
+	}
 }

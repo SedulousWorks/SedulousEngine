@@ -175,6 +175,51 @@ static class FixtureScriptTests
 		Test.Assert(vm.Problems.Back.Contains("another scene"), vm.Problems.Back);
 	}
 
+	/// Lists as the add-on's arrays: an array in, an array the callee fills, an array of
+	/// handles back, and a list field read and replaced.
+	[Test]
+	public static void ListsAreArrays()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let vm = Bound(s);
+		defer delete vm;
+
+		let ok = vm.Compile("t", "t.as", """
+			float sum(Thing@ t) { array<float> v = {1.0f, 2.5f, 4.0f}; return t.Sum(v); }
+			int fill(Thing@ t) { array<int64> got; int64 n = t.Fill(got, 4); return int(n * 100 + got.length() * 10 + got[3]); }
+			int followers(Thing@ t) { array<Thing@>@ f = t.Followers(); int c = 0; for (uint i = 0; i < f.length(); i++) { c += f[i].Count; } return c; }
+			float points(Thing@ t) { array<Vec2>@ p = t.Points; float y = p[0].Y; array<Vec2> next = {Vec2(5, 6), Vec2(7, 8)}; t.Points = next; return y; }
+			""");
+		Dump(vm);
+		Test.Assert(ok, "compiled");
+
+		let thing = scope Thing();
+		let a = scope Thing();
+		a.Count = 3;
+		let b = scope Thing();
+		b.Count = 4;
+		thing.mFollowers.Add(a);
+		thing.mFollowers.Add(b);
+		thing.Points.Add(.(1, 2));
+		var arg = ScriptValue[1](.FromObject(thing));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("t", "float sum(Thing@)", arg, ref r), "an array in");
+		Dump(vm);
+		Test.Assert(Near(r.AsFloat, 7.5));
+		Test.Assert(vm.Call("t", "int fill(Thing@)", arg, ref r), "an array the callee filled");
+		Dump(vm);
+		Test.Assert(r.AsInt == 4 * 100 + 4 * 10 + 4, scope $"got {r.AsInt}");
+		Test.Assert(vm.Call("t", "int followers(Thing@)", arg, ref r), "an array of handles back");
+		Dump(vm);
+		Test.Assert(r.AsInt == 7);
+		Test.Assert(vm.Call("t", "float points(Thing@)", arg, ref r), "a list field read and replaced");
+		Dump(vm);
+		Test.Assert(Near(r.AsFloat, 2), scope $"y {r.AsFloat}");
+		Test.Assert(thing.Points.Count == 2, scope $"count {thing.Points.Count}");
+		Test.Assert(Near(thing.Points[1].X, 7), scope $"x {thing.Points[1].X}");
+	}
+
 	/// The entity side of an entity-first method: `e.Poke()` reaches the manager in the
 	/// entity's scene, and a verb that did not ask is not there.
 	[Test]

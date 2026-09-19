@@ -40,6 +40,7 @@ struct ScriptValueData
 	public Color Color;
 	public Object Object;
 	public void* Struct;
+	public ScriptList* List;
 }
 
 struct ScriptValue
@@ -68,6 +69,7 @@ struct ScriptValue
 	public static ScriptValue FromColor(Color v) { var r = ScriptValue(); r.Kind = .Color; r.Data.Color = v; return r; }
 	public static ScriptValue FromObject(Object v) { var r = ScriptValue(); r.Kind = (v != null) ? .Object : .Nil; r.Data.Object = v; return r; }
 	public static ScriptValue FromStruct(void* p, Type type) { var r = ScriptValue(); r.Kind = .Struct; r.Data.Struct = p; r.StructType = type; return r; }
+	public static ScriptValue FromList(ScriptList* list) { var r = ScriptValue(); r.Kind = (list != null) ? .List : .Nil; r.Data.List = list; return r; }
 
 	// ---- out ----
 
@@ -86,6 +88,7 @@ struct ScriptValue
 	public Color AsColor => Data.Color;
 	public Object AsObject => (Kind == .Object) ? Data.Object : null;
 	public void* AsStruct => (Kind == .Struct) ? Data.Struct : null;
+	public ScriptList* AsList => (Kind == .List) ? Data.List : null;
 
 	public bool IsNil => Kind == .Nil;
 
@@ -121,6 +124,12 @@ struct ScriptValue
 		case .Struct:
 			return (Kind == .Struct) && (Data.Struct != null) && (StructType != null)
 				&& (StructType.GetFullName(.. scope .()) == typeName);
+		case .List:
+			// Nil stands for an empty list; a list must be of the slot's element type.
+			if (Kind == .Nil)
+				return true;
+			return (Kind == .List) && (Data.List != null)
+				&& (typeName.IsEmpty || (Data.List.ElementType == typeName));
 		default:
 			return Kind == kind;
 		}

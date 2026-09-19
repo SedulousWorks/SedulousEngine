@@ -382,6 +382,14 @@ class AngelScriptRuntime : ScriptRuntime
 			set.Field = f;
 			mBindings.Add(set);
 			let paramDecl = ParamDecl(f.Kind, f.TypeName, false, .. scope .());
+			// A list setter takes the array by value reference: with a handle parameter the
+			// compiler routes `t.Points = next` through the getter's handle instead.
+			if (f.Kind == .List)
+			{
+				paramDecl.RemoveFromEnd(1);
+				paramDecl.Insert(0, "const ");
+				paramDecl.Append(" &in");
+			}
 			let setDecl = scope $"void set_{f.ScriptName}({paramDecl}) property";
 			if (isGlobal)
 				Check(AS.asc_engine_register_global_function(mEngine, setDecl.CStr(), Internal.UnsafeCastToPtr(set)), t.FullName);
@@ -529,7 +537,60 @@ class AngelScriptRuntime : ScriptRuntime
 				return false;
 			outDecl.Append(AsName(st));
 			return true;
+		case .List:
+			// A List<X> is the add-on's array<X>, by handle: the script's own array, filled
+			// from the list and read back into it.
+			let element = scope String();
+			if (!ElementDecl(typeName, element))
+				return false;
+			outDecl.AppendF("array<{}>@", element);
+			return true;
 		}
+	}
+
+	/// The element type name of a List<X>, X in full.
+	private static bool ElementTypeOf(StringView listTypeName, String outElement)
+	{
+		const String cPrefix = "System.Collections.List<";
+		if (!listTypeName.StartsWith(cPrefix) || !listTypeName.EndsWith(">"))
+			return false;
+		outElement.Set(listTypeName.Substring(cPrefix.Length, listTypeName.Length - cPrefix.Length - 1));
+		return true;
+	}
+
+	/// The AngelScript declaration of a List<X>'s element, from X's name alone.
+	private bool ElementDecl(StringView listTypeName, String outDecl)
+	{
+		let element = scope String();
+		if (!ElementTypeOf(listTypeName, element))
+			return false;
+		return DeclOf(KindOfTypeName(element), element, outDecl);
+	}
+
+	/// The kind a Beef type name crosses as, for an element the surface only names.
+	private ScriptValueKind KindOfTypeName(StringView typeName)
+	{
+		switch (typeName)
+		{
+		case "float", "double": return .Float;
+		case "bool": return .Bool;
+		case "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64", "char8", "char32":
+			return .Int;
+		case "System.StringView": return .String;
+		case "System.String": return .Object;
+		}
+		let inlineKind = KindOfStructName(typeName);
+		if (inlineKind != .Struct)
+			return inlineKind;
+		if (let t = mSurface.Find(typeName))
+		{
+			if (t.Kind == .Enum)
+				return .Int;
+			if (t.Kind == .Class)
+				return .Object;
+			return .Struct;
+		}
+		return .Nil;
 	}
 
 	/// A parameter's declaration: primitives and handles by value, value types and strings
@@ -540,7 +601,7 @@ class AngelScriptRuntime : ScriptRuntime
 		if (!DeclOf(kind, typeName, type))
 			return false;
 		let isValue = ByReferenceKind(kind, typeName);
-		if (byRef)
+		if (byRef && (kind != .List))
 			outDecl.AppendF("{} &inout", type);
 		else if (isValue)
 			outDecl.AppendF("const {} &in", type);
@@ -556,6 +617,8 @@ class AngelScriptRuntime : ScriptRuntime
 		{
 		case .String, .Guid, .Entity, .Float2, .Float3, .Float4, .Quaternion, .Color, .Struct:
 			return true;
+		case .List:
+			return false;
 		case .Object:
 			return typeName == "System.String";
 		default:
@@ -577,6 +640,10 @@ class AngelScriptRuntime : ScriptRuntime
 	private void Dispatch(AS.Generic* gen, AngelScriptBinding b)
 	{
 		let context = mCallContext;
+		// Everything the call packs into scratch, lists and struct elements, is consumed
+		// by the time it returns; a nested call releases only its own.
+		let mark = context.ScratchMark;
+		defer { context.ReleaseScratch(mark); }
 		switch (b.Kind)
 		{
 		case .ComponentFromEntity:
@@ -692,13 +759,16 @@ class AngelScriptRuntime : ScriptRuntime
 		if (!isStatic && (selfMemory != null) && (b.Kind != .EntityCall))
 			WriteSelf(selfMemory, selfKind, frame.Self);
 
-		// By-ref arguments, back into the script's variables.
+		// By-ref arguments, back into the script's variables; a list always, into the
+		// script's array, since the callee may have filled it.
 		if (paramInfos != null)
 		{
 			int firstParam = (b.Kind == .EntityCall) ? 1 : 0;
 			for (int i = 0; i < count; i++)
 			{
-				if (paramInfos[i + firstParam].IsByRef)
+				if (kinds[i] == .List)
+					UnpackArray(AS.asc_generic_get_arg_object(gen, (uint32)i), args[i]);
+				else if (paramInfos[i + firstParam].IsByRef)
 					WriteValue(AS.asc_generic_get_arg_address(gen, (uint32)i), kinds[i], paramInfos[i + firstParam].TypeName, args[i]);
 			}
 		}
@@ -743,9 +813,11 @@ class AngelScriptRuntime : ScriptRuntime
 		}
 	}
 
-	private static ScriptValueKind KindOfStruct(ScriptTypeInfo t)
+	private static ScriptValueKind KindOfStruct(ScriptTypeInfo t) => KindOfStructName(t.FullName);
+
+	private static ScriptValueKind KindOfStructName(StringView fullName)
 	{
-		switch (t.FullName)
+		switch (fullName)
 		{
 		case "Sedulous.Core.Float2": return .Float2;
 		case "Sedulous.Core.Float3": return .Float3;
@@ -824,10 +896,78 @@ class AngelScriptRuntime : ScriptRuntime
 		case .Struct:
 			let st = mSurface.Find(typeName);
 			return .FromStruct(AS.asc_generic_get_arg_address(gen, arg), (st != null) ? st.BeefType : null);
+		case .List:
+			return PackArray(AS.asc_generic_get_arg_object(gen, arg), typeName);
 		default:
 			return ReadValue(AS.asc_generic_get_arg_address(gen, arg), kind, typeName);
 		}
 	}
+
+	/// A script array as a ScriptList in the context's scratch: each element read by its
+	/// AngelScript type. A null handle is an empty list.
+	private ScriptValue PackArray(void* array, StringView listTypeName)
+	{
+		let element = scope String();
+		ElementTypeOf(listTypeName, element);
+		let elementKind = KindOfTypeName(element);
+		// The element type name has to outlive the call: the surface's own copy does.
+		let elementName = ElementNameOf(listTypeName);
+		let count = (array != null) ? (int)AS.asc_array_get_size(array) : 0;
+		let packed = mCallContext.AllocList(count, elementKind, elementName);
+		if (count > 0)
+		{
+			let typeId = AS.asc_array_get_element_type_id(array);
+			for (int i < count)
+				packed.Items[i] = ReadTyped(typeId, AS.asc_array_at(array, (uint32)i));
+		}
+		return .FromList(packed);
+	}
+
+	/// Fills a script array from a ScriptList: resized to the list, each element written
+	/// by its AngelScript type.
+	private void UnpackArray(void* array, ScriptValue value)
+	{
+		if (array == null)
+			return;
+		let list = value.AsList;
+		let count = (list != null) ? (int)list.Count : 0;
+		AS.asc_array_resize(array, (uint32)count);
+		if (count == 0)
+			return;
+		let typeId = AS.asc_array_get_element_type_id(array);
+		for (int i < count)
+			WriteTyped(typeId, AS.asc_array_at(array, (uint32)i), list.Items[i]);
+	}
+
+	/// A fresh script array for a list result, the caller's to release.
+	private void* ArrayFor(StringView listTypeName, ScriptValue value)
+	{
+		let decl = scope String();
+		if (!DeclOf(.List, listTypeName, decl))
+			return null;
+		decl.RemoveFromEnd(1); // the handle mark: the type itself is asked for
+		let list = value.AsList;
+		let count = (list != null) ? (int)list.Count : 0;
+		let array = AS.asc_array_create(mEngine, decl.CStr(), (uint32)count);
+		if (array == null)
+			return null;
+		UnpackArray(array, value);
+		return array;
+	}
+
+	/// The stable element name of a list type: a view into a string this runtime keeps,
+	/// since a ScriptList only borrows its ElementType.
+	private StringView ElementNameOf(StringView listTypeName)
+	{
+		let element = scope String();
+		ElementTypeOf(listTypeName, element);
+		if (mElementNames.TryGetValue(element, let kept))
+			return kept;
+		let owned = new String(element);
+		mElementNames.Add(owned, owned);
+		return owned;
+	}
+	private Dictionary<String, String> mElementNames = new .() ~ DeleteDictionaryAndKeys!(_);
 
 	/// An inline value out of memory.
 	private static ScriptValue ReadValue(void* memory, ScriptValueKind kind, StringView typeName)
@@ -904,10 +1044,13 @@ class AngelScriptRuntime : ScriptRuntime
 	}
 
 	/// The thunk's result, to the generic call.
-	private static void WriteReturn(AS.Generic* gen, void* location, ScriptValueKind kind, StringView typeName, ScriptValue value)
+	private void WriteReturn(AS.Generic* gen, void* location, ScriptValueKind kind, StringView typeName, ScriptValue value)
 	{
 		switch (kind)
 		{
+		case .List:
+			// The array's one reference passes to the script with the handle.
+			AS.asc_generic_set_return_address(gen, ArrayFor(typeName, value));
 		case .Bool: AS.asc_generic_set_return_byte(gen, value.AsBool ? 1 : 0);
 		case .Float:
 			if (typeName == "double")
@@ -1542,7 +1685,7 @@ class AngelScriptRuntime : ScriptRuntime
 			if (mByName.TryGetValue(scope String(name), let t))
 			{
 				// Copied into scratch: the return object dies with Unprepare.
-				let copy = mCallContext.AllocStruct(t.BeefType, t.Size, t.Align);
+				let copy = mCallContext.AllocScratch(t.Size, t.Align);
 				Internal.MemCpy(copy, memory, t.Size);
 				return .FromStruct(copy, t.BeefType);
 			}

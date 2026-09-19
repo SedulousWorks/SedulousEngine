@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Reflection;
 
 namespace Sedulous.Script;
 
@@ -49,12 +50,31 @@ static class ScriptValueMap
 			outKind.Append("Int");
 		else if (IsRef(name))
 			outKind.Append("Guid");
+		else if (IsList(name))
+			outKind.Append("List");
 		else if (type.IsObject)
 			outKind.Append("Object");
 		else if (type.IsStruct && !type.IsPointer && !name.EndsWith("]"))
 			outKind.Append("Struct");
 		else
 			outKind.Append("Nil");
+	}
+
+	/// The full name of List<T>, which crosses as a ScriptList of its elements.
+	public const String cListPrefix = "System.Collections.List<";
+
+	[Comptime]
+	public static bool IsList(StringView fullName) => fullName.StartsWith(cListPrefix) && fullName.EndsWith(">");
+
+	/// The element type of a List<T>, null for anything else.
+	[Comptime]
+	public static Type ElementOf(Type type)
+	{
+		if (!IsList(type.GetFullName(.. scope .())))
+			return null;
+		if (let generic = type as SpecializedGenericType)
+			return generic.GetGenericArg(0);
+		return null;
 	}
 
 	/// The check a thunk makes before reading argument `i` as `type`: the kind, and the
@@ -65,6 +85,8 @@ static class ScriptValueMap
 		let kind = KindOf(type, .. scope .());
 		if ((kind == "Object") || (kind == "Struct"))
 			outCode.AppendF("\tif (!frame.Expect({}, .{}, \"{}\")) return;\n", i, kind, type.GetFullName(.. scope .()));
+		else if (kind == "List")
+			outCode.AppendF("\tif (!frame.Expect({}, .List, \"{}\")) return;\n", i, ElementOf(type).GetFullName(.. scope .()));
 		else
 			outCode.AppendF("\tif (!frame.Expect({}, .{})) return;\n", i, kind);
 	}
@@ -93,6 +115,8 @@ static class ScriptValueMap
 			outKey.Append("Int");
 		else if (IsRef(name))
 			outKey.Append("Guid");
+		else if (let element = ElementOf(type))
+			outKey.AppendF("List<{}>", KindKey(element, .. scope .()));
 		else if (type.IsObject)
 			outKey.AppendF("Object:{}", name);
 		else
@@ -145,6 +169,12 @@ static class ScriptValueMap
 		case "Sedulous.Core.Color": outCode.AppendF("{}.AsColor", value); return true;
 		}
 
+		if (IsList(name))
+		{
+			// A list is unpacked by statements, ReadList, not read by an expression.
+			outCode.Set(name);
+			return false;
+		}
 		if (!Crossable(type, name, known, outCode))
 			return false;
 		if (type.IsEnum)
@@ -153,6 +183,55 @@ static class ScriptValueMap
 			outCode.AppendF("({}){}.AsObject", name, value);
 		else
 			outCode.AppendF("*({}*){}.AsStruct", name, value);
+		return true;
+	}
+
+	/// Whether a List<T>'s element can cross: a value an element slot can hold.
+	[Comptime]
+	public static bool ListCrossable(Type type, List<String> known, String outReason)
+	{
+		let element = ElementOf(type);
+		if (element == null)
+		{
+			outReason.Set(type.GetFullName(.. scope .()));
+			return false;
+		}
+		let probe = scope String();
+		if (IsList(element.GetFullName(.. scope .())) || !Read(element, "x", known, probe))
+		{
+			outReason.AppendF("{} of {}", type.GetFullName(.. scope .()), probe);
+			return false;
+		}
+		return true;
+	}
+
+	/// The statements filling `target`, a List<T> already made, from `value`, a ScriptValue
+	/// of the List kind; Nil fills nothing.
+	[Comptime]
+	public static bool ReadList(Type type, StringView value, StringView target, List<String> known, String outCode)
+	{
+		if (!ListCrossable(type, known, outCode))
+			return false;
+		let element = ElementOf(type);
+		let read = scope String();
+		Read(element, "packed.Items[k]", known, read);
+		outCode.AppendF("\tif (let packed = {}.AsList)\n\t{{\n\t\tfor (int k = 0; k < packed.Count; k++)\n\t\t\t{}.Add({});\n\t}}\n", value, target, read);
+		return true;
+	}
+
+	/// The statements packing `expr`, a List<T> (null packs as empty), into `slot`.
+	[Comptime]
+	public static bool WriteList(Type type, StringView expr, StringView slot, List<String> known, String outCode,
+		StringView entityScene = "null")
+	{
+		if (!ListCrossable(type, known, outCode))
+			return false;
+		let element = ElementOf(type);
+		let elementName = element.GetFullName(.. scope .());
+		let write = scope String();
+		Write(element, "src[k]", "packed.Items[k]", known, write, entityScene);
+		outCode.AppendF("\t{{\n\t\tlet src = {};\n\t\tlet packed = frame.Context.AllocList((src != null) ? src.Count : 0, .{}, \"{}\");\n\t\tfor (int k = 0; k < packed.Count; k++)\n\t\t\t{}\n\t\t{} = .FromList(packed);\n\t}}\n",
+			expr, KindOf(element, .. scope .()), elementName, write, slot);
 		return true;
 	}
 
@@ -167,11 +246,6 @@ static class ScriptValueMap
 			return false;
 		}
 		if (IsKnown(name, known))
-			return true;
-		// A list of a surface type is an object a VM binds natively.
-		const String cList = "System.Collections.List<";
-		if (name.StartsWith(cList) && name.EndsWith(">")
-			&& IsKnown(name.Substring(cList.Length, name.Length - cList.Length - 1), known))
 			return true;
 		outCode.AppendF("{} is not on the surface", name);
 		return false;
@@ -202,6 +276,12 @@ static class ScriptValueMap
 		case "Sedulous.Core.Color": outCode.AppendF("{} = .FromColor({});", slot, expr); return true;
 		}
 
+		if (IsList(name))
+		{
+			// A list is packed by statements, WriteList, not by one store.
+			outCode.Set(name);
+			return false;
+		}
 		if (!Crossable(type, name, known, outCode))
 			return false;
 		if (type.IsEnum)
@@ -212,15 +292,15 @@ static class ScriptValueMap
 		{
 			outCode.AppendF("{} = .FromObject({});", slot, expr);
 		}
+		else if (slot == "frame.Result")
+		{
+			// The VM's own place for the result.
+			outCode.AppendF("frame.SetStruct<{}>({});", name, expr);
+		}
 		else
 		{
-			// Only the frame's result has struct storage.
-			if (slot != "frame.Result")
-			{
-				outCode.Set(name);
-				return false;
-			}
-			outCode.AppendF("frame.SetStruct<{}>({});", name, expr);
+			// An element or a written back argument: scratch.
+			outCode.AppendF("{} = frame.PackStruct<{}>({});", slot, name, expr);
 		}
 		return true;
 	}

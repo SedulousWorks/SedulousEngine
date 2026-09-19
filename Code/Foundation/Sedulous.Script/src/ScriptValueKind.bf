@@ -25,4 +25,7 @@ enum ScriptValueKind : uint8
 	/// Any other struct, by pointer into storage the VM owns: a result the thunk placed
 	/// through ScriptCallContext.AllocStruct, or an argument the VM keeps.
 	case Struct;
+	/// A List<T> of a crossable T, as a ScriptList of its elements in context storage: a
+	/// copy in either direction, so a VM renders its own array and the callee its own list.
+	case List;
 }

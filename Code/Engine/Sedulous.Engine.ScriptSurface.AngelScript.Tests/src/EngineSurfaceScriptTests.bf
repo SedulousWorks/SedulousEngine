@@ -28,10 +28,8 @@ static class EngineSurfaceScriptTests
 		File.WriteAllText(path, report).IgnoreError();
 		Console.WriteLine("angelscript binding report: {} ({} problems)", path, vm.Problems.Count);
 
-		// The lists: five members whose List<T> has no AngelScript type yet. Everything else binds.
-		for (let p in vm.Problems)
-			Test.Assert(p.Contains("System.Collections.List<"), p);
-		Test.Assert(vm.Problems.Count == 5, scope $"{vm.Problems.Count} members the language refused; see the report");
+		// Every member the surface binds, the language binds: the lists cross as arrays.
+		Test.Assert(vm.Problems.Count == 0, scope $"{vm.Problems.Count} members the language refused; see the report");
 	}
 
 	[Test]
@@ -61,7 +59,11 @@ static class EngineSurfaceScriptTests
 				b.SetLocalPosition(eb, Float3(0, 5, 0));
 				b.UpdateTransforms();
 				a.UpdateTransforms();
-				return int(a.GetWorldPosition(ea).Y) * 10 + int(b.GetWorldPosition(eb).Y) + a.Physics.BodyCount + b.Physics.BodyCount;
+				// A list parameter is the script's own array, filled by the callee: no
+				// bodies yet, so it stays empty, and the call itself is what is proven.
+				array<Entity> hits;
+				a.Physics.OverlapSphere(Float3(0, 0, 0), 5.0f, hits);
+				return int(a.GetWorldPosition(ea).Y) * 10 + int(b.GetWorldPosition(eb).Y) + a.Physics.BodyCount + b.Physics.BodyCount + int(hits.length());
 			}
 			""");
 		for (let p in vm.Problems)

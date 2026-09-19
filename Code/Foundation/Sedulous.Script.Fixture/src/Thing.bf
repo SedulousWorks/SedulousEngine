@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Resource;
 
@@ -55,6 +56,36 @@ class Thing
 	public int Twice(int x) => x * 2;
 	[Scriptable]
 	public float Twice(float x) => x * 2;
+
+	// ---- lists, which cross by copy in both directions ----
+
+	/// A list field: read as a copy, written by replacing the contents.
+	[Scriptable]
+	public List<Vec2> Points = new .() ~ delete _;
+	/// A list in: summed.
+	[Scriptable]
+	public float Sum(List<float> values)
+	{
+		float total = 0;
+		for (let v in values)
+			total += v;
+		return total;
+	}
+	/// A list out: the caller's list filled with 1..count, as OverlapSphere fills one.
+	[Scriptable]
+	public int Fill(List<int> outValues, int count)
+	{
+		for (int i = 1; i <= count; i++)
+			outValues.Add(i);
+		return outValues.Count;
+	}
+	/// A list result, of objects.
+	[Scriptable]
+	public List<Thing> Followers()
+	{
+		return mFollowers;
+	}
+	public List<Thing> mFollowers = new .() ~ delete _;
 
 	// Observed by the tests, not on the surface.
 	public Vec2 LastTarget;

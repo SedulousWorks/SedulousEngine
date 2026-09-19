@@ -84,4 +84,13 @@ struct ScriptCallFrame
 		*(T*)p = value;
 		Result = .FromStruct(p, typeof(T));
 	}
+
+	/// A struct value in scratch, for a list element or an argument written back: never
+	/// the VM's result place, which SetStruct alone may take.
+	public ScriptValue PackStruct<T>(T value) where T : struct
+	{
+		let p = Context.AllocScratch(sizeof(T), alignof(T));
+		*(T*)p = value;
+		return .FromStruct(p, typeof(T));
+	}
 }
