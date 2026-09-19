@@ -1,0 +1,5 @@
+FileVersion = 1
+Projects = {AngelScript-Beef = {Path = "."}}
+
+[Workspace]
+StartupProject = "AngelScript-Beef"

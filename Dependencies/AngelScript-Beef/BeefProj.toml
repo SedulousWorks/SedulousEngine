@@ -1,0 +1,34 @@
+FileVersion = 1
+
+[Project]
+Name = "AngelScript-Beef"
+TargetType = "BeefLib"
+StartupObject = "AngelScript_Beef.Program"
+
+# Two archives everywhere: the SDK's angelscript and the C shim over it (angelscript_beef).
+# The shim BEFORE the SDK: the linker resolves left to right and the shim is what references
+# the engine. Built by build-native.sh (Linux, wasm) and build-native.ps1 (Windows).
+
+[Configs.Debug.Win64]
+LibPaths = ["$(ProjectDir)/dist/Debug-Win64/angelscript_beef.lib", "$(ProjectDir)/dist/Debug-Win64/angelscript.lib"]
+
+[Configs.Release.Win64]
+LibPaths = ["$(ProjectDir)/dist/Release-Win64/angelscript_beef.lib", "$(ProjectDir)/dist/Release-Win64/angelscript.lib"]
+
+[Configs.Test.Win64]
+LibPaths = ["$(ProjectDir)/dist/Debug-Win64/angelscript_beef.lib", "$(ProjectDir)/dist/Debug-Win64/angelscript.lib"]
+
+[Configs.Debug.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libangelscript_beef.a", "$(ProjectDir)/dist/Release-Linux64/libangelscript.a"]
+
+[Configs.Release.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libangelscript_beef.a", "$(ProjectDir)/dist/Release-Linux64/libangelscript.a"]
+
+[Configs.Test.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libangelscript_beef.a", "$(ProjectDir)/dist/Release-Linux64/libangelscript.a"]
+
+[Configs.Debug.wasm32]
+LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libangelscript_beef.a", "$(ProjectDir)/dist/Release-wasm32/libangelscript.a"]
+
+[Configs.Release.wasm32]
+LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libangelscript_beef.a", "$(ProjectDir)/dist/Release-wasm32/libangelscript.a"]
