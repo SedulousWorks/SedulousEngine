@@ -16,9 +16,11 @@ static class ProjectLayout
 	public const String EditorDir = "Editor";
 	public const String CacheDir = ".cache";
 
-	/// Readable and diffable envelopes, against the binary ones a cook produces.
-	public const String SourceAssetExtension = ".xasset";
-	public const String CookedAssetExtension = ".rasset";
+	/// Readable and diffable envelopes, against the binary ones a cook produces. Without
+	/// the dot, as a ContentDatabase takes them: it adds its own, and a dotted one here had
+	/// the player scanning for `..xasset`.
+	public const String SourceAssetExtension = "xasset";
+	public const String CookedAssetExtension = "rasset";
 
 	// ---- distribution ----------------------------------------------------------------------
 
