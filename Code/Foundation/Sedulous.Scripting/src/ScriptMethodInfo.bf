@@ -19,12 +19,14 @@ class ScriptMethodInfo
 	public List<ScriptParamInfo> Params = new .() ~ DeleteContainerAndItems!(_);
 
 	/// Adds a parameter. Chains, for the generated populate code.
-	public ScriptMethodInfo Param(StringView name, StringView typeName, bool byRef = false)
+	public ScriptMethodInfo Param(StringView name, StringView typeName, bool byRef = false,
+		StringView defaultText = default)
 	{
 		let p = new ScriptParamInfo();
 		p.Name.Set(name);
 		p.TypeName.Set(typeName);
 		p.IsByRef = byRef;
+		p.Default.Set(defaultText);
 		Params.Add(p);
 		return this;
 	}

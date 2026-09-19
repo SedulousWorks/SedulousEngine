@@ -25,6 +25,8 @@ class Thing
 	[Scriptable]
 	public bool TryGet(int index, ref Vec2 outValue) => false;
 	[Scriptable]
+	public void Move(Vec2 to, float speed = 1.5f, bool teleport = false) {}
+	[Scriptable]
 	public static Thing Make() => new Thing();
 	public void Internal() {}
 }

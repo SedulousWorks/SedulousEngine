@@ -106,6 +106,12 @@ static class ScriptSurfaceWalkerTests
 		Test.Assert(!tryGet.Params[0].IsByRef && tryGet.Params[1].IsByRef, "ref is recorded");
 		Test.Assert(tryGet.Params[1].TypeName == scope $"{cFixture}.Vec2", "and the type is the pointee");
 
+		let move = Method(t, "Move");
+		Test.Assert((move != null) && (move.Params.Count == 3));
+		Test.Assert(!move.Params[0].HasDefault);
+		Test.Assert(move.Params[1].HasDefault && (move.Params[1].Default == "1.5f"), "the default as written");
+		Test.Assert(move.Params[2].Default == "false");
+
 		let make = Method(t, "Make");
 		Test.Assert((make != null) && make.IsStatic && (make.ReturnTypeName == scope $"{cFixture}.Thing"));
 		Test.Assert(Method(t, "Internal") == null);
@@ -194,6 +200,7 @@ static class ScriptSurfaceWalkerTests
 		Test.Assert(text.Contains("    static Dot(a: Vec2, b: Vec2) -> float"));
 		Test.Assert(text.Contains("    GoTo(at: Vec2) [was Go]"));
 		Test.Assert(text.Contains("    TryGet(index: int, ref outValue: Vec2) -> bool"));
+		Test.Assert(text.Contains("    Move(to: Vec2, speed: float = 1.5f, teleport: bool = false)"));
 		Test.Assert(text.Contains("global functions\n    Lerp(a: float, b: float, t: float) -> float"));
 		Test.Assert(text.Contains("struct WidgetComponent [Component] id=fixture_widget manager=WidgetComponentManager"));
 		Test.Assert(text.Contains("    On = 5"));

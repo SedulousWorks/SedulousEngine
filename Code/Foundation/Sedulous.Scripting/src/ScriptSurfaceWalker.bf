@@ -367,7 +367,8 @@ static class ScriptSurfaceWalker
 					pt = r.UnderlyingType;
 				}
 				let ptn = pt.GetFullName(.. scope .());
-				code.AppendF(".Param({}, {}{})", Quote(m.GetParamName(i), .. scope .()), Quote(ptn, .. scope .()), byRef ? ", true" : "");
+				code.AppendF(".Param({}, {}", Quote(m.GetParamName(i), .. scope .()), Quote(ptn, .. scope .()));
+				EmitParamTail(m, i, byRef, code);
 			}
 
 			if (m.GetCustomAttribute<ScriptNameAttribute>() case .Ok(let sn))
@@ -378,6 +379,19 @@ static class ScriptSurfaceWalker
 				code.AppendF(".Describe({})", Quote(ds.Text, .. scope .()));
 			code.Append(";\n");
 		}
+	}
+
+	/// The by-ref flag and the default, closing the Param call.
+	[Comptime]
+	private static void EmitParamTail(MethodInfo m, int i, bool byRef, String code)
+	{
+		let defaultText = m.GetParamDefault(i);
+		if (!defaultText.IsEmpty)
+			code.AppendF(", {}, {})", Bool(byRef), Quote(defaultText, .. scope .()));
+		else if (byRef)
+			code.Append(", true)");
+		else
+			code.Append(")");
 	}
 
 	[Comptime]
@@ -454,7 +468,8 @@ static class ScriptSurfaceWalker
 				}
 				scratch.Clear();
 				pt.GetFullName(scratch);
-				methods.AppendF(".Param({}, {}{})", Quote(m.GetParamName(i), .. scope .()), Quote(scratch, .. scope .()), byRef ? ", true" : "");
+				methods.AppendF(".Param({}, {}", Quote(m.GetParamName(i), .. scope .()), Quote(scratch, .. scope .()));
+				EmitParamTail(m, i, byRef, methods);
 			}
 			if (m.GetCustomAttribute<ScriptNameAttribute>() case .Ok(let sn))
 				methods.AppendF(".Named({})", Quote(sn.Name, .. scope .()));
