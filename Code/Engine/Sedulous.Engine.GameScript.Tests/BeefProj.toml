@@ -1,0 +1,22 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.GameScript.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Engine.GameScript.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Messaging" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Scene.Resource" = "*"
+"Sedulous.Script" = "*"
+"Sedulous.Script.Resource" = "*"
+"Sedulous.Script.AngelScript" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Engine.GameInstance" = "*"
+"Sedulous.Engine.Script" = "*"
+"Sedulous.Engine.ScriptSurface" = "*"

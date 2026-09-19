@@ -3,12 +3,16 @@ using System.Collections;
 using Sedulous.Content;
 using Sedulous.Core;
 using Sedulous.Core.IO;
+using Sedulous.Core.Logging;
 using Sedulous.Input;
 using Sedulous.Messaging;
 using Sedulous.Net.Manager;
 using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
+using Sedulous.Script;
+using Sedulous.Script.Resource;
+using Sedulous.Engine.Script;
 
 namespace Sedulous.Engine.GameInstance;
 
@@ -22,6 +26,12 @@ namespace Sedulous.Engine.GameInstance;
 /// The scene is CREATED BY THE CALLER and paired in, and the app keeps its own policy: what
 /// to load, and what to do to a scene once it is live. What lives here is the orchestration
 /// both of those would otherwise hand roll identically.
+/// TO A SCRIPT it is `Run`: the run's tier above the scenes, reached as a per run service,
+/// so the instance a script's calls land on is the one whose runtime ran the script and
+/// never another's. Its verbs are the level loads, the exit, the time scale and the run
+/// bus, which is what a `Game` orchestrator drives boot and level flow with:
+/// `let t = Run.LoadSceneAsync(id); while (!Run.LoadComplete(t)) yield();`.
+[Scriptable, ScriptService, DisplayName("Run")]
 class GameInstance
 {
 	/// What the APP does to a scene the moment one of its tracked loads completes: find a
@@ -47,7 +57,6 @@ class GameInstance
 	private Scene mScene = null;
 
 	private bool mHeadless = false;
-	private float mInstanceTimeScale = 1.0f;
 
 	/// OWNED: this run's networking.
 	private NetworkController mNetwork = new .() ~ delete _;
@@ -68,11 +77,43 @@ class GameInstance
 
 	private SceneActivationPolicy mActivationPolicy = null ~ delete _;
 
+	// ---- the Game tier ----
+
+	/// What the APP does to turn a scene id into a load on this instance: the content
+	/// database lookup and the prefab resolver are its. TAKES OWNERSHIP of the delegate.
+	public typealias SceneLoader = delegate SceneLoadHandle(Guid sceneId);
+	/// Where `Run.RequestExit` goes: the host's loop, or the editor's Game tab session.
+	/// TAKES OWNERSHIP of the delegate.
+	public typealias ExitRequest = delegate void(int32 code);
+
+	/// OWNED: this run's script host, the gameplay context the game script AND this
+	/// instance's scenes' behaviours share. The subsystem wires it like its own; the
+	/// instance installs itself on it as the `Run` service.
+	private ScriptRunHost mRunHost = new .() ~ delete _;
+	/// The orchestrator: an instance of the game script's class. Null when no script runs.
+	private ScriptObject mGame = null;
+	/// BORROWED: the resource manager owns the product.
+	private ScriptClass mGameClass = null;
+	private SceneLoader mSceneLoader = null ~ delete _;
+	private ExitRequest mExitRequest = null ~ delete _;
+	private Dictionary<String, uint32> mGameSubscriptions = new .() ~ DeleteDictionaryAndKeys!(_);
+	private List<delegate void(Variant)> mGameCallbacks = new .() ~ DeleteContainerAndItems!(_);
+	private List<String> mGameHandlerNames = new .() ~ DeleteContainerAndItems!(_);
+
 	public this()
 	{
 		// Every scene this run creates BORROWS the run bus. Setting it on the GROUP means the
 		// injection happens as a scene is created, before its systems bind, rather than after.
 		mSceneManager.SetSceneEventBus(mRunEvents);
+	}
+
+	public ~this()
+	{
+		// The game script, then the scenes, whose behaviours live on the host, then the
+		// host itself with the fields.
+		StopScript();
+		ClearScenes();
+		mRunHost.Teardown();
 	}
 
 	/// Pairs a scene in as the current one.
@@ -88,9 +129,13 @@ class GameInstance
 	}
 
 	public Scene GetScene() => mScene;
+	/// The run's live scene, null until one is.
+	[Scriptable]
+	public Scene CurrentScene => mScene;
 
 	/// This instance has a live current scene, which is what a caller waits on rather than
 	/// assuming one exists at launch.
+	[Scriptable]
 	public bool SceneReady => mScene != null;
 
 	/// Simulated and scripted, but NOT rendered by the host: no camera and no swapchain
@@ -103,11 +148,14 @@ class GameInstance
 
 	/// This run's term in the time model: the delta a scene sees is the host's, times the
 	/// context's scale, times THIS, times the scene's own. One by default, so a single
-	/// instance collapses to the model without it.
+	/// instance collapses to the model without it. It is the scene GROUP's scale, so nought
+	/// pauses the run's scenes, behaviours, physics and timers, while the Game orchestrator,
+	/// which runs on the run's own clock, keeps going and can resume.
+	[Scriptable, ScriptName("TimeScale")]
 	public float InstanceTimeScale
 	{
-		get => mInstanceTimeScale;
-		set => mInstanceTimeScale = value;
+		get => mSceneManager.TimeScale;
+		set => mSceneManager.TimeScale = value;
 	}
 
 	/// This run's scene group.
@@ -131,7 +179,19 @@ class GameInstance
 	{
 		// The run bus is already injected by the group before assembly, so the scene's events
 		// and the run's are one object by the time anything binds to either.
-		return mSceneManager.CreateScene(name, activate);
+		let scene = mSceneManager.CreateScene(name, activate);
+		AdoptScripting(scene);
+		return scene;
+	}
+
+	/// Points a scene's behaviours at THIS run's host, after the subsystem pointed them at
+	/// its default one during assembly: one gameplay context per run.
+	private void AdoptScripting(Scene scene)
+	{
+		if (scene == null)
+			return;
+		if (let scripts = scene.GetSystem<ScriptSceneSystem>())
+			scripts.SetRunHost(mRunHost);
 	}
 
 	/// Destroys a scene in this instance's group.
@@ -321,6 +381,7 @@ class GameInstance
 
 	/// An unknown or expired ticket reads complete rather than pending, so a caller polling
 	/// one in a loop can never hang on it.
+	[Scriptable]
 	public float LoadProgress(int32 ticket)
 	{
 		for (let load in mLoads)
@@ -333,6 +394,7 @@ class GameInstance
 
 	/// True once terminal, whether the load landed or failed. A retained entry is terminal
 	/// only when it FAILED, every successful one having been retired.
+	[Scriptable]
 	public bool LoadComplete(int32 ticket)
 	{
 		for (let load in mLoads)
@@ -343,6 +405,7 @@ class GameInstance
 		return true;
 	}
 
+	[Scriptable]
 	public bool LoadFailed(int32 ticket)
 	{
 		for (let load in mLoads)
@@ -351,6 +414,199 @@ class GameInstance
 				return load.Handle.Failed;
 		}
 		return false;
+	}
+
+	// ==================== The Game tier ====================
+
+	/// This run's script host. The subsystem wires it; the instance's scenes' behaviours
+	/// and its game script run on it.
+	public ScriptRunHost RunHost => mRunHost;
+
+	public void SetSceneLoader(SceneLoader loader)
+	{
+		delete mSceneLoader;
+		mSceneLoader = loader;
+	}
+
+	public void SetExitRequest(ExitRequest request)
+	{
+		delete mExitRequest;
+		mExitRequest = request;
+	}
+
+	/// Starts a level load by id: the ticket a script polls, or nought when the load could
+	/// not start, a wrong id or no loader. The scene activates through the app's policy once
+	/// its resources land, on the pump.
+	[Scriptable]
+	public int32 LoadSceneAsync(Guid sceneId)
+	{
+		if ((mSceneLoader == null) || (sceneId == Guid()))
+			return 0;
+		var handle = mSceneLoader(sceneId);
+		if (handle.Failed || (handle.Scene == null))
+			return 0;
+		return TrackLoad(handle);
+	}
+
+	/// Loads a level and activates it now, the app's policy applied. False when it could not.
+	[Scriptable]
+	public bool LoadScene(Guid sceneId)
+	{
+		let ticket = LoadSceneAsync(sceneId);
+		if (ticket == 0)
+			return false;
+		// The load's resources bind on workers; pumping them out here makes the call the
+		// synchronous convenience it claims to be.
+		for (let load in mLoads)
+		{
+			if (load.Ticket != ticket)
+				continue;
+			let handle = load.Handle;
+			while (!handle.IsComplete)
+				handle.Resources.Pump(0.010);
+		}
+		PumpLoads();
+		return !LoadFailed(ticket);
+	}
+
+	/// Ends the run with an exit code: the standalone host stops its loop, an editor stops
+	/// the Game tab's session. Nothing wired is a no-op.
+	[Scriptable]
+	public void RequestExit(int32 code = 0)
+	{
+		if (mExitRequest != null)
+			mExitRequest(code);
+	}
+
+	/// Publishes on the run bus, which every scene of this run shares: the Game orchestrator
+	/// and every behaviour declaring `on<Event>` hear it when the bus drains.
+	[Scriptable]
+	public void Emit(StringView eventName) => mRunEvents.Publish(StringHash(eventName), Variant());
+	[Scriptable]
+	public void Emit(StringView eventName, float payload) => mRunEvents.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
+	[Scriptable]
+	public void Emit(StringView eventName, int32 payload) => mRunEvents.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
+	[Scriptable]
+	public void Emit(StringView eventName, bool payload) => mRunEvents.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
+	[Scriptable]
+	public void Emit(StringView eventName, StringView payload) => mRunEvents.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
+	[Scriptable]
+	public void Emit(StringView eventName, EntityHandle payload) => mRunEvents.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
+
+	/// Whether a game script is running: instantiated and not faulted.
+	public bool ScriptRunning => mGame != null;
+
+	/// Compiles and launches the game script: the class's constructor, then `launch()` when
+	/// it has one; `update(dt)` each tick and `exit()` at the stop, all optional, its
+	/// `on<Event>` handlers subscribed to the run bus. False when the class did not load or
+	/// instantiate, logged. A second start stops the first.
+	public bool StartScript(ScriptClass scriptClass)
+	{
+		StopScript();
+		if (scriptClass == null)
+			return false;
+		let game = mRunHost.Instantiate(scriptClass);
+		if (game == null)
+		{
+			GlobalLog(.Error, scope $"Run: the game script '{scriptClass.ClassName}' did not instantiate");
+			return false;
+		}
+		mGame = game;
+		mGameClass = scriptClass;
+		// The context knows its run from here on: a call in the script lands on THIS instance.
+		mRunHost.Runtime.SetService(this);
+		SubscribeGameHandlers(scriptClass);
+		InvokeGame("launch", default);
+		GlobalLog(.Information, scope $"Run: game script '{scriptClass.ClassName}' launched");
+		return mGame != null;
+	}
+
+	/// `exit()`, then release. Idempotent; the fault path lands here too.
+	public void StopScript()
+	{
+		ClearGameSubscriptions();
+		if (mGame == null)
+			return;
+		InvokeGame("exit", default);
+		if ((mGame != null) && (mRunHost.Runtime != null))
+		{
+			mRunHost.Runtime.CancelCoroutinesFor(mGame);
+			mRunHost.Runtime.Release(mGame);
+		}
+		mGame = null;
+		mGameClass = null;
+	}
+
+	/// Ticks the game script with gameplay time, the host's delta through the context's,
+	/// the run's and the current scene's scales, and moves the run's clock: once per frame,
+	/// before the run bus drains. A faulting update stops THIS run's script, not the run.
+	public void TickScript(float hostDeltaTime, float contextTimeScale)
+	{
+		let sceneScale = (mScene != null) ? mScene.TimeScale : 1.0f;
+		let time = FrameTime(hostDeltaTime, contextTimeScale, mSceneManager.TimeScale, sceneScale);
+		let dt = time.SceneDelta;
+		if (mGame != null)
+		{
+			var args = ScriptValue[1](.FromFloat(dt));
+			InvokeGame("update", .(&args[0], 1));
+		}
+		mRunHost.Advance(dt);
+	}
+
+	/// A run bus event into the orchestrator's `on<Event>(payload)`. At drain time, no
+	/// script call active, so it dispatches directly.
+	private void DispatchGameEvent(StringView handler, Variant payload)
+	{
+		if (mGame == null)
+			return;
+		var value = ScriptPayloads.ValueOf(payload, mScene);
+		var args = ScriptValue[1](value);
+		InvokeGame(handler, value.IsNil ? default : .(&args[0], 1));
+	}
+
+	/// A call on the orchestrator, gated by the class declaring it: a script without an
+	/// `Update` is fine. A fault stops the script.
+	private void InvokeGame(StringView handler, Span<ScriptValue> args)
+	{
+		let runtime = mRunHost.Runtime;
+		if ((mGame == null) || (runtime == null) || !runtime.HasMethod(mGame, handler, args.Length))
+			return;
+		var result = ScriptValue.Nil;
+		if (runtime.Invoke(mGame, handler, args, ref result))
+			return;
+		GlobalLog(.Error, scope $"Run: the game script faulted in {handler}; stopped");
+		mRunHost.ReportProblems();
+		let faulted = mGame;
+		mGame = null;
+		runtime.CancelCoroutinesFor(faulted);
+		runtime.Release(faulted);
+		ClearGameSubscriptions();
+	}
+
+	private void SubscribeGameHandlers(ScriptClass scriptClass)
+	{
+		for (let handler in scriptClass.Handlers)
+		{
+			let eventName = ScriptSceneSystem.EventNameOf(handler, .. scope .());
+			if (eventName.IsEmpty || mGameSubscriptions.ContainsKey(eventName))
+				continue;
+			let name = new String(eventName);
+			let handlerName = new String(handler);
+			delegate void(Variant) callback = new (payload) => { DispatchGameEvent(handlerName, payload); };
+			mGameCallbacks.Add(callback);
+			mGameHandlerNames.Add(handlerName);
+			mGameSubscriptions[name] = mRunEvents.Subscribe(StringHash(eventName), callback);
+		}
+	}
+
+	private void ClearGameSubscriptions()
+	{
+		for (let entry in mGameSubscriptions)
+			mRunEvents.Unsubscribe(entry.value);
+		DeleteDictionaryAndKeys!(mGameSubscriptions);
+		mGameSubscriptions = new .();
+		ClearAndDeleteItems!(mGameCallbacks);
+		ClearAndDeleteItems!(mGameHandlerNames);
 	}
 
 	// ==================== Input ====================

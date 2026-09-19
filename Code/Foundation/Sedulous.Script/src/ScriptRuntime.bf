@@ -45,6 +45,16 @@ abstract class ScriptRuntime
 	/// What the bound calls reach: the scene, the services. Null for a backend with no calls.
 	public virtual ScriptCallContext Context => null;
 
+	/// Installs a Service role object, reached by its exact type: what a script's
+	/// `Audio.Play(...)` or `Run.LoadSceneAsync(...)` resolves. BORROWED. A per run service,
+	/// a game instance say, is installed on that run's runtime alone, so one run's script
+	/// never reaches another's.
+	public void SetService<T>(T service) where T : class
+	{
+		if (Context != null)
+			Context.SetService(typeof(T), service);
+	}
+
 	/// Compiles `source` into the module, replacing what it held. False on a compile error,
 	/// with the messages in Problems.
 	public bool Compile(StringView moduleName, StringView sectionName, StringView source)

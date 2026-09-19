@@ -66,6 +66,16 @@ class ScriptRunHost
 		return runtime;
 	}
 
+	/// Advances the run's coroutines by gameplay time. Once per frame, by the host's OWNER,
+	/// the game instance or the subsystem, never per scene: a run with three scenes has one
+	/// clock, and a run with no scene yet, a game script loading its first level, still has
+	/// to move.
+	public void Advance(float deltaTime)
+	{
+		if (mRuntime != null)
+			mRuntime.AdvanceCoroutines(deltaTime);
+	}
+
 	/// An instance of the class, its module loaded or reloaded as needed. Null on failure,
 	/// logged.
 	public ScriptObject Instantiate(ScriptClass scriptClass)

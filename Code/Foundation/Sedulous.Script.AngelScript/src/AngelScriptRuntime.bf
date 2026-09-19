@@ -111,6 +111,12 @@ class AngelScriptRuntime : ScriptRuntime
 		wait.Kind = .Wait;
 		mBindings.Add(wait);
 		AS.asc_engine_register_global_function(mEngine, "void wait(float seconds)", Internal.UnsafeCastToPtr(wait));
+		// `yield()`: the next advance resumes it, which is what a boot loop polling a load
+		// wants: `while (!Run.LoadComplete(t)) yield();`.
+		let yielding = new AngelScriptBinding();
+		yielding.Kind = .Yield;
+		mBindings.Add(yielding);
+		AS.asc_engine_register_global_function(mEngine, "void yield()", Internal.UnsafeCastToPtr(yielding));
 	}
 
 	/// The inline value kinds exist in the language whatever the surface declares, since
@@ -656,6 +662,9 @@ class AngelScriptRuntime : ScriptRuntime
 			return;
 		case .Wait:
 			WaitCurrent(AS.asc_generic_get_arg_float(gen, 0));
+			return;
+		case .Yield:
+			WaitCurrent(0);
 			return;
 		case .Resolve:
 			// `scene.Physics`: the scene's instance of the system.

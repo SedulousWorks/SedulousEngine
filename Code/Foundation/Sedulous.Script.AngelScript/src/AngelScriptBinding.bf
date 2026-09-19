@@ -27,6 +27,8 @@ class AngelScriptBinding
 		case StartCoroutine;
 		/// `wait(seconds)` inside a coroutine: the backend's own.
 		case Wait;
+		/// `yield()`: a wait of nought, resumed on the next advance.
+		case Yield;
 	}
 
 	public Role Kind;

@@ -30,6 +30,14 @@ class AngelScriptCallContext : ScriptCallContext
 		return null;
 	}
 
+	public override void SetService(Type type, Object service)
+	{
+		if (service == null)
+			Services.Remove(type);
+		else
+			Services[type] = service;
+	}
+
 	public override void* AllocScratch(int size, int align)
 	{
 		let p = Internal.Malloc(size);

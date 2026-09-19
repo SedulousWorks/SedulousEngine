@@ -151,6 +151,8 @@ class ScriptPlayScene
 			for (let s in mExtraScenes)
 				s.Update(dt);
 			Bus.Drain();
+			// Once per frame, as the host's owner does: the run's one clock.
+			Host.Advance(dt);
 		}
 	}
 

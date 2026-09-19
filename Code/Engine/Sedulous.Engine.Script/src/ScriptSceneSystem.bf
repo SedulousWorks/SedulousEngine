@@ -278,8 +278,6 @@ class ScriptSceneSystem : SceneSystem
 			TickBehaviors(deltaTime);
 			// The top level: no script call is active, so the deferred work is safe here.
 			DrainMessages();
-			if (mHost.Runtime != null)
-				mHost.Runtime.AdvanceCoroutines(deltaTime);
 		}
 	}
 
@@ -602,7 +600,7 @@ class ScriptSceneSystem : SceneSystem
 	/// snapshotted first, since a handler may spawn or destroy.
 	private void BroadcastEvent(StringView handler, Variant payload)
 	{
-		var value = ValueOf(payload);
+		var value = ScriptPayloads.ValueOf(payload, mScene);
 		var args = ScriptValue[1](value);
 		Span<ScriptValue> span = value.IsNil ? default : .(&args[0], 1);
 
@@ -629,24 +627,6 @@ class ScriptSceneSystem : SceneSystem
 		}
 	}
 
-	/// A bus payload in the frame's kinds: the scalar kinds, a string, an entity tagged
-	/// with this scene. Anything else is Nil, and the handler is called without it.
-	private ScriptValue ValueOf(Variant payload)
-	{
-		if (!payload.HasValue)
-			return .Nil;
-		let type = payload.VariantType;
-		if (type == typeof(float)) return .FromFloat(payload.Get<float>());
-		if (type == typeof(double)) return .FromFloat(payload.Get<double>());
-		if (type == typeof(int32)) return .FromInt(payload.Get<int32>());
-		if (type == typeof(int)) return .FromInt(payload.Get<int>());
-		if (type == typeof(int64)) return .FromInt(payload.Get<int64>());
-		if (type == typeof(bool)) return .FromBool(payload.Get<bool>());
-		if (type == typeof(EntityHandle)) return .FromEntity(payload.Get<EntityHandle>(), mScene);
-		if (type == typeof(Float3)) return .FromFloat3(payload.Get<Float3>());
-		if (type == typeof(String)) return .FromString(payload.Get<String>());
-		return .Nil;
-	}
 
 	// ---- the Level ----
 

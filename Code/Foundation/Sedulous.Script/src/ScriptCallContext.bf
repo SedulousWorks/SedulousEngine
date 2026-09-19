@@ -14,7 +14,12 @@ abstract class ScriptCallContext
 	/// The last failure a frame reported, for a host with no exception to raise.
 	public String LastError = new .() ~ delete _;
 
+	/// The host's service of `type`, for a Service role call, or null when the run has none.
 	public abstract Object FindService(Type type);
+
+	/// Installs, or with null removes, the service a Service role call of `type` reaches.
+	/// BORROWED: the host owns it and outlives the run.
+	public abstract void SetService(Type type, Object service);
 
 	/// Storage that lives at least until the VM has consumed the call's result. A VM
 	/// releases it when it has, or with the context.

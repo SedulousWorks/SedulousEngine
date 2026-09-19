@@ -354,10 +354,13 @@ static class ScriptSurfaceWalker
 			EmitResolver(ctx);
 	}
 
-	/// The role a class's bases give it: a scene system, or an engine service.
+	/// The role a class's bases give it, a scene system or an engine service, or the one it
+	/// asked for with [ScriptService].
 	[Comptime]
 	private static ScriptTypeRole BaseRole(Type type)
 	{
+		if (type.HasCustomAttribute<ScriptServiceAttribute>())
+			return .Service;
 		var t = type;
 		while (t != null)
 		{

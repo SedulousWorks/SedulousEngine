@@ -74,6 +74,8 @@ class Scene
 	public StringView Name => mName;
 	public void SetName(StringView name) => mName.Set(name);
 
+	/// How many entities are alive.
+	[Scriptable]
 	public uint32 EntityCount => mAliveCount;
 
 	/// Bumped by every structural change, so a consumer can tell "nothing moved" from

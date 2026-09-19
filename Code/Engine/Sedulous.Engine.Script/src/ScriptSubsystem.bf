@@ -25,6 +25,29 @@ class ScriptSubsystem : Subsystem, ISceneObserver
 
 	public ScriptRunHost Host => mHost;
 
+	/// Wires a host a game instance owns the way this subsystem's own is wired: the same
+	/// surface and services through Configure, so a run's scripts see what the default
+	/// host's do, plus whatever the instance installs on top.
+	public void ConfigureHost(ScriptRunHost host)
+	{
+		if (host == null)
+			return;
+		delete host.Configure;
+		host.Configure = new (runtime) =>
+			{
+				if (Configure != null)
+					Configure(runtime);
+			};
+	}
+
+	/// The default host's coroutines move with the context's time. An instance's host is
+	/// advanced by the instance, with its own gameplay time.
+	public override void Update(float deltaTime)
+	{
+		let scale = (Context != null) ? Context.TimeScale : 1.0f;
+		mHost.Advance(deltaTime * scale);
+	}
+
 	protected override void OnReady()
 	{
 		if (Context == null)

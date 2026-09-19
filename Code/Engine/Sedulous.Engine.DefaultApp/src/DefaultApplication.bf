@@ -21,6 +21,7 @@ using Sedulous.Engine.Script;
 using Sedulous.Engine.ScriptSurface;
 using Sedulous.Script;
 using Sedulous.Script.AngelScript;
+using Sedulous.Script.Resource;
 using Sedulous.Engine.Terrain;
 using Sedulous.Engine.UI;
 using Sedulous.Graphics;
@@ -84,6 +85,9 @@ class DefaultApplication : IApplication, ISceneObserver
 	private ResourceManager mOwnedResources = null ~ delete _;
 	private ResourceManager mBorrowedResources = null;
 	private ContentDatabase mContentDatabase = null;
+	/// BORROWED: where a scene id resolves for a script's Run.LoadSceneAsync. The content
+	/// database unless the host names another, the player's authored source database say.
+	private ContentDatabase mSceneDatabase = null;
 	/// The runtime script surface, populated once from the root; every run binds it.
 	private ScriptSurface mScriptSurface = new .() ~ delete _;
 
@@ -166,6 +170,10 @@ class DefaultApplication : IApplication, ISceneObserver
 	public void SetResourceManager(ResourceManager borrowed) => mBorrowedResources = borrowed;
 
 	public void SetContentDatabase(ContentDatabase database) => mContentDatabase = database;
+	/// The database scene ids resolve in for script driven loads; the content database when
+	/// none is named.
+	public void SetSceneDatabase(ContentDatabase database) => mSceneDatabase = database;
+	public ContentDatabase SceneDatabase => (mSceneDatabase != null) ? mSceneDatabase : mContentDatabase;
 
 	/// Attaches a borrowed manager AFTER startup, registering the standard factories on it.
 	public void AttachResourceManager(ResourceManager borrowed, IApplicationHost host)
@@ -244,10 +252,17 @@ class DefaultApplication : IApplication, ISceneObserver
 				for (let p in runtime.Problems)
 					GlobalLog(.Warning, scope $"Script: {p}");
 				ClearAndDeleteItems!(runtime.Problems);
+				// The engine services a script reaches by handle: what the surface's Service
+				// role types resolve to in this run.
+				if (mAudio != null)
+					runtime.SetService(mAudio);
+				if (mRender != null)
+					runtime.SetService(mRender);
 			};
 		// Physics contacts reach behaviours through the composition root's bridge: neither
 		// subsystem names the other.
 		mContactBridge.Install(mPhysics, scripts);
+		WireInstanceScripting(mInstance, host);
 
 		// The net subsystem injects the replication managers into every scene so authored
 		// network components work, and OWNS the per frame transport pump. It is given the
@@ -301,10 +316,58 @@ class DefaultApplication : IApplication, ISceneObserver
 
 		if (mInput != null)
 			instance.SetInputSource(mInput.ShellSource);
+		WireInstanceScripting(instance, mHost);
 
 		mExtraInstances.Add(instance);
 		return instance;
 	}
+
+	// ==================== the game script ====================
+
+	/// An instance's run host wired like the subsystem's own, and the instance's `Run`
+	/// verbs backed by this app: scene ids resolve in the scene database, a load's scene
+	/// gets the app's activation, and an exit reaches the host.
+	private void WireInstanceScripting(GameInstance instance, IApplicationHost host)
+	{
+		if (let scripts = host.Context.GetSubsystem<ScriptSubsystem>())
+			scripts.ConfigureHost(instance.RunHost);
+		instance.SetSceneLoader(new (sceneId) =>
+			{
+				let db = SceneDatabase;
+				let sceneInstance = (db != null) ? db.GetInstance(sceneId) : null;
+				if (sceneInstance == null)
+				{
+					var failed = SceneLoadHandle();
+					failed.Failed = true;
+					return failed;
+				}
+				return instance.LoadSceneAsync(sceneInstance, Resources, scope (prefabId) =>
+					{
+						let prefab = db.GetInstance(prefabId);
+						return (prefab != null) ? prefab.ReadData("scene") : null;
+					});
+			});
+		instance.SetExitRequest(new (code) => host.RequestExit(code));
+		instance.SetSceneActivationPolicy(new (scene) => ApplyLoadedSceneActivation(scene));
+	}
+
+	/// What a scene gets the moment a script driven load lands: started and simulating.
+	/// A player seeds a camera first, so a script loaded level renders.
+	protected virtual void ApplyLoadedSceneActivation(Scene scene)
+	{
+		if (scene == null)
+			return;
+		scene.Start();
+		scene.SetSimulationEnabled(true);
+	}
+
+	/// Launches the game script on the primary instance: a class with `launch()`,
+	/// `update(dt)`, `exit()` and `on<Event>` handlers, all optional. The CALLER resolves
+	/// where the class comes from, the manifest's startup script for the player. A fault
+	/// stops the script, not the game.
+	public bool StartGameScript(ScriptClass scriptClass) => mInstance.StartScript(scriptClass);
+	public void StopGameScript() => mInstance.StopScript();
+	public bool GameScriptRunning => mInstance.ScriptRunning;
 
 	public void ReleaseInstance(GameInstance instance)
 	{
@@ -331,16 +394,6 @@ class DefaultApplication : IApplication, ISceneObserver
 		fn(mInstance);
 		for (let instance in mExtraInstances)
 			fn(instance);
-	}
-
-	/// What the application does to a scene one of its loads just activated.
-	private static void ApplyLoadedSceneActivation(Scene scene)
-	{
-		if (scene == null)
-			return;
-
-		scene.Start();
-		scene.SetSimulationEnabled(true);
 	}
 
 	// ==================== lifecycle ====================
@@ -424,7 +477,9 @@ class DefaultApplication : IApplication, ISceneObserver
 				// Activate any load that finished, which is why this follows the pump.
 				instance.PumpLoads();
 				instance.DriveInput(deltaTime, contextScale);
-				// The run bus is drained where the script tick used to be.
+				// The game script sees this frame's input, and the bus drains after it with
+				// no script call active.
+				instance.TickScript(deltaTime, contextScale);
 				instance.DrainRunEvents();
 			});
 
@@ -563,6 +618,8 @@ class DefaultApplication : IApplication, ISceneObserver
 		// Paired with the install in OnStartup; owned, so this frees it.
 		ShutdownGlobalProfiler();
 		mContactBridge.Uninstall();
+		// Every game script's exit() before its scenes go.
+		ForEachInstance(scope (instance) => instance.StopScript());
 
 		for (let instance in mExtraInstances)
 		{

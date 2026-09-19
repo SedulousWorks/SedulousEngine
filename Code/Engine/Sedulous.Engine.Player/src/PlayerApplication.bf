@@ -21,6 +21,7 @@ using Sedulous.Scene;
 using Sedulous.Settings;
 using Sedulous.UI;
 using Sedulous.UI.Resource;
+using Sedulous.Script.Resource;
 using Sedulous.VFS;
 using Sedulous.VFS.Pak;
 using Sedulous.Xml.Serialization;
@@ -143,6 +144,7 @@ class PlayerApplication : DefaultApplication
 			ProjectLayout.CookedAssetExtension);
 		// The scenes live IN the pak, binary like every other product.
 		mSceneDb = mContentDb;
+		SetSceneDatabase(mSceneDb);
 
 		GlobalLog(.Information, "Player: distribution mode, {} pak entries", mPak.EntryCount);
 		return true;
@@ -172,6 +174,7 @@ class PlayerApplication : DefaultApplication
 			ProjectLayout.CookedAssetExtension);
 		// The authored scenes, with the products coming from the cooked database.
 		mSceneDb = mSourceDb;
+		SetSceneDatabase(mSceneDb);
 		return true;
 	}
 
@@ -224,11 +227,42 @@ class PlayerApplication : DefaultApplication
 
 		ApplyProjectBindings(host);
 
+		// The game script launches FIRST: its launch() may load the first level itself, and
+		// a startup scene, when the manifest names one, loads behind it.
+		LoadAndStartGameScript();
+
 		if (instance != null)
 			BeginBootScene(host, instance);
+		else if (GameScriptRunning)
+			GlobalLog(.Information, "Player: no startup scene; the game script owns boot");
 		else
 			GlobalLog(.Information,
 				"Player: no startup scene resolved, and no game script to own boot, so nothing is running");
+	}
+
+	/// The manifest's startup script is a cooked ScriptClass, bound from the content
+	/// database by id. None is fine; one that does not resolve is an error the run survives.
+	private void LoadAndStartGameScript()
+	{
+		let scriptId = mSettings.StartupScriptId;
+		if ((scriptId == Guid()) || (Resources == null))
+			return;
+		let scriptClass = Resources.Bind<ScriptClass>(scriptId).Get;
+		if (scriptClass == null)
+		{
+			GlobalLog(.Error, "Player: the startup script asset did not resolve");
+			return;
+		}
+		StartGameScript(scriptClass);
+	}
+
+	/// A script loaded level gets the player's full activation: a camera, then the base's
+	/// start and simulation. The load's scene is the run's current one from here.
+	protected override void ApplyLoadedSceneActivation(Scene scene)
+	{
+		EnsureCameraOn(scene);
+		base.ApplyLoadedSceneActivation(scene);
+		mScene = scene;
 	}
 
 	/// The override first, then the manifest's identifier, which survives a rename, then its
@@ -466,6 +500,7 @@ class PlayerApplication : DefaultApplication
 
 	public override void OnExit(IApplicationHost host)
 	{
+		StopGameScript();
 		SetPrimaryScene(null);
 		if (mScene != null)
 			mScene.Stop();
