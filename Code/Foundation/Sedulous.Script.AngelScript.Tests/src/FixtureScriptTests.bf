@@ -185,4 +185,21 @@ static class FixtureScriptTests
 		Test.Assert(!vm.Compile("t", "t.as", "int f() { return Nope(); }"));
 		Test.Assert(!vm.Problems.IsEmpty && vm.Problems.Back.Contains("t.as"));
 	}
+
+	/// A surface bound for some domains only: a pipeline type is not there to a script
+	/// compiled against the runtime subset.
+	[Test]
+	public static void ABindingMayBeRestrictedToDomains()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s, scope StringView[](ScriptDomains.Runtime));
+		Test.Assert(!vm.Compile("t", "t.as", "void f() { Cooker@ c; }"), "the pipeline type is absent");
+		Test.Assert(vm.Compile("t", "t.as", "void f() { Thing@ t; }"), "the runtime type is present");
+
+		let all = scope AngelScriptRuntime();
+		all.Bind(s);
+		Test.Assert(all.Compile("t", "t.as", "void f() { Cooker@ c; }"));
+	}
 }

@@ -1,0 +1,16 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Script.Pipeline"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Script.Pipeline.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Pipeline.Importer" = "*"
+"Sedulous.Script" = "*"
+"Sedulous.Script.Resource" = "*"
+"Sedulous.VFS" = "*"

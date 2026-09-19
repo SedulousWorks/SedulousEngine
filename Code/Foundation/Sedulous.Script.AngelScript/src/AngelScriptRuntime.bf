@@ -154,15 +154,21 @@ class AngelScriptRuntime : ScriptRuntime
 
 	// ==================== binding ====================
 
-	public override void Bind(ScriptSurface surface)
+	public override void Bind(ScriptSurface surface, Span<StringView> domains = default)
 	{
-		base.Bind(surface);
+		base.Bind(surface, domains);
 
 		// Declare every type before any member, since a member's declaration names types.
 		for (let t in surface.Types)
-			DeclareType(t);
+		{
+			if (InBoundDomains(t))
+				DeclareType(t);
+		}
 		for (let t in surface.Types)
-			BindMembers(t);
+		{
+			if (InBoundDomains(t))
+				BindMembers(t);
+		}
 	}
 
 	/// The AngelScript name of a surface type: its bare name, except the entity handle,

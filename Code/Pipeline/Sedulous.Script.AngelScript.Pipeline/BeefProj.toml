@@ -1,0 +1,14 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Script.AngelScript.Pipeline"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Script.AngelScript.Pipeline.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Script" = "*"
+"Sedulous.Script.AngelScript" = "*"
+"Sedulous.Script.Resource" = "*"
+"Sedulous.Script.Pipeline" = "*"

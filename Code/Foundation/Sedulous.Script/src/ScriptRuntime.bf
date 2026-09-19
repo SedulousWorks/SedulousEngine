@@ -16,10 +16,30 @@ abstract class ScriptRuntime
 
 	public abstract StringView Name { get; }
 
-	/// Registers every type of the surface with the backend.
-	public virtual void Bind(ScriptSurface surface)
+	/// Registers the surface's types with the backend: every one, or only those in the
+	/// domains given. A host holding a wider surface than a script may use (the cook, with
+	/// the pipeline's) binds the runtime subset for a game script.
+	public virtual void Bind(ScriptSurface surface, Span<StringView> domains = default)
 	{
 		mSurface = surface;
+		ClearAndDeleteItems!(mDomains);
+		for (let d in domains)
+			mDomains.Add(new String(d));
+	}
+
+	/// The domains bound, empty for all.
+	protected List<String> mDomains = new .() ~ DeleteContainerAndItems!(_);
+
+	protected bool InBoundDomains(ScriptTypeInfo t)
+	{
+		if (mDomains.IsEmpty)
+			return true;
+		for (let d in mDomains)
+		{
+			if (d == t.Domain)
+				return true;
+		}
+		return false;
 	}
 
 	/// What the bound calls reach: the scene, the services. Null for a backend with no calls.
