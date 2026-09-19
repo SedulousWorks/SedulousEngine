@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Engine.DefaultApp;
 using Sedulous.Graphics;
 using Sedulous.Graphics.Gpu;
 using Sedulous.Runtime.SDL3;
@@ -38,6 +39,9 @@ class Program
 		defer delete graphics;
 
 		let app = scope ParticleFXApp();
+		// --screenshot <png> [--screenshot-frame N | --screenshot-after S] [--screenshot-exit]:
+		// a capture with no hand on F11.
+		app.SetScreenshotOptions(ScreenshotOptions.FromArguments(args));
 		return DesktopRunner.RunApplication(app, shell, graphics);
 	}
 }

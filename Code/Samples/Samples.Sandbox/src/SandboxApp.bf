@@ -212,6 +212,9 @@ class SandboxApp : DefaultApplication
 		// The backbuffer is a render target again, so the panel loads and draws over it.
 		if (mOverlay != null)
 			mOverlay.Render(ref frame);
+
+		// The screenshot copy, off the finished backbuffer.
+		FinishFrame(host, ref frame);
 	}
 
 	public override void OnShutdown(IApplicationHost host)

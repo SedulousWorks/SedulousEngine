@@ -201,10 +201,13 @@ class AnimatedCrowdApp : DefaultApplication
 			}
 		}
 
-		base.OnRenderWindow(host, ref frame);
+		RenderFrame(host, ref frame);
 
 		if (mOverlay != null)
 			mOverlay.Render(ref frame);
+
+		// After the overlay, so a screenshot has it.
+		FinishFrame(host, ref frame);
 	}
 
 	public override void OnShutdown(IApplicationHost host)

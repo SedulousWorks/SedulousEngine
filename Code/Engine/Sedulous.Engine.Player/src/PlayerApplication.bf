@@ -39,7 +39,6 @@ namespace Sedulous.Engine.Player;
 class PlayerApplication : DefaultApplication
 {
 	private PlayerOptions mOptions;
-	private float mElapsed = 0.0f;
 
 	private ProjectSettings mSettings = new .() ~ delete _;
 	/// The native game, static or loaded.
@@ -78,6 +77,8 @@ class PlayerApplication : DefaultApplication
 	public this(PlayerOptions options)
 	{
 		mOptions = options;
+		// The base owns the exit timer, so a smoke run and a --screenshot-exit run share one.
+		SetExitAfterSeconds(options.ExitAfterSeconds);
 	}
 
 	private SerializerFactory MakeBinaryFactory() => mBinaryFactory;
@@ -435,13 +436,6 @@ class PlayerApplication : DefaultApplication
 
 		if (mBooting)
 			DriveBoot(host);
-
-		if (mOptions.ExitAfterSeconds > 0.0f)
-		{
-			mElapsed += deltaTime;
-			if (mElapsed >= mOptions.ExitAfterSeconds)
-				host.RequestExit(0);
-		}
 	}
 
 	private void DriveBoot(IApplicationHost host)

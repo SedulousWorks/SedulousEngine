@@ -8,6 +8,7 @@ StartupObject = "Sedulous.Engine.Player.Desktop.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
+"Sedulous.Engine.DefaultApp" = "*"
 "Sedulous.Engine.Player" = "*"
 "Sedulous.Engine.Project" = "*"
 "Sedulous.Graphics" = "*"

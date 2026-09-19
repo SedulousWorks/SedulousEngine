@@ -23,6 +23,7 @@ using Sedulous.Script.AngelScript;
 using Sedulous.Engine.Terrain;
 using Sedulous.Engine.UI;
 using Sedulous.Graphics;
+using Sedulous.Image;
 using Sedulous.Net.Manager;
 using Sedulous.Net.Replication;
 using Sedulous.Profiler;
@@ -87,6 +88,18 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	private NetworkStartup mNetStartup = .();
 
+	// ---- screenshots ----
+	private ScreenshotCapture mScreenshot = new .() ~ delete _;
+	/// OWNED: the setter takes the reference.
+	private ScreenshotOptions mScreenshotOptions = new .() ~ delete _;
+	/// The frames FinishFrame saw, which is what --screenshot-frame counts.
+	private uint64 mRenderedFrames = 0;
+	/// The --screenshot request is one shot.
+	private bool mScreenshotOptionFired = false;
+	private bool mScreenshotExitPending = false;
+	private float mExitAfterSeconds = 0.0f;
+	private float mRunSeconds = 0.0f;
+
 	// ==================== accessors ====================
 
 	public GameInstance Instance => mInstance;
@@ -108,6 +121,26 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// BORROWED: the settings outlive the call, the audio subsystem reading them at bring up.
 	public void SetAudioEngineSettings(AudioEngineSettings settings) =>
 		mAudioEngineSettings = settings;
+
+	// ---- screenshots ----
+
+	/// Captures the next presented frame of the main window to `path` as a PNG. F11 does
+	/// this with a timestamped name in the working directory; --screenshot does it at a
+	/// chosen frame. The write lands one frame later, the GPU having to finish the copy
+	/// first.
+	public void CaptureScreenshot(StringView path) => mScreenshot.Request(path);
+
+	/// The --screenshot flags, from ScreenshotOptions.FromArguments: capture at frame N or
+	/// after S seconds, optionally exiting once written. Takes ownership.
+	public void SetScreenshotOptions(ScreenshotOptions options)
+	{
+		delete mScreenshotOptions;
+		mScreenshotOptions = options;
+	}
+
+	/// Exits the host after this many seconds of updates, nought never. The player's
+	/// --exit-after.
+	public void SetExitAfterSeconds(float seconds) => mExitAfterSeconds = seconds;
 
 	/// An explicit data root, which beats the discovery walk. The player fills this from
 	/// --data-root; set it before Configure or it is too late to matter.
@@ -348,6 +381,26 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	public virtual void OnUpdate(IApplicationHost host, float deltaTime)
 	{
+		// A screenshot recorded last frame: the GPU has run that frame by now for any slot the
+		// host reuses, but not necessarily this one, and a screenshot is a one off, so wait
+		// for everything, then map, write, and honour --screenshot-exit.
+		if (mScreenshot.Recorded)
+		{
+			let graphics = host.Graphics;
+			if ((graphics != null) && (graphics.Raw != null))
+			{
+				graphics.Raw.WaitIdle();
+				let written = scope Image();
+				mScreenshot.Complete(graphics.Raw, written).IgnoreError();
+			}
+			if (mScreenshotExitPending)
+				host.RequestExit(0);
+		}
+
+		mRunSeconds += deltaTime;
+		if ((mExitAfterSeconds > 0.0f) && (mRunSeconds >= mExitAfterSeconds))
+			host.RequestExit(0);
+
 		// Finish the async loads FIRST, so this frame's spawns and ticks see ready
 		// resources. Only the manager this application OWNS is pumped: embedded in a larger
 		// host it borrows one, and that host pumps it, so pumping here as well would double
@@ -369,6 +422,51 @@ class DefaultApplication : IApplication, ISceneObserver
 			});
 
 		DumpProfileOnRequest(host);
+		CaptureOnRequest(host);
+	}
+
+	/// Press F11 for a timestamped PNG in the working directory.
+	private void CaptureOnRequest(IApplicationHost host)
+	{
+		let shell = host.Shell;
+		let input = (shell != null) ? shell.Input : null;
+		let keyboard = (input != null) ? input.Keyboard : null;
+
+		if ((keyboard == null) || !keyboard.IsKeyPressed(.F11))
+			return;
+
+		CaptureScreenshot(scope $"screenshot_{DateTime.Now.Ticks}.png");
+	}
+
+	/// The last thing a frame does before the host presents it: records the armed screenshot
+	/// copy off the backbuffer, which is in the RenderTarget state and is left there. The
+	/// base OnRenderWindow calls it; a subclass that overrides OnRenderWindow calls it at its
+	/// end, after its last draw into the backbuffer.
+	protected void FinishFrame(IApplicationHost host, ref FrameContext frame)
+	{
+		mRenderedFrames++;
+		if (mScreenshotOptions.Requested && !mScreenshotOptionFired
+			&& mScreenshotOptions.Due(mRenderedFrames, mRunSeconds))
+		{
+			mScreenshotOptionFired = true;
+			mScreenshot.Request(mScreenshotOptions.Path);
+			mScreenshotExitPending = mScreenshotOptions.ExitAfter;
+		}
+
+		if (!mScreenshot.Armed)
+			return;
+
+		let graphics = host.Graphics;
+		if ((graphics == null) || (graphics.Raw == null) || (frame.Encoder == null)
+			|| (frame.Window == null))
+		{
+			return; // stays armed for a frame that has a backbuffer
+		}
+
+		let recorded = mScreenshot.Record(graphics.Raw, frame.Encoder, frame.Backbuffer,
+			frame.Window.Swap.Format, frame.Width, frame.Height);
+		if (!recorded && mScreenshotExitPending)
+			host.RequestExit(1); // asked for a file that cannot be produced: the exit code says so
 	}
 
 	/// Press P for the previous frame's processor scope tree and the per pass timings.
@@ -399,7 +497,18 @@ class DefaultApplication : IApplication, ISceneObserver
 		}
 	}
 
+	/// The scenes, the overlays, then the screenshot. A subclass that draws something of its
+	/// own over the scenes overrides this and calls RenderFrame, its own drawing, then
+	/// FinishFrame, in that order, so a screenshot has the whole frame in it.
 	public virtual void OnRenderWindow(IApplicationHost host, ref FrameContext frame)
+	{
+		RenderFrame(host, ref frame);
+		FinishFrame(host, ref frame);
+	}
+
+	/// Every non headless instance's scenes and the window space overlays, into the
+	/// backbuffer, which is left in the RenderTarget state.
+	protected void RenderFrame(IApplicationHost host, ref FrameContext frame)
 	{
 		let render = host.Context.GetSubsystem<RenderSubsystem>();
 		let scenes = host.Context.GetSubsystem<SceneSubsystem>();
@@ -458,6 +567,10 @@ class DefaultApplication : IApplication, ISceneObserver
 		if (mScenes != null)
 			mScenes.UnregisterManager(mInstance.Scenes);
 		mInstance.Scenes.Clear();
+
+		let graphics = host.Graphics;
+		if ((graphics != null) && (graphics.Raw != null))
+			mScreenshot.Release(graphics.Raw);
 	}
 
 	// ==================== networking ====================

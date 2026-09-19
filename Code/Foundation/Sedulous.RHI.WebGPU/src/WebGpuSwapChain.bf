@@ -336,6 +336,10 @@ sealed class WebGpuSwapChain : ISwapChain
 		// surface needs CopyDst alongside RenderAttachment, which wgpu surfaces universally
 		// support.
 		config.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopyDst;
+		// CopySrc when the surface offers it: what a screenshot reads the presented backbuffer
+		// through. The spec does not guarantee it, so it is asked for, not assumed.
+		if (SupportsUsage(WGPUTextureUsage_CopySrc))
+			config.usage |= WGPUTextureUsage_CopySrc;
 		config.width = width;
 		config.height = height;
 		config.presentMode =
@@ -405,6 +409,19 @@ sealed class WebGpuSwapChain : ISwapChain
 		mWidth = width;
 		mHeight = height;
 		return .Ok;
+	}
+
+	/// Whether the surface's capabilities include `usage`, false when the query fails.
+	private bool SupportsUsage(WGPUTextureUsage usage)
+	{
+		WGPUSurfaceCapabilities capabilities = .();
+		if (wgpuSurfaceGetCapabilities(mSurface.Handle, mAdapter, &capabilities)
+			!= .WGPUStatus_Success)
+			return false;
+
+		let supported = (capabilities.usages & usage) != 0;
+		wgpuSurfaceCapabilitiesFreeMembers(capabilities);
+		return supported;
 	}
 
 	/// The requested mode when the surface offers it, else the closest match: Immediate and

@@ -208,10 +208,13 @@ class AudioPlaygroundApp : DefaultApplication
 			}
 		}
 
-		base.OnRenderWindow(host, ref frame);
+		RenderFrame(host, ref frame);
 
 		if (mOverlay != null)
 			mOverlay.Render(ref frame);
+
+		// After the overlay, so a screenshot has it.
+		FinishFrame(host, ref frame);
 	}
 
 	/// A small deterministic generator, so a run is repeatable and nothing drags in a library

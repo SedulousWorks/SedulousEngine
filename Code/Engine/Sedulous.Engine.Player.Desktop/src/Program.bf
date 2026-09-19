@@ -3,6 +3,7 @@ using System.IO;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
+using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine.Player;
 using Sedulous.Engine.Project;
 using Sedulous.Graphics;
@@ -75,6 +76,9 @@ class Program
 		defer delete graphics;
 
 		let app = scope PlayerApplication(options);
+		// --screenshot <png> [--screenshot-frame N | --screenshot-after S] [--screenshot-exit]:
+		// a capture with no hand on F11, which is how a run proves what it drew.
+		app.SetScreenshotOptions(ScreenshotOptions.FromArguments(args));
 		return DesktopRunner.RunApplication(app, shell, graphics);
 	}
 

@@ -145,10 +145,13 @@ class PhysicsPlaygroundApp : DefaultApplication
 			}
 		}
 
-		base.OnRenderWindow(host, ref frame);
+		RenderFrame(host, ref frame);
 
 		if (mOverlay != null)
 			mOverlay.Render(ref frame);
+
+		// After the overlay, so a screenshot has it.
+		FinishFrame(host, ref frame);
 	}
 
 	// ---- the world ----
