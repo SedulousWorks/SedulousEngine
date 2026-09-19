@@ -85,6 +85,24 @@ class CookDriver
 		mHostRecords = hostRecords;
 	}
 
+	/// The reusable per target cook step: cooks `sourceDb` for `target` into `targetCookedDb`,
+	/// carrying platform invariant products forward from the already cooked host database,
+	/// gated by the host's records, instead of cooking them again. `targetCache` is the
+	/// target's own cook records mount. The cooker's --target and the web export both drive
+	/// this; `force` re-cooks everything.
+	public static void CookForTarget(ContentDatabase sourceDb, ContentDatabase targetCookedDb,
+		ContentDatabase hostCookedDb, CookDb hostRecords, BuilderRegistry builders, IFileSystem sources,
+		IFileSystem targetCache, CookTarget target, CookStats outStats, JobSystem jobs = null,
+		bool force = false, CookProgress progress = null)
+	{
+		let driver = scope CookDriver(sourceDb, targetCookedDb, builders, sources, targetCache, jobs);
+		driver.Target = target;
+		driver.SetCopyForwardSource(hostCookedDb, hostRecords);
+		let plan = scope CookPlan();
+		driver.Plan(plan, force);
+		driver.Execute(plan, outStats, progress);
+	}
+
 	// ==================== planning ====================
 
 	/// The dirty set for the whole project, plus the orphans.

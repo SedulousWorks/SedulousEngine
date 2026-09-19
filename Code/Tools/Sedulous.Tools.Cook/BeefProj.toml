@@ -7,3 +7,10 @@ StartupObject = "Sedulous.Tools.Cook.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Pipeline.Cook" = "*"
+"Sedulous.Pipeline.Registration" = "*"
+"Sedulous.Editor.Core" = "*"

@@ -1,0 +1,19 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Tools.Cook.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Tools.Cook.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Engine.Project" = "*"
+"Sedulous.Editor.Core" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Pipeline.Cook" = "*"
+"Sedulous.Pipeline.Importer" = "*"
+"Sedulous.Pipeline.Registration" = "*"
+"Sedulous.Script.Resource" = "*"
