@@ -63,7 +63,46 @@ class ScriptRunHost
 		mLanguage.Set(language);
 		if (Configure != null)
 			Configure(runtime);
+		EnsureDebugger(); // a debugger requested before the runtime existed attaches now
 		return runtime;
+	}
+
+	// ---- debugging ----
+
+	/// OWNED: the run's step debugger, made on request.
+	private IScriptDebugger mDebugger = null ~ delete _;
+	/// A request that arrived before the runtime existed: applied when it does.
+	private delegate void(IScriptDebugger debugger) mDebuggerConfigurator = null ~ delete _;
+
+	public IScriptDebugger Debugger => mDebugger;
+
+	/// A call the debugger suspended is being held, which the host's ticks and handlers
+	/// hold still for: starting a new update each frame would hit the breakpoint again
+	/// every frame and orphan the held call.
+	public bool IsDebugPaused => (mRuntime != null) && mRuntime.IsDebugPaused;
+
+	/// Attaches the debugger, making it when the runtime exists and otherwise as soon as it
+	/// does; `configurator` applies the breakpoints and takes the pointer. TAKES OWNERSHIP
+	/// of the delegate. A backend without a debugger never calls it.
+	public void RequestDebugger(delegate void(IScriptDebugger debugger) configurator)
+	{
+		delete mDebuggerConfigurator;
+		mDebuggerConfigurator = configurator;
+		EnsureDebugger();
+	}
+
+	private void EnsureDebugger()
+	{
+		if ((mRuntime == null) || (mDebuggerConfigurator == null))
+			return;
+		if (mDebugger == null)
+			mDebugger = mRuntime.CreateDebugger();
+		if (mDebugger == null)
+			return;
+		let configurator = mDebuggerConfigurator;
+		mDebuggerConfigurator = null;
+		configurator(mDebugger);
+		delete configurator;
 	}
 
 	/// Advances the run's coroutines by gameplay time. Once per frame, by the host's OWNER,
@@ -72,7 +111,7 @@ class ScriptRunHost
 	/// to move.
 	public void Advance(float deltaTime)
 	{
-		if (mRuntime != null)
+		if ((mRuntime != null) && !IsDebugPaused)
 			mRuntime.AdvanceCoroutines(deltaTime);
 	}
 
@@ -151,6 +190,8 @@ class ScriptRunHost
 	/// must have been released first.
 	public void Teardown()
 	{
+		// The debugger before the runtime: it releases what it holds through it.
+		DeleteAndNullify!(mDebugger);
 		DeleteAndNullify!(mRuntime);
 		mLanguage.Clear();
 		mLoaded.Clear();

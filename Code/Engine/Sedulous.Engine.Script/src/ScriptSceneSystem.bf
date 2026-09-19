@@ -269,13 +269,20 @@ class ScriptSceneSystem : SceneSystem
 	{
 		if ((phase != .Update) || (mScene == null) || (mHost == null))
 			return;
+		// Debug paused: a held call is mid update. Script time stands still with the sim.
+		if (mHost.IsDebugPaused)
+			return;
 
 		mDeltaTime = deltaTime;
 		mElapsed += deltaTime;
 		using (ProfileScope("Script.Tick"))
 		{
 			TickLevel(deltaTime);
+			if (mHost.IsDebugPaused)
+				return;
 			TickBehaviors(deltaTime);
+			if (mHost.IsDebugPaused)
+				return;
 			// The top level: no script call is active, so the deferred work is safe here.
 			DrainMessages();
 		}
@@ -283,7 +290,7 @@ class ScriptSceneSystem : SceneSystem
 
 	public override void OnFixedUpdate(float fixedDeltaTime)
 	{
-		if ((mScene == null) || (mHost == null) || (mLevel == null) || mLevelFaulted || !mSettings.Enabled)
+		if ((mScene == null) || (mHost == null) || (mLevel == null) || mLevelFaulted || !mSettings.Enabled || mHost.IsDebugPaused)
 			return;
 		var dt = ScriptValue[1](.FromFloat(fixedDeltaTime));
 		InvokeLevel(cOnFixedUpdate, dt);
@@ -311,6 +318,10 @@ class ScriptSceneSystem : SceneSystem
 				if ((component == null) || (i >= component.Behaviors.Count))
 					break;
 				TickBehavior(component.Behaviors[i], entity, deltaTime);
+				// A breakpoint in this one holds the frame's tick here: the rest wait for
+				// the continue, as they would behind a real pause.
+				if (mHost.IsDebugPaused)
+					return;
 			}
 		}
 	}
@@ -447,6 +458,10 @@ class ScriptSceneSystem : SceneSystem
 		}
 		if (ok)
 			return true;
+		// A debugger suspension unwinds to here as a false too: paused is not a fault, and
+		// the debugger completes the held call on its continue.
+		if (mHost.IsDebugPaused)
+			return true;
 
 		behavior.Faulted = true;
 		GlobalLog(.Error, scope $"Script: '{mScene.GetEntityName(entity)}': behaviour '{scriptClass.ClassName}' faulted in {handler}; disabled");
@@ -527,6 +542,9 @@ class ScriptSceneSystem : SceneSystem
 		int delivered = 0;
 		while (!mMessages.IsEmpty && (delivered < cMaxMessagesPerDrain))
 		{
+			// A breakpoint in a handler holds the rest of the queue for the continue.
+			if (mHost.IsDebugPaused)
+				return;
 			let pending = mMessages.PopFront();
 			delivered++;
 			DeliverMessage(pending);
@@ -600,6 +618,10 @@ class ScriptSceneSystem : SceneSystem
 	/// snapshotted first, since a handler may spawn or destroy.
 	private void BroadcastEvent(StringView handler, Variant payload)
 	{
+		// The bus drains from the scene tick, which a debug pause holds; an external
+		// publish arriving meanwhile is dropped rather than dispatched into a held run.
+		if ((mHost == null) || mHost.IsDebugPaused)
+			return;
 		var value = ScriptPayloads.ValueOf(payload, mScene);
 		var args = ScriptValue[1](value);
 		Span<ScriptValue> span = value.IsNil ? default : .(&args[0], 1);
@@ -623,6 +645,8 @@ class ScriptSceneSystem : SceneSystem
 				if ((behavior.Instance == null) || !behavior.Enabled || behavior.Faulted || !behavior.Active)
 					continue;
 				Invoke(behavior, entity, handler, span);
+				if (mHost.IsDebugPaused)
+					return;
 			}
 		}
 	}
@@ -686,6 +710,8 @@ class ScriptSceneSystem : SceneSystem
 		var result = ScriptValue.Nil;
 		if (mHost.Runtime.Invoke(mLevel, handler, args, ref result))
 			return true;
+		if (mHost.IsDebugPaused)
+			return true; // suspended at a breakpoint, not a fault
 		mLevelFaulted = true;
 		GlobalLog(.Error, scope $"Script: scene '{mScene.Name}': the Level faulted in {handler}; disabled");
 		mHost.ReportProblems();

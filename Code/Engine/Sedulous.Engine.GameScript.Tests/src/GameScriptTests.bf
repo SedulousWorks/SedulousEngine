@@ -231,4 +231,45 @@ static class GameScriptTests
 		Test.Assert(b.PropBool("ready"), "b's Run is b's");
 		Test.Assert(a.Instance.RunHost.Runtime !== b.Instance.RunHost.Runtime, "one gameplay context per run");
 	}
+
+	[Test]
+	public static void ABreakpointInTheOrchestratorHoldsTheRunsScriptClock()
+	{
+		let run = scope GameRun("scratch_game_debug");
+		let game = run.Class("Game", """
+			class Game
+			{
+				int updates = 0;
+				int after = 0;
+				int score = 0;
+				void update(float dt)
+				{
+					updates++;
+					after++;
+				}
+				void onScore(int points) { score += points; }
+			}
+			""");
+		Test.Assert(run.Instance.StartScript(game));
+		IScriptDebugger debugger = null;
+		run.Instance.RequestDebugger(new [&] (d) => { d.SetBreakpoint("Game.as", 9); debugger = d; });
+		Test.Assert(debugger != null);
+
+		run.Step();
+		Test.Assert(run.Instance.IsDebugPaused, "held inside update");
+		Test.Assert((run.PropInt("updates") == 1) && (run.PropInt("after") == 0));
+		Test.Assert(run.Instance.ScriptRunning, "paused is not faulted");
+
+		// Held: no new update, and the bus waits.
+		run.Instance.Emit("Score", 4);
+		run.Step(3);
+		Test.Assert((run.PropInt("updates") == 1) && (run.PropInt("score") == 0));
+
+		debugger.Continue();
+		Test.Assert(!run.Instance.IsDebugPaused && (run.PropInt("after") == 1));
+		debugger.ClearBreakpoints();
+		run.Step();
+		Test.Assert(run.PropInt("updates") == 2);
+		Test.Assert(run.PropInt("score") == 4, "the event queued through the pause was delivered after it");
+	}
 }

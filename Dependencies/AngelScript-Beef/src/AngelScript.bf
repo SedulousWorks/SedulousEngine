@@ -125,6 +125,21 @@ static class AS
 	[CLink] public static extern int32 asc_set_active_exception(char8* message);
 	[CLink] public static extern Context* asc_get_active_context();
 	[CLink] public static extern int32 asc_context_suspend(Context* ctx);
+
+	// ---- debugging ----
+	public typealias LineFn = function void(Context* ctx, void* user);
+	[CLink] public static extern int32 asc_context_set_line_callback(Context* ctx, LineFn fn, void* user);
+	[CLink] public static extern void asc_context_clear_line_callback(Context* ctx);
+	[CLink] public static extern uint32 asc_context_get_callstack_size(Context* ctx);
+	[CLink] public static extern Function* asc_context_get_function(Context* ctx, uint32 level);
+	[CLink] public static extern int32 asc_context_get_line_number(Context* ctx, uint32 level, int32* column, char8** section);
+	[CLink] public static extern int32 asc_context_get_var_count(Context* ctx, uint32 level);
+	[CLink] public static extern int32 asc_context_get_var(Context* ctx, uint32 index, uint32 level, char8** name, int32* typeId);
+	[CLink] public static extern char8* asc_context_get_var_declaration(Context* ctx, uint32 index, uint32 level);
+	[CLink] public static extern void* asc_context_get_address_of_var(Context* ctx, uint32 index, uint32 level);
+	[CLink] public static extern int32 asc_context_is_var_in_scope(Context* ctx, uint32 index, uint32 level);
+	[CLink] public static extern int32 asc_context_get_this_type_id(Context* ctx, uint32 level);
+	[CLink] public static extern void* asc_context_get_this_pointer(Context* ctx, uint32 level);
 	[CLink] public static extern void* asc_context_get_user_data(Context* ctx);
 	[CLink] public static extern void asc_context_set_user_data(Context* ctx, void* data);
 	[CLink] public static extern void asc_function_add_ref(Function* fn);

@@ -40,6 +40,11 @@ class ScriptSubsystem : Subsystem, ISceneObserver
 			};
 	}
 
+	/// A debugger on the default host: the editor's scenes. A game instance's run is
+	/// debugged through its own host.
+	public void RequestDebugger(delegate void(IScriptDebugger debugger) configurator) => mHost.RequestDebugger(configurator);
+	public bool IsDebugPaused => mHost.IsDebugPaused;
+
 	/// The default host's coroutines move with the context's time. An instance's host is
 	/// advanced by the instance, with its own gameplay time.
 	public override void Update(float deltaTime)

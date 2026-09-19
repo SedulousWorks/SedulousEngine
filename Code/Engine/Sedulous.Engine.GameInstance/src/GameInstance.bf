@@ -167,7 +167,13 @@ class GameInstance
 
 	/// Delivers this frame's queued events. Cascade bounded like a scene's, and safe with
 	/// nothing subscribed.
-	public void DrainRunEvents() => mRunEvents.Drain();
+	/// Held while debug paused, so what was published during the pause is delivered after
+	/// it rather than into a held run or dropped.
+	public void DrainRunEvents()
+	{
+		if (!mRunHost.IsDebugPaused)
+			mRunEvents.Drain();
+	}
 
 	// ==================== Scenes ====================
 
@@ -496,6 +502,12 @@ class GameInstance
 	/// Whether a game script is running: instantiated and not faulted.
 	public bool ScriptRunning => mGame != null;
 
+	/// A step debugger over this run: its behaviours and its game script. The configurator
+	/// applies the breakpoints and takes the pointer; TAKES OWNERSHIP of the delegate.
+	public void RequestDebugger(delegate void(IScriptDebugger debugger) configurator) => mRunHost.RequestDebugger(configurator);
+	public IScriptDebugger Debugger => mRunHost.Debugger;
+	public bool IsDebugPaused => mRunHost.IsDebugPaused;
+
 	/// Compiles and launches the game script: the class's constructor, then `launch()` when
 	/// it has one; `update(dt)` each tick and `exit()` at the stop, all optional, its
 	/// `on<Event>` handlers subscribed to the run bus. False when the class did not load or
@@ -542,6 +554,11 @@ class GameInstance
 	/// before the run bus drains. A faulting update stops THIS run's script, not the run.
 	public void TickScript(float hostDeltaTime, float contextTimeScale)
 	{
+		// Debug paused: the debugger holds a suspended call. A new update each frame would
+		// hit the breakpoint again per frame and orphan the held call; script time stands
+		// still, like the scene sim.
+		if (mRunHost.IsDebugPaused)
+			return;
 		let sceneScale = (mScene != null) ? mScene.TimeScale : 1.0f;
 		let time = FrameTime(hostDeltaTime, contextTimeScale, mSceneManager.TimeScale, sceneScale);
 		let dt = time.SceneDelta;
@@ -554,10 +571,10 @@ class GameInstance
 	}
 
 	/// A run bus event into the orchestrator's `on<Event>(payload)`. At drain time, no
-	/// script call active, so it dispatches directly.
+	/// script call active, so it dispatches directly; held while debug paused.
 	private void DispatchGameEvent(StringView handler, Variant payload)
 	{
-		if (mGame == null)
+		if ((mGame == null) || mRunHost.IsDebugPaused)
 			return;
 		var value = ScriptPayloads.ValueOf(payload, mScene);
 		var args = ScriptValue[1](value);
@@ -574,6 +591,8 @@ class GameInstance
 		var result = ScriptValue.Nil;
 		if (runtime.Invoke(mGame, handler, args, ref result))
 			return;
+		if (mRunHost.IsDebugPaused)
+			return; // suspended at a breakpoint, not a fault; the debugger completes it
 		GlobalLog(.Error, scope $"Run: the game script faulted in {handler}; stopped");
 		mRunHost.ReportProblems();
 		let faulted = mGame;

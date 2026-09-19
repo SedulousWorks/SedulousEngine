@@ -106,6 +106,20 @@ abstract class ScriptRuntime
 	// between steps. The host resumes the due ones ONCE per simulated frame at the tick's
 	// top level, where no script call is active, and cancels an object's when it goes.
 
+	// ---- debugging ----
+
+	/// Whether this backend debugs: CreateDebugger answers one.
+	public virtual bool HasDebugger => false;
+
+	/// The runtime's step debugger, made on request and owned by the caller; null for a
+	/// backend without one. One at a time: it arms every call the runtime makes while it
+	/// lives, and a call it suspended reports as paused, not failed, through IsDebugPaused.
+	public virtual IScriptDebugger CreateDebugger() => null;
+
+	/// A call the debugger suspended is being held: what a caller checks when a call
+	/// answered false before treating it as a fault, and what a host gates its ticks on.
+	public virtual bool IsDebugPaused => false;
+
 	public virtual void AdvanceCoroutines(double deltaSeconds) {}
 	public virtual void CancelCoroutinesFor(ScriptObject object) {}
 	public virtual int CoroutineCount => 0;

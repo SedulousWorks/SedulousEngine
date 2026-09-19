@@ -136,8 +136,13 @@ class AngelScriptRuntime : ScriptRuntime
 		AS.asc_engine_register_object_type(mEngine, "Color", sizeof(Color), pod | AS.asOBJ_APP_CLASS_ALLFLOATS);
 	}
 
+	/// BORROWED: the debugger in force, which self registers and detaches.
+	private AngelScriptDebugger mDebugger = null;
+
 	public ~this()
 	{
+		if (mDebugger != null)
+			mDebugger.RuntimeGone();
 		for (let co in mCoroutines)
 		{
 			AS.asc_context_abort(co.Context);
@@ -1143,7 +1148,8 @@ class AngelScriptRuntime : ScriptRuntime
 	private bool Execute(AS.Function* fn, void* self, Span<ScriptValue> args, ref ScriptValue result, StringView what)
 	{
 		let ctx = AcquireContext();
-		defer ReleaseContext(ctx);
+		bool held = false;
+		defer { if (!held) ReleaseContext(ctx); }
 		if (AS.asc_context_prepare(ctx, fn) < 0)
 		{
 			Problem(scope $"{what}: could not prepare the call");
@@ -1162,14 +1168,20 @@ class AngelScriptRuntime : ScriptRuntime
 			SetContextArg(ctx, (uint32)i, typeId, flags, args[i], copies, strings);
 		}
 
+		// The debugger, when one is attached, may suspend the call at a line: it then owns
+		// the context for inspection and resumption, and the call reports as paused.
+		if (mDebugger != null)
+			mDebugger.Arm(ctx);
 		let state = AS.asc_context_execute(ctx);
-		for (let p in copies)
-			Internal.Free(p);
-		for (let p in strings)
+		if ((state == AS.asEXECUTION_SUSPENDED) && (mDebugger != null)
+			&& mDebugger.Adopt(ctx, fn, what, copies, strings))
 		{
-			AS.asc_string_destruct(p);
-			Internal.Free(p);
+			held = true;
+			return false;
 		}
+		if (mDebugger != null)
+			AS.asc_context_clear_line_callback(ctx);
+		FreeArgCopies(copies, strings);
 		if (state != AS.asEXECUTION_FINISHED)
 		{
 			ReportExecution(ctx, state, what);
@@ -1180,6 +1192,72 @@ class AngelScriptRuntime : ScriptRuntime
 		let returnType = AS.asc_function_get_return_type_id(fn, &returnFlags);
 		result = ReadContextReturn(ctx, returnType);
 		return true;
+	}
+
+	private void FreeArgCopies(List<void*> copies, List<void*> strings)
+	{
+		for (let p in copies)
+			Internal.Free(p);
+		for (let p in strings)
+		{
+			AS.asc_string_destruct(p);
+			Internal.Free(p);
+		}
+		copies.Clear();
+		strings.Clear();
+	}
+
+	// ---- debugging ----
+
+	public override bool HasDebugger => true;
+	public override IScriptDebugger CreateDebugger() => (mDebugger != null) ? null : new AngelScriptDebugger(this);
+	public override bool IsDebugPaused => (mDebugger != null) && mDebugger.IsPaused;
+
+	private void AttachDebugger(AngelScriptDebugger debugger) => mDebugger = debugger;
+	private void DetachDebugger(AngelScriptDebugger debugger)
+	{
+		if (mDebugger === debugger)
+			mDebugger = null;
+	}
+
+	/// The surface type behind an Object or Struct value, null for anything else.
+	private ScriptTypeInfo TypeOfValue(ScriptValue value)
+	{
+		if (value.Kind == .Struct)
+			return (value.StructType != null) ? mSurface.Find(value.StructType.GetFullName(.. scope .())) : null;
+		if (value.Kind != .Object)
+			return null;
+		var type = value.AsObject.GetType();
+		while (type != null)
+		{
+			if (let found = mSurface.Find(type.GetFullName(.. scope .())))
+				return found;
+			type = type.BaseType;
+		}
+		return null;
+	}
+
+	/// A value's display text, for a debugger or a log.
+	public static void ValueText(ScriptValue value, String outText)
+	{
+		switch (value.Kind)
+		{
+		case .Nil: outText.Append("null");
+		case .Bool: outText.Append(value.AsBool ? "true" : "false");
+		case .Int: outText.AppendF("{}", value.AsInt);
+		case .Float: outText.AppendF("{}", value.AsFloat);
+		case .String: outText.AppendF("\"{}\"", value.AsString);
+		case .Guid: value.AsGuid.ToString(outText);
+		case .Entity: outText.AppendF("entity {}", value.AsEntity.Index);
+		case .Float2: outText.AppendF("({}, {})", value.AsFloat2.X, value.AsFloat2.Y);
+		case .Float3: outText.AppendF("({}, {}, {})", value.AsFloat3.X, value.AsFloat3.Y, value.AsFloat3.Z);
+		case .Float4: outText.AppendF("({}, {}, {}, {})", value.AsFloat4.X, value.AsFloat4.Y, value.AsFloat4.Z, value.AsFloat4.W);
+		case .Quaternion: outText.AppendF("({}, {}, {}, {})", value.AsQuaternion.X, value.AsQuaternion.Y, value.AsQuaternion.Z, value.AsQuaternion.W);
+		case .Color: outText.AppendF("({}, {}, {}, {})", value.AsColor.R, value.AsColor.G, value.AsColor.B, value.AsColor.A);
+		case .Object: outText.Append((value.AsObject != null) ? value.AsObject.GetType().GetName(.. scope .()) : "null");
+		case .Struct: outText.Append((value.StructType != null) ? value.StructType.GetName(.. scope .()) : "struct");
+		case .List: outText.AppendF("list[{}]", (value.AsList != null) ? value.AsList.Count : 0);
+		}
 	}
 
 	private void ReportExecution(AS.Context* ctx, int32 state, StringView what)

@@ -147,6 +147,24 @@ asc_context*  asc_get_active_context(void);
 /* Asks the running context to suspend at the next opportunity; Execute then returns
  * asEXECUTION_SUSPENDED and a later Execute resumes it. */
 int           asc_context_suspend(asc_context* ctx);
+
+/* ---- debugging: a line callback, and the call stack and variables of a suspended context ---- */
+typedef void (*asc_line_fn)(asc_context* ctx, void* user);
+/* Called before every line the context executes; the callback may suspend the context. */
+int           asc_context_set_line_callback(asc_context* ctx, asc_line_fn fn, void* user);
+void          asc_context_clear_line_callback(asc_context* ctx);
+unsigned      asc_context_get_callstack_size(asc_context* ctx);
+/* Level 0 is the innermost frame. Section is the script section name the line is in. */
+asc_function* asc_context_get_function(asc_context* ctx, unsigned level);
+int           asc_context_get_line_number(asc_context* ctx, unsigned level, int* column, const char** section);
+int           asc_context_get_var_count(asc_context* ctx, unsigned level);
+int           asc_context_get_var(asc_context* ctx, unsigned index, unsigned level, const char** name, int* typeId);
+const char*   asc_context_get_var_declaration(asc_context* ctx, unsigned index, unsigned level);
+/* Null for a variable not yet initialised. */
+void*         asc_context_get_address_of_var(asc_context* ctx, unsigned index, unsigned level);
+int           asc_context_is_var_in_scope(asc_context* ctx, unsigned index, unsigned level);
+int           asc_context_get_this_type_id(asc_context* ctx, unsigned level);
+void*         asc_context_get_this_pointer(asc_context* ctx, unsigned level);
 void*         asc_context_get_user_data(asc_context* ctx);
 void          asc_context_set_user_data(asc_context* ctx, void* data);
 

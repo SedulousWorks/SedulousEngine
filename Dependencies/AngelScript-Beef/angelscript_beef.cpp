@@ -301,6 +301,65 @@ int asc_set_active_exception(const char* message)
 }
 asc_context* asc_get_active_context(void) { return reinterpret_cast<asc_context*>(asGetActiveContext()); }
 int asc_context_suspend(asc_context* ctx) { return C(ctx)->Suspend(); }
+
+/* ---- debugging ---- */
+
+namespace
+{
+	struct LineHooks
+	{
+		asc_line_fn fn;
+		void* user;
+	};
+
+	void LineCallback(asIScriptContext* ctx, void* obj)
+	{
+		LineHooks* hooks = static_cast<LineHooks*>(obj);
+		if (hooks != nullptr && hooks->fn != nullptr)
+			hooks->fn(reinterpret_cast<asc_context*>(ctx), hooks->user);
+	}
+
+	/* One hook record per context, kept in the context's user data slot 1 so the shim can free
+	   it on clear. Slot 0 stays the host's (asc_context_set_user_data). */
+	const asPWORD kLineHooksSlot = 1;
+}
+
+int asc_context_set_line_callback(asc_context* ctx, asc_line_fn fn, void* user)
+{
+	asIScriptContext* c = C(ctx);
+	LineHooks* hooks = static_cast<LineHooks*>(c->GetUserData(kLineHooksSlot));
+	if (hooks == nullptr)
+	{
+		hooks = new LineHooks();
+		c->SetUserData(hooks, kLineHooksSlot);
+	}
+	hooks->fn = fn;
+	hooks->user = user;
+	return c->SetLineCallback(asFUNCTION(LineCallback), hooks, asCALL_CDECL);
+}
+
+void asc_context_clear_line_callback(asc_context* ctx)
+{
+	asIScriptContext* c = C(ctx);
+	c->ClearLineCallback();
+	LineHooks* hooks = static_cast<LineHooks*>(c->GetUserData(kLineHooksSlot));
+	if (hooks != nullptr)
+	{
+		delete hooks;
+		c->SetUserData(nullptr, kLineHooksSlot);
+	}
+}
+
+unsigned asc_context_get_callstack_size(asc_context* ctx) { return C(ctx)->GetCallstackSize(); }
+asc_function* asc_context_get_function(asc_context* ctx, unsigned level) { return Wrap(C(ctx)->GetFunction(level)); }
+int asc_context_get_line_number(asc_context* ctx, unsigned level, int* column, const char** section) { return C(ctx)->GetLineNumber(level, column, section); }
+int asc_context_get_var_count(asc_context* ctx, unsigned level) { return C(ctx)->GetVarCount(level); }
+int asc_context_get_var(asc_context* ctx, unsigned index, unsigned level, const char** name, int* typeId) { return C(ctx)->GetVar(index, level, name, typeId); }
+const char* asc_context_get_var_declaration(asc_context* ctx, unsigned index, unsigned level) { return C(ctx)->GetVarDeclaration(index, level, false); }
+void* asc_context_get_address_of_var(asc_context* ctx, unsigned index, unsigned level) { return C(ctx)->GetAddressOfVar(index, level); }
+int asc_context_is_var_in_scope(asc_context* ctx, unsigned index, unsigned level) { return C(ctx)->IsVarInScope(index, level) ? 1 : 0; }
+int asc_context_get_this_type_id(asc_context* ctx, unsigned level) { return C(ctx)->GetThisTypeId(level); }
+void* asc_context_get_this_pointer(asc_context* ctx, unsigned level) { return C(ctx)->GetThisPointer(level); }
 void* asc_context_get_user_data(asc_context* ctx) { return C(ctx)->GetUserData(); }
 void asc_context_set_user_data(asc_context* ctx, void* data) { C(ctx)->SetUserData(data); }
 
