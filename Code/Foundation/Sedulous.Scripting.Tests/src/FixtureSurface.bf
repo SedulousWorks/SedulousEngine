@@ -11,7 +11,7 @@ static class FixtureSurface
 	[OnCompile(.TypeInit), Comptime]
 	private static void Generate()
 	{
-		ScriptSurfaceWalker.Emit(typeof(Self), "Sedulous.Scripting.Tests.Fixture",
+		ScriptSurfaceWalker.Emit(typeof(Self), scope StringView[]("Sedulous.Scripting.Tests.Fixture"),
 			scope StringView[](ScriptDomains.Runtime, ScriptDomains.Pipeline));
 	}
 }

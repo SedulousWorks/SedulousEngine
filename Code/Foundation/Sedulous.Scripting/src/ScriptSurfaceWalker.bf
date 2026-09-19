@@ -11,9 +11,11 @@ namespace Sedulous.Scripting;
 /// A composition root calls Emit from its own TypeInit, and gets a `Populate(ScriptSurface)`
 /// method emitted into itself that adds every marked type the root's dependency closure
 /// declares. The closure is the coarse cut: a runtime root never references the editor, so
-/// editor types do not exist in its compile. The domains the root allows are the fine cut,
-/// and a marked type whose [TypeDomain] is not allowed FAILS THE BUILD, because it means a
-/// layering slip put an editor type where a game could reach it.
+/// editor types are not on its surface. Type.TypeDeclarations sees the WHOLE workspace
+/// build, not only the closure, so the walk keeps a declaration only when it is in the
+/// root's project or one the root depends on. The domains the root allows are the fine
+/// cut, and a marked type whose [TypeDomain] is not allowed FAILS THE BUILD, because it
+/// means a layering slip put an editor type where a game could reach it.
 ///
 /// What counts as on the surface:
 ///  - a type marked [Scriptable]; its data members when AllPublic, else the marked ones;
@@ -35,7 +37,8 @@ static class ScriptSurfaceWalker
 	/// across builds and readable in a diff.
 	private class Entry
 	{
-		public String FullName = new .();
+		/// Namespace, then name, so a listing groups by namespace.
+		public String SortKey = new .();
 		public String Code = new .();
 	}
 
@@ -63,7 +66,7 @@ static class ScriptSurfaceWalker
 	}
 
 	[Comptime]
-	public static void Emit(Type root, StringView namespacePrefix, Span<StringView> allowedDomains)
+	public static void Emit(Type root, Span<StringView> namespacePrefixes, Span<StringView> allowedDomains)
 	{
 		let rootName = root.GetFullName(.. scope .());
 		// Nothing here is deleted: the comptime heap is discarded with the evaluation, and
@@ -76,8 +79,10 @@ static class ScriptSurfaceWalker
 		let managers = scope ManagerTable();
 		for (let decl in Type.TypeDeclarations)
 		{
+			if (!InClosure(decl))
+				continue;
 			let fullName = decl.GetFullName(.. scope .());
-			if (!fullName.StartsWith(namespacePrefix) || (fullName == rootName))
+			if (!HasPrefix(fullName, namespacePrefixes) || (fullName == rootName))
 				continue;
 			if (!fullName.EndsWith("Manager"))
 				continue;
@@ -92,18 +97,27 @@ static class ScriptSurfaceWalker
 
 		for (let decl in Type.TypeDeclarations)
 		{
+			if (!InClosure(decl))
+				continue;
 			let fullName = decl.GetFullName(.. scope .());
-			if (!fullName.StartsWith(namespacePrefix) || (fullName == rootName))
+			if (!HasPrefix(fullName, namespacePrefixes) || (fullName == rootName))
 				continue;
 
 			let name = decl.GetName(.. scope .());
 			let isStaticBlock = name == cStaticBlockName;
-			if (!isStaticBlock && !decl.HasCustomAttribute<ScriptableAttribute>())
-				continue;
-
+			// A declaration carries its own attributes; a mark on an EXTENSION of the type
+			// (`[Scriptable] extension Guid {}`) is only on the resolved type. Every
+			// declaration under the prefix is resolved to find those.
 			let type = decl.ResolvedType;
 			if (type == null)
+			{
+				if (isStaticBlock || !decl.HasCustomAttribute<ScriptableAttribute>())
+					continue;
 				Runtime.FatalError(scope $"ScriptSurface: {fullName} is marked but did not resolve");
+			}
+			if (!isStaticBlock && !decl.HasCustomAttribute<ScriptableAttribute>()
+				&& !type.HasCustomAttribute<ScriptableAttribute>())
+				continue;
 
 			let code = scope String();
 			if (isStaticBlock)
@@ -117,12 +131,15 @@ static class ScriptSurfaceWalker
 			}
 
 			let entry = new Entry();
-			entry.FullName.Set(fullName);
+			if (isStaticBlock)
+				entry.SortKey.AppendF("{}\n", fullName);
+			else
+				entry.SortKey.AppendF("{}\n{}", decl.GetNamespace(.. scope .()), name);
 			entry.Code.Set(code);
 			entries.Add(entry);
 		}
 
-		entries.Sort(scope (a, b) => a.FullName <=> b.FullName);
+		entries.Sort(scope (a, b) => a.SortKey <=> b.SortKey);
 
 		let body = scope String();
 		body.Append("/// Emitted by ScriptSurfaceWalker: every [Scriptable] type this root's closure declares.\n");
@@ -134,13 +151,16 @@ static class ScriptSurfaceWalker
 	}
 
 	// ---- one type ----
+	//
+	// Type level attributes are read off the RESOLVED type, which merges what the
+	// declaration and every extension carry.
 
 	[Comptime]
 	private static void EmitType(TypeDeclaration decl, StringView fullName, Type type,
 		ManagerTable managers, Span<StringView> allowedDomains, String code)
 	{
 		let domain = scope String(ScriptDomains.Runtime);
-		if (decl.GetCustomAttribute<TypeDomainAttribute>() case .Ok(let td))
+		if (type.GetCustomAttribute<TypeDomainAttribute>() case .Ok(let td))
 			domain.Set(td.Domain);
 		if (!Allowed(domain, allowedDomains))
 			Runtime.FatalError(scope $"ScriptSurface: {fullName} is in domain {domain}, which this surface does not allow");
@@ -153,16 +173,16 @@ static class ScriptSurfaceWalker
 		code.AppendF("\t{{\n\t\tlet t = surface.AddType({}, .{}, {});\n", Quote(fullName, .. scope .()), kind, Quote(domain, .. scope .()));
 
 		bool allPublic = false;
-		if (decl.GetCustomAttribute<ScriptableAttribute>() case .Ok(let s))
+		if (type.GetCustomAttribute<ScriptableAttribute>() case .Ok(let s))
 			allPublic = s.Members == .AllPublic;
 		if (allPublic)
 			code.Append("\t\tt.Everything();\n");
 
-		if (decl.GetCustomAttribute<DisplayNameAttribute>() case .Ok(let dn))
+		if (type.GetCustomAttribute<DisplayNameAttribute>() case .Ok(let dn))
 			code.AppendF("\t\tt.Display({});\n", Quote(dn.Name, .. scope .()));
-		if (decl.GetCustomAttribute<DescriptionAttribute>() case .Ok(let ds))
+		if (type.GetCustomAttribute<DescriptionAttribute>() case .Ok(let ds))
 			code.AppendF("\t\tt.Describe({});\n", Quote(ds.Text, .. scope .()));
-		if (decl.GetCustomAttribute<CategoryAttribute>() case .Ok(let c))
+		if (type.GetCustomAttribute<CategoryAttribute>() case .Ok(let c))
 			code.AppendF("\t\tt.Categorised({});\n", Quote(c.Name, .. scope .()));
 
 		EmitRole(decl, fullName, type, managers, code);
@@ -188,8 +208,8 @@ static class ScriptSurfaceWalker
 		{
 			// Component data: a struct the scene pools. Either attribute makes it one.
 			let typeId = scope String();
-			bool isComponent = decl.HasCustomAttribute<ComponentAttribute>();
-			if (decl.GetCustomAttribute<SerializableComponentAttribute>() case .Ok(let sc))
+			bool isComponent = type.HasCustomAttribute<ComponentAttribute>();
+			if (type.GetCustomAttribute<SerializableComponentAttribute>() case .Ok(let sc))
 			{
 				isComponent = true;
 				typeId.Set(sc.TypeId);
@@ -464,6 +484,23 @@ static class ScriptSurfaceWalker
 		}
 		return false;
 	}
+
+	[Comptime]
+	private static bool HasPrefix(StringView name, Span<StringView> prefixes)
+	{
+		for (let p in prefixes)
+		{
+			if (name.StartsWith(p))
+				return true;
+		}
+		return false;
+	}
+
+	/// Declared in the root's own project, or in one it depends on. The flags are relative
+	/// to the type whose TypeInit is running, which is the root.
+	[Comptime]
+	private static bool InClosure(TypeDeclaration decl)
+		=> decl.DeclaredInDependency || decl.[Friend]mFlags.HasFlag(.DeclaredInCurrent);
 
 	[Comptime]
 	private static StringView Bool(bool value) => value ? "true" : "false";

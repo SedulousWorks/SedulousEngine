@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core.Serialization;
+using Sedulous.Core;
 
 namespace Sedulous.Scene;
 
@@ -13,6 +14,7 @@ namespace Sedulous.Scene;
 /// A DUMB HOLDER, with no cached handle: resolve it at the point of use through
 /// Scene.FindEntity, which is the same "re-resolve, never borrow" rule component access
 /// follows.
+[Scriptable(.AllPublic)]
 struct EntityRef : IHashable
 {
 	public Guid Id = .();

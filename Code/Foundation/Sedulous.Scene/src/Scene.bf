@@ -19,6 +19,7 @@ namespace Sedulous.Scene;
 ///
 /// Destruction is recursive, children first. A destroy asked for DURING an update is
 /// deferred to the frame's cleanup, so iteration stays stable.
+[Scriptable]
 class Scene
 {
 	private String mName = new .() ~ delete _;
@@ -69,6 +70,7 @@ class Scene
 		mName.Set(name);
 	}
 
+	[Scriptable]
 	public StringView Name => mName;
 	public void SetName(StringView name) => mName.Set(name);
 
@@ -81,6 +83,7 @@ class Scene
 	// ---- entity lifecycle ----
 
 	/// A new entity with a fresh id: a root, active, at the identity transform.
+	[Scriptable]
 	public EntityHandle CreateEntity(StringView name = default)
 	{
 		// The generator is deterministic and LOADING does not advance it past the entities
@@ -100,6 +103,7 @@ class Scene
 	///
 	/// Called DURING an update, by a system destroying entities, it is deferred to the
 	/// frame's cleanup so whatever is iterating stays on solid ground.
+	[Scriptable]
 	public void DestroyEntity(EntityHandle entity)
 	{
 		if (!IsValid(entity))
@@ -113,6 +117,7 @@ class Scene
 		DestroyEntityImmediate(entity);
 	}
 
+	[Scriptable]
 	public bool IsValid(EntityHandle entity)
 	{
 		if (!entity.IsAssigned || (entity.Index >= (uint32)mEntities.Count))
@@ -121,9 +126,11 @@ class Scene
 		return slot.Alive && (slot.Generation == entity.Generation);
 	}
 
+	[Scriptable]
 	public Guid GetEntityId(EntityHandle entity)
 		=> IsValid(entity) ? mEntities[(int)entity.Index].PersistentId : Guid();
 
+	[Scriptable]
 	public EntityHandle FindEntity(Guid id)
 	{
 		if (!mIdMap.TryGetValue(id, let found))
@@ -136,9 +143,11 @@ class Scene
 		return .Invalid;
 	}
 
+	[Scriptable]
 	public StringView GetEntityName(EntityHandle entity)
 		=> IsValid(entity) ? mEntities[(int)entity.Index].Name : default;
 
+	[Scriptable]
 	public void SetEntityName(EntityHandle entity, StringView name)
 	{
 		if (!IsValid(entity))
@@ -147,6 +156,7 @@ class Scene
 		mRevision++;
 	}
 
+	[Scriptable]
 	public bool IsActive(EntityHandle entity) => IsValid(entity) && mEntities[(int)entity.Index].Active;
 
 	/// The EFFECTIVE state: this entity's own flag AND every ancestor's.
@@ -154,9 +164,11 @@ class Scene
 	/// O(1), because the bit is cached and recomputed only where it can change. ALL runtime
 	/// gating reads this and never IsActive: deactivating a parent must dark the whole
 	/// subtree without touching any child's own flag.
+	[Scriptable]
 	public bool IsEffectivelyActive(EntityHandle entity)
 		=> IsValid(entity) && mEntities[(int)entity.Index].EffectiveActive;
 
+	[Scriptable]
 	public void SetActive(EntityHandle entity, bool active)
 	{
 		if (!IsValid(entity))
@@ -189,6 +201,7 @@ class Scene
 
 	/// The first live entity with this exact name, in slot order. Names are NOT unique, so
 	/// this is a convenience: prefer FindEntity by id for identity.
+	[Scriptable]
 	public EntityHandle FindEntityByName(StringView name)
 	{
 		for (uint32 i < (uint32)mEntities.Count)
@@ -201,6 +214,7 @@ class Scene
 
 	/// The direct child of `parent` with this name, in sibling order. An invalid parent
 	/// means the scene's roots.
+	[Scriptable]
 	public EntityHandle FindChildByName(EntityHandle parent, StringView name)
 	{
 		var child = parent.IsAssigned ? GetFirstChild(parent) : mFirstRoot;
@@ -218,6 +232,7 @@ class Scene
 	/// Empty, leading, trailing and doubled separators are tolerated, because a path
 	/// assembled by concatenation grows them and refusing would be pedantry. Each segment
 	/// matches a child at that depth; a miss anywhere gives an invalid handle.
+	[Scriptable]
 	public EntityHandle FindEntityByPath(StringView path)
 	{
 		var current = EntityHandle.Invalid;
@@ -338,6 +353,7 @@ class Scene
 
 	// ---- transform hierarchy ----
 
+	[Scriptable]
 	public void SetLocalTransform(EntityHandle entity, Transform transform)
 	{
 		if (!IsValid(entity))
@@ -346,9 +362,11 @@ class Scene
 		MarkDirty(entity);
 	}
 
+	[Scriptable]
 	public Transform GetLocalTransform(EntityHandle entity)
 		=> IsValid(entity) ? mTransforms[(int)entity.Index].Local : Transform();
 
+	[Scriptable]
 	public void SetLocalPosition(EntityHandle entity, Float3 position)
 	{
 		if (!IsValid(entity))
@@ -358,6 +376,7 @@ class Scene
 	}
 
 	/// The world matrix from the most recent UpdateTransforms. Identity until the first one.
+	[Scriptable]
 	public Float4x4 GetWorldMatrix(EntityHandle entity)
 		=> IsValid(entity) ? mTransforms[(int)entity.Index].WorldMatrix : Float4x4.Identity();
 
@@ -365,6 +384,7 @@ class Scene
 		=> IsValid(entity) ? mTransforms[(int)entity.Index].PrevWorldMatrix : Float4x4.Identity();
 
 	/// The translation ROW of the world matrix, this being a row vector convention.
+	[Scriptable]
 	public Float3 GetWorldPosition(EntityHandle entity)
 	{
 		let world = GetWorldMatrix(entity);
@@ -377,6 +397,7 @@ class Scene
 	public bool IsTransformUpdatedThisFrame(EntityHandle entity)
 		=> IsValid(entity) && mTransforms[(int)entity.Index].UpdatedThisFrame;
 
+	[Scriptable]
 	public EntityHandle GetParent(EntityHandle entity)
 		=> IsValid(entity) ? mTransforms[(int)entity.Index].Parent : .Invalid;
 
@@ -384,9 +405,11 @@ class Scene
 	/// order, which is the order the hierarchy shows and serialization preserves.
 	public EntityHandle FirstRoot => mFirstRoot;
 
+	[Scriptable]
 	public EntityHandle GetFirstChild(EntityHandle entity)
 		=> IsValid(entity) ? mTransforms[(int)entity.Index].FirstChild : .Invalid;
 
+	[Scriptable]
 	public EntityHandle GetNextSibling(EntityHandle entity)
 		=> IsValid(entity) ? mTransforms[(int)entity.Index].NextSibling : .Invalid;
 
@@ -410,6 +433,7 @@ class Scene
 	/// doubles as move to end.
 	///
 	/// A reparent that would form a CYCLE is refused rather than corrupting the tree.
+	[Scriptable]
 	public void SetParent(EntityHandle child, EntityHandle parent)
 	{
 		if (!IsValid(child))
@@ -441,6 +465,7 @@ class Scene
 	/// The world matrices are composed fresh from the local chain rather than read from the
 	/// cache, so this is right even when the cached transforms are dirty. A refused move
 	/// changes nothing.
+	[Scriptable]
 	public void SetParent(EntityHandle child, EntityHandle parent, bool keepWorldTransform)
 	{
 		if (!keepWorldTransform)
@@ -460,6 +485,7 @@ class Scene
 
 	/// Sibling ORDERING: moves `child` under `sibling`'s parent, immediately before it, or
 	/// into the root list when `sibling` is a root. Same guards as SetParent, and O(1).
+	[Scriptable]
 	public void MoveBefore(EntityHandle child, EntityHandle sibling)
 	{
 		if (!IsValid(child) || !IsValid(sibling))
@@ -495,6 +521,7 @@ class Scene
 		mRevision++;
 	}
 
+	[Scriptable]
 	public void MoveBefore(EntityHandle child, EntityHandle sibling, bool keepWorldTransform)
 	{
 		if (!keepWorldTransform)

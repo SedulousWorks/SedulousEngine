@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core;
 
 namespace Sedulous.Scene;
 
@@ -8,6 +9,7 @@ namespace Sedulous.Scene;
 /// detectable in O(1) with no lookup table at all. Never keep a raw pointer to entity or
 /// component data: the pools move, handles do not. Hold a handle and resolve it through
 /// the scene.
+[Scriptable(.AllPublic)]
 struct EntityHandle : IHashable
 {
 	public const uint32 cInvalidIndex = 0xFFFFFFFF;

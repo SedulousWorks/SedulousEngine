@@ -1,0 +1,25 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.ScriptSurface"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Engine.ScriptSurface.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Scripting" = "*"
+"Sedulous.Engine.Animation" = "*"
+"Sedulous.Engine.Audio" = "*"
+"Sedulous.Engine.GameInstance" = "*"
+"Sedulous.Engine.Input" = "*"
+"Sedulous.Engine.Navigation" = "*"
+"Sedulous.Engine.Net" = "*"
+"Sedulous.Engine.Particles" = "*"
+"Sedulous.Engine.Physics" = "*"
+"Sedulous.Engine.Render" = "*"
+"Sedulous.Engine.Scene" = "*"
+"Sedulous.Engine.Spline" = "*"
+"Sedulous.Engine.Terrain" = "*"
+"Sedulous.Engine.UI" = "*"
