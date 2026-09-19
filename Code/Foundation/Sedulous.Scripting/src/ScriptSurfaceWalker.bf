@@ -6,16 +6,18 @@ using Sedulous.Scene;
 
 namespace Sedulous.Scripting;
 
-/// The comptime walk that turns the [Scriptable] marks in a build into a surface table.
+/// The comptime walk that turns the [Scriptable] marks in a build into a surface table and
+/// the thunks that make it callable.
 ///
-/// A composition root calls Emit from its own TypeInit, and gets a `Populate(ScriptSurface)`
-/// method emitted into itself that adds every marked type the root's dependency closure
-/// declares. The closure is the coarse cut: a runtime root never references the editor, so
-/// editor types are not on its surface. Type.TypeDeclarations sees the WHOLE workspace
-/// build, not only the closure, so the walk keeps a declaration only when it is in the
-/// root's project or one the root depends on. The domains the root allows are the fine
-/// cut, and a marked type whose [TypeDomain] is not allowed FAILS THE BUILD, because it
-/// means a layering slip put an editor type where a game could reach it.
+/// A composition root calls Emit from its own TypeInit, and gets emitted into itself a
+/// `Populate(ScriptSurface)` method that adds every marked type the root's dependency
+/// closure declares, plus one static thunk per member, bound into the table. The closure
+/// is the coarse cut: a runtime root never references the editor, so editor types are not
+/// on its surface. Type.TypeDeclarations sees the WHOLE workspace build, not only the
+/// closure, so the walk keeps a declaration only when it is in the root's project or one
+/// the root depends on. The domains the root allows are the fine cut, and a marked type
+/// whose [TypeDomain] is not allowed FAILS THE BUILD, because it means a layering slip put
+/// an editor type where a game could reach it.
 ///
 /// What counts as on the surface:
 ///  - a type marked [Scriptable]; its data members when AllPublic, else the marked ones;
@@ -24,6 +26,20 @@ namespace Sedulous.Scripting;
 ///  - an enum marked [Scriptable], with its cases.
 /// [Hidden] wins over AllPublic. The walk is by declaration, not by use, so a marked type
 /// nothing references is still on the surface.
+///
+/// Overloads: two callables on one type may share a script name and staticness only when
+/// their parameter kinds differ somewhere (see ScriptValueMap.KindKey), which is what a
+/// resolver at the boundary can tell apart. Two that do not FAIL THE BUILD, and [ScriptName]
+/// splits them.
+///
+/// A thunk resolves what it is called on from the type's role: a scene system through the
+/// frame's scene, a component through its manager and the entity in Self, a service through
+/// the context, a class or struct from Self itself. A member whose types cannot cross the
+/// boundary (see ScriptValueMap) is still on the table, marked Blocked with the type that
+/// stopped it, so the listing shows the gap.
+///
+/// Emitted code refers to a namespace static block's members bare, so the root's file
+/// carries a `using` for each namespace that has globals.
 ///
 /// Comptime only. The root MUST NOT be resolved by its own walk, which is a data cycle the
 /// compiler rejects; Emit skips it by name.
@@ -34,15 +50,18 @@ static class ScriptSurfaceWalker
 	private const String cStaticBlockName = "@";
 
 	/// One collected type, kept until the whole set is sorted so the emitted table is stable
-	/// across builds and readable in a diff.
+	/// across builds and readable in a diff. Nothing here is deleted: the comptime heap is
+	/// discarded with the evaluation, and deleting on it is what it rejects.
 	private class Entry
 	{
 		/// Namespace, then name, so a listing groups by namespace.
 		public String SortKey = new .();
 		public String Code = new .();
+		public String Thunks = new .();
 	}
 
-	/// Component type name to manager type name.
+	/// Component type name to manager type name. Two lists rather than a dictionary: the
+	/// comptime heap rejects the dictionary's delete.
 	private class ManagerTable
 	{
 		public List<String> Components = new .();
@@ -65,17 +84,45 @@ static class ScriptSurfaceWalker
 		}
 	}
 
+	/// What the emitter needs to know about the type whose members it is emitting.
+	private class TypeCtx
+	{
+		public String FullName = new .();
+		public String Name = new .();
+		public Type Type;
+		public ScriptTypeKind Kind;
+		public ScriptTypeRole Role = .Plain;
+		public String Manager = new .();
+		/// Thunk name prefix, unique in the root.
+		public String Prefix = new .();
+		public int Counter = 0;
+		/// The registration code and the thunk functions.
+		public String Code = new .();
+		public String Thunks = new .();
+		/// Every type on the surface, for the closure check.
+		public List<String> Known;
+		/// The callables seen so far: script name, staticness and kinds, for the overload rule.
+		public List<String> Signatures = new .();
+		/// Every violation of it in the whole walk, reported together.
+		public String Violations;
+
+		/// One of the inline value kinds, copied and written back rather than pointed at.
+		public bool IsInlineStruct = false;
+
+		public void NextThunk(String outName)
+		{
+			outName.AppendF("{}_{}", Prefix, Counter);
+			Counter++;
+		}
+	}
+
 	[Comptime]
 	public static void Emit(Type root, Span<StringView> namespacePrefixes, Span<StringView> allowedDomains)
 	{
 		let rootName = root.GetFullName(.. scope .());
-		// Nothing here is deleted: the comptime heap is discarded with the evaluation, and
-		// deleting on it is what it rejects.
 		let entries = scope List<Entry>();
 
 		// Component managers, by the component they pool, so a component's entry can name it.
-		// Two lists rather than a dictionary: the comptime heap rejects the dictionary's
-		// delete.
 		let managers = scope ManagerTable();
 		for (let decl in Type.TypeDeclarations)
 		{
@@ -95,6 +142,10 @@ static class ScriptSurfaceWalker
 				managers.Add(component, fullName);
 		}
 
+		// Every marked declaration first, so the emitter knows the whole surface before it
+		// emits any member of it: a member's class, struct or enum type must be on it.
+		let candidates = scope List<TypeDeclaration>();
+		let known = scope List<String>();
 		for (let decl in Type.TypeDeclarations)
 		{
 			if (!InClosure(decl))
@@ -119,15 +170,38 @@ static class ScriptSurfaceWalker
 				&& !type.HasCustomAttribute<ScriptableAttribute>())
 				continue;
 
-			let code = scope String();
+			candidates.Add(decl);
+			if (!isStaticBlock)
+				known.Add(new String(fullName));
+		}
+
+		let violations = scope String();
+		int typeIndex = 0;
+		for (let decl in candidates)
+		{
+			let fullName = decl.GetFullName(.. scope .());
+			let name = decl.GetName(.. scope .());
+			let isStaticBlock = name == cStaticBlockName;
+			let type = decl.ResolvedType;
+
+			let ctx = scope TypeCtx();
+			ctx.Known = known;
+			ctx.Violations = violations;
+			ctx.FullName.Set(fullName);
+			ctx.IsInlineStruct = type.IsStruct && !type.IsEnum && ScriptValueMap.IsInlineStruct(fullName);
+			ctx.Name.Set(isStaticBlock ? "" : name);
+			ctx.Type = type;
+			ctx.Prefix.AppendF("T{}", typeIndex);
+			typeIndex++;
+
 			if (isStaticBlock)
 			{
-				if (!EmitGlobal(fullName, type, code))
+				if (!EmitGlobal(ctx))
 					continue;
 			}
 			else
 			{
-				EmitType(decl, fullName, type, managers, allowedDomains, code);
+				EmitType(ctx, managers, allowedDomains);
 			}
 
 			let entry = new Entry();
@@ -135,9 +209,13 @@ static class ScriptSurfaceWalker
 				entry.SortKey.AppendF("{}\n", fullName);
 			else
 				entry.SortKey.AppendF("{}\n{}", decl.GetNamespace(.. scope .()), name);
-			entry.Code.Set(code);
+			entry.Code.Set(ctx.Code);
+			entry.Thunks.Set(ctx.Thunks);
 			entries.Add(entry);
 		}
+
+		if (!violations.IsEmpty)
+			Runtime.FatalError(scope $"ScriptSurface: callables a resolver could not tell apart; [ScriptName] one of each pair, or unmark it:\n{violations}");
 
 		entries.Sort(scope (a, b) => a.SortKey <=> b.SortKey);
 
@@ -146,7 +224,9 @@ static class ScriptSurfaceWalker
 		body.Append("public static void Populate(ScriptSurface surface)\n{\n");
 		for (let e in entries)
 			body.Append(e.Code);
-		body.AppendF("}}\n\n/// The count the walk found, a tripwire for the tests.\npublic const int TypeCount = {};\n", entries.Count);
+		body.AppendF("}}\n\n/// The count the walk found, a tripwire for the tests.\npublic const int TypeCount = {};\n\n", entries.Count);
+		for (let e in entries)
+			body.Append(e.Thunks);
 		Compiler.EmitTypeBody(root, body);
 	}
 
@@ -156,9 +236,12 @@ static class ScriptSurfaceWalker
 	// declaration and every extension carry.
 
 	[Comptime]
-	private static void EmitType(TypeDeclaration decl, StringView fullName, Type type,
-		ManagerTable managers, Span<StringView> allowedDomains, String code)
+	private static void EmitType(TypeCtx ctx, ManagerTable managers, Span<StringView> allowedDomains)
 	{
+		let type = ctx.Type;
+		let code = ctx.Code;
+		let fullName = ctx.FullName;
+
 		let domain = scope String(ScriptDomains.Runtime);
 		if (type.GetCustomAttribute<TypeDomainAttribute>() case .Ok(let td))
 			domain.Set(td.Domain);
@@ -170,6 +253,7 @@ static class ScriptSurfaceWalker
 			kind = .Enum;
 		else if (type.IsStruct)
 			kind = .Struct;
+		ctx.Kind = kind;
 		code.AppendF("\t{{\n\t\tlet t = surface.AddType({}, .{}, {});\n", Quote(fullName, .. scope .()), kind, Quote(domain, .. scope .()));
 
 		bool allPublic = false;
@@ -185,7 +269,7 @@ static class ScriptSurfaceWalker
 		if (type.GetCustomAttribute<CategoryAttribute>() case .Ok(let c))
 			code.AppendF("\t\tt.Categorised({});\n", Quote(c.Name, .. scope .()));
 
-		EmitRole(decl, fullName, type, managers, code);
+		EmitRole(ctx, managers);
 
 		if (kind == .Enum)
 		{
@@ -193,17 +277,17 @@ static class ScriptSurfaceWalker
 		}
 		else
 		{
-			EmitFields(type, allPublic, code);
-			EmitProperties(type, allPublic, code);
-			EmitMethods(type, code);
+			EmitFields(ctx, allPublic);
+			EmitProperties(ctx, allPublic);
+			EmitMethods(ctx);
 		}
 		code.Append("\t}\n");
 	}
 
 	[Comptime]
-	private static void EmitRole(TypeDeclaration decl, StringView fullName, Type type,
-		ManagerTable managers, String code)
+	private static void EmitRole(TypeCtx ctx, ManagerTable managers)
 	{
+		let type = ctx.Type;
 		if (type.IsStruct)
 		{
 			// Component data: a struct the scene pools. Either attribute makes it one.
@@ -217,10 +301,10 @@ static class ScriptSurfaceWalker
 			if (!isComponent)
 				return;
 
-			let manager = scope String();
-			if (let m = managers.Find(fullName))
-				manager.Set(m);
-			code.AppendF("\t\tt.As(.Component, {}, {});\n", Quote(manager, .. scope .()), Quote(typeId, .. scope .()));
+			if (let m = managers.Find(ctx.FullName))
+				ctx.Manager.Set(m);
+			ctx.Role = .Component;
+			ctx.Code.AppendF("\t\tt.As(.Component, {}, {});\n", Quote(ctx.Manager, .. scope .()), Quote(typeId, .. scope .()));
 			return;
 		}
 
@@ -228,14 +312,11 @@ static class ScriptSurfaceWalker
 			return;
 
 		if (!PooledComponent(type, .. scope .()).IsEmpty)
-		{
-			code.Append("\t\tt.As(.ComponentManager);\n");
-			return;
-		}
-
-		let role = BaseRole(type);
-		if (role != .Plain)
-			code.AppendF("\t\tt.As(.{});\n", role);
+			ctx.Role = .ComponentManager;
+		else
+			ctx.Role = BaseRole(type);
+		if (ctx.Role != .Plain)
+			ctx.Code.AppendF("\t\tt.As(.{});\n", ctx.Role);
 	}
 
 	/// The role a class's bases give it: a scene system, or an engine service.
@@ -274,12 +355,62 @@ static class ScriptSurfaceWalker
 		}
 	}
 
+	// ---- self ----
+
+	/// The lines that resolve `self` for an instance member, per the type's role, and
+	/// whether the self value must be written back after the call (an inline struct).
+	[Comptime]
+	private static void SelfPrologue(TypeCtx ctx, String outCode, out bool writeBack)
+	{
+		writeBack = false;
+		let t = ctx.FullName;
+		switch (ctx.Role)
+		{
+		case .SceneSystem, .ComponentManager:
+			outCode.AppendF("\tlet scene = frame.Context.Scene;\n\tlet self = (scene != null) ? scene.GetSystem<{}>() : null;\n\tif (self == null) {{ frame.Fail(\"no {} in the scene\"); return; }}\n", t, ctx.Name);
+		case .Component:
+			outCode.AppendF("\tlet scene = frame.Context.Scene;\n\tlet manager = (scene != null) ? scene.GetSystem<{}>() : null;\n\tlet self = (manager != null) ? manager.Get(frame.Self.AsEntity) : null;\n\tif (self == null) {{ frame.Fail(\"the entity has no {}\"); return; }}\n", ctx.Manager, ctx.Name);
+		case .Service:
+			outCode.AppendF("\tlet self = frame.Context.FindService(typeof({})) as {};\n\tif (self == null) {{ frame.Fail(\"no {} service\"); return; }}\n", t, t, ctx.Name);
+		case .Plain:
+			if (ctx.Kind == .Class)
+			{
+				outCode.AppendF("\tlet self = frame.Self.AsObject as {};\n\tif (self == null) {{ frame.Fail(\"self is not a {}\"); return; }}\n", t, ctx.Name);
+			}
+			else if (ctx.IsInlineStruct)
+			{
+				let read = scope String();
+				ScriptValueMap.Read(ctx.Type, "frame.Self", ctx.Known, read);
+				outCode.AppendF("\tvar self = {};\n", read);
+				writeBack = true;
+			}
+			else
+			{
+				outCode.AppendF("\tlet self = ({}*)frame.Self.AsStruct;\n\tif (self == null) {{ frame.Fail(\"self is not a {}\"); return; }}\n", t, ctx.Name);
+			}
+		}
+	}
+
+	[Comptime]
+	private static void SelfWriteBack(TypeCtx ctx, bool writeBack, String outCode)
+	{
+		if (!writeBack)
+			return;
+		let write = scope String();
+		ScriptValueMap.Write(ctx.Type, "self", "frame.Self", ctx.Known, write);
+		outCode.AppendF("\t{}\n", write);
+	}
+
+	/// Whether a component role can bind at all: it needs a manager to reach the pool.
+	[Comptime]
+	private static bool CanReachSelf(TypeCtx ctx) => (ctx.Role != .Component) || !ctx.Manager.IsEmpty;
+
 	// ---- the members ----
 
 	[Comptime]
-	private static void EmitFields(Type type, bool allPublic, String code)
+	private static void EmitFields(TypeCtx ctx, bool allPublic)
 	{
-		for (let f in type.GetFields(.Public | .Instance | .Static | .DeclaredOnly))
+		for (let f in ctx.Type.GetFields(.Public | .Instance | .Static | .DeclaredOnly))
 		{
 			if (f.IsEnumCase || !f.IsPublic)
 				continue;
@@ -289,19 +420,41 @@ static class ScriptSurfaceWalker
 				continue;
 
 			let typeName = f.FieldType.GetFullName(.. scope .());
+			let code = ctx.Code;
 			code.AppendF("\t\tt.AddField({}, {}, {})", Quote(f.Name, .. scope .()), Quote(typeName, .. scope .()), Bool(f.IsStatic));
-			if (f.IsReadOnly || f.IsConst)
+			let readOnly = f.IsReadOnly || f.IsConst;
+			if (readOnly)
 				code.Append(".ReadOnly()");
 			EmitFieldMetadata(f, code);
+			EmitAccessors(ctx, f.Name, f.FieldType, f.IsStatic, readOnly);
 			code.Append(";\n");
 		}
+	}
+
+	/// An override carries none of the base's attributes, so a [Hidden] on the base
+	/// property has to be looked for up the chain.
+	[Comptime]
+	private static bool HiddenOnABase(Type type, StringView accessorName)
+	{
+		var t = type.BaseType;
+		while (t != null)
+		{
+			for (let m in t.GetMethods(.Public | .Instance | .Static | .DeclaredOnly))
+			{
+				if ((m.Name == accessorName) && m.HasCustomAttribute<HiddenAttribute>())
+					return true;
+			}
+			t = t.BaseType;
+		}
+		return false;
 	}
 
 	/// Properties are their accessors in reflection: `get__X` and `set__X`. The getter
 	/// carries the property's attributes, and a missing setter makes it read only.
 	[Comptime]
-	private static void EmitProperties(Type type, bool allPublic, String code)
+	private static void EmitProperties(TypeCtx ctx, bool allPublic)
 	{
+		let type = ctx.Type;
 		for (let m in type.GetMethods(.Public | .Instance | .Static | .DeclaredOnly))
 		{
 			if (!m.Name.StartsWith("get__") || !m.IsPublic)
@@ -309,7 +462,7 @@ static class ScriptSurfaceWalker
 			let name = m.Name.Substring(5);
 			if (name.IsEmpty)
 				continue; // an indexer
-			if (m.HasCustomAttribute<HiddenAttribute>())
+			if (m.HasCustomAttribute<HiddenAttribute>() || HiddenOnABase(type, m.Name))
 				continue;
 			if (!allPublic && !m.HasCustomAttribute<ScriptableAttribute>())
 				continue;
@@ -327,17 +480,90 @@ static class ScriptSurfaceWalker
 			}
 
 			let typeName = m.ReturnType.GetFullName(.. scope .());
+			let code = ctx.Code;
 			code.AppendF("\t\tt.AddField({}, {}, {}, true)", Quote(name, .. scope .()), Quote(typeName, .. scope .()), Bool(m.IsStatic));
 			if (!canWrite)
 				code.Append(".ReadOnly()");
 			EmitMethodMetadataAsField(m, code);
+			EmitAccessors(ctx, name, m.ReturnType, m.IsStatic, !canWrite);
 			code.Append(";\n");
 		}
 	}
 
+	/// The get and set thunks for a field or property, bound into the registration, or the
+	/// member marked Blocked when its type cannot cross.
 	[Comptime]
-	private static void EmitMethods(Type type, String code)
+	private static void EmitAccessors(TypeCtx ctx, StringView member, Type memberType, bool isStatic, bool readOnly)
 	{
+		let code = ctx.Code;
+		if (!isStatic && !CanReachSelf(ctx))
+		{
+			code.Append(".Blocked(\"no manager for the component\")");
+			return;
+		}
+
+		let owner = scope String();
+		if (isStatic)
+			owner.Set(ctx.FullName);
+		else
+			owner.Set("self");
+		let access = scope $"{owner}.{member}";
+
+		let memberName = memberType.GetFullName(.. scope .());
+		let isRef = ScriptValueMap.IsRef(memberName);
+
+		// Get.
+		let getBody = scope String();
+		if (isRef)
+		{
+			getBody.AppendF("\tframe.Result = .FromGuid({}.Id);\n", access);
+		}
+		else
+		{
+			let write = scope String();
+			if (!ScriptValueMap.Write(memberType, access, "frame.Result", ctx.Known, write))
+			{
+				code.AppendF(".Blocked({})", Quote(write, .. scope .()));
+				return;
+			}
+			getBody.AppendF("\t{}\n", write);
+		}
+
+		let getName = ctx.NextThunk(.. scope .());
+		EmitThunk(ctx, getName, isStatic, getBody, false);
+
+		if (readOnly)
+		{
+			code.AppendF(".Bind(=> {}, null)", getName);
+			return;
+		}
+
+		// Set.
+		let setBody = scope String();
+		if (isRef)
+		{
+			let resources = (ctx.Role == .Component) ? "manager.Resources" : "null";
+			setBody.AppendF("\t{}.SetId(frame.Args[0].AsGuid);\n\t{}.Rebind({});\n", access, access, resources);
+		}
+		else
+		{
+			let read = scope String();
+			if (!ScriptValueMap.Read(memberType, "frame.Args[0]", ctx.Known, read))
+			{
+				code.AppendF(".Bind(=> {}, null).Blocked({})", getName, Quote(read, .. scope .()));
+				return;
+			}
+			setBody.AppendF("\t{} = {};\n", access, read);
+		}
+		let setName = ctx.NextThunk(.. scope .());
+		EmitThunk(ctx, setName, isStatic, setBody, true);
+		code.AppendF(".Bind(=> {}, => {})", getName, setName);
+	}
+
+	[Comptime]
+	private static void EmitMethods(TypeCtx ctx)
+	{
+		let type = ctx.Type;
 		for (let m in type.GetMethods(.Public | .Instance | .Static | .DeclaredOnly))
 		{
 			if (!m.IsPublic || m.IsDestructor || m.IsMixin)
@@ -347,6 +573,7 @@ static class ScriptSurfaceWalker
 			if (!m.HasCustomAttribute<ScriptableAttribute>())
 				continue;
 
+			let code = ctx.Code;
 			if (m.IsConstructor)
 			{
 				code.Append("\t\tt.AddConstructor()");
@@ -356,42 +583,191 @@ static class ScriptSurfaceWalker
 				let ret = m.ReturnType.GetFullName(.. scope .());
 				code.AppendF("\t\tt.AddMethod({}, {}, {})", Quote(m.Name, .. scope .()), Quote(ret, .. scope .()), Bool(m.IsStatic));
 			}
-
-			for (int i = 0; i < m.ParamCount; i++)
-			{
-				var pt = m.GetParamType(i);
-				bool byRef = false;
-				if (let r = pt as RefType)
-				{
-					byRef = true;
-					pt = r.UnderlyingType;
-				}
-				let ptn = pt.GetFullName(.. scope .());
-				code.AppendF(".Param({}, {}", Quote(m.GetParamName(i), .. scope .()), Quote(ptn, .. scope .()));
-				EmitParamTail(m, i, byRef, code);
-			}
-
+			EmitParams(m, code);
 			if (m.GetCustomAttribute<ScriptNameAttribute>() case .Ok(let sn))
 				code.AppendF(".Named({})", Quote(sn.Name, .. scope .()));
 			if (m.GetCustomAttribute<DisplayNameAttribute>() case .Ok(let dn))
 				code.AppendF(".Display({})", Quote(dn.Name, .. scope .()));
 			if (m.GetCustomAttribute<DescriptionAttribute>() case .Ok(let ds))
 				code.AppendF(".Describe({})", Quote(ds.Text, .. scope .()));
+			EmitCall(ctx, m, false);
 			code.Append(";\n");
 		}
 	}
 
-	/// The by-ref flag and the default, closing the Param call.
 	[Comptime]
-	private static void EmitParamTail(MethodInfo m, int i, bool byRef, String code)
+	private static void EmitParams(MethodInfo m, String code)
 	{
-		let defaultText = m.GetParamDefault(i);
-		if (!defaultText.IsEmpty)
-			code.AppendF(", {}, {})", Bool(byRef), Quote(defaultText, .. scope .()));
-		else if (byRef)
-			code.Append(", true)");
+		for (int i = 0; i < m.ParamCount; i++)
+		{
+			var pt = m.GetParamType(i);
+			bool byRef = false;
+			if (let r = pt as RefType)
+			{
+				byRef = true;
+				pt = r.UnderlyingType;
+			}
+			let ptn = pt.GetFullName(.. scope .());
+			code.AppendF(".Param({}, {}", Quote(m.GetParamName(i), .. scope .()), Quote(ptn, .. scope .()));
+			let defaultText = m.GetParamDefault(i);
+			if (!defaultText.IsEmpty)
+				code.AppendF(", {}, {})", Bool(byRef), Quote(defaultText, .. scope .()));
+			else if (byRef)
+				code.Append(", true)");
+			else
+				code.Append(")");
+		}
+	}
+
+	/// The thunk for a method or constructor, bound into the registration, or the member
+	/// marked Blocked when a type cannot cross.
+	[Comptime]
+	private static void EmitCall(TypeCtx ctx, MethodInfo m, bool isGlobal)
+	{
+		let code = ctx.Code;
+		let isStatic = m.IsStatic || m.IsConstructor || isGlobal;
+		CheckOverload(ctx, m, isStatic);
+		if (!isStatic && !CanReachSelf(ctx))
+		{
+			code.Append(".Blocked(\"no manager for the component\")");
+			return;
+		}
+
+		let body = scope String();
+		let args = scope String();
+		let after = scope String();
+		for (int i = 0; i < m.ParamCount; i++)
+		{
+			var pt = m.GetParamType(i);
+			var refKind = RefType.RefKind.Ref;
+			bool byRef = false;
+			if (let r = pt as RefType)
+			{
+				byRef = true;
+				refKind = r.RefKind;
+				pt = r.UnderlyingType;
+			}
+			let ptn = pt.GetFullName(.. scope .());
+			let slot = scope $"frame.Args[{i}]";
+			let read = scope String();
+			if (!ScriptValueMap.Read(pt, slot, ctx.Known, read))
+			{
+				code.AppendF(".Blocked({})", Quote(read, .. scope .()));
+				return;
+			}
+
+			let defaultText = m.GetParamDefault(i);
+			if (!defaultText.IsEmpty)
+				body.AppendF("\t{} a{} = {};\n\tif (frame.Args.Length > {})\n\t\ta{} = {};\n", ptn, i, defaultText, i, i, read);
+			else
+				body.AppendF("\tvar a{} = {};\n", i, read);
+
+			if (i > 0)
+				args.Append(", ");
+			if (byRef)
+			{
+				switch (refKind)
+				{
+				case .Out: args.Append("out ");
+				case .In: args.Append("in ");
+				default: args.Append("ref ");
+				}
+				// Written back so the caller sees what the callee did to it.
+				if (refKind != .In)
+				{
+					let write = scope String();
+					if (ScriptValueMap.Write(pt, scope $"a{i}", slot, ctx.Known, write))
+						after.AppendF("\t{}\n", write);
+					else if (pt.IsStruct)
+						after.AppendF("\t*({}*){}.AsStruct = a{};\n", ptn, slot, i);
+				}
+			}
+			args.AppendF("a{}", i);
+		}
+
+		let call = scope String();
+		if (m.IsConstructor)
+		{
+			if (ctx.Kind == .Class)
+				call.AppendF("new {}({})", ctx.FullName, args);
+			else
+				call.AppendF("{}({})", ctx.FullName, args);
+		}
+		else if (isGlobal)
+		{
+			call.AppendF("{}({})", m.Name, args);
+		}
+		else if (m.IsStatic)
+		{
+			call.AppendF("{}.{}({})", ctx.FullName, m.Name, args);
+		}
 		else
-			code.Append(")");
+		{
+			call.AppendF("self.{}({})", m.Name, args);
+		}
+
+		let write = scope String();
+		let resultType = m.IsConstructor ? ctx.Type : m.ReturnType;
+		if (!ScriptValueMap.Write(resultType, call, "frame.Result", ctx.Known, write))
+		{
+			code.AppendF(".Blocked({})", Quote(write, .. scope .()));
+			return;
+		}
+		body.AppendF("\t{}\n", write);
+		body.Append(after);
+
+		let name = ctx.NextThunk(.. scope .());
+		EmitThunk(ctx, name, isStatic, body, true);
+		code.AppendF(".Bind(=> {})", name);
+	}
+
+	/// The overload rule: the script name, staticness and parameter kinds together must be
+	/// unique on the type, or a resolver could not pick.
+	[Comptime]
+	private static void CheckOverload(TypeCtx ctx, MethodInfo m, bool isStatic)
+	{
+		let signature = scope String();
+		if (m.GetCustomAttribute<ScriptNameAttribute>() case .Ok(let sn))
+			signature.Append(sn.Name);
+		else
+			signature.Append(m.Name);
+		signature.Append(isStatic ? "|static(" : "|(");
+		for (int i = 0; i < m.ParamCount; i++)
+		{
+			var pt = m.GetParamType(i);
+			if (let r = pt as RefType)
+				pt = r.UnderlyingType;
+			if (i > 0)
+				signature.Append(", ");
+			ScriptValueMap.KindKey(pt, signature);
+		}
+		signature.Append(")");
+
+		for (let seen in ctx.Signatures)
+		{
+			if (seen == signature)
+				ctx.Violations.AppendF("  {}: {}\n", ctx.FullName, signature);
+		}
+		ctx.Signatures.Add(new String(signature));
+	}
+
+	/// One static thunk function: the self prologue, the body, the self write back.
+	[Comptime]
+	private static void EmitThunk(TypeCtx ctx, StringView name, bool isStatic, StringView body, bool mutatesSelf)
+	{
+		let t = ctx.Thunks;
+		t.AppendF("static void {}(ref ScriptCallFrame frame)\n{{\n", name);
+		bool writeBack = false;
+		if (!isStatic)
+		{
+			let prologue = scope String();
+			SelfPrologue(ctx, prologue, out writeBack);
+			t.Append(prologue);
+		}
+		t.Append(body);
+		if (mutatesSelf)
+			SelfWriteBack(ctx, writeBack, t);
+		t.Append("}\n\n");
 	}
 
 	[Comptime]
@@ -446,44 +822,35 @@ static class ScriptSurfaceWalker
 	/// Emits the block's marked methods as a Global. False when it has none, so a namespace
 	/// with only unmarked helpers adds nothing.
 	[Comptime]
-	private static bool EmitGlobal(StringView ns, Type type, String code)
+	private static bool EmitGlobal(TypeCtx ctx)
 	{
+		ctx.Kind = .Global;
 		let methods = scope String();
-		let scratch = scope String();
-		for (let m in type.GetMethods(.Public | .Static | .DeclaredOnly))
+		let savedCode = ctx.Code;
+		ctx.Code = methods;
+		for (let m in ctx.Type.GetMethods(.Public | .Static | .DeclaredOnly))
 		{
 			if (!m.IsPublic || !m.HasCustomAttribute<ScriptableAttribute>())
 				continue;
 
 			let ret = m.ReturnType.GetFullName(.. scope .());
 			methods.AppendF("\t\tt.AddMethod({}, {}, true)", Quote(m.Name, .. scope .()), Quote(ret, .. scope .()));
-			for (int i = 0; i < m.ParamCount; i++)
-			{
-				var pt = m.GetParamType(i);
-				bool byRef = false;
-				if (let r = pt as RefType)
-				{
-					byRef = true;
-					pt = r.UnderlyingType;
-				}
-				scratch.Clear();
-				pt.GetFullName(scratch);
-				methods.AppendF(".Param({}, {}", Quote(m.GetParamName(i), .. scope .()), Quote(scratch, .. scope .()));
-				EmitParamTail(m, i, byRef, methods);
-			}
+			EmitParams(m, methods);
 			if (m.GetCustomAttribute<ScriptNameAttribute>() case .Ok(let sn))
 				methods.AppendF(".Named({})", Quote(sn.Name, .. scope .()));
 			if (m.GetCustomAttribute<DescriptionAttribute>() case .Ok(let ds))
 				methods.AppendF(".Describe({})", Quote(ds.Text, .. scope .()));
+			EmitCall(ctx, m, true);
 			methods.Append(";\n");
 		}
+		ctx.Code = savedCode;
 
 		if (methods.IsEmpty)
 			return false;
 
-		code.AppendF("\t{{\n\t\tlet t = surface.AddType({}, .Global, {});\n", Quote(ns, .. scope .()), Quote(ScriptDomains.Runtime, .. scope .()));
-		code.Append(methods);
-		code.Append("\t}\n");
+		ctx.Code.AppendF("\t{{\n\t\tlet t = surface.AddType({}, .Global, {});\n", Quote(ctx.FullName, .. scope .()), Quote(ScriptDomains.Runtime, .. scope .()));
+		ctx.Code.Append(methods);
+		ctx.Code.Append("\t}\n");
 		return true;
 	}
 

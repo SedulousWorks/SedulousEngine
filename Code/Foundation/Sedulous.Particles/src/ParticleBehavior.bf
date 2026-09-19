@@ -1,3 +1,5 @@
+using Sedulous.Core;
+
 namespace Sedulous.Particles;
 
 /// Runs EVERY frame, over all live particles.
@@ -6,6 +8,8 @@ namespace Sedulous.Particles;
 /// step, so a behaviour's writes to velocity always land before the position they move.
 abstract class ParticleBehavior
 {
+	/// Engine side: which pipelines run it, not a knob.
+	[Hidden]
 	public abstract BehaviorSupport Support { get; }
 
 	public abstract void DeclareStreams(ParticleStreamContainer streams);

@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core;
 
 namespace Sedulous.Net.Replication;
 
@@ -8,6 +9,7 @@ namespace Sedulous.Net.Replication;
 /// Distinct from EntityHandle, which is an index and generation and is process local, and
 /// from the persisted Guid, which is disk identity. NetworkId is the compact id peers agree
 /// on for the lifetime of a networked entity.
+[Scriptable(.AllPublic)]
 struct NetworkId : IHashable
 {
 	public uint32 Value = 0;

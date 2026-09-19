@@ -29,13 +29,13 @@ static
 	public const float Epsilon = 1.0e-6f;
 	public const float FloatMax = 3.402823466e38f;
 
+	// A script has one float and one integer, so only one Abs of each crosses; the double
+	// and int64 overloads are the same callable at the boundary.
 	[Scriptable]
 	[Inline] public static float Abs(float x) => x < 0.0f ? -x : x;
-	[Scriptable]
 	[Inline] public static double Abs(double x) => x < 0.0 ? -x : x;
 	[Scriptable]
 	[Inline] public static int32 Abs(int32 x) => x < 0 ? -x : x;
-	[Scriptable]
 	[Inline] public static int64 Abs(int64 x) => x < 0 ? -x : x;
 
 	[Scriptable]

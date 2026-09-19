@@ -19,13 +19,37 @@ class Thing
 	public bool Ready => true;
 
 	[Scriptable]
-	public void Go() {}
+	public void Go() { Goes++; }
 	[Scriptable, ScriptName("GoTo")]
-	public void Go(Vec2 at) {}
+	public void Go(Vec2 at) { LastTarget = at; }
 	[Scriptable]
-	public bool TryGet(int index, ref Vec2 outValue) => false;
+	public bool TryGet(int index, ref Vec2 outValue)
+	{
+		outValue = .(index, index);
+		return index >= 0;
+	}
 	[Scriptable]
-	public void Move(Vec2 to, float speed = 1.5f, bool teleport = false) {}
+	public void Move(Vec2 to, float speed = 1.5f, bool teleport = false)
+	{
+		LastTarget = to;
+		LastSpeed = speed;
+		LastTeleport = teleport;
+	}
+	[Scriptable]
+	public void SetMode(Mode mode) { LastMode = mode; }
+	[Scriptable]
+	public Mode GetMode() => LastMode;
+	[Scriptable]
+	public StringView Label() => "thing";
+	[Scriptable]
+	public Vec2 Bounds() => .(3, 4);
+
+	// Observed by the tests, not on the surface.
+	public Vec2 LastTarget;
+	public float LastSpeed;
+	public bool LastTeleport;
+	public Mode LastMode = .Off;
+	public int Goes;
 	[Scriptable]
 	public static Thing Make() => new Thing();
 	public void Internal() {}

@@ -27,7 +27,19 @@ class NullScriptRuntime : ScriptRuntime
 		defer { ClearAndDeleteItems(domains); }
 		mSurface.CollectDomains(domains);
 
-		outText.AppendF("script surface: {} types", mSurface.Types.Count);
+		int callable = 0, blocked = 0;
+		for (let t in mSurface.Types)
+		{
+			for (let m in t.Methods)
+			{
+				if (m.IsCallable) callable++; else blocked++;
+			}
+			for (let f in t.Fields)
+			{
+				if (f.Get != null) callable++; else blocked++;
+			}
+		}
+		outText.AppendF("script surface: {} types, {} members bound, {} blocked", mSurface.Types.Count, callable, blocked);
 		outText.Append(", domains:");
 		for (let d in domains)
 			outText.AppendF(" {}", d);
@@ -107,6 +119,10 @@ class NullScriptRuntime : ScriptRuntime
 				o.AppendF(" [{}..{} step {}]", f.RangeMin, f.RangeMax, f.RangeStep);
 			if (!f.VisibleWhen.IsEmpty)
 				o.AppendF(" when {}", f.VisibleWhen);
+			if (f.Get == null)
+				o.AppendF(" !blocked: {}", f.Unsupported);
+			else if ((f.Set == null) && !f.Unsupported.IsEmpty)
+				o.AppendF(" !set blocked: {}", f.Unsupported);
 			o.Append("\n");
 			if (!f.Description.IsEmpty)
 				o.AppendF("        // {}\n", f.Description);
@@ -134,6 +150,8 @@ class NullScriptRuntime : ScriptRuntime
 				o.AppendF(" -> {}", Short(m.ReturnTypeName, .. scope .()));
 			if (m.ScriptName != m.Name)
 				o.AppendF(" [was {}]", m.Name);
+			if (!m.IsCallable)
+				o.AppendF(" !blocked: {}", m.Unsupported);
 			o.Append("\n");
 			if (!m.Description.IsEmpty)
 				o.AppendF("        // {}\n", m.Description);

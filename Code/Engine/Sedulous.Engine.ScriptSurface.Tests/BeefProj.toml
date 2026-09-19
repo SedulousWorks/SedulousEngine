@@ -8,6 +8,7 @@ StartupObject = "Sedulous.Engine.ScriptSurface.Tests.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
+"Sedulous.Scene" = "*"
 "Sedulous.Scripting" = "*"
 "Sedulous.Scripting.Null" = "*"
 "Sedulous.Engine.ScriptSurface" = "*"

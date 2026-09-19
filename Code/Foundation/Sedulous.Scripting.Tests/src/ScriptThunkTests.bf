@@ -1,0 +1,252 @@
+using System;
+using System.Collections;
+using Sedulous.Core;
+using Sedulous.Scene;
+using Sedulous.Scripting;
+using Sedulous.Scripting.Tests.Fixture;
+
+namespace Sedulous.Scripting.Tests;
+
+/// Calling the emitted thunks through the frame: every role, every direction a value
+/// crosses, and the failures a frame reports.
+static class ScriptThunkTests
+{
+	private const String cFixture = "Sedulous.Scripting.Tests.Fixture";
+
+	private static ScriptMethodInfo Method(ScriptSurface s, StringView type, StringView name, int arity = -1)
+	{
+		let t = s.Find(type);
+		for (let m in t.Methods)
+		{
+			if ((m.ScriptName == name) && ((arity < 0) || (m.Params.Count == arity)))
+				return m;
+		}
+		return null;
+	}
+
+	private static ScriptFieldInfo Field(ScriptSurface s, StringView type, StringView name)
+	{
+		let t = s.Find(type);
+		for (let f in t.Fields)
+			if (f.Name == name)
+				return f;
+		return null;
+	}
+
+	private static bool Near(float a, float b) => Math.Abs(a - b) < 1e-4f;
+
+	[Test]
+	public static void EveryFixtureMemberIsCallable()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		for (let t in s.Types)
+		{
+			for (let m in t.Methods)
+				Test.Assert(m.IsCallable, scope $"{t.FullName}.{m.Name}: {m.Unsupported}");
+			for (let f in t.Fields)
+				Test.Assert(f.Get != null, scope $"{t.FullName}.{f.Name}: {f.Unsupported}");
+		}
+	}
+
+	[Test]
+	public static void AGlobalAndAStaticTakeArgumentsAndAnswer()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let ctx = scope ScratchCallContext();
+
+		let lerp = Method(s, cFixture, "Lerp");
+		var args = ScriptValue[3](.FromFloat(0), .FromFloat(10), .FromFloat(0.25));
+		var frame = ScriptCallFrame(ctx, args);
+		lerp.Invoke(ref frame);
+		Test.Assert(!frame.Failed);
+		Test.Assert((frame.Result.Kind == .Float) && Near((float)frame.Result.AsFloat, 2.5f));
+
+		// A struct that is not an inline kind crosses by pointer.
+		var a = Vec2(1, 2);
+		var b = Vec2(3, 4);
+		let dot = Method(s, scope $"{cFixture}.Vec2", "Dot");
+		var dotArgs = ScriptValue[2](.FromStruct(&a, typeof(Vec2)), .FromStruct(&b, typeof(Vec2)));
+		frame = ScriptCallFrame(ctx, dotArgs);
+		dot.Invoke(ref frame);
+		Test.Assert(Near((float)frame.Result.AsFloat, 11.0f));
+	}
+
+	[Test]
+	public static void AConstructorAndAStructResultLandInContextStorage()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let ctx = scope ScratchCallContext();
+
+		let ctor = Method(s, scope $"{cFixture}.Vec2", "this");
+		var args = ScriptValue[2](.FromFloat(5), .FromFloat(6));
+		var frame = ScriptCallFrame(ctx, args);
+		ctor.Invoke(ref frame);
+		Test.Assert(frame.Result.Kind == .Struct);
+		Test.Assert(frame.Result.StructType == typeof(Vec2));
+		let storage = (Vec2*)frame.Result.AsStruct;
+		let v = *storage;
+		Test.Assert(Near(v.X, 5) && Near(v.Y, 6));
+
+		// A field on that storage, read and written through Self.
+		let x = Field(s, scope $"{cFixture}.Vec2", "X");
+		frame = ScriptCallFrame(ctx, default);
+		frame.Self = .FromStruct(storage, typeof(Vec2));
+		x.Get(ref frame);
+		Test.Assert(Near((float)frame.Result.AsFloat, 5));
+		var setArgs = ScriptValue[1](.FromFloat(9));
+		frame.Args = setArgs;
+		x.Set(ref frame);
+		Test.Assert(Near(v.X, 5), "the copy taken before is untouched");
+		Test.Assert(Near((*(Vec2*)frame.Self.AsStruct).X, 9), "the storage was written");
+
+		// A read only static field has no setter.
+		let zero = Field(s, scope $"{cFixture}.Vec2", "Zero");
+		Test.Assert((zero.Get != null) && (zero.Set == null));
+	}
+
+	[Test]
+	public static void AClassIsReachedThroughSelf()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let ctx = scope ScratchCallContext();
+		let thing = scope $"{cFixture}.Thing";
+
+		// The factory hands the object over.
+		var frame = ScriptCallFrame(ctx, default);
+		Method(s, thing, "Make").Invoke(ref frame);
+		Test.Assert(frame.Result.Kind == .Object);
+		let made = frame.Result.AsObject as Thing;
+		Test.Assert(made != null);
+		defer delete made;
+
+		frame = ScriptCallFrame(ctx, default);
+		frame.Self = .FromObject(made);
+		Method(s, thing, "Go", 0).Invoke(ref frame);
+		Test.Assert(made.Goes == 1);
+
+		// A field, a writable property, a read only property.
+		var one = ScriptValue[1](.FromInt(42));
+		frame.Args = one;
+		Field(s, thing, "Count").Set(ref frame);
+		Test.Assert(made.Count == 42);
+		Field(s, thing, "Count").Get(ref frame);
+		Test.Assert(frame.Result.AsInt == 42);
+		one[0] = .FromFloat(2.5);
+		Field(s, thing, "Speed").Set(ref frame);
+		Test.Assert(Near(made.Speed, 2.5f));
+		Field(s, thing, "Ready").Get(ref frame);
+		Test.Assert(frame.Result.AsBool);
+		Test.Assert(Field(s, thing, "Ready").Set == null);
+
+		// An enum crosses as its integer, a string as a view.
+		one[0] = .FromInt((int64)Mode.Auto);
+		Method(s, thing, "SetMode").Invoke(ref frame);
+		Test.Assert(made.LastMode == .Auto);
+		Method(s, thing, "GetMode").Invoke(ref frame);
+		Test.Assert(frame.Result.AsInt == (int64)Mode.Auto);
+		Method(s, thing, "Label").Invoke(ref frame);
+		Test.Assert(frame.Result.AsString == "thing");
+
+		// A struct result from an instance method.
+		Method(s, thing, "Bounds").Invoke(ref frame);
+		Test.Assert(Near((*(Vec2*)frame.Result.AsStruct).Y, 4));
+
+		// The wrong self fails, and says so.
+		frame.Self = .FromObject(scope Object());
+		Method(s, thing, "Go", 0).Invoke(ref frame);
+		Test.Assert(frame.Failed && frame.Error.Contains("Thing"));
+		Test.Assert(frame.Result.IsNil);
+	}
+
+	[Test]
+	public static void DefaultsFillMissingArgumentsAndRefsWriteBack()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let ctx = scope ScratchCallContext();
+		let thing = scope $"{cFixture}.Thing";
+		let made = scope Thing();
+
+		// Move(to, speed = 1.5f, teleport = false), called with one argument.
+		var to = Vec2(7, 8);
+		var one = ScriptValue[1](.FromStruct(&to, typeof(Vec2)));
+		var frame = ScriptCallFrame(ctx, one);
+		frame.Self = .FromObject(made);
+		Method(s, thing, "Move").Invoke(ref frame);
+		Test.Assert(!frame.Failed);
+		Test.Assert(Near(made.LastTarget.X, 7) && Near(made.LastSpeed, 1.5f) && !made.LastTeleport);
+
+		// And with all three.
+		var three = ScriptValue[3](.FromStruct(&to, typeof(Vec2)), .FromFloat(3), .FromBool(true));
+		frame.Args = three;
+		Method(s, thing, "Move").Invoke(ref frame);
+		Test.Assert(Near(made.LastSpeed, 3) && made.LastTeleport);
+
+		// The renamed overload.
+		frame.Args = one;
+		Method(s, thing, "GoTo").Invoke(ref frame);
+		Test.Assert(Near(made.LastTarget.X, 7));
+
+		// TryGet(index, ref outValue): the callee's write reaches the caller's storage.
+		var slot = Vec2(0, 0);
+		var refArgs = ScriptValue[2](.FromInt(3), .FromStruct(&slot, typeof(Vec2)));
+		frame.Args = refArgs;
+		Method(s, thing, "TryGet").Invoke(ref frame);
+		Test.Assert(frame.Result.AsBool);
+		Test.Assert(Near(slot.X, 3) && Near(slot.Y, 3));
+	}
+
+	[Test]
+	public static void SceneRolesResolveThroughTheContextScene()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let ctx = scope ScratchCallContext();
+		let component = scope $"{cFixture}.WidgetComponent";
+		let system = scope $"{cFixture}.FixtureSystem";
+
+		// No scene: a scene bound member fails rather than crashing.
+		var frame = ScriptCallFrame(ctx, default);
+		Field(s, system, "Ticks").Get(ref frame);
+		Test.Assert(frame.Failed && frame.Error.Contains("FixtureSystem"));
+
+		let scene = scope Scene();
+		let widgets = scene.AddSystem<WidgetComponentManager>();
+		let fixtureSystem = scene.AddSystem<FixtureSystem>();
+		ctx.Scene = scene;
+
+		frame = ScriptCallFrame(ctx, default);
+		Field(s, system, "Ticks").Get(ref frame);
+		Test.Assert(!frame.Failed && (frame.Result.AsInt == 7));
+		fixtureSystem.TickCount = 8;
+		Field(s, system, "Ticks").Get(ref frame);
+		Test.Assert(frame.Result.AsInt == 8);
+
+		// A component: Self is the entity; no component is a failure, not a crash.
+		let bare = scene.CreateEntity("bare");
+		frame.Self = .FromEntity(bare);
+		Field(s, component, "Size").Get(ref frame);
+		Test.Assert(frame.Failed && frame.Error.Contains("WidgetComponent"));
+
+		let entity = scene.CreateEntity("widget");
+		widgets.Add(entity).Size = 2.0f;
+		frame = ScriptCallFrame(ctx, default);
+		frame.Self = .FromEntity(entity);
+		Field(s, component, "Size").Get(ref frame);
+		Test.Assert(!frame.Failed && Near((float)frame.Result.AsFloat, 2.0f));
+		var one = ScriptValue[1](.FromFloat(5));
+		frame.Args = one;
+		Field(s, component, "Size").Set(ref frame);
+		Test.Assert(Near(widgets.Get(entity).Size, 5.0f), "written into the pool");
+
+		// The manager's verb: no Self needed, the entity is an argument.
+		var entityArg = ScriptValue[1](.FromEntity(entity));
+		frame = ScriptCallFrame(ctx, entityArg);
+		Method(s, scope $"{cFixture}.WidgetComponentManager", "Poke").Invoke(ref frame);
+		Test.Assert(!frame.Failed);
+	}
+}

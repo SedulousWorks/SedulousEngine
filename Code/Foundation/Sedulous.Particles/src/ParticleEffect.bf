@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Core;
 
 namespace Sedulous.Particles;
 
@@ -7,6 +8,8 @@ namespace Sedulous.Particles;
 ///
 /// An effect holds the DEFINITION and, today, the running state too, since a system carries
 /// its own streams. An instance drives one effect.
+/// On the script surface as an opaque handle: a script holds one and hands it back.
+[Scriptable]
 class ParticleEffect
 {
 	public String Name = new .() ~ delete _;

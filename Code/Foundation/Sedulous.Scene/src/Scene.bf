@@ -375,6 +375,24 @@ class Scene
 		MarkDirty(entity);
 	}
 
+	[Scriptable]
+	public void SetLocalRotation(EntityHandle entity, Quaternion rotation)
+	{
+		if (!IsValid(entity))
+			return;
+		mTransforms[(int)entity.Index].Local.Rotation = rotation;
+		MarkDirty(entity);
+	}
+
+	[Scriptable]
+	public void SetLocalScale(EntityHandle entity, Float3 scale)
+	{
+		if (!IsValid(entity))
+			return;
+		mTransforms[(int)entity.Index].Local.Scale = scale;
+		MarkDirty(entity);
+	}
+
 	/// The world matrix from the most recent UpdateTransforms. Identity until the first one.
 	[Scriptable]
 	public Float4x4 GetWorldMatrix(EntityHandle entity)

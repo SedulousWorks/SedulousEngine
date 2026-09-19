@@ -1,9 +1,11 @@
 using System;
+using Sedulous.Core;
 
 namespace Sedulous.Core;
 
 /// A Position and a Direction.
 [CRepr]
+[Scriptable(.AllPublic)]
 struct Ray
 {
 	public Float3 Position;

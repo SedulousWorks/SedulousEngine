@@ -6,6 +6,7 @@ namespace Sedulous.Scripting.Tests.Fixture;
 [Scriptable]
 class FixtureSystem : SceneSystem
 {
+	public int TickCount = 7;
 	[Scriptable]
-	public int Ticks => 0;
+	public int Ticks => TickCount;
 }

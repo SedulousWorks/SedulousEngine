@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Core;
 
 namespace Sedulous.Audio;
 
@@ -10,6 +11,8 @@ namespace Sedulous.Audio;
 /// flagged to stay compressed, which suits a large sound that can afford the decode as it
 /// goes. A streamed clip holds a re-openable source instead, so the engine pages it straight
 /// out of the mount without ever holding the whole thing.
+/// On the script surface as an opaque handle: a script holds one and hands it back.
+[Scriptable]
 class AudioClip
 {
 	public uint32 Channels = 0;

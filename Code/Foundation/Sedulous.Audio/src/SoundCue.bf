@@ -10,6 +10,8 @@ namespace Sedulous.Audio;
 /// which is the last pick and the sequential cursor, and the generator. That is what makes a
 /// pick reproducible under test, and it keeps the engine clip based, a resolved pick playing
 /// through the ordinary voice path like anything else.
+/// On the script surface as an opaque handle: a script holds one and hands it back.
+[Scriptable]
 class SoundCue
 {
 	/// The most variants a cue resolves over. A wheel of this size is walked on the stack.

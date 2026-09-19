@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core;
 
 namespace Sedulous.Core;
 
@@ -8,6 +9,7 @@ namespace Sedulous.Core;
 /// every one. That sign convention is the thing to get right: inverted, culling either
 /// keeps everything or discards everything, and both look plausible in a profiler.
 [CRepr]
+[Scriptable]
 struct BoundingFrustum
 {
 	public const int32 CornerCount = 8;

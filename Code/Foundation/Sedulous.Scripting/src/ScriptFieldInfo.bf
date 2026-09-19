@@ -17,6 +17,11 @@ class ScriptFieldInfo
 	public bool IsProperty = false;
 	/// A property without a setter, or a readonly field, reads only.
 	public bool CanWrite = true;
+	/// The emitted accessors; Set is null when the member cannot be written, Get null when
+	/// the type cannot cross at all.
+	public ScriptThunk Get = null;
+	public ScriptThunk Set = null;
+	public String Unsupported = new .() ~ delete _;
 	public bool HasRange = false;
 	public float RangeMin = 0.0f;
 	public float RangeMax = 0.0f;
@@ -58,6 +63,19 @@ class ScriptFieldInfo
 	public ScriptFieldInfo Named(StringView scriptName)
 	{
 		ScriptName.Set(scriptName);
+		return this;
+	}
+
+	public ScriptFieldInfo Bind(ScriptThunk get, ScriptThunk set)
+	{
+		Get = get;
+		Set = set;
+		return this;
+	}
+
+	public ScriptFieldInfo Blocked(StringView reason)
+	{
+		Unsupported.Set(reason);
 		return this;
 	}
 

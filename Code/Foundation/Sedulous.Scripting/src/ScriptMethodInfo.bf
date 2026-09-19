@@ -17,6 +17,12 @@ class ScriptMethodInfo
 	public bool IsStatic = false;
 	public bool IsConstructor = false;
 	public List<ScriptParamInfo> Params = new .() ~ DeleteContainerAndItems!(_);
+	/// The emitted callable, null when the member could not be bound.
+	public ScriptThunk Invoke = null;
+	/// Why it could not be bound: the type the frame cannot carry. Empty when it could.
+	public String Unsupported = new .() ~ delete _;
+
+	public bool IsCallable => Invoke != null;
 
 	/// Adds a parameter. Chains, for the generated populate code.
 	public ScriptMethodInfo Param(StringView name, StringView typeName, bool byRef = false,
@@ -40,6 +46,18 @@ class ScriptMethodInfo
 	public ScriptMethodInfo Display(StringView displayName)
 	{
 		DisplayName.Set(displayName);
+		return this;
+	}
+
+	public ScriptMethodInfo Bind(ScriptThunk thunk)
+	{
+		Invoke = thunk;
+		return this;
+	}
+
+	public ScriptMethodInfo Blocked(StringView reason)
+	{
+		Unsupported.Set(reason);
 		return this;
 	}
 

@@ -190,7 +190,8 @@ static class ScriptSurfaceWalkerTests
 
 		let text = scope String();
 		vm.Describe(text);
-		Test.Assert(text.StartsWith("script surface: 8 types, domains: Runtime Pipeline"));
+		Test.Assert(text.StartsWith("script surface: 8 types, "), scope String(text.Substring(0, 80)));
+		Test.Assert(text.Contains(" 0 blocked, domains: Runtime Pipeline"));
 		Test.Assert(text.Contains("== domain Pipeline =="));
 		Test.Assert(text.Contains("struct Vec2 [all public] \"Vector 2\""));
 		Test.Assert(text.Contains("    Y: float [0..1 step 0.1]"));
