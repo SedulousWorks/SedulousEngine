@@ -1,0 +1,15 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Pipeline.Registration.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Pipeline.Registration.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Script" = "*"
+"Sedulous.Script.Pipeline" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Pipeline.Importer" = "*"
+"Sedulous.Pipeline.Registration" = "*"
