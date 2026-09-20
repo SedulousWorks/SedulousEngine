@@ -7,3 +7,7 @@ StartupObject = "Sedulous.Editor.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Pipeline.Core" = "*"
