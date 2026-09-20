@@ -45,6 +45,10 @@ class EditorAppConfig
 	public float AutoExitSeconds = 0.0f;
 	/// A smoke-test aid: Build > Rebuild All after this many seconds (0 never).
 	public float AutoRebuildSeconds = 0.0f;
+	/// A smoke-test aid: the main window's backbuffer written as a PNG to this path (empty
+	/// never), once ScreenshotAfterSeconds have run, so a run proves what it drew.
+	public String ScreenshotPath = new .() ~ delete _;
+	public float ScreenshotAfterSeconds = 0.0f;
 
 	/// From Configure: registers the engine subsystems. Owned.
 	public delegate void(IApplicationHost host) ConfigureEngine ~ delete _;

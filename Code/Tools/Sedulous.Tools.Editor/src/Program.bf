@@ -22,7 +22,8 @@ namespace Sedulous.Tools.Editor;
 /// EditorRegistration.
 ///
 /// Usage: Sedulous.Tools.Editor [projectDirectory] [--project <dir>] [--data-root <dir>]
-///   [--exit-after <s>] [--rebuild-after <s>] [--seed] [--seed-primitives] [--version]
+///   [--exit-after <s>] [--rebuild-after <s>] [--screenshot <png> [--screenshot-after <s>]]
+///   [--seed] [--seed-primitives] [--version]
 ///   With a project (positional or --project): opens it directly, scaffolding the manifest
 ///   and the content tree on first run; the single project lifecycle.
 ///   With NO project: starts on the built in PROJECT MANAGER (recent projects from the per
@@ -124,6 +125,10 @@ class Program
 				config.AutoExitSeconds = float.Parse(args[i + 1]).GetValueOrDefault();
 			else if (args[i] == "--rebuild-after")
 				config.AutoRebuildSeconds = float.Parse(args[i + 1]).GetValueOrDefault();
+			else if (args[i] == "--screenshot")
+				config.ScreenshotPath.Set(args[i + 1]);
+			else if (args[i] == "--screenshot-after")
+				config.ScreenshotAfterSeconds = float.Parse(args[i + 1]).GetValueOrDefault();
 		}
 		for (let arg in args)
 		{

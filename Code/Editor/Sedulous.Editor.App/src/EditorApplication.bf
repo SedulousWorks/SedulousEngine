@@ -51,10 +51,14 @@ class EditorApplication : IApplication
 	private ToolkitThemeExtension mToolkitTheme = new .() ~ delete _;
 	private StyleSheet mStyleSheet = null ~ { if (_ != null) _.ReleaseRef(); };
 
-	// The embedded runtime: gameplay subsystems and all scene hosting live here.
-	private Context mRuntimeContext = new .() ~ delete _;
+	// The embedded runtime: gameplay subsystems and all scene hosting live here. The app
+	// registers subsystems it OWNS (render, audio, input, UI) into the context, so the
+	// context is declared after the app and disposes first, unregistering them while they
+	// are alive; the page holders below are declared later still, so every page's
+	// preview scene leaves the context before it goes.
 	private EmbeddedApplicationHost mEmbeddedHost = null ~ delete _;
 	private DefaultApplication mEmbeddedApp = null ~ delete _;
+	private Context mRuntimeContext = new .() ~ delete _;
 	private bool mStopGameRequested = false;
 
 	// The log drain state.
@@ -90,8 +94,11 @@ class EditorApplication : IApplication
 	private UIEditorPage mGamePage = null;
 	/// The unique persistence id for "Play New Instance" tabs.
 	private uint32 mGamePageCounter = 0;
-	/// The auto-exit and auto-rebuild accumulator.
+	/// The auto-exit, auto-rebuild and screenshot accumulator.
 	private float mElapsed = 0.0f;
+	/// The --screenshot capture; the request is one shot.
+	private ScreenshotCapture mScreenshot = new .() ~ delete _;
+	private bool mScreenshotFired = false;
 	private float mTestOpenElapsed = 0.0f;
 	private uint32 mTestOpenStage = 0;
 	private bool mAutoRebuilt = false;
@@ -616,9 +623,27 @@ class EditorApplication : IApplication
 			mEmbeddedApp.OnUpdate(mEmbeddedHost, dt);
 		}
 
+		// A screenshot recorded last frame: wait for the GPU, then map and write it.
+		if (mScreenshot.Recorded)
+		{
+			let graphics = host.Graphics;
+			if ((graphics != null) && (graphics.Raw != null))
+			{
+				graphics.Raw.WaitIdle();
+				let written = scope Sedulous.Image.Image();
+				if (mScreenshot.Complete(graphics.Raw, written) case .Ok)
+					GlobalLog(.Information, "Editor: screenshot written to {}", mConfig.ScreenshotPath);
+			}
+		}
+
+		mElapsed += dt;
+		if (!mConfig.ScreenshotPath.IsEmpty && !mScreenshotFired && (mElapsed >= mConfig.ScreenshotAfterSeconds))
+		{
+			mScreenshotFired = true;
+			mScreenshot.Request(mConfig.ScreenshotPath);
+		}
 		if ((mConfig.AutoExitSeconds > 0.0f) || (mConfig.AutoRebuildSeconds > 0.0f))
 		{
-			mElapsed += dt;
 			if ((mConfig.AutoExitSeconds > 0.0f) && (mElapsed >= mConfig.AutoExitSeconds))
 				host.RequestExit();
 			if ((mConfig.AutoRebuildSeconds > 0.0f) && !mAutoRebuilt && (mElapsed >= mConfig.AutoRebuildSeconds))
@@ -786,6 +811,13 @@ class EditorApplication : IApplication
 		}
 		if (mUiHost != null)
 			mUiHost.RenderWindow(ref frame);
+		// After the last draw into the main backbuffer; stays armed for a frame that has one.
+		if (mScreenshot.Armed && frame.Valid && (frame.Window === host.MainRenderWindow)
+			&& (host.Graphics != null) && (host.Graphics.Raw != null) && (frame.Encoder != null))
+		{
+			mScreenshot.Record(host.Graphics.Raw, frame.Encoder, frame.Backbuffer,
+				frame.Window.Swap.Format, frame.Width, frame.Height);
+		}
 	}
 
 	public void OnShutdown(IApplicationHost host)
@@ -805,6 +837,8 @@ class EditorApplication : IApplication
 		EditorIcons.Shutdown();
 		if (cUseDistanceFieldFonts)
 			DistanceFieldFonts.Shutdown();
+		if ((host.Graphics != null) && (host.Graphics.Raw != null))
+			mScreenshot.Release(host.Graphics.Raw);
 	}
 
 	/// The tab titles mirror the dirty state with a " *" suffix, polled per frame; the name
