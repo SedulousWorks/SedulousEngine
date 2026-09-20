@@ -7,4 +7,11 @@ StartupObject = "Sedulous.Editor.Texture.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Image" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Texture" = "*"
+"Sedulous.Texture.Compression" = "*"
+"Sedulous.Texture.Pipeline" = "*"
+"Sedulous.Editor.Core" = "*"
 "Sedulous.Editor.Texture" = "*"
