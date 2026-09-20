@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Resource;
+using Sedulous.Script;
 
 namespace Sedulous.Script.Fixture;
 
@@ -86,6 +87,20 @@ class Thing
 		return mFollowers;
 	}
 	public List<Thing> mFollowers = new .() ~ delete _;
+
+	// ---- a callback, held by the native side ----
+
+	/// A script function to call back: OWNED, replaced by the next, null clears.
+	public ScriptDelegate Handler = null ~ delete _;
+	[Scriptable]
+	public void OnPoke(ScriptDelegate handler)
+	{
+		delete Handler;
+		Handler = handler;
+	}
+	/// Fires the held callback; false when none, dead, or faulted.
+	[Scriptable]
+	public bool FirePoke() => (Handler != null) && Handler.Invoke();
 
 	// Observed by the tests, not on the surface.
 	public Vec2 LastTarget;

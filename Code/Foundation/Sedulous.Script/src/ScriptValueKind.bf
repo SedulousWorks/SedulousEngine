@@ -28,4 +28,6 @@ enum ScriptValueKind : uint8
 	/// A List<T> of a crossable T, as a ScriptList of its elements in context storage: a
 	/// copy in either direction, so a VM renders its own array and the callee its own list.
 	case List;
+	/// A script function as a ScriptDelegate the callee takes ownership of.
+	case Delegate;
 }

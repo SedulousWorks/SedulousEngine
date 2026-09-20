@@ -42,6 +42,7 @@ static class ScriptValueMap
 		case "System.String": outKind.Append("Object"); return;
 		case "System.Guid": outKind.Append("Guid"); return;
 		case "Sedulous.Scene.EntityHandle": outKind.Append("Entity"); return;
+		case "Sedulous.Script.ScriptDelegate": outKind.Append("Delegate"); return;
 		case "Sedulous.Core.Float2", "Sedulous.Core.Float3", "Sedulous.Core.Float4",
 			"Sedulous.Core.Quaternion", "Sedulous.Core.Color":
 			outKind.Append(name.Substring("Sedulous.Core.".Length)); return;
@@ -107,6 +108,7 @@ static class ScriptValueMap
 		case "System.String": outKey.Append("Object:System.String"); return;
 		case "System.Guid": outKey.Append("Guid"); return;
 		case "Sedulous.Scene.EntityHandle": outKey.Append("Entity"); return;
+		case "Sedulous.Script.ScriptDelegate": outKey.Append("Delegate"); return;
 		case "Sedulous.Core.Float2", "Sedulous.Core.Float3", "Sedulous.Core.Float4",
 			"Sedulous.Core.Quaternion", "Sedulous.Core.Color":
 			outKey.Append(name.Substring("Sedulous.Core.".Length)); return;
@@ -162,6 +164,7 @@ static class ScriptValueMap
 		case "System.String": outCode.AppendF("(System.String){}.AsObject", value); return true;
 		case "System.Guid": outCode.AppendF("{}.AsGuid", value); return true;
 		case "Sedulous.Scene.EntityHandle": outCode.AppendF("{}.AsEntity", value); return true;
+		case "Sedulous.Script.ScriptDelegate": outCode.AppendF("{}.AsDelegate", value); return true;
 		case "Sedulous.Core.Float2": outCode.AppendF("{}.AsFloat2", value); return true;
 		case "Sedulous.Core.Float3": outCode.AppendF("{}.AsFloat3", value); return true;
 		case "Sedulous.Core.Float4": outCode.AppendF("{}.AsFloat4", value); return true;
@@ -269,6 +272,7 @@ static class ScriptValueMap
 		case "System.String": outCode.AppendF("{} = .FromObject({});", slot, expr); return true;
 		case "System.Guid": outCode.AppendF("{} = .FromGuid({});", slot, expr); return true;
 		case "Sedulous.Scene.EntityHandle": outCode.AppendF("{} = .FromEntity({}, {});", slot, expr, entityScene); return true;
+		case "Sedulous.Script.ScriptDelegate": outCode.AppendF("{} = .FromDelegate({});", slot, expr); return true;
 		case "Sedulous.Core.Float2": outCode.AppendF("{} = .FromFloat2({});", slot, expr); return true;
 		case "Sedulous.Core.Float3": outCode.AppendF("{} = .FromFloat3({});", slot, expr); return true;
 		case "Sedulous.Core.Float4": outCode.AppendF("{} = .FromFloat4({});", slot, expr); return true;

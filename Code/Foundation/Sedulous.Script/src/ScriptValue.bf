@@ -70,6 +70,7 @@ struct ScriptValue
 	public static ScriptValue FromObject(Object v) { var r = ScriptValue(); r.Kind = (v != null) ? .Object : .Nil; r.Data.Object = v; return r; }
 	public static ScriptValue FromStruct(void* p, Type type) { var r = ScriptValue(); r.Kind = .Struct; r.Data.Struct = p; r.StructType = type; return r; }
 	public static ScriptValue FromList(ScriptList* list) { var r = ScriptValue(); r.Kind = (list != null) ? .List : .Nil; r.Data.List = list; return r; }
+	public static ScriptValue FromDelegate(ScriptDelegate d) { var r = ScriptValue(); r.Kind = (d != null) ? .Delegate : .Nil; r.Data.Object = d; return r; }
 
 	// ---- out ----
 
@@ -89,6 +90,7 @@ struct ScriptValue
 	public Object AsObject => (Kind == .Object) ? Data.Object : null;
 	public void* AsStruct => (Kind == .Struct) ? Data.Struct : null;
 	public ScriptList* AsList => (Kind == .List) ? Data.List : null;
+	public ScriptDelegate AsDelegate => (Kind == .Delegate) ? (ScriptDelegate)Data.Object : null;
 
 	public bool IsNil => Kind == .Nil;
 
@@ -124,6 +126,9 @@ struct ScriptValue
 		case .Struct:
 			return (Kind == .Struct) && (Data.Struct != null) && (StructType != null)
 				&& (StructType.GetFullName(.. scope .()) == typeName);
+		case .Delegate:
+			// Nil clears a binding.
+			return (Kind == .Nil) || (Kind == .Delegate);
 		case .List:
 			// Nil stands for an empty list; a list must be of the slot's element type.
 			if (Kind == .Nil)

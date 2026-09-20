@@ -220,6 +220,56 @@ static class FixtureScriptTests
 		Test.Assert(Near(thing.Points[1].X, 7), scope $"x {thing.Points[1].X}");
 	}
 
+	/// A script function held by native code: a free function or a method delegate passed
+	/// as a ScriptCallback@, fired from Beef, alive as long as its holder, dead once the
+	/// runtime goes.
+	[Test]
+	public static void ACallbackIsHeldAndFiredFromNative()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let vm = new AngelScriptRuntime();
+		vm.Bind(s);
+
+		let ok = vm.Compile("t", "t.as", """
+			int fired = 0;
+			void onFree() { fired += 10; }
+			class Owner
+			{
+				int hits = 0;
+				void onPoke() { hits++; }
+			}
+			Owner@ bindMethod(Thing@ t) { Owner o; t.OnPoke(ScriptCallback(o.onPoke)); return o; }
+			void bindFree(Thing@ t) { t.OnPoke(onFree); }
+			void clear(Thing@ t) { t.OnPoke(null); }
+			int firedCount() { return fired; }
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "compiled");
+
+		let thing = scope Thing();
+		var arg = ScriptValue[1](.FromObject(thing));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("t", "Owner@ bindMethod(Thing@)", arg, ref r), "a method delegate bound");
+		Test.Assert((thing.Handler != null) && thing.Handler.IsAlive);
+		// Fired from Beef, the method runs on its object, twice.
+		Test.Assert(thing.FirePoke() && thing.FirePoke());
+
+		Test.Assert(vm.Call("t", "void bindFree(Thing@)", arg, ref r), "a free function replaces it");
+		Test.Assert(thing.FirePoke());
+		Test.Assert(vm.Call("t", "int firedCount()", default, ref r) && (r.AsInt == 10));
+
+		Test.Assert(vm.Call("t", "void clear(Thing@)", arg, ref r));
+		Test.Assert((thing.Handler == null) && !thing.FirePoke(), "null clears the binding");
+
+		// The holder outlives the runtime: the delegate goes dead, and is deleted safely after.
+		Test.Assert(vm.Call("t", "void bindFree(Thing@)", arg, ref r));
+		delete vm;
+		Test.Assert((thing.Handler != null) && !thing.Handler.IsAlive);
+		Test.Assert(!thing.FirePoke(), "a dead callback answers false");
+	}
+
 	/// The entity side of an entity-first method: `e.Poke()` reaches the manager in the
 	/// entity's scene, and a verb that did not ask is not there.
 	[Test]

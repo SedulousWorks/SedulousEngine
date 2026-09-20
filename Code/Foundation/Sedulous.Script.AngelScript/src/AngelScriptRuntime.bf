@@ -103,6 +103,8 @@ class AngelScriptRuntime : ScriptRuntime
 	private void DeclareCoroutines()
 	{
 		AS.asc_engine_register_funcdef(mEngine, "void ScriptCoroutine()");
+		// The callback a native API takes: `button.OnClick(ScriptCallback(this.onRetry))`.
+		AS.asc_engine_register_funcdef(mEngine, "void ScriptCallback()");
 		let start = new AngelScriptBinding();
 		start.Kind = .StartCoroutine;
 		mBindings.Add(start);
@@ -138,6 +140,12 @@ class AngelScriptRuntime : ScriptRuntime
 
 	/// BORROWED: the debugger in force, which self registers and detaches.
 	private AngelScriptDebugger mDebugger = null;
+
+	/// BORROWED: the delegates handed to native code and still held there, told when the
+	/// runtime goes so they answer dead rather than call into freed memory.
+	private List<AngelScriptDelegate> mDelegates = new .() ~ delete _;
+	private void RegisterDelegate(AngelScriptDelegate d) => mDelegates.Add(d);
+	private void UnregisterDelegate(AngelScriptDelegate d) => mDelegates.Remove(d);
 
 	/// Everything the bind registered, as it was spelled: the bound API.
 	private List<ScriptApiType> mApi = new .() ~ DeleteContainerAndItems!(_);
@@ -205,6 +213,8 @@ class AngelScriptRuntime : ScriptRuntime
 	{
 		if (mDebugger != null)
 			mDebugger.RuntimeGone();
+		for (let d in mDelegates)
+			d.RuntimeGone();
 		for (let co in mCoroutines)
 		{
 			AS.asc_context_abort(co.Context);
@@ -237,6 +247,7 @@ class AngelScriptRuntime : ScriptRuntime
 		Record(GlobalApi, "startCoroutine", "void startCoroutine(ScriptCoroutine@ fn)", true, .Method);
 		Record(GlobalApi, "wait", "void wait(float seconds)", true, .Method);
 		Record(GlobalApi, "yield", "void yield()", true, .Method);
+		Record(GlobalApi, "ScriptCallback", "funcdef void ScriptCallback()", true, .Constant);
 
 		// Declare every type before any member, since a member's declaration names types.
 		for (let t in surface.Types)
@@ -668,6 +679,9 @@ class AngelScriptRuntime : ScriptRuntime
 				return false;
 			outDecl.Append(AsName(st));
 			return true;
+		case .Delegate:
+			outDecl.Append("ScriptCallback@");
+			return true;
 		case .List:
 			// A List<X> is the add-on's array<X>, by handle: the script's own array, filled
 			// from the list and read back into it.
@@ -748,7 +762,7 @@ class AngelScriptRuntime : ScriptRuntime
 		{
 		case .String, .Guid, .Entity, .Float2, .Float3, .Float4, .Quaternion, .Color, .Struct:
 			return true;
-		case .List:
+		case .List, .Delegate:
 			return false;
 		case .Object:
 			return typeName == "System.String";
@@ -1032,6 +1046,11 @@ class AngelScriptRuntime : ScriptRuntime
 			return .FromStruct(AS.asc_generic_get_arg_address(gen, arg), (st != null) ? st.BeefType : null);
 		case .List:
 			return PackArray(AS.asc_generic_get_arg_object(gen, arg), typeName);
+		case .Delegate:
+			// A funcdef handle arrives as the function itself; null clears a binding. The
+			// callee takes the delegate.
+			let fn = (AS.Function*)AS.asc_generic_get_arg_object(gen, arg);
+			return (fn != null) ? .FromDelegate(new AngelScriptDelegate(this, fn)) : .Nil;
 		default:
 			return ReadValue(AS.asc_generic_get_arg_address(gen, arg), kind, typeName);
 		}
@@ -1377,6 +1396,7 @@ class AngelScriptRuntime : ScriptRuntime
 		case .Object: outText.Append((value.AsObject != null) ? value.AsObject.GetType().GetName(.. scope .()) : "null");
 		case .Struct: outText.Append((value.StructType != null) ? value.StructType.GetName(.. scope .()) : "struct");
 		case .List: outText.AppendF("list[{}]", (value.AsList != null) ? value.AsList.Count : 0);
+		case .Delegate: outText.Append("callback");
 		}
 	}
 
