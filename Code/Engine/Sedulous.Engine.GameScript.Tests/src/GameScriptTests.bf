@@ -51,11 +51,9 @@ static class GameScriptTests
 		Test.Assert(Math.Abs(run.PropFloat("elapsed") - 3.0f / 60.0f) < 1e-4f, "with no time passing");
 		run.Instance.InstanceTimeScale = 1.0f;
 
-		// A second start replaces the first, exit() included.
-		let first = run.Game;
+		// A second start replaces the first, exit() included: the new one has seen nothing.
 		Test.Assert(run.Instance.StartScript(game));
-		Test.Assert(run.Game !== first);
-		Test.Assert(run.PropInt("exits") == 0, "a fresh instance");
+		Test.Assert((run.PropInt("updates") == 0) && (run.PropInt("exits") == 0), "a fresh instance");
 
 		run.Instance.StopScript();
 		Test.Assert(!run.Instance.ScriptRunning);
