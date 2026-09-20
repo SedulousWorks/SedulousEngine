@@ -88,6 +88,16 @@ class ViewportView : View
 
 		if ((input != null) && (mSurface == null))
 			mSurface = new InputSurface(input, windowId, ContentFit(.(0, 0, 1, 1), .(1, 1), mFitMode));
+
+		// A view laid out before the device arrived, a page mounted one frame and bound the
+		// next, has a size and no targets, and the layout will not repeat for an unchanged
+		// size: make them now.
+		if ((mDevice != null) && (mColorTexture == null) && ((Width > 0.0f) || (Height > 0.0f)))
+		{
+			let targetWidth = (mFixedWidth > 0) ? mFixedWidth : (uint32)Max(1.0f, Width);
+			let targetHeight = (mFixedHeight > 0) ? mFixedHeight : (uint32)Max(1.0f, Height);
+			ResizeRenderTarget(targetWidth, targetHeight);
+		}
 	}
 
 	/// Rebinds to a different window's renderer.
