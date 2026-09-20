@@ -58,7 +58,7 @@ class AngelScriptRuntime : ScriptRuntime
 	private List<Object> mOwned = new .() ~ DeleteContainerAndItems!(_);
 	/// The per role-type handle a global property points at: a non-null token, since the
 	/// thunk resolves the real system from the context.
-	private List<void*> mTokens = new .() ~ delete _;
+	private List<void**> mTokens = new .() ~ { for (let slot in _) delete slot; delete _; };
 	/// The global handle names taken, so a later one is not refused.
 	private HashSet<String> mHandleNames = new .() ~ DeleteContainerAndItems!(_);
 	/// The properties on Scene taken, likewise.
