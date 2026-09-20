@@ -9,6 +9,11 @@
 
 cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 
+# The static CRT, as every other native dependency and the Beef link itself (libcmtd) use;
+# the SDK's own project would otherwise pick the DLL runtime and the link refuses to mix
+# them. Set before project() so the SDK subdirectory inherits it.
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 project(angelscript_beef CXX C)
 
 set(CMAKE_CXX_STANDARD 17)
