@@ -94,7 +94,7 @@ extension MaterialEditorPage
 		let key = Own(new String(label));
 		let editor = new EnumEditor(label, read(mAsset.Source), items, new [=this, =key, =write](index) =>
 			{
-				ApplyEdit(key, new [=this, =write, =index](s) => write(s, index));
+				ApplyEdit(key, new [=write, =index](s) => write(s, index));
 			}, "Material");
 		AddEditor(editor, new [=this, =editor, =read]() =>
 			{
@@ -112,7 +112,7 @@ extension MaterialEditorPage
 		{
 			let editor = new RangeEditor(name, ReadFloat(name), 0.0f, zeroToTwo ? 2.0f : 1.0f, 0.01f, new [=this, =name](v) =>
 				{
-					ApplyEdit(name, new [=this, =name, =v](s) => MaterialSourceEdit.WriteFloat(s, name, v));
+					ApplyEdit(name, new [=name, =v](s) => MaterialSourceEdit.WriteFloat(s, name, v));
 				}, "Properties");
 			editor.SetDisplayName(label);
 			AddEditor(editor, new [=this, =editor, =name]() => editor.SetValue(ReadFloat(name)));
@@ -121,7 +121,7 @@ extension MaterialEditorPage
 		let editor = new FloatEditor(name, ReadFloat(name), 0.0, 1e9, 0.01, 3, new [=this, =name](v) =>
 			{
 				let f = (float)v;
-				ApplyEdit(name, new [=this, =name, =f](s) => MaterialSourceEdit.WriteFloat(s, name, f));
+				ApplyEdit(name, new [=name, =f](s) => MaterialSourceEdit.WriteFloat(s, name, f));
 			}, "Properties");
 		editor.SetDisplayName(label);
 		AddEditor(editor, new [=this, =editor, =name]() => editor.SetValue(ReadFloat(name)));
@@ -132,7 +132,7 @@ extension MaterialEditorPage
 		let editor = new ColorEditor(name, ReadColor(name), new [=this, =name](c) =>
 			{
 				let v = Float4(c.R, c.G, c.B, c.A);
-				ApplyEdit(name, new [=this, =name, =v](s) => MaterialSourceEdit.WriteFloat4(s, name, v));
+				ApplyEdit(name, new [=name, =v](s) => MaterialSourceEdit.WriteFloat4(s, name, v));
 			}, "Properties");
 		editor.SetDisplayName(PropertyNames.Prettify(name, .. scope .()));
 		AddEditor(editor, new [=this, =editor, =name]() => editor.SetValue(ReadColor(name)));
@@ -150,7 +150,7 @@ extension MaterialEditorPage
 				let dialog = new AssetPickerDialog(mContext, scope StringView[]("TextureAsset"));
 				dialog.OnPicked = new [=this, =slot](picked) =>
 					{
-						ApplyEdit(slot, new [=this, =slot, =picked](s) => MaterialSourceEdit.SetTexture(s, slot, picked));
+						ApplyEdit(slot, new [=slot, =picked](s) => MaterialSourceEdit.SetTexture(s, slot, picked));
 					};
 				dialog.Show(ctx);
 			};

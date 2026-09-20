@@ -135,7 +135,7 @@ class HeightfieldEditorPage : UIEditorPage
 		let samples = (uint16*)source.PixelData.Ptr;
 		mMinSample = 65535;
 		mMaxSample = 0;
-		let rgba = scope List<uint8>();
+		let rgba = new List<uint8>(); // handed to the image
 		rgba.Resize(count * 4);
 		for (int i < count)
 		{
