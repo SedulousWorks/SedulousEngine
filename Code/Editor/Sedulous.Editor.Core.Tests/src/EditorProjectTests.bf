@@ -213,4 +213,26 @@ static class EditorProjectTests
 		defer ShutdownGlobalLogger();
 		Test.Assert(EditorProject.Open(dir) == null, "another version's layout is not guessed at");
 	}
+
+	[Test]
+	public static void TheExportRootsLoadOnOpenAndSave()
+	{
+		let dir = Scratch("scratch_editor_project_roots", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		Test.Assert(EditorProject.Create(dir, "R") case .Ok);
+		let flagged = Guid.Parse("00000000-0000-0000-0000-0000000000f1").Get();
+		{
+			let project = EditorProject.Open(dir);
+			defer delete project;
+			Test.Assert(project.ExportRoots.IsEmpty, "absent is the empty set");
+			project.ExportRoots.SetInstance(flagged, true);
+			project.ExportRoots.SetGroup("levels", true);
+			Test.Assert(project.SaveExportRoots() case .Ok);
+		}
+		{
+			let project = EditorProject.Open(dir);
+			defer delete project;
+			Test.Assert(project.ExportRoots.HasInstance(flagged) && project.ExportRoots.HasGroup("levels"));
+		}
+	}
 }

@@ -19,12 +19,15 @@ namespace Sedulous.Editor.Core;
 /// The cooker, the exporter and the headless MCP host open a project through this without
 /// an editor around it.
 ///
-/// PARTIAL PORT. Raptor's also loads the explicit export roots (export_roots.xml); that
-/// comes with the export driver.
+/// The project's explicit "Always Export" set is a separate committed sidecar,
+/// export_roots.xml, loaded on Open: absent is the empty set, the common case, and a present
+/// but unreadable file leaves the set empty rather than blocking the open, so an export then
+/// over includes, which is safe, never mis-prunes.
 class EditorProject
 {
 	private String mDirectory = new .() ~ delete _;
 	private ProjectSettings mSettings ~ delete _;
+	private ExportRootsSet mExportRoots = new .() ~ delete _;
 	private NativeFileSystem mContentMount ~ delete _;
 	private NativeFileSystem mCookedMount ~ delete _;
 	private SerializerFactory mSourceFactory ~ delete _;
@@ -106,6 +109,20 @@ class EditorProject
 		mCookedFactory = new (stream, mode) => new BinarySerializerContext(stream, mode);
 		mSourceDb = new ContentDatabase(mContentMount, mSourceFactory, ProjectLayout.SourceAssetExtension);
 		mCookedDb = new ContentDatabase(mCookedMount, mCookedFactory, ProjectLayout.CookedAssetExtension);
+
+		let root = scope NativeFileSystem(directory);
+		ExportRootsFile.Load(root, mExportRoots).IgnoreError();
+	}
+
+	/// The "Always Export" roots; the export driver seeds from these.
+	public ExportRootsSet ExportRoots => mExportRoots;
+
+	/// Persists the export roots to <project>/export_roots.xml; the editor calls this after
+	/// a right click "Always Export" toggle.
+	public Result<void, ErrorCode> SaveExportRoots()
+	{
+		let root = scope NativeFileSystem(mDirectory);
+		return ExportRootsFile.Save(root, mExportRoots);
 	}
 
 	public StringView Name => mSettings.Name;

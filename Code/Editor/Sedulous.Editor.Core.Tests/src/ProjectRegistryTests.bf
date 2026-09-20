@@ -159,7 +159,7 @@ static class ProjectRegistryTests
 		// A section the store cannot instantiate makes every later Load abort at it and
 		// drop the sections after: the empty project list incident.
 		EditorSerializables.RegisterAll();
-		for (let type in scope Type[](typeof(EditorFontSettings), typeof(EditorUiSettings), typeof(RecentProjectsSettings)))
+		for (let type in scope Type[](typeof(EditorFontSettings), typeof(EditorUiSettings), typeof(RecentProjectsSettings), typeof(EditorExportSettings)))
 		{
 			let name = type.GetFullName(.. scope .());
 			let made = GlobalSerializableRegistry.Create(TypeIdOf(name));
