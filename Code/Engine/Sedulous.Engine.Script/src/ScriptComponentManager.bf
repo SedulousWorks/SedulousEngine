@@ -7,7 +7,6 @@ namespace Sedulous.Engine.Script;
 
 /// The pool of script components. Entity and component destruction route onDestroy
 /// through the scene's script system, which the system wires when the scene composes.
-[Scriptable]
 class ScriptComponentManager : ResourceBindingComponentManager<ScriptComponent>
 {
 	/// BORROWED: the system of the same scene.
@@ -35,7 +34,6 @@ class ScriptComponentManager : ResourceBindingComponentManager<ScriptComponent>
 
 	/// Adds a behaviour to the entity's component, adding the component when it has none.
 	/// The behaviour's class is bound through the manager the scene was resolved with.
-	[Scriptable]
 	public bool AddBehavior(EntityHandle entity, Guid scriptClass)
 	{
 		var component = Get(entity);

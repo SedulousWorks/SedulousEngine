@@ -13,6 +13,7 @@ using Sedulous.Scene.Resource;
 using Sedulous.Script;
 using Sedulous.Script.Resource;
 using Sedulous.Engine.Script;
+using Sedulous.Engine.Script.Facades;
 
 namespace Sedulous.Engine.GameInstance;
 
@@ -88,8 +89,10 @@ class GameInstance
 
 	/// OWNED: this run's script host, the gameplay context the game script AND this
 	/// instance's scenes' behaviours share. The subsystem wires it like its own; the
-	/// instance installs itself on it as the `Run` service.
+	/// instance installs itself on it as the `Run` service, and its actions as `Input`.
 	private ScriptRunHost mRunHost = new .() ~ delete _;
+	/// OWNED: `Input` to this run's scripts, over this run's action runtime alone.
+	private InputFacade mInputFacade = null ~ delete _;
 	/// The orchestrator: an instance of the game script's class. Null when no script runs.
 	private ScriptObject mGame = null;
 	/// BORROWED: the resource manager owns the product.
@@ -105,6 +108,9 @@ class GameInstance
 		// Every scene this run creates BORROWS the run bus. Setting it on the GROUP means the
 		// injection happens as a scene is created, before its systems bind, rather than after.
 		mSceneManager.SetSceneEventBus(mRunEvents);
+		mInputFacade = new InputFacade(mInputRuntime);
+		mRunHost.SetService(this);
+		mRunHost.SetService(mInputFacade);
 	}
 
 	public ~this()
@@ -525,8 +531,6 @@ class GameInstance
 		}
 		mGame = game;
 		mGameClass = scriptClass;
-		// The context knows its run from here on: a call in the script lands on THIS instance.
-		mRunHost.Runtime.SetService(this);
 		SubscribeGameHandlers(scriptClass);
 		InvokeGame("launch", default);
 		GlobalLog(.Information, scope $"Run: game script '{scriptClass.ClassName}' launched");

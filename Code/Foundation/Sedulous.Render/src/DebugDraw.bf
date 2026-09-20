@@ -13,7 +13,6 @@ namespace Sedulous.Render;
 ///
 /// Every three dimensional method takes an overlay flag: false is depth tested, true is drawn
 /// over everything. Immediate mode, so it is cleared once per frame.
-[Scriptable]
 class DebugDraw
 {
 	private List<DebugVertex> mLines = new .() ~ delete _;
@@ -72,7 +71,6 @@ class DebugDraw
 
 	// ==================== Lines ====================
 
-	[Scriptable]
 	public void DrawLine(Float3 from, Float3 to, Color color, bool overlay = false)
 	{
 		let list = overlay ? mOverlayLines : mLines;
@@ -86,7 +84,6 @@ class DebugDraw
 		DrawLine(from, to, color, true);
 	}
 
-	[Scriptable]
 	public void DrawRay(Float3 origin, Float3 direction, Color color, bool overlay = false)
 	{
 		DrawLine(origin, origin + direction, color, overlay);
@@ -137,7 +134,6 @@ class DebugDraw
 
 	// ==================== Wireframe ====================
 
-	[Scriptable]
 	public void DrawWireBox(Float3 min, Float3 max, Color color, bool overlay = false)
 	{
 		let c000 = Float3(min.X, min.Y, min.Z);
@@ -222,7 +218,6 @@ class DebugDraw
 		DrawCircle(center, right, forward, radius, color, segments, overlay);
 	}
 
-	[Scriptable]
 	public void DrawWireSphere(Float3 center, float radius, Color color, int32 segments = 24,
 		bool overlay = false)
 	{
@@ -302,7 +297,6 @@ class DebugDraw
 		DrawLine(origin, origin + z * size, .(0, 0, 1, 1), overlay);
 	}
 
-	[Scriptable]
 	public void DrawCross(Float3 center, float size, Color color, bool overlay = false)
 	{
 		let half = size * 0.5f;
@@ -311,7 +305,6 @@ class DebugDraw
 		DrawLine(center - .(0, 0, half), center + .(0, 0, half), color, overlay);
 	}
 
-	[Scriptable]
 	public void DrawArrow(Float3 start, Float3 end, Color color, float headSize = 0.1f,
 		bool overlay = false)
 	{
@@ -420,7 +413,6 @@ class DebugDraw
 
 	// ==================== Text and screen space ====================
 
-	[Scriptable]
 	public void DrawText3D(Float3 worldPosition, StringView text, Color color)
 	{
 		if (text.IsEmpty)
@@ -436,7 +428,6 @@ class DebugDraw
 			});
 	}
 
-	[Scriptable]
 	public void DrawScreenText(float x, float y, StringView text, Color color, float scale = 1.0f)
 	{
 		if (text.IsEmpty)

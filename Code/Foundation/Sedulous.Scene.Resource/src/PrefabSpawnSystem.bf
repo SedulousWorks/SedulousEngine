@@ -16,7 +16,6 @@ namespace Sedulous.Scene.Resource;
 /// One recipe for every runtime spawn, the network's included: read the payload, spawn it
 /// with the database resolving what it nests, place the root, bind the subtree. The
 /// instance is recorded on the scene like any other, so a saved scene restores it.
-[Scriptable]
 class PrefabSpawnSystem : SceneSystem
 {
 	/// BORROWED: the scene outlives its systems.
@@ -44,7 +43,6 @@ class PrefabSpawnSystem : SceneSystem
 	/// Spawns the prefab under `parent`, its root placed at `position` and `rotation` in
 	/// the parent's space. An unassigned handle when the prefab is unknown, the payload is
 	/// unreadable, or there is no source.
-	[Scriptable]
 	public EntityHandle Spawn(Guid prefab, Float3 position, Quaternion rotation = .Identity,
 		EntityHandle parent = .Invalid)
 	{

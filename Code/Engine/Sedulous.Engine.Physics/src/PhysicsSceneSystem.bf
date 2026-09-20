@@ -18,8 +18,6 @@ namespace Sedulous.Engine.Physics;
 /// steps on the FIXED clock, and hands the render frame interpolated poses.
 ///
 /// SIMULATION ONLY: an editor's edit mode runs nothing.
-[DisplayName("Physics")]
-[Scriptable]
 class PhysicsSceneSystem : SceneSystem
 {
 	/// BORROWED: the scene outlives its systems.
@@ -78,22 +76,18 @@ class PhysicsSceneSystem : SceneSystem
 	// asking the scene about space: what is at a point, what a ray meets, how heavy the world
 	// is. Every one answers something explicit rather than mutating state to read back.
 
-	[Scriptable]
 	public void SetGravity(Float3 gravity)
 	{
 		if (mWorld != null)
 			mWorld.SetGravity(gravity);
 	}
 
-	[Scriptable]
 	public Float3 Gravity => (mWorld != null) ? mWorld.Gravity : .(0, 0, 0);
 
-	[Scriptable]
 	public int BodyCount => (mWorld != null) ? mWorld.BodyCount : 0;
 
 	/// A ray against this scene's world, answering the CLOSEST hit. Direction must be unit
 	/// length: Distance scales by its magnitude otherwise.
-	[Scriptable]
 	public PhysicsHit RayCast(Float3 from, Float3 direction, float maxDistance,
 		uint32 groupMask = 0xFFFFFFFF)
 	{
@@ -107,7 +101,6 @@ class PhysicsSceneSystem : SceneSystem
 
 	/// A swept SPHERE from `from` along `direction`, answering the closest hit. Like RayCast
 	/// with a volume: the ray that slips through a gap a fat projectile cannot.
-	[Scriptable]
 	public PhysicsHit SphereCast(Float3 from, Float3 direction, float maxDistance, float radius,
 		uint32 groupMask = 0xFFFFFFFF)
 	{
@@ -128,7 +121,6 @@ class PhysicsSceneSystem : SceneSystem
 	/// script asks far more often than "act on all of them", and the group mask does the
 	/// category filtering. Nearest is by body ORIGIN, and Position is that origin; an overlap
 	/// has no contact surface, so Normal is zero.
-	[Scriptable]
 	public PhysicsHit NearestOverlap(Float3 center, float radius, uint32 groupMask = 0xFFFFFFFF)
 	{
 		var result = PhysicsHit();
@@ -162,7 +154,6 @@ class PhysicsSceneSystem : SceneSystem
 
 	/// Every entity whose body overlaps a sphere of `radius` at `center`, filtered to the
 	/// group mask. Bodies carrying no live entity are left out rather than answered as Invalid.
-	[Scriptable]
 	public void OverlapSphere(Float3 center, float radius, List<EntityHandle> outEntities,
 		uint32 groupMask = 0xFFFFFFFF)
 	{
@@ -193,7 +184,6 @@ class PhysicsSceneSystem : SceneSystem
 		result.Surface = (int32)hit.Surface;
 	}
 
-	[Scriptable]
 	public void ApplyImpulse(EntityHandle entity, Float3 impulse)
 	{
 		let bodies = (mScene != null) ? mScene.GetSystem<RigidBodyComponentManager>() : null;

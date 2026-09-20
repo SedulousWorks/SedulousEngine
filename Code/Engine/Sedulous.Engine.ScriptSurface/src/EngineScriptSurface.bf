@@ -4,8 +4,13 @@ using Sedulous.Script;
 
 namespace Sedulous.Engine.ScriptSurface;
 
-/// The RUNTIME script surface: the composition root whose closure is every engine
-/// subsystem, and nothing above the engine.
+/// The RUNTIME script surface: the composition root whose closure is the facades and what
+/// they reach, over every engine subsystem, and nothing above the engine.
+///
+/// A layer of its own, not the engine's API: the facades (`scene.Physics`, `Audio`, `Run`,
+/// `Ui`, the globals) are written in script shape and versioned as a script contract, and
+/// a component or a manager marked for the editor is not on it by being linked. A facade
+/// with a member the frame cannot carry is a facade bug, which the tests assert.
 ///
 /// A host that runs game scripts (the default application, the player) populates from
 /// here and hands the result to its backend. The pipeline and editor surfaces are wider
@@ -21,6 +26,6 @@ static class EngineScriptSurface
 	private static void Generate()
 	{
 		ScriptSurfaceWalker.Emit(typeof(Self), scope StringView[]("Sedulous.", "System."),
-			scope StringView[](ScriptDomains.Runtime));
+			scope StringView[](ScriptDomains.Runtime), .Facades);
 	}
 }

@@ -49,7 +49,8 @@ static class EngineSurfaceScriptTests
 		let apiPath = scope String();
 		Path.GetAbsolutePath("../../build/engine-script-api-angelscript.txt", Directory.GetCurrentDirectory(.. scope .()), apiPath);
 		File.WriteAllText(apiPath, text).IgnoreError();
-		Test.Assert(api.Count > 100, scope $"{api.Count} bound types");
+		// One bound type per surface type: the facades, the values they pass, the globals.
+		Test.Assert(api.Count == 45, scope $"{api.Count} bound types");
 		// Spot checks of the spelling at the engine's scale.
 		var scene = (ScriptApiType)null;
 		for (let t in api)
@@ -58,7 +59,7 @@ static class EngineSurfaceScriptTests
 		Test.Assert(scene != null);
 		bool physics = false;
 		for (let m in scene.Members)
-			if (m.Signature == "PhysicsSceneSystem@ Scene.Physics")
+			if (m.Signature == "PhysicsFacade@ Scene.Physics")
 				physics = true;
 		Test.Assert(physics, "the scene's system property");
 	}

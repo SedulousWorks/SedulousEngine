@@ -31,8 +31,6 @@ namespace Sedulous.Engine.Script;
 ///
 /// Every instance a script holds carries its own scene in its entity, so a behaviour of
 /// one scene reaching into another resolves there, never here.
-[Scriptable]
-[DisplayName("Scripts")]
 class ScriptSceneSystem : SceneSystem
 {
 	public const String cOnStart = "onStart";
@@ -113,42 +111,28 @@ class ScriptSceneSystem : SceneSystem
 	// ---- the script surface ----
 
 	/// The last delivered frame time.
-	[Scriptable]
 	public float DeltaTime => mDeltaTime;
 
 	/// Simulated seconds since the scene started.
-	[Scriptable]
 	public double Elapsed => mElapsed;
 
 	/// Queues `on<Message>()` for every enabled behaviour of `target` that declares it.
 	/// Delivered at the tick's top level, never inside the caller. On the entity too, so a
 	/// script writes `other.Send("hit", 5)`.
-	[Scriptable, ScriptOnEntity]
 	public void Send(EntityHandle target, StringView message) => Queue(target, message, .Nil, false);
-	[Scriptable, ScriptOnEntity]
 	public void Send(EntityHandle target, StringView message, float payload) => Queue(target, message, .FromFloat(payload), true);
-	[Scriptable, ScriptOnEntity]
 	public void Send(EntityHandle target, StringView message, int32 payload) => Queue(target, message, .FromInt(payload), true);
-	[Scriptable, ScriptOnEntity]
 	public void Send(EntityHandle target, StringView message, bool payload) => Queue(target, message, .FromBool(payload), true);
-	[Scriptable, ScriptOnEntity]
 	public void Send(EntityHandle target, StringView message, StringView payload) => Queue(target, message, .FromString(payload), true);
-	[Scriptable, ScriptOnEntity]
 	public void Send(EntityHandle target, StringView message, EntityHandle payload) => Queue(target, message, .FromEntity(payload, mScene), true);
 
 	/// Publishes an event on the scene's bus: every behaviour and the Level declaring
 	/// `on<Event>` hears it when the bus drains.
-	[Scriptable]
 	public void Emit(StringView eventName) => Publish(eventName, Variant());
-	[Scriptable]
 	public void Emit(StringView eventName, float payload) => Publish(eventName, Variant.Create(payload));
-	[Scriptable]
 	public void Emit(StringView eventName, int32 payload) => Publish(eventName, Variant.Create(payload));
-	[Scriptable]
 	public void Emit(StringView eventName, bool payload) => Publish(eventName, Variant.Create(payload));
-	[Scriptable]
 	public void Emit(StringView eventName, StringView payload) => Publish(eventName, Variant.Create(new String(payload), true));
-	[Scriptable]
 	public void Emit(StringView eventName, EntityHandle payload) => Publish(eventName, Variant.Create(payload));
 
 	private void Publish(StringView eventName, Variant payload)

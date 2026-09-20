@@ -15,7 +15,6 @@ namespace Sedulous.Engine.Animation;
 /// not simulating: watching things animate in an editor's edit mode is wrong. A consumer that
 /// wants live animation in a context that looks paused enables simulation on its OWN preview
 /// scene; scenes simulate by default, so a player and a headless test are unaffected.
-[Scriptable]
 class SkeletalAnimationComponentManager : ResourceBindingComponentManager<SkeletalAnimationComponent>
 {
 	/// BORROWED: the scene outlives its systems.
@@ -50,7 +49,6 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 
 	/// Plays the bound clip from the start. AutoPlay covers the first start; this is the
 	/// manual re-trigger.
-	[Scriptable]
 	public void Play(EntityHandle entity)
 	{
 		let component = Get(entity);
@@ -62,28 +60,24 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 			component.Player.Play(clip);
 	}
 
-	[Scriptable]
 	public void Stop(EntityHandle entity)
 	{
 		if (let player = Player(entity))
 			player.Stop();
 	}
 
-	[Scriptable]
 	public void Pause(EntityHandle entity)
 	{
 		if (let player = Player(entity))
 			player.Pause();
 	}
 
-	[Scriptable]
 	public void Resume(EntityHandle entity)
 	{
 		if (let player = Player(entity))
 			player.Resume();
 	}
 
-	[Scriptable]
 	public bool IsPlaying(EntityHandle entity)
 	{
 		let player = Player(entity);
@@ -91,14 +85,12 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 	}
 
 	/// The clip clock, in seconds. Nought without a player.
-	[Scriptable]
 	public float Time(EntityHandle entity)
 	{
 		let player = Player(entity);
 		return (player != null) ? player.CurrentTime : 0.0f;
 	}
 
-	[Scriptable]
 	public void SetTime(EntityHandle entity, float seconds)
 	{
 		if (let player = Player(entity))
@@ -107,7 +99,6 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 
 	/// Swaps the clip to the resource with this id, bound through the manager the scene was
 	/// resolved with. The next tick picks it up, and AutoPlay plays it.
-	[Scriptable]
 	public void SetClip(EntityHandle entity, Guid id)
 	{
 		let component = Get(entity);

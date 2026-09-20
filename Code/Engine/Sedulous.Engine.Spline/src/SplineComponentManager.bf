@@ -10,8 +10,6 @@ namespace Sedulous.Engine.Spline;
 /// It creates and frees the curve each component points at: a component is a struct in a
 /// packed pool, so it cannot own one itself. Raptor holds the curve BY VALUE and lets the
 /// vector's destructor deal with it.
-[DisplayName("Splines")]
-[Scriptable]
 class SplineComponentManager : SerializableComponentManager<SplineComponent>
 {
 	/// BORROWED: the scene owns this manager. Needed because every query answers in WORLD
@@ -42,21 +40,18 @@ class SplineComponentManager : SerializableComponentManager<SplineComponent>
 	// what places the curve.
 
 	/// The curve length, or nought when the entity carries no spline.
-	[Scriptable]
 	public float Length(EntityHandle entity)
 	{
 		let component = Get(entity);
 		return (component != null) ? component.Curve.Length : 0.0f;
 	}
 
-	[Scriptable]
 	public int32 PointCount(EntityHandle entity)
 	{
 		let component = Get(entity);
 		return (component != null) ? (int32)component.Curve.Points.Count : 0;
 	}
 
-	[Scriptable]
 	public bool IsClosed(EntityHandle entity)
 	{
 		let component = Get(entity);
@@ -65,7 +60,6 @@ class SplineComponentManager : SerializableComponentManager<SplineComponent>
 
 	/// Samples at the curve PARAMETER, which runs to the segment count and wraps on a closed
 	/// curve.
-	[Scriptable]
 	public SplineHit SampleAt(EntityHandle entity, float t)
 	{
 		let component = Get(entity);
@@ -77,7 +71,6 @@ class SplineComponentManager : SerializableComponentManager<SplineComponent>
 
 	/// Samples at a DISTANCE along the curve, which is evenly spaced where the parameter is
 	/// not: the arc length table is what makes the difference.
-	[Scriptable]
 	public SplineHit SampleAtDistance(EntityHandle entity, float distance)
 	{
 		let component = Get(entity);
@@ -92,7 +85,6 @@ class SplineComponentManager : SerializableComponentManager<SplineComponent>
 	///
 	/// Takes a Float3 where Raptor takes three floats, which is a script signature rather
 	/// than a choice about the query.
-	[Scriptable]
 	public SplineHit ClosestPoint(EntityHandle entity, Float3 world)
 	{
 		let component = Get(entity);

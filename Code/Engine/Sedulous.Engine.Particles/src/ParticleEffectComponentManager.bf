@@ -17,8 +17,6 @@ namespace Sedulous.Engine.Particles;
 ///
 /// It advances every instance in the animation phase, before extraction, and then packs what
 /// is alive into render data when its scene's turn to extract comes.
-[DisplayName("Particles")]
-[Scriptable]
 class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleEffectComponent>,
 	IRenderDataProvider
 {
@@ -110,7 +108,6 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 
 	/// Attaches a BORROWED effect the caller owns, which is the code path a sample or a test
 	/// takes.
-	[Scriptable]
 	public void SetEffect(EntityHandle entity, ParticleEffect effect)
 	{
 		let component = Get(entity);
@@ -150,7 +147,6 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 	// Each is a no-op on an entity with no effect attached yet.
 
 	/// Begins, or resumes, emission on the entity's effect.
-	[Scriptable]
 	public void Play(EntityHandle entity)
 	{
 		let instance = Instance(entity);
@@ -159,7 +155,6 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 	}
 
 	/// Stops emitting. Live particles finish out rather than vanishing.
-	[Scriptable]
 	public void Stop(EntityHandle entity)
 	{
 		let instance = Instance(entity);
@@ -168,7 +163,6 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 	}
 
 	/// Resets to empty and begins emitting fresh, which is how a one shot re triggers.
-	[Scriptable]
 	public void Restart(EntityHandle entity)
 	{
 		let instance = Instance(entity);
@@ -181,7 +175,6 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 
 	/// Freezes the whole simulation for this effect, live particles included. Distinct from
 	/// Stop, which lets what is already alive run out.
-	[Scriptable]
 	public void SetPaused(EntityHandle entity, bool paused)
 	{
 		let instance = Instance(entity);
@@ -190,7 +183,6 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 	}
 
 	/// True while the effect is still emitting or still has live particles.
-	[Scriptable]
 	public bool IsPlaying(EntityHandle entity)
 	{
 		let instance = Instance(entity);

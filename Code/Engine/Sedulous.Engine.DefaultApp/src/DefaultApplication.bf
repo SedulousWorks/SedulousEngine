@@ -18,6 +18,7 @@ using Sedulous.Engine.Physics;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Scene;
 using Sedulous.Engine.Script;
+using Sedulous.Engine.Script.Facades;
 using Sedulous.Engine.ScriptSurface;
 using Sedulous.Script;
 using Sedulous.Script.AngelScript;
@@ -100,6 +101,8 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// OWNED: `Ui` to a script, over the screen tier; a document instantiates through the
 	/// resource manager and the UI subsystem.
 	private UiScript mUiScript = new .() ~ delete _;
+	/// OWNED: `Audio` to a script, over the subsystem and the app's resources.
+	private AudioFacade mAudioFacade = null ~ delete _;
 
 	// ---- screenshots ----
 	private ScreenshotCapture mScreenshot = new .() ~ delete _;
@@ -259,12 +262,13 @@ class DefaultApplication : IApplication, ISceneObserver
 				ClearAndDeleteItems!(runtime.Problems);
 				// The engine services a script reaches by handle: what the surface's Service
 				// role types resolve to in this run.
-				if (mAudio != null)
-					runtime.SetService(mAudio);
-				if (mRender != null)
-					runtime.SetService(mRender);
+				// The service facades a script reaches by handle: the run's audio over the
+				// app's resources, the screen tier. Input is per instance, installed below.
+				runtime.SetService(mAudioFacade);
 				runtime.SetService(mUiScript);
 			};
+		// The scene facades' drawer.
+		DebugFacade.Renderer = mRender;
 		// Physics contacts reach behaviours through the composition root's bridge: neither
 		// subsystem names the other.
 		mContactBridge.Install(mPhysics, scripts);
@@ -288,6 +292,8 @@ class DefaultApplication : IApplication, ISceneObserver
 
 		mAudio = new AudioSubsystem(mAudioEngineSettings);
 		host.Context.RegisterSubsystem<AudioSubsystem>(mAudio);
+		// Resources is read per call, since the manager may be handed over after this.
+		mAudioFacade = new AudioFacade(mAudio, new () => Resources);
 
 		mInput = new InputSubsystem((host.Shell != null) ? host.Shell.Input : null);
 		host.Context.RegisterSubsystem<InputSubsystem>(mInput);
@@ -637,6 +643,7 @@ class DefaultApplication : IApplication, ISceneObserver
 		ForEachInstance(scope (instance) => instance.StopScript());
 		// The script handles' references before the UI tier's trees go.
 		UiHandles.Clear();
+		DebugFacade.Renderer = null;
 
 		for (let instance in mExtraInstances)
 		{

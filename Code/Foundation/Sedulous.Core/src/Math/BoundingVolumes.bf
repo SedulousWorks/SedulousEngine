@@ -61,8 +61,7 @@ static
 	}
 
 	/// Sedulous's corner order: index 0 is (min.X, max.Y, max.Z) through to 7 being
-	/// (min.X, min.Y, min.Z).
-	[Scriptable]
+	/// (min.X, min.Y, min.Z). Not for a script: a fixed array does not cross.
 	public static void GetCorners(AABB b, ref Float3[8] corners)
 	{
 		corners[0] = .(b.Min.X, b.Max.Y, b.Max.Z);

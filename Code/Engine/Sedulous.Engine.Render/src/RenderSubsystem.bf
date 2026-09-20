@@ -19,7 +19,6 @@ namespace Sedulous.Engine.Render;
 ///
 /// It renders rather than ticks, which is why it sorts LATE: everything that moves has
 /// already moved by the time it runs.
-[Scriptable]
 class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRenderer
 {
 	/// BORROWED: the owner outlives the subsystem.
@@ -423,7 +422,6 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 	public DebugDraw DebugGlobal => mDebugGlobal;
 	public DebugDraw DebugScreen => mDebugScreen;
 
-	[Scriptable]
 	public DebugDraw DebugScene(Scene scene)
 	{
 		if (mDebugScenes.TryGetValue(scene, let existing))

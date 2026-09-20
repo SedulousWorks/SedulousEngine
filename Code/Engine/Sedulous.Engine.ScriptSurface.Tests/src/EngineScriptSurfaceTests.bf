@@ -32,7 +32,7 @@ static class EngineScriptSurfaceTests
 		Test.Assert(s.Types.Count == EngineScriptSurface.TypeCount);
 		// Bump deliberately when a type is marked or unmarked; a surprise here is a lost or
 		// stray dependency of the root.
-		Test.Assert(EngineScriptSurface.TypeCount == 167, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
+		Test.Assert(EngineScriptSurface.TypeCount == 46, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
 	}
 
 	[Test]
@@ -47,32 +47,60 @@ static class EngineScriptSurfaceTests
 	}
 
 	[Test]
-	public static void TheSubsystemsAreReachable()
+	public static void TheFacadesAreReachableAndTheEngineIsNot()
 	{
 		let s = scope ScriptSurface();
 		EngineScriptSurface.Populate(s);
 
-		let physics = s.Find("Sedulous.Engine.Physics.PhysicsSceneSystem");
-		Test.Assert((physics != null) && (physics.Role == .SceneSystem));
+		// The facades, by role and name, with their verbs in script shape.
+		let physics = s.Find("Sedulous.Engine.Script.Facades.PhysicsFacade");
+		Test.Assert((physics != null) && (physics.Role == .SceneFacade) && (physics.DisplayName == "Physics"));
 		let rayCast = Method(physics, "RayCast");
 		Test.Assert((rayCast != null) && (rayCast.ReturnTypeName == "Sedulous.Engine.Physics.PhysicsHit"));
+		let applyImpulse = Method(physics, "ApplyImpulse");
+		Test.Assert((applyImpulse != null) && applyImpulse.OnEntity, "on the entity by request");
+		for (let name in scope String[]("Animation", "Audio", "Particles", "Render", "Debug", "Splines", "Scripts", "Prefabs"))
+		{
+			bool found = false;
+			for (let t in s.Types)
+				if ((t.Role == .SceneFacade) && (t.DisplayName == name))
+					found = true;
+			Test.Assert(found, name);
+		}
+		let audio = s.Find("Sedulous.Engine.Script.Facades.AudioFacade");
+		Test.Assert((audio != null) && (audio.Role == .Service) && (audio.DisplayName == "Audio"));
+		let input = s.Find("Sedulous.Engine.Script.Facades.InputFacade");
+		Test.Assert((input != null) && (input.Role == .Service) && (input.DisplayName == "Input"));
+		Test.Assert(s.Find("Sedulous.Engine.GameInstance.GameInstance").Role == .Service, "Run");
+		Test.Assert(s.Find("Sedulous.Engine.UI.Script.UiScript").Role == .Service, "Ui");
 
+		// What the facades reach: the values they pass.
 		let hit = s.Find("Sedulous.Engine.Physics.PhysicsHit");
 		Test.Assert((hit != null) && hit.AllPublic && (hit.Fields.Count == 6));
-
 		let float3 = s.Find("Sedulous.Core.Float3");
 		Test.Assert((float3 != null) && (float3.Kind == .Struct) && float3.AllPublic);
-
 		let core = s.Find("Sedulous.Core");
 		Test.Assert((core != null) && (core.Kind == .Global) && (core.Methods.Count > 100), "the math free functions");
+		Test.Assert(s.Find("Sedulous.Scene.Scene") != null, "the scene, the facades' home");
 
-		let skeletal = s.Find("Sedulous.Engine.Animation.SkeletalAnimationComponent");
-		Test.Assert((skeletal != null) && (skeletal.Role == .Component));
-		Test.Assert(skeletal.ManagerTypeName == "Sedulous.Engine.Animation.SkeletalAnimationComponentManager");
-		Test.Assert(skeletal.ComponentTypeId == "skeletal_animation");
+		// And what the engine keeps to itself: no subsystem, manager or component is a
+		// script contract by being linked.
+		Test.Assert(s.Find("Sedulous.Engine.Physics.PhysicsSceneSystem") == null);
+		Test.Assert(s.Find("Sedulous.Engine.Animation.SkeletalAnimationComponent") == null);
+		Test.Assert(s.Find("Sedulous.Engine.Animation.SkeletalAnimationComponentManager") == null);
+		Test.Assert(s.Find("Sedulous.Engine.Audio.AudioSubsystem") == null);
+		Test.Assert(s.Find("Sedulous.Engine.Render.RenderSubsystem") == null);
+		for (let t in s.Types)
+			Test.Assert((t.Role != .SceneSystem) && (t.Role != .ComponentManager) && (t.Role != .Component), t.FullName);
 
-		let audio = s.Find("Sedulous.Engine.Audio.AudioSubsystem");
-		Test.Assert((audio != null) && (audio.Role == .Service));
+		// A facade surface blocks nothing: a member the frame cannot carry is a facade bug.
+		for (let t in s.Types)
+		{
+			for (let f in t.Fields)
+				Test.Assert(f.Unsupported.IsEmpty, scope $"{t.FullName}.{f.Name}: {f.Unsupported}");
+			for (let m in t.Methods)
+				Test.Assert(m.Unsupported.IsEmpty, scope $"{t.FullName}.{m.Name}: {m.Unsupported}");
+		}
 	}
 
 	[Test]

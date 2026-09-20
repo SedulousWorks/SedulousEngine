@@ -14,7 +14,6 @@ namespace Sedulous.Engine.Animation;
 /// It runs at a LOWER update order than the clip manager, so a graph backed entity is driven
 /// by its graph. An entity is expected to carry one or the other: both push to the same mesh,
 /// and the later writer would win.
-[Scriptable]
 class AnimationGraphComponentManager : ResourceBindingComponentManager<AnimationGraphComponent>
 {
 	/// BORROWED: the scene outlives its systems.
@@ -51,14 +50,12 @@ class AnimationGraphComponentManager : ResourceBindingComponentManager<Animation
 	// The player is built on the first tick that has a skeleton and a graph; before then
 	// these are no-ops. An unknown name is a no-op in the player.
 
-	[Scriptable]
 	public void SetFloat(EntityHandle entity, StringView name, float value)
 	{
 		if (let player = Player(entity))
 			player.SetFloat(name, value);
 	}
 
-	[Scriptable]
 	public void SetBool(EntityHandle entity, StringView name, bool value)
 	{
 		if (let player = Player(entity))
@@ -66,7 +63,6 @@ class AnimationGraphComponentManager : ResourceBindingComponentManager<Animation
 	}
 
 	/// Fires a trigger; the graph consumes it on the transition that reads it.
-	[Scriptable]
 	public void SetTrigger(EntityHandle entity, StringView name)
 	{
 		if (let player = Player(entity))

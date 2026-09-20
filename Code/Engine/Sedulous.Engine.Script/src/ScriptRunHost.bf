@@ -26,6 +26,9 @@ class ScriptRunHost
 	private ScriptRuntime mRuntime = null ~ delete _;
 	/// OWNED: this run's random numbers, `Random` to a script; seedable by the owner.
 	private ScriptRandom mRandom = new .() ~ delete _;
+	/// BORROWED: the services the owner installed on this run, by exact type, applied to
+	/// the runtime when it exists and to the next one after a teardown.
+	private List<(Type type, Object service)> mServices = new .() ~ delete _;
 	private String mLanguage = new .() ~ delete _;
 	/// BORROWED: the resource manager owns the products.
 	private List<ScriptClass> mLoaded = new .() ~ delete _;
@@ -36,6 +39,25 @@ class ScriptRunHost
 
 	public ScriptRuntime Runtime => mRuntime;
 	public ScriptRandom Random => mRandom;
+
+	/// Installs a service on this run, `Input` say: reached by a script as the handle of
+	/// its type, on the runtime now and on any later one. BORROWED.
+	public void SetService<T>(T service) where T : class
+	{
+		for (int i = 0; i < mServices.Count; i++)
+		{
+			if (mServices[i].type == typeof(T))
+			{
+				mServices[i] = (typeof(T), service);
+				if (mRuntime?.Context != null)
+					mRuntime.Context.SetService(typeof(T), service);
+				return;
+			}
+		}
+		mServices.Add((typeof(T), service));
+		if (mRuntime?.Context != null)
+			mRuntime.Context.SetService(typeof(T), service);
+	}
 	public bool IsActive => mRuntime != null;
 	public StringView ModuleName => mModuleName;
 	public int Generation => mGeneration;
@@ -66,8 +88,10 @@ class ScriptRunHost
 		mLanguage.Set(language);
 		if (Configure != null)
 			Configure(runtime);
-		// The run's own services, whatever the owner installed: its random numbers.
+		// The run's own services: its random numbers, and what the owner installed.
 		runtime.SetService(mRandom);
+		for (let entry in mServices)
+			runtime.Context?.SetService(entry.type, entry.service);
 		EnsureDebugger(); // a debugger requested before the runtime existed attaches now
 		return runtime;
 	}

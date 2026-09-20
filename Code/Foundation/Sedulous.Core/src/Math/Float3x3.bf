@@ -10,6 +10,8 @@ namespace Sedulous.Core;
 [Scriptable(.AllPublic)]
 struct Float3x3
 {
+	/// Hidden from a script: a fixed array does not cross, and the elements have accessors.
+	[Hidden]
 	public float[3][3] M;
 
 	[Inline]

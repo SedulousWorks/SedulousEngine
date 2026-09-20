@@ -17,6 +17,8 @@ namespace Sedulous.Core;
 [Scriptable(.AllPublic)]
 struct Float4x4
 {
+	/// Hidden from a script: a fixed array does not cross.
+	[Hidden]
 	public float[4][4] M;
 
 	[Inline]
@@ -39,6 +41,7 @@ struct Float4x4
 	}
 
 	/// Raw row-major float pointer, sixteen contiguous floats, for GPU upload.
+	[Hidden]
 	public float* Data mut => &M[0][0];
 
 	public float this[int row, int col]
