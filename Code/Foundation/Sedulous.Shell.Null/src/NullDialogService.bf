@@ -23,9 +23,11 @@ class NullDialogService : IDialogService
 	/// Nothing to open a path with.
 	public void OpenPath(StringView path) {}
 
+	/// CONSUMES the callback, as the SDL service does once its dialog closes.
 	private static void Cancel(delegate void(Span<String>) callback)
 	{
 		if (callback != null)
 			callback(.());
+		delete callback;
 	}
 }

@@ -11,6 +11,7 @@ namespace Sedulous.Shell;
 ///
 /// A headless backend calls back at once with nothing, which reads as a cancel, so a
 /// caller never has to check whether dialogs exist.
+/// Every Show CONSUMES its callback: the service owns it until the dialog answers.
 interface IDialogService
 {
 	/// Shows an open dialog. The paths handed to the callback are valid FOR THE DURATION
