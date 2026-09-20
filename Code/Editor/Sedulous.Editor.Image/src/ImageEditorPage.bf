@@ -93,7 +93,6 @@ class ImageEditorPage : UIEditorPage
 		pageColumn.Direction = .Vertical;
 		pageColumn.AddView(mToolbar, match);
 		pageColumn.AddView(split, growMatch);
-		pageColumn.AddRef();
 		mContent = pageColumn;
 		RefreshInfo();
 	}

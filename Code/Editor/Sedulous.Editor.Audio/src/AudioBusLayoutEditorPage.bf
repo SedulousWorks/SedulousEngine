@@ -111,7 +111,6 @@ class AudioBusLayoutEditorPage : UIEditorPage
 		column.Direction = .Vertical;
 		column.AddView(mToolbar, match);
 		column.AddView(split, growMatch);
-		column.AddRef();
 		mContent = column;
 		RebuildTree();
 		RebuildInspector();

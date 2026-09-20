@@ -129,7 +129,6 @@ class ParticleEffectEditorPage : UIEditorPage
 		leftSplit.SplitRatio = 0.22f;
 		leftSplit.SetPanes(mTree, centerColumn);
 		let rightSplit = new SplitView();
-		rightSplit.AddRef();
 		rightSplit.SplitRatio = 0.72f;
 		rightSplit.SetPanes(leftSplit, inspectorColumn);
 		mContent = rightSplit;

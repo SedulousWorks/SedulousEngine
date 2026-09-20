@@ -80,7 +80,6 @@ class TerrainEditorPage : UIEditorPage
 		scroll.AddView(mFields, match);
 
 		let split = new SplitView();
-		split.AddRef();
 		split.SplitRatio = 0.62f;
 		split.SetPanes(mPreview.View, scroll);
 		mContent = split;

@@ -147,7 +147,6 @@ class AnimationGraphEditorPage : UIEditorPage
 		leftSplit.SplitRatio = 0.18f;
 		leftSplit.SetPanes(leftScroll, centerSplit);
 		let rightSplit = new SplitView();
-		rightSplit.AddRef();
 		rightSplit.SplitRatio = 0.74f;
 		rightSplit.SetPanes(leftSplit, inspectorColumn);
 		mContent = rightSplit;

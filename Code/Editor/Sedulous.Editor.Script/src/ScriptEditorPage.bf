@@ -132,7 +132,6 @@ class ScriptEditorPage : UIEditorPage
 		browserStyle.Width = SizeSpec.Fixed(Unit.Dp(300));
 		browserStyle.Height = SizeSpec.Match();
 		row.AddView(mApiBrowser.Root, browserStyle);
-		row.AddRef();
 		mContent = row;
 		RefreshCompileStatus(); // the page opens with live state
 	}

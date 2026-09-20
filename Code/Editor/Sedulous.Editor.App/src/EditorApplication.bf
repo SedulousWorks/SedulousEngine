@@ -59,6 +59,8 @@ class EditorApplication : IApplication
 	private EmbeddedApplicationHost mEmbeddedHost = null ~ delete _;
 	private DefaultApplication mEmbeddedApp = null ~ delete _;
 	private Context mRuntimeContext = new .() ~ delete _;
+	/// The host borrows it for as long as it is installed.
+	private delegate void(int) mEmbeddedExitHandler = null ~ delete _;
 	private bool mStopGameRequested = false;
 
 	// The log drain state.
@@ -252,8 +254,10 @@ class EditorApplication : IApplication
 			if (EditorIcons.Close != null)
 			{
 				EditorIcons.Close.TintColor = Color(palette.Text.R, palette.Text.G, palette.Text.B, 190.0f / 255.0f);
-				mStyleSheet.ForTypePseudo(typeof(DockablePanel), "close-button").Set(.Background, Retained(EditorIcons.Close));
-				mStyleSheet.ForTypePseudo(typeof(DockTabGroup), "close-button").Set(.Background, Retained(EditorIcons.Close));
+				// The rules borrow; the sheet holds the one reference for them both.
+				mStyleSheet.OwnDrawable(Retained(EditorIcons.Close));
+				mStyleSheet.ForTypePseudo(typeof(DockablePanel), "close-button").Set(.Background, EditorIcons.Close);
+				mStyleSheet.ForTypePseudo(typeof(DockTabGroup), "close-button").Set(.Background, EditorIcons.Close);
 			}
 		}
 		mStyleSheet.AddRef();
@@ -299,13 +303,15 @@ class EditorApplication : IApplication
 		// starts without a resource manager: the per-project manager late-attaches in
 		// OpenProjectAt and detaches in CloseProject.
 		mEmbeddedHost = new EmbeddedApplicationHost(host, mRuntimeContext);
-		mEmbeddedHost.SetExitHandler(new (code) =>
+		delete mEmbeddedExitHandler;
+		mEmbeddedExitHandler = new (code) =>
 			{
 				// Exit from embedded game code stops the play session, deferred past the
 				// page-update loop since the request usually fires from inside the script.
 				GlobalLog(.Information, "Editor: embedded app requested exit({})", code);
 				mStopGameRequested = true;
-			});
+			};
+		mEmbeddedHost.SetExitHandler(mEmbeddedExitHandler);
 		mEmbeddedApp = new DefaultApplication();
 		mEmbeddedApp.SetDataRoot(mConfig.DataRoot); // the editor's root, not a re-walk
 		mEmbeddedApp.Configure(mEmbeddedHost);

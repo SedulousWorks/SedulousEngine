@@ -84,7 +84,6 @@ class UIDocumentEditorPage : UIEditorPage
 		fill.FlexGrow = 1.0f;
 		right.AddView(mPreview.View, fill);
 		row.AddView(right, growMatch);
-		row.AddRef();
 		mContent = row;
 		RebuildPreview();
 	}

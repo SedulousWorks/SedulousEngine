@@ -134,7 +134,6 @@ class CollisionShapeEditorPage : UIEditorPage
 		growMatch.FlexGrow = 1.0f;
 		growMatch.Width = SizeSpec.Match();
 		pageColumn.AddView(split, growMatch);
-		pageColumn.AddRef();
 		mContent = pageColumn;
 
 		if (mContext.Resources != null)

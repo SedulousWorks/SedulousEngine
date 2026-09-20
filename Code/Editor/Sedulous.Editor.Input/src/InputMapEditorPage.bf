@@ -64,7 +64,6 @@ class InputMapEditorPage : UIEditorPage
 		growMatch.Width = SizeSpec.Match();
 		growMatch.FlexGrow = 1.0f;
 		column.AddView(mScroll, growMatch);
-		column.AddRef();
 		mContent = column;
 		Rebuild();
 	}

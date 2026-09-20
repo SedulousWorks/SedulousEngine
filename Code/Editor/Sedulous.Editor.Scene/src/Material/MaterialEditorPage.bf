@@ -102,7 +102,6 @@ class MaterialEditorPage : UIEditorPage
 		gridColumn.AddView(mGrid, grow);
 
 		mContent = new SplitView();
-		mContent.AddRef();
 		mContent.SplitRatio = 0.62f;
 		mContent.SetPanes(mPreview.View, gridColumn);
 

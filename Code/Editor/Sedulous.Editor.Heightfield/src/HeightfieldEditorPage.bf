@@ -83,7 +83,6 @@ class HeightfieldEditorPage : UIEditorPage
 		gridColumn.AddView(mGrid, grow);
 
 		let split = new SplitView();
-		split.AddRef();
 		split.SplitRatio = 0.6f;
 		split.SetPanes(previewColumn, gridColumn);
 		mContent = split;

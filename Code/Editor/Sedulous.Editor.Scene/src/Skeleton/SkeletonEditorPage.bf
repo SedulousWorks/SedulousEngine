@@ -101,7 +101,6 @@ class SkeletonEditorPage : UIEditorPage
 		centerSplit.SplitRatio = 0.26f;
 		centerSplit.SetPanes(leftColumn, mPreview.View);
 		let outerSplit = new SplitView();
-		outerSplit.AddRef();
 		outerSplit.SplitRatio = 0.78f;
 		outerSplit.SetPanes(centerSplit, mGrid);
 		mContent = outerSplit;

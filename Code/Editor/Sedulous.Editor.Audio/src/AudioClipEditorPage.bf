@@ -88,7 +88,6 @@ class AudioClipEditorPage : UIEditorPage
 		mStatus.FontSize.Value = 12.0f;
 		controls.AddView(mStatus);
 		column.AddView(controls, match);
-		column.AddRef();
 		mContent = column;
 		RefreshInfo();
 	}

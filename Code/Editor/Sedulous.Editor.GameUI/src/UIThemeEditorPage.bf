@@ -124,7 +124,6 @@ class UIThemeEditorPage : UIEditorPage
 		render.FlexGrow = 2.0f; // the render gets the lion's share of the right column
 		right.AddView(mPreview.View, render);
 		row.AddView(right, growMatch);
-		row.AddRef();
 		mContent = row;
 		RebuildPreview();
 	}

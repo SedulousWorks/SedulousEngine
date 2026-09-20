@@ -150,7 +150,6 @@ class SoundCueEditorPage : UIEditorPage
 		mEmptyHint.FontSize.Value = 12.0f;
 		mEmptyHint.TextColor.Value = Color(0.9f, 0.75f, 0.35f, 1.0f);
 		column.AddView(mEmptyHint, match);
-		column.AddRef();
 		mContent = column;
 		for (int i < SoundCueAsset.cSlotCount)
 			RefreshSlot(i);

@@ -152,7 +152,6 @@ class AnimationClipEditorPage : UIEditorPage
 		RebuildGrid();
 
 		let split = new SplitView();
-		split.AddRef();
 		split.SplitRatio = 0.66f;
 		split.SetPanes(previewColumn, mGrid);
 		mContent = split;
