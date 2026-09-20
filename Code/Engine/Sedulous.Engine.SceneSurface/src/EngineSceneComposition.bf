@@ -13,7 +13,7 @@ using Sedulous.Engine.UI;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 
-namespace Sedulous.Engine.DefaultApp;
+namespace Sedulous.Engine.SceneSurface;
 
 /// THE full scene composition: every domain's serializable component managers and settings
 /// bearing systems, in one place.
@@ -25,9 +25,9 @@ namespace Sedulous.Engine.DefaultApp;
 /// subsystem exists, and an absent subsystem simply leaves its systems unwired, as inert
 /// pools and ticks that do nothing.
 ///
-/// Raptor keeps this in a module of its own, so a tool can reach it without the application.
-/// That module is out of scope, so it lives here, with the one consumer that is in scope. It
-/// wants lifting out again when the export and validation tools arrive.
+/// A module of its own, as Raptor keeps it, so a tool reaches it without the application:
+/// the MCP host's scene_validate and the reference scans behind asset_uses and
+/// project_health load arbitrary scenes headlessly, and the export packager will.
 ///
 /// A manager added to a domain's own install function is picked up automatically: there is no
 /// second list here to forget.

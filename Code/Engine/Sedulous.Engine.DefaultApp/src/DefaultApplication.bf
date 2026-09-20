@@ -17,6 +17,7 @@ using Sedulous.Engine.Particles;
 using Sedulous.Engine.Physics;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Scene;
+using Sedulous.Engine.SceneSurface;
 using Sedulous.Engine.Script;
 using Sedulous.Engine.Script.Facades;
 using Sedulous.Engine.ScriptSurface;
