@@ -318,7 +318,7 @@ class AngelScriptRuntime : ScriptRuntime
 		// the scene that owns it, `scene.Physics`.
 		if (t.Role == .Service)
 			DeclareRoleHandle(t);
-		else if ((t.Role == .SceneSystem) || (t.Role == .ComponentManager))
+		else if ((t.Role == .SceneSystem) || (t.Role == .ComponentManager) || (t.Role == .SceneFacade))
 			DeclareSceneProperty(t);
 
 		// A component is constructed from the entity it lives on.
@@ -406,7 +406,7 @@ class AngelScriptRuntime : ScriptRuntime
 			return;
 		}
 		outName.Set(AsName(t));
-		for (let suffix in scope String[]("SceneSystem", "ComponentManager", "Subsystem", "System", "Manager"))
+		for (let suffix in scope String[]("SceneSystem", "ComponentManager", "Subsystem", "System", "Manager", "Facade"))
 		{
 			if (outName.EndsWith(suffix) && (outName.Length > suffix.Length))
 			{

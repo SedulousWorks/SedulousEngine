@@ -16,4 +16,7 @@ enum ScriptTypeRole
 	case Component;
 	/// A Subsystem or other engine level service, reached through the context.
 	case Service;
+	/// A SceneFacade: reached through the scene as `scene.<Name>`, one per scene, made on
+	/// first use by SceneFacades.
+	case SceneFacade;
 }

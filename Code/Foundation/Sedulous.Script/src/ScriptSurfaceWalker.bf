@@ -290,6 +290,12 @@ static class ScriptSurfaceWalker
 			members.AppendF("\t\tt.Named({});\n", Quote(sn.Name, .. scope .()));
 		if (type.GetCustomAttribute<DisplayNameAttribute>() case .Ok(let dn))
 			members.AppendF("\t\tt.Display({});\n", Quote(dn.Name, .. scope .()));
+		// A facade's name is what a script reaches it by: the property on Scene, or the
+		// global handle.
+		if (type.GetCustomAttribute<SceneFacadeAttribute>() case .Ok(let sf))
+			members.AppendF("\t\tt.Display({});\n", Quote(sf.Name, .. scope .()));
+		if (type.GetCustomAttribute<ServiceFacadeAttribute>() case .Ok(let svf))
+			members.AppendF("\t\tt.Display({});\n", Quote(svf.Name, .. scope .()));
 		if (type.GetCustomAttribute<DescriptionAttribute>() case .Ok(let ds))
 			members.AppendF("\t\tt.Describe({});\n", Quote(ds.Text, .. scope .()));
 		if (type.GetCustomAttribute<CategoryAttribute>() case .Ok(let c))
@@ -352,7 +358,7 @@ static class ScriptSurfaceWalker
 			ctx.Role = BaseRole(type);
 		if (ctx.Role != .Plain)
 			ctx.Code.AppendF("\t\tt.As(.{});\n", ctx.Role);
-		if ((ctx.Role == .SceneSystem) || (ctx.Role == .ComponentManager))
+		if ((ctx.Role == .SceneSystem) || (ctx.Role == .ComponentManager) || (ctx.Role == .SceneFacade))
 			EmitResolver(ctx);
 	}
 
@@ -361,8 +367,10 @@ static class ScriptSurfaceWalker
 	[Comptime]
 	private static ScriptTypeRole BaseRole(Type type)
 	{
-		if (type.HasCustomAttribute<ScriptServiceAttribute>())
+		if (type.HasCustomAttribute<ScriptServiceAttribute>() || type.HasCustomAttribute<ServiceFacadeAttribute>())
 			return .Service;
+		if (type.HasCustomAttribute<SceneFacadeAttribute>())
+			return .SceneFacade;
 		var t = type;
 		while (t != null)
 		{
@@ -425,6 +433,10 @@ static class ScriptSurfaceWalker
 		case .SceneSystem, .ComponentManager:
 			// The system a script holds, else the ambient scene's, for a host with no object.
 			outCode.AppendF("\tvar self = frame.Self.AsObject as {};\n\tif (self == null)\n\t{{\n\t\tlet ambient = frame.Context.Scene;\n\t\tself = (ambient != null) ? ambient.GetSystem<{}>() : null;\n\t}}\n\tif (self == null) {{ frame.Fail(\"no {} in the scene\"); return; }}\n", t, t, ctx.Name);
+			sceneExpr.Set("self.Scene");
+		case .SceneFacade:
+			// The facade a script holds, else the ambient scene's, made on first use.
+			outCode.AppendF("\tvar self = frame.Self.AsObject as {};\n\tif (self == null)\n\t\tself = SceneFacades.Resolve<{}>(frame.Context.Scene);\n\tif (self == null) {{ frame.Fail(\"no scene for {}\"); return; }}\n", t, t, ctx.Name);
 			sceneExpr.Set("self.Scene");
 		case .Component:
 			// The entity's own scene, else the ambient one.
@@ -699,7 +711,7 @@ static class ScriptSurfaceWalker
 		let onScene = (ctx.Role == .Plain) && (ctx.FullName == "Sedulous.Scene.Scene");
 		if (!onScene)
 		{
-			if ((ctx.Role != .SceneSystem) && (ctx.Role != .ComponentManager))
+			if ((ctx.Role != .SceneSystem) && (ctx.Role != .ComponentManager) && (ctx.Role != .SceneFacade))
 				return false;
 			if (!m.HasCustomAttribute<ScriptOnEntityAttribute>())
 				return false;
@@ -1045,7 +1057,7 @@ static class ScriptSurfaceWalker
 			return;
 		switch (ctx.Role)
 		{
-		case .SceneSystem, .ComponentManager: outExpr.Set("self.Scene");
+		case .SceneSystem, .ComponentManager, .SceneFacade: outExpr.Set("self.Scene");
 		case .Component: outExpr.Set("scene");
 		case .Plain:
 			if ((ctx.Kind == .Class) && (ctx.FullName == "Sedulous.Scene.Scene"))
@@ -1085,6 +1097,8 @@ static class ScriptSurfaceWalker
 		outCode.Append("\tif (frame.Self.Kind != .Entity) { frame.Fail(\"self is not an entity\"); return; }\n\tlet scene = frame.SceneOf(frame.Self);\n\tif (scene == null) { frame.Fail(\"the entity has no scene\"); return; }\n");
 		if (ctx.FullName == "Sedulous.Scene.Scene")
 			outCode.Append("\tlet self = scene;\n");
+		else if (ctx.Role == .SceneFacade)
+			outCode.AppendF("\tlet self = SceneFacades.Resolve<{}>(scene);\n", ctx.FullName);
 		else
 			outCode.AppendF("\tlet self = scene.GetSystem<{}>();\n\tif (self == null) {{ frame.Fail(\"no {} in the entity's scene\"); return; }}\n", ctx.FullName, ctx.Name);
 	}
@@ -1094,7 +1108,8 @@ static class ScriptSurfaceWalker
 	private static void EmitResolver(TypeCtx ctx)
 	{
 		let name = ctx.NextThunk(.. scope .());
-		ctx.Thunks.AppendF("static void {}(ref ScriptCallFrame frame)\n{{\n\tframe.Begin();\n\tlet scene = frame.Self.AsObject as Sedulous.Scene.Scene;\n\tif (scene == null) {{ frame.Fail(\"self is not a Scene\"); return; }}\n\tframe.Result = .FromObject(scene.GetSystem<{}>());\n}}\n\n", name, ctx.FullName);
+		let resolve = (ctx.Role == .SceneFacade) ? scope:: $"SceneFacades.Resolve<{ctx.FullName}>(scene)" : scope:: $"scene.GetSystem<{ctx.FullName}>()";
+		ctx.Thunks.AppendF("static void {}(ref ScriptCallFrame frame)\n{{\n\tframe.Begin();\n\tlet scene = frame.Self.AsObject as Sedulous.Scene.Scene;\n\tif (scene == null) {{ frame.Fail(\"self is not a Scene\"); return; }}\n\tframe.Result = .FromObject({});\n}}\n\n", name, resolve);
 		ctx.Code.AppendF("\t\tt.ResolvedBy(=> {});\n", name);
 	}
 

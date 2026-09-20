@@ -514,4 +514,63 @@ static class ScriptThunkTests
 		Test.Assert(!frame.Failed, scope String(frame.Error));
 		Test.Assert((made.Points.Count == 2) && Near(made.Points[1].X, 7));
 	}
+
+	/// A scene facade: one per scene, made on first use, resolved from the scene like a
+	/// system, its verbs in script shape over the scene's systems, and released with it.
+	[Test]
+	public static void ASceneFacadeIsMadePerSceneAndResolvedThroughIt()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let ctx = scope ScratchCallContext();
+		let facade = s.Find(scope $"{cFixture}.WidgetsFacade");
+		Test.Assert((facade != null) && (facade.Role == .SceneFacade) && (facade.DisplayName == "Widgets"));
+		Test.Assert(facade.FromScene != null, "resolved through the scene");
+
+		let a = scope Scene("a");
+		let b = scope Scene("b");
+		defer { SceneFacades.Release(a); SceneFacades.Release(b); }
+		let widgetsA = a.AddSystem<WidgetComponentManager>();
+		let systemA = a.AddSystem<FixtureSystem>();
+		b.AddSystem<WidgetComponentManager>();
+		let e = a.CreateEntity("e");
+		widgetsA.Add(e).Size = 3;
+
+		// The resolver: the scene's facade, the same object each time, one per scene.
+		var frame = ScriptCallFrame(ctx, default);
+		frame.Self = .FromObject(a);
+		facade.FromScene(ref frame);
+		Test.Assert(!frame.Failed && (frame.Result.AsObject != null));
+		let fa = frame.Result.AsObject as WidgetsFacade;
+		Test.Assert((fa != null) && (fa.Scene === a) && (fa.Attached == 1));
+		facade.FromScene(ref frame);
+		Test.Assert(frame.Result.AsObject === fa, "made once");
+		frame.Self = .FromObject(b);
+		facade.FromScene(ref frame);
+		Test.Assert((frame.Result.AsObject !== fa) && ((frame.Result.AsObject as WidgetsFacade).Scene === b), "b's own");
+		Test.Assert((SceneFacades.CountFor(a) == 1) && (SceneFacades.CountFor(b) == 1));
+
+		// A call on the held facade: the composite reaches both systems.
+		var arg = ScriptValue[1](.FromEntity(e, a));
+		frame = ScriptCallFrame(ctx, arg);
+		frame.Self = .FromObject(fa);
+		Method(s, scope $"{cFixture}.WidgetsFacade", "PokeAndTick").Invoke(ref frame);
+		Test.Assert(!frame.Failed && (frame.Result.AsInt == 1) && (systemA.TickCount == 8));
+		// The script shaped read.
+		Method(s, scope $"{cFixture}.WidgetsFacade", "SizeOf").Invoke(ref frame);
+		Test.Assert(!frame.Failed && Near((float)frame.Result.AsNumber, 3));
+		// Through the ambient scene with no object held, and on the entity itself.
+		ctx.Scene = a;
+		frame = ScriptCallFrame(ctx, default);
+		Field(s, scope $"{cFixture}.WidgetsFacade", "Pokes").Get(ref frame);
+		Test.Assert(!frame.Failed && (frame.Result.AsInt == 1));
+		frame = ScriptCallFrame(ctx, default);
+		frame.Self = .FromEntity(e, a);
+		Method(s, scope $"{cFixture}.WidgetsFacade", "PokeAndTick").EntityInvoke(ref frame);
+		Test.Assert(!frame.Failed && (frame.Result.AsInt == 2), "the entity side resolves the entity's scene's facade");
+
+		// Released with the scene.
+		SceneFacades.Release(a);
+		Test.Assert(SceneFacades.CountFor(a) == 0);
+	}
 }

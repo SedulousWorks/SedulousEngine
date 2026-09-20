@@ -270,6 +270,38 @@ static class FixtureScriptTests
 		Test.Assert(!thing.FirePoke(), "a dead callback answers false");
 	}
 
+	/// A scene facade to a script: reached as `scene.Widgets` where a Scene exists, here
+	/// by the handle a host passes, its verbs in script shape.
+	[Test]
+	public static void ASceneFacadeIsAHandleWithScriptShapedVerbs()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let vm = Bound(s);
+		defer delete vm;
+		let ok = vm.Compile("t", "t.as", """
+			int drive(WidgetsFacade@ widgets, const Entity &in e)
+			{
+				widgets.PokeAndTick(e);
+				e.PokeAndTick();
+				return widgets.Pokes * 100 + int(widgets.SizeOf(e));
+			}
+			""");
+		Dump(vm);
+		Test.Assert(ok, "compiled");
+		let a = scope Scene("a");
+		defer SceneFacades.Release(a);
+		let widgets = a.AddSystem<WidgetComponentManager>();
+		a.AddSystem<FixtureSystem>();
+		let e = a.CreateEntity("e");
+		widgets.Add(e).Size = 5;
+		var args = ScriptValue[2](.FromObject(SceneFacades.Resolve<WidgetsFacade>(a)), .FromEntity(e, a));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("t", "int drive(WidgetsFacade@, const Entity &in)", args, ref r), "drove the facade");
+		Dump(vm);
+		Test.Assert(r.AsInt == 205, scope $"got {r.AsInt}");
+	}
+
 	/// The entity side of an entity-first method: `e.Poke()` reaches the manager in the
 	/// entity's scene, and a verb that did not ask is not there.
 	[Test]

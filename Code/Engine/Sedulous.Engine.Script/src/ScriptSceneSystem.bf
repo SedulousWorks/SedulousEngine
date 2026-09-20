@@ -85,6 +85,14 @@ class ScriptSceneSystem : SceneSystem
 		mHost = host;
 	}
 
+	/// The scene's facades go with its scripting, the scene being destroyed with its
+	/// systems.
+	public ~this()
+	{
+		if (mScene != null)
+			SceneFacades.Release(mScene);
+	}
+
 	public ScriptRunHost Host => mHost;
 	public Scene OwningScene => mScene;
 	public SceneScriptSettings Settings => mSettings;

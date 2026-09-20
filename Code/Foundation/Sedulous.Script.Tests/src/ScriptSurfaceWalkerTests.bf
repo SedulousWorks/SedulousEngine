@@ -33,8 +33,9 @@ static class ScriptSurfaceWalkerTests
 	{
 		let s = scope ScriptSurface();
 		FixtureSurface.Populate(s);
-		// Vec2, Thing, Mode, Cooker, the static block, WidgetComponent, its manager, the system.
-		Test.Assert(FixtureSurface.TypeCount == 8, scope $"found {FixtureSurface.TypeCount}");
+		// Vec2, Thing, Mode, Cooker, the static block, WidgetComponent, its manager, the
+		// system, the Widgets facade.
+		Test.Assert(FixtureSurface.TypeCount == 9, scope $"found {FixtureSurface.TypeCount}");
 		Test.Assert(s.Types.Count == FixtureSurface.TypeCount);
 		Test.Assert(s.Find(scope $"{cFixture}.Unmarked") == null);
 		Test.Assert(s.Find("Sedulous.Script.Fixture.FixtureSurface") == null, "the root itself is off");
@@ -202,7 +203,7 @@ static class ScriptSurfaceWalkerTests
 
 		let text = scope String();
 		vm.Describe(text);
-		Test.Assert(text.StartsWith("script surface: 8 types, "), scope String(text.Substring(0, 80)));
+		Test.Assert(text.StartsWith("script surface: 9 types, "), scope String(text.Substring(0, 80)));
 		Test.Assert(text.Contains(" 0 blocked, domains: Runtime Pipeline"));
 		Test.Assert(text.Contains("== domain Pipeline =="));
 		Test.Assert(text.Contains("struct Vec2 [all public] \"Vector 2\""));
@@ -218,6 +219,8 @@ static class ScriptSurfaceWalkerTests
 		Test.Assert(text.Contains("struct WidgetComponent [Component] id=fixture_widget manager=WidgetComponentManager"));
 		Test.Assert(text.Contains("    On = 5"));
 		Test.Assert(text.Contains("    Poke(entity: EntityHandle) [on entity: Poke]"));
+		Test.Assert(text.Contains("class WidgetsFacade [SceneFacade] \"Widgets\""), "the facade role, reached as Widgets");
+		Test.Assert(text.Contains("    PokeAndTick(entity: EntityHandle) -> int [on entity: PokeAndTick]"));
 		Test.Assert(text.Contains("    Nudge(entity: EntityHandle, amount: float = ...)\n"), "not on the entity");
 		Test.Assert(!text.Contains("Scratch") && !text.Contains("Unmarked") && !text.Contains("NotExposed"));
 	}
