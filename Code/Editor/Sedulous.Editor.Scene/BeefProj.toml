@@ -7,3 +7,8 @@ StartupObject = "Sedulous.Editor.Scene.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Scene.Resource" = "*"
+"Sedulous.Editor.Core" = "*"
