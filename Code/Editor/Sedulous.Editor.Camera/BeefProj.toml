@@ -7,3 +7,5 @@ StartupObject = "Sedulous.Editor.Camera.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Shell" = "*"
