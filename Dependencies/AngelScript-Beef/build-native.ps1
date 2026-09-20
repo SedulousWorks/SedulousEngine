@@ -68,7 +68,7 @@ elseif($option -eq "build")
             }
 
             copy-item (Get-ChildItem -Recurse "./build-debug" -Filter "angelscript_beef.lib" | Select-Object -First 1).FullName "$targetPath/angelscript_beef.lib" -Force
-            copy-item (Get-ChildItem -Recurse "./build-debug" -Filter "angelscript.lib" | Select-Object -First 1).FullName "$targetPath/angelscript.lib" -Force
+            copy-item (Get-ChildItem -Recurse "./build-debug" -Filter "angelscriptd.lib" | Select-Object -First 1).FullName "$targetPath/angelscript.lib" -Force
         }
     }
 
