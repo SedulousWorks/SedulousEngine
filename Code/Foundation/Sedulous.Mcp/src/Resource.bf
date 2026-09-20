@@ -14,14 +14,18 @@ class Resource
 	public String Description = new .() ~ delete _;
 	/// Null for an entry listed by a provider, whose reads go through the provider instead.
 	public Reader Read ~ delete _;
+	/// State the reader closes over, OWNED here so it dies with the resource, as a tool's
+	/// Context does: a Beef closure has no destructor of its own.
+	public Object Context ~ delete _;
 
 	public this(StringView uri, StringView name, StringView mimeType, StringView description,
-		Reader read = null)
+		Reader read = null, Object context = null)
 	{
 		Uri.Set(uri);
 		Name.Set(name);
 		MimeType.Set(mimeType);
 		Description.Set(description);
 		Read = read;
+		Context = context;
 	}
 }

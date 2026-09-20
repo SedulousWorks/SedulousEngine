@@ -57,6 +57,28 @@ static class ScriptLanguageCooks
 		}
 	}
 
+	/// The file extension a language's cook claims, empty when none registered it.
+	public static void ExtensionOf(StringView language, String outExtension)
+	{
+		outExtension.Clear();
+		for (let entry in sEntries)
+		{
+			if (entry.Language == language)
+			{
+				outExtension.Set(entry.Extension);
+				return;
+			}
+		}
+	}
+
+	/// Every registered language id, in registration order, for a host describing what it
+	/// can compile.
+	public static void CollectLanguages(List<String> outLanguages)
+	{
+		for (let entry in sEntries)
+			outLanguages.Add(new String(entry.Language));
+	}
+
 	/// Every cook's version summed, for the builder's own.
 	public static int32 VersionSum
 	{

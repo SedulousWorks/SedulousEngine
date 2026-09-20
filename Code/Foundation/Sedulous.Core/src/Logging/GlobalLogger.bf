@@ -35,6 +35,18 @@ static
 		sOwnsGlobalLogger = false;
 	}
 
+	/// Detaches the global logger WITHOUT deleting it, handing its ownership to the caller:
+	/// for a scope that wants to listen in, installs a composite of this and its own, and
+	/// puts this one back afterwards with the ownership it took.
+	public static ILogger DetachGlobalLogger(out bool owned)
+	{
+		let logger = sGlobalLogger;
+		owned = sOwnsGlobalLogger;
+		sGlobalLogger = null;
+		sOwnsGlobalLogger = false;
+		return logger;
+	}
+
 	public static bool HasGlobalLogger() => sGlobalLogger != null;
 
 	public static ILogger GlobalLogger() => sGlobalLogger;

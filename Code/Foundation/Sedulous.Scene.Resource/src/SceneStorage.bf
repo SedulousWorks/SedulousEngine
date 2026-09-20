@@ -15,7 +15,7 @@ namespace Sedulous.Scene.Resource;
 /// feeds both, so the two can never come to describe different worlds.
 static class SceneStorage
 {
-	private const String cStreamName = "scene";
+	public const String cStreamName = "scene";
 
 	/// Reads the instance's scene stream into `scene`, which must ALREADY have its
 	/// component managers: load deserializes into them rather than creating them.

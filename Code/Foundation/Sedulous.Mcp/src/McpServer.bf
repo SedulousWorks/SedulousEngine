@@ -44,11 +44,11 @@ class McpServer
 		mTools.Add(new Tool(name, description, inputSchema, handler, context));
 	}
 
-	/// Registers a static resource. OWNERSHIP of the reader transfers.
+	/// Registers a static resource. OWNERSHIP of the reader and the context transfers.
 	public void RegisterResource(StringView uri, StringView name, StringView mimeType,
-		StringView description, Resource.Reader reader)
+		StringView description, Resource.Reader reader, Object context = null)
 	{
-		mResources.Add(new Resource(uri, name, mimeType, description, reader));
+		mResources.Add(new Resource(uri, name, mimeType, description, reader, context));
 	}
 
 	/// Registers a dynamic set. OWNERSHIP transfers.
