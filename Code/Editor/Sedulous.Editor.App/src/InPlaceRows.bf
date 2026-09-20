@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core;
 using Sedulous.UI.Toolkit;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.App;
 
 /// Property rows that edit a field IN PLACE through a pointer and report the edit under the
 /// category plus name as its merge key, so a scrub on one row is one undo step. What the

@@ -3,6 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.UI.Toolkit;
 using Sedulous.Particles;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Scene;
 
