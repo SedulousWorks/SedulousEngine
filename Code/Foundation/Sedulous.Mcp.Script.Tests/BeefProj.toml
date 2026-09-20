@@ -1,0 +1,16 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Mcp.Script.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Mcp.Script.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Json" = "*"
+"Sedulous.Mcp" = "*"
+"Sedulous.Mcp.Script" = "*"
+"Sedulous.Script" = "*"
+"Sedulous.Script.Fixture" = "*"
+"Sedulous.Script.AngelScript" = "*"

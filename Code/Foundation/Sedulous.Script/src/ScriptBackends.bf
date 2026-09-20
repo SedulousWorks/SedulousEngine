@@ -27,4 +27,12 @@ static class ScriptBackends
 	}
 
 	public static bool Has(StringView language) => sFactories.ContainsKey(scope String(language));
+
+	/// Every registered language id, in registration order. A host describing its backends,
+	/// the MCP script_api say, reads the set live rather than naming languages.
+	public static void CollectLanguages(List<String> outLanguages)
+	{
+		for (let entry in sFactories)
+			outLanguages.Add(new String(entry.key));
+	}
 }
