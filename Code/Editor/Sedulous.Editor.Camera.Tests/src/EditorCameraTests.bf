@@ -54,6 +54,37 @@ static class EditorCameraTests
 	}
 
 	[Test]
+	public static void WheelDollyKeepsTheOrbitPivotFixedAtAnyZoom()
+	{
+		let cam = scope EditorCamera();
+		cam.Position = .(0.0f, 0.0f, 5.0f);
+		cam.LookAt(.Zero); // the pivot is the origin, five away
+		let keyboard = scope StubKeyboard();
+		let mouse = scope StubMouse();
+		mouse.Scroll = 1.0f; // one notch in
+
+		// Far past where a fixed step dolly would start dragging the pivot: it stays at the
+		// origin every step, and the camera never crosses to the far side.
+		for (int i < 40)
+		{
+			cam.Update(keyboard, mouse, 1.0f / 60.0f);
+			let pivot = cam.Position + cam.Forward * cam.FocusDistance;
+			Test.Assert(Length(pivot) < 0.001f);
+			Test.Assert(cam.Position.Z > 0.0f);
+		}
+		Test.Assert(cam.FocusDistance < 1.0f); // closer than a unit floor would allow
+		Test.Assert(cam.FocusDistance >= 0.05f); // but never through the pivot
+
+		// Zooming back out retreats along the same axis, the pivot still fixed.
+		mouse.Scroll = -1.0f;
+		for (int i < 40)
+			cam.Update(keyboard, mouse, 1.0f / 60.0f);
+		let pivot = cam.Position + cam.Forward * cam.FocusDistance;
+		Test.Assert(Length(pivot) < 0.001f);
+		Test.Assert(cam.FocusDistance > 4.0f); // roughly back out, exponentially
+	}
+
+	[Test]
 	public static void RightButtonFreeLookTurnsByDeltaTimesSensitivity()
 	{
 		let cam = scope EditorCamera();
