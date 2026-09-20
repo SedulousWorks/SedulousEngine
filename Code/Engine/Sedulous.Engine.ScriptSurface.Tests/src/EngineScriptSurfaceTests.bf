@@ -32,7 +32,7 @@ static class EngineScriptSurfaceTests
 		Test.Assert(s.Types.Count == EngineScriptSurface.TypeCount);
 		// Bump deliberately when a type is marked or unmarked; a surprise here is a lost or
 		// stray dependency of the root.
-		Test.Assert(EngineScriptSurface.TypeCount == 159, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
+		Test.Assert(EngineScriptSurface.TypeCount == 167, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
 	}
 
 	[Test]

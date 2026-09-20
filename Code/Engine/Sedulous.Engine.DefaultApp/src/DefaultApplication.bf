@@ -24,6 +24,8 @@ using Sedulous.Script.AngelScript;
 using Sedulous.Script.Resource;
 using Sedulous.Engine.Terrain;
 using Sedulous.Engine.UI;
+using Sedulous.Engine.UI.Script;
+using Sedulous.UI.Resource;
 using Sedulous.Graphics;
 using Sedulous.Image;
 using Sedulous.Net.Manager;
@@ -95,6 +97,9 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	/// OWNED: physics contacts to script handlers. Uninstalled before the subsystems go.
 	private ScriptPhysicsContactBridge mContactBridge = new .() ~ delete _;
+	/// OWNED: `Ui` to a script, over the screen tier; a document instantiates through the
+	/// resource manager and the UI subsystem.
+	private UiScript mUiScript = new .() ~ delete _;
 
 	// ---- screenshots ----
 	private ScreenshotCapture mScreenshot = new .() ~ delete _;
@@ -258,6 +263,7 @@ class DefaultApplication : IApplication, ISceneObserver
 					runtime.SetService(mAudio);
 				if (mRender != null)
 					runtime.SetService(mRender);
+				runtime.SetService(mUiScript);
 			};
 		// Physics contacts reach behaviours through the composition root's bridge: neither
 		// subsystem names the other.
@@ -291,6 +297,15 @@ class DefaultApplication : IApplication, ISceneObserver
 
 		mUI = new UISubsystem(mDataMount);
 		host.Context.RegisterSubsystem<UISubsystem>(mUI);
+		// The screen tier to scripts: Ui.Push(document) instantiates the cooked document
+		// through the resource manager, on the subsystem's context.
+		mUiScript.Attach(mUI.Screens, new (documentId) =>
+			{
+				if ((Resources == null) || (mUI == null))
+					return null;
+				let document = Resources.Bind<UIDocument>(documentId).Get;
+				return (document != null) ? mUI.InstantiateScreenOverlay(document) : null;
+			});
 
 		// Each instance owns its OWN endpoint and goes online at runtime through the facade,
 		// so there is no application owned socket. The primary carries the prefab spawn
@@ -620,6 +635,8 @@ class DefaultApplication : IApplication, ISceneObserver
 		mContactBridge.Uninstall();
 		// Every game script's exit() before its scenes go.
 		ForEachInstance(scope (instance) => instance.StopScript());
+		// The script handles' references before the UI tier's trees go.
+		UiHandles.Clear();
 
 		for (let instance in mExtraInstances)
 		{
