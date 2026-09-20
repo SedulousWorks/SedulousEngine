@@ -7,4 +7,6 @@ StartupObject = "Sedulous.Editor.Generic.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Editor.Core" = "*"
 "Sedulous.Editor.Generic" = "*"
