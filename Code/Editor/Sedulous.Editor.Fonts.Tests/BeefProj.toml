@@ -7,4 +7,9 @@ StartupObject = "Sedulous.Editor.Fonts.Tests.Program"
 
 [Dependencies]
 corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Image" = "*"
+"Sedulous.Fonts.Pipeline" = "*"
+"Sedulous.Editor.Core" = "*"
 "Sedulous.Editor.Fonts" = "*"
