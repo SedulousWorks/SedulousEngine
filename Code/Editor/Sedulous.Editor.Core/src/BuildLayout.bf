@@ -36,18 +36,32 @@ static class BuildLayout
 		}
 	}
 
-	/// The build config this binary was made with, from its defines.
+	private static String sBuildConfigName = null ~ delete _;
+
+	/// The build config this binary was made with: read off its own build directory,
+	/// build/<Config>_<Platform>/<Project>, falling back to the defines for a relocated
+	/// binary.
 	public static StringView BuildConfigName
 	{
 		get
 		{
-#if BF_TEST
-			return "Test";
-#elif BF_DEBUG
-			return "Debug";
+			if (sBuildConfigName == null)
+			{
+				sBuildConfigName = new String();
+				let platform = scope String();
+				ParseBuildDirectory(GetExecutableDirectory(.. scope .()), sBuildConfigName, platform);
+				if (sBuildConfigName.IsEmpty)
+				{
+#if TEST
+					sBuildConfigName.Set("Test");
+#elif DEBUG
+					sBuildConfigName.Set("Debug");
 #else
-			return "Release";
+					sBuildConfigName.Set("Release");
 #endif
+				}
+			}
+			return sBuildConfigName;
 		}
 	}
 
