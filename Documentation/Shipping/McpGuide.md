@@ -50,6 +50,12 @@ class attachable.
 **Diagnostics**: `log_write` a marker, do the risky thing, then `log_read` with
 `sinceSequence` set to the marker's sequence to see exactly what the engine said after it.
 
+**Export**: `project_health` first, to catch breakage before a long cook, then
+`project_export` (`preset` optional; the default is the first, or the host platform preset
+when the project has no `export_presets.xml`). The dist lands under `<project>/Dist` unless
+`out` says otherwise: the player, its runtime libraries, `Content.pak`, `player.xml` and
+`Data/Shaders/shaders.dpak`.
+
 ## Per tool gotchas
 
 - `script_validate` is a COMPILE check (`checkLevel: "compile"`): a call the language cannot
@@ -61,9 +67,10 @@ class attachable.
   result plus empty `projectSettingsUses` is the "safe to touch" signal.
 - `log_read` is incremental: always pass the previous `lastSequence`; a non zero `dropped`
   means the ring overflowed and old lines are gone.
-- `asset_cook` is a long running call (a full cook may run inside it); do not assume a hang
-  before minutes have passed.
-- `project_export` is not on this host yet; it arrives with the export packager.
+- `asset_cook` and `project_export` are long running calls (a full cook may run inside
+  them); do not assume a hang before minutes have passed.
+- `project_export` failures say little in the response by design; the detail is in
+  `log_read` (the Cook and Export categories).
 
 ## When something looks wrong
 

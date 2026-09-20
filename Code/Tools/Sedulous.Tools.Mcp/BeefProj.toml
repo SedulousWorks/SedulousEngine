@@ -20,3 +20,11 @@ corlib = "*"
 "Sedulous.Engine.SceneSurface" = "*"
 "Sedulous.Editor.Core" = "*"
 "Sedulous.Editor.Mcp" = "*"
+
+# The WGSL shader cook a Web export runs needs naga and tint BESIDE the executable, where
+# ShaderPackCooker looks for them, exactly as Tools.ShaderPack ships them.
+[Configs.Debug.Linux64]
+PostBuildCmds = ["CopyToTarget(\"$(WorkspaceDir)/../Bin/Naga/bin/linux-x86_64/naga\")", "CopyToTarget(\"$(WorkspaceDir)/../Bin/Tint/bin/linux-x86_64/tint\")", "ExecuteRaw(\"chmod +x $(TargetDir)/naga $(TargetDir)/tint\")"]
+
+[Configs.Release.Linux64]
+PostBuildCmds = ["CopyToTarget(\"$(WorkspaceDir)/../Bin/Naga/bin/linux-x86_64/naga\")", "CopyToTarget(\"$(WorkspaceDir)/../Bin/Tint/bin/linux-x86_64/tint\")", "ExecuteRaw(\"chmod +x $(TargetDir)/naga $(TargetDir)/tint\")"]

@@ -3,6 +3,7 @@ using System.IO;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
+using Sedulous.VFS;
 using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.Mcp.Reflection;
@@ -22,11 +23,11 @@ namespace Sedulous.Tools.Mcp;
 /// The surface: host_info, the reflection tools, script_api over the pipeline surface, the
 /// project tools (create/open/info, asset list/info/import/cook, asset_uses,
 /// project_health), the scene tools (read/write/validate, prefabs), script_validate and
-/// script_create, the log tools with the curated known issues, and the read only resources:
+/// script_create, project_export, the log tools with the curated known issues, and the read only resources:
 /// the shipping docs as docs://<name> and the open project's scenes as project://.
 ///
-/// Usage: Sedulous.Tools.Mcp   (no arguments; run it from inside the engine checkout so the
-/// docs and KnownIssues.md resolve, or stage them beside the executable)
+/// Usage: Sedulous.Tools.Mcp [--data-root <dir>]   (run it from inside the engine checkout so
+/// the docs, KnownIssues.md and the data root resolve, or stage them beside the executable)
 class Program
 {
 	public static int Main(String[] args)
@@ -66,6 +67,17 @@ class Program
 		ScriptValidateTool.Register(server);
 		ScriptCreateTool.Register(server, session);
 		LogTools.Register(server, logBuffer, ShippingDocs.FindKnownIssues(.. scope .()));
+		// project_export: the ONE export entry point. The engine data root, whose Shaders
+		// the export cooks: --data-root, else the Data/.dataroot walk from this tool.
+		let dataRoot = scope String();
+		ResolveDataRoot(args, dataRoot);
+		if (dataRoot.IsEmpty)
+		{
+			Console.Error.WriteLine("Sedulous.Tools.Mcp: no data root (put Data/ with its .dataroot marker beside the tool, or pass --data-root <dir>)");
+			return 1;
+		}
+		let playerDir = BuildLayout.PlayerDirectoryBeside(GetExecutableDirectory(.. scope .()), .. scope .());
+		ProjectExportTool.Register(server, session, builders, playerDir, dataRoot);
 
 		let docs = ShippingDocs.FindDirectory(.. scope .());
 		if (!docs.IsEmpty)

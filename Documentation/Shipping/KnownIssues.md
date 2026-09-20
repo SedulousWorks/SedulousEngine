@@ -24,8 +24,3 @@ toolchain gains an option to build a runtime free library.
 WebGPU supports sample counts 1 and 4 for the scene pass; there is no 2x. A project whose
 render settings ask for 2x MSAA is clamped to the nearest supported count at runtime on
 web targets. Pick 1x or 4x directly for identical results across platforms.
-
-## The MCP host has no project_export yet
-
-`project_export` arrives with the export packager. Until then a dist is not made through
-the MCP host; cook with `asset_cook` and stage by hand.

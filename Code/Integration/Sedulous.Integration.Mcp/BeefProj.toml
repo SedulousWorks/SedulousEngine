@@ -29,3 +29,7 @@ corlib = "*"
 "Sedulous.Script.Pipeline" = "*"
 "Sedulous.Editor.Core" = "*"
 "Sedulous.Editor.Mcp" = "*"
+
+# A Web export's WGSL cook needs naga and tint beside the executable.
+[Configs.Test.Linux64]
+PostBuildCmds = ["CopyToTarget(\"$(WorkspaceDir)/../Bin/Naga/bin/linux-x86_64/naga\")", "CopyToTarget(\"$(WorkspaceDir)/../Bin/Tint/bin/linux-x86_64/tint\")", "ExecuteRaw(\"chmod +x $(TargetDir)/naga $(TargetDir)/tint\")"]
