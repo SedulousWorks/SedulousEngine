@@ -50,4 +50,57 @@ static class EditorLogBufferTests
 		Test.Assert((kept.Count == 3) && (kept[0].Message == "line 2") && (kept[2].Message == "line 4"));
 		Test.Assert(kept[0].Sequence == 3, "sequences keep advancing across the drop");
 	}
+
+	/// Added to the global composite, it captures what the engine logs through GlobalLog.
+	[Test]
+	public static void OnTheGlobalLoggerItCapturesLogOutput()
+	{
+		let buffer = new EditorLogBuffer(16);
+		let composite = new CompositeLogger();
+		composite.Add(buffer, true);
+		InitGlobalLogger(composite, true);
+		defer ShutdownGlobalLogger();
+		GlobalLog(.Warning, "Cook: something {}", "happened");
+		let entries = scope List<EditorLogEntry>();
+		defer { ClearAndDeleteItems(entries); }
+		Test.Assert(buffer.CollectSince(0, entries) == 1);
+		Test.Assert((entries.Count == 1) && (entries[0].Category == "Cook") && (entries[0].Message == "something happened"));
+	}
+
+	/// Writers on several threads lose nothing and corrupt nothing: every sequence is
+	/// present once and every message is whole.
+	[Test]
+	public static void ConcurrentWritersLoseNothing()
+	{
+		let buffer = scope EditorLogBuffer(1024);
+		const int cThreads = 4;
+		const int cPerThread = 100;
+		let threads = scope List<System.Threading.Thread>();
+		for (int t < cThreads)
+		{
+			let index = t;
+			let thread = new System.Threading.Thread(new [=]() =>
+				{
+					for (int i < cPerThread)
+						buffer.Log(.Information, "T{}: line {} of a message long enough to notice a tear", index, i);
+				});
+			threads.Add(thread);
+			thread.Start(false);
+		}
+		for (let thread in threads)
+		{
+			thread.Join();
+			delete thread;
+		}
+		let entries = scope List<EditorLogEntry>();
+		defer { ClearAndDeleteItems(entries); }
+		Test.Assert(buffer.CollectSince(0, entries) == cThreads * cPerThread);
+		Test.Assert(entries.Count == cThreads * cPerThread);
+		Test.Assert(buffer.DroppedCount == 0);
+		for (int i < entries.Count)
+		{
+			Test.Assert(entries[i].Sequence == (uint64)(i + 1), "sequences are dense and ordered");
+			Test.Assert(entries[i].Category.StartsWith("T") && entries[i].Message.EndsWith("a tear"), "whole");
+		}
+	}
 }
