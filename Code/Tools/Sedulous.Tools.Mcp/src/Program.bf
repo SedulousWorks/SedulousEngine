@@ -92,11 +92,9 @@ class Program
 
 	private static void BuildStamp(String outStamp)
 	{
-		// Through the directory enumeration, whose timestamps are right on every platform;
-		// File.GetLastWriteTime reads a POSIX stat as a Windows file time.
 		let exe = Environment.GetExecutableFilePath(.. scope .());
-		if (FileStat(exe, let size, let ticks) && (ticks != 0))
-			DateTime(ticks, .Utc).ToString(outStamp, "yyyy-MM-ddTHH:mm:ssZ");
+		if (File.GetLastWriteTimeUtc(exe) case .Ok(let time))
+			time.ToString(outStamp, "yyyy-MM-ddTHH:mm:ssZ");
 		else
 			outStamp.Set("unknown");
 	}
