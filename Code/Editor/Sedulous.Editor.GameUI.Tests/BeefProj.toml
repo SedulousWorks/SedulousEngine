@@ -1,0 +1,15 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.GameUI.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Editor.GameUI.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.UI" = "*"
+"Sedulous.UI.Toolkit" = "*"
+"Sedulous.UI.Pipeline" = "*"
+"Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.GameUI" = "*"
