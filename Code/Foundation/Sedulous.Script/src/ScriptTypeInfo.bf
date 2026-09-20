@@ -87,6 +87,13 @@ class ScriptTypeInfo
 		return this;
 	}
 
+	/// The name a script uses, where the Beef one will not do: [ScriptName] on the type.
+	public ScriptTypeInfo Named(StringView scriptName)
+	{
+		Name.Set(scriptName);
+		return this;
+	}
+
 	public ScriptTypeInfo Display(StringView displayName)
 	{
 		DisplayName.Set(displayName);

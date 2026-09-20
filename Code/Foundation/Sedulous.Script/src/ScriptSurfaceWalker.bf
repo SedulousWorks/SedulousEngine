@@ -286,6 +286,8 @@ static class ScriptSurfaceWalker
 		if (allPublic)
 			members.Append("\t\tt.Everything();\n");
 
+		if (type.GetCustomAttribute<ScriptNameAttribute>() case .Ok(let sn))
+			members.AppendF("\t\tt.Named({});\n", Quote(sn.Name, .. scope .()));
 		if (type.GetCustomAttribute<DisplayNameAttribute>() case .Ok(let dn))
 			members.AppendF("\t\tt.Display({});\n", Quote(dn.Name, .. scope .()));
 		if (type.GetCustomAttribute<DescriptionAttribute>() case .Ok(let ds))

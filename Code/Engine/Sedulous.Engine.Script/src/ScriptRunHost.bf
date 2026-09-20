@@ -24,6 +24,8 @@ class ScriptRunHost
 	public delegate void(ScriptRuntime runtime) Configure = null ~ delete _;
 
 	private ScriptRuntime mRuntime = null ~ delete _;
+	/// OWNED: this run's random numbers, `Random` to a script; seedable by the owner.
+	private ScriptRandom mRandom = new .() ~ delete _;
 	private String mLanguage = new .() ~ delete _;
 	/// BORROWED: the resource manager owns the products.
 	private List<ScriptClass> mLoaded = new .() ~ delete _;
@@ -33,6 +35,7 @@ class ScriptRunHost
 	private bool mWarnedLanguage = false;
 
 	public ScriptRuntime Runtime => mRuntime;
+	public ScriptRandom Random => mRandom;
 	public bool IsActive => mRuntime != null;
 	public StringView ModuleName => mModuleName;
 	public int Generation => mGeneration;
@@ -63,6 +66,8 @@ class ScriptRunHost
 		mLanguage.Set(language);
 		if (Configure != null)
 			Configure(runtime);
+		// The run's own services, whatever the owner installed: its random numbers.
+		runtime.SetService(mRandom);
 		EnsureDebugger(); // a debugger requested before the runtime existed attaches now
 		return runtime;
 	}
