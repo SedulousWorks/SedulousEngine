@@ -354,7 +354,7 @@ class ThumbnailService
 			names.Clear();
 			generator.AssetTypeNames(names);
 			for (let covered in names)
-				if (covered == typeName)
+				if (AssetTypeNames.Matches(typeName, covered))
 					return generator;
 		}
 		return null;
@@ -368,7 +368,7 @@ class ThumbnailService
 			names.Clear();
 			generator.AssetTypeNames(names);
 			for (let covered in names)
-				if (covered == typeName)
+				if (AssetTypeNames.Matches(typeName, covered))
 					return generator;
 		}
 		return null;

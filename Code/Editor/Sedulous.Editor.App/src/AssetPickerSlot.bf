@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Editor.Core;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
@@ -213,7 +214,7 @@ class AssetPickerSlot : FlexLayout, IDropTarget
 	{
 		for (let accepted in mAcceptedTypes)
 		{
-			if (accepted == typeName)
+			if (AssetTypeNames.Matches(typeName, accepted))
 				return true;
 		}
 		return false;

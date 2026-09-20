@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Editor.Core;
 using System.Collections;
 using Sedulous.UI;
 
@@ -146,7 +147,7 @@ static class EditorIcons
 	/// after Initialize: unmatched types get the generic document glyph.
 	public static SVGDrawable ForAssetType(StringView typeName)
 	{
-		switch (typeName)
+		switch (AssetTypeNames.Short(typeName))
 		{
 		case "SceneDocument": return Scene;
 		case "ModelManifestAsset": return Prefab;

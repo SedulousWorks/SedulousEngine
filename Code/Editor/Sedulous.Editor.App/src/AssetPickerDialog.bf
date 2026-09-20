@@ -178,7 +178,7 @@ class AssetPickerDialog : Dialog
 			return true;
 		for (let typeName in mTypeNames)
 		{
-			if (instance.TypeName == typeName)
+			if (AssetTypeNames.Matches(instance.TypeName, typeName))
 				return true;
 		}
 		return false;
