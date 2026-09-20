@@ -38,6 +38,7 @@ class EditorContext : IAssetEditSink
 	// ---- borrowed services ----
 	private EditorProject mProject = null;
 	private EditorJobService mJobs = null;
+	private ThumbnailService mThumbnails = null;
 	private ResourceManager mResources = null;
 	private Settings mProjectEditorSettings = null;
 	private Settings mUserEditorSettings = null;
@@ -129,6 +130,13 @@ class EditorContext : IAssetEditSink
 	{
 		get => mJobs;
 		set => mJobs = value;
+	}
+
+	/// The app's thumbnail service, borrowed; null in a headless context.
+	public ThumbnailService Thumbnails
+	{
+		get => mThumbnails;
+		set => mThumbnails = value;
 	}
 
 	/// The runtime products over the project's cooked database, owned by the application
