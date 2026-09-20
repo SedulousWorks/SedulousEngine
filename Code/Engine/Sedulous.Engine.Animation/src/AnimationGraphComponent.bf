@@ -35,6 +35,7 @@ struct AnimationGraphComponent : ISerializable, IComponentResources
 
 	/// The feed targets, by stable id. Empty means the owner.
 	[Scriptable]
+	[DisplayName("Mesh Entities")]
 	public List<EntityRef> MeshEntities = null;
 
 	/// Whether to evaluate at all this frame.

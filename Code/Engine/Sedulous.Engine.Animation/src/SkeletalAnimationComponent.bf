@@ -43,6 +43,7 @@ struct SkeletalAnimationComponent : ISerializable, IComponentResources
 
 	/// The entities whose mesh receives the matrices. Empty means the owner.
 	[Scriptable]
+	[DisplayName("Mesh Entities")]
 	public List<EntityRef> MeshEntities = null;
 
 	[Scriptable]

@@ -44,36 +44,51 @@ struct NavAgentComponent : ISerializable
 	// ---- runtime ----
 
 	/// The crowd's handle within the zone, minus one when unregistered.
+	[Hidden]
 	public int32 AgentId = -1;
 	/// The live zone index, minus one when the agent is outside every zone.
+	[Hidden]
 	public int32 ZoneIndex = -1;
 
+	[Hidden]
 	public Float3 Target = .(0, 0, 0);
+	[Hidden]
 	public bool HasTarget = false;
 	/// A destination the tick has not applied yet.
+	[Hidden]
 	public bool TargetDirty = false;
 	/// A halt the tick has not applied yet.
+	[Hidden]
 	public bool StopRequested = false;
 	[Scriptable]
+	[Hidden]
 	public bool Finished = true;
 	[Scriptable]
+	[Hidden]
 	public float RemainingDistance = 0.0f;
 	/// The crowd's steering output in WORLD space, which is what a reporting agent is read
 	/// for.
+	[Hidden]
 	public Float3 DesiredVelocity = .(0, 0, 0);
 
 	/// The steering profile last pushed into the crowd. The tick re-applies on ANY change, so
 	/// a script's call and an inspector's edit both take effect.
+	[Hidden]
 	public float AppliedSpeed = -1.0f;
+	[Hidden]
 	public float AppliedAcceleration = -1.0f;
 
 	// ---- the introspection cache, filled from the crowd each tick ----
 
+	[Hidden]
 	public NavAgentCrowdState CrowdState = .Invalid;
+	[Hidden]
 	public NavAgentTargetState CrowdTargetState = .None;
 	/// The crowd's current speed intent.
+	[Hidden]
 	public float CrowdDesiredSpeed = 0.0f;
 	/// The corridor corners ahead, which is a hint at the path's progress.
+	[Hidden]
 	public int32 PathCorners = 0;
 
 	public this() {}

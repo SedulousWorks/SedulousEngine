@@ -17,17 +17,28 @@ struct LightComponent : ISerializable
 	[Scriptable]
 	public Color Color = .(1.0f, 1.0f, 1.0f, 1.0f);
 	[Scriptable]
+	[Range(0.0f, 50.0f, 0.1f)]
 	public float Intensity = 1.0f;
 	/// Falloff distance, for a point or a spot.
 	[Scriptable]
+	[Range(0.0f, 500.0f, 0.5f)]
+	[VisibleWhen("Type=1,2")]
+	[Description("Falloff distance (point/spot lights)")]
 	public float Range = 10.0f;
 	/// Spot cone inner half angle, in radians.
 	[Scriptable]
+	[Range(0.0f, 1.55f, 0.01f)]
+	[VisibleWhen("Type=2")]
+	[Description("Spot cone inner half-angle (radians)")]
 	public float InnerAngle = 0.5f;
 	/// Spot cone outer half angle, in radians.
 	[Scriptable]
+	[Range(0.0f, 1.55f, 0.01f)]
+	[VisibleWhen("Type=2")]
+	[Description("Spot cone outer half-angle (radians)")]
 	public float OuterAngle = 0.6f;
 	[Scriptable]
+	[VisibleWhen("CastsShadows")]
 	public ShadowUpdateMode ShadowUpdate = .Realtime;
 	[Scriptable]
 	public bool Enabled = true;

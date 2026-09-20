@@ -26,20 +26,27 @@ namespace Sedulous.Engine.Animation;
 struct PropertyAnimatorComponent : ISerializable, IComponentResources
 {
 	[Scriptable]
+	[DisplayName("Clip")]
 	public Ref<PropertyAnimationClip> Clip = .(Guid());
 	[Scriptable]
+	[DisplayName("Autoplay")]
 	public bool AutoPlay = true;
 	[Scriptable]
+	[DisplayName("Speed")]
 	public float Speed = 1.0f;
 	[Scriptable]
+	[DisplayName("Loop Mode")]
 	public PropertyLoopMode LoopMode = .Loop;
 
 	// ---- runtime state ----
 
 	[Scriptable]
+	[Hidden]
 	public bool Playing = false;
 	[Scriptable]
+	[Hidden]
 	public float Time = 0.0f;
+	[Hidden]
 	public int8 PingPongDirection = 1;
 	/// The clip the bindings were built for, BORROWED and compared by reference.
 	public PropertyAnimationClip BoundClip = null;

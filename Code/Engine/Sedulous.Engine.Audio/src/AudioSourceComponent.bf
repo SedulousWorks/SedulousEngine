@@ -24,8 +24,10 @@ struct AudioSourceComponent : ISerializable, IComponentResources
 	[Scriptable]
 	public AudioSourceType SourceType = .Clip;
 	[Scriptable]
+	[VisibleWhen("SourceType=0")]
 	public Ref<AudioClip> Clip = .(Guid());
 	[Scriptable]
+	[VisibleWhen("SourceType=1")]
 	public Ref<SoundCue> Cue = .(Guid());
 
 	[Scriptable]
@@ -52,6 +54,7 @@ struct AudioSourceComponent : ISerializable, IComponentResources
 	/// The distance low pass FLOOR in hertz for a spatial source: the cutoff glides from open
 	/// at the near distance to this at the far one. Nought muffles nothing.
 	[Scriptable]
+	[VisibleWhen("Spatial")]
 	public float DistanceLowpassHz = 4000.0f;
 
 	/// This source's feed into the scene's reverb, from nought to one. The zones drive the
@@ -63,21 +66,29 @@ struct AudioSourceComponent : ISerializable, IComponentResources
 	[Scriptable]
 	public uint8 Priority = 128;
 	[Scriptable]
+	[VisibleWhen("Spatial")]
 	public float MinDistance = 1.0f;
 	[Scriptable]
+	[VisibleWhen("Spatial")]
 	public float MaxDistance = 100.0f;
 	[Scriptable]
+	[VisibleWhen("Spatial")]
 	public AudioAttenuationModel AttenuationModel = .Inverse;
 	[Scriptable]
+	[VisibleWhen("Spatial")]
 	public float Rolloff = 1.0f;
 	/// Velocities feed the spatialiser every frame.
 	[Scriptable]
+	[VisibleWhen("Spatial")]
 	public float DopplerFactor = 1.0f;
 	[Scriptable]
+	[VisibleWhen("Spatial")]
 	public float ConeInnerAngleDegrees = 360.0f;
 	[Scriptable]
+	[VisibleWhen("Spatial")]
 	public float ConeOuterAngleDegrees = 360.0f;
 	[Scriptable]
+	[VisibleWhen("Spatial")]
 	public float ConeOuterGain = 0.0f;
 
 	// ---- runtime ----
@@ -86,14 +97,19 @@ struct AudioSourceComponent : ISerializable, IComponentResources
 
 	/// The entity active LATCH: true while the voice is stopped BECAUSE its entity is
 	/// effectively inactive. Reactivation restarts an automatic source from it.
+	[Hidden]
 	public bool ActiveSuspended = false;
 
 	/// The cue's no repeat state, one per component so two things triggering the same cue do
 	/// not share a sequence.
+	[Hidden]
 	public int32 LastCueVariant = -1;
+	[Hidden]
 	public uint32 CueSequentialCursor = 0;
 
+	[Hidden]
 	public Float3 PreviousPosition = .(0.0f, 0.0f, 0.0f);
+	[Hidden]
 	public bool HasPreviousPosition = false;
 
 	public this() {}

@@ -40,6 +40,7 @@ struct NavMeshZoneComponent : ISerializable, IComponentResources
 	public Ref<NavigationZoneResource> Zone = .(Guid());
 
 	/// TRANSIENT: the index into the scene system's live zones, minus one until it starts.
+	[Hidden]
 	public int32 RuntimeIndex = -1;
 
 	public this() {}

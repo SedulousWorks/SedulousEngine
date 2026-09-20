@@ -17,6 +17,7 @@ class SceneScriptSettings : ISerializable
 	public Ref<ScriptClass> Script = .(Guid());
 	[Scriptable]
 	public bool Enabled = true;
+	[Hidden]
 	public List<ScriptPropertyOverride> Overrides = new .() ~ DeleteContainerAndItems!(_);
 
 	public ScriptPropertyOverride FindOverride(uint64 hash)
@@ -41,6 +42,19 @@ class SceneScriptSettings : ISerializable
 		if (existing.Value.Text != null)
 			delete existing.Value.Text;
 		existing.Value = value;
+	}
+
+	public void RemoveOverride(uint64 hash)
+	{
+		for (int i = 0; i < Overrides.Count; i++)
+		{
+			if (Overrides[i].Hash == hash)
+			{
+				delete Overrides[i];
+				Overrides.RemoveAt(i);
+				return;
+			}
+		}
 	}
 
 	public void Serialize(ISerializer ar)

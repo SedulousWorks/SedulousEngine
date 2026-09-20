@@ -17,6 +17,9 @@ struct CameraComponent : ISerializable
 {
 	/// Sixty degrees.
 	[Scriptable]
+	[DisplayName("Field Of View")]
+	[Description("Vertical field of view (radians)")]
+	[Range(0.1f, 3.04f, 0.01f)]
 	public float FovYRadians = 1.04719755f;
 	[Scriptable]
 	public float Aspect = 16.0f / 9.0f;

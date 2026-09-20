@@ -22,8 +22,11 @@ struct ReflectionProbeComponent : ISerializable
 	public Float3 HalfExtents = .(5.0f, 5.0f, 5.0f);
 	/// The soft falloff width, inward from the box edge.
 	[Scriptable]
+	[Range(0.0f, 10.0f, 0.1f)]
+	[Description("Fade width at the probe volume's edge")]
 	public float BlendDistance = 1.0f;
 	[Scriptable]
+	[Range(0.0f, 5.0f, 0.05f)]
 	public float Intensity = 1.0f;
 	/// The captured cube face size.
 	[Scriptable]

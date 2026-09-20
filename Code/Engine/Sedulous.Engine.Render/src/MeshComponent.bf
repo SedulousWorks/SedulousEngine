@@ -30,6 +30,7 @@ struct MeshComponent : ISerializable, IComponentResources
 	[Scriptable]
 	public Ref<StaticMesh> Mesh = .(Guid());
 	/// The serialized identities.
+	[Description("Material slots, indexed by the mesh's submesh material index. Slot 0 also covers single-material meshes and any submesh whose index has no slot.")]
 	public List<Ref<Material>> Materials = null;
 	/// The raw view EXTRACTION refreshes from the proxies EVERY frame, so a late cook or a
 	/// hot reload heals live. Snapshotting it once at resolve would pin a pre cook null until
@@ -47,15 +48,20 @@ struct MeshComponent : ISerializable, IComponentResources
 	public Float4x4* BoneMatrices = null;
 	/// Last frame's, for motion vectors. Null reuses the current ones.
 	public Float4x4* PrevBoneMatrices = null;
+	[Hidden]
 	public uint32 BoneCount = 0;
 
 	/// Above zero switches to a coarser level sooner, each unit halving the effective screen
 	/// coverage; below zero holds detail longer.
 	[Scriptable]
+	[DisplayName("LOD Bias")]
+	[Description("Positive selects coarser LODs sooner (each unit halves the effective screen coverage); negative holds detail longer.")]
 	public float LodBias = 0.0f;
 	/// Pins one level for a debug view or a cinematic. Minus one is automatic, and anything
 	/// else is clamped to the chain.
 	[Scriptable]
+	[DisplayName("Force LOD")]
+	[Description("Pin one LOD level (0 = finest). -1 = automatic selection.")]
 	public int32 ForceLod = -1;
 
 	public this() {}

@@ -48,7 +48,9 @@ struct InstancedSkinningComponent
 	public List<BoneTransform> Scratch = null;
 
 	/// The shared clock, wrapped to the clip's duration.
+	[Hidden]
 	public float Time = 0.0f;
+	[Hidden]
 	public uint32 BoneCount = 0;
 
 	public this() {}

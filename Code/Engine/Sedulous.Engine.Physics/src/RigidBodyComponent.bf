@@ -30,14 +30,18 @@ struct RigidBodyComponent : ISerializable, IComponentResources
 	public ShapeKind Shape = .Box;
 
 	[Scriptable]
+	[VisibleWhen("Shape=0")]
 	public Float3 HalfExtents = .(0.5f, 0.5f, 0.5f);
 	[Scriptable]
+	[VisibleWhen("Shape=1,2")]
 	public float Radius = 0.5f;
 	[Scriptable]
+	[VisibleWhen("Shape=2")]
 	public float HalfHeight = 0.5f;
 	/// A PLANE shape is the entity's local horizontal plane, solid below, and collides within
 	/// this reach of the entity. Static and kinematic only.
 	[Scriptable]
+	[VisibleWhen("Shape=4")]
 	public float PlaneHalfExtent = 1000.0f;
 
 	[Scriptable]
@@ -71,6 +75,7 @@ struct RigidBodyComponent : ISerializable, IComponentResources
 	/// A HEIGHTFIELD, which is a collision surface with no terrain renderer behind it. Static
 	/// and kinematic only.
 	[Scriptable]
+	[VisibleWhen("Shape=5")]
 	public Ref<Heightfield> Heightfield = .(Guid());
 	/// A surface override. When set it WINS over the inline friction and restitution.
 	[Scriptable]
@@ -83,15 +88,21 @@ struct RigidBodyComponent : ISerializable, IComponentResources
 	/// An impulse applied BEFORE the body existed, which is what a script that spawns a thing
 	/// and launches it in the same frame produces. Accumulated while the handle is invalid,
 	/// then flushed once the body is created.
+	[Hidden]
 	public Float3 PendingImpulse = .(0, 0, 0);
 
 	/// The effective active state this domain last reconciled against, which is what turns a
 	/// change into an edge rather than a per frame comparison.
+	[Hidden]
 	public bool SimActive = false;
 
+	[Hidden]
 	public Float3 PrevPosition = .(0, 0, 0);
+	[Hidden]
 	public Float3 CurrPosition = .(0, 0, 0);
+	[Hidden]
 	public Quaternion PrevRotation = Quaternion.Identity;
+	[Hidden]
 	public Quaternion CurrRotation = Quaternion.Identity;
 
 	public this() {}

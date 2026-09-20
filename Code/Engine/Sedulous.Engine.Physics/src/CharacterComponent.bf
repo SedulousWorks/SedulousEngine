@@ -42,20 +42,28 @@ struct CharacterComponent : ISerializable
 	// ---- the input gameplay writes ----
 
 	/// World space. The vertical component is ignored while grounded.
+	[Hidden]
 	public Float3 MoveVelocity = .(0.0f, 0.0f, 0.0f);
 	/// Consumed at the next grounded step.
+	[Hidden]
 	public float JumpSpeed = 0.0f;
+	[Hidden]
 	public Float3 TeleportTo = .(0.0f, 0.0f, 0.0f);
 	/// Consumed as a snap at the next step, then cleared.
+	[Hidden]
 	public bool TeleportPending = false;
 
 	// ---- runtime ----
 
 	public CharacterId Character = .();
 	/// The effective active state this domain last reconciled against.
+	[Hidden]
 	public bool SimActive = false;
+	[Hidden]
 	public CharacterGround Ground = .InAir;
+	[Hidden]
 	public Float3 PrevPosition = .(0, 0, 0);
+	[Hidden]
 	public Float3 CurrPosition = .(0, 0, 0);
 
 	public this() {}

@@ -23,17 +23,23 @@ struct ColliderComponent : ISerializable, IComponentResources
 	[Scriptable]
 	public ShapeKind Shape = .Box;
 	[Scriptable]
+	[VisibleWhen("Shape=0")]
 	public Float3 HalfExtents = .(0.5f, 0.5f, 0.5f);
 	[Scriptable]
+	[VisibleWhen("Shape=1,2")]
 	public float Radius = 0.5f;
 	[Scriptable]
+	[VisibleWhen("Shape=2")]
 	public float HalfHeight = 0.5f;
 	[Scriptable]
+	[VisibleWhen("Shape=4")]
 	public float PlaneHalfExtent = 1000.0f;
 
 	[Scriptable]
+	[VisibleWhen("Shape=3")]
 	public Ref<CollisionShape> CollisionShape = .(Guid());
 	[Scriptable]
+	[VisibleWhen("Shape=5")]
 	public Ref<Heightfield> Heightfield = .(Guid());
 
 	public this() {}

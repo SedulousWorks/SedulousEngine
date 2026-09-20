@@ -128,7 +128,7 @@ class EditContextComponentTests
 		// A block captured at one value, applied after the live value moved on.
 		wind.Settings.Speed = 7.0f;
 		let blob = new List<uint8>();
-		SetSceneSettingsBlockCommand.Capture(wind, blob);
+		SceneSettingsBlock.Capture(wind, blob);
 		wind.Settings.Speed = 1.0f;
 
 		Test.Assert(edit.ApplySceneSettingsBlock(typeof(WindSettings), blob));

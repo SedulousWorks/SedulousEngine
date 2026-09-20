@@ -18,7 +18,9 @@ struct AudioListenerComponent : ISerializable
 
 	// ---- runtime ----
 
+	[Hidden]
 	public Float3 PreviousPosition = .(0.0f, 0.0f, 0.0f);
+	[Hidden]
 	public bool HasPreviousPosition = false;
 
 	public this() {}
