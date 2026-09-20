@@ -1,0 +1,17 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Physics.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Editor.Physics.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Physics.Resource" = "*"
+"Sedulous.Physics.Pipeline" = "*"
+"Sedulous.Engine.Render" = "*"
+"Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.Physics" = "*"
