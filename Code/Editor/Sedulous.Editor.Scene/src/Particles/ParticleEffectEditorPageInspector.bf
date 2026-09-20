@@ -52,7 +52,7 @@ extension ParticleEffectEditorPage
 
 	private void BuildEffectInspector()
 	{
-		ParticleRows.Button(mGrid, "Add System", "Effect", new [=this]() => { AddSystem(); });
+		InPlaceRows.Button(mGrid, "Add System", "Effect", new [=this]() => { AddSystem(); });
 	}
 
 	private void BuildSystemInspector(ParticleSystem sys)
@@ -72,22 +72,22 @@ extension ParticleEffectEditorPage
 					sys.Name.Set(v);
 					CommitEdit("sys-name");
 				}, cat));
-			ParticleRows.Enum(g, "Simulation", (int32)sys.DesiredMode, cSimModes, new [=this, =sys](v) =>
+			InPlaceRows.Enum(g, "Simulation", (int32)sys.DesiredMode, cSimModes, new [=this, =sys](v) =>
 				{
 					sys.DesiredMode = (SimulationMode)v;
 					CommitEdit("sim-mode");
 				}, cat);
-			ParticleRows.Enum(g, "Sim Space", (int32)sys.SimulationSpace, cSpaces, new [=this, =sys](v) =>
+			InPlaceRows.Enum(g, "Sim Space", (int32)sys.SimulationSpace, cSpaces, new [=this, =sys](v) =>
 				{
 					sys.SimulationSpace = (ParticleSpace)v;
 					CommitEdit("sim-space");
 				}, cat);
-			ParticleRows.Enum(g, "Blend Mode", (int32)sys.BlendMode, cBlendModes, new [=this, =sys](v) =>
+			InPlaceRows.Enum(g, "Blend Mode", (int32)sys.BlendMode, cBlendModes, new [=this, =sys](v) =>
 				{
 					sys.BlendMode = (ParticleBlendMode)v;
 					CommitEdit("blend");
 				}, cat);
-			ParticleRows.Enum(g, "Render Mode", (int32)sys.RenderMode, cRenderModes, new [=this, =sys](v) =>
+			InPlaceRows.Enum(g, "Render Mode", (int32)sys.RenderMode, cRenderModes, new [=this, =sys](v) =>
 				{
 					sys.RenderMode = (ParticleRenderMode)v;
 					CommitEdit("render");
@@ -99,16 +99,16 @@ extension ParticleEffectEditorPage
 					sys.SetMaxParticles((int32)v);
 					CommitEdit(key);
 				} ~ delete key, cat));
-			ParticleRows.Bool(this, g, "Sort Particles", &sys.SortParticles, cat);
-			ParticleRows.Bool(this, g, "Soft Particles", &sys.SoftParticles, cat);
-			ParticleRows.Float(this, g, "Soft Distance", &sys.SoftDistance, cat, 0.0, 10.0, 0.01);
-			ParticleRows.Float(this, g, "Prewarm Time", &sys.PrewarmTime, cat, 0.0, 60.0, 0.1);
+			InPlaceRows.Bool(g, "Sort Particles", &sys.SortParticles, cat, mCommit);
+			InPlaceRows.Bool(g, "Soft Particles", &sys.SoftParticles, cat, mCommit);
+			InPlaceRows.Float(g, "Soft Distance", &sys.SoftDistance, cat, mCommit, 0.0, 10.0, 0.01);
+			InPlaceRows.Float(g, "Prewarm Time", &sys.PrewarmTime, cat, mCommit, 0.0, 60.0, 0.1);
 		}
 
 		if (textured)
 		{
 			let cat = "Texture";
-			ParticleRows.Button(g, sys.TextureRef.IsNil ? "(none)" : "(set - click to change)", cat, new [=this, =sysIndex]() =>
+			InPlaceRows.Button(g, sys.TextureRef.IsNil ? "(none)" : "(set - click to change)", cat, new [=this, =sysIndex]() =>
 				{
 					PickSystemRef(sysIndex, scope StringView[]("TextureAsset"), new [=this, =sysIndex](picked) =>
 						{
@@ -126,7 +126,7 @@ extension ParticleEffectEditorPage
 		if (meshMode)
 		{
 			let cat = "Mesh";
-			ParticleRows.Button(g, sys.MeshRef.IsNil ? "(none)" : "(set - click to change)", cat, new [=this, =sysIndex]() =>
+			InPlaceRows.Button(g, sys.MeshRef.IsNil ? "(none)" : "(set - click to change)", cat, new [=this, =sysIndex]() =>
 				{
 					PickSystemRef(sysIndex, scope StringView[]("StaticMeshAsset", "SkinnedMeshAsset"), new [=this, =sysIndex](picked) =>
 						{
@@ -139,7 +139,7 @@ extension ParticleEffectEditorPage
 							}
 						});
 				});
-			ParticleRows.Float(this, g, "Mesh Scale", &sys.MeshScale, cat, 0.001, 1000.0, 0.01);
+			InPlaceRows.Float(g, "Mesh Scale", &sys.MeshScale, cat, mCommit, 0.001, 1000.0, 0.01);
 
 			let slots = new ContainerListEditor("Materials", cat);
 			for (int mi < sys.MaterialRefs.Count)
@@ -205,34 +205,34 @@ extension ParticleEffectEditorPage
 
 		{
 			let cat = "LOD";
-			ParticleRows.Float(this, g, "Start Distance", &sys.LodStartDistance, cat, 0.0, 10000.0, 0.5);
-			ParticleRows.Float(this, g, "Cull Distance", &sys.LodCullDistance, cat, 0.0, 10000.0, 0.5);
-			ParticleRows.Float(this, g, "Min Rate", &sys.LodMinRate, cat, 0.0, 1.0, 0.01);
+			InPlaceRows.Float(g, "Start Distance", &sys.LodStartDistance, cat, mCommit, 0.0, 10000.0, 0.5);
+			InPlaceRows.Float(g, "Cull Distance", &sys.LodCullDistance, cat, mCommit, 0.0, 10000.0, 0.5);
+			InPlaceRows.Float(g, "Min Rate", &sys.LodMinRate, cat, mCommit, 0.0, 1.0, 0.01);
 		}
 
 		if (billboardFamily)
 		{
 			let cat = "Flipbook";
-			ParticleRows.Bool(this, g, "Enabled", &sys.Flipbook.Enabled, cat);
-			ParticleRows.Int(this, g, "Columns", &sys.Flipbook.Columns, cat, 1, 64);
-			ParticleRows.Int(this, g, "Rows", &sys.Flipbook.Rows, cat, 1, 64);
-			ParticleRows.Float(this, g, "FPS", &sys.Flipbook.Fps, cat, 0.0, 120.0, 0.5);
-			ParticleRows.Bool(this, g, "Over Lifetime", &sys.Flipbook.OverLifetime, cat);
-			ParticleRows.Int(this, g, "Start Frame", &sys.Flipbook.StartFrame, cat, 0, 4096);
+			InPlaceRows.Bool(g, "Enabled", &sys.Flipbook.Enabled, cat, mCommit);
+			InPlaceRows.Int(g, "Columns", &sys.Flipbook.Columns, cat, mCommit, 1, 64);
+			InPlaceRows.Int(g, "Rows", &sys.Flipbook.Rows, cat, mCommit, 1, 64);
+			InPlaceRows.Float(g, "FPS", &sys.Flipbook.Fps, cat, mCommit, 0.0, 120.0, 0.5);
+			InPlaceRows.Bool(g, "Over Lifetime", &sys.Flipbook.OverLifetime, cat, mCommit);
+			InPlaceRows.Int(g, "Start Frame", &sys.Flipbook.StartFrame, cat, mCommit, 0, 4096);
 		}
 
 		if (rm == .Trail)
 		{
 			let cat = "Trail";
-			ParticleRows.Bool(this, g, "Enabled", &sys.Trail.Enabled, cat);
-			ParticleRows.Int(this, g, "Max Points", &sys.Trail.MaxPoints, cat, 2, 256);
-			ParticleRows.Float(this, g, "Record Interval", &sys.Trail.RecordInterval, cat, 0.0, 1.0, 0.001);
-			ParticleRows.Float(this, g, "Lifetime", &sys.Trail.Lifetime, cat, 0.0, 10.0, 0.05);
-			ParticleRows.Float(this, g, "Width Start", &sys.Trail.WidthStart, cat, 0.0, 10.0, 0.01);
-			ParticleRows.Float(this, g, "Width End", &sys.Trail.WidthEnd, cat, 0.0, 10.0, 0.01);
-			ParticleRows.Float(this, g, "Min Vertex Dist", &sys.Trail.MinVertexDistance, cat, 0.0, 10.0, 0.01);
-			ParticleRows.Bool(this, g, "Use Particle Color", &sys.Trail.UseParticleColor, cat);
-			ParticleRows.Color(this, g, "Trail Color", &sys.Trail.TrailColor, cat);
+			InPlaceRows.Bool(g, "Enabled", &sys.Trail.Enabled, cat, mCommit);
+			InPlaceRows.Int(g, "Max Points", &sys.Trail.MaxPoints, cat, mCommit, 2, 256);
+			InPlaceRows.Float(g, "Record Interval", &sys.Trail.RecordInterval, cat, mCommit, 0.0, 1.0, 0.001);
+			InPlaceRows.Float(g, "Lifetime", &sys.Trail.Lifetime, cat, mCommit, 0.0, 10.0, 0.05);
+			InPlaceRows.Float(g, "Width Start", &sys.Trail.WidthStart, cat, mCommit, 0.0, 10.0, 0.01);
+			InPlaceRows.Float(g, "Width End", &sys.Trail.WidthEnd, cat, mCommit, 0.0, 10.0, 0.01);
+			InPlaceRows.Float(g, "Min Vertex Dist", &sys.Trail.MinVertexDistance, cat, mCommit, 0.0, 10.0, 0.01);
+			InPlaceRows.Bool(g, "Use Particle Color", &sys.Trail.UseParticleColor, cat, mCommit);
+			InPlaceRows.Color(g, "Trail Color", &sys.Trail.TrailColor, cat, mCommit);
 		}
 	}
 
@@ -259,21 +259,21 @@ extension ParticleEffectEditorPage
 		let continuous = (em.Mode == .Continuous) || (em.Mode == .ContinuousAndBurst);
 		let burst = (em.Mode == .Burst) || (em.Mode == .ContinuousAndBurst);
 
-		ParticleRows.Enum(g, "Mode", (int32)em.Mode, cEmissionModes, new [=this, =em](v) =>
+		InPlaceRows.Enum(g, "Mode", (int32)em.Mode, cEmissionModes, new [=this, =em](v) =>
 			{
 				em.Mode = (EmissionMode)v;
 				CommitEdit("emit-mode");
 				QueueInspectorRebuild();
 			}, cat);
 		if (continuous)
-			ParticleRows.Float(this, g, "Spawn Rate", &em.SpawnRate, cat, 0.0, 100000.0, 1.0);
-		ParticleRows.Float(this, g, "Duration (s)", &em.Duration, cat, 0.0, 600.0, 0.1);
-		ParticleRows.Bool(this, g, "Looping", &em.Looping, cat);
+			InPlaceRows.Float(g, "Spawn Rate", &em.SpawnRate, cat, mCommit, 0.0, 100000.0, 1.0);
+		InPlaceRows.Float(g, "Duration (s)", &em.Duration, cat, mCommit, 0.0, 600.0, 0.1);
+		InPlaceRows.Bool(g, "Looping", &em.Looping, cat, mCommit);
 		if (burst)
 		{
-			ParticleRows.Int(this, g, "Burst Count", &em.BurstCount, cat, 0, 100000);
-			ParticleRows.Float(this, g, "Burst Interval", &em.BurstInterval, cat, 0.0, 600.0, 0.05);
-			ParticleRows.Int(this, g, "Burst Cycles (0=inf)", &em.BurstCycles, cat, 0, 100000);
+			InPlaceRows.Int(g, "Burst Count", &em.BurstCount, cat, mCommit, 0, 100000);
+			InPlaceRows.Float(g, "Burst Interval", &em.BurstInterval, cat, mCommit, 0.0, 600.0, 0.05);
+			InPlaceRows.Int(g, "Burst Cycles (0=inf)", &em.BurstCycles, cat, mCommit, 0, 100000);
 		}
 	}
 
@@ -286,106 +286,106 @@ extension ParticleEffectEditorPage
 
 		if (let posInit = module as PositionInitializer)
 		{
-			ParticleRows.EmissionShape(this, g, "Shape", &posInit.Shape, cat);
-			ParticleRows.Bool(this, g, "Local Space", &posInit.LocalSpace, cat);
+			ParticleRows.EmissionShape(g, "Shape", &posInit.Shape, cat, mCommit);
+			InPlaceRows.Bool(g, "Local Space", &posInit.LocalSpace, cat, mCommit);
 		}
 		else if (let velInit = module as VelocityInitializer)
 		{
-			ParticleRows.Float3(this, g, "Base Velocity", &velInit.BaseVelocity, cat);
-			ParticleRows.Float3(this, g, "Randomness", &velInit.Randomness, cat);
-			ParticleRows.Float(this, g, "Shape Dir Speed", &velInit.ShapeDirectionSpeed, cat);
-			ParticleRows.Float(this, g, "Velocity Inherit", &velInit.VelocityInheritance, cat, 0.0, 1.0, 0.01);
-			ParticleRows.EmissionShape(this, g, "Shape", &velInit.Shape, cat);
+			InPlaceRows.Float3(g, "Base Velocity", &velInit.BaseVelocity, cat, mCommit);
+			InPlaceRows.Float3(g, "Randomness", &velInit.Randomness, cat, mCommit);
+			InPlaceRows.Float(g, "Shape Dir Speed", &velInit.ShapeDirectionSpeed, cat, mCommit);
+			InPlaceRows.Float(g, "Velocity Inherit", &velInit.VelocityInheritance, cat, mCommit, 0.0, 1.0, 0.01);
+			ParticleRows.EmissionShape(g, "Shape", &velInit.Shape, cat, mCommit);
 		}
 		else if (let lifeInit = module as LifetimeInitializer)
-			ParticleRows.RangeFloat(this, g, "Lifetime", &lifeInit.Lifetime, cat, 0.0, 100.0, 0.05);
+			ParticleRows.RangeFloat(g, "Lifetime", &lifeInit.Lifetime, cat, mCommit, 0.0, 100.0, 0.05);
 		else if (let colorInit = module as ColorInitializer)
-			ParticleRows.RangeColor(this, g, "Color", &colorInit.Color, cat);
+			ParticleRows.RangeColor(g, "Color", &colorInit.Color, cat, mCommit);
 		else if (let sizeInit = module as SizeInitializer)
-			ParticleRows.RangeFloat2(this, g, "Size", &sizeInit.Size, cat);
+			ParticleRows.RangeFloat2(g, "Size", &sizeInit.Size, cat, mCommit);
 		else if (let rotInit = module as RotationInitializer)
 		{
-			ParticleRows.RangeFloat(this, g, "Rotation", &rotInit.Rotation, cat);
-			ParticleRows.RangeFloat(this, g, "Rotation Speed", &rotInit.RotationSpeed, cat);
+			ParticleRows.RangeFloat(g, "Rotation", &rotInit.Rotation, cat, mCommit);
+			ParticleRows.RangeFloat(g, "Rotation Speed", &rotInit.RotationSpeed, cat, mCommit);
 		}
 		else if (let orientInit = module as MeshOrientationInitializer)
 		{
-			ParticleRows.Bool(this, g, "Random Axis", &orientInit.RandomAxis, cat);
-			ParticleRows.Float3(this, g, "Fixed Axis", &orientInit.FixedAxis, cat);
+			InPlaceRows.Bool(g, "Random Axis", &orientInit.RandomAxis, cat, mCommit);
+			InPlaceRows.Float3(g, "Fixed Axis", &orientInit.FixedAxis, cat, mCommit);
 		}
 		else if (let gravity = module as GravityBehavior)
 		{
-			ParticleRows.Float(this, g, "Multiplier", &gravity.Multiplier, cat);
-			ParticleRows.Float3(this, g, "Direction", &gravity.Direction, cat);
+			InPlaceRows.Float(g, "Multiplier", &gravity.Multiplier, cat, mCommit);
+			InPlaceRows.Float3(g, "Direction", &gravity.Direction, cat, mCommit);
 		}
 		else if (let drag = module as DragBehavior)
-			ParticleRows.Float(this, g, "Drag", &drag.Drag, cat);
+			InPlaceRows.Float(g, "Drag", &drag.Drag, cat, mCommit);
 		else if (let wind = module as WindBehavior)
 		{
-			ParticleRows.Float3(this, g, "Force", &wind.Force, cat);
-			ParticleRows.Float(this, g, "Turbulence", &wind.Turbulence, cat);
+			InPlaceRows.Float3(g, "Force", &wind.Force, cat, mCommit);
+			InPlaceRows.Float(g, "Turbulence", &wind.Turbulence, cat, mCommit);
 		}
 		else if (let turbulence = module as TurbulenceBehavior)
 		{
-			ParticleRows.Float(this, g, "Strength", &turbulence.Strength, cat);
-			ParticleRows.Float(this, g, "Frequency", &turbulence.Frequency, cat);
-			ParticleRows.Float(this, g, "Speed", &turbulence.Speed, cat);
+			InPlaceRows.Float(g, "Strength", &turbulence.Strength, cat, mCommit);
+			InPlaceRows.Float(g, "Frequency", &turbulence.Frequency, cat, mCommit);
+			InPlaceRows.Float(g, "Speed", &turbulence.Speed, cat, mCommit);
 		}
 		else if (let vortex = module as VortexBehavior)
 		{
-			ParticleRows.Float(this, g, "Strength", &vortex.Strength, cat);
-			ParticleRows.Float3(this, g, "Center", &vortex.Center, cat);
-			ParticleRows.Float3(this, g, "Axis", &vortex.Axis, cat);
+			InPlaceRows.Float(g, "Strength", &vortex.Strength, cat, mCommit);
+			InPlaceRows.Float3(g, "Center", &vortex.Center, cat, mCommit);
+			InPlaceRows.Float3(g, "Axis", &vortex.Axis, cat, mCommit);
 		}
 		else if (let attractor = module as AttractorBehavior)
 		{
-			ParticleRows.Float(this, g, "Strength", &attractor.Strength, cat);
-			ParticleRows.Float3(this, g, "Position", &attractor.Position, cat);
-			ParticleRows.Float(this, g, "Radius", &attractor.Radius, cat, 0.0, 1000.0, 0.05);
+			InPlaceRows.Float(g, "Strength", &attractor.Strength, cat, mCommit);
+			InPlaceRows.Float3(g, "Position", &attractor.Position, cat, mCommit);
+			InPlaceRows.Float(g, "Radius", &attractor.Radius, cat, mCommit, 0.0, 1000.0, 0.05);
 		}
 		else if (let radial = module as RadialForceBehavior)
-			ParticleRows.Float(this, g, "Strength", &radial.Strength, cat);
+			InPlaceRows.Float(g, "Strength", &radial.Strength, cat, mCommit);
 		else if (let collision = module as CollisionBehavior)
 			BuildCollisionInspector(collision, cat);
 		else if (let colorCurve = module as ColorOverLifetimeBehavior)
-			ParticleRows.CurveColor(this, g, "Color", &colorCurve.Curve, cat);
+			ParticleRows.CurveColor(g, "Color", &colorCurve.Curve, cat, this);
 		else if (let alphaCurve = module as AlphaOverLifetimeBehavior)
-			ParticleRows.CurveFloat(this, g, "Alpha", &alphaCurve.Curve, cat);
+			ParticleRows.CurveFloat(g, "Alpha", &alphaCurve.Curve, cat, this);
 		else if (let sizeCurve = module as SizeOverLifetimeBehavior)
-			ParticleRows.CurveFloat2(this, g, "Size", &sizeCurve.Curve, cat);
+			ParticleRows.CurveFloat2(g, "Size", &sizeCurve.Curve, cat, this);
 		else if (let rotCurve = module as RotationOverLifetimeBehavior)
-			ParticleRows.CurveFloat(this, g, "Rotation", &rotCurve.Curve, cat);
+			ParticleRows.CurveFloat(g, "Rotation", &rotCurve.Curve, cat, this);
 		else if (let speedCurve = module as SpeedOverLifetimeBehavior)
-			ParticleRows.CurveFloat(this, g, "Speed", &speedCurve.Curve, cat);
+			ParticleRows.CurveFloat(g, "Speed", &speedCurve.Curve, cat, this);
 	}
 
 	private void BuildCollisionInspector(CollisionBehavior collision, StringView cat)
 	{
 		let g = mGrid;
-		ParticleRows.Float(this, g, "Radius", &collision.Radius, cat, 0.0, 10.0, 0.01);
-		ParticleRows.Float(this, g, "Bounce", &collision.Bounce, cat, 0.0, 1.0, 0.01);
-		ParticleRows.Float(this, g, "Friction", &collision.Friction, cat, 0.0, 1.0, 0.01);
-		ParticleRows.Float(this, g, "Lifetime Loss", &collision.LifetimeLoss, cat, 0.0, 1.0, 0.01);
-		ParticleRows.Int(this, g, "Plane Count", &collision.PlaneCount, "Collision Planes", 0, CollisionBehavior.MaxPlanes);
+		InPlaceRows.Float(g, "Radius", &collision.Radius, cat, mCommit, 0.0, 10.0, 0.01);
+		InPlaceRows.Float(g, "Bounce", &collision.Bounce, cat, mCommit, 0.0, 1.0, 0.01);
+		InPlaceRows.Float(g, "Friction", &collision.Friction, cat, mCommit, 0.0, 1.0, 0.01);
+		InPlaceRows.Float(g, "Lifetime Loss", &collision.LifetimeLoss, cat, mCommit, 0.0, 1.0, 0.01);
+		InPlaceRows.Int(g, "Plane Count", &collision.PlaneCount, "Collision Planes", mCommit, 0, CollisionBehavior.MaxPlanes);
 		for (int32 i = 0; (i < collision.PlaneCount) && (i < CollisionBehavior.MaxPlanes); i++)
 		{
 			let c = scope $"Plane {i}";
-			ParticleRows.Float3(this, g, "Normal", &collision.Planes[i].Normal, c);
-			ParticleRows.Float(this, g, "Distance", &collision.Planes[i].Distance, c, -1000.0, 1000.0, 0.05);
+			InPlaceRows.Float3(g, "Normal", &collision.Planes[i].Normal, c, mCommit);
+			InPlaceRows.Float(g, "Distance", &collision.Planes[i].Distance, c, mCommit, -1000.0, 1000.0, 0.05);
 		}
-		ParticleRows.Int(this, g, "Sphere Count", &collision.SphereCount, "Collision Spheres", 0, CollisionBehavior.MaxSpheres);
+		InPlaceRows.Int(g, "Sphere Count", &collision.SphereCount, "Collision Spheres", mCommit, 0, CollisionBehavior.MaxSpheres);
 		for (int32 i = 0; (i < collision.SphereCount) && (i < CollisionBehavior.MaxSpheres); i++)
 		{
 			let c = scope $"Sphere {i}";
-			ParticleRows.Float3(this, g, "Center", &collision.Spheres[i].Center, c);
-			ParticleRows.Float(this, g, "Radius", &collision.Spheres[i].Radius, c, 0.0, 1000.0, 0.05);
+			InPlaceRows.Float3(g, "Center", &collision.Spheres[i].Center, c, mCommit);
+			InPlaceRows.Float(g, "Radius", &collision.Spheres[i].Radius, c, mCommit, 0.0, 1000.0, 0.05);
 		}
-		ParticleRows.Int(this, g, "Box Count", &collision.BoxCount, "Collision Boxes", 0, CollisionBehavior.MaxBoxes);
+		InPlaceRows.Int(g, "Box Count", &collision.BoxCount, "Collision Boxes", mCommit, 0, CollisionBehavior.MaxBoxes);
 		for (int32 i = 0; (i < collision.BoxCount) && (i < CollisionBehavior.MaxBoxes); i++)
 		{
 			let c = scope $"Box {i}";
-			ParticleRows.Float3(this, g, "Center", &collision.Boxes[i].Center, c);
-			ParticleRows.Float3(this, g, "Half Extents", &collision.Boxes[i].HalfExtents, c);
+			InPlaceRows.Float3(g, "Center", &collision.Boxes[i].Center, c, mCommit);
+			InPlaceRows.Float3(g, "Half Extents", &collision.Boxes[i].HalfExtents, c, mCommit);
 		}
 	}
 }

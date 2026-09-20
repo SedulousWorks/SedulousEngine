@@ -60,6 +60,8 @@ class ParticleEffectEditorPage : UIEditorPage
 	private bool mPaused = false;
 	/// The last committed effect blob, the undo anchor.
 	private List<uint8> mUndoBaseline = new .() ~ delete _;
+	/// What the in place rows report through; borrowed by every row.
+	private InPlaceRows.Commit mCommit = new => CommitEdit ~ delete _;
 
 	public this(EditorContext context, IApplicationHost host, UIHost uiHost, Instance instance)
 	{
