@@ -65,7 +65,7 @@ extension SceneHierarchyView
 
 		mFilterEdit.OnTextChanged.Add(new [=this](edit) =>
 		{
-			mFilter.Set(edit.Text);
+			mSnapshot.Filter.Set(edit.Text);
 			RebuildSnapshot(); // a filter change rebuilds regardless of the revision
 		});
 

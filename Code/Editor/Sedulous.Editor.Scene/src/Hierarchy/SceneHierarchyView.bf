@@ -29,13 +29,11 @@ class SceneHierarchyView : ViewGroup
 	private EditorContext mEditor = null;
 	private DraggableTreeView mTree;
 	private EditText mFilterEdit;
+	private EntityTreeSnapshot mSnapshot = new .() ~ delete _;
 	private HierarchyAdapter mAdapter ~ delete _;
-	private List<HierarchyNode> mNodes = new .() ~ DeleteContainerAndItems!(_);
-	private List<int32> mRoots = new .() ~ delete _;
 	/// The entities the user collapsed; survives rebuilds.
 	private HashSet<Guid> mCollapsed = new .() ~ delete _;
 	private uint64 mRevision = uint64.MaxValue;
-	private String mFilter = new .() ~ delete _;
 	private bool mSyncing = false;
 
 	public this(SceneEditContext edit)
@@ -59,9 +57,10 @@ class SceneHierarchyView : ViewGroup
 		header.AddView(mFilterEdit, grow);
 		column.AddView(header);
 
-		mAdapter = new HierarchyAdapter(this);
+		mAdapter = new HierarchyAdapter(this, mSnapshot);
 		mTree = new DraggableTreeView();
 		mTree.ItemHeight = 22.0f;
+		mAdapter.SetTree(mTree.InternalTreeView);
 		mTree.SetAdapter(mAdapter);
 		column.AddView(mTree, grow);
 
@@ -80,8 +79,9 @@ class SceneHierarchyView : ViewGroup
 
 	public void SetEditorContext(EditorContext context) => mEditor = context;
 
+	public SceneEditContext Edit => mEdit;
 	public DraggableTreeView Tree => mTree;
-	public int NodeCount => mNodes.Count;
+	public int NodeCount => mSnapshot.Count;
 
 	/// Rebuilds the snapshot when the scene changed since the last look.
 	public void Refresh()
@@ -146,107 +146,46 @@ class SceneHierarchyView : ViewGroup
 
 	/// A case insensitive substring match; an empty filter matches everything.
 	public static bool MatchesFilter(StringView name, StringView filter)
-	{
-		if (filter.IsEmpty)
-			return true;
-		if (name.Length < filter.Length)
-			return false;
-		for (int i = 0; i + filter.Length <= name.Length; i++)
-		{
-			var match = true;
-			for (int j < filter.Length)
-			{
-				if (name[i + j].ToLower != filter[j].ToLower)
-				{
-					match = false;
-					break;
-				}
-			}
-			if (match)
-				return true;
-		}
-		return false;
-	}
-
-	/// An entity shows when it or anything beneath it matches, so a match keeps its path.
-	private bool SubtreeMatches(Sedulous.Scene.Scene scene, EntityHandle e)
-	{
-		if (MatchesFilter(scene.GetEntityName(e), mFilter))
-			return true;
-		for (var c = scene.GetFirstChild(e); c.IsAssigned; c = scene.GetNextSibling(c))
-		{
-			if (SubtreeMatches(scene, c))
-				return true;
-		}
-		return false;
-	}
+		=> EntityTreeSnapshot.MatchesFilter(name, filter);
 
 	private void CaptureCollapseState()
 	{
 		let flat = mTree.InternalTreeView.FlatAdapter;
 		if (flat == null)
 			return;
-		for (int32 i < (int32)mNodes.Count)
+		let nodes = mSnapshot.Nodes;
+		for (int32 i < (int32)nodes.Count)
 		{
-			if (mNodes[i].Children.IsEmpty)
+			if (nodes[i].Children.IsEmpty)
 				continue;
 			if (flat.IsExpanded(i))
-				mCollapsed.Remove(mNodes[i].Id);
+				mCollapsed.Remove(nodes[i].Id);
 			else
-				mCollapsed.Add(mNodes[i].Id);
+				mCollapsed.Add(nodes[i].Id);
 		}
 	}
 
 	private void RebuildSnapshot()
 	{
 		CaptureCollapseState();
-		ClearAndDeleteItems(mNodes);
-		mRoots.Clear();
-		let scene = mEdit.Scene;
-
-		for (var r = scene.FirstRoot; r.IsAssigned; r = scene.GetNextSibling(r))
-		{
-			if (SubtreeMatches(scene, r))
-				mRoots.Add(AddNode(scene, r, 0));
-		}
+		mSnapshot.Rebuild(mEdit.Scene, "(unnamed)");
 
 		// SetAdapter rebuilds the flat view; everything not collapsed by the user is expanded.
 		mTree.SetAdapter(mAdapter);
 		let flat = mTree.InternalTreeView.FlatAdapter;
-		for (int32 i < (int32)mNodes.Count)
+		let nodes = mSnapshot.Nodes;
+		for (int32 i < (int32)nodes.Count)
 		{
-			if (mNodes[i].Children.IsEmpty)
+			if (nodes[i].Children.IsEmpty)
 				continue;
-			if (!mCollapsed.Contains(mNodes[i].Id))
+			if (!mCollapsed.Contains(nodes[i].Id))
 				flat.Expand(i);
 		}
 		mTree.InternalTreeView.InternalListView.NotifyDataChanged();
 		SyncSelectionToTree();
 	}
 
-	private int32 AddNode(Sedulous.Scene.Scene scene, EntityHandle e, int32 depth)
-	{
-		let nodeId = (int32)mNodes.Count;
-		let node = new HierarchyNode();
-		node.Id = scene.GetEntityId(e);
-		node.Name.Set(scene.GetEntityName(e));
-		if (node.Name.IsEmpty)
-			node.Name.Set("(unnamed)");
-		node.Depth = depth;
-		mNodes.Add(node);
-
-		for (var c = scene.GetFirstChild(e); c.IsAssigned; c = scene.GetNextSibling(c))
-		{
-			if (!SubtreeMatches(scene, c))
-				continue;
-			let child = AddNode(scene, c, depth + 1);
-			mNodes[nodeId].Children.Add(child);
-		}
-		return nodeId;
-	}
-
-	public Guid GuidOfNode(int32 nodeId)
-		=> ((nodeId >= 0) && (nodeId < mNodes.Count)) ? mNodes[nodeId].Id : Guid();
+	public Guid GuidOfNode(int32 nodeId) => mSnapshot.GuidOfNode(nodeId);
 
 	public Guid GuidAtFlat(int32 flatPosition)
 	{
