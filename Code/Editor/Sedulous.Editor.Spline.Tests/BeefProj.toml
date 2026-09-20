@@ -1,17 +1,17 @@
 FileVersion = 1
 
 [Project]
-Name = "Sedulous.Editor.Spline"
-TargetType = "BeefLib"
-StartupObject = "Sedulous.Editor.Spline.Program"
+Name = "Sedulous.Editor.Spline.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Editor.Spline.Tests.Program"
 
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
 "Sedulous.Scene" = "*"
-"Sedulous.Shell" = "*"
 "Sedulous.Render" = "*"
 "Sedulous.Spline" = "*"
 "Sedulous.Engine.Spline" = "*"
 "Sedulous.Editor.Core" = "*"
 "Sedulous.Editor.ViewportTools" = "*"
+"Sedulous.Editor.Spline" = "*"
