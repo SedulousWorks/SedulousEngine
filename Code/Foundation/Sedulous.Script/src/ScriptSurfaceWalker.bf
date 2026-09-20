@@ -133,7 +133,8 @@ static class ScriptSurfaceWalker
 	}
 
 	[Comptime]
-	public static void Emit(Type root, Span<StringView> namespacePrefixes, Span<StringView> allowedDomains)
+	public static void Emit(Type root, Span<StringView> namespacePrefixes, Span<StringView> allowedDomains,
+		ScriptSurfaceClosure closure = .Dependencies)
 	{
 		let rootName = root.GetFullName(.. scope .());
 		let entries = scope List<Entry>();
@@ -191,6 +192,9 @@ static class ScriptSurfaceWalker
 				known.Add(new String(fullName));
 		}
 
+		if (closure == .Facades)
+			RestrictToFacades(candidates, known, managers);
+
 		let violations = scope String();
 		let entitySignatures = scope List<String>();
 		int typeIndex = 0;
@@ -246,6 +250,131 @@ static class ScriptSurfaceWalker
 		for (let e in entries)
 			body.Append(e.Thunks);
 		Compiler.EmitTypeBody(root, body);
+	}
+
+	// ---- the facade closure ----
+
+	/// Keeps of the marked candidates only what a script can reach from the facades: the
+	/// seeds are the scene and service facades, the global static blocks and the Scene; then
+	/// every type a kept type's members name, transitively, a component bringing its
+	/// manager. `known` is cut to the same set, so the closure check speaks of this surface.
+	[Comptime]
+	private static void RestrictToFacades(List<TypeDeclaration> candidates, List<String> known, ManagerTable managers)
+	{
+		let kept = scope List<String>();
+		let work = scope List<Type>();
+		for (let decl in candidates)
+		{
+			let type = decl.ResolvedType;
+			let fullName = decl.GetFullName(.. scope .());
+			let isStaticBlock = decl.GetName(.. scope .()) == cStaticBlockName;
+			let seed = isStaticBlock || (fullName == "Sedulous.Scene.Scene")
+				|| ((type != null) && (type.HasCustomAttribute<SceneFacadeAttribute>()
+					|| type.HasCustomAttribute<ServiceFacadeAttribute>() || type.HasCustomAttribute<ScriptServiceAttribute>()));
+			if (!seed)
+				continue;
+			kept.Add(new String(fullName));
+			if (type != null)
+				work.Add(type);
+		}
+
+		let names = scope List<String>();
+		while (!work.IsEmpty)
+		{
+			let type = work.PopBack();
+			names.Clear();
+			CollectMemberTypeNames(type, names);
+			for (let name in names)
+			{
+				if (!IsKnown(name, known) || IsKnown(name, kept))
+					continue;
+				kept.Add(new String(name));
+				if (let next = ResolvedCandidate(candidates, name))
+					work.Add(next);
+				// A component reaches its scripts through its manager.
+				let at = managers.IndexOf(name);
+				if ((at >= 0) && !IsKnown(managers.Managers[at], kept) && IsKnown(managers.Managers[at], known))
+				{
+					kept.Add(new String(managers.Managers[at]));
+					if (let manager = ResolvedCandidate(candidates, managers.Managers[at]))
+						work.Add(manager);
+				}
+			}
+		}
+
+		for (int i = candidates.Count - 1; i >= 0; i--)
+		{
+			if (!IsKnown(candidates[i].GetFullName(.. scope .()), kept))
+				candidates.RemoveAt(i);
+		}
+		for (int i = known.Count - 1; i >= 0; i--)
+		{
+			if (!IsKnown(known[i], kept))
+				known.RemoveAt(i);
+		}
+	}
+
+	[Comptime]
+	private static bool IsKnown(StringView name, List<String> names) => ScriptValueMap.IsKnown(name, names);
+
+	[Comptime]
+	private static Type ResolvedCandidate(List<TypeDeclaration> candidates, StringView fullName)
+	{
+		for (let decl in candidates)
+		{
+			if (decl.GetFullName(.. scope .()) == fullName)
+				return decl.ResolvedType;
+		}
+		return null;
+	}
+
+	/// The full names of every type a type's script visible members name: fields,
+	/// properties, parameters and returns, a list by its element.
+	[Comptime]
+	private static void CollectMemberTypeNames(Type type, List<String> outNames)
+	{
+		bool allPublic = false;
+		if (type.GetCustomAttribute<ScriptableAttribute>() case .Ok(let sa))
+			allPublic = sa.Members == .AllPublic;
+		for (let f in type.GetFields(.Public | .Instance | .Static | .DeclaredOnly))
+		{
+			if (!f.IsPublic || (!allPublic && !f.HasCustomAttribute<ScriptableAttribute>()))
+				continue;
+			NoteType(f.FieldType, outNames);
+		}
+		for (let m in type.GetMethods(.Public | .Instance | .Static | .DeclaredOnly))
+		{
+			if (!m.IsPublic || m.IsDestructor || m.IsMixin)
+				continue;
+			// A property's mark sits on its getter; a setter names no new type.
+			if (m.Name.StartsWith("set__"))
+				continue;
+			let isGetter = m.Name.StartsWith("get__");
+			if (!m.HasCustomAttribute<ScriptableAttribute>() && !(isGetter && allPublic))
+				continue;
+			NoteType(m.ReturnType, outNames);
+			for (int i = 0; i < m.ParamCount; i++)
+				NoteType(m.GetParamType(i), outNames);
+		}
+	}
+
+	[Comptime]
+	private static void NoteType(Type type, List<String> outNames)
+	{
+		var t = type;
+		if (let r = t as RefType)
+			t = r.UnderlyingType;
+		if (let element = ScriptValueMap.ElementOf(t))
+			t = element;
+		let name = t.GetFullName(.. scope .());
+		if (name.IsEmpty)
+			return;
+		for (let n in outNames)
+		{
+			if (n == name)
+				return;
+		}
+		outNames.Add(new String(name));
 	}
 
 	// ---- one type ----

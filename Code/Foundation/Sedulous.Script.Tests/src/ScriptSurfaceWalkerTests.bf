@@ -233,4 +233,24 @@ static class ScriptSurfaceWalkerTests
 		Test.Assert(NullScriptRuntime.Short("System.Collections.Dictionary<System.String, int>", .. scope .()) == "Dictionary<String, int>");
 		Test.Assert(NullScriptRuntime.Short("float", .. scope .()) == "float");
 	}
+
+	/// The facade closure keeps only what a script reaches from the facades and the
+	/// globals, transitively through their members, and cuts the rest however marked.
+	[Test]
+	public static void TheFacadeClosureIsWhatTheFacadesReach()
+	{
+		let s = scope ScriptSurface();
+		FixtureFacadeSurface.Populate(s);
+		Test.Assert(FixtureFacadeSurface.TypeCount == 2, scope $"found {FixtureFacadeSurface.TypeCount}");
+		Test.Assert(s.Find(scope $"{cFixture}.WidgetsFacade") != null, "the facade");
+		Test.Assert(s.Find(scope $"{cFixture}.Thing") == null, "a marked class nothing reaches");
+		Test.Assert(s.Find(scope $"{cFixture}.WidgetComponent") == null, "a component marked for the editor");
+		Test.Assert(s.Find(scope $"{cFixture}.WidgetComponentManager") == null);
+		let text = scope String();
+		let vm = scope Sedulous.Script.Null.NullScriptRuntime();
+		vm.Bind(s);
+		vm.Describe(text);
+		Test.Assert(text.Contains("global functions\n    Lerp("), "the static block");
+		Test.Assert(text.Contains("0 blocked"), "a facade surface blocks nothing");
+	}
 }
