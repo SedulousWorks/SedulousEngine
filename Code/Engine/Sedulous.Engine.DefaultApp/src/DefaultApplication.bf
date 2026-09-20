@@ -165,6 +165,9 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	/// Where engine data was found, empty when it was not.
 	public StringView DataRoot => mDataRoot;
+	/// The engine facade surface every script in this app binds against; the editor's
+	/// script page browses and completes over it. Borrowed.
+	public ScriptSurface ScriptSurface => mScriptSurface;
 
 	/// The mount over that root, which is what every consumer of engine data is handed.
 	public IFileSystem DataFileSystem => mDataMount;
