@@ -20,7 +20,7 @@ class GroupTreeAdapter : ITreeAdapter
 
 	private List<Node> mNodes = new .() ~ { for (var n in _) delete n.Children; delete _; };
 	/// Borrowed; the tree whose inset the rows follow.
-	private TreeView mTree = null;
+	protected TreeView mTree = null;
 
 	public int Count => mNodes.Count;
 
@@ -76,7 +76,7 @@ class GroupTreeAdapter : ITreeAdapter
 	public int32 GetDepth(int32 nodeId) => InRange(nodeId) ? mNodes[nodeId].Depth : 0;
 	public bool HasChildren(int32 nodeId) => GetChildCount(nodeId) > 0;
 
-	public View CreateView(int32 viewType)
+	public virtual View CreateView(int32 viewType)
 	{
 		let row = new FlexLayout();
 		let label = new Label();
@@ -87,7 +87,7 @@ class GroupTreeAdapter : ITreeAdapter
 		return row;
 	}
 
-	public void BindView(View view, int32 nodeId, int32 depth, bool isExpanded)
+	public virtual void BindView(View view, int32 nodeId, int32 depth, bool isExpanded)
 	{
 		let row = view as FlexLayout;
 		if ((row == null) || (row.ChildCount == 0) || !InRange(nodeId))
