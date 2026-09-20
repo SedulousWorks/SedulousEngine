@@ -28,23 +28,57 @@ class AngelScriptCook : IScriptLanguageCook
 
 	public int32 CookVersion => 1;
 
-	public void NewAssetTemplate(String outSource)
+	public void NewAssetTemplate(ScriptTier tier, String outSource)
 	{
-		outSource.Append("""
-			// A behaviour: attach it to an entity through a Script component. Public fields of
-			// the authored kinds are its properties; `self` and `scene` are filled in by the
-			// engine; `on` handlers run by their names.
-			class NewBehavior
-			{
-				Entity self;
-				Scene@ scene;
-				float speed = 1.0f;
+		switch (tier)
+		{
+		case .Level:
+			outSource.Append("""
+				// The scene's own script: set it on the scene's Script settings. One instance
+				// per scene, `scene` filled in by the engine; the handlers run by their names
+				// while the scene simulates. Print, Random, Math and the facades on `scene`
+				// (scene.Physics, scene.Audio, scene.Scripts, ...) are visible globally.
+				class Level
+				{
+					Scene@ scene;
 
-				void onStart() {}
-				void onUpdate(float dt) {}
-			}
+					void onStart() { Print("Level started"); }
+					void onUpdate(float dt) {}
+					void onFixedUpdate(float dt) {}
+					void onStop() {}
+				}
 
-			""");
+				""");
+		case .Game:
+			outSource.Append("""
+				// The run's orchestrator: the reserved class `Game`, one per run. `Run` is the
+				// game instance: load the opening scene from launch(), Run.LoadScene(sceneId),
+				// and use Run.Emit for run wide events; on<Event> handlers receive them.
+				class Game
+				{
+					void launch() { Print("Game launched"); }
+					void update(float dt) {}
+					void exit() {}
+				}
+
+				""");
+		case .Behavior:
+			outSource.Append("""
+				// A behaviour: attach it to an entity through a Script component. Public fields of
+				// the authored kinds are its properties; `self` and `scene` are filled in by the
+				// engine; `on` handlers run by their names.
+				class NewBehavior
+				{
+					Entity self;
+					Scene@ scene;
+					float speed = 1.0f;
+
+					void onStart() {}
+					void onUpdate(float dt) {}
+				}
+
+				""");
+		}
 	}
 
 	public bool Cook(StringView source, StringView sourceName, StringView className, ScriptClassSource outRecord, List<String> problems)

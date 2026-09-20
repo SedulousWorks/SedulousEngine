@@ -12,8 +12,8 @@ interface IScriptLanguageCook
 	/// Folded into the builder's version: bump when the cook's output changes.
 	int32 CookVersion => 1;
 
-	/// The source a new asset of this language starts with.
-	void NewAssetTemplate(String outSource);
+	/// The source a new asset of this language and tier starts with.
+	void NewAssetTemplate(ScriptTier tier, String outSource);
 
 	/// Compiles `source`, harvests `className` (or the first class when empty) into the record,
 	/// reporting anything wrong into `problems`. False when the source does not compile or
