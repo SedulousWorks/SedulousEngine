@@ -1,0 +1,21 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Script"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Editor.Script.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Script" = "*"
+"Sedulous.Script.Resource" = "*"
+"Sedulous.Script.Pipeline" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.UI" = "*"
+"Sedulous.UI.Toolkit" = "*"
+"Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.App" = "*"

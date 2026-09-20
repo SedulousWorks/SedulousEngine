@@ -1,0 +1,11 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Script.AngelScript"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Editor.Script.AngelScript.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.UI.Toolkit" = "*"
