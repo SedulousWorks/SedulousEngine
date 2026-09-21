@@ -32,6 +32,7 @@ class PhysicsShapeTests
 
 		let shape = scope CollisionShape();
 		Test.Assert(ShapeCooking.CookConvexHull(corners, shape.Blob));
+		shape.Convex = true; // what the cook records for a hull
 
 		let play = scope PhysicsPlayScene();
 		play.AddFloor();

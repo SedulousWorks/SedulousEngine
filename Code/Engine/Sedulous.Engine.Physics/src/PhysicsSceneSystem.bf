@@ -538,8 +538,8 @@ class PhysicsSceneSystem : SceneSystem
 
 		// A shape that can only be static, the backend's MustBeStatic: a plane, a heightfield,
 		// a cooked triangle mesh. Under a moving body the world makes it static rather than
-		// tripping the backend's mass assert; named HERE, where the entity is known, so the
-		// author can find the component.
+		// tripping the backend's mass assert, by the backend's own rule; named HERE, where the
+		// entity is known, so the author can find the component.
 		let staticOnly = (component.Shape == .Plane) || (component.Shape == .Heightfield)
 			|| ((component.Shape == .Cooked) && (component.CollisionShape.Get != null)
 				&& !component.CollisionShape.Get.Convex);
@@ -551,7 +551,6 @@ class PhysicsSceneSystem : SceneSystem
 				(component.Motion == .Kinematic) ? "kinematic" : "dynamic",
 				(component.Shape == .Plane) ? "plane"
 					: (component.Shape == .Heightfield) ? "heightfield" : "triangle mesh");
-			desc.Motion = .Static;
 		}
 
 		desc.Shapes.Add(own);
