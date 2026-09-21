@@ -143,7 +143,7 @@ class DescriptorTests
 
 		let depth = DepthStencilState();
 		Test.Assert(depth.DepthTestEnabled && depth.DepthWriteEnabled);
-		Test.Assert(depth.DepthCompare == .Less);
+		Test.Assert(depth.DepthCompare == Depth.Nearer, "the default test names the depth convention");
 		Test.Assert(!depth.StencilEnabled);
 		Test.Assert((depth.StencilReadMask == 0xFF) && (depth.StencilWriteMask == 0xFF));
 		Test.Assert(depth.StencilFront.Compare == .Always);
@@ -173,7 +173,7 @@ class DescriptorTests
 		Test.Assert(color.ResolveTarget == null);
 
 		let depth = DepthStencilAttachment();
-		Test.Assert(depth.DepthClearValue == 1.0f, "the far plane under a Less test");
+		Test.Assert(depth.DepthClearValue == Depth.ClearValue, "the far plane under the depth convention");
 		Test.Assert(!depth.DepthReadOnly);
 		Test.Assert(depth.StencilClearValue == 0);
 

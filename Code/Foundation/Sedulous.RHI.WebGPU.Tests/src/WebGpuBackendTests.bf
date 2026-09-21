@@ -102,6 +102,11 @@ class WebGpuBackendTests
 	/// it routinely leads with an entry that cannot PRESENT, and the swapchain then dies
 	/// at configure. So a software adapter must never sort ahead of a real GPU.
 	///
+	/// The order is backend major: one physical GPU appears once per wgpu backend, and
+	/// the backend the platform presents through comes first, so a D3D12 WARP entry
+	/// legitimately sits ahead of the same GPU's Vulkan entry on Windows. The invariant
+	/// holds WITHIN a backend, and for the head of the list.
+	///
 	/// This pins the ORDER rather than the ranking arithmetic, because the ranking is
 	/// only worth anything through what ends up first.
 	[Test]
@@ -117,17 +122,25 @@ class WebGpuBackendTests
 			return;
 
 		var sawSoftware = false;
+		int32 lastBackend = -1;
 		for (let adapter in adapters)
 		{
 			let info = scope AdapterInfo();
 			adapter.GetInfo(info);
+
+			let wgpuBackend = (int32)((WebGpuAdapter)adapter).WgpuBackendType();
+			if (wgpuBackend != lastBackend)
+			{
+				lastBackend = wgpuBackend;
+				sawSoftware = false;
+			}
 
 			let isSoftware = info.Type == .Cpu;
 			if (isSoftware)
 				sawSoftware = true;
 			else
 				Test.Assert(!sawSoftware,
-					scope $"'{info.Name}' is a real GPU but sorted after a software one");
+					scope $"'{info.Name}' is a real GPU but sorted after a software one on the same backend");
 		}
 
 		// Whatever else it is, the head of the list is the one that has to be able to
