@@ -112,9 +112,9 @@ macOS has no backend yet.
 ## Dependencies
 
 Beef bindings, vendored under `Dependencies/`: Bulkan (Vulkan), Win32-Beef (D3D12 and
-DXGI), wgpu-Beef, SDL3 and SDL3_image, Dxc-Beef and SPIRV-Cross, joltc-Beef,
-recastnavigation-Beef, miniaudio, dr_libs and stb_vorbis, AngelScript-Beef, cgltf and ufbx,
-meshoptimizer, msdfgen, stb_image and stb_truetype, astcenc, bc7enc and bcdec, cimgui.
+DXGI), wgpu-Beef, SDL3, Dxc-Beef and SPIRV-Cross, joltc-Beef, recastnavigation-Beef,
+miniaudio (with stb_vorbis for Ogg), AngelScript-Beef, cgltf and ufbx, meshoptimizer,
+msdfgen, stb_image and stb_truetype, astcenc, bc7enc and bcdec, cimgui.
 
 ## License
 
