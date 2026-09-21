@@ -108,7 +108,15 @@ class Thing
 	public bool LastTeleport;
 	public Mode LastMode = .Off;
 	public int Goes;
+	/// A factory whose result the script only borrows: handles to a class are uncounted,
+	/// so what it makes stays the fixture's until shutdown.
 	[Scriptable]
-	public static Thing Make() => new Thing();
+	public static Thing Make()
+	{
+		let made = new Thing();
+		sMade.Add(made);
+		return made;
+	}
+	private static List<Thing> sMade = new .() ~ DeleteContainerAndItems!(_);
 	public void Internal() {}
 }

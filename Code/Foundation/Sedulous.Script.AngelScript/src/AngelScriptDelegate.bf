@@ -29,9 +29,12 @@ class AngelScriptDelegate : ScriptDelegate
 		}
 	}
 
-	/// The runtime is going: the function it owns may not be touched from here on.
+	/// The runtime is going: the reference goes back now, while the engine still stands,
+	/// and the function may not be touched from here on.
 	public void RuntimeGone()
 	{
+		if (mFunction != null)
+			AS.asc_function_release(mFunction);
 		mRuntime = null;
 		mFunction = null;
 	}

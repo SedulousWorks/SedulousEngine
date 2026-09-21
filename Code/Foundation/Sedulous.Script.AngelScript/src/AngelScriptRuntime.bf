@@ -77,6 +77,11 @@ class AngelScriptRuntime : ScriptRuntime
 		AS.asc_engine_set_generic_callback(mEngine, => OnGeneric, Internal.UnsafeCastToPtr(this));
 		// Value types by non-const reference, for `&out` and `&inout` on them.
 		AS.asc_engine_set_property(mEngine, AS.asEP_ALLOW_UNSAFE_REFERENCES, 1);
+		// A handle argument, an array or a funcdef, is the ENGINE's to release after the
+		// call: the trampoline only reads an array, and a delegate or coroutine takes a
+		// reference of its own. In the default mode the reference passes to the callee
+		// unless the parameter is declared `@+`, which would show in every signature.
+		AS.asc_engine_set_property(mEngine, AS.asEP_GENERIC_CALL_MODE, 0);
 		AS.asc_engine_register_std_string(mEngine);
 		AS.asc_engine_register_script_array(mEngine, 1);
 		DeclareInlineKinds();

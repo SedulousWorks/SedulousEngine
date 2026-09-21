@@ -302,4 +302,5 @@ static class AS
 	public const int32 asEP_BUILD_WITHOUT_LINE_CUES = 8;
 	public const int32 asEP_INIT_GLOBAL_VARS_AFTER_BUILD = 9;
 	public const int32 asEP_REQUIRE_ENUM_SCOPE = 10;
+	public const int32 asEP_GENERIC_CALL_MODE = 28;
 }
