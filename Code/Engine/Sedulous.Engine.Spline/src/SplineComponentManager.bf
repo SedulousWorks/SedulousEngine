@@ -23,6 +23,15 @@ class SplineComponentManager : SerializableComponentManager<SplineComponent>
 		component.Curve = new SplineCurve();
 	}
 
+	/// A component that reaches its first Initialize phase with NO points was added bare (the
+	/// editor's Add Component, a script): it is seeded. A loaded or spawned one has its
+	/// points by then and is left alone.
+	protected override void OnComponentInitialized(SplineComponent* component, EntityHandle entity)
+	{
+		if (component.Curve.Points.IsEmpty)
+			SplineComponent.SeedDefault(component.Curve);
+	}
+
 	protected override void OnComponentDestroyed(SplineComponent* component, EntityHandle entity)
 	{
 		delete component.Curve;

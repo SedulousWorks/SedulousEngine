@@ -65,6 +65,44 @@ class SplineComponentTests
 			&& Near(sampled.Z, expected.Z));
 	}
 
+	/// Add Component in the editor, or a script: no points until the Initialize phase runs,
+	/// which seeds a segment; a component that already has its points is left alone.
+	[Test]
+	public static void AddedBareItIsSeededAtItsFirstInitializeAndLoadedPointsAreKept()
+	{
+		let scene = scope Scene();
+		let splines = scene.AddSystem<SplineComponentManager>();
+
+		let bare = scene.CreateEntity("bare");
+		let added = splines.Add(bare);
+		Test.Assert(added.PointCount() == 0);
+		let loaded = scene.CreateEntity("loaded");
+		let kept = splines.Add(loaded);
+		for (let x in scope float[](0.0f, 1.0f, 2.0f))
+			kept.Curve.Points.Add(SplinePoint(.(x, 0.0f, 0.0f)));
+
+		scene.InitializePendingComponents();
+		Test.Assert(splines.Get(bare).PointCount() == 2, "the seed: a segment along local X");
+		Test.Assert(splines.Get(bare).Curve.Points[0].Position.X == -1.0f);
+		Test.Assert(splines.Get(bare).Curve.Points[1].Position.X == 1.0f);
+		Test.Assert(splines.Get(bare).Curve.Length > 1.9f, "caches rebuilt with the seed");
+		Test.Assert(splines.Get(loaded).PointCount() == 3);
+		Test.Assert(splines.Get(loaded).Curve.Points[0].Position.X == 0.0f);
+
+		// The inspector's rows: the loop flag goes through the curve and rebuilds its arc
+		// length.
+		let three = splines.Get(loaded);
+		three.Curve.UpdateAutoHandles();
+		three.Curve.RebuildArcLength();
+		let open = three.Curve.Length;
+		Test.Assert(!three.IsClosed());
+		three.SetClosed(true);
+		Test.Assert(three.IsClosed());
+		Test.Assert(three.Curve.Length > open, "the closing segment is in the table now");
+		three.SetClosed(false);
+		Test.Assert(Near(three.Curve.Length, open));
+	}
+
 	/// Every query answers in WORLD space: the points are stored entity local, and the
 	/// entity transform is what places them.
 	[Test]

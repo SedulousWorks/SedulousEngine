@@ -13,8 +13,8 @@ namespace Sedulous.Editor.Spline;
 
 /// The spline viewport tool, available while a selected entity carries a spline: drag a
 /// point or, on the selected point, a tangent handle (Shift breaks the pair), Ctrl-click a
-/// segment to insert, Delete or X over a point to remove. Every edit is one command holding
-/// the whole point table. The scene, commands and selection are BORROWED from the host.
+/// segment to insert, Ctrl-click off a curve with no segment to place a point, Delete or X
+/// over a point to remove. Every edit is one command holding the whole point table. The scene, commands and selection are BORROWED from the host.
 class SplineEditTool : IViewportTool
 {
 	/// Screen constant pick radius per unit of distance.
@@ -37,6 +37,9 @@ class SplineEditTool : IViewportTool
 	private bool mHasInsertPreview = false;
 	private float mInsertT = 0.0f;
 	private Float3 mInsertLocal = .Zero;
+	/// Ctrl over an empty curve: the next point's spot.
+	private bool mHasPlacePreview = false;
+	private Float3 mPlaceLocal = .Zero;
 	private List<SplinePoint> mSnapshotPoints = new .() ~ delete _;
 	private bool mSnapshotClosed = false;
 
@@ -55,6 +58,8 @@ class SplineEditTool : IViewportTool
 	public int32 SelectedPoint => mSelectedPoint;
 	public bool IsDragging => mDragging;
 	public bool HasInsertPreview => mHasInsertPreview;
+	/// Ctrl over a curve with no segment: a click appends here.
+	public bool HasPlacePreview => mHasPlacePreview;
 
 	public void OnActivate() {}
 	public void OnDeactivate() => EndDrag(true);
@@ -63,6 +68,7 @@ class SplineEditTool : IViewportTool
 	{
 		mHoverPoint = -1;
 		mHasInsertPreview = false;
+		mHasPlacePreview = false;
 		Guid entity = .();
 		let component = TargetComponent(ref entity);
 		if ((component == null) || (mScene == null))
@@ -112,6 +118,28 @@ class SplineEditTool : IViewportTool
 		}
 		if (input.Ctrl && (mHoverPoint < 0) && (curve.SegmentCount > 0))
 			FindRayClosest(curve, input.Ray);
+		// Place preview: a curve with no segment yet (a component added bare, or cut down to
+		// one point) takes its points from Ctrl-clicks, on the camera-facing plane through the
+		// entity (through its last point once it has one), so a spline can be built from
+		// nothing.
+		if (input.Ctrl && (mHoverPoint < 0) && (curve.SegmentCount == 0) && !mDragging)
+		{
+			let through = curve.Points.IsEmpty
+				? TransformPoint(.Zero, mWorld)
+				: TransformPoint(curve.Points[curve.Points.Count - 1].Position, mWorld);
+			let normal = input.CameraForward * -1.0f;
+			let denominator = Dot(input.Ray.Direction, normal);
+			if (Math.Abs(denominator) > 0.0001f)
+			{
+				let t = Dot(through - input.Ray.Origin, normal) / denominator;
+				if (t > 0.0f)
+				{
+					let world = input.Ray.Origin + input.Ray.Direction * t;
+					mPlaceLocal = TransformPoint(world, Inverse(mWorld));
+					mHasPlacePreview = true;
+				}
+			}
+		}
 
 		if (mDragging)
 		{
@@ -205,6 +233,19 @@ class SplineEditTool : IViewportTool
 				mDragPlaneNormal = input.CameraForward * -1.0f;
 				return true;
 			}
+			if (input.Ctrl && mHasPlacePreview)
+			{
+				// Append (one undo step each): the first two clicks make the curve a curve,
+				// after which Ctrl-click inserts on the segment under the pointer.
+				BeginSnapshot(curve);
+				curve.Points.Add(SplinePoint(mPlaceLocal));
+				curve.UpdateAutoHandles();
+				curve.RebuildArcLength();
+				CommitSnapshot(curve);
+				mSelectedPoint = (int32)curve.Points.Count - 1;
+				mHasPlacePreview = false;
+				return true;
+			}
 			if (input.Ctrl && mHasInsertPreview)
 			{
 				BeginSnapshot(curve);
@@ -263,6 +304,8 @@ class SplineEditTool : IViewportTool
 		}
 		if (mHasInsertPreview)
 			drawList.DrawWireSphere(TransformPoint(mInsertLocal, mWorld), 0.08f, .(0.4f, 1.0f, 0.4f, 1.0f));
+		if (mHasPlacePreview)
+			drawList.DrawWireSphere(TransformPoint(mPlaceLocal, mWorld), 0.08f, .(0.6f, 1.0f, 0.6f, 1.0f));
 	}
 
 	/// The first selected entity carrying a spline, and its guid.

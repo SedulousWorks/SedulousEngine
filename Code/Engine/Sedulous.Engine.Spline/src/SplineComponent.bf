@@ -25,6 +25,32 @@ struct SplineComponent : ISerializable
 
 	public this() {}
 
+	// The inspector's rows (points are authored in the viewport by the spline tool): the
+	// loop flag, through the curve so its arc-length table follows, and the point count.
+	[InspectorProperty("closed", "SetClosed")]
+	public bool IsClosed() => Curve.Closed;
+	public void SetClosed(bool closed)
+	{
+		if (Curve.Closed != closed)
+		{
+			Curve.Closed = closed;
+			Curve.RebuildArcLength();
+		}
+	}
+	[InspectorProperty("pointCount")]
+	public uint32 PointCount() => (uint32)Curve.Points.Count;
+
+	/// What a spline added with no points starts as: a short segment along the entity's
+	/// local X, so the viewport tool has points to grab and the gizmo shows a curve at once.
+	/// Also the runtime's answer for a script that adds the component bare.
+	public static void SeedDefault(SplineCurve curve)
+	{
+		curve.Points.Add(SplinePoint(.(-1.0f, 0.0f, 0.0f)));
+		curve.Points.Add(SplinePoint(.(1.0f, 0.0f, 0.0f)));
+		curve.UpdateAutoHandles();
+		curve.RebuildArcLength();
+	}
+
 	public void Serialize(ISerializer ar) mut
 	{
 		// Written by hand rather than through SerializeList: a point describes ITSELF, and the

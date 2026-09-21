@@ -15,6 +15,7 @@ namespace Sedulous.Editor.Spline.Tests;
 class SplineEditToolTests
 {
 	private static Float3 CamPos => .(0.0f, 0.0f, 10.0f);
+	private static bool Near(float a, float b) => Math.Abs(a - b) < 0.01f;
 
 	private static ViewportToolInput Frame(Float3 through, bool pressed, bool down, bool released, bool ctrl = false)
 	{
@@ -133,6 +134,54 @@ class SplineEditToolTests
 		Test.Assert(commands.CanUndo);
 		commands.Undo();
 		Test.Assert(component.Curve.Points.Count == 3);
+	}
+
+	/// A component added bare, before its Initialize phase seeded it: no points at all. The
+	/// tool builds the curve from Ctrl-clicks, one undo step each.
+	[Test]
+	public static void AnEmptySplineTakesItsFirstPointsFromCtrlClicksUndoably()
+	{
+		let scene = scope Scene();
+		let commands = scope EditorCommandStack();
+		let selection = scope Selection<Guid>();
+		let splines = scene.AddSystem<SplineComponentManager>();
+		let entity = scene.CreateEntity("Path");
+		let component = splines.Add(entity);
+		selection.Set(scene.GetEntityId(entity));
+		let tool = scope SplineEditTool(Host(scene, commands, selection));
+		Test.Assert(tool.IsAvailable, "the component is there, even with nothing to draw");
+
+		// Without Ctrl nothing happens; with Ctrl the place preview appears where the ray
+		// meets the camera-facing plane through the entity.
+		Test.Assert(!tool.Update(Frame(.(-1.0f, 0.0f, 0.0f), false, false, false)));
+		Test.Assert(!tool.HasPlacePreview);
+		tool.Update(Frame(.(-1.0f, 0.0f, 0.0f), false, false, false, true));
+		Test.Assert(tool.HasPlacePreview);
+		Test.Assert(!tool.HasInsertPreview);
+
+		// Two Ctrl-clicks: a two-point curve, each click one undo step, the last point selected.
+		Test.Assert(tool.Update(Frame(.(-1.0f, 0.0f, 0.0f), true, true, false, true)));
+		Test.Assert(component.Curve.Points.Count == 1);
+		Test.Assert(Near(component.Curve.Points[0].Position.X, -1.0f));
+		Test.Assert(tool.SelectedPoint == 0);
+		tool.Update(Frame(.(1.0f, 0.0f, 0.0f), false, false, true, true)); // release
+		Test.Assert(tool.Update(Frame(.(1.0f, 0.0f, 0.0f), true, true, false, true)));
+		Test.Assert(component.Curve.Points.Count == 2);
+		Test.Assert(Near(component.Curve.Points[1].Position.X, 1.0f));
+		Test.Assert(component.Curve.SegmentCount == 1);
+		tool.Update(Frame(.(1.0f, 0.0f, 0.0f), false, false, true, true));
+
+		// From here Ctrl-click is the insert-on-segment gesture, not placement.
+		tool.Update(Frame(.(0.0f, 0.0f, 0.0f), false, false, false, true));
+		Test.Assert(tool.HasInsertPreview);
+		Test.Assert(!tool.HasPlacePreview);
+
+		commands.Undo();
+		Test.Assert(component.Curve.Points.Count == 1);
+		commands.Undo();
+		Test.Assert(component.Curve.Points.IsEmpty);
+		commands.Redo();
+		Test.Assert(component.Curve.Points.Count == 1);
 	}
 
 	[Test]
