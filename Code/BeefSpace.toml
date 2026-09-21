@@ -495,3 +495,11 @@ ConfigSelections = {"Samples.WebScene.Web" = {Enabled = false}, "Samples.WebTria
 
 [Configs.Release.Win64]
 ConfigSelections = {"Samples.WebScene.Web" = {Enabled = false}, "Samples.WebTriangle" = {Enabled = false}, "Sedulous.Engine.Player.Web" = {Enabled = false}, "Sedulous.Engine.SceneSurface.Tests" = {Enabled = false}, "Sedulous.Integration.Mcp" = {Enabled = false}, "Sedulous.Mcp.Script.Tests" = {Enabled = false}}
+
+# The browser tier links against emscripten and has no desktop target; every desktop config
+# has to opt it out, and Test is a config like the others.
+[Configs.Test.Linux64]
+ConfigSelections = {"Samples.WebScene.Web" = {Enabled = false}, "Samples.WebTriangle" = {Enabled = false}, "Sedulous.Engine.Player.Web" = {Enabled = false}}
+
+[Configs.Test.Win64]
+ConfigSelections = {"Samples.WebScene.Web" = {Enabled = false}, "Samples.WebTriangle" = {Enabled = false}, "Sedulous.Engine.Player.Web" = {Enabled = false}}
