@@ -534,6 +534,15 @@ class PhysicsSceneSystem : SceneSystem
 					mScene.GetEntityName(entity));
 				return;
 			}
+			// Ground has no mass to move: the world would make the body static anyway, and
+			// the author should hear that the motion they set is not the one they get.
+			if (component.Motion != .Static)
+			{
+				GlobalLog(.Warning,
+					"Physics: '{}' has a heightfield shape, which is always static; its {} motion is ignored",
+					mScene.GetEntityName(entity), component.Motion);
+				desc.Motion = .Static;
+			}
 		}
 
 		desc.Shapes.Add(own);

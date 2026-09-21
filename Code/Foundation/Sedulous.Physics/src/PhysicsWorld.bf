@@ -354,8 +354,12 @@ class PhysicsWorld
 		// A trigger IS the Trigger layer, whatever the desc's layer says: a sensor on the
 		// Dynamic layer would take part in the solve.
 		let layer = desc.IsTrigger ? PhysicsLayer.Trigger : desc.Layer;
-		let motion = (desc.Motion == .Static) ? JPH_MotionType.JPH_MotionType_Static
-			: (desc.Motion == .Kinematic) ? JPH_MotionType.JPH_MotionType_Kinematic
+		// A heightfield or a triangle mesh has no mass: the backend refuses to move one, by
+		// an assert in a checked build and by a body with no inertia in a release one. Such
+		// a shape makes the body static whatever was asked.
+		let kind = JPH_Shape_MustBeStatic(shape) ? MotionKind.Static : desc.Motion;
+		let motion = (kind == .Static) ? JPH_MotionType.JPH_MotionType_Static
+			: (kind == .Kinematic) ? JPH_MotionType.JPH_MotionType_Kinematic
 			: JPH_MotionType.JPH_MotionType_Dynamic;
 
 		var position = ToJolt(desc.Position);
@@ -375,7 +379,7 @@ class PhysicsWorld
 		JPH_BodyCreationSettings_SetOverrideMassProperties(settings,
 			.JPH_OverrideMassProperties_CalculateMassAndInertia);
 
-		if (desc.Motion == .Dynamic)
+		if (kind == .Dynamic)
 		{
 			if (desc.ContinuousCollision)
 				JPH_BodyCreationSettings_SetMotionQuality(settings,
@@ -394,7 +398,7 @@ class PhysicsWorld
 			}
 		}
 
-		let activation = (desc.Motion == .Static) ? JPH_Activation.JPH_Activation_DontActivate
+		let activation = (kind == .Static) ? JPH_Activation.JPH_Activation_DontActivate
 			: JPH_Activation.JPH_Activation_Activate;
 		let id = JPH_BodyInterface_CreateAndAddBody(Bodies, settings, activation);
 		return (id == BodyId.Invalid) ? BodyId() : BodyId(id);

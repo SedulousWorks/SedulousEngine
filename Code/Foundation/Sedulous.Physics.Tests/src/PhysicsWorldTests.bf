@@ -80,6 +80,47 @@ class PhysicsWorldTests
 		Test.Assert(offPosition.Y < 0.0f);
 	}
 
+	/// A heightfield has no mass to move, so a body asked to be dynamic over one is static
+	/// instead: it stays put, and a ball still lands on it. The backend would otherwise
+	/// assert in a checked build, and in a release one give the body no inertia at all.
+	[Test]
+	public static void AHeightfieldAskedToBeDynamicIsStatic()
+	{
+		let world = scope PhysicsWorld();
+
+		const uint32 n = 17;
+		let samples = scope float[n * n];
+		for (int i < samples.Count)
+			samples[i] = 2.0f;
+
+		let ground = scope BodyDesc();
+		ground.Motion = .Dynamic; // the authored default, left as it is
+		var field = ShapeDesc();
+		field.Kind = .Heightfield;
+		field.HeightSamples = samples;
+		field.HeightSampleCount = n;
+		field.HeightWorldSize = .(16.0f, 16.0f);
+		ground.Shapes.Add(field);
+		let terrain = world.CreateBody(ground);
+		Test.Assert(terrain.IsValid);
+
+		let drop = scope BodyDesc();
+		var sphere = ShapeDesc();
+		sphere.Kind = .Sphere;
+		sphere.Radius = 0.5f;
+		drop.Shapes.Add(sphere);
+		drop.Position = .(0.0f, 10.0f, 0.0f);
+		let ball = world.CreateBody(drop);
+		Test.Assert(ball.IsValid);
+
+		Simulate(world, 240);
+
+		world.GetBodyTransform(terrain, let groundPosition, ?);
+		Test.Assert(Near(groundPosition.Y, 0.0f, 0.001f), "the ground never fell");
+		world.GetBodyTransform(ball, let onPosition, ?);
+		Test.Assert(Near(onPosition.Y, 2.5f, 0.1f), "and the ball landed on it");
+	}
+
 	/// Two statics never pair, since neither can move into the other, and pairing them would
 	/// be work done every step for a contact that can never change.
 	[Test]
