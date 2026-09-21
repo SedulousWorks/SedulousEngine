@@ -279,17 +279,16 @@ class NullShellTests
 		var calls = 0;
 		var results = -1;
 
-		// Typed explicitly: the parameter type cannot be inferred from a bare lambda here.
-		delegate void(Span<String>) observe = scope [&] (paths) => { calls++; results = paths.Length; };
-
-		shell.Dialogs.ShowOpenFile(observe, .(), "", false, 0);
+		// The service CONSUMES the callback once the dialog closes, so each call gets its own,
+		// heap allocated; a scoped one handed over would be freed twice.
+		shell.Dialogs.ShowOpenFile(new [&] (paths) => { calls++; results = paths.Length; }, .(), "", false, 0);
 		Test.Assert(calls == 1, "it answered");
 		Test.Assert(results == 0, "with nothing, which reads as a cancel");
 
-		shell.Dialogs.ShowSaveFile(observe, .(), "", 0);
+		shell.Dialogs.ShowSaveFile(new [&] (paths) => { calls++; results = paths.Length; }, .(), "", 0);
 		Test.Assert(calls == 2);
 
-		shell.Dialogs.ShowOpenFolder(observe, "", false, 0);
+		shell.Dialogs.ShowOpenFolder(new [&] (paths) => { calls++; results = paths.Length; }, "", false, 0);
 		Test.Assert(calls == 3);
 
 		// And a null callback is not an error.

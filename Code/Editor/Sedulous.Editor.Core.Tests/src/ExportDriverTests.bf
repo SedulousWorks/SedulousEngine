@@ -484,7 +484,10 @@ static class ExportDriverTests
 		preset.Platform.Set("Web");
 		preset.OutputSubdir.Set("web");
 		let result = scope ExportResult();
-		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, result) case .Ok);
+		let exported = ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, result);
+		Test.Assert(exported case .Ok, scope $"the web export: {exported}; the WGSL cook needs naga and tint beside the test executable");
+		if (exported case .Err)
+			return; // nothing below exists to read
 		let dist = scope NativeFileSystem(result.OutputDir);
 		Test.Assert(dist.Exists(page) && dist.Exists(scope $"{BuildLayout.cWebPlayerBaseName}.js") && dist.Exists(scope $"{BuildLayout.cWebPlayerBaseName}.wasm"), "the browser player trio");
 		Test.Assert(dist.Exists("Content-bc.pak") && dist.Exists("Content-astc.pak") && !dist.Exists("Content.pak"), "the two web paks, no desktop one");

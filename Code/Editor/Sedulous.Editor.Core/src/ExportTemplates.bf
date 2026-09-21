@@ -83,6 +83,9 @@ static class ExportTemplates
 			template.Platform.Set(BuildLayout.cWebPlatform);
 			template.PlayerBinary.Set(webPage);
 			template.Compiler.Set("Emscripten");
+			// A web dist is another toolchain's build: the tool's own config says nothing
+			// about it, so only its build directory can name one, else Release.
+			template.Config.Clear();
 			ClearAndDeleteItems(template.Sidecars);
 			BuildLayout.CollectWebParts(playerDir, webPage, template.Sidecars);
 		}

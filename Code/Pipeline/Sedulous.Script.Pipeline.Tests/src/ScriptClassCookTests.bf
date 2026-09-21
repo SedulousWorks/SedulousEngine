@@ -23,7 +23,7 @@ static class ScriptClassCookTests
 	private const String cRoot = "scratch_script_cook";
 	private const String cProductType = "Sedulous.Script.Resource.ScriptClassSource";
 
-	private static ScriptSurface sSurface = null;
+	private static ScriptSurface sSurface = null ~ delete _;
 
 	private static void Registered()
 	{
@@ -112,12 +112,12 @@ static class ScriptClassCookTests
 		Test.Assert(!problems.IsEmpty && problems[0].Contains("Broken.as"), problems[0]);
 
 		// The wrong class name is a failure too, not a silent empty record.
-		problems.Clear();
+		ClearAndDeleteItems(problems);
 		Test.Assert(!cook.Cook("class Fine {}", "Fine.as", "Other", record, problems));
 		Test.Assert(problems.Back.Contains("Other"));
 
 		// A script reaching beyond the surface it is cooked against is refused here.
-		problems.Clear();
+		ClearAndDeleteItems(problems);
 		Test.Assert(!cook.Cook("class Reach { void onStart() { PhysicsSceneSystem@ p; } }", "Reach.as", "", record, problems));
 	}
 

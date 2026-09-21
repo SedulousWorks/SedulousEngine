@@ -15,6 +15,11 @@ BeefBuild creates /tmp/<name> (the binary writes) and /tmp/<name>__ (the
 binary reads) and passes <name> as argv[1].
 
   Code/Tools/asan-test.py Sedulous.Mcp.Tests
+  Code/Tools/asan-test.py Sedulous.Editor.Core.Tests ExportDriverTests.AForeign
+
+A second argument runs only the tests whose name contains it, which is how
+one leaking test is isolated from a suite too slow to run whole under the
+sanitizer.
 
 Build the project with BeefBuild first; this only runs it.
 """
@@ -47,7 +52,7 @@ def find_asan_runtime():
     return None
 
 
-def run(exe, env):
+def run(exe, env, name_filter):
     name = "bfasan%d" % os.getpid()
     to_manager = "/tmp/" + name
     to_client = "/tmp/" + name + "__"
@@ -61,7 +66,11 @@ def run(exe, env):
 
     proc = subprocess.Popen([exe, name], env=env)
     buf = b""
-    index = -1
+    # The client lists its tests between :TestInit and :TestBegin, one per line with the
+    # name first, then asks with :TestQuery for the index to run next, until :TestFinish.
+    names = []
+    listing = False
+    next_index = 0
     failures = []
     deadline = time.time() + TIMEOUT_SECONDS
     while proc.poll() is None and time.time() < deadline:
@@ -78,9 +87,23 @@ def run(exe, env):
             line, buf = buf.split(b"\n", 1)
             command = line.decode("utf8", "replace").rstrip("\r")
             parts = command.split("\t")
-            if parts[0] in (":TestInit", ":TestBegin", ":TestQuery"):
-                index += 1
-                os.write(write_fd, (":TestRun\t%d\n" % index).encode())
+            if parts[0] == ":TestInit":
+                listing = True
+            elif parts[0] == ":TestBegin":
+                listing = False
+            elif listing:
+                if parts[0]:
+                    names.append(parts[0])
+            elif parts[0] == ":TestQuery":
+                while next_index < len(names) and name_filter not in names[next_index]:
+                    next_index += 1
+                if next_index < len(names):
+                    print("RUN: " + names[next_index])
+                    sys.stdout.flush()
+                    os.write(write_fd, (":TestRun\t%d\n" % next_index).encode())
+                    next_index += 1
+                else:
+                    os.write(write_fd, b":TestFinish\n")
             elif parts[0] in (":TestFail", ":TestFatal"):
                 failures.append(command)
                 print("FAIL: " + command)
@@ -97,8 +120,8 @@ def run(exe, env):
 
 
 def main():
-    if len(sys.argv) != 2:
-        sys.stderr.write("usage: asan-test.py <TestProjectName>\n")
+    if len(sys.argv) not in (2, 3):
+        sys.stderr.write("usage: asan-test.py <TestProjectName> [name-filter]\n")
         return 2
     project = sys.argv[1]
     exe = os.path.join(CODE_DIR, "build", "Test_Linux64", project, project)
@@ -113,7 +136,7 @@ def main():
     # A caller can override the whole option string, e.g. to cut memory during a sweep.
     env = dict(os.environ, LD_PRELOAD=runtime,
                ASAN_OPTIONS=os.environ.get("ASAN_OPTIONS") or ASAN_OPTIONS)
-    code, failures = run(exe, env)
+    code, failures = run(exe, env, sys.argv[2] if len(sys.argv) == 3 else "")
     # A nonzero exit with no test failure is LeakSanitizer's, and its report is above.
     print("%s: exit %d, %d test failure(s)" % (project, code, len(failures)))
     return code
