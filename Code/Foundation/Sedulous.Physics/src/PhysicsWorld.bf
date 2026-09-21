@@ -339,6 +339,21 @@ class PhysicsWorld
 		&& (desc.LocalRotation.X == 0.0f) && (desc.LocalRotation.Y == 0.0f)
 		&& (desc.LocalRotation.Z == 0.0f) && (desc.LocalRotation.W == 1.0f);
 
+	/// The mass and inertia of a solid box of the size and density, the backend's own
+	/// formula: the inertia is diagonal, mass over twelve times the squared sizes of the
+	/// other two axes.
+	private static JPH_MassProperties SolidBoxMassProperties(Float3 size, float density)
+	{
+		var properties = JPH_MassProperties();
+		properties.mass = size.X * size.Y * size.Z * density;
+		let scale = properties.mass / 12.0f;
+		properties.inertia.column[0].x = scale * (size.Y * size.Y + size.Z * size.Z);
+		properties.inertia.column[1].y = scale * (size.X * size.X + size.Z * size.Z);
+		properties.inertia.column[2].z = scale * (size.X * size.X + size.Y * size.Y);
+		properties.inertia.column[3].w = 1.0f;
+		return properties;
+	}
+
 	// ==================== bodies ====================
 
 	public BodyId CreateBody(BodyDesc desc)
@@ -354,9 +369,12 @@ class PhysicsWorld
 		// A trigger IS the Trigger layer, whatever the desc's layer says: a sensor on the
 		// Dynamic layer would take part in the solve.
 		let layer = desc.IsTrigger ? PhysicsLayer.Trigger : desc.Layer;
-		// A heightfield or a triangle mesh has no mass: the backend refuses to move one, by
-		// an assert in a checked build and by a body with no inertia in a release one. Such
-		// a shape makes the body static whatever was asked.
+		// The backend's own rule, MustBeStatic: a mesh, a heightfield, a plane, and any
+		// compound or decorated shape holding one derive no mass, and mass properties are set
+		// for EVERY non static body, kinematic as much as dynamic, so a moving one asserts on
+		// the invalid mass in a checked build and gets a body with no inertia in a release
+		// one. A data error, not a crash: such a body is static whatever was asked, and the
+		// scene system names the entity.
 		let kind = JPH_Shape_MustBeStatic(shape) ? MotionKind.Static : desc.Motion;
 		let motion = (kind == .Static) ? JPH_MotionType.JPH_MotionType_Static
 			: (kind == .Kinematic) ? JPH_MotionType.JPH_MotionType_Kinematic
@@ -385,7 +403,28 @@ class PhysicsWorld
 				JPH_BodyCreationSettings_SetMotionQuality(settings,
 					.JPH_MotionQuality_LinearCast);
 
-			if (desc.MassOverride > 0.0f)
+			// A convex shape degenerate to zero volume, a hull cooked from a flat quad, derives
+			// no mass and would trip the same assert; a zero scale is refused at shape creation,
+			// so the flat hull is the reachable case. It still collides, so it gets the mass and
+			// inertia of a solid box filling its local bounds, a centimetre thick at least,
+			// density derived or scaled to the explicit mass, and keeps simulating.
+			var derived = JPH_MassProperties();
+			JPH_Shape_GetMassProperties(shape, &derived);
+			if (!(derived.mass > 0.0f) || derived.mass.IsInfinity)
+			{
+				var bounds = JPH_AABox();
+				JPH_Shape_GetLocalBounds(shape, &bounds);
+				let size = Float3(Math.Max(bounds.max.x - bounds.min.x, 0.01f),
+					Math.Max(bounds.max.y - bounds.min.y, 0.01f),
+					Math.Max(bounds.max.z - bounds.min.z, 0.01f));
+				var solid = SolidBoxMassProperties(size, (desc.Density > 0.0f) ? desc.Density : 1000.0f);
+				if (desc.MassOverride > 0.0f)
+					JPH_MassProperties_ScaleToMass(&solid, desc.MassOverride);
+				JPH_BodyCreationSettings_SetOverrideMassProperties(settings,
+					.JPH_OverrideMassProperties_MassAndInertiaProvided);
+				JPH_BodyCreationSettings_SetMassPropertiesOverride(settings, &solid);
+			}
+			else if (desc.MassOverride > 0.0f)
 			{
 				// The INERTIA stays density derived; only the scalar mass is overridden, so a
 				// prop that shoves hard still tumbles like its shape.

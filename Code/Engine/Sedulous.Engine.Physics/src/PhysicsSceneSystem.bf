@@ -534,15 +534,24 @@ class PhysicsSceneSystem : SceneSystem
 					mScene.GetEntityName(entity));
 				return;
 			}
-			// Ground has no mass to move: the world would make the body static anyway, and
-			// the author should hear that the motion they set is not the one they get.
-			if (component.Motion != .Static)
-			{
-				GlobalLog(.Warning,
-					"Physics: '{}' has a heightfield shape, which is always static; its {} motion is ignored",
-					mScene.GetEntityName(entity), component.Motion);
-				desc.Motion = .Static;
-			}
+		}
+
+		// A shape that can only be static, the backend's MustBeStatic: a plane, a heightfield,
+		// a cooked triangle mesh. Under a moving body the world makes it static rather than
+		// tripping the backend's mass assert; named HERE, where the entity is known, so the
+		// author can find the component.
+		let staticOnly = (component.Shape == .Plane) || (component.Shape == .Heightfield)
+			|| ((component.Shape == .Cooked) && (component.CollisionShape.Get != null)
+				&& !component.CollisionShape.Get.Convex);
+		if ((component.Motion != .Static) && staticOnly)
+		{
+			GlobalLog(.Error,
+				"Physics: '{}': a {} body cannot use a {} shape, which is static only, having no mass and no mesh against mesh collision; simulated as static",
+				mScene.GetEntityName(entity),
+				(component.Motion == .Kinematic) ? "kinematic" : "dynamic",
+				(component.Shape == .Plane) ? "plane"
+					: (component.Shape == .Heightfield) ? "heightfield" : "triangle mesh");
+			desc.Motion = .Static;
 		}
 
 		desc.Shapes.Add(own);

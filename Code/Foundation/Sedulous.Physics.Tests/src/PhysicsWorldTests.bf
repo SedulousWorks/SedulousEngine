@@ -103,6 +103,7 @@ class PhysicsWorldTests
 		ground.Shapes.Add(field);
 		let terrain = world.CreateBody(ground);
 		Test.Assert(terrain.IsValid);
+		Test.Assert(world.BodyMass(terrain) == 0.0f);
 
 		let drop = scope BodyDesc();
 		var sphere = ShapeDesc();
@@ -119,6 +120,122 @@ class PhysicsWorldTests
 		Test.Assert(Near(groundPosition.Y, 0.0f, 0.001f), "the ground never fell");
 		world.GetBodyTransform(ball, let onPosition, ?);
 		Test.Assert(Near(onPosition.Y, 2.5f, 0.1f), "and the ball landed on it");
+	}
+
+	/// A dynamic body over a mesh or a plane simulates as static rather than asserting: such
+	/// shapes derive no mass and have no collision path against each other. A compound with
+	/// a mesh part is static only too, and so is a KINEMATIC mesh, since the backend sets mass
+	/// properties for every non static body. A dynamic box still falls through the same world.
+	[Test]
+	public static void ADynamicBodyOverAMeshOrPlaneSimulatesAsStatic()
+	{
+		let world = scope PhysicsWorld();
+		world.CreateBody(FloorDesc!());
+
+		let positions = scope Float3[4](.(-1, 0, -1), .(1, 0, -1), .(1, 0, 1), .(-1, 0, 1));
+		let indices = scope uint32[6](0, 2, 1, 0, 3, 2);
+		let slots = scope uint32[2](0, 0);
+		let blob = scope List<uint8>();
+		Test.Assert(ShapeCooking.CookTriangleMesh(positions, indices, slots, blob));
+
+		let meshBody = scope BodyDesc();
+		meshBody.Motion = .Dynamic;
+		meshBody.Position = .(0.0f, 5.0f, 0.0f);
+		var meshShape = ShapeDesc();
+		meshShape.Kind = .Cooked;
+		meshShape.Cooked = blob;
+		meshBody.Shapes.Add(meshShape);
+		let mesh = world.CreateBody(meshBody);
+		Test.Assert(mesh.IsValid);
+		Test.Assert(world.BodyMass(mesh) == 0.0f, "static: no mass");
+
+		let planeBody = scope BodyDesc();
+		planeBody.Motion = .Dynamic;
+		planeBody.Position = .(20.0f, 5.0f, 0.0f);
+		var planeShape = ShapeDesc();
+		planeShape.Kind = .Plane;
+		planeShape.PlaneHalfExtent = 2.0f;
+		planeBody.Shapes.Add(planeShape);
+		let plane = world.CreateBody(planeBody);
+		Test.Assert(plane.IsValid);
+		Test.Assert(world.BodyMass(plane) == 0.0f);
+
+		// A compound with a mesh part is static only too.
+		let compound = scope BodyDesc();
+		compound.Motion = .Dynamic;
+		compound.Position = .(-20.0f, 5.0f, 0.0f);
+		compound.Shapes.Add(meshShape);
+		var cube = ShapeDesc();
+		cube.Kind = .Box;
+		compound.Shapes.Add(cube);
+		let compoundId = world.CreateBody(compound);
+		Test.Assert(compoundId.IsValid);
+		Test.Assert(world.BodyMass(compoundId) == 0.0f);
+
+		// A KINEMATIC mesh: the same assert, demoted the same way.
+		let kinematic = scope BodyDesc();
+		kinematic.Motion = .Kinematic;
+		kinematic.Position = .(0.0f, 5.0f, 20.0f);
+		kinematic.Shapes.Add(meshShape);
+		let kinematicId = world.CreateBody(kinematic);
+		Test.Assert(kinematicId.IsValid);
+		Test.Assert(world.BodyMass(kinematicId) == 0.0f);
+
+		// A dynamic BOX still falls through the same world, and the demoted bodies stay put.
+		let drop = scope BodyDesc();
+		drop.Motion = .Dynamic;
+		drop.Position = .(0.0f, 8.0f, 0.0f);
+		drop.Shapes.Add(cube);
+		let dropped = world.CreateBody(drop);
+		Test.Assert(dropped.IsValid);
+		Simulate(world, 60); // mesh against box contacts are supported; nothing asserts
+
+		world.GetBodyTransform(mesh, let meshPosition, ?);
+		Test.Assert(Near(meshPosition.Y, 5.0f, 0.001f));
+		world.GetBodyTransform(dropped, let droppedPosition, ?);
+		Test.Assert(droppedPosition.Y < 7.9f);
+	}
+
+	/// The one reachable zero volume convex, a hull cooked from a flat quad: the backend
+	/// derives no mass for it, so the world gives it a solid box mass over its bounds, a
+	/// centimetre thick, and it falls like the dynamic body it was asked to be.
+	[Test]
+	public static void ADynamicBodyOverAFlatHullGetsASolidBoxMassAndSimulates()
+	{
+		let world = scope PhysicsWorld();
+		world.CreateBody(FloorDesc!());
+
+		let quad = scope Float3[4](.(-1, 0, -1), .(1, 0, -1), .(1, 0, 1), .(-1, 0, 1));
+		let blob = scope List<uint8>();
+		if (!ShapeCooking.CookConvexHull(quad, blob))
+		{
+			Console.WriteLine("SKIP: this backend refuses a coplanar hull, so the degenerate path is unreachable here");
+			return;
+		}
+
+		let flat = scope BodyDesc();
+		flat.Motion = .Dynamic;
+		flat.Position = .(0.0f, 5.0f, 0.0f);
+		var shape = ShapeDesc();
+		shape.Kind = .Cooked;
+		shape.Cooked = blob;
+		flat.Shapes.Add(shape);
+		let body = world.CreateBody(flat);
+		Test.Assert(body.IsValid);
+		Test.Assert(world.BodyMass(body) > 0.0f);
+
+		let heavy = scope BodyDesc();
+		heavy.Motion = .Dynamic;
+		heavy.Position = .(20.0f, 5.0f, 0.0f);
+		heavy.MassOverride = 3.0f;
+		heavy.Shapes.Add(shape);
+		let heavyId = world.CreateBody(heavy);
+		Test.Assert(heavyId.IsValid);
+		Test.Assert(Near(world.BodyMass(heavyId), 3.0f, 0.001f));
+
+		Simulate(world, 60);
+		world.GetBodyTransform(body, let position, ?);
+		Test.Assert(position.Y < 4.9f, "it falls: a dynamic body, the mass invented, the collision real");
 	}
 
 	/// Two statics never pair, since neither can move into the other, and pairing them would
