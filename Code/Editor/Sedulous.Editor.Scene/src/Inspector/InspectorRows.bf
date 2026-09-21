@@ -88,7 +88,38 @@ static class InspectorRows<T>
 				EmitVisibleWhen(type, access, v.Condition, code);
 			code.Append("}\n");
 		}
+		EmitComputed(type, access, code);
 		Compiler.MixinRoot(code);
+	}
+
+	/// The rows a type computes rather than stores: a getter marked [InspectorProperty],
+	/// written back through its named setter, or read-only without one. Only a bool is
+	/// writable; a getter with a parameter or an unwritable setter is a comptime error,
+	/// since a silent skip would read as "not marked".
+	[Comptime]
+	private static void EmitComputed(Type type, StringView access, String code)
+	{
+		for (let method in type.GetMethods(.Public | .Instance | .DeclaredOnly))
+		{
+			if (!(method.GetCustomAttribute<InspectorPropertyAttribute>() case .Ok(let mark)))
+				continue;
+			if (method.ParamCount != 0)
+				Runtime.FatalError(scope $"[InspectorProperty] {type.GetName(.. scope .())}.{method.Name} takes parameters; a getter takes none");
+			let rt = method.ReturnType;
+			let quoted = Quote(mark.Name, .. scope .());
+			let call = scope $"{access}.{method.Name}()";
+			code.Append("{\n\t");
+			if (mark.Setter.IsEmpty)
+			{
+				// Read-only: whatever it is, shown as text.
+				code.AppendF("s.ReadOnlyRow({}, new (p, text) => text.AppendF(\"{{}}\", {}));\n", quoted, call);
+			}
+			else if (rt == typeof(bool))
+				code.AppendF("s.BoolRow({}, new (p) => {}, new (p, v) => {}.{}(v));\n", quoted, call, access, mark.Setter);
+			else
+				Runtime.FatalError(scope $"[InspectorProperty] {type.GetName(.. scope .())}.{method.Name} returns {rt.GetName(.. scope .())}; only a bool is writable, drop the setter for a read-only row");
+			code.Append("}\n");
+		}
 	}
 
 	/// One row's call, or false for a field the inspector does not show.

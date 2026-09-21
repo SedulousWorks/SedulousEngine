@@ -73,6 +73,40 @@ class InspectorSection
 		Add(editor, new [=editor, =read, =target]() => { if (let p = target.Address) editor.SetValue(read(p)); });
 	}
 
+	/// A COMPUTED bool, written back through Mutate: the whole component is the undo step,
+	/// since there is no field for a property write to land on.
+	public void BoolRow(StringView field, delegate bool(void* p) read, delegate void(void* p, bool v) write)
+	{
+		Own(field);
+		Keep(read);
+		Keep(write);
+		let target = mTarget;
+		let editor = new BoolEditor(field, Read(read, false),
+			new [=target, =write](v) => { target.Mutate(scope [=write, =v](p) => { write(p, v); }); }, mCategory);
+		Add(editor, new [=editor, =read, =target]() => { if (let p = target.Address) editor.SetValue(read(p)); });
+	}
+
+	/// A COMPUTED value, shown as text and never edited; `read` formats it.
+	public void ReadOnlyRow(StringView field, delegate void(void* p, String text) read)
+	{
+		Own(field);
+		Keep(read);
+		let target = mTarget;
+		let initial = scope String();
+		if (let p = target.Address)
+			read(p, initial);
+		let editor = new ReadOnlyEditor(field, initial, mCategory);
+		Add(editor, new [=editor, =read, =target]() =>
+		{
+			if (let p = target.Address)
+			{
+				let text = scope String();
+				read(p, text);
+				editor.SetValue(text);
+			}
+		});
+	}
+
 	/// `pack` makes a Variant of the field's own integer type from the edited value.
 	public void IntRow(StringView field, delegate int64(void* p) read, delegate Variant(int64 v) pack)
 	{

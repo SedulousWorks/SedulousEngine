@@ -7,6 +7,8 @@ using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Animation;
+using Sedulous.Engine.Spline;
+using Sedulous.Spline;
 
 namespace Sedulous.Editor.Scene.Tests;
 
@@ -150,6 +152,53 @@ class InspectorViewTests
 		let fov = Find(inspector, "FovYRadians");
 		Test.Assert((fov != null) && (fov.DisplayName == "Field Of View") && (fov.Category == "Camera"));
 		Test.Assert(cameras.HasComponent(edit.Resolve(sun)));
+	}
+
+	/// A component's computed rows: a [InspectorProperty] getter with a setter is a bool
+	/// row written through Mutate as one undo step; one without is read-only text.
+	[Test]
+	public static void ComputedRowsWriteThroughTheirSetterAndReadOnlyOnesShowText()
+	{
+		SceneInspectors.RegisterBuiltin();
+		let scene = scope Scene();
+		let splines = scene.AddSystem<SplineComponentManager>();
+		let commands = scope EditorCommandStack();
+		let edit = scope SceneEditContext(scene, commands);
+		let editor = scope EditorContext();
+		let inspector = new SceneInspectorView(editor, edit);
+		defer inspector.ReleaseRef();
+
+		let path = edit.CreateEntity("Path");
+		edit.AddComponent(path, typeof(SplineComponent));
+		scene.InitializePendingComponents(); // seeds the two point segment
+		edit.EntitySelection.Set(path);
+		inspector.Refresh();
+
+		let closed = Find(inspector, "closed") as BoolEditor;
+		Test.Assert(closed != null);
+		Test.Assert(closed.Category == "Spline");
+		Test.Assert(!closed.Value);
+		let count = Find(inspector, "pointCount") as ReadOnlyEditor;
+		Test.Assert(count != null);
+		Test.Assert(count.Value == "2");
+
+		// The write goes through the curve, so the arc length follows, and is one undo step.
+		let component = splines.Get(edit.Resolve(path));
+		let open = component.Curve.Length;
+		let before = commands.Count;
+		closed.Setter(true);
+		Test.Assert(component.IsClosed());
+		Test.Assert(component.Curve.Length > open);
+		Test.Assert(commands.Count == before + 1);
+		commands.Undo();
+		Test.Assert(!component.IsClosed());
+		inspector.Refresh();
+		Test.Assert(!(Find(inspector, "closed") as BoolEditor).Value);
+
+		// The read-only row follows the data.
+		component.Curve.Points.Add(SplinePoint(.(0.0f, 1.0f, 0.0f)));
+		inspector.Refresh();
+		Test.Assert((Find(inspector, "pointCount") as ReadOnlyEditor).Value == "3");
 	}
 
 	[Test]
