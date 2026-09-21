@@ -41,8 +41,13 @@ class ToggleSwitch : View
 		let replacement = new String(text);
 		let previous = Text.Value;
 		Text.Value = replacement;
-		if (previous != replacement)
+		// The property compares CONTENT and keeps the old string for equal text, so which
+		// of the two is the stale one is decided by identity: a per frame SetText with an
+		// unchanged label leaked a string a frame.
+		if (Text.Value === replacement)
 			delete previous;
+		else
+			delete replacement;
 		Invalidate();
 	}
 
