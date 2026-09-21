@@ -51,8 +51,9 @@ agent can work on a project. The bundled skill under `.claude/` is the in checko
 Requirements:
 
 - A recent [Beef nightly](https://nightly.beeflang.org/index.html), for BeefBuild and the IDE.
-  A few compiler fixes this engine relies on are still pending upstream; until they land, the
-  `working` branch of [our fork](https://github.com/jayrulez/Beef) carries them.
+  Upstream is sufficient; the `working` branch of [our fork](https://github.com/jayrulez/Beef)
+  carries the compiler fixes we have contributed that are still in review, none of which the
+  engine depends on.
 - Linux x64 or Windows x64. Prebuilt native libraries for both are in the tree under
   `Dependencies/*/dist`; each dependency has a `build-native.sh` / `build-native.ps1` to
   rebuild them.
